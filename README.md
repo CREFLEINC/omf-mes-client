@@ -1,0 +1,35 @@
+# omf-mes-client
+
+OMF-MES 사용자 프로그램의 클라이언트 모노레포. React + TypeScript 코드 1벌에서 셸 3종 — 브라우저(관리웹) · Electron(POP) · Capacitor(모바일) — 을 빌드한다.
+
+## 구조
+
+```
+apps/
+  web/            # 관리웹 셸 (routes → screens → patterns → packages)
+packages/
+  domain/         # 업무 개념·상태 전이·검증 — 내부 의존 0
+  api-client/     # OpenAPI 계약 클라이언트·횡단 규약 — domain만 의존
+  ui/             # 표현 전용 부품 (ds-candidates 포함) — domain·api-client 무의존
+  i18n/           # 한/베 리소스
+tools/
+  mock/           # Prism 목 서버 (계약 검증·초기 개발용)
+```
+
+패키지 간 허용 의존과 책임 경계는 구조 설계 검토 보고서 v0.2가 정본이다. 각 패키지 README에 요약돼 있다.
+
+## 시작
+
+```bash
+pnpm install
+pnpm typecheck     # 전 패키지 타입 검사
+pnpm mock          # 목 서버 (형제 경로의 omf-mes 클론 필요 — tools/mock/README.md)
+pnpm mock:smoke    # 목 서버 smoke 테스트
+pnpm --filter @omf-mes/web dev   # 관리웹 개발 서버
+```
+
+요구 사항: Node ≥ 20.19, pnpm 11.
+
+## 작업 규칙
+
+`main` 직접 push는 차단돼 있다 — 브랜치에서 작업하고 PR로 병합한다. 공개 저장소 경계 규칙은 `CLAUDE.md`를 따른다.
