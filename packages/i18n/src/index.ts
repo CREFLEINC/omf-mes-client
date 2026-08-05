@@ -1,2 +1,5 @@
-// 한/베 화면 라벨·검증 메시지 리소스가 화면 개발과 함께 채워진다.
-export {};
+export { ko, type Messages } from './ko';
+export { vi } from './vi';
+
+// 언어 전환 기능이 붙기 전까지 화면은 이 별칭을 통해 한국어를 소비한다.
+export { ko as messages } from './ko';
