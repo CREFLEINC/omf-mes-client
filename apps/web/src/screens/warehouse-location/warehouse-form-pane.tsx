@@ -33,8 +33,11 @@ const t = messages.warehouseLocation;
  *
  * 비활성 사유·보조 안내는 항상 보이는 DOM 텍스트로 렌더하고 `aria-describedby`로 잇는다.
  * 비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 닿지 못한다.
+ *
+ * 기존 컴포넌트의 조합이므로 이 화면 슬라이스가 소유한다. 세 번째 사용처가 생기면
+ * 그때 공용 부품으로 올릴지 판단한다 — 조합물을 미리 디자인 시스템으로 올리지 않는다.
  */
-interface SelectFieldProps {
+export interface SelectFieldProps {
   label: string;
   required?: boolean;
   options: { value: string; label: string }[];
@@ -45,7 +48,7 @@ interface SelectFieldProps {
   note?: string;
 }
 
-const SelectField = ({
+export const SelectField = ({
   label,
   required = false,
   options,
