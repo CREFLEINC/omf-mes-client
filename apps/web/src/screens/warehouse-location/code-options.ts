@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { WarehouseFilters } from './types';
+import type { LookupEntry, WarehouseFilters } from './types';
 
 /**
  * 선택지 상수와 화면 기본값을 한 파일에 격리한다.
@@ -61,3 +61,22 @@ export const ensureOption = (options: CodeOption[], value: string): CodeOption[]
   value === '' || options.some((option) => option.value === value)
     ? options
     : [...options, { value, label: value }];
+
+/**
+ * 선택 목록에서 실제로 고를 수 있는 선택지를 만든다.
+ *
+ * 기본은 사용 중인 것만 보인다. 다만 지금 선택된 값이 미사용이면 그것도 남기고 라벨에 표식을 붙인다 —
+ * 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다. 목록에 아예 없는 값도 코드 그대로 남긴다.
+ */
+export const selectableOptions = (entries: LookupEntry[], selected: string): CodeOption[] =>
+  ensureOption(
+    entries
+      .filter((entry) => entry.isActive || entry.value === selected)
+      .map((entry) => ({
+        value: entry.value,
+        label: entry.isActive
+          ? entry.label
+          : `${entry.label}${messages.warehouseLocation.values.inactiveSuffix}`,
+      })),
+    selected,
+  );

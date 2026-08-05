@@ -1,3 +1,4 @@
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { PENDING_CODE_VALUE } from './code-options';
@@ -10,10 +11,11 @@ import type {
 } from './types';
 
 /**
- * 레이아웃 확인용 예시 데이터.
+ * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
+ * 참조하면 예시 값이 배포 번들에 들어간다.
  *
  * 여기 있는 값은 전부 지어낸 합성값이다. 실제 사번·품목코드·LOT 번호·거래처 코드·
- * 고객사명·공장 위치를 넣지 않는다(공개 저장소 경계). Phase 2 테스트가 이 fixture를 재사용한다.
+ * 고객사명·공장 위치를 넣지 않는다(공개 저장소 경계).
  */
 
 export const warehouseFixtures: Warehouse[] = [
@@ -117,6 +119,28 @@ export const locationFixtures: Location[] = [
     capacityUomId: null,
     isActive: true,
   },
+];
+
+/** 선택 목록 응답의 계약 표현. 화면이 만드는 선택지와 구분해 둔다. */
+export const plantFixtures: components['schemas']['Plant'][] = [
+  { plantId: 11, legalEntityId: 1, plantCode: 'PLT-01', plantName: '1공장', timezoneCode: 'STANDARD', isActive: true },
+  { plantId: 12, legalEntityId: 1, plantCode: 'PLT-02', plantName: '2공장', timezoneCode: 'STANDARD', isActive: true },
+];
+
+export const businessUnitFixtures: components['schemas']['BusinessUnit'][] = [
+  { businessUnitId: 21, legalEntityId: 1, businessUnitCode: 'BU-01', businessUnitName: '생산본부', isActive: true },
+  { businessUnitId: 22, legalEntityId: 1, businessUnitCode: 'BU-02', businessUnitName: '물류본부', isActive: true },
+];
+
+/** 32번은 미사용이다 — 미사용 값이 선택지에서 어떻게 다뤄지는지 확인하는 데 쓴다. */
+export const partnerFixtures: components['schemas']['Partner'][] = [
+  { partnerId: 31, partnerCode: 'SUP-001', partnerName: '(주)대한부품', isActive: true },
+  { partnerId: 32, partnerCode: 'SUP-002', partnerName: '(주)한빛소재', isActive: false },
+];
+
+export const uomFixtures: components['schemas']['Uom'][] = [
+  { uomId: 41, uomCode: 'EA', uomName: '개', decimalScale: 0, isActive: true },
+  { uomId: 42, uomCode: 'BOX', uomName: '박스', decimalScale: 0, isActive: true },
 ];
 
 export const lookupFixtures: LookupOptions = {

@@ -1,27 +1,51 @@
-import { AlertBanner, Breadcrumb, Button, EmptyState, PageHeader, Tabs, useToast } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import {
+  AlertBanner,
+  Breadcrumb,
+  Button,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+  Tabs,
+  useToast,
+} from '@crefle/web-ui';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { codeLockMessage } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { selectableOptions } from './code-options';
 import {
   locationFieldErrorFixtures,
   locationFixtures,
   locationFormInitialValues,
-  lookupFixtures,
-  warehouseFieldErrorFixtures,
-  warehouseFormInitialValues,
 } from './fixtures';
 import { LocationFormDialog } from './location-form-dialog';
 import { LocationPane } from './location-pane';
 import { buildLocationRows } from './location-tree';
-import { isTruncated, useWarehouseList } from './queries';
-import type { Location, LocationFormValues, WarehouseFilters, WarehouseFormValues } from './types';
+import { emptyWarehouseFormValues, isSameWarehouseValues, warehouseToFormValues } from './mappers';
+import { isTruncated, useLookupOptions, useWarehouseDetail, useWarehouseList } from './queries';
+import type {
+  Location,
+  LocationFormValues,
+  LookupOptions,
+  WarehouseFilters,
+  WarehouseFormValues,
+} from './types';
 import { WarehouseFormPane } from './warehouse-form-pane';
 import { WarehouseListPane } from './warehouse-list-pane';
 
 const t = messages.warehouseLocation;
+
+type WarehouseDetailResponse = components['schemas']['WarehouseDetailResponse'];
+
+/** 폼의 현재 값과 그것이 어느 응답에서 나왔는지. 「고친 것이 있는가」는 둘의 비교로 판정한다. */
+interface WarehouseFormState {
+  source: WarehouseDetailResponse;
+  baseline: WarehouseFormValues;
+  values: WarehouseFormValues;
+}
 
 type DemoPreset = 'default' | 'error' | 'conflict';
 
@@ -93,12 +117,29 @@ export const WarehouseLocationScreen = () => {
     [searchParams],
   );
 
+  const selectedWarehouseId = Number(searchParams.get('wh') ?? '') || null;
+
   const warehouseList = useWarehouseList(filters);
   const warehouses = warehouseList.data?.items ?? [];
+  const detail = useWarehouseDetail(selectedWarehouseId);
+  const lookups = useLookupOptions();
 
-  const [formValues, setFormValues] = useState<WarehouseFormValues>(warehouseFormInitialValues);
-  const [formMode, setFormMode] = useState<'create' | 'edit'>('edit');
-  const [isDirty, setIsDirty] = useState(false);
+  const [formState, setFormState] = useState<WarehouseFormState | null>(null);
+
+  /*
+   * 폼의 기준값은 상세 응답에서 온다. 응답 객체가 바뀔 때만 다시 세워
+   * 사용자가 입력하는 동안 값이 서버 값으로 되돌아가지 않게 한다.
+   * 캐시가 같은 값을 돌려주면 객체 동일성이 유지되므로 다시 세우지 않는다.
+   */
+  const detailData = detail.data;
+
+  if (detailData !== undefined && formState?.source !== detailData) {
+    const seeded = warehouseToFormValues(detailData.warehouse);
+    setFormState({ source: detailData, baseline: seeded, values: seeded });
+  }
+
+  const formValues = formState?.values ?? emptyWarehouseFormValues();
+  const isDirty = formState !== null && !isSameWarehouseValues(formState.values, formState.baseline);
 
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<number>>(new Set([2001, 2002]));
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
@@ -112,9 +153,7 @@ export const WarehouseLocationScreen = () => {
     locationFormInitialValues,
   );
 
-  const selectedWarehouseId = Number(searchParams.get('wh') ?? '') || null;
-  const selectedWarehouse =
-    warehouses.find((warehouse) => warehouse.warehouseId === selectedWarehouseId) ?? null;
+  const selectedWarehouse = detail.data?.warehouse ?? null;
 
   const locationRows = useMemo(
     () =>
@@ -149,10 +188,43 @@ export const WarehouseLocationScreen = () => {
   };
 
   const handleAddWarehouse = () => {
-    setFormMode('create');
-    setFormValues(warehouseFormInitialValues);
-    setIsDirty(false);
     updateParams({ tab: 'warehouse' });
+  };
+
+  const changeFormValues = (patch: Partial<WarehouseFormValues>) => {
+    setFormState((prev) => (prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } }));
+  };
+
+  /**
+   * 선택 목록이 잘리거나 실패했다는 사실을 폼 위에 낸다.
+   * 알리지 않으면 선택칸이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
+   */
+  const lookupNotice = (() => {
+    if (lookups.isError) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.optionsLoadFailed}</AlertBanner>
+        </div>
+      );
+    }
+
+    if (lookups.truncated) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.optionsTruncated}</AlertBanner>
+        </div>
+      );
+    }
+
+    return null;
+  })();
+
+  /** 선택 목록은 사용 중인 것과 지금 선택된 값만 낸다 — 값이 사라진 것처럼 보이면 안 된다. */
+  const formLookups: LookupOptions = {
+    plants: selectableOptions(lookups.entries.plants, formValues.plantId),
+    businessUnits: selectableOptions(lookups.entries.businessUnits, formValues.businessUnitId),
+    partners: selectableOptions(lookups.entries.partners, formValues.partnerId),
+    uoms: selectableOptions(lookups.entries.uoms, ''),
   };
 
   const notifyDemoAction = () => {
@@ -211,12 +283,38 @@ export const WarehouseLocationScreen = () => {
   const listPage = warehouseList.data?.page;
   const listTruncated = listPage !== undefined && isTruncated(listPage, warehouses.length);
 
-  const detailPane =
-    selectedWarehouse === null ? (
-      <div className="pane">
-        <EmptyState size="sm" title={t.empty.warehouseNotSelected} />
-      </div>
-    ) : (
+  /**
+   * 우측 페인. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
+   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
+   */
+  const renderDetailPane = () => {
+    if (selectedWarehouseId === null) {
+      return (
+        <div className="pane">
+          <EmptyState size="sm" title={t.empty.warehouseNotSelected} />
+        </div>
+      );
+    }
+
+    if (detail.isError) {
+      return (
+        <div className="pane">
+          <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
+        </div>
+      );
+    }
+
+    if (detail.data === undefined || formState === null || selectedWarehouse === null) {
+      return (
+        <div className="pane">
+          <div role="status" aria-label={t.loading.warehouseDetail}>
+            <SkeletonText lines={5} />
+          </div>
+        </div>
+      );
+    }
+
+    return (
       <div className="pane">
         <Tabs
           aria-label={t.title}
@@ -228,26 +326,28 @@ export const WarehouseLocationScreen = () => {
               label: t.tabs.warehouse,
               content: (
                 <WarehouseFormPane
-                  mode={formMode}
+                  mode="edit"
                   values={formValues}
-                  onChange={(patch) => {
-                    setFormValues((prev) => ({ ...prev, ...patch }));
-                    setIsDirty(true);
-                  }}
-                  fieldErrors={preset === 'error' ? warehouseFieldErrorFixtures : {}}
-                  banner={conflictBanner}
-                  codeLockReason={formMode === 'edit' ? messages.editability.referenced(3) : null}
+                  onChange={changeFormValues}
+                  fieldErrors={{}}
+                  banner={
+                    <>
+                      {lookupNotice}
+                      {conflictBanner}
+                    </>
+                  }
+                  codeLockReason={codeLockMessage(detail.data.editability)}
                   isActive={selectedWarehouse.isActive}
                   isDirty={isDirty}
                   isSaving={false}
-                  lookups={lookupFixtures}
+                  lookups={formLookups}
                   onSave={() => {
-                    setIsDirty(false);
                     notifyDemoAction();
                   }}
                   onCancel={() => {
-                    setFormValues(warehouseFormInitialValues);
-                    setIsDirty(false);
+                    setFormState((prev) =>
+                      prev === null ? prev : { ...prev, values: prev.baseline },
+                    );
                   }}
                   onDeactivate={notifyDemoAction}
                 />
@@ -276,6 +376,7 @@ export const WarehouseLocationScreen = () => {
         />
       </div>
     );
+  };
 
   return (
     <>
@@ -308,8 +409,6 @@ export const WarehouseLocationScreen = () => {
           onApplyFilters={handleApplyFilters}
           selectedWarehouseId={selectedWarehouseId}
           onSelect={(warehouseId) => {
-            setFormMode('edit');
-            setIsDirty(false);
             updateParams({ wh: String(warehouseId) });
           }}
           onAddWarehouse={handleAddWarehouse}
@@ -322,7 +421,7 @@ export const WarehouseLocationScreen = () => {
             ) : null
           }
         />
-        {detailPane}
+        {renderDetailPane()}
       </div>
 
       <LocationFormDialog
@@ -334,7 +433,7 @@ export const WarehouseLocationScreen = () => {
         onChange={(patch) => setLocationValues((prev) => ({ ...prev, ...patch }))}
         fieldErrors={preset === 'error' ? locationFieldErrorFixtures : {}}
         banner={conflictBanner}
-        uomOptions={lookupFixtures.uoms}
+        uomOptions={selectableOptions(lookups.entries.uoms, locationValues.capacityUomId)}
         isSaving={false}
         onSave={() => {
           setDialogState((prev) => ({ ...prev, open: false }));

@@ -3,10 +3,11 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { WarehouseFilters } from './types';
+import type { LookupEntries, LookupEntry, WarehouseFilters } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type Warehouse = components['schemas']['Warehouse'];
+type WarehouseDetailResponse = components['schemas']['WarehouseDetailResponse'];
 
 export interface WarehouseListResponse {
   items: Warehouse[];
@@ -55,5 +56,121 @@ export const useWarehouseList = (
   });
 };
 
+/**
+ * 창고 상세. ETag와 코드 편집 가능 여부가 이 응답으로 온다 —
+ * 목록 행만으로는 저장을 시작할 수 없다.
+ */
+export const useWarehouseDetail = (
+  warehouseId: number | null,
+): UseQueryResult<WarehouseDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: warehouseKeys.detail(warehouseId ?? 0),
+    enabled: warehouseId !== null,
+    queryFn: () => {
+      if (warehouseId === null) {
+        throw new Error('창고를 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/warehouses/{warehouseId}', { params: { path: { warehouseId } } }),
+      );
+    },
+  });
+};
+
 /** 받은 건수가 전체보다 적으면 목록이 잘린 것이다. */
 export const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
+
+const isListTruncated = (data: { items: unknown[]; page: PageMeta } | undefined): boolean =>
+  data !== undefined && isTruncated(data.page, data.items.length);
+
+export const lookupKeys = {
+  all: ['lookups'] as const,
+  list: (resource: string) => ['lookups', resource] as const,
+};
+
+export interface LookupResult {
+  entries: LookupEntries;
+  /** 어느 선택 목록이라도 잘렸으면 참. 고를 수 없는 값이 생겼다는 뜻이다. */
+  truncated: boolean;
+  /** 어느 선택 목록이라도 실패했으면 참. 실패를 삼키면 선택칸이 이유 없이 비어 보인다. */
+  isError: boolean;
+  isLoading: boolean;
+}
+
+const EMPTY_ENTRIES: LookupEntry[] = [];
+
+/**
+ * 선택 목록 4종. includeInactive=true로 한 번 받아 두고 화면이 표시 규칙을 정한다 —
+ * 기본 조회는 사용 중인 것만 내려주므로, 미사용 값을 참조하는 창고를 열면 선택칸이 비어 보인다.
+ */
+export const useLookupOptions = (): LookupResult => {
+  const { client } = useApiClient();
+
+  const plants = useQuery({
+    queryKey: lookupKeys.list('plants'),
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/plants', { params: { query: { includeInactive: true } } })),
+  });
+
+  const businessUnits = useQuery({
+    queryKey: lookupKeys.list('business-units'),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/business-units', { params: { query: { includeInactive: true } } }),
+      ),
+  });
+
+  const partners = useQuery({
+    queryKey: lookupKeys.list('partners'),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/partners', { params: { query: { includeInactive: true } } }),
+      ),
+  });
+
+  const uoms = useQuery({
+    queryKey: lookupKeys.list('uoms'),
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+  });
+
+  return {
+    entries: {
+      plants:
+        plants.data?.items.map((item) => ({
+          value: String(item.plantId),
+          label: item.plantName,
+          isActive: item.isActive,
+        })) ?? EMPTY_ENTRIES,
+      businessUnits:
+        businessUnits.data?.items.map((item) => ({
+          value: String(item.businessUnitId),
+          label: item.businessUnitName,
+          isActive: item.isActive,
+        })) ?? EMPTY_ENTRIES,
+      partners:
+        partners.data?.items.map((item) => ({
+          value: String(item.partnerId),
+          label: item.partnerName,
+          isActive: item.isActive,
+        })) ?? EMPTY_ENTRIES,
+      uoms:
+        uoms.data?.items.map((item) => ({
+          value: String(item.uomId),
+          label: item.uomCode,
+          isActive: item.isActive,
+        })) ?? EMPTY_ENTRIES,
+    },
+    truncated:
+      isListTruncated(plants.data) ||
+      isListTruncated(businessUnits.data) ||
+      isListTruncated(partners.data) ||
+      isListTruncated(uoms.data),
+    isError: plants.isError || businessUnits.isError || partners.isError || uoms.isError,
+    isLoading:
+      plants.isPending || businessUnits.isPending || partners.isPending || uoms.isPending,
+  };
+};

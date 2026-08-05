@@ -160,6 +160,12 @@ describe('WarehouseFormPane', () => {
     expect(screen.getByLabelText('사용')).toHaveTextContent('미사용');
   });
 
+  it('신규 등록 폼에는 사용 중지가 없다 — 아직 만들어지지 않은 창고다', () => {
+    renderPane({ mode: 'create', isActive: true });
+
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+  });
+
   it('창고명을 고치면 바뀐 필드만 담아 onChange를 부른다', async () => {
     const user = userEvent.setup();
     const { onChange } = renderPane();

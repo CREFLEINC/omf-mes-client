@@ -9,8 +9,15 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { warehouseFixtures } from './fixtures';
+import {
+  businessUnitFixtures,
+  partnerFixtures,
+  plantFixtures,
+  uomFixtures,
+  warehouseFixtures,
+} from './fixtures';
 import { WarehouseLocationScreen } from './screen';
+import type { Warehouse } from './types';
 
 const ROUTE = '/master-data/warehouse-location';
 
@@ -45,12 +52,45 @@ const createRecordingFetch = (
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
 
-const warehouseListRoute = (
-  items = warehouseFixtures,
-  total = items.length,
-): StubRoute => ({
+const listBody = (items: unknown[], total = items.length): unknown => ({
+  items,
+  page: { page: 1, size: 20, total },
+});
+
+const warehouseListRoute = (items = warehouseFixtures, total = items.length): StubRoute => ({
   match: (request) => isGet(request, '/mdm/warehouses'),
-  respond: () => jsonResponse({ items, page: { page: 1, size: 20, total } }),
+  respond: () => jsonResponse(listBody(items, total)),
+});
+
+/** 선택 목록 4종. 화면이 항상 조회하므로 스텁을 빠뜨리면 하네스가 던진다. */
+const lookupRoutes = (truncatedTotal?: number): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/mdm/plants'),
+    respond: () => jsonResponse(listBody(plantFixtures, truncatedTotal ?? plantFixtures.length)),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/business-units'),
+    respond: () => jsonResponse(listBody(businessUnitFixtures)),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/partners'),
+    respond: () => jsonResponse(listBody(partnerFixtures)),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/uoms'),
+    respond: () => jsonResponse(listBody(uomFixtures)),
+  },
+];
+
+const DEFAULT_EDITABILITY = { codeEditable: true, reason: 'EDITABLE' as const };
+
+const warehouseDetailRoute = (
+  warehouse: Warehouse = warehouseFixtures[0]!,
+  editability: { codeEditable: boolean; reason: 'EDITABLE' | 'REFERENCED' | 'NOT_COUNTABLE' | 'RECEIVED_FROM_ERP'; referenceCount?: number | null } = DEFAULT_EDITABILITY,
+  etag = '"7"',
+): StubRoute => ({
+  match: (request) => isGet(request, `/mdm/warehouses/${String(warehouse.warehouseId)}`),
+  respond: () => jsonResponse({ warehouse, editability }, { headers: { ETag: etag } }),
 });
 
 const renderScreen = (
@@ -165,7 +205,11 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
   });
 
   it('목록의 코드를 누르면 URL의 wh가 바뀐다', async () => {
-    const { user } = renderScreen([warehouseListRoute()]);
+    const { user } = renderScreen([
+      warehouseListRoute(),
+      warehouseDetailRoute(warehouseFixtures[1]!),
+      ...lookupRoutes(),
+    ]);
 
     await user.click(await screen.findByRole('button', { name: 'WH-02' }));
 
@@ -173,12 +217,158 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
   });
 
   it('Location 탭으로 전환하면 보이는 패널 안에서 Location 계층이 조회된다', async () => {
-    const { user } = renderScreen([warehouseListRoute()], '?wh=1001');
-    await screen.findByRole('button', { name: 'WH-01' });
+    const { user } = renderScreen(
+      [warehouseListRoute(), warehouseDetailRoute(), ...lookupRoutes()],
+      '?wh=1001',
+    );
+    await screen.findByLabelText('창고명');
 
     await user.click(screen.getByRole('tab', { name: 'Location' }));
 
     const panel = screen.getByRole('tabpanel');
     expect(within(panel).getByRole('button', { name: 'A-01' })).toBeInTheDocument();
+  });
+});
+
+describe('WarehouseLocationScreen — 창고 상세 조회', () => {
+  it('창고를 고르면 상세 요청이 나가고 폼이 응답 값으로 채워진다', async () => {
+    const { requests, user } = renderScreen([
+      warehouseListRoute(),
+      warehouseDetailRoute(warehouseFixtures[1]!),
+      ...lookupRoutes(),
+    ]);
+
+    await user.click(await screen.findByRole('button', { name: 'WH-02' }));
+
+    expect(await screen.findByLabelText('창고명')).toHaveValue('1공장 제품창고');
+    expect(screen.getByLabelText('창고코드')).toHaveValue('WH-02');
+    expect(
+      requests.some((request) => request.url.pathname === '/mdm/warehouses/1002'),
+    ).toBe(true);
+  });
+
+  it('고르기 전에는 상세 요청이 나가지 않는다', async () => {
+    const { requests } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
+    await screen.findByRole('button', { name: 'WH-01' });
+
+    expect(requests.some((request) => /^\/mdm\/warehouses\/\d+$/.test(request.url.pathname))).toBe(
+      false,
+    );
+  });
+
+  it('코드 편집이 잠긴 창고는 입력이 비활성이고 사유가 화면에 보인다', async () => {
+    renderScreen(
+      [
+        warehouseListRoute(),
+        warehouseDetailRoute(warehouseFixtures[0]!, {
+          codeEditable: false,
+          reason: 'REFERENCED',
+          referenceCount: 3,
+        }),
+        ...lookupRoutes(),
+      ],
+      '?wh=1001',
+    );
+
+    const code = await screen.findByLabelText('창고코드');
+    expect(code).toBeDisabled();
+    expect(
+      screen.getByText('이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('codeEditable이 참이면 코드 입력이 열려 있다', async () => {
+    renderScreen(
+      [warehouseListRoute(), warehouseDetailRoute(), ...lookupRoutes()],
+      '?wh=1001',
+    );
+
+    expect(await screen.findByLabelText('창고코드')).not.toBeDisabled();
+  });
+
+  it('상세 조회에 실패하면 폼 대신 오류 배너가 나온다', async () => {
+    renderScreen(
+      [
+        warehouseListRoute(),
+        {
+          match: (request) => isGet(request, '/mdm/warehouses/1001'),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+        ...lookupRoutes(),
+      ],
+      '?wh=1001',
+    );
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByLabelText('창고명')).not.toBeInTheDocument();
+  });
+
+  it('불러오는 동안에는 빈 폼 대신 스켈레톤을 낸다', () => {
+    renderScreen(
+      [warehouseListRoute(), warehouseDetailRoute(), ...lookupRoutes()],
+      '?wh=1001',
+    );
+
+    expect(screen.getByRole('status', { name: '창고 정보를 불러오는 중' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('창고명')).not.toBeInTheDocument();
+  });
+
+  it('미사용 거래처를 참조하는 창고를 열면 그 값이 표식과 함께 선택지에 남는다', async () => {
+    const external: Warehouse = { ...warehouseFixtures[2]!, warehouseId: 1001, partnerId: 32 };
+    const { user } = renderScreen(
+      [warehouseListRoute(), warehouseDetailRoute(external), ...lookupRoutes()],
+      '?wh=1001',
+    );
+
+    await screen.findByLabelText('창고명');
+    await user.click(screen.getByRole('combobox', { name: '거래처' }));
+
+    expect(screen.getByRole('option', { name: '(주)한빛소재 (미사용)' })).toBeInTheDocument();
+  });
+
+  it('선택 목록이 잘리면 폼에 그 사실을 알린다', async () => {
+    renderScreen(
+      [warehouseListRoute(), warehouseDetailRoute(), ...lookupRoutes(500)],
+      '?wh=1001',
+    );
+
+    expect(
+      await screen.findByText('선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('선택 목록 조회가 실패하면 그 사실을 폼에 알린다 — 빈 선택칸을 이유 없이 두지 않는다', async () => {
+    renderScreen(
+      [
+        warehouseListRoute(),
+        warehouseDetailRoute(),
+        {
+          match: (request) => isGet(request, '/mdm/plants'),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+        ...lookupRoutes().slice(1),
+      ],
+      '?wh=1001',
+    );
+
+    expect(
+      await screen.findByText('선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('값을 고치면 저장·취소가 열리고 취소하면 서버 값으로 되돌아간다', async () => {
+    const { user } = renderScreen(
+      [warehouseListRoute(), warehouseDetailRoute(), ...lookupRoutes()],
+      '?wh=1001',
+    );
+
+    const name = await screen.findByLabelText('창고명');
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+
+    await user.type(name, '가');
+    expect(screen.getByRole('button', { name: '저장' })).not.toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(screen.getByLabelText('창고명')).toHaveValue('1공장 자재창고');
   });
 });

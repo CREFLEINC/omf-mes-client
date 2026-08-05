@@ -44,3 +44,20 @@ export interface LookupOptions {
   partners: { value: string; label: string }[];
   uoms: { value: string; label: string }[];
 }
+
+/**
+ * 선택 목록의 원본 항목. 사용 여부를 함께 들고 있어야
+ * 「사용 중인 것 + 지금 선택된 값」만 선택지로 낼 수 있다(미사용 항목은 라벨에 표식을 붙인다).
+ */
+export interface LookupEntry {
+  value: string;
+  label: string;
+  isActive: boolean;
+}
+
+export interface LookupEntries {
+  plants: LookupEntry[];
+  businessUnits: LookupEntry[];
+  partners: LookupEntry[];
+  uoms: LookupEntry[];
+}
