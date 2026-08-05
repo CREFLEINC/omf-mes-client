@@ -708,6 +708,169 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
   });
 });
 
+const NEW_WAREHOUSE: Warehouse = {
+  ...warehouseFixtures[0]!,
+  warehouseId: 1009,
+  warehouseCode: 'WH-09',
+  warehouseName: '신규 창고',
+};
+
+const createRoutes = (post: StubRoute): StubRoute[] => [
+  warehouseListRoute(),
+  warehouseDetailRoute(),
+  warehouseDetailRoute(NEW_WAREHOUSE),
+  locationListRoute(),
+  ...lookupRoutes(),
+  post,
+];
+
+const postRoute = (respond: StubRoute['respond']): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === '/mdm/warehouses',
+  respond,
+});
+
+const fillCreateForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  // 창고유형은 필터 바에도 있어 폼 안으로 범위를 좁힌다.
+  const form = screen.getByRole('region', { name: '창고 정보' });
+
+  await user.click(within(form).getByRole('combobox', { name: '공장' }));
+  await user.click(screen.getByRole('option', { name: '1공장' }));
+  await user.click(within(form).getByRole('combobox', { name: '사업부' }));
+  await user.click(screen.getByRole('option', { name: '생산본부' }));
+  await user.type(within(form).getByLabelText('창고코드'), 'WH-09');
+  await user.type(within(form).getByLabelText('창고명'), '신규 창고');
+  await user.click(within(form).getByRole('combobox', { name: '창고유형' }));
+  await user.click(screen.getByRole('option', { name: '자재창고' }));
+};
+
+describe('WarehouseLocationScreen — 창고 신규 등록', () => {
+  it('창고 추가를 누르면 빈 폼이 열리고 공장을 고를 수 있으며 사용 중지가 없다', async () => {
+    const { user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
+
+    await user.click(await screen.findByRole('button', { name: '창고 추가' }));
+
+    expect(screen.getByLabelText('창고코드')).toHaveValue('');
+    expect(screen.getByLabelText('창고명')).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: '공장' })).not.toBeDisabled();
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+  });
+
+  it('빈 상태의 창고 추가도 같은 신규 폼을 연다', async () => {
+    const { user } = renderScreen([warehouseListRoute([]), ...lookupRoutes()]);
+
+    await user.click(await screen.findByRole('button', { name: '창고 추가' }));
+
+    expect(screen.getByLabelText('창고코드')).toHaveValue('');
+  });
+
+  it('신규 등록에서 공장을 비우면 요청을 보내지 않고 인라인 오류를 낸다', async () => {
+    const { requests, user } = renderScreen(
+      createRoutes(postRoute(() => jsonResponse(NEW_WAREHOUSE, { status: 201 }))),
+      '?mode=create',
+    );
+
+    await screen.findByLabelText('창고코드');
+    await user.type(screen.getByLabelText('창고코드'), 'WH-09');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(screen.getAllByText('필수 입력 항목입니다.').length).toBeGreaterThan(0);
+    expect(writeRequests(requests, 'POST')).toHaveLength(0);
+  });
+
+  it('POST 본문에 plantId가 실리고 If-Match는 실리지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      createRoutes(postRoute(() => jsonResponse(NEW_WAREHOUSE, { status: 201 }))),
+      '?mode=create',
+    );
+
+    await screen.findByLabelText('창고코드');
+    await fillCreateForm(user);
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('등록했습니다')).toBeInTheDocument();
+
+    const post = writeRequests(requests, 'POST')[0];
+    expect(post?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    // 등록에는 낙관적 잠금이 없다 — 계약에 If-Match가 없다.
+    expect(post?.headers.get('If-Match')).toBeNull();
+    expect(JSON.parse(post?.body ?? '{}')).toMatchObject({
+      plantId: 11,
+      businessUnitId: 21,
+      warehouseCode: 'WH-09',
+    });
+  });
+
+  it('등록되면 그 창고의 상세로 옮겨 다시 조회한다 — 여기서 잠금 토큰을 확보한다', async () => {
+    const { requests, user } = renderScreen(
+      createRoutes(postRoute(() => jsonResponse(NEW_WAREHOUSE, { status: 201 }))),
+      '?mode=create',
+    );
+
+    await screen.findByLabelText('창고코드');
+    await fillCreateForm(user);
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByLabelText('창고명')).toHaveValue('신규 창고');
+    expect(
+      requests.some(
+        (request) => request.method === 'GET' && request.url.pathname === '/mdm/warehouses/1009',
+      ),
+    ).toBe(true);
+    // 상세가 열렸다는 것은 Location 탭이 다시 생겼다는 뜻이다.
+    expect(screen.getByRole('tab', { name: 'Location' })).toBeInTheDocument();
+  });
+
+  it('등록이 400이면 필드 오류가 인라인으로 뜬다', async () => {
+    const { user } = renderScreen(
+      createRoutes(
+        postRoute(() =>
+          jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'warehouseCode',
+                  code: 'DUPLICATED',
+                  message: '이미 사용 중인 코드입니다.',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      ),
+      '?mode=create',
+    );
+
+    await screen.findByLabelText('창고코드');
+    await fillCreateForm(user);
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('이미 사용 중인 코드입니다.')).toBeInTheDocument();
+  });
+
+  it('등록 실패에는 최신 불러오기를 내지 않는다 — 되돌아갈 저장본이 없다', async () => {
+    const { user } = renderScreen(
+      createRoutes(
+        postRoute(() => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })),
+      ),
+      '?mode=create',
+    );
+
+    await screen.findByLabelText('창고코드');
+    await fillCreateForm(user);
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText(
+        '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+});
+
 describe('WarehouseLocationScreen — 예시 데이터 제거', () => {
   it('예시 데이터 안내 배너가 없다', async () => {
     renderScreen([warehouseListRoute(), ...lookupRoutes()]);

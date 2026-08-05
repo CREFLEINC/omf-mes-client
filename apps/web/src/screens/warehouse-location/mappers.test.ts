@@ -7,6 +7,7 @@ import {
   emptyWarehouseFormValues,
   isSameWarehouseValues,
   locationToFormValues,
+  toWarehouseCreate,
   toWarehouseUpdate,
   warehouseToFormValues,
 } from './mappers';
@@ -97,6 +98,22 @@ describe('toWarehouseUpdate', () => {
 
     expect(padded.warehouseCode).toBe('WH-01');
     expect(padded.warehouseName).toBe('자재창고');
+  });
+});
+
+describe('toWarehouseCreate', () => {
+  const values = warehouseToFormValues({ ...base, plantId: 11 });
+
+  it('공장을 숫자로 담는다 — 등록에서만 정할 수 있는 값이다', () => {
+    expect(toWarehouseCreate(values).plantId).toBe(11);
+  });
+
+  it('수정 본문의 항목을 그대로 갖는다', () => {
+    expect(toWarehouseCreate(values)).toMatchObject(toWarehouseUpdate(values));
+  });
+
+  it('isActive를 보내지 않는다 — 신규는 항상 사용 중이다', () => {
+    expect(toWarehouseCreate(values)).not.toHaveProperty('isActive');
   });
 });
 

@@ -19,6 +19,7 @@ const common = {
   close: '닫기',
   deactivate: '사용 중지',
   saved: '저장했습니다',
+  created: '등록했습니다',
   retry: '다시 시도',
   includeInactive: '미사용 포함',
   discardChangesConfirm: '입력한 내용이 저장되지 않았습니다. 변경을 파기할까요?',

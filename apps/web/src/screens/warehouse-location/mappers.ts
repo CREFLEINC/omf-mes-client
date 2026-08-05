@@ -3,6 +3,7 @@ import type { components } from '@omf-mes/api-client';
 import { PENDING_CODE_VALUE } from './code-options';
 import type { Location, LocationFormValues, Warehouse, WarehouseFormValues } from './types';
 
+type WarehouseCreate = components['schemas']['WarehouseCreate'];
 type WarehouseUpdate = components['schemas']['WarehouseUpdate'];
 
 /**
@@ -58,6 +59,15 @@ export const toWarehouseUpdate = (values: WarehouseFormValues): WarehouseUpdate 
   managementLevelCode: values.managementLevelCode,
   isExternal: values.isExternal,
   partnerId: textToOptionalId(values.partnerId),
+});
+
+/**
+ * 창고 등록 요청 본문. 계약상 수정 본문에 plantId만 더한 형태이며,
+ * isActive는 받지 않는다 — 신규는 항상 사용 중이다.
+ */
+export const toWarehouseCreate = (values: WarehouseFormValues): WarehouseCreate => ({
+  ...toWarehouseUpdate(values),
+  plantId: Number(values.plantId),
 });
 
 /** 널·없음을 빈 문자열로 모은다. 선택 코드도 「고르지 않음」이 하나의 값이어야 한다. */
