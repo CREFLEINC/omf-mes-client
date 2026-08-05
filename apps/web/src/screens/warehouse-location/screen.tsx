@@ -21,17 +21,23 @@ import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { LocationFormDialog } from './location-form-dialog';
 import { LocationPane } from './location-pane';
 import { buildLocationRows } from './location-tree';
+import { LOCATION_FORM_FIELDS, validateLocation } from './location-validation';
 import {
   emptyLocationFormValues,
   emptyWarehouseFormValues,
   isSameWarehouseValues,
   locationToFormValues,
+  toLocationCreate,
+  toLocationUpdate,
   toWarehouseCreate,
   toWarehouseUpdate,
   warehouseToFormValues,
 } from './mappers';
 import {
   isTruncated,
+  locationDetailPath,
+  locationKeys,
+  useLocationDetail,
   useLocationList,
   useLookupOptions,
   useWarehouseDetail,
@@ -68,6 +74,23 @@ interface WarehouseFormState {
 }
 
 const NO_EXPANDED_IDS: ReadonlySet<number> = new Set();
+
+/** Location 다이얼로그가 무엇을 다루는지. 상위 위치는 화면에 재배치 수단이 없어 그대로 보존한다. */
+interface LocationDialogState {
+  open: boolean;
+  mode: 'create' | 'edit';
+  locationId: number | null;
+  parentLocationId: number | null;
+  parentLabel: string | null;
+}
+
+const CLOSED_LOCATION_DIALOG: LocationDialogState = {
+  open: false,
+  mode: 'create',
+  locationId: null,
+  parentLocationId: null,
+  parentLabel: null,
+};
 
 /**
  * 조회 실패의 원인을 한 줄 안내로 옮긴다.
@@ -241,12 +264,61 @@ export const WarehouseLocationScreen = () => {
   } | null>(null);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [locationFilterText, setLocationFilterText] = useState('');
-  const [dialogState, setDialogState] = useState<{
-    open: boolean;
-    mode: 'create' | 'edit';
-    parentLabel: string | null;
-  }>({ open: false, mode: 'create', parentLabel: null });
+  const [dialogState, setDialogState] = useState<LocationDialogState>(CLOSED_LOCATION_DIALOG);
   const [locationValues, setLocationValues] = useState<LocationFormValues>(emptyLocationFormValues);
+  const [locationFieldErrors, setLocationFieldErrors] = useState<Record<string, string>>({});
+
+  /*
+   * 편집 다이얼로그를 열 때만 상세를 조회한다. 목록 응답에는 잠금 토큰도 코드 편집 가능 여부도 없다.
+   * 다이얼로그의 초기값은 목록 행에서 오고, 이 조회는 그 둘을 확보하는 데만 쓴다.
+   */
+  const locationDetail = useLocationDetail(dialogState.open ? dialogState.locationId : null);
+
+  const locationWrite = useMasterWrite<LocationFormValues, Location>({
+    request: (values, headers) =>
+      dialogState.mode === 'create'
+        ? client.POST('/mdm/locations', {
+            params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+            body: toLocationCreate(
+              values,
+              selectedWarehouseId ?? 0,
+              dialogState.parentLocationId,
+            ),
+          })
+        : client.PUT('/mdm/locations/{locationId}', {
+            params: {
+              path: { locationId: dialogState.locationId ?? 0 },
+              header: {
+                'Idempotency-Key': headers['Idempotency-Key'],
+                'If-Match': headers['If-Match'] ?? '',
+              },
+            },
+            body: toLocationUpdate(values, dialogState.parentLocationId),
+          }),
+    etagPath:
+      dialogState.mode === 'edit' && dialogState.locationId !== null
+        ? locationDetailPath(dialogState.locationId)
+        : null,
+    invalidateKeys: [locationKeys.all],
+    knownFields: LOCATION_FORM_FIELDS,
+    onSuccess: (saved) => {
+      setDialogState(CLOSED_LOCATION_DIALOG);
+      setLocationFieldErrors({});
+      toast.show({
+        variant: 'success',
+        description:
+          dialogState.mode === 'create' ? messages.common.created : messages.common.saved,
+      });
+
+      // 하위로 등록했으면 그 부모를 펼쳐 둔다. 접혀 있으면 방금 만든 것이 행으로 나오지 않는다.
+      const parentId = saved.parentLocationId;
+      if (parentId !== null && parentId !== undefined) {
+        setExpansion((prev) =>
+          prev === null ? prev : { ...prev, ids: new Set([...prev.ids, parentId]) },
+        );
+      }
+    },
+  });
 
   const selectedWarehouse = detail.data?.warehouse ?? null;
 
@@ -383,10 +455,6 @@ export const WarehouseLocationScreen = () => {
     uoms: selectableOptions(lookups.entries.uoms, ''),
   };
 
-  const notifyUnavailable = (reason: string) => {
-    toast.show({ variant: 'idle', description: reason });
-  };
-
   const handleToggleExpand = (locationId: number) => {
     setExpansion((prev) => {
       if (prev === null) return prev;
@@ -401,19 +469,61 @@ export const WarehouseLocationScreen = () => {
     });
   };
 
-  const openLocationDialog = (mode: 'create' | 'edit', parentLabel: string | null) => {
+  const locationCodeOf = (locationId: number | null): string | null =>
+    locationId === null
+      ? null
+      : (locationItems.find((item) => item.locationId === locationId)?.locationCode ?? null);
+
+  const openCreateLocation = (parentLocationId: number | null) => {
+    locationWrite.reset();
+    setLocationFieldErrors({});
     setLocationValues(emptyLocationFormValues());
-    setDialogState({ open: true, mode, parentLabel });
+    setDialogState({
+      open: true,
+      mode: 'create',
+      locationId: null,
+      parentLocationId,
+      parentLabel: locationCodeOf(parentLocationId),
+    });
   };
 
   const handleEditLocation = (location: Location) => {
+    locationWrite.reset();
+    setLocationFieldErrors({});
     setLocationValues(locationToFormValues(location));
-    setDialogState({ open: true, mode: 'edit', parentLabel: null });
+    setDialogState({
+      open: true,
+      mode: 'edit',
+      locationId: location.locationId,
+      parentLocationId: location.parentLocationId ?? null,
+      parentLabel: locationCodeOf(location.parentLocationId ?? null),
+    });
   };
 
-  const selectedLocationCode = locationRows.find(
-    (row) => String(row.location.locationId) === selectedLocationIds[0],
-  )?.location.locationCode;
+  const changeLocationValues = (patch: Partial<LocationFormValues>) => {
+    setLocationValues((prev) => ({ ...prev, ...patch }));
+
+    for (const field of Object.keys(patch)) {
+      locationWrite.clearFieldError(field);
+      setLocationFieldErrors((prev) => {
+        if (!(field in prev)) return prev;
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleSaveLocation = () => {
+    const errors = validateLocation(locationValues);
+    setLocationFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) return;
+
+    locationWrite.write(locationValues);
+  };
+
+  const selectedLocationId = Number(selectedLocationIds[0] ?? '') || null;
 
   const listPage = warehouseList.data?.page;
   const listTruncated = listPage !== undefined && isTruncated(listPage, warehouses.length);
@@ -542,8 +652,8 @@ export const WarehouseLocationScreen = () => {
                   onSelectionChange={setSelectedLocationIds}
                   filterText={locationFilterText}
                   onFilterTextChange={setLocationFilterText}
-                  onAddRoot={() => openLocationDialog('create', null)}
-                  onAddChild={() => openLocationDialog('create', selectedLocationCode ?? null)}
+                  onAddRoot={() => openCreateLocation(null)}
+                  onAddChild={() => openCreateLocation(selectedLocationId)}
                   onEdit={handleEditLocation}
                 />
               ),
@@ -608,19 +718,22 @@ export const WarehouseLocationScreen = () => {
 
       <LocationFormDialog
         open={dialogState.open}
-        onClose={() => setDialogState((prev) => ({ ...prev, open: false }))}
+        onClose={() => setDialogState(CLOSED_LOCATION_DIALOG)}
         mode={dialogState.mode}
         warehouseLabel={warehouseLabel}
         parentLabel={dialogState.parentLabel}
         values={locationValues}
-        onChange={(patch) => setLocationValues((prev) => ({ ...prev, ...patch }))}
-        fieldErrors={{}}
-        banner={null}
+        onChange={changeLocationValues}
+        fieldErrors={{ ...locationWrite.fieldErrors, ...locationFieldErrors }}
+        banner={<SaveErrorBanner error={locationWrite.error} />}
+        codeLockReason={
+          locationDetail.data === undefined
+            ? null
+            : codeLockMessage(locationDetail.data.editability)
+        }
         uomOptions={selectableOptions(lookups.entries.uoms, locationValues.capacityUomId)}
-        isSaving={false}
-        onSave={() => {
-          notifyUnavailable(t.actionReasons.saveUnavailable);
-        }}
+        isSaving={locationWrite.isSaving}
+        onSave={handleSaveLocation}
       />
     </>
   );

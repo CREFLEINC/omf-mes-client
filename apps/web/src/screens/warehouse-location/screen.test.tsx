@@ -1021,6 +1021,234 @@ describe('WarehouseLocationScreen — 창고 사용 중지', () => {
   });
 });
 
+const locationDetailRoute = (
+  location = locationFixtures[1]!,
+  editability: {
+    codeEditable: boolean;
+    reason: 'EDITABLE' | 'REFERENCED' | 'NOT_COUNTABLE' | 'RECEIVED_FROM_ERP';
+    referenceCount?: number | null;
+  } = DEFAULT_EDITABILITY,
+  etag = '"5"',
+): StubRoute => ({
+  match: (request) => isGet(request, `/mdm/locations/${String(location.locationId)}`),
+  respond: () => jsonResponse({ location, editability }, { headers: { ETag: etag } }),
+});
+
+const locationWriteRoutes = (...extra: StubRoute[]): StubRoute[] => [
+  warehouseListRoute(),
+  warehouseDetailRoute(),
+  locationListRoute(),
+  ...lookupRoutes(),
+  ...extra,
+];
+
+describe('WarehouseLocationScreen — Location 등록·수정', () => {
+  it('하위 추가 저장의 POST 본문에 parentLocationId가 실린다', async () => {
+    const { requests, user } = renderScreen(
+      locationWriteRoutes({
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname === '/mdm/locations',
+        respond: () =>
+          jsonResponse({ ...locationFixtures[1]!, locationId: 2009, locationCode: 'A-01-09' }, {
+            status: 201,
+          }),
+      }),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    // 하위 추가는 선택이 정확히 1건일 때만 열린다.
+    await user.click(within(panel).getAllByRole('checkbox')[1]!);
+    await user.click(within(panel).getByRole('button', { name: '하위 추가' }));
+
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByLabelText('위치코드'), 'A-01-09');
+    await user.type(within(dialog).getByLabelText('위치명'), 'A구역 09열');
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('등록했습니다')).toBeInTheDocument();
+
+    const post = requests.find(
+      (request) => request.method === 'POST' && request.url.pathname === '/mdm/locations',
+    );
+    expect(post?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(post?.headers.get('If-Match')).toBeNull();
+    expect(JSON.parse(post?.body ?? '{}')).toMatchObject({
+      warehouseId: 1001,
+      parentLocationId: 2001,
+      locationCode: 'A-01-09',
+    });
+  });
+
+  it('최상위 추가는 상위 위치를 널로 보낸다', async () => {
+    const { requests, user } = renderScreen(
+      locationWriteRoutes({
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname === '/mdm/locations',
+        respond: () => jsonResponse(locationFixtures[3]!, { status: 201 }),
+      }),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: '최상위 추가' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('없음 (최상위)')).toBeInTheDocument();
+
+    await user.type(within(dialog).getByLabelText('위치코드'), 'C-01');
+    await user.type(within(dialog).getByLabelText('위치명'), 'C구역');
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('등록했습니다');
+
+    const post = requests.find(
+      (request) => request.method === 'POST' && request.url.pathname === '/mdm/locations',
+    );
+    expect(JSON.parse(post?.body ?? '{}')).toMatchObject({ parentLocationId: null });
+  });
+
+  it('검증이 걸리면 요청을 보내지 않고 인라인 오류를 낸다', async () => {
+    const { requests, user } = renderScreen(locationWriteRoutes(), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: '최상위 추가' }));
+
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByLabelText('수용량'), '10');
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(
+      within(dialog).getByText('수용량과 단위는 함께 입력하거나 함께 비워야 합니다.'),
+    ).toBeInTheDocument();
+    expect(
+      requests.some(
+        (request) => request.method === 'POST' && request.url.pathname === '/mdm/locations',
+      ),
+    ).toBe(false);
+  });
+
+  it('편집 다이얼로그를 열면 상세를 조회해 잠금 토큰과 코드 잠금을 확보한다', async () => {
+    const { requests, user } = renderScreen(
+      locationWriteRoutes(
+        locationDetailRoute(locationFixtures[1]!, {
+          codeEditable: false,
+          reason: 'REFERENCED',
+          referenceCount: 2,
+        }),
+      ),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(await within(dialog).findByLabelText('위치코드')).toBeDisabled();
+    expect(
+      within(dialog).getByText('이미 2건에서 사용 중이라 코드를 바꿀 수 없습니다.'),
+    ).toBeInTheDocument();
+    expect(requests.some((request) => request.url.pathname === '/mdm/locations/2002')).toBe(true);
+  });
+
+  it('편집 저장의 PUT에 상세 경로의 If-Match가 실린다', async () => {
+    const { requests, user } = renderScreen(
+      locationWriteRoutes(locationDetailRoute(), {
+        match: (request) =>
+          request.method === 'PUT' && new URL(request.url).pathname === '/mdm/locations/2002',
+        respond: () => jsonResponse({ ...locationFixtures[1]!, locationName: 'A구역 01열 수정' }),
+      }),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
+
+    const dialog = screen.getByRole('dialog');
+    await within(dialog).findByLabelText('위치명');
+    await user.type(within(dialog).getByLabelText('위치명'), ' 수정');
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+
+    const put = requests.find(
+      (request) => request.method === 'PUT' && request.url.pathname === '/mdm/locations/2002',
+    );
+    expect(put?.headers.get('If-Match')).toBe('"5"');
+    expect(put?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    // 상위 위치는 화면에 재배치 수단이 없으므로 지금 값을 그대로 되돌려 보낸다.
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ parentLocationId: 2001 });
+    expect(JSON.parse(put?.body ?? '{}')).not.toHaveProperty('warehouseId');
+  });
+
+  it('잠금 토큰을 확보하지 못하면 저장을 보내지 않고 그 사실을 알린다', async () => {
+    const { requests, user } = renderScreen(
+      locationWriteRoutes({
+        match: (request) => isGet(request, '/mdm/locations/2002'),
+        respond: () => jsonResponse({ message: '' }, { status: 500 }),
+      }),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
+
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByLabelText('위치명'), '가');
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(dialog).findByText('최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.'),
+    ).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
+  it('편집 다이얼로그에 상위 위치의 코드가 보인다', async () => {
+    const { user } = renderScreen(locationWriteRoutes(locationDetailRoute()), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
+
+    expect(within(screen.getByRole('dialog')).getByText('A-01')).toBeInTheDocument();
+  });
+
+  it('서버가 준 필드 오류는 다이얼로그 안에 인라인으로 뜬다', async () => {
+    const { user } = renderScreen(
+      locationWriteRoutes({
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname === '/mdm/locations',
+        respond: () =>
+          jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'locationCode',
+                  code: 'DUPLICATED',
+                  message: '이미 사용 중인 위치코드입니다.',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+      }),
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: '최상위 추가' }));
+
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByLabelText('위치코드'), 'A-01');
+    await user.type(within(dialog).getByLabelText('위치명'), '겹치는 구역');
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(await within(dialog).findByText('이미 사용 중인 위치코드입니다.')).toBeInTheDocument();
+    // 실패하면 다이얼로그를 닫지 않는다 — 입력한 내용을 다시 쓰게 만들지 않는다.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
 describe('WarehouseLocationScreen — 예시 데이터 제거', () => {
   it('예시 데이터 안내 배너가 없다', async () => {
     renderScreen([warehouseListRoute(), ...lookupRoutes()]);

@@ -102,7 +102,6 @@ const warehouseLocation = {
       '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     plantFixedAfterCreate: '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
-    saveUnavailable: '저장은 아직 쓸 수 없습니다. 저장 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
   },
   loading: {
     warehouses: '창고 목록을 불러오는 중',
@@ -174,6 +173,7 @@ const warehouseLocation = {
     codeDuplicated: '이미 사용 중인 코드입니다. 다른 코드를 입력하세요.',
     partnerRequiredForExternal: '외부창고이면 거래처를 지정해야 합니다.',
     capacityNeedsUom: '수용량과 단위는 함께 입력하거나 함께 비워야 합니다.',
+    capacityInvalid: '수용량은 0 이상의 숫자로 입력하세요.',
   },
   locationTable: {
     expand: '하위 펼치기',

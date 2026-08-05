@@ -9,6 +9,7 @@ type PageMeta = components['schemas']['PageMeta'];
 type Warehouse = components['schemas']['Warehouse'];
 type WarehouseDetailResponse = components['schemas']['WarehouseDetailResponse'];
 type Location = components['schemas']['Location'];
+type LocationDetailResponse = components['schemas']['LocationDetailResponse'];
 
 export interface WarehouseListResponse {
   items: Warehouse[];
@@ -112,6 +113,30 @@ export const useLocationList = (
 
       return runRequest(() =>
         client.GET('/mdm/locations', { params: { query: { warehouseId } } }),
+      );
+    },
+  });
+};
+
+/**
+ * Location 상세. 화면은 목록만 조회하므로 잠금 토큰과 코드 편집 가능 여부가 없다 —
+ * 편집 다이얼로그를 열 때 이것을 실행해 둘을 확보한다. 초기값은 목록 행에서 온다.
+ */
+export const useLocationDetail = (
+  locationId: number | null,
+): UseQueryResult<LocationDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: locationKeys.detail(locationId ?? 0),
+    enabled: locationId !== null,
+    queryFn: () => {
+      if (locationId === null) {
+        throw new Error('편집할 Location을 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/locations/{locationId}', { params: { path: { locationId } } }),
       );
     },
   });

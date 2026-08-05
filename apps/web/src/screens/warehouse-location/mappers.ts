@@ -5,6 +5,8 @@ import type { Location, LocationFormValues, Warehouse, WarehouseFormValues } fro
 
 type WarehouseCreate = components['schemas']['WarehouseCreate'];
 type WarehouseUpdate = components['schemas']['WarehouseUpdate'];
+type LocationCreate = components['schemas']['LocationCreate'];
+type LocationUpdate = components['schemas']['LocationUpdate'];
 
 /**
  * 계약 표현과 폼 표현 사이의 변환.
@@ -99,6 +101,40 @@ export const emptyLocationFormValues = (): LocationFormValues => ({
   allowMixedLot: true,
   capacityQty: '',
   capacityUomId: '',
+});
+
+/** 빈 문자열 코드는 「고르지 않음」이다. 계약은 그것을 널로 표현한다. */
+const textToOptionalCode = (value: string): string | null => (value === '' ? null : value);
+
+/**
+ * Location 수정 요청 본문. warehouseId는 등록 후 바꿀 수 없어 실리지 않는다.
+ * 상위 위치는 화면에 재배치 수단이 없으므로 지금 값을 그대로 되돌려 보낸다.
+ */
+export const toLocationUpdate = (
+  values: LocationFormValues,
+  parentLocationId: number | null,
+): LocationUpdate => ({
+  parentLocationId,
+  locationCode: values.locationCode.trim(),
+  locationName: values.locationName.trim(),
+  locationTypeCode: values.locationTypeCode,
+  qualityZoneCode: textToOptionalCode(values.qualityZoneCode),
+  storageConditionCode: textToOptionalCode(values.storageConditionCode),
+  allowMixedItem: values.allowMixedItem,
+  allowMixedLot: values.allowMixedLot,
+  // 수용량과 단위는 함께 있거나 함께 비어야 한다(계약의 짝 제약). 검증이 그것을 먼저 막는다.
+  capacityQty: values.capacityQty.trim() === '' ? null : Number(values.capacityQty),
+  capacityUomId: textToOptionalId(values.capacityUomId),
+});
+
+/** Location 등록 요청 본문. 계약상 수정 본문에 warehouseId만 더한 형태다. */
+export const toLocationCreate = (
+  values: LocationFormValues,
+  warehouseId: number,
+  parentLocationId: number | null,
+): LocationCreate => ({
+  ...toLocationUpdate(values, parentLocationId),
+  warehouseId,
 });
 
 /** 기준값과 현재 값의 비교. 「고친 것이 있는가」의 판정 근거다. */

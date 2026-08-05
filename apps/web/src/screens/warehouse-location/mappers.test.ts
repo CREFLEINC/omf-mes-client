@@ -7,6 +7,8 @@ import {
   emptyWarehouseFormValues,
   isSameWarehouseValues,
   locationToFormValues,
+  toLocationCreate,
+  toLocationUpdate,
   toWarehouseCreate,
   toWarehouseUpdate,
   warehouseToFormValues,
@@ -152,6 +154,46 @@ describe('locationToFormValues', () => {
     expect(values.locationName).toBe('A구역 01열 01단');
     expect(values.allowMixedItem).toBe(false);
     expect(values.allowMixedLot).toBe(false);
+  });
+});
+
+describe('toLocationCreate · toLocationUpdate', () => {
+  const values = locationToFormValues(locationFixtures[2]!);
+
+  it('등록 본문에는 창고와 상위 위치가 함께 실린다', () => {
+    const body = toLocationCreate(values, 1001, 2002);
+
+    expect(body.warehouseId).toBe(1001);
+    expect(body.parentLocationId).toBe(2002);
+  });
+
+  it('최상위 등록이면 상위 위치가 널이다', () => {
+    expect(toLocationCreate(values, 1001, null).parentLocationId).toBeNull();
+  });
+
+  it('수정 본문에는 창고가 실리지 않는다 — 등록 후 바꿀 수 없다', () => {
+    expect(toLocationUpdate(values, null)).not.toHaveProperty('warehouseId');
+  });
+
+  it('수용량을 숫자로 되돌리고 단위를 숫자 id로 보낸다', () => {
+    const body = toLocationUpdate(values, null);
+
+    expect(body.capacityQty).toBe(500);
+    expect(body.capacityUomId).toBe(41);
+  });
+
+  it('수용량과 단위를 비우면 둘 다 널로 보낸다 — 짝 제약을 지킨다', () => {
+    const body = toLocationUpdate({ ...values, capacityQty: '', capacityUomId: '' }, null);
+
+    expect(body.capacityQty).toBeNull();
+    expect(body.capacityUomId).toBeNull();
+  });
+
+  it('고르지 않은 품질구역·보관조건은 널로 보낸다', () => {
+    const body = toLocationUpdate({ ...values, qualityZoneCode: '', storageConditionCode: '' }, null);
+
+    expect(body.qualityZoneCode).toBeNull();
+    expect(body.storageConditionCode).toBeNull();
   });
 });
 

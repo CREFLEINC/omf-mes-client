@@ -23,6 +23,8 @@ export interface LocationFormDialogProps {
   onChange: (patch: Partial<LocationFormValues>) => void;
   fieldErrors: Record<string, string>;
   banner: ReactNode;
+  /** null이면 위치코드 편집 가능. 잠긴 코드를 고치게 두면 저장 시점에야 거부된다 */
+  codeLockReason: string | null;
   uomOptions: { value: string; label: string }[];
   isSaving: boolean;
   onSave: () => void;
@@ -40,6 +42,7 @@ export const LocationFormDialog = ({
   onChange,
   fieldErrors,
   banner,
+  codeLockReason,
   uomOptions,
   isSaving,
   onSave,
@@ -88,6 +91,8 @@ export const LocationFormDialog = ({
           label={t.fields.locationCode}
           value={values.locationCode}
           onChange={(event) => onChange({ locationCode: event.target.value })}
+          disabled={codeLockReason !== null}
+          disabledReason={codeLockReason}
           error={fieldErrors.locationCode}
         />
 
