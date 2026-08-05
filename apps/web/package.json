@@ -16,6 +16,7 @@
     "@omf-mes/domain": "workspace:*",
     "@omf-mes/i18n": "workspace:*",
     "@omf-mes/ui": "workspace:*",
+    "@tanstack/react-query": "^5.101.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router": "^7.18.2"
