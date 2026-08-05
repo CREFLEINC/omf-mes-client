@@ -1,0 +1,121 @@
+/*
+ * 전역 배치 계약 — 화면 슬라이스는 이 파일을 import하지 않고 클래스 이름만 쓴다.
+ * (`pnpm dep:check`의 app-inner-direction 규칙이 screens → app 참조를 막는다.
+ *  CSS는 main.tsx가 한 번만 import한다.)
+ *
+ * .two-pane     2단 배치 컨테이너 — 좌 목록 / 우 상세
+ * .pane         2단 배치의 각 칸 — 표면·테두리·안쪽 여백
+ * .filter-bar   검색·필터 컨트롤과 조건 칩을 담는 줄
+ * .form-grid    폼 필드 2열 그리드
+ * .form-actions 폼 하단 액션 줄(우측 정렬)
+ * .field-note   필드 아래 보조 안내 텍스트(비활성 사유·선택지 준비 중 등)
+ * .field-error  필드 아래 오류 텍스트
+ * .link-cell    표의 코드 셀을 누를 수 있게 만드는 텍스트 버튼
+ * .tree-toggle  Location 계층의 들여쓰기 + 접기 버튼을 담는 셀 래퍼
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  padding: var(--space-6);
+}
+
+.two-pane {
+  display: grid;
+  grid-template-columns: minmax(320px, 2fr) 3fr;
+  gap: var(--space-5);
+  align-items: start;
+  margin-top: var(--space-5);
+}
+
+@media (max-width: 1280px) {
+  .two-pane {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pane {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  min-width: 0;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 720px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.field-note {
+  display: block;
+  margin-top: var(--space-1);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.field-error {
+  display: block;
+  margin-top: var(--space-1);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--semantic-error-text);
+}
+
+.link-cell {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--primary-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.link-cell:hover {
+  background: var(--state-hover-neutral);
+}
+
+.link-cell:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tree-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
