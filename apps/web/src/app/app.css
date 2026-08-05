@@ -8,6 +8,7 @@
  * .filter-bar   검색·필터 컨트롤과 조건 칩을 담는 줄
  * .form-grid    폼 필드 2열 그리드
  * .form-actions 폼 하단 액션 줄(우측 정렬)
+ * .field-label  DS가 라벨을 내장하지 않는 컨트롤(Select 등)에 직접 붙이는 라벨
  * .field-note   필드 아래 보조 안내 텍스트(비활성 사유·선택지 준비 중 등)
  * .field-error  필드 아래 오류 텍스트
  * .link-cell    표의 코드 셀을 누를 수 있게 만드는 텍스트 버튼
@@ -76,6 +77,14 @@ main {
   justify-content: flex-end;
   gap: var(--space-3);
   margin-top: var(--space-5);
+}
+
+.field-label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-variant);
 }
 
 .field-note {

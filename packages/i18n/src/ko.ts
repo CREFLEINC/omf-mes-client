@@ -91,6 +91,10 @@ const warehouseLocation = {
     plantFixedAfterCreate: '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
   },
+  loading: {
+    warehouses: '창고 목록을 불러오는 중',
+    locations: 'Location을 불러오는 중',
+  },
   empty: {
     warehouseNoneTitle: '아직 등록된 창고가 없습니다',
     warehouseNoneDescription: '「창고 추가」로 첫 창고를 등록하세요.',
