@@ -36,6 +36,8 @@ const t = messages.warehouseLocation;
  *
  * 기존 컴포넌트의 조합이므로 이 화면 슬라이스가 소유한다. 세 번째 사용처가 생기면
  * 그때 공용 부품으로 올릴지 판단한다 — 조합물을 미리 디자인 시스템으로 올리지 않는다.
+ *
+ * 라벨 층·필수 표시 위치의 근거는 docs/layout-conventions.md 규범 3에 있다.
  */
 export interface SelectFieldProps {
   label: string;
@@ -63,11 +65,16 @@ export const SelectField = ({
   const description = error ?? note;
 
   return (
-    <div>
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
-      {required && <span aria-hidden="true"> *</span>}
+    <div className="field-cell">
+      {/*
+       * 필수 표시는 <label> 밖에 두되 같은 줄에 오도록 .field-label 안으로 올린다.
+       * 밖에 두면 .field-label이 블록 서식이라 별도 줄로 떨어지고,
+       * 안에 넣으면 접근성 이름이 「이름 *」이 되어 라벨 조회가 깨진다.
+       */}
+      <span className="field-label">
+        <label htmlFor={id}>{label}</label>
+        {required && <span aria-hidden="true"> *</span>}
+      </span>
       <Select
         id={id}
         options={options}

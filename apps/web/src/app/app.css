@@ -9,6 +9,8 @@
  * .two-pane     2단 배치 컨테이너 — 좌 목록 / 우 상세
  * .pane         2단 배치의 각 칸 — 표면·테두리·안쪽 여백
  * .filter-bar   검색·필터 컨트롤과 조건 칩을 담는 줄
+ * .field-cell   라벨·컨트롤·사유를 한 세로 묶음으로 놓는 셀(규범 2·3·4)
+ * .field-cell-unlabeled  라벨 없는 셀을 라벨 층만큼 내려 컨트롤 상자의 윗선을 맞춘다(규범 2)
  * .form-grid    폼 필드 2열 그리드
  * .form-actions 폼 하단 액션 줄(우측 정렬)
  * .field-label  DS가 라벨을 내장하지 않는 컨트롤(Select 등)에 직접 붙이는 라벨
@@ -17,6 +19,11 @@
  * .link-cell    표의 코드 셀을 누를 수 있게 만드는 텍스트 버튼
  * .tree-toggle  Location 계층의 들여쓰기 + 접기 버튼을 담는 셀 래퍼
  */
+
+:root {
+  /* 라벨 층 = DS 라벨 줄높이(--type-label-sm의 16px) + 라벨–컨트롤 간격(--space-1) */
+  --field-label-layer: calc(16px + var(--space-1));
+}
 
 html,
 body,
@@ -65,9 +72,28 @@ main > * + * {
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  /* 규범 2 — 컨트롤 상자의 윗선에 맞춘다. 가운데 정렬은 셀 높이가 제각각일 때 어느 선도 맞지 않는다. */
+  align-items: flex-start;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
+}
+
+/*
+ * 규범 2 — 한 클래스가 세 경우를 모두 처리한다.
+ * 컨트롤이 40px보다 낮으면 상자 안 중앙에 놓이고, 40px이면 그대로이며,
+ * 40px보다 높으면(라벨+컨트롤, 컨트롤+사유) 위에서부터 쌓인다.
+ * flex 컨테이너로 두면 인라인 서식 컨트롤이 블록화되어 줄상자 여백이 생기지 않는다.
+ */
+.field-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: var(--control-height-md);
+}
+
+.field-cell-unlabeled {
+  margin-top: var(--field-label-layer);
 }
 
 .form-grid {

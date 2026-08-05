@@ -111,7 +111,7 @@ export const WarehouseListPane = ({
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
           onSearch={(value) => onApplyFilters({ ...draft, q: value })}
         />
-        <div>
+        <div className="field-cell">
           <label className="field-label" htmlFor={typeSelectId}>
             {t.fields.warehouseType}
           </label>
@@ -123,16 +123,24 @@ export const WarehouseListPane = ({
           />
         </div>
         {/* 해제 축이라 변경 즉시 적용한다. */}
-        <Checkbox
-          checked={appliedFilters.includeInactive}
-          onChange={(event) =>
-            onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
-          }
+        <div className="field-cell field-cell-unlabeled">
+          <Checkbox
+            checked={appliedFilters.includeInactive}
+            onChange={(event) =>
+              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
+            }
+          >
+            {messages.common.includeInactive}
+          </Checkbox>
+        </div>
+        <Button className="field-cell-unlabeled" onClick={applyDraft}>
+          {messages.common.search}
+        </Button>
+        <Button
+          className="field-cell-unlabeled"
+          variant="outlined"
+          onClick={() => onApplyFilters(defaultWarehouseFilters)}
         >
-          {messages.common.includeInactive}
-        </Checkbox>
-        <Button onClick={applyDraft}>{messages.common.search}</Button>
-        <Button variant="outlined" onClick={() => onApplyFilters(defaultWarehouseFilters)}>
           {messages.common.reset}
         </Button>
       </div>

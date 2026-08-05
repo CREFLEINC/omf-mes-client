@@ -58,6 +58,14 @@ describe('WarehouseFormPane', () => {
     }
   });
 
+  // 필수 표시(*)는 라벨과 같은 줄에 있어야 하지만 접근성 이름에는 섞이면 안 된다.
+  // 기본 fixture는 isExternal이 false라 이 경로를 지나지 않으므로 따로 세운다.
+  it('필수 항목이 되어도 라벨로 조회할 수 있다', () => {
+    renderPane({ values: { ...warehouseFormInitialValues, isExternal: true } });
+
+    expect(screen.getByLabelText('거래처')).toBeInTheDocument();
+  });
+
   it('fieldErrors를 주입하면 창고코드와 거래처의 인라인 오류가 화면에 보인다', () => {
     renderPane({ fieldErrors: warehouseFieldErrorFixtures });
 

@@ -133,10 +133,10 @@ export const LocationPane = ({
           onChange={(event) => onFilterTextChange(event.target.value)}
           onClear={() => onFilterTextChange('')}
         />
-        <Button variant="outlined" onClick={onAddRoot}>
+        <Button className="field-cell-unlabeled" variant="outlined" onClick={onAddRoot}>
           {t.actions.addRootLocation}
         </Button>
-        <div>
+        <div className="field-cell field-cell-unlabeled">
           <Button
             variant="outlined"
             disabled={!canAddChild}
@@ -151,8 +151,8 @@ export const LocationPane = ({
             </span>
           )}
         </div>
-        {/* 서버 렌더링 API가 없다 — 기능을 지어내지 않고 사유를 보이는 텍스트로 낸다. */}
-        <div>
+        {/* 생성 기능이 없다 — 기능을 지어내지 않고 사유를 보이는 텍스트로 낸다. */}
+        <div className="field-cell field-cell-unlabeled">
           <Button variant="outlined" disabled aria-describedby={labelNoteId}>
             {t.actions.generateLabel}
           </Button>
