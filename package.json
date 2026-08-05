@@ -1,0 +1,21 @@
+{
+  "name": "omf-mes-client",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "mock": "node tools/mock/serve.mjs",
+    "mock:smoke": "node tools/mock/smoke.mjs"
+  },
+  "devDependencies": {
+    "@stoplight/prism-cli": "^5.14.2",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2"
+  }
+}
