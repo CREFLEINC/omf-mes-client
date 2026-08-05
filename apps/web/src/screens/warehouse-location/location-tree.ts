@@ -21,7 +21,7 @@ const byLocationCode = (a: Location, b: Location): number => {
  *
  * - 형제는 locationCode 오름차순
  * - 접힌 노드(expandedIds에 없는 노드)의 하위는 결과에서 빠지지만 hasChildren은 그대로 참
- * - 부모가 목록에 없는 고아는 최상위로 올려 반드시 노출한다
+ * - 부모가 없거나 자기 자신인 항목, 부모가 목록에 없는 고아는 최상위로 올려 반드시 노출한다
  * - 부모-자식 순환이 있어도 무한 루프에 빠지지 않고 모든 항목이 정확히 한 번씩 나온다
  */
 export const buildLocationRows = (
@@ -35,8 +35,16 @@ export const buildLocationRows = (
 
   for (const item of items) {
     const parentId = item.parentLocationId;
-    // 부모가 없거나 목록에 없으면(고아) 최상위로 올린다.
-    if (parentId === null || parentId === undefined || !byId.has(parentId)) {
+    /*
+     * 부모가 없거나, 자기 자신이거나, 목록에 없으면(고아) 최상위로 올린다.
+     * 자기참조를 부모-자식으로 세면 하위가 없는데도 「하위 접기」가 붙어 누를 것이 없는 컨트롤이 생긴다.
+     */
+    if (
+      parentId === null ||
+      parentId === undefined ||
+      parentId === item.locationId ||
+      !byId.has(parentId)
+    ) {
       roots.push(item);
       continue;
     }

@@ -333,7 +333,13 @@ export const WarehouseLocationScreen = () => {
 
     for (const item of locationItems) {
       const parentId = item.parentLocationId;
-      if (parentId !== null && parentId !== undefined && known.has(parentId)) {
+      // 자기참조는 부모로 세지 않는다 — buildLocationRows가 그것을 최상위로 올린다.
+      if (
+        parentId !== null &&
+        parentId !== undefined &&
+        parentId !== item.locationId &&
+        known.has(parentId)
+      ) {
         parents.add(parentId);
       }
     }
