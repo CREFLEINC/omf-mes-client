@@ -128,7 +128,8 @@ export const LocationFormDialog = ({
           note={messages.pendingCode.note}
         />
 
-        <div>
+        {/* 간격이 없으면 두 문구가 붙어 「…허용LOT 혼적…」처럼 한 줄로 읽힌다. */}
+        <div className="check-group">
           <Checkbox
             checked={values.allowMixedItem}
             onChange={(event) => onChange({ allowMixedItem: event.target.checked })}
