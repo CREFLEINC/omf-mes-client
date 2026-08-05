@@ -19,6 +19,7 @@
  * .field-error  필드 아래 오류 텍스트
  * .link-cell    표의 코드 셀을 누를 수 있게 만드는 텍스트 버튼
  * .tree-toggle  Location 계층의 들여쓰기 + 접기 버튼을 담는 셀 래퍼
+ * .banner-slot  페인·다이얼로그 안의 배너와 아래 블록 사이 이음매(규범 6)
  */
 
 :root {
@@ -47,6 +48,15 @@ main {
  */
 main > * + * {
   margin-top: var(--space-5);
+}
+
+/*
+ * 규범 6 — main > * + *는 화면 최상위 블록에만 닿는다. 페인·다이얼로그 안의 배너는
+ * 아래 블록과 붙어 머리말처럼 읽히므로 배너 쪽이 자기 아래 이음매를 갖는다.
+ * 값 20px 근거는 규범 1과 같다(이웃 블록의 내부 최대 간격 16px보다 커야 경계가 읽힌다).
+ */
+.banner-slot {
+  margin-bottom: var(--space-5);
 }
 
 .two-pane {

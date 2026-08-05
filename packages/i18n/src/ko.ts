@@ -29,6 +29,7 @@ const common = {
  */
 const conflict = {
   reloadAction: '최신 불러오기',
+  reloadNote: '최신 내용을 불러오면 입력한 내용은 사라집니다.',
   user: '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
   erpSync: '외부 시스템에서 이 항목이 다시 동기화됐습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
   workerLease:
@@ -45,6 +46,12 @@ const httpError = {
   title: '요청을 처리하지 못했습니다',
   description: '잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.',
   offline: '네트워크 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도하세요.',
+  forbidden: '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+} as const;
+
+/** 저장을 서버로 보내기 전에 멈춘 경우. 사용자가 다시 시도하면 풀린다. */
+const save = {
+  staleToken: '최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.',
 } as const;
 
 /**
@@ -60,6 +67,8 @@ const editability = {
     '이 코드를 참조하는 자료의 수를 확인할 수 없어 코드를 잠급니다. 변경이 필요하면 담당자에게 문의하세요.',
   receivedFromErp: (_count: number | null): string =>
     '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+  /** 잠긴 것은 확실하나 사유가 특정되지 않을 때. 사유를 지어내지 않고 잠금 사실만 밝힌다. */
+  locked: '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
 } as const;
 
 /** 공통코드 값 목록이 확정되지 않은 선택지에 붙인다. 값을 지어내지 않는다. */
@@ -175,6 +184,7 @@ export const ko = {
   conflict,
   stateLocked,
   httpError,
+  save,
   editability,
   pendingCode,
   warehouseLocation,

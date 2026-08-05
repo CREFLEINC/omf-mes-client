@@ -7,12 +7,13 @@ const errorResponse = (status: number): Response => new Response(null, { status 
 
 describe('runRequest', () => {
   it('성공하면 응답 데이터를 그대로 돌려준다', async () => {
+    // patterns는 리소스 이름을 알지 않는다 — 스텁 본문도 특정 리소스의 형태를 쓰지 않는다.
     const data = await runRequest(async () => ({
-      data: { warehouseId: 1001 },
+      data: { id: 1001 },
       response: okResponse(),
     }));
 
-    expect(data).toEqual({ warehouseId: 1001 });
+    expect(data).toEqual({ id: 1001 });
   });
 
   it('본문 없는 200도 성공으로 다룬다 — 사용 중지처럼 결과 본문이 없는 요청이 있다', async () => {
