@@ -64,9 +64,16 @@ interface TestEnvironment {
 }
 
 const createEnvironment = (options: ProviderOptions): TestEnvironment => {
-  // 재시도를 끈다 — 실패가 즉시 드러나야 테스트가 원인을 가리키지 않고 느려지기만 하는 일이 없다.
+  /*
+   * 재시도를 끈다 — 실패가 즉시 드러나야 테스트가 원인을 가리키지 않고 느려지기만 하는 일이 없다.
+   * networkMode는 앱과 같은 값을 쓴다(app/providers.tsx). 여기서만 기본값을 두면
+   * 「오프라인으로 보고될 때 조회가 보류된다」는 실패를 테스트가 통과시켜 버린다.
+   */
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    defaultOptions: {
+      queries: { retry: false, networkMode: 'always' },
+      mutations: { retry: false, networkMode: 'always' },
+    },
   });
   const apiClient = createApiClient({
     baseUrl: TEST_BASE_URL,

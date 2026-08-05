@@ -1,6 +1,7 @@
+import { onlineManager } from '@tanstack/react-query';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -1251,6 +1252,92 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
     expect(await within(dialog).findByText('이미 사용 중인 위치코드입니다.')).toBeInTheDocument();
     // 실패하면 다이얼로그를 닫지 않는다 — 입력한 내용을 다시 쓰게 만들지 않는다.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
+/** 연결이 거부됐을 때 브라우저가 겪는 것 — 응답이 없고 fetch가 예외를 던진다. */
+const refusingFetch: StubFetch = async () => {
+  throw new TypeError('Failed to fetch');
+};
+
+describe('WarehouseLocationScreen — 서버에 닿지 못할 때', () => {
+  afterEach(() => {
+    onlineManager.setOnline(true);
+  });
+
+  it('연결이 거부되면 좌측이 스켈레톤에 머물지 않고 오류 배너로 바뀐다', async () => {
+    renderWithProviders(<WarehouseLocationScreen />, { fetch: refusingFetch, route: ROUTE });
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(
+      screen.getByText('네트워크 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도하세요.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: '창고 목록을 불러오는 중' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('아직 등록된 창고가 없습니다')).not.toBeInTheDocument();
+  });
+
+  /*
+   * navigator.onLine은 브라우저에 네트워크 연결이 있는지만 말한다. 우리 서버에 닿는지는 말하지 않는다.
+   * 그 신호로 조회를 멈추면 화면이 영원히 스켈레톤에 머물고 사용자가 빠져나올 방법이 없다.
+   */
+  it('브라우저가 오프라인으로 보고해도 조회 실패가 오류로 드러난다', async () => {
+    onlineManager.setOnline(false);
+
+    renderWithProviders(<WarehouseLocationScreen />, { fetch: refusingFetch, route: ROUTE });
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: '창고 목록을 불러오는 중' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('브라우저가 오프라인으로 보고해도 Location 조회 실패가 오류로 드러난다', async () => {
+    onlineManager.setOnline(false);
+
+    const { user } = renderScreen(
+      [
+        warehouseListRoute(),
+        warehouseDetailRoute(),
+        ...lookupRoutes(),
+        {
+          match: (request) => isGet(request, '/mdm/locations'),
+          respond: () => {
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+
+    expect(within(panel).getByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(
+      within(panel).queryByRole('status', { name: 'Location을 불러오는 중' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('브라우저가 오프라인으로 보고해도 저장이 멈춰 있지 않고 답을 준다', async () => {
+    onlineManager.setOnline(false);
+
+    const { user } = renderScreen(
+      saveRoutes({
+        match: (request) => request.method === 'PUT',
+        respond: () => {
+          throw new TypeError('Failed to fetch');
+        },
+      }),
+      '?wh=1001',
+    );
+
+    await user.type(await screen.findByLabelText('창고명'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText('네트워크 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도하세요.'),
+    ).toBeInTheDocument();
   });
 });
 

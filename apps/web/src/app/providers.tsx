@@ -11,11 +11,21 @@ import { apiClient } from './api';
  * - staleTime 30초: 마스터 자료는 초 단위로 바뀌지 않는다. 탭 전환마다 재요청하지 않는다.
  * - mutations.retry 0: 멱등 키가 있어도 결과는 사용자가 보고 판단해야 한다.
  *   자동 재시도는 실패 원인을 감춘다.
+ * - networkMode 'always': 기본값은 브라우저가 오프라인이라고 보고하면 요청을 **보류**해
+ *   조회가 영원히 「불러오는 중」에 머물고 오류도 나지 않는다. 사용자가 빠져나올 방법이 없다.
+ *   navigator.onLine은 브라우저에 네트워크 연결이 있는지만 말하고 **우리 서버에 닿는지는
+ *   말하지 않는다** — 이 화면의 서버는 같은 기기(목 서버)나 사내망에 있을 수 있다.
+ *   실패는 보류하지 말고 오류로 드러내 「다시 시도」를 사용자가 고르게 한다.
  */
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 30_000 },
-    mutations: { retry: 0 },
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+      networkMode: 'always',
+    },
+    mutations: { retry: 0, networkMode: 'always' },
   },
 });
 
