@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@crefle/web-ui": "github:CREFLEINC/design-system-v2-webui#a554d11",
     "@omf-mes/api-client": "workspace:*",
     "@omf-mes/domain": "workspace:*",
     "@omf-mes/i18n": "workspace:*",

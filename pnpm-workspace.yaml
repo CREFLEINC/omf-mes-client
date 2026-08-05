@@ -1,6 +1,9 @@
 packages:
   - apps/*
   - packages/*
+
 allowBuilds:
+  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/a554d119c4181781c7929fb842d48165c629c91f': true
   '@scarf/scarf': false
   esbuild: true
+  node: true
