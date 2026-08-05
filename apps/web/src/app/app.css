@@ -84,12 +84,18 @@ main > * + * {
  * 컨트롤이 40px보다 낮으면 상자 안 중앙에 놓이고, 40px이면 그대로이며,
  * 40px보다 높으면(라벨+컨트롤, 컨트롤+사유) 위에서부터 쌓인다.
  * flex 컨테이너로 두면 인라인 서식 컨트롤이 블록화되어 줄상자 여백이 생기지 않는다.
+ *
+ * align-self는 grid 부모(.form-grid) 때문에 필요하다. grid 자식은 기본이 stretch라
+ * 셀이 줄 높이만큼 늘어나고, 그러면 justify-content: center가 발동해 사유가 없는 셀의
+ * 라벨이 같은 줄 짝보다 아래로 내려간다 — 규범 2가 막으려는 어긋남이 그대로 생긴다.
+ * flex 부모(.filter-bar·.form-actions)에서는 이미 같은 값이라 영향이 없다.
  */
 .field-cell {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
+  align-self: start;
   min-height: var(--control-height-md);
 }
 

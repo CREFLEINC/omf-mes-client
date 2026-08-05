@@ -114,6 +114,7 @@ main > * + * {
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
+  align-self: start;
   min-height: var(--control-height-md);
 }
 
@@ -124,6 +125,11 @@ main > * + * {
 
 `.field-cell`이 `justify-content: center`와 `min-height`를 함께 갖기 때문에 **한 클래스가 세 경우를 모두 처리한다.**
 컨트롤이 40px보다 낮으면 상자 안 중앙에 놓이고, 40px이면 그대로이며, 40px보다 높으면(라벨+컨트롤, 컨트롤+사유) 위에서부터 쌓인다.
+
+**`align-self: start`는 이 셀이 grid 부모 안에 놓일 때를 위한 것이다.** grid 자식은 기본이 `stretch`라
+셀이 줄 높이만큼 늘어나고, 그러면 `justify-content: center`가 발동해 **사유가 없는 셀의 라벨이 같은 줄 짝보다 아래로 내려간다.**
+이 규범이 막으려는 어긋남이 그대로 생기는 것이다. flex 부모 안에서는 이미 같은 값이라 영향이 없다.
+셀 하나가 두 부모에서 같게 동작해야 규범이 성립한다.
 
 `.field-cell`을 flex 컨테이너로 둔 것에는 두 번째 이득이 있다. 인라인 서식 컨트롤(`display: inline-block`인 선택 트리거,
 `inline-flex`인 체크박스)이 블록 컨테이너 안에 있으면 인라인 줄상자가 생겨 글꼴 내려긋기만큼의 빈 공간이 붙는다.
@@ -264,7 +270,7 @@ flex 자식은 블록화되므로 이 빈 공간이 사라지고 셀 높이가 �
 | --- | --- | --- |
 | `main > * + *` | 화면 최상위 블록 사이의 이음매 `--space-5` | 1 |
 | `--field-label-layer` | 라벨 층 높이 `calc(16px + var(--space-1))` | 2 |
-| `.field-cell` | 라벨·컨트롤·사유를 한 세로 묶음으로 놓는 셀 | 2 · 3 · 4 |
+| `.field-cell` | 라벨·컨트롤·사유를 한 세로 묶음으로 놓는 셀. flex·grid 부모에서 같게 동작한다 | 2 · 3 · 4 |
 | `.field-cell-unlabeled` | 라벨 없는 셀을 라벨 층만큼 내려 윗선을 맞춘다 | 2 |
 | `.filter-bar` | 컨트롤 줄. `align-items: flex-start` | 2 |
 | `.field-label` | 디자인 시스템이 라벨을 내장하지 않는 컨트롤의 라벨 | 3 |
