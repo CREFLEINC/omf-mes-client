@@ -17,8 +17,8 @@ export interface MasterWriteOptions<TVariables, TData> {
   request: (variables: TVariables, headers: WriteHeaders) => Promise<ApiCallResult<TData>>;
   /** If-Match를 꺼낼 리소스 상세 경로. 신규 등록처럼 낙관적 잠금이 없으면 null. */
   etagPath: string | null;
-  /** 성공 후 무효화할 캐시 키 */
-  invalidateKeys: readonly unknown[][];
+  /** 성공 후 무효화할 캐시 키. 키를 `as const`로 두는 것이 관례라 안쪽도 읽기 전용을 받는다. */
+  invalidateKeys: readonly (readonly unknown[])[];
   /** 화면이 소유한 입력칸 이름 — 인라인으로 낼 필드 오류를 고르는 기준 */
   knownFields: readonly string[];
   onSuccess?: (data: TData) => void;

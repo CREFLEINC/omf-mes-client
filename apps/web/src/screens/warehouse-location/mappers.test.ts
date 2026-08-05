@@ -7,6 +7,7 @@ import {
   emptyWarehouseFormValues,
   isSameWarehouseValues,
   locationToFormValues,
+  toWarehouseUpdate,
   warehouseToFormValues,
 } from './mappers';
 import type { Location, Warehouse } from './types';
@@ -68,6 +69,34 @@ describe('emptyWarehouseFormValues', () => {
 
   it('호출할 때마다 새 객체를 준다 — 이전 입력이 남지 않는다', () => {
     expect(emptyWarehouseFormValues()).not.toBe(emptyWarehouseFormValues());
+  });
+});
+
+describe('toWarehouseUpdate', () => {
+  const values = warehouseToFormValues({ ...base, businessUnitId: 21, partnerId: 31 });
+
+  it('문자열 id를 계약이 요구하는 숫자로 되돌린다', () => {
+    expect(toWarehouseUpdate(values).businessUnitId).toBe(21);
+    expect(toWarehouseUpdate(values).partnerId).toBe(31);
+  });
+
+  it('고르지 않은 거래처는 널로 보낸다 — 0은 유효한 id가 아니다', () => {
+    expect(toWarehouseUpdate({ ...values, partnerId: '' }).partnerId).toBeNull();
+  });
+
+  it('공장은 요청에 실리지 않는다 — 등록 후 바꿀 수 없다', () => {
+    expect(toWarehouseUpdate(values)).not.toHaveProperty('plantId');
+  });
+
+  it('코드·명칭의 앞뒤 공백을 걷어낸다 — 눈에 안 보이는 다른 값이 저장되면 안 된다', () => {
+    const padded = toWarehouseUpdate({
+      ...values,
+      warehouseCode: '  WH-01  ',
+      warehouseName: ' 자재창고 ',
+    });
+
+    expect(padded.warehouseCode).toBe('WH-01');
+    expect(padded.warehouseName).toBe('자재창고');
   });
 });
 

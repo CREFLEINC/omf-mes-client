@@ -13,7 +13,8 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { codeLockMessage } from '../../patterns/master';
+import { useApiClient } from '../../patterns/api-context';
+import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { selectableOptions } from './code-options';
 import { LocationFormDialog } from './location-form-dialog';
@@ -24,6 +25,7 @@ import {
   emptyWarehouseFormValues,
   isSameWarehouseValues,
   locationToFormValues,
+  toWarehouseUpdate,
   warehouseToFormValues,
 } from './mappers';
 import {
@@ -32,16 +34,20 @@ import {
   useLookupOptions,
   useWarehouseDetail,
   useWarehouseList,
+  warehouseDetailPath,
+  warehouseKeys,
 } from './queries';
 import type {
   Location,
   LocationFormValues,
   LookupOptions,
+  Warehouse,
   WarehouseFilters,
   WarehouseFormValues,
 } from './types';
 import { WarehouseFormPane } from './warehouse-form-pane';
 import { WarehouseListPane } from './warehouse-list-pane';
+import { WAREHOUSE_FORM_FIELDS, validateWarehouse } from './warehouse-validation';
 
 const t = messages.warehouseLocation;
 
@@ -106,6 +112,7 @@ const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
 export const WarehouseLocationScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
+  const { client } = useApiClient();
 
   const activeTab = searchParams.get('tab') === 'location' ? 'location' : 'warehouse';
 
@@ -141,6 +148,33 @@ export const WarehouseLocationScreen = () => {
 
   const formValues = formState?.values ?? emptyWarehouseFormValues();
   const isDirty = formState !== null && !isSameWarehouseValues(formState.values, formState.baseline);
+
+  /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
+  const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>({});
+
+  const warehouseWrite = useMasterWrite<WarehouseFormValues, Warehouse>({
+    request: (values, headers) =>
+      client.PUT('/mdm/warehouses/{warehouseId}', {
+        params: {
+          path: { warehouseId: selectedWarehouseId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: toWarehouseUpdate(values),
+      }),
+    // ETag는 상세 경로에 보관된다. 저장 응답의 ETag도 같은 경로로 갱신돼 연속 수정이 된다.
+    etagPath: selectedWarehouseId === null ? null : warehouseDetailPath(selectedWarehouseId),
+    invalidateKeys: [warehouseKeys.all],
+    knownFields: WAREHOUSE_FORM_FIELDS,
+    onSuccess: (saved) => {
+      const next = warehouseToFormValues(saved);
+      setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      setLocalFieldErrors({});
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
 
   const locations = useLocationList(selectedWarehouseId);
   const locationItems = useMemo(() => locations.data?.items ?? [], [locations.data]);
@@ -220,8 +254,42 @@ export const WarehouseLocationScreen = () => {
     updateParams({ tab: 'warehouse' });
   };
 
+  /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
   const changeFormValues = (patch: Partial<WarehouseFormValues>) => {
-    setFormState((prev) => (prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } }));
+    setFormState((prev) =>
+      prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+    );
+
+    for (const field of Object.keys(patch)) {
+      warehouseWrite.clearFieldError(field);
+      setLocalFieldErrors((prev) => {
+        if (!(field in prev)) return prev;
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleSaveWarehouse = () => {
+    const errors = validateWarehouse(formValues, 'edit');
+    setLocalFieldErrors(errors);
+
+    // 화면에서 잡히는 오류는 서버로 보내지 않는다.
+    if (Object.keys(errors).length > 0) return;
+
+    warehouseWrite.write(formValues);
+  };
+
+  /**
+   * 저장 충돌을 푸는 유일한 경로. 계약이 덮어쓰기 강제를 제공하지 않으므로
+   * 최신 값을 받아 다시 입력하는 수밖에 없고, 입력한 내용은 사라진다.
+   */
+  const handleReloadDetail = () => {
+    warehouseWrite.reset();
+    setLocalFieldErrors({});
+    setFormState(null);
+    void detail.refetch();
   };
 
   /**
@@ -343,17 +411,23 @@ export const WarehouseLocationScreen = () => {
                   mode="edit"
                   values={formValues}
                   onChange={changeFormValues}
-                  fieldErrors={{}}
-                  banner={lookupNotice}
+                  // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
+                  fieldErrors={{ ...warehouseWrite.fieldErrors, ...localFieldErrors }}
+                  banner={
+                    <>
+                      {lookupNotice}
+                      <SaveErrorBanner error={warehouseWrite.error} onReload={handleReloadDetail} />
+                    </>
+                  }
                   codeLockReason={codeLockMessage(detail.data.editability)}
                   isActive={selectedWarehouse.isActive}
                   isDirty={isDirty}
-                  isSaving={false}
+                  isSaving={warehouseWrite.isSaving}
                   lookups={formLookups}
-                  onSave={() => {
-                    notifyUnavailable(t.actionReasons.saveUnavailable);
-                  }}
+                  onSave={handleSaveWarehouse}
                   onCancel={() => {
+                    setLocalFieldErrors({});
+                    warehouseWrite.reset();
                     setFormState((prev) =>
                       prev === null ? prev : { ...prev, values: prev.baseline },
                     );

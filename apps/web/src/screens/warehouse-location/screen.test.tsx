@@ -489,6 +489,225 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
   });
 });
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const writeRequests = (requests: RecordedRequest[], method: string): RecordedRequest[] =>
+  requests.filter((request) => request.method === method);
+
+/** 저장 흐름의 기본 스텁 — PUT은 요청마다 다르게 주고 싶어 따로 받는다. */
+const saveRoutes = (put: StubRoute): StubRoute[] => [
+  warehouseListRoute(),
+  warehouseDetailRoute(),
+  locationListRoute(),
+  ...lookupRoutes(),
+  put,
+];
+
+const putRoute = (respond: StubRoute['respond']): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' && new URL(request.url).pathname === '/mdm/warehouses/1001',
+  respond,
+});
+
+describe('WarehouseLocationScreen — 창고 수정 저장', () => {
+  it('로컬 검증이 걸리면 요청을 보내지 않고 인라인 오류만 보인다', async () => {
+    const { requests, user } = renderScreen(
+      saveRoutes(putRoute(() => jsonResponse(warehouseFixtures[0]!))),
+      '?wh=1001',
+    );
+
+    await user.clear(await screen.findByLabelText('창고명'));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(screen.getByText('필수 입력 항목입니다.')).toBeInTheDocument();
+    expect(writeRequests(requests, 'PUT')).toHaveLength(0);
+  });
+
+  it('저장하면 PUT에 UUID 멱등 키와 상세 경로의 If-Match가 실린다', async () => {
+    const { requests, user } = renderScreen(
+      saveRoutes(
+        putRoute(() =>
+          jsonResponse({ ...warehouseFixtures[0]!, warehouseName: '1공장 자재창고가' }, {
+            headers: { ETag: '"8"' },
+          }),
+        ),
+      ),
+      '?wh=1001',
+    );
+
+    await user.type(await screen.findByLabelText('창고명'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+
+    const put = writeRequests(requests, 'PUT')[0];
+    expect(put?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    // 상세 GET이 준 ETag를 그대로 되돌려 보낸다.
+    expect(put?.headers.get('If-Match')).toBe('"7"');
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({
+      warehouseName: '1공장 자재창고가',
+      businessUnitId: 21,
+    });
+  });
+
+  it('저장한 값이 새 기준값이 된다 — 곧바로 다시 저장할 수 없다', async () => {
+    const { user } = renderScreen(
+      saveRoutes(
+        putRoute(() =>
+          jsonResponse({ ...warehouseFixtures[0]!, warehouseName: '1공장 자재창고가' }, {
+            headers: { ETag: '"8"' },
+          }),
+        ),
+      ),
+      '?wh=1001',
+    );
+
+    await user.type(await screen.findByLabelText('창고명'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  it('409면 원인에 맞는 충돌 배너와 최신 불러오기가 뜬다', async () => {
+    const { user } = renderScreen(
+      saveRoutes(
+        putRoute(() =>
+          jsonResponse(
+            { conflictCause: 'user', message: '다른 사용자가 먼저 저장했습니다.' },
+            { status: 409 },
+          ),
+        ),
+      ),
+      '?wh=1001',
+    );
+
+    await user.type(await screen.findByLabelText('창고명'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText(
+        '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+    expect(
+      screen.getByText('최신 내용을 불러오면 입력한 내용은 사라집니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('최신 불러오기를 누르면 상세를 다시 조회하고 입력한 내용이 사라진다', async () => {
+    const { requests, user } = renderScreen(
+      saveRoutes(
+        putRoute(() => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })),
+      ),
+      '?wh=1001',
+    );
+
+    await user.type(await screen.findByLabelText('창고명'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByRole('button', { name: '최신 불러오기' });
+
+    const before = requests.filter(
+      (request) => request.url.pathname === '/mdm/warehouses/1001' && request.method === 'GET',
+    ).length;
+
+    await user.click(screen.getByRole('button', { name: '최신 불러오기' }));
+
+    const after = requests.filter(
+      (request) => request.url.pathname === '/mdm/warehouses/1001' && request.method === 'GET',
+    ).length;
+    expect(after).toBeGreaterThan(before);
+    expect(await screen.findByLabelText('창고명')).toHaveValue('1공장 자재창고');
+  });
+
+  it('서버가 준 필드 오류는 인라인으로, 모르는 필드는 배너로 간다', async () => {
+    const { user } = renderScreen(
+      saveRoutes(
+        putRoute(() =>
+          jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'warehouseCode',
+                  code: 'DUPLICATED',
+                  message: '이미 사용 중인 코드입니다.',
+                },
+                {
+                  scope: 'field',
+                  field: 'somethingTheScreenDoesNotOwn',
+                  code: 'STANDARD',
+                  message: '화면이 모르는 필드의 오류입니다.',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      ),
+      '?wh=1001',
+    );
+
+    await user.type(await screen.findByLabelText('창고명'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('이미 사용 중인 코드입니다.')).toBeInTheDocument();
+    // 삼키면 어디에도 보이지 않는 오류가 된다.
+    expect(screen.getByText('화면이 모르는 필드의 오류입니다.')).toBeInTheDocument();
+  });
+
+  it('값을 고치면 그 필드의 서버 오류가 사라진다', async () => {
+    const { user } = renderScreen(
+      saveRoutes(
+        putRoute(() =>
+          jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'warehouseName',
+                  code: 'STANDARD',
+                  message: '창고명을 다시 입력하세요.',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      ),
+      '?wh=1001',
+    );
+
+    await user.type(await screen.findByLabelText('창고명'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(await screen.findByText('창고명을 다시 입력하세요.')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('창고명'), '나');
+
+    expect(screen.queryByText('창고명을 다시 입력하세요.')).not.toBeInTheDocument();
+  });
+
+  it('연결이 끊기면 오프라인 안내가 뜬다', async () => {
+    const { user } = renderScreen(
+      saveRoutes({
+        match: (request) => request.method === 'PUT',
+        respond: () => {
+          throw new Error('연결 실패');
+        },
+      }),
+      '?wh=1001',
+    );
+
+    await user.type(await screen.findByLabelText('창고명'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText('네트워크 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도하세요.'),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('WarehouseLocationScreen — 예시 데이터 제거', () => {
   it('예시 데이터 안내 배너가 없다', async () => {
     renderScreen([warehouseListRoute(), ...lookupRoutes()]);

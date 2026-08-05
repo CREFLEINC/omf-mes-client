@@ -1,5 +1,9 @@
+import type { components } from '@omf-mes/api-client';
+
 import { PENDING_CODE_VALUE } from './code-options';
 import type { Location, LocationFormValues, Warehouse, WarehouseFormValues } from './types';
+
+type WarehouseUpdate = components['schemas']['WarehouseUpdate'];
 
 /**
  * 계약 표현과 폼 표현 사이의 변환.
@@ -36,6 +40,24 @@ export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   managementLevelCode: PENDING_CODE_VALUE,
   isExternal: false,
   partnerId: '',
+});
+
+/** 빈 문자열은 「고르지 않음」이므로 널로 되돌린다. 0은 유효한 id가 아니다. */
+const textToOptionalId = (value: string): number | null => (value === '' ? null : Number(value));
+
+/**
+ * 창고 수정 요청 본문. plantId는 등록 후 변경할 수 없어 실리지 않고,
+ * isActive는 사용 중지 액션으로만 바뀌므로 여기 없다.
+ */
+export const toWarehouseUpdate = (values: WarehouseFormValues): WarehouseUpdate => ({
+  businessUnitId: Number(values.businessUnitId),
+  // 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 코드가 된다.
+  warehouseCode: values.warehouseCode.trim(),
+  warehouseName: values.warehouseName.trim(),
+  warehouseTypeCode: values.warehouseTypeCode,
+  managementLevelCode: values.managementLevelCode,
+  isExternal: values.isExternal,
+  partnerId: textToOptionalId(values.partnerId),
 });
 
 /** 널·없음을 빈 문자열로 모은다. 선택 코드도 「고르지 않음」이 하나의 값이어야 한다. */
