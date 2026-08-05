@@ -8,7 +8,7 @@ import {
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { type ReactNode, useId } from 'react';
 
 import type { LocationTreeRow } from './location-tree';
 import type { Location } from './types';
@@ -28,6 +28,11 @@ export interface LocationPaneProps {
   /** 선택이 정확히 1건일 때만 활성 */
   onAddChild: () => void;
   onEdit: (location: Location) => void;
+  /**
+   * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
+   * 실패를 「등록된 Location이 없습니다」로 보이면 사실과 다른 안내가 된다.
+   */
+  loadError: ReactNode;
 }
 
 const t = messages.warehouseLocation;
@@ -56,6 +61,7 @@ export const LocationPane = ({
   onAddRoot,
   onAddChild,
   onEdit,
+  loadError,
 }: LocationPaneProps) => {
   const addChildNoteId = useId();
   const labelNoteId = useId();
@@ -123,6 +129,32 @@ export const LocationPane = ({
       />
     );
 
+  /** 조회 실패 → 로딩 → 표 순서로 하나만 낸다. */
+  const listSlot = (): ReactNode => {
+    if (loadError !== null && loadError !== undefined) return loadError;
+
+    if (isLoading) {
+      return (
+        <div role="status" aria-label={t.loading.locations}>
+          <SkeletonText lines={3} />
+        </div>
+      );
+    }
+
+    return (
+      <Table
+        density="compact"
+        columns={columns}
+        rows={visibleRows}
+        getRowId={(row) => String(row.location.locationId)}
+        selectable
+        selectedIds={selectedIds}
+        onSelectionChange={onSelectionChange}
+        empty={emptySlot}
+      />
+    );
+  };
+
   return (
     <section aria-label={t.tabs.location}>
       <div className="filter-bar">
@@ -162,22 +194,7 @@ export const LocationPane = ({
         </div>
       </div>
 
-      {isLoading ? (
-        <div role="status" aria-label={t.loading.locations}>
-          <SkeletonText lines={3} />
-        </div>
-      ) : (
-        <Table
-          density="compact"
-          columns={columns}
-          rows={visibleRows}
-          getRowId={(row) => String(row.location.locationId)}
-          selectable
-          selectedIds={selectedIds}
-          onSelectionChange={onSelectionChange}
-          empty={emptySlot}
-        />
-      )}
+      {listSlot()}
     </section>
   );
 };

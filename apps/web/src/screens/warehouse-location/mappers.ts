@@ -1,5 +1,5 @@
 import { PENDING_CODE_VALUE } from './code-options';
-import type { Warehouse, WarehouseFormValues } from './types';
+import type { Location, LocationFormValues, Warehouse, WarehouseFormValues } from './types';
 
 /**
  * 계약 표현과 폼 표현 사이의 변환.
@@ -36,6 +36,37 @@ export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   managementLevelCode: PENDING_CODE_VALUE,
   isExternal: false,
   partnerId: '',
+});
+
+/** 널·없음을 빈 문자열로 모은다. 선택 코드도 「고르지 않음」이 하나의 값이어야 한다. */
+const optionalTextToText = (value: string | null | undefined): string => value ?? '';
+
+export const locationToFormValues = (location: Location): LocationFormValues => ({
+  locationCode: location.locationCode,
+  locationName: location.locationName,
+  locationTypeCode: location.locationTypeCode,
+  qualityZoneCode: optionalTextToText(location.qualityZoneCode),
+  storageConditionCode: optionalTextToText(location.storageConditionCode),
+  allowMixedItem: location.allowMixedItem,
+  allowMixedLot: location.allowMixedLot,
+  capacityQty:
+    location.capacityQty === null || location.capacityQty === undefined
+      ? ''
+      : String(location.capacityQty),
+  capacityUomId: optionalIdToText(location.capacityUomId),
+});
+
+/** 신규 Location 폼의 초기값. 값 목록이 확정되지 않은 코드만 자리표시자를 쓴다. */
+export const emptyLocationFormValues = (): LocationFormValues => ({
+  locationCode: '',
+  locationName: '',
+  locationTypeCode: PENDING_CODE_VALUE,
+  qualityZoneCode: PENDING_CODE_VALUE,
+  storageConditionCode: PENDING_CODE_VALUE,
+  allowMixedItem: true,
+  allowMixedLot: true,
+  capacityQty: '',
+  capacityUomId: '',
 });
 
 /** 기준값과 현재 값의 비교. 「고친 것이 있는가」의 판정 근거다. */

@@ -16,16 +16,23 @@ import { useSearchParams } from 'react-router';
 import { codeLockMessage } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { selectableOptions } from './code-options';
-import {
-  locationFieldErrorFixtures,
-  locationFixtures,
-  locationFormInitialValues,
-} from './fixtures';
 import { LocationFormDialog } from './location-form-dialog';
 import { LocationPane } from './location-pane';
 import { buildLocationRows } from './location-tree';
-import { emptyWarehouseFormValues, isSameWarehouseValues, warehouseToFormValues } from './mappers';
-import { isTruncated, useLookupOptions, useWarehouseDetail, useWarehouseList } from './queries';
+import {
+  emptyLocationFormValues,
+  emptyWarehouseFormValues,
+  isSameWarehouseValues,
+  locationToFormValues,
+  warehouseToFormValues,
+} from './mappers';
+import {
+  isTruncated,
+  useLocationList,
+  useLookupOptions,
+  useWarehouseDetail,
+  useWarehouseList,
+} from './queries';
 import type {
   Location,
   LocationFormValues,
@@ -47,12 +54,7 @@ interface WarehouseFormState {
   values: WarehouseFormValues;
 }
 
-type DemoPreset = 'default' | 'error' | 'conflict';
-
-const DEMO_PRESETS: readonly DemoPreset[] = ['default', 'error', 'conflict'];
-
-const asPreset = (value: string | null): DemoPreset =>
-  DEMO_PRESETS.includes(value as DemoPreset) ? (value as DemoPreset) : 'default';
+const NO_EXPANDED_IDS: ReadonlySet<number> = new Set();
 
 /**
  * 조회 실패의 원인을 한 줄 안내로 옮긴다.
@@ -98,14 +100,13 @@ const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
 );
 
 /**
- * W-06-07 컨테이너 — 좌측 목록은 서버 응답으로 그린다.
- * 우측 폼과 Location 탭은 아직 예시 데이터를 쓰며 뒤 단계에서 차례로 실데이터로 바뀐다.
+ * W-06-07 컨테이너. 목록·상세·Location 계층을 서버 응답으로 그리고
+ * 조회 조건과 선택을 URL에 둔다.
  */
 export const WarehouseLocationScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
 
-  const preset = asPreset(searchParams.get('demo'));
   const activeTab = searchParams.get('tab') === 'location' ? 'location' : 'warehouse';
 
   const filters = useMemo<WarehouseFilters>(
@@ -141,7 +142,13 @@ export const WarehouseLocationScreen = () => {
   const formValues = formState?.values ?? emptyWarehouseFormValues();
   const isDirty = formState !== null && !isSameWarehouseValues(formState.values, formState.baseline);
 
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<number>>(new Set([2001, 2002]));
+  const locations = useLocationList(selectedWarehouseId);
+  const locationItems = useMemo(() => locations.data?.items ?? [], [locations.data]);
+
+  const [expansion, setExpansion] = useState<{
+    warehouseId: number;
+    ids: ReadonlySet<number>;
+  } | null>(null);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [locationFilterText, setLocationFilterText] = useState('');
   const [dialogState, setDialogState] = useState<{
@@ -149,21 +156,43 @@ export const WarehouseLocationScreen = () => {
     mode: 'create' | 'edit';
     parentLabel: string | null;
   }>({ open: false, mode: 'create', parentLabel: null });
-  const [locationValues, setLocationValues] = useState<LocationFormValues>(
-    locationFormInitialValues,
-  );
+  const [locationValues, setLocationValues] = useState<LocationFormValues>(emptyLocationFormValues);
 
   const selectedWarehouse = detail.data?.warehouse ?? null;
 
+  /*
+   * 기본 펼침 대상 — 하위를 가진 모든 노드.
+   * Location 검색이 이미 받아 둔 목록을 클라이언트에서 거르므로, 접힌 노드의 하위는
+   * 애초에 행으로 나오지 않는다. 접힌 상태를 기본으로 두면 검색이 「없다」는 잘못된 답을 준다.
+   */
+  const expandableIds = useMemo(() => {
+    const known = new Set(locationItems.map((item) => item.locationId));
+    const parents = new Set<number>();
+
+    for (const item of locationItems) {
+      const parentId = item.parentLocationId;
+      if (parentId !== null && parentId !== undefined && known.has(parentId)) {
+        parents.add(parentId);
+      }
+    }
+
+    return parents;
+  }, [locationItems]);
+
+  // 고른 창고가 바뀌면 펼침 상태를 다시 계산한다. 같은 창고를 다시 조회할 때는 사용자의 접기를 지킨다.
+  if (
+    locations.data !== undefined &&
+    selectedWarehouseId !== null &&
+    expansion?.warehouseId !== selectedWarehouseId
+  ) {
+    setExpansion({ warehouseId: selectedWarehouseId, ids: expandableIds });
+  }
+
+  const expandedIds = expansion?.ids ?? NO_EXPANDED_IDS;
+
   const locationRows = useMemo(
-    () =>
-      buildLocationRows(
-        locationFixtures.filter(
-          (location) => location.warehouseId === (selectedWarehouse?.warehouseId ?? -1),
-        ),
-        expandedIds,
-      ),
-    [selectedWarehouse, expandedIds],
+    () => buildLocationRows(locationItems, expandedIds),
+    [locationItems, expandedIds],
   );
 
   const updateParams = (patch: Record<string, string | null>) => {
@@ -227,52 +256,31 @@ export const WarehouseLocationScreen = () => {
     uoms: selectableOptions(lookups.entries.uoms, ''),
   };
 
-  const notifyDemoAction = () => {
-    toast.show({ variant: 'idle', description: t.demoActionToast });
+  const notifyUnavailable = (reason: string) => {
+    toast.show({ variant: 'idle', description: reason });
   };
 
-  const conflictBanner =
-    preset === 'conflict' ? (
-      <AlertBanner
-        variant="error"
-        title={messages.conflict.user}
-        action={
-          <Button variant="outlined" onClick={notifyDemoAction}>
-            {messages.conflict.reloadAction}
-          </Button>
-        }
-      />
-    ) : null;
-
   const handleToggleExpand = (locationId: number) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
+    setExpansion((prev) => {
+      if (prev === null) return prev;
+
+      const next = new Set(prev.ids);
       if (next.has(locationId)) {
         next.delete(locationId);
       } else {
         next.add(locationId);
       }
-      return next;
+      return { ...prev, ids: next };
     });
   };
 
   const openLocationDialog = (mode: 'create' | 'edit', parentLabel: string | null) => {
-    setLocationValues(locationFormInitialValues);
+    setLocationValues(emptyLocationFormValues());
     setDialogState({ open: true, mode, parentLabel });
   };
 
   const handleEditLocation = (location: Location) => {
-    setLocationValues({
-      locationCode: location.locationCode,
-      locationName: location.locationName,
-      locationTypeCode: location.locationTypeCode,
-      qualityZoneCode: location.qualityZoneCode ?? '',
-      storageConditionCode: location.storageConditionCode ?? '',
-      allowMixedItem: location.allowMixedItem,
-      allowMixedLot: location.allowMixedLot,
-      capacityQty: location.capacityQty === null ? '' : String(location.capacityQty ?? ''),
-      capacityUomId: location.capacityUomId === null ? '' : String(location.capacityUomId ?? ''),
-    });
+    setLocationValues(locationToFormValues(location));
     setDialogState({ open: true, mode: 'edit', parentLabel: null });
   };
 
@@ -282,6 +290,12 @@ export const WarehouseLocationScreen = () => {
 
   const listPage = warehouseList.data?.page;
   const listTruncated = listPage !== undefined && isTruncated(listPage, warehouses.length);
+
+  /** 다이얼로그가 어느 창고의 Location을 다루는지 값으로 밝힌다. */
+  const warehouseLabel =
+    selectedWarehouse === null
+      ? ''
+      : `${selectedWarehouse.warehouseCode} · ${selectedWarehouse.warehouseName}`;
 
   /**
    * 우측 페인. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
@@ -330,26 +344,23 @@ export const WarehouseLocationScreen = () => {
                   values={formValues}
                   onChange={changeFormValues}
                   fieldErrors={{}}
-                  banner={
-                    <>
-                      {lookupNotice}
-                      {conflictBanner}
-                    </>
-                  }
+                  banner={lookupNotice}
                   codeLockReason={codeLockMessage(detail.data.editability)}
                   isActive={selectedWarehouse.isActive}
                   isDirty={isDirty}
                   isSaving={false}
                   lookups={formLookups}
                   onSave={() => {
-                    notifyDemoAction();
+                    notifyUnavailable(t.actionReasons.saveUnavailable);
                   }}
                   onCancel={() => {
                     setFormState((prev) =>
                       prev === null ? prev : { ...prev, values: prev.baseline },
                     );
                   }}
-                  onDeactivate={notifyDemoAction}
+                  onDeactivate={() => {
+                    notifyUnavailable(t.actionReasons.deactivateUnavailable);
+                  }}
                 />
               ),
             },
@@ -359,7 +370,15 @@ export const WarehouseLocationScreen = () => {
               content: (
                 <LocationPane
                   rows={locationRows}
-                  isLoading={false}
+                  isLoading={locations.isPending}
+                  loadError={
+                    locations.isError ? (
+                      <LoadErrorBanner
+                        error={locations.error}
+                        onRetry={() => void locations.refetch()}
+                      />
+                    ) : null
+                  }
                   expandedIds={expandedIds}
                   onToggleExpand={handleToggleExpand}
                   selectedIds={selectedLocationIds}
@@ -380,11 +399,6 @@ export const WarehouseLocationScreen = () => {
 
   return (
     <>
-      {/* 미완성 상태가 실데이터로 오해되지 않게 하는 격리 장치. 우측 폼이 실데이터로 바뀌면 제거한다. */}
-      <AlertBanner variant="info" title={t.demoNotice.title}>
-        {t.demoNotice.description}
-      </AlertBanner>
-
       <PageHeader
         title={t.title}
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
@@ -428,16 +442,16 @@ export const WarehouseLocationScreen = () => {
         open={dialogState.open}
         onClose={() => setDialogState((prev) => ({ ...prev, open: false }))}
         mode={dialogState.mode}
+        warehouseLabel={warehouseLabel}
         parentLabel={dialogState.parentLabel}
         values={locationValues}
         onChange={(patch) => setLocationValues((prev) => ({ ...prev, ...patch }))}
-        fieldErrors={preset === 'error' ? locationFieldErrorFixtures : {}}
-        banner={conflictBanner}
+        fieldErrors={{}}
+        banner={null}
         uomOptions={selectableOptions(lookups.entries.uoms, locationValues.capacityUomId)}
         isSaving={false}
         onSave={() => {
-          setDialogState((prev) => ({ ...prev, open: false }));
-          notifyDemoAction();
+          notifyUnavailable(t.actionReasons.saveUnavailable);
         }}
       />
     </>

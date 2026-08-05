@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { PENDING_CODE_VALUE } from './code-options';
-import { warehouseFixtures } from './fixtures';
+import { locationFixtures, warehouseFixtures } from './fixtures';
 import {
+  emptyLocationFormValues,
   emptyWarehouseFormValues,
   isSameWarehouseValues,
+  locationToFormValues,
   warehouseToFormValues,
 } from './mappers';
-import type { Warehouse } from './types';
+import type { Location, Warehouse } from './types';
 
 const base: Warehouse = {
   warehouseId: 1001,
@@ -66,6 +68,59 @@ describe('emptyWarehouseFormValues', () => {
 
   it('호출할 때마다 새 객체를 준다 — 이전 입력이 남지 않는다', () => {
     expect(emptyWarehouseFormValues()).not.toBe(emptyWarehouseFormValues());
+  });
+});
+
+describe('locationToFormValues', () => {
+  const location: Location = locationFixtures[2]!;
+
+  it('수용량과 단위를 문자열로 옮긴다', () => {
+    const values = locationToFormValues(location);
+
+    expect(values.capacityQty).toBe('500');
+    expect(values.capacityUomId).toBe('41');
+  });
+
+  it('널 수용량·단위는 빈 문자열이 된다 — 짝 제약을 「둘 다 비었다」로 읽을 수 있어야 한다', () => {
+    const values = locationToFormValues({ ...location, capacityQty: null, capacityUomId: null });
+
+    expect(values.capacityQty).toBe('');
+    expect(values.capacityUomId).toBe('');
+  });
+
+  it('널 품질구역·보관조건은 빈 문자열이 된다', () => {
+    const values = locationToFormValues({
+      ...location,
+      qualityZoneCode: null,
+      storageConditionCode: null,
+    });
+
+    expect(values.qualityZoneCode).toBe('');
+    expect(values.storageConditionCode).toBe('');
+  });
+
+  it('코드·명칭·혼적 허용은 그대로 옮긴다', () => {
+    const values = locationToFormValues(location);
+
+    expect(values.locationCode).toBe('A-01-01-01');
+    expect(values.locationName).toBe('A구역 01열 01단');
+    expect(values.allowMixedItem).toBe(false);
+    expect(values.allowMixedLot).toBe(false);
+  });
+});
+
+describe('emptyLocationFormValues', () => {
+  it('신규 등록 폼은 코드·명칭·수용량이 비어 있다', () => {
+    const values = emptyLocationFormValues();
+
+    expect(values.locationCode).toBe('');
+    expect(values.locationName).toBe('');
+    expect(values.capacityQty).toBe('');
+    expect(values.capacityUomId).toBe('');
+  });
+
+  it('호출할 때마다 새 객체를 준다', () => {
+    expect(emptyLocationFormValues()).not.toBe(emptyLocationFormValues());
   });
 });
 

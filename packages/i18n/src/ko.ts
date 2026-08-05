@@ -82,11 +82,6 @@ const pendingCode = {
 const warehouseLocation = {
   title: '창고·Location',
   breadcrumbRoot: '기준정보',
-  demoNotice: {
-    title: '예시 데이터로 배치를 확인하는 화면입니다',
-    description: '실제 자료가 아닙니다. 저장·조회는 다음 단계에서 연결됩니다.',
-  },
-  demoActionToast: '레이아웃 확인 단계입니다 — 저장은 다음 단계에서 연결됩니다.',
   tabs: {
     warehouse: '창고 정보',
     location: 'Location',
@@ -106,6 +101,9 @@ const warehouseLocation = {
       '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     plantFixedAfterCreate: '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
+    saveUnavailable: '저장은 아직 쓸 수 없습니다. 저장 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    deactivateUnavailable:
+      '사용 중지는 아직 쓸 수 없습니다. 중지 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
   },
   loading: {
     warehouses: '창고 목록을 불러오는 중',

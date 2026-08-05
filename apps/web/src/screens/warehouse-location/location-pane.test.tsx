@@ -1,3 +1,4 @@
+import { AlertBanner } from '@crefle/web-ui';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -30,6 +31,7 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       onAddRoot={onAddRoot}
       onAddChild={onAddChild}
       onEdit={onEdit}
+      loadError={null}
       {...overrides}
     />,
   );
@@ -163,5 +165,22 @@ describe('LocationPane', () => {
 
     renderPane({ rows, filterText: '없는코드' });
     expect(screen.getByText('조건에 맞는 Location이 없습니다')).toBeInTheDocument();
+  });
+
+  it('loadError가 있으면 표와 빈 상태 대신 그것을 낸다', () => {
+    renderPane({
+      rows: [],
+      loadError: <AlertBanner variant="error" title="목록을 불러오지 못했습니다" />,
+    });
+
+    expect(screen.getByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText('등록된 Location이 없습니다')).not.toBeInTheDocument();
+  });
+
+  it('loadError가 있어도 추가 액션 줄은 남는다', () => {
+    renderPane({ rows: [], loadError: <AlertBanner variant="error" title="실패" /> });
+
+    expect(screen.getByRole('button', { name: '최상위 추가' })).toBeInTheDocument();
   });
 });

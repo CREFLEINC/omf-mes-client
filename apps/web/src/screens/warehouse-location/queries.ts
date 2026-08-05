@@ -8,9 +8,15 @@ import type { LookupEntries, LookupEntry, WarehouseFilters } from './types';
 type PageMeta = components['schemas']['PageMeta'];
 type Warehouse = components['schemas']['Warehouse'];
 type WarehouseDetailResponse = components['schemas']['WarehouseDetailResponse'];
+type Location = components['schemas']['Location'];
 
 export interface WarehouseListResponse {
   items: Warehouse[];
+  page: PageMeta;
+}
+
+export interface LocationListResponse {
+  items: Location[];
   page: PageMeta;
 }
 
@@ -75,6 +81,37 @@ export const useWarehouseDetail = (
 
       return runRequest(() =>
         client.GET('/mdm/warehouses/{warehouseId}', { params: { path: { warehouseId } } }),
+      );
+    },
+  });
+};
+
+export const locationKeys = {
+  all: ['locations'] as const,
+  list: (warehouseId: number) => ['locations', 'list', warehouseId] as const,
+  detail: (locationId: number) => ['locations', 'detail', locationId] as const,
+};
+
+/** ETag가 보관된 경로. Location 수정의 If-Match는 여기서 꺼낸다. */
+export const locationDetailPath = (locationId: number): string =>
+  `/mdm/locations/${String(locationId)}`;
+
+/** Location 목록. 계약이 warehouseId를 필수로 두므로 창고를 고르기 전에는 조회하지 않는다. */
+export const useLocationList = (
+  warehouseId: number | null,
+): UseQueryResult<LocationListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: locationKeys.list(warehouseId ?? 0),
+    enabled: warehouseId !== null,
+    queryFn: () => {
+      if (warehouseId === null) {
+        throw new Error('창고를 고르기 전에는 Location을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/locations', { params: { query: { warehouseId } } }),
       );
     },
   });

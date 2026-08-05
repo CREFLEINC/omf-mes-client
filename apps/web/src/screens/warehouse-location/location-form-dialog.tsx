@@ -15,6 +15,8 @@ export interface LocationFormDialogProps {
   open: boolean;
   onClose: () => void;
   mode: 'create' | 'edit';
+  /** 어느 창고의 Location인지 — 「창고코드 · 창고명」 */
+  warehouseLabel: string;
   /** 하위 추가일 때 부모 코드(고정 안내) */
   parentLabel: string | null;
   values: LocationFormValues;
@@ -32,6 +34,7 @@ export const LocationFormDialog = ({
   open,
   onClose,
   mode,
+  warehouseLabel,
   parentLabel,
   values,
   onChange,
@@ -65,11 +68,13 @@ export const LocationFormDialog = ({
 
       <div className="form-grid">
         {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 않고 값 표기로 낸다. */}
+        {/* 어느 창고의 Location인지는 값으로 밝히고, 바꿀 수 없다는 사실은 보조 문구로 남긴다. */}
         <div>
           <span className="field-label" id={warehouseLabelId}>
             {t.fields.warehouse}
           </span>
-          <p aria-labelledby={warehouseLabelId}>{t.actionReasons.warehouseFixedInLocation}</p>
+          <p aria-labelledby={warehouseLabelId}>{warehouseLabel}</p>
+          <span className="field-note">{t.actionReasons.warehouseFixedInLocation}</span>
         </div>
 
         <div>
