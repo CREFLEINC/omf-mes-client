@@ -4,3 +4,9 @@
  */
 export { codeLockMessage, type Editability } from './editability';
 export { SaveErrorBanner, type SaveErrorBannerProps } from './save-error-banner';
+export {
+  useMasterWrite,
+  type MasterWriteOptions,
+  type MasterWriteResult,
+  type WriteHeaders,
+} from './use-master-write';
