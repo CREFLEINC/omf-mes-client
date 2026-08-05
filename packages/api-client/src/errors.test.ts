@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeApiError } from './errors';
+import { NETWORK_ERROR, normalizeApiError } from './errors';
 
 describe('normalizeApiError', () => {
   it('409 + ConflictResponse는 저장 충돌로 정규화한다 — 재로드하면 풀린다', () => {
@@ -69,5 +69,30 @@ describe('normalizeApiError', () => {
   it('http 정규화는 상태 코드를 보존한다', () => {
     const result = normalizeApiError(403, undefined);
     expect(result).toEqual({ kind: 'http', status: 403 });
+  });
+
+  it('계약 형태가 아닌 본문의 message를 http에 보존한다 — 서버가 준 유일한 단서를 버리지 않는다', () => {
+    const result = normalizeApiError(500, { message: '일시적인 오류가 발생했습니다' });
+
+    expect(result).toEqual({
+      kind: 'http',
+      status: 500,
+      message: '일시적인 오류가 발생했습니다',
+    });
+  });
+
+  it('message가 문자열이 아니면 http에 넣지 않는다 — 화면이 기본 문구를 쓰게 둔다', () => {
+    const result = normalizeApiError(500, { message: { detail: '객체' } });
+
+    expect(result.kind).toBe('http');
+    if (result.kind === 'http') {
+      expect(result.message).toBeUndefined();
+    }
+  });
+});
+
+describe('NETWORK_ERROR', () => {
+  it('응답이 없는 실패를 나타내는 network 변형이다 — 상태 코드를 갖지 않는다', () => {
+    expect(NETWORK_ERROR).toEqual({ kind: 'network' });
   });
 });
