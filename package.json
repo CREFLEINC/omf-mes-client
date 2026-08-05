@@ -11,10 +11,15 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "mock": "node tools/mock/serve.mjs",
-    "mock:smoke": "node tools/mock/smoke.mjs"
+    "mock:smoke": "node tools/mock/smoke.mjs",
+    "gen:api": "node tools/gen-api.mjs",
+    "dep:check": "depcruise apps packages --config .dependency-cruiser.cjs"
   },
   "devDependencies": {
     "@stoplight/prism-cli": "^5.14.2",
+    "dependency-cruiser": "^18.1.1",
+    "node": "24.19.0",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2"
   }
