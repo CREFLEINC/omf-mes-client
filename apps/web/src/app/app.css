@@ -3,6 +3,9 @@
  * (`pnpm dep:check`의 app-inner-direction 규칙이 screens → app 참조를 막는다.
  *  CSS는 main.tsx가 한 번만 import한다.)
  *
+ * 간격·정렬 값의 근거는 docs/layout-conventions.md에 있다. 값을 바꾸려면 그 문서를 먼저 고친다.
+ *
+ * main > * + * 화면 최상위 블록 사이의 이음매(규범 1) — 블록마다 붙이면 반드시 하나를 빠뜨린다
  * .two-pane     2단 배치 컨테이너 — 좌 목록 / 우 상세
  * .pane         2단 배치의 각 칸 — 표면·테두리·안쪽 여백
  * .filter-bar   검색·필터 컨트롤과 조건 칩을 담는 줄
@@ -29,12 +32,20 @@ main {
   padding: var(--space-6);
 }
 
+/*
+ * 규범 1 — DS 컴포넌트는 바깥 여백을 갖지 않으므로 블록 사이 이음매는 화면 셸이 소유한다.
+ * 이음매를 한 곳에서 한 번만 정의해 화면이 무엇을 렌더하든 자동으로 생기게 한다.
+ * 값 20px 근거: 블록의 내부 최대 간격(16px)보다 커야 블록 경계가 읽힌다.
+ */
+main > * + * {
+  margin-top: var(--space-5);
+}
+
 .two-pane {
   display: grid;
   grid-template-columns: minmax(320px, 2fr) 3fr;
   gap: var(--space-5);
   align-items: start;
-  margin-top: var(--space-5);
 }
 
 @media (max-width: 1280px) {
