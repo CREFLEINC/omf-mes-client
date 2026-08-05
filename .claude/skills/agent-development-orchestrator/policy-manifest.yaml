@@ -1,0 +1,40 @@
+# 운영 정책 배포 매니페스트
+#
+# 이 저장소의 하네스는 references/operating-policy.md(배포본)만 읽는다.
+# 정본은 팀 문서 저장소에 있으며, 런타임에서 그 경로를 직접 참조하지 않는다.
+# (해당 경로는 이 실행 환경에서 읽기 권한이 없어 자동 대조가 불가능하다 — limitations 참조)
+
+policy:
+  title: Agent Coding 기반 소프트웨어 개발 공통 지침
+  version: v1.0
+  effective_date: 2026-08-05
+  author: 김정규
+
+source:
+  document: 20260805_A-개발팀_AgentCoding소프트웨어개발_지침_v1.0.md
+  location: 팀 문서 저장소(Obsidian) · Crefle/2_Areas/개발팀/
+  accessible_from_runtime: false
+
+distribution:
+  path: .claude/skills/agent-development-orchestrator/references/operating-policy.md
+  distributed_at: 2026-08-05
+  source_copy_sha256_prefix: 9ef48fb0c156dc27 # 배포 안내 헤더 추가 전 원문 사본 기준
+  note: 배포본 상단에 배포 안내 헤더만 추가했고 본문은 정본과 동일하다.
+
+# 정본이 갱신됐을 때의 동기화 절차
+sync_procedure:
+  - 사용자가 정본 문서를 이 저장소로 복사한다(런타임이 정본 경로를 읽을 수 없다).
+  - 복사본으로 references/operating-policy.md 를 교체하고 배포 안내 헤더를 다시 붙인다.
+  - 이 파일의 policy.version · effective_date · distribution.distributed_at · sha256 을 갱신한다.
+  - risk-classification.md · work-splitting.md · verification-policy.md 가 바뀐 조항과 어긋나지 않는지 확인한다.
+  - CLAUDE.md 의 「운영 정책 버전」과 변경 이력을 갱신한다.
+
+# 버전 일치 감사 방법
+audit:
+  - 배포본 frontmatter 의 version 과 이 파일의 policy.version 이 같아야 한다.
+  - CLAUDE.md 에 적힌 운영 정책 버전이 이 파일의 policy.version 과 같아야 한다.
+  - 정본과의 대조는 사용자가 재복사한 시점에만 가능하다.
+
+limitations:
+  - 정본 문서가 실행 환경의 읽기 권한 밖에 있어 원본↔배포본 자동 대조를 수행할 수 없다.
+  - 정본 갱신 감지는 사용자 통지에 의존한다.
