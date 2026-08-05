@@ -1,7 +1,13 @@
+import '@crefle/web-ui/styles/index.css';
+import '@crefle/web-ui/css';
+import './app.css';
+
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { RouterProvider } from 'react-router';
 
-import { App } from './App';
+import { appRouter } from '../routes';
+import { AppProviders } from './providers';
 
 const container = document.getElementById('root');
 if (!container) {
@@ -10,6 +16,8 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <AppProviders>
+      <RouterProvider router={appRouter} />
+    </AppProviders>
   </StrictMode>,
 );
