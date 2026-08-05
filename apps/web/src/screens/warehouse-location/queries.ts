@@ -111,9 +111,7 @@ export const useLocationList = (
         throw new Error('창고를 고르기 전에는 Location을 조회하지 않습니다.');
       }
 
-      return runRequest(() =>
-        client.GET('/mdm/locations', { params: { query: { warehouseId } } }),
-      );
+      return runRequest(() => client.GET('/mdm/locations', { params: { query: { warehouseId } } }));
     },
   });
 };
@@ -232,7 +230,6 @@ export const useLookupOptions = (): LookupResult => {
       isListTruncated(partners.data) ||
       isListTruncated(uoms.data),
     isError: plants.isError || businessUnits.isError || partners.isError || uoms.isError,
-    isLoading:
-      plants.isPending || businessUnits.isPending || partners.isPending || uoms.isPending,
+    isLoading: plants.isPending || businessUnits.isPending || partners.isPending || uoms.isPending,
   };
 };

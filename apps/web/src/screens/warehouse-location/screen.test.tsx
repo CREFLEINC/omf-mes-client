@@ -527,9 +527,12 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
     const { requests, user } = renderScreen(
       saveRoutes(
         putRoute(() =>
-          jsonResponse({ ...warehouseFixtures[0]!, warehouseName: '1공장 자재창고가' }, {
-            headers: { ETag: '"8"' },
-          }),
+          jsonResponse(
+            { ...warehouseFixtures[0]!, warehouseName: '1공장 자재창고가' },
+            {
+              headers: { ETag: '"8"' },
+            },
+          ),
         ),
       ),
       '?wh=1001',
@@ -554,9 +557,12 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
     const { user } = renderScreen(
       saveRoutes(
         putRoute(() =>
-          jsonResponse({ ...warehouseFixtures[0]!, warehouseName: '1공장 자재창고가' }, {
-            headers: { ETag: '"8"' },
-          }),
+          jsonResponse(
+            { ...warehouseFixtures[0]!, warehouseName: '1공장 자재창고가' },
+            {
+              headers: { ETag: '"8"' },
+            },
+          ),
         ),
       ),
       '?wh=1001',
@@ -591,9 +597,7 @@ describe('WarehouseLocationScreen — 창고 수정 저장', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
-    expect(
-      screen.getByText('최신 내용을 불러오면 입력한 내용은 사라집니다.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('최신 내용을 불러오면 입력한 내용은 사라집니다.')).toBeInTheDocument();
   });
 
   it('최신 불러오기를 누르면 상세를 다시 조회하고 입력한 내용이 사라진다', async () => {
@@ -961,9 +965,7 @@ describe('WarehouseLocationScreen — 창고 사용 중지', () => {
         deactivateRoute(() =>
           jsonResponse(
             {
-              errors: [
-                { scope: 'screen', code: 'STATE_LOCKED', message: '확정된 항목입니다.' },
-              ],
+              errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '확정된 항목입니다.' }],
             },
             { status: 400 },
           ),
@@ -1049,9 +1051,12 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
         match: (request) =>
           request.method === 'POST' && new URL(request.url).pathname === '/mdm/locations',
         respond: () =>
-          jsonResponse({ ...locationFixtures[1]!, locationId: 2009, locationCode: 'A-01-09' }, {
-            status: 201,
-          }),
+          jsonResponse(
+            { ...locationFixtures[1]!, locationId: 2009, locationCode: 'A-01-09' },
+            {
+              status: 201,
+            },
+          ),
       }),
       '?wh=1001',
     );

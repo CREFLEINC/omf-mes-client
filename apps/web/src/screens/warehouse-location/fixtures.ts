@@ -123,13 +123,39 @@ export const locationFixtures: Location[] = [
 
 /** 선택 목록 응답의 계약 표현. 화면이 만드는 선택지와 구분해 둔다. */
 export const plantFixtures: components['schemas']['Plant'][] = [
-  { plantId: 11, legalEntityId: 1, plantCode: 'PLT-01', plantName: '1공장', timezoneCode: 'STANDARD', isActive: true },
-  { plantId: 12, legalEntityId: 1, plantCode: 'PLT-02', plantName: '2공장', timezoneCode: 'STANDARD', isActive: true },
+  {
+    plantId: 11,
+    legalEntityId: 1,
+    plantCode: 'PLT-01',
+    plantName: '1공장',
+    timezoneCode: 'STANDARD',
+    isActive: true,
+  },
+  {
+    plantId: 12,
+    legalEntityId: 1,
+    plantCode: 'PLT-02',
+    plantName: '2공장',
+    timezoneCode: 'STANDARD',
+    isActive: true,
+  },
 ];
 
 export const businessUnitFixtures: components['schemas']['BusinessUnit'][] = [
-  { businessUnitId: 21, legalEntityId: 1, businessUnitCode: 'BU-01', businessUnitName: '생산본부', isActive: true },
-  { businessUnitId: 22, legalEntityId: 1, businessUnitCode: 'BU-02', businessUnitName: '물류본부', isActive: true },
+  {
+    businessUnitId: 21,
+    legalEntityId: 1,
+    businessUnitCode: 'BU-01',
+    businessUnitName: '생산본부',
+    isActive: true,
+  },
+  {
+    businessUnitId: 22,
+    legalEntityId: 1,
+    businessUnitCode: 'BU-02',
+    businessUnitName: '물류본부',
+    isActive: true,
+  },
 ];
 
 /** 32번은 미사용이다 — 미사용 값이 선택지에서 어떻게 다뤄지는지 확인하는 데 쓴다. */

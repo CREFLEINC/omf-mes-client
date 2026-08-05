@@ -52,9 +52,7 @@ describe('validateWarehouse', () => {
   });
 
   it('외부창고를 켜고 거래처를 고르면 통과한다', () => {
-    expect(
-      validateWarehouse({ ...filled, isExternal: true, partnerId: '31' }, 'edit'),
-    ).toEqual({});
+    expect(validateWarehouse({ ...filled, isExternal: true, partnerId: '31' }, 'edit')).toEqual({});
   });
 
   it('신규 등록에서 공장이 비면 필수 오류다', () => {

@@ -12,7 +12,11 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
-import { WAREHOUSE_TYPE_OPTIONS, defaultWarehouseFilters, warehouseTypeLabel } from './code-options';
+import {
+  WAREHOUSE_TYPE_OPTIONS,
+  defaultWarehouseFilters,
+  warehouseTypeLabel,
+} from './code-options';
 import type { Warehouse, WarehouseFilters } from './types';
 
 export interface WarehouseListPaneProps {

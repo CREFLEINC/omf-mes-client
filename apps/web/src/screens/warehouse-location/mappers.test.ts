@@ -51,7 +51,11 @@ describe('warehouseToFormValues', () => {
   });
 
   it('코드·명칭·스위치 값은 그대로 옮긴다', () => {
-    const values = warehouseToFormValues({ ...base, isExternal: true, warehouseName: '외부 보관창고' });
+    const values = warehouseToFormValues({
+      ...base,
+      isExternal: true,
+      warehouseName: '외부 보관창고',
+    });
 
     expect(values.warehouseCode).toBe('WH-01');
     expect(values.warehouseName).toBe('외부 보관창고');
@@ -190,7 +194,10 @@ describe('toLocationCreate · toLocationUpdate', () => {
   });
 
   it('고르지 않은 품질구역·보관조건은 널로 보낸다', () => {
-    const body = toLocationUpdate({ ...values, qualityZoneCode: '', storageConditionCode: '' }, null);
+    const body = toLocationUpdate(
+      { ...values, qualityZoneCode: '', storageConditionCode: '' },
+      null,
+    );
 
     expect(body.qualityZoneCode).toBeNull();
     expect(body.storageConditionCode).toBeNull();
@@ -223,6 +230,8 @@ describe('isSameWarehouseValues', () => {
     const values = warehouseToFormValues(warehouseFixtures[0]!);
 
     expect(isSameWarehouseValues(values, { ...values, warehouseName: '바뀐 이름' })).toBe(false);
-    expect(isSameWarehouseValues(values, { ...values, isExternal: !values.isExternal })).toBe(false);
+    expect(isSameWarehouseValues(values, { ...values, isExternal: !values.isExternal })).toBe(
+      false,
+    );
   });
 });
