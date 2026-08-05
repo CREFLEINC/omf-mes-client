@@ -36,11 +36,20 @@ const describeError = (error: ApiError): BannerContent => {
   switch (error.kind) {
     case 'conflict':
       return { lines: [messages.conflict[error.cause]] };
-    case 'stateLocked':
+    case 'stateLocked': {
+      /*
+       * 서버가 「확정된 항목입니다」 같은 구체적 사유를 주면 함께 낸다.
+       * 일반 문구로 뭉개면 재조회로 풀리지 않는 상태에서 사용자가 다음 행동을 정할 수 없다.
+       */
+      const serverLines = error.errors
+        .map((item) => item.message)
+        .filter((message) => message !== '');
+
       return {
         title: messages.stateLocked.title,
-        lines: [messages.stateLocked.description],
+        lines: [messages.stateLocked.description, ...serverLines],
       };
+    }
     case 'validation':
       // 화면이 인라인으로 소화하지 못한 오류만 여기 온다. 서버 문구를 그대로 나열한다 —
       // 삼키면 어디에도 보이지 않는 오류가 된다.

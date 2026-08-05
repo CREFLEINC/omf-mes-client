@@ -871,6 +871,156 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
   });
 });
 
+const DEACTIVATE_PATH = '/mdm/warehouses/1001:deactivate';
+
+const deactivateRoutes = (deactivate: StubRoute): StubRoute[] => [
+  warehouseListRoute(),
+  warehouseDetailRoute(),
+  locationListRoute(),
+  ...lookupRoutes(),
+  deactivate,
+];
+
+const deactivateRoute = (respond: StubRoute['respond']): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === DEACTIVATE_PATH,
+  respond,
+});
+
+const openDeactivateDialog = async (
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<HTMLElement> => {
+  await screen.findByLabelText('창고명');
+  await user.click(screen.getByRole('button', { name: '사용 중지' }));
+
+  return screen.getByRole('dialog');
+};
+
+describe('WarehouseLocationScreen — 창고 사용 중지', () => {
+  it('사용 중지를 눌러도 확인 전에는 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      deactivateRoutes(deactivateRoute(() => jsonResponse(warehouseFixtures[0]!))),
+      '?wh=1001',
+    );
+
+    const dialog = await openDeactivateDialog(user);
+
+    expect(within(dialog).getByText('사용 중지할까요?')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.'),
+    ).toBeInTheDocument();
+    expect(requests.some((request) => request.url.pathname === DEACTIVATE_PATH)).toBe(false);
+  });
+
+  it('확인하면 :deactivate로 POST가 나가고 If-Match가 상세 경로의 토큰이다', async () => {
+    const { requests, user } = renderScreen(
+      deactivateRoutes(
+        deactivateRoute(() => jsonResponse({ ...warehouseFixtures[0]!, isActive: false })),
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openDeactivateDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+
+    const request = requests.find((candidate) => candidate.url.pathname === DEACTIVATE_PATH);
+    expect(request?.method).toBe('POST');
+    expect(request?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    // 사용 중지 경로가 아니라 상세 경로에 보관된 토큰이어야 한다.
+    expect(request?.headers.get('If-Match')).toBe('"7"');
+  });
+
+  it('409면 충돌 배너와 최신 불러오기가 뜨고 다이얼로그는 닫히지 않는다', async () => {
+    const { user } = renderScreen(
+      deactivateRoutes(
+        deactivateRoute(() =>
+          jsonResponse({ conflictCause: 'workerLease', message: '' }, { status: 409 }),
+        ),
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openDeactivateDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
+
+    expect(
+      await within(screen.getByRole('dialog')).findByText(
+        '다른 작업에서 이 항목을 처리하는 중입니다. 잠시 뒤 최신 내용을 불러와 다시 저장하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '최신 불러오기' }),
+    ).toBeInTheDocument();
+  });
+
+  it('400 STATE_LOCKED에는 최신 불러오기를 내지 않고 서버가 준 사유를 함께 낸다', async () => {
+    const { user } = renderScreen(
+      deactivateRoutes(
+        deactivateRoute(() =>
+          jsonResponse(
+            {
+              errors: [
+                { scope: 'screen', code: 'STATE_LOCKED', message: '확정된 항목입니다.' },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openDeactivateDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
+
+    const alert = await within(screen.getByRole('dialog')).findByRole('alert');
+    expect(alert).toHaveTextContent('지금은 저장할 수 없는 상태입니다');
+    // 재조회해도 풀리지 않는다 — 재시도를 권하지 않는다.
+    expect(
+      within(screen.getByRole('dialog')).queryByRole('button', { name: '최신 불러오기' }),
+    ).not.toBeInTheDocument();
+    // 일반 문구로 뭉개면 무엇을 먼저 해야 하는지 알 수 없다.
+    expect(alert).toHaveTextContent('확정된 항목입니다.');
+  });
+
+  it('403이면 권한 문구를 배너로 낸다 — 대응하는 입력칸이 없다', async () => {
+    const { user } = renderScreen(
+      deactivateRoutes(
+        deactivateRoute(() =>
+          jsonResponse(
+            { errors: [{ scope: 'screen', code: 'FORBIDDEN', message: '' }] },
+            { status: 403 },
+          ),
+        ),
+      ),
+      '?wh=1001',
+    );
+
+    const dialog = await openDeactivateDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
+
+    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toBeInTheDocument();
+  });
+
+  it('이미 미사용인 창고에는 사용 중지 버튼이 없다', async () => {
+    renderScreen(
+      [
+        warehouseListRoute(),
+        warehouseDetailRoute({ ...warehouseFixtures[0]!, isActive: false }),
+        locationListRoute(),
+        ...lookupRoutes(),
+      ],
+      '?wh=1001',
+    );
+
+    await screen.findByLabelText('창고명');
+
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+  });
+});
+
 describe('WarehouseLocationScreen — 예시 데이터 제거', () => {
   it('예시 데이터 안내 배너가 없다', async () => {
     renderScreen([warehouseListRoute(), ...lookupRoutes()]);

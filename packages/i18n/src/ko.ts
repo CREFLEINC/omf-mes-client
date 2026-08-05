@@ -103,8 +103,6 @@ const warehouseLocation = {
     plantFixedAfterCreate: '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
     saveUnavailable: '저장은 아직 쓸 수 없습니다. 저장 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-    deactivateUnavailable:
-      '사용 중지는 아직 쓸 수 없습니다. 중지 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
   },
   loading: {
     warehouses: '창고 목록을 불러오는 중',
@@ -185,6 +183,12 @@ const warehouseLocation = {
   dialog: {
     createTitle: 'Location 추가',
     editTitle: 'Location 수정',
+  },
+  /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
+  deactivate: {
+    title: '사용 중지할까요?',
+    description: '삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.',
+    confirm: '사용 중지',
   },
 } as const;
 

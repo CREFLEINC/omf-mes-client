@@ -58,6 +58,41 @@ describe('SaveErrorBanner', () => {
     expect(screen.queryByRole('button', { name: reloadName })).not.toBeInTheDocument();
   });
 
+  it('상태 잠김은 서버가 준 구체적 사유를 일반 문구와 함께 낸다', () => {
+    render(
+      <SaveErrorBanner
+        error={{
+          kind: 'stateLocked',
+          errors: [
+            { scope: 'screen', code: 'STATE_LOCKED', message: '확정된 항목입니다.' },
+            { scope: 'screen', code: 'STATE_LOCKED', message: '먼저 확정을 해제하세요.' },
+          ],
+        }}
+      />,
+    );
+
+    const banner = screen.getByRole('alert');
+    expect(banner).toHaveTextContent(messages.stateLocked.description);
+    // 일반 문구로 뭉개면 사용자가 다음 행동을 정할 수 없다.
+    expect(banner).toHaveTextContent('확정된 항목입니다.');
+    expect(banner).toHaveTextContent('먼저 확정을 해제하세요.');
+  });
+
+  it('상태 잠김에 서버 문구가 없으면 일반 문구만 낸다 — 빈 줄을 만들지 않는다', () => {
+    render(
+      <SaveErrorBanner
+        error={{
+          kind: 'stateLocked',
+          errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '' }],
+        }}
+      />,
+    );
+
+    const banner = screen.getByRole('alert');
+    expect(banner).toHaveTextContent(messages.stateLocked.description);
+    expect(banner.querySelectorAll('li')).toHaveLength(0);
+  });
+
   it('403은 권한 문구를 낸다', () => {
     render(<SaveErrorBanner error={{ kind: 'http', status: 403 }} onReload={vi.fn()} />);
 

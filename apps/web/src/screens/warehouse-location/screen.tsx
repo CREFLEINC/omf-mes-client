@@ -17,6 +17,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { selectableOptions } from './code-options';
+import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { LocationFormDialog } from './location-form-dialog';
 import { LocationPane } from './location-pane';
 import { buildLocationRows } from './location-tree';
@@ -201,6 +202,32 @@ export const WarehouseLocationScreen = () => {
 
       const next = warehouseToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+
+  const deactivateWrite = useMasterWrite<void, Warehouse>({
+    request: (_variables, headers) =>
+      client.POST('/mdm/warehouses/{warehouseId}:deactivate', {
+        params: {
+          path: { warehouseId: selectedWarehouseId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    /*
+     * 잠금 토큰은 상세 경로에 보관돼 있다. 요청 경로(`...:deactivate`)로 꺼내면 언제나 비어 있다.
+     */
+    etagPath: selectedWarehouseId === null ? null : warehouseDetailPath(selectedWarehouseId),
+    invalidateKeys: [warehouseKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: () => {
+      setIsDeactivateOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -429,7 +456,8 @@ export const WarehouseLocationScreen = () => {
         setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
       }}
       onDeactivate={() => {
-        notifyUnavailable(t.actionReasons.deactivateUnavailable);
+        deactivateWrite.reset();
+        setIsDeactivateOpen(true);
       }}
     />
   );
@@ -568,6 +596,15 @@ export const WarehouseLocationScreen = () => {
         />
         {renderDetailPane()}
       </div>
+
+      <DeactivateConfirmDialog
+        open={isDeactivateOpen}
+        onClose={() => setIsDeactivateOpen(false)}
+        onConfirm={() => deactivateWrite.write(undefined)}
+        isSaving={deactivateWrite.isSaving}
+        // 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다.
+        banner={<SaveErrorBanner error={deactivateWrite.error} onReload={handleReloadDetail} />}
+      />
 
       <LocationFormDialog
         open={dialogState.open}
