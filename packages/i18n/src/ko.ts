@@ -19,6 +19,7 @@ const common = {
   close: '닫기',
   deactivate: '사용 중지',
   saved: '저장했습니다',
+  retry: '다시 시도',
   includeInactive: '미사용 포함',
   discardChangesConfirm: '입력한 내용이 저장되지 않았습니다. 변경을 파기할까요?',
 } as const;
@@ -44,6 +45,7 @@ const stateLocked = {
 
 const httpError = {
   title: '요청을 처리하지 못했습니다',
+  loadTitle: '목록을 불러오지 못했습니다',
   description: '잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.',
   offline: '네트워크 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도하세요.',
   forbidden: '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
@@ -109,6 +111,10 @@ const warehouseLocation = {
     warehouses: '창고 목록을 불러오는 중',
     locations: 'Location을 불러오는 중',
   },
+  /** 서버가 목록을 잘라 내려보냈을 때. 잘림을 감추지 않고 조건을 좁힐 방법을 함께 알린다. */
+  listTruncated: (shown: number, total: number): string =>
+    `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
+  optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   empty: {
     warehouseNoneTitle: '아직 등록된 창고가 없습니다',
     warehouseNoneDescription: '「창고 추가」로 첫 창고를 등록하세요.',

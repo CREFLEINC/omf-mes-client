@@ -10,10 +10,9 @@ import {
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 
-import { WAREHOUSE_TYPE_OPTIONS, warehouseTypeLabel } from './code-options';
-import { defaultWarehouseFilters } from './fixtures';
+import { WAREHOUSE_TYPE_OPTIONS, defaultWarehouseFilters, warehouseTypeLabel } from './code-options';
 import type { Warehouse, WarehouseFilters } from './types';
 
 export interface WarehouseListPaneProps {
@@ -25,6 +24,13 @@ export interface WarehouseListPaneProps {
   onApplyFilters: (next: WarehouseFilters) => void;
   selectedWarehouseId: number | null;
   onSelect: (warehouseId: number) => void;
+  /** 빈 상태에서 등록으로 이끄는 주 액션 */
+  onAddWarehouse: () => void;
+  /**
+   * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
+   * 실패를 「등록된 창고가 없습니다」로 보이면 사실과 다른 안내가 된다.
+   */
+  loadError: ReactNode;
 }
 
 const t = messages.warehouseLocation;
@@ -39,6 +45,8 @@ export const WarehouseListPane = ({
   onApplyFilters,
   selectedWarehouseId,
   onSelect,
+  onAddWarehouse,
+  loadError,
 }: WarehouseListPaneProps) => {
   const typeSelectId = useId();
 
@@ -97,8 +105,32 @@ export const WarehouseListPane = ({
       live
       title={t.empty.warehouseNoneTitle}
       description={t.empty.warehouseNoneDescription}
+      action={<Button onClick={onAddWarehouse}>{t.actions.addWarehouse}</Button>}
     />
   );
+
+  /** 조회 실패 → 로딩 → 표 순서로 하나만 낸다. 실패했는데 빈 표를 함께 보이면 안 된다. */
+  const listSlot = (): ReactNode => {
+    if (loadError !== null && loadError !== undefined) return loadError;
+
+    if (isLoading) {
+      return (
+        <div role="status" aria-label={t.loading.warehouses}>
+          <SkeletonText lines={3} />
+        </div>
+      );
+    }
+
+    return (
+      <Table
+        density="compact"
+        columns={columns}
+        rows={items}
+        getRowId={(row) => String(row.warehouseId)}
+        empty={emptySlot}
+      />
+    );
+  };
 
   return (
     <section className="pane" aria-label={t.title}>
@@ -175,19 +207,7 @@ export const WarehouseListPane = ({
         )}
       </div>
 
-      {isLoading ? (
-        <div role="status" aria-label={t.loading.warehouses}>
-          <SkeletonText lines={3} />
-        </div>
-      ) : (
-        <Table
-          density="compact"
-          columns={columns}
-          rows={items}
-          getRowId={(row) => String(row.warehouseId)}
-          empty={emptySlot}
-        />
-      )}
+      {listSlot()}
     </section>
   );
 };

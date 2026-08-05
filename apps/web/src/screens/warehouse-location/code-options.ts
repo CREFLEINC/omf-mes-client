@@ -1,7 +1,9 @@
 import { messages } from '@omf-mes/i18n';
 
+import type { WarehouseFilters } from './types';
+
 /**
- * 선택지 상수를 한 파일에 격리한다.
+ * 선택지 상수와 화면 기본값을 한 파일에 격리한다.
  * 공통코드 값 목록이 확정되면 이 파일만 고치면 된다.
  */
 
@@ -9,6 +11,13 @@ export interface CodeOption {
   value: string;
   label: string;
 }
+
+/** 화면을 처음 열었을 때의 조회 조건. 예시 데이터가 아니라 화면 상수라 여기가 자리다. */
+export const defaultWarehouseFilters: WarehouseFilters = {
+  q: '',
+  warehouseTypeCode: '',
+  includeInactive: false,
+};
 
 /** 확정값 — 창고유형 5종. */
 export const WAREHOUSE_TYPE_OPTIONS: CodeOption[] = [
@@ -43,3 +52,12 @@ export const STORAGE_CONDITION_OPTIONS: CodeOption[] = pendingOptions();
 
 export const warehouseTypeLabel = (code: string): string =>
   WAREHOUSE_TYPE_OPTIONS.find((option) => option.value === code)?.label ?? code;
+
+/**
+ * 서버가 준 현재 값이 선택지 목록에 없으면 코드 그대로 덧붙인다.
+ * 덧붙이지 않으면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다.
+ */
+export const ensureOption = (options: CodeOption[], value: string): CodeOption[] =>
+  value === '' || options.some((option) => option.value === value)
+    ? options
+    : [...options, { value, label: value }];

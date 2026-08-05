@@ -6,7 +6,6 @@ import type {
   LocationFormValues,
   LookupOptions,
   Warehouse,
-  WarehouseFilters,
   WarehouseFormValues,
 } from './types';
 
@@ -138,12 +137,6 @@ export const lookupFixtures: LookupOptions = {
     { value: '42', label: 'BOX' },
     { value: '43', label: 'PLT' },
   ],
-};
-
-export const defaultWarehouseFilters: WarehouseFilters = {
-  q: '',
-  warehouseTypeCode: '',
-  includeInactive: false,
 };
 
 export const warehouseFormInitialValues: WarehouseFormValues = {
