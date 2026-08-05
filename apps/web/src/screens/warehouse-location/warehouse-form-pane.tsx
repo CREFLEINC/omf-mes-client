@@ -195,8 +195,12 @@ export const WarehouseFormPane = ({
       </div>
 
       <div className="form-actions">
-        <div>
-          <Button variant="text" disabled aria-describedby={historyNoteId}>
+        {/*
+         * 사유가 붙은 보조 액션은 줄 왼쪽에, 주 액션(취소·저장)은 오른쪽에 남긴다.
+         * variant는 outlined여야 한다 — text는 비활성일 때 흐린 글자만 남아 버튼으로 읽히지 않는다.
+         */}
+        <div className="field-cell form-actions-secondary">
+          <Button variant="outlined" disabled aria-describedby={historyNoteId}>
             {t.actions.changeHistory}
           </Button>
           <span id={historyNoteId} className="field-note">

@@ -135,8 +135,13 @@ describe('WarehouseFormPane', () => {
   it('변경 이력은 비활성이고 그 사유가 화면 텍스트로 보인다', () => {
     renderPane();
 
-    expect(screen.getByRole('button', { name: '변경 이력' })).toBeDisabled();
-    expect(screen.getByText('변경 이력 조회 규약이 확정되면 활성화됩니다.')).toBeInTheDocument();
+    const reason = '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.';
+    const button = screen.getByRole('button', { name: '변경 이력' });
+
+    expect(button).toBeDisabled();
+    expect(screen.getByText(reason)).toBeInTheDocument();
+    // 화면에 보이는 것과 그 버튼의 설명인 것은 별개 조건이다. 배치를 바꿔도 연결이 끊기면 안 된다.
+    expect(button).toHaveAccessibleDescription(reason);
   });
 
   it('사용 중이면 사용 중지를 눌러 onDeactivate를 부른다', async () => {

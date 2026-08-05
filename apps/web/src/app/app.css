@@ -13,6 +13,7 @@
  * .field-cell-unlabeled  라벨 없는 셀을 라벨 층만큼 내려 컨트롤 상자의 윗선을 맞춘다(규범 2)
  * .form-grid    폼 필드 2열 그리드
  * .form-actions 폼 하단 액션 줄(우측 정렬)
+ * .form-actions-secondary  사유가 붙은 보조 액션만 줄 왼쪽 끝으로(규범 4)
  * .field-label  DS가 라벨을 내장하지 않는 컨트롤(Select 등)에 직접 붙이는 라벨
  * .field-note   필드 아래 보조 안내 텍스트(비활성 사유·선택지 준비 중 등)
  * .field-error  필드 아래 오류 텍스트
@@ -112,8 +113,15 @@ main > * + * {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
+  /* 규범 4 — 보조 액션의 사유가 아래로 자라도 취소·저장은 윗줄에 남는다. */
+  align-items: flex-start;
   gap: var(--space-3);
   margin-top: var(--space-5);
+}
+
+/* 보조 액션만 줄 왼쪽 끝으로. 폭이 넓어 우연히 왼쪽에 놓이는 것과 다르다. */
+.form-actions-secondary {
+  margin-right: auto;
 }
 
 .field-label {
@@ -126,6 +134,8 @@ main > * + * {
 
 .field-note {
   display: block;
+  /* 규범 4 — 줄 전체로 퍼지면 줄 전체의 설명으로 읽힌다. 액션 줄 폭의 절반 아래로 가둔다. */
+  max-width: 20rem;
   margin-top: var(--space-1);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);

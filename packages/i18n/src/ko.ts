@@ -3,7 +3,10 @@
  *
  * 작성 규칙
  * - 비활성 컨트롤의 사유는 「무엇이 막혔는지 + 어떻게 풀 수 있는지」를 함께 담는다. 감추지 않는다.
- * - 사용자에게 보이는 문구에 내부 이슈 번호를 넣지 않는다.
+ * - 비활성 사유는 그 컨트롤의 이름으로 시작한다. 주어가 없으면 사유가 붙은 대상이
+ *   시각적으로 끊겼을 때 복원할 단서가 없다. 여러 컨트롤이 공유하는 안내는 예외다.
+ * - 구현 사정을 드러내는 말(내부 절차·기술 스택·시스템 구성)과 내부 이슈 번호를 넣지 않는다.
+ *   사용자가 쓰지 않는 말은 화면에 내지 않는다.
  */
 
 const common = {
@@ -85,9 +88,11 @@ const warehouseLocation = {
     changeHistory: '변경 이력',
   },
   actionReasons: {
-    addChildNeedsSingleSelection: 'Location을 하나만 선택하면 그 아래에 추가할 수 있습니다.',
-    generateLabelUnavailable: '라벨 이미지 서버 렌더링이 준비되면 활성화됩니다.',
-    changeHistoryUnavailable: '변경 이력 조회 규약이 확정되면 활성화됩니다.',
+    addChildNeedsSingleSelection: '하위 추가는 Location을 하나만 선택했을 때 쓸 수 있습니다.',
+    generateLabelUnavailable:
+      '라벨 이미지는 아직 만들 수 없습니다. 생성 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    changeHistoryUnavailable:
+      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     plantFixedAfterCreate: '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
   },

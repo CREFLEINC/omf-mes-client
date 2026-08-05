@@ -96,10 +96,13 @@ describe('LocationPane', () => {
   it('선택이 없으면 하위 추가가 비활성이고 사유가 보인다', () => {
     renderPane({ selectedIds: [] });
 
-    expect(screen.getByRole('button', { name: '하위 추가' })).toBeDisabled();
-    expect(
-      screen.getByText('Location을 하나만 선택하면 그 아래에 추가할 수 있습니다.'),
-    ).toBeInTheDocument();
+    const reason = '하위 추가는 Location을 하나만 선택했을 때 쓸 수 있습니다.';
+    const button = screen.getByRole('button', { name: '하위 추가' });
+
+    expect(button).toBeDisabled();
+    expect(screen.getByText(reason)).toBeInTheDocument();
+    // 화면에 보이는 것과 그 버튼의 설명인 것은 별개 조건이다. 배치를 바꿔도 연결이 끊기면 안 된다.
+    expect(button).toHaveAccessibleDescription(reason);
   });
 
   it('선택이 2건 이상이면 하위 추가가 비활성이다', () => {
@@ -122,8 +125,13 @@ describe('LocationPane', () => {
   it('라벨 이미지 생성은 항상 비활성이고 사유가 화면 텍스트로 보인다', () => {
     renderPane();
 
-    expect(screen.getByRole('button', { name: '라벨 이미지 생성' })).toBeDisabled();
-    expect(screen.getByText('라벨 이미지 서버 렌더링이 준비되면 활성화됩니다.')).toBeInTheDocument();
+    const reason = '라벨 이미지는 아직 만들 수 없습니다. 생성 기능이 준비되면 이 버튼을 쓸 수 있습니다.';
+    const button = screen.getByRole('button', { name: '라벨 이미지 생성' });
+
+    expect(button).toBeDisabled();
+    expect(screen.getByText(reason)).toBeInTheDocument();
+    // 화면에 보이는 것과 그 버튼의 설명인 것은 별개 조건이다. 배치를 바꿔도 연결이 끊기면 안 된다.
+    expect(button).toHaveAccessibleDescription(reason);
   });
 
   it('최상위 추가를 누르면 onAddRoot를 부른다', async () => {
