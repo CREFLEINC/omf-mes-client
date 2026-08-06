@@ -222,6 +222,60 @@ export const lookupKeys = {
   items: ['inspection-standard-items'] as const,
   processes: ['inspection-standard-processes'] as const,
   routings: (itemId: number) => ['inspection-standard-routings', itemId] as const,
+  uoms: ['inspection-standard-uoms'] as const,
+  equipments: ['inspection-standard-equipments'] as const,
+};
+
+/** 단위 선택 목록. 검사 항목의 수치형 값에 붙는다. */
+export const useUomOptions = (): LookupResult => {
+  const { client } = useApiClient();
+
+  const uoms = useQuery({
+    queryKey: lookupKeys.uoms,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+  });
+
+  const data = uoms.data;
+
+  return {
+    entries:
+      data?.items.map((uom) => ({
+        value: String(uom.uomId),
+        label: `${uom.uomCode} · ${uom.uomName}`,
+        isActive: uom.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: uoms.isError,
+    isLoading: uoms.isPending,
+  };
+};
+
+/** 지정 검사장비 선택 목록. */
+export const useEquipmentOptions = (): LookupResult => {
+  const { client } = useApiClient();
+
+  const equipments = useQuery({
+    queryKey: lookupKeys.equipments,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/equipments', { params: { query: { includeInactive: true } } }),
+      ),
+  });
+
+  const data = equipments.data;
+
+  return {
+    entries:
+      data?.items.map((equipment) => ({
+        value: String(equipment.equipmentId),
+        label: equipment.equipmentName,
+        isActive: equipment.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: equipments.isError,
+    isLoading: equipments.isPending,
+  };
 };
 
 /**

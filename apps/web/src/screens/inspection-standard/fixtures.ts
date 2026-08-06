@@ -1,4 +1,4 @@
-import type { InspectionPlan, InspectionPlanVersion } from './types';
+import type { InspectionItemSpec, InspectionPlan, InspectionPlanVersion } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -92,5 +92,49 @@ export const inspectionPlanVersionFixtures: InspectionPlanVersion[] = [
     frequencyIntervalValue: 4,
     frequencyIntervalUomCode: 'PENDING',
     statusCode: 'CONFIRMED',
+  },
+];
+
+/**
+ * 한 버전의 검사 항목 2건.
+ *
+ * **순서 값을 일부러 10·20으로 둔다.** 서버 채번은 서버 재량이고 화면은 그 값을 보이지 않는다 —
+ * 표시 번호가 1·2로 나오는지 확인하는 것이 이 픽스처의 목적이다.
+ * 5102는 선택 값을 전부 비워 「지정하지 않음」 표기를 함께 볼 수 있게 했다.
+ */
+export const inspectionItemSpecFixtures: InspectionItemSpec[] = [
+  {
+    inspectionItemSpecId: 5101,
+    inspectionPlanVersionId: 4002,
+    sequenceNo: 10,
+    inspectionItemCode: 'SYN-ITEM-CODE-01',
+    inspectionItemName: '합성 항목 A',
+    dataTypeCode: 'PENDING',
+    uomId: 41,
+    targetValue: 10,
+    lowerLimit: 9,
+    upperLimit: 11,
+    measurementCount: 3,
+    inspectionMethodCode: 'PENDING',
+    defaultInspectionEquipmentId: 6001,
+    requiredFlag: true,
+    automaticJudgment: true,
+  },
+  {
+    inspectionItemSpecId: 5102,
+    inspectionPlanVersionId: 4002,
+    sequenceNo: 20,
+    inspectionItemCode: 'SYN-ITEM-CODE-02',
+    inspectionItemName: '합성 항목 B',
+    dataTypeCode: 'PENDING',
+    uomId: null,
+    targetValue: null,
+    lowerLimit: null,
+    upperLimit: null,
+    measurementCount: 1,
+    inspectionMethodCode: null,
+    defaultInspectionEquipmentId: null,
+    requiredFlag: false,
+    automaticJudgment: false,
   },
 ];

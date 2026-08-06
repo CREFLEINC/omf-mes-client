@@ -1426,7 +1426,7 @@ const itemSpecFixture = {
   inspectionItemCode: 'SYN-ITEM-CODE-01',
   inspectionItemName: '합성 항목 A',
   dataTypeCode: 'PENDING',
-  uomId: null,
+  uomId: 41,
   targetValue: 10,
   lowerLimit: 9,
   upperLimit: 11,
@@ -1823,5 +1823,412 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(
       screen.getByText('버전 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.'),
     ).toBeInTheDocument();
+  });
+});
+
+const uomOptionsRoute = (total = 1): StubRoute => ({
+  match: (request) => isGet(request, '/mdm/uoms'),
+  respond: () =>
+    jsonResponse({
+      items: [{ uomId: 41, uomCode: 'EA', uomName: '개', decimalScale: 0, isActive: true }],
+      page: { page: 1, size: 50, total },
+    }),
+});
+
+const equipmentOptionsRoute = (): StubRoute => ({
+  match: (request) => isGet(request, '/mdm/equipments'),
+  respond: () =>
+    jsonResponse({
+      items: [
+        {
+          equipmentId: 6001,
+          plantId: 1,
+          equipmentCode: 'SYN-EQ-01',
+          equipmentName: '합성 설비 A',
+          equipmentTypeCode: 'PENDING',
+          processId: null,
+          productionLineId: null,
+          statusCode: 'PENDING',
+          calibrationRequired: false,
+          lastCalibrationDate: null,
+          calibrationDueDate: null,
+          isActive: true,
+        },
+      ],
+      page: { page: 1, size: 50, total: 1 },
+    }),
+});
+
+const itemsSaveRoute = (
+  respond: StubRoute['respond'] = () => jsonResponse({ items: [itemSpecFixture] }),
+): StubRoute => ({
+  match: (request) => request.method === 'PUT' && new URL(request.url).pathname === ITEMS_PATH,
+  respond,
+});
+
+const itemFixtures = [
+  itemSpecFixture,
+  {
+    ...itemSpecFixture,
+    inspectionItemSpecId: 5102,
+    sequenceNo: 20,
+    inspectionItemCode: 'SYN-ITEM-CODE-02',
+    inspectionItemName: '합성 항목 B',
+    uomId: null,
+    targetValue: null,
+    lowerLimit: null,
+    upperLimit: null,
+    measurementCount: 1,
+    requiredFlag: false,
+    automaticJudgment: false,
+  },
+];
+
+const itemPane = (): HTMLElement => screen.getByRole('region', { name: '검사 항목' });
+
+const renderItems = (extraRoutes: StubRoute[] = [], search = '?plan=3001&ver=4002') =>
+  renderScreen(
+    [
+      ...extraRoutes,
+      planListRoute(),
+      planDetailRoute(),
+      versionListRoute(),
+      versionDetailRoute(),
+      itemListRoute(4002, itemFixtures),
+      uomOptionsRoute(),
+      equipmentOptionsRoute(),
+      ...lookupRoutes(),
+    ],
+    search,
+  );
+
+describe('InspectionStandardScreen — 검사 항목 조회', () => {
+  it('버전을 고르면 항목 요청이 한 번 나간다', async () => {
+    const { requests, user } = renderItems([], '?plan=3001');
+
+    await user.click(await screen.findByRole('button', { name: '버전 2' }));
+
+    expect(await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A')).toBeInTheDocument();
+    expect(requestsTo(requests, ITEMS_PATH)).toHaveLength(1);
+  });
+
+  /* 서버 채번은 서버 재량이다 — 그 값을 그대로 보이면 사용자가 그것을 자료로 읽는다. */
+  it('서버가 순서 값 10·20을 줘도 표시 번호는 1·2다', async () => {
+    renderItems();
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+
+    const rows = within(itemPane()).getAllByRole('row').slice(1);
+    expect(within(rows[0]!).getByText('1')).toBeInTheDocument();
+    expect(within(rows[1]!).getByText('2')).toBeInTheDocument();
+    expect(within(itemPane()).queryByText('10')).not.toBeInTheDocument();
+  });
+
+  it('단위 id를 선택 목록의 이름으로 옮겨 보인다', async () => {
+    renderItems();
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+
+    await waitFor(() => {
+      expect(within(itemPane()).getByText('10 · 9~11 · EA · 개')).toBeInTheDocument();
+    });
+  });
+
+  /* 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다. */
+  it('단위 선택 목록이 잘리면 그 사실을 표 위에 낸다', async () => {
+    renderItems([uomOptionsRoute(120)]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+
+    expect(
+      within(itemPane()).getByText(
+        '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /* 지금 고른 값이 목록에 없어도 지우지 않는다 — 지우면 저장 때 조용히 다른 값이 된다. */
+  it('선택 목록에 없는 단위 값은 코드를 그대로 낸다', async () => {
+    renderItems([
+      itemListRoute(4002, [{ ...itemSpecFixture, uomId: 99 }]),
+      {
+        match: (request) => isGet(request, '/mdm/uoms'),
+        respond: () => jsonResponse({ items: [], page: { page: 1, size: 50, total: 0 } }),
+      },
+    ]);
+
+    expect(await screen.findByText('10 · 9~11 · 99')).toBeInTheDocument();
+  });
+
+  it('항목 조회에 실패하면 표 대신 오류 배너가 나온다', async () => {
+    renderItems([
+      {
+        match: (request) => isGet(request, ITEMS_PATH),
+        respond: () => jsonResponse({ message: '검사 항목을 불러오지 못했습니다.' }, { status: 500 }),
+      },
+    ]);
+
+    expect(await screen.findByText('검사 항목을 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(screen.queryByText('등록된 검사 항목이 없습니다')).not.toBeInTheDocument();
+  });
+});
+
+describe('InspectionStandardScreen — 검사 항목 편집', () => {
+  /* 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다. */
+  it('창에서 확인하면 표에만 반영되고 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+
+    const dialogNode = await dialog();
+    await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
+    await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+    expect(
+      within(dialogNode).getByText(
+        '확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+
+    expect(await screen.findByText('SYN-ITEM-CODE-09 · 합성 항목 Z')).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+  });
+
+  /* 계약에 버전 내 유일 제약이 없다 — 막는 곳이 화면과 서버뿐이다. */
+  it('같은 항목코드를 두 행에 넣으면 확인이 막힌다', async () => {
+    const { user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+
+    const dialogNode = await dialog();
+    await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-01');
+    await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+
+    expect(
+      await screen.findByText('같은 항목코드가 이 버전에 이미 있습니다. 다른 코드를 입력하세요.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /* 수정할 때 자기 코드가 그대로여도 통과해야 한다. */
+  it('자기 자신을 수정할 때 코드가 그대로면 통과한다', async () => {
+    const { user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '1번 항목 수정' }));
+
+    const dialogNode = await dialog();
+    await user.type(within(dialogNode).getByLabelText('항목명'), '-수정');
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('SYN-ITEM-CODE-01 · 합성 항목 A-수정')).toBeInTheDocument();
+  });
+
+  it('상한이 하한보다 작으면 확인이 막힌다', async () => {
+    const { user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '1번 항목 수정' }));
+
+    const dialogNode = await dialog();
+    fireEvent.change(within(dialogNode).getByLabelText('상한'), { target: { value: '1' } });
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+
+    expect(await screen.findAllByText('상한은 하한과 같거나 그보다 커야 합니다.')).toHaveLength(2);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('측정 횟수가 0이면 확인이 막힌다', async () => {
+    const { user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '1번 항목 수정' }));
+
+    const dialogNode = await dialog();
+    fireEvent.change(within(dialogNode).getByLabelText('측정 횟수'), { target: { value: '0' } });
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+
+    expect(await screen.findByText('측정 횟수는 1 이상의 정수여야 합니다.')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /* 계약 A-9 ⓑ — 경고 등급이다. 화면이 막으면 서버가 허용한 값을 넣을 방법이 없어진다. */
+  it('목표값이 범위 밖이면 경고가 뜨지만 확인은 막히지 않는다', async () => {
+    const { user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '1번 항목 수정' }));
+
+    const dialogNode = await dialog();
+    fireEvent.change(within(dialogNode).getByLabelText('목표값'), { target: { value: '99' } });
+
+    expect(
+      await within(dialogNode).findByText('목표값이 하한~상한 밖입니다. 의도한 값인지 확인하세요.'),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /* 창을 열 때만 붙인다 — 닫힌 창을 남기면 지난 편집 값이 그대로 살아 있다. */
+  it('창을 닫았다 다시 열면 지난 편집 값이 남지 않는다', async () => {
+    const { user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+
+    await user.type(within(await dialog()).getByLabelText('항목코드'), 'SYN-BUFFER');
+    await user.click(within(await dialog()).getByRole('button', { name: '취소' }));
+
+    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+
+    expect(within(await dialog()).getByLabelText('항목코드')).toHaveValue('');
+  });
+});
+
+describe('InspectionStandardScreen — 검사 항목 저장', () => {
+  it('저장이 If-Match 없이 나가고 순서·식별자·버전 번호를 계약대로 싣는다', async () => {
+    const { requests, user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+
+    // 새 행을 하나 더한 뒤 순서를 바꿔 저장한다.
+    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    const dialogNode = await dialog();
+    await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
+    await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+
+    await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find(
+      (request) => request.method === 'PUT' && request.url.pathname === ITEMS_PATH,
+    );
+    expect(put?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(put?.headers.get('If-Match')).toBeNull();
+
+    const body = JSON.parse(put?.body ?? '{}') as {
+      items: { sequenceNo: number; inspectionPlanVersionId: number; inspectionItemSpecId?: number }[];
+    };
+
+    expect(body.items.map((item) => item.sequenceNo)).toEqual([1, 2, 3]);
+    expect(body.items[0]?.inspectionItemSpecId).toBe(5101);
+    expect('inspectionItemSpecId' in (body.items[2] ?? {})).toBe(false);
+    expect(body.items.every((item) => item.inspectionPlanVersionId === 4002)).toBe(true);
+  });
+
+  /* 이동은 초안만 바꾼다 — 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다. */
+  it('순서를 바꿔도 서버 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+
+    const moveButtons = within(itemPane()).getAllByRole('button', { name: /아래로|위로/ });
+    await user.click(moveButtons[0]!);
+
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+  });
+
+  /* 채번 방식은 서버 재량이라 보낸 값과 다를 수 있다 — 서버가 정본이다. */
+  it('저장 성공 후 서버 응답으로 초안을 다시 세운다', async () => {
+    const { user } = renderItems([
+      itemsSaveRoute(() =>
+        jsonResponse({
+          items: [
+            { ...itemSpecFixture, sequenceNo: 100, inspectionItemName: '서버가 고친 이름' },
+          ],
+        }),
+      ),
+    ]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '2번 항목 삭제' }));
+    await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('SYN-ITEM-CODE-01 · 서버가 고친 이름')).toBeInTheDocument();
+    // 서버 채번 값(100)이 아니라 목록 안의 위치를 낸다.
+    expect(within(itemPane()).queryByText('100')).not.toBeInTheDocument();
+  });
+
+  /*
+   * 서버가 준 목록에 이미 중복이 있을 수 있다 — 화면이 만든 행만 검사하면
+   * 옛 중복이 전체 치환에 실려 나가 저장 전체가 거부된다.
+   */
+  it('서버가 준 목록에 이미 중복 코드가 있으면 저장이 비활성이고 사유가 보인다', async () => {
+    renderItems([
+      itemListRoute(4002, [
+        itemSpecFixture,
+        { ...itemSpecFixture, inspectionItemSpecId: 5102, sequenceNo: 20 },
+      ]),
+    ]);
+
+    await screen.findAllByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+
+    expect(within(itemPane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(
+      screen.getByText('항목 저장은 저장할 수 없는 항목이 섞여 있으면 할 수 없습니다. 표에서 그 항목을 수정하세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('버전 정보에 저장하지 않은 변경이 있으면 항목 저장이 비활성이다', async () => {
+    const { user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '2번 항목 삭제' }));
+
+    fireEvent.change(within(versionForm()).getByLabelText('샘플 수량(개)'), {
+      target: { value: '40' },
+    });
+
+    expect(within(itemPane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(
+      screen.getByText(
+        '항목 저장은 버전 정보에 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('확정 버전에서는 항목 편집이 잠기고 순서 이동 열이 사라진다', async () => {
+    renderItems(
+      [
+        versionDetailRoute(inspectionPlanVersionFixtures[1]),
+        itemListRoute(4001, itemFixtures),
+      ],
+      '?plan=3001&ver=4001',
+    );
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+
+    expect(within(itemPane()).getByRole('button', { name: '항목 추가' })).toBeDisabled();
+    expect(within(itemPane()).getByRole('button', { name: '1번 항목 수정' })).toBeDisabled();
+    expect(within(itemPane()).queryByRole('button', { name: /아래로|위로/ })).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        '검사 항목은 작성중 버전에서만 편집할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
+      ).length,
+    ).toBeGreaterThan(0);
+  });
+
+  /* 저장하지 않은 초안으로 세면 화면은 1건인데 서버는 0건이라 확정이 400으로 거부된다. */
+  it('저장된 항목이 0건이면 초안이 있어도 확정이 비활성이다', async () => {
+    const { user } = renderItems([itemListRoute(4002, []), itemsSaveRoute()]);
+
+    await screen.findByText('등록된 검사 항목이 없습니다');
+
+    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    const dialogNode = await dialog();
+    await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
+    await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+
+    expect(await screen.findByText('SYN-ITEM-CODE-09 · 합성 항목 Z')).toBeInTheDocument();
+    expect(within(versionForm()).getByRole('button', { name: '확정' })).toBeDisabled();
   });
 });

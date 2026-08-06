@@ -666,6 +666,13 @@ const inspectionStandard = {
     obsolete: '폐기',
     compareVersions: '버전 비교',
     changeHistory: '변경 이력',
+    addItem: '항목 추가',
+    /*
+     * 행 안의 아이콘 버튼은 보이는 글자가 없어 접근 이름이 곧 이름이다.
+     * 표시 번호를 함께 넣어야 「수정」이 행마다 되풀이되지 않는다.
+     */
+    editItem: (displayNo: number): string => `${String(displayNo)}번 항목 수정`,
+    removeItem: (displayNo: number): string => `${String(displayNo)}번 항목 삭제`,
   },
   actionReasons: {
     excelUploadUnavailable:
@@ -700,6 +707,20 @@ const inspectionStandard = {
       '버전 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     changeHistoryUnavailable:
       '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    /*
+     * 확정·폐기 버전에서는 검사 항목도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
+     * 공유하는 안내라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(배치 규범 4의 이탈 조건).
+     */
+    versionLocked:
+      '검사 항목은 작성중 버전에서만 편집할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
+    /*
+     * 항목을 저장하면 버전 정보도 다시 불러온다 — 그때 저장하지 않은 버전 편집이
+     * 서버 값으로 되돌아간다. 조용히 잃지 않도록 먼저 막는다.
+     */
+    itemsSaveBlockedByHeader:
+      '항목 저장은 버전 정보에 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+    itemsSaveBlockedByInvalid:
+      '항목 저장은 저장할 수 없는 항목이 섞여 있으면 할 수 없습니다. 표에서 그 항목을 수정하세요.',
   },
   /**
    * 서버가 코드로만 알려 주는 거부 사유의 화면 문구.
@@ -730,6 +751,13 @@ const inspectionStandard = {
     obsoleteTitle: '이 버전을 폐기할까요?',
     obsoleteDescription:
       '삭제하지 않습니다. 폐기하면 새 검사에서 이 버전을 쓸 수 없게 됩니다.',
+    itemCreateTitle: '검사 항목 추가',
+    itemEditTitle: '검사 항목 수정',
+    /*
+     * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다 —
+     * 이 창의 확인은 표에만 반영되고 서버 반영은 「저장」 한 번뿐이다. 그 사실을 감추지 않는다.
+     */
+    itemLocalNote: '확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.',
   },
   filters: {
     searchLabel: '검사기준 검색',
@@ -747,6 +775,7 @@ const inspectionStandard = {
     planDetail: '기준 정보를 불러오는 중',
     versions: '버전 목록을 불러오는 중',
     versionDetail: '버전 정보를 불러오는 중',
+    items: '검사 항목을 불러오는 중',
   },
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
@@ -759,6 +788,8 @@ const inspectionStandard = {
     versionNoneTitle: '등록된 버전이 없습니다',
     versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',
     versionNotSelected: '가운데에서 버전을 먼저 고르세요',
+    itemNoneTitle: '등록된 검사 항목이 없습니다',
+    itemNoneDescription: '「항목 추가」로 첫 항목을 등록하세요.',
   },
   fields: {
     inspectionPlanCode: '기준코드',
@@ -785,6 +816,25 @@ const inspectionStandard = {
     inspectionFrequency: '검사 주기',
     frequencyIntervalValue: '주기 값',
     frequencyIntervalUom: '주기 단위',
+    sequence: '순서',
+    /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
+    itemSpec: '항목',
+    dataType: '자료형',
+    targetRange: '목표·범위',
+    measurementCount: '측정 횟수',
+    judgment: '판정',
+    /** 행 안의 수정·삭제 열. 머리글이 없으면 보조기술이 열의 뜻을 읽을 수 없다. */
+    rowActions: '편집',
+    inspectionItemCode: '항목코드',
+    inspectionItemName: '항목명',
+    uom: '단위',
+    targetValue: '목표값',
+    lowerLimit: '하한',
+    upperLimit: '상한',
+    inspectionMethod: '검사 방법',
+    defaultInspectionEquipment: '지정 검사장비',
+    requiredFlag: '필수',
+    automaticJudgment: '자동판정',
   },
   /** 입력칸 아래 한 줄 보조 안내. */
   fieldNotes: {
@@ -816,6 +866,11 @@ const inspectionStandard = {
     draft: '작성중',
     confirmed: '확정',
     obsolete: '폐기',
+    none: '없음',
+    /** 「코드 · 이름」. 코드가 앞에 온다 — 중복 검증의 대상이라 훑을 수 있어야 한다. */
+    itemLabel: (code: string, name: string): string => `${code} · ${name}`,
+    /** 목표·하한~상한·단위를 한 칸에 담는다. 없는 값은 지어내지 않고 자리를 비워 표기한다. */
+    range: (lower: string, upper: string): string => `${lower}~${upper}`,
   },
   validation: {
     required: '필수 입력 항목입니다.',
@@ -830,6 +885,20 @@ const inspectionStandard = {
     acceptanceNumberInvalid: '합격판정개수는 0 이상의 숫자여야 합니다.',
     /* 계약 minimum: 0. 「개수」라고만 적는다 — 라벨과 같은 말이어야 무엇을 고칠지 알 수 있다. */
     samplingQtyInvalid: '샘플 수량은 0 이상의 개수여야 합니다.',
+    /*
+     * 계약이 버전 내 유일 제약을 두지 않았다 — 막는 곳이 화면과 서버뿐이다.
+     * 중복이 저장되면 측정 기록이 어느 항목의 것인지 가릴 수 없다.
+     */
+    itemCodeDuplicated: '같은 항목코드가 이 버전에 이미 있습니다. 다른 코드를 입력하세요.',
+    /* 계약 ck_inspection_limits — 데이터베이스가 막는다. 먼저 막는 것이 사용자에게 이롭다. */
+    limitsReversed: '상한은 하한과 같거나 그보다 커야 합니다.',
+    /* 계약 CHECK > 0. 측정 횟수는 표본 번호의 상한이라 정수여야 한다. */
+    measurementCountInvalid: '측정 횟수는 1 이상의 정수여야 합니다.',
+    /*
+     * **경고이지 차단이 아니다.** 계약이 목표값 범위 밖을 데이터베이스로 막지 않고
+     * 서버가 경고 등급으로 다룬다 — 관리 한계와 규격 한계가 다른 경우가 업무상 정상이다.
+     */
+    targetOutOfRange: '목표값이 하한~상한 밖입니다. 의도한 값인지 확인하세요.',
   },
   /**
    * 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다.

@@ -17,6 +17,18 @@ import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns
 import { selectableOptions } from './code-options';
 import { DisabledAction } from './disabled-action';
 import { readFilters, readPage, toSearchParams } from './filters';
+import { ItemFormDialog } from './item-form-dialog';
+import {
+  createItemDraft,
+  isSameItemDrafts,
+  moveItemDraft,
+  removeItemDraft,
+  toItemDrafts,
+  toItemsPayload,
+  upsertItemDraft,
+} from './item-order';
+import { ItemPane } from './item-pane';
+import { hasInvalidItemDraft, validateItemDraft, warnItemDraft } from './item-validation';
 import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
 import { PlanActionBanner } from './plan-action-banner';
@@ -41,16 +53,20 @@ import {
   useInspectionPlanList,
   useInspectionPlanVersionDetail,
   useInspectionPlanVersionList,
+  useEquipmentOptions,
   useItemOptions,
   useProcessOptions,
   useRoutingOptions,
+  useUomOptions,
   versionDetailPath,
   versionKeys,
+  type InspectionItemSpecListResponse,
   type LookupResult,
 } from './queries';
 import type {
   InspectionPlan,
   InspectionPlanVersion,
+  ItemDraft,
   PlanFilters,
   PlanFormValues,
   VersionFormValues,
@@ -88,6 +104,23 @@ interface VersionFormState {
   source: InspectionPlanVersionDetailResponse;
   baseline: VersionFormValues;
   values: VersionFormValues;
+}
+
+/**
+ * 검사 항목의 로컬 초안. 폼 상태와 같은 모양을 쓴다 —
+ * 응답 객체를 출처로 들고 있다가 **그것이 바뀔 때만** 다시 세워야,
+ * 사용자가 순서를 바꾸는 동안 캐시 갱신이 그 편집을 조용히 지우지 않는다.
+ */
+interface ItemDraftState {
+  source: InspectionItemSpecListResponse;
+  baseline: ItemDraft[];
+  drafts: ItemDraft[];
+}
+
+/** 편집 창이 열려 있는 동안의 값. 확인을 눌러야 초안 목록에 들어간다. */
+interface ItemDialogState {
+  mode: 'create' | 'edit';
+  values: ItemDraft;
 }
 
 /** 계약이 정한 버전 상태 전이 경로. 본문이 없고 멱등 키만 싣는다. */
@@ -448,6 +481,65 @@ export const InspectionStandardScreen = () => {
 
   const versionTransitionWrite = versionTransition === 'obsolete' ? obsoleteWrite : confirmWrite;
 
+  /*
+   * 검사 항목은 화면의 로컬 초안 목록으로 다룬다 — 순서 컬럼에 유일 제약이 있어
+   * 행 단위 저장이 성립하지 않기 때문이다(공유계약 A-5).
+   * 응답 객체가 바뀔 때만 다시 세운다. 매 렌더 파생값으로 두면 편집 중에 캐시가 갱신될 때
+   * 사용자가 바꾼 순서가 조용히 사라진다.
+   */
+  const [itemDraftState, setItemDraftState] = useState<ItemDraftState | null>(null);
+  const [itemDialog, setItemDialog] = useState<ItemDialogState | null>(null);
+  const [itemDialogErrors, setItemDialogErrors] = useState<Record<string, string>>({});
+
+  const itemSource = itemSpecs.data ?? null;
+
+  if (itemSource !== null && itemDraftState?.source !== itemSource) {
+    const seeded = toItemDrafts(itemSource.items);
+    setItemDraftState({ source: itemSource, baseline: seeded, drafts: seeded });
+  }
+
+  const itemDrafts = itemDraftState?.drafts ?? [];
+  const isItemsDirty =
+    itemDraftState !== null && !isSameItemDrafts(itemDraftState.drafts, itemDraftState.baseline);
+
+  const itemsWrite = useMasterWrite<ItemDraft[], InspectionItemSpecListResponse>({
+    request: (drafts, headers) =>
+      client.PUT('/quality/inspection-plan-versions/{inspectionPlanVersionId}/items', {
+        params: {
+          path: { inspectionPlanVersionId: selectedVersionId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { items: toItemsPayload(selectedVersionId ?? 0, drafts) },
+      }),
+    /*
+     * 계약이 이 경로에 If-Match를 요구하지 않는다 — 컬렉션 전체 치환이라 행 단위 낙관적 잠금이 없고
+     * 409도 없다. 상세 경로를 주면 토큰을 찾지 못했을 때 요청을 보내지 않고 멈춰
+     * 「저장을 눌러도 아무 일이 없다」가 된다.
+     */
+    etagPath: null,
+    /*
+     * 항목 저장이 버전의 판 번호를 올리는지 계약이 밝히지 않는다.
+     * 함께 무효화해 두면 어느 쪽이든 안전하고 비용은 조회 한 번이다.
+     */
+    invalidateKeys: [versionKeys.all],
+    /*
+     * 어느 행의 오류인지 계약이 알려 주지 않는다(필드명만 온다) — 인라인으로 낼 자리가 없다.
+     * 전부 배너로 올린다. 삼키면 어디에도 보이지 않는 오류가 된다.
+     */
+    knownFields: [],
+    onSuccess: (saved) => {
+      // 서버가 정본이다. 채번 방식(연번·간격)은 서버 재량이라 보낸 값과 다를 수 있다.
+      const reseeded = toItemDrafts(saved.items);
+      setItemDraftState((prev) =>
+        prev === null ? prev : { ...prev, baseline: reseeded, drafts: reseeded },
+      );
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const uomOptions = useUomOptions();
+  const equipmentOptions = useEquipmentOptions();
+
   /** 다른 버전으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다. */
   const resetVersionEditing = () => {
     versionCreateWrite.reset();
@@ -455,10 +547,55 @@ export const InspectionStandardScreen = () => {
     versionWrite.reset();
     confirmWrite.reset();
     obsoleteWrite.reset();
+    itemsWrite.reset();
     setVersionTransition(null);
     setVersionCreateValues(null);
     setVersionCreateFieldErrors({});
     setVersionFieldErrors({});
+    setItemDraftState(null);
+    setItemDialog(null);
+    setItemDialogErrors({});
+  };
+
+  const changeItemDrafts = (next: (drafts: ItemDraft[]) => ItemDraft[]) => {
+    setItemDraftState((prev) => (prev === null ? prev : { ...prev, drafts: next(prev.drafts) }));
+  };
+
+  const handleAddItem = () => {
+    setItemDialogErrors({});
+    setItemDialog({ mode: 'create', values: createItemDraft() });
+  };
+
+  const handleEditItem = (draftId: string) => {
+    const target = itemDrafts.find((draft) => draft.draftId === draftId);
+
+    if (target === undefined) return;
+
+    setItemDialogErrors({});
+    setItemDialog({ mode: 'edit', values: target });
+  };
+
+  /*
+   * 항목 저장은 목록 전체를 한 번에 보내므로 한 행의 잘못이 전체 저장을 무르게 한다 —
+   * 행이 표에 들어오기 전에 여기서 거른다. **경고는 막지 않는다**(계약 A-9 ⓑ).
+   */
+  const handleSubmitItemDialog = () => {
+    if (itemDialog === null) return;
+
+    const errors = validateItemDraft(itemDialog.values, itemDrafts);
+    setItemDialogErrors(errors);
+
+    if (Object.keys(errors).length > 0) return;
+
+    const committed = itemDialog.values;
+    changeItemDrafts((drafts) => upsertItemDraft(drafts, committed));
+    setItemDialog(null);
+  };
+
+  const handleSaveItems = () => {
+    if (itemDraftState === null) return;
+
+    itemsWrite.write(itemDraftState.drafts);
   };
 
   /** 다른 기준으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다. */
@@ -718,7 +855,7 @@ export const InspectionStandardScreen = () => {
    * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
    * 잃기 전에 먼저 막고 무엇을 하면 풀리는지 알린다.
    */
-  const isAnythingDirty = isPlanDirty || isVersionDirty;
+  const isAnythingDirty = isPlanDirty || isVersionDirty || isItemsDirty;
 
   const newRevisionDisabledReason = isAnythingDirty
     ? t.actionReasons.newVersionBlockedByUnsaved
@@ -1019,6 +1156,98 @@ export const InspectionStandardScreen = () => {
     );
   };
 
+  /**
+   * 항목 저장을 막는 사유. 잠금은 페인이 따로 다루므로 여기서는 잠금 밖의 사유만 고른다.
+   *
+   * 버전에 저장하지 않은 변경이 있으면 막는 이유: 항목 저장이 성공하면 버전 상세도 다시 불러오고,
+   * 그때 폼이 서버 값으로 다시 세워져 **사용자가 입력한 버전 값이 조용히 사라진다.**
+   */
+  const itemsSaveBlockedReason = ((): string | null => {
+    if (isVersionDirty) return t.actionReasons.itemsSaveBlockedByHeader;
+    if (hasInvalidItemDraft(itemDrafts)) return t.actionReasons.itemsSaveBlockedByInvalid;
+
+    return null;
+  })();
+
+  /**
+   * 단위 id를 사람이 읽는 이름으로 옮긴다.
+   * 목록에 없는 값은 코드를 그대로 낸다 — 빼 버리면 값이 사라진 것처럼 보인다.
+   */
+  const uomLabelOf = (uomId: string): string => {
+    const entry = uomOptions.entries.find((item) => item.value === uomId);
+
+    if (entry === undefined) return uomId;
+
+    return entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`;
+  };
+
+  /**
+   * 검사 항목이 쓰는 선택 목록이 잘리거나 실패했다는 사실을 표 위에 낸다.
+   * 알리지 않으면 단위 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
+   */
+  const itemOptionsNotice = (() => {
+    const lookups: LookupResult[] = [uomOptions, equipmentOptions];
+
+    if (lookups.some((lookup) => lookup.isError)) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.optionsLoadFailed}</AlertBanner>
+        </div>
+      );
+    }
+
+    if (lookups.some((lookup) => lookup.truncated)) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.optionsTruncated}</AlertBanner>
+        </div>
+      );
+    }
+
+    return null;
+  })();
+
+  /** 검사 항목 구획. 버전 등록 폼이 열려 있는 동안에는 붙일 버전이 없어 내지 않는다. */
+  const renderItemPane = (): ReactNode => {
+    if (selectedPlanId === null || versionCreateValues !== null) return null;
+
+    return (
+      <ItemPane
+        drafts={itemDrafts}
+        uomLabel={uomLabelOf}
+        isLoading={itemSpecs.isPending}
+        isVersionSelected={selectedVersionId !== null}
+        loadError={
+          itemSpecs.isError ? (
+            <LoadErrorBanner error={itemSpecs.error} onRetry={() => void itemSpecs.refetch()} />
+          ) : null
+        }
+        optionsNotice={itemOptionsNotice}
+        isEditable={versionStatus?.isEditable === true}
+        lockReason={t.actionReasons.versionLocked}
+        isDirty={isItemsDirty}
+        isSaving={itemsWrite.isSaving}
+        saveBlockedReason={itemsSaveBlockedReason}
+        /* 전체 치환에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니다. */
+        banner={<PlanActionBanner error={itemsWrite.error} />}
+        onAdd={handleAddItem}
+        onEdit={handleEditItem}
+        onRemove={(draftId) => {
+          changeItemDrafts((drafts) => removeItemDraft(drafts, draftId));
+        }}
+        /* 순서 이동은 초안만 바꾼다. 여기서 서버를 부르지 않는다(공유계약 A-5). */
+        onReorder={(from, to) => {
+          changeItemDrafts((drafts) => moveItemDraft(drafts, from, to));
+        }}
+        onSave={handleSaveItems}
+        onCancel={() => {
+          itemsWrite.reset();
+          setItemDraftState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
+        }}
+      />
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -1084,6 +1313,7 @@ export const InspectionStandardScreen = () => {
         <div className="pane-stack">
           {renderPlanPane()}
           {renderVersionFormPane()}
+          {renderItemPane()}
         </div>
       </div>
 
@@ -1112,6 +1342,43 @@ export const InspectionStandardScreen = () => {
               onReload={planAction === 'deactivate' ? handleReloadPlanDetail : undefined}
             />
           }
+        />
+      )}
+
+      {/* 창은 열 때만 붙인다 — 닫힌 창을 남겨 두면 지난 편집 값이 그대로 살아 있다. */}
+      {itemDialog !== null && (
+        <ItemFormDialog
+          open
+          mode={itemDialog.mode}
+          values={itemDialog.values}
+          onChange={(patch) => {
+            setItemDialog((prev) =>
+              prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+            );
+
+            for (const field of Object.keys(patch)) {
+              setItemDialogErrors((prev) => {
+                if (!(field in prev)) return prev;
+                const next = { ...prev };
+                delete next[field];
+                return next;
+              });
+            }
+          }}
+          fieldErrors={itemDialogErrors}
+          /* 경고는 확인을 막지 않는다 — 계약이 경고 등급으로 정했다(A-9 ⓑ). */
+          fieldWarnings={warnItemDraft(itemDialog.values)}
+          uomOptions={optionsFor(uomOptions, itemDialog.values.uomId)}
+          equipmentOptions={optionsFor(
+            equipmentOptions,
+            itemDialog.values.defaultInspectionEquipmentId,
+          )}
+          isSubmitting={false}
+          onClose={() => {
+            setItemDialog(null);
+            setItemDialogErrors({});
+          }}
+          onSubmit={handleSubmitItemDialog}
         />
       )}
 
