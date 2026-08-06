@@ -234,6 +234,8 @@ const routing = {
     obsoleteNotReady: '폐기는 아직 실행할 수 없습니다. 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     newRevisionNotReady:
       '신규 Rev 발행은 아직 실행할 수 없습니다. 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    createRoutingNotReady:
+      'Routing 등록은 아직 할 수 없습니다. 등록 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     addOperationNotReady:
       '공정 추가는 아직 할 수 없습니다. 편집 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
   },

@@ -6,7 +6,8 @@ import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
 import { ItemPane } from './item-pane';
-import { isTruncated, useItemList } from './queries';
+import { isTruncated, useItemList, useRoutingList } from './queries';
+import { RevisionPane } from './revision-pane';
 import type { ItemFilters } from './types';
 
 const t = messages.routing;
@@ -83,9 +84,13 @@ export const RoutingScreen = () => {
   );
 
   const selectedItemId = Number(searchParams.get('item') ?? '') || null;
+  const selectedRoutingId = Number(searchParams.get('rev') ?? '') || null;
 
   const itemList = useItemList(filters);
   const items = itemList.data?.items ?? [];
+
+  const revisionList = useRoutingList(selectedItemId);
+  const revisions = revisionList.data?.items ?? [];
 
   const updateParams = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
@@ -144,13 +149,28 @@ export const RoutingScreen = () => {
           }
         />
 
-        <section className="pane" aria-label={t.panes.revision}>
-          <EmptyState size="sm" title={t.empty.itemNotSelected} />
-        </section>
+        <RevisionPane
+          revisions={revisions}
+          isLoading={revisionList.isPending}
+          isItemSelected={selectedItemId !== null}
+          selectedRoutingId={selectedRoutingId}
+          onSelect={(routingId) => updateParams({ rev: String(routingId) })}
+          loadError={
+            revisionList.isError ? (
+              <LoadErrorBanner
+                error={revisionList.error}
+                onRetry={() => void revisionList.refetch()}
+              />
+            ) : null
+          }
+        />
 
         <div className="pane-stack">
           <section className="pane" aria-label={t.panes.header}>
-            <EmptyState size="sm" title={t.empty.itemNotSelected} />
+            <EmptyState
+              size="sm"
+              title={selectedItemId === null ? t.empty.itemNotSelected : t.empty.revisionNotSelected}
+            />
           </section>
         </div>
       </div>
