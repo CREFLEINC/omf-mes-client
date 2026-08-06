@@ -203,6 +203,51 @@ describe('validateCode — R2도 상위를 바꾸려 할 때만 발동한다', (
   });
 });
 
+/*
+ * 등록에는 **저장된 상위가 없다.** 폼의 기준값은 「상세 추가」가 심은 씨앗이지 서버 값이 아니다.
+ * 호출자가 그 씨앗을 `savedParentId`로 넘겨도 규칙이 그대로 믿으면 3계층이 새로 만들어진다.
+ * 규칙 쪽이 정본이라 여기서 막는다 — 호출자가 무엇을 넘기든 뚫리지 않아야 한다.
+ */
+describe('validateCode — 등록에서는 저장된 상위를 보지 않는다', () => {
+  const createContext = (savedParentId: string): CodeHierarchyContext => ({
+    items: hierarchyFixtures,
+    editingId: null,
+    savedParentId,
+  });
+
+  it('씨앗이 상세 코드이면 그 값을 그대로 넘겨도 R2가 막는다', () => {
+    expect(
+      validateCode({ code: 'DF-99', name: '신규', parentId: '1002' }, createContext('1002'))
+        .parentId,
+    ).toBe('상위는 대분류만 지정할 수 있습니다. 계층은 2단계까지입니다.');
+  });
+
+  it('씨앗을 빈 값으로 넘겨도 같은 결과다 — 호출자에 기대지 않는다', () => {
+    expect(
+      validateCode({ code: 'DF-99', name: '신규', parentId: '1002' }, createContext('')).parentId,
+    ).toBe('상위는 대분류만 지정할 수 있습니다. 계층은 2단계까지입니다.');
+  });
+
+  it('대분류를 씨앗으로 한 상세 등록은 통과한다', () => {
+    expect(
+      validateCode({ code: 'DF-99', name: '신규', parentId: '1001' }, createContext('1001')),
+    ).toEqual({});
+  });
+
+  /* 하위가 있는 대분류 밑에 상세를 하나 더 만드는 것은 2계층 그대로다 — R3의 대상이 아니다. */
+  it('씨앗이 하위를 가진 대분류여도 등록은 통과한다', () => {
+    expect(
+      validateCode({ code: 'DF-13', name: '눌림' , parentId: '1001' }, createContext('1001')),
+    ).toEqual({});
+  });
+
+  it('상위를 비운 대분류 등록은 그대로 통과한다', () => {
+    expect(validateCode({ code: 'DF-99', name: '신규', parentId: '' }, createContext(''))).toEqual(
+      {},
+    );
+  });
+});
+
 describe('validateCode — 여러 오류', () => {
   it('입력 오류와 계층 차단을 함께 낸다', () => {
     const errors = validateCode(values({ code: '', name: '  ', parentId: '1002' }), context(null));

@@ -44,6 +44,11 @@ export const CODE_FORM_FIELDS: readonly (keyof CodeFormValues)[] = ['code', 'nam
  * 상태라 새 위반을 만들지 않는다. R1은 좁히지 않는다 — 자기참조는 계약→화면 변환이
  * 대분류로 접으므로 「저장된 상위」가 될 수 없다.
  *
+ * **좁히기는 수정에만 적용된다.** 등록에는 저장된 상위가 없으므로 R2는 언제나 발동한다.
+ * R3는 등록에서 아예 돌지 않는다 — 그 규칙의 대상은 「편집 중인 코드가 가진 하위」이고
+ * 새로 만드는 코드에는 하위가 없다. 씨앗이 하위를 가진 대분류여도 그 밑에 상세를
+ * 하나 더 만드는 것은 2계층 그대로다.
+ *
  * **목록에 없는 상위는 막지 않는다.** 전체 목록이 잘렸을 때 계층을 판정할 수 없는데 막아 버리면
  * 고칠 길이 사라진다. 그 경우는 서버 400에 맡기고 오류를 상위 선택칸 옆에 낸다.
  *
@@ -76,7 +81,15 @@ export const validateCode = (
     return errors;
   }
 
-  const isChangingParent = values.parentId !== savedParentId;
+  /*
+   * 「지금 상위 관계를 새로 만들거나 바꾸려 하는가」.
+   *
+   * **등록에는 저장된 상위가 없다.** 폼의 기준값은 「상세 추가」가 심은 씨앗이지 서버 값이 아니다.
+   * 그래서 등록에서는 넣은 값이 곧 새로 만드는 관계이고, 규칙이 언제나 발동해야 한다.
+   * 호출자가 씨앗을 `savedParentId`로 넘기더라도 여기서 뚫리지 않는다 —
+   * 규칙 쪽이 정본이고, 호출자가 엉뚱한 값을 넘겼는데 규칙이 그대로 믿으면 그것이 곧 구멍이다.
+   */
+  const isChangingParent = editingId === null || values.parentId !== savedParentId;
 
   if (editingId !== null && isChangingParent && hasChildren(items, editingId)) {
     errors.parentId = t.parentBlockedByChildren;

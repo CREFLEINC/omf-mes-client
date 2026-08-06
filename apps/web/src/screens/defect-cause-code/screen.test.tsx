@@ -586,6 +586,27 @@ describe('DefectCauseCodeScreen — 등록 저장', () => {
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 
+  /*
+   * 씨앗이 상세 코드인 채로 등록하면 3계층이 **새로** 만들어진다.
+   * 도달 경로는 계획 결정 4가 두 겹 방어를 둔 이유로 명시한 바로 그 둘이다 —
+   * 주소 조작, 그리고 대분류를 골라 폼을 연 뒤 그 코드가 상세로 바뀌는 목록 갱신 시차.
+   */
+  it('씨앗이 상세 코드이면 등록 요청이 나가지 않고 사유가 보인다', async () => {
+    const { requests, user } = renderScreen(
+      createFlowRoutes(defectCreateRoute(() => jsonResponse(CREATED_DEFECT, { status: 201 }))),
+      '?sel=1002&mode=create',
+    );
+
+    await user.type(await screen.findByLabelText('코드'), 'DF-99');
+    await user.type(screen.getByLabelText('명칭'), '신규');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      screen.getByText('상위는 대분류만 지정할 수 있습니다. 계층은 2단계까지입니다.'),
+    ).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
   it('서버가 준 필드 오류는 입력칸 옆에, 화면이 모르는 이름은 배너로 간다', async () => {
     const { user } = renderScreen(
       createFlowRoutes(

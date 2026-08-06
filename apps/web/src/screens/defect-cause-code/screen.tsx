@@ -282,8 +282,12 @@ export const DefectCauseCodeScreen = () => {
     const errors = validateCode(formValues, {
       items: options.items,
       editingId: selectedId,
-      // 기준값이 곧 「서버에 저장돼 있는 상위」다 — 저장에 성공하면 기준값도 함께 갱신된다.
-      savedParentId: formState?.baseline.parentId ?? '',
+      /*
+       * 수정에서는 폼의 기준값이 곧 「서버에 저장돼 있는 상위」다 — 저장에 성공하면 함께 갱신된다.
+       * 등록에는 저장된 상위가 **없다.** 그때의 기준값은 「상세 추가」가 심은 씨앗이지 서버 값이
+       * 아니므로 넘기지 않는다 — 값의 이름과 실제가 어긋난 채로 두면 다음 사람이 또 넘긴다.
+       */
+      savedParentId: isCreateMode ? '' : (formState?.baseline.parentId ?? ''),
     });
     setLocalFieldErrors(errors);
 
