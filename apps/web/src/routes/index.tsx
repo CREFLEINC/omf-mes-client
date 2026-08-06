@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
+import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
@@ -21,6 +22,7 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/routing', element: <RoutingScreen /> },
       { path: 'master-data/inspection-standard', element: <InspectionStandardScreen /> },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },
+      { path: 'master-data/common-code', element: <CommonCodeScreen /> },
       { path: 'master-data/integration-sync', element: <IntegrationSyncScreen /> },
     ],
   },

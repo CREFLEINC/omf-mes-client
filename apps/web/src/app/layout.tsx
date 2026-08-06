@@ -49,6 +49,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/master-data/defect-cause-code" icon="rule">
               불량·원인코드
             </NavItem>
+            <NavItem to="/master-data/common-code" icon="list_alt">
+              공통코드·조직·작업자
+            </NavItem>
             <NavItem to="/master-data/integration-sync" icon="sync_alt">
               연계 동기화 현황
             </NavItem>

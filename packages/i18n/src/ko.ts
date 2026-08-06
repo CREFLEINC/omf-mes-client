@@ -100,7 +100,8 @@ const warehouseLocation = {
       '라벨 이미지는 아직 만들 수 없습니다. 생성 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     changeHistoryUnavailable:
       '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-    plantFixedAfterCreate: '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
+    plantFixedAfterCreate:
+      '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
     warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
   },
   loading: {
@@ -361,8 +362,7 @@ const routing = {
     confirmDescription:
       '확정하면 이 Rev는 더 이상 수정할 수 없습니다. 변경하려면 신규 Rev를 발행해야 합니다.',
     obsoleteTitle: '이 Rev를 폐기할까요?',
-    obsoleteDescription:
-      '삭제하지 않습니다. 폐기하면 새 작업에서 이 Rev를 쓸 수 없게 됩니다.',
+    obsoleteDescription: '삭제하지 않습니다. 폐기하면 새 작업에서 이 Rev를 쓸 수 없게 됩니다.',
     /*
      * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다 —
      * 이 창의 확인은 표에만 반영되고 서버 반영은 「저장」 한 번뿐이다. 그 사실을 감추지 않는다.
@@ -728,8 +728,7 @@ const inspectionStandard = {
    * **서버 문구가 비어 있어도 무엇을 하라는 안내가 남아야 한다** — 실제로 빈 문구가 온다.
    */
   serverErrors: {
-    confirmedVersionRequired:
-      '승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.',
+    confirmedVersionRequired: '승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.',
     lineRequired: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
   },
   /** 확정·폐기 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
@@ -750,8 +749,7 @@ const inspectionStandard = {
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
     obsoleteTitle: '이 버전을 폐기할까요?',
-    obsoleteDescription:
-      '삭제하지 않습니다. 폐기하면 새 검사에서 이 버전을 쓸 수 없게 됩니다.',
+    obsoleteDescription: '삭제하지 않습니다. 폐기하면 새 검사에서 이 버전을 쓸 수 없게 됩니다.',
     itemCreateTitle: '검사 항목 추가',
     itemEditTitle: '검사 항목 수정',
     /*
@@ -921,6 +919,90 @@ const inspectionStandard = {
   },
 } as const;
 
+/**
+ * W-06-06 공통코드·조직·작업자. 마스터 형 화면의 세 번째 벌이라 문구 구조는 `inspectionStandard`와 같다.
+ *
+ * **`codeValue` 묶음은 통째로 옮겨질 것을 전제로 모아 둔다.** 코드값 편집 부분을 다른 화면이
+ * 그대로 다시 쓰게 되어 있어(omf-mes#13), 그 부분의 문구가 다른 자원의 문구와 섞이면
+ * 옮길 때 어느 열쇠가 딸려 가야 하는지 가릴 수 없다.
+ */
+const commonCode = {
+  title: '공통코드·조직·작업자',
+  breadcrumbRoot: '기준정보',
+  /** 탭 라벨. **만든 탭만 둔다** — 없는 탭의 라벨을 미리 두면 무엇이 렌더되는지 흐려진다. */
+  tabs: {
+    label: '공통코드·조직·작업자',
+    code: '공통코드',
+  },
+  panes: {
+    codeGroup: '코드그룹',
+    codeGroupForm: '코드그룹 정보',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+  },
+  /**
+   * 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다.
+   * 좌 목록과 코드값 목록 둘 다 계약에 쪽 나눔이 있다.
+   */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+  filters: {
+    codeGroupSearchLabel: '코드그룹 검색',
+    codeGroupSearchPlaceholder: '그룹코드 또는 그룹명',
+    chipKeyword: (value: string): string => `검색어: ${value}`,
+    chipRemoveKeyword: '검색어 조건 제거',
+    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+  },
+  loading: {
+    codeGroups: '코드그룹 목록을 불러오는 중',
+  },
+  empty: {
+    /*
+     * 결과는 있는데 **이 쪽에는** 없다. 주소를 손으로 고치거나 조건이 좁아졌을 때 생긴다 —
+     * 「등록된 것이 없다」로 내면 사실과 다른 안내가 된다.
+     */
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
+  },
+  values: {
+    /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+    empty: '—',
+    /*
+     * 좁은 좌 페인에서 「사용 여부」 열을 따로 두면 이름 열이 짓눌린다 —
+     * 이름 뒤 접미로 붙여 열을 늘리지 않는다.
+     */
+    inactiveSuffix: ' (미사용)',
+  },
+  codeGroup: {
+    /*
+     * 결정 6 — 코드 체계 정의가 표준화 작업 중이라 기대 목록이 비어 있다.
+     * 그 사실을 감추지 않고 목록 위에 한 번 낸다.
+     */
+    provisionalCatalog:
+      '임시 목록입니다. 코드 체계가 확정되면 여기 보이는 코드그룹의 구성이 바뀔 수 있습니다.',
+    fields: {
+      groupCode: '그룹코드',
+      groupName: '그룹명',
+      description: '설명',
+    },
+    empty: {
+      noneTitle: '등록된 코드그룹이 없습니다',
+      noneDescription: '조건 없이 조회했으나 코드그룹이 하나도 없습니다.',
+      noMatchTitle: '조건에 맞는 코드그룹이 없습니다',
+      noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+      notSelected: '좌측에서 코드그룹을 먼저 고르세요',
+    },
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -934,6 +1016,7 @@ export const ko = {
   defectCauseCode,
   integrationSync,
   inspectionStandard,
+  commonCode,
 } as const;
 
 export type Messages = typeof ko;
