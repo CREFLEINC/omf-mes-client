@@ -207,15 +207,20 @@ describe('OperationsPane — 편집', () => {
     ).toBeDisabled();
   });
 
-  /** 순서를 바꾸는 것은 초안만 바꾼다. 여기서 서버를 부르지 않는다(공유계약 A-5). */
-  it('아래로 이동은 자기 자리와 다음 자리를 올린다', async () => {
-    const { props, user } = renderPane();
+  /** 순서를 바꾸는 것은 초안만 바꾼다. 여기서 저장을 부르지 않는다(공유계약 A-5). */
+  it('아래로 이동은 자기 자리와 다음 자리를 올리고 저장은 부르지 않는다', async () => {
+    const { props, user } = renderPane({ isDirty: true });
 
     await user.click(
       within(bodyRows()[0] as HTMLElement).getByRole('button', { name: '아래로 이동' }),
     );
+    await user.click(
+      within(bodyRows()[1] as HTMLElement).getByRole('button', { name: '위로 이동' }),
+    );
 
-    expect(props.onReorder).toHaveBeenCalledWith(0, 1);
+    expect(props.onReorder).toHaveBeenNthCalledWith(1, 0, 1);
+    expect(props.onReorder).toHaveBeenNthCalledWith(2, 1, 0);
+    expect(props.onSave).not.toHaveBeenCalled();
   });
 
   it('고친 것이 없으면 저장·취소가 비활성이다', () => {
