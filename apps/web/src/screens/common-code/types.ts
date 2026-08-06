@@ -13,7 +13,38 @@ import type { components } from '@omf-mes/api-client';
  */
 
 export type CodeGroup = components['schemas']['CodeGroup'];
+export type Department = components['schemas']['Department'];
 export type PageMeta = components['schemas']['PageMeta'];
+
+/**
+ * 계층 판정에 쓰는 부서 한 행. **자기참조가 이미 접힌 값이다** —
+ * 접기는 `department-mappers.ts` 한 곳에서만 하고, 이 타입을 받는 쪽은 접힌 뒤의 값만 다룬다.
+ * 규칙이 두 곳에 생기면 반드시 한쪽이 어긋난다.
+ */
+export interface DepartmentRow {
+  departmentId: number;
+  departmentCode: string;
+  departmentName: string;
+  /** 뿌리 부서면 null. 자기참조는 여기 오지 않는다 */
+  parentDepartmentId: number | null;
+  businessUnitId: number | null;
+  isActive: boolean;
+}
+
+/**
+ * 선택 목록의 원본 항목. 사용 여부를 함께 들고 있어야
+ * 「사용 중인 것 + 지금 고른 값」만 선택지로 낼 수 있다.
+ */
+export interface LookupEntry {
+  value: string;
+  label: string;
+  isActive: boolean;
+}
+
+export interface SelectOption {
+  value: string;
+  label: string;
+}
 
 /**
  * 좌 페인의 조회 조건. URL이 소유하며 화면 상태로 복제하지 않는다.
@@ -35,4 +66,31 @@ export interface CodeGroupFormValues {
   groupName: string;
   /** 계약이 널을 허용한다 — 비우는 것이 정상 값이다. */
   description: string;
+}
+
+/**
+ * 좌 목록 조건 — **검색어 + 선택 축 하나 + 미사용 포함**.
+ * 조직 탭(사업부)과 작업자 탭(부서)이 같은 모양이라 한 타입으로 둔다.
+ *
+ * 선택 축이 문자열인 이유는 디자인 시스템 선택칸이 문자열을 다루기 때문이다.
+ * 계약 표현(숫자)으로의 변환은 `filters.ts`가 맡는다.
+ */
+export interface ScopedFilters {
+  q: string;
+  /** 조직 탭은 사업부, 작업자 탭은 부서. 비면 「전체」다 */
+  scopeId: string;
+  includeInactive: boolean;
+}
+
+/**
+ * 부서 폼 값. 전부 문자열인 이유는 디자인 시스템 입력·선택이 문자열을 다루기 때문이다.
+ * 계약 표현(숫자·널)으로의 변환은 `department-mappers.ts`가 맡는다.
+ */
+export interface DepartmentFormValues {
+  departmentCode: string;
+  departmentName: string;
+  /** 비우면 뿌리 부서다 — 계약이 널을 허용한다. */
+  parentDepartmentId: string;
+  /** 계약이 널을 허용한다. */
+  businessUnitId: string;
 }

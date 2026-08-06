@@ -2,12 +2,20 @@ import { describe, expect, it } from 'vitest';
 
 import {
   clearFilter,
+  clearScopedFilter,
   hasAnyFilter,
+  hasAnyScopedFilter,
   readCodeGroupFilters,
   readPage,
+  readScopedFilters,
+  readSelectedId,
   toCodeGroupListQuery,
+  toDepartmentListQuery,
   toFilterChips,
+  toScopedFilterChips,
+  toScopedSearchParams,
   toSearchParams,
+  toWorkerListQuery,
 } from './filters';
 
 const params = (search: string): URLSearchParams => new URLSearchParams(search);
@@ -46,6 +54,190 @@ describe('readPage', () => {
     expect(readPage(params('?page=-2'))).toBe(1);
     expect(readPage(params('?page=1.5'))).toBe(1);
     expect(readPage(params('?page=abc'))).toBe(1);
+  });
+});
+
+/*
+ * 선택 번호는 네 자리(`grp`·`val`·`dep`·`wkr`)에서 같은 규칙으로 읽는다 —
+ * 자리마다 따로 해석하면 한 자리만 규칙이 어긋나도 드러나지 않는다.
+ */
+describe('readSelectedId', () => {
+  it('주소의 선택 번호를 읽는다', () => {
+    expect(readSelectedId(params('?grp=1001'), 'grp')).toBe(1001);
+    expect(readSelectedId(params('?dep=1001&wkr=2002'), 'wkr')).toBe(2002);
+  });
+
+  it('없으면 고르지 않은 것이다', () => {
+    expect(readSelectedId(params(''), 'grp')).toBeNull();
+    expect(readSelectedId(params('?grp='), 'grp')).toBeNull();
+  });
+
+  /* 식별자는 1부터 매겨진다 — 0·음수·소수·문자는 어떤 자원도 가리키지 않는다. */
+  it('양의 정수가 아니면 고르지 않은 것으로 본다', () => {
+    expect(readSelectedId(params('?grp=0'), 'grp')).toBeNull();
+    expect(readSelectedId(params('?grp=-3'), 'grp')).toBeNull();
+    expect(readSelectedId(params('?grp=1.5'), 'grp')).toBeNull();
+    expect(readSelectedId(params('?grp=abc'), 'grp')).toBeNull();
+    expect(readSelectedId(params('?grp=12abc'), 'grp')).toBeNull();
+  });
+});
+
+describe('readScopedFilters', () => {
+  it('조직 탭은 사업부를, 작업자 탭은 부서를 선택 축으로 읽는다', () => {
+    expect(readScopedFilters(params('?q=SYN&bu=1001&inactive=1'), 'bu')).toEqual({
+      q: 'SYN',
+      scopeId: '1001',
+      includeInactive: true,
+    });
+    expect(readScopedFilters(params('?q=SYN&dept=2002'), 'dept')).toEqual({
+      q: 'SYN',
+      scopeId: '2002',
+      includeInactive: false,
+    });
+  });
+
+  it('조건이 없으면 빈 조건이다', () => {
+    expect(readScopedFilters(params(''), 'bu')).toEqual({
+      q: '',
+      scopeId: '',
+      includeInactive: false,
+    });
+  });
+
+  /* 다른 탭의 선택 축 키를 읽지 않는다 — 읽으면 탭 사이로 조건이 샌다. */
+  it('자기 탭의 선택 축만 읽는다', () => {
+    expect(readScopedFilters(params('?dept=2002'), 'bu').scopeId).toBe('');
+  });
+});
+
+describe('toScopedSearchParams', () => {
+  it('빈 조건과 첫 쪽은 키 자체를 두지 않는다', () => {
+    const next = toScopedSearchParams(
+      'org',
+      'bu',
+      { q: '', scopeId: '', includeInactive: false },
+      1,
+    );
+
+    expect([...next.keys()]).toEqual(['tab']);
+    expect(next.get('tab')).toBe('org');
+  });
+
+  it('걸린 조건과 두 번째 이후 쪽만 싣는다', () => {
+    const next = toScopedSearchParams(
+      'worker',
+      'dept',
+      { q: 'SYN', scopeId: '2002', includeInactive: true },
+      4,
+    );
+
+    expect(next.get('q')).toBe('SYN');
+    expect(next.get('dept')).toBe('2002');
+    expect(next.get('inactive')).toBe('1');
+    expect(next.get('page')).toBe('4');
+  });
+
+  it('선택 파라미터를 담지 않는다', () => {
+    const next = toScopedSearchParams(
+      'org',
+      'bu',
+      { q: 'SYN', scopeId: '1001', includeInactive: true },
+      2,
+    );
+
+    for (const key of ['dep', 'wkr', 'grp', 'val', 'new']) {
+      expect(next.has(key)).toBe(false);
+    }
+  });
+});
+
+describe('toDepartmentListQuery', () => {
+  it('빈 값·꺼진 확인칸·첫 쪽을 싣지 않는다', () => {
+    expect(toDepartmentListQuery({ q: '', scopeId: '', includeInactive: false }, 1)).toEqual({});
+  });
+
+  it('걸린 조건만 계약 이름으로 싣는다', () => {
+    expect(toDepartmentListQuery({ q: 'SYN', scopeId: '1001', includeInactive: true }, 2)).toEqual({
+      q: 'SYN',
+      businessUnitId: 1001,
+      includeInactive: true,
+      page: 2,
+    });
+  });
+});
+
+describe('toWorkerListQuery', () => {
+  it('걸린 조건만 계약 이름으로 싣는다', () => {
+    expect(toWorkerListQuery({ q: 'SYN', scopeId: '2002', includeInactive: true }, 3)).toEqual({
+      q: 'SYN',
+      departmentId: 2002,
+      includeInactive: true,
+      page: 3,
+    });
+  });
+
+  /* 공장·사업부 필터를 만들지 않았다 — 화면에 없는 조건을 요청에 실으면 되돌릴 수단이 없다. */
+  it('공장·사업부를 싣지 않는다', () => {
+    const query = toWorkerListQuery({ q: 'SYN', scopeId: '2002', includeInactive: false }, 1);
+
+    expect('plantId' in query).toBe(false);
+    expect('businessUnitId' in query).toBe(false);
+  });
+});
+
+describe('toScopedFilterChips', () => {
+  const labels = {
+    keyword: (value: string) => `검색어: ${value}`,
+    keywordRemove: '검색어 조건 제거',
+    scope: (label: string) => `사업부: ${label}`,
+    scopeRemove: '사업부 조건 제거',
+    includeInactiveRemove: '미사용 포함 조건 제거',
+  };
+
+  it('걸린 조건마다 칩 하나가 나온다', () => {
+    const chips = toScopedFilterChips(
+      { q: 'SYN', scopeId: '1001', includeInactive: true },
+      () => '제조사업부',
+      labels,
+    );
+
+    expect(chips.map((chip) => chip.key)).toEqual(['q', 'scopeId', 'includeInactive']);
+    expect(chips[1]?.label).toBe('사업부: 제조사업부');
+  });
+
+  it('조건이 없으면 칩도 없다', () => {
+    expect(
+      toScopedFilterChips({ q: '', scopeId: '', includeInactive: false }, () => '', labels),
+    ).toEqual([]);
+  });
+
+  it('칩마다 제거 버튼의 접근 이름이 다르다', () => {
+    const chips = toScopedFilterChips(
+      { q: 'SYN', scopeId: '1001', includeInactive: true },
+      () => '제조사업부',
+      labels,
+    );
+    const removeLabels = chips.map((chip) => chip.removeLabel);
+
+    expect(new Set(removeLabels).size).toBe(removeLabels.length);
+  });
+});
+
+describe('hasAnyScopedFilter · clearScopedFilter', () => {
+  it('조건이 하나라도 있으면 참이다', () => {
+    expect(hasAnyScopedFilter({ q: '', scopeId: '1001', includeInactive: false })).toBe(true);
+    expect(hasAnyScopedFilter({ q: '', scopeId: '', includeInactive: false })).toBe(false);
+  });
+
+  it('조건 하나만 푼다 — 키마다 「비었다」의 표현이 다르다', () => {
+    const filters = { q: 'SYN', scopeId: '1001', includeInactive: true };
+
+    expect(clearScopedFilter(filters, 'scopeId')).toEqual({ ...filters, scopeId: '' });
+    expect(clearScopedFilter(filters, 'includeInactive')).toEqual({
+      ...filters,
+      includeInactive: false,
+    });
+    expect(clearScopedFilter(filters, 'q')).toEqual({ ...filters, q: '' });
   });
 });
 

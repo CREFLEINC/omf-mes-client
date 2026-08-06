@@ -40,11 +40,18 @@ export const codeGroupKeys = {
 export const useCodeGroupList = (
   filters: CodeGroupFilters,
   page: number,
+  enabled: boolean,
 ): UseQueryResult<CodeGroupListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: codeGroupKeys.list(filters, page),
+    /*
+     * 다른 탭에 있는 동안에는 조회하지 않는다. 보이지 않는 목록을 받아 둘 이유가 없고,
+     * 주소 키(`q`·`inactive`·`page`)를 탭이 공유하므로 손으로 고친 주소에서
+     * 「부서를 찾던 말」로 코드그룹을 조회하는 일이 생긴다.
+     */
+    enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/code-groups', { params: { query: toCodeGroupListQuery(filters, page) } }),

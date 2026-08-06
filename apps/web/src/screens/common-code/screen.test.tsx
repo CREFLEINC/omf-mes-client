@@ -11,7 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { codeGroupFixtures, codeValueFixtures } from './fixtures';
+import { codeGroupFixtures, codeValueFixtures, departmentFixtures } from './fixtures';
 import { CommonCodeScreen } from './screen';
 
 type Editability = components['schemas']['Editability'];
@@ -194,18 +194,70 @@ const codeValueDetailRoute = (
 /** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const DEPARTMENTS_PATH = '/mdm/departments';
+const BUSINESS_UNITS_PATH = '/mdm/business-units';
+
+/**
+ * 부서 목록. 좌 목록 조회와 상위 선택지 조회가 **같은 경로**를 쓴다 —
+ * 선택지 조회는 `includeInactive=true`를 늘 싣고 그 밖의 조건을 싣지 않는다.
+ */
+const isDepartmentOptionsRequest = (request: Request): boolean => {
+  const url = new URL(request.url);
+
+  return (
+    url.searchParams.get('includeInactive') === 'true' &&
+    !url.searchParams.has('q') &&
+    !url.searchParams.has('businessUnitId') &&
+    !url.searchParams.has('page')
+  );
+};
+
+const departmentListRoute = (
+  items = departmentFixtures,
+  pageMeta: PageStub = { page: 1, size: 50, total: departmentFixtures.length },
+): StubRoute => ({
+  match: (request) => isGet(request, DEPARTMENTS_PATH) && !isDepartmentOptionsRequest(request),
+  respond: () => jsonResponse({ items, page: pageMeta }),
+});
+
+const businessUnitFixtures = [
+  {
+    businessUnitId: 4001,
+    legalEntityId: 5001,
+    businessUnitCode: 'SYN-BU-01',
+    businessUnitName: '합성 사업부 A',
+    isActive: true,
+  },
+];
+
+const businessUnitsRoute = (
+  items: unknown[] = businessUnitFixtures,
+  pageMeta: PageStub = { page: 1, size: 50, total: businessUnitFixtures.length },
+): StubRoute => ({
+  match: (request) => isGet(request, BUSINESS_UNITS_PATH),
+  respond: () => jsonResponse({ items, page: pageMeta }),
+});
+
+const departmentRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requestsTo(requests, DEPARTMENTS_PATH);
+
+const departmentPane = (): HTMLElement => screen.getByRole('region', { name: '부서' });
+
+/** 조직 탭의 기본 스텁 묶음. 탭이 열리면 부서 목록과 사업부 선택지가 함께 필요하다. */
+const orgRoutes = (): StubRoute[] => [departmentListRoute(), businessUnitsRoute()];
+
 describe('CommonCodeScreen — 탭', () => {
   /* C2 — 만든 탭만 렌더한다. 자리만 먼저 두면 「눌러도 빈 화면인」 탭이 생긴다. */
-  it('탭 묶음이 있고 만든 탭 하나만 렌더된다', async () => {
+  it('탭 묶음에 만든 탭만 렌더되고 첫 탭이 활성이다', async () => {
     renderScreen([codeGroupListRoute()]);
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     const tablist = screen.getByRole('tablist', { name: '공통코드·조직·작업자' });
     const tabs = within(tablist).getAllByRole('tab');
 
-    expect(tabs).toHaveLength(1);
-    expect(tabs[0]).toHaveTextContent('공통코드');
+    expect(tabs.map((element) => element.textContent)).toEqual(['공통코드', '조직(부서)']);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
   });
 
   it('주소의 탭 값이 모르는 값이면 공통코드 탭으로 떨어진다', async () => {
@@ -224,7 +276,7 @@ describe('CommonCodeScreen — 탭', () => {
 
   /* 아직 만들지 않은 탭의 주소값도 모르는 값이다 — 빈 화면이 되지 않아야 한다. */
   it('아직 만들지 않은 탭 값으로 들어와도 코드그룹 목록이 보인다', async () => {
-    renderScreen([codeGroupListRoute()], '?tab=org');
+    renderScreen([codeGroupListRoute()], '?tab=worker');
 
     expect(await screen.findByRole('button', { name: 'SYN-GRP-01' })).toBeInTheDocument();
   });
@@ -1931,6 +1983,340 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
       }),
     );
     await screen.findByDisplayValue('SYN-GRP-09');
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+});
+
+describe('CommonCodeScreen — 부서 목록 조회 (C41·C45·C47)', () => {
+  /* C41 — 조직 탭에 들어오면 부서 목록이 한 번만 나가고 조건이 없으면 쿼리도 없다. */
+  it('조직 탭에 들어오면 부서 목록 요청이 한 번 나간다', async () => {
+    const { requests } = renderScreen(orgRoutes(), '?tab=org');
+
+    expect(await screen.findByRole('button', { name: 'SYN-DEPT-01' })).toBeInTheDocument();
+
+    const sent = departmentRequests(requests);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.url.search).toBe('');
+  });
+
+  /* 다른 탭의 목록을 함께 받아 두지 않는다 — 보이지 않는 목록을 조회할 이유가 없다. */
+  it('조직 탭에서는 코드그룹 목록을 조회하지 않는다', async () => {
+    const { requests } = renderScreen(orgRoutes(), '?tab=org');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    expect(codeGroupRequests(requests)).toHaveLength(0);
+  });
+
+  /* C41 — 빈 값·꺼진 확인칸은 쿼리에 싣지 않는다. */
+  it('걸린 조건만 요청 쿼리에 실린다', async () => {
+    const { requests } = renderScreen(orgRoutes(), '?tab=org&q=SYN&bu=4001&inactive=1');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    const sent = departmentRequests(requests)[0];
+    expect(sent?.url.searchParams.get('q')).toBe('SYN');
+    expect(sent?.url.searchParams.get('businessUnitId')).toBe('4001');
+    expect(sent?.url.searchParams.get('includeInactive')).toBe('true');
+  });
+
+  it('미사용 포함이 꺼져 있으면 그 키를 보내지 않는다', async () => {
+    const { requests } = renderScreen(orgRoutes(), '?tab=org&q=SYN');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    const sent = departmentRequests(requests)[0];
+    expect(sent?.url.searchParams.has('includeInactive')).toBe(false);
+    expect(sent?.url.searchParams.has('businessUnitId')).toBe(false);
+  });
+
+  /* C45 — 선택 목록이 실제 조회로 채워진다. 지어내지 않는다. */
+  it('사업부 선택지를 조회해 필터에 채운다', async () => {
+    const { requests } = renderScreen(orgRoutes(), '?tab=org');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    expect(requestsTo(requests, BUSINESS_UNITS_PATH)).toHaveLength(1);
+    expect(screen.getByLabelText('사업부')).toBeInTheDocument();
+  });
+
+  /* C45 — 잘림을 감추면 사용자는 찾는 값이 왜 없는지 알 수 없다. */
+  it('사업부 선택지가 잘리면 그 사실을 목록 위에 알린다', async () => {
+    renderScreen(
+      [
+        departmentListRoute(),
+        businessUnitsRoute(businessUnitFixtures, { page: 1, size: 1, total: 9 }),
+      ],
+      '?tab=org',
+    );
+
+    expect(
+      await screen.findByText(
+        '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('사업부 선택지 조회가 실패하면 그 사실을 목록 위에 알린다', async () => {
+    renderScreen(
+      [
+        departmentListRoute(),
+        {
+          match: (request) => isGet(request, BUSINESS_UNITS_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+      ],
+      '?tab=org',
+    );
+
+    expect(
+      await screen.findByText('선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.'),
+    ).toBeInTheDocument();
+  });
+
+  /* C47 — 빈 상태와 실패가 함께 나오지 않는다. */
+  it('0건이면 빈 상태를 내고 조건이 걸린 0건과 갈린다', async () => {
+    renderScreen(
+      [departmentListRoute([], { page: 1, size: 50, total: 0 }), businessUnitsRoute()],
+      '?tab=org',
+    );
+
+    expect(await screen.findByText('등록된 부서가 없습니다')).toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 부서가 없습니다')).not.toBeInTheDocument();
+  });
+
+  it('조건이 걸린 0건이면 조건을 줄이라는 안내가 나온다', async () => {
+    renderScreen(
+      [departmentListRoute([], { page: 1, size: 50, total: 0 }), businessUnitsRoute()],
+      '?tab=org&q=SYN',
+    );
+
+    expect(await screen.findByText('조건에 맞는 부서가 없습니다')).toBeInTheDocument();
+    expect(screen.queryByText('등록된 부서가 없습니다')).not.toBeInTheDocument();
+  });
+
+  it('부서 목록 조회에 실패하면 배너를 내고 빈 상태를 함께 내지 않는다', async () => {
+    renderScreen(
+      [
+        {
+          match: (request) => isGet(request, DEPARTMENTS_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+        businessUnitsRoute(),
+      ],
+      '?tab=org',
+    );
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText('등록된 부서가 없습니다')).not.toBeInTheDocument();
+  });
+
+  it('부서 목록이 403이면 권한 안내를 낸다', async () => {
+    renderScreen(
+      [
+        {
+          match: (request) => isGet(request, DEPARTMENTS_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 403 }),
+        },
+        businessUnitsRoute(),
+      ],
+      '?tab=org',
+    );
+
+    expect(
+      await screen.findByText(
+        '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 부서 계층 표시 (C42·C43·C44)', () => {
+  /*
+   * C42 — **목 서버가 실제로 자기참조 행을 준다.** 접지 않으면 「합성 부서 A」가
+   * 자기 그룹의 하위 행으로도 나타나 대표와 하위가 같아진다.
+   */
+  it('자기 자신을 상위로 가리키는 행이 뿌리로 접혀 그룹 대표가 된다', async () => {
+    renderScreen(orgRoutes(), '?tab=org');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    expect(screen.getByText('SYN-DEPT-01 · 합성 부서 A')).toBeInTheDocument();
+    expect(screen.getByText('SYN-DEPT-03 · 합성 부서 C')).toBeInTheDocument();
+  });
+
+  /* C43 — 상위가 이 쪽에 없는 행은 고아 그룹에 모이고 머리글이 비지 않는다. */
+  it('상위를 이 쪽에서 찾을 수 없는 행은 고아 그룹으로 간다', async () => {
+    renderScreen(
+      [
+        departmentListRoute([
+          departmentFixtures[0]!,
+          {
+            departmentId: 3009,
+            departmentCode: 'SYN-DEPT-09',
+            departmentName: '합성 부서 I',
+            parentDepartmentId: 9999,
+            businessUnitId: null,
+            isActive: true,
+          },
+        ]),
+        businessUnitsRoute(),
+      ],
+      '?tab=org',
+    );
+
+    expect(await screen.findByText('상위 부서가 이 쪽에 없음')).toBeInTheDocument();
+  });
+
+  /* C44 — 3단 이상이면 그 사실을 밝히고 계층을 다시 계산하지 않는다. */
+  it('3단 이상 계층이 있으면 목록 위에 안내가 뜬다', async () => {
+    renderScreen(
+      [
+        departmentListRoute([
+          departmentFixtures[0]!,
+          departmentFixtures[1]!,
+          {
+            departmentId: 3006,
+            departmentCode: 'SYN-DEPT-06',
+            departmentName: '합성 부서 F',
+            parentDepartmentId: 3002,
+            businessUnitId: null,
+            isActive: true,
+          },
+        ]),
+        businessUnitsRoute(),
+      ],
+      '?tab=org',
+    );
+
+    expect(await screen.findByText(/3단 이상 계층이 있습니다/)).toBeInTheDocument();
+  });
+
+  it('2단까지면 3단 안내가 뜨지 않는다', async () => {
+    renderScreen(orgRoutes(), '?tab=org');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    expect(screen.queryByText(/3단 이상 계층이 있습니다/)).not.toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 부서 조건과 선택 (C46)', () => {
+  it('부서코드를 누르면 주소에 dep가 붙고 그 행에 선택 표식이 선다', async () => {
+    const { history, user } = renderScreen(orgRoutes(), '?tab=org');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-DEPT-02' }));
+
+    expect(history.search()).toBe('?tab=org&dep=3002');
+    expect(screen.getByRole('button', { name: 'SYN-DEPT-02' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  /* 보이는 행이 달라지면 선택을 비운다 — 목록에 없는 부서의 폼이 우 칸에 남으면 안 된다. */
+  it('조건을 바꾸면 주소에서 dep와 new가 사라진다', async () => {
+    const { history, user } = renderScreen(orgRoutes(), '?tab=org&dep=3002&new=dept&page=3');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    await user.type(screen.getByLabelText('부서 검색'), 'SYN');
+    await user.click(within(departmentPane()).getByRole('button', { name: '조회' }));
+
+    expect(history.search()).toBe('?tab=org&q=SYN');
+  });
+
+  it('쪽을 옮기면 주소에서 dep와 new가 사라진다', async () => {
+    const { history, user } = renderScreen(
+      [
+        departmentListRoute(departmentFixtures, { page: 1, size: 2, total: 9 }),
+        businessUnitsRoute(),
+      ],
+      '?tab=org&dep=3002&new=dept',
+    );
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    await user.click(within(departmentPane()).getByRole('button', { name: '다음' }));
+
+    expect(history.search()).toBe('?tab=org&page=2');
+  });
+
+  /* 이상한 선택 번호는 고르지 않은 것으로 본다 — 주소는 손으로 고쳐지는 자리다. */
+  it('선택 번호가 0이면 아무 행도 고르지 않은 것으로 본다', async () => {
+    renderScreen(orgRoutes(), '?tab=org&dep=0');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    for (const code of ['SYN-DEPT-01', 'SYN-DEPT-02', 'SYN-DEPT-03']) {
+      expect(screen.getByRole('button', { name: code })).not.toHaveAttribute('aria-current');
+    }
+  });
+
+  /* 한 조작은 히스토리 한 칸이다 — 뒤로가기가 사용자가 본 적 없는 주소로 떨어지면 안 된다. */
+  it('부서를 고른 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen(orgRoutes(), '?tab=org&new=dept');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    const before = history.search();
+
+    await user.click(screen.getByRole('button', { name: 'SYN-DEPT-02' }));
+    expect(history.search()).toBe('?tab=org&dep=3002');
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+
+  it('부서 추가를 누른 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen(orgRoutes(), '?tab=org&dep=3002');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    const before = history.search();
+
+    await user.click(within(departmentPane()).getByRole('button', { name: '부서 추가' }));
+    expect(history.search()).toBe('?tab=org&new=dept');
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+});
+
+describe('CommonCodeScreen — 탭 전환 (C13)', () => {
+  /*
+   * C13 · 뮤테이션 33 — 탭마다 목록이 통째로 다르다. 검색어를 넘기면
+   * 「부서를 찾던 말」로 코드그룹을 조회한 결과가 나오고, 선택 번호를 넘기면
+   * 그 탭에 없는 자원의 상세를 조회하게 된다.
+   */
+  it('조직 탭으로 바꾸면 이전 탭의 조건·선택이 주소에서 모두 사라진다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), ...orgRoutes()],
+      '?q=SYN&inactive=1&page=2&grp=1001&val=2001&vpage=3&vinactive=1',
+    );
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    await user.click(screen.getByRole('tab', { name: '조직(부서)' }));
+
+    expect(history.search()).toBe('?tab=org');
+    expect(await screen.findByRole('button', { name: 'SYN-DEPT-01' })).toBeInTheDocument();
+  });
+
+  it('공통코드 탭으로 되돌아가면 조직 탭의 조건·선택이 사라진다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), ...orgRoutes()],
+      '?tab=org&q=SYN&bu=4001&inactive=1&page=2&dep=3002',
+    );
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    await user.click(screen.getByRole('tab', { name: '공통코드' }));
+
+    expect(history.search()).toBe('?tab=code');
+    expect(await screen.findByRole('button', { name: 'SYN-GRP-01' })).toBeInTheDocument();
+  });
+
+  /* 탭 전환도 한 조작이다. */
+  it('탭을 바꾼 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen([codeGroupListRoute(), ...orgRoutes()], '?q=SYN');
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    const before = history.search();
+
+    await user.click(screen.getByRole('tab', { name: '조직(부서)' }));
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
 
     history.back();
     expect(history.search()).toBe(before);

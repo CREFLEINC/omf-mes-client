@@ -1,5 +1,5 @@
 import type { CodeValue } from './code-value-types';
-import type { CodeGroup } from './types';
+import type { CodeGroup, Department } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -75,6 +75,48 @@ export const codeValueFixtures: CodeValue[] = [
     displayOrder: 20,
     effectiveFrom: '2026-08-01',
     effectiveTo: null,
+    isActive: false,
+  },
+];
+
+/**
+ * 부서 4건 — **계약 표현 그대로**(화면이 접기 전).
+ *
+ * 3001은 **자기 자신을 상위로 가리킨다.** 목 서버가 실제로 주는 형태이며,
+ * 화면이 이것을 뿌리로 접는지 보는 것이 이 픽스처의 목적이다.
+ * 3004는 **미사용**이고 3003은 **사업부가 없다** — 「(미사용)」 접미와 「—」 표기를 함께 볼 수 있다.
+ */
+export const departmentFixtures: Department[] = [
+  {
+    departmentId: 3001,
+    departmentCode: 'SYN-DEPT-01',
+    departmentName: '합성 부서 A',
+    parentDepartmentId: 3001,
+    businessUnitId: 4001,
+    isActive: true,
+  },
+  {
+    departmentId: 3002,
+    departmentCode: 'SYN-DEPT-02',
+    departmentName: '합성 부서 B',
+    parentDepartmentId: 3001,
+    businessUnitId: 4001,
+    isActive: true,
+  },
+  {
+    departmentId: 3003,
+    departmentCode: 'SYN-DEPT-03',
+    departmentName: '합성 부서 C',
+    parentDepartmentId: null,
+    businessUnitId: null,
+    isActive: true,
+  },
+  {
+    departmentId: 3004,
+    departmentCode: 'SYN-DEPT-04',
+    departmentName: '합성 부서 D',
+    parentDepartmentId: 3001,
+    businessUnitId: 4001,
     isActive: false,
   },
 ];

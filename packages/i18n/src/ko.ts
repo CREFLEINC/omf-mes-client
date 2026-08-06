@@ -933,16 +933,20 @@ const commonCode = {
   tabs: {
     label: '공통코드·조직·작업자',
     code: '공통코드',
+    org: '조직(부서)',
   },
   panes: {
     codeGroup: '코드그룹',
     codeGroupForm: '코드그룹 정보',
+    department: '부서',
+    departmentForm: '부서 정보',
   },
   actions: {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     addCodeGroup: '그룹 추가',
+    addDepartment: '부서 추가',
   },
   /** 비활성 사유는 배치 규범 4의 문형을 따른다 — 컨트롤 이름으로 시작한다. */
   actionReasons: {
@@ -963,9 +967,16 @@ const commonCode = {
    */
   dialog: {
     deactivateCodeGroupTitle: '이 코드그룹을 사용 중지할까요?',
+    deactivateDepartmentTitle: '이 부서를 사용 중지할까요?',
     deactivateDescription:
       '사용 중지하면 새 선택지에서 빠지고 이미 쓰인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
   },
+  /*
+   * 선택 목록이 잘리거나 실패했다는 사실을 감추지 않는다 —
+   * 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
+   */
+  optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+  optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   /**
    * 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다.
    * 좌 목록과 코드값 목록 둘 다 계약에 쪽 나눔이 있다.
@@ -980,17 +991,27 @@ const commonCode = {
   filters: {
     codeGroupSearchLabel: '코드그룹 검색',
     codeGroupSearchPlaceholder: '그룹코드 또는 그룹명',
+    departmentSearchLabel: '부서 검색',
+    departmentSearchPlaceholder: '부서코드 또는 부서명',
+    businessUnit: '사업부',
+    /* 선택지에 빈 값을 두어 고른 사업부를 다시 「전체」로 되돌릴 수 있게 한다. */
+    businessUnitAll: '전체 사업부',
     chipKeyword: (value: string): string => `검색어: ${value}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    chipBusinessUnit: (label: string): string => `사업부: ${label}`,
+    chipRemoveBusinessUnit: '사업부 조건 제거',
   },
   loading: {
     codeGroups: '코드그룹 목록을 불러오는 중',
     codeGroupDetail: '코드그룹 정보를 불러오는 중',
+    departments: '부서 목록을 불러오는 중',
+    departmentDetail: '부서 정보를 불러오는 중',
   },
   /** 자원 이름 — 여러 자원이 공유하는 문구에 끼워 넣는다. */
   targets: {
     codeGroup: '코드그룹',
+    department: '부서',
   },
   empty: {
     /*
@@ -1008,6 +1029,11 @@ const commonCode = {
      * 이름 뒤 접미로 붙여 열을 늘리지 않는다.
      */
     inactiveSuffix: ' (미사용)',
+    /*
+     * 값은 있는데 그 번호를 선택 목록에서 찾지 못했다. **번호를 그대로 내지 않는다** —
+     * 내부 식별자라 사용자가 쓸 수 없고, 보이면 자료로 읽힌다.
+     */
+    unknown: '알 수 없음',
   },
   codeGroup: {
     /*
@@ -1038,6 +1064,52 @@ const commonCode = {
       groupNameBlank: '그룹명은 공백만으로 지정할 수 없습니다.',
       groupCodeTooLong: '그룹코드는 50자를 넘을 수 없습니다.',
       groupNameTooLong: '그룹명은 200자를 넘을 수 없습니다.',
+    },
+  },
+  department: {
+    fields: {
+      departmentCode: '부서코드',
+      departmentName: '부서명',
+      parentDepartment: '상위 부서',
+      businessUnit: '사업부',
+    },
+    values: {
+      /** 계층 그룹 머리글 — 그 그룹을 대표하는 부서. */
+      groupHeader: (code: string, name: string): string => `${code} · ${name}`,
+      /** 상위 부서를 비운 상태. 「없음」만으로는 무엇이 없는지 읽히지 않는다. */
+      noParent: '없음 (뿌리 부서)',
+    },
+    /*
+     * 상위를 이 쪽 목록에서 찾지 못한 행이 모이는 그룹. 쪽 나눔 때문에 상위가 다른 쪽에
+     * 있을 수 있다 — 「없다」를 「뿌리다」로 읽지 않고 그 사실을 그대로 밝힌다.
+     */
+    groupHeaderOrphan: '상위 부서가 이 쪽에 없음',
+    notices: {
+      /*
+       * 이슈 §6이 예고한 「2단 표시로는 부족한」 상태. 감추지 않는다 —
+       * 계층을 다시 계산해 접으면 서버에 있는 관계와 화면이 어긋난다.
+       */
+      deepHierarchy:
+        '3단 이상 계층이 있습니다. 이 목록은 상위–하위 2단까지만 묶어 보이므로 더 깊은 관계는 부서 정보의 상위 부서에서 확인하세요.',
+    },
+    empty: {
+      noneTitle: '등록된 부서가 없습니다',
+      noneDescription: '「부서 추가」로 첫 부서를 등록하세요.',
+      noMatchTitle: '조건에 맞는 부서가 없습니다',
+      noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+      notSelected: '좌측에서 부서를 고르면 여기에 그 부서의 정보가 보입니다',
+    },
+    actionReasons: {
+      /* 목록에 자기 하나뿐이면 상위로 고를 대상이 없다 — 감추지 않고 사유를 밝힌다. */
+      parentNeedsOthers:
+        '상위 부서는 고를 수 있는 다른 부서가 없어 지정할 수 없습니다. 부서를 하나 더 등록하면 이 칸을 쓸 수 있습니다.',
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      departmentCodeBlank: '부서코드는 공백만으로 지정할 수 없습니다.',
+      departmentNameBlank: '부서명은 공백만으로 지정할 수 없습니다.',
+      departmentCodeTooLong: '부서코드는 50자를 넘을 수 없습니다.',
+      departmentNameTooLong: '부서명은 200자를 넘을 수 없습니다.',
     },
   },
   /**

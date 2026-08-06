@@ -10,7 +10,7 @@ import { messages } from '@omf-mes/i18n';
 
 const t = messages.commonCode;
 
-export type CommonCodeTabId = 'code';
+export type CommonCodeTabId = 'code' | 'org';
 
 export interface CommonCodeTabDefinition {
   /** 주소의 `tab` 값이자 DS `Tabs`의 항목 값 */
@@ -21,6 +21,7 @@ export interface CommonCodeTabDefinition {
 /** 비어 있지 않은 배열로 두어 「첫 탭」이 언제나 존재함을 타입으로 보장한다. */
 export const COMMON_CODE_TABS: readonly [CommonCodeTabDefinition, ...CommonCodeTabDefinition[]] = [
   { id: 'code', label: t.tabs.code },
+  { id: 'org', label: t.tabs.org },
 ];
 
 /**

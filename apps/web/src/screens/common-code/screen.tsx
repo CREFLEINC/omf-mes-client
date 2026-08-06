@@ -1,4 +1,12 @@
-import { Breadcrumb, EmptyState, PageHeader, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Breadcrumb,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+  Tabs,
+  useToast,
+} from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useMemo, useState } from 'react';
@@ -22,13 +30,27 @@ import {
   useCodeGroupList,
 } from './code-group-queries';
 import { CODE_GROUP_FORM_FIELDS, validateCodeGroupForm } from './code-group-validation';
+import { lookupLabel, selectableOptions } from './code-options';
 import { CodeValueSection } from './code-value-section';
 import { DeactivateDialog } from './deactivate-dialog';
-import { readCodeGroupFilters, readPage, toSearchParams } from './filters';
+import { indexById, orderForGrouping } from './department-hierarchy';
+import { DepartmentListPane } from './department-list-pane';
+import { toDepartmentRows } from './department-mappers';
+import { useDepartmentList } from './department-queries';
+import {
+  SCOPE_KEYS,
+  readCodeGroupFilters,
+  readPage,
+  readScopedFilters,
+  readSelectedId,
+  toScopedSearchParams,
+  toSearchParams,
+} from './filters';
 import { LoadErrorBanner } from './load-error-banner';
+import { useBusinessUnitOptions, type LookupResult } from './lookups';
 import { toPageView } from './pagination';
 import { COMMON_CODE_TABS, resolveTab, tabSearchParams } from './tabs';
-import type { CodeGroupFilters, CodeGroupFormValues } from './types';
+import type { CodeGroupFilters, CodeGroupFormValues, ScopedFilters } from './types';
 
 type CodeGroup = components['schemas']['CodeGroup'];
 type CodeGroupDetailResponse = components['schemas']['CodeGroupDetailResponse'];
@@ -67,6 +89,8 @@ export const CommonCodeScreen = () => {
   const { client } = useApiClient();
 
   const tab = resolveTab(searchParams.get('tab'));
+  const isCodeTab = tab.id === 'code';
+  const isOrgTab = tab.id === 'org';
 
   const filters = useMemo<CodeGroupFilters>(
     () => readCodeGroupFilters(searchParams),
@@ -74,12 +98,12 @@ export const CommonCodeScreen = () => {
   );
   const page = readPage(searchParams);
 
-  const isCreatingCodeGroup = searchParams.get('new') === 'group';
-  const selectedParam = Number(searchParams.get('grp') ?? '') || null;
+  const isCreatingCodeGroup = isCodeTab && searchParams.get('new') === 'group';
+  const selectedParam = isCodeTab ? readSelectedId(searchParams, 'grp') : null;
   /** 등록 폼이 열려 있는 동안에는 상세를 조회하지 않는다 — 만들고 있는 자원에는 상세가 없다. */
   const selectedCodeGroupId = isCreatingCodeGroup ? null : selectedParam;
 
-  const codeGroupList = useCodeGroupList(filters, page);
+  const codeGroupList = useCodeGroupList(filters, page, isCodeTab);
   const codeGroups = codeGroupList.data?.items ?? [];
 
   /*
@@ -99,7 +123,7 @@ export const CommonCodeScreen = () => {
    */
   const codeValueIncludeInactive = searchParams.get('vinactive') === '1';
   const codeValuePage = readPage(searchParams, 'vpage');
-  const selectedCodeValueId = Number(searchParams.get('val') ?? '') || null;
+  const selectedCodeValueId = readSelectedId(searchParams, 'val');
   /*
    * 코드값 등록에는 그룹이 있어야 한다 — 계약이 그룹 번호를 필수로 두었다.
    * 그룹 없이 `new=value`만 실린 주소로 들어와도 만들 수 없는 폼을 세우지 않는다.
@@ -368,6 +392,91 @@ export const CommonCodeScreen = () => {
     });
   };
 
+  /* ── 조직(부서) 탭 ─────────────────────────────────────────────────────── */
+
+  const departmentFilters = useMemo(
+    () => readScopedFilters(searchParams, SCOPE_KEYS.businessUnit),
+    [searchParams],
+  );
+
+  const isCreatingDepartment = isOrgTab && searchParams.get('new') === 'dept';
+  const selectedDepartmentParam = isOrgTab ? readSelectedId(searchParams, 'dep') : null;
+  const selectedDepartmentId = isCreatingDepartment ? null : selectedDepartmentParam;
+
+  const departmentList = useDepartmentList(departmentFilters, page, isOrgTab);
+
+  /*
+   * 계약 표현을 화면 표현으로 옮기며 **자기참조를 여기서 한 번만 접는다** —
+   * 목 서버가 실제로 그런 행을 준다. 접지 않으면 대표가 자기 자신인 그룹이 생긴다.
+   */
+  const departmentRows = useMemo(
+    () => toDepartmentRows(departmentList.data?.items ?? []),
+    [departmentList.data],
+  );
+  const departmentById = useMemo(() => indexById(departmentRows), [departmentRows]);
+  /* 디자인 시스템 Table의 그룹 순서는 rows에서 그 키가 처음 나온 순서다 — 화면이 미리 정렬한다. */
+  const orderedDepartments = useMemo(
+    () => orderForGrouping(departmentRows, departmentById),
+    [departmentRows, departmentById],
+  );
+
+  const departmentPageView = toPageView(
+    departmentList.data?.page ?? { page, size: 0, total: 0 },
+    departmentRows.length,
+  );
+
+  const businessUnitOptions = useBusinessUnitOptions(isOrgTab);
+
+  /**
+   * 선택 목록이 잘리거나 실패했다는 사실을 목록 위에 낸다.
+   * 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
+   */
+  const renderOptionsNotice = (lookups: LookupResult[]): ReactNode => {
+    if (lookups.some((lookup) => lookup.isError)) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.optionsLoadFailed}</AlertBanner>
+        </div>
+      );
+    }
+
+    if (lookups.some((lookup) => lookup.truncated)) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.optionsTruncated}</AlertBanner>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const applyDepartmentFilters = (next: ScopedFilters) => {
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, next, 1));
+  };
+
+  const changeDepartmentPage = (nextPage: number) => {
+    setSearchParams(
+      toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, departmentFilters, nextPage),
+    );
+  };
+
+  const handleSelectDepartment = (departmentId: number) => {
+    patchSearchParams((next) => {
+      next.set('dep', String(departmentId));
+      // 부서를 고르는 것과 등록 폼이 열려 있는 것은 함께 성립하지 않는다.
+      next.delete('new');
+    });
+  };
+
+  const handleAddDepartment = () => {
+    patchSearchParams((next) => {
+      next.set('new', 'dept');
+      // 등록 폼이 열려 있는 동안 고른 부서의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
+      next.delete('dep');
+    });
+  };
+
   /*
    * 탭이 바뀌면 그 탭의 처음 상태로 간다. 한쪽 탭의 조건·선택이 남으면
    * 그 탭에 없는 자원을 조회하게 된다.
@@ -554,6 +663,52 @@ export const CommonCodeScreen = () => {
     </div>
   );
 
+  const orgTabContent = (
+    <div className="two-pane">
+      <DepartmentListPane
+        rows={orderedDepartments}
+        byId={departmentById}
+        isLoading={departmentList.isPending}
+        appliedFilters={departmentFilters}
+        onApplyFilters={applyDepartmentFilters}
+        businessUnitOptions={selectableOptions(
+          businessUnitOptions.entries,
+          departmentFilters.scopeId,
+        )}
+        /*
+         * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
+         * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
+         * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
+         */
+        businessUnitLabel={(scopeId) => lookupLabel(businessUnitOptions.entries, Number(scopeId))}
+        optionsNotice={renderOptionsNotice([businessUnitOptions])}
+        pageView={departmentPageView}
+        onChangePage={changeDepartmentPage}
+        selectedDepartmentId={selectedDepartmentId}
+        onSelect={handleSelectDepartment}
+        isCreating={isCreatingDepartment}
+        onAddDepartment={handleAddDepartment}
+        loadError={
+          departmentList.isError ? (
+            <LoadErrorBanner
+              error={departmentList.error}
+              onRetry={() => void departmentList.refetch()}
+            />
+          ) : null
+        }
+      />
+
+      <section className="pane" aria-label={t.panes.departmentForm}>
+        <EmptyState size="sm" title={t.department.empty.notSelected} />
+      </section>
+    </div>
+  );
+
+  const tabContentOf = (tabId: string): ReactNode => {
+    if (tabId === 'code') return codeTabContent;
+    return orgTabContent;
+  };
+
   return (
     <>
       <PageHeader
@@ -572,7 +727,7 @@ export const CommonCodeScreen = () => {
            * 활성 탭의 내용만 만든다. 디자인 시스템 Tabs는 비활성 패널도 DOM에 두므로
            * 모두 만들면 보이지 않는 표가 함께 살아 있게 된다.
            */
-          content: definition.id === tab.id ? codeTabContent : null,
+          content: definition.id === tab.id ? tabContentOf(definition.id) : null,
         }))}
       />
 

@@ -4,7 +4,7 @@ import { COMMON_CODE_TABS, resolveTab, tabSearchParams } from './tabs';
 
 describe('COMMON_CODE_TABS', () => {
   it('탭 정의 배열이 정본이다 — 만든 탭만 들어 있다', () => {
-    expect(COMMON_CODE_TABS.map((tab) => tab.id)).toEqual(['code']);
+    expect(COMMON_CODE_TABS.map((tab) => tab.id)).toEqual(['code', 'org']);
   });
 
   it('탭마다 서로 다른 주소값을 갖는다', () => {
@@ -35,7 +35,6 @@ describe('resolveTab', () => {
     expect(resolveTab('xyz')).toBe(COMMON_CODE_TABS[0]);
     expect(resolveTab('')).toBe(COMMON_CODE_TABS[0]);
     // 아직 만들지 않은 탭의 주소값도 모르는 값이다.
-    expect(resolveTab('org')).toBe(COMMON_CODE_TABS[0]);
     expect(resolveTab('worker')).toBe(COMMON_CODE_TABS[0]);
   });
 
@@ -56,7 +55,22 @@ describe('tabSearchParams', () => {
     for (const tab of COMMON_CODE_TABS) {
       const next = tabSearchParams(tab.id);
 
-      for (const key of ['q', 'inactive', 'page', 'grp', 'val', 'vpage', 'vinactive', 'new']) {
+      const carried = [
+        'q',
+        'inactive',
+        'page',
+        'bu',
+        'dept',
+        'grp',
+        'val',
+        'vpage',
+        'vinactive',
+        'dep',
+        'wkr',
+        'new',
+      ];
+
+      for (const key of carried) {
         expect(next.has(key)).toBe(false);
       }
     }

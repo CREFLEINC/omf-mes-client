@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { CodeGroupFilters } from './types';
+import type { CodeGroupFilters, ScopedFilters } from './types';
 
 /**
  * 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
@@ -18,6 +18,18 @@ const URL_KEYS = {
   includeInactive: 'inactive',
   page: 'page',
 } as const;
+
+/**
+ * 탭마다 다른 선택 축의 주소 키. 조직 탭은 사업부, 작업자 탭은 부서다.
+ *
+ * **탭이 자기 키만 읽는다** — 다른 탭의 키까지 읽으면 탭 사이로 조건이 샌다.
+ */
+export const SCOPE_KEYS = {
+  businessUnit: 'bu',
+  department: 'dept',
+} as const;
+
+export type ScopeKey = (typeof SCOPE_KEYS)[keyof typeof SCOPE_KEYS];
 
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소를 손으로 고쳐도 뜻이 흔들리지 않는다. */
 const ON = '1';
@@ -37,6 +49,25 @@ export const readPage = (params: URLSearchParams, key: string = URL_KEYS.page): 
 };
 
 /**
+ * 주소가 가리키는 선택 번호. 네 자리(`grp`·`val`·`dep`·`wkr`)가 **같은 규칙**을 쓴다.
+ *
+ * 식별자는 1부터 매겨지므로 `0`·음수·소수·문자는 어떤 자원도 가리키지 않는다 —
+ * 「고르지 않은 것」으로 본다. 자리마다 따로 해석하면 한 자리만 규칙이 어긋나도 드러나지 않는다.
+ */
+export const readSelectedId = (params: URLSearchParams, key: string): number | null => {
+  const raw = params.get(key) ?? '';
+
+  return POSITIVE_INTEGER.test(raw) && Number(raw) >= 1 ? Number(raw) : null;
+};
+
+/** 조직·작업자 탭의 조회 조건. 선택 축의 주소 키만 탭마다 다르다. */
+export const readScopedFilters = (params: URLSearchParams, scopeKey: ScopeKey): ScopedFilters => ({
+  q: params.get(URL_KEYS.q) ?? '',
+  scopeId: params.get(scopeKey) ?? '',
+  includeInactive: params.get(URL_KEYS.includeInactive) === ON,
+});
+
+/**
  * 조건 전체를 주소로 옮긴다. **빈 조건은 키 자체를 두지 않는다** —
  * 주소가 조건을 그대로 드러내야 무엇으로 조회했는지 읽을 수 있다.
  *
@@ -52,6 +83,26 @@ export const toSearchParams = (
   const next = new URLSearchParams({ [URL_KEYS.tab]: tabId });
 
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
+  if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
+  if (page > 1) next.set(URL_KEYS.page, String(page));
+
+  return next;
+};
+
+/**
+ * 조직·작업자 탭의 조건 전체를 주소로 옮긴다. 규칙은 `toSearchParams`와 같다 —
+ * 빈 조건은 키 자체를 두지 않고, 선택(`dep`·`wkr`·`new`)을 담지 않는다.
+ */
+export const toScopedSearchParams = (
+  tabId: string,
+  scopeKey: ScopeKey,
+  filters: ScopedFilters,
+  page: number,
+): URLSearchParams => {
+  const next = new URLSearchParams({ [URL_KEYS.tab]: tabId });
+
+  if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
+  if (filters.scopeId !== '') next.set(scopeKey, filters.scopeId);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
@@ -77,6 +128,44 @@ export const toCodeGroupListQuery = (
   page: number,
 ): CodeGroupListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
+  ...(filters.includeInactive ? { includeInactive: true } : {}),
+  ...(page > 1 ? { page } : {}),
+});
+
+export interface DepartmentListQuery {
+  q?: string;
+  businessUnitId?: number;
+  includeInactive?: boolean;
+  page?: number;
+}
+
+/** 부서 목록 조회 쿼리. 규칙은 코드그룹과 같다 — 빈 값·꺼진 확인칸·첫 쪽을 싣지 않는다. */
+export const toDepartmentListQuery = (
+  filters: ScopedFilters,
+  page: number,
+): DepartmentListQuery => ({
+  ...(filters.q === '' ? {} : { q: filters.q }),
+  ...(filters.scopeId === '' ? {} : { businessUnitId: Number(filters.scopeId) }),
+  ...(filters.includeInactive ? { includeInactive: true } : {}),
+  ...(page > 1 ? { page } : {}),
+});
+
+export interface WorkerListQuery {
+  q?: string;
+  departmentId?: number;
+  includeInactive?: boolean;
+  page?: number;
+}
+
+/**
+ * 작업자 목록 조회 쿼리.
+ *
+ * **공장·사업부를 싣지 않는다** — 계약에 `plantId`·`businessUnitId`가 있으나 좌 페인에
+ * 필터 컨트롤 넷을 놓으면 표가 짓눌린다. 화면에 없는 조건을 요청에 실으면 되돌릴 수단이 없다.
+ */
+export const toWorkerListQuery = (filters: ScopedFilters, page: number): WorkerListQuery => ({
+  ...(filters.q === '' ? {} : { q: filters.q }),
+  ...(filters.scopeId === '' ? {} : { departmentId: Number(filters.scopeId) }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
 });
@@ -122,4 +211,67 @@ export const clearFilter = (
   filters: CodeGroupFilters,
   key: keyof CodeGroupFilters,
 ): CodeGroupFilters =>
+  key === 'includeInactive' ? { ...filters, includeInactive: false } : { ...filters, [key]: '' };
+
+export interface ScopedFilterChip {
+  key: keyof ScopedFilters;
+  label: string;
+  removeLabel: string;
+}
+
+/**
+ * 조건 칩의 문구. 탭마다 선택 축의 이름이 달라(사업부·부서) 바깥에서 받는다 —
+ * 문구를 이 파일에 박으면 탭이 늘 때마다 여기를 고치게 된다.
+ */
+export interface ScopedFilterLabels {
+  keyword: (value: string) => string;
+  keywordRemove: string;
+  scope: (label: string) => string;
+  scopeRemove: string;
+  includeInactiveRemove: string;
+}
+
+/**
+ * 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다.
+ *
+ * 선택 축은 **번호가 아니라 이름**으로 낸다 — 번호를 그대로 보이면 사용자가 무엇을 걸었는지 모른다.
+ */
+export const toScopedFilterChips = (
+  filters: ScopedFilters,
+  scopeLabel: (scopeId: string) => string,
+  labels: ScopedFilterLabels,
+): ScopedFilterChip[] => {
+  const chips: ScopedFilterChip[] = [];
+
+  if (filters.q !== '') {
+    chips.push({ key: 'q', label: labels.keyword(filters.q), removeLabel: labels.keywordRemove });
+  }
+
+  if (filters.scopeId !== '') {
+    chips.push({
+      key: 'scopeId',
+      label: labels.scope(scopeLabel(filters.scopeId)),
+      removeLabel: labels.scopeRemove,
+    });
+  }
+
+  if (filters.includeInactive) {
+    chips.push({
+      key: 'includeInactive',
+      label: messages.common.includeInactive,
+      removeLabel: labels.includeInactiveRemove,
+    });
+  }
+
+  return chips;
+};
+
+export const hasAnyScopedFilter = (filters: ScopedFilters): boolean =>
+  filters.q !== '' || filters.scopeId !== '' || filters.includeInactive;
+
+/** 조건 하나만 푼다. 키마다 「비었다」의 표현이 달라(문자열 vs 불리언) 여기서 다룬다. */
+export const clearScopedFilter = (
+  filters: ScopedFilters,
+  key: keyof ScopedFilters,
+): ScopedFilters =>
   key === 'includeInactive' ? { ...filters, includeInactive: false } : { ...filters, [key]: '' };
