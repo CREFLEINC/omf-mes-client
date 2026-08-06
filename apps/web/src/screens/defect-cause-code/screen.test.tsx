@@ -1,0 +1,1511 @@
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useLocation } from 'react-router';
+import { describe, expect, it } from 'vitest';
+
+import {
+  createStubFetch,
+  jsonResponse,
+  renderWithProviders,
+  type StubFetch,
+  type StubRoute,
+} from '../../test/api-harness';
+import {
+  causeCodeFixtures,
+  deepHierarchyCodeFixtures,
+  defectCodeFixtures,
+  legacyThreeLevelCodeFixtures,
+} from './fixtures';
+import { DefectCauseCodeScreen } from './screen';
+import { CODE_TABS } from './tabs';
+
+const ROUTE = '/master-data/defect-cause-code';
+
+const DEFECT_LIST_PATH = '/quality/defect-codes';
+const CAUSE_LIST_PATH = '/quality/cause-codes';
+
+interface RecordedRequest {
+  method: string;
+  url: URL;
+  headers: Headers;
+  body: string;
+}
+
+/** 요청을 기록하면서 스텁 규칙으로 응답한다. 규칙에 없는 요청은 하네스가 던져 스텁 누락을 드러낸다. */
+const createRecordingFetch = (
+  routes: StubRoute[],
+): { fetch: StubFetch; requests: RecordedRequest[] } => {
+  const requests: RecordedRequest[] = [];
+  const stub = createStubFetch(routes);
+
+  const fetch: StubFetch = async (request) => {
+    requests.push({
+      method: request.method,
+      url: new URL(request.url),
+      headers: new Headers(request.headers),
+      body: request.method === 'GET' ? '' : await request.clone().text(),
+    });
+
+    return stub(request);
+  };
+
+  return { fetch, requests };
+};
+
+const isGet = (request: Request, pathname: string): boolean =>
+  request.method === 'GET' && new URL(request.url).pathname === pathname;
+
+const listBody = (items: unknown[], total = items.length): unknown => ({
+  items,
+  page: { page: 1, size: 20, total },
+});
+
+const defectListRoute = (items: unknown[] = defectCodeFixtures, total?: number): StubRoute => ({
+  match: (request) => isGet(request, DEFECT_LIST_PATH),
+  respond: () => jsonResponse(listBody(items, total ?? items.length)),
+});
+
+/**
+ * 상위 선택지·계층 판정 전용 목록. 화면이 `includeInactive=true`로 따로 조회하므로
+ * 목록 규칙보다 **먼저** 등록해야 이 규칙이 잡는다.
+ */
+const defectOptionsRoute = (items: unknown[] = defectCodeFixtures, total?: number): StubRoute => ({
+  match: (request) =>
+    isGet(request, DEFECT_LIST_PATH) &&
+    new URL(request.url).searchParams.get('includeInactive') === 'true',
+  respond: () => jsonResponse(listBody(items, total ?? items.length)),
+});
+
+/** 기본 조회는 사용 중인 것만 내려준다 — 미사용 대분류가 선택지에만 있는 상황을 만든다. */
+const activeDefectFixtures = defectCodeFixtures.filter((item) => item.isActive);
+
+const defectCreateRoute = (respond: StubRoute['respond']): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === DEFECT_LIST_PATH,
+  respond,
+});
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 탭 순회 테스트가 쓰는 값. 어느 탭에도 없는 번호라 다른 픽스처와 섞이지 않는다. */
+const SELECTED_ID = 7101;
+const PRESERVED_PROCESS_ID = 7001;
+const TAB_ETAG = '"9"';
+
+const DEFAULT_EDITABILITY = { codeEditable: true, reason: 'EDITABLE' as const };
+
+interface EditabilityStub {
+  codeEditable: boolean;
+  reason: 'EDITABLE' | 'REFERENCED' | 'NOT_COUNTABLE' | 'RECEIVED_FROM_ERP';
+  referenceCount?: number | null;
+}
+
+const defectDetailRoute = (
+  code: Record<string, unknown> = defectCodeFixtures[0]!,
+  editability: EditabilityStub = DEFAULT_EDITABILITY,
+  /** null이면 ETag 없이 응답한다 — 잠금 토큰을 확보하지 못한 상태를 만든다. */
+  etag: string | null = '"7"',
+): StubRoute => ({
+  match: (request) => isGet(request, `${DEFECT_LIST_PATH}/${String(code.defectCodeId)}`),
+  respond: () =>
+    jsonResponse({ defectCode: code, editability }, etag === null ? {} : { headers: { ETag: etag } }),
+});
+
+const defectUpdateRoute = (id: number, respond: StubRoute['respond']): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' &&
+    new URL(request.url).pathname === `${DEFECT_LIST_PATH}/${String(id)}`,
+  respond,
+});
+
+const causeListRoute = (items: unknown[] = causeCodeFixtures): StubRoute => ({
+  match: (request) => isGet(request, CAUSE_LIST_PATH),
+  respond: () => jsonResponse(listBody(items)),
+});
+
+/** 주소가 실제로 어떻게 바뀌는지 본다 — 탭 전환이 조건을 지우는지 판정할 유일한 근거다. */
+const LocationProbe = () => {
+  const location = useLocation();
+
+  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+};
+
+const renderScreen = (
+  routes: StubRoute[],
+  search = '',
+): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
+  const { fetch, requests } = createRecordingFetch(routes);
+
+  renderWithProviders(
+    <>
+      <DefectCauseCodeScreen />
+      <LocationProbe />
+    </>,
+    { fetch, route: `${ROUTE}${search}` },
+  );
+
+  return { requests, user: userEvent.setup() };
+};
+
+const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname === pathname);
+
+const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
+
+describe('DefectCauseCodeScreen — 목록 조회', () => {
+  it('화면에 들어오면 선택을 기다리지 않고 목록을 조회한다', async () => {
+    const { requests } = renderScreen([defectListRoute()]);
+
+    expect(await screen.findByRole('button', { name: 'DF-10' })).toBeInTheDocument();
+    expect(requestsTo(requests, DEFECT_LIST_PATH)).toHaveLength(1);
+  });
+
+  it('조건이 없으면 q·includeInactive를 요청에 싣지 않는다', async () => {
+    const { requests } = renderScreen([defectListRoute()]);
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    const first = requestsTo(requests, DEFECT_LIST_PATH)[0];
+    expect(first?.url.searchParams.has('q')).toBe(false);
+    expect(first?.url.searchParams.has('includeInactive')).toBe(false);
+  });
+
+  it('조건을 적용하면 요청 쿼리와 주소에 함께 실린다', async () => {
+    const { requests, user } = renderScreen([defectListRoute()]);
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
+    await user.type(screen.getByLabelText('불량코드 검색'), 'DF-1');
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    const last = requestsTo(requests, DEFECT_LIST_PATH).at(-1);
+    expect(last?.url.searchParams.get('q')).toBe('DF-1');
+    expect(last?.url.searchParams.get('includeInactive')).toBe('true');
+    expect(currentLocation()).toContain('q=DF-1');
+    expect(currentLocation()).toContain('inactive=1');
+  });
+
+  it('주소에 있던 조건이 첫 조회에 그대로 실린다 — 새로고침·공유가 같은 결과를 낸다', async () => {
+    const { requests } = renderScreen([defectListRoute()], '?q=DF&inactive=1');
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    const first = requestsTo(requests, DEFECT_LIST_PATH)[0];
+    expect(first?.url.searchParams.get('q')).toBe('DF');
+    expect(first?.url.searchParams.get('includeInactive')).toBe('true');
+  });
+
+  it('전체 건수가 받은 건수보다 많으면 잘림 안내를 낸다', async () => {
+    renderScreen([defectListRoute(defectCodeFixtures, 120)]);
+
+    expect(
+      await screen.findByText('전체 120건 중 7건을 표시합니다. 조건을 좁혀 조회하세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('전부 받았으면 잘림 안내를 내지 않는다', async () => {
+    renderScreen([defectListRoute()]);
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    expect(screen.queryByText(/전체 .*건을 표시합니다/)).not.toBeInTheDocument();
+  });
+
+  it('조회에 실패하면 표와 빈 상태 대신 오류 배너와 다시 시도가 뜬다', async () => {
+    renderScreen([
+      {
+        match: (request) => isGet(request, DEFECT_LIST_PATH),
+        respond: () => jsonResponse({ message: '' }, { status: 500 }),
+      },
+    ]);
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    // 서버가 빈 message를 줘도 배너에 제목만 남으면 안 된다 — 무엇을 하라는 안내가 사라진다.
+    expect(
+      screen.getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('다시 시도를 누르면 목록 요청이 한 번 더 나간다', async () => {
+    const { requests, user } = renderScreen([
+      {
+        match: (request) => isGet(request, DEFECT_LIST_PATH),
+        respond: () => jsonResponse({ message: '' }, { status: 500 }),
+      },
+    ]);
+
+    await user.click(await screen.findByRole('button', { name: '다시 시도' }));
+
+    expect(requestsTo(requests, DEFECT_LIST_PATH).length).toBeGreaterThan(1);
+  });
+
+  it('0건이면 조건 유무에 따라 다른 빈 상태를 낸다', async () => {
+    renderScreen([defectListRoute([])]);
+
+    expect(await screen.findByText('아직 등록된 코드가 없습니다')).toBeInTheDocument();
+  });
+
+  it('조건이 걸린 0건은 조건을 고치라고 안내한다', async () => {
+    renderScreen([defectListRoute([])], '?q=ZZ');
+
+    expect(await screen.findByText('조건에 맞는 결과가 없습니다')).toBeInTheDocument();
+  });
+});
+
+describe('DefectCauseCodeScreen — 2계층 표시', () => {
+  it('대분류마다 그룹 머리글이 나오고 그 아래 첫 행이 대분류 자신이다', async () => {
+    renderScreen([defectListRoute()]);
+
+    expect(await screen.findByText('DF-10 · 외관')).toBeInTheDocument();
+
+    const codes = screen
+      .getAllByRole('button')
+      .map((element) => element.textContent ?? '')
+      .filter((text) => text.startsWith('DF-'));
+    expect(codes).toEqual(['DF-10', 'DF-11', 'DF-12', 'DF-20', 'DF-21', 'DF-90', 'DF-91']);
+  });
+
+  it('자기참조 행은 대분류로 보인다 — 목 서버가 실제로 내려주는 모양이다', async () => {
+    renderScreen([defectListRoute()]);
+
+    expect(await screen.findByText('DF-20 · 치수')).toBeInTheDocument();
+  });
+
+  it('고아 행은 별도 그룹으로 나오고 사라지지 않는다', async () => {
+    renderScreen([defectListRoute()]);
+
+    expect(await screen.findByText('상위를 찾을 수 없는 코드')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'DF-91' })).toBeInTheDocument();
+  });
+
+  it('코드를 고르면 주소에 sel이 남는다', async () => {
+    const { user } = renderScreen([
+      defectOptionsRoute(),
+      defectListRoute(),
+      defectDetailRoute(defectCodeFixtures[1]),
+    ]);
+
+    await user.click(await screen.findByRole('button', { name: 'DF-11' }));
+
+    expect(currentLocation()).toContain('sel=1002');
+    expect(screen.getByRole('button', { name: 'DF-11' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('고르기 전에는 우측이 선택 안내를 낸다', async () => {
+    renderScreen([defectListRoute()]);
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    expect(
+      screen.getByText('왼쪽에서 코드를 고르거나 「대분류 추가」로 시작하세요'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('DefectCauseCodeScreen — 탭', () => {
+  it('탭을 바꾸면 다른 리소스의 목록을 조회한다', async () => {
+    const { requests, user } = renderScreen([defectListRoute(), causeListRoute()]);
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    await user.click(screen.getByRole('tab', { name: '원인코드' }));
+
+    expect(await screen.findByRole('button', { name: 'CS-10' })).toBeInTheDocument();
+    expect(requestsTo(requests, CAUSE_LIST_PATH)).toHaveLength(1);
+  });
+
+  /*
+   * 한쪽 탭의 코드 번호가 남으면 다른 탭에는 없는 리소스의 상세를 조회하게 된다.
+   * 조회 조건도 함께 지워 규칙을 하나로 둔다 — 「탭이 바뀌면 그 탭의 처음 상태로 간다」.
+   */
+  it('탭을 바꾸면 q·inactive·sel·mode가 주소에서 지워진다', async () => {
+    const { requests, user } = renderScreen(
+      [defectListRoute(), causeListRoute()],
+      '?q=DF&inactive=1&sel=1001&mode=create',
+    );
+    await screen.findByRole('tab', { name: '원인코드' });
+
+    await user.click(screen.getByRole('tab', { name: '원인코드' }));
+    await screen.findByRole('button', { name: 'CS-10' });
+
+    expect(currentLocation()).toBe(`${ROUTE}?tab=cause`);
+
+    const causeRequest = requestsTo(requests, CAUSE_LIST_PATH)[0];
+    expect(causeRequest?.url.searchParams.has('q')).toBe(false);
+    expect(causeRequest?.url.searchParams.has('includeInactive')).toBe(false);
+  });
+
+  it('모르는 탭 값이면 첫 탭으로 떨어진다', async () => {
+    const { requests } = renderScreen([defectListRoute()], '?tab=xyz');
+
+    expect(await screen.findByRole('button', { name: 'DF-10' })).toBeInTheDocument();
+    expect(requestsTo(requests, DEFECT_LIST_PATH)).toHaveLength(1);
+  });
+
+  it('비활성 탭의 표는 화면에 남지 않는다', async () => {
+    const { user } = renderScreen([defectListRoute(), causeListRoute()]);
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    await user.click(screen.getByRole('tab', { name: '원인코드' }));
+    await screen.findByRole('button', { name: 'CS-10' });
+
+    expect(screen.queryByText('DF-10 · 외관')).not.toBeInTheDocument();
+  });
+});
+
+const CREATED_DEFECT = {
+  defectCodeId: 1100,
+  defectCode: 'DF-30',
+  defectName: '신규',
+  parentDefectCodeId: null,
+  isActive: true,
+};
+
+/** 등록 흐름의 기본 스텁 — 선택지 규칙을 목록 규칙보다 먼저 둔다. */
+const createFlowRoutes = (post: StubRoute): StubRoute[] => [
+  defectOptionsRoute(),
+  defectListRoute(activeDefectFixtures),
+  post,
+];
+
+describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
+  it('대분류 추가를 누르면 상위가 빈 폼과 경고·안내가 함께 열린다', async () => {
+    const { user } = renderScreen([defectOptionsRoute(), defectListRoute(activeDefectFixtures)]);
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    await user.click(screen.getByRole('button', { name: '대분류 추가' }));
+
+    expect(screen.getByLabelText('코드')).toHaveValue('');
+    expect(
+      screen.getByText(
+        '대분류는 전사에서 공통으로 쓰는 축입니다. 추가하면 모든 현장에서 함께 쓰이므로 신중히 정하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('폼을 열 때 상위 선택지를 미사용까지 포함해 따로 조회한다', async () => {
+    const { requests, user } = renderScreen([
+      defectOptionsRoute(),
+      defectListRoute(activeDefectFixtures),
+    ]);
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    expect(
+      requests.some((request) => request.url.searchParams.get('includeInactive') === 'true'),
+    ).toBe(false);
+
+    await user.click(screen.getByRole('button', { name: '대분류 추가' }));
+    await screen.findByLabelText('코드');
+
+    expect(
+      requests.some((request) => request.url.searchParams.get('includeInactive') === 'true'),
+    ).toBe(true);
+  });
+
+  it('상세 추가는 대분류를 고르기 전에는 비활성이고 사유가 보인다', async () => {
+    renderScreen([defectListRoute(activeDefectFixtures)]);
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    expect(screen.getByRole('button', { name: '상세 추가' })).toBeDisabled();
+    expect(
+      screen.getByText('상세 추가는 대분류를 하나 고른 뒤에 쓸 수 있습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('상세 코드를 고르면 상세 추가를 쓸 수 없다 — 3계층이 된다', async () => {
+    renderScreen(
+      [
+        defectOptionsRoute(),
+        defectListRoute(activeDefectFixtures),
+        defectDetailRoute(defectCodeFixtures[1]),
+      ],
+      '?sel=1002',
+    );
+    await screen.findByRole('button', { name: 'DF-11' });
+
+    expect(screen.getByRole('button', { name: '상세 추가' })).toBeDisabled();
+  });
+
+  it('대분류를 고른 뒤 상세 추가를 누르면 상위가 그 대분류로 채워진 폼이 열린다', async () => {
+    const { user } = renderScreen(
+      [defectOptionsRoute(), defectListRoute(activeDefectFixtures), defectDetailRoute()],
+      '?sel=1001',
+    );
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    await user.click(screen.getByRole('button', { name: '상세 추가' }));
+
+    const parent = await screen.findByRole('combobox', { name: '상위 대분류' });
+    await waitFor(() => {
+      expect(parent).toHaveTextContent('DF-10 · 외관');
+    });
+    expect(screen.queryByText(/대분류는 전사에서 공통으로 쓰는 축입니다/)).not.toBeInTheDocument();
+  });
+});
+
+describe('DefectCauseCodeScreen — 상위 선택지', () => {
+  it('선택지에 대분류만 들어간다 — 상세 코드는 상위가 될 수 없다', async () => {
+    const { user } = renderScreen(
+      [defectOptionsRoute(), defectListRoute(activeDefectFixtures)],
+      '?mode=create',
+    );
+    await screen.findByLabelText('코드');
+
+    await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
+
+    expect(screen.getByRole('option', { name: 'DF-10 · 외관' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'DF-20 · 치수' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /DF-11/ })).not.toBeInTheDocument();
+  });
+
+  it('미사용 대분류는 기본으로 빠진다', async () => {
+    const { user } = renderScreen(
+      [defectOptionsRoute(), defectListRoute(activeDefectFixtures)],
+      '?mode=create',
+    );
+    await screen.findByLabelText('코드');
+
+    await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
+
+    expect(screen.queryByRole('option', { name: /DF-90/ })).not.toBeInTheDocument();
+  });
+
+  /* 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다. */
+  it('지금 상위로 지정된 미사용 대분류는 표식과 함께 남는다', async () => {
+    renderScreen(
+      [defectOptionsRoute(), defectListRoute()],
+      '?inactive=1&sel=1006&mode=create',
+    );
+
+    // 선택지가 도착하기 전에는 번호만 보인다 — 라벨이 붙는 것까지 기다린다.
+    expect(await screen.findByText('DF-90 · 사용하지 않는 축 (미사용)')).toBeInTheDocument();
+  });
+
+  it('선택지 목록이 잘리면 경고가 보인다', async () => {
+    renderScreen(
+      [defectOptionsRoute(defectCodeFixtures, 500), defectListRoute(activeDefectFixtures)],
+      '?mode=create',
+    );
+
+    expect(
+      await screen.findByText('선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('선택지 조회가 실패하면 그 사실을 폼 위에 낸다', async () => {
+    renderScreen(
+      [
+        {
+          match: (request) =>
+            isGet(request, DEFECT_LIST_PATH) &&
+            new URL(request.url).searchParams.get('includeInactive') === 'true',
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+        defectListRoute(activeDefectFixtures),
+      ],
+      '?mode=create',
+    );
+
+    expect(
+      await screen.findByText('선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('DefectCauseCodeScreen — 등록 저장', () => {
+  it('저장하면 UUID 멱등 키를 실은 POST가 나가고 본문에 공정 번호가 없다', async () => {
+    const { requests, user } = renderScreen(
+      createFlowRoutes(defectCreateRoute(() => jsonResponse(CREATED_DEFECT, { status: 201 }))),
+      '?mode=create',
+    );
+
+    await user.type(await screen.findByLabelText('코드'), 'DF-30');
+    await user.type(screen.getByLabelText('명칭'), '신규');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('등록했습니다')).toBeInTheDocument();
+
+    const post = requests.find((request) => request.method === 'POST');
+    expect(post?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    // 등록에는 낙관적 잠금이 없다 — 계약에 If-Match가 없다.
+    expect(post?.headers.get('If-Match')).toBeNull();
+
+    const body: unknown = JSON.parse(post?.body ?? '{}');
+    expect(body).toEqual({ defectCode: 'DF-30', defectName: '신규' });
+  });
+
+  it('상세로 등록하면 상위 번호가 본문에 실린다', async () => {
+    const { requests, user } = renderScreen(
+      createFlowRoutes(
+        defectCreateRoute(() =>
+          jsonResponse({ ...CREATED_DEFECT, parentDefectCodeId: 1001 }, { status: 201 }),
+        ),
+      ),
+      '?sel=1001&mode=create',
+    );
+
+    await user.type(await screen.findByLabelText('코드'), 'DF-13');
+    await user.type(screen.getByLabelText('명칭'), '눌림');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('등록했습니다');
+
+    const post = requests.find((request) => request.method === 'POST');
+    expect(JSON.parse(post?.body ?? '{}')).toMatchObject({ parentDefectCodeId: 1001 });
+  });
+
+  it('등록에 성공하면 목록을 다시 조회하고 폼이 비워진다', async () => {
+    const { requests, user } = renderScreen(
+      createFlowRoutes(defectCreateRoute(() => jsonResponse(CREATED_DEFECT, { status: 201 }))),
+      '?mode=create',
+    );
+
+    await user.type(await screen.findByLabelText('코드'), 'DF-30');
+    await user.type(screen.getByLabelText('명칭'), '신규');
+
+    const before = requests.filter((request) => request.method === 'GET').length;
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('등록했습니다');
+
+    expect(requests.filter((request) => request.method === 'GET').length).toBeGreaterThan(before);
+    expect(screen.getByLabelText('코드')).toHaveValue('');
+    expect(screen.getByLabelText('명칭')).toHaveValue('');
+  });
+
+  it('코드·명칭이 공백만이면 요청을 보내지 않고 인라인 오류만 보인다', async () => {
+    const { requests, user } = renderScreen(
+      createFlowRoutes(defectCreateRoute(() => jsonResponse(CREATED_DEFECT, { status: 201 }))),
+      '?mode=create',
+    );
+
+    await user.type(await screen.findByLabelText('코드'), '   ');
+    await user.type(screen.getByLabelText('명칭'), '  ');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(screen.getByText('코드는 공백만으로 지정할 수 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('필수 입력 항목입니다.')).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  /*
+   * 씨앗이 상세 코드인 채로 등록하면 3계층이 **새로** 만들어진다.
+   * 도달 경로는 계획 결정 4가 두 겹 방어를 둔 이유로 명시한 바로 그 둘이다 —
+   * 주소 조작, 그리고 대분류를 골라 폼을 연 뒤 그 코드가 상세로 바뀌는 목록 갱신 시차.
+   */
+  it('씨앗이 상세 코드이면 등록 요청이 나가지 않고 사유가 보인다', async () => {
+    const { requests, user } = renderScreen(
+      createFlowRoutes(defectCreateRoute(() => jsonResponse(CREATED_DEFECT, { status: 201 }))),
+      '?sel=1002&mode=create',
+    );
+
+    await user.type(await screen.findByLabelText('코드'), 'DF-99');
+    await user.type(screen.getByLabelText('명칭'), '신규');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      screen.getByText('상위는 대분류만 지정할 수 있습니다. 계층은 2단계까지입니다.'),
+    ).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  it('서버가 준 필드 오류는 입력칸 옆에, 화면이 모르는 이름은 배너로 간다', async () => {
+    const { user } = renderScreen(
+      createFlowRoutes(
+        defectCreateRoute(() =>
+          jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'defectCode',
+                  code: 'DUPLICATED',
+                  message: '이미 사용 중인 코드입니다.',
+                },
+                {
+                  scope: 'field',
+                  field: '문자열',
+                  code: 'STANDARD',
+                  message: '화면이 모르는 필드의 오류입니다.',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      ),
+      '?mode=create',
+    );
+
+    await user.type(await screen.findByLabelText('코드'), 'DF-30');
+    await user.type(screen.getByLabelText('명칭'), '신규');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('이미 사용 중인 코드입니다.')).toBeInTheDocument();
+    expect(screen.getByText('화면이 모르는 필드의 오류입니다.')).toBeInTheDocument();
+  });
+
+  it('입력칸을 고치면 그 칸의 서버 오류가 사라진다', async () => {
+    const { user } = renderScreen(
+      createFlowRoutes(
+        defectCreateRoute(() =>
+          jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'defectCode',
+                  code: 'DUPLICATED',
+                  message: '이미 사용 중인 코드입니다.',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      ),
+      '?mode=create',
+    );
+
+    await user.type(await screen.findByLabelText('코드'), 'DF-30');
+    await user.type(screen.getByLabelText('명칭'), '신규');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('이미 사용 중인 코드입니다.');
+
+    await user.type(screen.getByLabelText('코드'), '1');
+
+    expect(screen.queryByText('이미 사용 중인 코드입니다.')).not.toBeInTheDocument();
+  });
+});
+
+/** 수정 흐름의 기본 스텁 — 상세와 PUT은 시나리오마다 달라 따로 받는다. */
+const editFlowRoutes = (...extra: StubRoute[]): StubRoute[] => [
+  defectOptionsRoute(),
+  defectListRoute(activeDefectFixtures),
+  ...extra,
+];
+
+describe('DefectCauseCodeScreen — 상세 조회', () => {
+  it('코드를 고르면 상세를 조회해 폼을 그 값으로 채운다', async () => {
+    const { requests, user } = renderScreen(
+      editFlowRoutes(defectDetailRoute(defectCodeFixtures[1])),
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'DF-11' }));
+
+    expect(await screen.findByLabelText('코드')).toHaveValue('DF-11');
+    expect(screen.getByLabelText('명칭')).toHaveValue('스크래치');
+    expect(requestsTo(requests, `${DEFECT_LIST_PATH}/1002`)).toHaveLength(1);
+  });
+
+  it('고르기 전에는 상세 요청이 나가지 않는다', async () => {
+    const { requests } = renderScreen([defectListRoute(activeDefectFixtures)]);
+    await screen.findByRole('button', { name: 'DF-10' });
+
+    expect(
+      requests.some((request) => /^\/quality\/defect-codes\/\d+$/.test(request.url.pathname)),
+    ).toBe(false);
+  });
+
+  it('주소에 있던 선택이 그대로 복원된다', async () => {
+    renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
+
+    expect(await screen.findByLabelText('코드')).toHaveValue('DF-10');
+  });
+
+  it('불러오는 동안에는 스켈레톤을 낸다', () => {
+    renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
+
+    expect(screen.getByRole('status', { name: '코드 정보를 불러오는 중' })).toBeInTheDocument();
+  });
+
+  /* 판정의 주인은 codeEditable이다 — 어긋난 조합이 실제로 내려온다. */
+  it('코드 편집이 잠기면 사유가 보인다 — reason이 EDITABLE로 어긋나도 잠긴다', async () => {
+    renderScreen(
+      editFlowRoutes(
+        defectDetailRoute(defectCodeFixtures[0], {
+          codeEditable: false,
+          reason: 'EDITABLE',
+          referenceCount: 3,
+        }),
+      ),
+      '?sel=1001',
+    );
+
+    expect(await screen.findByLabelText('코드')).toBeDisabled();
+    expect(
+      screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('codeEditable이 참이면 코드 입력이 열려 있다', async () => {
+    renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
+
+    expect(await screen.findByLabelText('코드')).not.toBeDisabled();
+  });
+
+  it('상세 조회에 실패하면 폼 대신 오류 배너와 다시 시도가 뜬다', async () => {
+    renderScreen(
+      editFlowRoutes({
+        match: (request) => isGet(request, `${DEFECT_LIST_PATH}/1001`),
+        // 서버가 빈 message를 주는 일이 실제로 있다.
+        respond: () => jsonResponse({ message: '' }, { status: 500 }),
+      }),
+      '?sel=1001',
+    );
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(
+      screen.getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('코드')).not.toBeInTheDocument();
+  });
+});
+
+describe('DefectCauseCodeScreen — 수정 중의 상위 선택', () => {
+  it('편집 중인 코드는 상위 선택지에 없다 — 자기 자신을 상위로 고를 수 없다', async () => {
+    const { user } = renderScreen(
+      editFlowRoutes(defectDetailRoute(defectCodeFixtures[5])),
+      '?inactive=1&sel=1006',
+    );
+    await screen.findByLabelText('코드');
+
+    await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
+
+    expect(screen.getByRole('option', { name: 'DF-10 · 외관' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /DF-90/ })).not.toBeInTheDocument();
+  });
+
+  it('하위가 있는 코드는 상위 선택칸이 잠기고 사유가 보인다', async () => {
+    renderScreen(editFlowRoutes(defectDetailRoute()), '?sel=1001');
+    await screen.findByLabelText('코드');
+
+    expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
+    expect(
+      screen.getByText(
+        '상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다. 하위 코드를 다른 대분류로 옮기면 이 항목을 쓸 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /* 「미사용 포함」이 꺼져 있어도 상위의 이름이 보여야 한다 — 계층 판정용 목록을 따로 받는 이유다. */
+  it('미사용 대분류를 상위로 가진 상세 코드도 그 상위 이름이 선택칸에 보인다', async () => {
+    const child = {
+      defectCodeId: 1008,
+      defectCode: 'DF-92',
+      defectName: '하위',
+      parentDefectCodeId: 1006,
+      processId: null,
+      isActive: true,
+    };
+
+    renderScreen(
+      [
+        defectOptionsRoute([...defectCodeFixtures, child]),
+        defectListRoute([...activeDefectFixtures, child]),
+        {
+          match: (request) => isGet(request, `${DEFECT_LIST_PATH}/1008`),
+          respond: () =>
+            jsonResponse(
+              { defectCode: child, editability: DEFAULT_EDITABILITY },
+              { headers: { ETag: '"7"' } },
+            ),
+        },
+      ],
+      '?sel=1008',
+    );
+
+    expect(await screen.findByText('DF-90 · 사용하지 않는 축 (미사용)')).toBeInTheDocument();
+  });
+});
+
+describe('DefectCauseCodeScreen — 수정 저장', () => {
+  it('저장하면 멱등 키와 상세 경로의 If-Match가 함께 실리고 공정 번호가 보존된다', async () => {
+    const { requests, user } = renderScreen(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectUpdateRoute(1001, () =>
+          jsonResponse(
+            { ...defectCodeFixtures[0], defectName: '외관가' },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+
+    const put = requests.find((request) => request.method === 'PUT');
+    expect(put?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    // 상세 GET이 준 ETag를 그대로 되돌려 보낸다.
+    expect(put?.headers.get('If-Match')).toBe('"7"');
+    expect(JSON.parse(put?.body ?? '{}')).toEqual({
+      defectCode: 'DF-10',
+      defectName: '외관가',
+      parentDefectCodeId: null,
+      processId: 3001,
+    });
+  });
+
+  it('공정 번호가 없는 코드는 그 키를 싣지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      editFlowRoutes(
+        defectDetailRoute(defectCodeFixtures[1]),
+        defectUpdateRoute(1002, () =>
+          jsonResponse(
+            { ...defectCodeFixtures[1], defectName: '스크래치가' },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=1002',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find((request) => request.method === 'PUT');
+    expect(JSON.parse(put?.body ?? '{}')).not.toHaveProperty('processId');
+    // 상위는 null도 명시해 보낸다 — 키를 빼면 서버가 이전 값을 남길 수 있다.
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ parentDefectCodeId: 1001 });
+  });
+
+  it('저장에 성공하면 목록을 다시 조회하고 그 값이 새 기준값이 된다', async () => {
+    const { requests, user } = renderScreen(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectUpdateRoute(1001, () =>
+          jsonResponse(
+            { ...defectCodeFixtures[0], defectName: '외관가' },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), '가');
+
+    const before = requests.filter((request) => request.method === 'GET').length;
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    expect(requests.filter((request) => request.method === 'GET').length).toBeGreaterThan(before);
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  /* 저장 응답의 ETag가 같은 경로로 갱신돼야 재조회 없이 이어서 고칠 수 있다. */
+  it('이어서 한 번 더 저장하면 갱신된 잠금 토큰이 실린다', async () => {
+    let etag = '"7"';
+
+    const { requests, user } = renderScreen(
+      [
+        defectOptionsRoute(),
+        defectListRoute(activeDefectFixtures),
+        {
+          match: (request) => isGet(request, `${DEFECT_LIST_PATH}/1001`),
+          respond: () =>
+            jsonResponse(
+              { defectCode: defectCodeFixtures[0], editability: DEFAULT_EDITABILITY },
+              { headers: { ETag: etag } },
+            ),
+        },
+        defectUpdateRoute(1001, () => {
+          etag = '"8"';
+          return jsonResponse({ ...defectCodeFixtures[0] }, { headers: { ETag: '"8"' } });
+        }),
+      ],
+      '?sel=1001',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    await user.type(screen.getByLabelText('명칭'), '나');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(2);
+    });
+    expect(requests.filter((request) => request.method === 'PUT').at(-1)?.headers.get('If-Match')).toBe(
+      '"8"',
+    );
+  });
+
+  /* 빈 If-Match는 계약 위반이라 서버가 거부한다. 보내지 않고 멈춘다. */
+  it('잠금 토큰을 확보하지 못했으면 요청을 보내지 않고 안내한다', async () => {
+    const { requests, user } = renderScreen(
+      editFlowRoutes(
+        defectDetailRoute(defectCodeFixtures[0], DEFAULT_EDITABILITY, null),
+        defectUpdateRoute(1001, () => jsonResponse(defectCodeFixtures[0])),
+      ),
+      '?sel=1001',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText('최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.'),
+    ).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+  });
+
+  it('저장 전 화면 검증에 걸리면 요청을 보내지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectUpdateRoute(1001, () => jsonResponse(defectCodeFixtures[0])),
+      ),
+      '?sel=1001',
+    );
+
+    await user.clear(await screen.findByLabelText('명칭'));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(screen.getByText('필수 입력 항목입니다.')).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+  });
+});
+
+/*
+ * 계약 문서가 인정하는 「이미 3계층인 기존 데이터」. 가운데 DF-41(4002)은 상위와 하위를
+ * 동시에 가져 상위 선택칸이 잠긴다 — 그 상태에서 명칭조차 고칠 수 없으면 영구히 잠기는 것이다.
+ */
+describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
+  const legacyRoutes = (...extra: StubRoute[]): StubRoute[] => [
+    defectOptionsRoute(legacyThreeLevelCodeFixtures),
+    defectListRoute(legacyThreeLevelCodeFixtures),
+    ...extra,
+  ];
+
+  it('상위와 하위를 동시에 가진 코드도 명칭만 고쳐 저장할 수 있다', async () => {
+    const { requests, user } = renderScreen(
+      legacyRoutes(
+        defectDetailRoute(legacyThreeLevelCodeFixtures[1]),
+        defectUpdateRoute(4002, () =>
+          jsonResponse(
+            { ...legacyThreeLevelCodeFixtures[1], defectName: '체결 불량' },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=4002',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), ' 불량');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find((request) => request.method === 'PUT');
+    expect(put?.url.pathname).toBe(`${DEFECT_LIST_PATH}/4002`);
+    // 저장된 상위를 그대로 되돌려 보낸다 — 화면이 바꾸려 한 것이 아니다.
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ parentDefectCodeId: 4001 });
+  });
+
+  it('그래도 상위 선택칸은 잠겨 있고 사유가 보인다 — 계층을 더 깨지 못하게 한다', async () => {
+    renderScreen(legacyRoutes(defectDetailRoute(legacyThreeLevelCodeFixtures[1])), '?sel=4002');
+    await screen.findByLabelText('명칭');
+
+    expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
+    expect(screen.getByText(/상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다/)).toBeInTheDocument();
+  });
+
+  /* 3계층의 막내 DF-42는 상위가 상세 코드다. 그래도 명칭만 고치는 것은 막지 않는다. */
+  it('상위가 상세 코드인 행도 명칭만 고쳐 저장할 수 있다', async () => {
+    const { requests, user } = renderScreen(
+      legacyRoutes(
+        defectDetailRoute(legacyThreeLevelCodeFixtures[2]),
+        defectUpdateRoute(4003, () =>
+          jsonResponse(
+            { ...legacyThreeLevelCodeFixtures[2], defectName: '토크 미달 심함' },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=4003',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), ' 심함');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    // 저장된 상위를 그대로 되돌려 보낸다 — 화면이 바꾸려 한 것이 아니다.
+    expect(
+      JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}'),
+    ).toMatchObject({ parentDefectCodeId: 4002 });
+  });
+
+  it('상위를 대분류로 고쳐 저장하는 정상 흐름은 그대로 통과한다', async () => {
+    const { requests, user } = renderScreen(
+      legacyRoutes(
+        defectDetailRoute(legacyThreeLevelCodeFixtures[2]),
+        defectUpdateRoute(4003, () =>
+          jsonResponse(
+            { ...legacyThreeLevelCodeFixtures[2], parentDefectCodeId: 4001 },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=4003',
+    );
+
+    await screen.findByLabelText('명칭');
+    await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
+    await user.click(await screen.findByRole('option', { name: 'DF-40 · 조립' }));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    expect(
+      JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}'),
+    ).toMatchObject({ parentDefectCodeId: 4001 });
+  });
+});
+
+/*
+ * R2와 R3가 **동시에** 걸리는 유일한 조합 — 상위가 상세 코드이면서 자기도 하위를 갖는다.
+ * 두 규칙이 각각 값만 봤을 때는 한쪽이 다른 쪽의 탈출구를 막아 이 행이 영구히 잠겼다.
+ */
+describe('DefectCauseCodeScreen — 상위가 상세 코드이면서 하위도 가진 행', () => {
+  const deepRoutes = (...extra: StubRoute[]): StubRoute[] => [
+    defectOptionsRoute(deepHierarchyCodeFixtures),
+    defectListRoute(deepHierarchyCodeFixtures),
+    ...extra,
+  ];
+
+  it('명칭만 고쳐 저장할 수 있다 — 두 규칙이 서로의 탈출구를 막지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      deepRoutes(
+        defectDetailRoute(deepHierarchyCodeFixtures[2]),
+        defectUpdateRoute(5003, () =>
+          jsonResponse(
+            { ...deepHierarchyCodeFixtures[2], defectName: '기포 다수' },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=5003',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), ' 다수');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    expect(
+      JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}'),
+    ).toMatchObject({ parentDefectCodeId: 5002 });
+  });
+
+  it('그래도 상위 선택칸은 잠겨 있다 — 계층을 더 깨지 못하게 한다', async () => {
+    renderScreen(deepRoutes(defectDetailRoute(deepHierarchyCodeFixtures[2])), '?sel=5003');
+    await screen.findByLabelText('명칭');
+
+    expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
+  });
+});
+
+describe('DefectCauseCodeScreen — 상세 코드를 대분류로 되돌리기', () => {
+  /*
+   * 수정은 전체 치환이라 상위 키를 빼면 서버가 이전 값을 남길 수 있다.
+   * 「없음 (대분류)」로 바꿔 저장하는 이 흐름이 그 판단의 유일한 근거다.
+   */
+  it('상위를 비워 저장하면 본문에 null이 명시된다', async () => {
+    const { requests, user } = renderScreen(
+      editFlowRoutes(
+        defectDetailRoute(defectCodeFixtures[1]),
+        defectUpdateRoute(1002, () =>
+          jsonResponse(
+            { ...defectCodeFixtures[1], parentDefectCodeId: null },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=1002',
+    );
+
+    await screen.findByLabelText('명칭');
+    await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
+    await user.click(screen.getByRole('option', { name: '없음 (대분류)' }));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find((request) => request.method === 'PUT');
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ parentDefectCodeId: null });
+  });
+});
+
+describe('DefectCauseCodeScreen — 저장 충돌', () => {
+  const conflictRoutes = (cause: string): StubRoute[] =>
+    editFlowRoutes(
+      defectDetailRoute(),
+      defectUpdateRoute(1001, () =>
+        jsonResponse({ conflictCause: cause, message: '' }, { status: 409 }),
+      ),
+    );
+
+  it.each([
+    ['user', '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.'],
+    [
+      'erpSync',
+      '외부 시스템에서 이 항목이 다시 동기화됐습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+    ],
+    [
+      'workerLease',
+      '다른 작업에서 이 항목을 처리하는 중입니다. 잠시 뒤 최신 내용을 불러와 다시 저장하세요.',
+    ],
+  ])('충돌 원인 %s에 맞는 문구와 최신 불러오기가 나온다', async (cause, expected) => {
+    const { user } = renderScreen(conflictRoutes(cause), '?sel=1001');
+
+    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+  });
+
+  it('최신 불러오기를 누르면 상세를 다시 조회하고 입력한 내용이 사라진다', async () => {
+    const { requests, user } = renderScreen(conflictRoutes('user'), '?sel=1001');
+
+    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByRole('button', { name: '최신 불러오기' });
+
+    const before = requestsTo(requests, `${DEFECT_LIST_PATH}/1001`).length;
+    await user.click(screen.getByRole('button', { name: '최신 불러오기' }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, `${DEFECT_LIST_PATH}/1001`).length).toBeGreaterThan(before);
+    });
+    expect(await screen.findByLabelText('명칭')).toHaveValue('외관');
+  });
+});
+
+const defectDeactivateRoute = (id: number, respond: StubRoute['respond']): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' &&
+    new URL(request.url).pathname === `${DEFECT_LIST_PATH}/${String(id)}:deactivate`,
+  respond,
+});
+
+describe('DefectCauseCodeScreen — 사용 중지', () => {
+  const openDialog = async (
+    routes: StubRoute[],
+    search: string,
+  ): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = renderScreen(routes, search);
+
+    await rendered.user.click(await screen.findByRole('button', { name: '사용 중지' }));
+
+    return rendered;
+  };
+
+  it('사용 중지를 누르면 확인 창이 뜨고 하위 건수를 함께 보인다', async () => {
+    await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () => jsonResponse(defectCodeFixtures[0]!)),
+      ),
+      '?sel=1001',
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('사용 중지할까요?')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('이 대분류에는 표시된 목록 기준 하위 상세 코드 2건이 있습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('하위가 없는 코드에는 건수 문장이 나오지 않는다', async () => {
+    await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(defectCodeFixtures[1]),
+        defectDeactivateRoute(1002, () => jsonResponse(defectCodeFixtures[1]!)),
+      ),
+      '?sel=1002',
+    );
+
+    expect(within(screen.getByRole('dialog')).queryByText(/하위 상세 코드/)).not.toBeInTheDocument();
+  });
+
+  /* If-Match를 요청 경로(`…:deactivate`)로 꺼내면 언제나 비어 있어 전부 실패한다. */
+  it('확인하면 상세 경로의 잠금 토큰을 실은 사용 중지 요청이 나간다', async () => {
+    const { requests, user } = await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () =>
+          jsonResponse({ ...defectCodeFixtures[0], isActive: false }),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+    );
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+
+    const request = requests.find((candidate) => candidate.method === 'POST');
+    expect(request?.url.pathname).toBe(`${DEFECT_LIST_PATH}/1001:deactivate`);
+    expect(request?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(request?.headers.get('If-Match')).toBe('"7"');
+  });
+
+  it('성공하면 창이 닫히고 목록·상세를 다시 조회한다', async () => {
+    const { requests, user } = await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () =>
+          jsonResponse({ ...defectCodeFixtures[0], isActive: false }),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    const before = requests.filter((request) => request.method === 'GET').length;
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+    );
+    await screen.findByText('저장했습니다');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'GET').length).toBeGreaterThan(before);
+  });
+
+  it('실패하면 창이 닫히지 않고 창 안에 사유가 보인다', async () => {
+    const { user } = await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () =>
+          jsonResponse({ message: '' }, { status: 422 }),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('충돌이면 창 안에 최신 불러오기가 함께 나온다', async () => {
+    const { user } = await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () =>
+          jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+  });
+
+  it('이미 미사용인 코드에서는 사용 중지를 쓸 수 없다', async () => {
+    renderScreen(
+      [
+        defectOptionsRoute(),
+        defectListRoute(),
+        defectDetailRoute(defectCodeFixtures[5]),
+      ],
+      '?inactive=1&sel=1006',
+    );
+
+    expect(await screen.findByRole('button', { name: '사용 중지' })).toBeDisabled();
+    expect(
+      screen.getByText('사용 중지는 이미 미사용인 코드에는 할 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+});
+
+/*
+ * 탭 정의 배열을 순회한다 — 탭이 셋으로 늘면 이 테스트도 함께 는다.
+ * 탭마다 경로·필드 이름이 다르므로 어댑터별 응답을 만들어 준다.
+ */
+describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, definition] as const))(
+  'DefectCauseCodeScreen — %s 탭',
+  (_label, definition) => {
+    /** 목록 경로는 상세 경로에서 번호만 떼면 나온다 — 탭이 늘어도 여기를 고칠 일이 없다. */
+    const detailPath = definition.adapter.detailPath(SELECTED_ID);
+    const listPath = detailPath.slice(0, detailPath.lastIndexOf('/'));
+    const fixtures = definition.kind === 'defect' ? defectCodeFixtures : causeCodeFixtures;
+    const firstCode = definition.kind === 'defect' ? 'DF-10' : 'CS-10';
+    const groupHeader = definition.kind === 'defect' ? 'DF-10 · 외관' : 'CS-10 · 설비';
+
+    const routes: StubRoute[] = [
+      {
+        match: (request) => isGet(request, listPath),
+        respond: () => jsonResponse(listBody(fixtures)),
+      },
+    ];
+
+    it('진입 즉시 그 탭의 목록을 조회하고 대분류로 묶어 그린다', async () => {
+      const { requests } = renderScreen(routes, `?tab=${definition.kind}`);
+
+      expect(await screen.findByRole('button', { name: firstCode })).toBeInTheDocument();
+      expect(screen.getByText(groupHeader)).toBeInTheDocument();
+      expect(requestsTo(requests, listPath)).toHaveLength(1);
+    });
+
+    it('조건이 그 탭의 요청 쿼리에 실린다', async () => {
+      const { requests, user } = renderScreen(routes, `?tab=${definition.kind}`);
+      await screen.findByRole('button', { name: firstCode });
+
+      await user.type(screen.getByLabelText(definition.adapter.labels.searchLabel), 'X');
+      await user.click(screen.getByRole('button', { name: '조회' }));
+
+      expect(requestsTo(requests, listPath).at(-1)?.url.searchParams.get('q')).toBe('X');
+    });
+
+    it('탭 안의 목록 페인에 그 탭의 이름이 붙는다', async () => {
+      renderScreen(routes, `?tab=${definition.kind}`);
+      await screen.findByRole('button', { name: firstCode });
+
+      const pane = screen.getByRole('region', { name: definition.adapter.labels.tab });
+      expect(within(pane).getByRole('button', { name: firstCode })).toBeInTheDocument();
+    });
+
+    it('등록 요청이 그 탭의 경로와 필드 이름으로 나간다', async () => {
+      const fields = definition.adapter.serverFields;
+      const created: Record<string, unknown> = {
+        [`${definition.kind}CodeId`]: 1100,
+        [fields.code]: 'X-01',
+        [fields.name]: '새 코드',
+        [fields.parentId]: null,
+        isActive: true,
+      };
+
+      const { requests, user } = renderScreen(
+        [
+          ...routes,
+          {
+            match: (request) =>
+              request.method === 'POST' && new URL(request.url).pathname === listPath,
+            respond: () => jsonResponse(created, { status: 201 }),
+          },
+        ],
+        `?tab=${definition.kind}&mode=create`,
+      );
+
+      await user.type(await screen.findByLabelText('코드'), 'X-01');
+      await user.type(screen.getByLabelText('명칭'), '새 코드');
+      await user.click(screen.getByRole('button', { name: '저장' }));
+      await screen.findByText('등록했습니다');
+
+      const post = requests.find((request) => request.method === 'POST');
+      expect(post?.url.pathname).toBe(listPath);
+      expect(post?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+      expect(JSON.parse(post?.body ?? '{}')).toEqual({
+        [fields.code]: 'X-01',
+        [fields.name]: '새 코드',
+      });
+    });
+
+    /*
+     * 아래 두 사례가 없으면 어댑터 한쪽(원인 탭)의 수정·사용 중지·공정 번호 보존을
+     * 통째로 망가뜨려도 테스트가 전건 통과한다 — 어댑터는 손으로 쓴 쌍둥이 두 벌이기 때문이다.
+     * 계획이 꼽은 최상위 위험 두 건(사용 중지 전면 실패 · 서버 값이 조용히 지워짐)이 여기 걸린다.
+     */
+    const editFields = definition.adapter.serverFields;
+    const idField = `${definition.kind}CodeId`;
+
+    /** 그 탭의 계약 표현으로 코드 한 행을 만든다. 필드 이름은 어댑터가 안다. */
+    const codeRow = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+      [idField]: SELECTED_ID,
+      [editFields.code]: 'X-10',
+      [editFields.name]: '대분류',
+      [editFields.parentId]: null,
+      processId: PRESERVED_PROCESS_ID,
+      isActive: true,
+      ...overrides,
+    });
+
+    /** 상세 응답의 감싸개 키는 코드 필드 이름과 같다(`defectCode` / `causeCode`). */
+    const detailBody = (): Record<string, unknown> => ({
+      [editFields.code]: codeRow(),
+      editability: DEFAULT_EDITABILITY,
+    });
+
+    const tabEditRoutes = (...extra: StubRoute[]): StubRoute[] => [
+      {
+        match: (request) =>
+          isGet(request, listPath) &&
+          new URL(request.url).searchParams.get('includeInactive') === 'true',
+        respond: () => jsonResponse(listBody([codeRow()])),
+      },
+      { match: (request) => isGet(request, listPath), respond: () => jsonResponse(listBody([codeRow()])) },
+      {
+        match: (request) => isGet(request, detailPath),
+        respond: () => jsonResponse(detailBody(), { headers: { ETag: TAB_ETAG } }),
+      },
+      ...extra,
+    ];
+
+    it('수정 요청이 그 탭의 경로·필드 이름으로 나가고 공정 번호가 보존된다', async () => {
+      const { requests, user } = renderScreen(
+        tabEditRoutes({
+          match: (request) => request.method === 'PUT' && new URL(request.url).pathname === detailPath,
+          respond: () => jsonResponse(codeRow({ [editFields.name]: '대분류가' }), {
+            headers: { ETag: '"10"' },
+          }),
+        }),
+        `?tab=${definition.kind}&sel=${String(SELECTED_ID)}`,
+      );
+
+      await user.type(await screen.findByLabelText('명칭'), '가');
+      await user.click(screen.getByRole('button', { name: '저장' }));
+      await screen.findByText('저장했습니다');
+
+      const put = requests.find((request) => request.method === 'PUT');
+      expect(put?.url.pathname).toBe(detailPath);
+      expect(put?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+      expect(put?.headers.get('If-Match')).toBe(TAB_ETAG);
+      expect(JSON.parse(put?.body ?? '{}')).toEqual({
+        [editFields.code]: 'X-10',
+        [editFields.name]: '대분류가',
+        [editFields.parentId]: null,
+        processId: PRESERVED_PROCESS_ID,
+      });
+    });
+
+    it('사용 중지 요청이 그 탭의 경로와 상세 경로의 잠금 토큰으로 나간다', async () => {
+      const deactivatePath = `${detailPath}:deactivate`;
+
+      const { requests, user } = renderScreen(
+        tabEditRoutes({
+          match: (request) =>
+            request.method === 'POST' && new URL(request.url).pathname === deactivatePath,
+          respond: () => jsonResponse(codeRow({ isActive: false })),
+        }),
+        `?tab=${definition.kind}&sel=${String(SELECTED_ID)}`,
+      );
+
+      await user.click(await screen.findByRole('button', { name: '사용 중지' }));
+      await user.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+      );
+      await screen.findByText('저장했습니다');
+
+      const request = requests.find(
+        (candidate) => candidate.method === 'POST' && candidate.url.pathname === deactivatePath,
+      );
+      expect(request).toBeDefined();
+      expect(request?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+      // 요청 경로(`…:deactivate`)로 꺼내면 언제나 비어 있다 — 상세 경로에서 꺼내야 한다.
+      expect(request?.headers.get('If-Match')).toBe(TAB_ETAG);
+    });
+  },
+);
