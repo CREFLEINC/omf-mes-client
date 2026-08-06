@@ -1,9 +1,11 @@
-import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, Button, Dialog, PageHeader, useToast } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useApiClient } from '../../patterns/api-context';
+import { useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import {
   PLACEHOLDER_DIRECTION_CODES,
@@ -27,7 +29,10 @@ import { MessageTable } from './message-table';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
-import { useFilterOptions, useMessageDetail, useMessageList } from './queries';
+import { messageKeys, useFilterOptions, useMessageDetail, useMessageList } from './queries';
+import { retryMessage } from './requests';
+import { RetryErrorBanner } from './retry-error-banner';
+import type { IntegrationMessageRow } from './types';
 
 const t = messages.integrationSync;
 
@@ -80,6 +85,49 @@ const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
   </div>
 );
 
+interface RetryConfirmDialogProps {
+  target: IntegrationMessageRow | null;
+  onClose: () => void;
+  onConfirm: () => void;
+  isSaving: boolean;
+  banner: ReactNode;
+}
+
+/**
+ * 단건 재처리 확인. 되돌리기 쉽지 않은 조작이라 한 단계를 둔다.
+ *
+ * 확인 창을 이 파일이 갖는 이유는 이 화면 말고 열 곳이 없기 때문이다.
+ * 재처리 조작은 표의 열 하나에만 두고 상세에는 두지 않는다 —
+ * 두 자리에 두면 같은 쓰기의 실패 표시가 두 곳으로 갈라진다.
+ */
+const RetryConfirmDialog = ({
+  target,
+  onClose,
+  onConfirm,
+  isSaving,
+  banner,
+}: RetryConfirmDialogProps) => (
+  <Dialog
+    open={target !== null}
+    onClose={onClose}
+    title={t.retry.confirmTitle}
+    footer={
+      <>
+        <Button variant="outlined" onClick={onClose}>
+          {messages.common.cancel}
+        </Button>
+        {/* loading이 곧 비활성이다 — 연타해도 같은 요청이 두 번 나가지 않는다. */}
+        <Button loading={isSaving} onClick={onConfirm}>
+          {t.actions.retry}
+        </Button>
+      </>
+    }
+  >
+    {banner}
+    <p>{t.retry.confirmDescription}</p>
+  </Dialog>
+);
+
 /**
  * W-06-10 컨테이너 — 이 저장소의 **첫 조회 형 화면**이다.
  *
@@ -88,6 +136,8 @@ const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
  */
 export const IntegrationSyncScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const toast = useToast();
+  const { client } = useApiClient();
 
   const period: PeriodInput = {
     from: searchParams.get('from') ?? '',
@@ -159,6 +209,32 @@ export const IntegrationSyncScreen = () => {
     setSearchParams(next);
   };
 
+  /** 확인 창을 연 대상. 409 안내에 붙일 `lockedAt`도 이 행에서 가져온다. */
+  const [retryTarget, setRetryTarget] = useState<IntegrationMessageRow | null>(null);
+
+  const retryWrite = useMasterWrite<number, IntegrationMessageRow>({
+    request: (id, headers) => retryMessage(client, id, headers),
+    /*
+     * **반드시 null이다.** 이 리소스에는 낙관적 잠금이 없어 상세 응답에 ETag가 오지 않는다.
+     * 경로를 주면 훅이 잠금 토큰을 찾지 못해 **요청을 보내기도 전에 멈추고**
+     * 「최신 정보를 불러오는 중입니다」만 되풀이돼 재처리가 영영 되지 않는다.
+     */
+    etagPath: null,
+    invalidateKeys: [messageKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: () => {
+      setRetryTarget(null);
+      toast.show({ variant: 'success', description: t.retry.requested });
+    },
+  });
+
+  /** 충돌·상태 불일치는 지금 상태를 다시 받아야 풀린다. 버릴 입력이 없다. */
+  const reloadList = () => {
+    retryWrite.reset();
+    void list.refetch();
+  };
+
   return (
     <>
       <PageHeader
@@ -220,6 +296,11 @@ export const IntegrationSyncScreen = () => {
                 applyQuery(period, filters);
               }}
               onOpenDetail={openDetail}
+              onRetry={(row) => {
+                retryWrite.reset();
+                setRetryTarget(row);
+              }}
+              retryingId={retryWrite.isSaving ? (retryTarget?.integrationMessageId ?? null) : null}
               now={now}
             />
             {listQuery !== null && !list.isPending && (
@@ -247,6 +328,25 @@ export const IntegrationSyncScreen = () => {
           ) : null
         }
         now={now}
+      />
+
+      <RetryConfirmDialog
+        target={retryTarget}
+        onClose={() => {
+          retryWrite.reset();
+          setRetryTarget(null);
+        }}
+        onConfirm={() => {
+          if (retryTarget !== null) retryWrite.write(retryTarget.integrationMessageId);
+        }}
+        isSaving={retryWrite.isSaving}
+        banner={
+          <RetryErrorBanner
+            error={retryWrite.error}
+            onReload={reloadList}
+            lockedAt={retryTarget?.lockedAt}
+          />
+        }
       />
     </>
   );

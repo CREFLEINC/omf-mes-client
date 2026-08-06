@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -239,7 +239,7 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
 });
 
 describe('IntegrationSyncScreen — 목록 표시', () => {
-  it('여섯 열과 응답 건수만큼의 행이 나온다', async () => {
+  it('일곱 열과 응답 건수만큼의 행이 나온다', async () => {
     renderScreen([listRoute()]);
 
     expect(await screen.findByText('SAMPLE-KEY-0001')).toBeInTheDocument();
@@ -249,7 +249,15 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent);
 
-    expect(headers).toEqual(['메시지 키', '연계 종류', '상태', '시도', '생성', '마지막 오류']);
+    expect(headers).toEqual([
+      '메시지 키',
+      '연계 종류',
+      '상태',
+      '시도',
+      '생성',
+      '마지막 오류',
+      '재처리',
+    ]);
     expect(within(table).getAllByRole('row')).toHaveLength(messageRowFixtures.length + 1);
   });
 
@@ -565,7 +573,10 @@ describe('IntegrationSyncScreen — 상세', () => {
     const { requests, user } = renderScreen([listRoute(), detailRoute()], PERIOD);
     await openFirstDetail(user);
 
-    expect(await screen.findByText('연계 메시지 상세')).toBeInTheDocument();
+    // 디자인 시스템 Dialog는 닫혀 있어도 내용을 DOM에 둔다. 열림 여부는 role로만 판정된다.
+    expect(
+      within(await screen.findByRole('dialog')).getByText('연계 메시지 상세'),
+    ).toBeInTheDocument();
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
     expect(currentLocation()).toContain('sel=9001');
   });
@@ -573,23 +584,26 @@ describe('IntegrationSyncScreen — 상세', () => {
   it('주소에 상세가 있으면 새로고침해도 같은 상세가 열린다', async () => {
     const { requests } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
 
-    expect(await screen.findByText('연계 메시지 상세')).toBeInTheDocument();
+    expect(
+      within(await screen.findByRole('dialog')).getByText('연계 메시지 상세'),
+    ).toBeInTheDocument();
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
   });
 
   it('닫으면 주소에서 상세가 지워진다', async () => {
     const { user } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
-    await screen.findByText('연계 메시지 상세');
+    await screen.findByRole('dialog');
 
     await user.click(screen.getByRole('button', { name: '닫기' }));
 
     expect(currentLocation()).not.toContain('sel=');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('전문이 실려 와도 화면 어디에도 나오지 않는다', async () => {
     const { user } = renderScreen([listRoute(), detailRoute()], PERIOD);
     await openFirstDetail(user);
-    await screen.findByText('연계 메시지 상세');
+    await screen.findByRole('dialog');
 
     expect(screen.queryByText(PAYLOAD_MARKER)).not.toBeInTheDocument();
     expect(document.body.textContent).not.toContain(PAYLOAD_MARKER);
@@ -630,10 +644,206 @@ describe('IntegrationSyncScreen — 상세', () => {
 
   it('조건을 바꾸면 열려 있던 상세도 닫힌다 — 그 건이 새 결과에 없을 수 있다', async () => {
     const { user } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
-    await screen.findByText('연계 메시지 상세');
+    await screen.findByRole('dialog');
 
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).not.toContain('sel=');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('IntegrationSyncScreen — 단건 재처리', () => {
+  const PERIOD = '?from=2026-08-01&to=2026-08-06';
+  const RETRY_PATH = `${LIST_PATH}/9001:retry`;
+
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const retryRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) => request.method === 'POST' && new URL(request.url).pathname === RETRY_PATH,
+    respond,
+  });
+
+  const okRetry = retryRoute(() => jsonResponse(messageRowFixtures[0]));
+
+  const confirmRetry = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole('button', { name: 'SAMPLE-KEY-0001 재처리' }));
+    await user.click(await screen.findByRole('button', { name: '재처리' }));
+  };
+
+  it('확인을 거쳐야 요청이 나간다', async () => {
+    const { requests, user } = renderScreen([listRoute(), okRetry], PERIOD);
+
+    await user.click(await screen.findByRole('button', { name: 'SAMPLE-KEY-0001 재처리' }));
+    expect(within(screen.getByRole('dialog')).getByText('다시 보낼까요?')).toBeInTheDocument();
+    expect(requestsTo(requests, RETRY_PATH)).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: '재처리' }));
+
+    expect(requestsTo(requests, RETRY_PATH)).toHaveLength(1);
+  });
+
+  it('멱등 키가 UUID 형식으로 실리고 If-Match는 실리지 않는다', async () => {
+    const { requests, user } = renderScreen([listRoute(), okRetry], PERIOD);
+    await confirmRetry(user);
+
+    const request = requestsTo(requests, RETRY_PATH)[0];
+    expect(request?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    // 이 리소스에는 낙관적 잠금이 없다. If-Match를 꺼내려 하면 요청 자체가 나가지 않는다.
+    expect(request?.headers.has('If-Match')).toBe(false);
+    expect(request?.body).toBe('');
+  });
+
+  it('성공하면 창이 닫히고 안내가 뜨며 목록을 다시 조회한다', async () => {
+    const { requests, user } = renderScreen([listRoute(), okRetry], PERIOD);
+    const before = requestsTo(requests, LIST_PATH).length;
+
+    await confirmRetry(user);
+
+    expect(await screen.findByText('다시 보내도록 요청했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
+  it('연타해도 같은 요청이 두 번 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        listRoute(),
+        retryRoute(
+          () =>
+            new Response(JSON.stringify(messageRowFixtures[0]), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+        ),
+      ],
+      PERIOD,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'SAMPLE-KEY-0001 재처리' }));
+    const confirm = await screen.findByRole('button', { name: '재처리' });
+    await user.click(confirm);
+    await user.click(confirm);
+
+    expect(requestsTo(requests, RETRY_PATH)).toHaveLength(1);
+  });
+
+  it('워커 점유 충돌은 목록 행의 시각과 함께 안내한다', async () => {
+    const { user } = renderScreen(
+      [
+        listRoute([
+          messageRow({ lockedBy: 'sync-worker-01', lockedAt: '2026-08-04T11:20:00+09:00' }),
+        ]),
+        retryRoute(() =>
+          jsonResponse({ conflictCause: 'workerLease', message: '' }, { status: 409 }),
+        ),
+      ],
+      PERIOD,
+    );
+    await confirmRetry(user);
+
+    expect(
+      await screen.findByText(
+        '이 건을 처리하는 작업이 11:20부터 진행 중입니다. 잠시 뒤 다시 시도하세요.',
+      ),
+    ).toBeInTheDocument();
+    // 실패했으면 창을 닫지 않는다 — 사유를 보고 다음 행동을 정해야 한다.
+    expect(within(screen.getByRole('dialog')).getByText('다시 보낼까요?')).toBeInTheDocument();
+  });
+
+  it('다른 사용자 충돌은 다른 문구로 나온다', async () => {
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        retryRoute(() => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })),
+      ],
+      PERIOD,
+    );
+    await confirmRetry(user);
+
+    expect(
+      await screen.findByText(
+        '다른 사용자가 이 건을 먼저 처리했습니다. 목록을 다시 조회해 상태를 확인하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('상태가 실패가 아니면 서버 문구가 비어도 안내가 남는다', async () => {
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        retryRoute(() =>
+          jsonResponse(
+            {
+              errors: [{ scope: 'field', field: '문자열', code: 'NOT_RETRYABLE', message: '' }],
+            },
+            { status: 400 },
+          ),
+        ),
+      ],
+      PERIOD,
+    );
+    await confirmRetry(user);
+
+    expect(
+      await screen.findByText(
+        '지금 상태에서는 다시 보낼 수 없습니다. 목록을 다시 조회해 상태를 확인하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('다시 조회를 누르면 목록 요청이 한 번 더 나간다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        listRoute(),
+        retryRoute(() => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })),
+      ],
+      PERIOD,
+    );
+    await confirmRetry(user);
+    const before = requestsTo(requests, LIST_PATH).length;
+
+    await user.click(await screen.findByRole('button', { name: '다시 조회' }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
+  it('권한이 없으면 권한 안내가 창 안에 나온다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), retryRoute(() => jsonResponse({ message: '' }, { status: 403 }))],
+      PERIOD,
+    );
+    await confirmRetry(user);
+
+    expect(
+      await screen.findByText(
+        '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('연결이 끊기면 연결 안내가 나온다', async () => {
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        {
+          match: (request) =>
+            request.method === 'POST' && new URL(request.url).pathname === RETRY_PATH,
+          respond: () => {
+            throw new Error('네트워크 실패');
+          },
+        },
+      ],
+      PERIOD,
+    );
+    await confirmRetry(user);
+
+    expect(
+      await screen.findByText('네트워크 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도하세요.'),
+    ).toBeInTheDocument();
   });
 });

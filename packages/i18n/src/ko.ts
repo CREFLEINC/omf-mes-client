@@ -486,6 +486,38 @@ const integrationSync = {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
+    retry: '재처리',
+    /*
+     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 메시지 키를 넣어 어느 건인지 밝히되,
+     * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「재처리」로 이 버튼을 부를 수 없다.
+     */
+    retryRow: (messageKey: string): string => `${messageKey} 재처리`,
+    reload: '다시 조회',
+  },
+  /**
+   * 재처리 — 같은 메시지 키로 다시 보낸다. 새 건을 만들지 않는다.
+   * 되돌리기 쉽지 않은 조작이라 확인을 한 단계 둔다.
+   */
+  retry: {
+    confirmTitle: '다시 보낼까요?',
+    confirmDescription: '같은 메시지 키로 다시 보냅니다. 새 건을 만들지 않습니다.',
+    requested: '다시 보내도록 요청했습니다',
+  },
+  /**
+   * 재처리 실패. 「저장」 어휘를 쓰는 공통 배너를 쓰지 않는다 —
+   * 이 화면의 쓰기는 저장이 아니라 재처리 요청이라 「다시 저장하세요」가 뜻을 잃는다.
+   */
+  retryError: {
+    title: '다시 보내지 못했습니다',
+    /** 상태가 실패가 아닌 건. 서버 문구가 비어도 이 안내는 남는다. */
+    notRetryable: '지금 상태에서는 다시 보낼 수 없습니다. 목록을 다시 조회해 상태를 확인하세요.',
+    workerLease: '이 건을 처리하는 작업이 진행 중입니다. 잠시 뒤 다시 시도하세요.',
+    /** 시작 시각을 알 때. 모르면 위 문구를 그대로 쓴다 — 시각을 지어내지 않는다. */
+    workerLeaseAt: (time: string): string =>
+      `이 건을 처리하는 작업이 ${time}부터 진행 중입니다. 잠시 뒤 다시 시도하세요.`,
+    user: '다른 사용자가 이 건을 먼저 처리했습니다. 목록을 다시 조회해 상태를 확인하세요.',
+    erpSync:
+      '외부 시스템에서 이 건이 다시 동기화됐습니다. 목록을 다시 조회해 상태를 확인하세요.',
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/integration-sync/message-table.tsx에 있다. */
   table: {
@@ -495,6 +527,7 @@ const integrationSync = {
     retryCount: '시도',
     createdAt: '생성',
     lastErrorMessage: '마지막 오류',
+    retry: '재처리',
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
   reasons: {

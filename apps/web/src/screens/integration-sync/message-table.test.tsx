@@ -10,6 +10,7 @@ const NOW = new Date('2026-08-06T12:00:00+09:00');
 const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) => {
   const onFirstPage = vi.fn();
   const onOpenDetail = vi.fn();
+  const onRetry = vi.fn();
   render(
     <MessageTable
       rows={[messageRow()]}
@@ -18,12 +19,14 @@ const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
       isBeyondLast={false}
       onFirstPage={onFirstPage}
       onOpenDetail={onOpenDetail}
+      onRetry={onRetry}
+      retryingId={null}
       now={NOW}
       {...props}
     />,
   );
 
-  return { onFirstPage, onOpenDetail, user: userEvent.setup() };
+  return { onFirstPage, onOpenDetail, onRetry, user: userEvent.setup() };
 };
 
 describe('MessageTable', () => {
@@ -90,6 +93,33 @@ describe('MessageTable', () => {
     await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 상세 열기' }));
 
     expect(onOpenDetail).toHaveBeenCalledWith(9001);
+  });
+
+  it('재처리 버튼은 상태와 무관하게 언제나 누를 수 있다', async () => {
+    // 실서버의 상태 어휘를 화면이 모른다. 「실패일 때만」으로 막으면 어휘가 다른 서버에서 전부 죽는다.
+    const { onRetry, user } = renderTable({
+      rows: [messageRow({ statusCode: 'ERROR', lockedBy: 'sync-worker-01' })],
+    });
+
+    const button = screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' });
+    expect(button).toBeEnabled();
+
+    await user.click(button);
+
+    expect(onRetry).toHaveBeenCalledWith(expect.objectContaining({ integrationMessageId: 9001 }));
+  });
+
+  it('보내는 중인 행의 버튼만 진행 중으로 잠긴다', () => {
+    renderTable({
+      rows: [
+        messageRow(),
+        messageRow({ integrationMessageId: 9002, messageKey: 'SAMPLE-KEY-0002' }),
+      ],
+      retryingId: 9001,
+    });
+
+    expect(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'SAMPLE-KEY-0002 재처리' })).toBeEnabled();
   });
 
   it('결과는 있는데 이 쪽이 비었으면 첫 쪽으로 갈 수단과 함께 안내한다', async () => {

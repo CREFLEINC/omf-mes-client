@@ -16,6 +16,9 @@ export interface MessageTableProps {
   isBeyondLast: boolean;
   onFirstPage: () => void;
   onOpenDetail: (id: number) => void;
+  onRetry: (row: IntegrationMessageRow) => void;
+  /** 지금 재처리를 보내고 있는 건. 그 행의 버튼만 진행 중으로 보인다. */
+  retryingId: number | null;
   /**
    * 상태 보조 문구의 기준 시각. 화면이 한 번 만들어 넘긴다 —
    * 셀마다 지금 시각을 만들면 같은 표 안에서 행마다 다른 기준으로 판정된다.
@@ -29,9 +32,9 @@ const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty
 /**
  * 연계 메시지 목록 표.
  *
- * 계약의 `IntegrationMessage`에는 필드가 14개 있으나 **열은 여섯이다.** 전부 열로 만들면 표가
- * 짓눌려 셀이 낱말 단위로 쪼개진다 — 앞 화면에서 「표를 읽을 수 없다」로 보고된 결함이다.
- * 나머지는 상세에서 본다.
+ * 계약의 `IntegrationMessage`에는 필드가 14개 있으나 **자료 열은 여섯이다**(+ 재처리 열).
+ * 전부 열로 만들면 표가 짓눌려 셀이 낱말 단위로 쪼개진다 —
+ * 앞 화면에서 「표를 읽을 수 없다」로 보고된 결함이다. 나머지는 상세에서 본다.
  *
  * 정렬 열을 두지 않는다. 계약의 목록 쿼리에 **정렬 파라미터가 없어** 클라이언트 정렬은
  * 지금 쪽 안에서만 정렬되고, 사용자에게는 「정렬했는데 순서가 이상하다」로 나타난다.
@@ -43,6 +46,8 @@ export const MessageTable = ({
   isBeyondLast,
   onFirstPage,
   onOpenDetail,
+  onRetry,
+  retryingId,
   now,
 }: MessageTableProps) => {
   const columns: Column<IntegrationMessageRow>[] = [
@@ -97,6 +102,30 @@ export const MessageTable = ({
       key: 'lastErrorMessage',
       header: t.table.lastErrorMessage,
       render: (row) => orEmptyMark(row.lastErrorMessage ?? null),
+    },
+    {
+      key: 'retry',
+      header: t.table.retry,
+      width: '88px',
+      /*
+       * **상태 코드로도 `lockedBy`로도 막지 않는다.** 실서버의 상태 어휘를 화면이 모르므로
+       * 「실패일 때만」으로 막으면 어휘가 다른 서버에서 버튼이 전부 죽는다. 화면의 자료는 낡기도 한다.
+       * 계약이 두 실패(400 NOT_RETRYABLE · 409 workerLease)를 정의했고, 판정은 서버 몫이다.
+       * 막지 않는 대신 상태 열의 보조 한 줄이 「처리 중」을 미리 알린다.
+       */
+      render: (row) => (
+        <Button
+          variant="outlined"
+          size="sm"
+          loading={retryingId === row.integrationMessageId}
+          aria-label={t.actions.retryRow(row.messageKey)}
+          onClick={() => {
+            onRetry(row);
+          }}
+        >
+          {t.actions.retry}
+        </Button>
+      ),
     },
   ];
 
