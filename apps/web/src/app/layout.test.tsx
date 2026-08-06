@@ -80,6 +80,17 @@ describe('AppLayout', () => {
     );
   });
 
+  it('사이드바에 품목 확장속성 메뉴가 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByRole('link', { name: '품목 확장속성' })).toHaveAttribute(
+      'href',
+      '/master-data/item-extended-attrs',
+    );
+  });
+
   it('본문 랜드마크가 자식 내용을 담는다', () => {
     renderLayout('본문 내용');
 

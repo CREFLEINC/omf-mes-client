@@ -1319,6 +1319,96 @@ const commonCode = {
   },
 } as const;
 
+/**
+ * W-06-05 품목 확장속성.
+ *
+ * 이 화면의 문구는 **원본과 확장을 말로 갈라 놓는 것**이 목적이다 —
+ * 한 화면에 「고칠 수 없는 자리」와 「고칠 수 있는 자리」가 붙어 있어,
+ * 배치만으로는 어느 쪽이 어느 쪽인지 읽히지 않는다.
+ *
+ * **원본 구획의 안내는 여기서 만들지 않는다** — 이미 있는 `editability.receivedFromErp`를 그대로 쓴다.
+ * 충돌·상태 잠금·권한 문구도 공통 규약 문구(`conflict.*`·`stateLocked.*`·`httpError.*`)를 그대로 쓴다.
+ */
+const itemExtendedAttrs = {
+  title: '품목 확장속성',
+  breadcrumbRoot: '기준정보',
+  panes: {
+    item: '품목',
+    itemOrigin: '품목 원본 정보',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+  },
+  /** 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다. */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+  filters: {
+    itemSearchLabel: '품목 검색',
+    itemSearchPlaceholder: '품목코드 또는 품목명',
+    chipKeyword: (value: string): string => `검색어: ${value}`,
+    chipRemoveKeyword: '검색어 조건 제거',
+    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+  },
+  loading: {
+    items: '품목 목록을 불러오는 중',
+    itemDetail: '품목 정보를 불러오는 중',
+  },
+  /*
+   * 선택 목록이 잘리거나 실패했다는 사실을 감추지 않는다 —
+   * 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
+   */
+  optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+  optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+  empty: {
+    /*
+     * 결과는 있는데 **이 쪽에는** 없다. 주소를 손으로 고치거나 조건이 좁아졌을 때 생긴다 —
+     * 「등록된 것이 없다」로 내면 사실과 다른 안내가 된다.
+     */
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
+    /*
+     * **여기서 만들 수 없는 자료다.** 품목은 외부 시스템이 소유하므로
+     * 「추가하세요」가 아니라 「원본 시스템을 확인하세요」다.
+     */
+    noneTitle: '표시할 품목이 없습니다',
+    noneDescription: '품목은 외부 시스템에서 받아옵니다. 원본 시스템에 자료가 있는지 확인하세요.',
+    noMatchTitle: '조건에 맞는 품목이 없습니다',
+    noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+    notSelected: '좌측에서 품목을 고르면 여기에 그 품목의 정보가 보입니다',
+  },
+  values: {
+    /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+    empty: '—',
+    /** 좁은 좌 페인에서 「사용 여부」 열을 따로 두면 이름 열이 짓눌린다 — 이름 뒤 접미로 붙인다. */
+    inactiveSuffix: ' (미사용)',
+    /*
+     * 값은 있는데 그 번호를 선택 목록에서 찾지 못했다. **번호를 그대로 내지 않는다** —
+     * 내부 식별자라 사용자가 쓸 수 없고, 보이면 자료로 읽힌다.
+     */
+    unknown: '알 수 없음',
+  },
+  /**
+   * 원본 구획 — 외부 시스템이 소유하는 네 열. **여기에 입력칸도 저장도 없다.**
+   * 안내 문구는 공통 `editability.receivedFromErp`를 쓴다.
+   */
+  origin: {
+    fields: {
+      itemCode: '품목코드',
+      itemName: '품목명',
+      /** 값 목록이 미정이라 코드 문자열을 그대로 낸다 — 이름을 지어내지 않는다. */
+      itemType: '품목유형',
+      baseUom: '기준 단위',
+    },
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -1333,6 +1423,7 @@ export const ko = {
   integrationSync,
   inspectionStandard,
   commonCode,
+  itemExtendedAttrs,
 } as const;
 
 export type Messages = typeof ko;

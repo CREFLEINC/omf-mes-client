@@ -55,6 +55,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/master-data/integration-sync" icon="sync_alt">
               연계 동기화 현황
             </NavItem>
+            <NavItem to="/master-data/item-extended-attrs" icon="inventory_2">
+              품목 확장속성
+            </NavItem>
           </SidebarSection>
         </Sidebar>
       }
