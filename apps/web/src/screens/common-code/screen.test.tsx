@@ -3123,6 +3123,19 @@ describe('CommonCodeScreen — 작업자 선택과 기본 정보 (C58~C63)', () 
     expect(screen.queryByText('7001')).not.toBeInTheDocument();
   });
 
+  /*
+   * C63 — **연결된 작업자에서도** 번호를 내지 않는다.
+   * 연결이 없는 작업자만 보면 「연결 안 됨」이라 번호가 새는 것을 잡지 못한다
+   * (뮤테이션 자체 주입에서 실제로 이 빈틈이 드러났다).
+   */
+  it('계정이 연결된 작업자도 번호를 내지 않는다', async () => {
+    renderScreen(workerRoutes(), '?tab=worker&wkr=5001');
+    await findLoadedWorkerDetailPane();
+
+    expect(within(workerDetailPane()).getByText('연결됨')).toBeInTheDocument();
+    expect(within(workerDetailPane()).queryByText('7001')).not.toBeInTheDocument();
+  });
+
   /* 조회 목록에 없는 번호를 화면에 내지 않는다. */
   it('선택 목록에 없는 부서 번호는 「알 수 없음」이 된다', async () => {
     renderScreen(
