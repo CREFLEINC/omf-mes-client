@@ -2124,6 +2124,40 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     expect(body.items.every((item) => item.inspectionPlanVersionId === 4002)).toBe(true);
   });
 
+  /*
+   * **잠금 토큰이 없어도 항목 저장은 나가야 한다.** 계약이 이 경로에 If-Match 를 요구하지 않으므로
+   * 화면이 상세 경로를 잠금 출처로 지정하면, 토큰을 찾지 못한 순간 요청을 보내지 않고 멈춰
+   * 「저장을 눌러도 아무 일이 없다」가 된다 — 이 화면에서 가장 사고가 나기 쉬운 자리다.
+   */
+  it('버전 상세에 잠금 토큰이 없어도 항목 저장 요청이 나간다', async () => {
+    const { requests, user } = renderItems([
+      {
+        match: (request) => isGet(request, VERSION_DETAIL_PATH),
+        respond: () =>
+          jsonResponse({
+            inspectionPlanVersion: inspectionPlanVersionFixtures[0],
+            editability: DEFAULT_EDITABILITY,
+          }),
+      },
+      itemsSaveRoute(),
+    ]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '2번 항목 삭제' }));
+    await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(
+        requests.filter(
+          (request) => request.method === 'PUT' && request.url.pathname === ITEMS_PATH,
+        ),
+      ).toHaveLength(1);
+    });
+    expect(
+      screen.queryByText('최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.'),
+    ).not.toBeInTheDocument();
+  });
+
   /* 이동은 초안만 바꾼다 — 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다. */
   it('순서를 바꿔도 서버 요청이 나가지 않는다', async () => {
     const { requests, user } = renderItems([itemsSaveRoute()]);
@@ -2230,5 +2264,13 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     expect(await screen.findByText('SYN-ITEM-CODE-09 · 합성 항목 Z')).toBeInTheDocument();
     expect(within(versionForm()).getByRole('button', { name: '확정' })).toBeDisabled();
+    /*
+     * 사유가 「1건 이상 저장해야」여야 한다 — 초안으로 세면 이 사유가 사라지고
+     * 「저장하지 않은 변경」 사유로 바뀐다. 그 차이가 곧 「저장된 건수로 센다」의 증거다.
+     */
+    expect(screen.getByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.'),
+    ).not.toBeInTheDocument();
   });
 });

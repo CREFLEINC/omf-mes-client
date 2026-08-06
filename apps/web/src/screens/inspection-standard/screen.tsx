@@ -873,9 +873,15 @@ export const InspectionStandardScreen = () => {
   const confirmDisabledReason = ((): string | null => {
     if (versionStatus === null) return t.actionReasons.transitionNeedsVersion;
     if (!versionStatus.isEditable) return t.actionReasons.confirmNeedsDraft;
+    /*
+     * **항목 건수를 저장하지 않은 편집보다 먼저 본다.** 두 사유가 함께 참인 자리는
+     * 「저장된 항목 0건 + 초안 1건」뿐이고, 거기서 사용자가 할 일은 그 초안을 저장하는 것이다 —
+     * 항목 건수 사유가 그 행동을 직접 가리킨다. 반대로 두면 「저장된 건수로 센다」는 규칙이
+     * 화면에 드러나지 않아, 초안으로 세는 잘못이 겉으로 같은 화면을 만든다.
+     */
+    if (savedItemCount === 0) return t.actionReasons.confirmNeedsItems;
     // 확정하면 되돌릴 수 없다 — 저장하지 않은 편집은 그 순간 영영 사라진다.
     if (isAnythingDirty) return t.actionReasons.confirmBlockedByUnsaved;
-    if (savedItemCount === 0) return t.actionReasons.confirmNeedsItems;
 
     return null;
   })();
