@@ -101,7 +101,8 @@ export const MessageTable = ({
     },
     /*
      * 폭을 지정하지 않는 유일한 열이다 — 남는 폭을 이 열이 가져간다.
-     * 지정 폭의 합(676px)이 `.wide-table`의 최소 폭 안에 들어가므로 좁은 창에서도 읽을 폭이 남는다.
+     * 지정 폭의 합 **764px**(176+128+160+64+148+88)이 `.wide-table`의 최소 폭 928px 안에 들어가므로
+     * 가장 좁을 때도 이 열에 164px이 남는다. 도출 표는 docs/layout-conventions.md에 있다.
      */
     {
       key: 'lastErrorMessage',

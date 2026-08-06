@@ -145,6 +145,17 @@ export const IntegrationSyncScreen = () => {
   /**
    * 고른 행. **주소에 두지 않는다** — 조건·쪽이 바뀌면 비워야 하는 상태라
    * 주소에 남기면 화면에 보이지 않는 건이 요청에 실린다.
+   *
+   * **선택의 수명 — 보이는 행이 달라지면 비우고, 달라지지 않으면 유지한다.**
+   * 이 규칙이 흩어지면 한쪽만 고쳐져 비대칭이 생긴다(실제로 상세를 여는 쪽은 유지하는데
+   * 닫는 쪽은 비우는 어긋남이 있었다). 조회 형 골격은 뒤따르는 화면들이 그대로 가져가므로
+   * 규칙과 그 이유가 한 곳에 있어야 한다.
+   *
+   * | 조작 | 선택 | 왜 |
+   * | --- | --- | --- |
+   * | 조건 변경 · 쪽 이동 · 다시 조회 | **비운다** | 다른 행이 온다. 남기면 보이지 않는 건이 요청에 실린다 |
+   * | 상세 열기 · 닫기 | **유지한다** | 보이는 행이 그대로다. 비우면 상세를 한 번 봤다고 고른 것이 사라진다 |
+   * | 갱신된 목록에서 고른 행이 사라짐 | **그 식별자만 뺀다** | 「선택 N건」이 실제와 어긋나면 안 된다 |
    */
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -205,23 +216,44 @@ export const IntegrationSyncScreen = () => {
    * 3쪽을 보다가 조건을 좁히면 결과가 3쪽에 못 미쳐 사용자에게는
    * 「조건을 좁혔더니 아무것도 없다」로 보인다.
    */
+  /**
+   * 조건·쪽을 바꾼다 — **다른 행이 오므로 선택을 비운다**(수명 규칙 1행).
+   * 주소에서 `sel`이 빠지므로 열려 있던 상세도 함께 닫힌다 — 그 건이 새 결과에 없을 수 있다.
+   */
   const applyQuery = (nextPeriod: PeriodInput, nextFilters: MessageFilters, nextPage = 1) => {
-    /*
-     * 조건·쪽이 바뀌면 선택을 비운다. 비우지 않으면 **화면에 보이지 않는 건이 요청에 실린다** —
-     * 사용자가 확인할 수 없는 건을 보내는 것이라 그대로 두면 안 된다.
-     * 열려 있던 상세도 함께 닫힌다 — 그 건이 새 결과에 없을 수 있다.
-     */
     setSelectedIds([]);
     setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
   };
 
   const detail = useMessageDetail(selectedId);
 
+  /*
+   * 상세를 열고 닫는 것은 **보이는 행을 바꾸지 않는다.** 둘 다 선택을 건드리지 않는다.
+   * 닫기를 `applyQuery`로 처리하면 여는 쪽과 비대칭이 되어, 상세를 한 번 봤다는 이유로
+   * 고른 것이 사라진다.
+   */
   const openDetail = (id: number) => {
     const next = toSearchParams(period, filters, page);
     next.set('sel', String(id));
     setSearchParams(next);
   };
+
+  const closeDetail = () => {
+    setSearchParams(toSearchParams(period, filters, page));
+  };
+
+  /*
+   * 갱신된 목록에서 고른 행이 사라지면 그 식별자를 뺀다. 남겨 두면 「선택 N건」이 실제와 어긋나고
+   * 확인 창의 건수와도 갈린다(「선택 3건」인데 「선택한 2건을 다시 보낼까요?」).
+   *
+   * **받은 결과가 있을 때만 판정한다** — 조회 중에는 행이 비어 있어 선택이 통째로 날아간다.
+   */
+  if (list.data !== undefined && selectedIds.length > 0) {
+    const visibleIds = new Set(rows.map((row) => String(row.integrationMessageId)));
+    const remaining = selectedIds.filter((id) => visibleIds.has(id));
+
+    if (remaining.length !== selectedIds.length) setSelectedIds(remaining);
+  }
 
   /** 확인 창을 연 대상. 409 안내에 붙일 `lockedAt`도 이 행에서 가져온다. */
   const [retryTarget, setRetryTarget] = useState<IntegrationMessageRow | null>(null);
@@ -243,10 +275,12 @@ export const IntegrationSyncScreen = () => {
     },
   });
 
-  /** 충돌·상태 불일치는 지금 상태를 다시 받아야 풀린다. 버릴 입력이 없다. */
+  /**
+   * 충돌·상태 불일치는 지금 상태를 다시 받아야 풀린다. 버릴 입력이 없다.
+   * **다른 행이 올 수 있으므로 선택을 비운다**(수명 규칙 1행).
+   */
   const reloadList = () => {
     retryWrite.reset();
-    // 다시 조회하면 행이 달라질 수 있다. 남은 선택은 보이지 않는 건을 가리키게 된다.
     setSelectedIds([]);
     void list.refetch();
   };
@@ -286,8 +320,15 @@ export const IntegrationSyncScreen = () => {
     batchWrite.reset();
     setBatchResult(null);
     /*
-     * 고른 순서가 아니라 **표에 보이는 순서**로 보낸다. 되짚기의 정본은 이 배열이므로
-     * 어떤 순서든 상관없으나, 표와 같은 순서여야 결과 목록을 사용자가 대조할 수 있다.
+     * **고른 순서가 아니라 표에 보이는 순서로 보낸다.**
+     *
+     * 계약이 순서를 요구하지 않고, 되짚기의 정본은 「보낸 배열」인데 그 배열과 `requested`가
+     * **같은 식(式)에서 함께 나오므로** 어떤 순서를 쓰든 위치 번호와 어긋나지 않는다.
+     * 표 순서를 고른 이유는 결과 창의 실패 목록을 사용자가 표와 위에서 아래로 대조할 수 있어서다 —
+     * 고른 순서로 보내면 그 대조가 뒤죽박죽이 된다.
+     *
+     * 이 순서를 바꾸려면 `requested`와 요청 배열을 **함께** 바꿔야 한다. 한쪽만 바꾸면
+     * 엉뚱한 건에 실패 사유가 붙는다.
      */
     setRequested(
       rows
@@ -408,9 +449,7 @@ export const IntegrationSyncScreen = () => {
 
       <MessageDetailDialog
         open={selectedId !== null}
-        onClose={() => {
-          applyQuery(period, filters, page);
-        }}
+        onClose={closeDetail}
         view={detail.data}
         isLoading={selectedId !== null && detail.isPending}
         loadError={

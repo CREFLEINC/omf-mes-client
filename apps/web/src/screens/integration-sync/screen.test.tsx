@@ -1081,3 +1081,126 @@ describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
     expect(screen.getByText('선택 0건')).toBeInTheDocument();
   });
 });
+
+describe('IntegrationSyncScreen — 선택의 수명', () => {
+  const PERIOD = '?from=2026-08-01&to=2026-08-06';
+  const RETRY_PATH = `${LIST_PATH}/9001:retry`;
+
+  const selectRow = async (user: ReturnType<typeof userEvent.setup>, index: number) => {
+    const boxes = await screen.findAllByRole('checkbox', { name: '행 선택' });
+    await user.click(boxes[index] as HTMLElement);
+  };
+
+  /** 조회할 때마다 다른 결과를 주는 목록. 재조회로 행이 달라지는 상황을 만든다. */
+  const shrinkingListRoute = (): StubRoute => {
+    let calls = 0;
+
+    return {
+      match: (request) => isGet(request, LIST_PATH),
+      respond: () => {
+        calls += 1;
+        // 두 번째 조회부터 첫 행이 사라진다 — 워커가 그 사이에 처리했다는 뜻이다.
+        const items = calls === 1 ? messageRowFixtures : messageRowFixtures.slice(1);
+
+        return jsonResponse(listBody(items));
+      },
+    };
+  };
+
+  it('상세를 열고 닫아도 선택이 그대로다 — 보이는 행이 달라지지 않았다', async () => {
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        {
+          match: (request) => isGet(request, `${LIST_PATH}/9001`),
+          respond: () => jsonResponse({ ...messageRowFixtures[0], payload: {} }),
+        },
+      ],
+      PERIOD,
+    );
+    await selectRow(user, 0);
+    expect(screen.getByText('선택 1건')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0002 상세 열기' }));
+    await screen.findByRole('dialog');
+    expect(screen.getByText('선택 1건')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('선택 1건')).toBeInTheDocument();
+  });
+
+  it('다시 조회하면 선택이 비워진다 — 행이 달라질 수 있다', async () => {
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        {
+          match: (request) =>
+            request.method === 'POST' && new URL(request.url).pathname === RETRY_PATH,
+          respond: () => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+        },
+      ],
+      PERIOD,
+    );
+    await selectRow(user, 1);
+    expect(screen.getByText('선택 1건')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' }));
+    await user.click(await screen.findByRole('button', { name: '재처리' }));
+    await user.click(await screen.findByRole('button', { name: '다시 조회' }));
+
+    expect(screen.getByText('선택 0건')).toBeInTheDocument();
+  });
+
+  it('목록이 갱신돼 고른 행이 사라지면 선택에서도 빠진다', async () => {
+    const { user } = renderScreen(
+      [
+        shrinkingListRoute(),
+        {
+          match: (request) =>
+            request.method === 'POST' && new URL(request.url).pathname === RETRY_PATH,
+          respond: () => jsonResponse(messageRowFixtures[0]),
+        },
+      ],
+      PERIOD,
+    );
+
+    await user.click(await screen.findByRole('checkbox', { name: '전체 선택' }));
+    expect(screen.getByText('선택 3건')).toBeInTheDocument();
+
+    // 재처리에 성공하면 목록을 다시 조회한다. 그 결과에서 9001이 사라진다.
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' }));
+    await user.click(await screen.findByRole('button', { name: '재처리' }));
+
+    // 남은 두 건만 선택으로 남는다 — 보이지 않는 건이 일괄 요청에 실리면 안 된다.
+    expect(await screen.findByText('선택 2건')).toBeInTheDocument();
+  });
+});
+
+describe('IntegrationSyncScreen — 선택칸 폭', () => {
+  const PERIOD = '?from=2026-08-01&to=2026-08-06';
+
+  it('코드값을 고르는 네 칸이 넓은 선택칸으로 표시된다', async () => {
+    /*
+     * 디자인 시스템 선택 목록은 트리거 상자에 못 박혀 있어(left:0; right:0) 값이 길면 잘린다.
+     * 바깥 칸에 최소 폭을 주는 것이 지금의 우회이고, 그 표시가 떨어지면 다시 잘린다.
+     * jsdom 은 폭을 재지 못하므로 **표시가 붙어 있는지**를 고정한다.
+     */
+    renderScreen([listRoute()], PERIOD);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    for (const label of ['상태', '연계 종류', '방향', '대상 유형']) {
+      expect(screen.getByLabelText(label).closest('.field-cell')).toHaveClass('wide-select');
+    }
+  });
+
+  it('값이 짧은 칸에는 넓은 선택칸을 붙이지 않는다 — 필요 없는 자리까지 넓어진다', async () => {
+    renderScreen([listRoute()], PERIOD);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    expect(screen.getByLabelText('시도 횟수 하한').closest('.field-cell')).not.toHaveClass(
+      'wide-select',
+    );
+  });
+});

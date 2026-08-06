@@ -96,8 +96,12 @@ export const MessageFilterBar = ({
           /*
            * 배치 규범 3 — 디자인 시스템 Select는 라벨을 내장하지 않는다.
            * 라벨을 직접 붙이고 htmlFor로 잇는다. aria-label만 두면 눈으로 보이는 이름이 없다.
+           *
+           * 규범 3-2 — 이 네 칸은 **코드값**을 고른다. 선택지 목록이 트리거 폭에 갇혀 있어
+           * 최소 폭을 주지 않으면 「FAILED」가 「FAI⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
+           * 값이 짧은 시도 하한 칸에는 붙이지 않는다.
            */
-          <div className="field-cell" key={select.key}>
+          <div className="field-cell wide-select" key={select.key}>
             <label className="field-label" htmlFor={`${fieldId}-${select.key}`}>
               {select.label}
             </label>
