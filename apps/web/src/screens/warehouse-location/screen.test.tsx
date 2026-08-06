@@ -1,5 +1,5 @@
 import { onlineManager } from '@tanstack/react-query';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -832,11 +832,18 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     expect(await screen.findByLabelText('창고명')).toHaveValue('신규 창고');
-    expect(
-      requests.some(
-        (request) => request.method === 'GET' && request.url.pathname === '/mdm/warehouses/1009',
-      ),
-    ).toBe(true);
+    /*
+     * 상세 조회를 **기다려서** 단언한다. 창고명 입력칸은 등록 폼 상태만으로도 이 값을 가져
+     * `findByLabelText`가 즉시 풀리므로, 동기로 단언하면 상세 GET이 기록되기 전에 먼저 도는
+     * 경합이 생긴다 — 병렬 부하가 커지면 실제로 어긋난다.
+     */
+    await waitFor(() => {
+      expect(
+        requests.some(
+          (request) => request.method === 'GET' && request.url.pathname === '/mdm/warehouses/1009',
+        ),
+      ).toBe(true);
+    });
     // 상세가 열렸다는 것은 Location 탭이 다시 생겼다는 뜻이다.
     expect(screen.getByRole('tab', { name: 'Location' })).toBeInTheDocument();
   });

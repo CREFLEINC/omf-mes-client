@@ -36,6 +36,17 @@ describe('AppLayout', () => {
     );
   });
 
+  it('사이드바에 검사기준 메뉴가 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByRole('link', { name: '검사기준' })).toHaveAttribute(
+      'href',
+      '/master-data/inspection-standard',
+    );
+  });
+
   it('사이드바에 불량·원인코드 메뉴가 보인다', () => {
     renderLayout('본문 내용');
 
