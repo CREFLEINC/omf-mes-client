@@ -47,6 +47,17 @@ describe('AppLayout', () => {
     );
   });
 
+  it('사이드바에 연계 동기화 현황 메뉴가 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByRole('link', { name: '연계 동기화 현황' })).toHaveAttribute(
+      'href',
+      '/master-data/integration-sync',
+    );
+  });
+
   it('본문 랜드마크가 자식 내용을 담는다', () => {
     renderLayout('본문 내용');
 
