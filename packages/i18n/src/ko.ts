@@ -659,6 +659,7 @@ const inspectionStandard = {
     nextPage: '다음',
     excelUpload: '엑셀 올리기',
     addPlan: '기준 추가',
+    approve: '승인',
   },
   actionReasons: {
     excelUploadUnavailable:
@@ -669,6 +670,28 @@ const inspectionStandard = {
      * 사용자가 무엇이 막혔는지 모르고, 감추면 「이 화면에는 없는 항목」으로 오해한다.
      */
     routingNeedsItem: '라우팅은 품목을 고른 뒤에 고를 수 있습니다. 먼저 품목을 고르세요.',
+    approveAlreadyDone: '승인은 이미 승인된 기준에 다시 할 수 없습니다.',
+    approveNeedsPlan: '승인은 기준을 먼저 등록해야 할 수 있습니다.',
+    deactivateAlreadyDone: '사용 중지는 이미 미사용인 기준에 다시 할 수 없습니다.',
+    deactivateNeedsPlan: '사용 중지는 기준을 먼저 등록해야 할 수 있습니다.',
+  },
+  /**
+   * 서버가 코드로만 알려 주는 거부 사유의 화면 문구.
+   * **서버 문구가 비어 있어도 무엇을 하라는 안내가 남아야 한다** — 실제로 빈 문구가 온다.
+   */
+  serverErrors: {
+    confirmedVersionRequired:
+      '승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.',
+    lineRequired: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
+  },
+  dialog: {
+    approveTitle: '이 검사기준을 승인할까요?',
+    /* 계약이 승인 해제를 제공하지 않는다 — 되돌릴 수 없다는 사실을 먼저 밝힌다. */
+    approveDescription:
+      '승인하면 되돌릴 수 없습니다. 승인 해제는 제공되지 않습니다. 승인자와 승인 시각은 서버가 기록합니다.',
+    deactivateTitle: '이 검사기준을 사용 중지할까요?',
+    deactivateDescription:
+      '삭제하지 않습니다. 사용 중지하면 새 검사에서 이 기준을 쓸 수 없게 됩니다.',
   },
   filters: {
     searchLabel: '검사기준 검색',

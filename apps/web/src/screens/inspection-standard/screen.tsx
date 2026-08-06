@@ -1,18 +1,30 @@
-import { AlertBanner, Breadcrumb, EmptyState, PageHeader, SkeletonText, useToast } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Breadcrumb,
+  Button,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+  useToast,
+} from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { selectableOptions } from './code-options';
+import { DisabledAction } from './disabled-action';
 import { readFilters, readPage, toSearchParams } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
+import { PlanActionBanner } from './plan-action-banner';
+import { PlanActionDialog, type PlanActionKind } from './plan-action-dialog';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
+  formatApprovedAt,
   isSamePlanValues,
   planToFormValues,
   toPlanCreate,
@@ -156,10 +168,66 @@ export const InspectionStandardScreen = () => {
     },
   });
 
+  /**
+   * 승인 — **`If-Match`를 싣지 않는다.** 계약이 이 경로에 낙관적 잠금을 두지 않았다.
+   * 상세 경로를 주면 토큰을 찾지 못했을 때 요청을 보내지 않고 멈춰
+   * 「눌러도 아무 일이 없다」가 된다.
+   *
+   * **본문이 없다.** 승인자와 승인 시각은 서버가 함께 기록한다 — 화면이 보내지 않는다.
+   * 응답에 `ETag`가 없으므로 성공하면 상세를 무효화해 재조회가 새 토큰을 확보하게 한다.
+   */
+  const approveWrite = useMasterWrite<void, InspectionPlan>({
+    request: (_variables, headers) =>
+      client.POST('/quality/inspection-plans/{inspectionPlanId}:approve', {
+        params: {
+          path: { inspectionPlanId: selectedPlanId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [planKeys.all],
+    // 액션에는 입력칸이 없다 — 인라인으로 낼 자리가 없어 서버 오류는 전부 배너로 간다.
+    knownFields: [],
+    onSuccess: () => {
+      setPlanAction(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /**
+   * 사용 중지 — 같은 기준에 걸리는 액션인데도 **`If-Match`를 요구한다.**
+   * 승인과 규약이 다르다(계약 실측). 여기에 `null`을 주면 서버가 거부한다.
+   */
+  const deactivateWrite = useMasterWrite<void, InspectionPlan>({
+    request: (_variables, headers) =>
+      client.POST('/quality/inspection-plans/{inspectionPlanId}:deactivate', {
+        params: {
+          path: { inspectionPlanId: selectedPlanId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    etagPath: selectedPlanId === null ? null : planDetailPath(selectedPlanId),
+    invalidateKeys: [planKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setPlanAction(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const [planAction, setPlanAction] = useState<PlanActionKind | null>(null);
+  const planActionWrite = planAction === 'deactivate' ? deactivateWrite : approveWrite;
+
   /** 다른 기준으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다. */
   const resetPlanEditing = () => {
     planWrite.reset();
     createWrite.reset();
+    approveWrite.reset();
+    deactivateWrite.reset();
+    setPlanAction(null);
     setPlanFieldErrors({});
     setCreateFieldErrors({});
     setCreateValues(null);
@@ -311,6 +379,72 @@ export const InspectionStandardScreen = () => {
     selectableOptions(lookup.entries, selected);
 
   /**
+   * 승인·사용 중지를 막는 사유. 서버가 최종 판정을 하지만(400·403·409)
+   * 이미 끝난 액션은 화면이 먼저 막고 **왜 못 하는지** 알린다.
+   *
+   * 아직 등록하지 않은 기준에는 액션을 걸 대상 자체가 없다 — 감추지 않고 사유와 함께 비활성으로 둔다.
+   */
+  const savedPlan = planDetail.data?.inspectionPlan ?? null;
+
+  const approveDisabledReason = ((): string | null => {
+    if (createValues !== null || savedPlan === null) return t.actionReasons.approveNeedsPlan;
+    if (formatApprovedAt(savedPlan.approvedAt) !== null) return t.actionReasons.approveAlreadyDone;
+
+    return null;
+  })();
+
+  const deactivateDisabledReason = ((): string | null => {
+    if (createValues !== null || savedPlan === null) return t.actionReasons.deactivateNeedsPlan;
+    if (!savedPlan.isActive) return t.actionReasons.deactivateAlreadyDone;
+
+    return null;
+  })();
+
+  const isPlanActionRunning = approveWrite.isSaving || deactivateWrite.isSaving;
+
+  const renderPlanActions = (): ReactNode => (
+    <>
+      {approveDisabledReason === null ? (
+        <div className="field-cell">
+          <Button
+            variant="outlined"
+            disabled={isPlanActionRunning}
+            onClick={() => {
+              approveWrite.reset();
+              setPlanAction('approve');
+            }}
+          >
+            {t.actions.approve}
+          </Button>
+        </div>
+      ) : (
+        <DisabledAction label={t.actions.approve} reason={approveDisabledReason} />
+      )}
+
+      {deactivateDisabledReason === null ? (
+        <div className="field-cell form-actions-secondary">
+          <Button
+            variant="outlined"
+            disabled={isPlanActionRunning}
+            onClick={() => {
+              deactivateWrite.reset();
+              setPlanAction('deactivate');
+            }}
+          >
+            {messages.common.deactivate}
+          </Button>
+        </div>
+      ) : (
+        <DisabledAction
+          label={messages.common.deactivate}
+          reason={deactivateDisabledReason}
+          className="form-actions-secondary"
+        />
+      )}
+    </>
+  );
+
+  /**
    * 우 상단 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
@@ -340,6 +474,8 @@ export const InspectionStandardScreen = () => {
             setCreateValues(null);
             setCreateFieldErrors({});
           }}
+          // 아직 없는 기준에는 승인·중지할 대상이 없다. 감추지 않고 사유와 함께 비활성으로 둔다.
+          transitionActions={renderPlanActions()}
         />
       );
     }
@@ -394,6 +530,7 @@ export const InspectionStandardScreen = () => {
           setPlanFieldErrors({});
           setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
         }}
+        transitionActions={renderPlanActions()}
       />
     );
   };
@@ -433,6 +570,34 @@ export const InspectionStandardScreen = () => {
 
         <div className="pane-stack">{renderPlanPane()}</div>
       </div>
+
+      {/*
+       * 창은 열 때만 붙인다 — 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다.
+       * 되돌릴 수 없는 액션이라 확인을 한 단계 두고, **실패해도 창을 닫지 않는다** —
+       * 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다.
+       */}
+      {planAction !== null && (
+        <PlanActionDialog
+          open
+          kind={planAction}
+          onClose={() => {
+            setPlanAction(null);
+            approveWrite.reset();
+            deactivateWrite.reset();
+          }}
+          onConfirm={() => {
+            planActionWrite.write();
+          }}
+          isSaving={planActionWrite.isSaving}
+          banner={
+            <PlanActionBanner
+              error={planActionWrite.error}
+              /* 409는 사용 중지에만 있다(계약 실측) — 승인에 내면 헛수고를 시킨다. */
+              onReload={planAction === 'deactivate' ? handleReloadPlanDetail : undefined}
+            />
+          }
+        />
+      )}
     </>
   );
 };
