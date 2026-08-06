@@ -8,7 +8,7 @@ import {
   orderForGrouping,
   parentOptionsFor,
 } from './department-hierarchy';
-import type { DepartmentRow } from './types';
+import type { DepartmentRow, LookupEntry } from './types';
 
 const row = (
   departmentId: number,
@@ -116,41 +116,68 @@ describe('hasDeepHierarchy', () => {
   });
 });
 
+/*
+ * 상위 선택지는 좌 목록이 아니라 **전체 목록(선택지 조회)**에서 나온다 —
+ * 쪽 나눔 때문에 상위 부서가 다른 쪽에 있을 수 있다. 그래서 입력이 선택지 항목이다.
+ */
 describe('parentOptionsFor', () => {
+  const entry = (departmentId: number, code: string, isActive = true): LookupEntry => ({
+    value: String(departmentId),
+    label: `${code} · 합성 부서 ${code.slice(-1)}`,
+    isActive,
+  });
+
+  const ENTRIES = [
+    entry(1001, 'SYN-DEPT-01'),
+    entry(1002, 'SYN-DEPT-02'),
+    entry(1004, 'SYN-DEPT-04'),
+  ];
+
   /* 계약: ck_department_parent가 자기 자신을 막는다 — 거부당할 값을 고르게 두지 않는다. */
   it('자기 자신은 상위 선택지에서 빠진다', () => {
-    const rows = [ROOT_A, CHILD_A1, ROOT_B];
-
-    expect(parentOptionsFor(rows, 1001).map((item) => item.departmentId)).toEqual([1002, 1004]);
+    expect(parentOptionsFor(ENTRIES, 1001).map((item) => item.value)).toEqual(['1002', '1004']);
   });
 
   /*
    * **순환은 화면이 막지 않는다.** 계약이 서버 소관으로 정했고,
-   * 화면이 흉내 내면 서버와 다른 답을 낸다.
+   * 화면이 흉내 내면 서버와 다른 답을 낸다. 후손도 그대로 남는다.
    */
-  it('후손은 상위 선택지에 남는다', () => {
-    const rows = [ROOT_A, CHILD_A1, GRANDCHILD];
+  it('자기 자신 말고는 하나도 빼지 않는다 — 후손도 남는다', () => {
+    const withDescendant = [...ENTRIES, entry(1006, 'SYN-DEPT-06')];
 
-    expect(parentOptionsFor(rows, 1001).map((item) => item.departmentId)).toEqual([1002, 1006]);
-  });
-
-  it('등록 중이면 뺄 자기 자신이 없다', () => {
-    const rows = [ROOT_A, CHILD_A1];
-
-    expect(parentOptionsFor(rows, null)).toHaveLength(2);
-  });
-
-  it('부서코드 오름차순이다', () => {
-    const rows = [ROOT_B, CHILD_A1, ROOT_A];
-
-    expect(parentOptionsFor(rows, null).map((item) => item.departmentCode)).toEqual([
-      'SYN-DEPT-01',
-      'SYN-DEPT-02',
-      'SYN-DEPT-04',
+    expect(parentOptionsFor(withDescendant, 1001).map((item) => item.value)).toEqual([
+      '1002',
+      '1004',
+      '1006',
     ]);
   });
 
+  it('등록 중이면 뺄 자기 자신이 없다', () => {
+    expect(parentOptionsFor(ENTRIES, null)).toHaveLength(3);
+  });
+
+  it('선택지 문구 오름차순이다 — 결과적으로 부서코드 순이다', () => {
+    const shuffled = [
+      entry(1004, 'SYN-DEPT-04'),
+      entry(1001, 'SYN-DEPT-01'),
+      entry(1002, 'SYN-DEPT-02'),
+    ];
+
+    expect(parentOptionsFor(shuffled, null).map((item) => item.value)).toEqual([
+      '1001',
+      '1002',
+      '1004',
+    ]);
+  });
+
+  /* 미사용 여부는 여기서 거르지 않는다 — 표시 규칙은 선택지 쪽이 정한다. */
+  it('미사용 부서도 남는다', () => {
+    const withInactive = [entry(1001, 'SYN-DEPT-01'), entry(1009, 'SYN-DEPT-09', false)];
+
+    expect(parentOptionsFor(withInactive, 1001).map((item) => item.value)).toEqual(['1009']);
+  });
+
   it('목록에 자기 하나뿐이면 고를 수 있는 상위가 없다', () => {
-    expect(parentOptionsFor([ROOT_A], 1001)).toEqual([]);
+    expect(parentOptionsFor([entry(1001, 'SYN-DEPT-01')], 1001)).toEqual([]);
   });
 });

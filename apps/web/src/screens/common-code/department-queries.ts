@@ -1,9 +1,12 @@
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { toDepartmentListQuery } from './filters';
 import type { Department, PageMeta, ScopedFilters } from './types';
+
+type DepartmentDetailResponse = components['schemas']['DepartmentDetailResponse'];
 
 /**
  * 부서의 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -53,5 +56,36 @@ export const useDepartmentList = (
           params: { query: toDepartmentListQuery(filters, page) },
         }),
       ),
+  });
+};
+
+/**
+ * ETag가 보관된 경로. 쓰기의 If-Match는 **언제나 이 경로**에서 꺼낸다.
+ * 보관 키가 요청 경로라 `...:deactivate` 같은 액션 경로로 꺼내면 항상 비어 있다.
+ */
+export const departmentDetailPath = (departmentId: number): string =>
+  `/mdm/departments/${String(departmentId)}`;
+
+/**
+ * 부서 상세. 낙관적 잠금 토큰(ETag)과 코드 편집 가능 여부가 이 응답으로 온다 —
+ * 목록 행만으로는 저장을 시작할 수 없다.
+ */
+export const useDepartmentDetail = (
+  departmentId: number | null,
+): UseQueryResult<DepartmentDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: departmentKeys.detail(departmentId ?? 0),
+    enabled: departmentId !== null,
+    queryFn: () => {
+      if (departmentId === null) {
+        throw new Error('부서를 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/departments/{departmentId}', { params: { path: { departmentId } } }),
+      );
+    },
   });
 };

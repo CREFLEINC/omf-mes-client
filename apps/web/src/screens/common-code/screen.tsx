@@ -33,10 +33,24 @@ import { CODE_GROUP_FORM_FIELDS, validateCodeGroupForm } from './code-group-vali
 import { lookupLabel, selectableOptions } from './code-options';
 import { CodeValueSection } from './code-value-section';
 import { DeactivateDialog } from './deactivate-dialog';
-import { indexById, orderForGrouping } from './department-hierarchy';
+import { DepartmentFormPane } from './department-form-pane';
+import { indexById, orderForGrouping, parentOptionsFor } from './department-hierarchy';
 import { DepartmentListPane } from './department-list-pane';
-import { toDepartmentRows } from './department-mappers';
-import { useDepartmentList } from './department-queries';
+import {
+  departmentToFormValues,
+  emptyDepartmentFormValues,
+  isSameDepartmentValues,
+  toDepartmentCreate,
+  toDepartmentRows,
+  toDepartmentUpdate,
+} from './department-mappers';
+import {
+  departmentDetailPath,
+  departmentKeys,
+  useDepartmentDetail,
+  useDepartmentList,
+} from './department-queries';
+import { DEPARTMENT_FORM_FIELDS, validateDepartmentForm } from './department-validation';
 import {
   SCOPE_KEYS,
   readCodeGroupFilters,
@@ -47,13 +61,20 @@ import {
   toSearchParams,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
-import { useBusinessUnitOptions, type LookupResult } from './lookups';
+import { useBusinessUnitOptions, useDepartmentOptions, type LookupResult } from './lookups';
 import { toPageView } from './pagination';
 import { COMMON_CODE_TABS, resolveTab, tabSearchParams } from './tabs';
-import type { CodeGroupFilters, CodeGroupFormValues, ScopedFilters } from './types';
+import type {
+  CodeGroupFilters,
+  CodeGroupFormValues,
+  DepartmentFormValues,
+  ScopedFilters,
+} from './types';
 
 type CodeGroup = components['schemas']['CodeGroup'];
 type CodeGroupDetailResponse = components['schemas']['CodeGroupDetailResponse'];
+type Department = components['schemas']['Department'];
+type DepartmentDetailResponse = components['schemas']['DepartmentDetailResponse'];
 
 const t = messages.commonCode;
 
@@ -72,6 +93,15 @@ interface CodeGroupFormState {
   source: CodeGroupFormSource;
   baseline: CodeGroupFormValues;
   values: CodeGroupFormValues;
+}
+
+/** 부서 폼도 같은 규칙을 쓴다 — 수정은 상세 응답 객체, 등록은 주소에서 파생한 문자열. */
+type DepartmentFormSource = string | DepartmentDetailResponse;
+
+interface DepartmentFormState {
+  source: DepartmentFormSource;
+  baseline: DepartmentFormValues;
+  values: DepartmentFormValues;
 }
 
 /**
@@ -425,7 +455,17 @@ export const CommonCodeScreen = () => {
     departmentRows.length,
   );
 
+  const departmentDetail = useDepartmentDetail(selectedDepartmentId);
+
+  /** 부서 정보 폼이 화면에 있는가 — 상위 선택지는 그때만 조회한다. */
+  const isDepartmentFormOpen = isCreatingDepartment || selectedDepartmentId !== null;
+
   const businessUnitOptions = useBusinessUnitOptions(isOrgTab);
+  /*
+   * 상위 선택지는 **조회 조건과 무관한 전체 목록**을 따로 받는다 —
+   * 쪽 나눔 때문에 상위 부서가 다른 쪽에 있을 수 있어 보이는 목록만으로는 고를 수 없다.
+   */
+  const departmentOptions = useDepartmentOptions(isOrgTab && isDepartmentFormOpen);
 
   /**
    * 선택 목록이 잘리거나 실패했다는 사실을 목록 위에 낸다.
@@ -451,30 +491,204 @@ export const CommonCodeScreen = () => {
     return null;
   };
 
+  /**
+   * 부서를 고른다. **주소 갱신 한 번으로 끝낸다** — 선택과 등록 폼은 함께 성립하지 않으므로
+   * 그 규칙까지 이 patch 안에서 처리한다. 나눠 부르면 뒤로가기가 중간 상태로 떨어진다.
+   */
+  const handleSelectDepartment = (departmentId: number) => {
+    patchSearchParams((next) => {
+      next.set('dep', String(departmentId));
+      next.delete('new');
+    });
+  };
+
+  const [departmentFormState, setDepartmentFormState] = useState<DepartmentFormState | null>(null);
+
+  /**
+   * 부서 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 **주소**가 정한다 —
+   * 코드그룹과 같은 규칙이다. 등록 출처를 주소에서 파생시켜야 `?tab=org&new=dept`로
+   * 바로 들어온 사용자에게도 폼이 선다.
+   */
+  const departmentFormSource: DepartmentFormSource | null = isCreatingDepartment
+    ? 'create:department'
+    : (departmentDetail.data ?? null);
+
+  if (departmentFormSource === null) {
+    if (departmentFormState !== null) setDepartmentFormState(null);
+  } else if (departmentFormState?.source !== departmentFormSource) {
+    const seeded =
+      typeof departmentFormSource === 'string'
+        ? emptyDepartmentFormValues()
+        : departmentToFormValues(departmentFormSource.department);
+    setDepartmentFormState({ source: departmentFormSource, baseline: seeded, values: seeded });
+  }
+
+  const isDepartmentDirty =
+    departmentFormState !== null &&
+    !isSameDepartmentValues(departmentFormState.values, departmentFormState.baseline);
+
+  const [departmentFieldErrors, setDepartmentFieldErrors] = useState<Record<string, string>>({});
+  const [isDepartmentDeactivateOpen, setIsDepartmentDeactivateOpen] = useState(false);
+
+  const departmentWrite = useMasterWrite<DepartmentFormValues, Department>({
+    request: (values, headers) =>
+      client.PUT('/mdm/departments/{departmentId}', {
+        params: {
+          path: { departmentId: selectedDepartmentId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: toDepartmentUpdate(values),
+      }),
+    /* 잠금 토큰은 상세 경로에 보관돼 있다. 다른 경로로 꺼내면 언제나 비어 있다. */
+    etagPath: selectedDepartmentId === null ? null : departmentDetailPath(selectedDepartmentId),
+    // 상위 선택지도 함께 무효화된다 — 이름이 바뀌면 선택지 문구도 바뀐다.
+    invalidateKeys: [departmentKeys.all],
+    knownFields: DEPARTMENT_FORM_FIELDS,
+    onSuccess: (saved) => {
+      setDepartmentFieldErrors({});
+      const next = departmentToFormValues(saved);
+      setDepartmentFormState((prev) =>
+        prev === null ? prev : { ...prev, baseline: next, values: next },
+      );
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const departmentCreateWrite = useMasterWrite<DepartmentFormValues, Department>({
+    request: (values, headers) =>
+      client.POST('/mdm/departments', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body: toDepartmentCreate(values),
+      }),
+    // 아직 없는 자원이라 잠글 대상이 없다. 201 응답에도 ETag가 없다(계약 실측).
+    etagPath: null,
+    invalidateKeys: [departmentKeys.all],
+    knownFields: DEPARTMENT_FORM_FIELDS,
+    onSuccess: (saved) => {
+      setDepartmentFieldErrors({});
+      /*
+       * 201에는 ETag가 없다 — 새 부서를 고르면 상세를 다시 조회하게 되고 그 조회가 토큰을 확보한다.
+       * **주소 갱신은 이 한 번뿐이다**(`new` 해제 + `dep` 설정을 한 patch로).
+       */
+      handleSelectDepartment(saved.departmentId);
+      toast.show({ variant: 'success', description: messages.common.created });
+    },
+  });
+
+  /**
+   * 사용 중지 — **본문이 없다.**
+   *
+   * 응답에 `ETag`가 없으므로 성공하면 상세까지 무효화해 재조회가 새 토큰을 확보하게 한다.
+   * 무효화를 빠뜨리면 보관된 토큰이 낡아 그다음 저장이 조용히 막힌다.
+   */
+  const departmentDeactivateWrite = useMasterWrite<void, Department>({
+    request: (_variables, headers) =>
+      client.POST('/mdm/departments/{departmentId}:deactivate', {
+        params: {
+          path: { departmentId: selectedDepartmentId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    etagPath: selectedDepartmentId === null ? null : departmentDetailPath(selectedDepartmentId),
+    invalidateKeys: [departmentKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: () => {
+      setIsDepartmentDeactivateOpen(false);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const activeDepartmentWrite = isCreatingDepartment ? departmentCreateWrite : departmentWrite;
+
+  /** 편집 중이던 상태를 통째로 비운다. 보이는 행이 달라질 때 함께 부른다. */
+  const resetDepartmentEditing = () => {
+    departmentWrite.reset();
+    departmentCreateWrite.reset();
+    departmentDeactivateWrite.reset();
+    setIsDepartmentDeactivateOpen(false);
+    setDepartmentFormState(null);
+    setDepartmentFieldErrors({});
+  };
+
   const applyDepartmentFilters = (next: ScopedFilters) => {
+    resetDepartmentEditing();
     setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, next, 1));
   };
 
   const changeDepartmentPage = (nextPage: number) => {
+    resetDepartmentEditing();
     setSearchParams(
       toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, departmentFilters, nextPage),
     );
   };
 
-  const handleSelectDepartment = (departmentId: number) => {
-    patchSearchParams((next) => {
-      next.set('dep', String(departmentId));
-      // 부서를 고르는 것과 등록 폼이 열려 있는 것은 함께 성립하지 않는다.
-      next.delete('new');
-    });
+  const handleSelectDepartmentRow = (departmentId: number) => {
+    resetDepartmentEditing();
+    handleSelectDepartment(departmentId);
   };
 
   const handleAddDepartment = () => {
+    resetDepartmentEditing();
+
     patchSearchParams((next) => {
       next.set('new', 'dept');
       // 등록 폼이 열려 있는 동안 고른 부서의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
       next.delete('dep');
     });
+  };
+
+  const closeDepartmentCreateForm = () => {
+    departmentCreateWrite.reset();
+    setDepartmentFieldErrors({});
+
+    patchSearchParams((next) => {
+      // 코드그룹·코드값 쪽 등록 폼을 부서 쪽 조작이 닫아 버리면 안 된다.
+      if (next.get('new') === 'dept') next.delete('new');
+    });
+  };
+
+  /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
+  const changeDepartmentValues = (patch: Partial<DepartmentFormValues>) => {
+    setDepartmentFormState((prev) =>
+      prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+    );
+
+    for (const field of Object.keys(patch)) {
+      activeDepartmentWrite.clearFieldError(field);
+      setDepartmentFieldErrors((prev) => {
+        if (!(field in prev)) return prev;
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleSaveDepartment = () => {
+    if (departmentFormState === null) return;
+
+    const errors = validateDepartmentForm(departmentFormState.values);
+    setDepartmentFieldErrors(errors);
+
+    // 화면에서 잡히는 오류는 서버로 보내지 않는다.
+    if (Object.keys(errors).length > 0) return;
+
+    activeDepartmentWrite.write(departmentFormState.values);
+  };
+
+  const reloadDepartmentDetail = () => {
+    departmentWrite.reset();
+    departmentDeactivateWrite.reset();
+    setDepartmentFieldErrors({});
+    setDepartmentFormState(null);
+    void departmentDetail.refetch();
   };
 
   /*
@@ -483,6 +697,7 @@ export const CommonCodeScreen = () => {
    */
   const changeTab = (value: string) => {
     resetCodeGroupEditing();
+    resetDepartmentEditing();
     setSearchParams(tabSearchParams(value));
   };
 
@@ -663,6 +878,134 @@ export const CommonCodeScreen = () => {
     </div>
   );
 
+  /**
+   * 상위로 고를 수 있는 부서. 전체 목록에서 **자기 자신만 뺀다** — 후손은 남는다.
+   * 지금 고른 값이 목록에 없거나 미사용이어도 지우지 않는다(그러면 칸이 비어 보인다).
+   */
+  const selectedParentId = departmentFormState?.values.parentDepartmentId ?? '';
+  const parentDepartmentOptions = useMemo(
+    () =>
+      selectableOptions(
+        parentOptionsFor(departmentOptions.entries, selectedDepartmentId),
+        selectedParentId,
+      ),
+    [departmentOptions.entries, selectedDepartmentId, selectedParentId],
+  );
+
+  /**
+   * 우 칸 — 부서 정보.
+   *
+   * 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
+   * 등록·선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
+   */
+  const renderDepartmentFormPane = (): ReactNode => {
+    if (isCreatingDepartment) {
+      if (departmentFormState === null) return null;
+
+      return (
+        <DepartmentFormPane
+          mode="create"
+          values={departmentFormState.values}
+          onChange={changeDepartmentValues}
+          fieldErrors={{ ...departmentCreateWrite.fieldErrors, ...departmentFieldErrors }}
+          /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+          banner={<SaveErrorBanner error={departmentCreateWrite.error} />}
+          /* 등록에서는 부서코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
+          codeLockReason={null}
+          deactivateDisabledReason={null}
+          parentOptions={parentDepartmentOptions}
+          parentDisabledReason={
+            parentDepartmentOptions.length === 0
+              ? t.department.actionReasons.parentNeedsOthers
+              : null
+          }
+          businessUnitOptions={selectableOptions(
+            businessUnitOptions.entries,
+            departmentFormState.values.businessUnitId,
+          )}
+          isDirty={isDepartmentDirty}
+          isSaving={departmentCreateWrite.isSaving}
+          onSave={handleSaveDepartment}
+          onCancel={closeDepartmentCreateForm}
+          onDeactivate={() => undefined}
+        />
+      );
+    }
+
+    if (selectedDepartmentId === null) {
+      return (
+        <section className="pane" aria-label={t.panes.departmentForm}>
+          <EmptyState size="sm" title={t.department.empty.notSelected} />
+        </section>
+      );
+    }
+
+    if (departmentDetail.isError) {
+      return (
+        <section className="pane" aria-label={t.panes.departmentForm}>
+          <LoadErrorBanner
+            error={departmentDetail.error}
+            onRetry={() => void departmentDetail.refetch()}
+          />
+        </section>
+      );
+    }
+
+    if (departmentDetail.data === undefined || departmentFormState === null) {
+      return (
+        <section className="pane" aria-label={t.panes.departmentForm}>
+          <div role="status" aria-label={t.loading.departmentDetail}>
+            <SkeletonText lines={4} />
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <DepartmentFormPane
+        mode="edit"
+        values={departmentFormState.values}
+        onChange={changeDepartmentValues}
+        // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
+        fieldErrors={{ ...departmentWrite.fieldErrors, ...departmentFieldErrors }}
+        /* 순환 참조 400도 이 배너로 온다 — 화면이 순환을 막지 않기 때문이다. */
+        banner={<SaveErrorBanner error={departmentWrite.error} onReload={reloadDepartmentDetail} />}
+        /*
+         * 판정의 주인은 서버가 준 `codeEditable`이다. 화면이 스스로 잠그지 않는다 —
+         * `reason`이 `EDITABLE`인데 잠긴 어긋난 조합이 실제로 내려온다.
+         */
+        codeLockReason={codeLockMessage(departmentDetail.data.editability)}
+        deactivateDisabledReason={
+          departmentDetail.data.department.isActive === false
+            ? t.actionReasons.deactivateAlreadyDone(t.targets.department)
+            : null
+        }
+        parentOptions={parentDepartmentOptions}
+        parentDisabledReason={
+          parentDepartmentOptions.length === 0 ? t.department.actionReasons.parentNeedsOthers : null
+        }
+        businessUnitOptions={selectableOptions(
+          businessUnitOptions.entries,
+          departmentFormState.values.businessUnitId,
+        )}
+        isDirty={isDepartmentDirty}
+        isSaving={departmentWrite.isSaving}
+        onSave={handleSaveDepartment}
+        onCancel={() => {
+          setDepartmentFieldErrors({});
+          departmentWrite.reset();
+          setDepartmentFormState((prev) =>
+            prev === null ? prev : { ...prev, values: prev.baseline },
+          );
+        }}
+        onDeactivate={() => {
+          departmentDeactivateWrite.reset();
+          setIsDepartmentDeactivateOpen(true);
+        }}
+      />
+    );
+  };
+
   const orgTabContent = (
     <div className="two-pane">
       <DepartmentListPane
@@ -685,7 +1028,7 @@ export const CommonCodeScreen = () => {
         pageView={departmentPageView}
         onChangePage={changeDepartmentPage}
         selectedDepartmentId={selectedDepartmentId}
-        onSelect={handleSelectDepartment}
+        onSelect={handleSelectDepartmentRow}
         isCreating={isCreatingDepartment}
         onAddDepartment={handleAddDepartment}
         loadError={
@@ -698,9 +1041,7 @@ export const CommonCodeScreen = () => {
         }
       />
 
-      <section className="pane" aria-label={t.panes.departmentForm}>
-        <EmptyState size="sm" title={t.department.empty.notSelected} />
-      </section>
+      {renderDepartmentFormPane()}
     </div>
   );
 
@@ -736,6 +1077,27 @@ export const CommonCodeScreen = () => {
        * 되돌릴 수 없는 액션이라 확인을 한 단계 두고, **실패해도 창을 닫지 않는다** —
        * 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다.
        */}
+      {isDepartmentDeactivateOpen && (
+        <DeactivateDialog
+          open
+          title={t.dialog.deactivateDepartmentTitle}
+          onClose={() => {
+            setIsDepartmentDeactivateOpen(false);
+            departmentDeactivateWrite.reset();
+          }}
+          onConfirm={() => {
+            departmentDeactivateWrite.write(undefined);
+          }}
+          isSaving={departmentDeactivateWrite.isSaving}
+          banner={
+            <SaveErrorBanner
+              error={departmentDeactivateWrite.error}
+              onReload={reloadDepartmentDetail}
+            />
+          }
+        />
+      )}
+
       {isDeactivateOpen && (
         <DeactivateDialog
           open

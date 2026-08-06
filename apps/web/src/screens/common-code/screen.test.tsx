@@ -238,13 +238,50 @@ const businessUnitsRoute = (
   respond: () => jsonResponse({ items, page: pageMeta }),
 });
 
+/** 상위 선택지 조회. 좌 목록과 **경로가 같고 쿼리가 다르다**. */
+const departmentOptionsRoute = (
+  items = departmentFixtures,
+  pageMeta: PageStub = { page: 1, size: 50, total: departmentFixtures.length },
+): StubRoute => ({
+  match: (request) => isGet(request, DEPARTMENTS_PATH) && isDepartmentOptionsRequest(request),
+  respond: () => jsonResponse({ items, page: pageMeta }),
+});
+
+/** 부서 상세 — `ETag`가 함께 온다(계약 실측). 저장의 `If-Match`가 이 값에서 나온다. */
+const departmentDetailRoute = (
+  departmentId = 3001,
+  editability: Editability = { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
+): StubRoute => ({
+  match: (request) => isGet(request, `${DEPARTMENTS_PATH}/${String(departmentId)}`),
+  respond: () =>
+    jsonResponse(
+      {
+        department: departmentFixtures.find((row) => row.departmentId === departmentId),
+        editability,
+      },
+      { headers: { ETag: 'W/"5"' } },
+    ),
+});
+
 const departmentRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, DEPARTMENTS_PATH);
 
 const departmentPane = (): HTMLElement => screen.getByRole('region', { name: '부서' });
 
+const departmentFormPane = (): HTMLElement => screen.getByRole('region', { name: '부서 정보' });
+
 /** 조직 탭의 기본 스텁 묶음. 탭이 열리면 부서 목록과 사업부 선택지가 함께 필요하다. */
 const orgRoutes = (): StubRoute[] => [departmentListRoute(), businessUnitsRoute()];
+
+/** 부서를 고른 뒤에 필요한 스텁까지 포함한 묶음. */
+const orgDetailRoutes = (
+  editability: Editability = { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
+): StubRoute[] => [
+  departmentListRoute(),
+  businessUnitsRoute(),
+  departmentOptionsRoute(),
+  departmentDetailRoute(3001, editability),
+];
 
 describe('CommonCodeScreen — 탭', () => {
   /* C2 — 만든 탭만 렌더한다. 자리만 먼저 두면 「눌러도 빈 화면인」 탭이 생긴다. */
@@ -2320,5 +2357,500 @@ describe('CommonCodeScreen — 탭 전환 (C13)', () => {
 
     history.back();
     expect(history.search()).toBe(before);
+  });
+});
+
+describe('CommonCodeScreen — 부서 상세 (C48·C54)', () => {
+  /* C48 */
+  it('부서를 고르면 상세 요청이 한 번 나가고 고르기 전에는 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(orgDetailRoutes(), '?tab=org');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    expect(requestsTo(requests, `${DEPARTMENTS_PATH}/3001`)).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-DEPT-01' }));
+    await screen.findByDisplayValue('SYN-DEPT-01');
+
+    expect(requestsTo(requests, `${DEPARTMENTS_PATH}/3001`)).toHaveLength(1);
+  });
+
+  it('폼이 상세 값으로 채워진다', async () => {
+    renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+
+    expect(await screen.findByDisplayValue('SYN-DEPT-01')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('합성 부서 A')).toBeInTheDocument();
+  });
+
+  /*
+   * C54 · 뮤테이션 44 — 판정의 주인은 `codeEditable`이다.
+   * 목 서버가 `{codeEditable:false, reason:'EDITABLE'}`이라는 어긋난 조합을 실제로 준다.
+   */
+  it('편집 불가면 사유가 EDITABLE이어도 부서코드 칸이 잠긴다', async () => {
+    renderScreen(
+      orgDetailRoutes({ codeEditable: false, reason: 'EDITABLE', referenceCount: 3 }),
+      '?tab=org&dep=3001',
+    );
+
+    expect(await screen.findByLabelText('부서코드')).toBeDisabled();
+  });
+
+  /* 서버가 잠그지 않은 칸까지 화면이 잠그면 안 된다. */
+  it('편집 가능하면 부서코드와 부서명이 모두 열려 있다', async () => {
+    renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+
+    expect(await screen.findByLabelText('부서코드')).toBeEnabled();
+    expect(screen.getByLabelText('부서명')).toBeEnabled();
+  });
+
+  /* 입력하는 동안 캐시가 갱신돼도 입력한 값이 서버 값으로 되돌아가지 않는다. */
+  it('입력 중에 캐시가 갱신돼도 입력값이 유지된다', async () => {
+    const { queryClient, user } = renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+    await screen.findByDisplayValue('합성 부서 A');
+
+    await user.clear(screen.getByLabelText('부서명'));
+    await user.type(screen.getByLabelText('부서명'), '합성 부서 Z');
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['common-code-departments'] });
+    });
+
+    expect(screen.getByLabelText('부서명')).toHaveValue('합성 부서 Z');
+  });
+});
+
+describe('CommonCodeScreen — 부서 수정 (C49·C50·C52·C53)', () => {
+  const updateRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'PUT' && new URL(request.url).pathname === `${DEPARTMENTS_PATH}/3001`,
+    respond,
+  });
+
+  const savedDepartment = { ...departmentFixtures[0]!, departmentName: '합성 부서 Z' };
+
+  /* C49 — 낙관적 잠금이 있는 쓰기다. 헤더 둘이 함께 있어야 한다. */
+  it('저장이 PUT으로 나가고 멱등 키와 If-Match가 둘 다 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [...orgDetailRoutes(), updateRoute(() => jsonResponse(savedDepartment))],
+      '?tab=org&dep=3001',
+    );
+    await screen.findByDisplayValue('합성 부서 A');
+
+    await user.clear(screen.getByLabelText('부서명'));
+    await user.type(screen.getByLabelText('부서명'), '합성 부서 Z');
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    const sent = requests.find((request) => request.method === 'PUT');
+    expect(sent?.url.pathname).toBe(`${DEPARTMENTS_PATH}/3001`);
+    expect(sent?.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(sent?.headers.get('If-Match')).toBe('W/"5"');
+  });
+
+  /*
+   * C50 — 사용 여부·번호는 싣지 않고, 상위·사업부는 **비어도 널을 명시**한다.
+   * 키를 빼면 서버가 이전 값을 남겨 하위 부서를 뿌리로 되돌릴 수 없다.
+   */
+  it('수정 본문에 사용 여부·번호가 없고 상위·사업부는 널로 명시된다', async () => {
+    const { requests, user } = renderScreen(
+      [...orgDetailRoutes(), updateRoute(() => jsonResponse(savedDepartment))],
+      '?tab=org&dep=3001',
+    );
+    await screen.findByDisplayValue('합성 부서 A');
+
+    await user.clear(screen.getByLabelText('부서명'));
+    await user.type(screen.getByLabelText('부서명'), '합성 부서 Z');
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    const body = JSON.parse(
+      requests.find((request) => request.method === 'PUT')?.body ?? '{}',
+    ) as Record<string, unknown>;
+
+    expect('isActive' in body).toBe(false);
+    expect('departmentId' in body).toBe(false);
+    expect('parentDepartmentId' in body).toBe(true);
+    expect(body.parentDepartmentId).toBeNull();
+    expect(body.businessUnitId).toBe(4001);
+  });
+
+  /* C53 — 화면에서 잡히는 오류는 서버로 보내지 않는다. */
+  it('필수 칸을 비우면 요청이 나가지 않고 인라인 오류가 뜬다', async () => {
+    const { requests, user } = renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+    await screen.findByDisplayValue('합성 부서 A');
+
+    await user.clear(screen.getByLabelText('부서명'));
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(screen.getByText('필수 입력 항목입니다.')).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+  });
+
+  it('공백만 넣어도 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+    await screen.findByDisplayValue('합성 부서 A');
+
+    await user.clear(screen.getByLabelText('부서명'));
+    await user.type(screen.getByLabelText('부서명'), '   ');
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(screen.getByText('부서명은 공백만으로 지정할 수 없습니다.')).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+  });
+
+  /*
+   * C52 — **순환을 화면이 막지 않는다.** 서버가 400을 주면 그 사유를 배너로 낸다.
+   * 화면이 흉내 내면 서버와 다른 답을 낸다.
+   */
+  it('순환 참조를 서버가 400으로 거부하면 그 사유가 배너에 나온다', async () => {
+    const { user } = renderScreen(
+      [
+        ...orgDetailRoutes(),
+        updateRoute(() =>
+          jsonResponse(
+            {
+              message: '',
+              errors: [
+                { scope: 'screen', code: 'CYCLE', message: '상위 부서가 순환 참조를 만듭니다.' },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      ],
+      '?tab=org&dep=3001',
+    );
+    await screen.findByDisplayValue('합성 부서 A');
+
+    await user.clear(screen.getByLabelText('부서명'));
+    await user.type(screen.getByLabelText('부서명'), '합성 부서 Z');
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('상위 부서가 순환 참조를 만듭니다.')).toBeInTheDocument();
+  });
+
+  /* 409에만 「최신 불러오기」를 낸다 — 다른 실패는 다시 받아도 풀리지 않는다. */
+  it('409면 원인별 문구와 최신 불러오기가 나온다', async () => {
+    const { user } = renderScreen(
+      [
+        ...orgDetailRoutes(),
+        updateRoute(() => jsonResponse({ message: '', conflictCause: 'user' }, { status: 409 })),
+      ],
+      '?tab=org&dep=3001',
+    );
+    await screen.findByDisplayValue('합성 부서 A');
+
+    await user.clear(screen.getByLabelText('부서명'));
+    await user.type(screen.getByLabelText('부서명'), '합성 부서 Z');
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 상위 부서 선택지 (C51·C52)', () => {
+  /*
+   * C51 — 계약이 자기참조를 막는다. 거부당할 값을 고르게 두지 않는다.
+   * 선택지는 좌 목록이 아니라 **전체 목록**에서 나온다(쪽 나눔 때문).
+   */
+  it('상위 부서 선택지에 자기 자신이 없다', async () => {
+    const { user } = renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+    await screen.findByDisplayValue('SYN-DEPT-01');
+
+    await user.click(screen.getByLabelText('상위 부서'));
+
+    expect(screen.queryByRole('option', { name: /SYN-DEPT-01/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /SYN-DEPT-02/ })).toBeInTheDocument();
+  });
+
+  /*
+   * C52 — 후손도 선택지에 남는다. 순환 판정은 서버 몫이다.
+   * 빠지는 것은 자기 자신(3001)과 미사용 부서(3004)뿐이며, 미사용은 순환과 무관한 표시 규칙이다.
+   */
+  it('자기 자신 말고는 빼지 않는다 — 후손(3002)이 선택지에 남는다', async () => {
+    const { user } = renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+    await screen.findByDisplayValue('SYN-DEPT-01');
+
+    await user.click(screen.getByLabelText('상위 부서'));
+
+    // 선택지는 셋뿐이다 — 「없음」과 활성 부서 둘. 자기 자신만 빠졌다.
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+    expect(screen.getByRole('option', { name: /없음 \(뿌리 부서\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /SYN-DEPT-02/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /SYN-DEPT-03/ })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /SYN-DEPT-01/ })).not.toBeInTheDocument();
+  });
+
+  /* C51 — 고를 다른 부서가 하나도 없으면 감추지 않고 사유와 함께 비활성으로 둔다. */
+  it('상위로 고를 다른 부서가 없으면 선택칸이 비활성이고 사유가 붙는다', async () => {
+    renderScreen(
+      [
+        departmentListRoute([departmentFixtures[0]!]),
+        businessUnitsRoute(),
+        departmentOptionsRoute([departmentFixtures[0]!], { page: 1, size: 50, total: 1 }),
+        departmentDetailRoute(),
+      ],
+      '?tab=org&dep=3001',
+    );
+
+    expect(await screen.findByLabelText('상위 부서')).toBeDisabled();
+    expect(screen.getByText(/상위 부서는 고를 수 있는 다른 부서가 없어/)).toBeInTheDocument();
+  });
+
+  /* 상위 선택지는 폼이 열렸을 때만 받는다 — 목록만 볼 때 같은 경로로 두 번 나가면 안 된다. */
+  it('부서를 고르기 전에는 상위 선택지를 조회하지 않는다', async () => {
+    const { requests } = renderScreen(orgDetailRoutes(), '?tab=org');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    expect(departmentRequests(requests)).toHaveLength(1);
+  });
+});
+
+describe('CommonCodeScreen — 부서 등록 (C55)', () => {
+  const createRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === DEPARTMENTS_PATH,
+    respond,
+  });
+
+  const madeDepartment = {
+    departmentId: 3009,
+    departmentCode: 'SYN-DEPT-09',
+    departmentName: '합성 부서 I',
+    parentDepartmentId: null,
+    businessUnitId: null,
+    isActive: true,
+  };
+
+  const madeDetailRoute: StubRoute = {
+    match: (request) => isGet(request, `${DEPARTMENTS_PATH}/3009`),
+    respond: () =>
+      jsonResponse(
+        {
+          department: madeDepartment,
+          editability: { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
+        },
+        { headers: { ETag: 'W/"1"' } },
+      ),
+  };
+
+  /* 주소가 폼의 여닫음을 소유한다 — 새로고침·공유로 들어와도 폼이 서야 한다. */
+  it('주소로 바로 들어와도 등록 폼이 선다', async () => {
+    renderScreen(orgDetailRoutes(), '?tab=org&new=dept');
+
+    const pane = await screen.findByRole('region', { name: '부서 정보' });
+    expect(within(pane).getByLabelText('부서코드')).toHaveValue('');
+    expect(within(pane).getByRole('button', { name: '부서 추가' })).toBeInTheDocument();
+  });
+
+  /* C55 — 아직 없는 자원이라 잠글 대상이 없다. */
+  it('등록 저장이 POST로 나가고 If-Match가 없다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        ...orgDetailRoutes(),
+        createRoute(() => jsonResponse(madeDepartment, { status: 201 })),
+        madeDetailRoute,
+      ],
+      '?tab=org&new=dept',
+    );
+
+    await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
+    await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
+    });
+
+    const sent = requests.find((request) => request.method === 'POST');
+    expect(sent?.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(sent?.headers.has('If-Match')).toBe(false);
+  });
+
+  /* C50 — 등록 본문에서는 「없음」이 곧 뿌리다. 지울 이전 값이 없어 키 자체를 싣지 않는다. */
+  it('등록 본문은 비어 있는 상위·사업부의 키 자체를 싣지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        ...orgDetailRoutes(),
+        createRoute(() => jsonResponse(madeDepartment, { status: 201 })),
+        madeDetailRoute,
+      ],
+      '?tab=org&new=dept',
+    );
+
+    await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
+    await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
+    });
+
+    const body = JSON.parse(
+      requests.find((request) => request.method === 'POST')?.body ?? '{}',
+    ) as Record<string, unknown>;
+
+    expect('parentDepartmentId' in body).toBe(false);
+    expect('businessUnitId' in body).toBe(false);
+  });
+
+  /* C55 — 방금 만든 부서로 옮겨 가야 이어서 고칠 수 있다. */
+  it('등록에 성공하면 새 부서로 옮겨 가고 new가 사라진다', async () => {
+    const { history, user } = renderScreen(
+      [
+        ...orgDetailRoutes(),
+        createRoute(() => jsonResponse(madeDepartment, { status: 201 })),
+        madeDetailRoute,
+      ],
+      '?tab=org&new=dept',
+    );
+
+    await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
+    await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+
+    await screen.findByDisplayValue('SYN-DEPT-09');
+    expect(history.search()).toBe('?tab=org&dep=3009');
+  });
+
+  /* 한 조작은 히스토리 한 칸이다 — 나눠 부르면 뒤로가기가 중간 상태로 떨어진다. */
+  it('등록에 성공한 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen(
+      [
+        ...orgDetailRoutes(),
+        createRoute(() => jsonResponse(madeDepartment, { status: 201 })),
+        madeDetailRoute,
+      ],
+      '?tab=org&new=dept',
+    );
+
+    await user.type(await screen.findByLabelText('부서코드'), 'SYN-DEPT-09');
+    await user.type(screen.getByLabelText('부서명'), '합성 부서 I');
+
+    const before = history.search();
+
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '부서 추가' }));
+    await screen.findByDisplayValue('SYN-DEPT-09');
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+});
+
+describe('CommonCodeScreen — 부서 사용 중지 (C56)', () => {
+  const deactivateRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' &&
+      new URL(request.url).pathname === `${DEPARTMENTS_PATH}/3001:deactivate`,
+    respond,
+  });
+
+  /* C56 — 되돌릴 수 없는 조작이라 확인을 한 단계 둔다. */
+  it('사용 중지를 누르면 확인 창이 열리고 확인 전에는 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(orgDetailRoutes(), '?tab=org&dep=3001');
+    await screen.findByDisplayValue('SYN-DEPT-01');
+
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '사용 중지' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  /* C56 — 확인 창에 참조 건수를 내지 않는다(결정 10). */
+  it('확인 창에 참조 건수가 없고 되돌릴 수 없다는 사실을 밝힌다', async () => {
+    const { user } = renderScreen(
+      orgDetailRoutes({ codeEditable: false, reason: 'REFERENCED', referenceCount: 3 }),
+      '?tab=org&dep=3001',
+    );
+    await screen.findByDisplayValue('SYN-DEPT-01');
+
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '사용 중지' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(/되돌리는 경로가 없습니다/)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/3건/)).not.toBeInTheDocument();
+  });
+
+  it('확인하면 사용 중지 요청이 나가고 If-Match가 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [...orgDetailRoutes(), deactivateRoute(() => jsonResponse(departmentFixtures[0]))],
+      '?tab=org&dep=3001',
+    );
+    await screen.findByDisplayValue('SYN-DEPT-01');
+
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
+    });
+
+    const sent = requests.find((request) => request.method === 'POST');
+    expect(sent?.url.pathname).toBe(`${DEPARTMENTS_PATH}/3001:deactivate`);
+    expect(sent?.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(sent?.headers.get('If-Match')).toBe('W/"5"');
+  });
+
+  /* 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */
+  it('사용 중지에 실패해도 확인 창이 닫히지 않는다', async () => {
+    const { user } = renderScreen(
+      [
+        ...orgDetailRoutes(),
+        deactivateRoute(() =>
+          jsonResponse({ message: '', conflictCause: 'user' }, { status: 409 }),
+        ),
+      ],
+      '?tab=org&dep=3001',
+    );
+    await screen.findByDisplayValue('SYN-DEPT-01');
+
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
+  /* 응답에 ETag가 없다 — 재조회로 새 토큰을 확보하지 않으면 그다음 저장이 조용히 막힌다. */
+  it('사용 중지에 성공하면 상세와 목록이 다시 조회된다', async () => {
+    const { requests, user } = renderScreen(
+      [...orgDetailRoutes(), deactivateRoute(() => jsonResponse(departmentFixtures[0]))],
+      '?tab=org&dep=3001',
+    );
+    await screen.findByDisplayValue('SYN-DEPT-01');
+
+    const before = departmentRequests(requests).length;
+    const beforeDetail = requestsTo(requests, `${DEPARTMENTS_PATH}/3001`).length;
+
+    await user.click(within(departmentFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, `${DEPARTMENTS_PATH}/3001`).length).toBeGreaterThan(beforeDetail);
+    });
+    expect(departmentRequests(requests).length).toBeGreaterThan(before);
+  });
+
+  /* 이미 미사용이면 되돌릴 수 없는 조작을 다시 할 이유가 없다. */
+  it('이미 미사용인 부서는 사용 중지가 비활성이고 사유가 붙는다', async () => {
+    renderScreen(
+      [
+        departmentListRoute(),
+        businessUnitsRoute(),
+        departmentOptionsRoute(),
+        departmentDetailRoute(3004),
+      ],
+      '?tab=org&dep=3004',
+    );
+
+    expect(await screen.findByDisplayValue('SYN-DEPT-04')).toBeInTheDocument();
+    expect(within(departmentFormPane()).getByRole('button', { name: '사용 중지' })).toBeDisabled();
+    expect(
+      screen.getByText('사용 중지는 이미 미사용인 부서에 다시 할 수 없습니다.'),
+    ).toBeInTheDocument();
   });
 });

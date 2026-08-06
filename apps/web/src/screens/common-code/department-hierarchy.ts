@@ -1,4 +1,4 @@
-import type { DepartmentRow } from './types';
+import type { DepartmentRow, LookupEntry } from './types';
 
 /**
  * 부서 계층 판정. 순수 함수만 둔다 — 목록 그룹·3단 안내·상위 선택지가 모두 이것을 쓴다.
@@ -121,9 +121,20 @@ export const hasDeepHierarchy = (
  * **후손은 남긴다 — 순환(A→B→A)을 화면이 막지 않는다.** 계약이 그 검사를 서버 소관으로 명시했고,
  * 화면이 흉내 내면 서버와 다른 답을 낸다. 서버가 400을 주면 그 사유를 배너로 낸다.
  *
+ * **좌 목록이 아니라 전체 목록(선택지 조회)을 받는다** — 쪽 나눔 때문에 상위 부서가 다른 쪽에
+ * 있을 수 있어 보이는 행만으로는 고를 수 없다. 그래서 입력이 계층 행이 아니라 선택지 항목이다.
+ *
  * 미사용 여부는 거르지 않는다 — 「지금 고른 값은 남긴다」는 표시 규칙을 선택지 쪽이 정한다.
+ * 정렬은 선택지 문구(`부서코드 · 부서명`) 오름차순이라 결과적으로 부서코드 순이다.
  */
 export const parentOptionsFor = (
-  rows: readonly DepartmentRow[],
+  entries: readonly LookupEntry[],
   editingDepartmentId: number | null,
-): DepartmentRow[] => rows.filter((row) => row.departmentId !== editingDepartmentId).sort(byCode);
+): LookupEntry[] =>
+  entries
+    .filter((entry) => entry.value !== String(editingDepartmentId))
+    .sort((a, b) => {
+      if (a.label < b.label) return -1;
+      if (a.label > b.label) return 1;
+      return 0;
+    });
