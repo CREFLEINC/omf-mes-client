@@ -43,6 +43,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/master-data/routing" icon="account_tree">
               Routing(공정)
             </NavItem>
+            <NavItem to="/master-data/defect-cause-code" icon="rule">
+              불량·원인코드
+            </NavItem>
           </SidebarSection>
         </Sidebar>
       }
