@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -1108,12 +1108,17 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
   };
 
   it('상세를 열고 닫아도 선택이 그대로다 — 보이는 행이 달라지지 않았다', async () => {
+    /*
+     * 고른 행(9001)과 상세를 여는 행(9002)을 일부러 다르게 둔다 — 선택과 상세가
+     * 서로 다른 축임을 드러낸다. 스텁 경로는 **여는 행에 맞춘다.**
+     * 어긋나면 상세가 조회 실패 경로로 열려, 단언은 통과해도 정상 경로를 태우지 못한다.
+     */
     const { user } = renderScreen(
       [
         listRoute(),
         {
-          match: (request) => isGet(request, `${LIST_PATH}/9001`),
-          respond: () => jsonResponse({ ...messageRowFixtures[0], payload: {} }),
+          match: (request) => isGet(request, `${LIST_PATH}/9002`),
+          respond: () => jsonResponse({ ...messageRowFixtures[1], payload: {} }),
         },
       ],
       PERIOD,
@@ -1122,7 +1127,11 @@ describe('IntegrationSyncScreen — 선택의 수명', () => {
     expect(screen.getByText('선택 1건')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0002 상세 열기' }));
-    await screen.findByRole('dialog');
+
+    // 정상 경로로 열렸는지 확인한다 — 실패 배너가 아니라 상세 항목이 보여야 한다.
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('연계 메시지 상세')).toBeInTheDocument();
+    expect(within(dialog).queryByText('목록을 불러오지 못했습니다')).not.toBeInTheDocument();
     expect(screen.getByText('선택 1건')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '닫기' }));
@@ -1202,5 +1211,198 @@ describe('IntegrationSyncScreen — 선택칸 폭', () => {
     expect(screen.getByLabelText('시도 횟수 하한').closest('.field-cell')).not.toHaveClass(
       'wide-select',
     );
+  });
+});
+
+describe('IntegrationSyncScreen — 선택의 수명 · 일괄 창', () => {
+  const PERIOD = '?from=2026-08-01&to=2026-08-06';
+  const BATCH_PATH = '/integration/messages:retry-batch';
+
+  const batchRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) => request.method === 'POST' && new URL(request.url).pathname === BATCH_PATH,
+    respond,
+  });
+
+  const selectAll = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole('checkbox', { name: '전체 선택' }));
+  };
+
+  it('확인 창을 취소하면 선택이 그대로다 — 보내지도 않았고 보이는 행도 그대로다', async () => {
+    const { requests, user } = renderScreen([listRoute()], PERIOD);
+    await selectAll(user);
+    expect(screen.getByText('선택 3건')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('선택 3건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '선택 일괄 재처리' })).toBeEnabled();
+    expect(requestsTo(requests, BATCH_PATH)).toHaveLength(0);
+  });
+
+  it('전건 성공 뒤에도 목록에 남아 있는 행은 선택에 남는다', async () => {
+    /*
+     * 서버가 요청만 접수하고 상태를 바로 바꾸지 않을 수 있다. 그때 그 행은 목록에 그대로 남는다 —
+     * 보이는 행이 달라지지 않았으므로 선택도 그대로여야 한다.
+     */
+    const { user } = renderScreen(
+      [listRoute(), batchRoute(() => jsonResponse({ succeeded: 3, failed: [] }))],
+      PERIOD,
+    );
+    await selectAll(user);
+    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    expect(await screen.findByText('3건을 다시 보냈습니다.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('선택 3건')).toBeInTheDocument();
+  });
+
+  it('전건 성공 뒤 목록에서 사라진 행은 선택에서도 빠진다', async () => {
+    let calls = 0;
+    const { user } = renderScreen(
+      [
+        {
+          match: (request) => isGet(request, LIST_PATH),
+          respond: () => {
+            calls += 1;
+
+            return jsonResponse(
+              listBody(calls === 1 ? messageRowFixtures : messageRowFixtures.slice(2)),
+            );
+          },
+        },
+        batchRoute(() => jsonResponse({ succeeded: 3, failed: [] })),
+      ],
+      PERIOD,
+    );
+    await selectAll(user);
+    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    expect(await screen.findByText('선택 1건')).toBeInTheDocument();
+  });
+
+  it('결과 창을 닫으면 사라진 행만 선택에서 빠지고 남은 건은 그대로다', async () => {
+    let calls = 0;
+    const { user } = renderScreen(
+      [
+        {
+          match: (request) => isGet(request, LIST_PATH),
+          respond: () => {
+            calls += 1;
+            // 재처리 뒤 재조회에서 첫 행만 처리돼 사라진다.
+            return jsonResponse(
+              listBody(calls === 1 ? messageRowFixtures : messageRowFixtures.slice(1)),
+            );
+          },
+        },
+        batchRoute(() =>
+          jsonResponse({
+            succeeded: 1,
+            failed: [
+              {
+                index: 1,
+                errors: [
+                  {
+                    scope: 'field',
+                    field: '문자열',
+                    code: 'STANDARD',
+                    message: '상태가 맞지 않습니다',
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      ],
+      PERIOD,
+    );
+    await selectAll(user);
+    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    // 부분 실패라 창이 남는다.
+    const dialog = await screen.findByRole('dialog');
+    /*
+     * 머리글의 X와 하단 액션의 「닫기」는 접근 이름이 같다(디자인 시스템이 X에 aria-label을 붙인다).
+     * 하단 액션이 나중에 나오므로 마지막 것을 고른다.
+     */
+    const closeButtons = within(dialog).getAllByRole('button', { name: '닫기' });
+    await user.click(closeButtons.at(-1) as HTMLElement);
+
+    // 실패해 남은 두 건은 고른 채로 둔다 — 곧바로 다시 시도할 수 있어야 한다.
+    expect(await screen.findByText('선택 2건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '선택 일괄 재처리' })).toBeEnabled();
+  });
+});
+
+describe('IntegrationSyncScreen — 조회를 기다리는 동안의 선택', () => {
+  const PERIOD = '?from=2026-08-01&to=2026-08-06';
+
+  /** 화면 밖에서 주소만 바꾼다 — 뒤로·앞으로 이동과 같은 경로다(applyQuery 를 거치지 않는다). */
+  const NavProbe = ({ to }: { to: string }) => {
+    const navigate = useNavigate();
+
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          void navigate(to);
+        }}
+      >
+        주소 이동
+      </button>
+    );
+  };
+
+  it('조회 키가 바뀌어 결과를 기다리는 동안에도 선택이 살아 있다', async () => {
+    /*
+     * 뒤로·앞으로 이동은 applyQuery 를 거치지 않아 선택이 남은 채 조회 키만 바뀐다.
+     * 그 순간 목록은 비어 있는데, 「고른 행이 전부 사라졌다」로 읽으면 선택이 통째로 날아간다.
+     */
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+
+    const stub = createStubFetch([listRoute()]);
+    const fetch: StubFetch = async (request) => {
+      calls += 1;
+      // 두 번째 조회부터 붙잡아 둔다 — 결과를 기다리는 순간을 관찰할 수 있게 한다.
+      if (calls > 1) await gate;
+
+      return stub(request);
+    };
+
+    renderWithProviders(
+      <>
+        <IntegrationSyncScreen />
+        <NavProbe to={`${ROUTE}?from=2026-07-01&to=2026-07-31`} />
+      </>,
+      { fetch, route: `${ROUTE}${PERIOD}` },
+    );
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('checkbox', { name: '전체 선택' }));
+    expect(screen.getByText('선택 3건')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    // 아직 결과가 오지 않았다. 여기서 비우면 사용자는 고른 것을 이유 없이 잃는다.
+    expect(screen.getByText('선택 3건')).toBeInTheDocument();
+
+    release();
+    await waitFor(() => {
+      expect(screen.getByText('SAMPLE-KEY-0001')).toBeInTheDocument();
+    });
   });
 });

@@ -151,11 +151,14 @@ export const IntegrationSyncScreen = () => {
    * 닫는 쪽은 비우는 어긋남이 있었다). 조회 형 골격은 뒤따르는 화면들이 그대로 가져가므로
    * 규칙과 그 이유가 한 곳에 있어야 한다.
    *
-   * | 조작 | 선택 | 왜 |
-   * | --- | --- | --- |
-   * | 조건 변경 · 쪽 이동 · 다시 조회 | **비운다** | 다른 행이 온다. 남기면 보이지 않는 건이 요청에 실린다 |
-   * | 상세 열기 · 닫기 | **유지한다** | 보이는 행이 그대로다. 비우면 상세를 한 번 봤다고 고른 것이 사라진다 |
-   * | 갱신된 목록에서 고른 행이 사라짐 | **그 식별자만 뺀다** | 「선택 N건」이 실제와 어긋나면 안 된다 |
+   * | # | 조작 | 선택 | 왜 |
+   * | :-: | --- | --- | --- |
+   * | 1 | 조건 변경 · 쪽 이동 · 다시 조회 | **비운다** | 다른 행이 온다. 남기면 보이지 않는 건이 요청에 실린다 |
+   * | 2 | 상세 열기·닫기 · **일괄 확인 취소** | **유지한다** | 보이는 행이 그대로다. 비우면 창을 한 번 열었다고 고른 것이 사라진다 |
+   * | 3 | 갱신된 목록에서 고른 행이 사라짐 · **일괄 결과 닫기** | **그 식별자만 뺀다** | 「선택 N건」이 실제와 어긋나면 안 된다 |
+   *
+   * **비우는 지점은 세 곳뿐이다** — `applyQuery` · `reloadList` · 「사라진 행 정리」.
+   * 네 번째가 생기면 이 표에 행을 먼저 더한다. 표에 없는 자리에서 비우면 규칙이 다시 흩어진다.
    */
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -246,7 +249,11 @@ export const IntegrationSyncScreen = () => {
    * 갱신된 목록에서 고른 행이 사라지면 그 식별자를 뺀다. 남겨 두면 「선택 N건」이 실제와 어긋나고
    * 확인 창의 건수와도 갈린다(「선택 3건」인데 「선택한 2건을 다시 보낼까요?」).
    *
-   * **받은 결과가 있을 때만 판정한다** — 조회 중에는 행이 비어 있어 선택이 통째로 날아간다.
+   * **받은 결과가 있을 때만 판정한다.** 조회를 기다리는 동안에는 행이 비어 있어, 가드가 없으면
+   * 「고른 행이 전부 사라졌다」로 읽혀 선택이 통째로 날아간다.
+   *
+   * 이 가드가 실제로 발동하는 자리: **뒤로·앞으로 이동**은 `applyQuery`를 거치지 않아
+   * 선택이 남은 채 조회 키만 바뀐다. 그 키의 결과가 아직 없는 순간이 바로 여기다.
    */
   if (list.data !== undefined && selectedIds.length > 0) {
     const visibleIds = new Set(rows.map((row) => String(row.integrationMessageId)));
@@ -304,9 +311,15 @@ export const IntegrationSyncScreen = () => {
     onSuccess: (result) => {
       const view = toBatchResultView(result, requested);
 
+      /*
+       * 전건 성공이면 창을 닫는다. **선택을 통째로 비우지 않는다**(수명 규칙 3행) —
+       * 처리된 건은 목록 재조회에서 사라지고 그것은 「사라진 행 정리」가 뺀다.
+       *
+       * 서버가 재처리 요청만 접수하고 그 행이 목록에 그대로 남는 경우까지 여기서 비우면,
+       * 보이는 행이 달라지지 않았는데 고른 것이 사라진다 — 취소가 선택을 비우던 것과 같은 어긋남이다.
+       */
       if (view.isAllSucceeded) {
         setIsBatchOpen(false);
-        setSelectedIds([]);
         toast.show({ variant: 'success', description: view.summary ?? t.retry.requested });
         return;
       }
@@ -338,11 +351,29 @@ export const IntegrationSyncScreen = () => {
     setIsBatchOpen(true);
   };
 
-  const closeBatch = () => {
+  /**
+   * 확인 단계에서 물러난다 — **선택을 건드리지 않는다**(수명 규칙 2행).
+   * 요청을 보내지 않았고 보이는 행도 그대로다. 여기서 비우면 잘못 열었다는 이유로
+   * 고른 것이 사라져, 사용자가 처음부터 다시 골라야 한다.
+   */
+  const cancelBatch = () => {
+    batchWrite.reset();
+    setIsBatchOpen(false);
+  };
+
+  /**
+   * 결과 단계를 닫는다 — **여기서도 통째로 비우지 않는다**(수명 규칙 3행).
+   * 성공한 건은 목록 재조회에서 사라지고 그것은 「사라진 행 정리」가 처리한다.
+   * 실패해 남은 건은 고른 채로 두어야 곧바로 다시 시도할 수 있다.
+   *
+   * 확인 단계와 함수를 나눈 이유는 **두 닫기가 서로 다른 사건**이기 때문이다.
+   * 한 함수가 겸하면 한쪽 사정으로 넣은 처리가 다른 쪽에 조용히 딸려 간다 —
+   * 실제로 취소가 선택을 비우는 결함이 그렇게 생겼다.
+   */
+  const closeBatchResult = () => {
     batchWrite.reset();
     setIsBatchOpen(false);
     setBatchResult(null);
-    setSelectedIds([]);
   };
 
   return (
@@ -481,7 +512,8 @@ export const IntegrationSyncScreen = () => {
 
       <BatchRetryDialog
         open={isBatchOpen}
-        onClose={closeBatch}
+        // 확인 단계의 「취소」와 결과 단계의 「닫기」는 서로 다른 사건이다.
+        onClose={batchResult === null ? cancelBatch : closeBatchResult}
         onConfirm={() => {
           batchWrite.write(requested);
         }}
