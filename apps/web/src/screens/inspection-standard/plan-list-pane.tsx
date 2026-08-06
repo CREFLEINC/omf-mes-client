@@ -100,26 +100,58 @@ export const PlanListPane = ({
     },
   ];
 
-  const emptySlot = hasAnyFilter(appliedFilters) ? (
-    <EmptyState
-      size="sm"
-      live
-      title={t.empty.planNoMatchTitle}
-      description={t.empty.planNoMatchDescription}
-      action={
-        <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_PLAN_FILTERS)}>
-          {messages.common.reset}
-        </Button>
-      }
-    />
-  ) : (
-    <EmptyState
-      size="sm"
-      live
-      title={t.empty.planNoneTitle}
-      description={t.empty.planNoneDescription}
-    />
-  );
+  /**
+   * 빈 상태는 세 갈래다 — **셋을 뭉치면 사실과 다른 안내가 된다.**
+   *
+   * ① 범위 밖 쪽: 결과는 있는데 이 쪽에 없다. 주소를 손으로 고치거나 조건이 좁아졌을 때 생기며
+   *   「등록된 것이 없다」로 내면 거짓말이 된다 — 돌아갈 길(첫 쪽으로)을 함께 준다.
+   * ② 조건이 걸린 0건: 조건을 줄이면 나올 수 있다.
+   * ③ 조건 없는 0건: 정말로 아무것도 없다.
+   *
+   * ①을 먼저 본다. 범위 밖은 `total > 0`일 때만 참이라 ②·③과 겹치지 않는다.
+   */
+  const emptySlot = ((): ReactNode => {
+    if (pageView.isBeyondLast) {
+      return (
+        <EmptyState
+          size="sm"
+          live
+          title={t.empty.beyondLastTitle}
+          description={t.empty.beyondLastDescription}
+          action={
+            <Button variant="outlined" onClick={() => onChangePage(1)}>
+              {t.actions.goFirstPage}
+            </Button>
+          }
+        />
+      );
+    }
+
+    if (hasAnyFilter(appliedFilters)) {
+      return (
+        <EmptyState
+          size="sm"
+          live
+          title={t.empty.planNoMatchTitle}
+          description={t.empty.planNoMatchDescription}
+          action={
+            <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_PLAN_FILTERS)}>
+              {messages.common.reset}
+            </Button>
+          }
+        />
+      );
+    }
+
+    return (
+      <EmptyState
+        size="sm"
+        live
+        title={t.empty.planNoneTitle}
+        description={t.empty.planNoneDescription}
+      />
+    );
+  })();
 
   /** 조회 실패 → 로딩 → 표 순서로 하나만 낸다. 실패했는데 빈 표를 함께 보이면 안 된다. */
   const listSlot = (): ReactNode => {

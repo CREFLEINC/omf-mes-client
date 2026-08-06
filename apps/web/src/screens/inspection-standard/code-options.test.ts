@@ -7,6 +7,7 @@ import {
   INSPECTION_METHOD_OPTIONS,
   INSPECTION_TYPE_OPTIONS,
   PENDING_CODE_VALUE,
+  SAMPLING_METHOD_OPTIONS,
   ensureOption,
   inspectionTypeLabel,
   selectableOptions,
@@ -125,6 +126,7 @@ describe('자리표시 상수', () => {
   /** 값 목록이 확정되지 않은 코드는 **값을 지어내지 않는다** — 자리표시 한 값만 둔다. */
   it('값 목록이 미확정인 코드는 자리표시 한 값만 갖는다', () => {
     const pending = [
+      SAMPLING_METHOD_OPTIONS,
       INSPECTION_FREQUENCY_OPTIONS,
       FREQUENCY_INTERVAL_UOM_OPTIONS,
       DATA_TYPE_OPTIONS,

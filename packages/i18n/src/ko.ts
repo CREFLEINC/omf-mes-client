@@ -657,6 +657,7 @@ const inspectionStandard = {
   actions: {
     prevPage: '이전',
     nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
     excelUpload: '엑셀 올리기',
     addPlan: '기준 추가',
     approve: '승인',
@@ -784,6 +785,12 @@ const inspectionStandard = {
     planNoneDescription: '「기준 추가」로 첫 검사기준을 등록하세요.',
     planNoMatchTitle: '조건에 맞는 검사기준이 없습니다',
     planNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+    /*
+     * 결과는 있는데 **이 쪽에는** 없다. 주소를 손으로 고치거나 조건이 좁아졌을 때 생긴다 —
+     * 「등록된 것이 없다」로 내면 사실과 다른 안내가 된다.
+     */
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
     planNotSelected: '좌측에서 검사기준을 먼저 고르세요',
     versionNoneTitle: '등록된 버전이 없습니다',
     versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',

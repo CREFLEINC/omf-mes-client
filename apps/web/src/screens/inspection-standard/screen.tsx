@@ -540,7 +540,14 @@ export const InspectionStandardScreen = () => {
   const uomOptions = useUomOptions();
   const equipmentOptions = useEquipmentOptions();
 
-  /** 다른 버전으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다. */
+  /**
+   * 다른 버전으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다.
+   *
+   * **폼 상태(`versionFormState`)를 반드시 비운다.** 비우지 않으면 상세를 다시 받을 수 없는 자리에서
+   * 옛 편집이 갇힌다 — 기준을 바꾸면 `ver`가 사라져 버전 상세 조회가 꺼지고, 그러면 재시드 조건
+   * (`versionSource !== null`)이 영영 성립하지 않아 `isVersionDirty`가 참으로 굳는다.
+   * 그 결과 새 기준의 「신규 버전 발행」이 **보이지 않는 편집**을 사유로 비활성이 된다.
+   */
   const resetVersionEditing = () => {
     versionCreateWrite.reset();
     newRevisionWrite.reset();
@@ -551,6 +558,7 @@ export const InspectionStandardScreen = () => {
     setVersionTransition(null);
     setVersionCreateValues(null);
     setVersionCreateFieldErrors({});
+    setVersionFormState(null);
     setVersionFieldErrors({});
     setItemDraftState(null);
     setItemDialog(null);
@@ -598,13 +606,20 @@ export const InspectionStandardScreen = () => {
     itemsWrite.write(itemDraftState.drafts);
   };
 
-  /** 다른 기준으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다. */
+  /**
+   * 다른 기준으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다.
+   * 결정 2의 「조건 변경·쪽 이동에서는 편집 중이던 폼 상태와 실패 배너도 함께 비운다」를 구현한다.
+   *
+   * **폼 상태(`formState`)를 비우는 것이 그 규칙의 핵심이다** — 비우면 상세 응답이 그대로여도
+   * 재시드 조건이 성립해 서버 값으로 다시 세워진다.
+   */
   const resetPlanEditing = () => {
     planWrite.reset();
     createWrite.reset();
     approveWrite.reset();
     deactivateWrite.reset();
     setPlanAction(null);
+    setFormState(null);
     setPlanFieldErrors({});
     setCreateFieldErrors({});
     setCreateValues(null);

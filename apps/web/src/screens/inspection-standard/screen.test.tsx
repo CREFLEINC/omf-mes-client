@@ -2360,3 +2360,93 @@ describe('InspectionStandardScreen — 선택 목록 조회 실패', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+/**
+ * 선택을 옮기면 **편집 중이던 폼 상태도 함께 비운다**(결정 2).
+ *
+ * 비우지 않으면 상세를 다시 받을 수 없는 자리에서 옛 편집이 갇히고,
+ * 그 편집은 화면 어디에도 보이지 않으면서 액션만 막는다 — 사용자가 풀 방법이 없다.
+ */
+describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운다', () => {
+  it('버전 폼을 고친 채 다른 기준을 고르면 신규 버전 발행이 다시 열린다', async () => {
+    const { user } = renderScreen(
+      [
+        planListRoute(),
+        planDetailRoute(),
+        planDetailRoute(inspectionPlanFixtures[1]),
+        versionListRoute(),
+        versionDetailRoute(),
+        itemListRoute(),
+        uomOptionsRoute(),
+        equipmentOptionsRoute(),
+        ...lookupRoutes(),
+      ],
+      '?plan=3001&ver=4002',
+    );
+
+    const form = await awaitVersionForm();
+    fireEvent.change(within(form).getByLabelText('샘플 수량(개)'), { target: { value: '40' } });
+
+    // 고친 상태에서는 발행이 막힌다 — 여기까지는 의도한 동작이다.
+    expect(within(versionPane()).getByRole('button', { name: '신규 버전 발행' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-02' }));
+
+    /*
+     * 기준을 바꾸면 `ver`가 사라져 버전 상세 조회가 꺼진다 — 폼 상태를 비우지 않으면
+     * 재시드가 영영 일어나지 않아 「저장하지 않은 변경」이 참으로 굳는다.
+     */
+    await waitFor(() => {
+      expect(within(versionPane()).getByRole('button', { name: '신규 버전 발행' })).toBeEnabled();
+    });
+    expect(
+      screen.queryByText(
+        '신규 버전 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  /*
+   * 같은 규칙의 기준 폼 쪽. **상세 응답 객체가 그대로여도** 폼 상태를 비우면 재시드 조건이
+   * 성립해 서버 값으로 다시 세워진다 — 비우지 않으면 옛 편집이 그대로 남는다.
+   */
+  it('기준 폼을 고친 뒤 같은 기준을 다시 고르면 고친 값이 남지 않는다', async () => {
+    const { user } = renderSelectedPlan();
+
+    const name = await screen.findByLabelText('기준명');
+    await user.type(name, '-편집중');
+    expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A-편집중');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A');
+    });
+  });
+});
+
+/**
+ * 결과는 있는데 이 쪽에는 없다 — 주소를 손으로 고치거나 조건이 좁아졌을 때 생긴다.
+ * 「등록된 것이 없다」로 내면 사실과 다른 안내가 된다.
+ */
+describe('InspectionStandardScreen — 범위 밖 쪽', () => {
+  it('결과가 있는데 이 쪽에 없으면 범위 밖 안내를 내고 0건 안내를 내지 않는다', async () => {
+    renderScreen([planListRoute([], { page: 9, size: 50, total: 240 })], '?page=9');
+
+    expect(await screen.findByText('이 쪽에는 결과가 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('첫 쪽으로 이동하세요.')).toBeInTheDocument();
+    expect(screen.queryByText('등록된 검사기준이 없습니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 검사기준이 없습니다')).not.toBeInTheDocument();
+  });
+
+  it('「첫 쪽으로」를 누르면 첫 쪽을 다시 조회한다', async () => {
+    const { requests, user } = renderScreen(
+      [planListRoute([], { page: 9, size: 50, total: 240 })],
+      '?page=9',
+    );
+
+    await user.click(await screen.findByRole('button', { name: '첫 쪽으로' }));
+
+    expect(planRequests(requests).at(-1)?.url.searchParams.has('page')).toBe(false);
+  });
+});
