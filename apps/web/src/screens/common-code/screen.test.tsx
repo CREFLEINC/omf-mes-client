@@ -11,7 +11,12 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { codeGroupFixtures, codeValueFixtures, departmentFixtures } from './fixtures';
+import {
+  codeGroupFixtures,
+  codeValueFixtures,
+  departmentFixtures,
+  workerFixtures,
+} from './fixtures';
 import { CommonCodeScreen } from './screen';
 
 type Editability = components['schemas']['Editability'];
@@ -292,7 +297,11 @@ describe('CommonCodeScreen — 탭', () => {
     const tablist = screen.getByRole('tablist', { name: '공통코드·조직·작업자' });
     const tabs = within(tablist).getAllByRole('tab');
 
-    expect(tabs.map((element) => element.textContent)).toEqual(['공통코드', '조직(부서)']);
+    expect(tabs.map((element) => element.textContent)).toEqual([
+      '공통코드',
+      '조직(부서)',
+      '작업자',
+    ]);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
   });
@@ -309,13 +318,6 @@ describe('CommonCodeScreen — 탭', () => {
 
     expect(await screen.findByRole('button', { name: 'SYN-GRP-01' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '공통코드' })).toHaveAttribute('aria-selected', 'true');
-  });
-
-  /* 아직 만들지 않은 탭의 주소값도 모르는 값이다 — 빈 화면이 되지 않아야 한다. */
-  it('아직 만들지 않은 탭 값으로 들어와도 코드그룹 목록이 보인다', async () => {
-    renderScreen([codeGroupListRoute()], '?tab=worker');
-
-    expect(await screen.findByRole('button', { name: 'SYN-GRP-01' })).toBeInTheDocument();
   });
 });
 
@@ -2852,5 +2854,347 @@ describe('CommonCodeScreen — 부서 사용 중지 (C56)', () => {
     expect(
       screen.getByText('사용 중지는 이미 미사용인 부서에 다시 할 수 없습니다.'),
     ).toBeInTheDocument();
+  });
+});
+
+const WORKERS_PATH = '/mdm/workers';
+const PLANTS_PATH = '/mdm/plants';
+
+const workerListRoute = (
+  items = workerFixtures,
+  pageMeta: PageStub = { page: 1, size: 50, total: workerFixtures.length },
+): StubRoute => ({
+  match: (request) => isGet(request, WORKERS_PATH),
+  respond: () => jsonResponse({ items, page: pageMeta }),
+});
+
+/** 작업자 상세 — **`ETag`가 없다**(계약 실측). 이 화면 고유의 함정이 여기서 나온다. */
+const workerDetailRoute = (
+  workerId = 5001,
+  editability: Editability = { codeEditable: false, reason: 'EDITABLE', referenceCount: 3 },
+): StubRoute => ({
+  match: (request) => isGet(request, `${WORKERS_PATH}/${String(workerId)}`),
+  respond: () =>
+    jsonResponse({
+      worker: workerFixtures.find((row) => row.workerId === workerId),
+      editability,
+    }),
+});
+
+const plantsRoute = (): StubRoute => ({
+  match: (request) => isGet(request, PLANTS_PATH),
+  respond: () =>
+    jsonResponse({
+      items: [
+        {
+          plantId: 6001,
+          legalEntityId: 5001,
+          businessUnitId: 4001,
+          plantCode: 'SYN-PLT-01',
+          plantName: '합성 공장 1',
+          timezoneCode: 'STANDARD',
+          isActive: true,
+        },
+      ],
+      page: { page: 1, size: 50, total: 1 },
+    }),
+});
+
+const workerRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requestsTo(requests, WORKERS_PATH);
+
+const workerPane = (): HTMLElement => screen.getByRole('region', { name: '작업자' });
+
+const workerDetailPane = (): HTMLElement =>
+  screen.getByRole('region', { name: '작업자 기본 정보' });
+
+/**
+ * 기본 정보가 **다 채워질 때까지** 기다린다.
+ *
+ * 구획은 불러오는 중에도 같은 이름으로 있으므로 `findByRole`만으로는 뼈대를 잡고 지나간다 —
+ * 이 구획에서만 나오는 고정 안내가 보일 때가 채워진 시점이다.
+ */
+const findLoadedWorkerDetailPane = async (): Promise<HTMLElement> => {
+  await screen.findByText(/외부 시스템에서 받은 자료라/);
+  return workerDetailPane();
+};
+
+/** 작업자 탭의 기본 스텁 묶음. 탭이 열리면 작업자 목록과 부서 선택지가 필요하다. */
+const workerRoutes = (): StubRoute[] => [
+  workerListRoute(),
+  departmentOptionsRoute(),
+  workerDetailRoute(),
+  businessUnitsRoute(),
+  plantsRoute(),
+];
+
+describe('CommonCodeScreen — 작업자 목록 조회 (C57)', () => {
+  it('작업자 탭에 들어오면 목록 요청이 한 번 나간다', async () => {
+    const { requests } = renderScreen(workerRoutes(), '?tab=worker');
+
+    expect(await screen.findByRole('button', { name: 'SYN-W-0001' })).toBeInTheDocument();
+    expect(workerRequests(requests)).toHaveLength(1);
+    expect(workerRequests(requests)[0]?.url.search).toBe('');
+  });
+
+  it('걸린 조건만 요청 쿼리에 실린다', async () => {
+    const { requests } = renderScreen(workerRoutes(), '?tab=worker&q=SYN&dept=3001&inactive=1');
+    await screen.findByRole('button', { name: 'SYN-W-0001' });
+
+    const sent = workerRequests(requests)[0];
+    expect(sent?.url.searchParams.get('q')).toBe('SYN');
+    expect(sent?.url.searchParams.get('departmentId')).toBe('3001');
+    expect(sent?.url.searchParams.get('includeInactive')).toBe('true');
+  });
+
+  /* C57 — 만들지 않은 필터의 조건을 요청에 실으면 되돌릴 수단이 없다. */
+  it('공장·사업부를 쿼리에 싣지 않는다', async () => {
+    const { requests } = renderScreen(workerRoutes(), '?tab=worker&q=SYN&dept=3001');
+    await screen.findByRole('button', { name: 'SYN-W-0001' });
+
+    const sent = workerRequests(requests)[0];
+    expect(sent?.url.searchParams.has('plantId')).toBe(false);
+    expect(sent?.url.searchParams.has('businessUnitId')).toBe(false);
+  });
+
+  it('미사용 포함이 꺼져 있으면 그 키를 보내지 않는다', async () => {
+    const { requests } = renderScreen(workerRoutes(), '?tab=worker');
+    await screen.findByRole('button', { name: 'SYN-W-0001' });
+
+    expect(workerRequests(requests)[0]?.url.searchParams.has('includeInactive')).toBe(false);
+  });
+
+  it('다른 탭의 목록을 함께 조회하지 않는다', async () => {
+    const { requests } = renderScreen(workerRoutes(), '?tab=worker');
+    await screen.findByRole('button', { name: 'SYN-W-0001' });
+
+    expect(codeGroupRequests(requests)).toHaveLength(0);
+    // 부서 경로로는 **선택지 조회 한 번**만 나간다(좌 목록 조회가 아니다).
+    expect(departmentRequests(requests)).toHaveLength(1);
+    expect(departmentRequests(requests)[0]?.url.searchParams.get('includeInactive')).toBe('true');
+  });
+
+  it('작업자 목록 조회에 실패하면 배너를 내고 빈 상태를 함께 내지 않는다', async () => {
+    renderScreen(
+      [
+        {
+          match: (request) => isGet(request, WORKERS_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+        departmentOptionsRoute(),
+      ],
+      '?tab=worker',
+    );
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByText('등록된 작업자가 없습니다')).not.toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 작업자 선택과 기본 정보 (C58~C63)', () => {
+  /* C58 */
+  it('작업자를 고르면 상세 요청이 한 번 나가고 주소에 wkr가 붙는다', async () => {
+    const { requests, history, user } = renderScreen(workerRoutes(), '?tab=worker');
+    await screen.findByRole('button', { name: 'SYN-W-0001' });
+
+    expect(requestsTo(requests, `${WORKERS_PATH}/5001`)).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-W-0001' }));
+    await findLoadedWorkerDetailPane();
+
+    expect(requestsTo(requests, `${WORKERS_PATH}/5001`)).toHaveLength(1);
+    expect(history.search()).toBe('?tab=worker&wkr=5001');
+    expect(screen.getByRole('button', { name: 'SYN-W-0001' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  /*
+   * C59 — 계약에 쓰기 경로가 아예 없다. 폼 컨트롤을 잠그는 것이 아니라 두지 않는다.
+   * 우 칸 전체에서 입력칸과 버튼이 0개여야 한다.
+   */
+  it('기본 정보 구획에 입력칸도 버튼도 없다', async () => {
+    renderScreen(workerRoutes(), '?tab=worker&wkr=5001');
+
+    const pane = await findLoadedWorkerDetailPane();
+
+    expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('combobox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('checkbox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  /* C60 — `editability`가 `EDITABLE`을 줘도 고정 문구를 낸다. */
+  it('편집 가능 여부와 무관하게 외부 수신본 안내가 보인다', async () => {
+    renderScreen(
+      [
+        workerListRoute(),
+        departmentOptionsRoute(),
+        workerDetailRoute(5001, { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 }),
+        businessUnitsRoute(),
+        plantsRoute(),
+      ],
+      '?tab=worker&wkr=5001',
+    );
+
+    expect(
+      await screen.findByText(
+        '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * C61 — 이 화면의 어떤 요청도 `/mdm/workers`로 `If-Match`를 보내지 않는다.
+   * 작업자 상세에 `ETag`가 없어 보내려 해도 보낼 수 없고, 보내려 하면 요청이 조용히 멈춘다.
+   */
+  it('작업자 경로로 나가는 요청에 If-Match가 하나도 없다', async () => {
+    const { requests } = renderScreen(workerRoutes(), '?tab=worker&wkr=5001');
+    await findLoadedWorkerDetailPane();
+
+    const workerPathRequests = requests.filter((request) =>
+      request.url.pathname.startsWith(WORKERS_PATH),
+    );
+
+    expect(workerPathRequests.length).toBeGreaterThan(0);
+    for (const request of workerPathRequests) {
+      expect(request.headers.has('If-Match')).toBe(false);
+    }
+  });
+
+  /* 이 화면에서 작업자 경로로 나가는 쓰기가 0회다 — 기본 정보에 저장 경로가 없다. */
+  it('작업자 경로로 나가는 쓰기 요청이 없다', async () => {
+    const { requests, user } = renderScreen(workerRoutes(), '?tab=worker&wkr=5001');
+    await findLoadedWorkerDetailPane();
+    await screen.findByRole('button', { name: 'SYN-W-0002' });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-W-0002' }));
+
+    const writes = requests.filter(
+      (request) => request.url.pathname.startsWith(WORKERS_PATH) && request.method !== 'GET',
+    );
+
+    expect(writes).toHaveLength(0);
+  });
+
+  /* C62 — 번호가 아니라 이름을 낸다. */
+  it('사업부·공장·부서를 이름으로 낸다', async () => {
+    renderScreen(workerRoutes(), '?tab=worker&wkr=5001');
+    await findLoadedWorkerDetailPane();
+
+    // 선택 목록은 상세보다 늦게 도착할 수 있다 — 이름이 채워질 때까지 기다린다.
+    expect(await screen.findByText('SYN-BU-01 · 합성 사업부 A')).toBeInTheDocument();
+    const pane = workerDetailPane();
+    expect(within(pane).getByText('합성 공장 1')).toBeInTheDocument();
+    expect(within(pane).getByText('SYN-DEPT-01 · 합성 부서 A')).toBeInTheDocument();
+  });
+
+  /* C62 — 값 목록이 미정이라 이름을 지어내지 않는다. */
+  it('상태 코드를 원본 문자열 그대로 낸다', async () => {
+    renderScreen(
+      [
+        workerListRoute(),
+        departmentOptionsRoute(),
+        workerDetailRoute(5002),
+        businessUnitsRoute(),
+        plantsRoute(),
+      ],
+      '?tab=worker&wkr=5002',
+    );
+
+    expect(await screen.findByText('SYN-UNKNOWN-STATUS')).toBeInTheDocument();
+  });
+
+  /* C63 — 번호도 편집 수단도 두지 않는다. */
+  it('계정 연결을 연결 여부로만 낸다', async () => {
+    renderScreen(
+      [
+        workerListRoute(),
+        departmentOptionsRoute(),
+        workerDetailRoute(5002),
+        businessUnitsRoute(),
+        plantsRoute(),
+      ],
+      '?tab=worker&wkr=5002',
+    );
+
+    expect(await screen.findByText('연결 안 됨')).toBeInTheDocument();
+    expect(screen.queryByText('7001')).not.toBeInTheDocument();
+  });
+
+  /* 조회 목록에 없는 번호를 화면에 내지 않는다. */
+  it('선택 목록에 없는 부서 번호는 「알 수 없음」이 된다', async () => {
+    renderScreen(
+      [
+        workerListRoute(),
+        departmentOptionsRoute(),
+        workerDetailRoute(5003),
+        businessUnitsRoute(),
+        plantsRoute(),
+      ],
+      '?tab=worker&wkr=5003',
+    );
+
+    await findLoadedWorkerDetailPane();
+
+    // 사업부·공장은 이름으로 채워지고 부서만 목록에 없다.
+    await screen.findByText('합성 공장 1');
+    expect(within(workerDetailPane()).getByText('알 수 없음')).toBeInTheDocument();
+    expect(screen.queryByText('9999')).not.toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 작업자 조건과 탭 전환', () => {
+  it('조건을 바꾸면 주소에서 wkr가 사라진다', async () => {
+    const { history, user } = renderScreen(workerRoutes(), '?tab=worker&wkr=5001&page=3');
+    await screen.findByRole('button', { name: 'SYN-W-0001' });
+
+    await user.type(screen.getByLabelText('작업자 검색'), 'SYN');
+    await user.click(within(workerPane()).getByRole('button', { name: '조회' }));
+
+    expect(history.search()).toBe('?tab=worker&q=SYN');
+  });
+
+  it('작업자를 고른 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen(workerRoutes(), '?tab=worker');
+    await screen.findByRole('button', { name: 'SYN-W-0001' });
+
+    const before = history.search();
+
+    await user.click(screen.getByRole('button', { name: 'SYN-W-0001' }));
+    expect(history.search()).toBe('?tab=worker&wkr=5001');
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+
+  /* C13 — 작업자 탭으로 바꿔도 이전 탭의 조건·선택이 하나도 남지 않는다. */
+  it('작업자 탭으로 바꾸면 조직 탭의 조건·선택이 사라진다', async () => {
+    const { history, user } = renderScreen(
+      [...orgDetailRoutes(), ...workerRoutes()],
+      '?tab=org&q=SYN&bu=4001&inactive=1&page=2&dep=3001',
+    );
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    await user.click(screen.getByRole('tab', { name: '작업자' }));
+
+    expect(history.search()).toBe('?tab=worker');
+    expect(await screen.findByRole('button', { name: 'SYN-W-0001' })).toBeInTheDocument();
+  });
+
+  it('탭 묶음에 만든 탭 셋이 렌더된다', async () => {
+    renderScreen(workerRoutes(), '?tab=worker');
+    await screen.findByRole('button', { name: 'SYN-W-0001' });
+
+    const tabs = within(screen.getByRole('tablist', { name: '공통코드·조직·작업자' })).getAllByRole(
+      'tab',
+    );
+
+    expect(tabs.map((element) => element.textContent)).toEqual([
+      '공통코드',
+      '조직(부서)',
+      '작업자',
+    ]);
   });
 });

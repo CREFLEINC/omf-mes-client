@@ -934,12 +934,15 @@ const commonCode = {
     label: '공통코드·조직·작업자',
     code: '공통코드',
     org: '조직(부서)',
+    worker: '작업자',
   },
   panes: {
     codeGroup: '코드그룹',
     codeGroupForm: '코드그룹 정보',
     department: '부서',
     departmentForm: '부서 정보',
+    worker: '작업자',
+    workerDetail: '작업자 기본 정보',
   },
   actions: {
     prevPage: '이전',
@@ -996,17 +999,29 @@ const commonCode = {
     businessUnit: '사업부',
     /* 선택지에 빈 값을 두어 고른 사업부를 다시 「전체」로 되돌릴 수 있게 한다. */
     businessUnitAll: '전체 사업부',
+    /*
+     * 공장·사업부 필터를 두지 않는다 — 좌 페인에 필터 컨트롤 넷을 놓으면 표가 짓눌린다.
+     * 검색어(사번·성명) + 부서 + 미사용 포함 셋으로 좁힌다.
+     */
+    workerSearchLabel: '작업자 검색',
+    workerSearchPlaceholder: '사번 또는 성명',
+    department: '부서',
+    departmentAll: '전체 부서',
     chipKeyword: (value: string): string => `검색어: ${value}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     chipBusinessUnit: (label: string): string => `사업부: ${label}`,
     chipRemoveBusinessUnit: '사업부 조건 제거',
+    chipDepartment: (label: string): string => `부서: ${label}`,
+    chipRemoveDepartment: '부서 조건 제거',
   },
   loading: {
     codeGroups: '코드그룹 목록을 불러오는 중',
     codeGroupDetail: '코드그룹 정보를 불러오는 중',
     departments: '부서 목록을 불러오는 중',
     departmentDetail: '부서 정보를 불러오는 중',
+    workers: '작업자 목록을 불러오는 중',
+    workerDetail: '작업자 정보를 불러오는 중',
   },
   /** 자원 이름 — 여러 자원이 공유하는 문구에 끼워 넣는다. */
   targets: {
@@ -1110,6 +1125,46 @@ const commonCode = {
       departmentNameBlank: '부서명은 공백만으로 지정할 수 없습니다.',
       departmentCodeTooLong: '부서코드는 50자를 넘을 수 없습니다.',
       departmentNameTooLong: '부서명은 200자를 넘을 수 없습니다.',
+    },
+  },
+  /**
+   * 작업자 — **읽기 전용이다.** 계약에 쓰기 경로가 없다(POST·PUT 모두 없음).
+   * 그래서 입력칸 라벨이 아니라 **값 표기의 이름**이며, 비활성 사유도 두지 않는다
+   * (「언젠가 풀린다」는 뜻이 되는데 계약에 그 경로가 없다).
+   */
+  worker: {
+    /*
+     * `editability`가 아니라 **고정 문구**다 — 계약은 「항상 RECEIVED_FROM_ERP」라고 적었으나
+     * 목 서버는 `reason:'EDITABLE'`을 준다. 쓰기 경로가 없다는 사실이 `editability`보다 강한 근거다.
+     */
+    readOnlyNotice:
+      '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+    fields: {
+      workerNo: '사번',
+      workerName: '성명',
+      businessUnit: '사업부',
+      plant: '공장',
+      department: '부서',
+      status: '상태',
+      appUser: '계정 연결',
+      isActive: '사용 여부',
+    },
+    values: {
+      /*
+       * 계정 연결은 **연결 여부만** 낸다 — `appUserId`는 내부 식별자이고 이름을 만들려면
+       * 다른 화면 소관의 조회가 필요하다. 번호를 그대로 내면 사용자가 쓸 수 없다.
+       */
+      appUserLinked: '연결됨',
+      appUserNotLinked: '연결 안 됨',
+      active: '사용 중',
+      inactive: '미사용',
+    },
+    empty: {
+      noneTitle: '등록된 작업자가 없습니다',
+      noneDescription: '작업자는 외부 시스템에서 받아 옵니다. 원본 시스템을 확인하세요.',
+      noMatchTitle: '조건에 맞는 작업자가 없습니다',
+      noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+      notSelected: '좌측에서 작업자를 고르면 여기에 그 작업자의 정보가 보입니다',
     },
   },
   /**

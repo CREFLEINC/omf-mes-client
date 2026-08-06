@@ -14,6 +14,7 @@ import type { components } from '@omf-mes/api-client';
 
 export type CodeGroup = components['schemas']['CodeGroup'];
 export type Department = components['schemas']['Department'];
+export type Worker = components['schemas']['Worker'];
 export type PageMeta = components['schemas']['PageMeta'];
 
 /**

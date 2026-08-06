@@ -1,5 +1,5 @@
 import type { CodeValue } from './code-value-types';
-import type { CodeGroup, Department } from './types';
+import type { CodeGroup, Department, Worker } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -117,6 +117,52 @@ export const departmentFixtures: Department[] = [
     departmentName: '합성 부서 D',
     parentDepartmentId: 3001,
     businessUnitId: 4001,
+    isActive: false,
+  },
+];
+
+/**
+ * 작업자 3건.
+ *
+ * **사번과 성명은 한눈에 지어낸 값으로 보이게 둔다** — 이 화면은 이 저장소에서 처음으로
+ * 사람 이름과 사번을 다룬다. 실제 사람 이름·사번 형태를 쓰지 않는다(공개 저장소 경계).
+ *
+ * 5002는 **계정 연결이 없고 부서가 없으며 상태 코드가 화면이 모르는 값**이다 —
+ * 「연결 안 됨」·「알 수 없음」·원본 문자열 표기를 한 픽스처에서 함께 볼 수 있다.
+ * 5003은 **미사용**이고 **부서 번호가 조회 목록에 없다**.
+ */
+export const workerFixtures: Worker[] = [
+  {
+    workerId: 5001,
+    workerNo: 'SYN-W-0001',
+    workerName: '합성 작업자 A',
+    businessUnitId: 4001,
+    plantId: 6001,
+    departmentId: 3001,
+    appUserId: 7001,
+    statusCode: 'ACTIVE',
+    isActive: true,
+  },
+  {
+    workerId: 5002,
+    workerNo: 'SYN-W-0002',
+    workerName: '합성 작업자 B',
+    businessUnitId: 4001,
+    plantId: 6001,
+    departmentId: null,
+    appUserId: null,
+    statusCode: 'SYN-UNKNOWN-STATUS',
+    isActive: true,
+  },
+  {
+    workerId: 5003,
+    workerNo: 'SYN-W-0003',
+    workerName: '합성 작업자 C',
+    businessUnitId: 4001,
+    plantId: 6001,
+    departmentId: 9999,
+    appUserId: 7003,
+    statusCode: '',
     isActive: false,
   },
 ];

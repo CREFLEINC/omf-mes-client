@@ -4,7 +4,7 @@ import { COMMON_CODE_TABS, resolveTab, tabSearchParams } from './tabs';
 
 describe('COMMON_CODE_TABS', () => {
   it('탭 정의 배열이 정본이다 — 만든 탭만 들어 있다', () => {
-    expect(COMMON_CODE_TABS.map((tab) => tab.id)).toEqual(['code', 'org']);
+    expect(COMMON_CODE_TABS.map((tab) => tab.id)).toEqual(['code', 'org', 'worker']);
   });
 
   it('탭마다 서로 다른 주소값을 갖는다', () => {
@@ -34,8 +34,6 @@ describe('resolveTab', () => {
   it('모르는 값·빈 값이면 첫 탭으로 떨어진다 — 주소 조작으로 빈 화면이 되지 않는다', () => {
     expect(resolveTab('xyz')).toBe(COMMON_CODE_TABS[0]);
     expect(resolveTab('')).toBe(COMMON_CODE_TABS[0]);
-    // 아직 만들지 않은 탭의 주소값도 모르는 값이다.
-    expect(resolveTab('worker')).toBe(COMMON_CODE_TABS[0]);
   });
 
   it('대소문자가 다르면 모르는 값이다 — 주소값을 느슨하게 해석하지 않는다', () => {

@@ -61,9 +61,17 @@ import {
   toSearchParams,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
-import { useBusinessUnitOptions, useDepartmentOptions, type LookupResult } from './lookups';
+import {
+  useBusinessUnitOptions,
+  useDepartmentOptions,
+  usePlantOptions,
+  type LookupResult,
+} from './lookups';
 import { toPageView } from './pagination';
 import { COMMON_CODE_TABS, resolveTab, tabSearchParams } from './tabs';
+import { WorkerDetailPane } from './worker-detail-pane';
+import { WorkerListPane } from './worker-list-pane';
+import { useWorkerDetail, useWorkerList } from './worker-queries';
 import type {
   CodeGroupFilters,
   CodeGroupFormValues,
@@ -121,6 +129,7 @@ export const CommonCodeScreen = () => {
   const tab = resolveTab(searchParams.get('tab'));
   const isCodeTab = tab.id === 'code';
   const isOrgTab = tab.id === 'org';
+  const isWorkerTab = tab.id === 'worker';
 
   const filters = useMemo<CodeGroupFilters>(
     () => readCodeGroupFilters(searchParams),
@@ -691,6 +700,48 @@ export const CommonCodeScreen = () => {
     void departmentDetail.refetch();
   };
 
+  /* ── 작업자 탭 ─────────────────────────────────────────────────────────── */
+
+  const workerFilters = useMemo(
+    () => readScopedFilters(searchParams, SCOPE_KEYS.department),
+    [searchParams],
+  );
+
+  const selectedWorkerId = isWorkerTab ? readSelectedId(searchParams, 'wkr') : null;
+
+  const workerList = useWorkerList(workerFilters, page, isWorkerTab);
+  const workers = workerList.data?.items ?? [];
+
+  const workerPageView = toPageView(
+    workerList.data?.page ?? { page, size: 0, total: 0 },
+    workers.length,
+  );
+
+  const workerDetail = useWorkerDetail(selectedWorkerId);
+
+  /*
+   * 작업자 탭이 쓰는 선택지 셋. 부서는 필터에도 상세 표기에도 쓰이므로 탭에 들어오면 받고,
+   * 사업부·공장은 **상세 표기에만** 쓰이므로 작업자를 고른 뒤에 받는다 —
+   * 목록만 훑는 동안 쓰지 않을 목록을 받아 둘 이유가 없다.
+   */
+  const workerDepartmentOptions = useDepartmentOptions(isWorkerTab);
+  const workerBusinessUnits = useBusinessUnitOptions(isOrgTab || selectedWorkerId !== null);
+  const plantOptions = usePlantOptions(selectedWorkerId !== null);
+
+  const applyWorkerFilters = (next: ScopedFilters) => {
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, next, 1));
+  };
+
+  const changeWorkerPage = (nextPage: number) => {
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, nextPage));
+  };
+
+  const handleSelectWorker = (workerId: number) => {
+    patchSearchParams((next) => {
+      next.set('wkr', String(workerId));
+    });
+  };
+
   /*
    * 탭이 바뀌면 그 탭의 처음 상태로 간다. 한쪽 탭의 조건·선택이 남으면
    * 그 탭에 없는 자원을 조회하게 된다.
@@ -1045,9 +1096,79 @@ export const CommonCodeScreen = () => {
     </div>
   );
 
+  /**
+   * 우 칸 — 작업자 기본 정보. **값 표기만 있고 쓰기 경로가 없다**(결정 9).
+   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
+   */
+  const renderWorkerDetailPane = (): ReactNode => {
+    if (selectedWorkerId === null) {
+      return (
+        <section className="pane" aria-label={t.panes.workerDetail}>
+          <EmptyState size="sm" title={t.worker.empty.notSelected} />
+        </section>
+      );
+    }
+
+    if (workerDetail.isError) {
+      return (
+        <section className="pane" aria-label={t.panes.workerDetail}>
+          <LoadErrorBanner error={workerDetail.error} onRetry={() => void workerDetail.refetch()} />
+        </section>
+      );
+    }
+
+    if (workerDetail.data === undefined) {
+      return (
+        <section className="pane" aria-label={t.panes.workerDetail}>
+          <div role="status" aria-label={t.loading.workerDetail}>
+            <SkeletonText lines={4} />
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <WorkerDetailPane
+        worker={workerDetail.data.worker}
+        businessUnitEntries={workerBusinessUnits.entries}
+        plantEntries={plantOptions.entries}
+        departmentEntries={workerDepartmentOptions.entries}
+      />
+    );
+  };
+
+  const workerTabContent = (
+    <div className="two-pane">
+      <WorkerListPane
+        workers={workers}
+        isLoading={workerList.isPending}
+        appliedFilters={workerFilters}
+        onApplyFilters={applyWorkerFilters}
+        departmentOptions={selectableOptions(
+          workerDepartmentOptions.entries,
+          workerFilters.scopeId,
+        )}
+        departmentLabel={(scopeId) => lookupLabel(workerDepartmentOptions.entries, Number(scopeId))}
+        optionsNotice={renderOptionsNotice([workerDepartmentOptions])}
+        pageView={workerPageView}
+        onChangePage={changeWorkerPage}
+        selectedWorkerId={selectedWorkerId}
+        onSelect={handleSelectWorker}
+        loadError={
+          workerList.isError ? (
+            <LoadErrorBanner error={workerList.error} onRetry={() => void workerList.refetch()} />
+          ) : null
+        }
+      />
+
+      <div className="pane-stack">{renderWorkerDetailPane()}</div>
+    </div>
+  );
+
   const tabContentOf = (tabId: string): ReactNode => {
     if (tabId === 'code') return codeTabContent;
-    return orgTabContent;
+    if (tabId === 'org') return orgTabContent;
+    return workerTabContent;
   };
 
   return (

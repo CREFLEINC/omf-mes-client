@@ -4,13 +4,13 @@ import { messages } from '@omf-mes/i18n';
  * 탭 정의. **이 배열이 정본이다** — 화면과 테스트가 모두 이 배열을 순회하므로
  * 탭이 늘면 검증도 함께 는다.
  *
- * **만든 탭만 넣는다.** 조직·작업자 탭은 그 탭의 목록·폼이 생기는 작업에서 한 줄씩 더한다 —
+ * **만든 탭만 넣는다.** 탭은 그 탭의 목록·폼이 생기는 작업에서 한 줄씩 더한다 —
  * 자리만 먼저 두면 「탭은 있는데 눌러도 빈 화면인」 상태가 된다.
  */
 
 const t = messages.commonCode;
 
-export type CommonCodeTabId = 'code' | 'org';
+export type CommonCodeTabId = 'code' | 'org' | 'worker';
 
 export interface CommonCodeTabDefinition {
   /** 주소의 `tab` 값이자 DS `Tabs`의 항목 값 */
@@ -22,6 +22,7 @@ export interface CommonCodeTabDefinition {
 export const COMMON_CODE_TABS: readonly [CommonCodeTabDefinition, ...CommonCodeTabDefinition[]] = [
   { id: 'code', label: t.tabs.code },
   { id: 'org', label: t.tabs.org },
+  { id: 'worker', label: t.tabs.worker },
 ];
 
 /**
