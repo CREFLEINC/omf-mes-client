@@ -101,6 +101,47 @@ export const causeCodeFixtures: CauseCode[] = [
   },
 ];
 
+/**
+ * **이미 3계층인 기존 데이터.** 계약 문서가 이 형태의 존재를 인정한다 —
+ * 자기참조 방지 제약도 3계층 금지 제약도 데이터베이스에 없다.
+ *
+ * 가운데 DF-41은 **상위와 하위를 동시에** 갖는다. 화면이 그런 행을 영구히 잠그면
+ * 명칭조차 고칠 수 없게 되므로, 차단 규칙이 「지금 바꾸려는 것」만 막아야 한다.
+ */
+export const legacyThreeLevelFixtures: HierarchyCode[] = [
+  { id: 4001, code: 'DF-40', name: '조립', parentId: null, isActive: true },
+  { id: 4002, code: 'DF-41', name: '체결', parentId: 4001, isActive: true },
+  { id: 4003, code: 'DF-42', name: '토크 미달', parentId: 4002, isActive: true },
+];
+
+/** 위와 같은 계층을 계약 표현으로 담은 것. 화면 수준 테스트가 목록·상세 응답으로 쓴다. */
+export const legacyThreeLevelCodeFixtures: DefectCode[] = [
+  {
+    defectCodeId: 4001,
+    defectCode: 'DF-40',
+    defectName: '조립',
+    parentDefectCodeId: null,
+    processId: null,
+    isActive: true,
+  },
+  {
+    defectCodeId: 4002,
+    defectCode: 'DF-41',
+    defectName: '체결',
+    parentDefectCodeId: 4001,
+    processId: null,
+    isActive: true,
+  },
+  {
+    defectCodeId: 4003,
+    defectCode: 'DF-42',
+    defectName: '토크 미달',
+    parentDefectCodeId: 4002,
+    processId: null,
+    isActive: true,
+  },
+];
+
 /** 계층 판정 단위 테스트가 쓰는 화면 표현. 계약 변환을 거치지 않고 바로 넣는다. */
 export const hierarchyFixtures: HierarchyCode[] = [
   { id: 1001, code: 'DF-10', name: '외관', parentId: null, isActive: true },

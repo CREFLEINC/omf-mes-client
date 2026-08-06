@@ -10,7 +10,11 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { causeCodeFixtures, defectCodeFixtures } from './fixtures';
+import {
+  causeCodeFixtures,
+  defectCodeFixtures,
+  legacyThreeLevelCodeFixtures,
+} from './fixtures';
 import { DefectCauseCodeScreen } from './screen';
 import { CODE_TABS } from './tabs';
 
@@ -81,6 +85,11 @@ const defectCreateRoute = (respond: StubRoute['respond']): StubRoute => ({
 });
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 탭 순회 테스트가 쓰는 값. 어느 탭에도 없는 번호라 다른 픽스처와 섞이지 않는다. */
+const SELECTED_ID = 7101;
+const PRESERVED_PROCESS_ID = 7001;
+const TAB_ETAG = '"9"';
 
 const DEFAULT_EDITABILITY = { codeEditable: true, reason: 'EDITABLE' as const };
 
@@ -940,6 +949,127 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
   });
 });
 
+/*
+ * 계약 문서가 인정하는 「이미 3계층인 기존 데이터」. 가운데 DF-41(4002)은 상위와 하위를
+ * 동시에 가져 상위 선택칸이 잠긴다 — 그 상태에서 명칭조차 고칠 수 없으면 영구히 잠기는 것이다.
+ */
+describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
+  const legacyRoutes = (...extra: StubRoute[]): StubRoute[] => [
+    defectOptionsRoute(legacyThreeLevelCodeFixtures),
+    defectListRoute(legacyThreeLevelCodeFixtures),
+    ...extra,
+  ];
+
+  it('상위와 하위를 동시에 가진 코드도 명칭만 고쳐 저장할 수 있다', async () => {
+    const { requests, user } = renderScreen(
+      legacyRoutes(
+        defectDetailRoute(legacyThreeLevelCodeFixtures[1]),
+        defectUpdateRoute(4002, () =>
+          jsonResponse(
+            { ...legacyThreeLevelCodeFixtures[1], defectName: '체결 불량' },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=4002',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), ' 불량');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find((request) => request.method === 'PUT');
+    expect(put?.url.pathname).toBe(`${DEFECT_LIST_PATH}/4002`);
+    // 저장된 상위를 그대로 되돌려 보낸다 — 화면이 바꾸려 한 것이 아니다.
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ parentDefectCodeId: 4001 });
+  });
+
+  it('그래도 상위 선택칸은 잠겨 있고 사유가 보인다 — 계층을 더 깨지 못하게 한다', async () => {
+    renderScreen(legacyRoutes(defectDetailRoute(legacyThreeLevelCodeFixtures[1])), '?sel=4002');
+    await screen.findByLabelText('명칭');
+
+    expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
+    expect(screen.getByText(/상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다/)).toBeInTheDocument();
+  });
+
+  /*
+   * 차단이 화면에서 실제로 요청을 막는지 본다(2차 방어). 3계층의 막내 DF-42는 상위가 상세 코드라
+   * R2에 걸린다. 상위 선택칸이 열려 있어 대분류를 골라 빠져나갈 수 있으므로 영구 잠금이 아니다.
+   */
+  it('상위가 상세 코드인 행은 저장 요청이 나가지 않고 사유가 보인다', async () => {
+    const { requests, user } = renderScreen(
+      legacyRoutes(
+        defectDetailRoute(legacyThreeLevelCodeFixtures[2]),
+        defectUpdateRoute(4003, () => jsonResponse(legacyThreeLevelCodeFixtures[2]!)),
+      ),
+      '?sel=4003',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      screen.getByText('상위는 대분류만 지정할 수 있습니다. 계층은 2단계까지입니다.'),
+    ).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+  });
+
+  it('상위를 대분류로 고쳐 주면 저장할 수 있다 — 빠져나갈 길이 있다', async () => {
+    const { requests, user } = renderScreen(
+      legacyRoutes(
+        defectDetailRoute(legacyThreeLevelCodeFixtures[2]),
+        defectUpdateRoute(4003, () =>
+          jsonResponse(
+            { ...legacyThreeLevelCodeFixtures[2], parentDefectCodeId: 4001 },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=4003',
+    );
+
+    await screen.findByLabelText('명칭');
+    await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
+    await user.click(await screen.findByRole('option', { name: 'DF-40 · 조립' }));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    expect(
+      JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}'),
+    ).toMatchObject({ parentDefectCodeId: 4001 });
+  });
+});
+
+describe('DefectCauseCodeScreen — 상세 코드를 대분류로 되돌리기', () => {
+  /*
+   * 수정은 전체 치환이라 상위 키를 빼면 서버가 이전 값을 남길 수 있다.
+   * 「없음 (대분류)」로 바꿔 저장하는 이 흐름이 그 판단의 유일한 근거다.
+   */
+  it('상위를 비워 저장하면 본문에 null이 명시된다', async () => {
+    const { requests, user } = renderScreen(
+      editFlowRoutes(
+        defectDetailRoute(defectCodeFixtures[1]),
+        defectUpdateRoute(1002, () =>
+          jsonResponse(
+            { ...defectCodeFixtures[1], parentDefectCodeId: null },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=1002',
+    );
+
+    await screen.findByLabelText('명칭');
+    await user.click(screen.getByRole('combobox', { name: '상위 대분류' }));
+    await user.click(screen.getByRole('option', { name: '없음 (대분류)' }));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find((request) => request.method === 'PUT');
+    expect(JSON.parse(put?.body ?? '{}')).toMatchObject({ parentDefectCodeId: null });
+  });
+});
+
 describe('DefectCauseCodeScreen — 저장 충돌', () => {
   const conflictRoutes = (cause: string): StubRoute[] =>
     editFlowRoutes(
@@ -1141,7 +1271,9 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
 describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, definition] as const))(
   'DefectCauseCodeScreen — %s 탭',
   (_label, definition) => {
-    const listPath = definition.kind === 'defect' ? DEFECT_LIST_PATH : CAUSE_LIST_PATH;
+    /** 목록 경로는 상세 경로에서 번호만 떼면 나온다 — 탭이 늘어도 여기를 고칠 일이 없다. */
+    const detailPath = definition.adapter.detailPath(SELECTED_ID);
+    const listPath = detailPath.slice(0, detailPath.lastIndexOf('/'));
     const fixtures = definition.kind === 'defect' ? defectCodeFixtures : causeCodeFixtures;
     const firstCode = definition.kind === 'defect' ? 'DF-10' : 'CS-10';
     const groupHeader = definition.kind === 'defect' ? 'DF-10 · 외관' : 'CS-10 · 설비';
@@ -1213,6 +1345,100 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
         [fields.code]: 'X-01',
         [fields.name]: '새 코드',
       });
+    });
+
+    /*
+     * 아래 두 사례가 없으면 어댑터 한쪽(원인 탭)의 수정·사용 중지·공정 번호 보존을
+     * 통째로 망가뜨려도 테스트가 전건 통과한다 — 어댑터는 손으로 쓴 쌍둥이 두 벌이기 때문이다.
+     * 계획이 꼽은 최상위 위험 두 건(사용 중지 전면 실패 · 서버 값이 조용히 지워짐)이 여기 걸린다.
+     */
+    const editFields = definition.adapter.serverFields;
+    const idField = `${definition.kind}CodeId`;
+
+    /** 그 탭의 계약 표현으로 코드 한 행을 만든다. 필드 이름은 어댑터가 안다. */
+    const codeRow = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+      [idField]: SELECTED_ID,
+      [editFields.code]: 'X-10',
+      [editFields.name]: '대분류',
+      [editFields.parentId]: null,
+      processId: PRESERVED_PROCESS_ID,
+      isActive: true,
+      ...overrides,
+    });
+
+    /** 상세 응답의 감싸개 키는 코드 필드 이름과 같다(`defectCode` / `causeCode`). */
+    const detailBody = (): Record<string, unknown> => ({
+      [editFields.code]: codeRow(),
+      editability: DEFAULT_EDITABILITY,
+    });
+
+    const tabEditRoutes = (...extra: StubRoute[]): StubRoute[] => [
+      {
+        match: (request) =>
+          isGet(request, listPath) &&
+          new URL(request.url).searchParams.get('includeInactive') === 'true',
+        respond: () => jsonResponse(listBody([codeRow()])),
+      },
+      { match: (request) => isGet(request, listPath), respond: () => jsonResponse(listBody([codeRow()])) },
+      {
+        match: (request) => isGet(request, detailPath),
+        respond: () => jsonResponse(detailBody(), { headers: { ETag: TAB_ETAG } }),
+      },
+      ...extra,
+    ];
+
+    it('수정 요청이 그 탭의 경로·필드 이름으로 나가고 공정 번호가 보존된다', async () => {
+      const { requests, user } = renderScreen(
+        tabEditRoutes({
+          match: (request) => request.method === 'PUT' && new URL(request.url).pathname === detailPath,
+          respond: () => jsonResponse(codeRow({ [editFields.name]: '대분류가' }), {
+            headers: { ETag: '"10"' },
+          }),
+        }),
+        `?tab=${definition.kind}&sel=${String(SELECTED_ID)}`,
+      );
+
+      await user.type(await screen.findByLabelText('명칭'), '가');
+      await user.click(screen.getByRole('button', { name: '저장' }));
+      await screen.findByText('저장했습니다');
+
+      const put = requests.find((request) => request.method === 'PUT');
+      expect(put?.url.pathname).toBe(detailPath);
+      expect(put?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+      expect(put?.headers.get('If-Match')).toBe(TAB_ETAG);
+      expect(JSON.parse(put?.body ?? '{}')).toEqual({
+        [editFields.code]: 'X-10',
+        [editFields.name]: '대분류가',
+        [editFields.parentId]: null,
+        processId: PRESERVED_PROCESS_ID,
+      });
+    });
+
+    it('사용 중지 요청이 그 탭의 경로와 상세 경로의 잠금 토큰으로 나간다', async () => {
+      const deactivatePath = `${detailPath}:deactivate`;
+
+      const { requests, user } = renderScreen(
+        tabEditRoutes({
+          match: (request) =>
+            request.method === 'POST' && new URL(request.url).pathname === deactivatePath,
+          respond: () => jsonResponse(codeRow({ isActive: false })),
+        }),
+        `?tab=${definition.kind}&sel=${String(SELECTED_ID)}`,
+      );
+
+      await user.click(await screen.findByRole('button', { name: '사용 중지' }));
+      await user.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+      );
+      await screen.findByText('저장했습니다');
+
+      const request = requests.find(
+        (candidate) => candidate.method === 'POST' && candidate.url.pathname === deactivatePath,
+      );
+      expect(request).toBeDefined();
+      expect(request?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+      // 요청 경로(`…:deactivate`)로 꺼내면 언제나 비어 있다 — 상세 경로에서 꺼내야 한다.
+      expect(request?.headers.get('If-Match')).toBe(TAB_ETAG);
     });
   },
 );

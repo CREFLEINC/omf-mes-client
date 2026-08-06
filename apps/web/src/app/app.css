@@ -23,6 +23,7 @@
  * .link-cell    표의 코드 셀을 누를 수 있게 만드는 텍스트 버튼
  * .tree-toggle  Location 계층의 들여쓰기 + 접기 버튼을 담는 셀 래퍼
  * .banner-slot  페인·다이얼로그 안의 배너와 아래 블록 사이 이음매(규범 6)
+ *               + DS 배너의 box-sizing 정규화(임시 우회 — design-system-v2-webui#60)
  */
 
 :root {
@@ -68,6 +69,22 @@ main > * + * {
  */
 .banner-slot {
   margin-bottom: var(--space-5);
+}
+
+/*
+ * 디자인 시스템 배너의 폭 정규화 — **임시 우회**.
+ *
+ * DS AlertBanner 루트가 `width: 100%` + 안쪽 여백인데 `box-sizing` 선언이 없고,
+ * DS의 styles/index.css에도 이 파일에도 전역 리셋이 없다. 그래서 배너가 담는 컨테이너를
+ * 안쪽 여백만큼(--space-4 × 2 = 32px) 넘쳐 페인 테두리 밖으로 삐져나온다.
+ *
+ * 전역 리셋(`* { box-sizing: border-box }`)을 넣지 않는 이유는 이미 병합된 두 화면의 배치가
+ * 통째로 흔들리기 때문이다. 배너 슬롯 안에서만 바로잡는다.
+ *
+ * 걷어내는 시점: design-system-v2-webui#60이 반영된 뒤.
+ */
+.banner-slot > * {
+  box-sizing: border-box;
 }
 
 .two-pane {

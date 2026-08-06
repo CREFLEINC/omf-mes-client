@@ -279,7 +279,12 @@ export const DefectCauseCodeScreen = () => {
   };
 
   const handleSave = () => {
-    const errors = validateCode(formValues, { items: options.items, editingId: selectedId });
+    const errors = validateCode(formValues, {
+      items: options.items,
+      editingId: selectedId,
+      // 기준값이 곧 「서버에 저장돼 있는 상위」다 — 저장에 성공하면 기준값도 함께 갱신된다.
+      savedParentId: formState?.baseline.parentId ?? '',
+    });
     setLocalFieldErrors(errors);
 
     // 화면에서 잡히는 오류는 서버로 보내지 않는다.
@@ -458,9 +463,16 @@ export const DefectCauseCodeScreen = () => {
       {/*
        * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
        * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
+       *
+       * 화면 최상위 배너라 이음매는 `main > * + *`가 이미 처리하지만, 슬롯으로 감싸
+       * DS 배너의 box-sizing까지 정규화한다 — 감싸지 않으면 배너만 본문 폭을 넘친다.
        */}
       {listTruncated && listPage !== undefined && (
-        <AlertBanner variant="warning">{t.listTruncated(items.length, listPage.total)}</AlertBanner>
+        <div className="banner-slot">
+          <AlertBanner variant="warning">
+            {t.listTruncated(items.length, listPage.total)}
+          </AlertBanner>
+        </div>
       )}
 
       <Tabs

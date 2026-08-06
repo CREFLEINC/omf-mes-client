@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import { validateCode, type CodeHierarchyContext } from './code-validation';
-import { hierarchyFixtures } from './fixtures';
+import { hierarchyFixtures, legacyThreeLevelFixtures } from './fixtures';
 import type { CodeFormValues } from './types';
 
-/** DF-10(1001)은 하위 둘, DF-90(1006)은 하위 없음, DF-11(1002)은 상세 코드다. */
-const context = (editingId: number | null): CodeHierarchyContext => ({
+/**
+ * DF-10(1001)은 하위 둘, DF-90(1006)은 하위 없음, DF-11(1002)은 상세 코드다.
+ * `savedParentId`는 서버에 저장돼 있는 상위 값이며, 주지 않으면 대분류로 본다.
+ */
+const context = (editingId: number | null, savedParentId = ''): CodeHierarchyContext => ({
   items: hierarchyFixtures,
   editingId,
+  savedParentId,
 });
 
 const values = (patch: Partial<CodeFormValues> = {}): CodeFormValues => ({
@@ -75,7 +79,7 @@ describe('validateCode — 차단 R2 3계층 금지', () => {
 });
 
 describe('validateCode — 차단 R3 하위가 있는 코드', () => {
-  it('하위가 있는 코드에는 상위를 지정할 수 없다', () => {
+  it('하위가 있는 코드에 상위를 새로 지정할 수 없다', () => {
     expect(validateCode(values({ parentId: '1004' }), context(1001)).parentId).toBe(
       '하위 코드가 있어 상위를 지정할 수 없습니다. 계층은 2단계까지입니다.',
     );
@@ -93,6 +97,61 @@ describe('validateCode — 차단 R3 하위가 있는 코드', () => {
     expect(validateCode(values({ parentId: '1001' }), context(1001)).parentId).toBe(
       '자기 자신을 상위로 지정할 수 없습니다.',
     );
+  });
+});
+
+/*
+ * 이미 3계층인 기존 데이터의 중간 노드(DF-41 · 4002)는 상위와 하위를 동시에 갖는다.
+ * R3가 「상위 값이 비어 있지 않다」만 보면 명칭조차 고칠 수 없고, 1차 방어가 상위 선택칸을
+ * 잠그고 있어 빠져나갈 길도 없다. 그래서 R3는 **상위를 바꾸려 할 때만** 발동한다.
+ */
+describe('validateCode — R3는 상위를 바꾸려 할 때만 발동한다', () => {
+  const legacyContext = (savedParentId: string): CodeHierarchyContext => ({
+    items: legacyThreeLevelFixtures,
+    editingId: 4002,
+    savedParentId,
+  });
+
+  it('상위를 그대로 둔 채 명칭만 고치는 것은 막지 않는다', () => {
+    const errors = validateCode(
+      { code: 'DF-41', name: '체결 불량', parentId: '4001' },
+      legacyContext('4001'),
+    );
+
+    expect(errors).toEqual({});
+  });
+
+  it('상위를 다른 값으로 바꾸려 하면 막는다', () => {
+    const errors = validateCode(
+      { code: 'DF-41', name: '체결', parentId: '4003' },
+      legacyContext('4001'),
+    );
+
+    expect(errors.parentId).toBe('하위 코드가 있어 상위를 지정할 수 없습니다. 계층은 2단계까지입니다.');
+  });
+
+  it('상위를 비우는 것은 막지 않는다 — 계층이 얕아지는 방향이다', () => {
+    expect(
+      validateCode({ code: 'DF-41', name: '체결', parentId: '' }, legacyContext('4001')),
+    ).toEqual({});
+  });
+
+  it('저장된 상위가 없던 코드에 상위를 새로 붙이면 여전히 막힌다', () => {
+    const errors = validateCode(
+      { code: 'DF-40', name: '조립', parentId: '4003' },
+      { items: legacyThreeLevelFixtures, editingId: 4001, savedParentId: '' },
+    );
+
+    expect(errors.parentId).toBe('하위 코드가 있어 상위를 지정할 수 없습니다. 계층은 2단계까지입니다.');
+  });
+
+  it('상위를 그대로 둬도 자기참조이면 막는다 — R1이 먼저다', () => {
+    const errors = validateCode(
+      { code: 'DF-41', name: '체결', parentId: '4002' },
+      legacyContext('4002'),
+    );
+
+    expect(errors.parentId).toBe('자기 자신을 상위로 지정할 수 없습니다.');
   });
 });
 

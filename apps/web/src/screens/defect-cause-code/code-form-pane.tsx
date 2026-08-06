@@ -134,9 +134,15 @@ export const CodeFormPane = ({
           </span>
         </div>
 
-        {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. */}
+        {/*
+         * 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다.
+         *
+         * `form-actions-secondary`를 함께 붙인다. `.form-grid .field-cell`은 규범 3-1로
+         * `align-items: stretch`라 선택 컨트롤뿐 아니라 **버튼까지 칸 폭 전체로 늘린다** —
+         * 액션 버튼이 입력칸처럼 보인다. `margin-right: auto`가 칸을 내용 폭으로 줄여 준다.
+         */}
         {mode === 'edit' && (
-          <div className="field-cell">
+          <div className="field-cell form-actions-secondary">
             <span className="field-label" id={activeLabelId}>
               {t.fields.isActive}
             </span>
