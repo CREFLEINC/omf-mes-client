@@ -19,13 +19,17 @@ import { HeaderPane } from './header-pane';
 import { ROUTING_HEADER_FORM_FIELDS, validateRoutingHeader } from './header-validation';
 import { ItemPane } from './item-pane';
 import { isSameHeaderValues, routingToFormValues, toRoutingUpdate } from './mappers';
+import { toOperationDrafts } from './operation-order';
+import { OperationsPane } from './operations-pane';
 import {
   isTruncated,
   routingDetailPath,
   routingKeys,
   useItemList,
+  useProcessOptions,
   useRoutingDetail,
   useRoutingList,
+  useRoutingOperations,
 } from './queries';
 import { RevisionPane } from './revision-pane';
 import { resolveRoutingStatus } from './routing-status';
@@ -125,6 +129,8 @@ export const RoutingScreen = () => {
   const revisions = revisionList.data?.items ?? [];
 
   const detail = useRoutingDetail(selectedRoutingId);
+  const operationList = useRoutingOperations(selectedRoutingId);
+  const processOptions = useProcessOptions();
 
   const [formState, setFormState] = useState<HeaderFormState | null>(null);
 
@@ -257,6 +263,52 @@ export const RoutingScreen = () => {
   const itemLabel =
     selectedItem === null ? t.values.empty : `${selectedItem.itemCode} · ${selectedItem.itemName}`;
 
+  /*
+   * 라인은 화면의 로컬 초안 목록으로 다룬다. 서버 응답으로 초안을 세우고,
+   * 편집은 초안만 바꾼다 — 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않기 때문이다.
+   * 응답 객체가 바뀔 때만 다시 세운다.
+   */
+  const operationDrafts = useMemo(
+    () => toOperationDrafts(operationList.data?.items ?? []),
+    [operationList.data],
+  );
+
+  /**
+   * 공정 id를 사람이 읽는 이름으로 옮긴다.
+   * 목록에 없는 값은 코드를 그대로 낸다 — 빼 버리면 값이 사라진 것처럼 보인다.
+   */
+  const processLabelOf = (processId: string): string => {
+    const entry = processOptions.entries.find((item) => item.value === processId);
+
+    if (entry === undefined) return processId;
+
+    return entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`;
+  };
+
+  /**
+   * 선택 목록이 잘리거나 실패했다는 사실을 표 위에 낸다.
+   * 알리지 않으면 공정 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
+   */
+  const processNotice = (() => {
+    if (processOptions.isError) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.optionsLoadFailed}</AlertBanner>
+        </div>
+      );
+    }
+
+    if (processOptions.truncated) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.optionsTruncated}</AlertBanner>
+        </div>
+      );
+    }
+
+    return null;
+  })();
+
   /**
    * 우측 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
@@ -365,7 +417,25 @@ export const RoutingScreen = () => {
           }
         />
 
-        <div className="pane-stack">{renderHeaderPane()}</div>
+        <div className="pane-stack">
+          {renderHeaderPane()}
+
+          <OperationsPane
+            drafts={operationDrafts}
+            processLabel={processLabelOf}
+            isLoading={operationList.isPending}
+            isRevisionSelected={selectedRoutingId !== null}
+            loadError={
+              operationList.isError ? (
+                <LoadErrorBanner
+                  error={operationList.error}
+                  onRetry={() => void operationList.refetch()}
+                />
+              ) : null
+            }
+            optionsNotice={processNotice}
+          />
+        </div>
       </div>
     </>
   );

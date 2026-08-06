@@ -3,12 +3,13 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { ItemFilters } from './types';
+import type { ItemFilters, LookupEntry } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type Item = components['schemas']['Item'];
 type Routing = components['schemas']['Routing'];
 type RoutingDetailResponse = components['schemas']['RoutingDetailResponse'];
+type RoutingOperation = components['schemas']['RoutingOperation'];
 
 export interface ItemListResponse {
   items: Item[];
@@ -65,6 +66,7 @@ export const routingKeys = {
   all: ['routings'] as const,
   list: (itemId: number) => ['routings', 'list', itemId] as const,
   detail: (routingId: number) => ['routings', 'detail', routingId] as const,
+  operations: (routingId: number) => ['routings', 'operations', routingId] as const,
 };
 
 /**
@@ -113,4 +115,81 @@ export const useRoutingDetail = (
       );
     },
   });
+};
+
+/** 공정 라인 목록에도 페이지네이션이 없다 — Rev당 라인 수가 소수라 계약이 두지 않았다. */
+export interface RoutingOperationListResponse {
+  items: RoutingOperation[];
+}
+
+/**
+ * 공정 라인 목록. Rev를 고르기 전에는 조회하지 않는다.
+ *
+ * 응답의 순서 값은 서버 채번이며 화면은 그것을 표시하지 않는다 — 표시 번호는 목록 안의 위치다.
+ */
+export const useRoutingOperations = (
+  routingId: number | null,
+): UseQueryResult<RoutingOperationListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: routingKeys.operations(routingId ?? 0),
+    enabled: routingId !== null,
+    queryFn: () => {
+      if (routingId === null) {
+        throw new Error('Rev를 고르기 전에는 공정 라인을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/planning/routings/{routingId}/operations', {
+          params: { path: { routingId } },
+        }),
+      );
+    },
+  });
+};
+
+export const processKeys = {
+  all: ['routing-processes'] as const,
+};
+
+export interface ProcessLookupResult {
+  entries: LookupEntry[];
+  /** 목록이 잘렸으면 참. 고를 수 없는 값이 생겼다는 뜻이다. */
+  truncated: boolean;
+  /** 실패했으면 참. 실패를 삼키면 선택칸이 이유 없이 비어 보인다. */
+  isError: boolean;
+  isLoading: boolean;
+}
+
+const EMPTY_ENTRIES: LookupEntry[] = [];
+
+/**
+ * 공정 선택 목록. `includeInactive=true`로 한 번 받아 두고 화면이 표시 규칙을 정한다 —
+ * 기본 조회는 사용 중인 것만 내려주므로, 미사용 공정을 참조하는 라인을 열면 이름이 비어 보인다.
+ */
+export const useProcessOptions = (): ProcessLookupResult => {
+  const { client } = useApiClient();
+
+  const processes = useQuery({
+    queryKey: processKeys.all,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/processes', { params: { query: { includeInactive: true } } }),
+      ),
+  });
+
+  const data = processes.data;
+
+  return {
+    entries:
+      data?.items.map((process) => ({
+        value: String(process.processId),
+        label: process.processName,
+        isActive: process.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: processes.isError,
+    isLoading: processes.isPending,
+  };
 };

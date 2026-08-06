@@ -1,4 +1,4 @@
-import type { Item, Routing } from './types';
+import type { Item, Process, Routing, RoutingOperation } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -91,5 +91,72 @@ export const routingFixtures: Routing[] = [
     statusCode: 'OBSOLETE',
     effectiveFrom: '2026-01-01',
     effectiveTo: '2026-01-31',
+  },
+];
+
+/**
+ * 한 Rev의 공정 라인 2건.
+ *
+ * **순서 값을 일부러 10·20으로 둔다.** 서버 채번은 서버 재량이고 화면은 그 값을 보이지 않는다 —
+ * 표시 번호가 1·2로 나오는지 확인하는 것이 이 픽스처의 목적이다.
+ * 관리 플래그도 한쪽은 켜고 한쪽은 전부 꺼서 「없음」 표시를 함께 볼 수 있게 했다.
+ */
+export const routingOperationFixtures: RoutingOperation[] = [
+  {
+    routingOperationId: 8001,
+    routingId: 7003,
+    operationSeq: 10,
+    processId: 9001,
+    operationName: '1차 사출',
+    mesManaged: true,
+    materialInputManaged: false,
+    productionResultManaged: true,
+    inspectionManaged: true,
+    outputLotRequired: false,
+    equipmentRequired: false,
+    moldRequired: false,
+    standardCycleTimeSec: 45,
+    standardYieldRate: 0.98,
+  },
+  {
+    routingOperationId: 8002,
+    routingId: 7003,
+    operationSeq: 20,
+    processId: 9002,
+    operationName: '2차 조립',
+    mesManaged: false,
+    materialInputManaged: false,
+    productionResultManaged: false,
+    inspectionManaged: false,
+    outputLotRequired: false,
+    equipmentRequired: false,
+    moldRequired: false,
+    standardCycleTimeSec: null,
+    standardYieldRate: null,
+  },
+];
+
+/** 9003은 미사용이다 — 미사용 공정이 어떻게 표시되는지 확인하는 데 쓴다. */
+export const processFixtures: Process[] = [
+  {
+    processId: 9001,
+    processCode: 'OP-INJ',
+    processName: '사출',
+    processTypeCode: 'STANDARD',
+    isActive: true,
+  },
+  {
+    processId: 9002,
+    processCode: 'OP-ASM',
+    processName: '조립',
+    processTypeCode: 'STANDARD',
+    isActive: true,
+  },
+  {
+    processId: 9003,
+    processCode: 'OP-PNT',
+    processName: '도장',
+    processTypeCode: 'STANDARD',
+    isActive: false,
   },
 ];

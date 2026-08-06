@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -9,7 +9,12 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { itemFixtures, routingFixtures } from './fixtures';
+import {
+  itemFixtures,
+  processFixtures,
+  routingFixtures,
+  routingOperationFixtures,
+} from './fixtures';
 import { RoutingScreen } from './screen';
 import type { Routing } from './types';
 
@@ -533,5 +538,143 @@ describe('RoutingScreen — 헤더 저장', () => {
 
     await screen.findByText('저장했습니다');
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+});
+
+const operationListRoute = (routingId = 7003, items = routingOperationFixtures): StubRoute => ({
+  match: (request) => isGet(request, `/planning/routings/${String(routingId)}/operations`),
+  respond: () => jsonResponse({ items }),
+});
+
+const processListRoute = (items = processFixtures, total = items.length): StubRoute => ({
+  match: (request) => isGet(request, '/mdm/processes'),
+  respond: () => jsonResponse(listBody(items, total)),
+});
+
+describe('RoutingScreen — 공정 라인 조회·표시', () => {
+  it('Rev를 고르기 전에는 라인 요청이 나가지 않는다', async () => {
+    const { requests } = renderScreen(
+      [itemListRoute(), revisionListRoute(), processListRoute()],
+      '?item=5001',
+    );
+    await screen.findByRole('button', { name: 'Rev 3' });
+
+    expect(requestsTo(requests, '/planning/routings/7003/operations')).toHaveLength(0);
+  });
+
+  it('Rev를 고르면 라인 요청이 나가고 표가 그려진다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        operationListRoute(),
+        processListRoute(),
+      ],
+      '?item=5001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Rev 3' }));
+
+    expect(await screen.findByText('1차 사출')).toBeInTheDocument();
+    expect(requestsTo(requests, '/planning/routings/7003/operations')).toHaveLength(1);
+    expect(requestsTo(requests, '/mdm/processes')[0]?.url.searchParams.get('includeInactive')).toBe(
+      'true',
+    );
+  });
+
+  /*
+   * 서버 채번은 서버 재량이다. 그 값을 그대로 보이면 사용자가 그것을 자료로 읽는다.
+   */
+  it('서버가 순서 값 10·20을 줘도 표시 번호는 1·2다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        operationListRoute(),
+        processListRoute(),
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    await screen.findByText('1차 사출');
+
+    const operations = screen.getByRole('region', { name: '공정 라인' });
+    const rows = within(operations).getAllByRole('row').slice(1);
+    expect(within(rows[0] as HTMLElement).getByText('1')).toBeInTheDocument();
+    expect(within(rows[1] as HTMLElement).getByText('2')).toBeInTheDocument();
+    expect(within(operations).queryByText('10')).not.toBeInTheDocument();
+    expect(within(operations).queryByText('20')).not.toBeInTheDocument();
+  });
+
+  it('공정 id를 선택 목록의 이름으로 옮겨 보인다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        operationListRoute(),
+        processListRoute(),
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    const operations = await screen.findByRole('region', { name: '공정 라인' });
+    expect(await within(operations).findByText('사출')).toBeInTheDocument();
+    expect(within(operations).getByText('조립')).toBeInTheDocument();
+  });
+
+  it('라인이 0건이면 빈 상태를 낸다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        operationListRoute(7003, []),
+        processListRoute(),
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    expect(await screen.findByText('등록된 공정이 없습니다')).toBeInTheDocument();
+  });
+
+  it('라인 조회에 실패하면 표 대신 오류 배너가 나온다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        {
+          match: (request) => isGet(request, '/planning/routings/7003/operations'),
+          respond: () => jsonResponse({ message: '공정을 불러오지 못했습니다.' }, { status: 500 }),
+        },
+        processListRoute(),
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    expect(await screen.findByText('공정을 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(screen.queryByText('등록된 공정이 없습니다')).not.toBeInTheDocument();
+  });
+
+  it('공정 선택 목록이 잘리면 그 사실을 표 위에 낸다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        operationListRoute(),
+        processListRoute(processFixtures, 120),
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    expect(
+      await screen.findByText(
+        '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+      ),
+    ).toBeInTheDocument();
   });
 });
