@@ -1402,3 +1402,426 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 });
+
+const VERSION_DETAIL_PATH = `${VERSIONS_PATH}/4002`;
+const ITEMS_PATH = `${VERSIONS_PATH}/4002/items`;
+
+const versionDetailRoute = (
+  version = inspectionPlanVersionFixtures[0]!,
+  etag = '"11"',
+): StubRoute => ({
+  match: (request) =>
+    isGet(request, `${VERSIONS_PATH}/${String(version.inspectionPlanVersionId)}`),
+  respond: () =>
+    jsonResponse(
+      { inspectionPlanVersion: version, editability: DEFAULT_EDITABILITY },
+      { headers: { ETag: etag } },
+    ),
+});
+
+const itemSpecFixture = {
+  inspectionItemSpecId: 5101,
+  inspectionPlanVersionId: 4002,
+  sequenceNo: 10,
+  inspectionItemCode: 'SYN-ITEM-CODE-01',
+  inspectionItemName: '합성 항목 A',
+  dataTypeCode: 'PENDING',
+  uomId: null,
+  targetValue: 10,
+  lowerLimit: 9,
+  upperLimit: 11,
+  measurementCount: 3,
+  inspectionMethodCode: null,
+  defaultInspectionEquipmentId: null,
+  requiredFlag: true,
+  automaticJudgment: true,
+};
+
+const itemListRoute = (
+  versionId = 4002,
+  items: unknown[] = [itemSpecFixture],
+): StubRoute => ({
+  match: (request) => isGet(request, `${VERSIONS_PATH}/${String(versionId)}/items`),
+  respond: () => jsonResponse({ items }),
+});
+
+const versionSaveRoute = (
+  respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanVersionFixtures[0]),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' && new URL(request.url).pathname === VERSION_DETAIL_PATH,
+  respond,
+});
+
+const versionTransitionRoute = (
+  action: 'confirm' | 'obsolete',
+  versionId = 4002,
+  respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanVersionFixtures[0]),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' &&
+    new URL(request.url).pathname === `${VERSIONS_PATH}/${String(versionId)}:${action}`,
+  respond,
+});
+
+const versionForm = (): HTMLElement => screen.getByRole('region', { name: '버전 정보' });
+
+/** 버전 상세가 도착해 폼이 그려질 때까지 기다린다 — 불러오는 중 구획과 폼 구획은 다른 컴포넌트다. */
+const awaitVersionForm = async (): Promise<HTMLElement> => {
+  await screen.findByLabelText('샘플 수량(개)');
+
+  return versionForm();
+};
+
+const renderSelectedVersion = (extraRoutes: StubRoute[] = [], search = '?plan=3001&ver=4002') =>
+  renderScreen(
+    [
+      ...extraRoutes,
+      planListRoute(),
+      planDetailRoute(),
+      versionListRoute(),
+      versionDetailRoute(),
+      itemListRoute(),
+      ...lookupRoutes(),
+    ],
+    search,
+  );
+
+describe('InspectionStandardScreen — 버전 상세와 샘플 수량 표기', () => {
+  it('버전을 고르면 상세 요청이 한 번 나가고 폼이 응답 값으로 채워진다', async () => {
+    const { requests, user } = renderScreen([
+      planListRoute(),
+      planDetailRoute(),
+      versionListRoute(),
+      versionDetailRoute(),
+      itemListRoute(),
+      ...lookupRoutes(),
+    ], '?plan=3001');
+
+    await user.click(await screen.findByRole('button', { name: '버전 2' }));
+
+    expect(await screen.findByLabelText('샘플 수량(개)')).toHaveValue(30);
+    expect(requestsTo(requests, VERSION_DETAIL_PATH)).toHaveLength(1);
+  });
+
+  it('버전을 고르기 전에는 상세 요청이 나가지 않는다', async () => {
+    const { requests } = renderScreen(
+      [
+        planListRoute(),
+        planDetailRoute(),
+        versionListRoute(),
+        versionDetailRoute(),
+        itemListRoute(),
+        ...lookupRoutes(),
+      ],
+      '?plan=3001',
+    );
+    await screen.findByRole('button', { name: '버전 2' });
+
+    expect(requestsTo(requests, VERSION_DETAIL_PATH)).toHaveLength(0);
+  });
+
+  /*
+   * 라벨을 「비율」로 쓰면 30을 넣은 사람이 30%로 오해한다 — 단위를 라벨에 박고
+   * 그 아래 한 줄로 무엇이 아닌지까지 밝힌다.
+   */
+  it('샘플 수량 라벨이 단위를 담고 보조 안내가 비율이 아님을 밝힌다', async () => {
+    renderSelectedVersion();
+
+    expect(await screen.findByLabelText('샘플 수량(개)')).toBeInTheDocument();
+    expect(screen.getByText('비율(%)이 아니라 검사할 개수입니다.')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/샘플 비율/)).not.toBeInTheDocument();
+  });
+
+  it('0인 합격판정개수가 빈 칸으로 뭉개지지 않는다', async () => {
+    renderSelectedVersion();
+
+    expect(await screen.findByLabelText('합격판정개수')).toHaveValue(0);
+  });
+
+  /* 상태 값 목록이 확정되지 않았다는 사실을 감추지 않는다. 되풀이하지도 않는다. */
+  it('상태 임시 안내가 화면에 한 번만 보인다', async () => {
+    renderSelectedVersion();
+
+    await awaitVersionForm();
+
+    expect(
+      screen.getAllByText(
+        '상태 표시는 임시입니다 — 상태 값 목록이 확정되면 이 표시가 바뀔 수 있습니다.',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('버전 상세 조회에 실패하면 폼 대신 오류 배너가 나온다', async () => {
+    renderSelectedVersion([
+      {
+        match: (request) => isGet(request, VERSION_DETAIL_PATH),
+        respond: () => jsonResponse({ message: '버전 정보를 불러오지 못했습니다.' }, { status: 500 }),
+      },
+    ]);
+
+    expect(await screen.findByText('버전 정보를 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('샘플 수량(개)')).not.toBeInTheDocument();
+  });
+});
+
+describe('InspectionStandardScreen — 버전 저장', () => {
+  it('저장이 멱등 키와 If-Match를 함께 실어 나가고 금지 항목을 싣지 않는다', async () => {
+    const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
+
+    const form = await awaitVersionForm();
+    fireEvent.change(within(form).getByLabelText('샘플 수량(개)'), { target: { value: '40' } });
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find(
+      (request) => request.method === 'PUT' && request.url.pathname === VERSION_DETAIL_PATH,
+    );
+    expect(put?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(put?.headers.get('If-Match')).toBe('"11"');
+
+    const body = JSON.parse(put?.body ?? '{}') as Record<string, unknown>;
+    expect(body.samplingQty).toBe(40);
+    expect('inspectionPlanId' in body).toBe(false);
+    expect('planVersion' in body).toBe(false);
+    expect('statusCode' in body).toBe(false);
+  });
+
+  it('유효기간이 역전되면 두 칸 모두에 오류를 내고 보내지 않는다', async () => {
+    const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
+
+    const form = await awaitVersionForm();
+    fireEvent.change(within(form).getByLabelText('유효시작'), { target: { value: '2026-09-01' } });
+    fireEvent.change(within(form).getByLabelText('유효종료'), { target: { value: '2026-08-01' } });
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findAllByText('유효종료는 유효시작과 같거나 그 뒤여야 합니다.'),
+    ).toHaveLength(2);
+    expect(
+      requests.filter(
+        (request) => request.method === 'PUT' && request.url.pathname === VERSION_DETAIL_PATH,
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('주기 값만 채우면 두 칸 모두에 오류를 내고 보내지 않는다', async () => {
+    const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
+
+    const form = await awaitVersionForm();
+    fireEvent.change(within(form).getByLabelText('주기 값'), { target: { value: '4' } });
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findAllByText('주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.'),
+    ).toHaveLength(2);
+    expect(
+      requests.filter(
+        (request) => request.method === 'PUT' && request.url.pathname === VERSION_DETAIL_PATH,
+      ),
+    ).toHaveLength(0);
+  });
+
+  /* 계약의 CHECK 가 서로 다르다 — 하나로 뭉뚱그리면 0이 잘못 막히거나 잘못 통과한다. */
+  it('불합격판정개수 0은 막히고 샘플 수량 음수도 막힌다', async () => {
+    const { user } = renderSelectedVersion([versionSaveRoute()]);
+
+    const form = await awaitVersionForm();
+    fireEvent.change(within(form).getByLabelText('불합격판정개수'), { target: { value: '0' } });
+    fireEvent.change(within(form).getByLabelText('샘플 수량(개)'), { target: { value: '-1' } });
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('불합격판정개수는 0보다 큰 숫자여야 합니다.')).toBeInTheDocument();
+    expect(screen.getByText('샘플 수량은 0 이상의 개수여야 합니다.')).toBeInTheDocument();
+  });
+
+  it('충돌이면 「최신 불러오기」가 나온다', async () => {
+    const { user } = renderSelectedVersion([
+      versionSaveRoute(() => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })),
+    ]);
+
+    const form = await awaitVersionForm();
+    fireEvent.change(within(form).getByLabelText('샘플 수량(개)'), { target: { value: '40' } });
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText('다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+  });
+});
+
+describe('InspectionStandardScreen — 상태 잠금', () => {
+  it('확정 버전에서는 전 입력이 잠기고 푸는 방법을 안내한다', async () => {
+    renderSelectedVersion(
+      [versionDetailRoute(inspectionPlanVersionFixtures[1]), itemListRoute(4001)],
+      '?plan=3001&ver=4001',
+    );
+
+    expect(await screen.findByLabelText('샘플 수량(개)')).toBeDisabled();
+    expect(screen.getByLabelText('유효시작')).toBeDisabled();
+    expect(screen.getByLabelText('합격판정개수')).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: '샘플링 방법' })).toBeDisabled();
+    expect(
+      screen.getByText('확정된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('폐기 버전에서도 전 입력이 잠긴다', async () => {
+    renderSelectedVersion(
+      [
+        versionDetailRoute({ ...inspectionPlanVersionFixtures[1]!, statusCode: 'OBSOLETE' }),
+        itemListRoute(4001),
+      ],
+      '?plan=3001&ver=4001',
+    );
+
+    expect(await screen.findByLabelText('샘플 수량(개)')).toBeDisabled();
+    expect(
+      screen.getByText('폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
+    ).toBeInTheDocument();
+  });
+
+  /* 미인식 코드를 잠그면 실서버가 다른 문자열을 쓰는 순간 사용자가 풀 방법이 없다. */
+  it('인식하지 못한 상태 코드에서는 편집이 열린다', async () => {
+    renderSelectedVersion([
+      versionDetailRoute({ ...inspectionPlanVersionFixtures[0]!, statusCode: 'IN_REVIEW' }),
+    ]);
+
+    expect(await screen.findByLabelText('샘플 수량(개)')).toBeEnabled();
+  });
+});
+
+describe('InspectionStandardScreen — 확정과 폐기', () => {
+  it('「확정」은 확인 창을 거쳐 본문 없이 If-Match도 없이 나간다', async () => {
+    const { requests, user } = renderSelectedVersion([versionTransitionRoute('confirm')]);
+
+    const form = await awaitVersionForm();
+    await user.click(within(form).getByRole('button', { name: '확정' }));
+
+    expect(await dialog()).toBeInTheDocument();
+    expect(requestsTo(requests, `${VERSIONS_PATH}/4002:confirm`)).toHaveLength(0);
+
+    await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
+    await screen.findByText('저장했습니다');
+
+    const posts = requestsTo(requests, `${VERSIONS_PATH}/4002:confirm`);
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.body).toBe('');
+    expect(posts[0]?.headers.get('If-Match')).toBeNull();
+    expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+  });
+
+  /* 응답에 ETag가 없다 — 재조회로 새 잠금 토큰을 확보해야 그다음 저장이 막히지 않는다. */
+  it('전이에 성공하면 버전 목록·상세·항목을 다시 조회한다', async () => {
+    const { requests, user } = renderSelectedVersion([versionTransitionRoute('confirm')]);
+
+    const form = await awaitVersionForm();
+    const before = {
+      detail: requestsTo(requests, VERSION_DETAIL_PATH).length,
+      items: requestsTo(requests, ITEMS_PATH).length,
+      list: versionRequests(requests).filter((request) => request.method === 'GET').length,
+    };
+
+    await user.click(within(form).getByRole('button', { name: '확정' }));
+    await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
+    await screen.findByText('저장했습니다');
+
+    await waitFor(() => {
+      expect(requestsTo(requests, VERSION_DETAIL_PATH).length).toBeGreaterThan(before.detail);
+    });
+    expect(requestsTo(requests, ITEMS_PATH).length).toBeGreaterThan(before.items);
+    expect(
+      versionRequests(requests).filter((request) => request.method === 'GET').length,
+    ).toBeGreaterThan(before.list);
+  });
+
+  it('전이에 실패해도 확인 창이 닫히지 않는다', async () => {
+    const { user } = renderSelectedVersion([
+      versionTransitionRoute('confirm', 4002, () =>
+        jsonResponse(
+          { errors: [{ scope: 'screen', code: 'LINE_REQUIRED', message: '' }] },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    const form = await awaitVersionForm();
+    await user.click(within(form).getByRole('button', { name: '확정' }));
+    await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
+
+    expect(await screen.findByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /* 계약이 항목 1건 이상을 요구한다 — 화면이 먼저 막고 사유를 밝힌다. */
+  it('저장된 항목이 0건이면 확정이 비활성이고 사유가 보인다', async () => {
+    renderSelectedVersion([itemListRoute(4002, [])]);
+
+    const form = await awaitVersionForm();
+
+    await waitFor(() => {
+      expect(within(form).getByRole('button', { name: '확정' })).toBeDisabled();
+    });
+    expect(screen.getByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.')).toBeInTheDocument();
+  });
+
+  /* 확정하면 되돌릴 수 없다 — 저장하지 않은 편집은 그 순간 영영 사라진다. */
+  it('저장하지 않은 편집이 있으면 확정과 신규 버전 발행이 비활성이다', async () => {
+    renderSelectedVersion();
+
+    const form = await awaitVersionForm();
+    fireEvent.change(within(form).getByLabelText('샘플 수량(개)'), { target: { value: '40' } });
+
+    expect(within(form).getByRole('button', { name: '확정' })).toBeDisabled();
+    expect(within(versionPane()).getByRole('button', { name: '신규 버전 발행' })).toBeDisabled();
+    expect(
+      screen.getByText('확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('작성중 버전에서는 폐기가 비활성이고 먼저 확정하라고 알린다', async () => {
+    renderSelectedVersion();
+
+    const form = await awaitVersionForm();
+
+    expect(within(form).getByRole('button', { name: '폐기' })).toBeDisabled();
+    expect(screen.getByText('폐기는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.')).toBeInTheDocument();
+  });
+
+  it('확정 버전에서는 폐기가 활성이고 확인하면 요청이 나간다', async () => {
+    const { requests, user } = renderSelectedVersion(
+      [
+        versionDetailRoute(inspectionPlanVersionFixtures[1]),
+        itemListRoute(4001),
+        versionTransitionRoute('obsolete', 4001),
+      ],
+      '?plan=3001&ver=4001',
+    );
+
+    await screen.findByLabelText('샘플 수량(개)');
+    const form = versionForm();
+
+    await user.click(within(form).getByRole('button', { name: '폐기' }));
+    await user.click(within(await dialog()).getByRole('button', { name: '폐기' }));
+    await screen.findByText('저장했습니다');
+
+    const posts = requestsTo(requests, `${VERSIONS_PATH}/4001:obsolete`);
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.headers.get('If-Match')).toBeNull();
+  });
+
+  /* 계약에 경로가 없다. 감추면 「이 화면에는 없는 기능」으로 오해한다. */
+  it('버전 비교와 변경 이력은 비활성이고 사유가 보인다', async () => {
+    renderSelectedVersion();
+
+    const form = await awaitVersionForm();
+
+    expect(within(form).getByRole('button', { name: '버전 비교' })).toBeDisabled();
+    expect(within(form).getByRole('button', { name: '변경 이력' })).toBeDisabled();
+    expect(
+      screen.getByText('버전 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.'),
+    ).toBeInTheDocument();
+  });
+});

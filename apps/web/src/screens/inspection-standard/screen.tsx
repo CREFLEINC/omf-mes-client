@@ -7,7 +7,7 @@ import {
   SkeletonText,
   useToast,
 } from '@crefle/web-ui';
-import type { components } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -32,15 +32,19 @@ import {
 } from './plan-mappers';
 import { PlanPane } from './plan-pane';
 import { PLAN_FORM_FIELDS, validatePlanForm } from './plan-validation';
+import { resolveVersionStatus } from './plan-version-status';
 import {
   planDetailPath,
   planKeys,
+  useInspectionItemSpecs,
   useInspectionPlanDetail,
   useInspectionPlanList,
+  useInspectionPlanVersionDetail,
   useInspectionPlanVersionList,
   useItemOptions,
   useProcessOptions,
   useRoutingOptions,
+  versionDetailPath,
   versionKeys,
   type LookupResult,
 } from './queries';
@@ -56,11 +60,19 @@ import {
   emptyVersionFormValues,
   isSameVersionValues,
   toVersionCreate,
+  toVersionUpdate,
+  versionToFormValues,
 } from './version-mappers';
 import { VersionPane } from './version-pane';
+import {
+  VersionTransitionDialog,
+  type VersionTransitionKind,
+} from './version-transition-dialog';
 import { VERSION_FORM_FIELDS, validateVersionForm } from './version-validation';
 
 type InspectionPlanDetailResponse = components['schemas']['InspectionPlanDetailResponse'];
+type InspectionPlanVersionDetailResponse =
+  components['schemas']['InspectionPlanVersionDetailResponse'];
 
 const t = messages.inspectionStandard;
 
@@ -70,6 +82,58 @@ interface PlanFormState {
   baseline: PlanFormValues;
   values: PlanFormValues;
 }
+
+/** 버전 폼도 같은 모양을 쓴다 — 판정 규칙이 두 곳에서 갈리지 않게 한다. */
+interface VersionFormState {
+  source: InspectionPlanVersionDetailResponse;
+  baseline: VersionFormValues;
+  values: VersionFormValues;
+}
+
+/** 계약이 정한 버전 상태 전이 경로. 본문이 없고 멱등 키만 싣는다. */
+type VersionTransitionPath =
+  | '/quality/inspection-plan-versions/{inspectionPlanVersionId}:confirm'
+  | '/quality/inspection-plan-versions/{inspectionPlanVersionId}:obsolete';
+
+interface VersionTransitionOptions {
+  /** 계약 클라이언트. 훅이 화면 상태를 알 필요가 없도록 필요한 것만 받는다 */
+  client: ApiClient['client'];
+  inspectionPlanVersionId: number | null;
+  path: VersionTransitionPath;
+  onDone: () => void;
+}
+
+/**
+ * 상태 전이 요청 하나.
+ *
+ * **`etagPath`는 null이다.** 계약이 전이 경로에 `If-Match`를 요구하지 않는다 —
+ * 상세 경로를 주면 토큰을 찾지 못했을 때 요청을 **보내지 않고 멈춰**
+ * 「눌러도 아무 일이 없다」가 된다.
+ *
+ * **전이 응답에는 `ETag`가 없다.** 보관된 토큰은 전이 직후 낡은 값이 되므로,
+ * 성공하면 버전 계층 전체를 무효화해 재조회가 새 토큰을 확보하게 한다.
+ * 무효화를 빠뜨리면 그다음 저장이 조용히 막힌다.
+ */
+const useVersionTransition = ({
+  client,
+  inspectionPlanVersionId,
+  path,
+  onDone,
+}: VersionTransitionOptions) =>
+  useMasterWrite<void, InspectionPlanVersion>({
+    request: (_variables, headers) =>
+      client.POST(path, {
+        params: {
+          path: { inspectionPlanVersionId: inspectionPlanVersionId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [versionKeys.all],
+    // 전이에는 입력칸이 없다 — 인라인으로 낼 자리가 없어 서버 오류는 전부 배너로 간다.
+    knownFields: [],
+    onSuccess: onDone,
+  });
 
 /**
  * W-06-02 컨테이너 — 기준 목록 → 버전 목록 → 기준·버전·항목을 3단으로 놓는다.
@@ -305,12 +369,96 @@ export const InspectionStandardScreen = () => {
     },
   });
 
+  const versionDetail = useInspectionPlanVersionDetail(selectedVersionId);
+  const itemSpecs = useInspectionItemSpecs(selectedVersionId);
+
+  const [versionFormState, setVersionFormState] = useState<VersionFormState | null>(null);
+  const [versionFieldErrors, setVersionFieldErrors] = useState<Record<string, string>>({});
+
+  /*
+   * 폼의 기준값은 상세 응답에서 온다. 응답 객체가 바뀔 때만 다시 세워
+   * 사용자가 입력하는 동안 값이 서버 값으로 되돌아가지 않게 한다.
+   */
+  const versionSource = versionDetail.data ?? null;
+
+  if (versionSource !== null && versionFormState?.source !== versionSource) {
+    const seeded = versionToFormValues(versionSource.inspectionPlanVersion);
+    setVersionFormState({ source: versionSource, baseline: seeded, values: seeded });
+  }
+
+  const isVersionDirty =
+    versionFormState !== null &&
+    !isSameVersionValues(versionFormState.values, versionFormState.baseline);
+
+  /** 상세를 받기 전에는 편집을 열지 않는다 — 상태를 모르는 채로 여는 것은 잘못 여는 것이다. */
+  const versionStatus =
+    versionDetail.data === undefined
+      ? null
+      : resolveVersionStatus(versionDetail.data.inspectionPlanVersion.statusCode);
+
+  const versionWrite = useMasterWrite<VersionFormValues, InspectionPlanVersion>({
+    request: (values, headers) =>
+      client.PUT('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
+        params: {
+          path: { inspectionPlanVersionId: selectedVersionId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: toVersionUpdate(values),
+      }),
+    // 버전 수정은 이 화면에서 If-Match를 요구하는 세 경로 중 하나다(계약 실측).
+    etagPath: selectedVersionId === null ? null : versionDetailPath(selectedVersionId),
+    invalidateKeys: [versionKeys.all],
+    knownFields: VERSION_FORM_FIELDS,
+    onSuccess: (saved) => {
+      setVersionFieldErrors({});
+      const next = versionToFormValues(saved);
+      setVersionFormState((prev) =>
+        prev === null ? prev : { ...prev, baseline: next, values: next },
+      );
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const [versionTransition, setVersionTransition] = useState<VersionTransitionKind | null>(null);
+
+  /*
+   * 전이 두 갈래의 훅을 나눈다 — 하나로 묶으면 확정 실패 문구가 폐기 창에 남는다.
+   */
+  const finishVersionTransition = () => {
+    setVersionTransition(null);
+    toast.show({ variant: 'success', description: messages.common.saved });
+  };
+
+  const confirmWrite = useVersionTransition({
+    client,
+    inspectionPlanVersionId: selectedVersionId,
+    path: '/quality/inspection-plan-versions/{inspectionPlanVersionId}:confirm',
+    onDone: finishVersionTransition,
+  });
+
+  const obsoleteWrite = useVersionTransition({
+    client,
+    inspectionPlanVersionId: selectedVersionId,
+    path: '/quality/inspection-plan-versions/{inspectionPlanVersionId}:obsolete',
+    onDone: finishVersionTransition,
+  });
+
+  const versionTransitionWrite = versionTransition === 'obsolete' ? obsoleteWrite : confirmWrite;
+
   /** 다른 버전으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다. */
   const resetVersionEditing = () => {
     versionCreateWrite.reset();
     newRevisionWrite.reset();
+    versionWrite.reset();
+    confirmWrite.reset();
+    obsoleteWrite.reset();
+    setVersionTransition(null);
     setVersionCreateValues(null);
     setVersionCreateFieldErrors({});
+    setVersionFieldErrors({});
   };
 
   /** 다른 기준으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다. */
@@ -389,6 +537,40 @@ export const InspectionStandardScreen = () => {
     if (Object.keys(errors).length > 0) return;
 
     versionCreateWrite.write(versionCreateValues);
+  };
+
+  const handleChangeVersionValues = (patch: Partial<VersionFormValues>) => {
+    setVersionFormState((prev) =>
+      prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+    );
+
+    for (const field of Object.keys(patch)) {
+      versionWrite.clearFieldError(field);
+      setVersionFieldErrors((prev) => {
+        if (!(field in prev)) return prev;
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleSaveVersion = () => {
+    if (versionFormState === null) return;
+
+    const errors = validateVersionForm(versionFormState.values);
+    setVersionFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) return;
+
+    versionWrite.write(versionFormState.values);
+  };
+
+  const handleReloadVersionDetail = () => {
+    versionWrite.reset();
+    setVersionFieldErrors({});
+    setVersionFormState(null);
+    void versionDetail.refetch();
   };
 
   /**
@@ -536,9 +718,88 @@ export const InspectionStandardScreen = () => {
    * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
    * 잃기 전에 먼저 막고 무엇을 하면 풀리는지 알린다.
    */
-  const newRevisionDisabledReason = isPlanDirty
+  const isAnythingDirty = isPlanDirty || isVersionDirty;
+
+  const newRevisionDisabledReason = isAnythingDirty
     ? t.actionReasons.newVersionBlockedByUnsaved
     : null;
+
+  /**
+   * 확정을 막는 사유. 서버가 최종 판정을 하지만(400 `STATE_LOCKED`·`LINE_REQUIRED`),
+   * 화면이 먼저 막고 **무엇을 하면 풀리는지** 알린다.
+   *
+   * 항목 건수는 **서버가 준 목록**으로 센다. 저장하지 않은 초안으로 세면
+   * 화면은 「1건 있음」인데 서버는 0건이라 확정이 400으로 거부된다.
+   */
+  const savedItemCount = itemSpecs.data?.items.length ?? 0;
+
+  const confirmDisabledReason = ((): string | null => {
+    if (versionStatus === null) return t.actionReasons.transitionNeedsVersion;
+    if (!versionStatus.isEditable) return t.actionReasons.confirmNeedsDraft;
+    // 확정하면 되돌릴 수 없다 — 저장하지 않은 편집은 그 순간 영영 사라진다.
+    if (isAnythingDirty) return t.actionReasons.confirmBlockedByUnsaved;
+    if (savedItemCount === 0) return t.actionReasons.confirmNeedsItems;
+
+    return null;
+  })();
+
+  /** 폐기는 확정된 버전에만 성립한다 — 계약이 그렇게 정했다. */
+  const obsoleteDisabledReason = ((): string | null => {
+    if (versionStatus === null) return t.actionReasons.transitionNeedsVersion;
+
+    return versionStatus.status === 'confirmed' ? null : t.actionReasons.obsoleteNeedsConfirmed;
+  })();
+
+  const isVersionTransitionRunning = confirmWrite.isSaving || obsoleteWrite.isSaving;
+
+  const renderVersionTransitionActions = (): ReactNode => (
+    <>
+      {confirmDisabledReason === null ? (
+        <div className="field-cell">
+          <Button
+            variant="outlined"
+            disabled={isVersionTransitionRunning}
+            onClick={() => {
+              confirmWrite.reset();
+              setVersionTransition('confirm');
+            }}
+          >
+            {t.actions.confirm}
+          </Button>
+        </div>
+      ) : (
+        <DisabledAction label={t.actions.confirm} reason={confirmDisabledReason} />
+      )}
+
+      {obsoleteDisabledReason === null ? (
+        <div className="field-cell">
+          <Button
+            variant="outlined"
+            disabled={isVersionTransitionRunning}
+            onClick={() => {
+              obsoleteWrite.reset();
+              setVersionTransition('obsolete');
+            }}
+          >
+            {t.actions.obsolete}
+          </Button>
+        </div>
+      ) : (
+        <DisabledAction label={t.actions.obsolete} reason={obsoleteDisabledReason} />
+      )}
+
+      {/* 계약에 경로가 없다. 감추지 않고 사유와 함께 비활성으로 둔다. */}
+      <DisabledAction
+        label={t.actions.compareVersions}
+        reason={t.actionReasons.compareVersionsUnavailable}
+      />
+      <DisabledAction
+        label={t.actions.changeHistory}
+        reason={t.actionReasons.changeHistoryUnavailable}
+        className="form-actions-secondary"
+      />
+    </>
+  );
 
   const renderPlanActions = (): ReactNode => (
     <>
@@ -674,27 +935,86 @@ export const InspectionStandardScreen = () => {
   };
 
   /**
-   * 우 중단 편집 칸. 지금은 **첫 버전 등록 폼**만 연다 —
-   * 아직 만들지 않은 동작의 자리를 미리 두면 「눌러도 아무 일이 없는」 화면이 된다.
+   * 우 중단 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
+   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
   const renderVersionFormPane = (): ReactNode => {
-    if (versionCreateValues === null) return null;
+    if (versionCreateValues !== null) {
+      return (
+        <VersionFormPane
+          mode="create"
+          // 판 번호와 상태는 서버가 채운다 — 없는 값을 미리 지어내 보이지 않는다.
+          planVersion={null}
+          status={null}
+          values={versionCreateValues}
+          onChange={handleChangeVersionCreateValues}
+          fieldErrors={{ ...versionCreateWrite.fieldErrors, ...versionCreateFieldErrors }}
+          /* 첫 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+          banner={<PlanActionBanner error={versionCreateWrite.error} />}
+          isDirty={!isSameVersionValues(versionCreateValues, emptyVersionFormValues())}
+          isSaving={versionCreateWrite.isSaving}
+          onSave={handleSaveVersionCreate}
+          onCancel={resetVersionEditing}
+          // 아직 없는 버전에는 전이할 대상이 없다. 감추지 않고 사유와 함께 비활성으로 둔다.
+          transitionActions={renderVersionTransitionActions()}
+        />
+      );
+    }
+
+    if (selectedPlanId === null) return null;
+
+    if (selectedVersionId === null) {
+      return (
+        <section className="pane" aria-label={t.panes.versionForm}>
+          <EmptyState size="sm" title={t.empty.versionNotSelected} />
+        </section>
+      );
+    }
+
+    if (versionDetail.isError) {
+      return (
+        <section className="pane" aria-label={t.panes.versionForm}>
+          <LoadErrorBanner
+            error={versionDetail.error}
+            onRetry={() => void versionDetail.refetch()}
+          />
+        </section>
+      );
+    }
+
+    if (versionDetail.data === undefined || versionFormState === null) {
+      return (
+        <section className="pane" aria-label={t.panes.versionForm}>
+          <div role="status" aria-label={t.loading.versionDetail}>
+            <SkeletonText lines={5} />
+          </div>
+        </section>
+      );
+    }
 
     return (
       <VersionFormPane
-        mode="create"
-        // 판 번호와 상태는 서버가 채운다 — 없는 값을 미리 지어내 보이지 않는다.
-        planVersion={null}
-        status={null}
-        values={versionCreateValues}
-        onChange={handleChangeVersionCreateValues}
-        fieldErrors={{ ...versionCreateWrite.fieldErrors, ...versionCreateFieldErrors }}
-        /* 첫 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-        banner={<PlanActionBanner error={versionCreateWrite.error} />}
-        isDirty={!isSameVersionValues(versionCreateValues, emptyVersionFormValues())}
-        isSaving={versionCreateWrite.isSaving}
-        onSave={handleSaveVersionCreate}
-        onCancel={resetVersionEditing}
+        mode="edit"
+        planVersion={versionDetail.data.inspectionPlanVersion.planVersion}
+        status={versionStatus}
+        values={versionFormState.values}
+        onChange={handleChangeVersionValues}
+        // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
+        fieldErrors={{ ...versionWrite.fieldErrors, ...versionFieldErrors }}
+        banner={
+          <PlanActionBanner error={versionWrite.error} onReload={handleReloadVersionDetail} />
+        }
+        isDirty={isVersionDirty}
+        isSaving={versionWrite.isSaving}
+        onSave={handleSaveVersion}
+        onCancel={() => {
+          versionWrite.reset();
+          setVersionFieldErrors({});
+          setVersionFormState((prev) =>
+            prev === null ? prev : { ...prev, values: prev.baseline },
+          );
+        }}
+        transitionActions={renderVersionTransitionActions()}
       />
     );
   };
@@ -792,6 +1112,24 @@ export const InspectionStandardScreen = () => {
               onReload={planAction === 'deactivate' ? handleReloadPlanDetail : undefined}
             />
           }
+        />
+      )}
+
+      {versionTransition !== null && (
+        <VersionTransitionDialog
+          open
+          kind={versionTransition}
+          onClose={() => {
+            setVersionTransition(null);
+            confirmWrite.reset();
+            obsoleteWrite.reset();
+          }}
+          onConfirm={() => {
+            versionTransitionWrite.write();
+          }}
+          isSaving={versionTransitionWrite.isSaving}
+          /* 전이에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니다. */
+          banner={<PlanActionBanner error={versionTransitionWrite.error} />}
         />
       )}
     </>

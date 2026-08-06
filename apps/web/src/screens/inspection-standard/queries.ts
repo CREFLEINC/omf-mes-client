@@ -6,6 +6,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { toListQuery } from './filters';
 import type {
+  InspectionItemSpec,
   InspectionPlan,
   InspectionPlanVersion,
   LookupEntry,
@@ -14,6 +15,8 @@ import type {
 } from './types';
 
 type InspectionPlanDetailResponse = components['schemas']['InspectionPlanDetailResponse'];
+type InspectionPlanVersionDetailResponse =
+  components['schemas']['InspectionPlanVersionDetailResponse'];
 
 /**
  * 이 화면이 쓰는 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -131,6 +134,72 @@ export const useInspectionPlanVersionList = (
       return runRequest(() =>
         client.GET('/quality/inspection-plan-versions', {
           params: { query: { inspectionPlanId } },
+        }),
+      );
+    },
+  });
+};
+
+/**
+ * 버전의 ETag가 보관된 경로. 버전 수정은 이 화면에서 `If-Match`를 요구하는 세 경로 중 하나다.
+ * 전이 경로(`:confirm` 등)로 꺼내면 보관 키가 달라 항상 비어 있다.
+ */
+export const versionDetailPath = (inspectionPlanVersionId: number): string =>
+  `/quality/inspection-plan-versions/${String(inspectionPlanVersionId)}`;
+
+/**
+ * 버전 상세. 낙관적 잠금 토큰(ETag)이 이 응답으로 온다 —
+ * 목록 행만으로는 저장을 시작할 수 없다.
+ */
+export const useInspectionPlanVersionDetail = (
+  inspectionPlanVersionId: number | null,
+): UseQueryResult<InspectionPlanVersionDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: versionKeys.detail(inspectionPlanVersionId ?? 0),
+    enabled: inspectionPlanVersionId !== null,
+    queryFn: () => {
+      if (inspectionPlanVersionId === null) {
+        throw new Error('버전을 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
+          params: { path: { inspectionPlanVersionId } },
+        }),
+      );
+    },
+  });
+};
+
+/** 검사 항목 목록에는 페이지네이션이 없다 — 버전당 항목 수가 소수라 계약이 두지 않았다. */
+export interface InspectionItemSpecListResponse {
+  items: InspectionItemSpec[];
+}
+
+/**
+ * 검사 항목 목록. 버전을 고르기 전에는 조회하지 않는다.
+ *
+ * 응답의 순서 값은 서버 채번이며 화면은 그것을 표시하지 않는다 — 표시 번호는 목록 안의 위치다.
+ * **확정 가능 여부의 근거이기도 하다**: 저장된 항목이 0건이면 서버가 확정을 거부한다(`LINE_REQUIRED`).
+ */
+export const useInspectionItemSpecs = (
+  inspectionPlanVersionId: number | null,
+): UseQueryResult<InspectionItemSpecListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: versionKeys.items(inspectionPlanVersionId ?? 0),
+    enabled: inspectionPlanVersionId !== null,
+    queryFn: () => {
+      if (inspectionPlanVersionId === null) {
+        throw new Error('버전을 고르기 전에는 검사 항목을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/quality/inspection-plan-versions/{inspectionPlanVersionId}/items', {
+          params: { path: { inspectionPlanVersionId } },
         }),
       );
     },

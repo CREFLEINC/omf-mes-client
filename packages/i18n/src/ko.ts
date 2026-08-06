@@ -662,6 +662,10 @@ const inspectionStandard = {
     approve: '승인',
     createVersion: '버전 등록',
     newRevision: '신규 버전 발행',
+    confirm: '확정',
+    obsolete: '폐기',
+    compareVersions: '버전 비교',
+    changeHistory: '변경 이력',
   },
   actionReasons: {
     excelUploadUnavailable:
@@ -681,6 +685,21 @@ const inspectionStandard = {
      */
     newVersionBlockedByUnsaved:
       '신규 버전 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+    confirmNeedsDraft: '확정은 작성중 버전에만 할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
+    /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
+    confirmNeedsItems: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
+    /*
+     * 확정하면 그 버전은 더 이상 수정할 수 없다 — 저장하지 않은 편집은 되돌릴 길 없이 사라진다.
+     */
+    confirmBlockedByUnsaved:
+      '확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+    obsoleteNeedsConfirmed: '폐기는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.',
+    /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
+    transitionNeedsVersion: '확정·폐기는 버전을 먼저 등록해야 할 수 있습니다.',
+    compareVersionsUnavailable:
+      '버전 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    changeHistoryUnavailable:
+      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
   },
   /**
    * 서버가 코드로만 알려 주는 거부 사유의 화면 문구.
@@ -705,6 +724,12 @@ const inspectionStandard = {
     deactivateTitle: '이 검사기준을 사용 중지할까요?',
     deactivateDescription:
       '삭제하지 않습니다. 사용 중지하면 새 검사에서 이 기준을 쓸 수 없게 됩니다.',
+    confirmTitle: '이 버전을 확정할까요?',
+    confirmDescription:
+      '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
+    obsoleteTitle: '이 버전을 폐기할까요?',
+    obsoleteDescription:
+      '삭제하지 않습니다. 폐기하면 새 검사에서 이 버전을 쓸 수 없게 됩니다.',
   },
   filters: {
     searchLabel: '검사기준 검색',
