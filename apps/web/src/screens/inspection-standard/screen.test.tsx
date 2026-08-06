@@ -2274,3 +2274,89 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+/**
+ * 선택 목록 조회가 **실패**했을 때의 안내.
+ *
+ * 잘림과 「목록에 없는 값」은 이미 각각 덮여 있으나 실패 갈래는 계약이 정한 세 입력 중 하나이며
+ * 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
+ *
+ * **실패가 잘림보다 우선한다** — 둘 다 참일 때 잘림 안내를 내면 「일부만 표시됩니다」가
+ * 「아예 못 불러왔습니다」를 덮어 사용자가 지금 목록을 믿게 된다.
+ */
+describe('InspectionStandardScreen — 선택 목록 조회 실패', () => {
+  it('품목·공정 조회가 실패하면 기준 폼 위에 그 사실을 내고 잘림 안내로 덮지 않는다', async () => {
+    renderScreen(
+      [
+        {
+          match: (request) => isGet(request, '/mdm/items'),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+        // 공정 목록은 성공하되 잘려서 온다 — 두 안내가 함께 참인 상태를 만든다.
+        processOptionsRoute(120),
+        planListRoute(),
+        planDetailRoute(),
+        versionListRoute(),
+        routingOptionsRoute(),
+      ],
+      '?plan=3001',
+    );
+
+    const form = await awaitPlanForm();
+
+    expect(
+      await within(form).findByText('선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.'),
+    ).toBeInTheDocument();
+    expect(
+      within(form).queryByText(
+        '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('단위·설비 조회가 실패하면 검사 항목 표 위에 그 사실을 내고 잘림 안내로 덮지 않는다', async () => {
+    renderItems([
+      {
+        match: (request) => isGet(request, '/mdm/uoms'),
+        respond: () => jsonResponse({ message: '' }, { status: 500 }),
+      },
+      // 설비 목록은 성공하되 잘려서 온다 — 두 안내가 함께 참인 상태를 만든다.
+      {
+        match: (request) => isGet(request, '/mdm/equipments'),
+        respond: () =>
+          jsonResponse({
+            items: [
+              {
+                equipmentId: 6001,
+                plantId: 1,
+                equipmentCode: 'SYN-EQ-01',
+                equipmentName: '합성 설비 A',
+                equipmentTypeCode: 'PENDING',
+                processId: null,
+                productionLineId: null,
+                statusCode: 'PENDING',
+                calibrationRequired: false,
+                lastCalibrationDate: null,
+                calibrationDueDate: null,
+                isActive: true,
+              },
+            ],
+            page: { page: 1, size: 50, total: 120 },
+          }),
+      },
+    ]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+
+    expect(
+      await within(itemPane()).findByText(
+        '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(itemPane()).queryByText(
+        '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+});
