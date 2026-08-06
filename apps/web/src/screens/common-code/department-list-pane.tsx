@@ -200,7 +200,7 @@ export const DepartmentListPane = ({
           columns={columns}
           rows={rows}
           getRowId={(row) => String(row.departmentId)}
-          // 행 순서 재배치(reorderable)는 쓰지 않는다 — groupBy와 병용하면 조용히 무시된다.
+          // 행 순서 재배치 기능은 쓰지 않는다 — 계층 그룹과 병용하면 조용히 무시된다.
           groupBy={(row) => groupKeyOf(row, byId)}
           renderGroupHeader={(groupKey) => groupLabel(groupKey)}
           empty={emptySlot}
