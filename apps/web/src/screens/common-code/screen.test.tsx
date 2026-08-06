@@ -1829,4 +1829,110 @@ describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 
     // 주소가 달라지지 않는 갱신은 칸만 늘린다 — 아예 갱신하지 않는다.
     expect(history.entries()).toBe(entriesBefore);
   });
+
+  /*
+   * 등록 성공은 Major ②의 증상이 났던 **두 번째 자리**다 — 「등록을 끈다」와 「새 번호를 고른다」를
+   * 나눠 부르면 뒤로가기가 고른 값이 사라진 주소로 떨어진다. 폼을 여는 자리만 덮고 이쪽을 비워 두면
+   * 나중에 다시 둘로 나눠도 아무 테스트가 실패하지 않는다.
+   */
+  it('코드값 등록에 성공한 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const made = {
+      codeValueId: 2009,
+      codeGroupId: 1001,
+      code: 'SYN-CV-09',
+      codeName: '합성 코드값 I',
+      displayOrder: 40,
+      effectiveFrom: null,
+      effectiveTo: null,
+      isActive: true,
+    };
+
+    const { history, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        {
+          match: (r) => r.method === 'POST' && new URL(r.url).pathname === CODE_VALUES_PATH,
+          respond: () => jsonResponse(made, { status: 201 }),
+        },
+        {
+          match: (r) => isGet(r, `${CODE_VALUES_PATH}/2009`),
+          respond: () =>
+            jsonResponse(
+              {
+                codeValue: made,
+                editability: { codeEditable: false, reason: 'NOT_COUNTABLE', referenceCount: null },
+              },
+              { headers: { ETag: 'W/"1"' } },
+            ),
+        },
+      ],
+      '?grp=1001&new=value',
+    );
+
+    await user.type(await screen.findByLabelText('코드'), 'SYN-CV-09');
+    await user.type(screen.getByLabelText('코드명'), '합성 코드값 I');
+
+    const before = history.search();
+
+    await user.click(
+      within(screen.getByRole('region', { name: '코드값 정보' })).getByRole('button', {
+        name: '코드값 추가',
+      }),
+    );
+    await screen.findByDisplayValue('SYN-CV-09');
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+
+  /* 코드그룹 등록 성공도 같은 자리다 — 한쪽만 덮으면 그물이 반만 남는다. */
+  it('코드그룹 등록에 성공한 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const made = {
+      codeGroupId: 1009,
+      groupCode: 'SYN-GRP-09',
+      groupName: '합성 코드그룹 I',
+      description: null,
+      isActive: true,
+    };
+
+    const { history, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        {
+          match: (r) => r.method === 'POST' && new URL(r.url).pathname === CODE_GROUPS_PATH,
+          respond: () => jsonResponse(made, { status: 201 }),
+        },
+        {
+          match: (r) => isGet(r, `${CODE_GROUPS_PATH}/1009`),
+          respond: () =>
+            jsonResponse(
+              {
+                codeGroup: made,
+                editability: { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
+              },
+              { headers: { ETag: 'W/"1"' } },
+            ),
+        },
+        codeValueListRoute(),
+      ],
+      '?new=group',
+    );
+
+    await user.type(await screen.findByLabelText('그룹코드'), 'SYN-GRP-09');
+    await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
+
+    const before = history.search();
+
+    await user.click(
+      within(screen.getByRole('region', { name: '코드그룹 정보' })).getByRole('button', {
+        name: '그룹 추가',
+      }),
+    );
+    await screen.findByDisplayValue('SYN-GRP-09');
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
 });
