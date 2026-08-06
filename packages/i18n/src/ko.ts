@@ -216,6 +216,12 @@ const routing = {
     dependencies: '선후행 설정',
     compareRevisions: 'Rev 비교',
     changeHistory: '변경 이력',
+    /*
+     * 행 안의 아이콘 버튼은 보이는 글자가 없어 접근 이름이 곧 이름이다.
+     * 표시 번호를 함께 넣어야 「수정」이 행마다 되풀이되지 않는다.
+     */
+    editOperation: (displayNo: number): string => `${displayNo}번 공정 수정`,
+    removeOperation: (displayNo: number): string => `${displayNo}번 공정 삭제`,
   },
   actionReasons: {
     dependenciesUnavailable:
@@ -227,7 +233,7 @@ const routing = {
     outsourcedUnavailable:
       '외주 공정은 아직 지정할 수 없습니다. 저장할 항목이 준비되면 이 확인칸을 쓸 수 있습니다.',
     /*
-     * 아래 셋은 아직 붙지 않은 액션의 사유다 — 감추는 대신 사유와 함께 비활성으로 남긴다.
+     * 아래 넷은 아직 붙지 않은 액션의 사유다 — 감추는 대신 사유와 함께 비활성으로 남긴다.
      * 그 액션을 붙이는 작업에서 이 키를 지우고 실제 활성 조건 문구로 바꾼다.
      */
     confirmNotReady: '확정은 아직 실행할 수 없습니다. 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
@@ -236,8 +242,20 @@ const routing = {
       '신규 Rev 발행은 아직 실행할 수 없습니다. 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     createRoutingNotReady:
       'Routing 등록은 아직 할 수 없습니다. 등록 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-    addOperationNotReady:
-      '공정 추가는 아직 할 수 없습니다. 편집 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    /*
+     * 확정·폐기 Rev에서는 공정 라인도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
+     * 공유하는 안내라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(배치 규범 4의 이탈 조건).
+     */
+    operationsLocked:
+      '공정 라인은 작성중 Rev에서만 편집할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
+    /*
+     * 라인을 저장하면 헤더도 다시 불러온다(판 번호가 올라갈 수 있다) —
+     * 그때 저장하지 않은 헤더 편집이 서버 값으로 되돌아간다. 조용히 잃지 않도록 먼저 막는다.
+     */
+    operationsSaveBlockedByHeader:
+      '공정 저장은 Routing 정보에 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+    operationsSaveBlockedByInvalid:
+      '공정 저장은 입력이 완성되지 않은 공정이 있으면 할 수 없습니다. 표에서 그 공정을 수정하세요.',
   },
   /** 확정·폐기 Rev의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
   stateLock: {
@@ -293,6 +311,8 @@ const routing = {
     /** 허용 범위를 라벨에 적는다 — 퍼센트로 오입력하면 100배가 조용히 통과한다. */
     standardYieldRate: '표준 수율(0~1)',
     outsourced: '외주 공정',
+    /** 행 안의 수정·삭제 열. 머리글이 없으면 보조기술이 열의 뜻을 읽을 수 없다. */
+    rowActions: '편집',
   },
   /** 공정 라인의 관리 플래그 7종. 표에서는 켜진 것의 이름만 이어 낸다. */
   operationFlags: {
@@ -317,6 +337,20 @@ const routing = {
     required: '필수 입력 항목입니다.',
     codeBlank: 'Routing 코드는 공백만으로 지정할 수 없습니다.',
     effectiveRangeReversed: '유효종료는 유효시작과 같거나 그 뒤여야 합니다.',
+    operationNameBlank: '공정명은 공백만으로 지정할 수 없습니다.',
+    /** 단위가 초이고 0은 불가다 — 라벨과 같은 말을 오류에도 적어야 무엇을 고칠지 알 수 있다. */
+    cycleTimeInvalid: '표준 C/T는 0보다 큰 초 단위 숫자여야 합니다.',
+    /** 퍼센트로 넣으면 여기서 막힌다. 막지 않으면 100배 오입력이 조용히 통과한다. */
+    yieldRateInvalid: '표준 수율은 0과 1 사이의 비율이어야 합니다. 퍼센트가 아닙니다.',
+  },
+  dialog: {
+    operationCreateTitle: '공정 추가',
+    operationEditTitle: '공정 수정',
+    /*
+     * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다 —
+     * 이 창의 확인은 표에만 반영되고 서버 반영은 「저장」 한 번뿐이다. 그 사실을 감추지 않는다.
+     */
+    operationLocalNote: '확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.',
   },
 } as const;
 

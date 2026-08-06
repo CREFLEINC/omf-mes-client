@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import { routingOperationFixtures } from './fixtures';
 import { toOperationDrafts } from './operation-order';
@@ -9,18 +10,36 @@ const DRAFTS = toOperationDrafts(routingOperationFixtures);
 
 const PROCESS_LABELS: Record<string, string> = { '9001': '사출', '9002': '조립' };
 
-const renderPane = (overrides: Partial<OperationsPaneProps> = {}) =>
-  render(
-    <OperationsPane
-      drafts={DRAFTS}
-      processLabel={(processId) => PROCESS_LABELS[processId] ?? processId}
-      isLoading={false}
-      isRevisionSelected
-      loadError={null}
-      optionsNotice={null}
-      {...overrides}
-    />,
-  );
+const OPERATIONS_LOCK_REASON =
+  '공정 라인은 작성중 Rev에서만 편집할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.';
+
+const renderPane = (overrides: Partial<OperationsPaneProps> = {}) => {
+  const props: OperationsPaneProps = {
+    drafts: DRAFTS,
+    processLabel: (processId) => PROCESS_LABELS[processId] ?? processId,
+    isLoading: false,
+    isRevisionSelected: true,
+    loadError: null,
+    optionsNotice: null,
+    isEditable: true,
+    lockReason: OPERATIONS_LOCK_REASON,
+    isDirty: false,
+    isSaving: false,
+    saveBlockedReason: null,
+    banner: null,
+    onAdd: vi.fn(),
+    onEdit: vi.fn(),
+    onRemove: vi.fn(),
+    onReorder: vi.fn(),
+    onSave: vi.fn(),
+    onCancel: vi.fn(),
+    ...overrides,
+  };
+
+  render(<OperationsPane {...props} />);
+
+  return { props, user: userEvent.setup() };
+};
 
 const bodyRows = (): HTMLElement[] => screen.getAllByRole('row').slice(1);
 
@@ -124,10 +143,9 @@ describe('OperationsPane', () => {
     expect(screen.getByRole('status', { name: '공정 라인을 불러오는 중' })).toBeInTheDocument();
   });
 
-  it('범위 밖 액션과 아직 붙지 않은 액션을 감추지 않고 사유와 함께 비활성으로 둔다', () => {
+  it('범위 밖 액션을 감추지 않고 사유와 함께 비활성으로 둔다', () => {
     renderPane();
 
-    expect(screen.getByRole('button', { name: '공정 추가' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '선후행 설정' })).toBeDisabled();
     expect(
       screen.getByText(
@@ -140,5 +158,124 @@ describe('OperationsPane', () => {
     renderPane({ optionsNotice: <p>선택 목록을 불러오지 못했습니다.</p> });
 
     expect(screen.getByText('선택 목록을 불러오지 못했습니다.')).toBeInTheDocument();
+  });
+});
+
+describe('OperationsPane — 편집', () => {
+  it('공정 추가를 누르면 상위에 올린다', async () => {
+    const { props, user } = renderPane();
+
+    await user.click(screen.getByRole('button', { name: '공정 추가' }));
+
+    expect(props.onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+   * 행 안의 아이콘 버튼은 보이는 글자가 없어 접근 이름이 곧 이름이다.
+   * 표시 번호를 함께 넣지 않으면 「수정」이 행마다 되풀이돼 어느 행인지 알 수 없다.
+   */
+  it('행마다 표시 번호가 붙은 수정·삭제를 낸다', async () => {
+    const { props, user } = renderPane();
+    const rows = bodyRows();
+
+    await user.click(
+      within(rows[1] as HTMLElement).getByRole('button', { name: '2번 공정 수정' }),
+    );
+    expect(props.onEdit).toHaveBeenCalledWith(DRAFTS[1]?.draftId);
+
+    await user.click(
+      within(rows[0] as HTMLElement).getByRole('button', { name: '1번 공정 삭제' }),
+    );
+    expect(props.onRemove).toHaveBeenCalledWith(DRAFTS[0]?.draftId);
+  });
+
+  /*
+   * 순서 이동 열은 디자인 시스템 `Table`이 렌더한다.
+   * 첫 행의 위로·마지막 행의 아래로가 비활성인 것도 디자인 시스템의 몫이며, 여기서는 그것이 켜졌는지를 본다.
+   */
+  it('순서 이동 버튼을 내고 첫 행 위로·마지막 행 아래로는 비활성이다', () => {
+    renderPane();
+    const rows = bodyRows();
+
+    expect(within(rows[0] as HTMLElement).getByRole('button', { name: '위로 이동' })).toBeDisabled();
+    expect(
+      within(rows[0] as HTMLElement).getByRole('button', { name: '아래로 이동' }),
+    ).toBeEnabled();
+    expect(within(rows[1] as HTMLElement).getByRole('button', { name: '위로 이동' })).toBeEnabled();
+    expect(
+      within(rows[1] as HTMLElement).getByRole('button', { name: '아래로 이동' }),
+    ).toBeDisabled();
+  });
+
+  /** 순서를 바꾸는 것은 초안만 바꾼다. 여기서 서버를 부르지 않는다(공유계약 A-5). */
+  it('아래로 이동은 자기 자리와 다음 자리를 올린다', async () => {
+    const { props, user } = renderPane();
+
+    await user.click(
+      within(bodyRows()[0] as HTMLElement).getByRole('button', { name: '아래로 이동' }),
+    );
+
+    expect(props.onReorder).toHaveBeenCalledWith(0, 1);
+  });
+
+  it('고친 것이 없으면 저장·취소가 비활성이다', () => {
+    renderPane();
+
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+  });
+
+  it('고친 것이 있으면 저장·취소를 눌러 상위에 올린다', async () => {
+    const { props, user } = renderPane({ isDirty: true });
+
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(props.onSave).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(props.onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('저장을 막는 사유가 있으면 저장이 비활성이고 그 사유가 보인다', () => {
+    renderPane({
+      isDirty: true,
+      saveBlockedReason:
+        '공정 저장은 Routing 정보에 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+    });
+
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(
+      screen.getByText(
+        '공정 저장은 Routing 정보에 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('저장 실패 배너를 표 위에 낸다', () => {
+    renderPane({ banner: <p>공정을 저장하지 못했습니다.</p> });
+
+    expect(screen.getByText('공정을 저장하지 못했습니다.')).toBeInTheDocument();
+  });
+
+  /*
+   * 확정·폐기 Rev에서는 라인도 잠긴다. 「추가·수정·삭제·순서 이동·저장」이 전부 막히고
+   * 무엇이 막혔는지·어떻게 푸는지가 한 번 보인다(여러 컨트롤이 공유하는 안내 — 배치 규범 4의 이탈 조건).
+   */
+  it('잠긴 상태에서는 추가·수정·삭제·순서 이동·저장이 전부 막히고 사유가 보인다', () => {
+    renderPane({ isEditable: false, isDirty: true });
+
+    expect(screen.getByRole('button', { name: '공정 추가' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+
+    for (const row of bodyRows()) {
+      expect(within(row).getByRole('button', { name: /공정 수정$/ })).toBeDisabled();
+      expect(within(row).getByRole('button', { name: /공정 삭제$/ })).toBeDisabled();
+    }
+
+    // 이동은 디자인 시스템이 렌더하는 열이라 비활성 스위치가 없다 — 열 자체를 내지 않는다.
+    expect(screen.queryByRole('button', { name: '위로 이동' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '아래로 이동' })).not.toBeInTheDocument();
+
+    expect(screen.getAllByText(OPERATIONS_LOCK_REASON).length).toBeGreaterThan(0);
   });
 });

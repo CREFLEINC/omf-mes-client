@@ -19,7 +19,17 @@ import { HeaderPane } from './header-pane';
 import { ROUTING_HEADER_FORM_FIELDS, validateRoutingHeader } from './header-validation';
 import { ItemPane } from './item-pane';
 import { isSameHeaderValues, routingToFormValues, toRoutingUpdate } from './mappers';
-import { toOperationDrafts } from './operation-order';
+import { OperationFormDialog } from './operation-form-dialog';
+import {
+  createOperationDraft,
+  isSameDrafts,
+  moveDraft,
+  removeDraft,
+  toOperationDrafts,
+  toOperationsPayload,
+  upsertDraft,
+} from './operation-order';
+import { hasIncompleteDraft, validateOperationDraft } from './operation-validation';
 import { OperationsPane } from './operations-pane';
 import {
   isTruncated,
@@ -30,10 +40,17 @@ import {
   useRoutingDetail,
   useRoutingList,
   useRoutingOperations,
+  type RoutingOperationListResponse,
 } from './queries';
 import { RevisionPane } from './revision-pane';
 import { resolveRoutingStatus } from './routing-status';
-import type { ItemFilters, Routing, RoutingHeaderFormValues } from './types';
+import type {
+  ItemFilters,
+  OperationDraft,
+  Routing,
+  RoutingHeaderFormValues,
+  SelectOption,
+} from './types';
 
 type RoutingDetailResponse = components['schemas']['RoutingDetailResponse'];
 
@@ -42,6 +59,23 @@ interface HeaderFormState {
   source: RoutingDetailResponse;
   baseline: RoutingHeaderFormValues;
   values: RoutingHeaderFormValues;
+}
+
+/**
+ * 공정 라인의 로컬 초안. 헤더 폼과 같은 모양을 쓴다 —
+ * 응답 객체를 출처로 들고 있다가 **그것이 바뀔 때만** 다시 세워야,
+ * 사용자가 순서를 바꾸는 동안 캐시 갱신이 그 편집을 조용히 지우지 않는다.
+ */
+interface OperationDraftState {
+  source: RoutingOperationListResponse;
+  baseline: OperationDraft[];
+  drafts: OperationDraft[];
+}
+
+/** 편집 창이 열려 있는 동안의 값. 확인을 눌러야 초안 목록에 들어간다. */
+interface OperationDialogState {
+  mode: 'create' | 'edit';
+  values: OperationDraft;
 }
 
 const t = messages.routing;
@@ -247,11 +281,13 @@ export const RoutingScreen = () => {
   /** 품목을 바꾸면 Rev 선택을 지운다 — 다른 품목의 Rev를 가리키면 안 된다. */
   const handleSelectItem = (itemId: number) => {
     resetHeaderEditing();
+    resetOperationEditing();
     updateParams({ item: String(itemId), rev: null });
   };
 
   const handleSelectRevision = (routingId: number) => {
     resetHeaderEditing();
+    resetOperationEditing();
     updateParams({ rev: String(routingId) });
   };
 
@@ -262,16 +298,6 @@ export const RoutingScreen = () => {
   const selectedItem = items.find((item) => item.itemId === selectedItemId) ?? null;
   const itemLabel =
     selectedItem === null ? t.values.empty : `${selectedItem.itemCode} · ${selectedItem.itemName}`;
-
-  /*
-   * 라인은 화면의 로컬 초안 목록으로 다룬다. 서버 응답으로 초안을 세우고,
-   * 편집은 초안만 바꾼다 — 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않기 때문이다.
-   * 응답 객체가 바뀔 때만 다시 세운다.
-   */
-  const operationDrafts = useMemo(
-    () => toOperationDrafts(operationList.data?.items ?? []),
-    [operationList.data],
-  );
 
   /**
    * 공정 id를 사람이 읽는 이름으로 옮긴다.
@@ -284,6 +310,147 @@ export const RoutingScreen = () => {
 
     return entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`;
   };
+
+  /**
+   * 선택지는 「사용 중인 것 + 지금 고른 값」이다.
+   * 미사용을 전부 늘어놓으면 고를 수 없는 값이 섞이고, 지금 값을 빼면 창을 여는 순간 값이 사라진 것처럼 보인다.
+   */
+  const processOptionsFor = (selectedProcessId: string): SelectOption[] => {
+    const options = processOptions.entries
+      .filter((entry) => entry.isActive || entry.value === selectedProcessId)
+      .map((entry) => ({ value: entry.value, label: processLabelOf(entry.value) }));
+
+    // 선택 목록이 잘리거나 실패해도 지금 값을 지우지 않는다 — 지우면 저장 때 조용히 다른 값이 된다.
+    if (selectedProcessId !== '' && !options.some((option) => option.value === selectedProcessId)) {
+      return [{ value: selectedProcessId, label: selectedProcessId }, ...options];
+    }
+
+    return options;
+  };
+
+  const [draftState, setDraftState] = useState<OperationDraftState | null>(null);
+  const [operationDialog, setOperationDialog] = useState<OperationDialogState | null>(null);
+  const [operationDialogErrors, setOperationDialogErrors] = useState<Record<string, string>>({});
+
+  /*
+   * 라인은 화면의 로컬 초안 목록으로 다룬다 — 순서 컬럼에 유일 제약이 있어
+   * 행 단위 저장이 성립하지 않기 때문이다(공유계약 A-5).
+   * 응답 객체가 바뀔 때만 다시 세운다. 매 렌더 파생값으로 두면 편집 중에 캐시가 갱신될 때
+   * 사용자가 바꾼 순서가 조용히 사라진다.
+   */
+  const operationSource = operationList.data ?? null;
+
+  if (operationSource !== null && draftState?.source !== operationSource) {
+    const seeded = toOperationDrafts(operationSource.items);
+    setDraftState({ source: operationSource, baseline: seeded, drafts: seeded });
+  }
+
+  const operationDrafts = draftState?.drafts ?? [];
+  const isOperationsDirty =
+    draftState !== null && !isSameDrafts(draftState.drafts, draftState.baseline);
+
+  /** 상세를 받기 전에는 편집을 열지 않는다 — 상태를 모르는 채로 여는 것은 잘못 여는 것이다. */
+  const detailStatus =
+    detail.data === undefined ? null : resolveRoutingStatus(detail.data.routing.statusCode);
+  const isOperationsEditable = detailStatus?.isEditable === true;
+
+  const operationsWrite = useMasterWrite<OperationDraft[], RoutingOperationListResponse>({
+    request: (drafts, headers) =>
+      client.PUT('/planning/routings/{routingId}/operations', {
+        params: {
+          path: { routingId: selectedRoutingId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { operations: toOperationsPayload(selectedRoutingId ?? 0, drafts) },
+      }),
+    /*
+     * 계약이 이 경로에 If-Match를 요구하지 않는다 — 컬렉션 전체 치환이라 행 단위 낙관적 잠금이 없고 409도 없다.
+     * 상세 경로를 주면 토큰을 찾지 못했을 때 요청을 보내지 않고 멈춰 「저장을 눌러도 아무 일이 없다」가 된다.
+     */
+    etagPath: null,
+    /*
+     * 라인 저장이 헤더의 판 번호를 올리는지 계약이 밝히지 않는다.
+     * 함께 무효화해 두면 어느 쪽이든 안전하고 비용은 조회 한 번이다.
+     */
+    invalidateKeys: [routingKeys.all],
+    /*
+     * 어느 행의 오류인지 계약이 알려 주지 않는다(필드명만 온다) — 인라인으로 낼 자리가 없다.
+     * 전부 배너로 올린다. 삼키면 어디에도 보이지 않는 오류가 된다.
+     */
+    knownFields: [],
+    onSuccess: (saved) => {
+      // 서버가 정본이다. 채번 방식(연번·간격)은 서버 재량이라 보낸 값과 다를 수 있다.
+      const reseeded = toOperationDrafts(saved.items);
+      setDraftState((prev) =>
+        prev === null ? prev : { ...prev, baseline: reseeded, drafts: reseeded },
+      );
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /** 다른 Rev·품목으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다. */
+  const resetOperationEditing = () => {
+    operationsWrite.reset();
+    setOperationDialog(null);
+    setOperationDialogErrors({});
+    setDraftState(null);
+  };
+
+  const changeOperationDrafts = (next: (drafts: OperationDraft[]) => OperationDraft[]) => {
+    setDraftState((prev) => (prev === null ? prev : { ...prev, drafts: next(prev.drafts) }));
+  };
+
+  const handleAddOperation = () => {
+    setOperationDialogErrors({});
+    setOperationDialog({ mode: 'create', values: createOperationDraft() });
+  };
+
+  const handleEditOperation = (draftId: string) => {
+    const target = operationDrafts.find((draft) => draft.draftId === draftId);
+
+    if (target === undefined) return;
+
+    setOperationDialogErrors({});
+    setOperationDialog({ mode: 'edit', values: target });
+  };
+
+  /*
+   * 라인 저장은 목록 전체를 한 번에 보내므로 한 행의 잘못이 전체 저장을 무르게 한다 —
+   * 행이 표에 들어오기 전에 여기서 거른다.
+   */
+  const handleSubmitOperationDialog = () => {
+    if (operationDialog === null) return;
+
+    const errors = validateOperationDraft(operationDialog.values);
+    setOperationDialogErrors(errors);
+
+    if (Object.keys(errors).length > 0) return;
+
+    const committed = operationDialog.values;
+    changeOperationDrafts((drafts) => upsertDraft(drafts, committed));
+    setOperationDialog(null);
+  };
+
+  const handleSaveOperations = () => {
+    if (draftState === null) return;
+
+    operationsWrite.write(draftState.drafts);
+  };
+
+  /**
+   * 라인 저장을 막는 사유. 잠금은 페인이 따로 다루므로 여기서는 잠금 밖의 사유만 고른다.
+   *
+   * 헤더에 저장하지 않은 변경이 있으면 막는 이유: 라인 저장이 성공하면 상세도 다시 불러오고,
+   * 그때 폼이 서버 값으로 다시 세워져 **사용자가 입력한 헤더 값이 조용히 사라진다.**
+   * 무효화 자체는 판 번호가 올라가는 경우를 대비해 반드시 필요하므로(계약이 밝히지 않는다),
+   * 잃기 전에 먼저 막고 무엇을 하면 풀리는지 알린다.
+   */
+  const operationsSaveBlockedReason = ((): string | null => {
+    if (isHeaderDirty) return t.actionReasons.operationsSaveBlockedByHeader;
+    if (hasIncompleteDraft(operationDrafts)) return t.actionReasons.operationsSaveBlockedByInvalid;
+
+    return null;
+  })();
 
   /**
    * 선택 목록이 잘리거나 실패했다는 사실을 표 위에 낸다.
@@ -434,9 +601,61 @@ export const RoutingScreen = () => {
               ) : null
             }
             optionsNotice={processNotice}
+            isEditable={isOperationsEditable}
+            lockReason={t.actionReasons.operationsLocked}
+            isDirty={isOperationsDirty}
+            isSaving={operationsWrite.isSaving}
+            saveBlockedReason={operationsSaveBlockedReason}
+            /* 라인 저장에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니라 onReload를 넘기지 않는다. */
+            banner={<SaveErrorBanner error={operationsWrite.error} />}
+            onAdd={handleAddOperation}
+            onEdit={handleEditOperation}
+            onRemove={(draftId) => {
+              changeOperationDrafts((drafts) => removeDraft(drafts, draftId));
+            }}
+            /* 순서 이동은 초안만 바꾼다. 여기서 서버를 부르지 않는다(공유계약 A-5). */
+            onReorder={(from, to) => {
+              changeOperationDrafts((drafts) => moveDraft(drafts, from, to));
+            }}
+            onSave={handleSaveOperations}
+            onCancel={() => {
+              operationsWrite.reset();
+              setDraftState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
+            }}
           />
         </div>
       </div>
+
+      {/* 창은 열 때만 붙인다 — 닫힌 창을 남겨 두면 지난 편집 값이 그대로 살아 있다. */}
+      {operationDialog !== null && (
+        <OperationFormDialog
+          open
+          mode={operationDialog.mode}
+          values={operationDialog.values}
+          onChange={(patch) => {
+            setOperationDialog((prev) =>
+              prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+            );
+
+            for (const field of Object.keys(patch)) {
+              setOperationDialogErrors((prev) => {
+                if (!(field in prev)) return prev;
+                const next = { ...prev };
+                delete next[field];
+                return next;
+              });
+            }
+          }}
+          fieldErrors={operationDialogErrors}
+          processOptions={processOptionsFor(operationDialog.values.processId)}
+          isSubmitting={false}
+          onClose={() => {
+            setOperationDialog(null);
+            setOperationDialogErrors({});
+          }}
+          onSubmit={handleSubmitOperationDialog}
+        />
+      )}
     </>
   );
 };

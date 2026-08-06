@@ -1,8 +1,9 @@
-import { type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, type Column, EmptyState, IconButton, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { DisabledAction } from './disabled-action';
+import { OPERATION_FLAG_KEYS } from './operation-order';
 import type { OperationDraft } from './types';
 
 const t = messages.routing;
@@ -16,21 +17,24 @@ export interface OperationsPaneProps {
   loadError: ReactNode;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
+  /** 편집할 수 있는 상태인가. 확정·폐기 Rev는 라인도 잠긴다. */
+  isEditable: boolean;
+  /** 잠겼을 때 보일 사유. 여러 컨트롤이 공유하므로 한 문구를 돌려 쓴다 */
+  lockReason: string;
+  isDirty: boolean;
+  isSaving: boolean;
+  /** 잠금 말고 저장만 막는 이유(헤더 미저장·입력 미완성). 없으면 null */
+  saveBlockedReason: string | null;
+  /** 저장 실패 배너 슬롯 */
+  banner: ReactNode;
+  onAdd: () => void;
+  onEdit: (draftId: string) => void;
+  onRemove: (draftId: string) => void;
+  /** 초안 배열의 위치 기준 이동. **여기서 서버를 부르지 않는다** */
+  onReorder: (from: number, to: number) => void;
+  onSave: () => void;
+  onCancel: () => void;
 }
-
-/**
- * 관리 플래그 7종과 그 짧은 이름. **배열 순서가 곧 표시 순서다** —
- * 행마다 순서가 달라지면 열을 훑어 비교할 수 없다.
- */
-const MANAGED_FLAGS: readonly [keyof OperationDraft, string][] = [
-  ['mesManaged', t.operationFlags.mesManaged],
-  ['materialInputManaged', t.operationFlags.materialInputManaged],
-  ['productionResultManaged', t.operationFlags.productionResultManaged],
-  ['inspectionManaged', t.operationFlags.inspectionManaged],
-  ['outputLotRequired', t.operationFlags.outputLotRequired],
-  ['equipmentRequired', t.operationFlags.equipmentRequired],
-  ['moldRequired', t.operationFlags.moldRequired],
-];
 
 /**
  * 켜진 관리 항목의 이름만 이어 한 칸에 낸다.
@@ -39,7 +43,9 @@ const MANAGED_FLAGS: readonly [keyof OperationDraft, string][] = [
  * 열이 화면 폭을 먹기 때문이다. 전체 항목은 행 편집 다이얼로그에서 본다.
  */
 const managedItemsLabel = (draft: OperationDraft): string => {
-  const enabled = MANAGED_FLAGS.filter(([key]) => draft[key] === true).map(([, label]) => label);
+  const enabled = OPERATION_FLAG_KEYS.filter((key) => draft[key]).map(
+    (key) => t.operationFlags[key],
+  );
 
   return enabled.length === 0 ? t.values.none : enabled.join(' · ');
 };
@@ -55,6 +61,9 @@ const orEmptyMark = (value: string): string => (value === '' ? t.values.empty : 
  *
  * **정렬 가능한 열을 두지 않는다.** 정렬은 보는 방식이고 재배치는 편집이라
  * 함께 쓰면 결과가 어긋난다(디자인 시스템도 정렬이 켜지면 이동 버튼을 비활성화한다).
+ *
+ * **순서를 바꿔도 저장하지 않는다.** 순서 컬럼에 유일 제약이 있어 행 단위 저장은
+ * 중간 상태가 반드시 제약을 위반한다 — 최종 순서 전체를 「저장」에서 한 번에 보낸다(공유계약 A-5).
  */
 export const OperationsPane = ({
   drafts,
@@ -63,6 +72,18 @@ export const OperationsPane = ({
   isRevisionSelected,
   loadError,
   optionsNotice,
+  isEditable,
+  lockReason,
+  isDirty,
+  isSaving,
+  saveBlockedReason,
+  banner,
+  onAdd,
+  onEdit,
+  onRemove,
+  onReorder,
+  onSave,
+  onCancel,
 }: OperationsPaneProps) => {
   const columns: Column<OperationDraft>[] = [
     {
@@ -92,6 +113,29 @@ export const OperationsPane = ({
       // 비율 그대로 낸다. 퍼센트로 보이면서 비율로 저장하면 100배 오입력이 조용히 통과한다.
       render: (row) => orEmptyMark(row.standardYieldRate),
     },
+    {
+      key: 'rowActions',
+      header: t.fields.rowActions,
+      width: '96px',
+      render: (row, rowIndex) => (
+        <>
+          <IconButton
+            icon="edit"
+            size="sm"
+            aria-label={t.actions.editOperation(rowIndex + 1)}
+            disabled={!isEditable}
+            onClick={() => onEdit(row.draftId)}
+          />
+          <IconButton
+            icon="delete"
+            size="sm"
+            aria-label={t.actions.removeOperation(rowIndex + 1)}
+            disabled={!isEditable}
+            onClick={() => onRemove(row.draftId)}
+          />
+        </>
+      ),
+    },
   ];
 
   /** 선택 전 → 조회 실패 → 로딩 → 표 순서로 하나만 낸다. */
@@ -116,6 +160,14 @@ export const OperationsPane = ({
         columns={columns}
         rows={drafts}
         getRowId={(row) => row.draftId}
+        /*
+         * 순서 이동 열은 디자인 시스템이 렌더하고 접근성 처리(포커스 이동·라이브 안내)도 맡는다.
+         * 잠긴 상태에서는 이 열 자체를 내지 않는다 — 디자인 시스템에 「이동만 비활성」 스위치가 없고,
+         * 눌러도 아무 일이 없는 버튼을 남기는 것보다 없는 편이 정직하다.
+         * 무엇이 막혔는지는 액션 줄의 잠금 사유가 한 번 말한다.
+         */
+        reorderable={isEditable}
+        onRowReorder={onReorder}
         empty={
           <EmptyState
             size="sm"
@@ -128,16 +180,26 @@ export const OperationsPane = ({
     );
   };
 
+  /** 잠금이 먼저다 — 잠긴 상태에서는 헤더 편집 여부가 사용자에게 아무 도움이 되지 않는다. */
+  const saveReason = isEditable ? saveBlockedReason : lockReason;
+
   return (
     <section className="pane" aria-label={t.panes.operations}>
       {optionsNotice}
+      {banner}
 
       {isRevisionSelected && (
         <div className="filter-bar">
-          <DisabledAction
-            label={t.actions.addOperation}
-            reason={t.actionReasons.addOperationNotReady}
-          />
+          {isEditable ? (
+            <div className="field-cell">
+              <Button variant="outlined" onClick={onAdd}>
+                {t.actions.addOperation}
+              </Button>
+            </div>
+          ) : (
+            <DisabledAction label={t.actions.addOperation} reason={lockReason} />
+          )}
+
           <DisabledAction
             label={t.actions.dependencies}
             reason={t.actionReasons.dependenciesUnavailable}
@@ -146,6 +208,26 @@ export const OperationsPane = ({
       )}
 
       {listSlot()}
+
+      {isRevisionSelected && (
+        <div className="form-actions">
+          {/*
+           * 저장을 막는 사유는 그 버튼 아래에 붙인다(배치 규범 4).
+           * 「고친 것이 없다」는 사유를 적지 않는다 — 무엇을 하면 풀리는지가 화면에 이미 있다.
+           */}
+          <Button variant="outlined" disabled={!isEditable || !isDirty} onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+
+          {saveReason === null ? (
+            <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+              {messages.common.save}
+            </Button>
+          ) : (
+            <DisabledAction label={messages.common.save} reason={saveReason} />
+          )}
+        </div>
+      )}
     </section>
   );
 };
