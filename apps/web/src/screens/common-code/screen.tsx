@@ -1,4 +1,12 @@
-import { Breadcrumb, EmptyState, PageHeader, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Breadcrumb,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+  Tabs,
+  useToast,
+} from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useMemo, useState } from 'react';
@@ -22,16 +30,77 @@ import {
   useCodeGroupList,
 } from './code-group-queries';
 import { CODE_GROUP_FORM_FIELDS, validateCodeGroupForm } from './code-group-validation';
+import { lookupLabel, selectableOptions } from './code-options';
 import { CodeValueSection } from './code-value-section';
 import { DeactivateDialog } from './deactivate-dialog';
-import { readCodeGroupFilters, readPage, toSearchParams } from './filters';
+import { DepartmentFormPane } from './department-form-pane';
+import { indexById, orderForGrouping, parentOptionsFor } from './department-hierarchy';
+import { DepartmentListPane } from './department-list-pane';
+import {
+  departmentToFormValues,
+  emptyDepartmentFormValues,
+  isSameDepartmentValues,
+  toDepartmentCreate,
+  toDepartmentRows,
+  toDepartmentUpdate,
+} from './department-mappers';
+import {
+  departmentDetailPath,
+  departmentKeys,
+  useDepartmentDetail,
+  useDepartmentList,
+} from './department-queries';
+import { DEPARTMENT_FORM_FIELDS, validateDepartmentForm } from './department-validation';
+import {
+  SCOPE_KEYS,
+  readCodeGroupFilters,
+  readPage,
+  readScopedFilters,
+  readSelectedId,
+  toScopedSearchParams,
+  toSearchParams,
+} from './filters';
 import { LoadErrorBanner } from './load-error-banner';
+import {
+  useBusinessUnitOptions,
+  useDepartmentOptions,
+  usePlantOptions,
+  useProcessOptions,
+  type LookupResult,
+} from './lookups';
 import { toPageView } from './pagination';
+import {
+  createQualificationDraft,
+  isSameQualificationDrafts,
+  removeQualificationDraft,
+  toQualificationDrafts,
+  toQualificationsPayload,
+  upsertQualificationDraft,
+  type QualificationDraft,
+} from './qualification-draft';
+import { QualificationFormDialog } from './qualification-form-dialog';
+import { QualificationPane } from './qualification-pane';
 import { COMMON_CODE_TABS, resolveTab, tabSearchParams } from './tabs';
-import type { CodeGroupFilters, CodeGroupFormValues } from './types';
+import { WorkerDetailPane } from './worker-detail-pane';
+import { WorkerListPane } from './worker-list-pane';
+import {
+  useWorkerDetail,
+  useWorkerList,
+  useWorkerQualifications,
+  workerKeys,
+} from './worker-queries';
+import type {
+  CodeGroupFilters,
+  CodeGroupFormValues,
+  DepartmentFormValues,
+  ScopedFilters,
+} from './types';
 
 type CodeGroup = components['schemas']['CodeGroup'];
 type CodeGroupDetailResponse = components['schemas']['CodeGroupDetailResponse'];
+type Department = components['schemas']['Department'];
+type DepartmentDetailResponse = components['schemas']['DepartmentDetailResponse'];
+type WorkerQualificationListResponse = components['schemas']['WorkerQualificationListResponse'];
 
 const t = messages.commonCode;
 
@@ -52,6 +121,25 @@ interface CodeGroupFormState {
   values: CodeGroupFormValues;
 }
 
+/** 부서 폼도 같은 규칙을 쓴다 — 수정은 상세 응답 객체, 등록은 주소에서 파생한 문자열. */
+type DepartmentFormSource = string | DepartmentDetailResponse;
+
+interface DepartmentFormState {
+  source: DepartmentFormSource;
+  baseline: DepartmentFormValues;
+  values: DepartmentFormValues;
+}
+
+/**
+ * 자격 초안과 그 기준값. 「고친 것이 있는가」는 둘의 비교로 판정하고,
+ * **서버 응답 객체가 바뀔 때만** 다시 세운다 — 편집 중에 캐시가 갱신돼도 되돌아가지 않는다.
+ */
+interface QualificationState {
+  source: WorkerQualificationListResponse;
+  baseline: QualificationDraft[];
+  drafts: QualificationDraft[];
+}
+
 /**
  * W-06-06 컨테이너.
  *
@@ -67,6 +155,9 @@ export const CommonCodeScreen = () => {
   const { client } = useApiClient();
 
   const tab = resolveTab(searchParams.get('tab'));
+  const isCodeTab = tab.id === 'code';
+  const isOrgTab = tab.id === 'org';
+  const isWorkerTab = tab.id === 'worker';
 
   const filters = useMemo<CodeGroupFilters>(
     () => readCodeGroupFilters(searchParams),
@@ -74,12 +165,12 @@ export const CommonCodeScreen = () => {
   );
   const page = readPage(searchParams);
 
-  const isCreatingCodeGroup = searchParams.get('new') === 'group';
-  const selectedParam = Number(searchParams.get('grp') ?? '') || null;
+  const isCreatingCodeGroup = isCodeTab && searchParams.get('new') === 'group';
+  const selectedParam = isCodeTab ? readSelectedId(searchParams, 'grp') : null;
   /** 등록 폼이 열려 있는 동안에는 상세를 조회하지 않는다 — 만들고 있는 자원에는 상세가 없다. */
   const selectedCodeGroupId = isCreatingCodeGroup ? null : selectedParam;
 
-  const codeGroupList = useCodeGroupList(filters, page);
+  const codeGroupList = useCodeGroupList(filters, page, isCodeTab);
   const codeGroups = codeGroupList.data?.items ?? [];
 
   /*
@@ -99,7 +190,7 @@ export const CommonCodeScreen = () => {
    */
   const codeValueIncludeInactive = searchParams.get('vinactive') === '1';
   const codeValuePage = readPage(searchParams, 'vpage');
-  const selectedCodeValueId = Number(searchParams.get('val') ?? '') || null;
+  const selectedCodeValueId = readSelectedId(searchParams, 'val');
   /*
    * 코드값 등록에는 그룹이 있어야 한다 — 계약이 그룹 번호를 필수로 두었다.
    * 그룹 없이 `new=value`만 실린 주소로 들어와도 만들 수 없는 폼을 세우지 않는다.
@@ -368,12 +459,419 @@ export const CommonCodeScreen = () => {
     });
   };
 
+  /* ── 조직(부서) 탭 ─────────────────────────────────────────────────────── */
+
+  const departmentFilters = useMemo(
+    () => readScopedFilters(searchParams, SCOPE_KEYS.businessUnit),
+    [searchParams],
+  );
+
+  const isCreatingDepartment = isOrgTab && searchParams.get('new') === 'dept';
+  const selectedDepartmentParam = isOrgTab ? readSelectedId(searchParams, 'dep') : null;
+  const selectedDepartmentId = isCreatingDepartment ? null : selectedDepartmentParam;
+
+  const departmentList = useDepartmentList(departmentFilters, page, isOrgTab);
+
+  /*
+   * 계약 표현을 화면 표현으로 옮기며 **자기참조를 여기서 한 번만 접는다** —
+   * 목 서버가 실제로 그런 행을 준다. 접지 않으면 대표가 자기 자신인 그룹이 생긴다.
+   */
+  const departmentRows = useMemo(
+    () => toDepartmentRows(departmentList.data?.items ?? []),
+    [departmentList.data],
+  );
+  const departmentById = useMemo(() => indexById(departmentRows), [departmentRows]);
+  /* 디자인 시스템 Table의 그룹 순서는 rows에서 그 키가 처음 나온 순서다 — 화면이 미리 정렬한다. */
+  const orderedDepartments = useMemo(
+    () => orderForGrouping(departmentRows, departmentById),
+    [departmentRows, departmentById],
+  );
+
+  const departmentPageView = toPageView(
+    departmentList.data?.page ?? { page, size: 0, total: 0 },
+    departmentRows.length,
+  );
+
+  const departmentDetail = useDepartmentDetail(selectedDepartmentId);
+
+  /** 부서 정보 폼이 화면에 있는가 — 상위 선택지는 그때만 조회한다. */
+  const isDepartmentFormOpen = isCreatingDepartment || selectedDepartmentId !== null;
+
+  const businessUnitOptions = useBusinessUnitOptions(isOrgTab);
+  /*
+   * 상위 선택지는 **조회 조건과 무관한 전체 목록**을 따로 받는다 —
+   * 쪽 나눔 때문에 상위 부서가 다른 쪽에 있을 수 있어 보이는 목록만으로는 고를 수 없다.
+   */
+  const departmentOptions = useDepartmentOptions(isOrgTab && isDepartmentFormOpen);
+
+  /**
+   * 선택 목록이 잘리거나 실패했다는 사실을 목록 위에 낸다.
+   * 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
+   */
+  const renderOptionsNotice = (lookups: LookupResult[]): ReactNode => {
+    if (lookups.some((lookup) => lookup.isError)) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.optionsLoadFailed}</AlertBanner>
+        </div>
+      );
+    }
+
+    if (lookups.some((lookup) => lookup.truncated)) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.optionsTruncated}</AlertBanner>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  /**
+   * 부서를 고른다. **주소 갱신 한 번으로 끝낸다** — 선택과 등록 폼은 함께 성립하지 않으므로
+   * 그 규칙까지 이 patch 안에서 처리한다. 나눠 부르면 뒤로가기가 중간 상태로 떨어진다.
+   */
+  const handleSelectDepartment = (departmentId: number) => {
+    patchSearchParams((next) => {
+      next.set('dep', String(departmentId));
+      next.delete('new');
+    });
+  };
+
+  const [departmentFormState, setDepartmentFormState] = useState<DepartmentFormState | null>(null);
+
+  /**
+   * 부서 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 **주소**가 정한다 —
+   * 코드그룹과 같은 규칙이다. 등록 출처를 주소에서 파생시켜야 `?tab=org&new=dept`로
+   * 바로 들어온 사용자에게도 폼이 선다.
+   */
+  const departmentFormSource: DepartmentFormSource | null = isCreatingDepartment
+    ? 'create:department'
+    : (departmentDetail.data ?? null);
+
+  if (departmentFormSource === null) {
+    if (departmentFormState !== null) setDepartmentFormState(null);
+  } else if (departmentFormState?.source !== departmentFormSource) {
+    const seeded =
+      typeof departmentFormSource === 'string'
+        ? emptyDepartmentFormValues()
+        : departmentToFormValues(departmentFormSource.department);
+    setDepartmentFormState({ source: departmentFormSource, baseline: seeded, values: seeded });
+  }
+
+  const isDepartmentDirty =
+    departmentFormState !== null &&
+    !isSameDepartmentValues(departmentFormState.values, departmentFormState.baseline);
+
+  const [departmentFieldErrors, setDepartmentFieldErrors] = useState<Record<string, string>>({});
+  const [isDepartmentDeactivateOpen, setIsDepartmentDeactivateOpen] = useState(false);
+
+  const departmentWrite = useMasterWrite<DepartmentFormValues, Department>({
+    request: (values, headers) =>
+      client.PUT('/mdm/departments/{departmentId}', {
+        params: {
+          path: { departmentId: selectedDepartmentId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: toDepartmentUpdate(values),
+      }),
+    /* 잠금 토큰은 상세 경로에 보관돼 있다. 다른 경로로 꺼내면 언제나 비어 있다. */
+    etagPath: selectedDepartmentId === null ? null : departmentDetailPath(selectedDepartmentId),
+    // 상위 선택지도 함께 무효화된다 — 이름이 바뀌면 선택지 문구도 바뀐다.
+    invalidateKeys: [departmentKeys.all],
+    knownFields: DEPARTMENT_FORM_FIELDS,
+    onSuccess: (saved) => {
+      setDepartmentFieldErrors({});
+      const next = departmentToFormValues(saved);
+      setDepartmentFormState((prev) =>
+        prev === null ? prev : { ...prev, baseline: next, values: next },
+      );
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const departmentCreateWrite = useMasterWrite<DepartmentFormValues, Department>({
+    request: (values, headers) =>
+      client.POST('/mdm/departments', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body: toDepartmentCreate(values),
+      }),
+    // 아직 없는 자원이라 잠글 대상이 없다. 201 응답에도 ETag가 없다(계약 실측).
+    etagPath: null,
+    invalidateKeys: [departmentKeys.all],
+    knownFields: DEPARTMENT_FORM_FIELDS,
+    onSuccess: (saved) => {
+      setDepartmentFieldErrors({});
+      /*
+       * 201에는 ETag가 없다 — 새 부서를 고르면 상세를 다시 조회하게 되고 그 조회가 토큰을 확보한다.
+       * **주소 갱신은 이 한 번뿐이다**(`new` 해제 + `dep` 설정을 한 patch로).
+       */
+      handleSelectDepartment(saved.departmentId);
+      toast.show({ variant: 'success', description: messages.common.created });
+    },
+  });
+
+  /**
+   * 사용 중지 — **본문이 없다.**
+   *
+   * 응답에 `ETag`가 없으므로 성공하면 상세까지 무효화해 재조회가 새 토큰을 확보하게 한다.
+   * 무효화를 빠뜨리면 보관된 토큰이 낡아 그다음 저장이 조용히 막힌다.
+   */
+  const departmentDeactivateWrite = useMasterWrite<void, Department>({
+    request: (_variables, headers) =>
+      client.POST('/mdm/departments/{departmentId}:deactivate', {
+        params: {
+          path: { departmentId: selectedDepartmentId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    etagPath: selectedDepartmentId === null ? null : departmentDetailPath(selectedDepartmentId),
+    invalidateKeys: [departmentKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: () => {
+      setIsDepartmentDeactivateOpen(false);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const activeDepartmentWrite = isCreatingDepartment ? departmentCreateWrite : departmentWrite;
+
+  /** 편집 중이던 상태를 통째로 비운다. 보이는 행이 달라질 때 함께 부른다. */
+  const resetDepartmentEditing = () => {
+    departmentWrite.reset();
+    departmentCreateWrite.reset();
+    departmentDeactivateWrite.reset();
+    setIsDepartmentDeactivateOpen(false);
+    setDepartmentFormState(null);
+    setDepartmentFieldErrors({});
+  };
+
+  const applyDepartmentFilters = (next: ScopedFilters) => {
+    resetDepartmentEditing();
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, next, 1));
+  };
+
+  const changeDepartmentPage = (nextPage: number) => {
+    resetDepartmentEditing();
+    setSearchParams(
+      toScopedSearchParams(tab.id, SCOPE_KEYS.businessUnit, departmentFilters, nextPage),
+    );
+  };
+
+  const handleSelectDepartmentRow = (departmentId: number) => {
+    resetDepartmentEditing();
+    handleSelectDepartment(departmentId);
+  };
+
+  const handleAddDepartment = () => {
+    resetDepartmentEditing();
+
+    patchSearchParams((next) => {
+      next.set('new', 'dept');
+      // 등록 폼이 열려 있는 동안 고른 부서의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
+      next.delete('dep');
+    });
+  };
+
+  const closeDepartmentCreateForm = () => {
+    departmentCreateWrite.reset();
+    setDepartmentFieldErrors({});
+
+    patchSearchParams((next) => {
+      // 코드그룹·코드값 쪽 등록 폼을 부서 쪽 조작이 닫아 버리면 안 된다.
+      if (next.get('new') === 'dept') next.delete('new');
+    });
+  };
+
+  /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
+  const changeDepartmentValues = (patch: Partial<DepartmentFormValues>) => {
+    setDepartmentFormState((prev) =>
+      prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+    );
+
+    for (const field of Object.keys(patch)) {
+      activeDepartmentWrite.clearFieldError(field);
+      setDepartmentFieldErrors((prev) => {
+        if (!(field in prev)) return prev;
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleSaveDepartment = () => {
+    if (departmentFormState === null) return;
+
+    const errors = validateDepartmentForm(departmentFormState.values);
+    setDepartmentFieldErrors(errors);
+
+    // 화면에서 잡히는 오류는 서버로 보내지 않는다.
+    if (Object.keys(errors).length > 0) return;
+
+    activeDepartmentWrite.write(departmentFormState.values);
+  };
+
+  const reloadDepartmentDetail = () => {
+    departmentWrite.reset();
+    departmentDeactivateWrite.reset();
+    setDepartmentFieldErrors({});
+    setDepartmentFormState(null);
+    void departmentDetail.refetch();
+  };
+
+  /* ── 작업자 탭 ─────────────────────────────────────────────────────────── */
+
+  const workerFilters = useMemo(
+    () => readScopedFilters(searchParams, SCOPE_KEYS.department),
+    [searchParams],
+  );
+
+  const selectedWorkerId = isWorkerTab ? readSelectedId(searchParams, 'wkr') : null;
+
+  const workerList = useWorkerList(workerFilters, page, isWorkerTab);
+  const workers = workerList.data?.items ?? [];
+
+  const workerPageView = toPageView(
+    workerList.data?.page ?? { page, size: 0, total: 0 },
+    workers.length,
+  );
+
+  const workerDetail = useWorkerDetail(selectedWorkerId);
+
+  /*
+   * 작업자 탭이 쓰는 선택지 셋. 부서는 필터에도 상세 표기에도 쓰이므로 탭에 들어오면 받고,
+   * 사업부·공장은 **상세 표기에만** 쓰이므로 작업자를 고른 뒤에 받는다 —
+   * 목록만 훑는 동안 쓰지 않을 목록을 받아 둘 이유가 없다.
+   */
+  const workerDepartmentOptions = useDepartmentOptions(isWorkerTab);
+  const workerBusinessUnits = useBusinessUnitOptions(isOrgTab || selectedWorkerId !== null);
+  const plantOptions = usePlantOptions(selectedWorkerId !== null);
+
+  /* ── 자격·인증 ─────────────────────────────────────────────────────────── */
+
+  const qualificationList = useWorkerQualifications(selectedWorkerId);
+  const processOptions = useProcessOptions(selectedWorkerId !== null);
+
+  const [qualificationState, setQualificationState] = useState<QualificationState | null>(null);
+
+  /**
+   * 초안의 출처. 서버 응답 객체가 바뀔 때만 다시 세운다 —
+   * 사용자가 표를 고치는 동안 캐시가 갱신돼도 편집 중인 목록이 되돌아가지 않는다.
+   */
+  const qualificationSource = qualificationList.data ?? null;
+
+  if (qualificationSource === null) {
+    if (qualificationState !== null) setQualificationState(null);
+  } else if (qualificationState?.source !== qualificationSource) {
+    const seeded = toQualificationDrafts(qualificationSource.items);
+    setQualificationState({ source: qualificationSource, baseline: seeded, drafts: seeded });
+  }
+
+  const qualificationDrafts = qualificationState?.drafts ?? [];
+  const isQualificationDirty =
+    qualificationState !== null &&
+    !isSameQualificationDrafts(qualificationState.drafts, qualificationState.baseline);
+
+  /** 편집 창의 대상. **열 때만 마운트한다** — 닫힌 창을 남기면 지난 값이 살아 있다. */
+  const [editingQualification, setEditingQualification] = useState<QualificationDraft | null>(null);
+  const [isEditingNewQualification, setIsEditingNewQualification] = useState(false);
+
+  const qualificationWrite = useMasterWrite<QualificationDraft[], WorkerQualificationListResponse>({
+    request: (drafts, headers) =>
+      client.PUT('/mdm/workers/{workerId}/qualifications', {
+        params: {
+          path: { workerId: selectedWorkerId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { qualifications: toQualificationsPayload(drafts) },
+      }),
+    /*
+     * **반드시 `null`이다.** 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없고,
+     * 더구나 `GET /mdm/workers/{id}`가 `ETag`를 주지 않는다 — 상세 경로를 주면 토큰을 찾지 못해
+     * 요청이 **나가지 않고 멈춘다**(「저장을 눌러도 아무 일이 없다」).
+     */
+    etagPath: null,
+    invalidateKeys: [workerKeys.all],
+    // 대응하는 입력칸이 이 구획에 없다(창 안에 있다) — 필드 오류도 배너로 올린다.
+    knownFields: [],
+    onSuccess: (saved) => {
+      /*
+       * **서버 응답으로 초안을 다시 세운다.** 서버가 행 번호를 새로 매기므로
+       * 보낸 목록을 그대로 두면 다음 저장이 옛 번호로 도는 것처럼 보인다.
+       */
+      const next = toQualificationDrafts(saved.items);
+      setQualificationState({ source: saved, baseline: next, drafts: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const resetQualificationEditing = () => {
+    qualificationWrite.reset();
+    setEditingQualification(null);
+    setQualificationState(null);
+  };
+
+  /*
+   * 작업자 탭의 주소 조작 셋은 **자격 편집 상태를 함께 비운다.**
+   * 자격은 고른 작업자에 매인 자료라 보이는 작업자가 달라지면 편집 중이던 초안·저장 실패 배너가
+   * 남을 자리가 없다 — 남기면 뒤로가기로 돌아왔을 때 **남의 실패 배너**를 보게 된다.
+   * 그래서 초기화 함수 뒤에 모아 둔다(코드그룹·부서와 같은 형태).
+   */
+  const handleSelectWorker = (workerId: number) => {
+    resetQualificationEditing();
+
+    patchSearchParams((next) => {
+      next.set('wkr', String(workerId));
+    });
+  };
+
+  const applyWorkerFilters = (next: ScopedFilters) => {
+    resetQualificationEditing();
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, next, 1));
+  };
+
+  const changeWorkerPage = (nextPage: number) => {
+    resetQualificationEditing();
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, nextPage));
+  };
+
+  const changeQualificationDrafts = (
+    next: (drafts: QualificationDraft[]) => QualificationDraft[],
+  ) => {
+    setQualificationState((prev) =>
+      prev === null ? prev : { ...prev, drafts: next(prev.drafts) },
+    );
+  };
+
+  const openQualificationDialog = (draft: QualificationDraft, isNew: boolean) => {
+    qualificationWrite.reset();
+    setIsEditingNewQualification(isNew);
+    setEditingQualification(draft);
+  };
+
+  const handleSaveQualifications = () => {
+    if (qualificationState === null) return;
+
+    qualificationWrite.write(qualificationState.drafts);
+  };
+
   /*
    * 탭이 바뀌면 그 탭의 처음 상태로 간다. 한쪽 탭의 조건·선택이 남으면
    * 그 탭에 없는 자원을 조회하게 된다.
    */
   const changeTab = (value: string) => {
     resetCodeGroupEditing();
+    resetDepartmentEditing();
+    resetQualificationEditing();
     setSearchParams(tabSearchParams(value));
   };
 
@@ -554,6 +1052,285 @@ export const CommonCodeScreen = () => {
     </div>
   );
 
+  /**
+   * 상위로 고를 수 있는 부서. 전체 목록에서 **자기 자신만 뺀다** — 후손은 남는다.
+   * 지금 고른 값이 목록에 없거나 미사용이어도 지우지 않는다(그러면 칸이 비어 보인다).
+   */
+  const selectedParentId = departmentFormState?.values.parentDepartmentId ?? '';
+  const parentDepartmentOptions = useMemo(
+    () =>
+      selectableOptions(
+        parentOptionsFor(departmentOptions.entries, selectedDepartmentId),
+        selectedParentId,
+      ),
+    [departmentOptions.entries, selectedDepartmentId, selectedParentId],
+  );
+
+  /**
+   * 우 칸 — 부서 정보.
+   *
+   * 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
+   * 등록·선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
+   */
+  const renderDepartmentFormPane = (): ReactNode => {
+    if (isCreatingDepartment) {
+      if (departmentFormState === null) return null;
+
+      return (
+        <DepartmentFormPane
+          mode="create"
+          values={departmentFormState.values}
+          onChange={changeDepartmentValues}
+          fieldErrors={{ ...departmentCreateWrite.fieldErrors, ...departmentFieldErrors }}
+          /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+          banner={<SaveErrorBanner error={departmentCreateWrite.error} />}
+          /* 등록에서는 부서코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
+          codeLockReason={null}
+          deactivateDisabledReason={null}
+          parentOptions={parentDepartmentOptions}
+          parentDisabledReason={
+            parentDepartmentOptions.length === 0
+              ? t.department.actionReasons.parentNeedsOthers
+              : null
+          }
+          businessUnitOptions={selectableOptions(
+            businessUnitOptions.entries,
+            departmentFormState.values.businessUnitId,
+          )}
+          isDirty={isDepartmentDirty}
+          isSaving={departmentCreateWrite.isSaving}
+          onSave={handleSaveDepartment}
+          onCancel={closeDepartmentCreateForm}
+          onDeactivate={() => undefined}
+        />
+      );
+    }
+
+    if (selectedDepartmentId === null) {
+      return (
+        <section className="pane" aria-label={t.panes.departmentForm}>
+          <EmptyState size="sm" title={t.department.empty.notSelected} />
+        </section>
+      );
+    }
+
+    if (departmentDetail.isError) {
+      return (
+        <section className="pane" aria-label={t.panes.departmentForm}>
+          <LoadErrorBanner
+            error={departmentDetail.error}
+            onRetry={() => void departmentDetail.refetch()}
+          />
+        </section>
+      );
+    }
+
+    if (departmentDetail.data === undefined || departmentFormState === null) {
+      return (
+        <section className="pane" aria-label={t.panes.departmentForm}>
+          <div role="status" aria-label={t.loading.departmentDetail}>
+            <SkeletonText lines={4} />
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <DepartmentFormPane
+        mode="edit"
+        values={departmentFormState.values}
+        onChange={changeDepartmentValues}
+        // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
+        fieldErrors={{ ...departmentWrite.fieldErrors, ...departmentFieldErrors }}
+        /* 순환 참조 400도 이 배너로 온다 — 화면이 순환을 막지 않기 때문이다. */
+        banner={<SaveErrorBanner error={departmentWrite.error} onReload={reloadDepartmentDetail} />}
+        /*
+         * 판정의 주인은 서버가 준 `codeEditable`이다. 화면이 스스로 잠그지 않는다 —
+         * `reason`이 `EDITABLE`인데 잠긴 어긋난 조합이 실제로 내려온다.
+         */
+        codeLockReason={codeLockMessage(departmentDetail.data.editability)}
+        deactivateDisabledReason={
+          departmentDetail.data.department.isActive === false
+            ? t.actionReasons.deactivateAlreadyDone(t.targets.department)
+            : null
+        }
+        parentOptions={parentDepartmentOptions}
+        parentDisabledReason={
+          parentDepartmentOptions.length === 0 ? t.department.actionReasons.parentNeedsOthers : null
+        }
+        businessUnitOptions={selectableOptions(
+          businessUnitOptions.entries,
+          departmentFormState.values.businessUnitId,
+        )}
+        isDirty={isDepartmentDirty}
+        isSaving={departmentWrite.isSaving}
+        onSave={handleSaveDepartment}
+        onCancel={() => {
+          setDepartmentFieldErrors({});
+          departmentWrite.reset();
+          setDepartmentFormState((prev) =>
+            prev === null ? prev : { ...prev, values: prev.baseline },
+          );
+        }}
+        onDeactivate={() => {
+          departmentDeactivateWrite.reset();
+          setIsDepartmentDeactivateOpen(true);
+        }}
+      />
+    );
+  };
+
+  const orgTabContent = (
+    <div className="two-pane">
+      <DepartmentListPane
+        rows={orderedDepartments}
+        byId={departmentById}
+        isLoading={departmentList.isPending}
+        appliedFilters={departmentFilters}
+        onApplyFilters={applyDepartmentFilters}
+        businessUnitOptions={selectableOptions(
+          businessUnitOptions.entries,
+          departmentFilters.scopeId,
+        )}
+        /*
+         * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
+         * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
+         * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
+         */
+        businessUnitLabel={(scopeId) => lookupLabel(businessUnitOptions.entries, Number(scopeId))}
+        optionsNotice={renderOptionsNotice([businessUnitOptions])}
+        pageView={departmentPageView}
+        onChangePage={changeDepartmentPage}
+        selectedDepartmentId={selectedDepartmentId}
+        onSelect={handleSelectDepartmentRow}
+        isCreating={isCreatingDepartment}
+        onAddDepartment={handleAddDepartment}
+        loadError={
+          departmentList.isError ? (
+            <LoadErrorBanner
+              error={departmentList.error}
+              onRetry={() => void departmentList.refetch()}
+            />
+          ) : null
+        }
+      />
+
+      {renderDepartmentFormPane()}
+    </div>
+  );
+
+  /**
+   * 우 칸 — 작업자 기본 정보. **값 표기만 있고 쓰기 경로가 없다**(결정 9).
+   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
+   */
+  const renderWorkerDetailPane = (): ReactNode => {
+    if (selectedWorkerId === null) {
+      return (
+        <section className="pane" aria-label={t.panes.workerDetail}>
+          <EmptyState size="sm" title={t.worker.empty.notSelected} />
+        </section>
+      );
+    }
+
+    if (workerDetail.isError) {
+      return (
+        <section className="pane" aria-label={t.panes.workerDetail}>
+          <LoadErrorBanner error={workerDetail.error} onRetry={() => void workerDetail.refetch()} />
+        </section>
+      );
+    }
+
+    if (workerDetail.data === undefined) {
+      return (
+        <section className="pane" aria-label={t.panes.workerDetail}>
+          <div role="status" aria-label={t.loading.workerDetail}>
+            <SkeletonText lines={4} />
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <WorkerDetailPane
+        worker={workerDetail.data.worker}
+        businessUnitEntries={workerBusinessUnits.entries}
+        plantEntries={plantOptions.entries}
+        departmentEntries={workerDepartmentOptions.entries}
+      />
+    );
+  };
+
+  const workerTabContent = (
+    <div className="two-pane">
+      <WorkerListPane
+        workers={workers}
+        isLoading={workerList.isPending}
+        appliedFilters={workerFilters}
+        onApplyFilters={applyWorkerFilters}
+        departmentOptions={selectableOptions(
+          workerDepartmentOptions.entries,
+          workerFilters.scopeId,
+        )}
+        departmentLabel={(scopeId) => lookupLabel(workerDepartmentOptions.entries, Number(scopeId))}
+        optionsNotice={renderOptionsNotice([workerDepartmentOptions])}
+        pageView={workerPageView}
+        onChangePage={changeWorkerPage}
+        selectedWorkerId={selectedWorkerId}
+        onSelect={handleSelectWorker}
+        loadError={
+          workerList.isError ? (
+            <LoadErrorBanner error={workerList.error} onRetry={() => void workerList.refetch()} />
+          ) : null
+        }
+      />
+
+      <div className="pane-stack">
+        {renderWorkerDetailPane()}
+
+        <QualificationPane
+          drafts={qualificationDrafts}
+          // 작업자를 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
+          isLoading={selectedWorkerId !== null && qualificationList.isPending}
+          isWorkerSelected={selectedWorkerId !== null}
+          processEntries={processOptions.entries}
+          optionsNotice={renderOptionsNotice([processOptions])}
+          loadError={
+            qualificationList.isError ? (
+              <LoadErrorBanner
+                error={qualificationList.error}
+                onRetry={() => void qualificationList.refetch()}
+              />
+            ) : null
+          }
+          banner={<SaveErrorBanner error={qualificationWrite.error} />}
+          isDirty={isQualificationDirty}
+          isSaving={qualificationWrite.isSaving}
+          onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
+          onEdit={(draftId) => {
+            const found = qualificationDrafts.find((item) => item.draftId === draftId);
+            if (found !== undefined) openQualificationDialog(found, false);
+          }}
+          onRemove={(draftId) => {
+            changeQualificationDrafts((drafts) => removeQualificationDraft(drafts, draftId));
+          }}
+          onSave={handleSaveQualifications}
+          onCancel={() => {
+            qualificationWrite.reset();
+            setQualificationState((prev) =>
+              prev === null ? prev : { ...prev, drafts: prev.baseline },
+            );
+          }}
+        />
+      </div>
+    </div>
+  );
+
+  const tabContentOf = (tabId: string): ReactNode => {
+    if (tabId === 'code') return codeTabContent;
+    if (tabId === 'org') return orgTabContent;
+    return workerTabContent;
+  };
+
   return (
     <>
       <PageHeader
@@ -572,7 +1349,7 @@ export const CommonCodeScreen = () => {
            * 활성 탭의 내용만 만든다. 디자인 시스템 Tabs는 비활성 패널도 DOM에 두므로
            * 모두 만들면 보이지 않는 표가 함께 살아 있게 된다.
            */
-          content: definition.id === tab.id ? codeTabContent : null,
+          content: definition.id === tab.id ? tabContentOf(definition.id) : null,
         }))}
       />
 
@@ -581,6 +1358,45 @@ export const CommonCodeScreen = () => {
        * 되돌릴 수 없는 액션이라 확인을 한 단계 두고, **실패해도 창을 닫지 않는다** —
        * 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다.
        */}
+      {/*
+       * 자격 편집 창도 열 때만 붙인다. **확인은 저장이 아니다** —
+       * 표에만 반영되고 서버로는 「저장」에서 최종 목록이 한 번에 나간다.
+       */}
+      {editingQualification !== null && (
+        <QualificationFormDialog
+          draft={editingQualification}
+          isNew={isEditingNewQualification}
+          otherDrafts={qualificationDrafts}
+          processOptions={selectableOptions(processOptions.entries, editingQualification.processId)}
+          onClose={() => setEditingQualification(null)}
+          onConfirm={(next) => {
+            changeQualificationDrafts((drafts) => upsertQualificationDraft(drafts, next));
+            setEditingQualification(null);
+          }}
+        />
+      )}
+
+      {isDepartmentDeactivateOpen && (
+        <DeactivateDialog
+          open
+          title={t.dialog.deactivateDepartmentTitle}
+          onClose={() => {
+            setIsDepartmentDeactivateOpen(false);
+            departmentDeactivateWrite.reset();
+          }}
+          onConfirm={() => {
+            departmentDeactivateWrite.write(undefined);
+          }}
+          isSaving={departmentDeactivateWrite.isSaving}
+          banner={
+            <SaveErrorBanner
+              error={departmentDeactivateWrite.error}
+              onReload={reloadDepartmentDetail}
+            />
+          }
+        />
+      )}
+
       {isDeactivateOpen && (
         <DeactivateDialog
           open

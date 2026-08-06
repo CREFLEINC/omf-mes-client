@@ -330,9 +330,7 @@ export const CodeValueSection = ({
     );
 
   const deactivateDisabledReason =
-    detail.data?.codeValue.isActive === false
-      ? messages.commonCode.actionReasons.deactivateAlreadyDone(t.paneTitle)
-      : null;
+    detail.data?.codeValue.isActive === false ? t.actionReasons.deactivateAlreadyDone : null;
 
   /**
    * 코드값 정보 구획. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —

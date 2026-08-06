@@ -1,5 +1,5 @@
 import type { CodeValue } from './code-value-types';
-import type { CodeGroup } from './types';
+import type { CodeGroup, Department, Worker } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -75,6 +75,94 @@ export const codeValueFixtures: CodeValue[] = [
     displayOrder: 20,
     effectiveFrom: '2026-08-01',
     effectiveTo: null,
+    isActive: false,
+  },
+];
+
+/**
+ * 부서 4건 — **계약 표현 그대로**(화면이 접기 전).
+ *
+ * 3001은 **자기 자신을 상위로 가리킨다.** 목 서버가 실제로 주는 형태이며,
+ * 화면이 이것을 뿌리로 접는지 보는 것이 이 픽스처의 목적이다.
+ * 3004는 **미사용**이고 3003은 **사업부가 없다** — 「(미사용)」 접미와 「—」 표기를 함께 볼 수 있다.
+ */
+export const departmentFixtures: Department[] = [
+  {
+    departmentId: 3001,
+    departmentCode: 'SYN-DEPT-01',
+    departmentName: '합성 부서 A',
+    parentDepartmentId: 3001,
+    businessUnitId: 4001,
+    isActive: true,
+  },
+  {
+    departmentId: 3002,
+    departmentCode: 'SYN-DEPT-02',
+    departmentName: '합성 부서 B',
+    parentDepartmentId: 3001,
+    businessUnitId: 4001,
+    isActive: true,
+  },
+  {
+    departmentId: 3003,
+    departmentCode: 'SYN-DEPT-03',
+    departmentName: '합성 부서 C',
+    parentDepartmentId: null,
+    businessUnitId: null,
+    isActive: true,
+  },
+  {
+    departmentId: 3004,
+    departmentCode: 'SYN-DEPT-04',
+    departmentName: '합성 부서 D',
+    parentDepartmentId: 3001,
+    businessUnitId: 4001,
+    isActive: false,
+  },
+];
+
+/**
+ * 작업자 3건.
+ *
+ * **사번과 성명은 한눈에 지어낸 값으로 보이게 둔다** — 이 화면은 이 저장소에서 처음으로
+ * 사람 이름과 사번을 다룬다. 실제 사람 이름·사번 형태를 쓰지 않는다(공개 저장소 경계).
+ *
+ * 5002는 **계정 연결이 없고 부서가 없으며 상태 코드가 화면이 모르는 값**이다 —
+ * 「연결 안 됨」·「알 수 없음」·원본 문자열 표기를 한 픽스처에서 함께 볼 수 있다.
+ * 5003은 **미사용**이고 **부서 번호가 조회 목록에 없다**.
+ */
+export const workerFixtures: Worker[] = [
+  {
+    workerId: 5001,
+    workerNo: 'SYN-W-0001',
+    workerName: '합성 작업자 A',
+    businessUnitId: 4001,
+    plantId: 6001,
+    departmentId: 3001,
+    appUserId: 7001,
+    statusCode: 'ACTIVE',
+    isActive: true,
+  },
+  {
+    workerId: 5002,
+    workerNo: 'SYN-W-0002',
+    workerName: '합성 작업자 B',
+    businessUnitId: 4001,
+    plantId: 6001,
+    departmentId: null,
+    appUserId: null,
+    statusCode: 'SYN-UNKNOWN-STATUS',
+    isActive: true,
+  },
+  {
+    workerId: 5003,
+    workerNo: 'SYN-W-0003',
+    workerName: '합성 작업자 C',
+    businessUnitId: 4001,
+    plantId: 6001,
+    departmentId: 9999,
+    appUserId: 7003,
+    statusCode: '',
     isActive: false,
   },
 ];

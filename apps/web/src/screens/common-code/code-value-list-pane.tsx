@@ -38,7 +38,7 @@ export interface CodeValueListPaneProps {
 
 /** 유효기간 표기. 한쪽만 있는 것도 계약이 허용한다 — 없는 쪽을 지어내지 않고 자리를 비운다. */
 const formatPeriod = (from: string | null | undefined, to: string | null | undefined): string => {
-  const empty = messages.commonCode.values.empty;
+  const empty = t.values.empty;
 
   if ((from ?? '') === '' && (to ?? '') === '') return empty;
 
@@ -91,8 +91,7 @@ export const CodeValueListPane = ({
     {
       key: 'codeName',
       header: t.fields.codeName,
-      render: (row) =>
-        row.isActive ? row.codeName : `${row.codeName}${messages.commonCode.values.inactiveSuffix}`,
+      render: (row) => (row.isActive ? row.codeName : `${row.codeName}${t.values.inactiveSuffix}`),
     },
     {
       key: 'displayOrder',
@@ -119,8 +118,8 @@ export const CodeValueListPane = ({
         <EmptyState
           size="sm"
           live
-          title={messages.commonCode.empty.beyondLastTitle}
-          description={messages.commonCode.empty.beyondLastDescription}
+          title={t.empty.beyondLastTitle}
+          description={t.empty.beyondLastDescription}
         />
       );
     }

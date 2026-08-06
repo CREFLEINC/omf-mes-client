@@ -933,16 +933,23 @@ const commonCode = {
   tabs: {
     label: '공통코드·조직·작업자',
     code: '공통코드',
+    org: '조직(부서)',
+    worker: '작업자',
   },
   panes: {
     codeGroup: '코드그룹',
     codeGroupForm: '코드그룹 정보',
+    department: '부서',
+    departmentForm: '부서 정보',
+    worker: '작업자',
+    workerDetail: '작업자 기본 정보',
   },
   actions: {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     addCodeGroup: '그룹 추가',
+    addDepartment: '부서 추가',
   },
   /** 비활성 사유는 배치 규범 4의 문형을 따른다 — 컨트롤 이름으로 시작한다. */
   actionReasons: {
@@ -963,9 +970,16 @@ const commonCode = {
    */
   dialog: {
     deactivateCodeGroupTitle: '이 코드그룹을 사용 중지할까요?',
+    deactivateDepartmentTitle: '이 부서를 사용 중지할까요?',
     deactivateDescription:
       '사용 중지하면 새 선택지에서 빠지고 이미 쓰인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
   },
+  /*
+   * 선택 목록이 잘리거나 실패했다는 사실을 감추지 않는다 —
+   * 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
+   */
+  optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+  optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   /**
    * 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다.
    * 좌 목록과 코드값 목록 둘 다 계약에 쪽 나눔이 있다.
@@ -980,17 +994,39 @@ const commonCode = {
   filters: {
     codeGroupSearchLabel: '코드그룹 검색',
     codeGroupSearchPlaceholder: '그룹코드 또는 그룹명',
+    departmentSearchLabel: '부서 검색',
+    departmentSearchPlaceholder: '부서코드 또는 부서명',
+    businessUnit: '사업부',
+    /* 선택지에 빈 값을 두어 고른 사업부를 다시 「전체」로 되돌릴 수 있게 한다. */
+    businessUnitAll: '전체 사업부',
+    /*
+     * 공장·사업부 필터를 두지 않는다 — 좌 페인에 필터 컨트롤 넷을 놓으면 표가 짓눌린다.
+     * 검색어(사번·성명) + 부서 + 미사용 포함 셋으로 좁힌다.
+     */
+    workerSearchLabel: '작업자 검색',
+    workerSearchPlaceholder: '사번 또는 성명',
+    department: '부서',
+    departmentAll: '전체 부서',
     chipKeyword: (value: string): string => `검색어: ${value}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    chipBusinessUnit: (label: string): string => `사업부: ${label}`,
+    chipRemoveBusinessUnit: '사업부 조건 제거',
+    chipDepartment: (label: string): string => `부서: ${label}`,
+    chipRemoveDepartment: '부서 조건 제거',
   },
   loading: {
     codeGroups: '코드그룹 목록을 불러오는 중',
     codeGroupDetail: '코드그룹 정보를 불러오는 중',
+    departments: '부서 목록을 불러오는 중',
+    departmentDetail: '부서 정보를 불러오는 중',
+    workers: '작업자 목록을 불러오는 중',
+    workerDetail: '작업자 정보를 불러오는 중',
   },
   /** 자원 이름 — 여러 자원이 공유하는 문구에 끼워 넣는다. */
   targets: {
     codeGroup: '코드그룹',
+    department: '부서',
   },
   empty: {
     /*
@@ -1008,6 +1044,11 @@ const commonCode = {
      * 이름 뒤 접미로 붙여 열을 늘리지 않는다.
      */
     inactiveSuffix: ' (미사용)',
+    /*
+     * 값은 있는데 그 번호를 선택 목록에서 찾지 못했다. **번호를 그대로 내지 않는다** —
+     * 내부 식별자라 사용자가 쓸 수 없고, 보이면 자료로 읽힌다.
+     */
+    unknown: '알 수 없음',
   },
   codeGroup: {
     /*
@@ -1040,6 +1081,160 @@ const commonCode = {
       groupNameTooLong: '그룹명은 200자를 넘을 수 없습니다.',
     },
   },
+  department: {
+    fields: {
+      departmentCode: '부서코드',
+      departmentName: '부서명',
+      parentDepartment: '상위 부서',
+      businessUnit: '사업부',
+    },
+    values: {
+      /** 계층 그룹 머리글 — 그 그룹을 대표하는 부서. */
+      groupHeader: (code: string, name: string): string => `${code} · ${name}`,
+      /** 상위 부서를 비운 상태. 「없음」만으로는 무엇이 없는지 읽히지 않는다. */
+      noParent: '없음 (뿌리 부서)',
+    },
+    /*
+     * 상위를 이 쪽 목록에서 찾지 못한 행이 모이는 그룹. 쪽 나눔 때문에 상위가 다른 쪽에
+     * 있을 수 있다 — 「없다」를 「뿌리다」로 읽지 않고 그 사실을 그대로 밝힌다.
+     */
+    groupHeaderOrphan: '상위 부서가 이 쪽에 없음',
+    notices: {
+      /*
+       * 이슈 §6이 예고한 「2단 표시로는 부족한」 상태. 감추지 않는다 —
+       * 계층을 다시 계산해 접으면 서버에 있는 관계와 화면이 어긋난다.
+       */
+      deepHierarchy:
+        '3단 이상 계층이 있습니다. 이 목록은 상위–하위 2단까지만 묶어 보이므로 더 깊은 관계는 부서 정보의 상위 부서에서 확인하세요.',
+    },
+    empty: {
+      noneTitle: '등록된 부서가 없습니다',
+      noneDescription: '「부서 추가」로 첫 부서를 등록하세요.',
+      noMatchTitle: '조건에 맞는 부서가 없습니다',
+      noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+      notSelected: '좌측에서 부서를 고르면 여기에 그 부서의 정보가 보입니다',
+    },
+    actionReasons: {
+      /* 목록에 자기 하나뿐이면 상위로 고를 대상이 없다 — 감추지 않고 사유를 밝힌다. */
+      parentNeedsOthers:
+        '상위 부서는 고를 수 있는 다른 부서가 없어 지정할 수 없습니다. 부서를 하나 더 등록하면 이 칸을 쓸 수 있습니다.',
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      departmentCodeBlank: '부서코드는 공백만으로 지정할 수 없습니다.',
+      departmentNameBlank: '부서명은 공백만으로 지정할 수 없습니다.',
+      departmentCodeTooLong: '부서코드는 50자를 넘을 수 없습니다.',
+      departmentNameTooLong: '부서명은 200자를 넘을 수 없습니다.',
+    },
+  },
+  /**
+   * 작업자 — **읽기 전용이다.** 계약에 쓰기 경로가 없다(POST·PUT 모두 없음).
+   * 그래서 입력칸 라벨이 아니라 **값 표기의 이름**이며, 비활성 사유도 두지 않는다
+   * (「언젠가 풀린다」는 뜻이 되는데 계약에 그 경로가 없다).
+   */
+  worker: {
+    /*
+     * `editability`가 아니라 **고정 문구**다 — 계약은 「항상 RECEIVED_FROM_ERP」라고 적었으나
+     * 목 서버는 `reason:'EDITABLE'`을 준다. 쓰기 경로가 없다는 사실이 `editability`보다 강한 근거다.
+     */
+    readOnlyNotice:
+      '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+    fields: {
+      workerNo: '사번',
+      workerName: '성명',
+      businessUnit: '사업부',
+      plant: '공장',
+      department: '부서',
+      status: '상태',
+      appUser: '계정 연결',
+      isActive: '사용 여부',
+    },
+    values: {
+      /*
+       * 계정 연결은 **연결 여부만** 낸다 — `appUserId`는 내부 식별자이고 이름을 만들려면
+       * 다른 화면 소관의 조회가 필요하다. 번호를 그대로 내면 사용자가 쓸 수 없다.
+       */
+      appUserLinked: '연결됨',
+      appUserNotLinked: '연결 안 됨',
+      active: '사용 중',
+      inactive: '미사용',
+    },
+    empty: {
+      noneTitle: '등록된 작업자가 없습니다',
+      noneDescription: '작업자는 외부 시스템에서 받아 옵니다. 원본 시스템을 확인하세요.',
+      noMatchTitle: '조건에 맞는 작업자가 없습니다',
+      noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+      notSelected: '좌측에서 작업자를 고르면 여기에 그 작업자의 정보가 보입니다',
+    },
+  },
+  /**
+   * 자격·인증 — **이 화면에서 편집 가능한 유일한 작업자 관련 자료**다.
+   * 저장은 전체 치환이라 표의 최종 상태를 한 번에 보낸다.
+   */
+  qualification: {
+    paneTitle: '자격·인증',
+    fields: {
+      qualificationType: '자격 유형',
+      process: '공정',
+      certificateNo: '인증번호',
+      validPeriod: '유효기간',
+      validFrom: '유효 시작',
+      validTo: '유효 종료',
+      certifiedBy: '인증자',
+      edit: '편집',
+    },
+    values: {
+      /** 공정을 비운 자격은 모든 공정에 걸린다 — 계약이 그 뜻을 널로 표현한다(A-7). */
+      allProcesses: '(전체 공정)',
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+    },
+    actions: {
+      add: '자격 추가',
+      /* 행 아이콘 버튼은 보이는 글자가 없다 — 어느 행의 것인지 이름에 담는다. */
+      editRow: (label: string): string => `${label} 자격 수정`,
+      removeRow: (label: string): string => `${label} 자격 삭제`,
+    },
+    actionReasons: {
+      needsWorker: '자격 추가는 좌측에서 작업자를 고른 뒤에 할 수 있습니다.',
+      /*
+       * 서버가 준 목록에 이미 중복 짝이 있으면 그대로 보내도 서버가 거부한다 —
+       * 사용자가 먼저 그 줄을 고쳐야 한다.
+       */
+      saveBlockedByInvalid:
+        '저장은 자격 유형과 공정 짝이 겹치는 줄이 있어 할 수 없습니다. 그 줄을 고치거나 지우면 저장할 수 있습니다.',
+    },
+    /*
+     * 창의 확인은 **저장이 아니다.** 표에만 반영되고 서버로는 「저장」에서 한 번에 나간다 —
+     * 밝히지 않으면 사용자가 창을 닫는 순간 저장된 줄 안다.
+     */
+    dialog: {
+      addTitle: '자격 추가',
+      editTitle: '자격 수정',
+      notSavedNotice:
+        '이 창의 확인은 저장이 아닙니다. 표에 반영된 뒤 「저장」을 눌러야 서버에 반영됩니다.',
+      confirm: '확인',
+    },
+    empty: {
+      notSelected: '좌측에서 작업자를 고르면 그 작업자의 자격·인증이 보입니다',
+      noneTitle: '등록된 자격·인증이 없습니다',
+      noneDescription: '「자격 추가」로 첫 자격을 등록하세요.',
+    },
+    loading: {
+      list: '자격·인증을 불러오는 중',
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      certificateNoTooLong: '인증번호는 100자를 넘을 수 없습니다.',
+      /* 계약 ck_worker_qualification_dates — 있으면 유효 시작 이상. 한쪽만 있는 것은 허용된다. */
+      validRangeReversed: '유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.',
+      /*
+       * 계약 uq_worker_qualification이 `COALESCE(process_id,0)`으로 접는다 —
+       * 공정을 비운 두 줄은 같은 짝이다.
+       */
+      duplicatePair:
+        '자격 유형과 공정 짝이 이미 있습니다. 공정을 다르게 고르거나 그 줄을 고치세요.',
+    },
+  },
   /**
    * **코드값 편집 한 벌의 문구.** 이 묶음은 통째로 옮겨질 것을 전제로 모아 둔다 —
    * 다른 자원의 문구와 섞으면 옮길 때 어느 열쇠가 딸려 가야 하는지 가릴 수 없다.
@@ -1057,6 +1252,12 @@ const commonCode = {
     actionReasons: {
       /* 계약이 `codeGroupId`를 필수 쿼리로 두었다 — 그룹 없이는 만들 자리 자체가 없다. */
       addNeedsGroup: '코드값 추가는 좌측에서 코드그룹을 고른 뒤에 할 수 있습니다.',
+      /*
+       * 바깥 묶음의 같은 문형을 **대상을 코드값으로 고정해** 여기 둔다.
+       * 한 벌이 바깥 열쇠를 빌려 쓰면 옮길 때 그 열쇠가 딸려 가지 않는다 —
+       * 대상이 늘 코드값이라 매개변수도 필요 없다.
+       */
+      deactivateAlreadyDone: '사용 중지는 이미 미사용인 코드값에 다시 할 수 없습니다.',
     },
     loading: {
       list: '코드값 목록을 불러오는 중',
@@ -1086,10 +1287,20 @@ const commonCode = {
       noMatchTitle: '조건에 맞는 코드값이 없습니다',
       noMatchDescription: '「미사용 포함」을 켜면 미사용 코드값도 보입니다.',
       notSelected: '위 목록에서 코드값을 먼저 고르세요',
+      /*
+       * 결과는 있는데 **이 쪽에는** 없다. 바깥 묶음에 같은 문구가 있으나 여기 따로 둔다 —
+       * 한 벌은 자기 묶음만 들고 옮겨진다.
+       */
+      beyondLastTitle: '이 쪽에는 결과가 없습니다',
+      beyondLastDescription: '첫 쪽으로 이동하세요.',
     },
     values: {
       /** 유효기간 표기. 한쪽만 있는 것도 계약이 허용한다 — 없는 쪽을 지어내지 않는다. */
       period: (from: string, to: string): string => `${from} ~ ${to}`,
+      /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+      empty: '—',
+      /** 좁은 칸에서 「사용 여부」 열을 따로 두면 이름 열이 짓눌린다 — 이름 뒤 접미로 붙인다. */
+      inactiveSuffix: ' (미사용)',
     },
     validation: {
       required: '필수 입력 항목입니다.',
