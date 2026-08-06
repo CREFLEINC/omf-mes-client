@@ -93,8 +93,17 @@ export const OperationsPane = ({
       width: '64px',
       render: (_row, rowIndex) => String(rowIndex + 1),
     },
-    { key: 'processId', header: t.fields.process, render: (row) => processLabel(row.processId) },
-    { key: 'operationName', header: t.fields.operationName },
+    {
+      key: 'processId',
+      header: t.fields.process,
+      width: '112px',
+      render: (row) => processLabel(row.processId),
+    },
+    { key: 'operationName', header: t.fields.operationName, width: '144px' },
+    /*
+     * 관리 항목만 폭을 지정하지 않는다 — 여러 값을 이어 담는 칸이라 남는 폭을 이 열이 가져가는 것이 맞다.
+     * 나머지 열의 폭 합과 표 최소 폭의 차이가 곧 이 열의 하한이다(도출 표는 배치 규범 문서에).
+     */
     {
       key: 'managedItems',
       header: t.fields.managedItems,
@@ -104,12 +113,14 @@ export const OperationsPane = ({
       key: 'standardCycleTimeSec',
       header: t.fields.standardCycleTimeSec,
       align: 'end',
+      width: '112px',
       render: (row) => orEmptyMark(row.standardCycleTimeSec),
     },
     {
       key: 'standardYieldRate',
       header: t.fields.standardYieldRate,
       align: 'end',
+      width: '120px',
       // 비율 그대로 낸다. 퍼센트로 보이면서 비율로 저장하면 100배 오입력이 조용히 통과한다.
       render: (row) => orEmptyMark(row.standardYieldRate),
     },
@@ -154,29 +165,36 @@ export const OperationsPane = ({
       );
     }
 
+    /*
+     * `.wide-table`이 표에 최소 폭을 준다 — 이 페인은 3단 배치의 한 칸이라
+     * 8열이 들어갈 폭이 늘 나오지 않는다. 폭이 모자라면 짓누르지 않고 가로로 넘긴다.
+     * 값의 근거는 docs/layout-conventions.md의 도출 표에 있다.
+     */
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={drafts}
-        getRowId={(row) => row.draftId}
-        /*
-         * 순서 이동 열은 디자인 시스템이 렌더하고 접근성 처리(포커스 이동·라이브 안내)도 맡는다.
-         * 잠긴 상태에서는 이 열 자체를 내지 않는다 — 디자인 시스템에 「이동만 비활성」 스위치가 없고,
-         * 눌러도 아무 일이 없는 버튼을 남기는 것보다 없는 편이 정직하다.
-         * 무엇이 막혔는지는 액션 줄의 잠금 사유가 한 번 말한다.
-         */
-        reorderable={isEditable}
-        onRowReorder={onReorder}
-        empty={
-          <EmptyState
-            size="sm"
-            live
-            title={t.empty.operationNoneTitle}
-            description={t.empty.operationNoneDescription}
-          />
-        }
-      />
+      <div className="wide-table">
+        <Table
+          density="compact"
+          columns={columns}
+          rows={drafts}
+          getRowId={(row) => row.draftId}
+          /*
+           * 순서 이동 열은 디자인 시스템이 렌더하고 접근성 처리(포커스 이동·라이브 안내)도 맡는다.
+           * 잠긴 상태에서는 이 열 자체를 내지 않는다 — 디자인 시스템에 「이동만 비활성」 스위치가 없고,
+           * 눌러도 아무 일이 없는 버튼을 남기는 것보다 없는 편이 정직하다.
+           * 무엇이 막혔는지는 액션 줄의 잠금 사유가 한 번 말한다.
+           */
+          reorderable={isEditable}
+          onRowReorder={onReorder}
+          empty={
+            <EmptyState
+              size="sm"
+              live
+              title={t.empty.operationNoneTitle}
+              description={t.empty.operationNoneDescription}
+            />
+          }
+        />
+      </div>
     );
   };
 
