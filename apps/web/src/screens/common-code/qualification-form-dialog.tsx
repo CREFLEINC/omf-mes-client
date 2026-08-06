@@ -56,8 +56,20 @@ export const QualificationFormDialog = ({
     setErrors((prev) => {
       const next = { ...prev };
       for (const field of Object.keys(patch)) delete next[field];
+
       // 유형·공정은 함께 중복을 만든다 — 한쪽을 고치면 그 판정을 다시 한다.
       if ('processId' in patch) delete next.qualificationTypeCode;
+
+      /*
+       * 유효 시작·종료도 **짝으로** 오류가 붙는다(둘 다에 같은 문구가 간다).
+       * 한쪽만 지우면 고친 칸의 오류는 사라지는데 다른 칸에 같은 문구가 남아,
+       * 사용자가 이미 고친 것을 다시 고치려 든다.
+       */
+      if ('validFrom' in patch || 'validTo' in patch) {
+        delete next.validFrom;
+        delete next.validTo;
+      }
+
       return next;
     });
   };

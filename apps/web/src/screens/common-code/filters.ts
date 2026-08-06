@@ -60,12 +60,23 @@ export const readSelectedId = (params: URLSearchParams, key: string): number | n
   return POSITIVE_INTEGER.test(raw) && Number(raw) >= 1 ? Number(raw) : null;
 };
 
-/** 조직·작업자 탭의 조회 조건. 선택 축의 주소 키만 탭마다 다르다. */
-export const readScopedFilters = (params: URLSearchParams, scopeKey: ScopeKey): ScopedFilters => ({
-  q: params.get(URL_KEYS.q) ?? '',
-  scopeId: params.get(scopeKey) ?? '',
-  includeInactive: params.get(URL_KEYS.includeInactive) === ON,
-});
+/**
+ * 조직·작업자 탭의 조회 조건. 선택 축의 주소 키만 탭마다 다르다.
+ *
+ * **선택 축도 선택 번호와 같은 규칙으로 거른다**(`readSelectedId`와 같은 판정).
+ * 이 값은 그대로 `Number()`를 거쳐 계약 쿼리(`businessUnitId`·`departmentId`)로 나가므로,
+ * 걸러 내지 않으면 `?bu=abc` 같은 주소가 **`businessUnitId=NaN`을 서버로 보낸다.**
+ * 고를 수 없는 값은 「전체」(`''`)로 본다 — 주소는 손으로 고쳐지는 자리다.
+ */
+export const readScopedFilters = (params: URLSearchParams, scopeKey: ScopeKey): ScopedFilters => {
+  const scope = params.get(scopeKey) ?? '';
+
+  return {
+    q: params.get(URL_KEYS.q) ?? '',
+    scopeId: POSITIVE_INTEGER.test(scope) && Number(scope) >= 1 ? scope : '',
+    includeInactive: params.get(URL_KEYS.includeInactive) === ON,
+  };
+};
 
 /**
  * 조건 전체를 주소로 옮긴다. **빈 조건은 키 자체를 두지 않는다** —

@@ -108,6 +108,29 @@ describe('readScopedFilters', () => {
   it('자기 탭의 선택 축만 읽는다', () => {
     expect(readScopedFilters(params('?dept=2002'), 'bu').scopeId).toBe('');
   });
+
+  /*
+   * 선택 축도 **선택 번호와 같은 규칙**으로 거른다. 이 값은 그대로 `Number()`를 거쳐
+   * 계약 쿼리로 나가므로, 걸러 내지 않으면 `?bu=abc`가 `businessUnitId=NaN`을 서버로 보낸다.
+   */
+  it('양의 정수가 아닌 선택 축은 「전체」로 본다', () => {
+    expect(readScopedFilters(params('?bu=0'), 'bu').scopeId).toBe('');
+    expect(readScopedFilters(params('?bu=-3'), 'bu').scopeId).toBe('');
+    expect(readScopedFilters(params('?bu=1.5'), 'bu').scopeId).toBe('');
+    expect(readScopedFilters(params('?bu=abc'), 'bu').scopeId).toBe('');
+    expect(readScopedFilters(params('?bu=12abc'), 'bu').scopeId).toBe('');
+  });
+
+  it('걸러 낸 선택 축은 계약 쿼리에도 실리지 않는다', () => {
+    const filters = readScopedFilters(params('?bu=abc'), 'bu');
+
+    expect('businessUnitId' in toDepartmentListQuery(filters, 1)).toBe(false);
+  });
+
+  it('작업자 탭의 선택 축도 같은 규칙을 쓴다', () => {
+    expect(readScopedFilters(params('?dept=abc'), 'dept').scopeId).toBe('');
+    expect(readScopedFilters(params('?dept=3001'), 'dept').scopeId).toBe('3001');
+  });
 });
 
 describe('toScopedSearchParams', () => {

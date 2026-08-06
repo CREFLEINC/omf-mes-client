@@ -157,6 +157,48 @@ describe('QualificationFormDialog — 검증 (C69·C71·C72)', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  /*
+   * 짝 오류는 두 칸에 함께 붙는다 — 한쪽만 지우면 고친 칸의 오류는 사라지는데
+   * 다른 칸에 같은 문구가 남아, 사용자가 이미 고친 것을 다시 고치려 든다.
+   */
+  it('유효 시작을 고치면 유효 종료의 짝 오류도 함께 지워진다', async () => {
+    const { user } = renderDialog({
+      draft: draft({
+        qualificationTypeCode: 'PENDING',
+        validFrom: '2026-08-10',
+        validTo: '2026-08-01',
+      }),
+    });
+
+    await user.click(screen.getByRole('button', { name: '확인' }));
+    expect(screen.getAllByText('유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.')).toHaveLength(2);
+
+    await user.clear(screen.getByLabelText('유효 시작'));
+
+    expect(screen.queryAllByText('유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.')).toHaveLength(
+      0,
+    );
+  });
+
+  it('유효 종료를 고쳐도 유효 시작의 짝 오류가 함께 지워진다', async () => {
+    const { user } = renderDialog({
+      draft: draft({
+        qualificationTypeCode: 'PENDING',
+        validFrom: '2026-08-10',
+        validTo: '2026-08-01',
+      }),
+    });
+
+    await user.click(screen.getByRole('button', { name: '확인' }));
+    expect(screen.getAllByText('유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.')).toHaveLength(2);
+
+    await user.clear(screen.getByLabelText('유효 종료'));
+
+    expect(screen.queryAllByText('유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.')).toHaveLength(
+      0,
+    );
+  });
+
   it('값을 고치면 그 칸의 오류가 지워진다', async () => {
     const { user } = renderDialog();
 

@@ -3593,6 +3593,48 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     expect(await screen.findByText('이미 있는 자격입니다.')).toBeInTheDocument();
   });
 
+  /*
+   * **저장 실패 배너는 고른 작업자에 매인 자료다.** 조건을 바꿔 선택이 비워졌다가
+   * 뒤로가기로 같은 작업자에 돌아오면, 초기화하지 않은 실패 배너가 **남의 실패처럼** 되살아난다
+   * (사용자가 본 적 없는 맥락에서 「이미 있는 자격입니다」가 뜬다).
+   */
+  it('저장에 실패한 뒤 조건을 바꿨다 돌아오면 지난 실패 배너가 남지 않는다', async () => {
+    const { history, user } = renderScreen(
+      [
+        ...qualificationRoutes(),
+        replaceRoute(() =>
+          jsonResponse(
+            {
+              message: '',
+              errors: [{ scope: 'screen', code: 'UNIQUE', message: '이미 있는 자격입니다.' }],
+            },
+            { status: 400 },
+          ),
+        ),
+      ],
+      '?tab=worker&wkr=5001',
+    );
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-77');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('이미 있는 자격입니다.')).toBeInTheDocument();
+
+    // 조건을 바꾸면 보이는 작업자가 달라진다 — 주소에서 wkr가 사라진다.
+    await user.type(screen.getByLabelText('작업자 검색'), 'SYN');
+    await user.click(within(workerPane()).getByRole('button', { name: '조회' }));
+    expect(history.search()).toBe('?tab=worker&q=SYN');
+
+    history.back();
+    expect(history.search()).toBe('?tab=worker&wkr=5001');
+
+    await screen.findByText('SYN-CERT-01');
+    expect(screen.queryByText('이미 있는 자격입니다.')).not.toBeInTheDocument();
+  });
+
   /* 다른 작업자를 고르면 편집 중이던 초안이 남으면 안 된다. */
   it('다른 작업자를 고르면 편집 중이던 초안이 비워진다', async () => {
     const { user } = renderScreen(

@@ -756,14 +756,6 @@ export const CommonCodeScreen = () => {
   const workerBusinessUnits = useBusinessUnitOptions(isOrgTab || selectedWorkerId !== null);
   const plantOptions = usePlantOptions(selectedWorkerId !== null);
 
-  const applyWorkerFilters = (next: ScopedFilters) => {
-    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, next, 1));
-  };
-
-  const changeWorkerPage = (nextPage: number) => {
-    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, nextPage));
-  };
-
   /* ── 자격·인증 ─────────────────────────────────────────────────────────── */
 
   const qualificationList = useWorkerQualifications(selectedWorkerId);
@@ -828,12 +820,28 @@ export const CommonCodeScreen = () => {
     setQualificationState(null);
   };
 
+  /*
+   * 작업자 탭의 주소 조작 셋은 **자격 편집 상태를 함께 비운다.**
+   * 자격은 고른 작업자에 매인 자료라 보이는 작업자가 달라지면 편집 중이던 초안·저장 실패 배너가
+   * 남을 자리가 없다 — 남기면 뒤로가기로 돌아왔을 때 **남의 실패 배너**를 보게 된다.
+   * 그래서 초기화 함수 뒤에 모아 둔다(코드그룹·부서와 같은 형태).
+   */
   const handleSelectWorker = (workerId: number) => {
     resetQualificationEditing();
 
     patchSearchParams((next) => {
       next.set('wkr', String(workerId));
     });
+  };
+
+  const applyWorkerFilters = (next: ScopedFilters) => {
+    resetQualificationEditing();
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, next, 1));
+  };
+
+  const changeWorkerPage = (nextPage: number) => {
+    resetQualificationEditing();
+    setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, nextPage));
   };
 
   const changeQualificationDrafts = (
@@ -863,6 +871,7 @@ export const CommonCodeScreen = () => {
   const changeTab = (value: string) => {
     resetCodeGroupEditing();
     resetDepartmentEditing();
+    resetQualificationEditing();
     setSearchParams(tabSearchParams(value));
   };
 
