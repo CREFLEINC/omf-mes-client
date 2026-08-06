@@ -986,6 +986,154 @@ describe('DefectCauseCodeScreen — 저장 충돌', () => {
   });
 });
 
+const defectDeactivateRoute = (id: number, respond: StubRoute['respond']): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' &&
+    new URL(request.url).pathname === `${DEFECT_LIST_PATH}/${String(id)}:deactivate`,
+  respond,
+});
+
+describe('DefectCauseCodeScreen — 사용 중지', () => {
+  const openDialog = async (
+    routes: StubRoute[],
+    search: string,
+  ): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = renderScreen(routes, search);
+
+    await rendered.user.click(await screen.findByRole('button', { name: '사용 중지' }));
+
+    return rendered;
+  };
+
+  it('사용 중지를 누르면 확인 창이 뜨고 하위 건수를 함께 보인다', async () => {
+    await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () => jsonResponse(defectCodeFixtures[0]!)),
+      ),
+      '?sel=1001',
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('사용 중지할까요?')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('이 대분류에는 표시된 목록 기준 하위 상세 코드 2건이 있습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('하위가 없는 코드에는 건수 문장이 나오지 않는다', async () => {
+    await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(defectCodeFixtures[1]),
+        defectDeactivateRoute(1002, () => jsonResponse(defectCodeFixtures[1]!)),
+      ),
+      '?sel=1002',
+    );
+
+    expect(within(screen.getByRole('dialog')).queryByText(/하위 상세 코드/)).not.toBeInTheDocument();
+  });
+
+  /* If-Match를 요청 경로(`…:deactivate`)로 꺼내면 언제나 비어 있어 전부 실패한다. */
+  it('확인하면 상세 경로의 잠금 토큰을 실은 사용 중지 요청이 나간다', async () => {
+    const { requests, user } = await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () =>
+          jsonResponse({ ...defectCodeFixtures[0], isActive: false }),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+    );
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+
+    const request = requests.find((candidate) => candidate.method === 'POST');
+    expect(request?.url.pathname).toBe(`${DEFECT_LIST_PATH}/1001:deactivate`);
+    expect(request?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(request?.headers.get('If-Match')).toBe('"7"');
+  });
+
+  it('성공하면 창이 닫히고 목록·상세를 다시 조회한다', async () => {
+    const { requests, user } = await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () =>
+          jsonResponse({ ...defectCodeFixtures[0], isActive: false }),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    const before = requests.filter((request) => request.method === 'GET').length;
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+    );
+    await screen.findByText('저장했습니다');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'GET').length).toBeGreaterThan(before);
+  });
+
+  it('실패하면 창이 닫히지 않고 창 안에 사유가 보인다', async () => {
+    const { user } = await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () =>
+          jsonResponse({ message: '' }, { status: 422 }),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('충돌이면 창 안에 최신 불러오기가 함께 나온다', async () => {
+    const { user } = await openDialog(
+      editFlowRoutes(
+        defectDetailRoute(),
+        defectDeactivateRoute(1001, () =>
+          jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+        ),
+      ),
+      '?sel=1001',
+    );
+
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+  });
+
+  it('이미 미사용인 코드에서는 사용 중지를 쓸 수 없다', async () => {
+    renderScreen(
+      [
+        defectOptionsRoute(),
+        defectListRoute(),
+        defectDetailRoute(defectCodeFixtures[5]),
+      ],
+      '?inactive=1&sel=1006',
+    );
+
+    expect(await screen.findByRole('button', { name: '사용 중지' })).toBeDisabled();
+    expect(
+      screen.getByText('사용 중지는 이미 미사용인 코드에는 할 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+});
+
 /*
  * 탭 정의 배열을 순회한다 — 탭이 셋으로 늘면 이 테스트도 함께 는다.
  * 탭마다 경로·필드 이름이 다르므로 어댑터별 응답을 만들어 준다.

@@ -26,6 +26,7 @@ const renderPane = (overrides: Partial<CodeFormPaneProps> = {}) => {
     isSaving: false,
     onSave: vi.fn(),
     onCancel: vi.fn(),
+    onDeactivate: vi.fn(),
     ...overrides,
   };
 
@@ -162,17 +163,37 @@ describe('CodeFormPane — 저장·취소', () => {
   });
 });
 
-describe('CodeFormPane — 사용 여부', () => {
+describe('CodeFormPane — 사용 여부와 사용 중지', () => {
   it('수정에서는 지금 사용 여부를 값으로 보인다', () => {
     renderPane({ mode: 'edit', isActive: false });
 
     expect(screen.getByText('미사용')).toBeInTheDocument();
   });
 
-  it('등록에는 아직 사용 여부가 없다', () => {
+  it('등록에는 아직 사용 여부도 사용 중지도 없다', () => {
     renderPane();
 
     expect(screen.queryByText('사용 중')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+  });
+
+  it('사용 중인 코드는 사용 중지를 시작할 수 있다', async () => {
+    const { props, user } = renderPane({ mode: 'edit', isActive: true });
+
+    await user.click(screen.getByRole('button', { name: '사용 중지' }));
+
+    expect(props.onDeactivate).toHaveBeenCalled();
+  });
+
+  it('이미 미사용이면 사용 중지가 비활성이고 사유가 보인다', () => {
+    renderPane({ mode: 'edit', isActive: false });
+
+    const button = screen.getByRole('button', { name: '사용 중지' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-describedby');
+    expect(
+      screen.getByText('사용 중지는 이미 미사용인 코드에는 할 수 없습니다.'),
+    ).toBeInTheDocument();
   });
 });
 

@@ -27,6 +27,7 @@ export interface CodeFormPaneProps {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  onDeactivate: () => void;
 }
 
 /** 우 페인 — 코드 하나를 등록하거나 고치는 자리. 두 탭이 같은 부품을 쓴다. */
@@ -45,12 +46,14 @@ export const CodeFormPane = ({
   isSaving,
   onSave,
   onCancel,
+  onDeactivate,
 }: CodeFormPaneProps) => {
   const parentId = useId();
   const parentErrorId = `${parentId}-error`;
   const parentLockId = `${parentId}-lock`;
   const parentNoteId = `${parentId}-note`;
   const activeLabelId = useId();
+  const deactivateNoteId = useId();
 
   const parentError = fieldErrors.parentId;
   const describedBy = [
@@ -133,11 +136,25 @@ export const CodeFormPane = ({
 
         {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. */}
         {mode === 'edit' && (
-          <div>
+          <div className="field-cell">
             <span className="field-label" id={activeLabelId}>
               {t.fields.isActive}
             </span>
             <p aria-labelledby={activeLabelId}>{isActive ? t.values.active : t.values.inactive}</p>
+            {/* 이미 미사용인 코드에는 중지할 대상이 없다. 감추지 않고 사유를 밝힌다(배치 규범 4). */}
+            <Button
+              variant="outlined"
+              disabled={!isActive}
+              aria-describedby={isActive ? undefined : deactivateNoteId}
+              onClick={onDeactivate}
+            >
+              {messages.common.deactivate}
+            </Button>
+            {!isActive && (
+              <span id={deactivateNoteId} className="field-note">
+                {t.actionReasons.deactivateNeedsActive}
+              </span>
+            )}
           </div>
         )}
       </div>

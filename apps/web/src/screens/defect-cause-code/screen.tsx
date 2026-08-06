@@ -20,8 +20,10 @@ import { CodeFormPane } from './code-form-pane';
 import { CodeListPane } from './code-list-pane';
 import { selectableCategoryOptions } from './code-options';
 import { validateCode } from './code-validation';
+import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import {
   categoryOptionsFor,
+  childCountOf,
   hasChildren,
   indexById,
   isCategory,
@@ -203,6 +205,25 @@ export const DefectCauseCodeScreen = () => {
     },
   });
 
+  const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+
+  const deactivateWrite = useMasterWrite<void, HierarchyCode>({
+    request: (_variables, headers) => adapter.deactivate(client, selectedId ?? 0, headers),
+    /*
+     * 잠금 토큰은 상세 경로에 보관돼 있다. 요청 경로(`…:deactivate`)로 꺼내면 언제나 비어 있어
+     * 사용 중지가 전부 실패한다.
+     */
+    etagPath: selectedId === null ? null : adapter.detailPath(selectedId),
+    // 응답에 ETag가 없어 보관된 토큰이 낡는다 — 상세까지 무효화해야 다음 쓰기가 된다.
+    invalidateKeys: [adapter.keys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: () => {
+      setIsDeactivateOpen(false);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
   const listPage = list.data?.page;
   const listTruncated = listPage !== undefined && isTruncated(listPage, items.length);
 
@@ -316,6 +337,16 @@ export const DefectCauseCodeScreen = () => {
     formValues.parentId,
   );
 
+  /*
+   * 하위가 딸린 대분류를 중지하면 영향 범위가 넓다. 누르기 전에 그 건수를 보인다.
+   * 세는 대상은 지금 화면에 그려진 목록이라 문구가 「표시된 목록 기준」이라고 밝힌다.
+   */
+  const selectedCode = selected ?? detail.data?.code ?? null;
+  const deactivateChildCount =
+    selectedCode !== null && isCategory(selectedCode) && childCountOf(items, selectedCode.id) > 0
+      ? childCountOf(items, selectedCode.id)
+      : null;
+
   const codeListPane = (
     <CodeListPane
       adapter={adapter}
@@ -374,6 +405,10 @@ export const DefectCauseCodeScreen = () => {
         setLocalFieldErrors({});
         write.reset();
         setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+      }}
+      onDeactivate={() => {
+        deactivateWrite.reset();
+        setIsDeactivateOpen(true);
       }}
     />
   );
@@ -441,6 +476,16 @@ export const DefectCauseCodeScreen = () => {
            */
           content: definition.kind === tab.kind ? tabContent : null,
         }))}
+      />
+
+      <DeactivateConfirmDialog
+        open={isDeactivateOpen}
+        onClose={() => setIsDeactivateOpen(false)}
+        onConfirm={() => deactivateWrite.write(undefined)}
+        isSaving={deactivateWrite.isSaving}
+        childCount={deactivateChildCount}
+        // 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다.
+        banner={<SaveErrorBanner error={deactivateWrite.error} onReload={handleReloadDetail} />}
       />
     </>
   );

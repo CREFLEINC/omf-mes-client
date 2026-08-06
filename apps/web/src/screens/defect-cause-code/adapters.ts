@@ -78,6 +78,11 @@ export interface CodeAdapter {
     preservedProcessId: number | null,
     headers: WriteHeaders,
   ) => Promise<ApiCallResult<HierarchyCode>>;
+  deactivate: (
+    client: Client,
+    id: number,
+    headers: WriteHeaders,
+  ) => Promise<ApiCallResult<HierarchyCode>>;
 }
 
 const t = messages.defectCauseCode;
@@ -215,6 +220,19 @@ export const defectCodeAdapter: CodeAdapter = {
       }),
       defectToHierarchyCode,
     ),
+  deactivate: async (client, id, headers) =>
+    toWriteResult(
+      await client.POST('/quality/defect-codes/{defectCodeId}:deactivate', {
+        params: {
+          path: { defectCodeId: id },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+      defectToHierarchyCode,
+    ),
 };
 
 export const causeCodeAdapter: CodeAdapter = {
@@ -279,6 +297,19 @@ export const causeCodeAdapter: CodeAdapter = {
           },
         },
         body: toCauseUpdate(toWritePayload(values, preservedProcessId)),
+      }),
+      causeToHierarchyCode,
+    ),
+  deactivate: async (client, id, headers) =>
+    toWriteResult(
+      await client.POST('/quality/cause-codes/{causeCodeId}:deactivate', {
+        params: {
+          path: { causeCodeId: id },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
       }),
       causeToHierarchyCode,
     ),
