@@ -1,9 +1,12 @@
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { toCodeGroupListQuery } from './filters';
 import type { CodeGroup, CodeGroupFilters, PageMeta } from './types';
+
+type CodeGroupDetailResponse = components['schemas']['CodeGroupDetailResponse'];
 
 /**
  * 코드그룹의 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -55,3 +58,27 @@ export const useCodeGroupList = (
  */
 export const codeGroupDetailPath = (codeGroupId: number): string =>
   `/mdm/code-groups/${String(codeGroupId)}`;
+
+/**
+ * 코드그룹 상세. 낙관적 잠금 토큰(ETag)과 코드 편집 가능 여부가 이 응답으로 온다 —
+ * 목록 행만으로는 저장을 시작할 수 없다.
+ */
+export const useCodeGroupDetail = (
+  codeGroupId: number | null,
+): UseQueryResult<CodeGroupDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: codeGroupKeys.detail(codeGroupId ?? 0),
+    enabled: codeGroupId !== null,
+    queryFn: () => {
+      if (codeGroupId === null) {
+        throw new Error('코드그룹을 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/code-groups/{codeGroupId}', { params: { path: { codeGroupId } } }),
+      );
+    },
+  });
+};

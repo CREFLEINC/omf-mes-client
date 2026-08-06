@@ -11,6 +11,7 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeGroupListPane>[0]> 
   const onApplyFilters = vi.fn<(next: CodeGroupFilters) => void>();
   const onSelect = vi.fn<(codeGroupId: number) => void>();
   const onChangePage = vi.fn<(page: number) => void>();
+  const onAddCodeGroup = vi.fn<() => void>();
 
   render(
     <CodeGroupListPane
@@ -22,12 +23,14 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeGroupListPane>[0]> 
       onChangePage={onChangePage}
       selectedCodeGroupId={null}
       onSelect={onSelect}
+      isCreating={false}
+      onAddCodeGroup={onAddCodeGroup}
       loadError={null}
       {...overrides}
     />,
   );
 
-  return { onApplyFilters, onSelect, onChangePage, user: userEvent.setup() };
+  return { onApplyFilters, onSelect, onChangePage, onAddCodeGroup, user: userEvent.setup() };
 };
 
 describe('CodeGroupListPane — 목록 표시', () => {
@@ -185,6 +188,22 @@ describe('CodeGroupListPane — 빈 상태', () => {
 
     await user.click(screen.getByRole('button', { name: '첫 쪽으로' }));
     expect(onChangePage).toHaveBeenCalledWith(1);
+  });
+});
+
+describe('CodeGroupListPane — 그룹 추가', () => {
+  it('그룹 추가를 누르면 알린다', async () => {
+    const { onAddCodeGroup, user } = renderPane();
+
+    await user.click(screen.getByRole('button', { name: '그룹 추가' }));
+
+    expect(onAddCodeGroup).toHaveBeenCalledTimes(1);
+  });
+
+  it('등록 폼이 이미 열려 있으면 그룹 추가가 막힌다 — 같은 폼을 두 번 열지 않는다', () => {
+    renderPane({ isCreating: true });
+
+    expect(screen.getByRole('button', { name: '그룹 추가' })).toBeDisabled();
   });
 });
 

@@ -942,6 +942,29 @@ const commonCode = {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
+    addCodeGroup: '그룹 추가',
+  },
+  /** 비활성 사유는 배치 규범 4의 문형을 따른다 — 컨트롤 이름으로 시작한다. */
+  actionReasons: {
+    /*
+     * 세 자원이 같은 문형을 쓰되 대상 이름이 달라 함수로 둔다 —
+     * 「사용 중지」가 어느 자원의 것인지 밝히지 않으면 사유가 붙은 대상을 복원할 단서가 없다.
+     */
+    deactivateAlreadyDone: (target: string): string =>
+      `사용 중지는 이미 미사용인 ${target}에 다시 할 수 없습니다.`,
+    deactivateNeedsSaved: (target: string): string =>
+      `사용 중지는 ${target}을 먼저 등록해야 할 수 있습니다.`,
+  },
+  /**
+   * 사용 중지 확인 창. 세 자원이 제목만 바꿔 쓰고 본문은 공유한다.
+   *
+   * **참조 건수를 내지 않는다**(결정 10) — 화면이 쓸 수 있는 건수는 「코드 필드를 고칠 수 있는지」의
+   * 근거이지 「이 행을 참조하는 자료의 수」가 아니다. 두 뜻을 섞으면 화면이 지어낸다.
+   */
+  dialog: {
+    deactivateCodeGroupTitle: '이 코드그룹을 사용 중지할까요?',
+    deactivateDescription:
+      '사용 중지하면 새 선택지에서 빠지고 이미 쓰인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
   },
   /**
    * 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다.
@@ -963,6 +986,11 @@ const commonCode = {
   },
   loading: {
     codeGroups: '코드그룹 목록을 불러오는 중',
+    codeGroupDetail: '코드그룹 정보를 불러오는 중',
+  },
+  /** 자원 이름 — 여러 자원이 공유하는 문구에 끼워 넣는다. */
+  targets: {
+    codeGroup: '코드그룹',
   },
   empty: {
     /*
@@ -995,10 +1023,17 @@ const commonCode = {
     },
     empty: {
       noneTitle: '등록된 코드그룹이 없습니다',
-      noneDescription: '조건 없이 조회했으나 코드그룹이 하나도 없습니다.',
+      noneDescription: '「그룹 추가」로 첫 코드그룹을 등록하세요.',
       noMatchTitle: '조건에 맞는 코드그룹이 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
       notSelected: '좌측에서 코드그룹을 먼저 고르세요',
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      groupCodeBlank: '그룹코드는 공백만으로 지정할 수 없습니다.',
+      groupNameBlank: '그룹명은 공백만으로 지정할 수 없습니다.',
+      groupCodeTooLong: '그룹코드는 50자를 넘을 수 없습니다.',
+      groupNameTooLong: '그룹명은 200자를 넘을 수 없습니다.',
     },
   },
 } as const;

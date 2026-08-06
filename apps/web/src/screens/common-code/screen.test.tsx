@@ -1,4 +1,5 @@
-import { screen, within } from '@testing-library/react';
+import type { components } from '@omf-mes/api-client';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -11,6 +12,8 @@ import {
 } from '../../test/api-harness';
 import { codeGroupFixtures } from './fixtures';
 import { CommonCodeScreen } from './screen';
+
+type Editability = components['schemas']['Editability'];
 
 const ROUTE = '/master-data/common-code';
 
@@ -63,12 +66,31 @@ const codeGroupListRoute = (
   respond: () => jsonResponse({ items, page: pageMeta }),
 });
 
+/** 코드그룹 상세 — `ETag`가 함께 온다(계약 실측). 저장의 `If-Match`가 이 값에서 나온다. */
+const codeGroupDetailRoute = (
+  codeGroupId = 1001,
+  editability: Editability = { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
+): StubRoute => ({
+  match: (request) => isGet(request, `${CODE_GROUPS_PATH}/${String(codeGroupId)}`),
+  respond: () =>
+    jsonResponse(
+      {
+        codeGroup: codeGroupFixtures.find((row) => row.codeGroupId === codeGroupId),
+        editability,
+      },
+      { headers: { ETag: 'W/"7"' } },
+    ),
+});
+
 const renderScreen = (routes: StubRoute[], search = '') => {
   const { fetch, requests } = createRecordingFetch(routes);
 
-  renderWithProviders(<CommonCodeScreen />, { fetch, route: `${ROUTE}${search}` });
+  const { queryClient } = renderWithProviders(<CommonCodeScreen />, {
+    fetch,
+    route: `${ROUTE}${search}`,
+  });
 
-  return { requests, user: userEvent.setup() };
+  return { requests, queryClient, user: userEvent.setup() };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -78,6 +100,11 @@ const codeGroupRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, CODE_GROUPS_PATH);
 
 const codeGroupPane = (): HTMLElement => screen.getByRole('region', { name: '코드그룹' });
+
+const codeGroupFormPane = (): HTMLElement => screen.getByRole('region', { name: '코드그룹 정보' });
+
+/** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 describe('CommonCodeScreen — 탭', () => {
   /* C2 — 만든 탭만 렌더한다. 자리만 먼저 두면 「눌러도 빈 화면인」 탭이 생긴다. */
@@ -318,7 +345,10 @@ describe('CommonCodeScreen — 쪽 이동 (C7·C8)', () => {
   /* C8 — 쪽을 옮기면 선택이 사라진다. 보이는 행이 달라지기 때문이다. */
   it('쪽을 옮기면 grp·val·vpage가 주소에서 사라진다', async () => {
     const { requests, user } = renderScreen(
-      [codeGroupListRoute(codeGroupFixtures, { page: 1, size: 2, total: 10 })],
+      [
+        codeGroupListRoute(codeGroupFixtures, { page: 1, size: 2, total: 10 }),
+        codeGroupDetailRoute(),
+      ],
       '?grp=1001&val=2001&vpage=3',
     );
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
@@ -335,7 +365,7 @@ describe('CommonCodeScreen — 조건 변경과 선택 (C6·C11)', () => {
   /* C6 */
   it('조건이 바뀌면 page·grp·val·vpage가 주소에서 사라진다', async () => {
     const { requests, user } = renderScreen(
-      [codeGroupListRoute()],
+      [codeGroupListRoute(), codeGroupDetailRoute()],
       '?page=3&grp=1001&val=2001&vpage=2&new=value',
     );
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
@@ -351,7 +381,7 @@ describe('CommonCodeScreen — 조건 변경과 선택 (C6·C11)', () => {
 
   /* C11 */
   it('그룹코드를 누르면 그 행에 선택 표식이 선다', async () => {
-    const { user } = renderScreen([codeGroupListRoute()]);
+    const { user } = renderScreen([codeGroupListRoute(), codeGroupDetailRoute(1002)]);
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     await user.click(screen.getByRole('button', { name: 'SYN-GRP-02' }));
@@ -366,5 +396,485 @@ describe('CommonCodeScreen — 조건 변경과 선택 (C6·C11)', () => {
     renderScreen([codeGroupListRoute()]);
 
     expect(await screen.findByText('좌측에서 코드그룹을 먼저 고르세요')).toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 코드그룹 상세 (C14·C15·C19)', () => {
+  /* C14 */
+  it('그룹을 고르면 상세 요청이 한 번 나간다', async () => {
+    const { requests, user } = renderScreen([codeGroupListRoute(), codeGroupDetailRoute()]);
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1001`)).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-GRP-01' }));
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+
+    expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1001`)).toHaveLength(1);
+  });
+
+  it('폼이 상세 값으로 채워진다', async () => {
+    renderScreen([codeGroupListRoute(), codeGroupDetailRoute()], '?grp=1001');
+
+    expect(await screen.findByLabelText('그룹코드')).toHaveValue('SYN-GRP-01');
+    expect(screen.getByLabelText('그룹명')).toHaveValue('합성 코드그룹 A');
+    expect(screen.getByLabelText('설명')).toHaveValue('합성 설명 A');
+  });
+
+  /*
+   * C15 — 입력하는 동안 캐시가 갱신돼도 사용자가 넣은 값이 서버 값으로 되돌아가면 안 된다.
+   * 같은 값을 다시 받으면 객체 동일성이 유지되므로 폼을 다시 세우지 않는다.
+   */
+  it('입력 중에 상세 캐시가 갱신돼도 입력값이 유지된다', async () => {
+    const { user, requests, queryClient } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute()],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+
+    await user.type(screen.getByLabelText('그룹명'), '-편집중');
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['common-code-groups'] });
+    });
+
+    await waitFor(() => {
+      expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1001`).length).toBeGreaterThan(1);
+    });
+
+    expect(screen.getByLabelText('그룹명')).toHaveValue('합성 코드그룹 A-편집중');
+  });
+
+  /* C19 — 판정의 주인은 codeEditable이다. reason이 EDITABLE이어도 잠근다. */
+  it('codeEditable이 거짓이면 reason이 EDITABLE이어도 그룹코드가 잠긴다', async () => {
+    renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(1001, {
+          codeEditable: false,
+          reason: 'EDITABLE',
+          referenceCount: 3,
+        }),
+      ],
+      '?grp=1001',
+    );
+
+    expect(await screen.findByLabelText('그룹코드')).toBeDisabled();
+    expect(
+      screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('codeEditable이 참이면 그룹코드를 고칠 수 있다', async () => {
+    renderScreen([codeGroupListRoute(), codeGroupDetailRoute()], '?grp=1001');
+
+    expect(await screen.findByLabelText('그룹코드')).toBeEnabled();
+  });
+
+  it('상세 조회에 실패하면 폼 대신 배너를 낸다', async () => {
+    renderScreen(
+      [
+        codeGroupListRoute(),
+        {
+          match: (request) => isGet(request, `${CODE_GROUPS_PATH}/1001`),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+      ],
+      '?grp=1001',
+    );
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '코드그룹 정보' })).not.toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 코드그룹 수정 (C16·C17·C18·C20)', () => {
+  const updateRoute: StubRoute = {
+    match: (request) =>
+      request.method === 'PUT' && new URL(request.url).pathname === `${CODE_GROUPS_PATH}/1001`,
+    respond: () =>
+      jsonResponse(
+        { ...codeGroupFixtures[0], groupName: '고친 이름' },
+        { headers: { ETag: 'W/"8"' } },
+      ),
+  };
+
+  const openEditForm = async () => {
+    const rendered = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), updateRoute],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+
+    return rendered;
+  };
+
+  /* C16 — 수정에는 멱등 키와 If-Match가 둘 다 필요하다(계약 실측). */
+  it('저장이 PUT으로 나가고 UUID 멱등 키와 If-Match가 둘 다 실린다', async () => {
+    const { requests, user } = await openEditForm();
+
+    await user.type(screen.getByLabelText('그룹명'), 'X');
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '저장' }));
+
+    const put = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'PUT');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+
+    expect(put.url.pathname).toBe(`${CODE_GROUPS_PATH}/1001`);
+    expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(put.headers.get('If-Match')).toBe('W/"7"');
+  });
+
+  /* C17 */
+  it('저장 본문에 isActive·codeGroupId가 없다', async () => {
+    const { requests, user } = await openEditForm();
+
+    await user.type(screen.getByLabelText('그룹명'), 'X');
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '저장' }));
+
+    const put = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'PUT');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+
+    const body = JSON.parse(put.body) as Record<string, unknown>;
+    expect('isActive' in body).toBe(false);
+    expect('codeGroupId' in body).toBe(false);
+    expect(Object.keys(body).sort()).toEqual(['description', 'groupCode', 'groupName']);
+  });
+
+  /* C18 — 화면에서 잡히는 오류는 서버로 보내지 않는다. */
+  it('필수를 비우면 요청이 나가지 않고 인라인 오류가 뜬다', async () => {
+    const { requests, user } = await openEditForm();
+
+    await user.clear(screen.getByLabelText('그룹명'));
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('필수 입력 항목입니다.')).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
+  it('공백만 넣어도 막고, 값을 고치면 그 오류가 지워진다', async () => {
+    const { requests, user } = await openEditForm();
+
+    await user.clear(screen.getByLabelText('그룹명'));
+    await user.type(screen.getByLabelText('그룹명'), '   ');
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('그룹명은 공백만으로 지정할 수 없습니다.')).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+
+    await user.type(screen.getByLabelText('그룹명'), '고친 이름');
+
+    expect(screen.queryByText('그룹명은 공백만으로 지정할 수 없습니다.')).not.toBeInTheDocument();
+  });
+
+  it('길이 상한을 넘으면 막는다', async () => {
+    const { requests, user } = await openEditForm();
+
+    await user.clear(screen.getByLabelText('그룹코드'));
+    await user.type(screen.getByLabelText('그룹코드'), 'A'.repeat(51));
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('그룹코드는 50자를 넘을 수 없습니다.')).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
+  /* C20 — 재조회로 풀리는 것은 충돌뿐이다. */
+  it('409면 원인별 문구와 최신 불러오기가 나온다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        {
+          match: (request) =>
+            request.method === 'PUT' &&
+            new URL(request.url).pathname === `${CODE_GROUPS_PATH}/1001`,
+          respond: () => jsonResponse({ conflictCause: 'erpSync', message: '' }, { status: 409 }),
+        },
+      ],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+
+    await user.type(screen.getByLabelText('그룹명'), 'X');
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText(
+        '외부 시스템에서 이 항목이 다시 동기화됐습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+      ),
+    ).toBeInTheDocument();
+
+    const before = requestsTo(requests, `${CODE_GROUPS_PATH}/1001`).filter(
+      (request) => request.method === 'GET',
+    ).length;
+
+    await user.click(screen.getByRole('button', { name: '최신 불러오기' }));
+
+    await waitFor(() => {
+      expect(
+        requestsTo(requests, `${CODE_GROUPS_PATH}/1001`).filter(
+          (request) => request.method === 'GET',
+        ).length,
+      ).toBeGreaterThan(before);
+    });
+  });
+
+  it('409가 아닌 실패에는 최신 불러오기를 내지 않는다', async () => {
+    const { user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        {
+          match: (request) =>
+            request.method === 'PUT' &&
+            new URL(request.url).pathname === `${CODE_GROUPS_PATH}/1001`,
+          respond: () =>
+            jsonResponse(
+              { errors: [{ scope: 'screen', code: 'STANDARD', message: '저장할 수 없습니다.' }] },
+              { status: 400 },
+            ),
+        },
+      ],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+
+    await user.type(screen.getByLabelText('그룹명'), 'X');
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('저장할 수 없습니다.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 코드그룹 등록 (C21)', () => {
+  const createRoute: StubRoute = {
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === CODE_GROUPS_PATH,
+    respond: () =>
+      jsonResponse(
+        {
+          codeGroupId: 1009,
+          groupCode: 'SYN-GRP-09',
+          groupName: '합성 코드그룹 I',
+          description: null,
+          isActive: true,
+        },
+        { status: 201 },
+      ),
+  };
+
+  const openCreateForm = async () => {
+    const rendered = renderScreen([
+      codeGroupListRoute(),
+      createRoute,
+      {
+        match: (request) => isGet(request, `${CODE_GROUPS_PATH}/1009`),
+        respond: () =>
+          jsonResponse(
+            {
+              codeGroup: {
+                codeGroupId: 1009,
+                groupCode: 'SYN-GRP-09',
+                groupName: '합성 코드그룹 I',
+                description: null,
+                isActive: true,
+              },
+              editability: { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
+            },
+            { headers: { ETag: 'W/"1"' } },
+          ),
+      },
+    ]);
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    await rendered.user.click(screen.getByRole('button', { name: '그룹 추가' }));
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+
+    return rendered;
+  };
+
+  it('등록 저장이 POST로 나가고 If-Match가 없다', async () => {
+    const { requests, user } = await openCreateForm();
+
+    await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
+    await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+
+    const post = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'POST');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+
+    expect(post.url.pathname).toBe(CODE_GROUPS_PATH);
+    expect(post.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(post.headers.has('If-Match')).toBe(false);
+  });
+
+  it('등록에 성공하면 새 그룹으로 옮겨 가고 new가 사라진다', async () => {
+    const { requests, user } = await openCreateForm();
+
+    await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
+    await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+
+    // 새 그룹의 상세를 조회한다 = grp가 새 번호가 되고 new가 사라졌다.
+    await waitFor(() => {
+      expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1009`)).toHaveLength(1);
+    });
+    expect(await screen.findByRole('button', { name: '저장' })).toBeInTheDocument();
+  });
+
+  it('등록에 성공하면 목록이 다시 조회된다', async () => {
+    const { requests, user } = await openCreateForm();
+    const before = codeGroupRequests(requests).filter((request) => request.method === 'GET').length;
+
+    await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
+    await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+
+    await waitFor(() => {
+      expect(
+        codeGroupRequests(requests).filter((request) => request.method === 'GET').length,
+      ).toBeGreaterThan(before);
+    });
+  });
+
+  /* 등록 폼이 열려 있는 동안 고른 그룹의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다. */
+  it('등록 폼을 열면 고른 그룹의 상세를 조회하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute()],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+    const before = requestsTo(requests, `${CODE_GROUPS_PATH}/1001`).length;
+
+    await user.click(screen.getByRole('button', { name: '그룹 추가' }));
+
+    expect(screen.getByLabelText('그룹코드')).toHaveValue('');
+    expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1001`)).toHaveLength(before);
+  });
+});
+
+describe('CommonCodeScreen — 코드그룹 사용 중지 (C22)', () => {
+  const deactivateRoute: StubRoute = {
+    match: (request) =>
+      request.method === 'POST' &&
+      new URL(request.url).pathname === `${CODE_GROUPS_PATH}/1001:deactivate`,
+    respond: () => jsonResponse({ ...codeGroupFixtures[0], isActive: false }),
+  };
+
+  const openEditForm = async (routes: StubRoute[] = [deactivateRoute]) => {
+    const rendered = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), ...routes],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+
+    return rendered;
+  };
+
+  it('사용 중지를 누르면 확인 창이 열리고 확인 전에는 요청이 나가지 않는다', async () => {
+    const { requests, user } = await openEditForm();
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'POST')).toBe(false);
+  });
+
+  it('확인하면 :deactivate로 나가고 멱등 키와 If-Match가 둘 다 실린다', async () => {
+    const { requests, user } = await openEditForm();
+
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    const post = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'POST');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+
+    expect(post.url.pathname).toBe(`${CODE_GROUPS_PATH}/1001:deactivate`);
+    expect(post.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(post.headers.get('If-Match')).toBe('W/"7"');
+  });
+
+  /* 응답에 ETag가 없어 보관된 토큰이 낡는다 — 재조회로 새 토큰을 확보해야 한다. */
+  it('중지에 성공하면 상세와 목록이 다시 조회된다', async () => {
+    const { requests, user } = await openEditForm();
+    const beforeDetail = requestsTo(requests, `${CODE_GROUPS_PATH}/1001`).length;
+    const beforeList = codeGroupRequests(requests).filter(
+      (request) => request.method === 'GET',
+    ).length;
+
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1001`).length).toBeGreaterThan(beforeDetail);
+      expect(
+        codeGroupRequests(requests).filter((request) => request.method === 'GET').length,
+      ).toBeGreaterThan(beforeList);
+    });
+  });
+
+  /* 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */
+  it('중지에 실패해도 확인 창이 닫히지 않는다', async () => {
+    const { user } = await openEditForm([
+      {
+        match: (request) =>
+          request.method === 'POST' &&
+          new URL(request.url).pathname === `${CODE_GROUPS_PATH}/1001:deactivate`,
+        respond: () => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+      },
+    ]);
+
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    expect(
+      await within(screen.getByRole('dialog')).findByText(
+        '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('확인 창에 참조 건수를 내지 않는다', async () => {
+    const { user } = await openEditForm();
+
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
+
+    expect(screen.getByRole('dialog').textContent).not.toMatch(/\d+\s*건/);
+  });
+
+  it('이미 미사용이면 사용 중지가 비활성이고 사유가 붙는다', async () => {
+    renderScreen([codeGroupListRoute(), codeGroupDetailRoute(1003)], '?grp=1003');
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+
+    const button = within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' });
+    expect(button).toBeDisabled();
+    expect(
+      screen.getByText('사용 중지는 이미 미사용인 코드그룹에 다시 할 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  /* 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다. */
+  it('창을 닫으면 DOM에서 사라진다', async () => {
+    const { user } = await openEditForm();
+
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

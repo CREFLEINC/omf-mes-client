@@ -34,6 +34,9 @@ export interface CodeGroupListPaneProps {
   onChangePage: (page: number) => void;
   selectedCodeGroupId: number | null;
   onSelect: (codeGroupId: number) => void;
+  /** 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
+  isCreating: boolean;
+  onAddCodeGroup: () => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 코드그룹이 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -59,6 +62,8 @@ export const CodeGroupListPane = ({
   onChangePage,
   selectedCodeGroupId,
   onSelect,
+  isCreating,
+  onAddCodeGroup,
   loadError,
 }: CodeGroupListPaneProps) => {
   /*
@@ -235,6 +240,14 @@ export const CodeGroupListPane = ({
       </div>
 
       {listSlot()}
+
+      <div className="filter-bar">
+        <div className="field-cell">
+          <Button variant="outlined" disabled={isCreating} onClick={onAddCodeGroup}>
+            {t.actions.addCodeGroup}
+          </Button>
+        </div>
+      </div>
     </section>
   );
 };
