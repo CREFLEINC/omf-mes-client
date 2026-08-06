@@ -11,6 +11,7 @@ import {
 } from '../../test/api-harness';
 import { itemFixtures, routingFixtures } from './fixtures';
 import { RoutingScreen } from './screen';
+import type { Routing } from './types';
 
 const ROUTE = '/master-data/routing';
 
@@ -58,6 +59,23 @@ const itemListRoute = (items = itemFixtures, total = items.length): StubRoute =>
 const revisionListRoute = (items = routingFixtures): StubRoute => ({
   match: (request) => isGet(request, '/planning/routings'),
   respond: () => jsonResponse({ items }),
+});
+
+const DEFAULT_EDITABILITY = { codeEditable: true, reason: 'EDITABLE' as const };
+
+interface EditabilityStub {
+  codeEditable: boolean;
+  reason: 'EDITABLE' | 'REFERENCED' | 'NOT_COUNTABLE' | 'RECEIVED_FROM_ERP';
+  referenceCount?: number | null;
+}
+
+const routingDetailRoute = (
+  routing: Routing = routingFixtures[0]!,
+  editability: EditabilityStub = DEFAULT_EDITABILITY,
+  etag = '"7"',
+): StubRoute => ({
+  match: (request) => isGet(request, `/planning/routings/${String(routing.routingId)}`),
+  respond: () => jsonResponse({ routing, editability }, { headers: { ETag: etag } }),
 });
 
 const renderScreen = (
@@ -240,5 +258,110 @@ describe('RoutingScreen — Rev 목록 조회·선택', () => {
 
     expect(await screen.findByText('Rev를 불러오지 못했습니다.')).toBeInTheDocument();
     expect(screen.queryByText('등록된 Rev가 없습니다')).not.toBeInTheDocument();
+  });
+});
+
+describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
+  it('Rev를 고르면 상세 요청이 나가고 폼이 응답 값으로 채워진다', async () => {
+    const { requests, user } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Rev 3' }));
+
+    expect(await screen.findByLabelText('Routing 코드')).toHaveValue('STANDARD');
+    expect(screen.getByLabelText('유효시작')).toHaveValue('2026-03-01');
+    // 유효종료가 널인 응답에서 입력칸이 비어 있다.
+    expect(screen.getByLabelText('유효종료')).toHaveValue('');
+    expect(requestsTo(requests, '/planning/routings/7003')).toHaveLength(1);
+  });
+
+  it('상세 조회에 실패하면 폼 대신 오류 배너가 나온다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        {
+          match: (request) => isGet(request, '/planning/routings/7003'),
+          respond: () => jsonResponse({ message: '상세를 불러오지 못했습니다.' }, { status: 500 }),
+        },
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    expect(await screen.findByText('상세를 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Routing 코드')).not.toBeInTheDocument();
+  });
+
+  it('확정 Rev에서는 헤더 입력이 전부 잠기고 푸는 방법을 안내한다', async () => {
+    renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute(routingFixtures[1])],
+      '?item=5001&rev=7002',
+    );
+
+    expect(await screen.findByLabelText('Routing 코드')).toBeDisabled();
+    expect(screen.getByLabelText('유효시작')).toBeDisabled();
+    expect(
+      screen.getByText('확정된 Rev는 수정할 수 없습니다. 변경하려면 신규 Rev를 발행하세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('작성중 Rev에서는 헤더를 편집할 수 있다', async () => {
+    renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001&rev=7003',
+    );
+
+    expect(await screen.findByLabelText('Routing 코드')).toBeEnabled();
+    expect(screen.getByLabelText('유효시작')).toBeEnabled();
+  });
+
+  /*
+   * 판정의 주인은 codeEditable이다 — 목 서버도 실서버도 codeEditable=false에
+   * reason=EDITABLE인 어긋난 조합을 실제로 내려준다.
+   */
+  it('codeEditable이 거짓이면 Routing 코드만 잠기고 상태 잠금과 다른 사유가 붙는다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(routingFixtures[0], { codeEditable: false, reason: 'EDITABLE' }),
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    expect(await screen.findByLabelText('Routing 코드')).toBeDisabled();
+    expect(screen.getByLabelText('유효시작')).toBeEnabled();
+    expect(
+      screen.getByText('지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('확정된 Rev는 수정할 수 없습니다. 변경하려면 신규 Rev를 발행하세요.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('고른 품목을 헤더에 값으로 밝힌다', async () => {
+    renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001&rev=7003',
+    );
+
+    expect(await screen.findByText('ITM-001 · 하우징 커버')).toBeInTheDocument();
+  });
+
+  it('고친 값은 취소로 기준값으로 되돌아간다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute(), routingDetailRoute()],
+      '?item=5001&rev=7003',
+    );
+
+    const code = await screen.findByLabelText('Routing 코드');
+    await user.type(code, '-X');
+    expect(code).toHaveValue('STANDARD-X');
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(screen.getByLabelText('Routing 코드')).toHaveValue('STANDARD');
   });
 });

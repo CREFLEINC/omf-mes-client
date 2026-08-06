@@ -1,7 +1,8 @@
-import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId } from 'react';
+import type { ReactNode } from 'react';
 
+import { DisabledAction } from './disabled-action';
 import { resolveRoutingStatus } from './routing-status';
 import type { Routing } from './types';
 
@@ -34,8 +35,6 @@ export const RevisionPane = ({
   onSelect,
   loadError,
 }: RevisionPaneProps) => {
-  const actionNoteId = useId();
-
   const columns: Column<Routing>[] = [
     {
       key: 'routingVersion',
@@ -115,14 +114,7 @@ export const RevisionPane = ({
     <section className="pane" aria-label={t.panes.revision}>
       {isItemSelected && (
         <div className="filter-bar">
-          <div className="field-cell">
-            <Button variant="outlined" disabled aria-describedby={actionNoteId}>
-              {actionLabel}
-            </Button>
-            <span id={actionNoteId} className="field-note">
-              {actionReason}
-            </span>
-          </div>
+          <DisabledAction label={actionLabel} reason={actionReason} />
         </div>
       )}
 

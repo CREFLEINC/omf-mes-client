@@ -87,7 +87,9 @@ describe('RevisionPane', () => {
     const button = screen.getByRole('button', { name: '신규 Rev 발행' });
     expect(button).toBeDisabled();
     expect(
-      screen.getByText('신규 Rev 발행은 아직 실행할 수 없습니다. 기능이 준비되면 이 버튼을 쓸 수 있습니다.'),
+      screen.getByText(
+        '신규 Rev 발행은 아직 실행할 수 없습니다. 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+      ),
     ).toBeInTheDocument();
   });
 

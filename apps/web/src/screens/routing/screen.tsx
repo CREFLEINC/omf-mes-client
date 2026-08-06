@@ -1,14 +1,34 @@
-import { AlertBanner, Breadcrumb, Button, EmptyState, PageHeader } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import {
+  AlertBanner,
+  Breadcrumb,
+  Button,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+} from '@crefle/web-ui';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { codeLockMessage } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { HeaderPane } from './header-pane';
 import { ItemPane } from './item-pane';
-import { isTruncated, useItemList, useRoutingList } from './queries';
+import { isSameHeaderValues, routingToFormValues } from './mappers';
+import { isTruncated, useItemList, useRoutingDetail, useRoutingList } from './queries';
 import { RevisionPane } from './revision-pane';
-import type { ItemFilters } from './types';
+import { resolveRoutingStatus } from './routing-status';
+import type { ItemFilters, RoutingHeaderFormValues } from './types';
+
+type RoutingDetailResponse = components['schemas']['RoutingDetailResponse'];
+
+/** 폼의 현재 값과 그것이 어디서 나왔는지. 「고친 것이 있는가」는 둘의 비교로 판정한다. */
+interface HeaderFormState {
+  source: RoutingDetailResponse;
+  baseline: RoutingHeaderFormValues;
+  values: RoutingHeaderFormValues;
+}
 
 const t = messages.routing;
 
@@ -92,6 +112,31 @@ export const RoutingScreen = () => {
   const revisionList = useRoutingList(selectedItemId);
   const revisions = revisionList.data?.items ?? [];
 
+  const detail = useRoutingDetail(selectedRoutingId);
+
+  const [formState, setFormState] = useState<HeaderFormState | null>(null);
+
+  /*
+   * 폼의 기준값은 상세 응답에서 온다. 응답 객체가 바뀔 때만 다시 세워
+   * 사용자가 입력하는 동안 값이 서버 값으로 되돌아가지 않게 한다.
+   * 캐시가 같은 값을 돌려주면 객체 동일성이 유지되므로 다시 세우지 않는다.
+   */
+  const formSource = detail.data ?? null;
+
+  if (formSource !== null && formState?.source !== formSource) {
+    const seeded = routingToFormValues(formSource.routing);
+    setFormState({ source: formSource, baseline: seeded, values: seeded });
+  }
+
+  const isHeaderDirty =
+    formState !== null && !isSameHeaderValues(formState.values, formState.baseline);
+
+  const changeHeaderValues = (patch: Partial<RoutingHeaderFormValues>) => {
+    setFormState((prev) =>
+      prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+    );
+  };
+
   const updateParams = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
     for (const [key, value] of Object.entries(patch)) {
@@ -118,6 +163,71 @@ export const RoutingScreen = () => {
 
   const itemPage = itemList.data?.page;
   const isItemListTruncated = itemPage !== undefined && isTruncated(itemPage, items.length);
+
+  /** 어느 품목의 Routing인지 값으로 밝힌다. 조건이 좁아져 목록에 없으면 지어내지 않는다. */
+  const selectedItem = items.find((item) => item.itemId === selectedItemId) ?? null;
+  const itemLabel =
+    selectedItem === null ? t.values.empty : `${selectedItem.itemCode} · ${selectedItem.itemName}`;
+
+  /**
+   * 우측 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
+   * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
+   */
+  const renderHeaderPane = () => {
+    if (selectedItemId === null) {
+      return (
+        <section className="pane" aria-label={t.panes.header}>
+          <EmptyState size="sm" title={t.empty.itemNotSelected} />
+        </section>
+      );
+    }
+
+    if (selectedRoutingId === null) {
+      return (
+        <section className="pane" aria-label={t.panes.header}>
+          <EmptyState size="sm" title={t.empty.revisionNotSelected} />
+        </section>
+      );
+    }
+
+    if (detail.isError) {
+      return (
+        <section className="pane" aria-label={t.panes.header}>
+          <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
+        </section>
+      );
+    }
+
+    if (detail.data === undefined || formState === null) {
+      return (
+        <section className="pane" aria-label={t.panes.header}>
+          <div role="status" aria-label={t.loading.header}>
+            <SkeletonText lines={5} />
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <HeaderPane
+        itemLabel={itemLabel}
+        routingVersion={detail.data.routing.routingVersion}
+        status={resolveRoutingStatus(detail.data.routing.statusCode)}
+        values={formState.values}
+        onChange={changeHeaderValues}
+        fieldErrors={{}}
+        banner={null}
+        // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.
+        codeLockReason={codeLockMessage(detail.data.editability)}
+        isDirty={isHeaderDirty}
+        isSaving={false}
+        onSave={undefined}
+        onCancel={() =>
+          setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }))
+        }
+      />
+    );
+  };
 
   return (
     <>
@@ -165,14 +275,7 @@ export const RoutingScreen = () => {
           }
         />
 
-        <div className="pane-stack">
-          <section className="pane" aria-label={t.panes.header}>
-            <EmptyState
-              size="sm"
-              title={selectedItemId === null ? t.empty.itemNotSelected : t.empty.revisionNotSelected}
-            />
-          </section>
-        </div>
+        <div className="pane-stack">{renderHeaderPane()}</div>
       </div>
     </>
   );

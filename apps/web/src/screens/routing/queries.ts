@@ -8,6 +8,7 @@ import type { ItemFilters } from './types';
 type PageMeta = components['schemas']['PageMeta'];
 type Item = components['schemas']['Item'];
 type Routing = components['schemas']['Routing'];
+type RoutingDetailResponse = components['schemas']['RoutingDetailResponse'];
 
 export interface ItemListResponse {
   items: Item[];
@@ -63,6 +64,7 @@ export const isTruncated = (page: PageMeta, shown: number): boolean => page.tota
 export const routingKeys = {
   all: ['routings'] as const,
   list: (itemId: number) => ['routings', 'list', itemId] as const,
+  detail: (routingId: number) => ['routings', 'detail', routingId] as const,
 };
 
 /**
@@ -85,6 +87,30 @@ export const useRoutingList = (itemId: number | null): UseQueryResult<RoutingLis
       }
 
       return runRequest(() => client.GET('/planning/routings', { params: { query: { itemId } } }));
+    },
+  });
+};
+
+/**
+ * Routing 헤더 상세. 낙관적 잠금 토큰(ETag)과 코드 편집 가능 여부가 이 응답으로 온다 —
+ * 목록 행만으로는 저장을 시작할 수 없다.
+ */
+export const useRoutingDetail = (
+  routingId: number | null,
+): UseQueryResult<RoutingDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: routingKeys.detail(routingId ?? 0),
+    enabled: routingId !== null,
+    queryFn: () => {
+      if (routingId === null) {
+        throw new Error('Rev를 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/planning/routings/{routingId}', { params: { path: { routingId } } }),
+      );
     },
   });
 };
