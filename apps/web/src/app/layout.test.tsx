@@ -58,6 +58,17 @@ describe('AppLayout', () => {
     );
   });
 
+  it('사이드바에 공통코드·조직·작업자 메뉴가 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByRole('link', { name: '공통코드·조직·작업자' })).toHaveAttribute(
+      'href',
+      '/master-data/common-code',
+    );
+  });
+
   it('사이드바에 연계 동기화 현황 메뉴가 보인다', () => {
     renderLayout('본문 내용');
 
