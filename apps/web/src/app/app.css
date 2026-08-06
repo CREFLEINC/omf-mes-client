@@ -160,6 +160,18 @@ main > * + * {
   margin-top: var(--field-label-layer);
 }
 
+/*
+ * 규범 2-1 — 의미상 짝인 액션(조회·초기화)이 갈라지지 않게 한 덩어리로 묶는다.
+ * .filter-bar가 flex-wrap이라 좁아지면 하나씩 넘어가는데, 짝이 갈라지면
+ * 남은 버튼이 무엇에 딸린 것인지 읽히지 않는다(좁은 페인에서 실제로 초기화만 혼자 떨어졌다).
+ * 안쪽 간격을 .filter-bar의 gap과 같게 둬야 같은 줄에 두 종류의 간격이 생기지 않는다.
+ * 라벨 층은 이 묶음이 한 번만 갖는다 — 버튼마다 붙이면 두 번 적용돼 짝이 아래로 내려간다.
+ */
+.filter-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

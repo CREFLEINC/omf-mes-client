@@ -137,16 +137,17 @@ export const ItemPane = ({
             {t.filters.onlyWithoutRouting}
           </Checkbox>
         </div>
-        <Button className="field-cell-unlabeled" onClick={() => onApplyFilters(draft)}>
-          {messages.common.search}
-        </Button>
-        <Button
-          className="field-cell-unlabeled"
-          variant="outlined"
-          onClick={() => onApplyFilters(DEFAULT_ITEM_FILTERS)}
-        >
-          {messages.common.reset}
-        </Button>
+        {/*
+         * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
+         * 좌 페인이 좁아 줄바꿈 자체는 피할 수 없지만, 갈라지면 남은 버튼이 무엇에 딸린 것인지 읽히지 않는다.
+         * 라벨 층은 묶음이 한 번만 갖는다 — 버튼마다 붙이면 두 번 적용된다.
+         */}
+        <div className="filter-actions field-cell-unlabeled">
+          <Button onClick={() => onApplyFilters(draft)}>{messages.common.search}</Button>
+          <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_ITEM_FILTERS)}>
+            {messages.common.reset}
+          </Button>
+        </div>
       </div>
 
       <div className="filter-bar">
