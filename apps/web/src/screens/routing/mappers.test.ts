@@ -5,6 +5,7 @@ import {
   emptyHeaderFormValues,
   isSameHeaderValues,
   routingToFormValues,
+  toRoutingCreate,
   toRoutingUpdate,
 } from './mappers';
 import type { Routing } from './types';
@@ -81,5 +82,36 @@ describe('isSameHeaderValues', () => {
     expect(isSameHeaderValues(values, { ...values })).toBe(true);
     expect(isSameHeaderValues(values, { ...values, effectiveTo: '' })).toBe(false);
     expect(isSameHeaderValues(values, { ...values, routingCode: 'OTHER' })).toBe(false);
+  });
+});
+
+describe('toRoutingCreate', () => {
+  it('수정 본문에 품목만 더한다 — 판 번호와 상태는 서버가 채운다', () => {
+    const body = toRoutingCreate(
+      { routingCode: ' STANDARD ', effectiveFrom: '2026-03-01', effectiveTo: '' },
+      5001,
+    );
+
+    expect(body).toEqual({
+      itemId: 5001,
+      routingCode: 'STANDARD',
+      effectiveFrom: '2026-03-01',
+      effectiveTo: null,
+    });
+  });
+
+  /* 판 번호·상태를 실어 보내면 계약 위반이다 — 키가 늘면 이 단언이 먼저 깨진다. */
+  it('본문 키가 정확히 넷이다', () => {
+    const body = toRoutingCreate(
+      { routingCode: 'STANDARD', effectiveFrom: '2026-03-01', effectiveTo: '2026-03-31' },
+      5001,
+    );
+
+    expect(Object.keys(body).sort()).toEqual([
+      'effectiveFrom',
+      'effectiveTo',
+      'itemId',
+      'routingCode',
+    ]);
   });
 });

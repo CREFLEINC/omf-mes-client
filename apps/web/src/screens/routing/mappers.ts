@@ -3,6 +3,7 @@ import type { components } from '@omf-mes/api-client';
 import type { Routing, RoutingHeaderFormValues } from './types';
 
 type RoutingUpdate = components['schemas']['RoutingUpdate'];
+type RoutingCreate = components['schemas']['RoutingCreate'];
 
 /**
  * 계약 표현과 폼 표현 사이의 변환.
@@ -35,6 +36,20 @@ export const toRoutingUpdate = (values: RoutingHeaderFormValues): RoutingUpdate 
   routingCode: values.routingCode.trim(),
   effectiveFrom: values.effectiveFrom,
   effectiveTo: values.effectiveTo === '' ? null : values.effectiveTo,
+});
+
+/**
+ * 첫 Rev 등록 요청 본문. 수정 본문에 품목을 더한 것이 전부다 —
+ * 판 번호는 서버가 항상 1로, 상태는 항상 작성중으로 채운다(계약).
+ *
+ * 품목은 등록할 때만 정할 수 있고 뒤에는 바꿀 수 없어 여기서만 실린다.
+ */
+export const toRoutingCreate = (
+  values: RoutingHeaderFormValues,
+  itemId: number,
+): RoutingCreate => ({
+  ...toRoutingUpdate(values),
+  itemId,
 });
 
 /** 기준값과 현재 값의 비교. 「고친 것이 있는가」의 판정 근거다. */

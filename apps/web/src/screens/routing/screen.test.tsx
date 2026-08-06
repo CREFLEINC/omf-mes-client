@@ -1185,3 +1185,187 @@ describe('RoutingScreen — 확정·폐기', () => {
     expect(requestsTo(requests, '/planning/routings/7003:confirm')).toHaveLength(0);
   });
 });
+
+const revisionRegion = (): HTMLElement => screen.getByRole('region', { name: 'Rev 목록' });
+
+const createRoutingRoute = (
+  respond: StubRoute['respond'] = () =>
+    jsonResponse({ ...routingFixtures[0], routingId: 7010, routingVersion: 1 }, { status: 201 }),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === '/planning/routings',
+  respond,
+});
+
+describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
+  it('Rev가 1건 이상이면 발행 버튼이 활성되고 멱등 키만 실어 요청한다', async () => {
+    const { requests, user } = renderDraftOperations([
+      transitionRoute('new-revision', 7003, () =>
+        jsonResponse({ ...routingFixtures[0], routingId: 7004, routingVersion: 4 }, { status: 201 }),
+      ),
+      routingDetailRoute({ ...routingFixtures[0]!, routingId: 7004, routingVersion: 4 }),
+      operationListRoute(7004),
+    ]);
+    await screen.findByText('1차 사출');
+
+    await user.click(within(revisionRegion()).getByRole('button', { name: '신규 Rev 발행' }));
+    await screen.findByText('등록했습니다');
+
+    const posts = requestsTo(requests, '/planning/routings/7003:new-revision');
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(posts[0]?.headers.get('If-Match')).toBeNull();
+  });
+
+  /*
+   * 201 응답에는 ETag가 없다 — 새 판으로 옮겨 상세를 다시 조회해야 잠금 토큰이 생긴다.
+   * 옮기지 않으면 사용자가 방금 만든 판을 목록에서 직접 찾아야 한다.
+   */
+  it('발행에 성공하면 새 Rev로 옮겨 상세와 라인을 다시 조회한다', async () => {
+    const { requests, user } = renderDraftOperations([
+      transitionRoute('new-revision', 7003, () =>
+        jsonResponse({ ...routingFixtures[0], routingId: 7004, routingVersion: 4 }, { status: 201 }),
+      ),
+      routingDetailRoute({ ...routingFixtures[0]!, routingId: 7004, routingVersion: 4 }),
+      operationListRoute(7004),
+    ]);
+    await screen.findByText('1차 사출');
+
+    await user.click(within(revisionRegion()).getByRole('button', { name: '신규 Rev 발행' }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, '/planning/routings/7004')).toHaveLength(1);
+    });
+    expect(requestsTo(requests, '/planning/routings/7004/operations')).toHaveLength(1);
+  });
+
+  it('상태 잠김은 「최신 불러오기」 없는 배너로 낸다', async () => {
+    const { user } = renderDraftOperations([
+      transitionRoute('new-revision', 7003, () =>
+        stateLockedResponse('확정된 Rev에서만 신규 Rev를 발행할 수 있습니다.'),
+      ),
+    ]);
+    await screen.findByText('1차 사출');
+
+    await user.click(within(revisionRegion()).getByRole('button', { name: '신규 Rev 발행' }));
+
+    expect(
+      await screen.findByText('확정된 Rev에서만 신규 Rev를 발행할 수 있습니다.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+
+  it('저장하지 않은 변경이 있으면 발행이 비활성이고 사유가 보인다', async () => {
+    const { user } = renderDraftOperations([transitionRoute('new-revision')]);
+    await screen.findByText('1차 사출');
+
+    await user.click(
+      within(operationsRegion()).getByRole('button', { name: '1번 공정 삭제' }),
+    );
+
+    expect(within(revisionRegion()).getByRole('button', { name: '신규 Rev 발행' })).toBeDisabled();
+    expect(
+      screen.getByText(
+        '신규 Rev 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('Rev가 0건이면 등록 액션이 보이고 누르면 빈 등록 폼이 열린다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute([]), processListRoute()],
+      '?item=5001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Routing 등록' }));
+
+    expect(await screen.findByLabelText('Routing 코드')).toHaveValue('');
+    expect(screen.getByLabelText('유효시작')).toHaveValue('');
+    // 판 번호와 상태는 서버가 채운다 — 없는 값을 미리 지어내 보이지 않는다.
+    expect(screen.queryByText('Rev 1')).not.toBeInTheDocument();
+    expect(screen.queryByText('작성중')).not.toBeInTheDocument();
+  });
+
+  it('등록 폼에서 로컬 검증에 걸리면 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [itemListRoute(), revisionListRoute([]), processListRoute(), createRoutingRoute()],
+      '?item=5001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Routing 등록' }));
+    await user.type(await screen.findByLabelText('Routing 코드'), 'STANDARD');
+    await user.click(within(headerRegion()).getByRole('button', { name: 'Routing 등록' }));
+
+    expect(await screen.findByText('필수 입력 항목입니다.')).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  it('등록하면 품목 id와 코드·유효시작을 실어 보내고 새 Rev로 옮긴다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute([]),
+        processListRoute(),
+        createRoutingRoute(),
+        routingDetailRoute({ ...routingFixtures[0]!, routingId: 7010, routingVersion: 1 }),
+        operationListRoute(7010, []),
+      ],
+      '?item=5001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Routing 등록' }));
+    await user.type(await screen.findByLabelText('Routing 코드'), 'STANDARD');
+    fireEvent.change(screen.getByLabelText('유효시작'), { target: { value: '2026-03-01' } });
+    await user.click(within(headerRegion()).getByRole('button', { name: 'Routing 등록' }));
+
+    await screen.findByText('등록했습니다');
+
+    const post = requestsTo(requests, '/planning/routings').find(
+      (request) => request.method === 'POST',
+    );
+    expect(post?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    /* 첫 등록에는 잠글 대상이 없다 — 계약이 If-Match를 요구하지 않는다. */
+    expect(post?.headers.get('If-Match')).toBeNull();
+    expect(JSON.parse(post?.body ?? '{}')).toEqual({
+      itemId: 5001,
+      routingCode: 'STANDARD',
+      effectiveFrom: '2026-03-01',
+      effectiveTo: null,
+    });
+
+    /* 201에는 ETag가 없다 — 새 판으로 옮겨 상세를 다시 조회해야 잠금 토큰이 생긴다. */
+    await waitFor(() => {
+      expect(requestsTo(requests, '/planning/routings/7010')).toHaveLength(1);
+    });
+  });
+
+  it('등록 폼에서 취소하면 폼이 닫힌다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute([]), processListRoute(), createRoutingRoute()],
+      '?item=5001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Routing 등록' }));
+    await user.type(await screen.findByLabelText('Routing 코드'), 'STANDARD');
+    await user.click(within(headerRegion()).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByLabelText('Routing 코드')).not.toBeInTheDocument();
+  });
+
+  /* 아직 없는 Rev에는 전이할 대상이 없다. 감추지 않고 사유와 함께 비활성으로 둔다. */
+  it('등록 폼에서는 확정·폐기가 비활성이고 사유가 보인다', async () => {
+    const { user } = renderScreen(
+      [itemListRoute(), revisionListRoute([]), processListRoute()],
+      '?item=5001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Routing 등록' }));
+
+    const header = headerRegion();
+    expect(within(header).getByRole('button', { name: '확정' })).toBeDisabled();
+    expect(within(header).getByRole('button', { name: '폐기' })).toBeDisabled();
+    expect(
+      within(header).getAllByText('확정·폐기는 Routing을 먼저 등록해야 할 수 있습니다.').length,
+    ).toBeGreaterThan(0);
+  });
+});

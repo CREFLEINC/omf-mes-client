@@ -1,4 +1,4 @@
-import { Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -16,6 +16,15 @@ export interface RevisionPaneProps {
   selectedRoutingId: number | null;
   onSelect: (routingId: number) => void;
   loadError: ReactNode;
+  /** 신규 Rev 발행을 막는 사유. null이면 누를 수 있다 */
+  newRevisionDisabledReason: string | null;
+  /** 첫 Rev 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
+  isCreating: boolean;
+  isPublishing: boolean;
+  onNewRevision: () => void;
+  onCreateRouting: () => void;
+  /** 발행 실패 배너 슬롯 */
+  banner: ReactNode;
 }
 
 /**
@@ -34,6 +43,12 @@ export const RevisionPane = ({
   selectedRoutingId,
   onSelect,
   loadError,
+  newRevisionDisabledReason,
+  isCreating,
+  isPublishing,
+  onNewRevision,
+  onCreateRouting,
+  banner,
 }: RevisionPaneProps) => {
   const columns: Column<Routing>[] = [
     {
@@ -101,22 +116,42 @@ export const RevisionPane = ({
   };
 
   /*
-   * Rev가 하나도 없으면 발행할 대상 판이 없다 — 첫 판을 만드는 액션으로 바뀐다.
-   * 아직 붙지 않은 액션이므로 감추지 않고 사유와 함께 비활성으로 둔다.
+   * Rev가 하나도 없으면 발행할 원본 판이 없다 — 첫 판을 만드는 액션으로 바뀐다.
+   * 계약도 두 경로를 나눠 두었다(`:new-revision`은 기존 판을 복사한다).
    */
   const hasRevisions = revisions.length > 0;
-  const actionLabel = hasRevisions ? t.actions.newRevision : t.actions.createRouting;
-  const actionReason = hasRevisions
-    ? t.actionReasons.newRevisionNotReady
-    : t.actionReasons.createRoutingNotReady;
+
+  const actionSlot = (): ReactNode => {
+    if (!hasRevisions) {
+      return (
+        <div className="field-cell">
+          <Button variant="outlined" disabled={isCreating} onClick={onCreateRouting}>
+            {t.actions.createRouting}
+          </Button>
+        </div>
+      );
+    }
+
+    if (newRevisionDisabledReason !== null) {
+      return (
+        <DisabledAction label={t.actions.newRevision} reason={newRevisionDisabledReason} />
+      );
+    }
+
+    return (
+      <div className="field-cell">
+        <Button variant="outlined" disabled={isPublishing} onClick={onNewRevision}>
+          {t.actions.newRevision}
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <section className="pane" aria-label={t.panes.revision}>
-      {isItemSelected && (
-        <div className="filter-bar">
-          <DisabledAction label={actionLabel} reason={actionReason} />
-        </div>
-      )}
+      {banner}
+
+      {isItemSelected && <div className="filter-bar">{actionSlot()}</div>}
 
       {listSlot()}
     </section>

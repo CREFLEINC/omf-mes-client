@@ -23,6 +23,7 @@ const renderPane = (overrides: Partial<HeaderPaneProps> = {}) => {
 
   render(
     <HeaderPane
+      mode="edit"
       itemLabel="ITM-001 · 하우징 커버"
       routingVersion={3}
       status={resolveRoutingStatus('DRAFT')}

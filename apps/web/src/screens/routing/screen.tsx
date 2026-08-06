@@ -18,7 +18,13 @@ import { toApiError } from '../../patterns/request';
 import { HeaderPane } from './header-pane';
 import { ROUTING_HEADER_FORM_FIELDS, validateRoutingHeader } from './header-validation';
 import { ItemPane } from './item-pane';
-import { isSameHeaderValues, routingToFormValues, toRoutingUpdate } from './mappers';
+import {
+  emptyHeaderFormValues,
+  isSameHeaderValues,
+  routingToFormValues,
+  toRoutingCreate,
+  toRoutingUpdate,
+} from './mappers';
 import { OperationFormDialog } from './operation-form-dialog';
 import {
   createOperationDraft,
@@ -118,14 +124,15 @@ interface LoadErrorBannerProps {
 /** 계약이 정한 상태 전이 경로. 본문이 없고 멱등 키만 싣는다. */
 type TransitionPath =
   | '/planning/routings/{routingId}:confirm'
-  | '/planning/routings/{routingId}:obsolete';
+  | '/planning/routings/{routingId}:obsolete'
+  | '/planning/routings/{routingId}:new-revision';
 
 interface RoutingTransitionOptions {
   /** 계약 클라이언트. 훅이 화면 상태를 알 필요가 없도록 필요한 것만 받는다 */
   client: ApiClient['client'];
   routingId: number | null;
   path: TransitionPath;
-  onDone: () => void;
+  onDone: (saved: Routing) => void;
 }
 
 /**
@@ -507,6 +514,72 @@ export const RoutingScreen = () => {
     onDone: finishTransition,
   });
 
+  /*
+   * 복사할 원본은 고른 Rev다. 아무것도 고르지 않았으면 최신 판을 쓴다 —
+   * 계약이 목록을 판 번호 내림차순으로 준다고 정했으므로 첫 행이 최신이다.
+   * 원본이 확정이 아니면 서버가 400(STATE_LOCKED)으로 거부하고 화면이 그 사유를 배너로 낸다.
+   */
+  const newRevisionSourceId = selectedRoutingId ?? revisions[0]?.routingId ?? null;
+
+  const newRevisionWrite = useRoutingTransition({
+    client,
+    routingId: newRevisionSourceId,
+    path: '/planning/routings/{routingId}:new-revision',
+    onDone: (saved) => {
+      /*
+       * 201 응답에는 ETag가 없다 — 새 판을 고르면 상세를 다시 조회하게 되고
+       * 그 조회가 잠금 토큰을 확보한다. 여기서 옮기지 않으면 사용자가 방금 만든 판을 직접 찾아야 한다.
+       */
+      updateParams({ rev: String(saved.routingId) });
+      toast.show({ variant: 'success', description: messages.common.created });
+    },
+  });
+
+  /**
+   * 첫 Rev 등록 폼의 값. null이면 폼이 닫혀 있다.
+   *
+   * 상세 응답이 없는 폼이라 헤더 폼 상태와 섞지 않는다 —
+   * 섞으면 「기준값이 서버에서 왔는가」가 흐려지고, 등록 성공 후 어느 쪽을 비울지도 갈린다.
+   */
+  const [createValues, setCreateValues] = useState<RoutingHeaderFormValues | null>(null);
+  const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
+
+  const createWrite = useMasterWrite<RoutingHeaderFormValues, Routing>({
+    request: (values, headers) =>
+      client.POST('/planning/routings', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body: toRoutingCreate(values, selectedItemId ?? 0),
+      }),
+    // 아직 없는 자원이라 잠글 대상이 없다. 201 응답에도 ETag가 없다(계약 실측).
+    etagPath: null,
+    invalidateKeys: [routingKeys.all],
+    knownFields: ROUTING_HEADER_FORM_FIELDS,
+    onSuccess: (saved) => {
+      setCreateValues(null);
+      setCreateFieldErrors({});
+      updateParams({ rev: String(saved.routingId) });
+      toast.show({ variant: 'success', description: messages.common.created });
+    },
+  });
+
+  const handleSaveCreate = () => {
+    if (createValues === null) return;
+
+    const errors = validateRoutingHeader(createValues);
+    setCreateFieldErrors(errors);
+
+    // 화면에서 잡히는 오류는 서버로 보내지 않는다.
+    if (Object.keys(errors).length > 0) return;
+
+    createWrite.write(createValues);
+  };
+
+  const closeCreateForm = () => {
+    createWrite.reset();
+    setCreateValues(null);
+    setCreateFieldErrors({});
+  };
+
   const transitionWrite = transition === 'obsolete' ? obsoleteWrite : confirmWrite;
 
   /** 다른 Rev·품목으로 옮기면 열려 있던 확인 창과 실패 표시를 들고 가지 않는다. */
@@ -538,6 +611,14 @@ export const RoutingScreen = () => {
   /** 폐기는 확정된 Rev에만 성립한다 — 계약이 그렇게 정했고 상태표도 같다. */
   const obsoleteDisabledReason =
     detailStatus?.status === 'confirmed' ? null : t.actionReasons.obsoleteNeedsConfirmed;
+
+  /*
+   * 발행하면 새 판이 선택돼 지금 판을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
+   * 원본 판의 상태(확정이어야 한다)는 서버가 판정한다. 상태 코드가 확정되지 않은 지금
+   * 화면이 막으면 잘못 막을 수 있고, 그때 사용자가 풀 길이 없다.
+   */
+  const newRevisionDisabledReason =
+    isHeaderDirty || isOperationsDirty ? t.actionReasons.newRevisionBlockedByUnsaved : null;
 
   /**
    * 라인 저장을 막는 사유. 잠금은 페인이 따로 다루므로 여기서는 잠금 밖의 사유만 고른다.
@@ -591,6 +672,50 @@ export const RoutingScreen = () => {
       );
     }
 
+    /*
+     * 첫 Rev 등록 폼. 아직 없는 Rev를 만드는 자리라 상세 조회가 없고 판 번호·상태도 없다 —
+     * 서버가 채우는 값을 미리 지어내 보이지 않는다.
+     */
+    if (createValues !== null) {
+      return (
+        <HeaderPane
+          mode="create"
+          itemLabel={itemLabel}
+          routingVersion={null}
+          status={null}
+          values={createValues}
+          onChange={(patch) => {
+            setCreateValues((prev) => (prev === null ? prev : { ...prev, ...patch }));
+
+            for (const field of Object.keys(patch)) {
+              createWrite.clearFieldError(field);
+              setCreateFieldErrors((prev) => {
+                if (!(field in prev)) return prev;
+                const next = { ...prev };
+                delete next[field];
+                return next;
+              });
+            }
+          }}
+          fieldErrors={{ ...createWrite.fieldErrors, ...createFieldErrors }}
+          /* 첫 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+          banner={<SaveErrorBanner error={createWrite.error} />}
+          // 새로 짓는 코드는 잠길 이유가 없다. editability는 이미 있는 자원의 판정이다.
+          codeLockReason={null}
+          isDirty={!isSameHeaderValues(createValues, emptyHeaderFormValues())}
+          isSaving={createWrite.isSaving}
+          onSave={handleSaveCreate}
+          onCancel={closeCreateForm}
+          // 아직 없는 Rev에는 전이할 대상이 없다. 감추지 않고 사유와 함께 비활성으로 둔다.
+          confirmDisabledReason={t.actionReasons.transitionNeedsRouting}
+          obsoleteDisabledReason={t.actionReasons.transitionNeedsRouting}
+          isTransitioning={false}
+          onConfirm={() => undefined}
+          onObsolete={() => undefined}
+        />
+      );
+    }
+
     if (selectedRoutingId === null) {
       return (
         <section className="pane" aria-label={t.panes.header}>
@@ -619,6 +744,7 @@ export const RoutingScreen = () => {
 
     return (
       <HeaderPane
+        mode="edit"
         itemLabel={itemLabel}
         routingVersion={detail.data.routing.routingVersion}
         status={resolveRoutingStatus(detail.data.routing.statusCode)}
@@ -695,6 +821,19 @@ export const RoutingScreen = () => {
               />
             ) : null
           }
+          newRevisionDisabledReason={newRevisionDisabledReason}
+          isCreating={createValues !== null}
+          isPublishing={newRevisionWrite.isSaving}
+          onNewRevision={() => {
+            newRevisionWrite.write();
+          }}
+          onCreateRouting={() => {
+            resetHeaderEditing();
+            setCreateFieldErrors({});
+            setCreateValues(emptyHeaderFormValues());
+          }}
+          /* 발행에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+          banner={<SaveErrorBanner error={newRevisionWrite.error} />}
         />
 
         <div className="pane-stack">

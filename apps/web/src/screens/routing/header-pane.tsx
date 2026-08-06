@@ -8,12 +8,17 @@ import type { RoutingHeaderFormValues } from './types';
 
 const t = messages.routing;
 
+export type HeaderPaneMode = 'edit' | 'create';
+
 export interface HeaderPaneProps {
+  /** `create`면 아직 없는 Rev를 만드는 폼이다 — 판 번호·상태가 없고 주 액션이 등록이다. */
+  mode: HeaderPaneMode;
   /** 어느 품목의 Routing인지 값으로 밝힌다. 품목은 등록 후 바꿀 수 없어 입력칸을 두지 않는다. */
   itemLabel: string;
-  /** 판 번호는 시스템 채번이라 값 표기로만 낸다. */
-  routingVersion: number;
-  status: RoutingStatusView;
+  /** 판 번호는 시스템 채번이라 값 표기로만 낸다. 등록 전에는 없으므로 null이다. */
+  routingVersion: number | null;
+  /** 상태도 서버가 정한다. 등록 전에는 없으므로 null이며, 없는 값을 지어내 보이지 않는다. */
+  status: RoutingStatusView | null;
   values: RoutingHeaderFormValues;
   onChange: (patch: Partial<RoutingHeaderFormValues>) => void;
   /** 필드별 인라인 오류 — 로컬 검증 결과와 서버 필드 오류를 상위가 병합해 넘긴다. */
@@ -50,6 +55,7 @@ export interface HeaderPaneProps {
  * 둘 다 걸리면 둘 다 보인다 — 하나로 뭉뚱그리면 무엇을 하면 풀리는지 알 수 없게 된다.
  */
 export const HeaderPane = ({
+  mode,
   itemLabel,
   routingVersion,
   status,
@@ -72,10 +78,10 @@ export const HeaderPane = ({
   const revisionLabelId = useId();
   const statusLabelId = useId();
 
-  const isLockedByState = !status.isEditable;
+  const isLockedByState = status !== null && !status.isEditable;
 
   const stateLockMessage =
-    status.status === 'obsolete' ? t.stateLock.obsolete : t.stateLock.confirmed;
+    status?.status === 'obsolete' ? t.stateLock.obsolete : t.stateLock.confirmed;
 
   return (
     <section className="pane" aria-label={t.panes.header}>
@@ -98,12 +104,15 @@ export const HeaderPane = ({
           <p aria-labelledby={itemLabelId}>{itemLabel}</p>
         </div>
 
-        <div>
-          <span className="field-label" id={revisionLabelId}>
-            {t.fields.revision}
-          </span>
-          <p aria-labelledby={revisionLabelId}>{t.values.revision(routingVersion)}</p>
-        </div>
+        {/* 등록 전에는 판 번호가 없다 — 서버가 채우는 값을 미리 지어내 보이지 않는다. */}
+        {routingVersion !== null && (
+          <div>
+            <span className="field-label" id={revisionLabelId}>
+              {t.fields.revision}
+            </span>
+            <p aria-labelledby={revisionLabelId}>{t.values.revision(routingVersion)}</p>
+          </div>
+        )}
 
         <TextField
           label={t.fields.routingCode}
@@ -118,16 +127,18 @@ export const HeaderPane = ({
           error={fieldErrors.routingCode}
         />
 
-        <div>
-          <span className="field-label" id={statusLabelId}>
-            {t.fields.status}
-          </span>
-          <p aria-labelledby={statusLabelId}>
-            <Chip variant="status" status={status.tone}>
-              {status.label}
-            </Chip>
-          </p>
-        </div>
+        {status !== null && (
+          <div>
+            <span className="field-label" id={statusLabelId}>
+              {t.fields.status}
+            </span>
+            <p aria-labelledby={statusLabelId}>
+              <Chip variant="status" status={status.tone}>
+                {status.label}
+              </Chip>
+            </p>
+          </div>
+        )}
 
         {/* DS에 DatePicker가 없다(고정 커밋 기준). 날짜 입력은 TextField의 date 형을 쓴다. */}
         <TextField
@@ -194,7 +205,7 @@ export const HeaderPane = ({
           loading={isSaving}
           onClick={onSave}
         >
-          {messages.common.save}
+          {mode === 'create' ? t.actions.createRouting : messages.common.save}
         </Button>
       </div>
     </section>

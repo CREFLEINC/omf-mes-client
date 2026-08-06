@@ -7,6 +7,8 @@ import { RevisionPane, type RevisionPaneProps } from './revision-pane';
 
 const renderPane = (overrides: Partial<RevisionPaneProps> = {}) => {
   const onSelect = vi.fn();
+  const onNewRevision = vi.fn();
+  const onCreateRouting = vi.fn();
 
   render(
     <RevisionPane
@@ -16,11 +18,17 @@ const renderPane = (overrides: Partial<RevisionPaneProps> = {}) => {
       selectedRoutingId={null}
       onSelect={onSelect}
       loadError={null}
+      newRevisionDisabledReason={null}
+      isCreating={false}
+      isPublishing={false}
+      onNewRevision={onNewRevision}
+      onCreateRouting={onCreateRouting}
+      banner={null}
       {...overrides}
     />,
   );
 
-  return { onSelect, user: userEvent.setup() };
+  return { onSelect, onNewRevision, onCreateRouting, user: userEvent.setup() };
 };
 
 describe('RevisionPane', () => {
@@ -81,22 +89,42 @@ describe('RevisionPane', () => {
     expect(screen.getByRole('status', { name: 'Rev 목록을 불러오는 중' })).toBeInTheDocument();
   });
 
-  it('아직 붙지 않은 발행 액션은 감추지 않고 사유와 함께 비활성으로 둔다', () => {
-    renderPane();
+  it('Rev가 1건 이상이면 발행 액션을 눌러 상위에 올린다', async () => {
+    const { onNewRevision, user } = renderPane();
 
-    const button = screen.getByRole('button', { name: '신규 Rev 발행' });
-    expect(button).toBeDisabled();
-    expect(
-      screen.getByText(
-        '신규 Rev 발행은 아직 실행할 수 없습니다. 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '신규 Rev 발행' }));
+
+    expect(onNewRevision).toHaveBeenCalledTimes(1);
   });
 
-  it('Rev가 0건이면 발행 대신 등록 액션을 낸다', () => {
-    renderPane({ revisions: [] });
+  it('발행을 막는 사유가 있으면 비활성이고 그 사유가 보인다', () => {
+    const reason =
+      '신규 Rev 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.';
+    renderPane({ newRevisionDisabledReason: reason });
+
+    expect(screen.getByRole('button', { name: '신규 Rev 발행' })).toBeDisabled();
+    expect(screen.getByText(reason)).toBeInTheDocument();
+  });
+
+  /* 복사할 원본 판이 없으면 발행이 성립하지 않는다 — 계약도 두 경로를 나눠 두었다. */
+  it('Rev가 0건이면 발행 대신 등록 액션을 내고 눌러 상위에 올린다', async () => {
+    const { onCreateRouting, user } = renderPane({ revisions: [] });
+
+    expect(screen.queryByRole('button', { name: '신규 Rev 발행' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Routing 등록' }));
+
+    expect(onCreateRouting).toHaveBeenCalledTimes(1);
+  });
+
+  it('등록 폼이 이미 열려 있으면 등록 액션을 다시 누를 수 없다', () => {
+    renderPane({ revisions: [], isCreating: true });
 
     expect(screen.getByRole('button', { name: 'Routing 등록' })).toBeDisabled();
-    expect(screen.queryByRole('button', { name: '신규 Rev 발행' })).not.toBeInTheDocument();
+  });
+
+  it('발행 실패 배너를 목록 위에 낸다', () => {
+    renderPane({ banner: <p>발행하지 못했습니다.</p> });
+
+    expect(screen.getByText('발행하지 못했습니다.')).toBeInTheDocument();
   });
 });
