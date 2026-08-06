@@ -637,6 +637,76 @@ const integrationSync = {
   },
 } as const;
 
+/**
+ * W-06-02 검사기준 등록. 버전 마스터 형 화면의 두 번째 벌이라 문구 구조는 `routing`과 같다.
+ *
+ * **「비율」·「%」를 샘플 수량의 라벨·검증 문구에 쓰지 않는다.** 저장되는 값은 개수이고,
+ * 라벨을 「비율」로 쓰면 30을 넣은 사람이 30%로 오해한다. 다만 그 오해를 막는
+ * 보조 안내 한 줄(`fieldNotes.samplingQty`)만은 두 낱말을 함께 적어야 뜻이 선다.
+ */
+const inspectionStandard = {
+  title: '검사기준 등록',
+  breadcrumbRoot: '기준정보',
+  panes: {
+    plan: '검사기준',
+    version: '버전 목록',
+    planForm: '기준 정보',
+    versionForm: '버전 정보',
+    items: '검사 항목',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    excelUpload: '엑셀 올리기',
+  },
+  actionReasons: {
+    excelUploadUnavailable:
+      '엑셀 올리기는 아직 할 수 없습니다. 양식이 정해지면 이 버튼을 쓸 수 있습니다.',
+  },
+  filters: {
+    searchLabel: '검사기준 검색',
+    searchPlaceholder: '기준코드 또는 기준명',
+    inspectionType: '검사 유형',
+    typeAll: '전체 유형',
+    chipKeyword: (value: string): string => `검색어: ${value}`,
+    chipInspectionType: (label: string): string => `검사 유형: ${label}`,
+    chipRemoveKeyword: '검색어 조건 제거',
+    chipRemoveInspectionType: '검사 유형 조건 제거',
+    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+  },
+  loading: {
+    plans: '검사기준 목록을 불러오는 중',
+  },
+  empty: {
+    planNoneTitle: '등록된 검사기준이 없습니다',
+    planNoneDescription: '「기준 추가」로 첫 검사기준을 등록하세요.',
+    planNoMatchTitle: '조건에 맞는 검사기준이 없습니다',
+    planNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+    planNotSelected: '좌측에서 검사기준을 먼저 고르세요',
+  },
+  fields: {
+    inspectionPlanCode: '기준코드',
+    inspectionPlanName: '기준명',
+    inspectionType: '검사 유형',
+  },
+  values: {
+    /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+    empty: '—',
+    inactiveSuffix: ' (미사용)',
+  },
+  /**
+   * 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다.
+   * 좌 목록에만 둔다. 버전 목록에는 계약이 페이지네이션을 두지 않았다.
+   */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -649,6 +719,7 @@ export const ko = {
   routing,
   defectCauseCode,
   integrationSync,
+  inspectionStandard,
 } as const;
 
 export type Messages = typeof ko;
