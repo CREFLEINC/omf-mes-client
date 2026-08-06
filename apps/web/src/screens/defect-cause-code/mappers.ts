@@ -39,6 +39,13 @@ export const causeToHierarchyCode = (raw: CauseCode): HierarchyCode => ({
   isActive: raw.isActive,
 });
 
+/** 상세 응답을 폼 값으로 옮긴다. 대분류는 「고르지 않음」인 빈 문자열이 된다. */
+export const codeToFormValues = (code: HierarchyCode): CodeFormValues => ({
+  code: code.code,
+  name: code.name,
+  parentId: code.parentId === null ? '' : String(code.parentId),
+});
+
 /** 신규 등록 폼의 초기값. 「상세 추가」로 열면 고른 대분류가 상위로 채워진 채 시작한다. */
 export const emptyCodeFormValues = (parentId = ''): CodeFormValues => ({
   code: '',

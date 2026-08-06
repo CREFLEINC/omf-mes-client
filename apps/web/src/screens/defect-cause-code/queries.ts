@@ -2,7 +2,13 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { CodeAdapter } from './adapters';
-import type { CodeFilters, CodeListResult, HierarchyCode, PageMeta } from './types';
+import type {
+  CodeDetailResult,
+  CodeFilters,
+  CodeListResult,
+  HierarchyCode,
+  PageMeta,
+} from './types';
 
 /**
  * 이 화면이 쓰는 조회. 어댑터가 경로와 캐시 키를 들고 있으므로 훅은 리소스 이름을 알지 않는다.
@@ -24,6 +30,29 @@ export const useCodeList = (
   return useQuery({
     queryKey: adapter.keys.list(filters),
     queryFn: () => adapter.fetchList(client, filters),
+  });
+};
+
+/**
+ * 코드 상세. 낙관적 잠금 토큰(ETag)과 코드 편집 가능 여부가 이 응답으로 온다 —
+ * 목록 행만으로는 저장을 시작할 수 없다.
+ */
+export const useCodeDetail = (
+  adapter: CodeAdapter,
+  id: number | null,
+): UseQueryResult<CodeDetailResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: adapter.keys.detail(id ?? 0),
+    enabled: id !== null,
+    queryFn: () => {
+      if (id === null) {
+        throw new Error('코드를 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return adapter.fetchDetail(client, id);
+    },
   });
 };
 

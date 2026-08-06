@@ -4,6 +4,7 @@ import {
   Button,
   EmptyState,
   PageHeader,
+  SkeletonText,
   Tabs,
   useToast,
 } from '@crefle/web-ui';
@@ -13,22 +14,29 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
-import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { CodeFormPane } from './code-form-pane';
 import { CodeListPane } from './code-list-pane';
 import { selectableCategoryOptions } from './code-options';
 import { validateCode } from './code-validation';
-import { categoryOptionsFor, hasChildren, indexById, isCategory, orderForGrouping } from './hierarchy';
 import {
+  categoryOptionsFor,
+  hasChildren,
+  indexById,
+  isCategory,
+  orderForGrouping,
+} from './hierarchy';
+import {
+  codeToFormValues,
   emptyCodeFormValues,
   isSameCodeValues,
   toFormFieldErrors,
   toServerFieldName,
 } from './mappers';
-import { isTruncated, useCodeList, useCodeOptions } from './queries';
+import { isTruncated, useCodeDetail, useCodeList, useCodeOptions } from './queries';
 import { CODE_TABS, resolveTab } from './tabs';
-import type { CodeFilters, CodeFormValues, HierarchyCode } from './types';
+import type { CodeDetailResult, CodeFilters, CodeFormValues, HierarchyCode } from './types';
 
 const t = messages.defectCauseCode;
 
@@ -87,7 +95,8 @@ const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
  * 사용자가 입력하는 동안 값이 되돌아가면 안 된다.
  */
 interface CodeFormState {
-  source: string;
+  /** 등록은 「어느 탭에서 어느 상위로 여는가」를 담은 문자열, 수정은 상세 응답 객체다. */
+  source: string | CodeDetailResult;
   baseline: CodeFormValues;
   values: CodeFormValues;
 }
@@ -126,23 +135,29 @@ export const DefectCauseCodeScreen = () => {
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
   const canAddChild = selected !== null && isCategory(selected);
 
-  const isFormOpen = isCreateMode;
+  const detail = useCodeDetail(adapter, selectedId);
+
+  const isFormOpen = isCreateMode || selectedId !== null;
   const options = useCodeOptions(adapter, isFormOpen);
 
   /*
-   * 폼의 기준값 출처. 등록은 「어느 탭에서 어느 상위로 여는가」가 정하므로 그것을 문자열로 만든다.
-   * 출처가 그대로면 다시 세우지 않아 입력 도중에 값이 초기화되지 않는다.
+   * 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 「어느 탭에서 어느 상위로 여는가」가 정한다.
+   * 출처가 그대로면 다시 세우지 않아 사용자가 입력하는 동안 값이 서버 값으로 되돌아가지 않는다.
+   * 캐시가 같은 값을 돌려주면 객체 동일성이 유지되므로 다시 세우지 않는다.
    */
-  const formSource: string | null = isCreateMode
+  const formSource: string | CodeDetailResult | null = isCreateMode
     ? `create:${adapter.kind}:${String(createParentSeed ?? '')}`
-    : null;
+    : (detail.data ?? null);
 
   const [formState, setFormState] = useState<CodeFormState | null>(null);
 
   if (formSource === null) {
     if (formState !== null) setFormState(null);
   } else if (formState?.source !== formSource) {
-    const seeded = emptyCodeFormValues(createParentSeed === null ? '' : String(createParentSeed));
+    const seeded =
+      typeof formSource === 'string'
+        ? emptyCodeFormValues(createParentSeed === null ? '' : String(createParentSeed))
+        : codeToFormValues(formSource.code);
     setFormState({ source: formSource, baseline: seeded, values: seeded });
   }
 
@@ -154,18 +169,37 @@ export const DefectCauseCodeScreen = () => {
     Partial<Record<keyof CodeFormValues, string>>
   >({});
 
-  const createWrite = useMasterWrite<CodeFormValues, HierarchyCode>({
-    request: (values, headers) => adapter.create(client, values, headers),
-    // 등록에는 낙관적 잠금이 없다 — 계약이 If-Match를 요구하지 않는다.
-    etagPath: null,
+  const write = useMasterWrite<CodeFormValues, HierarchyCode>({
+    request: (values, headers) =>
+      isCreateMode
+        ? // 등록에는 낙관적 잠금이 없다 — 계약이 If-Match를 요구하지 않는다.
+          adapter.create(client, values, headers)
+        : adapter.update(
+            client,
+            selectedId ?? 0,
+            values,
+            // 화면에 입력칸이 없는 값을 그대로 되돌려 보낸다 — 빠뜨리면 조용히 지워진다.
+            detail.data?.processId ?? null,
+            headers,
+          ),
+    // 잠금 토큰은 상세 경로에 보관돼 있다. 저장 응답의 ETag도 같은 경로로 갱신돼 연속 수정이 된다.
+    etagPath: selectedId === null ? null : adapter.detailPath(selectedId),
     invalidateKeys: [adapter.keys.all],
     // 어댑터가 아는 세 이름만 인라인으로 낸다. 그 밖의 이름은 훅이 배너로 올린다.
     knownFields: Object.values(adapter.serverFields),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       setLocalFieldErrors({});
-      // 이어서 한 건 더 등록할 수 있게 폼을 기준값으로 되돌린다.
-      setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
-      toast.show({ variant: 'success', description: messages.common.created });
+
+      if (isCreateMode) {
+        // 이어서 한 건 더 등록할 수 있게 폼을 기준값으로 되돌린다.
+        setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+        toast.show({ variant: 'success', description: messages.common.created });
+        return;
+      }
+
+      const next = codeToFormValues(saved);
+      setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
 
@@ -201,7 +235,7 @@ export const DefectCauseCodeScreen = () => {
   };
 
   const openCreateForm = (patch: Record<string, string | null>) => {
-    createWrite.reset();
+    write.reset();
     setLocalFieldErrors({});
     updateParams({ mode: 'create', ...patch });
   };
@@ -213,7 +247,7 @@ export const DefectCauseCodeScreen = () => {
     );
 
     for (const field of Object.keys(patch) as (keyof CodeFormValues)[]) {
-      createWrite.clearFieldError(toServerFieldName(field, adapter.serverFields));
+      write.clearFieldError(toServerFieldName(field, adapter.serverFields));
       setLocalFieldErrors((prev) => {
         if (!(field in prev)) return prev;
         const next = { ...prev };
@@ -230,7 +264,18 @@ export const DefectCauseCodeScreen = () => {
     // 화면에서 잡히는 오류는 서버로 보내지 않는다.
     if (Object.keys(errors).length > 0) return;
 
-    createWrite.write(formValues);
+    write.write(formValues);
+  };
+
+  /**
+   * 저장 충돌을 푸는 유일한 경로. 계약이 덮어쓰기 강제를 제공하지 않으므로
+   * 최신 값을 받아 다시 입력하는 수밖에 없고, 입력한 내용은 사라진다.
+   */
+  const handleReloadDetail = () => {
+    write.reset();
+    setLocalFieldErrors({});
+    setFormState(null);
+    void detail.refetch();
   };
 
   /**
@@ -294,46 +339,71 @@ export const DefectCauseCodeScreen = () => {
     />
   );
 
+  const renderForm = (formMode: 'create' | 'edit'): ReactNode => (
+    <CodeFormPane
+      adapter={adapter}
+      mode={formMode}
+      values={formValues}
+      onChange={changeFormValues}
+      // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
+      fieldErrors={{
+        ...toFormFieldErrors(write.fieldErrors, adapter.serverFields),
+        ...localFieldErrors,
+      }}
+      banner={
+        <>
+          {optionsNotice()}
+          <SaveErrorBanner
+            error={write.error}
+            onReload={formMode === 'edit' ? handleReloadDetail : undefined}
+          />
+        </>
+      }
+      codeLockReason={
+        formMode === 'edit' && detail.data !== undefined
+          ? codeLockMessage(detail.data.editability)
+          : null
+      }
+      parentOptions={parentOptions}
+      parentLockReason={parentLockReason}
+      isActive={detail.data?.code.isActive ?? true}
+      isDirty={isDirty}
+      isSaving={write.isSaving}
+      onSave={handleSave}
+      onCancel={() => {
+        setLocalFieldErrors({});
+        write.reset();
+        setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+      }}
+    />
+  );
+
   /**
    * 우 페인. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
-   * 선택 전과 등록을 각각 다른 화면으로 낸다.
+   * 선택 전·등록·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
   const renderFormPane = (): ReactNode => {
-    if (!isCreateMode || formState === null) {
+    if (isCreateMode) {
+      return formState === null ? null : renderForm('create');
+    }
+
+    if (selectedId === null) {
       return <EmptyState size="sm" title={t.empty.codeNotSelected} />;
     }
 
-    return (
-      <CodeFormPane
-        adapter={adapter}
-        mode="create"
-        values={formValues}
-        onChange={changeFormValues}
-        // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
-        fieldErrors={{
-          ...toFormFieldErrors(createWrite.fieldErrors, adapter.serverFields),
-          ...localFieldErrors,
-        }}
-        banner={
-          <>
-            {optionsNotice()}
-            <SaveErrorBanner error={createWrite.error} />
-          </>
-        }
-        codeLockReason={null}
-        parentOptions={parentOptions}
-        parentLockReason={parentLockReason}
-        isActive
-        isDirty={isDirty}
-        isSaving={createWrite.isSaving}
-        onSave={handleSave}
-        onCancel={() => {
-          setLocalFieldErrors({});
-          createWrite.reset();
-          setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
-        }}
-      />
-    );
+    if (detail.isError) {
+      return <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />;
+    }
+
+    if (detail.data === undefined || formState === null) {
+      return (
+        <div role="status" aria-label={t.loading.codeDetail}>
+          <SkeletonText lines={4} />
+        </div>
+      );
+    }
+
+    return renderForm('edit');
   };
 
   const tabContent = (
