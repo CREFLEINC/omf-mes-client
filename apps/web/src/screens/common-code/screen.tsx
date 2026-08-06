@@ -1,7 +1,7 @@
 import { Breadcrumb, EmptyState, PageHeader, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -39,9 +39,15 @@ const t = messages.commonCode;
  * 폼의 현재 값과 그것이 어디서 나왔는지.
  * 「고친 것이 있는가」는 둘의 비교로 판정하고, 출처가 바뀔 때만 폼을 다시 세운다 —
  * 사용자가 입력하는 동안 값이 되돌아가면 안 된다.
+ *
+ * **출처는 등록과 수정을 함께 담는다** — 수정은 상세 응답 객체이고, 등록은 주소에서 파생한
+ * 문자열이다. 등록 폼의 값을 로컬 상태에만 두면 주소로 직접 들어온 사용자에게 빈 화면이 남는다
+ * (여닫음은 주소가 소유한다고 정해 놓고 값은 주소에서 살아나지 못하는 어긋남).
  */
+type CodeGroupFormSource = string | CodeGroupDetailResponse;
+
 interface CodeGroupFormState {
-  source: CodeGroupDetailResponse;
+  source: CodeGroupFormSource;
   baseline: CodeGroupFormValues;
   values: CodeGroupFormValues;
 }
@@ -94,20 +100,35 @@ export const CommonCodeScreen = () => {
   const codeValueIncludeInactive = searchParams.get('vinactive') === '1';
   const codeValuePage = readPage(searchParams, 'vpage');
   const selectedCodeValueId = Number(searchParams.get('val') ?? '') || null;
-  const isCreatingCodeValue = searchParams.get('new') === 'value';
+  /*
+   * 코드값 등록에는 그룹이 있어야 한다 — 계약이 그룹 번호를 필수로 두었다.
+   * 그룹 없이 `new=value`만 실린 주소로 들어와도 만들 수 없는 폼을 세우지 않는다.
+   */
+  const isCreatingCodeValue = searchParams.get('new') === 'value' && selectedCodeGroupId !== null;
 
   const [formState, setFormState] = useState<CodeGroupFormState | null>(null);
 
-  /*
-   * 폼의 기준값은 상세 응답에서 온다. 응답 객체가 바뀔 때만 다시 세워
-   * 사용자가 입력하는 동안 값이 서버 값으로 되돌아가지 않게 한다.
+  /**
+   * 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 **주소**가 정한다.
+   *
+   * 출처가 그대로면 다시 세우지 않아 사용자가 입력하는 동안 값이 서버 값으로 되돌아가지 않는다.
    * 캐시가 같은 값을 돌려주면 객체 동일성이 유지되므로 다시 세우지 않는다.
+   *
+   * 등록 출처를 주소에서 파생시키는 것이 핵심이다 — 그래야 새로고침·공유·뒤로가기로
+   * `?new=group`에 바로 들어온 사용자에게도 폼이 선다.
    */
-  const codeGroupSource = codeGroupDetail.data ?? null;
+  const codeGroupFormSource: CodeGroupFormSource | null = isCreatingCodeGroup
+    ? 'create:group'
+    : (codeGroupDetail.data ?? null);
 
-  if (codeGroupSource !== null && formState?.source !== codeGroupSource) {
-    const seeded = codeGroupToFormValues(codeGroupSource.codeGroup);
-    setFormState({ source: codeGroupSource, baseline: seeded, values: seeded });
+  if (codeGroupFormSource === null) {
+    if (formState !== null) setFormState(null);
+  } else if (formState?.source !== codeGroupFormSource) {
+    const seeded =
+      typeof codeGroupFormSource === 'string'
+        ? emptyCodeGroupFormValues()
+        : codeGroupToFormValues(codeGroupFormSource.codeGroup);
+    setFormState({ source: codeGroupFormSource, baseline: seeded, values: seeded });
   }
 
   const isCodeGroupDirty =
@@ -116,41 +137,24 @@ export const CommonCodeScreen = () => {
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [codeGroupFieldErrors, setCodeGroupFieldErrors] = useState<Record<string, string>>({});
 
-  /**
-   * 코드그룹 등록 폼의 값. null이면 폼이 닫혀 있다.
-   *
-   * 상세 응답이 없는 폼이라 수정 폼 상태와 섞지 않는다 —
-   * 섞으면 「기준값이 서버에서 왔는가」가 흐려지고, 등록 성공 후 어느 쪽을 비울지도 갈린다.
-   */
-  const [createValues, setCreateValues] = useState<CodeGroupFormValues | null>(null);
-  const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
-
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
 
   /**
    * 주소의 일부만 고친다.
    *
-   * **한 조작이 이 함수를 두 번 부르는 자리가 있다** — 예를 들어 코드값 등록 폼을 열 때
-   * 등록 표시를 켜면서 선택을 비운다. 그때 두 갱신이 각각 지금 렌더의 주소를 밑그림으로 쓰면
-   * 뒤 갱신이 앞 갱신을 지운다. `setSearchParams`의 되돌림 함수 형태도 마찬가지다 —
-   * 그 함수가 받는 값이 **지금 렌더의 주소**라 한 틱 안의 두 호출이 서로를 보지 못한다.
+   * **한 조작은 이 함수를 한 번만 부른다.** 한 틱에 두 번 부르면 앞 갱신이 렌더되지 않은 채
+   * 히스토리 칸으로 남아, 뒤로가기가 사용자가 본 적 없는 중간 상태로 떨어진다.
+   * 그래서 「선택을 비우면서 등록을 켠다」 같은 조작은 한 번의 patch 안에서 함께 처리한다.
    *
-   * 그래서 방금 만든 주소를 참조에 남겨 다음 호출이 그 위에 이어 붙이게 한다.
-   * 참조는 렌더마다 주소로 다시 맞춰지므로 실제 주소와 어긋난 채 남지 않는다.
+   * **주소가 달라지지 않으면 갱신하지 않는다.** 같은 값을 다시 쓰는 갱신은 화면을 바꾸지 않으면서
+   * 히스토리 칸만 늘린다.
    */
-  const pendingParamsRef = useRef(searchParams);
-  pendingParamsRef.current = searchParams;
-
   const patchSearchParams = (patch: (next: URLSearchParams) => void) => {
-    const next = new URLSearchParams(pendingParamsRef.current);
+    const next = new URLSearchParams(searchParams);
     patch(next);
-    pendingParamsRef.current = next;
-    setSearchParams(next);
-  };
 
-  /** 주소를 통째로 갈아 끼운다. 참조도 함께 옮겨 뒤따르는 부분 갱신이 옛 주소를 밑그림으로 쓰지 않게 한다. */
-  const replaceSearchParams = (next: URLSearchParams) => {
-    pendingParamsRef.current = next;
+    if (next.toString() === searchParams.toString()) return;
+
     setSearchParams(next);
   };
 
@@ -160,6 +164,7 @@ export const CommonCodeScreen = () => {
       // 다른 그룹의 코드값을 가리키면 안 된다.
       next.delete('val');
       next.delete('vpage');
+      // 그룹을 고르는 것과 등록 폼이 열려 있는 것은 함께 성립하지 않는다.
       next.delete('new');
     });
   };
@@ -202,11 +207,13 @@ export const CommonCodeScreen = () => {
     invalidateKeys: [codeGroupKeys.all],
     knownFields: CODE_GROUP_FORM_FIELDS,
     onSuccess: (saved) => {
-      setCreateValues(null);
-      setCreateFieldErrors({});
+      setCodeGroupFieldErrors({});
       /*
        * 201에는 ETag가 없다 — 새 그룹을 고르면 상세를 다시 조회하게 되고
        * 그 조회가 잠금 토큰을 확보한다. 여기서 옮기지 않으면 사용자가 방금 만든 그룹을 직접 찾아야 한다.
+       *
+       * **주소 갱신은 이 한 번뿐이다.** `new`를 지우는 것과 `grp`를 새 번호로 놓는 것을
+       * 한 patch 안에서 함께 한다 — 나눠 부르면 뒤로가기가 중간 상태로 떨어진다.
        */
       selectCodeGroup(saved.codeGroupId);
       toast.show({ variant: 'success', description: messages.common.created });
@@ -244,6 +251,12 @@ export const CommonCodeScreen = () => {
     },
   });
 
+  /**
+   * 지금 모드의 쓰기. 등록과 수정이 **한 폼 상태**를 쓰므로 저장·오류·진행 표시도
+   * 한 곳에서 골라 쓴다 — 두 훅의 상태를 화면에서 합치면 어느 저장의 실패인지 흐려진다.
+   */
+  const activeCodeGroupWrite = isCreatingCodeGroup ? codeGroupCreateWrite : codeGroupWrite;
+
   /** 편집 중이던 상태를 통째로 비운다. 보이는 행이 달라질 때 함께 부른다. */
   const resetCodeGroupEditing = () => {
     codeGroupWrite.reset();
@@ -252,8 +265,6 @@ export const CommonCodeScreen = () => {
     setIsDeactivateOpen(false);
     setFormState(null);
     setCodeGroupFieldErrors({});
-    setCreateValues(null);
-    setCreateFieldErrors({});
   };
 
   /**
@@ -263,12 +274,12 @@ export const CommonCodeScreen = () => {
    */
   const applyFilters = (next: CodeGroupFilters) => {
     resetCodeGroupEditing();
-    replaceSearchParams(toSearchParams(tab.id, next, 1));
+    setSearchParams(toSearchParams(tab.id, next, 1));
   };
 
   const changeCodeGroupPage = (nextPage: number) => {
     resetCodeGroupEditing();
-    replaceSearchParams(toSearchParams(tab.id, filters, nextPage));
+    setSearchParams(toSearchParams(tab.id, filters, nextPage));
   };
 
   const handleSelectCodeGroup = (codeGroupId: number) => {
@@ -278,7 +289,6 @@ export const CommonCodeScreen = () => {
 
   const handleAddCodeGroup = () => {
     resetCodeGroupEditing();
-    setCreateValues(emptyCodeGroupFormValues());
 
     patchSearchParams((next) => {
       next.set('new', 'group');
@@ -289,37 +299,44 @@ export const CommonCodeScreen = () => {
     });
   };
 
-  const closeCreateForm = () => {
-    setCreateValues(null);
-    setCreateFieldErrors({});
+  const closeCodeGroupCreateForm = () => {
     codeGroupCreateWrite.reset();
+    setCodeGroupFieldErrors({});
 
     patchSearchParams((next) => {
       next.delete('new');
     });
   };
 
-  const selectCodeValue = (codeValueId: number | null) => {
+  /**
+   * 코드값 한 벌이 주소에 바라는 것은 **조작 단위**다.
+   *
+   * 「고른다」·「등록 폼을 연다」·「조건을 바꾼다」가 각각 patch 한 번으로 끝나야
+   * 뒤로가기가 사용자가 본 적 없는 중간 상태로 떨어지지 않는다. 그래서 각 함수가
+   * 그 조작에 딸린 주소 규칙(선택과 등록 폼은 함께 성립하지 않는다 등)까지 함께 처리한다.
+   */
+  const clearCodeValueCreating = (next: URLSearchParams) => {
+    // 코드그룹 등록 폼이 열려 있는 상태를 코드값 쪽 조작이 닫아 버리면 안 된다.
+    if (next.get('new') === 'value') next.delete('new');
+  };
+
+  const selectCodeValue = (codeValueId: number) => {
     patchSearchParams((next) => {
-      if (codeValueId === null) {
-        next.delete('val');
-      } else {
-        next.set('val', String(codeValueId));
-      }
+      next.set('val', String(codeValueId));
+      clearCodeValueCreating(next);
     });
   };
 
-  /** 코드값 등록 폼의 여닫음도 주소가 소유한다 — 새로고침이 같은 화면을 낸다. */
-  const changeCodeValueCreating = (isCreatingNext: boolean) => {
+  const openCodeValueCreate = () => {
     patchSearchParams((next) => {
-      if (isCreatingNext) {
-        next.set('new', 'value');
-        return;
-      }
-
-      // 코드그룹 등록 폼이 열려 있는 상태를 이 함수가 닫아 버리면 안 된다.
-      if (next.get('new') === 'value') next.delete('new');
+      next.set('new', 'value');
+      // 등록 폼이 열려 있는 동안 고른 코드값의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
+      next.delete('val');
     });
+  };
+
+  const closeCodeValueCreate = () => {
+    patchSearchParams(clearCodeValueCreating);
   };
 
   /** 코드값 조건이 바뀌면 보이는 행이 달라진다 — 코드값 선택과 쪽을 함께 비운다. */
@@ -333,6 +350,7 @@ export const CommonCodeScreen = () => {
 
       next.delete('val');
       next.delete('vpage');
+      clearCodeValueCreating(next);
     });
   };
 
@@ -346,6 +364,7 @@ export const CommonCodeScreen = () => {
 
       // 쪽을 옮기면 보이는 행이 달라진다 — 목록에 없는 코드값을 가리키면 안 된다.
       next.delete('val');
+      clearCodeValueCreating(next);
     });
   };
 
@@ -355,7 +374,7 @@ export const CommonCodeScreen = () => {
    */
   const changeTab = (value: string) => {
     resetCodeGroupEditing();
-    replaceSearchParams(tabSearchParams(value));
+    setSearchParams(tabSearchParams(value));
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -365,22 +384,8 @@ export const CommonCodeScreen = () => {
     );
 
     for (const field of Object.keys(patch)) {
-      codeGroupWrite.clearFieldError(field);
+      activeCodeGroupWrite.clearFieldError(field);
       setCodeGroupFieldErrors((prev) => {
-        if (!(field in prev)) return prev;
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
-
-  const changeCreateValues = (patch: Partial<CodeGroupFormValues>) => {
-    setCreateValues((prev) => (prev === null ? prev : { ...prev, ...patch }));
-
-    for (const field of Object.keys(patch)) {
-      codeGroupCreateWrite.clearFieldError(field);
-      setCreateFieldErrors((prev) => {
         if (!(field in prev)) return prev;
         const next = { ...prev };
         delete next[field];
@@ -398,18 +403,7 @@ export const CommonCodeScreen = () => {
     // 화면에서 잡히는 오류는 서버로 보내지 않는다.
     if (Object.keys(errors).length > 0) return;
 
-    codeGroupWrite.write(formState.values);
-  };
-
-  const handleSaveCreate = () => {
-    if (createValues === null) return;
-
-    const errors = validateCodeGroupForm(createValues);
-    setCreateFieldErrors(errors);
-
-    if (Object.keys(errors).length > 0) return;
-
-    codeGroupCreateWrite.write(createValues);
+    activeCodeGroupWrite.write(formState.values);
   };
 
   /**
@@ -441,22 +435,23 @@ export const CommonCodeScreen = () => {
    */
   const renderCodeGroupFormPane = (): ReactNode => {
     if (isCreatingCodeGroup) {
-      if (createValues === null) return null;
+      if (formState === null) return null;
 
       return (
         <CodeGroupFormPane
           mode="create"
-          values={createValues}
-          onChange={changeCreateValues}
-          fieldErrors={{ ...codeGroupCreateWrite.fieldErrors, ...createFieldErrors }}
+          values={formState.values}
+          onChange={changeCodeGroupValues}
+          fieldErrors={{ ...codeGroupCreateWrite.fieldErrors, ...codeGroupFieldErrors }}
           /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
           banner={<SaveErrorBanner error={codeGroupCreateWrite.error} />}
+          /* 등록에서는 코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
           codeLockReason={null}
           deactivateDisabledReason={null}
-          isDirty
+          isDirty={isCodeGroupDirty}
           isSaving={codeGroupCreateWrite.isSaving}
-          onSave={handleSaveCreate}
-          onCancel={closeCreateForm}
+          onSave={handleSaveCodeGroup}
+          onCancel={closeCodeGroupCreateForm}
           onDeactivate={() => undefined}
         />
       );
@@ -548,7 +543,8 @@ export const CommonCodeScreen = () => {
           selectedCodeValueId={selectedCodeValueId}
           onSelectCodeValue={selectCodeValue}
           isCreating={isCreatingCodeValue}
-          onCreatingChange={changeCodeValueCreating}
+          onOpenCreate={openCodeValueCreate}
+          onCloseCreate={closeCodeValueCreate}
           includeInactive={codeValueIncludeInactive}
           onIncludeInactiveChange={changeCodeValueIncludeInactive}
           page={codeValuePage}

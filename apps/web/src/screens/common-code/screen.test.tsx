@@ -1,6 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation, useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -83,15 +84,64 @@ const codeGroupDetailRoute = (
     ),
 });
 
+/**
+ * 뒤로가기를 눌러 보기 위한 탐침.
+ *
+ * 하네스가 `MemoryRouter`라 브라우저 히스토리가 없다 — 라우터가 쌓은 칸을 보려면
+ * 트리 안에서 `navigate(-1)`을 부르고 그때의 주소를 읽는 수밖에 없다.
+ */
+interface HistoryProbe {
+  search: () => string;
+  /**
+   * **렌더된** 히스토리 칸 수. 한 틱에 갱신이 두 번 나면 앞 칸은 렌더되지 않고 스쳐 가므로
+   * 이 값은 그것을 세지 못한다 — 「한 조작 = 한 칸」의 정본 판정은 `back()`이다.
+   * 여기서는 「주소가 달라지지 않는데 칸만 늘었다」를 잡는 데만 쓴다.
+   */
+  entries: () => number;
+  back: () => void;
+}
+
+let probeNavigate: ((delta: number) => void) | null = null;
+let probeSearch = '';
+let probeKeys: string[] = [];
+
+const RouterProbe = () => {
+  const location = useLocation();
+
+  probeNavigate = useNavigate();
+  probeSearch = location.search;
+  // 같은 칸을 여러 번 렌더해도 한 번만 센다. 라우터는 칸마다 다른 열쇠를 준다.
+  if (probeKeys.at(-1) !== location.key) probeKeys.push(location.key);
+
+  return null;
+};
+
 const renderScreen = (routes: StubRoute[], search = '') => {
   const { fetch, requests } = createRecordingFetch(routes);
 
-  const { queryClient } = renderWithProviders(<CommonCodeScreen />, {
-    fetch,
-    route: `${ROUTE}${search}`,
-  });
+  probeNavigate = null;
+  probeSearch = '';
+  probeKeys = [];
 
-  return { requests, queryClient, user: userEvent.setup() };
+  const { queryClient } = renderWithProviders(
+    <>
+      <CommonCodeScreen />
+      <RouterProbe />
+    </>,
+    { fetch, route: `${ROUTE}${search}` },
+  );
+
+  const history: HistoryProbe = {
+    search: () => probeSearch,
+    entries: () => probeKeys.length,
+    back: () => {
+      act(() => {
+        probeNavigate?.(-1);
+      });
+    },
+  };
+
+  return { requests, queryClient, history, user: userEvent.setup() };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -117,6 +167,29 @@ const codeValueListRoute = (
 
 const codeValueRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, CODE_VALUES_PATH);
+
+/**
+ * 코드값 상세 — `ETag`가 함께 온다(계약 실측).
+ * 코드값의 코드는 참조 건수를 셀 수 없어 늘 잠긴 상태로 온다(계약).
+ */
+const codeValueDetailRoute = (
+  codeValueId = 2001,
+  editability: Editability = {
+    codeEditable: false,
+    reason: 'NOT_COUNTABLE',
+    referenceCount: null,
+  },
+): StubRoute => ({
+  match: (request) => isGet(request, `${CODE_VALUES_PATH}/${String(codeValueId)}`),
+  respond: () =>
+    jsonResponse(
+      {
+        codeValue: codeValueFixtures.find((row) => row.codeValueId === codeValueId),
+        editability,
+      },
+      { headers: { ETag: 'W/"3"' } },
+    ),
+});
 
 /** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1085,25 +1158,6 @@ describe('CommonCodeScreen — 코드값 목록 (C23·C24·C25·C29)', () => {
 });
 
 describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C36·C40)', () => {
-  const codeValueDetailRoute = (
-    codeValueId = 2001,
-    editability: Editability = {
-      codeEditable: false,
-      reason: 'NOT_COUNTABLE',
-      referenceCount: null,
-    },
-  ): StubRoute => ({
-    match: (request) => isGet(request, `${CODE_VALUES_PATH}/${String(codeValueId)}`),
-    respond: () =>
-      jsonResponse(
-        {
-          codeValue: codeValueFixtures.find((row) => row.codeValueId === codeValueId),
-          editability,
-        },
-        { headers: { ETag: 'W/"3"' } },
-      ),
-  });
-
   const updateRoute: StubRoute = {
     match: (request) =>
       request.method === 'PUT' && new URL(request.url).pathname.startsWith(`${CODE_VALUES_PATH}/`),
@@ -1583,5 +1637,196 @@ describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 주소만으로 등록 폼이 살아난다 (리뷰 Major ①)', () => {
+  const createdCodeValue = {
+    codeValueId: 2009,
+    codeGroupId: 1001,
+    code: 'SYN-CV-09',
+    codeName: '합성 코드값 I',
+    displayOrder: 40,
+    effectiveFrom: null,
+    effectiveTo: null,
+    isActive: true,
+  };
+
+  /*
+   * 등록 폼의 여닫음을 주소가 소유한다고 정했으면 **주소만 있어도 폼이 서야 한다.**
+   * 폼 값이 로컬 상태에만 있으면 새로고침·공유·북마크·뒤로가기로 들어온 사용자는
+   * 빈 화면을 보고, 「그룹 추가」도 이미 열린 것으로 보여 비활성이라 되돌릴 길이 없다.
+   */
+  it('?new=group으로 직접 들어와도 코드그룹 등록 폼이 뜬다', async () => {
+    renderScreen([codeGroupListRoute()], '?new=group');
+
+    expect(await screen.findByRole('region', { name: '코드그룹 정보' })).toBeInTheDocument();
+    expect(screen.getByLabelText('그룹코드')).toHaveValue('');
+    expect(
+      within(screen.getByRole('region', { name: '코드그룹 정보' })).getByRole('button', {
+        name: '그룹 추가',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('?grp=1001&new=value로 직접 들어와도 코드값 등록 폼이 뜬다', async () => {
+    renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()],
+      '?grp=1001&new=value',
+    );
+
+    expect(await screen.findByRole('region', { name: '코드값 정보' })).toBeInTheDocument();
+    expect(screen.getByLabelText('코드')).toHaveValue('');
+    expect(
+      within(screen.getByRole('region', { name: '코드값 정보' })).getByRole('button', {
+        name: '코드값 추가',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  /* 그룹이 없으면 만들 자리 자체가 없다 — 주소만으로 그룹 없는 등록 폼이 서면 안 된다. */
+  it('?new=value만 있고 그룹이 없으면 등록 폼을 세우지 않는다', async () => {
+    renderScreen([codeGroupListRoute()], '?new=value');
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    expect(screen.queryByLabelText('코드')).not.toBeInTheDocument();
+    expect(
+      within(codeValuePane()).getByText('좌측에서 코드그룹을 먼저 고르세요'),
+    ).toBeInTheDocument();
+  });
+
+  it('직접 들어온 등록 폼에서 그대로 저장할 수 있다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        {
+          match: (request) =>
+            request.method === 'POST' && new URL(request.url).pathname === CODE_VALUES_PATH,
+          respond: () => jsonResponse(createdCodeValue, { status: 201 }),
+        },
+        {
+          match: (request) => isGet(request, `${CODE_VALUES_PATH}/2009`),
+          respond: () =>
+            jsonResponse(
+              {
+                codeValue: createdCodeValue,
+                editability: { codeEditable: false, reason: 'NOT_COUNTABLE', referenceCount: null },
+              },
+              { headers: { ETag: 'W/"1"' } },
+            ),
+        },
+      ],
+      '?grp=1001&new=value',
+    );
+
+    await user.type(await screen.findByLabelText('코드'), 'SYN-CV-09');
+    await user.type(screen.getByLabelText('코드명'), '합성 코드값 I');
+    await user.click(
+      within(screen.getByRole('region', { name: '코드값 정보' })).getByRole('button', {
+        name: '코드값 추가',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.method === 'POST')).toBe(true);
+    });
+  });
+});
+
+describe('CommonCodeScreen — 한 조작은 히스토리 한 칸이다 (리뷰 Major ②)', () => {
+  it('코드값 추가를 누른 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByLabelText('코드명');
+
+    const before = history.search();
+    await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
+    await screen.findByRole('region', { name: '코드값 정보' });
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+
+  it('코드값 행을 고른 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
+      '?grp=1001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    const before = history.search();
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-01' }));
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+
+  it('코드값 미사용 포함을 켠 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByLabelText('코드명');
+
+    const before = history.search();
+    await user.click(within(codeValuePane()).getByRole('checkbox', { name: '미사용 포함' }));
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+
+  it('코드값 쪽을 옮긴 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(codeValueFixtures, { page: 1, size: 2, total: 10 }),
+        codeValueDetailRoute(),
+      ],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByLabelText('코드명');
+
+    const before = history.search();
+    await user.click(within(codeValuePane()).getByRole('button', { name: '다음' }));
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+
+  it('그룹 추가를 누른 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()],
+      '?grp=1001',
+    );
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+
+    const before = history.search();
+
+    await user.click(within(codeGroupPane()).getByRole('button', { name: '그룹 추가' }));
+    await screen.findByLabelText('그룹코드');
+
+    history.back();
+    expect(history.search()).toBe(before);
+  });
+
+  /* 같은 값을 다시 쓰면 주소가 달라지지 않는다 — 달라지지 않는 갱신은 칸만 늘린다. */
+  it('이미 고른 코드값을 다시 눌러도 히스토리가 늘지 않는다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), codeValueDetailRoute()],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByLabelText('코드명');
+
+    const entriesBefore = history.entries();
+
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-01' }));
+
+    // 주소가 달라지지 않는 갱신은 칸만 늘린다 — 아예 갱신하지 않는다.
+    expect(history.entries()).toBe(entriesBefore);
   });
 });

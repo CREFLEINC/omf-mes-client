@@ -35,9 +35,15 @@ const t = messages.commonCode.codeValue;
  * 폼의 현재 값과 그것이 어디서 나왔는지.
  * 「고친 것이 있는가」는 둘의 비교로 판정하고, 출처가 바뀔 때만 폼을 다시 세운다 —
  * 사용자가 입력하는 동안 값이 되돌아가면 안 된다.
+ *
+ * **출처는 등록과 수정을 함께 담는다** — 수정은 상세 응답 객체이고, 등록은 바깥이 준
+ * 「지금 등록 중이다」에서 파생한 문자열이다. 등록 폼의 값을 이 부품의 로컬 상태에만 두면
+ * 소비 화면이 주소로 폼을 여닫을 때 값이 따라 살아나지 못한다.
  */
+type CodeValueFormSource = string | CodeValueDetailResponse;
+
 interface CodeValueFormState {
-  source: CodeValueDetailResponse;
+  source: CodeValueFormSource;
   baseline: CodeValueFormValues;
   values: CodeValueFormValues;
 }
@@ -49,9 +55,17 @@ export interface CodeValueSectionProps {
    */
   codeGroupId: number | null;
   selectedCodeValueId: number | null;
-  onSelectCodeValue: (codeValueId: number | null) => void;
+  onSelectCodeValue: (codeValueId: number) => void;
+  /**
+   * 등록 폼이 열려 있는가. 이 값도 소비 화면이 소유한다(주소에 둘 수 있다).
+   *
+   * 여닫음을 **조작 단위 콜백**으로 나눈 이유는 소비 화면이 한 조작을 주소 갱신 한 번으로
+   * 끝낼 수 있어야 하기 때문이다 — 「선택을 비우면서 등록을 켠다」를 두 번으로 나눠 부르면
+   * 뒤로가기가 사용자가 본 적 없는 중간 상태로 떨어진다.
+   */
   isCreating: boolean;
-  onCreatingChange: (isCreating: boolean) => void;
+  onOpenCreate: () => void;
+  onCloseCreate: () => void;
   includeInactive: boolean;
   onIncludeInactiveChange: (includeInactive: boolean) => void;
   page: number;
@@ -78,7 +92,8 @@ export const CodeValueSection = ({
   selectedCodeValueId,
   onSelectCodeValue,
   isCreating,
-  onCreatingChange,
+  onOpenCreate,
+  onCloseCreate,
   includeInactive,
   onIncludeInactiveChange,
   page,
@@ -99,15 +114,24 @@ export const CodeValueSection = ({
 
   const [formState, setFormState] = useState<CodeValueFormState | null>(null);
 
-  /*
-   * 폼의 기준값은 상세 응답에서 온다. 응답 객체가 바뀔 때만 다시 세워
-   * 사용자가 입력하는 동안 값이 서버 값으로 되돌아가지 않게 한다.
+  /**
+   * 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 **바깥이 준 상태**가 정한다.
+   * 그래야 소비 화면이 주소로 등록 폼을 열어 둔 채 새로고침해도 폼이 선다.
+   *
+   * 등록 출처에 그룹 번호를 넣는 이유는 그룹이 바뀌면 다른 그룹의 새 값이라 다시 세워야 하기 때문이다.
    */
-  const source = detail.data ?? null;
+  const formSource: CodeValueFormSource | null = isCreating
+    ? `create:${String(codeGroupId ?? '')}`
+    : (detail.data ?? null);
 
-  if (source !== null && formState?.source !== source) {
-    const seeded = codeValueToFormValues(source.codeValue);
-    setFormState({ source, baseline: seeded, values: seeded });
+  if (formSource === null) {
+    if (formState !== null) setFormState(null);
+  } else if (formState?.source !== formSource) {
+    const seeded =
+      typeof formSource === 'string'
+        ? emptyCodeValueFormValues()
+        : codeValueToFormValues(formSource.codeValue);
+    setFormState({ source: formSource, baseline: seeded, values: seeded });
   }
 
   const isDirty =
@@ -115,10 +139,6 @@ export const CodeValueSection = ({
 
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다. */
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  /** 등록 폼의 값. null이면 폼이 닫혀 있다. 상세 응답이 없는 폼이라 수정 폼 상태와 섞지 않는다. */
-  const [createValues, setCreateValues] = useState<CodeValueFormValues | null>(null);
-  const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
 
@@ -166,12 +186,14 @@ export const CodeValueSection = ({
     invalidateKeys: [codeValueKeys.all],
     knownFields: CODE_VALUE_FORM_FIELDS,
     onSuccess: (saved) => {
-      setCreateValues(null);
-      setCreateFieldErrors({});
-      onCreatingChange(false);
+      setFieldErrors({});
       /*
        * 201에는 ETag가 없다 — 새 코드값을 고르면 상세를 다시 조회하게 되고
        * 그 조회가 잠금 토큰을 확보한다.
+       *
+       * **바깥에 알리는 것은 이 한 번뿐이다.** 「등록을 끈다」와 「새 번호를 고른다」를
+       * 나눠 부르면 소비 화면이 주소를 두 번 고치게 되고, 뒤로가기가 중간 상태로 떨어진다.
+       * 고르는 것 자체가 등록을 끝냈다는 뜻이라 소비 화면이 한 번에 처리한다.
        */
       onSelectCodeValue(saved.codeValueId);
       toast.show({ variant: 'success', description: messages.common.created });
@@ -206,6 +228,12 @@ export const CodeValueSection = ({
     },
   });
 
+  /**
+   * 지금 모드의 쓰기. 등록과 수정이 **한 폼 상태**를 쓰므로 저장·오류·진행 표시도
+   * 한 곳에서 골라 쓴다 — 두 훅의 상태를 합치면 어느 저장의 실패인지 흐려진다.
+   */
+  const activeWrite = isCreating ? createWrite : updateWrite;
+
   const resetEditing = () => {
     updateWrite.reset();
     createWrite.reset();
@@ -213,41 +241,36 @@ export const CodeValueSection = ({
     setIsDeactivateOpen(false);
     setFormState(null);
     setFieldErrors({});
-    setCreateValues(null);
-    setCreateFieldErrors({});
   };
 
+  /*
+   * 조작마다 바깥 콜백을 **한 번만** 부른다. 소비 화면이 그 한 번으로 주소를 마무리할 수 있어야
+   * 뒤로가기가 사용자가 본 적 없는 중간 상태로 떨어지지 않는다.
+   */
   const handleSelect = (codeValueId: number) => {
     resetEditing();
-    onCreatingChange(false);
     onSelectCodeValue(codeValueId);
   };
 
   const handleIncludeInactiveChange = (next: boolean) => {
     resetEditing();
-    onCreatingChange(false);
     onIncludeInactiveChange(next);
   };
 
   const handlePageChange = (next: number) => {
     resetEditing();
-    onCreatingChange(false);
     onPageChange(next);
   };
 
   const handleAdd = () => {
     resetEditing();
-    setCreateValues(emptyCodeValueFormValues());
-    // 등록 폼이 열려 있는 동안 고른 코드값의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-    onSelectCodeValue(null);
-    onCreatingChange(true);
+    onOpenCreate();
   };
 
   const closeCreateForm = () => {
-    setCreateValues(null);
-    setCreateFieldErrors({});
     createWrite.reset();
-    onCreatingChange(false);
+    setFieldErrors({});
+    onCloseCreate();
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -257,22 +280,8 @@ export const CodeValueSection = ({
     );
 
     for (const field of Object.keys(patch)) {
-      updateWrite.clearFieldError(field);
+      activeWrite.clearFieldError(field);
       setFieldErrors((prev) => {
-        if (!(field in prev)) return prev;
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
-
-  const changeCreateValues = (patch: Partial<CodeValueFormValues>) => {
-    setCreateValues((prev) => (prev === null ? prev : { ...prev, ...patch }));
-
-    for (const field of Object.keys(patch)) {
-      createWrite.clearFieldError(field);
-      setCreateFieldErrors((prev) => {
         if (!(field in prev)) return prev;
         const next = { ...prev };
         delete next[field];
@@ -290,18 +299,7 @@ export const CodeValueSection = ({
     // 화면에서 잡히는 오류는 서버로 보내지 않는다.
     if (Object.keys(errors).length > 0) return;
 
-    updateWrite.write(formState.values);
-  };
-
-  const handleSaveCreate = () => {
-    if (createValues === null) return;
-
-    const errors = validateCodeValueForm(createValues);
-    setCreateFieldErrors(errors);
-
-    if (Object.keys(errors).length > 0) return;
-
-    createWrite.write(createValues);
+    activeWrite.write(formState.values);
   };
 
   /**
@@ -342,22 +340,22 @@ export const CodeValueSection = ({
    */
   const renderFormPane = (): ReactNode => {
     if (isCreating) {
-      if (createValues === null) return null;
+      if (formState === null) return null;
 
       return (
         <CodeValueFormPane
           mode="create"
-          values={createValues}
-          onChange={changeCreateValues}
-          fieldErrors={{ ...createWrite.fieldErrors, ...createFieldErrors }}
+          values={formState.values}
+          onChange={changeValues}
+          fieldErrors={{ ...createWrite.fieldErrors, ...fieldErrors }}
           /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
           banner={<SaveErrorBanner error={createWrite.error} />}
           /* 등록에서는 코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
           codeLockReason={null}
           deactivateDisabledReason={null}
-          isDirty
+          isDirty={isDirty}
           isSaving={createWrite.isSaving}
-          onSave={handleSaveCreate}
+          onSave={handleSave}
           onCancel={closeCreateForm}
           onDeactivate={() => undefined}
         />

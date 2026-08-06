@@ -122,7 +122,11 @@ export const CodeGroupFormPane = ({
             />
           ))}
 
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
+        {/*
+         * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
+         * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
+         */}
+        <Button variant="outlined" disabled={mode === 'edit' && !isDirty} onClick={onCancel}>
           {messages.common.cancel}
         </Button>
 
