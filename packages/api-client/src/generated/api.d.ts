@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * 창고 목록
-         * @description 근거: W-06-07 §3 좌측 목록 · 공유계약 G-8(유효성 판정은 서버가 한다)
+         * @description 근거: W-06-07 §3 좌측 목록 · 공유계약 G-8
          */
         get: {
             parameters: {
@@ -49,13 +49,13 @@ export interface paths {
         put?: never;
         /**
          * 창고 등록
-         * @description 근거: W-06-07 §5-1 「창고 추가」 · 공유계약 A-1(유일 위반은 범위를 담아 응답)
+         * @description 근거: W-06-07 §5-1 「창고 추가」 · 공유계약 A-1
          */
         post: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -85,7 +85,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-07 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-07 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -113,7 +113,7 @@ export interface paths {
         };
         /**
          * 창고 상세
-         * @description 근거: W-06-07 §4-A · 공유계약 B-4(참조 건수를 응답에 담는다 — 화면이 세지 않는다)
+         * @description 근거: W-06-07 §4-A · 공유계약 B-4
          */
         get: {
             parameters: {
@@ -129,7 +129,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -141,13 +141,13 @@ export interface paths {
         };
         /**
          * 창고 수정
-         * @description 근거: W-06-07 §5-3 · 공유계약 B-1(낙관적 잠금 — 덮어쓰기 강제는 제공하지 않는다)
+         * @description 근거: W-06-07 §5-3 · 공유계약 B-1
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -166,7 +166,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -183,7 +183,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-07 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-07 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -229,7 +229,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -250,7 +250,7 @@ export interface paths {
                         "application/json": components["schemas"]["Warehouse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-07 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-07 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -285,7 +285,7 @@ export interface paths {
         };
         /**
          * Location 목록
-         * @description 창고를 고른 뒤에만 조회한다. 근거: W-06-07 §3 우측 Location 탭 · 공유계약 G-8(유효성 판정은 서버가 한다)
+         * @description 창고를 고른 뒤에만 조회한다. 근거: W-06-07 §3 우측 Location 탭 · 공유계약 G-8
          */
         get: {
             parameters: {
@@ -321,13 +321,13 @@ export interface paths {
         put?: never;
         /**
          * Location 등록
-         * @description 근거: W-06-07 §5-1 「Location 추가 / 하위 추가」 · 공유계약 A-1(유일 위반은 범위를 담아 응답)
+         * @description 근거: W-06-07 §5-1 「Location 추가 / 하위 추가」 · 공유계약 A-1
          */
         post: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -357,7 +357,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-07 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-07 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -385,7 +385,7 @@ export interface paths {
         };
         /**
          * Location 상세
-         * @description 근거: W-06-07 §4-B · 공유계약 B-4(참조 건수를 응답에 담는다 — 화면이 세지 않는다)
+         * @description 근거: W-06-07 §4-B · 공유계약 B-4
          */
         get: {
             parameters: {
@@ -401,7 +401,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -413,13 +413,13 @@ export interface paths {
         };
         /**
          * Location 수정
-         * @description 행 선택 → 인스펙터/Dialog 편집. 근거: W-06-07 §4-B 편집 열 · §3 · 공유계약 B-1(낙관적 잠금 — 덮어쓰기 강제는 제공하지 않는다)
+         * @description 행 선택 → 인스펙터/Dialog 편집. 근거: W-06-07 §4-B 편집 열 · §3 · 공유계약 B-1
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -438,7 +438,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -455,7 +455,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-07 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-07 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -495,13 +495,13 @@ export interface paths {
         put?: never;
         /**
          * Location 사용 중지
-         * @description 물리 삭제는 제공하지 않는다. 재고가 있는 Location 은 확인 다이얼로그 + 사유 안내가 선행된다(허용 여부 자체는 §8-6 미결). 근거: W-06-07 §6 「참조 중 비활성화」 · 공유계약 B-4
+         * @description 물리 삭제는 제공하지 않는다. 재고가 있는 Location 은 확인 다이얼로그 + 사유 안내가 선행된다. 근거: W-06-07 §6 「참조 중 비활성화」 · 공유계약 B-4
          */
         post: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -522,7 +522,7 @@ export interface paths {
                         "application/json": components["schemas"]["Location"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-07 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-07 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -557,7 +557,7 @@ export interface paths {
         };
         /**
          * 사용자 목록
-         * @description 근거: W-CO-02 §3 좌측 목록 · 공유계약 G-8(유효성 판정은 서버가 한다)
+         * @description 근거: W-CO-02 §3 좌측 목록 · 공유계약 G-8
          */
         get: {
             parameters: {
@@ -591,7 +591,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description 권한 없음. 이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다(G-1 화면 수준). 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다(G-1 화면 수준). 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -605,13 +605,13 @@ export interface paths {
         put?: never;
         /**
          * 사용자 등록
-         * @description 근거: W-CO-02 §5-1 「사용자 추가」 · 공유계약 A-1(유일 위반은 범위를 담아 응답)
+         * @description 근거: W-CO-02 §5-1 「사용자 추가」 · 공유계약 A-1
          */
         post: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -641,7 +641,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -669,7 +669,7 @@ export interface paths {
         };
         /**
          * 사용자 상세
-         * @description 근거: W-CO-02 §4-A · 공유계약 B-4(참조 건수를 응답에 담는다 — 화면이 세지 않는다). loginId 는 항상 editability.reason=NOT_COUNTABLE — 미착지 #69
+         * @description 근거: W-CO-02 §4-A · 공유계약 B-4. loginId 는 항상 editability.reason=NOT_COUNTABLE
          */
         get: {
             parameters: {
@@ -685,7 +685,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -697,13 +697,13 @@ export interface paths {
         };
         /**
          * 사용자 수정
-         * @description 근거: W-CO-02 §5-2 · 공유계약 B-1(낙관적 잠금 — 덮어쓰기 강제는 제공하지 않는다)
+         * @description 근거: W-CO-02 §5-2 · 공유계약 B-1
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -722,7 +722,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -739,7 +739,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -785,7 +785,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -806,7 +806,7 @@ export interface paths {
                         "application/json": components["schemas"]["AppUser"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -869,13 +869,13 @@ export interface paths {
         };
         /**
          * 역할 전체 치환
-         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. 체크박스 화면이 서버와 어긋날 여지가 없다. 서버는 한 트랜잭션으로 반영한다. 동시에 같은 역할이 부여되는 경합은 유일 위반으로 거부하지 않고 이미 반영된 상태로 조용히 갱신한다(§6 「역할 중복 부여 경합」). 근거: W-CO-02 §4-C·§5-1 · 공유계약 B-6(부여·회수 테이블은 INSERT/DELETE 이며 물리 삭제 금지 규칙을 적용하지 않는다)
+         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. 체크박스 화면이 서버와 어긋날 여지가 없다. 서버는 한 트랜잭션으로 반영한다. 동시에 같은 역할이 부여되는 경합은 유일 위반으로 거부하지 않고 이미 반영된 상태로 조용히 갱신한다(§6 「역할 중복 부여 경합」). 근거: W-CO-02 §4-C·§5-1 · 공유계약 B-6
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -909,7 +909,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -964,13 +964,13 @@ export interface paths {
         };
         /**
          * 데이터 접근범위 전체 치환
-         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. ck_user_data_scope_target — businessUnitId·plantId 둘 중 하나 이상 필수, 위반 시 400(PAIR). uq_user_data_scope 가 COALESCE(...,0) 으로 NULL 을 접어 유일 판정하므로 같은 범위를 두 번 넣으면 400(UNIQUE_VIOLATION) — 화면은 빈 축을 (전체)로 표기한다(공유계약 A-7). 서버는 한 트랜잭션으로 반영한다. 근거: W-CO-02 §4-D·§5-1 · 공유계약 B-6. 미착지: 법인 축(legal_entity_id) 부재 — #69
+         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. ck_user_data_scope_target — businessUnitId·plantId 둘 중 하나 이상 필수, 위반 시 400(PAIR). uq_user_data_scope 가 COALESCE(...,0) 으로 NULL 을 접어 유일 판정하므로 같은 범위를 두 번 넣으면 400(UNIQUE_VIOLATION) — 화면은 빈 축을 (전체)로 표기한다(공유계약 A-7). 서버는 한 트랜잭션으로 반영한다. 근거: W-CO-02 §4-D·§5-1 · 공유계약 B-6.
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -1009,7 +1009,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1036,7 +1036,7 @@ export interface paths {
         };
         /**
          * 역할 목록
-         * @description 근거: W-CO-02 §3 좌측 목록(역할 탭) · 공유계약 G-8(유효성 판정은 서버가 한다)
+         * @description 근거: W-CO-02 §3 좌측 목록(역할 탭) · 공유계약 G-8
          */
         get: {
             parameters: {
@@ -1066,7 +1066,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description 권한 없음. 이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다(G-1 화면 수준). 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다(G-1 화면 수준). 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1080,13 +1080,13 @@ export interface paths {
         put?: never;
         /**
          * 역할 등록
-         * @description 근거: W-CO-02 §5-1 「역할 추가」 · 공유계약 A-1(유일 위반은 범위를 담아 응답)
+         * @description 근거: W-CO-02 §5-1 「역할 추가」 · 공유계약 A-1
          */
         post: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -1116,7 +1116,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1144,7 +1144,7 @@ export interface paths {
         };
         /**
          * 역할 상세
-         * @description 근거: W-CO-02 §4-B · 공유계약 B-4(참조 건수를 응답에 담는다 — 화면이 세지 않는다)
+         * @description 근거: W-CO-02 §4-B · 공유계약 B-4
          */
         get: {
             parameters: {
@@ -1160,7 +1160,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -1172,13 +1172,13 @@ export interface paths {
         };
         /**
          * 역할 수정
-         * @description 근거: W-CO-02 §5-2 · 공유계약 B-1(낙관적 잠금 — 덮어쓰기 강제는 제공하지 않는다)
+         * @description 근거: W-CO-02 §5-2 · 공유계약 B-1
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -1197,7 +1197,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -1214,7 +1214,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1254,13 +1254,13 @@ export interface paths {
         put?: never;
         /**
          * 역할 사용 중지
-         * @description 물리 삭제는 제공하지 않는다. 배정된 사용자가 있는 역할은 확인 다이얼로그 + 배정 건수 표시가 선행된다(허용 여부 자체는 §8-6 미결). 근거: W-CO-02 §6 「참조 중인 역할 사용 중지」 · 공유계약 B-4
+         * @description 물리 삭제는 제공하지 않는다. 배정된 사용자가 있는 역할은 확인 다이얼로그 + 배정 건수 표시가 선행된다. 근거: W-CO-02 §6 「참조 중인 역할 사용 중지」 · 공유계약 B-4
          */
         post: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -1281,7 +1281,7 @@ export interface paths {
                         "application/json": components["schemas"]["Role"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1344,13 +1344,13 @@ export interface paths {
         };
         /**
          * 기능 권한 전체 치환
-         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. 서버는 한 트랜잭션으로 반영한다. 미착지: permission_code 값 목록이 회신 E-9 대기 — 화면은 비활성+사유로 둔다(공유계약 G-2·G-6). 근거: W-CO-02 §4-E·§5-1 · 공유계약 B-6(부여·회수 테이블은 INSERT/DELETE 이며 물리 삭제 금지 규칙을 적용하지 않는다)
+         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. 서버는 한 트랜잭션으로 반영한다. 근거: W-CO-02 §4-E·§5-1 · 공유계약 B-6
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -1384,7 +1384,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1411,7 +1411,7 @@ export interface paths {
         };
         /**
          * Routing Rev 목록
-         * @description 품목의 Routing Rev 전체를 routingVersion 내림차순(최신이 위)으로 준다. 이 화면은 Rev 목록을 접지 않으므로 상태(작성중/확정/폐기)를 가리지 않고 전부 낸다. 근거: W-06-01 §3 중단 Rev 목록 · 공유계약 G-8(유효성 판정은 서버가 한다)
+         * @description 품목의 Routing Rev 전체를 routingVersion 내림차순(최신이 위)으로 준다. 이 화면은 Rev 목록을 접지 않으므로 상태(작성중/확정/폐기)를 가리지 않고 전부 낸다. 근거: W-06-01 §3 중단 Rev 목록 · 공유계약 G-8
          */
         get: {
             parameters: {
@@ -1445,7 +1445,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -1503,7 +1503,7 @@ export interface paths {
         };
         /**
          * Routing 헤더 상세
-         * @description 근거: W-06-01 §4-A · 공유계약 B-4(routingCode 참조 건수를 응답에 담는다 — 화면이 세지 않는다)
+         * @description 근거: W-06-01 §4-A · 공유계약 B-4
          */
         get: {
             parameters: {
@@ -1519,7 +1519,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -1531,13 +1531,13 @@ export interface paths {
         };
         /**
          * Routing 헤더 수정
-         * @description 상태=작성중일 때만 허용한다 — 확정 Rev 는 in-place 수정을 금지한다(설계 결정 07). 상태≠작성중이면 400(ErrorResponse, code=STATE_LOCKED — 확정 또는 폐기 상태라 잠김). itemId 는 신규만(편집 불가) · routingVersion 은 시스템 채번(편집 불가) · statusCode 는 이 API 로 바꾸지 않고 :new-revision·:confirm·:obsolete 로만 전이한다. ck_routing_dates — effectiveTo 는 있으면 effectiveFrom 이상이어야 한다(짝 제약). 근거: W-06-01 §4-A · §5-4 · 공유계약 B-1(낙관적 잠금)
+         * @description 상태=작성중일 때만 허용한다 — 확정 Rev 는 in-place 수정을 금지한다(설계 결정 07). 상태≠작성중이면 400(ErrorResponse, code=STATE_LOCKED — 확정 또는 폐기 상태라 잠김). itemId 는 신규만(편집 불가) · routingVersion 은 시스템 채번(편집 불가) · statusCode 는 이 API 로 바꾸지 않고 :new-revision·:confirm·:obsolete 로만 전이한다. ck_routing_dates — effectiveTo 는 있으면 effectiveFrom 이상이어야 한다(짝 제약). 근거: W-06-01 §4-A · §5-4 · 공유계약 B-1
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -1556,7 +1556,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -1582,7 +1582,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 충돌 — 공유계약 B-1(낙관적 잠금). 상태 잠김(확정·폐기)은 409 가 아니라 400(STATE_LOCKED) */
+                /** @description 충돌 — 공유계약 B-1. 상태 잠김(확정·폐기)은 409 가 아니라 400(STATE_LOCKED) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -1619,7 +1619,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -1683,7 +1683,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -1747,7 +1747,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -1839,7 +1839,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -1934,7 +1934,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -2002,7 +2002,7 @@ export interface paths {
         };
         /**
          * 코드그룹 목록
-         * @description 근거: W-06-06 §3 좌측 그룹 목록 · 공유계약 G-8(유효성 판정은 서버가 한다)
+         * @description 근거: W-06-06 §3 좌측 그룹 목록 · 공유계약 G-8
          */
         get: {
             parameters: {
@@ -2036,13 +2036,13 @@ export interface paths {
         put?: never;
         /**
          * 코드그룹 등록
-         * @description ⚠ 코드그룹의 정본이 ERP 인지 MES 인지는 미결이다(§5-4 「구멍」 · §8-7 — WF06 S1 Boundary 는 「정본=ERP」이나 Action 은 「MES 에서 정의」라 원문 안에서 갈린다). 결정 전까지는 등록을 막지 않는다. 근거: W-06-06 §5-1 「그룹 추가」 · 공유계약 A-1(유일 위반은 범위를 담아 응답)
+         * @description 등록을 막지 않는다. 근거: W-06-06 §5-1 「그룹 추가」 · 공유계약 A-1
          */
         post: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -2072,7 +2072,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-06 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2100,7 +2100,7 @@ export interface paths {
         };
         /**
          * 코드그룹 상세
-         * @description 근거: W-06-06 §4-A · 공유계약 B-4(참조 건수를 응답에 담는다 — 화면이 세지 않는다)
+         * @description 근거: W-06-06 §4-A · 공유계약 B-4
          */
         get: {
             parameters: {
@@ -2116,7 +2116,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -2128,13 +2128,13 @@ export interface paths {
         };
         /**
          * 코드그룹 수정
-         * @description 근거: W-06-06 §4-A · 공유계약 B-1(낙관적 잠금 — 덮어쓰기 강제는 제공하지 않는다)
+         * @description 근거: W-06-06 §4-A · 공유계약 B-1
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -2153,7 +2153,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -2170,7 +2170,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-06 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2216,7 +2216,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -2237,7 +2237,7 @@ export interface paths {
                         "application/json": components["schemas"]["CodeGroup"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-06 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2272,7 +2272,7 @@ export interface paths {
         };
         /**
          * 코드값 목록
-         * @description 코드그룹을 고른 뒤에만 조회한다. 판정유형 코드도 이 경로로 조회한다(W-06-04 는 codeGroupId 를 「판정유형」 그룹으로 고정해 호출한다). 근거: W-06-06 §3 코드값 목록 · W-06-04 §4-A · 공유계약 G-8(유효성 판정은 서버가 한다)
+         * @description 코드그룹을 고른 뒤에만 조회한다. 판정유형 코드도 이 경로로 조회한다(W-06-04 는 codeGroupId 를 「판정유형」 그룹으로 고정해 호출한다). 근거: W-06-06 §3 코드값 목록 · W-06-04 §4-A · 공유계약 G-8
          */
         get: {
             parameters: {
@@ -2314,7 +2314,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -2344,7 +2344,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-06 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2388,7 +2388,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -2406,7 +2406,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -2425,7 +2425,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -2442,7 +2442,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-06 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2488,7 +2488,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -2509,7 +2509,7 @@ export interface paths {
                         "application/json": components["schemas"]["CodeValue"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-06 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2585,7 +2585,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -2615,7 +2615,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-06 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2659,7 +2659,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -2677,7 +2677,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -2696,7 +2696,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -2713,7 +2713,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-06 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2759,7 +2759,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -2780,7 +2780,7 @@ export interface paths {
                         "application/json": components["schemas"]["Department"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-06 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2943,7 +2943,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -2998,7 +2998,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-06 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3025,7 +3025,7 @@ export interface paths {
         };
         /**
          * 품목 목록
-         * @description 품목 목록. W-06-05 는 확장 속성 편집 대상으로, W-06-01 은 Routing 을 붙일 대상으로 같은 목록을 쓴다. 근거: W-06-05 §3 좌측 품목 목록 · W-06-01 §3 좌측 품목 검색·§6 · 공유계약 G-8(유효성 판정은 서버가 한다)
+         * @description 품목 목록. W-06-05 는 확장 속성 편집 대상으로, W-06-01 은 Routing 을 붙일 대상으로 같은 목록을 쓴다. 근거: W-06-05 §3 좌측 품목 목록 · W-06-01 §3 좌측 품목 검색·§6 · 공유계약 G-8
          */
         get: {
             parameters: {
@@ -3094,7 +3094,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -3106,13 +3106,13 @@ export interface paths {
         };
         /**
          * 품목 MES 확장 속성 수정
-         * @description ERP 수신본. 원본 필드(itemCode·itemName·itemTypeCode·baseUomId)는 읽기 전용이고 MES 확장 속성만 편집한다 — QA #34. 미착지 넷: 자재LOT 보관단위·생산LOT 기본크기·개발품 플래그·재생재 하위코드 — #64. 그리고 수신본 식별 플래그 부재로 읽기 전용 판정 자체가 불가능하다 — #65. 「유효기한 관리」 토글은 별도 컬럼이 아니라 shelfLifeDays 의 NULL 여부로 표현한다(§8-2) — 화면이 토글 OFF 시 shelfLifeDays 를 null 로 보낸다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-05 §4-B·§5-1
+         * @description ERP 수신본. 원본 필드(itemCode·itemName·itemTypeCode·baseUomId)는 읽기 전용이고 MES 확장 속성만 편집한다 — QA #34. 그리고 수신본 식별 플래그 부재로 읽기 전용 판정 자체가 불가능하다 — #65. 「유효기한 관리」 토글은 별도 컬럼이 아니라 shelfLifeDays 의 NULL 여부로 표현한다(§8-2) — 화면이 토글 OFF 시 shelfLifeDays 를 null 로 보낸다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-05 §4-B·§5-1
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -3131,7 +3131,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -3148,7 +3148,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-05 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-05 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3218,7 +3218,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -3269,7 +3269,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-05 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-05 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3330,7 +3330,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -3373,7 +3373,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-05 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-05 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3434,7 +3434,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -3485,7 +3485,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-05 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-05 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3608,7 +3608,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -3636,7 +3636,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-05 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-05 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3708,7 +3708,7 @@ export interface paths {
         };
         /**
          * BOM 구성품 상세
-         * @description ERP 원본 열(sequenceNo·componentItemId·requiredQty·uomId·scrapRate·isMandatory)과 MES 확장 열(routingOperationId·actualUseProcessId·lotTraceRequired·backflushAllowed)이 한 행에 섞인다. editability 는 원본 열이 항상 잠김임을 알린다(RECEIVED_FROM_ERP) — `Item`(같은 화면)과 같은 원리. 참조 건수로 갈리지 않는다 — MES 확장 4열은 항상 편집 가능하고 나머지는 항상 잠김이다. 행 단위 GET 신설로 `PUT` 의 `If-Match` 가 실을 `ETag` 자리가 비로소 생겼다(§5 미착지 16 해소 — 2026-08-03 사용자 결정). 근거: W-06-05 §5-1 「구성품 확장 열 편집」
+         * @description ERP 원본 열(sequenceNo·componentItemId·requiredQty·uomId·scrapRate·isMandatory)과 MES 확장 열(routingOperationId·actualUseProcessId·lotTraceRequired·backflushAllowed)이 한 행에 섞인다. editability 는 원본 열이 항상 잠김임을 알린다(RECEIVED_FROM_ERP) — `Item`(같은 화면)과 같은 원리. 참조 건수로 갈리지 않는다 — MES 확장 4열은 항상 편집 가능하고 나머지는 항상 잠김이다. 행 단위 GET 신설로 `PUT` 의 `If-Match` 가 실을 `ETag` 자리가 비로소 생겼다. 근거: W-06-05 §5-1 「구성품 확장 열 편집」
          */
         get: {
             parameters: {
@@ -3725,7 +3725,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -3743,7 +3743,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -3763,7 +3763,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -3780,7 +3780,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 권한 없음. 근거: W-06-05 §6 · §8-8(편집 권한 매트릭스는 미결) */
+                /** @description 권한 없음. 근거: W-06-05 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3816,7 +3816,7 @@ export interface paths {
         };
         /**
          * 검사기준 목록
-         * @description 근거: W-06-02 §3 좌측 기준 목록 · 공유계약 G-8(유효성 판정은 서버가 한다)
+         * @description 근거: W-06-02 §3 좌측 기준 목록 · 공유계약 G-8
          */
         get: {
             parameters: {
@@ -3852,13 +3852,13 @@ export interface paths {
         put?: never;
         /**
          * 검사기준 등록
-         * @description 근거: W-06-02 §5-1 「기준 추가」 · 공유계약 A-1(유일 위반은 범위를 담아 응답)
+         * @description 근거: W-06-02 §5-1 「기준 추가」 · 공유계약 A-1
          */
         post: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -3932,7 +3932,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -3950,7 +3950,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -3969,7 +3969,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -4032,7 +4032,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -4092,13 +4092,13 @@ export interface paths {
         put?: never;
         /**
          * 검사기준 승인
-         * @description approvedBy·approvedAt 을 서버가 동시에 기록한다(현재 사용자·현재 시각) — 둘은 짝이어야 하나 물리 모델에 CHECK 제약이 없어(§8-3) 서버가 항상 함께 채우는 방식으로 짝을 보장한다(A-9 취지). 전제: 이 기준에 확정(status_code=확정) 버전이 1건 이상 있어야 한다 — 없으면 400(code=CONFIRMED_VERSION_REQUIRED). 승인 해제(취소)는 제공하지 않는다 — 미결 §8-3, 결정 시 추가한다. 근거: W-06-02 §5-1 「승인」
+         * @description approvedBy·approvedAt 을 서버가 동시에 기록한다(현재 사용자·현재 시각) — 둘은 짝이어야 하나 물리 모델에 CHECK 제약이 없어(§8-3) 서버가 항상 함께 채우는 방식으로 짝을 보장한다(A-9 취지). 전제: 이 기준에 확정(status_code=확정) 버전이 1건 이상 있어야 한다 — 없으면 400(code=CONFIRMED_VERSION_REQUIRED). 승인 해제(취소)는 제공하지 않는다. 근거: W-06-02 §5-1 「승인」
          */
         post: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -4186,7 +4186,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -4260,7 +4260,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -4272,13 +4272,13 @@ export interface paths {
         };
         /**
          * 검사기준 버전 수정
-         * @description 상태=작성중일 때만 허용한다 — W-06-01 §5-4 와 같은 규칙을 적용한다(다만 근거는 status_code 의 존재와 inspection_item_spec 에 version_no 가 없다는 구조에서 읽은 것이다 [추정] — W-06-02 §5-4). 상태≠작성중이면 400(ErrorResponse, code=STATE_LOCKED). planVersion·statusCode 는 이 API 로 바꾸지 않고 :new-revision·:confirm·:obsolete 로만 전이한다. ck_inspection_plan_version_dates — effectiveTo 는 있으면 effectiveFrom 이상. ⚠ sampling_qty 의 단위 해석(비율/수량)이 미결이다 §8-2 — 규약 없이 개발하면 30%가 30개로 저장된다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-B·§5-4
+         * @description 상태=작성중일 때만 허용한다 — W-06-01 §5-4 와 같은 규칙을 적용한다(다만 근거는 status_code 의 존재와 inspection_item_spec 에 version_no 가 없다는 구조에서 읽은 것이다 [추정] — W-06-02 §5-4). 상태≠작성중이면 400(ErrorResponse, code=STATE_LOCKED). planVersion·statusCode 는 이 API 로 바꾸지 않고 :new-revision·:confirm·:obsolete 로만 전이한다. ck_inspection_plan_version_dates — effectiveTo 는 있으면 effectiveFrom 이상. ⚠ sampling_qty 의 단위 해석(비율/수량)이 확정되지 않았다 — 규약 없이 개발하면 30%가 30개로 저장된다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-B·§5-4
          */
         put: {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -4297,7 +4297,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -4323,7 +4323,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 충돌 — 공유계약 B-1(낙관적 잠금). 상태 잠김(확정·폐기)은 409 가 아니라 400(STATE_LOCKED) */
+                /** @description 충돌 — 공유계약 B-1. 상태 잠김(확정·폐기)은 409 가 아니라 400(STATE_LOCKED) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -4360,7 +4360,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -4424,7 +4424,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -4488,7 +4488,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -4576,7 +4576,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -4679,7 +4679,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -4737,7 +4737,7 @@ export interface paths {
         };
         /**
          * 불량코드 상세
-         * @description 근거: W-06-03 §4-A · 공유계약 B-4(참조처는 defect_record — FK 실재라 셀 수 있다)
+         * @description 근거: W-06-03 §4-A · 공유계약 B-4
          */
         get: {
             parameters: {
@@ -4753,7 +4753,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -4771,7 +4771,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -4790,7 +4790,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -4853,7 +4853,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -4950,7 +4950,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -5008,7 +5008,7 @@ export interface paths {
         };
         /**
          * 원인코드 상세
-         * @description 근거: W-06-03 §4-C · 공유계약 B-4(참조처는 defect_record.suspected_cause_code_id·confirmed_cause_code_id — FK 실재)
+         * @description 근거: W-06-03 §4-C · 공유계약 B-4
          */
         get: {
             parameters: {
@@ -5024,7 +5024,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -5042,7 +5042,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -5061,7 +5061,7 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로 내리지 않는 이유는 공유계약 A-4(version_no 는 화면에 노출하지 않는다)이고, 전송 자체는 A-4 가 함께 요구하는 B-1(낙관적 잠금) 구현에 필요하다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -5124,7 +5124,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
@@ -5256,7 +5256,7 @@ export interface paths {
         };
         /**
          * 연계 메시지 상세
-         * @description payload(jsonb) 전문·lastErrorMessage 전문을 포함한다 — 목록 응답에는 payload 가 없고 이 상세에만 있다. ⚠ payload 는 대외비를 담을 수 있어 노출 범위가 미결이다 — W-06-10 §8-4(내보내기 기능과 함께 판단해야 한다). 근거: W-06-10 §4-C
+         * @description payload(jsonb) 전문·lastErrorMessage 전문을 포함한다 — 목록 응답에는 payload 가 없고 이 상세에만 있다. ⚠ payload 는 대외비를 담을 수 있어 노출 범위가 확정되지 않았다. 근거: W-06-10 §4-C
          */
         get: {
             parameters: {
@@ -5316,7 +5316,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path: {
@@ -5387,7 +5387,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+                    /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                 };
                 path?: never;
@@ -5436,7 +5436,7 @@ export interface paths {
         };
         /**
          * 변경 이력 조회
-         * @description occurred_at RANGE 파티션이라 기간 조건이 없으면 전 파티션을 훑는다 — 공유계약 B-5. 미착지: target_id 가 FK 가 아니라 유형별로 다른 테이블을 가리키고 before/after jsonb 의 키 규약이 없어 응답을 사람이 읽게 만들 수 없다 — #68. 이 결손 때문에 별도 /history 엔드포인트는 만들지 않는다(#68 해소 후 추가 — info.description 참고). 근거: W-06-11 §4-A·§5-1 「조회」
+         * @description occurred_at RANGE 파티션이라 기간 조건이 없으면 전 파티션을 훑는다 — 공유계약 B-5. 이 결손 때문에 별도 /history 엔드포인트는 만들지 않는다(#68 해소 후 추가 — info.description 참고). 근거: W-06-11 §4-A·§5-1 「조회」
          */
         get: {
             parameters: {
@@ -5801,7 +5801,7 @@ export interface paths {
         };
         /**
          * 공정 목록
-         * @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 화면이 쓰는 것은 processId·processName 이다. 근거: W-06-01 §4-B 공정 · W-06-02 §4-A 검사 대상 공정 · W-06-03 §4-A·§4-C 공정 · W-06-05 §4-F 실제 사용 공정 · W-06-06 §4-E 자격 대상 공정. ⚠ 공정 마스터의 관리 화면이 어디인지 자체가 미결이다 — W-06-01 §8-5
+         * @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 화면이 쓰는 것은 processId·processName 이다. 근거: W-06-01 §4-B 공정 · W-06-02 §4-A 검사 대상 공정 · W-06-03 §4-A·§4-C 공정 · W-06-05 §4-F 실제 사용 공정 · W-06-06 §4-E 자격 대상 공정.
          */
         get: {
             parameters: {
@@ -5972,7 +5972,7 @@ export interface components {
             /** @example 1 */
             total: number;
         };
-        /** @description 창고. 미착지: 다국어(한/베) 명칭 — #64 */
+        /** @description 창고. */
         Warehouse: {
             /**
              * Format: int64
@@ -6058,7 +6058,7 @@ export interface components {
              */
             businessUnitId: number;
             /**
-             * @description uq_warehouse — plantId 내 유일. 실제 편집 가능 여부는 GET 응답의 editability(§8-7 미결 반영)를 따른다
+             * @description uq_warehouse — plantId 내 유일. 실제 편집 가능 여부는 GET 응답의 editability를 따른다
              * @example WH-01
              */
             warehouseCode: string;
@@ -6191,7 +6191,7 @@ export interface components {
              */
             parentLocationId?: number | null;
             /**
-             * @description uq_location — warehouseId 내 유일. 실제 편집 가능 여부는 GET 응답의 editability(§8-7 미결 반영)를 따른다
+             * @description uq_location — warehouseId 내 유일. 실제 편집 가능 여부는 GET 응답의 editability를 따른다
              * @example A-01-03
              */
             locationCode: string;
@@ -6222,7 +6222,7 @@ export interface components {
             location: components["schemas"]["Location"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description 사용자. 미착지: 인증 수단(password_hash·last_login_at·failed_login_count) 전무 — #69. 비밀번호 초기화 액션을 정의할 수 없다. loginId 는 참조를 셀 수 없어(created_by 류가 의도적 비-FK) editability.reason=NOT_COUNTABLE 로 무조건 잠근다 — 공유계약 B-4 */
+        /** @description 사용자. 비밀번호 초기화 액션을 정의할 수 없다. loginId 는 참조를 셀 수 없어(created_by 류가 의도적 비-FK) editability.reason=NOT_COUNTABLE 로 무조건 잠근다 — 공유계약 B-4 */
         AppUser: {
             /**
              * Format: int64
@@ -6368,7 +6368,6 @@ export interface components {
         UserRoleListResponse: {
             items: components["schemas"]["UserRole"][];
         };
-        /** @description 미착지: permission_code 값 목록이 회신 E-9 대기 — 화면은 비활성+사유로 둔다(공유계약 G-2·G-6) */
         RolePermission: {
             /**
              * Format: int64
@@ -6386,7 +6385,7 @@ export interface components {
         RolePermissionListResponse: {
             items: components["schemas"]["RolePermission"][];
         };
-        /** @description ck_user_data_scope_target — businessUnitId·plantId 둘 중 하나 이상 필수. uq_user_data_scope 가 COALESCE(...,0) 으로 NULL 을 접어 유일 판정하므로 화면은 빈 축을 (전체)로 표기한다 — 공유계약 A-7. 미착지: 법인 축(legal_entity_id) 부재 — #69 */
+        /** @description ck_user_data_scope_target — businessUnitId·plantId 둘 중 하나 이상 필수. uq_user_data_scope 가 COALESCE(...,0) 으로 NULL 을 접어 유일 판정하므로 화면은 빈 축을 (전체)로 표기한다 — 공유계약 A-7. */
         UserDataScope: {
             /**
              * Format: int64
@@ -6414,7 +6413,7 @@ export interface components {
         UserDataScopeListResponse: {
             items: components["schemas"]["UserDataScope"][];
         };
-        /** @description 미착지: 기본(default) Rev 플래그 부재 — #64. planning.bom 에는 is_default 와 부분 유일 인덱스가 있는데 여기엔 둘 다 없어 :set-default 오퍼레이션이 성립하지 않는다. 유효기간이 겹치는 Rev 가 둘일 때 어느 것을 쓸지 정할 수 없다. effective_from 은 결정 07 이 「선택」이라 했으나 하류가 NOT NULL 이라 하류를 따른다 — W-06-01 §8-3 */
+        /** @description planning.bom 에는 is_default 와 부분 유일 인덱스가 있는데 여기엔 둘 다 없어 :set-default 오퍼레이션이 성립하지 않는다. 유효기간이 겹치는 Rev 가 둘일 때 어느 것을 쓸지 정할 수 없다. effective_from 은 결정 07 이 「선택」이라 했으나 하류가 NOT NULL 이라 하류를 따른다 — W-06-01 §8-3 */
         Routing: {
             /**
              * Format: int64
@@ -6502,7 +6501,7 @@ export interface components {
         RoutingListResponse: {
             items: components["schemas"]["Routing"][];
         };
-        /** @description 미착지: 외주 공정 구분(is_outsourced boolean) — 요청 형태 확정, #64. L/T·UPH 부재 — 목표관리 화면이 인벤토리에 없어 범위 밖 가능성. standardYieldRate 는 0~1 비율이며 퍼센트가 아니다 — 화면이 %로 보이면서 저장을 비율로 하면 100배 오입력이 조용히 통과한다(공유계약 A-8) */
+        /** @description L/T·UPH 부재 — 목표관리 화면이 인벤토리에 없어 범위 밖 가능성. standardYieldRate 는 0~1 비율이며 퍼센트가 아니다 — 화면이 %로 보이면서 저장을 비율로 하면 100배 오입력이 조용히 통과한다(공유계약 A-8) */
         RoutingOperation: {
             /**
              * Format: int64
@@ -6678,7 +6677,7 @@ export interface components {
         RoutingOperationDependencyListResponse: {
             items: components["schemas"]["RoutingOperationDependency"][];
         };
-        /** @description 코드그룹 — 공통코드 값 목록의 최상위 분류. 근거: W-06-06 §4-A. 등록 주체(ERP/MES)가 미결이라(§5-4 「구멍」·§8-7) 잠정적으로 MES 등록을 허용한다 */
+        /** @description 코드그룹 — 공통코드 값 목록의 최상위 분류. 근거: W-06-06 §4-A. 잠정적으로 MES 등록을 허용한다 */
         CodeGroup: {
             /**
              * Format: int64
@@ -6722,7 +6721,7 @@ export interface components {
             codeGroup: components["schemas"]["CodeGroup"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description 미착지: 다국어(한/베) 명칭 — #64. ck_code_value_dates 짝 제약. display_order 에는 유일 제약이 없어 순서 재배치에 전체 치환이 불필요하다 — 공유계약 A-5 대상 아님. 미착지: 수신본 식별 플래그 — #65. ERP 수신본이라 읽기 전용이어야 하는데 판정할 컬럼이 없다 */
+        /** @description ck_code_value_dates 짝 제약. display_order 에는 유일 제약이 없어 순서 재배치에 전체 치환이 불필요하다 — 공유계약 A-5 대상 아님. ERP 수신본이라 읽기 전용이어야 하는데 판정할 컬럼이 없다 */
         CodeValue: {
             /**
              * Format: int64
@@ -6819,7 +6818,7 @@ export interface components {
             codeValue: components["schemas"]["CodeValue"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description 계층(parent_department_id). ck_department_parent 는 자기 자신만 막고 순환(A→B→A)은 막지 않으므로 서버가 검사한다. 미착지: 수신본 식별 플래그 — #65. ERP 수신본이라 읽기 전용이어야 하는데 판정할 컬럼이 없다 */
+        /** @description 계층(parent_department_id). ck_department_parent 는 자기 자신만 막고 순환(A→B→A)은 막지 않으므로 서버가 검사한다. ERP 수신본이라 읽기 전용이어야 하는데 판정할 컬럼이 없다 */
         Department: {
             /**
              * Format: int64
@@ -6888,7 +6887,7 @@ export interface components {
             department: components["schemas"]["Department"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description ERP 수신본. 미착지: 수신본 식별 플래그 — #65 */
+        /** @description ERP 수신본. */
         Worker: {
             /**
              * Format: int64
@@ -6919,7 +6918,7 @@ export interface components {
             departmentId?: number | null;
             /**
              * Format: int64
-             * @description 작업자 ↔ 입력자 구분(SQL 502 주석). 연결 편집 소관 미결 — W-06-06 §8-3
+             * @description 작업자 ↔ 입력자 구분.
              * @example 1001
              */
             appUserId?: number | null;
@@ -6984,7 +6983,7 @@ export interface components {
         WorkerQualificationListResponse: {
             items: components["schemas"]["WorkerQualification"][];
         };
-        /** @description ERP 수신본. 원본 필드(itemCode·itemName·itemTypeCode·baseUomId)는 읽기 전용이고 MES 확장 속성만 편집한다 — QA #34. 미착지 넷: 자재LOT 보관단위·생산LOT 기본크기·개발품 플래그·재생재 하위코드 — #64. 그리고 수신본 식별 플래그 부재로 읽기 전용 판정 자체가 불가능하다 — #65 */
+        /** @description ERP 수신본. 원본 필드(itemCode·itemName·itemTypeCode·baseUomId)는 읽기 전용이고 MES 확장 속성만 편집한다 — QA #34. 그리고 수신본 식별 플래그 부재로 읽기 전용 판정 자체가 불가능하다 — #65 */
         Item: {
             /**
              * Format: int64
@@ -7285,13 +7284,13 @@ export interface components {
             componentItemId: number;
             /**
              * Format: int64
-             * @description MES 확장 — SQL 683 주석 「MES 등록(관리) 공정」
+             * @description MES 확장 — MES 등록(관리) 공정
              * @example 1001
              */
             routingOperationId?: number | null;
             /**
              * Format: int64
-             * @description MES 확장 — SQL 684 주석 「실제 사용 공정」. routingOperationId 와 다를 수 있다
+             * @description MES 확장 — 실제 사용 공정. routingOperationId 와 다를 수 있다
              * @example 1001
              */
             actualUseProcessId?: number | null;
@@ -7389,7 +7388,7 @@ export interface components {
             processId?: number | null;
             /**
              * Format: int64
-             * @description SQL 1745 주석 「적용 라우팅(버전) 연결」 — Routing Rev 단위로 묶인다. W-06-01 의 Rev 가 바뀌면 재연결 규칙 미정 §8-5
+             * @description 적용 라우팅(버전) 연결 — Routing Rev 단위로 묶인다. Rev 가 바뀌면 재연결 규칙은 확정되지 않았다.
              * @example 1001
              */
             routingId?: number | null;
@@ -7471,7 +7470,7 @@ export interface components {
             inspectionPlan: components["schemas"]["InspectionPlan"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description 미착지 셋: PQC 생략 허용·생략 근거·검사기준 미비 시 단순 선택 허용 — #64. samplingQty 는 확정 문구가 「샘플 비율(%)」인데 컬럼은 수량(app.qty_t)이다 — 규약 없이 개발하면 30%가 30개로 저장된다(A-8·#64) */
+        /** @description samplingQty 는 확정 문구가 「샘플 비율(%)」인데 컬럼은 수량(app.qty_t)이다 — 규약 없이 개발하면 30%가 30개로 저장된다(A-8·#64) */
         InspectionPlanVersion: {
             /**
              * Format: int64
@@ -7510,7 +7509,7 @@ export interface components {
              */
             samplingQty?: number | null;
             /**
-             * @description AQL·허용불량수(SQL 1766 주석)
+             * @description AQL·허용불량수
              * @example 1
              */
             aqlValue?: number | null;
@@ -7530,7 +7529,7 @@ export interface components {
              */
             inspectionFrequencyCode: string;
             /**
-             * @description 주기 파라미터: N시간·N수량(SQL 1770 주석) — frequencyIntervalUomCode 와 짝이어야 하나 CHECK 없음 §8-3
+             * @description 주기 파라미터: N시간·N수량 — frequencyIntervalUomCode 와 짝이어야 하나 데이터베이스 CHECK 제약이 없다.
              * @example 1
              */
             frequencyIntervalValue?: number | null;
@@ -7766,7 +7765,7 @@ export interface components {
         InspectionItemSpecListResponse: {
             items: components["schemas"]["InspectionItemSpec"][];
         };
-        /** @description 2계층(parent_defect_code_id). ck_*_parent 자기참조 CHECK 가 없다 — department 에만 있고 location·defect_code 엔 둘 다 없다(#64). 3계층 이상은 결정 12 위반이라 서버가 차단한다. 미착지: 처분구분·다국어(ko/vi)·공정 N:M 매핑 — #64. N:M 테이블이 없어 공정 매핑 엔드포인트가 성립하지 않는다 */
+        /** @description 2계층(parent_defect_code_id). ck_*_parent 자기참조 CHECK 가 없다 — department 에만 있고 location·defect_code 엔 둘 다 없다(#64). 3계층 이상은 결정 12 위반이라 서버가 차단한다. N:M 테이블이 없어 공정 매핑 엔드포인트가 성립하지 않는다 */
         DefectCode: {
             /**
              * Format: int64
@@ -7840,7 +7839,7 @@ export interface components {
             defectCode: components["schemas"]["DefectCode"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description 불량 현상과 분리 관리(SQL 1906 주석). W-06-03 이 흡수한다 — 화면명 「불량·원인코드 2계층 마스터」 */
+        /** @description 불량 현상과 분리 관리. W-06-03 이 흡수한다 — 화면명 「불량·원인코드 2계층 마스터」 */
         CauseCode: {
             /**
              * Format: int64
@@ -7912,7 +7911,7 @@ export interface components {
             causeCode: components["schemas"]["CauseCode"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description message_key 가 UNIQUE 라 재처리는 중복 전송이 아니다. lockedBy 가 있으면 워커가 처리 중이므로 재처리를 거부하고 409 conflictCause=workerLease 로 응답한다. version_no 가 없어 낙관적 잠금 대신 리스 충돌이다 — 공유계약 B-1·C-4. payload 는 이 스키마에 없다 — W-06-10 §4-B 표시 열에 payload 가 없고 대외비 노출 범위가 미결(§8-4)이라, 목록이 전 행의 payload 를 나르지 않도록 상세 전용 IntegrationMessageDetail 로 분리했다 */
+        /** @description message_key 가 UNIQUE 라 재처리는 중복 전송이 아니다. lockedBy 가 있으면 워커가 처리 중이므로 재처리를 거부하고 409 conflictCause=workerLease 로 응답한다. version_no 가 없어 낙관적 잠금 대신 리스 충돌이다 — 공유계약 B-1·C-4. payload 는 이 스키마에 없다 — 대외비 노출 범위가 확정되지 않아 목록이 전 행의 payload 를 나르지 않도록 상세 전용 IntegrationMessageDetail 로 분리했다 */
         IntegrationMessage: {
             /**
              * Format: int64
@@ -7989,12 +7988,12 @@ export interface components {
              */
             lockedBy?: string | null;
         };
-        /** @description W-06-10 §4-C 상세 패널 전용 — 목록(IntegrationMessage)에 payload 를 싣지 않는다. payload 는 거래처·단가·수량 등 대외비를 담을 수 있어 노출 범위가 미결이고(§8-4), 권한이 없으면 이 응답 자체가 403 이다 */
+        /** @description W-06-10 §4-C 상세 패널 전용 — 목록(IntegrationMessage)에 payload 를 싣지 않는다. payload 는 거래처·단가·수량 등 대외비를 담을 수 있어 노출 범위가 확정되지 않았고, 권한이 없으면 이 응답 자체가 403 이다 */
         IntegrationMessageDetail: components["schemas"]["IntegrationMessage"] & {
-            /** @description 실제 전송 내용(jsonb). ⚠ 대외비 노출 위험 — 노출 범위 미결 §8-4 */
+            /** @description 실제 전송 내용(jsonb). ⚠ 대외비 노출 위험 — 노출 범위가 확정되지 않았다 */
             payload: Record<string, never>;
         };
-        /** @description occurred_at RANGE 파티션이라 기간 조건이 없으면 전 파티션을 훑는다 — 공유계약 B-5. 미착지: target_id 가 FK 가 아니라 유형별로 다른 테이블을 가리키고 before/after jsonb 의 키 규약이 없어 응답을 사람이 읽게 만들 수 없다 — #68 */
+        /** @description occurred_at RANGE 파티션이라 기간 조건이 없으면 전 파티션을 훑는다 — 공유계약 B-5. */
         AuditEvent: {
             /**
              * Format: int64
@@ -8208,7 +8207,7 @@ export interface components {
              */
             isActive: boolean;
         };
-        /** @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 화면이 쓰는 것은 processId·processName 이다. 근거: W-06-01 §4-B 공정 · W-06-02 §4-A 검사 대상 공정 · W-06-03 §4-A·§4-C 공정 · W-06-05 §4-F 실제 사용 공정 · W-06-06 §4-E 자격 대상 공정. ⚠ 공정 마스터의 관리 화면이 어디인지 자체가 미결이다 — W-06-01 §8-5 */
+        /** @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 화면이 쓰는 것은 processId·processName 이다. 근거: W-06-01 §4-B 공정 · W-06-02 §4-A 검사 대상 공정 · W-06-03 §4-A·§4-C 공정 · W-06-05 §4-F 실제 사용 공정 · W-06-06 §4-E 자격 대상 공정. */
         Process: {
             /**
              * Format: int64
@@ -8294,7 +8293,7 @@ export interface components {
     };
     responses: never;
     parameters: {
-        /** @description 전 쓰기 API 필수. 근거: deliverables/02-SW설계사양서 §3.3 */
+        /** @description 전 쓰기 API 필수. */
         IdempotencyKey: string;
         /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
         IfMatchVersion: string;
