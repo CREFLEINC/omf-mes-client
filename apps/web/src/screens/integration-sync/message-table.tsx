@@ -1,0 +1,112 @@
+import { Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
+
+import { formatDateTime, toStatusView } from './message-status';
+import type { IntegrationMessageRow } from './types';
+
+const t = messages.integrationSync;
+
+export interface MessageTableProps {
+  rows: IntegrationMessageRow[];
+  isLoading: boolean;
+  /** 기간이 갖춰져 실제로 조회한 상태인가. 빈 상태의 문구가 갈린다. */
+  hasPeriod: boolean;
+  /**
+   * 상태 보조 문구의 기준 시각. 화면이 한 번 만들어 넘긴다 —
+   * 셀마다 지금 시각을 만들면 같은 표 안에서 행마다 다른 기준으로 판정된다.
+   */
+  now: Date;
+}
+
+/** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty;
+
+/**
+ * 연계 메시지 목록 표.
+ *
+ * 계약의 `IntegrationMessage`에는 필드가 14개 있으나 **열은 여섯이다.** 전부 열로 만들면 표가
+ * 짓눌려 셀이 낱말 단위로 쪼개진다 — 앞 화면에서 「표를 읽을 수 없다」로 보고된 결함이다.
+ * 나머지는 상세에서 본다.
+ *
+ * 정렬 열을 두지 않는다. 계약의 목록 쿼리에 **정렬 파라미터가 없어** 클라이언트 정렬은
+ * 지금 쪽 안에서만 정렬되고, 사용자에게는 「정렬했는데 순서가 이상하다」로 나타난다.
+ */
+export const MessageTable = ({ rows, isLoading, hasPeriod, now }: MessageTableProps) => {
+  const columns: Column<IntegrationMessageRow>[] = [
+    { key: 'messageKey', header: t.table.messageKey, width: '176px' },
+    { key: 'interfaceCode', header: t.table.interfaceCode, width: '128px' },
+    {
+      key: 'statusCode',
+      header: t.table.status,
+      width: '160px',
+      render: (row) => {
+        const view = toStatusView(row, now);
+
+        return (
+          <>
+            <Chip variant="status" size="sm" status={view.tone}>
+              {view.label}
+            </Chip>
+            {view.note !== null && <span className="field-note">{view.note}</span>}
+          </>
+        );
+      },
+    },
+    { key: 'retryCount', header: t.table.retryCount, align: 'end', width: '64px' },
+    {
+      key: 'createdAt',
+      header: t.table.createdAt,
+      width: '148px',
+      render: (row) => orEmptyMark(formatDateTime(row.createdAt)),
+    },
+    /*
+     * 폭을 지정하지 않는 유일한 열이다 — 남는 폭을 이 열이 가져간다.
+     * 지정 폭의 합(676px)이 `.wide-table`의 최소 폭 안에 들어가므로 좁은 창에서도 읽을 폭이 남는다.
+     */
+    {
+      key: 'lastErrorMessage',
+      header: t.table.lastErrorMessage,
+      render: (row) => orEmptyMark(row.lastErrorMessage ?? null),
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <div role="status" aria-label={t.loading.messages}>
+        <SkeletonText lines={3} />
+      </div>
+    );
+  }
+
+  const emptySlot = hasPeriod ? (
+    <EmptyState
+      size="sm"
+      live
+      title={t.empty.noResultTitle}
+      description={t.empty.noResultDescription}
+    />
+  ) : (
+    <EmptyState size="sm" title={t.empty.noPeriodTitle} description={t.empty.noPeriodDescription} />
+  );
+
+  /*
+   * `.wide-table`이 표에 최소 폭을 준다 — 폭이 모자라면 짓누르는 대신 가로로 넘긴다.
+   * 스크롤 상자는 디자인 시스템 `Table`이 이미 갖고 있어 우리가 만들지 않는다.
+   */
+  return (
+    <div className="wide-table">
+      <Table
+        density="compact"
+        columns={columns}
+        rows={rows}
+        /*
+         * 반드시 준다. 미지정이면 인덱스가 식별자가 되어 쪽이 바뀔 때
+         * 엉뚱한 건이 선택된 것처럼 보인다.
+         */
+        getRowId={(row) => String(row.integrationMessageId)}
+        empty={emptySlot}
+      />
+    </div>
+  );
+};

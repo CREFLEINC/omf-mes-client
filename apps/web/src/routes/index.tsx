@@ -2,6 +2,7 @@ import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
+import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
@@ -18,6 +19,7 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
       { path: 'master-data/routing', element: <RoutingScreen /> },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },
+      { path: 'master-data/integration-sync', element: <IntegrationSyncScreen /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

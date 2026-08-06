@@ -462,6 +462,61 @@ const defectCauseCode = {
   },
 } as const;
 
+/**
+ * W-06-10 연계 동기화 현황·실패 재처리.
+ *
+ * 이 저장소의 첫 조회 형 화면이다 — 목록을 읽는 것이 주 동작이고 쓰기는 재처리뿐이다.
+ *
+ * 상태·연계 종류·방향·대상 유형의 코드 값 목록이 확정되지 않았다. 화면은 이름을 지어내지 않고
+ * 모르는 코드를 코드 문자열 그대로 낸다 — 여기에 값 목록을 채워 넣지 않는다.
+ */
+const integrationSync = {
+  title: '연계 동기화 현황',
+  breadcrumbRoot: '기준정보',
+  fields: {
+    periodFrom: '기간 시작',
+    periodTo: '기간 종료',
+  },
+  /** 목록 표의 머리글. 열 구성의 근거는 screens/integration-sync/message-table.tsx에 있다. */
+  table: {
+    messageKey: '메시지 키',
+    interfaceCode: '연계 종류',
+    status: '상태',
+    retryCount: '시도',
+    createdAt: '생성',
+    lastErrorMessage: '마지막 오류',
+  },
+  /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
+  reasons: {
+    searchNeedsPeriod: '조회는 기간을 모두 채운 뒤에 쓸 수 있습니다. 시작일과 종료일을 고르세요.',
+    periodReversed: '기간 종료는 기간 시작보다 앞설 수 없습니다.',
+  },
+  loading: {
+    messages: '연계 메시지 목록을 불러오는 중',
+  },
+  /**
+   * 상태 열의 보조 한 줄. 계약이 정의한 사실만 옮긴다 —
+   * 「잠금이 오래됐다」·「재시도 한도를 넘었다」 같은 판정은 하지 않는다.
+   */
+  status: {
+    failed: '실패',
+    processing: (time: string): string => `${time}부터 처리 중`,
+    /** 처리 중인 것은 분명한데 시작 시각이 없을 때. 시각을 지어내지 않는다. */
+    processingNoTime: '처리 중',
+    autoRetry: (time: string): string => `${time} 자동 재시도`,
+  },
+  empty: {
+    noResultTitle: '조건에 맞는 기록이 없습니다',
+    noResultDescription: '기간을 넓히거나 조건을 줄인 뒤 다시 조회하세요.',
+    noPeriodTitle: '기간을 고르고 조회하세요',
+    noPeriodDescription: '연계 기록은 기간을 정해야 조회할 수 있습니다.',
+  },
+  values: {
+    /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+    empty: '—',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -473,6 +528,7 @@ export const ko = {
   warehouseLocation,
   routing,
   defectCauseCode,
+  integrationSync,
 } as const;
 
 export type Messages = typeof ko;
