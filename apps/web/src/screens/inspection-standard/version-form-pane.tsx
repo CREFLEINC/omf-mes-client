@@ -45,7 +45,8 @@ export interface VersionFormPaneProps {
  * 구획 배너로 안내한다. 잠금의 최종 판정은 서버(400 `STATE_LOCKED`)가 한다.
  *
  * **샘플 수량은 개수다.** 라벨에 단위를 박고 그 아래에 「비율이 아니다」를 한 줄 더 적는다 —
- * 확정 문서의 문구가 「샘플 비율(%)」이었기 때문에 라벨만으로는 오해가 남는다(착수 이슈 §6).
+ * 착수 이슈 #12 §4·§6이 밝혔듯 확정 스펙은 비율 입력인데 저장 자리는 수량이라,
+ * 라벨만으로는 오해가 남는다.
  */
 export const VersionFormPane = ({
   mode,
@@ -147,7 +148,8 @@ export const VersionFormPane = ({
 
         {/*
          * **개수다.** 라벨에 단위를 박고 아래에 한 줄 더 적는다 —
-         * 확정 문서가 「샘플 비율(%)」이라 라벨만으로는 30을 30%로 읽는 오해가 남는다.
+         * 착수 이슈 #12 §4·§6이 밝혔듯 확정 스펙은 비율 입력인데 저장 자리는 수량이라,
+         * 라벨만으로는 30을 30%로 읽는 오해가 남는다.
          */}
         <div className="field-cell">
           <FieldLabel htmlFor={samplingQtyId} label={t.fields.samplingQty} />
