@@ -1,73 +1,16 @@
-import { Button, Select, TextField } from '@crefle/web-ui';
+import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { INSPECTION_TYPE_OPTIONS, ensureOption } from './code-options';
 import { FieldLabel } from './field-label';
 import { formatApprovedAt } from './plan-mappers';
+import { SelectField } from './select-field';
 import type { InspectionPlan, PlanFormValues, SelectOption } from './types';
 
 const t = messages.inspectionStandard;
 
 export type PlanPaneMode = 'edit' | 'create';
-
-interface SelectFieldProps {
-  label: string;
-  options: SelectOption[];
-  value: string;
-  onChange: (value: string) => void;
-  required?: boolean;
-  disabled?: boolean;
-  /** 비활성 사유. DS `Select`에는 `disabledReason`이 없어 화면이 직접 붙인다(배치 규범 4). */
-  disabledReason?: string;
-  error?: string;
-  placeholder?: string;
-}
-
-/**
- * 디자인 시스템 `Select`에는 `label` prop이 없다(배치 규범 3) — 라벨을 직접 만들되
- * 내장 라벨과 같은 토큰을 써 라벨 층 높이를 맞춘다.
- *
- * 비활성 사유도 `TextField`와 달리 내장 자리가 없어 여기서 붙이고 `aria-describedby`로 잇는다.
- * 비활성 컨트롤은 포커스를 받지 못해 사유를 시각으로만 두면 보조기술이 닿을 수 없다.
- */
-const SelectField = ({
-  label,
-  options,
-  value,
-  onChange,
-  required = false,
-  disabled = false,
-  disabledReason,
-  error,
-  placeholder,
-}: SelectFieldProps) => {
-  const id = useId();
-  const noteId = `${id}-note`;
-  const note = error ?? (disabled ? disabledReason : undefined);
-
-  return (
-    <div className="field-cell">
-      <FieldLabel htmlFor={id} label={label} required={required} />
-      <Select
-        id={id}
-        options={options}
-        value={value === '' ? null : value}
-        onChange={onChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        invalid={error !== undefined}
-        aria-required={required || undefined}
-        aria-describedby={note === undefined ? undefined : noteId}
-      />
-      {note !== undefined && (
-        <span id={noteId} className={error === undefined ? 'field-note' : 'field-error'}>
-          {note}
-        </span>
-      )}
-    </div>
-  );
-};
 
 export interface PlanPaneProps {
   /** `create`면 아직 없는 기준을 만드는 폼이다 — 승인·사용 여부가 없고 주 액션이 등록이다. */

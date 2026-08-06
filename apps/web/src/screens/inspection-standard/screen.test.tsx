@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -10,7 +10,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { inspectionPlanFixtures } from './fixtures';
+import { inspectionPlanFixtures, inspectionPlanVersionFixtures } from './fixtures';
 import { InspectionStandardScreen } from './screen';
 
 const ROUTE = '/master-data/inspection-standard';
@@ -1083,5 +1083,322 @@ describe('InspectionStandardScreen — 기준 사용 중지', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+  });
+});
+
+const VERSIONS_PATH = '/quality/inspection-plan-versions';
+
+const versionListRoute = (items = inspectionPlanVersionFixtures): StubRoute => ({
+  match: (request) => isGet(request, VERSIONS_PATH),
+  respond: () => jsonResponse({ items }),
+});
+
+const versionCreateRoute = (
+  respond: StubRoute['respond'] = () =>
+    jsonResponse(
+      { ...inspectionPlanVersionFixtures[0], inspectionPlanVersionId: 4010, planVersion: 1 },
+      { status: 201 },
+    ),
+): StubRoute => ({
+  match: (request) => request.method === 'POST' && new URL(request.url).pathname === VERSIONS_PATH,
+  respond,
+});
+
+const newRevisionRoute = (
+  sourceVersionId = 4002,
+  respond: StubRoute['respond'] = () =>
+    jsonResponse(
+      { ...inspectionPlanVersionFixtures[0], inspectionPlanVersionId: 4003, planVersion: 3 },
+      { status: 201 },
+    ),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' &&
+    new URL(request.url).pathname === `${VERSIONS_PATH}/${String(sourceVersionId)}:new-revision`,
+  respond,
+});
+
+const versionPane = (): HTMLElement => screen.getByRole('region', { name: '버전 목록' });
+
+const versionRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requestsTo(requests, VERSIONS_PATH);
+
+/** 넘긴 규칙이 기본 규칙보다 **앞선다** — 스텁은 첫 일치를 쓰므로 이 순서가 곧 덮어쓰기다. */
+const renderVersions = (extraRoutes: StubRoute[] = [], search = '?plan=3001') =>
+  renderScreen(
+    [...extraRoutes, planListRoute(), planDetailRoute(), versionListRoute(), ...lookupRoutes()],
+    search,
+  );
+
+describe('InspectionStandardScreen — 버전 목록', () => {
+  it('기준을 고르기 전에는 버전 요청이 나가지 않는다', async () => {
+    const { requests } = renderScreen([planListRoute(), versionListRoute(), ...lookupRoutes()]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    expect(versionRequests(requests)).toHaveLength(0);
+  });
+
+  it('기준을 고르면 기준 번호를 실은 버전 요청이 한 번 나가고 목록이 그려진다', async () => {
+    const { requests, user } = renderScreen([
+      planListRoute(),
+      planDetailRoute(),
+      versionListRoute(),
+      ...lookupRoutes(),
+    ]);
+
+    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
+
+    expect(await screen.findByRole('button', { name: '버전 2' })).toBeInTheDocument();
+
+    const gets = versionRequests(requests).filter((request) => request.method === 'GET');
+    expect(gets).toHaveLength(1);
+    expect(gets[0]?.url.searchParams.get('inspectionPlanId')).toBe('3001');
+  });
+
+  it('버전을 누르면 주소에 남아 선택 표식이 붙는다', async () => {
+    const { user } = renderVersions();
+
+    await user.click(await screen.findByRole('button', { name: '버전 1' }));
+
+    expect(screen.getByRole('button', { name: '버전 1' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('주소의 ver로 버전 선택이 복원된다', async () => {
+    renderVersions([], '?plan=3001&ver=4001');
+
+    expect(await screen.findByRole('button', { name: '버전 1' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  /* 다른 기준의 버전을 가리키면 안 된다. */
+  it('기준을 바꾸면 버전 선택이 지워진다', async () => {
+    const { user } = renderScreen(
+      [
+        planListRoute(),
+        planDetailRoute(),
+        planDetailRoute(inspectionPlanFixtures[1]),
+        versionListRoute(),
+        ...lookupRoutes(),
+      ],
+      '?plan=3001&ver=4001',
+    );
+
+    expect(await screen.findByRole('button', { name: '버전 1' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-02' }));
+
+    expect(screen.getByRole('button', { name: '버전 1' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('버전 조회에 실패하면 목록 대신 오류 배너가 나온다', async () => {
+    renderScreen(
+      [
+        planListRoute(),
+        planDetailRoute(),
+        {
+          match: (request) => isGet(request, VERSIONS_PATH),
+          respond: () => jsonResponse({ message: '버전을 불러오지 못했습니다.' }, { status: 500 }),
+        },
+        ...lookupRoutes(),
+      ],
+      '?plan=3001',
+    );
+
+    expect(await screen.findByText('버전을 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(screen.queryByText('등록된 버전이 없습니다')).not.toBeInTheDocument();
+  });
+
+  /*
+   * 미인식을 잠금으로 두면 실서버가 다른 문자열을 쓰는 순간 작성중 버전도 편집할 수 없다.
+   * 원문을 그대로 내고 편집을 연다 — 서버 400이 최종 방어선이다.
+   */
+  it('인식하지 못한 상태 코드는 원문을 그대로 배지에 낸다', async () => {
+    renderVersions([
+      versionListRoute([{ ...inspectionPlanVersionFixtures[0]!, statusCode: 'IN_REVIEW' }]),
+    ]);
+
+    expect(await screen.findByText('IN_REVIEW')).toBeInTheDocument();
+  });
+
+  it('빈 상태 코드는 작성중으로 낸다', async () => {
+    renderVersions([
+      versionListRoute([{ ...inspectionPlanVersionFixtures[0]!, statusCode: '' }]),
+    ]);
+
+    expect(await screen.findByText('작성중')).toBeInTheDocument();
+  });
+});
+
+describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
+  it('버전이 0건이면 중 페인 액션이 「버전 등록」이다', async () => {
+    renderVersions([versionListRoute([])]);
+
+    expect(await within(versionPane()).findByRole('button', { name: '버전 등록' })).toBeInTheDocument();
+    expect(
+      within(versionPane()).queryByRole('button', { name: '신규 버전 발행' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('버전이 1건 이상이면 중 페인 액션이 「신규 버전 발행」이다', async () => {
+    renderVersions();
+
+    expect(
+      await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }),
+    ).toBeInTheDocument();
+    expect(within(versionPane()).queryByRole('button', { name: '버전 등록' })).not.toBeInTheDocument();
+  });
+
+  /* 버전이 0건이면 복사할 원본이 없다 — 생성 경로를 쓴다. */
+  it('「버전 등록」의 저장은 생성 경로로 나가고 기준 번호를 싣는다', async () => {
+    const { requests, user } = renderVersions([versionListRoute([]), versionCreateRoute()]);
+
+    await user.click(await within(versionPane()).findByRole('button', { name: '버전 등록' }));
+
+    const form = screen.getByRole('region', { name: '버전 정보' });
+    fireEvent.change(within(form).getByLabelText('유효시작'), {
+      target: { value: '2026-08-01' },
+    });
+    await user.click(within(form).getByRole('combobox', { name: '샘플링 방법' }));
+    await user.click(screen.getByRole('option', { name: '선택지 준비 중' }));
+    await user.click(within(form).getByRole('combobox', { name: '검사 주기' }));
+    await user.click(screen.getByRole('option', { name: '선택지 준비 중' }));
+    await user.click(within(form).getByRole('button', { name: '버전 등록' }));
+
+    await screen.findByText('등록했습니다');
+
+    const post = versionRequests(requests).find((request) => request.method === 'POST');
+    expect(post?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(post?.headers.get('If-Match')).toBeNull();
+
+    const body = JSON.parse(post?.body ?? '{}') as Record<string, unknown>;
+    expect(body.inspectionPlanId).toBe(3001);
+    expect('planVersion' in body).toBe(false);
+    expect('statusCode' in body).toBe(false);
+  });
+
+  /* 버전이 1건 이상이면 개정 경로다 — 생성 경로를 부르면 유일 제약을 위반한다. */
+  it('「신규 버전 발행」은 개정 경로로 나가고 본문이 없다', async () => {
+    const { requests, user } = renderVersions([newRevisionRoute()]);
+
+    await user.click(
+      await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }),
+    );
+
+    await screen.findByText('등록했습니다');
+
+    const posts = requestsTo(requests, `${VERSIONS_PATH}/4002:new-revision`);
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.body).toBe('');
+    expect(posts[0]?.headers.get('If-Match')).toBeNull();
+    // 생성 경로를 부르지 않는다.
+    expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  /*
+   * 계약이 목록을 판 번호 내림차순으로 준다 — 첫 행이 최신이다.
+   * 마지막 행을 대상으로 삼으면 옛 판을 복사하게 된다.
+   */
+  it('아무것도 고르지 않았으면 목록 첫 행을 원본으로 삼는다', async () => {
+    const { requests, user } = renderVersions([newRevisionRoute(4002)]);
+
+    await user.click(
+      await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }),
+    );
+    await screen.findByText('등록했습니다');
+
+    expect(requestsTo(requests, `${VERSIONS_PATH}/4002:new-revision`)).toHaveLength(1);
+    expect(requestsTo(requests, `${VERSIONS_PATH}/4001:new-revision`)).toHaveLength(0);
+  });
+
+  it('버전을 골랐으면 그 버전을 원본으로 삼는다', async () => {
+    const { requests, user } = renderVersions([newRevisionRoute(4001)], '?plan=3001&ver=4001');
+
+    await user.click(
+      await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }),
+    );
+    await screen.findByText('등록했습니다');
+
+    expect(requestsTo(requests, `${VERSIONS_PATH}/4001:new-revision`)).toHaveLength(1);
+  });
+
+  /* 201에는 ETag가 없다 — 새 버전으로 옮겨 다시 조회해야 잠금 토큰이 생긴다. */
+  it('발행에 성공하면 새 버전으로 옮기고 버전 목록을 다시 조회한다', async () => {
+    const { requests, user } = renderVersions([newRevisionRoute()]);
+
+    await within(versionPane()).findByRole('button', { name: '신규 버전 발행' });
+    const before = versionRequests(requests).filter((request) => request.method === 'GET').length;
+
+    await user.click(within(versionPane()).getByRole('button', { name: '신규 버전 발행' }));
+    await screen.findByText('등록했습니다');
+
+    await waitFor(() => {
+      expect(
+        versionRequests(requests).filter((request) => request.method === 'GET').length,
+      ).toBeGreaterThan(before);
+    });
+  });
+
+  /*
+   * 원본이 확정이 아니면 서버가 거부한다 — 화면은 막지 않는다(상태 어휘가 미확정이다).
+   * 재조회해도 풀리지 않으므로 「최신 불러오기」를 내지 않는다.
+   */
+  it('상태 잠김은 「최신 불러오기」 없는 배너로 낸다', async () => {
+    const { user } = renderVersions([
+      newRevisionRoute(4002, () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'STATE_LOCKED',
+                message: '확정된 버전에서만 신규 버전을 발행할 수 있습니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    await user.click(
+      await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }),
+    );
+
+    expect(
+      await screen.findByText('확정된 버전에서만 신규 버전을 발행할 수 있습니다.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('지금은 저장할 수 없는 상태입니다')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+
+  it('기준에 저장하지 않은 변경이 있으면 발행이 비활성이고 사유가 보인다', async () => {
+    const { user } = renderVersions([newRevisionRoute()]);
+
+    await user.type(await screen.findByLabelText('기준명'), 'X');
+
+    expect(within(versionPane()).getByRole('button', { name: '신규 버전 발행' })).toBeDisabled();
+    expect(
+      screen.getByText(
+        '신규 버전 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('등록 폼에서 로컬 검증에 걸리면 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderVersions([versionListRoute([]), versionCreateRoute()]);
+
+    await user.click(await within(versionPane()).findByRole('button', { name: '버전 등록' }));
+
+    const form = screen.getByRole('region', { name: '버전 정보' });
+    fireEvent.change(within(form).getByLabelText('유효시작'), { target: { value: '2026-08-01' } });
+    await user.click(within(form).getByRole('button', { name: '버전 등록' }));
+
+    expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(2);
+    expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 });

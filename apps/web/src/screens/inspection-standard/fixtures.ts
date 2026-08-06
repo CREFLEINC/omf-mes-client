@@ -1,4 +1,4 @@
-import type { InspectionPlan } from './types';
+import type { InspectionPlan, InspectionPlanVersion } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -49,5 +49,48 @@ export const inspectionPlanFixtures: InspectionPlan[] = [
     approvedBy: 4001,
     approvedAt: '2026-08-04T09:12:00+09:00',
     isActive: false,
+  },
+];
+
+/**
+ * 한 기준의 버전 2판. 계약이 판 번호 내림차순(최신이 위)으로 준다고 정했으므로
+ * 픽스처도 그 순서로 둔다 — 화면은 받은 순서를 그대로 그린다.
+ *
+ * 4002는 **작성중**, 4001은 **확정**이다 — 편집 잠금 대비를 한 픽스처에서 볼 수 있다.
+ * `acceptanceNumber`를 일부러 **0**으로 둔다: 계약이 합격판정개수에만 0을 허용하므로
+ * 0이 「지정하지 않음」으로 뭉개지지 않는지 확인하는 것이 이 값의 목적이다.
+ */
+export const inspectionPlanVersionFixtures: InspectionPlanVersion[] = [
+  {
+    inspectionPlanVersionId: 4002,
+    inspectionPlanId: 3001,
+    planVersion: 2,
+    effectiveFrom: '2026-08-01',
+    effectiveTo: null,
+    samplingMethodCode: 'PENDING',
+    samplingQty: 30,
+    aqlValue: null,
+    acceptanceNumber: 0,
+    rejectionNumber: 2,
+    inspectionFrequencyCode: 'PENDING',
+    frequencyIntervalValue: null,
+    frequencyIntervalUomCode: null,
+    statusCode: 'DRAFT',
+  },
+  {
+    inspectionPlanVersionId: 4001,
+    inspectionPlanId: 3001,
+    planVersion: 1,
+    effectiveFrom: '2026-07-01',
+    effectiveTo: '2026-07-31',
+    samplingMethodCode: 'PENDING',
+    samplingQty: 20,
+    aqlValue: 1,
+    acceptanceNumber: 1,
+    rejectionNumber: 3,
+    inspectionFrequencyCode: 'PENDING',
+    frequencyIntervalValue: 4,
+    frequencyIntervalUomCode: 'PENDING',
+    statusCode: 'CONFIRMED',
   },
 ];

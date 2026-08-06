@@ -5,7 +5,13 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { toListQuery } from './filters';
-import type { InspectionPlan, LookupEntry, PageMeta, PlanFilters } from './types';
+import type {
+  InspectionPlan,
+  InspectionPlanVersion,
+  LookupEntry,
+  PageMeta,
+  PlanFilters,
+} from './types';
 
 type InspectionPlanDetailResponse = components['schemas']['InspectionPlanDetailResponse'];
 
@@ -81,6 +87,50 @@ export const useInspectionPlanDetail = (
       return runRequest(() =>
         client.GET('/quality/inspection-plans/{inspectionPlanId}', {
           params: { path: { inspectionPlanId } },
+        }),
+      );
+    },
+  });
+};
+
+/** 버전 목록에는 페이지네이션이 없다 — 기준당 버전 수가 소수라 계약이 두지 않았다. */
+export interface InspectionPlanVersionListResponse {
+  items: InspectionPlanVersion[];
+}
+
+/**
+ * 버전의 캐시 키.
+ *
+ * `all`을 무효화하면 목록·상세·항목이 함께 다시 조회된다 — 전이(`:confirm`·`:obsolete`·
+ * `:new-revision`) 응답에는 `ETag`가 없어서 성공 후 재조회로 잠금 토큰을 확보해야 한다.
+ */
+export const versionKeys = {
+  all: ['inspection-plan-versions'] as const,
+  list: (inspectionPlanId: number) =>
+    ['inspection-plan-versions', 'list', inspectionPlanId] as const,
+  detail: (inspectionPlanVersionId: number) =>
+    ['inspection-plan-versions', 'detail', inspectionPlanVersionId] as const,
+  items: (inspectionPlanVersionId: number) =>
+    ['inspection-plan-versions', 'items', inspectionPlanVersionId] as const,
+};
+
+/** 버전 목록. 계약이 `inspectionPlanId`를 필수로 두므로 기준을 고르기 전에는 조회하지 않는다. */
+export const useInspectionPlanVersionList = (
+  inspectionPlanId: number | null,
+): UseQueryResult<InspectionPlanVersionListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: versionKeys.list(inspectionPlanId ?? 0),
+    enabled: inspectionPlanId !== null,
+    queryFn: () => {
+      if (inspectionPlanId === null) {
+        throw new Error('기준을 고르기 전에는 버전 목록을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/quality/inspection-plan-versions', {
+          params: { query: { inspectionPlanId } },
         }),
       );
     },

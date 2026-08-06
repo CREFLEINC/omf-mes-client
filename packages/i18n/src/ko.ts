@@ -660,6 +660,8 @@ const inspectionStandard = {
     excelUpload: '엑셀 올리기',
     addPlan: '기준 추가',
     approve: '승인',
+    createVersion: '버전 등록',
+    newRevision: '신규 버전 발행',
   },
   actionReasons: {
     excelUploadUnavailable:
@@ -674,6 +676,11 @@ const inspectionStandard = {
     approveNeedsPlan: '승인은 기준을 먼저 등록해야 할 수 있습니다.',
     deactivateAlreadyDone: '사용 중지는 이미 미사용인 기준에 다시 할 수 없습니다.',
     deactivateNeedsPlan: '사용 중지는 기준을 먼저 등록해야 할 수 있습니다.',
+    /*
+     * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
+     */
+    newVersionBlockedByUnsaved:
+      '신규 버전 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
   },
   /**
    * 서버가 코드로만 알려 주는 거부 사유의 화면 문구.
@@ -683,6 +690,12 @@ const inspectionStandard = {
     confirmedVersionRequired:
       '승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.',
     lineRequired: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
+  },
+  /** 확정·폐기 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
+  stateLock: {
+    title: '지금은 수정할 수 없는 버전입니다',
+    confirmed: '확정된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
+    obsolete: '폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
   },
   dialog: {
     approveTitle: '이 검사기준을 승인할까요?',
@@ -707,6 +720,8 @@ const inspectionStandard = {
   loading: {
     plans: '검사기준 목록을 불러오는 중',
     planDetail: '기준 정보를 불러오는 중',
+    versions: '버전 목록을 불러오는 중',
+    versionDetail: '버전 정보를 불러오는 중',
   },
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
@@ -716,6 +731,9 @@ const inspectionStandard = {
     planNoMatchTitle: '조건에 맞는 검사기준이 없습니다',
     planNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
     planNotSelected: '좌측에서 검사기준을 먼저 고르세요',
+    versionNoneTitle: '등록된 버전이 없습니다',
+    versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',
+    versionNotSelected: '가운데에서 버전을 먼저 고르세요',
   },
   fields: {
     inspectionPlanCode: '기준코드',
@@ -726,6 +744,33 @@ const inspectionStandard = {
     routing: '라우팅',
     approval: '승인',
     active: '사용',
+    planVersion: '버전',
+    status: '상태',
+    effectiveFrom: '유효시작',
+    effectiveTo: '유효종료',
+    samplingMethod: '샘플링 방법',
+    /*
+     * **단위를 라벨에 박는다.** 저장되는 값은 개수인데 라벨이 그것을 말하지 않으면
+     * 30을 넣은 사람이 30%로 오해한다(착수 이슈 §6).
+     */
+    samplingQty: '샘플 수량(개)',
+    aqlValue: 'AQL',
+    acceptanceNumber: '합격판정개수',
+    rejectionNumber: '불합격판정개수',
+    inspectionFrequency: '검사 주기',
+    frequencyIntervalValue: '주기 값',
+    frequencyIntervalUom: '주기 단위',
+  },
+  /** 입력칸 아래 한 줄 보조 안내. */
+  fieldNotes: {
+    /*
+     * 라벨의 단위 표기만으로는 오해가 남는다 — 확정 문서가 「샘플 비율(%)」이었기 때문이다.
+     * 두 낱말을 함께 적어 무엇이 아닌지까지 밝히는 **유일한 자리**다.
+     * 라벨·검증 문구에는 두 낱말을 쓰지 않는다.
+     */
+    samplingQty: '비율(%)이 아니라 검사할 개수입니다.',
+    /* 상태 값 목록이 확정되지 않았다는 사실을 감추지 않는다. */
+    statusTemporary: '상태 표시는 임시입니다 — 상태 값 목록이 확정되면 이 표시가 바뀔 수 있습니다.',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -742,11 +787,24 @@ const inspectionStandard = {
     active: '사용',
     inactive: '미사용',
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
+    version: (planVersion: number): string => `버전 ${String(planVersion)}`,
+    draft: '작성중',
+    confirmed: '확정',
+    obsolete: '폐기',
   },
   validation: {
     required: '필수 입력 항목입니다.',
     planCodeBlank: '기준코드는 공백만으로 지정할 수 없습니다.',
     planNameBlank: '기준명은 공백만으로 지정할 수 없습니다.',
+    effectiveRangeReversed: '유효종료는 유효시작과 같거나 그 뒤여야 합니다.',
+    /* 계약이 짝을 요구하나 데이터베이스 CHECK 가 없다 — 화면이 먼저 막는다. */
+    frequencyPairRequired: '주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
+    /* 계약 CHECK > 0 — 0 은 「없음」이 아니라 위반이다. */
+    rejectionNumberInvalid: '불합격판정개수는 0보다 큰 숫자여야 합니다.',
+    /* 계약 CHECK ≥ 0 — 0 은 허용된다. 불합격판정개수와 규칙이 다르다. */
+    acceptanceNumberInvalid: '합격판정개수는 0 이상의 숫자여야 합니다.',
+    /* 계약 minimum: 0. 「개수」라고만 적는다 — 라벨과 같은 말이어야 무엇을 고칠지 알 수 있다. */
+    samplingQtyInvalid: '샘플 수량은 0 이상의 개수여야 합니다.',
   },
   /**
    * 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다.
