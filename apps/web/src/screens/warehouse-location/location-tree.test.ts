@@ -59,6 +59,30 @@ describe('buildLocationRows', () => {
     expect(rootB?.hasChildren).toBe(false);
   });
 
+  /*
+   * 자기 자신을 부모로 갖는 행은 계층에서 의미가 없다.
+   * 그것을 부모-자식으로 세면 하위가 없는데도 접기 버튼이 붙어 누를 것이 없는 컨트롤이 생긴다.
+   */
+  it('자기 자신을 부모로 갖는 행은 최상위로 두고 하위가 있다고 세지 않는다', () => {
+    const items = [makeLocation(1001, 'A-01', 1001), makeLocation(1002, 'B-01')];
+
+    const rows = buildLocationRows(items, new Set([1001]));
+
+    expect(codesOf(rows)).toEqual(['A-01', 'B-01']);
+    expect(rows[0]?.depth).toBe(0);
+    expect(rows[0]?.hasChildren).toBe(false);
+  });
+
+  it('자기참조 행에도 실제 하위가 있으면 그 하위는 그대로 붙는다', () => {
+    const items = [makeLocation(1, 'A', 1), makeLocation(11, 'A-01', 1)];
+
+    const rows = buildLocationRows(items, new Set([1]));
+
+    expect(codesOf(rows)).toEqual(['A', 'A-01']);
+    expect(rows[0]?.hasChildren).toBe(true);
+    expect(rows[1]?.depth).toBe(1);
+  });
+
   it('고아는 최상위로 올리고 순환이 있어도 모든 항목이 정확히 한 번씩 나온다', () => {
     const orphan = makeLocation(9, 'Z', 404); // 부모 404가 목록에 없다
     const cycleA = makeLocation(5, 'C-1', 6);

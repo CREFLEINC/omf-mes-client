@@ -11,7 +11,8 @@
  * .filter-bar   검색·필터 컨트롤과 조건 칩을 담는 줄
  * .field-cell   라벨·컨트롤·사유를 한 세로 묶음으로 놓는 셀(규범 2·3·4)
  * .field-cell-unlabeled  라벨 없는 셀을 라벨 층만큼 내려 컨트롤 상자의 윗선을 맞춘다(규범 2)
- * .form-grid    폼 필드 2열 그리드
+ * .form-grid    폼 필드 2열 그리드 — 안의 셀은 자식을 칸 폭에 맞춰 늘린다(규범 3-1)
+ * .check-group  한 칸에 나란히 놓은 확인칸 사이 간격
  * .form-actions 폼 하단 액션 줄(우측 정렬)
  * .form-actions-secondary  사유가 붙은 보조 액션만 줄 왼쪽 끝으로(규범 4)
  * .field-label  DS가 라벨을 내장하지 않는 컨트롤(Select 등)에 직접 붙이는 라벨
@@ -19,6 +20,7 @@
  * .field-error  필드 아래 오류 텍스트
  * .link-cell    표의 코드 셀을 누를 수 있게 만드는 텍스트 버튼
  * .tree-toggle  Location 계층의 들여쓰기 + 접기 버튼을 담는 셀 래퍼
+ * .banner-slot  페인·다이얼로그 안의 배너와 아래 블록 사이 이음매(규범 6)
  */
 
 :root {
@@ -32,8 +34,16 @@ body,
   height: 100%;
 }
 
+/*
+ * 규범 7 — 한국어는 어절 경계에서만 끊는다. 브라우저 기본값은 어절 중간에서 줄을 바꾼다.
+ * 상속되는 속성이라 뿌리에 한 번만 둔다. main이 아니라 body인 이유는
+ * 다이얼로그와 토스트가 main 밖에 놓이기 때문이다.
+ * overflow-wrap은 칸보다 긴 낱말 하나가 넘쳐흐르는 것을 막는 최후 수단이다.
+ */
 body {
   margin: 0;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 main {
@@ -47,6 +57,15 @@ main {
  */
 main > * + * {
   margin-top: var(--space-5);
+}
+
+/*
+ * 규범 6 — main > * + *는 화면 최상위 블록에만 닿는다. 페인·다이얼로그 안의 배너는
+ * 아래 블록과 붙어 머리말처럼 읽히므로 배너 쪽이 자기 아래 이음매를 갖는다.
+ * 값 20px 근거는 규범 1과 같다(이웃 블록의 내부 최대 간격 16px보다 커야 경계가 읽힌다).
+ */
+.banner-slot {
+  margin-bottom: var(--space-5);
 }
 
 .two-pane {
@@ -107,6 +126,23 @@ main > * + * {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
+}
+
+/*
+ * 규범 3-1 — 폼 그리드 안에서는 셀이 자식을 칸 폭에 맞춰 늘린다.
+ * DS Select의 뿌리가 inline-block이라 내용 폭으로 줄어드는데,
+ * 선택지 목록이 그 뿌리에 붙어 있어(left:0; right:0) 목록 문구까지 잘린다.
+ * 필터 바의 같은 셀은 그대로 둔다 — 거기서는 각 컨트롤이 제 내용 폭을 갖는 것이 맞다.
+ */
+.form-grid .field-cell {
+  align-items: stretch;
+}
+
+/* 한 칸에 확인칸을 나란히 두면 간격이 없어 문구가 붙어 읽힌다. */
+.check-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 @media (max-width: 720px) {

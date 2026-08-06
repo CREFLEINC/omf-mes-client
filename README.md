@@ -30,6 +30,12 @@ pnpm --filter @omf-mes/web dev   # 관리웹 개발 서버
 
 요구 사항: Node ≥ 20.19, pnpm 11.
 
+### 관리웹을 목 서버에 붙여 실행
+
+`pnpm mock`과 `pnpm --filter @omf-mes/web dev`를 각각 띄우면 화면이 목 서버 응답으로 그려진다.
+관리웹의 기본 기준 URL은 목 서버 주소(`http://127.0.0.1:4010`)이며, 다른 서버에 붙이려면
+`VITE_API_BASE_URL`로 덮는다(예: `VITE_API_BASE_URL=http://127.0.0.1:4011 pnpm --filter @omf-mes/web dev`).
+
 ## 작업 규칙
 
 `main` 직접 push는 차단돼 있다 — 브랜치에서 작업하고 PR로 병합한다. 공개 저장소 경계 규칙은 `CLAUDE.md`를 따른다.

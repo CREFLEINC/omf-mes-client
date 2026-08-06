@@ -1,14 +1,17 @@
+import { AlertBanner } from '@crefle/web-ui';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { defaultWarehouseFilters, warehouseFixtures } from './fixtures';
+import { defaultWarehouseFilters } from './code-options';
+import { warehouseFixtures } from './fixtures';
 import type { WarehouseFilters } from './types';
 import { WarehouseListPane } from './warehouse-list-pane';
 
 const renderPane = (overrides: Partial<Parameters<typeof WarehouseListPane>[0]> = {}) => {
   const onApplyFilters = vi.fn();
   const onSelect = vi.fn();
+  const onAddWarehouse = vi.fn();
 
   render(
     <WarehouseListPane
@@ -18,11 +21,13 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseListPane>[0]> 
       onApplyFilters={onApplyFilters}
       selectedWarehouseId={null}
       onSelect={onSelect}
+      onAddWarehouse={onAddWarehouse}
+      loadError={null}
       {...overrides}
     />,
   );
 
-  return { onApplyFilters, onSelect };
+  return { onApplyFilters, onSelect, onAddWarehouse };
 };
 
 describe('WarehouseListPane', () => {
@@ -123,5 +128,32 @@ describe('WarehouseListPane', () => {
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({ ...defaultWarehouseFilters, includeInactive: true });
+  });
+
+  it('등록된 것이 없을 때의 빈 상태에서 창고 추가를 눌러 onAddWarehouse를 부른다', async () => {
+    const user = userEvent.setup();
+    const { onAddWarehouse } = renderPane({ items: [] });
+
+    await user.click(screen.getByRole('button', { name: '창고 추가' }));
+
+    expect(onAddWarehouse).toHaveBeenCalledTimes(1);
+  });
+
+  it('loadError가 있으면 표와 빈 상태 대신 그것을 낸다 — 조회 실패를 「없음」으로 보이지 않는다', () => {
+    renderPane({
+      items: [],
+      loadError: <AlertBanner variant="error" title="목록을 불러오지 못했습니다" />,
+    });
+
+    expect(screen.getByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText('아직 등록된 창고가 없습니다')).not.toBeInTheDocument();
+  });
+
+  it('loadError가 있어도 조건을 고칠 필터 바는 남는다', () => {
+    renderPane({ items: [], loadError: <AlertBanner variant="error" title="실패" /> });
+
+    expect(screen.getByLabelText('창고 검색')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '조회' })).toBeInTheDocument();
   });
 });

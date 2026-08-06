@@ -186,7 +186,8 @@ export const WarehouseFormPane = ({
             {t.fields.isActive}
           </span>
           <p aria-labelledby={activeLabelId}>{isActive ? t.values.active : t.values.inactive}</p>
-          {isActive && (
+          {/* 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다. */}
+          {mode === 'edit' && isActive && (
             <Button variant="outlined" onClick={onDeactivate}>
               {messages.common.deactivate}
             </Button>

@@ -19,6 +19,8 @@ const common = {
   close: '닫기',
   deactivate: '사용 중지',
   saved: '저장했습니다',
+  created: '등록했습니다',
+  retry: '다시 시도',
   includeInactive: '미사용 포함',
   discardChangesConfirm: '입력한 내용이 저장되지 않았습니다. 변경을 파기할까요?',
 } as const;
@@ -29,6 +31,7 @@ const common = {
  */
 const conflict = {
   reloadAction: '최신 불러오기',
+  reloadNote: '최신 내용을 불러오면 입력한 내용은 사라집니다.',
   user: '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
   erpSync: '외부 시스템에서 이 항목이 다시 동기화됐습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
   workerLease:
@@ -43,8 +46,15 @@ const stateLocked = {
 
 const httpError = {
   title: '요청을 처리하지 못했습니다',
+  loadTitle: '목록을 불러오지 못했습니다',
   description: '잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.',
   offline: '네트워크 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도하세요.',
+  forbidden: '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+} as const;
+
+/** 저장을 서버로 보내기 전에 멈춘 경우. 사용자가 다시 시도하면 풀린다. */
+const save = {
+  staleToken: '최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.',
 } as const;
 
 /**
@@ -60,6 +70,8 @@ const editability = {
     '이 코드를 참조하는 자료의 수를 확인할 수 없어 코드를 잠급니다. 변경이 필요하면 담당자에게 문의하세요.',
   receivedFromErp: (_count: number | null): string =>
     '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+  /** 잠긴 것은 확실하나 사유가 특정되지 않을 때. 사유를 지어내지 않고 잠금 사실만 밝힌다. */
+  locked: '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
 } as const;
 
 /** 공통코드 값 목록이 확정되지 않은 선택지에 붙인다. 값을 지어내지 않는다. */
@@ -71,11 +83,6 @@ const pendingCode = {
 const warehouseLocation = {
   title: '창고·Location',
   breadcrumbRoot: '기준정보',
-  demoNotice: {
-    title: '예시 데이터로 배치를 확인하는 화면입니다',
-    description: '실제 자료가 아닙니다. 저장·조회는 다음 단계에서 연결됩니다.',
-  },
-  demoActionToast: '레이아웃 확인 단계입니다 — 저장은 다음 단계에서 연결됩니다.',
   tabs: {
     warehouse: '창고 정보',
     location: 'Location',
@@ -98,8 +105,14 @@ const warehouseLocation = {
   },
   loading: {
     warehouses: '창고 목록을 불러오는 중',
+    warehouseDetail: '창고 정보를 불러오는 중',
     locations: 'Location을 불러오는 중',
   },
+  /** 서버가 목록을 잘라 내려보냈을 때. 잘림을 감추지 않고 조건을 좁힐 방법을 함께 알린다. */
+  listTruncated: (shown: number, total: number): string =>
+    `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
+  optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+  optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {
     warehouseNoneTitle: '아직 등록된 창고가 없습니다',
     warehouseNoneDescription: '「창고 추가」로 첫 창고를 등록하세요.',
@@ -151,6 +164,8 @@ const warehouseLocation = {
     active: '사용 중',
     inactive: '미사용',
     noParent: '없음 (최상위)',
+    /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
+    inactiveSuffix: ' (미사용)',
   },
   validation: {
     required: '필수 입력 항목입니다.',
@@ -158,6 +173,7 @@ const warehouseLocation = {
     codeDuplicated: '이미 사용 중인 코드입니다. 다른 코드를 입력하세요.',
     partnerRequiredForExternal: '외부창고이면 거래처를 지정해야 합니다.',
     capacityNeedsUom: '수용량과 단위는 함께 입력하거나 함께 비워야 합니다.',
+    capacityInvalid: '수용량은 0 이상의 숫자로 입력하세요.',
   },
   locationTable: {
     expand: '하위 펼치기',
@@ -168,6 +184,12 @@ const warehouseLocation = {
     createTitle: 'Location 추가',
     editTitle: 'Location 수정',
   },
+  /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
+  deactivate: {
+    title: '사용 중지할까요?',
+    description: '삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.',
+    confirm: '사용 중지',
+  },
 } as const;
 
 export const ko = {
@@ -175,6 +197,7 @@ export const ko = {
   conflict,
   stateLocked,
   httpError,
+  save,
   editability,
   pendingCode,
   warehouseLocation,
