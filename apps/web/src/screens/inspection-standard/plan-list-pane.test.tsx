@@ -104,6 +104,19 @@ describe('PlanListPane — 조건', () => {
     });
   });
 
+  /*
+   * 규범 3-2 — 디자인 시스템 이슈 #62로 선택지 목록이 트리거 폭에 갇힌다.
+   * 최소 폭을 주지 않으면 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
+   * 브라우저 확인에서 실제로 잘린 자리라 클래스가 붙어 있는지 여기서 고정한다.
+   */
+  it('검사 유형 선택칸이 선택지 폭을 확보하는 클래스를 갖는다', () => {
+    renderPane();
+
+    expect(screen.getByRole('combobox', { name: '검사 유형' }).closest('.field-cell')).toHaveClass(
+      'wide-select',
+    );
+  });
+
   it('적용된 조건마다 칩이 하나씩 서고 제거 라벨이 서로 다르다', () => {
     renderPane({
       appliedFilters: { q: 'SYN', inspectionTypeCode: 'IQC', includeInactive: true },

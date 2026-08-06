@@ -162,10 +162,14 @@ export const PlanListPane = ({
         />
 
         {/*
-         * 값이 3자(`IQC`)로 짧아 `.field-cell.wide-select`를 붙이지 않는다 —
-         * 값이 짧은 선택칸에 붙이면 좁은 좌 페인의 줄이 쓸데없이 일찍 넘어간다(규범 3-2 이탈 조건 1).
+         * 규범 3-2 — 선택지 목록이 트리거 폭에 갇혀 있어(디자인 시스템 이슈 #62) 최소 폭을 주지 않으면
+         * 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
+         *
+         * 계획은 「값이 3자(`IQC`)라 붙이지 않는다」로 판단했으나 **고르는 것은 코드가 아니라 선택지 문구**라
+         * 전제가 어긋났다 — 브라우저 확인에서 실제로 잘리는 것을 보고 붙였다(계획 §5.4가 예고한 처리 경로).
+         * 이미 있는 옵트인 클래스라 `app.css`를 고치지 않는다.
          */}
-        <div className="field-cell">
+        <div className="field-cell wide-select">
           <FieldLabel htmlFor={typeSelectId} label={t.filters.inspectionType} />
           <Select
             id={typeSelectId}
