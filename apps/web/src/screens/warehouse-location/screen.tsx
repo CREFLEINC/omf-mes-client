@@ -102,7 +102,10 @@ const describeLoadError = (error: ApiError): string => {
       return messages.httpError.offline;
     case 'http':
       if (error.status === 403) return messages.httpError.forbidden;
-      return error.message ?? messages.httpError.description;
+      // 서버가 빈 message를 주는 일이 실제로 있다. ??는 빈 문자열을 통과시켜 본문을 지운다.
+      return error.message === undefined || error.message === ''
+        ? messages.httpError.description
+        : error.message;
     case 'conflict':
       return error.message === '' ? messages.httpError.description : error.message;
     case 'stateLocked':

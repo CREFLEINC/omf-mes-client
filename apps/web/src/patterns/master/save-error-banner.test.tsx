@@ -108,6 +108,21 @@ describe('SaveErrorBanner', () => {
     expect(banner).toHaveTextContent('처리 지연');
   });
 
+  it('서버 문구가 비어 있으면 일반 문구만 낸다 — 빈 줄을 만들지 않는다', () => {
+    render(<SaveErrorBanner error={{ kind: 'http', status: 500, message: '' }} />);
+
+    const banner = screen.getByRole('alert');
+    expect(banner).toHaveTextContent(messages.httpError.description);
+    // 한 줄뿐이면 목록으로 내지 않는다. 빈 <li>가 생기면 없는 항목이 있는 것처럼 읽힌다.
+    expect(banner.querySelectorAll('li')).toHaveLength(0);
+  });
+
+  it('서버 문구가 아예 없어도 일반 문구는 남는다', () => {
+    render(<SaveErrorBanner error={{ kind: 'http', status: 500 }} />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(messages.httpError.description);
+  });
+
   it('network는 연결을 확인하라는 문구를 낸다', () => {
     render(<SaveErrorBanner error={{ kind: 'network' }} />);
 

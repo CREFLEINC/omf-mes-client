@@ -54,16 +54,20 @@ const describeError = (error: ApiError): BannerContent => {
       // 화면이 인라인으로 소화하지 못한 오류만 여기 온다. 서버 문구를 그대로 나열한다 —
       // 삼키면 어디에도 보이지 않는 오류가 된다.
       return { lines: error.errors.map((item) => item.message) };
-    case 'http':
-      return error.status === 403
-        ? { title: messages.httpError.title, lines: [messages.httpError.forbidden] }
-        : {
-            title: messages.httpError.title,
-            lines:
-              error.message === undefined
-                ? [messages.httpError.description]
-                : [messages.httpError.description, error.message],
-          };
+    case 'http': {
+      if (error.status === 403) {
+        return { title: messages.httpError.title, lines: [messages.httpError.forbidden] };
+      }
+
+      // 서버 문구는 있을 때만 덧붙인다. 빈 문자열을 그대로 실으면 빈 줄이 생긴다.
+      const serverLines =
+        error.message === undefined || error.message === '' ? [] : [error.message];
+
+      return {
+        title: messages.httpError.title,
+        lines: [messages.httpError.description, ...serverLines],
+      };
+    }
     case 'network':
       return { title: messages.httpError.title, lines: [messages.httpError.offline] };
   }

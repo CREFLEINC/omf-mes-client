@@ -138,6 +138,21 @@ describe('WarehouseLocationScreen — 창고 목록 조회', () => {
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.queryByText('아직 등록된 창고가 없습니다')).not.toBeInTheDocument();
+    // 서버가 빈 message를 줘도 배너에 제목만 남으면 안 된다 — 무엇을 하라는 안내가 사라진다.
+    expect(
+      screen.getByText('잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('서버가 준 문구가 있으면 배너 본문에 그 문구를 낸다', async () => {
+    renderScreen([
+      {
+        match: (request) => isGet(request, '/mdm/warehouses'),
+        respond: () => jsonResponse({ message: '조회 대상이 너무 많습니다.' }, { status: 500 }),
+      },
+    ]);
+
+    expect(await screen.findByText('조회 대상이 너무 많습니다.')).toBeInTheDocument();
   });
 
   it('다시 시도를 누르면 목록 요청이 한 번 더 나간다', async () => {
