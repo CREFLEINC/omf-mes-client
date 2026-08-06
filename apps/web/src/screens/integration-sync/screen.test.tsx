@@ -239,7 +239,7 @@ describe('IntegrationSyncScreen — 기간 필수 조회', () => {
 });
 
 describe('IntegrationSyncScreen — 목록 표시', () => {
-  it('일곱 열과 응답 건수만큼의 행이 나온다', async () => {
+  it('선택 열과 일곱 열, 응답 건수만큼의 행이 나온다', async () => {
     renderScreen([listRoute()]);
 
     expect(await screen.findByText('SAMPLE-KEY-0001')).toBeInTheDocument();
@@ -249,7 +249,9 @@ describe('IntegrationSyncScreen — 목록 표시', () => {
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent);
 
+    // 첫 칸은 디자인 시스템이 렌더하는 선택 열이라 머리글 글자가 없다.
     expect(headers).toEqual([
+      '',
       '메시지 키',
       '연계 종류',
       '상태',
@@ -845,5 +847,237 @@ describe('IntegrationSyncScreen — 단건 재처리', () => {
     expect(
       await screen.findByText('네트워크 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도하세요.'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('IntegrationSyncScreen — 선택 일괄 재처리', () => {
+  const PERIOD = '?from=2026-08-01&to=2026-08-06';
+  const BATCH_PATH = '/integration/messages:retry-batch';
+
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const batchRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) => request.method === 'POST' && new URL(request.url).pathname === BATCH_PATH,
+    respond,
+  });
+
+  const failureItem = (index: number, message = '상태가 맞지 않습니다') => ({
+    index,
+    errors: [{ scope: 'field', field: '문자열', code: 'STANDARD', message }],
+  });
+
+  /**
+   * 디자인 시스템은 행 체크박스의 접근 이름을 모든 행에 같게 붙인다 —
+   * 이름으로 특정할 수 없어 **순서**로 찾는다.
+   */
+  const selectRow = async (user: ReturnType<typeof userEvent.setup>, index: number) => {
+    const boxes = await screen.findAllByRole('checkbox', { name: '행 선택' });
+    await user.click(boxes[index] as HTMLElement);
+  };
+
+  const openBatch = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: '선택 일괄 재처리' }));
+  };
+
+  it('고르기 전에는 일괄 재처리가 잠기고 사유가 보인다', async () => {
+    renderScreen([listRoute()], PERIOD);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    const button = screen.getByRole('button', { name: '선택 일괄 재처리' });
+    expect(button).toBeDisabled();
+    expect(screen.getByText('선택 0건')).toBeInTheDocument();
+
+    const reasonId = button.getAttribute('aria-describedby') ?? '';
+    expect(document.getElementById(reasonId)).toHaveTextContent(
+      '선택 일괄 재처리는 목록에서 건을 고른 뒤에 쓸 수 있습니다.',
+    );
+  });
+
+  it('고르면 건수가 맞고 버튼이 열린다', async () => {
+    const { user } = renderScreen([listRoute()], PERIOD);
+    await selectRow(user, 0);
+    await selectRow(user, 2);
+
+    expect(screen.getByText('선택 2건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '선택 일괄 재처리' })).toBeEnabled();
+  });
+
+  it('확인하면 고른 식별자가 표에 보이는 순서 그대로 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(), batchRoute(() => jsonResponse({ succeeded: 2, failed: [] }))],
+      PERIOD,
+    );
+    await selectRow(user, 2);
+    await selectRow(user, 0);
+    await openBatch(user);
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    const request = requestsTo(requests, BATCH_PATH)[0];
+    expect(JSON.parse(request?.body ?? '{}')).toEqual({ integrationMessageIds: [9001, 9003] });
+    expect(request?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(request?.headers.has('If-Match')).toBe(false);
+  });
+
+  it('전건 성공이면 창이 닫히고 안내가 뜨며 목록을 다시 조회한다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(), batchRoute(() => jsonResponse({ succeeded: 1, failed: [] }))],
+      PERIOD,
+    );
+    await selectRow(user, 0);
+    const before = requestsTo(requests, LIST_PATH).length;
+    await openBatch(user);
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    expect(await screen.findByText('1건을 다시 보냈습니다.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
+  it('부분 실패면 창이 닫히지 않고 건별 사유가 창 안에 나온다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(), batchRoute(() => jsonResponse({ succeeded: 1, failed: [failureItem(1)] }))],
+      PERIOD,
+    );
+    await selectRow(user, 0);
+    await selectRow(user, 1);
+    const before = requestsTo(requests, LIST_PATH).length;
+    await openBatch(user);
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).getByText('1건을 다시 보냈습니다. 1건은 보내지 못했습니다.'),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText('SAMPLE-KEY-0002')).toBeInTheDocument();
+    expect(within(dialog).getByText('상태가 맞지 않습니다')).toBeInTheDocument();
+    // 부분 실패라도 목록은 달라졌다 — 다시 조회한다.
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
+  it('전건 실패면 성공 안내가 나오지 않는다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), batchRoute(() => jsonResponse({ succeeded: 0, failed: [failureItem(0)] }))],
+      PERIOD,
+    );
+    await selectRow(user, 0);
+    await openBatch(user);
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByText(/다시 보냈습니다/)).not.toBeInTheDocument();
+    expect(within(dialog).getByText('SAMPLE-KEY-0001')).toBeInTheDocument();
+  });
+
+  it('보낸 건수 밖의 위치 번호가 와도 그 항목이 사라지지 않는다', async () => {
+    // 목 서버가 실제로 이렇게 내려준다 — 한 건만 보내도 index: 1이 온다.
+    const { user } = renderScreen(
+      [listRoute(), batchRoute(() => jsonResponse({ succeeded: 1, failed: [failureItem(1)] }))],
+      PERIOD,
+    );
+    await selectRow(user, 0);
+    await openBatch(user);
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('어느 건인지 알 수 없습니다.')).toBeInTheDocument();
+  });
+
+  it('건별 사유가 비어 있으면 받지 못했다고 밝힌다', async () => {
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        batchRoute(() => jsonResponse({ succeeded: 0, failed: [{ index: 0, errors: [] }] })),
+      ],
+      PERIOD,
+    );
+    await selectRow(user, 0);
+    await openBatch(user);
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    expect(
+      within(await screen.findByRole('dialog')).getByText('사유를 받지 못했습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('요청 자체가 실패하면 창이 닫히지 않고 사유가 나온다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), batchRoute(() => jsonResponse({ message: '' }, { status: 403 }))],
+      PERIOD,
+    );
+    await selectRow(user, 0);
+    await openBatch(user);
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      await within(dialog).findByText(
+        '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('계약 형태가 아닌 422도 삼키지 않고 안내한다', async () => {
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        batchRoute(() =>
+          jsonResponse({ type: 'about:blank', title: 'Unprocessable Entity' }, { status: 422 }),
+        ),
+      ],
+      PERIOD,
+    );
+    await selectRow(user, 0);
+    await openBatch(user);
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '선택 일괄 재처리' }),
+    );
+
+    expect(
+      await within(screen.getByRole('dialog')).findByText(
+        '잠시 뒤 다시 시도하세요. 반복되면 담당자에게 알려 주세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('조건을 바꾸면 선택이 비워진다 — 보이지 않는 건이 요청에 실리면 안 된다', async () => {
+    const { user } = renderScreen([listRoute()], PERIOD);
+    await selectRow(user, 0);
+    expect(screen.getByText('선택 1건')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    expect(screen.getByText('선택 0건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '선택 일괄 재처리' })).toBeDisabled();
+  });
+
+  it('쪽을 옮기면 선택이 비워진다', async () => {
+    const { user } = renderScreen(
+      [listRoute(messageRowFixtures, { page: 1, size: 3, total: 10 })],
+      PERIOD,
+    );
+    await selectRow(user, 0);
+    expect(screen.getByText('선택 1건')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(screen.getByText('선택 0건')).toBeInTheDocument();
   });
 });

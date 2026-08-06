@@ -1,12 +1,14 @@
 import { AlertBanner, Breadcrumb, Button, Dialog, PageHeader, useToast } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { toBatchResultView, type BatchResultView, type RequestedMessage } from './batch-result';
+import { BatchRetryDialog } from './batch-retry-dialog';
 import {
   PLACEHOLDER_DIRECTION_CODES,
   PLACEHOLDER_INTERFACE_CODES,
@@ -30,9 +32,9 @@ import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
 import { messageKeys, useFilterOptions, useMessageDetail, useMessageList } from './queries';
-import { retryMessage } from './requests';
+import { retryMessage, retryMessagesBatch } from './requests';
 import { RetryErrorBanner } from './retry-error-banner';
-import type { IntegrationMessageRow } from './types';
+import type { BatchResult, IntegrationMessageRow } from './types';
 
 const t = messages.integrationSync;
 
@@ -138,6 +140,13 @@ export const IntegrationSyncScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client } = useApiClient();
+  const batchReasonId = useId();
+
+  /**
+   * 고른 행. **주소에 두지 않는다** — 조건·쪽이 바뀌면 비워야 하는 상태라
+   * 주소에 남기면 화면에 보이지 않는 건이 요청에 실린다.
+   */
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const period: PeriodInput = {
     from: searchParams.get('from') ?? '',
@@ -197,7 +206,12 @@ export const IntegrationSyncScreen = () => {
    * 「조건을 좁혔더니 아무것도 없다」로 보인다.
    */
   const applyQuery = (nextPeriod: PeriodInput, nextFilters: MessageFilters, nextPage = 1) => {
-    // 조건·쪽이 바뀌면 열려 있던 상세도 닫는다 — 그 건이 새 결과에 없을 수 있다.
+    /*
+     * 조건·쪽이 바뀌면 선택을 비운다. 비우지 않으면 **화면에 보이지 않는 건이 요청에 실린다** —
+     * 사용자가 확인할 수 없는 건을 보내는 것이라 그대로 두면 안 된다.
+     * 열려 있던 상세도 함께 닫힌다 — 그 건이 새 결과에 없을 수 있다.
+     */
+    setSelectedIds([]);
     setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
   };
 
@@ -232,7 +246,62 @@ export const IntegrationSyncScreen = () => {
   /** 충돌·상태 불일치는 지금 상태를 다시 받아야 풀린다. 버릴 입력이 없다. */
   const reloadList = () => {
     retryWrite.reset();
+    // 다시 조회하면 행이 달라질 수 있다. 남은 선택은 보이지 않는 건을 가리키게 된다.
+    setSelectedIds([]);
     void list.refetch();
+  };
+
+  const [isBatchOpen, setIsBatchOpen] = useState(false);
+  const [batchResult, setBatchResult] = useState<BatchResultView | null>(null);
+  /** 보낸 순서 그대로의 목록. 응답의 위치 번호를 되짚는 정본이다. */
+  const [requested, setRequested] = useState<RequestedMessage[]>([]);
+
+  const batchWrite = useMasterWrite<RequestedMessage[], BatchResult>({
+    request: (targets, headers) =>
+      retryMessagesBatch(
+        client,
+        targets.map((target) => target.id),
+        headers,
+      ),
+    // 단건과 같은 이유로 null이다 — 이 리소스에는 낙관적 잠금이 없다.
+    etagPath: null,
+    invalidateKeys: [messageKeys.all],
+    knownFields: [],
+    onSuccess: (result) => {
+      const view = toBatchResultView(result, requested);
+
+      if (view.isAllSucceeded) {
+        setIsBatchOpen(false);
+        setSelectedIds([]);
+        toast.show({ variant: 'success', description: view.summary ?? t.retry.requested });
+        return;
+      }
+
+      // 하나라도 실패했으면 창을 닫지 않는다 — 건별 사유가 이 창에만 있다.
+      setBatchResult(view);
+    },
+  });
+
+  const openBatch = () => {
+    batchWrite.reset();
+    setBatchResult(null);
+    /*
+     * 고른 순서가 아니라 **표에 보이는 순서**로 보낸다. 되짚기의 정본은 이 배열이므로
+     * 어떤 순서든 상관없으나, 표와 같은 순서여야 결과 목록을 사용자가 대조할 수 있다.
+     */
+    setRequested(
+      rows
+        .filter((row) => selectedIds.includes(String(row.integrationMessageId)))
+        .map((row) => ({ id: row.integrationMessageId, messageKey: row.messageKey })),
+    );
+    setIsBatchOpen(true);
+  };
+
+  const closeBatch = () => {
+    batchWrite.reset();
+    setIsBatchOpen(false);
+    setBatchResult(null);
+    setSelectedIds([]);
   };
 
   return (
@@ -287,6 +356,26 @@ export const IntegrationSyncScreen = () => {
         {/* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「기록이 없습니다」로 보이면 안 된다. */}
         {!list.isError && (
           <>
+            {/* 배치 규범 4 — 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 낸다. */}
+            <div className="filter-bar">
+              <div className="field-cell">
+                <span className="field-label">{t.batch.selectionCount(selectedIds.length)}</span>
+                <Button
+                  variant="outlined"
+                  disabled={selectedIds.length === 0}
+                  aria-describedby={selectedIds.length === 0 ? batchReasonId : undefined}
+                  onClick={openBatch}
+                >
+                  {t.actions.batchRetry}
+                </Button>
+                {selectedIds.length === 0 && (
+                  <span id={batchReasonId} className="field-note">
+                    {t.reasons.batchNeedsSelection}
+                  </span>
+                )}
+              </div>
+            </div>
+
             <MessageTable
               rows={rows}
               isLoading={listQuery !== null && list.isPending}
@@ -301,6 +390,8 @@ export const IntegrationSyncScreen = () => {
                 setRetryTarget(row);
               }}
               retryingId={retryWrite.isSaving ? (retryTarget?.integrationMessageId ?? null) : null}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
               now={now}
             />
             {listQuery !== null && !list.isPending && (
@@ -347,6 +438,19 @@ export const IntegrationSyncScreen = () => {
             lockedAt={retryTarget?.lockedAt}
           />
         }
+      />
+
+      <BatchRetryDialog
+        open={isBatchOpen}
+        onClose={closeBatch}
+        onConfirm={() => {
+          batchWrite.write(requested);
+        }}
+        selectedCount={requested.length}
+        isSaving={batchWrite.isSaving}
+        result={batchResult}
+        // 요청 자체가 실패한 경우다(권한 없음·형식 오류·연결 끊김). 건별 결과와 다른 층이다.
+        banner={<RetryErrorBanner error={batchWrite.error} />}
       />
     </>
   );

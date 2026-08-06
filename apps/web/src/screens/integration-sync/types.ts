@@ -12,6 +12,9 @@ import type { components } from '@omf-mes/api-client';
 export type IntegrationMessageRow = components['schemas']['IntegrationMessage'];
 export type PageMeta = components['schemas']['PageMeta'];
 
+/** 일괄 처리 결과. **부분 실패를 허용한다** — 전체를 되돌리지 않는다. */
+export type BatchResult = components['schemas']['BatchResult'];
+
 /**
  * 상세 표시. 계약의 상세 응답에서 **전문을 뺀 것**이며 목록 행과 같은 항목만 갖는다.
  * 별칭이라 구조가 같아도 이름을 따로 두는 이유는, 「여기에 payload가 없다」가 이 이름의 뜻이기 때문이다.

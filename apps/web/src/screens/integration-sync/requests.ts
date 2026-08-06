@@ -2,7 +2,7 @@ import type { ApiClient } from '@omf-mes/api-client';
 
 import type { WriteHeaders } from '../../patterns/master';
 import type { ApiCallResult } from '../../patterns/request';
-import type { IntegrationMessageRow } from './types';
+import type { BatchResult, IntegrationMessageRow } from './types';
 
 /**
  * 이 화면의 쓰기 — 재처리 요청 두 가지. 쓰기 경로 리터럴이 사는 유일한 자리다.
@@ -31,4 +31,21 @@ export const retryMessage = (
       path: { integrationMessageId: id },
       header: { 'Idempotency-Key': headers['Idempotency-Key'] },
     },
+  });
+
+/**
+ * 선택 일괄 재처리. 고른 순서를 그대로 보낸다 —
+ * 응답의 `failed[].index`가 **이 배열에서의 위치**라 순서를 바꾸면 되짚을 수 없다.
+ *
+ * 화면이 고른 것을 거르지 않는다. 무엇이 재처리 가능한지는 화면이 판정할 수 없고
+ * 계약이 부분 실패를 허용한 이유가 그것이다 — 서버가 건별로 판정한다.
+ */
+export const retryMessagesBatch = (
+  client: Client,
+  ids: number[],
+  headers: WriteHeaders,
+): Promise<ApiCallResult<BatchResult>> =>
+  client.POST('/integration/messages:retry-batch', {
+    params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+    body: { integrationMessageIds: ids },
   });

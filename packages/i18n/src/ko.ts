@@ -493,6 +493,24 @@ const integrationSync = {
      */
     retryRow: (messageKey: string): string => `${messageKey} 재처리`,
     reload: '다시 조회',
+    batchRetry: '선택 일괄 재처리',
+  },
+  /**
+   * 선택 일괄 재처리. **부분 실패를 허용한다** — 전체를 되돌리지 않으므로
+   * 성공 건수와 실패 건별 사유를 함께 낸다.
+   */
+  batch: {
+    selectionCount: (count: number): string => `선택 ${String(count)}건`,
+    confirmTitle: (count: number): string => `선택한 ${String(count)}건을 다시 보낼까요?`,
+    confirmDescription: '일부만 성공할 수 있습니다. 결과를 건별로 알려 드립니다.',
+    resultTitle: '재처리 결과',
+    failedListLabel: '보내지 못한 건',
+    allSucceeded: (count: number): string => `${String(count)}건을 다시 보냈습니다.`,
+    partial: (succeeded: number, failed: number): string =>
+      `${String(succeeded)}건을 다시 보냈습니다. ${String(failed)}건은 보내지 못했습니다.`,
+    /** 서버가 준 위치 번호가 보낸 건수 밖일 때. 그 항목을 버리지 않고 이렇게 밝힌다. */
+    unknownItem: '어느 건인지 알 수 없습니다.',
+    noReason: '사유를 받지 못했습니다.',
   },
   /**
    * 재처리 — 같은 메시지 키로 다시 보낸다. 새 건을 만들지 않는다.
@@ -516,8 +534,7 @@ const integrationSync = {
     workerLeaseAt: (time: string): string =>
       `이 건을 처리하는 작업이 ${time}부터 진행 중입니다. 잠시 뒤 다시 시도하세요.`,
     user: '다른 사용자가 이 건을 먼저 처리했습니다. 목록을 다시 조회해 상태를 확인하세요.',
-    erpSync:
-      '외부 시스템에서 이 건이 다시 동기화됐습니다. 목록을 다시 조회해 상태를 확인하세요.',
+    erpSync: '외부 시스템에서 이 건이 다시 동기화됐습니다. 목록을 다시 조회해 상태를 확인하세요.',
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/integration-sync/message-table.tsx에 있다. */
   table: {
@@ -533,6 +550,7 @@ const integrationSync = {
   reasons: {
     searchNeedsPeriod: '조회는 기간을 모두 채운 뒤에 쓸 수 있습니다. 시작일과 종료일을 고르세요.',
     periodReversed: '기간 종료는 기간 시작보다 앞설 수 없습니다.',
+    batchNeedsSelection: '선택 일괄 재처리는 목록에서 건을 고른 뒤에 쓸 수 있습니다.',
   },
   loading: {
     messages: '연계 메시지 목록을 불러오는 중',

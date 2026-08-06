@@ -19,6 +19,9 @@ export interface MessageTableProps {
   onRetry: (row: IntegrationMessageRow) => void;
   /** 지금 재처리를 보내고 있는 건. 그 행의 버튼만 진행 중으로 보인다. */
   retryingId: number | null;
+  /** 고른 행의 식별자. 디자인 시스템 `Table`의 선택은 제어형이다. */
+  selectedIds: readonly string[];
+  onSelectionChange: (nextIds: string[]) => void;
   /**
    * 상태 보조 문구의 기준 시각. 화면이 한 번 만들어 넘긴다 —
    * 셀마다 지금 시각을 만들면 같은 표 안에서 행마다 다른 기준으로 판정된다.
@@ -48,6 +51,8 @@ export const MessageTable = ({
   onOpenDetail,
   onRetry,
   retryingId,
+  selectedIds,
+  onSelectionChange,
   now,
 }: MessageTableProps) => {
   const columns: Column<IntegrationMessageRow>[] = [
@@ -190,6 +195,14 @@ export const MessageTable = ({
          * 엉뚱한 건이 선택된 것처럼 보인다.
          */
         getRowId={(row) => String(row.integrationMessageId)}
+        /*
+         * 화면이 선택을 거르지 않는다. 「재처리 가능한 것만 남기게」 걸러 보면
+         * 머리글 체크박스가 절대 완전히 체크되지 않아 토글이 먹지 않는 것처럼 보이고,
+         * 무엇이 재처리 가능한지는 화면이 판정할 수도 없다. 서버가 건별로 판정한다.
+         */
+        selectable
+        selectedIds={selectedIds}
+        onSelectionChange={onSelectionChange}
         empty={emptySlot()}
       />
     </div>

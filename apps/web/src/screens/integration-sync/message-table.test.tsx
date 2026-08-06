@@ -11,6 +11,7 @@ const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
   const onFirstPage = vi.fn();
   const onOpenDetail = vi.fn();
   const onRetry = vi.fn();
+  const onSelectionChange = vi.fn();
   render(
     <MessageTable
       rows={[messageRow()]}
@@ -21,12 +22,14 @@ const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
       onOpenDetail={onOpenDetail}
       onRetry={onRetry}
       retryingId={null}
+      selectedIds={[]}
+      onSelectionChange={onSelectionChange}
       now={NOW}
       {...props}
     />,
   );
 
-  return { onFirstPage, onOpenDetail, onRetry, user: userEvent.setup() };
+  return { onFirstPage, onOpenDetail, onRetry, onSelectionChange, user: userEvent.setup() };
 };
 
 describe('MessageTable', () => {
@@ -120,6 +123,26 @@ describe('MessageTable', () => {
 
     expect(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 재처리' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'SAMPLE-KEY-0002 재처리' })).toBeEnabled();
+  });
+
+  it('행마다 선택칸이 있고 고르면 그 식별자가 넘어간다', async () => {
+    const { onSelectionChange, user } = renderTable();
+
+    /*
+     * 디자인 시스템은 행 체크박스의 접근 이름을 모든 행에 같게 붙인다.
+     * 이름으로 특정할 수 없어 순서로 찾는다 — 이 사실이 바뀌면 이 테스트가 먼저 깨진다.
+     */
+    await user.click(screen.getAllByRole('checkbox', { name: '행 선택' })[0] as HTMLElement);
+
+    expect(onSelectionChange).toHaveBeenCalledWith(['9001']);
+  });
+
+  it('머리글 선택칸을 해제하면 빈 배열이 넘어간다 — 이 쪽의 선택이 통째로 풀린다', async () => {
+    const { onSelectionChange, user } = renderTable({ selectedIds: ['9001'] });
+
+    await user.click(screen.getByRole('checkbox', { name: '전체 선택' }));
+
+    expect(onSelectionChange).toHaveBeenCalledWith([]);
   });
 
   it('결과는 있는데 이 쪽이 비었으면 첫 쪽으로 갈 수단과 함께 안내한다', async () => {
