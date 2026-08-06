@@ -658,10 +658,17 @@ const inspectionStandard = {
     prevPage: '이전',
     nextPage: '다음',
     excelUpload: '엑셀 올리기',
+    addPlan: '기준 추가',
   },
   actionReasons: {
     excelUploadUnavailable:
       '엑셀 올리기는 아직 할 수 없습니다. 양식이 정해지면 이 버튼을 쓸 수 있습니다.',
+    /*
+     * 계약의 라우팅 조회가 품목을 필수 쿼리로 둔다 — 품목을 비운 「전 품목 공통 기준」에는
+     * 고를 수 있는 라우팅 자체가 없다. 값을 고를 수 없는 칸을 활성으로 두면
+     * 사용자가 무엇이 막혔는지 모르고, 감추면 「이 화면에는 없는 항목」으로 오해한다.
+     */
+    routingNeedsItem: '라우팅은 품목을 고른 뒤에 고를 수 있습니다. 먼저 품목을 고르세요.',
   },
   filters: {
     searchLabel: '검사기준 검색',
@@ -676,7 +683,10 @@ const inspectionStandard = {
   },
   loading: {
     plans: '검사기준 목록을 불러오는 중',
+    planDetail: '기준 정보를 불러오는 중',
   },
+  optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+  optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {
     planNoneTitle: '등록된 검사기준이 없습니다',
     planNoneDescription: '「기준 추가」로 첫 검사기준을 등록하세요.',
@@ -688,11 +698,32 @@ const inspectionStandard = {
     inspectionPlanCode: '기준코드',
     inspectionPlanName: '기준명',
     inspectionType: '검사 유형',
+    item: '품목',
+    process: '공정',
+    routing: '라우팅',
+    approval: '승인',
+    active: '사용',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (미사용)',
+    /** 「전 품목 공통 기준」. 계약이 품목 널을 허용한다 — 빈 칸으로 두면 빠뜨린 것처럼 보인다. */
+    allItems: '전 품목 공통',
+    /*
+     * 승인자 **이름을 만들지 않는다.** 계약이 주는 것은 사용자 번호이고
+     * 이름을 만들려면 이 화면의 관심사가 아닌 사용자 조회가 필요하다 — 시각만 낸다.
+     */
+    approvedAt: (at: string): string => `승인됨 · ${at}`,
+    notApproved: '미승인',
+    active: '사용',
+    inactive: '미사용',
+    routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
+  },
+  validation: {
+    required: '필수 입력 항목입니다.',
+    planCodeBlank: '기준코드는 공백만으로 지정할 수 없습니다.',
+    planNameBlank: '기준명은 공백만으로 지정할 수 없습니다.',
   },
   /**
    * 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다.

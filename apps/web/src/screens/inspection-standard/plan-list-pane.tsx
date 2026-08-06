@@ -33,6 +33,9 @@ export interface PlanListPaneProps {
   onChangePage: (page: number) => void;
   selectedPlanId: number | null;
   onSelect: (inspectionPlanId: number) => void;
+  /** 등록 폼이 이미 열려 있으면 참. 같은 폼을 두 번 열지 않는다 */
+  isCreating: boolean;
+  onAddPlan: () => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 검사기준이 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -59,6 +62,8 @@ export const PlanListPane = ({
   onChangePage,
   selectedPlanId,
   onSelect,
+  isCreating,
+  onAddPlan,
   loadError,
 }: PlanListPaneProps) => {
   const typeSelectId = useId();
@@ -210,6 +215,12 @@ export const PlanListPane = ({
       {listSlot()}
 
       <div className="filter-bar">
+        <div className="field-cell">
+          <Button variant="outlined" disabled={isCreating} onClick={onAddPlan}>
+            {t.actions.addPlan}
+          </Button>
+        </div>
+
         {/*
          * 계약에 올리기 경로가 없고 양식도 정해지지 않았다. 감추면 사용자가
          * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다 — 사유와 함께 비활성으로 둔다.

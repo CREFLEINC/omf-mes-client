@@ -12,6 +12,7 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
   const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
   const onSelect = vi.fn<(id: number) => void>();
   const onChangePage = vi.fn<(page: number) => void>();
+  const onAddPlan = vi.fn<() => void>();
 
   render(
     <PlanListPane
@@ -23,12 +24,14 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanListPane>[0]> = {})
       onChangePage={onChangePage}
       selectedPlanId={null}
       onSelect={onSelect}
+      isCreating={false}
+      onAddPlan={onAddPlan}
       loadError={null}
       {...overrides}
     />,
   );
 
-  return { onApplyFilters, onSelect, onChangePage, user: userEvent.setup() };
+  return { onApplyFilters, onSelect, onChangePage, onAddPlan, user: userEvent.setup() };
 };
 
 describe('PlanListPane — 목록 표시', () => {
