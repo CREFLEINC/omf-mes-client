@@ -2,6 +2,7 @@ import { Button, Checkbox, Dialog, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { FieldLabel } from './field-label';
 import { OPERATION_FLAG_KEYS } from './operation-order';
 import type { OperationDraft, SelectOption } from './types';
 
@@ -40,14 +41,7 @@ const ProcessSelectField = ({ label, options, value, onChange, error }: ProcessS
 
   return (
     <div className="field-cell">
-      {/*
-       * 필수 표시는 <label> 밖에 두되 같은 줄에 오도록 .field-label 안으로 올린다.
-       * 안에 넣으면 접근성 이름이 「이름 *」이 되어 라벨 조회가 깨진다.
-       */}
-      <span className="field-label">
-        <label htmlFor={id}>{label}</label>
-        <span aria-hidden="true"> *</span>
-      </span>
+      <FieldLabel htmlFor={id} label={label} required />
       <Select
         id={id}
         options={options}
@@ -87,6 +81,7 @@ export const OperationFormDialog = ({
   onClose,
   onSubmit,
 }: OperationFormDialogProps) => {
+  const operationNameId = useId();
   const outsourcedNoteId = useId();
 
   return (
@@ -115,13 +110,20 @@ export const OperationFormDialog = ({
           error={fieldErrors.processId}
         />
 
-        <TextField
-          label={t.fields.operationName}
-          value={values.operationName}
-          onChange={(event) => onChange({ operationName: event.target.value })}
-          error={fieldErrors.operationName}
-          aria-required
-        />
+        {/*
+         * 공정명도 필수다 — 표시를 빼면 같은 창 안에서 공정(필수 표시 있음)과 규칙이 어긋난다.
+         * 디자인 시스템 내장 라벨에는 표시를 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
+         */}
+        <div className="field-cell">
+          <FieldLabel htmlFor={operationNameId} label={t.fields.operationName} required />
+          <TextField
+            id={operationNameId}
+            value={values.operationName}
+            onChange={(event) => onChange({ operationName: event.target.value })}
+            error={fieldErrors.operationName}
+            aria-required
+          />
+        </div>
 
         {/* 단위는 초이며 0은 불가다(계약 CHECK > 0). 라벨이 그 사실을 담는다. */}
         <TextField

@@ -90,6 +90,29 @@ describe('OperationFormDialog', () => {
     ).toBeInTheDocument();
   });
 
+  /*
+   * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
+   * 표시를 라벨 글자에 붙이면 접근성 이름이 「이름 *」이 되어 라벨 조회가 깨지므로 밖에 둔다(배치 규범 3).
+   */
+  it('필수 입력칸에 표시를 붙이되 접근성 이름을 깨뜨리지 않는다', () => {
+    renderDialog();
+
+    // 라벨 조회가 표시 없이 그대로 동작한다.
+    expect(screen.getByLabelText('공정명')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '공정' })).toBeInTheDocument();
+
+    // 표시는 보이는 글자로 남되 보조기술에는 읽히지 않는다.
+    const marks = screen.getAllByText('*', { selector: '[aria-hidden="true"]' });
+    expect(marks).toHaveLength(2);
+  });
+
+  it('필수가 아닌 칸에는 표시를 붙이지 않는다', () => {
+    renderDialog();
+
+    expect(screen.getByLabelText('표준 C/T(초)')).not.toHaveAttribute('aria-required');
+    expect(screen.getByLabelText('표준 수율(0~1)')).not.toHaveAttribute('aria-required');
+  });
+
   it('표준 C/T와 표준 수율 라벨에 단위와 허용 범위를 적는다', () => {
     renderDialog();
 

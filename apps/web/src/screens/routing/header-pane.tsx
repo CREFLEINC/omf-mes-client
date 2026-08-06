@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import { DisabledAction } from './disabled-action';
+import { FieldLabel } from './field-label';
 import type { RoutingStatusView } from './routing-status';
 import type { RoutingHeaderFormValues } from './types';
 
@@ -77,6 +78,8 @@ export const HeaderPane = ({
   const itemLabelId = useId();
   const revisionLabelId = useId();
   const statusLabelId = useId();
+  const routingCodeId = useId();
+  const effectiveFromId = useId();
 
   const isLockedByState = status !== null && !status.isEditable;
 
@@ -114,18 +117,26 @@ export const HeaderPane = ({
           </div>
         )}
 
-        <TextField
-          label={t.fields.routingCode}
-          value={values.routingCode}
-          onChange={(event) => onChange({ routingCode: event.target.value })}
-          disabled={isLockedByState || codeLockReason !== null}
-          /*
-           * 상태 잠금 사유는 여기 붙이지 않는다 — 구획 배너가 이미 한 번 말했고,
-           * 입력칸마다 되풀이하면 무엇이 코드만의 사유인지 흐려진다.
-           */
-          disabledReason={codeLockReason}
-          error={fieldErrors.routingCode}
-        />
+        {/*
+         * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
+         * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
+         */}
+        <div className="field-cell">
+          <FieldLabel htmlFor={routingCodeId} label={t.fields.routingCode} required />
+          <TextField
+            id={routingCodeId}
+            value={values.routingCode}
+            onChange={(event) => onChange({ routingCode: event.target.value })}
+            disabled={isLockedByState || codeLockReason !== null}
+            /*
+             * 상태 잠금 사유는 여기 붙이지 않는다 — 구획 배너가 이미 한 번 말했고,
+             * 입력칸마다 되풀이하면 무엇이 코드만의 사유인지 흐려진다.
+             */
+            disabledReason={codeLockReason}
+            error={fieldErrors.routingCode}
+            aria-required
+          />
+        </div>
 
         {status !== null && (
           <div>
@@ -141,15 +152,20 @@ export const HeaderPane = ({
         )}
 
         {/* DS에 DatePicker가 없다(고정 커밋 기준). 날짜 입력은 TextField의 date 형을 쓴다. */}
-        <TextField
-          type="date"
-          label={t.fields.effectiveFrom}
-          value={values.effectiveFrom}
-          onChange={(event) => onChange({ effectiveFrom: event.target.value })}
-          disabled={isLockedByState}
-          error={fieldErrors.effectiveFrom}
-        />
+        <div className="field-cell">
+          <FieldLabel htmlFor={effectiveFromId} label={t.fields.effectiveFrom} required />
+          <TextField
+            id={effectiveFromId}
+            type="date"
+            value={values.effectiveFrom}
+            onChange={(event) => onChange({ effectiveFrom: event.target.value })}
+            disabled={isLockedByState}
+            error={fieldErrors.effectiveFrom}
+            aria-required
+          />
+        </div>
 
+        {/* 유효종료는 「지정하지 않음」이 정상 값이라 필수 표시를 붙이지 않는다. */}
         <TextField
           type="date"
           label={t.fields.effectiveTo}

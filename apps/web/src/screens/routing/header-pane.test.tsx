@@ -127,6 +127,20 @@ describe('HeaderPane', () => {
     expect(screen.getByLabelText('Routing 코드')).toBeEnabled();
   });
 
+  /*
+   * 유효종료는 「지정하지 않음」이 정상 값이라 표시를 붙이지 않는다 —
+   * 필수인 칸과 아닌 칸이 같은 폼에 있으므로 표시가 그 차이를 밝힌다.
+   */
+  it('필수 입력칸에만 표시를 붙이고 접근성 이름은 그대로 둔다', () => {
+    renderPane();
+
+    expect(screen.getByLabelText('Routing 코드')).toHaveAttribute('aria-required', 'true');
+    expect(screen.getByLabelText('유효시작')).toHaveAttribute('aria-required', 'true');
+    expect(screen.getByLabelText('유효종료')).not.toHaveAttribute('aria-required');
+
+    expect(screen.getAllByText('*', { selector: '[aria-hidden="true"]' })).toHaveLength(2);
+  });
+
   it('필드 오류를 그 입력칸에 인라인으로 낸다', () => {
     renderPane({ fieldErrors: { routingCode: '필수 입력 항목입니다.' } });
 
