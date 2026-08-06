@@ -40,6 +40,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/master-data/warehouse-location" icon="warehouse">
               창고·Location
             </NavItem>
+            <NavItem to="/master-data/routing" icon="account_tree">
+              Routing(공정)
+            </NavItem>
           </SidebarSection>
         </Sidebar>
       }

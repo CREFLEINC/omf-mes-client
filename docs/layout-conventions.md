@@ -374,6 +374,8 @@ body {
 | `.form-actions` | 폼 하단 액션 줄. `align-items: flex-start` | 4 |
 | `.form-actions-secondary` | 보조 액션만 줄 왼쪽 끝으로(`margin-right: auto`) | 4 |
 | `.two-pane` · `.form-grid`의 `@media` | 접힘 기준점 1280px · 720px | 5 |
+| `.three-pane` | 3단 배치 컨테이너(좌 목록 / 중 목록 / 우 편집). 접힘 기준점은 `.two-pane`과 같은 1280px · 720px이며 그 근거는 소비 화면 파일에 있다 | 5의 이탈 조건 |
+| `.pane-stack` | 3단 배치의 한 칸에 페인을 세로로 쌓는 자리. 이음매 `--space-5`를 담는 쪽이 한 번에 정의한다 | 1 · 5 |
 | `.banner-slot` | 페인·다이얼로그 안의 배너와 아래 블록 사이 이음매 `--space-5` | 6 |
 | `.form-grid .field-cell` | 폼 그리드 안의 셀이 자식을 칸 폭에 맞춰 늘린다(`align-items: stretch`) | 3-1 |
 | `.check-group` | 한 칸에 나란히 놓은 확인칸 사이 간격 `--space-2` | — |

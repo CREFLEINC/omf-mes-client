@@ -192,6 +192,132 @@ const warehouseLocation = {
   },
 } as const;
 
+/**
+ * W-06-01 Routing(공정) 등록·관리.
+ *
+ * 상태 문구(작성중·확정·폐기)는 서버 코드 문자열이 확정되기 전이라 화면이 매핑해서 고른다 —
+ * 매핑의 정본은 screens/routing/routing-status.ts 한 곳이다.
+ */
+const routing = {
+  title: 'Routing(공정)',
+  breadcrumbRoot: '기준정보',
+  panes: {
+    item: '품목',
+    revision: 'Rev 목록',
+    header: 'Routing 정보',
+    operations: '공정 라인',
+  },
+  actions: {
+    newRevision: '신규 Rev 발행',
+    createRouting: 'Routing 등록',
+    addOperation: '공정 추가',
+    confirm: '확정',
+    obsolete: '폐기',
+    dependencies: '선후행 설정',
+    compareRevisions: 'Rev 비교',
+    changeHistory: '변경 이력',
+  },
+  actionReasons: {
+    dependenciesUnavailable:
+      '선후행 설정은 아직 할 수 없습니다. 공정 사이의 선후 관계를 정하는 방식이 정해지면 이 버튼을 쓸 수 있습니다.',
+    compareRevisionsUnavailable:
+      'Rev 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    changeHistoryUnavailable:
+      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    outsourcedUnavailable:
+      '외주 공정은 아직 지정할 수 없습니다. 저장할 항목이 준비되면 이 확인칸을 쓸 수 있습니다.',
+    /*
+     * 아래 셋은 아직 붙지 않은 액션의 사유다 — 감추는 대신 사유와 함께 비활성으로 남긴다.
+     * 그 액션을 붙이는 작업에서 이 키를 지우고 실제 활성 조건 문구로 바꾼다.
+     */
+    confirmNotReady: '확정은 아직 실행할 수 없습니다. 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    obsoleteNotReady: '폐기는 아직 실행할 수 없습니다. 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    newRevisionNotReady:
+      '신규 Rev 발행은 아직 실행할 수 없습니다. 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    addOperationNotReady:
+      '공정 추가는 아직 할 수 없습니다. 편집 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+  },
+  /** 확정·폐기 Rev의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
+  stateLock: {
+    title: '지금은 수정할 수 없는 Rev입니다',
+    confirmed: '확정된 Rev는 수정할 수 없습니다. 변경하려면 신규 Rev를 발행하세요.',
+    obsolete: '폐기된 Rev는 수정할 수 없습니다. 변경하려면 신규 Rev를 발행하세요.',
+  },
+  filters: {
+    searchLabel: '품목 검색',
+    searchPlaceholder: '품목코드 또는 품목명',
+    onlyWithoutRouting: 'Routing 미보유만',
+    chipRemoveKeyword: '검색어 조건 제거',
+    chipRemoveOnlyWithoutRouting: 'Routing 미보유만 조건 제거',
+    chipKeyword: (value: string): string => `검색어: ${value}`,
+  },
+  loading: {
+    items: '품목 목록을 불러오는 중',
+    revisions: 'Rev 목록을 불러오는 중',
+    header: 'Routing 정보를 불러오는 중',
+    operations: '공정 라인을 불러오는 중',
+  },
+  listTruncated: (shown: number, total: number): string =>
+    `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
+  optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+  optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+  empty: {
+    itemNoneTitle: '등록된 품목이 없습니다',
+    itemNoneDescription: '품목이 등록되면 이 목록에서 고를 수 있습니다.',
+    itemNoMatchTitle: '조건에 맞는 품목이 없습니다',
+    itemNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+    itemNotSelected: '좌측에서 품목을 먼저 고르세요',
+    revisionNoneTitle: '등록된 Rev가 없습니다',
+    revisionNoneDescription: '「Routing 등록」으로 첫 Rev를 만드세요.',
+    revisionNotSelected: '가운데에서 Rev를 먼저 고르세요',
+    operationNoneTitle: '등록된 공정이 없습니다',
+    operationNoneDescription: '「공정 추가」로 첫 공정을 등록하세요.',
+  },
+  fields: {
+    item: '품목',
+    itemCode: '품목코드',
+    itemName: '품목명',
+    routingCode: 'Routing 코드',
+    revision: 'Rev',
+    status: '상태',
+    effectiveFrom: '유효시작',
+    effectiveTo: '유효종료',
+    operationNo: '순서',
+    process: '공정',
+    operationName: '공정명',
+    managedItems: '관리 항목',
+    /** 단위를 라벨에 적는다 — 값만 보고는 분·초를 구분할 수 없다. */
+    standardCycleTimeSec: '표준 C/T(초)',
+    /** 허용 범위를 라벨에 적는다 — 퍼센트로 오입력하면 100배가 조용히 통과한다. */
+    standardYieldRate: '표준 수율(0~1)',
+    outsourced: '외주 공정',
+  },
+  /** 공정 라인의 관리 플래그 7종. 표에서는 켜진 것의 이름만 이어 낸다. */
+  operationFlags: {
+    mesManaged: 'MES 관리',
+    materialInputManaged: '자재투입 관리',
+    productionResultManaged: '실적 관리',
+    inspectionManaged: '검사 관리',
+    outputLotRequired: '산출 LOT 필수',
+    equipmentRequired: '설비 필수',
+    moldRequired: '금형 필수',
+  },
+  values: {
+    draft: '작성중',
+    confirmed: '확정',
+    obsolete: '폐기',
+    none: '없음',
+    empty: '—',
+    inactiveSuffix: ' (미사용)',
+    revision: (version: number): string => `Rev ${version}`,
+  },
+  validation: {
+    required: '필수 입력 항목입니다.',
+    codeBlank: 'Routing 코드는 공백만으로 지정할 수 없습니다.',
+    effectiveRangeReversed: '유효종료는 유효시작과 같거나 그 뒤여야 합니다.',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -201,6 +327,7 @@ export const ko = {
   editability,
   pendingCode,
   warehouseLocation,
+  routing,
 } as const;
 
 export type Messages = typeof ko;
