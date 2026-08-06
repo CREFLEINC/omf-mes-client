@@ -12,6 +12,7 @@ import {
 } from '../../test/api-harness';
 import {
   causeCodeFixtures,
+  deepHierarchyCodeFixtures,
   defectCodeFixtures,
   legacyThreeLevelCodeFixtures,
 } from './fixtures';
@@ -992,29 +993,32 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
     expect(screen.getByText(/상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다/)).toBeInTheDocument();
   });
 
-  /*
-   * 차단이 화면에서 실제로 요청을 막는지 본다(2차 방어). 3계층의 막내 DF-42는 상위가 상세 코드라
-   * R2에 걸린다. 상위 선택칸이 열려 있어 대분류를 골라 빠져나갈 수 있으므로 영구 잠금이 아니다.
-   */
-  it('상위가 상세 코드인 행은 저장 요청이 나가지 않고 사유가 보인다', async () => {
+  /* 3계층의 막내 DF-42는 상위가 상세 코드다. 그래도 명칭만 고치는 것은 막지 않는다. */
+  it('상위가 상세 코드인 행도 명칭만 고쳐 저장할 수 있다', async () => {
     const { requests, user } = renderScreen(
       legacyRoutes(
         defectDetailRoute(legacyThreeLevelCodeFixtures[2]),
-        defectUpdateRoute(4003, () => jsonResponse(legacyThreeLevelCodeFixtures[2]!)),
+        defectUpdateRoute(4003, () =>
+          jsonResponse(
+            { ...legacyThreeLevelCodeFixtures[2], defectName: '토크 미달 심함' },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
       ),
       '?sel=4003',
     );
 
-    await user.type(await screen.findByLabelText('명칭'), '가');
+    await user.type(await screen.findByLabelText('명칭'), ' 심함');
     await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
 
+    // 저장된 상위를 그대로 되돌려 보낸다 — 화면이 바꾸려 한 것이 아니다.
     expect(
-      screen.getByText('상위는 대분류만 지정할 수 있습니다. 계층은 2단계까지입니다.'),
-    ).toBeInTheDocument();
-    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+      JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}'),
+    ).toMatchObject({ parentDefectCodeId: 4002 });
   });
 
-  it('상위를 대분류로 고쳐 주면 저장할 수 있다 — 빠져나갈 길이 있다', async () => {
+  it('상위를 대분류로 고쳐 저장하는 정상 흐름은 그대로 통과한다', async () => {
     const { requests, user } = renderScreen(
       legacyRoutes(
         defectDetailRoute(legacyThreeLevelCodeFixtures[2]),
@@ -1037,6 +1041,48 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
     expect(
       JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}'),
     ).toMatchObject({ parentDefectCodeId: 4001 });
+  });
+});
+
+/*
+ * R2와 R3가 **동시에** 걸리는 유일한 조합 — 상위가 상세 코드이면서 자기도 하위를 갖는다.
+ * 두 규칙이 각각 값만 봤을 때는 한쪽이 다른 쪽의 탈출구를 막아 이 행이 영구히 잠겼다.
+ */
+describe('DefectCauseCodeScreen — 상위가 상세 코드이면서 하위도 가진 행', () => {
+  const deepRoutes = (...extra: StubRoute[]): StubRoute[] => [
+    defectOptionsRoute(deepHierarchyCodeFixtures),
+    defectListRoute(deepHierarchyCodeFixtures),
+    ...extra,
+  ];
+
+  it('명칭만 고쳐 저장할 수 있다 — 두 규칙이 서로의 탈출구를 막지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      deepRoutes(
+        defectDetailRoute(deepHierarchyCodeFixtures[2]),
+        defectUpdateRoute(5003, () =>
+          jsonResponse(
+            { ...deepHierarchyCodeFixtures[2], defectName: '기포 다수' },
+            { headers: { ETag: '"8"' } },
+          ),
+        ),
+      ),
+      '?sel=5003',
+    );
+
+    await user.type(await screen.findByLabelText('명칭'), ' 다수');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다');
+
+    expect(
+      JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}'),
+    ).toMatchObject({ parentDefectCodeId: 5002 });
+  });
+
+  it('그래도 상위 선택칸은 잠겨 있다 — 계층을 더 깨지 못하게 한다', async () => {
+    renderScreen(deepRoutes(defectDetailRoute(deepHierarchyCodeFixtures[2])), '?sel=5003');
+    await screen.findByLabelText('명칭');
+
+    expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
   });
 });
 

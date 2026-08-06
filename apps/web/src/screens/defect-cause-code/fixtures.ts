@@ -142,6 +142,56 @@ export const legacyThreeLevelCodeFixtures: DefectCode[] = [
   },
 ];
 
+/**
+ * 4계층까지 내려간 기존 데이터.
+ *
+ * 가운데 DF-52는 **상위가 상세 코드이면서 자기도 하위를 갖는다** — R2와 R3가 동시에 걸리는
+ * 유일한 조합이다. 두 규칙이 각각 「바꾸려 할 때만」으로 좁혀지지 않으면
+ * 한쪽이 다른 쪽의 탈출구를 막아 그 행은 명칭조차 고칠 수 없게 된다.
+ */
+export const deepHierarchyFixtures: HierarchyCode[] = [
+  { id: 5001, code: 'DF-50', name: '도장', parentId: null, isActive: true },
+  { id: 5002, code: 'DF-51', name: '표면', parentId: 5001, isActive: true },
+  { id: 5003, code: 'DF-52', name: '기포', parentId: 5002, isActive: true },
+  { id: 5004, code: 'DF-53', name: '미세 기포', parentId: 5003, isActive: true },
+];
+
+/** 위와 같은 계층을 계약 표현으로 담은 것. */
+export const deepHierarchyCodeFixtures: DefectCode[] = [
+  {
+    defectCodeId: 5001,
+    defectCode: 'DF-50',
+    defectName: '도장',
+    parentDefectCodeId: null,
+    processId: null,
+    isActive: true,
+  },
+  {
+    defectCodeId: 5002,
+    defectCode: 'DF-51',
+    defectName: '표면',
+    parentDefectCodeId: 5001,
+    processId: null,
+    isActive: true,
+  },
+  {
+    defectCodeId: 5003,
+    defectCode: 'DF-52',
+    defectName: '기포',
+    parentDefectCodeId: 5002,
+    processId: null,
+    isActive: true,
+  },
+  {
+    defectCodeId: 5004,
+    defectCode: 'DF-53',
+    defectName: '미세 기포',
+    parentDefectCodeId: 5003,
+    processId: null,
+    isActive: true,
+  },
+];
+
 /** 계층 판정 단위 테스트가 쓰는 화면 표현. 계약 변환을 거치지 않고 바로 넣는다. */
 export const hierarchyFixtures: HierarchyCode[] = [
   { id: 1001, code: 'DF-10', name: '외관', parentId: null, isActive: true },

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { validateCode, type CodeHierarchyContext } from './code-validation';
-import { hierarchyFixtures, legacyThreeLevelFixtures } from './fixtures';
+import { deepHierarchyFixtures, hierarchyFixtures, legacyThreeLevelFixtures } from './fixtures';
 import type { CodeFormValues } from './types';
 
 /**
@@ -102,8 +102,8 @@ describe('validateCode — 차단 R3 하위가 있는 코드', () => {
 
 /*
  * 이미 3계층인 기존 데이터의 중간 노드(DF-41 · 4002)는 상위와 하위를 동시에 갖는다.
- * R3가 「상위 값이 비어 있지 않다」만 보면 명칭조차 고칠 수 없고, 1차 방어가 상위 선택칸을
- * 잠그고 있어 빠져나갈 길도 없다. 그래서 R3는 **상위를 바꾸려 할 때만** 발동한다.
+ * R3가 「상위 값이 비어 있지 않다」만 보면 명칭조차 고칠 수 없다. 그래서 R3는
+ * **상위를 바꾸려 할 때만** 발동한다.
  */
 describe('validateCode — R3는 상위를 바꾸려 할 때만 발동한다', () => {
   const legacyContext = (savedParentId: string): CodeHierarchyContext => ({
@@ -152,6 +152,54 @@ describe('validateCode — R3는 상위를 바꾸려 할 때만 발동한다', (
     );
 
     expect(errors.parentId).toBe('자기 자신을 상위로 지정할 수 없습니다.');
+  });
+});
+
+/*
+ * R2도 같은 기준을 따른다. 규칙이 엄해서가 아니라 **명칭만 고치려는 사람까지 막기** 때문이다.
+ * 기존 값을 그대로 되돌려 보내는 것은 서버에 이미 있는 상태라 새 위반을 만들지 않는다.
+ *
+ * 특히 DF-52(5003)는 **상위가 상세 코드이면서 자기도 하위를 갖는다** — R2와 R3가 동시에 걸린다.
+ * 둘 중 하나라도 「값이 비어 있지 않다」만 보면 두 규칙이 서로의 탈출구를 막아 그 행은 영구히 잠긴다.
+ */
+describe('validateCode — R2도 상위를 바꾸려 할 때만 발동한다', () => {
+  const deepContext = (editingId: number, savedParentId: string): CodeHierarchyContext => ({
+    items: deepHierarchyFixtures,
+    editingId,
+    savedParentId,
+  });
+
+  it('상위가 상세 코드여도 그대로 둔 채 명칭만 고치는 것은 막지 않는다', () => {
+    expect(
+      validateCode({ code: 'DF-53', name: '미세 기포 다수', parentId: '5003' }, deepContext(5004, '5003')),
+    ).toEqual({});
+  });
+
+  it('상위를 다른 상세 코드로 바꾸려 하면 막는다', () => {
+    expect(
+      validateCode({ code: 'DF-53', name: '미세 기포', parentId: '5002' }, deepContext(5004, '5003'))
+        .parentId,
+    ).toBe('상위는 대분류만 지정할 수 있습니다. 계층은 2단계까지입니다.');
+  });
+
+  it('대분류를 새로 상위로 지정하는 정상 흐름은 통과한다', () => {
+    expect(
+      validateCode({ code: 'DF-53', name: '미세 기포', parentId: '5001' }, deepContext(5004, '5003')),
+    ).toEqual({});
+  });
+
+  /** 이번 사고의 그 조합 — R2와 R3가 함께 걸리는 유일한 행이다. */
+  it('상위가 상세 코드이면서 하위도 가진 행도 명칭만 고칠 수 있다', () => {
+    expect(
+      validateCode({ code: 'DF-52', name: '기포 다수', parentId: '5002' }, deepContext(5003, '5002')),
+    ).toEqual({});
+  });
+
+  it('그 행이 상위를 바꾸려 하면 하위가 있다는 사유로 막힌다', () => {
+    expect(
+      validateCode({ code: 'DF-52', name: '기포', parentId: '5001' }, deepContext(5003, '5002'))
+        .parentId,
+    ).toBe('하위 코드가 있어 상위를 지정할 수 없습니다. 계층은 2단계까지입니다.');
   });
 });
 
