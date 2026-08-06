@@ -7,7 +7,9 @@
  *
  * main > * + * 화면 최상위 블록 사이의 이음매(규범 1) — 블록마다 붙이면 반드시 하나를 빠뜨린다
  * .two-pane     2단 배치 컨테이너 — 좌 목록 / 우 상세
- * .pane         2단 배치의 각 칸 — 표면·테두리·안쪽 여백
+ * .three-pane   3단 배치 컨테이너 — 좌 목록 / 중 목록 / 우 편집
+ * .pane-stack   3단 배치의 한 칸에 페인을 세로로 쌓는 자리(우 편집 칸)
+ * .pane         2·3단 배치의 각 칸 — 표면·테두리·안쪽 여백
  * .filter-bar   검색·필터 컨트롤과 조건 칩을 담는 줄
  * .field-cell   라벨·컨트롤·사유를 한 세로 묶음으로 놓는 셀(규범 2·3·4)
  * .field-cell-unlabeled  라벨 없는 셀을 라벨 층만큼 내려 컨트롤 상자의 윗선을 맞춘다(규범 2)
@@ -81,6 +83,42 @@ main > * + * {
   }
 }
 
+/*
+ * 3단 배치 — 좌(품목) / 중(Rev) / 우(편집). 접힘 기준점의 근거는 소비 화면 파일에 있다(규범 5 이탈 조건).
+ * 우 칸은 페인을 세로로 쌓으므로 그 자체가 격자다. 쌓이는 페인마다 이음매를 붙이면
+ * 규범 1이 겪은 「잊음」이 되풀이되므로 담는 쪽이 gap으로 한 번에 정의한다.
+ */
+.three-pane {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(200px, 1fr) minmax(480px, 2fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.pane-stack {
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
+  min-width: 0;
+}
+
+@media (max-width: 1280px) {
+  /* 좌·중은 한 줄에 남기고 편집 칸만 다음 줄 전체 폭으로 내린다 — 폼 2열이 유지되는 하한이다. */
+  .three-pane {
+    grid-template-columns: minmax(240px, 1fr) minmax(200px, 1fr);
+  }
+
+  .three-pane > .pane-stack {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .three-pane {
+    grid-template-columns: 1fr;
+  }
+}
+
 .pane {
   background: var(--surface-container-low);
   border: 1px solid var(--outline-variant);
@@ -122,6 +160,18 @@ main > * + * {
   margin-top: var(--field-label-layer);
 }
 
+/*
+ * 규범 2-1 — 의미상 짝인 액션(조회·초기화)이 갈라지지 않게 한 덩어리로 묶는다.
+ * .filter-bar가 flex-wrap이라 좁아지면 하나씩 넘어가는데, 짝이 갈라지면
+ * 남은 버튼이 무엇에 딸린 것인지 읽히지 않는다(좁은 페인에서 실제로 초기화만 혼자 떨어졌다).
+ * 안쪽 간격을 .filter-bar의 gap과 같게 둬야 같은 줄에 두 종류의 간격이 생기지 않는다.
+ * 라벨 층은 이 묶음이 한 번만 갖는다 — 버튼마다 붙이면 두 번 적용돼 짝이 아래로 내려간다.
+ */
+.filter-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -136,6 +186,26 @@ main > * + * {
  */
 .form-grid .field-cell {
   align-items: stretch;
+}
+
+/*
+ * 열이 많은 표 — 폭이 모자랄 때 내용을 짓누르는 대신 가로로 넘긴다.
+ *
+ * 좁은 칸에 8열을 넣으면 표가 폭에 맞춰 줄면서 셀이 낱말 단위로 쪼개진다(한 셀이 네 줄이 되어
+ * 행 높이가 네 배가 된다). 최소 폭을 주면 넘치고, 넘침은 곧 가로 스크롤이 된다 —
+ * 스크롤 상자는 DS Table이 이미 갖고 있어(overflow-x: auto) 우리가 만들지 않는다.
+ * DS의 해시 클래스 이름을 겨냥하지 않고 table 요소를 겨냥한다. 그 이름은 버전이 바뀌면 조용히 어긋난다.
+ *
+ * 58rem의 근거는 열별 하한의 합(944px)이며 도출 표는 docs/layout-conventions.md에 있다.
+ * 머리글만 줄바꿈을 막는다 — 본문의 관리 항목은 여러 값을 잇는 칸이라 접히는 것이 정상이고,
+ * 막으면 표가 끝없이 넓어진다.
+ */
+.wide-table table {
+  min-width: 58rem;
+}
+
+.wide-table th {
+  white-space: nowrap;
 }
 
 /* 한 칸에 확인칸을 나란히 두면 간격이 없어 문구가 붙어 읽힌다. */

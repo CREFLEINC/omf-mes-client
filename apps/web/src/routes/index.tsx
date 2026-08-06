@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
+import { RoutingScreen } from '../screens/routing/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
 export const appRouter = createBrowserRouter([
@@ -14,6 +15,7 @@ export const appRouter = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/master-data/warehouse-location" replace /> },
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
+      { path: 'master-data/routing', element: <RoutingScreen /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
