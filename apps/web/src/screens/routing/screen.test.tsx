@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -1019,5 +1019,169 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
         '공정 라인은 작성중 Rev에서만 편집할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
       ).length,
     ).toBeGreaterThan(0);
+  });
+});
+
+const transitionRoute = (
+  action: 'confirm' | 'obsolete' | 'new-revision',
+  routingId = 7003,
+  respond: StubRoute['respond'] = () => jsonResponse(routingFixtures[0]),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' &&
+    new URL(request.url).pathname === `/planning/routings/${String(routingId)}:${action}`,
+  respond,
+});
+
+const stateLockedResponse = (message: string): Response =>
+  jsonResponse(
+    { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
+    { status: 400 },
+  );
+
+describe('RoutingScreen — 확정·폐기', () => {
+  /* 되돌릴 수 없는 전이다 — 확인 단계를 건너뛰면 실수로 판이 잠긴다. */
+  it('확정을 눌러도 확인 전에는 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderDraftOperations([transitionRoute('confirm')]);
+    await screen.findByText('1차 사출');
+
+    await user.click(within(headerRegion()).getByRole('button', { name: '확정' }));
+
+    expect(await screen.findByText('이 Rev를 확정할까요?')).toBeInTheDocument();
+    expect(requestsTo(requests, '/planning/routings/7003:confirm')).toHaveLength(0);
+  });
+
+  it('확인하면 멱등 키만 실어 확정 요청을 보낸다', async () => {
+    const { requests, user } = renderDraftOperations([transitionRoute('confirm')]);
+    await screen.findByText('1차 사출');
+
+    await user.click(within(headerRegion()).getByRole('button', { name: '확정' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: '확정' }));
+
+    await screen.findByText('저장했습니다');
+
+    const posts = requestsTo(requests, '/planning/routings/7003:confirm');
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    /* 계약이 이 경로에 If-Match를 요구하지 않는다 — 실으면 규약을 지어내는 것이다. */
+    expect(posts[0]?.headers.get('If-Match')).toBeNull();
+  });
+
+  /*
+   * 전이 응답에는 ETag가 없다 — 보관된 토큰은 그 순간 낡은 값이 된다.
+   * 재조회로 새 토큰을 확보하지 않으면 다음 헤더 저장이 조용히 막힌다.
+   */
+  it('확정에 성공하면 상세와 Rev 목록을 다시 조회한다', async () => {
+    const { requests, user } = renderDraftOperations([transitionRoute('confirm')]);
+    await screen.findByText('1차 사출');
+
+    const before = {
+      detail: requestsTo(requests, '/planning/routings/7003').length,
+      list: revisionRequests(requests).length,
+    };
+
+    await user.click(within(headerRegion()).getByRole('button', { name: '확정' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '확정' }));
+    await screen.findByText('저장했습니다');
+
+    await waitFor(() => {
+      expect(requestsTo(requests, '/planning/routings/7003').length).toBeGreaterThan(before.detail);
+    });
+    expect(revisionRequests(requests).length).toBeGreaterThan(before.list);
+  });
+
+  it('상태 잠김은 창을 닫지 않고 「최신 불러오기」 없는 배너로 낸다', async () => {
+    const { user } = renderDraftOperations([
+      transitionRoute('confirm', 7003, () =>
+        stateLockedResponse('작성중 Rev가 아니라 확정할 수 없습니다.'),
+      ),
+    ]);
+    await screen.findByText('1차 사출');
+
+    await user.click(within(headerRegion()).getByRole('button', { name: '확정' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '확정' }));
+
+    expect(await screen.findByText('작성중 Rev가 아니라 확정할 수 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('지금은 저장할 수 없는 상태입니다')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+
+  /* 계약이 라인 1건 이상을 요구한다(400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
+  it('라인이 0건이면 확정이 비활성이고 사유가 보인다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        operationListRoute(7003, []),
+        processListRoute(),
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    await screen.findByText('등록된 공정이 없습니다');
+
+    expect(within(headerRegion()).getByRole('button', { name: '확정' })).toBeDisabled();
+    expect(screen.getByText('확정은 공정을 1건 이상 등록해야 할 수 있습니다.')).toBeInTheDocument();
+  });
+
+  /* 확정하면 되돌릴 수 없다 — 저장하지 않은 편집은 그 순간 영영 사라진다. */
+  it('저장하지 않은 변경이 있으면 확정이 비활성이고 사유가 보인다', async () => {
+    const { user } = renderDraftOperations([transitionRoute('confirm')]);
+    await screen.findByText('1차 사출');
+
+    await user.type(screen.getByLabelText('Routing 코드'), '-B');
+
+    expect(within(headerRegion()).getByRole('button', { name: '확정' })).toBeDisabled();
+    expect(
+      screen.getByText('확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.'),
+    ).toBeInTheDocument();
+  });
+
+  it('작성중 Rev에서는 폐기가 비활성이고 먼저 확정하라고 알린다', async () => {
+    renderDraftOperations([transitionRoute('obsolete')]);
+    await screen.findByText('1차 사출');
+
+    expect(within(headerRegion()).getByRole('button', { name: '폐기' })).toBeDisabled();
+    expect(screen.getByText('폐기는 확정된 Rev에만 할 수 있습니다. 먼저 확정하세요.')).toBeInTheDocument();
+  });
+
+  it('확정 Rev에서는 폐기가 활성이고 확인하면 요청이 나간다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(routingFixtures[1]),
+        operationListRoute(7002),
+        processListRoute(),
+        transitionRoute('obsolete', 7002),
+      ],
+      '?item=5001&rev=7002',
+    );
+
+    await screen.findByText('1차 사출');
+
+    await user.click(within(headerRegion()).getByRole('button', { name: '폐기' }));
+    expect(await screen.findByText('이 Rev를 폐기할까요?')).toBeInTheDocument();
+    expect(requestsTo(requests, '/planning/routings/7002:obsolete')).toHaveLength(0);
+
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '폐기' }));
+    await screen.findByText('저장했습니다');
+
+    const posts = requestsTo(requests, '/planning/routings/7002:obsolete');
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.headers.get('If-Match')).toBeNull();
+  });
+
+  it('확인 창에서 취소하면 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderDraftOperations([transitionRoute('confirm')]);
+    await screen.findByText('1차 사출');
+
+    await user.click(within(headerRegion()).getByRole('button', { name: '확정' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByText('이 Rev를 확정할까요?')).not.toBeInTheDocument();
+    expect(requestsTo(requests, '/planning/routings/7003:confirm')).toHaveLength(0);
   });
 });

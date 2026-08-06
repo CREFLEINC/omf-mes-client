@@ -7,7 +7,7 @@ import {
   SkeletonText,
   useToast,
 } from '@crefle/web-ui';
-import type { ApiError, components } from '@omf-mes/api-client';
+import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -44,6 +44,10 @@ import {
 } from './queries';
 import { RevisionPane } from './revision-pane';
 import { resolveRoutingStatus } from './routing-status';
+import {
+  TransitionConfirmDialog,
+  type RoutingTransitionKind,
+} from './transition-confirm-dialog';
 import type {
   ItemFilters,
   OperationDraft,
@@ -110,6 +114,45 @@ interface LoadErrorBannerProps {
   error: unknown;
   onRetry: () => void;
 }
+
+/** 계약이 정한 상태 전이 경로. 본문이 없고 멱등 키만 싣는다. */
+type TransitionPath =
+  | '/planning/routings/{routingId}:confirm'
+  | '/planning/routings/{routingId}:obsolete';
+
+interface RoutingTransitionOptions {
+  /** 계약 클라이언트. 훅이 화면 상태를 알 필요가 없도록 필요한 것만 받는다 */
+  client: ApiClient['client'];
+  routingId: number | null;
+  path: TransitionPath;
+  onDone: () => void;
+}
+
+/**
+ * 상태 전이 요청 하나.
+ *
+ * **`etagPath`는 null이다.** 계약이 전이 경로에 If-Match를 요구하지 않는다 —
+ * 상세 경로를 주면 토큰을 찾지 못했을 때 요청을 보내지 않고 멈춰 「눌러도 아무 일이 없다」가 된다.
+ *
+ * **전이 응답에는 ETag가 없다.** 보관된 토큰은 전이 직후 낡은 값이 되므로,
+ * 성공하면 상세를 무효화해 재조회가 새 토큰을 확보하게 한다. 무효화를 빠뜨리면
+ * 그다음 헤더 저장이 조용히 막힌다.
+ */
+const useRoutingTransition = ({ client, routingId, path, onDone }: RoutingTransitionOptions) =>
+  useMasterWrite<void, Routing>({
+    request: (_variables, headers) =>
+      client.POST(path, {
+        params: {
+          path: { routingId: routingId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [routingKeys.all],
+    // 전이에는 입력칸이 없다 — 인라인으로 낼 자리가 없어 서버 오류는 전부 배너로 간다.
+    knownFields: [],
+    onSuccess: onDone,
+  });
 
 /** 조회 실패 배너. 규범 6에 따라 화면이 직접 배치하는 배너는 화면이 이음매를 붙인다. */
 const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
@@ -282,12 +325,14 @@ export const RoutingScreen = () => {
   const handleSelectItem = (itemId: number) => {
     resetHeaderEditing();
     resetOperationEditing();
+    resetTransition();
     updateParams({ item: String(itemId), rev: null });
   };
 
   const handleSelectRevision = (routingId: number) => {
     resetHeaderEditing();
     resetOperationEditing();
+    resetTransition();
     updateParams({ rev: String(routingId) });
   };
 
@@ -437,6 +482,63 @@ export const RoutingScreen = () => {
     operationsWrite.write(draftState.drafts);
   };
 
+  const [transition, setTransition] = useState<RoutingTransitionKind | null>(null);
+
+  /*
+   * 상태 전이 두 갈래. 실패 배너가 섞이지 않도록 훅을 나눈다 —
+   * 하나로 묶으면 확정 실패 문구가 폐기 창에 남는다.
+   */
+  const finishTransition = () => {
+    setTransition(null);
+    toast.show({ variant: 'success', description: messages.common.saved });
+  };
+
+  const confirmWrite = useRoutingTransition({
+    client,
+    routingId: selectedRoutingId,
+    path: '/planning/routings/{routingId}:confirm',
+    onDone: finishTransition,
+  });
+
+  const obsoleteWrite = useRoutingTransition({
+    client,
+    routingId: selectedRoutingId,
+    path: '/planning/routings/{routingId}:obsolete',
+    onDone: finishTransition,
+  });
+
+  const transitionWrite = transition === 'obsolete' ? obsoleteWrite : confirmWrite;
+
+  /** 다른 Rev·품목으로 옮기면 열려 있던 확인 창과 실패 표시를 들고 가지 않는다. */
+  const resetTransition = () => {
+    setTransition(null);
+    confirmWrite.reset();
+    obsoleteWrite.reset();
+  };
+
+  /**
+   * 확정을 막는 사유. 서버가 최종 판정을 하지만(400 STATE_LOCKED·LINE_REQUIRED),
+   * 화면이 먼저 막고 **무엇을 하면 풀리는지** 알린다.
+   *
+   * 라인 건수는 **서버가 준 목록**으로 센다. 저장하지 않은 초안으로 세면
+   * 화면은 「1건 있음」인데 서버는 0건이라 확정이 400으로 거부된다.
+   */
+  const savedOperationCount = operationList.data?.items.length ?? 0;
+
+  const confirmDisabledReason = ((): string | null => {
+    if (detailStatus === null) return t.actionReasons.confirmNeedsDraft;
+    if (!detailStatus.isEditable) return t.actionReasons.confirmNeedsDraft;
+    // 확정하면 되돌릴 수 없다 — 저장하지 않은 편집은 그 순간 영영 사라진다.
+    if (isHeaderDirty || isOperationsDirty) return t.actionReasons.confirmBlockedByUnsaved;
+    if (savedOperationCount === 0) return t.actionReasons.confirmNeedsOperations;
+
+    return null;
+  })();
+
+  /** 폐기는 확정된 Rev에만 성립한다 — 계약이 그렇게 정했고 상태표도 같다. */
+  const obsoleteDisabledReason =
+    detailStatus?.status === 'confirmed' ? null : t.actionReasons.obsoleteNeedsConfirmed;
+
   /**
    * 라인 저장을 막는 사유. 잠금은 페인이 따로 다루므로 여기서는 잠금 밖의 사유만 고른다.
    *
@@ -533,6 +635,17 @@ export const RoutingScreen = () => {
         onCancel={() => {
           resetHeaderEditing();
           setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+        }}
+        confirmDisabledReason={confirmDisabledReason}
+        obsoleteDisabledReason={obsoleteDisabledReason}
+        isTransitioning={confirmWrite.isSaving || obsoleteWrite.isSaving}
+        onConfirm={() => {
+          confirmWrite.reset();
+          setTransition('confirm');
+        }}
+        onObsolete={() => {
+          obsoleteWrite.reset();
+          setTransition('obsolete');
         }}
       />
     );
@@ -654,6 +767,24 @@ export const RoutingScreen = () => {
             setOperationDialogErrors({});
           }}
           onSubmit={handleSubmitOperationDialog}
+        />
+      )}
+
+      {/*
+       * 되돌릴 수 없는 전이라 확인을 한 단계 둔다. 실패해도 창을 닫지 않는다 —
+       * 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다.
+       */}
+      {transition !== null && (
+        <TransitionConfirmDialog
+          open
+          kind={transition}
+          onClose={resetTransition}
+          onConfirm={() => {
+            transitionWrite.write();
+          }}
+          isSaving={transitionWrite.isSaving}
+          /* 전이에는 409가 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+          banner={<SaveErrorBanner error={transitionWrite.error} />}
         />
       )}
     </>

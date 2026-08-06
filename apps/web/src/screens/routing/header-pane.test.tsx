@@ -11,10 +11,15 @@ const VALUES = {
   effectiveTo: '2026-02-28',
 };
 
+const CONFIRM_NEEDS_OPERATIONS = '확정은 공정을 1건 이상 등록해야 할 수 있습니다.';
+const OBSOLETE_NEEDS_CONFIRMED = '폐기는 확정된 Rev에만 할 수 있습니다. 먼저 확정하세요.';
+
 const renderPane = (overrides: Partial<HeaderPaneProps> = {}) => {
   const onChange = vi.fn();
   const onCancel = vi.fn();
   const onSave = vi.fn();
+  const onConfirm = vi.fn();
+  const onObsolete = vi.fn();
 
   render(
     <HeaderPane
@@ -30,11 +35,16 @@ const renderPane = (overrides: Partial<HeaderPaneProps> = {}) => {
       isSaving={false}
       onSave={onSave}
       onCancel={onCancel}
+      confirmDisabledReason={null}
+      obsoleteDisabledReason={OBSOLETE_NEEDS_CONFIRMED}
+      isTransitioning={false}
+      onConfirm={onConfirm}
+      onObsolete={onObsolete}
       {...overrides}
     />,
   );
 
-  return { onChange, onCancel, onSave, user: userEvent.setup() };
+  return { onChange, onCancel, onSave, onConfirm, onObsolete, user: userEvent.setup() };
 };
 
 const STATE_LOCK_CONFIRMED = '확정된 Rev는 수정할 수 없습니다. 변경하려면 신규 Rev를 발행하세요.';
@@ -134,8 +144,47 @@ describe('HeaderPane', () => {
     ).toBeInTheDocument();
   });
 
-  it('아직 붙지 않은 상태 전이 액션도 사유와 함께 비활성으로 둔다', () => {
+  /*
+   * 확정·폐기는 활성 조건이 서로 다르다 — 하나로 묶으면 무엇을 하면 풀리는지 알 수 없다.
+   */
+  it('막을 사유가 없으면 확정을 눌러 상위에 올린다', async () => {
+    const { onConfirm, user } = renderPane();
+
+    const confirm = screen.getByRole('button', { name: '확정' });
+    expect(confirm).toBeEnabled();
+
+    await user.click(confirm);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('라인이 0건이면 확정이 비활성이고 그 사유가 보인다', () => {
+    renderPane({ confirmDisabledReason: CONFIRM_NEEDS_OPERATIONS });
+
+    expect(screen.getByRole('button', { name: '확정' })).toBeDisabled();
+    expect(screen.getByText(CONFIRM_NEEDS_OPERATIONS)).toBeInTheDocument();
+  });
+
+  it('작성중이면 폐기가 비활성이고 먼저 확정하라고 알린다', () => {
     renderPane();
+
+    expect(screen.getByRole('button', { name: '폐기' })).toBeDisabled();
+    expect(screen.getByText(OBSOLETE_NEEDS_CONFIRMED)).toBeInTheDocument();
+  });
+
+  it('확정 Rev에서는 폐기를 눌러 상위에 올린다', async () => {
+    const { onObsolete, user } = renderPane({
+      status: resolveRoutingStatus('CONFIRMED'),
+      confirmDisabledReason: '확정은 작성중 Rev에만 할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
+      obsoleteDisabledReason: null,
+    });
+
+    await user.click(screen.getByRole('button', { name: '폐기' }));
+
+    expect(onObsolete).toHaveBeenCalledTimes(1);
+  });
+
+  it('전이 요청이 도는 동안에는 확정·폐기를 다시 누를 수 없다', () => {
+    renderPane({ obsoleteDisabledReason: null, isTransitioning: true });
 
     expect(screen.getByRole('button', { name: '확정' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '폐기' })).toBeDisabled();

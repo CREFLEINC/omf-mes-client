@@ -26,6 +26,18 @@ export interface HeaderPaneProps {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  /**
+   * 상태 전이를 막는 사유. null이면 누를 수 있다.
+   *
+   * 판정은 화면이 한다 — 라인 건수·저장하지 않은 편집처럼 이 구획 밖의 사실이 조건에 들어간다.
+   * 페인이 그것을 알면 두 곳에서 같은 판정을 하게 된다.
+   */
+  confirmDisabledReason: string | null;
+  obsoleteDisabledReason: string | null;
+  /** 전이 요청이 도는 동안 참. 두 번 눌러 두 번 전이하는 것을 막는다 */
+  isTransitioning: boolean;
+  onConfirm: () => void;
+  onObsolete: () => void;
 }
 
 /**
@@ -50,6 +62,11 @@ export const HeaderPane = ({
   isSaving,
   onSave,
   onCancel,
+  confirmDisabledReason,
+  obsoleteDisabledReason,
+  isTransitioning,
+  onConfirm,
+  onObsolete,
 }: HeaderPaneProps) => {
   const itemLabelId = useId();
   const revisionLabelId = useId();
@@ -137,8 +154,26 @@ export const HeaderPane = ({
          * 사유가 붙은 비활성 액션은 줄 왼쪽에, 주 액션(취소·저장)은 오른쪽에 남긴다.
          * 왼쪽 묶음의 마지막 항목이 auto 여백을 가져 그 뒤가 오른쪽으로 밀린다.
          */}
-        <DisabledAction label={t.actions.confirm} reason={t.actionReasons.confirmNotReady} />
-        <DisabledAction label={t.actions.obsolete} reason={t.actionReasons.obsoleteNotReady} />
+        {confirmDisabledReason === null ? (
+          <div className="field-cell">
+            <Button variant="outlined" disabled={isTransitioning} onClick={onConfirm}>
+              {t.actions.confirm}
+            </Button>
+          </div>
+        ) : (
+          <DisabledAction label={t.actions.confirm} reason={confirmDisabledReason} />
+        )}
+
+        {obsoleteDisabledReason === null ? (
+          <div className="field-cell">
+            <Button variant="outlined" disabled={isTransitioning} onClick={onObsolete}>
+              {t.actions.obsolete}
+            </Button>
+          </div>
+        ) : (
+          <DisabledAction label={t.actions.obsolete} reason={obsoleteDisabledReason} />
+        )}
+
         <DisabledAction
           label={t.actions.compareRevisions}
           reason={t.actionReasons.compareRevisionsUnavailable}
