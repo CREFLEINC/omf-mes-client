@@ -1057,6 +1057,12 @@ const commonCode = {
     actionReasons: {
       /* 계약이 `codeGroupId`를 필수 쿼리로 두었다 — 그룹 없이는 만들 자리 자체가 없다. */
       addNeedsGroup: '코드값 추가는 좌측에서 코드그룹을 고른 뒤에 할 수 있습니다.',
+      /*
+       * 바깥 묶음의 같은 문형을 **대상을 코드값으로 고정해** 여기 둔다.
+       * 한 벌이 바깥 열쇠를 빌려 쓰면 옮길 때 그 열쇠가 딸려 가지 않는다 —
+       * 대상이 늘 코드값이라 매개변수도 필요 없다.
+       */
+      deactivateAlreadyDone: '사용 중지는 이미 미사용인 코드값에 다시 할 수 없습니다.',
     },
     loading: {
       list: '코드값 목록을 불러오는 중',
@@ -1086,10 +1092,20 @@ const commonCode = {
       noMatchTitle: '조건에 맞는 코드값이 없습니다',
       noMatchDescription: '「미사용 포함」을 켜면 미사용 코드값도 보입니다.',
       notSelected: '위 목록에서 코드값을 먼저 고르세요',
+      /*
+       * 결과는 있는데 **이 쪽에는** 없다. 바깥 묶음에 같은 문구가 있으나 여기 따로 둔다 —
+       * 한 벌은 자기 묶음만 들고 옮겨진다.
+       */
+      beyondLastTitle: '이 쪽에는 결과가 없습니다',
+      beyondLastDescription: '첫 쪽으로 이동하세요.',
     },
     values: {
       /** 유효기간 표기. 한쪽만 있는 것도 계약이 허용한다 — 없는 쪽을 지어내지 않는다. */
       period: (from: string, to: string): string => `${from} ~ ${to}`,
+      /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+      empty: '—',
+      /** 좁은 칸에서 「사용 여부」 열을 따로 두면 이름 열이 짓눌린다 — 이름 뒤 접미로 붙인다. */
+      inactiveSuffix: ' (미사용)',
     },
     validation: {
       required: '필수 입력 항목입니다.',

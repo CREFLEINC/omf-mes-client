@@ -9,7 +9,9 @@ import type { components } from '@omf-mes/api-client';
  *    참조하지 않는다. 그래서 이 파일이 `types.ts`와 별개로 존재한다 —
  *    타입을 공유하면 그 파일이 딸려 오고, 그 파일이 다른 자원을 끌고 온다.
  * 2. **주소를 읽지 않는다.** 조회 조건·선택·쪽은 전부 `code-value-section.tsx`의 props로 들어온다.
- * 3. 문구는 `messages.commonCode.codeValue` 한 묶음에 모은다.
+ * 3. 문구는 `messages.commonCode.codeValue` 한 묶음에 모은다. **바깥 묶음을 빌려 쓰지 않는다** —
+ *    빌리면 옮길 때 그 열쇠가 딸려 가지 않아 문구가 비는 자리가 생긴다. 자원 이름이 없는
+ *    저장소 전역 묶음(`common`·`httpError`)만 예외다.
  *
  * `api-client`는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이 유지된다.
  */
