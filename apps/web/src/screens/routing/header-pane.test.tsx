@@ -14,6 +14,7 @@ const VALUES = {
 const renderPane = (overrides: Partial<HeaderPaneProps> = {}) => {
   const onChange = vi.fn();
   const onCancel = vi.fn();
+  const onSave = vi.fn();
 
   render(
     <HeaderPane
@@ -27,13 +28,13 @@ const renderPane = (overrides: Partial<HeaderPaneProps> = {}) => {
       codeLockReason={null}
       isDirty={false}
       isSaving={false}
-      onSave={undefined}
+      onSave={onSave}
       onCancel={onCancel}
       {...overrides}
     />,
   );
 
-  return { onChange, onCancel, user: userEvent.setup() };
+  return { onChange, onCancel, onSave, user: userEvent.setup() };
 };
 
 const STATE_LOCK_CONFIRMED = '확정된 Rev는 수정할 수 없습니다. 변경하려면 신규 Rev를 발행하세요.';
@@ -140,15 +141,31 @@ describe('HeaderPane', () => {
     expect(screen.getByRole('button', { name: '폐기' })).toBeDisabled();
   });
 
-  it('저장 경로가 붙기 전에는 저장이 사유와 함께 비활성이다', () => {
-    renderPane({ isDirty: true });
+  it('고친 것이 없으면 저장이 비활성이다', () => {
+    renderPane();
 
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(
-      screen.getByText(
-        '저장은 아직 할 수 없습니다. 저장 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+  });
+
+  it('고치면 저장할 수 있다', async () => {
+    const { onSave, user } = renderPane({ isDirty: true });
+
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(onSave).toHaveBeenCalled();
+  });
+
+  /* 잠긴 상태에서는 고칠 수도 없지만, 잠금 직전에 고친 값이 남아 있을 수 있어 함께 막는다. */
+  it('확정 Rev에서는 고친 값이 남아 있어도 저장이 비활성이다', () => {
+    renderPane({ isDirty: true, status: resolveRoutingStatus('CONFIRMED') });
+
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  it('저장 중에는 저장이 비활성이다', () => {
+    renderPane({ isDirty: true, isSaving: true });
+
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   it('고친 것이 없으면 취소가 비활성이고, 고치면 취소로 되돌릴 수 있다', async () => {

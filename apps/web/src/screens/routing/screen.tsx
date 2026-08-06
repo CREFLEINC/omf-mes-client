@@ -5,21 +5,31 @@ import {
   EmptyState,
   PageHeader,
   SkeletonText,
+  useToast,
 } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { codeLockMessage } from '../../patterns/master';
+import { useApiClient } from '../../patterns/api-context';
+import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { HeaderPane } from './header-pane';
+import { ROUTING_HEADER_FORM_FIELDS, validateRoutingHeader } from './header-validation';
 import { ItemPane } from './item-pane';
-import { isSameHeaderValues, routingToFormValues } from './mappers';
-import { isTruncated, useItemList, useRoutingDetail, useRoutingList } from './queries';
+import { isSameHeaderValues, routingToFormValues, toRoutingUpdate } from './mappers';
+import {
+  isTruncated,
+  routingDetailPath,
+  routingKeys,
+  useItemList,
+  useRoutingDetail,
+  useRoutingList,
+} from './queries';
 import { RevisionPane } from './revision-pane';
 import { resolveRoutingStatus } from './routing-status';
-import type { ItemFilters, RoutingHeaderFormValues } from './types';
+import type { ItemFilters, Routing, RoutingHeaderFormValues } from './types';
 
 type RoutingDetailResponse = components['schemas']['RoutingDetailResponse'];
 
@@ -94,6 +104,8 @@ const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
  */
 export const RoutingScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const toast = useToast();
+  const { client } = useApiClient();
 
   const filters = useMemo<ItemFilters>(
     () => ({
@@ -131,10 +143,80 @@ export const RoutingScreen = () => {
   const isHeaderDirty =
     formState !== null && !isSameHeaderValues(formState.values, formState.baseline);
 
+  /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
+  const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>({});
+
+  const headerWrite = useMasterWrite<RoutingHeaderFormValues, Routing>({
+    request: (values, headers) =>
+      client.PUT('/planning/routings/{routingId}', {
+        params: {
+          path: { routingId: selectedRoutingId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: toRoutingUpdate(values),
+      }),
+    /*
+     * 잠금 토큰은 상세 경로에 보관돼 있다. 보관 키가 요청 경로라 다른 경로로 꺼내면 언제나 비어 있다.
+     * 헤더 수정은 이 화면에서 If-Match를 요구하는 유일한 경로다(계약 실측).
+     */
+    etagPath: selectedRoutingId === null ? null : routingDetailPath(selectedRoutingId),
+    invalidateKeys: [routingKeys.all],
+    knownFields: ROUTING_HEADER_FORM_FIELDS,
+    onSuccess: (saved) => {
+      setLocalFieldErrors({});
+      const next = routingToFormValues(saved);
+      setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
   const changeHeaderValues = (patch: Partial<RoutingHeaderFormValues>) => {
     setFormState((prev) =>
       prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
     );
+
+    for (const field of Object.keys(patch)) {
+      headerWrite.clearFieldError(field);
+      setLocalFieldErrors((prev) => {
+        if (!(field in prev)) return prev;
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleSaveHeader = () => {
+    if (formState === null) return;
+
+    const errors = validateRoutingHeader(formState.values);
+    setLocalFieldErrors(errors);
+
+    // 화면에서 잡히는 오류는 서버로 보내지 않는다.
+    if (Object.keys(errors).length > 0) return;
+
+    headerWrite.write(formState.values);
+  };
+
+  /**
+   * 저장 충돌을 푸는 유일한 경로. 계약이 덮어쓰기 강제를 제공하지 않으므로
+   * 최신 값을 받아 다시 입력하는 수밖에 없고, 입력한 내용은 사라진다.
+   */
+  const handleReloadDetail = () => {
+    headerWrite.reset();
+    setLocalFieldErrors({});
+    setFormState(null);
+    void detail.refetch();
+  };
+
+  /** 다른 Rev·품목으로 옮기면 앞의 실패 표시를 들고 가지 않는다. */
+  const resetHeaderEditing = () => {
+    headerWrite.reset();
+    setLocalFieldErrors({});
   };
 
   const updateParams = (patch: Record<string, string | null>) => {
@@ -158,7 +240,13 @@ export const RoutingScreen = () => {
 
   /** 품목을 바꾸면 Rev 선택을 지운다 — 다른 품목의 Rev를 가리키면 안 된다. */
   const handleSelectItem = (itemId: number) => {
+    resetHeaderEditing();
     updateParams({ item: String(itemId), rev: null });
+  };
+
+  const handleSelectRevision = (routingId: number) => {
+    resetHeaderEditing();
+    updateParams({ rev: String(routingId) });
   };
 
   const itemPage = itemList.data?.page;
@@ -215,16 +303,18 @@ export const RoutingScreen = () => {
         status={resolveRoutingStatus(detail.data.routing.statusCode)}
         values={formState.values}
         onChange={changeHeaderValues}
-        fieldErrors={{}}
-        banner={null}
+        // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
+        fieldErrors={{ ...headerWrite.fieldErrors, ...localFieldErrors }}
+        banner={<SaveErrorBanner error={headerWrite.error} onReload={handleReloadDetail} />}
         // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.
         codeLockReason={codeLockMessage(detail.data.editability)}
         isDirty={isHeaderDirty}
-        isSaving={false}
-        onSave={undefined}
-        onCancel={() =>
-          setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }))
-        }
+        isSaving={headerWrite.isSaving}
+        onSave={handleSaveHeader}
+        onCancel={() => {
+          resetHeaderEditing();
+          setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+        }}
       />
     );
   };
@@ -264,7 +354,7 @@ export const RoutingScreen = () => {
           isLoading={revisionList.isPending}
           isItemSelected={selectedItemId !== null}
           selectedRoutingId={selectedRoutingId}
-          onSelect={(routingId) => updateParams({ rev: String(routingId) })}
+          onSelect={handleSelectRevision}
           loadError={
             revisionList.isError ? (
               <LoadErrorBanner

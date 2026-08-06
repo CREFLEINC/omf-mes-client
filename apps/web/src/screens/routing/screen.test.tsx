@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -363,5 +363,175 @@ describe('RoutingScreen — 헤더 상세 조회와 상태 잠금', () => {
     await user.click(screen.getByRole('button', { name: '취소' }));
 
     expect(screen.getByLabelText('Routing 코드')).toHaveValue('STANDARD');
+  });
+});
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const headerSaveRoute = (
+  respond: StubRoute['respond'] = () => jsonResponse(routingFixtures[0]),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' && new URL(request.url).pathname === '/planning/routings/7003',
+  respond,
+});
+
+const renderDraftHeader = (extraRoutes: StubRoute[] = []) =>
+  renderScreen(
+    [itemListRoute(), revisionListRoute(), routingDetailRoute(), ...extraRoutes],
+    '?item=5001&rev=7003',
+  );
+
+describe('RoutingScreen — 헤더 저장', () => {
+  it('로컬 검증에 걸리면 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderDraftHeader([headerSaveRoute()]);
+
+    await user.clear(await screen.findByLabelText('Routing 코드'));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('필수 입력 항목입니다.')).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+  });
+
+  it('유효기간이 역전되면 두 칸 모두에 오류를 내고 보내지 않는다', async () => {
+    const { requests, user } = renderDraftHeader([headerSaveRoute()]);
+
+    const from = await screen.findByLabelText('유효시작');
+    fireEvent.change(from, { target: { value: '2026-05-01' } });
+    fireEvent.change(screen.getByLabelText('유효종료'), { target: { value: '2026-04-01' } });
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findAllByText('유효종료는 유효시작과 같거나 그 뒤여야 합니다.'),
+    ).toHaveLength(2);
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+  });
+
+  it('저장하면 멱등 키와 상세 경로에서 꺼낸 If-Match를 실어 보낸다', async () => {
+    const { requests, user } = renderDraftHeader([headerSaveRoute()]);
+
+    await user.type(await screen.findByLabelText('Routing 코드'), '-B');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find((request) => request.method === 'PUT');
+    expect(put?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(put?.headers.get('If-Match')).toBe('"7"');
+    expect(JSON.parse(put?.body ?? '{}')).toEqual({
+      routingCode: 'STANDARD-B',
+      effectiveFrom: '2026-03-01',
+      effectiveTo: null,
+    });
+  });
+
+  it('저장 충돌은 원인별 문구와 「최신 불러오기」로 낸다', async () => {
+    const { user } = renderDraftHeader([
+      headerSaveRoute(() => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })),
+    ]);
+
+    await user.type(await screen.findByLabelText('Routing 코드'), '-B');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText(
+        '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+  });
+
+  /*
+   * 상태 잠김은 재조회해도 풀리지 않는다 — 「최신 불러오기」를 내면 입력만 버리게 된다.
+   */
+  it('상태 잠김은 「최신 불러오기」 없는 배너로 낸다', async () => {
+    const { user } = renderDraftHeader([
+      headerSaveRoute(() =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'STATE_LOCKED',
+                message: '확정된 Rev는 수정할 수 없습니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    await user.type(await screen.findByLabelText('Routing 코드'), '-B');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('지금은 저장할 수 없는 상태입니다')).toBeInTheDocument();
+    expect(screen.getByText('확정된 Rev는 수정할 수 없습니다.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+
+  it('화면이 아는 필드의 400 오류는 그 입력칸 옆에 낸다', async () => {
+    const { user } = renderDraftHeader([
+      headerSaveRoute(() =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'routingCode',
+                code: 'UNIQUE_VIOLATION',
+                message: '이미 사용 중인 코드입니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    await user.type(await screen.findByLabelText('Routing 코드'), '-B');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('이미 사용 중인 코드입니다.')).toBeInTheDocument();
+  });
+
+  /*
+   * 목 서버도 실서버도 화면이 모르는 필드명을 내려준다. 삼키면 어디에도 보이지 않는 오류가 생긴다.
+   */
+  it('화면이 모르는 필드의 400 오류는 배너로 올린다', async () => {
+    const { user } = renderDraftHeader([
+      headerSaveRoute(() =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'unknownColumn',
+                code: 'STANDARD',
+                message: '알 수 없는 항목이 거부됐습니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    await user.type(await screen.findByLabelText('Routing 코드'), '-B');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('알 수 없는 항목이 거부됐습니다.')).toBeInTheDocument();
+  });
+
+  it('저장에 성공하면 고친 것이 없는 상태로 돌아간다', async () => {
+    const { user } = renderDraftHeader([
+      headerSaveRoute(() => jsonResponse({ ...routingFixtures[0], routingCode: 'STANDARD-B' })),
+    ]);
+
+    await user.type(await screen.findByLabelText('Routing 코드'), '-B');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
 });

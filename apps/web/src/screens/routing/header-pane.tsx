@@ -24,8 +24,7 @@ export interface HeaderPaneProps {
   codeLockReason: string | null;
   isDirty: boolean;
   isSaving: boolean;
-  /** 저장 경로가 아직 붙지 않았으면 undefined — 감추지 않고 사유와 함께 비활성으로 낸다. */
-  onSave: (() => void) | undefined;
+  onSave: () => void;
   onCancel: () => void;
 }
 
@@ -154,17 +153,14 @@ export const HeaderPane = ({
           {messages.common.cancel}
         </Button>
 
-        {onSave === undefined ? (
-          <DisabledAction label={messages.common.save} reason={t.actionReasons.saveNotReady} />
-        ) : (
-          <Button
-            disabled={!isDirty || isSaving || isLockedByState}
-            loading={isSaving}
-            onClick={onSave}
-          >
-            {messages.common.save}
-          </Button>
-        )}
+        {/* 잠긴 상태에서는 고칠 수도 없지만, 잠금 직전에 고친 값이 남아 있을 수 있어 함께 막는다. */}
+        <Button
+          disabled={!isDirty || isSaving || isLockedByState}
+          loading={isSaving}
+          onClick={onSave}
+        >
+          {messages.common.save}
+        </Button>
       </div>
     </section>
   );
