@@ -21,12 +21,13 @@ import {
   toSearchParams,
   type MessageFilters,
 } from './filters';
+import { MessageDetailDialog } from './message-detail-dialog';
 import { MessageFilterBar } from './message-filter-bar';
 import { MessageTable } from './message-table';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
-import { useFilterOptions, useMessageList } from './queries';
+import { useFilterOptions, useMessageDetail, useMessageList } from './queries';
 
 const t = messages.integrationSync;
 
@@ -95,6 +96,8 @@ export const IntegrationSyncScreen = () => {
   const hasPeriodParams = searchParams.has('from') || searchParams.has('to');
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
+  /** 상세를 연 메시지. 주소에 두어 새로고침·공유가 같은 상세를 연다. */
+  const selectedId = Number(searchParams.get('sel') ?? '') || null;
 
   /*
    * 빈 화면으로 시작하지 않는다 — 매번 날짜를 고르는 비용이 크다.
@@ -144,7 +147,16 @@ export const IntegrationSyncScreen = () => {
    * 「조건을 좁혔더니 아무것도 없다」로 보인다.
    */
   const applyQuery = (nextPeriod: PeriodInput, nextFilters: MessageFilters, nextPage = 1) => {
+    // 조건·쪽이 바뀌면 열려 있던 상세도 닫는다 — 그 건이 새 결과에 없을 수 있다.
     setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
+  };
+
+  const detail = useMessageDetail(selectedId);
+
+  const openDetail = (id: number) => {
+    const next = toSearchParams(period, filters, page);
+    next.set('sel', String(id));
+    setSearchParams(next);
   };
 
   return (
@@ -207,6 +219,7 @@ export const IntegrationSyncScreen = () => {
               onFirstPage={() => {
                 applyQuery(period, filters);
               }}
+              onOpenDetail={openDetail}
               now={now}
             />
             {listQuery !== null && !list.isPending && (
@@ -220,6 +233,21 @@ export const IntegrationSyncScreen = () => {
           </>
         )}
       </section>
+
+      <MessageDetailDialog
+        open={selectedId !== null}
+        onClose={() => {
+          applyQuery(period, filters, page);
+        }}
+        view={detail.data}
+        isLoading={selectedId !== null && detail.isPending}
+        loadError={
+          detail.isError ? (
+            <LoadErrorBanner error={detail.error} onRetry={() => void detail.refetch()} />
+          ) : null
+        }
+        now={now}
+      />
     </>
   );
 };

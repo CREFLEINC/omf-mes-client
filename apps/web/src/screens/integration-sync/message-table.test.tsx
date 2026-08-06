@@ -9,6 +9,7 @@ const NOW = new Date('2026-08-06T12:00:00+09:00');
 
 const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) => {
   const onFirstPage = vi.fn();
+  const onOpenDetail = vi.fn();
   render(
     <MessageTable
       rows={[messageRow()]}
@@ -16,12 +17,13 @@ const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
       hasPeriod
       isBeyondLast={false}
       onFirstPage={onFirstPage}
+      onOpenDetail={onOpenDetail}
       now={NOW}
       {...props}
     />,
   );
 
-  return { onFirstPage, user: userEvent.setup() };
+  return { onFirstPage, onOpenDetail, user: userEvent.setup() };
 };
 
 describe('MessageTable', () => {
@@ -75,8 +77,19 @@ describe('MessageTable', () => {
   it('정렬 가능한 머리글을 두지 않는다 — 계약에 정렬 파라미터가 없다', () => {
     renderTable();
 
-    const table = screen.getByRole('table');
-    expect(within(table).queryAllByRole('button')).toHaveLength(0);
+    // 정렬 가능한 열은 머리글이 button이 되고 aria-sort가 붙는다. 둘 다 없어야 한다.
+    for (const header of screen.getAllByRole('columnheader')) {
+      expect(within(header).queryByRole('button')).toBeNull();
+      expect(header).not.toHaveAttribute('aria-sort');
+    }
+  });
+
+  it('메시지 키가 상세를 여는 버튼이고 접근 이름에 그 키가 들어간다', async () => {
+    const { onOpenDetail, user } = renderTable();
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-KEY-0001 상세 열기' }));
+
+    expect(onOpenDetail).toHaveBeenCalledWith(9001);
   });
 
   it('결과는 있는데 이 쪽이 비었으면 첫 쪽으로 갈 수단과 함께 안내한다', async () => {

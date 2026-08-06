@@ -12,6 +12,12 @@ import type { components } from '@omf-mes/api-client';
 export type IntegrationMessageRow = components['schemas']['IntegrationMessage'];
 export type PageMeta = components['schemas']['PageMeta'];
 
+/**
+ * 상세 표시. 계약의 상세 응답에서 **전문을 뺀 것**이며 목록 행과 같은 항목만 갖는다.
+ * 별칭이라 구조가 같아도 이름을 따로 두는 이유는, 「여기에 payload가 없다」가 이 이름의 뜻이기 때문이다.
+ */
+export type MessageDetailView = IntegrationMessageRow;
+
 /** 목록 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */
 export interface MessageListResult {
   items: IntegrationMessageRow[];

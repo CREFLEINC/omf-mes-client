@@ -503,6 +503,34 @@ const integrationSync = {
   },
   loading: {
     messages: '연계 메시지 목록을 불러오는 중',
+    messageDetail: '연계 메시지 정보를 불러오는 중',
+  },
+  /**
+   * 상세. 목록에 없는 항목만 여기서 늘어난다.
+   *
+   * 전송 내용(전문)은 **구획만 두고 값을 그리지 않는다** — 거래처·수량 등이 들어 있어
+   * 누구에게까지 보일지가 정해지지 않았다(이슈 omf-mes-client#11 §4).
+   */
+  detail: {
+    title: '연계 메시지 상세',
+    openAction: (messageKey: string): string => `${messageKey} 상세 열기`,
+    direction: '방향',
+    target: '대상',
+    createdAt: '생성',
+    availableAt: '다음 시도',
+    sentAt: '전송',
+    completedAt: '완료',
+    lockedBy: '처리 중',
+    lastErrorMessage: '마지막 오류',
+    payload: '전송 내용',
+    payloadAction: '전송 내용 보기',
+    payloadLocked: '전송 내용은 열람 범위가 정해진 뒤에 볼 수 있습니다. 지금은 표시하지 않습니다.',
+    /*
+     * 대상은 유형 코드와 번호를 그대로 낸다. 유형에서 어느 목록을 찾을지의 지도가 없어
+     * 화면이 이름을 만들 수 없다 — 지어내지 않는다.
+     */
+    targetValue: (typeCode: string, id: number): string => `${typeCode} · ${String(id)}`,
+    lockedValue: (worker: string, at: string): string => `${worker} (${at})`,
   },
   /**
    * 상태 열의 보조 한 줄. 계약이 정의한 사실만 옮긴다 —

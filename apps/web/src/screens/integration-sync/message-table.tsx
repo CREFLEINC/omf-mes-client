@@ -15,6 +15,7 @@ export interface MessageTableProps {
   /** 결과는 있는데 이 쪽에는 없다. 「결과가 없다」와 다른 안내를 낸다. */
   isBeyondLast: boolean;
   onFirstPage: () => void;
+  onOpenDetail: (id: number) => void;
   /**
    * 상태 보조 문구의 기준 시각. 화면이 한 번 만들어 넘긴다 —
    * 셀마다 지금 시각을 만들면 같은 표 안에서 행마다 다른 기준으로 판정된다.
@@ -41,10 +42,28 @@ export const MessageTable = ({
   hasPeriod,
   isBeyondLast,
   onFirstPage,
+  onOpenDetail,
   now,
 }: MessageTableProps) => {
   const columns: Column<IntegrationMessageRow>[] = [
-    { key: 'messageKey', header: t.table.messageKey, width: '176px' },
+    {
+      key: 'messageKey',
+      header: t.table.messageKey,
+      width: '176px',
+      render: (row) => (
+        // 접근 이름에 메시지 키를 넣는다 — 「상세 열기」가 행마다 되풀이되면 어느 건인지 알 수 없다.
+        <button
+          type="button"
+          className="link-cell"
+          aria-label={t.detail.openAction(row.messageKey)}
+          onClick={() => {
+            onOpenDetail(row.integrationMessageId);
+          }}
+        >
+          {row.messageKey}
+        </button>
+      ),
+    },
     { key: 'interfaceCode', header: t.table.interfaceCode, width: '128px' },
     {
       key: 'statusCode',

@@ -527,3 +527,113 @@ describe('IntegrationSyncScreen — 쪽 이동', () => {
     expect(currentLocation()).not.toContain('page=');
   });
 });
+
+describe('IntegrationSyncScreen — 상세', () => {
+  const PERIOD = '?from=2026-08-01&to=2026-08-06';
+  const DETAIL_PATH = `${LIST_PATH}/9001`;
+
+  /**
+   * 상세 응답은 **전문을 언제나 싣는다.** 여기 값이 화면 어디에도 나오지 않아야 한다.
+   * 합성값임이 한눈에 보이는 이름만 쓴다(공개 저장소 경계).
+   */
+  const PAYLOAD_MARKER = 'SAMPLE-PAYLOAD-MARKER';
+
+  const detailRoute = (overrides: Record<string, unknown> = {}, status = 200): StubRoute => ({
+    match: (request) => isGet(request, DETAIL_PATH),
+    respond: () =>
+      status === 200
+        ? jsonResponse({
+            ...messageRowFixtures[0],
+            payload: { sampleField: PAYLOAD_MARKER },
+            ...overrides,
+          })
+        : jsonResponse({ message: '' }, { status }),
+  });
+
+  const openFirstDetail = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole('button', { name: 'SAMPLE-KEY-0001 상세 열기' }));
+  };
+
+  it('메시지 키를 누르기 전에는 상세를 조회하지 않는다', async () => {
+    const { requests } = renderScreen([listRoute(), detailRoute()], PERIOD);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
+  });
+
+  it('메시지 키를 누르면 상세를 조회하고 주소에 남긴다', async () => {
+    const { requests, user } = renderScreen([listRoute(), detailRoute()], PERIOD);
+    await openFirstDetail(user);
+
+    expect(await screen.findByText('연계 메시지 상세')).toBeInTheDocument();
+    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
+    expect(currentLocation()).toContain('sel=9001');
+  });
+
+  it('주소에 상세가 있으면 새로고침해도 같은 상세가 열린다', async () => {
+    const { requests } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
+
+    expect(await screen.findByText('연계 메시지 상세')).toBeInTheDocument();
+    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
+  });
+
+  it('닫으면 주소에서 상세가 지워진다', async () => {
+    const { user } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
+    await screen.findByText('연계 메시지 상세');
+
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+
+    expect(currentLocation()).not.toContain('sel=');
+  });
+
+  it('전문이 실려 와도 화면 어디에도 나오지 않는다', async () => {
+    const { user } = renderScreen([listRoute(), detailRoute()], PERIOD);
+    await openFirstDetail(user);
+    await screen.findByText('연계 메시지 상세');
+
+    expect(screen.queryByText(PAYLOAD_MARKER)).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toContain(PAYLOAD_MARKER);
+    expect(document.body.textContent).not.toContain('sampleField');
+  });
+
+  it('전송 내용 구획은 잠긴 채로 사유와 함께 보인다', async () => {
+    const { user } = renderScreen([listRoute(), detailRoute()], PERIOD);
+    await openFirstDetail(user);
+
+    expect(await screen.findByRole('button', { name: '전송 내용 보기' })).toBeDisabled();
+    expect(
+      screen.getByText(
+        '전송 내용은 열람 범위가 정해진 뒤에 볼 수 있습니다. 지금은 표시하지 않습니다.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('상세 조회에 실패하면 창 안에 사유가 나오고 목록은 남는다', async () => {
+    const { user } = renderScreen([listRoute(), detailRoute({}, 500)], PERIOD);
+    await openFirstDetail(user);
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByText('SAMPLE-KEY-0002')).toBeInTheDocument();
+  });
+
+  it('전문 권한이 없어 상세가 403이면 권한 안내가 나온다', async () => {
+    const { user } = renderScreen([listRoute(), detailRoute({}, 403)], PERIOD);
+    await openFirstDetail(user);
+
+    expect(
+      await screen.findByText(
+        '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('조건을 바꾸면 열려 있던 상세도 닫힌다 — 그 건이 새 결과에 없을 수 있다', async () => {
+    const { user } = renderScreen([listRoute(), detailRoute()], `${PERIOD}&sel=9001`);
+    await screen.findByText('연계 메시지 상세');
+
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    expect(currentLocation()).not.toContain('sel=');
+  });
+});

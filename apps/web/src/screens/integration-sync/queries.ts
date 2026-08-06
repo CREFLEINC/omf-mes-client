@@ -1,11 +1,14 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { MessageFilterQuery } from './filters';
 import type { PeriodQuery } from './period';
-import type { IntegrationMessageRow, MessageListResult } from './types';
+import type { IntegrationMessageRow, MessageDetailView, MessageListResult } from './types';
+
+/** 계약의 상세 응답 — **전문을 담고 있다.** 화면 타입으로 옮기는 것은 `toDetailView` 하나뿐이다. */
+type IntegrationMessageDetailResponse = components['schemas']['IntegrationMessageDetail'];
 
 /**
  * 이 화면의 읽기. 경로 리터럴은 여기와 `requests.ts`(쓰기)에만 둔다 —
@@ -31,6 +34,7 @@ export const messageKeys = {
   list: (query: MessageListQuery | null) => ['integration-messages', 'list', query] as const,
   /** 선택지는 **기간만** 담는다. 필터를 담으면 조건을 좁힐 때마다 선택지도 함께 좁아진다. */
   options: (period: PeriodQuery | null) => ['integration-messages', 'options', period] as const,
+  detail: (id: number | null) => ['integration-messages', 'detail', id] as const,
 };
 
 const fetchMessageList = (client: Client, query: MessageListQuery): Promise<MessageListResult> =>
@@ -95,4 +99,55 @@ export const useFilterOptions = (period: PeriodQuery | null): FilterOptionsResul
   });
 
   return { rows: options.data?.items ?? EMPTY_ROWS, isError: options.isError };
+};
+
+/**
+ * 상세 응답에서 화면이 쓰는 항목만 **하나씩 골라 옮긴다.**
+ *
+ * 통째로 넘기지 않는 이유는 응답에 전문(`payload`)이 실려 오기 때문이다. 변수에 담아 두면
+ * 언젠가 렌더된다 — 여기서 걸러야 화면 어디에서도 그릴 수 없다.
+ */
+const toDetailView = (data: IntegrationMessageDetailResponse): MessageDetailView => ({
+  integrationMessageId: data.integrationMessageId,
+  messageKey: data.messageKey,
+  interfaceCode: data.interfaceCode,
+  directionCode: data.directionCode,
+  targetTypeCode: data.targetTypeCode,
+  targetId: data.targetId,
+  statusCode: data.statusCode,
+  retryCount: data.retryCount,
+  lastErrorMessage: data.lastErrorMessage ?? null,
+  createdAt: data.createdAt,
+  availableAt: data.availableAt,
+  sentAt: data.sentAt ?? null,
+  completedAt: data.completedAt ?? null,
+  lockedAt: data.lockedAt ?? null,
+  lockedBy: data.lockedBy ?? null,
+});
+
+/**
+ * 연계 메시지 상세. 목록에 없는 항목(방향·대상·전송·완료·처리 중)이 이 응답으로 온다.
+ *
+ * 고르기 전에는 조회하지 않는다 — 화면에 들어오기만 해도 부르면 쓰지 않는 요청이 나간다.
+ */
+export const useMessageDetail = (id: number | null): UseQueryResult<MessageDetailView> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: messageKeys.detail(id),
+    enabled: id !== null,
+    queryFn: async () => {
+      if (id === null) {
+        throw new Error('메시지를 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/integration/messages/{integrationMessageId}', {
+          params: { path: { integrationMessageId: id } },
+        }),
+      );
+
+      return toDetailView(data);
+    },
+  });
 };
