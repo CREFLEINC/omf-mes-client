@@ -105,6 +105,22 @@ describe('MessageDetailDialog — 전송 내용 구획', () => {
 
     expect(Object.keys(view)).not.toContain('payload');
   });
+
+  it('전문이 실린 객체가 들어와도 그 값을 그리지 않는다', () => {
+    /*
+     * 타입 방어가 뚫린 상황(조회가 응답을 통째로 넘기는 실수)을 일부러 만든다.
+     * 타입만 검사하면 「타입에는 없는데 화면이 그리는」 회귀를 잡지 못한다.
+     * 합성값임이 한눈에 보이는 이름만 쓴다(공개 저장소 경계).
+     */
+    const marker = 'SAMPLE-PAYLOAD-MARKER';
+    const leaked = { ...messageRow(), payload: { sampleField: marker } } as MessageDetailView;
+
+    renderDialog({ view: leaked });
+
+    expect(screen.queryByText(marker)).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toContain(marker);
+    expect(document.body.textContent).not.toContain('sampleField');
+  });
 });
 
 describe('MessageDetailDialog — 불러오는 중과 실패', () => {
