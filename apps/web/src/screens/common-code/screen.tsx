@@ -65,13 +65,30 @@ import {
   useBusinessUnitOptions,
   useDepartmentOptions,
   usePlantOptions,
+  useProcessOptions,
   type LookupResult,
 } from './lookups';
 import { toPageView } from './pagination';
+import {
+  createQualificationDraft,
+  isSameQualificationDrafts,
+  removeQualificationDraft,
+  toQualificationDrafts,
+  toQualificationsPayload,
+  upsertQualificationDraft,
+  type QualificationDraft,
+} from './qualification-draft';
+import { QualificationFormDialog } from './qualification-form-dialog';
+import { QualificationPane } from './qualification-pane';
 import { COMMON_CODE_TABS, resolveTab, tabSearchParams } from './tabs';
 import { WorkerDetailPane } from './worker-detail-pane';
 import { WorkerListPane } from './worker-list-pane';
-import { useWorkerDetail, useWorkerList } from './worker-queries';
+import {
+  useWorkerDetail,
+  useWorkerList,
+  useWorkerQualifications,
+  workerKeys,
+} from './worker-queries';
 import type {
   CodeGroupFilters,
   CodeGroupFormValues,
@@ -83,6 +100,7 @@ type CodeGroup = components['schemas']['CodeGroup'];
 type CodeGroupDetailResponse = components['schemas']['CodeGroupDetailResponse'];
 type Department = components['schemas']['Department'];
 type DepartmentDetailResponse = components['schemas']['DepartmentDetailResponse'];
+type WorkerQualificationListResponse = components['schemas']['WorkerQualificationListResponse'];
 
 const t = messages.commonCode;
 
@@ -110,6 +128,16 @@ interface DepartmentFormState {
   source: DepartmentFormSource;
   baseline: DepartmentFormValues;
   values: DepartmentFormValues;
+}
+
+/**
+ * 자격 초안과 그 기준값. 「고친 것이 있는가」는 둘의 비교로 판정하고,
+ * **서버 응답 객체가 바뀔 때만** 다시 세운다 — 편집 중에 캐시가 갱신돼도 되돌아가지 않는다.
+ */
+interface QualificationState {
+  source: WorkerQualificationListResponse;
+  baseline: QualificationDraft[];
+  drafts: QualificationDraft[];
 }
 
 /**
@@ -736,10 +764,96 @@ export const CommonCodeScreen = () => {
     setSearchParams(toScopedSearchParams(tab.id, SCOPE_KEYS.department, workerFilters, nextPage));
   };
 
+  /* ── 자격·인증 ─────────────────────────────────────────────────────────── */
+
+  const qualificationList = useWorkerQualifications(selectedWorkerId);
+  const processOptions = useProcessOptions(selectedWorkerId !== null);
+
+  const [qualificationState, setQualificationState] = useState<QualificationState | null>(null);
+
+  /**
+   * 초안의 출처. 서버 응답 객체가 바뀔 때만 다시 세운다 —
+   * 사용자가 표를 고치는 동안 캐시가 갱신돼도 편집 중인 목록이 되돌아가지 않는다.
+   */
+  const qualificationSource = qualificationList.data ?? null;
+
+  if (qualificationSource === null) {
+    if (qualificationState !== null) setQualificationState(null);
+  } else if (qualificationState?.source !== qualificationSource) {
+    const seeded = toQualificationDrafts(qualificationSource.items);
+    setQualificationState({ source: qualificationSource, baseline: seeded, drafts: seeded });
+  }
+
+  const qualificationDrafts = qualificationState?.drafts ?? [];
+  const isQualificationDirty =
+    qualificationState !== null &&
+    !isSameQualificationDrafts(qualificationState.drafts, qualificationState.baseline);
+
+  /** 편집 창의 대상. **열 때만 마운트한다** — 닫힌 창을 남기면 지난 값이 살아 있다. */
+  const [editingQualification, setEditingQualification] = useState<QualificationDraft | null>(null);
+  const [isEditingNewQualification, setIsEditingNewQualification] = useState(false);
+
+  const qualificationWrite = useMasterWrite<QualificationDraft[], WorkerQualificationListResponse>({
+    request: (drafts, headers) =>
+      client.PUT('/mdm/workers/{workerId}/qualifications', {
+        params: {
+          path: { workerId: selectedWorkerId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { qualifications: toQualificationsPayload(drafts) },
+      }),
+    /*
+     * **반드시 `null`이다.** 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없고,
+     * 더구나 `GET /mdm/workers/{id}`가 `ETag`를 주지 않는다 — 상세 경로를 주면 토큰을 찾지 못해
+     * 요청이 **나가지 않고 멈춘다**(「저장을 눌러도 아무 일이 없다」).
+     */
+    etagPath: null,
+    invalidateKeys: [workerKeys.all],
+    // 대응하는 입력칸이 이 구획에 없다(창 안에 있다) — 필드 오류도 배너로 올린다.
+    knownFields: [],
+    onSuccess: (saved) => {
+      /*
+       * **서버 응답으로 초안을 다시 세운다.** 서버가 행 번호를 새로 매기므로
+       * 보낸 목록을 그대로 두면 다음 저장이 옛 번호로 도는 것처럼 보인다.
+       */
+      const next = toQualificationDrafts(saved.items);
+      setQualificationState({ source: saved, baseline: next, drafts: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const resetQualificationEditing = () => {
+    qualificationWrite.reset();
+    setEditingQualification(null);
+    setQualificationState(null);
+  };
+
   const handleSelectWorker = (workerId: number) => {
+    resetQualificationEditing();
+
     patchSearchParams((next) => {
       next.set('wkr', String(workerId));
     });
+  };
+
+  const changeQualificationDrafts = (
+    next: (drafts: QualificationDraft[]) => QualificationDraft[],
+  ) => {
+    setQualificationState((prev) =>
+      prev === null ? prev : { ...prev, drafts: next(prev.drafts) },
+    );
+  };
+
+  const openQualificationDialog = (draft: QualificationDraft, isNew: boolean) => {
+    qualificationWrite.reset();
+    setIsEditingNewQualification(isNew);
+    setEditingQualification(draft);
+  };
+
+  const handleSaveQualifications = () => {
+    if (qualificationState === null) return;
+
+    qualificationWrite.write(qualificationState.drafts);
   };
 
   /*
@@ -1161,7 +1275,44 @@ export const CommonCodeScreen = () => {
         }
       />
 
-      <div className="pane-stack">{renderWorkerDetailPane()}</div>
+      <div className="pane-stack">
+        {renderWorkerDetailPane()}
+
+        <QualificationPane
+          drafts={qualificationDrafts}
+          // 작업자를 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
+          isLoading={selectedWorkerId !== null && qualificationList.isPending}
+          isWorkerSelected={selectedWorkerId !== null}
+          processEntries={processOptions.entries}
+          optionsNotice={renderOptionsNotice([processOptions])}
+          loadError={
+            qualificationList.isError ? (
+              <LoadErrorBanner
+                error={qualificationList.error}
+                onRetry={() => void qualificationList.refetch()}
+              />
+            ) : null
+          }
+          banner={<SaveErrorBanner error={qualificationWrite.error} />}
+          isDirty={isQualificationDirty}
+          isSaving={qualificationWrite.isSaving}
+          onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
+          onEdit={(draftId) => {
+            const found = qualificationDrafts.find((item) => item.draftId === draftId);
+            if (found !== undefined) openQualificationDialog(found, false);
+          }}
+          onRemove={(draftId) => {
+            changeQualificationDrafts((drafts) => removeQualificationDraft(drafts, draftId));
+          }}
+          onSave={handleSaveQualifications}
+          onCancel={() => {
+            qualificationWrite.reset();
+            setQualificationState((prev) =>
+              prev === null ? prev : { ...prev, drafts: prev.baseline },
+            );
+          }}
+        />
+      </div>
     </div>
   );
 
@@ -1198,6 +1349,24 @@ export const CommonCodeScreen = () => {
        * 되돌릴 수 없는 액션이라 확인을 한 단계 두고, **실패해도 창을 닫지 않는다** —
        * 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다.
        */}
+      {/*
+       * 자격 편집 창도 열 때만 붙인다. **확인은 저장이 아니다** —
+       * 표에만 반영되고 서버로는 「저장」에서 최종 목록이 한 번에 나간다.
+       */}
+      {editingQualification !== null && (
+        <QualificationFormDialog
+          draft={editingQualification}
+          isNew={isEditingNewQualification}
+          otherDrafts={qualificationDrafts}
+          processOptions={selectableOptions(processOptions.entries, editingQualification.processId)}
+          onClose={() => setEditingQualification(null)}
+          onConfirm={(next) => {
+            changeQualificationDrafts((drafts) => upsertQualificationDraft(drafts, next));
+            setEditingQualification(null);
+          }}
+        />
+      )}
+
       {isDepartmentDeactivateOpen && (
         <DeactivateDialog
           open

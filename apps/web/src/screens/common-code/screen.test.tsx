@@ -3198,3 +3198,411 @@ describe('CommonCodeScreen — 작업자 조건과 탭 전환', () => {
     ]);
   });
 });
+
+const qualificationsPath = (workerId: number): string =>
+  `${WORKERS_PATH}/${String(workerId)}/qualifications`;
+
+const PROCESSES_PATH = '/mdm/processes';
+
+const savedQualifications = [
+  {
+    workerQualificationId: 8001,
+    workerId: 5001,
+    qualificationTypeCode: 'PENDING',
+    processId: 6001,
+    certificateNo: 'SYN-CERT-01',
+    validFrom: '2026-08-01',
+    validTo: '2026-12-31',
+    /** 목 서버가 실제로 값을 준다 — 되돌려 싣지 않으면 조용히 지워진다. */
+    certifiedBy: 7001,
+  },
+];
+
+const qualificationListRoute = (items: unknown[] = savedQualifications): StubRoute => ({
+  match: (request) => isGet(request, qualificationsPath(5001)),
+  respond: () => jsonResponse({ items }),
+});
+
+const processesRoute = (): StubRoute => ({
+  match: (request) => isGet(request, PROCESSES_PATH),
+  respond: () =>
+    jsonResponse({
+      items: [
+        {
+          processId: 6001,
+          processCode: 'SYN-OP-01',
+          processName: '합성 공정 A',
+          processTypeCode: 'STANDARD',
+          isActive: true,
+        },
+      ],
+      page: { page: 1, size: 50, total: 1 },
+    }),
+});
+
+const qualificationPane = (): HTMLElement => screen.getByRole('region', { name: '자격·인증' });
+
+/** 자격까지 다루는 작업자 탭 스텁 묶음. */
+const qualificationRoutes = (items: unknown[] = savedQualifications): StubRoute[] => [
+  ...workerRoutes(),
+  qualificationListRoute(items),
+  processesRoute(),
+];
+
+describe('CommonCodeScreen — 자격 조회 (C64·C75)', () => {
+  /* C64 */
+  it('작업자를 고르면 자격 목록 요청이 한 번 나가고 고르기 전에는 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(qualificationRoutes(), '?tab=worker');
+    await screen.findByRole('button', { name: 'SYN-W-0001' });
+
+    expect(requestsTo(requests, qualificationsPath(5001))).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-W-0001' }));
+    await screen.findByText('SYN-CERT-01');
+
+    expect(requestsTo(requests, qualificationsPath(5001))).toHaveLength(1);
+  });
+
+  /* C75 — 공정 선택지가 실제 조회로 채워진다. */
+  it('공정 이름을 조회 목록에서 찾아 표에 낸다', async () => {
+    renderScreen(qualificationRoutes(), '?tab=worker&wkr=5001');
+
+    expect(await screen.findByText('합성 공정 A')).toBeInTheDocument();
+  });
+
+  /* C75 — 계약이 비운 공정을 「모든 공정」으로 정했다(A-7). */
+  it('공정을 비운 자격은 「(전체 공정)」으로 표기한다', async () => {
+    renderScreen(
+      qualificationRoutes([{ ...savedQualifications[0], processId: null }]),
+      '?tab=worker&wkr=5001',
+    );
+
+    expect(await screen.findByText('(전체 공정)')).toBeInTheDocument();
+  });
+
+  it('공정 선택지 조회가 실패하면 그 사실을 표 위에 알린다', async () => {
+    renderScreen(
+      [
+        ...workerRoutes(),
+        qualificationListRoute(),
+        {
+          match: (request) => isGet(request, PROCESSES_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+      ],
+      '?tab=worker&wkr=5001',
+    );
+
+    expect(
+      await screen.findByText('선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('자격이 0건이면 빈 상태를 낸다', async () => {
+    renderScreen(qualificationRoutes([]), '?tab=worker&wkr=5001');
+
+    expect(await screen.findByText('등록된 자격·인증이 없습니다')).toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
+  const replaceRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'PUT' && new URL(request.url).pathname === qualificationsPath(5001),
+    respond,
+  });
+
+  /** 서버는 새 번호를 매겨 돌려준다 — 화면이 그 응답으로 초안을 다시 세워야 한다. */
+  const replacedResponse = {
+    items: [
+      { ...savedQualifications[0], workerQualificationId: 9001, certificateNo: 'SYN-CERT-77' },
+    ],
+  };
+
+  const openEditDialog = async (user: ReturnType<typeof userEvent.setup>) => {
+    await screen.findByText('SYN-CERT-01');
+    await user.click(screen.getByRole('button', { name: 'PENDING 자격 수정' }));
+    return screen.getByRole('dialog');
+  };
+
+  /* C65 — 창의 확인은 표에만 반영된다. 서버 요청이 나가지 않는다. */
+  it('창에서 확인해도 서버 요청이 나가지 않고 표에만 반영된다', async () => {
+    const { requests, user } = renderScreen(qualificationRoutes(), '?tab=worker&wkr=5001');
+
+    const dialog = await openEditDialog(user);
+    const certificate = within(dialog).getByLabelText('인증번호');
+    await user.clear(certificate);
+    await user.type(certificate, 'SYN-CERT-77');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+
+    expect(await screen.findByText('SYN-CERT-77')).toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+  });
+
+  it('창 안에 확인이 저장이 아니라는 안내가 있다', async () => {
+    const { user } = renderScreen(qualificationRoutes(), '?tab=worker&wkr=5001');
+
+    const dialog = await openEditDialog(user);
+
+    expect(
+      within(dialog).getByText(
+        '이 창의 확인은 저장이 아닙니다. 표에 반영된 뒤 「저장」을 눌러야 서버에 반영됩니다.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /* 창은 열 때만 마운트한다 — 닫힌 창을 남기면 지난 값이 살아 있다. */
+  it('창을 닫았다 다시 열면 지난 입력이 남지 않는다', async () => {
+    const { user } = renderScreen(qualificationRoutes(), '?tab=worker&wkr=5001');
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-77');
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'PENDING 자격 수정' }));
+    expect(within(screen.getByRole('dialog')).getByLabelText('인증번호')).toHaveValue(
+      'SYN-CERT-01',
+    );
+  });
+
+  /*
+   * C66 · 뮤테이션 23 — **`etagPath`가 `null`이어야 요청이 실제로 나간다.**
+   * 작업자 상세에 `ETag`가 없어 상세 경로를 주면 토큰을 못 찾고 요청이 멈춘다.
+   */
+  it('저장이 치환 경로로 실제로 나가고 If-Match가 없다', async () => {
+    const { requests, user } = renderScreen(
+      [...qualificationRoutes(), replaceRoute(() => jsonResponse(replacedResponse))],
+      '?tab=worker&wkr=5001',
+    );
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-77');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    const sent = requests.find((request) => request.method === 'PUT');
+    expect(sent?.url.pathname).toBe(qualificationsPath(5001));
+    expect(sent?.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(sent?.headers.has('If-Match')).toBe(false);
+  });
+
+  /* C67 — 계약의 요청 항목에 식별자가 없다. W-06-01·W-06-02의 치환과 반대다. */
+  it('요청 본문의 어느 항목에도 행 식별자와 작업자 번호가 없다', async () => {
+    const { requests, user } = renderScreen(
+      [...qualificationRoutes(), replaceRoute(() => jsonResponse(replacedResponse))],
+      '?tab=worker&wkr=5001',
+    );
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-77');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    const body = JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}') as {
+      qualifications: Record<string, unknown>[];
+    };
+
+    expect(body.qualifications).toHaveLength(1);
+    for (const item of body.qualifications) {
+      expect('workerQualificationId' in item).toBe(false);
+      expect('workerId' in item).toBe(false);
+    }
+  });
+
+  /* C68 — 화면에 입력칸이 없는 값이라 되돌려 싣지 않으면 조용히 지워진다. */
+  it('기존 행의 인증자가 서버가 준 값 그대로 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [...qualificationRoutes(), replaceRoute(() => jsonResponse(replacedResponse))],
+      '?tab=worker&wkr=5001',
+    );
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-77');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    const body = JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}') as {
+      qualifications: Record<string, unknown>[];
+    };
+
+    expect(body.qualifications[0]?.certifiedBy).toBe(7001);
+  });
+
+  /* C68 — 새 행에는 그 값을 만들 수 없다. 널이 아니라 **키 자체가 없어야** 한다. */
+  it('새로 더한 행에는 인증자 키 자체가 없다', async () => {
+    const { requests, user } = renderScreen(
+      [...qualificationRoutes([]), replaceRoute(() => jsonResponse({ items: [] }))],
+      '?tab=worker&wkr=5001',
+    );
+    await screen.findByText('등록된 자격·인증이 없습니다');
+
+    await user.click(within(qualificationPane()).getByRole('button', { name: '자격 추가' }));
+
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByLabelText('자격 유형'));
+    await user.click(screen.getByRole('option', { name: /선택지 준비 중/ }));
+    await user.type(within(dialog).getByLabelText('유효 시작'), '2026-08-01');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    const body = JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}') as {
+      qualifications: Record<string, unknown>[];
+    };
+
+    expect('certifiedBy' in (body.qualifications[0] ?? {})).toBe(false);
+  });
+
+  /*
+   * C74 — **서버가 새 번호를 매기고 값을 다듬을 수 있다.** 보낸 목록을 그대로 두면
+   * 다음 저장이 옛 번호로 돈다. 서버가 돌려준 것이 정본이다.
+   *
+   * 목 서버는 상태를 갖지 않으므로 여기서만 상태를 두어 「치환 뒤의 조회」를 흉내 낸다 —
+   * 그렇게 해야 저장 성공 뒤 재조회까지 포함한 최종 표시를 잴 수 있다.
+   */
+  it('저장에 성공하면 서버가 돌려준 값이 정본이 된다', async () => {
+    let current: unknown[] = savedQualifications;
+
+    const { user } = renderScreen(
+      [
+        ...workerRoutes(),
+        processesRoute(),
+        {
+          match: (request) => isGet(request, qualificationsPath(5001)),
+          respond: () => jsonResponse({ items: current }),
+        },
+        replaceRoute(() => {
+          current = replacedResponse.items;
+          return jsonResponse(replacedResponse);
+        }),
+      ],
+      '?tab=worker&wkr=5001',
+    );
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-99');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    // 서버가 돌려준 값(`SYN-CERT-77`)이 남고 사용자가 보낸 값(`SYN-CERT-99`)은 남지 않는다.
+    expect(await screen.findByText('SYN-CERT-77')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('SYN-CERT-99')).not.toBeInTheDocument();
+    });
+  });
+
+  /* C74 — 지운 행이 본문에서 빠진다. */
+  it('행을 지우고 저장하면 그 행이 본문에서 빠진다', async () => {
+    const { requests, user } = renderScreen(
+      [...qualificationRoutes(), replaceRoute(() => jsonResponse({ items: [] }))],
+      '?tab=worker&wkr=5001',
+    );
+    await screen.findByText('SYN-CERT-01');
+
+    await user.click(screen.getByRole('button', { name: 'PENDING 자격 삭제' }));
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    const body = JSON.parse(requests.find((request) => request.method === 'PUT')?.body ?? '{}') as {
+      qualifications: unknown[];
+    };
+
+    expect(body.qualifications).toHaveLength(0);
+  });
+
+  /* C70 — 서버가 준 목록에 이미 겹친 짝이 있으면 그대로 보내도 서버가 거부한다. */
+  it('서버가 준 목록에 이미 겹친 짝이 있으면 저장이 비활성이고 사유가 붙는다', async () => {
+    renderScreen(
+      qualificationRoutes([
+        { ...savedQualifications[0], workerQualificationId: 8001, processId: null },
+        { ...savedQualifications[0], workerQualificationId: 8002, processId: null },
+      ]),
+      '?tab=worker&wkr=5001',
+    );
+
+    await screen.findAllByText('(전체 공정)');
+
+    expect(within(qualificationPane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByText(/저장은 자격 유형과 공정 짝이 겹치는 줄이 있어/)).toBeInTheDocument();
+  });
+
+  /* 저장 실패는 삼키지 않는다 — 무엇이 막았는지 밝힌다. */
+  it('저장에 실패하면 배너에 사유가 나온다', async () => {
+    const { user } = renderScreen(
+      [
+        ...qualificationRoutes(),
+        replaceRoute(() =>
+          jsonResponse(
+            {
+              message: '',
+              errors: [{ scope: 'screen', code: 'UNIQUE', message: '이미 있는 자격입니다.' }],
+            },
+            { status: 400 },
+          ),
+        ),
+      ],
+      '?tab=worker&wkr=5001',
+    );
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-77');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('이미 있는 자격입니다.')).toBeInTheDocument();
+  });
+
+  /* 다른 작업자를 고르면 편집 중이던 초안이 남으면 안 된다. */
+  it('다른 작업자를 고르면 편집 중이던 초안이 비워진다', async () => {
+    const { user } = renderScreen(
+      [
+        ...qualificationRoutes(),
+        workerDetailRoute(5002),
+        {
+          match: (request) => isGet(request, qualificationsPath(5002)),
+          respond: () => jsonResponse({ items: [] }),
+        },
+      ],
+      '?tab=worker&wkr=5001',
+    );
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-77');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+    await screen.findByText('SYN-CERT-77');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-W-0002' }));
+
+    expect(await screen.findByText('등록된 자격·인증이 없습니다')).toBeInTheDocument();
+    expect(screen.queryByText('SYN-CERT-77')).not.toBeInTheDocument();
+  });
+});

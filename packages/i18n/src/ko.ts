@@ -1168,6 +1168,74 @@ const commonCode = {
     },
   },
   /**
+   * 자격·인증 — **이 화면에서 편집 가능한 유일한 작업자 관련 자료**다.
+   * 저장은 전체 치환이라 표의 최종 상태를 한 번에 보낸다.
+   */
+  qualification: {
+    paneTitle: '자격·인증',
+    fields: {
+      qualificationType: '자격 유형',
+      process: '공정',
+      certificateNo: '인증번호',
+      validPeriod: '유효기간',
+      validFrom: '유효 시작',
+      validTo: '유효 종료',
+      certifiedBy: '인증자',
+      edit: '편집',
+    },
+    values: {
+      /** 공정을 비운 자격은 모든 공정에 걸린다 — 계약이 그 뜻을 널로 표현한다(A-7). */
+      allProcesses: '(전체 공정)',
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+    },
+    actions: {
+      add: '자격 추가',
+      /* 행 아이콘 버튼은 보이는 글자가 없다 — 어느 행의 것인지 이름에 담는다. */
+      editRow: (label: string): string => `${label} 자격 수정`,
+      removeRow: (label: string): string => `${label} 자격 삭제`,
+    },
+    actionReasons: {
+      needsWorker: '자격 추가는 좌측에서 작업자를 고른 뒤에 할 수 있습니다.',
+      /*
+       * 서버가 준 목록에 이미 중복 짝이 있으면 그대로 보내도 서버가 거부한다 —
+       * 사용자가 먼저 그 줄을 고쳐야 한다.
+       */
+      saveBlockedByInvalid:
+        '저장은 자격 유형과 공정 짝이 겹치는 줄이 있어 할 수 없습니다. 그 줄을 고치거나 지우면 저장할 수 있습니다.',
+    },
+    /*
+     * 창의 확인은 **저장이 아니다.** 표에만 반영되고 서버로는 「저장」에서 한 번에 나간다 —
+     * 밝히지 않으면 사용자가 창을 닫는 순간 저장된 줄 안다.
+     */
+    dialog: {
+      addTitle: '자격 추가',
+      editTitle: '자격 수정',
+      notSavedNotice:
+        '이 창의 확인은 저장이 아닙니다. 표에 반영된 뒤 「저장」을 눌러야 서버에 반영됩니다.',
+      confirm: '확인',
+    },
+    empty: {
+      notSelected: '좌측에서 작업자를 고르면 그 작업자의 자격·인증이 보입니다',
+      noneTitle: '등록된 자격·인증이 없습니다',
+      noneDescription: '「자격 추가」로 첫 자격을 등록하세요.',
+    },
+    loading: {
+      list: '자격·인증을 불러오는 중',
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      certificateNoTooLong: '인증번호는 100자를 넘을 수 없습니다.',
+      /* 계약 ck_worker_qualification_dates — 있으면 유효 시작 이상. 한쪽만 있는 것은 허용된다. */
+      validRangeReversed: '유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.',
+      /*
+       * 계약 uq_worker_qualification이 `COALESCE(process_id,0)`으로 접는다 —
+       * 공정을 비운 두 줄은 같은 짝이다.
+       */
+      duplicatePair:
+        '자격 유형과 공정 짝이 이미 있습니다. 공정을 다르게 고르거나 그 줄을 고치세요.',
+    },
+  },
+  /**
    * **코드값 편집 한 벌의 문구.** 이 묶음은 통째로 옮겨질 것을 전제로 모아 둔다 —
    * 다른 자원의 문구와 섞으면 옮길 때 어느 열쇠가 딸려 가야 하는지 가릴 수 없다.
    *
