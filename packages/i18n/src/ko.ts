@@ -476,6 +476,16 @@ const integrationSync = {
   fields: {
     periodFrom: '기간 시작',
     periodTo: '기간 종료',
+    status: '상태',
+    interfaceCode: '연계 종류',
+    direction: '방향',
+    targetType: '대상 유형',
+    retryMin: '시도 횟수 하한',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/integration-sync/message-table.tsx에 있다. */
   table: {
@@ -505,11 +515,43 @@ const integrationSync = {
     processingNoTime: '처리 중',
     autoRetry: (time: string): string => `${time} 자동 재시도`,
   },
+  /**
+   * 조건 줄. 선택지는 조회한 기록에서 만들므로 그 한계를 문구가 함께 밝힌다 —
+   * 「한 번도 실행되지 않은 것」만 적으면 기간·범위 밖의 값이 빠진 사실이 숨는다.
+   */
+  filters: {
+    all: '전체',
+    optionsNote:
+      '선택지는 조회한 기간의 기록에서 만듭니다. 한 번도 실행되지 않았거나 이 기간에 없는 값은 목록에 없습니다.',
+    chipStatus: (value: string): string => `상태: ${value}`,
+    chipInterface: (value: string): string => `연계 종류: ${value}`,
+    chipDirection: (value: string): string => `방향: ${value}`,
+    chipTargetType: (value: string): string => `대상 유형: ${value}`,
+    chipRetryMin: (value: string): string => `시도 횟수 하한: ${value}`,
+    chipRemoveStatus: '상태 조건 제거',
+    chipRemoveInterface: '연계 종류 조건 제거',
+    chipRemoveDirection: '방향 조건 제거',
+    chipRemoveTargetType: '대상 유형 조건 제거',
+    chipRemoveRetryMin: '시도 횟수 하한 조건 제거',
+  },
+  /**
+   * 쪽 이동. 번호 목록을 두지 않는다 — 로그성 조회에서 「7쪽으로 점프」는 정상 경로가 아니고,
+   * 조건을 좁히는 것이 정상 경로다.
+   */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
   empty: {
     noResultTitle: '조건에 맞는 기록이 없습니다',
     noResultDescription: '기간을 넓히거나 조건을 줄인 뒤 다시 조회하세요.',
     noPeriodTitle: '기간을 고르고 조회하세요',
     noPeriodDescription: '연계 기록은 기간을 정해야 조회할 수 있습니다.',
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */

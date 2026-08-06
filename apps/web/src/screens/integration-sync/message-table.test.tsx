@@ -1,13 +1,28 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import { messageRow } from './fixtures';
 import { MessageTable } from './message-table';
 
 const NOW = new Date('2026-08-06T12:00:00+09:00');
 
-const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) =>
-  render(<MessageTable rows={[messageRow()]} isLoading={false} hasPeriod now={NOW} {...props} />);
+const renderTable = (props: Partial<Parameters<typeof MessageTable>[0]> = {}) => {
+  const onFirstPage = vi.fn();
+  render(
+    <MessageTable
+      rows={[messageRow()]}
+      isLoading={false}
+      hasPeriod
+      isBeyondLast={false}
+      onFirstPage={onFirstPage}
+      now={NOW}
+      {...props}
+    />,
+  );
+
+  return { onFirstPage, user: userEvent.setup() };
+};
 
 describe('MessageTable', () => {
   it('불러오는 중에는 표 대신 진행 상태를 낸다', () => {
@@ -62,5 +77,16 @@ describe('MessageTable', () => {
 
     const table = screen.getByRole('table');
     expect(within(table).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('결과는 있는데 이 쪽이 비었으면 첫 쪽으로 갈 수단과 함께 안내한다', async () => {
+    const { onFirstPage, user } = renderTable({ rows: [], isBeyondLast: true });
+
+    expect(screen.getByText('이 쪽에는 결과가 없습니다')).toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 기록이 없습니다')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '첫 쪽으로' }));
+
+    expect(onFirstPage).toHaveBeenCalledTimes(1);
   });
 });

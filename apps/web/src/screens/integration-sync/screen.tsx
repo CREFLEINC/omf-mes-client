@@ -5,10 +5,28 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
+import {
+  PLACEHOLDER_DIRECTION_CODES,
+  PLACEHOLDER_INTERFACE_CODES,
+  PLACEHOLDER_STATUS_CODES,
+  PLACEHOLDER_TARGET_TYPE_CODES,
+  toCodeOptions,
+} from './filter-options';
+import {
+  EMPTY_FILTERS,
+  hasAnyFilter,
+  readFilters,
+  readPage,
+  toFilterQuery,
+  toSearchParams,
+  type MessageFilters,
+} from './filters';
 import { MessageFilterBar } from './message-filter-bar';
 import { MessageTable } from './message-table';
+import { PageNav } from './page-nav';
+import { toPageView } from './pagination';
 import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
-import { useMessageList } from './queries';
+import { useFilterOptions, useMessageList } from './queries';
 
 const t = messages.integrationSync;
 
@@ -75,6 +93,8 @@ export const IntegrationSyncScreen = () => {
     to: searchParams.get('to') ?? '',
   };
   const hasPeriodParams = searchParams.has('from') || searchParams.has('to');
+  const filters = readFilters(searchParams);
+  const page = readPage(searchParams);
 
   /*
    * 빈 화면으로 시작하지 않는다 — 매번 날짜를 고르는 비용이 크다.
@@ -97,13 +117,34 @@ export const IntegrationSyncScreen = () => {
   const now = new Date();
 
   const periodReason = validatePeriod(period);
-  const listQuery = periodReason === null ? toPeriodQuery(period, offsetMinutes) : null;
+  const periodQuery = periodReason === null ? toPeriodQuery(period, offsetMinutes) : null;
+  const listQuery =
+    periodQuery === null
+      ? null
+      : { ...periodQuery, ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) };
 
   const list = useMessageList(listQuery);
   const rows = list.data?.items ?? [];
+  const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
-  const applyPeriod = (next: PeriodInput) => {
-    setSearchParams(new URLSearchParams({ from: next.from, to: next.to }));
+  /*
+   * 선택지는 **같은 기간에 다른 조건 없이** 조회한 결과에서 만든다.
+   * 목록이 좁아진 결과에서 뽑으면 상태를 고른 순간 선택지가 그 값 하나로 줄어 되돌릴 수 없다.
+   *
+   * 조건이 하나도 걸리지 않은 첫 쪽에서는 **목록 조회가 곧 그 「조건 없는 조회」**다.
+   * 그럴 때 따로 부르면 같은 경로로 똑같은 요청이 한 번 더 나간다.
+   */
+  const needsOptionQuery = hasAnyFilter(filters) || page > 1;
+  const options = useFilterOptions(needsOptionQuery ? periodQuery : null);
+  const optionRows = needsOptionQuery ? options.rows : rows;
+
+  /**
+   * 조건을 주소에 반영한다. **조건이 바뀌면 쪽을 첫 쪽으로 되돌린다** —
+   * 3쪽을 보다가 조건을 좁히면 결과가 3쪽에 못 미쳐 사용자에게는
+   * 「조건을 좁혔더니 아무것도 없다」로 보인다.
+   */
+  const applyQuery = (nextPeriod: PeriodInput, nextFilters: MessageFilters, nextPage = 1) => {
+    setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
   };
 
   return (
@@ -119,20 +160,64 @@ export const IntegrationSyncScreen = () => {
         {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
         <MessageFilterBar
           appliedPeriod={period}
-          onSearch={applyPeriod}
+          appliedFilters={filters}
+          statusOptions={toCodeOptions(
+            PLACEHOLDER_STATUS_CODES,
+            optionRows,
+            (row) => row.statusCode,
+            filters.status,
+          )}
+          interfaceOptions={toCodeOptions(
+            PLACEHOLDER_INTERFACE_CODES,
+            optionRows,
+            (row) => row.interfaceCode,
+            filters.iface,
+          )}
+          directionOptions={toCodeOptions(
+            PLACEHOLDER_DIRECTION_CODES,
+            optionRows,
+            (row) => row.directionCode,
+            filters.direction,
+          )}
+          targetTypeOptions={toCodeOptions(
+            PLACEHOLDER_TARGET_TYPE_CODES,
+            optionRows,
+            (row) => row.targetTypeCode,
+            filters.targetType,
+          )}
+          onSearch={(nextPeriod, nextFilters) => {
+            applyQuery(nextPeriod, nextFilters);
+          }}
+          onRemoveFilter={(key) => {
+            applyQuery(period, { ...filters, [key]: '' });
+          }}
           onReset={() => {
-            applyPeriod(defaultPeriod(new Date()));
+            applyQuery(defaultPeriod(new Date()), EMPTY_FILTERS);
           }}
         />
 
         {/* 조회에 실패했으면 표도 빈 상태도 내지 않는다 — 실패를 「기록이 없습니다」로 보이면 안 된다. */}
         {!list.isError && (
-          <MessageTable
-            rows={rows}
-            isLoading={listQuery !== null && list.isPending}
-            hasPeriod={listQuery !== null}
-            now={now}
-          />
+          <>
+            <MessageTable
+              rows={rows}
+              isLoading={listQuery !== null && list.isPending}
+              hasPeriod={listQuery !== null}
+              isBeyondLast={pageView.isBeyondLast}
+              onFirstPage={() => {
+                applyQuery(period, filters);
+              }}
+              now={now}
+            />
+            {listQuery !== null && !list.isPending && (
+              <PageNav
+                view={pageView}
+                onChange={(nextPage) => {
+                  applyQuery(period, filters, nextPage);
+                }}
+              />
+            )}
+          </>
         )}
       </section>
     </>

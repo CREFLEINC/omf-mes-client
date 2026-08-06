@@ -1,4 +1,4 @@
-import { Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -12,6 +12,9 @@ export interface MessageTableProps {
   isLoading: boolean;
   /** 기간이 갖춰져 실제로 조회한 상태인가. 빈 상태의 문구가 갈린다. */
   hasPeriod: boolean;
+  /** 결과는 있는데 이 쪽에는 없다. 「결과가 없다」와 다른 안내를 낸다. */
+  isBeyondLast: boolean;
+  onFirstPage: () => void;
   /**
    * 상태 보조 문구의 기준 시각. 화면이 한 번 만들어 넘긴다 —
    * 셀마다 지금 시각을 만들면 같은 표 안에서 행마다 다른 기준으로 판정된다.
@@ -32,7 +35,14 @@ const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty
  * 정렬 열을 두지 않는다. 계약의 목록 쿼리에 **정렬 파라미터가 없어** 클라이언트 정렬은
  * 지금 쪽 안에서만 정렬되고, 사용자에게는 「정렬했는데 순서가 이상하다」로 나타난다.
  */
-export const MessageTable = ({ rows, isLoading, hasPeriod, now }: MessageTableProps) => {
+export const MessageTable = ({
+  rows,
+  isLoading,
+  hasPeriod,
+  isBeyondLast,
+  onFirstPage,
+  now,
+}: MessageTableProps) => {
   const columns: Column<IntegrationMessageRow>[] = [
     { key: 'messageKey', header: t.table.messageKey, width: '176px' },
     { key: 'interfaceCode', header: t.table.interfaceCode, width: '128px' },
@@ -79,16 +89,43 @@ export const MessageTable = ({ rows, isLoading, hasPeriod, now }: MessageTablePr
     );
   }
 
-  const emptySlot = hasPeriod ? (
-    <EmptyState
-      size="sm"
-      live
-      title={t.empty.noResultTitle}
-      description={t.empty.noResultDescription}
-    />
-  ) : (
-    <EmptyState size="sm" title={t.empty.noPeriodTitle} description={t.empty.noPeriodDescription} />
-  );
+  /** 조회 전 → 범위 밖 쪽 → 결과 없음 순서로 하나만 낸다. 셋은 사용자가 할 조치가 서로 다르다. */
+  const emptySlot = (): ReactNode => {
+    if (!hasPeriod) {
+      return (
+        <EmptyState
+          size="sm"
+          title={t.empty.noPeriodTitle}
+          description={t.empty.noPeriodDescription}
+        />
+      );
+    }
+
+    if (isBeyondLast) {
+      return (
+        <EmptyState
+          size="sm"
+          live
+          title={t.empty.beyondLastTitle}
+          description={t.empty.beyondLastDescription}
+          action={
+            <Button variant="outlined" onClick={onFirstPage}>
+              {t.actions.goFirstPage}
+            </Button>
+          }
+        />
+      );
+    }
+
+    return (
+      <EmptyState
+        size="sm"
+        live
+        title={t.empty.noResultTitle}
+        description={t.empty.noResultDescription}
+      />
+    );
+  };
 
   /*
    * `.wide-table`이 표에 최소 폭을 준다 — 폭이 모자라면 짓누르는 대신 가로로 넘긴다.
@@ -105,7 +142,7 @@ export const MessageTable = ({ rows, isLoading, hasPeriod, now }: MessageTablePr
          * 엉뚱한 건이 선택된 것처럼 보인다.
          */
         getRowId={(row) => String(row.integrationMessageId)}
-        empty={emptySlot}
+        empty={emptySlot()}
       />
     </div>
   );

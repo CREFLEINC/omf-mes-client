@@ -95,6 +95,26 @@ const renderScreen = (
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === pathname);
 
+/** 목록과 선택지가 같은 경로를 쓴다. 조건이 실렸는지로 가른다. */
+const NARROWING_KEYS = [
+  'statusCode',
+  'interfaceCode',
+  'directionCode',
+  'targetTypeCode',
+  'retryCountMin',
+  'page',
+];
+
+const isNarrowed = (request: RecordedRequest): boolean =>
+  NARROWING_KEYS.some((key) => request.url.searchParams.has(key));
+
+/** 조건이 걸린 요청 = 목록 조회. 조건 없는 요청 = 선택지 조회(또는 조건 없는 목록 조회). */
+const narrowedRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requestsTo(requests, LIST_PATH).filter(isNarrowed);
+
+const plainRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requestsTo(requests, LIST_PATH).filter((request) => !isNarrowed(request));
+
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
 /** 오늘 날짜(로컬). 기본 기간이 「오늘까지」인지 보기 위해 테스트도 같은 기준으로 만든다. */
@@ -304,5 +324,206 @@ describe('IntegrationSyncScreen — 빈 상태와 실패', () => {
         '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('IntegrationSyncScreen — 조건으로 좁히기', () => {
+  const PERIOD = '?from=2026-08-01&to=2026-08-06';
+
+  it('고른 조건이 요청 쿼리와 주소에 함께 실린다', async () => {
+    const { requests, user } = renderScreen([listRoute()], PERIOD);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('option', { name: 'ERROR' }));
+    await user.type(screen.getByLabelText('시도 횟수 하한'), '2');
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    const last = narrowedRequests(requests).at(-1);
+    expect(last?.url.searchParams.get('statusCode')).toBe('ERROR');
+    expect(last?.url.searchParams.get('retryCountMin')).toBe('2');
+    expect(currentLocation()).toContain('status=ERROR');
+    expect(currentLocation()).toContain('retryMin=2');
+  });
+
+  it('걸리지 않은 조건은 요청에 키 자체를 싣지 않는다', async () => {
+    const { requests } = renderScreen([listRoute()], PERIOD);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    const first = requestsTo(requests, LIST_PATH)[0];
+    for (const key of NARROWING_KEYS) {
+      expect(first?.url.searchParams.has(key)).toBe(false);
+    }
+  });
+
+  it('주소에 있던 조건이 첫 조회에 그대로 실린다', async () => {
+    const { requests } = renderScreen([listRoute()], `${PERIOD}&status=FAILED&dir=OUTBOUND`);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    const listRequest = narrowedRequests(requests)[0];
+    expect(listRequest?.url.searchParams.get('statusCode')).toBe('FAILED');
+    expect(listRequest?.url.searchParams.get('directionCode')).toBe('OUTBOUND');
+  });
+
+  it('조건이 걸리면 선택지는 조건 없는 조회에서 만든다 — 선택지가 자기 자신으로 줄면 안 된다', async () => {
+    const { requests } = renderScreen([listRoute()], `${PERIOD}&status=FAILED`);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    // 조건이 실린 목록 조회와, 조건이 하나도 실리지 않은 선택지 조회가 따로 나간다.
+    expect(narrowedRequests(requests)).toHaveLength(1);
+    expect(plainRequests(requests)).toHaveLength(1);
+    for (const key of NARROWING_KEYS) {
+      expect(plainRequests(requests)[0]?.url.searchParams.has(key)).toBe(false);
+    }
+  });
+
+  it('조건이 걸린 상태에서도 선택지에 다른 값이 남는다', async () => {
+    const { user } = renderScreen([listRoute()], `${PERIOD}&status=FAILED`);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    await user.click(screen.getByRole('combobox', { name: '상태' }));
+
+    expect(screen.getByRole('option', { name: 'ERROR' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'FAILED' })).toBeInTheDocument();
+  });
+
+  it('고른 값이 선택지에 없어도 목록에 남는다 — 없으면 해제할 방법이 사라진다', async () => {
+    const { user } = renderScreen([listRoute()], `${PERIOD}&status=GONE_CODE`);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    await user.click(screen.getByRole('combobox', { name: '상태' }));
+
+    expect(screen.getByRole('option', { name: 'GONE_CODE' })).toBeInTheDocument();
+  });
+
+  it('조건 칩의 ×는 그 조건만 풀고 다시 조회한다', async () => {
+    const { requests, user } = renderScreen([listRoute()], `${PERIOD}&status=FAILED&dir=OUTBOUND`);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    await user.click(screen.getByRole('button', { name: '상태 조건 제거' }));
+
+    expect(currentLocation()).not.toContain('status=');
+    expect(currentLocation()).toContain('dir=OUTBOUND');
+
+    const last = narrowedRequests(requests).at(-1);
+    expect(last?.url.searchParams.has('statusCode')).toBe(false);
+    expect(last?.url.searchParams.get('directionCode')).toBe('OUTBOUND');
+  });
+
+  it('초기화는 기간을 기본값으로 되돌리고 나머지 조건과 쪽을 지운다', async () => {
+    const { user } = renderScreen([listRoute()], `${PERIOD}&status=FAILED&page=3`);
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    const location = currentLocation();
+    expect(location).toContain(`to=${todayText()}`);
+    expect(location).not.toContain('status=');
+    expect(location).not.toContain('page=');
+  });
+});
+
+describe('IntegrationSyncScreen — 쪽 이동', () => {
+  const PERIOD = '?from=2026-08-01&to=2026-08-06';
+
+  it('다음을 누르면 쪽이 하나 늘고 요청에 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(messageRowFixtures, { page: 1, size: 3, total: 10 })],
+      PERIOD,
+    );
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(currentLocation()).toContain('page=2');
+    expect(narrowedRequests(requests).at(-1)?.url.searchParams.get('page')).toBe('2');
+  });
+
+  it('첫 쪽이면 주소와 요청에 page 키가 없다', async () => {
+    const { requests } = renderScreen(
+      [listRoute(messageRowFixtures, { page: 1, size: 3, total: 10 })],
+      PERIOD,
+    );
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    expect(currentLocation()).not.toContain('page=');
+    expect(requestsTo(requests, LIST_PATH)[0]?.url.searchParams.has('page')).toBe(false);
+  });
+
+  it('지금 위치를 받은 건수와 전체 건수로 계산해 낸다', async () => {
+    renderScreen(
+      [listRoute(messageRowFixtures, { page: 3, size: 3, total: 10 })],
+      `${PERIOD}&page=3`,
+    );
+
+    expect(await screen.findByText('7–9 / 전체 10건')).toBeInTheDocument();
+  });
+
+  it('마지막 쪽에서는 다음이 잠긴다', async () => {
+    renderScreen(
+      [listRoute(messageRowFixtures, { page: 4, size: 3, total: 12 })],
+      `${PERIOD}&page=4`,
+    );
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
+  });
+
+  it('전체가 쪽 크기의 배수여도 마지막 쪽에서 다음이 잠긴다', async () => {
+    renderScreen(
+      [listRoute(messageRowFixtures, { page: 2, size: 3, total: 6 })],
+      `${PERIOD}&page=2`,
+    );
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
+  });
+
+  it('0건이면 전체 0건이 보이고 양쪽 이동이 다 잠긴다', async () => {
+    renderScreen([listRoute([], { page: 1, size: 50, total: 0 })], PERIOD);
+
+    expect(await screen.findByText('전체 0건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '이전' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
+  });
+
+  it('마지막 쪽보다 뒤를 가리키면 첫 쪽으로 갈 수단과 함께 안내한다', async () => {
+    const { user } = renderScreen(
+      [listRoute([], { page: 9, size: 3, total: 10 })],
+      `${PERIOD}&page=9`,
+    );
+
+    expect(await screen.findByText('이 쪽에는 결과가 없습니다')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '첫 쪽으로' }));
+
+    expect(currentLocation()).not.toContain('page=');
+  });
+
+  it('조건을 바꾸면 쪽이 첫 쪽으로 되돌아간다 — 좁힌 결과가 그 쪽에 못 미친다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(messageRowFixtures, { page: 3, size: 3, total: 10 })],
+      `${PERIOD}&page=3`,
+    );
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    await user.click(screen.getByRole('combobox', { name: '상태' }));
+    await user.click(screen.getByRole('option', { name: 'ERROR' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    expect(currentLocation()).not.toContain('page=');
+    expect(narrowedRequests(requests).at(-1)?.url.searchParams.has('page')).toBe(false);
+  });
+
+  it('조건 칩으로 조건을 풀어도 쪽이 첫 쪽으로 되돌아간다', async () => {
+    const { user } = renderScreen(
+      [listRoute(messageRowFixtures, { page: 3, size: 3, total: 10 })],
+      `${PERIOD}&status=FAILED&page=3`,
+    );
+    await screen.findByText('SAMPLE-KEY-0001');
+
+    await user.click(screen.getByRole('button', { name: '상태 조건 제거' }));
+
+    expect(currentLocation()).not.toContain('page=');
   });
 });
