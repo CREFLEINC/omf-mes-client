@@ -1,0 +1,14 @@
+# 빈 이슈를 막지 않는다. 이 저장소의 이슈 폼은 「착수 가능 통지」 하나뿐이라
+# 빈 이슈를 막으면 버그·작업·문서 같은 나머지 이슈가 모두 그 폼으로 밀려 들어와 신호가 망가진다.
+blank_issues_enabled: true
+
+contact_links:
+  - name: 설계에 묻고 싶다 (프론트 → 설계)
+    url: https://github.com/CREFLEINC/omf-mes/issues/new
+    about: 화면·계약에 대한 질문은 여기가 아니라 설계 저장소에 [client→uiux] 접두로 올린다. 설계 저장소는 비공개라 권한이 있는 사람에게만 열린다.
+  - name: 디자인 시스템 컴포넌트 요청
+    url: https://github.com/CREFLEINC/design-system-v2-webui/issues/new
+    about: 없는 컴포넌트나 부족한 변형은 디자인 시스템 저장소로. 그쪽도 공개이므로 제품 화면명·고객사명·와이어 캡처를 붙이지 않고 컴포넌트의 언어로만 쓴다.
+  - name: 착수 규칙 전문
+    url: https://github.com/CREFLEINC/omf-mes-client/blob/main/docs/uiux-handoff.md
+    about: 세 채널(착수 가능 · 변경 통지 ⛔/⚠ · 질문)의 구분, 공개 저장소 경계, 프론트 응답 규약을 정리한 문서.
