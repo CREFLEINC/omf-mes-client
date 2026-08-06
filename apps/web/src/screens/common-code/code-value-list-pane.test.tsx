@@ -23,6 +23,7 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeValueListPane>[0]> 
       onChangePage={onChangePage}
       selectedCodeValueId={null}
       onSelect={onSelect}
+      addAction={<button type="button">코드값 추가</button>}
       loadError={null}
       {...overrides}
     />,
@@ -141,10 +142,12 @@ describe('CodeValueListPane — 안내', () => {
 });
 
 describe('CodeValueListPane — 상태 갈래', () => {
-  it('그룹을 고르기 전에는 안내만 내고 표·확인칸을 두지 않는다', () => {
+  /* 「코드값 추가」는 감추지 않는다 — 감추면 「이 화면에는 없는 기능」으로 오해한다(배치 규범 4). */
+  it('그룹을 고르기 전에는 안내와 추가 자리만 내고 표·확인칸을 두지 않는다', () => {
     renderPane({ isGroupSelected: false, codeValues: [] });
 
     expect(screen.getByText('좌측에서 코드그룹을 먼저 고르세요')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '코드값 추가' })).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });

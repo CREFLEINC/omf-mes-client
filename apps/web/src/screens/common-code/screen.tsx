@@ -1,7 +1,7 @@
 import { Breadcrumb, EmptyState, PageHeader, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -94,6 +94,7 @@ export const CommonCodeScreen = () => {
   const codeValueIncludeInactive = searchParams.get('vinactive') === '1';
   const codeValuePage = readPage(searchParams, 'vpage');
   const selectedCodeValueId = Number(searchParams.get('val') ?? '') || null;
+  const isCreatingCodeValue = searchParams.get('new') === 'value';
 
   const [formState, setFormState] = useState<CodeGroupFormState | null>(null);
 
@@ -126,14 +127,41 @@ export const CommonCodeScreen = () => {
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
 
-  const selectCodeGroup = (codeGroupId: number) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('grp', String(codeGroupId));
-    // 다른 그룹의 코드값을 가리키면 안 된다.
-    next.delete('val');
-    next.delete('vpage');
-    next.delete('new');
+  /**
+   * 주소의 일부만 고친다.
+   *
+   * **한 조작이 이 함수를 두 번 부르는 자리가 있다** — 예를 들어 코드값 등록 폼을 열 때
+   * 등록 표시를 켜면서 선택을 비운다. 그때 두 갱신이 각각 지금 렌더의 주소를 밑그림으로 쓰면
+   * 뒤 갱신이 앞 갱신을 지운다. `setSearchParams`의 되돌림 함수 형태도 마찬가지다 —
+   * 그 함수가 받는 값이 **지금 렌더의 주소**라 한 틱 안의 두 호출이 서로를 보지 못한다.
+   *
+   * 그래서 방금 만든 주소를 참조에 남겨 다음 호출이 그 위에 이어 붙이게 한다.
+   * 참조는 렌더마다 주소로 다시 맞춰지므로 실제 주소와 어긋난 채 남지 않는다.
+   */
+  const pendingParamsRef = useRef(searchParams);
+  pendingParamsRef.current = searchParams;
+
+  const patchSearchParams = (patch: (next: URLSearchParams) => void) => {
+    const next = new URLSearchParams(pendingParamsRef.current);
+    patch(next);
+    pendingParamsRef.current = next;
     setSearchParams(next);
+  };
+
+  /** 주소를 통째로 갈아 끼운다. 참조도 함께 옮겨 뒤따르는 부분 갱신이 옛 주소를 밑그림으로 쓰지 않게 한다. */
+  const replaceSearchParams = (next: URLSearchParams) => {
+    pendingParamsRef.current = next;
+    setSearchParams(next);
+  };
+
+  const selectCodeGroup = (codeGroupId: number) => {
+    patchSearchParams((next) => {
+      next.set('grp', String(codeGroupId));
+      // 다른 그룹의 코드값을 가리키면 안 된다.
+      next.delete('val');
+      next.delete('vpage');
+      next.delete('new');
+    });
   };
 
   const codeGroupWrite = useMasterWrite<CodeGroupFormValues, CodeGroup>({
@@ -235,12 +263,12 @@ export const CommonCodeScreen = () => {
    */
   const applyFilters = (next: CodeGroupFilters) => {
     resetCodeGroupEditing();
-    setSearchParams(toSearchParams(tab.id, next, 1));
+    replaceSearchParams(toSearchParams(tab.id, next, 1));
   };
 
   const changeCodeGroupPage = (nextPage: number) => {
     resetCodeGroupEditing();
-    setSearchParams(toSearchParams(tab.id, filters, nextPage));
+    replaceSearchParams(toSearchParams(tab.id, filters, nextPage));
   };
 
   const handleSelectCodeGroup = (codeGroupId: number) => {
@@ -252,13 +280,13 @@ export const CommonCodeScreen = () => {
     resetCodeGroupEditing();
     setCreateValues(emptyCodeGroupFormValues());
 
-    const next = new URLSearchParams(searchParams);
-    next.set('new', 'group');
-    // 등록 폼이 열려 있는 동안 고른 그룹의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
-    next.delete('grp');
-    next.delete('val');
-    next.delete('vpage');
-    setSearchParams(next);
+    patchSearchParams((next) => {
+      next.set('new', 'group');
+      // 등록 폼이 열려 있는 동안 고른 그룹의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
+      next.delete('grp');
+      next.delete('val');
+      next.delete('vpage');
+    });
   };
 
   const closeCreateForm = () => {
@@ -266,50 +294,59 @@ export const CommonCodeScreen = () => {
     setCreateFieldErrors({});
     codeGroupCreateWrite.reset();
 
-    const next = new URLSearchParams(searchParams);
-    next.delete('new');
-    setSearchParams(next);
+    patchSearchParams((next) => {
+      next.delete('new');
+    });
   };
 
   const selectCodeValue = (codeValueId: number | null) => {
-    const next = new URLSearchParams(searchParams);
+    patchSearchParams((next) => {
+      if (codeValueId === null) {
+        next.delete('val');
+      } else {
+        next.set('val', String(codeValueId));
+      }
+    });
+  };
 
-    if (codeValueId === null) {
-      next.delete('val');
-    } else {
-      next.set('val', String(codeValueId));
-    }
+  /** 코드값 등록 폼의 여닫음도 주소가 소유한다 — 새로고침이 같은 화면을 낸다. */
+  const changeCodeValueCreating = (isCreatingNext: boolean) => {
+    patchSearchParams((next) => {
+      if (isCreatingNext) {
+        next.set('new', 'value');
+        return;
+      }
 
-    setSearchParams(next);
+      // 코드그룹 등록 폼이 열려 있는 상태를 이 함수가 닫아 버리면 안 된다.
+      if (next.get('new') === 'value') next.delete('new');
+    });
   };
 
   /** 코드값 조건이 바뀌면 보이는 행이 달라진다 — 코드값 선택과 쪽을 함께 비운다. */
   const changeCodeValueIncludeInactive = (includeInactive: boolean) => {
-    const next = new URLSearchParams(searchParams);
+    patchSearchParams((next) => {
+      if (includeInactive) {
+        next.set('vinactive', '1');
+      } else {
+        next.delete('vinactive');
+      }
 
-    if (includeInactive) {
-      next.set('vinactive', '1');
-    } else {
-      next.delete('vinactive');
-    }
-
-    next.delete('val');
-    next.delete('vpage');
-    setSearchParams(next);
+      next.delete('val');
+      next.delete('vpage');
+    });
   };
 
   const changeCodeValuePage = (nextPage: number) => {
-    const next = new URLSearchParams(searchParams);
+    patchSearchParams((next) => {
+      if (nextPage > 1) {
+        next.set('vpage', String(nextPage));
+      } else {
+        next.delete('vpage');
+      }
 
-    if (nextPage > 1) {
-      next.set('vpage', String(nextPage));
-    } else {
-      next.delete('vpage');
-    }
-
-    // 쪽을 옮기면 보이는 행이 달라진다 — 목록에 없는 코드값을 가리키면 안 된다.
-    next.delete('val');
-    setSearchParams(next);
+      // 쪽을 옮기면 보이는 행이 달라진다 — 목록에 없는 코드값을 가리키면 안 된다.
+      next.delete('val');
+    });
   };
 
   /*
@@ -318,7 +355,7 @@ export const CommonCodeScreen = () => {
    */
   const changeTab = (value: string) => {
     resetCodeGroupEditing();
-    setSearchParams(tabSearchParams(value));
+    replaceSearchParams(tabSearchParams(value));
   };
 
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
@@ -510,6 +547,8 @@ export const CommonCodeScreen = () => {
           codeGroupId={selectedCodeGroupId}
           selectedCodeValueId={selectedCodeValueId}
           onSelectCodeValue={selectCodeValue}
+          isCreating={isCreatingCodeValue}
+          onCreatingChange={changeCodeValueCreating}
           includeInactive={codeValueIncludeInactive}
           onIncludeInactiveChange={changeCodeValueIncludeInactive}
           page={codeValuePage}

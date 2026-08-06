@@ -1083,3 +1083,505 @@ describe('CommonCodeScreen — 코드값 목록 (C23·C24·C25·C29)', () => {
     expect(within(codeValuePane()).queryByRole('table')).not.toBeInTheDocument();
   });
 });
+
+describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C36·C40)', () => {
+  const codeValueDetailRoute = (
+    codeValueId = 2001,
+    editability: Editability = {
+      codeEditable: false,
+      reason: 'NOT_COUNTABLE',
+      referenceCount: null,
+    },
+  ): StubRoute => ({
+    match: (request) => isGet(request, `${CODE_VALUES_PATH}/${String(codeValueId)}`),
+    respond: () =>
+      jsonResponse(
+        {
+          codeValue: codeValueFixtures.find((row) => row.codeValueId === codeValueId),
+          editability,
+        },
+        { headers: { ETag: 'W/"3"' } },
+      ),
+  });
+
+  const updateRoute: StubRoute = {
+    match: (request) =>
+      request.method === 'PUT' && new URL(request.url).pathname.startsWith(`${CODE_VALUES_PATH}/`),
+    respond: (request) =>
+      jsonResponse(
+        {
+          ...codeValueFixtures[0],
+          codeValueId: Number(new URL(request.url).pathname.split('/').pop()),
+          displayOrder: 5,
+        },
+        { headers: { ETag: 'W/"4"' } },
+      ),
+  };
+
+  const openCodeValueForm = async (routes: StubRoute[] = []) => {
+    const rendered = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        codeValueDetailRoute(),
+        ...routes,
+      ],
+      '?grp=1001&val=2001',
+    );
+    // 구획은 불러오는 중에도 있다 — 입력칸이 나와야 상세가 도착한 것이다.
+    await screen.findByLabelText('코드명');
+
+    return rendered;
+  };
+
+  const codeValueFormPane = (): HTMLElement => screen.getByRole('region', { name: '코드값 정보' });
+
+  /* C30 */
+  it('코드값을 고르면 상세 요청이 한 번 나간다', async () => {
+    const { requests, user } = renderScreen([
+      codeGroupListRoute(),
+      codeGroupDetailRoute(),
+      codeValueListRoute(),
+      codeValueDetailRoute(2002),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-GRP-01' }));
+    await screen.findByRole('button', { name: 'SYN-CV-02' });
+
+    expect(requestsTo(requests, `${CODE_VALUES_PATH}/2002`)).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-02' }));
+    await screen.findByLabelText('코드명');
+
+    expect(requestsTo(requests, `${CODE_VALUES_PATH}/2002`)).toHaveLength(1);
+  });
+
+  it('폼이 상세 값으로 채워진다', async () => {
+    await openCodeValueForm();
+
+    expect(screen.getByLabelText('코드')).toHaveValue('SYN-CV-01');
+    expect(screen.getByLabelText('정렬 순서')).toHaveValue(30);
+    expect(screen.getByLabelText('유효 시작')).toHaveValue('2026-07-01');
+  });
+
+  /* C36 — 코드값의 코드는 참조 건수를 셀 수 없어 수정에서 언제나 잠긴다(계약). */
+  it('수정 폼의 코드 칸이 잠기고 셀 수 없다는 문구가 붙는다', async () => {
+    await openCodeValueForm();
+
+    expect(screen.getByLabelText('코드')).toBeDisabled();
+    expect(
+      screen.getByText(
+        '이 코드를 참조하는 자료의 수를 확인할 수 없어 코드를 잠급니다. 변경이 필요하면 담당자에게 문의하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /* C31 */
+  it('저장이 PUT으로 나가고 UUID 멱등 키와 If-Match가 둘 다 실린다', async () => {
+    const { requests, user } = await openCodeValueForm([updateRoute]);
+
+    await user.type(screen.getByLabelText('코드명'), 'X');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
+
+    const put = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'PUT');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+
+    expect(put.url.pathname).toBe(`${CODE_VALUES_PATH}/2001`);
+    expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(put.headers.get('If-Match')).toBe('W/"3"');
+  });
+
+  /* C32 */
+  it('저장 본문에 codeGroupId·isActive·codeValueId가 없다', async () => {
+    const { requests, user } = await openCodeValueForm([updateRoute]);
+
+    await user.type(screen.getByLabelText('코드명'), 'X');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
+
+    const put = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'PUT');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+
+    const body = JSON.parse(put.body) as Record<string, unknown>;
+    expect('codeGroupId' in body).toBe(false);
+    expect('isActive' in body).toBe(false);
+    expect('codeValueId' in body).toBe(false);
+  });
+
+  /*
+   * C33 — **전체 치환이 아니다.** 정렬 순서를 고쳐도 그 행 하나만 보낸다.
+   * `display_order`에 유일 제약이 없어 중간 상태가 제약을 위반하지 않는다.
+   */
+  it('정렬 순서를 고쳐 저장하면 PUT 요청이 정확히 한 번 나간다', async () => {
+    const { requests, user } = await openCodeValueForm([updateRoute]);
+
+    await user.clear(screen.getByLabelText('정렬 순서'));
+    await user.type(screen.getByLabelText('정렬 순서'), '5');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    const puts = requests.filter((request) => request.method === 'PUT');
+    expect(puts[0]?.url.pathname).toBe(`${CODE_VALUES_PATH}/2001`);
+    // 보이는 다른 행(2002·2003)에는 요청이 나가지 않는다.
+    expect(requestsTo(requests, `${CODE_VALUES_PATH}/2002`)).toHaveLength(0);
+    expect(requestsTo(requests, `${CODE_VALUES_PATH}/2003`)).toHaveLength(0);
+    expect(JSON.parse(puts[0]?.body ?? '{}')).toMatchObject({ displayOrder: 5 });
+  });
+
+  /* C34 */
+  it('정렬 순서가 정수가 아니면 요청이 나가지 않고 인라인 오류가 뜬다', async () => {
+    const { requests, user } = await openCodeValueForm([updateRoute]);
+
+    await user.clear(screen.getByLabelText('정렬 순서'));
+    await user.type(screen.getByLabelText('정렬 순서'), '1.5');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('정렬 순서는 정수로 입력하세요.')).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
+  it('정렬 순서를 비우면 요청이 나가지 않는다', async () => {
+    const { requests, user } = await openCodeValueForm([updateRoute]);
+
+    await user.clear(screen.getByLabelText('정렬 순서'));
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText('필수 입력 항목입니다.')).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
+  /* 계약에 하한이 없다 — 화면이 서버가 허용한 값을 막으면 안 된다. */
+  it('음수 정렬 순서는 막지 않고 그대로 보낸다', async () => {
+    const { requests, user } = await openCodeValueForm([updateRoute]);
+
+    await user.clear(screen.getByLabelText('정렬 순서'));
+    await user.type(screen.getByLabelText('정렬 순서'), '-5');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
+
+    const put = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'PUT');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+
+    expect(JSON.parse(put.body)).toMatchObject({ displayOrder: -5 });
+  });
+
+  /* C35 */
+  it('유효 종료가 유효 시작보다 앞이면 두 칸 모두에 오류가 뜨고 요청이 나가지 않는다', async () => {
+    const { requests, user } = await openCodeValueForm([updateRoute]);
+
+    await user.clear(screen.getByLabelText('유효 종료'));
+    await user.type(screen.getByLabelText('유효 종료'), '2026-01-01');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findAllByText('유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.'),
+    ).toHaveLength(2);
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
+  it('유효기간이 한쪽만 있으면 막지 않는다', async () => {
+    const { requests, user } = await openCodeValueForm([updateRoute]);
+
+    await user.clear(screen.getByLabelText('유효 종료'));
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
+
+    const put = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'PUT');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+
+    expect(JSON.parse(put.body)).toMatchObject({ effectiveTo: null });
+  });
+
+  /* C40 */
+  it('저장에 성공하면 목록과 상세가 다시 조회된다', async () => {
+    const { requests, user } = await openCodeValueForm([updateRoute]);
+    const beforeList = codeValueRequests(requests).length;
+    const beforeDetail = requestsTo(requests, `${CODE_VALUES_PATH}/2001`).length;
+
+    await user.type(screen.getByLabelText('코드명'), 'X');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(codeValueRequests(requests).length).toBeGreaterThan(beforeList);
+      expect(requestsTo(requests, `${CODE_VALUES_PATH}/2001`).length).toBeGreaterThan(beforeDetail);
+    });
+  });
+
+  it('409면 원인별 문구와 최신 불러오기가 나온다', async () => {
+    const { user } = await openCodeValueForm([
+      {
+        match: (request) =>
+          request.method === 'PUT' && new URL(request.url).pathname === `${CODE_VALUES_PATH}/2001`,
+        respond: () => jsonResponse({ conflictCause: 'workerLease', message: '' }, { status: 409 }),
+      },
+    ]);
+
+    await user.type(screen.getByLabelText('코드명'), 'X');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText(
+        '다른 작업에서 이 항목을 처리하는 중입니다. 잠시 뒤 최신 내용을 불러와 다시 저장하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 코드값 등록 (C37·C38)', () => {
+  const createdCodeValue = {
+    codeValueId: 2009,
+    codeGroupId: 1001,
+    code: 'SYN-CV-09',
+    codeName: '합성 코드값 I',
+    displayOrder: 40,
+    effectiveFrom: null,
+    effectiveTo: null,
+    isActive: true,
+  };
+
+  const createRoute: StubRoute = {
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === CODE_VALUES_PATH,
+    respond: () => jsonResponse(createdCodeValue, { status: 201 }),
+  };
+
+  const createdDetailRoute: StubRoute = {
+    match: (request) => isGet(request, `${CODE_VALUES_PATH}/2009`),
+    respond: () =>
+      jsonResponse(
+        {
+          codeValue: createdCodeValue,
+          editability: { codeEditable: false, reason: 'NOT_COUNTABLE', referenceCount: null },
+        },
+        { headers: { ETag: 'W/"1"' } },
+      ),
+  };
+
+  const codeValueFormPane = (): HTMLElement => screen.getByRole('region', { name: '코드값 정보' });
+
+  /* C38 — 계약이 그룹 번호를 필수 쿼리로 두어 그룹 없이는 만들 자리 자체가 없다. */
+  it('그룹을 고르지 않았으면 코드값 추가가 비활성이고 사유가 붙는다', async () => {
+    renderScreen([codeGroupListRoute()]);
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    const button = within(codeValuePane()).getByRole('button', { name: '코드값 추가' });
+    expect(button).toBeDisabled();
+
+    const noteId = button.getAttribute('aria-describedby');
+    expect(noteId).not.toBeNull();
+    expect(document.getElementById(noteId as string)).toHaveTextContent(
+      '코드값 추가는 좌측에서 코드그룹을 고른 뒤에 할 수 있습니다.',
+    );
+  });
+
+  it('등록 저장이 POST로 나가고 본문에 고른 그룹 번호가 실리며 If-Match가 없다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        createRoute,
+        createdDetailRoute,
+      ],
+      '?grp=1001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
+
+    await user.type(await screen.findByLabelText('코드'), 'SYN-CV-09');
+    await user.type(screen.getByLabelText('코드명'), '합성 코드값 I');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '코드값 추가' }));
+
+    const post = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'POST');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+
+    expect(post.url.pathname).toBe(CODE_VALUES_PATH);
+    expect(post.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(post.headers.has('If-Match')).toBe(false);
+    expect(JSON.parse(post.body)).toMatchObject({ codeGroupId: 1001 });
+  });
+
+  /* C37 — 옮기지 않으면 사용자가 방금 만든 코드값을 직접 찾아야 한다. */
+  it('등록에 성공하면 새 코드값으로 옮겨 가고 목록이 다시 조회된다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        createRoute,
+        createdDetailRoute,
+      ],
+      '?grp=1001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+    const beforeList = codeValueRequests(requests).length;
+
+    await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
+
+    await user.type(await screen.findByLabelText('코드'), 'SYN-CV-09');
+    await user.type(screen.getByLabelText('코드명'), '합성 코드값 I');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '코드값 추가' }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, `${CODE_VALUES_PATH}/2009`)).toHaveLength(1);
+    });
+    expect(codeValueRequests(requests).length).toBeGreaterThan(beforeList);
+  });
+
+  /* 등록 폼이 열려 있는 동안 고른 코드값의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다. */
+  it('등록 폼을 열면 고른 코드값의 상세를 조회하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(),
+        {
+          match: (request) => isGet(request, `${CODE_VALUES_PATH}/2001`),
+          respond: () =>
+            jsonResponse(
+              {
+                codeValue: codeValueFixtures[0],
+                editability: { codeEditable: false, reason: 'NOT_COUNTABLE', referenceCount: null },
+              },
+              { headers: { ETag: 'W/"3"' } },
+            ),
+        },
+      ],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByLabelText('코드명');
+    const before = requestsTo(requests, `${CODE_VALUES_PATH}/2001`).length;
+
+    await user.click(within(codeValuePane()).getByRole('button', { name: '코드값 추가' }));
+
+    expect(screen.getByLabelText('코드')).toHaveValue('');
+    expect(requestsTo(requests, `${CODE_VALUES_PATH}/2001`)).toHaveLength(before);
+  });
+});
+
+describe('CommonCodeScreen — 코드값 사용 중지 (C39)', () => {
+  const detailRoute: StubRoute = {
+    match: (request) => isGet(request, `${CODE_VALUES_PATH}/2001`),
+    respond: () =>
+      jsonResponse(
+        {
+          codeValue: codeValueFixtures[0],
+          editability: { codeEditable: false, reason: 'NOT_COUNTABLE', referenceCount: null },
+        },
+        { headers: { ETag: 'W/"3"' } },
+      ),
+  };
+
+  const deactivateRoute: StubRoute = {
+    match: (request) =>
+      request.method === 'POST' &&
+      new URL(request.url).pathname === `${CODE_VALUES_PATH}/2001:deactivate`,
+    respond: () => jsonResponse({ ...codeValueFixtures[0], isActive: false }),
+  };
+
+  const openForm = async (routes: StubRoute[] = [deactivateRoute]) => {
+    const rendered = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), detailRoute, ...routes],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByLabelText('코드명');
+
+    return rendered;
+  };
+
+  const codeValueFormPane = (): HTMLElement => screen.getByRole('region', { name: '코드값 정보' });
+
+  /*
+   * 계약 서술은 「확인 다이얼로그 없이」이지만 그 이유가 「참조 건수를 셀 수 없어」다 —
+   * 못 보여 주는 것은 건수이지 확인 절차가 아니다. 되돌리는 경로가 없는 조작이라 확인을 둔다.
+   */
+  it('사용 중지를 누르면 확인 창이 열리고 확인 전에는 요청이 나가지 않는다', async () => {
+    const { requests, user } = await openForm();
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'POST')).toBe(false);
+  });
+
+  it('확인하면 :deactivate로 나가고 멱등 키와 If-Match가 둘 다 실린다', async () => {
+    const { requests, user } = await openForm();
+
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    const post = await waitFor(() => {
+      const found = requests.find((request) => request.method === 'POST');
+      expect(found).toBeDefined();
+      return found as RecordedRequest;
+    });
+
+    expect(post.url.pathname).toBe(`${CODE_VALUES_PATH}/2001:deactivate`);
+    expect(post.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(post.headers.get('If-Match')).toBe('W/"3"');
+  });
+
+  it('확인 창에 참조 건수를 내지 않는다', async () => {
+    const { user } = await openForm();
+
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' }));
+
+    expect(screen.getByRole('dialog').textContent).not.toMatch(/\d+\s*건/);
+  });
+
+  it('중지에 성공하면 목록과 상세가 다시 조회된다', async () => {
+    const { requests, user } = await openForm();
+    const beforeList = codeValueRequests(requests).length;
+    const beforeDetail = requestsTo(requests, `${CODE_VALUES_PATH}/2001`).length;
+
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    await waitFor(() => {
+      expect(codeValueRequests(requests).length).toBeGreaterThan(beforeList);
+      expect(requestsTo(requests, `${CODE_VALUES_PATH}/2001`).length).toBeGreaterThan(beforeDetail);
+    });
+  });
+
+  it('중지에 실패해도 확인 창이 닫히지 않는다', async () => {
+    const { user } = await openForm([
+      {
+        match: (request) =>
+          request.method === 'POST' &&
+          new URL(request.url).pathname === `${CODE_VALUES_PATH}/2001:deactivate`,
+        respond: () => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+      },
+    ]);
+
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    expect(
+      await within(screen.getByRole('dialog')).findByText(
+        '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});

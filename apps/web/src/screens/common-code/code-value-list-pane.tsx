@@ -27,6 +27,8 @@ export interface CodeValueListPaneProps {
   onChangePage: (page: number) => void;
   selectedCodeValueId: number | null;
   onSelect: (codeValueId: number) => void;
+  /** 「코드값 추가」 자리. 그룹을 고르지 않았을 때의 비활성 처리는 조립부가 정한다 */
+  addAction: ReactNode;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 코드값이 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -65,6 +67,7 @@ export const CodeValueListPane = ({
   onChangePage,
   selectedCodeValueId,
   onSelect,
+  addAction,
   loadError,
 }: CodeValueListPaneProps) => {
   const rows = sortForDisplay(codeValues);
@@ -174,6 +177,11 @@ export const CodeValueListPane = ({
     return (
       <section className="pane" aria-label={t.paneTitle}>
         <EmptyState size="sm" title={t.empty.groupNotSelected} />
+        {/*
+         * 그룹을 고르기 전에도 「코드값 추가」를 감추지 않는다 — 감추면 사용자가
+         * 「이 화면에는 없는 기능」으로 오해하고 다른 곳을 찾는다(배치 규범 4).
+         */}
+        <div className="filter-bar">{addAction}</div>
       </section>
     );
   }
@@ -209,6 +217,8 @@ export const CodeValueListPane = ({
       </div>
 
       {listSlot()}
+
+      <div className="filter-bar">{addAction}</div>
     </section>
   );
 };

@@ -1,8 +1,11 @@
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { CodeValue, CodeValuePageMeta } from './code-value-types';
+
+type CodeValueDetailResponse = components['schemas']['CodeValueDetailResponse'];
 
 /**
  * **코드값 편집 한 벌**의 조회와 캐시 키.
@@ -87,3 +90,27 @@ export const useCodeValueList = (
  */
 export const codeValueDetailPath = (codeValueId: number): string =>
   `/mdm/code-values/${String(codeValueId)}`;
+
+/**
+ * 코드값 상세. 낙관적 잠금 토큰(ETag)과 코드 편집 가능 여부가 이 응답으로 온다 —
+ * 목록 행만으로는 저장을 시작할 수 없다.
+ */
+export const useCodeValueDetail = (
+  codeValueId: number | null,
+): UseQueryResult<CodeValueDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: codeValueKeys.detail(codeValueId ?? 0),
+    enabled: codeValueId !== null,
+    queryFn: () => {
+      if (codeValueId === null) {
+        throw new Error('코드값을 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/code-values/{codeValueId}', { params: { path: { codeValueId } } }),
+      );
+    },
+  });
+};
