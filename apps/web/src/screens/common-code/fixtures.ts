@@ -1,3 +1,4 @@
+import type { CodeValue } from './code-value-types';
 import type { CodeGroup } from './types';
 
 /**
@@ -34,6 +35,46 @@ export const codeGroupFixtures: CodeGroup[] = [
     groupCode: 'SYN-GRP-03',
     groupName: '합성 코드그룹 C',
     description: '합성 설명 C',
+    isActive: false,
+  },
+];
+
+/**
+ * 코드그룹 1001의 코드값 3건.
+ *
+ * **정렬 순서를 일부러 뒤섞어 둔다**(30·10·20). 화면이 서버가 준 배열 순서를 그대로 쓰지 않고
+ * 다시 세우는지 확인하는 것이 이 픽스처의 목적이다.
+ * 2003은 **유효기간이 한쪽만 있고 미사용**이다 — 「—」 표기와 「(미사용)」 접미를 함께 볼 수 있다.
+ */
+export const codeValueFixtures: CodeValue[] = [
+  {
+    codeValueId: 2001,
+    codeGroupId: 1001,
+    code: 'SYN-CV-01',
+    codeName: '합성 코드값 A',
+    displayOrder: 30,
+    effectiveFrom: '2026-07-01',
+    effectiveTo: '2026-12-31',
+    isActive: true,
+  },
+  {
+    codeValueId: 2002,
+    codeGroupId: 1001,
+    code: 'SYN-CV-02',
+    codeName: '합성 코드값 B',
+    displayOrder: 10,
+    effectiveFrom: null,
+    effectiveTo: null,
+    isActive: true,
+  },
+  {
+    codeValueId: 2003,
+    codeGroupId: 1001,
+    code: 'SYN-CV-03',
+    codeName: '합성 코드값 C',
+    displayOrder: 20,
+    effectiveFrom: '2026-08-01',
+    effectiveTo: null,
     isActive: false,
   },
 ];

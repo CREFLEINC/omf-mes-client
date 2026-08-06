@@ -1026,7 +1026,11 @@ const commonCode = {
       noneDescription: '「그룹 추가」로 첫 코드그룹을 등록하세요.',
       noMatchTitle: '조건에 맞는 코드그룹이 없습니다',
       noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-      notSelected: '좌측에서 코드그룹을 먼저 고르세요',
+      /*
+       * 코드값 구획도 같은 자리에서 「먼저 고르세요」를 낸다 — 같은 문장을 두 번 쌓으면
+       * 무엇을 하라는 안내인지 오히려 흐려진다. 이 구획은 무엇이 채워지는지로 말한다.
+       */
+      notSelected: '좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다',
     },
     validation: {
       required: '필수 입력 항목입니다.',
@@ -1034,6 +1038,72 @@ const commonCode = {
       groupNameBlank: '그룹명은 공백만으로 지정할 수 없습니다.',
       groupCodeTooLong: '그룹코드는 50자를 넘을 수 없습니다.',
       groupNameTooLong: '그룹명은 200자를 넘을 수 없습니다.',
+    },
+  },
+  /**
+   * **코드값 편집 한 벌의 문구.** 이 묶음은 통째로 옮겨질 것을 전제로 모아 둔다 —
+   * 다른 자원의 문구와 섞으면 옮길 때 어느 열쇠가 딸려 가야 하는지 가릴 수 없다.
+   *
+   * 구획 이름·액션·쪽 이동 접근 이름까지 여기 둔다. 바깥에서 빌려 쓰는 것은
+   * 자원 이름이 없는 공통 문구(`common`·`conflict`·`httpError`)뿐이다.
+   */
+  codeValue: {
+    paneTitle: '코드값',
+    formPaneTitle: '코드값 정보',
+    pageNavLabel: '코드값 쪽 이동',
+    actions: {
+      add: '코드값 추가',
+    },
+    actionReasons: {
+      /* 계약이 `codeGroupId`를 필수 쿼리로 두었다 — 그룹 없이는 만들 자리 자체가 없다. */
+      addNeedsGroup: '코드값 추가는 좌측에서 코드그룹을 고른 뒤에 할 수 있습니다.',
+    },
+    loading: {
+      list: '코드값 목록을 불러오는 중',
+      detail: '코드값 정보를 불러오는 중',
+    },
+    /*
+     * 정렬은 화면이 한다(계약이 목록의 정렬을 명시하지 않았다) — 그 한계를 감추지 않는다.
+     * 겹친 정렬 순서는 서버가 허용하는 값이라 **막지 않고 알리기만** 한다.
+     */
+    notices: {
+      sortWithinPage: '정렬은 현재 쪽 안에서만 적용됩니다.',
+      duplicateDisplayOrder:
+        '정렬 순서가 같은 코드값이 있습니다. 같은 값끼리는 코드 순으로 보입니다.',
+    },
+    fields: {
+      code: '코드',
+      codeName: '코드명',
+      displayOrder: '정렬 순서',
+      effectivePeriod: '유효기간',
+      effectiveFrom: '유효 시작',
+      effectiveTo: '유효 종료',
+    },
+    empty: {
+      groupNotSelected: '좌측에서 코드그룹을 먼저 고르세요',
+      noneTitle: '이 코드그룹에 등록된 코드값이 없습니다',
+      noneDescription: '「코드값 추가」로 첫 코드값을 등록하세요.',
+      noMatchTitle: '조건에 맞는 코드값이 없습니다',
+      noMatchDescription: '「미사용 포함」을 켜면 미사용 코드값도 보입니다.',
+      notSelected: '위 목록에서 코드값을 먼저 고르세요',
+    },
+    values: {
+      /** 유효기간 표기. 한쪽만 있는 것도 계약이 허용한다 — 없는 쪽을 지어내지 않는다. */
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      codeBlank: '코드는 공백만으로 지정할 수 없습니다.',
+      codeNameBlank: '코드명은 공백만으로 지정할 수 없습니다.',
+      codeTooLong: '코드는 50자를 넘을 수 없습니다.',
+      codeNameTooLong: '코드명은 200자를 넘을 수 없습니다.',
+      /* 계약이 정수를 받는다. 하한이 없어 음수는 막지 않는다. */
+      displayOrderInvalid: '정렬 순서는 정수로 입력하세요.',
+      /* 계약 ck_code_value_dates — 있으면 유효 시작 이상. 한쪽만 있는 것은 허용된다. */
+      effectiveRangeReversed: '유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.',
+    },
+    dialog: {
+      deactivateTitle: '이 코드값을 사용 중지할까요?',
     },
   },
 } as const;

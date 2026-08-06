@@ -22,6 +22,7 @@ import {
   useCodeGroupList,
 } from './code-group-queries';
 import { CODE_GROUP_FORM_FIELDS, validateCodeGroupForm } from './code-group-validation';
+import { CodeValueSection } from './code-value-section';
 import { DeactivateDialog } from './deactivate-dialog';
 import { readCodeGroupFilters, readPage, toSearchParams } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
@@ -85,6 +86,14 @@ export const CommonCodeScreen = () => {
   );
 
   const codeGroupDetail = useCodeGroupDetail(selectedCodeGroupId);
+
+  /*
+   * 코드값 한 벌에 넘길 상태. 좌 목록과 **다른 주소 키**를 쓴다 —
+   * 한 화면에 쪽이 둘이라 같은 키를 쓰면 한쪽을 옮길 때 다른 쪽까지 따라간다.
+   */
+  const codeValueIncludeInactive = searchParams.get('vinactive') === '1';
+  const codeValuePage = readPage(searchParams, 'vpage');
+  const selectedCodeValueId = Number(searchParams.get('val') ?? '') || null;
 
   const [formState, setFormState] = useState<CodeGroupFormState | null>(null);
 
@@ -259,6 +268,47 @@ export const CommonCodeScreen = () => {
 
     const next = new URLSearchParams(searchParams);
     next.delete('new');
+    setSearchParams(next);
+  };
+
+  const selectCodeValue = (codeValueId: number | null) => {
+    const next = new URLSearchParams(searchParams);
+
+    if (codeValueId === null) {
+      next.delete('val');
+    } else {
+      next.set('val', String(codeValueId));
+    }
+
+    setSearchParams(next);
+  };
+
+  /** 코드값 조건이 바뀌면 보이는 행이 달라진다 — 코드값 선택과 쪽을 함께 비운다. */
+  const changeCodeValueIncludeInactive = (includeInactive: boolean) => {
+    const next = new URLSearchParams(searchParams);
+
+    if (includeInactive) {
+      next.set('vinactive', '1');
+    } else {
+      next.delete('vinactive');
+    }
+
+    next.delete('val');
+    next.delete('vpage');
+    setSearchParams(next);
+  };
+
+  const changeCodeValuePage = (nextPage: number) => {
+    const next = new URLSearchParams(searchParams);
+
+    if (nextPage > 1) {
+      next.set('vpage', String(nextPage));
+    } else {
+      next.delete('vpage');
+    }
+
+    // 쪽을 옮기면 보이는 행이 달라진다 — 목록에 없는 코드값을 가리키면 안 된다.
+    next.delete('val');
     setSearchParams(next);
   };
 
@@ -449,7 +499,23 @@ export const CommonCodeScreen = () => {
         }
       />
 
-      <div className="pane-stack">{renderCodeGroupFormPane()}</div>
+      {/*
+       * 우 칸은 구획을 세로로 쌓는다 — 코드그룹 정보 아래에 코드값 한 벌이 붙는다.
+       * 한 벌을 이 칸에 통째로 두면 코드값만 다루는 화면이 그 칸을 그대로 옮길 수 있다.
+       */}
+      <div className="pane-stack">
+        {renderCodeGroupFormPane()}
+
+        <CodeValueSection
+          codeGroupId={selectedCodeGroupId}
+          selectedCodeValueId={selectedCodeValueId}
+          onSelectCodeValue={selectCodeValue}
+          includeInactive={codeValueIncludeInactive}
+          onIncludeInactiveChange={changeCodeValueIncludeInactive}
+          page={codeValuePage}
+          onPageChange={changeCodeValuePage}
+        />
+      </div>
     </div>
   );
 

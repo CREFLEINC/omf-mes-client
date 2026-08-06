@@ -10,7 +10,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { codeGroupFixtures } from './fixtures';
+import { codeGroupFixtures, codeValueFixtures } from './fixtures';
 import { CommonCodeScreen } from './screen';
 
 type Editability = components['schemas']['Editability'];
@@ -18,6 +18,7 @@ type Editability = components['schemas']['Editability'];
 const ROUTE = '/master-data/common-code';
 
 const CODE_GROUPS_PATH = '/mdm/code-groups';
+const CODE_VALUES_PATH = '/mdm/code-values';
 
 interface RecordedRequest {
   method: string;
@@ -102,6 +103,20 @@ const codeGroupRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 const codeGroupPane = (): HTMLElement => screen.getByRole('region', { name: '코드그룹' });
 
 const codeGroupFormPane = (): HTMLElement => screen.getByRole('region', { name: '코드그룹 정보' });
+
+const codeValuePane = (): HTMLElement => screen.getByRole('region', { name: '코드값' });
+
+/** 코드값 목록 — 계약이 `codeGroupId`를 필수 쿼리로 둔다. */
+const codeValueListRoute = (
+  items = codeValueFixtures,
+  pageMeta: PageStub = { page: 1, size: 50, total: codeValueFixtures.length },
+): StubRoute => ({
+  match: (request) => isGet(request, CODE_VALUES_PATH),
+  respond: () => jsonResponse({ items, page: pageMeta }),
+});
+
+const codeValueRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requestsTo(requests, CODE_VALUES_PATH);
 
 /** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -356,7 +371,9 @@ describe('CommonCodeScreen — 쪽 이동 (C7·C8)', () => {
     await user.click(within(codeGroupPane()).getByRole('button', { name: '다음' }));
 
     // 선택이 남아 있었다면 상세 조회가 이어졌을 것이다 — 스텁에 없는 요청은 하네스가 던진다.
-    expect(await screen.findByText('좌측에서 코드그룹을 먼저 고르세요')).toBeInTheDocument();
+    expect(
+      await screen.findByText('좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다'),
+    ).toBeInTheDocument();
     expect(codeGroupRequests(requests).at(-1)?.url.searchParams.get('page')).toBe('2');
   });
 });
@@ -376,7 +393,9 @@ describe('CommonCodeScreen — 조건 변경과 선택 (C6·C11)', () => {
     const last = codeGroupRequests(requests).at(-1);
     expect(last?.url.searchParams.has('page')).toBe(false);
     expect(last?.url.searchParams.get('q')).toBe('SYN');
-    expect(await screen.findByText('좌측에서 코드그룹을 먼저 고르세요')).toBeInTheDocument();
+    expect(
+      await screen.findByText('좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다'),
+    ).toBeInTheDocument();
   });
 
   /* C11 */
@@ -395,7 +414,9 @@ describe('CommonCodeScreen — 조건 변경과 선택 (C6·C11)', () => {
   it('고르기 전에는 우 칸이 선택 전 안내를 낸다', async () => {
     renderScreen([codeGroupListRoute()]);
 
-    expect(await screen.findByText('좌측에서 코드그룹을 먼저 고르세요')).toBeInTheDocument();
+    expect(
+      await screen.findByText('좌측에서 코드그룹을 고르면 여기에 그 그룹의 정보가 보입니다'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -876,5 +897,189 @@ describe('CommonCodeScreen — 코드그룹 사용 중지 (C22)', () => {
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 코드값 목록 (C23·C24·C25·C29)', () => {
+  /* C23 — 계약이 `codeGroupId`를 필수 쿼리로 두어 빼고 부르면 422다. */
+  it('그룹을 고르기 전에는 코드값 목록을 조회하지 않는다', async () => {
+    const { requests } = renderScreen([codeGroupListRoute(), codeValueListRoute()]);
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    expect(codeValueRequests(requests)).toHaveLength(0);
+    expect(
+      within(codeValuePane()).getByText('좌측에서 코드그룹을 먼저 고르세요'),
+    ).toBeInTheDocument();
+  });
+
+  it('그룹을 고르면 codeGroupId를 실어 한 번 조회한다', async () => {
+    const { requests, user } = renderScreen([
+      codeGroupListRoute(),
+      codeGroupDetailRoute(),
+      codeValueListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-GRP-01' }));
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    const list = codeValueRequests(requests);
+    expect(list).toHaveLength(1);
+    expect(list[0]?.url.searchParams.get('codeGroupId')).toBe('1001');
+  });
+
+  /* C24 — 계약의 기본값이 false다. 끈 상태를 값으로 실어 보내면 캐시 키가 갈린다. */
+  it('코드값 미사용 포함이 꺼져 있으면 includeInactive를 싣지 않는다', async () => {
+    const { requests } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()],
+      '?grp=1001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    expect(codeValueRequests(requests)[0]?.url.searchParams.has('includeInactive')).toBe(false);
+  });
+
+  it('코드값 미사용 포함을 켜면 includeInactive=true가 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()],
+      '?grp=1001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    await user.click(within(codeValuePane()).getByRole('checkbox', { name: '미사용 포함' }));
+
+    await waitFor(() => {
+      expect(codeValueRequests(requests).at(-1)?.url.searchParams.get('includeInactive')).toBe(
+        'true',
+      );
+    });
+  });
+
+  /* C25 — 한 화면에 쪽이 둘이라 같은 키를 쓰면 한쪽을 옮길 때 다른 쪽까지 따라간다. */
+  it('코드값 쪽 이동은 vpage를 쓰고 좌 목록의 page와 섞이지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        codeGroupListRoute(codeGroupFixtures, { page: 1, size: 50, total: 3 }),
+        codeGroupDetailRoute(),
+        codeValueListRoute(codeValueFixtures, { page: 1, size: 2, total: 10 }),
+      ],
+      '?grp=1001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    const groupRequestsBefore = codeGroupRequests(requests).filter(
+      (request) => request.method === 'GET',
+    ).length;
+
+    await user.click(within(codeValuePane()).getByRole('button', { name: '다음' }));
+
+    await waitFor(() => {
+      expect(codeValueRequests(requests).at(-1)?.url.searchParams.get('page')).toBe('2');
+    });
+
+    // 좌 목록은 다시 조회되지 않는다 — 요청 쿼리의 page도 그대로다.
+    expect(codeGroupRequests(requests).filter((request) => request.method === 'GET').length).toBe(
+      groupRequestsBefore,
+    );
+    expect(codeGroupRequests(requests).at(-1)?.url.searchParams.has('page')).toBe(false);
+  });
+
+  it('주소의 vpage로 들어오면 그 쪽을 조회한다', async () => {
+    const { requests } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        codeValueListRoute(codeValueFixtures, { page: 3, size: 2, total: 10 }),
+      ],
+      '?grp=1001&vpage=3',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    expect(codeValueRequests(requests)[0]?.url.searchParams.get('page')).toBe('3');
+  });
+
+  /* C26 — 화면 수준에서도 서버가 준 배열 순서를 그대로 쓰지 않음을 확인한다. */
+  it('코드값이 정렬 순서 오름차순으로 그려진다', async () => {
+    renderScreen([codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()], '?grp=1001');
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    const codes = within(codeValuePane())
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell')[0]?.textContent ?? '');
+
+    expect(codes).toEqual(['SYN-CV-02', 'SYN-CV-03', 'SYN-CV-01']);
+  });
+
+  /* C29 */
+  it('코드를 누르면 그 행에 선택 표식이 선다', async () => {
+    const { user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()],
+      '?grp=1001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-CV-02' }));
+
+    expect(screen.getByRole('button', { name: 'SYN-CV-02' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  it('그룹을 바꾸면 val·vpage가 주소에서 사라진다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(1001),
+        codeGroupDetailRoute(1002),
+        codeValueListRoute(),
+      ],
+      '?grp=1001&val=2001&vpage=2',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-GRP-02' }));
+
+    await waitFor(() => {
+      expect(codeValueRequests(requests).at(-1)?.url.searchParams.get('codeGroupId')).toBe('1002');
+    });
+    // vpage가 남아 있었다면 page=2가 실렸을 것이다.
+    expect(codeValueRequests(requests).at(-1)?.url.searchParams.has('page')).toBe(false);
+    expect(screen.getByRole('button', { name: 'SYN-CV-01' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('코드값 조건을 바꾸면 val이 주소에서 사라진다', async () => {
+    const { user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()],
+      '?grp=1001&val=2001',
+    );
+    await screen.findByRole('button', { name: 'SYN-CV-01' });
+    expect(screen.getByRole('button', { name: 'SYN-CV-01' })).toHaveAttribute('aria-current');
+
+    await user.click(within(codeValuePane()).getByRole('checkbox', { name: '미사용 포함' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'SYN-CV-01' })).not.toHaveAttribute('aria-current');
+    });
+  });
+
+  it('코드값 조회에 실패하면 표 대신 배너를 낸다', async () => {
+    renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(),
+        {
+          match: (request) => isGet(request, CODE_VALUES_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+      ],
+      '?grp=1001',
+    );
+
+    expect(
+      await within(codeValuePane()).findByText('목록을 불러오지 못했습니다'),
+    ).toBeInTheDocument();
+    expect(within(codeValuePane()).queryByRole('table')).not.toBeInTheDocument();
   });
 });
