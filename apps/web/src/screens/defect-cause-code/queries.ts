@@ -2,7 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { CodeAdapter } from './adapters';
-import type { CodeFilters, CodeListResult, PageMeta } from './types';
+import type { CodeFilters, CodeListResult, HierarchyCode, PageMeta } from './types';
 
 /**
  * 이 화면이 쓰는 조회. 어댑터가 경로와 캐시 키를 들고 있으므로 훅은 리소스 이름을 알지 않는다.
@@ -32,3 +32,43 @@ export const useCodeList = (
  * 이 화면이 갖는다 — 짧아도 다른 화면 슬라이스에서 가져오지 않는다.
  */
 export const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
+
+export interface CodeOptionsResult {
+  items: HierarchyCode[];
+  /** 목록이 잘렸으면 참. 고를 수 없는 상위가 생겼다는 뜻이다. */
+  truncated: boolean;
+  /** 실패했으면 참. 실패를 삼키면 선택칸이 이유 없이 비어 보인다. */
+  isError: boolean;
+  isLoading: boolean;
+}
+
+const EMPTY_ITEMS: HierarchyCode[] = [];
+
+/**
+ * 상위 선택지와 계층 판정에 쓰는 전체 목록. `includeInactive=true`로 **따로** 조회한다.
+ *
+ * 화면의 조회 조건을 그대로 쓰면 「미사용 포함」이 꺼져 있을 때 미사용 대분류 밑의 상세 코드를
+ * 고칠 수 없게 된다 — 계층 판정이 조회 조건에 끌려다니면 안 된다.
+ *
+ * 폼이 열려 있을 때만 조회한다. 목록과 같은 경로라, 화면에 들어오기만 해도 부르면
+ * 쓰지 않는 요청이 한 번 더 나간다.
+ */
+export const useCodeOptions = (adapter: CodeAdapter, enabled: boolean): CodeOptionsResult => {
+  const { client } = useApiClient();
+
+  const options = useQuery({
+    queryKey: adapter.keys.options,
+    enabled,
+    queryFn: () => adapter.fetchAllForOptions(client),
+  });
+
+  const data = options.data;
+
+  return {
+    items: data?.items ?? EMPTY_ITEMS,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: options.isError,
+    // 꺼져 있는 동안에는 pending이지만 아무것도 기다리지 않는다.
+    isLoading: enabled && options.isPending,
+  };
+};

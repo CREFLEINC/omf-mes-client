@@ -1,9 +1,22 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import { runRequest } from '../../patterns/request';
-import { causeToHierarchyCode, defectToHierarchyCode } from './mappers';
-import type { CodeFilters, CodeKind, CodeListResult, ServerFieldNames } from './types';
+import type { WriteHeaders } from '../../patterns/master';
+import { runRequest, type ApiCallResult } from '../../patterns/request';
+import {
+  causeToHierarchyCode,
+  defectToHierarchyCode,
+  toWritePayload,
+  type CodeWritePayload,
+} from './mappers';
+import type {
+  CodeFilters,
+  CodeFormValues,
+  CodeKind,
+  CodeListResult,
+  HierarchyCode,
+  ServerFieldNames,
+} from './types';
 
 /**
  * 탭 어댑터 — **리소스 이름이 사는 유일한 자리**다.
@@ -42,9 +55,48 @@ export interface CodeAdapter {
   serverFields: ServerFieldNames;
   labels: CodeLabels;
   fetchList: (client: Client, filters: CodeFilters) => Promise<CodeListResult>;
+  /** 계층 판정과 상위 선택지 전용 목록. 화면의 조회 조건과 무관하게 미사용까지 받는다. */
+  fetchAllForOptions: (client: Client) => Promise<CodeListResult>;
+  create: (
+    client: Client,
+    values: CodeFormValues,
+    headers: WriteHeaders,
+  ) => Promise<ApiCallResult<HierarchyCode>>;
 }
 
 const t = messages.defectCauseCode;
+
+type DefectCodeCreate = components['schemas']['DefectCodeCreate'];
+type CauseCodeCreate = components['schemas']['CauseCodeCreate'];
+
+/**
+ * 쓰기 응답의 계약 표현을 화면 표현으로 옮긴다.
+ * 실패 응답(`error`)과 원본 `response`는 그대로 넘겨 `runRequest`의 오류 정규화를 건드리지 않는다.
+ */
+const toWriteResult = <TRaw>(
+  result: { data?: TRaw; error?: unknown; response: Response },
+  toCode: (raw: TRaw) => HierarchyCode,
+): ApiCallResult<HierarchyCode> => ({
+  data: result.data === undefined ? undefined : toCode(result.data),
+  error: result.error,
+  response: result.response,
+});
+
+/**
+ * 등록 본문. **공정 번호를 싣지 않는다** — 화면에 입력 수단이 없으므로 만들 값이 없다.
+ * 상위가 없으면 키 자체를 싣지 않는다. 새로 만드는 행이라 「없음」이 곧 대분류다.
+ */
+const toDefectCreate = (payload: CodeWritePayload): DefectCodeCreate => ({
+  defectCode: payload.code,
+  defectName: payload.name,
+  ...(payload.parentId === null ? {} : { parentDefectCodeId: payload.parentId }),
+});
+
+const toCauseCreate = (payload: CodeWritePayload): CauseCodeCreate => ({
+  causeCode: payload.code,
+  causeName: payload.name,
+  ...(payload.parentId === null ? {} : { parentCauseCodeId: payload.parentId }),
+});
 
 /**
  * 목록 조회 조건. **비어 있거나 꺼진 조건은 키 자체를 싣지 않는다** —
@@ -80,6 +132,21 @@ export const defectCodeAdapter: CodeAdapter = {
 
     return { items: data.items.map(defectToHierarchyCode), page: data.page };
   },
+  fetchAllForOptions: async (client) => {
+    const data = await runRequest(() =>
+      client.GET('/quality/defect-codes', { params: { query: { includeInactive: true } } }),
+    );
+
+    return { items: data.items.map(defectToHierarchyCode), page: data.page };
+  },
+  create: async (client, values, headers) =>
+    toWriteResult(
+      await client.POST('/quality/defect-codes', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body: toDefectCreate(toWritePayload(values, null)),
+      }),
+      defectToHierarchyCode,
+    ),
 };
 
 export const causeCodeAdapter: CodeAdapter = {
@@ -106,4 +173,19 @@ export const causeCodeAdapter: CodeAdapter = {
 
     return { items: data.items.map(causeToHierarchyCode), page: data.page };
   },
+  fetchAllForOptions: async (client) => {
+    const data = await runRequest(() =>
+      client.GET('/quality/cause-codes', { params: { query: { includeInactive: true } } }),
+    );
+
+    return { items: data.items.map(causeToHierarchyCode), page: data.page };
+  },
+  create: async (client, values, headers) =>
+    toWriteResult(
+      await client.POST('/quality/cause-codes', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body: toCauseCreate(toWritePayload(values, null)),
+      }),
+      causeToHierarchyCode,
+    ),
 };
