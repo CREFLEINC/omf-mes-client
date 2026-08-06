@@ -3619,3 +3619,51 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     expect(screen.queryByText('SYN-CERT-77')).not.toBeInTheDocument();
   });
 });
+
+/*
+ * 탭마다 선택 축의 주소 키가 다르다 — 조직 탭은 `bu`, 작업자 탭은 `dept`.
+ *
+ * **읽는 쪽과 쓰는 쪽을 함께 고정해야 한다.** 단위 테스트(`readScopedFilters`)는 읽는 쪽만 덮고,
+ * 「각 탭이 `toScopedSearchParams`에 어떤 키를 넘기는가」는 화면에만 있다. 그 배선이 뒤바뀌면
+ * 주소에는 다른 탭의 키가 실리고 화면은 자기 키를 읽으므로 **필터가 조용히 아무 일도 하지 않는다** —
+ * 선택칸이 되돌아가고 요청에도 조건이 실리지 않는다.
+ *
+ * 그래서 선택칸을 실제로 골라 「조회」를 누르는 경로를 여기서만 밟는다.
+ * 디자인 시스템 `Select`는 네이티브 `<select>`가 아니라 트리거를 누른 뒤 선택지를 누른다.
+ */
+describe('CommonCodeScreen — 탭마다 자기 선택 축 키를 쓴다', () => {
+  it('작업자 탭에서 부서를 골라 조회하면 dept로 실리고 요청에도 실린다', async () => {
+    const { requests, history, user } = renderScreen(workerRoutes(), '?tab=worker');
+    await screen.findByRole('button', { name: 'SYN-W-0001' });
+
+    await user.click(within(workerPane()).getByLabelText('부서'));
+    await user.click(screen.getByRole('option', { name: /SYN-DEPT-01/ }));
+    await user.click(within(workerPane()).getByRole('button', { name: '조회' }));
+
+    expect(history.search()).toContain('dept=3001');
+    expect(history.search()).not.toContain('bu=');
+
+    // 주소에서 끝나지 않는다 — 그 조건이 실제로 서버로 나가야 필터가 「먹는다」.
+    await waitFor(() => {
+      expect(workerRequests(requests).at(-1)?.url.searchParams.get('departmentId')).toBe('3001');
+    });
+  });
+
+  it('조직 탭에서 사업부를 골라 조회하면 bu로 실리고 요청에도 실린다', async () => {
+    const { requests, history, user } = renderScreen(orgRoutes(), '?tab=org');
+    await screen.findByRole('button', { name: 'SYN-DEPT-01' });
+
+    await user.click(within(departmentPane()).getByLabelText('사업부'));
+    await user.click(screen.getByRole('option', { name: /SYN-BU-01/ }));
+    await user.click(within(departmentPane()).getByRole('button', { name: '조회' }));
+
+    expect(history.search()).toContain('bu=4001');
+    expect(history.search()).not.toContain('dept=');
+
+    await waitFor(() => {
+      expect(departmentRequests(requests).at(-1)?.url.searchParams.get('businessUnitId')).toBe(
+        '4001',
+      );
+    });
+  });
+});
