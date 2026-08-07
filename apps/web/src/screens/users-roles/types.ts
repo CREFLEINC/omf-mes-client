@@ -13,6 +13,7 @@ export type AppUser = components['schemas']['AppUser'];
 export type PageMeta = components['schemas']['PageMeta'];
 export type Role = components['schemas']['Role'];
 export type UserRole = components['schemas']['UserRole'];
+export type UserDataScope = components['schemas']['UserDataScope'];
 
 /**
  * 선택 목록의 원본 항목. 사용 여부를 함께 들고 있어야

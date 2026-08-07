@@ -1971,6 +1971,7 @@ const usersRoles = {
     userList: '사용자',
     userForm: '사용자 정보',
     roleAssign: '역할 부여',
+    dataScope: '데이터 접근범위',
   },
   actions: {
     prevPage: '이전',
@@ -2000,6 +2001,17 @@ const usersRoles = {
     /* 주 액션의 이름이 모드마다 달라 사유도 갈린다 — 규범 4는 컨트롤 이름으로 시작하라고 정한다. */
     saveNoChanges: '저장은 고친 내용이 있을 때 누를 수 있습니다.',
     addNoInput: '사용자 추가는 입력한 내용이 있을 때 누를 수 있습니다.',
+    /*
+     * 계약이 두 축 중 하나 이상을 요구한다. **목 서버가 막지 않으므로** 화면이 저장 전에 막는다 —
+     * 보내 놓고 되돌려 받으면 사용자가 두 번 기다린다.
+     */
+    dataScopeTargetRequired: '확인은 사업부와 공장 중 적어도 하나를 고른 뒤에 누를 수 있습니다.',
+    /*
+     * 유일 제약이 빈 축을 접어 판정한다 — 사업부만 고른 두 줄은 서버에게 같은 짝이다.
+     * 화면이 다르게 세면 사용자가 만든 줄이 저장 시점에야 거부된다.
+     */
+    dataScopeDuplicate:
+      '확인은 이미 있는 범위와 겹치지 않을 때 누를 수 있습니다. 비운 축은 「(전체)」로 봅니다.',
   },
   /**
    * 사용 중지 확인 창.
@@ -2044,6 +2056,7 @@ const usersRoles = {
     users: '사용자 목록을 불러오는 중',
     userDetail: '사용자 정보를 불러오는 중',
     roleAssign: '역할 부여분을 불러오는 중',
+    dataScopes: '데이터 접근범위를 불러오는 중',
   },
   empty: {
     /*
@@ -2116,6 +2129,41 @@ const usersRoles = {
      */
     lockedInactiveNote:
       '미사용 역할은 이미 부여돼 있어 목록에 남아 있습니다. 여기에서는 바꿀 수 없습니다.',
+  },
+  /**
+   * 데이터 접근범위 — 이 사용자가 어느 사업부·공장의 자료를 볼 수 있는가.
+   *
+   * **빈 축은 「고르지 않음」이 아니라 고른 값이다** — 그 축 전체를 뜻한다.
+   * 그래서 표에도 「(전체)」로 적고 저장 본문에도 널을 명시해 싣는다.
+   */
+  scope: {
+    fields: {
+      businessUnit: '사업부',
+      plant: '공장',
+      edit: '편집',
+    },
+    values: {
+      all: '(전체)',
+      pair: (businessUnit: string, plant: string): string => `${businessUnit} · ${plant}`,
+    },
+    actions: {
+      add: '범위 추가',
+      /* 「수정」이 여러 줄에 있으면 어느 줄을 고치는 것인지 알 수 없다. */
+      editRow: (label: string): string => `${label} 범위 수정`,
+      removeRow: (label: string): string => `${label} 범위 삭제`,
+      confirm: '확인',
+    },
+    dialog: {
+      addTitle: '접근범위 추가',
+      editTitle: '접근범위 수정',
+      /* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다. */
+      notSavedNotice:
+        '확인을 눌러도 아직 저장되지 않습니다. 표에만 반영되고 「저장」을 눌러야 서버로 갑니다.',
+    },
+    empty: {
+      none: '지정된 접근범위가 없습니다',
+      noneDescription: '「범위 추가」로 이 사용자가 볼 수 있는 범위를 정하세요.',
+    },
   },
 } as const;
 

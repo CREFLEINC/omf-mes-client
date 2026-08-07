@@ -32,6 +32,8 @@ const isTruncated = (page: PageMeta, shown: number): boolean => page.total > sho
 const lookupKeys = {
   departments: ['users-roles-lookups', 'departments'] as const,
   roles: ['users-roles-lookups', 'roles'] as const,
+  businessUnits: ['users-roles-lookups', 'business-units'] as const,
+  plants: ['users-roles-lookups', 'plants'] as const,
 };
 
 /**
@@ -92,6 +94,65 @@ export const useRoleOptions = (enabled: boolean): LookupResult => {
       data?.items.map((item) => ({
         value: String(item.roleId),
         label: `${item.roleCode} · ${item.roleName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: query.isPending,
+  };
+};
+
+/** 사업부 — 접근범위의 한 축. */
+export const useBusinessUnitOptions = (enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.businessUnits,
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/business-units', { params: { query: { includeInactive: true } } }),
+      ),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.businessUnitId),
+        label: `${item.businessUnitCode} · ${item.businessUnitName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: query.isPending,
+  };
+};
+
+/**
+ * 공장 — 접근범위의 다른 축.
+ *
+ * **사업부로 좁혀 받지 않는다.** 계약이 두 축을 각각 독립으로 두었고(둘 중 하나만 골라도 된다),
+ * 좁혀 받으면 사업부를 비운 상태에서 고를 수 있는 공장이 하나도 없게 된다.
+ */
+export const usePlantOptions = (enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.plants,
+    enabled,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/plants', { params: { query: { includeInactive: true } } })),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.plantId),
+        label: `${item.plantCode} · ${item.plantName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),

@@ -1,8 +1,10 @@
 import type { components } from '@omf-mes/api-client';
 
-import type { AppUser, Role, UserRole } from './types';
+import type { AppUser, Role, UserDataScope, UserRole } from './types';
 
 type Department = components['schemas']['Department'];
+type BusinessUnit = components['schemas']['BusinessUnit'];
+type Plant = components['schemas']['Plant'];
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -119,4 +121,53 @@ export const roleFixtures: Role[] = [
 export const userRoleFixtures: UserRole[] = [
   { userRoleId: 7001, appUserId: 1001, roleId: 5001 },
   { userRoleId: 7002, appUserId: 1001, roleId: 5003 },
+];
+
+export const businessUnitFixtures: BusinessUnit[] = [
+  {
+    businessUnitId: 2001,
+    legalEntityId: 1,
+    businessUnitCode: 'SYN-BU-01',
+    businessUnitName: '합성 사업부 A',
+    isActive: true,
+  },
+  {
+    businessUnitId: 2002,
+    legalEntityId: 1,
+    businessUnitCode: 'SYN-BU-02',
+    businessUnitName: '합성 사업부 B',
+    isActive: true,
+  },
+];
+
+export const plantFixtures: Plant[] = [
+  {
+    plantId: 4001,
+    legalEntityId: 1,
+    businessUnitId: 2001,
+    plantCode: 'SYN-PLT-01',
+    plantName: '합성 공장 A',
+    timezoneCode: 'SYN-TZ-01',
+    isActive: true,
+  },
+  {
+    plantId: 4002,
+    legalEntityId: 1,
+    businessUnitId: 2002,
+    plantCode: 'SYN-PLT-02',
+    plantName: '합성 공장 B',
+    timezoneCode: 'SYN-TZ-01',
+    isActive: true,
+  },
+];
+
+/**
+ * 사용자 `1001`의 접근범위 2건.
+ *
+ * - `9001` 두 축을 다 고른 줄
+ * - `9002` **공장을 비운 줄** — 표에 「(전체)」가 나오는지, 저장 본문에 널이 명시되는지 보는 자리다
+ */
+export const userDataScopeFixtures: UserDataScope[] = [
+  { userDataScopeId: 9001, appUserId: 1001, businessUnitId: 2001, plantId: 4001 },
+  { userDataScopeId: 9002, appUserId: 1001, businessUnitId: 2002, plantId: null },
 ];

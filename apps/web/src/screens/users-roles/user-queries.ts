@@ -8,6 +8,7 @@ import type { AppUser, PageMeta, UserFilters } from './types';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
 type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
+type UserDataScopeListResponse = components['schemas']['UserDataScopeListResponse'];
 
 /**
  * 사용자의 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -38,6 +39,7 @@ export const userKeys = {
    * 사용자 행을 바꾸지 않으므로(잠금 토큰도 그대로다) 상세를 다시 부를 이유가 없다.
    */
   roles: (appUserId: number) => ['users-roles-users', 'roles', appUserId] as const,
+  dataScopes: (appUserId: number) => ['users-roles-users', 'data-scopes', appUserId] as const,
 };
 
 /**
@@ -110,6 +112,27 @@ export const useUserRoles = (appUserId: number | null): UseQueryResult<UserRoleL
 
       return runRequest(() =>
         client.GET('/app/users/{appUserId}/roles', { params: { path: { appUserId } } }),
+      );
+    },
+  });
+};
+
+/** 이 사용자에게 지정된 데이터 접근범위. 부여분과 같이 **쪽 나눔이 없다.** */
+export const useUserDataScopes = (
+  appUserId: number | null,
+): UseQueryResult<UserDataScopeListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: userKeys.dataScopes(appUserId ?? 0),
+    enabled: appUserId !== null,
+    queryFn: () => {
+      if (appUserId === null) {
+        throw new Error('사용자를 고르기 전에는 접근범위를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/app/users/{appUserId}/data-scopes', { params: { path: { appUserId } } }),
       );
     },
   });

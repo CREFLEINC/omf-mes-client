@@ -13,9 +13,12 @@ import {
 } from '../../test/api-harness';
 import {
   appUserFixtures,
+  businessUnitFixtures,
   departmentFixtures,
   filledUserFixture,
+  plantFixtures,
   roleFixtures,
+  userDataScopeFixtures,
   userRoleFixtures,
 } from './fixtures';
 import { UsersRolesScreen } from './screen';
@@ -29,7 +32,13 @@ const USERS_PATH = '/app/users';
 const ROLES_PATH = '/app/roles';
 const DEPARTMENTS_PATH = '/mdm/departments';
 
+const BUSINESS_UNITS_PATH = '/mdm/business-units';
+const PLANTS_PATH = '/mdm/plants';
+
 const userRolesPath = (appUserId: number): string => `${USERS_PATH}/${String(appUserId)}/roles`;
+
+const dataScopesPath = (appUserId: number): string =>
+  `${USERS_PATH}/${String(appUserId)}/data-scopes`;
 
 interface RecordedRequest {
   method: string;
@@ -112,10 +121,44 @@ const roleAssignRoute = (
   respond,
 });
 
-/** 고른 사용자가 있으면 언제나 함께 도는 조회 둘. 부서 선택 목록과 같은 자리다. */
+const businessUnitsRoute = (
+  items = businessUnitFixtures,
+  pageMeta: PageStub = { page: 1, size: 50, total: businessUnitFixtures.length },
+): StubRoute => ({
+  match: (request) => isGet(request, BUSINESS_UNITS_PATH),
+  respond: () => jsonResponse({ items, page: pageMeta }),
+});
+
+const plantsRoute = (
+  items = plantFixtures,
+  pageMeta: PageStub = { page: 1, size: 50, total: plantFixtures.length },
+): StubRoute => ({
+  match: (request) => isGet(request, PLANTS_PATH),
+  respond: () => jsonResponse({ items, page: pageMeta }),
+});
+
+/** 이 사용자에게 지정된 접근범위. 부여분과 같이 **쪽 나눔이 없다.** */
+const userDataScopesRoute = (appUserId = 1001, items = userDataScopeFixtures): StubRoute => ({
+  match: (request) => isGet(request, dataScopesPath(appUserId)),
+  respond: () => jsonResponse({ items }),
+});
+
+const dataScopeReplaceRoute = (
+  appUserId = 1001,
+  respond: (request: Request) => Response = () => jsonResponse({ items: userDataScopeFixtures }),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' && new URL(request.url).pathname === dataScopesPath(appUserId),
+  respond,
+});
+
+/** 고른 사용자가 있으면 언제나 함께 도는 조회들. 부서 선택 목록과 같은 자리다. */
 const roleRoutes = (appUserId = 1001): StubRoute[] => [
   roleLookupRoute(),
   userRolesRoute(appUserId),
+  businessUnitsRoute(),
+  plantsRoute(),
+  userDataScopesRoute(appUserId),
 ];
 
 const EDITABLE: Editability = { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 };
@@ -212,7 +255,8 @@ const waitForUserList = async (requests: RecordedRequest[]): Promise<void> => {
   await waitFor(() => {
     expect(userRequests(requests).length).toBeGreaterThan(0);
   });
-  await screen.findByRole('table');
+  // 우 칸에도 표가 있다(접근범위) — 기다리는 대상을 좌 페인으로 좁힌다.
+  await within(userListPane()).findByRole('table');
 };
 
 describe('UsersRolesScreen 진입과 조회', () => {
@@ -1169,6 +1213,7 @@ describe('UsersRolesScreen 초안 수명', () => {
     const { goTo, user } = await openUserDetail([
       userDetailRoute({ ...filledUserFixture, appUserId: 1002, userName: '합성 사용자 B' }),
       userRolesRoute(1002, []),
+      userDataScopesRoute(1002, []),
     ]);
 
     // 1002를 한 번 열어 상세를 캐시에 올린다.
@@ -1276,6 +1321,7 @@ describe('UsersRolesScreen 창·오류의 수명', () => {
       userDeactivateRoute(1001),
       userDeactivateRoute(1002),
       userRolesRoute(1002, []),
+      userDataScopesRoute(1002, []),
       ...extraRoutes,
     ]);
 
@@ -1340,6 +1386,7 @@ describe('UsersRolesScreen 창·오류의 수명', () => {
     const { goTo, user } = await openUserDetail([
       userDetailRoute(USER_B, { etag: 'W/"1002"' }),
       userRolesRoute(1002, []),
+      userDataScopesRoute(1002, []),
       userUpdateRoute(),
     ]);
 
@@ -1361,6 +1408,7 @@ describe('UsersRolesScreen 창·오류의 수명', () => {
     const { goTo, user } = await openUserDetail([
       userDetailRoute(USER_B, { etag: 'W/"1002"' }),
       userRolesRoute(1002, []),
+      userDataScopesRoute(1002, []),
       userUpdateRoute(1001, () =>
         jsonResponse(
           { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '앞 사용자의 실패.' }] },
@@ -1684,6 +1732,7 @@ describe('UsersRolesScreen 역할 부여', () => {
     const { goTo } = await openRoleAssign([
       userDetailRoute(userB, { etag: 'W/"1002"' }),
       userRolesRoute(1002, [{ userRoleId: 7010, appUserId: 1002, roleId: 5002 }]),
+      userDataScopesRoute(1002, []),
     ]);
 
     expect(roleCheckbox('SYN-ROLE-01 · 합성 역할 A')).toBeChecked();
@@ -1831,5 +1880,365 @@ describe('UsersRolesScreen 역할 부여 — 화면이 잠금을 판정하지 �
 
     expect(roleCheckbox('SYN-ROLE-01 · 합성 역할 A')).toBeEnabled();
     expect(roleCheckbox('SYN-ROLE-02 · 합성 역할 B')).toBeEnabled();
+  });
+});
+
+const dataScopePane = (): HTMLElement => screen.getByRole('region', { name: '데이터 접근범위' });
+
+const dataScopeRows = (): HTMLElement[] =>
+  within(within(dataScopePane()).getByRole('table')).getAllByRole('row').slice(1);
+
+const dataScopeRequests = (requests: RecordedRequest[], appUserId = 1001): RecordedRequest[] =>
+  requestsTo(requests, dataScopesPath(appUserId));
+
+const dataScopeBodyOf = (
+  requests: RecordedRequest[],
+): { scopes?: Record<string, unknown>[] } => {
+  const put = dataScopeRequests(requests).find((request) => request.method === 'PUT');
+
+  expect(put).toBeDefined();
+
+  return JSON.parse(put?.body ?? '{}') as { scopes?: Record<string, unknown>[] };
+};
+
+const openDataScopes = async (extraRoutes: StubRoute[] = []) => {
+  const rendered = await openUserDetail(extraRoutes);
+
+  await screen.findByRole('region', { name: '데이터 접근범위' });
+  await waitFor(() => {
+    expect(within(dataScopePane()).getByRole('table')).toBeInTheDocument();
+  });
+
+  return rendered;
+};
+
+const waitForDataScopePut = async (requests: RecordedRequest[]): Promise<void> => {
+  await waitFor(() => {
+    expect(dataScopeRequests(requests).some((request) => request.method === 'PUT')).toBe(true);
+  });
+};
+
+describe('UsersRolesScreen 데이터 접근범위', () => {
+  it('사용자를 고르면 접근범위를 조회하고 표가 그 결과와 일치한다', async () => {
+    const { requests } = await openDataScopes([dataScopeReplaceRoute()]);
+
+    expect(dataScopeRequests(requests).filter((request) => request.method === 'GET')).toHaveLength(1);
+    expect(dataScopeRows()).toHaveLength(2);
+    expect(
+      within(dataScopeRows()[0] as HTMLElement).getByText('SYN-BU-01 · 합성 사업부 A'),
+    ).toBeInTheDocument();
+  });
+
+  /** 빈 축은 「고르지 않음」이 아니라 그 축 전체를 뜻하는 고른 값이다. */
+  it('빈 축이 「(전체)」로 보인다', async () => {
+    await openDataScopes([dataScopeReplaceRoute()]);
+
+    expect(within(dataScopeRows()[1] as HTMLElement).getByText('(전체)')).toBeInTheDocument();
+  });
+
+  it('고르기 전에는 페인이 없고 접근범위를 조회하지도 않는다', async () => {
+    const { requests } = renderScreen([userListRoute(), departmentsRoute()]);
+
+    await waitForUserList(requests);
+
+    expect(screen.queryByRole('region', { name: '데이터 접근범위' })).not.toBeInTheDocument();
+    expect(dataScopeRequests(requests)).toHaveLength(0);
+  });
+
+  it('등록 중에는 페인이 없다', async () => {
+    const { requests } = renderScreen([userListRoute(), departmentsRoute()], '?new=user');
+
+    await waitForUserList(requests);
+
+    expect(screen.queryByRole('region', { name: '데이터 접근범위' })).not.toBeInTheDocument();
+  });
+
+  /** 확인이 저장이면 사용자는 창을 닫는 순간 저장된 줄 안다. */
+  it('창의 확인은 서버를 부르지 않고 표에만 반영된다', async () => {
+    const { requests, user } = await openDataScopes([dataScopeReplaceRoute()]);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    const before = requests.length;
+
+    await user.click(within(dataScopePane()).getByRole('button', { name: '범위 추가' }));
+
+    const dialog = await screen.findByRole('dialog');
+
+    await user.click(within(dialog).getByLabelText('사업부'));
+    await user.click(await screen.findByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
+    await user.click(within(dialog).getByLabelText('공장'));
+    await user.click(await screen.findByRole('option', { name: 'SYN-PLT-02 · 합성 공장 B' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '확인' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(dataScopeRows()).toHaveLength(3);
+    expect(requests).toHaveLength(before);
+  });
+
+  /**
+   * 계약의 요청 항목은 두 축뿐이다. **빈 축은 키를 빼지 않고 널을 명시한다** —
+   * 여기서 빈 축은 사용자가 고른 「(전체)」다.
+   */
+  it('저장 본문에 식별자가 없고 빈 축이 널로 실린다', async () => {
+    const { requests, user } = await openDataScopes([dataScopeReplaceRoute()]);
+
+    await user.click(
+      within(dataScopePane()).getByRole('button', {
+        name: 'SYN-BU-01 · 합성 사업부 A · SYN-PLT-01 · 합성 공장 A 범위 삭제',
+      }),
+    );
+    await user.click(within(dataScopePane()).getByRole('button', { name: '저장' }));
+
+    await waitForDataScopePut(requests);
+
+    const scopes = dataScopeBodyOf(requests).scopes ?? [];
+
+    expect(scopes).toEqual([{ businessUnitId: 2002, plantId: null }]);
+    expect(Object.keys(scopes[0] ?? {})).toEqual(['businessUnitId', 'plantId']);
+  });
+
+  it('저장 요청에 멱등 키가 실리고 잠금 토큰은 실리지 않는다', async () => {
+    const { requests, user } = await openDataScopes([dataScopeReplaceRoute()]);
+
+    await user.click(
+      within(dataScopePane()).getByRole('button', {
+        name: 'SYN-BU-02 · 합성 사업부 B · (전체) 범위 삭제',
+      }),
+    );
+    await user.click(within(dataScopePane()).getByRole('button', { name: '저장' }));
+
+    await waitForDataScopePut(requests);
+
+    const put = dataScopeRequests(requests).find((request) => request.method === 'PUT');
+
+    expect(put?.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(put?.headers.get('If-Match')).toBeNull();
+  });
+
+  /** 전체 회수도 정상 조작이다 — 「보낼 것이 없다」로 요청을 건너뛰면 지울 수가 없다. */
+  it('줄을 전부 지우고 저장하면 빈 배열이 실린다', async () => {
+    const { requests, user } = await openDataScopes([dataScopeReplaceRoute()]);
+
+    for (const name of [
+      'SYN-BU-01 · 합성 사업부 A · SYN-PLT-01 · 합성 공장 A 범위 삭제',
+      'SYN-BU-02 · 합성 사업부 B · (전체) 범위 삭제',
+    ]) {
+      await user.click(within(dataScopePane()).getByRole('button', { name }));
+    }
+
+    expect(within(dataScopePane()).getByText('지정된 접근범위가 없습니다')).toBeInTheDocument();
+
+    await user.click(within(dataScopePane()).getByRole('button', { name: '저장' }));
+
+    await waitForDataScopePut(requests);
+    expect(dataScopeBodyOf(requests).scopes).toEqual([]);
+  });
+
+  it('저장에 성공하면 접근범위를 다시 조회하고 서버가 답한 상태로 다시 세운다', async () => {
+    const replaced = [{ userDataScopeId: 9010, appUserId: 1001, businessUnitId: 2002, plantId: null }];
+    let served = userDataScopeFixtures;
+
+    const { requests, user } = await openDataScopes([
+      {
+        match: (request) => isGet(request, dataScopesPath(1001)),
+        respond: () => jsonResponse({ items: served }),
+      },
+      dataScopeReplaceRoute(1001, () => {
+        served = replaced;
+
+        return jsonResponse({ items: replaced });
+      }),
+    ]);
+
+    await user.click(
+      within(dataScopePane()).getByRole('button', {
+        name: 'SYN-BU-01 · 합성 사업부 A · SYN-PLT-01 · 합성 공장 A 범위 삭제',
+      }),
+    );
+    await user.click(within(dataScopePane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(
+        dataScopeRequests(requests).filter((request) => request.method === 'GET').length,
+      ).toBeGreaterThan(1);
+    });
+    await waitFor(() => {
+      expect(dataScopeRows()).toHaveLength(1);
+    });
+  });
+
+  it('취소는 요청을 보내지 않고 표를 기준값으로 되돌린다', async () => {
+    const { requests, user } = await openDataScopes([dataScopeReplaceRoute()]);
+
+    await user.click(
+      within(dataScopePane()).getByRole('button', {
+        name: 'SYN-BU-02 · 합성 사업부 B · (전체) 범위 삭제',
+      }),
+    );
+
+    expect(dataScopeRows()).toHaveLength(1);
+
+    const before = requests.length;
+
+    await user.click(within(dataScopePane()).getByRole('button', { name: '취소' }));
+
+    expect(dataScopeRows()).toHaveLength(2);
+    expect(requests).toHaveLength(before);
+  });
+
+  it('고친 것이 없으면 저장이 비활성이고 사유가 보인다', async () => {
+    await openDataScopes([dataScopeReplaceRoute()]);
+
+    expect(within(dataScopePane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(within(dataScopePane()).getByText(/저장은 고친 내용이 있을 때/)).toBeInTheDocument();
+  });
+
+  it('다른 사용자를 고르면 표가 그 사용자의 접근범위로 다시 세워진다', async () => {
+    const userB: AppUser = { ...filledUserFixture, appUserId: 1002, userName: '합성 사용자 B' };
+
+    const { goTo } = await openDataScopes([
+      userDetailRoute(userB, { etag: 'W/"1002"' }),
+      userRolesRoute(1002, []),
+      userDataScopesRoute(1002, [
+        { userDataScopeId: 9020, appUserId: 1002, businessUnitId: null, plantId: 4002 },
+      ]),
+    ]);
+
+    expect(dataScopeRows()).toHaveLength(2);
+
+    goTo(`${ROUTE}?usr=1002`);
+
+    await waitFor(() => {
+      expect(dataScopeRows()).toHaveLength(1);
+    });
+    expect(
+      within(dataScopeRows()[0] as HTMLElement).getByText('SYN-PLT-02 · 합성 공장 B'),
+    ).toBeInTheDocument();
+  });
+
+  /** 초안이 사라진 뒤에 창만 남으면 그 창의 확인이 어느 줄을 고치는 것인지 알 수 없다. */
+  it('창을 연 채 다른 사용자로 옮기면 창이 닫힌다', async () => {
+    const userB: AppUser = { ...filledUserFixture, appUserId: 1002, userName: '합성 사용자 B' };
+
+    const { goTo, user } = await openDataScopes([
+      userDetailRoute(userB, { etag: 'W/"1002"' }),
+      userRolesRoute(1002, []),
+      userDataScopesRoute(1002, []),
+    ]);
+
+    await user.click(within(dataScopePane()).getByRole('button', { name: '범위 추가' }));
+    await screen.findByRole('dialog');
+
+    goTo(`${ROUTE}?usr=1002`);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('UsersRolesScreen 데이터 접근범위 — 만들 수 없는 줄', () => {
+  /**
+   * 계약의 `ck_user_data_scope_target`이 두 축 중 하나 이상을 요구한다.
+   * **목 서버는 둘 다 널인 본문에도 200을 준다** — 화면이 막지 않으면
+   * 실서버에 붙기 전까지 아무도 이 결함을 보지 못한다.
+   */
+  it('두 축이 모두 비면 확인이 비활성이고 줄이 만들어지지 않으며 요청도 나가지 않는다', async () => {
+    const { requests, user } = await openDataScopes([dataScopeReplaceRoute()]);
+
+    const before = requests.length;
+
+    await user.click(within(dataScopePane()).getByRole('button', { name: '범위 추가' }));
+
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByRole('button', { name: '확인' })).toBeDisabled();
+    expect(
+      within(dialog).getByText('확인은 사업부와 공장 중 적어도 하나를 고른 뒤에 누를 수 있습니다.'),
+    ).toBeInTheDocument();
+    expect(dataScopeRows()).toHaveLength(2);
+    expect(requests).toHaveLength(before);
+  });
+
+  /** 유일 제약이 빈 축을 접어 판정한다 — 사업부만 고른 두 줄은 서버에게 같은 짝이다. */
+  it('이미 있는 범위와 겹치는 줄은 확인이 비활성이다', async () => {
+    const { user } = await openDataScopes([dataScopeReplaceRoute()]);
+
+    await user.click(within(dataScopePane()).getByRole('button', { name: '범위 추가' }));
+
+    const dialog = await screen.findByRole('dialog');
+
+    // 이미 「합성 사업부 B · (전체)」 줄이 있다 — 빈 공장은 0으로 접혀 같은 짝이 된다.
+    await user.click(within(dialog).getByLabelText('사업부'));
+    await user.click(await screen.findByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
+
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: '확인' })).toBeDisabled();
+    expect(
+      within(screen.getByRole('dialog')).getByText(/이미 있는 범위와 겹치지 않을 때/),
+    ).toBeInTheDocument();
+  });
+
+  it('겹치지 않는 짝으로 고치면 확인이 다시 열린다', async () => {
+    const { user } = await openDataScopes([dataScopeReplaceRoute()]);
+
+    await user.click(within(dataScopePane()).getByRole('button', { name: '범위 추가' }));
+
+    const dialog = await screen.findByRole('dialog');
+
+    await user.click(within(dialog).getByLabelText('사업부'));
+    await user.click(await screen.findByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
+    await user.click(within(screen.getByRole('dialog')).getByLabelText('공장'));
+    await user.click(await screen.findByRole('option', { name: 'SYN-PLT-02 · 합성 공장 B' }));
+
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: '확인' })).toBeEnabled();
+  });
+});
+
+describe('UsersRolesScreen 데이터 접근범위 저장 실패', () => {
+  const rejectRoute = (code: string, message: string): StubRoute =>
+    dataScopeReplaceRoute(1001, () =>
+      jsonResponse({ errors: [{ scope: 'screen', code, message }] }, { status: 400 }),
+    );
+
+  /** 서버가 백스톱으로 막는 자리다 — 화면이 삼키면 저장이 조용히 실패한 것처럼 보인다. */
+  it('서버가 거부하면 배너가 서고 표의 줄이 사라지지 않는다', async () => {
+    const { user } = await openDataScopes([rejectRoute('PAIR', '범위를 확인하세요.')]);
+
+    await user.click(
+      within(dataScopePane()).getByRole('button', {
+        name: 'SYN-BU-02 · 합성 사업부 B · (전체) 범위 삭제',
+      }),
+    );
+    await user.click(within(dataScopePane()).getByRole('button', { name: '저장' }));
+
+    expect(await within(dataScopePane()).findByText('범위를 확인하세요.')).toBeInTheDocument();
+    // 사용자가 지운 줄이 되살아나지 않는다 — 실패에 초안을 되돌리면 한 일을 잃는다.
+    expect(dataScopeRows()).toHaveLength(1);
+  });
+
+  it('거부된 뒤에도 바로 다시 저장할 수 있다', async () => {
+    const { requests, user } = await openDataScopes([
+      rejectRoute('UNIQUE_VIOLATION', '이미 있는 범위입니다.'),
+    ]);
+
+    await user.click(
+      within(dataScopePane()).getByRole('button', {
+        name: 'SYN-BU-02 · 합성 사업부 B · (전체) 범위 삭제',
+      }),
+    );
+    await user.click(within(dataScopePane()).getByRole('button', { name: '저장' }));
+
+    await within(dataScopePane()).findByText('이미 있는 범위입니다.');
+
+    await user.click(within(dataScopePane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(
+        dataScopeRequests(requests).filter((request) => request.method === 'PUT'),
+      ).toHaveLength(2);
+    });
   });
 });
