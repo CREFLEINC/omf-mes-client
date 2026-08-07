@@ -12,6 +12,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { codeGroupKeys } from './code-group-queries';
 import type { CodeValue } from './code-value-types';
 import { JudgmentCodeScreen } from './judgment-code-screen';
 import { JUDGMENT_TYPE_GROUP_CODE } from './judgment-group';
@@ -185,6 +186,30 @@ const failingGroupListRoute = (status: number, body: unknown = { message: '' }):
   respond: () => jsonResponse(body, { status }),
 });
 
+/**
+ * 처음 한 번만 성공하고 그다음부터 실패하는 그룹 조회.
+ *
+ * **재조회 실패**를 만드는 유일한 방법이다 — 그때 지난 자료가 캐시에 남아 있어,
+ * 「받은 자료가 있는가」로 갈래를 판정하는 구현은 본문과 배너가 서로 다른 갈래에 선다.
+ */
+const flakyGroupListRoute = (items: CodeGroup[]): StubRoute => {
+  let served = 0;
+
+  return {
+    match: (request) => isGet(request, CODE_GROUPS_PATH),
+    respond: () => {
+      served += 1;
+
+      return served === 1
+        ? jsonResponse({
+            items,
+            page: { page: 1, size: 50, total: items.length } satisfies PageStub,
+          })
+        : jsonResponse({ message: '' }, { status: 500 });
+    },
+  };
+};
+
 const codeValueListRoute = (
   items: CodeValue[] = CODE_VALUES,
   pageMeta: PageStub = { page: 1, size: 50, total: CODE_VALUES.length },
@@ -264,7 +289,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
   probeNavigate = null;
   probeSearch = '';
 
-  renderWithProviders(
+  const { queryClient } = renderWithProviders(
     <>
       <JudgmentCodeScreen />
       <RouterProbe />
@@ -281,7 +306,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
     },
   };
 
-  return { requests, history, user: userEvent.setup() };
+  return { requests, history, queryClient, user: userEvent.setup() };
 };
 
 /**
@@ -794,6 +819,47 @@ describe('JudgmentCodeScreen — 안내와 경고', () => {
     renderScreen([groupListRoute(), codeValueListRoute()]);
 
     expect(await screen.findByText(t.notices.provisionalList)).toBeInTheDocument();
+  });
+
+  /*
+   * 안내는 「지금 보이는 값이 전부가 아닐 수 있다」는 뜻이다 — 보이는 값이 없는 화면에서는
+   * 가리킬 대상이 없다. 목록이 선 갈래에서만 낸다.
+   */
+  it('그룹을 찾지 못하면 임시 목록 안내를 내지 않는다', async () => {
+    renderScreen([groupListRoute(DECOY_GROUPS), codeValueListRoute()]);
+    await screen.findByText(t.empty.groupNotFoundTitle);
+
+    expect(screen.queryByText(t.notices.provisionalList)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **본문과 배너가 같은 갈래에 선다.**
+   *
+   * 재조회가 실패하면 지난 그룹이 캐시에 남는다. 갈래를 「받은 자료가 있는가」로 판정하면
+   * 본문은 조회 실패 배너인데 그 위에 경고·안내가 그대로 살아남아, 사용자는 실패한 화면에서
+   * 「값을 추가하면 다른 화면에 나타난다」는 경고를 읽는다.
+   */
+  it('재조회에 실패하면 본문과 함께 안내·경고도 사라진다', async () => {
+    const { queryClient } = renderScreen(
+      [flakyGroupListRoute([...DECOY_GROUPS, INACTIVE_JUDGMENT_GROUP]), codeValueListRoute()],
+      '?new=1',
+    );
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    /* 스텁이 갈리기 전 상태 — 셋이 실제로 서 있어야 뒤의 부재 단언이 뜻을 갖는다. */
+    expect(screen.getByText(t.notices.provisionalList)).toBeInTheDocument();
+    expect(screen.getByText(t.notices.groupInactive)).toBeInTheDocument();
+    expect(alertWithText(t.notices.addAffectsOtherScreens)).toBeDefined();
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: codeGroupKeys.all });
+    });
+
+    expect(await screen.findByText(messages.httpError.loadTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.notices.provisionalList)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.notices.groupInactive)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.notices.addAffectsOtherScreens)).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: tv.paneTitle })).not.toBeInTheDocument();
   });
 
   /* 그룹이 꺼져 있어도 값은 그대로 있다 — 편집기를 막으면 왜 막혔는지 알 수 없다. */

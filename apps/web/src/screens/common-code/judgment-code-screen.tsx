@@ -70,9 +70,12 @@ export const JudgmentCodeScreen = () => {
   /**
    * 판정유형 코드 그룹. 받은 목록에서 **정확히 일치하는 것만** 고른다(`judgment-group.ts`).
    * 못 찾았으면 `null`이고, 그때 편집기를 렌더하지 않는 것이 이 화면의 핵심 규칙이다.
+   *
+   * **조회에 성공한 상태에서만 값을 갖는다.** 본문 네 갈래와 배너가 이 한 값을 함께 보므로
+   * 화면 전체가 언제나 같은 갈래에 선다. 「받은 자료가 있는가」로 판정하면 어긋나는 자리가 있다 —
+   * 재조회가 실패하면 지난 자료가 캐시에 남아, **본문은 조회 실패인데 경고 배너만 살아남는다.**
    */
-  const judgmentGroup =
-    groupList.data === undefined ? null : findJudgmentTypeGroup(groupList.data.items);
+  const judgmentGroup = groupList.isSuccess ? findJudgmentTypeGroup(groupList.data.items) : null;
 
   const selectedCodeValueId = readSelectedId(searchParams, URL_KEYS.selected);
   const page = readPage(searchParams, URL_KEYS.page);
@@ -242,9 +245,15 @@ export const JudgmentCodeScreen = () => {
       {/*
        * 배너 셋은 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,
        * 그 순간 공통코드 화면이 함께 위험해진다. 소비 화면이 이미 필요한 사실을 전부 갖고 있다.
-       * 배치 규범 6에 따라 각각 이음매(`.banner-slot`)로 감싼다.
+       *
+       * 셋 다 **그룹을 찾았을 때만** 선다 — 위 `judgmentGroup` 한 값을 본문과 함께 본다.
+       *
+       * `.banner-slot`으로 감싸는 이유는 **이음매가 아니다.** 이 배너들은 화면 최상위 블록이라
+       * 이음매는 `main > * + *`가 이미 준다(배치 규범 1). 슬롯이 필요한 것은 DS `AlertBanner`의
+       * `box-sizing` 정규화 때문이며, 감싸지 않으면 배너가 안쪽 여백만큼 컨테이너를 넘친다.
+       * **임시 우회다** — `design-system-v2-webui#60`이 반영되면 이 래퍼도 함께 걷는다.
        */}
-      {isProvisionalJudgmentTypeList() && (
+      {judgmentGroup !== null && isProvisionalJudgmentTypeList() && (
         <div className="banner-slot">
           <AlertBanner variant="info">{t.notices.provisionalList}</AlertBanner>
         </div>

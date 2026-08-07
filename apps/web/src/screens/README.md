@@ -9,3 +9,5 @@
 W-06-04(판정유형 코드)는 폴더를 갖지 않고 `common-code/`에 `judgment-` 접두 파일로 산다. 그 화면은 **전용 자원이 아니라** W-06-06의 코드값 편집기를 코드그룹 하나로 고정해 여는 진입점이라, 폴더를 나누면 편집기 한 벌(파일 14개)을 복제하거나 `patterns/`로 올려야 한다 — 둘 다 규칙을 더 크게 깬다.
 
 판정유형이 자기 속성을 갖는 자원이 되면 `judgment-` 접두 파일과 `messages.judgmentCode`만 새 폴더로 옮긴다.
+
+옮길 때 함께 정리할 것: 그 파일들이 지금 **같은 슬라이스의 것을 쓴다** — 편집기 한 벌(`code-value-*`)·`CodeGroup` 타입·`useCodeGroupList`·주소 파서(`readPage`·`readSelectedId`)·`LoadErrorBanner`. 폴더만 옮기면 이것들이 전부 **슬라이스 간 참조**가 되므로, 그때 옮길지·복제할지·`patterns/`로 올릴지를 함께 정한다.
