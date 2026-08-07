@@ -3321,6 +3321,18 @@ const componentGets = (requests: RecordedRequest[], bomId = 2001): RecordedReque
     (request) => request.method === 'GET' && request.url.pathname === componentsPath(bomId),
   );
 
+/**
+ * 자재 명세서 번호를 가리지 않고 **모든** 구성품 목록 요청.
+ *
+ * 「고르기 전에는 0회」를 특정 번호로만 세면 `enabled`를 뺀 코드가 그대로 통과한다 —
+ * 그때 나가는 것은 `bomId=0`을 실은 요청이라 다른 경로이기 때문이다.
+ */
+const anyComponentGets = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.method === 'GET' && /^\/planning\/boms\/\d+\/components$/.test(request.url.pathname),
+  );
+
 const routingOperationGets = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter(
     (request) =>
@@ -3338,11 +3350,20 @@ describe('ItemExtendedAttrsScreen — 구성품 조회 시점', () => {
 
     await findBomListPane();
 
-    expect(componentGets(requests)).toHaveLength(0);
+    /* 번호를 가리지 않고 센다 — `enabled`를 빼면 `bomId=0`을 실은 요청이 나간다. */
+    expect(anyComponentGets(requests)).toHaveLength(0);
     expect(
       requests.filter((request) => request.url.pathname.startsWith(ROUTINGS_PATH)),
     ).toHaveLength(0);
     expect(requestsTo(requests, PROCESSES_PATH)).toHaveLength(0);
+  });
+
+  it('품목을 고르기 전에는 자재 명세서 탭 주소여도 구성품을 조회하지 않는다', async () => {
+    const { requests } = renderScreen(bomDetailRoutes(), '?tab=bom&bom=2001');
+
+    await screen.findByRole('button', { name: 'SYN-ITEM-01' });
+
+    expect(anyComponentGets(requests)).toHaveLength(0);
   });
 
   it('고르면 구성품을 한 번 조회한다', async () => {
@@ -3369,7 +3390,7 @@ describe('ItemExtendedAttrsScreen — 구성품 조회 시점', () => {
     expect(
       screen.getByText('위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다'),
     ).toBeInTheDocument();
-    expect(componentGets(requests, 9999)).toHaveLength(0);
+    expect(anyComponentGets(requests)).toHaveLength(0);
     /* 헤더 상세를 부르지 않는다 — 부르면 남의 자재 명세서를 그리게 된다. */
     expect(
       requests.filter((request) => /^\/planning\/boms\/\d+$/.test(request.url.pathname)),
@@ -4118,5 +4139,54 @@ describe('ItemExtendedAttrsScreen — 화면 전체', () => {
     await user.click(screen.getByRole('tab', { name: '부속 정보' }));
 
     expect(await screen.findByRole('region', { name: '외부 코드' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * **무효화 범위는 자원마다 나뉘어 있어야 한다.**
+ *
+ * 넓게 무효화하면 보고 있지도 않은 표가 다시 그려지고, 편집 중이던 다른 자료가
+ * 서버 응답으로 되감긴다 — 부속 3종에서 이미 같은 방향으로 잠갔다.
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 쓰기의 무효화 범위', () => {
+  it('구성품 저장이 자재 명세서 헤더 목록을 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    expect(bomListGets(requests)).toHaveLength(1);
+
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentGets(requests)).toHaveLength(2);
+    });
+    expect(bomListGets(requests)).toHaveLength(1);
+  });
+
+  /* 기본이 어느 줄인지는 구성품과 무관하다 — 함께 받으면 표가 이유 없이 다시 그려진다. */
+  it('기본 지정이 구성품을 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    expect(componentGets(requests)).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 기본으로 지정' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '기본으로 지정' }),
+    );
+
+    await waitFor(() => {
+      expect(bomListGets(requests)).toHaveLength(2);
+    });
+    expect(componentGets(requests)).toHaveLength(1);
   });
 });
