@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
@@ -47,8 +47,18 @@ const NAME_KEYED_FIELDS = new Set([
   'encoding',
 ]);
 
-/** 최상위 키 중 아래 규칙 함수가 따로 다루는 것. 나머지는 선행 우선으로만 처리한다. */
+/** 최상위 키 중 아래 규칙 함수가 따로 다루는 것. 나머지는 `mergeRemainingInto` 가 다룬다. */
 const FIELDS_WITH_OWN_RULE = new Set(['paths', 'components', 'tags']);
+
+/**
+ * 계약마다 값이 다른 것이 **정상인** 최상위 키 — 선행 우선을 유지하고 멈추지 않는다.
+ *
+ * `info` 는 문서 메타(제목·설명)이고 `openapi-typescript` 의 생성물에 실리지 않는다.
+ * 도메인마다 제목이 다른 것이 당연하므로 여기서 멈추면 병합이 아예 되지 않는다.
+ * **이 집합에 키를 더하는 것은 「조용히 잃어도 되는 것」을 늘리는 일이다** — 생성물과
+ * 서빙 동작에 영향이 없음을 확인하고 그 근거를 여기 적은 뒤에만 더한다.
+ */
+const FIELDS_ALLOWED_TO_DIFFER = new Set(['info']);
 
 /** 주석성 필드를 걷어낸 사본을 만든다. 원본은 건드리지 않는다. */
 const withoutAnnotations = (node, isNameKeyed = false) => {
@@ -160,12 +170,43 @@ const mergeTagsInto = (merged, next) => {
   }
 };
 
-/** `openapi`·`info`·`servers` 처럼 규칙을 따로 두지 않은 최상위 키 — 앞 계약의 값을 그대로 둔다. */
-const mergeRemainingInto = (merged, next) => {
+/**
+ * `openapi`·`servers`·`security`·`webhooks` 처럼 규칙을 따로 두지 않은 최상위 키.
+ *
+ * 앞 계약에 없으면 덧붙이고, 있으면 **형태를 비교해** 같으면 선행 유지·다르면 멈춘다.
+ * `paths`·`components` 와 같은 원칙이다 — 이 자리만 조용히 덮으면 잃는 것이 가장 크다.
+ *
+ * - `servers` 가 다른 계약을 말없이 흡수하면 그 계약의 경로 수십 개가 잘못된 base 로
+ *   서빙·타이핑되고, 증상이 드러나는 자리는 병합기가 아니라 화면이다.
+ * - `openapi` 버전이 다르면 3.0 의 `nullable`·불리언형 `exclusiveMinimum` 이 3.1 로 읽혀
+ *   생성 타입이 조용히 틀어진다. 버전이 섞인 병합은 정의되지 않은 동작이다.
+ */
+const mergeRemainingInto = (merged, next, nextSpecPath) => {
+  const conflicts = [];
+
   for (const [key, value] of Object.entries(next)) {
     if (FIELDS_WITH_OWN_RULE.has(key)) continue;
-    if (Object.hasOwn(merged, key)) continue;
-    merged[key] = value;
+    if (!Object.hasOwn(merged, key)) {
+      merged[key] = value;
+      continue;
+    }
+    if (FIELDS_ALLOWED_TO_DIFFER.has(key)) continue;
+    if (isSameShape(merged[key], value)) continue;
+    conflicts.push(key);
+  }
+
+  if (conflicts.length > 0) {
+    throw new Error(
+      [
+        `계약 병합 중단 — 최상위 키의 값이 다릅니다 (${conflicts.length}건): ${nextSpecPath}`,
+        ...conflicts.map((key) => `  ${key}`),
+        '',
+        '앞 계약의 값을 그대로 두면 뒤 계약의 값이 말없이 사라집니다.',
+        'servers 가 다르면 그 계약의 경로 전부가 잘못된 base 로 서빙되고,',
+        'openapi 버전이 다르면 생성 타입이 조용히 틀어집니다.',
+        '설계 저장소에 [client→uiux] 질문 이슈를 올리세요.',
+      ].join('\n'),
+    );
   }
 };
 
@@ -193,7 +234,7 @@ export const mergeSpecs = (specPaths) => {
     mergePathsInto(merged, next, specPath);
     mergeComponentsInto(merged, next, specPath, foldedKeys);
     mergeTagsInto(merged, next);
-    mergeRemainingInto(merged, next);
+    mergeRemainingInto(merged, next, specPath);
   }
 
   return { document: merged, foldedKeys };
@@ -210,7 +251,18 @@ export const writeMergedSpec = (specPaths) => {
   const { document, foldedKeys } = mergeSpecs(specPaths);
 
   mkdirSync(path.dirname(MERGED_SPEC_PATH), { recursive: true });
-  writeFileSync(MERGED_SPEC_PATH, `${JSON.stringify(document, null, 2)}\n`, 'utf-8');
+
+  // 한 파일을 여러 진입점(gen:api · mock · mock:smoke · CLI)이 쓰고, 상주 목 서버가 그 사이 읽는다.
+  // writeFileSync 는 자르고 쓰므로 읽는 쪽이 반쯤 쓰인 JSON 을 만날 수 있다 — 같은 디렉터리에
+  // 쓴 뒤 rename 으로 바꾼다. 같은 파일시스템이라 교체가 원자적이다.
+  const temporaryPath = `${MERGED_SPEC_PATH}.${process.pid}.tmp`;
+  try {
+    writeFileSync(temporaryPath, `${JSON.stringify(document, null, 2)}\n`, 'utf-8');
+    renameSync(temporaryPath, MERGED_SPEC_PATH);
+  } finally {
+    // 교체에 성공했으면 이미 없다. 실패했을 때 반쯤 쓰인 임시 파일을 남기지 않는다.
+    rmSync(temporaryPath, { force: true });
+  }
 
   if (foldedKeys.length > 0) {
     console.log(`계약 병합: 같은 형태의 컴포넌트 ${foldedKeys.length}건을 선행 계약 쪽으로 접음`);
