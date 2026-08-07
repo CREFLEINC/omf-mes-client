@@ -641,6 +641,124 @@ describe('JudgmentCodeScreen — 주소 키', () => {
 
     expect(history.search()).toBe('?sel=2101');
   });
+
+  /**
+   * 같은 주소로 다시 옮기면 뒤로가기가 제자리에서 한 번 헛돈다.
+   *
+   * **이것은 실제 사용자 경로다** — 한 벌의 목록은 이미 고른 행에도 버튼을 그대로 둔다
+   * (표시만 `aria-current`로 갈릴 뿐 비활성이 아니다). 같은 행을 두 번 누르는 일이 실제로 있다.
+   */
+  it('이미 고른 코드값을 다시 눌러도 히스토리가 늘지 않는다', async () => {
+    const { history, user } = renderScreen([
+      groupListRoute(),
+      codeValueListRoute(),
+      codeValueDetailRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-JDG-01' }));
+    await waitFor(() => {
+      expect(history.search()).toBe('?sel=2101');
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-JDG-01' }));
+
+    expect(history.search()).toBe('?sel=2101');
+
+    // 한 칸만 쌓였다면 뒤로가기 한 번으로 처음 주소에 닿는다.
+    history.back();
+
+    expect(history.search()).toBe('');
+  });
+});
+
+/**
+ * 주소 키 표의 **「유지」 방향**을 한 바퀴 돈다.
+ *
+ * 앞의 검사들은 「무엇이 지워지는가」를 본다. 그것만으로는 **지나치게 지우는 구현**이 통과한다 —
+ * 예를 들어 2쪽에서 「미사용 포함」을 켜 놓고 행을 고를 때 조건과 쪽까지 함께 지우면,
+ * 사용자는 방금 고른 행이 목록에서 사라지는 것을 본다.
+ *
+ * 그래서 네 키가 **전부 실려 있는 딥링크**에서 조작을 하나씩 하고 **결과 주소를 통째로** 단언한다.
+ * 통째로 보면 「지움」과 「유지」가 한 번에 판정되어 표의 20칸이 다섯 검사로 덮인다.
+ */
+describe('JudgmentCodeScreen — 주소 키 표의 유지 방향', () => {
+  /** 네 키가 다 실린 자리. 쪽은 2쪽이고 「미사용 포함」이 켜져 있다. */
+  const DEEP_LINK = '?sel=2101&inactive=1&page=2';
+  const SECOND_PAGE: PageStub = { page: 2, size: 3, total: 7 };
+
+  const renderAt = (search: string) =>
+    renderScreen(
+      [
+        groupListRoute(),
+        codeValueListRoute(CODE_VALUES, SECOND_PAGE),
+        codeValueDetailRoute(2101),
+        codeValueDetailRoute(2102),
+      ],
+      search,
+    );
+
+  it('고르면 선택만 바뀌고 쪽과 미사용 포함은 남는다', async () => {
+    const { history, user } = renderAt(DEEP_LINK);
+    await screen.findByRole('button', { name: 'SYN-JDG-02' });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-JDG-02' }));
+
+    await waitFor(() => {
+      expect(history.search()).toBe('?sel=2102&inactive=1&page=2');
+    });
+  });
+
+  it('등록을 열면 선택만 빠지고 쪽과 미사용 포함은 남는다', async () => {
+    const { history, user } = renderAt(DEEP_LINK);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    await user.click(screen.getByRole('button', { name: tv.actions.add }));
+
+    await waitFor(() => {
+      expect(history.search()).toBe('?inactive=1&page=2&new=1');
+    });
+  });
+
+  it('등록을 닫으면 등록만 빠지고 선택·쪽·미사용 포함은 남는다', async () => {
+    const { history, user } = renderAt(`${DEEP_LINK}&new=1`);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    await user.click(
+      within(codeValueFormPane()).getByRole('button', { name: messages.common.cancel }),
+    );
+
+    await waitFor(() => {
+      expect(history.search()).toBe(DEEP_LINK);
+    });
+  });
+
+  /* 보이는 행이 통째로 달라지는 조작이라 선택·쪽·등록 폼이 함께 정리된다. */
+  it('미사용 포함을 끄면 선택·쪽·등록이 함께 빠진다', async () => {
+    const { history, user } = renderAt(`${DEEP_LINK}&new=1`);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    await user.click(screen.getByRole('checkbox', { name: messages.common.includeInactive }));
+
+    await waitFor(() => {
+      expect(history.search()).toBe('');
+    });
+  });
+
+  it('첫 쪽으로 돌아가면 쪽 키가 빠지고 등록도 함께 닫힌다', async () => {
+    const { history, user } = renderAt(`${DEEP_LINK}&new=1`);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    await user.click(
+      within(screen.getByRole('navigation', { name: tv.pageNavLabel })).getByRole('button', {
+        name: messages.commonCode.actions.prevPage,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(history.search()).toBe('?inactive=1');
+    });
+  });
 });
 
 describe('JudgmentCodeScreen — 주소가 조회 조건이 된다', () => {
