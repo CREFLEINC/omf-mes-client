@@ -65,14 +65,46 @@ describe('validateUserForm — 등록', () => {
     expect(validateUserForm({ ...valid, email: '  a@b.invalid  ' }, 'create').email).toBeUndefined();
   });
 
-  /**
-   * **길이 상한을 만들지 않는다.** 계약이 이 칸들에 길이 제약을 적어 두지 않았고,
-   * 화면이 상한을 지어내면 서버가 받아 주는 값을 사용자가 넣지 못한다.
-   */
-  it('아주 긴 값을 화면이 막지 않는다', () => {
-    const long = 'A'.repeat(5000);
+  /** 상한 자체는 허용값이다 — 상한에서 막으면 쓸 수 있는 값을 하나 잃는다. */
+  it('상한 길이 그대로는 통과한다', () => {
+    expect(
+      validateUserForm(
+        {
+          ...valid,
+          loginId: 'A'.repeat(100),
+          userName: '가'.repeat(200),
+          email: `${'a'.repeat(190)}@b.invalid`,
+        },
+        'create',
+      ),
+    ).toEqual({});
+  });
 
-    expect(validateUserForm({ ...valid, loginId: long, userName: long }, 'create')).toEqual({});
+  it('상한을 한 자라도 넘으면 막는다', () => {
+    expect(validateUserForm({ ...valid, loginId: 'A'.repeat(101) }, 'create').loginId).toBeDefined();
+    expect(
+      validateUserForm({ ...valid, userName: '가'.repeat(201) }, 'create').userName,
+    ).toBeDefined();
+    expect(
+      validateUserForm({ ...valid, email: `${'a'.repeat(191)}@b.invalid` }, 'create').email,
+    ).toBeDefined();
+  });
+
+  /** 저장되는 값이 앞뒤 공백을 턴 값이므로 길이도 그 값으로 센다. */
+  it('길이는 앞뒤 공백을 턴 값으로 센다', () => {
+    expect(
+      validateUserForm({ ...valid, userName: `  ${'가'.repeat(200)}  ` }, 'create').userName,
+    ).toBeUndefined();
+    expect(
+      validateUserForm({ ...valid, userName: `  ${'가'.repeat(201)}  ` }, 'create').userName,
+    ).toBeDefined();
+  });
+
+  /** 공백은 길이에 들어간다 — 가운데 공백은 저장되는 값의 일부다. */
+  it('가운데 공백도 길이로 센다', () => {
+    expect(
+      validateUserForm({ ...valid, userName: `${'가'.repeat(200)} 나` }, 'create').userName,
+    ).toBeDefined();
   });
 
   /** 계약이 그 판정을 서버 몫으로 두었다(전역 유일 제약) — 화면이 흉내 내면 다른 답을 낼 수 있다. */
@@ -99,5 +131,19 @@ describe('validateUserForm — 수정', () => {
   /** 화면이 고른 적이 없는 값이다 — 검증할 규칙 자체가 없다. */
   it('상태 코드가 비어 있어도 오류가 아니다', () => {
     expect(validateUserForm({ ...valid, statusCode: '' }, 'edit')).toEqual({});
+  });
+
+  /** 보낼 수 없는 값이라 길이도 볼 이유가 없다. */
+  it('로그인 ID가 아무리 길어도 수정에서는 오류로 잡지 않는다', () => {
+    expect(validateUserForm({ ...valid, loginId: 'A'.repeat(5000) }, 'edit').loginId).toBeUndefined();
+  });
+
+  it('이름·전자우편의 상한은 수정에서도 같다', () => {
+    expect(
+      validateUserForm({ ...valid, userName: '가'.repeat(201) }, 'edit').userName,
+    ).toBeDefined();
+    expect(
+      validateUserForm({ ...valid, email: `${'a'.repeat(191)}@b.invalid` }, 'edit').email,
+    ).toBeDefined();
   });
 });

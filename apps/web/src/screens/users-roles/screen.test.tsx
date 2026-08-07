@@ -759,6 +759,22 @@ describe('UsersRolesScreen 수정 저장', () => {
     expect(requests.some((request) => request.method === 'PUT')).toBe(false);
   });
 
+  /** 서버 왕복은 정의상 요청이 나간 뒤다 — C16은 **저장 전에** 막을 것을 요구한다. */
+  it('상한을 넘는 길이는 저장 전에 막히고 요청이 나가지 않는다', async () => {
+    const { requests, user } = await openUserDetail([userUpdateRoute()]);
+
+    await user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    // 한 자씩 두드리면 느리다 — 붙여넣기와 같은 경로로 넣는다.
+    await user.click(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    await user.paste('가'.repeat(201));
+    await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(
+      await within(userFormPane()).findByText('이름은 200자를 넘을 수 없습니다.'),
+    ).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
   it('공백만 넣은 필수 칸도 요청 없이 막힌다', async () => {
     const { requests, user } = await openUserDetail([userUpdateRoute()]);
 
