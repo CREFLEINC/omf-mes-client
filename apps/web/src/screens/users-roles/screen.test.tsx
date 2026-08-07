@@ -1676,6 +1676,58 @@ describe('UsersRolesScreen 역할 부여', () => {
     ).not.toBeInTheDocument();
   });
 
+  /**
+   * **역할 선택 목록은 이 구획의 보조가 아니라 내용 그 자체다.**
+   * 못 불러왔을 때 빈 상태를 내면 「역할이 등록되면 여기에서 부여할 수 있습니다」가 되어
+   * **없는 사실을 단정한다** — 역할이 없는 것이 아니라 못 불러온 것이고,
+   * 이 사용자에게 이미 부여된 역할이 있을 수도 있다(부여분 조회는 성공했다).
+   */
+  it('역할 선택 목록 조회가 실패하면 빈 상태가 아니라 조회 실패 배너가 나온다', async () => {
+    const { requests } = await openUserDetail([
+      {
+        match: (request) => isGet(request, ROLES_PATH),
+        respond: () => jsonResponse({}, { status: 500 }),
+      },
+    ]);
+
+    const pane = await screen.findByRole('region', { name: '역할 부여' });
+
+    await waitFor(() => {
+      expect(within(pane).getByText(/잠시 뒤 다시 시도하세요/)).toBeInTheDocument();
+    });
+
+    expect(within(roleAssignPane()).queryByText('고를 수 있는 역할이 없습니다')).not.toBeInTheDocument();
+    expect(within(roleAssignPane()).queryAllByRole('checkbox')).toHaveLength(0);
+    // 같은 뜻의 경고를 겹쳐 내지 않는다 — 배너 둘이 서면 다른 두 가지 일로 읽힌다.
+    expect(
+      within(roleAssignPane()).queryByText(/선택 목록을 불러오지 못했습니다/),
+    ).not.toBeInTheDocument();
+    expect(requests.length).toBeGreaterThan(0);
+  });
+
+  /** 조회 실패에 사용자가 할 수 있는 조치는 재시도뿐이다 — 눌러야 실제로 다시 조회한다. */
+  it('역할 선택 목록 조회 실패의 「다시 시도」가 실제로 다시 조회한다', async () => {
+    const { requests, user } = await openUserDetail([
+      {
+        match: (request) => isGet(request, ROLES_PATH),
+        respond: () => jsonResponse({}, { status: 500 }),
+      },
+    ]);
+
+    await screen.findByRole('region', { name: '역할 부여' });
+    await waitFor(() => {
+      expect(within(roleAssignPane()).getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    });
+
+    const before = requestsTo(requests, ROLES_PATH).length;
+
+    await user.click(within(roleAssignPane()).getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ROLES_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
   it('선택 목록이 잘리면 안내가 나온다 — 고를 수 없는 역할이 있다는 뜻이다', async () => {
     await openRoleAssign([
       roleAssignRoute(),

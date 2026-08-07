@@ -689,19 +689,35 @@ export const UsersRolesScreen = () => {
   const renderRoleAssignPane = (): ReactNode => {
     if (selectedAppUserId === null) return null;
 
+    /*
+     * **역할 선택 목록은 이 구획의 보조가 아니라 내용 그 자체다.** 그것이 실패하면
+     * 확인칸이 하나도 서지 않는데, 그때 빈 상태를 내면 「역할이 등록되면 여기에서 부여할 수
+     * 있습니다」가 되어 **없는 사실을 단정한다** — 역할이 없는 것이 아니라 못 불러온 것이고,
+     * 이 사용자에게 이미 부여된 역할이 있을 수도 있다.
+     *
+     * 그래서 부여분 실패와 **같은 자리**(조회 실패 배너 + 다시 시도)로 보낸다.
+     * 부여분 실패를 먼저 보는 이유는 그것이 이 사용자에게 매인 자료이기 때문이다.
+     */
+    const roleAssignFailure = userRoleList.isError
+      ? { error: userRoleList.error, retry: () => void userRoleList.refetch() }
+      : roleOptions.isError
+        ? { error: roleOptions.error, retry: roleOptions.refetch }
+        : null;
+
     return (
       <RoleAssignPane
         choices={toRoleChoices(roleOptions.entries, roleSelection)}
         /* 선택 목록과 부여분이 함께 있어야 확인칸 하나를 그릴 수 있다. */
         isLoading={userRoleList.isPending || roleOptions.isLoading}
-        optionsNotice={renderOptionsNotice([roleOptions])}
+        /*
+         * 실패를 배너로 낸 자리에 같은 뜻의 경고를 겹쳐 내지 않는다 —
+         * 배너 둘이 서면 사용자가 서로 다른 두 가지 일이 났다고 읽는다.
+         */
+        optionsNotice={roleAssignFailure === null ? renderOptionsNotice([roleOptions]) : null}
         loadError={
-          userRoleList.isError ? (
-            <LoadErrorBanner
-              error={userRoleList.error}
-              onRetry={() => void userRoleList.refetch()}
-            />
-          ) : null
+          roleAssignFailure === null ? null : (
+            <LoadErrorBanner error={roleAssignFailure.error} onRetry={roleAssignFailure.retry} />
+          )
         }
         /*
          * 서버가 거부하면 그 사유를 그대로 낸다. 화면이 무엇을 막을지 정하지 않으므로

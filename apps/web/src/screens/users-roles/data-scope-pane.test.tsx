@@ -13,6 +13,7 @@ const BUSINESS_UNITS: LookupEntry[] = [
 
 const PLANTS: LookupEntry[] = [
   { value: '4001', label: 'SYN-PLT-01 · 합성 공장 A', isActive: true },
+  { value: '4002', label: 'SYN-PLT-02 · 합성 공장 B', isActive: false },
 ];
 
 const DRAFTS: DataScopeDraft[] = [
@@ -60,6 +61,26 @@ describe('DataScopePane', () => {
     renderPane();
 
     expect(within(rows()[1] as HTMLElement).getByText('(전체)')).toBeInTheDocument();
+  });
+
+  /**
+   * 같은 값을 편집 창은 「(미사용)」으로 낸다(`selectableOptions`) — 표에만 표식이 없으면
+   * 사용 중인 값과 구분되지 않다가 창을 여는 순간 갑자기 바뀐다.
+   */
+  it('미사용 값에는 표식이 붙는다', () => {
+    renderPane({ drafts: [{ draftId: 'a', businessUnitId: '', plantId: '4002' }] });
+
+    expect(
+      within(rows()[0] as HTMLElement).getByText('SYN-PLT-02 · 합성 공장 B (미사용)'),
+    ).toBeInTheDocument();
+  });
+
+  it('사용 중인 값에는 표식이 붙지 않는다', () => {
+    renderPane();
+
+    expect(
+      within(rows()[0] as HTMLElement).getByText('SYN-PLT-01 · 합성 공장 A'),
+    ).toBeInTheDocument();
   });
 
   /** 내부 식별자는 사용자가 쓸 수 없는 값이라 그대로 보이면 자료로 읽힌다. */

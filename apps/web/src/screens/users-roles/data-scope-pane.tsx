@@ -33,11 +33,17 @@ export interface DataScopePaneProps {
  *
  * **빈 축은 「(전체)」다** — 고르지 않은 것이 아니라 그 축 전체를 고른 것이다(공유계약 A-7).
  * **목록에 없는 번호는 번호로 내지 않는다** — 내부 식별자라 사용자가 쓸 수 없고, 보이면 자료로 읽힌다.
+ * **미사용 값에는 표식을 붙인다** — 편집 창(`selectableOptions`)과 역할 부여(`toRoleChoices`)가
+ * 같은 규칙을 쓴다. 표에만 표식이 없으면 같은 값이 창을 열 때 갑자기 「(미사용)」으로 바뀐다.
  */
 const axisLabel = (entries: LookupEntry[], value: string): string => {
   if (value === '') return t.scope.values.all;
 
-  return entries.find((entry) => entry.value === value)?.label ?? t.values.unknown;
+  const entry = entries.find((item) => item.value === value);
+
+  if (entry === undefined) return t.values.unknown;
+
+  return entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`;
 };
 
 /**

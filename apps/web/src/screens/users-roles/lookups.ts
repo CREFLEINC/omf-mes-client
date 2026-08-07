@@ -20,6 +20,13 @@ export interface LookupResult {
   truncated: boolean;
   /** 조회가 실패했으면 참. 실패를 삼키면 선택칸이 이유 없이 비어 보인다 */
   isError: boolean;
+  /**
+   * 실패의 원인. **선택 목록이 곧 그 구획의 내용인 자리**(역할 부여)에서는 이 실패가
+   * 보조 안내가 아니라 조회 실패 그 자체라 배너에 사유를 실어야 한다.
+   */
+  error: unknown;
+  /** 조회 실패에는 복구 경로를 함께 낸다 — 사용자가 할 수 있는 조치가 재시도뿐이다. */
+  refetch: () => void;
   isLoading: boolean;
 }
 
@@ -66,6 +73,10 @@ export const useDepartmentOptions = (enabled: boolean): LookupResult => {
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
+    error: query.error,
+    refetch: () => {
+      void query.refetch();
+    },
     isLoading: query.isPending,
   };
 };
@@ -98,6 +109,10 @@ export const useRoleOptions = (enabled: boolean): LookupResult => {
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
+    error: query.error,
+    refetch: () => {
+      void query.refetch();
+    },
     isLoading: query.isPending,
   };
 };
@@ -126,6 +141,10 @@ export const useBusinessUnitOptions = (enabled: boolean): LookupResult => {
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
+    error: query.error,
+    refetch: () => {
+      void query.refetch();
+    },
     isLoading: query.isPending,
   };
 };
@@ -157,6 +176,10 @@ export const usePlantOptions = (enabled: boolean): LookupResult => {
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
+    error: query.error,
+    refetch: () => {
+      void query.refetch();
+    },
     isLoading: query.isPending,
   };
 };
