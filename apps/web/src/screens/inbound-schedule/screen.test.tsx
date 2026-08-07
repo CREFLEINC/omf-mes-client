@@ -482,6 +482,21 @@ describe('InboundScheduleScreen — 조회 실패', () => {
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
   });
 
+  /*
+   * 401은 **403과 갈리고 500과 같은 갈래로 흐른다.** 이 앱에는 인증 만료 특례가 없어
+   * 지금은 500과 동작이 같은데, **같다는 사실 자체를 고정한다** —
+   * 특례가 조용히 생기면 이 테스트가 먼저 걸린다.
+   */
+  it('인증 만료(401)는 403이 아니라 500과 같은 갈래로 흐른다', async () => {
+    renderScreen([failingListRoute(401), ...lookupRoutes()]);
+
+    await screen.findByText(messages.httpError.loadTitle);
+
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noResultTitle)).not.toBeInTheDocument();
+  });
+
   it('연결이 끊기면 그 사유를 낸다', async () => {
     renderScreen([
       {
@@ -659,6 +674,33 @@ describe('InboundScheduleScreen — 건 고르기', () => {
     expect(requestsTo(requests, LINES_PATH)).toHaveLength(1);
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
     expect(screen.queryByText(DETAIL_MARKER)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **단위 참조는 아래 표만 쓴다.** 고르기 전에 부르면 첫 진입의 요청 수가 이유 없이 늘고,
+   * 뒤따르는 W-01 화면들이 이 골격을 복제하므로 여기서 풀리면 도메인 전체에서 풀린다.
+   *
+   * 나머지 참조 셋이 이미 온 것을 함께 단언한다 — 그래야 「단위만 늦다」와
+   * 「아직 아무것도 안 왔다」가 구분된다.
+   */
+  it('단위 참조는 고르기 전에는 부르지 않고 고른 뒤에 1회 부른다', async () => {
+    const { requests, user } = renderScreen([
+      listRoute(),
+      linesRoute(),
+      detailRoute(),
+      ...lookupRoutes(),
+    ]);
+
+    await screen.findByText('SAMPLE-ASN-0001');
+
+    expect(requestsTo(requests, PARTNERS_PATH)).toHaveLength(1);
+    expect(requestsTo(requests, ITEMS_PATH)).toHaveLength(1);
+    expect(requestsTo(requests, UOMS_PATH)).toHaveLength(0);
+
+    await selectFirstRow(user);
+    await screen.findByRole('group', { name: t.summary.label });
+
+    expect(requestsTo(requests, UOMS_PATH)).toHaveLength(1);
   });
 
   /* 렌더마다 다시 부르면 표를 훑는 동안 요청이 계속 나간다. */
