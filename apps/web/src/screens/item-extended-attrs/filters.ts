@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
+import { DEFAULT_TAB_ID, TAB_KEY } from './tabs';
 import type { ItemFilters } from './types';
 
 /**
@@ -60,10 +61,18 @@ export const readSelectedId = (params: URLSearchParams, key: string): number | n
  * **선택(`item`)을 담지 않는다.** 조건·쪽이 바뀌면 보이는 행이 달라지므로 이 함수의 결과로
  * 주소를 통째로 갈아 끼우면 선택이 자연히 사라진다 — 목록에 없는 품목의 폼이 우 칸에 남으면
  * 그것이 어디서 왔는지 알 수 없다.
+ *
+ * **탭은 남긴다.** 조건이 바뀌어도 「같은 품목의 어느 면을 보고 있는가」는 달라지지 않는다 —
+ * 여기서 탭을 떨구면 조건을 고칠 때마다 첫 탭으로 튕긴다.
  */
-export const toSearchParams = (filters: ItemFilters, page: number): URLSearchParams => {
+export const toSearchParams = (
+  tabId: string,
+  filters: ItemFilters,
+  page: number,
+): URLSearchParams => {
   const next = new URLSearchParams();
 
+  if (tabId !== DEFAULT_TAB_ID) next.set(TAB_KEY, tabId);
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));

@@ -1,12 +1,35 @@
 import { describe, expect, it } from 'vitest';
 
-import { lookupLabel } from './options';
-import type { LookupEntry } from './types';
+import { ensureOption, lookupLabel } from './options';
+import type { LookupEntry, SelectOption } from './types';
 
 const entries: LookupEntry[] = [
   { value: '7001', label: 'SYN-UOM-01 · 합성 단위 A', isActive: true },
   { value: '7002', label: 'SYN-UOM-02 · 합성 단위 B', isActive: false },
 ];
+
+describe('ensureOption', () => {
+  const options: SelectOption[] = [
+    { value: 'FIFO', label: 'FIFO' },
+    { value: 'FEFO', label: 'FEFO' },
+  ];
+
+  it('이미 있는 값이면 목록을 그대로 둔다', () => {
+    expect(ensureOption(options, 'FIFO')).toBe(options);
+  });
+
+  /* 빼면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다. */
+  it('목록에 없는 현재 값을 덧붙인다', () => {
+    expect(ensureOption(options, 'SYN-POLICY-X')).toEqual([
+      ...options,
+      { value: 'SYN-POLICY-X', label: 'SYN-POLICY-X' },
+    ]);
+  });
+
+  it('값이 없으면 아무것도 덧붙이지 않는다', () => {
+    expect(ensureOption(options, '')).toBe(options);
+  });
+});
 
 describe('lookupLabel', () => {
   it('번호를 이름으로 옮긴다', () => {

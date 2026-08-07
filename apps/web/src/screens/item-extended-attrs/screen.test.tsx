@@ -90,6 +90,30 @@ const errorRoute = (pathname: string, status = 500): StubRoute => ({
   respond: () => jsonResponse({ message: '조회에 실패했습니다' }, { status }),
 });
 
+const isPut = (request: Request, pathname: string): boolean =>
+  request.method === 'PUT' && new URL(request.url).pathname === pathname;
+
+/** 확장 속성 저장 — 성공. 응답에도 `ETag`가 온다(계약 실측). */
+const itemSaveRoute = (itemId = 1001): StubRoute => ({
+  match: (request) => isPut(request, `${ITEMS_PATH}/${String(itemId)}`),
+  respond: () =>
+    jsonResponse(
+      itemFixtures.find((row) => row.itemId === itemId),
+      {
+        headers: { ETag: 'W/"8"' },
+      },
+    ),
+});
+
+/** 확장 속성 저장 — 실패. 상태 코드와 본문을 그대로 받는다. */
+const itemSaveFailureRoute = (status: number, body: unknown, itemId = 1001): StubRoute => ({
+  match: (request) => isPut(request, `${ITEMS_PATH}/${String(itemId)}`),
+  respond: () => jsonResponse(body, { status }),
+});
+
+/** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * 뒤로가기를 눌러 보기 위한 탐침.
  *
@@ -443,5 +467,418 @@ describe('ItemExtendedAttrsScreen — 선택 수명 (M07)', () => {
     expect(
       await screen.findByText('좌측에서 품목을 고르면 여기에 그 품목의 정보가 보입니다'),
     ).toBeInTheDocument();
+  });
+});
+
+/* ── 탭 ─────────────────────────────────────────────────────────────────── */
+
+describe('ItemExtendedAttrsScreen — 탭', () => {
+  /* **만든 탭만 넣는다.** 아직 없는 탭을 목록에 두면 「눌러도 빈 화면」이 생긴다. */
+  it('만든 탭만 렌더한다', async () => {
+    renderScreen([itemListRoute(), itemDetailRoute(), uomsRoute()], '?item=1001');
+
+    await findOriginContent();
+
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['확장 속성']);
+    expect(screen.queryByRole('tab', { name: '부속 정보' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '자재 명세서' })).not.toBeInTheDocument();
+  });
+
+  /* 「먼저 고르세요」를 두 번 쌓으면 무엇을 하라는 안내인지 오히려 흐려진다. */
+  it('품목을 고르기 전에는 탭을 렌더하지 않는다', async () => {
+    renderScreen([itemListRoute()]);
+
+    await screen.findByRole('button', { name: 'SYN-ITEM-01' });
+
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+  });
+
+  /* 주소를 손으로 고쳐도 빈 화면이 되지 않아야 한다. */
+  it('주소의 탭 값이 이상하면 첫 탭으로 떨어진다', async () => {
+    renderScreen([itemListRoute(), itemDetailRoute(), uomsRoute()], '?item=1001&tab=bogus');
+
+    expect(await screen.findByRole('tab', { name: '확장 속성' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  /* 원본 구획이 **탭 밖 맨 위**에 있어야 어느 탭에서도 저장 버튼이 없다는 사실이 보인다(결정 2). */
+  it('원본 구획이 탭 밖에 있다', async () => {
+    renderScreen([itemListRoute(), itemDetailRoute(), uomsRoute()], '?item=1001');
+
+    await findOriginContent();
+
+    const tabPanel = screen.getByRole('tabpanel');
+    expect(within(tabPanel).queryByLabelText('품목코드')).not.toBeInTheDocument();
+    expect(within(tabPanel).getByRole('region', { name: '확장 속성' })).toBeInTheDocument();
+  });
+});
+
+/* ── 확장 속성 저장 ─────────────────────────────────────────────────────── */
+
+const findAttrsPane = async (): Promise<HTMLElement> =>
+  screen.findByRole('region', { name: '확장 속성' });
+
+/** 폼을 한 군데 고쳐 저장을 연다. 어느 필드를 고쳐도 결과는 같다. */
+const editAndSave = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.type(screen.getByLabelText('보관 조건'), 'X');
+  await user.click(screen.getByRole('button', { name: '저장' }));
+};
+
+const savedBodies = (requests: RecordedRequest[], itemId = 1001): unknown[] =>
+  requests
+    .filter(
+      (request) =>
+        request.method === 'PUT' && request.url.pathname === `${ITEMS_PATH}/${String(itemId)}`,
+    )
+    .map((request) => JSON.parse(request.body) as unknown);
+
+/**
+ * M02 — 확장 저장 본문에 원본 4열이 없다.
+ * M03 — 본문의 `isActive`가 조회값이다.
+ *
+ * 서버가 원본 열의 편집을 막지 않는다(계약 실측) — 경계를 지키는 곳이 화면뿐이다.
+ */
+describe('ItemExtendedAttrsScreen — 저장 본문 (M02·M03)', () => {
+  it('계약의 아홉 키만 실린다', async () => {
+    const { requests, user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveRoute(),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await editAndSave(user);
+
+    await waitFor(() => {
+      expect(savedBodies(requests)).toHaveLength(1);
+    });
+
+    expect(Object.keys(savedBodies(requests)[0] as object).sort()).toEqual(
+      [
+        'fifoPolicyCode',
+        'inspectionRequired',
+        'isActive',
+        'lotControlTypeCode',
+        'negativeStockAllowed',
+        'openedShelfLifeHours',
+        'serialControlTypeCode',
+        'shelfLifeDays',
+        'storageConditionCode',
+      ].sort(),
+    );
+  });
+
+  it('원본 4열과 번호를 담지 않는다', async () => {
+    const { requests, user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveRoute(),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await editAndSave(user);
+
+    await waitFor(() => {
+      expect(savedBodies(requests)).toHaveLength(1);
+    });
+
+    const body = savedBodies(requests)[0] as Record<string, unknown>;
+    for (const key of ['itemCode', 'itemName', 'itemTypeCode', 'baseUomId', 'itemId']) {
+      expect(body).not.toHaveProperty(key);
+    }
+  });
+
+  /* `true`로 굳히면 미사용 품목이 저장하는 순간 조용히 되살아난다. */
+  it('미사용 품목을 저장해도 미사용 그대로 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [itemListRoute(), itemDetailRoute(1003), uomsRoute(), itemSaveRoute(1003)],
+      '?item=1003',
+    );
+
+    await findAttrsPane();
+    await editAndSave(user);
+
+    await waitFor(() => {
+      expect(savedBodies(requests, 1003)).toHaveLength(1);
+    });
+
+    expect(savedBodies(requests, 1003)[0]).toHaveProperty('isActive', false);
+  });
+
+  it('사용 중인 품목은 사용 중으로 실린다', async () => {
+    const { requests, user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveRoute(),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await editAndSave(user);
+
+    await waitFor(() => {
+      expect(savedBodies(requests)).toHaveLength(1);
+    });
+
+    expect(savedBodies(requests)[0]).toHaveProperty('isActive', true);
+  });
+});
+
+/**
+ * M04 — 유효기한 토글 OFF면 `shelfLifeDays`가 널이다.
+ * M05 — 토글 ON에 값이 비면 요청이 나가지 않는다.
+ */
+describe('ItemExtendedAttrsScreen — 유효기한 (M04·M05)', () => {
+  it('토글을 끄고 저장하면 널이 실린다', async () => {
+    const { requests, user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveRoute(),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+
+    await user.click(screen.getByRole('switch', { name: '유효기한 관리' }));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(savedBodies(requests)).toHaveLength(1);
+    });
+
+    expect(savedBodies(requests)[0]).toHaveProperty('shelfLifeDays', null);
+  });
+
+  it('토글이 켜져 있는데 값을 비우면 요청이 나가지 않고 인라인 오류가 난다', async () => {
+    const { requests, user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveRoute(),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+
+    await user.clear(screen.getByLabelText('유효기한(일)'));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText('유효기한 관리를 켜면 유효기한(일)을 입력해야 합니다.'),
+    ).toBeInTheDocument();
+    expect(savedBodies(requests)).toHaveLength(0);
+  });
+
+  /* 계약 `exclusiveMinimum: 0` — 유효기한(일)과 하한 규칙이 다르다(M06의 화면 쪽 확인). */
+  it('개봉 후 유효시간에 0을 넣으면 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveRoute(),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+
+    await user.clear(screen.getByLabelText('개봉 후 유효시간(시간)'));
+    await user.type(screen.getByLabelText('개봉 후 유효시간(시간)'), '0');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText('개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.'),
+    ).toBeInTheDocument();
+    expect(savedBodies(requests)).toHaveLength(0);
+  });
+});
+
+/**
+ * M14 — 확장 저장에 `If-Match`가 실린다.
+ *
+ * `etagPath`를 `null`로 주면 토큰 없이 보내고 서버가 400으로 되돌린다(계약 실측 B).
+ */
+describe('ItemExtendedAttrsScreen — 저장 헤더 (M14)', () => {
+  it('상세 조회가 준 토큰을 If-Match로 되돌려 보낸다', async () => {
+    const { requests, user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveRoute(),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await editAndSave(user);
+
+    await waitFor(() => {
+      expect(savedBodies(requests)).toHaveLength(1);
+    });
+
+    const put = requests.find((request) => request.method === 'PUT')!;
+    expect(put.headers.get('If-Match')).toBe('W/"7"');
+  });
+
+  /* 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다. */
+  it('멱등 키를 요청마다 새로 만든다', async () => {
+    const { requests, user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveRoute(),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await editAndSave(user);
+
+    await waitFor(() => {
+      expect(savedBodies(requests)).toHaveLength(1);
+    });
+
+    const put = requests.find((request) => request.method === 'PUT')!;
+    expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
+  });
+});
+
+/**
+ * M26 — 충돌 문구가 공통 규약 문구다.
+ *
+ * 이슈 #14 §4의 「배치 충돌 전용 문구를 두지 않는다」는 **이 화면이 자기 문구를 만들지 않는다**는 뜻이다.
+ * 원인 구분은 공통 배너가 이미 갖고 있으므로 그것을 그대로 소비하는 것이 유일한 답이다.
+ */
+describe('ItemExtendedAttrsScreen — 저장 실패 (M26)', () => {
+  const saveAndExpect = async (status: number, body: unknown, expected: string) => {
+    const { user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveFailureRoute(status, body),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await editAndSave(user);
+
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+  };
+
+  it('외부 재수신 충돌을 공통 문구로 낸다', async () => {
+    await saveAndExpect(
+      409,
+      { conflictCause: 'erpSync', message: '충돌' },
+      '외부 시스템에서 이 항목이 다시 동기화됐습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+    );
+  });
+
+  it('다른 사용자와의 충돌을 공통 문구로 낸다', async () => {
+    await saveAndExpect(
+      409,
+      { conflictCause: 'user', message: '충돌' },
+      '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+    );
+  });
+
+  it('권한 없음을 공통 문구로 낸다', async () => {
+    await saveAndExpect(
+      403,
+      { code: 'FORBIDDEN', message: '권한 없음' },
+      '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+    );
+  });
+
+  it('서버 검증 오류를 그 칸 옆에 낸다', async () => {
+    const { user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveFailureRoute(400, {
+        code: 'VALIDATION_ERROR',
+        message: '검증 실패',
+        errors: [
+          { scope: 'field', field: 'shelfLifeDays', code: 'REQUIRED', message: '서버 검증 문구' },
+        ],
+      }),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await editAndSave(user);
+
+    expect(await screen.findByText('서버 검증 문구')).toBeInTheDocument();
+  });
+
+  /* 재조회로 풀리는 것은 충돌뿐이다 — 다른 오류에 「최신 불러오기」를 내면 입력만 버리게 된다. */
+  it('충돌에만 최신 불러오기를 낸다', async () => {
+    const { user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await editAndSave(user);
+
+    await screen.findByText(
+      '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+    );
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * M30 — 저장 성공 후 상세가 무효화된다.
+ * 무효화를 빠뜨리면 보관된 토큰이 낡아 그다음 저장이 조용히 막힌다.
+ */
+describe('ItemExtendedAttrsScreen — 저장 성공 (M30)', () => {
+  it('성공하면 목록과 상세를 다시 조회한다', async () => {
+    const { requests, user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveRoute(),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+
+    const detailsBefore = requestsTo(requests, `${ITEMS_PATH}/1001`).filter(
+      (request) => request.method === 'GET',
+    ).length;
+
+    await editAndSave(user);
+
+    await waitFor(() => {
+      const detailsAfter = requestsTo(requests, `${ITEMS_PATH}/1001`).filter(
+        (request) => request.method === 'GET',
+      ).length;
+      expect(detailsAfter).toBeGreaterThan(detailsBefore);
+    });
+  });
+
+  it('성공하면 저장이 다시 닫힌다 — 고친 것이 없어진다', async () => {
+    const { user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      uomsRoute(),
+      itemSaveRoute(),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+    await editAndSave(user);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    });
   });
 });

@@ -45,3 +45,33 @@ export interface ItemFilters {
   q: string;
   includeInactive: boolean;
 }
+
+/**
+ * 확장 속성 폼 값. 문자열이 많은 이유는 디자인 시스템 입력·선택이 문자열을 다루기 때문이고,
+ * 계약은 선택 항목을 널로 표현한다. 그 경계는 `item-attrs-mappers.ts`가 한 곳에서 넘는다.
+ *
+ * **여기에 원본 4열이 없다.** 폼에 담지 않으면 실수로도 요청 본문에 실을 수 없다 —
+ * 서버가 원본 열의 편집을 막지 않으므로(계약 실측) 화면이 형태로 경계를 지킨다.
+ *
+ * **`isActive`도 없다.** 계약이 요청에 필수로 요구하지만 화면에 컨트롤을 두지 않는다 —
+ * 저장할 때 **조회한 값을 그대로 되돌려 싣는다**(결정 3). 폼 값으로 두면 어딘가에서
+ * 기본값이 끼어들어 미사용 품목이 조용히 되살아난다.
+ */
+export interface ItemAttrsFormValues {
+  lotControlTypeCode: string;
+  serialControlTypeCode: string;
+  /**
+   * 「유효기한 관리」 토글. **계약 필드가 아니다** —
+   * `shelfLifeDays`의 널 여부를 사람이 다루는 형태로 옮긴 것이다(계약 §8-2).
+   */
+  shelfLifeManaged: boolean;
+  /** 토글 ON이면 필수. OFF이면 요청에 `null`이 실린다 */
+  shelfLifeDays: string;
+  inspectionRequired: boolean;
+  fifoPolicyCode: string;
+  negativeStockAllowed: boolean;
+  /** 계약이 널을 허용한다 — 비우는 것이 정상 값이다 */
+  storageConditionCode: string;
+  /** 계약이 널을 허용한다. 값이 있으면 **0을 넘어야** 한다(`exclusiveMinimum`) */
+  openedShelfLifeHours: string;
+}

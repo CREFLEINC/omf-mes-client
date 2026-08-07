@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { LookupEntry } from './types';
+import type { LookupEntry, SelectOption } from './types';
 
 /**
  * 선택지를 다루는 순수 함수. 조회로 채우는 선택 목록(단위 등)이 모두 이것을 쓴다.
@@ -9,6 +9,15 @@ import type { LookupEntry } from './types';
  */
 
 const t = messages.itemExtendedAttrs;
+
+/**
+ * 서버가 준 현재 값이 선택지 목록에 없으면 값 그대로 덧붙인다.
+ * 덧붙이지 않으면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다.
+ */
+export const ensureOption = (options: SelectOption[], value: string): SelectOption[] =>
+  value === '' || options.some((option) => option.value === value)
+    ? options
+    : [...options, { value, label: value }];
 
 /**
  * 번호를 사람이 읽는 이름으로 옮긴다. 읽기 전용 표기에 쓴다.

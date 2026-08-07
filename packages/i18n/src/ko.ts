@@ -1332,9 +1332,15 @@ const commonCode = {
 const itemExtendedAttrs = {
   title: '품목 확장속성',
   breadcrumbRoot: '기준정보',
+  /** 탭 라벨. **만든 탭만 둔다** — 없는 탭의 라벨을 미리 두면 무엇이 렌더되는지 흐려진다. */
+  tabs: {
+    label: '품목 확장속성',
+    attrs: '확장 속성',
+  },
   panes: {
     item: '품목',
     itemOrigin: '품목 원본 정보',
+    itemAttrs: '확장 속성',
   },
   actions: {
     prevPage: '이전',
@@ -1405,6 +1411,45 @@ const itemExtendedAttrs = {
       /** 값 목록이 미정이라 코드 문자열을 그대로 낸다 — 이름을 지어내지 않는다. */
       itemType: '품목유형',
       baseUom: '기준 단위',
+    },
+  },
+  /**
+   * 확장 구획 — 이쪽이 소유해 편집하는 값. **원본 구획과 말이 갈려 있어야 한다.**
+   *
+   * 「유효기한 관리」는 계약 필드가 아니라 유효기한(일)의 널 여부를 사람이 다루는 형태로 옮긴 것이다.
+   * 두 항목을 한 줄로 붙여 놓아 무엇이 무엇을 켜는지 보이게 한다.
+   */
+  attrs: {
+    fields: {
+      lotControlType: 'LOT 관리 유형',
+      serialControlType: '시리얼 관리 유형',
+      shelfLifeManaged: '유효기한 관리',
+      shelfLifeDays: '유효기한(일)',
+      inspectionRequired: '입고검사 대상',
+      fifoPolicy: '선출 정책',
+      negativeStockAllowed: '마이너스 재고 허용',
+      storageCondition: '보관 조건',
+      openedShelfLifeHours: '개봉 후 유효시간(시간)',
+      isActive: '사용 여부',
+    },
+    values: {
+      active: '사용 중',
+      inactive: '미사용',
+    },
+    /**
+     * 사용 여부에 컨트롤을 두지 않는 이유. **감추지 않고 밝힌다** —
+     * 값만 있고 바꿀 수단이 없으면 사용자가 화면이 빠뜨린 것으로 읽는다.
+     */
+    isActiveNote: '사용 여부는 이 화면에서 바꾸지 않습니다. 저장해도 지금 값이 그대로 유지됩니다.',
+    validation: {
+      required: '필수 입력 항목입니다.',
+      codeTooLong: '코드는 50자를 넘을 수 없습니다.',
+      /* 계약 A-2 — 「유효기한 관리」가 켜져 있을 때만 필수다. */
+      shelfLifeDaysRequired: '유효기한 관리를 켜면 유효기한(일)을 입력해야 합니다.',
+      /* 계약 minimum: 0 — 0은 허용값이다. 「비었다」로 다루지 않는다. */
+      shelfLifeDaysInvalid: '유효기한(일)은 0 이상의 정수로 입력하세요.',
+      /* 계약 exclusiveMinimum: 0 — 유효기한(일)과 규칙이 다르다. 0을 받지 않는다. */
+      openedShelfLifeHoursInvalid: '개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.',
     },
   },
 } as const;
