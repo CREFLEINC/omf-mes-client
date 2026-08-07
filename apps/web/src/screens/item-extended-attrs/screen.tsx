@@ -36,7 +36,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import { useBusinessUnitOptions, useUomOptions, type LookupResult } from './lookups';
 import { lookupLabel, selectableOptions } from './options';
 import { toPageView } from './pagination';
-import { subsidiaryKeys, useBuMaps } from './subsidiary-queries';
+import { subsidiaryKeys, useBuMaps, useUomConversions } from './subsidiary-queries';
 import {
   DEFAULT_SUBSIDIARY_TAB_ID,
   DEFAULT_TAB_ID,
@@ -48,9 +48,21 @@ import {
   resolveTab,
 } from './tabs';
 import type { Item, ItemAttrsFormValues, ItemFilters } from './types';
+import {
+  createUomConversionDraft,
+  isSameUomConversionDrafts,
+  removeUomConversionDraft,
+  toUomConversionDrafts,
+  toUomConversionsPayload,
+  upsertUomConversionDraft,
+  type UomConversionDraft,
+} from './uom-conversion-draft';
+import { UomConversionFormDialog } from './uom-conversion-form-dialog';
+import { UomConversionPane } from './uom-conversion-pane';
 
 type ItemDetailResponse = components['schemas']['ItemDetailResponse'];
 type ItemBuItemMapListResponse = components['schemas']['ItemBuItemMapListResponse'];
+type ItemUomConversionListResponse = components['schemas']['ItemUomConversionListResponse'];
 
 const t = messages.itemExtendedAttrs;
 
@@ -85,6 +97,13 @@ interface BuMapDraftState {
   source: ItemBuItemMapListResponse;
   baseline: BuMapDraft[];
   drafts: BuMapDraft[];
+}
+
+/** 단위 환산 초안. 사업부 매핑과 **같은 모양이되 서로를 알지 않는다**(결정 6). */
+interface UomConversionDraftState {
+  source: ItemUomConversionListResponse;
+  baseline: UomConversionDraft[];
+  drafts: UomConversionDraft[];
 }
 
 /**
@@ -280,6 +299,65 @@ export const ItemExtendedAttrsScreen = () => {
     setEditingBuMap(draft);
   };
 
+  /* ── 부속 정보 · 단위 환산 ──────────────────────────────────────────────── */
+
+  const uomConversionList = useUomConversions(selectedItemId, isSubsidiaryTab);
+
+  const [uomConversionState, setUomConversionState] = useState<UomConversionDraftState | null>(
+    null,
+  );
+
+  const uomConversionSource = uomConversionList.data ?? null;
+
+  if (uomConversionSource === null) {
+    if (uomConversionState !== null) setUomConversionState(null);
+  } else if (uomConversionState?.source !== uomConversionSource) {
+    const seeded = toUomConversionDrafts(uomConversionSource.items);
+    setUomConversionState({ source: uomConversionSource, baseline: seeded, drafts: seeded });
+  }
+
+  const uomConversionDrafts = uomConversionState?.drafts ?? [];
+  const isUomConversionDirty =
+    uomConversionState !== null &&
+    !isSameUomConversionDrafts(uomConversionState.drafts, uomConversionState.baseline);
+
+  const [editingUomConversion, setEditingUomConversion] = useState<UomConversionDraft | null>(null);
+  const [isEditingNewUomConversion, setIsEditingNewUomConversion] = useState(false);
+
+  const uomConversionWrite = useMasterWrite<UomConversionDraft[], ItemUomConversionListResponse>({
+    request: (drafts, headers) =>
+      client.PUT('/mdm/items/{itemId}/uom-conversions', {
+        params: {
+          path: { itemId: selectedItemId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { conversions: toUomConversionsPayload(drafts) },
+      }),
+    /* **반드시 `null`이다**(§5.3 표 3행) — 사업부 매핑과 같은 근거다(M17). */
+    etagPath: null,
+    invalidateKeys: [subsidiaryKeys.uomConversions(selectedItemId ?? 0)],
+    knownFields: [],
+    onSuccess: (saved) => {
+      const next = toUomConversionDrafts(saved.items);
+      setUomConversionState({ source: saved, baseline: next, drafts: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const changeUomConversionDrafts = (
+    next: (drafts: UomConversionDraft[]) => UomConversionDraft[],
+  ) => {
+    setUomConversionState((prev) =>
+      prev === null ? prev : { ...prev, drafts: next(prev.drafts) },
+    );
+  };
+
+  const openUomConversionDialog = (draft: UomConversionDraft, isNew: boolean) => {
+    uomConversionWrite.reset();
+    setIsEditingNewUomConversion(isNew);
+    setEditingUomConversion(draft);
+  };
+
   /* ── 선택 수명 ──────────────────────────────────────────────────────────── */
 
   /**
@@ -296,6 +374,10 @@ export const ItemExtendedAttrsScreen = () => {
     buMapWrite.reset();
     setBuMapState(null);
     setEditingBuMap(null);
+
+    uomConversionWrite.reset();
+    setUomConversionState(null);
+    setEditingUomConversion(null);
   };
 
   /*
@@ -597,8 +679,54 @@ export const ItemExtendedAttrsScreen = () => {
     />
   );
 
-  const subTabContentOf = (subTabId: string): ReactNode =>
-    subTabId === 'bu' ? renderBuMapPane() : null;
+  /** 하위 탭①-2 — 단위 환산. */
+  const renderUomConversionPane = (): ReactNode => (
+    <UomConversionPane
+      drafts={uomConversionDrafts}
+      isLoading={uomConversionList.isPending}
+      uomEntries={uomOptions.entries}
+      isUomLoading={uomOptions.isLoading}
+      optionsNotice={renderOptionsNotice([uomOptions])}
+      loadError={
+        uomConversionList.isError ? (
+          <LoadErrorBanner
+            error={uomConversionList.error}
+            onRetry={() => void uomConversionList.refetch()}
+          />
+        ) : null
+      }
+      /* 낙관적 잠금이 없어 충돌 갈래가 없다 — 「최신 불러오기」를 주지 않는다. */
+      banner={<SaveErrorBanner error={uomConversionWrite.error} />}
+      isDirty={isUomConversionDirty}
+      isSaving={uomConversionWrite.isSaving}
+      onAdd={() => openUomConversionDialog(createUomConversionDraft(), true)}
+      onEdit={(draftId) => {
+        const found = uomConversionDrafts.find((draft) => draft.draftId === draftId);
+        if (found !== undefined) openUomConversionDialog(found, false);
+      }}
+      onRemove={(draftId) => {
+        changeUomConversionDrafts((drafts) => removeUomConversionDraft(drafts, draftId));
+      }}
+      onSave={() => {
+        if (uomConversionState === null) return;
+
+        uomConversionWrite.write(uomConversionState.drafts);
+      }}
+      onCancel={() => {
+        uomConversionWrite.reset();
+        setUomConversionState((prev) =>
+          prev === null ? prev : { ...prev, drafts: prev.baseline },
+        );
+      }}
+    />
+  );
+
+  const subTabContentOf = (subTabId: string): ReactNode => {
+    if (subTabId === 'bu') return renderBuMapPane();
+    if (subTabId === 'uom') return renderUomConversionPane();
+
+    return null;
+  };
 
   /**
    * 탭② — 부속 정보. **탭 안의 탭이다**(결정 2).
@@ -707,6 +835,21 @@ export const ItemExtendedAttrsScreen = () => {
           onConfirm={(next) => {
             changeBuMapDrafts((drafts) => upsertBuMapDraft(drafts, next));
             setEditingBuMap(null);
+          }}
+        />
+      )}
+
+      {editingUomConversion !== null && (
+        <UomConversionFormDialog
+          draft={editingUomConversion}
+          isNew={isEditingNewUomConversion}
+          /* 자기 자신은 초안 키로 걸러진다 — 수정할 때 세 값을 그대로 두는 것이 정상이다. */
+          otherDrafts={uomConversionDrafts}
+          uomOptions={(selected) => selectableOptions(uomOptions.entries, selected)}
+          onClose={() => setEditingUomConversion(null)}
+          onConfirm={(next) => {
+            changeUomConversionDrafts((drafts) => upsertUomConversionDraft(drafts, next));
+            setEditingUomConversion(null);
           }}
         />
       )}

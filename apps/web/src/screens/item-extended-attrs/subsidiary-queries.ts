@@ -5,6 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 
 type ItemBuItemMapListResponse = components['schemas']['ItemBuItemMapListResponse'];
+type ItemUomConversionListResponse = components['schemas']['ItemUomConversionListResponse'];
 
 /**
  * 부속 행 세 종류의 조회와 캐시 키.
@@ -33,6 +34,7 @@ type ItemBuItemMapListResponse = components['schemas']['ItemBuItemMapListRespons
  */
 export const subsidiaryKeys = {
   buMaps: (itemId: number) => ['item-extended-attrs-bu-maps', itemId] as const,
+  uomConversions: (itemId: number) => ['item-extended-attrs-uom-conversions', itemId] as const,
 };
 
 /**
@@ -60,6 +62,31 @@ export const useBuMaps = (
 
       return runRequest(() =>
         client.GET('/mdm/items/{itemId}/bu-item-maps', { params: { path: { itemId } } }),
+      );
+    },
+  });
+};
+
+/**
+ * 단위 환산 목록. 사업부 매핑과 **같은 조건에서 켜고 끈다** —
+ * 세 부속 자원은 함께 살아야 하고(§5.4), 하위 탭마다 켜면 옮길 때마다 새로 받는다.
+ */
+export const useUomConversions = (
+  itemId: number | null,
+  enabled: boolean,
+): UseQueryResult<ItemUomConversionListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: subsidiaryKeys.uomConversions(itemId ?? 0),
+    enabled: enabled && itemId !== null,
+    queryFn: () => {
+      if (itemId === null) {
+        throw new Error('품목을 고르기 전에는 단위 환산을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/items/{itemId}/uom-conversions', { params: { path: { itemId } } }),
       );
     },
   });

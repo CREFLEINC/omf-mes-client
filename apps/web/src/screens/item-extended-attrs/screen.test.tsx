@@ -10,7 +10,13 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { buMapFixtures, businessUnitFixtures, itemFixtures, uomFixtures } from './fixtures';
+import {
+  buMapFixtures,
+  businessUnitFixtures,
+  itemFixtures,
+  uomConversionFixtures,
+  uomFixtures,
+} from './fixtures';
 import { ItemExtendedAttrsScreen } from './screen';
 
 const ROUTE = '/master-data/item-extended-attrs';
@@ -19,6 +25,8 @@ const ITEMS_PATH = '/mdm/items';
 const UOMS_PATH = '/mdm/uoms';
 const BUSINESS_UNITS_PATH = '/mdm/business-units';
 const buMapsPath = (itemId = 1001): string => `${ITEMS_PATH}/${String(itemId)}/bu-item-maps`;
+const uomConversionsPath = (itemId = 1001): string =>
+  `${ITEMS_PATH}/${String(itemId)}/uom-conversions`;
 
 interface RecordedRequest {
   method: string;
@@ -158,6 +166,17 @@ const itemDetailByIdRoute = (): StubRoute => ({
   },
 });
 
+/** 단위 환산 목록 — `ETag`도 쪽 나눔도 없다(계약 실측). */
+const uomConversionsRoute = (items = uomConversionFixtures, itemId = 1001): StubRoute => ({
+  match: (request) => isGet(request, uomConversionsPath(itemId)),
+  respond: () => jsonResponse({ items }),
+});
+
+const uomConversionSaveRoute = (items = uomConversionFixtures, itemId = 1001): StubRoute => ({
+  match: (request) => isPut(request, uomConversionsPath(itemId)),
+  respond: () => jsonResponse({ items }),
+});
+
 /** 부속 정보 탭을 그릴 때 필요한 스텁 한 벌. 하나만 빠져도 하네스가 던진다. */
 const subsidiaryRoutes = (): StubRoute[] => [
   itemListRoute(),
@@ -165,6 +184,7 @@ const subsidiaryRoutes = (): StubRoute[] => [
   uomsRoute(),
   businessUnitsRoute(),
   buMapsRoute(),
+  uomConversionsRoute(),
 ];
 
 /** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
@@ -1819,5 +1839,293 @@ describe('ItemExtendedAttrsScreen — 대상 품목 이름 (결정 12)', () => {
     await screen.findByText('SYN-ITEM-02 · 합성 품목 B');
 
     expect(requestsTo(requests, `${ITEMS_PATH}/1002`)).toHaveLength(1);
+  });
+});
+
+/* ── 부속 정보 · 단위 환산 ─────────────────────────────────────────────────── */
+
+const findUomConversionPane = async (): Promise<HTMLElement> => {
+  const pane = await screen.findByRole('region', { name: '단위 환산' });
+
+  await waitFor(() => {
+    expect(
+      within(pane).queryByRole('status', { name: '단위 환산을 불러오는 중' }),
+    ).not.toBeInTheDocument();
+  });
+
+  return pane;
+};
+
+const uomConversionBodies = (requests: RecordedRequest[], itemId = 1001): unknown[] =>
+  requests
+    .filter(
+      (request) => request.method === 'PUT' && request.url.pathname === uomConversionsPath(itemId),
+    )
+    .map((request) => JSON.parse(request.body) as unknown);
+
+const uomConversionPuts = (requests: RecordedRequest[], itemId = 1001): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'PUT' && request.url.pathname === uomConversionsPath(itemId),
+  );
+
+/** 단위 환산 하위 탭으로 옮긴다. */
+const openUomConversionTab = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('tab', { name: '단위 환산' }));
+
+  return findUomConversionPane();
+};
+
+/** 단위 환산 한 줄을 창에서 만든다. 확인까지 누르면 표에만 반영된다. */
+const addUomConversionRow = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: '환산 추가' }));
+
+  const dialog = screen.getByRole('dialog');
+
+  await user.click(within(dialog).getByLabelText('변환 전 단위'));
+  await user.click(screen.getByRole('option', { name: 'SYN-UOM-01 · 합성 단위 A' }));
+
+  await user.click(within(dialog).getByLabelText('변환 후 단위'));
+  await user.click(screen.getByRole('option', { name: 'SYN-UOM-03 · 합성 단위 C' }));
+
+  await user.type(within(dialog).getByLabelText('환산 비율'), '1.5');
+  await user.type(within(dialog).getByLabelText('유효 시작'), '2026-05-01');
+
+  await user.click(within(dialog).getByRole('button', { name: '확인' }));
+};
+
+describe('ItemExtendedAttrsScreen — 단위 환산 조회 시점', () => {
+  it('확장 속성 탭에서는 단위 환산을 조회하지 않는다', async () => {
+    const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001');
+
+    await findOriginContent();
+
+    expect(requestsTo(requests, uomConversionsPath())).toHaveLength(0);
+  });
+
+  /* 세 초안이 함께 살아야 하므로 부속 탭에 들어올 때 셋을 함께 받는다(§5.4). */
+  it('부속 정보 탭에 들어가면 사업부 매핑과 함께 조회한다', async () => {
+    const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+
+    await waitFor(() => {
+      expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
+    });
+  });
+});
+
+/**
+ * C08·C09·C10 · M15~M18 — 단위 환산의 전체 치환.
+ *
+ * 세 부속 자원이 **같은 규칙**을 지킨다. 하나만 검사하면 나머지 둘이 규칙을 어겨도 드러나지 않아
+ * 자원마다 같은 단언을 되풀이한다(결정 6 — 셋은 서로를 알지 않는다).
+ */
+describe('ItemExtendedAttrsScreen — 단위 환산 치환 (M15~M18)', () => {
+  it('치환 본문에 서버 식별자와 itemId가 없다 (M15·M16)', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), uomConversionSaveRoute()],
+      '?item=1001&tab=sub&sub=uom',
+    );
+
+    const pane = await findUomConversionPane();
+    await addUomConversionRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(uomConversionBodies(requests)).toHaveLength(1);
+    });
+
+    const body = uomConversionBodies(requests)[0] as { conversions: Record<string, unknown>[] };
+    expect(body.conversions).toHaveLength(3);
+
+    for (const conversion of body.conversions) {
+      expect(Object.keys(conversion).sort()).toEqual([
+        'conversionRate',
+        'effectiveFrom',
+        'effectiveTo',
+        'fromUomId',
+        'toUomId',
+      ]);
+    }
+    expect(uomConversionPuts(requests)[0]?.body).not.toContain('itemId');
+  });
+
+  it('치환 저장이 1회이고 If-Match가 실리지 않는다 (M17)', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), uomConversionSaveRoute()],
+      '?item=1001&tab=sub&sub=uom',
+    );
+
+    const pane = await findUomConversionPane();
+    await addUomConversionRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(uomConversionPuts(requests)).toHaveLength(1);
+    });
+
+    const put = uomConversionPuts(requests)[0]!;
+    expect(put.url.pathname).toBe('/mdm/items/1001/uom-conversions');
+    expect(put.headers.get('If-Match')).toBeNull();
+    expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
+  });
+
+  it('행을 전부 지우면 빈 배열을 보낸다 (M18)', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), uomConversionSaveRoute([])],
+      '?item=1001&tab=sub&sub=uom',
+    );
+
+    const pane = await findUomConversionPane();
+
+    for (const button of within(pane).getAllByRole('button', { name: /환산 삭제$/ })) {
+      await user.click(button);
+    }
+    expect(within(pane).getByText('등록된 단위 환산이 없습니다')).toBeInTheDocument();
+
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(uomConversionBodies(requests)).toHaveLength(1);
+    });
+
+    expect(uomConversionBodies(requests)[0]).toEqual({ conversions: [] });
+  });
+
+  /* 소수점 여덟 자리는 값의 일부다 — 옮기다 잃으면 사용자가 넣지 않은 값이 저장된다. */
+  it('소수점 여덟 자리가 본문까지 그대로 간다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), uomConversionSaveRoute()],
+      '?item=1001&tab=sub&sub=uom',
+    );
+
+    const pane = await findUomConversionPane();
+    await user.click(within(pane).getAllByRole('button', { name: /환산 수정$/ })[1]!);
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '확인' }));
+    await user.click(within(pane).getAllByRole('button', { name: /환산 삭제$/ })[0]!);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(uomConversionBodies(requests)).toHaveLength(1);
+    });
+
+    const body = uomConversionBodies(requests)[0] as { conversions: { conversionRate: number }[] };
+    expect(body.conversions[0]?.conversionRate).toBe(0.00012345);
+  });
+
+  it('창의 확인만으로는 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), uomConversionSaveRoute()],
+      '?item=1001&tab=sub&sub=uom',
+    );
+
+    await findUomConversionPane();
+    await addUomConversionRow(user);
+
+    expect(uomConversionPuts(requests)).toHaveLength(0);
+  });
+
+  it('취소하면 만든 줄이 사라지고 저장이 다시 닫힌다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub&sub=uom');
+
+    const pane = await findUomConversionPane();
+    await addUomConversionRow(user);
+    expect(within(pane).getAllByRole('row')).toHaveLength(4);
+
+    await user.click(within(pane).getByRole('button', { name: '취소' }));
+
+    expect(within(pane).getAllByRole('row')).toHaveLength(3);
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  it('성공하면 목록을 다시 조회한다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), uomConversionSaveRoute()],
+      '?item=1001&tab=sub&sub=uom',
+    );
+
+    const pane = await findUomConversionPane();
+    await waitFor(() => {
+      expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
+    });
+
+    await addUomConversionRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(
+        requestsTo(requests, uomConversionsPath()).filter((r) => r.method === 'GET'),
+      ).toHaveLength(2);
+    });
+  });
+
+  /*
+   * **한 자원을 저장해도 나머지 둘은 다시 받지 않는다.**
+   * 함께 무효화하면 편집 중이던 다른 초안이 서버 응답으로 되감긴다.
+   */
+  it('단위 환산 저장이 사업부 매핑을 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), uomConversionSaveRoute()],
+      '?item=1001&tab=sub&sub=uom',
+    );
+
+    const pane = await findUomConversionPane();
+    await waitFor(() => {
+      expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+    });
+
+    await addUomConversionRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(uomConversionPuts(requests)).toHaveLength(1);
+    });
+    expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+  });
+});
+
+/**
+ * §5.4 — **세 초안은 서로 다른 자원이라 함께 산다.**
+ * 하위 탭을 옮기는 것은 「보이는 행이 달라지는」 조작이 아니다.
+ */
+describe('ItemExtendedAttrsScreen — 하위 탭 사이의 초안 수명', () => {
+  it('두 하위 탭의 초안이 동시에 살아 있다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    const buPane = await findBuMapPane();
+    await addBuMapRow(user);
+    expect(buMapRowCount(buPane)).toBe(3);
+
+    const uomPane = await openUomConversionTab(user);
+    await addUomConversionRow(user);
+    expect(within(uomPane).getAllByRole('row')).toHaveLength(4);
+
+    await user.click(screen.getByRole('tab', { name: '사업부 매핑' }));
+
+    expect(buMapRowCount(await findBuMapPane())).toBe(3);
+  });
+
+  /* 반대 방향 — 품목이 달라지면 **셋 다** 비워진다. */
+  it('품목을 바꾸면 두 하위 탭의 초안이 함께 비워진다', async () => {
+    const { user } = renderScreen(
+      [...subsidiaryRoutes(), buMapsRoute([], 1002), uomConversionsRoute([], 1002)],
+      '?item=1001&tab=sub',
+    );
+
+    await findBuMapPane();
+    await addBuMapRow(user);
+    await openUomConversionTab(user);
+    await addUomConversionRow(user);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('등록된 단위 환산이 없습니다')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: '사업부 매핑' }));
+    await waitFor(() => {
+      expect(screen.getByText('등록된 사업부 매핑이 없습니다')).toBeInTheDocument();
+    });
   });
 });

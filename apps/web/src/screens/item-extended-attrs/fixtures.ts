@@ -5,6 +5,7 @@ import type { Item } from './types';
 type Uom = components['schemas']['Uom'];
 type BusinessUnit = components['schemas']['BusinessUnit'];
 type ItemBuItemMap = components['schemas']['ItemBuItemMap'];
+type ItemUomConversion = components['schemas']['ItemUomConversion'];
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -78,8 +79,11 @@ export const itemFixtures: Item[] = [
 ];
 
 /**
- * 단위 2건. **1003의 `baseUomId`(9999)는 일부러 여기 없다** —
+ * 단위 3건. **1003의 `baseUomId`(9999)는 일부러 여기 없다** —
  * 목록에서 찾지 못한 번호를 화면이 그대로 내지 않고 「알 수 없음」으로 내는지 본다.
+ *
+ * 둘째는 **미사용**이라 선택지에서 걸러지고, 셋째가 있어야 「변환 전 ≠ 변환 후」를
+ * 실제로 만들 수 있다.
  */
 export const uomFixtures: Uom[] = [
   {
@@ -95,6 +99,13 @@ export const uomFixtures: Uom[] = [
     uomName: '합성 단위 B',
     decimalScale: 2,
     isActive: false,
+  },
+  {
+    uomId: 7003,
+    uomCode: 'SYN-UOM-03',
+    uomName: '합성 단위 C',
+    decimalScale: 3,
+    isActive: true,
   },
 ];
 
@@ -151,6 +162,34 @@ export const buMapFixtures: ItemBuItemMap[] = [
     fromItemId: 1001,
     toBusinessUnitId: 5001,
     toItemId: 9001,
+    effectiveFrom: '2026-02-01',
+    effectiveTo: null,
+  },
+];
+
+/**
+ * 단위 환산 2건.
+ *
+ * - 4001 — 유효 종료가 있다
+ * - 4002 — 유효 종료가 **널**이고 환산 비율이 **소수점 여덟 자리**다(`numeric(18,8)`).
+ *   자릿수를 손대면 사용자가 고치지 않은 줄이 저장할 때 다른 값이 된다
+ */
+export const uomConversionFixtures: ItemUomConversion[] = [
+  {
+    itemUomConversionId: 4001,
+    itemId: 1001,
+    fromUomId: 7001,
+    toUomId: 7002,
+    conversionRate: 2.5,
+    effectiveFrom: '2026-01-01',
+    effectiveTo: '2026-12-31',
+  },
+  {
+    itemUomConversionId: 4002,
+    itemId: 1001,
+    fromUomId: 7002,
+    toUomId: 7001,
+    conversionRate: 0.00012345,
     effectiveFrom: '2026-02-01',
     effectiveTo: null,
   },

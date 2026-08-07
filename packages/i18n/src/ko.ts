@@ -1536,6 +1536,63 @@ const itemExtendedAttrs = {
       validRangeReversed: '유효 종료는 유효 시작과 같거나 뒤여야 합니다.',
     },
   },
+  /**
+   * 부속 하위 탭② — 단위 환산.
+   *
+   * 사업부 매핑과 달리 **유일 제약이 있다**(`uq_item_uom_conversion` 네 컬럼).
+   * 서버가 준 목록에 이미 겹친 줄이 있을 수 있어 저장을 막는 사유 문구가 함께 있다.
+   */
+  uomConversion: {
+    paneTitle: '단위 환산',
+    fields: {
+      fromUom: '변환 전 단위',
+      toUom: '변환 후 단위',
+      conversionRate: '환산 비율',
+      validPeriod: '유효기간',
+      effectiveFrom: '유효 시작',
+      effectiveTo: '유효 종료',
+      edit: '편집',
+    },
+    values: {
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+    },
+    actions: {
+      add: '환산 추가',
+      editRow: (name: string): string => `${name} 환산 수정`,
+      removeRow: (name: string): string => `${name} 환산 삭제`,
+    },
+    /* 「무엇이 막혔는지 + 어떻게 풀 수 있는지」를 담고 그 컨트롤의 이름으로 시작한다. */
+    actionReasons: {
+      saveBlockedByDuplicate:
+        '저장할 수 없습니다. 변환 전·변환 후·유효 시작이 같은 줄이 둘 이상 있습니다. 겹친 줄을 고치거나 지운 뒤 저장하세요.',
+    },
+    loading: {
+      list: '단위 환산을 불러오는 중',
+    },
+    empty: {
+      noneTitle: '등록된 단위 환산이 없습니다',
+      noneDescription: '「환산 추가」로 줄을 만든 뒤 저장하세요.',
+    },
+    dialog: {
+      addTitle: '단위 환산 추가',
+      editTitle: '단위 환산 수정',
+      confirm: '확인',
+      notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      /* 계약 ck_item_uom_distinct */
+      sameUom: '변환 전 단위와 변환 후 단위는 서로 달라야 합니다.',
+      /* 계약 exclusiveMinimum: 0 — 0은 허용값이 아니다. */
+      conversionRateInvalid: '환산 비율은 0보다 큰 수로 입력하세요.',
+      /* 계약 ck_item_uom_dates — 짝 제약이라 두 칸에 함께 낸다. */
+      validRangeReversed: '유효 종료는 유효 시작과 같거나 뒤여야 합니다.',
+      /* 계약 uq_item_uom_conversion — 유효 종료·환산 비율은 이 키에 들어가지 않는다. */
+      duplicateKey: '변환 전·변환 후·유효 시작이 같은 줄이 이미 있습니다.',
+      /* 표 위에 낸다 — 어느 줄이 문제인지 저장을 눌러야 알게 하지 않는다. */
+      duplicateInList: '변환 전·변환 후·유효 시작이 같은 줄이 있습니다. 겹친 줄을 정리하세요.',
+    },
+  },
 } as const;
 
 export const ko = {
