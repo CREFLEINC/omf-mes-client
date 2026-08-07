@@ -4023,3 +4023,100 @@ describe('ItemExtendedAttrsScreen — 구성품 확장 열에 없는 제약을 �
     expect(componentBodies(requests)[0]!.backflushAllowed).toBe(true);
   });
 });
+
+/* ── 화면 전체 (작업 9 · 통합) ────────────────────────────────────────────── */
+
+/** 세 탭과 하위 탭 셋을 모두 그릴 수 있는 스텁 한 벌. */
+const wholeScreenRoutes = (): StubRoute[] => [
+  ...componentEditRoutes(),
+  businessUnitsRoute(),
+  partnersRoute(),
+  buMapsRoute(),
+  uomConversionsRoute(),
+  externalCodesRoute(),
+];
+
+/** 확장 속성 → 부속 정보(하위 탭 셋) → 자재 명세서(구성품까지) 순으로 화면을 훑는다. */
+const walkWholeScreen = async (user: ReturnType<typeof userEvent.setup>) => {
+  await findOriginContent();
+  await findAttrsPane();
+
+  await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+  await findBuMapPane();
+  await openUomConversionTab(user);
+  await user.click(screen.getByRole('tab', { name: '외부 코드' }));
+  await findExternalCodePane();
+
+  await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+  await findBomListPane();
+  await openFirstBom(user);
+};
+
+describe('ItemExtendedAttrsScreen — 화면 전체', () => {
+  /** C04 — 계약에 `POST /mdm/items`가 없다. 품목은 외부 정본이고 여기서 만들지 않는다. */
+  it('세 탭을 모두 돌아도 품목을 새로 만드는 요청이 0회다 (C04)', async () => {
+    const { requests, user } = renderScreen(wholeScreenRoutes(), '?item=1001');
+
+    await walkWholeScreen(user);
+
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  /**
+   * C03 · M01 — **원본 구획은 어느 탭에서도 값 표기뿐이다.**
+   * 탭 밖에 있으므로 탭을 옮겨도 같아야 한다(결정 2).
+   */
+  it.each([
+    ['확장 속성', '?item=1001'],
+    ['부속 정보', '?item=1001&tab=sub'],
+    ['자재 명세서', '?item=1001&tab=bom'],
+  ])('%s 탭에서도 원본 구획에 쓰기 수단이 없다 (M01)', async (_name, search) => {
+    renderScreen(wholeScreenRoutes(), search);
+
+    await findOriginContent();
+
+    const origin = itemOriginPane();
+    expect(within(origin).queryAllByRole('textbox')).toHaveLength(0);
+    expect(within(origin).queryAllByRole('combobox')).toHaveLength(0);
+    expect(within(origin).queryAllByRole('switch')).toHaveLength(0);
+    expect(within(origin).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  /**
+   * C11 · M13 — **주소가 조건·탭·선택의 정본이다.**
+   * 새로고침·공유가 같은 화면을 내는지, 주소 한 벌로 통째로 확인한다.
+   */
+  it('주소 한 벌이 조건·탭·하위 탭·선택을 모두 되살린다', async () => {
+    const { requests } = renderScreen(
+      wholeScreenRoutes(),
+      '?tab=bom&sub=ext&q=SYN&inactive=1&item=1001&bom=2001',
+    );
+
+    await findBomComponentPane();
+
+    /* 좌 목록의 조건이 서버로 그대로 나갔다. */
+    const list = requestsTo(requests, ITEMS_PATH)[0]!;
+    expect(list.url.searchParams.get('q')).toBe('SYN');
+    expect(list.url.searchParams.get('includeInactive')).toBe('true');
+
+    /* 고른 탭·자재 명세서가 그대로 열려 있다. */
+    expect(screen.getByRole('tab', { name: '자재 명세서' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByLabelText('BOM 코드')).toHaveTextContent('SYN-BOM-01');
+  });
+
+  /* 하위 탭은 자재 명세서 탭에 있는 동안에도 주소에 남아야 돌아왔을 때 그 자리를 낸다. */
+  it('자재 명세서 탭을 다녀와도 부속 하위 탭이 그대로다', async () => {
+    const { user } = renderScreen(wholeScreenRoutes(), '?item=1001&tab=sub&sub=ext');
+
+    await findExternalCodePane();
+
+    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+    await findBomListPane();
+    await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+
+    expect(await screen.findByRole('region', { name: '외부 코드' })).toBeInTheDocument();
+  });
+});
