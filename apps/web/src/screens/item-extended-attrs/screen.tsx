@@ -9,7 +9,7 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -151,12 +151,35 @@ export const ItemExtendedAttrsScreen = () => {
     },
   });
 
-  /** 편집 중이던 상태를 통째로 비운다. 보이는 행이 달라질 때 함께 부른다. */
-  const resetAttrsEditing = () => {
+  /**
+   * 이 품목에 매달린 편집 상태를 통째로 비운다.
+   *
+   * 폼과 초안은 조회 응답에서 다시 세워지므로 스스로 낫지만, **쓰기 오류는 낫지 않는다** —
+   * 어느 품목에서 난 실패인지 훅이 알지 못해 다음 품목 화면에 그대로 남는다.
+   */
+  const resetItemEditing = () => {
     attrsWrite.reset();
     setFormState(null);
     setAttrsFieldErrors({});
   };
+
+  /*
+   * 위 함수는 매 렌더 새로 만들어지므로 그대로 의존성에 넣으면 렌더마다 초기화가 돈다 —
+   * 입력 도중에 값이 사라진다. 최신 함수를 참조로 들고 **고른 품목에만** 반응하게 한다.
+   */
+  const resetItemEditingRef = useRef(resetItemEditing);
+  resetItemEditingRef.current = resetItemEditing;
+
+  /**
+   * 선택 수명 규칙의 실행 지점(§5.4 3행). **클릭 핸들러가 아니라 고른 품목에 묶는다.**
+   *
+   * 클릭에만 두면 뒤로가기·앞으로가기·주소 직접 편집처럼 핸들러를 거치지 않는 경로에서
+   * **앞 품목의 실패 배너가 다음 품목 화면에 따라온다** — 사용자는 지금 품목이 저장에
+   * 실패한 줄 안다. 조건 변경·쪽 이동도 주소에서 `item`을 떨구므로 이 한 곳을 지나간다.
+   */
+  useEffect(() => {
+    resetItemEditingRef.current();
+  }, [selectedItemId]);
 
   /**
    * 주소의 일부만 고친다.
@@ -180,14 +203,15 @@ export const ItemExtendedAttrsScreen = () => {
    * 조건·쪽이 바뀌면 **주소를 통째로 새로 만든다.**
    * 그래야 `item`이 자연히 사라진다 — 보이는 행이 달라지는데 선택이 남으면
    * 우 칸의 내용이 어디서 온 것인지 알 수 없다.
+   *
+   * 편집 상태를 여기서 비우지 않는다. `item`이 사라지는 것을 위 효과가 보고 비운다 —
+   * 비우는 규칙이 조작마다 흩어지면 그중 하나를 빠뜨렸을 때 드러나지 않는다.
    */
   const applyFilters = (next: ItemFilters) => {
-    resetAttrsEditing();
     setSearchParams(toSearchParams(tab.id, next, 1));
   };
 
   const changePage = (nextPage: number) => {
-    resetAttrsEditing();
     setSearchParams(toSearchParams(tab.id, filters, nextPage));
   };
 
@@ -195,18 +219,14 @@ export const ItemExtendedAttrsScreen = () => {
    * 품목을 고른다. **주소 갱신 한 번으로 끝낸다** — 나눠 부르면 뒤로가기가
    * 사용자가 본 적 없는 중간 상태로 떨어진다.
    *
-   * **이미 고른 품목을 다시 누르면 아무것도 하지 않는다.** 선택 수명 규칙이 비우기를 거는 것은
-   * 「품목 선택 **변경**」이지 재클릭이 아니다 — 보이는 행이 달라지지 않았는데 비우면
-   * 저장하지 않은 입력이 조용히 사라진다. 여기서 먼저 걸러 두면 부속 초안이 이 화면으로
-   * 들어와도(뒤 작업) 같은 클릭 한 번에 초안 세 벌이 함께 날아가지 않는다.
+   * **이미 고른 품목을 다시 눌러도 히스토리를 늘리지 않는다.** 화면이 달라지지 않는 갱신은
+   * 뒤로가기 한 번을 헛돌게 만든다.
    *
-   * 실제로 달라질 때만 편집 중이던 상태를 비운다 — 다른 품목의 폼·실패 배너가 남으면
-   * 뒤로가기로 돌아왔을 때 **남의 실패 배너**를 보게 된다.
+   * 편집 상태를 여기서 비우지 않는다 — 비우기는 고른 품목에 묶여 있고, 재클릭은
+   * 그 값을 바꾸지 않으므로 저장하지 않은 입력이 그대로 남는다.
    */
   const handleSelectItem = (itemId: number) => {
     if (itemId === selectedItemId) return;
-
-    resetAttrsEditing();
 
     patchSearchParams((next) => {
       next.set(ITEM_KEY, String(itemId));
@@ -269,7 +289,7 @@ export const ItemExtendedAttrsScreen = () => {
    * 최신 값을 받아 다시 입력하는 수밖에 없고, 입력한 내용은 사라진다.
    */
   const reloadItemDetail = () => {
-    resetAttrsEditing();
+    resetItemEditing();
     void itemDetail.refetch();
   };
 

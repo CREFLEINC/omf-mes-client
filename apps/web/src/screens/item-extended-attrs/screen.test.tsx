@@ -861,6 +861,65 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
 
     expect(history.search()).toBe('?item=1001');
   });
+
+  /*
+   * **초기화는 클릭이 아니라 고른 품목에 묶여 있다.**
+   *
+   * 클릭 핸들러에만 두면 뒤로가기·주소 직접 편집으로 품목이 바뀔 때 그 핸들러를 거치지 않아
+   * 앞 품목의 실패 배너가 그대로 따라온다 — 사용자는 **지금 품목이** 저장에 실패한 줄 안다.
+   */
+  it('뒤로가기로 품목이 바뀌면 앞 품목의 저장 실패 배너가 따라오지 않는다', async () => {
+    const { history, user } = renderScreen(
+      [
+        itemListRoute(),
+        itemDetailRoute(),
+        itemDetailRoute(1002),
+        uomsRoute(),
+        itemSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+        itemSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }, 1002),
+      ],
+      '?item=1001',
+    );
+
+    await findAttrsPane();
+    await editAndSave(user);
+    await screen.findByText(FORBIDDEN_TEXT);
+
+    // 두 번째 품목에서도 실패시켜, 뒤로 돌아갈 때 배너가 **실제로 떠 있게** 만든다.
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+    await findAttrsPane();
+    await editAndSave(user);
+    await screen.findByText(FORBIDDEN_TEXT);
+
+    history.back();
+
+    await waitFor(() => {
+      expect(history.search()).toBe('?item=1001');
+    });
+    await waitFor(() => {
+      expect(screen.queryByText(FORBIDDEN_TEXT)).not.toBeInTheDocument();
+    });
+  });
+
+  /*
+   * 반대 방향 — **고른 품목이 그대로면 비우지 않는다.**
+   * 초기화를 「렌더할 때마다」로 넓히면 입력 도중에 값이 사라지므로 짝으로 고정한다.
+   * 검색어 칸은 조회를 걸기 전까지 주소를 바꾸지 않는다 — 화면만 다시 그려지는 조작이다.
+   */
+  it('고른 품목이 그대로면 화면을 다시 그려도 저장하지 않은 입력이 남는다', async () => {
+    const { history, user } = renderScreen(
+      [itemListRoute(), itemDetailRoute(), uomsRoute()],
+      '?item=1001',
+    );
+
+    await findAttrsPane();
+
+    await user.type(screen.getByLabelText('보관 조건'), 'ZZZ');
+    await user.type(screen.getByRole('searchbox', { name: '품목 검색' }), 'SYN');
+
+    expect(history.search()).toBe('?item=1001');
+    expect(screen.getByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01ZZZ');
+  });
 });
 
 /**
