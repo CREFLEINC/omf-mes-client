@@ -57,13 +57,42 @@ export const EventFilterBar = ({
   const [period, setPeriod] = useState<PeriodInput>(appliedPeriod);
   const [filters, setFilters] = useState<EventFilters>(appliedFilters);
 
-  /* 주소가 정본이다 — 뒤로가기·초기화로 주소가 바뀌면 편집 중인 값도 그 값으로 되돌아간다. */
+  /*
+   * 주소가 정본이다 — 뒤로가기·초기화로 주소가 **바뀌면** 편집 중인 값도 그 값으로 되돌아간다.
+   *
+   * **되돌림을 참조가 아니라 값으로 판정한다.** 부모는 렌더할 때마다 주소에서 값을 새로 읽으므로
+   * 내용이 같아도 참조가 달라질 수 있고(조회 응답이 도착해 다시 그려질 때가 그렇다),
+   * 참조로 판정하면 그때마다 사용자가 입력하던 값이 사라진다.
+   * 값이 실제로 달라졌을 때만 되돌린다.
+   */
+  const { from: appliedFrom, to: appliedTo } = appliedPeriod;
+  const {
+    targetType: appliedTargetType,
+    targetId: appliedTargetId,
+    eventType: appliedEventType,
+    performedBy: appliedPerformedBy,
+    correlationId: appliedCorrelationId,
+  } = appliedFilters;
+
   useEffect(() => {
-    setPeriod(appliedPeriod);
-  }, [appliedPeriod]);
+    setPeriod({ from: appliedFrom, to: appliedTo });
+  }, [appliedFrom, appliedTo]);
+
   useEffect(() => {
-    setFilters(appliedFilters);
-  }, [appliedFilters]);
+    setFilters({
+      targetType: appliedTargetType,
+      targetId: appliedTargetId,
+      eventType: appliedEventType,
+      performedBy: appliedPerformedBy,
+      correlationId: appliedCorrelationId,
+    });
+  }, [
+    appliedTargetType,
+    appliedTargetId,
+    appliedEventType,
+    appliedPerformedBy,
+    appliedCorrelationId,
+  ]);
 
   /** 기간이 갖춰지지 않으면 조회를 막고 사유를 밝힌다 — 계약이 기간을 필수로 두었다. */
   const searchReason = validatePeriod(period);

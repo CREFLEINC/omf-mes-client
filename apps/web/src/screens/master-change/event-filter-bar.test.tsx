@@ -96,6 +96,33 @@ describe('EventFilterBar — 조회 기간', () => {
     expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-01');
   });
 
+  /*
+   * 위 테스트의 짝이다. 부모는 렌더할 때마다 주소에서 값을 새로 읽어 **내용은 같은데 참조만
+   * 새로운** 객체를 내려보낼 수 있다(조회 응답이 도착해 다시 그려질 때가 그렇다).
+   * 되돌림을 참조로 판정하면 그때마다 사용자가 입력하던 값이 사라진다.
+   */
+  it('같은 내용의 새 참조가 와도 편집 중인 값을 건드리지 않는다', async () => {
+    const props = baseProps();
+    const { rerender } = render(<EventFilterBar {...props} />);
+    const user = userEvent.setup();
+
+    await user.clear(screen.getByLabelText('기간 시작'));
+    await user.type(screen.getByLabelText('기간 시작'), '2026-07-20');
+    await user.type(screen.getByLabelText('대상'), '9101');
+
+    // 값은 같고 참조만 새로운 객체를 내려보낸다.
+    rerender(
+      <EventFilterBar
+        {...props}
+        appliedPeriod={{ from: '2026-08-01', to: '2026-08-07' }}
+        appliedFilters={{ ...EMPTY_FILTERS }}
+      />,
+    );
+
+    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-20');
+    expect(screen.getByLabelText('대상')).toHaveValue(9101);
+  });
+
   it('초기화는 화면이 처리하도록 그대로 올린다', async () => {
     const { onReset, user } = renderBar();
 

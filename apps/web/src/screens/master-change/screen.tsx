@@ -1,7 +1,7 @@
 import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
@@ -104,12 +104,18 @@ export const MasterChangeScreen = () => {
    * 1·2·3은 `toSearchParams`가 **`sel`을 만들지 않는 것**으로 함께 지켜진다 — 여는 쪽만 덧붙인다.
    * 4는 아래 정리 effect가 한다. **비우는 자리는 이 넷뿐이고**, 다섯째가 생기면 이 표에 행을 먼저 더한다.
    */
-  const period: PeriodInput = {
-    from: searchParams.get('from') ?? '',
-    to: searchParams.get('to') ?? '',
-  };
+  /*
+   * **주소가 바뀔 때만 새 참조를 만든다.** 렌더마다 새 객체를 만들면 내용이 같아도 참조가 달라,
+   * 이 값을 되돌림 기준으로 삼는 조건 줄이 **부모가 다시 그려질 때마다** 입력을 덮어쓴다.
+   * 조회 응답이 도착하는 순간(대기 → 성공)이 실제로 그 자리이며, 사용자에게는
+   * 「치던 날짜가 갑자기 사라졌다」로 나타난다. `searchParams`는 주소가 바뀔 때만 새 참조다.
+   */
+  const period = useMemo<PeriodInput>(
+    () => ({ from: searchParams.get('from') ?? '', to: searchParams.get('to') ?? '' }),
+    [searchParams],
+  );
+  const filters = useMemo<EventFilters>(() => readFilters(searchParams), [searchParams]);
   const hasPeriodParams = searchParams.has('from') || searchParams.has('to');
-  const filters = readFilters(searchParams);
   const page = readPage(searchParams);
   /**
    * 변경 내용 창을 연 이력 번호. **주소에 둔다** — 새로고침·공유가 같은 창을 열어야 한다.
@@ -127,7 +133,21 @@ export const MasterChangeScreen = () => {
     if (hasPeriodParams) return;
 
     const seeded = defaultPeriod(new Date());
-    setSearchParams(new URLSearchParams({ from: seeded.from, to: seeded.to }), { replace: true });
+
+    /*
+     * **기간만 채운다.** 주소를 통째로 갈아 끼우면 공유받은 주소의 조건·쪽이 조용히 사라져
+     * 받은 사람과 보낸 사람이 서로 다른 결과를 본다.
+     */
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('from', seeded.from);
+        next.set('to', seeded.to);
+
+        return next;
+      },
+      { replace: true },
+    );
   }, [hasPeriodParams, setSearchParams]);
 
   /*

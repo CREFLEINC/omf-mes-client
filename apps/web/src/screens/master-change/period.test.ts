@@ -22,6 +22,22 @@ describe('validatePeriod', () => {
     expect(validatePeriod({ from: '어제', to: '2026-08-07' })).not.toBeNull();
   });
 
+  /*
+   * 자릿수만 맞는 값은 자릿수만 맞을 뿐이다. 그대로 보내면 서버가 400을 돌려주고
+   * 사용자에게는 「조회가 늘 실패한다」로만 보인다 — 형식 깨짐과 같이 다룬다.
+   */
+  it('없는 날짜는 자릿수가 맞아도 거부한다', () => {
+    expect(validatePeriod({ from: '2026-13-45', to: '2026-08-07' })).not.toBeNull();
+    expect(validatePeriod({ from: '2026-02-31', to: '2026-08-07' })).not.toBeNull();
+    expect(validatePeriod({ from: '2026-00-10', to: '2026-08-07' })).not.toBeNull();
+    expect(validatePeriod({ from: '2026-08-00', to: '2026-08-07' })).not.toBeNull();
+  });
+
+  it('윤년의 2월 29일은 받고 평년의 2월 29일은 거부한다', () => {
+    expect(validatePeriod({ from: '2024-02-29', to: '2026-08-07' })).toBeNull();
+    expect(validatePeriod({ from: '2026-02-29', to: '2026-08-07' })).not.toBeNull();
+  });
+
   it('기간이 역전되면 비었을 때와 다른 사유를 낸다', () => {
     const reversed = validatePeriod({ from: '2026-08-07', to: '2026-08-01' });
     const empty = validatePeriod({ from: '', to: '' });

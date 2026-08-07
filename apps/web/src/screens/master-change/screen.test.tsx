@@ -136,7 +136,7 @@ const renderScreen = (
 const renderScreenAwaitingResponse = (
   routes: StubRoute[],
   search: string,
-): { release: () => void } => {
+): { release: () => void; user: ReturnType<typeof userEvent.setup> } => {
   const stub = createStubFetch(routes);
   let release = (): void => {
     /* 아래 Promise 생성자가 곧바로 채운다. */
@@ -159,7 +159,7 @@ const renderScreenAwaitingResponse = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { release };
+  return { release, user: userEvent.setup() };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -282,6 +282,28 @@ describe('MasterChangeScreen — 기간 필수 조회', () => {
   });
 
   /*
+   * 조회 결과가 도착하면 화면이 다시 그려진다. 그때 조건 줄에 **내용은 같은데 참조만 새로운**
+   * 값이 내려가면, 참조로 비교하는 되돌림 effect가 발동해 **사용자가 입력하던 값을 덮어쓴다.**
+   * 조회가 느릴수록 잘 드러나며, 사용자에게는 「치던 날짜가 갑자기 사라졌다」로 나타난다.
+   */
+  it('조회 결과가 도착해도 편집 중인 조건이 사라지지 않는다', async () => {
+    const { release, user } = renderScreenAwaitingResponse(
+      [listRoute()],
+      '?from=2026-08-01&to=2026-08-06',
+    );
+    await screen.findByRole('status', { name: '변경 이력 목록을 불러오는 중' });
+
+    await user.clear(screen.getByLabelText('기간 시작'));
+    await user.type(screen.getByLabelText('기간 시작'), '2026-07-20');
+    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-20');
+
+    release();
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-20');
+  });
+
+  /*
    * 기본 기간은 **주소에 기간이 아예 없을 때만** 채운다.
    * 한쪽만 있는 주소를 「아예 없음」으로 읽으면 사용자가 적어 넣은 날짜를 최근 7일로 덮어써,
    * 공유받은 주소가 조용히 다른 기간을 조회한다.
@@ -291,6 +313,24 @@ describe('MasterChangeScreen — 기간 필수 조회', () => {
 
     expect(await screen.findByText('기간을 고르고 조회하세요')).toBeInTheDocument();
     expect(currentLocation()).toContain('from=2026-08-01');
+  });
+
+  /*
+   * 기간을 채워 넣는 것은 **기간만** 채우는 일이다. 주소를 통째로 갈아 끼우면
+   * 공유받은 주소의 조건·쪽이 조용히 사라져, 받은 사람과 보낸 사람이 서로 다른 결과를 본다.
+   */
+  it('기간을 채워 넣어도 주소에 있던 조건과 쪽이 그대로 남는다', async () => {
+    renderScreen([listRoute()], '?type=SAMPLE_TARGET_A&corr=SAMPLE-CORR-0001&page=3');
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('from=');
+    });
+
+    const location = currentLocation();
+    expect(location).toContain('type=SAMPLE_TARGET_A');
+    expect(location).toContain('corr=SAMPLE-CORR-0001');
+    expect(location).toContain('page=3');
+    expect(location).toContain(`to=${todayText()}`);
   });
 
   it('초기화를 누르면 기간이 기본값으로 되돌아간다', async () => {

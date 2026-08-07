@@ -34,9 +34,29 @@ export interface PeriodQuery {
   occurredTo: string;
 }
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-const isDate = (value: string): boolean => DATE_PATTERN.test(value);
+/**
+ * 자릿수가 맞고 **실제로 있는 날짜**인가.
+ *
+ * 자릿수만 보면 `2026-13-45`·`2026-02-31`이 통과해 그대로 요청에 실리고, 서버가 400을 돌려주면
+ * 사용자에게는 「조회가 늘 실패한다」로만 보인다. 실존 판정까지 해야 화면이 보내기 전에 막는다.
+ *
+ * 실존 판정은 **되짚기**로 한다 — 만든 날짜의 해·달·일이 넣은 값과 같으면 그 날짜가 있는 것이다.
+ * `Date`가 넘치는 값을 다음 달로 굴리므로(2월 31일 → 3월 3일) 되짚으면 달라진다.
+ * 인자를 모두 주므로 실행 환경의 시각을 읽지 않는다 — 이 파일의 순수성은 그대로다.
+ */
+const isDate = (value: string): boolean => {
+  const matched = DATE_PATTERN.exec(value);
+  if (matched === null) return false;
+
+  const year = Number(matched[1]);
+  const month = Number(matched[2]);
+  const day = Number(matched[3]);
+  const made = new Date(year, month - 1, day);
+
+  return made.getFullYear() === year && made.getMonth() === month - 1 && made.getDate() === day;
+};
 
 const pad = (value: number, length: number): string => String(value).padStart(length, '0');
 
