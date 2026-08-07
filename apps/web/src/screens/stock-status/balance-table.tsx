@@ -99,14 +99,12 @@ export const buildBalanceColumns = ({
      */
     key: 'itemCode',
     header: t.table.item,
-    sortable: true,
     render: (row) => describeReference(toReference(itemLookup, row.itemId)),
   };
 
   const lotColumn: Column<BalanceView> = {
     key: 'lotNo',
     header: t.table.lot,
-    sortable: true,
     /*
      * **`null`이 확정된 뜻을 갖는 자리다**(계획 결정 10) — `toReference`에 그냥 넘기면
      * 「알 수 없음」이 되어 *값이 잘못됐다*는 뜻으로 뒤집힌다. 넘기기 전에 갈라낸다.
@@ -118,7 +116,6 @@ export const buildBalanceColumns = ({
   const locationColumn: Column<BalanceView> = {
     key: 'locationCode',
     header: t.table.location,
-    sortable: true,
     /*
      * 위치별 보기에서는 계약이 늘 채워 준다. 비는 것은 정상 형태가 아니므로
      * 「(LOT 무관)」 같은 고유 표기를 만들지 않고 대시로 둔다 — 뜻을 지어내지 않는다.
@@ -136,8 +133,6 @@ export const buildBalanceColumns = ({
     location: [locationColumn, itemColumn],
   }[view];
 
-  const sortable = new Set<string>(sortableKeysOf(view));
-
   const columns: Column<BalanceView>[] = [
     ...axisColumns,
     {
@@ -145,7 +140,6 @@ export const buildBalanceColumns = ({
       header: t.table.onHandQty,
       width: WIDTH.qty,
       align: QTY_ALIGN,
-      sortable: true,
       render: (row) => (
         <div className="field-cell">
           <span>{row.onHandQty}</span>
@@ -166,7 +160,6 @@ export const buildBalanceColumns = ({
       header: t.table.availableQty,
       width: WIDTH.qty,
       align: QTY_ALIGN,
-      sortable: true,
       /*
        * **서버가 계산해 내려준 값을 그대로 그린다**(계약에서 `readonly`). 보유−예약−피킹−보류를
        * 화면이 다시 빼면 서버와 다른 답을 낼 수 있다 — 이슈 #21 §6의 금지 항목이다.
@@ -241,12 +234,15 @@ export const buildBalanceColumns = ({
   ];
 
   /*
-   * **계약 열거값 밖의 열에는 정렬을 열지 않는다**(이슈 #21 §6). 열 정의에서 `sortable`을
-   * 켜 두고 여기서 한 번에 거른다 — 켜는 자리와 거르는 자리를 나누면 한쪽만 고쳐진다.
+   * **정렬 가능 여부를 열마다 적지 않고 한 곳에서 파생시킨다**(이슈 #21 §6 「임의 열 정렬을
+   * 열지 마세요」). 열 정의가 스스로 `sortable`을 켜면 계약 열거값 목록과 정본이 둘이 되어
+   * 한쪽만 고쳐지고, 표에는 정렬 버튼이 보이는데 눌러도 요청에 실리지 않는 열이 생긴다.
+   *
+   * `sortableKeysOf`가 유일한 정본이다 — 요청에 실을 열을 고르는 `sort.ts`와 같은 자리를 본다.
    */
-  return columns.map((column) =>
-    column.sortable === true && !sortable.has(column.key) ? { ...column, sortable: false } : column,
-  );
+  const sortable = new Set<string>(sortableKeysOf(view));
+
+  return columns.map((column) => ({ ...column, sortable: sortable.has(column.key) }));
 };
 
 export interface BalanceTableProps extends BalanceColumnDeps {
