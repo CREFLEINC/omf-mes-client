@@ -6,6 +6,7 @@ import { runRequest } from '../../patterns/request';
 
 type BomListResponse = components['schemas']['BomListResponse'];
 type BomComponentListResponse = components['schemas']['BomComponentListResponse'];
+type BomComponentDetailResponse = components['schemas']['BomComponentDetailResponse'];
 
 /**
  * 자재 명세서(BOM)의 조회와 캐시 키.
@@ -106,6 +107,48 @@ export const useBomComponents = (
 
       return runRequest(() =>
         client.GET('/planning/boms/{bomId}/components', { params: { path: { bomId } } }),
+      );
+    },
+  });
+};
+
+/**
+ * 잠금 토큰이 보관된 경로. 구성품 저장의 `If-Match`는 **언제나 이 경로**에서 꺼낸다.
+ * 보관 키가 요청 경로라 다른 경로로 꺼내면 항상 비어 있다.
+ */
+export const bomComponentDetailPath = (bomId: number, bomComponentId: number): string =>
+  `/planning/boms/${String(bomId)}/components/${String(bomComponentId)}`;
+
+/**
+ * 구성품 행 상세 — **이 화면 최대의 함정이 여기 있다**(§5.3 6행 · 위험 2).
+ *
+ * 잠금 토큰(`ETag`)이 **이 응답에만** 온다. 구성품 목록에는 없으므로(계약 실측 L·M)
+ * 편집 창을 열 때 이 조회가 먼저 나가야 저장이 성립한다 — 목록만 받고 저장하면
+ * `useMasterWrite`가 토큰을 찾지 못해 요청을 보내지 않고 조용히 멈춘다.
+ *
+ * **폼의 기준값도 이 응답에서 세운다.** 목록 행에서 세우면 토큰과 값의 출처가 갈려,
+ * 그 사이에 남이 고친 값을 화면이 최신으로 보이면서 저장은 충돌로 막히는 상태가 생긴다.
+ *
+ * `editability`는 읽지 않는다 — 원본 열에 쓰기 경로를 두지 않기로 한 이상 읽을 자리가 없다(결정 1).
+ */
+export const useBomComponentDetail = (
+  bomId: number | null,
+  bomComponentId: number | null,
+): UseQueryResult<BomComponentDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: bomKeys.component(bomId ?? 0, bomComponentId ?? 0),
+    enabled: bomId !== null && bomComponentId !== null,
+    queryFn: () => {
+      if (bomId === null || bomComponentId === null) {
+        throw new Error('편집 창을 열기 전에는 구성품 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/planning/boms/{bomId}/components/{bomComponentId}', {
+          params: { path: { bomId, bomComponentId } },
+        }),
       );
     },
   });

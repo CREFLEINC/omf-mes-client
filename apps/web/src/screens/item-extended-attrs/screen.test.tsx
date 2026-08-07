@@ -3570,3 +3570,456 @@ describe('ItemExtendedAttrsScreen — 자재 명세서 선택의 수명', () => 
     expect(screen.getByText('등록된 구성품이 없습니다')).toBeInTheDocument();
   });
 });
+
+/* ── 구성품 확장 열 편집 ──────────────────────────────────────────────────── */
+
+const componentDetailPath = (bomId: number, bomComponentId: number): string =>
+  `${componentsPath(bomId)}/${String(bomComponentId)}`;
+
+/**
+ * 구성품 행 상세 — **`ETag`가 여기에만 온다**(계약 실측 M).
+ * 목록 조회에는 없으므로 이 조회가 저장의 유일한 토큰 출처다.
+ */
+const componentDetailRoute = ({ withEtag = true } = {}): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' &&
+    /^\/planning\/boms\/\d+\/components\/\d+$/.test(new URL(request.url).pathname),
+  respond: (request) => {
+    const bomComponentId = Number(new URL(request.url).pathname.split('/').pop());
+    const component = bomComponentFixtures.find((row) => row.bomComponentId === bomComponentId);
+
+    if (component === undefined)
+      return jsonResponse({ message: '없는 구성품입니다' }, { status: 404 });
+
+    return jsonResponse(
+      {
+        bomComponent: component,
+        editability: { codeEditable: false, reason: 'RECEIVED_FROM_ERP', referenceCount: 0 },
+      },
+      withEtag ? { headers: { ETag: 'W/"3"' } } : {},
+    );
+  },
+});
+
+const componentSaveRoute = (): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' &&
+    /^\/planning\/boms\/\d+\/components\/\d+$/.test(new URL(request.url).pathname),
+  respond: (request) => {
+    const bomComponentId = Number(new URL(request.url).pathname.split('/').pop());
+
+    return jsonResponse(
+      bomComponentFixtures.find((row) => row.bomComponentId === bomComponentId),
+      { headers: { ETag: 'W/"4"' } },
+    );
+  },
+});
+
+const componentSaveFailureRoute = (status: number, body: unknown): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' &&
+    /^\/planning\/boms\/\d+\/components\/\d+$/.test(new URL(request.url).pathname),
+  respond: () => jsonResponse(body, { status }),
+});
+
+interface ComponentEditRouteOverrides extends BomDetailRouteOverrides {
+  componentDetail?: StubRoute;
+}
+
+/**
+ * 구성품 편집까지 그릴 때 필요한 스텁 한 벌.
+ * **덧붙이기로는 갈아 끼울 수 없다**(F6 교훈) — 갈아 끼울 것은 이 인자로 넘긴다.
+ */
+const componentEditRoutes = (overrides: ComponentEditRouteOverrides = {}): StubRoute[] => [
+  ...bomDetailRoutes(overrides),
+  overrides.componentDetail ?? componentDetailRoute(),
+];
+
+const componentDetailGets = (
+  requests: RecordedRequest[],
+  bomId = 2001,
+  bomComponentId = 7001,
+): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.method === 'GET' &&
+      request.url.pathname === componentDetailPath(bomId, bomComponentId),
+  );
+
+const componentPuts = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.method === 'PUT' &&
+      /^\/planning\/boms\/\d+\/components\/\d+$/.test(request.url.pathname),
+  );
+
+const componentBodies = (requests: RecordedRequest[]): Record<string, unknown>[] =>
+  componentPuts(requests).map((request) => JSON.parse(request.body) as Record<string, unknown>);
+
+/** 첫 구성품의 편집 창을 연다. **여는 것이 곧 행 상세 조회를 켜는 것이다.** */
+const openComponentDialog = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(
+    screen.getByRole('button', { name: '1. SYN-ITEM-02 · 합성 품목 B 확장 열 수정' }),
+  );
+
+  return screen.findByRole('dialog');
+};
+
+/**
+ * M24 — **구성품 저장이 상세 GET 뒤에 확장 4키만 보낸다.**
+ *
+ * 목록만 받고 저장하면 잠금 토큰이 없어 요청이 조용히 멈추고(위험 2),
+ * 원본 열을 섞어 보내도 서버가 막지 않는다(실측 P).
+ */
+describe('ItemExtendedAttrsScreen — 구성품 확장 열 저장 (M24)', () => {
+  it('편집 창을 열면 행 상세가 먼저 나간다', async () => {
+    const { requests, user } = renderScreen(componentEditRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    await findBomComponentPane();
+    expect(componentDetailGets(requests)).toHaveLength(0);
+
+    await openComponentDialog(user);
+
+    await waitFor(() => {
+      expect(componentDetailGets(requests)).toHaveLength(1);
+    });
+    /* 저장은 그 응답 뒤에야 열린다 — 그전에 누르면 토큰 없이 요청이 나간다. */
+    expect(componentPuts(requests)).toHaveLength(0);
+  });
+
+  it('저장 본문의 키 집합이 정확히 확장 4키다 (C14)', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentBodies(requests)).toHaveLength(1);
+    });
+
+    expect(Object.keys(componentBodies(requests)[0]!).sort()).toEqual([
+      'actualUseProcessId',
+      'backflushAllowed',
+      'lotTraceRequired',
+      'routingOperationId',
+    ]);
+  });
+
+  /* 서버가 원본 열을 막지 않는다(실측 P) — 이 단언이 유일한 방어다. */
+  it('저장 본문에 원본 열이 하나도 없다 (C14)', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentBodies(requests)).toHaveLength(1);
+    });
+
+    const body = componentBodies(requests)[0]!;
+    for (const key of [
+      'sequenceNo',
+      'componentItemId',
+      'requiredQty',
+      'uomId',
+      'scrapRate',
+      'isMandatory',
+      'bomComponentId',
+      'bomId',
+    ]) {
+      expect(body).not.toHaveProperty(key);
+    }
+  });
+
+  it('저장에 If-Match와 멱등 키가 실린다 (C15)', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentPuts(requests)).toHaveLength(1);
+    });
+
+    const put = componentPuts(requests)[0]!;
+    expect(put.headers.get('If-Match')).toBe('W/"3"');
+    expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(put.url.pathname).toBe('/planning/boms/2001/components/7001');
+  });
+
+  /**
+   * **토큰이 없으면 요청을 보내지 않는다.** `etagPath`를 잘못 준 코드는 이 갈래에서만 드러난다 —
+   * 토큰이 늘 있는 상황만 검사하면 잘못된 경로로도 저장이 그대로 나간다(PR ② 교훈).
+   */
+  it('상세에 잠금 토큰이 없으면 저장이 나가지 않고 안내가 뜬다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        ...componentEditRoutes({ componentDetail: componentDetailRoute({ withEtag: false }) }),
+        componentSaveRoute(),
+      ],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText('최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.'),
+    ).toBeInTheDocument();
+    expect(componentPuts(requests)).toHaveLength(0);
+  });
+
+  /* §11.4 — 키를 빼지 않고 널을 명시한다. 빼면 서버가 이전 값을 남길 수 있다. */
+  it('공정 둘을 비우면 널 두 개가 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await user.click(await within(dialog).findByLabelText('등록 공정'));
+    await user.click(screen.getAllByRole('option', { name: '지정 안 함' })[0]!);
+
+    await user.click(within(dialog).getByLabelText('실사용 공정'));
+    await user.click(screen.getAllByRole('option', { name: '지정 안 함' })[0]!);
+
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentBodies(requests)).toHaveLength(1);
+    });
+
+    const body = componentBodies(requests)[0]!;
+    expect(body.routingOperationId).toBeNull();
+    expect(body.actualUseProcessId).toBeNull();
+  });
+
+  /**
+   * M30 — 성공 후 목록이 무효화된다. 구성품 목록 키가 행 상세 키의 앞부분이라
+   * 둘이 함께 무효화된다(`bom-queries.test.ts`가 그 모양을 지킨다).
+   */
+  it('성공하면 창이 닫히고 구성품을 다시 조회한다 (M30)', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    expect(componentGets(requests)).toHaveLength(1);
+
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentGets(requests)).toHaveLength(2);
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /* 창을 여는 것만으로는 서버로 쓰기가 나가지 않는다. */
+  it('창을 닫으면 요청이 나가지 않고 창이 DOM에서 사라진다', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('등록 공정')).not.toBeInTheDocument();
+    expect(componentPuts(requests)).toHaveLength(0);
+  });
+
+  /* 열기 전에는 창의 입력칸이 DOM에 없다 — 디자인 시스템 Dialog는 닫혀도 내용이 남는다. */
+  it('열기 전에는 창의 입력칸이 DOM에 없다', async () => {
+    renderScreen(componentEditRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    await findBomComponentPane();
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('등록 공정')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * M25 · M26 · C17 — **저장 실패가 공통 규약 문구로 난다.**
+ * 이 화면 전용 충돌 문구를 만들지 않는다.
+ */
+describe('ItemExtendedAttrsScreen — 구성품 저장 실패 (M25·M26)', () => {
+  const saveAndFail = async (route: StubRoute) => {
+    const rendered = renderScreen([...componentEditRoutes(), route], '?item=1001&tab=bom&bom=2001');
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(rendered.user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await rendered.user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await rendered.user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    return rendered;
+  };
+
+  /**
+   * 결정 10 — 화면이 확정 상태를 선제 판정하지 않는다. `Bom.statusCode`의 값 목록이
+   * 확정되지 않아 「작성중」을 판정할 문자열이 없다 — 서버가 막고 공통 배너가 낸다.
+   */
+  it('400 STATE_LOCKED이 재시도 없는 배너로 난다 (M25)', async () => {
+    await saveAndFail(
+      componentSaveFailureRoute(400, {
+        errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '상태가 작성중이 아닙니다.' }],
+      }),
+    );
+
+    expect(await screen.findByText('지금은 저장할 수 없는 상태입니다')).toBeInTheDocument();
+    /* 다시 불러와도 풀리지 않는 상태다 — 재시도를 권하면 사용자가 헛돈다. */
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
+  });
+
+  /* 화면이 상태를 선제 판정하지 않는다는 반대 방향 — 편집 창은 상태와 무관하게 열린다. */
+  it('상태를 화면이 미리 막지 않는다 (결정 10)', async () => {
+    const { user } = renderScreen(componentEditRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    const pane = await findBomComponentPane();
+
+    for (const button of within(pane).getAllByRole('button')) {
+      expect(button).toBeEnabled();
+    }
+
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled();
+  });
+
+  /* M26 — 409의 원인 구분은 공통 규약 문구가 이미 갖고 있다. */
+  it('409 erpSync가 공통 규약 문구로 난다 (M26)', async () => {
+    await saveAndFail(
+      componentSaveFailureRoute(409, { conflictCause: 'erpSync', message: '충돌' }),
+    );
+
+    expect(await screen.findByText(ERP_SYNC_TEXT)).toBeInTheDocument();
+  });
+
+  it('403이 공통 배너 문구로 난다 (M26)', async () => {
+    await saveAndFail(componentSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }));
+
+    expect(await screen.findByText(FORBIDDEN_TEXT)).toBeInTheDocument();
+  });
+
+  /* 실패해도 창이 열린 채 남아야 고친 값을 잃지 않는다. */
+  it('실패해도 창이 열린 채 남고 문구가 하나뿐이다', async () => {
+    await saveAndFail(componentSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }));
+
+    await screen.findByText(FORBIDDEN_TEXT);
+    expect(screen.getAllByText(FORBIDDEN_TEXT)).toHaveLength(1);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /* 다른 품목으로 옮기면 앞 품목의 실패가 따라오면 안 된다(§5.4 3행). */
+  it('품목을 바꾸면 구성품 저장 실패 배너가 사라진다', async () => {
+    const { user } = await saveAndFail(
+      componentSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+    );
+
+    await screen.findByText(FORBIDDEN_TEXT);
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(FORBIDDEN_TEXT)).not.toBeInTheDocument();
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * 결정 7의 반대 방향 — **화면이 확장 열에 없는 제약을 만들지 않는다.**
+ *
+ * 계약이 이 네 열에 로컬로 옮길 제약을 두지 않았다. 있지도 않은 제약을 흉내 내면
+ * 서버가 허용하는 값을 화면이 막는다.
+ */
+describe('ItemExtendedAttrsScreen — 구성품 확장 열에 없는 제약을 만들지 않는다', () => {
+  it.each([
+    ['등록 공정만 비워도', ['등록 공정']],
+    ['실사용 공정만 비워도', ['실사용 공정']],
+    ['둘 다 비워도', ['등록 공정', '실사용 공정']],
+  ])('%s 저장이 열려 있다', async (_name, labels) => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+
+    for (const label of labels) {
+      await user.click(within(dialog).getByLabelText(label));
+      await user.click(screen.getAllByRole('option', { name: '지정 안 함' })[0]!);
+    }
+
+    const save = within(dialog).getByRole('button', { name: '저장' });
+    expect(save).toBeEnabled();
+
+    await user.click(save);
+
+    await waitFor(() => {
+      expect(componentPuts(requests)).toHaveLength(1);
+    });
+  });
+
+  /* 확장 표시 둘을 다 꺼도 막지 않는다 — 계약에 그런 제약이 없다. */
+  it('확장 표시를 둘 다 꺼도 저장이 나간다', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+
+    await user.click(within(dialog).getByRole('switch', { name: 'LOT 추적 강제' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentBodies(requests)).toHaveLength(1);
+    });
+    expect(componentBodies(requests)[0]!.lotTraceRequired).toBe(false);
+    expect(componentBodies(requests)[0]!.backflushAllowed).toBe(true);
+  });
+});

@@ -23,10 +23,25 @@ import {
   upsertBuMapDraft,
   type BuMapDraft,
 } from './bu-map-draft';
+import { componentRowName } from './bom-component-format';
+import { BomComponentFormDialog } from './bom-component-form-dialog';
+import {
+  BOM_COMPONENT_FORM_FIELDS,
+  componentToFormValues,
+  isSameBomComponentValues,
+  toBomComponentUpdate,
+  type BomComponentFormValues,
+} from './bom-component-mappers';
 import { BomComponentPane } from './bom-component-pane';
 import { BomDetailPane } from './bom-detail-pane';
 import { BomListPane, bomName } from './bom-list-pane';
-import { bomKeys, useBomComponents, useBomList } from './bom-queries';
+import {
+  bomComponentDetailPath,
+  bomKeys,
+  useBomComponentDetail,
+  useBomComponents,
+  useBomList,
+} from './bom-queries';
 import { BuMapFormDialog } from './bu-map-form-dialog';
 import { BuMapPane } from './bu-map-pane';
 import {
@@ -96,6 +111,8 @@ import { UomConversionFormDialog } from './uom-conversion-form-dialog';
 import { UomConversionPane } from './uom-conversion-pane';
 
 type Bom = components['schemas']['Bom'];
+type BomComponent = components['schemas']['BomComponent'];
+type BomComponentDetailResponse = components['schemas']['BomComponentDetailResponse'];
 type ItemDetailResponse = components['schemas']['ItemDetailResponse'];
 type ItemBuItemMapListResponse = components['schemas']['ItemBuItemMapListResponse'];
 type ItemUomConversionListResponse = components['schemas']['ItemUomConversionListResponse'];
@@ -160,6 +177,18 @@ interface ExternalCodeDraftState {
 interface EditingRow<TDraft> {
   draft: TDraft;
   isNew: boolean;
+}
+
+/**
+ * 구성품 확장 열 폼의 현재 값과 그것이 어디서 나왔는지.
+ *
+ * **출처가 행 상세 응답이다**(목록 행이 아니다). 잠금 토큰이 그 응답에만 오므로,
+ * 값과 토큰을 같은 응답에서 받아야 「화면은 최신인데 저장은 충돌로 막히는」 상태가 생기지 않는다.
+ */
+interface BomComponentFormState {
+  source: BomComponentDetailResponse;
+  baseline: BomComponentFormValues;
+  values: BomComponentFormValues;
 }
 
 /**
@@ -515,6 +544,66 @@ export const ItemExtendedAttrsScreen = () => {
    */
   const [pendingDefaultBom, setPendingDefaultBom] = useState<Bom | null>(null);
 
+  /**
+   * 편집 창을 연 구성품. **창을 여는 것이 곧 행 상세 조회를 켜는 것이다**(§5.3 6행) —
+   * 잠금 토큰이 그 조회에만 오므로 목록만 받은 상태에서는 저장이 성립하지 않는다.
+   */
+  const [editingComponentId, setEditingComponentId] = useState<number | null>(null);
+
+  const componentDetail = useBomComponentDetail(selectedBom?.bomId ?? null, editingComponentId);
+
+  const [componentFormState, setComponentFormState] = useState<BomComponentFormState | null>(null);
+
+  /*
+   * 출처가 그대로면 폼을 다시 세우지 않는다 — 사용자가 고르는 동안 값이 서버 값으로
+   * 되돌아가지 않는다. 확장 속성 폼과 같은 형태다.
+   */
+  const componentSource = componentDetail.data ?? null;
+
+  if (componentSource === null) {
+    if (componentFormState !== null) setComponentFormState(null);
+  } else if (componentFormState?.source !== componentSource) {
+    const seeded = componentToFormValues(componentSource.bomComponent);
+    setComponentFormState({ source: componentSource, baseline: seeded, values: seeded });
+  }
+
+  const componentWrite = useMasterWrite<BomComponentFormValues, BomComponent>({
+    request: (values, headers) =>
+      client.PUT('/planning/boms/{bomId}/components/{bomComponentId}', {
+        params: {
+          path: {
+            bomId: selectedBom?.bomId ?? 0,
+            bomComponentId: editingComponentId ?? 0,
+          },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        /* **키를 열거해 만든다** — 원본 열을 섞어 보내도 서버가 막지 않는다(실측 P). */
+        body: toBomComponentUpdate(values),
+      }),
+    /*
+     * **행 단위 상세 경로다**(§5.3 표 6행). 목록 조회는 `ETag`를 주지 않으므로
+     * 이 경로 말고는 토큰이 보관된 자리가 없다 — 다른 경로를 주면 저장이 조용히 멈춘다(M24).
+     */
+    etagPath:
+      selectedBom === null || editingComponentId === null
+        ? null
+        : bomComponentDetailPath(selectedBom.bomId, editingComponentId),
+    /*
+     * 구성품 목록 키가 **행 상세 키의 앞부분**이라 둘이 함께 무효화된다.
+     * 행 상세를 빠뜨리면 다음 저장이 낡은 토큰을 쓴다.
+     */
+    invalidateKeys: [bomKeys.components(selectedBom?.bomId ?? 0)],
+    knownFields: BOM_COMPONENT_FORM_FIELDS,
+    onSuccess: () => {
+      setEditingComponentId(null);
+      setComponentFormState(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
   const setDefaultWrite = useMasterWrite<number, Bom>({
     request: (bomId, headers) =>
       client.POST('/planning/boms/{bomId}:set-default', {
@@ -570,6 +659,9 @@ export const ItemExtendedAttrsScreen = () => {
 
     setDefaultWrite.reset();
     setPendingDefaultBom(null);
+
+    componentWrite.reset();
+    setEditingComponentId(null);
   };
 
   /*
@@ -655,9 +747,25 @@ export const ItemExtendedAttrsScreen = () => {
   const handleSelectBom = (bomId: number) => {
     if (bomId === selectedBomId) return;
 
+    /*
+     * 열려 있던 편집 창은 앞 자재 명세서의 줄을 가리킨다 — 남기면 다른 표의 행을
+     * 고치는 창이 떠 있게 된다.
+     */
+    componentWrite.reset();
+    setEditingComponentId(null);
+
     patchSearchParams((next) => {
       next.set(BOM_KEY, String(bomId));
     });
+  };
+
+  /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
+  const changeComponentValues = (patch: Partial<BomComponentFormValues>) => {
+    setComponentFormState((prev) =>
+      prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+    );
+
+    for (const field of Object.keys(patch)) componentWrite.clearFieldError(field);
   };
 
   /**
@@ -1054,6 +1162,10 @@ export const ItemExtendedAttrsScreen = () => {
                 />
               ) : null
             }
+            onEdit={(bomComponentId) => {
+              componentWrite.reset();
+              setEditingComponentId(bomComponentId);
+            }}
           />
         </>
       )}
@@ -1213,6 +1325,69 @@ export const ItemExtendedAttrsScreen = () => {
           onConfirm={(next) => {
             changeExternalCodeDrafts((drafts) => upsertExternalCodeDraft(drafts, next));
             setEditingExternalCode(null);
+          }}
+        />
+      )}
+
+      {/*
+       * 구성품 확장 열 편집. **열 때만 마운트한다** — 닫힌 창을 남기면 지난 값이 살아 있고,
+       * 창을 여는 것이 곧 행 상세 조회를 켜는 것이라 닫힌 창이 요청을 붙잡고 있게 된다.
+       */}
+      {editingComponentId !== null && selectedBom !== null && (
+        <BomComponentFormDialog
+          rowName={componentRowName(
+            bomComponents.find((row) => row.bomComponentId === editingComponentId)?.sequenceNo ?? 0,
+            lookupLabel(
+              componentItemNames.entries,
+              bomComponents.find((row) => row.bomComponentId === editingComponentId)
+                ?.componentItemId,
+              componentItemNames.isLoading,
+            ),
+          )}
+          loadError={
+            componentDetail.isError ? (
+              <LoadErrorBanner
+                error={componentDetail.error}
+                onRetry={() => void componentDetail.refetch()}
+              />
+            ) : null
+          }
+          values={componentFormState?.values ?? null}
+          onChange={changeComponentValues}
+          routingOperationOptions={(selected) =>
+            selectableOptions(routingOperationOptions.entries, selected)
+          }
+          /*
+           * 이 품목에 공정 흐름이 하나도 없으면 고를 값이 없다 — 빈 선택칸을 두면
+           * 사용자가 목록이 안 나오는 것으로 읽는다. **감추지 않고 사유를 붙인다**(배치 규범 4).
+           */
+          routingOperationDisabledReason={
+            routingOperationOptions.isLoading || routingOperationOptions.entries.length > 0
+              ? undefined
+              : t.component.actionReasons.routingOperationEmpty
+          }
+          processOptions={(selected) => selectableOptions(processOptions.entries, selected)}
+          fieldErrors={componentWrite.fieldErrors}
+          /*
+           * 400 `STATE_LOCKED`·403·409가 전부 이 공통 배너로 온다.
+           * **이 화면 전용 문구를 만들지 않는다** — 원인 구분은 공통 규약 문구가 이미 갖고 있다.
+           * 「최신 불러오기」를 주지 않는다: 창을 닫았다 다시 여는 것이 곧 재조회이고,
+           * 창 안에 또 하나의 되돌리기를 두면 무엇이 사라지는지 흐려진다.
+           */
+          banner={<SaveErrorBanner error={componentWrite.error} />}
+          isDirty={
+            componentFormState !== null &&
+            !isSameBomComponentValues(componentFormState.values, componentFormState.baseline)
+          }
+          isSaving={componentWrite.isSaving}
+          onSave={() => {
+            if (componentFormState === null) return;
+
+            componentWrite.write(componentFormState.values);
+          }}
+          onClose={() => {
+            componentWrite.reset();
+            setEditingComponentId(null);
           }}
         />
       )}

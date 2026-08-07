@@ -1748,6 +1748,8 @@ const itemExtendedAttrs = {
       process: (registered: string, actual: string): string => `${registered} · ${actual}`,
       lotTraceRequired: 'LOT 추적',
       backflushAllowed: '백플러시',
+      /* 계약이 널을 허용한다 — 비우는 것이 정상 값이라 선택지로 둔다. */
+      unassigned: '지정 안 함',
       /** 등록 공정 선택지 라벨. 순서는 **목록 내 위치**이며 서버 채번 값이 아니다 */
       routingOperation: (version: number, position: number, name: string): string =>
         `Rev ${String(version)} · ${String(position)}. ${name}`,
@@ -1755,8 +1757,24 @@ const itemExtendedAttrs = {
     actions: {
       editRow: (name: string): string => `${name} 확장 열 수정`,
     },
+    actionReasons: {
+      /* 「무엇이 막혔는지 + 어떻게 풀 수 있는지」 — 이 컨트롤의 이름으로 시작한다. */
+      routingOperationEmpty:
+        '등록 공정은 이 품목에 등록된 공정 흐름이 없어 고를 수 없습니다. 공정 흐름을 먼저 등록한 뒤 다시 여세요.',
+    },
     loading: {
       list: '구성품을 불러오는 중',
+      /* 행 상세를 받는 동안. **이 조회가 끝나야 저장을 열 수 있다**(§5.3 6행). */
+      detail: '구성품 정보를 불러오는 중',
+    },
+    dialog: {
+      title: (name: string): string => `구성품 확장 열 수정 — ${name}`,
+      /*
+       * 창에 원본 열이 없다는 사실을 밝힌다 — 없는 것을 찾다가 「화면이 빠뜨렸다」로 읽지 않게 한다.
+       * 서버가 이 경계를 막지 않으므로 화면이 지키는 자리라는 것도 이 문구가 대신한다.
+       */
+      originNotice:
+        '원본 열은 외부 시스템이 소유해 여기서 바꿀 수 없습니다. 아래 네 가지만 저장됩니다.',
     },
     empty: {
       /* **여기서 만들 수 없는 자료다** — 계약에 구성품 추가·삭제 경로가 없다. */
