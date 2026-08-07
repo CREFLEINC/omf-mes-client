@@ -23,7 +23,15 @@ const renderPane = (overrides: Partial<UserListPaneProps> = {}) => {
       onApplyFilters={onApplyFilters}
       departmentOptions={departmentOptions}
       departmentLabel={(id) => (id === '3001' ? 'SYN-DEPT-01 · 합성 부서 A' : '알 수 없음')}
-      departmentNameOf={(id) => (id === 3001 ? 'SYN-DEPT-01 · 합성 부서 A' : '—')}
+      /*
+       * 실제 화면의 `lookupLabel`과 같은 세 갈래를 그대로 흉내 낸다 —
+       * 값 없음은 「—」, 목록에 없는 번호는 「알 수 없음」, 나머지는 이름.
+       * 여기서 셋을 뭉개면 「상태 칸이 대시인가」를 부서 칸의 대시가 대신 통과시킨다.
+       */
+      departmentNameOf={(id) => {
+        if (id === null || id === undefined) return '—';
+        return id === 3001 ? 'SYN-DEPT-01 · 합성 부서 A' : '알 수 없음';
+      }}
       optionsNotice={null}
       pageView={toPageView({ page: 1, size: 50, total: appUserFixtures.length }, appUserFixtures.length)}
       onChangePage={onChangePage}
@@ -77,22 +85,35 @@ describe('UserListPane 표', () => {
     );
   });
 
-  /** 계약이 널을 허용하고 목 서버가 실제로 키 없는 응답을 준다 — 셀이 깨지면 안 된다. */
-  it('부서가 널이어도 셀이 깨지지 않고 「—」가 나온다', () => {
-    renderPane();
-
-    const row = screen.getByRole('button', { name: 'SYN-LOGIN-02' }).closest('tr');
+  /** 열 순서는 로그인 ID · 이름 · 부서 · 상태다. 칸을 자리로 집어야 다른 칸이 대신 통과시키지 않는다. */
+  const cellsOf = (loginId: string): string[] => {
+    const row = screen.getByRole('button', { name: loginId }).closest('tr');
 
     expect(row).not.toBeNull();
-    expect(within(row as HTMLElement).getByText('—')).toBeInTheDocument();
-  });
 
-  it('상태 코드가 빈 문자열이면 「—」가 나온다', () => {
+    return within(row as HTMLElement)
+      .getAllByRole('cell')
+      .map((cell) => cell.textContent ?? '');
+  };
+
+  /** 계약이 널을 허용하고 목 서버가 실제로 키 없는 응답을 준다 — 셀이 깨지면 안 된다. */
+  it('부서가 널이면 부서 칸이 「—」다', () => {
     renderPane();
 
-    const row = screen.getByRole('button', { name: 'SYN-LOGIN-03' }).closest('tr');
+    expect(cellsOf('SYN-LOGIN-02')[2]).toBe('—');
+  });
 
-    expect(within(row as HTMLElement).getAllByText('—').length).toBeGreaterThan(0);
+  it('부서 번호가 선택 목록에 없으면 번호를 내지 않는다', () => {
+    renderPane();
+
+    expect(cellsOf('SYN-LOGIN-03')[2]).toBe('알 수 없음');
+    expect(cellsOf('SYN-LOGIN-03')[2]).not.toContain('9999');
+  });
+
+  it('상태 코드가 빈 문자열이면 상태 칸이 「—」다', () => {
+    renderPane();
+
+    expect(cellsOf('SYN-LOGIN-03')[3]).toBe('—');
   });
 
   /** 상태 코드는 값 목록이 미정이라 **원본 문자열을 그대로** 낸다 — 이름을 지어내지 않는다. */

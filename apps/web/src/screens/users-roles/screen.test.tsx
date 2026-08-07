@@ -1,7 +1,7 @@
 import type { components } from '@omf-mes/api-client';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -121,11 +121,19 @@ const userDeactivateRoute = (
 /** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** 주소를 읽어 보기 위한 탐침. 하네스가 `MemoryRouter`라 트리 안에서 읽는 수밖에 없다. */
+/**
+ * 주소를 읽고 **직접 바꿔 보기 위한** 탐침. 하네스가 `MemoryRouter`라
+ * 트리 안에서 읽고 옮기는 수밖에 없다.
+ *
+ * 주소를 직접 옮기는 경로는 뒤로가기·주소 손 편집·공유 링크가 밟는 길이며,
+ * 클릭 핸들러가 하는 정리를 하나도 거치지 않는다 — 그래서 따로 밟아 봐야 한다.
+ */
 let probeSearch = '';
+let probeNavigate: ((to: string) => void) | null = null;
 
 const RouterProbe = () => {
   probeSearch = useLocation().search;
+  probeNavigate = useNavigate();
 
   return null;
 };
@@ -134,6 +142,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
   const { fetch, requests } = createRecordingFetch(routes);
 
   probeSearch = '';
+  probeNavigate = null;
 
   renderWithProviders(
     <>
@@ -143,7 +152,13 @@ const renderScreen = (routes: StubRoute[], search = '') => {
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, search: () => probeSearch, user: userEvent.setup() };
+  const goTo = (to: string) => {
+    act(() => {
+      probeNavigate?.(to);
+    });
+  };
+
+  return { requests, search: () => probeSearch, goTo, user: userEvent.setup() };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -1056,6 +1071,42 @@ describe('UsersRolesScreen 초안 수명', () => {
     expect(
       within(userFormPane()).queryByRole('textbox', { name: '이름' }),
     ).not.toBeInTheDocument();
+  });
+
+  /**
+   * 뒤로가기·주소 손 편집·공유 링크가 밟는 길이다. **클릭 핸들러의 정리를 하나도 거치지 않는다.**
+   *
+   * 그리고 **한 번 본 사용자로 되돌아가는 경우**를 밟는다 — 상세가 이미 캐시에 있어
+   * 「불러오는 중」이 한 번도 지나가지 않는다. 그 빈틈이 없으면 초안을 다시 세우는 판정은
+   * **출처 비교뿐**이라, 비교가 없으면 앞 사용자의 값이 그대로 남는다.
+   */
+  it('이미 본 사용자로 주소를 직접 되돌려도 폼이 그 사용자의 값으로 다시 세워진다', async () => {
+    const nameBox = () => within(userFormPane()).getByRole('textbox', { name: '이름' });
+
+    const { goTo, user } = await openUserDetail([
+      userDetailRoute({ ...filledUserFixture, appUserId: 1002, userName: '합성 사용자 B' }),
+    ]);
+
+    // 1002를 한 번 열어 상세를 캐시에 올린다.
+    goTo(`${ROUTE}?usr=1002`);
+    await waitFor(() => {
+      expect(nameBox()).toHaveValue('합성 사용자 B');
+    });
+
+    goTo(`${ROUTE}?usr=1001`);
+    await waitFor(() => {
+      expect(nameBox()).toHaveValue('합성 사용자 A');
+    });
+
+    await user.clear(nameBox());
+    await user.type(nameBox(), '고치던 값');
+
+    // 캐시가 더워 「불러오는 중」이 지나가지 않는다.
+    goTo(`${ROUTE}?usr=1002`);
+
+    await waitFor(() => {
+      expect(nameBox()).toHaveValue('합성 사용자 B');
+    });
   });
 
   it('다른 사용자를 고르면 폼이 그 사용자의 값으로 다시 세워진다', async () => {
