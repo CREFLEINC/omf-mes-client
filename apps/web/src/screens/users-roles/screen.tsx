@@ -16,10 +16,36 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { lookupLabel, selectableOptions } from './code-options';
 import { DeactivateDialog } from './deactivate-dialog';
+import {
+  createDataScopeDraft,
+  isSameDataScopeDrafts,
+  removeDataScopeDraft,
+  toDataScopeDrafts,
+  toDataScopesPayload,
+  upsertDataScopeDraft,
+  type DataScopeDraft,
+} from './data-scope-draft';
+import { DataScopeFormDialog } from './data-scope-form-dialog';
+import { DataScopePane } from './data-scope-pane';
 import { readPage, readSelectedId, readUserFilters, toUserSearchParams } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
-import { useDepartmentOptions, type LookupResult } from './lookups';
+import {
+  useBusinessUnitOptions,
+  useDepartmentOptions,
+  usePlantOptions,
+  useRoleOptions,
+  type LookupResult,
+} from './lookups';
 import { toPageView } from './pagination';
+import {
+  isSameRoleSelection,
+  roleCatalogOrder,
+  toRoleAssignDraft,
+  toRoleChoices,
+  toRolesPayload,
+  toggleRoleId,
+} from './role-assign-draft';
+import { RoleAssignPane } from './role-assign-pane';
 import { USERS_ROLES_TABS, resolveTab, tabSearchParams } from './tabs';
 import { UserFormPane } from './user-form-pane';
 import { UserListPane } from './user-list-pane';
@@ -30,11 +56,20 @@ import {
   toAppUserCreate,
   toAppUserUpdate,
 } from './user-mappers';
-import { useUserDetail, useUserList, userDetailPath, userKeys } from './user-queries';
+import {
+  useUserDataScopes,
+  useUserDetail,
+  useUserList,
+  useUserRoles,
+  userDetailPath,
+  userKeys,
+} from './user-queries';
 import { USER_FORM_FIELDS, validateUserForm } from './user-validation';
 import type { AppUser, UserFilters, UserFormValues } from './types';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
+type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
+type UserDataScopeListResponse = components['schemas']['UserDataScopeListResponse'];
 
 const t = messages.usersRoles;
 
@@ -53,6 +88,25 @@ interface UserFormState {
   source: UserFormSource;
   baseline: UserFormValues;
   values: UserFormValues;
+}
+
+/**
+ * 역할 부여의 초안과 그것이 어디서 나왔는지.
+ *
+ * 폼과 같은 규칙이다 — **출처(서버 응답 객체)가 바뀔 때만** 다시 세운다.
+ * 사용자가 확인칸을 고치는 동안 캐시가 갱신돼도 체크가 되돌아가면 안 된다.
+ */
+interface RoleAssignState {
+  source: UserRoleListResponse;
+  baseline: number[];
+  selected: number[];
+}
+
+/** 접근범위 초안. 역할 부여와 같은 규칙으로 수명을 다룬다. */
+interface DataScopeState {
+  source: UserDataScopeListResponse;
+  baseline: DataScopeDraft[];
+  drafts: DataScopeDraft[];
 }
 
 /**
@@ -127,6 +181,51 @@ export const UsersRolesScreen = () => {
   const [userFieldErrors, setUserFieldErrors] = useState<Record<string, string>>({});
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+
+  /* ── 역할 부여 ─────────────────────────────────────────────────────────── */
+
+  const userRoleList = useUserRoles(selectedAppUserId);
+  const roleOptions = useRoleOptions(selectedAppUserId !== null);
+
+  const [roleAssignState, setRoleAssignState] = useState<RoleAssignState | null>(null);
+
+  const roleAssignSource = userRoleList.data ?? null;
+
+  if (roleAssignSource === null) {
+    if (roleAssignState !== null) setRoleAssignState(null);
+  } else if (roleAssignState?.source !== roleAssignSource) {
+    const seeded = toRoleAssignDraft(roleAssignSource.items);
+    setRoleAssignState({ source: roleAssignSource, baseline: seeded, selected: seeded });
+  }
+
+  const roleSelection = roleAssignState?.selected ?? [];
+  const isRoleAssignDirty =
+    roleAssignState !== null && !isSameRoleSelection(roleAssignState.selected, roleAssignState.baseline);
+
+  /* ── 데이터 접근범위 ───────────────────────────────────────────────────── */
+
+  const dataScopeList = useUserDataScopes(selectedAppUserId);
+  const businessUnitOptions = useBusinessUnitOptions(selectedAppUserId !== null);
+  const plantOptions = usePlantOptions(selectedAppUserId !== null);
+
+  const [dataScopeState, setDataScopeState] = useState<DataScopeState | null>(null);
+
+  const dataScopeSource = dataScopeList.data ?? null;
+
+  if (dataScopeSource === null) {
+    if (dataScopeState !== null) setDataScopeState(null);
+  } else if (dataScopeState?.source !== dataScopeSource) {
+    const seeded = toDataScopeDrafts(dataScopeSource.items);
+    setDataScopeState({ source: dataScopeSource, baseline: seeded, drafts: seeded });
+  }
+
+  const dataScopeDrafts = dataScopeState?.drafts ?? [];
+  const isDataScopeDirty =
+    dataScopeState !== null && !isSameDataScopeDrafts(dataScopeState.drafts, dataScopeState.baseline);
+
+  /** 편집 창의 대상. **열 때만 마운트한다** — 닫힌 창을 남기면 지난 값이 살아 있다. */
+  const [editingDataScope, setEditingDataScope] = useState<DataScopeDraft | null>(null);
+  const [isEditingNewDataScope, setIsEditingNewDataScope] = useState(false);
 
   /**
    * 선택 목록이 잘리거나 실패했다는 사실을 목록 위에 낸다.
@@ -269,6 +368,62 @@ export const UsersRolesScreen = () => {
   });
 
   /**
+   * 역할 부여 치환.
+   *
+   * **`etagPath`가 반드시 `null`이다.** 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없다 —
+   * `user_role`에는 `version_no`가 없어 낙관적 잠금 대상이 아니다(부여·회수 형).
+   * 상세 경로를 넘기면 토큰을 찾지 못해 **요청이 나가지 않고 멈춘다**(「저장을 눌러도 아무 일이 없다」).
+   *
+   * **무효화는 부여분 키 하나뿐이다.** 사용자 행도 잠금 토큰도 이 치환으로 바뀌지 않고,
+   * 상세까지 무효화하면 바로 위 칸에서 편집 중이던 폼이 서버 값으로 되돌아간다.
+   */
+  const roleAssignWrite = useMasterWrite<readonly number[], UserRoleListResponse>({
+    request: (selected, headers) =>
+      client.PUT('/app/users/{appUserId}/roles', {
+        params: {
+          path: { appUserId: selectedAppUserId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: toRolesPayload(selected, roleCatalogOrder(roleOptions.entries)),
+      }),
+    etagPath: null,
+    invalidateKeys: [userKeys.roles(selectedAppUserId ?? 0)],
+    // 확인칸에는 계약의 필드 이름이 붙지 않는다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: (saved) => {
+      /* **서버 응답이 정본이다.** 보낸 목록을 그대로 두면 서버가 조정한 결과를 놓친다. */
+      const next = toRoleAssignDraft(saved.items);
+      setRoleAssignState({ source: saved, baseline: next, selected: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /**
+   * 데이터 접근범위 치환. 역할 부여와 같은 규약이다 —
+   * **`If-Match` 없음 · 자기 키만 무효화 · 서버 응답으로 초안을 다시 세움.**
+   */
+  const dataScopeWrite = useMasterWrite<readonly DataScopeDraft[], UserDataScopeListResponse>({
+    request: (drafts, headers) =>
+      client.PUT('/app/users/{appUserId}/data-scopes', {
+        params: {
+          path: { appUserId: selectedAppUserId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { scopes: toDataScopesPayload(drafts) },
+      }),
+    etagPath: null,
+    invalidateKeys: [userKeys.dataScopes(selectedAppUserId ?? 0)],
+    // 대응하는 입력칸이 이 구획에 없다(창 안에 있고, 창은 닫혀 있다) — 필드 오류도 배너로 올린다.
+    knownFields: [],
+    onSuccess: (saved) => {
+      /* 서버가 줄 번호를 새로 매기므로 보낸 목록을 그대로 두면 다음 저장이 옛 번호로 돈다. */
+      const next = toDataScopeDrafts(saved.items);
+      setDataScopeState({ source: saved, baseline: next, drafts: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /**
    * 지금 모드의 쓰기. 등록과 수정이 **한 폼 상태**를 쓰므로 저장·오류·진행 표시도
    * 한 곳에서 골라 쓴다 — 두 훅의 상태를 화면에서 합치면 어느 저장의 실패인지 흐려진다.
    */
@@ -283,9 +438,14 @@ export const UsersRolesScreen = () => {
     userWrite.reset();
     userCreateWrite.reset();
     userDeactivateWrite.reset();
+    roleAssignWrite.reset();
+    dataScopeWrite.reset();
     setIsDeactivateOpen(false);
     setFormState(null);
     setUserFieldErrors({});
+    setRoleAssignState(null);
+    setDataScopeState(null);
+    setEditingDataScope(null);
   };
 
   /*
@@ -369,6 +529,51 @@ export const UsersRolesScreen = () => {
     if (Object.keys(errors).length > 0) return;
 
     activeUserWrite.write(formState.values);
+  };
+
+  const handleToggleRole = (roleId: number) => {
+    setRoleAssignState((prev) =>
+      prev === null ? prev : { ...prev, selected: toggleRoleId(prev.selected, roleId) },
+    );
+  };
+
+  const handleSaveRoleAssign = () => {
+    /*
+     * 페인은 고른 사용자가 있을 때만 서므로 여기까지 오지 않는다.
+     * 그래도 대상 없이 보내지 않는다 — 「번호 0으로 나가는 요청」을 만들 여지를 두지 않는다.
+     */
+    if (roleAssignState === null || selectedAppUserId === null) return;
+
+    roleAssignWrite.write(roleAssignState.selected);
+  };
+
+  /** 취소는 **서버를 부르지 않는다** — 체크 상태를 기준값으로 되돌릴 뿐이다. */
+  const handleCancelRoleAssign = () => {
+    roleAssignWrite.reset();
+    setRoleAssignState((prev) => (prev === null ? prev : { ...prev, selected: prev.baseline }));
+  };
+
+  const changeDataScopeDrafts = (next: (drafts: DataScopeDraft[]) => DataScopeDraft[]) => {
+    setDataScopeState((prev) => (prev === null ? prev : { ...prev, drafts: next(prev.drafts) }));
+  };
+
+  /** 창을 열 때 앞선 저장 실패 배너를 걷는다 — 지금 고치는 줄과 무관한 안내다. */
+  const openDataScopeDialog = (draft: DataScopeDraft, isNew: boolean) => {
+    dataScopeWrite.reset();
+    setIsEditingNewDataScope(isNew);
+    setEditingDataScope(draft);
+  };
+
+  const handleSaveDataScopes = () => {
+    if (dataScopeState === null || selectedAppUserId === null) return;
+
+    dataScopeWrite.write(dataScopeState.drafts);
+  };
+
+  /** 취소는 **서버를 부르지 않는다** — 표를 기준값으로 되돌릴 뿐이다. */
+  const handleCancelDataScopes = () => {
+    dataScopeWrite.reset();
+    setDataScopeState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
   };
 
   /**
@@ -474,6 +679,101 @@ export const UsersRolesScreen = () => {
     );
   };
 
+  /**
+   * 우 칸 가운데 — 역할 부여.
+   *
+   * **고른 사용자가 없으면 페인 자체를 두지 않는다.** 등록 중인 사용자에게는 아직 부여할
+   * 대상이 없고(자원이 만들어지지 않았다), 아무도 고르지 않았으면 누구에게 주는 것인지 알 수 없다.
+   * 빈 페인을 두면 사용자가 「여기서 무언가 할 수 있다」고 읽는다.
+   */
+  const renderRoleAssignPane = (): ReactNode => {
+    if (selectedAppUserId === null) return null;
+
+    /*
+     * **역할 선택 목록은 이 구획의 보조가 아니라 내용 그 자체다.** 그것이 실패하면
+     * 확인칸이 하나도 서지 않는데, 그때 빈 상태를 내면 「역할이 등록되면 여기에서 부여할 수
+     * 있습니다」가 되어 **없는 사실을 단정한다** — 역할이 없는 것이 아니라 못 불러온 것이고,
+     * 이 사용자에게 이미 부여된 역할이 있을 수도 있다.
+     *
+     * 그래서 부여분 실패와 **같은 자리**(조회 실패 배너 + 다시 시도)로 보낸다.
+     * 부여분 실패를 먼저 보는 이유는 그것이 이 사용자에게 매인 자료이기 때문이다.
+     */
+    const roleAssignFailure = userRoleList.isError
+      ? { error: userRoleList.error, retry: () => void userRoleList.refetch() }
+      : roleOptions.isError
+        ? { error: roleOptions.error, retry: roleOptions.refetch }
+        : null;
+
+    return (
+      <RoleAssignPane
+        choices={toRoleChoices(roleOptions.entries, roleSelection)}
+        /* 선택 목록과 부여분이 함께 있어야 확인칸 하나를 그릴 수 있다. */
+        isLoading={userRoleList.isPending || roleOptions.isLoading}
+        /*
+         * 실패를 배너로 낸 자리에 같은 뜻의 경고를 겹쳐 내지 않는다 —
+         * 배너 둘이 서면 사용자가 서로 다른 두 가지 일이 났다고 읽는다.
+         */
+        optionsNotice={roleAssignFailure === null ? renderOptionsNotice([roleOptions]) : null}
+        loadError={
+          roleAssignFailure === null ? null : (
+            <LoadErrorBanner error={roleAssignFailure.error} onRetry={roleAssignFailure.retry} />
+          )
+        }
+        /*
+         * 서버가 거부하면 그 사유를 그대로 낸다. 화면이 무엇을 막을지 정하지 않으므로
+         * **이 배너가 사용자가 거부 이유를 아는 유일한 자리**다(계획 결정 4).
+         * 이 치환에는 낙관적 잠금이 없어 충돌도 없다 — 「최신 불러오기」를 낼 자리가 아니다.
+         */
+        banner={<SaveErrorBanner error={roleAssignWrite.error} />}
+        isDirty={isRoleAssignDirty}
+        isSaving={roleAssignWrite.isSaving}
+        onToggle={handleToggleRole}
+        onSave={handleSaveRoleAssign}
+        onCancel={handleCancelRoleAssign}
+      />
+    );
+  };
+
+  /** 우 칸 아래 — 데이터 접근범위. 역할 부여와 같은 조건에서 선다. */
+  const renderDataScopePane = (): ReactNode => {
+    if (selectedAppUserId === null) return null;
+
+    return (
+      <DataScopePane
+        drafts={dataScopeDrafts}
+        isLoading={dataScopeList.isPending}
+        businessUnitEntries={businessUnitOptions.entries}
+        plantEntries={plantOptions.entries}
+        optionsNotice={renderOptionsNotice([businessUnitOptions, plantOptions])}
+        loadError={
+          dataScopeList.isError ? (
+            <LoadErrorBanner
+              error={dataScopeList.error}
+              onRetry={() => void dataScopeList.refetch()}
+            />
+          ) : null
+        }
+        /* 이 치환에도 낙관적 잠금이 없어 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
+        banner={<SaveErrorBanner error={dataScopeWrite.error} />}
+        isDirty={isDataScopeDirty}
+        isSaving={dataScopeWrite.isSaving}
+        onAdd={() => {
+          openDataScopeDialog(createDataScopeDraft(), true);
+        }}
+        onEdit={(draftId) => {
+          const found = dataScopeDrafts.find((draft) => draft.draftId === draftId);
+
+          if (found !== undefined) openDataScopeDialog(found, false);
+        }}
+        onRemove={(draftId) => {
+          changeDataScopeDrafts((drafts) => removeDataScopeDraft(drafts, draftId));
+        }}
+        onSave={handleSaveDataScopes}
+        onCancel={handleCancelDataScopes}
+      />
+    );
+  };
+
   const usersTabContent = (
     <div className="two-pane">
       <UserListPane
@@ -509,7 +809,11 @@ export const UsersRolesScreen = () => {
        * 우 칸은 구획을 세로로 쌓는다 — 사용자 정보 아래에 역할 부여·데이터 접근범위가 붙는다.
        * `.pane-stack`은 선택자에 매이지 않은 기본 규칙이라 2단 배치의 칸 안에서도 그대로 동작한다.
        */}
-      <div className="pane-stack">{renderUserFormPane()}</div>
+      <div className="pane-stack">
+        {renderUserFormPane()}
+        {renderRoleAssignPane()}
+        {renderDataScopePane()}
+      </div>
     </div>
   );
 
@@ -563,6 +867,35 @@ export const UsersRolesScreen = () => {
           banner={
             <SaveErrorBanner error={userDeactivateWrite.error} onReload={reloadUserDetail} />
           }
+        />
+      )}
+
+      {/*
+       * 접근범위 편집 창도 **열 때만 붙인다.** 고른 사용자가 없으면 붙이지 않는 것이
+       * 사용 중지 창과 같은 이중 방어다 — 초안이 사라진 뒤에 창만 남는 자리를 만들지 않는다.
+       */}
+      {editingDataScope !== null && selectedAppUserId !== null && (
+        <DataScopeFormDialog
+          draft={editingDataScope}
+          isNew={isEditingNewDataScope}
+          otherDrafts={dataScopeDrafts}
+          /*
+           * 지금 고른 값이 선택 목록에 없으면(목록이 잘렸을 때) 코드 그대로 남긴다 —
+           * 빼면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다.
+           */
+          businessUnitOptions={selectableOptions(
+            businessUnitOptions.entries,
+            editingDataScope.businessUnitId,
+          )}
+          plantOptions={selectableOptions(plantOptions.entries, editingDataScope.plantId)}
+          onClose={() => {
+            setEditingDataScope(null);
+          }}
+          onConfirm={(next) => {
+            /* 확인은 **서버를 부르지 않는다** — 표에만 반영하고 저장에서 한 번에 보낸다. */
+            changeDataScopeDrafts((drafts) => upsertDataScopeDraft(drafts, next));
+            setEditingDataScope(null);
+          }}
         />
       )}
     </>
