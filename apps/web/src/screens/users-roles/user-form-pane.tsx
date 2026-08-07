@@ -81,6 +81,7 @@ export const UserFormPane = ({
   const loginIdId = useId();
   const userNameId = useId();
   const emailId = useId();
+  const saveLabel = mode === 'create' ? t.actions.addUser : messages.common.save;
 
   return (
     <section className="pane" aria-label={t.panes.userForm}>
@@ -192,9 +193,22 @@ export const UserFormPane = ({
           {messages.common.cancel}
         </Button>
 
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {mode === 'create' ? t.actions.addUser : messages.common.save}
-        </Button>
+        {/*
+         * 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4) —
+         * 사유가 없으면 사용자는 버튼이 왜 안 눌리는지 알 방법이 없다.
+         * 저장 중에는 진행 표시가 그 자리를 대신하므로 사유를 내지 않는다.
+         */}
+        {isDirty || isSaving ? (
+          <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
+            {saveLabel}
+          </Button>
+        ) : (
+          <DisabledAction
+            variant="filled"
+            label={saveLabel}
+            reason={mode === 'create' ? t.actionReasons.addNoInput : t.actionReasons.saveNoChanges}
+          />
+        )}
       </div>
     </section>
   );

@@ -152,10 +152,28 @@ describe('UserFormPane 입력', () => {
 });
 
 describe('UserFormPane 액션', () => {
-  it('고친 것이 없으면 저장이 비활성이다', () => {
+  /** 사유가 없으면 사용자는 버튼이 왜 안 눌리는지 알 방법이 없다(배치 규범 4). */
+  it('고친 것이 없으면 저장이 비활성이고 사유가 보인다', () => {
     renderPane({ isDirty: false });
 
-    expect(within(pane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    const save = within(pane()).getByRole('button', { name: '저장' });
+
+    expect(save).toBeDisabled();
+
+    const describedBy = save.getAttribute('aria-describedby');
+
+    expect(describedBy).not.toBeNull();
+    expect(document.getElementById(describedBy as string)?.textContent).toBe(
+      '저장은 고친 내용이 있을 때 누를 수 있습니다.',
+    );
+  });
+
+  it('등록의 사유는 그 액션의 이름으로 시작한다', () => {
+    renderPane({ mode: 'create', isDirty: false, values: { ...values, loginId: '' } });
+
+    expect(
+      within(pane()).getByText('사용자 추가는 입력한 내용이 있을 때 누를 수 있습니다.'),
+    ).toBeInTheDocument();
   });
 
   /** 등록에서 「취소」는 폼을 닫는 것이라 고친 것이 없어도 눌러야 한다. */

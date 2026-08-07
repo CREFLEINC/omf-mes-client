@@ -7,6 +7,11 @@ export interface DisabledActionProps {
   reason: string;
   /** 액션 줄에서 위치를 정하는 배치 클래스(예: `form-actions-secondary`). */
   className?: string;
+  /**
+   * 주 액션(저장·등록)이 막힌 자리에는 `filled`를 쓴다.
+   * 활성일 때와 같은 위계로 보여야 사용자가 「어느 버튼이 원래 주 액션인지」를 잃지 않는다.
+   */
+  variant?: 'filled' | 'outlined';
 }
 
 /**
@@ -17,14 +22,19 @@ export interface DisabledActionProps {
  * - 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더하고 `aria-describedby`로 잇는다.
  *   비활성 컨트롤은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다.
  * - 사유는 그 컨트롤 바로 아래 왼쪽 가장자리를 맞춰 놓는다(`.field-cell`).
- * - `variant`는 `outlined`다. `text`는 비활성일 때 흐린 글자만 남아 버튼으로 읽히지 않는다.
+ * - 기본 `variant`는 `outlined`다. `text`는 비활성일 때 흐린 글자만 남아 버튼으로 읽히지 않는다.
  */
-export const DisabledAction = ({ label, reason, className }: DisabledActionProps) => {
+export const DisabledAction = ({
+  label,
+  reason,
+  className,
+  variant = 'outlined',
+}: DisabledActionProps) => {
   const noteId = useId();
 
   return (
     <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>
-      <Button variant="outlined" disabled aria-describedby={noteId}>
+      <Button variant={variant} disabled aria-describedby={noteId}>
         {label}
       </Button>
       <span id={noteId} className="field-note">
