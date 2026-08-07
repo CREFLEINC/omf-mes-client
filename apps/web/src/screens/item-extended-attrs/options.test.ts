@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ensureOption, lookupLabel } from './options';
+import { ensureOption, lookupLabel, selectableOptions } from './options';
 import type { LookupEntry, SelectOption } from './types';
 
 const entries: LookupEntry[] = [
@@ -28,6 +28,28 @@ describe('ensureOption', () => {
 
   it('값이 없으면 아무것도 덧붙이지 않는다', () => {
     expect(ensureOption(options, '')).toBe(options);
+  });
+});
+
+describe('selectableOptions', () => {
+  it('사용 중인 것만 고를 수 있다', () => {
+    expect(selectableOptions(entries, '').map((option) => option.value)).toEqual(['7001']);
+  });
+
+  /* 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다. */
+  it('지금 고른 값이 미사용이면 표식을 붙여 남긴다', () => {
+    const options = selectableOptions(entries, '7002');
+
+    expect(options.map((option) => option.value)).toEqual(['7001', '7002']);
+    expect(options[1]?.label).toBe('SYN-UOM-02 · 합성 단위 B (미사용)');
+  });
+
+  /* 목록에 아예 없는 값도 남긴다 — 지워진 것과 못 받은 것을 화면이 구분할 수 없다. */
+  it('목록에 없는 현재 값은 값 그대로 남긴다', () => {
+    expect(selectableOptions(entries, '9999').map((option) => option.value)).toEqual([
+      '7001',
+      '9999',
+    ]);
   });
 });
 

@@ -1336,6 +1336,17 @@ const itemExtendedAttrs = {
   tabs: {
     label: '품목 확장속성',
     attrs: '확장 속성',
+    subsidiary: '부속 정보',
+  },
+  /**
+   * 부속 정보 안의 하위 탭. 계약이 인용한 화면 스펙의 구획 이름을 그대로 옮긴 것이다 —
+   * 여기서 이름을 새로 지으면 설계 문서와 화면이 다른 말을 하게 된다.
+   */
+  subTabs: {
+    label: '부속 정보',
+    buMap: '사업부 매핑',
+    uomConversion: '단위 환산',
+    externalCode: '외부 코드',
   },
   panes: {
     item: '품목',
@@ -1456,6 +1467,73 @@ const itemExtendedAttrs = {
       shelfLifeDaysInvalid: '유효기한(일)은 0 이상의 정수로 입력하세요.',
       /* 계약 exclusiveMinimum: 0 — 유효기한(일)과 규칙이 다르다. 0을 받지 않는다. */
       openedShelfLifeHoursInvalid: '개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.',
+    },
+  },
+  /**
+   * 대상 품목을 **검색해서 고르는** 묶음(결정 8).
+   *
+   * 품목이 수천 건일 수 있어 선택칸에 다 담을 수 없고, 번호를 입력받으면 사용자가
+   * 알 수도 확인할 수도 없는 내부 식별자를 화면이 요구하게 된다.
+   */
+  itemPicker: {
+    keywordLabel: '대상 품목 검색',
+    keywordPlaceholder: '품목코드 또는 품목명',
+    search: '찾기',
+    resultLabel: '대상 품목',
+    resultPlaceholder: '검색 결과에서 고르세요',
+    /* 검색 전에는 선택칸이 비어 있는 것이 정상이다 — 그 사실을 밝히지 않으면 고장으로 읽힌다. */
+    beforeSearch: '품목코드나 품목명을 넣고 찾기를 누르세요.',
+    truncated: '검색 결과가 많아 일부만 표시합니다. 검색어를 좁히세요.',
+    noResult: '검색어에 맞는 품목이 없습니다. 검색어를 바꿔 다시 찾아 보세요.',
+    searchFailed: '품목을 검색하지 못했습니다. 잠시 뒤 다시 찾아 보세요.',
+  },
+  /**
+   * 부속 하위 탭① — 사업부 매핑. 사업부 사이의 품목 대응을 담는다.
+   *
+   * **중복 안내 문구가 없다.** 계약이 이 표에 유일 제약을 적지 않았고,
+   * 화면이 없는 제약을 흉내 내면 서버가 허용하는 값을 막는다(결정 7).
+   */
+  buMap: {
+    paneTitle: '사업부 매핑',
+    fields: {
+      fromBusinessUnit: '보내는 사업부',
+      toBusinessUnit: '받는 사업부',
+      toItem: '대상 품목',
+      validPeriod: '유효기간',
+      effectiveFrom: '유효 시작',
+      effectiveTo: '유효 종료',
+      edit: '편집',
+    },
+    values: {
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+    },
+    actions: {
+      add: '매핑 추가',
+      editRow: (name: string): string => `${name} 매핑 수정`,
+      removeRow: (name: string): string => `${name} 매핑 삭제`,
+    },
+    loading: {
+      list: '사업부 매핑을 불러오는 중',
+    },
+    empty: {
+      noneTitle: '등록된 사업부 매핑이 없습니다',
+      noneDescription: '「매핑 추가」로 줄을 만든 뒤 저장하세요.',
+    },
+    dialog: {
+      addTitle: '사업부 매핑 추가',
+      editTitle: '사업부 매핑 수정',
+      confirm: '확인',
+      /* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다 — 전체 치환이라 저장이 따로 있다. */
+      notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
+    },
+    /* 「대상 품목 이름을 못 받았다」는 저장을 막지 않는다 — 표시만의 문제다. */
+    itemNamesLoadFailed: '대상 품목 이름을 불러오지 못했습니다. 저장에는 영향이 없습니다.',
+    validation: {
+      required: '필수 입력 항목입니다.',
+      /* 계약 ck_item_bu_map_distinct */
+      sameBusinessUnit: '보내는 사업부와 받는 사업부는 서로 달라야 합니다.',
+      /* 계약 ck_item_bu_map_dates — 짝 제약이라 두 칸에 함께 낸다. */
+      validRangeReversed: '유효 종료는 유효 시작과 같거나 뒤여야 합니다.',
     },
   },
 } as const;

@@ -30,6 +30,7 @@ const isTruncated = (page: PageMeta, shown: number): boolean => page.total > sho
 
 const lookupKeys = {
   uoms: ['item-extended-attrs-lookups', 'uoms'] as const,
+  businessUnits: ['item-extended-attrs-lookups', 'business-units'] as const,
 };
 
 /**
@@ -56,6 +57,39 @@ export const useUomOptions = (enabled: boolean): LookupResult => {
       data?.items.map((item) => ({
         value: String(item.uomId),
         label: `${item.uomCode} · ${item.uomName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: query.isPending,
+  };
+};
+
+/**
+ * 사업부 — 사업부 매핑의 「보내는 사업부」·「받는 사업부」.
+ *
+ * `legalEntityId`로 좁히지 않는다. 이 화면에 법인 조건이 없고, 좁히면 사용자가
+ * 왜 어떤 사업부가 보이지 않는지 알 수단이 없다.
+ */
+export const useBusinessUnitOptions = (enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.businessUnits,
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/business-units', { params: { query: { includeInactive: true } } }),
+      ),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.businessUnitId),
+        label: `${item.businessUnitCode} · ${item.businessUnitName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),

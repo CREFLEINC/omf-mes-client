@@ -20,6 +20,23 @@ export const ensureOption = (options: SelectOption[], value: string): SelectOpti
     : [...options, { value, label: value }];
 
 /**
+ * 조회 결과로 채우는 선택 목록에서 실제로 고를 수 있는 선택지를 만든다.
+ *
+ * 기본은 사용 중인 것만 보인다. 다만 **지금 고른 값이 미사용이면 그것도 남기고 표식을 붙인다** —
+ * 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 알고, 고치지 않은 줄을 고치려 든다.
+ */
+export const selectableOptions = (entries: LookupEntry[], selected: string): SelectOption[] =>
+  ensureOption(
+    entries
+      .filter((entry) => entry.isActive || entry.value === selected)
+      .map((entry) => ({
+        value: entry.value,
+        label: entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`,
+      })),
+    selected,
+  );
+
+/**
  * 번호를 사람이 읽는 이름으로 옮긴다. 읽기 전용 표기에 쓴다.
  *
  * **목록에 없으면 번호를 화면에 내지 않는다** — 내부 식별자라 사용자가 쓸 수 없는 값이고,

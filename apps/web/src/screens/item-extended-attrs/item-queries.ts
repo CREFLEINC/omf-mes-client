@@ -1,10 +1,11 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { toItemListQuery } from './filters';
-import type { Item, ItemFilters, PageMeta } from './types';
+import type { LookupResult } from './lookups';
+import type { Item, ItemFilters, LookupEntry, PageMeta } from './types';
 
 type ItemDetailResponse = components['schemas']['ItemDetailResponse'];
 
@@ -40,7 +41,13 @@ export const itemKeys = {
   all: ['item-extended-attrs-items'] as const,
   list: (filters: ItemFilters, page: number) =>
     ['item-extended-attrs-items', 'list', filters, page] as const,
+  /**
+   * 상세의 키. **행 단위 이름 조회가 이 키를 함께 쓴다**(결정 12) —
+   * 같은 품목이 여러 행·여러 표에 나와도 한 번만 받게 하려는 것이다.
+   */
   detail: (itemId: number) => ['item-extended-attrs-items', 'detail', itemId] as const,
+  /** 품목 고르기의 검색. 좌 목록과 조건 축이 달라 키를 나눈다 */
+  search: (keyword: string) => ['item-extended-attrs-items', 'search', keyword] as const,
 };
 
 /**
@@ -95,4 +102,86 @@ export const useItemDetail = (itemId: number | null): UseQueryResult<ItemDetailR
       return runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }));
     },
   });
+};
+
+/** 품목 하나를 사람이 읽는 한 줄로. 번호를 화면에 내지 않기 위한 형태다. */
+const toItemEntry = (item: Item): LookupEntry => ({
+  value: String(item.itemId),
+  label: `${item.itemCode} · ${item.itemName}`,
+  isActive: item.isActive,
+});
+
+const EMPTY_ENTRIES: LookupEntry[] = [];
+
+/**
+ * 검색으로 고르는 품목 목록(결정 8).
+ *
+ * **검색어가 비면 조회하지 않는다**(M31). 품목은 수천 건일 수 있어 전 목록을 받는 것이
+ * 화면에도 서버에도 의미가 없고, 빈 검색어로 받은 앞 N건은 「고를 만한 후보」가 아니다.
+ *
+ * 상위 N건만 받고 잘렸다는 사실을 화면이 밝힌다 — 밝히지 않으면 사용자가
+ * 「이 품목은 없다」로 잘못 읽고 검색을 그만둔다.
+ */
+const ITEM_SEARCH_SIZE = 20;
+
+export const useItemSearch = (keyword: string): LookupResult => {
+  const { client } = useApiClient();
+  const trimmed = keyword.trim();
+
+  const query = useQuery({
+    queryKey: itemKeys.search(trimmed),
+    enabled: trimmed !== '',
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/items', {
+          params: { query: { q: trimmed, size: ITEM_SEARCH_SIZE } },
+        }),
+      ),
+  });
+
+  const data = query.data;
+
+  return {
+    entries: data?.items.map(toItemEntry) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && data.page.total > data.items.length,
+    isError: query.isError,
+    // 검색어를 넣기 전에는 「불러오는 중」이 아니다 — 조회 자체가 없다.
+    isLoading: trimmed !== '' && query.isPending,
+  };
+};
+
+/**
+ * 번호 목록을 이름으로 옮긴다 — 표의 「대상 품목」·「구성품」이 쓴다(결정 12).
+ *
+ * **계약에 번호 목록으로 품목을 한꺼번에 받는 오퍼레이션이 없다**(실측). 행마다 상세를 부르되
+ * `useItemDetail`과 **같은 캐시 키**를 써서 같은 품목이 여러 행에 나와도 한 번만 받는다.
+ * 요청 수가 행 수에 비례하는 것은 계약의 목록 응답에 쪽 나눔이 없다는 사실로 감수한다.
+ *
+ * 실패한 행만 이름을 잃는다 — 「알 수 없음」은 그 행에서 난다.
+ * **전부 실패했을 때만** `isError`가 참이다. 한 행이 실패했다고 표 위에 안내를 올리면
+ * 나머지 행이 멀쩡히 보이는데도 목록 전체가 실패한 것처럼 읽힌다.
+ */
+export const useItemNames = (itemIds: readonly number[]): LookupResult => {
+  const { client } = useApiClient();
+  const uniqueIds = [...new Set(itemIds)];
+
+  const results = useQueries({
+    queries: uniqueIds.map((itemId) => ({
+      queryKey: itemKeys.detail(itemId),
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+    })),
+  });
+
+  const entries = results.flatMap((result) =>
+    result.data === undefined ? [] : [toItemEntry(result.data.item)],
+  );
+
+  return {
+    entries,
+    // 행 단위 조회라 잘림이라는 상태가 없다 — 요청한 번호가 곧 전부다.
+    truncated: false,
+    isError: results.length > 0 && results.every((result) => result.isError),
+    isLoading: results.some((result) => result.isPending),
+  };
 };

@@ -10,13 +10,15 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { itemFixtures, uomFixtures } from './fixtures';
+import { buMapFixtures, businessUnitFixtures, itemFixtures, uomFixtures } from './fixtures';
 import { ItemExtendedAttrsScreen } from './screen';
 
 const ROUTE = '/master-data/item-extended-attrs';
 
 const ITEMS_PATH = '/mdm/items';
 const UOMS_PATH = '/mdm/uoms';
+const BUSINESS_UNITS_PATH = '/mdm/business-units';
+const buMapsPath = (itemId = 1001): string => `${ITEMS_PATH}/${String(itemId)}/bu-item-maps`;
 
 interface RecordedRequest {
   method: string;
@@ -110,6 +112,60 @@ const itemSaveFailureRoute = (status: number, body: unknown, itemId = 1001): Stu
   match: (request) => isPut(request, `${ITEMS_PATH}/${String(itemId)}`),
   respond: () => jsonResponse(body, { status }),
 });
+
+/* ── 부속 정보 ─────────────────────────────────────────────────────────────── */
+
+/** 사업부 매핑 목록 — **`ETag`가 없다**(계약 실측). 쪽 나눔도 없다. */
+const buMapsRoute = (items = buMapFixtures, itemId = 1001): StubRoute => ({
+  match: (request) => isGet(request, buMapsPath(itemId)),
+  respond: () => jsonResponse({ items }),
+});
+
+/** 사업부 매핑 치환 — 성공. 서버가 행 번호를 새로 매겨 돌려준다. */
+const buMapSaveRoute = (items = buMapFixtures, itemId = 1001): StubRoute => ({
+  match: (request) => isPut(request, buMapsPath(itemId)),
+  respond: () => jsonResponse({ items }),
+});
+
+const buMapSaveFailureRoute = (status: number, body: unknown, itemId = 1001): StubRoute => ({
+  match: (request) => isPut(request, buMapsPath(itemId)),
+  respond: () => jsonResponse(body, { status }),
+});
+
+const businessUnitsRoute = (items = businessUnitFixtures): StubRoute => ({
+  match: (request) => isGet(request, BUSINESS_UNITS_PATH),
+  respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
+});
+
+/**
+ * 행 단위 이름 조회(결정 12)의 응답.
+ *
+ * 픽스처에 없는 번호(9001)는 **404**로 둔다 — 그 행만 「알 수 없음」이 되는지 본다.
+ */
+const itemDetailByIdRoute = (): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' && /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+  respond: (request) => {
+    const itemId = Number(new URL(request.url).pathname.split('/').pop());
+    const item = itemFixtures.find((row) => row.itemId === itemId);
+
+    if (item === undefined) return jsonResponse({ message: '없는 품목입니다' }, { status: 404 });
+
+    return jsonResponse(
+      { item, editability: { codeEditable: false, reason: 'EDITABLE', referenceCount: 3 } },
+      { headers: { ETag: 'W/"7"' } },
+    );
+  },
+});
+
+/** 부속 정보 탭을 그릴 때 필요한 스텁 한 벌. 하나만 빠져도 하네스가 던진다. */
+const subsidiaryRoutes = (): StubRoute[] => [
+  itemListRoute(),
+  itemDetailByIdRoute(),
+  uomsRoute(),
+  businessUnitsRoute(),
+  buMapsRoute(),
+];
 
 /** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -479,8 +535,10 @@ describe('ItemExtendedAttrsScreen — 탭', () => {
 
     await findOriginContent();
 
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['확장 속성']);
-    expect(screen.queryByRole('tab', { name: '부속 정보' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      '확장 속성',
+      '부속 정보',
+    ]);
     expect(screen.queryByRole('tab', { name: '자재 명세서' })).not.toBeInTheDocument();
   });
 
@@ -1176,5 +1234,590 @@ describe('ItemExtendedAttrsScreen — 최신 불러오기', () => {
     await waitFor(() => {
       expect(screen.queryByText(ERP_SYNC_TEXT)).not.toBeInTheDocument();
     });
+  });
+});
+
+/* ── 부속 정보 탭 ──────────────────────────────────────────────────────────── */
+
+/**
+ * 사업부 매핑 구획의 **표까지** 그려지길 기다린다.
+ *
+ * 구획 자체는 불러오는 중에도 있다 — 그 상태에는 표가 없어 행을 세는 단언이 헛돈다.
+ */
+const findBuMapPane = async (): Promise<HTMLElement> => {
+  const pane = await screen.findByRole('region', { name: '사업부 매핑' });
+
+  await waitFor(() => {
+    expect(
+      within(pane).queryByRole('status', { name: '사업부 매핑을 불러오는 중' }),
+    ).not.toBeInTheDocument();
+  });
+
+  return pane;
+};
+
+/** 머리 줄을 뺀 자료 줄 수. 좌 목록 표가 함께 잡히지 않도록 구획 안에서만 센다. */
+const buMapRowCount = (pane: HTMLElement): number => within(pane).getAllByRole('row').length - 1;
+
+const buMapBodies = (requests: RecordedRequest[], itemId = 1001): unknown[] =>
+  requests
+    .filter((request) => request.method === 'PUT' && request.url.pathname === buMapsPath(itemId))
+    .map((request) => JSON.parse(request.body) as unknown);
+
+const buMapPuts = (requests: RecordedRequest[], itemId = 1001): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'PUT' && request.url.pathname === buMapsPath(itemId),
+  );
+
+/** 열려 있는 편집 창. 구획에도 같은 이름의 버튼이 있어 창 안으로 좁혀 찾는다. */
+const buMapDialog = (): HTMLElement => screen.getByRole('dialog');
+
+/** 사업부 매핑 한 줄을 창에서 만든다. 확인까지 누르면 **표에만** 반영된다. */
+const addBuMapRow = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: '매핑 추가' }));
+
+  const dialog = buMapDialog();
+
+  await user.click(within(dialog).getByLabelText('보내는 사업부'));
+  await user.click(screen.getByRole('option', { name: 'SYN-BU-01 · 합성 사업부 A' }));
+
+  await user.click(within(dialog).getByLabelText('받는 사업부'));
+  await user.click(screen.getByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
+
+  await user.type(within(dialog).getByLabelText('대상 품목 검색'), 'SYN');
+  await user.click(within(dialog).getByRole('button', { name: '찾기' }));
+  await user.click(await within(dialog).findByLabelText('대상 품목'));
+  await user.click(screen.getByRole('option', { name: 'SYN-ITEM-01 · 합성 품목 A' }));
+
+  await user.type(within(dialog).getByLabelText('유효 시작'), '2026-05-01');
+
+  await user.click(within(dialog).getByRole('button', { name: '확인' }));
+};
+
+/**
+ * 부속 자원의 조회는 **부속 정보 탭에 들어왔을 때** 켠다.
+ *
+ * 품목을 고르기만 하고 확장 속성만 보는 동안 세 목록을 받아 둘 이유가 없다.
+ * 하위 탭마다 켜지 않는 이유는 §5.4의 「세 초안은 함께 산다」와 같다 —
+ * 하위 탭을 옮길 때마다 새로 받으면 편집 중이던 초안이 서버 응답으로 되감긴다.
+ */
+describe('ItemExtendedAttrsScreen — 부속 조회 시점', () => {
+  it('확장 속성 탭에서는 부속을 조회하지 않는다', async () => {
+    const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001');
+
+    await findOriginContent();
+
+    expect(requestsTo(requests, buMapsPath())).toHaveLength(0);
+    expect(requestsTo(requests, BUSINESS_UNITS_PATH)).toHaveLength(0);
+  });
+
+  /* 계약이 경로에 `itemId`를 요구한다 — `enabled` 없이 부르면 `0`을 실은 요청이 나간다. */
+  it('품목을 고르기 전에는 부속 탭 주소여도 조회하지 않는다', async () => {
+    const { requests } = renderScreen(subsidiaryRoutes(), '?tab=sub');
+
+    await screen.findByRole('button', { name: 'SYN-ITEM-01' });
+
+    expect(requestsTo(requests, buMapsPath())).toHaveLength(0);
+    expect(requestsTo(requests, buMapsPath(0))).toHaveLength(0);
+  });
+
+  it('부속 정보 탭에 들어가면 사업부 매핑을 조회한다', async () => {
+    const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+
+    await waitFor(() => {
+      expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+    });
+  });
+
+  /* 하위 탭을 옮길 때마다 새로 받으면 초안이 서버 응답으로 되감긴다. */
+  it('하위 탭을 옮겨도 사업부 매핑을 다시 받지 않는다', async () => {
+    const { requests, user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+    await waitFor(() => {
+      expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('tab', { name: '단위 환산' }));
+    await user.click(screen.getByRole('tab', { name: '사업부 매핑' }));
+
+    expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+  });
+});
+
+describe('ItemExtendedAttrsScreen — 부속 하위 탭', () => {
+  it('하위 탭 셋을 낸다', async () => {
+    renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+
+    const subTabs = screen.getAllByRole('tab').map((tab) => tab.textContent);
+    expect(subTabs).toContain('사업부 매핑');
+    expect(subTabs).toContain('단위 환산');
+    expect(subTabs).toContain('외부 코드');
+  });
+
+  /* 「빈 조건·기본값은 키 자체를 두지 않는다」를 하위 탭에도 적용한다. */
+  it('기본 하위 탭은 주소에 쓰지 않고, 다른 하위 탭은 주소에 남는다', async () => {
+    const { history, user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+    expect(history.search()).toBe('?item=1001&tab=sub');
+
+    await user.click(screen.getByRole('tab', { name: '외부 코드' }));
+
+    await waitFor(() => {
+      expect(history.search()).toBe('?item=1001&tab=sub&sub=ext');
+    });
+  });
+
+  /* 주소를 손으로 고쳐도 빈 화면이 되지 않아야 한다. */
+  it('주소의 하위 탭 값이 이상하면 첫 하위 탭으로 떨어진다', async () => {
+    renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub&sub=bogus');
+
+    expect(await screen.findByRole('tab', { name: '사업부 매핑' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  /* 조건을 고칠 때마다 첫 하위 탭으로 튕기면 어디를 보고 있었는지 잃는다. */
+  it('조건을 바꿔도 하위 탭이 남는다', async () => {
+    const { history, user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub&sub=ext');
+
+    await findOriginContent();
+
+    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
+
+    await waitFor(() => {
+      expect(history.search()).toBe('?tab=sub&sub=ext&inactive=1');
+    });
+  });
+});
+
+/**
+ * M09 — 탭 변경이 **아무것도 비우지 않는다.**
+ *
+ * 앞선 화면(W-06-06)은 탭마다 좌 목록이 통째로 달라 전부 비웠다. 여기는 반대다 —
+ * 세 탭이 전부 「지금 고른 품목」의 다른 면이라 비울 근거가 없다.
+ * W-06-06의 규칙을 그대로 옮기는 뮤테이션이 여기서 잡힌다.
+ */
+describe('ItemExtendedAttrsScreen — 탭 변경이 아무것도 비우지 않는다 (M09)', () => {
+  it('탭을 옮겨도 고른 품목과 조건이 그대로다', async () => {
+    const { history, user } = renderScreen(subsidiaryRoutes(), '?q=SYN&item=1001');
+
+    await findOriginContent();
+
+    await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+
+    await waitFor(() => {
+      expect(history.search()).toBe('?q=SYN&item=1001&tab=sub');
+    });
+    expect(await screen.findByLabelText('품목코드')).toHaveTextContent('SYN-ITEM-01');
+  });
+
+  it('탭을 옮겨도 확장 폼의 저장하지 않은 입력이 남는다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001');
+
+    await findAttrsPane();
+
+    await user.type(screen.getByLabelText('보관 조건'), 'ZZZ');
+
+    await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+    await findBuMapPane();
+    await user.click(screen.getByRole('tab', { name: '확장 속성' }));
+
+    expect(await screen.findByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01ZZZ');
+  });
+
+  /* 탭을 옮겼다고 저장 실패 배너까지 지우면 사용자가 실패 사실을 못 본 채 넘어간다. */
+  it('탭을 옮겨도 저장 실패 배너가 남는다', async () => {
+    const { user } = renderScreen(
+      [
+        ...subsidiaryRoutes(),
+        itemSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+      ],
+      '?item=1001',
+    );
+
+    await findAttrsPane();
+    await editAndSave(user);
+    await screen.findByText(FORBIDDEN_TEXT);
+
+    await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+    await findBuMapPane();
+    await user.click(screen.getByRole('tab', { name: '확장 속성' }));
+
+    expect(await screen.findByText(FORBIDDEN_TEXT)).toBeInTheDocument();
+  });
+});
+
+/**
+ * M10 · C12 — 탭을 떠났다 돌아와도 **저장하지 않은 초안이 남는다.**
+ *
+ * 초안을 탭 안 페인이 소유하면 탭을 옮기는 순간 언마운트되어 조용히 사라진다.
+ * 그래서 초안은 화면이 소유한다(§5.4).
+ */
+describe('ItemExtendedAttrsScreen — 초안 수명 (M10·C12)', () => {
+  it('탭을 떠났다 돌아와도 만든 줄이 남는다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+
+    expect(buMapRowCount(pane)).toBe(3); // 서버 2 + 새로 만든 1
+
+    await user.click(screen.getByRole('tab', { name: '확장 속성' }));
+    await findAttrsPane();
+    await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+
+    expect(buMapRowCount(await findBuMapPane())).toBe(3);
+  });
+
+  it('하위 탭을 떠났다 돌아와도 만든 줄이 남는다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+    await addBuMapRow(user);
+
+    await user.click(screen.getByRole('tab', { name: '외부 코드' }));
+    await user.click(screen.getByRole('tab', { name: '사업부 매핑' }));
+
+    expect(buMapRowCount(await findBuMapPane())).toBe(3);
+  });
+
+  /*
+   * M08 — 반대 방향. 품목이 달라지면 초안은 남을 자리가 없다.
+   * 남기면 **다른 품목의 부속 행**을 지금 품목에 저장하게 된다.
+   */
+  it('품목을 바꾸면 초안이 비워진다 (M08)', async () => {
+    const { user } = renderScreen(
+      [...subsidiaryRoutes(), buMapsRoute([], 1002)],
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    expect(buMapRowCount(pane)).toBe(3);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('등록된 사업부 매핑이 없습니다')).toBeInTheDocument();
+    });
+  });
+
+  /* 뒤로가기도 같은 규칙이다 — 초기화가 클릭 핸들러에만 있으면 이 경로가 새어 나간다. */
+  it('뒤로가기로 품목이 바뀌어도 초안이 따라오지 않는다 (M08)', async () => {
+    const { history, user } = renderScreen(
+      [...subsidiaryRoutes(), buMapsRoute([], 1002)],
+      '?item=1002&tab=sub',
+    );
+
+    await findBuMapPane();
+    await screen.findByText('등록된 사업부 매핑이 없습니다');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01' }));
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    expect(buMapRowCount(pane)).toBe(3);
+
+    history.back();
+
+    await waitFor(() => {
+      expect(history.search()).toBe('?item=1002&tab=sub');
+    });
+    await waitFor(() => {
+      expect(screen.getByText('등록된 사업부 매핑이 없습니다')).toBeInTheDocument();
+    });
+  });
+});
+
+/**
+ * C08·C09·C10 · M15·M16·M17·M18 — 전체 치환의 본문·횟수·헤더.
+ *
+ * 서버가 남는 키를 막지 않으므로(계약 실측) 경계를 지키는 곳이 화면뿐이다.
+ */
+describe('ItemExtendedAttrsScreen — 사업부 매핑 치환 (M15~M18)', () => {
+  it('치환 본문에 서버 식별자와 itemId가 없다 (M15·M16)', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), buMapSaveRoute()],
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(buMapBodies(requests)).toHaveLength(1);
+    });
+
+    const body = buMapBodies(requests)[0] as { maps: Record<string, unknown>[] };
+    expect(body.maps).toHaveLength(3);
+
+    for (const map of body.maps) {
+      expect(Object.keys(map).sort()).toEqual([
+        'effectiveFrom',
+        'effectiveTo',
+        'fromBusinessUnitId',
+        'toBusinessUnitId',
+        'toItemId',
+      ]);
+    }
+  });
+
+  /* 계약: 「fromItemId 는 경로의 itemId 로 고정한다」 — 경로가 정본이다. */
+  it('경로에 품목 번호가 실리고 본문에는 실리지 않는다 (M16)', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), buMapSaveRoute()],
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(buMapPuts(requests)).toHaveLength(1);
+    });
+
+    expect(buMapPuts(requests)[0]?.url.pathname).toBe('/mdm/items/1001/bu-item-maps');
+    expect(buMapPuts(requests)[0]?.body).not.toContain('fromItemId');
+    expect(buMapPuts(requests)[0]?.body).not.toContain('itemId');
+  });
+
+  /*
+   * M17 — **`If-Match`가 실리지 않는다.** 계약에 이 쓰기의 그 파라미터 자체가 없고,
+   * 목록 조회가 `ETag`를 주지 않아 `etagPath`에 상세 경로를 주면 요청이 멈춘다.
+   */
+  it('치환 저장이 1회이고 If-Match가 실리지 않는다 (M17)', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), buMapSaveRoute()],
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(buMapPuts(requests)).toHaveLength(1);
+    });
+
+    const put = buMapPuts(requests)[0]!;
+    expect(put.headers.get('If-Match')).toBeNull();
+    expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
+  });
+
+  /*
+   * M18 — 행을 전부 지우면 **빈 배열**을 보낸다.
+   * 요청을 생략하면 「지우려 했는데 그대로 남는」 상태가 된다.
+   */
+  it('행을 전부 지우면 빈 배열을 보낸다 (M18)', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), buMapSaveRoute([])],
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+
+    for (const button of within(pane).getAllByRole('button', { name: /매핑 삭제$/ })) {
+      await user.click(button);
+    }
+    // 빈 표에는 빈 상태 줄이 들어가므로 줄 수가 아니라 빈 상태 문구로 잰다.
+    expect(within(pane).getByText('등록된 사업부 매핑이 없습니다')).toBeInTheDocument();
+
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(buMapBodies(requests)).toHaveLength(1);
+    });
+
+    expect(buMapBodies(requests)[0]).toEqual({ maps: [] });
+  });
+
+  it('성공하면 목록을 다시 조회한다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), buMapSaveRoute()],
+      '?item=1001&tab=sub',
+    );
+
+    await findBuMapPane();
+    await waitFor(() => {
+      expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+    });
+
+    await addBuMapRow(user);
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, buMapsPath()).filter((r) => r.method === 'GET')).toHaveLength(2);
+    });
+  });
+
+  /*
+   * 창의 확인은 **저장이 아니다.** 확인만으로 요청이 나가면 전체 치환이라는 규약이 깨지고,
+   * 사용자가 표를 확인하기 전에 서버가 바뀐다.
+   */
+  it('창의 확인만으로는 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), buMapSaveRoute()],
+      '?item=1001&tab=sub',
+    );
+
+    await findBuMapPane();
+    await addBuMapRow(user);
+
+    expect(buMapPuts(requests)).toHaveLength(0);
+  });
+
+  /* 되돌리기는 서버가 준 목록으로 되돌리는 것이다 — 화면 수준에서 실제로 되돌아가는지 본다. */
+  it('취소하면 만든 줄이 사라지고 저장이 다시 닫힌다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    expect(buMapRowCount(pane)).toBe(3);
+
+    await user.click(within(pane).getByRole('button', { name: '취소' }));
+
+    expect(buMapRowCount(pane)).toBe(2);
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  /* 저장 실패는 이 화면 전용 문구를 만들지 않는다 — 공통 배너를 그대로 소비한다(M26). */
+  it('403이 공통 배너 문구로 난다 (M26)', async () => {
+    const { user } = renderScreen(
+      [
+        ...subsidiaryRoutes(),
+        buMapSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+      ],
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText(FORBIDDEN_TEXT)).toBeInTheDocument();
+  });
+
+  /*
+   * 이 쓰기에는 낙관적 잠금이 없다 — 충돌이라는 갈래 자체가 없으므로
+   * 「최신 불러오기」를 내면 사용자에게 없는 원인을 짚어 주게 된다.
+   */
+  it('부속 저장 실패에는 최신 불러오기를 내지 않는다', async () => {
+    const { user } = renderScreen(
+      [
+        ...subsidiaryRoutes(),
+        buMapSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+      ],
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await screen.findByText(FORBIDDEN_TEXT);
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * 편집 창은 **열 때만 마운트한다.**
+ * 디자인 시스템 `Dialog`는 닫혀도 내용이 DOM에 남아, 항상 렌더하면 지난 값이 살아 있다.
+ */
+describe('ItemExtendedAttrsScreen — 사업부 매핑 편집 창', () => {
+  it('열기 전에는 창의 입력칸이 DOM에 없다', async () => {
+    renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+
+    expect(screen.queryByLabelText('보내는 사업부')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('닫으면 창의 입력칸이 DOM에서 사라진다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+    await user.click(screen.getByRole('button', { name: '매핑 추가' }));
+    expect(screen.getByLabelText('보내는 사업부')).toBeInTheDocument();
+
+    await user.click(within(buMapDialog()).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByLabelText('보내는 사업부')).not.toBeInTheDocument();
+  });
+
+  /* 창이 서버 값을 그대로 들고 열려야 사용자가 무엇을 고치는지 안다. */
+  it('수정을 누르면 그 줄의 값이 창에 들어온다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    const pane = await findBuMapPane();
+    await user.click(within(pane).getAllByRole('button', { name: /매핑 수정$/ })[0]!);
+
+    expect(within(buMapDialog()).getByLabelText('유효 시작')).toHaveValue('2026-01-01');
+  });
+
+  /* 로컬 검증에서 막힌 줄은 표에 들어가지 않는다 — 저장 시점에야 거부되면 안 된다. */
+  it('같은 사업부를 고르면 표에 들어가지 않는다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+    await user.click(screen.getByRole('button', { name: '매핑 추가' }));
+
+    const dialog = buMapDialog();
+    await user.click(within(dialog).getByLabelText('보내는 사업부'));
+    await user.click(screen.getByRole('option', { name: 'SYN-BU-01 · 합성 사업부 A' }));
+    await user.click(within(dialog).getByLabelText('받는 사업부'));
+    await user.click(screen.getByRole('option', { name: 'SYN-BU-01 · 합성 사업부 A' }));
+    await user.type(within(dialog).getByLabelText('유효 시작'), '2026-05-01');
+
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+
+    expect(
+      screen.getByText('보내는 사업부와 받는 사업부는 서로 달라야 합니다.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
+/** 결정 12 — 번호를 화면에 내지 않는다. 행마다 상세를 부르되 캐시 키를 공유한다. */
+describe('ItemExtendedAttrsScreen — 대상 품목 이름 (결정 12)', () => {
+  it('대상 품목을 번호가 아니라 이름으로 낸다', async () => {
+    renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+
+    expect(await screen.findByText('SYN-ITEM-02 · 합성 품목 B')).toBeInTheDocument();
+    expect(screen.queryByText('1002')).not.toBeInTheDocument();
+  });
+
+  /* 한 행이 실패했다고 나머지 행까지 이름을 잃으면 안 된다. */
+  it('이름을 얻지 못한 행만 「알 수 없음」이다', async () => {
+    renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+
+    expect(await screen.findByText('알 수 없음')).toBeInTheDocument();
+    expect(screen.getByText('SYN-ITEM-02 · 합성 품목 B')).toBeInTheDocument();
+    expect(screen.queryByText('9001')).not.toBeInTheDocument();
+  });
+
+  /*
+   * 고른 품목의 상세와 **같은 캐시 키**를 쓴다 — 같은 번호를 두 번 받지 않는다.
+   * 여기서 1002는 표의 행이 가리키는 품목이고, 좌 목록에도 있다.
+   */
+  it('같은 품목을 여러 번 받지 않는다', async () => {
+    const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+    await screen.findByText('SYN-ITEM-02 · 합성 품목 B');
+
+    expect(requestsTo(requests, `${ITEMS_PATH}/1002`)).toHaveLength(1);
   });
 });

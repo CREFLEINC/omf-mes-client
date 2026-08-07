@@ -13,7 +13,7 @@ import { messages } from '@omf-mes/i18n';
 
 const t = messages.itemExtendedAttrs;
 
-export type ItemExtendedAttrsTabId = 'attrs';
+export type ItemExtendedAttrsTabId = 'attrs' | 'sub';
 
 export interface ItemExtendedAttrsTabDefinition {
   /** 주소의 `tab` 값이자 DS `Tabs`의 항목 값 */
@@ -28,7 +28,10 @@ export const TAB_KEY = 'tab';
 export const ITEM_EXTENDED_ATTRS_TABS: readonly [
   ItemExtendedAttrsTabDefinition,
   ...ItemExtendedAttrsTabDefinition[],
-] = [{ id: 'attrs', label: t.tabs.attrs }];
+] = [
+  { id: 'attrs', label: t.tabs.attrs },
+  { id: 'sub', label: t.tabs.subsidiary },
+];
 
 /**
  * 기본 탭. **주소에 쓰지 않는다** — 「빈 조건·기본값은 키 자체를 두지 않는다」는
@@ -45,3 +48,36 @@ export const DEFAULT_TAB_ID: ItemExtendedAttrsTabId = ITEM_EXTENDED_ATTRS_TABS[0
  */
 export const resolveTab = (param: string | null): ItemExtendedAttrsTabDefinition =>
   ITEM_EXTENDED_ATTRS_TABS.find((tab) => tab.id === param) ?? ITEM_EXTENDED_ATTRS_TABS[0];
+
+/* ── 부속 정보 안의 하위 탭 ───────────────────────────────────────────────── */
+
+/**
+ * 부속 자원 셋. **탭 안의 탭이다**(결정 2).
+ *
+ * 계약이 인용한 화면 스펙의 구획 이름(「부속 정보」)을 그대로 옮긴 결과다.
+ * 평평한 탭 다섯으로 펴는 대안이 있으나 그러면 그 구획 이름이 사라진다.
+ *
+ * **세 자원은 서로를 알지 않는다**(결정 6) — 같은 모양이되 필드도 검증도 다르다.
+ * 여기 있는 것은 「어느 하위 탭인가」뿐이고, 자원의 규칙은 각 파일이 갖는다.
+ */
+export type SubsidiaryTabId = 'bu' | 'uom' | 'ext';
+
+export interface SubsidiaryTabDefinition {
+  id: SubsidiaryTabId;
+  label: string;
+}
+
+/** 하위 탭의 주소 키. 바깥 탭과 같은 주소에 살되 키가 다르다. */
+export const SUBSIDIARY_TAB_KEY = 'sub';
+
+export const SUBSIDIARY_TABS: readonly [SubsidiaryTabDefinition, ...SubsidiaryTabDefinition[]] = [
+  { id: 'bu', label: t.subTabs.buMap },
+  { id: 'uom', label: t.subTabs.uomConversion },
+  { id: 'ext', label: t.subTabs.externalCode },
+];
+
+/** 기본 하위 탭. 바깥 탭과 같은 규칙으로 **주소에 쓰지 않는다.** */
+export const DEFAULT_SUBSIDIARY_TAB_ID: SubsidiaryTabId = SUBSIDIARY_TABS[0].id;
+
+export const resolveSubsidiaryTab = (param: string | null): SubsidiaryTabDefinition =>
+  SUBSIDIARY_TABS.find((tab) => tab.id === param) ?? SUBSIDIARY_TABS[0];
