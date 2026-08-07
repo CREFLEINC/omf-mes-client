@@ -92,27 +92,42 @@ export const toBalanceView = (data: InventoryBalanceResponse): BalanceView => ({
   lastTransactionAt: data.lastTransactionAt ?? null,
 });
 
-const KEY_PART = (value: string | number | null): string => (value === null ? '-' : String(value));
+/**
+ * 식별자 한 조각을 키 문자열로 옮긴다.
+ *
+ * **이 슬라이스에서 내부 번호를 문자열로 만드는 유일한 자리다.** 여기서 나온 값은 React key와
+ * 그룹 키로만 쓰이며 **셀 텍스트가 되지 않는다** — 표시되는 값으로 옮기는 자리를 두지 않는 것이
+ * #44를 구조로 막는 형태이고, 만드는 자리를 하나로 모아 두면 그 사실을 한눈에 확인할 수 있다.
+ */
+const toIdentityKey = (value: string | number | null): string =>
+  value === null ? '-' : String(value);
 
 /**
  * 표의 행 식별자(React key).
  *
  * `inventoryBalanceId`는 **축을 하나도 접지 않은 줄에만** 있어 그것만으로는 키가 겹친다 —
  * 겹치면 쪽을 넘길 때 앞 쪽의 행이 남아 보인다. 그래서 행을 가르는 축 전부를 잇는다.
- *
- * **이 문자열은 화면에 나오지 않는다** — React key로만 쓰이며 셀 텍스트가 되지 않는다.
- * 내부 번호를 표시되는 값으로 옮기는 자리는 이 슬라이스에 없다(#44).
  */
 export const toRowKey = (row: BalanceView): string =>
   [
-    KEY_PART(row.itemId),
-    KEY_PART(row.lotId),
-    KEY_PART(row.locationId),
-    KEY_PART(row.qualityStatusCode),
-    KEY_PART(row.inventoryStatusCode),
-    KEY_PART(row.ownershipTypeCode),
-    KEY_PART(row.ownerPartnerId),
+    toIdentityKey(row.itemId),
+    toIdentityKey(row.lotId),
+    toIdentityKey(row.locationId),
+    toIdentityKey(row.qualityStatusCode),
+    toIdentityKey(row.inventoryStatusCode),
+    toIdentityKey(row.ownershipTypeCode),
+    toIdentityKey(row.ownerPartnerId),
   ].join(':');
+
+/**
+ * 1단 그룹 헤더가 줄을 묶는 키.
+ *
+ * **이름이 아니라 축의 식별자로 묶는다.** 이름으로 묶으면 아직 못 푼 줄들이 「알 수 없음」
+ * 한 덩어리로 뭉쳐, 서로 다른 품목이 한 그룹으로 보인다. 보이는 이름은 그룹 헤더가
+ * 그 그룹의 첫 줄에서 따로 푼다 — 키를 되짚어 숫자로 되돌리는 자리를 만들지 않는다.
+ */
+export const toGroupKey = (row: BalanceView, axis: 'item' | 'location'): string =>
+  toIdentityKey(axis === 'item' ? row.itemId : row.locationId);
 
 /** 목록 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */
 export interface BalanceListResult {

@@ -44,4 +44,14 @@ describe('appRouter', () => {
   it('입하 예정 조회가 자재창고 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/logistics/inbound-schedule');
   });
+
+  /*
+   * **앞머리는 사이드바 섹션(도메인)을 따르고 계약 경로를 따르지 않는다.**
+   * 이 화면의 계약 경로는 `/inventory/**`·`/trace/**`인데 주소는 `/logistics/`다 —
+   * 계약 경로를 따랐다면 같은 섹션 안에서 앞머리가 갈렸을 것이다.
+   */
+  it('재고 현황·상태 조회도 같은 자재창고 앞머리를 쓴다', () => {
+    expect(routedPaths()).toContain('/logistics/stock-status');
+    expect(routedPaths()).not.toContain('/inventory/stock-status');
+  });
 });
