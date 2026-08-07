@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
+import { ChangeDetailDialog } from './change-detail-dialog';
 import { EventFilterBar } from './event-filter-bar';
 import { EventTable } from './event-table';
 import {
@@ -109,6 +110,11 @@ export const MasterChangeScreen = () => {
   const hasPeriodParams = searchParams.has('from') || searchParams.has('to');
   const filters = readFilters(searchParams);
   const page = readPage(searchParams);
+  /**
+   * 변경 내용 창을 연 이력 번호. **주소에 둔다** — 새로고침·공유가 같은 창을 열어야 한다.
+   * 요청에는 실리지 않는다. 창의 자료는 목록 응답에 이미 들어 있다.
+   */
+  const selectedId = Number(searchParams.get('sel') ?? '') || null;
 
   /*
    * 빈 화면으로 시작하지 않는다 — 매번 날짜를 고르는 비용이 크다.
@@ -162,6 +168,55 @@ export const MasterChangeScreen = () => {
     setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
   };
 
+  /**
+   * 창이 가리키는 건. **목록 응답에서 찾는다** — 계약에 상세 조회 경로가 없고,
+   * 전후 값이 목록 응답에 이미 들어 있어 창을 열 때 요청이 나갈 이유가 없다.
+   */
+  const selectedRow = rows.find((row) => row.auditEventId === selectedId) ?? null;
+
+  /*
+   * 창을 열고 닫는 것은 **보이는 행을 바꾸지 않는다**(수명 규칙 3행) — 쪽·조건을 건드리지 않는다.
+   * 닫기를 `applyQuery`로 처리하면 3쪽에서 창을 한 번 열었다는 이유로 1쪽으로 튄다.
+   */
+  const openDiff = (id: number) => {
+    const next = toSearchParams(period, filters, page);
+    next.set('sel', String(id));
+    setSearchParams(next);
+  };
+
+  const closeDiff = () => {
+    setSearchParams(toSearchParams(period, filters, page));
+  };
+
+  /*
+   * 갱신된 결과에 고른 건이 없으면 `sel`을 주소에서 뗀다(수명 규칙 4행).
+   * 남겨 두면 창이 화면에 없는 건을 가리킨 채 주소만 남는다.
+   *
+   * **정리를 클릭 핸들러가 아니라 고른 식별자에 묶는다.** 뒤로가기·앞으로가기·주소 직접 편집은
+   * 핸들러를 거치지 않고 `sel`만 바꾸므로, 핸들러에 두면 그 경로가 통째로 샌다.
+   *
+   * **받은 결과가 있을 때만 판정한다.** 조회를 기다리는 동안에는 행이 비어 있어,
+   * 가드가 없으면 「고른 건이 사라졌다」로 읽혀 창이 깜빡 닫힌다.
+   *
+   * replace로 바꿔 정리가 뒤로가기 기록을 늘리지 않게 한다 — 뒤로 눌렀는데 같은 자리로
+   * 돌아오는 것처럼 보이면 안 된다.
+   */
+  useEffect(() => {
+    if (selectedId === null) return;
+    if (list.data === undefined) return;
+    if (list.data.items.some((row) => row.auditEventId === selectedId)) return;
+
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('sel');
+
+        return next;
+      },
+      { replace: true },
+    );
+  }, [selectedId, list.data, setSearchParams]);
+
   return (
     <>
       <PageHeader
@@ -213,6 +268,7 @@ export const MasterChangeScreen = () => {
               onFirstPage={() => {
                 applyQuery(period, filters);
               }}
+              onOpenDiff={openDiff}
             />
             {listQuery !== null && !list.isPending && (
               <PageNav
@@ -225,6 +281,9 @@ export const MasterChangeScreen = () => {
           </>
         )}
       </section>
+
+      {/* 열 때만 마운트된다 — 부품이 `row`가 null이면 아무것도 렌더하지 않는다. */}
+      <ChangeDetailDialog row={selectedRow} onClose={closeDiff} />
     </>
   );
 };

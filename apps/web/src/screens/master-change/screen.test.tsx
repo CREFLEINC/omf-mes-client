@@ -1,6 +1,6 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -61,6 +61,23 @@ const failingListRoute = (status: number, body: unknown = { message: '' }): Stub
   respond: () => jsonResponse(body, { status }),
 });
 
+/**
+ * 조건이 걸린 조회에는 그 조건에 맞는 행만 돌려준다.
+ * 「고른 건이 갱신된 결과에 없다」를 실제로 만들어 내는 유일한 방법이다.
+ */
+const filteringListRoute = (): StubRoute => ({
+  match: (request) => isGet(request, LIST_PATH),
+  respond: (request) => {
+    const typeCode = new URL(request.url).searchParams.get('targetTypeCode');
+    const items =
+      typeCode === null
+        ? auditEventFixtures
+        : auditEventFixtures.filter((row) => row.targetTypeCode === typeCode);
+
+    return jsonResponse(listBody(items));
+  },
+});
+
 /** 주소가 실제로 어떻게 바뀌는지 본다 — 기본 기간이 주소에 채워지는지 판정할 유일한 근거다. */
 const LocationProbe = () => {
   const location = useLocation();
@@ -68,11 +85,75 @@ const LocationProbe = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
+/**
+ * 화면의 클릭 핸들러를 거치지 않는 이동. 뒤로가기·앞으로가기·주소 직접 편집이 이 경로다 —
+ * 정리 절차가 핸들러에 들어 있으면 여기서 샌다.
+ */
+const NavigationProbe = ({ to }: { to: string }) => {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          void navigate(`${ROUTE}${to}`);
+        }}
+      >
+        주소 이동
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void navigate(-1);
+        }}
+      >
+        뒤로
+      </button>
+    </>
+  );
+};
+
 const renderScreen = (
   routes: StubRoute[],
   search = '',
+  navigateTo = '',
 ): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
   const { fetch, requests } = createRecordingFetch(routes);
+
+  renderWithProviders(
+    <>
+      <MasterChangeScreen />
+      <LocationProbe />
+      <NavigationProbe to={navigateTo} />
+    </>,
+    { fetch, route: `${ROUTE}${search}` },
+  );
+
+  return { requests, user: userEvent.setup() };
+};
+
+/**
+ * 응답을 붙잡아 두는 렌더. 「조회를 기다리는 동안」을 실제로 만들어야
+ * 그 사이에 창이 깜빡 닫히는지 판정할 수 있다.
+ */
+const renderScreenAwaitingResponse = (
+  routes: StubRoute[],
+  search: string,
+): { release: () => void } => {
+  const stub = createStubFetch(routes);
+  let release = (): void => {
+    /* 아래 Promise 생성자가 곧바로 채운다. */
+  };
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  const fetch: StubFetch = async (request) => {
+    await gate;
+
+    return stub(request);
+  };
 
   renderWithProviders(
     <>
@@ -82,7 +163,7 @@ const renderScreen = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, user: userEvent.setup() };
+  return { release };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -396,7 +477,7 @@ describe('MasterChangeScreen — 쪽 이동', () => {
 });
 
 describe('MasterChangeScreen — 목록 표시', () => {
-  it('다섯 열과 응답 건수만큼의 행이 나온다', async () => {
+  it('일곱 열과 응답 건수만큼의 행이 나온다', async () => {
     renderScreen([listRoute()]);
 
     expect(await screen.findByText('SAMPLE_EVENT_A')).toBeInTheDocument();
@@ -406,7 +487,15 @@ describe('MasterChangeScreen — 목록 표시', () => {
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent);
 
-    expect(headers).toEqual(['발생 시각', '대상 종류', '대상', '사건 종류', '수행자']);
+    expect(headers).toEqual([
+      '발생 시각',
+      '대상 종류',
+      '대상',
+      '사건 종류',
+      '수행자',
+      '바뀐 항목',
+      '변경 내용',
+    ]);
     expect(within(table).getAllByRole('row')).toHaveLength(auditEventFixtures.length + 1);
   });
 
@@ -478,5 +567,186 @@ describe('MasterChangeScreen — 조회 실패', () => {
     await user.click(screen.getByRole('button', { name: '다시 시도' }));
 
     expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(1);
+  });
+});
+
+describe('MasterChangeScreen — 변경 내용 창', () => {
+  const PERIOD_SEARCH = '?from=2026-08-01&to=2026-08-06';
+
+  /*
+   * 전후 값이 목록 응답에 이미 들어 있고 계약에 상세 경로 자체가 없다.
+   * 창을 열 때 요청이 나가면 없는 경로를 지어낸 것이다.
+   */
+  it('창을 열어도 추가 요청이 0회다', async () => {
+    const { requests, user } = renderScreen([listRoute()], PERIOD_SEARCH);
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    const before = requestsTo(requests, LIST_PATH).length;
+
+    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(requestsTo(requests, LIST_PATH)).toHaveLength(before);
+  });
+
+  it('창을 열면 주소에 sel이 붙고 조건·쪽은 그대로다', async () => {
+    const { user } = renderScreen(
+      [listRoute(auditEventFixtures, { page: 2, size: 50, total: 120 })],
+      `${PERIOD_SEARCH}&type=SAMPLE_TARGET_A&page=2`,
+    );
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+
+    const location = currentLocation();
+    expect(location).toContain('sel=9001');
+    expect(location).toContain('page=2');
+    expect(location).toContain('type=SAMPLE_TARGET_A');
+  });
+
+  /* 디자인 시스템 Dialog는 닫혀도 내용이 DOM에 남는다. */
+  it('열기 전에는 창의 내용이 DOM에 없다', async () => {
+    renderScreen([listRoute()], PERIOD_SEARCH);
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('이력 번호')).not.toBeInTheDocument();
+  });
+
+  it('바깥 어둠을 누르면 창이 닫히고 주소에서 sel이 사라진다', async () => {
+    const { user } = renderScreen([listRoute()], PERIOD_SEARCH);
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    expect(currentLocation()).toContain('sel=9001');
+
+    await user.click(screen.getByRole('dialog'));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('이력 번호')).not.toBeInTheDocument();
+    expect(currentLocation()).not.toContain('sel=');
+  });
+
+  it('주소에 sel이 있으면 새로고침·공유에서도 같은 창이 열린다', async () => {
+    renderScreen([listRoute()], `${PERIOD_SEARCH}&sel=9002`);
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog')).getByText('9002')).toBeInTheDocument();
+  });
+
+  it('전후 값이 빈 객체인 건은 비교 행 대신 받지 못했다는 안내를 낸다', async () => {
+    renderScreen([listRoute()], `${PERIOD_SEARCH}&sel=9002`);
+
+    expect(await screen.findByText('전후 값을 받지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryAllByRole('group')).toHaveLength(0);
+  });
+
+  it('창에 항목별 전후 비교가 나오고 [object Object]가 어디에도 없다', async () => {
+    renderScreen([listRoute()], `${PERIOD_SEARCH}&sel=9001`);
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'sampleFieldA' })).toHaveAttribute(
+      'data-changed',
+      'true',
+    );
+    expect(screen.getByRole('group', { name: 'sampleFieldB' })).toHaveAttribute(
+      'data-changed',
+      'false',
+    );
+    expect(document.body).not.toHaveTextContent('[object Object]');
+  });
+});
+
+describe('MasterChangeScreen — 창 수명', () => {
+  const PERIOD_SEARCH = '?from=2026-08-01&to=2026-08-06';
+
+  it('조건을 바꾸면 열린 창이 닫히고 주소에서 sel이 사라진다', async () => {
+    const { user } = renderScreen([filteringListRoute()], PERIOD_SEARCH);
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('대상 종류'));
+    await user.click(screen.getByRole('option', { name: 'SAMPLE_TARGET_B' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    expect(currentLocation()).not.toContain('sel=');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('쪽을 옮기면 열린 창이 닫힌다', async () => {
+    const { user } = renderScreen(
+      [listRoute(auditEventFixtures, { page: 1, size: 50, total: 120 })],
+      PERIOD_SEARCH,
+    );
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(currentLocation()).not.toContain('sel=');
+    expect(currentLocation()).toContain('page=2');
+  });
+
+  /*
+   * 정리가 클릭 핸들러에 있으면 이 경로가 통째로 샌다 —
+   * 주소 직접 편집·뒤로가기·앞으로가기는 화면의 핸들러를 거치지 않는다.
+   */
+  it('결과에 없는 sel을 담은 주소로 곧장 들어오면 sel이 정리된다', async () => {
+    renderScreen([listRoute()], `${PERIOD_SEARCH}&sel=9999`);
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('sel=');
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('주소를 직접 고쳐 조건과 어긋난 sel을 넣어도 정리된다', async () => {
+    const { user } = renderScreen(
+      [filteringListRoute()],
+      PERIOD_SEARCH,
+      `${PERIOD_SEARCH}&type=SAMPLE_TARGET_B&sel=9001`,
+    );
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('sel=');
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(currentLocation()).toContain('type=SAMPLE_TARGET_B');
+  });
+
+  it('뒤로가기로 돌아오면 그 주소의 창이 그대로 복원된다', async () => {
+    const { user } = renderScreen([listRoute()], PERIOD_SEARCH);
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('dialog'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(currentLocation()).toContain('sel=9001');
+  });
+
+  /* 가드가 없으면 결과가 오기 전에 「고른 건이 사라졌다」로 읽혀 창이 깜빡 닫힌다. */
+  it('결과를 기다리는 동안에는 sel을 지우지 않는다', async () => {
+    const { release } = renderScreenAwaitingResponse([listRoute([])], `${PERIOD_SEARCH}&sel=9001`);
+
+    expect(
+      await screen.findByRole('status', { name: '변경 이력 목록을 불러오는 중' }),
+    ).toBeInTheDocument();
+    expect(currentLocation()).toContain('sel=9001');
+
+    release();
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('sel=');
+    });
   });
 });

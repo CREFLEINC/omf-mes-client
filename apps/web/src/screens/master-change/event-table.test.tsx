@@ -7,6 +7,7 @@ import { EventTable, type EventTableProps } from './event-table';
 
 const renderTable = (overrides: Partial<EventTableProps> = {}) => {
   const onFirstPage = vi.fn();
+  const onOpenDiff = vi.fn();
 
   render(
     <EventTable
@@ -15,11 +16,12 @@ const renderTable = (overrides: Partial<EventTableProps> = {}) => {
       hasPeriod
       isBeyondLast={false}
       onFirstPage={onFirstPage}
+      onOpenDiff={onOpenDiff}
       {...overrides}
     />,
   );
 
-  return { onFirstPage, user: userEvent.setup() };
+  return { onFirstPage, onOpenDiff, user: userEvent.setup() };
 };
 
 describe('EventTable — 목록 표시', () => {
@@ -63,6 +65,42 @@ describe('EventTable — 목록 표시', () => {
 
     expect(screen.getByText('SAMPLE_EVENT_A')).toBeInTheDocument();
     expect(screen.getByRole('table')).toHaveTextContent('—');
+  });
+});
+
+describe('EventTable — 바뀐 항목과 변경 내용', () => {
+  /* 키 이름을 우리말로 바꾸거나 뜻을 붙이지 않는다 — 계약이 키 구조를 정하지 않았다. */
+  it('바뀐 항목 열에 받은 키 이름이 그대로 이어 나온다', () => {
+    renderTable({
+      rows: [
+        auditEvent({
+          beforeValue: { sampleFieldA: 1, someUnknownKey: 2 },
+          afterValue: { someUnknownKey: 3, sampleFieldC: 4 },
+        }),
+      ],
+    });
+
+    expect(screen.getByText('sampleFieldA, someUnknownKey, sampleFieldC')).toBeInTheDocument();
+  });
+
+  it('전후 값이 없으면 바뀐 항목 칸이 「—」다', () => {
+    renderTable({ rows: [auditEvent({ beforeValue: null, afterValue: null })] });
+
+    expect(screen.getByRole('table')).toHaveTextContent('—');
+  });
+
+  it('행마다 「보기」가 있고 접근 이름이 어느 건인지 밝힌다', async () => {
+    const { onOpenDiff, user } = renderTable();
+
+    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+
+    expect(onOpenDiff).toHaveBeenCalledWith(9001);
+  });
+
+  it('보이는 글자가 「보기」라 음성 조작으로도 부를 수 있다', () => {
+    renderTable({ rows: [auditEvent()] });
+
+    expect(screen.getByRole('button', { name: /보기$/ })).toHaveTextContent('보기');
   });
 });
 

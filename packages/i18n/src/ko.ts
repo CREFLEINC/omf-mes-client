@@ -1811,6 +1811,12 @@ const masterChange = {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
+    viewDiff: '보기',
+    /*
+     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 발생 시각을 넣어 어느 건인지 밝히되,
+     * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「보기」로 이 버튼을 부를 수 없다.
+     */
+    viewDiffRow: (occurredAt: string): string => `${occurredAt} 변경 내용 보기`,
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다(배치 규범 4). */
   reasons: {
@@ -1827,6 +1833,23 @@ const masterChange = {
     targetId: '대상',
     eventType: '사건 종류',
     performedBy: '수행자',
+    /** 받은 키 이름을 그대로 이어 담는 흡수 열. 이름을 우리말로 바꾸지 않는다. */
+    changedKeys: '바뀐 항목',
+    diff: '변경 내용',
+  },
+  /**
+   * 변경 내용 창. **항목 이름 문구가 없다** — 전후 값의 키는 받은 그대로 낸다.
+   *
+   * 전후 값을 받지 못한 경우는 계약이 허용하고 목 서버가 실제로 그렇게 내려준다.
+   * 빈 표를 내거나 값을 지어내지 않고 받지 못했다는 사실을 밝힌다.
+   */
+  diff: {
+    title: '변경 내용',
+    auditEventId: '이력 번호',
+    terminalId: '단말',
+    reason: '사유',
+    noValuesTitle: '전후 값을 받지 못했습니다',
+    noValuesDescription: '이 건에는 변경 전후 항목이 담겨 있지 않습니다.',
   },
   /**
    * 조건 줄. 선택지는 조회한 기록에서 만들므로 그 한계를 문구가 함께 밝힌다 —
