@@ -1718,6 +1718,36 @@ describe('UsersRolesScreen 역할 부여', () => {
     expect(roleCheckbox('SYN-ROLE-01 · 합성 역할 A')).not.toBeChecked();
   });
 
+  /**
+   * **무효화를 넓히면 아무것도 빨개지지 않는다.** 이 치환은 사용자 행도 잠금 토큰도 바꾸지
+   * 않으므로(`user_role`에 `version_no`가 없다) 상세·목록을 다시 부를 이유가 없다.
+   * 넓히면 왕복 둘이 늘고, 상세 응답이 조금이라도 달라지는 순간 **바로 위 칸에서 편집 중이던
+   * 폼이 서버 값으로 되돌아간다.** 「선례와 같게 맞춘다」는 이름의 되돌림을 여기서 잡는다.
+   *
+   * 무효화는 걸린 조회를 **한 번에** 다시 띄우고 요청은 뜨는 시점에 기록되므로,
+   * 부여분 재조회가 기록됐다면 넓힌 무효화의 상세·목록도 이미 기록돼 있다.
+   */
+  it('치환 저장은 부여분만 다시 조회하고 상세·목록은 다시 부르지 않는다', async () => {
+    const { requests, user } = await openRoleAssign([roleAssignRoute()]);
+
+    const grantsBefore = userRolesRequests(requests).filter((r) => r.method === 'GET').length;
+    const detailBefore = detailRequests(requests).length;
+    const listBefore = userRequests(requests).length;
+
+    await user.click(roleCheckbox('SYN-ROLE-02 · 합성 역할 B'));
+    await user.click(within(roleAssignPane()).getByRole('button', { name: '저장' }));
+
+    // 선행 단언 — 무효화가 실제로 돌았는지 먼저 본다. 없으면 아래 비교가 빈 확인이 된다.
+    await waitFor(() => {
+      expect(userRolesRequests(requests).filter((r) => r.method === 'GET').length).toBeGreaterThan(
+        grantsBefore,
+      );
+    });
+
+    expect(detailRequests(requests)).toHaveLength(detailBefore);
+    expect(userRequests(requests)).toHaveLength(listBefore);
+  });
+
   it('취소는 요청을 보내지 않고 체크를 기준값으로 되돌린다', async () => {
     const { requests, user } = await openRoleAssign([roleAssignRoute()]);
 
@@ -2137,6 +2167,31 @@ describe('UsersRolesScreen 데이터 접근범위', () => {
     await waitFor(() => {
       expect(dataScopeRows()).toHaveLength(1);
     });
+  });
+
+  /** 역할 부여와 같은 자리다 — 이 치환도 사용자 행과 잠금 토큰을 바꾸지 않는다. */
+  it('치환 저장은 접근범위만 다시 조회하고 상세·목록은 다시 부르지 않는다', async () => {
+    const { requests, user } = await openDataScopes([dataScopeReplaceRoute()]);
+
+    const scopesBefore = dataScopeRequests(requests).filter((r) => r.method === 'GET').length;
+    const detailBefore = detailRequests(requests).length;
+    const listBefore = userRequests(requests).length;
+
+    await user.click(
+      within(dataScopePane()).getByRole('button', {
+        name: 'SYN-BU-02 · 합성 사업부 B · (전체) 범위 삭제',
+      }),
+    );
+    await user.click(within(dataScopePane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(dataScopeRequests(requests).filter((r) => r.method === 'GET').length).toBeGreaterThan(
+        scopesBefore,
+      );
+    });
+
+    expect(detailRequests(requests)).toHaveLength(detailBefore);
+    expect(userRequests(requests)).toHaveLength(listBefore);
   });
 
   it('취소는 요청을 보내지 않고 표를 기준값으로 되돌린다', async () => {
