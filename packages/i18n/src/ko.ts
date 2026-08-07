@@ -1949,6 +1949,150 @@ const judgmentCode = {
   },
 } as const;
 
+/**
+ * W-CO-02 사용자·역할·권한 관리.
+ *
+ * **「관리자」라는 낱말을 쓰지 않는다.** 어느 역할이 관리자인지 판정할 근거가 계약에 없어
+ * 화면이 그 판정을 하지 않기로 했다(계획 결정 4). 문구에 그 낱말이 있으면 화면이
+ * 판정하는 것처럼 읽히고, 서버가 실제로 무엇을 막는지와 어긋난다.
+ *
+ * **역할·권한 탭의 문구는 아직 없다.** 만든 화면의 문구만 둔다 — 없는 화면의 라벨을 미리 두면
+ * 무엇이 렌더되는지 흐려진다.
+ */
+const usersRoles = {
+  title: '사용자·역할·권한',
+  breadcrumbRoot: '시스템 관리',
+  /** 탭 라벨. **만든 탭만 둔다.** 역할·권한 탭은 그 탭의 목록·폼이 생길 때 붙는다. */
+  tabs: {
+    label: '사용자·역할·권한',
+    users: '사용자',
+  },
+  panes: {
+    userList: '사용자',
+    userForm: '사용자 정보',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+    addUser: '사용자 추가',
+  },
+  /** 비활성 사유는 배치 규범 4의 문형을 따른다 — 그 컨트롤의 이름으로 시작한다. */
+  actionReasons: {
+    /*
+     * 상태 코드의 값 목록이 확정되지 않았다. **값을 지어내지 않는다** —
+     * 자리표시 값을 조회 조건으로 보내면 언제나 0건이 온다.
+     */
+    statusFilterPending:
+      '상태 조건은 상태 코드 목록이 확정되지 않아 쓸 수 없습니다. 목록이 확정되면 이 조건으로 좁힐 수 있습니다.',
+    statusFieldPending:
+      '상태는 상태 코드 목록이 확정되지 않아 고를 수 없습니다. 지금 저장된 값이 그대로 유지됩니다.',
+    statusFieldOnCreate:
+      '상태는 사용자를 등록할 때 정해집니다. 상태 코드 목록이 확정되면 이 칸에서 고를 수 있습니다.',
+    /*
+     * 계약의 수정 요청 본문에 로그인 ID가 아예 없다 — 「언젠가 풀린다」가 아니라
+     * 보낼 자리가 없다는 뜻이다. 그 사실을 그대로 밝힌다.
+     */
+    loginIdLocked:
+      '로그인 ID는 등록할 때만 정할 수 있고 이후에는 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+    deactivateAlreadyDone: '사용 중지는 이미 미사용인 사용자에게 다시 할 수 없습니다.',
+    saveNoChanges: '저장은 고친 내용이 있을 때 누를 수 있습니다.',
+  },
+  /**
+   * 사용 중지 확인 창.
+   *
+   * **참조 건수·배정 건수를 내지 않는다**(계획 결정 12) — 화면이 쓸 수 있는 건수는
+   * 「코드 필드를 고칠 수 있는지」의 근거이지 「이 사용자에게 배정된 수」가 아니다.
+   * 두 뜻을 섞으면 화면이 지어낸다.
+   */
+  dialog: {
+    deactivateUserTitle: '이 사용자를 사용 중지할까요?',
+    deactivateDescription:
+      '사용 중지하면 이 사용자는 시스템을 쓸 수 없게 되고 이미 쌓인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
+  },
+  /*
+   * 선택 목록이 잘리거나 실패했다는 사실을 감추지 않는다 —
+   * 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
+   */
+  optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+  optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+  /** 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다. */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+  filters: {
+    userSearchLabel: '사용자 검색',
+    userSearchPlaceholder: '로그인 ID 또는 이름',
+    department: '부서',
+    /* 선택지에 빈 값을 두어 고른 부서를 다시 「전체」로 되돌릴 수 있게 한다. */
+    departmentAll: '전체 부서',
+    status: '상태',
+    chipKeyword: (value: string): string => `검색어: ${value}`,
+    chipRemoveKeyword: '검색어 조건 제거',
+    chipDepartment: (label: string): string => `부서: ${label}`,
+    chipRemoveDepartment: '부서 조건 제거',
+    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+  },
+  loading: {
+    users: '사용자 목록을 불러오는 중',
+    userDetail: '사용자 정보를 불러오는 중',
+  },
+  empty: {
+    /*
+     * 결과는 있는데 **이 쪽에는** 없다. 주소를 손으로 고치거나 조건이 좁아졌을 때 생긴다 —
+     * 「등록된 것이 없다」로 내면 사실과 다른 안내가 된다.
+     */
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
+  },
+  values: {
+    /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+    empty: '—',
+    /*
+     * 좁은 좌 페인에서 「사용 여부」 열을 따로 두면 이름 열이 짓눌린다 —
+     * 이름 뒤 접미로 붙여 열을 늘리지 않는다.
+     */
+    inactiveSuffix: ' (미사용)',
+    /*
+     * 값은 있는데 그 번호를 선택 목록에서 찾지 못했다. **번호를 그대로 내지 않는다** —
+     * 내부 식별자라 사용자가 쓸 수 없고, 보이면 자료로 읽힌다.
+     */
+    unknown: '알 수 없음',
+  },
+  user: {
+    fields: {
+      loginId: '로그인 ID',
+      userName: '이름',
+      department: '부서',
+      email: '전자우편',
+      status: '상태',
+    },
+    /* 부서를 고르지 않은 상태. 계약이 널을 허용하므로 비우는 것이 정상 값이다. */
+    departmentNone: '지정하지 않음',
+    empty: {
+      noneTitle: '등록된 사용자가 없습니다',
+      noneDescription: '「사용자 추가」로 첫 사용자를 등록하세요.',
+      noMatchTitle: '조건에 맞는 사용자가 없습니다',
+      noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+      notSelected: '좌측에서 사용자를 고르면 여기에 그 사용자의 정보가 보입니다',
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      loginIdBlank: '로그인 ID는 공백만으로 지정할 수 없습니다.',
+      loginIdTooLong: '로그인 ID는 100자를 넘을 수 없습니다.',
+      userNameBlank: '이름은 공백만으로 지정할 수 없습니다.',
+      userNameTooLong: '이름은 200자를 넘을 수 없습니다.',
+      emailTooLong: '전자우편은 255자를 넘을 수 없습니다.',
+      /* 계약에 형식 제약이 없어 검증이 화면 책임이라고 계약이 명시했다. */
+      emailFormat: '전자우편 형식이 아닙니다. 「이름@도메인」 형태로 입력하세요.',
+    },
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -1966,6 +2110,7 @@ export const ko = {
   itemExtendedAttrs,
   masterChange,
   judgmentCode,
+  usersRoles,
 } as const;
 
 export type Messages = typeof ko;

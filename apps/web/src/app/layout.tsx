@@ -67,6 +67,15 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               마스터 변경관리
             </NavItem>
           </SidebarSection>
+          {/*
+           * 사용자·역할·권한은 기준정보가 아니라 **시스템 운영**이다 —
+           * 기준정보 섹션에 넣으면 「창고·Location」 옆에 서서 분류가 무너진다.
+           */}
+          <SidebarSection label="시스템 관리">
+            <NavItem to="/system/users-roles" icon="manage_accounts">
+              사용자·역할·권한
+            </NavItem>
+          </SidebarSection>
         </Sidebar>
       }
     >

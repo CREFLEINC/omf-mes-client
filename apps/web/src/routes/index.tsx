@@ -9,6 +9,7 @@ import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
 import { RoutingScreen } from '../screens/routing/screen';
+import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
 export const appRouter = createBrowserRouter([
@@ -31,6 +32,8 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/integration-sync', element: <IntegrationSyncScreen /> },
       { path: 'master-data/item-extended-attrs', element: <ItemExtendedAttrsScreen /> },
       { path: 'master-data/master-change', element: <MasterChangeScreen /> },
+      /* W-CO-02 — 기준정보가 아니라 시스템 운영이라 경로 앞머리를 가른다. */
+      { path: 'system/users-roles', element: <UsersRolesScreen /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
