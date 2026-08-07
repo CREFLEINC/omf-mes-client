@@ -1330,6 +1330,44 @@ describe('UsersRolesScreen 창·오류의 수명', () => {
   });
 
   /**
+   * 편집 대상 판정의 **등록 폼 쪽 절반**. 고른 사용자가 없는 상태에서 `new`만 켜졌다 꺼지므로
+   * 선택 번호만 보면 「아무것도 안 바뀐 것」으로 읽혀 앞선 실패가 그대로 남는다.
+   *
+   * 등록 폼을 닫는 자리에서 오류를 직접 비우던 코드를 걷어내고 이 규칙에 그 몫을 넘겼으므로,
+   * 이 경로가 실제로 정리되는지를 여기서 고정한다.
+   */
+  it('등록에 실패한 뒤 폼을 닫았다 다시 열면 앞선 실패 배너가 없다', async () => {
+    const { requests, user } = renderScreen([
+      userListRoute(),
+      departmentsRoute(),
+      userCreateRoute(() =>
+        jsonResponse(
+          { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '등록이 막혔습니다.' }] },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    await waitForUserList(requests);
+    await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+
+    await user.type(
+      await within(userFormPane()).findByRole('textbox', { name: '로그인 ID' }),
+      'SYN-LOGIN-09',
+    );
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), '합성 사용자 Z');
+    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+    await within(userFormPane()).findByText('등록이 막혔습니다.');
+
+    await user.click(within(userFormPane()).getByRole('button', { name: '취소' }));
+    await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+
+    await within(userFormPane()).findByRole('textbox', { name: '로그인 ID' });
+    expect(screen.queryByText('등록이 막혔습니다.')).not.toBeInTheDocument();
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue('');
+  });
+
+  /**
    * 결과를 기다리는 동안 창이 사라지면 사용자는 무엇이 진행 중인지 잃는다(계획 §12-15 후단).
    *
    * 응답 본문을 끝내지 않는 흐름으로 두어 **요청이 실제로 떠 있는 상태**를 만든다 —

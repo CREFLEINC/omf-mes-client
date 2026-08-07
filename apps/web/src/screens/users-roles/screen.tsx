@@ -371,9 +371,11 @@ export const UsersRolesScreen = () => {
     activeUserWrite.write(formState.values);
   };
 
-  /** 탭을 바꾸면 **탭 값 하나만 남긴다** — 규칙은 `tabs.ts`가 갖는다. */
+  /**
+   * 탭을 바꾸면 **탭 값 하나만 남긴다** — 규칙은 `tabs.ts`가 갖는다.
+   * 그 결과 `usr`·`new`가 떨어져 편집 대상이 바뀌므로 정리는 위 effect가 맡는다.
+   */
   const changeTab = (nextTabId: string) => {
-    resetUserEditing();
     setSearchParams(tabSearchParams(nextTabId));
   };
 
