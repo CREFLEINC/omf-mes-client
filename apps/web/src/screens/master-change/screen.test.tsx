@@ -281,6 +281,18 @@ describe('MasterChangeScreen — 기간 필수 조회', () => {
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
   });
 
+  /*
+   * 기본 기간은 **주소에 기간이 아예 없을 때만** 채운다.
+   * 한쪽만 있는 주소를 「아예 없음」으로 읽으면 사용자가 적어 넣은 날짜를 최근 7일로 덮어써,
+   * 공유받은 주소가 조용히 다른 기간을 조회한다.
+   */
+  it('기간이 한쪽만 있는 주소를 화면이 덮어쓰지 않는다', async () => {
+    renderScreen([listRoute()], '?from=2026-08-01');
+
+    expect(await screen.findByText('기간을 고르고 조회하세요')).toBeInTheDocument();
+    expect(currentLocation()).toContain('from=2026-08-01');
+  });
+
   it('초기화를 누르면 기간이 기본값으로 되돌아간다', async () => {
     const { user } = renderScreen([listRoute()], '?from=2026-01-01&to=2026-01-02');
     await screen.findByText('SAMPLE_EVENT_A');
@@ -621,6 +633,24 @@ describe('MasterChangeScreen — 변경 내용 창', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.queryByText('이력 번호')).not.toBeInTheDocument();
     expect(currentLocation()).not.toContain('sel=');
+  });
+
+  /*
+   * 창을 여닫는 것은 보이는 행을 바꾸지 않는다(수명 규칙 3행) — 여는 쪽의 짝이다.
+   * 닫기를 조건 변경과 같게 다루면 3쪽에서 창을 한 번 열었다는 이유로 1쪽으로 튄다.
+   */
+  it('창을 닫아도 보고 있던 쪽이 그대로다', async () => {
+    const { user } = renderScreen(
+      [listRoute(auditEventFixtures, { page: 2, size: 50, total: 120 })],
+      `${PERIOD_SEARCH}&page=2`,
+    );
+    await screen.findByText('SAMPLE_EVENT_A');
+
+    await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
+    await user.click(screen.getByRole('dialog'));
+
+    expect(currentLocation()).not.toContain('sel=');
+    expect(currentLocation()).toContain('page=2');
   });
 
   it('주소에 sel이 있으면 새로고침·공유에서도 같은 창이 열린다', async () => {
