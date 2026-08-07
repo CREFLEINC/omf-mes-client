@@ -58,6 +58,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/master-data/item-extended-attrs" icon="inventory_2">
               품목 확장속성
             </NavItem>
+            {/* 특정 마스터에 속하지 않는 횡단 조회라 마스터 항목들 뒤에 둔다. */}
+            <NavItem to="/master-data/master-change" icon="history">
+              마스터 변경관리
+            </NavItem>
           </SidebarSection>
         </Sidebar>
       }

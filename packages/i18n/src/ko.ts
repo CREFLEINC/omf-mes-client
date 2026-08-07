@@ -1787,6 +1787,54 @@ const itemExtendedAttrs = {
   },
 } as const;
 
+/**
+ * W-06-11 마스터 변경관리. 이 저장소의 **첫 읽기 전용 조회 형** 화면이라 쓰기 어휘가 하나도 없다.
+ *
+ * **「Rev」를 사용자 문구에 쓰지 않는다** — 업계 약어라 화면에서는 「개정」으로 쓴다.
+ *
+ * **전후 값의 항목 이름 문구가 이 묶음에 없다.** 계약이 그 값의 키 구조를 정하지 않아
+ * 키→우리말 대응표를 두면 화면이 뜻을 지어낸다. 받은 키를 그대로 낸다.
+ */
+const masterChange = {
+  title: '마스터 변경관리',
+  breadcrumbRoot: '기준정보',
+  fields: {
+    periodFrom: '기간 시작',
+    periodTo: '기간 종료',
+  },
+  actions: {
+    goFirstPage: '첫 쪽으로',
+  },
+  /** 비활성 사유는 그 컨트롤의 이름으로 시작한다(배치 규범 4). */
+  reasons: {
+    searchNeedsPeriod: '조회는 기간을 모두 채운 뒤에 쓸 수 있습니다. 시작일과 종료일을 고르세요.',
+    periodReversed: '기간 종료는 기간 시작보다 앞설 수 없습니다.',
+  },
+  loading: {
+    events: '변경 이력 목록을 불러오는 중',
+  },
+  /** 목록 표의 머리글. 열 구성의 근거는 screens/master-change/event-table.tsx에 있다. */
+  table: {
+    occurredAt: '발생 시각',
+    targetType: '대상 종류',
+    targetId: '대상',
+    eventType: '사건 종류',
+    performedBy: '수행자',
+  },
+  empty: {
+    noResultTitle: '조건에 맞는 변경 이력이 없습니다',
+    noResultDescription: '기간을 넓히거나 조건을 줄인 뒤 다시 조회하세요.',
+    noPeriodTitle: '기간을 고르고 조회하세요',
+    noPeriodDescription: '변경 이력은 기간을 정해야 조회할 수 있습니다.',
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
+  },
+  values: {
+    /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+    empty: '—',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -1802,6 +1850,7 @@ export const ko = {
   inspectionStandard,
   commonCode,
   itemExtendedAttrs,
+  masterChange,
 } as const;
 
 export type Messages = typeof ko;

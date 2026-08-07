@@ -91,6 +91,17 @@ describe('AppLayout', () => {
     );
   });
 
+  it('사이드바에 마스터 변경관리 메뉴가 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByRole('link', { name: '마스터 변경관리' })).toHaveAttribute(
+      'href',
+      '/master-data/master-change',
+    );
+  });
+
   it('본문 랜드마크가 자식 내용을 담는다', () => {
     renderLayout('본문 내용');
 
