@@ -3698,3 +3698,85 @@ describe('UsersRolesScreen 탭·모드가 아닌 선택 번호는 읽지 않는�
     expect(roleCodeField()).toHaveValue('');
   });
 });
+
+/**
+ * 행 라벨을 지어내지 않는 판단은 옳으나, **기다려도 오지 않는 경우**가 있다 —
+ * 상세가 실패하고 그 역할이 지금 쪽의 목록에도 없으면(주소로 직접 들어온 자리) 이름을 영영 못 받고,
+ * 앱이 `retry: 0`이라 스스로 회복되지도 않는다. 그때 진행 표시로 두면
+ * **권한 자료는 이미 손에 있는데 「불러오는 중」이 굳는다.**
+ */
+describe('UsersRolesScreen 상세를 못 받은 역할의 기능 권한 격자', () => {
+  /** 목록에 5002만 있다 — 고른 5001의 이름을 목록에서도 찾을 수 없다. */
+  const orphanRoutes: StubRoute[] = [
+    roleListRoute([roleFixtures[1] as Role], { page: 1, size: 50, total: 1 }),
+    {
+      match: (request) => isGet(request, rolePath(5001)),
+      respond: () => jsonResponse({ errors: [] }, { status: 500 }),
+    },
+    rolePermissionsRoute(),
+  ];
+
+  it('상세가 실패하고 목록에도 없으면 진행 표시로 굳지 않는다', async () => {
+    const { requests } = renderScreen(orphanRoutes, '?tab=roles&rol=5001');
+
+    await waitForRoleList(requests);
+
+    // 권한 조회는 성공했다 — 자료가 손에 있는데도 굳는가를 보는 것이 이 테스트다.
+    await waitFor(() => {
+      expect(requestsTo(requests, rolePermissionsPath(5001))).toHaveLength(1);
+    });
+
+    // 상세 실패는 역할 정보 페인이 이미 말하고 있다.
+    expect(await within(roleFormPane()).findByRole('alert')).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole('status', { name: '기능 권한을 불러오는 중' }),
+    ).not.toBeInTheDocument();
+  });
+
+  /** 하나의 실패를 배너 둘로 내면 사용자가 서로 다른 두 가지 일이 났다고 읽는다. */
+  it('같은 실패를 두 번 말하지 않는다 — 격자 페인을 두지 않는다', async () => {
+    const { requests } = renderScreen(orphanRoutes, '?tab=roles&rol=5001');
+
+    await waitForRoleList(requests);
+    await within(roleFormPane()).findByRole('alert');
+
+    expect(screen.queryByRole('region', { name: '기능 권한' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  /** 다시 시도가 성공하면 이름이 오고 격자가 선다 — 페인을 영영 지우는 것이 아니다. */
+  it('「다시 시도」로 상세가 오면 격자가 선다', async () => {
+    let failDetail = true;
+
+    const { requests, user } = renderScreen(
+      [
+        roleListRoute([roleFixtures[1] as Role], { page: 1, size: 50, total: 1 }),
+        {
+          match: (request) => isGet(request, rolePath(5001)),
+          respond: () =>
+            failDetail
+              ? jsonResponse({ errors: [] }, { status: 500 })
+              : jsonResponse(
+                  { role: roleFixtures[0], editability: EDITABLE },
+                  { headers: { ETag: 'W/"9"' } },
+                ),
+        },
+        rolePermissionsRoute(),
+      ],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+    await within(roleFormPane()).findByRole('alert');
+
+    // 선행 단언 — 지금은 격자가 없다. 이것이 없으면 뒤 단언이 무엇을 보는지 알 수 없다.
+    expect(screen.queryByRole('region', { name: '기능 권한' })).not.toBeInTheDocument();
+
+    failDetail = false;
+    await user.click(within(roleFormPane()).getByRole('button', { name: '다시 시도' }));
+
+    expect(await within(permissionPane()).findByRole('grid')).toBeInTheDocument();
+    expect(within(permissionPane()).getAllByRole('rowheader')[0]?.textContent).toBe('SYN-ROLE-01');
+  });
+});

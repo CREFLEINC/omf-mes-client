@@ -50,11 +50,17 @@ export const PermissionGridPane = ({
       cells: columns.map((column) => ({
         key: column.code,
         /*
-         * 내용 없이 상태만 둔다 — 디자인 시스템이 「행 라벨 · 열 라벨 · 상태명」으로
-         * 셀의 접근 이름을 조합해 준다.
+         * 셀은 내용 없이 상태만 갖는다(밀집 격자). 그래서 **접근 이름을 화면이 만들어 넘긴다.**
+         *
+         * 디자인 시스템의 자동 조합에 기대면 안 된다 — 그 분기는 상태가 있는 셀에만 도는데,
+         * `'none'`은 내부에서 「상태 없음」으로 정규화되고 상태명 표에도 그 항목이 없다(설치본 실측).
+         * 즉 **부여되지 않은 칸만 이름 없는 빈 칸이 되어** 보조기술에게 그 칸의 뜻이 닿지 않는다.
+         * 자리표시가 채워지는 날 그 칸이 처음 생기므로, 지금 두 갈래를 다 만들어 둔다.
          */
         status: column.isGranted ? 'success' : 'none',
-        ariaLabel: column.isGranted ? `${roleLabel} · ${column.code} · ${t.permission.granted}` : undefined,
+        ariaLabel: `${roleLabel} · ${column.code} · ${
+          column.isGranted ? t.permission.granted : t.permission.notGranted
+        }`,
       })),
     },
   ];

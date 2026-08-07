@@ -1178,6 +1178,18 @@ export const UsersRolesScreen = () => {
      */
     const selectedRole = roleDetail.data?.role ?? roles.find((row) => row.roleId === selectedRoleId);
 
+    /*
+     * **기다려도 오지 않는 경우가 있다.** 상세가 실패하고 그 역할이 지금 쪽의 목록에도 없으면
+     * (주소로 직접 들어온 자리다) 이름을 영영 받지 못한다 — 앱이 `retry: 0`이라 스스로 회복되지도 않는다.
+     * 그대로 두면 **권한 자료는 이미 손에 있는데 격자 대신 진행 표시가 굳어**,
+     * 불러오는 중이 아닌데 불러오는 중이라고 말하는 화면이 된다.
+     *
+     * 그때는 페인을 두지 않는다. 바로 위 역할 정보 페인이 **같은 실패**를 배너와 「다시 시도」로
+     * 이미 내고 있고, 하나의 실패를 배너 둘로 내면 사용자가 서로 다른 두 가지 일이 났다고 읽는다
+     * (PR ②가 세운 규칙). 다시 시도가 성공하면 이름이 오고 격자가 선다.
+     */
+    if (selectedRole === undefined && roleDetail.isError) return null;
+
     return (
       <PermissionGridPane
         roleLabel={selectedRole?.roleCode ?? ''}

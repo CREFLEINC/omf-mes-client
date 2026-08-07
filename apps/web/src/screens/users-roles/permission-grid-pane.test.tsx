@@ -81,6 +81,48 @@ describe('PermissionGridPane 격자', () => {
     expect(cell?.hasAttribute('data-clickable')).toBe(false);
   });
 
+  /**
+   * 셀에 내용이 없으므로 **접근 이름이 그 칸의 유일한 뜻**이다.
+   *
+   * 디자인 시스템의 자동 조합은 상태가 있는 셀에만 도는데 `'none'`은 「상태 없음」으로
+   * 정규화된다 — 화면이 만들지 않으면 **부여되지 않은 칸만** 이름 없는 빈 칸이 된다.
+   * 자리표시가 채워지는 날 그 칸이 처음 생기므로 지금 고정해 둔다.
+   */
+  it('부여된 칸과 부여되지 않은 칸이 서로 다른 접근 이름을 갖는다', () => {
+    renderPane({
+      columns: [
+        { code: 'SYN-PERM-01', isGranted: true },
+        { code: 'SYN-PERM-03', isGranted: false },
+      ],
+    });
+
+    // `<td>`의 접근 역할은 `cell`이다 — 표 자체의 `role="grid"`와 별개다.
+    expect(
+      within(pane()).getByRole('cell', { name: 'SYN-ROLE-01 · SYN-PERM-01 · 부여됨' }),
+    ).toBeInTheDocument();
+    expect(
+      within(pane()).getByRole('cell', { name: 'SYN-ROLE-01 · SYN-PERM-03 · 부여되지 않음' }),
+    ).toBeInTheDocument();
+  });
+
+  it('이름 없는 칸이 하나도 없다', () => {
+    renderPane({
+      columns: [
+        { code: 'SYN-PERM-01', isGranted: true },
+        { code: 'SYN-PERM-03', isGranted: false },
+      ],
+    });
+
+    const cells = [...within(pane()).getByRole('grid').querySelectorAll('tbody td')];
+
+    expect(cells).toHaveLength(2);
+
+    for (const cell of cells) {
+      expect(cell.getAttribute('aria-label')).not.toBe(null);
+      expect(cell.getAttribute('aria-label')).not.toBe('');
+    }
+  });
+
   /** 누를 수 있는 저장이 없으면 「비활성 저장 버튼」도 두지 않는다(계획 결정 5·9). */
   it('저장 버튼이 없다', () => {
     renderPane();
