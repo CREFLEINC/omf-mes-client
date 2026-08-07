@@ -29,6 +29,7 @@ const renderTable = (overrides: Partial<AsnTableProps> = {}) => {
     <AsnTable
       rows={ROWS}
       isLoading={false}
+      hasQuery
       isBeyondLast={false}
       today={TODAY}
       selectedId={null}

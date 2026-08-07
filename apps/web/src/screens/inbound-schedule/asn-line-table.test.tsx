@@ -25,6 +25,13 @@ const uomSource = (overrides: Partial<ReferenceSource> = {}): ReferenceSource =>
   ...overrides,
 });
 
+const plantSource = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
+  entries: [{ value: '8201', label: '합성 공장 가', isActive: true }],
+  isError: false,
+  isLoading: false,
+  ...overrides,
+});
+
 const renderTable = (overrides: Partial<AsnLineTableProps> = {}) => {
   const onRetryReferences = vi.fn<() => void>();
 
@@ -32,10 +39,10 @@ const renderTable = (overrides: Partial<AsnLineTableProps> = {}) => {
     <AsnLineTable
       asn={asn({ expectedArrivalDate: '2026-08-09' })}
       supplierName="합성 공급사 가"
-      plantName="합성 공장 가"
       today={TODAY}
       rows={asnLineFixtures}
       isLoading={false}
+      plantLookup={plantSource()}
       itemLookup={itemSource()}
       uomLookup={uomSource()}
       onRetryReferences={onRetryReferences}

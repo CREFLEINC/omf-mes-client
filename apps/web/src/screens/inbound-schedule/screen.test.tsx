@@ -102,10 +102,22 @@ const filteringListRoute = (): StubRoute => ({
   },
 });
 
-const lookupRoute = (pathname: string, items: unknown[]): StubRoute => ({
+/**
+ * 참조 목록 응답. **`page`를 인자로 받는다** — 기본값(`total === items.length`)만 쓰면
+ * 「잘렸다」 갈래가 영영 만들어지지 않아 그 판정이 통째로 검사되지 않는다.
+ */
+const lookupRoute = (
+  pathname: string,
+  items: unknown[],
+  page?: Partial<{ page: number; size: number; total: number }>,
+): StubRoute => ({
   match: (request) => isGet(request, pathname),
-  respond: () => jsonResponse(listBody(items)),
+  respond: () => jsonResponse(listBody(items, page)),
 });
+
+/** 서버에 더 있는데 앞쪽만 받은 상태. 「잘림」을 만들어 내는 유일한 방법이다. */
+const truncatedLookupRoute = (pathname: string, items: unknown[]): StubRoute =>
+  lookupRoute(pathname, items, { total: items.length + 1 });
 
 /** 참조 목록 넷. 화면이 이름으로 풀 수 있는 정상 상태다. */
 const lookupRoutes = (): StubRoute[] => [
@@ -402,6 +414,30 @@ describe('InboundScheduleScreen — 조건과 주소', () => {
 
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
   });
+
+  /*
+   * **조회하지 않은 것을 「없습니다」로 말하지 않는다.** 요청이 나가지 않았는데 결과 없음을 내면
+   * 사용자가 자료가 없는 줄 알고 조건을 더 넓힌다 — 무엇을 해도 결과가 같다.
+   * 안내가 시키는 조치(기간을 넓혀라)도 실제 원인(날짜가 없는 날짜다)과 어긋난다.
+   */
+  it('보낼 수 없는 기간이면 「결과 없음」이 아니라 「조회하지 않았다」를 낸다', async () => {
+    renderScreen([listRoute(), ...lookupRoutes()], '?from=2026-02-31');
+
+    await screen.findByText(t.reasons.periodInvalid);
+
+    expect(screen.getByText(t.empty.notQueriedTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noResultTitle)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.empty.beyondLastTitle)).not.toBeInTheDocument();
+  });
+
+  /* 짝이 되는 방향 — 실제로 조회했는데 0건이면 「결과 없음」이 맞다. */
+  it('조회했는데 0건이면 「조회하지 않았다」가 아니라 「결과 없음」이다', async () => {
+    renderScreen([listRoute([], { total: 0 }), ...lookupRoutes()]);
+
+    await screen.findByText(t.empty.noResultTitle);
+
+    expect(screen.queryByText(t.empty.notQueriedTitle)).not.toBeInTheDocument();
+  });
 });
 
 describe('InboundScheduleScreen — 쪽 이동', () => {
@@ -601,6 +637,123 @@ describe('InboundScheduleScreen — 참조 값의 세 갈래', () => {
     for (const id of ['8101', '8102', '8201', '8202', '7001', '7002', '7003']) {
       expect(text).not.toContain(id);
     }
+  });
+
+  /*
+   * **공장만 실패하는 갈래.** 공장 이름은 고른 건의 제목줄에서만 보이므로 그 실패도,
+   * 되살릴 수단도 아래 구획이 소유한다. 넷 중 유일하게 어느 「다시 시도」에도 걸리지 않아
+   * 새로고침 말고는 되돌릴 방법이 없던 자리다 — 뒤따르는 W-01 화면들이 이 골격을 복제한다.
+   */
+  it('공장 참조만 실패해도 사유와 복구 수단이 있고, 눌렀을 때 공장을 다시 부른다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        listRoute(),
+        linesRoute(),
+        detailRoute(),
+        lookupRoute(PARTNERS_PATH, partnerFixtures),
+        failingLookupRoute(PLANTS_PATH),
+        lookupRoute(ITEMS_PATH, itemFixtures),
+        lookupRoute(UOMS_PATH, uomFixtures),
+      ],
+      '?sel=7001',
+    );
+
+    // 제목줄에서 공장 이름 자리가 사유로 바뀐다.
+    await screen.findByText(t.reasons.lineReferencesFailed);
+
+    const summary = screen.getByRole('group', { name: t.summary.label });
+    expect(within(summary).getByText(t.values.referenceFailed)).toBeInTheDocument();
+
+    const before = requestsTo(requests, PLANTS_PATH).length;
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    // 「버튼이 있다」로는 모자란다 — 눌렀을 때 그 참조를 실제로 다시 부르는지까지 본다.
+    await waitFor(() => {
+      expect(requestsTo(requests, PLANTS_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
+  /* 문구가 적은 대상과 다시 부르는 대상이 같아야 한다 — 아래 안내는 셋을 적는다. */
+  it('아래 구획의 다시 시도가 품목·단위·공장을 함께 다시 부른다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        listRoute(),
+        linesRoute(),
+        detailRoute(),
+        lookupRoute(PARTNERS_PATH, partnerFixtures),
+        lookupRoute(PLANTS_PATH, plantFixtures),
+        failingLookupRoute(ITEMS_PATH),
+        lookupRoute(UOMS_PATH, uomFixtures),
+      ],
+      '?sel=7001',
+    );
+
+    await screen.findByText(t.reasons.lineReferencesFailed);
+
+    const before = {
+      plants: requestsTo(requests, PLANTS_PATH).length,
+      items: requestsTo(requests, ITEMS_PATH).length,
+      uoms: requestsTo(requests, UOMS_PATH).length,
+    };
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, PLANTS_PATH).length).toBeGreaterThan(before.plants);
+    });
+    expect(requestsTo(requests, ITEMS_PATH).length).toBeGreaterThan(before.items);
+    expect(requestsTo(requests, UOMS_PATH).length).toBeGreaterThan(before.uoms);
+  });
+});
+
+describe('InboundScheduleScreen — 참조 선택지의 한계', () => {
+  /*
+   * 아래 「잘렸으면 밝힌다」의 **선행 단언**이다. 이것이 없으면 그 문구가
+   * 늘 떠 있는 것인지 잘렸을 때만 뜨는 것인지 구분되지 않는다.
+   */
+  it('목록이 다 왔으면 잘림 안내를 내지 않는다', async () => {
+    renderScreen([listRoute(), ...lookupRoutes()]);
+
+    await screen.findAllByText(SUPPLIER_LABEL);
+
+    expect(screen.queryByText(t.filters.lookupTruncated)).not.toBeInTheDocument();
+  });
+
+  /*
+   * 잘렸다는 사실을 알리는 **유일한 수단**이다. 조용히 죽으면 사용자가 불완전한 목록을
+   * 완전한 것으로 읽고, 찾는 값이 없으면 「그런 공급사가 없다」로 결론짓는다.
+   * 목이 늘 `total === items.length`를 주면 이 갈래가 만들어지지 않으므로 응답을 갈아 끼운다.
+   */
+  it('참조 목록이 잘리면 조건 줄이 그 사실을 밝힌다', async () => {
+    renderScreen([
+      listRoute(),
+      truncatedLookupRoute(PARTNERS_PATH, partnerFixtures),
+      lookupRoute(PLANTS_PATH, plantFixtures),
+      lookupRoute(ITEMS_PATH, itemFixtures),
+      lookupRoute(UOMS_PATH, uomFixtures),
+    ]);
+
+    expect(await screen.findByText(t.filters.lookupTruncated)).toBeInTheDocument();
+  });
+
+  /*
+   * **미사용 값을 선택지에서 빼지 않는다.** 조회 전용 화면이고 ERP 수신본에는 지금은 쓰지 않는
+   * 거래처를 참조하는 과거 건이 온다 — 빼면 그 건들을 조건으로 찾을 방법이 사라진다.
+   * 대신 표식을 붙여 고를 때 알 수 있게 한다.
+   */
+  it('미사용 참조도 선택지에 남고 표식이 붙는다', async () => {
+    const { user } = renderScreen([listRoute(), ...lookupRoutes()]);
+
+    await screen.findAllByText(SUPPLIER_LABEL);
+    await user.click(screen.getByLabelText(t.fields.supplier));
+
+    expect(
+      screen.getByRole('option', {
+        name: `SAMPLE-SUP-03 · 합성 공급사 다${t.values.inactiveSuffix}`,
+      }),
+    ).toBeInTheDocument();
+    // 사용 중인 값에는 붙지 않는다 — 표식이 늘 붙으면 뜻이 없다.
+    expect(screen.getByRole('option', { name: SUPPLIER_LABEL })).toBeInTheDocument();
   });
 });
 

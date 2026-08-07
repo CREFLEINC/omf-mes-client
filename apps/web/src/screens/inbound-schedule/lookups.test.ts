@@ -1,7 +1,13 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { describeReference, toReference, type ReferenceSource } from './lookups';
+import {
+  describeReference,
+  lookupNote,
+  toReference,
+  type LookupResult,
+  type ReferenceSource,
+} from './lookups';
 
 const t = messages.inboundSchedule;
 
@@ -80,6 +86,39 @@ describe('toReference', () => {
     ['실패', source({ entries: [], isError: true }), 8102],
   ] as const)('%s일 때도 번호를 결과에 담지 않는다', (_name, given, id) => {
     expect(JSON.stringify(toReference(given, id))).not.toContain('8102');
+  });
+});
+
+describe('lookupNote', () => {
+  const result = (overrides: Partial<LookupResult> = {}): LookupResult => ({
+    entries: [],
+    truncated: false,
+    isError: false,
+    isLoading: false,
+    refetch: () => undefined,
+    ...overrides,
+  });
+
+  it('멀쩡하면 안내를 붙이지 않는다', () => {
+    expect(lookupNote(result())).toBeUndefined();
+  });
+
+  /* 잘렸다는 사실을 알리는 유일한 수단이다 — 조용히 죽으면 사용자가 불완전한 목록을 완전한 것으로 읽는다. */
+  it('목록이 잘렸으면 그 사실을 밝힌다', () => {
+    expect(lookupNote(result({ truncated: true }))).toBe(t.filters.lookupTruncated);
+  });
+
+  it('조회가 실패했으면 그 사실을 밝힌다', () => {
+    expect(lookupNote(result({ isError: true }))).toBe(t.filters.lookupFailed);
+  });
+
+  /*
+   * **둘이 겹치면 실패가 앞선다.** 첫 조회가 잘린 목록을 주고 다시 부르기가 실패하면
+   * 낡은 자료와 실패가 함께 참이 된다 — 그때 「일부만 보인다」고만 말하면
+   * 지금 목록이 **낡았다는 사실**이 가려진다. 화면으로는 만들기 어려운 조합이라 여기서 고정한다.
+   */
+  it('실패와 잘림이 겹치면 실패가 앞선다', () => {
+    expect(lookupNote(result({ truncated: true, isError: true }))).toBe(t.filters.lookupFailed);
   });
 });
 

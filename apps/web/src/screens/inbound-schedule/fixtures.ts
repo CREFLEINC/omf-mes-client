@@ -108,6 +108,11 @@ export const asnLineFixtures: AsnLineView[] = [
  */
 export const partnerFixtures = [
   { partnerId: 8101, partnerCode: 'SAMPLE-SUP-01', partnerName: '합성 공급사 가', isActive: true },
+  /*
+   * **미사용 거래처.** 조회 화면은 이것도 선택지에 낸다 — 과거 건이 참조하기 때문이다.
+   * 어느 입하 예정도 이 번호를 쓰지 않는다. 「선택지에는 있으나 표에는 없다」를 만드는 값이다.
+   */
+  { partnerId: 8103, partnerCode: 'SAMPLE-SUP-03', partnerName: '합성 공급사 다', isActive: false },
 ];
 
 export const plantFixtures = [

@@ -11,6 +11,12 @@ const t = messages.inboundSchedule;
 export interface AsnTableProps {
   rows: AsnView[];
   isLoading: boolean;
+  /**
+   * 조회가 실제로 나갔는가. **거짓이면 「결과가 없다」로 말하지 않는다** —
+   * 보낼 수 없는 기간이면 요청 자체가 나가지 않는데, 그때 결과 없음을 내면
+   * 사용자가 자료가 없는 줄 알고 조건을 더 넓힌다(무엇을 해도 결과가 같다).
+   */
+  hasQuery: boolean;
   /** 결과는 있는데 이 쪽에는 없다. 「결과가 없다」와 다른 안내를 낸다. */
   isBeyondLast: boolean;
   /** 「오늘」은 화면이 인자로 준다 — 표가 직접 읽으면 테스트가 실행 환경의 시각을 검사하게 된다. */
@@ -54,6 +60,7 @@ const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty
 export const AsnTable = ({
   rows,
   isLoading,
+  hasQuery,
   isBeyondLast,
   today,
   selectedId,
@@ -83,7 +90,11 @@ export const AsnTable = ({
       header: t.table.expectedArrivalDate,
       width: '168px',
       sortable: true,
-      /* 표시가 날짜 + 칩이라 정렬 기준을 명시한다 — 렌더된 노드로 정렬할 수는 없다. */
+      /*
+       * 디자인 시스템은 렌더된 노드가 아니라 `row[key]`로 되짚어 정렬하므로 지금은 없어도 같다.
+       * 그래도 명시하는 이유는 **이 칸의 표시가 날짜 + 칩**이라, 나중에 열 `key`를 표시용
+       * 이름으로 바꾸면 되짚기가 조용히 빗나가기 때문이다. 정렬 기준을 값으로 못 박아 둔다.
+       */
       sortAccessor: (row) => row.expectedArrivalDate,
       render: (row) => (
         <div className="field-cell">
@@ -154,21 +165,42 @@ export const AsnTable = ({
     );
   }
 
-  /** 범위 밖 쪽 → 결과 없음 순서로 하나만 낸다. 둘은 사용자가 할 조치가 서로 다르다. */
-  const emptySlot = (): ReactNode =>
-    isBeyondLast ? (
-      <EmptyState
-        size="sm"
-        live
-        title={t.empty.beyondLastTitle}
-        description={t.empty.beyondLastDescription}
-        action={
-          <Button variant="outlined" onClick={onFirstPage}>
-            {t.actions.goFirstPage}
-          </Button>
-        }
-      />
-    ) : (
+  /**
+   * 조회 전 → 범위 밖 쪽 → 결과 없음 순서로 하나만 낸다. 셋은 사용자가 할 조치가 서로 다르다.
+   *
+   * **조회 전이 맨 앞이다.** 요청을 보내지 않은 상태를 「결과가 없다」로 말하면
+   * 안내가 시키는 조치(기간을 넓혀라)가 실제 원인(날짜가 없는 날짜다)과 어긋난다.
+   * 사유는 조건 줄이 이미 밝히고 있으므로 여기서는 `live`를 붙이지 않는다 — 붙이면
+   * 같은 사정이 보조기술에 두 번 읽힌다.
+   */
+  const emptySlot = (): ReactNode => {
+    if (!hasQuery) {
+      return (
+        <EmptyState
+          size="sm"
+          title={t.empty.notQueriedTitle}
+          description={t.empty.notQueriedDescription}
+        />
+      );
+    }
+
+    if (isBeyondLast) {
+      return (
+        <EmptyState
+          size="sm"
+          live
+          title={t.empty.beyondLastTitle}
+          description={t.empty.beyondLastDescription}
+          action={
+            <Button variant="outlined" onClick={onFirstPage}>
+              {t.actions.goFirstPage}
+            </Button>
+          }
+        />
+      );
+    }
+
+    return (
       <EmptyState
         size="sm"
         live
@@ -176,6 +208,7 @@ export const AsnTable = ({
         description={t.empty.noResultDescription}
       />
     );
+  };
 
   return (
     <>

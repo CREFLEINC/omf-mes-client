@@ -19,6 +19,7 @@ import {
 import { LoadErrorBanner } from './load-error-banner';
 import {
   describeReference,
+  lookupNote,
   toReference,
   useItemOptions,
   usePlantOptions,
@@ -39,16 +40,19 @@ const t = messages.inboundSchedule;
 const EMPTY_ROWS: AsnView[] = [];
 const EMPTY_LINES: AsnLineView[] = [];
 
-/** 선택칸의 한계를 밝힌다. 밝히지 않으면 값이 사라진 것으로 읽힌다. */
-const lookupNote = (lookup: LookupResult): string | undefined => {
-  if (lookup.isError) return t.filters.lookupFailed;
-  if (lookup.truncated) return t.filters.lookupTruncated;
-
-  return undefined;
-};
-
+/**
+ * 참조 목록을 선택지로 옮긴다.
+ *
+ * **미사용 값을 빼지 않고 표식만 붙인다.** 참조를 `includeInactive=true`로 받는 이유는
+ * 미사용 값을 참조하는 과거 건의 이름을 풀기 위해서인데, 그 건들을 **조건으로 찾으려면**
+ * 선택지에도 있어야 한다 — 조회 전용 화면이고 ERP 수신본에는 그런 건이 실제로 온다.
+ * 표식은 저장소 관례를 따른다(W-CO-02의 「(미사용)」).
+ */
 const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
-  lookup.entries.map((entry) => ({ value: entry.value, label: entry.label }));
+  lookup.entries.map((entry) => ({
+    value: entry.value,
+    label: entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`,
+  }));
 
 /**
  * W-01-09 컨테이너 — **자재창고 도메인의 첫 화면**이다.
@@ -182,6 +186,23 @@ export const InboundScheduleScreen = () => {
   );
   const itemReference = toReference(items, filters.item === '' ? null : Number(filters.item));
 
+  /**
+   * 참조 실패의 복구 경로 — **이름이 보이는 자리마다 하나씩** 둔다.
+   *
+   * 나누는 기준은 「그 이름이 어느 구획에서 보이는가」다. 실패 안내와 「다시 시도」는
+   * 그 이름이 실제로 실패로 보이는 자리에 있어야 사용자가 무엇을 되살리는지 알 수 있고,
+   * **안내 문구가 적은 대상과 다시 부르는 대상이 어긋나지 않는다** — 어긋나면 눌러도
+   * 한쪽은 실패인 채로 남는데 문구는 둘 다 고쳐질 것처럼 말한다.
+   *
+   * | 참조 | 보이는 자리 | 복구 |
+   * | --- | --- | --- |
+   * | 공급사 | 위 표의 칸 · 조건 칩 | 위 구획 |
+   * | 품목 · 단위 | 아래 표의 칸 | 아래 구획 |
+   * | **공장** | **고른 건의 제목줄뿐** | **아래 구획** |
+   *
+   * 공장이 아래에 있는 이유가 이 표의 요점이다 — 위 표에는 공장 열이 없어(폭 예산상
+   * 제목줄로 보냈다) 위 구획에 두면 **보이지도 않는 실패의 복구 버튼**이 된다.
+   */
   const retryTopReferences = (): void => {
     suppliers.refetch();
   };
@@ -189,6 +210,7 @@ export const InboundScheduleScreen = () => {
   const retryLineReferences = (): void => {
     items.refetch();
     uoms.refetch();
+    plants.refetch();
   };
 
   /** 아래 구획. 넷 중 하나만 낸다 — 사용자가 할 조치가 서로 다르다. */
@@ -230,10 +252,14 @@ export const InboundScheduleScreen = () => {
       <AsnLineTable
         asn={selectedRow}
         supplierName={describeReference(toReference(suppliers, selectedRow.supplierId))}
-        plantName={describeReference(toReference(plants, selectedRow.plantId))}
         today={today}
         rows={lines.data ?? EMPTY_LINES}
         isLoading={lines.isPending}
+        /*
+         * 공장은 **이름이 아니라 참조 자체**를 넘긴다 — 이 구획이 실패 안내와 다시 시도를
+         * 소유하므로 실패 여부를 함께 알아야 한다. 공급사는 위 구획이 소유해 이름만 넘긴다.
+         */
+        plantLookup={plants}
         itemLookup={items}
         uomLookup={uoms}
         onRetryReferences={retryLineReferences}
@@ -288,6 +314,7 @@ export const InboundScheduleScreen = () => {
             <AsnTable
               rows={rows}
               isLoading={list.isPending && listQuery !== null}
+              hasQuery={listQuery !== null}
               isBeyondLast={pageView.isBeyondLast}
               today={today}
               selectedId={selectedId}

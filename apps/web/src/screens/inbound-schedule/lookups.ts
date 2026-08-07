@@ -90,6 +90,24 @@ const EMPTY_ENTRIES: LookupEntry[] = [];
 /** 서버가 보낸 전체 건수가 받은 건수보다 많으면 잘린 것이다. */
 const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
 
+/**
+ * 선택칸 아래에 붙일 안내. 밝히지 않으면 사용자가 **불완전한 목록을 완전한 것으로 읽고**
+ * 찾는 값이 없으면 「그런 공급사가 없다」로 결론짓는다.
+ *
+ * **실패가 잘림보다 앞선다.** 둘이 겹치는 자리가 실제로 있다 — 첫 조회가 잘린 목록을 주고
+ * 다시 부르기가 실패하면 낡은 자료(`truncated`)와 실패(`isError`)가 함께 참이 된다.
+ * 그때 「일부만 보인다」고만 말하면 지금 목록이 **낡았다는 사실**이 가려진다.
+ *
+ * 화면이 아니라 여기에 둔다 — 판정이 `LookupResult`의 두 필드로만 정해져
+ * 화면을 띄우지 않고 단위로 고정할 수 있다.
+ */
+export const lookupNote = (lookup: LookupResult): string | undefined => {
+  if (lookup.isError) return t.filters.lookupFailed;
+  if (lookup.truncated) return t.filters.lookupTruncated;
+
+  return undefined;
+};
+
 export const lookupKeys = {
   suppliers: ['inbound-schedule-lookups', 'suppliers'] as const,
   plants: ['inbound-schedule-lookups', 'plants'] as const,

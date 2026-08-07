@@ -11,12 +11,19 @@ const t = messages.inboundSchedule;
 export interface AsnLineTableProps {
   /** 고른 건. 제목줄의 자료는 위 표의 행에 이미 있어 상세 경로를 부르지 않는다. */
   asn: AsnView;
-  /** 참조는 화면이 이름으로 풀어 넘긴다 — 이 부품에 번호를 문자열로 만드는 자리가 없다. */
+  /**
+   * 공급사는 **위 구획이 실패 안내와 복구를 소유**하므로 이름만 받는다.
+   * 이 부품에 번호를 문자열로 만드는 자리는 어느 쪽에도 없다.
+   */
   supplierName: string;
-  plantName: string;
   today: Date;
   rows: AsnLineView[];
   isLoading: boolean;
+  /**
+   * 공장 — **이름이 이 구획의 제목줄에서만 보인다.** 그래서 실패 안내와 다시 시도도
+   * 여기가 소유하고, 그러려면 이름이 아니라 참조 자체를 받아 실패 여부를 알아야 한다.
+   */
+  plantLookup: ReferenceSource;
   itemLookup: ReferenceSource;
   uomLookup: ReferenceSource;
   onRetryReferences: () => void;
@@ -60,10 +67,10 @@ interface SummaryItem {
 export const AsnLineTable = ({
   asn,
   supplierName,
-  plantName,
   today,
   rows,
   isLoading,
+  plantLookup,
   itemLookup,
   uomLookup,
   onRetryReferences,
@@ -93,7 +100,11 @@ export const AsnLineTable = ({
   const summary: SummaryItem[] = [
     { key: 'asnNo', label: t.summary.asnNo, value: asn.asnNo },
     { key: 'supplier', label: t.summary.supplier, value: supplierName },
-    { key: 'plant', label: t.summary.plant, value: plantName },
+    {
+      key: 'plant',
+      label: t.summary.plant,
+      value: describeReference(toReference(plantLookup, asn.plantId)),
+    },
     {
       key: 'expectedArrivalDate',
       label: t.summary.expectedArrivalDate,
@@ -116,7 +127,8 @@ export const AsnLineTable = ({
     { key: 'remarks', label: t.summary.remarks, value: orEmptyMark(asn.remarks) },
   ];
 
-  const hasReferenceError = itemLookup.isError || uomLookup.isError;
+  /* 이 구획이 이름을 내는 참조 셋 중 **하나라도** 실패하면 안내와 복구 수단을 낸다. */
+  const hasReferenceError = itemLookup.isError || uomLookup.isError || plantLookup.isError;
 
   return (
     <>
