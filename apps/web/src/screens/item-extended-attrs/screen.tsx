@@ -635,10 +635,26 @@ export const ItemExtendedAttrsScreen = () => {
   /* ── 선택 수명 ──────────────────────────────────────────────────────────── */
 
   /**
+   * 이 자재 명세서에 매달린 편집 상태를 비운다. **정의는 여기 한 곳이다.**
+   *
+   * 열려 있던 편집 창은 앞 자재 명세서의 줄을 가리킨다 — 남기면 사용자가 연 창이 말없이
+   * 다른 표의 행으로 갈아타고, 그 번호가 새 자재 명세서에 없으면 창 안에서 404가 난다.
+   * 쓰기 오류도 낫지 않는다 — 어느 줄에서 난 실패인지 훅이 알지 못한다.
+   */
+  const resetBomComponentEditing = () => {
+    componentWrite.reset();
+    setEditingComponentId(null);
+  };
+
+  /**
    * 이 품목에 매달린 편집 상태를 통째로 비운다.
    *
    * 폼과 초안은 조회 응답에서 다시 세워지므로 스스로 낫지만, **쓰기 오류와 열린 창은 낫지 않는다** —
    * 어느 품목에서 난 실패인지 훅이 알지 못해 다음 품목 화면에 그대로 남는다.
+   *
+   * 자재 명세서 축은 **위 함수를 불러** 규칙을 한 곳에 둔다. 대개 품목이 바뀌면 주소의 `bom`도
+   * 함께 떨어져 아래 자재 명세서 효과가 같은 일을 하지만, **주소가 품목만 바꾸는 경로**
+   * (공유된 링크·직접 편집)에서는 그 효과가 돌지 않는다 — 그때는 이 축이 유일한 지점이다.
    */
   const resetItemEditing = () => {
     attrsWrite.reset();
@@ -660,8 +676,7 @@ export const ItemExtendedAttrsScreen = () => {
     setDefaultWrite.reset();
     setPendingDefaultBom(null);
 
-    componentWrite.reset();
-    setEditingComponentId(null);
+    resetBomComponentEditing();
   };
 
   /*
@@ -681,6 +696,23 @@ export const ItemExtendedAttrsScreen = () => {
   useEffect(() => {
     resetItemEditingRef.current();
   }, [selectedItemId]);
+
+  /*
+   * 자재 명세서 축도 같은 형태를 쓴다 — 참조로 최신 함수를 들고 **고른 자재 명세서에만** 반응한다.
+   */
+  const resetBomComponentEditingRef = useRef(resetBomComponentEditing);
+  resetBomComponentEditingRef.current = resetBomComponentEditing;
+
+  /**
+   * 선택 수명 규칙의 두 번째 실행 지점. **클릭 핸들러가 아니라 고른 자재 명세서에 묶는다.**
+   *
+   * 클릭에만 두면 뒤로가기·앞으로가기·주소 직접 편집처럼 핸들러를 거치지 않는 경로에서
+   * **앞 자재 명세서의 줄을 가리키는 창이 그대로 남는다.** 품목 축이 이미 겪은 자리이고
+   * (r2 개정 1) 이 화면에서 같은 부류가 세 번째다 — 두 경로를 한 지점으로 모은다.
+   */
+  useEffect(() => {
+    resetBomComponentEditingRef.current();
+  }, [selectedBomId]);
 
   /**
    * 주소의 일부만 고친다.
@@ -741,18 +773,18 @@ export const ItemExtendedAttrsScreen = () => {
   };
 
   /**
-   * 자재 명세서를 고른다. **선택만 바꾸고 아무것도 비우지 않는다** —
-   * 헤더 목록도 품목도 달라지지 않고, 부속 초안은 다른 탭의 자료다.
+   * 자재 명세서를 고른다. **주소만 바꾼다** — 헤더 목록도 품목도 달라지지 않고,
+   * 부속 초안은 다른 탭의 자료다.
+   *
+   * **편집 창 정리를 여기서 하지 않는다.** 정리는 고른 자재 명세서에 묶여 있고(위 효과),
+   * 핸들러에도 두면 뒤로가기 경로만 새는 것을 알아채지 못한다 — 품목 축이 겪은 그대로다.
+   *
+   * **이미 고른 줄을 다시 눌러도 히스토리를 늘리지 않는다.** 화면이 달라지지 않는 갱신은
+   * 뒤로가기 한 번을 헛돌게 만든다. (`patchSearchParams`가 같은 주소를 이미 걸러 내므로
+   * 이 가드는 지금 중복 방어다 — 열린 창을 지키는 것은 위 효과의 의존성 배열이다.)
    */
   const handleSelectBom = (bomId: number) => {
     if (bomId === selectedBomId) return;
-
-    /*
-     * 열려 있던 편집 창은 앞 자재 명세서의 줄을 가리킨다 — 남기면 다른 표의 행을
-     * 고치는 창이 떠 있게 된다.
-     */
-    componentWrite.reset();
-    setEditingComponentId(null);
 
     patchSearchParams((next) => {
       next.set(BOM_KEY, String(bomId));

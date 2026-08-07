@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation, useNavigate, type NavigateFunction } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -304,17 +304,21 @@ const subsidiaryRoutes = (overrides: SubsidiaryRouteOverrides = {}): StubRoute[]
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * 뒤로가기를 눌러 보기 위한 탐침.
+ * 주소를 핸들러를 거치지 않고 바꿔 보기 위한 탐침.
  *
  * 하네스가 `MemoryRouter`라 브라우저 히스토리가 없다 — 라우터가 쌓은 칸을 보려면
  * 트리 안에서 `navigate(-1)`을 부르고 그때의 주소를 읽는 수밖에 없다.
+ *
+ * `go`는 **공유된 링크·주소 직접 편집** 경로다. 화면의 클릭 핸들러가 만들 수 없는 조합
+ * (예: 품목만 바뀌고 `bom`은 그대로)을 만들 수 있어야 「주소가 정본이다」가 실제로 검사된다.
  */
 interface HistoryProbe {
   search: () => string;
   back: () => void;
+  go: (search: string) => void;
 }
 
-let probeNavigate: ((delta: number) => void) | null = null;
+let probeNavigate: NavigateFunction | null = null;
 let probeSearch = '';
 
 const RouterProbe = () => {
@@ -345,6 +349,11 @@ const renderScreen = (routes: StubRoute[], search = '') => {
     back: () => {
       act(() => {
         probeNavigate?.(-1);
+      });
+    },
+    go: (next: string) => {
+      act(() => {
+        probeNavigate?.(`${ROUTE}${next}`);
       });
     },
   };
@@ -4188,5 +4197,140 @@ describe('ItemExtendedAttrsScreen — 자재 명세서 쓰기의 무효화 범�
       expect(bomListGets(requests)).toHaveLength(2);
     });
     expect(componentGets(requests)).toHaveLength(1);
+  });
+});
+
+/**
+ * §5.4 선택 수명 — **열린 편집 창의 정리는 고른 자재 명세서에 묶여 있다.**
+ *
+ * 클릭 핸들러에만 두면 뒤로가기·앞으로가기·주소 직접 편집처럼 핸들러를 거치지 않는 경로에서
+ * 앞 자재 명세서의 줄을 가리키는 창이 그대로 남는다 — 품목 축이 이미 겪은 자리다(r2 개정 1).
+ */
+describe('ItemExtendedAttrsScreen — 구성품 편집 창의 수명', () => {
+  const openThenSwitchBom = async (user: ReturnType<typeof userEvent.setup>) => {
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-02 · Rev 2 구성품 보기' }));
+  };
+
+  /* 클릭 경로 — 이 방향은 1회차에도 닫혔다. */
+  it('다른 자재 명세서를 고르면 열린 창이 닫힌다', async () => {
+    const { user } = renderScreen(
+      [...componentEditRoutes(), bomComponentsRoute([], 2002)],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    await openThenSwitchBom(user);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /**
+   * **뒤로가기 경로 — 1회차에 새던 자리다.**
+   *
+   * 주소는 앞 자재 명세서로 돌아오는데 창이 그대로 남으면, 사용자가 연 창이 말없이
+   * 다른 표의 행으로 갈아탄다. 그 번호가 새 자재 명세서에 없으면 창 안에서 404가 난다.
+   */
+  it('뒤로가기로 자재 명세서가 바뀌어도 열린 창이 닫힌다', async () => {
+    const { history, user } = renderScreen(
+      [...componentEditRoutes(), bomComponentsRoute([], 2002)],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    await openThenSwitchBom(user);
+    expect(history.search()).toContain('bom=2002');
+
+    /* 두 번째 줄에서 창을 열고 뒤로가기 — 핸들러를 거치지 않는 경로다. */
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }));
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+
+    history.back();
+
+    expect(history.search()).toContain('bom=2002');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /* 뒤로가기가 저장 실패까지 데려오면 안 된다 — 앞 줄에서 난 실패다. */
+  it('뒤로가기로 자재 명세서가 바뀌면 저장 실패 배너도 사라진다', async () => {
+    const { history, user } = renderScreen(
+      [
+        ...componentEditRoutes(),
+        bomComponentsRoute([], 2002),
+        componentSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+      ],
+      '?item=1001&tab=bom&bom=2002',
+    );
+
+    /* 2002는 빈 목록이라 먼저 2001로 옮겨 편집할 줄을 만든다. */
+    await findBomComponentPane();
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }));
+    await findBomComponentPane();
+
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+    await screen.findByText(FORBIDDEN_TEXT);
+
+    history.back();
+
+    await waitFor(() => {
+      expect(screen.queryByText(FORBIDDEN_TEXT)).not.toBeInTheDocument();
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /**
+   * **같은 줄을 다시 눌러도 열린 창이 그대로다.**
+   *
+   * 정리가 고른 자재 명세서에 묶여 있으므로 같은 값으로는 돌지 않는다 —
+   * 재클릭이 창을 닫으면 사용자가 고치던 값이 사라진다(PR ① 1회차 결함과 같은 모양).
+   */
+  it('같은 자재 명세서를 다시 눌러도 열린 창이 남는다', async () => {
+    const { user } = renderScreen(componentEditRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '백플러시 허용' })).not.toBeChecked();
+  });
+
+  /**
+   * **주소가 품목만 바꾸는 경로.** 공유된 링크나 주소 직접 편집으로만 닿는다 —
+   * 이 화면의 클릭 핸들러는 품목을 바꿀 때 `bom`을 함께 떨구므로 이 조합을 만들지 않는다.
+   *
+   * 그래서 **자재 명세서 축 효과가 돌지 않고**, 품목 축이 유일한 정리 지점이 된다.
+   *
+   * **목록이 도착한 뒤에 잰다.** 주소가 바뀐 직후에는 새 품목의 자재 명세서 목록이 아직 없어
+   * 창이 잠깐 언마운트되므로, 그 순간만 보면 정리를 빠뜨린 코드도 통과한다(검증 발견 ②).
+   * 실제 해악은 목록이 도착했을 때 **사용자가 열지 않은 창이 저절로 다시 뜨는** 것이다.
+   */
+  it('주소가 품목만 바꾸면 열린 구성품 편집 창이 다시 뜨지 않는다', async () => {
+    const { history, user } = renderScreen(componentEditRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+
+    /* `bom`은 그대로 두고 `item`만 바꾼다 — 자재 명세서 축은 값이 같아 반응하지 않는다. */
+    history.go('?item=1002&tab=bom&bom=2001');
+
+    expect(history.search()).toContain('bom=2001');
+    expect(history.search()).toContain('item=1002');
+
+    /* 새 품목의 목록이 도착해 구획이 다시 그려질 때까지 기다린 뒤에 잰다. */
+    await findBomComponentPane();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('등록 공정')).not.toBeInTheDocument();
   });
 });
