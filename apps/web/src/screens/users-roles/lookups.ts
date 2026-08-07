@@ -36,7 +36,14 @@ const EMPTY_ENTRIES: LookupEntry[] = [];
 /** 서버가 보낸 전체 건수가 받은 건수보다 많으면 잘린 것이다. */
 const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
 
-const lookupKeys = {
+/**
+ * 선택 목록의 캐시 키.
+ *
+ * **밖으로 낸다** — 이 목록의 내용을 바꾸는 쓰기가 다른 탭에 있기 때문이다.
+ * 역할을 만들거나 고치거나 중지하는 것은 역할·권한 탭에서 일어나는데, 그 결과가 보이는 자리는
+ * 사용자 탭의 역할 부여 확인칸이다. 무효화하는 쪽이 키를 알지 못하면 그 목록이 낡은 채로 남는다.
+ */
+export const lookupKeys = {
   departments: ['users-roles-lookups', 'departments'] as const,
   roles: ['users-roles-lookups', 'roles'] as const,
   businessUnits: ['users-roles-lookups', 'business-units'] as const,

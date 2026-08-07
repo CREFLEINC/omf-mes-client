@@ -40,6 +40,7 @@ import {
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import {
+  lookupKeys,
   useBusinessUnitOptions,
   useDepartmentOptions,
   usePlantOptions,
@@ -517,6 +518,21 @@ export const UsersRolesScreen = () => {
   });
 
   /**
+   * 역할 쓰기가 무효화하는 것 — **역할 자신과 사용자 탭의 역할 선택 목록 둘**이다.
+   *
+   * 선택 목록을 함께 무효화하는 이유: 역할을 만들고 고치고 중지하는 일은 **이 탭**에서 일어나는데
+   * 그 결과가 보이는 자리는 **사용자 탭의 역할 부여 확인칸**이다. 앱의 기본 `staleTime`이 30초라
+   * (`app/providers.tsx` — 「탭 전환마다 재요청하지 않는다」) 재마운트만으로는 다시 조회되지 않는다.
+   * 무효화하지 않으면 **방금 만든 역할이 부여 목록에 없고, 고친 이름이 옛 이름 그대로이며,
+   * 중지한 역할에 「(미사용)」이 붙지 않는다.**
+   *
+   * **「무효화를 좁힌다」와 어긋나지 않는다.** 그 규칙은 *편집 중인 초안의 출처*를 되돌리지 말라는
+   * 것인데(PR ②), 이 선택 목록은 부여 초안의 **출처가 아니라 선택지**다 — 초안은
+   * `useUserRoles`가 세운다. 그래서 여기서는 사용자 상세·목록·부여분을 건드리지 않는다.
+   */
+  const roleWriteInvalidateKeys = [roleKeys.all, lookupKeys.roles];
+
+  /**
    * 역할 수정. 사용자 수정과 **같은 규약**이다 — 두 헤더를 모두 싣고 잠금 토큰은 상세 경로에서 꺼낸다.
    *
    * **`roleCode`가 본문에 실린다.** 로그인 ID와 갈리는 자리다(계획 결정 10) —
@@ -535,7 +551,7 @@ export const UsersRolesScreen = () => {
         body: toRoleUpdate(values),
       }),
     etagPath: selectedRoleId === null ? null : roleDetailPath(selectedRoleId),
-    invalidateKeys: [roleKeys.all],
+    invalidateKeys: roleWriteInvalidateKeys,
     knownFields: ROLE_FORM_FIELDS,
     onSuccess: (saved) => {
       setRoleFieldErrors({});
@@ -553,7 +569,7 @@ export const UsersRolesScreen = () => {
       }),
     // 아직 없는 자원이라 잠글 대상이 없다. 201 응답에도 ETag가 없다(계약 실측).
     etagPath: null,
-    invalidateKeys: [roleKeys.all],
+    invalidateKeys: roleWriteInvalidateKeys,
     knownFields: ROLE_FORM_FIELDS,
     onSuccess: (saved) => {
       setRoleFieldErrors({});
@@ -582,7 +598,7 @@ export const UsersRolesScreen = () => {
         },
       }),
     etagPath: selectedRoleId === null ? null : roleDetailPath(selectedRoleId),
-    invalidateKeys: [roleKeys.all],
+    invalidateKeys: roleWriteInvalidateKeys,
     // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
     knownFields: [],
     onSuccess: () => {
