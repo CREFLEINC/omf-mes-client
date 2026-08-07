@@ -1,20 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applySelection,
+  clearRoleFilter,
   clearUserFilter,
+  hasAnyRoleFilter,
   hasAnyUserFilter,
+  isCreating,
   readPage,
+  readRoleFilters,
   readSelectedId,
   readUserFilters,
+  toRoleFilterChips,
+  toRoleListQuery,
+  toRoleSearchParams,
   toUserFilterChips,
   toUserListQuery,
   toUserSearchParams,
 } from './filters';
-import type { UserFilters } from './types';
+import type { RoleFilters, UserFilters } from './types';
 
 const params = (search: string): URLSearchParams => new URLSearchParams(search);
 
 const EMPTY: UserFilters = { q: '', departmentId: '', includeInactive: false };
+
+const EMPTY_ROLE: RoleFilters = { q: '', includeInactive: false };
 
 describe('readUserFilters', () => {
   it('키가 하나도 없으면 빈 조건이다', () => {
@@ -214,5 +224,218 @@ describe('clearUserFilter', () => {
     clearUserFilter(all, 'q');
 
     expect(all.q).toBe('SYN-LOGIN');
+  });
+});
+
+describe('readRoleFilters', () => {
+  it('키가 하나도 없으면 빈 조건이다', () => {
+    expect(readRoleFilters(params(''))).toEqual(EMPTY_ROLE);
+  });
+
+  it('검색어와 미사용 포함을 읽는다', () => {
+    expect(readRoleFilters(params('q=SYN-ROLE&inactive=1'))).toEqual({
+      q: 'SYN-ROLE',
+      includeInactive: true,
+    });
+  });
+
+  it('미사용 포함은 「1」일 때만 켜진다 — 사용자 탭과 같은 규칙이다', () => {
+    expect(readRoleFilters(params('inactive=true')).includeInactive).toBe(false);
+    expect(readRoleFilters(params('inactive=1')).includeInactive).toBe(true);
+  });
+
+  /**
+   * 계약의 역할 목록 쿼리에 부서가 없다. 주소에 남아 있어도 조건으로 읽지 않아야
+   * 탭을 손으로 오간 주소가 「없는 쿼리」를 만들지 않는다.
+   */
+  it('주소에 부서가 남아 있어도 역할 조건으로 읽지 않는다', () => {
+    expect(readRoleFilters(params('q=SYN-ROLE&dept=3001'))).toEqual({
+      q: 'SYN-ROLE',
+      includeInactive: false,
+    });
+  });
+});
+
+describe('toRoleSearchParams', () => {
+  it('빈 조건·첫 쪽은 키 자체를 두지 않는다', () => {
+    expect([...toRoleSearchParams('roles', EMPTY_ROLE, 1).keys()]).toEqual(['tab']);
+  });
+
+  it('걸린 조건과 둘째 쪽부터는 주소에 남는다', () => {
+    const next = toRoleSearchParams('roles', { q: 'SYN-ROLE', includeInactive: true }, 2);
+
+    expect(next.get('tab')).toBe('roles');
+    expect(next.get('q')).toBe('SYN-ROLE');
+    expect(next.get('inactive')).toBe('1');
+    expect(next.get('page')).toBe('2');
+  });
+
+  /** 이 탭에 없는 조건을 주소에 적으면 무엇으로 조회했는지 읽을 수 없다. */
+  it('부서 키를 만들지 않는다', () => {
+    expect(toRoleSearchParams('roles', { q: 'SYN-ROLE', includeInactive: true }, 2).has('dept')).toBe(
+      false,
+    );
+  });
+
+  it('선택(rol·new)을 담지 않는다', () => {
+    const next = toRoleSearchParams('roles', { ...EMPTY_ROLE, q: 'SYN-ROLE' }, 3);
+
+    expect(next.has('rol')).toBe(false);
+    expect(next.has('new')).toBe(false);
+    expect(next.has('usr')).toBe(false);
+  });
+
+  it('읽기와 쓰기가 서로의 역이다', () => {
+    const filters: RoleFilters = { q: 'SYN-ROLE', includeInactive: true };
+
+    expect(readRoleFilters(toRoleSearchParams('roles', filters, 2))).toEqual(filters);
+    expect(readPage(toRoleSearchParams('roles', filters, 2))).toBe(2);
+  });
+});
+
+describe('toRoleListQuery', () => {
+  it('빈 조건·꺼진 확인칸·첫 쪽은 키 자체를 싣지 않는다', () => {
+    expect(toRoleListQuery(EMPTY_ROLE, 1)).toEqual({});
+  });
+
+  it('걸린 조건만 싣는다', () => {
+    expect(toRoleListQuery({ q: 'SYN-ROLE', includeInactive: true }, 2)).toEqual({
+      q: 'SYN-ROLE',
+      includeInactive: true,
+      page: 2,
+    });
+  });
+
+  /** 계약에 없는 쿼리다 — 실으면 서버가 모르는 조건이 나간다. */
+  it('부서를 어떤 경우에도 싣지 않는다', () => {
+    expect(Object.keys(toRoleListQuery({ q: 'SYN-ROLE', includeInactive: true }, 2))).not.toContain(
+      'departmentId',
+    );
+  });
+
+  it('상태 코드를 어떤 경우에도 싣지 않는다', () => {
+    expect(Object.keys(toRoleListQuery({ q: 'SYN-ROLE', includeInactive: true }, 2))).not.toContain(
+      'statusCode',
+    );
+  });
+});
+
+describe('toRoleFilterChips', () => {
+  it('조건이 없으면 칩도 없다', () => {
+    expect(toRoleFilterChips(EMPTY_ROLE)).toEqual([]);
+  });
+
+  it('조건마다 칩 하나이고 순서는 조건 줄의 컨트롤 순서와 같다', () => {
+    expect(toRoleFilterChips({ q: 'SYN-ROLE', includeInactive: true }).map((chip) => chip.key)).toEqual(
+      ['q', 'includeInactive'],
+    );
+  });
+
+  it('칩마다 제거 버튼의 접근 이름이 서로 다르다', () => {
+    const labels = toRoleFilterChips({ q: 'SYN-ROLE', includeInactive: true }).map(
+      (chip) => chip.removeLabel,
+    );
+
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+});
+
+describe('hasAnyRoleFilter · clearRoleFilter', () => {
+  it('조건이 하나라도 걸리면 참이다', () => {
+    expect(hasAnyRoleFilter(EMPTY_ROLE)).toBe(false);
+    expect(hasAnyRoleFilter({ ...EMPTY_ROLE, q: 'SYN-ROLE' })).toBe(true);
+    expect(hasAnyRoleFilter({ ...EMPTY_ROLE, includeInactive: true })).toBe(true);
+  });
+
+  it('고른 조건 하나만 푼다', () => {
+    const all: RoleFilters = { q: 'SYN-ROLE', includeInactive: true };
+
+    expect(clearRoleFilter(all, 'q')).toEqual({ ...all, q: '' });
+    expect(clearRoleFilter(all, 'includeInactive')).toEqual({ ...all, includeInactive: false });
+    expect(all.q).toBe('SYN-ROLE');
+  });
+});
+
+/**
+ * 선택 자리는 넷이지만 **함께 성립하지 않는 하나의 자리**다.
+ * 규칙을 한 곳에 두지 않으면 자리마다 「무엇을 비우는가」가 갈린다.
+ */
+describe('applySelection', () => {
+  const applied = (search: string, selection: Parameters<typeof applySelection>[1]): URLSearchParams => {
+    const next = params(search);
+    applySelection(next, selection);
+    return next;
+  };
+
+  it('사용자를 고르면 등록 자리와 역할 선택이 함께 빠진다', () => {
+    const next = applied('new=user&rol=5001', { kind: 'user', appUserId: 1001 });
+
+    expect(next.get('usr')).toBe('1001');
+    expect(next.has('new')).toBe(false);
+    expect(next.has('rol')).toBe(false);
+  });
+
+  it('사용자 등록을 열면 고른 사용자와 역할 선택이 함께 빠진다', () => {
+    const next = applied('usr=1001&rol=5001', { kind: 'createUser' });
+
+    expect(next.get('new')).toBe('user');
+    expect(next.has('usr')).toBe(false);
+    expect(next.has('rol')).toBe(false);
+  });
+
+  it('역할을 고르면 등록 자리와 사용자 선택이 함께 빠진다', () => {
+    const next = applied('new=role&usr=1001', { kind: 'role', roleId: 5001 });
+
+    expect(next.get('rol')).toBe('5001');
+    expect(next.has('new')).toBe(false);
+    expect(next.has('usr')).toBe(false);
+  });
+
+  it('역할 등록을 열면 고른 역할과 사용자 선택이 함께 빠진다', () => {
+    const next = applied('rol=5001&usr=1001', { kind: 'createRole' });
+
+    expect(next.get('new')).toBe('role');
+    expect(next.has('rol')).toBe(false);
+    expect(next.has('usr')).toBe(false);
+  });
+
+  it('선택을 놓으면 네 자리가 모두 빠진다', () => {
+    const next = applied('usr=1001&rol=5001&new=user', { kind: 'none' });
+
+    for (const key of ['usr', 'rol', 'new']) {
+      expect(next.has(key)).toBe(false);
+    }
+  });
+
+  /**
+   * **비우지 않는 쪽의 짝이다.** 선택을 바꾸는 것은 보이는 행을 바꾸지 않으므로
+   * 조건과 쪽은 그대로 둔다 — 고른 사용자를 열었다고 조회 조건이 풀리면 안 된다.
+   */
+  it('조회 조건과 쪽은 그대로 둔다', () => {
+    const next = applied('tab=users&q=syn&dept=3001&inactive=1&page=3', {
+      kind: 'user',
+      appUserId: 1001,
+    });
+
+    expect(next.get('tab')).toBe('users');
+    expect(next.get('q')).toBe('syn');
+    expect(next.get('dept')).toBe('3001');
+    expect(next.get('inactive')).toBe('1');
+    expect(next.get('page')).toBe('3');
+  });
+});
+
+describe('isCreating', () => {
+  it('등록 자리의 값이 그 자원일 때만 참이다', () => {
+    expect(isCreating(params('new=user'), 'user')).toBe(true);
+    expect(isCreating(params('new=user'), 'role')).toBe(false);
+    expect(isCreating(params('new=role'), 'role')).toBe(true);
+    expect(isCreating(params('new=role'), 'user')).toBe(false);
+  });
+
+  it('키가 없거나 모르는 값이면 거짓이다 — 주소는 손으로 고쳐지는 자리다', () => {
+    expect(isCreating(params(''), 'user')).toBe(false);
+    expect(isCreating(params('new=xyz'), 'user')).toBe(false);
+    expect(isCreating(params('new=USER'), 'user')).toBe(false);
   });
 });

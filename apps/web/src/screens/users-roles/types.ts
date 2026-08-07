@@ -14,6 +14,7 @@ export type PageMeta = components['schemas']['PageMeta'];
 export type Role = components['schemas']['Role'];
 export type UserRole = components['schemas']['UserRole'];
 export type UserDataScope = components['schemas']['UserDataScope'];
+export type RolePermission = components['schemas']['RolePermission'];
 
 /**
  * 선택 목록의 원본 항목. 사용 여부를 함께 들고 있어야
@@ -51,6 +52,21 @@ export interface UserFilters {
 }
 
 /**
+ * 역할 목록의 조회 조건.
+ *
+ * **`departmentId`가 없다.** 계약의 역할 목록 쿼리는 `q`·`includeInactive`·쪽뿐이다 —
+ * 부서로 좁히는 조건 자체가 없으므로 조건 타입에 자리를 두지 않는다.
+ * 자리를 두지 않는 것이 「이 탭에서는 실리지 않는다」의 가장 단단한 보장이다.
+ *
+ * **상태 조건도 없다.** 사용자와 달리 계약이 `statusCode` 쿼리를 두지 않았다 —
+ * 값 목록이 미정이라 못 쓰는 것이 아니라 애초에 없는 조건이다.
+ */
+export interface RoleFilters {
+  q: string;
+  includeInactive: boolean;
+}
+
+/**
  * 사용자 폼 값. 전부 문자열인 이유는 디자인 시스템 입력·선택이 문자열을 다루기 때문이다.
  * 계약 표현(숫자·널)으로의 변환은 `user-mappers.ts`가 맡는다.
  *
@@ -68,4 +84,20 @@ export interface UserFormValues {
   /** 계약이 널을 허용한다 */
   email: string;
   statusCode: string;
+}
+
+/**
+ * 역할 폼 값.
+ *
+ * **`roleCode`가 등록·수정 양쪽 본문에 있다** — 로그인 ID와 갈리는 자리다.
+ * 수정에서 고칠 수 있는지는 상세 응답의 `editability`가 정하고 화면은 그 판정을 옮긴다.
+ *
+ * **`isActive`가 없다.** 사용 여부는 전용 액션(`:deactivate`)으로만 바뀌므로
+ * 폼 값에 자리를 두면 저장 본문에 실릴 여지가 생긴다.
+ */
+export interface RoleFormValues {
+  roleCode: string;
+  roleName: string;
+  /** 계약이 널을 허용한다 */
+  description: string;
 }
