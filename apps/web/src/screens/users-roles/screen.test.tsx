@@ -1,3 +1,4 @@
+import type { components } from '@omf-mes/api-client';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
@@ -10,8 +11,11 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { appUserFixtures, departmentFixtures } from './fixtures';
+import { appUserFixtures, departmentFixtures, filledUserFixture } from './fixtures';
 import { UsersRolesScreen } from './screen';
+import type { AppUser } from './types';
+
+type Editability = components['schemas']['Editability'];
 
 const ROUTE = '/system/users-roles';
 
@@ -74,6 +78,48 @@ const departmentsRoute = (
   match: (request) => isGet(request, DEPARTMENTS_PATH),
   respond: () => jsonResponse({ items, page: pageMeta }),
 });
+
+const EDITABLE: Editability = { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 };
+
+/** 사용자 상세 — `ETag`가 함께 온다(계약 실측). 저장의 `If-Match`가 이 값에서 나온다. */
+const userDetailRoute = (
+  appUser: AppUser = filledUserFixture,
+  { etag = 'W/"7"', editability = EDITABLE }: { etag?: string | null; editability?: Editability } = {},
+): StubRoute => ({
+  match: (request) => isGet(request, `${USERS_PATH}/${String(appUser.appUserId)}`),
+  respond: () =>
+    jsonResponse({ appUser, editability }, etag === null ? {} : { headers: { ETag: etag } }),
+});
+
+const userUpdateRoute = (
+  appUserId = 1001,
+  respond: (request: Request) => Response = () => jsonResponse(filledUserFixture),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' && new URL(request.url).pathname === `${USERS_PATH}/${String(appUserId)}`,
+  respond,
+});
+
+const userCreateRoute = (
+  respond: (request: Request) => Response = () =>
+    jsonResponse({ ...filledUserFixture, appUserId: 1009 }, { status: 201 }),
+): StubRoute => ({
+  match: (request) => request.method === 'POST' && new URL(request.url).pathname === USERS_PATH,
+  respond,
+});
+
+const userDeactivateRoute = (
+  appUserId = 1001,
+  respond: (request: Request) => Response = () => jsonResponse(filledUserFixture),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' &&
+    new URL(request.url).pathname === `${USERS_PATH}/${String(appUserId)}:deactivate`,
+  respond,
+});
+
+/** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 주소를 읽어 보기 위한 탐침. 하네스가 `MemoryRouter`라 트리 안에서 읽는 수밖에 없다. */
 let probeSearch = '';
@@ -468,5 +514,564 @@ describe('UsersRolesScreen 조회 실패', () => {
     expect(screen.queryByText('조건에 맞는 사용자가 없습니다')).not.toBeInTheDocument();
     // 다시 불러도 같은 답이 온다 — 누를 수 있는 조치를 주면 사용자를 헛돌게 한다.
     expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
+  });
+});
+
+const userFormPane = (): HTMLElement => screen.getByRole('region', { name: '사용자 정보' });
+
+const detailRequests = (requests: RecordedRequest[], appUserId = 1001): RecordedRequest[] =>
+  requestsTo(requests, `${USERS_PATH}/${String(appUserId)}`);
+
+const openUserDetail = async (
+  extraRoutes: StubRoute[] = [],
+  appUser: AppUser = filledUserFixture,
+  options: { etag?: string | null; editability?: Editability } = {},
+) => {
+  const rendered = renderScreen(
+    [userListRoute(), departmentsRoute(), userDetailRoute(appUser, options), ...extraRoutes],
+    `?usr=${String(appUser.appUserId)}`,
+  );
+
+  await screen.findByRole('region', { name: '사용자 정보' });
+  await waitFor(() => {
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toBeInTheDocument();
+  });
+
+  return rendered;
+};
+
+describe('UsersRolesScreen 상세 열기', () => {
+  it('로그인 ID를 누르면 주소가 붙고 상세를 조회해 폼이 채워진다', async () => {
+    const { requests, search, user } = renderScreen([
+      userListRoute(),
+      departmentsRoute(),
+      userDetailRoute(),
+    ]);
+
+    await waitForUserList(requests);
+    await user.click(within(userListPane()).getByRole('button', { name: 'SYN-LOGIN-01' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('usr')).toBe('1001');
+    });
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
+
+    expect(await within(userFormPane()).findByRole('textbox', { name: '이름' })).toHaveValue(
+      '합성 사용자 A',
+    );
+  });
+
+  /** 새로고침·공유·뒤로가기가 같은 화면을 내야 한다. */
+  it('주소로 직접 들어와도 같은 상태가 복원된다', async () => {
+    const { requests } = await openUserDetail();
+
+    expect(detailRequests(requests)).toHaveLength(1);
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue(
+      '합성 사용자 A',
+    );
+  });
+
+  it('고르기 전에는 폼이 아니라 안내가 나온다', async () => {
+    const { requests } = renderScreen([userListRoute(), departmentsRoute()]);
+
+    await waitForUserList(requests);
+
+    expect(
+      within(userFormPane()).getByText('좌측에서 사용자를 고르면 여기에 그 사용자의 정보가 보입니다'),
+    ).toBeInTheDocument();
+    expect(within(userFormPane()).queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('사용자 추가는 빈 폼을 열고 상세를 조회하지 않는다', async () => {
+    const { requests, user } = renderScreen([userListRoute(), departmentsRoute(), userDetailRoute()]);
+
+    await waitForUserList(requests);
+    await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+
+    expect(await within(userFormPane()).findByRole('textbox', { name: '로그인 ID' })).toHaveValue('');
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue('');
+    expect(detailRequests(requests)).toHaveLength(0);
+  });
+
+  it('상세 조회가 실패하면 빈 폼 대신 배너가 나온다', async () => {
+    const { requests } = renderScreen(
+      [
+        userListRoute(),
+        departmentsRoute(),
+        {
+          match: (request) => isGet(request, `${USERS_PATH}/1001`),
+          respond: () => jsonResponse({}, { status: 500 }),
+        },
+      ],
+      '?usr=1001',
+    );
+
+    await waitForUserList(requests);
+
+    expect(await screen.findByText(/잠시 뒤 다시 시도하세요/)).toBeInTheDocument();
+    expect(within(userFormPane()).queryByRole('textbox')).not.toBeInTheDocument();
+  });
+});
+
+describe('UsersRolesScreen 로그인 ID 잠금', () => {
+  /** 계약의 수정 본문에 그 키가 아예 없다 — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다. */
+  it('수정에서는 입력칸이 아니라 값 표기이고 사유가 보인다', async () => {
+    await openUserDetail();
+
+    expect(
+      within(userFormPane()).queryByRole('textbox', { name: '로그인 ID' }),
+    ).not.toBeInTheDocument();
+    expect(within(userFormPane()).getByText('SYN-LOGIN-01')).toBeInTheDocument();
+    expect(within(userFormPane()).getByText(/로그인 ID는 등록할 때만/)).toBeInTheDocument();
+  });
+
+  it('등록에서만 입력칸이다', async () => {
+    const { requests, user } = renderScreen([userListRoute(), departmentsRoute(), userCreateRoute()]);
+
+    await waitForUserList(requests);
+    await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+
+    expect(
+      await within(userFormPane()).findByRole('textbox', { name: '로그인 ID' }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('UsersRolesScreen 수정 저장', () => {
+  const saveEdit = async (extraRoutes: StubRoute[] = []) => {
+    const rendered = await openUserDetail([userUpdateRoute(), ...extraRoutes]);
+
+    await rendered.user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    await rendered.user.type(
+      within(userFormPane()).getByRole('textbox', { name: '이름' }),
+      '합성 사용자 Z',
+    );
+    await rendered.user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+
+    return rendered;
+  };
+
+  const updateBodyOf = (requests: RecordedRequest[]): Record<string, unknown> => {
+    const put = requests.find((request) => request.method === 'PUT');
+
+    expect(put).toBeDefined();
+
+    return JSON.parse(put?.body ?? '{}') as Record<string, unknown>;
+  };
+
+  it('수정 본문에 로그인 ID가 없다', async () => {
+    const { requests } = await saveEdit();
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.method === 'PUT')).toBe(true);
+    });
+    expect(Object.keys(updateBodyOf(requests))).not.toContain('loginId');
+  });
+
+  it('계약이 필수로 둔 이름과 상태 코드가 반드시 실린다', async () => {
+    const { requests } = await saveEdit();
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.method === 'PUT')).toBe(true);
+    });
+
+    const body = updateBodyOf(requests);
+
+    expect(body.userName).toBe('합성 사용자 Z');
+    expect(Object.keys(body)).toContain('statusCode');
+  });
+
+  /** 화면이 고른 적이 없는 값이다 — 지어내지도, 빼지도 않는다. */
+  it('상태 코드는 서버가 준 값이 그대로 되돌아간다', async () => {
+    const { requests } = await saveEdit();
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.method === 'PUT')).toBe(true);
+    });
+    expect(updateBodyOf(requests).statusCode).toBe('SYN-STATUS-A');
+  });
+
+  it('수정 요청에 멱등 키와 낙관적 잠금 토큰이 둘 다 실린다', async () => {
+    const { requests } = await saveEdit();
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.method === 'PUT')).toBe(true);
+    });
+
+    const put = requests.find((request) => request.method === 'PUT');
+
+    expect(put?.headers.get('Idempotency-Key')).toMatch(UUID);
+    // 값은 **상세 경로**가 준 ETag다. 액션 경로로 꺼내면 언제나 비어 있다.
+    expect(put?.headers.get('If-Match')).toBe('W/"7"');
+  });
+
+  it('저장에 성공하면 목록과 상세를 다시 조회한다', async () => {
+    const { requests } = await saveEdit();
+
+    await waitFor(() => {
+      expect(userRequests(requests).length).toBeGreaterThan(1);
+    });
+    await waitFor(() => {
+      expect(detailRequests(requests).length).toBeGreaterThan(1);
+    });
+  });
+
+  /** 빈 If-Match는 계약 위반이라 서버가 400으로 되돌린다 — 보내지 않고 멈춘다. */
+  it('잠금 토큰을 확보하지 못했으면 요청을 보내지 않고 안내한다', async () => {
+    const { requests, user } = await openUserDetail([userUpdateRoute()], filledUserFixture, {
+      etag: null,
+    });
+
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), 'Z');
+    await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText(/최신 정보를 불러오는 중입니다/)).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
+  it('검증에 걸리면 인라인 오류가 나오고 요청이 한 건도 나가지 않는다', async () => {
+    const { requests, user } = await openUserDetail([userUpdateRoute()]);
+
+    await user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    await user.clear(within(userFormPane()).getByRole('textbox', { name: '전자우편' }));
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '전자우편' }), 'syn.user.a');
+    await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await within(userFormPane()).findByText('필수 입력 항목입니다.')).toBeInTheDocument();
+    expect(within(userFormPane()).getByText(/전자우편 형식이 아닙니다/)).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
+  it('공백만 넣은 필수 칸도 요청 없이 막힌다', async () => {
+    const { requests, user } = await openUserDetail([userUpdateRoute()]);
+
+    await user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), '   ');
+    await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await within(userFormPane()).findByText(/공백만으로 지정할 수 없습니다/)).toBeInTheDocument();
+    expect(requests.some((request) => request.method === 'PUT')).toBe(false);
+  });
+
+  it('고친 것이 없으면 저장이 비활성이다', async () => {
+    await openUserDetail([userUpdateRoute()]);
+
+    expect(within(userFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  it('취소는 요청을 보내지 않고 값을 기준값으로 되돌린다', async () => {
+    const { requests, user } = await openUserDetail([userUpdateRoute()]);
+
+    const before = requests.length;
+
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), 'Z');
+    await user.click(within(userFormPane()).getByRole('button', { name: '취소' }));
+
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue(
+      '합성 사용자 A',
+    );
+    expect(requests).toHaveLength(before);
+  });
+});
+
+describe('UsersRolesScreen 저장 실패', () => {
+  const validationErrorResponse = (errors: unknown[]): Response =>
+    jsonResponse({ errors }, { status: 400 });
+
+  it('아는 필드의 400은 그 칸 옆 인라인으로 나온다', async () => {
+    const { user } = await openUserDetail([
+      userUpdateRoute(1001, () =>
+        validationErrorResponse([
+          { scope: 'field', field: 'userName', code: 'REQUIRED', message: '이름을 확인하세요.' },
+        ]),
+      ),
+    ]);
+
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), 'Z');
+    await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await within(userFormPane()).findByText('이름을 확인하세요.')).toBeInTheDocument();
+  });
+
+  /** 서버가 화면이 모르는 필드명을 내려주며, 그것을 버리면 어디에도 표시되지 않는 오류가 생긴다. */
+  it('화면이 모르는 필드의 400과 화면 수준 오류는 배너로 나온다', async () => {
+    const { user } = await openUserDetail([
+      userUpdateRoute(1001, () =>
+        validationErrorResponse([
+          { scope: 'field', field: 'syntheticUnknown', code: 'RANGE', message: '모르는 칸 오류.' },
+          { scope: 'screen', code: 'STATE_LOCKED', message: '화면 수준 오류.' },
+        ]),
+      ),
+    ]);
+
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), 'Z');
+    await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await within(userFormPane()).findByText('모르는 칸 오류.')).toBeInTheDocument();
+    expect(within(userFormPane()).getByText('화면 수준 오류.')).toBeInTheDocument();
+  });
+
+  /**
+   * 세 원인은 대응 방법이 서로 다르다 — 한 문구로 뭉개면 사용자가 다음 행동을 정할 수 없다.
+   * 그래서 **다른 두 원인의 문구가 나오지 않는 것**까지 함께 본다.
+   */
+  const CONFLICT_CASES = [
+    { cause: 'user', phrase: '다른 사용자가 먼저 저장했습니다' },
+    { cause: 'erpSync', phrase: '외부 시스템에서 이 항목이 다시 동기화됐습니다' },
+    { cause: 'workerLease', phrase: '다른 작업에서 이 항목을 처리하는 중입니다' },
+  ] as const;
+
+  for (const { cause, phrase } of CONFLICT_CASES) {
+    it(`충돌 원인 ${cause}에는 그 원인만의 문구와 「최신 불러오기」가 나온다`, async () => {
+      const { user } = await openUserDetail([
+        userUpdateRoute(1001, () =>
+          jsonResponse({ conflictCause: cause, message: '' }, { status: 409 }),
+        ),
+      ]);
+
+      await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), 'Z');
+      await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+
+      expect(await screen.findByText(new RegExp(phrase))).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+
+      for (const other of CONFLICT_CASES) {
+        if (other.cause === cause) continue;
+        expect(screen.queryByText(new RegExp(other.phrase))).not.toBeInTheDocument();
+      }
+    });
+  }
+
+  /** 실패에도 폼을 닫으면 사용자는 자기가 무엇을 하려 했는지 잃는다. */
+  it('저장에 실패해도 폼이 닫히지 않고 입력값이 남는다', async () => {
+    const { user } = await openUserDetail([
+      userUpdateRoute(1001, () =>
+        validationErrorResponse([{ scope: 'screen', code: 'STATE_LOCKED', message: '막혔습니다.' }]),
+      ),
+    ]);
+
+    await user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), '합성 사용자 Z');
+    await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await within(userFormPane()).findByText('막혔습니다.')).toBeInTheDocument();
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue(
+      '합성 사용자 Z',
+    );
+  });
+});
+
+describe('UsersRolesScreen 등록', () => {
+  const fillCreateForm = async (extraRoutes: StubRoute[] = []) => {
+    const rendered = renderScreen([
+      userListRoute(),
+      departmentsRoute(),
+      userDetailRoute(),
+      ...extraRoutes,
+    ]);
+
+    await waitForUserList(rendered.requests);
+    await rendered.user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+    await within(userFormPane()).findByRole('textbox', { name: '로그인 ID' });
+
+    await rendered.user.type(
+      within(userFormPane()).getByRole('textbox', { name: '로그인 ID' }),
+      'SYN-LOGIN-09',
+    );
+    await rendered.user.type(
+      within(userFormPane()).getByRole('textbox', { name: '이름' }),
+      '합성 사용자 Z',
+    );
+
+    return rendered;
+  };
+
+  const createBodyOf = (requests: RecordedRequest[]): Record<string, unknown> => {
+    const post = requests.find(
+      (request) => request.method === 'POST' && request.url.pathname === USERS_PATH,
+    );
+
+    expect(post).toBeDefined();
+
+    return JSON.parse(post?.body ?? '{}') as Record<string, unknown>;
+  };
+
+  it('등록 요청에 멱등 키만 실린다 — 아직 잠글 대상이 없다', async () => {
+    const { requests, user } = await fillCreateForm([userCreateRoute()]);
+
+    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.method === 'POST')).toBe(true);
+    });
+
+    const post = requests.find((request) => request.method === 'POST');
+
+    expect(post?.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(post?.headers.get('If-Match')).toBeNull();
+  });
+
+  /** 계약이 「미지정 시 서버가 기본값으로 채운다」고 명시했고 화면이 고를 값이 없다. */
+  it('등록 본문에 상태 코드가 실리지 않는다', async () => {
+    const { requests, user } = await fillCreateForm([userCreateRoute()]);
+
+    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.method === 'POST')).toBe(true);
+    });
+    expect(Object.keys(createBodyOf(requests))).not.toContain('statusCode');
+    expect(createBodyOf(requests).loginId).toBe('SYN-LOGIN-09');
+  });
+
+  it('등록에 성공하면 방금 만든 사용자가 열린다', async () => {
+    const { requests, search, user } = await fillCreateForm([
+      userCreateRoute(),
+      userDetailRoute({ ...filledUserFixture, appUserId: 1009 }),
+    ]);
+
+    await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('usr')).toBe('1009');
+    });
+    expect(new URLSearchParams(search()).has('new')).toBe(false);
+    expect(requests.length).toBeGreaterThan(0);
+  });
+
+  it('등록에는 사용 중지가 없다 — 아직 없는 자원을 중지할 수 없다', async () => {
+    await fillCreateForm([userCreateRoute()]);
+
+    expect(
+      within(userFormPane()).queryByRole('button', { name: '사용 중지' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('UsersRolesScreen 사용 중지', () => {
+  const openDeactivateDialog = async (extraRoutes: StubRoute[] = []) => {
+    const rendered = await openUserDetail(extraRoutes);
+
+    await rendered.user.click(within(userFormPane()).getByRole('button', { name: '사용 중지' }));
+    await screen.findByRole('dialog');
+
+    return rendered;
+  };
+
+  /** 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다. */
+  it('창은 열기 전에는 DOM에 없다', async () => {
+    await openUserDetail([userDeactivateRoute()]);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText(/되돌리는 경로가 없습니다/)).not.toBeInTheDocument();
+  });
+
+  it('창이 되돌릴 수 없다는 사실을 먼저 밝히고 건수를 내지 않는다', async () => {
+    await openDeactivateDialog([userDeactivateRoute()]);
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText(/되돌리는 경로가 없습니다/)).toBeInTheDocument();
+    expect(dialog.textContent).not.toMatch(/\d+\s*건/);
+  });
+
+  it('확인 요청에 멱등 키와 상세 경로의 잠금 토큰이 둘 다 실린다', async () => {
+    const { requests, user } = await openDeactivateDialog([userDeactivateRoute()]);
+
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.url.pathname.endsWith(':deactivate'))).toBe(true);
+    });
+
+    const action = requests.find((request) => request.url.pathname.endsWith(':deactivate'));
+
+    expect(action?.headers.get('Idempotency-Key')).toMatch(UUID);
+    // 액션 경로에는 ETag가 보관되지 않는다 — 그 경로로 꺼내면 언제나 비어 있다.
+    expect(action?.headers.get('If-Match')).toBe('W/"7"');
+  });
+
+  it('성공하면 창이 닫히고 목록과 상세를 다시 조회한다', async () => {
+    const { requests, user } = await openDeactivateDialog([userDeactivateRoute()]);
+
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(userRequests(requests).length).toBeGreaterThan(1);
+    });
+  });
+
+  /** 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */
+  it('실패하면 창이 닫히지 않고 배너가 창 안에 나온다', async () => {
+    const { user } = await openDeactivateDialog([
+      userDeactivateRoute(1001, () =>
+        jsonResponse(
+          { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '중지할 수 없습니다.' }] },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    expect(
+      await within(screen.getByRole('dialog')).findByText('중지할 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('이미 미사용인 사용자는 사용 중지가 비활성이고 사유가 보인다', async () => {
+    await openUserDetail([userDeactivateRoute(1003)], {
+      ...filledUserFixture,
+      appUserId: 1003,
+      isActive: false,
+    });
+
+    expect(within(userFormPane()).getByRole('button', { name: '사용 중지' })).toBeDisabled();
+    expect(
+      within(userFormPane()).getByText('사용 중지는 이미 미사용인 사용자에게 다시 할 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('UsersRolesScreen 초안 수명', () => {
+  /** 편집 중에 캐시가 갱신돼도 값이 되돌아가면 사용자는 자기가 쓰던 것을 잃는다. */
+  it('편집 중 목록 캐시가 갱신돼도 폼의 값이 되돌아가지 않는다', async () => {
+    const { requests, user } = await openUserDetail([userUpdateRoute()]);
+
+    await user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), '합성 사용자 Z');
+
+    // 목록만 다시 조회한다 — 상세 응답 객체는 그대로다.
+    await user.click(within(userListPane()).getByRole('checkbox', { name: '미사용 포함' }));
+    await waitFor(() => {
+      expect(userRequests(requests).length).toBeGreaterThan(1);
+    });
+
+    // 조건이 바뀌면 선택이 사라지는 것이 규칙이라 폼 자체가 닫힌다 — 값이 서버 값으로 되돌아 남지 않는다.
+    expect(
+      within(userFormPane()).queryByRole('textbox', { name: '이름' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('다른 사용자를 고르면 폼이 그 사용자의 값으로 다시 세워진다', async () => {
+    const { user } = await openUserDetail([
+      userDetailRoute({ ...filledUserFixture, appUserId: 1002, userName: '합성 사용자 B' }),
+    ]);
+
+    await user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), '고치던 값');
+
+    await user.click(within(userListPane()).getByRole('button', { name: 'SYN-LOGIN-02' }));
+
+    await waitFor(() => {
+      expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue(
+        '합성 사용자 B',
+      );
+    });
   });
 });

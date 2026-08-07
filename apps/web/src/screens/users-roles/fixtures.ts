@@ -13,41 +13,49 @@ type Department = components['schemas']['Department'];
  * 전자우편은 예약 도메인(`.invalid`)을 써 실제로 보낼 수 없는 값임을 드러낸다.
  */
 
+/** 모든 칸이 채워진 사용자. 정상 경로의 기준이다. */
+export const filledUserFixture: AppUser = {
+  appUserId: 1001,
+  loginId: 'SYN-LOGIN-01',
+  userName: '합성 사용자 A',
+  departmentId: 3001,
+  email: 'syn.user.a@example.invalid',
+  statusCode: 'SYN-STATUS-A',
+  isActive: true,
+};
+
 /**
- * 사용자 3건.
- *
- * 1002는 **부서와 전자우편이 널**이고 **상태 코드가 화면이 모르는 값**이다 —
- * 「—」 표기와 「선택지에 없는 값이 그대로 남는다」를 한 픽스처에서 함께 볼 수 있다.
- * 1003은 **미사용**이고 **부서 번호가 선택 목록에 없으며 상태 코드가 빈 문자열**이다.
+ * **부서와 전자우편이 널**인 사용자. 계약이 널을 허용하고 목 서버가 실제로 그런 행을 준다 —
+ * 「—」 표기가 나오는지 보는 것이 이 픽스처의 목적이다.
  */
+export const nullFieldUserFixture: AppUser = {
+  appUserId: 1002,
+  loginId: 'SYN-LOGIN-02',
+  userName: '합성 사용자 B',
+  departmentId: null,
+  email: null,
+  statusCode: 'SYN-STATUS-B',
+  isActive: true,
+};
+
+/**
+ * **미사용**이고 **부서 번호가 선택 목록에 없으며 상태 코드가 빈 문자열**인 사용자.
+ * 「(미사용)」 접미·「알 수 없음」·빈 상태 코드를 한 픽스처에서 함께 볼 수 있다.
+ */
+export const inactiveUserFixture: AppUser = {
+  appUserId: 1003,
+  loginId: 'SYN-LOGIN-03',
+  userName: '합성 사용자 C',
+  departmentId: 9999,
+  email: 'syn.user.c@example.invalid',
+  statusCode: '',
+  isActive: false,
+};
+
 export const appUserFixtures: AppUser[] = [
-  {
-    appUserId: 1001,
-    loginId: 'SYN-LOGIN-01',
-    userName: '합성 사용자 A',
-    departmentId: 3001,
-    email: 'syn.user.a@example.invalid',
-    statusCode: 'SYN-STATUS-A',
-    isActive: true,
-  },
-  {
-    appUserId: 1002,
-    loginId: 'SYN-LOGIN-02',
-    userName: '합성 사용자 B',
-    departmentId: null,
-    email: null,
-    statusCode: 'SYN-STATUS-B',
-    isActive: true,
-  },
-  {
-    appUserId: 1003,
-    loginId: 'SYN-LOGIN-03',
-    userName: '합성 사용자 C',
-    departmentId: 9999,
-    email: 'syn.user.c@example.invalid',
-    statusCode: '',
-    isActive: false,
-  },
+  filledUserFixture,
+  nullFieldUserFixture,
+  inactiveUserFixture,
 ];
 
 /**
