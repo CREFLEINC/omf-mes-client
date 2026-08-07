@@ -534,6 +534,18 @@ const savedBodies = (requests: RecordedRequest[], itemId = 1001): unknown[] =>
     )
     .map((request) => JSON.parse(request.body) as unknown);
 
+/** 상세를 몇 번 받았는가. 재조회가 실제로 나갔는지 세는 유일한 근거다. */
+const detailGetCount = (requests: RecordedRequest[], itemId = 1001): number =>
+  requests.filter(
+    (request) =>
+      request.method === 'GET' && request.url.pathname === `${ITEMS_PATH}/${String(itemId)}`,
+  ).length;
+
+const FORBIDDEN_TEXT = '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.';
+const ERP_SYNC_TEXT =
+  '외부 시스템에서 이 항목이 다시 동기화됐습니다. 최신 내용을 불러온 뒤 다시 저장하세요.';
+const SHELF_LIFE_REQUIRED_TEXT = '유효기한 관리를 켜면 유효기한(일)을 입력해야 합니다.';
+
 /**
  * M02 — 확장 저장 본문에 원본 4열이 없다.
  * M03 — 본문의 `isActive`가 조회값이다.
@@ -786,16 +798,23 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
     await selectFirstItem(user);
     await findAttrsPane();
 
-    // 인라인 오류와 배너를 함께 세운다 — 로컬 검증 실패 뒤 값을 되돌려 서버 실패까지 받는다.
-    await user.clear(screen.getByLabelText('유효기한(일)'));
-    await user.click(screen.getByRole('button', { name: '저장' }));
-    await screen.findByText('유효기한 관리를 켜면 유효기한(일)을 입력해야 합니다.');
-
-    await user.type(screen.getByLabelText('유효기한(일)'), '30');
+    // 먼저 서버 실패 배너를 세운다.
     await editAndSave(user);
     await screen.findByText(
       '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
     );
+
+    /*
+     * 이어서 로컬 검증 오류를 세운다. 요청이 나가지 않으므로 배너가 그대로 남는다.
+     *
+     * **이 칸을 품목을 옮길 때까지 다시 건드리지 않는다.** 값을 고치면 그 자리에서 오류가
+     * 지워져(`changeAttrsValues`) 「품목 변경이 인라인 오류를 지운다」가 검사되지 않는다 —
+     * 오류가 이미 없는 상태를 「사라졌다」로 읽는 헛도는 단언이 된다.
+     */
+    await user.clear(screen.getByLabelText('개봉 후 유효시간(시간)'));
+    await user.type(screen.getByLabelText('개봉 후 유효시간(시간)'), '0');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.');
 
     await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
 
@@ -807,7 +826,7 @@ describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => 
       ).not.toBeInTheDocument();
     });
     expect(
-      screen.queryByText('유효기한 관리를 켜면 유효기한(일)을 입력해야 합니다.'),
+      screen.queryByText('개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.'),
     ).not.toBeInTheDocument();
   });
 
@@ -975,6 +994,128 @@ describe('ItemExtendedAttrsScreen — 저장 성공 (M30)', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    });
+  });
+});
+
+/**
+ * 「취소」 — 기준값으로 되돌리는 조작이다.
+ *
+ * 세 가지를 한꺼번에 한다(값 복원 · 인라인 오류 소거 · 저장 실패 배너 소거).
+ * 셋을 따로 단언해야 하나가 빠졌을 때 어느 것이 빠졌는지 드러난다 —
+ * 핸들러를 통째로 비워도 통과하는 상태를 남기지 않는다.
+ */
+describe('ItemExtendedAttrsScreen — 취소', () => {
+  it('고친 값이 기준값으로 돌아온다', async () => {
+    const { user } = renderScreen([itemListRoute(), itemDetailRoute(), uomsRoute()], '?item=1001');
+
+    await findAttrsPane();
+
+    await user.type(screen.getByLabelText('보관 조건'), 'ZZZ');
+    expect(screen.getByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01ZZZ');
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(screen.getByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01');
+  });
+
+  /* 되돌린 뒤에는 고친 것이 없다 — 저장·취소가 다시 닫혀야 상태와 액션이 어긋나지 않는다. */
+  it('취소한 뒤에는 저장과 취소가 다시 닫힌다', async () => {
+    const { user } = renderScreen([itemListRoute(), itemDetailRoute(), uomsRoute()], '?item=1001');
+
+    await findAttrsPane();
+
+    await user.type(screen.getByLabelText('보관 조건'), 'ZZZ');
+    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+  });
+
+  it('인라인 오류와 저장 실패 배너가 함께 사라진다', async () => {
+    const { user } = renderScreen(
+      [
+        itemListRoute(),
+        itemDetailRoute(),
+        uomsRoute(),
+        itemSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+      ],
+      '?item=1001',
+    );
+
+    await findAttrsPane();
+
+    // 서버 실패 배너를 먼저 세운다.
+    await editAndSave(user);
+    await screen.findByText(FORBIDDEN_TEXT);
+
+    // 이어서 로컬 검증 오류를 세운다 — 요청이 나가지 않으므로 배너가 그대로 남는다.
+    await user.clear(screen.getByLabelText('유효기한(일)'));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText(SHELF_LIFE_REQUIRED_TEXT);
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByText(SHELF_LIFE_REQUIRED_TEXT)).not.toBeInTheDocument();
+    expect(screen.queryByText(FORBIDDEN_TEXT)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * 「최신 불러오기」 — 저장 충돌을 푸는 **유일한** 경로다.
+ *
+ * 계약이 덮어쓰기 강제를 제공하지 않으므로 최신 값을 받아 다시 입력하는 수밖에 없다.
+ * **상세를 실제로 다시 받는지**가 이 액션의 전부다 — 배너만 사라지고 재조회가 없으면
+ * 보관된 잠금 토큰이 낡은 채로 남아 다음 저장이 같은 충돌로 또 막힌다.
+ */
+describe('ItemExtendedAttrsScreen — 최신 불러오기', () => {
+  it('상세를 한 번 더 받는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        itemListRoute(),
+        itemDetailRoute(),
+        uomsRoute(),
+        itemSaveFailureRoute(409, { conflictCause: 'erpSync', message: '충돌' }),
+      ],
+      '?item=1001',
+    );
+
+    await findAttrsPane();
+
+    await editAndSave(user);
+    await screen.findByText(ERP_SYNC_TEXT);
+
+    const before = detailGetCount(requests);
+
+    await user.click(screen.getByRole('button', { name: '최신 불러오기' }));
+
+    await waitFor(() => {
+      expect(detailGetCount(requests)).toBe(before + 1);
+    });
+  });
+
+  it('배너가 사라진다', async () => {
+    const { user } = renderScreen(
+      [
+        itemListRoute(),
+        itemDetailRoute(),
+        uomsRoute(),
+        itemSaveFailureRoute(409, { conflictCause: 'erpSync', message: '충돌' }),
+      ],
+      '?item=1001',
+    );
+
+    await findAttrsPane();
+
+    await editAndSave(user);
+    await screen.findByText(ERP_SYNC_TEXT);
+
+    await user.click(screen.getByRole('button', { name: '최신 불러오기' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(ERP_SYNC_TEXT)).not.toBeInTheDocument();
     });
   });
 });
