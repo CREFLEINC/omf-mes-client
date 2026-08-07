@@ -230,16 +230,15 @@ describe('UserListPane 상태별 표시', () => {
     expect(screen.queryByText('등록된 사용자가 없습니다')).not.toBeInTheDocument();
   });
 
-  it('조건 없는 0건과 조건이 걸린 0건의 안내가 다르다', () => {
-    const { unmount } = render(<span />);
-    unmount();
-
+  it('조건 없는 0건에는 「등록된 사용자가 없습니다」가 나온다', () => {
     renderPane({
       users: [],
       pageView: toPageView({ page: 1, size: 50, total: 0 }, 0),
     });
 
     expect(screen.getByText('등록된 사용자가 없습니다')).toBeInTheDocument();
+    // 조건이 걸린 0건과 뭉치면 「조건을 줄이라」는 쓸모없는 안내가 된다.
+    expect(screen.queryByText('조건에 맞는 사용자가 없습니다')).not.toBeInTheDocument();
   });
 
   it('조건이 걸린 0건에는 초기화 길이 함께 나온다', async () => {

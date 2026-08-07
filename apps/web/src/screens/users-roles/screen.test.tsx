@@ -485,17 +485,36 @@ describe('UsersRolesScreen 목록 표시', () => {
 });
 
 describe('UsersRolesScreen 조회 실패', () => {
-  it('조회에 실패하면 배너와 다시 시도가 나오고 빈 상태는 나오지 않는다', async () => {
-    const { requests } = renderScreen([userListRoute(), departmentsRoute()]);
-
-    await waitForUserList(requests);
-
-    const failing = renderScreen([userListErrorRoute(500), departmentsRoute()]);
+  /** 조회 실패는 표·빈 상태 대신 배너가 서는 자리다 — 「없습니다」로 내면 사실과 다른 안내가 된다. */
+  it('조회에 실패하면 배너가 서고 표도 빈 상태도 나오지 않는다', async () => {
+    const { requests } = renderScreen([userListErrorRoute(500), departmentsRoute()]);
 
     await waitFor(() => {
-      expect(screen.getAllByText('목록을 불러오지 못했습니다').length).toBeGreaterThan(0);
+      expect(userRequests(requests)).toHaveLength(1);
     });
-    expect(failing.requests.length).toBeGreaterThan(0);
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText('등록된 사용자가 없습니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 사용자가 없습니다')).not.toBeInTheDocument();
+  });
+
+  /**
+   * 조회 실패에서 사용자가 할 수 있는 조치는 재시도뿐이다.
+   * **버튼이 있는지만 보면 안 된다** — 눌러도 아무 일이 없으면 사용자를 헛돌게 한다.
+   */
+  it('「다시 시도」를 누르면 목록을 실제로 다시 조회한다', async () => {
+    const { requests, user } = renderScreen([userListErrorRoute(500), departmentsRoute()]);
+
+    await waitFor(() => {
+      expect(userRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(await screen.findByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(userRequests(requests).length).toBeGreaterThan(1);
+    });
   });
 
   /** 서버가 빈 문구를 주는 일이 실제로 있다 — 빈 배너가 아니라 기본 안내가 나와야 한다. */
