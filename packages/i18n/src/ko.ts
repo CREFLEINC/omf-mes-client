@@ -1929,7 +1929,7 @@ const judgmentCode = {
   empty: {
     groupNotFoundTitle: '판정유형 코드 그룹을 찾지 못했습니다',
     groupNotFoundDescription: (groupCode: string): string =>
-      `그룹코드 ${groupCode} 인 코드그룹이 없습니다. 공통코드 화면에서 이 코드그룹을 먼저 등록하세요.`,
+      `그룹코드가 「${groupCode}」인 코드그룹이 없습니다. 공통코드 화면에서 이 코드그룹을 먼저 등록하세요.`,
   },
   notices: {
     /** 판정유형 목록이 확정되기 전까지 낸다. 값을 지어내지 않으므로 그 한계를 문구가 밝힌다. */
