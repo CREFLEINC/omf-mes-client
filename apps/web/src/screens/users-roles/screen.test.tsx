@@ -1770,6 +1770,34 @@ describe('UsersRolesScreen 역할 부여', () => {
   });
 
   /**
+   * **한 번 본 사용자로 되돌아가는 길**이다. 부여분이 이미 캐시에 있어 「불러오는 중」이
+   * 한 번도 지나가지 않는다 — 조회가 비는 순간에 기대는 정리는 이 길을 덮지 못한다.
+   * 뒤로가기·주소 손 편집·공유 링크가 밟는다.
+   */
+  it('이미 본 사용자로 주소를 직접 되돌려도 체크가 그 사용자의 부여분으로 다시 세워진다', async () => {
+    const userB: AppUser = { ...filledUserFixture, appUserId: 1002, userName: '합성 사용자 B' };
+
+    const { goTo } = await openRoleAssign([
+      userDetailRoute(userB, { etag: 'W/"1002"' }),
+      userRolesRoute(1002, [{ userRoleId: 7010, appUserId: 1002, roleId: 5002 }]),
+      userDataScopesRoute(1002, []),
+    ]);
+
+    // 1002를 한 번 열어 부여분을 캐시에 올린다.
+    goTo(`${ROUTE}?usr=1002`);
+    await waitFor(() => {
+      expect(roleCheckbox('SYN-ROLE-02 · 합성 역할 B')).toBeChecked();
+    });
+
+    goTo(`${ROUTE}?usr=1001`);
+
+    await waitFor(() => {
+      expect(roleCheckbox('SYN-ROLE-01 · 합성 역할 A')).toBeChecked();
+    });
+    expect(roleCheckbox('SYN-ROLE-02 · 합성 역할 B')).not.toBeChecked();
+  });
+
+  /**
    * 역할 부여와 사용자 정보는 저장 버튼이 서로 다르다. 한쪽을 저장했다고 다른 쪽에서
    * 아직 저장하지 않은 조작이 사라지면 사용자는 자기가 무엇을 잃었는지 모른다.
    */
@@ -2157,6 +2185,33 @@ describe('UsersRolesScreen 데이터 접근범위', () => {
     });
     expect(
       within(dataScopeRows()[0] as HTMLElement).getByText('SYN-PLT-02 · 합성 공장 B'),
+    ).toBeInTheDocument();
+  });
+
+  /** 한 번 본 사용자로 되돌아가는 길 — 접근범위가 캐시에 있어 조회가 비는 순간이 없다. */
+  it('이미 본 사용자로 주소를 직접 되돌려도 표가 그 사용자의 접근범위로 다시 세워진다', async () => {
+    const userB: AppUser = { ...filledUserFixture, appUserId: 1002, userName: '합성 사용자 B' };
+
+    const { goTo } = await openDataScopes([
+      userDetailRoute(userB, { etag: 'W/"1002"' }),
+      userRolesRoute(1002, []),
+      userDataScopesRoute(1002, [
+        { userDataScopeId: 9020, appUserId: 1002, businessUnitId: null, plantId: 4002 },
+      ]),
+    ]);
+
+    goTo(`${ROUTE}?usr=1002`);
+    await waitFor(() => {
+      expect(dataScopeRows()).toHaveLength(1);
+    });
+
+    goTo(`${ROUTE}?usr=1001`);
+
+    await waitFor(() => {
+      expect(dataScopeRows()).toHaveLength(2);
+    });
+    expect(
+      within(dataScopeRows()[0] as HTMLElement).getByText('SYN-BU-01 · 합성 사업부 A'),
     ).toBeInTheDocument();
   });
 
