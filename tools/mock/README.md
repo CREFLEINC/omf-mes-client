@@ -13,12 +13,42 @@ pnpm mock:smoke    # 대표 경로 smoke 테스트
 
 | 변수 | 기본값 | 뜻 |
 | --- | --- | --- |
-| `OMF_SPEC_PATH` | `../omf/deliverables/openapi/mdm-기준정보.json` (형제 클론) | OpenAPI 정본 경로 |
+| `OMF_SPEC_PATH` | `../omf/deliverables/openapi/` 아래 `mdm-기준정보.json`, `logistics-01자재창고.json` (형제 클론) | OpenAPI 정본 경로. **쉼표로 여러 벌**을 준다. 하나만 줘도 된다 |
 | `MOCK_PORT` | `4010` | 목 서버 포트 |
 
 ## 정본 규칙
 
 스펙 파일은 설계 저장소(omf-mes)가 정본이며 **이 저장소로 복사하지 않는다** — 복사하면 갱신이 갈린다. 항상 경로 참조로 쓴다.
+
+## 계약이 여러 벌이다 — 병합해서 쓴다
+
+설계가 도메인마다 계약 파일을 따로 둔다. 반면 Prism `mock`도 `openapi-typescript`도 **문서 하나만** 받는다. 그래서 `tools/merge-spec.mjs`가 여러 문서를 하나로 합친 뒤 그것을 넘긴다.
+
+병합할 문서 목록과 그 **순서**는 `tools/mock/resolve-spec.mjs`가 정한다. 도메인 계약이 늘면 그 배열에 한 줄을 더하는 것으로 끝나야 한다.
+
+### 병합 규칙 — 순서 보존·선행 우선
+
+1. **먼저 온 계약이 이긴다.** 뒤 계약은 앞에 없는 키만 덧붙인다. 그래야 생성물의 블록 순서가 유지되어 도메인이 늘 때마다 재생성 diff가 「덧붙은 부분」으로만 읽힌다.
+2. **`paths` 키가 겹치면 멈춘다**(종료 코드 1, 겹친 경로 이름 출력). 같은 경로를 두 계약이 각각 정의한 것은 계약끼리의 모순이며 설계 저장소가 풀 문제다.
+3. **`components.*` 키가 겹치면**, `description`·`example`·`examples`·`x-`로 시작하는 키를 뺀 나머지가 **완전히 같을 때만** 선행 우선으로 접고 접은 키 이름을 출력한다. 하나라도 다르면 멈춘다. 단 `properties` 아래처럼 **키가 사용자가 지은 이름인 자리**에서는 걷어내지 않는다 — `properties.description`은 설명이 아니라 필드다.
+4. `tags`는 이름 기준 선행 우선으로 합친다. `openapi`·`info`·`servers`처럼 규칙을 따로 두지 않은 최상위 키는 앞 계약의 값을 그대로 둔다.
+
+조용히 덮지 않고 멈추는 것이 핵심이다 — 덮으면 어느 계약의 타입이 살았는지 모르는 채로 생성물이 만들어진다. 멈췄다면 설계 저장소에 `[client→uiux]` 질문 이슈를 올린다.
+
+### 병합본은 커밋하지 않는다
+
+병합본은 `node_modules/.cache/omf-mes/openapi-merged.json`에 쓴다.
+
+- **저장소에 커밋하지 않는다.** 계약 정본은 비공개 설계 저장소에 있고 이 저장소는 공개다.
+- `node_modules/`는 이미 `.gitignore`에 있어 실수로 커밋될 경로가 아니다.
+- 매 실행(`pnpm mock`·`pnpm mock:smoke`·`pnpm gen:api`)마다 다시 쓰므로 낡을 수 없다.
+- OS 임시 폴더 대신 여기를 쓰는 이유는 병합 결과가 이상할 때 사람이 열어 볼 수 있어야 하기 때문이다.
+
+직접 병합해 보려면:
+
+```bash
+node tools/merge-spec.mjs <openapi.json> [openapi.json ...]   # 앞에 오는 문서가 우선한다
+```
 
 ## 한계 — 상태가 없다
 
