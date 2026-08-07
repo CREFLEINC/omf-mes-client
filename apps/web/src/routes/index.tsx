@@ -4,6 +4,7 @@ import { AppLayout } from '../app/layout';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
 import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
+import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
@@ -34,6 +35,11 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/master-change', element: <MasterChangeScreen /> },
       /* W-CO-02 — 기준정보가 아니라 시스템 운영이라 경로 앞머리를 가른다. */
       { path: 'system/users-roles', element: <UsersRolesScreen /> },
+      /*
+       * W-01-09 — 자재창고(도메인 01)의 첫 화면. 앞머리를 계약 경로(`/logistics/**`)와 같은
+       * 낱말로 두어 화면과 계약의 대응이 주소에서 읽히게 한다. 뒤따르는 W-01 화면들이 그대로 쓴다.
+       */
+      { path: 'logistics/inbound-schedule', element: <InboundScheduleScreen /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

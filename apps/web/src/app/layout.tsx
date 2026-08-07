@@ -68,6 +68,15 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             </NavItem>
           </SidebarSection>
           {/*
+           * 입하 예정은 기준정보도 시스템 운영도 아닌 **현장 물류**다 —
+           * 도메인 01(자재창고)의 첫 화면이고, 뒤따르는 W-01 화면들이 이 섹션에 들어온다.
+           */}
+          <SidebarSection label="자재창고">
+            <NavItem to="/logistics/inbound-schedule" icon="local_shipping">
+              입하 예정 조회
+            </NavItem>
+          </SidebarSection>
+          {/*
            * 사용자·역할·권한은 기준정보가 아니라 **시스템 운영**이다 —
            * 기준정보 섹션에 넣으면 「창고·Location」 옆에 서서 분류가 무너진다.
            */}

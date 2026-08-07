@@ -2305,7 +2305,6 @@ const inboundSchedule = {
   table: {
     asnNo: '입하예정번호',
     supplier: '공급사',
-    plant: '공장',
     expectedArrivalDate: '도착 예정일',
     status: '상태',
     select: '선택',
@@ -2318,11 +2317,12 @@ const inboundSchedule = {
     uom: '단위',
     supplierLotNo: '공급사 LOT',
   },
-  /** 고른 건의 제목줄. 위 표에 두지 않은 값(거래명세서번호·비고)이 여기서 보인다. */
+  /** 고른 건의 제목줄. **위 표에 두지 않은 값(공장·비고)이 여기서 보인다.** */
   summary: {
     label: '고른 입하 예정',
     asnNo: '입하예정번호',
     supplier: '공급사',
+    plant: '공장',
     expectedArrivalDate: '도착 예정일',
     deliveryNoteNo: '거래명세서번호',
     remarks: '비고',
