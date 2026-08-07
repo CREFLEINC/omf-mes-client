@@ -727,6 +727,11 @@ describe('ItemExtendedAttrsScreen — 저장 헤더 (M14)', () => {
   });
 
   /* 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다. */
+  /**
+   * **형식만 보지 않는다.** 고정 문자열도 UUID 형식일 수 있어서, 형식 단언만으로는
+   * 「요청마다 새로 만든다」가 지켜지는지 알 수 없다 — 두 번 저장해 값이 서로 다름을 본다.
+   * 같은 키가 두 번 가면 서버가 두 번째 저장을 첫 번째의 재시도로 보고 삼킨다.
+   */
   it('멱등 키를 요청마다 새로 만든다', async () => {
     const { requests, user } = renderScreen([
       itemListRoute(),
@@ -743,8 +748,99 @@ describe('ItemExtendedAttrsScreen — 저장 헤더 (M14)', () => {
       expect(savedBodies(requests)).toHaveLength(1);
     });
 
-    const put = requests.find((request) => request.method === 'PUT')!;
-    expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
+    // 저장 성공으로 폼이 기준값으로 돌아간다 — 다시 고쳐야 두 번째 저장이 열린다.
+    await editAndSave(user);
+
+    await waitFor(() => {
+      expect(savedBodies(requests)).toHaveLength(2);
+    });
+
+    const keys = requests
+      .filter((request) => request.method === 'PUT')
+      .map((request) => request.headers.get('Idempotency-Key'));
+
+    expect(keys).toHaveLength(2);
+    for (const key of keys) {
+      expect(key).toMatch(UUID);
+    }
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+});
+
+/**
+ * 계획 §5.4 선택 수명 표 3행 — 「품목 선택 **변경**」.
+ *
+ * 두 방향을 함께 고정한다. 하나만 두면 반대쪽으로 넘어지기 쉬운 자리다 —
+ * 「비우지 않는다」만 두면 남의 실패 배너가 남고, 「비운다」만 두면 재클릭이 입력을 지운다.
+ */
+describe('ItemExtendedAttrsScreen — 품목 선택 변경 (§5.4 3행)', () => {
+  it('다른 품목으로 옮기면 저장 실패 배너와 인라인 오류가 사라진다', async () => {
+    const { user } = renderScreen([
+      itemListRoute(),
+      itemDetailRoute(),
+      itemDetailRoute(1002),
+      uomsRoute(),
+      itemSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+    ]);
+
+    await selectFirstItem(user);
+    await findAttrsPane();
+
+    // 인라인 오류와 배너를 함께 세운다 — 로컬 검증 실패 뒤 값을 되돌려 서버 실패까지 받는다.
+    await user.clear(screen.getByLabelText('유효기한(일)'));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('유효기한 관리를 켜면 유효기한(일)을 입력해야 합니다.');
+
+    await user.type(screen.getByLabelText('유효기한(일)'), '30');
+    await editAndSave(user);
+    await screen.findByText(
+      '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+        ),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText('유효기한 관리를 켜면 유효기한(일)을 입력해야 합니다.'),
+    ).not.toBeInTheDocument();
+  });
+
+  /*
+   * 재클릭은 「보이는 행이 달라지는」 조작이 아니다 — 비울 근거가 없다.
+   * 비우면 저장하지 않은 입력이 조용히 사라진다(계획 §8 위험 7과 같은 부류).
+   */
+  it('같은 품목을 다시 눌러도 저장하지 않은 입력이 남는다', async () => {
+    const { user } = renderScreen([itemListRoute(), itemDetailRoute(), uomsRoute()], '?item=1001');
+
+    await findAttrsPane();
+
+    await user.type(screen.getByLabelText('보관 조건'), 'ZZZ');
+    expect(screen.getByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01ZZZ');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01' }));
+
+    // 값이 서버 값으로 되돌아가면 여기서 잡힌다.
+    expect(screen.getByLabelText('보관 조건')).toHaveValue('SYN-STORAGE-01ZZZ');
+    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
+  });
+
+  it('같은 품목을 다시 눌러도 주소가 달라지지 않는다', async () => {
+    const { history, user } = renderScreen(
+      [itemListRoute(), itemDetailRoute(), uomsRoute()],
+      '?item=1001',
+    );
+
+    await findAttrsPane();
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01' }));
+
+    expect(history.search()).toBe('?item=1001');
   });
 });
 
