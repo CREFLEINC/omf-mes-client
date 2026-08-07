@@ -1,4 +1,4 @@
-import { Breadcrumb, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -6,7 +6,11 @@ import { useSearchParams } from 'react-router';
 import { useCodeGroupList } from './code-group-queries';
 import { CodeValueSection } from './code-value-section';
 import { readPage, readSelectedId } from './filters';
-import { JUDGMENT_TYPE_GROUP_CODE, findJudgmentTypeGroup } from './judgment-group';
+import {
+  JUDGMENT_TYPE_GROUP_CODE,
+  findJudgmentTypeGroup,
+  isProvisionalJudgmentTypeList,
+} from './judgment-group';
 import { LoadErrorBanner } from './load-error-banner';
 import type { CodeGroupFilters } from './types';
 
@@ -224,7 +228,39 @@ export const JudgmentCodeScreen = () => {
       <PageHeader
         title={t.title}
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        /*
+         * 편집기 안의 문구는 「코드값」이다 — 공통코드 화면과 한 묶음을 공유해 여기서 바꾸면
+         * 그쪽 화면이 함께 바뀐다. 화면 이름과 편집기 어휘가 다른 이유를 머리에서 밝힌다.
+         */
+        description={t.notices.editorScope}
       />
+
+      {/*
+       * 배너 셋은 **편집기 바깥**에 선다. 한 벌에 prop을 더해 안에서 그리면 그 파일이 바뀌고,
+       * 그 순간 공통코드 화면이 함께 위험해진다. 소비 화면이 이미 필요한 사실을 전부 갖고 있다.
+       * 배치 규범 6에 따라 각각 이음매(`.banner-slot`)로 감싼다.
+       */}
+      {isProvisionalJudgmentTypeList() && (
+        <div className="banner-slot">
+          <AlertBanner variant="info">{t.notices.provisionalList}</AlertBanner>
+        </div>
+      )}
+
+      {judgmentGroup !== null && !judgmentGroup.isActive && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.notices.groupInactive}</AlertBanner>
+        </div>
+      )}
+
+      {/*
+       * 값 추가 경고 — **등록 폼이 열려 있는 동안에만** 낸다. 늘 보이는 경고는 읽히지 않아
+       * 정작 값을 늘리는 순간에 효력이 없다. 경고가 필요한 자리는 그 순간 하나뿐이다.
+       */}
+      {isCreating && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.notices.addAffectsOtherScreens}</AlertBanner>
+        </div>
+      )}
 
       {renderBody()}
     </>

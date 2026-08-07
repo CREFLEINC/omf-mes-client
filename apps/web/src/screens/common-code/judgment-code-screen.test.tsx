@@ -122,6 +122,20 @@ const CODE_VALUES: CodeValue[] = [
   },
 ];
 
+const INACTIVE_JUDGMENT_GROUP: CodeGroup = { ...JUDGMENT_GROUP, isActive: false };
+
+/** 등록 성공으로 새로 생긴 코드값. 목록 픽스처에는 없다 — 방금 만들어진 자원이다. */
+const CREATED_CODE_VALUE: CodeValue = {
+  codeValueId: 2104,
+  codeGroupId: JUDGMENT_GROUP.codeGroupId,
+  code: 'SYN-JDG-04',
+  codeName: '합성 판정유형 D',
+  displayOrder: 40,
+  effectiveFrom: null,
+  effectiveTo: null,
+  isActive: true,
+};
+
 interface RecordedRequest {
   method: string;
   url: URL;
@@ -195,11 +209,30 @@ const codeValueDetailRoute = (
   respond: () =>
     jsonResponse(
       {
-        codeValue: CODE_VALUES.find((row) => row.codeValueId === codeValueId),
+        codeValue: [...CODE_VALUES, CREATED_CODE_VALUE].find(
+          (row) => row.codeValueId === codeValueId,
+        ),
         editability,
       },
       { headers: { ETag: 'W/"5"' } },
     ),
+});
+
+/** 코드값 수정. **어느 번호로 나갔는지**가 판정의 핵심이라 경로를 열어 두고 받는다. */
+const codeValueUpdateRoute = (): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' && new URL(request.url).pathname.startsWith(`${CODE_VALUES_PATH}/`),
+  respond: (request) => {
+    const codeValueId = Number(new URL(request.url).pathname.split('/').at(-1));
+
+    return jsonResponse(CODE_VALUES.find((row) => row.codeValueId === codeValueId));
+  },
+});
+
+const codeValueCreateRoute = (): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === CODE_VALUES_PATH,
+  respond: () => jsonResponse(CREATED_CODE_VALUE, { status: 201 }),
 });
 
 /**
@@ -291,6 +324,15 @@ const codeValueTraffic = (requests: RecordedRequest[]): RecordedRequest[] =>
 
 const codeValuePane = (): HTMLElement => screen.getByRole('region', { name: tv.paneTitle });
 
+const codeValueFormPane = (): HTMLElement => screen.getByRole('region', { name: tv.formPaneTitle });
+
+/**
+ * 그 문구를 담은 경고(`role="alert"`). 이 화면에는 경고가 둘 이상 함께 설 수 있어
+ * `getByRole('alert')` 하나로는 어느 경고인지 가릴 수 없다.
+ */
+const alertWithText = (text: string): HTMLElement | undefined =>
+  screen.queryAllByRole('alert').find((element) => element.textContent?.includes(text));
+
 describe('JudgmentCodeScreen — 페이지 머리', () => {
   it('제목과 경로 표시가 보인다', async () => {
     renderScreen([groupListRoute(), codeValueListRoute()]);
@@ -300,7 +342,6 @@ describe('JudgmentCodeScreen — 페이지 머리', () => {
     const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
     expect(within(breadcrumb).getByText(t.breadcrumbRoot)).toBeInTheDocument();
   });
-
 });
 
 describe('JudgmentCodeScreen — 그룹 조회', () => {
@@ -621,6 +662,158 @@ describe('JudgmentCodeScreen — 주소가 조회 조건이 된다', () => {
     expect(query?.get('includeInactive')).toBe('true');
     expect(query?.get('page')).toBe('2');
     expect(query?.get('codeGroupId')).toBe(String(JUDGMENT_GROUP.codeGroupId));
+  });
+});
+
+describe('JudgmentCodeScreen — 안내와 경고', () => {
+  it('편집기가 코드값 어휘를 쓰는 이유를 머리에서 밝힌다', async () => {
+    renderScreen([groupListRoute(), codeValueListRoute()]);
+
+    expect(await screen.findByText(t.notices.editorScope)).toBeInTheDocument();
+  });
+
+  it('판정유형 목록이 확정되기 전에는 임시 목록 안내를 낸다', async () => {
+    renderScreen([groupListRoute(), codeValueListRoute()]);
+
+    expect(await screen.findByText(t.notices.provisionalList)).toBeInTheDocument();
+  });
+
+  /* 그룹이 꺼져 있어도 값은 그대로 있다 — 편집기를 막으면 왜 막혔는지 알 수 없다. */
+  it('찾은 그룹이 미사용이면 경고를 내되 편집기는 연다', async () => {
+    renderScreen([
+      groupListRoute([...DECOY_GROUPS, INACTIVE_JUDGMENT_GROUP]),
+      codeValueListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    expect(screen.getByText(t.notices.groupInactive)).toBeInTheDocument();
+    expect(within(codeValuePane()).getByText('SYN-JDG-01')).toBeInTheDocument();
+  });
+
+  it('그룹이 사용 중이면 미사용 경고를 내지 않는다', async () => {
+    renderScreen([groupListRoute(), codeValueListRoute()]);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    expect(screen.queryByText(t.notices.groupInactive)).not.toBeInTheDocument();
+  });
+
+  /*
+   * 값 추가 경고 — 여기서 늘린 값이 다른 화면 전체에 나타난다는 사실.
+   * **등록 폼이 열려 있는 동안에만** 낸다. 늘 보이는 경고는 읽히지 않는다.
+   */
+  it('등록 폼이 열려 있는 동안 값 추가 경고를 낸다', async () => {
+    renderScreen([groupListRoute(), codeValueListRoute()], '?new=1');
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    expect(alertWithText(t.notices.addAffectsOtherScreens)).toBeDefined();
+  });
+
+  it('등록 폼이 닫혀 있으면 값 추가 경고를 내지 않는다', async () => {
+    renderScreen([groupListRoute(), codeValueListRoute()]);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    expect(screen.queryByText(t.notices.addAffectsOtherScreens)).not.toBeInTheDocument();
+  });
+
+  it('등록 폼을 열고 닫으면 경고도 함께 사라진다', async () => {
+    const { user } = renderScreen([groupListRoute(), codeValueListRoute(), codeValueDetailRoute()]);
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    await user.click(screen.getByRole('button', { name: tv.actions.add }));
+    await waitFor(() => {
+      expect(alertWithText(t.notices.addAffectsOtherScreens)).toBeDefined();
+    });
+
+    await user.click(
+      within(codeValueFormPane()).getByRole('button', { name: messages.common.cancel }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.notices.addAffectsOtherScreens)).not.toBeInTheDocument();
+    });
+  });
+
+  /* 그룹이 없으면 등록 폼도 서지 않는다 — 열리지 않은 폼의 경고를 낼 수 없다. */
+  it('그룹을 찾지 못하면 new=1이 실려 있어도 값 추가 경고를 내지 않는다', async () => {
+    renderScreen([groupListRoute(DECOY_GROUPS), codeValueListRoute()], '?new=1');
+    await screen.findByText(t.empty.groupNotFoundTitle);
+
+    expect(screen.queryByText(t.notices.addAffectsOtherScreens)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * 재사용한 편집기의 동작을 **이 화면에서 독립적으로** 덮는다.
+ *
+ * 한 벌은 공통코드 화면과 공유한다 — 그쪽 사정으로 한 벌이 바뀌면 이 화면만 조용히 깨질 수 있다.
+ * 아래 둘은 이 화면의 완료 조건이기도 하므로 여기에 방어선을 따로 둔다.
+ */
+describe('JudgmentCodeScreen — 재사용한 편집기의 동작', () => {
+  const openCodeValueForm = async (extraRoutes: StubRoute[] = []) => {
+    const rendered = renderScreen(
+      [groupListRoute(), codeValueListRoute(), codeValueDetailRoute(), ...extraRoutes],
+      '?sel=2101',
+    );
+    await screen.findByLabelText(tv.fields.codeName);
+
+    return rendered;
+  };
+
+  /* 판정유형은 참조 관계로 이어져 있지 않아 참조 건수를 셀 수 없다 — 서버가 그렇게 준다. */
+  it('코드 칸이 잠기고 셀 수 없다는 사유가 보인다', async () => {
+    await openCodeValueForm();
+
+    expect(screen.getByLabelText(tv.fields.code)).toBeDisabled();
+    expect(screen.getByText(messages.editability.notCountable(null))).toBeInTheDocument();
+  });
+
+  /* 계약이 두 곳에서 못 박았다 — `display_order`에 유일 제약이 없어 전체 치환이 필요 없다. */
+  it('정렬 순서를 고쳐 저장하면 그 행 하나만 보낸다', async () => {
+    const { requests, user } = await openCodeValueForm([codeValueUpdateRoute()]);
+
+    await user.clear(screen.getByLabelText(tv.fields.displayOrder));
+    await user.type(screen.getByLabelText(tv.fields.displayOrder), '15');
+    await user.click(
+      within(codeValueFormPane()).getByRole('button', { name: messages.common.save }),
+    );
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.method === 'PUT')).toBe(true);
+    });
+
+    const writes = codeValueTraffic(requests).filter((request) => request.method !== 'GET');
+    expect(writes).toHaveLength(1);
+    expect(writes[0]?.url.pathname).toBe(`${CODE_VALUES_PATH}/2101`);
+  });
+
+  /*
+   * 등록에 성공하면 한 벌은 **고르기 콜백만 한 번** 부른다.
+   * 화면이 그것을 주소 갱신 한 번으로 끝내야 뒤로가기가 중간 상태로 떨어지지 않는다.
+   */
+  it('등록에 성공하면 새 코드값으로 옮겨 가고 주소를 한 번만 고친다', async () => {
+    const { history, user } = renderScreen(
+      [
+        groupListRoute(),
+        codeValueListRoute(),
+        codeValueCreateRoute(),
+        codeValueDetailRoute(CREATED_CODE_VALUE.codeValueId),
+      ],
+      '?new=1',
+    );
+    await screen.findByRole('button', { name: 'SYN-JDG-01' });
+
+    await user.type(screen.getByLabelText(tv.fields.code), CREATED_CODE_VALUE.code);
+    await user.type(screen.getByLabelText(tv.fields.codeName), CREATED_CODE_VALUE.codeName);
+    await user.type(screen.getByLabelText(tv.fields.displayOrder), '40');
+    await user.click(within(codeValueFormPane()).getByRole('button', { name: tv.actions.add }));
+
+    await waitFor(() => {
+      expect(history.search()).toBe(`?sel=${String(CREATED_CODE_VALUE.codeValueId)}`);
+    });
+
+    history.back();
+
+    expect(history.search()).toBe('?new=1');
   });
 });
 
