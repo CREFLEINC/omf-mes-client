@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import { toDecimalText } from './decimal-text';
+
 type ItemUomConversion = components['schemas']['ItemUomConversion'];
 
 /**
@@ -50,15 +52,19 @@ const optionalText = (value: string | null | undefined): string => value ?? '';
 /**
  * 서버 응답을 로컬 초안으로 옮긴다.
  *
- * 환산 비율은 **숫자를 문자열로 옮기기만** 한다. 자릿수를 맞추거나 반올림하면
- * 사용자가 고치지 않은 줄이 저장할 때 다른 값이 된다.
+ * 환산 비율은 **표기만 편다**(지수 → 십진). 자릿수를 맞추거나 반올림하면
+ * 사용자가 고치지 않은 줄이 저장할 때 다른 값이 되므로, `toDecimalText`는 값을 바꾸지 않는다.
+ *
+ * **`String`을 그대로 쓰면 안 되는 이유**: 계약이 `numeric(18,8)`이라 `0.00000001`이 실제로
+ * 올 수 있는데 `String(1e-8)`은 `"1e-8"`이다. 표에도 편집 창에도 그 표기가 그대로 나가면
+ * 사용자가 자료로 읽지 못한다.
  */
 export const toUomConversionDrafts = (items: readonly ItemUomConversion[]): UomConversionDraft[] =>
   items.map((item) => ({
     draftId: `saved:${String(item.itemUomConversionId)}`,
     fromUomId: String(item.fromUomId),
     toUomId: String(item.toUomId),
-    conversionRate: String(item.conversionRate),
+    conversionRate: toDecimalText(item.conversionRate),
     effectiveFrom: item.effectiveFrom,
     effectiveTo: optionalText(item.effectiveTo),
   }));

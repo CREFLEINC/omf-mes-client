@@ -1337,6 +1337,7 @@ const itemExtendedAttrs = {
     label: '품목 확장속성',
     attrs: '확장 속성',
     subsidiary: '부속 정보',
+    bom: '자재 명세서',
   },
   /**
    * 부속 정보 안의 하위 탭. 계약이 인용한 화면 스펙의 구획 이름을 그대로 옮긴 것이다 —
@@ -1646,6 +1647,143 @@ const itemExtendedAttrs = {
       duplicateInList:
         '외부 시스템과 거래처가 같은 줄이 있습니다. 거래처를 비운 줄끼리도 같은 줄로 보므로 겹친 줄을 정리하세요.',
     },
+  },
+  /**
+   * 탭③ — 자재 명세서(BOM). **헤더는 전부 원본이다.**
+   *
+   * 이 탭에서 바꿀 수 있는 것은 둘뿐이다 — 어느 자재 명세서가 기본인가(`:set-default`)와
+   * 구성품의 확장 열 넷. 나머지는 외부 시스템이 소유하므로 원본 구획과 같은 말을 쓴다.
+   *
+   * **상태 문구를 만들지 않는다.** 상태 코드의 값 목록이 확정되지 않아 화면이 이름을 지어내면
+   * 그 이름으로 읽힌 판단이 남는다 — 품목유형과 같은 처리로 코드 문자열을 그대로 낸다.
+   */
+  bom: {
+    paneTitle: '자재 명세서 목록',
+    detailPaneTitle: '자재 명세서 정보',
+    fields: {
+      bomCode: 'BOM 코드',
+      bomVersion: 'Rev',
+      status: '상태',
+      isDefault: '기본',
+      validPeriod: '유효기간',
+      /* 수량과 단위를 한 칸에 담으므로 단위 라벨을 따로 두지 않는다 — 구성품 표의 소요량과 같다. */
+      baseQty: '기준 수량',
+      setDefault: '기본 지정',
+    },
+    values: {
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+      /** 기본인 줄에 붙이는 표식. 아닌 줄은 값 없음 표기(`values.empty`)를 쓴다 */
+      isDefault: '기본',
+      /** 「Rev 3」처럼 사람이 읽는 형태. 표의 숫자 열과 액션 이름이 함께 쓴다 */
+      revision: (version: number): string => `Rev ${String(version)}`,
+      /** 자재 명세서 하나를 한 줄로. 액션 이름과 확인 창이 같은 형태를 쓴다 */
+      name: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
+    },
+    actions: {
+      setDefaultRow: (name: string): string => `${name} 기본으로 지정`,
+    },
+    actionReasons: {
+      /* 「무엇이 막혔는지 + 어떻게 풀 수 있는지」 — 이 컨트롤의 이름으로 시작한다. */
+      alreadyDefault:
+        '기본 지정은 이 자재 명세서가 이미 기본이라 할 수 없습니다. 기본을 옮기려면 다른 줄에서 지정하세요.',
+    },
+    loading: {
+      list: '자재 명세서를 불러오는 중',
+    },
+    empty: {
+      /* **여기서 만들 수 없는 자료다** — 자재 명세서도 외부 정본이다. */
+      noneTitle: '등록된 자재 명세서가 없습니다',
+      noneDescription:
+        '자재 명세서는 외부 시스템에서 받아옵니다. 원본 시스템에 자료가 있는지 확인하세요.',
+      notSelected: '위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다',
+    },
+    dialog: {
+      setDefaultTitle: '기본 자재 명세서 지정',
+      /*
+       * **사용자가 고르지 않은 다른 줄이 함께 바뀐다.** 그 사실을 창이 먼저 밝히지 않으면
+       * 어느 줄이 왜 기본에서 내려갔는지 알 수 없다 — 서버 응답은 지정한 줄만 돌려준다.
+       */
+      setDefaultDescription: '같은 품목의 기존 기본 자재 명세서는 자동으로 해제됩니다.',
+      setDefaultConfirm: '기본으로 지정',
+    },
+    actionsColumn: {
+      /** 헤더 목록에서 이 자재 명세서의 내용·구성품을 연다 */
+      open: (name: string): string => `${name} 구성품 보기`,
+    },
+  },
+  /**
+   * 구성품 — **한 행에 원본 열 여섯과 확장 열 넷이 섞여 있다.**
+   *
+   * 이 화면 전체가 걸린 함정이 여기서 가장 좁게 나타난다. 문구도 그 경계를 따라 갈라 둔다 —
+   * 편집 창에 들어가는 라벨은 **확장 열 넷뿐**이고, 표의 원본 열에는 라벨만 있고 입력이 없다.
+   *
+   * **스크랩률에 퍼센트 기호를 쓰지 않는다.** 계약이 0~1 비율이라 못 박았다(A-8) —
+   * 화면이 100을 곱하면 사용자가 넣지 않은 값이 보인다.
+   */
+  component: {
+    paneTitle: '구성품',
+    fields: {
+      sequence: '순서',
+      componentItem: '구성품',
+      /** 수량과 단위를 한 칸에 담는다 — 둘은 따로 읽히지 않는다 */
+      requiredQty: '소요량',
+      scrapRate: '스크랩률',
+      isMandatory: '필수',
+      /** 「등록 공정 · 실사용 공정」을 한 칸에. 두 값이 같을 때가 많아 나란히 놓아야 비교된다 */
+      process: '공정',
+      /** 켜진 확장 표시만 칩으로 */
+      extensions: '확장 표시',
+      edit: '편집',
+      routingOperation: '등록 공정',
+      actualUseProcess: '실사용 공정',
+      lotTraceRequired: 'LOT 추적 강제',
+      backflushAllowed: '백플러시 허용',
+    },
+    values: {
+      mandatory: '필수',
+      optional: '선택',
+      /** 소요량 한 칸 — 「수량 단위」 */
+      quantity: (qty: string, uom: string): string => `${qty} ${uom}`,
+      /** 공정 한 칸 — 「등록 · 실사용」 */
+      process: (registered: string, actual: string): string => `${registered} · ${actual}`,
+      lotTraceRequired: 'LOT 추적',
+      backflushAllowed: '백플러시',
+      /* 계약이 널을 허용한다 — 비우는 것이 정상 값이라 선택지로 둔다. */
+      unassigned: '지정 안 함',
+      /** 등록 공정 선택지 라벨. 순서는 **목록 내 위치**이며 서버 채번 값이 아니다 */
+      routingOperation: (version: number, position: number, name: string): string =>
+        `Rev ${String(version)} · ${String(position)}. ${name}`,
+    },
+    actions: {
+      editRow: (name: string): string => `${name} 확장 열 수정`,
+    },
+    actionReasons: {
+      /* 「무엇이 막혔는지 + 어떻게 풀 수 있는지」 — 이 컨트롤의 이름으로 시작한다. */
+      routingOperationEmpty:
+        '등록 공정은 이 품목에 등록된 공정 흐름이 없어 고를 수 없습니다. 공정 흐름을 먼저 등록한 뒤 다시 여세요.',
+    },
+    loading: {
+      list: '구성품을 불러오는 중',
+      /* 행 상세를 받는 동안. **이 조회가 끝나야 저장을 열 수 있다**(§5.3 6행). */
+      detail: '구성품 정보를 불러오는 중',
+    },
+    dialog: {
+      title: (name: string): string => `구성품 확장 열 수정 — ${name}`,
+      /*
+       * 창에 원본 열이 없다는 사실을 밝힌다 — 없는 것을 찾다가 「화면이 빠뜨렸다」로 읽지 않게 한다.
+       * 서버가 이 경계를 막지 않으므로 화면이 지키는 자리라는 것도 이 문구가 대신한다.
+       */
+      originNotice:
+        '원본 열은 외부 시스템이 소유해 여기서 바꿀 수 없습니다. 아래 네 가지만 저장됩니다.',
+    },
+    empty: {
+      /* **여기서 만들 수 없는 자료다** — 계약에 구성품 추가·삭제 경로가 없다. */
+      noneTitle: '등록된 구성품이 없습니다',
+      noneDescription:
+        '구성품은 외부 시스템에서 받아옵니다. 원본 시스템에 자료가 있는지 확인하세요.',
+    },
+    /* 「구성품 이름을 못 받았다」는 편집을 막지 않는다 — 표시만의 문제다. */
+    itemNamesLoadFailed: '구성품 이름을 불러오지 못했습니다. 편집에는 영향이 없습니다.',
   },
 } as const;
 

@@ -8,6 +8,11 @@ type ItemBuItemMap = components['schemas']['ItemBuItemMap'];
 type ItemUomConversion = components['schemas']['ItemUomConversion'];
 type Partner = components['schemas']['Partner'];
 type ItemExternalCode = components['schemas']['ItemExternalCode'];
+type Bom = components['schemas']['Bom'];
+type BomComponent = components['schemas']['BomComponent'];
+type Routing = components['schemas']['Routing'];
+type RoutingOperation = components['schemas']['RoutingOperation'];
+type Process = components['schemas']['Process'];
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -237,5 +242,178 @@ export const externalCodeFixtures: ItemExternalCode[] = [
     externalSystemCode: 'SYN-EXT-02',
     partnerId: null,
     externalItemCode: 'SYN-EXT-ITEM-02',
+  },
+];
+
+/**
+ * 자재 명세서 헤더 2건. 한 품목에 Rev가 여럿인 형태다.
+ *
+ * - 2001 — **기본이 아니다.** 기본 지정 액션이 열려 있는 줄
+ * - 2002 — **기본이다.** 지정 액션이 사유 붙은 비활성이 되는 줄 · 유효 종료가 **널**이다(무기한)
+ *
+ * 둘 다 `statusCode`가 값 목록 미정 코드라 화면이 이름을 지어내지 않고 그대로 낸다.
+ */
+export const bomFixtures: Bom[] = [
+  {
+    bomId: 2001,
+    parentItemId: 1001,
+    bomCode: 'SYN-BOM-01',
+    bomVersion: 1,
+    statusCode: 'SYN-BOM-STATUS-A',
+    isDefault: false,
+    effectiveFrom: '2026-01-01',
+    effectiveTo: '2026-12-31',
+    baseQty: 100,
+    baseUomId: 7001,
+  },
+  {
+    bomId: 2002,
+    parentItemId: 1001,
+    bomCode: 'SYN-BOM-02',
+    bomVersion: 2,
+    statusCode: 'SYN-BOM-STATUS-B',
+    isDefault: true,
+    effectiveFrom: '2026-03-01',
+    effectiveTo: null,
+    baseQty: 250,
+    baseUomId: 9999,
+  },
+];
+
+/**
+ * 구성품 3건. **원본 열 여섯과 확장 열 넷이 한 행에 섞여 있는** 계약 표현 그대로다.
+ *
+ * - 7001 — 확장 넷이 모두 채워졌다. 스크랩률이 **0.05**라 퍼센트 환산 여부가 눈에 보인다 ·
+ *   등록 공정이 **채번 순서 20 · 목록 내 위치 2**라 둘을 구분해 볼 수 있다
+ * - 7002 — 확장 공정 둘이 **널**이고 확장 표시 둘이 꺼져 있다 · 스크랩률이 **0**이다
+ *   (계약 기본값 · 「0%」가 아니라 「0」이어야 한다) · 구성품 번호가 품목 목록에 **없다**(9001)
+ * - 7003 — 스크랩률이 **1**이다(계약 상한 · 「100%」가 아니다) · 등록 공정이 **옛 Rev**의 줄이라
+ *   최신 Rev만 평탄화하면 이름을 잃는다(M32)
+ */
+export const bomComponentFixtures: BomComponent[] = [
+  {
+    bomComponentId: 7001,
+    bomId: 2001,
+    componentItemId: 1002,
+    routingOperationId: 8002,
+    actualUseProcessId: 3001,
+    requiredQty: 2,
+    uomId: 7001,
+    scrapRate: 0.05,
+    isMandatory: true,
+    lotTraceRequired: true,
+    backflushAllowed: true,
+    sequenceNo: 1,
+  },
+  {
+    bomComponentId: 7002,
+    bomId: 2001,
+    componentItemId: 9001,
+    routingOperationId: null,
+    actualUseProcessId: null,
+    requiredQty: 10,
+    uomId: 7003,
+    scrapRate: 0,
+    isMandatory: false,
+    lotTraceRequired: false,
+    backflushAllowed: false,
+    sequenceNo: 2,
+  },
+  {
+    bomComponentId: 7003,
+    bomId: 2001,
+    componentItemId: 1003,
+    routingOperationId: 8003,
+    actualUseProcessId: 3002,
+    requiredQty: 1,
+    uomId: 7001,
+    scrapRate: 1,
+    isMandatory: true,
+    lotTraceRequired: false,
+    backflushAllowed: true,
+    sequenceNo: 3,
+  },
+];
+
+/**
+ * Routing Rev 2건. 계약이 `routingVersion` 내림차순(최신이 위)으로 준다.
+ * **둘 다 있어야 「최신 Rev만 쓰지 않는다」를 실제로 잴 수 있다**(M32).
+ */
+export const routingFixtures: Routing[] = [
+  {
+    routingId: 9002,
+    itemId: 1001,
+    routingCode: 'SYN-ROUTING-01',
+    routingVersion: 2,
+    statusCode: 'SYN-ROUTING-STATUS-A',
+    effectiveFrom: '2026-03-01',
+    effectiveTo: null,
+  },
+  {
+    routingId: 9001,
+    itemId: 1001,
+    routingCode: 'SYN-ROUTING-01',
+    routingVersion: 1,
+    statusCode: 'SYN-ROUTING-STATUS-B',
+    effectiveFrom: '2026-01-01',
+    effectiveTo: '2026-02-28',
+  },
+];
+
+const routingOperation = (overrides: Partial<RoutingOperation>): RoutingOperation => ({
+  routingOperationId: 8001,
+  routingId: 9002,
+  operationSeq: 10,
+  processId: 3001,
+  operationName: '합성 공정 A',
+  mesManaged: true,
+  materialInputManaged: false,
+  productionResultManaged: true,
+  inspectionManaged: false,
+  outputLotRequired: false,
+  equipmentRequired: false,
+  moldRequired: false,
+  standardCycleTimeSec: null,
+  standardYieldRate: null,
+  ...overrides,
+});
+
+/**
+ * Rev별 공정 라인. **서버 채번 순서(`operationSeq`)가 10·20처럼 띄어 있다** —
+ * 화면은 그 값을 그대로 내지 않고 목록 내 위치로 1부터 센다(계약).
+ */
+export const routingOperationFixtures: Record<number, RoutingOperation[]> = {
+  9002: [
+    routingOperation({ routingOperationId: 8001, operationSeq: 10, operationName: '합성 공정 A' }),
+    routingOperation({ routingOperationId: 8002, operationSeq: 20, operationName: '합성 공정 B' }),
+  ],
+  9001: [
+    routingOperation({
+      routingOperationId: 8003,
+      routingId: 9001,
+      operationSeq: 10,
+      operationName: '합성 공정 C',
+    }),
+  ],
+};
+
+/**
+ * 공정 마스터 2건 — 구성품의 「실사용 공정」. 등록 공정과 **다른 자원이다.**
+ * 둘째는 **미사용**이라 선택지에서 걸러지되 지금 고른 값이면 표식이 붙는다.
+ */
+export const processFixtures: Process[] = [
+  {
+    processId: 3001,
+    processCode: 'SYN-PROC-01',
+    processName: '합성 공정 가',
+    processTypeCode: 'SYN-PROC-TYPE-A',
+    isActive: true,
+  },
+  {
+    processId: 3002,
+    processCode: 'SYN-PROC-02',
+    processName: '합성 공정 나',
+    processTypeCode: 'SYN-PROC-TYPE-A',
+    isActive: false,
   },
 ];

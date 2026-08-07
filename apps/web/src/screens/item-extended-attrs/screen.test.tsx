@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation, useNavigate, type NavigateFunction } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -11,11 +11,16 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  bomComponentFixtures,
+  bomFixtures,
   buMapFixtures,
   businessUnitFixtures,
   externalCodeFixtures,
   itemFixtures,
   partnerFixtures,
+  processFixtures,
+  routingFixtures,
+  routingOperationFixtures,
   uomConversionFixtures,
   uomFixtures,
 } from './fixtures';
@@ -203,6 +208,69 @@ const partnersRoute = (items = partnerFixtures): StubRoute => ({
   respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
 });
 
+/* ── 자재 명세서 ───────────────────────────────────────────────────────────── */
+
+const BOMS_PATH = '/planning/boms';
+const setDefaultPath = (bomId: number): string => `${BOMS_PATH}/${String(bomId)}:set-default`;
+
+/** BOM 헤더 목록 — `ETag`도 쪽 나눔도 없다(계약 실측). `parentItemId`가 필수 쿼리다. */
+const bomListRoute = (items = bomFixtures): StubRoute => ({
+  match: (request) => isGet(request, BOMS_PATH),
+  respond: () => jsonResponse({ items }),
+});
+
+/** 기본 지정 — 응답은 **지정한 BOM 하나만** 돌려준다(기존 기본의 해제는 응답에 없다). */
+const setDefaultRoute = (bomId = 2001): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === setDefaultPath(bomId),
+  respond: () =>
+    jsonResponse({ ...bomFixtures.find((row) => row.bomId === bomId), isDefault: true }),
+});
+
+const setDefaultFailureRoute = (status: number, body: unknown, bomId = 2001): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === setDefaultPath(bomId),
+  respond: () => jsonResponse(body, { status }),
+});
+
+const componentsPath = (bomId: number): string => `${BOMS_PATH}/${String(bomId)}/components`;
+
+/** 구성품 목록 — **`ETag`가 없다**(계약 실측 L). 쪽 나눔도 없다. */
+const bomComponentsRoute = (items = bomComponentFixtures, bomId = 2001): StubRoute => ({
+  match: (request) => isGet(request, componentsPath(bomId)),
+  respond: () => jsonResponse({ items }),
+});
+
+const ROUTINGS_PATH = '/planning/routings';
+
+/** Routing Rev 목록 — `itemId`가 필수 쿼리다. */
+const routingsRoute = (items = routingFixtures): StubRoute => ({
+  match: (request) => isGet(request, ROUTINGS_PATH),
+  respond: () => jsonResponse({ items }),
+});
+
+/**
+ * Rev별 공정 라인. **Rev마다 요청이 하나씩 나간다** — 계약에 「품목의 공정 라인을 한꺼번에
+ * 받는」 오퍼레이션이 없다.
+ */
+const routingOperationsRoute = (byRoutingId = routingOperationFixtures): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' &&
+    /^\/planning\/routings\/\d+\/operations$/.test(new URL(request.url).pathname),
+  respond: (request) => {
+    const routingId = Number(new URL(request.url).pathname.split('/')[3]);
+
+    return jsonResponse({ items: byRoutingId[routingId] ?? [] });
+  },
+});
+
+const PROCESSES_PATH = '/mdm/processes';
+
+const processesRoute = (items = processFixtures): StubRoute => ({
+  match: (request) => isGet(request, PROCESSES_PATH),
+  respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
+});
+
 interface SubsidiaryRouteOverrides {
   itemDetail?: StubRoute;
   buMaps?: StubRoute;
@@ -236,17 +304,21 @@ const subsidiaryRoutes = (overrides: SubsidiaryRouteOverrides = {}): StubRoute[]
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * 뒤로가기를 눌러 보기 위한 탐침.
+ * 주소를 핸들러를 거치지 않고 바꿔 보기 위한 탐침.
  *
  * 하네스가 `MemoryRouter`라 브라우저 히스토리가 없다 — 라우터가 쌓은 칸을 보려면
  * 트리 안에서 `navigate(-1)`을 부르고 그때의 주소를 읽는 수밖에 없다.
+ *
+ * `go`는 **공유된 링크·주소 직접 편집** 경로다. 화면의 클릭 핸들러가 만들 수 없는 조합
+ * (예: 품목만 바뀌고 `bom`은 그대로)을 만들 수 있어야 「주소가 정본이다」가 실제로 검사된다.
  */
 interface HistoryProbe {
   search: () => string;
   back: () => void;
+  go: (search: string) => void;
 }
 
-let probeNavigate: ((delta: number) => void) | null = null;
+let probeNavigate: NavigateFunction | null = null;
 let probeSearch = '';
 
 const RouterProbe = () => {
@@ -277,6 +349,11 @@ const renderScreen = (routes: StubRoute[], search = '') => {
     back: () => {
       act(() => {
         probeNavigate?.(-1);
+      });
+    },
+    go: (next: string) => {
+      act(() => {
+        probeNavigate?.(`${ROUTE}${next}`);
       });
     },
   };
@@ -603,8 +680,8 @@ describe('ItemExtendedAttrsScreen — 탭', () => {
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       '확장 속성',
       '부속 정보',
+      '자재 명세서',
     ]);
-    expect(screen.queryByRole('tab', { name: '자재 명세서' })).not.toBeInTheDocument();
   });
 
   /* 「먼저 고르세요」를 두 번 쌓으면 무엇을 하라는 안내인지 오히려 흐려진다. */
@@ -1752,6 +1829,33 @@ describe('ItemExtendedAttrsScreen — 사업부 매핑 치환 (M15~M18)', () => 
   });
 
   /*
+   * **한 자원을 저장해도 나머지 둘은 다시 받지 않는다.**
+   * 함께 무효화하면 편집 중이던 다른 초안이 서버 응답으로 되감긴다 — `subsidiaryKeys`가
+   * 자원마다 키를 나눈 이유가 이것이다.
+   */
+  it('사업부 매핑 저장이 단위 환산·외부 코드를 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), buMapSaveRoute()],
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+    await waitFor(() => {
+      expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
+    });
+    expect(requestsTo(requests, externalCodesPath())).toHaveLength(1);
+
+    await addBuMapRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(buMapPuts(requests)).toHaveLength(1);
+    });
+    expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
+    expect(requestsTo(requests, externalCodesPath())).toHaveLength(1);
+  });
+
+  /*
    * 창의 확인은 **저장이 아니다.** 확인만으로 요청이 나가면 전체 치환이라는 규약이 깨지고,
    * 사용자가 표를 확인하기 전에 서버가 바뀐다.
    */
@@ -2086,6 +2190,45 @@ describe('ItemExtendedAttrsScreen — 단위 환산 치환 (M15~M18)', () => {
     expect(body.conversions[0]?.conversionRate).toBe(0.00012345);
   });
 
+  /**
+   * F4 — `numeric(18,8)`의 가장 작은 값은 `String`으로 옮기면 `"1e-8"`이 된다.
+   *
+   * **표기만 펴고 값은 그대로다.** 표에 십진으로 보이는지와 본문에 같은 값이 실리는지를
+   * 함께 잰다 — 한쪽만 보면 자릿수를 반올림하는 구현도 통과한다.
+   */
+  it('아주 작은 환산 비율이 표와 본문에서 값을 잃지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        ...subsidiaryRoutes({
+          uomConversions: uomConversionsRoute([
+            { ...uomConversionFixtures[0]!, itemUomConversionId: 4009, conversionRate: 1e-8 },
+            uomConversionFixtures[1]!,
+          ]),
+        }),
+        uomConversionSaveRoute(),
+      ],
+      '?item=1001&tab=sub&sub=uom',
+    );
+
+    const pane = await findUomConversionPane();
+
+    /* 갈아 끼운 자료가 실제로 그려졌는가 — 기본 목록에는 없는 값으로 잰다(F6 교훈). */
+    expect(within(pane).getByText('0.00000001')).toBeInTheDocument();
+    expect(within(pane).queryByText('1e-8')).not.toBeInTheDocument();
+
+    /* 이 줄을 고치지 않는다 — 다른 줄을 지워 저장을 여는 것으로 충분하다. */
+    await user.click(within(pane).getAllByRole('button', { name: /환산 삭제$/ })[1]!);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(uomConversionBodies(requests)).toHaveLength(1);
+    });
+
+    const body = uomConversionBodies(requests)[0] as { conversions: { conversionRate: number }[] };
+    expect(body.conversions).toHaveLength(1);
+    expect(body.conversions[0]?.conversionRate).toBe(1e-8);
+  });
+
   it('창의 확인만으로는 요청이 나가지 않는다', async () => {
     const { requests, user } = renderScreen(
       [...subsidiaryRoutes(), uomConversionSaveRoute()],
@@ -2404,6 +2547,29 @@ describe('ItemExtendedAttrsScreen — 외부 코드 치환 (M15~M18)', () => {
         requestsTo(requests, externalCodesPath()).filter((r) => r.method === 'GET'),
       ).toHaveLength(2);
     });
+  });
+
+  /* 셋째 자원도 자기 키만 무효화한다 — 세 자원 모두 같은 방향으로 잠근다. */
+  it('외부 코드 저장이 사업부 매핑·단위 환산을 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), externalCodeSaveRoute()],
+      '?item=1001&tab=sub&sub=ext',
+    );
+
+    const pane = await findExternalCodePane();
+    await waitFor(() => {
+      expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+    });
+    expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
+
+    await addExternalCodeRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(externalCodePuts(requests)).toHaveLength(1);
+    });
+    expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+    expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
   });
 
   it('403이 공통 배너 문구로 난다 (M26)', async () => {
@@ -2771,5 +2937,1433 @@ describe('ItemExtendedAttrsScreen — 대상 품목 이름의 로딩 갈래 (F2)
 
     expect(screen.queryByRole('option', { name: '알 수 없음' })).not.toBeInTheDocument();
     expect(screen.getByRole('option', { name: '불러오는 중…' })).toBeInTheDocument();
+  });
+});
+
+/* ── 자재 명세서 탭 ────────────────────────────────────────────────────────── */
+
+interface BomRouteOverrides {
+  itemDetail?: StubRoute;
+  bomList?: StubRoute;
+}
+
+/**
+ * 자재 명세서 탭을 그릴 때 필요한 스텁 한 벌.
+ *
+ * **덧붙이기로는 갈아 끼울 수 없다**(F6 교훈) — `createStubFetch`는 첫 일치로 응답하므로
+ * 갈아 끼울 것은 반드시 이 인자로 넘긴다. 쓰기(`setDefaultRoute()`)는 메서드가 달라
+ * 겹치지 않으므로 그대로 덧붙여도 된다.
+ */
+const bomRoutes = (overrides: BomRouteOverrides = {}): StubRoute[] => [
+  itemListRoute(),
+  overrides.itemDetail ?? itemDetailByIdRoute(),
+  uomsRoute(),
+  overrides.bomList ?? bomListRoute(),
+];
+
+const findBomListPane = async (): Promise<HTMLElement> => {
+  const pane = await screen.findByRole('region', { name: '자재 명세서 목록' });
+
+  await waitFor(() => {
+    expect(
+      within(pane).queryByRole('status', { name: '자재 명세서를 불러오는 중' }),
+    ).not.toBeInTheDocument();
+  });
+
+  return pane;
+};
+
+/** `/planning/boms` 아래로 나간 **모든 쓰기**. 기본 지정 말고는 하나도 없어야 한다(M20). */
+const bomWrites = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method !== 'GET' && request.url.pathname.startsWith(BOMS_PATH),
+  );
+
+const bomListGets = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.method === 'GET' && request.url.pathname === BOMS_PATH);
+
+/**
+ * 조회 시점 — 계약이 `parentItemId`를 **필수 쿼리**로 두었다.
+ * `enabled` 없이 부르면 서버가 422로 되돌린다(목 실측).
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 조회 시점', () => {
+  it('확장 속성 탭에서는 자재 명세서를 조회하지 않는다', async () => {
+    const { requests } = renderScreen(bomRoutes(), '?item=1001');
+
+    await findOriginContent();
+
+    expect(bomListGets(requests)).toHaveLength(0);
+  });
+
+  it('품목을 고르기 전에는 자재 명세서 탭 주소여도 조회하지 않는다', async () => {
+    const { requests } = renderScreen(bomRoutes(), '?tab=bom');
+
+    await screen.findByRole('button', { name: 'SYN-ITEM-01' });
+
+    expect(bomListGets(requests)).toHaveLength(0);
+  });
+
+  it('자재 명세서 탭에 들어가면 고른 품목으로 한 번 조회한다', async () => {
+    const { requests } = renderScreen(bomRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+
+    expect(bomListGets(requests)).toHaveLength(1);
+    expect(bomListGets(requests)[0]?.url.searchParams.get('parentItemId')).toBe('1001');
+  });
+
+  /* 부속 자원과 자재 명세서는 서로 다른 탭이다 — 한쪽 탭에서 다른 쪽을 받아 둘 이유가 없다. */
+  it('부속 정보 탭에서는 자재 명세서를 조회하지 않는다', async () => {
+    const { requests } = renderScreen(
+      [...subsidiaryRoutes(), bomListRoute()],
+      '?item=1001&tab=sub',
+    );
+
+    await findBuMapPane();
+
+    expect(bomListGets(requests)).toHaveLength(0);
+  });
+});
+
+/**
+ * C13 · M19 · M20 — **기본 지정은 서버 한 번 호출이다**(결정 9).
+ *
+ * 기존 기본을 화면이 따로 해제하면 그 사이에 **기본이 하나도 없는 순간**이 생긴다.
+ * 계약이 한 트랜잭션으로 처리하며, 응답은 지정한 줄만 돌려준다.
+ */
+describe('ItemExtendedAttrsScreen — 기본 지정 (M19·M20·M21·M22)', () => {
+  /** 확인 창까지 열어 지정을 확정한다. */
+  const setDefaultFirstBom = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 기본으로 지정' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '기본으로 지정' }),
+    );
+  };
+
+  it('지정이 :set-default 한 번으로 끝난다 (M19)', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    await waitFor(() => {
+      expect(bomWrites(requests)).toHaveLength(1);
+    });
+
+    const write = bomWrites(requests)[0]!;
+    expect(write.method).toBe('POST');
+    expect(write.url.pathname).toBe('/planning/boms/2001:set-default');
+  });
+
+  /**
+   * M20 — **다른 자재 명세서로 나가는 쓰기가 0회다.**
+   * 기존 기본(2002)을 화면이 내리면 그 사이에 기본이 하나도 없는 순간이 생긴다.
+   */
+  it('다른 자재 명세서에 대한 쓰기가 0회다 (M20)', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    await waitFor(() => {
+      expect(bomWrites(requests)).toHaveLength(1);
+    });
+
+    /* 기존 기본(2002)을 건드리는 요청이 어떤 메서드로도 나가지 않았다. */
+    expect(
+      requests.filter(
+        (request) => request.method !== 'GET' && request.url.pathname.includes('2002'),
+      ),
+    ).toHaveLength(0);
+  });
+
+  /**
+   * §5.3 표 5행 — 이 쓰기에는 낙관적 잠금이 없다.
+   * `etagPath`에 상세 경로를 주면 토큰을 찾지 못해 요청이 **나가지 않고 멈춘다.**
+   */
+  it('멱등 키만 싣고 If-Match를 싣지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    await waitFor(() => {
+      expect(bomWrites(requests)).toHaveLength(1);
+    });
+
+    const write = bomWrites(requests)[0]!;
+    expect(write.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(write.headers.get('If-Match')).toBeNull();
+  });
+
+  /**
+   * M21 — 확인 창은 **열 때만 마운트한다.**
+   * 디자인 시스템 `Dialog`는 닫혀도 내용이 DOM에 남아, 항상 렌더하면 표에도 없는 버튼이
+   * 검색에 잡히고 지난 대상이 살아 있다.
+   */
+  it('열기 전에는 확인 창이 DOM에 없다 (M21)', async () => {
+    renderScreen(bomRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('같은 품목의 기존 기본 자재 명세서는 자동으로 해제됩니다.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('닫은 뒤에도 확인 창이 DOM에 남지 않는다 (M21)', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 기본으로 지정' }));
+
+    expect(
+      screen.getByText('같은 품목의 기존 기본 자재 명세서는 자동으로 해제됩니다.'),
+    ).toBeInTheDocument();
+
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    /* 창을 여는 것만으로는 서버로 아무것도 나가지 않는다. */
+    expect(bomWrites(requests)).toHaveLength(0);
+  });
+
+  /* M22 — 감추면 그 줄에만 액션이 없는 이유를 알 수 없다. 사유를 붙여 비활성으로 둔다. */
+  it('이미 기본인 줄의 지정은 사유 붙은 비활성이다 (M22)', async () => {
+    const { user } = renderScreen(bomRoutes(), '?item=1001&tab=bom');
+
+    const pane = await findBomListPane();
+    const disabled = within(pane).getByRole('button', { name: '기본으로 지정' });
+
+    expect(disabled).toBeDisabled();
+    expect(
+      within(pane).getByText(/기본 지정은 이 자재 명세서가 이미 기본이라 할 수 없습니다/),
+    ).toBeInTheDocument();
+
+    await user.click(disabled);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /**
+   * 서버 응답이 **지정한 줄만** 돌려주므로(기존 기본의 해제는 응답에 없다)
+   * 목록을 다시 받아야 어느 줄이 기본인지 화면이 알 수 있다.
+   */
+  it('성공하면 목록을 다시 조회하고 창이 닫힌다', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    await waitFor(() => {
+      expect(bomListGets(requests)).toHaveLength(2);
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /* 구성품은 달라지지 않는다 — 함께 무효화하면 표가 이유 없이 다시 그려진다. */
+  it('기본 지정이 품목 상세를 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    const before = detailGetCount(requests);
+
+    await setDefaultFirstBom(user);
+
+    await waitFor(() => {
+      expect(bomListGets(requests)).toHaveLength(2);
+    });
+    expect(detailGetCount(requests)).toBe(before);
+  });
+
+  /**
+   * C17 — 이 화면 전용 문구를 만들지 않는다.
+   *
+   * **실패 배너의 주인은 확인 창 하나다.** 페인에도 슬롯을 두면 창이 열린 채 같은 문구가
+   * 둘로 보인다(F1과 같은 실패 모드) — 개수까지 함께 잰다.
+   */
+  it('403이 공통 배너 문구로 나고 창 안에 하나만 보인다', async () => {
+    const { user } = renderScreen(
+      [...bomRoutes(), setDefaultFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' })],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    expect(await screen.findAllByText(FORBIDDEN_TEXT)).toHaveLength(1);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(FORBIDDEN_TEXT)).toBeInTheDocument();
+  });
+
+  /* 낙관적 잠금이 없어 충돌 갈래가 없다 — 「최신 불러오기」를 내면 없는 원인을 짚어 주게 된다. */
+  it('기본 지정 실패에는 최신 불러오기를 내지 않는다', async () => {
+    const { user } = renderScreen(
+      [...bomRoutes(), setDefaultFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' })],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    await screen.findByText(FORBIDDEN_TEXT);
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+
+  /* 다른 품목으로 옮기면 앞 품목의 실패가 따라오면 안 된다(§5.4 3행). */
+  it('품목을 바꾸면 기본 지정 실패 배너가 사라진다', async () => {
+    const { user } = renderScreen(
+      [...bomRoutes(), setDefaultFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' })],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+    await screen.findByText(FORBIDDEN_TEXT);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(FORBIDDEN_TEXT)).not.toBeInTheDocument();
+    });
+  });
+});
+
+/**
+ * M09 — **탭 변경은 아무것도 비우지 않는다.** 세 탭이 전부 「지금 고른 품목」의 다른 면이다.
+ * 세 번째 탭이 생겼으므로 왕복을 세 탭 전부로 넓힌다.
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 탭을 오가도 잃지 않는다 (M09)', () => {
+  it('탭 셋을 오가도 고른 품목이 그대로다', async () => {
+    const { user } = renderScreen([...subsidiaryRoutes(), bomListRoute()], '?item=1001&tab=sub');
+
+    await findBuMapPane();
+
+    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+    await findBomListPane();
+    expect(await findOriginContent()).toHaveTextContent('SYN-ITEM-01');
+
+    await user.click(screen.getByRole('tab', { name: '확장 속성' }));
+    await findAttrsPane();
+    expect(await findOriginContent()).toHaveTextContent('SYN-ITEM-01');
+  });
+
+  /* 부속 초안은 자재 명세서 탭을 다녀와도 살아 있어야 한다 — 같은 품목의 다른 면이다. */
+  it('자재 명세서 탭을 다녀와도 부속 초안이 남는다', async () => {
+    const { user } = renderScreen([...subsidiaryRoutes(), bomListRoute()], '?item=1001&tab=sub');
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    expect(buMapRowCount(pane)).toBe(3);
+
+    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+    await findBomListPane();
+    await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+
+    expect(buMapRowCount(await findBuMapPane())).toBe(3);
+  });
+});
+
+/* ── 자재 명세서 · 헤더 구획과 구성품 ─────────────────────────────────────── */
+
+interface BomDetailRouteOverrides extends BomRouteOverrides {
+  components?: StubRoute;
+  routings?: StubRoute;
+  routingOperations?: StubRoute;
+}
+
+/**
+ * 헤더 구획·구성품 표까지 그릴 때 필요한 스텁 한 벌.
+ *
+ * **덧붙이기로는 갈아 끼울 수 없다**(F6 교훈) — 갈아 끼울 것은 이 인자로 넘긴다.
+ */
+const bomDetailRoutes = (overrides: BomDetailRouteOverrides = {}): StubRoute[] => [
+  ...bomRoutes(overrides),
+  overrides.components ?? bomComponentsRoute(),
+  overrides.routings ?? routingsRoute(),
+  overrides.routingOperations ?? routingOperationsRoute(),
+  processesRoute(),
+];
+
+const findBomDetailPane = (): Promise<HTMLElement> =>
+  screen.findByRole('region', { name: '자재 명세서 정보' });
+
+const findBomComponentPane = async (): Promise<HTMLElement> => {
+  const pane = await screen.findByRole('region', { name: '구성품' });
+
+  await waitFor(() => {
+    expect(
+      within(pane).queryByRole('status', { name: '구성품을 불러오는 중' }),
+    ).not.toBeInTheDocument();
+  });
+
+  return pane;
+};
+
+const openFirstBom = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }));
+
+  return findBomComponentPane();
+};
+
+const componentGets = (requests: RecordedRequest[], bomId = 2001): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'GET' && request.url.pathname === componentsPath(bomId),
+  );
+
+/**
+ * 자재 명세서 번호를 가리지 않고 **모든** 구성품 목록 요청.
+ *
+ * 「고르기 전에는 0회」를 특정 번호로만 세면 `enabled`를 뺀 코드가 그대로 통과한다 —
+ * 그때 나가는 것은 `bomId=0`을 실은 요청이라 다른 경로이기 때문이다.
+ */
+const anyComponentGets = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.method === 'GET' && /^\/planning\/boms\/\d+\/components$/.test(request.url.pathname),
+  );
+
+const routingOperationGets = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.method === 'GET' &&
+      /^\/planning\/routings\/\d+\/operations$/.test(request.url.pathname),
+  );
+
+/**
+ * 작업 7 완료 조건 ⑤ — **자재 명세서를 고르기 전에는 구성품 조회가 0회다.**
+ * 경로에 `bomId`가 들어가므로 `enabled` 없이 부르면 `0`을 실은 요청이 나간다.
+ */
+describe('ItemExtendedAttrsScreen — 구성품 조회 시점', () => {
+  it('자재 명세서를 고르기 전에는 구성품을 조회하지 않는다', async () => {
+    const { requests } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+
+    /* 번호를 가리지 않고 센다 — `enabled`를 빼면 `bomId=0`을 실은 요청이 나간다. */
+    expect(anyComponentGets(requests)).toHaveLength(0);
+    expect(
+      requests.filter((request) => request.url.pathname.startsWith(ROUTINGS_PATH)),
+    ).toHaveLength(0);
+    expect(requestsTo(requests, PROCESSES_PATH)).toHaveLength(0);
+  });
+
+  it('품목을 고르기 전에는 자재 명세서 탭 주소여도 구성품을 조회하지 않는다', async () => {
+    const { requests } = renderScreen(bomDetailRoutes(), '?tab=bom&bom=2001');
+
+    await screen.findByRole('button', { name: 'SYN-ITEM-01' });
+
+    expect(anyComponentGets(requests)).toHaveLength(0);
+  });
+
+  it('고르면 구성품을 한 번 조회한다', async () => {
+    const { requests, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    await openFirstBom(user);
+
+    expect(componentGets(requests)).toHaveLength(1);
+  });
+
+  /**
+   * 주소에 남의 번호를 손으로 넣어도 그 자재 명세서를 그리지 않는다.
+   *
+   * **헤더 상세를 따로 부르지 않는 결정이 이 방어를 만든다** — 목록에서 찾은 헤더가 정본이라
+   * 이 품목의 목록에 없는 번호는 「고르지 않은 것」이 된다. 상세를 부르면 서버가 그 헤더를
+   * 그대로 돌려주어 남의 자재 명세서를 그린다.
+   */
+  it('이 품목의 목록에 없는 번호는 고르지 않은 것으로 본다', async () => {
+    const { requests } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom&bom=9999');
+
+    await findBomListPane();
+
+    expect(
+      screen.getByText('위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다'),
+    ).toBeInTheDocument();
+    expect(anyComponentGets(requests)).toHaveLength(0);
+    /* 헤더 상세를 부르지 않는다 — 부르면 남의 자재 명세서를 그리게 된다. */
+    expect(
+      requests.filter((request) => /^\/planning\/boms\/\d+$/.test(request.url.pathname)),
+    ).toHaveLength(0);
+  });
+
+  /* 주소를 손으로 고쳐도 빈 화면이 되지 않아야 한다. */
+  it('주소의 자재 명세서 번호가 이상하면 고르지 않은 것으로 본다', async () => {
+    renderScreen(bomDetailRoutes(), '?item=1001&tab=bom&bom=abc');
+
+    await findBomListPane();
+
+    expect(
+      screen.getByText('위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다'),
+    ).toBeInTheDocument();
+  });
+
+  /** 고른 자재 명세서는 품목 아래에 매달린 선택이다(§5.4 3행). */
+  it('품목을 바꾸면 주소에서 자재 명세서 선택이 떨어진다', async () => {
+    const { history, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    await openFirstBom(user);
+    expect(history.search()).toContain('bom=2001');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    expect(history.search()).not.toContain('bom=');
+    expect(history.search()).toContain('item=1002');
+  });
+
+  /* 조건이 바뀌면 주소를 통째로 다시 만든다 — 선택이 자연히 사라진다. */
+  it('조회 조건을 바꾸면 자재 명세서 선택이 사라진다', async () => {
+    const { history, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    await openFirstBom(user);
+
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(history.search()).not.toContain('bom=');
+  });
+});
+
+/**
+ * C03 — **헤더 구획에 폼 컨트롤이 0개이고 저장 버튼이 없다.**
+ * 품목 원본 구획과 같은 자리를 두 번째로 되풀이하는 자리다(M01).
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 헤더에 쓰기 수단이 없다 (M01·C03)', () => {
+  it('헤더 구획에 입력칸도 버튼도 없다', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    await openFirstBom(user);
+
+    const detail = await findBomDetailPane();
+    expect(within(detail).queryAllByRole('textbox')).toHaveLength(0);
+    expect(within(detail).queryAllByRole('combobox')).toHaveLength(0);
+    expect(within(detail).queryAllByRole('switch')).toHaveLength(0);
+    expect(within(detail).queryAllByRole('spinbutton')).toHaveLength(0);
+    expect(within(detail).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('헤더 값을 값 표기로 낸다', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    await openFirstBom(user);
+
+    await findBomDetailPane();
+    expect(screen.getByLabelText('BOM 코드')).toHaveTextContent('SYN-BOM-01');
+    expect(screen.getByLabelText('기준 수량')).toHaveTextContent('100 SYN-UOM-01 · 합성 단위 A');
+  });
+});
+
+/**
+ * M32 — **등록 공정 선택지가 Rev를 평탄화한다.**
+ * 최신 Rev만 받으면 옛 Rev의 줄을 가리키는 구성품이 이름을 잃는다.
+ */
+describe('ItemExtendedAttrsScreen — 구성품 표 (M23·M32)', () => {
+  it('Rev마다 공정 목록을 받아 한 목록으로 편다 (M32)', async () => {
+    const { requests, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    await waitFor(() => {
+      expect(routingOperationGets(requests)).toHaveLength(2);
+    });
+
+    /* 최신 Rev(9002)만 받으면 셋째 줄이 「알 수 없음」이 된다. */
+    expect(within(pane).getByText(/Rev 2 · 2\. 합성 공정 B/)).toBeInTheDocument();
+    expect(within(pane).getByText(/Rev 1 · 1\. 합성 공정 C/)).toBeInTheDocument();
+  });
+
+  /* 계약이 「이 값을 그대로 보여주지 않는다」고 못 박았다 — 채번 값(10·20)이 아니라 위치다. */
+  it('서버 채번 순서 값을 공정 라벨에 내지 않는다', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    /* 이 줄이 가리키는 공정은 채번 순서가 **20**이고 목록 내 위치는 **2**다. */
+    expect(within(pane).getByText(/Rev 2 · 2\. 합성 공정 B/)).toBeInTheDocument();
+    expect(pane.textContent).not.toContain('Rev 2 · 20.');
+  });
+
+  /* C16 — 0~1 비율이며 퍼센트가 아니다(A-8). */
+  it('스크랩률을 비율 그대로 낸다 (M23·C16)', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    expect(within(pane).getByText('0.05')).toBeInTheDocument();
+    expect(pane.textContent).not.toContain('%');
+  });
+
+  it('원본 열에 입력칸이 없다 (M23)', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('combobox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('switch')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('spinbutton')).toHaveLength(0);
+  });
+
+  /**
+   * 결정 12 — **행 단위 이름 조회가 다른 표와 캐시를 공유한다.**
+   * 같은 품목이 두 표에 나와도 상세를 한 번만 받는다.
+   */
+  it('구성품 이름을 행 단위로 받고 같은 품목은 한 번만 받는다', async () => {
+    const { requests, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    expect(within(pane).getByText('SYN-ITEM-02 · 합성 품목 B')).toBeInTheDocument();
+    expect(detailGetCount(requests, 1002)).toBe(1);
+  });
+
+  /* 실패한 행만 이름을 잃는다 — 번호를 대신 내지 않는다. */
+  it('이름을 찾지 못한 줄만 「알 수 없음」이 된다', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    await waitFor(() => {
+      expect(within(pane).getByText('알 수 없음')).toBeInTheDocument();
+    });
+    expect(pane.textContent).not.toContain('9001');
+  });
+});
+
+/**
+ * 탭과 자재 명세서 선택의 수명. **고른 자재 명세서는 탭을 옮겨도 남는다** —
+ * 세 탭이 같은 품목의 다른 면이고, 자재 명세서는 그 품목 아래에 매달려 있다.
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 선택의 수명', () => {
+  it('탭을 오갔다 돌아와도 고른 자재 명세서가 남는다', async () => {
+    const { user } = renderScreen(
+      [...bomDetailRoutes(), ...subsidiaryRoutes().slice(3)],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await openFirstBom(user);
+
+    await user.click(screen.getByRole('tab', { name: '확장 속성' }));
+    await findAttrsPane();
+
+    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+
+    await findBomComponentPane();
+    expect(screen.getByLabelText('BOM 코드')).toHaveTextContent('SYN-BOM-01');
+  });
+
+  /* 다른 자재 명세서를 고르면 그 구성품을 받는다 — 앞 줄의 표가 남으면 안 된다. */
+  it('다른 자재 명세서를 고르면 그 구성품을 받는다', async () => {
+    const { requests, user } = renderScreen(
+      [...bomDetailRoutes(), bomComponentsRoute([], 2002)],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await openFirstBom(user);
+    expect(componentGets(requests, 2001)).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-02 · Rev 2 구성품 보기' }));
+
+    await waitFor(() => {
+      expect(componentGets(requests, 2002)).toHaveLength(1);
+    });
+    expect(screen.getByText('등록된 구성품이 없습니다')).toBeInTheDocument();
+  });
+});
+
+/* ── 구성품 확장 열 편집 ──────────────────────────────────────────────────── */
+
+const componentDetailPath = (bomId: number, bomComponentId: number): string =>
+  `${componentsPath(bomId)}/${String(bomComponentId)}`;
+
+/**
+ * 구성품 행 상세 — **`ETag`가 여기에만 온다**(계약 실측 M).
+ * 목록 조회에는 없으므로 이 조회가 저장의 유일한 토큰 출처다.
+ */
+const componentDetailRoute = ({ withEtag = true } = {}): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' &&
+    /^\/planning\/boms\/\d+\/components\/\d+$/.test(new URL(request.url).pathname),
+  respond: (request) => {
+    const bomComponentId = Number(new URL(request.url).pathname.split('/').pop());
+    const component = bomComponentFixtures.find((row) => row.bomComponentId === bomComponentId);
+
+    if (component === undefined)
+      return jsonResponse({ message: '없는 구성품입니다' }, { status: 404 });
+
+    return jsonResponse(
+      {
+        bomComponent: component,
+        editability: { codeEditable: false, reason: 'RECEIVED_FROM_ERP', referenceCount: 0 },
+      },
+      withEtag ? { headers: { ETag: 'W/"3"' } } : {},
+    );
+  },
+});
+
+const componentSaveRoute = (): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' &&
+    /^\/planning\/boms\/\d+\/components\/\d+$/.test(new URL(request.url).pathname),
+  respond: (request) => {
+    const bomComponentId = Number(new URL(request.url).pathname.split('/').pop());
+
+    return jsonResponse(
+      bomComponentFixtures.find((row) => row.bomComponentId === bomComponentId),
+      { headers: { ETag: 'W/"4"' } },
+    );
+  },
+});
+
+const componentSaveFailureRoute = (status: number, body: unknown): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' &&
+    /^\/planning\/boms\/\d+\/components\/\d+$/.test(new URL(request.url).pathname),
+  respond: () => jsonResponse(body, { status }),
+});
+
+interface ComponentEditRouteOverrides extends BomDetailRouteOverrides {
+  componentDetail?: StubRoute;
+}
+
+/**
+ * 구성품 편집까지 그릴 때 필요한 스텁 한 벌.
+ * **덧붙이기로는 갈아 끼울 수 없다**(F6 교훈) — 갈아 끼울 것은 이 인자로 넘긴다.
+ */
+const componentEditRoutes = (overrides: ComponentEditRouteOverrides = {}): StubRoute[] => [
+  ...bomDetailRoutes(overrides),
+  overrides.componentDetail ?? componentDetailRoute(),
+];
+
+const componentDetailGets = (
+  requests: RecordedRequest[],
+  bomId = 2001,
+  bomComponentId = 7001,
+): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.method === 'GET' &&
+      request.url.pathname === componentDetailPath(bomId, bomComponentId),
+  );
+
+const componentPuts = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.method === 'PUT' &&
+      /^\/planning\/boms\/\d+\/components\/\d+$/.test(request.url.pathname),
+  );
+
+const componentBodies = (requests: RecordedRequest[]): Record<string, unknown>[] =>
+  componentPuts(requests).map((request) => JSON.parse(request.body) as Record<string, unknown>);
+
+/** 첫 구성품의 편집 창을 연다. **여는 것이 곧 행 상세 조회를 켜는 것이다.** */
+const openComponentDialog = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(
+    screen.getByRole('button', { name: '1. SYN-ITEM-02 · 합성 품목 B 확장 열 수정' }),
+  );
+
+  return screen.findByRole('dialog');
+};
+
+/**
+ * M24 — **구성품 저장이 상세 GET 뒤에 확장 4키만 보낸다.**
+ *
+ * 목록만 받고 저장하면 잠금 토큰이 없어 요청이 조용히 멈추고(위험 2),
+ * 원본 열을 섞어 보내도 서버가 막지 않는다(실측 P).
+ */
+describe('ItemExtendedAttrsScreen — 구성품 확장 열 저장 (M24)', () => {
+  it('편집 창을 열면 행 상세가 먼저 나간다', async () => {
+    const { requests, user } = renderScreen(componentEditRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    await findBomComponentPane();
+    expect(componentDetailGets(requests)).toHaveLength(0);
+
+    await openComponentDialog(user);
+
+    await waitFor(() => {
+      expect(componentDetailGets(requests)).toHaveLength(1);
+    });
+    /* 저장은 그 응답 뒤에야 열린다 — 그전에 누르면 토큰 없이 요청이 나간다. */
+    expect(componentPuts(requests)).toHaveLength(0);
+  });
+
+  it('저장 본문의 키 집합이 정확히 확장 4키다 (C14)', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentBodies(requests)).toHaveLength(1);
+    });
+
+    expect(Object.keys(componentBodies(requests)[0]!).sort()).toEqual([
+      'actualUseProcessId',
+      'backflushAllowed',
+      'lotTraceRequired',
+      'routingOperationId',
+    ]);
+  });
+
+  /* 서버가 원본 열을 막지 않는다(실측 P) — 이 단언이 유일한 방어다. */
+  it('저장 본문에 원본 열이 하나도 없다 (C14)', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentBodies(requests)).toHaveLength(1);
+    });
+
+    const body = componentBodies(requests)[0]!;
+    for (const key of [
+      'sequenceNo',
+      'componentItemId',
+      'requiredQty',
+      'uomId',
+      'scrapRate',
+      'isMandatory',
+      'bomComponentId',
+      'bomId',
+    ]) {
+      expect(body).not.toHaveProperty(key);
+    }
+  });
+
+  it('저장에 If-Match와 멱등 키가 실린다 (C15)', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentPuts(requests)).toHaveLength(1);
+    });
+
+    const put = componentPuts(requests)[0]!;
+    expect(put.headers.get('If-Match')).toBe('W/"3"');
+    expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(put.url.pathname).toBe('/planning/boms/2001/components/7001');
+  });
+
+  /**
+   * **토큰이 없으면 요청을 보내지 않는다.** `etagPath`를 잘못 준 코드는 이 갈래에서만 드러난다 —
+   * 토큰이 늘 있는 상황만 검사하면 잘못된 경로로도 저장이 그대로 나간다(PR ② 교훈).
+   */
+  it('상세에 잠금 토큰이 없으면 저장이 나가지 않고 안내가 뜬다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        ...componentEditRoutes({ componentDetail: componentDetailRoute({ withEtag: false }) }),
+        componentSaveRoute(),
+      ],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText('최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.'),
+    ).toBeInTheDocument();
+    expect(componentPuts(requests)).toHaveLength(0);
+  });
+
+  /* §11.4 — 키를 빼지 않고 널을 명시한다. 빼면 서버가 이전 값을 남길 수 있다. */
+  it('공정 둘을 비우면 널 두 개가 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await user.click(await within(dialog).findByLabelText('등록 공정'));
+    await user.click(screen.getAllByRole('option', { name: '지정 안 함' })[0]!);
+
+    await user.click(within(dialog).getByLabelText('실사용 공정'));
+    await user.click(screen.getAllByRole('option', { name: '지정 안 함' })[0]!);
+
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentBodies(requests)).toHaveLength(1);
+    });
+
+    const body = componentBodies(requests)[0]!;
+    expect(body.routingOperationId).toBeNull();
+    expect(body.actualUseProcessId).toBeNull();
+  });
+
+  /**
+   * M30 — 성공 후 목록이 무효화된다. 구성품 목록 키가 행 상세 키의 앞부분이라
+   * 둘이 함께 무효화된다(`bom-queries.test.ts`가 그 모양을 지킨다).
+   */
+  it('성공하면 창이 닫히고 구성품을 다시 조회한다 (M30)', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    expect(componentGets(requests)).toHaveLength(1);
+
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentGets(requests)).toHaveLength(2);
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /* 창을 여는 것만으로는 서버로 쓰기가 나가지 않는다. */
+  it('창을 닫으면 요청이 나가지 않고 창이 DOM에서 사라진다', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('등록 공정')).not.toBeInTheDocument();
+    expect(componentPuts(requests)).toHaveLength(0);
+  });
+
+  /* 열기 전에는 창의 입력칸이 DOM에 없다 — 디자인 시스템 Dialog는 닫혀도 내용이 남는다. */
+  it('열기 전에는 창의 입력칸이 DOM에 없다', async () => {
+    renderScreen(componentEditRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    await findBomComponentPane();
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('등록 공정')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * M25 · M26 · C17 — **저장 실패가 공통 규약 문구로 난다.**
+ * 이 화면 전용 충돌 문구를 만들지 않는다.
+ */
+describe('ItemExtendedAttrsScreen — 구성품 저장 실패 (M25·M26)', () => {
+  const saveAndFail = async (route: StubRoute) => {
+    const rendered = renderScreen([...componentEditRoutes(), route], '?item=1001&tab=bom&bom=2001');
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(rendered.user);
+
+    await within(dialog).findByLabelText('등록 공정');
+    await rendered.user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await rendered.user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    return rendered;
+  };
+
+  /**
+   * 결정 10 — 화면이 확정 상태를 선제 판정하지 않는다. `Bom.statusCode`의 값 목록이
+   * 확정되지 않아 「작성중」을 판정할 문자열이 없다 — 서버가 막고 공통 배너가 낸다.
+   */
+  it('400 STATE_LOCKED이 재시도 없는 배너로 난다 (M25)', async () => {
+    await saveAndFail(
+      componentSaveFailureRoute(400, {
+        errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '상태가 작성중이 아닙니다.' }],
+      }),
+    );
+
+    expect(await screen.findByText('지금은 저장할 수 없는 상태입니다')).toBeInTheDocument();
+    /* 다시 불러와도 풀리지 않는 상태다 — 재시도를 권하면 사용자가 헛돈다. */
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
+  });
+
+  /* 화면이 상태를 선제 판정하지 않는다는 반대 방향 — 편집 창은 상태와 무관하게 열린다. */
+  it('상태를 화면이 미리 막지 않는다 (결정 10)', async () => {
+    const { user } = renderScreen(componentEditRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    const pane = await findBomComponentPane();
+
+    for (const button of within(pane).getAllByRole('button')) {
+      expect(button).toBeEnabled();
+    }
+
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled();
+  });
+
+  /* M26 — 409의 원인 구분은 공통 규약 문구가 이미 갖고 있다. */
+  it('409 erpSync가 공통 규약 문구로 난다 (M26)', async () => {
+    await saveAndFail(
+      componentSaveFailureRoute(409, { conflictCause: 'erpSync', message: '충돌' }),
+    );
+
+    expect(await screen.findByText(ERP_SYNC_TEXT)).toBeInTheDocument();
+  });
+
+  it('403이 공통 배너 문구로 난다 (M26)', async () => {
+    await saveAndFail(componentSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }));
+
+    expect(await screen.findByText(FORBIDDEN_TEXT)).toBeInTheDocument();
+  });
+
+  /* 실패해도 창이 열린 채 남아야 고친 값을 잃지 않는다. */
+  it('실패해도 창이 열린 채 남고 문구가 하나뿐이다', async () => {
+    await saveAndFail(componentSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }));
+
+    await screen.findByText(FORBIDDEN_TEXT);
+    expect(screen.getAllByText(FORBIDDEN_TEXT)).toHaveLength(1);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /* 다른 품목으로 옮기면 앞 품목의 실패가 따라오면 안 된다(§5.4 3행). */
+  it('품목을 바꾸면 구성품 저장 실패 배너가 사라진다', async () => {
+    const { user } = await saveAndFail(
+      componentSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+    );
+
+    await screen.findByText(FORBIDDEN_TEXT);
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(FORBIDDEN_TEXT)).not.toBeInTheDocument();
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * 결정 7의 반대 방향 — **화면이 확장 열에 없는 제약을 만들지 않는다.**
+ *
+ * 계약이 이 네 열에 로컬로 옮길 제약을 두지 않았다. 있지도 않은 제약을 흉내 내면
+ * 서버가 허용하는 값을 화면이 막는다.
+ */
+describe('ItemExtendedAttrsScreen — 구성품 확장 열에 없는 제약을 만들지 않는다', () => {
+  it.each([
+    ['등록 공정만 비워도', ['등록 공정']],
+    ['실사용 공정만 비워도', ['실사용 공정']],
+    ['둘 다 비워도', ['등록 공정', '실사용 공정']],
+  ])('%s 저장이 열려 있다', async (_name, labels) => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+
+    for (const label of labels) {
+      await user.click(within(dialog).getByLabelText(label));
+      await user.click(screen.getAllByRole('option', { name: '지정 안 함' })[0]!);
+    }
+
+    const save = within(dialog).getByRole('button', { name: '저장' });
+    expect(save).toBeEnabled();
+
+    await user.click(save);
+
+    await waitFor(() => {
+      expect(componentPuts(requests)).toHaveLength(1);
+    });
+  });
+
+  /* 확장 표시 둘을 다 꺼도 막지 않는다 — 계약에 그런 제약이 없다. */
+  it('확장 표시를 둘 다 꺼도 저장이 나간다', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+
+    await user.click(within(dialog).getByRole('switch', { name: 'LOT 추적 강제' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentBodies(requests)).toHaveLength(1);
+    });
+    expect(componentBodies(requests)[0]!.lotTraceRequired).toBe(false);
+    expect(componentBodies(requests)[0]!.backflushAllowed).toBe(true);
+  });
+});
+
+/* ── 화면 전체 (작업 9 · 통합) ────────────────────────────────────────────── */
+
+/** 세 탭과 하위 탭 셋을 모두 그릴 수 있는 스텁 한 벌. */
+const wholeScreenRoutes = (): StubRoute[] => [
+  ...componentEditRoutes(),
+  businessUnitsRoute(),
+  partnersRoute(),
+  buMapsRoute(),
+  uomConversionsRoute(),
+  externalCodesRoute(),
+];
+
+/** 확장 속성 → 부속 정보(하위 탭 셋) → 자재 명세서(구성품까지) 순으로 화면을 훑는다. */
+const walkWholeScreen = async (user: ReturnType<typeof userEvent.setup>) => {
+  await findOriginContent();
+  await findAttrsPane();
+
+  await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+  await findBuMapPane();
+  await openUomConversionTab(user);
+  await user.click(screen.getByRole('tab', { name: '외부 코드' }));
+  await findExternalCodePane();
+
+  await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+  await findBomListPane();
+  await openFirstBom(user);
+};
+
+describe('ItemExtendedAttrsScreen — 화면 전체', () => {
+  /** C04 — 계약에 `POST /mdm/items`가 없다. 품목은 외부 정본이고 여기서 만들지 않는다. */
+  it('세 탭을 모두 돌아도 품목을 새로 만드는 요청이 0회다 (C04)', async () => {
+    const { requests, user } = renderScreen(wholeScreenRoutes(), '?item=1001');
+
+    await walkWholeScreen(user);
+
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  /**
+   * C03 · M01 — **원본 구획은 어느 탭에서도 값 표기뿐이다.**
+   * 탭 밖에 있으므로 탭을 옮겨도 같아야 한다(결정 2).
+   */
+  it.each([
+    ['확장 속성', '?item=1001'],
+    ['부속 정보', '?item=1001&tab=sub'],
+    ['자재 명세서', '?item=1001&tab=bom'],
+  ])('%s 탭에서도 원본 구획에 쓰기 수단이 없다 (M01)', async (_name, search) => {
+    renderScreen(wholeScreenRoutes(), search);
+
+    await findOriginContent();
+
+    const origin = itemOriginPane();
+    expect(within(origin).queryAllByRole('textbox')).toHaveLength(0);
+    expect(within(origin).queryAllByRole('combobox')).toHaveLength(0);
+    expect(within(origin).queryAllByRole('switch')).toHaveLength(0);
+    expect(within(origin).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  /**
+   * C11 · M13 — **주소가 조건·탭·선택의 정본이다.**
+   * 새로고침·공유가 같은 화면을 내는지, 주소 한 벌로 통째로 확인한다.
+   */
+  it('주소 한 벌이 조건·탭·하위 탭·선택을 모두 되살린다', async () => {
+    const { requests } = renderScreen(
+      wholeScreenRoutes(),
+      '?tab=bom&sub=ext&q=SYN&inactive=1&item=1001&bom=2001',
+    );
+
+    await findBomComponentPane();
+
+    /* 좌 목록의 조건이 서버로 그대로 나갔다. */
+    const list = requestsTo(requests, ITEMS_PATH)[0]!;
+    expect(list.url.searchParams.get('q')).toBe('SYN');
+    expect(list.url.searchParams.get('includeInactive')).toBe('true');
+
+    /* 고른 탭·자재 명세서가 그대로 열려 있다. */
+    expect(screen.getByRole('tab', { name: '자재 명세서' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByLabelText('BOM 코드')).toHaveTextContent('SYN-BOM-01');
+  });
+
+  /* 하위 탭은 자재 명세서 탭에 있는 동안에도 주소에 남아야 돌아왔을 때 그 자리를 낸다. */
+  it('자재 명세서 탭을 다녀와도 부속 하위 탭이 그대로다', async () => {
+    const { user } = renderScreen(wholeScreenRoutes(), '?item=1001&tab=sub&sub=ext');
+
+    await findExternalCodePane();
+
+    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+    await findBomListPane();
+    await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+
+    expect(await screen.findByRole('region', { name: '외부 코드' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * **무효화 범위는 자원마다 나뉘어 있어야 한다.**
+ *
+ * 넓게 무효화하면 보고 있지도 않은 표가 다시 그려지고, 편집 중이던 다른 자료가
+ * 서버 응답으로 되감긴다 — 부속 3종에서 이미 같은 방향으로 잠갔다.
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 쓰기의 무효화 범위', () => {
+  it('구성품 저장이 자재 명세서 헤더 목록을 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), componentSaveRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    expect(bomListGets(requests)).toHaveLength(1);
+
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(componentGets(requests)).toHaveLength(2);
+    });
+    expect(bomListGets(requests)).toHaveLength(1);
+  });
+
+  /* 기본이 어느 줄인지는 구성품과 무관하다 — 함께 받으면 표가 이유 없이 다시 그려진다. */
+  it('기본 지정이 구성품을 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...componentEditRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    expect(componentGets(requests)).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 기본으로 지정' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '기본으로 지정' }),
+    );
+
+    await waitFor(() => {
+      expect(bomListGets(requests)).toHaveLength(2);
+    });
+    expect(componentGets(requests)).toHaveLength(1);
+  });
+});
+
+/**
+ * §5.4 선택 수명 — **열린 편집 창의 정리는 고른 자재 명세서에 묶여 있다.**
+ *
+ * 클릭 핸들러에만 두면 뒤로가기·앞으로가기·주소 직접 편집처럼 핸들러를 거치지 않는 경로에서
+ * 앞 자재 명세서의 줄을 가리키는 창이 그대로 남는다 — 품목 축이 이미 겪은 자리다(r2 개정 1).
+ */
+describe('ItemExtendedAttrsScreen — 구성품 편집 창의 수명', () => {
+  const openThenSwitchBom = async (user: ReturnType<typeof userEvent.setup>) => {
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-02 · Rev 2 구성품 보기' }));
+  };
+
+  /* 클릭 경로 — 이 방향은 1회차에도 닫혔다. */
+  it('다른 자재 명세서를 고르면 열린 창이 닫힌다', async () => {
+    const { user } = renderScreen(
+      [...componentEditRoutes(), bomComponentsRoute([], 2002)],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    await openThenSwitchBom(user);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /**
+   * **뒤로가기 경로 — 1회차에 새던 자리다.**
+   *
+   * 주소는 앞 자재 명세서로 돌아오는데 창이 그대로 남으면, 사용자가 연 창이 말없이
+   * 다른 표의 행으로 갈아탄다. 그 번호가 새 자재 명세서에 없으면 창 안에서 404가 난다.
+   */
+  it('뒤로가기로 자재 명세서가 바뀌어도 열린 창이 닫힌다', async () => {
+    const { history, user } = renderScreen(
+      [...componentEditRoutes(), bomComponentsRoute([], 2002)],
+      '?item=1001&tab=bom&bom=2001',
+    );
+
+    await findBomComponentPane();
+    await openThenSwitchBom(user);
+    expect(history.search()).toContain('bom=2002');
+
+    /* 두 번째 줄에서 창을 열고 뒤로가기 — 핸들러를 거치지 않는 경로다. */
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }));
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+
+    history.back();
+
+    expect(history.search()).toContain('bom=2002');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /* 뒤로가기가 저장 실패까지 데려오면 안 된다 — 앞 줄에서 난 실패다. */
+  it('뒤로가기로 자재 명세서가 바뀌면 저장 실패 배너도 사라진다', async () => {
+    const { history, user } = renderScreen(
+      [
+        ...componentEditRoutes(),
+        bomComponentsRoute([], 2002),
+        componentSaveFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' }),
+      ],
+      '?item=1001&tab=bom&bom=2002',
+    );
+
+    /* 2002는 빈 목록이라 먼저 2001로 옮겨 편집할 줄을 만든다. */
+    await findBomComponentPane();
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }));
+    await findBomComponentPane();
+
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+    await screen.findByText(FORBIDDEN_TEXT);
+
+    history.back();
+
+    await waitFor(() => {
+      expect(screen.queryByText(FORBIDDEN_TEXT)).not.toBeInTheDocument();
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /**
+   * **같은 줄을 다시 눌러도 열린 창이 그대로다.**
+   *
+   * 정리가 고른 자재 명세서에 묶여 있으므로 같은 값으로는 돌지 않는다 —
+   * 재클릭이 창을 닫으면 사용자가 고치던 값이 사라진다(PR ① 1회차 결함과 같은 모양).
+   */
+  it('같은 자재 명세서를 다시 눌러도 열린 창이 남는다', async () => {
+    const { user } = renderScreen(componentEditRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+    await user.click(within(dialog).getByRole('switch', { name: '백플러시 허용' }));
+
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: '백플러시 허용' })).not.toBeChecked();
+  });
+
+  /**
+   * **주소가 품목만 바꾸는 경로.** 공유된 링크나 주소 직접 편집으로만 닿는다 —
+   * 이 화면의 클릭 핸들러는 품목을 바꿀 때 `bom`을 함께 떨구므로 이 조합을 만들지 않는다.
+   *
+   * 그래서 **자재 명세서 축 효과가 돌지 않고**, 품목 축이 유일한 정리 지점이 된다.
+   *
+   * **목록이 도착한 뒤에 잰다.** 주소가 바뀐 직후에는 새 품목의 자재 명세서 목록이 아직 없어
+   * 창이 잠깐 언마운트되므로, 그 순간만 보면 정리를 빠뜨린 코드도 통과한다(검증 발견 ②).
+   * 실제 해악은 목록이 도착했을 때 **사용자가 열지 않은 창이 저절로 다시 뜨는** 것이다.
+   */
+  it('주소가 품목만 바꾸면 열린 구성품 편집 창이 다시 뜨지 않는다', async () => {
+    const { history, user } = renderScreen(componentEditRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    await findBomComponentPane();
+    const dialog = await openComponentDialog(user);
+    await within(dialog).findByLabelText('등록 공정');
+
+    /* `bom`은 그대로 두고 `item`만 바꾼다 — 자재 명세서 축은 값이 같아 반응하지 않는다. */
+    history.go('?item=1002&tab=bom&bom=2001');
+
+    expect(history.search()).toContain('bom=2001');
+    expect(history.search()).toContain('item=1002');
+
+    /* 새 품목의 목록이 도착해 구획이 다시 그려질 때까지 기다린 뒤에 잰다. */
+    await findBomComponentPane();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('등록 공정')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * 등록 공정 선택지는 **조회가 2단이다**(Rev 목록 → Rev마다 공정 목록).
+ * 두 단에 같은 조건을 줘야 한다 — **1단만 막으면 캐시가 따뜻할 때 샌다.**
+ *
+ * 꺼진 조회도 react-query는 캐시에 있던 값을 그대로 돌려주므로, 1단의 Rev 목록이
+ * 비어 있지 않은 채로 남는다. 조건 없는 2단은 그 목록을 보고 Rev 수만큼 요청을 낸다 —
+ * 구성품 표가 보이지도 않는 동안에.
+ */
+describe('ItemExtendedAttrsScreen — 등록 공정 2단 조회의 조건', () => {
+  it('자재 명세서를 고르지 않으면 Rev 캐시가 따뜻해도 공정 목록을 다시 받지 않는다', async () => {
+    const { requests, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    /* ① 한 번 받아 캐시를 데운다 — Rev 둘이므로 요청도 둘이다. */
+    await findBomComponentPane();
+    await waitFor(() => {
+      expect(routingOperationGets(requests)).toHaveLength(2);
+    });
+
+    /* ② 다른 품목으로 옮긴다 — 주소에서 `bom`이 떨어져 구성품 표가 사라진다. */
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+    await findBomListPane();
+
+    /* ③ 돌아온다. 자재 명세서를 고르지 않았으므로 표가 없는데 **Rev 캐시는 따뜻하다.** */
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01' }));
+    await findBomListPane();
+
+    expect(
+      screen.getByText('위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다'),
+    ).toBeInTheDocument();
+    expect(routingOperationGets(requests)).toHaveLength(2);
   });
 });

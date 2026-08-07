@@ -83,7 +83,10 @@ export const validateUomConversionDraft = (
  * 이미 겹쳐 있는 줄의 초안 키.
  *
  * **서버가 준 목록에 이미 중복이 있을 수 있다**(옛 자료). 그대로 보내면 서버가 거부하므로
- * 저장을 막고 어느 줄이 문제인지 표에서 짚는다 — 저장을 눌러야 알게 하지 않는다.
+ * 저장을 눌러야 알게 하지 않고 **표 위 안내와 저장 차단 사유**로 먼저 밝힌다.
+ *
+ * **지금 소비되는 것은 「겹친 줄이 있는가」(`size > 0`)까지다.** 어느 줄인지 표에서 짚는 것은
+ * 아직 하지 않는다 — 돌려주는 키 집합은 그것을 할 수 있게 남겨 둔 자리다.
  */
 export const duplicateDraftIds = (drafts: readonly UomConversionDraft[]): Set<string> => {
   const byKey = new Map<string, string[]>();

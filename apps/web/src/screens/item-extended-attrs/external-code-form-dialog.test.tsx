@@ -192,6 +192,24 @@ describe('ExternalCodeFormDialog — 중복 (M29)', () => {
   });
 
   /*
+   * **거래처 칸에는 자기 오류가 없다.** 필수가 아니고 중복 문구는 외부 시스템 칸에 붙는다 —
+   * 늘 비어 있을 오류 자리를 두면 「이 칸도 막힐 수 있다」는 뜻이 되어
+   * 읽는 사람이 없는 규칙을 찾게 된다.
+   */
+  it('중복이어도 거래처 칸은 오류로 표시되지 않는다', async () => {
+    const { user } = renderDialog({
+      draft: filled({ draftId: 'new:9', partnerId: '' }),
+      otherDrafts: [existingWithoutPartner],
+    });
+
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    // 외부 시스템 칸이 오류를 받았다는 것을 먼저 확인한다 — 그래야 아래 부재 단언이 헛돌지 않는다.
+    expect(screen.getByLabelText('외부 시스템')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('거래처')).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /*
    * 외부 시스템과 거래처가 **함께** 유일 제약을 만든다 —
    * 중복 문구는 외부 시스템 칸에 붙으므로 거래처를 고쳤을 때도 지워야 한다.
    */
