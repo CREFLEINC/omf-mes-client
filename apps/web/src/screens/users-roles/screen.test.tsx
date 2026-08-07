@@ -1126,3 +1126,176 @@ describe('UsersRolesScreen 초안 수명', () => {
     });
   });
 });
+
+/**
+ * 창·오류의 수명이 **편집 대상**에 묶여 있는지 본다.
+ *
+ * 클릭 핸들러에만 정리를 두면 뒤로가기·주소 손 편집·공유 링크가 핸들러를 거치지 않고 샌다.
+ * 그 경로에서 창이 살아남으면 **A를 중지하려고 연 창이 B를 중지한다** — 쓰기 대상은 지금 주소를
+ * 읽기 때문이다. 계약에 되살리는 오퍼레이션이 없어 복구 경로가 없다.
+ */
+describe('UsersRolesScreen 창·오류의 수명', () => {
+  const USER_B: AppUser = { ...filledUserFixture, appUserId: 1002, userName: '합성 사용자 B' };
+
+  const openDialogOnUserA = async (extraRoutes: StubRoute[] = []) => {
+    const rendered = await openUserDetail([
+      userDetailRoute(USER_B, { etag: 'W/"1002"' }),
+      userDeactivateRoute(1001),
+      userDeactivateRoute(1002),
+      ...extraRoutes,
+    ]);
+
+    await rendered.user.click(within(userFormPane()).getByRole('button', { name: '사용 중지' }));
+    await screen.findByRole('dialog');
+
+    return rendered;
+  };
+
+  /** 가장 심각한 갈래 — 어느 경로로 요청이 나갔는지까지 봐야 대상이 갈리는 문제를 잡는다. */
+  it('창을 연 채 주소로 다른 사용자에 가면 창이 닫히고 아무 요청도 나가지 않는다', async () => {
+    const { requests, goTo } = await openDialogOnUserA();
+
+    goTo(`${ROUTE}?usr=1002`);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    expect(requests.some((request) => request.url.pathname.endsWith(':deactivate'))).toBe(false);
+  });
+
+  it('그 뒤 다시 중지하면 지금 보고 있는 사용자에게만 나간다', async () => {
+    const { requests, goTo, user } = await openDialogOnUserA();
+
+    goTo(`${ROUTE}?usr=1002`);
+    await waitFor(() => {
+      expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue(
+        '합성 사용자 B',
+      );
+    });
+
+    await user.click(within(userFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.url.pathname.endsWith(':deactivate'))).toBe(true);
+    });
+
+    const actions = requests.filter((request) => request.url.pathname.endsWith(':deactivate'));
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0]?.url.pathname).toBe('/app/users/1002:deactivate');
+    expect(actions[0]?.headers.get('If-Match')).toBe('W/"1002"');
+  });
+
+  /** 선택이 사라진 주소에서 창이 남으면 존재하지 않는 번호로 요청이 나간다. */
+  it('창을 연 채 선택 없는 주소로 가면 창이 닫히고 번호 없는 요청이 나가지 않는다', async () => {
+    const { requests, goTo } = await openDialogOnUserA();
+
+    goTo(ROUTE);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    expect(requests.some((request) => request.url.pathname.includes('/app/users/0'))).toBe(false);
+    expect(requests.some((request) => request.url.pathname.endsWith(':deactivate'))).toBe(false);
+  });
+
+  it('앞 사용자의 인라인 오류가 다음 사용자의 폼에 따라오지 않는다', async () => {
+    const { goTo, user } = await openUserDetail([
+      userDetailRoute(USER_B, { etag: 'W/"1002"' }),
+      userUpdateRoute(),
+    ]);
+
+    await user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
+    await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+    await within(userFormPane()).findByText('필수 입력 항목입니다.');
+
+    goTo(`${ROUTE}?usr=1002`);
+
+    await waitFor(() => {
+      expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue(
+        '합성 사용자 B',
+      );
+    });
+    expect(within(userFormPane()).queryByText('필수 입력 항목입니다.')).not.toBeInTheDocument();
+  });
+
+  it('앞 사용자의 저장 실패 배너가 다음 사용자의 폼 위에 남지 않는다', async () => {
+    const { goTo, user } = await openUserDetail([
+      userDetailRoute(USER_B, { etag: 'W/"1002"' }),
+      userUpdateRoute(1001, () =>
+        jsonResponse(
+          { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '앞 사용자의 실패.' }] },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이름' }), 'Z');
+    await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+    await within(userFormPane()).findByText('앞 사용자의 실패.');
+
+    goTo(`${ROUTE}?usr=1002`);
+
+    await waitFor(() => {
+      expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue(
+        '합성 사용자 B',
+      );
+    });
+    expect(screen.queryByText('앞 사용자의 실패.')).not.toBeInTheDocument();
+  });
+
+  /**
+   * 짝이 되는 반대쪽 — **같은 대상이면 닫지 않는다.**
+   * 아무 렌더에나 정리가 돌면 창이 열리자마자 사라져 사용자가 확인을 누를 수 없다.
+   */
+  it('같은 사용자를 다시 고르면 창이 닫히지 않는다', async () => {
+    const { goTo } = await openDialogOnUserA();
+
+    goTo(`${ROUTE}?usr=1001`);
+    await waitFor(() => {
+      expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue(
+        '합성 사용자 A',
+      );
+    });
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * 결과를 기다리는 동안 창이 사라지면 사용자는 무엇이 진행 중인지 잃는다(계획 §12-15 후단).
+   *
+   * 응답 본문을 끝내지 않는 흐름으로 두어 **요청이 실제로 떠 있는 상태**를 만든다 —
+   * 곧바로 응답하면 성공 처리가 끼어들어 「진행 중」을 한 번도 지나가지 않는다.
+   */
+  it('중지 요청이 진행되는 동안 창이 닫히지 않는다', async () => {
+    const neverEndingResponse = (): Response =>
+      new Response(
+        new ReadableStream({
+          start() {
+            /* 끝내지 않는다 — 요청이 진행 중인 상태를 유지한다. */
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+
+    const { user } = await openUserDetail([
+      {
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname.endsWith(':deactivate'),
+        respond: neverEndingResponse,
+      },
+    ]);
+
+    await user.click(within(userFormPane()).getByRole('button', { name: '사용 중지' }));
+    const dialog = await screen.findByRole('dialog');
+
+    await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // 연타로 요청이 두 번 나가지 않는다.
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' })).toBeDisabled();
+  });
+});

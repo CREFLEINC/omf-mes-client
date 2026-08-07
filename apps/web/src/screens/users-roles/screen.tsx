@@ -9,7 +9,7 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -247,6 +247,10 @@ export const UsersRolesScreen = () => {
     request: (_variables, headers) =>
       client.POST('/app/users/{appUserId}:deactivate', {
         params: {
+          /*
+           * 고른 사용자가 없으면 **여기까지 오지 않는다** — 창을 그때만 붙이고 확인도 막는다.
+           * 되돌릴 수 없는 액션이라 「없는 번호로 나가는 요청」을 만들 여지를 두지 않는다.
+           */
           path: { appUserId: selectedAppUserId ?? 0 },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
@@ -270,7 +274,11 @@ export const UsersRolesScreen = () => {
    */
   const activeUserWrite = isCreatingUser ? userCreateWrite : userWrite;
 
-  /** 편집 중이던 상태를 통째로 비운다. 보이는 행이 달라질 때 함께 부른다. */
+  /**
+   * 편집 중이던 상태를 통째로 비운다 — 창·초안·인라인 오류·저장 실패 배너.
+   *
+   * **직접 부르지 않는다.** 아래 effect 한 곳만 부른다(선택 수명 규칙의 유일한 실행 지점).
+   */
   const resetUserEditing = () => {
     userWrite.reset();
     userCreateWrite.reset();
@@ -280,29 +288,47 @@ export const UsersRolesScreen = () => {
     setUserFieldErrors({});
   };
 
+  /*
+   * 위 함수는 매 렌더 새로 만들어지므로 그대로 의존성에 넣으면 렌더마다 초기화가 돈다 —
+   * 입력 도중에 값이 사라진다. 최신 함수를 참조로 들고 **편집 대상에만** 반응하게 한다.
+   */
+  const resetUserEditingRef = useRef(resetUserEditing);
+  resetUserEditingRef.current = resetUserEditing;
+
+  /**
+   * 「지금 무엇을 편집하고 있는가」를 한 값으로 모은다.
+   *
+   * 고른 사용자와 등록 폼은 **함께 성립하지 않는 하나의 자리**다 — 둘을 따로 감시하면
+   * 등록 폼을 닫는 것과 사용자를 바꾸는 것이 서로 다른 규칙을 갖게 된다.
+   */
+  const editingTargetKey = isCreatingUser ? 'create' : String(selectedAppUserId ?? '');
+
+  /**
+   * 선택 수명 규칙의 **유일한 실행 지점**. 클릭 핸들러가 아니라 편집 대상에 묶는다.
+   *
+   * 클릭에만 두면 뒤로가기·앞으로가기·주소 직접 편집처럼 핸들러를 거치지 않는 경로가 샌다.
+   * 그 경로에서 창과 오류가 살아남으면 **앞 사용자를 중지하려고 연 창이 다음 사용자를 중지한다** —
+   * 쓰기 대상은 지금 주소를 읽기 때문이다. 계약에 되살리는 오퍼레이션이 없어 복구 경로가 없다.
+   * 조건 변경·쪽 이동·탭 전환도 주소에서 `usr`·`new`를 떨구므로 전부 이 한 곳을 지나간다.
+   */
+  useEffect(() => {
+    resetUserEditingRef.current();
+  }, [editingTargetKey]);
+
   /**
    * 조건·쪽이 바뀌면 **주소를 통째로 새로 만든다.**
    * 그래야 `usr`·`new`가 자연히 사라진다 — 보이는 행이 달라지는데 선택이 남으면
-   * 우 칸의 폼이 어디서 온 것인지 알 수 없다.
+   * 우 칸의 폼이 어디서 온 것인지 알 수 없다. 편집 상태 정리는 위 effect가 맡는다.
    */
   const applyFilters = (next: UserFilters) => {
-    resetUserEditing();
     setSearchParams(toUserSearchParams(tab.id, next, 1));
   };
 
   const changeUserPage = (nextPage: number) => {
-    resetUserEditing();
     setSearchParams(toUserSearchParams(tab.id, filters, nextPage));
   };
 
-  const handleSelectUser = (appUserId: number) => {
-    resetUserEditing();
-    selectUser(appUserId);
-  };
-
   const handleAddUser = () => {
-    resetUserEditing();
-
     patchSearchParams((next) => {
       next.set('new', 'user');
       // 등록 폼이 열려 있는 동안 고른 사용자의 상세가 함께 보이면 어느 쪽을 고치는지 가릴 수 없다.
@@ -310,10 +336,8 @@ export const UsersRolesScreen = () => {
     });
   };
 
+  /** 등록 폼을 닫는다. 편집 상태 정리는 편집 대상이 바뀌면서 위 effect가 맡는다. */
   const closeUserCreateForm = () => {
-    userCreateWrite.reset();
-    setUserFieldErrors({});
-
     patchSearchParams((next) => {
       next.delete('new');
     });
@@ -469,7 +493,7 @@ export const UsersRolesScreen = () => {
         pageView={userPageView}
         onChangePage={changeUserPage}
         selectedAppUserId={selectedAppUserId}
-        onSelect={handleSelectUser}
+        onSelect={selectUser}
         isCreating={isCreatingUser}
         onAddUser={handleAddUser}
         loadError={
@@ -518,7 +542,7 @@ export const UsersRolesScreen = () => {
        * 되돌릴 수 없는 액션이라 확인을 한 단계 두고, **실패해도 창을 닫지 않는다** —
        * 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다.
        */}
-      {isDeactivateOpen && (
+      {isDeactivateOpen && selectedAppUserId !== null && (
         <DeactivateDialog
           open
           title={t.dialog.deactivateUserTitle}
@@ -527,6 +551,9 @@ export const UsersRolesScreen = () => {
             userDeactivateWrite.reset();
           }}
           onConfirm={() => {
+            // 대상이 없으면 보내지 않는다. 위 조건과 짝을 이루는 이중 방어다.
+            if (selectedAppUserId === null) return;
+
             userDeactivateWrite.write(undefined);
           }}
           isSaving={userDeactivateWrite.isSaving}
