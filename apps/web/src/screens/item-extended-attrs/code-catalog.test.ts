@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { describe, expect, it } from 'vitest';
 
 import { FIFO_POLICY_CODES, FREE_TEXT_CODES, fifoPolicyOptions } from './code-catalog';
+import type { ExternalCodeItemPayload } from './external-code-draft';
 
 type ItemUpdate = components['schemas']['ItemUpdate'];
 
@@ -33,6 +34,9 @@ describe('FREE_TEXT_CODES', () => {
   /*
    * 자유 입력으로 받는 것은 **필드**이지 코드값이 아니다.
    * 목록에 코드값이 섞이면 이 파일이 무엇을 기록하는 것인지 뜻이 흐려진다.
+   *
+   * 이 화면의 쓰기가 여럿이라 대조 대상도 여럿이다 — 확장 속성 저장(`ItemUpdate`)과
+   * 외부 코드 치환의 요청 항목이다. 구획이 늘 때 함께 늘린다.
    */
   it('전부 계약 요청 본문의 필드 이름이다', () => {
     const updateKeys: (keyof ItemUpdate)[] = [
@@ -47,14 +51,37 @@ describe('FREE_TEXT_CODES', () => {
       'isActive',
     ];
 
+    const externalCodeKeys: (keyof ExternalCodeItemPayload)[] = [
+      'externalSystemCode',
+      'partnerId',
+      'externalItemCode',
+    ];
+
+    const writeFields: string[] = [...updateKeys, ...externalCodeKeys];
+
     for (const field of FREE_TEXT_CODES) {
-      expect(updateKeys).toContain(field);
+      expect(writeFields).toContain(field);
     }
   });
 
   /* 계약이 값을 밝힌 코드는 선택칸이다 — 자유 입력 목록에 있으면 안 된다. */
   it('선출 정책은 자유 입력이 아니다', () => {
     expect(FREE_TEXT_CODES).not.toContain('fifoPolicyCode');
+  });
+
+  /*
+   * 외부 코드 구획의 필수 필드다. 앞선 화면처럼 빈 선택지로 두면
+   * 그 탭이 통째로 동작하지 않는다 — 행을 아예 추가할 수 없다(결정 4).
+   */
+  it('외부 시스템 코드가 자유 입력이다', () => {
+    expect(FREE_TEXT_CODES).toContain('externalSystemCode');
+  });
+
+  /* 이 목록은 필드 이름만 담는다 — 코드값이 섞이면 화면이 값 목록을 아는 것처럼 보인다. */
+  it('스키마 예시 문자열이 섞여 있지 않다', () => {
+    for (const example of CONTRACT_EXAMPLE_STRINGS) {
+      expect(FREE_TEXT_CODES).not.toContain(example);
+    }
   });
 });
 

@@ -9,25 +9,82 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import {
+  createBuMapDraft,
+  isSameBuMapDrafts,
+  removeBuMapDraft,
+  toBuMapDrafts,
+  toBuMapsPayload,
+  upsertBuMapDraft,
+  type BuMapDraft,
+} from './bu-map-draft';
+import { BuMapFormDialog } from './bu-map-form-dialog';
+import { BuMapPane } from './bu-map-pane';
+import {
+  createExternalCodeDraft,
+  isSameExternalCodeDrafts,
+  removeExternalCodeDraft,
+  toExternalCodeDrafts,
+  toExternalCodesPayload,
+  upsertExternalCodeDraft,
+  type ExternalCodeDraft,
+} from './external-code-draft';
+import { ExternalCodeFormDialog } from './external-code-form-dialog';
+import { ExternalCodePane } from './external-code-pane';
 import { ITEM_KEY, readItemFilters, readPage, readSelectedId, toSearchParams } from './filters';
 import { ItemAttrsPane } from './item-attrs-pane';
 import { isSameItemAttrsValues, itemToAttrsFormValues, toItemUpdate } from './item-attrs-mappers';
 import { ITEM_ATTRS_FORM_FIELDS, validateItemAttrsForm } from './item-attrs-validation';
 import { ItemListPane } from './item-list-pane';
 import { ItemOriginPane } from './item-origin-pane';
-import { itemDetailPath, itemKeys, useItemDetail, useItemList } from './item-queries';
+import { itemDetailPath, itemKeys, useItemDetail, useItemList, useItemNames } from './item-queries';
 import { LoadErrorBanner } from './load-error-banner';
-import { useUomOptions, type LookupResult } from './lookups';
+import {
+  useBusinessUnitOptions,
+  usePartnerOptions,
+  useUomOptions,
+  type LookupResult,
+} from './lookups';
+import { lookupLabel, selectableOptions } from './options';
 import { toPageView } from './pagination';
-import { DEFAULT_TAB_ID, ITEM_EXTENDED_ATTRS_TABS, TAB_KEY, resolveTab } from './tabs';
+import {
+  subsidiaryKeys,
+  useBuMaps,
+  useExternalCodes,
+  useUomConversions,
+} from './subsidiary-queries';
+import {
+  DEFAULT_SUBSIDIARY_TAB_ID,
+  DEFAULT_TAB_ID,
+  ITEM_EXTENDED_ATTRS_TABS,
+  SUBSIDIARY_TABS,
+  SUBSIDIARY_TAB_KEY,
+  TAB_KEY,
+  resolveSubsidiaryTab,
+  resolveTab,
+} from './tabs';
 import type { Item, ItemAttrsFormValues, ItemFilters } from './types';
+import {
+  createUomConversionDraft,
+  isSameUomConversionDrafts,
+  removeUomConversionDraft,
+  toUomConversionDrafts,
+  toUomConversionsPayload,
+  upsertUomConversionDraft,
+  type UomConversionDraft,
+} from './uom-conversion-draft';
+import { UomConversionFormDialog } from './uom-conversion-form-dialog';
+import { UomConversionPane } from './uom-conversion-pane';
 
 type ItemDetailResponse = components['schemas']['ItemDetailResponse'];
+type ItemBuItemMapListResponse = components['schemas']['ItemBuItemMapListResponse'];
+type ItemUomConversionListResponse = components['schemas']['ItemUomConversionListResponse'];
+type ItemExternalCodeListResponse = components['schemas']['ItemExternalCodeListResponse'];
 
 const t = messages.itemExtendedAttrs;
 
@@ -53,6 +110,32 @@ interface ItemAttrsWriteVariables {
 }
 
 /**
+ * 사업부 매핑 초안과 그것이 어디서 나왔는지.
+ *
+ * **초안을 화면이 소유한다**(§5.4). 탭 안 페인이 소유하면 탭을 옮기는 순간 언마운트되어
+ * 저장하지 않은 입력이 조용히 사라진다(M10).
+ */
+interface BuMapDraftState {
+  source: ItemBuItemMapListResponse;
+  baseline: BuMapDraft[];
+  drafts: BuMapDraft[];
+}
+
+/** 단위 환산 초안. 사업부 매핑과 **같은 모양이되 서로를 알지 않는다**(결정 6). */
+interface UomConversionDraftState {
+  source: ItemUomConversionListResponse;
+  baseline: UomConversionDraft[];
+  drafts: UomConversionDraft[];
+}
+
+/** 외부 코드 초안. 같은 모양의 셋째이자 마지막이다. */
+interface ExternalCodeDraftState {
+  source: ItemExternalCodeListResponse;
+  baseline: ExternalCodeDraft[];
+  drafts: ExternalCodeDraft[];
+}
+
+/**
  * W-06-05 컨테이너.
  *
  * 조회 조건과 선택은 URL이 소유한다(`?tab=&q=&inactive=1&page=&item=`) —
@@ -63,7 +146,7 @@ interface ItemAttrsWriteVariables {
  * 그래서 **탭을 옮겨도 아무것도 비우지 않는다** — 같은 규칙(「보이는 행이 달라지면 비운다」)에서
  * 나온 반대 결론이다.
  *
- * **탭은 만든 것만 렌더한다**(`tabs.ts`). 부속 정보·자재 명세서 탭은 그 내용이 생길 때 붙는다 —
+ * **탭은 만든 것만 렌더한다**(`tabs.ts`). 자재 명세서 탭은 그 내용이 생길 때 붙는다 —
  * 자리만 먼저 두면 「탭은 있는데 눌러도 빈 화면인」 상태가 된다.
  */
 export const ItemExtendedAttrsScreen = () => {
@@ -72,9 +155,19 @@ export const ItemExtendedAttrsScreen = () => {
   const { client } = useApiClient();
 
   const tab = resolveTab(searchParams.get(TAB_KEY));
+  const subTab = resolveSubsidiaryTab(searchParams.get(SUBSIDIARY_TAB_KEY));
   const filters = useMemo<ItemFilters>(() => readItemFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const selectedItemId = readSelectedId(searchParams, ITEM_KEY);
+
+  /**
+   * 부속 정보 탭을 보고 있는가.
+   *
+   * 부속 자원 셋의 조회를 **탭 단위로** 켠다. 하위 탭마다 켜면 하위 탭을 옮길 때마다
+   * 새로 받아, 편집 중이던 초안이 서버 응답으로 되감길 여지가 생긴다
+   * (§5.4 「세 초안은 서로 다른 자원이라 함께 산다」).
+   */
+  const isSubsidiaryTab = tab.id === 'sub';
 
   const itemList = useItemList(filters, page);
   const items = itemList.data?.items ?? [];
@@ -151,12 +244,246 @@ export const ItemExtendedAttrsScreen = () => {
     },
   });
 
-  /** 편집 중이던 상태를 통째로 비운다. 보이는 행이 달라질 때 함께 부른다. */
-  const resetAttrsEditing = () => {
+  /* ── 부속 정보 · 사업부 매핑 ────────────────────────────────────────────── */
+
+  const buMapList = useBuMaps(selectedItemId, isSubsidiaryTab);
+  const businessUnitOptions = useBusinessUnitOptions(isSubsidiaryTab);
+
+  const [buMapState, setBuMapState] = useState<BuMapDraftState | null>(null);
+
+  /**
+   * 초안의 출처. 서버 응답 객체가 바뀔 때만 다시 세운다 —
+   * 사용자가 표를 고치는 동안 캐시가 갱신돼도 편집 중인 목록이 되돌아가지 않는다.
+   */
+  const buMapSource = buMapList.data ?? null;
+
+  if (buMapSource === null) {
+    if (buMapState !== null) setBuMapState(null);
+  } else if (buMapState?.source !== buMapSource) {
+    const seeded = toBuMapDrafts(buMapSource.items);
+    setBuMapState({ source: buMapSource, baseline: seeded, drafts: seeded });
+  }
+
+  const buMapDrafts = buMapState?.drafts ?? [];
+  const isBuMapDirty =
+    buMapState !== null && !isSameBuMapDrafts(buMapState.drafts, buMapState.baseline);
+
+  /**
+   * 표에 보이는 대상 품목의 이름. **행마다 상세를 부른다**(결정 12) —
+   * 계약에 번호 목록으로 품목을 한꺼번에 받는 수단이 없다.
+   */
+  const buMapItemIds = useMemo(
+    () =>
+      buMapDrafts
+        .map((draft) => Number(draft.toItemId))
+        .filter((itemId) => Number.isInteger(itemId) && itemId > 0),
+    [buMapDrafts],
+  );
+  const buMapItemNames = useItemNames(buMapItemIds);
+
+  /** 편집 창의 대상. **열 때만 마운트한다** — 닫힌 창을 남기면 지난 값이 살아 있다. */
+  const [editingBuMap, setEditingBuMap] = useState<BuMapDraft | null>(null);
+  const [isEditingNewBuMap, setIsEditingNewBuMap] = useState(false);
+
+  const buMapWrite = useMasterWrite<BuMapDraft[], ItemBuItemMapListResponse>({
+    request: (drafts, headers) =>
+      client.PUT('/mdm/items/{itemId}/bu-item-maps', {
+        params: {
+          path: { itemId: selectedItemId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        /*
+         * **경로의 `itemId`가 `fromItemId`다**(계약). 본문에 다시 실으면 두 곳이
+         * 정본을 다투게 되고, 계약의 요청 항목에 그 키 자체가 없다.
+         */
+        body: { maps: toBuMapsPayload(drafts) },
+      }),
+    /*
+     * **반드시 `null`이다**(§5.3 표 2행). 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없고
+     * 목록 조회가 `ETag`를 주지도 않는다 — 상세 경로를 주면 토큰을 찾지 못해
+     * 요청이 **나가지 않고 멈춘다**(M17).
+     */
+    etagPath: null,
+    invalidateKeys: [subsidiaryKeys.buMaps(selectedItemId ?? 0)],
+    // 대응하는 입력칸이 이 구획에 없다(창 안에 있다) — 필드 오류도 배너로 올린다.
+    knownFields: [],
+    onSuccess: (saved) => {
+      /*
+       * **서버 응답으로 초안을 다시 세운다.** 서버가 행 번호를 새로 매기므로
+       * 보낸 목록을 그대로 두면 다음 저장이 옛 번호로 도는 것처럼 보인다.
+       */
+      const next = toBuMapDrafts(saved.items);
+      setBuMapState({ source: saved, baseline: next, drafts: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const changeBuMapDrafts = (next: (drafts: BuMapDraft[]) => BuMapDraft[]) => {
+    setBuMapState((prev) => (prev === null ? prev : { ...prev, drafts: next(prev.drafts) }));
+  };
+
+  const openBuMapDialog = (draft: BuMapDraft, isNew: boolean) => {
+    buMapWrite.reset();
+    setIsEditingNewBuMap(isNew);
+    setEditingBuMap(draft);
+  };
+
+  /* ── 부속 정보 · 단위 환산 ──────────────────────────────────────────────── */
+
+  const uomConversionList = useUomConversions(selectedItemId, isSubsidiaryTab);
+
+  const [uomConversionState, setUomConversionState] = useState<UomConversionDraftState | null>(
+    null,
+  );
+
+  const uomConversionSource = uomConversionList.data ?? null;
+
+  if (uomConversionSource === null) {
+    if (uomConversionState !== null) setUomConversionState(null);
+  } else if (uomConversionState?.source !== uomConversionSource) {
+    const seeded = toUomConversionDrafts(uomConversionSource.items);
+    setUomConversionState({ source: uomConversionSource, baseline: seeded, drafts: seeded });
+  }
+
+  const uomConversionDrafts = uomConversionState?.drafts ?? [];
+  const isUomConversionDirty =
+    uomConversionState !== null &&
+    !isSameUomConversionDrafts(uomConversionState.drafts, uomConversionState.baseline);
+
+  const [editingUomConversion, setEditingUomConversion] = useState<UomConversionDraft | null>(null);
+  const [isEditingNewUomConversion, setIsEditingNewUomConversion] = useState(false);
+
+  const uomConversionWrite = useMasterWrite<UomConversionDraft[], ItemUomConversionListResponse>({
+    request: (drafts, headers) =>
+      client.PUT('/mdm/items/{itemId}/uom-conversions', {
+        params: {
+          path: { itemId: selectedItemId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { conversions: toUomConversionsPayload(drafts) },
+      }),
+    /* **반드시 `null`이다**(§5.3 표 3행) — 사업부 매핑과 같은 근거다(M17). */
+    etagPath: null,
+    invalidateKeys: [subsidiaryKeys.uomConversions(selectedItemId ?? 0)],
+    knownFields: [],
+    onSuccess: (saved) => {
+      const next = toUomConversionDrafts(saved.items);
+      setUomConversionState({ source: saved, baseline: next, drafts: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const changeUomConversionDrafts = (
+    next: (drafts: UomConversionDraft[]) => UomConversionDraft[],
+  ) => {
+    setUomConversionState((prev) =>
+      prev === null ? prev : { ...prev, drafts: next(prev.drafts) },
+    );
+  };
+
+  const openUomConversionDialog = (draft: UomConversionDraft, isNew: boolean) => {
+    uomConversionWrite.reset();
+    setIsEditingNewUomConversion(isNew);
+    setEditingUomConversion(draft);
+  };
+
+  /* ── 부속 정보 · 외부 코드 ──────────────────────────────────────────────── */
+
+  const externalCodeList = useExternalCodes(selectedItemId, isSubsidiaryTab);
+  const partnerOptions = usePartnerOptions(isSubsidiaryTab);
+
+  const [externalCodeState, setExternalCodeState] = useState<ExternalCodeDraftState | null>(null);
+
+  const externalCodeSource = externalCodeList.data ?? null;
+
+  if (externalCodeSource === null) {
+    if (externalCodeState !== null) setExternalCodeState(null);
+  } else if (externalCodeState?.source !== externalCodeSource) {
+    const seeded = toExternalCodeDrafts(externalCodeSource.items);
+    setExternalCodeState({ source: externalCodeSource, baseline: seeded, drafts: seeded });
+  }
+
+  const externalCodeDrafts = externalCodeState?.drafts ?? [];
+  const isExternalCodeDirty =
+    externalCodeState !== null &&
+    !isSameExternalCodeDrafts(externalCodeState.drafts, externalCodeState.baseline);
+
+  const [editingExternalCode, setEditingExternalCode] = useState<ExternalCodeDraft | null>(null);
+  const [isEditingNewExternalCode, setIsEditingNewExternalCode] = useState(false);
+
+  const externalCodeWrite = useMasterWrite<ExternalCodeDraft[], ItemExternalCodeListResponse>({
+    request: (drafts, headers) =>
+      client.PUT('/mdm/items/{itemId}/external-codes', {
+        params: {
+          path: { itemId: selectedItemId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { externalCodes: toExternalCodesPayload(drafts) },
+      }),
+    /* **반드시 `null`이다**(§5.3 표 4행) — 부속 3종이 같은 근거다(M17). */
+    etagPath: null,
+    invalidateKeys: [subsidiaryKeys.externalCodes(selectedItemId ?? 0)],
+    knownFields: [],
+    onSuccess: (saved) => {
+      const next = toExternalCodeDrafts(saved.items);
+      setExternalCodeState({ source: saved, baseline: next, drafts: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const changeExternalCodeDrafts = (next: (drafts: ExternalCodeDraft[]) => ExternalCodeDraft[]) => {
+    setExternalCodeState((prev) => (prev === null ? prev : { ...prev, drafts: next(prev.drafts) }));
+  };
+
+  const openExternalCodeDialog = (draft: ExternalCodeDraft, isNew: boolean) => {
+    externalCodeWrite.reset();
+    setIsEditingNewExternalCode(isNew);
+    setEditingExternalCode(draft);
+  };
+
+  /* ── 선택 수명 ──────────────────────────────────────────────────────────── */
+
+  /**
+   * 이 품목에 매달린 편집 상태를 통째로 비운다.
+   *
+   * 폼과 초안은 조회 응답에서 다시 세워지므로 스스로 낫지만, **쓰기 오류와 열린 창은 낫지 않는다** —
+   * 어느 품목에서 난 실패인지 훅이 알지 못해 다음 품목 화면에 그대로 남는다.
+   */
+  const resetItemEditing = () => {
     attrsWrite.reset();
     setFormState(null);
     setAttrsFieldErrors({});
+
+    buMapWrite.reset();
+    setBuMapState(null);
+    setEditingBuMap(null);
+
+    uomConversionWrite.reset();
+    setUomConversionState(null);
+    setEditingUomConversion(null);
+
+    externalCodeWrite.reset();
+    setExternalCodeState(null);
+    setEditingExternalCode(null);
   };
+
+  /*
+   * 위 함수는 매 렌더 새로 만들어지므로 그대로 의존성에 넣으면 렌더마다 초기화가 돈다 —
+   * 입력 도중에 값이 사라진다. 최신 함수를 참조로 들고 **고른 품목에만** 반응하게 한다.
+   */
+  const resetItemEditingRef = useRef(resetItemEditing);
+  resetItemEditingRef.current = resetItemEditing;
+
+  /**
+   * 선택 수명 규칙의 실행 지점(§5.4 3행). **클릭 핸들러가 아니라 고른 품목에 묶는다.**
+   *
+   * 클릭에만 두면 뒤로가기·앞으로가기·주소 직접 편집처럼 핸들러를 거치지 않는 경로에서
+   * **앞 품목의 실패 배너가 다음 품목 화면에 따라온다** — 사용자는 지금 품목이 저장에
+   * 실패한 줄 안다. 조건 변경·쪽 이동도 주소에서 `item`을 떨구므로 이 한 곳을 지나간다.
+   */
+  useEffect(() => {
+    resetItemEditingRef.current();
+  }, [selectedItemId]);
 
   /**
    * 주소의 일부만 고친다.
@@ -180,33 +507,30 @@ export const ItemExtendedAttrsScreen = () => {
    * 조건·쪽이 바뀌면 **주소를 통째로 새로 만든다.**
    * 그래야 `item`이 자연히 사라진다 — 보이는 행이 달라지는데 선택이 남으면
    * 우 칸의 내용이 어디서 온 것인지 알 수 없다.
+   *
+   * 편집 상태를 여기서 비우지 않는다. `item`이 사라지는 것을 위 효과가 보고 비운다 —
+   * 비우는 규칙이 조작마다 흩어지면 그중 하나를 빠뜨렸을 때 드러나지 않는다.
    */
   const applyFilters = (next: ItemFilters) => {
-    resetAttrsEditing();
-    setSearchParams(toSearchParams(tab.id, next, 1));
+    setSearchParams(toSearchParams(tab.id, subTab.id, next, 1));
   };
 
   const changePage = (nextPage: number) => {
-    resetAttrsEditing();
-    setSearchParams(toSearchParams(tab.id, filters, nextPage));
+    setSearchParams(toSearchParams(tab.id, subTab.id, filters, nextPage));
   };
 
   /**
    * 품목을 고른다. **주소 갱신 한 번으로 끝낸다** — 나눠 부르면 뒤로가기가
    * 사용자가 본 적 없는 중간 상태로 떨어진다.
    *
-   * **이미 고른 품목을 다시 누르면 아무것도 하지 않는다.** 선택 수명 규칙이 비우기를 거는 것은
-   * 「품목 선택 **변경**」이지 재클릭이 아니다 — 보이는 행이 달라지지 않았는데 비우면
-   * 저장하지 않은 입력이 조용히 사라진다. 여기서 먼저 걸러 두면 부속 초안이 이 화면으로
-   * 들어와도(뒤 작업) 같은 클릭 한 번에 초안 세 벌이 함께 날아가지 않는다.
+   * **이미 고른 품목을 다시 눌러도 히스토리를 늘리지 않는다.** 화면이 달라지지 않는 갱신은
+   * 뒤로가기 한 번을 헛돌게 만든다.
    *
-   * 실제로 달라질 때만 편집 중이던 상태를 비운다 — 다른 품목의 폼·실패 배너가 남으면
-   * 뒤로가기로 돌아왔을 때 **남의 실패 배너**를 보게 된다.
+   * 편집 상태를 여기서 비우지 않는다 — 비우기는 고른 품목에 묶여 있고, 재클릭은
+   * 그 값을 바꾸지 않으므로 저장하지 않은 입력이 그대로 남는다.
    */
   const handleSelectItem = (itemId: number) => {
     if (itemId === selectedItemId) return;
-
-    resetAttrsEditing();
 
     patchSearchParams((next) => {
       next.set(ITEM_KEY, String(itemId));
@@ -226,6 +550,22 @@ export const ItemExtendedAttrsScreen = () => {
         next.delete(TAB_KEY);
       } else {
         next.set(TAB_KEY, value);
+      }
+    });
+  };
+
+  /**
+   * 부속 정보 안의 하위 탭을 옮긴다. **여기도 아무것도 비우지 않는다.**
+   *
+   * 세 부속 자원은 서로 다른 자원이라 함께 산다(§5.4) — 사업부 매핑을 고치다
+   * 단위 환산을 보고 돌아왔을 때 앞의 편집이 사라져 있으면 안 된다.
+   */
+  const changeSubTab = (value: string) => {
+    patchSearchParams((next) => {
+      if (value === DEFAULT_SUBSIDIARY_TAB_ID) {
+        next.delete(SUBSIDIARY_TAB_KEY);
+      } else {
+        next.set(SUBSIDIARY_TAB_KEY, value);
       }
     });
   };
@@ -269,7 +609,7 @@ export const ItemExtendedAttrsScreen = () => {
    * 최신 값을 받아 다시 입력하는 수밖에 없고, 입력한 내용은 사라진다.
    */
   const reloadItemDetail = () => {
-    resetAttrsEditing();
+    resetItemEditing();
     void itemDetail.refetch();
   };
 
@@ -328,7 +668,13 @@ export const ItemExtendedAttrsScreen = () => {
       );
     }
 
-    return <ItemOriginPane item={itemDetail.data.item} uomEntries={uomOptions.entries} />;
+    return (
+      <ItemOriginPane
+        item={itemDetail.data.item}
+        uomEntries={uomOptions.entries}
+        isUomLoading={uomOptions.isLoading}
+      />
+    );
   };
 
   /**
@@ -366,7 +712,186 @@ export const ItemExtendedAttrsScreen = () => {
     );
   };
 
-  const tabContentOf = (tabId: string): ReactNode => (tabId === 'attrs' ? renderAttrsPane() : null);
+  /** 하위 탭①-1 — 사업부 매핑. */
+  const renderBuMapPane = (): ReactNode => (
+    <BuMapPane
+      drafts={buMapDrafts}
+      isLoading={buMapList.isPending}
+      businessUnitEntries={businessUnitOptions.entries}
+      isBusinessUnitLoading={businessUnitOptions.isLoading}
+      itemNameEntries={buMapItemNames.entries}
+      isItemNameLoading={buMapItemNames.isLoading}
+      /*
+       * 이름 조회 실패는 **저장을 막지 않는다** — 표시만의 문제라 잘림·실패 안내와
+       * 같은 자리에 다른 문구로 낸다.
+       */
+      optionsNotice={
+        buMapItemNames.isError ? (
+          <div className="banner-slot">
+            <AlertBanner variant="warning">{t.buMap.itemNamesLoadFailed}</AlertBanner>
+          </div>
+        ) : (
+          renderOptionsNotice([businessUnitOptions])
+        )
+      }
+      loadError={
+        buMapList.isError ? (
+          <LoadErrorBanner error={buMapList.error} onRetry={() => void buMapList.refetch()} />
+        ) : null
+      }
+      /*
+       * 400·403이 이 공통 배너로 온다. **이 화면 전용 문구를 만들지 않는다.**
+       * 「최신 불러오기」를 주지 않는다 — 이 쓰기에는 낙관적 잠금이 없어 충돌이라는 갈래 자체가 없다.
+       */
+      banner={<SaveErrorBanner error={buMapWrite.error} />}
+      isDirty={isBuMapDirty}
+      isSaving={buMapWrite.isSaving}
+      onAdd={() => openBuMapDialog(createBuMapDraft(), true)}
+      onEdit={(draftId) => {
+        const found = buMapDrafts.find((draft) => draft.draftId === draftId);
+        if (found !== undefined) openBuMapDialog(found, false);
+      }}
+      onRemove={(draftId) => {
+        changeBuMapDrafts((drafts) => removeBuMapDraft(drafts, draftId));
+      }}
+      onSave={() => {
+        if (buMapState === null) return;
+
+        buMapWrite.write(buMapState.drafts);
+      }}
+      onCancel={() => {
+        buMapWrite.reset();
+        setBuMapState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
+      }}
+    />
+  );
+
+  /** 하위 탭①-2 — 단위 환산. */
+  const renderUomConversionPane = (): ReactNode => (
+    <UomConversionPane
+      drafts={uomConversionDrafts}
+      isLoading={uomConversionList.isPending}
+      uomEntries={uomOptions.entries}
+      isUomLoading={uomOptions.isLoading}
+      /*
+       * **단위 목록 안내의 주인은 이 페인이 아니다.**
+       *
+       * 같은 목록을 원본 구획의 기준 단위도 쓰고, 그 구획은 어느 탭에서나 보인다.
+       * 그래서 안내를 우 칸 머리에 한 번만 낸다(`renderOptionsNotice`의 유일한 호출부) —
+       * 여기서 한 번 더 내면 이 하위 탭에서만 같은 문구가 둘로 보인다.
+       */
+      optionsNotice={null}
+      loadError={
+        uomConversionList.isError ? (
+          <LoadErrorBanner
+            error={uomConversionList.error}
+            onRetry={() => void uomConversionList.refetch()}
+          />
+        ) : null
+      }
+      /* 낙관적 잠금이 없어 충돌 갈래가 없다 — 「최신 불러오기」를 주지 않는다. */
+      banner={<SaveErrorBanner error={uomConversionWrite.error} />}
+      isDirty={isUomConversionDirty}
+      isSaving={uomConversionWrite.isSaving}
+      onAdd={() => openUomConversionDialog(createUomConversionDraft(), true)}
+      onEdit={(draftId) => {
+        const found = uomConversionDrafts.find((draft) => draft.draftId === draftId);
+        if (found !== undefined) openUomConversionDialog(found, false);
+      }}
+      onRemove={(draftId) => {
+        changeUomConversionDrafts((drafts) => removeUomConversionDraft(drafts, draftId));
+      }}
+      onSave={() => {
+        if (uomConversionState === null) return;
+
+        uomConversionWrite.write(uomConversionState.drafts);
+      }}
+      onCancel={() => {
+        uomConversionWrite.reset();
+        setUomConversionState((prev) =>
+          prev === null ? prev : { ...prev, drafts: prev.baseline },
+        );
+      }}
+    />
+  );
+
+  /** 하위 탭①-3 — 외부 코드. */
+  const renderExternalCodePane = (): ReactNode => (
+    <ExternalCodePane
+      drafts={externalCodeDrafts}
+      isLoading={externalCodeList.isPending}
+      partnerEntries={partnerOptions.entries}
+      isPartnerLoading={partnerOptions.isLoading}
+      optionsNotice={renderOptionsNotice([partnerOptions])}
+      loadError={
+        externalCodeList.isError ? (
+          <LoadErrorBanner
+            error={externalCodeList.error}
+            onRetry={() => void externalCodeList.refetch()}
+          />
+        ) : null
+      }
+      /* 낙관적 잠금이 없어 충돌 갈래가 없다 — 「최신 불러오기」를 주지 않는다. */
+      banner={<SaveErrorBanner error={externalCodeWrite.error} />}
+      isDirty={isExternalCodeDirty}
+      isSaving={externalCodeWrite.isSaving}
+      onAdd={() => openExternalCodeDialog(createExternalCodeDraft(), true)}
+      onEdit={(draftId) => {
+        const found = externalCodeDrafts.find((draft) => draft.draftId === draftId);
+        if (found !== undefined) openExternalCodeDialog(found, false);
+      }}
+      onRemove={(draftId) => {
+        changeExternalCodeDrafts((drafts) => removeExternalCodeDraft(drafts, draftId));
+      }}
+      onSave={() => {
+        if (externalCodeState === null) return;
+
+        externalCodeWrite.write(externalCodeState.drafts);
+      }}
+      onCancel={() => {
+        externalCodeWrite.reset();
+        setExternalCodeState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
+      }}
+    />
+  );
+
+  const subTabContentOf = (subTabId: string): ReactNode => {
+    if (subTabId === 'bu') return renderBuMapPane();
+    if (subTabId === 'uom') return renderUomConversionPane();
+    if (subTabId === 'ext') return renderExternalCodePane();
+
+    return null;
+  };
+
+  /**
+   * 탭② — 부속 정보. **탭 안의 탭이다**(결정 2).
+   *
+   * 바깥 탭은 우 칸 머리에, 안쪽 탭은 이 페인 안에 둔다 — 두 층이 같은 줄에 있으면
+   * 어느 것이 무엇을 가르는지 읽히지 않는다.
+   */
+  const renderSubsidiaryPane = (): ReactNode => (
+    <section className="pane-stack">
+      <Tabs
+        aria-label={t.subTabs.label}
+        size="sm"
+        value={subTab.id}
+        onChange={changeSubTab}
+        items={SUBSIDIARY_TABS.map((definition) => ({
+          value: definition.id,
+          label: definition.label,
+          /* 활성 하위 탭의 내용만 만든다 — 디자인 시스템 Tabs는 비활성 패널도 DOM에 둔다. */
+          content: definition.id === subTab.id ? subTabContentOf(definition.id) : null,
+        }))}
+      />
+    </section>
+  );
+
+  const tabContentOf = (tabId: string): ReactNode => {
+    if (tabId === 'attrs') return renderAttrsPane();
+    if (tabId === 'sub') return renderSubsidiaryPane();
+
+    return null;
+  };
 
   return (
     <>
@@ -423,6 +948,68 @@ export const ItemExtendedAttrsScreen = () => {
           )}
         </div>
       </div>
+
+      {/*
+       * **열 때만 마운트한다.** 디자인 시스템 `Dialog`는 닫혀도 내용이 DOM에 남아,
+       * 항상 렌더하면 지난 값이 살아 있고 표에도 없는 입력칸이 검색에 잡힌다.
+       */}
+      {editingBuMap !== null && (
+        <BuMapFormDialog
+          draft={editingBuMap}
+          isNew={isEditingNewBuMap}
+          businessUnitOptions={(selected) =>
+            selectableOptions(businessUnitOptions.entries, selected)
+          }
+          /*
+           * 표가 이미 아는 이름을 넘긴다 — 검색 결과에 없어도 선택칸에 번호가 보이지 않는다.
+           * **로딩 갈래를 함께 넘긴다**: 빠뜨리면 이름을 받는 중인 창에서만 「알 수 없음」이 되어
+           * 표는 「불러오는 중…」인데 창은 값이 없는 것처럼 보인다.
+           */
+          selectedItemLabel={
+            editingBuMap.toItemId === ''
+              ? undefined
+              : lookupLabel(
+                  buMapItemNames.entries,
+                  Number(editingBuMap.toItemId),
+                  buMapItemNames.isLoading,
+                )
+          }
+          onClose={() => setEditingBuMap(null)}
+          onConfirm={(next) => {
+            changeBuMapDrafts((drafts) => upsertBuMapDraft(drafts, next));
+            setEditingBuMap(null);
+          }}
+        />
+      )}
+
+      {editingUomConversion !== null && (
+        <UomConversionFormDialog
+          draft={editingUomConversion}
+          isNew={isEditingNewUomConversion}
+          /* 자기 자신은 초안 키로 걸러진다 — 수정할 때 세 값을 그대로 두는 것이 정상이다. */
+          otherDrafts={uomConversionDrafts}
+          uomOptions={(selected) => selectableOptions(uomOptions.entries, selected)}
+          onClose={() => setEditingUomConversion(null)}
+          onConfirm={(next) => {
+            changeUomConversionDrafts((drafts) => upsertUomConversionDraft(drafts, next));
+            setEditingUomConversion(null);
+          }}
+        />
+      )}
+
+      {editingExternalCode !== null && (
+        <ExternalCodeFormDialog
+          draft={editingExternalCode}
+          isNew={isEditingNewExternalCode}
+          otherDrafts={externalCodeDrafts}
+          partnerOptions={(selected) => selectableOptions(partnerOptions.entries, selected)}
+          onClose={() => setEditingExternalCode(null)}
+          onConfirm={(next) => {
+            changeExternalCodeDrafts((drafts) => upsertExternalCodeDraft(drafts, next));
+            setEditingExternalCode(null);
+          }}
+        />
+      )}
     </>
   );
 };

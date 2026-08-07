@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ensureOption, lookupLabel } from './options';
+import { ensureOption, lookupLabel, selectableOptions } from './options';
 import type { LookupEntry, SelectOption } from './types';
 
 const entries: LookupEntry[] = [
@@ -31,6 +31,28 @@ describe('ensureOption', () => {
   });
 });
 
+describe('selectableOptions', () => {
+  it('사용 중인 것만 고를 수 있다', () => {
+    expect(selectableOptions(entries, '').map((option) => option.value)).toEqual(['7001']);
+  });
+
+  /* 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다. */
+  it('지금 고른 값이 미사용이면 표식을 붙여 남긴다', () => {
+    const options = selectableOptions(entries, '7002');
+
+    expect(options.map((option) => option.value)).toEqual(['7001', '7002']);
+    expect(options[1]?.label).toBe('SYN-UOM-02 · 합성 단위 B (미사용)');
+  });
+
+  /* 목록에 아예 없는 값도 남긴다 — 지워진 것과 못 받은 것을 화면이 구분할 수 없다. */
+  it('목록에 없는 현재 값은 값 그대로 남긴다', () => {
+    expect(selectableOptions(entries, '9999').map((option) => option.value)).toEqual([
+      '7001',
+      '9999',
+    ]);
+  });
+});
+
 describe('lookupLabel', () => {
   it('번호를 이름으로 옮긴다', () => {
     expect(lookupLabel(entries, 7001)).toBe('SYN-UOM-01 · 합성 단위 A');
@@ -51,5 +73,22 @@ describe('lookupLabel', () => {
   it('값이 없으면 미지정 표기다', () => {
     expect(lookupLabel(entries, null)).toBe('—');
     expect(lookupLabel(entries, undefined)).toBe('—');
+  });
+
+  /*
+   * **「아직 못 받았다」와 「목록에 없다」는 다른 사실이다.**
+   * 같은 문구로 내면 사용자가 잘못 담긴 자료로 읽고 원본 시스템을 확인하러 간다.
+   */
+  it('목록을 받는 중이면 「알 수 없음」이 아니라 불러오는 중이다', () => {
+    expect(lookupLabel([], 7001, true)).toBe('불러오는 중…');
+  });
+
+  it('값이 없으면 목록을 받는 중이어도 미지정 표기다 — 오지 않을 이름을 기다리게 하지 않는다', () => {
+    expect(lookupLabel([], null, true)).toBe('—');
+  });
+
+  /* 다 받은 뒤에도 없으면 그때는 정말 「알 수 없음」이다. */
+  it('다 받았는데 없으면 「알 수 없음」이다', () => {
+    expect(lookupLabel([], 7001, false)).toBe('알 수 없음');
   });
 });

@@ -8,7 +8,13 @@ import { ItemAttrsPane } from './item-attrs-pane';
 import { itemToAttrsFormValues } from './item-attrs-mappers';
 import type { ItemAttrsFormValues } from './types';
 
-/** 자유 입력 코드의 화면 라벨. 목록이 늘면 여기도 함께 늘어야 한다. */
+/**
+ * **이 구획이 소유한** 자유 입력 코드와 그 화면 라벨.
+ *
+ * `code-catalog.ts`의 목록은 화면 전체를 담는다 — `externalSystemCode`는 부속 정보 탭의
+ * 외부 코드 구획에 있어 여기서 찾을 수 없다. 그래서 이 구획 몫만 뽑아 쓰되,
+ * 아래에서 **그 몫이 실제로 목록에 있는지** 함께 확인한다(목록과 화면이 갈리지 않도록).
+ */
 const FREE_TEXT_LABELS: Record<string, string> = {
   lotControlTypeCode: 'LOT 관리 유형',
   serialControlTypeCode: '시리얼 관리 유형',
@@ -49,10 +55,17 @@ describe('ItemAttrsPane — 폼 구성', () => {
    * 값 목록이 확정되지 않은 코드는 **자유 입력**이다(결정 4).
    * 빈 선택지로 두면 저장 자체가 막히고, 값을 지어내면 화면이 코드 체계를 주장하게 된다.
    */
-  it.each(FREE_TEXT_CODES)('%s는 자유 입력이다', (field) => {
+  it.each(Object.keys(FREE_TEXT_LABELS))('%s는 자유 입력이다', (field) => {
     renderPane();
 
     expect(screen.getByLabelText(FREE_TEXT_LABELS[field]!)).toHaveProperty('tagName', 'INPUT');
+  });
+
+  /* 위 목록이 자리표시 기록과 갈리면 「무엇이 자유 입력인가」의 정본이 둘이 된다. */
+  it('이 구획의 자유 입력 필드가 자리표시 기록에 들어 있다', () => {
+    for (const field of Object.keys(FREE_TEXT_LABELS)) {
+      expect(FREE_TEXT_CODES).toContain(field);
+    }
   });
 
   /* 계약이 이름으로 밝힌 두 값이 있으므로 이것만 선택칸이다. */

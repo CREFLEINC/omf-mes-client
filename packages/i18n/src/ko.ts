@@ -1336,6 +1336,17 @@ const itemExtendedAttrs = {
   tabs: {
     label: '품목 확장속성',
     attrs: '확장 속성',
+    subsidiary: '부속 정보',
+  },
+  /**
+   * 부속 정보 안의 하위 탭. 계약이 인용한 화면 스펙의 구획 이름을 그대로 옮긴 것이다 —
+   * 여기서 이름을 새로 지으면 설계 문서와 화면이 다른 말을 하게 된다.
+   */
+  subTabs: {
+    label: '부속 정보',
+    buMap: '사업부 매핑',
+    uomConversion: '단위 환산',
+    externalCode: '외부 코드',
   },
   panes: {
     item: '품목',
@@ -1399,6 +1410,12 @@ const itemExtendedAttrs = {
      * 내부 식별자라 사용자가 쓸 수 없고, 보이면 자료로 읽힌다.
      */
     unknown: '알 수 없음',
+    /*
+     * 선택 목록을 아직 받지 못해 이름으로 옮길 수 없다. **「알 수 없음」과 가른다** —
+     * 둘을 같은 문구로 내면 잠깐 보이는 「알 수 없음」을 자료가 잘못 담긴 것으로 읽고
+     * 사용자가 원본 시스템을 확인하러 간다.
+     */
+    loading: '불러오는 중…',
   },
   /**
    * 원본 구획 — 외부 시스템이 소유하는 네 열. **여기에 입력칸도 저장도 없다.**
@@ -1450,6 +1467,184 @@ const itemExtendedAttrs = {
       shelfLifeDaysInvalid: '유효기한(일)은 0 이상의 정수로 입력하세요.',
       /* 계약 exclusiveMinimum: 0 — 유효기한(일)과 규칙이 다르다. 0을 받지 않는다. */
       openedShelfLifeHoursInvalid: '개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.',
+    },
+  },
+  /**
+   * 대상 품목을 **검색해서 고르는** 묶음(결정 8).
+   *
+   * 품목이 수천 건일 수 있어 선택칸에 다 담을 수 없고, 번호를 입력받으면 사용자가
+   * 알 수도 확인할 수도 없는 내부 식별자를 화면이 요구하게 된다.
+   */
+  itemPicker: {
+    keywordLabel: '대상 품목 검색',
+    keywordPlaceholder: '품목코드 또는 품목명',
+    search: '찾기',
+    resultLabel: '대상 품목',
+    resultPlaceholder: '검색 결과에서 고르세요',
+    /* 검색 전에는 선택칸이 비어 있는 것이 정상이다 — 그 사실을 밝히지 않으면 고장으로 읽힌다. */
+    beforeSearch: '품목코드나 품목명을 넣고 찾기를 누르세요.',
+    truncated: '검색 결과가 많아 일부만 표시합니다. 검색어를 좁히세요.',
+    noResult: '검색어에 맞는 품목이 없습니다. 검색어를 바꿔 다시 찾아 보세요.',
+    searchFailed: '품목을 검색하지 못했습니다. 잠시 뒤 다시 찾아 보세요.',
+  },
+  /**
+   * 부속 하위 탭① — 사업부 매핑. 사업부 사이의 품목 대응을 담는다.
+   *
+   * **중복 안내 문구가 없다.** 계약이 이 표에 유일 제약을 적지 않았고,
+   * 화면이 없는 제약을 흉내 내면 서버가 허용하는 값을 막는다(결정 7).
+   */
+  buMap: {
+    paneTitle: '사업부 매핑',
+    fields: {
+      fromBusinessUnit: '보내는 사업부',
+      toBusinessUnit: '받는 사업부',
+      toItem: '대상 품목',
+      validPeriod: '유효기간',
+      effectiveFrom: '유효 시작',
+      effectiveTo: '유효 종료',
+      edit: '편집',
+    },
+    values: {
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+    },
+    actions: {
+      add: '매핑 추가',
+      editRow: (name: string): string => `${name} 매핑 수정`,
+      removeRow: (name: string): string => `${name} 매핑 삭제`,
+    },
+    loading: {
+      list: '사업부 매핑을 불러오는 중',
+    },
+    empty: {
+      noneTitle: '등록된 사업부 매핑이 없습니다',
+      noneDescription: '「매핑 추가」로 줄을 만든 뒤 저장하세요.',
+    },
+    dialog: {
+      addTitle: '사업부 매핑 추가',
+      editTitle: '사업부 매핑 수정',
+      confirm: '확인',
+      /* 확인이 저장이라고 오해하면 창을 닫고 화면을 떠난다 — 전체 치환이라 저장이 따로 있다. */
+      notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
+    },
+    /* 「대상 품목 이름을 못 받았다」는 저장을 막지 않는다 — 표시만의 문제다. */
+    itemNamesLoadFailed: '대상 품목 이름을 불러오지 못했습니다. 저장에는 영향이 없습니다.',
+    validation: {
+      required: '필수 입력 항목입니다.',
+      /* 계약 ck_item_bu_map_distinct */
+      sameBusinessUnit: '보내는 사업부와 받는 사업부는 서로 달라야 합니다.',
+      /* 계약 ck_item_bu_map_dates — 짝 제약이라 두 칸에 함께 낸다. */
+      validRangeReversed: '유효 종료는 유효 시작과 같거나 뒤여야 합니다.',
+    },
+  },
+  /**
+   * 부속 하위 탭② — 단위 환산.
+   *
+   * 사업부 매핑과 달리 **유일 제약이 있다**(`uq_item_uom_conversion` 네 컬럼).
+   * 서버가 준 목록에 이미 겹친 줄이 있을 수 있어 저장을 막는 사유 문구가 함께 있다.
+   */
+  uomConversion: {
+    paneTitle: '단위 환산',
+    fields: {
+      fromUom: '변환 전 단위',
+      toUom: '변환 후 단위',
+      conversionRate: '환산 비율',
+      validPeriod: '유효기간',
+      effectiveFrom: '유효 시작',
+      effectiveTo: '유효 종료',
+      edit: '편집',
+    },
+    values: {
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+    },
+    actions: {
+      add: '환산 추가',
+      editRow: (name: string): string => `${name} 환산 수정`,
+      removeRow: (name: string): string => `${name} 환산 삭제`,
+    },
+    /* 「무엇이 막혔는지 + 어떻게 풀 수 있는지」를 담고 그 컨트롤의 이름으로 시작한다. */
+    actionReasons: {
+      saveBlockedByDuplicate:
+        '저장할 수 없습니다. 변환 전·변환 후·유효 시작이 같은 줄이 둘 이상 있습니다. 겹친 줄을 고치거나 지운 뒤 저장하세요.',
+    },
+    loading: {
+      list: '단위 환산을 불러오는 중',
+    },
+    empty: {
+      noneTitle: '등록된 단위 환산이 없습니다',
+      noneDescription: '「환산 추가」로 줄을 만든 뒤 저장하세요.',
+    },
+    dialog: {
+      addTitle: '단위 환산 추가',
+      editTitle: '단위 환산 수정',
+      confirm: '확인',
+      notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      /* 계약 ck_item_uom_distinct */
+      sameUom: '변환 전 단위와 변환 후 단위는 서로 달라야 합니다.',
+      /* 계약 exclusiveMinimum: 0 — 0은 허용값이 아니다. */
+      conversionRateInvalid: '환산 비율은 0보다 큰 수로 입력하세요.',
+      /* 계약 ck_item_uom_dates — 짝 제약이라 두 칸에 함께 낸다. */
+      validRangeReversed: '유효 종료는 유효 시작과 같거나 뒤여야 합니다.',
+      /* 계약 uq_item_uom_conversion — 유효 종료·환산 비율은 이 키에 들어가지 않는다. */
+      duplicateKey: '변환 전·변환 후·유효 시작이 같은 줄이 이미 있습니다.',
+      /* 표 위에 낸다 — 어느 줄이 문제인지 저장을 눌러야 알게 하지 않는다. */
+      duplicateInList: '변환 전·변환 후·유효 시작이 같은 줄이 있습니다. 겹친 줄을 정리하세요.',
+    },
+  },
+  /**
+   * 부속 하위 탭③ — 외부 코드. 고객 바코드 체계의 저장처다.
+   *
+   * **중복 문구가 접힘을 밝힌다.** 계약의 유일 제약이 `COALESCE(partner_id,0)`으로 접혀
+   * 거래처를 비운 두 줄이 서버에게 같은 짝이 되는데(A-7), 그 사실을 적지 않으면
+   * 사용자가 「다른 줄인데 왜 막느냐」로 읽는다.
+   */
+  externalCode: {
+    paneTitle: '외부 코드',
+    fields: {
+      externalSystem: '외부 시스템',
+      partner: '거래처',
+      externalItemCode: '외부 품목코드',
+      edit: '편집',
+    },
+    values: {
+      /* 계약이 「비우면 (전체)」로 정했다(A-7) — 빈 칸으로 두면 빠뜨린 것으로 읽힌다. */
+      allPartners: '(전체)',
+    },
+    actions: {
+      add: '외부 코드 추가',
+      editRow: (name: string): string => `${name} 외부 코드 수정`,
+      removeRow: (name: string): string => `${name} 외부 코드 삭제`,
+    },
+    actionReasons: {
+      saveBlockedByDuplicate:
+        '저장할 수 없습니다. 외부 시스템과 거래처가 같은 줄이 둘 이상 있습니다. 겹친 줄을 고치거나 지운 뒤 저장하세요.',
+    },
+    loading: {
+      list: '외부 코드를 불러오는 중',
+    },
+    empty: {
+      noneTitle: '등록된 외부 코드가 없습니다',
+      noneDescription: '「외부 코드 추가」로 줄을 만든 뒤 저장하세요.',
+    },
+    dialog: {
+      addTitle: '외부 코드 추가',
+      editTitle: '외부 코드 수정',
+      confirm: '확인',
+      notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
+    },
+    /* 값 목록이 확정되지 않아 자유 입력으로 받는다(결정 4) — 그 사실을 밝힌다. */
+    externalSystemNote: '코드 목록이 확정되지 않아 직접 입력합니다. 값은 서버가 확인합니다.',
+    validation: {
+      required: '필수 입력 항목입니다.',
+      externalSystemCodeTooLong: '외부 시스템 코드는 50자를 넘을 수 없습니다.',
+      externalItemCodeTooLong: '외부 품목코드는 100자를 넘을 수 없습니다.',
+      /* 계약 uq_item_external_code — COALESCE(partner_id,0) 접기를 문구가 밝힌다(A-7). */
+      duplicateKey:
+        '외부 시스템과 거래처가 같은 줄이 이미 있습니다. 거래처를 비운 줄끼리도 같은 줄로 봅니다.',
+      duplicateInList:
+        '외부 시스템과 거래처가 같은 줄이 있습니다. 거래처를 비운 줄끼리도 같은 줄로 보므로 겹친 줄을 정리하세요.',
     },
   },
 } as const;
