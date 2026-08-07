@@ -113,6 +113,46 @@ describe('AppLayout', () => {
     );
   });
 
+  /*
+   * 시스템 운영 화면이라 기준정보와 다른 섹션에 둔다 —
+   * 같은 섹션에 넣으면 「창고·Location」 옆에 서서 분류가 무너진다.
+   */
+  it('사이드바에 시스템 관리 섹션의 사용자·역할·권한 메뉴가 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByText('시스템 관리')).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: '사용자·역할·권한' })).toHaveAttribute(
+      'href',
+      '/system/users-roles',
+    );
+  });
+
+  /* 새 섹션을 더하면서 기존 섹션의 구성이 흔들리지 않았는지 함께 본다. */
+  it('기준정보 섹션의 항목 순서와 경로가 그대로다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(
+      within(sidebar)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual([
+      '/master-data/warehouse-location',
+      '/master-data/routing',
+      '/master-data/inspection-standard',
+      '/master-data/defect-cause-code',
+      '/master-data/common-code',
+      '/master-data/judgment-code',
+      '/master-data/integration-sync',
+      '/master-data/item-extended-attrs',
+      '/master-data/master-change',
+      '/system/users-roles',
+    ]);
+  });
+
   it('본문 랜드마크가 자식 내용을 담는다', () => {
     renderLayout('본문 내용');
 
