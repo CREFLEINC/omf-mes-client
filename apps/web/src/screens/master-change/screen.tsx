@@ -1,7 +1,7 @@
 import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
@@ -86,6 +86,7 @@ const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
  */
 export const MasterChangeScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const newRevisionReasonId = useId();
 
   /**
    * **주소 키의 수명 — 무엇이 바뀔 때 무엇을 비우는가.**
@@ -222,6 +223,28 @@ export const MasterChangeScreen = () => {
       <PageHeader
         title={t.title}
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        /*
+         * 배치 규범 4 — 개정 발행은 여기서 할 수 없지만 **버튼을 감추지 않는다.**
+         * 감추면 개정 발행이 어디서 이루어지는지 화면에서 알 방법이 없어진다.
+         *
+         * `outlined`인 이유는 비활성일 때도 테두리가 남아 버튼으로 읽히기 때문이다 —
+         * `text`는 라벨로 읽힌다. 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해
+         * `aria-describedby`로 잇는다. 비활성 컨트롤은 포커스를 받지 못해
+         * 툴팁만으로는 키보드·보조기술 사용자가 닿을 수 없다.
+         *
+         * **이동 수단을 붙이지 않는다.** 대상 식별자가 어느 표를 가리키는지 데이터로
+         * 판정되지 않아 어디로 보낼지 화면이 알 수 없다.
+         */
+        actions={
+          <div className="field-cell">
+            <Button variant="outlined" disabled aria-describedby={newRevisionReasonId}>
+              {t.actions.newRevision}
+            </Button>
+            <span id={newRevisionReasonId} className="field-note">
+              {t.reasons.newRevisionElsewhere}
+            </span>
+          </div>
+        }
       />
 
       {list.isError && <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />}
