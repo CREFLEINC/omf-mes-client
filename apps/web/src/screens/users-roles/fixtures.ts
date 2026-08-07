@@ -1,6 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
-import type { AppUser } from './types';
+import type { AppUser, Role, UserRole } from './types';
 
 type Department = components['schemas']['Department'];
 
@@ -79,4 +79,44 @@ export const departmentFixtures: Department[] = [
     businessUnitId: null,
     isActive: false,
   },
+];
+
+/**
+ * 역할 선택지 3건.
+ *
+ * - `5001` 사용 중 · **이미 부여됨** — 회수가 막히지 않는지 보는 자리다
+ * - `5002` 사용 중 · 부여되지 않음 — 새로 고를 수 있는지 보는 자리다
+ * - `5003` **미사용** · 이미 부여됨 — 목록에 남고 잠기는지 보는 자리다
+ *
+ * 이름에 어떤 직책·권한 등급도 담지 않는다 — 화면은 「어떤 역할이 특별한가」를 판정하지 않으며,
+ * 픽스처가 그런 이름을 가지면 그 판정을 넣고 싶어지는 자리를 만든다(계획 결정 4).
+ */
+export const roleFixtures: Role[] = [
+  {
+    roleId: 5001,
+    roleCode: 'SYN-ROLE-01',
+    roleName: '합성 역할 A',
+    description: '합성 역할 A 설명',
+    isActive: true,
+  },
+  {
+    roleId: 5002,
+    roleCode: 'SYN-ROLE-02',
+    roleName: '합성 역할 B',
+    description: null,
+    isActive: true,
+  },
+  {
+    roleId: 5003,
+    roleCode: 'SYN-ROLE-03',
+    roleName: '합성 역할 C',
+    description: null,
+    isActive: false,
+  },
+];
+
+/** 사용자 `1001`의 부여분 — 사용 중 하나와 미사용 하나를 함께 담는다. */
+export const userRoleFixtures: UserRole[] = [
+  { userRoleId: 7001, appUserId: 1001, roleId: 5001 },
+  { userRoleId: 7002, appUserId: 1001, roleId: 5003 },
 ];

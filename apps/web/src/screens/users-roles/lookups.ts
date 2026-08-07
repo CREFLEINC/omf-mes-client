@@ -31,6 +31,7 @@ const isTruncated = (page: PageMeta, shown: number): boolean => page.total > sho
 
 const lookupKeys = {
   departments: ['users-roles-lookups', 'departments'] as const,
+  roles: ['users-roles-lookups', 'roles'] as const,
 };
 
 /**
@@ -59,6 +60,38 @@ export const useDepartmentOptions = (enabled: boolean): LookupResult => {
       data?.items.map((item) => ({
         value: String(item.departmentId),
         label: `${item.departmentCode} · ${item.departmentName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: query.isPending,
+  };
+};
+
+/**
+ * 역할 — 역할 부여 확인칸 목록이 쓴다.
+ *
+ * **`includeInactive=true`로 받는다.** 기본 조회는 사용 중인 것만 내려주는데, 미사용 역할이
+ * 이미 부여돼 있으면 그 부여가 이름 없이 보이고 저장할 때 조용히 회수된다.
+ * 「무엇을 남기고 무엇을 잠글 것인가」는 `role-assign-draft.ts`가 정한다.
+ */
+export const useRoleOptions = (enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.roles,
+    enabled,
+    queryFn: () =>
+      runRequest(() => client.GET('/app/roles', { params: { query: { includeInactive: true } } })),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.roleId),
+        label: `${item.roleCode} · ${item.roleName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),

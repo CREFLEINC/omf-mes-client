@@ -18,8 +18,17 @@ import { lookupLabel, selectableOptions } from './code-options';
 import { DeactivateDialog } from './deactivate-dialog';
 import { readPage, readSelectedId, readUserFilters, toUserSearchParams } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
-import { useDepartmentOptions, type LookupResult } from './lookups';
+import { useDepartmentOptions, useRoleOptions, type LookupResult } from './lookups';
 import { toPageView } from './pagination';
+import {
+  isSameRoleSelection,
+  roleCatalogOrder,
+  toRoleAssignDraft,
+  toRoleChoices,
+  toRolesPayload,
+  toggleRoleId,
+} from './role-assign-draft';
+import { RoleAssignPane } from './role-assign-pane';
 import { USERS_ROLES_TABS, resolveTab, tabSearchParams } from './tabs';
 import { UserFormPane } from './user-form-pane';
 import { UserListPane } from './user-list-pane';
@@ -30,11 +39,18 @@ import {
   toAppUserCreate,
   toAppUserUpdate,
 } from './user-mappers';
-import { useUserDetail, useUserList, userDetailPath, userKeys } from './user-queries';
+import {
+  useUserDetail,
+  useUserList,
+  useUserRoles,
+  userDetailPath,
+  userKeys,
+} from './user-queries';
 import { USER_FORM_FIELDS, validateUserForm } from './user-validation';
 import type { AppUser, UserFilters, UserFormValues } from './types';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
+type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
 
 const t = messages.usersRoles;
 
@@ -53,6 +69,18 @@ interface UserFormState {
   source: UserFormSource;
   baseline: UserFormValues;
   values: UserFormValues;
+}
+
+/**
+ * 역할 부여의 초안과 그것이 어디서 나왔는지.
+ *
+ * 폼과 같은 규칙이다 — **출처(서버 응답 객체)가 바뀔 때만** 다시 세운다.
+ * 사용자가 확인칸을 고치는 동안 캐시가 갱신돼도 체크가 되돌아가면 안 된다.
+ */
+interface RoleAssignState {
+  source: UserRoleListResponse;
+  baseline: number[];
+  selected: number[];
 }
 
 /**
@@ -127,6 +155,26 @@ export const UsersRolesScreen = () => {
   const [userFieldErrors, setUserFieldErrors] = useState<Record<string, string>>({});
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+
+  /* ── 역할 부여 ─────────────────────────────────────────────────────────── */
+
+  const userRoleList = useUserRoles(selectedAppUserId);
+  const roleOptions = useRoleOptions(selectedAppUserId !== null);
+
+  const [roleAssignState, setRoleAssignState] = useState<RoleAssignState | null>(null);
+
+  const roleAssignSource = userRoleList.data ?? null;
+
+  if (roleAssignSource === null) {
+    if (roleAssignState !== null) setRoleAssignState(null);
+  } else if (roleAssignState?.source !== roleAssignSource) {
+    const seeded = toRoleAssignDraft(roleAssignSource.items);
+    setRoleAssignState({ source: roleAssignSource, baseline: seeded, selected: seeded });
+  }
+
+  const roleSelection = roleAssignState?.selected ?? [];
+  const isRoleAssignDirty =
+    roleAssignState !== null && !isSameRoleSelection(roleAssignState.selected, roleAssignState.baseline);
 
   /**
    * 선택 목록이 잘리거나 실패했다는 사실을 목록 위에 낸다.
@@ -269,6 +317,37 @@ export const UsersRolesScreen = () => {
   });
 
   /**
+   * 역할 부여 치환.
+   *
+   * **`etagPath`가 반드시 `null`이다.** 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없다 —
+   * `user_role`에는 `version_no`가 없어 낙관적 잠금 대상이 아니다(부여·회수 형).
+   * 상세 경로를 넘기면 토큰을 찾지 못해 **요청이 나가지 않고 멈춘다**(「저장을 눌러도 아무 일이 없다」).
+   *
+   * **무효화는 부여분 키 하나뿐이다.** 사용자 행도 잠금 토큰도 이 치환으로 바뀌지 않고,
+   * 상세까지 무효화하면 바로 위 칸에서 편집 중이던 폼이 서버 값으로 되돌아간다.
+   */
+  const roleAssignWrite = useMasterWrite<readonly number[], UserRoleListResponse>({
+    request: (selected, headers) =>
+      client.PUT('/app/users/{appUserId}/roles', {
+        params: {
+          path: { appUserId: selectedAppUserId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: toRolesPayload(selected, roleCatalogOrder(roleOptions.entries)),
+      }),
+    etagPath: null,
+    invalidateKeys: [userKeys.roles(selectedAppUserId ?? 0)],
+    // 확인칸에는 계약의 필드 이름이 붙지 않는다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: (saved) => {
+      /* **서버 응답이 정본이다.** 보낸 목록을 그대로 두면 서버가 조정한 결과를 놓친다. */
+      const next = toRoleAssignDraft(saved.items);
+      setRoleAssignState({ source: saved, baseline: next, selected: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /**
    * 지금 모드의 쓰기. 등록과 수정이 **한 폼 상태**를 쓰므로 저장·오류·진행 표시도
    * 한 곳에서 골라 쓴다 — 두 훅의 상태를 화면에서 합치면 어느 저장의 실패인지 흐려진다.
    */
@@ -283,9 +362,11 @@ export const UsersRolesScreen = () => {
     userWrite.reset();
     userCreateWrite.reset();
     userDeactivateWrite.reset();
+    roleAssignWrite.reset();
     setIsDeactivateOpen(false);
     setFormState(null);
     setUserFieldErrors({});
+    setRoleAssignState(null);
   };
 
   /*
@@ -369,6 +450,28 @@ export const UsersRolesScreen = () => {
     if (Object.keys(errors).length > 0) return;
 
     activeUserWrite.write(formState.values);
+  };
+
+  const handleToggleRole = (roleId: number) => {
+    setRoleAssignState((prev) =>
+      prev === null ? prev : { ...prev, selected: toggleRoleId(prev.selected, roleId) },
+    );
+  };
+
+  const handleSaveRoleAssign = () => {
+    /*
+     * 페인은 고른 사용자가 있을 때만 서므로 여기까지 오지 않는다.
+     * 그래도 대상 없이 보내지 않는다 — 「번호 0으로 나가는 요청」을 만들 여지를 두지 않는다.
+     */
+    if (roleAssignState === null || selectedAppUserId === null) return;
+
+    roleAssignWrite.write(roleAssignState.selected);
+  };
+
+  /** 취소는 **서버를 부르지 않는다** — 체크 상태를 기준값으로 되돌릴 뿐이다. */
+  const handleCancelRoleAssign = () => {
+    roleAssignWrite.reset();
+    setRoleAssignState((prev) => (prev === null ? prev : { ...prev, selected: prev.baseline }));
   };
 
   /**
@@ -474,6 +577,45 @@ export const UsersRolesScreen = () => {
     );
   };
 
+  /**
+   * 우 칸 가운데 — 역할 부여.
+   *
+   * **고른 사용자가 없으면 페인 자체를 두지 않는다.** 등록 중인 사용자에게는 아직 부여할
+   * 대상이 없고(자원이 만들어지지 않았다), 아무도 고르지 않았으면 누구에게 주는 것인지 알 수 없다.
+   * 빈 페인을 두면 사용자가 「여기서 무언가 할 수 있다」고 읽는다.
+   */
+  const renderRoleAssignPane = (): ReactNode => {
+    if (selectedAppUserId === null) return null;
+
+    return (
+      <RoleAssignPane
+        choices={toRoleChoices(roleOptions.entries, roleSelection)}
+        /* 선택 목록과 부여분이 함께 있어야 확인칸 하나를 그릴 수 있다. */
+        isLoading={userRoleList.isPending || roleOptions.isLoading}
+        optionsNotice={renderOptionsNotice([roleOptions])}
+        loadError={
+          userRoleList.isError ? (
+            <LoadErrorBanner
+              error={userRoleList.error}
+              onRetry={() => void userRoleList.refetch()}
+            />
+          ) : null
+        }
+        /*
+         * 서버가 거부하면 그 사유를 그대로 낸다. 화면이 무엇을 막을지 정하지 않으므로
+         * **이 배너가 사용자가 거부 이유를 아는 유일한 자리**다(계획 결정 4).
+         * 이 치환에는 낙관적 잠금이 없어 충돌도 없다 — 「최신 불러오기」를 낼 자리가 아니다.
+         */
+        banner={<SaveErrorBanner error={roleAssignWrite.error} />}
+        isDirty={isRoleAssignDirty}
+        isSaving={roleAssignWrite.isSaving}
+        onToggle={handleToggleRole}
+        onSave={handleSaveRoleAssign}
+        onCancel={handleCancelRoleAssign}
+      />
+    );
+  };
+
   const usersTabContent = (
     <div className="two-pane">
       <UserListPane
@@ -509,7 +651,10 @@ export const UsersRolesScreen = () => {
        * 우 칸은 구획을 세로로 쌓는다 — 사용자 정보 아래에 역할 부여·데이터 접근범위가 붙는다.
        * `.pane-stack`은 선택자에 매이지 않은 기본 규칙이라 2단 배치의 칸 안에서도 그대로 동작한다.
        */}
-      <div className="pane-stack">{renderUserFormPane()}</div>
+      <div className="pane-stack">
+        {renderUserFormPane()}
+        {renderRoleAssignPane()}
+      </div>
     </div>
   );
 

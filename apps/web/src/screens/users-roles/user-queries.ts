@@ -7,6 +7,7 @@ import { toUserListQuery } from './filters';
 import type { AppUser, PageMeta, UserFilters } from './types';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
+type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
 
 /**
  * 사용자의 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -29,6 +30,14 @@ export const userKeys = {
   list: (filters: UserFilters, page: number) =>
     ['users-roles-users', 'list', filters, page] as const,
   detail: (appUserId: number) => ['users-roles-users', 'detail', appUserId] as const,
+  /**
+   * 부여분은 **자기 키만** 무효화한다.
+   *
+   * `all`을 무효화하면 상세까지 다시 조회되고, 그 응답 객체가 갈리면 **바로 위 칸에서
+   * 편집 중이던 사용자 정보 폼이 서버 값으로 되돌아간다.** 역할·접근범위 치환은
+   * 사용자 행을 바꾸지 않으므로(잠금 토큰도 그대로다) 상세를 다시 부를 이유가 없다.
+   */
+  roles: (appUserId: number) => ['users-roles-users', 'roles', appUserId] as const,
 };
 
 /**
@@ -77,6 +86,30 @@ export const useUserDetail = (appUserId: number | null): UseQueryResult<AppUserD
 
       return runRequest(() =>
         client.GET('/app/users/{appUserId}', { params: { path: { appUserId } } }),
+      );
+    },
+  });
+};
+
+/**
+ * 이 사용자에게 부여된 역할.
+ *
+ * **쪽 나눔이 없다** — 계약이 `items`만 준다. 부여분은 사용자 하나에 매인 목록이라
+ * 전부 받아야 「최종 상태 전체」를 되돌려 보낼 수 있다.
+ */
+export const useUserRoles = (appUserId: number | null): UseQueryResult<UserRoleListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: userKeys.roles(appUserId ?? 0),
+    enabled: appUserId !== null,
+    queryFn: () => {
+      if (appUserId === null) {
+        throw new Error('사용자를 고르기 전에는 부여분을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/app/users/{appUserId}/roles', { params: { path: { appUserId } } }),
       );
     },
   });
