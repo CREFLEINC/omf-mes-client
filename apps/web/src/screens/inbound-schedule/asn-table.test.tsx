@@ -173,10 +173,24 @@ describe('AsnTable — 상태와 경과 표시', () => {
       ],
     });
 
-    const first = screen.getByText('SAMPLE_STATUS_A').outerHTML.replaceAll('SAMPLE_STATUS_A', 'X');
-    const second = screen.getByText('SAMPLE_STATUS_B').outerHTML.replaceAll('SAMPLE_STATUS_B', 'X');
+    /*
+     * **배지의 뿌리를 본다.** 디자인 시스템 `Chip`은 변형 클래스를 뿌리 `<span>`에 붙이고
+     * 글자는 그 안의 이름 없는 `<span>`에 넣는다 — 글자 요소만 비교하면 변형이 갈려도 같아 보인다.
+     */
+    const chipRoot = (code: string): HTMLElement => {
+      const root = screen.getByText(code).parentElement;
 
+      if (root === null) throw new Error(`상태 배지의 뿌리를 찾지 못했습니다: ${code}`);
+
+      return root;
+    };
+
+    const first = chipRoot('SAMPLE_STATUS_A').outerHTML.replaceAll('SAMPLE_STATUS_A', 'X');
+    const second = chipRoot('SAMPLE_STATUS_B').outerHTML.replaceAll('SAMPLE_STATUS_B', 'X');
+
+    // 뿌리의 클래스가 곧 변형이다. 값에 따라 갈리면 이 두 문자열이 달라진다.
     expect(second).toBe(first);
+    expect(chipRoot('SAMPLE_STATUS_A').className).toBe(chipRoot('SAMPLE_STATUS_B').className);
   });
 
   it('상태 코드를 번역하지 않고 그대로 낸다', () => {
