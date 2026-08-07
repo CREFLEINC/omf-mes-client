@@ -1125,6 +1125,55 @@ describe('UsersRolesScreen 초안 수명', () => {
     });
   });
 
+  /**
+   * **대상이 그대로인 채 서버 값만 바뀌는 유일한 길**이다. 편집 대상에 묶인 정리는 여기서 돌지 않으므로
+   * 초안을 다시 세우는 판정은 **출처 비교뿐**이다.
+   *
+   * 충돌 배너가 「최신 내용을 불러오면 입력한 내용은 사라집니다」라고 약속하므로,
+   * 다시 세우지 않으면 화면이 그 약속을 어긴다 — 사용자는 남의 값 위에 자기 값을 덮어쓰게 된다.
+   */
+  it('충돌 뒤 「최신 불러오기」를 누르면 폼이 서버의 최신 값으로 다시 세워진다', async () => {
+    let serverName = '합성 사용자 A';
+
+    const { requests, user } = renderScreen(
+      [
+        userListRoute(),
+        departmentsRoute(),
+        {
+          match: (request) => isGet(request, `${USERS_PATH}/1001`),
+          respond: () =>
+            jsonResponse(
+              { appUser: { ...filledUserFixture, userName: serverName }, editability: EDITABLE },
+              { headers: { ETag: 'W/"7"' } },
+            ),
+        },
+        userUpdateRoute(1001, () =>
+          jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+        ),
+      ],
+      '?usr=1001',
+    );
+
+    await waitForUserList(requests);
+    const nameBox = () => within(userFormPane()).getByRole('textbox', { name: '이름' });
+    await waitFor(() => {
+      expect(nameBox()).toHaveValue('합성 사용자 A');
+    });
+
+    await user.clear(nameBox());
+    await user.type(nameBox(), '내가 고치던 값');
+    await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
+    await screen.findByText(/다른 사용자가 먼저 저장했습니다/);
+
+    // 그동안 남이 저장해 둔 값.
+    serverName = '남이 저장한 이름';
+    await user.click(screen.getByRole('button', { name: '최신 불러오기' }));
+
+    await waitFor(() => {
+      expect(nameBox()).toHaveValue('남이 저장한 이름');
+    });
+  });
+
   it('다른 사용자를 고르면 폼이 그 사용자의 값으로 다시 세워진다', async () => {
     const { user } = await openUserDetail([
       userDetailRoute({ ...filledUserFixture, appUserId: 1002, userName: '합성 사용자 B' }),
