@@ -5,6 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 
 type BomListResponse = components['schemas']['BomListResponse'];
+type BomComponentListResponse = components['schemas']['BomComponentListResponse'];
 
 /**
  * 자재 명세서(BOM)의 조회와 캐시 키.
@@ -74,6 +75,37 @@ export const useBomList = (
 
       return runRequest(() =>
         client.GET('/planning/boms', { params: { query: { parentItemId } } }),
+      );
+    },
+  });
+};
+
+/**
+ * 자재 명세서의 구성품 목록.
+ *
+ * **자재 명세서를 고르기 전에는 조회하지 않는다.** 경로에 `bomId`가 들어가므로 `enabled` 없이
+ * 부르면 `0`을 실은 요청이 나간다.
+ *
+ * **이 응답에 `ETag`가 없다**(계약 실측 L). 여기서 받은 행을 그대로 저장하면 잠금 토큰이
+ * 없어 요청이 조용히 멈춘다 — 편집 창은 행 상세를 따로 조회한다(§5.3 6행).
+ *
+ * `sequenceNo` 오름차순으로 온다. 화면이 다시 정렬하지 않는다.
+ */
+export const useBomComponents = (
+  bomId: number | null,
+): UseQueryResult<BomComponentListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: bomKeys.components(bomId ?? 0),
+    enabled: bomId !== null,
+    queryFn: () => {
+      if (bomId === null) {
+        throw new Error('자재 명세서를 고르기 전에는 구성품을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/planning/boms/{bomId}/components', { params: { path: { bomId } } }),
       );
     },
   });

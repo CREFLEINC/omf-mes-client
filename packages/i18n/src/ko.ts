@@ -1706,6 +1706,66 @@ const itemExtendedAttrs = {
       setDefaultDescription: '같은 품목의 기존 기본 자재 명세서는 자동으로 해제됩니다.',
       setDefaultConfirm: '기본으로 지정',
     },
+    actionsColumn: {
+      /** 헤더 목록에서 이 자재 명세서의 내용·구성품을 연다 */
+      open: (name: string): string => `${name} 구성품 보기`,
+    },
+  },
+  /**
+   * 구성품 — **한 행에 원본 열 여섯과 확장 열 넷이 섞여 있다.**
+   *
+   * 이 화면 전체가 걸린 함정이 여기서 가장 좁게 나타난다. 문구도 그 경계를 따라 갈라 둔다 —
+   * 편집 창에 들어가는 라벨은 **확장 열 넷뿐**이고, 표의 원본 열에는 라벨만 있고 입력이 없다.
+   *
+   * **스크랩률에 퍼센트 기호를 쓰지 않는다.** 계약이 0~1 비율이라 못 박았다(A-8) —
+   * 화면이 100을 곱하면 사용자가 넣지 않은 값이 보인다.
+   */
+  component: {
+    paneTitle: '구성품',
+    fields: {
+      sequence: '순서',
+      componentItem: '구성품',
+      /** 수량과 단위를 한 칸에 담는다 — 둘은 따로 읽히지 않는다 */
+      requiredQty: '소요량',
+      scrapRate: '스크랩률',
+      isMandatory: '필수',
+      /** 「등록 공정 · 실사용 공정」을 한 칸에. 두 값이 같을 때가 많아 나란히 놓아야 비교된다 */
+      process: '공정',
+      /** 켜진 확장 표시만 칩으로 */
+      extensions: '확장 표시',
+      edit: '편집',
+      routingOperation: '등록 공정',
+      actualUseProcess: '실사용 공정',
+      lotTraceRequired: 'LOT 추적 강제',
+      backflushAllowed: '백플러시 허용',
+    },
+    values: {
+      mandatory: '필수',
+      optional: '선택',
+      /** 소요량 한 칸 — 「수량 단위」 */
+      quantity: (qty: string, uom: string): string => `${qty} ${uom}`,
+      /** 공정 한 칸 — 「등록 · 실사용」 */
+      process: (registered: string, actual: string): string => `${registered} · ${actual}`,
+      lotTraceRequired: 'LOT 추적',
+      backflushAllowed: '백플러시',
+      /** 등록 공정 선택지 라벨. 순서는 **목록 내 위치**이며 서버 채번 값이 아니다 */
+      routingOperation: (version: number, position: number, name: string): string =>
+        `Rev ${String(version)} · ${String(position)}. ${name}`,
+    },
+    actions: {
+      editRow: (name: string): string => `${name} 확장 열 수정`,
+    },
+    loading: {
+      list: '구성품을 불러오는 중',
+    },
+    empty: {
+      /* **여기서 만들 수 없는 자료다** — 계약에 구성품 추가·삭제 경로가 없다. */
+      noneTitle: '등록된 구성품이 없습니다',
+      noneDescription:
+        '구성품은 외부 시스템에서 받아옵니다. 원본 시스템에 자료가 있는지 확인하세요.',
+    },
+    /* 「구성품 이름을 못 받았다」는 편집을 막지 않는다 — 표시만의 문제다. */
+    itemNamesLoadFailed: '구성품 이름을 불러오지 못했습니다. 편집에는 영향이 없습니다.',
   },
 } as const;
 

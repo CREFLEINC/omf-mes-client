@@ -11,12 +11,16 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  bomComponentFixtures,
   bomFixtures,
   buMapFixtures,
   businessUnitFixtures,
   externalCodeFixtures,
   itemFixtures,
   partnerFixtures,
+  processFixtures,
+  routingFixtures,
+  routingOperationFixtures,
   uomConversionFixtures,
   uomFixtures,
 } from './fixtures';
@@ -227,6 +231,44 @@ const setDefaultFailureRoute = (status: number, body: unknown, bomId = 2001): St
   match: (request) =>
     request.method === 'POST' && new URL(request.url).pathname === setDefaultPath(bomId),
   respond: () => jsonResponse(body, { status }),
+});
+
+const componentsPath = (bomId: number): string => `${BOMS_PATH}/${String(bomId)}/components`;
+
+/** 구성품 목록 — **`ETag`가 없다**(계약 실측 L). 쪽 나눔도 없다. */
+const bomComponentsRoute = (items = bomComponentFixtures, bomId = 2001): StubRoute => ({
+  match: (request) => isGet(request, componentsPath(bomId)),
+  respond: () => jsonResponse({ items }),
+});
+
+const ROUTINGS_PATH = '/planning/routings';
+
+/** Routing Rev 목록 — `itemId`가 필수 쿼리다. */
+const routingsRoute = (items = routingFixtures): StubRoute => ({
+  match: (request) => isGet(request, ROUTINGS_PATH),
+  respond: () => jsonResponse({ items }),
+});
+
+/**
+ * Rev별 공정 라인. **Rev마다 요청이 하나씩 나간다** — 계약에 「품목의 공정 라인을 한꺼번에
+ * 받는」 오퍼레이션이 없다.
+ */
+const routingOperationsRoute = (byRoutingId = routingOperationFixtures): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' &&
+    /^\/planning\/routings\/\d+\/operations$/.test(new URL(request.url).pathname),
+  respond: (request) => {
+    const routingId = Number(new URL(request.url).pathname.split('/')[3]);
+
+    return jsonResponse({ items: byRoutingId[routingId] ?? [] });
+  },
+});
+
+const PROCESSES_PATH = '/mdm/processes';
+
+const processesRoute = (items = processFixtures): StubRoute => ({
+  match: (request) => isGet(request, PROCESSES_PATH),
+  respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
 });
 
 interface SubsidiaryRouteOverrides {
@@ -3229,5 +3271,302 @@ describe('ItemExtendedAttrsScreen — 자재 명세서 탭을 오가도 잃지 �
     await user.click(screen.getByRole('tab', { name: '부속 정보' }));
 
     expect(buMapRowCount(await findBuMapPane())).toBe(3);
+  });
+});
+
+/* ── 자재 명세서 · 헤더 구획과 구성품 ─────────────────────────────────────── */
+
+interface BomDetailRouteOverrides extends BomRouteOverrides {
+  components?: StubRoute;
+  routings?: StubRoute;
+  routingOperations?: StubRoute;
+}
+
+/**
+ * 헤더 구획·구성품 표까지 그릴 때 필요한 스텁 한 벌.
+ *
+ * **덧붙이기로는 갈아 끼울 수 없다**(F6 교훈) — 갈아 끼울 것은 이 인자로 넘긴다.
+ */
+const bomDetailRoutes = (overrides: BomDetailRouteOverrides = {}): StubRoute[] => [
+  ...bomRoutes(overrides),
+  overrides.components ?? bomComponentsRoute(),
+  overrides.routings ?? routingsRoute(),
+  overrides.routingOperations ?? routingOperationsRoute(),
+  processesRoute(),
+];
+
+const findBomDetailPane = (): Promise<HTMLElement> =>
+  screen.findByRole('region', { name: '자재 명세서 정보' });
+
+const findBomComponentPane = async (): Promise<HTMLElement> => {
+  const pane = await screen.findByRole('region', { name: '구성품' });
+
+  await waitFor(() => {
+    expect(
+      within(pane).queryByRole('status', { name: '구성품을 불러오는 중' }),
+    ).not.toBeInTheDocument();
+  });
+
+  return pane;
+};
+
+const openFirstBom = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }));
+
+  return findBomComponentPane();
+};
+
+const componentGets = (requests: RecordedRequest[], bomId = 2001): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'GET' && request.url.pathname === componentsPath(bomId),
+  );
+
+const routingOperationGets = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.method === 'GET' &&
+      /^\/planning\/routings\/\d+\/operations$/.test(request.url.pathname),
+  );
+
+/**
+ * 작업 7 완료 조건 ⑤ — **자재 명세서를 고르기 전에는 구성품 조회가 0회다.**
+ * 경로에 `bomId`가 들어가므로 `enabled` 없이 부르면 `0`을 실은 요청이 나간다.
+ */
+describe('ItemExtendedAttrsScreen — 구성품 조회 시점', () => {
+  it('자재 명세서를 고르기 전에는 구성품을 조회하지 않는다', async () => {
+    const { requests } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+
+    expect(componentGets(requests)).toHaveLength(0);
+    expect(
+      requests.filter((request) => request.url.pathname.startsWith(ROUTINGS_PATH)),
+    ).toHaveLength(0);
+    expect(requestsTo(requests, PROCESSES_PATH)).toHaveLength(0);
+  });
+
+  it('고르면 구성품을 한 번 조회한다', async () => {
+    const { requests, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    await openFirstBom(user);
+
+    expect(componentGets(requests)).toHaveLength(1);
+  });
+
+  /**
+   * 주소에 남의 번호를 손으로 넣어도 그 자재 명세서를 그리지 않는다.
+   *
+   * **헤더 상세를 따로 부르지 않는 결정이 이 방어를 만든다** — 목록에서 찾은 헤더가 정본이라
+   * 이 품목의 목록에 없는 번호는 「고르지 않은 것」이 된다. 상세를 부르면 서버가 그 헤더를
+   * 그대로 돌려주어 남의 자재 명세서를 그린다.
+   */
+  it('이 품목의 목록에 없는 번호는 고르지 않은 것으로 본다', async () => {
+    const { requests } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom&bom=9999');
+
+    await findBomListPane();
+
+    expect(
+      screen.getByText('위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다'),
+    ).toBeInTheDocument();
+    expect(componentGets(requests, 9999)).toHaveLength(0);
+    /* 헤더 상세를 부르지 않는다 — 부르면 남의 자재 명세서를 그리게 된다. */
+    expect(
+      requests.filter((request) => /^\/planning\/boms\/\d+$/.test(request.url.pathname)),
+    ).toHaveLength(0);
+  });
+
+  /* 주소를 손으로 고쳐도 빈 화면이 되지 않아야 한다. */
+  it('주소의 자재 명세서 번호가 이상하면 고르지 않은 것으로 본다', async () => {
+    renderScreen(bomDetailRoutes(), '?item=1001&tab=bom&bom=abc');
+
+    await findBomListPane();
+
+    expect(
+      screen.getByText('위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다'),
+    ).toBeInTheDocument();
+  });
+
+  /** 고른 자재 명세서는 품목 아래에 매달린 선택이다(§5.4 3행). */
+  it('품목을 바꾸면 주소에서 자재 명세서 선택이 떨어진다', async () => {
+    const { history, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    await openFirstBom(user);
+    expect(history.search()).toContain('bom=2001');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    expect(history.search()).not.toContain('bom=');
+    expect(history.search()).toContain('item=1002');
+  });
+
+  /* 조건이 바뀌면 주소를 통째로 다시 만든다 — 선택이 자연히 사라진다. */
+  it('조회 조건을 바꾸면 자재 명세서 선택이 사라진다', async () => {
+    const { history, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    await openFirstBom(user);
+
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(history.search()).not.toContain('bom=');
+  });
+});
+
+/**
+ * C03 — **헤더 구획에 폼 컨트롤이 0개이고 저장 버튼이 없다.**
+ * 품목 원본 구획과 같은 자리를 두 번째로 되풀이하는 자리다(M01).
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 헤더에 쓰기 수단이 없다 (M01·C03)', () => {
+  it('헤더 구획에 입력칸도 버튼도 없다', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    await openFirstBom(user);
+
+    const detail = await findBomDetailPane();
+    expect(within(detail).queryAllByRole('textbox')).toHaveLength(0);
+    expect(within(detail).queryAllByRole('combobox')).toHaveLength(0);
+    expect(within(detail).queryAllByRole('switch')).toHaveLength(0);
+    expect(within(detail).queryAllByRole('spinbutton')).toHaveLength(0);
+    expect(within(detail).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('헤더 값을 값 표기로 낸다', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    await openFirstBom(user);
+
+    await findBomDetailPane();
+    expect(screen.getByLabelText('BOM 코드')).toHaveTextContent('SYN-BOM-01');
+    expect(screen.getByLabelText('기준 수량')).toHaveTextContent('100 SYN-UOM-01 · 합성 단위 A');
+  });
+});
+
+/**
+ * M32 — **등록 공정 선택지가 Rev를 평탄화한다.**
+ * 최신 Rev만 받으면 옛 Rev의 줄을 가리키는 구성품이 이름을 잃는다.
+ */
+describe('ItemExtendedAttrsScreen — 구성품 표 (M23·M32)', () => {
+  it('Rev마다 공정 목록을 받아 한 목록으로 편다 (M32)', async () => {
+    const { requests, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    await waitFor(() => {
+      expect(routingOperationGets(requests)).toHaveLength(2);
+    });
+
+    /* 최신 Rev(9002)만 받으면 셋째 줄이 「알 수 없음」이 된다. */
+    expect(within(pane).getByText(/Rev 2 · 2\. 합성 공정 B/)).toBeInTheDocument();
+    expect(within(pane).getByText(/Rev 1 · 1\. 합성 공정 C/)).toBeInTheDocument();
+  });
+
+  /* 계약이 「이 값을 그대로 보여주지 않는다」고 못 박았다 — 채번 값(10·20)이 아니라 위치다. */
+  it('서버 채번 순서 값을 공정 라벨에 내지 않는다', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    /* 이 줄이 가리키는 공정은 채번 순서가 **20**이고 목록 내 위치는 **2**다. */
+    expect(within(pane).getByText(/Rev 2 · 2\. 합성 공정 B/)).toBeInTheDocument();
+    expect(pane.textContent).not.toContain('Rev 2 · 20.');
+  });
+
+  /* C16 — 0~1 비율이며 퍼센트가 아니다(A-8). */
+  it('스크랩률을 비율 그대로 낸다 (M23·C16)', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    expect(within(pane).getByText('0.05')).toBeInTheDocument();
+    expect(pane.textContent).not.toContain('%');
+  });
+
+  it('원본 열에 입력칸이 없다 (M23)', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('combobox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('switch')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('spinbutton')).toHaveLength(0);
+  });
+
+  /**
+   * 결정 12 — **행 단위 이름 조회가 다른 표와 캐시를 공유한다.**
+   * 같은 품목이 두 표에 나와도 상세를 한 번만 받는다.
+   */
+  it('구성품 이름을 행 단위로 받고 같은 품목은 한 번만 받는다', async () => {
+    const { requests, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    expect(within(pane).getByText('SYN-ITEM-02 · 합성 품목 B')).toBeInTheDocument();
+    expect(detailGetCount(requests, 1002)).toBe(1);
+  });
+
+  /* 실패한 행만 이름을 잃는다 — 번호를 대신 내지 않는다. */
+  it('이름을 찾지 못한 줄만 「알 수 없음」이 된다', async () => {
+    const { user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+    const pane = await openFirstBom(user);
+
+    await waitFor(() => {
+      expect(within(pane).getByText('알 수 없음')).toBeInTheDocument();
+    });
+    expect(pane.textContent).not.toContain('9001');
+  });
+});
+
+/**
+ * 탭과 자재 명세서 선택의 수명. **고른 자재 명세서는 탭을 옮겨도 남는다** —
+ * 세 탭이 같은 품목의 다른 면이고, 자재 명세서는 그 품목 아래에 매달려 있다.
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 선택의 수명', () => {
+  it('탭을 오갔다 돌아와도 고른 자재 명세서가 남는다', async () => {
+    const { user } = renderScreen(
+      [...bomDetailRoutes(), ...subsidiaryRoutes().slice(3)],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await openFirstBom(user);
+
+    await user.click(screen.getByRole('tab', { name: '확장 속성' }));
+    await findAttrsPane();
+
+    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+
+    await findBomComponentPane();
+    expect(screen.getByLabelText('BOM 코드')).toHaveTextContent('SYN-BOM-01');
+  });
+
+  /* 다른 자재 명세서를 고르면 그 구성품을 받는다 — 앞 줄의 표가 남으면 안 된다. */
+  it('다른 자재 명세서를 고르면 그 구성품을 받는다', async () => {
+    const { requests, user } = renderScreen(
+      [...bomDetailRoutes(), bomComponentsRoute([], 2002)],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await openFirstBom(user);
+    expect(componentGets(requests, 2001)).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-02 · Rev 2 구성품 보기' }));
+
+    await waitFor(() => {
+      expect(componentGets(requests, 2002)).toHaveLength(1);
+    });
+    expect(screen.getByText('등록된 구성품이 없습니다')).toBeInTheDocument();
   });
 });

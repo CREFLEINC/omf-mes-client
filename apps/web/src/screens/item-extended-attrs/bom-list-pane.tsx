@@ -14,6 +14,9 @@ export interface BomListPaneProps {
   boms: Bom[];
   isLoading: boolean;
   loadError: ReactNode;
+  /** 지금 고른 자재 명세서. 아래 구획과 구성품 표가 이 값 하나에 매달린다 */
+  selectedBomId: number | null;
+  onSelect: (bomId: number) => void;
   /** 확인 창을 연다. **여기서 서버로 보내지 않는다** */
   onRequestSetDefault: (bom: Bom) => void;
 }
@@ -53,6 +56,8 @@ export const BomListPane = ({
   boms,
   isLoading,
   loadError,
+  selectedBomId,
+  onSelect,
   onRequestSetDefault,
 }: BomListPaneProps) => {
   /*
@@ -67,7 +72,18 @@ export const BomListPane = ({
     {
       key: 'bomCode',
       header: t.fields.bomCode,
-      render: (row) => orEmptyMark(row.bomCode),
+      /* 좌 품목 목록과 같은 형태 — 코드 칸이 곧 「이 줄을 연다」다. */
+      render: (row) => (
+        <button
+          type="button"
+          className="link-cell"
+          aria-current={row.bomId === selectedBomId ? 'true' : undefined}
+          aria-label={t.actionsColumn.open(bomName(row))}
+          onClick={() => onSelect(row.bomId)}
+        >
+          {orEmptyMark(row.bomCode)}
+        </button>
+      ),
     },
     {
       key: 'bomVersion',

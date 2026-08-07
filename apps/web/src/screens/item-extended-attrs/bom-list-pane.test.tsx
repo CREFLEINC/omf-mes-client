@@ -7,18 +7,21 @@ import { bomFixtures } from './fixtures';
 
 const renderPane = (overrides: Partial<Parameters<typeof BomListPane>[0]> = {}) => {
   const onRequestSetDefault = vi.fn<(bom: (typeof bomFixtures)[number]) => void>();
+  const onSelect = vi.fn<(bomId: number) => void>();
 
   render(
     <BomListPane
       boms={bomFixtures}
       isLoading={false}
       loadError={null}
+      selectedBomId={null}
+      onSelect={onSelect}
       onRequestSetDefault={onRequestSetDefault}
       {...overrides}
     />,
   );
 
-  return { onRequestSetDefault, user: userEvent.setup() };
+  return { onRequestSetDefault, onSelect, user: userEvent.setup() };
 };
 
 const pane = (): HTMLElement => screen.getByRole('region', { name: '자재 명세서 목록' });
@@ -41,17 +44,44 @@ describe('BomListPane — 원본을 고치는 수단이 없다', () => {
     expect(within(region).queryAllByRole('checkbox')).toHaveLength(0);
   });
 
-  /** 추가·수정·삭제가 계약에 없다 — 그 액션을 두면 누를 수 없는 버튼이 남는다. */
-  it('기본 지정 밖의 액션이 없다', () => {
+  /**
+   * 추가·수정·삭제가 계약에 없다 — 그 액션을 두면 누를 수 없는 버튼이 남는다.
+   * 이 표의 버튼은 **줄을 여는 것**과 **기본 지정** 둘뿐이다.
+   */
+  it('줄 열기와 기본 지정 밖의 액션이 없다', () => {
     renderPane();
 
     const labels = within(pane())
       .getAllByRole('button')
       .map((button) => button.getAttribute('aria-label') ?? button.textContent);
 
+    expect(labels).toHaveLength(4);
     for (const label of labels) {
-      expect(label).toMatch(/기본으로 지정$/);
+      expect(label).toMatch(/(구성품 보기|기본으로 지정)$/);
     }
+  });
+});
+
+describe('BomListPane — 줄 열기', () => {
+  it('코드 칸이 그 줄을 연다', async () => {
+    const { onSelect, user } = renderPane();
+
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }));
+
+    expect(onSelect).toHaveBeenCalledWith(2001);
+  });
+
+  /* 어느 줄을 보고 있는지 표에서 드러나야 아래 구획의 내용이 어디서 왔는지 알 수 있다. */
+  it('고른 줄에 현재 위치 표식이 붙는다', () => {
+    renderPane({ selectedBomId: 2002 });
+
+    expect(screen.getByRole('button', { name: 'SYN-BOM-02 · Rev 2 구성품 보기' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(
+      screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 구성품 보기' }),
+    ).not.toHaveAttribute('aria-current');
   });
 });
 

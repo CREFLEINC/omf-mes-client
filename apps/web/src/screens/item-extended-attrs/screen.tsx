@@ -23,8 +23,10 @@ import {
   upsertBuMapDraft,
   type BuMapDraft,
 } from './bu-map-draft';
+import { BomComponentPane } from './bom-component-pane';
+import { BomDetailPane } from './bom-detail-pane';
 import { BomListPane, bomName } from './bom-list-pane';
-import { bomKeys, useBomList } from './bom-queries';
+import { bomKeys, useBomComponents, useBomList } from './bom-queries';
 import { BuMapFormDialog } from './bu-map-form-dialog';
 import { BuMapPane } from './bu-map-pane';
 import {
@@ -38,7 +40,14 @@ import {
 } from './external-code-draft';
 import { ExternalCodeFormDialog } from './external-code-form-dialog';
 import { ExternalCodePane } from './external-code-pane';
-import { ITEM_KEY, readItemFilters, readPage, readSelectedId, toSearchParams } from './filters';
+import {
+  BOM_KEY,
+  ITEM_KEY,
+  readItemFilters,
+  readPage,
+  readSelectedId,
+  toSearchParams,
+} from './filters';
 import { ItemAttrsPane } from './item-attrs-pane';
 import { isSameItemAttrsValues, itemToAttrsFormValues, toItemUpdate } from './item-attrs-mappers';
 import { ITEM_ATTRS_FORM_FIELDS, validateItemAttrsForm } from './item-attrs-validation';
@@ -49,6 +58,8 @@ import { LoadErrorBanner } from './load-error-banner';
 import {
   useBusinessUnitOptions,
   usePartnerOptions,
+  useProcessOptions,
+  useRoutingOperationOptions,
   useUomOptions,
   type LookupResult,
 } from './lookups';
@@ -467,6 +478,38 @@ export const ItemExtendedAttrsScreen = () => {
   const boms = bomList.data?.items ?? [];
 
   /**
+   * 고른 자재 명세서. **주소의 번호가 아니라 목록에서 찾은 헤더가 정본이다.**
+   *
+   * 헤더 상세를 따로 부르지 않는 이유가 여기 있다(`bom-queries.ts`) — 목록에서 찾으면
+   * `?item=1002&bom=2001`처럼 **다른 품목의 번호를 손으로 넣은 주소**가 저절로 걸러진다.
+   * 상세를 부르면 서버가 그 헤더를 그대로 돌려주어 남의 자재 명세서를 그린다.
+   */
+  const selectedBomId = readSelectedId(searchParams, BOM_KEY);
+  const selectedBom = boms.find((bom) => bom.bomId === selectedBomId) ?? null;
+
+  const bomComponentList = useBomComponents(selectedBom?.bomId ?? null);
+  const bomComponents = bomComponentList.data?.items ?? [];
+
+  /**
+   * 구성품 표에 보이는 이름. **행마다 상세를 부른다**(결정 12) —
+   * 계약에 번호 목록으로 품목을 한꺼번에 받는 수단이 없다. 사업부 매핑의 「대상 품목」과
+   * **같은 캐시 키**를 쓰므로 같은 품목이 두 표에 나와도 한 번만 받는다.
+   */
+  const componentItemIds = useMemo(
+    () => bomComponents.map((component) => component.componentItemId),
+    [bomComponents],
+  );
+  const componentItemNames = useItemNames(componentItemIds);
+
+  /*
+   * 공정 선택 목록 둘은 **구성품 표가 보일 때만** 받는다 — 헤더 목록만 훑는 동안
+   * Rev 목록과 Rev마다의 공정을 받아 둘 이유가 없다.
+   */
+  const isComponentVisible = isBomTab && selectedBom !== null;
+  const routingOperationOptions = useRoutingOperationOptions(selectedItemId, isComponentVisible);
+  const processOptions = useProcessOptions(isComponentVisible);
+
+  /**
    * 기본 지정을 기다리는 자재 명세서. **확인 창은 이 값이 있을 때만 마운트한다** —
    * 닫힌 창을 남기면 지난 대상이 살아 있고 표에도 없는 버튼이 검색에 잡힌다.
    */
@@ -596,6 +639,24 @@ export const ItemExtendedAttrsScreen = () => {
 
     patchSearchParams((next) => {
       next.set(ITEM_KEY, String(itemId));
+      /*
+       * 고른 자재 명세서는 **품목 아래에 매달린 선택**이다(§5.4 3행). 함께 지우지 않으면
+       * 다른 품목의 번호가 주소에 남고, 그것을 지운 뒤에야 목록이 비어 보이는 순간이 생긴다.
+       * 같은 갱신 안에서 지운다 — 나눠 부르면 뒤로가기가 중간 상태로 떨어진다.
+       */
+      next.delete(BOM_KEY);
+    });
+  };
+
+  /**
+   * 자재 명세서를 고른다. **선택만 바꾸고 아무것도 비우지 않는다** —
+   * 헤더 목록도 품목도 달라지지 않고, 부속 초안은 다른 탭의 자료다.
+   */
+  const handleSelectBom = (bomId: number) => {
+    if (bomId === selectedBomId) return;
+
+    patchSearchParams((next) => {
+      next.set(BOM_KEY, String(bomId));
     });
   };
 
@@ -924,23 +985,79 @@ export const ItemExtendedAttrsScreen = () => {
    * 확인이 `:set-default` **한 번**으로 끝낸다(결정 9).
    */
   const renderBomPane = (): ReactNode => (
-    <BomListPane
-      boms={boms}
-      isLoading={bomList.isPending}
-      loadError={
-        bomList.isError ? (
-          <LoadErrorBanner error={bomList.error} onRetry={() => void bomList.refetch()} />
-        ) : null
-      }
-      /*
-       * **실패 배너를 여기 두지 않는다.** 이 페인의 유일한 쓰기가 확인 창 안에서 일어나므로
-       * 실패한 이유도 그 창에 낸다 — 두 자리에 두면 창이 열린 채 같은 문구가 둘로 보인다(F1).
-       */
-      onRequestSetDefault={(bom) => {
-        setDefaultWrite.reset();
-        setPendingDefaultBom(bom);
-      }}
-    />
+    <section className="pane-stack">
+      <BomListPane
+        boms={boms}
+        isLoading={bomList.isPending}
+        loadError={
+          bomList.isError ? (
+            <LoadErrorBanner error={bomList.error} onRetry={() => void bomList.refetch()} />
+          ) : null
+        }
+        /*
+         * **실패 배너를 여기 두지 않는다.** 이 페인의 유일한 쓰기가 확인 창 안에서 일어나므로
+         * 실패한 이유도 그 창에 낸다 — 두 자리에 두면 창이 열린 채 같은 문구가 둘로 보인다(F1).
+         */
+        selectedBomId={selectedBomId}
+        onSelect={handleSelectBom}
+        onRequestSetDefault={(bom) => {
+          setDefaultWrite.reset();
+          setPendingDefaultBom(bom);
+        }}
+      />
+
+      {/*
+       * 고르기 전에는 헤더 구획도 구성품 표도 만들지 않는다 —
+       * 빈 폼·빈 표를 보이면 사용자가 그것을 자료로 읽는다.
+       */}
+      {selectedBom === null ? (
+        <section className="pane" aria-label={t.bom.detailPaneTitle}>
+          <EmptyState size="sm" title={t.bom.empty.notSelected} />
+        </section>
+      ) : (
+        <>
+          <BomDetailPane
+            bom={selectedBom}
+            uomEntries={uomOptions.entries}
+            isUomLoading={uomOptions.isLoading}
+          />
+
+          <BomComponentPane
+            components={bomComponents}
+            isLoading={bomComponentList.isPending}
+            itemNameEntries={componentItemNames.entries}
+            isItemNameLoading={componentItemNames.isLoading}
+            uomEntries={uomOptions.entries}
+            isUomLoading={uomOptions.isLoading}
+            routingOperationEntries={routingOperationOptions.entries}
+            isRoutingOperationLoading={routingOperationOptions.isLoading}
+            processEntries={processOptions.entries}
+            isProcessLoading={processOptions.isLoading}
+            /*
+             * 이름 조회 실패는 **표시만의 문제라** 편집을 막지 않는다 —
+             * 선택 목록의 잘림·실패와 같은 자리에 다른 문구로 낸다.
+             */
+            optionsNotice={
+              componentItemNames.isError ? (
+                <div className="banner-slot">
+                  <AlertBanner variant="warning">{t.component.itemNamesLoadFailed}</AlertBanner>
+                </div>
+              ) : (
+                renderOptionsNotice([routingOperationOptions, processOptions])
+              )
+            }
+            loadError={
+              bomComponentList.isError ? (
+                <LoadErrorBanner
+                  error={bomComponentList.error}
+                  onRetry={() => void bomComponentList.refetch()}
+                />
+              ) : null
+            }
+          />
+        </>
+      )}
+    </section>
   );
 
   const subTabContentOf = (subTabId: string): ReactNode => {
