@@ -1541,8 +1541,12 @@ const roleAssignBodyOf = (requests: RecordedRequest[], appUserId = 1001): { role
 };
 
 /** 확인칸이 실제로 그려진 뒤에야 조작할 수 있다 — 선택 목록과 부여분이 둘 다 있어야 한다. */
-const openRoleAssign = async (extraRoutes: StubRoute[] = [], appUser: AppUser = filledUserFixture) => {
-  const rendered = await openUserDetail(extraRoutes, appUser);
+const openRoleAssign = async (
+  extraRoutes: StubRoute[] = [],
+  appUser: AppUser = filledUserFixture,
+  options: { etag?: string | null } = {},
+) => {
+  const rendered = await openUserDetail(extraRoutes, appUser, options);
 
   await screen.findByRole('region', { name: '역할 부여' });
   await waitFor(() => {
@@ -1625,6 +1629,25 @@ describe('UsersRolesScreen 역할 부여', () => {
 
     expect(put?.headers.get('Idempotency-Key')).toMatch(UUID);
     expect(put?.headers.get('If-Match')).toBeNull();
+  });
+
+  /**
+   * **낙관적 잠금이 없다는 것은 헤더 하나의 문제가 아니다.** 잠금 토큰을 꺼낼 경로를 넘기면
+   * 토큰이 없을 때 훅이 요청을 **보내지 않고 멈춘다** — 저장을 눌러도 아무 일이 없는 상태가 된다.
+   * 상세 응답에 `ETag`가 없는 상황이 그 갈래를 드러낸다.
+   */
+  it('상세에 잠금 토큰이 없어도 치환 저장이 그대로 나간다', async () => {
+    const { requests, user } = await openRoleAssign([roleAssignRoute()], filledUserFixture, {
+      etag: null,
+    });
+
+    await user.click(roleCheckbox('SYN-ROLE-02 · 합성 역할 B'));
+    await user.click(within(roleAssignPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(userRolesRequests(requests).some((request) => request.method === 'PUT')).toBe(true);
+    });
+    expect(within(roleAssignPane()).queryByText(/최신 정보를 불러오는 중입니다/)).not.toBeInTheDocument();
   });
 
   /** 빼 버리면 저장할 때 그 부여가 조용히 사라진다. */
@@ -1901,8 +1924,11 @@ const dataScopeBodyOf = (
   return JSON.parse(put?.body ?? '{}') as { scopes?: Record<string, unknown>[] };
 };
 
-const openDataScopes = async (extraRoutes: StubRoute[] = []) => {
-  const rendered = await openUserDetail(extraRoutes);
+const openDataScopes = async (
+  extraRoutes: StubRoute[] = [],
+  options: { etag?: string | null } = {},
+) => {
+  const rendered = await openUserDetail(extraRoutes, filledUserFixture, options);
 
   await screen.findByRole('region', { name: '데이터 접근범위' });
   await waitFor(() => {
@@ -2016,6 +2042,21 @@ describe('UsersRolesScreen 데이터 접근범위', () => {
 
     expect(put?.headers.get('Idempotency-Key')).toMatch(UUID);
     expect(put?.headers.get('If-Match')).toBeNull();
+  });
+
+  /** 헤더가 아니라 **저장이 시작조차 하지 않는** 갈래다 — 역할 부여와 같은 자리다. */
+  it('상세에 잠금 토큰이 없어도 치환 저장이 그대로 나간다', async () => {
+    const { requests, user } = await openDataScopes([dataScopeReplaceRoute()], { etag: null });
+
+    await user.click(
+      within(dataScopePane()).getByRole('button', {
+        name: 'SYN-BU-02 · 합성 사업부 B · (전체) 범위 삭제',
+      }),
+    );
+    await user.click(within(dataScopePane()).getByRole('button', { name: '저장' }));
+
+    await waitForDataScopePut(requests);
+    expect(within(dataScopePane()).queryByText(/최신 정보를 불러오는 중입니다/)).not.toBeInTheDocument();
   });
 
   /** 전체 회수도 정상 조작이다 — 「보낼 것이 없다」로 요청을 건너뛰면 지울 수가 없다. */
