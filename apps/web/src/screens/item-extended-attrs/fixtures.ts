@@ -8,6 +8,7 @@ type ItemBuItemMap = components['schemas']['ItemBuItemMap'];
 type ItemUomConversion = components['schemas']['ItemUomConversion'];
 type Partner = components['schemas']['Partner'];
 type ItemExternalCode = components['schemas']['ItemExternalCode'];
+type Bom = components['schemas']['Bom'];
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -237,5 +238,40 @@ export const externalCodeFixtures: ItemExternalCode[] = [
     externalSystemCode: 'SYN-EXT-02',
     partnerId: null,
     externalItemCode: 'SYN-EXT-ITEM-02',
+  },
+];
+
+/**
+ * 자재 명세서 헤더 2건. 한 품목에 Rev가 여럿인 형태다.
+ *
+ * - 2001 — **기본이 아니다.** 기본 지정 액션이 열려 있는 줄
+ * - 2002 — **기본이다.** 지정 액션이 사유 붙은 비활성이 되는 줄 · 유효 종료가 **널**이다(무기한)
+ *
+ * 둘 다 `statusCode`가 값 목록 미정 코드라 화면이 이름을 지어내지 않고 그대로 낸다.
+ */
+export const bomFixtures: Bom[] = [
+  {
+    bomId: 2001,
+    parentItemId: 1001,
+    bomCode: 'SYN-BOM-01',
+    bomVersion: 1,
+    statusCode: 'SYN-BOM-STATUS-A',
+    isDefault: false,
+    effectiveFrom: '2026-01-01',
+    effectiveTo: '2026-12-31',
+    baseQty: 100,
+    baseUomId: 7001,
+  },
+  {
+    bomId: 2002,
+    parentItemId: 1001,
+    bomCode: 'SYN-BOM-02',
+    bomVersion: 2,
+    statusCode: 'SYN-BOM-STATUS-B',
+    isDefault: true,
+    effectiveFrom: '2026-03-01',
+    effectiveTo: null,
+    baseQty: 250,
+    baseUomId: 9999,
   },
 ];

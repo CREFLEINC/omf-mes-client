@@ -23,6 +23,8 @@ import {
   upsertBuMapDraft,
   type BuMapDraft,
 } from './bu-map-draft';
+import { BomListPane, bomName } from './bom-list-pane';
+import { bomKeys, useBomList } from './bom-queries';
 import { BuMapFormDialog } from './bu-map-form-dialog';
 import { BuMapPane } from './bu-map-pane';
 import {
@@ -52,6 +54,7 @@ import {
 } from './lookups';
 import { lookupLabel, selectableOptions } from './options';
 import { toPageView } from './pagination';
+import { SetDefaultDialog } from './set-default-dialog';
 import {
   subsidiaryKeys,
   useBuMaps,
@@ -81,6 +84,7 @@ import {
 import { UomConversionFormDialog } from './uom-conversion-form-dialog';
 import { UomConversionPane } from './uom-conversion-pane';
 
+type Bom = components['schemas']['Bom'];
 type ItemDetailResponse = components['schemas']['ItemDetailResponse'];
 type ItemBuItemMapListResponse = components['schemas']['ItemBuItemMapListResponse'];
 type ItemUomConversionListResponse = components['schemas']['ItemUomConversionListResponse'];
@@ -180,6 +184,14 @@ export const ItemExtendedAttrsScreen = () => {
    * (§5.4 「세 초안은 서로 다른 자원이라 함께 산다」).
    */
   const isSubsidiaryTab = tab.id === 'sub';
+
+  /**
+   * 자재 명세서 탭을 보고 있는가.
+   *
+   * 부속 자원과 같은 규칙으로 **탭 단위로** 켠다 — 확장 속성만 보는 동안 자재 명세서를
+   * 받아 둘 이유가 없고, 계약이 `parentItemId`를 필수 쿼리로 두어 품목 없이는 부를 수도 없다.
+   */
+  const isBomTab = tab.id === 'bom';
 
   const itemList = useItemList(filters, page);
   const items = itemList.data?.items ?? [];
@@ -449,6 +461,45 @@ export const ItemExtendedAttrsScreen = () => {
     setEditingExternalCode({ draft, isNew });
   };
 
+  /* ── 자재 명세서 ────────────────────────────────────────────────────────── */
+
+  const bomList = useBomList(selectedItemId, isBomTab);
+  const boms = bomList.data?.items ?? [];
+
+  /**
+   * 기본 지정을 기다리는 자재 명세서. **확인 창은 이 값이 있을 때만 마운트한다** —
+   * 닫힌 창을 남기면 지난 대상이 살아 있고 표에도 없는 버튼이 검색에 잡힌다.
+   */
+  const [pendingDefaultBom, setPendingDefaultBom] = useState<Bom | null>(null);
+
+  const setDefaultWrite = useMasterWrite<number, Bom>({
+    request: (bomId, headers) =>
+      client.POST('/planning/boms/{bomId}:set-default', {
+        params: {
+          path: { bomId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    /*
+     * **반드시 `null`이다**(§5.3 표 5행). 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없고
+     * 헤더 목록·상세 어느 쪽도 `ETag`를 주지 않는다 — 상세 경로를 주면 토큰을 찾지 못해
+     * 요청이 **나가지 않고 멈춘다**(M17과 같은 갈래).
+     */
+    etagPath: null,
+    /*
+     * **헤더 목록만 무효화한다.** 서버가 지정한 줄만 응답으로 돌려주므로(기존 기본의 해제는
+     * 반영되나 응답에 없다) 목록을 다시 받아야 어느 줄이 기본인지 화면이 알 수 있다.
+     * 구성품은 달라지지 않으므로 함께 받지 않는다.
+     */
+    invalidateKeys: [bomKeys.list(selectedItemId ?? 0)],
+    // 대응하는 입력칸이 없다(본문 자체가 없는 요청이다) — 필드 오류도 배너로 올린다.
+    knownFields: [],
+    onSuccess: () => {
+      setPendingDefaultBom(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
   /* ── 선택 수명 ──────────────────────────────────────────────────────────── */
 
   /**
@@ -473,6 +524,9 @@ export const ItemExtendedAttrsScreen = () => {
     externalCodeWrite.reset();
     setExternalCodeState(null);
     setEditingExternalCode(null);
+
+    setDefaultWrite.reset();
+    setPendingDefaultBom(null);
   };
 
   /*
@@ -863,6 +917,32 @@ export const ItemExtendedAttrsScreen = () => {
     />
   );
 
+  /**
+   * 탭③ — 자재 명세서. 지금은 헤더 목록과 기본 지정만 있다.
+   *
+   * **여기서 서버로 보내지 않는다.** 표의 버튼은 확인 창을 열기만 하고, 지정은 그 창의
+   * 확인이 `:set-default` **한 번**으로 끝낸다(결정 9).
+   */
+  const renderBomPane = (): ReactNode => (
+    <BomListPane
+      boms={boms}
+      isLoading={bomList.isPending}
+      loadError={
+        bomList.isError ? (
+          <LoadErrorBanner error={bomList.error} onRetry={() => void bomList.refetch()} />
+        ) : null
+      }
+      /*
+       * **실패 배너를 여기 두지 않는다.** 이 페인의 유일한 쓰기가 확인 창 안에서 일어나므로
+       * 실패한 이유도 그 창에 낸다 — 두 자리에 두면 창이 열린 채 같은 문구가 둘로 보인다(F1).
+       */
+      onRequestSetDefault={(bom) => {
+        setDefaultWrite.reset();
+        setPendingDefaultBom(bom);
+      }}
+    />
+  );
+
   const subTabContentOf = (subTabId: string): ReactNode => {
     if (subTabId === 'bu') return renderBuMapPane();
     if (subTabId === 'uom') return renderUomConversionPane();
@@ -897,6 +977,7 @@ export const ItemExtendedAttrsScreen = () => {
   const tabContentOf = (tabId: string): ReactNode => {
     if (tabId === 'attrs') return renderAttrsPane();
     if (tabId === 'sub') return renderSubsidiaryPane();
+    if (tabId === 'bom') return renderBomPane();
 
     return null;
   };
@@ -1015,6 +1096,25 @@ export const ItemExtendedAttrsScreen = () => {
           onConfirm={(next) => {
             changeExternalCodeDrafts((drafts) => upsertExternalCodeDraft(drafts, next));
             setEditingExternalCode(null);
+          }}
+        />
+      )}
+
+      {/*
+       * 기본 지정 확인. **여기서만 서버로 나가고, 나가는 요청은 하나뿐이다**(결정 9) —
+       * 기존 기본의 해제를 화면이 따로 부르면 그 사이에 기본이 하나도 없는 순간이 생긴다.
+       */}
+      {pendingDefaultBom !== null && (
+        <SetDefaultDialog
+          bomName={bomName(pendingDefaultBom)}
+          isSaving={setDefaultWrite.isSaving}
+          banner={<SaveErrorBanner error={setDefaultWrite.error} />}
+          onClose={() => {
+            setDefaultWrite.reset();
+            setPendingDefaultBom(null);
+          }}
+          onConfirm={() => {
+            setDefaultWrite.write(pendingDefaultBom.bomId);
           }}
         />
       )}

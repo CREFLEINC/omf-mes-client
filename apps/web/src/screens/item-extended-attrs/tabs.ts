@@ -13,7 +13,7 @@ import { messages } from '@omf-mes/i18n';
 
 const t = messages.itemExtendedAttrs;
 
-export type ItemExtendedAttrsTabId = 'attrs' | 'sub';
+export type ItemExtendedAttrsTabId = 'attrs' | 'sub' | 'bom';
 
 export interface ItemExtendedAttrsTabDefinition {
   /** 주소의 `tab` 값이자 DS `Tabs`의 항목 값 */
@@ -31,6 +31,7 @@ export const ITEM_EXTENDED_ATTRS_TABS: readonly [
 ] = [
   { id: 'attrs', label: t.tabs.attrs },
   { id: 'sub', label: t.tabs.subsidiary },
+  { id: 'bom', label: t.tabs.bom },
 ];
 
 /**

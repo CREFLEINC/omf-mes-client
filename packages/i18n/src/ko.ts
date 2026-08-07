@@ -1337,6 +1337,7 @@ const itemExtendedAttrs = {
     label: '품목 확장속성',
     attrs: '확장 속성',
     subsidiary: '부속 정보',
+    bom: '자재 명세서',
   },
   /**
    * 부속 정보 안의 하위 탭. 계약이 인용한 화면 스펙의 구획 이름을 그대로 옮긴 것이다 —
@@ -1645,6 +1646,65 @@ const itemExtendedAttrs = {
         '외부 시스템과 거래처가 같은 줄이 이미 있습니다. 거래처를 비운 줄끼리도 같은 줄로 봅니다.',
       duplicateInList:
         '외부 시스템과 거래처가 같은 줄이 있습니다. 거래처를 비운 줄끼리도 같은 줄로 보므로 겹친 줄을 정리하세요.',
+    },
+  },
+  /**
+   * 탭③ — 자재 명세서(BOM). **헤더는 전부 원본이다.**
+   *
+   * 이 탭에서 바꿀 수 있는 것은 둘뿐이다 — 어느 자재 명세서가 기본인가(`:set-default`)와
+   * 구성품의 확장 열 넷. 나머지는 외부 시스템이 소유하므로 원본 구획과 같은 말을 쓴다.
+   *
+   * **상태 문구를 만들지 않는다.** 상태 코드의 값 목록이 확정되지 않아 화면이 이름을 지어내면
+   * 그 이름으로 읽힌 판단이 남는다 — 품목유형과 같은 처리로 코드 문자열을 그대로 낸다.
+   */
+  bom: {
+    paneTitle: '자재 명세서 목록',
+    detailPaneTitle: '자재 명세서 정보',
+    fields: {
+      bomCode: 'BOM 코드',
+      bomVersion: 'Rev',
+      status: '상태',
+      isDefault: '기본',
+      validPeriod: '유효기간',
+      baseQty: '기준 수량',
+      baseUom: '기준 단위',
+      setDefault: '기본 지정',
+    },
+    values: {
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+      /** 기본인 줄에 붙이는 표식. 아닌 줄은 값 없음 표기(`values.empty`)를 쓴다 */
+      isDefault: '기본',
+      /** 「Rev 3」처럼 사람이 읽는 형태. 표의 숫자 열과 액션 이름이 함께 쓴다 */
+      revision: (version: number): string => `Rev ${String(version)}`,
+      /** 자재 명세서 하나를 한 줄로. 액션 이름과 확인 창이 같은 형태를 쓴다 */
+      name: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
+    },
+    actions: {
+      setDefaultRow: (name: string): string => `${name} 기본으로 지정`,
+    },
+    actionReasons: {
+      /* 「무엇이 막혔는지 + 어떻게 풀 수 있는지」 — 이 컨트롤의 이름으로 시작한다. */
+      alreadyDefault:
+        '기본 지정은 이 자재 명세서가 이미 기본이라 할 수 없습니다. 기본을 옮기려면 다른 줄에서 지정하세요.',
+    },
+    loading: {
+      list: '자재 명세서를 불러오는 중',
+    },
+    empty: {
+      /* **여기서 만들 수 없는 자료다** — 자재 명세서도 외부 정본이다. */
+      noneTitle: '등록된 자재 명세서가 없습니다',
+      noneDescription:
+        '자재 명세서는 외부 시스템에서 받아옵니다. 원본 시스템에 자료가 있는지 확인하세요.',
+      notSelected: '위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다',
+    },
+    dialog: {
+      setDefaultTitle: '기본 자재 명세서 지정',
+      /*
+       * **사용자가 고르지 않은 다른 줄이 함께 바뀐다.** 그 사실을 창이 먼저 밝히지 않으면
+       * 어느 줄이 왜 기본에서 내려갔는지 알 수 없다 — 서버 응답은 지정한 줄만 돌려준다.
+       */
+      setDefaultDescription: '같은 품목의 기존 기본 자재 명세서는 자동으로 해제됩니다.',
+      setDefaultConfirm: '기본으로 지정',
     },
   },
 } as const;

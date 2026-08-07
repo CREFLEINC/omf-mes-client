@@ -11,11 +11,11 @@ import {
 
 describe('탭 정의', () => {
   /*
-   * **만든 탭만 넣는다.** 자재 명세서 탭은 그 내용이 생길 때 붙는다 —
-   * 자리만 먼저 두면 「탭은 있는데 눌러도 빈 화면인」 상태가 된다.
+   * **만든 탭만 넣는다.** 세 탭이 모두 내용을 갖췄으므로 이제 셋이 정본이다 —
+   * 자리만 먼저 둔 탭은 「눌러도 빈 화면」이 되므로 이 배열이 그것을 막는 자리다.
    */
   it('지금 만든 탭만 들어 있다', () => {
-    expect(ITEM_EXTENDED_ATTRS_TABS.map((tab) => tab.id)).toEqual(['attrs', 'sub']);
+    expect(ITEM_EXTENDED_ATTRS_TABS.map((tab) => tab.id)).toEqual(['attrs', 'sub', 'bom']);
   });
 
   it('탭마다 라벨이 있다', () => {
@@ -33,6 +33,7 @@ describe('resolveTab', () => {
   it('아는 값은 그 탭이다', () => {
     expect(resolveTab('attrs').id).toBe('attrs');
     expect(resolveTab('sub').id).toBe('sub');
+    expect(resolveTab('bom').id).toBe('bom');
   });
 
   /* 주소를 손으로 고쳐도 빈 화면이 되지 않아야 한다. */

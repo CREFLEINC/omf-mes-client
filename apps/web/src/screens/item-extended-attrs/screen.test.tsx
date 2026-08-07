@@ -11,6 +11,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  bomFixtures,
   buMapFixtures,
   businessUnitFixtures,
   externalCodeFixtures,
@@ -201,6 +202,31 @@ const externalCodeSaveRoute = (items = externalCodeFixtures, itemId = 1001): Stu
 const partnersRoute = (items = partnerFixtures): StubRoute => ({
   match: (request) => isGet(request, PARTNERS_PATH),
   respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
+});
+
+/* ── 자재 명세서 ───────────────────────────────────────────────────────────── */
+
+const BOMS_PATH = '/planning/boms';
+const setDefaultPath = (bomId: number): string => `${BOMS_PATH}/${String(bomId)}:set-default`;
+
+/** BOM 헤더 목록 — `ETag`도 쪽 나눔도 없다(계약 실측). `parentItemId`가 필수 쿼리다. */
+const bomListRoute = (items = bomFixtures): StubRoute => ({
+  match: (request) => isGet(request, BOMS_PATH),
+  respond: () => jsonResponse({ items }),
+});
+
+/** 기본 지정 — 응답은 **지정한 BOM 하나만** 돌려준다(기존 기본의 해제는 응답에 없다). */
+const setDefaultRoute = (bomId = 2001): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === setDefaultPath(bomId),
+  respond: () =>
+    jsonResponse({ ...bomFixtures.find((row) => row.bomId === bomId), isDefault: true }),
+});
+
+const setDefaultFailureRoute = (status: number, body: unknown, bomId = 2001): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === setDefaultPath(bomId),
+  respond: () => jsonResponse(body, { status }),
 });
 
 interface SubsidiaryRouteOverrides {
@@ -603,8 +629,8 @@ describe('ItemExtendedAttrsScreen — 탭', () => {
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       '확장 속성',
       '부속 정보',
+      '자재 명세서',
     ]);
-    expect(screen.queryByRole('tab', { name: '자재 명세서' })).not.toBeInTheDocument();
   });
 
   /* 「먼저 고르세요」를 두 번 쌓으면 무엇을 하라는 안내인지 오히려 흐려진다. */
@@ -2860,5 +2886,348 @@ describe('ItemExtendedAttrsScreen — 대상 품목 이름의 로딩 갈래 (F2)
 
     expect(screen.queryByRole('option', { name: '알 수 없음' })).not.toBeInTheDocument();
     expect(screen.getByRole('option', { name: '불러오는 중…' })).toBeInTheDocument();
+  });
+});
+
+/* ── 자재 명세서 탭 ────────────────────────────────────────────────────────── */
+
+interface BomRouteOverrides {
+  itemDetail?: StubRoute;
+  bomList?: StubRoute;
+}
+
+/**
+ * 자재 명세서 탭을 그릴 때 필요한 스텁 한 벌.
+ *
+ * **덧붙이기로는 갈아 끼울 수 없다**(F6 교훈) — `createStubFetch`는 첫 일치로 응답하므로
+ * 갈아 끼울 것은 반드시 이 인자로 넘긴다. 쓰기(`setDefaultRoute()`)는 메서드가 달라
+ * 겹치지 않으므로 그대로 덧붙여도 된다.
+ */
+const bomRoutes = (overrides: BomRouteOverrides = {}): StubRoute[] => [
+  itemListRoute(),
+  overrides.itemDetail ?? itemDetailByIdRoute(),
+  uomsRoute(),
+  overrides.bomList ?? bomListRoute(),
+];
+
+const findBomListPane = async (): Promise<HTMLElement> => {
+  const pane = await screen.findByRole('region', { name: '자재 명세서 목록' });
+
+  await waitFor(() => {
+    expect(
+      within(pane).queryByRole('status', { name: '자재 명세서를 불러오는 중' }),
+    ).not.toBeInTheDocument();
+  });
+
+  return pane;
+};
+
+/** `/planning/boms` 아래로 나간 **모든 쓰기**. 기본 지정 말고는 하나도 없어야 한다(M20). */
+const bomWrites = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method !== 'GET' && request.url.pathname.startsWith(BOMS_PATH),
+  );
+
+const bomListGets = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.method === 'GET' && request.url.pathname === BOMS_PATH);
+
+/**
+ * 조회 시점 — 계약이 `parentItemId`를 **필수 쿼리**로 두었다.
+ * `enabled` 없이 부르면 서버가 422로 되돌린다(목 실측).
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 조회 시점', () => {
+  it('확장 속성 탭에서는 자재 명세서를 조회하지 않는다', async () => {
+    const { requests } = renderScreen(bomRoutes(), '?item=1001');
+
+    await findOriginContent();
+
+    expect(bomListGets(requests)).toHaveLength(0);
+  });
+
+  it('품목을 고르기 전에는 자재 명세서 탭 주소여도 조회하지 않는다', async () => {
+    const { requests } = renderScreen(bomRoutes(), '?tab=bom');
+
+    await screen.findByRole('button', { name: 'SYN-ITEM-01' });
+
+    expect(bomListGets(requests)).toHaveLength(0);
+  });
+
+  it('자재 명세서 탭에 들어가면 고른 품목으로 한 번 조회한다', async () => {
+    const { requests } = renderScreen(bomRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+
+    expect(bomListGets(requests)).toHaveLength(1);
+    expect(bomListGets(requests)[0]?.url.searchParams.get('parentItemId')).toBe('1001');
+  });
+
+  /* 부속 자원과 자재 명세서는 서로 다른 탭이다 — 한쪽 탭에서 다른 쪽을 받아 둘 이유가 없다. */
+  it('부속 정보 탭에서는 자재 명세서를 조회하지 않는다', async () => {
+    const { requests } = renderScreen(
+      [...subsidiaryRoutes(), bomListRoute()],
+      '?item=1001&tab=sub',
+    );
+
+    await findBuMapPane();
+
+    expect(bomListGets(requests)).toHaveLength(0);
+  });
+});
+
+/**
+ * C13 · M19 · M20 — **기본 지정은 서버 한 번 호출이다**(결정 9).
+ *
+ * 기존 기본을 화면이 따로 해제하면 그 사이에 **기본이 하나도 없는 순간**이 생긴다.
+ * 계약이 한 트랜잭션으로 처리하며, 응답은 지정한 줄만 돌려준다.
+ */
+describe('ItemExtendedAttrsScreen — 기본 지정 (M19·M20·M21·M22)', () => {
+  /** 확인 창까지 열어 지정을 확정한다. */
+  const setDefaultFirstBom = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 기본으로 지정' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: '기본으로 지정' }),
+    );
+  };
+
+  it('지정이 :set-default 한 번으로 끝난다 (M19)', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    await waitFor(() => {
+      expect(bomWrites(requests)).toHaveLength(1);
+    });
+
+    const write = bomWrites(requests)[0]!;
+    expect(write.method).toBe('POST');
+    expect(write.url.pathname).toBe('/planning/boms/2001:set-default');
+  });
+
+  /**
+   * M20 — **다른 자재 명세서로 나가는 쓰기가 0회다.**
+   * 기존 기본(2002)을 화면이 내리면 그 사이에 기본이 하나도 없는 순간이 생긴다.
+   */
+  it('다른 자재 명세서에 대한 쓰기가 0회다 (M20)', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    await waitFor(() => {
+      expect(bomWrites(requests)).toHaveLength(1);
+    });
+
+    /* 기존 기본(2002)을 건드리는 요청이 어떤 메서드로도 나가지 않았다. */
+    expect(
+      requests.filter(
+        (request) => request.method !== 'GET' && request.url.pathname.includes('2002'),
+      ),
+    ).toHaveLength(0);
+  });
+
+  /**
+   * §5.3 표 5행 — 이 쓰기에는 낙관적 잠금이 없다.
+   * `etagPath`에 상세 경로를 주면 토큰을 찾지 못해 요청이 **나가지 않고 멈춘다.**
+   */
+  it('멱등 키만 싣고 If-Match를 싣지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    await waitFor(() => {
+      expect(bomWrites(requests)).toHaveLength(1);
+    });
+
+    const write = bomWrites(requests)[0]!;
+    expect(write.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(write.headers.get('If-Match')).toBeNull();
+  });
+
+  /**
+   * M21 — 확인 창은 **열 때만 마운트한다.**
+   * 디자인 시스템 `Dialog`는 닫혀도 내용이 DOM에 남아, 항상 렌더하면 표에도 없는 버튼이
+   * 검색에 잡히고 지난 대상이 살아 있다.
+   */
+  it('열기 전에는 확인 창이 DOM에 없다 (M21)', async () => {
+    renderScreen(bomRoutes(), '?item=1001&tab=bom');
+
+    await findBomListPane();
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('같은 품목의 기존 기본 자재 명세서는 자동으로 해제됩니다.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('닫은 뒤에도 확인 창이 DOM에 남지 않는다 (M21)', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await user.click(screen.getByRole('button', { name: 'SYN-BOM-01 · Rev 1 기본으로 지정' }));
+
+    expect(
+      screen.getByText('같은 품목의 기존 기본 자재 명세서는 자동으로 해제됩니다.'),
+    ).toBeInTheDocument();
+
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    /* 창을 여는 것만으로는 서버로 아무것도 나가지 않는다. */
+    expect(bomWrites(requests)).toHaveLength(0);
+  });
+
+  /* M22 — 감추면 그 줄에만 액션이 없는 이유를 알 수 없다. 사유를 붙여 비활성으로 둔다. */
+  it('이미 기본인 줄의 지정은 사유 붙은 비활성이다 (M22)', async () => {
+    const { user } = renderScreen(bomRoutes(), '?item=1001&tab=bom');
+
+    const pane = await findBomListPane();
+    const disabled = within(pane).getByRole('button', { name: '기본으로 지정' });
+
+    expect(disabled).toBeDisabled();
+    expect(
+      within(pane).getByText(/기본 지정은 이 자재 명세서가 이미 기본이라 할 수 없습니다/),
+    ).toBeInTheDocument();
+
+    await user.click(disabled);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /**
+   * 서버 응답이 **지정한 줄만** 돌려주므로(기존 기본의 해제는 응답에 없다)
+   * 목록을 다시 받아야 어느 줄이 기본인지 화면이 알 수 있다.
+   */
+  it('성공하면 목록을 다시 조회하고 창이 닫힌다', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    await waitFor(() => {
+      expect(bomListGets(requests)).toHaveLength(2);
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /* 구성품은 달라지지 않는다 — 함께 무효화하면 표가 이유 없이 다시 그려진다. */
+  it('기본 지정이 품목 상세를 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...bomRoutes(), setDefaultRoute()],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    const before = detailGetCount(requests);
+
+    await setDefaultFirstBom(user);
+
+    await waitFor(() => {
+      expect(bomListGets(requests)).toHaveLength(2);
+    });
+    expect(detailGetCount(requests)).toBe(before);
+  });
+
+  /**
+   * C17 — 이 화면 전용 문구를 만들지 않는다.
+   *
+   * **실패 배너의 주인은 확인 창 하나다.** 페인에도 슬롯을 두면 창이 열린 채 같은 문구가
+   * 둘로 보인다(F1과 같은 실패 모드) — 개수까지 함께 잰다.
+   */
+  it('403이 공통 배너 문구로 나고 창 안에 하나만 보인다', async () => {
+    const { user } = renderScreen(
+      [...bomRoutes(), setDefaultFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' })],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    expect(await screen.findAllByText(FORBIDDEN_TEXT)).toHaveLength(1);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(FORBIDDEN_TEXT)).toBeInTheDocument();
+  });
+
+  /* 낙관적 잠금이 없어 충돌 갈래가 없다 — 「최신 불러오기」를 내면 없는 원인을 짚어 주게 된다. */
+  it('기본 지정 실패에는 최신 불러오기를 내지 않는다', async () => {
+    const { user } = renderScreen(
+      [...bomRoutes(), setDefaultFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' })],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+
+    await screen.findByText(FORBIDDEN_TEXT);
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+
+  /* 다른 품목으로 옮기면 앞 품목의 실패가 따라오면 안 된다(§5.4 3행). */
+  it('품목을 바꾸면 기본 지정 실패 배너가 사라진다', async () => {
+    const { user } = renderScreen(
+      [...bomRoutes(), setDefaultFailureRoute(403, { code: 'FORBIDDEN', message: '권한 없음' })],
+      '?item=1001&tab=bom',
+    );
+
+    await findBomListPane();
+    await setDefaultFirstBom(user);
+    await screen.findByText(FORBIDDEN_TEXT);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(FORBIDDEN_TEXT)).not.toBeInTheDocument();
+    });
+  });
+});
+
+/**
+ * M09 — **탭 변경은 아무것도 비우지 않는다.** 세 탭이 전부 「지금 고른 품목」의 다른 면이다.
+ * 세 번째 탭이 생겼으므로 왕복을 세 탭 전부로 넓힌다.
+ */
+describe('ItemExtendedAttrsScreen — 자재 명세서 탭을 오가도 잃지 않는다 (M09)', () => {
+  it('탭 셋을 오가도 고른 품목이 그대로다', async () => {
+    const { user } = renderScreen([...subsidiaryRoutes(), bomListRoute()], '?item=1001&tab=sub');
+
+    await findBuMapPane();
+
+    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+    await findBomListPane();
+    expect(await findOriginContent()).toHaveTextContent('SYN-ITEM-01');
+
+    await user.click(screen.getByRole('tab', { name: '확장 속성' }));
+    await findAttrsPane();
+    expect(await findOriginContent()).toHaveTextContent('SYN-ITEM-01');
+  });
+
+  /* 부속 초안은 자재 명세서 탭을 다녀와도 살아 있어야 한다 — 같은 품목의 다른 면이다. */
+  it('자재 명세서 탭을 다녀와도 부속 초안이 남는다', async () => {
+    const { user } = renderScreen([...subsidiaryRoutes(), bomListRoute()], '?item=1001&tab=sub');
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    expect(buMapRowCount(pane)).toBe(3);
+
+    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+    await findBomListPane();
+    await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+
+    expect(buMapRowCount(await findBuMapPane())).toBe(3);
   });
 });
