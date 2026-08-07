@@ -155,7 +155,7 @@ const businessUnitsRoute = (items = businessUnitFixtures): StubRoute => ({
  *
  * 픽스처에 없는 번호(9001)는 **404**로 둔다 — 그 행만 「알 수 없음」이 되는지 본다.
  */
-const itemDetailByIdRoute = (): StubRoute => ({
+const itemDetailByIdRoute = ({ withEtag = true } = {}): StubRoute => ({
   match: (request) =>
     request.method === 'GET' && /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
   respond: (request) => {
@@ -166,7 +166,12 @@ const itemDetailByIdRoute = (): StubRoute => ({
 
     return jsonResponse(
       { item, editability: { codeEditable: false, reason: 'EDITABLE', referenceCount: 3 } },
-      { headers: { ETag: 'W/"7"' } },
+      /*
+       * 토큰 없는 갈래를 만들 수 있어야 한다. **부속 치환 셋은 낙관적 잠금을 쓰지 않으므로**
+       * 잠금 토큰이 없어도 저장이 나가야 하는데(§5.3 2~4행), 토큰이 늘 있는 상황만
+       * 검사하면 `etagPath`를 잘못 준 코드가 그대로 통과한다.
+       */
+      withEtag ? { headers: { ETag: 'W/"7"' } } : {},
     );
   },
 });
@@ -2499,5 +2504,86 @@ describe('ItemExtendedAttrsScreen — 부속 초안 세 벌 (C12)', () => {
     await waitFor(() => {
       expect(screen.getByText('등록된 외부 코드가 없습니다')).toBeInTheDocument();
     });
+  });
+});
+
+/**
+ * M17(핵심) — **부속 치환 셋은 잠금 토큰에 매이지 않는다.**
+ *
+ * 계약에 이 쓰기들의 `If-Match` 파라미터 자체가 없고 목록 조회가 `ETag`를 주지도 않는다.
+ * `etagPath`에 상세 경로를 주면 토큰을 찾지 못한 `useMasterWrite`가 **요청을 보내지 않고 멈춘다** —
+ * 「저장을 눌러도 아무 일이 없다」가 된다.
+ *
+ * **토큰이 있는 상황만 검사하면 이 결함이 통과한다.** 이 화면은 품목 상세를 늘 함께 받아
+ * 보관소에 토큰이 들어 있기 때문이다. 그래서 여기서는 **토큰 없는 상세**를 준다.
+ */
+describe('ItemExtendedAttrsScreen — 부속 치환은 잠금 토큰에 매이지 않는다 (M17)', () => {
+  const tokenlessRoutes = (): StubRoute[] => [
+    itemListRoute(),
+    itemDetailByIdRoute({ withEtag: false }),
+    uomsRoute(),
+    businessUnitsRoute(),
+    partnersRoute(),
+    buMapsRoute(),
+    uomConversionsRoute(),
+    externalCodesRoute(),
+    buMapSaveRoute(),
+    uomConversionSaveRoute(),
+    externalCodeSaveRoute(),
+  ];
+
+  it('상세에 잠금 토큰이 없어도 사업부 매핑 저장이 나간다', async () => {
+    const { requests, user } = renderScreen(tokenlessRoutes(), '?item=1001&tab=sub');
+
+    const pane = await findBuMapPane();
+    await addBuMapRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(buMapPuts(requests)).toHaveLength(1);
+    });
+    expect(screen.queryByText(/최신 내용을 불러온 뒤/)).not.toBeInTheDocument();
+  });
+
+  it('상세에 잠금 토큰이 없어도 단위 환산 저장이 나간다', async () => {
+    const { requests, user } = renderScreen(tokenlessRoutes(), '?item=1001&tab=sub&sub=uom');
+
+    const pane = await findUomConversionPane();
+    await addUomConversionRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(uomConversionPuts(requests)).toHaveLength(1);
+    });
+  });
+
+  it('상세에 잠금 토큰이 없어도 외부 코드 저장이 나간다', async () => {
+    const { requests, user } = renderScreen(tokenlessRoutes(), '?item=1001&tab=sub&sub=ext');
+
+    const pane = await findExternalCodePane();
+    await addExternalCodeRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(externalCodePuts(requests)).toHaveLength(1);
+    });
+  });
+
+  /*
+   * 반대 방향 — **확장 속성 저장은 토큰에 매인다**(§5.3 1행).
+   * 두 규칙을 한 화면이 함께 지키므로 한쪽만 검사하면 나머지가 흔들린다.
+   */
+  it('상세에 잠금 토큰이 없으면 확장 속성 저장은 나가지 않는다', async () => {
+    const { requests, user } = renderScreen([...tokenlessRoutes(), itemSaveRoute()], '?item=1001');
+
+    await findAttrsPane();
+    await editAndSave(user);
+
+    await waitFor(() => {
+      expect(savedBodies(requests)).toHaveLength(0);
+    });
+    expect(
+      await screen.findByText('최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.'),
+    ).toBeInTheDocument();
   });
 });
