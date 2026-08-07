@@ -2587,3 +2587,60 @@ describe('ItemExtendedAttrsScreen — 부속 치환은 잠금 토큰에 매이�
     ).toBeInTheDocument();
   });
 });
+
+/**
+ * M29(사업부 매핑 몫) — **계약에 없는 중복 검사를 만들지 않는다.**
+ *
+ * 계약이 이 표에 유일 제약을 적지 않았다(구별 제약·짝 제약만 있다). 화면이 없는 제약을
+ * 흉내 내면 **서버가 허용하는 값을 화면이 막는다**(W-06-02 결정 9 승계 · 계획 §13-11).
+ * 단위 환산·외부 코드에는 중복 검사가 있어, 셋을 나란히 만들다 보면 이 표에도 옮겨 붙기 쉽다.
+ */
+describe('ItemExtendedAttrsScreen — 사업부 매핑은 중복을 막지 않는다 (M29)', () => {
+  it('서버에 있는 줄과 같은 짝을 하나 더 만들 수 있다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    const pane = await findBuMapPane();
+    expect(buMapRowCount(pane)).toBe(2);
+
+    /* 픽스처 3001과 **네 값이 모두 같은** 줄이다 — 서버는 이것을 받는다. */
+    await user.click(screen.getByRole('button', { name: '매핑 추가' }));
+    const dialog = buMapDialog();
+
+    await user.click(within(dialog).getByLabelText('보내는 사업부'));
+    await user.click(screen.getByRole('option', { name: 'SYN-BU-01 · 합성 사업부 A' }));
+    await user.click(within(dialog).getByLabelText('받는 사업부'));
+    await user.click(screen.getByRole('option', { name: 'SYN-BU-02 · 합성 사업부 B' }));
+    await user.type(within(dialog).getByLabelText('대상 품목 검색'), 'SYN');
+    await user.click(within(dialog).getByRole('button', { name: '찾기' }));
+    await user.click(await within(dialog).findByLabelText('대상 품목'));
+    await user.click(screen.getByRole('option', { name: 'SYN-ITEM-02 · 합성 품목 B' }));
+    await user.type(within(dialog).getByLabelText('유효 시작'), '2026-01-01');
+
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(buMapRowCount(pane)).toBe(3);
+    expect(screen.queryByText(/이미 있습니다|겹친 줄/)).not.toBeInTheDocument();
+  });
+
+  /* 저장까지 막히지 않아야 한다 — 판정은 서버 몫이고 400이 배너로 온다. */
+  it('같은 짝이 둘이어도 저장이 열려 있다', async () => {
+    const first = buMapFixtures[0]!;
+    const { user } = renderScreen(
+      [
+        ...subsidiaryRoutes(),
+        buMapsRoute([first, { ...first, itemBuItemMapId: 3009 }]),
+        buMapSaveRoute(),
+      ],
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+    await user.click(within(pane).getAllByRole('button', { name: /매핑 삭제$/ })[0]!);
+
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(within(pane).getByRole('button', { name: '저장' })).not.toHaveAttribute(
+      'aria-describedby',
+    );
+  });
+});
