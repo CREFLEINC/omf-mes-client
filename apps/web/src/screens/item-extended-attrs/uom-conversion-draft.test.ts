@@ -46,6 +46,21 @@ describe('toUomConversionDrafts', () => {
     expect(toUomConversionDrafts(uomConversionFixtures)[1]?.conversionRate).toBe('0.00012345');
   });
 
+  /**
+   * F4 — `numeric(18,8)`의 가장 작은 값(`0.00000001`)이 `String`으로는 `"1e-8"`이 된다.
+   * 그 표기가 표와 편집 창에 그대로 나가면 사용자가 자료로 읽지 못한다.
+   *
+   * **값은 그대로다** — 아래 두 단언이 표기와 값을 각각 잰다.
+   */
+  it('아주 작은 환산 비율을 지수 표기로 내지 않는다', () => {
+    const [draft] = toUomConversionDrafts([
+      { ...uomConversionFixtures[0]!, itemUomConversionId: 4009, conversionRate: 1e-8 },
+    ]);
+
+    expect(draft?.conversionRate).toBe('0.00000001');
+    expect(Number(draft?.conversionRate)).toBe(1e-8);
+  });
+
   it('서버 식별자와 itemId를 초안에 담지 않는다', () => {
     for (const draft of toUomConversionDrafts(uomConversionFixtures)) {
       expect(draft).not.toHaveProperty('itemUomConversionId');

@@ -2113,6 +2113,45 @@ describe('ItemExtendedAttrsScreen — 단위 환산 치환 (M15~M18)', () => {
     expect(body.conversions[0]?.conversionRate).toBe(0.00012345);
   });
 
+  /**
+   * F4 — `numeric(18,8)`의 가장 작은 값은 `String`으로 옮기면 `"1e-8"`이 된다.
+   *
+   * **표기만 펴고 값은 그대로다.** 표에 십진으로 보이는지와 본문에 같은 값이 실리는지를
+   * 함께 잰다 — 한쪽만 보면 자릿수를 반올림하는 구현도 통과한다.
+   */
+  it('아주 작은 환산 비율이 표와 본문에서 값을 잃지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        ...subsidiaryRoutes({
+          uomConversions: uomConversionsRoute([
+            { ...uomConversionFixtures[0]!, itemUomConversionId: 4009, conversionRate: 1e-8 },
+            uomConversionFixtures[1]!,
+          ]),
+        }),
+        uomConversionSaveRoute(),
+      ],
+      '?item=1001&tab=sub&sub=uom',
+    );
+
+    const pane = await findUomConversionPane();
+
+    /* 갈아 끼운 자료가 실제로 그려졌는가 — 기본 목록에는 없는 값으로 잰다(F6 교훈). */
+    expect(within(pane).getByText('0.00000001')).toBeInTheDocument();
+    expect(within(pane).queryByText('1e-8')).not.toBeInTheDocument();
+
+    /* 이 줄을 고치지 않는다 — 다른 줄을 지워 저장을 여는 것으로 충분하다. */
+    await user.click(within(pane).getAllByRole('button', { name: /환산 삭제$/ })[1]!);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(uomConversionBodies(requests)).toHaveLength(1);
+    });
+
+    const body = uomConversionBodies(requests)[0] as { conversions: { conversionRate: number }[] };
+    expect(body.conversions).toHaveLength(1);
+    expect(body.conversions[0]?.conversionRate).toBe(1e-8);
+  });
+
   it('창의 확인만으로는 요청이 나가지 않는다', async () => {
     const { requests, user } = renderScreen(
       [...subsidiaryRoutes(), uomConversionSaveRoute()],
