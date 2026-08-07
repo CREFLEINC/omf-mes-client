@@ -348,7 +348,13 @@ export const ItemExtendedAttrsScreen = () => {
       );
     }
 
-    return <ItemOriginPane item={itemDetail.data.item} uomEntries={uomOptions.entries} />;
+    return (
+      <ItemOriginPane
+        item={itemDetail.data.item}
+        uomEntries={uomOptions.entries}
+        isUomLoading={uomOptions.isLoading}
+      />
+    );
   };
 
   /**

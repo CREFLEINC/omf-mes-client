@@ -11,7 +11,14 @@ const uomEntries: LookupEntry[] = [
 ];
 
 const renderPane = (overrides: Partial<Parameters<typeof ItemOriginPane>[0]> = {}) =>
-  render(<ItemOriginPane item={itemFixtures[0]!} uomEntries={uomEntries} {...overrides} />);
+  render(
+    <ItemOriginPane
+      item={itemFixtures[0]!}
+      uomEntries={uomEntries}
+      isUomLoading={false}
+      {...overrides}
+    />,
+  );
 
 /**
  * M01 — 원본 구획에 쓰기 수단이 없다.
@@ -76,6 +83,17 @@ describe('ItemOriginPane — 원본 4열의 값 표기', () => {
 
     expect(screen.getByLabelText('기준 단위')).toHaveTextContent('알 수 없음');
     expect(screen.queryByText('9999')).not.toBeInTheDocument();
+  });
+
+  /*
+   * 단위 목록이 도착하기 전에는 어떤 번호도 이름으로 옮길 수 없다.
+   * 그 상태를 「알 수 없음」으로 내면 값이 잘못 담긴 것처럼 읽힌다.
+   */
+  it('단위 목록을 받는 중이면 「알 수 없음」을 내지 않는다', () => {
+    renderPane({ uomEntries: [], isUomLoading: true });
+
+    expect(screen.getByLabelText('기준 단위')).toHaveTextContent('불러오는 중…');
+    expect(screen.getByLabelText('기준 단위')).not.toHaveTextContent('알 수 없음');
   });
 
   it('품목유형이 비어 있으면 미지정 표기다 — 빈 칸을 남기지 않는다', () => {

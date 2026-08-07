@@ -52,4 +52,21 @@ describe('lookupLabel', () => {
     expect(lookupLabel(entries, null)).toBe('—');
     expect(lookupLabel(entries, undefined)).toBe('—');
   });
+
+  /*
+   * **「아직 못 받았다」와 「목록에 없다」는 다른 사실이다.**
+   * 같은 문구로 내면 사용자가 잘못 담긴 자료로 읽고 원본 시스템을 확인하러 간다.
+   */
+  it('목록을 받는 중이면 「알 수 없음」이 아니라 불러오는 중이다', () => {
+    expect(lookupLabel([], 7001, true)).toBe('불러오는 중…');
+  });
+
+  it('값이 없으면 목록을 받는 중이어도 미지정 표기다 — 오지 않을 이름을 기다리게 하지 않는다', () => {
+    expect(lookupLabel([], null, true)).toBe('—');
+  });
+
+  /* 다 받은 뒤에도 없으면 그때는 정말 「알 수 없음」이다. */
+  it('다 받았는데 없으면 「알 수 없음」이다', () => {
+    expect(lookupLabel([], 7001, false)).toBe('알 수 없음');
+  });
 });
