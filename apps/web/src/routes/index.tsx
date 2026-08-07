@@ -6,6 +6,7 @@ import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
+import { MasterChangeScreen } from '../screens/master-change/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
@@ -26,6 +27,7 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/common-code', element: <CommonCodeScreen /> },
       { path: 'master-data/integration-sync', element: <IntegrationSyncScreen /> },
       { path: 'master-data/item-extended-attrs', element: <ItemExtendedAttrsScreen /> },
+      { path: 'master-data/master-change', element: <MasterChangeScreen /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
