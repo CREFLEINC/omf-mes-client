@@ -112,7 +112,13 @@ export const ExternalCodeFormDialog = ({
           />
         </div>
 
-        {/* 비우면 「(전체)」다 — 계약이 그 뜻을 널로 표현한다(A-7). */}
+        {/*
+         * 비우면 「(전체)」다 — 계약이 그 뜻을 널로 표현한다(A-7).
+         *
+         * **이 칸에는 자기 오류가 없다.** 필수가 아니고, 유일 제약은 외부 시스템과 짝을 이루므로
+         * 중복 문구는 위 칸에 붙는다. 늘 비어 있을 오류 자리를 두면 「이 칸도 막힐 수 있다」는
+         * 뜻이 되어, 읽는 사람이 없는 규칙을 찾게 된다.
+         */}
         <SelectField
           label={t.fields.partner}
           options={[
@@ -121,7 +127,6 @@ export const ExternalCodeFormDialog = ({
           ]}
           value={values.partnerId}
           onChange={(value) => change({ partnerId: value })}
-          error={errors.partnerId}
         />
 
         <div className="field-cell">

@@ -136,6 +136,18 @@ interface ExternalCodeDraftState {
 }
 
 /**
+ * 열려 있는 편집 창의 대상.
+ *
+ * **초안과 「새 줄인가」를 한 상태에 담는다.** 둘을 따로 두면 창을 닫을 때 하나만 되돌아가
+ * 다음에 열리는 창의 제목이 어긋날 수 있고, 초기화 지점마다 둘을 함께 비웠는지 세어야 한다.
+ * 한 값으로 묶으면 `null`이 곧 「창이 닫혔다」이고 갈릴 여지가 사라진다.
+ */
+interface EditingRow<TDraft> {
+  draft: TDraft;
+  isNew: boolean;
+}
+
+/**
  * W-06-05 컨테이너.
  *
  * 조회 조건과 선택은 URL이 소유한다(`?tab=&q=&inactive=1&page=&item=`) —
@@ -282,8 +294,7 @@ export const ItemExtendedAttrsScreen = () => {
   const buMapItemNames = useItemNames(buMapItemIds);
 
   /** 편집 창의 대상. **열 때만 마운트한다** — 닫힌 창을 남기면 지난 값이 살아 있다. */
-  const [editingBuMap, setEditingBuMap] = useState<BuMapDraft | null>(null);
-  const [isEditingNewBuMap, setIsEditingNewBuMap] = useState(false);
+  const [editingBuMap, setEditingBuMap] = useState<EditingRow<BuMapDraft> | null>(null);
 
   const buMapWrite = useMasterWrite<BuMapDraft[], ItemBuItemMapListResponse>({
     request: (drafts, headers) =>
@@ -324,8 +335,7 @@ export const ItemExtendedAttrsScreen = () => {
 
   const openBuMapDialog = (draft: BuMapDraft, isNew: boolean) => {
     buMapWrite.reset();
-    setIsEditingNewBuMap(isNew);
-    setEditingBuMap(draft);
+    setEditingBuMap({ draft, isNew });
   };
 
   /* ── 부속 정보 · 단위 환산 ──────────────────────────────────────────────── */
@@ -350,8 +360,8 @@ export const ItemExtendedAttrsScreen = () => {
     uomConversionState !== null &&
     !isSameUomConversionDrafts(uomConversionState.drafts, uomConversionState.baseline);
 
-  const [editingUomConversion, setEditingUomConversion] = useState<UomConversionDraft | null>(null);
-  const [isEditingNewUomConversion, setIsEditingNewUomConversion] = useState(false);
+  const [editingUomConversion, setEditingUomConversion] =
+    useState<EditingRow<UomConversionDraft> | null>(null);
 
   const uomConversionWrite = useMasterWrite<UomConversionDraft[], ItemUomConversionListResponse>({
     request: (drafts, headers) =>
@@ -383,8 +393,7 @@ export const ItemExtendedAttrsScreen = () => {
 
   const openUomConversionDialog = (draft: UomConversionDraft, isNew: boolean) => {
     uomConversionWrite.reset();
-    setIsEditingNewUomConversion(isNew);
-    setEditingUomConversion(draft);
+    setEditingUomConversion({ draft, isNew });
   };
 
   /* ── 부속 정보 · 외부 코드 ──────────────────────────────────────────────── */
@@ -408,8 +417,8 @@ export const ItemExtendedAttrsScreen = () => {
     externalCodeState !== null &&
     !isSameExternalCodeDrafts(externalCodeState.drafts, externalCodeState.baseline);
 
-  const [editingExternalCode, setEditingExternalCode] = useState<ExternalCodeDraft | null>(null);
-  const [isEditingNewExternalCode, setIsEditingNewExternalCode] = useState(false);
+  const [editingExternalCode, setEditingExternalCode] =
+    useState<EditingRow<ExternalCodeDraft> | null>(null);
 
   const externalCodeWrite = useMasterWrite<ExternalCodeDraft[], ItemExternalCodeListResponse>({
     request: (drafts, headers) =>
@@ -437,8 +446,7 @@ export const ItemExtendedAttrsScreen = () => {
 
   const openExternalCodeDialog = (draft: ExternalCodeDraft, isNew: boolean) => {
     externalCodeWrite.reset();
-    setIsEditingNewExternalCode(isNew);
-    setEditingExternalCode(draft);
+    setEditingExternalCode({ draft, isNew });
   };
 
   /* ── 선택 수명 ──────────────────────────────────────────────────────────── */
@@ -955,8 +963,8 @@ export const ItemExtendedAttrsScreen = () => {
        */}
       {editingBuMap !== null && (
         <BuMapFormDialog
-          draft={editingBuMap}
-          isNew={isEditingNewBuMap}
+          draft={editingBuMap.draft}
+          isNew={editingBuMap.isNew}
           businessUnitOptions={(selected) =>
             selectableOptions(businessUnitOptions.entries, selected)
           }
@@ -966,11 +974,11 @@ export const ItemExtendedAttrsScreen = () => {
            * 표는 「불러오는 중…」인데 창은 값이 없는 것처럼 보인다.
            */
           selectedItemLabel={
-            editingBuMap.toItemId === ''
+            editingBuMap.draft.toItemId === ''
               ? undefined
               : lookupLabel(
                   buMapItemNames.entries,
-                  Number(editingBuMap.toItemId),
+                  Number(editingBuMap.draft.toItemId),
                   buMapItemNames.isLoading,
                 )
           }
@@ -984,8 +992,8 @@ export const ItemExtendedAttrsScreen = () => {
 
       {editingUomConversion !== null && (
         <UomConversionFormDialog
-          draft={editingUomConversion}
-          isNew={isEditingNewUomConversion}
+          draft={editingUomConversion.draft}
+          isNew={editingUomConversion.isNew}
           /* 자기 자신은 초안 키로 걸러진다 — 수정할 때 세 값을 그대로 두는 것이 정상이다. */
           otherDrafts={uomConversionDrafts}
           uomOptions={(selected) => selectableOptions(uomOptions.entries, selected)}
@@ -999,8 +1007,8 @@ export const ItemExtendedAttrsScreen = () => {
 
       {editingExternalCode !== null && (
         <ExternalCodeFormDialog
-          draft={editingExternalCode}
-          isNew={isEditingNewExternalCode}
+          draft={editingExternalCode.draft}
+          isNew={editingExternalCode.isNew}
           otherDrafts={externalCodeDrafts}
           partnerOptions={(selected) => selectableOptions(partnerOptions.entries, selected)}
           onClose={() => setEditingExternalCode(null)}

@@ -1752,6 +1752,33 @@ describe('ItemExtendedAttrsScreen — 사업부 매핑 치환 (M15~M18)', () => 
   });
 
   /*
+   * **한 자원을 저장해도 나머지 둘은 다시 받지 않는다.**
+   * 함께 무효화하면 편집 중이던 다른 초안이 서버 응답으로 되감긴다 — `subsidiaryKeys`가
+   * 자원마다 키를 나눈 이유가 이것이다.
+   */
+  it('사업부 매핑 저장이 단위 환산·외부 코드를 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), buMapSaveRoute()],
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+    await waitFor(() => {
+      expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
+    });
+    expect(requestsTo(requests, externalCodesPath())).toHaveLength(1);
+
+    await addBuMapRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(buMapPuts(requests)).toHaveLength(1);
+    });
+    expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
+    expect(requestsTo(requests, externalCodesPath())).toHaveLength(1);
+  });
+
+  /*
    * 창의 확인은 **저장이 아니다.** 확인만으로 요청이 나가면 전체 치환이라는 규약이 깨지고,
    * 사용자가 표를 확인하기 전에 서버가 바뀐다.
    */
@@ -2404,6 +2431,29 @@ describe('ItemExtendedAttrsScreen — 외부 코드 치환 (M15~M18)', () => {
         requestsTo(requests, externalCodesPath()).filter((r) => r.method === 'GET'),
       ).toHaveLength(2);
     });
+  });
+
+  /* 셋째 자원도 자기 키만 무효화한다 — 세 자원 모두 같은 방향으로 잠근다. */
+  it('외부 코드 저장이 사업부 매핑·단위 환산을 다시 받게 하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), externalCodeSaveRoute()],
+      '?item=1001&tab=sub&sub=ext',
+    );
+
+    const pane = await findExternalCodePane();
+    await waitFor(() => {
+      expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+    });
+    expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
+
+    await addExternalCodeRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(externalCodePuts(requests)).toHaveLength(1);
+    });
+    expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+    expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
   });
 
   it('403이 공통 배너 문구로 난다 (M26)', async () => {
