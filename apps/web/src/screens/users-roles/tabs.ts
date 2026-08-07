@@ -6,14 +6,13 @@ import { messages } from '@omf-mes/i18n';
  *
  * **만든 탭만 넣는다.** 탭은 그 탭의 목록·폼이 생기는 작업에서 한 줄씩 더한다 —
  * 자리만 먼저 두면 「탭은 있는데 눌러도 빈 화면인」 상태가 된다.
- * 역할·권한 탭은 그 목록·폼이 생길 때 여기에 붙는다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
 const t = messages.usersRoles;
 
-export type UsersRolesTabId = 'users';
+export type UsersRolesTabId = 'users' | 'roles';
 
 export interface UsersRolesTabDefinition {
   /** 주소의 `tab` 값이자 디자인 시스템 `Tabs`의 항목 값 */
@@ -24,6 +23,7 @@ export interface UsersRolesTabDefinition {
 /** 비어 있지 않은 배열로 두어 「첫 탭」이 언제나 존재함을 타입으로 보장한다. */
 export const USERS_ROLES_TABS: readonly [UsersRolesTabDefinition, ...UsersRolesTabDefinition[]] = [
   { id: 'users', label: t.tabs.users },
+  { id: 'roles', label: t.tabs.roles },
 ];
 
 /**

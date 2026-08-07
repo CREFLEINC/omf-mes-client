@@ -1,6 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
-import type { AppUser, Role, UserDataScope, UserRole } from './types';
+import type { AppUser, Role, RolePermission, UserDataScope, UserRole } from './types';
 
 type Department = components['schemas']['Department'];
 type BusinessUnit = components['schemas']['BusinessUnit'];
@@ -121,6 +121,19 @@ export const roleFixtures: Role[] = [
 export const userRoleFixtures: UserRole[] = [
   { userRoleId: 7001, appUserId: 1001, roleId: 5001 },
   { userRoleId: 7002, appUserId: 1001, roleId: 5003 },
+];
+
+/**
+ * 역할 `5001`에 부여된 기능 권한 2건.
+ *
+ * **코드값은 전부 지어낸 것이다.** 권한 목록이 확정되지 않아 실제 코드가 무엇인지 아무도 모르며,
+ * 그럴듯한 이름(`MASTER_EDIT` 같은)을 쓰면 그것이 실제 값인 줄 읽힌다.
+ * 자리표시 상수(`permission-catalog.ts`)는 여전히 **비어 있어야 한다** — 여기 값은
+ * 「서버가 준 부여분」의 자리이지 「권한 목록」이 아니다.
+ */
+export const rolePermissionFixtures: RolePermission[] = [
+  { rolePermissionId: 8001, roleId: 5001, permissionCode: 'SYN-PERM-01' },
+  { rolePermissionId: 8002, roleId: 5001, permissionCode: 'SYN-PERM-02' },
 ];
 
 export const businessUnitFixtures: BusinessUnit[] = [

@@ -1,8 +1,11 @@
+import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DeactivateDialog, type DeactivateDialogProps } from './deactivate-dialog';
+
+const t = messages.usersRoles.dialog;
 
 const renderDialog = (overrides: Partial<DeactivateDialogProps> = {}) => {
   const onClose = vi.fn<() => void>();
@@ -11,7 +14,8 @@ const renderDialog = (overrides: Partial<DeactivateDialogProps> = {}) => {
   render(
     <DeactivateDialog
       open
-      title="이 사용자를 사용 중지할까요?"
+      title={t.deactivateUserTitle}
+      description={t.deactivateUserDescription}
       onClose={onClose}
       onConfirm={onConfirm}
       isSaving={false}
@@ -38,11 +42,42 @@ describe('DeactivateDialog', () => {
   });
 
   /**
-   * 화면이 쓸 수 있는 건수는 「코드 필드를 고칠 수 있는지」의 근거이지
-   * 「이 사용자에게 배정된 자료의 수」가 아니다 — 두 뜻을 섞으면 화면이 지어낸다.
+   * 사용자와 역할은 **중지했을 때 일어나는 일이 다르다.** 한 문구를 함께 쓰면
+   * 역할 창에 「이 사용자는 시스템을 쓸 수 없게 됩니다」가 나와 사실과 다른 안내가 된다.
    */
-  it('참조 건수·배정 건수를 내지 않는다', () => {
+  it('본문이 어느 자원을 중지하는지에 따라 달라진다', () => {
     renderDialog();
+
+    expect(screen.getByText(/이 사용자는 시스템을 쓸 수 없게 되고/)).toBeInTheDocument();
+    expect(screen.queryByText(/이 역할로 열려 있던 권한이 사라집니다/)).not.toBeInTheDocument();
+  });
+
+  it('역할 창에는 역할의 결과가 나온다', () => {
+    renderDialog({
+      title: t.deactivateRoleTitle,
+      description: t.deactivateRoleDescription,
+    });
+
+    expect(screen.getByRole('dialog', { name: '이 역할을 사용 중지할까요?' })).toBeInTheDocument();
+    expect(screen.getByText(/이 역할로 열려 있던 권한이 사라집니다/)).toBeInTheDocument();
+    expect(screen.queryByText(/이 사용자는 시스템을 쓸 수 없게 되고/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * 화면이 쓸 수 있는 건수는 「코드 필드를 고칠 수 있는지」의 근거이지
+   * 「배정된 자료의 수」가 아니다 — 두 뜻을 섞으면 화면이 지어낸다.
+   */
+  it('두 자원 모두 참조 건수·배정 건수를 내지 않는다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('dialog').textContent).not.toMatch(/\d+\s*건/);
+  });
+
+  it('역할 창도 건수를 내지 않는다', () => {
+    renderDialog({
+      title: t.deactivateRoleTitle,
+      description: t.deactivateRoleDescription,
+    });
 
     expect(screen.getByRole('dialog').textContent).not.toMatch(/\d+\s*건/);
   });

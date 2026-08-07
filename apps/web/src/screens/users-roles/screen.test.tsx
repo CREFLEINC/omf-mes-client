@@ -18,11 +18,12 @@ import {
   filledUserFixture,
   plantFixtures,
   roleFixtures,
+  rolePermissionFixtures,
   userDataScopeFixtures,
   userRoleFixtures,
 } from './fixtures';
 import { UsersRolesScreen } from './screen';
-import type { AppUser } from './types';
+import type { AppUser, Role } from './types';
 
 type Editability = components['schemas']['Editability'];
 
@@ -200,6 +201,79 @@ const userDeactivateRoute = (
   respond,
 });
 
+/* ── 역할·권한 탭의 스텁 ───────────────────────────────────────────────────
+ *
+ * 목록은 **사용자 탭의 역할 선택 목록과 같은 경로**를 쓰지만 조회 목적이 달라 캐시가 갈린다.
+ * 한 탭에서 둘이 함께 돌지 않으므로(선택 목록은 고른 사용자가 있을 때만 켜진다) 규칙 하나로 받는다.
+ */
+
+const rolePath = (roleId: number): string => `${ROLES_PATH}/${String(roleId)}`;
+
+const rolePermissionsPath = (roleId: number): string => `${rolePath(roleId)}/permissions`;
+
+const ROLE_PAGE: PageStub = { page: 1, size: 50, total: roleFixtures.length };
+
+const roleListRoute = (items = roleFixtures, pageMeta: PageStub = ROLE_PAGE): StubRoute => ({
+  match: (request) => isGet(request, ROLES_PATH),
+  respond: () => jsonResponse({ items, page: pageMeta }),
+});
+
+const roleListErrorRoute = (status: number, body: unknown = { errors: [] }): StubRoute => ({
+  match: (request) => isGet(request, ROLES_PATH),
+  respond: () => jsonResponse(body, { status }),
+});
+
+/** 역할 상세 — `ETag`가 함께 온다(계약 실측). 저장의 `If-Match`가 이 값에서 나온다. */
+const roleDetailRoute = (
+  role: Role = roleFixtures[0] as Role,
+  { etag = 'W/"9"', editability = EDITABLE }: { etag?: string | null; editability?: Editability } = {},
+): StubRoute => ({
+  match: (request) => isGet(request, rolePath(role.roleId)),
+  respond: () => jsonResponse({ role, editability }, etag === null ? {} : { headers: { ETag: etag } }),
+});
+
+const roleUpdateRoute = (
+  roleId = 5001,
+  respond: (request: Request) => Response = () => jsonResponse(roleFixtures[0]),
+): StubRoute => ({
+  match: (request) => request.method === 'PUT' && new URL(request.url).pathname === rolePath(roleId),
+  respond,
+});
+
+const roleCreateRoute = (
+  respond: (request: Request) => Response = () =>
+    jsonResponse({ ...roleFixtures[0], roleId: 5009 }, { status: 201 }),
+): StubRoute => ({
+  match: (request) => request.method === 'POST' && new URL(request.url).pathname === ROLES_PATH,
+  respond,
+});
+
+const roleDeactivateRoute = (
+  roleId = 5001,
+  respond: (request: Request) => Response = () => jsonResponse(roleFixtures[0]),
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === `${rolePath(roleId)}:deactivate`,
+  respond,
+});
+
+/** 이 역할에 부여된 기능 권한. **쪽 나눔이 없다** — 계약이 `items`만 준다. */
+const rolePermissionsRoute = (roleId = 5001, items = rolePermissionFixtures): StubRoute => ({
+  match: (request) => isGet(request, rolePermissionsPath(roleId)),
+  respond: () => jsonResponse({ items }),
+});
+
+const rolePermissionsErrorRoute = (roleId = 5001, status = 500): StubRoute => ({
+  match: (request) => isGet(request, rolePermissionsPath(roleId)),
+  respond: () => jsonResponse({ errors: [] }, { status }),
+});
+
+/** 역할을 고르면 언제나 함께 도는 조회들. */
+const roleDetailRoutes = (roleId = 5001): StubRoute[] => [
+  roleDetailRoute(roleFixtures.find((role) => role.roleId === roleId) ?? (roleFixtures[0] as Role)),
+  rolePermissionsRoute(roleId),
+];
+
 /** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -259,6 +333,41 @@ const waitForUserList = async (requests: RecordedRequest[]): Promise<void> => {
   await within(userListPane()).findByRole('table');
 };
 
+const roleListPane = (): HTMLElement => screen.getByRole('region', { name: '역할' });
+
+const roleFormPane = (): HTMLElement => screen.getByRole('region', { name: '역할 정보' });
+
+const permissionPane = (): HTMLElement => screen.getByRole('region', { name: '기능 권한' });
+
+const roleRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requestsTo(requests, ROLES_PATH);
+
+const waitForRoleList = async (requests: RecordedRequest[]): Promise<void> => {
+  await waitFor(() => {
+    expect(roleRequests(requests).length).toBeGreaterThan(0);
+  });
+  await within(roleListPane()).findByRole('table');
+};
+
+/** 역할 탭에서 시작한다. 탭 값이 없으면 사용자 탭이 열려 다른 조회가 돈다. */
+const ROLES_TAB = '?tab=roles';
+
+const roleCodeField = (): HTMLElement => within(roleFormPane()).getByLabelText(/역할 코드/);
+
+const roleNameField = (): HTMLElement => within(roleFormPane()).getByLabelText(/역할명/);
+
+/**
+ * 폼이 그 역할의 값으로 설 때까지 기다린다.
+ *
+ * **페인 요소를 미리 붙잡지 않는다** — 불러오는 중과 폼은 서로 다른 구획이라
+ * 미리 잡아 두면 갈아 끼워진 뒤의 내용을 영영 찾지 못한다.
+ */
+const waitForRoleForm = async (roleCode: string): Promise<void> => {
+  await waitFor(() => {
+    expect(roleCodeField()).toHaveValue(roleCode);
+  });
+};
+
 describe('UsersRolesScreen 진입과 조회', () => {
   it('화면에 들어오면 조건 없이 목록을 조회한다', async () => {
     const { requests } = renderScreen([userListRoute(), departmentsRoute()]);
@@ -296,17 +405,19 @@ describe('UsersRolesScreen 진입과 조회', () => {
 
 describe('UsersRolesScreen 탭', () => {
   /** 자리만 먼저 두면 「탭은 있는데 눌러도 빈 화면인」 상태가 된다. */
-  it('만든 탭 하나만 렌더된다', async () => {
+  it('만든 탭만 렌더된다', async () => {
     const { requests } = renderScreen([userListRoute(), departmentsRoute()]);
 
     await waitForUserList(requests);
 
-    expect(screen.getAllByRole('tab')).toHaveLength(1);
-    expect(screen.getByRole('tab', { name: '사용자' })).toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      '사용자',
+      '역할·권한',
+    ]);
   });
 
   it('주소에 모르는 탭 값이 와도 첫 탭이 열린다', async () => {
-    const { requests } = renderScreen([userListRoute(), departmentsRoute()], '?tab=roles');
+    const { requests } = renderScreen([userListRoute(), departmentsRoute()], '?tab=permissions');
 
     await waitForUserList(requests);
 
@@ -2442,6 +2553,984 @@ describe('UsersRolesScreen 데이터 접근범위 저장 실패', () => {
       expect(
         dataScopeRequests(requests).filter((request) => request.method === 'PUT'),
       ).toHaveLength(2);
+    });
+  });
+});
+
+/* ══ 역할·권한 탭 ═══════════════════════════════════════════════════════════ */
+
+describe('UsersRolesScreen 역할 탭 진입과 조건', () => {
+  it('역할 탭 주소로 들어오면 역할 목록을 조회한다', async () => {
+    const { requests } = renderScreen([roleListRoute()], ROLES_TAB);
+
+    await waitForRoleList(requests);
+
+    expect(screen.getByRole('tab', { name: '역할·권한' })).toHaveAttribute('aria-selected', 'true');
+    expect(roleRequests(requests)).toHaveLength(1);
+  });
+
+  it('빈 조건·꺼진 확인칸·첫 쪽은 요청에 실리지 않는다', async () => {
+    const { requests } = renderScreen([roleListRoute()], ROLES_TAB);
+
+    await waitForRoleList(requests);
+
+    const params = roleRequests(requests)[0]?.url.searchParams;
+
+    for (const key of ['q', 'includeInactive', 'page']) {
+      expect(params?.has(key)).toBe(false);
+    }
+  });
+
+  it('검색어·미사용 포함이 요청 쿼리에 실리고 주소에도 남는다', async () => {
+    const { requests, search, user } = renderScreen([roleListRoute()], ROLES_TAB);
+
+    await waitForRoleList(requests);
+
+    await user.type(within(roleListPane()).getByLabelText('역할 검색'), 'SYN');
+    await user.click(within(roleListPane()).getByRole('button', { name: '조회' }));
+
+    await waitFor(() => {
+      expect(roleRequests(requests).length).toBeGreaterThan(1);
+    });
+
+    expect(roleRequests(requests).at(-1)?.url.searchParams.get('q')).toBe('SYN');
+    expect(new URLSearchParams(search()).get('q')).toBe('SYN');
+  });
+
+  /**
+   * 계약의 역할 목록 쿼리에 부서가 없다. 주소에 `dept`가 남아 있어도(탭을 손으로 오간 주소)
+   * 그 값이 요청으로 나가면 서버가 모르는 조건이 실린다.
+   */
+  it('부서가 어떤 요청 쿼리에도 실리지 않는다', async () => {
+    const { requests } = renderScreen([roleListRoute()], '?tab=roles&dept=3001&q=SYN');
+
+    await waitForRoleList(requests);
+
+    for (const request of requests) {
+      expect(request.url.searchParams.has('departmentId')).toBe(false);
+    }
+  });
+
+  /** 부서 선택 목록은 사용자 탭의 조건·폼이 쓰는 것이다 — 이 탭에서 부르면 쓰지 않는 요청이 는다. */
+  it('부서 선택 목록을 조회하지 않는다', async () => {
+    const { requests } = renderScreen([roleListRoute()], ROLES_TAB);
+
+    await waitForRoleList(requests);
+
+    expect(requestsTo(requests, DEPARTMENTS_PATH)).toHaveLength(0);
+  });
+
+  it('조건이 바뀌면 쪽과 선택이 주소에서 사라진다', async () => {
+    const { requests, search, user } = renderScreen(
+      [roleListRoute(), ...roleDetailRoutes()],
+      '?tab=roles&page=3&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+
+    await user.click(within(roleListPane()).getByRole('checkbox', { name: '미사용 포함' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('inactive')).toBe('1');
+    });
+
+    const params = new URLSearchParams(search());
+
+    expect(params.has('page')).toBe(false);
+    expect(params.has('rol')).toBe(false);
+    expect(params.has('new')).toBe(false);
+  });
+
+  it('쪽을 옮기면 주소와 요청에 그 쪽이 실린다', async () => {
+    const { requests, search, user } = renderScreen(
+      [roleListRoute(roleFixtures, { page: 1, size: 3, total: 9 })],
+      ROLES_TAB,
+    );
+
+    await waitForRoleList(requests);
+
+    await user.click(within(roleListPane()).getByRole('button', { name: '다음' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('page')).toBe('2');
+    });
+    expect(roleRequests(requests).at(-1)?.url.searchParams.get('page')).toBe('2');
+  });
+});
+
+describe('UsersRolesScreen 탭 전환', () => {
+  /**
+   * 탭마다 목록이 통째로 다르다 — 검색어를 넘기면 「역할을 찾던 말」로 사용자를 조회한 결과가 나오고,
+   * 선택 번호를 넘기면 그 탭에 없는 자원의 상세를 조회하게 된다.
+   */
+  it('탭을 바꾸면 주소에 탭 값 하나만 남는다', async () => {
+    const { requests, search, user } = renderScreen(
+      [userListRoute(), departmentsRoute(), ...roleRoutes(), roleListRoute()],
+      '?q=syn&dept=3001&inactive=1&page=2&usr=1001',
+    );
+
+    await waitForUserList(requests);
+
+    await user.click(screen.getByRole('tab', { name: '역할·권한' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('tab')).toBe('roles');
+    });
+
+    expect([...new URLSearchParams(search()).keys()]).toEqual(['tab']);
+  });
+
+  it('역할 탭에서 사용자 탭으로 돌아갈 때도 탭 값 하나만 남는다', async () => {
+    const { requests, search, user } = renderScreen(
+      [roleListRoute(), ...roleDetailRoutes(), userListRoute(), departmentsRoute()],
+      '?tab=roles&q=SYN&inactive=1&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+
+    await user.click(screen.getByRole('tab', { name: '사용자' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('tab')).toBe('users');
+    });
+
+    expect([...new URLSearchParams(search()).keys()]).toEqual(['tab']);
+  });
+
+  /** 앞 탭의 검색어가 넘어가면 「역할을 찾던 말」로 사용자를 조회한 결과가 나온다. */
+  it('앞 탭의 검색어가 다음 탭의 요청에 새지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [userListRoute(), departmentsRoute(), roleListRoute()],
+      '?q=syn',
+    );
+
+    await waitForUserList(requests);
+
+    await user.click(screen.getByRole('tab', { name: '역할·권한' }));
+
+    await waitForRoleList(requests);
+
+    expect(roleRequests(requests).at(-1)?.url.searchParams.has('q')).toBe(false);
+  });
+
+  /** 그 탭에 없는 자원의 상세를 조회하게 된다 — 스텁에 없는 요청이면 하네스가 던진다. */
+  it('앞 탭의 선택이 다음 탭으로 넘어가지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [userListRoute(), departmentsRoute(), ...roleRoutes(), roleListRoute()],
+      '?usr=1001',
+    );
+
+    await waitForUserList(requests);
+
+    await user.click(screen.getByRole('tab', { name: '역할·권한' }));
+
+    await waitForRoleList(requests);
+
+    expect(screen.getByText('좌측에서 역할을 고르면 여기에 그 역할의 정보가 보입니다')).toBeInTheDocument();
+    expect(requestsTo(requests, `${ROLES_PATH}/1001`)).toHaveLength(0);
+  });
+});
+
+describe('UsersRolesScreen 역할 목록 표시', () => {
+  it('응답 건수만큼 행이 그려지고 미사용 표식이 붙는다', async () => {
+    const { requests } = renderScreen([roleListRoute()], ROLES_TAB);
+
+    await waitForRoleList(requests);
+
+    expect(within(roleListPane()).getAllByRole('row')).toHaveLength(roleFixtures.length + 1);
+    expect(within(roleListPane()).getByText('미사용')).toBeInTheDocument();
+  });
+
+  it('0건이면 빈 상태가 나온다', async () => {
+    const { requests } = renderScreen([roleListRoute([], { page: 1, size: 50, total: 0 })], ROLES_TAB);
+
+    await waitForRoleList(requests);
+
+    expect(within(roleListPane()).getByText('등록된 역할이 없습니다')).toBeInTheDocument();
+  });
+
+  /** 실패를 「등록된 역할이 없습니다」로 내면 사실과 다른 안내가 된다. */
+  it('조회에 실패하면 배너가 서고 표도 빈 상태도 나오지 않는다', async () => {
+    const { requests } = renderScreen([roleListErrorRoute(500)], ROLES_TAB);
+
+    await waitFor(() => {
+      expect(roleRequests(requests).length).toBeGreaterThan(0);
+    });
+
+    expect(await within(roleListPane()).findByRole('alert')).toBeInTheDocument();
+    expect(within(roleListPane()).queryByRole('table')).not.toBeInTheDocument();
+    expect(within(roleListPane()).queryByText('등록된 역할이 없습니다')).not.toBeInTheDocument();
+  });
+
+  /** 버튼만 있고 아무 일도 하지 않는 갈래를 잡는다 — 클릭 뒤 요청 수가 늘어야 한다. */
+  it('「다시 시도」를 누르면 목록을 실제로 다시 조회한다', async () => {
+    const { requests, user } = renderScreen([roleListErrorRoute(500)], ROLES_TAB);
+
+    await within(roleListPane()).findByRole('alert');
+
+    const before = roleRequests(requests).length;
+
+    await user.click(within(roleListPane()).getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(roleRequests(requests).length).toBeGreaterThan(before);
+    });
+  });
+
+  /** 계약이 「이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다」고 못 박았다. */
+  it('권한이 없으면 배너만 나오고 다시 시도를 주지 않는다', async () => {
+    const { requests } = renderScreen([roleListErrorRoute(403)], ROLES_TAB);
+
+    await waitFor(() => {
+      expect(roleRequests(requests).length).toBeGreaterThan(0);
+    });
+
+    const banner = await within(roleListPane()).findByRole('alert');
+
+    expect(within(banner).queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
+    expect(within(roleListPane()).queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('범위 밖 쪽에는 다른 안내가 나온다', async () => {
+    const { requests } = renderScreen(
+      [roleListRoute([], { page: 9, size: 3, total: 6 })],
+      '?tab=roles&page=9',
+    );
+
+    await waitForRoleList(requests);
+
+    expect(within(roleListPane()).getByText('이 쪽에는 결과가 없습니다')).toBeInTheDocument();
+  });
+});
+
+describe('UsersRolesScreen 역할 상세 열기', () => {
+  it('역할 코드를 누르면 주소가 붙고 상세를 조회해 폼이 채워진다', async () => {
+    const { requests, search, user } = renderScreen(
+      [roleListRoute(), ...roleDetailRoutes()],
+      ROLES_TAB,
+    );
+
+    await waitForRoleList(requests);
+
+    await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-01' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('rol')).toBe('5001');
+    });
+
+    await waitForRoleForm('SYN-ROLE-01');
+    expect(within(roleFormPane()).getByDisplayValue('합성 역할 A')).toBeInTheDocument();
+    expect(requestsTo(requests, rolePath(5001))).toHaveLength(1);
+  });
+
+  it('주소로 직접 들어와도 같은 상태가 복원된다', async () => {
+    const { requests } = renderScreen(
+      [roleListRoute(), ...roleDetailRoutes()],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+
+    await waitForRoleForm('SYN-ROLE-01');
+  });
+
+  it('고르기 전에는 폼이 아니라 안내가 나온다', async () => {
+    const { requests } = renderScreen([roleListRoute()], ROLES_TAB);
+
+    await waitForRoleList(requests);
+
+    expect(
+      screen.getByText('좌측에서 역할을 고르면 여기에 그 역할의 정보가 보입니다'),
+    ).toBeInTheDocument();
+    expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
+  });
+
+  it('역할 추가는 빈 폼을 열고 상세를 조회하지 않는다', async () => {
+    const { requests, search, user } = renderScreen([roleListRoute()], ROLES_TAB);
+
+    await waitForRoleList(requests);
+
+    await user.click(within(roleListPane()).getByRole('button', { name: '역할 추가' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('new')).toBe('role');
+    });
+
+    expect(roleCodeField()).toHaveValue('');
+    expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
+  });
+
+  it('역할을 고르면 등록 폼이 주소에서 빠진다', async () => {
+    const { requests, search, user } = renderScreen(
+      [roleListRoute(), ...roleDetailRoutes()],
+      '?tab=roles&new=role',
+    );
+
+    await waitForRoleList(requests);
+
+    await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-01' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('rol')).toBe('5001');
+    });
+    expect(new URLSearchParams(search()).has('new')).toBe(false);
+  });
+
+  it('등록 폼을 열면 고른 역할이 주소에서 빠진다', async () => {
+    const { requests, search, user } = renderScreen(
+      [roleListRoute(), ...roleDetailRoutes()],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+
+    await user.click(within(roleListPane()).getByRole('button', { name: '역할 추가' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('new')).toBe('role');
+    });
+    expect(new URLSearchParams(search()).has('rol')).toBe(false);
+  });
+
+  it('상세 조회가 실패하면 빈 폼 대신 배너가 나온다', async () => {
+    const { requests } = renderScreen(
+      [
+        roleListRoute(),
+        {
+          match: (request) => isGet(request, rolePath(5001)),
+          respond: () => jsonResponse({ errors: [] }, { status: 500 }),
+        },
+        rolePermissionsRoute(),
+      ],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+
+    expect(await within(roleFormPane()).findByRole('alert')).toBeInTheDocument();
+    expect(within(roleFormPane()).queryByLabelText(/역할명/)).not.toBeInTheDocument();
+  });
+
+  /** 판정의 주인은 `codeEditable`이다 — 조합 5종은 부품 테스트가 지킨다. */
+  it('상세가 준 잠금 판정이 코드 칸에 그대로 걸린다', async () => {
+    const { requests } = renderScreen(
+      [
+        roleListRoute(),
+        roleDetailRoute(roleFixtures[0] as Role, {
+          editability: { codeEditable: false, reason: 'REFERENCED', referenceCount: 3 },
+        }),
+        rolePermissionsRoute(),
+      ],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+
+    await waitForRoleForm('SYN-ROLE-01');
+
+    expect(roleCodeField()).toBeDisabled();
+  });
+});
+
+describe('UsersRolesScreen 역할 수정 저장', () => {
+  const editRoutes = (respond?: (request: Request) => Response): StubRoute[] => [
+    roleListRoute(),
+    ...roleDetailRoutes(),
+    roleUpdateRoute(5001, respond),
+  ];
+
+  const openAndEdit = async (routes: StubRoute[] = editRoutes()) => {
+    const rendered = renderScreen(routes, '?tab=roles&rol=5001');
+
+    await waitForRoleList(rendered.requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    await rendered.user.type(roleNameField(), 'X');
+
+    return rendered;
+  };
+
+  const roleWrites = (requests: RecordedRequest[]): RecordedRequest[] =>
+    requestsTo(requests, rolePath(5001)).filter((request) => request.method === 'PUT');
+
+  it('수정 본문에 역할 코드와 역할명이 실린다', async () => {
+    const { requests, user } = await openAndEdit();
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(roleWrites(requests)).toHaveLength(1);
+    });
+
+    const body = JSON.parse(roleWrites(requests)[0]?.body ?? '{}') as Record<string, unknown>;
+
+    expect(body.roleCode).toBe('SYN-ROLE-01');
+    expect(body.roleName).toBe('합성 역할 AX');
+    expect(body).not.toHaveProperty('isActive');
+    expect(body).not.toHaveProperty('roleId');
+  });
+
+  /** 헤더 하나가 빠지면 저장이 통째로 실패한다 — 잠금 토큰은 **상세 경로**에서 나온다. */
+  it('수정 요청에 멱등 키와 상세 경로의 잠금 토큰이 둘 다 실린다', async () => {
+    const { requests, user } = await openAndEdit();
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(roleWrites(requests)).toHaveLength(1);
+    });
+
+    const headers = roleWrites(requests)[0]?.headers;
+
+    expect(headers?.get('If-Match')).toBe('W/"9"');
+    expect(headers?.get('Idempotency-Key')).toMatch(UUID);
+  });
+
+  it('저장에 성공하면 목록과 상세를 다시 조회한다', async () => {
+    const { requests, user } = await openAndEdit();
+
+    const before = roleRequests(requests).length;
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(roleRequests(requests).length).toBeGreaterThan(before);
+      expect(requestsTo(requests, rolePath(5001)).filter((r) => r.method === 'GET').length).toBeGreaterThan(1);
+    });
+  });
+
+  /** 빈 `If-Match`는 계약 위반이라 서버가 400으로 되돌린다. 보내지 않고 멈춘다. */
+  it('잠금 토큰을 확보하지 못했으면 요청을 보내지 않고 안내한다', async () => {
+    const { requests, user } = await openAndEdit([
+      roleListRoute(),
+      roleDetailRoute(roleFixtures[0] as Role, { etag: null }),
+      rolePermissionsRoute(),
+      roleUpdateRoute(),
+    ]);
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+
+    await within(roleFormPane()).findByRole('alert');
+
+    expect(roleWrites(requests)).toHaveLength(0);
+  });
+
+  /** 보내 놓고 서버가 되돌려 주기를 기다리면 사용자가 두 번 기다린다. */
+  it('검증에 걸리면 인라인 오류가 나오고 요청이 한 건도 나가지 않는다', async () => {
+    const { requests, user } = await openAndEdit();
+
+    await user.clear(roleNameField());
+    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await within(roleFormPane()).findByText('필수 입력 항목입니다.')).toBeInTheDocument();
+    expect(roleWrites(requests)).toHaveLength(0);
+  });
+
+  it('역할 코드 중복은 그 칸 옆 인라인으로 나온다', async () => {
+    const { requests, user } = await openAndEdit(
+      editRoutes(() =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'roleCode',
+                code: 'UNIQUE_VIOLATION',
+                message: '이미 쓰고 있는 역할 코드입니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(roleWrites(requests)).toHaveLength(1);
+    });
+
+    expect(
+      await within(roleFormPane()).findByText('이미 쓰고 있는 역할 코드입니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('저장에 실패해도 폼이 닫히지 않고 입력값이 남는다', async () => {
+    const { user } = await openAndEdit(
+      editRoutes(() => jsonResponse({ errors: [] }, { status: 500 })),
+    );
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+
+    await within(roleFormPane()).findByRole('alert');
+
+    expect(roleNameField()).toHaveValue('합성 역할 AX');
+  });
+
+  it('고친 것이 없으면 저장이 비활성이고 사유가 보인다', async () => {
+    const { requests } = renderScreen(editRoutes(), '?tab=roles&rol=5001');
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    expect(within(roleFormPane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(
+      within(roleFormPane()).getByText('저장은 고친 내용이 있을 때 누를 수 있습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  /** 취소는 **서버를 부르지 않는다** — 초안을 기준값으로 되돌릴 뿐이다. */
+  it('취소는 요청을 보내지 않고 값을 기준값으로 되돌린다', async () => {
+    const { requests, user } = await openAndEdit();
+
+    const before = requests.length;
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '취소' }));
+
+    expect(roleNameField()).toHaveValue('합성 역할 A');
+    expect(requests).toHaveLength(before);
+  });
+});
+
+describe('UsersRolesScreen 역할 등록', () => {
+  const createRoutes = (respond?: (request: Request) => Response): StubRoute[] => [
+    roleListRoute(),
+    roleCreateRoute(respond),
+    roleDetailRoute({ ...(roleFixtures[0] as Role), roleId: 5009 }),
+    rolePermissionsRoute(5009),
+  ];
+
+  const openAndFill = async (routes: StubRoute[] = createRoutes()) => {
+    const rendered = renderScreen(routes, '?tab=roles&new=role');
+
+    await waitForRoleList(rendered.requests);
+
+    await rendered.user.type(roleCodeField(), 'SYN-ROLE-09');
+    await rendered.user.type(roleNameField(), '합성 역할 D');
+
+    return rendered;
+  };
+
+  const roleCreates = (requests: RecordedRequest[]): RecordedRequest[] =>
+    roleRequests(requests).filter((request) => request.method === 'POST');
+
+  it('등록 요청에 멱등 키만 실린다 — 아직 잠글 대상이 없다', async () => {
+    const { requests, user } = await openAndFill();
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '역할 추가' }));
+
+    await waitFor(() => {
+      expect(roleCreates(requests)).toHaveLength(1);
+    });
+
+    const headers = roleCreates(requests)[0]?.headers;
+
+    expect(headers?.get('Idempotency-Key')).toMatch(UUID);
+    expect(headers?.has('If-Match')).toBe(false);
+  });
+
+  it('등록 본문에 사용 여부가 실리지 않는다', async () => {
+    const { requests, user } = await openAndFill();
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '역할 추가' }));
+
+    await waitFor(() => {
+      expect(roleCreates(requests)).toHaveLength(1);
+    });
+
+    const body = JSON.parse(roleCreates(requests)[0]?.body ?? '{}') as Record<string, unknown>;
+
+    expect(body.roleCode).toBe('SYN-ROLE-09');
+    expect(body.roleName).toBe('합성 역할 D');
+    expect(body).not.toHaveProperty('isActive');
+  });
+
+  it('등록에 성공하면 방금 만든 역할이 열린다', async () => {
+    const { requests, search, user } = await openAndFill();
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '역할 추가' }));
+
+    await waitFor(() => {
+      expect(new URLSearchParams(search()).get('rol')).toBe('5009');
+    });
+    expect(new URLSearchParams(search()).has('new')).toBe(false);
+  });
+
+  it('등록에는 사용 중지가 없다 — 아직 없는 자원을 중지할 수 없다', async () => {
+    const { requests } = renderScreen(createRoutes(), '?tab=roles&new=role');
+
+    await waitForRoleList(requests);
+
+    expect(within(roleFormPane()).queryByText('사용 중지')).not.toBeInTheDocument();
+  });
+
+  /** 등록 중인 역할에는 아직 부여분이 없다 — 빈 페인을 두면 여기서 무언가 할 수 있다고 읽힌다. */
+  it('등록 중에는 기능 권한 페인이 없다', async () => {
+    const { requests } = renderScreen(createRoutes(), '?tab=roles&new=role');
+
+    await waitForRoleList(requests);
+
+    expect(screen.queryByRole('region', { name: '기능 권한' })).not.toBeInTheDocument();
+  });
+});
+
+describe('UsersRolesScreen 역할 사용 중지', () => {
+  const deactivateRoutes = (respond?: (request: Request) => Response): StubRoute[] => [
+    roleListRoute(),
+    ...roleDetailRoutes(),
+    roleDeactivateRoute(5001, respond),
+  ];
+
+  const openDialog = async (routes: StubRoute[] = deactivateRoutes()) => {
+    const rendered = renderScreen(routes, '?tab=roles&rol=5001');
+
+    await waitForRoleList(rendered.requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    await rendered.user.click(within(roleFormPane()).getByRole('button', { name: '사용 중지' }));
+
+    return rendered;
+  };
+
+  const deactivateRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+    requestsTo(requests, `${rolePath(5001)}:deactivate`);
+
+  it('창은 열기 전에는 DOM에 없다', async () => {
+    const { requests } = renderScreen(deactivateRoutes(), '?tab=roles&rol=5001');
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('창이 역할의 결과를 밝히고 건수를 내지 않는다', async () => {
+    await openDialog();
+
+    const dialog = await screen.findByRole('dialog', { name: '이 역할을 사용 중지할까요?' });
+
+    expect(within(dialog).getByText(/이 역할로 열려 있던 권한이 사라집니다/)).toBeInTheDocument();
+    expect(dialog.textContent).not.toMatch(/\d+\s*건/);
+  });
+
+  it('확인 요청에 멱등 키와 상세 경로의 잠금 토큰이 둘 다 실린다', async () => {
+    const { requests, user } = await openDialog();
+
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    await waitFor(() => {
+      expect(deactivateRequests(requests)).toHaveLength(1);
+    });
+
+    const headers = deactivateRequests(requests)[0]?.headers;
+
+    expect(headers?.get('If-Match')).toBe('W/"9"');
+    expect(headers?.get('Idempotency-Key')).toMatch(UUID);
+  });
+
+  it('성공하면 창이 닫히고 목록과 상세를 다시 조회한다', async () => {
+    const { requests, user } = await openDialog();
+
+    const before = roleRequests(requests).length;
+
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '사용 중지' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(roleRequests(requests).length).toBeGreaterThan(before);
+  });
+
+  /** 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */
+  it('실패하면 창이 닫히지 않고 배너가 창 안에 나온다', async () => {
+    const { user } = await openDialog(
+      deactivateRoutes(() => jsonResponse({ errors: [] }, { status: 500 })),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+
+    await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
+
+    expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('이미 미사용인 역할은 사용 중지가 비활성이고 사유가 보인다', async () => {
+    const inactive = roleFixtures[2] as Role;
+    const { requests } = renderScreen(
+      [roleListRoute(), roleDetailRoute(inactive), rolePermissionsRoute(inactive.roleId)],
+      `?tab=roles&rol=${String(inactive.roleId)}`,
+    );
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-03');
+
+    expect(within(roleFormPane()).getByRole('button', { name: '사용 중지' })).toBeDisabled();
+    expect(
+      within(roleFormPane()).getByText('사용 중지는 이미 미사용인 역할에 다시 할 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('UsersRolesScreen 역할 초안·창의 수명', () => {
+  const routesFor = (roleId: number): StubRoute[] => [
+    roleListRoute(),
+    roleDetailRoute(roleFixtures.find((role) => role.roleId === roleId) ?? (roleFixtures[0] as Role)),
+    rolePermissionsRoute(roleId),
+  ];
+
+  it('다른 역할을 고르면 폼이 그 역할의 값으로 다시 세워진다', async () => {
+    const { requests, user } = renderScreen(
+      [roleListRoute(), ...routesFor(5001).slice(1), ...routesFor(5002).slice(1)],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    await user.type(roleNameField(), 'X');
+
+    await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-02' }));
+
+    await waitForRoleForm('SYN-ROLE-02');
+    expect(roleNameField()).toHaveValue('합성 역할 B');
+  });
+
+  /**
+   * 주소를 직접 옮기는 경로는 뒤로가기·주소 손 편집·공유 링크가 밟는 길이며
+   * 클릭 핸들러가 하는 정리를 하나도 거치지 않는다.
+   */
+  it('주소를 직접 옮겨도 폼이 그 역할의 값으로 다시 세워진다', async () => {
+    const { requests, goTo, user } = renderScreen(
+      [roleListRoute(), ...routesFor(5001).slice(1), ...routesFor(5002).slice(1)],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    await user.type(roleNameField(), 'X');
+
+    goTo('/system/users-roles?tab=roles&rol=5002');
+
+    await waitForRoleForm('SYN-ROLE-02');
+    expect(roleNameField()).toHaveValue('합성 역할 B');
+  });
+
+  /**
+   * 창을 클릭 핸들러로만 닫으면 주소를 직접 옮기는 경로가 샌다 —
+   * 앞 역할을 중지하려고 연 창이 **다음 역할을 중지한다.**
+   */
+  it('창을 연 채 주소로 다른 역할에 가면 창이 닫히고 아무 요청도 나가지 않는다', async () => {
+    const { requests, goTo, user } = renderScreen(
+      [
+        roleListRoute(),
+        ...routesFor(5001).slice(1),
+        ...routesFor(5002).slice(1),
+        roleDeactivateRoute(5001),
+        roleDeactivateRoute(5002),
+      ],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '사용 중지' }));
+    await screen.findByRole('dialog');
+
+    goTo('/system/users-roles?tab=roles&rol=5002');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    expect(requests.filter((request) => request.url.pathname.includes(':deactivate'))).toHaveLength(0);
+  });
+
+  it('앞 역할의 인라인 오류가 다음 역할의 폼에 따라오지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [roleListRoute(), ...routesFor(5001).slice(1), ...routesFor(5002).slice(1), roleUpdateRoute()],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    await user.clear(roleNameField());
+    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+
+    expect(await within(roleFormPane()).findByText('필수 입력 항목입니다.')).toBeInTheDocument();
+
+    await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-02' }));
+
+    await waitForRoleForm('SYN-ROLE-02');
+
+    expect(within(roleFormPane()).queryByText('필수 입력 항목입니다.')).not.toBeInTheDocument();
+  });
+
+  /**
+   * 편집 대상이 그대로면 초안을 다시 세우지 않는다 — **출처가 바뀔 때만** 세운다.
+   * 매 렌더 다시 세우면 사용자가 입력하는 동안 값이 서버 값으로 되돌아간다.
+   */
+  it('같은 역할을 다시 골라도 고치던 값이 남는다', async () => {
+    const { requests, user } = renderScreen(
+      [roleListRoute(), ...routesFor(5001).slice(1)],
+      '?tab=roles&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    await user.type(roleNameField(), 'X');
+
+    await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-01' }));
+
+    expect(roleNameField()).toHaveValue('합성 역할 AX');
+  });
+});
+
+describe('UsersRolesScreen 기능 권한 격자', () => {
+  const gridRoutes = (items = rolePermissionFixtures): StubRoute[] => [
+    roleListRoute(),
+    roleDetailRoute(),
+    rolePermissionsRoute(5001, items),
+  ];
+
+  const openRole = async (routes: StubRoute[] = gridRoutes()) => {
+    const rendered = renderScreen(routes, '?tab=roles&rol=5001');
+
+    await waitForRoleList(rendered.requests);
+
+    return rendered;
+  };
+
+  it('역할을 고르면 권한을 조회하고 부여된 코드가 열로 나온다', async () => {
+    const { requests } = await openRole();
+
+    await within(permissionPane()).findByRole('grid');
+
+    expect(requestsTo(requests, rolePermissionsPath(5001))).toHaveLength(1);
+    expect(
+      within(permissionPane())
+        .getAllByRole('columnheader')
+        .slice(1)
+        .map((header) => header.textContent),
+    ).toEqual(['SYN-PERM-01', 'SYN-PERM-02']);
+  });
+
+  it('행은 고른 역할 하나다', async () => {
+    await openRole();
+
+    await within(permissionPane()).findByRole('grid');
+
+    const rowHeaders = within(permissionPane()).getAllByRole('rowheader');
+
+    expect(rowHeaders).toHaveLength(1);
+    expect(rowHeaders[0]?.textContent).toBe('SYN-ROLE-01');
+  });
+
+  it('고르기 전에는 페인이 없고 권한을 조회하지도 않는다', async () => {
+    const { requests } = renderScreen(gridRoutes(), ROLES_TAB);
+
+    await waitForRoleList(requests);
+
+    expect(screen.queryByRole('region', { name: '기능 권한' })).not.toBeInTheDocument();
+    expect(requestsTo(requests, rolePermissionsPath(5001))).toHaveLength(0);
+  });
+
+  /** 넘기는 순간 격자가 눌린다 — 누를 수 있는 격자는 「바꿀 수 있다」고 읽힌다. */
+  it('셀에 누를 수 있는 표식이 없고 눌러도 요청이 나가지 않는다', async () => {
+    const { requests, user } = await openRole();
+
+    const grid = await within(permissionPane()).findByRole('grid');
+    const cells = [...grid.querySelectorAll('tbody td')];
+
+    expect(cells.length).toBeGreaterThan(0);
+
+    for (const cell of cells) {
+      expect(cell.hasAttribute('data-clickable')).toBe(false);
+      expect(cell.hasAttribute('tabindex')).toBe(false);
+    }
+
+    const before = requests.length;
+
+    for (const cell of cells) await user.click(cell);
+
+    expect(requests).toHaveLength(before);
+  });
+
+  /** 경로는 계약에 있으나 권한 목록이 확정되기 전에는 부르지 않는다(계획 결정 5). */
+  it('기능 권한 치환을 한 번도 부르지 않는다', async () => {
+    const { requests, user } = await openRole();
+
+    const grid = await within(permissionPane()).findByRole('grid');
+
+    for (const cell of grid.querySelectorAll('tbody td')) await user.click(cell);
+
+    expect(
+      requests.filter(
+        (request) => request.method === 'PUT' && request.url.pathname.endsWith('/permissions'),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('저장 버튼이 없다', async () => {
+    await openRole();
+
+    await within(permissionPane()).findByRole('grid');
+
+    expect(within(permissionPane()).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('안내가 항상 보이고 격자가 그것을 가리킨다', async () => {
+    await openRole();
+
+    const grid = await within(permissionPane()).findByRole('grid');
+    const note = within(permissionPane()).getByText(/기능 권한은 권한 목록이 확정된 뒤에/);
+
+    expect(note).toBeVisible();
+    expect(grid).toHaveAttribute('aria-describedby', note.id);
+  });
+
+  /** 열 없는 격자는 라벨 칸만 남은 빈 표가 된다. */
+  it('부여된 권한이 0개면 격자 대신 빈 상태와 안내가 나온다', async () => {
+    await openRole(gridRoutes([]));
+
+    expect(
+      await within(permissionPane()).findByText('이 역할에 부여된 기능 권한이 없습니다'),
+    ).toBeInTheDocument();
+    expect(within(permissionPane()).queryByRole('grid')).not.toBeInTheDocument();
+    expect(within(permissionPane()).getByText(/기능 권한은 권한 목록이 확정된 뒤에/)).toBeVisible();
+  });
+
+  /** 실패를 빈 상태로 내면 「부여된 권한이 없습니다」가 되어 없는 사실을 단정한다. */
+  it('권한 조회가 실패하면 빈 상태가 아니라 배너가 나온다', async () => {
+    await openRole([roleListRoute(), roleDetailRoute(), rolePermissionsErrorRoute()]);
+
+    expect(await within(permissionPane()).findByRole('alert')).toBeInTheDocument();
+    expect(
+      within(permissionPane()).queryByText('이 역할에 부여된 기능 권한이 없습니다'),
+    ).not.toBeInTheDocument();
+    expect(within(permissionPane()).queryByRole('grid')).not.toBeInTheDocument();
+  });
+
+  it('권한 조회 실패의 「다시 시도」가 실제로 다시 조회한다', async () => {
+    const { requests, user } = await openRole([
+      roleListRoute(),
+      roleDetailRoute(),
+      rolePermissionsErrorRoute(),
+    ]);
+
+    await within(permissionPane()).findByRole('alert');
+
+    const before = requestsTo(requests, rolePermissionsPath(5001)).length;
+
+    await user.click(within(permissionPane()).getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, rolePermissionsPath(5001)).length).toBeGreaterThan(before);
     });
   });
 });

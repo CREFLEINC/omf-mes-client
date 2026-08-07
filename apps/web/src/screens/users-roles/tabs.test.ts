@@ -4,7 +4,7 @@ import { USERS_ROLES_TABS, resolveTab, tabSearchParams } from './tabs';
 
 describe('USERS_ROLES_TABS', () => {
   it('탭 정의 배열이 정본이다 — 만든 탭만 들어 있다', () => {
-    expect(USERS_ROLES_TABS.map((tab) => tab.id)).toEqual(['users']);
+    expect(USERS_ROLES_TABS.map((tab) => tab.id)).toEqual(['users', 'roles']);
   });
 
   it('탭마다 서로 다른 주소값을 갖는다', () => {
@@ -36,12 +36,18 @@ describe('resolveTab', () => {
     expect(resolveTab('')).toBe(USERS_ROLES_TABS[0]);
   });
 
-  it('아직 만들지 않은 탭 값도 모르는 값이다 — 자리만 있는 탭으로 떨어지지 않는다', () => {
-    expect(resolveTab('roles')).toBe(USERS_ROLES_TABS[0]);
+  /** 만든 탭이므로 이제는 아는 값이다 — 첫 탭으로 떨어지지 않는다. */
+  it('역할·권한 탭 값이면 그 탭이 열린다', () => {
+    expect(resolveTab('roles')).toBe(USERS_ROLES_TABS[1]);
+  });
+
+  it('아직 만들지 않은 탭 값은 모르는 값이다 — 자리만 있는 탭으로 떨어지지 않는다', () => {
+    expect(resolveTab('permissions')).toBe(USERS_ROLES_TABS[0]);
   });
 
   it('대소문자가 다르면 모르는 값이다 — 주소값을 느슨하게 해석하지 않는다', () => {
     expect(resolveTab('USERS')).toBe(USERS_ROLES_TABS[0]);
+    expect(resolveTab('ROLES')).toBe(USERS_ROLES_TABS[0]);
   });
 });
 

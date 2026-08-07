@@ -1962,22 +1962,27 @@ const judgmentCode = {
 const usersRoles = {
   title: '사용자·역할·권한',
   breadcrumbRoot: '시스템 관리',
-  /** 탭 라벨. **만든 탭만 둔다.** 역할·권한 탭은 그 탭의 목록·폼이 생길 때 붙는다. */
+  /** 탭 라벨. **만든 탭만 둔다** — 자리만 먼저 두면 「탭은 있는데 눌러도 빈 화면인」 상태가 된다. */
   tabs: {
     label: '사용자·역할·권한',
     users: '사용자',
+    roles: '역할·권한',
   },
   panes: {
     userList: '사용자',
     userForm: '사용자 정보',
     roleAssign: '역할 부여',
     dataScope: '데이터 접근범위',
+    roleList: '역할',
+    roleForm: '역할 정보',
+    permission: '기능 권한',
   },
   actions: {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
     addUser: '사용자 추가',
+    addRole: '역할 추가',
   },
   /** 비활성 사유는 배치 규범 4의 문형을 따른다 — 그 컨트롤의 이름으로 시작한다. */
   actionReasons: {
@@ -1998,9 +2003,11 @@ const usersRoles = {
     loginIdLocked:
       '로그인 ID는 등록할 때만 정할 수 있고 이후에는 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
     deactivateAlreadyDone: '사용 중지는 이미 미사용인 사용자에게 다시 할 수 없습니다.',
+    deactivateRoleAlreadyDone: '사용 중지는 이미 미사용인 역할에 다시 할 수 없습니다.',
     /* 주 액션의 이름이 모드마다 달라 사유도 갈린다 — 규범 4는 컨트롤 이름으로 시작하라고 정한다. */
     saveNoChanges: '저장은 고친 내용이 있을 때 누를 수 있습니다.',
     addNoInput: '사용자 추가는 입력한 내용이 있을 때 누를 수 있습니다.',
+    addRoleNoInput: '역할 추가는 입력한 내용이 있을 때 누를 수 있습니다.',
     /*
      * 계약이 두 축 중 하나 이상을 요구한다. **목 서버가 막지 않으므로** 화면이 저장 전에 막는다 —
      * 보내 놓고 되돌려 받으면 사용자가 두 번 기다린다.
@@ -2022,8 +2029,16 @@ const usersRoles = {
    */
   dialog: {
     deactivateUserTitle: '이 사용자를 사용 중지할까요?',
-    deactivateDescription:
+    deactivateUserDescription:
       '사용 중지하면 이 사용자는 시스템을 쓸 수 없게 되고 이미 쌓인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
+    deactivateRoleTitle: '이 역할을 사용 중지할까요?',
+    /*
+     * 역할과 사용자는 **중지했을 때 일어나는 일이 다르다.** 사용자 문구를 그대로 쓰면
+     * 「이 사용자는 시스템을 쓸 수 없게 됩니다」가 역할 창에 나와 사실과 다른 안내가 된다.
+     * 건수는 여기서도 내지 않는다 — 화면이 낼 수 있는 건수가 없다.
+     */
+    deactivateRoleDescription:
+      '사용 중지하면 이 역할을 새로 부여할 수 없고 이 역할로 열려 있던 권한이 사라집니다. 이미 쌓인 자료는 그대로 남습니다. 되돌리는 경로가 없습니다.',
   },
   /*
    * 선택 목록이 잘리거나 실패했다는 사실을 감추지 않는다 —
@@ -2051,12 +2066,17 @@ const usersRoles = {
     chipDepartment: (label: string): string => `부서: ${label}`,
     chipRemoveDepartment: '부서 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    roleSearchLabel: '역할 검색',
+    roleSearchPlaceholder: '역할 코드 또는 역할명',
   },
   loading: {
     users: '사용자 목록을 불러오는 중',
     userDetail: '사용자 정보를 불러오는 중',
     roleAssign: '역할 부여분을 불러오는 중',
     dataScopes: '데이터 접근범위를 불러오는 중',
+    roles: '역할 목록을 불러오는 중',
+    roleDetail: '역할 정보를 불러오는 중',
+    permissions: '기능 권한을 불러오는 중',
   },
   empty: {
     /*
@@ -2079,6 +2099,13 @@ const usersRoles = {
      * 내부 식별자라 사용자가 쓸 수 없고, 보이면 자료로 읽힌다.
      */
     unknown: '알 수 없음',
+    /*
+     * 사용 여부를 **열로** 내는 자리에 쓴다. 역할에는 상태 코드가 없어(계약이 준 필드가
+     * `isActive` 하나뿐이다) 상태 열이 사용 여부를 그대로 낸다 — 사용자 표처럼
+     * 이름 뒤 접미로만 붙이면 역할 표의 상태 열에 낼 것이 없어진다.
+     */
+    active: '사용 중',
+    inactive: '미사용',
   },
   user: {
     fields: {
@@ -2106,6 +2133,54 @@ const usersRoles = {
       emailTooLong: '전자우편은 200자를 넘을 수 없습니다.',
       /* 계약이 「형식 검증은 화면 책임 — DB 제약 없음」이라고 명시한 유일한 칸이다. */
       emailFormat: '전자우편 형식이 아닙니다. 「이름@도메인」 형태로 입력하세요.',
+    },
+  },
+  /**
+   * 역할 — 사용자에게 부여하는 묶음이자 기능 권한을 담는 그릇.
+   *
+   * **역할 코드는 로그인 ID와 다르다.** 계약의 수정 본문에 그 키가 있고 참조 건수를 셀 수 있어
+   * 잠금 판정이 정상으로 내려온다 — 화면이 따로 잠그지 않고 `editability`를 따른다.
+   */
+  role: {
+    fields: {
+      roleCode: '역할 코드',
+      roleName: '역할명',
+      description: '설명',
+      status: '상태',
+    },
+    empty: {
+      noneTitle: '등록된 역할이 없습니다',
+      noneDescription: '「역할 추가」로 첫 역할을 등록하세요.',
+      noMatchTitle: '조건에 맞는 역할이 없습니다',
+      noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+      notSelected: '좌측에서 역할을 고르면 여기에 그 역할의 정보가 보입니다',
+    },
+    validation: {
+      required: '필수 입력 항목입니다.',
+      roleCodeBlank: '역할 코드는 공백만으로 지정할 수 없습니다.',
+      roleNameBlank: '역할명은 공백만으로 지정할 수 없습니다.',
+      roleCodeTooLong: '역할 코드는 50자를 넘을 수 없습니다.',
+      roleNameTooLong: '역할명은 200자를 넘을 수 없습니다.',
+    },
+  },
+  /**
+   * 기능 권한 격자 — **보는 것까지만 된다.**
+   *
+   * 권한 목록(어떤 권한이 있는지·메뉴 단위인지 조작 단위인지)이 확정되지 않아
+   * 화면이 고를 수 있는 값이 하나도 없다. 격자는 그리되 누를 수 없게 두고,
+   * 그 사실을 감추지 않고 **항상 보이는 안내**로 밝힌다(이슈 #17 §4).
+   *
+   * 안내 문구는 여러 컨트롤이 함께 보는 것이라 컨트롤 이름이 아니라
+   * **무엇에 대한 안내인지**로 시작한다(배치 규범 4의 이탈 조건).
+   */
+  permission: {
+    pendingNote:
+      '기능 권한은 권한 목록이 확정된 뒤에 여기에서 바꿀 수 있습니다. 지금은 이 역할에 부여된 권한을 보는 것까지만 됩니다.',
+    /** 격자의 열 머리글이 곧 권한 코드다 — 이름 목록이 아직 없어 코드를 그대로 낸다. */
+    granted: '부여됨',
+    empty: {
+      none: '이 역할에 부여된 기능 권한이 없습니다',
+      noneDescription: '권한 목록이 확정되면 여기에서 부여할 수 있습니다.',
     },
   },
   /**
