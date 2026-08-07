@@ -52,6 +52,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/master-data/common-code" icon="list_alt">
               공통코드·조직·작업자
             </NavItem>
+            {/* 같은 코드값 편집기를 여는 화면이라 공통코드 바로 뒤에 둔다 — 인접이 관계를 드러낸다. */}
+            <NavItem to="/master-data/judgment-code" icon="verified">
+              판정유형 코드
+            </NavItem>
             <NavItem to="/master-data/integration-sync" icon="sync_alt">
               연계 동기화 현황
             </NavItem>

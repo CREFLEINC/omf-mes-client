@@ -69,6 +69,17 @@ describe('AppLayout', () => {
     );
   });
 
+  it('사이드바에 판정유형 코드 메뉴가 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByRole('link', { name: '판정유형 코드' })).toHaveAttribute(
+      'href',
+      '/master-data/judgment-code',
+    );
+  });
+
   it('사이드바에 연계 동기화 현황 메뉴가 보인다', () => {
     renderLayout('본문 내용');
 
