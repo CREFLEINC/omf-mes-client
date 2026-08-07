@@ -3,21 +3,24 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EventFilterBar, type EventFilterBarProps } from './event-filter-bar';
+import { EMPTY_FILTERS } from './filters';
+
+const baseProps = (): EventFilterBarProps => ({
+  appliedPeriod: { from: '2026-08-01', to: '2026-08-07' },
+  appliedFilters: EMPTY_FILTERS,
+  targetTypeOptions: ['SAMPLE_TARGET_A', 'SAMPLE_TARGET_B'],
+  eventTypeOptions: ['SAMPLE_EVENT_A'],
+  onSearch: vi.fn(),
+  onRemoveFilter: vi.fn(),
+  onReset: vi.fn(),
+});
 
 const renderBar = (overrides: Partial<EventFilterBarProps> = {}) => {
-  const onSearch = vi.fn();
-  const onReset = vi.fn();
+  const props = { ...baseProps(), ...overrides };
 
-  render(
-    <EventFilterBar
-      appliedPeriod={{ from: '2026-08-01', to: '2026-08-07' }}
-      onSearch={onSearch}
-      onReset={onReset}
-      {...overrides}
-    />,
-  );
+  render(<EventFilterBar {...props} />);
 
-  return { onSearch, onReset, user: userEvent.setup() };
+  return { ...props, user: userEvent.setup() };
 };
 
 describe('EventFilterBar — 조회 기간', () => {
@@ -39,7 +42,7 @@ describe('EventFilterBar — 조회 기간', () => {
 
     await user.click(screen.getByRole('button', { name: '조회' }));
 
-    expect(onSearch).toHaveBeenCalledWith({ from: '2026-07-20', to: '2026-08-07' });
+    expect(onSearch).toHaveBeenCalledWith({ from: '2026-07-20', to: '2026-08-07' }, EMPTY_FILTERS);
   });
 
   it('기간을 비우면 조회가 잠기고 사유가 보이며 조회가 올라가지 않는다', async () => {
@@ -83,23 +86,12 @@ describe('EventFilterBar — 조회 기간', () => {
   });
 
   it('바깥에서 기간이 바뀌면 두 칸이 따라간다 — 뒤로가기가 칸을 되돌린다', () => {
-    const { rerender } = render(
-      <EventFilterBar
-        appliedPeriod={{ from: '2026-08-01', to: '2026-08-07' }}
-        onSearch={vi.fn()}
-        onReset={vi.fn()}
-      />,
-    );
+    const props = baseProps();
+    const { rerender } = render(<EventFilterBar {...props} />);
 
     expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-08-01');
 
-    rerender(
-      <EventFilterBar
-        appliedPeriod={{ from: '2026-07-01', to: '2026-07-31' }}
-        onSearch={vi.fn()}
-        onReset={vi.fn()}
-      />,
-    );
+    rerender(<EventFilterBar {...props} appliedPeriod={{ from: '2026-07-01', to: '2026-07-31' }} />);
 
     expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-01');
   });
@@ -110,5 +102,86 @@ describe('EventFilterBar — 조회 기간', () => {
     await user.click(screen.getByRole('button', { name: '초기화' }));
 
     expect(onReset).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('EventFilterBar — 조건 5종', () => {
+  it('다섯 조건 칸이 모두 이름을 갖는다', () => {
+    renderBar();
+
+    expect(screen.getByLabelText('대상 종류')).toBeInTheDocument();
+    expect(screen.getByLabelText('사건 종류')).toBeInTheDocument();
+    expect(screen.getByLabelText('대상')).toBeInTheDocument();
+    expect(screen.getByLabelText('수행자')).toBeInTheDocument();
+    expect(screen.getByLabelText('상관 식별자')).toBeInTheDocument();
+  });
+
+  it('고른 조건이 조회에 함께 올라간다', async () => {
+    const { onSearch, user } = renderBar();
+
+    await user.type(screen.getByLabelText('대상'), '9101');
+    await user.type(screen.getByLabelText('상관 식별자'), 'SAMPLE-CORR-0001');
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    expect(onSearch).toHaveBeenCalledWith(
+      { from: '2026-08-01', to: '2026-08-07' },
+      { ...EMPTY_FILTERS, targetId: '9101', correlationId: 'SAMPLE-CORR-0001' },
+    );
+  });
+
+  it('선택지에 조회 결과에서 만든 값이 들어 있다', async () => {
+    const { user } = renderBar();
+
+    await user.click(screen.getByLabelText('대상 종류'));
+
+    expect(screen.getByRole('option', { name: 'SAMPLE_TARGET_B' })).toBeInTheDocument();
+  });
+
+  /* 두지 않으면 한 번 고른 뒤에 조건을 해제할 방법이 선택칸 안에 없어진다. */
+  it('선택칸에 「전체」가 있다', async () => {
+    const { user } = renderBar();
+
+    await user.click(screen.getByLabelText('사건 종류'));
+
+    expect(screen.getByRole('option', { name: '전체' })).toBeInTheDocument();
+  });
+
+  it('선택지 안내에 「임시 목록」이 들어 있다', () => {
+    renderBar();
+
+    expect(screen.getByText(/임시 목록/)).toBeInTheDocument();
+  });
+
+  it('선택지 안내가 기간의 한계도 밝힌다', () => {
+    renderBar();
+
+    expect(screen.getByText(/이 기간에 없는 값은 목록에 없습니다/)).toBeInTheDocument();
+  });
+});
+
+describe('EventFilterBar — 조건 칩', () => {
+  it('적용된 조건마다 칩이 하나씩 나온다', () => {
+    renderBar({
+      appliedFilters: { ...EMPTY_FILTERS, targetType: 'SAMPLE_TARGET_A', performedBy: '9201' },
+    });
+
+    expect(screen.getByText('대상 종류: SAMPLE_TARGET_A')).toBeInTheDocument();
+    expect(screen.getByText('수행자: 9201')).toBeInTheDocument();
+  });
+
+  it('×를 누르면 그 조건만 풀린다', async () => {
+    const { onRemoveFilter, user } = renderBar({
+      appliedFilters: { ...EMPTY_FILTERS, targetType: 'SAMPLE_TARGET_A', performedBy: '9201' },
+    });
+
+    await user.click(screen.getByRole('button', { name: '수행자 조건 제거' }));
+
+    expect(onRemoveFilter).toHaveBeenCalledWith('performedBy');
+  });
+
+  it('걸린 조건이 없으면 칩 줄도 없다', () => {
+    renderBar();
+
+    expect(screen.queryByText(/조건 제거$/)).not.toBeInTheDocument();
   });
 });

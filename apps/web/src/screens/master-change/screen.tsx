@@ -7,8 +7,24 @@ import { useSearchParams } from 'react-router';
 import { toApiError } from '../../patterns/request';
 import { EventFilterBar } from './event-filter-bar';
 import { EventTable } from './event-table';
+import {
+  PLACEHOLDER_EVENT_TYPE_CODES,
+  PLACEHOLDER_TARGET_TYPE_CODES,
+  toCodeOptions,
+} from './filter-options';
+import {
+  EMPTY_FILTERS,
+  hasAnyFilter,
+  readFilters,
+  readPage,
+  toFilterQuery,
+  toSearchParams,
+  type EventFilters,
+} from './filters';
+import { PageNav } from './page-nav';
+import { toPageView } from './pagination';
 import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
-import { useAuditEventList } from './queries';
+import { useAuditEventList, useFilterOptions } from './queries';
 
 const t = messages.masterChange;
 
@@ -70,11 +86,29 @@ const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
 export const MasterChangeScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
+  /**
+   * **주소 키의 수명 — 무엇이 바뀔 때 무엇을 비우는가.**
+   *
+   * 「비운다」와 「비우지 않는다」를 이 표 한 곳에 모은다. 규칙이 흩어지면 한쪽만 고쳐져
+   * 비대칭이 생긴다(조건을 바꾸면 창이 닫히는데 쪽을 옮기면 안 닫히는 식).
+   *
+   * | # | 조작 | `page` | `sel` | 왜 |
+   * | :-: | --- | --- | --- | --- |
+   * | 1 | 조건·기간 변경 · 초기화 | **첫 쪽으로** | **비운다** | 결과가 통째로 달라진다. 3쪽을 보다 조건을 좁히면 빈 쪽이 되고, 열린 창의 건은 새 결과에 없을 수 있다 |
+   * | 2 | 쪽 이동 | 옮긴 쪽 | **비운다** | 다른 행이 온다. 열린 창의 건은 그 쪽에 없다 |
+   * | 3 | 창 열기·닫기 | **유지한다** | 여닫는다 | 보이는 행이 그대로다. 쪽까지 되돌리면 3쪽에서 창을 한 번 열었다고 1쪽으로 튄다 |
+   * | 4 | 갱신된 결과에 고른 건이 없음 | 유지한다 | **비운다** | 화면에 없는 건을 창이 가리키면 안 된다 |
+   *
+   * 1·2·3은 `toSearchParams`가 **`sel`을 만들지 않는 것**으로 함께 지켜진다 — 여는 쪽만 덧붙인다.
+   * 4는 아래 정리 effect가 한다. **비우는 자리는 이 넷뿐이고**, 다섯째가 생기면 이 표에 행을 먼저 더한다.
+   */
   const period: PeriodInput = {
     from: searchParams.get('from') ?? '',
     to: searchParams.get('to') ?? '',
   };
   const hasPeriodParams = searchParams.has('from') || searchParams.has('to');
+  const filters = readFilters(searchParams);
+  const page = readPage(searchParams);
 
   /*
    * 빈 화면으로 시작하지 않는다 — 매번 날짜를 고르는 비용이 크다.
@@ -96,14 +130,36 @@ export const MasterChangeScreen = () => {
   const offsetMinutes = -new Date().getTimezoneOffset();
 
   const periodReason = validatePeriod(period);
-  const listQuery = periodReason === null ? toPeriodQuery(period, offsetMinutes) : null;
+  const periodQuery = periodReason === null ? toPeriodQuery(period, offsetMinutes) : null;
+  const listQuery =
+    periodQuery === null
+      ? null
+      : { ...periodQuery, ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) };
 
   const list = useAuditEventList(listQuery);
   const rows = list.data?.items ?? [];
+  const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
-  /** 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다. */
-  const applyQuery = (nextPeriod: PeriodInput) => {
-    setSearchParams(new URLSearchParams({ from: nextPeriod.from, to: nextPeriod.to }));
+  /*
+   * 선택지는 **같은 기간에 다른 조건 없이** 조회한 결과에서 만든다.
+   * 좁아진 목록에서 뽑으면 대상 종류를 고른 순간 선택지가 그 값 하나로 줄어 되돌릴 수 없다.
+   *
+   * 조건이 하나도 걸리지 않은 첫 쪽에서는 **목록 조회가 곧 그 「조건 없는 조회」**다.
+   * 그럴 때 따로 부르면 같은 경로로 똑같은 요청이 한 번 더 나간다.
+   */
+  const needsOptionQuery = hasAnyFilter(filters) || page > 1;
+  const options = useFilterOptions(needsOptionQuery ? periodQuery : null);
+  const optionRows = needsOptionQuery ? options.rows : rows;
+
+  /**
+   * 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다.
+   *
+   * **조건이 바뀌면 쪽을 첫 쪽으로 되돌린다**(수명 규칙 1행) — 3쪽을 보다가 조건을 좁히면
+   * 결과가 3쪽에 못 미쳐 사용자에게는 「조건을 좁혔더니 아무것도 없다」로 보인다.
+   * `toSearchParams`가 `sel`을 만들지 않으므로 열려 있던 창도 함께 닫힌다.
+   */
+  const applyQuery = (nextPeriod: PeriodInput, nextFilters: EventFilters, nextPage = 1) => {
+    setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
   };
 
   return (
@@ -119,9 +175,27 @@ export const MasterChangeScreen = () => {
         {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
         <EventFilterBar
           appliedPeriod={period}
-          onSearch={applyQuery}
+          appliedFilters={filters}
+          targetTypeOptions={toCodeOptions(
+            PLACEHOLDER_TARGET_TYPE_CODES,
+            optionRows,
+            (row) => row.targetTypeCode,
+            filters.targetType,
+          )}
+          eventTypeOptions={toCodeOptions(
+            PLACEHOLDER_EVENT_TYPE_CODES,
+            optionRows,
+            (row) => row.eventTypeCode,
+            filters.eventType,
+          )}
+          onSearch={(nextPeriod, nextFilters) => {
+            applyQuery(nextPeriod, nextFilters);
+          }}
+          onRemoveFilter={(key) => {
+            applyQuery(period, { ...filters, [key]: '' });
+          }}
           onReset={() => {
-            applyQuery(defaultPeriod(new Date()));
+            applyQuery(defaultPeriod(new Date()), EMPTY_FILTERS);
           }}
         />
 
@@ -130,15 +204,25 @@ export const MasterChangeScreen = () => {
          * 권한 없음(403)도 같은 갈래다. 계약이 「진입 차단 + 배너」로 정했다.
          */}
         {!list.isError && (
-          <EventTable
-            rows={rows}
-            isLoading={listQuery !== null && list.isPending}
-            hasPeriod={listQuery !== null}
-            isBeyondLast={false}
-            onFirstPage={() => {
-              applyQuery(period);
-            }}
-          />
+          <>
+            <EventTable
+              rows={rows}
+              isLoading={listQuery !== null && list.isPending}
+              hasPeriod={listQuery !== null}
+              isBeyondLast={pageView.isBeyondLast}
+              onFirstPage={() => {
+                applyQuery(period, filters);
+              }}
+            />
+            {listQuery !== null && !list.isPending && (
+              <PageNav
+                view={pageView}
+                onChange={(nextPage) => {
+                  applyQuery(period, filters, nextPage);
+                }}
+              />
+            )}
+          </>
         )}
       </section>
     </>

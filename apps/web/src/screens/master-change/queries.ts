@@ -3,8 +3,9 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import type { EventFilterQuery } from './filters';
 import type { PeriodQuery } from './period';
-import { toAuditEventView, type AuditEventListResult } from './types';
+import { toAuditEventView, type AuditEventListResult, type AuditEventView } from './types';
 
 /**
  * 이 화면의 읽기 — **오퍼레이션이 하나뿐이다.**
@@ -24,14 +25,17 @@ type Client = ApiClient['client'];
  *
  * `size`는 싣지 않는다. 서버 기본값을 그대로 쓰고 쪽 크기를 화면이 정하지 않는다.
  */
-export type AuditEventListQuery = PeriodQuery & {
-  /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
-  page?: number;
-};
+export type AuditEventListQuery = PeriodQuery &
+  EventFilterQuery & {
+    /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
+    page?: number;
+  };
 
 export const auditEventKeys = {
   all: ['audit-events'] as const,
   list: (query: AuditEventListQuery | null) => ['audit-events', 'list', query] as const,
+  /** 선택지는 **기간만** 담는다. 조건을 담으면 조건을 좁힐 때마다 선택지도 함께 좁아진다. */
+  options: (period: PeriodQuery | null) => ['audit-events', 'options', period] as const,
 };
 
 const fetchAuditEvents = async (
@@ -65,4 +69,41 @@ export const useAuditEventList = (
       return fetchAuditEvents(client, query);
     },
   });
+};
+
+export interface FilterOptionsResult {
+  rows: AuditEventView[];
+  /** 실패했으면 참. 실패를 삼키면 선택칸이 이유 없이 비어 보인다. */
+  isError: boolean;
+}
+
+const EMPTY_ROWS: AuditEventView[] = [];
+
+/**
+ * 필터 선택지의 원천 — **같은 기간에 다른 조건 없이** 한 번 더 조회한다.
+ *
+ * 화면의 조회 조건을 그대로 쓰면 대상 종류를 하나로 좁혔을 때 결과의 대상 종류가 하나뿐이라
+ * 선택지가 자기 자신으로 줄고 **다른 값으로 바꿀 수 없게 된다.**
+ *
+ * 서버가 쪽을 나눠 주므로 이 결과도 첫 쪽뿐이다. 그 한계는 선택칸 아래 안내가 밝힌다.
+ *
+ * 조건이 하나도 걸리지 않은 첫 쪽에서는 화면이 이 훅을 끈다(`period === null`) —
+ * 그때는 목록 조회가 곧 「조건 없는 조회」라 같은 요청을 한 번 더 보낼 이유가 없다.
+ */
+export const useFilterOptions = (period: PeriodQuery | null): FilterOptionsResult => {
+  const { client } = useApiClient();
+
+  const options = useQuery({
+    queryKey: auditEventKeys.options(period),
+    enabled: period !== null,
+    queryFn: () => {
+      if (period === null) {
+        throw new Error('기간을 정하기 전에는 선택지를 조회하지 않습니다.');
+      }
+
+      return fetchAuditEvents(client, period);
+    },
+  });
+
+  return { rows: options.data?.items ?? EMPTY_ROWS, isError: options.isError };
 };

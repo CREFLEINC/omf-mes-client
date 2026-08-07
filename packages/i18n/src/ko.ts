@@ -1801,8 +1801,15 @@ const masterChange = {
   fields: {
     periodFrom: '기간 시작',
     periodTo: '기간 종료',
+    targetType: '대상 종류',
+    targetId: '대상',
+    eventType: '사건 종류',
+    performedBy: '수행자',
+    correlationId: '상관 식별자',
   },
   actions: {
+    prevPage: '이전',
+    nextPage: '다음',
     goFirstPage: '첫 쪽으로',
   },
   /** 비활성 사유는 그 컨트롤의 이름으로 시작한다(배치 규범 4). */
@@ -1820,6 +1827,37 @@ const masterChange = {
     targetId: '대상',
     eventType: '사건 종류',
     performedBy: '수행자',
+  },
+  /**
+   * 조건 줄. 선택지는 조회한 기록에서 만들므로 그 한계를 문구가 함께 밝힌다 —
+   * ① 아직 확정되지 않은 **임시 목록**이라는 것 ② 이 기간의 기록에서 만들어
+   * 한 번도 기록되지 않았거나 기간 밖의 값은 빠진다는 것.
+   */
+  filters: {
+    all: '전체',
+    optionsNote:
+      '대상 종류·사건 종류는 아직 확정되지 않은 임시 목록입니다. 조회한 기간의 기록에서 만들어, 한 번도 기록되지 않았거나 이 기간에 없는 값은 목록에 없습니다.',
+    chipTargetType: (value: string): string => `대상 종류: ${value}`,
+    chipTargetId: (value: string): string => `대상: ${value}`,
+    chipEventType: (value: string): string => `사건 종류: ${value}`,
+    chipPerformedBy: (value: string): string => `수행자: ${value}`,
+    chipCorrelationId: (value: string): string => `상관 식별자: ${value}`,
+    chipRemoveTargetType: '대상 종류 조건 제거',
+    chipRemoveTargetId: '대상 조건 제거',
+    chipRemoveEventType: '사건 종류 조건 제거',
+    chipRemovePerformedBy: '수행자 조건 제거',
+    chipRemoveCorrelationId: '상관 식별자 조건 제거',
+  },
+  /**
+   * 쪽 이동. 번호 목록을 두지 않는다 — 로그성 조회에서 「7쪽으로 점프」는 정상 경로가 아니고,
+   * 조건을 좁히는 것이 정상 경로다.
+   */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
   },
   empty: {
     noResultTitle: '조건에 맞는 변경 이력이 없습니다',
