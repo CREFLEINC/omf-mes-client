@@ -79,6 +79,18 @@ export const BuMapPane = ({
   const periodLabel = (draft: BuMapDraft): string =>
     t.values.period(orEmptyMark(draft.effectiveFrom), orEmptyMark(draft.effectiveTo));
 
+  /**
+   * 줄 액션의 접근 이름.
+   *
+   * **대상 품목만으로는 줄이 구분되지 않는다.** 이 표에는 유일 제약이 없어(결정 7)
+   * 같은 품목을 가리키는 줄이 여럿 있는 것이 정상이고, 그때 「수정」이 여럿이면
+   * 어느 줄을 고치는 것인지 알 수 없다. 옆 두 자원과 같은 형태로 짓는다.
+   */
+  const rowName = (draft: BuMapDraft): string =>
+    `${businessUnitLabel(draft.fromBusinessUnitId)} → ${businessUnitLabel(
+      draft.toBusinessUnitId,
+    )} · ${itemLabel(draft.toItemId)} · ${orEmptyMark(draft.effectiveFrom)}`;
+
   /*
    * 지정 폭의 합은 **576px**(140+140+200+96)이라 `.wide-table`의 최소 폭(58rem = 928px)
    * 안에 들어간다 — 「대상 품목」만 폭을 지정하지 않고 남는 폭을 흡수한다.
@@ -117,13 +129,13 @@ export const BuMapPane = ({
           <IconButton
             icon="edit"
             size="sm"
-            aria-label={t.actions.editRow(itemLabel(row.toItemId))}
+            aria-label={t.actions.editRow(rowName(row))}
             onClick={() => onEdit(row.draftId)}
           />
           <IconButton
             icon="delete"
             size="sm"
-            aria-label={t.actions.removeRow(itemLabel(row.toItemId))}
+            aria-label={t.actions.removeRow(rowName(row))}
             onClick={() => onRemove(row.draftId)}
           />
         </>

@@ -149,8 +149,13 @@ describe('BuMapPane — 계약에 없는 조작을 두지 않는다', () => {
       ],
     });
 
-    expect(screen.queryByText(/중복/)).not.toBeInTheDocument();
+    /*
+     * 옆 두 자원의 중복 문구에는 「중복」이라는 낱말이 없다 —
+     * `/중복/`으로만 재면 그 문구를 그대로 옮겨 와도 잡히지 않는다.
+     */
+    expect(screen.queryByText(/이미 있습니다|겹친 줄/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '저장' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '저장' })).not.toHaveAttribute('aria-describedby');
   });
 });
 
@@ -174,13 +179,45 @@ describe('BuMapPane — 액션', () => {
     expect(new Set(editLabels).size).toBe(editLabels.length);
   });
 
+  /*
+   * **이 표에는 유일 제약이 없다**(결정 7) — 같은 품목을 가리키는 줄이 여럿 있는 것이 정상이다.
+   * 이름을 대상 품목만으로 지으면 그때 「수정」이 여럿이 되어 어느 줄인지 알 수 없다.
+   */
+  it('같은 대상 품목을 가리키는 두 줄도 이름이 갈린다', () => {
+    const [first] = toBuMapDrafts(buMapFixtures);
+    renderPane({
+      drafts: [
+        { ...first!, draftId: 'saved:3001' },
+        /* 대상 품목은 같고 사업부·유효 시작만 다른 줄 — 서버가 허용하는 조합이다. */
+        {
+          ...first!,
+          draftId: 'saved:3009',
+          fromBusinessUnitId: '5002',
+          effectiveFrom: '2026-06-01',
+        },
+      ],
+    });
+
+    const editLabels = screen
+      .getAllByRole('button', { name: /매핑 수정$/ })
+      .map((button) => button.getAttribute('aria-label'));
+
+    expect(editLabels).toHaveLength(2);
+    expect(new Set(editLabels).size).toBe(2);
+    /* 대상 품목만 담으면 두 이름이 같아진다 — 그 형태를 막는다. */
+    for (const label of editLabels) {
+      expect(label).toContain('SYN-ITEM-02 · 합성 품목 B');
+      expect(label).not.toBe('SYN-ITEM-02 · 합성 품목 B 매핑 수정');
+    }
+  });
+
   it('수정과 삭제를 초안 키로 알린다', async () => {
     const { onEdit, onRemove, user } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02 · 합성 품목 B 매핑 수정' }));
+    await user.click(screen.getAllByRole('button', { name: /매핑 수정$/ })[0]!);
     expect(onEdit).toHaveBeenCalledWith('saved:3001');
 
-    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02 · 합성 품목 B 매핑 삭제' }));
+    await user.click(screen.getAllByRole('button', { name: /매핑 삭제$/ })[0]!);
     expect(onRemove).toHaveBeenCalledWith('saved:3001');
   });
 

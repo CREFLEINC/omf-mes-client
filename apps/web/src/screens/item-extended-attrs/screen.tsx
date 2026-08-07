@@ -773,7 +773,14 @@ export const ItemExtendedAttrsScreen = () => {
       isLoading={uomConversionList.isPending}
       uomEntries={uomOptions.entries}
       isUomLoading={uomOptions.isLoading}
-      optionsNotice={renderOptionsNotice([uomOptions])}
+      /*
+       * **단위 목록 안내의 주인은 이 페인이 아니다.**
+       *
+       * 같은 목록을 원본 구획의 기준 단위도 쓰고, 그 구획은 어느 탭에서나 보인다.
+       * 그래서 안내를 우 칸 머리에 한 번만 낸다(`renderOptionsNotice`의 유일한 호출부) —
+       * 여기서 한 번 더 내면 이 하위 탭에서만 같은 문구가 둘로 보인다.
+       */
+      optionsNotice={null}
       loadError={
         uomConversionList.isError ? (
           <LoadErrorBanner
@@ -953,11 +960,19 @@ export const ItemExtendedAttrsScreen = () => {
           businessUnitOptions={(selected) =>
             selectableOptions(businessUnitOptions.entries, selected)
           }
-          /* 표가 이미 아는 이름을 넘긴다 — 검색 결과에 없어도 선택칸에 번호가 보이지 않는다. */
+          /*
+           * 표가 이미 아는 이름을 넘긴다 — 검색 결과에 없어도 선택칸에 번호가 보이지 않는다.
+           * **로딩 갈래를 함께 넘긴다**: 빠뜨리면 이름을 받는 중인 창에서만 「알 수 없음」이 되어
+           * 표는 「불러오는 중…」인데 창은 값이 없는 것처럼 보인다.
+           */
           selectedItemLabel={
             editingBuMap.toItemId === ''
               ? undefined
-              : lookupLabel(buMapItemNames.entries, Number(editingBuMap.toItemId))
+              : lookupLabel(
+                  buMapItemNames.entries,
+                  Number(editingBuMap.toItemId),
+                  buMapItemNames.isLoading,
+                )
           }
           onClose={() => setEditingBuMap(null)}
           onConfirm={(next) => {

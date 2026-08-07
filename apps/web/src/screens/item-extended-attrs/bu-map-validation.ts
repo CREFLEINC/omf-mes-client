@@ -20,19 +20,6 @@ import type { BuMapDraft } from './bu-map-draft';
 
 const t = messages.itemExtendedAttrs.buMap.validation;
 
-/**
- * 이 창이 소유한 입력칸 이름. 서버가 준 필드 오류를 인라인으로 낼지 배너로 올릴지 가르는
- * 기준이다. 다만 이 화면의 부속 저장은 **창을 닫은 뒤** 한 번에 나가므로
- * 필드 오류도 배너로 간다 — 목록은 그 사실을 기록해 둔 것이다.
- */
-export const BU_MAP_FORM_FIELDS: readonly string[] = [
-  'fromBusinessUnitId',
-  'toBusinessUnitId',
-  'toItemId',
-  'effectiveFrom',
-  'effectiveTo',
-];
-
 export const validateBuMapDraft = (draft: BuMapDraft): Record<string, string> => {
   const errors: Record<string, string> = {};
 

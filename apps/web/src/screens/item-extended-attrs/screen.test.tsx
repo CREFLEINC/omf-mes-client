@@ -203,16 +203,33 @@ const partnersRoute = (items = partnerFixtures): StubRoute => ({
   respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
 });
 
-/** 부속 정보 탭을 그릴 때 필요한 스텁 한 벌. 하나만 빠져도 하네스가 던진다. */
-const subsidiaryRoutes = (): StubRoute[] => [
+interface SubsidiaryRouteOverrides {
+  itemDetail?: StubRoute;
+  buMaps?: StubRoute;
+  uomConversions?: StubRoute;
+  externalCodes?: StubRoute;
+}
+
+/**
+ * 부속 정보 탭을 그릴 때 필요한 스텁 한 벌. 하나만 빠져도 하네스가 던진다.
+ *
+ * **덧붙이기로는 갈아 끼울 수 없다.** `createStubFetch`는 **첫 일치**로 응답하므로
+ * `[...subsidiaryRoutes(), buMapsRoute(다른 목록)]`은 앞의 규칙이 이겨 덧붙인 쪽이 죽는다 —
+ * 테스트가 의도한 자료를 **한 번도 만들지 못한 채 통과한다.**
+ * 갈아 끼울 것은 반드시 이 인자로 넘긴다.
+ *
+ * 다른 품목(`…(items, 1002)`)이나 쓰기(`…SaveRoute()`)는 경로·메서드가 달라 겹치지 않으므로
+ * 그대로 덧붙여도 된다.
+ */
+const subsidiaryRoutes = (overrides: SubsidiaryRouteOverrides = {}): StubRoute[] => [
   itemListRoute(),
-  itemDetailByIdRoute(),
+  overrides.itemDetail ?? itemDetailByIdRoute(),
   uomsRoute(),
   businessUnitsRoute(),
   partnersRoute(),
-  buMapsRoute(),
-  uomConversionsRoute(),
-  externalCodesRoute(),
+  overrides.buMaps ?? buMapsRoute(),
+  overrides.uomConversions ?? uomConversionsRoute(),
+  overrides.externalCodes ?? externalCodesRoute(),
 ];
 
 /** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
@@ -2628,19 +2645,131 @@ describe('ItemExtendedAttrsScreen — 사업부 매핑은 중복을 막지 않�
     const first = buMapFixtures[0]!;
     const { user } = renderScreen(
       [
-        ...subsidiaryRoutes(),
-        buMapsRoute([first, { ...first, itemBuItemMapId: 3009 }]),
+        ...subsidiaryRoutes({
+          buMaps: buMapsRoute([first, { ...first, itemBuItemMapId: 3009 }]),
+        }),
         buMapSaveRoute(),
       ],
       '?item=1001&tab=sub',
     );
 
     const pane = await findBuMapPane();
+
+    /*
+     * **겹친 두 줄이 실제로 그려졌는지 먼저 잰다.** 스텁을 갈아 끼우지 못하면
+     * 기본 목록(겹치지 않는 두 줄)이 그려지는데, 줄 수만 세면 둘 다 2라 구분되지 않는다 —
+     * 두 줄이 **같은 값**을 내는지로 잰다.
+     */
+    expect(buMapRowCount(pane)).toBe(2);
+    expect(within(pane).getAllByText('SYN-ITEM-02 · 합성 품목 B')).toHaveLength(2);
+    expect(within(pane).getAllByText('2026-01-01 ~ 2026-12-31')).toHaveLength(2);
+
     await user.click(within(pane).getAllByRole('button', { name: /매핑 삭제$/ })[0]!);
 
     expect(within(pane).getByRole('button', { name: '저장' })).toBeEnabled();
     expect(within(pane).getByRole('button', { name: '저장' })).not.toHaveAttribute(
       'aria-describedby',
     );
+  });
+});
+
+/**
+ * 선택 목록 안내는 **주인이 하나**다.
+ *
+ * 단위 목록은 원본 구획의 기준 단위와 단위 환산 표가 함께 쓴다. 두 자리가 각각 안내를 내면
+ * 단위 환산 하위 탭에서만 같은 문구가 둘로 보이고, 사용자는 서로 다른 두 가지 실패로 읽는다.
+ */
+describe('ItemExtendedAttrsScreen — 선택 목록 안내의 주인 (F1)', () => {
+  const failingUomsRoute = (): StubRoute => ({
+    match: (request) => isGet(request, UOMS_PATH),
+    respond: () => jsonResponse({ message: '조회에 실패했습니다' }, { status: 500 }),
+  });
+
+  /** 실패한 단위 목록으로 화면을 그린다. `subsidiaryRoutes()`의 규칙이 이기지 않도록 직접 조립한다. */
+  const routesWithFailingUoms = (): StubRoute[] => [
+    itemListRoute(),
+    itemDetailByIdRoute(),
+    failingUomsRoute(),
+    businessUnitsRoute(),
+    partnersRoute(),
+    buMapsRoute(),
+    uomConversionsRoute(),
+    externalCodesRoute(),
+  ];
+
+  const LOAD_FAILED_TEXT = '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.';
+
+  it('단위 환산 하위 탭에서도 안내가 하나뿐이다', async () => {
+    renderScreen(routesWithFailingUoms(), '?item=1001&tab=sub&sub=uom');
+
+    await findUomConversionPane();
+
+    expect(await screen.findAllByText(LOAD_FAILED_TEXT)).toHaveLength(1);
+  });
+
+  /*
+   * 반대 방향 — **다른 탭에서도 사라지지 않는다.**
+   * 원본 구획의 기준 단위는 어느 탭에서나 보이므로, 안내를 확장 속성 탭으로 좁히면
+   * 나머지 탭에서 「알 수 없음」만 남고 이유가 사라진다.
+   */
+  it.each([
+    ['확장 속성', '?item=1001'],
+    ['사업부 매핑', '?item=1001&tab=sub'],
+    ['외부 코드', '?item=1001&tab=sub&sub=ext'],
+  ])('%s 에서도 안내가 하나 보인다', async (_name, search) => {
+    renderScreen(routesWithFailingUoms(), search);
+
+    expect(await screen.findAllByText(LOAD_FAILED_TEXT)).toHaveLength(1);
+  });
+});
+
+/**
+ * F2 — 이름을 받는 중인 상태가 **창에서도** 표와 같아야 한다.
+ *
+ * 표는 「불러오는 중…」인데 창만 「알 수 없음」이면 사용자는 창을 여는 순간
+ * 값이 사라진 것으로 읽는다.
+ */
+describe('ItemExtendedAttrsScreen — 대상 품목 이름의 로딩 갈래 (F2)', () => {
+  /** 대상 품목 상세만 응답을 늦춰 「받는 중」 상태를 만든다. */
+  const pendingItemDetailRoute = (): StubRoute => ({
+    match: (request) =>
+      request.method === 'GET' && /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+    respond: (request) => {
+      const itemId = Number(new URL(request.url).pathname.split('/').pop());
+
+      /* 고른 품목(1001)은 즉시 준다 — 그것이 없으면 화면 자체가 그려지지 않는다. */
+      if (itemId === 1001) {
+        return jsonResponse(
+          {
+            item: itemFixtures[0],
+            editability: { codeEditable: false, reason: 'EDITABLE', referenceCount: 3 },
+          },
+          { headers: { ETag: 'W/"7"' } },
+        );
+      }
+
+      return new Response(new ReadableStream(), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    },
+  });
+
+  it('이름을 받는 중이면 창의 선택칸도 「알 수 없음」이 아니다', async () => {
+    const { user } = renderScreen(
+      subsidiaryRoutes({ itemDetail: pendingItemDetailRoute() }),
+      '?item=1001&tab=sub',
+    );
+
+    const pane = await findBuMapPane();
+    expect(within(pane).getAllByText('불러오는 중…').length).toBeGreaterThan(0);
+
+    await user.click(within(pane).getAllByRole('button', { name: /매핑 수정$/ })[0]!);
+
+    const dialog = buMapDialog();
+    await user.click(within(dialog).getByLabelText('대상 품목'));
+
+    expect(screen.queryByRole('option', { name: '알 수 없음' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '불러오는 중…' })).toBeInTheDocument();
   });
 });

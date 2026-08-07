@@ -21,15 +21,6 @@ import { duplicateKeyOf, type UomConversionDraft } from './uom-conversion-draft'
 
 const t = messages.itemExtendedAttrs.uomConversion.validation;
 
-/** 이 창이 소유한 입력칸 이름. 서버가 준 필드 오류의 자리를 기록해 둔 것이다. */
-export const UOM_CONVERSION_FORM_FIELDS: readonly string[] = [
-  'fromUomId',
-  'toUomId',
-  'conversionRate',
-  'effectiveFrom',
-  'effectiveTo',
-];
-
 /** 숫자로 읽을 수 있는가. 빈 문자열을 `Number`가 0으로 읽는 것을 먼저 걸러 낸다. */
 const isNumeric = (value: string): boolean => value.trim() !== '' && !Number.isNaN(Number(value));
 

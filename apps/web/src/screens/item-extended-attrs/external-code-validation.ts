@@ -24,13 +24,6 @@ const t = messages.itemExtendedAttrs.externalCode.validation;
 const EXTERNAL_SYSTEM_CODE_MAX = 50;
 const EXTERNAL_ITEM_CODE_MAX = 100;
 
-/** 이 창이 소유한 입력칸 이름. 서버가 준 필드 오류의 자리를 기록해 둔 것이다. */
-export const EXTERNAL_CODE_FORM_FIELDS: readonly string[] = [
-  'externalSystemCode',
-  'partnerId',
-  'externalItemCode',
-];
-
 export const validateExternalCodeDraft = (
   draft: ExternalCodeDraft,
   others: readonly ExternalCodeDraft[],
