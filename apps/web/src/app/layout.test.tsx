@@ -114,6 +114,22 @@ describe('AppLayout', () => {
   });
 
   /*
+   * 현장 물류 화면이라 기준정보·시스템 관리 어느 쪽도 아니다 —
+   * 도메인 01(자재창고)의 첫 화면이고 뒤따르는 W-01 화면들이 이 섹션에 들어온다.
+   */
+  it('사이드바에 자재창고 섹션의 입하 예정 조회 메뉴가 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByText('자재창고')).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: '입하 예정 조회' })).toHaveAttribute(
+      'href',
+      '/logistics/inbound-schedule',
+    );
+  });
+
+  /*
    * 시스템 운영 화면이라 기준정보와 다른 섹션에 둔다 —
    * 같은 섹션에 넣으면 「창고·Location」 옆에 서서 분류가 무너진다.
    */
@@ -149,6 +165,7 @@ describe('AppLayout', () => {
       '/master-data/integration-sync',
       '/master-data/item-extended-attrs',
       '/master-data/master-change',
+      '/logistics/inbound-schedule',
       '/system/users-roles',
     ]);
   });
