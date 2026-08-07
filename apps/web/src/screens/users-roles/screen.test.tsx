@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import type { QueryClient } from '@tanstack/react-query';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
@@ -300,7 +301,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
   probeSearch = '';
   probeNavigate = null;
 
-  renderWithProviders(
+  const { queryClient } = renderWithProviders(
     <>
       <UsersRolesScreen />
       <RouterProbe />
@@ -314,8 +315,20 @@ const renderScreen = (routes: StubRoute[], search = '') => {
     });
   };
 
-  return { requests, search: () => probeSearch, goTo, user: userEvent.setup() };
+  return { requests, search: () => probeSearch, goTo, queryClient, user: userEvent.setup() };
 };
+
+/**
+ * 그 키가 무효화 표시를 받았는가.
+ *
+ * **요청 수로는 이 갈래를 볼 수 없다.** 무효화는 지금 화면에 붙어 있는(active) 조회만 다시
+ * 부르고, 다른 탭의 선택 목록은 그 시점에 붙어 있지 않다. 그런데 앱의 기본 `staleTime`이
+ * 30초라(`app/providers.tsx`) **무효화 표시가 없으면 다시 열어도 낡은 값이 그대로 쓰인다** —
+ * 테스트 하네스는 `staleTime`을 0으로 두어 언제나 다시 부르므로 요청 수로는 구분되지 않는다.
+ * 그래서 캐시가 받은 표시를 직접 본다.
+ */
+const isInvalidated = (queryClient: QueryClient, queryKey: readonly unknown[]): boolean =>
+  queryClient.getQueryState(queryKey)?.isInvalidated ?? false;
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === pathname);
@@ -3532,5 +3545,156 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     await waitFor(() => {
       expect(requestsTo(requests, rolePermissionsPath(5001)).length).toBeGreaterThan(before);
     });
+  });
+});
+
+/**
+ * 역할을 만들고 고치고 중지하는 일은 **역할·권한 탭**에서 일어나는데, 그 결과가 보이는 자리는
+ * **사용자 탭의 역할 부여 확인칸**이다. 앱의 기본 `staleTime`이 30초라 재마운트만으로는 다시
+ * 조회되지 않으므로, 무효화하지 않으면 방금 만든 역할이 부여 목록에 없고 고친 이름이 옛 이름
+ * 그대로이며 중지한 역할에 「(미사용)」이 붙지 않는다.
+ */
+describe('UsersRolesScreen 역할 쓰기가 사용자 탭의 선택 목록을 갱신한다', () => {
+  const ROLE_LOOKUP_KEY = ['users-roles-lookups', 'roles'] as const;
+
+  /** 사용자 탭에서 부여 목록을 먼저 본다 — 그래야 선택 목록이 캐시에 오른다. */
+  const warmRoleLookup = async (routes: StubRoute[]) => {
+    const rendered = renderScreen(
+      [userListRoute(), departmentsRoute(), userDetailRoute(), ...roleRoutes(), ...routes],
+      '?usr=1001',
+    );
+
+    await waitForUserList(rendered.requests);
+    await screen.findByRole('region', { name: '역할 부여' });
+
+    // 선행 단언 — 아직 아무것도 무효화되지 않았다. 이것이 없으면 뒤 단언이 무엇을 보는지 알 수 없다.
+    expect(rendered.queryClient.getQueryState(ROLE_LOOKUP_KEY)).toBeDefined();
+    expect(isInvalidated(rendered.queryClient, ROLE_LOOKUP_KEY)).toBe(false);
+
+    return rendered;
+  };
+
+  /**
+   * 좁힘이 유지되는 키들. 역할 쓰기는 사용자 자료를 바꾸지 않으므로 여기까지 무효화하면
+   * 사용자 탭에서 편집 중이던 폼과 초안이 서버 값으로 되돌아간다(PR ②가 세운 규칙).
+   */
+  const expectUserSideUntouched = (queryClient: QueryClient): void => {
+    expect(isInvalidated(queryClient, ['users-roles-users', 'detail', 1001])).toBe(false);
+    expect(isInvalidated(queryClient, ['users-roles-users', 'roles', 1001])).toBe(false);
+    expect(isInvalidated(queryClient, ['users-roles-users', 'data-scopes', 1001])).toBe(false);
+  };
+
+  it('역할을 새로 만들면 선택 목록이 무효화된다', async () => {
+    const { requests, queryClient, goTo, user } = await warmRoleLookup([
+      roleListRoute(),
+      roleCreateRoute(),
+      roleDetailRoute({ ...(roleFixtures[0] as Role), roleId: 5009 }),
+      rolePermissionsRoute(5009),
+    ]);
+
+    goTo(`${ROUTE}?tab=roles&new=role`);
+    await waitForRoleList(requests);
+
+    await user.type(roleCodeField(), 'SYN-ROLE-09');
+    await user.type(roleNameField(), '합성 역할 D');
+    await user.click(within(roleFormPane()).getByRole('button', { name: '역할 추가' }));
+
+    await waitFor(() => {
+      expect(isInvalidated(queryClient, ROLE_LOOKUP_KEY)).toBe(true);
+    });
+
+    expectUserSideUntouched(queryClient);
+  });
+
+  it('역할 이름을 고치면 선택 목록이 무효화된다', async () => {
+    const { requests, queryClient, goTo, user } = await warmRoleLookup([
+      roleListRoute(),
+      ...roleDetailRoutes(),
+      roleUpdateRoute(),
+    ]);
+
+    goTo(`${ROUTE}?tab=roles&rol=5001`);
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    await user.type(roleNameField(), 'X');
+    await user.click(within(roleFormPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(isInvalidated(queryClient, ROLE_LOOKUP_KEY)).toBe(true);
+    });
+
+    expectUserSideUntouched(queryClient);
+  });
+
+  it('역할을 사용 중지하면 선택 목록이 무효화된다', async () => {
+    const { requests, queryClient, goTo, user } = await warmRoleLookup([
+      roleListRoute(),
+      ...roleDetailRoutes(),
+      roleDeactivateRoute(),
+    ]);
+
+    goTo(`${ROUTE}?tab=roles&rol=5001`);
+    await waitForRoleList(requests);
+    await waitForRoleForm('SYN-ROLE-01');
+
+    await user.click(within(roleFormPane()).getByRole('button', { name: '사용 중지' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '사용 중지' }),
+    );
+
+    await waitFor(() => {
+      expect(isInvalidated(queryClient, ROLE_LOOKUP_KEY)).toBe(true);
+    });
+
+    expectUserSideUntouched(queryClient);
+  });
+});
+
+/**
+ * 주소는 손으로 고쳐지는 자리다. 조건 쪽에는 이미 그 검사가 있으나(부서 번호·쪽 번호)
+ * **선택 쪽**에는 없었다 — 탭이 둘이 되면서 「그 탭에 없는 자원의 선택 번호」가 실제로 들어온다.
+ * 그 번호를 읽으면 **보이지도 않는 자원의 상세를 조회한다.**
+ */
+describe('UsersRolesScreen 탭·모드가 아닌 선택 번호는 읽지 않는다', () => {
+  it('사용자 탭에서는 역할 선택 번호를 읽지 않는다', async () => {
+    const { requests } = renderScreen(
+      [userListRoute(), departmentsRoute(), roleDetailRoute(), rolePermissionsRoute()],
+      '?tab=users&rol=5001',
+    );
+
+    await waitForUserList(requests);
+
+    expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
+    expect(requestsTo(requests, rolePermissionsPath(5001))).toHaveLength(0);
+    expect(screen.queryByRole('region', { name: '기능 권한' })).not.toBeInTheDocument();
+  });
+
+  it('역할 탭에서는 사용자 선택 번호를 읽지 않는다', async () => {
+    const { requests } = renderScreen(
+      [roleListRoute(), userDetailRoute(), userRolesRoute(), userDataScopesRoute()],
+      '?tab=roles&usr=1001',
+    );
+
+    await waitForRoleList(requests);
+
+    expect(requestsTo(requests, `${USERS_PATH}/1001`)).toHaveLength(0);
+    expect(requestsTo(requests, userRolesPath(1001))).toHaveLength(0);
+    expect(requestsTo(requests, dataScopesPath(1001))).toHaveLength(0);
+    expect(screen.queryByRole('region', { name: '역할 부여' })).not.toBeInTheDocument();
+  });
+
+  /** 만들고 있는 자원에는 상세가 없다 — 등록 폼이 열려 있는데 남의 상세를 부르면 폼이 그 값으로 채워진다. */
+  it('역할 등록 폼이 열려 있으면 고른 역할의 상세를 읽지 않는다', async () => {
+    const { requests } = renderScreen(
+      [roleListRoute(), ...roleDetailRoutes()],
+      '?tab=roles&new=role&rol=5001',
+    );
+
+    await waitForRoleList(requests);
+
+    expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
+    expect(requestsTo(requests, rolePermissionsPath(5001))).toHaveLength(0);
+    expect(roleCodeField()).toHaveValue('');
   });
 });
