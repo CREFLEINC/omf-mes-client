@@ -4334,3 +4334,36 @@ describe('ItemExtendedAttrsScreen — 구성품 편집 창의 수명', () => {
     expect(screen.queryByLabelText('등록 공정')).not.toBeInTheDocument();
   });
 });
+
+/**
+ * 등록 공정 선택지는 **조회가 2단이다**(Rev 목록 → Rev마다 공정 목록).
+ * 두 단에 같은 조건을 줘야 한다 — **1단만 막으면 캐시가 따뜻할 때 샌다.**
+ *
+ * 꺼진 조회도 react-query는 캐시에 있던 값을 그대로 돌려주므로, 1단의 Rev 목록이
+ * 비어 있지 않은 채로 남는다. 조건 없는 2단은 그 목록을 보고 Rev 수만큼 요청을 낸다 —
+ * 구성품 표가 보이지도 않는 동안에.
+ */
+describe('ItemExtendedAttrsScreen — 등록 공정 2단 조회의 조건', () => {
+  it('자재 명세서를 고르지 않으면 Rev 캐시가 따뜻해도 공정 목록을 다시 받지 않는다', async () => {
+    const { requests, user } = renderScreen(bomDetailRoutes(), '?item=1001&tab=bom&bom=2001');
+
+    /* ① 한 번 받아 캐시를 데운다 — Rev 둘이므로 요청도 둘이다. */
+    await findBomComponentPane();
+    await waitFor(() => {
+      expect(routingOperationGets(requests)).toHaveLength(2);
+    });
+
+    /* ② 다른 품목으로 옮긴다 — 주소에서 `bom`이 떨어져 구성품 표가 사라진다. */
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+    await findBomListPane();
+
+    /* ③ 돌아온다. 자재 명세서를 고르지 않았으므로 표가 없는데 **Rev 캐시는 따뜻하다.** */
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01' }));
+    await findBomListPane();
+
+    expect(
+      screen.getByText('위에서 자재 명세서를 고르면 여기에 그 내용과 구성품이 보입니다'),
+    ).toBeInTheDocument();
+    expect(routingOperationGets(requests)).toHaveLength(2);
+  });
+});

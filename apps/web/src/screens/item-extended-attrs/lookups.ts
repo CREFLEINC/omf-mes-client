@@ -207,9 +207,16 @@ export const useRoutingOperationOptions = (
 
   const revisionItems = revisions.data?.items ?? [];
 
+  /*
+   * **2단에도 같은 조건을 준다.** 1단만 막으면 캐시가 따뜻할 때 샌다 —
+   * 꺼진 조회도 react-query가 **캐시에 있던 값을 그대로 돌려주므로** `revisionItems`가
+   * 비어 있지 않고, 조건 없는 `useQueries`는 그 목록을 보고 Rev 수만큼 요청을 낸다.
+   * 구성품 표가 보이지도 않는 동안 공정 목록을 받아 둘 이유가 없다.
+   */
   const operationQueries = useQueries({
     queries: revisionItems.map((routing) => ({
       queryKey: lookupKeys.routingOperations(routing.routingId),
+      enabled,
       queryFn: () =>
         runRequest(() =>
           client.GET('/planning/routings/{routingId}/operations', {

@@ -1666,8 +1666,8 @@ const itemExtendedAttrs = {
       status: '상태',
       isDefault: '기본',
       validPeriod: '유효기간',
+      /* 수량과 단위를 한 칸에 담으므로 단위 라벨을 따로 두지 않는다 — 구성품 표의 소요량과 같다. */
       baseQty: '기준 수량',
-      baseUom: '기준 단위',
       setDefault: '기본 지정',
     },
     values: {

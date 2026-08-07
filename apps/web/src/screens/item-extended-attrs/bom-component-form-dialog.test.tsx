@@ -212,10 +212,34 @@ describe('BomComponentFormDialog — 입력', () => {
     expect(screen.getByLabelText('실사용 공정')).toBeEnabled();
   });
 
-  it('서버 필드 오류를 그 칸에 낸다', () => {
-    renderDialog({ fieldErrors: { routingOperationId: '없는 공정입니다.' } });
+  /**
+   * **선택칸을 모두 돈다.** 한 칸만 재면 다른 칸의 오류 키 오타가 그대로 통과한다 —
+   * `useMasterWrite`가 `knownFields`를 보고 그 오류를 **인라인으로 분류해 배너에서 빼는데**
+   * 창이 없는 키를 읽으면 서버가 거절한 이유가 화면 어디에도 나오지 않는다.
+   *
+   * 그래서 **오류가 붙는 칸까지** 함께 잰다. 문구가 어딘가 있는 것만으로는 부족하다.
+   */
+  it.each([
+    ['등록 공정', 'routingOperationId'],
+    ['실사용 공정', 'actualUseProcessId'],
+  ])('%s 의 서버 필드 오류를 그 칸에 낸다', (label, field) => {
+    renderDialog({ fieldErrors: { [field]: '없는 공정입니다.' } });
 
-    expect(screen.getByText('없는 공정입니다.')).toBeInTheDocument();
+    const select = screen.getByLabelText(label);
+    expect(select).toHaveAttribute('aria-invalid', 'true');
+
+    const describedBy = select.getAttribute('aria-describedby');
+    expect(document.getElementById(describedBy ?? '')?.textContent).toBe('없는 공정입니다.');
+  });
+
+  /* 오류가 없는 칸까지 붉어지면 사용자가 고칠 곳을 잘못 찾는다. */
+  it.each([
+    ['등록 공정', 'actualUseProcessId'],
+    ['실사용 공정', 'routingOperationId'],
+  ])('%s 은 다른 칸의 오류로 붉어지지 않는다', (label, otherField) => {
+    renderDialog({ fieldErrors: { [otherField]: '없는 공정입니다.' } });
+
+    expect(screen.getByLabelText(label)).not.toHaveAttribute('aria-invalid', 'true');
   });
 
   /* 창을 닫으면 실패 이유가 사라진다 — 창 안에서 보여야 다시 시도할 수 있다. */

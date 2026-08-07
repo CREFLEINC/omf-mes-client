@@ -105,8 +105,13 @@ export const BomComponentFormDialog = ({
             ...processOptions(values.actualUseProcessId),
           ]}
           value={values.actualUseProcessId}
+          /*
+           * **오류 키는 계약 필드 이름 그대로다**(`BOM_COMPONENT_FORM_FIELDS`와 같은 집합).
+           * 한 글자만 달라도 `useMasterWrite`가 그 오류를 인라인으로 분류해 배너에서 빼는데
+           * 창은 없는 키를 읽어 아무것도 내지 않는다 — 서버가 거절한 이유가 화면에서 사라진다.
+           */
           onChange={(value) => onChange({ actualUseProcessId: value })}
-          error={fieldErrors.actualUseProcess}
+          error={fieldErrors.actualUseProcessId}
         />
 
         <div className="field-cell">
