@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -86,31 +86,27 @@ const LocationProbe = () => {
 };
 
 /**
- * 화면의 클릭 핸들러를 거치지 않는 이동. 뒤로가기·앞으로가기·주소 직접 편집이 이 경로다 —
- * 정리 절차가 핸들러에 들어 있으면 여기서 샌다.
+ * **화면 바깥에서** 주소를 갈아 끼운다. 뒤로가기·앞으로가기·주소 직접 편집이 이 경로다 —
+ * 셋 모두 화면의 클릭 핸들러를 거치지 않고 검색 파라미터만 바뀐다.
+ *
+ * 화면은 `useSearchParams`가 주는 값만 읽으므로 **셋을 구분하지 못한다.**
+ * 그래서 이 한 부품이 세 경로를 모두 대신한다 — 정리 절차가 핸들러에 들어 있으면 여기서 샌다.
+ *
+ * 라우터의 이동 훅을 쓰지 않는다. 이 슬라이스에는 이동 수단을 하나도 두지 않기로 했고
+ * 테스트 부품도 같은 기준을 지킨다 — 경계 점검이 슬라이스 전체를 훑기 때문이다.
  */
-const NavigationProbe = ({ to }: { to: string }) => {
-  const navigate = useNavigate();
+const SearchProbe = ({ to }: { to: string }) => {
+  const [, setSearchParams] = useSearchParams();
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          void navigate(`${ROUTE}${to}`);
-        }}
-      >
-        주소 이동
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          void navigate(-1);
-        }}
-      >
-        뒤로
-      </button>
-    </>
+    <button
+      type="button"
+      onClick={() => {
+        setSearchParams(new URLSearchParams(to));
+      }}
+    >
+      주소 이동
+    </button>
   );
 };
 
@@ -125,7 +121,7 @@ const renderScreen = (
     <>
       <MasterChangeScreen />
       <LocationProbe />
-      <NavigationProbe to={navigateTo} />
+      <SearchProbe to={navigateTo} />
     </>,
     { fetch, route: `${ROUTE}${search}` },
   );
@@ -707,7 +703,7 @@ describe('MasterChangeScreen — 창 수명', () => {
     const { user } = renderScreen(
       [filteringListRoute()],
       PERIOD_SEARCH,
-      `${PERIOD_SEARCH}&type=SAMPLE_TARGET_B&sel=9001`,
+      `${PERIOD_SEARCH.slice(1)}&type=SAMPLE_TARGET_B&sel=9001`,
     );
     await screen.findByText('SAMPLE_EVENT_A');
 
@@ -720,15 +716,20 @@ describe('MasterChangeScreen — 창 수명', () => {
     expect(currentLocation()).toContain('type=SAMPLE_TARGET_B');
   });
 
-  it('뒤로가기로 돌아오면 그 주소의 창이 그대로 복원된다', async () => {
-    const { user } = renderScreen([listRoute()], PERIOD_SEARCH);
+  /* 뒤로가기로 sel이 붙은 주소로 되돌아오는 경로다 — 화면 핸들러를 거치지 않는다. */
+  it('핸들러를 거치지 않고 sel이 붙은 주소로 돌아오면 창이 복원된다', async () => {
+    const { user } = renderScreen(
+      [listRoute()],
+      PERIOD_SEARCH,
+      `${PERIOD_SEARCH.slice(1)}&sel=9001`,
+    );
     await screen.findByText('SAMPLE_EVENT_A');
 
     await user.click(screen.getByRole('button', { name: '2026-08-04 09:12 변경 내용 보기' }));
     await user.click(screen.getByRole('dialog'));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '뒤로' }));
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     expect(currentLocation()).toContain('sel=9001');
