@@ -1593,6 +1593,60 @@ const itemExtendedAttrs = {
       duplicateInList: '변환 전·변환 후·유효 시작이 같은 줄이 있습니다. 겹친 줄을 정리하세요.',
     },
   },
+  /**
+   * 부속 하위 탭③ — 외부 코드. 고객 바코드 체계의 저장처다.
+   *
+   * **중복 문구가 접힘을 밝힌다.** 계약의 유일 제약이 `COALESCE(partner_id,0)`으로 접혀
+   * 거래처를 비운 두 줄이 서버에게 같은 짝이 되는데(A-7), 그 사실을 적지 않으면
+   * 사용자가 「다른 줄인데 왜 막느냐」로 읽는다.
+   */
+  externalCode: {
+    paneTitle: '외부 코드',
+    fields: {
+      externalSystem: '외부 시스템',
+      partner: '거래처',
+      externalItemCode: '외부 품목코드',
+      edit: '편집',
+    },
+    values: {
+      /* 계약이 「비우면 (전체)」로 정했다(A-7) — 빈 칸으로 두면 빠뜨린 것으로 읽힌다. */
+      allPartners: '(전체)',
+    },
+    actions: {
+      add: '외부 코드 추가',
+      editRow: (name: string): string => `${name} 외부 코드 수정`,
+      removeRow: (name: string): string => `${name} 외부 코드 삭제`,
+    },
+    actionReasons: {
+      saveBlockedByDuplicate:
+        '저장할 수 없습니다. 외부 시스템과 거래처가 같은 줄이 둘 이상 있습니다. 겹친 줄을 고치거나 지운 뒤 저장하세요.',
+    },
+    loading: {
+      list: '외부 코드를 불러오는 중',
+    },
+    empty: {
+      noneTitle: '등록된 외부 코드가 없습니다',
+      noneDescription: '「외부 코드 추가」로 줄을 만든 뒤 저장하세요.',
+    },
+    dialog: {
+      addTitle: '외부 코드 추가',
+      editTitle: '외부 코드 수정',
+      confirm: '확인',
+      notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
+    },
+    /* 값 목록이 확정되지 않아 자유 입력으로 받는다(결정 4) — 그 사실을 밝힌다. */
+    externalSystemNote: '코드 목록이 확정되지 않아 직접 입력합니다. 값은 서버가 확인합니다.',
+    validation: {
+      required: '필수 입력 항목입니다.',
+      externalSystemCodeTooLong: '외부 시스템 코드는 50자를 넘을 수 없습니다.',
+      externalItemCodeTooLong: '외부 품목코드는 100자를 넘을 수 없습니다.',
+      /* 계약 uq_item_external_code — COALESCE(partner_id,0) 접기를 문구가 밝힌다(A-7). */
+      duplicateKey:
+        '외부 시스템과 거래처가 같은 줄이 이미 있습니다. 거래처를 비운 줄끼리도 같은 줄로 봅니다.',
+      duplicateInList:
+        '외부 시스템과 거래처가 같은 줄이 있습니다. 거래처를 비운 줄끼리도 같은 줄로 보므로 겹친 줄을 정리하세요.',
+    },
+  },
 } as const;
 
 export const ko = {

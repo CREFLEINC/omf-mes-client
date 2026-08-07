@@ -33,6 +33,8 @@ export const FREE_TEXT_CODES: readonly string[] = [
   'lotControlTypeCode',
   'serialControlTypeCode',
   'storageConditionCode',
+  /* 외부 코드 구획의 필수 필드다 — 선택지가 비면 행을 아예 추가할 수 없다(결정 4). */
+  'externalSystemCode',
 ];
 
 /**

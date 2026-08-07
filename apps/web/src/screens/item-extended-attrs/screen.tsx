@@ -25,6 +25,17 @@ import {
 } from './bu-map-draft';
 import { BuMapFormDialog } from './bu-map-form-dialog';
 import { BuMapPane } from './bu-map-pane';
+import {
+  createExternalCodeDraft,
+  isSameExternalCodeDrafts,
+  removeExternalCodeDraft,
+  toExternalCodeDrafts,
+  toExternalCodesPayload,
+  upsertExternalCodeDraft,
+  type ExternalCodeDraft,
+} from './external-code-draft';
+import { ExternalCodeFormDialog } from './external-code-form-dialog';
+import { ExternalCodePane } from './external-code-pane';
 import { ITEM_KEY, readItemFilters, readPage, readSelectedId, toSearchParams } from './filters';
 import { ItemAttrsPane } from './item-attrs-pane';
 import { isSameItemAttrsValues, itemToAttrsFormValues, toItemUpdate } from './item-attrs-mappers';
@@ -33,10 +44,20 @@ import { ItemListPane } from './item-list-pane';
 import { ItemOriginPane } from './item-origin-pane';
 import { itemDetailPath, itemKeys, useItemDetail, useItemList, useItemNames } from './item-queries';
 import { LoadErrorBanner } from './load-error-banner';
-import { useBusinessUnitOptions, useUomOptions, type LookupResult } from './lookups';
+import {
+  useBusinessUnitOptions,
+  usePartnerOptions,
+  useUomOptions,
+  type LookupResult,
+} from './lookups';
 import { lookupLabel, selectableOptions } from './options';
 import { toPageView } from './pagination';
-import { subsidiaryKeys, useBuMaps, useUomConversions } from './subsidiary-queries';
+import {
+  subsidiaryKeys,
+  useBuMaps,
+  useExternalCodes,
+  useUomConversions,
+} from './subsidiary-queries';
 import {
   DEFAULT_SUBSIDIARY_TAB_ID,
   DEFAULT_TAB_ID,
@@ -63,6 +84,7 @@ import { UomConversionPane } from './uom-conversion-pane';
 type ItemDetailResponse = components['schemas']['ItemDetailResponse'];
 type ItemBuItemMapListResponse = components['schemas']['ItemBuItemMapListResponse'];
 type ItemUomConversionListResponse = components['schemas']['ItemUomConversionListResponse'];
+type ItemExternalCodeListResponse = components['schemas']['ItemExternalCodeListResponse'];
 
 const t = messages.itemExtendedAttrs;
 
@@ -104,6 +126,13 @@ interface UomConversionDraftState {
   source: ItemUomConversionListResponse;
   baseline: UomConversionDraft[];
   drafts: UomConversionDraft[];
+}
+
+/** 외부 코드 초안. 같은 모양의 셋째이자 마지막이다. */
+interface ExternalCodeDraftState {
+  source: ItemExternalCodeListResponse;
+  baseline: ExternalCodeDraft[];
+  drafts: ExternalCodeDraft[];
 }
 
 /**
@@ -358,6 +387,60 @@ export const ItemExtendedAttrsScreen = () => {
     setEditingUomConversion(draft);
   };
 
+  /* ── 부속 정보 · 외부 코드 ──────────────────────────────────────────────── */
+
+  const externalCodeList = useExternalCodes(selectedItemId, isSubsidiaryTab);
+  const partnerOptions = usePartnerOptions(isSubsidiaryTab);
+
+  const [externalCodeState, setExternalCodeState] = useState<ExternalCodeDraftState | null>(null);
+
+  const externalCodeSource = externalCodeList.data ?? null;
+
+  if (externalCodeSource === null) {
+    if (externalCodeState !== null) setExternalCodeState(null);
+  } else if (externalCodeState?.source !== externalCodeSource) {
+    const seeded = toExternalCodeDrafts(externalCodeSource.items);
+    setExternalCodeState({ source: externalCodeSource, baseline: seeded, drafts: seeded });
+  }
+
+  const externalCodeDrafts = externalCodeState?.drafts ?? [];
+  const isExternalCodeDirty =
+    externalCodeState !== null &&
+    !isSameExternalCodeDrafts(externalCodeState.drafts, externalCodeState.baseline);
+
+  const [editingExternalCode, setEditingExternalCode] = useState<ExternalCodeDraft | null>(null);
+  const [isEditingNewExternalCode, setIsEditingNewExternalCode] = useState(false);
+
+  const externalCodeWrite = useMasterWrite<ExternalCodeDraft[], ItemExternalCodeListResponse>({
+    request: (drafts, headers) =>
+      client.PUT('/mdm/items/{itemId}/external-codes', {
+        params: {
+          path: { itemId: selectedItemId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { externalCodes: toExternalCodesPayload(drafts) },
+      }),
+    /* **반드시 `null`이다**(§5.3 표 4행) — 부속 3종이 같은 근거다(M17). */
+    etagPath: null,
+    invalidateKeys: [subsidiaryKeys.externalCodes(selectedItemId ?? 0)],
+    knownFields: [],
+    onSuccess: (saved) => {
+      const next = toExternalCodeDrafts(saved.items);
+      setExternalCodeState({ source: saved, baseline: next, drafts: next });
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const changeExternalCodeDrafts = (next: (drafts: ExternalCodeDraft[]) => ExternalCodeDraft[]) => {
+    setExternalCodeState((prev) => (prev === null ? prev : { ...prev, drafts: next(prev.drafts) }));
+  };
+
+  const openExternalCodeDialog = (draft: ExternalCodeDraft, isNew: boolean) => {
+    externalCodeWrite.reset();
+    setIsEditingNewExternalCode(isNew);
+    setEditingExternalCode(draft);
+  };
+
   /* ── 선택 수명 ──────────────────────────────────────────────────────────── */
 
   /**
@@ -378,6 +461,10 @@ export const ItemExtendedAttrsScreen = () => {
     uomConversionWrite.reset();
     setUomConversionState(null);
     setEditingUomConversion(null);
+
+    externalCodeWrite.reset();
+    setExternalCodeState(null);
+    setEditingExternalCode(null);
   };
 
   /*
@@ -721,9 +808,50 @@ export const ItemExtendedAttrsScreen = () => {
     />
   );
 
+  /** 하위 탭①-3 — 외부 코드. */
+  const renderExternalCodePane = (): ReactNode => (
+    <ExternalCodePane
+      drafts={externalCodeDrafts}
+      isLoading={externalCodeList.isPending}
+      partnerEntries={partnerOptions.entries}
+      isPartnerLoading={partnerOptions.isLoading}
+      optionsNotice={renderOptionsNotice([partnerOptions])}
+      loadError={
+        externalCodeList.isError ? (
+          <LoadErrorBanner
+            error={externalCodeList.error}
+            onRetry={() => void externalCodeList.refetch()}
+          />
+        ) : null
+      }
+      /* 낙관적 잠금이 없어 충돌 갈래가 없다 — 「최신 불러오기」를 주지 않는다. */
+      banner={<SaveErrorBanner error={externalCodeWrite.error} />}
+      isDirty={isExternalCodeDirty}
+      isSaving={externalCodeWrite.isSaving}
+      onAdd={() => openExternalCodeDialog(createExternalCodeDraft(), true)}
+      onEdit={(draftId) => {
+        const found = externalCodeDrafts.find((draft) => draft.draftId === draftId);
+        if (found !== undefined) openExternalCodeDialog(found, false);
+      }}
+      onRemove={(draftId) => {
+        changeExternalCodeDrafts((drafts) => removeExternalCodeDraft(drafts, draftId));
+      }}
+      onSave={() => {
+        if (externalCodeState === null) return;
+
+        externalCodeWrite.write(externalCodeState.drafts);
+      }}
+      onCancel={() => {
+        externalCodeWrite.reset();
+        setExternalCodeState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
+      }}
+    />
+  );
+
   const subTabContentOf = (subTabId: string): ReactNode => {
     if (subTabId === 'bu') return renderBuMapPane();
     if (subTabId === 'uom') return renderUomConversionPane();
+    if (subTabId === 'ext') return renderExternalCodePane();
 
     return null;
   };
@@ -850,6 +978,20 @@ export const ItemExtendedAttrsScreen = () => {
           onConfirm={(next) => {
             changeUomConversionDrafts((drafts) => upsertUomConversionDraft(drafts, next));
             setEditingUomConversion(null);
+          }}
+        />
+      )}
+
+      {editingExternalCode !== null && (
+        <ExternalCodeFormDialog
+          draft={editingExternalCode}
+          isNew={isEditingNewExternalCode}
+          otherDrafts={externalCodeDrafts}
+          partnerOptions={(selected) => selectableOptions(partnerOptions.entries, selected)}
+          onClose={() => setEditingExternalCode(null)}
+          onConfirm={(next) => {
+            changeExternalCodeDrafts((drafts) => upsertExternalCodeDraft(drafts, next));
+            setEditingExternalCode(null);
           }}
         />
       )}

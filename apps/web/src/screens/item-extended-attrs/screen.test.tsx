@@ -13,7 +13,9 @@ import {
 import {
   buMapFixtures,
   businessUnitFixtures,
+  externalCodeFixtures,
   itemFixtures,
+  partnerFixtures,
   uomConversionFixtures,
   uomFixtures,
 } from './fixtures';
@@ -27,6 +29,9 @@ const BUSINESS_UNITS_PATH = '/mdm/business-units';
 const buMapsPath = (itemId = 1001): string => `${ITEMS_PATH}/${String(itemId)}/bu-item-maps`;
 const uomConversionsPath = (itemId = 1001): string =>
   `${ITEMS_PATH}/${String(itemId)}/uom-conversions`;
+const externalCodesPath = (itemId = 1001): string =>
+  `${ITEMS_PATH}/${String(itemId)}/external-codes`;
+const PARTNERS_PATH = '/mdm/partners';
 
 interface RecordedRequest {
   method: string;
@@ -177,14 +182,32 @@ const uomConversionSaveRoute = (items = uomConversionFixtures, itemId = 1001): S
   respond: () => jsonResponse({ items }),
 });
 
+/** 외부 코드 목록 — `ETag`도 쪽 나눔도 없다(계약 실측). */
+const externalCodesRoute = (items = externalCodeFixtures, itemId = 1001): StubRoute => ({
+  match: (request) => isGet(request, externalCodesPath(itemId)),
+  respond: () => jsonResponse({ items }),
+});
+
+const externalCodeSaveRoute = (items = externalCodeFixtures, itemId = 1001): StubRoute => ({
+  match: (request) => isPut(request, externalCodesPath(itemId)),
+  respond: () => jsonResponse({ items }),
+});
+
+const partnersRoute = (items = partnerFixtures): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
+});
+
 /** 부속 정보 탭을 그릴 때 필요한 스텁 한 벌. 하나만 빠져도 하네스가 던진다. */
 const subsidiaryRoutes = (): StubRoute[] => [
   itemListRoute(),
   itemDetailByIdRoute(),
   uomsRoute(),
   businessUnitsRoute(),
+  partnersRoute(),
   buMapsRoute(),
   uomConversionsRoute(),
+  externalCodesRoute(),
 ];
 
 /** UUID 형식인지. 고정 문자열 멱등 키를 쓰면 서버가 400으로 되돌린다(계약 실측). */
@@ -2126,6 +2149,327 @@ describe('ItemExtendedAttrsScreen — 하위 탭 사이의 초안 수명', () =>
     await user.click(screen.getByRole('tab', { name: '사업부 매핑' }));
     await waitFor(() => {
       expect(screen.getByText('등록된 사업부 매핑이 없습니다')).toBeInTheDocument();
+    });
+  });
+});
+
+/* ── 부속 정보 · 외부 코드 ─────────────────────────────────────────────────── */
+
+const findExternalCodePane = async (): Promise<HTMLElement> => {
+  const pane = await screen.findByRole('region', { name: '외부 코드' });
+
+  await waitFor(() => {
+    expect(
+      within(pane).queryByRole('status', { name: '외부 코드를 불러오는 중' }),
+    ).not.toBeInTheDocument();
+  });
+
+  return pane;
+};
+
+const externalCodeBodies = (requests: RecordedRequest[], itemId = 1001): unknown[] =>
+  requests
+    .filter(
+      (request) => request.method === 'PUT' && request.url.pathname === externalCodesPath(itemId),
+    )
+    .map((request) => JSON.parse(request.body) as unknown);
+
+const externalCodePuts = (requests: RecordedRequest[], itemId = 1001): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'PUT' && request.url.pathname === externalCodesPath(itemId),
+  );
+
+/** 외부 코드 한 줄을 창에서 만든다. 확인까지 누르면 표에만 반영된다. */
+const addExternalCodeRow = async (
+  user: ReturnType<typeof userEvent.setup>,
+  systemCode = 'SYN-EXT-09',
+) => {
+  await user.click(screen.getByRole('button', { name: '외부 코드 추가' }));
+
+  const dialog = screen.getByRole('dialog');
+
+  await user.type(within(dialog).getByLabelText('외부 시스템'), systemCode);
+  await user.type(within(dialog).getByLabelText('외부 품목코드'), 'SYN-EXT-ITEM-09');
+
+  await user.click(within(dialog).getByRole('button', { name: '확인' }));
+};
+
+describe('ItemExtendedAttrsScreen — 외부 코드 조회 시점', () => {
+  it('확장 속성 탭에서는 외부 코드와 거래처를 조회하지 않는다', async () => {
+    const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001');
+
+    await findOriginContent();
+
+    expect(requestsTo(requests, externalCodesPath())).toHaveLength(0);
+    expect(requestsTo(requests, PARTNERS_PATH)).toHaveLength(0);
+  });
+
+  it('부속 정보 탭에 들어가면 셋을 함께 조회한다', async () => {
+    const { requests } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+
+    await waitFor(() => {
+      expect(requestsTo(requests, externalCodesPath())).toHaveLength(1);
+    });
+    expect(requestsTo(requests, buMapsPath())).toHaveLength(1);
+    expect(requestsTo(requests, uomConversionsPath())).toHaveLength(1);
+  });
+});
+
+/** C08·C09·C10 · M15~M18 — 외부 코드의 전체 치환. 셋째 자원도 같은 규칙을 지킨다. */
+describe('ItemExtendedAttrsScreen — 외부 코드 치환 (M15~M18)', () => {
+  it('치환 본문에 서버 식별자와 itemId가 없다 (M15·M16)', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), externalCodeSaveRoute()],
+      '?item=1001&tab=sub&sub=ext',
+    );
+
+    const pane = await findExternalCodePane();
+    await addExternalCodeRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(externalCodeBodies(requests)).toHaveLength(1);
+    });
+
+    const body = externalCodeBodies(requests)[0] as { externalCodes: Record<string, unknown>[] };
+    expect(body.externalCodes).toHaveLength(3);
+
+    for (const code of body.externalCodes) {
+      expect(Object.keys(code).sort()).toEqual([
+        'externalItemCode',
+        'externalSystemCode',
+        'partnerId',
+      ]);
+    }
+    expect(externalCodePuts(requests)[0]?.body).not.toContain('itemId');
+  });
+
+  it('치환 저장이 1회이고 If-Match가 실리지 않는다 (M17)', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), externalCodeSaveRoute()],
+      '?item=1001&tab=sub&sub=ext',
+    );
+
+    const pane = await findExternalCodePane();
+    await addExternalCodeRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(externalCodePuts(requests)).toHaveLength(1);
+    });
+
+    const put = externalCodePuts(requests)[0]!;
+    expect(put.url.pathname).toBe('/mdm/items/1001/external-codes');
+    expect(put.headers.get('If-Match')).toBeNull();
+    expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
+  });
+
+  it('행을 전부 지우면 빈 배열을 보낸다 (M18)', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), externalCodeSaveRoute([])],
+      '?item=1001&tab=sub&sub=ext',
+    );
+
+    const pane = await findExternalCodePane();
+
+    for (const button of within(pane).getAllByRole('button', { name: /외부 코드 삭제$/ })) {
+      await user.click(button);
+    }
+    expect(within(pane).getByText('등록된 외부 코드가 없습니다')).toBeInTheDocument();
+
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(externalCodeBodies(requests)).toHaveLength(1);
+    });
+
+    expect(externalCodeBodies(requests)[0]).toEqual({ externalCodes: [] });
+  });
+
+  /* 계약이 「비우면 (전체)」를 널로 표현한다(A-7) — 빈 문자열을 그대로 보내면 형식 위반이다. */
+  it('거래처를 비운 줄은 널로 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), externalCodeSaveRoute()],
+      '?item=1001&tab=sub&sub=ext',
+    );
+
+    const pane = await findExternalCodePane();
+    await addExternalCodeRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(externalCodeBodies(requests)).toHaveLength(1);
+    });
+
+    const body = externalCodeBodies(requests)[0] as {
+      externalCodes: { externalSystemCode: string; partnerId: number | null }[];
+    };
+    const added = body.externalCodes.find((code) => code.externalSystemCode === 'SYN-EXT-09');
+    expect(added?.partnerId).toBeNull();
+  });
+
+  it('창의 확인만으로는 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), externalCodeSaveRoute()],
+      '?item=1001&tab=sub&sub=ext',
+    );
+
+    await findExternalCodePane();
+    await addExternalCodeRow(user);
+
+    expect(externalCodePuts(requests)).toHaveLength(0);
+  });
+
+  it('취소하면 만든 줄이 사라지고 저장이 다시 닫힌다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub&sub=ext');
+
+    const pane = await findExternalCodePane();
+    await addExternalCodeRow(user);
+    expect(within(pane).getAllByRole('row')).toHaveLength(4);
+
+    await user.click(within(pane).getByRole('button', { name: '취소' }));
+
+    expect(within(pane).getAllByRole('row')).toHaveLength(3);
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  it('성공하면 목록을 다시 조회한다', async () => {
+    const { requests, user } = renderScreen(
+      [...subsidiaryRoutes(), externalCodeSaveRoute()],
+      '?item=1001&tab=sub&sub=ext',
+    );
+
+    const pane = await findExternalCodePane();
+    await waitFor(() => {
+      expect(requestsTo(requests, externalCodesPath())).toHaveLength(1);
+    });
+
+    await addExternalCodeRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(
+        requestsTo(requests, externalCodesPath()).filter((r) => r.method === 'GET'),
+      ).toHaveLength(2);
+    });
+  });
+
+  it('403이 공통 배너 문구로 난다 (M26)', async () => {
+    const { user } = renderScreen(
+      [
+        ...subsidiaryRoutes(),
+        {
+          match: (request: Request) => isPut(request, externalCodesPath()),
+          respond: () => jsonResponse({ code: 'FORBIDDEN', message: '권한 없음' }, { status: 403 }),
+        },
+      ],
+      '?item=1001&tab=sub&sub=ext',
+    );
+
+    const pane = await findExternalCodePane();
+    await addExternalCodeRow(user);
+    await user.click(within(pane).getByRole('button', { name: '저장' }));
+
+    expect(await screen.findByText(FORBIDDEN_TEXT)).toBeInTheDocument();
+  });
+});
+
+/**
+ * M29 — **이 화면 최대의 중복 함정**을 화면 수준에서 잡는다.
+ * `COALESCE(partner_id,0)` 접기(A-7) — 거래처를 비운 두 줄은 서버에게 같은 짝이다.
+ */
+describe('ItemExtendedAttrsScreen — 외부 코드 중복 (M29)', () => {
+  it('거래처를 비운 같은 외부 시스템 줄은 표에 들어가지 않는다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub&sub=ext');
+
+    const pane = await findExternalCodePane();
+
+    /* 픽스처 5502가 거래처를 비운 `SYN-EXT-02`다 — 같은 코드를 거래처 없이 하나 더 만든다. */
+    await addExternalCodeRow(user, 'SYN-EXT-02');
+
+    expect(screen.getByText(/거래처를 비운 줄끼리도 같은 줄로 봅니다/)).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(within(pane).getAllByRole('row')).toHaveLength(3);
+  });
+
+  /* 반대 방향 — 거래처가 다르면 같은 외부 시스템이어도 만들 수 있다. */
+  it('거래처가 다르면 같은 외부 시스템 줄을 만들 수 있다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub&sub=ext');
+
+    const pane = await findExternalCodePane();
+
+    await user.click(screen.getByRole('button', { name: '외부 코드 추가' }));
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByLabelText('외부 시스템'), 'SYN-EXT-02');
+    await user.click(within(dialog).getByLabelText('거래처'));
+    await user.click(screen.getByRole('option', { name: 'SYN-PARTNER-01 · 합성 거래처 A' }));
+    await user.type(within(dialog).getByLabelText('외부 품목코드'), 'SYN-EXT-ITEM-09');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+
+    expect(within(pane).getAllByRole('row')).toHaveLength(4);
+  });
+});
+
+/**
+ * §5.4 — 세 초안이 **함께 산다.** 하위 탭 셋을 모두 고친 뒤 왕복해도 남아야 하고,
+ * 품목이 바뀌면 셋 다 비워져야 한다.
+ */
+describe('ItemExtendedAttrsScreen — 부속 초안 세 벌 (C12)', () => {
+  it('세 하위 탭의 초안이 동시에 살아 있다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub');
+
+    await findBuMapPane();
+    await addBuMapRow(user);
+
+    await openUomConversionTab(user);
+    await addUomConversionRow(user);
+
+    await user.click(screen.getByRole('tab', { name: '외부 코드' }));
+    const extPane = await findExternalCodePane();
+    await addExternalCodeRow(user);
+
+    expect(within(extPane).getAllByRole('row')).toHaveLength(4);
+
+    await user.click(screen.getByRole('tab', { name: '단위 환산' }));
+    expect(within(await findUomConversionPane()).getAllByRole('row')).toHaveLength(4);
+
+    await user.click(screen.getByRole('tab', { name: '사업부 매핑' }));
+    expect(buMapRowCount(await findBuMapPane())).toBe(3);
+  });
+
+  it('확장 속성 탭을 다녀와도 세 초안이 남는다', async () => {
+    const { user } = renderScreen(subsidiaryRoutes(), '?item=1001&tab=sub&sub=ext');
+
+    await findExternalCodePane();
+    await addExternalCodeRow(user);
+
+    await user.click(screen.getByRole('tab', { name: '확장 속성' }));
+    await findAttrsPane();
+    await user.click(screen.getByRole('tab', { name: '부속 정보' }));
+
+    expect(within(await findExternalCodePane()).getAllByRole('row')).toHaveLength(4);
+  });
+
+  it('품목을 바꾸면 세 초안이 함께 비워진다 (M08)', async () => {
+    const { user } = renderScreen(
+      [
+        ...subsidiaryRoutes(),
+        buMapsRoute([], 1002),
+        uomConversionsRoute([], 1002),
+        externalCodesRoute([], 1002),
+      ],
+      '?item=1001&tab=sub&sub=ext',
+    );
+
+    await findExternalCodePane();
+    await addExternalCodeRow(user);
+
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-02' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('등록된 외부 코드가 없습니다')).toBeInTheDocument();
     });
   });
 });

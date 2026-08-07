@@ -6,6 +6,8 @@ type Uom = components['schemas']['Uom'];
 type BusinessUnit = components['schemas']['BusinessUnit'];
 type ItemBuItemMap = components['schemas']['ItemBuItemMap'];
 type ItemUomConversion = components['schemas']['ItemUomConversion'];
+type Partner = components['schemas']['Partner'];
+type ItemExternalCode = components['schemas']['ItemExternalCode'];
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -192,5 +194,48 @@ export const uomConversionFixtures: ItemUomConversion[] = [
     conversionRate: 0.00012345,
     effectiveFrom: '2026-02-01',
     effectiveTo: null,
+  },
+];
+
+/**
+ * 거래처 2건. 둘째는 **미사용**이다 —
+ * 지금 고른 값이 미사용이면 선택지에서 빼지 않고 표식을 붙이는지 본다.
+ */
+export const partnerFixtures: Partner[] = [
+  {
+    partnerId: 6001,
+    partnerCode: 'SYN-PARTNER-01',
+    partnerName: '합성 거래처 A',
+    isActive: true,
+  },
+  {
+    partnerId: 6002,
+    partnerCode: 'SYN-PARTNER-02',
+    partnerName: '합성 거래처 B',
+    isActive: false,
+  },
+];
+
+/**
+ * 외부 코드 2건.
+ *
+ * - 5501 — 거래처를 고른 줄
+ * - 5502 — 거래처가 **널**이다(전체). `COALESCE(partner_id,0)` 접기의 대상이라
+ *   거래처를 비운 줄을 하나 더 만들면 서버에게 같은 짝이 된다(A-7)
+ */
+export const externalCodeFixtures: ItemExternalCode[] = [
+  {
+    itemExternalCodeId: 5501,
+    itemId: 1001,
+    externalSystemCode: 'SYN-EXT-01',
+    partnerId: 6001,
+    externalItemCode: 'SYN-EXT-ITEM-01',
+  },
+  {
+    itemExternalCodeId: 5502,
+    itemId: 1001,
+    externalSystemCode: 'SYN-EXT-02',
+    partnerId: null,
+    externalItemCode: 'SYN-EXT-ITEM-02',
   },
 ];

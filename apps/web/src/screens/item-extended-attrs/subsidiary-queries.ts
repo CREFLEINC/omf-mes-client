@@ -6,6 +6,7 @@ import { runRequest } from '../../patterns/request';
 
 type ItemBuItemMapListResponse = components['schemas']['ItemBuItemMapListResponse'];
 type ItemUomConversionListResponse = components['schemas']['ItemUomConversionListResponse'];
+type ItemExternalCodeListResponse = components['schemas']['ItemExternalCodeListResponse'];
 
 /**
  * 부속 행 세 종류의 조회와 캐시 키.
@@ -35,6 +36,7 @@ type ItemUomConversionListResponse = components['schemas']['ItemUomConversionLis
 export const subsidiaryKeys = {
   buMaps: (itemId: number) => ['item-extended-attrs-bu-maps', itemId] as const,
   uomConversions: (itemId: number) => ['item-extended-attrs-uom-conversions', itemId] as const,
+  externalCodes: (itemId: number) => ['item-extended-attrs-external-codes', itemId] as const,
 };
 
 /**
@@ -87,6 +89,31 @@ export const useUomConversions = (
 
       return runRequest(() =>
         client.GET('/mdm/items/{itemId}/uom-conversions', { params: { path: { itemId } } }),
+      );
+    },
+  });
+};
+
+/**
+ * 외부 코드 목록. 사업부 매핑·단위 환산과 **같은 조건에서 켜고 끈다** —
+ * 세 부속 자원은 함께 살아야 한다(§5.4).
+ */
+export const useExternalCodes = (
+  itemId: number | null,
+  enabled: boolean,
+): UseQueryResult<ItemExternalCodeListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: subsidiaryKeys.externalCodes(itemId ?? 0),
+    enabled: enabled && itemId !== null,
+    queryFn: () => {
+      if (itemId === null) {
+        throw new Error('품목을 고르기 전에는 외부 코드를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/items/{itemId}/external-codes', { params: { path: { itemId } } }),
       );
     },
   });
