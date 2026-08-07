@@ -1,16 +1,25 @@
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-import { resolveSpecPath } from './resolve-spec.mjs';
+import { writeMergedSpec } from '../merge-spec.mjs';
+import { resolveSpecPaths } from './resolve-spec.mjs';
 
-const specPath = resolveSpecPath();
+const specPaths = resolveSpecPaths();
+// 서빙과 같은 병합본을 검사한다 — 병합이 깨지면 여기서 먼저 드러나야 한다.
+const mergedSpecPath = writeMergedSpec(specPaths);
 const port = process.env.MOCK_PORT ?? '4010';
 const baseUrl = `http://127.0.0.1:${port}`;
 
-// 대표 경로 3종 — 리소스 패턴별 하나씩 (마스터 형 · 버전 마스터 형 · 연계 실행).
-const REPRESENTATIVE_PATHS = ['/mdm/warehouses', '/planning/routings', '/integration/messages'];
+// 대표 경로 4종 — 리소스 패턴별 하나씩 (마스터 형 · 버전 마스터 형 · 연계 실행) + 계약 벌마다 하나.
+// `/logistics/asns` 는 두 번째 계약(자재창고)에서 온 경로다 — 병합본이 서빙되고 있음을 여기서 확인한다.
+const REPRESENTATIVE_PATHS = [
+  '/mdm/warehouses',
+  '/planning/routings',
+  '/integration/messages',
+  '/logistics/asns',
+];
 
-const spec = JSON.parse(readFileSync(specPath, 'utf-8'));
+const spec = JSON.parse(readFileSync(mergedSpecPath, 'utf-8'));
 
 const resolveParameter = (parameter) =>
   '$ref' in parameter
@@ -40,7 +49,7 @@ const requiredQueryString = (path) => {
 };
 
 const startPrism = () =>
-  spawn('pnpm', ['exec', 'prism', 'mock', specPath, '--host', '127.0.0.1', '--port', port], {
+  spawn('pnpm', ['exec', 'prism', 'mock', mergedSpecPath, '--host', '127.0.0.1', '--port', port], {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 

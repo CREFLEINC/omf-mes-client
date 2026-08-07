@@ -5890,6 +5890,5515 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/logistics/putaway-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 적치 규칙 목록
+         * @description 근거: W-06-14 · 공유계약 G-8
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 창고 */
+                    warehouseId?: number;
+                    /** @description 품목 */
+                    itemId?: number;
+                    locationId?: number;
+                    /** @description 기본은 사용 중인 것만 */
+                    includeInactive?: boolean;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["PutawayRule"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 적치 규칙 등록
+         * @description 같은 품목·창고·위치 조합이 이미 있으면 400 이다. 근거: W-06-14 · 공유계약 A-1
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PutawayRuleCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PutawayRule"];
+                    };
+                };
+                /** @description 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/putaway-rules/{putawayRuleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                putawayRuleId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 적치 규칙 상세
+         * @description 근거: W-06-14 · 공유계약 B-4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    putawayRuleId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PutawayRuleDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 적치 규칙 수정
+         * @description 근거: W-06-14 · 공유계약 B-1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    putawayRuleId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PutawayRuleUpdate"];
+                };
+            };
+            responses: {
+                /** @description 수정됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PutawayRule"];
+                    };
+                };
+                /** @description 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/putaway-rules/{putawayRuleId}:deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                putawayRuleId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 적치 규칙 사용 중지
+         * @description 물리 삭제는 제공하지 않는다. 중지하면 그 품목에 권장 위치가 없어지므로 적치가 확인 후 통과로 바뀐다. 근거: M-01-05 §5-2-1 · 공유계약 B-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    putawayRuleId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 중지됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PutawayRule"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 업무 규칙 위반은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/putaway-rules/{putawayRuleId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                putawayRuleId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 적치 규칙 다시 사용
+         * @description 중지한 규칙을 되살린다. 같은 (품목, 창고, 위치, 우선순위)로 이미 활성인 규칙이 있으면 400 이다 — 물리 모델에 유일 제약이 없어 계약이 막는다. 근거: W-06-14 §5-2·§5-7 · 공유계약 B-12
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    putawayRuleId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PutawayRule"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 업무 규칙 위반은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/putaway-rules/uncovered-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 적치 규칙이 없는 품목
+         * @description 그 창고에 입고 이력이 있는데 활성 규칙이 없는 품목이다. 규칙이 없으면 현장이 위치 검증 없이 통과하므로(M-01-05 §5-2-1 둘째 갈래) 마스터 화면이 「비어 있음」을 함께 보인다 — 등록된 것만 보이면 비어 있다는 사실이 어디에도 드러나지 않는다. 근거: W-06-14 §5-1 · 공유계약 G-12
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 창고를 고르지 않으면 세는 범위가 정해지지 않는다 */
+                    warehouseId: number;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["UncoveredItem"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * P/O 목록
+         * @description 근거: W-01-09 §5-1 · W-01-11
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 공급사 */
+                    supplierId?: number;
+                    /** @description 공장 */
+                    plantId?: number;
+                    /** @description 상태 */
+                    statusCode?: string;
+                    /** @description 이 품목이 라인에 있는 P/O 만 */
+                    itemId?: number;
+                    /** @description 발주일 시작 */
+                    orderDateFrom?: string;
+                    /** @description 발주일 종료 */
+                    orderDateTo?: string;
+                    /** @description 아직 입하가 끝나지 않은 건만 */
+                    openOnly?: boolean;
+                    /** @description 발주번호 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["PurchaseOrder"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * P/O 등록
+         * @description 헤더와 라인을 한 트랜잭션으로 저장한다. 근거: W-01-11 §5-1
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchaseOrderDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/purchase-orders/{purchaseOrderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchaseOrderId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * P/O 상세
+         * @description 헤더와 라인을 함께 내린다. 근거: W-01-09 §5-1 · W-01-03
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    purchaseOrderId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchaseOrderDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * P/O 헤더 수정
+         * @description 작성중 상태에서만 허용한다. 근거: 공유계약 B-1 · G-1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    purchaseOrderId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderUpdate"];
+                };
+            };
+            responses: {
+                /** @description 수정됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchaseOrder"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/purchase-orders/{purchaseOrderId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchaseOrderId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * P/O 라인 목록
+         * @description 근거: W-01-11 §4-B
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    purchaseOrderId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 라인 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchaseOrderLineListResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * P/O 라인 치환
+         * @description 라인 배열을 통째로 치환한다. 이미 입하가 붙은 라인은 지울 수 없다. 근거: W-01-11 §5-1 · 공유계약 A-5
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    purchaseOrderId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["PurchaseOrderLineUpsert"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description 치환됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchaseOrderLineListResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/purchase-orders/{purchaseOrderId}:request-approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchaseOrderId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * P/O 승인 요청
+         * @description 등록이 끝난 P/O 에 승인을 건다. 근거: W-01-11 §5-1 · 공유계약 J-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    purchaseOrderId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestCreate"];
+                };
+            };
+            responses: {
+                /** @description 요청됨 */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestRef"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/asns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 입하 예정 목록
+         * @description 기간·공급사·상태·품목으로 거른다. 기본 정렬은 도착 예정일 오름차순. 근거: W-01-09 §5-1
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 도착 예정일 시작 */
+                    expectedArrivalDateFrom?: string;
+                    /** @description 도착 예정일 종료 */
+                    expectedArrivalDateTo?: string;
+                    supplierId?: number;
+                    plantId?: number;
+                    statusCode?: string;
+                    /** @description 이 품목이 라인에 있는 건만 */
+                    itemId?: number;
+                    /** @description 입하예정번호·거래명세서번호 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["Asn"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/asns/{asnId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asnId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 입하 예정 상세
+         * @description 근거: W-01-09 §5-1
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    asnId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AsnDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/asns/{asnId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asnId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 입하 예정 라인
+         * @description 근거: W-01-09 §3
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    asnId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 라인 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AsnLineListResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/inbound-receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 입하 목록
+         * @description 근거: W-01-03 · M-01-06
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 입하일 시작 */
+                    receiptDateFrom?: string;
+                    /** @description 입하일 종료 */
+                    receiptDateTo?: string;
+                    supplierId?: number;
+                    plantId?: number;
+                    statusCode?: string;
+                    /** @description 라벨이 발행된 건을 뺄지. 근거: P-01-01 §5-1 */
+                    labelIssued?: boolean;
+                    /** @description 입하번호·거래명세서번호 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["InboundReceipt"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 입하 등록
+         * @description 입하·라인·자재 LOT 이 한 트랜잭션으로 만들어진다. 근거: M-01-01 §5-4 · 공유계약 B-8
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InboundReceiptCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboundReceiptDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/inbound-receipts:split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 초과 입하 분리 등록
+         * @description 정량분과 초과분을 한 트랜잭션으로 등록한다. 근거: W-01-03 §5-1 · §5-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InboundReceiptSplitRequest"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboundReceiptSplitResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/inbound-receipts/{inboundReceiptId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inboundReceiptId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 입하 상세
+         * @description 근거: W-01-03 · M-01-06 · P-01-01
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    inboundReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboundReceiptDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 입하 헤더 수정
+         * @description 작성중 상태에서만 허용한다. 근거: 공유계약 B-1 · G-1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    inboundReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InboundReceiptUpdate"];
+                };
+            };
+            responses: {
+                /** @description 수정됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboundReceipt"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/inbound-receipts/{inboundReceiptId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inboundReceiptId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 입하 라인 목록
+         * @description 근거: W-01-03 §3
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    inboundReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 라인 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboundReceiptLineListResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 입하 라인 치환
+         * @description LOT 이 이미 만들어진 라인은 지울 수 없다. 근거: 공유계약 A-5 · G-1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    inboundReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["InboundReceiptLineUpsert"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description 치환됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboundReceiptLineListResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/inbound-receipt-lines/{inboundReceiptLineId}/variances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inboundReceiptLineId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 입하 차이 목록
+         * @description 근거: M-01-06 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    inboundReceiptLineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 차이 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboundVarianceListResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 입하 차이 등록
+         * @description 한 번 등록하면 고칠 수 없다 — 수정·삭제 경로를 두지 않는다. 근거: M-01-06 §5-1
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    inboundReceiptLineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InboundVarianceCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InboundVariance"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 입고 목록
+         * @description 근거: W-01-10 §3
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 입고일 시작 */
+                    receiptDateFrom?: string;
+                    /** @description 입고일 종료 */
+                    receiptDateTo?: string;
+                    warehouseId?: number;
+                    plantId?: number;
+                    receiptTypeCode?: string;
+                    statusCode?: string;
+                    /** @description 입고번호 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["GoodsReceipt"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 입고 처리
+         * @description 입고 전표 생성과 전기가 한 번에 일어난다. LOT 상태 전이·수불 원장·잔액·ERP 송신 적재가 같은 트랜잭션이며 ERP 실제 전송만 밖이다. 근거: W-01-10 §5-4 · 공유계약 B-8
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GoodsReceiptCreate"];
+                };
+            };
+            responses: {
+                /** @description 처리됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GoodsReceiptDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-receipts/{goodsReceiptId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goodsReceiptId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 입고 상세
+         * @description 근거: W-01-10 §3
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    goodsReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GoodsReceiptDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-receipts/{goodsReceiptId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goodsReceiptId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 입고 라인 목록
+         * @description 근거: W-01-10 §5-6
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    goodsReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 라인 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GoodsReceiptLineListResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/putaway-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 적치 지시 목록
+         * @description 담당자에게 할당된 지시를 내린다. 근거: M-01-05 §3 · M-01-07 §3
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 비우면 요청자 본인 */
+                    assignedWorkerId?: number;
+                    warehouseId?: number;
+                    statusCode?: string;
+                    lotId?: number;
+                    /** @description 임시 위치에 적재된 건만. 정위치 이동 대상을 찾는다 */
+                    temporaryOnly?: boolean;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["PutawayTask"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/putaway-tasks/{putawayTaskId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                putawayTaskId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 적치 지시 상세
+         * @description 근거: M-01-05 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    putawayTaskId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PutawayTask"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/putaway-tasks/{putawayTaskId}:complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                putawayTaskId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 적치 완료
+         * @description 권장 위치가 있는데 다른 위치로 적치하면 400 으로 막는다. 권장 위치가 없는 품목은 confirmedNoRule 을 참으로 보내면 통과하며, 이때도 실제 위치는 반드시 남는다. 근거: M-01-05 §5-2-1
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path: {
+                    putawayTaskId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PutawayTaskComplete"];
+                };
+            };
+            responses: {
+                /** @description 완료됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PutawayTask"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/putaway-tasks/{putawayTaskId}:complete-temporary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                putawayTaskId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 임시 위치 적재
+         * @description 정상 적치와 상태가 구분된다. 사유 코드와 비고 중 적어도 하나는 있어야 한다. 근거: M-01-07 §5-5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path: {
+                    putawayTaskId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PutawayTaskCompleteTemporary"];
+                };
+            };
+            responses: {
+                /** @description 적재됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PutawayTask"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/material-issue-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 자재 출고 요청 목록
+         * @description 01 화면은 읽기만 한다. 근거: M-01-08 §3
+         */
+        get: {
+            parameters: {
+                query?: {
+                    workOrderId?: number;
+                    statusCode?: string;
+                    /** @description 필요 시각 시작 */
+                    requiredAtFrom?: string;
+                    /** @description 필요 시각 종료 */
+                    requiredAtTo?: string;
+                    /** @description 요청번호 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["MaterialIssueRequest"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/material-issue-requests/{materialIssueRequestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                materialIssueRequestId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 자재 출고 요청 상세
+         * @description 근거: M-01-08 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    materialIssueRequestId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MaterialIssueRequestDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/picking-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 피킹 지시 목록
+         * @description 근거: M-01-08 §3
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 비우면 요청자 본인 */
+                    assignedWorkerId?: number;
+                    warehouseId?: number;
+                    statusCode?: string;
+                    sourceDocumentId?: number;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["PickingOrder"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/picking-orders/{pickingOrderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pickingOrderId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 피킹 지시 상세
+         * @description 보류 중인 LOT 의 라인은 held 로 표시해 내린다 — 화면이 별도 호출로 세지 않는다. 근거: M-01-08 §5-8
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    pickingOrderId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PickingOrderDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/picking-orders/{pickingOrderId}/lines/{pickingLineId}:pick": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pickingOrderId: number;
+                pickingLineId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 라인 피킹
+         * @description 라인 하나를 피킹한다. 건별로 저장하므로 중간에 통신이 끊겨도 이미 피킹한 건은 남는다. 근거: M-01-08 §5-8 · 공유계약 C-3
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path: {
+                    pickingOrderId: number;
+                    pickingLineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PickingLinePick"];
+                };
+            };
+            responses: {
+                /** @description 기록됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PickingLine"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 출고 목록
+         * @description 유형으로 걸러 일반 출고·반품·기타 출고를 나눠 본다. 근거: W-01-05 · W-01-06 · P-01-02
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 출고일 시작 */
+                    issuedAtFrom?: string;
+                    /** @description 출고일 종료 */
+                    issuedAtTo?: string;
+                    /** @description 출고 유형 */
+                    issueTypeCode?: string;
+                    sourceWarehouseId?: number;
+                    statusCode?: string;
+                    reasonCode?: string;
+                    /** @description 반품 대상 공급사. 근거: W-01-05 §3 */
+                    supplierId?: number;
+                    /** @description 출고번호 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["GoodsIssue"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 출고 등록
+         * @description postImmediately 가 참이면 등록과 전기가 같은 트랜잭션이다 — 화면이 한 버튼인 경우다. 승인을 먼저 받는 기타 출고는 거짓으로 보낸다. 근거: M-01-08 · W-01-05 · W-01-06
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GoodsIssueCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GoodsIssueDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-issues/{goodsIssueId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goodsIssueId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 출고 상세
+         * @description 근거: W-01-05 · W-01-06 · P-01-02 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    goodsIssueId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GoodsIssueDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-issues/{goodsIssueId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goodsIssueId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 출고 라인 목록
+         * @description 근거: P-01-02 §5-6
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    goodsIssueId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 라인 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GoodsIssueLineListResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 출고 라인 치환
+         * @description 전기된 전표의 라인은 바꿀 수 없다. 근거: 공유계약 A-5 · G-1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    goodsIssueId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["GoodsIssueLineUpsert"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description 치환됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GoodsIssueLineListResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-issues/{goodsIssueId}:request-approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goodsIssueId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 기타 출고 품의 상신
+         * @description 결재선이 없으면 400 이다 — 상신할 곳이 없는 품의를 만들지 않는다. 근거: W-01-06 §5-7 · 공유계약 J-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    goodsIssueId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestCreate"];
+                };
+            };
+            responses: {
+                /** @description 상신됨 */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestRef"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-issues/{goodsIssueId}:post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goodsIssueId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 출고 전기
+         * @description 재고가 움직이는 순간이다. 승인이 필요한 전표는 승인이 끝나기 전에는 400 이다. 근거: W-01-06 §5-5 · 공유계약 B-8
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    goodsIssueId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PostRequest"];
+                };
+            };
+            responses: {
+                /** @description 전기됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GoodsIssue"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/shopfloor-receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 생산창고 입고 목록
+         * @description 근거: M-01-09 §3
+         */
+        get: {
+            parameters: {
+                query?: {
+                    workOrderId?: number;
+                    goodsIssueId?: number;
+                    statusCode?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["ShopfloorReceipt"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 생산창고 입고 확정
+         * @description 화면이 「입고 확정」 한 버튼이므로 등록이 곧 확정이다. 근거: M-01-09 §5-6
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ShopfloorReceiptCreate"];
+                };
+            };
+            responses: {
+                /** @description 확정됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShopfloorReceiptDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/shopfloor-receipts/{shopfloorReceiptId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shopfloorReceiptId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 생산창고 입고 상세
+         * @description 근거: M-01-09 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    shopfloorReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShopfloorReceiptDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/stock-transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 재고 이동 목록
+         * @description inTransitOnly 로 아직 도착하지 않은 건을 찾는다 — 이어하기 목록이 이것이다. 근거: M-01-10 §5-6
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 반출됐으나 도착하지 않은 건만 */
+                    inTransitOnly?: boolean;
+                    fromWarehouseId?: number;
+                    toWarehouseId?: number;
+                    transferTypeCode?: string;
+                    statusCode?: string;
+                    /** @description 요청일 시작 */
+                    requestedAtFrom?: string;
+                    /** @description 요청일 종료 */
+                    requestedAtTo?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["StockTransfer"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 반출 등록
+         * @description 반출 스캔이 곧 이동 문서를 만드는 행위이므로 생성과 반출이 한 오퍼레이션이다. 근거: M-01-10 §5-6
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StockTransferCreate"];
+                };
+            };
+            responses: {
+                /** @description 반출됨 */
+                201: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StockTransferDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/stock-transfers/{stockTransferId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stockTransferId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 재고 이동 상세
+         * @description 근거: M-01-10 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    stockTransferId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StockTransferDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/stock-transfers/{stockTransferId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stockTransferId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 이동 라인 목록
+         * @description 근거: M-01-10 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    stockTransferId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 라인 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StockTransferLineListResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 이동 라인 치환
+         * @description 반출이 끝난 라인은 바꿀 수 없다. 근거: 공유계약 A-5 · G-1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    stockTransferId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["StockTransferLineUpsert"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description 치환됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StockTransferLineListResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/stock-transfers/{stockTransferId}:arrive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stockTransferId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 도착 확정
+         * @description 반출한 수량 이하만 받을 수 있다. 근거: M-01-10 §5-6
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path: {
+                    stockTransferId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StockTransferArrive"];
+                };
+            };
+            responses: {
+                /** @description 도착됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StockTransferDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 실사 목록
+         * @description 근거: W-01-04 §3 · M-01-11 §3
+         */
+        get: {
+            parameters: {
+                query?: {
+                    warehouseId?: number;
+                    /** @description 계획일 시작 */
+                    plannedDateFrom?: string;
+                    /** @description 계획일 종료 */
+                    plannedDateTo?: string;
+                    countTypeCode?: string;
+                    statusCode?: string;
+                    /** @description 진행 중인 실사만. 근거: M-01-11 §5-6 */
+                    inProgressOnly?: boolean;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["InventoryCount"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 실사 개시
+         * @description 라인은 서버가 장부에서 만든다 — 화면이 대상을 열거하지 않는다. 근거: W-01-04 §5-7
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InventoryCountCreate"];
+                };
+            };
+            responses: {
+                /** @description 개시됨 */
+                201: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryCountDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/counts/{inventoryCountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inventoryCountId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 실사 상세
+         * @description 요약 4칸을 서버가 계산해 함께 내린다 — 화면이 전체 라인을 받아 세지 않는다. 근거: W-01-04 §5-6
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    inventoryCountId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryCountDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/counts/{inventoryCountId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inventoryCountId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 실사 라인 목록
+         * @description 창고 하나의 라인이 수천 건이라 페이지네이션이 필요하다. 근거: W-01-04 §5-6 · 공유계약 B-7
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 한 위치만 */
+                    locationId?: number;
+                    itemId?: number;
+                    /** @description 미실사만 */
+                    uncountedOnly?: boolean;
+                    /** @description 차이가 있는 라인만 */
+                    varianceOnly?: boolean;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path: {
+                    inventoryCountId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 라인 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryCountLineListResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 한 위치의 실사 라인 치환
+         * @description 위치 단위로 끊어 치환한다 — 화면이 「이 위치 완료」로 끊기 때문이다. 마감된 실사는 400 이다. 근거: M-01-11 §5-6 · 공유계약 C-3
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path: {
+                    inventoryCountId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InventoryCountLineReplace"];
+                };
+            };
+            responses: {
+                /** @description 치환됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryCountLineListResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/counts/{inventoryCountId}:close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inventoryCountId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 실사 마감
+         * @description 미실사가 0 이고 차이가 없거나 모두 조정된 뒤에만 통과한다. 조건을 못 채우면 400 으로 무엇이 남았는지 돌려준다. 근거: W-01-04 §5-5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    inventoryCountId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InventoryCountClose"];
+                };
+            };
+            responses: {
+                /** @description 마감됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryCountDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 재고 조정 목록
+         * @description 근거: W-01-12 §3
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 이 실사에서 나온 조정만 */
+                    inventoryCountId?: number;
+                    statusCode?: string;
+                    reasonCode?: string;
+                    /** @description 전기일 시작 */
+                    adjustedAtFrom?: string;
+                    /** @description 전기일 종료 */
+                    adjustedAtTo?: string;
+                    /** @description 승인 대기 탭. 근거: W-01-12 §5-6 */
+                    pendingApprovalOnly?: boolean;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["InventoryAdjustment"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 재고 조정 등록
+         * @description 실사에서 불러오거나 직접 입력한다. 근거: W-01-12 §5-6
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InventoryAdjustmentCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryAdjustmentDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/adjustments/{inventoryAdjustmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inventoryAdjustmentId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 재고 조정 상세
+         * @description 근거: W-01-12 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    inventoryAdjustmentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryAdjustmentDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/adjustments/{inventoryAdjustmentId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inventoryAdjustmentId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 조정 라인 목록
+         * @description 근거: W-01-12 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    inventoryAdjustmentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 라인 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryAdjustmentLineListResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 조정 라인 치환
+         * @description 전기된 조정은 바꿀 수 없다. 근거: 공유계약 A-5 · G-1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    inventoryAdjustmentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["InventoryAdjustmentLineUpsert"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description 치환됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryAdjustmentLineListResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/adjustments/{inventoryAdjustmentId}:request-approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inventoryAdjustmentId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 재고 조정 상신
+         * @description 근거: W-01-12 §5-6 · 공유계약 J-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    inventoryAdjustmentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestCreate"];
+                };
+            };
+            responses: {
+                /** @description 상신됨 */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestRef"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/adjustments/{inventoryAdjustmentId}:post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inventoryAdjustmentId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 재고 조정 전기
+         * @description 재고가 움직이는 순간이다. 승인이 필요한데 끝나지 않았으면 400 이다. 근거: W-01-12 §5-6
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    inventoryAdjustmentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PostRequest"];
+                };
+            };
+            responses: {
+                /** @description 전기됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryAdjustment"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 재고 잔액 조회
+         * @description warehouseId · itemId · lotId 중 적어도 하나는 있어야 한다 — 셋 다 비면 400 이다. 관리웹 조회는 창고를 고르고 들어오지만 현장에서 LOT 을 스캔해 위치를 찾는 경로는 창고를 모른 채 들어온다. groupBy 로 묶는 축을 고르되 소유 구분은 어떤 축에서도 합치지 않는다. 근거: W-01-07 §5-1 · M-01-04 · 공유계약 L-7
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 관리웹 조회에서는 화면이 필수로 둔다 */
+                    warehouseId?: number;
+                    /** @description 묶는 축 */
+                    groupBy?: "ITEM" | "LOT" | "LOCATION";
+                    itemId?: number;
+                    lotId?: number;
+                    locationId?: number;
+                    qualityStatusCode?: string;
+                    inventoryStatusCode?: string;
+                    ownershipTypeCode?: string;
+                    /** @description 잔액이 0 인 줄도 내릴지 */
+                    includeZero?: boolean;
+                    /** @description 정렬. 지정된 열만 받는다 */
+                    sort?: "itemCode" | "lotNo" | "locationCode" | "onHandQty" | "availableQty";
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 묶인 잔액 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["InventoryBalance"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 수불 이력 조회
+         * @description 영업일 범위가 필수다 — 이 테이블은 영업일로 나뉘어 저장되므로 범위 없이는 전체를 훑는다. 근거: W-01-07 §5-4 · 공유계약 L-3
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 영업일 시작. 필수 */
+                    businessDateFrom: string;
+                    /** @description 영업일 종료. 필수 */
+                    businessDateTo: string;
+                    itemId?: number;
+                    lotId?: number;
+                    warehouseId?: number;
+                    locationId?: number;
+                    transactionTypeCode?: string;
+                    sourceDocumentTypeCode?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 수불 이력 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["InventoryTransaction"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/transactions/{businessDate}/{inventoryTransactionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 식별자의 일부다 */
+                businessDate: string;
+                inventoryTransactionId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 수불 거래 상세
+         * @description 영업일이 식별자의 일부라 경로에 함께 온다. 근거: 02-URL동작규약 §3-1
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 식별자의 일부다 */
+                    businessDate: string;
+                    inventoryTransactionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InventoryTransactionDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/reservations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 재고 예약 조회
+         * @description 조회만 제공한다 — 예약은 출고 요청과 피킹의 결과로 서버가 걸고 푼다. 근거: M-01-08 §5-5
+         */
+        get: {
+            parameters: {
+                query?: {
+                    itemId?: number;
+                    lotId?: number;
+                    warehouseId?: number;
+                    sourceDocumentId?: number;
+                    statusCode?: string;
+                    /** @description 아직 소진되지 않은 예약만 */
+                    openOnly?: boolean;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["InventoryReservation"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/handling-units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 취급 단위 목록
+         * @description 근거: M-01-10 §5-6 · P-01-02
+         */
+        get: {
+            parameters: {
+                query?: {
+                    warehouseId?: number;
+                    locationId?: number;
+                    handlingUnitTypeCode?: string;
+                    statusCode?: string;
+                    /** @description 취급 단위 번호 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["HandlingUnit"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 취급 단위 등록
+         * @description 근거: M-01-10 §5-2
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["HandlingUnitCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HandlingUnitDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/handling-units/{handlingUnitId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                handlingUnitId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 취급 단위 상세
+         * @description 근거: P-01-02 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    handlingUnitId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HandlingUnitDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/handling-units/{handlingUnitId}/contents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                handlingUnitId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 취급 단위 구성 목록
+         * @description 근거: M-01-10 §5-2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    handlingUnitId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 구성 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HandlingUnitContentListResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 취급 단위 구성 치환
+         * @description 근거: 공유계약 A-5
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    handlingUnitId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["HandlingUnitContentUpsert"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description 치환됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HandlingUnitContentListResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trace/lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * LOT 목록
+         * @description 근거: M-01-02 · P-01-01 · W-01-07
+         */
+        get: {
+            parameters: {
+                query?: {
+                    itemId?: number;
+                    plantId?: number;
+                    lotTypeCode?: string;
+                    statusCode?: string;
+                    /** @description 보류 중인 LOT 만 */
+                    heldOnly?: boolean;
+                    /** @description 유효기간 시작 */
+                    expiryDateFrom?: string;
+                    /** @description 유효기간 종료 */
+                    expiryDateTo?: string;
+                    /** @description LOT 번호·외부 식별자 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["Lot"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * LOT 등록
+         * @description 스캔한 값이 그대로 번호가 된다. 같은 공장에 같은 번호가 있으면 400 이다. 근거: M-01-02 §5-2
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LotCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LotDetailResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trace/lots/{lotId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * LOT 상세
+         * @description 외부 식별자와 해제되지 않은 보류를 함께 내린다. 근거: M-01-04 · W-01-07
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    lotId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LotDetailResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * LOT 수정
+         * @description 이미 재고가 움직인 LOT 은 수량을 바꿀 수 없다. 근거: 공유계약 B-1 · G-1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    lotId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LotUpdate"];
+                };
+            };
+            responses: {
+                /** @description 수정됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Lot"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trace/lots/{lotId}/external-identifiers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * LOT 외부 식별자 목록
+         * @description 근거: M-01-02 §4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    lotId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 외부 식별자 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LotExternalIdentifierListResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * LOT 외부 식별자 치환
+         * @description 근거: 공유계약 A-5
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    lotId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["LotExternalIdentifierUpsert"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description 치환됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LotExternalIdentifierListResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trace/lots/{lotId}/holds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * LOT 보류 목록
+         * @description 읽기만 제공한다 — 보류를 걸고 푸는 것은 품질 도메인의 화면이다. 근거: W-01-07 §4-B · M-01-08 §5-8
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 해제되지 않은 것만 */
+                    activeOnly?: boolean;
+                };
+                header?: never;
+                path: {
+                    lotId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 보류 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LotHoldListResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/inbound-receipts/{inboundReceiptId}:request-cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inboundReceiptId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 입하 취소 요청
+         * @description 취소 요청 상신. 문서 상태를 취소요청으로 옮기고 승인 요청을 만든다.
+         *
+         *     ⚠ 취소는 반드시 승인을 탄다 — 물류 문서 테이블에 취소 시각·취소자·취소 사유를 담을 컬럼이 하나도 없어(실측 0건), 승인 기록이 그 이력을 대신한다. 승인 없는 취소 경로를 두면 흔적 없는 취소가 생긴다(공유계약 A-11 보강).
+         *
+         *     다음이면 400 이다 — 후속 문서·재고 사용이 있다(code=SUCCESSOR_EXISTS) · 이미 취소됐다 · 취소 요청이 이미 진행 중이다 · 취소 결재선이 없다. 후속 목록은 GET /logistics/document-progress/{documentTypeCode}/{documentId} 가 내려 준다.
+         *
+         *     근거: W-01-13 §5-1·§5-4·§5-5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    inboundReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestCreate"];
+                };
+            };
+            responses: {
+                /** @description 상신됨 */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestRef"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/inbound-receipts/{inboundReceiptId}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inboundReceiptId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 입하 취소 실행
+         * @description 취소 실행. 승인이 끝난 요청만 받는다.
+         *
+         *     ⭐ 서버가 후속 유무를 다시 판정한다 — 승인을 기다리는 사이에 후속이 생겼을 수 있고, 자동 실행이면 그것을 못 본다. 재판정에 걸리면 400(code=SUCCESSOR_EXISTS)이고 승인은 그대로 유효하다 — 새 요청을 다시 올리지 않는다(공유계약 J-8).
+         *
+         *     전기된 문서는 원장에 역트랜잭션을 만든다. 전기 전이었으면 상태만 바뀌고 원장에는 아무것도 생기지 않는다. 역처리가 재고 잔액을 음수로 만들면 400 이다.
+         *
+         *     승인 전이면 400 이다 — :post 가 승인 전이면 400 인 것과 같은 형태다. 근거: W-01-13 §5-1·§5-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    inboundReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 취소됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CancelResult"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-receipts/{goodsReceiptId}:request-cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goodsReceiptId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 입고 취소 요청
+         * @description 취소 요청 상신. 문서 상태를 취소요청으로 옮기고 승인 요청을 만든다.
+         *
+         *     ⚠ 취소는 반드시 승인을 탄다 — 물류 문서 테이블에 취소 시각·취소자·취소 사유를 담을 컬럼이 하나도 없어(실측 0건), 승인 기록이 그 이력을 대신한다. 승인 없는 취소 경로를 두면 흔적 없는 취소가 생긴다(공유계약 A-11 보강).
+         *
+         *     다음이면 400 이다 — 후속 문서·재고 사용이 있다(code=SUCCESSOR_EXISTS) · 이미 취소됐다 · 취소 요청이 이미 진행 중이다 · 취소 결재선이 없다. 후속 목록은 GET /logistics/document-progress/{documentTypeCode}/{documentId} 가 내려 준다.
+         *
+         *     근거: W-01-13 §5-1·§5-4·§5-5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    goodsReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestCreate"];
+                };
+            };
+            responses: {
+                /** @description 상신됨 */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestRef"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-receipts/{goodsReceiptId}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goodsReceiptId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 입고 취소 실행
+         * @description 취소 실행. 승인이 끝난 요청만 받는다.
+         *
+         *     ⭐ 서버가 후속 유무를 다시 판정한다 — 승인을 기다리는 사이에 후속이 생겼을 수 있고, 자동 실행이면 그것을 못 본다. 재판정에 걸리면 400(code=SUCCESSOR_EXISTS)이고 승인은 그대로 유효하다 — 새 요청을 다시 올리지 않는다(공유계약 J-8).
+         *
+         *     전기된 문서는 원장에 역트랜잭션을 만든다. 전기 전이었으면 상태만 바뀌고 원장에는 아무것도 생기지 않는다. 역처리가 재고 잔액을 음수로 만들면 400 이다.
+         *
+         *     승인 전이면 400 이다 — :post 가 승인 전이면 400 인 것과 같은 형태다. 근거: W-01-13 §5-1·§5-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    goodsReceiptId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 취소됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CancelResult"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-issues/{goodsIssueId}:request-cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goodsIssueId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 출고 취소 요청
+         * @description 취소 요청 상신. 문서 상태를 취소요청으로 옮기고 승인 요청을 만든다.
+         *
+         *     ⚠ 취소는 반드시 승인을 탄다 — 물류 문서 테이블에 취소 시각·취소자·취소 사유를 담을 컬럼이 하나도 없어(실측 0건), 승인 기록이 그 이력을 대신한다. 승인 없는 취소 경로를 두면 흔적 없는 취소가 생긴다(공유계약 A-11 보강).
+         *
+         *     다음이면 400 이다 — 후속 문서·재고 사용이 있다(code=SUCCESSOR_EXISTS) · 이미 취소됐다 · 취소 요청이 이미 진행 중이다 · 취소 결재선이 없다. 후속 목록은 GET /logistics/document-progress/{documentTypeCode}/{documentId} 가 내려 준다.
+         *
+         *     근거: W-01-13 §5-1·§5-4·§5-5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    goodsIssueId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestCreate"];
+                };
+            };
+            responses: {
+                /** @description 상신됨 */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestRef"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/goods-issues/{goodsIssueId}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goodsIssueId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 출고 취소 실행
+         * @description 취소 실행. 승인이 끝난 요청만 받는다.
+         *
+         *     ⭐ 서버가 후속 유무를 다시 판정한다 — 승인을 기다리는 사이에 후속이 생겼을 수 있고, 자동 실행이면 그것을 못 본다. 재판정에 걸리면 400(code=SUCCESSOR_EXISTS)이고 승인은 그대로 유효하다 — 새 요청을 다시 올리지 않는다(공유계약 J-8).
+         *
+         *     전기된 문서는 원장에 역트랜잭션을 만든다. 전기 전이었으면 상태만 바뀌고 원장에는 아무것도 생기지 않는다. 역처리가 재고 잔액을 음수로 만들면 400 이다.
+         *
+         *     승인 전이면 400 이다 — :post 가 승인 전이면 400 인 것과 같은 형태다. 근거: W-01-13 §5-1·§5-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    goodsIssueId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 취소됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CancelResult"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/document-progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 물류 문서 진행현황
+         * @description 문서 유형마다 테이블이 다른데 화면은 한 목록으로 본다 — 서버가 한 형태로 맞춰 내린다.
+         *
+         *     ⭐ successorCount·cancellable 을 서버가 판정해 내린다. 원천 참조가 다형이라(source_document_type_code + source_document_id) 유형↔테이블 규약이 아직 없는데, 프런트가 「입고 → 출고·이동·투입」 관계표를 하드코딩하면 유형이 늘 때마다 취소 판정이 조용히 틀린다(공유계약 A-10 보강).
+         *
+         *     ⚠ 이 화면이 덮는 것은 6유형이다 — 발주·입하·입고·출고요청·피킹·이동요청. 외주 2문서는 상태 컬럼 자체가 없고 출하·생산품 입고는 다른 도메인이다. 근거: W-01-13 §5-2·§5-3
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 유형을 고르지 않으면 한 형태로 맞출 대상이 정해지지 않는다 */
+                    documentTypeCode: string;
+                    statusCode?: string;
+                    /** @description 문서 일자 시작 */
+                    documentDateFrom?: string;
+                    /** @description 문서 일자 종료 */
+                    documentDateTo?: string;
+                    itemId?: number;
+                    lotId?: number;
+                    warehouseId?: number;
+                    /** @description 참이면 지금 취소할 수 있는 것만 */
+                    cancellableOnly?: boolean;
+                    /** @description 문서번호 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["DocumentProgress"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+                /** @description 검증 실패 — 덮지 않는 문서 유형이면 여기로 온다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/document-progress/{documentTypeCode}/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentTypeCode: string;
+                documentId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 물류 문서 진행현황 상세
+         * @description 처리 경과와 후속 목록을 함께 내린다. 후속이 있으면 그것을 역순으로 먼저 취소해야 이 문서를 취소할 수 있다. 근거: W-01-13 §3·§5-3
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    documentTypeCode: string;
+                    documentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentProgressDetail"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8290,6 +13799,3347 @@ export interface components {
              */
             isActive: boolean;
         };
+        /** @description 적치 규칙. 품목을 어느 창고 어느 위치에 두는지 정한다. 권장 위치가 있는데 다른 곳에 적치하면 적치 완료가 막힌다 — 규칙이 없는 품목만 확인 후 통과한다. 근거: M-01-05 §5-2-1 */
+        PutawayRule: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            putawayRuleId: number;
+            /**
+             * Format: int64
+             * @description FK → mdm.item
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @description FK → mdm.warehouse
+             * @example 1001
+             */
+            warehouseId: number;
+            /**
+             * Format: int64
+             * @description 비우면 창고 수준 규칙이다 — 세부 위치는 창고 안 정책이 정한다
+             * @example 1001
+             */
+            locationId?: number | null;
+            /**
+             * @description 이 위치가 받을 수 있는 수량. 0 은 넣을 수 없다
+             * @example 500
+             */
+            capacityQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 작을수록 먼저 권장한다
+             * @default 100
+             * @example 100
+             */
+            priorityNo: number;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+            /**
+             * @default true
+             * @example true
+             */
+            isActive: boolean;
+        };
+        /** @description 적치 규칙 등록 요청. isActive 는 받지 않는다 — 신규는 항상 사용 중이다. */
+        PutawayRuleCreate: {
+            /**
+             * Format: int64
+             * @description FK → mdm.item
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @description FK → mdm.warehouse
+             * @example 1001
+             */
+            warehouseId: number;
+            /**
+             * Format: int64
+             * @description 비우면 창고 수준 규칙이다 — 세부 위치는 창고 안 정책이 정한다
+             * @example 1001
+             */
+            locationId?: number | null;
+            /**
+             * @description 이 위치가 받을 수 있는 수량. 0 은 넣을 수 없다
+             * @example 500
+             */
+            capacityQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 작을수록 먼저 권장한다
+             * @default 100
+             * @example 100
+             */
+            priorityNo: number;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+        };
+        /** @description 적치 규칙 수정. 품목과 창고는 신규만 — 바꾸면 다른 규칙이 된다. isActive 는 사용 중지 액션으로만 바꾼다. 낙관적 잠금은 공유계약 B-1. */
+        PutawayRuleUpdate: {
+            /**
+             * Format: int64
+             * @description 비우면 창고 수준 규칙이다 — 세부 위치는 창고 안 정책이 정한다
+             * @example 1001
+             */
+            locationId?: number | null;
+            /**
+             * @description 이 위치가 받을 수 있는 수량. 0 은 넣을 수 없다
+             * @example 500
+             */
+            capacityQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 작을수록 먼저 권장한다
+             * @default 100
+             * @example 100
+             */
+            priorityNo: number;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+        };
+        PutawayRuleDetailResponse: {
+            putawayRule: components["schemas"]["PutawayRule"];
+            editability: components["schemas"]["Editability"];
+        };
+        /** @description 적치 규칙이 없는 품목 한 건. 화면은 건수를 먼저 보이고 펼치면 목록이 온다. */
+        UncoveredItem: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /** @example RM-1001 */
+            itemCode: string;
+            /** @example 수지A */
+            itemName: string;
+            /**
+             * Format: date-time
+             * @description 이 창고에 마지막으로 입고된 시각. 오래된 것부터 채울지 판단하는 근거다
+             * @example 2026-08-06T09:14:00+09:00
+             */
+            lastReceivedAt?: string | null;
+        };
+        /** @description P/O 라인. */
+        PurchaseOrderLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            purchaseOrderLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            purchaseOrderId: number;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @description FK → mdm.item
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * @description 0 보다 커야 한다
+             * @example 100
+             */
+            orderedQty: number;
+            /**
+             * Format: int64
+             * @description FK → mdm.uom
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 누적 입하 수량. 서버가 갱신한다
+             * @example 0
+             */
+            readonly receivedQty: number;
+            /**
+             * @description 초과 허용치. 이 값을 넘으면 초과 입하 분리로 간다
+             * @example 5
+             */
+            toleranceOverQty: number;
+            /**
+             * @description 부족 허용치
+             * @example 5
+             */
+            toleranceUnderQty: number;
+        };
+        /** @description 라인 전체 치환 항목. purchaseOrderLineId 가 없으면 신규 행, 있으면 갱신, 요청에서 빠진 기존 행은 삭제한다. lineNo 는 배열 순서로 서버가 다시 부여한다. 근거: W-01-11 §5-1 · 공유계약 A-5 */
+        PurchaseOrderLineUpsert: {
+            /**
+             * Format: int64
+             * @description 없으면 신규 행
+             * @example 1001
+             */
+            purchaseOrderLineId?: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /** @example 100 */
+            orderedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /** @example 5 */
+            toleranceOverQty?: number;
+            /** @example 5 */
+            toleranceUnderQty?: number;
+        };
+        /** @description P/O 헤더. 근거: W-01-11 · W-01-09 · W-01-03 */
+        PurchaseOrder: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            purchaseOrderId: number;
+            /**
+             * @description 전사 유일
+             * @example PO-2026-000123
+             */
+            purchaseOrderNo: string;
+            /**
+             * @description ERP 발주번호. MES 에서 먼저 만든 P/O 는 비어 있다
+             * @example EPO-2026-000123
+             */
+            erpPurchaseOrderNo?: string | null;
+            /**
+             * Format: int64
+             * @description FK → mdm.partner
+             * @example 1001
+             */
+            supplierId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            businessUnitId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            orderDate: string;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            expectedReceiptDate?: string | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example DRAFT
+             */
+            statusCode: string;
+            /**
+             * Format: int64
+             * @description 승인 요청 식별자. 승인 진행 상태를 읽는 경로는 별도 계약에서 온다
+             * @example 1001
+             */
+            approvalRequestId?: number | null;
+        };
+        /** @description P/O 등록 요청. 헤더와 라인을 한 트랜잭션으로 저장한다 — 헤더만 남고 라인이 없는 P/O 는 만들지 않는다. purchaseOrderNo 와 statusCode 는 서버가 정한다. 근거: W-01-11 §5-1 */
+        PurchaseOrderCreate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            supplierId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            businessUnitId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            orderDate: string;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            expectedReceiptDate?: string | null;
+            /**
+             * Format: int64
+             * @description 초과 입하 분리에서 넘어온 경우 승계된 입하 라인. 근거: W-01-03 §5-1
+             * @example 1001
+             */
+            sourceInboundReceiptLineId?: number | null;
+            /** @description 최소 1행 */
+            lines: components["schemas"]["PurchaseOrderLineUpsert"][];
+        };
+        /** @description P/O 헤더 수정. 작성중 상태에서만 허용한다 — 확정 후에는 400 STATE_LOCKED. 근거: W-01-11 · 공유계약 G-1 */
+        PurchaseOrderUpdate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            supplierId: number;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            orderDate: string;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            expectedReceiptDate?: string | null;
+        };
+        PurchaseOrderDetailResponse: {
+            purchaseOrder: components["schemas"]["PurchaseOrder"];
+            lines: components["schemas"]["PurchaseOrderLine"][];
+        };
+        PurchaseOrderLineListResponse: {
+            items: components["schemas"]["PurchaseOrderLine"][];
+        };
+        /** @description 승인 요청. 사유는 비울 수 없다 — 데이터가 NOT NULL 로 강제하고, 결재함 목록에서 이 문장이 요약을 겸한다(approval_request 에 업무 값이 reason 하나뿐이다). 승인 진행 상태를 읽고 결재하는 경로는 app-공통 파일이 갖는다. 근거: W-01-11 §5-6 · W-01-06 §5-7 · W-01-13 §5-5 · 공유계약 J-4 · A-12 보강 */
+        ApprovalRequestCreate: {
+            /**
+             * @description approval_request.reason 이 NOT NULL 이다. 취소 요청에서는 이 사유가 곧 취소 이력이 된다 — 문서에 취소 흔적을 담을 컬럼이 없다
+             * @example 초과 입하분 정산용 발주
+             */
+            reason: string;
+        };
+        ApprovalRequestRef: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            approvalRequestId: number;
+        };
+        /** @description 입하 예정 라인. ERP 수신본이라 화면이 고치지 않는다. */
+        AsnLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            asnLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            asnId: number;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            purchaseOrderLineId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /** @example 100 */
+            expectedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 공급사가 부여한 LOT 번호
+             * @example SL-2026-0001
+             */
+            supplierLotNo?: string | null;
+        };
+        /** @description 입하 예정. ERP 에서 받은 수신본이라 등록·수정·삭제가 없다. 근거: W-01-09 §5-3 */
+        Asn: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            asnId: number;
+            /** @example ASN-2026-000045 */
+            asnNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            supplierId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: date
+             * @description 기간 필터와 기본 정렬의 축. 근거: W-01-09 §4
+             * @example 2026-08-06
+             */
+            expectedArrivalDate: string;
+            /**
+             * @description 거래명세서 번호
+             * @example DN-2026-000045
+             */
+            deliveryNoteNo?: string | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example PLANNED
+             */
+            statusCode: string;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+        };
+        AsnDetailResponse: {
+            asn: components["schemas"]["Asn"];
+            lines: components["schemas"]["AsnLine"][];
+        };
+        AsnLineListResponse: {
+            items: components["schemas"]["AsnLine"][];
+        };
+        /** @description 입하 라인. */
+        InboundReceiptLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inboundReceiptLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inboundReceiptId: number;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @description P/O 없이 도착한 예외 입하는 비어 있다
+             * @example 1001
+             */
+            purchaseOrderLineId?: number | null;
+            /**
+             * Format: int64
+             * @description 입하 예정 근거
+             * @example 1001
+             */
+            asnLineId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /** @example 100 */
+            receivedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 포장 수량. 0 은 넣을 수 없다
+             * @example 12
+             */
+            packageCount?: number | null;
+            /** @example SL-2026-0001 */
+            supplierLotNo?: string | null;
+            /**
+             * @description 공급사 LOT 이 부착되지 않아 대체 LOT 을 만든 건인지. 근거: M-01-01 §5-1
+             * @default false
+             * @example false
+             */
+            supplierLotMissing: boolean;
+            /**
+             * @description supplierLotMissing 이 참일 때의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example NO_LABEL
+             */
+            substituteLotReasonCode?: string | null;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            manufacturedDate?: string | null;
+            /**
+             * Format: date
+             * @description 제조일보다 앞설 수 없다
+             * @example 2027-08-06
+             */
+            expiryDate?: string | null;
+            /**
+             * @description 이 라인이 수입검사 대상인지. 입하 라인 단위로 갈린다. 근거: M-01-01 §5-4
+             * @example true
+             */
+            inspectionRequired: boolean;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example DRAFT
+             */
+            statusCode: string;
+            /**
+             * Format: int64
+             * @description 이 라인으로 만들어진 자재 LOT. 등록과 같은 트랜잭션에서 생긴다. 근거: M-01-01 §5-4
+             * @example 1001
+             */
+            lotId?: number | null;
+        };
+        /** @description 라인 전체 치환 항목. inboundReceiptLineId 가 없으면 신규 행, 있으면 갱신, 요청에서 빠진 기존 행은 삭제한다. 이미 LOT 이 만들어진 라인은 삭제할 수 없다 — 400 STATE_LOCKED. 근거: M-01-01 §5-4 · 공유계약 A-5 */
+        InboundReceiptLineUpsert: {
+            /**
+             * Format: int64
+             * @description 없으면 신규 행
+             * @example 1001
+             */
+            inboundReceiptLineId?: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            purchaseOrderLineId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            asnLineId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /** @example 100 */
+            receivedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /** @example 12 */
+            packageCount?: number | null;
+            /** @example SL-2026-0001 */
+            supplierLotNo?: string | null;
+            /**
+             * @default false
+             * @example false
+             */
+            supplierLotMissing: boolean;
+            /**
+             * @description supplierLotMissing 이 참일 때 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example NO_LABEL
+             */
+            substituteLotReasonCode?: string | null;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            manufacturedDate?: string | null;
+            /**
+             * Format: date
+             * @example 2027-08-06
+             */
+            expiryDate?: string | null;
+        };
+        /** @description 입하 등록 헤더. 근거: M-01-01 · W-01-03 · M-01-06 */
+        InboundReceipt: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inboundReceiptId: number;
+            /** @example IR-2026-000210 */
+            inboundReceiptNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            supplierId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            receiptDatetime: string;
+            /** @example DN-2026-000045 */
+            deliveryNoteNo?: string | null;
+            /**
+             * @description 차량 번호
+             * @example V-0001
+             */
+            vehicleNo?: string | null;
+            /**
+             * Format: int64
+             * @description 입하장(도크)
+             * @example 1001
+             */
+            dockLocationId?: number | null;
+            /**
+             * @description P/O 없이 도착한 예외 입하의 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example NO_PO
+             */
+            exceptionTypeCode?: string | null;
+            /**
+             * @description 예외 입하 사유
+             * @example 비고 문자열
+             */
+            exceptionReason?: string | null;
+            /**
+             * Format: int64
+             * @description 예외 입하 승인 요청
+             * @example 1001
+             */
+            approvalRequestId?: number | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example DRAFT
+             */
+            statusCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            receivedBy?: number | null;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+        };
+        /** @description 입하 등록. 헤더·라인·자재 LOT 이 한 트랜잭션으로 만들어진다 — 입하는 저장됐는데 LOT 이 없으면 이후 흐름이 통째로 막힌다. 근거: M-01-01 §5-4 */
+        InboundReceiptCreate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            supplierId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            receiptDatetime: string;
+            /** @example DN-2026-000045 */
+            deliveryNoteNo?: string | null;
+            /** @example V-0001 */
+            vehicleNo?: string | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            dockLocationId?: number | null;
+            /**
+             * @description P/O 를 고르지 않고 진행할 때 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example NO_PO
+             */
+            exceptionTypeCode?: string | null;
+            /**
+             * @description 예외 입하 사유. exceptionTypeCode 가 있으면 필수
+             * @example 비고 문자열
+             */
+            exceptionReason?: string | null;
+            /**
+             * Format: int64
+             * @description 촬영한 거래명세서 첨부 식별자. 첨부 계약은 이 파일이 갖지 않는다
+             * @example 1001
+             */
+            deliveryNoteAttachmentId?: number | null;
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /** @description 최소 1행 */
+            lines: components["schemas"]["InboundReceiptLineUpsert"][];
+        };
+        /** @description 입하 헤더 수정. 작성중 상태에서만 허용한다. 근거: 공유계약 G-1 */
+        InboundReceiptUpdate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            supplierId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            receiptDatetime: string;
+            /** @example DN-2026-000045 */
+            deliveryNoteNo?: string | null;
+            /** @example V-0001 */
+            vehicleNo?: string | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            dockLocationId?: number | null;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+        };
+        InboundReceiptDetailResponse: {
+            inboundReceipt: components["schemas"]["InboundReceipt"];
+            lines: components["schemas"]["InboundReceiptLine"][];
+        };
+        InboundReceiptLineListResponse: {
+            items: components["schemas"]["InboundReceiptLine"][];
+        };
+        /** @description 분리 등록의 한쪽. 영업일과 발생 시각은 바깥에서 한 번만 받는다. */
+        InboundReceiptSplitPart: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            supplierId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            receiptDatetime: string;
+            /** @example DN-2026-000045 */
+            deliveryNoteNo?: string | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            dockLocationId?: number | null;
+            /**
+             * @description 초과분 쪽에서 쓰는 예외 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example OVER_DELIVERY
+             */
+            exceptionTypeCode?: string | null;
+            /**
+             * @description 초과 사유. exceptionTypeCode 가 있으면 필수
+             * @example 비고 문자열
+             */
+            exceptionReason?: string | null;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+            /** @description 최소 1행 */
+            lines: components["schemas"]["InboundReceiptLineUpsert"][];
+        };
+        /** @description 초과 입하 분리. 정량분과 초과분을 한 트랜잭션으로 등록한다. mode 로 어느 쪽을 저장할지 고른다 — 세 갈래가 모두 화면의 버튼이다. 근거: W-01-03 §5-1 · §5-4 */
+        InboundReceiptSplitRequest: {
+            /**
+             * @description BOTH=분리 등록 · NORMAL_ONLY=정량분만 저장 · EXCESS_ONLY=초과분만 저장
+             * @example BOTH
+             * @enum {string}
+             */
+            mode: "BOTH" | "NORMAL_ONLY" | "EXCESS_ONLY";
+            /** @description 정량분 입하. mode 가 EXCESS_ONLY 가 아니면 필수 */
+            normal?: components["schemas"]["InboundReceiptSplitPart"];
+            /** @description 초과분 입하. mode 가 NORMAL_ONLY 가 아니면 필수 */
+            excess?: components["schemas"]["InboundReceiptSplitPart"];
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+        };
+        /** @description 만들어진 입하 건. mode 에 따라 1건 또는 2건이다. */
+        InboundReceiptSplitResponse: {
+            created: components["schemas"]["InboundReceipt"][];
+        };
+        /** @description 입하 차이 기록. 한 번 등록하면 고치지 않는다. 근거: M-01-06 §5-1 */
+        InboundVariance: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inboundVarianceId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inboundReceiptLineId: number;
+            /**
+             * @description 차이 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example SHORTAGE
+             */
+            varianceTypeCode: string;
+            /** @example 5 */
+            varianceQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example DAMAGED
+             */
+            reasonCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            approvalRequestId?: number | null;
+        };
+        /** @description 입하 차이 등록. 등록 후 수정·삭제 경로를 두지 않는다 — 화면이 한 번 등록하면 고칠 수 없다고 정했다. 근거: M-01-06 §5-1 */
+        InboundVarianceCreate: {
+            /**
+             * @description 차이 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example SHORTAGE
+             */
+            varianceTypeCode: string;
+            /** @example 5 */
+            varianceQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example DAMAGED
+             */
+            reasonCode: string;
+        };
+        InboundVarianceListResponse: {
+            items: components["schemas"]["InboundVariance"][];
+        };
+        /** @description 입고 라인. 한 입고 전표에 여러 LOT 이 붙는다. 근거: W-01-10 §5-6 */
+        GoodsReceiptLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsReceiptLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsReceiptId: number;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inboundReceiptLineId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 100 */
+            receiptQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 품질 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example RELEASED
+             */
+            qualityStatusCode: string;
+            /**
+             * @description 재고 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example AVAILABLE
+             */
+            inventoryStatusCode: string;
+            /**
+             * Format: int64
+             * @description 적치 목적지. 라인마다 다를 수 있다. 근거: W-01-10 §5-6
+             * @example 1001
+             */
+            destinationLocationId: number;
+            /**
+             * Format: int64
+             * @description 전기로 생긴 원장 라인
+             * @example 1001
+             */
+            inventoryTransactionLineId?: number | null;
+        };
+        /** @description 입고 라인 등록 항목. */
+        GoodsReceiptLineCreate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inboundReceiptLineId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 100 */
+            receiptQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 품질 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example RELEASED
+             */
+            qualityStatusCode: string;
+            /**
+             * @description 재고 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example AVAILABLE
+             */
+            inventoryStatusCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            destinationLocationId: number;
+        };
+        /** @description 입고 전표. 근거: W-01-10 */
+        GoodsReceipt: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsReceiptId: number;
+            /** @example GR-2026-000310 */
+            goodsReceiptNo: string;
+            /**
+             * @description 입고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example PURCHASE
+             */
+            receiptTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: int64
+             * @description 입고 창고. 품목유형으로 제한하지 않고 건별로 고른다. 근거: W-01-10 §5-2
+             * @example 1001
+             */
+            warehouseId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            receiptDatetime: string;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example POSTED
+             */
+            statusCode: string;
+            /**
+             * @description 원천 문서의 유형. 유형 코드와 대응 테이블의 규약이 함께 와야 화면이 원천을 표시할 수 있다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example INBOUND_RECEIPT
+             */
+            sourceDocumentTypeCode: string;
+            /**
+             * Format: int64
+             * @description 원천 문서 식별자. 유형에 따라 가리키는 테이블이 다르다
+             * @example 1001
+             */
+            sourceDocumentId: number;
+            /**
+             * @description 반품 입고 등의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example RETURN
+             */
+            reasonCode?: string | null;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+            /**
+             * @description ERP 입고 전표 메시지가 송신 대기열에 적재됐는지. 적재이지 전송이 아니다 — 확정 직후 ERP 에서 조회하면 아직 없을 수 있다. 근거: W-01-10 §5-4
+             * @example true
+             */
+            erpMessageQueued?: boolean;
+        };
+        /** @description 입고 처리. 생성과 전기가 같은 순간이다 — 화면이 「입고 처리」 한 버튼이므로 오퍼레이션도 하나다. 입고 전표·LOT 상태 전이·수불 원장·잔액·ERP 송신 적재가 한 트랜잭션에서 일어나며, ERP 실제 전송만 트랜잭션 밖이다. 근거: W-01-10 §5-4 · 공유계약 B-8 */
+        GoodsReceiptCreate: {
+            /**
+             * @description 입고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example PURCHASE
+             */
+            receiptTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            receiptDatetime: string;
+            /**
+             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example INBOUND_RECEIPT
+             */
+            sourceDocumentTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceDocumentId: number;
+            /**
+             * @description 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example RETURN
+             */
+            reasonCode?: string | null;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /** @description 최소 1행 */
+            lines: components["schemas"]["GoodsReceiptLineCreate"][];
+        };
+        GoodsReceiptDetailResponse: {
+            goodsReceipt: components["schemas"]["GoodsReceipt"];
+            lines: components["schemas"]["GoodsReceiptLine"][];
+        };
+        GoodsReceiptLineListResponse: {
+            items: components["schemas"]["GoodsReceiptLine"][];
+        };
+        /** @description 적치 지시. 근거: M-01-05 · M-01-07 */
+        PutawayTask: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            putawayTaskId: number;
+            /** @example PT-2026-000512 */
+            putawayTaskNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsReceiptLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 100 */
+            taskQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: int64
+             * @description 지시가 시작되는 위치
+             * @example 1001
+             */
+            fromLocationId: number;
+            /**
+             * Format: int64
+             * @description 권장 적치 위치. 비어 있으면 이 품목에 관리 위치가 없다는 뜻이다. 근거: M-01-05 §5-2
+             * @example 1001
+             */
+            recommendedLocationId?: number | null;
+            /**
+             * Format: int64
+             * @description 권장 위치를 산출한 규칙
+             * @example 1001
+             */
+            appliedPutawayRuleId?: number | null;
+            /**
+             * Format: int64
+             * @description 실제 적치된 위치. 완료되면 반드시 채워진다
+             * @example 1001
+             */
+            actualLocationId?: number | null;
+            /**
+             * @description 이 지시가 속한 창고의 위치 관리 수준. 위치 스캔을 요구할지가 이 값으로 갈린다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example CELL
+             */
+            warehouseManagementLevelCode?: string;
+            /**
+             * @default 100
+             * @example 100
+             */
+            priorityNo: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            assignedWorkerId?: number | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example ASSIGNED
+             */
+            statusCode: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            completedAt?: string | null;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+        };
+        /** @description 적치 완료. 권장 위치가 있는데 다른 위치로 적치하면 400 으로 막는다. 권장 위치가 없는 품목은 확인 후 통과하며, 이때도 실제 적치 위치는 반드시 남는다. 근거: M-01-05 §5-2-1 */
+        PutawayTaskComplete: {
+            /**
+             * Format: int64
+             * @description 실제 적치한 위치
+             * @example 1001
+             */
+            actualLocationId: number;
+            /**
+             * @description 권장 위치가 없는 품목을 확인하고 진행했는지. 권장 위치가 없을 때만 참으로 보낸다
+             * @default false
+             * @example false
+             */
+            confirmedNoRule: boolean;
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+        };
+        /** @description 임시 위치 적재. 정상 적치와 상태가 구분되어야 정위치 이동이 남은 건을 찾을 수 있다. 사유 코드와 비고 중 적어도 하나는 있어야 한다. 근거: M-01-07 §5-2 · §5-5 */
+        PutawayTaskCompleteTemporary: {
+            /**
+             * Format: int64
+             * @description 임시로 둔 위치
+             * @example 1001
+             */
+            actualLocationId: number;
+            /**
+             * @description 임시 적재 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example NO_SPACE
+             */
+            reasonCode?: string | null;
+            /**
+             * @description 사유 코드를 고를 수 없을 때의 자유 입력
+             * @example 비고 문자열
+             */
+            remarks?: string | null;
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+        };
+        /** @description 자재 출고 요청 라인. */
+        MaterialIssueRequestLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            materialIssueRequestLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            materialIssueRequestId: number;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            bomComponentId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /** @example 100 */
+            requestedQty: number;
+            /**
+             * @description 누적 출고 수량. 요청 수량을 넘지 않는다
+             * @example 0
+             */
+            readonly issuedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+        };
+        /** @description 자재 출고 요청. 01 화면은 읽기만 한다 — 요청을 만드는 것은 생산 도메인이다. 근거: M-01-08 */
+        MaterialIssueRequest: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            materialIssueRequestId: number;
+            /** @example MIR-2026-000088 */
+            issueRequestNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            workOrderId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            destinationLocationId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            requiredAt?: string | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example OPEN
+             */
+            statusCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            requestedBy?: number | null;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+        };
+        MaterialIssueRequestDetailResponse: {
+            materialIssueRequest: components["schemas"]["MaterialIssueRequest"];
+            lines: components["schemas"]["MaterialIssueRequestLine"][];
+        };
+        /** @description 피킹 라인. 계획 수량을 넘겨 피킹할 수 없다. 근거: M-01-08 */
+        PickingLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            pickingLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            pickingOrderId: number;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId: number;
+            /** @example 100 */
+            plannedQty: number;
+            /** @example 0 */
+            pickedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryReservationId?: number | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example OPEN
+             */
+            statusCode: string;
+            /**
+             * @description 이 라인의 LOT 이 보류 중인지. 참이면 화면이 라인을 비활성으로 두고 사유를 보여준다. 근거: M-01-08 §5-8
+             * @example false
+             */
+            held?: boolean;
+            /**
+             * @description held 가 참일 때의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example QUALITY_HOLD
+             */
+            holdReasonCode?: string | null;
+        };
+        /** @description 피킹 지시. 근거: M-01-08 */
+        PickingOrder: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            pickingOrderId: number;
+            /** @example PK-2026-000131 */
+            pickingOrderNo: string;
+            /**
+             * @description 피킹 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example MATERIAL
+             */
+            pickingTypeCode: string;
+            /**
+             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example MATERIAL_ISSUE_REQUEST
+             */
+            sourceDocumentTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceDocumentId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId: number;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example OPEN
+             */
+            statusCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            assignedWorkerId?: number | null;
+        };
+        PickingOrderDetailResponse: {
+            pickingOrder: components["schemas"]["PickingOrder"];
+            lines: components["schemas"]["PickingLine"][];
+        };
+        /** @description 라인 하나를 피킹한다. 건별로 저장하고 마지막에 출고를 확정한다 — 중간에 통신이 끊겨도 이미 피킹한 건은 남는다. 보류 중인 LOT 이면 400 으로 막는다. 근거: M-01-08 §5-8 · 공유계약 C-3 */
+        PickingLinePick: {
+            /**
+             * @description 계획 수량 이하
+             * @example 100
+             */
+            pickedQty: number;
+            /**
+             * Format: int64
+             * @description 스캔한 LOT. 계획과 다르면 400
+             * @example 1001
+             */
+            lotId?: number | null;
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+        };
+        /** @description 출고 라인. */
+        GoodsIssueLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsIssueLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsIssueId: number;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            pickingLineId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 100 */
+            issueQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceLocationId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryTransactionLineId?: number | null;
+        };
+        /** @description 라인 전체 치환 항목. goodsIssueLineId 가 없으면 신규 행, 있으면 갱신, 요청에서 빠진 기존 행은 삭제한다. 전기된 전표의 라인은 바꿀 수 없다 — 400 STATE_LOCKED. 근거: 공유계약 A-5 · G-1 */
+        GoodsIssueLineUpsert: {
+            /**
+             * Format: int64
+             * @description 없으면 신규 행
+             * @example 1001
+             */
+            goodsIssueLineId?: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            pickingLineId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /**
+             * @description 보유 수량 이하. 근거: W-01-05 §5-7
+             * @example 100
+             */
+            issueQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceLocationId: number;
+        };
+        /** @description 출고 전표. 일반 출고·공급사 반품·기타 출고가 경로를 나누지 않고 issueTypeCode 로 갈린다 — 경로를 나누면 같은 전표가 세 벌로 갈라지고 조회가 세 곳을 봐야 한다. 근거: M-01-08 · W-01-05 · W-01-06 */
+        GoodsIssue: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsIssueId: number;
+            /** @example GI-2026-000402 */
+            goodsIssueNo: string;
+            /**
+             * @description 출고 유형. 일반 출고·반품·기타 출고를 가른다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example MATERIAL
+             */
+            issueTypeCode: string;
+            /**
+             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example PICKING_ORDER
+             */
+            sourceDocumentTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceDocumentId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceWarehouseId: number;
+            /**
+             * @description 도착지 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example WORK_ORDER
+             */
+            destinationTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            destinationId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            issuedAt: string;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example DRAFT
+             */
+            statusCode: string;
+            /**
+             * @description 반품·폐기 등의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example SUPPLIER_RETURN
+             */
+            reasonCode?: string | null;
+            /**
+             * @description 공급사 반품 시 대체 입고가 예정되어 있는지. 근거: W-01-05 §5-7
+             * @example true
+             */
+            replacementExpected?: boolean | null;
+            /**
+             * Format: int64
+             * @description 기타 출고 품의의 승인 요청 식별자
+             * @example 1001
+             */
+            approvalRequestId?: number | null;
+            /**
+             * @description ERP 송신 대기열에 적재됐는지. 적재이지 전송이 아니다
+             * @example true
+             */
+            erpMessageQueued?: boolean;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+        };
+        /** @description 출고 전표 등록. postImmediately 가 참이면 등록과 전기가 같은 트랜잭션에서 일어난다 — 「출고 확정」·「반품 처리」처럼 화면이 한 버튼인 경우다. 승인을 먼저 받아야 하는 기타 출고는 거짓으로 보내고 나중에 전기한다. 근거: M-01-08 §5-8 · W-01-05 §5-7 · W-01-06 §5-7 */
+        GoodsIssueCreate: {
+            /**
+             * @description 출고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example MATERIAL
+             */
+            issueTypeCode: string;
+            /**
+             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example PICKING_ORDER
+             */
+            sourceDocumentTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceDocumentId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceWarehouseId: number;
+            /**
+             * @description 도착지 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example WORK_ORDER
+             */
+            destinationTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            destinationId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            issuedAt: string;
+            /**
+             * @description 사유. 반품·기타 출고에서는 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example SUPPLIER_RETURN
+             */
+            reasonCode?: string | null;
+            /** @example true */
+            replacementExpected?: boolean | null;
+            /**
+             * @description ERP 송신 여부. 화면의 송신 토글이 이 값이다. 근거: W-01-05 §5-7
+             * @default true
+             * @example true
+             */
+            sendToErp: boolean;
+            /**
+             * @description 참이면 등록과 동시에 전기한다. 두 번 호출로 나누면 오프라인 큐에 중간 상태가 남는다
+             * @default false
+             * @example true
+             */
+            postImmediately: boolean;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /** @description 최소 1행 */
+            lines: components["schemas"]["GoodsIssueLineUpsert"][];
+        };
+        GoodsIssueDetailResponse: {
+            goodsIssue: components["schemas"]["GoodsIssue"];
+            lines: components["schemas"]["GoodsIssueLine"][];
+        };
+        GoodsIssueLineListResponse: {
+            items: components["schemas"]["GoodsIssueLine"][];
+        };
+        /** @description 전기 요청. 재고가 움직이는 순간이므로 영업일과 발생 시각을 함께 받는다. 근거: 공유계약 C-8 · B-8 */
+        PostRequest: {
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+        };
+        /** @description 생산창고 입고 라인. 차이 수량은 서버가 계산한다 — 화면이 빼지 않는다. 근거: M-01-09 · 공유계약 L-2 */
+        ShopfloorReceiptLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            shopfloorReceiptLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            shopfloorReceiptId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsIssueLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 100 */
+            issuedQty: number;
+            /**
+             * @description 출고 수량 이하
+             * @example 100
+             */
+            receivedQty: number;
+            /**
+             * @description 출고 수량 − 수령 수량. 서버가 계산한다
+             * @example 0
+             */
+            readonly varianceQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 차이 사유. 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example SPILL
+             */
+            varianceReasonCode?: string | null;
+        };
+        /** @description 생산창고 입고 라인 등록 항목. */
+        ShopfloorReceiptLineCreate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsIssueLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 100 */
+            issuedQty: number;
+            /** @example 100 */
+            receivedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example SPILL
+             */
+            varianceReasonCode?: string | null;
+        };
+        /** @description 생산창고 입고. 근거: M-01-09 */
+        ShopfloorReceipt: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            shopfloorReceiptId: number;
+            /** @example SR-2026-000077 */
+            shopfloorReceiptNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsIssueId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            workOrderId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            destinationLocationId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            receivedAt: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            receivedBy?: number | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example CONFIRMED
+             */
+            statusCode: string;
+        };
+        /** @description 생산창고 입고 확정. 화면이 「입고 확정」 한 버튼이므로 등록이 곧 확정이다. 근거: M-01-09 §5-6 */
+        ShopfloorReceiptCreate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            goodsIssueId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            workOrderId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            destinationLocationId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            receivedAt: string;
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /** @description 최소 1행 */
+            lines: components["schemas"]["ShopfloorReceiptLineCreate"][];
+        };
+        ShopfloorReceiptDetailResponse: {
+            shopfloorReceipt: components["schemas"]["ShopfloorReceipt"];
+            lines: components["schemas"]["ShopfloorReceiptLine"][];
+        };
+        /** @description 재고 이동 라인. 도착 수량은 반출 수량을 넘을 수 없다. */
+        StockTransferLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            stockTransferLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            stockTransferId: number;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 100 */
+            requestedQty: number;
+            /** @example 100 */
+            shippedQty: number;
+            /** @example 0 */
+            receivedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            fromLocationId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            toLocationId: number;
+            /**
+             * Format: int64
+             * @description 파렛트 단위로 옮긴 경우의 취급 단위
+             * @example 1001
+             */
+            handlingUnitId?: number | null;
+        };
+        /** @description 이동 라인 치환 항목. 반출이 끝난 라인은 바꿀 수 없다 — 400 STATE_LOCKED. */
+        StockTransferLineUpsert: {
+            /**
+             * Format: int64
+             * @description 없으면 신규 행
+             * @example 1001
+             */
+            stockTransferLineId?: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 100 */
+            requestedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            fromLocationId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            toLocationId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            handlingUnitId?: number | null;
+        };
+        /** @description 재고 이동. 출발 창고와 도착 창고가 같을 수 없다. 근거: M-01-10 */
+        StockTransfer: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            stockTransferId: number;
+            /** @example ST-2026-000260 */
+            stockTransferNo: string;
+            /**
+             * @description 이동 유형. 일반 이동과 불량 반출을 가른다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example NORMAL
+             */
+            transferTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            fromBusinessUnitId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            toBusinessUnitId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            fromWarehouseId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            toWarehouseId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            requestedAt: string;
+            /**
+             * Format: date-time
+             * @description 반출 확정 시각
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            shippedAt?: string | null;
+            /**
+             * Format: date-time
+             * @description 도착 확정 시각. 비어 있으면 아직 이동 중이다
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            receivedAt?: string | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example IN_TRANSIT
+             */
+            statusCode: string;
+        };
+        /** @description 반출 등록. 반출 스캔이 곧 이동 문서를 만드는 행위이므로 생성과 반출이 한 오퍼레이션이다 — 둘로 나누면 오프라인 큐에 반출 전 상태가 남는다. 근거: M-01-10 §5-6 */
+        StockTransferCreate: {
+            /**
+             * @description 이동 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example NORMAL
+             */
+            transferTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            fromBusinessUnitId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            toBusinessUnitId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            fromWarehouseId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            toWarehouseId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            requestedAt?: string | null;
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 반출 스캔 시각. 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /** @description 최소 1행 */
+            lines: components["schemas"]["StockTransferLineUpsert"][];
+        };
+        /** @description 도착 확정. 반출한 수량 이하만 받을 수 있다. 근거: M-01-10 §5-6 */
+        StockTransferArrive: {
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 도착 스캔 시각. 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /** @description 도착 수량을 기록할 라인 */
+            lines: {
+                /**
+                 * Format: int64
+                 * @example 1001
+                 */
+                stockTransferLineId: number;
+                /** @example 100 */
+                receivedQty: number;
+                /**
+                 * Format: int64
+                 * @description 스캔한 도착 위치가 계획과 다를 때
+                 * @example 1001
+                 */
+                toLocationId?: number | null;
+            }[];
+        };
+        StockTransferDetailResponse: {
+            stockTransfer: components["schemas"]["StockTransfer"];
+            lines: components["schemas"]["StockTransferLine"][];
+        };
+        StockTransferLineListResponse: {
+            items: components["schemas"]["StockTransferLine"][];
+        };
+        /** @description 실사 라인. 차이 수량은 서버가 계산한다. 근거: 공유계약 L-2 */
+        InventoryCountLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryCountLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryCountId: number;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId?: number | null;
+            /**
+             * @description 장부 수량. 블라인드 실사에서는 내려보내지 않는다
+             * @example 100
+             */
+            systemQty: number;
+            /** @example 98 */
+            countedQty: number;
+            /**
+             * @description 실물 − 장부. 서버가 계산한다
+             * @example -2
+             */
+            readonly varianceQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example MISPLACED
+             */
+            varianceReasonCode?: string | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            countedBy?: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            countedAt: string;
+        };
+        /** @description 실사 라인 치환 항목. inventoryCountLineId 가 없으면 신규 행이다 — 목록에 없는 재고를 현장에서 추가하는 경로가 여기다. 마감된 실사는 바꿀 수 없다 — 400 STATE_LOCKED. 근거: M-01-11 §5-6 */
+        InventoryCountLineUpsert: {
+            /**
+             * Format: int64
+             * @description 없으면 신규 행
+             * @example 1001
+             */
+            inventoryCountLineId?: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId?: number | null;
+            /** @example 98 */
+            countedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example MISPLACED
+             */
+            varianceReasonCode?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            countedAt: string;
+        };
+        /** @description 한 위치의 실사 라인을 치환한다. 실사 전체가 아니라 위치 단위로 끊는 것은 화면이 「이 위치 완료」로 끊기 때문이다 — 창고 하나의 라인이 수천 건이라 전체 치환은 보낼 수 없다. 근거: M-01-11 §5-6 · 공유계약 C-3 */
+        InventoryCountLineReplace: {
+            /**
+             * Format: int64
+             * @description 이 요청이 치환하는 위치
+             * @example 1001
+             */
+            locationId: number;
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /** @description 이 위치의 라인 전체. 여기 없는 기존 라인은 미실사로 되돌린다 */
+            lines: components["schemas"]["InventoryCountLineUpsert"][];
+        };
+        /** @description 실사 진행 요약. 서버가 계산해 내려보낸다 — 화면이 전체 라인을 받아 세면 페이지네이션과 어긋난다. 근거: W-01-04 §5-6 */
+        InventoryCountSummary: {
+            /**
+             * @description 계획 라인 수
+             * @example 1240
+             */
+            plannedCount: number;
+            /**
+             * @description 카운트된 라인 수
+             * @example 1180
+             */
+            countedCount: number;
+            /**
+             * @description 미실사 라인 수. 마감하려면 0 이어야 한다
+             * @example 60
+             */
+            uncountedCount: number;
+            /**
+             * @description 차이가 있는 라인 수
+             * @example 12
+             */
+            varianceCount: number;
+        };
+        /** @description 재고 실사. 근거: W-01-04 · M-01-11 */
+        InventoryCount: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryCountId: number;
+            /** @example IC-2026-000019 */
+            inventoryCountNo: string;
+            /**
+             * @description 실사 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example CYCLE
+             */
+            countTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId: number;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            plannedDate: string;
+            /**
+             * @description 참이면 장부 수량을 내려보내지 않는다. 개시 전에만 바꿀 수 있다. 근거: W-01-04 §5-2
+             * @default false
+             * @example false
+             */
+            blindCount: boolean;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example IN_PROGRESS
+             */
+            statusCode: string;
+        };
+        /** @description 실사 개시. 라인은 서버가 장부에서 만든다 — 화면이 대상을 열거하지 않는다. 근거: W-01-04 §5-7 */
+        InventoryCountCreate: {
+            /**
+             * @description 실사 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example CYCLE
+             */
+            countTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId: number;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            plannedDate: string;
+            /**
+             * @default false
+             * @example false
+             */
+            blindCount: boolean;
+        };
+        InventoryCountDetailResponse: {
+            inventoryCount: components["schemas"]["InventoryCount"];
+            summary: components["schemas"]["InventoryCountSummary"];
+        };
+        InventoryCountLineListResponse: {
+            items: components["schemas"]["InventoryCountLine"][];
+            page: components["schemas"]["PageMeta"];
+        };
+        /** @description 실사 마감. 미실사가 0 이고 차이가 없거나 모두 조정된 뒤에만 통과한다 — 조건을 못 채우면 400 으로 무엇이 남았는지 돌려준다. 근거: W-01-04 §5-5 */
+        InventoryCountClose: {
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+        };
+        /** @description 재고 조정 라인. */
+        InventoryAdjustmentLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryAdjustmentLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryAdjustmentId: number;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @description 실사 차이에서 불러온 경우의 원천 라인
+             * @example 1001
+             */
+            inventoryCountLineId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId?: number | null;
+            /**
+             * @description 증감 수량. 음수가 올 수 있다
+             * @example -2
+             */
+            adjustmentQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 라인 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example COUNT_VARIANCE
+             */
+            reasonCode?: string | null;
+        };
+        /** @description 조정 라인 치환 항목. 전기된 조정은 바꿀 수 없다 — 400 STATE_LOCKED. */
+        InventoryAdjustmentLineUpsert: {
+            /**
+             * Format: int64
+             * @description 없으면 신규 행
+             * @example 1001
+             */
+            inventoryAdjustmentLineId?: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryCountLineId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId?: number | null;
+            /** @example -2 */
+            adjustmentQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 라인 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example COUNT_VARIANCE
+             */
+            reasonCode?: string | null;
+        };
+        /** @description 재고 조정. 근거: W-01-12 · W-01-04 */
+        InventoryAdjustment: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryAdjustmentId: number;
+            /** @example IA-2026-000031 */
+            inventoryAdjustmentNo: string;
+            /**
+             * Format: int64
+             * @description 실사에서 시작한 조정이면 그 실사
+             * @example 1001
+             */
+            inventoryCountId?: number | null;
+            /**
+             * @description 헤더 사유. 비울 수 없다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example COUNT_VARIANCE
+             */
+            reasonCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            approvalRequestId?: number | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example REQUESTED
+             */
+            statusCode: string;
+            /**
+             * Format: date-time
+             * @description 전기된 시각
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            adjustedAt?: string | null;
+            /**
+             * @description ERP 송신 대기열에 적재됐는지
+             * @example true
+             */
+            erpMessageQueued?: boolean;
+        };
+        /** @description 재고 조정 등록. 실사에서 불러오거나 직접 입력한다. 근거: W-01-12 §5-6 */
+        InventoryAdjustmentCreate: {
+            /**
+             * Format: int64
+             * @description 실사 차이를 불러온 경우
+             * @example 1001
+             */
+            inventoryCountId?: number | null;
+            /**
+             * @description 헤더 사유. 비울 수 없다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example COUNT_VARIANCE
+             */
+            reasonCode: string;
+            /**
+             * @description ERP 송신 여부. 화면의 송신 토글이 이 값이다
+             * @default true
+             * @example true
+             */
+            sendToErp: boolean;
+            /** @description 최소 1행 */
+            lines: components["schemas"]["InventoryAdjustmentLineUpsert"][];
+        };
+        InventoryAdjustmentDetailResponse: {
+            inventoryAdjustment: components["schemas"]["InventoryAdjustment"];
+            lines: components["schemas"]["InventoryAdjustmentLine"][];
+        };
+        InventoryAdjustmentLineListResponse: {
+            items: components["schemas"]["InventoryAdjustmentLine"][];
+        };
+        /** @description 재고 잔액 한 줄. 읽기 전용이다 — 잔액을 직접 쓰는 경로를 두지 않고 원장이 움직이면 서버가 파생한다. groupBy 로 접은 축은 비워서 내린다. 다만 소유 구분은 어떤 축에서도 합치지 않는다 — 자사 재고와 고객 지급품을 더하면 오독이다. 근거: W-01-07 §5-1 · M-01-04 · 공유계약 L-7 */
+        InventoryBalance: {
+            /**
+             * @description 이 줄이 묶인 축
+             * @example ITEM
+             * @enum {string}
+             */
+            groupBy: "ITEM" | "LOT" | "LOCATION";
+            /**
+             * Format: int64
+             * @description 축을 하나도 접지 않은 줄에만 있다
+             * @example 1001
+             */
+            inventoryBalanceId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            legalEntityId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            businessUnitId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId?: number | null;
+            /**
+             * Format: int64
+             * @description groupBy 가 LOCATION 일 때 채워진다
+             * @example 1001
+             */
+            locationId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @description groupBy 가 LOT 일 때 채워진다
+             * @example 1001
+             */
+            lotId?: number | null;
+            /**
+             * @description 품질 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example RELEASED
+             */
+            qualityStatusCode?: string | null;
+            /**
+             * @description 재고 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example AVAILABLE
+             */
+            inventoryStatusCode?: string | null;
+            /**
+             * @description 소유 구분. 묶는 축과 무관하게 항상 채워진다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example OWNED
+             */
+            ownershipTypeCode: string;
+            /**
+             * Format: int64
+             * @description 소유가 자사가 아닐 때의 거래처
+             * @example 1001
+             */
+            ownerPartnerId?: number | null;
+            /**
+             * @description 보유 수량. 음수 허용 품목에서는 음수가 올 수 있다
+             * @example 100
+             */
+            onHandQty: number;
+            /** @example 20 */
+            reservedQty: number;
+            /** @example 0 */
+            pickedQty: number;
+            /** @example 0 */
+            blockedQty: number;
+            /**
+             * @description 보유 − 예약 − 피킹 − 보류. 서버가 계산해 내려보내며 화면도 서버도 다시 빼지 않는다
+             * @example 80
+             */
+            readonly availableQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 이 줄에 포함된 보류 LOT 수. 화면이 보류를 따로 세지 않게 한다
+             * @example 1
+             */
+            heldLotCount?: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            lastTransactionAt?: string | null;
+        };
+        /** @description 수불 원장 라인. 출발지와 도착지 중 적어도 한쪽은 있어야 한다. */
+        InventoryTransactionLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryTransactionLineId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryTransactionId: number;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * @description 헤더 안에서 유일하다. 서버가 부여하며 화면이 정하지 않는다
+             * @example 1
+             */
+            lineNo: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId?: number | null;
+            /** @example 100 */
+            qty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            fromWarehouseId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            fromLocationId?: number | null;
+            /** @example RELEASED */
+            fromQualityStatusCode?: string | null;
+            /** @example AVAILABLE */
+            fromInventoryStatusCode?: string | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            toWarehouseId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            toLocationId?: number | null;
+            /** @example RELEASED */
+            toQualityStatusCode?: string | null;
+            /** @example AVAILABLE */
+            toInventoryStatusCode?: string | null;
+            /** @example OWNED */
+            ownershipTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            ownerPartnerId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            handlingUnitId?: number | null;
+            /**
+             * @description 이 거래 직후 출발지 잔액. 시점 재고를 원장 재합산 없이 보이기 위한 값
+             * @example 80
+             */
+            fromQtyAfterTransaction?: number | null;
+            /**
+             * @description 이 거래 직후 도착지 잔액
+             * @example 120
+             */
+            toQtyAfterTransaction?: number | null;
+        };
+        /** @description 수불 원장. 조회만 제공한다 — 전표의 전기가 만들며 화면이 직접 쓰지 않는다. 취소도 행을 지우지 않고 역처리 행을 더한다. 근거: W-01-07 §5-4 */
+        InventoryTransaction: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryTransactionId: number;
+            /**
+             * Format: date
+             * @description 식별자의 일부다 — 이 값 없이는 행을 찾을 수 없다
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /** @example IT-2026-000998 */
+            transactionNo: string;
+            /**
+             * @description 거래 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example RECEIPT
+             */
+            transactionTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: date-time
+             * @description 단말에서 행위가 일어난 시각
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /**
+             * Format: date-time
+             * @description 서버가 받은 시각. 오프라인 큐를 거치면 occurredAt 과 벌어진다
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            recordedAt: string;
+            /**
+             * @description 원천 전표 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example GOODS_RECEIPT
+             */
+            sourceDocumentTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceDocumentId: number;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example POSTED
+             */
+            statusCode: string;
+            /**
+             * Format: int64
+             * @description 역처리 대상 거래
+             * @example 1001
+             */
+            reversalOfTransactionId?: number | null;
+            /**
+             * Format: date
+             * @description 역처리 대상의 영업일
+             * @example 2026-08-06
+             */
+            reversalOfBusinessDate?: string | null;
+        };
+        InventoryTransactionDetailResponse: {
+            inventoryTransaction: components["schemas"]["InventoryTransaction"];
+            lines: components["schemas"]["InventoryTransactionLine"][];
+        };
+        /** @description 재고 예약. 조회만 제공한다 — 예약은 출고 요청과 피킹의 결과로 서버가 걸고 푼다. 근거: M-01-08 §5-5 */
+        InventoryReservation: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            inventoryReservationId: number;
+            /** @example RS-2026-000144 */
+            reservationNo: string;
+            /**
+             * @description 예약 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example MATERIAL
+             */
+            reservationTypeCode: string;
+            /**
+             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example MATERIAL_ISSUE_REQUEST
+             */
+            sourceDocumentTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceDocumentId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId?: number | null;
+            /** @example 100 */
+            reservedQty: number;
+            /** @example 0 */
+            releasedQty: number;
+            /** @example 0 */
+            consumedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example OPEN
+             */
+            statusCode: string;
+        };
+        /** @description 취급 단위 구성. 같은 취급 단위 안에서 품목·LOT 조합은 한 번만 나온다. */
+        HandlingUnitContent: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            handlingUnitContentId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            handlingUnitId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 100 */
+            qty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+        };
+        /** @description 구성 전체 치환 항목. 요청에서 빠진 기존 행은 삭제한다. 근거: 공유계약 A-5 */
+        HandlingUnitContentUpsert: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 100 */
+            qty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+        };
+        /** @description 취급 단위(파렛트 등). 자기 자신을 상위로 둘 수 없다. 근거: M-01-10 · P-01-02 */
+        HandlingUnit: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            handlingUnitId: number;
+            /** @example HU-2026-000058 */
+            handlingUnitNo: string;
+            /**
+             * @description 취급 단위 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example PALLET
+             */
+            handlingUnitTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            parentHandlingUnitId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId?: number | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example ACTIVE
+             */
+            statusCode: string;
+        };
+        /** @description 취급 단위 등록. */
+        HandlingUnitCreate: {
+            /**
+             * @description 취급 단위 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example PALLET
+             */
+            handlingUnitTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            parentHandlingUnitId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId?: number | null;
+            /** @description 초기 구성 */
+            contents?: components["schemas"]["HandlingUnitContentUpsert"][];
+        };
+        HandlingUnitDetailResponse: {
+            handlingUnit: components["schemas"]["HandlingUnit"];
+            contents: components["schemas"]["HandlingUnitContent"][];
+        };
+        HandlingUnitContentListResponse: {
+            items: components["schemas"]["HandlingUnitContent"][];
+        };
+        /** @description 자재 LOT. 공장 안에서 번호가 유일하다. 근거: M-01-02 · P-01-01 */
+        Lot: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /**
+             * @description 공장 안에서 유일하다
+             * @example LOT-2026-000045
+             */
+            lotNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * @description LOT 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example MATERIAL
+             */
+            lotTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /** @example 100 */
+            initialQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            manufacturedAt?: string | null;
+            /**
+             * Format: date
+             * @example 2027-08-06
+             */
+            expiryDate?: string | null;
+            /**
+             * @description LOT 을 만든 원천의 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example INBOUND_RECEIPT
+             */
+            sourceTypeCode: string;
+            /**
+             * Format: int64
+             * @description 원천 식별자. 유형에 따라 가리키는 테이블이 다르다
+             * @example 1001
+             */
+            sourceId: number;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example HOLD
+             */
+            statusCode: string;
+            /**
+             * Format: int64
+             * @description 분할 조회 편의용 표시 값. 계보의 원천은 아니다
+             * @example 1001
+             */
+            parentLotId?: number | null;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+            /**
+             * @description 지금 보류 중인지. 보류 기록은 별도 경로에서 읽는다
+             * @example true
+             */
+            held?: boolean;
+        };
+        /** @description LOT 등록. 스캔한 값이 그대로 번호가 되며, 같은 공장에 같은 번호가 있으면 409 가 아니라 400 으로 막는다. 근거: M-01-02 */
+        LotCreate: {
+            /** @example LOT-2026-000045 */
+            lotNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * @description LOT 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example MATERIAL
+             */
+            lotTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /** @example 100 */
+            initialQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            manufacturedAt?: string | null;
+            /**
+             * Format: date
+             * @example 2027-08-06
+             */
+            expiryDate?: string | null;
+            /**
+             * @description 원천 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example INBOUND_RECEIPT
+             */
+            sourceTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceId: number;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+            /** @description 공급사 LOT 번호 등 외부 식별자 */
+            externalIdentifiers?: components["schemas"]["LotExternalIdentifierUpsert"][];
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+        };
+        /** @description LOT 수정. 이미 재고가 움직인 LOT 은 수량을 바꿀 수 없다 — 400 STATE_LOCKED. */
+        LotUpdate: {
+            /** @example 100 */
+            initialQty: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            manufacturedAt?: string | null;
+            /**
+             * Format: date
+             * @example 2027-08-06
+             */
+            expiryDate?: string | null;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+        };
+        /** @description LOT 외부 식별자. */
+        LotExternalIdentifier: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotExternalIdentifierId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /**
+             * @description 식별자 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example SUPPLIER_LOT
+             */
+            identifierTypeCode: string;
+            /** @example SL-2026-0001 */
+            externalIdentifier: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            partnerId?: number | null;
+            /**
+             * @description 외부 시스템. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example ERP
+             */
+            externalSystemCode?: string | null;
+        };
+        /** @description 외부 식별자 전체 치환 항목. 요청에서 빠진 기존 행은 삭제한다. 근거: 공유계약 A-5 */
+        LotExternalIdentifierUpsert: {
+            /**
+             * @description 식별자 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example SUPPLIER_LOT
+             */
+            identifierTypeCode: string;
+            /** @example SL-2026-0001 */
+            externalIdentifier: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            partnerId?: number | null;
+            /**
+             * @description 외부 시스템. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example ERP
+             */
+            externalSystemCode?: string | null;
+        };
+        LotExternalIdentifierListResponse: {
+            items: components["schemas"]["LotExternalIdentifier"][];
+        };
+        /** @description LOT 보류. 이 파일은 읽기만 제공한다 — 보류를 걸고 푸는 것은 품질 도메인의 화면이다. 근거: W-01-07 §4-B · M-01-04 · M-01-08 */
+        LotHold: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotHoldId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /**
+             * @description 비어 있으면 전량 보류다
+             * @example 50
+             */
+            holdQty?: number | null;
+            /**
+             * Format: int64
+             * @description holdQty 가 있으면 함께 채워진다
+             * @example 1001
+             */
+            uomId?: number | null;
+            /**
+             * @description 보류 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @example QUALITY_HOLD
+             */
+            reasonCode: string;
+            /**
+             * @description 해제 조건
+             * @example 비고 문자열
+             */
+            releaseCondition?: string | null;
+            /**
+             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
+             * @example HELD
+             */
+            statusCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            heldBy?: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            heldAt: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            releasedBy?: number | null;
+            /**
+             * Format: date-time
+             * @description 보류 시각보다 앞설 수 없다
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            releasedAt?: string | null;
+            /** @example 비고 문자열 */
+            remarks?: string | null;
+        };
+        LotHoldListResponse: {
+            items: components["schemas"]["LotHold"][];
+        };
+        LotDetailResponse: {
+            lot: components["schemas"]["Lot"];
+            externalIdentifiers: components["schemas"]["LotExternalIdentifier"][];
+            /** @description 해제되지 않은 보류 */
+            holds: components["schemas"]["LotHold"][];
+        };
+        /** @description 물류 문서 한 건의 진행현황. 문서 유형마다 테이블이 다르므로 서버가 한 형태로 맞춰 내린다 — 화면이 유형별 응답을 각각 다루지 않는다. 근거: W-01-13 §3·§4-A */
+        DocumentProgress: {
+            /**
+             * @description 입하·입고·출고·발주·피킹·이동요청. 값 목록은 공통코드 소관이다
+             * @example GOODS_RECEIPT
+             */
+            documentTypeCode: string;
+            /**
+             * Format: int64
+             * @example 4412
+             */
+            documentId: number;
+            /** @example GR-2026-0412 */
+            documentNo: string;
+            /**
+             * Format: date
+             * @example 2026-08-06
+             */
+            documentDate: string;
+            /**
+             * @description 유형 안의 구분. 입고면 정상·반품 같은 값이다
+             * @example NORMAL
+             */
+            documentSubTypeCode?: string | null;
+            /** @example POSTED */
+            statusCode: string;
+            /**
+             * @description 계획 수량. 라인 합계다
+             * @example 1200
+             */
+            plannedQty: number;
+            /**
+             * @description 처리 수량
+             * @example 1200
+             */
+            processedQty: number;
+            /**
+             * @description 잔여 수량
+             * @example 0
+             */
+            remainingQty: number;
+            /**
+             * @description 이 문서를 원천으로 삼는 하류 문서 수. 0 이 아니면 취소할 수 없다 — 판정을 서버가 하고 화면은 결과만 쓴다
+             * @example 2
+             */
+            successorCount: number;
+            /**
+             * @description 지금 취소 요청을 낼 수 있는가. 후속 유무·상태·진행 중 취소 요청을 함께 본 결과다
+             * @example false
+             */
+            cancellable: boolean;
+            /**
+             * @description cancellable 이 거짓인 이유. SUCCESSOR_EXISTS · ALREADY_CANCELLED · CANCEL_IN_PROGRESS · STATE_LOCKED
+             * @example SUCCESSOR_EXISTS
+             */
+            cancelBlockedReasonCode?: string | null;
+            /**
+             * Format: int64
+             * @description 취소 요청이 진행 중이면 그 승인 요청 번호. 결재함으로 이어진다
+             * @example 1001
+             */
+            cancelApprovalRequestId?: number | null;
+            /**
+             * @description 이 문서를 여는 화면 ID. 유형↔화면 표를 프런트가 갖지 않는다 — 공유계약 A-10 보강
+             * @example W-01-10
+             */
+            screenId?: string | null;
+        };
+        /** @description 이 문서를 원천으로 삼는 하류 문서 또는 재고 사용 기록. 취소하려면 이것들을 역순으로 먼저 취소해야 한다. 근거: W-01-13 §5-3 */
+        DocumentSuccessor: {
+            /** @example GOODS_ISSUE */
+            successorTypeCode: string;
+            /**
+             * Format: int64
+             * @example 4455
+             */
+            successorId: number;
+            /** @example GI-2026-0455 */
+            successorNo: string;
+            /**
+             * @description 이 문서에서 넘어간 수량
+             * @example 400
+             */
+            qty: number;
+            /**
+             * @description 후속 문서를 여는 화면 ID
+             * @example W-01-06
+             */
+            screenId?: string | null;
+        };
+        /** @description 문서의 처리 경과 한 줄. 등록·전기·취소 같은 시점을 시간순으로 보인다. */
+        DocumentProgressStep: {
+            /** @example POSTED */
+            stepCode: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:14:00+09:00
+             */
+            occurredAt: string;
+            /**
+             * @description 사람이 한 것이 아니면 비어 있다
+             * @example 김창고
+             */
+            actorName?: string | null;
+            /**
+             * @description 이 단계가 원장을 만들었으면 그 번호
+             * @example TX-2026-0009
+             */
+            inventoryTransactionNo?: string | null;
+            /**
+             * Format: date
+             * @description 원장 조회에 필요하다 — 원장은 영업일이 키의 일부다
+             * @example 2026-08-06
+             */
+            businessDate?: string | null;
+        };
+        /** @description 진행현황 상세. 처리 경과와 후속 목록을 함께 내린다 — 화면이 두 번 부르지 않는다. */
+        DocumentProgressDetail: {
+            progress: components["schemas"]["DocumentProgress"];
+            steps: components["schemas"]["DocumentProgressStep"][];
+            successors: components["schemas"]["DocumentSuccessor"][];
+        };
+        /** @description 취소 실행 결과. 전기된 문서였으면 역트랜잭션이 생기고, 전기 전이었으면 상태만 바뀐다. */
+        CancelResult: {
+            /** @example GOODS_RECEIPT */
+            documentTypeCode: string;
+            /**
+             * Format: int64
+             * @example 4412
+             */
+            documentId: number;
+            /** @example CANCELLED */
+            statusCode: string;
+            /**
+             * @description 원장 역트랜잭션이 만들어졌는가. 전기 전 취소면 거짓이다
+             * @example true
+             */
+            reversed: boolean;
+            /**
+             * @description 역트랜잭션 번호
+             * @example TX-2026-0011
+             */
+            reversalTransactionNo?: string | null;
+            /**
+             * Format: date
+             * @description 역트랜잭션 영업일 — 원장 조회에 함께 쓴다
+             * @example 2026-08-07
+             */
+            reversalBusinessDate?: string | null;
+        };
     };
     responses: never;
     parameters: {
@@ -8297,6 +17147,8 @@ export interface components {
         IdempotencyKey: string;
         /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
         IfMatchVersion: string;
+        /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+        IfMatchVersionOptional: string;
     };
     requestBodies: never;
     headers: never;

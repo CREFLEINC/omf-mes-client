@@ -10,6 +10,7 @@
 | 4 | 계약 타입 생성 | **openapi-typescript** + **openapi-fetch** | 정본 스펙에서 타입 생성(`pnpm gen:api`) — DTO는 api-client 소유 원칙(§4.6). openapi-fetch는 생성 타입과 한 생태계라 별도 매핑이 없다 | ✅ 도입됨 |
 | 5 | DS 버전 고정 | git 의존 + **커밋 해시 고정** (`a554d11`) | DS는 npm 미퍼블리시. 커밋 고정으로 재현 가능한 설치 — 갱신은 해시 교체 PR로 명시적으로 | ✅ 도입됨 |
 | 6 | 실행 Node | **`node` 패키지 devDependency로 24 LTS 고정** | 시스템 Node(비-LTS 25)와 무관하게 프로젝트 스크립트가 LTS에서 돈다. dependency-cruiser의 지원 범위 문제로 표면화됐고, CI에서도 동일 버전 보장 | ✅ 도입됨 |
+| 7 | 계약 스펙 병합 | **자체 병합기 `tools/merge-spec.mjs` — 순서 보존·선행 우선, 값이 다르면 중단** | 설계가 도메인마다 계약 파일을 나눠 두는데 Prism과 openapi-typescript는 문서 하나만 받는다. 외부 병합 도구를 들이지 않은 이유는 ① 필요한 규칙이 「앞선 계약이 이긴다 + 값이 갈리면 멈춘다」뿐이고 ② 조용히 덮는 병합은 어느 계약의 타입이 살았는지 알 수 없게 만들기 때문. **덮어쓰기가 일어날 수 있는 모든 자리**(`paths`·`components.*`·`openapi`·`servers` 등 최상위 키)에서 멈춘다 — 설명·예시만 다른 것은 접고 접은 키를 출력한다. 유일한 예외는 생성물에 실리지 않는 `info`다. 병합본은 `node_modules/.cache/omf-mes/openapi-merged.json`에 쓰고 **커밋하지 않는다**(정본은 비공개 저장소, 여기는 공개). 규칙 전문은 `tools/mock/README.md` | ✅ 도입됨 |
 
 ## 갱신 규칙
 
