@@ -1552,6 +1552,34 @@ describe('ItemExtendedAttrsScreen — 초안 수명 (M10·C12)', () => {
     });
   });
 
+  /*
+   * **열려 있던 편집 창도 함께 닫힌다.**
+   *
+   * 초안·폼은 조회 응답에서 다시 세워지므로 스스로 낫지만 **열린 창은 낫지 않는다** —
+   * 남겨 두면 앞 품목의 줄을 지금 품목의 표에 확인해 넣게 된다.
+   * 창이 떠 있는 동안 좌 목록은 덮여 있으므로 주소로만 품목이 바뀔 수 있다.
+   */
+  it('품목이 바뀌면 열려 있던 편집 창이 닫힌다 (M08)', async () => {
+    const { history, user } = renderScreen(
+      [...subsidiaryRoutes(), buMapsRoute([], 1002), uomConversionsRoute([], 1002)],
+      '?item=1002&tab=sub',
+    );
+
+    await findBuMapPane();
+    await user.click(screen.getByRole('button', { name: 'SYN-ITEM-01' }));
+
+    await findBuMapPane();
+    await user.click(screen.getByRole('button', { name: '매핑 추가' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    history.back();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText('보내는 사업부')).not.toBeInTheDocument();
+  });
+
   /* 뒤로가기도 같은 규칙이다 — 초기화가 클릭 핸들러에만 있으면 이 경로가 새어 나간다. */
   it('뒤로가기로 품목이 바뀌어도 초안이 따라오지 않는다 (M08)', async () => {
     const { history, user } = renderScreen(
