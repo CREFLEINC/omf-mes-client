@@ -248,6 +248,25 @@ const currentLocation = (): string => screen.getByTestId('location').textContent
 
 const balanceTable = (): HTMLElement => screen.getByRole('table');
 
+const headerNames = (): string[] =>
+  within(balanceTable())
+    .getAllByRole('columnheader')
+    .map((cell) => cell.textContent ?? '');
+
+/**
+ * 지금 정렬 표시가 켜져 있는 머리글. **`aria-sort`로 본다** — 주소의 `sort` 키만 보면
+ * 「주소에는 있는데 표에는 표시되지 않는」 어긋남을 그대로 통과시킨다.
+ */
+const sortedHeaderNames = (): string[] =>
+  within(balanceTable())
+    .getAllByRole('columnheader')
+    .filter((cell) => {
+      const direction = cell.getAttribute('aria-sort');
+
+      return direction !== null && direction !== 'none';
+    })
+    .map((cell) => cell.textContent ?? '');
+
 describe('StockStatusScreen — 창고를 고르기 전', () => {
   /*
    * **창고 필수는 이 화면의 규칙이지 계약의 규칙이 아니다**(계획 결정 5).
@@ -434,15 +453,21 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
 
   /*
    * 창고까지 비운다 — 남기면 「초기화했는데 조회가 열려 있다」가 되어 상태가 어중간해진다.
-   * **수명 표 3행**대로 정렬은 그 보기의 기본값으로 되돌아간다(조건과 달리 비우지 않는다).
+   *
+   * **정렬도 함께 없앤다**(수명 표 3행 — 검증 1회차 F2 정정). 초기화는 첫 진입과 같은 상태로
+   * 되돌리는 것인데, 보기 기본 열을 주소에 써 넣으면 첫 진입으로는 만들 수 없는 상태가 생기고
+   * **요청이 0회인 표**에 「정렬됨」이 보조기술로 읽힌다.
    */
-  it('초기화가 창고까지 비우고 그 뒤 요청이 나가지 않는다', async () => {
+  it('초기화가 창고·정렬까지 비우고 그 뒤 요청이 나가지 않는다', async () => {
     const { requests, user } = renderScreen(
       [balanceRoute(), ...lookupRoutes()],
       `${WITH_WAREHOUSE}&item=9301&zero=true&sort=onHandQty`,
     );
 
     await screen.findAllByText(ITEM_LABEL);
+
+    // 선행 단언 — 초기화 전에는 그 열이 실제로 정렬 표시를 갖는다.
+    expect(sortedHeaderNames()).toEqual([t.table.onHandQty]);
 
     const before = requestsTo(requests, BALANCES_PATH).length;
 
@@ -452,12 +477,31 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
       expect(screen.getByText(t.empty.notQueriedTitle)).toBeInTheDocument();
     });
 
-    for (const key of ['wh=', 'item=', 'zero=']) {
+    for (const key of ['wh=', 'item=', 'zero=', 'sort=']) {
       expect(currentLocation()).not.toContain(key);
     }
 
-    expect(currentLocation()).toContain('sort=itemCode');
+    // 조회가 0회인 표가 「정렬됨」을 말하지 않는다.
+    expect(sortedHeaderNames()).toEqual([]);
     expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(before);
+  });
+
+  /*
+   * **짝이 되는 방향** — 초기화 뒤 상태가 첫 진입과 같다. 「초기화」라는 낱말이 약속하는 것이다.
+   */
+  it('초기화 뒤 주소가 첫 진입과 같다', async () => {
+    const { user } = renderScreen(
+      [balanceRoute(), ...lookupRoutes()],
+      `${WITH_WAREHOUSE}&item=9301&sort=onHandQty&page=2`,
+    );
+
+    await screen.findAllByText(ITEM_LABEL);
+
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
   });
 });
 
@@ -1042,8 +1086,14 @@ describe('StockStatusScreen — 매달린 참조', () => {
     expect(lastQuery(requests, LOTS_PATH)?.get('itemId')).toBe('9301');
   });
 
-  /* 품목 없이 LOT별 보기로 들어와도 탭이 잠기고 참조가 나가지 않는다. */
-  it('품목 없이 LOT별 주소로 들어와도 LOT 참조를 부르지 않는다', async () => {
+  /*
+   * **품목 없이 LOT별 보기에 서 있는 상태를 만들지 않는다**(계획 결정 11).
+   *
+   * 「LOT 참조를 부르지 않는다」만 단언하면 **항상-참에 가깝다** — 부르지 않은 채로
+   * LOT 묶음 조회만 나가면 표의 LOT 칸이 전부 「알 수 없음」이 되는데, 그것이 바로
+   * 결정 11이 막으려던 #47 금지 표기다. 그래서 **표시 결과를 짝으로** 단언한다.
+   */
+  it('품목 없이 LOT별 주소로 들어오면 품목별로 읽고 LOT 참조를 부르지 않는다', async () => {
     const { requests } = renderScreen(
       [balanceRoute(), ...lookupRoutes()],
       `${WITH_WAREHOUSE}&view=lot`,
@@ -1052,6 +1102,50 @@ describe('StockStatusScreen — 매달린 참조', () => {
     await screen.findAllByText(ITEM_LABEL);
 
     expect(requestsTo(requests, LOTS_PATH)).toHaveLength(0);
+
+    // 짝 단언 ① — 보기가 품목별로 읽힌다. LOT 묶음 조회 자체가 나가지 않는다.
+    expect(screen.getByRole('tab', { name: t.views.item })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(lastQuery(requests, BALANCES_PATH)?.has('groupBy')).toBe(false);
+
+    // 짝 단언 ② — 이름이 보이고, 「값이 잘못됐다」를 뜻하는 표기가 표를 덮지 않는다.
+    expect(within(balanceTable()).getAllByText(ITEM_LABEL)).not.toHaveLength(0);
+    expect(within(balanceTable()).queryByText(t.values.noLot)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **마우스만으로 닿는 경로다**(주소 편집이 필요 없다) — LOT별 보기에서 품목 조건 칩의 ×를
+   * 누르면 품목이 사라진다. 이때도 같은 규칙이 적용돼 품목별로 되읽혀야 한다.
+   */
+  it('LOT별 보기에서 품목 칩을 제거하면 품목별로 되읽힌다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), ...lookupRoutes()],
+      `${WITH_WAREHOUSE}&item=9301&view=lot`,
+    );
+
+    // 선행 단언 — 품목이 있는 동안에는 LOT 이름이 실제로 풀린다.
+    expect(await screen.findByText('SAMPLE-LOT-0001')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveItem }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('item=');
+    });
+
+    // **못 푸는 LOT 이름이 표를 덮을 자리 자체가 사라진다** — 열이 없어진다.
+    await waitFor(() => {
+      expect(headerNames()).not.toContain(t.table.lot);
+    });
+
+    expect(lastQuery(requests, BALANCES_PATH)?.has('groupBy')).toBe(false);
+    expect(screen.getByRole('tab', { name: t.views.item })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.queryByText('SAMPLE-LOT-0001')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: t.views.lot })).toHaveAttribute('aria-disabled', 'true');
   });
 });
 

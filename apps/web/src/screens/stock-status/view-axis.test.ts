@@ -5,6 +5,7 @@ import {
   VIEW_AXES,
   groupAxisOf,
   readViewAxis,
+  resolveViewAxis,
   toGroupByQuery,
   type ViewAxis,
 } from './view-axis';
@@ -33,6 +34,34 @@ describe('readViewAxis — 주소가 담은 보기', () => {
 
   it('보기 목록의 순서가 탭 순서다', () => {
     expect(VIEW_AXES).toEqual(['item', 'lot', 'location']);
+  });
+});
+
+describe('resolveViewAxis — 지금 열 수 있는 보기로 읽는다', () => {
+  /*
+   * **LOT별 보기는 품목이 있어야 성립한다**(계획 결정 11). 품목 없이 열면 표의 LOT 칸이
+   * 전부 「알 수 없음」이 되는데, 이름을 풀 수단 자체가 없어 그 표기가 **영구적**이다 —
+   * 「정상 값을 잘못된 값으로 보이게 하는」 #47 금지 표기다.
+   */
+  it('품목이 없으면 LOT별을 품목별로 읽는다', () => {
+    expect(resolveViewAxis('lot', false)).toBe(DEFAULT_VIEW);
+  });
+
+  it('품목이 있으면 LOT별을 그대로 읽는다', () => {
+    expect(resolveViewAxis('lot', true)).toBe('lot');
+  });
+
+  /* 나머지 두 보기는 품목에 매달리지 않는다 — 창고만 있으면 이름이 다 풀린다. */
+  it('품목별·위치별은 품목 유무와 무관하다', () => {
+    for (const hasItem of [true, false]) {
+      expect(resolveViewAxis('item', hasItem)).toBe('item');
+      expect(resolveViewAxis('location', hasItem)).toBe('location');
+    }
+  });
+
+  it('모르는 값은 품목 유무와 무관하게 기본 보기다', () => {
+    expect(resolveViewAxis('xyz', true)).toBe(DEFAULT_VIEW);
+    expect(resolveViewAxis(null, false)).toBe(DEFAULT_VIEW);
   });
 });
 

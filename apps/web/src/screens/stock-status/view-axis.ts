@@ -38,6 +38,28 @@ export const readViewAxis = (raw: string | null): ViewAxis => {
   return isViewAxis(value) ? value : DEFAULT_VIEW;
 };
 
+/**
+ * 주소가 담은 보기를 **지금 열 수 있는 보기**로 읽는다.
+ *
+ * **LOT별 보기는 품목이 있어야 성립한다**(계획 결정 11). LOT을 번호 여러 개로 조회할 수단이
+ * 계약에 없어 품목이 이름을 풀 범위를 정하는데, 품목 없이 그 보기를 열면 표의 LOT 칸이 전부
+ * 「알 수 없음」이 된다 — **정상 값을 잘못된 값으로 보이게 하는 표기**(#47)이고, 이름을 풀
+ * 수단 자체가 없으니 일시적이 아니라 **영구적**이다.
+ *
+ * 탭을 비활성으로 두는 것만으로는 **클릭 경로만** 막힌다. 이 화면은 주소가 조건의 정본이라
+ * 주소 진입(북마크·공유·뒤로가기)과 품목 조건 제거로도 같은 자리에 닿는다.
+ * 그래서 **읽는 자리에서** 막는다 — 모르는 값을 기본 보기로 읽는 것과 같은 갈래다.
+ *
+ * **주소의 `view`를 고쳐 쓰지는 않는다.** 품목을 다시 고르면 원하던 보기가 되살아나야 하고,
+ * 「주소에 적힌 값과 읽는 값이 다를 수 있다」는 이 화면이 이미 `view=xyz`·`sort=nope`에서
+ * 쓰고 있는 규칙이다.
+ */
+export const resolveViewAxis = (raw: string | null, hasItemFilter: boolean): ViewAxis => {
+  const requested = readViewAxis(raw);
+
+  return requested === 'lot' && !hasItemFilter ? DEFAULT_VIEW : requested;
+};
+
 /** 계약이 받는 묶는 축. 품목별은 키 자체가 생기지 않는다. */
 export interface GroupByQuery {
   groupBy?: 'LOT' | 'LOCATION';

@@ -40,7 +40,13 @@ import { toPageView } from './pagination';
 import { useBalanceList, type BalanceListQuery } from './queries';
 import { defaultSortKey, nextSortKey, readSortKey, toSortQuery, type SortKey } from './sort';
 import type { BalanceView, SelectOption } from './types';
-import { readViewAxis, toGroupByQuery, VIEW_AXES, type ViewAxis } from './view-axis';
+import {
+  readViewAxis,
+  resolveViewAxis,
+  toGroupByQuery,
+  VIEW_AXES,
+  type ViewAxis,
+} from './view-axis';
 
 const t = messages.stockStatus;
 
@@ -94,7 +100,7 @@ export const StockStatusScreen = () => {
    * | :-: | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
    * | 1 | **보기 전환** | 바뀐다 | **유지** | **보기 기본값으로** | **첫 쪽** | **비운다** | 비운다 | 비운다 | **유지** |
    * | 2 | 조건 변경·조회 | 유지 | 바뀐다 | 유지 | **첫 쪽** | **비운다** | 비운다 | 비운다 | (적용됨) |
-   * | 3 | 초기화 | 유지 | **비운다**(창고 포함) | 보기 기본값 | 첫 쪽 | 비운다 | 비운다 | 비운다 | 비운다 |
+   * | 3 | 초기화 | 유지 | **비운다**(창고 포함) | **비운다** | 첫 쪽 | 비운다 | 비운다 | 비운다 | 비운다 |
    * | 4 | 정렬 열 변경·해제 | 유지 | 유지 | 바뀐다 | **첫 쪽** | **비운다** | 비운다 | 비운다 | 유지 |
    * | 5 | 쪽 이동 | 유지 | 유지 | 유지 | 옮긴 쪽 | **비운다** | 비운다 | 비운다 | 유지 |
    * | 6 | LOT 고르기·해제 | 유지 | 유지 | 유지 | **유지** | 넣고 뺀다 | **기본 1개월로 채운다** | 비운다 | 유지 |
@@ -112,6 +118,12 @@ export const StockStatusScreen = () => {
    *   받아들여진다. 축을 바꿨다고 조건을 버리면 사용자가 방금 좁힌 범위가 사라진다.
    * - **4행이 첫 쪽으로 되돌아가는 이유**: 이 화면의 정렬은 **서버 정렬**이라 전체 순서가 바뀐다
    *   (W-01-09와 반대다 — 그쪽은 쪽 안 정렬이라 쪽을 건드리지 않았다). 3쪽의 뜻이 달라진다.
+   * - **3행의 `sort`가 1행과 다른 이유**(검증 1회차 F2로 정정): 초기화는 **첫 진입과 같은
+   *   상태로 되돌리는 것**이다. 보기 기본 열을 주소에 써 넣으면 첫 진입으로는 만들 수 없는
+   *   상태가 생기고, 창고가 비어 **요청이 0회인 표**에 「정렬됨」이 보조기술로 읽힌다.
+   *   「기본값은 주소에 적지 않는다」는 `filters.ts`의 자기 규칙과도 어긋난다.
+   *   1행(보기 전환)은 정정 대상이 아니다 — 그쪽은 조회가 이어지고, 열이 없는 정렬을
+   *   끌고 가지 않기 위해 그 보기의 기본 열이 필요하다.
    * - **8행이 아무것도 비우지 않는 이유**: 새로고침은 **같은 조회를 다시 하는 것**이다.
    *   무언가를 비우면 새로고침이 조건 변경으로 둔갑한다.
    *
@@ -134,12 +146,18 @@ export const StockStatusScreen = () => {
    * 「고르던 값이 갑자기 사라졌다」로 나타난다. `searchParams`는 주소가 바뀔 때만 새 참조다.
    */
   const filters = useMemo<BalanceFilters>(() => readFilters(searchParams), [searchParams]);
-  const view = readViewAxis(readViewParam(searchParams));
-  const sortKey = readSortKey(readSortParam(searchParams), view);
-  const page = readPage(searchParams);
 
   const warehouseId = toLookupId(filters.warehouse);
   const itemId = toLookupId(filters.item);
+
+  /*
+   * **보기를 조건보다 뒤에 읽는다.** LOT별 보기가 품목에 매달리므로(계획 결정 11) 어느 보기를
+   * 열 수 있는지는 조건이 정한다 — 품목이 없으면 `view=lot`을 품목별로 읽는다.
+   * 파생이라 effect가 필요 없다: `itemId`도 같은 주소에서 나온 값이라 같은 렌더에서 정해진다.
+   */
+  const view = resolveViewAxis(readViewParam(searchParams), itemId !== null);
+  const sortKey = readSortKey(readSortParam(searchParams), view);
+  const page = readPage(searchParams);
 
   /*
    * **창고를 고르기 전에는 조회하지 않는다**(계획 결정 5). 계약은 「창고·품목·LOT 중 적어도
@@ -183,6 +201,12 @@ export const StockStatusScreen = () => {
   const lots = useLotOptions(itemId, view === 'lot');
   const uoms = useUomOptions();
   const partners = usePartnerOptions();
+
+  /*
+   * LOT 선택칸 아래 안내. **`view === 'lot'`이면 품목이 있다** — `resolveViewAxis`가 그것을
+   * 보장하므로 품목 유무를 여기서 다시 묻지 않는다(물으면 늘 참인 죽은 가지가 된다).
+   */
+  const lotNote = view === 'lot' ? lookupNote(lots) : t.filters.lotNeedsItem;
 
   /**
    * 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다.
@@ -379,7 +403,7 @@ export const StockStatusScreen = () => {
           warehouseNote={lookupNote(warehouses)}
           itemNote={lookupNote(items)}
           /* 매달린 조건이 비어 선택지가 없는 것을 「그런 값이 없다」로 읽지 않게 한다. */
-          lotNote={canUseLotView && view === 'lot' ? lookupNote(lots) : t.filters.lotNeedsItem}
+          lotNote={lotNote}
           locationNote={
             warehouseId === null ? t.filters.locationNeedsWarehouse : lookupNote(locations)
           }
@@ -391,8 +415,12 @@ export const StockStatusScreen = () => {
           onRemoveFilter={(key) => {
             apply(view, { ...filters, [key]: key === 'includeZero' ? false : '' }, sortKey);
           }}
+          /*
+           * **초기화는 정렬도 없앤다**(수명 표 3행 — 검증 1회차 F2 정정).
+           * 첫 진입과 같은 상태로 되돌린다: 주소에 `sort`가 없는 것이 곧 「정렬 없음」이다.
+           */
           onReset={() => {
-            apply(view, EMPTY_FILTERS, defaultSortKey(view));
+            apply(view, EMPTY_FILTERS, null);
           }}
         />
 
