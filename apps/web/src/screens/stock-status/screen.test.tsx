@@ -786,6 +786,33 @@ describe('StockStatusScreen — 정렬', () => {
 
     expect(lastQuery(requests, BALANCES_PATH)?.has('sort')).toBe(false);
   });
+
+  /*
+   * **요청이 0회인 표가 「정렬됨」을 말하지 않는다**(리뷰 m-2).
+   *
+   * 주소 규칙은 바뀌지 않았다 — 수명 표 2행(조건 변경·조회에서 `sort` 유지)이 승인된 정본이라
+   * 주소의 `sort`는 그대로 둔다. 다만 창고를 고르기 전에는 정렬할 결과가 없으므로
+   * **표시 계층에서** 정렬 표시를 내지 않는다. 아니면 보조기술이 빈 표를 「보유 기준 오름차순
+   * 정렬됨」으로 읽는다.
+   */
+  it('창고를 고르기 전에는 표가 정렬 표시를 내지 않는다', async () => {
+    renderScreen([balanceRoute(), ...lookupRoutes()], '?sort=onHandQty');
+
+    await screen.findByText(t.empty.notQueriedTitle);
+
+    expect(sortedHeaderNames()).toEqual([]);
+    /* 주소는 손대지 않는다 — 창고를 고르면 그 정렬로 조회된다. */
+    expect(currentLocation()).toContain('sort=onHandQty');
+  });
+
+  /* 짝 방향 — 조회한 표에서는 같은 정렬이 실제로 표시된다. */
+  it('조회하면 같은 정렬이 표에 표시된다', async () => {
+    renderScreen([balanceRoute(), ...lookupRoutes()], `${WITH_WAREHOUSE}&sort=onHandQty`);
+
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(sortedHeaderNames()).toEqual([t.table.onHandQty]);
+  });
 });
 
 describe('StockStatusScreen — 쪽 이동', () => {
@@ -1263,6 +1290,12 @@ describe('StockStatusScreen — 부모가 빠진 종속 조건', () => {
     expect(await screen.findByText('LOT: SAMPLE-LOT-0001')).toBeInTheDocument();
     expect(requestsTo(requests, LOTS_PATH)).toHaveLength(1);
     expect(screen.queryByText(`LOT: ${t.values.unknown}`)).not.toBeInTheDocument();
+    /*
+     * **선택칸 안내가 훅과 같은 값을 본다.** 다르면 선택지는 채워졌는데 그 아래 안내는
+     * 「고르면 채워집니다」라고 말하는 어긋남이 생긴다 — 여기가 정확히 그 상태다
+     * (품목별 보기인데 LOT 조건이 걸려 참조를 부른다).
+     */
+    expect(screen.queryByText(t.filters.lotNeedsItem)).not.toBeInTheDocument();
   });
 });
 
@@ -1417,6 +1450,22 @@ describe('StockStatusScreen — 기준 시각과 새로고침', () => {
     await user.keyboard('{Escape}');
 
     expect(screen.getByTestId('as-of').textContent).toBe(first);
+  });
+
+  /*
+   * **기준 시각을 live 영역으로 두지 않는다.** `<output>`은 암묵적으로 `role="status"`라
+   * 쪽 이동·정렬 변경·새로고침마다 시각이 낭독된다 — 조회가 끝났음은 표의 빈 상태가 이미
+   * 알리므로 같은 사정이 두 번 읽힌다. 되돌리면 이 두 단언이 함께 깨진다.
+   */
+  it('기준 시각이 live 영역이 아니다', async () => {
+    renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
+
+    await screen.findAllByText(ITEM_LABEL);
+
+    const asOf = await screen.findByTestId('as-of');
+
+    expect(asOf.tagName).toBe('SPAN');
+    expect(screen.queryAllByRole('status')).not.toContain(asOf);
   });
 
   it('조회하기 전에는 기준 시각을 내지 않는다', async () => {

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EMPTY_FILTERS,
-  hasAnyFilter,
   readFilters,
   readPage,
   resolveFilters,
@@ -304,13 +303,5 @@ describe('toFilterChips — 적용된 조건마다 칩 하나', () => {
 
   it('조건이 없으면 칩도 없다', () => {
     expect(toFilterChips(EMPTY_FILTERS, NAMES)).toEqual([]);
-  });
-});
-
-describe('hasAnyFilter', () => {
-  it('하나라도 걸려 있으면 참이다', () => {
-    expect(hasAnyFilter(EMPTY_FILTERS)).toBe(false);
-    expect(hasAnyFilter(filters({ warehouse: '9101' }))).toBe(true);
-    expect(hasAnyFilter(filters({ includeZero: true }))).toBe(true);
   });
 });

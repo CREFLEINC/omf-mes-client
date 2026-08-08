@@ -90,6 +90,20 @@ const sortableHeaderNames = (): string[] =>
     .filter((cell) => within(cell).queryByRole('button') !== null)
     .map((cell) => cell.textContent ?? '');
 
+/**
+ * 지금 **정렬 표시가 켜져 있는** 머리글. 「정렬할 수 있다」(위)와 다르다 —
+ * `aria-sort`가 `none`이면 정렬 가능하되 정렬돼 있지 않다는 뜻이다.
+ */
+const sortedHeaderNames = (): string[] =>
+  within(table())
+    .getAllByRole('columnheader')
+    .filter((cell) => {
+      const direction = cell.getAttribute('aria-sort');
+
+      return direction !== null && direction !== 'none';
+    })
+    .map((cell) => cell.textContent ?? '');
+
 describe('buildBalanceColumns — 보기마다의 열 구성', () => {
   /* 열이 9~10개다. 축 열만 보기마다 다르고 나머지 여덟은 세 보기가 공유한다. */
   it('품목별은 아홉 열, LOT별·위치별은 열 열이다', () => {
@@ -222,6 +236,24 @@ describe('BalanceTable — 정렬 가능한 열', () => {
     await user.click(screen.getByRole('button', { name: t.table.onHandQty }));
 
     expect(onSortChange).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+   * **요청이 0회인 표가 「정렬됨」을 말하지 않는다**(리뷰 m-2). 주소의 `sort`는 수명 표 2행대로
+   * 유지되지만, 조회하지 않은 표에는 정렬할 결과가 없어 보조기술이 빈 표를
+   * 「보유 기준 오름차순 정렬됨」으로 읽게 된다. **표시 계층에서만** 가른다.
+   */
+  it('조회하지 않은 표는 정렬 표시를 내지 않는다', () => {
+    renderTable({ view: 'item', rows: [], hasQuery: false, sortKey: 'onHandQty' });
+
+    expect(sortedHeaderNames()).toEqual([]);
+  });
+
+  /* 짝 방향 — 같은 정렬 열이라도 조회한 표에서는 실제로 표시된다. */
+  it('조회한 표는 같은 정렬을 표시한다', () => {
+    renderTable({ view: 'item', rows: [], hasQuery: true, sortKey: 'onHandQty' });
+
+    expect(sortedHeaderNames()).toEqual([t.table.onHandQty]);
   });
 });
 

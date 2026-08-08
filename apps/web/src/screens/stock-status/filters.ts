@@ -269,12 +269,16 @@ export const toFilterChips = (filters: BalanceFilters, names: FilterChipNames): 
   return candidates.filter((chip) => isFilterSet(filters, chip.key));
 };
 
-/** 조건이 걸려 있는가. 참·거짓 조건과 문자열 조건의 「비어 있음」이 다르다. */
+/**
+ * 조건이 걸려 있는가. 참·거짓 조건과 문자열 조건의 「비어 있음」이 다르다.
+ *
+ * **칩을 고르는 데만 쓴다.** 형제 슬라이스에는 「조건이 하나라도 걸렸는가」를 묻는 짝
+ * (`hasAnyFilter`)이 있으나 이 화면에는 쓸 자리가 없다 — 빈 상태 세 갈래를 가르는 것은
+ * `hasQuery`(창고 유무)와 `isBeyondLast`이고 조건 전체가 아니다. 없는 자리에 두면
+ * 검사 범위가 실제보다 넓어 보인다.
+ */
 const isFilterSet = (filters: BalanceFilters, key: keyof BalanceFilters): boolean => {
   const value = filters[key];
 
   return typeof value === 'boolean' ? value : value !== '';
 };
-
-export const hasAnyFilter = (filters: BalanceFilters): boolean =>
-  (Object.keys(filters) as (keyof BalanceFilters)[]).some((key) => isFilterSet(filters, key));

@@ -434,8 +434,17 @@ export const BalanceTable = ({
            * `sort`를 주면 디자인 시스템이 내부 재정렬을 쓰지 않는다(실측).
            *
            * W-01-09는 정반대다 — 그 계약에는 정렬 파라미터가 없어 `defaultSort`만 준다.
+           *
+           * **조회하지 않았으면 정렬 표시를 내지 않는다**(리뷰 m-2). 주소의 `sort`는 그대로 둔다 —
+           * 조건 변경·조회에서 정렬을 유지하는 것이 승인된 수명 표 2행이고, 창고를 고르면 그
+           * 정렬로 조회되어야 한다. 다만 요청이 0회인 표에는 정렬할 결과가 없어, 표시까지 남기면
+           * 보조기술이 빈 표를 「이 열 기준 오름차순 정렬됨」으로 읽는다.
+           * **가르는 자리는 표시 계층 하나**다 — 주소·요청 쪽을 함께 건드리면 규칙이 둘이 된다.
+           *
+           * `null`도 제어다(`sort !== undefined`가 제어 판정 — 번들 실측). 내부 재정렬로
+           * 넘어가지 않는다.
            */
-          sort={toSortState(sortKey)}
+          sort={hasQuery ? toSortState(sortKey) : null}
           onSortChange={onSortChange}
           groupBy={groupAxis === null ? undefined : groupKeyOf}
           renderGroupHeader={groupAxis === null ? undefined : groupHeaderOf}
