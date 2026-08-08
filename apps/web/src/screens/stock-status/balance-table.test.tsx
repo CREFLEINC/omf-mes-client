@@ -57,6 +57,7 @@ const renderTable = (overrides: Partial<BalanceTableProps> = {}) => {
   const onSortChange = vi.fn<(next: SortState | null) => void>();
   const onFirstPage = vi.fn<() => void>();
   const onRetryReferences = vi.fn<() => void>();
+  const onToggleSelect = vi.fn<(lotId: number) => void>();
 
   render(
     <BalanceTable
@@ -66,15 +67,17 @@ const renderTable = (overrides: Partial<BalanceTableProps> = {}) => {
       hasQuery
       isBeyondLast={false}
       sortKey={null}
+      selectedLotId={null}
       onSortChange={onSortChange}
       onFirstPage={onFirstPage}
+      onToggleSelect={onToggleSelect}
       onRetryReferences={onRetryReferences}
       {...LOOKUPS}
       {...overrides}
     />,
   );
 
-  return { onSortChange, onFirstPage, onRetryReferences, user: userEvent.setup() };
+  return { onSortChange, onFirstPage, onRetryReferences, onToggleSelect, user: userEvent.setup() };
 };
 
 const table = (): HTMLElement => screen.getByRole('table');
@@ -104,12 +107,17 @@ const sortedHeaderNames = (): string[] =>
     })
     .map((cell) => cell.textContent ?? '');
 
+const SELECTION = { selectedLotId: null, onToggleSelect: (): void => undefined };
+
 describe('buildBalanceColumns — 보기마다의 열 구성', () => {
-  /* 열이 9~10개다. 축 열만 보기마다 다르고 나머지 여덟은 세 보기가 공유한다. */
-  it('품목별은 아홉 열, LOT별·위치별은 열 열이다', () => {
-    expect(buildBalanceColumns({ view: 'item', ...LOOKUPS })).toHaveLength(9);
-    expect(buildBalanceColumns({ view: 'lot', ...LOOKUPS })).toHaveLength(10);
-    expect(buildBalanceColumns({ view: 'location', ...LOOKUPS })).toHaveLength(10);
+  /*
+   * 축 열만 보기마다 다르고 나머지 여덟은 세 보기가 공유한다. **LOT별에만 상세 열이 하나 더
+   * 붙는다** — 다른 두 보기의 줄은 LOT을 가리키지 않아 고를 대상이 없다.
+   */
+  it('품목별은 아홉 열, 위치별은 열 열, LOT별은 열한 열이다', () => {
+    expect(buildBalanceColumns({ view: 'item', ...LOOKUPS, ...SELECTION })).toHaveLength(9);
+    expect(buildBalanceColumns({ view: 'location', ...LOOKUPS, ...SELECTION })).toHaveLength(10);
+    expect(buildBalanceColumns({ view: 'lot', ...LOOKUPS, ...SELECTION })).toHaveLength(11);
   });
 
   /*
@@ -125,7 +133,7 @@ describe('buildBalanceColumns — 보기마다의 열 구성', () => {
    */
   it('모든 열이 폭을 지정한다 — 미지정 열은 잔여분을 받아 선언과 실렌더가 어긋난다', () => {
     for (const view of VIEW_AXES) {
-      const unspecified = buildBalanceColumns({ view, ...LOOKUPS }).filter(
+      const unspecified = buildBalanceColumns({ view, ...LOOKUPS, ...SELECTION }).filter(
         (column) => column.width === undefined,
       );
 
@@ -142,7 +150,7 @@ describe('buildBalanceColumns — 보기마다의 열 구성', () => {
     };
 
     for (const view of VIEW_AXES) {
-      const columns = buildBalanceColumns({ view, ...LOOKUPS });
+      const columns = buildBalanceColumns({ view, ...LOOKUPS, ...SELECTION });
 
       for (const key of axisKeys[view]) {
         expect(widthOf(columns, key)).toBeGreaterThanOrEqual(CODE_NAME_COLUMN_PX);
@@ -158,9 +166,9 @@ describe('buildBalanceColumns — 보기마다의 열 구성', () => {
    */
   it('열 폭 합이 세 보기 모두 표 하한 이상이다', () => {
     for (const view of VIEW_AXES) {
-      expect(totalWidthOf(buildBalanceColumns({ view, ...LOOKUPS }))).toBeGreaterThanOrEqual(
-        WIDE_TABLE_MIN_PX,
-      );
+      const columns = buildBalanceColumns({ view, ...LOOKUPS, ...SELECTION });
+
+      expect(totalWidthOf(columns)).toBeGreaterThanOrEqual(WIDE_TABLE_MIN_PX);
     }
   });
 });
@@ -597,7 +605,7 @@ describe('BalanceTable — 비어 있는 상태 세 갈래', () => {
 });
 
 describe('BalanceTable — 배치', () => {
-  /* 열이 9~10개다. 최소 폭이 없으면 셀이 낱말 단위로 쪼개진다. */
+  /* 열이 9~11개다. 최소 폭이 없으면 셀이 낱말 단위로 쪼개진다. */
   it('표를 넓은 표 상자로 감싼다', () => {
     const { container } = render(
       <BalanceTable
@@ -607,13 +615,83 @@ describe('BalanceTable — 배치', () => {
         hasQuery
         isBeyondLast={false}
         sortKey={null}
+        selectedLotId={null}
         onSortChange={() => undefined}
         onFirstPage={() => undefined}
+        onToggleSelect={() => undefined}
         onRetryReferences={() => undefined}
         {...LOOKUPS}
       />,
     );
 
     expect(container.querySelector('.wide-table')).not.toBeNull();
+  });
+});
+
+describe('BalanceTable — LOT 고르기', () => {
+  /*
+   * **LOT별 보기에만 상세 열이 있다.** 품목별·위치별의 줄은 계약상 `lotId`가 비어 있어
+   * 가리킬 LOT이 없다 — 열을 두면 누를 수 없는 버튼이 줄마다 생긴다.
+   */
+  it('LOT별에만 상세 열이 있다', () => {
+    renderTable({ view: 'lot', rows: lotViewFixtures });
+
+    expect(headerNames()).toContain(t.table.select);
+  });
+
+  it('품목별에는 상세 열이 없다', () => {
+    renderTable({ view: 'item' });
+
+    expect(headerNames()).not.toContain(t.table.select);
+  });
+
+  it('위치별에는 상세 열이 없다', () => {
+    renderTable({ view: 'location', rows: locationViewFixtures });
+
+    expect(headerNames()).not.toContain(t.table.select);
+  });
+
+  /*
+   * 접근 이름에 **LOT 이름**을 넣는다 — 「선택」이 줄마다 되풀이되면 어느 LOT인지 알 수 없다.
+   * 내부 번호를 넣지 않는다(#44) — 이름을 못 풀면 표 칸과 같은 대체 표기가 들어간다.
+   */
+  it('고르기 버튼의 접근 이름이 LOT 이름이다', () => {
+    renderTable({ view: 'lot', rows: lotViewFixtures });
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0001') }),
+    ).toBeInTheDocument();
+    /* 이름을 못 푼 줄도 번호가 아니라 표 칸과 같은 대체 표기를 쓴다. */
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow(t.values.unknown) }),
+    ).toBeInTheDocument();
+  });
+
+  it('고른 줄은 해제 이름이 된다', () => {
+    renderTable({ view: 'lot', rows: lotViewFixtures, selectedLotId: 9401 });
+
+    expect(
+      screen.getByRole('button', { name: t.actions.deselectRow('SAMPLE-LOT-0001') }),
+    ).toBeInTheDocument();
+    /* 짝 방향 — 고르지 않은 줄은 그대로 고르기다. */
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0002') }),
+    ).toBeInTheDocument();
+  });
+
+  it('버튼을 누르면 그 LOT 번호를 상위에 알린다', async () => {
+    const { onToggleSelect, user } = renderTable({ view: 'lot', rows: lotViewFixtures });
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0002') }));
+
+    expect(onToggleSelect).toHaveBeenCalledTimes(1);
+    expect(onToggleSelect).toHaveBeenCalledWith(9402);
+  });
+
+  /* 상세 열은 정렬 대상이 아니다 — 계약 열거값에 없고 정렬할 값도 아니다. */
+  it('상세 열에 정렬 버튼이 붙지 않는다', () => {
+    renderTable({ view: 'lot', rows: lotViewFixtures });
+
+    expect(sortableHeaderNames()).not.toContain(t.table.select);
   });
 });

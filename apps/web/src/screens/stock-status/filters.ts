@@ -62,6 +62,7 @@ const URL_KEYS = {
 const VIEW_KEY = 'view';
 const SORT_KEY = 'sort';
 const PAGE_KEY = 'page';
+const SELECTED_KEY = 'sel';
 
 /**
  * **1 이상의 정수만.** `\d+`는 `0`을 통과시키는데 `0`은 어느 자원의 번호도 아니다 —
@@ -132,6 +133,20 @@ export const readPage = (params: URLSearchParams): number => {
 
   /* 정규식이 이미 1 이상만 통과시키므로 크기를 다시 묻지 않는다. */
   return POSITIVE_INTEGER.test(raw) ? Number(raw) : 1;
+};
+
+/**
+ * 고른 LOT의 번호. **잔액 요청에 실리지 않는다** — LOT 상세 경로의 조각으로만 쓴다.
+ *
+ * 주소에 두는 이유는 새로고침·뒤로가기·공유가 같은 LOT을 열어야 하기 때문이다.
+ * 만드는 자리는 화면의 고르기 핸들러 하나뿐이다 — `toSearchParams`가 이 키를 만들지 않는 것이
+ * 수명 표 1~5행을 함께 지킨다.
+ */
+export const readSelectedLotId = (params: URLSearchParams): number | null => {
+  const raw = params.get(SELECTED_KEY) ?? '';
+
+  /* 조건 번호와 같은 잣대다 — `0`은 어느 LOT의 번호도 아니라 `/trace/lots/0`을 부르게 된다. */
+  return POSITIVE_INTEGER.test(raw) ? Number(raw) : null;
 };
 
 /**
