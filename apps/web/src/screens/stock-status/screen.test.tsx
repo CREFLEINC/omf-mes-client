@@ -147,7 +147,15 @@ const lookupRoutes = (): StubRoute[] => [
   lookupRoute(PARTNERS_PATH, partnerFixtures),
 ];
 
+/** 스텁이 응답할 상세 경로. 목록(`/trace/lots`)과 갈라야 한다. */
 const isLotDetailPath = (pathname: string): boolean => /^\/trace\/lots\/\d+$/.test(pathname);
+
+/**
+ * 상세 경로로 **나간 요청 전부**. 번호 자리가 무엇이든 센다 —
+ * `/trace/lots/null` 같은 잘못된 경로도 「부르지 않았다」를 깨뜨리는 요청이다.
+ */
+const lotDetailRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname.startsWith(`${LOTS_PATH}/`));
 
 /**
  * LOT 상세. **어느 번호로 불러도 응답한다** — 「부르지 않았다」를 증명하려면 부를 수 있는
@@ -1602,7 +1610,7 @@ describe('StockStatusScreen — LOT 고르기', () => {
 
     await screen.findByText(t.empty.noSelectionTitle);
 
-    expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(0);
+    expect(lotDetailRequests(requests)).toHaveLength(0);
   });
 
   it('고르면 주소에 sel이 붙고 상세를 1회 부른다', async () => {
@@ -1794,7 +1802,7 @@ describe('StockStatusScreen — 고른 LOT의 수명', () => {
 
     await screen.findAllByText(ITEM_LABEL);
 
-    expect(requests.filter((request) => isLotDetailPath(request.url.pathname))).toHaveLength(0);
+    expect(lotDetailRequests(requests)).toHaveLength(0);
     /* 주소는 고쳐 쓰지 않는다 — 보기를 되돌리면 그 선택이 되살아난다. */
     expect(currentLocation()).toContain('sel=9401');
   });
@@ -1808,7 +1816,7 @@ describe('StockStatusScreen — 고른 LOT의 수명', () => {
 
     await screen.findByText(t.empty.noSelectionTitle);
 
-    expect(requests.filter((request) => isLotDetailPath(request.url.pathname))).toHaveLength(0);
+    expect(lotDetailRequests(requests)).toHaveLength(0);
   });
 });
 
