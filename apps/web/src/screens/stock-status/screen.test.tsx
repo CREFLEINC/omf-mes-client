@@ -1781,6 +1781,24 @@ describe('StockStatusScreen — 고른 LOT의 수명', () => {
     expect(currentLocation()).toContain('sel=9401');
   });
 
+  /*
+   * **LOT별 보기가 아니면 `sel`은 가리킬 줄이 없다.** 읽는 자리에서 그렇게 판정하지 않으면
+   * 화면에 없는 LOT의 상세를 한 번 부르고 나서 지우게 된다 — 사용자에게는 아무 일도 없는데
+   * 요청만 하나 늘어난다.
+   */
+  it('품목별 보기의 주소에 sel이 남아 있어도 상세를 부르지 않는다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      `${WITH_WAREHOUSE}&sel=9401`,
+    );
+
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(requests.filter((request) => isLotDetailPath(request.url.pathname))).toHaveLength(0);
+    /* 주소는 고쳐 쓰지 않는다 — 보기를 되돌리면 그 선택이 되살아난다. */
+    expect(currentLocation()).toContain('sel=9401');
+  });
+
   /* 주소는 손으로 고쳐지는 자리다 — `/trace/lots/0`을 부르지 않는다. */
   it('번호가 아닌 sel로는 상세를 부르지 않는다', async () => {
     const { requests } = renderScreen(
