@@ -1541,6 +1541,59 @@ describe('StockStatusScreen — 기준 시각과 새로고침', () => {
   });
 
   /*
+   * **새로고침은 화면이 보고 있는 것 전부를 다시 부른다.** 목록만 다시 부르면 상세 구획에
+   * 갱신된 수량(고른 줄에서 온다)과 갱신되지 않은 보류·유효기한이 섞이고, 그 위의
+   * 「기준 {시각}」이 화면 일부에 대해 거짓이 된다. 보류는 이 구획에서 가장 자주 바뀌는 값이라
+   * 「해제됐나」를 보려고 누른 사용자가 같은 보류를 다시 보게 된다.
+   */
+  it('선택이 걸린 새로고침이 목록과 상세를 함께 다시 부른다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    await screen.findByText(t.detail.quantitiesNote);
+
+    const listBefore = requestsTo(requests, BALANCES_PATH).length;
+    const detailBefore = lotDetailRequests(requests).length;
+    const before = currentLocation();
+
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    await waitFor(() => {
+      expect(lotDetailRequests(requests).length).toBeGreaterThan(detailBefore);
+    });
+
+    expect(requestsTo(requests, BALANCES_PATH).length).toBeGreaterThan(listBefore);
+    /* 새로고침은 조건·선택을 하나도 바꾸지 않는다(수명 표 8행). */
+    expect(currentLocation()).toBe(before);
+    expect(screen.getByText(t.detail.quantitiesNote)).toBeInTheDocument();
+  });
+
+  /*
+   * 짝 방향 — **고른 LOT이 없으면 상세를 부를 대상이 없다.** 이 단언이 없으면 「전부 다시 부른다」가
+   * 「아무 때나 부른다」로 넓어져도 드러나지 않는다.
+   */
+  it('선택이 없으면 새로고침이 상세를 부르지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      LOT_VIEW,
+    );
+
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    const listBefore = requestsTo(requests, BALANCES_PATH).length;
+
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, BALANCES_PATH).length).toBeGreaterThan(listBefore);
+    });
+
+    expect(lotDetailRequests(requests)).toHaveLength(0);
+  });
+
+  /*
    * **자동으로 갱신되지 않는다**(이슈 #21 §5 — 대시보드가 아니다).
    * 아무것도 하지 않는 동안 요청이 늘지 않음을 값으로 고정한다.
    */
@@ -1805,6 +1858,26 @@ describe('StockStatusScreen — 고른 LOT의 수명', () => {
     expect(lotDetailRequests(requests)).toHaveLength(0);
     /* 주소는 고쳐 쓰지 않는다 — 보기를 되돌리면 그 선택이 되살아난다. */
     expect(currentLocation()).toContain('sel=9401');
+  });
+
+  /*
+   * **조회가 성립하지 않으면 `sel`도 가리킬 줄이 없다.** 창고가 없으면 목록 요청이 0회라
+   * 고른 줄이 영영 오지 않는데, 보기만 보고 판정하면 상세를 한 번 부르고 **스켈레톤에 갇힌다** —
+   * 정리 effect는 목록 응답이 없어 돌아서므로 `sel`도 지워지지 않는다.
+   * 이 화면이 `?wh=0`·`sel=0`·`view=item&sel=…`을 막는 것과 같은 갈래의 잣대다.
+   */
+  it('창고가 없으면 sel이 걸려 있어도 상세를 부르지 않는다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      '?view=lot&item=9301&sel=9401',
+    );
+
+    await screen.findByText(t.empty.notQueriedTitle);
+
+    expect(lotDetailRequests(requests)).toHaveLength(0);
+    /* 영영 오지 않을 것을 기다리는 표기를 두지 않는다. */
+    expect(screen.queryByRole('status', { name: t.loading.lotDetail })).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
   });
 
   /* 주소는 손으로 고쳐지는 자리다 — `/trace/lots/0`을 부르지 않는다. */

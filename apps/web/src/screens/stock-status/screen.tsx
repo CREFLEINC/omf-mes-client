@@ -182,13 +182,22 @@ export const StockStatusScreen = () => {
 
   /*
    * **고른 LOT도 읽는 자리에서 뜻을 판정한다**(`resolveFilters`·`resolveViewAxis`와 같은 갈래).
-   * LOT별 보기가 아니면 표에 가리킬 줄이 없으므로 고르지 않은 것으로 읽는다 — 그러지 않으면
-   * `?view=item&sel=…` 주소로 들어왔을 때 화면에 없는 LOT의 상세를 한 번 부르고 나서 지운다.
+   * 가리킬 줄이 있으려면 **둘 다** 있어야 한다.
    *
-   * **주소는 고쳐 쓰지 않는다.** 보기를 되돌리면 그 선택이 되살아나야 하고, 조회·보기 전환은
+   * - **LOT별 보기여야 한다.** 다른 보기의 줄은 LOT을 가리키지 않는다 — 그러지 않으면
+   *   `?view=item&sel=…` 주소에서 화면에 없는 LOT의 상세를 한 번 부르고 나서 지운다.
+   * - **창고가 있어야 한다.** 없으면 목록 요청이 0회라(결정 5) 고른 줄이 **영영 오지 않는다** —
+   *   상세만 한 번 부르고 구획이 스켈레톤에 갇히며, 정리 effect는 목록 응답이 없어 돌아서므로
+   *   `sel`도 지워지지 않는다. 회복은 창고를 고르는 순간 자동으로 일어나지만, 그때까지
+   *   화면이 오지 않을 것을 기다리는 표기를 낸다.
+   *
+   * 두 잣대 모두 이 화면이 이미 쓰는 형태다 — `?wh=0`·`sel=0`을 버리는 것과 같은 갈래다.
+   *
+   * **주소는 고쳐 쓰지 않는다.** 보기·창고를 되돌리면 그 선택이 되살아나야 하고, 조회·보기 전환은
    * `toSearchParams`가 `sel`을 만들지 않으므로 어긋남이 쌓이지 않는다.
    */
-  const selectedLotId = view === 'lot' ? readSelectedLotId(searchParams) : null;
+  const selectedLotId =
+    view === 'lot' && warehouseId !== null ? readSelectedLotId(searchParams) : null;
 
   /*
    * **창고를 고르기 전에는 조회하지 않는다**(계획 결정 5). 계약은 「창고·품목·LOT 중 적어도
@@ -513,7 +522,23 @@ export const StockStatusScreen = () => {
               size="sm"
               disabled={listQuery === null}
               onClick={() => {
+                /*
+                 * **화면이 보고 있는 조회를 전부 다시 한다.** 목록만 다시 부르면 상세 구획에
+                 * 갱신된 수량(고른 잔액 줄에서 온다)과 갱신되지 않은 보류·유효기한이 섞이고,
+                 * 그 위의 「기준 {시각}」이 화면 일부에 대해 거짓이 된다. 이 화면은 스스로를
+                 * 「조회 시점 스냅샷」으로 선언했고 기준 시각이 그 선언의 유일한 표시다.
+                 *
+                 * **고른 LOT이 없으면 부르지 않는다.** 설치본(`@tanstack/query-core@5.101.4`)의
+                 * `Query.fetch`는 `enabled`를 보지 않는다 — `refetch()`는 비활성 쿼리에서도
+                 * `queryFn`을 실행한다. 지금은 `queryFn`이 던져서 요청이 나가지 않지만,
+                 * 그것은 **가드가 막는 것**이지 훅이 무동작인 것이 아니다. 뜻을 던지기에
+                 * 기대지 않고 여기서 밝힌다.
+                 *
+                 * 조건·보기·정렬·쪽·선택은 하나도 바꾸지 않는다(수명 표 8행).
+                 */
                 void list.refetch();
+
+                if (selectedLotId !== null) void lotDetail.refetch();
               }}
             >
               {t.actions.refresh}

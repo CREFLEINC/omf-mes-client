@@ -214,21 +214,23 @@ export const LotDetailPane = ({
        */}
       <p className="field-note">{t.detail.quantitiesNote}</p>
 
-      {detail.externalIdentifiers.length === 0 ? (
-        <p className="field-note">{t.detail.noExternalIdentifiers}</p>
-      ) : (
-        <div className="wide-table">
-          <Table
-            density="compact"
-            caption={t.detail.externalIdentifiers}
-            columns={buildIdentifierColumns(partnerLookup)}
-            rows={detail.externalIdentifiers}
-            /* **이 문자열은 화면에 나오지 않는다** — React key로만 쓰인다(#44). */
-            getRowId={(identifier) => String(identifier.lotExternalIdentifierId)}
-            empty={<EmptyState size="sm" title={t.detail.noExternalIdentifiers} />}
-          />
-        </div>
-      )}
+      {/*
+       * **빈 상태를 만드는 자리는 하나다** — 표를 늘 그리고 `empty` 슬롯이 0건을 맡는다.
+       * 바깥에서 `length === 0`을 먼저 가르면 그 슬롯이 도달 불가한 죽은 가지가 되고,
+       * 같은 문구가 두 형태로 두 번 적힌다. 바로 아래 보류 표와 같은 형태로 맞춘다 —
+       * 이웃한 두 표가 빈 상태를 다르게 처리하면 다음 사람이 어느 쪽을 따를지 알 수 없다.
+       */}
+      <div className="wide-table">
+        <Table
+          density="compact"
+          caption={t.detail.externalIdentifiers}
+          columns={buildIdentifierColumns(partnerLookup)}
+          rows={detail.externalIdentifiers}
+          /* **이 문자열은 화면에 나오지 않는다** — React key로만 쓰인다(#44). */
+          getRowId={(identifier) => String(identifier.lotExternalIdentifierId)}
+          empty={<EmptyState size="sm" title={t.detail.noExternalIdentifiers} />}
+        />
+      </div>
 
       <LotHoldTable holds={detail.holds} uomLookup={uomLookup} />
 
