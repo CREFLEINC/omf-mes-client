@@ -63,7 +63,12 @@ const VIEW_KEY = 'view';
 const SORT_KEY = 'sort';
 const PAGE_KEY = 'page';
 
-const POSITIVE_INTEGER = /^\d+$/;
+/**
+ * **1 이상의 정수만.** `\d+`는 `0`을 통과시키는데 `0`은 어느 자원의 번호도 아니다 —
+ * `?wh=0`이 창고 필수 세 겹(타입·`enabled`·잠긴 버튼)을 전부 지나 `warehouseId=0` 요청이
+ * 나갔다. 세 겹이 막는 것은 「비어 있음」이지 「0」이 아니다.
+ */
+const POSITIVE_INTEGER = /^[1-9]\d*$/;
 
 /**
  * 정수가 아닌 번호는 조건으로 받지 않는다. 그대로 `Number()`에 넘기면 `NaN`이 요청 URL에 실려
@@ -88,6 +93,33 @@ export const readFilters = (params: URLSearchParams): BalanceFilters => ({
   includeZero: params.get(URL_KEYS.includeZero) === 'true',
 });
 
+/**
+ * 주소가 담은 조건을 **지금 뜻이 있는 조건**으로 읽는다.
+ *
+ * 이 화면에는 종속 관계가 둘 있고, 화면이 이미 그것을 선언해 두었다 —
+ * **LOT은 품목에**(LOT을 번호 여러 개로 조회할 수단이 없어 품목이 범위를 정한다) ·
+ * **위치는 창고에**(계약이 `warehouseId`를 필수로 요구한다) 매달린다.
+ * 그런데 매달림이 「참조를 부를지」에만 걸려 있고 **조건 값 자체**에는 걸려 있지 않아,
+ * 부모를 빼도 종속 조건이 남아 요청에 계속 실리고 칩은 「알 수 없음」으로 보였다.
+ *
+ * 「알 수 없음」은 이 저장소에서 뜻이 확정된 낱말이다 — 「이름 목록은 왔는데 그 안에 없다,
+ * 즉 **값이 잘못됐다**」. 정상적으로 걸려 결과를 좁히고 있는 조건에 그 표를 붙이면
+ * 사용자는 결과가 좁아진 이유를 알 수 없다(#47과 같은 갈래).
+ *
+ * **읽는 자리에서 판정한다** — `resolveViewAxis`와 같은 갈래다. 제거 핸들러마다 흩어 놓으면
+ * 주소 진입·뒤로가기처럼 핸들러를 거치지 않는 경로가 새고, 관계가 늘 때마다 손댈 곳이 는다.
+ *
+ * **주소는 고쳐 쓰지 않는다.** 부모를 다시 채우면 원하던 조건이 되살아나야 하고,
+ * 「주소에 적힌 값과 읽는 값이 다를 수 있다」는 이 화면이 이미 쓰는 규칙이다.
+ * 다만 조건 줄의 초안은 **읽은 값**에서 시작하므로, 화면에서 부모를 다시 고르고 조회하면
+ * 뜻을 잃었던 종속 조건은 주소에서도 사라진다 — **어긋남이 쌓이지 않는다.**
+ */
+export const resolveFilters = (filters: BalanceFilters): BalanceFilters => ({
+  ...filters,
+  location: filters.warehouse === '' ? '' : filters.location,
+  lot: filters.item === '' ? '' : filters.lot,
+});
+
 /** 주소가 담은 보기. 모르는 값의 처리는 `view-axis.ts`가 정한다. */
 export const readViewParam = (params: URLSearchParams): string | null => params.get(VIEW_KEY);
 
@@ -98,7 +130,8 @@ export const readSortParam = (params: URLSearchParams): string | null => params.
 export const readPage = (params: URLSearchParams): number => {
   const raw = params.get(PAGE_KEY) ?? '';
 
-  return POSITIVE_INTEGER.test(raw) && Number(raw) >= 1 ? Number(raw) : 1;
+  /* 정규식이 이미 1 이상만 통과시키므로 크기를 다시 묻지 않는다. */
+  return POSITIVE_INTEGER.test(raw) ? Number(raw) : 1;
 };
 
 /**

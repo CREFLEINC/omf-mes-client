@@ -371,11 +371,14 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
     expect(query?.get('includeZero')).toBe('true');
   });
 
-  /* 정수가 아닌 번호를 그대로 보내면 조회 전체가 400으로 실패한다. */
+  /*
+   * 정수가 아닌 번호를 그대로 보내면 조회 전체가 400으로 실패한다.
+   * **`0`도 번호가 아니다** — 통과시키면 `itemId=0` 같은 값이 그대로 실린다.
+   */
   it('정수가 아닌 번호 조건은 버리고 조회한다', async () => {
     const { requests } = renderScreen(
       [balanceRoute(), ...lookupRoutes()],
-      '?wh=9101&item=abc&lot=1.5&loc=-3&page=0',
+      '?wh=9101&item=0&lot=1.5&loc=-3&page=0',
     );
 
     await screen.findByText(ITEM_LABEL);
@@ -391,6 +394,18 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
   /* 창고가 없으면 조회 자체가 없다 — 잘못된 주소로 들어와도 요청이 나가지 않는다. */
   it('창고가 정수가 아니면 조회하지 않는다', async () => {
     const { requests } = renderScreen([balanceRoute(), ...lookupRoutes()], '?wh=abc&item=9301');
+
+    await screen.findByText(t.empty.notQueriedTitle);
+
+    expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(0);
+  });
+
+  /*
+   * **`0`이 창고 필수 세 겹을 뚫던 자리다.** 타입·`enabled`·잠긴 버튼이 막는 것은
+   * 「비어 있음」이지 「0」이 아니라, `warehouseId=0` 요청이 실제로 나갔다.
+   */
+  it('창고가 0이면 조회하지 않는다', async () => {
+    const { requests } = renderScreen([balanceRoute(), ...lookupRoutes()], '?wh=0');
 
     await screen.findByText(t.empty.notQueriedTitle);
 
@@ -1146,6 +1161,108 @@ describe('StockStatusScreen — 매달린 참조', () => {
     );
     expect(screen.queryByText('SAMPLE-LOT-0001')).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: t.views.lot })).toHaveAttribute('aria-disabled', 'true');
+  });
+});
+
+/**
+ * **부모 조건이 빠지면 종속 조건도 함께 뜻을 잃는다.**
+ *
+ * 이 화면은 두 종속 관계를 이미 선언해 두었다 — LOT은 품목에, 위치는 창고에 매달린다
+ * (조건 줄의 안내 문구가 그렇게 말하고 `enabled`가 그렇게 부른다). 그런데 **조건 값 자체**는
+ * 부모가 빠져도 남아, 요청에 계속 실리면서 칩은 「알 수 없음」으로 보였다.
+ *
+ * 이 저장소에서 「알 수 없음」은 뜻이 확정된 낱말이다 — 「이름 목록은 왔는데 그 안에 없다,
+ * 즉 **값이 잘못됐다**」. 정상적으로 걸려 있고 결과를 좁히고 있는 조건에 그 표를 붙이면
+ * 사용자는 결과가 좁아진 이유를 알 수 없고 걸린 값을 잘못된 것으로 읽는다(#47과 같은 갈래).
+ */
+describe('StockStatusScreen — 부모가 빠진 종속 조건', () => {
+  /** 리뷰 실측 경로 (a) — 마우스만으로 닿는다. */
+  it('품목 칩을 빼면 LOT 조건이 요청에서도 칩에서도 사라진다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), ...lookupRoutes()],
+      `${WITH_WAREHOUSE}&item=9301&lot=9401&view=lot`,
+    );
+
+    // 선행 단언 — 품목이 있는 동안에는 LOT 조건이 실제로 걸려 있고 이름으로 보인다.
+    expect(await screen.findByText('LOT: SAMPLE-LOT-0001')).toBeInTheDocument();
+    expect(lastQuery(requests, BALANCES_PATH)?.get('lotId')).toBe('9401');
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveItem }));
+
+    await waitFor(() => {
+      expect(lastQuery(requests, BALANCES_PATH)?.has('lotId')).toBe(false);
+    });
+
+    expect(screen.queryByText(/^LOT: /)).not.toBeInTheDocument();
+    expect(screen.queryByText(`LOT: ${t.values.unknown}`)).not.toBeInTheDocument();
+  });
+
+  /** 리뷰 실측 경로 (b) — 위치는 창고에 매달린다. */
+  it('창고 칩을 빼면 위치 조건이 칩에서 사라진다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), ...lookupRoutes()],
+      `${WITH_WAREHOUSE}&loc=9201`,
+    );
+
+    // 선행 단언 — 창고가 있는 동안에는 위치 조건이 걸려 있고 이름으로 보인다.
+    expect(await screen.findByText('위치: SAMPLE-LOC-01 · 합성 위치 가')).toBeInTheDocument();
+    expect(lastQuery(requests, BALANCES_PATH)?.get('locationId')).toBe('9201');
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveWarehouse }));
+
+    await waitFor(() => {
+      expect(screen.getByText(t.empty.notQueriedTitle)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/^위치: /)).not.toBeInTheDocument();
+    expect(screen.queryByText(`위치: ${t.values.unknown}`)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **어긋남이 쌓이지 않는다.** 부모를 다시 채워도 뜻을 잃은 종속 조건이 되살아나지 않는다 —
+   * 되살아나면 사용자가 지운 적 없는 조건이 갑자기 결과를 좁힌다.
+   */
+  it('품목을 다시 골라도 빠졌던 LOT 조건이 되살아나지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), ...lookupRoutes()],
+      `${WITH_WAREHOUSE}&item=9301&lot=9401&view=lot`,
+    );
+
+    await screen.findByText('LOT: SAMPLE-LOT-0001');
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveItem }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/^LOT: /)).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByLabelText(t.fields.item));
+    await user.click(await screen.findByRole('option', { name: ITEM_LABEL }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('item=9301');
+    });
+
+    expect(currentLocation()).not.toContain('lot=');
+    expect(lastQuery(requests, BALANCES_PATH)?.has('lotId')).toBe(false);
+    expect(screen.queryByText(/^LOT: /)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **LOT 이름을 내는 자리가 있으면 반드시 부른다.** 「쓰지 않으면 부르지 않는다」의 뒷면이며,
+   * 한쪽만 지키면 부르지 않는 참조의 이름을 「알 수 없음」으로 확정 표시하게 된다.
+   * LOT 조건 칩은 **품목별 보기에서도** LOT 이름을 낸다.
+   */
+  it('품목별 보기라도 LOT 조건이 걸려 있으면 LOT 참조를 부르고 이름으로 낸다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), ...lookupRoutes()],
+      `${WITH_WAREHOUSE}&item=9301&lot=9401`,
+    );
+
+    expect(await screen.findByText('LOT: SAMPLE-LOT-0001')).toBeInTheDocument();
+    expect(requestsTo(requests, LOTS_PATH)).toHaveLength(1);
+    expect(screen.queryByText(`LOT: ${t.values.unknown}`)).not.toBeInTheDocument();
   });
 });
 

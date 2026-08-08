@@ -5,6 +5,7 @@ import {
   hasAnyFilter,
   readFilters,
   readPage,
+  resolveFilters,
   toBalanceFilterQuery,
   toFilterChips,
   toSearchParams,
@@ -63,6 +64,29 @@ describe('readFilters — 주소가 조건의 정본이다', () => {
     expect(read.location).toBe('');
   });
 
+  /*
+   * **`0`은 어느 자원의 번호도 아니다.** `\\d+`가 통과시키면 `?wh=0`이 창고 필수 세 겹을
+   * 전부 지나 `warehouseId=0` 요청이 나간다 — 세 겹이 막는 것은 「비어 있음」이지 「0」이 아니다.
+   */
+  it('0은 번호 조건으로 받지 않는다', () => {
+    const read = readFilters(params('wh=0&item=0&lot=0&loc=0'));
+
+    expect(read.warehouse).toBe('');
+    expect(read.item).toBe('');
+    expect(read.lot).toBe('');
+    expect(read.location).toBe('');
+  });
+
+  /* 짝이 되는 방향 — 1 이상은 그대로 받는다. 위 단언이 「전부 버린다」가 되지 않게 한다. */
+  it('1 이상의 번호는 그대로 받는다', () => {
+    expect(readFilters(params('wh=1&item=10&lot=100&loc=1000'))).toMatchObject({
+      warehouse: '1',
+      item: '10',
+      lot: '100',
+      location: '1000',
+    });
+  });
+
   /* 계약 기본값이 거짓이다 — 참인 값 하나만 켠 것으로 읽는다. */
   it('잔액 0 포함은 true일 때만 켜진다', () => {
     expect(readFilters(params('zero=true')).includeZero).toBe(true);
@@ -84,6 +108,55 @@ describe('readPage — 주소가 가리키는 쪽', () => {
     expect(readPage(params('page=0'))).toBe(1);
     expect(readPage(params('page=-1'))).toBe(1);
     expect(readPage(params('page=abc'))).toBe(1);
+  });
+});
+
+describe('resolveFilters — 부모가 빠진 종속 조건은 뜻을 잃는다', () => {
+  /*
+   * 매달림이 「참조를 부를지」에만 걸려 있으면 조건 값은 남아 요청에 계속 실리고,
+   * 칩은 이름을 못 풀어 「알 수 없음」(= 값이 잘못됐다)으로 보인다.
+   */
+  it('창고가 없으면 위치 조건을 버린다', () => {
+    expect(resolveFilters(filters({ location: '9201' })).location).toBe('');
+  });
+
+  it('품목이 없으면 LOT 조건을 버린다', () => {
+    expect(resolveFilters(filters({ lot: '9401' })).lot).toBe('');
+  });
+
+  /* 짝이 되는 방향 — 부모가 있으면 그대로 둔다. 위 단언이 「늘 버린다」가 되지 않게 한다. */
+  it('부모가 있으면 종속 조건을 그대로 둔다', () => {
+    const resolved = resolveFilters(
+      filters({ warehouse: '9101', location: '9201', item: '9301', lot: '9401' }),
+    );
+
+    expect(resolved.location).toBe('9201');
+    expect(resolved.lot).toBe('9401');
+  });
+
+  /* 종속 관계가 둘뿐이다 — 나머지 조건은 서로 매달리지 않는다. */
+  it('매달리지 않은 조건은 건드리지 않는다', () => {
+    const applied = filters({
+      warehouse: '9101',
+      item: '9301',
+      qualityStatus: 'SAMPLE_Q_A',
+      inventoryStatus: 'SAMPLE_I_A',
+      ownership: 'SAMPLE_OWN_A',
+      includeZero: true,
+    });
+
+    expect(resolveFilters(applied)).toEqual(applied);
+  });
+
+  /* 부모를 빼도 부모 아닌 조건은 남는다 — 한꺼번에 비우는 것이 아니다. */
+  it('창고를 빼도 품목·코드 조건은 남는다', () => {
+    const resolved = resolveFilters(
+      filters({ item: '9301', location: '9201', qualityStatus: 'SAMPLE_Q_A' }),
+    );
+
+    expect(resolved.item).toBe('9301');
+    expect(resolved.qualityStatus).toBe('SAMPLE_Q_A');
+    expect(resolved.location).toBe('');
   });
 });
 

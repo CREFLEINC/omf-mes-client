@@ -16,6 +16,7 @@ import {
   EMPTY_FILTERS,
   readFilters,
   readPage,
+  resolveFilters,
   readSortParam,
   readViewParam,
   toBalanceFilterQuery,
@@ -145,7 +146,14 @@ export const StockStatusScreen = () => {
    * 조회 응답이 도착하는 순간(대기 → 성공)이 실제로 그 자리이며, 사용자에게는
    * 「고르던 값이 갑자기 사라졌다」로 나타난다. `searchParams`는 주소가 바뀔 때만 새 참조다.
    */
-  const filters = useMemo<BalanceFilters>(() => readFilters(searchParams), [searchParams]);
+  /*
+   * **읽으면서 뜻을 잃은 종속 조건을 걷어낸다**(`resolveFilters`) — 부모가 빠진 LOT·위치는
+   * 요청에도 칩에도 남지 않는다. 보기를 조건에서 파생시키는 것과 같은 갈래다.
+   */
+  const filters = useMemo<BalanceFilters>(
+    () => resolveFilters(readFilters(searchParams)),
+    [searchParams],
+  );
 
   const warehouseId = toLookupId(filters.warehouse);
   const itemId = toLookupId(filters.item);
@@ -198,15 +206,24 @@ export const StockStatusScreen = () => {
   /* 매달림은 `enabled`로만 표현한다 — 화면이 조건을 다시 계산하면 두 곳이 어긋난다. */
   const locations = useLocationOptions(warehouseId);
   const items = useItemOptions();
-  const lots = useLotOptions(itemId, view === 'lot');
+  /*
+   * **LOT 이름을 내는 자리가 있으면 부른다.** 「쓰지 않으면 부르지 않는다」의 뒷면이며,
+   * 한쪽만 지키면 부르지 않는 참조의 이름을 「알 수 없음」으로 확정 표시하게 된다.
+   * 자리는 둘이다 — LOT별 보기의 LOT 열, 그리고 **보기와 무관한 LOT 조건 칩**.
+   */
+  const isLotNameShown = view === 'lot' || filters.lot !== '';
+  const lots = useLotOptions(itemId, isLotNameShown);
   const uoms = useUomOptions();
   const partners = usePartnerOptions();
 
   /*
-   * LOT 선택칸 아래 안내. **`view === 'lot'`이면 품목이 있다** — `resolveViewAxis`가 그것을
-   * 보장하므로 품목 유무를 여기서 다시 묻지 않는다(물으면 늘 참인 죽은 가지가 된다).
+   * LOT 선택칸 아래 안내. **훅을 켜는 값과 같은 값을 본다** — 다르면 선택지는 채워졌는데
+   * 「고르면 채워집니다」라고 말하는 어긋남이 생긴다.
+   *
+   * `isLotNameShown`이면 품목이 있다 — `resolveViewAxis`와 `resolveFilters`가 각각 보장하므로
+   * 품목 유무를 여기서 다시 묻지 않는다(물으면 늘 참인 죽은 가지가 된다).
    */
-  const lotNote = view === 'lot' ? lookupNote(lots) : t.filters.lotNeedsItem;
+  const lotNote = isLotNameShown ? lookupNote(lots) : t.filters.lotNeedsItem;
 
   /**
    * 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다.
@@ -338,11 +355,16 @@ export const StockStatusScreen = () => {
             {/*
              * 조회 시점 스냅샷임을 밝힌다 — 이 화면은 자동으로 갱신되지 않는다.
              * 조회하기 전에는 가리킬 시각이 없어 내지 않는다.
+             *
+             * **live 영역으로 두지 않는다**(`<output>`은 암묵적으로 `role="status"`다).
+             * 쪽 이동·정렬 변경·새로고침마다 낭독되는데, 이 화면은 다른 자리에서도
+             * 같은 사정이 두 번 읽히지 않게 `live`를 일부러 붙이지 않았다 —
+             * 조회가 끝났음은 표의 빈 상태가 이미 알린다.
              */}
             {asOf !== null && (
-              <output data-testid="as-of" className="field-note">
+              <span data-testid="as-of" className="field-note">
                 {t.asOf(asOf)}
-              </output>
+              </span>
             )}
             <Button
               variant="outlined"
