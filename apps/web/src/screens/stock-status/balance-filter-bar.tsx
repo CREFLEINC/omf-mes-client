@@ -146,13 +146,18 @@ export const BalanceFilterBar = ({
     <>
       <div className="filter-bar">
         {/*
-         * 규범 3-2 — 참조 선택칸은 전부 「코드 · 이름」을 고른다. 최소 폭을 주지 않으면
-         * 선택지 목록이 트리거 폭에 갇혀 잘리고, 무엇을 고르는지 읽을 수 없다.
+         * 규범 3-2 — 최소 폭을 주지 않으면 선택지 목록이 트리거 폭에 갇혀 잘리고,
+         * 무엇을 고르는지 읽을 수 없다. **판단 기준은 선택지 문구 길이다.**
+         *
+         * 참조 넷은 `codeName`(18.5rem) — 창고·위치·품목은 「코드 · 이름」이고 LOT은
+         * `LOT-2026-000045` 형의 긴 식별자라 `.wide-select`의 13rem으로 모자란다
+         * (브라우저 확인 F-B1: 창고 선택지가 13px 부족해 말줄임됐다).
+         * 코드 셋은 `code`(13rem) — 규범 3-2가 코드값 13자에서 도출한 값 그대로다.
          *
          * 순서는 **매달림의 순서**다 — 창고 → 위치, 품목 → LOT. 고르는 차례가 곧 읽는 차례다.
          */}
         <SelectField
-          wide
+          optionWidth="codeName"
           label={t.fields.warehouse}
           options={withAll(warehouseOptions)}
           value={filters.warehouse}
@@ -162,7 +167,7 @@ export const BalanceFilterBar = ({
           }}
         />
         <SelectField
-          wide
+          optionWidth="codeName"
           label={t.fields.location}
           options={withAll(locationOptions)}
           value={filters.location}
@@ -172,7 +177,7 @@ export const BalanceFilterBar = ({
           }}
         />
         <SelectField
-          wide
+          optionWidth="codeName"
           label={t.fields.item}
           options={withAll(itemOptions)}
           value={filters.item}
@@ -182,7 +187,7 @@ export const BalanceFilterBar = ({
           }}
         />
         <SelectField
-          wide
+          optionWidth="codeName"
           label={t.fields.lot}
           options={withAll(lotOptions)}
           value={filters.lot}
@@ -193,7 +198,7 @@ export const BalanceFilterBar = ({
         />
 
         <SelectField
-          wide
+          optionWidth="code"
           label={t.fields.qualityStatus}
           options={codeOptions(qualityStatusOptions)}
           value={filters.qualityStatus}
@@ -203,7 +208,7 @@ export const BalanceFilterBar = ({
           }}
         />
         <SelectField
-          wide
+          optionWidth="code"
           label={t.fields.inventoryStatus}
           options={codeOptions(inventoryStatusOptions)}
           value={filters.inventoryStatus}
@@ -213,7 +218,7 @@ export const BalanceFilterBar = ({
           }}
         />
         <SelectField
-          wide
+          optionWidth="code"
           label={t.fields.ownership}
           options={codeOptions(ownershipOptions)}
           value={filters.ownership}

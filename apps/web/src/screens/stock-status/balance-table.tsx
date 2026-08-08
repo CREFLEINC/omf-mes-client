@@ -10,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { formatTransactionAt } from './as-of';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { sortableKeysOf, toSortState, type SortKey } from './sort';
 import { toGroupKey, toRowKey, type BalanceView } from './types';
@@ -18,26 +19,57 @@ import { groupAxisOf, type ViewAxis } from './view-axis';
 const t = messages.stockStatus;
 
 /**
- * 열 폭 예산 — `.wide-table`의 최소 폭 `58rem`(928px) 안에 지정 폭의 합이 들어가야 한다.
- * `docs/layout-conventions.md`가 「지정 폭의 합이 그 안에 들어가도록 **열 구성을 먼저 맞춘다**」로
- * 정했다. 넘치면 축 열이 흡수할 폭이 음수가 되어 표가 짓눌리고 셀이 낱말 단위로 쪼개진다.
+ * 열 폭 예산.
+ *
+ * **모든 열이 폭을 지정한다.** 디자인 시스템 `Table`은 `table-layout: fixed`이고 폭을
+ * `<colgroup>`에 싣는다(번들 실측) — 고정 배치에서 **폭을 지정하지 않은 열은 남는 폭의
+ * 잔여분**을 받는다. 지정 합이 표 폭에 가까우면 그 열에 남는 것이 사실상 없다.
+ *
+ * 이것이 브라우저 확인 F-B2의 원인이다: 지정 합 924px에 `.wide-table` 하한 928px이라
+ * 미지정이던 품목 열에 4px만 남았고, 실렌더 82px에서 「ABC-123 · 하우징 커버 A」가
+ * **네 줄로 쪼개졌다.** 주 식별자 열이라 표를 훑을 수 없게 된다.
+ *
+ * **합과 하한의 관계가 뒤집혀 있다.** `.wide-table`은 `min-width`라 **바닥이지 천장이 아니다** —
+ * 합이 하한보다 **작으면** 고정 배치가 남는 폭을 나눠 넣어 선언과 실렌더가 어긋나고,
+ * 합이 하한 **이상이면** 각 열이 선언한 폭 그대로 렌더되고 모자란 폭은
+ * 디자인 시스템의 `overflow-x` 상자가 가로 스크롤로 처리한다(브라우저 확인 B6의 통과 기준이
+ * 「좁으면 가로 스크롤이 생긴다」이다). **그래서 합을 하한 아래로 누르지 않는다.**
+ *
+ * 값은 `docs/layout-conventions.md`의 방법으로 도출한다 — `--type-body-sm` 14px ·
+ * ASCII 자폭 약 7.5px · 한글 14px · 셀 여백 32px · 칩 안쪽 여백 24px.
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
- * | 축 열(품목 / LOT / 위치) | **미지정** | 「코드 · 이름」을 담고 남는 폭을 흡수한다 |
- * | 보유 · 가용 | 각 112px | 여섯 자리 수 + 우측 정렬 여백. 보유는 아래에 경고 칩이 쌓인다 |
- * | 보류 | 128px | 수 아래에 「보류 LOT n건」 표식이 쌓인다 |
- * | 단위 | 96px | **단위 코드만** 낸다(전체 이름은 상세에서) |
- * | 품질 상태 · 재고 상태 | 각 112px | 코드 배지 하나 |
+ * | 축 열(품목 · 위치) | **200px** | 「코드 · 이름」이 한 줄에 들어가는 폭. W-06-02 「항목」·W-01-09 흡수 예산과 같은 값 |
+ * | LOT | 144px | `LOT-2026-000045` 15자 113px + 셀 여백 32px |
+ * | 보유 | 120px | 수 아래 「음수 보유」 칩(4한글 56 + 공백 4 + 칩 여백 24 = 84) + 32 |
+ * | 가용 | 88px | 여섯 자리 수 45 + 32. 아래에 쌓이는 것이 없다 |
+ * | 보류 | 136px | 수 아래 「보류 LOT n건」 칩(80 + 칩 여백 24 = 104) + 32 |
+ * | 단위 | 96px | **단위 코드만** 낸다(전체 이름은 상세에서) — 8자 60 + 32 |
+ * | 품질 상태 · 재고 상태 | 각 120px | 코드 배지 하나(8자 60 + 24 = 84) + 32 |
  * | 소유 | 128px | 「(자사 소유)」 또는 거래처명 아래에 소유 구분 코드 배지가 쌓인다 |
- * | 최근 거래 | 124px | `YYYY-MM-DD HH:mm`이 두 줄로 접힌다 |
- * | **지정 폭 합** | **924px** | 928px 안에 들어간다 |
+ * | 최근 거래 | 124px | **`MM-DD HH:mm`** 11자 83 + 32(`as-of.ts`가 그 형태로 줄인다) |
+ *
+ * | 보기 | 축 열 | 합 |
+ * | --- | --- | ---: |
+ * | 품목별 | 품목 | **1,132px** |
+ * | LOT별 | 품목 · LOT | **1,276px** |
+ * | 위치별 | 위치 · 품목 | **1,332px** |
+ *
+ * **세 합이 모두 928px을 넘는다.** 열이 9~10개인 표를 928px에 넣으려면 열마다 66~91px이라
+ * 칩 하나도 한 줄에 들어가지 않는다 — 이 표는 그 하한에 들어가지 않는다.
+ * `docs/layout-conventions.md`가 예고한 「세 번째 화면이 하한을 넘겨야 하는」 자리이며,
+ * 문서가 권하는 첫 수단(**열을 줄인다**)은 계획 §5.4가 정한 열 구성을 바꾸는 일이라
+ * 실행 담당이 단독으로 정하지 않는다(실행 보고에 판단 요청으로 남긴다).
  */
 const WIDTH = {
-  qty: '112px',
-  blocked: '128px',
+  axis: '200px',
+  lot: '144px',
+  onHandQty: '120px',
+  availableQty: '88px',
+  blocked: '136px',
   uom: '96px',
-  code: '112px',
+  code: '120px',
   ownership: '128px',
   lastTransactionAt: '124px',
 } as const;
@@ -99,12 +131,14 @@ export const buildBalanceColumns = ({
      */
     key: 'itemCode',
     header: t.table.item,
+    width: WIDTH.axis,
     render: (row) => describeReference(toReference(itemLookup, row.itemId)),
   };
 
   const lotColumn: Column<BalanceView> = {
     key: 'lotNo',
     header: t.table.lot,
+    width: WIDTH.lot,
     /*
      * **`null`이 확정된 뜻을 갖는 자리다**(계획 결정 10) — `toReference`에 그냥 넘기면
      * 「알 수 없음」이 되어 *값이 잘못됐다*는 뜻으로 뒤집힌다. 넘기기 전에 갈라낸다.
@@ -116,6 +150,7 @@ export const buildBalanceColumns = ({
   const locationColumn: Column<BalanceView> = {
     key: 'locationCode',
     header: t.table.location,
+    width: WIDTH.axis,
     /*
      * 위치별 보기에서는 계약이 늘 채워 준다. 비는 것은 정상 형태가 아니므로
      * 「(LOT 무관)」 같은 고유 표기를 만들지 않고 대시로 둔다 — 뜻을 지어내지 않는다.
@@ -126,7 +161,7 @@ export const buildBalanceColumns = ({
         : describeReference(toReference(locationLookup, row.locationId)),
   };
 
-  /** 축 열 — 보기가 정한다. 폭을 지정하지 않아 남는 폭을 흡수한다. */
+  /** 축 열 — 보기가 정한다. 「코드 · 이름」이 한 줄에 들어가는 폭을 **지정한다**(위 표). */
   const axisColumns: Column<BalanceView>[] = {
     item: [itemColumn],
     lot: [itemColumn, lotColumn],
@@ -138,7 +173,7 @@ export const buildBalanceColumns = ({
     {
       key: 'onHandQty',
       header: t.table.onHandQty,
-      width: WIDTH.qty,
+      width: WIDTH.onHandQty,
       align: QTY_ALIGN,
       render: (row) => (
         <div className="field-cell">
@@ -158,7 +193,7 @@ export const buildBalanceColumns = ({
     {
       key: 'availableQty',
       header: t.table.availableQty,
-      width: WIDTH.qty,
+      width: WIDTH.availableQty,
       align: QTY_ALIGN,
       /*
        * **서버가 계산해 내려준 값을 그대로 그린다**(계약에서 `readonly`). 보유−예약−피킹−보류를
@@ -229,7 +264,7 @@ export const buildBalanceColumns = ({
       key: 'lastTransactionAt',
       header: t.table.lastTransactionAt,
       width: WIDTH.lastTransactionAt,
-      render: (row) => orEmptyMark(row.lastTransactionAt),
+      render: (row) => orEmptyMark(formatTransactionAt(row.lastTransactionAt)),
     },
   ];
 

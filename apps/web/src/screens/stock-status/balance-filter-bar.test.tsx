@@ -229,6 +229,44 @@ describe('BalanceFilterBar — 선택지의 한계 안내', () => {
   });
 });
 
+describe('BalanceFilterBar — 선택칸 최소 폭 (규범 3-2)', () => {
+  /**
+   * 디자인 시스템 `Select`의 선택지 목록은 뿌리 폭에 못 박혀 있고 넘치는 가로를 **잘라 버린다.**
+   * 브라우저 확인 F-B1에서 창고 선택지 「WH-01 · 1공장 자재창고」가 13px 부족해 말줄임됐다.
+   *
+   * 폭 자체는 CSS라 단위 테스트가 픽셀을 재지 못한다 — 대신 **어느 갈래를 골랐는지**를 값으로
+   * 고정한다. 갈래가 잘못 붙으면(되돌림) 이 단언이 먼저 걸린다.
+   */
+  const cellOf = (label: string): HTMLElement | null =>
+    screen.getByLabelText(label).closest('.field-cell');
+
+  it('「코드 · 이름」과 긴 식별자를 고르는 넷은 넓은 갈래를 쓴다', () => {
+    renderBar();
+
+    for (const label of [t.fields.warehouse, t.fields.location, t.fields.item, t.fields.lot]) {
+      const cell = cellOf(label);
+
+      expect(cell).toHaveClass('wide-select');
+      expect(cell).toHaveStyle({ minWidth: '18.5rem' });
+    }
+  });
+
+  /*
+   * **짝이 되는 방향** — 코드값만 고르는 칸에는 넓은 갈래를 붙이지 않는다.
+   * 규범 3-2의 이탈 조건 1(「값이 짧은 선택칸에는 붙이지 않는다 — 줄이 쓸데없이 일찍 넘어간다」).
+   */
+  it('코드값만 고르는 셋은 규범 3-2의 기본 폭을 쓴다', () => {
+    renderBar();
+
+    for (const label of [t.fields.qualityStatus, t.fields.inventoryStatus, t.fields.ownership]) {
+      const cell = cellOf(label);
+
+      expect(cell).toHaveClass('wide-select');
+      expect(cell?.style.minWidth).toBe('');
+    }
+  });
+});
+
 describe('BalanceFilterBar — 참조 실패 복구', () => {
   /*
    * **문구가 적은 대상과 「다시 시도」가 다시 부르는 대상이 같아야 한다.**

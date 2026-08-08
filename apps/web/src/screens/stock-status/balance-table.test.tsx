@@ -1,4 +1,4 @@
-import type { SortState } from '@crefle/web-ui';
+import type { Column, SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -6,13 +6,26 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { BalanceTable, buildBalanceColumns, type BalanceTableProps } from './balance-table';
 import { balance, itemViewFixtures, locationViewFixtures, lotViewFixtures } from './fixtures';
+import type { BalanceView } from './types';
 import type { ReferenceSource } from './lookups';
 import { VIEW_AXES, type ViewAxis } from './view-axis';
 
 const t = messages.stockStatus;
 
-/** `.wide-table`의 최소 폭(58rem). 지정한 열 폭의 합이 이 안에 들어가야 한다. */
+/** `.wide-table`이 표에 주는 최소 폭(58rem). **바닥이지 천장이 아니다.** */
 const WIDE_TABLE_MIN_PX = 928;
+
+/** 「코드 · 이름」이 한 줄에 들어가는 폭(`docs/layout-conventions.md`의 선례 값). */
+const CODE_NAME_COLUMN_PX = 200;
+
+const toPx = (width: string | undefined): number =>
+  width === undefined ? 0 : Number.parseInt(width, 10);
+
+const widthOf = (columns: Column<BalanceView>[], key: string): number =>
+  toPx(columns.find((column) => column.key === key)?.width);
+
+const totalWidthOf = (columns: Column<BalanceView>[]): number =>
+  columns.reduce((sum, column) => sum + toPx(column.width), 0);
 
 const source = (values: [number, string][], overrides: Partial<ReferenceSource> = {}) =>
   ({
@@ -86,26 +99,31 @@ describe('buildBalanceColumns — 보기마다의 열 구성', () => {
   });
 
   /*
-   * **지정 폭의 합이 `.wide-table` 최소 폭 안에 들어가야 한다**(`docs/layout-conventions.md` —
-   * 「지정 폭의 합이 그 안에 들어가도록 열 구성을 먼저 맞춘다」). 넘치면 축 열이 흡수할 폭이
-   * 음수가 되어 표가 짓눌리고 셀이 낱말 단위로 쪼개진다.
+   * **선언한 폭이 곧 실렌더 폭이 되게 한다.**
+   *
+   * 디자인 시스템 `Table`은 `table-layout: fixed`이고 폭을 `<colgroup>`에 싣는다 —
+   * 고정 배치에서 **폭을 지정하지 않은 열은 남는 폭의 잔여분**을 받는다. 지정 합이 표 폭에
+   * 가까우면 그 열에 남는 것이 사실상 없고, 브라우저 확인 F-B2에서 실제로 품목 열이 82px로
+   * 렌더돼 주 식별자가 네 줄로 쪼개졌다.
+   *
+   * **지난 회차의 「합 ≤ 928px」 단언이 그 결함을 통과시켰다** — 미지정 열을 세지 않아
+   * 924px을 「여유 있음」으로 읽었기 때문이다. 그래서 세 갈래로 바꾼다.
    */
-  it('지정한 열 폭의 합이 세 보기 모두 928px 이하다', () => {
+  it('모든 열이 폭을 지정한다 — 미지정 열은 잔여분을 받아 선언과 실렌더가 어긋난다', () => {
     for (const view of VIEW_AXES) {
-      const total = buildBalanceColumns({ view, ...LOOKUPS })
-        .map((column) => column.width)
-        .filter((width): width is string => width !== undefined)
-        .reduce((sum, width) => sum + Number.parseInt(width, 10), 0);
+      const unspecified = buildBalanceColumns({ view, ...LOOKUPS }).filter(
+        (column) => column.width === undefined,
+      );
 
-      expect(total).toBeLessThanOrEqual(WIDE_TABLE_MIN_PX);
+      expect(unspecified).toEqual([]);
     }
   });
 
-  /* 축 열은 남는 폭을 흡수해야 한다 — 이름이 길어 고정 폭을 주면 잘린다. */
-  it('축 열에는 폭을 지정하지 않는다', () => {
+  /* 주 식별자 열이다. 「코드 · 이름」이 한 줄에 들어가지 않으면 표를 훑을 수 없다. */
+  it('축 열이 「코드 · 이름」을 담는 폭 이상이다', () => {
     const axisKeys: Record<ViewAxis, string[]> = {
       item: ['itemCode'],
-      lot: ['itemCode', 'lotNo'],
+      lot: ['itemCode'],
       location: ['locationCode', 'itemCode'],
     };
 
@@ -113,8 +131,22 @@ describe('buildBalanceColumns — 보기마다의 열 구성', () => {
       const columns = buildBalanceColumns({ view, ...LOOKUPS });
 
       for (const key of axisKeys[view]) {
-        expect(columns.find((column) => column.key === key)?.width).toBeUndefined();
+        expect(widthOf(columns, key)).toBeGreaterThanOrEqual(CODE_NAME_COLUMN_PX);
       }
+    }
+  });
+
+  /*
+   * **`.wide-table`은 `min-width`라 바닥이지 천장이 아니다.** 합이 하한보다 작으면 고정 배치가
+   * 남는 폭을 나눠 넣어 선언과 실렌더가 다시 어긋난다. 합이 하한 이상이면 각 열이 선언한 폭
+   * 그대로 렌더되고, 모자란 폭은 디자인 시스템의 `overflow-x` 상자가 가로 스크롤로 처리한다
+   * (브라우저 확인 B6의 통과 기준이 「좁으면 가로 스크롤이 생긴다」이다).
+   */
+  it('열 폭 합이 세 보기 모두 표 하한 이상이다', () => {
+    for (const view of VIEW_AXES) {
+      expect(totalWidthOf(buildBalanceColumns({ view, ...LOOKUPS }))).toBeGreaterThanOrEqual(
+        WIDE_TABLE_MIN_PX,
+      );
     }
   });
 });
@@ -419,6 +451,23 @@ describe('BalanceTable — 수량 표시', () => {
     renderTable({ view: 'item', rows: [balance({ lastTransactionAt: null })] });
 
     expect(within(table()).getAllByText(t.values.empty)).not.toHaveLength(0);
+  });
+
+  /*
+   * **계약 값을 그대로 그리지 않는다.** `lastTransactionAt`은 시간대까지 붙은 25자라
+   * 어떤 열 폭에도 한 줄로 들어가지 않는다 — 브라우저 확인 F-B2가 드러낸 자리다.
+   *
+   * 정확한 값이 아니라 **형태와 계약 값 부재**를 본다 — 시간대가 붙은 값의 현지 표기는
+   * 실행 환경에 따라 달라져, 기대값을 박으면 테스트가 실행 환경을 검사하게 된다.
+   * 값의 정확도는 `as-of.test.ts`가 맡는다.
+   */
+  it('최근 거래를 「MM-DD HH:mm」으로 줄여 낸다', () => {
+    const contractValue = '2026-08-06T09:12:00+09:00';
+
+    renderTable({ view: 'item', rows: [balance({ lastTransactionAt: contractValue })] });
+
+    expect(within(table()).getByText(/^\d{2}-\d{2} \d{2}:\d{2}$/)).toBeInTheDocument();
+    expect(table()).not.toHaveTextContent(contractValue);
   });
 
   /*
