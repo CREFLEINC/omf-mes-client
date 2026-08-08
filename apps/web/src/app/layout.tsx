@@ -75,6 +75,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/logistics/inbound-schedule" icon="local_shipping">
               입하 예정 조회
             </NavItem>
+            {/*
+             * W-01-07 — 같은 도메인이라 **섹션을 새로 만들지 않는다.** 계약 경로가
+             * `/inventory/**`·`/trace/**`이지만 주소 앞머리는 이 섹션을 따른다.
+             */}
+            <NavItem to="/logistics/stock-status" icon="inventory">
+              재고 현황·상태 조회
+            </NavItem>
           </SidebarSection>
           {/*
            * 사용자·역할·권한은 기준정보가 아니라 **시스템 운영**이다 —
