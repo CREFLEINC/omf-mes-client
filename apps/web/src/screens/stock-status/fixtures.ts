@@ -1,4 +1,5 @@
-import type { BalanceView } from './types';
+import { EXPIRY_SOON_DAYS } from './expiry';
+import type { BalanceView, LotDetailView } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -9,8 +10,9 @@ import type { BalanceView } from './types';
  * 실 운영 코드·거래처명·품목코드·LOT 번호를 넣지 않는다(공개 저장소 경계).
  *
  * **내부 번호(FK)는 서로 겹치지 않는 대역으로 나눈다** — 9100대(창고) · 9200대(위치) ·
- * 9300대(품목) · 9400대(LOT) · 9500대(단위) · 9600대(거래처). 「표 어디에도 내부 번호가
- * 렌더되지 않는다」를 검사할 때 수량 같은 정상 숫자와 헷갈리지 않게 하기 위해서다.
+ * 9300대(품목) · 9400대(LOT) · 9500대(단위) · 9600대(거래처) · 9700대(보류) ·
+ * 9800대(외부 식별자). 「표 어디에도 내부 번호가 렌더되지 않는다」를 검사할 때 수량 같은
+ * 정상 숫자와 헷갈리지 않게 하기 위해서다.
  * 수량은 전부 세 자리 이하로 두어 네 자리 번호와 섞이지 않는다.
  */
 
@@ -182,3 +184,102 @@ export const partnerFixtures = [
     isActive: true,
   },
 ];
+
+/**
+ * 「오늘」에서 며칠 뒤의 날짜. **고정 날짜를 쓰지 않는다** — 유효기한 표식이 실행 날짜에 따라
+ * 뒤집혀, 어느 날 아무것도 고치지 않았는데 테스트가 깨진다.
+ */
+const shiftDays = (today: Date, days: number): string => {
+  const at = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+
+  return `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+};
+
+const BASE_LOT: LotDetailView['lot'] = {
+  lotId: 9401,
+  lotNo: 'SAMPLE-LOT-0001',
+  itemId: 9301,
+  lotTypeCode: 'SAMPLE_LOT_T_A',
+  statusCode: 'SAMPLE_LOT_S_A',
+  initialQty: 150,
+  uomId: 9501,
+  manufacturedAt: '2026-08-06T09:12:00+09:00',
+  expiryDate: null,
+  remarks: null,
+};
+
+/**
+ * **보류가 걸린 LOT.** 이 화면이 다뤄야 하는 까다로운 입력을 한 벌에 담는다.
+ *
+ * - 유효기한이 **기준 일수째**다 — 임박 경계 안쪽의 마지막 날이다
+ * - 보류 둘 — 9701은 **`holdQty`가 없어 전량 보류**, 9702는 수량과 단위가 있다.
+ *   9701에는 해제 조건과 비고가 있고 9702에는 **둘 다 없다**
+ * - 외부 식별자 둘 — 9801은 **발급처가 있고**, 9802는 **없다**(우리가 붙인 번호다)
+ */
+export const heldLotDetail = (today: Date): LotDetailView => ({
+  lot: {
+    ...BASE_LOT,
+    expiryDate: shiftDays(today, EXPIRY_SOON_DAYS),
+    remarks: '합성 비고입니다',
+  },
+  externalIdentifiers: [
+    {
+      lotExternalIdentifierId: 9801,
+      identifierTypeCode: 'SAMPLE_EXT_T_A',
+      externalIdentifier: 'SAMPLE-EXT-0001',
+      partnerId: 9601,
+      externalSystemCode: 'SAMPLE_SYS_A',
+    },
+    {
+      lotExternalIdentifierId: 9802,
+      identifierTypeCode: 'SAMPLE_EXT_T_B',
+      externalIdentifier: 'SAMPLE-EXT-0002',
+      partnerId: null,
+      externalSystemCode: null,
+    },
+  ],
+  holds: [
+    {
+      lotHoldId: 9701,
+      reasonCode: 'SAMPLE_HOLD_R_A',
+      statusCode: 'SAMPLE_HOLD_S_A',
+      heldAt: '2026-08-06T09:12:00+09:00',
+      holdQty: null,
+      uomId: null,
+      releaseCondition: '합성 해제 조건입니다',
+      remarks: '합성 보류 비고입니다',
+    },
+    {
+      lotHoldId: 9702,
+      reasonCode: 'SAMPLE_HOLD_R_B',
+      statusCode: 'SAMPLE_HOLD_S_A',
+      heldAt: '2026-08-07T14:30:00+09:00',
+      holdQty: 40,
+      uomId: 9501,
+      releaseCondition: null,
+      remarks: null,
+    },
+  ],
+});
+
+/**
+ * **보류도 외부 식별자도 없는 LOT.** 빈 상태 둘을 만들어 내는 값이다 —
+ * 유효기한도 없어 표식이 하나도 붙지 않는다(짝 방향의 선행 단언에 쓴다).
+ */
+export const plainLotDetail = (): LotDetailView => ({
+  lot: { ...BASE_LOT, lotId: 9402, lotNo: 'SAMPLE-LOT-0002', expiryDate: null, remarks: null },
+  externalIdentifiers: [],
+  holds: [],
+});
+
+/** **유효기한이 지난 LOT.** 표식만 붙고 화면이 보류를 걸지 않음을 이 값으로 확인한다. */
+export const expiredLotDetail = (today: Date): LotDetailView => ({
+  ...plainLotDetail(),
+  lot: {
+    ...BASE_LOT,
+    lotId: 9402,
+    lotNo: 'SAMPLE-LOT-0002',
+    expiryDate: shiftDays(today, -1),
+  },
+});

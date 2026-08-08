@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EMPTY_FILTERS,
-  hasAnyFilter,
   readFilters,
   readPage,
+  readSelectedLotId,
   resolveFilters,
   toBalanceFilterQuery,
   toFilterChips,
@@ -307,10 +307,22 @@ describe('toFilterChips — 적용된 조건마다 칩 하나', () => {
   });
 });
 
-describe('hasAnyFilter', () => {
-  it('하나라도 걸려 있으면 참이다', () => {
-    expect(hasAnyFilter(EMPTY_FILTERS)).toBe(false);
-    expect(hasAnyFilter(filters({ warehouse: '9101' }))).toBe(true);
-    expect(hasAnyFilter(filters({ includeZero: true }))).toBe(true);
+describe('readSelectedLotId — 고른 LOT', () => {
+  it('주소의 sel을 번호로 읽는다', () => {
+    expect(readSelectedLotId(params('sel=9401'))).toBe(9401);
+  });
+
+  it('없으면 고르지 않은 것이다', () => {
+    expect(readSelectedLotId(params(''))).toBeNull();
+  });
+
+  /*
+   * 주소는 손으로 고쳐지는 자리다. **`0`도 번호가 아니다** — 통과시키면 `/trace/lots/0`을
+   * 부르고, 조건 번호가 `0`을 뚫던 자리(m-1)와 같은 갈래다.
+   */
+  it('번호가 아닌 값은 고르지 않은 것으로 읽는다', () => {
+    for (const raw of ['sel=0', 'sel=-1', 'sel=1.5', 'sel=abc', 'sel=']) {
+      expect(readSelectedLotId(params(raw))).toBeNull();
+    }
   });
 });

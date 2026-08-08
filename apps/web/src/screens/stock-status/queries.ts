@@ -5,11 +5,16 @@ import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { BalanceFilterQuery } from './filters';
 import type { SortQuery } from './sort';
-import { toBalanceView, type BalanceListResult } from './types';
+import {
+  toBalanceView,
+  toLotDetailView,
+  type BalanceListResult,
+  type LotDetailView,
+} from './types';
 import type { GroupByQuery } from './view-axis';
 
 /**
- * 이 화면의 읽기 — 잔액 목록 하나다(작업 1).
+ * 이 화면의 읽기 — 잔액 목록과 고른 LOT의 상세 둘이다.
  *
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
  * 문자열 변수로 넘기면 타입 검사가 풀린다.
@@ -87,6 +92,46 @@ export const useBalanceList = (
       }
 
       return fetchBalances(client, query);
+    },
+  });
+};
+
+export const lotKeys = {
+  all: ['stock-status-lot-detail'] as const,
+  detail: (lotId: number | null) => ['stock-status-lot-detail', lotId] as const,
+};
+
+const fetchLotDetail = async (client: Client, lotId: number): Promise<LotDetailView> => {
+  const data = await runRequest(() =>
+    client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
+  );
+
+  return toLotDetailView(data);
+};
+
+/**
+ * 고른 LOT의 상세 — 유효기한·해제되지 않은 보류·외부 식별자.
+ *
+ * **고르기 전에는 부르지 않는다**(`lotId`가 `null`이다). 상세는 목록에서 한 줄을 고른
+ * 결과이지 화면에 들어온 것만으로 생기는 조회가 아니다.
+ *
+ * **응답의 `ETag`를 읽지 않는다.** 계약이 다음 쓰기의 `If-Match`에 쓰라고 내려주지만
+ * 이 화면은 조회 전용이라 쓸 자리가 없다 — 들고 있으면 쓰기를 붙일 준비가 된 것처럼 읽힌다.
+ *
+ * 조건이 없어 잔액 조회와 달리 쿼리 타입이 없다. 대상은 경로 조각 하나(`lotId`)뿐이다.
+ */
+export const useLotDetail = (lotId: number | null): UseQueryResult<LotDetailView> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: lotKeys.detail(lotId),
+    enabled: lotId !== null,
+    queryFn: () => {
+      if (lotId === null) {
+        throw new Error('LOT을 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return fetchLotDetail(client, lotId);
     },
   });
 };

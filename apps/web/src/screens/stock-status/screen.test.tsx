@@ -12,6 +12,8 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  expiredLotDetail,
+  heldLotDetail,
   itemFixtures,
   itemViewFixtures,
   locationFixtures,
@@ -19,10 +21,12 @@ import {
   lotFixtures,
   lotViewFixtures,
   partnerFixtures,
+  plainLotDetail,
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
 import { StockStatusScreen } from './screen';
+import type { LotDetailView } from './types';
 
 const t = messages.stockStatus;
 
@@ -34,9 +38,13 @@ const ITEMS_PATH = '/mdm/items';
 const LOTS_PATH = '/trace/lots';
 const UOMS_PATH = '/mdm/uoms';
 const PARTNERS_PATH = '/mdm/partners';
+const LOT_DETAIL_PATH = '/trace/lots/9401';
 
 /** 창고가 걸린 주소. 이 화면은 창고 없이는 조회하지 않으므로 대부분의 검사가 여기서 시작한다. */
 const WITH_WAREHOUSE = '?wh=9101';
+
+/** LOT별 보기가 열리는 주소. 이 보기는 품목을 고른 뒤에만 열린다(계획 결정 11). */
+const LOT_VIEW = '?wh=9101&view=lot&item=9301';
 
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 자재창고 가';
 const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 품목 가';
@@ -138,6 +146,34 @@ const lookupRoutes = (): StubRoute[] => [
   lookupRoute(UOMS_PATH, uomFixtures),
   lookupRoute(PARTNERS_PATH, partnerFixtures),
 ];
+
+/** 스텁이 응답할 상세 경로. 목록(`/trace/lots`)과 갈라야 한다. */
+const isLotDetailPath = (pathname: string): boolean => /^\/trace\/lots\/\d+$/.test(pathname);
+
+/**
+ * 상세 경로로 **나간 요청 전부**. 번호 자리가 무엇이든 센다 —
+ * `/trace/lots/null` 같은 잘못된 경로도 「부르지 않았다」를 깨뜨리는 요청이다.
+ */
+const lotDetailRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname.startsWith(`${LOTS_PATH}/`));
+
+/**
+ * LOT 상세. **어느 번호로 불러도 응답한다** — 「부르지 않았다」를 증명하려면 부를 수 있는
+ * 스텁이 있어야 한다(계획 §12-6). 화면 타입 그대로를 본문으로 준다:
+ * 응답 → 화면 타입 변환은 `types.test.ts`가 계약 모양으로 따로 검사한다.
+ */
+const lotDetailRoute = (detail: LotDetailView): StubRoute => ({
+  match: (request) => request.method === 'GET' && isLotDetailPath(new URL(request.url).pathname),
+  respond: () => jsonResponse(detail),
+});
+
+const failingLotDetailRoute = (status = 500): StubRoute => ({
+  match: (request) => request.method === 'GET' && isLotDetailPath(new URL(request.url).pathname),
+  respond: () => jsonResponse({ message: '' }, { status }),
+});
+
+/** 유효기한 표식은 「오늘」에 매인다 — 화면과 픽스처가 같은 날을 본다. */
+const TODAY = new Date();
 
 /** 주소가 실제로 어떻게 바뀌는지 본다 — 수명 표를 판정할 유일한 근거다. */
 const LocationProbe = () => {
@@ -786,6 +822,33 @@ describe('StockStatusScreen — 정렬', () => {
 
     expect(lastQuery(requests, BALANCES_PATH)?.has('sort')).toBe(false);
   });
+
+  /*
+   * **요청이 0회인 표가 「정렬됨」을 말하지 않는다**(리뷰 m-2).
+   *
+   * 주소 규칙은 바뀌지 않았다 — 수명 표 2행(조건 변경·조회에서 `sort` 유지)이 승인된 정본이라
+   * 주소의 `sort`는 그대로 둔다. 다만 창고를 고르기 전에는 정렬할 결과가 없으므로
+   * **표시 계층에서** 정렬 표시를 내지 않는다. 아니면 보조기술이 빈 표를 「보유 기준 오름차순
+   * 정렬됨」으로 읽는다.
+   */
+  it('창고를 고르기 전에는 표가 정렬 표시를 내지 않는다', async () => {
+    renderScreen([balanceRoute(), ...lookupRoutes()], '?sort=onHandQty');
+
+    await screen.findByText(t.empty.notQueriedTitle);
+
+    expect(sortedHeaderNames()).toEqual([]);
+    /* 주소는 손대지 않는다 — 창고를 고르면 그 정렬로 조회된다. */
+    expect(currentLocation()).toContain('sort=onHandQty');
+  });
+
+  /* 짝 방향 — 조회한 표에서는 같은 정렬이 실제로 표시된다. */
+  it('조회하면 같은 정렬이 표에 표시된다', async () => {
+    renderScreen([balanceRoute(), ...lookupRoutes()], `${WITH_WAREHOUSE}&sort=onHandQty`);
+
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(sortedHeaderNames()).toEqual([t.table.onHandQty]);
+  });
 });
 
 describe('StockStatusScreen — 쪽 이동', () => {
@@ -1263,6 +1326,12 @@ describe('StockStatusScreen — 부모가 빠진 종속 조건', () => {
     expect(await screen.findByText('LOT: SAMPLE-LOT-0001')).toBeInTheDocument();
     expect(requestsTo(requests, LOTS_PATH)).toHaveLength(1);
     expect(screen.queryByText(`LOT: ${t.values.unknown}`)).not.toBeInTheDocument();
+    /*
+     * **선택칸 안내가 훅과 같은 값을 본다.** 다르면 선택지는 채워졌는데 그 아래 안내는
+     * 「고르면 채워집니다」라고 말하는 어긋남이 생긴다 — 여기가 정확히 그 상태다
+     * (품목별 보기인데 LOT 조건이 걸려 참조를 부른다).
+     */
+    expect(screen.queryByText(t.filters.lotNeedsItem)).not.toBeInTheDocument();
   });
 });
 
@@ -1419,6 +1488,22 @@ describe('StockStatusScreen — 기준 시각과 새로고침', () => {
     expect(screen.getByTestId('as-of').textContent).toBe(first);
   });
 
+  /*
+   * **기준 시각을 live 영역으로 두지 않는다.** `<output>`은 암묵적으로 `role="status"`라
+   * 쪽 이동·정렬 변경·새로고침마다 시각이 낭독된다 — 조회가 끝났음은 표의 빈 상태가 이미
+   * 알리므로 같은 사정이 두 번 읽힌다. 되돌리면 이 두 단언이 함께 깨진다.
+   */
+  it('기준 시각이 live 영역이 아니다', async () => {
+    renderScreen([balanceRoute(), ...lookupRoutes()], WITH_WAREHOUSE);
+
+    await screen.findAllByText(ITEM_LABEL);
+
+    const asOf = await screen.findByTestId('as-of');
+
+    expect(asOf.tagName).toBe('SPAN');
+    expect(screen.queryAllByRole('status')).not.toContain(asOf);
+  });
+
   it('조회하기 전에는 기준 시각을 내지 않는다', async () => {
     renderScreen([balanceRoute(), ...lookupRoutes()]);
 
@@ -1497,5 +1582,368 @@ describe('StockStatusScreen — 요약과 집계', () => {
 
     expect(within(balanceTable()).getAllByText('77')).not.toHaveLength(0);
     expect(within(balanceTable()).queryByText('85')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * LOT별 보기의 첫 줄을 고른다. 주소·요청·구획을 판정하는 공통 앞자락이다.
+ * 목록이 도착해 버튼이 생길 때까지 기다린다 — 아래 구획의 빈 상태는 목록보다 먼저 나온다.
+ */
+const selectFirstLot = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(
+    await screen.findByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0001') }),
+  );
+};
+
+const detailPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.detail });
+
+/** 상세 구획에도 표가 있어 목록의 표는 위 구획 안에서 찾는다. */
+const listPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.list });
+
+describe('StockStatusScreen — LOT 고르기', () => {
+  /* 고르기 전에는 부를 대상이 없다 — 화면에 들어온 것만으로 생기는 조회가 아니다. */
+  it('고르기 전에는 상세를 부르지 않고 「고른 LOT이 없습니다」를 낸다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      LOT_VIEW,
+    );
+
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    expect(lotDetailRequests(requests)).toHaveLength(0);
+  });
+
+  it('고르면 주소에 sel이 붙고 상세를 1회 부른다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      LOT_VIEW,
+    );
+
+    await selectFirstLot(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
+    });
+
+    expect(currentLocation()).toContain('sel=9401');
+    /* 번호는 경로 조각으로만 쓴다 — 잔액 요청 쿼리에 실리지 않는다. */
+    expect(lastQuery(requests, BALANCES_PATH)?.has('sel')).toBe(false);
+  });
+
+  /*
+   * **렌더마다 다시 부르지 않는다.** 화면을 여러 번 다시 그려도 같은 LOT의 상세는 한 번이다 —
+   * 캐시 키가 렌더마다 새로 만들어지면 목록을 훑는 동안 요청이 계속 늘어난다.
+   */
+  it('다시 그려도 상세 요청이 늘지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      LOT_VIEW,
+    );
+
+    await selectFirstLot(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByLabelText(t.fields.qualityStatus));
+    await user.keyboard('{Escape}');
+
+    expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
+  });
+
+  /*
+   * **고르기는 보이는 줄을 바꾸지 않는다**(수명 표 6행). 3쪽에서 고른 LOT의 상세를 보는 동안
+   * 목록이 1쪽으로 튀면 사용자가 돌아갈 자리를 잃는다.
+   */
+  it('고르기가 쪽·조건·보기·정렬을 바꾸지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute({ total: 300 }), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      `${LOT_VIEW}&sort=onHandQty&page=3`,
+    );
+
+    await screen.findByRole('button', { name: t.actions.selectRow('SAMPLE-LOT-0001') });
+
+    const listRequests = requestsTo(requests, BALANCES_PATH).length;
+
+    await selectFirstLot(user);
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('sel=9401');
+    });
+
+    expect(currentLocation()).toContain('page=3');
+    expect(currentLocation()).toContain('sort=onHandQty');
+    expect(currentLocation()).toContain('view=lot');
+    expect(currentLocation()).toContain('item=9301');
+    /* 목록을 다시 부르지 않는다 — 조회 조건이 하나도 바뀌지 않았다. */
+    expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(listRequests);
+  });
+
+  it('다시 누르면 선택이 풀리고 구획이 되돌아간다', async () => {
+    const { user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      LOT_VIEW,
+    );
+
+    await selectFirstLot(user);
+
+    await screen.findByText(t.detail.quantitiesNote);
+
+    await user.click(
+      screen.getByRole('button', { name: t.actions.deselectRow('SAMPLE-LOT-0001') }),
+    );
+
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    expect(currentLocation()).not.toContain('sel=');
+  });
+
+  /* 보기를 바꾸면 고른 LOT이 새 결과에 없다 — 수명 표 1행이 `sel`을 함께 비운다. */
+  it('보기를 바꾸면 상세 구획이 사라진다', async () => {
+    const { user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      LOT_VIEW,
+    );
+
+    await selectFirstLot(user);
+
+    await screen.findByText(t.detail.quantitiesNote);
+
+    await user.click(screen.getByRole('tab', { name: t.views.item }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('sel=');
+    });
+
+    expect(screen.queryByRole('region', { name: t.panes.detail })).not.toBeInTheDocument();
+  });
+
+  /* 품목별·위치별에는 고를 대상이 없다 — 구획을 두면 할 수 없는 일을 시키는 안내가 된다. */
+  it('품목별 보기에는 상세 구획이 없다', async () => {
+    renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      WITH_WAREHOUSE,
+    );
+
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(screen.queryByRole('region', { name: t.panes.detail })).not.toBeInTheDocument();
+  });
+});
+
+describe('StockStatusScreen — 고른 LOT의 수명', () => {
+  /*
+   * **갱신된 결과에 없는 선택은 정리한다**(수명 표 7행). 정리를 클릭 핸들러에 두면
+   * 뒤로가기·앞으로가기·주소 직접 편집이 통째로 샌다 — 여기서는 화면 **바깥에서** 주소를
+   * 갈아 끼워 그 경로를 만든다.
+   */
+  it('결과에 없는 LOT을 주소로 넣으면 sel이 사라진다', async () => {
+    const { user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      LOT_VIEW,
+      'wh=9101&view=lot&item=9301&sel=9999',
+    );
+
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('sel=');
+    });
+
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
+  /* 짝 방향 — 결과에 있는 LOT은 주소로 들어와도 살아남는다. */
+  it('결과에 있는 LOT을 주소로 넣으면 상세가 열린다', async () => {
+    renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    expect(await screen.findByText(t.detail.quantitiesNote)).toBeInTheDocument();
+    expect(currentLocation()).toContain('sel=9401');
+  });
+
+  /*
+   * **응답이 도착하기 전에는 지우지 않는다.** 기다리는 동안에는 줄이 비어 있어, 가드가 없으면
+   * 「고른 LOT이 사라졌다」로 읽혀 구획이 깜빡 닫히고 주소의 `sel`까지 날아간다.
+   */
+  it('목록 응답 전에는 선택을 지우지 않는다', async () => {
+    const { release } = renderScreenHolding(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      [BALANCES_PATH],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    await screen.findByRole('status', { name: t.loading.lotDetail });
+
+    expect(currentLocation()).toContain('sel=9401');
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
+
+    release();
+
+    expect(await screen.findByText(t.detail.quantitiesNote)).toBeInTheDocument();
+    expect(currentLocation()).toContain('sel=9401');
+  });
+
+  /*
+   * **LOT별 보기가 아니면 `sel`은 가리킬 줄이 없다.** 읽는 자리에서 그렇게 판정하지 않으면
+   * 화면에 없는 LOT의 상세를 한 번 부르고 나서 지우게 된다 — 사용자에게는 아무 일도 없는데
+   * 요청만 하나 늘어난다.
+   */
+  it('품목별 보기의 주소에 sel이 남아 있어도 상세를 부르지 않는다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      `${WITH_WAREHOUSE}&sel=9401`,
+    );
+
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(lotDetailRequests(requests)).toHaveLength(0);
+    /* 주소는 고쳐 쓰지 않는다 — 보기를 되돌리면 그 선택이 되살아난다. */
+    expect(currentLocation()).toContain('sel=9401');
+  });
+
+  /* 주소는 손으로 고쳐지는 자리다 — `/trace/lots/0`을 부르지 않는다. */
+  it('번호가 아닌 sel로는 상세를 부르지 않는다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=0`,
+    );
+
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    expect(lotDetailRequests(requests)).toHaveLength(0);
+  });
+});
+
+describe('StockStatusScreen — LOT 상세의 내용', () => {
+  it('수량 다섯과 보류·외부 식별자를 낸다', async () => {
+    renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    await screen.findByText(t.detail.quantitiesNote);
+
+    const pane = within(detailPane());
+
+    for (const label of [
+      t.detail.onHandQty,
+      t.detail.reservedQty,
+      t.detail.pickedQty,
+      t.detail.blockedQty,
+      t.detail.availableQty,
+    ]) {
+      expect(pane.getByText(label)).toBeInTheDocument();
+    }
+
+    expect(pane.getByText(t.detail.holds.wholeLot)).toBeInTheDocument();
+    expect(pane.getByText('SAMPLE-EXT-0001')).toBeInTheDocument();
+  });
+
+  /*
+   * **기한이 지나도 보류를 걸지 않는다**(이슈 §4 미결 5 — 정책 미정). 표식만 내고,
+   * 그 상태에서 나간 요청이 전부 읽기임을 값으로 고정한다.
+   */
+  it('기한이 지난 LOT을 열어도 쓰기 요청이 없다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(expiredLotDetail(TODAY)), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    expect(await screen.findByText(t.detail.expiryPassed)).toBeInTheDocument();
+    expect(requests.every((request) => request.method === 'GET')).toBe(true);
+  });
+
+  /* 짝 방향 — 유효기한이 없는 LOT에는 표식이 붙지 않는다. */
+  it('유효기한이 없으면 표식이 붙지 않는다', async () => {
+    renderScreen(
+      [balanceRoute(), lotDetailRoute(plainLotDetail()), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    await screen.findByText(t.detail.quantitiesNote);
+
+    expect(screen.queryByText(t.detail.expiryPassed)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.detail.expirySoon)).not.toBeInTheDocument();
+  });
+
+  /* 목록에 없는 수량 둘이 여기서 나온다(계획 결정 13-2) — 열 폭 예산이 목록에 다섯을 못 담는다. */
+  it('예약·피킹은 목록이 아니라 상세에서만 보인다', async () => {
+    renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    await screen.findByText(t.detail.quantitiesNote);
+
+    expect(within(detailPane()).getByText(t.detail.reservedQty)).toBeInTheDocument();
+    expect(within(listPane()).getByRole('table').textContent?.includes(t.detail.reservedQty)).toBe(
+      false,
+    );
+  });
+});
+
+describe('StockStatusScreen — 상세 조회 실패', () => {
+  /*
+   * **상세가 실패해도 위 목록은 그대로 보인다.** 실패한 것은 고른 LOT 한 벌뿐인데
+   * 화면 전체를 덮으면 사용자가 목록까지 못 쓰게 된다.
+   */
+  it('배너가 상세 구획에만 나오고 목록은 남는다', async () => {
+    renderScreen(
+      [balanceRoute(), failingLotDetailRoute(), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    const retry = await screen.findByRole('button', { name: messages.common.retry });
+
+    expect(detailPane()).toContainElement(retry);
+    /* 위 목록이 여전히 그려져 있다. */
+    expect(
+      within(within(listPane()).getByRole('table')).getAllByText('SAMPLE-LOT-0001').length,
+    ).toBeGreaterThan(0);
+  });
+
+  /* 실패를 「없습니다」로 말하지 않는다 — 자료가 없는 줄 알고 다른 LOT을 찾게 된다. */
+  it('실패를 빈 상태로 말하지 않는다', async () => {
+    renderScreen(
+      [balanceRoute(), failingLotDetailRoute(), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    await screen.findByRole('region', { name: t.panes.detail });
+    await screen.findByRole('button', { name: messages.common.retry });
+
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.detail.holds.emptyTitle)).not.toBeInTheDocument();
+  });
+
+  /* 권한이 없으면 다시 시도가 사용자가 할 수 있는 조치가 아니다. */
+  it('권한이 없으면 다시 시도를 내지 않는다', async () => {
+    renderScreen(
+      [balanceRoute(), failingLotDetailRoute(403), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    const pane = within(await screen.findByRole('region', { name: t.panes.detail }));
+
+    expect(await pane.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(pane.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  /* 목록이 실패하면 낼 수량이 없다 — 배너가 이미 사유와 복구를 냈다. */
+  it('목록이 실패하면 상세 구획을 내지 않는다', async () => {
+    renderScreen(
+      [failingBalanceRoute(500), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    await screen.findByRole('button', { name: messages.common.retry });
+
+    expect(screen.queryByRole('region', { name: t.panes.detail })).not.toBeInTheDocument();
   });
 });

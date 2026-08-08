@@ -2427,6 +2427,12 @@ const stockStatus = {
   breadcrumbRoot: '자재창고',
   panes: {
     list: '재고 잔액 목록',
+    /*
+     * **드로어도 창도 아닌 「아래 구획」이다**(계획 결정 2). 디자인 시스템에 드로어가 없고,
+     * 창으로 대체하면 목록이 가려져 이 화면의 「고르고 돌아오는」 반복 조회가 매번 열고 닫는
+     * 일이 된다.
+     */
+    detail: 'LOT 상세',
   },
   /** 보기 탭. 값은 주소 키 `view`와 같다. */
   views: {
@@ -2451,6 +2457,14 @@ const stockStatus = {
     goFirstPage: '첫 쪽으로',
     /** 같은 조회를 다시 한다. 조건·보기·정렬·쪽·선택을 하나도 바꾸지 않는다. */
     refresh: '새로고침',
+    select: '선택',
+    deselect: '선택 해제',
+    /*
+     * 접근 이름에 **LOT 이름**을 넣는다 — 「선택」이 행마다 되풀이되면 어느 줄인지 알 수 없다.
+     * 내부 번호를 넣지 않는다(#44) — 이름을 못 풀면 표 칸과 같은 대체 표기가 들어간다.
+     */
+    selectRow: (lotName: string): string => `${lotName} 선택`,
+    deselectRow: (lotName: string): string => `${lotName} 선택 해제`,
   },
   /** 비활성 사유·실패 사유는 그 컨트롤이나 대상의 이름으로 시작한다(배치 규범 4). */
   reasons: {
@@ -2474,6 +2488,7 @@ const stockStatus = {
   },
   loading: {
     balances: '재고 잔액을 불러오는 중',
+    lotDetail: 'LOT 상세를 불러오는 중',
   },
   /** 잔액 표의 머리글. 열 구성과 폭의 근거는 screens/stock-status/balance-table.tsx에 있다. */
   table: {
@@ -2488,6 +2503,8 @@ const stockStatus = {
     inventoryStatus: '재고 상태',
     ownership: '소유',
     lastTransactionAt: '최근 거래',
+    /** LOT별 보기에만 있는 열. 다른 보기의 줄은 LOT을 가리키지 않아 고를 대상이 없다. */
+    select: '상세',
   },
   /** 1단 그룹 헤더. 무엇으로 묶였는지 이름 앞에 밝힌다 — 이름만 있으면 축을 알 수 없다. */
   groupHeader: {
@@ -2544,6 +2561,9 @@ const stockStatus = {
     beyondLastDescription: '첫 쪽으로 이동하세요.',
     noResultTitle: '조건에 맞는 재고가 없습니다',
     noResultDescription: '조건을 줄이거나 「잔액 0 포함」을 켠 뒤 다시 조회하세요.',
+    /* 목록이 계속 보이는 자리라 「무엇을 하면 채워지는가」만 말한다. */
+    noSelectionTitle: '고른 LOT이 없습니다',
+    noSelectionDescription: '위 표에서 LOT을 고르면 그 상태와 보류가 여기에 보입니다.',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -2586,6 +2606,76 @@ const stockStatus = {
       '정렬은 서버가 전체 결과를 기준으로 합니다. 정렬 방향은 고를 수 없어 오름차순 한 방향입니다.',
     /* 밝히지 않으면 사용자가 「이 품목의 LOT은 이게 전부」로 읽는다 — 서버가 쪽을 나눠 준다. */
     groupScope: '그룹은 지금 보고 있는 쪽 안에서만 묶입니다. 다른 쪽의 행은 함께 묶이지 않습니다.',
+  },
+  /**
+   * LOT 상세 구획 — 아래 구획이다(계획 결정 2). **조회만 한다** — 등록·수정·보류 해제 수단이
+   * 하나도 없다. 그것은 품질 도메인 화면의 소관이다.
+   */
+  detail: {
+    title: (lotNo: string): string => `LOT ${lotNo}`,
+    /*
+     * **수량은 상세 조회가 아니라 고른 잔액 줄에서 온다.** 계약의 `Lot`은 만들어질 때의
+     * 초기 수량만 갖는다. 그래서 「이 조건으로 조회한 줄의 수량」임을 밝힌다 —
+     * 밝히지 않으면 사용자가 그 LOT의 전체 재고로 읽는다.
+     */
+    quantities: '지금 수량',
+    quantitiesNote:
+      '지금 걸린 조회 조건에 해당하는 줄의 수량입니다. 가용은 서버가 계산해 내려준 값입니다.',
+    onHandQty: '보유',
+    reservedQty: '예약',
+    pickedQty: '피킹',
+    blockedQty: '보류',
+    availableQty: '가용',
+    /** 수량 다섯이 모두 이 단위로 세어진다 — 줄마다 다르므로 수량 곁에 붙인다. */
+    uom: '단위',
+    lotType: 'LOT 유형',
+    status: '상태',
+    manufacturedAt: '제조 시각',
+    expiryDate: '유효기한',
+    initialQty: '초기 수량',
+    remarks: '비고',
+    /*
+     * **표식일 뿐이다.** 기한이 지난 재고를 어떻게 할지가 아직 정해지지 않아
+     * 자동으로 보류를 걸지 않는다(이슈 §4 미결 5). 임박 기준 일수도 미확정이라(미결 2)
+     * 상수에서 받아 문구에 넣는다 — 문구에 숫자를 박으면 고칠 자리가 둘이 된다.
+     */
+    expiryPassed: '유효기한 경과',
+    expirySoon: '유효기한 임박',
+    expiryNote: (days: number): string =>
+      `임박 기준은 ${String(days)}일이며 아직 확정되지 않았습니다. 기한이 지나도 보류가 자동으로 걸리지 않습니다.`,
+    externalIdentifiers: '외부 식별자',
+    identifierType: '식별자 유형',
+    externalIdentifier: '식별자',
+    issuedBy: '발급처',
+    externalSystem: '외부 시스템',
+    /* 발급처가 비어 있는 것이 정상이다 — 우리 쪽에서 붙인 번호다. */
+    issuedBySelf: '(자체 부여)',
+    noExternalIdentifiers: '등록된 외부 식별자가 없습니다.',
+    /*
+     * **문구에 적은 대상과 「다시 시도」가 다시 부르는 대상이 같아야 한다.**
+     * 이 구획이 이름을 내는 참조는 단위와 발급처(거래처) 둘이다.
+     */
+    referencesFailed: '단위·발급처 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+    holds: {
+      title: '해제되지 않은 보류',
+      reason: '사유',
+      status: '상태',
+      holdQty: '보류 수량',
+      uom: '단위',
+      heldAt: '보류 시각',
+      releaseCondition: '해제 조건',
+      remarks: '비고',
+      /* 계약이 「비어 있으면 전량 보류」로 정했다. 빈칸이나 0으로 두면 정반대로 읽힌다. */
+      wholeLot: '전량 보류',
+      emptyTitle: '해제되지 않은 보류가 없습니다',
+      emptyDescription: '이 LOT에 걸린 보류가 없거나 모두 해제되었습니다.',
+      /*
+       * **경로 안내이지 링크가 아니다.** 의심자재 등록은 품질 도메인 화면의 소관이고
+       * 그 화면이 아직 없어 링크를 만들면 죽은 링크가 된다(이슈 §6).
+       */
+      suspectMaterialPath:
+        '의심자재 등록은 품질관리 > 의심자재 등록(W-03-03)에서 합니다. 이 화면은 조회만 합니다.',
+    },
   },
   /** 조회 시점 스냅샷임을 밝힌다 — 집계는 언제나 이미 과거다. */
   asOf: (at: string): string => `기준 ${at}`,

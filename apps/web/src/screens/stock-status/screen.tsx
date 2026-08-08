@@ -1,6 +1,14 @@
-import { Breadcrumb, Button, PageHeader, Tabs, type TabItem } from '@crefle/web-ui';
+import {
+  Breadcrumb,
+  Button,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+  Tabs,
+  type TabItem,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { formatAsOf } from './as-of';
@@ -16,6 +24,7 @@ import {
   EMPTY_FILTERS,
   readFilters,
   readPage,
+  readSelectedLotId,
   resolveFilters,
   readSortParam,
   readViewParam,
@@ -36,9 +45,10 @@ import {
   useWarehouseOptions,
   type LookupResult,
 } from './lookups';
+import { LotDetailPane } from './lot-detail-pane';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
-import { useBalanceList, type BalanceListQuery } from './queries';
+import { useBalanceList, useLotDetail, type BalanceListQuery } from './queries';
 import { defaultSortKey, nextSortKey, readSortKey, toSortQuery, type SortKey } from './sort';
 import type { BalanceView, SelectOption } from './types';
 import {
@@ -132,13 +142,16 @@ export const StockStatusScreen = () => {
    *
    * 1. `toSearchParams(view, filters, sort, page)`가 **`sel`·`hfrom`·`hto`·`tx`를 만들지 않는다.**
    *    1~5행이 함께 지켜진다. 고르는 쪽만 덧붙인다(작업 2·3).
-   * 2. 7행은 **고른 식별자에 묶인 effect 한 곳**이 한다(작업 2). 클릭 핸들러에 두면
+   * 2. 7행은 **고른 식별자에 묶인 effect 한 곳**이 한다. 클릭 핸들러에 두면
    *    뒤로가기·앞으로가기·주소 직접 편집이 통째로 샌다.
    *
    * **비우는 자리는 이 열 줄뿐이고, 열한째가 생기면 이 표에 행을 먼저 더한다.**
    *
-   * 6~10행은 작업 2·3(LOT 상세 · 수불 이력)의 몫이다. 표를 지금 다 적어 두는 이유는,
-   * 나중에 더하는 사람이 이미 정해진 규칙을 다시 정하지 않게 하기 위해서다.
+   * 6·7행이 이번 작업의 몫이고 **8~10행은 수불 이력(작업 3)의 몫**이다. 6행의
+   * 「`hfrom`·`hto`를 기본 1개월로 채운다」도 그때 온다 — 기본 기간을 만드는 모듈이 아직 없고,
+   * 읽는 쪽 없이 주소에 키만 심으면 아무도 쓰지 않는 상태가 주소에 남는다.
+   * 표를 지금 다 적어 두는 이유는, 나중에 더하는 사람이 이미 정해진 규칙을 다시 정하지
+   * 않게 하기 위해서다.
    */
   /*
    * **주소가 바뀔 때만 새 참조를 만든다.** 렌더마다 새 객체를 만들면 내용이 같아도 참조가 달라,
@@ -168,6 +181,16 @@ export const StockStatusScreen = () => {
   const page = readPage(searchParams);
 
   /*
+   * **고른 LOT도 읽는 자리에서 뜻을 판정한다**(`resolveFilters`·`resolveViewAxis`와 같은 갈래).
+   * LOT별 보기가 아니면 표에 가리킬 줄이 없으므로 고르지 않은 것으로 읽는다 — 그러지 않으면
+   * `?view=item&sel=…` 주소로 들어왔을 때 화면에 없는 LOT의 상세를 한 번 부르고 나서 지운다.
+   *
+   * **주소는 고쳐 쓰지 않는다.** 보기를 되돌리면 그 선택이 되살아나야 하고, 조회·보기 전환은
+   * `toSearchParams`가 `sel`을 만들지 않으므로 어긋남이 쌓이지 않는다.
+   */
+  const selectedLotId = view === 'lot' ? readSelectedLotId(searchParams) : null;
+
+  /*
    * **창고를 고르기 전에는 조회하지 않는다**(계획 결정 5). 계약은 「창고·품목·LOT 중 적어도
    * 하나」를 요구하지만 이 화면은 그보다 좁게 창고를 필수로 둔다 —
    * **창고 필수는 이 화면의 규칙이지 계약의 규칙이 아니다.** 현장 단말(M-01-04)은 LOT만 들고
@@ -187,6 +210,20 @@ export const StockStatusScreen = () => {
   const list = useBalanceList(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
+
+  /**
+   * 고른 줄. **목록 응답에서 찾는다** — 상세 구획의 수량 다섯이 이 줄에서 온다.
+   * 계약의 LOT 상세는 만들어질 때의 초기 수량만 갖고, 지금 남은 양은 잔액 응답이 나른다.
+   */
+  const selectedRow = rows.find((row) => row.lotId === selectedLotId) ?? null;
+
+  const lotDetail = useLotDetail(selectedLotId);
+
+  /**
+   * 유효기한 판정의 「오늘」. **화면이 정해 아래로 내린다** — 판정 함수를 순수하게 두어야
+   * 테스트가 실행 환경의 시각을 검사하지 않는다.
+   */
+  const today = new Date();
 
   /*
    * **기준 시각은 응답이 도착한 시각이다.** 렌더 시각을 쓰면 아무것도 안 했는데 시각이
@@ -265,6 +302,48 @@ export const StockStatusScreen = () => {
   };
 
   /**
+   * LOT 고르기·해제(수명 표 6행).
+   *
+   * **보이는 줄을 바꾸지 않는다** — 조건·보기·정렬·쪽을 그대로 두고 `sel`만 넣고 뺀다.
+   * 고를 때 첫 쪽으로 튀면 사용자가 3쪽에서 고른 LOT의 상세를 보는 동안 목록은 1쪽이 된다.
+   */
+  const toggleSelectLot = (lotId: number): void => {
+    const next = toSearchParams(view, filters, sortKey, page);
+
+    if (lotId !== selectedLotId) next.set('sel', String(lotId));
+
+    setSearchParams(next);
+  };
+
+  /*
+   * 갱신된 결과에 고른 LOT이 없으면 `sel`을 주소에서 뗀다(수명 표 7행).
+   * 남겨 두면 아래 구획이 화면에 없는 LOT을 가리킨 채 주소만 남는다.
+   *
+   * **정리를 클릭 핸들러가 아니라 고른 식별자에 묶는다.** 뒤로가기·앞으로가기·주소 직접
+   * 편집은 핸들러를 거치지 않고 `sel`만 바꾸므로, 핸들러에 두면 그 경로가 통째로 샌다.
+   *
+   * **받은 결과가 있을 때만 판정한다.** 조회를 기다리는 동안에는 줄이 비어 있어, 가드가 없으면
+   * 「고른 LOT이 사라졌다」로 읽혀 상세가 깜빡 닫힌다.
+   *
+   * `replace`로 바꿔 정리가 뒤로가기 기록을 늘리지 않게 한다 — 사용자가 한 조작이 아니다.
+   */
+  useEffect(() => {
+    if (selectedLotId === null) return;
+    if (list.data === undefined) return;
+    if (list.data.items.some((row) => row.lotId === selectedLotId)) return;
+
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('sel');
+
+        return next;
+      },
+      { replace: true },
+    );
+  }, [selectedLotId, list.data, setSearchParams]);
+
+  /**
    * 참조 실패의 복구 경로 — **이름이 보이는 자리마다 하나씩** 둔다.
    *
    * 나누는 기준은 「그 이름이 어느 구획에서 보이는가」다. 실패 안내와 「다시 시도」는
@@ -278,11 +357,17 @@ export const StockStatusScreen = () => {
    * | 위치 | **창고를 고른 뒤** | 조건 줄 · 위치별 보기의 그룹 헤더·열 | **조건 줄** |
    * | 품목 | 항상 | 조건 줄 · 세 보기의 품목 열·그룹 헤더 | **조건 줄** |
    * | LOT | **품목 + LOT별 보기** | 조건 줄 · LOT별 보기의 LOT 열 | **조건 줄** |
-   * | 단위 | 항상 | 세 보기의 단위 열 | **목록 구획** |
-   * | 소유처 | 항상 | 세 보기의 소유 열 | **목록 구획** |
+   * | 단위 | 항상 | 세 보기의 단위 열 · **LOT 상세의 수량·보류** | **목록 구획 · 상세 구획** |
+   * | 소유처 | 항상 | 세 보기의 소유 열 · **LOT 상세의 발급처** | **목록 구획 · 상세 구획** |
    *
    * 앞 넷이 조건 줄인 이유가 이 표의 요점이다 — 넷 다 **선택칸에 이름이 실린다.**
    * 뒤 둘은 조건에 없어 표에서만 보이므로 목록 구획이 소유한다.
+   *
+   * 뒤 둘의 복구가 **두 자리에 있는 이유**: 같은 참조가 두 구획에서 이름을 낸다. 규칙은
+   * 「그 이름이 실제로 실패로 보이는 자리에 둔다」이므로, 상세를 읽는 사람이 실패를 보면서
+   * 위 구획까지 올라가 버튼을 찾게 두지 않는다. **두 버튼이 부르는 대상은 정확히 같은 둘**이라
+   * 「문구가 적은 대상 = 다시 부르는 대상」 규칙은 양쪽 모두에서 지켜진다.
+   *
    * **일곱째 참조가 생기면 이 표에 먼저 줄을 더한다.**
    */
   const filterReferences = [warehouses, locations, items, lots];
@@ -315,10 +400,12 @@ export const StockStatusScreen = () => {
         hasQuery={listQuery !== null}
         isBeyondLast={pageView.isBeyondLast}
         sortKey={sortKey}
+        selectedLotId={selectedLotId}
         onSortChange={changeSort}
         onFirstPage={() => {
           apply(view, filters, sortKey);
         }}
+        onToggleSelect={toggleSelectLot}
         itemLookup={items}
         lotLookup={lots}
         locationLookup={locations}
@@ -344,6 +431,61 @@ export const StockStatusScreen = () => {
     disabled: axis === 'lot' && !canUseLotView,
     content: axis === view ? balancePane : null,
   }));
+
+  /**
+   * 아래 구획. 넷 중 하나만 낸다 — 사용자가 할 조치가 서로 다르다.
+   *
+   * **상세가 실패해도 위 목록은 그대로 둔다.** 배너를 이 구획 안에만 내는 것이 그 규칙을
+   * 코드로 지키는 형태다 — 화면 전체를 덮으면 사용자가 목록까지 못 쓰게 되는데,
+   * 실패한 것은 고른 LOT 한 벌뿐이다.
+   */
+  const detailPane = (): ReactNode => {
+    if (selectedLotId === null) {
+      return (
+        <EmptyState
+          size="sm"
+          title={t.empty.noSelectionTitle}
+          description={t.empty.noSelectionDescription}
+        />
+      );
+    }
+
+    if (lotDetail.isError) {
+      return (
+        <LoadErrorBanner
+          error={lotDetail.error}
+          onRetry={() => {
+            void lotDetail.refetch();
+          }}
+        />
+      );
+    }
+
+    /*
+     * 고른 번호는 있는데 그 줄이나 상세가 아직 없다 — 기다리는 중이다.
+     * **정리 effect가 결과를 보고 판정할 때까지 「고르지 않았다」로 되돌리지 않는다** —
+     * 되돌리면 응답이 오는 사이에 구획이 깜빡 닫힌다.
+     */
+    if (selectedRow === null || lotDetail.data === undefined) {
+      return (
+        <div role="status" aria-label={t.loading.lotDetail}>
+          <SkeletonText lines={3} />
+        </div>
+      );
+    }
+
+    return (
+      <LotDetailPane
+        row={selectedRow}
+        detail={lotDetail.data}
+        today={today}
+        uomLookup={uoms}
+        partnerLookup={partners}
+        /* 이 구획이 이름을 내는 참조는 목록 구획과 같은 둘이다(위 표) — 같은 둘을 다시 부른다. */
+        onRetryReferences={retryListReferences}
+      />
+    );
+  };
 
   return (
     <>
@@ -451,6 +593,19 @@ export const StockStatusScreen = () => {
         {/* 잠긴 탭은 포커스를 받지 못해 사유를 자기 안에 담을 수 없다. 탭 밖에 둔다. */}
         {!canUseLotView && <p className="field-note">{t.reasons.lotViewNeedsItem}</p>}
       </section>
+
+      {/*
+       * **LOT별 보기에서만 낸다.** 다른 두 보기에는 고를 대상 자체가 없어, 구획을 두면
+       * 「고르세요」가 할 수 없는 일을 시키는 안내가 된다.
+       *
+       * **목록이 실패하면 내지 않는다** — 상세의 수량 다섯이 목록의 줄에서 오므로 낼 것이 없고,
+       * 배너가 이미 사유와 「다시 시도」를 냈다. 반대 방향(상세 실패)은 위 목록을 가리지 않는다.
+       */}
+      {view === 'lot' && !list.isError && (
+        <section className="pane" aria-label={t.panes.detail}>
+          {detailPane()}
+        </section>
+      )}
     </>
   );
 };

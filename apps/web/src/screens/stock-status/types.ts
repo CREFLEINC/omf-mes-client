@@ -13,6 +13,7 @@ import type { components } from '@omf-mes/api-client';
  */
 
 type InventoryBalanceResponse = components['schemas']['InventoryBalance'];
+type LotDetailResponse = components['schemas']['LotDetailResponse'];
 
 export type PageMeta = components['schemas']['PageMeta'];
 
@@ -95,9 +96,13 @@ export const toBalanceView = (data: InventoryBalanceResponse): BalanceView => ({
 /**
  * 식별자 한 조각을 키 문자열로 옮긴다.
  *
- * **이 슬라이스에서 내부 번호를 문자열로 만드는 유일한 자리다.** 여기서 나온 값은 React key와
- * 그룹 키로만 쓰이며 **셀 텍스트가 되지 않는다** — 표시되는 값으로 옮기는 자리를 두지 않는 것이
- * #44를 구조로 막는 형태이고, 만드는 자리를 하나로 모아 두면 그 사실을 한눈에 확인할 수 있다.
+ * 여기서 나온 값은 React key와 그룹 키로만 쓰이며 **셀 텍스트가 되지 않는다** —
+ * 표시되는 값으로 옮기는 자리를 두지 않는 것이 #44를 구조로 막는 형태다.
+ *
+ * **번호를 문자열로 만드는 자리가 이 슬라이스에 셋 있고 전부 표의 행 키다** — 잔액 줄(여기),
+ * 보류(`lot-hold-table.tsx`), 외부 식별자(`lot-detail-pane.tsx`). 뒤 둘은 키가 한 조각뿐이라
+ * 이 함수를 거치지 않는다. **셋 중 어느 것도 렌더되지 않는다는 것이 규칙**이고, 표기 경로에
+ * 번호를 담는 자리는 하나도 없다.
  */
 const toIdentityKey = (value: string | number | null): string =>
   value === null ? '-' : String(value);
@@ -134,6 +139,102 @@ export interface BalanceListResult {
   items: BalanceView[];
   page: PageMeta;
 }
+
+/**
+ * 고른 LOT 한 벌.
+ *
+ * **수량 다섯은 여기 없다** — 계약의 `Lot`은 만들어질 때의 `initialQty`만 갖고, 지금 얼마나
+ * 남았는지는 잔액 응답이 나른다. 상세 구획은 고른 **잔액 줄**에서 수량을 받는다.
+ *
+ * **내부 번호로만 이어진 필드는 옮기지 않는다** — `plantId`·`sourceId`·`parentLotId`가
+ * 그렇다. 이름을 풀 참조를 새로 만들면 이 화면의 참조가 일곱째부터 늘고(계획 결정 9의 표),
+ * 풀지 못한 채 내면 번호가 화면으로 샌다(#44). 계보·원천 문서는 이 화면의 질문이 아니다.
+ */
+export interface LotView {
+  lotId: number;
+  lotNo: string;
+  itemId: number;
+  lotTypeCode: string;
+  statusCode: string;
+  initialQty: number;
+  uomId: number;
+  manufacturedAt: string | null;
+  /** 없는 것이 정상이다(계약에서 `nullable`) — 유효기한을 관리하지 않는 품목이 있다. */
+  expiryDate: string | null;
+  remarks: string | null;
+}
+
+/**
+ * 해제되지 않은 보류 한 건.
+ *
+ * **`releasedBy`·`releasedAt`을 옮기지 않는다** — 계약이 이 목록을 「해제되지 않은 보류」로
+ * 정해 언제나 비어 있다. 담아 두면 늘 대시인 열이 생긴다.
+ * **`heldBy`도 옮기지 않는다** — 사용자 번호이고 이름을 풀 참조가 이 화면에 없다(#44).
+ */
+export interface LotHoldView {
+  lotHoldId: number;
+  reasonCode: string;
+  statusCode: string;
+  heldAt: string;
+  /**
+   * **`null`이 확정된 뜻을 갖는 자리다** — 계약이 「비어 있으면 전량 보류」로 적었다.
+   * 0은 정반대(아무것도 묶이지 않았다)라 함께 뭉갤 수 없다.
+   */
+  holdQty: number | null;
+  /** 계약상 `holdQty`가 있을 때 함께 온다. 전량 보류에는 견줄 수가 없어 단위도 없다. */
+  uomId: number | null;
+  releaseCondition: string | null;
+  remarks: string | null;
+}
+
+/** LOT을 밖에서 부르는 이름. 발급처가 없으면 우리 쪽에서 붙인 번호다. */
+export interface LotExternalIdentifierView {
+  lotExternalIdentifierId: number;
+  identifierTypeCode: string;
+  externalIdentifier: string;
+  partnerId: number | null;
+  externalSystemCode: string | null;
+}
+
+export interface LotDetailView {
+  lot: LotView;
+  externalIdentifiers: LotExternalIdentifierView[];
+  holds: LotHoldView[];
+}
+
+/** LOT 상세 응답을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toLotDetailView = (data: LotDetailResponse): LotDetailView => ({
+  lot: {
+    lotId: data.lot.lotId,
+    lotNo: data.lot.lotNo,
+    itemId: data.lot.itemId,
+    lotTypeCode: data.lot.lotTypeCode,
+    statusCode: data.lot.statusCode,
+    initialQty: data.lot.initialQty,
+    uomId: data.lot.uomId,
+    manufacturedAt: data.lot.manufacturedAt ?? null,
+    expiryDate: data.lot.expiryDate ?? null,
+    remarks: data.lot.remarks ?? null,
+  },
+  externalIdentifiers: data.externalIdentifiers.map((identifier) => ({
+    lotExternalIdentifierId: identifier.lotExternalIdentifierId,
+    identifierTypeCode: identifier.identifierTypeCode,
+    externalIdentifier: identifier.externalIdentifier,
+    partnerId: identifier.partnerId ?? null,
+    externalSystemCode: identifier.externalSystemCode ?? null,
+  })),
+  holds: data.holds.map((hold) => ({
+    lotHoldId: hold.lotHoldId,
+    reasonCode: hold.reasonCode,
+    statusCode: hold.statusCode,
+    heldAt: hold.heldAt,
+    /* 0과 「없음」을 가른다 — 없음은 전량 보류이고 0은 아무것도 묶이지 않았다는 뜻이다. */
+    holdQty: hold.holdQty ?? null,
+    uomId: hold.uomId ?? null,
+    releaseCondition: hold.releaseCondition ?? null,
+    remarks: hold.remarks ?? null,
+  })),
+});
 
 /**
  * 선택 목록의 원본 항목.
