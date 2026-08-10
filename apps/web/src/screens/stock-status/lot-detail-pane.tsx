@@ -197,7 +197,7 @@ export const LotDetailPane = ({
 
   return (
     <>
-      <SummaryList label={t.detail.title(lot.lotNo)} items={attributes} />
+      <SummaryList label={t.detail.attributes(lot.lotNo)} items={attributes} />
 
       {/*
        * **표식일 뿐 조치가 아니다.** 기한이 지나도 보류가 자동으로 걸리지 않는다는 사실과
