@@ -5,10 +5,9 @@ import type { components } from '@omf-mes/api-client';
  *
  * `api-client`는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이 유지된다.
  *
- * 이 화면은 **입하 전표를 읽고 입고 전표를 쓴다.** PR ①이 다루는 것은 읽기뿐이고
- * (`GET /logistics/inbound-receipts`·같은 경로의 `/lines`), 쓰기는 PR ②에서 붙는다.
- * 그래서 이 파일에는 **초안 타입이 아직 없다** — 쓰이지 않는 타입을 먼저 세우면
- * 어느 값이 실제로 화면에 있는지 읽을 수 없다.
+ * 이 화면은 **입하 전표를 읽고 입고 전표를 쓴다.** 읽기는
+ * `GET /logistics/inbound-receipts`·같은 경로의 `/lines`·창고·위치·자재 LOT이고,
+ * 쓰기는 `POST /logistics/goods-receipts` 하나다.
  *
  * 이 파일은 이 화면이 소유한다. **다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다** —
  * 형태가 같아도 리소스 이름이 박힌 타입을 공유하면 한 화면의 계약 변화가 다른 화면을 끌고 간다.
@@ -16,6 +15,10 @@ import type { components } from '@omf-mes/api-client';
 
 type InboundReceiptResponse = components['schemas']['InboundReceipt'];
 type InboundReceiptLineResponse = components['schemas']['InboundReceiptLine'];
+type WarehouseResponse = components['schemas']['Warehouse'];
+type LocationResponse = components['schemas']['Location'];
+type GoodsReceiptResponse = components['schemas']['GoodsReceipt'];
+type GoodsReceiptLineResponse = components['schemas']['GoodsReceiptLine'];
 
 export type PageMeta = components['schemas']['PageMeta'];
 
@@ -116,6 +119,147 @@ export interface SelectOption {
   value: string;
   label: string;
 }
+
+/**
+ * 화면이 다루는 창고 한 건.
+ *
+ * **`plantId`를 함께 들고 있는다.** 요청에 싣는 공장은 입하 전표의 값이지만(계획 결정 8),
+ * 고른 창고의 공장을 **함께 보여** 어긋남이 눈에 보이게 한다. 막지는 않는다 — 어떤 조합이
+ * 성립하는지 정한 규칙이 데이터에 없어 화면이 판정할 수 없다.
+ *
+ * **`isActive`를 담지 않는다.** 창고·위치 목록은 참조 풀이와 달리 `includeInactive`를 켜지
+ * 않는다 — 지금 물건을 넣을 자리를 고르는 칸이라 쓰지 않는 창고가 선택지에 있을 이유가 없다.
+ * 담을 값이 없으면 표식을 붙일 경로도 생기지 않는다.
+ */
+export interface WarehouseView {
+  warehouseId: number;
+  warehouseCode: string;
+  warehouseName: string;
+  plantId: number;
+}
+
+export const toWarehouseView = (data: WarehouseResponse): WarehouseView => ({
+  warehouseId: data.warehouseId,
+  warehouseCode: data.warehouseCode,
+  warehouseName: data.warehouseName,
+  plantId: data.plantId,
+});
+
+/**
+ * 화면이 다루는 적치 위치 한 자리.
+ *
+ * **`parentLocationId`가 이 타입의 요점이다.** 위치는 자기참조 계층이라(계약 실측)
+ * 선택칸을 1단 그룹으로 접을 때 이 값이 그룹을 정한다 — 접는 규칙은 `location-options.ts`가 갖는다.
+ */
+export interface LocationView {
+  locationId: number;
+  parentLocationId: number | null;
+  locationCode: string;
+  locationName: string;
+}
+
+export const toLocationView = (data: LocationResponse): LocationView => ({
+  locationId: data.locationId,
+  parentLocationId: data.parentLocationId ?? null,
+  locationCode: data.locationCode,
+  locationName: data.locationName,
+});
+
+/** 값 목록이 확정되지 않은 코드 다섯. 선택지와 자리표시는 `code-options.ts`가 소유한다. */
+export type GoodsReceiptCodeKey =
+  | 'receiptType'
+  | 'sourceDocumentType'
+  | 'qualityStatus'
+  | 'inventoryStatus'
+  | 'reason';
+
+/** 사용자가 고른 코드값. 아직 고르지 않은 것은 빈 문자열이다. */
+export type CodeDraft = Record<GoodsReceiptCodeKey, string>;
+
+/**
+ * 화면에서 입력했으나 아직 보내지 않은 값.
+ *
+ * **주소에 싣지 않는다** — 글자마다 뒤로가기 기록이 쌓이고, 화면이 조회 조건과 입력을
+ * 같은 통로로 다루게 된다.
+ *
+ * **수량이 없다.** 전량 입고라 수량 입력칸을 두지 않고 입하 라인의 값을 그대로 싣는다
+ * (계획 결정 4). 품목·단위·자재 LOT도 같은 이유로 여기 없다 — 초안에 자리를 두지 않으면
+ * 사용자가 그 값을 바꿀 경로도 생기지 않는다.
+ */
+export interface ReceiptDraft {
+  /** 창고·위치는 선택칸 값이라 문자열이다. 요청 조립이 번호로 옮긴다. */
+  warehouse: string;
+  location: string;
+  codes: CodeDraft;
+  receiptDatetime: string;
+  remarks: string;
+}
+
+export const EMPTY_CODE_DRAFT: CodeDraft = {
+  receiptType: '',
+  sourceDocumentType: '',
+  qualityStatus: '',
+  inventoryStatus: '',
+  reason: '',
+};
+
+export const EMPTY_RECEIPT_DRAFT: ReceiptDraft = {
+  warehouse: '',
+  location: '',
+  codes: EMPTY_CODE_DRAFT,
+  receiptDatetime: '',
+  remarks: '',
+};
+
+/**
+ * 버릴 것이 있는가. **모든 칸을 함께 본다** — 한쪽만 보면 나머지가 확인 없이 사라진다.
+ */
+export const hasAnyDraftValue = (draft: ReceiptDraft): boolean =>
+  draft.warehouse !== '' ||
+  draft.location !== '' ||
+  draft.receiptDatetime !== '' ||
+  draft.remarks.trim() !== '' ||
+  Object.values(draft.codes).some((value) => value !== '');
+
+/**
+ * 입고 처리 결과 — **화면이 증거를 가진 것만 담는다.**
+ *
+ * **내부 번호를 담지 않는다**(#44). `goodsReceiptId`·`goodsReceiptLineId`·`lotId`·
+ * `inventoryTransactionLineId`의 자리가 이 타입에 없으므로 결과 구획으로 샐 경로도 없다.
+ * `goodsReceiptNo`는 사용자가 나중에 이 전표를 찾을 때 쓰는 업무 번호라 담는 것이 맞다 —
+ * 이 구분이 이 화면에서 갈리는 자리다.
+ *
+ * 원장은 **유무만** 담는다. 번호를 담으면 내야 할 것이 없는데 낼 수 있게 된다.
+ */
+export interface GoodsReceiptResultView {
+  goodsReceiptNo: string;
+  statusCode: string;
+  sourceDocumentTypeCode: string;
+  /** 응답의 `erpMessageQueued`. **키가 없을 수 있어** `undefined`를 그대로 나른다. */
+  erpMessageQueued: boolean | undefined;
+  lineCount: number;
+  ledgerLineCount: number;
+}
+
+/**
+ * **원천 문서의 「번호」를 여기 담지 않는다.** 응답이 주는 것은 내부 식별자뿐이고 사용자가
+ * 읽는 번호는 이 화면이 고른 입하 전표의 입하번호다 — 그 값은 결과가 그려지는 순간에도
+ * 화면에 그대로 있으므로(성공해도 고른 전표를 유지한다) 결과에 복사해 두지 않고 그때 읽는다.
+ */
+export const toGoodsReceiptResultView = (
+  goodsReceipt: GoodsReceiptResponse,
+  lines: readonly GoodsReceiptLineResponse[],
+): GoodsReceiptResultView => ({
+  goodsReceiptNo: goodsReceipt.goodsReceiptNo,
+  statusCode: goodsReceipt.statusCode,
+  sourceDocumentTypeCode: goodsReceipt.sourceDocumentTypeCode,
+  erpMessageQueued: goodsReceipt.erpMessageQueued,
+  lineCount: lines.length,
+  /* `null`과 키 없음을 함께 「원장 라인이 없다」로 센다 — 둘 다 낼 번호가 없다는 뜻이다. */
+  ledgerLineCount: lines.filter(
+    (line) => line.inventoryTransactionLineId !== undefined && line.inventoryTransactionLineId !== null,
+  ).length,
+});
 
 /** 계약의 date-time 문자열에서 표기용 조각을 뽑는다. */
 const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;

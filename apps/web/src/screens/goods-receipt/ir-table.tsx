@@ -13,6 +13,14 @@ const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty
 export interface IrColumnsInput {
   selectedIrId: number | null;
   supplierLookup: ReferenceSource;
+  /**
+   * 입고 처리를 보내는 중인가.
+   *
+   * 참이면 **대상을 바꾸는 길을 닫는다**(계획 결정 13). 열어 두면 사용자가 다른 전표로 옮긴 뒤
+   * **앞 전표의 처리 결과가 지금 보는 전표의 맥락에 나타난다** — 중복 전송이 생기지는 않지만
+   * 「무엇이 어느 전표에 입고됐는가」가 화면에서 흐려지고, 되돌릴 수 없는 쓰기라 그 혼선이 비싸다.
+   */
+  isLocked: boolean;
   onToggleSelect: (inboundReceiptId: number) => void;
 }
 
@@ -44,6 +52,7 @@ export interface IrColumnsInput {
 export const buildIrColumns = ({
   selectedIrId,
   supplierLookup,
+  isLocked,
   onToggleSelect,
 }: IrColumnsInput): Column<IrView>[] => [
   { key: 'inboundReceiptNo', header: t.table.inboundReceiptNo, width: '160px' },
@@ -97,6 +106,7 @@ export const buildIrColumns = ({
         <Button
           variant="outlined"
           size="sm"
+          disabled={isLocked}
           aria-label={
             selected
               ? t.actions.deselectRow(row.inboundReceiptNo)
@@ -142,11 +152,12 @@ export const IrTable = ({
   isBeyondLast,
   selectedIrId,
   supplierLookup,
+  isLocked,
   onFirstPage,
   onToggleSelect,
   onRetryReferences,
 }: IrTableProps) => {
-  const columns = buildIrColumns({ selectedIrId, supplierLookup, onToggleSelect });
+  const columns = buildIrColumns({ selectedIrId, supplierLookup, isLocked, onToggleSelect });
 
   if (isLoading) {
     return (
@@ -164,7 +175,7 @@ export const IrTable = ({
         title={t.empty.beyondLastTitle}
         description={t.empty.beyondLastDescription}
         action={
-          <Button variant="outlined" onClick={onFirstPage}>
+          <Button variant="outlined" disabled={isLocked} onClick={onFirstPage}>
             {t.actions.goFirstPage}
           </Button>
         }

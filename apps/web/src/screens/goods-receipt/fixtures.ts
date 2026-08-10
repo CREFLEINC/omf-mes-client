@@ -13,9 +13,10 @@ import type { IrLineView, IrView } from './types';
  * 예시를 픽스처에 쓰면 나중에 「확정 값」으로 읽힌다.
  *
  * **내부 번호(FK)는 서로 겹치지 않는 대역으로 나눈다** — 9000대(입하 전표) · 9400대(입하 라인) ·
- * 9100~9600대(참조). 「표 어디에도 내부 번호가 렌더되지 않는다」를 검사할 때
- * 줄번호·수량 같은 정상 숫자와 헷갈리지 않게 하기 위해서다. 업무 번호(`IR-2026-900001`)에
- * 내부 번호가 **부분 문자열로 들어가지 않도록** 대역을 갈라 두었다.
+ * 9100~9600대(참조) · 9700대(창고) · 9800대(적치 위치) · 9900대(입고 전표와 그 라인).
+ * 「표 어디에도 내부 번호가 렌더되지 않는다」를 검사할 때 줄번호·수량 같은 정상 숫자와
+ * 헷갈리지 않게 하기 위해서다. 업무 번호에 내부 번호가 **부분 문자열로 들어가지 않도록**
+ * 대역을 갈라 두었다 — 입고번호를 `GR-2026-8…`로 둔 것이 그 때문이다.
  */
 
 const BASE_RECEIPT: IrView = {
@@ -150,3 +151,108 @@ export const lotFixtures = [
   { lotId: 9601, lotNo: 'LOT-2026-900010', itemId: 9301 },
   { lotId: 9602, lotNo: 'LOT-2026-900011', itemId: 9302 },
 ];
+
+/**
+ * 입고 창고 목록. **두 창고의 공장이 다르다** — 9701은 입하 전표(9001)와 같은 9201이고
+ * 9702는 9202다. 「고른 창고의 공장이 전표와 다르면 눈에 보인다」를 실제 값으로 만든다.
+ */
+export const warehouseFixtures = [
+  {
+    warehouseId: 9701,
+    warehouseCode: 'SAMPLE-WH-01',
+    warehouseName: '합성 창고 가',
+    plantId: 9201,
+  },
+  {
+    warehouseId: 9702,
+    warehouseCode: 'SAMPLE-WH-02',
+    warehouseName: '합성 창고 나',
+    plantId: 9202,
+  },
+];
+
+/**
+ * 9701의 적치 위치. **계층이 실제로 셋 있다** — 그래야 1단 그룹 접기가 검사된다.
+ *
+ * - 9801 — 상위가 없다. 평면으로 남고 **다른 둘의 그룹 라벨**이 된다
+ * - 9802·9803 — 상위가 9801이다. 한 그룹으로 묶인다
+ * - 9804 — 상위가 9802다(**3단 깊이**). 최상위가 아니라 **직속 상위**로 묶인다
+ * - 9805 — 상위 번호는 있는데 그 상위가 목록에 없다. 평면으로 남는다
+ */
+export const locationFixtures = [
+  { locationId: 9801, warehouseId: 9701, parentLocationId: null, locationCode: 'SAMPLE-LOC-A', locationName: '합성 구역 가' },
+  { locationId: 9802, warehouseId: 9701, parentLocationId: 9801, locationCode: 'SAMPLE-LOC-A1', locationName: '합성 열 가1' },
+  { locationId: 9803, warehouseId: 9701, parentLocationId: 9801, locationCode: 'SAMPLE-LOC-A2', locationName: '합성 열 가2' },
+  { locationId: 9804, warehouseId: 9701, parentLocationId: 9802, locationCode: 'SAMPLE-LOC-A1-1', locationName: '합성 단 가1-1' },
+  { locationId: 9805, warehouseId: 9701, parentLocationId: 9899, locationCode: 'SAMPLE-LOC-Z', locationName: '합성 구역 하' },
+];
+
+/** 9702의 위치. 창고를 바꾸면 **다른 목록이 온다**는 것을 실제 값으로 만든다. */
+export const otherLocationFixtures = [
+  { locationId: 9811, warehouseId: 9702, parentLocationId: null, locationCode: 'SAMPLE-LOC-B', locationName: '합성 구역 나' },
+];
+
+/**
+ * 입고 처리 응답.
+ *
+ * **업무 번호를 8000대로 둔다** — 내부 번호 대역(9…)과 겹치면 「결과에 내부 번호가 없다」를
+ * 검사할 때 입고번호가 부분 문자열로 걸린다.
+ *
+ * `erpMessageQueued`를 **일부러 담지 않는다** — 계약이 선택 필드로 두었고(실측) 값이 오지 않는
+ * 갈래가 실재한다. 담긴 갈래는 각 테스트가 덮어써서 만든다.
+ */
+export const goodsReceiptResponse = (
+  overrides: Record<string, unknown> = {},
+  lineOverrides: Record<string, unknown> = {},
+) => ({
+  goodsReceipt: {
+    goodsReceiptId: 9901,
+    goodsReceiptNo: 'GR-2026-800001',
+    receiptTypeCode: 'SAMPLE_RECEIPT_TYPE_A',
+    plantId: 9201,
+    warehouseId: 9701,
+    receiptDatetime: '2026-08-06T09:12:00+09:00',
+    statusCode: 'SAMPLE_GR_STATUS_A',
+    sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+    sourceDocumentId: 9001,
+    ...overrides,
+  },
+  lines: [
+    {
+      goodsReceiptLineId: 9902,
+      goodsReceiptId: 9901,
+      lineNo: 1,
+      inboundReceiptLineId: 9401,
+      itemId: 9301,
+      lotId: 9601,
+      receiptQty: 100,
+      uomId: 9501,
+      qualityStatusCode: 'SAMPLE_QUALITY_A',
+      inventoryStatusCode: 'SAMPLE_INVENTORY_A',
+      destinationLocationId: 9802,
+      inventoryTransactionLineId: 9903,
+      ...lineOverrides,
+    },
+  ],
+});
+
+/**
+ * 자재 LOT 상세. **입고 처리 뒤 상태를 다시 읽는 유일한 수단**이다 —
+ * 입고 응답에는 LOT 상태가 없다.
+ */
+export const lotDetailResponse = (statusCode = 'SAMPLE_LOT_STATUS_A') => ({
+  lot: {
+    lotId: 9601,
+    lotNo: 'LOT-2026-900010',
+    itemId: 9301,
+    lotTypeCode: 'SAMPLE_LOT_TYPE_A',
+    plantId: 9201,
+    initialQty: 100,
+    uomId: 9501,
+    sourceTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+    sourceId: 9001,
+    statusCode,
+  },
+  externalIdentifiers: [],
+  holds: [],
+});

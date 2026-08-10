@@ -49,6 +49,7 @@ const columns = (): Column<IrLineView>[] =>
     uomLookup: uomSource,
     lotLookup: lotSource,
     reasonIdPrefix: 'reason',
+    isLocked: false,
     onToggleSelect: () => undefined,
   });
 
@@ -68,6 +69,7 @@ const renderTable = (overrides: Partial<IrLineTableProps> = {}) => {
       lotLookup={lotSource}
       selectedLineId={null}
       selectedLine={null}
+      isLocked={false}
       onToggleSelect={onToggleSelect}
       onRetryReferences={onRetryReferences}
       {...overrides}
@@ -242,6 +244,29 @@ describe('IrLineTable — 라인 표', () => {
     ).toBeInTheDocument();
   });
 
+  /*
+   * **M34의 한 겹** — 보내는 중에 다른 줄로 옮기면 앞 줄의 처리 결과가 지금 보는 줄의
+   * 맥락에 나타난다.
+   */
+  it('전송 중에는 줄 선택 버튼이 잠기고 눌러도 알리지 않는다', async () => {
+    const { onToggleSelect, user } = renderTable({ isLocked: true });
+
+    const button = screen.getByRole('button', { name: t.actions.selectLine(1) });
+
+    expect(button).toBeDisabled();
+
+    await user.click(button);
+
+    expect(onToggleSelect).not.toHaveBeenCalled();
+  });
+
+  /* 짝 방향 — 전송 중이 아니면 고를 수 있는 줄은 열려 있다. */
+  it('전송 중이 아니면 줄 선택 버튼이 열려 있다', () => {
+    renderTable();
+
+    expect(screen.getByRole('button', { name: t.actions.selectLine(1) })).not.toBeDisabled();
+  });
+
   /* 한 줄만 고른다는 사실을 밝히지 않으면 앞 선택이 풀리는 것이 고장으로 읽힌다. */
   it('한 줄만 고를 수 있다는 안내가 있다', () => {
     renderTable();
@@ -342,6 +367,19 @@ describe('IrLineTable — 참조 잘림', () => {
     renderTable(overrides);
 
     expect(screen.getByText(t.reasons.lineReferencesTruncated)).toBeInTheDocument();
+  });
+
+  /**
+   * **잘림 안내의 짝 방향** — 잘린 것은 「고를 수 없는 값이 생겼다」이지 「받은 이름을 믿을 수
+   * 없다」가 아니다. 「잘렸으니 확신할 수 없다 → 알 수 없음」이라는 그럴듯한 오판이 실제로
+   * 닿을 수 있는 거리에 있는데(잘림 여부가 이름을 푸는 함수와 같은 층에 있다), 그 오판은
+   * 이 화면이 막으려는 #47 그 자체다 — 정상 값에 *값이 잘못됐다*는 표를 붙이는 것.
+   */
+  it('잘려도 목록에 있는 이름은 이름으로 낸다', () => {
+    renderTable({ itemLookup: { ...itemSource, truncated: true } });
+
+    expect(screen.getByText(t.reasons.lineReferencesTruncated)).toBeInTheDocument();
+    expect(screen.getAllByText('SAMPLE-ITEM-01 · 합성 품목 가').length).toBeGreaterThan(0);
   });
 
   /* 짝 방향 — 잘리지 않으면 내지 않는다. 늘 뜨는 안내는 읽히지 않는다. */

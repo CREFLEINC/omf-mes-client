@@ -145,6 +145,21 @@ describe('AppLayout', () => {
   });
 
   /*
+   * W-01-10 — 이 도메인의 **둘째 쓰기 화면**이다. 차례는 업무 순서를 따른다 —
+   * 도착을 처리한 뒤(초과 입하 분리) 창고로 받아들이고(정상품 입하 처리) 재고에서 확인한다.
+   */
+  it('사이드바 자재창고 섹션에 정상품 입하 처리 메뉴가 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByRole('link', { name: '정상품 입하 처리' })).toHaveAttribute(
+      'href',
+      '/logistics/goods-receipt',
+    );
+  });
+
+  /*
    * W-01-07은 같은 도메인이라 **섹션을 새로 만들지 않고** 「자재창고」에 항목만 더한다.
    * 계약 경로는 `/inventory/**`·`/trace/**`이지만 주소 앞머리는 **사이드바 섹션을 따른다** —
    * 한 섹션 안의 화면들이 서로 다른 앞머리를 가지면 섹션과 주소를 대응시킬 수 없다.
@@ -218,6 +233,7 @@ describe('AppLayout', () => {
       '/master-data/master-change',
       '/logistics/inbound-schedule',
       '/logistics/over-receipt-split',
+      '/logistics/goods-receipt',
       '/logistics/stock-status',
       '/system/users-roles',
     ]);

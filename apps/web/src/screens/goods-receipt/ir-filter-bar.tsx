@@ -23,6 +23,15 @@ export interface IrFilterBarProps {
   chipNames: FilterChipNames;
   /** 참조 선택지의 한계(잘림·실패) 안내. 밝히지 않으면 값이 사라진 것으로 읽힌다. */
   supplierNote?: string;
+  /**
+   * 입고 처리를 보내는 중인가.
+   *
+   * 참이면 **조회·초기화를 닫는다** — 조건을 다시 걸면 고른 전표가 풀려 앞 전표의 처리 결과가
+   * 다른 맥락에 나타난다. **조건 칸 자체는 잠그지 않는다**(배치 규범 3) — 잠그면 지금 걸린
+   * 조건을 읽을 수만 있고 고칠 수 없는 상태가 되는데, 조건을 고쳐도 누르기 전에는 아무 일도
+   * 일어나지 않는다. 칩의 ×는 디자인 시스템이 잠금을 받지 않아 화면의 경로 가드가 막는다.
+   */
+  isLocked: boolean;
   onSearch: (filters: IrFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: ChipFilterKey) => void;
@@ -52,6 +61,7 @@ export const IrFilterBar = ({
   supplierOptions,
   chipNames,
   supplierNote,
+  isLocked,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -162,8 +172,10 @@ export const IrFilterBar = ({
          */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
-            <Button onClick={search}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={onReset}>
+            <Button disabled={isLocked} onClick={search}>
+              {messages.common.search}
+            </Button>
+            <Button variant="outlined" disabled={isLocked} onClick={onReset}>
               {messages.common.reset}
             </Button>
           </div>

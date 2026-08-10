@@ -1,23 +1,41 @@
-import { Select } from '@crefle/web-ui';
+import { Select, type SelectItems } from '@crefle/web-ui';
 import { useId } from 'react';
 
 import { FieldLabel } from './field-label';
-import type { SelectOption } from './types';
 
 export interface SelectFieldProps {
   label: string;
-  options: SelectOption[];
+  /** 평면 선택지와 1단 그룹을 함께 받는다 — 적치 위치가 상위 위치로 묶여 온다. */
+  options: SelectItems;
   value: string;
   onChange: (value: string) => void;
-  /** 선택지의 한계(잘림·불러오기 실패·값 목록 미확정)를 밝히는 보조 문구. */
+  /** 선택지의 한계(잘림·불러오기 실패·값 목록 미확정)나 잠금 사유를 밝히는 보조 문구. */
   note?: string;
+  /** 화면이 잡았거나 서버가 준 오류. 있으면 `invalid`와 함께 오류 문구를 낸다. */
+  error?: string;
   placeholder?: string;
   /**
    * 규범 3-2 — 선택지 문구가 길어 트리거 폭에 갇혀 잘리는 자리에만 붙인다(옵트인).
    * **판단 기준은 코드값이 아니라 선택지 문구 길이다.**
    */
   wide?: boolean;
+  /**
+   * 전송 중이거나 **아직 고를 수 없는** 자리에만 잠근다(옵트인).
+   *
+   * 조회 조건 칸은 잠그지 않는다 — 잠그면 지금 걸린 조건을 해제할 방법이 사라진다.
+   * 잠기는 자리는 둘이다: 전송 중처럼 값을 바꿔도 이번 요청에 실리지 않는 곳,
+   * 그리고 적치 위치처럼 앞선 선택이 있어야 목록이 열리는 곳.
+   */
+  disabled?: boolean;
 }
+
+/** 그룹 안까지 훑는다 — 빈 값 선택지는 그룹 안에 들어 있을 수도 있다. */
+const hasEmptyValue = (options: SelectItems): boolean =>
+  options.some((item) =>
+    'options' in item
+      ? item.options.some((option) => option.value === '')
+      : item.value === '',
+  );
 
 /**
  * 라벨과 보조 문구가 붙는 선택칸.
@@ -25,11 +43,11 @@ export interface SelectFieldProps {
  * 디자인 시스템 `Select`에는 `label`·`helperText` prop이 없다(배치 규범 3) —
  * 라벨을 직접 만들되 내장 라벨과 같은 토큰(`.field-label`)을 써 라벨 층 높이를 맞춘다.
  *
- * 보조 문구는 감추지 않고 항상 보이는 DOM 텍스트로 렌더하고 `aria-describedby`로 잇는다.
+ * 보조 문구와 오류는 감추지 않고 **항상 보이는 DOM 텍스트**로 렌더하고 `aria-describedby`로
+ * 잇는다. 잠긴 칸은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다.
  *
- * **잠금 prop을 두지 않는다.** 조회 조건 칸은 잠그지 않는다 — 잠그면 지금 걸린 조건을 해제할
- * 방법이 사라진다. 잠기는 자리(전송 중처럼 값을 바꿔도 이번 요청에 실리지 않는 곳)는
- * 이 PR에 없다. 필요해질 때 prop을 더한다 — 늘 거짓인 prop을 미리 두면 죽은 가지가 된다.
+ * **둘을 함께 낼 수 있다.** 잠금 사유(「창고를 먼저 고르세요」)와 오류는 서로 다른 사정이라
+ * 한쪽이 다른 쪽을 덮으면 사용자가 무엇을 해야 하는지 잃는다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -39,16 +57,23 @@ export const SelectField = ({
   value,
   onChange,
   note,
+  error,
   placeholder,
   wide = false,
+  disabled = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
+  const errorId = `${id}-error`;
 
   /*
    * 선택지에 빈 값(「전체」)이 있으면 **빈 값도 고른 값이다** — 그때는 자리표시로 대신하지 않는다.
    */
-  const hasEmptyOption = options.some((option) => option.value === '');
+  const hasEmptyOption = hasEmptyValue(options);
+
+  const describedBy = [note === undefined ? null : noteId, error === undefined ? null : errorId]
+    .filter((candidate): candidate is string => candidate !== null)
+    .join(' ');
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
@@ -59,11 +84,18 @@ export const SelectField = ({
         value={value === '' && !hasEmptyOption ? null : value}
         onChange={onChange}
         placeholder={placeholder}
-        aria-describedby={note === undefined ? undefined : noteId}
+        disabled={disabled}
+        invalid={error !== undefined}
+        aria-describedby={describedBy === '' ? undefined : describedBy}
       />
       {note !== undefined && (
         <span id={noteId} className="field-note">
           {note}
+        </span>
+      )}
+      {error !== undefined && (
+        <span id={errorId} className="field-error">
+          {error}
         </span>
       )}
     </div>

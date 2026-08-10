@@ -1,9 +1,10 @@
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { QueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -13,20 +14,79 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  goodsReceiptResponse,
   inboundReceiptFixtures,
   inboundReceiptLine,
   inboundReceiptLineFixtures,
   itemFixtures,
+  locationFixtures,
+  lotDetailResponse,
   lotFixtures,
+  otherLocationFixtures,
   partnerFixtures,
   plantFixtures,
   uomFixtures,
+  warehouseFixtures,
 } from './fixtures';
 import { LOT_PAGE_SIZE } from './lookups';
 import { irKeys } from './queries';
 import { GoodsReceiptScreen } from './screen';
 
 const t = messages.goodsReceipt;
+
+/**
+ * **값 목록이 확정된 뒤의 화면**을 이 파일에서 만들어 내기 위한 자리.
+ *
+ * 자리표시 상수는 지금 **비어 있고**(`code-options.test.ts`가 그 사실을 고정한다) 비어 있는
+ * 동안에는 「입고 처리」가 잠긴다. 그런데 이 화면의 값어치는 **잠금이 풀린 뒤에 무엇이
+ * 일어나는가**에 있다 — 요청에 무엇이 실리는지, 전송 중에 무엇이 닫히는지, 성공·실패가
+ * 어떻게 보이는지는 배열이 채워진 상태에서만 확인할 수 있다.
+ *
+ * 그래서 **배열만 갈아 끼운다.** 판정·선택지 만들기·검증은 실물 그대로이고, 바뀌는 것은
+ * 「값 목록이 왔다」는 사실 하나다 — 값 목록이 확정되면 실제로 그 한 가지만 달라진다.
+ * 매 테스트 앞에서 빈 배열로 되돌려, 아무것도 채우지 않은 테스트는 **지금의 화면**을 본다.
+ */
+const { codeValues } = vi.hoisted(() => ({
+  codeValues: {
+    receiptType: [] as string[],
+    sourceDocumentType: [] as string[],
+    qualityStatus: [] as string[],
+    inventoryStatus: [] as string[],
+    reason: [] as string[],
+  },
+}));
+
+vi.mock('./code-options', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./code-options')>();
+
+  return { ...actual, PLACEHOLDER_GOODS_RECEIPT_CODES: codeValues };
+});
+
+/** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
+const SAMPLE_RECEIPT_TYPE = 'SAMPLE_RECEIPT_TYPE_A';
+const SAMPLE_SOURCE_TYPE = 'SAMPLE_SOURCE_TYPE_A';
+const SAMPLE_QUALITY = 'SAMPLE_QUALITY_A';
+const SAMPLE_INVENTORY = 'SAMPLE_INVENTORY_A';
+const SAMPLE_REASON = 'SAMPLE_REASON_A';
+
+const clearCodeLists = (): void => {
+  codeValues.receiptType = [];
+  codeValues.sourceDocumentType = [];
+  codeValues.qualityStatus = [];
+  codeValues.inventoryStatus = [];
+  codeValues.reason = [];
+};
+
+/** 값 목록이 확정된 뒤. **배열만 채운다** — 다른 자리는 손대지 않는다. */
+const fillCodeLists = (): void => {
+  codeValues.receiptType = [SAMPLE_RECEIPT_TYPE];
+  codeValues.sourceDocumentType = [SAMPLE_SOURCE_TYPE];
+  codeValues.qualityStatus = [SAMPLE_QUALITY];
+  codeValues.inventoryStatus = [SAMPLE_INVENTORY];
+  codeValues.reason = [SAMPLE_REASON];
+};
+
+beforeEach(clearCodeLists);
 
 const ROUTE = '/logistics/goods-receipt';
 const LIST_PATH = '/logistics/inbound-receipts';
@@ -40,6 +100,10 @@ const PLANTS_PATH = '/mdm/plants';
 const ITEMS_PATH = '/mdm/items';
 const UOMS_PATH = '/mdm/uoms';
 const LOTS_PATH = '/trace/lots';
+const WAREHOUSES_PATH = '/mdm/warehouses';
+const LOCATIONS_PATH = '/mdm/locations';
+/** 성공 뒤 다시 읽는 자재 LOT. 고른 줄(9401)의 LOT이 9601이다. */
+const LOT_DETAIL_PATH = '/trace/lots/9601';
 
 /**
  * 상세 응답에만 있는 표식. 화면이 입하 상세를 부르지 않는다는 것을 **두 방향으로** 굳힌다 —
@@ -213,14 +277,41 @@ const lotsRoute = (): StubRoute => ({
   },
 });
 
-/** 참조 목록 다섯. 화면이 이름으로 풀 수 있는 정상 상태다. */
+/** 적치 위치는 **창고마다** 다른 목록이 온다 — 창고를 바꾸면 앞 위치가 뜻을 잃는다. */
+const locationsRoute = (
+  page?: Partial<{ page: number; size: number; total: number }>,
+): StubRoute => ({
+  match: (request) => isGet(request, LOCATIONS_PATH),
+  respond: (request) => {
+    const warehouseId = new URL(request.url).searchParams.get('warehouseId');
+
+    return jsonResponse(
+      listBody(warehouseId === '9702' ? otherLocationFixtures : locationFixtures, page),
+    );
+  },
+});
+
+/** 참조 목록 다섯과 확정 입력의 선택지 둘. 화면이 이름으로 풀 수 있는 정상 상태다. */
 const lookupRoutes = (): StubRoute[] => [
   lookupRoute(PARTNERS_PATH, partnerFixtures),
   lookupRoute(PLANTS_PATH, plantFixtures),
   lookupRoute(ITEMS_PATH, itemFixtures),
   lookupRoute(UOMS_PATH, uomFixtures),
   lotsRoute(),
+  lookupRoute(WAREHOUSES_PATH, warehouseFixtures),
+  locationsRoute(),
 ];
+
+/** 입고 처리 뒤 다시 읽는 자재 LOT 상세. **입고 응답에는 LOT 상태가 없다.** */
+const lotDetailRoute = (statusCode = 'SAMPLE_LOT_STATUS_A'): StubRoute => ({
+  match: (request) => isGet(request, LOT_DETAIL_PATH),
+  respond: () => jsonResponse(lotDetailResponse(statusCode)),
+});
+
+const failingLotDetailRoute = (): StubRoute => ({
+  match: (request) => isGet(request, LOT_DETAIL_PATH),
+  respond: () => jsonResponse({ message: '' }, { status: 500 }),
+});
 
 const failingLookupRoute = (pathname: string): StubRoute => ({
   match: (request) => isGet(request, pathname),
@@ -277,23 +368,45 @@ const detailRoute = (): StubRoute => ({
 });
 
 /**
- * 입고 처리(쓰기) 스텁. **부를 수 있게 두는 것이 요점이다** —
- * 「이 PR은 쓰기를 하나도 부르지 않는다」를 증명하려면 부를 수 있는 자리가 있어야 한다.
+ * 입고 처리(쓰기) 스텁.
+ *
+ * **부를 수 있게 두는 것이 요점이다** — 「확인하기 전에는 부르지 않는다」를 증명하려면
+ * 부를 수 있는 자리가 있어야 한다. 응답은 계약 형태 그대로여서, 결과 구획이 무엇을 읽는지가
+ * 스텁에서 드러난다.
  */
-const goodsReceiptRoute = (): StubRoute => ({
+const goodsReceiptRoute = (
+  overrides: Record<string, unknown> = {},
+  lineOverrides: Record<string, unknown> = {},
+): StubRoute => ({
   match: (request) =>
     request.method === 'POST' && new URL(request.url).pathname === GOODS_RECEIPTS_PATH,
-  respond: () =>
-    jsonResponse({ goodsReceipt: { goodsReceiptNo: 'GR-2026-900001' }, lines: [] }, { status: 201 }),
+  respond: () => jsonResponse(goodsReceiptResponse(overrides, lineOverrides), { status: 201 }),
+});
+
+/** 입고 처리 실패. 400·403·네트워크 끊김이 서로 다른 안내로 갈려야 한다. */
+const failingGoodsReceiptRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === GOODS_RECEIPTS_PATH,
+  respond: () => jsonResponse(body, { status }),
+});
+
+const offlineGoodsReceiptRoute = (): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && new URL(request.url).pathname === GOODS_RECEIPTS_PATH,
+  respond: () => {
+    throw new TypeError('Failed to fetch');
+  },
 });
 
 /** 이 화면이 닿을 수 있는 경로를 전부 스텁으로 둔 한 벌. */
-const allRoutes = (): StubRoute[] => [
+const allRoutes = (extra: StubRoute[] = []): StubRoute[] => [
+  ...extra,
   listRoute(),
   linesRoute(),
   otherLinesRoute(),
   detailRoute(),
   goodsReceiptRoute(),
+  lotDetailRoute(),
   ...lookupRoutes(),
 ];
 
@@ -981,22 +1094,22 @@ describe('GoodsReceiptScreen — 라인 고르기', () => {
     });
 
     expect(screen.getByRole('group', { name: t.lineSummary.label })).toBeInTheDocument();
-    /* 입고 처리 입력이 아직 없다는 사실을 밝힌다 — 비어 있는 아래쪽이 고장으로 읽히지 않게 한다. */
-    expect(screen.getByText(t.notes.postPending)).toBeInTheDocument();
+    /* 줄을 고르면 그 아래에 확정 입력이 열린다 — 고른 줄이 그 입력의 대상이다. */
+    expect(screen.getByRole('region', { name: t.panes.post })).toBeInTheDocument();
   });
 
   /*
-   * **R-2의 짝 방향** — 이 문구는 「접근 불가능한 경계의 안쪽 표지」라 **위치가 곧 뜻**이다.
-   * 줄을 고르기 전에도 뜨면 「지금 이 화면에서 할 수 있는 것이 없다」로 읽힌다.
-   * 있음만 단언하면 조건을 통째로 지워 늘 내게 만들어도 통과한다.
+   * **짝 방향** — 확정 입력은 **고른 줄 아래에만** 있다. 대상이 없는데 창고·코드를 받으면
+   * 그 입력이 무엇에 대한 것인지 화면이 말할 수 없고, 줄을 고르는 순간 그 값이 사라진다
+   * (수명 표 5행). 있음만 단언하면 조건을 통째로 지워 늘 내게 만들어도 통과한다.
    */
-  it('줄을 고르기 전에는 입고 처리 안내를 내지 않는다', async () => {
+  it('줄을 고르기 전에는 확정 입력을 그리지 않는다', async () => {
     renderScreen(allRoutes(), '?ir=9001');
 
     // 선행 긍정 — 아래 구획이 실제로 열려 있다(아무것도 안 그려서 통과한 것이 아니다).
     await screen.findAllByText(ITEM_LABEL);
 
-    expect(screen.queryByText(t.notes.postPending)).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.post })).not.toBeInTheDocument();
   });
 
   /* **M16 · C15** — 한 줄만 고른다. 둘째를 고르면 앞 선택이 풀린다. */
@@ -1410,5 +1523,860 @@ describe('GoodsReceiptScreen — 참조 풀이', () => {
     expect(within(lineTable()).getByText(t.values.empty)).toBeInTheDocument();
     expect(within(lineTable()).queryByText(t.values.unknown)).not.toBeInTheDocument();
     expect(screen.getByText(t.reasons.lineNoLot)).toBeInTheDocument();
+  });
+});
+
+/* ------------------------------------------------------------------------ *
+ * 입고 처리 — 되돌릴 수 없는 쓰기
+ * ------------------------------------------------------------------------ */
+
+type GoodsReceiptCreate = components['schemas']['GoodsReceiptCreate'];
+
+const RECEIPT_DATETIME = '2026-08-06T09:12';
+
+const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 창고 가';
+const OTHER_WAREHOUSE_LABEL = 'SAMPLE-WH-02 · 합성 창고 나';
+const LOCATION_LABEL = 'SAMPLE-LOC-A1 · 합성 열 가1';
+const OTHER_LOCATION_LABEL = 'SAMPLE-LOC-B · 합성 구역 나';
+
+/**
+ * 결과 구획 어디에도 나와서는 안 되는 내부 번호. 입고 전표 대역(9900대)과 창고·위치 대역을
+ * 함께 본다 — 업무 번호(`GR-2026-800001`)는 8000대라 부분 문자열로 걸리지 않는다.
+ */
+const POST_INTERNAL_IDS = ['9901', '9902', '9903', '9701', '9702', '9801', '9802'];
+
+const postRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname === GOODS_RECEIPTS_PATH);
+
+/** 마지막으로 나간 요청 본문. **계약 타입으로 읽는다** — 형태가 어긋나면 타입 검사가 잡는다. */
+const lastPostBody = (requests: RecordedRequest[]): GoodsReceiptCreate => {
+  const sent = postRequests(requests);
+
+  expect(sent.length).toBeGreaterThan(0);
+
+  return sent[sent.length - 1]?.body as GoodsReceiptCreate;
+};
+
+const chooseOption = async (
+  user: ReturnType<typeof userEvent.setup>,
+  fieldLabel: string,
+  optionLabel: string,
+): Promise<void> => {
+  await user.click(screen.getByRole('combobox', { name: fieldLabel }));
+  await user.click(screen.getByRole('option', { name: optionLabel }));
+};
+
+/** 확정 구획이 열릴 때까지 — 전표를 고르고 줄을 고른다. */
+const openPostPane = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await screen.findAllByText(ITEM_LABEL);
+  await selectLine(user, 1);
+  await screen.findByRole('region', { name: t.panes.post });
+};
+
+/** 코드 넷을 고른다. 사유는 계약상 선택이라 채우지 않는다. */
+const chooseRequiredCodes = async (
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<void> => {
+  await chooseOption(user, t.fields.receiptType, SAMPLE_RECEIPT_TYPE);
+  await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
+  await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
+  await chooseOption(user, t.fields.inventoryStatus, SAMPLE_INVENTORY);
+};
+
+/** 보낼 수 있는 상태까지 채운다 — 창고·위치·코드 넷·입고 일시. */
+const fillDraft = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await chooseOption(user, t.fields.warehouse, WAREHOUSE_LABEL);
+  await chooseOption(user, t.fields.location, LOCATION_LABEL);
+  await chooseRequiredCodes(user);
+  await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
+};
+
+const postButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.post });
+
+const clickPost = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(postButton());
+};
+
+const confirmPost = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: t.actions.confirmPost }));
+};
+
+/** 값 목록이 확정된 뒤의 화면을 열고 보낼 수 있는 상태까지 채운다. */
+const setupReadyToPost = async (
+  routes: StubRoute[] = allRoutes(),
+  hold: string[] = [],
+  search = '?ir=9001',
+): Promise<ReturnType<typeof renderScreen>> => {
+  fillCodeLists();
+
+  const rendered = renderScreen(routes, search, '', hold);
+
+  await openPostPane(rendered.user);
+  await fillDraft(rendered.user);
+
+  return rendered;
+};
+
+describe('GoodsReceiptScreen — 코드 목록이 확정되지 않은 지금', () => {
+  /**
+   * **G1** — 값 목록이 없으니 고를 수 있는 값도 없다. 그 상태에서 「고르세요」라고 말하면
+   * 사용자가 자기가 놓친 것을 찾다가 화면을 고장으로 읽는다.
+   */
+  it('입고 처리가 잠기고 코드 목록이 확정되지 않았다는 사유가 붙는다', async () => {
+    const { user, requests } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+
+    expect(postButton()).toBeDisabled();
+    expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postCodeListPending);
+    expect(postRequests(requests)).toHaveLength(0);
+  });
+
+  it('코드 다섯 칸이 비어 있고 왜 비었는지 밝힌다', async () => {
+    const { user } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+
+    const pane = screen.getByRole('region', { name: t.panes.post });
+
+    expect(within(pane).getAllByText(messages.pendingCode.note)).toHaveLength(5);
+  });
+});
+
+/**
+ * **G1의 전환 — 배열이 차면 입고 처리가 살아난다.**
+ *
+ * 값 목록이 확정될 때 고칠 자리가 `code-options.ts`의 배열 하나뿐이라는 것이 이 화면의
+ * 설계다. 배열만 채우고 다른 자리를 손대지 않은 채 화면이 열리는지를 여기서 고정한다.
+ */
+describe('GoodsReceiptScreen — 코드 목록이 채워지면', () => {
+  it('사유가 「목록 미확정」에서 「값을 고르세요」로 바뀐다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+
+    expect(postButton()).toBeDisabled();
+    expect(postButton()).not.toHaveAccessibleDescription(t.actionReasons.postCodeListPending);
+    expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsWarehouse);
+  });
+
+  it('준비 중 안내가 사라지고 코드를 고를 수 있다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+
+    /*
+     * 확정 구획 안에서만 본다 — 조회 조건의 상태 선택지는 별개의 자리표시라 그대로 비어 있다
+     * (그 값 목록은 이 화면이 채우는 것이 아니다).
+     */
+    const pane = screen.getByRole('region', { name: t.panes.post });
+
+    expect(within(pane).queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
+
+    await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
+
+    expect(screen.getByRole('combobox', { name: t.fields.qualityStatus })).toHaveTextContent(
+      SAMPLE_QUALITY,
+    );
+  });
+
+  /* 다 채우면 실제로 열린다 — 여기까지 와야 「차면 활성」이 값으로 고정된다. */
+  it('필요한 값을 다 채우면 입고 처리가 열린다', async () => {
+    const { requests } = await setupReadyToPost();
+
+    expect(postButton()).not.toBeDisabled();
+    /* 짝 방향 — 열렸다고 저절로 나가지는 않는다. */
+    expect(postRequests(requests)).toHaveLength(0);
+  });
+
+  /* **M24 · C26** — 목 서버는 빈 문자열도 201로 통과시킨다(실측). 막는 곳이 화면뿐이다. */
+  it('필수 코드가 하나라도 비면 잠긴 채로 사유가 바뀐다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+    await chooseOption(user, t.fields.warehouse, WAREHOUSE_LABEL);
+    await chooseOption(user, t.fields.location, LOCATION_LABEL);
+    await chooseOption(user, t.fields.receiptType, SAMPLE_RECEIPT_TYPE);
+
+    expect(postButton()).toBeDisabled();
+    expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsCodes);
+  });
+});
+
+describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
+  /* **M22 · C22** — 계약이 위치 조회에 창고를 필수로 요구한다. 없이 부르면 422가 온다(실측). */
+  it('창고를 고르기 전에는 위치를 부르지 않는다', async () => {
+    fillCodeLists();
+
+    const { user, requests } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+
+    expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(0);
+
+    await chooseOption(user, t.fields.warehouse, WAREHOUSE_LABEL);
+
+    /* 짝 방향 — 고른 뒤에는 실제로 부른다(스텁이 있는데도 0회가 아니다). */
+    await waitFor(() => {
+      expect(requestsTo(requests, LOCATIONS_PATH).length).toBeGreaterThan(0);
+    });
+    expect(requestsTo(requests, LOCATIONS_PATH)[0]?.url.searchParams.get('warehouseId')).toBe('9701');
+  });
+
+  /*
+   * **M23 · C22** — 위치는 창고에 속한다. 창고를 바꾸면 앞서 고른 위치는 **다른 창고의 자리**라
+   * 그대로 보내면 물건이 없는 곳에 재고가 잡힌다. 코드·일시는 창고와 무관하므로 남긴다.
+   */
+  it('창고를 바꾸면 위치만 비우고 코드와 일시는 남긴다', async () => {
+    const { user } = await setupReadyToPost();
+
+    expect(screen.getByRole('combobox', { name: t.fields.location })).toHaveTextContent(
+      LOCATION_LABEL,
+    );
+
+    await chooseOption(user, t.fields.warehouse, OTHER_WAREHOUSE_LABEL);
+
+    expect(screen.getByRole('combobox', { name: t.fields.location })).not.toHaveTextContent(
+      LOCATION_LABEL,
+    );
+    expect(screen.getByRole('combobox', { name: t.fields.receiptType })).toHaveTextContent(
+      SAMPLE_RECEIPT_TYPE,
+    );
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+  });
+
+  it('창고를 바꾸면 그 창고의 위치 목록이 온다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await chooseOption(user, t.fields.warehouse, OTHER_WAREHOUSE_LABEL);
+    await user.click(screen.getByRole('combobox', { name: t.fields.location }));
+
+    expect(await screen.findByRole('option', { name: OTHER_LOCATION_LABEL })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: LOCATION_LABEL })).not.toBeInTheDocument();
+  });
+
+  /* **C24** — 잘린 목록을 완전한 것으로 읽으면 「그런 창고가 없다」로 결론짓는다. */
+  it('창고 목록이 잘리면 그 사실을 밝힌다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(
+      allRoutes([lookupRoute(WAREHOUSES_PATH, warehouseFixtures, { total: 40 })]),
+      '?ir=9001',
+    );
+
+    await openPostPane(user);
+
+    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toHaveAccessibleDescription(
+      t.filters.lookupTruncated,
+    );
+  });
+
+  /* **C29** — 요청에 싣는 공장은 입하 전표의 값이다. 어긋나면 눈에 보이되 막지는 않는다. */
+  it('고른 창고의 공장이 전표와 다르면 그 사실을 밝힌다', async () => {
+    const { user } = await setupReadyToPost();
+
+    expect(screen.queryByText(t.notes.warehousePlantDiffers)).not.toBeInTheDocument();
+
+    await chooseOption(user, t.fields.warehouse, OTHER_WAREHOUSE_LABEL);
+
+    expect(screen.getByText(t.notes.warehousePlantDiffers)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.warehousePlant('SAMPLE-PLT-02 · 합성 공장 나'))).toBeInTheDocument();
+  });
+});
+
+describe('GoodsReceiptScreen — 제출 확인 창', () => {
+  /* **M32 · C35** — 버튼에서 곧바로 보내면 되돌릴 수 없는 전표가 확인 없이 만들어진다. */
+  it('입고 처리를 눌러도 확인 전에는 요청이 나가지 않는다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    await clickPost(user);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(postRequests(requests)).toHaveLength(0);
+  });
+
+  it('확인 창이 보낼 값과 함께 움직이는 다섯 가지를 밝힌다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await clickPost(user);
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText('IR-2026-900001')).toBeInTheDocument();
+    expect(within(dialog).getByText(WAREHOUSE_LABEL)).toBeInTheDocument();
+    expect(within(dialog).getByText(LOCATION_LABEL)).toBeInTheDocument();
+    expect(within(dialog).getByText(SAMPLE_RECEIPT_TYPE)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.dialog.submitEffects)).toBeInTheDocument();
+  });
+
+  /* **M30 · C36** — 창 본문이 선택 목록을 자르는 결함(#45)에 걸릴 자리를 만들지 않는다. */
+  it('확인 창 안에 선택칸이 없다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await clickPost(user);
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).queryAllByRole('combobox')).toHaveLength(0);
+    /* 짝 방향 — 폼에는 선택칸이 그대로 있다(창만 비어 있다). */
+    expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0);
+  });
+
+  it('계속 입력을 누르면 창이 닫히고 요청이 나가지 않는다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    await clickPost(user);
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(postRequests(requests)).toHaveLength(0);
+    /* 짝 방향 — 입력은 그대로 남아 있다. */
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+  });
+});
+
+describe('GoodsReceiptScreen — 실제로 나가는 요청', () => {
+  it('확인하면 요청이 딱 한 번 나간다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    await clickPost(user);
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+    expect(postRequests(requests)[0]?.method).toBe('POST');
+  });
+
+  /* **M28 · C29** — 창고에서 공장을 끌어오면 사용자가 모르는 채 공장이 바뀐다. */
+  it('공장이 고른 입하 전표의 값이다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    await clickPost(user);
+    await confirmPost(user);
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    expect(lastPostBody(requests).plantId).toBe(9201);
+    expect(lastPostBody(requests).warehouseId).toBe(9701);
+  });
+
+  /* **M29 · C30 · C31 · C32** — 라인 값은 입하 라인 그대로이고 원천 연결이 실린다. */
+  it('라인 값이 입하 라인 그대로이고 원천이 고른 전표를 가리킨다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    await clickPost(user);
+    await confirmPost(user);
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    const body = lastPostBody(requests);
+
+    expect(body.sourceDocumentId).toBe(9001);
+    expect(body.lines).toEqual([
+      {
+        inboundReceiptLineId: 9401,
+        itemId: 9301,
+        lotId: 9601,
+        receiptQty: 100,
+        uomId: 9501,
+        qualityStatusCode: SAMPLE_QUALITY,
+        inventoryStatusCode: SAMPLE_INVENTORY,
+        destinationLocationId: 9802,
+      },
+    ]);
+  });
+
+  /* **M44 · M45 · M46 · C33 · C34** */
+  it('영업일이 입고 일시에서 나오고 발생 시각을 싣지 않으며 일시에 offset이 붙는다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    await clickPost(user);
+    await confirmPost(user);
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    const body = lastPostBody(requests);
+
+    expect(body.businessDate).toBe('2026-08-06');
+    expect(Object.keys(body)).not.toContain('occurredAt');
+    expect(/[+-]\d{2}:\d{2}$/.test(body.receiptDatetime)).toBe(true);
+  });
+
+  it('사유와 비고를 넣지 않으면 그 키를 싣지 않는다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    await clickPost(user);
+    await confirmPost(user);
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    const keys = Object.keys(lastPostBody(requests));
+
+    expect(keys).not.toContain('reasonCode');
+    expect(keys).not.toContain('remarks');
+    /* 짝 방향 — 필수 키는 실제로 실린다. */
+    expect(keys).toContain('receiptTypeCode');
+  });
+
+  /* **C27** — 상한을 넘긴 코드는 확인 창을 열지도 않고 요청도 만들지 않는다. */
+  it('코드가 상한을 넘으면 인라인 오류를 내고 창을 열지 않는다', async () => {
+    codeValues.receiptType = ['S'.repeat(51)];
+    codeValues.sourceDocumentType = [SAMPLE_SOURCE_TYPE];
+    codeValues.qualityStatus = [SAMPLE_QUALITY];
+    codeValues.inventoryStatus = [SAMPLE_INVENTORY];
+
+    const { user, requests } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+    await chooseOption(user, t.fields.warehouse, WAREHOUSE_LABEL);
+    await chooseOption(user, t.fields.location, LOCATION_LABEL);
+    await chooseOption(user, t.fields.receiptType, 'S'.repeat(51));
+    await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
+    await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
+    await chooseOption(user, t.fields.inventoryStatus, SAMPLE_INVENTORY);
+    await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
+    await clickPost(user);
+
+    expect(screen.getByText(t.errors.codeTooLong(50))).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(postRequests(requests)).toHaveLength(0);
+  });
+});
+
+describe('GoodsReceiptScreen — 전송 중 잠금', () => {
+  /* **M33 · C38** — 공통 쓰기 훅이 호출마다 새 멱등 키를 만들어 연타가 전표 두 벌이 된다. */
+  it('전송 중에 다시 눌러도 요청이 늘지 않는다', async () => {
+    const { user, requests, release } = await setupReadyToPost(allRoutes(), [GOODS_RECEIPTS_PATH]);
+
+    await clickPost(user);
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(postButton());
+
+    expect(postRequests(requests)).toHaveLength(1);
+    expect(postButton()).toBeDisabled();
+
+    await act(async () => {
+      release();
+    });
+  });
+
+  /*
+   * **M34 · C38** — 대상을 바꾸는 길까지 닫는다. 열어 두면 앞 전표의 처리 결과가
+   * 지금 보는 전표의 맥락에 나타난다.
+   */
+  it('전송 중에는 대상을 바꾸는 길이 모두 닫힌다', async () => {
+    const { user, requests, release } = await setupReadyToPost(allRoutes(), [GOODS_RECEIPTS_PATH]);
+
+    await clickPost(user);
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    expect(screen.getByRole('button', { name: t.actions.selectRow('IR-2026-900002') })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.deselectLine(1) })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.nextPage })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.cancel })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeDisabled();
+
+    await act(async () => {
+      release();
+    });
+  });
+
+  /*
+   * **M34의 경로 가드** — 조건 칩의 ×는 디자인 시스템이 잠금을 받지 않는다.
+   * 그 길로 들어와도 주소가 바뀌지 않아야 한다.
+   */
+  it('전송 중에는 조건 칩의 ×로도 대상이 바뀌지 않는다', async () => {
+    const { user, requests, release } = await setupReadyToPost(
+      allRoutes([filteringListRoute()]),
+      [GOODS_RECEIPTS_PATH],
+      '?ir=9001&q=IR-2026-900001',
+    );
+
+    await clickPost(user);
+    await confirmPost(user);
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    const before = currentLocation();
+
+    /* 칩의 ×는 디자인 시스템이 잠금을 받지 않는다 — 화면의 경로 가드가 막는 유일한 자리다. */
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveQ }));
+
+    expect(currentLocation()).toBe(before);
+
+    await act(async () => {
+      release();
+    });
+  });
+});
+
+describe('GoodsReceiptScreen — 성공', () => {
+  const succeed = async (
+    routes: StubRoute[] = allRoutes(),
+  ): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = await setupReadyToPost(routes);
+
+    await clickPost(rendered.user);
+    await confirmPost(rendered.user);
+    await screen.findByRole('status', { name: t.result.label });
+
+    return rendered;
+  };
+
+  /* **C39** — 무엇이 만들어졌는지 번호와 상태로 보인다. 값으로 분기하지 않는다. */
+  it('입고번호와 상태 코드가 보인다', async () => {
+    await succeed();
+
+    expect(screen.getByText('GR-2026-800001')).toBeInTheDocument();
+    expect(screen.getByText('SAMPLE_GR_STATUS_A')).toBeInTheDocument();
+  });
+
+  /* **M47 · C39** — 초안은 비우고 고른 전표·라인은 남긴다. 결과를 읽으려면 대상이 있어야 한다. */
+  it('초안을 비우고 고른 전표와 라인은 남긴다', async () => {
+    await succeed();
+
+    expect(currentLocation()).toBe(`${ROUTE}?ir=9001&line=9401`);
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).not.toHaveTextContent(
+      WAREHOUSE_LABEL,
+    );
+  });
+
+  /* 성공하면 그 줄의 상태가 달라졌을 수 있다 — 라인을 다시 부른다. */
+  it('성공하면 라인을 다시 부른다', async () => {
+    const { requests } = await succeed();
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LINES_PATH).length).toBeGreaterThan(1);
+    });
+  });
+
+  /*
+   * **M38 · C42** — 입고 응답에 LOT 상태가 없다(실측). 화면 이름의 「Release」가 실제로
+   * 걸렸는지 값으로 확인하는 유일한 자리다.
+   */
+  it('성공하면 자재 LOT을 다시 조회해 상태를 그대로 보인다', async () => {
+    const { requests } = await succeed();
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
+    });
+    expect(await screen.findByText('SAMPLE_LOT_STATUS_A')).toBeInTheDocument();
+  });
+
+  it('자재 LOT 재조회가 실패하면 그 사실을 밝힌다', async () => {
+    await succeed(allRoutes([failingLotDetailRoute()]));
+
+    expect(await screen.findByText(t.result.lotStatusFailed)).toBeInTheDocument();
+  });
+
+  /* **C40** — 결과 어디에도 내부 번호가 없다. 짝 방향으로 업무 번호는 실제로 보인다. */
+  it('결과에 내부 번호가 없다', async () => {
+    await succeed();
+
+    const pane = screen.getByRole('status', { name: t.result.label });
+
+    expect(within(pane).getByText('GR-2026-800001')).toBeInTheDocument();
+    for (const id of POST_INTERNAL_IDS) {
+      expect(pane.textContent ?? '').not.toContain(id);
+    }
+  });
+
+  /* **C43** — 원장은 유무만, 잔액은 확인하지 않는다는 사실을 밝힌다. */
+  it('원장 유무를 내고 잔액은 확인하지 않는다고 밝힌다', async () => {
+    await succeed();
+
+    expect(screen.getByText(t.result.ledgerAll)).toBeInTheDocument();
+    expect(screen.getByText(t.result.balanceNote)).toBeInTheDocument();
+  });
+
+  it('원장 라인이 오지 않으면 그 사실을 따로 말한다', async () => {
+    await succeed(allRoutes([goodsReceiptRoute({}, { inventoryTransactionLineId: null })]));
+
+    expect(screen.getByText(t.result.ledgerNone)).toBeInTheDocument();
+    expect(screen.queryByText(t.result.ledgerAll)).not.toBeInTheDocument();
+  });
+
+  /* **M36 · C41** — 참이면 「적재」라고만 말한다. 「전송」이 아니다. */
+  it('ERP 적재가 참이면 대기열에 적재됐다고 말한다', async () => {
+    await succeed(allRoutes([goodsReceiptRoute({ erpMessageQueued: true })]));
+
+    expect(screen.getByText(t.result.erpQueued)).toBeInTheDocument();
+    expect(screen.queryByText(t.result.erpNotQueued)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.erpUnknown)).not.toBeInTheDocument();
+  });
+
+  /* 조건부 승인으로 들어온 건이 여기다 — 참과 뭉개면 승인자가 반영된 줄로 오해한다. */
+  it('ERP 적재가 거짓이면 따로 말한다', async () => {
+    await succeed(allRoutes([goodsReceiptRoute({ erpMessageQueued: false })]));
+
+    expect(screen.getByText(t.result.erpNotQueued)).toBeInTheDocument();
+    expect(screen.queryByText(t.result.erpQueued)).not.toBeInTheDocument();
+  });
+
+  /* **M35 · C41** — 응답에 키가 없는 갈래. 없음을 참으로 읽으면 가장 나쁜 오해가 생긴다. */
+  it('ERP 적재 값이 응답에 없으면 알 수 없다고 말한다', async () => {
+    await succeed();
+
+    expect(screen.getByText(t.result.erpUnknown)).toBeInTheDocument();
+    expect(screen.queryByText(t.result.erpQueued)).not.toBeInTheDocument();
+  });
+
+  it('결과 어디에도 「전송 완료」가 없다', async () => {
+    await succeed(allRoutes([goodsReceiptRoute({ erpMessageQueued: true })]));
+
+    expect(screen.getByRole('status', { name: t.result.label }).textContent ?? '').not.toContain(
+      '전송 완료',
+    );
+  });
+
+  /* **M53 · C47** — 원천 문서 보기는 비활성이고 어떤 경로로도 이동하지 않는다. */
+  it('원천 문서 보기가 비활성이고 주소를 바꾸지 않는다', async () => {
+    const { user } = await succeed();
+
+    const before = currentLocation();
+    const button = screen.getByRole('button', { name: t.actions.viewSourceDocument });
+
+    expect(button).toBeDisabled();
+
+    await user.click(button);
+
+    expect(currentLocation()).toBe(before);
+  });
+
+  /* 대상을 바꾸면 결과도 비운다 — 남으면 지금 고른 전표의 결과로 읽힌다(수명 표 4행). */
+  it('대상을 바꾸면 결과 구획이 사라진다', async () => {
+    const { user } = await succeed();
+
+    await selectReceipt(user, 'IR-2026-900002');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('GoodsReceiptScreen — 실패 세 갈래', () => {
+  const fail = async (route: StubRoute): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = await setupReadyToPost(allRoutes([route]));
+
+    await clickPost(rendered.user);
+    await confirmPost(rendered.user);
+
+    return rendered;
+  };
+
+  /* **M48 · M49 · C44** — 실패했는데 입력을 지우면 처음부터 다시 친다. */
+  it('검증 실패에도 입력이 남고 결과 구획이 생기지 않는다', async () => {
+    await fail(
+      failingGoodsReceiptRoute(400, {
+        errors: [{ scope: 'field', field: 'remarks', code: 'INVALID', message: '합성 서버 오류' }],
+      }),
+    );
+
+    expect(await screen.findByText('합성 서버 오류')).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
+  /* **M51** — 같은 권한으로 다시 불러도 같은 답이 온다. 재시도를 권하지 않는다. */
+  it('권한 없음은 다른 문구이고 다시 시도를 내지 않는다', async () => {
+    await fail(failingGoodsReceiptRoute(403));
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.postRecheck)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **M50 · C45** — 공통 문구는 「다시 시도하세요」로 끝나는데, 확인 없이 다시 보내면
+   * 같은 입하가 입고 전표 두 벌로 남는다.
+   */
+  it('응답을 받지 못하면 등록 여부를 확인하라는 안내가 함께 나온다', async () => {
+    await fail(offlineGoodsReceiptRoute());
+
+    expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.postRecheck)).toBeInTheDocument();
+  });
+
+  it('검증 실패에는 그 안내가 붙지 않는다', async () => {
+    await fail(failingGoodsReceiptRoute(400));
+
+    expect(await screen.findByText(messages.httpError.title)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.postRecheck)).not.toBeInTheDocument();
+  });
+
+  /* 실패한 뒤 고치고 다시 보낼 수 있어야 한다 — 막히면 처음부터 다시 친다. */
+  it('실패한 뒤 다시 보낼 수 있다', async () => {
+    const { user, requests } = await fail(failingGoodsReceiptRoute(400));
+
+    await screen.findByText(messages.httpError.title);
+    await clickPost(user);
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(2);
+    });
+  });
+});
+
+describe('GoodsReceiptScreen — 취소와 파기 확인', () => {
+  /* **M52 · C46** — 이 화면의 「취소」는 보내기 전 복귀다. 서버를 부르지 않는다. */
+  it('취소는 서버를 부르지 않고 고른 줄과 초안을 푼다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?ir=9001`);
+    });
+    expect(postRequests(requests)).toHaveLength(0);
+    expect(screen.queryByRole('region', { name: t.panes.post })).not.toBeInTheDocument();
+  });
+
+  /* 친 값이 말없이 사라지면 무엇을 잃었는지도 알 수 없다. */
+  it('초안이 있으면 대상을 바꾸기 전에 파기 확인을 받는다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await selectReceipt(user, 'IR-2026-900002');
+
+    expect(screen.getByText(messages.common.discardChangesConfirm)).toBeInTheDocument();
+    /* 아직 바뀌지 않았다 — 확인해야 바뀐다. */
+    expect(currentLocation()).toContain('ir=9001');
+  });
+
+  it('계속 입력을 고르면 대상이 그대로 남는다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await selectReceipt(user, 'IR-2026-900002');
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    expect(currentLocation()).toContain('ir=9001');
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+  });
+
+  it('버리기를 고르면 대상이 바뀌고 초안이 사라진다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await selectReceipt(user, 'IR-2026-900002');
+    await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('ir=9002');
+    });
+  });
+
+  /* **M31 · C36** — 파기 확인 창에도 선택칸이 없다. */
+  it('파기 확인 창 안에 선택칸이 없다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await selectReceipt(user, 'IR-2026-900002');
+
+    expect(within(screen.getByRole('dialog')).queryAllByRole('combobox')).toHaveLength(0);
+  });
+
+  /* 아무것도 잃지 않는 조작에까지 확인을 받으면 확인 창이 의미를 잃는다. */
+  it('초안이 비어 있으면 확인 없이 대상을 바꾼다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+    await selectReceipt(user, 'IR-2026-900002');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(currentLocation()).toContain('ir=9002');
+    });
+  });
+});
+
+describe('GoodsReceiptScreen — 초안이 사라지지 않는다', () => {
+  /*
+   * **M15** — 코드를 고르는 것은 조회가 아니다. 주소에 실으면 글자마다 뒤로가기 기록이 쌓이고,
+   * 화면이 조회 조건과 입력을 같은 통로로 다루게 된다.
+   */
+  it('확정 입력이 주소를 바꾸지 않고 조회도 다시 부르지 않는다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    const listCallsBefore = requestsTo(requests, LIST_PATH).length;
+
+    expect(currentLocation()).toBe(`${ROUTE}?ir=9001&line=9401`);
+    expect(requestsTo(requests, LIST_PATH)).toHaveLength(listCallsBefore);
+
+    await user.type(screen.getByLabelText(t.fields.remarks), '합성 비고');
+
+    expect(currentLocation()).toBe(`${ROUTE}?ir=9001&line=9401`);
+    expect(requestsTo(requests, LIST_PATH)).toHaveLength(listCallsBefore);
+  });
+
+  /*
+   * **M14 · C17** — 되돌림을 목록 응답이나 파생 객체에 반응시키면 코드를 고르는 도중에
+   * 값이 사라진다(#43). 되돌림의 신호는 **고른 줄과 라인 응답 둘뿐**이다.
+   */
+  it('목록이 다시 도착해도 확정 입력이 되돌아가지 않는다', async () => {
+    fillCodeLists();
+
+    const { user, queryClient } = renderScreen(
+      [
+        changingListRoute(),
+        linesRoute(),
+        otherLinesRoute(),
+        detailRoute(),
+        goodsReceiptRoute(),
+        lotDetailRoute(),
+        ...lookupRoutes(),
+      ],
+      '?ir=9001',
+    );
+
+    await openPostPane(user);
+    await fillDraft(user);
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: irKeys.lists });
+    });
+
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toHaveTextContent(
+      WAREHOUSE_LABEL,
+    );
+    expect(screen.getByRole('combobox', { name: t.fields.receiptType })).toHaveTextContent(
+      SAMPLE_RECEIPT_TYPE,
+    );
+  });
+
+  /* 참조가 늦게 도착하는 것도 같다 — 이름이 채워지는 것이 입력을 지울 이유가 되지 않는다. */
+  it('참조가 다시 도착해도 확정 입력이 되돌아가지 않는다', async () => {
+    const { queryClient } = await setupReadyToPost();
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['goods-receipt-lookups'] });
+    });
+
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
   });
 });
