@@ -2563,6 +2563,39 @@ describe('StockStatusScreen — 이력의 빈 상태와 실패', () => {
   });
 
   /*
+   * **재시도는 요청 증가로 검사한다**(확립된 규칙). 「버튼이 있다」만 보면 눌러도 아무 일도
+   * 일어나지 않는 버튼을 통과시킨다 — 사용자에게는 조치가 있는 것처럼 보이는데 없다.
+   */
+  it('이력의 다시 시도가 같은 조회를 다시 부른다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        balanceRoute(),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        failingHistoryRoute(),
+        transactionDetailRoute(transactionDetailResponse()),
+        ...lookupRoutes(),
+      ],
+      WITH_HISTORY,
+    );
+
+    const retry = await within(historyPane()).findByRole('button', {
+      name: messages.common.retry,
+    });
+
+    const before = historyRequests(requests).length;
+
+    await user.click(retry);
+
+    await waitFor(() => {
+      expect(historyRequests(requests).length).toBeGreaterThan(before);
+    });
+
+    /* 재시도는 조건을 하나도 바꾸지 않는다 — 같은 기간으로 같은 조회를 다시 한다. */
+    expect(lastQuery(requests, TRANSACTIONS_PATH)?.get('businessDateFrom')).toBe('2026-07-10');
+    expect(currentLocation()).toContain('hfrom=2026-07-10');
+  });
+
+  /*
    * **실패해도 기간을 고칠 수단이 남는다.** 조건 줄까지 감추면 사용자가 할 수 있는 일이
    * 「같은 기간으로 다시 부르기」뿐이고, 권한 없음이면 그 하나마저 없어 조치가 0이 된다.
    * 잔액 구획의 「조건을 고칠 수단이 사라지면 안 된다」와 같은 규칙이다.
