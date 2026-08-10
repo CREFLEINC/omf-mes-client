@@ -687,6 +687,9 @@ describe('GoodsReceiptScreen — 조건과 주소', () => {
     ]);
 
     await screen.findAllByText('IR-2026-900001');
+    /* 첫 응답이 적용된 것을 눈에 보이는 값으로 확인한다 — 전체 건수가 부를 때마다 는다. */
+    await screen.findByText(t.pageNav.range(1, 3, 4));
+
     await user.type(screen.getByLabelText(t.fields.q), 'IR-2026-9');
 
     await act(async () => {
@@ -696,6 +699,12 @@ describe('GoodsReceiptScreen — 조건과 주소', () => {
     await waitFor(() => {
       expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(1);
     });
+
+    /*
+     * **새 응답이 실제로 화면에 적용될 때까지 기다린다.** 요청이 나간 것만 보고 단언하면
+     * 다시 그려지기 전에 검사해 **어떤 되돌림 결함도 통과시킨다**(늘 참인 단언).
+     */
+    await screen.findByText(t.pageNav.range(1, 3, 5));
 
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('IR-2026-9');
   });
@@ -1036,15 +1045,16 @@ describe('GoodsReceiptScreen — 라인 고르기', () => {
     );
 
     await screen.findAllByText(ITEM_LABEL);
+    await screen.findByText(t.pageNav.range(1, 3, 4));
 
     await act(async () => {
       await queryClient.invalidateQueries({ queryKey: irKeys.lists });
     });
 
-    await waitFor(() => {
-      expect(screen.getByRole('group', { name: t.lineSummary.label })).toBeInTheDocument();
-    });
+    /* 새 목록이 실제로 적용된 뒤에 본다 — 적용 전에 검사하면 늘 참인 단언이 된다. */
+    await screen.findByText(t.pageNav.range(1, 3, 5));
 
+    expect(screen.getByRole('group', { name: t.lineSummary.label })).toBeInTheDocument();
     expect(currentLocation()).toBe(`${ROUTE}?ir=9001&line=9401`);
   });
 
