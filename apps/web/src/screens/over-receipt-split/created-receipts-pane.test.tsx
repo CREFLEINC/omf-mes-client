@@ -44,6 +44,26 @@ describe('CreatedReceiptsPane', () => {
   });
 
   /*
+   * **이름 하나에 값 하나다.** 이름 칸 하나 뒤에 값 칸이 둘이면 보조기술이 상태를
+   * 「전표번호」의 **두 번째 값**으로 읽는다 — 이름 없는 값이 아니라 **틀린 이름이 붙은 값**이다.
+   * 「보인다」만 단언하면 그 어긋남이 그대로 통과한다.
+   */
+  it('전표번호와 상태가 각각 자기 이름 아래에 있다', () => {
+    render(<CreatedReceiptsPane receipts={[receipt('IR-2026-900010', 'SAMPLE_IR_STATUS_B')]} />);
+
+    const labelOf = (value: string): string | null => {
+      const definition = screen
+        .getAllByRole('definition')
+        .find((node) => node.textContent === value);
+
+      return definition?.previousElementSibling?.textContent ?? null;
+    };
+
+    expect(labelOf('IR-2026-900010')).toBe(t.result.receiptNo);
+    expect(labelOf('SAMPLE_IR_STATUS_B')).toBe(t.result.status);
+  });
+
+  /*
    * **응답이 어느 건이 정량분인지 알려 주지 않는다.** 순서로 추측해 라벨을 붙이면
    * 틀린 라벨이 되돌릴 수 없는 전표에 붙는다 — 모른다는 사실을 밝힌다.
    */

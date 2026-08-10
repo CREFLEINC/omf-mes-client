@@ -31,11 +31,17 @@ export const CreatedReceiptsPane = ({ receipts }: CreatedReceiptsPaneProps) => (
   <div role="status" aria-label={t.panes.result}>
     <p>{t.result.count(receipts.length)}</p>
 
+    {/*
+     * **이름 하나에 값 하나로 짝을 맞춘다.** `<dt>` 하나 뒤의 `<dd>`는 전부 그 이름의 값이라,
+     * 상태 칩을 전표번호 아래에 그대로 두면 보조기술이 「전표번호: IR-…, SAMPLE_…」로 읽는다 —
+     * 이름 없는 값이 아니라 **틀린 이름이 붙은 값**이 된다.
+     */}
     <dl className="filter-bar">
       {receipts.map((created) => (
         <div className="field-cell" key={created.inboundReceiptNo}>
           <dt className="field-label">{t.result.receiptNo}</dt>
           <dd>{created.inboundReceiptNo}</dd>
+          <dt className="field-label">{t.result.status}</dt>
           <dd>
             {/* 상태 코드는 값으로 분기하지 않고 그대로 보인다(공유계약 G-2). */}
             <Chip variant="status" size="sm">
