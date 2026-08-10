@@ -1994,6 +1994,12 @@ describe('GoodsReceiptScreen — 전송 중 잠금', () => {
 
     await user.click(postButton());
 
+    /*
+     * **버튼이 잠겼다는 것만으로는 모자란다.** 잠금이 풀리면 다음에 일어나는 일은 확인 창이
+     * 열리는 것이고, 거기서 확인하면 둘째 요청이 나간다 — 창이 아예 열리지 않는 것까지 봐야
+     * 「연타해도 한 번」이 값으로 고정된다.
+     */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(postRequests(requests)).toHaveLength(1);
     expect(postButton()).toBeDisabled();
 
@@ -2052,6 +2058,12 @@ describe('GoodsReceiptScreen — 전송 중 잠금', () => {
     await user.click(screen.getByRole('button', { name: t.filters.chipRemoveQ }));
 
     expect(currentLocation()).toBe(before);
+    /*
+     * **주소가 그대로인 것만으로는 모자란다.** 가드가 없으면 초안이 있으니 파기 확인 창이
+     * 뜨는데, 그 창에서 확인하면 그때 대상이 바뀐다 — 주소는 아직 그대로다.
+     * 창이 아예 뜨지 않는 것까지 봐야 「전송 중에는 그 길이 닫혀 있다」가 고정된다.
+     */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     await act(async () => {
       release();
