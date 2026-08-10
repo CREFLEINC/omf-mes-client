@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { describe, expect, it } from 'vitest';
 
 import {
+  sameNumberTransactionFixtures,
   transactionDetailResponse,
   transactionFixtures,
   transactionLineFixtures,
@@ -12,7 +13,9 @@ import {
   toLotDetailView,
   toRowKey,
   toTransactionDetailView,
+  toTransactionRowKey,
   toTransactionView,
+  type TransactionView,
 } from './types';
 
 type InventoryBalanceResponse = components['schemas']['InventoryBalance'];
@@ -377,5 +380,38 @@ describe('toTransactionDetailView — 거래 상세를 옮기는 유일한 지�
   it('계약 모양 픽스처를 옮기면 화면 타입 픽스처와 같다', () => {
     expect(toTransactionDetailView(transactionDetailResponse())).toEqual(transactionLineFixtures());
     expect(transactionResponseFixtures.map(toTransactionView)).toEqual(transactionFixtures);
+  });
+});
+
+describe('toTransactionRowKey — 이력 표의 행 식별자', () => {
+  /*
+   * **번호만으로는 행이 겹친다.** 원장이 영업일로 나뉘어 저장되고 계약이 영업일을 식별자의
+   * 일부로 두어 같은 번호가 다른 영업일에 설 수 있다 — 겹치면 React가 두 행을 같은 것으로
+   * 보아 쪽을 넘길 때 앞 쪽의 행이 남아 보인다.
+   */
+  it('번호가 같아도 영업일이 다르면 키가 다르다', () => {
+    const [first, second] = sameNumberTransactionFixtures;
+
+    /* 선행 단언 — 두 줄의 번호가 실제로 같다(다르면 아래 단언이 저절로 통과한다). */
+    expect(first?.inventoryTransactionId).toBe(second?.inventoryTransactionId);
+    expect(first?.businessDate).not.toBe(second?.businessDate);
+
+    expect(toTransactionRowKey(first as TransactionView)).not.toBe(
+      toTransactionRowKey(second as TransactionView),
+    );
+  });
+
+  /* 짝 방향 — 같은 줄은 같은 키다. 아니면 다시 그릴 때마다 행이 통째로 새로 만들어진다. */
+  it('같은 줄은 같은 키다', () => {
+    const [first] = sameNumberTransactionFixtures;
+
+    expect(toTransactionRowKey(first as TransactionView)).toBe(
+      toTransactionRowKey({ ...(first as TransactionView) }),
+    );
+  });
+
+  /* 키에 영업일과 번호가 **둘 다** 들어 있다 — 한 조각이 빠지면 위 두 단언 중 하나가 죽는다. */
+  it('영업일과 번호를 함께 잇는다', () => {
+    expect(toTransactionRowKey(transactionFixtures[0] as TransactionView)).toBe('2026-08-06:9901');
   });
 });

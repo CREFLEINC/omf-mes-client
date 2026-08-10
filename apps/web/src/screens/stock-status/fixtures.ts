@@ -319,6 +319,19 @@ const REVERSAL_TRANSACTION: TransactionView = {
 export const transactionFixtures: TransactionView[] = [RECEIPT_TRANSACTION, REVERSAL_TRANSACTION];
 
 /**
+ * **번호가 같고 영업일이 다른 두 줄.** 계약이 원장을 영업일로 나눠 저장하고 영업일을
+ * 식별자의 일부로 두므로 실제로 생길 수 있는 형태다 — 행 키가 번호 한 조각이면 두 줄이
+ * 같은 행으로 보이고, React가 쪽을 넘길 때 앞 쪽의 행을 남긴다.
+ *
+ * 위 `transactionFixtures`에 섞지 않는다 — 그쪽은 역처리 표식·시각 표기 같은 다른 단언이
+ * 줄을 세고 있어, 줄을 더하면 무엇을 검사하는 픽스처인지 흐려진다.
+ */
+export const sameNumberTransactionFixtures: TransactionView[] = [
+  RECEIPT_TRANSACTION,
+  { ...RECEIPT_TRANSACTION, businessDate: '2026-08-07' },
+];
+
+/**
  * **계약 모양**의 같은 두 줄. 화면 타입과 키 이름이 달라(`isReversal` ↔
  * `reversalOfTransactionId`) 화면 타입을 그대로 응답 본문으로 줄 수 없다 —
  * 주면 스텁이 계약과 다른 것을 말하고, 변환이 통째로 검사되지 않은 채 통과한다.

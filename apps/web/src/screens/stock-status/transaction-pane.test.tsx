@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { transactionFixtures } from './fixtures';
+import { sameNumberTransactionFixtures, transactionFixtures } from './fixtures';
 import { toPageView } from './pagination';
 import {
   buildTransactionColumns,
@@ -278,6 +278,41 @@ describe('TransactionPane — 기간 조건', () => {
     rerender({ appliedPeriod: { from: '2026-01-01', to: '2026-01-31' } });
 
     expect(screen.getByLabelText(t.history.periodFrom)).toHaveValue('2026-01-01');
+  });
+});
+
+describe('TransactionPane — 행 식별자', () => {
+  /*
+   * **번호가 같고 영업일이 다른 두 줄이 서로 다른 행이다.** 계약이 원장을 영업일로 나눠
+   * 저장하므로 실제로 생길 수 있는 형태다. 행 키를 번호 한 조각으로 줄이면 React가 둘을
+   * 같은 행으로 보아 경고를 내고, 쪽을 넘길 때 앞 쪽의 행이 남아 보인다.
+   *
+   * **키가 화면에 서지 않아** 렌더 결과만으로는 갈 수 없다 — React가 겹침을 알리는 자리를
+   * 그대로 본다. 키 판정 자체는 `types.test.ts`가 값으로 고정하고, 이 단언은 **표가 그 판정을
+   * 실제로 쓰는지**를 잡는다(둘이 짝이라야 되돌림이 어느 쪽에서 일어나도 죽는다).
+   */
+  it('번호가 같고 영업일이 다른 두 줄을 겹치지 않게 그린다', () => {
+    const reportedErrors: unknown[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      reportedErrors.push(args[0]);
+    });
+
+    try {
+      renderPane({ rows: sameNumberTransactionFixtures });
+
+      /* 선행 단언 — 두 줄이 실제로 그려졌다. */
+      expect(within(table()).getAllByRole('row')).toHaveLength(
+        sameNumberTransactionFixtures.length + 1,
+      );
+      expect(within(table()).getByText('2026-08-06')).toBeInTheDocument();
+      expect(within(table()).getByText('2026-08-07')).toBeInTheDocument();
+
+      expect(reportedErrors.map(String).filter((message) => message.includes('same key'))).toEqual(
+        [],
+      );
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

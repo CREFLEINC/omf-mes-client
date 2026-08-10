@@ -15,7 +15,7 @@ import { resolveBusinessPeriod, type BusinessPeriod } from './business-period';
 import { LoadErrorBanner } from './load-error-banner';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
-import type { TransactionRef, TransactionView } from './types';
+import { toTransactionRowKey, type TransactionRef, type TransactionView } from './types';
 
 const t = messages.stockStatus;
 
@@ -368,9 +368,11 @@ export const TransactionPane = ({
               rows={rows}
               /*
                * **영업일과 번호를 함께 잇는다** — 계약이 둘을 함께 식별자로 두어 번호만으로는
-               * 행이 겹칠 수 있다. **이 문자열은 화면에 나오지 않는다**(#44).
+               * 행이 겹칠 수 있다. 그 판정은 `types.ts`가 소유한다 — 여기 인라인으로 두면
+               * 키를 한 조각으로 줄여도 아무 단언도 깨지지 않는다(리뷰 M13).
+               * **이 문자열은 화면에 나오지 않는다**(#44).
                */
-              getRowId={(row) => `${row.businessDate}:${String(row.inventoryTransactionId)}`}
+              getRowId={toTransactionRowKey}
               empty={emptySlot()}
             />
           </div>

@@ -283,6 +283,19 @@ export const toTransactionView = (data: InventoryTransactionResponse): Transacti
   isReversal: (data.reversalOfTransactionId ?? null) !== null,
 });
 
+/**
+ * 수불 이력 표의 행 식별자(React key).
+ *
+ * **번호만으로는 행이 겹친다** — 원장이 영업일로 나뉘어 저장되고 계약이 영업일을 식별자의
+ * 일부로 두어, **같은 번호가 다른 영업일에 설 수 있다.** 겹치면 React가 두 행을 같은 것으로
+ * 보아 쪽을 넘길 때 앞 쪽의 행이 남아 보인다 — `toRowKey`가 축 전부를 잇는 것과 같은 이유다.
+ *
+ * 표의 JSX 안에 인라인으로 두지 않고 여기 내보내는 이유는 **그 주장을 값으로 고정하기
+ * 위해서다** — 인라인이면 키를 한 조각으로 줄여도 아무 단언도 깨지지 않는다(리뷰 M13).
+ */
+export const toTransactionRowKey = (row: TransactionView): string =>
+  [toIdentityKey(row.businessDate), toIdentityKey(row.inventoryTransactionId)].join(':');
+
 /** 이력 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */
 export interface TransactionListResult {
   items: TransactionView[];
