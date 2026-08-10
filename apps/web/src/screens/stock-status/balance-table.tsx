@@ -49,11 +49,12 @@ const t = messages.stockStatus;
  * | 품질 상태 · 재고 상태 | 각 120px | 코드 배지 하나(8자 60 + 24 = 84) + 32 |
  * | 소유 | 128px | 「(자사 소유)」 또는 거래처명 아래에 소유 구분 코드 배지가 쌓인다 |
  * | 최근 거래 | 124px | **`MM-DD HH:mm`** 11자 83 + 32(`as-of.ts`가 그 형태로 줄인다) |
+ * | 상세(LOT별만) | 88px | 「선택 해제」 버튼 하나 |
  *
  * | 보기 | 축 열 | 합 |
  * | --- | --- | ---: |
  * | 품목별 | 품목 | **1,132px** |
- * | LOT별 | 품목 · LOT | **1,276px** |
+ * | LOT별 | 품목 · LOT | **1,364px**(상세 열 포함) |
  * | 위치별 | 위치 · 품목 | **1,332px** |
  *
  * **세 합이 모두 928px을 넘는다.** 열이 9~10개인 표를 928px에 넣으려면 열마다 66~91px이라
@@ -72,6 +73,7 @@ const WIDTH = {
   code: '120px',
   ownership: '128px',
   lastTransactionAt: '124px',
+  select: '88px',
 } as const;
 
 export interface BalanceColumnDeps {
@@ -81,6 +83,9 @@ export interface BalanceColumnDeps {
   locationLookup: ReferenceSource;
   uomLookup: ReferenceSource;
   partnerLookup: ReferenceSource;
+  /** 지금 상세를 보고 있는 LOT. 주소가 소유하므로 표는 받아 쓰기만 한다. */
+  selectedLotId: number | null;
+  onToggleSelect: (lotId: number) => void;
 }
 
 /** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -118,6 +123,8 @@ export const buildBalanceColumns = ({
   locationLookup,
   uomLookup,
   partnerLookup,
+  selectedLotId,
+  onToggleSelect,
 }: BalanceColumnDeps): Column<BalanceView>[] => {
   /*
    * **번호를 문자열로 바꾸는 자리가 없다**(#44). 이름으로 풀 수 없는 세 갈래(미도착·목록에
@@ -159,6 +166,41 @@ export const buildBalanceColumns = ({
       row.locationId === null
         ? t.values.empty
         : describeReference(toReference(locationLookup, row.locationId)),
+  };
+
+  /**
+   * 상세 열 — **LOT별 보기에만 붙는다.** 고르면 아래 구획에 그 LOT의 상세가 열린다
+   * (드로어도 창도 아니다 — 계획 결정 2. 목록이 계속 보인다).
+   *
+   * 접근 이름에 **LOT 이름**을 넣는다 — 「선택」이 줄마다 되풀이되면 어느 LOT을 여는지
+   * 알 수 없다. **번호를 넣지 않는다**(#44): 이름을 못 푼 줄에는 LOT 칸과 **같은 대체 표기**가
+   * 들어가, 눈으로 읽는 값과 보조기술이 읽는 값이 어긋나지 않는다.
+   */
+  const selectColumn: Column<BalanceView> = {
+    key: 'select',
+    header: t.table.select,
+    width: WIDTH.select,
+    render: (row) => {
+      /* 계약상 LOT별 보기에는 늘 채워진다. 비면 가리킬 대상이 없어 버튼을 만들지 않는다. */
+      if (row.lotId === null) return t.values.empty;
+
+      const lotId = row.lotId;
+      const name = describeReference(toReference(lotLookup, lotId));
+      const isSelected = lotId === selectedLotId;
+
+      return (
+        <Button
+          variant="outlined"
+          size="sm"
+          aria-label={isSelected ? t.actions.deselectRow(name) : t.actions.selectRow(name)}
+          onClick={() => {
+            onToggleSelect(lotId);
+          }}
+        >
+          {isSelected ? t.actions.deselect : t.actions.select}
+        </Button>
+      );
+    },
   };
 
   /** 축 열 — 보기가 정한다. 「코드 · 이름」이 한 줄에 들어가는 폭을 **지정한다**(위 표). */
@@ -266,6 +308,11 @@ export const buildBalanceColumns = ({
       width: WIDTH.lastTransactionAt,
       render: (row) => orEmptyMark(formatTransactionAt(row.lastTransactionAt)),
     },
+    /*
+     * **상세 열은 LOT별 보기에만 둔다.** 다른 두 보기의 줄은 계약상 `lotId`가 비어 있어
+     * 가리킬 LOT이 없다 — 열을 두면 누를 수 없는 버튼이 줄마다 생긴다.
+     */
+    ...(view === 'lot' ? [selectColumn] : []),
   ];
 
   /*
@@ -316,8 +363,10 @@ export const BalanceTable = ({
   hasQuery,
   isBeyondLast,
   sortKey,
+  selectedLotId,
   onSortChange,
   onFirstPage,
+  onToggleSelect,
   onRetryReferences,
   itemLookup,
   lotLookup,
@@ -326,7 +375,7 @@ export const BalanceTable = ({
   partnerLookup,
 }: BalanceTableProps) => {
   const lookups = { itemLookup, lotLookup, locationLookup, uomLookup, partnerLookup };
-  const columns = buildBalanceColumns({ view, ...lookups });
+  const columns = buildBalanceColumns({ view, ...lookups, selectedLotId, onToggleSelect });
   const groupAxis = groupAxisOf(view);
 
   if (isLoading) {
@@ -434,8 +483,17 @@ export const BalanceTable = ({
            * `sort`를 주면 디자인 시스템이 내부 재정렬을 쓰지 않는다(실측).
            *
            * W-01-09는 정반대다 — 그 계약에는 정렬 파라미터가 없어 `defaultSort`만 준다.
+           *
+           * **조회하지 않았으면 정렬 표시를 내지 않는다**(리뷰 m-2). 주소의 `sort`는 그대로 둔다 —
+           * 조건 변경·조회에서 정렬을 유지하는 것이 승인된 수명 표 2행이고, 창고를 고르면 그
+           * 정렬로 조회되어야 한다. 다만 요청이 0회인 표에는 정렬할 결과가 없어, 표시까지 남기면
+           * 보조기술이 빈 표를 「이 열 기준 오름차순 정렬됨」으로 읽는다.
+           * **가르는 자리는 표시 계층 하나**다 — 주소·요청 쪽을 함께 건드리면 규칙이 둘이 된다.
+           *
+           * `null`도 제어다(`sort !== undefined`가 제어 판정 — 번들 실측). 내부 재정렬로
+           * 넘어가지 않는다.
            */
-          sort={toSortState(sortKey)}
+          sort={hasQuery ? toSortState(sortKey) : null}
           onSortChange={onSortChange}
           groupBy={groupAxis === null ? undefined : groupKeyOf}
           renderGroupHeader={groupAxis === null ? undefined : groupHeaderOf}
