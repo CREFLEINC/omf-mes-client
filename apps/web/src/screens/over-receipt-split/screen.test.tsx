@@ -1886,13 +1886,22 @@ describe('OverReceiptSplitScreen — 등록 실패 3갈래', () => {
 });
 
 describe('OverReceiptSplitScreen — 취소와 초안 파기 확인', () => {
-  /* **M47** — 이 화면의 「취소」는 저장 전 복귀다. 계약의 입하 취소는 승인을 탄다. */
-  it('취소는 서버를 부르지 않고 선택을 비운다', async () => {
+  /*
+   * **M47** — 이 화면의 「취소」는 저장 전 복귀다. 계약의 입하 취소는 승인을 타며
+   * 이 화면이 부를 수 있는 것이 아니다.
+   *
+   * **요청 수 자체를 센다.** 「쓰기가 나가지 않았다」만 보면 취소 경로에 붙인 조회
+   * (되돌리려고 다시 부르기 같은 것)가 그대로 통과한다 — 취소는 **아무것도 부르지 않는다.**
+   */
+  it('취소는 어떤 요청도 보내지 않고 선택을 비운다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await screen.findByText('PO-2026-900001');
     await selectPo(user, 'PO-2026-900001');
     await screen.findByText(t.lineTable.orderedPair(100, 40));
+
+    /* 짝 방향 — 여기까지 실제로 요청이 여럿 나갔다(아무것도 안 부르고 통과하지 않게 한다). */
+    expect(requests.length).toBeGreaterThan(3);
 
     const before = requests.length;
 
@@ -1901,8 +1910,7 @@ describe('OverReceiptSplitScreen — 취소와 초안 파기 확인', () => {
     await screen.findByText(t.empty.noSelectionTitle);
 
     expect(currentLocation()).not.toContain('po=');
-    expect(requests.slice(before).every((request) => request.method === 'GET')).toBe(true);
-    expect(splitRequests(requests)).toHaveLength(0);
+    expect(requests.slice(before)).toHaveLength(0);
   });
 
   /* **C33** — 친 값이 있으면 확인을 받는다. 말없이 사라지면 무엇을 잃었는지도 알 수 없다. */
