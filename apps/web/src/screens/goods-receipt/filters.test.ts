@@ -71,6 +71,24 @@ describe('readFilters', () => {
   it('윤년의 2월 29일은 받는다', () => {
     expect(readFilters(params('from=2028-02-29')).from).toBe('2028-02-29');
   });
+
+  /*
+   * **N-1** — 자유 문자열 조건이 둘(검색어·상태 코드)인데 한쪽만 다듬으면
+   * `?st=%20`이 `statusCode: ' '`로 요청에 실리고 칩도 「상태:  」로 뜬다.
+   */
+  it('공백만 친 상태 코드는 조건이 아니다', () => {
+    expect(readFilters(params('st=%20%20')).status).toBe('');
+    expect(toFilterQuery(filters({ status: '  ' }))).toEqual({});
+    expect(toSearchParams(filters({ status: '  ' }), 1).has('st')).toBe(false);
+    expect(toFilterChips(filters({ status: '  ' }), { supplier: '' })).toEqual([]);
+  });
+
+  it('상태 코드의 앞뒤 공백을 다듬어 싣는다', () => {
+    expect(readFilters(params('st=%20SAMPLE_IR_STATUS_A%20')).status).toBe('SAMPLE_IR_STATUS_A');
+    expect(toFilterQuery(filters({ status: ' SAMPLE_IR_STATUS_A ' })).statusCode).toBe(
+      'SAMPLE_IR_STATUS_A',
+    );
+  });
 });
 
 describe('readPage', () => {

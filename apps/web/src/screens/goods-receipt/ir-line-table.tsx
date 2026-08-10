@@ -296,6 +296,18 @@ export const IrLineTable = ({
   const hasReferenceError =
     itemLookup.isError || uomLookup.isError || lotLookup.isError || plantLookup.isError;
 
+  /*
+   * **잘림은 실패와 따로 낸다.** 실패는 「이름을 못 받았다」이고 잘림은 「일부만 받았다」인데,
+   * 잘린 목록으로 이름을 풀면 그 뒤의 정상 값이 **「알 수 없음」**으로 찍힌다 —
+   * 이 화면 자신이 그 문구를 「값이 잘못됐다는 신호」로 정의해 두었으므로, 밝히지 않으면
+   * 사용자가 정상 LOT을 잘못된 값으로 읽는다(#47과 같은 갈래의 오해다).
+   *
+   * **복구 버튼을 붙이지 않는다** — 다시 불러도 같은 쪽이 온다. 사용자가 할 조치가 없고
+   * 알아야 할 사실만 있다.
+   */
+  const hasTruncatedReference =
+    itemLookup.truncated || uomLookup.truncated || lotLookup.truncated || plantLookup.truncated;
+
   return (
     <>
       {/*
@@ -352,6 +364,8 @@ export const IrLineTable = ({
           </dl>
         </div>
       )}
+
+      {hasTruncatedReference && <p className="field-note">{t.reasons.lineReferencesTruncated}</p>}
 
       {hasReferenceError && (
         <div className="field-cell">

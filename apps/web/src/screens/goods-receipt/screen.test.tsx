@@ -22,6 +22,7 @@ import {
   plantFixtures,
   uomFixtures,
 } from './fixtures';
+import { LOT_PAGE_SIZE } from './lookups';
 import { irKeys } from './queries';
 import { GoodsReceiptScreen } from './screen';
 
@@ -483,14 +484,16 @@ describe('GoodsReceiptScreen — 첫 진입 조회', () => {
   });
 
   /*
-   * **M19 · C12** — 단위와 자재 LOT은 아래 구획만 쓴다. 고르기 전에 부르면 어느 요청이
-   * 무엇을 위한 것인지 가릴 수 없고 첫 진입의 요청 수가 이유 없이 는다.
+   * **M19 · C12** — 라인 표가 쓰는 참조 셋(품목·단위·자재 LOT)은 아래 구획만 쓴다.
+   * 그 표 자체가 라인 응답을 기다리므로 미리 받아 둘 이득이 없고, 고르기 전에 부르면
+   * 어느 요청이 무엇을 위한 것인지 가릴 수 없고 첫 진입의 요청 수가 이유 없이 는다.
    */
-  it('단위와 자재 LOT을 전표를 고르기 전에 부르지 않는다', async () => {
+  it('품목·단위·자재 LOT을 전표를 고르기 전에 부르지 않는다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await screen.findAllByText('IR-2026-900001');
 
+    expect(requestsTo(requests, ITEMS_PATH)).toHaveLength(0);
     expect(requestsTo(requests, UOMS_PATH)).toHaveLength(0);
     expect(requestsTo(requests, LOTS_PATH)).toHaveLength(0);
 
@@ -498,9 +501,23 @@ describe('GoodsReceiptScreen — 첫 진입 조회', () => {
     await selectReceipt(user, 'IR-2026-900001');
 
     await waitFor(() => {
+      expect(requestsTo(requests, ITEMS_PATH).length).toBeGreaterThan(0);
       expect(requestsTo(requests, UOMS_PATH).length).toBeGreaterThan(0);
       expect(requestsTo(requests, LOTS_PATH).length).toBeGreaterThan(0);
     });
+  });
+
+  /*
+   * **공장만 미리 받는다.** 제목줄은 **목록 응답만으로** 곧바로 그려지므로(고른 행에 값이 있다)
+   * 고른 뒤에 부르기 시작하면 제목줄만 한 박자 늦게 채워진다 — 라인 표가 쓰는 셋과 사정이 다르다.
+   */
+  it('공급사와 공장은 첫 진입에 부른다', async () => {
+    const { requests } = renderScreen(allRoutes());
+
+    await screen.findAllByText('IR-2026-900001');
+
+    expect(requestsTo(requests, PARTNERS_PATH)).toHaveLength(1);
+    expect(requestsTo(requests, PLANTS_PATH)).toHaveLength(1);
   });
 
   /* 자재 LOT은 번호 목록으로 조회할 수단이 없어 **품목마다** 부른다. */
@@ -519,6 +536,34 @@ describe('GoodsReceiptScreen — 첫 진입 조회', () => {
         .map((request) => request.url.searchParams.get('itemId'))
         .sort(),
     ).toEqual(['9301', '9302']);
+  });
+
+  /*
+   * **R-1의 완화 층** — 자재 LOT은 다섯 중 유일한 거래 기록이라 가장 잘리기 쉽다.
+   * 쪽 크기를 실어 잘림 **빈도**를 낮춘다. 보장이 아니므로 잘림 표식이 따로 있다.
+   *
+   * 짝 방향으로 **다른 참조에는 싣지 않는다**를 함께 단언한다 — 그래야 이 값이
+   * 「자재 LOT에만 필요한 완화」임이 고정된다.
+   */
+  it('자재 LOT에만 쪽 크기를 싣는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findAllByText('IR-2026-900001');
+    await selectReceipt(user, 'IR-2026-900001');
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LOTS_PATH).length).toBeGreaterThan(0);
+    });
+
+    for (const request of requestsTo(requests, LOTS_PATH)) {
+      expect(request.url.searchParams.get('size')).toBe(String(LOT_PAGE_SIZE));
+    }
+
+    for (const path of [PARTNERS_PATH, PLANTS_PATH, ITEMS_PATH, UOMS_PATH, LIST_PATH]) {
+      for (const request of requestsTo(requests, path)) {
+        expect(request.url.searchParams.has('size')).toBe(false);
+      }
+    }
   });
 
   /* **C21** — 조회 조건의 상태 선택지는 비어 있고 왜 비어 있는지 안내가 붙는다. */
@@ -940,6 +985,20 @@ describe('GoodsReceiptScreen — 라인 고르기', () => {
     expect(screen.getByText(t.notes.postPending)).toBeInTheDocument();
   });
 
+  /*
+   * **R-2의 짝 방향** — 이 문구는 「접근 불가능한 경계의 안쪽 표지」라 **위치가 곧 뜻**이다.
+   * 줄을 고르기 전에도 뜨면 「지금 이 화면에서 할 수 있는 것이 없다」로 읽힌다.
+   * 있음만 단언하면 조건을 통째로 지워 늘 내게 만들어도 통과한다.
+   */
+  it('줄을 고르기 전에는 입고 처리 안내를 내지 않는다', async () => {
+    renderScreen(allRoutes(), '?ir=9001');
+
+    // 선행 긍정 — 아래 구획이 실제로 열려 있다(아무것도 안 그려서 통과한 것이 아니다).
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(screen.queryByText(t.notes.postPending)).not.toBeInTheDocument();
+  });
+
   /* **M16 · C15** — 한 줄만 고른다. 둘째를 고르면 앞 선택이 풀린다. */
   it('둘째 줄을 고르면 앞 선택이 풀린다', async () => {
     const { user } = renderScreen(allRoutes(), '?ir=9001');
@@ -1244,6 +1303,41 @@ describe('GoodsReceiptScreen — 참조 풀이', () => {
     await waitFor(() => {
       expect(requestsTo(requests, ITEMS_PATH).length).toBeGreaterThan(before);
     });
+  });
+
+  /*
+   * **R-1** — 자재 LOT이 잘리면 그 뒤의 정상 LOT이 「알 수 없음」으로 찍히는데, 이 화면은
+   * 그 문구를 「값이 잘못됐다는 신호」로 정의해 두었다. 잘렸다는 사실이 화면에 나와야
+   * 사용자가 정상 값을 잘못된 값으로 읽지 않는다.
+   */
+  it('자재 LOT 목록이 잘리면 라인 구획이 그 사실을 밝힌다', async () => {
+    renderScreen(
+      [
+        listRoute(),
+        linesRoute(),
+        otherLinesRoute(),
+        detailRoute(),
+        goodsReceiptRoute(),
+        lookupRoute(PARTNERS_PATH, partnerFixtures),
+        lookupRoute(PLANTS_PATH, plantFixtures),
+        lookupRoute(ITEMS_PATH, itemFixtures),
+        lookupRoute(UOMS_PATH, uomFixtures),
+        /* 서버가 「전체 500건 중 이만큼」이라고 답한다 — 쪽 크기를 실어도 잘릴 수 있다. */
+        lookupRoute(LOTS_PATH, lotFixtures, { total: 500 }),
+      ],
+      '?ir=9001',
+    );
+
+    await screen.findByText(t.reasons.lineReferencesTruncated);
+  });
+
+  /* 짝 방향 — 잘리지 않으면 내지 않는다. 늘 뜨는 안내는 읽히지 않는다. */
+  it('자재 LOT 목록이 잘리지 않으면 그 안내를 내지 않는다', async () => {
+    renderScreen(allRoutes(), '?ir=9001');
+
+    await screen.findAllByText('LOT-2026-900010');
+
+    expect(screen.queryByText(t.reasons.lineReferencesTruncated)).not.toBeInTheDocument();
   });
 
   /* 잘림을 밝히지 않으면 불완전한 목록을 완전한 것으로 읽는다. */

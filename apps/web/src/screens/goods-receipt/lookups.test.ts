@@ -20,6 +20,7 @@ const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
   entries,
   isError: false,
   isLoading: false,
+  truncated: false,
   ...overrides,
 });
 

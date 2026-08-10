@@ -27,6 +27,7 @@ const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
   entries: [{ value: '9101', label: 'SAMPLE-SUP-01 · 합성 공급사 가', isActive: true }],
   isError: false,
   isLoading: false,
+  truncated: false,
   ...overrides,
 });
 

@@ -27,6 +27,7 @@ const source = (entries: ReferenceSource['entries'] = []): ReferenceSource => ({
   entries,
   isError: false,
   isLoading: false,
+  truncated: false,
 });
 
 const itemSource = source([
@@ -152,6 +153,45 @@ describe('IrLineTable — 라인 표', () => {
     expect(button).toBeDisabled();
     /* 사유는 감추지 않고 항상 보이는 DOM 텍스트로 두고 `aria-describedby`로 잇는다(규범 4-1). */
     expect(button.getAttribute('aria-describedby')).toBe(reason.getAttribute('id'));
+  });
+
+  /*
+   * **R-3** — 사유가 서로 다른 두 줄이 한 표에 있는 것이 이 화면의 **정상 경로**다.
+   * 막힌 줄이 하나뿐인 표에서는 상수 `id`도 정답과 구분되지 않아, 연결이 어긋나 있어도
+   * 드러나지 않는다. 어긋나면 수량 0인 줄이 스크린리더에서 **「자재 LOT이 없다」**로 읽혀,
+   * `line-select.ts`가 판정 **순서**까지 정해 막으려 한 바로 그 오해가 되살아난다.
+   */
+  it('막힌 줄이 둘이면 각 버튼이 자기 줄의 사유를 가리킨다', () => {
+    renderTable({
+      rows: [
+        inboundReceiptLine({ inboundReceiptLineId: 9403, lineNo: 1, lotId: null }),
+        inboundReceiptLine({ inboundReceiptLineId: 9404, lineNo: 2, receivedQty: 0 }),
+      ],
+    });
+
+    expect(screen.getByRole('button', { name: t.actions.selectLine(1) })).toHaveAccessibleDescription(
+      t.reasons.lineNoLot,
+    );
+    expect(screen.getByRole('button', { name: t.actions.selectLine(2) })).toHaveAccessibleDescription(
+      t.reasons.lineQtyNotPositive,
+    );
+  });
+
+  /* 사유 `id`가 줄마다 달라야 한다 — 같으면 HTML도 어긋나고 연결도 뒤섞인다. */
+  it('막힌 줄마다 사유 id가 다르다', () => {
+    renderTable({
+      rows: [
+        inboundReceiptLine({ inboundReceiptLineId: 9403, lineNo: 1, lotId: null }),
+        inboundReceiptLine({ inboundReceiptLineId: 9404, lineNo: 2, receivedQty: 0 }),
+      ],
+    });
+
+    const ids = [1, 2].map((lineNo) =>
+      screen.getByRole('button', { name: t.actions.selectLine(lineNo) }).getAttribute('aria-describedby'),
+    );
+
+    expect(ids[0]).not.toBeNull();
+    expect(new Set(ids).size).toBe(2);
   });
 
   /* **M13** — 계약이 `exclusiveMinimum: 0`이라 0도 보낼 수 없다. */
@@ -284,5 +324,47 @@ describe('IrLineTable — 참조 실패', () => {
     renderTable();
 
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+});
+
+describe('IrLineTable — 참조 잘림', () => {
+  /*
+   * **R-1** — 잘린 목록으로 이름을 풀면 그 뒤의 정상 값이 「알 수 없음」으로 찍히는데,
+   * 이 화면은 그 문구를 「값이 잘못됐다는 신호」로 정의해 두었다. 밝히지 않으면 사용자가
+   * 정상 값을 잘못된 값으로 읽는다. **자재 LOT은 다섯 중 유일한 거래 기록이라 가장 잘리기 쉽다.**
+   */
+  it.each([
+    ['자재 LOT', { lotLookup: { ...lotSource, truncated: true } }],
+    ['품목', { itemLookup: { ...itemSource, truncated: true } }],
+    ['단위', { uomLookup: { ...uomSource, truncated: true } }],
+    ['공장', { plantLookup: { ...plantSource, truncated: true } }],
+  ])('%s 목록이 잘리면 그 사실을 밝힌다', (_label, overrides) => {
+    renderTable(overrides);
+
+    expect(screen.getByText(t.reasons.lineReferencesTruncated)).toBeInTheDocument();
+  });
+
+  /* 짝 방향 — 잘리지 않으면 내지 않는다. 늘 뜨는 안내는 읽히지 않는다. */
+  it('잘리지 않으면 안내를 내지 않는다', () => {
+    renderTable();
+
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.queryByText(t.reasons.lineReferencesTruncated)).not.toBeInTheDocument();
+  });
+
+  /* 잘림과 실패는 사용자가 할 조치가 다르다 — 잘림에는 「다시 시도」가 붙지 않는다. */
+  it('잘림 안내에는 다시 시도를 붙이지 않는다', () => {
+    renderTable({ lotLookup: { ...lotSource, truncated: true } });
+
+    expect(screen.getByText(t.reasons.lineReferencesTruncated)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  /* 둘이 함께 참인 순간이 실제로 있다 — 잘린 목록을 받은 뒤 다시 부르기가 실패한 경우다. */
+  it('잘림과 실패가 함께 참이면 둘 다 낸다', () => {
+    renderTable({ lotLookup: { ...lotSource, truncated: true, isError: true } });
+
+    expect(screen.getByText(t.reasons.lineReferencesTruncated)).toBeInTheDocument();
+    expect(screen.getByText(t.reasons.lineReferencesFailed)).toBeInTheDocument();
   });
 });

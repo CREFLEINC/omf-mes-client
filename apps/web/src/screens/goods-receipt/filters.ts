@@ -86,14 +86,20 @@ const readDateFilter = (raw: string): string => {
   return at.toISOString().slice(0, 10) === raw ? raw : '';
 };
 
-/** 공백만 친 검색어는 조건이 아니다 — 주소에 남기면 조건이 걸린 것처럼 보인다. */
-const normalizeQuery = (raw: string): string => raw.trim();
+/**
+ * 공백만 친 값은 조건이 아니다 — 주소에 남기면 조건이 걸린 것처럼 보인다.
+ *
+ * **검색어와 상태 코드가 같은 규칙을 쓴다.** 자유 문자열 조건이 둘인데 한쪽만 다듬으면
+ * `?st=%20`이 `statusCode: ' '`로 요청에 실리고 칩도 「상태:  」로 뜬다 —
+ * 사용자가 만들 수 없는 값이지만(선택지가 비어 있다) 주소는 손으로 고쳐지는 자리다.
+ */
+const normalizeText = (raw: string): string => raw.trim();
 
 export const readFilters = (params: URLSearchParams): IrFilters => ({
   supplier: readNumberFilter(params.get(URL_KEYS.supplier) ?? ''),
   from: readDateFilter(params.get(URL_KEYS.from) ?? ''),
   to: readDateFilter(params.get(URL_KEYS.to) ?? ''),
-  status: params.get(URL_KEYS.status) ?? '',
+  status: normalizeText(params.get(URL_KEYS.status) ?? ''),
   q: params.get(URL_KEYS.q) ?? '',
 });
 
@@ -141,8 +147,8 @@ export const toSearchParams = (filters: IrFilters, page: number): URLSearchParam
     [URL_KEYS.supplier, readNumberFilter(filters.supplier)],
     [URL_KEYS.from, readDateFilter(filters.from)],
     [URL_KEYS.to, readDateFilter(filters.to)],
-    [URL_KEYS.status, filters.status],
-    [URL_KEYS.q, normalizeQuery(filters.q)],
+    [URL_KEYS.status, normalizeText(filters.status)],
+    [URL_KEYS.q, normalizeText(filters.q)],
   ];
 
   for (const [key, value] of entries) {
@@ -172,13 +178,14 @@ export const toFilterQuery = (filters: IrFilters): IrFilterQuery => {
   const supplier = readNumberFilter(filters.supplier);
   const from = readDateFilter(filters.from);
   const to = readDateFilter(filters.to);
-  const query = normalizeQuery(filters.q);
+  const status = normalizeText(filters.status);
+  const query = normalizeText(filters.q);
 
   return {
     ...(supplier === '' ? {} : { supplierId: Number(supplier) }),
     ...(from === '' ? {} : { receiptDateFrom: from }),
     ...(to === '' ? {} : { receiptDateTo: to }),
-    ...(filters.status === '' ? {} : { statusCode: filters.status }),
+    ...(status === '' ? {} : { statusCode: status }),
     ...(query === '' ? {} : { q: query }),
   };
 };
@@ -223,7 +230,8 @@ const periodLabel = (from: string, to: string): string => {
 export const toFilterChips = (filters: IrFilters, names: FilterChipNames): FilterChip[] => {
   const from = readDateFilter(filters.from);
   const to = readDateFilter(filters.to);
-  const query = normalizeQuery(filters.q);
+  const status = normalizeText(filters.status);
+  const query = normalizeText(filters.q);
 
   const candidates: [FilterChip, string][] = [
     [
@@ -245,10 +253,10 @@ export const toFilterChips = (filters: IrFilters, names: FilterChipNames): Filte
     [
       {
         key: 'status',
-        label: t.filters.chipStatus(filters.status),
+        label: t.filters.chipStatus(status),
         removeLabel: t.filters.chipRemoveStatus,
       },
-      filters.status,
+      status,
     ],
     [{ key: 'q', label: t.filters.chipQ(query), removeLabel: t.filters.chipRemoveQ }, query],
   ];

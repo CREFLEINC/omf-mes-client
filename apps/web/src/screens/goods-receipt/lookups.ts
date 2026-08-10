@@ -21,13 +21,18 @@ import type { LookupEntry, PageMeta } from './types';
  * | 참조 | 보이는 자리 | 복구 | 언제 부르나 |
  * | --- | --- | --- | --- |
  * | 공급사 | 목록 표의 칸 · 조건 칩 | **위 구획** | 첫 진입 |
- * | 공장 | 고른 전표의 제목줄 | **아래 구획** | 첫 진입 |
- * | 품목 | 라인 표의 칸 | **아래 구획** | 첫 진입 |
+ * | 공장 | 고른 전표의 **제목줄** | **아래 구획** | 첫 진입 |
+ * | 품목 | 라인 표의 칸 | **아래 구획** | **전표를 고른 뒤** |
  * | 단위 | 라인 표의 수량 표기 | **아래 구획** | **전표를 고른 뒤** |
  * | **자재 LOT** | 라인 표의 칸 | **아래 구획** | **전표를 고른 뒤** |
  *
  * 공장이 아래에 있는 이유가 이 표의 요점이다 — 목록 표에는 공장 열이 없어(폭 예산상
  * 제목줄로 보냈다) 위 구획에 두면 **보이지도 않는 실패의 복구 버튼**이 된다.
+ *
+ * **「언제 부르나」가 공장만 다른 이유**는 그 이름이 나타나는 **시점**이 다르기 때문이다.
+ * 제목줄은 목록 응답만으로 곧바로 그려지지만(고른 행의 값이 거기 있다) 라인 표의 칸은
+ * **라인 응답이 와야** 그려진다 — 라인을 기다리는 동안 나머지 셋이 도착할 여유가 있다.
+ * 그래서 제목줄이 쓰는 공장만 미리 받고, 라인 표가 쓰는 셋은 전표를 고른 뒤에 부른다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
@@ -42,12 +47,18 @@ export interface ReferenceSource {
   entries: readonly LookupEntry[];
   isError: boolean;
   isLoading: boolean;
+  /**
+   * 목록이 잘렸으면 참.
+   *
+   * **읽는 쪽이 이 값을 볼 수 있어야 한다.** 잘린 목록으로 이름을 풀면 그 뒤의 정상 값이
+   * 「알 수 없음」으로 찍히는데, 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
+   * 그래서 `isError`·`isLoading`과 같은 층에 둔다 — 이름을 내는 구획이 사실을 밝힐 수 있게.
+   */
+  truncated: boolean;
 }
 
 export interface LookupResult extends ReferenceSource {
   entries: LookupEntry[];
-  /** 목록이 잘렸으면 참. 고를 수 없는 값이 생겼다는 뜻이다 */
-  truncated: boolean;
   /** 조회 실패에는 복구 경로를 함께 낸다 — 사용자가 할 수 있는 조치가 재시도뿐이다. */
   refetch: () => void;
 }
@@ -122,6 +133,20 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
   return undefined;
 };
 
+/**
+ * 자재 LOT 조회의 쪽 크기.
+ *
+ * **다섯 참조 중 여기에만 쪽 크기를 싣는다.** 나머지 넷은 기준정보라 서버 기본값으로 충분하고,
+ * 그 사실이 `filters.ts`에도 적혀 있다(「쪽 크기는 서버 기본값을 쓴다」).
+ *
+ * **이 값에는 계약 근거가 없다** — 실측상 계약의 `size`는 43개 오퍼레이션 전부 `default: 50`이고
+ * **상한(`maximum`)이 없다.** 그래서 이 숫자는 화면이 정한 완화값이며 **보장이 아니다.**
+ * 한 품목의 LOT이 몇 건인지 화면이 알 수 없으므로 어떤 값을 넣어도 잘릴 수 있다 —
+ * 잘렸다는 사실을 밝히는 것은 `truncated`이고, 이 값은 그 일이 **덜 일어나게** 할 뿐이다.
+ * 무한정 키우지 않는 이유는 응답이 그만큼 무거워지고 얻는 것이 확률뿐이기 때문이다.
+ */
+export const LOT_PAGE_SIZE = 200;
+
 export const lookupKeys = {
   suppliers: ['goods-receipt-lookups', 'suppliers'] as const,
   plants: ['goods-receipt-lookups', 'plants'] as const,
@@ -169,9 +194,10 @@ export const useSupplierOptions = (): LookupResult => {
 /**
  * 공장 — 고른 전표의 제목줄이 쓴다. 조건에는 없다(계약에 있으나 화면 조건으로 두지 않았다).
  *
- * **고르기 전에도 부른다.** 단위·LOT과 달리 잠그지 않는 이유는 이름이 **제목줄에 곧바로**
- * 필요해서다 — 전표를 고른 순간 라인 조회와 참조 조회가 함께 시작되면 제목줄이
- * 「이름 불러오는 중」에서 한 박자 늦게 채워진다. 요청 수는 화면당 한 번이다.
+ * **다섯 중 유일하게 고르기 전에도 부른다.** 제목줄은 **목록 응답만으로** 곧바로 그려지므로
+ * (고른 행의 `plantId`가 거기 있다) 전표를 고른 뒤에 부르기 시작하면 제목줄만 한 박자 늦게
+ * 채워진다. 라인 표가 쓰는 셋은 **라인 응답을 기다리는 동안** 도착할 여유가 있어 사정이 다르다.
+ * 요청 수는 화면당 한 번이다.
  */
 export const usePlantOptions = (): LookupResult => {
   const { client } = useApiClient();
@@ -200,12 +226,19 @@ export const usePlantOptions = (): LookupResult => {
   };
 };
 
-/** 품목 — 라인 표의 품목 칸이 쓴다. 공장과 같은 이유로 미리 받아 둔다. */
-export const useItemOptions = (): LookupResult => {
+/**
+ * 품목 — 라인 표의 품목 칸이 쓴다.
+ *
+ * **전표를 고르기 전에는 부르지 않는다**(`enabled`) — 단위·LOT과 **같은 부품·같은 시점**이다.
+ * 이름이 필요한 라인 표 자체가 라인 응답을 기다리므로, 미리 받아 둘 이득이 없고
+ * 첫 진입의 요청 수만 이유 없이 는다.
+ */
+export const useItemOptions = (enabled: boolean): LookupResult => {
   const { client } = useApiClient();
 
   const query = useQuery({
     queryKey: lookupKeys.items,
+    enabled,
     queryFn: () =>
       runRequest(() => client.GET('/mdm/items', { params: { query: { includeInactive: true } } })),
   });
@@ -221,7 +254,7 @@ export const useItemOptions = (): LookupResult => {
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
-    isLoading: query.isPending,
+    isLoading: enabled && query.isPending,
     refetch: () => {
       void query.refetch();
     },
@@ -270,8 +303,12 @@ export const useUomOptions = (enabled: boolean): LookupResult => {
  * **고른 전표의 라인이 가리키는 품목마다 한 번씩 받아 번호로 맞춘다**(W-01-07이 세운 형태).
  *
  * 품목으로 좁히지 않고 전체를 받으면 첫 쪽에 없는 LOT이 전부 「목록에 없음」이 되어
- * **정상 값이 잘못된 값으로 보인다**(#47이 금지한 표기). 좁혀 받으면 그 위험이 작아지고,
- * 그래도 잘리면 잘림 표식이 그 사실을 밝힌다.
+ * **정상 값이 잘못된 값으로 보인다**(#47이 금지한 표기). 좁혀 받으면 그 위험이 작아진다.
+ *
+ * **그래도 잘릴 수 있다.** 자재 LOT은 다섯 참조 중 유일한 **거래 기록**이라(나머지 넷은
+ * 기준정보) 한 품목의 LOT이 시간이 갈수록 쌓인다. 그래서 두 겹으로 다룬다 —
+ * ① 쪽 크기를 명시해 잘림 **빈도를 낮추고**(`LOT_PAGE_SIZE`) ② 그래도 잘리면
+ * **잘림 표식이 그 사실을 밝힌다**(`truncated` → 라인 표의 안내). ①은 완화이고 보장은 ②다.
  *
  * **전표를 고르기 전에는 부르지 않는다** — 고르기 전에는 풀 LOT 번호 자체가 없다.
  */
@@ -289,7 +326,9 @@ export const useLotOptions = (itemIds: readonly number[], enabled: boolean): Loo
       queryKey: lookupKeys.lots(itemId),
       enabled,
       queryFn: () =>
-        runRequest(() => client.GET('/trace/lots', { params: { query: { itemId } } })),
+        runRequest(() =>
+          client.GET('/trace/lots', { params: { query: { itemId, size: LOT_PAGE_SIZE } } }),
+        ),
     })),
   });
 

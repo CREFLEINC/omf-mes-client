@@ -142,14 +142,18 @@ export const GoodsReceiptScreen = () => {
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
   const suppliers = useSupplierOptions();
+  /* 공장만 미리 받는다 — 제목줄은 목록 응답만으로 곧바로 그려진다(`lookups.ts`의 표). */
   const plants = usePlantOptions();
-  const items = useItemOptions();
 
   const lines = useInboundReceiptLines(selectedIrId);
   const lineData = lines.data;
   const lineRows = lineData ?? EMPTY_LINES;
 
-  /* 단위·자재 LOT은 아래 구획만 쓴다 — 고르기 전에 부르면 첫 진입의 요청 수가 이유 없이 는다. */
+  /*
+   * 품목·단위·자재 LOT은 **라인 표가 그려질 때** 쓴다 — 그 표는 라인 응답을 기다리므로
+   * 미리 받아 둘 이득이 없고, 고르기 전에 부르면 첫 진입의 요청 수만 이유 없이 는다.
+   */
+  const items = useItemOptions(selectedIrId !== null);
   const uoms = useUomOptions(selectedIrId !== null);
 
   /*
