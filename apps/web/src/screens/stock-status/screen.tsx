@@ -228,15 +228,13 @@ export const StockStatusScreen = () => {
 
   const lotDetail = useLotDetail(selectedLotId);
 
-  /**
-   * 유효기한 판정의 「오늘」. **화면이 정해 아래로 내린다** — 판정 함수를 순수하게 두어야
-   * 테스트가 실행 환경의 시각을 검사하지 않는다.
-   */
-  const today = new Date();
-
   /*
    * **기준 시각은 응답이 도착한 시각이다.** 렌더 시각을 쓰면 아무것도 안 했는데 시각이
    * 계속 바뀌어, 사용자가 자료가 갱신되고 있다고 읽는다.
+   *
+   * 이 값은 표기만이 아니라 **유효기한 판정의 「오늘」**이기도 하다(아래 `detailPane`) —
+   * 화면이 스스로를 「조회 시점 스냅샷」이라 말했으므로 그 안의 판정도 같은 시각을 봐야 한다.
+   * 렌더 시각을 따로 쓰면 머리글은 어제 시각을 말하는데 표식만 오늘로 갈린다.
    */
   const asOf = formatAsOf(list.data === undefined ? null : list.dataUpdatedAt);
 
@@ -487,7 +485,15 @@ export const StockStatusScreen = () => {
       <LotDetailPane
         row={selectedRow}
         detail={lotDetail.data}
-        today={today}
+        /*
+         * **유효기한 판정의 「오늘」도 기준 시각이다.** 목록 응답이 도착한 시각을 쓴다 —
+         * 이 구획의 수량이 그 응답에서 왔고 머리글의 「기준 …」이 그 시각을 말한다.
+         * 렌더 시각을 쓰면 근거가 둘로 갈린다(자정을 넘겨 열어 둔 화면에서 실제로 갈린다).
+         *
+         * 여기까지 왔으면 `selectedRow`가 목록 응답에서 나온 줄이라 `dataUpdatedAt`은 0이
+         * 아니다 — 0을 가르는 가지를 따로 두면 닿을 수 없는 죽은 가지가 된다.
+         */
+        today={new Date(list.dataUpdatedAt)}
         uomLookup={uoms}
         partnerLookup={partners}
         /* 이 구획이 이름을 내는 참조는 목록 구획과 같은 둘이다(위 표) — 같은 둘을 다시 부른다. */
