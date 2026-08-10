@@ -1924,6 +1924,110 @@ describe('OverReceiptSplitScreen — 등록 실패 3갈래', () => {
     expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
   });
 
+  /**
+   * **서버 필드 오류는 그 칸에 붙는다.**
+   *
+   * 「문구가 화면 어딘가에 있다」만 보면 화면이 아는 필드 목록(`knownFields`)이 끊겨
+   * 같은 문구가 통째로 **배너로** 옮겨 가도 통과한다. 두 표면은 사용자에게 전혀 다르다 —
+   * 배너는 「무엇을 고쳐야 하는지」를 가리키지 못한다.
+   */
+  it('서버가 준 필드 오류가 그 입력칸에 붙는다', async () => {
+    const { user } = renderFailing(failingSplitRoute(400, VALIDATION_BODY));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText('합성 서버 문구');
+
+    const field = screen.getByLabelText(t.fields.deliveryNoteNo);
+
+    expect(field).toHaveAccessibleDescription(/합성 서버 문구/);
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /*
+   * 짝 방향 — **인라인으로 소화한 오류는 배너로 두 번 나오지 않는다.** 두 곳에 같은 문구가
+   * 뜨면 고칠 곳이 둘인 것처럼 읽힌다. 배너 자리(`.banner-slot`)가 아예 비어 있는지로 본다.
+   */
+  it('인라인으로 소화한 오류는 배너에 나오지 않는다', async () => {
+    const { user } = renderFailing(failingSplitRoute(400, VALIDATION_BODY));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText('합성 서버 문구');
+
+    /* 배너가 아예 서지 않는다 — 인라인이 전부 소화하면 배너에 남길 것이 없다. */
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  /*
+   * 짝 방향 — **화면이 모르는 필드는 배너로 올라간다.** 인라인으로 낼 자리를 고를 수 없어
+   * 삼키면 어디에도 보이지 않는 오류가 된다. 위 단언이 「배너를 아예 그리지 않는다」로
+   * 굳어 버리지 않게 한다.
+   */
+  it('화면이 모르는 필드의 오류는 배너로 올라간다', async () => {
+    const { user } = renderFailing(
+      failingSplitRoute(400, {
+        errors: [
+          { scope: 'field', field: 'lines[0].receivedQty', code: 'INVALID', message: '합성 라인 문구' },
+        ],
+      }),
+    );
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    const banner = await screen.findByRole('alert');
+
+    expect(banner).toHaveTextContent('합성 라인 문구');
+    expect(screen.getByLabelText(t.fields.deliveryNoteNo)).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+
+  /*
+   * **고치면 걷힌다.** 서버가 준 오류가 그 칸을 고치는 동안에도 남아 있으면, 사용자는
+   * 방금 고친 값이 여전히 잘못된 것으로 읽는다 — 무엇을 더 고쳐야 하는지 알 수 없다.
+   */
+  it('그 칸을 다시 치면 서버가 준 오류가 걷힌다', async () => {
+    const { user } = renderFailing(failingSplitRoute(400, VALIDATION_BODY));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText('합성 서버 문구');
+
+    await user.type(screen.getByLabelText(t.fields.deliveryNoteNo), 'A');
+
+    await waitFor(() => {
+      expect(screen.queryByText('합성 서버 문구')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText(t.fields.deliveryNoteNo)).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+
+  /*
+   * 짝 방향 — **다른 칸을 고치는 것으로는 걷히지 않는다.** 아무 입력에나 반응해 지우면
+   * 아직 유효한 오류가 사라져, 고치지 않은 값을 그대로 다시 보내게 된다.
+   */
+  it('다른 칸을 고쳐도 그 오류는 남는다', async () => {
+    const { user } = renderFailing(failingSplitRoute(400, VALIDATION_BODY));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText('합성 서버 문구');
+
+    await user.type(screen.getByLabelText(t.fields.remarks), '합성 비고');
+
+    expect(screen.getByText('합성 서버 문구')).toBeInTheDocument();
+  });
+
   /*
    * **M46** — 권한 없음은 다시 시도해도 풀리지 않는다. 재시도 수단을 내면
    * 사용자가 같은 실패를 되풀이한다.
