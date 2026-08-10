@@ -54,4 +54,12 @@ describe('appRouter', () => {
     expect(routedPaths()).toContain('/logistics/stock-status');
     expect(routedPaths()).not.toContain('/inventory/stock-status');
   });
+
+  /*
+   * W-01-03은 계약 경로도 `/logistics/**`라 둘이 우연히 같다. 그래도 근거는 섹션이다 —
+   * 계약 경로를 근거로 삼으면 W-01-07에서 앞머리가 갈렸을 것이다.
+   */
+  it('초과 입하 분리가 자재창고 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/logistics/over-receipt-split');
+  });
 });
