@@ -1,6 +1,8 @@
 import { messages } from '@omf-mes/i18n';
 
+import { EMPTY_PERIOD, isBusinessDate, type BusinessPeriod } from './business-period';
 import type { SortKey } from './sort';
+import type { TransactionRef } from './types';
 import { DEFAULT_VIEW, type ViewAxis } from './view-axis';
 
 /**
@@ -10,8 +12,8 @@ import { DEFAULT_VIEW, type ViewAxis } from './view-axis';
  * 값은 전부 문자열로 다룬다(잔액 0 포함만 참·거짓이다). 입력 도중의 상태를 숫자로 강제하면
  * 지우는 중간에 값이 튄다.
  *
- * **`sel`·`hfrom`·`hto`·`tx`는 이 모듈이 만들지 않는다.** 주소 키 수명 표(계획 결정 4)의
- * 1~5행이 그 한 가지로 함께 지켜진다 — `screen.tsx` 주석에 표가 있다.
+ * **고르는 쪽의 키(`SELECTION_KEYS`)는 `toSearchParams`가 만들지 않는다.** 주소 키 수명
+ * 표(계획 결정 4)의 1~5행이 그 한 가지로 함께 지켜진다 — `screen.tsx` 주석에 표가 있다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
@@ -62,7 +64,24 @@ const URL_KEYS = {
 const VIEW_KEY = 'view';
 const SORT_KEY = 'sort';
 const PAGE_KEY = 'page';
-const SELECTED_KEY = 'sel';
+
+/**
+ * **`toSearchParams`가 만들지 않는 키들.** 고르는 쪽이 덧붙인다(수명 표 6·9·10·11행).
+ *
+ * 이름을 한 곳에 모아 두는 이유: 만드는 자리(화면의 고르기·이력 조회 핸들러)와 읽는 자리
+ * (아래 `read*`)가 서로 다른 파일에 있어, 문자열을 양쪽에 적으면 한쪽만 고쳐졌을 때
+ * **주소에 심기는 키와 읽는 키가 달라진다** — 조회는 되는데 아무것도 안 걸린 것처럼 보인다.
+ */
+export const SELECTION_KEYS = {
+  lot: 'sel',
+  historyFrom: 'hfrom',
+  historyTo: 'hto',
+  historyPage: 'hpage',
+  transaction: 'tx',
+} as const;
+
+/** 고른 거래의 주소 표기 — `영업일:거래번호`. 계약이 둘을 함께 식별자로 쓴다. */
+const TRANSACTION_SEPARATOR = ':';
 
 /**
  * **1 이상의 정수만.** `\d+`는 `0`을 통과시키는데 `0`은 어느 자원의 번호도 아니다 —
@@ -143,11 +162,52 @@ export const readPage = (params: URLSearchParams): number => {
  * 수명 표 1~5행을 함께 지킨다.
  */
 export const readSelectedLotId = (params: URLSearchParams): number | null => {
-  const raw = params.get(SELECTED_KEY) ?? '';
+  const raw = params.get(SELECTION_KEYS.lot) ?? '';
 
   /* 조건 번호와 같은 잣대다 — `0`은 어느 LOT의 번호도 아니라 `/trace/lots/0`을 부르게 된다. */
   return POSITIVE_INTEGER.test(raw) ? Number(raw) : null;
 };
+
+/**
+ * 주소가 담은 수불 이력의 영업일 범위. **읽기만 하고 판정하지 않는다** —
+ * 성한 기간인지는 `business-period.ts`가 한 곳에서 정하고, 그 판정이 곧 사용자에게 낼
+ * 사유가 된다. 여기서 걸러 내면 「왜 조회가 안 되는가」를 말할 근거가 사라진다.
+ */
+export const readHistoryPeriod = (params: URLSearchParams): BusinessPeriod => ({
+  from: params.get(SELECTION_KEYS.historyFrom) ?? EMPTY_PERIOD.from,
+  to: params.get(SELECTION_KEYS.historyTo) ?? EMPTY_PERIOD.to,
+});
+
+/** 수불 이력이 보고 있는 쪽. 잔액 목록의 쪽과 **따로 센다** — 서로 다른 조회다. */
+export const readHistoryPage = (params: URLSearchParams): number => {
+  const raw = params.get(SELECTION_KEYS.historyPage) ?? '';
+
+  return POSITIVE_INTEGER.test(raw) ? Number(raw) : 1;
+};
+
+/**
+ * 고른 거래. **영업일과 번호가 둘 다 성해야 한다** — 계약이 둘을 함께 경로 조각으로 받아
+ * 한쪽만으로는 부를 수 없다. 주소는 손으로 고쳐지는 자리라 여기서 막지 않으면
+ * `/inventory/transactions/undefined/0` 같은 요청이 나간다.
+ */
+export const readSelectedTransaction = (params: URLSearchParams): TransactionRef | null => {
+  const raw = params.get(SELECTION_KEYS.transaction) ?? '';
+  const separator = raw.indexOf(TRANSACTION_SEPARATOR);
+
+  if (separator < 0) return null;
+
+  const businessDate = raw.slice(0, separator);
+  const transactionId = raw.slice(separator + 1);
+
+  if (!isBusinessDate(businessDate)) return null;
+  if (!POSITIVE_INTEGER.test(transactionId)) return null;
+
+  return { businessDate, transactionId: Number(transactionId) };
+};
+
+/** 고른 거래를 주소 값으로 옮긴다. 읽는 쪽(`readSelectedTransaction`)과 짝이다. */
+export const toTransactionParam = (ref: TransactionRef): string =>
+  `${ref.businessDate}${TRANSACTION_SEPARATOR}${String(ref.transactionId)}`;
 
 /**
  * 보기·조건·정렬·쪽 전체를 주소로 옮긴다. **빈 조건은 키 자체를 두지 않는다** —
@@ -156,8 +216,9 @@ export const readSelectedLotId = (params: URLSearchParams): number | null => {
  * **기본값은 적지 않는다** — 기본 보기(품목별) · 첫 쪽 · 정렬 없음 · 잔액 0 미포함.
  * 기본값을 주소에 적으면 같은 화면의 주소가 두 가지가 된다.
  *
- * **`sel`·`hfrom`·`hto`·`tx`를 만들지 않는다.** 보기·조건·정렬·쪽이 바뀌면 고른 LOT이
+ * **`SELECTION_KEYS`의 다섯을 만들지 않는다.** 보기·조건·정렬·쪽이 바뀌면 고른 LOT이
  * 새 결과에 없을 수 있어 함께 비워져야 하고, 고르는 쪽만 이 결과에 덧붙인다(수명 표 1~5행).
+ * 이력 기간·쪽·고른 거래도 고른 LOT에 매달린 값이라 같이 사라진다.
  */
 export const toSearchParams = (
   view: ViewAxis,
