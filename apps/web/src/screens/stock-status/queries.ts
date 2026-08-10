@@ -48,8 +48,14 @@ export type BalanceListQuery = GroupByQuery &
     page?: number;
   };
 
+/**
+ * 캐시 키. **묶음 키(`all`)를 두지 않는다** — 무효화할 자리가 없기 때문이다.
+ *
+ * 묶음 키는 쓰기 뒤에 「이 리소스의 조회를 전부 무효화한다」고 말하기 위한 것인데
+ * 이 화면은 조회 전용이라 그 자리가 하나도 없다. 두면 쓰이지 않는 export가 되고,
+ * 다음 사람이 「어딘가 무효화하는 코드가 있다」고 읽는다.
+ */
 export const balanceKeys = {
-  all: ['inventory-balances'] as const,
   list: (query: BalanceListQuery | null) => ['inventory-balances', 'list', query] as const,
 };
 
@@ -97,7 +103,6 @@ export const useBalanceList = (
 };
 
 export const lotKeys = {
-  all: ['stock-status-lot-detail'] as const,
   detail: (lotId: number | null) => ['stock-status-lot-detail', lotId] as const,
 };
 
