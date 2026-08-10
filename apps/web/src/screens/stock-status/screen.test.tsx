@@ -2403,6 +2403,29 @@ describe('StockStatusScreen — 이력 쪽과 고른 거래', () => {
     expect(screen.getByText(t.history.empty.noSelectionTitle)).toBeInTheDocument();
   });
 
+  /*
+   * **기간이 없으면 고른 거래도 가리킬 줄이 없다.** 위 목록이 「아직 조회하지 않았다」인데
+   * 아래 라인만 열리면, 사용자는 화면에 보이지 않는 거래의 라인을 읽게 된다 —
+   * 요청도 한 번 나간다. 창고 없는 `sel`을 막는 것과 같은 갈래의 잣대다.
+   */
+  it('기간이 없으면 tx가 성해도 라인을 부르지 않는다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401&tx=2026-08-06%3A9901`,
+    );
+
+    await screen.findByText(t.history.empty.notQueriedTitle);
+
+    expect(transactionDetailRequests(requests)).toHaveLength(0);
+    /* 영영 오지 않을 것을 기다리는 표기도 두지 않는다. */
+    expect(
+      screen.queryByRole('status', { name: t.loading.transactionLines }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(t.history.empty.noSelectionTitle)).toBeInTheDocument();
+    /* 주소는 고쳐 쓰지 않는다 — 기간을 채우면 그 선택이 되살아난다. */
+    expect(currentLocation()).toContain('tx=2026-08-06%3A9901');
+  });
+
   /* 주소는 손으로 고쳐지는 자리다 — 반쪽짜리 식별자로 경로를 만들지 않는다. */
   it('깨진 tx로는 라인을 부르지 않는다', async () => {
     for (const broken of ['abc', '2026-02-31%3A9901', '2026-08-06%3A0', '9901']) {
