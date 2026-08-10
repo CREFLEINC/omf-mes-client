@@ -1540,10 +1540,13 @@ const LOCATION_LABEL = 'SAMPLE-LOC-A1 · 합성 열 가1';
 const OTHER_LOCATION_LABEL = 'SAMPLE-LOC-B · 합성 구역 나';
 
 /**
- * 결과 구획 어디에도 나와서는 안 되는 내부 번호. 입고 전표 대역(9900대)과 창고·위치 대역을
- * 함께 본다 — 업무 번호(`GR-2026-800001`)는 8000대라 부분 문자열로 걸리지 않는다.
+ * 결과 구획 어디에도 나와서는 안 되는 내부 번호.
+ *
+ * 입고 전표 대역(9900대)·창고(9700대)·위치(9800대)뿐 아니라 **입하 전표와 라인 대역까지**
+ * 함께 본다 — 결과 구획이 내는 원천 문서 자리가 그 번호로 새기 가장 쉬운 자리다.
+ * 업무 번호(`GR-2026-800001`·`IR-2026-900001`)에는 이 문자열들이 부분으로 들어가지 않는다.
  */
-const POST_INTERNAL_IDS = ['9901', '9902', '9903', '9701', '9702', '9801', '9802'];
+const POST_INTERNAL_IDS = [...INTERNAL_IDS, '9901', '9902', '9903', '9701', '9702', '9801', '9802'];
 
 const postRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === GOODS_RECEIPTS_PATH);
