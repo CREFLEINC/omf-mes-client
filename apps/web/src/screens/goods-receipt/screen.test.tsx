@@ -1739,16 +1739,42 @@ describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
     expect(screen.getByRole('combobox', { name: t.fields.location })).toHaveTextContent(
       LOCATION_LABEL,
     );
+    expect(postButton()).not.toBeDisabled();
 
     await chooseOption(user, t.fields.warehouse, OTHER_WAREHOUSE_LABEL);
 
+    /*
+     * **보이는 글자만 보면 모자란다.** 앞 창고의 위치 번호가 남아 있어도 새 목록에 없어
+     * 트리거는 자리표시로 보인다 — 그런데 그 값은 요청에 그대로 실린다. 「위치를 고르세요」로
+     * 다시 잠기는지까지 봐야 값이 실제로 비워졌음이 고정된다.
+     */
     expect(screen.getByRole('combobox', { name: t.fields.location })).not.toHaveTextContent(
       LOCATION_LABEL,
     );
+    expect(postButton()).toBeDisabled();
+    expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsLocation);
+
+    /* 코드·일시는 창고와 무관하므로 남는다 — 함께 지우면 사용자가 처음부터 다시 넣는다. */
     expect(screen.getByRole('combobox', { name: t.fields.receiptType })).toHaveTextContent(
       SAMPLE_RECEIPT_TYPE,
     );
     expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+  });
+
+  /* 새 창고에서 다시 고르면 **그 창고의 위치**가 요청에 실린다 — 앞 위치가 아니다. */
+  it('창고를 바꾼 뒤 고른 위치가 요청에 실린다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    await chooseOption(user, t.fields.warehouse, OTHER_WAREHOUSE_LABEL);
+    await chooseOption(user, t.fields.location, OTHER_LOCATION_LABEL);
+    await clickPost(user);
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    expect(lastPostBody(requests).lines[0]?.destinationLocationId).toBe(9811);
   });
 
   it('창고를 바꾸면 그 창고의 위치 목록이 온다', async () => {
