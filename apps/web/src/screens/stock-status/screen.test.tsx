@@ -2469,6 +2469,30 @@ describe('StockStatusScreen — 이력의 빈 상태와 실패', () => {
   });
 
   /*
+   * **조회 중은 결과 없음이 아니다.** 기다리는 동안 표를 그리면 행이 0건이라
+   * 「이 기간에 움직인 기록이 없습니다」가 잠깐 뜨고, 사용자가 그것을 답으로 읽고
+   * 기간을 넓히러 간다 — 빈 상태 세 갈래에 없는 넷째 상태를 그 자리에 만드는 셈이다.
+   */
+  it('이력을 기다리는 동안 「기록이 없다」를 내지 않는다', async () => {
+    const { release } = renderScreenHolding(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      [TRANSACTIONS_PATH],
+      WITH_HISTORY,
+    );
+
+    await screen.findByRole('status', { name: t.loading.history });
+
+    expect(screen.queryByText(t.history.empty.noResultTitle)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.history.empty.notQueriedTitle)).not.toBeInTheDocument();
+
+    release();
+
+    /* 짝 방향 — 응답이 오면 표가 그려지고 로딩 표기는 사라진다. */
+    expect(await screen.findByText('SAMPLE-IT-0001')).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.loading.history })).not.toBeInTheDocument();
+  });
+
+  /*
    * **이력이 실패해도 위 두 구획은 그대로 보인다**(C60). 실패한 것은 이력 한 벌뿐인데
    * 화면 전체를 덮으면 사용자가 목록과 상세까지 못 쓰게 된다.
    */
