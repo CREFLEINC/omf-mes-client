@@ -26,7 +26,14 @@ import type { HeaderDraft, SplitMode } from './types';
 
 const t = messages.overReceiptSplit;
 
-/** 계약이 정한 거래명세서번호의 길이 상한. 문구와 `maxLength`가 같은 값을 읽는다. */
+/**
+ * 계약이 정한 거래명세서번호의 길이 상한.
+ *
+ * **입력칸에 `maxLength`를 두지 않고 이 검증이 오류로 잡는다.** `maxLength`는 붙여넣기를
+ * 조용히 잘라 내는데, 그러면 사용자가 넣으려던 것과 **다른 번호**가 되돌릴 수 없는 전표에
+ * 실린다 — 길이 문제는 감추지 말고 보이는 오류로 돌려주는 것이 맞다.
+ * 상한을 넘겼다는 사실은 이 상수를 읽는 오류 문구가 밝힌다.
+ */
 export const DELIVERY_NOTE_NO_MAX = 100;
 
 /**
