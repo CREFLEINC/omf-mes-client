@@ -46,8 +46,7 @@ export interface BusinessPeriodQuery {
  * 조회할 수 있으면 보낼 쿼리를, 없으면 사용자가 고칠 사유를 담는다.
  */
 export type BusinessPeriodState =
-  | { kind: 'ready'; query: BusinessPeriodQuery }
-  | { kind: 'blocked'; reason: string };
+  { kind: 'ready'; query: BusinessPeriodQuery } | { kind: 'blocked'; reason: string };
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 

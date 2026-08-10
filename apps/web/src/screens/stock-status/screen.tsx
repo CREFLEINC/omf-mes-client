@@ -15,6 +15,11 @@ import { formatAsOf } from './as-of';
 import { BalanceFilterBar } from './balance-filter-bar';
 import { BalanceTable } from './balance-table';
 import {
+  defaultBusinessPeriod,
+  resolveBusinessPeriod,
+  type BusinessPeriod,
+} from './business-period';
+import {
   PLACEHOLDER_INVENTORY_STATUS_CODES,
   PLACEHOLDER_OWNERSHIP_TYPE_CODES,
   PLACEHOLDER_QUALITY_STATUS_CODES,
@@ -23,13 +28,18 @@ import {
 import {
   EMPTY_FILTERS,
   readFilters,
+  readHistoryPage,
+  readHistoryPeriod,
   readPage,
   readSelectedLotId,
+  readSelectedTransaction,
   resolveFilters,
   readSortParam,
   readViewParam,
+  SELECTION_KEYS,
   toBalanceFilterQuery,
   toSearchParams,
+  toTransactionParam,
   type BalanceFilters,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
@@ -48,9 +58,18 @@ import {
 import { LotDetailPane } from './lot-detail-pane';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
-import { useBalanceList, useLotDetail, type BalanceListQuery } from './queries';
+import {
+  useBalanceList,
+  useLotDetail,
+  useTransactionDetail,
+  useTransactionList,
+  type BalanceListQuery,
+  type TransactionListQuery,
+} from './queries';
 import { defaultSortKey, nextSortKey, readSortKey, toSortQuery, type SortKey } from './sort';
-import type { BalanceView, SelectOption } from './types';
+import { TransactionLineTable } from './transaction-line-table';
+import { TransactionPane } from './transaction-pane';
+import type { BalanceView, SelectOption, TransactionView } from './types';
 import {
   readViewAxis,
   resolveViewAxis,
@@ -63,6 +82,7 @@ const t = messages.stockStatus;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: BalanceView[] = [];
+const EMPTY_TRANSACTIONS: TransactionView[] = [];
 
 /**
  * 참조 목록을 선택지로 옮긴다.
@@ -107,18 +127,19 @@ export const StockStatusScreen = () => {
    * 규칙이 흩어지면 한쪽만 고쳐져 비대칭이 생긴다(보기를 바꾸면 선택이 풀리는데 쪽을 옮기면
    * 안 풀리는 식).
    *
-   * | # | 조작 | `view` | 조건 8종 | `sort` | `page` | `sel` | `hfrom`·`hto` | `tx` | 조건 줄 초안 |
-   * | :-: | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-   * | 1 | **보기 전환** | 바뀐다 | **유지** | **보기 기본값으로** | **첫 쪽** | **비운다** | 비운다 | 비운다 | **유지** |
-   * | 2 | 조건 변경·조회 | 유지 | 바뀐다 | 유지 | **첫 쪽** | **비운다** | 비운다 | 비운다 | (적용됨) |
-   * | 3 | 초기화 | 유지 | **비운다**(창고 포함) | **비운다** | 첫 쪽 | 비운다 | 비운다 | 비운다 | 비운다 |
-   * | 4 | 정렬 열 변경·해제 | 유지 | 유지 | 바뀐다 | **첫 쪽** | **비운다** | 비운다 | 비운다 | 유지 |
-   * | 5 | 쪽 이동 | 유지 | 유지 | 유지 | 옮긴 쪽 | **비운다** | 비운다 | 비운다 | 유지 |
-   * | 6 | LOT 고르기·해제 | 유지 | 유지 | 유지 | **유지** | 넣고 뺀다 | **기본 1개월로 채운다** | 비운다 | 유지 |
-   * | 7 | 갱신 결과에 고른 LOT 없음 | 유지 | 유지 | 유지 | 유지 | **비운다** | 비운다 | 비운다 | 유지 |
-   * | 8 | **새로고침**(재조회) | 유지 | 유지 | 유지 | 유지 | **유지** | **유지** | **유지** | 유지 |
-   * | 9 | 이력 기간 변경·조회 | 유지 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **비운다** | (적용됨) |
-   * | 10 | 거래 고르기·해제 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 넣고 뺀다 | 유지 |
+   * | # | 조작 | `view` | 조건 8종 | `sort` | `page` | `sel` | `hfrom`·`hto` | `hpage` | `tx` | 조건 줄 초안 |
+   * | :-: | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+   * | 1 | **보기 전환** | 바뀐다 | **유지** | **보기 기본값으로** | **첫 쪽** | **비운다** | 비운다 | 비운다 | 비운다 | **유지** |
+   * | 2 | 조건 변경·조회 | 유지 | 바뀐다 | 유지 | **첫 쪽** | **비운다** | 비운다 | 비운다 | 비운다 | (적용됨) |
+   * | 3 | 초기화 | 유지 | **비운다**(창고 포함) | **비운다** | 첫 쪽 | 비운다 | 비운다 | 비운다 | 비운다 | 비운다 |
+   * | 4 | 정렬 열 변경·해제 | 유지 | 유지 | 바뀐다 | **첫 쪽** | **비운다** | 비운다 | 비운다 | 비운다 | 유지 |
+   * | 5 | 쪽 이동 | 유지 | 유지 | 유지 | 옮긴 쪽 | **비운다** | 비운다 | 비운다 | 비운다 | 유지 |
+   * | 6 | LOT 고르기·해제 | 유지 | 유지 | 유지 | **유지** | 넣고 뺀다 | **기본 1개월로 채운다** | 첫 쪽 | 비운다 | 유지 |
+   * | 7 | 갱신 결과에 고른 LOT 없음 | 유지 | 유지 | 유지 | 유지 | **비운다** | 비운다 | 비운다 | 비운다 | 유지 |
+   * | 8 | **새로고침**(재조회) | 유지 | 유지 | 유지 | 유지 | **유지** | **유지** | **유지** | **유지** | 유지 |
+   * | 9 | 이력 기간 변경·조회 | 유지 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **첫 쪽** | **비운다** | (적용됨) |
+   * | 10 | 거래 고르기·해제 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 넣고 뺀다 | 유지 |
+   * | 11 | **이력 쪽 이동** | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 옮긴 쪽 | **비운다** | 유지 |
    *
    * **왜 이렇게 정했는가**
    *
@@ -137,21 +158,21 @@ export const StockStatusScreen = () => {
    *   끌고 가지 않기 위해 그 보기의 기본 열이 필요하다.
    * - **8행이 아무것도 비우지 않는 이유**: 새로고침은 **같은 조회를 다시 하는 것**이다.
    *   무언가를 비우면 새로고침이 조건 변경으로 둔갑한다.
+   * - **9·11행이 `tx`를 비우는 이유**: 고른 거래는 지금 보고 있는 이력 목록의 한 줄이다.
+   *   기간이나 쪽이 바뀌면 그 줄이 목록에 없을 수 있는데, 남겨 두면 아래 라인 표가
+   *   **위에 보이지 않는 거래**를 가리킨 채 열려 있다.
+   * - **11행이 이 표의 열한째 줄인 이유**: 이력 쪽은 잔액 쪽(`page`)과 **다른 조회**라
+   *   따로 센다. 조작이 하나 늘었으므로 규칙을 정하기 전에 이 표에 줄부터 더했다 —
+   *   그것이 이 표가 지시하는 순서다.
    *
    * **구현 규칙 둘** — 이 둘이 표를 코드로 지킨다.
    *
-   * 1. `toSearchParams(view, filters, sort, page)`가 **`sel`·`hfrom`·`hto`·`tx`를 만들지 않는다.**
-   *    1~5행이 함께 지켜진다. 고르는 쪽만 덧붙인다(작업 2·3).
+   * 1. `toSearchParams(view, filters, sort, page)`가 **`SELECTION_KEYS`의 다섯을 만들지 않는다.**
+   *    1~5행이 함께 지켜진다. 고르는 쪽만 덧붙인다.
    * 2. 7행은 **고른 식별자에 묶인 effect 한 곳**이 한다. 클릭 핸들러에 두면
    *    뒤로가기·앞으로가기·주소 직접 편집이 통째로 샌다.
    *
-   * **비우는 자리는 이 열 줄뿐이고, 열한째가 생기면 이 표에 행을 먼저 더한다.**
-   *
-   * 6·7행이 이번 작업의 몫이고 **8~10행은 수불 이력(작업 3)의 몫**이다. 6행의
-   * 「`hfrom`·`hto`를 기본 1개월로 채운다」도 그때 온다 — 기본 기간을 만드는 모듈이 아직 없고,
-   * 읽는 쪽 없이 주소에 키만 심으면 아무도 쓰지 않는 상태가 주소에 남는다.
-   * 표를 지금 다 적어 두는 이유는, 나중에 더하는 사람이 이미 정해진 규칙을 다시 정하지
-   * 않게 하기 위해서다.
+   * **비우는 자리는 이 열한 줄뿐이고, 열두째가 생기면 이 표에 행을 먼저 더한다.**
    */
   /*
    * **주소가 바뀔 때만 새 참조를 만든다.** 렌더마다 새 객체를 만들면 내용이 같아도 참조가 달라,
@@ -227,6 +248,53 @@ export const StockStatusScreen = () => {
   const selectedRow = rows.find((row) => row.lotId === selectedLotId) ?? null;
 
   const lotDetail = useLotDetail(selectedLotId);
+
+  /*
+   * **이력의 기간·쪽·고른 거래도 읽는 자리에서 판정한다**(`selectedLotId`와 같은 갈래).
+   * 셋 다 **고른 LOT에 매달린 값**이라, LOT이 없으면 가리킬 대상이 없다 —
+   * 판정을 여기 두지 않으면 `?hfrom=…&tx=…`만 남은 주소에서 이력과 라인을 한 번씩 부르고
+   * 나서 구획도 없이 버린다(사용자에게는 아무 일도 없는데 요청만 는다).
+   *
+   * **기간은 걸러 내지 않고 그대로 읽는다.** 성한지는 `business-period.ts`가 한 곳에서
+   * 정하고 그 판정이 곧 사용자에게 낼 사유가 된다 — 여기서 지우면 「왜 조회가 안 되는가」를
+   * 말할 근거가 사라진다.
+   */
+  const historyPeriod = readHistoryPeriod(searchParams);
+  const historyPage = readHistoryPage(searchParams);
+  const resolvedPeriod = resolveBusinessPeriod(historyPeriod);
+
+  /**
+   * 이력 구획이 서는 자리 — **고른 LOT과 그 LOT을 찾은 창고가 함께** 있어야 한다.
+   *
+   * 창고는 `selectedLotId`가 이미 보장하지만(위 판정), 라인 표가 **위치 이름을 풀 수 있는
+   * 범위**로 창고 번호를 쓴다. 둘을 한 값으로 묶어 두면 그 번호를 「없을 수도 있는 값」으로
+   * 다시 다루지 않아도 되고, 없을 때의 자리표시 번호를 지어낼 일도 없다.
+   */
+  const historyScope =
+    selectedLotId !== null && warehouseId !== null ? { lotId: selectedLotId, warehouseId } : null;
+
+  const historyQuery: TransactionListQuery | null =
+    historyScope === null || resolvedPeriod.kind === 'blocked'
+      ? null
+      : {
+          ...resolvedPeriod.query,
+          lotId: historyScope.lotId,
+          ...(historyPage > 1 ? { page: historyPage } : {}),
+        };
+
+  const history = useTransactionList(historyQuery);
+  const historyRows = history.data?.items ?? EMPTY_TRANSACTIONS;
+  const historyPageView = toPageView(
+    history.data?.page ?? { page: historyPage, size: 0, total: 0 },
+    historyRows.length,
+  );
+
+  /*
+   * 고른 거래. **이력을 조회하고 있을 때만 뜻이 있다** — 기간이 없으면 위 목록이 비어 있어
+   * 라인 표만 홀로 열린 상태가 된다.
+   */
+  const selectedTransaction = historyQuery === null ? null : readSelectedTransaction(searchParams);
+  const transactionDetail = useTransactionDetail(selectedTransaction);
 
   /*
    * **기준 시각은 응답이 도착한 시각이다.** 렌더 시각을 쓰면 아무것도 안 했는데 시각이
@@ -317,9 +385,71 @@ export const StockStatusScreen = () => {
   const toggleSelectLot = (lotId: number): void => {
     const next = toSearchParams(view, filters, sortKey, page);
 
-    if (lotId !== selectedLotId) next.set('sel', String(lotId));
+    if (lotId !== selectedLotId) {
+      next.set(SELECTION_KEYS.lot, String(lotId));
+
+      /*
+       * **이력 기간을 함께 채운다**(수명 표 6행). 영업일 범위 없이는 수불 이력을 부를 수
+       * 없으므로(계획 결정 14), 비워 두면 LOT을 고를 때마다 사용자가 두 칸을 채워야 한다.
+       *
+       * 「오늘」은 여기서 정한다 — 기본 기간을 만드는 함수를 순수하게 두어야 테스트가
+       * 실행 환경의 시각을 검사하지 않는다.
+       */
+      const period = defaultBusinessPeriod(new Date());
+
+      next.set(SELECTION_KEYS.historyFrom, period.from);
+      next.set(SELECTION_KEYS.historyTo, period.to);
+    }
 
     setSearchParams(next);
+  };
+
+  /**
+   * 이력 조건을 주소에 반영한다(수명 표 9행).
+   *
+   * **고른 거래를 비운다** — 기간이 바뀌면 그 거래가 새 목록에 없을 수 있는데, 남기면
+   * 아래 라인 표가 위에 보이지 않는 거래를 가리킨 채 열려 있다. 이력 쪽도 첫 쪽으로
+   * 되돌린다(조건이 바뀌면 3쪽의 뜻이 달라진다 — 잔액 목록과 같은 규칙이다).
+   *
+   * **잔액 쪽 조건은 하나도 건드리지 않는다.** 이력은 고른 LOT에 대한 다른 질문이다.
+   */
+  const applyHistory = (period: BusinessPeriod, nextPage = 1): void => {
+    if (selectedLotId === null) return;
+
+    const next = toSearchParams(view, filters, sortKey, page);
+
+    next.set(SELECTION_KEYS.lot, String(selectedLotId));
+    next.set(SELECTION_KEYS.historyFrom, period.from);
+    next.set(SELECTION_KEYS.historyTo, period.to);
+
+    if (nextPage > 1) next.set(SELECTION_KEYS.historyPage, String(nextPage));
+
+    setSearchParams(next);
+  };
+
+  /**
+   * 거래 고르기·해제(수명 표 10행).
+   *
+   * **보이는 이력 줄을 바꾸지 않는다** — 기간·쪽을 그대로 두고 `tx`만 넣고 뺀다.
+   * 영업일과 번호를 함께 싣는다: 계약이 영업일을 식별자의 일부로 둔다.
+   */
+  const toggleSelectTransaction = (row: TransactionView): void => {
+    if (selectedLotId === null) return;
+
+    const ref = { businessDate: row.businessDate, transactionId: row.inventoryTransactionId };
+    const isSelected =
+      selectedTransaction !== null &&
+      selectedTransaction.businessDate === ref.businessDate &&
+      selectedTransaction.transactionId === ref.transactionId;
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+
+      if (isSelected) next.delete(SELECTION_KEYS.transaction);
+      else next.set(SELECTION_KEYS.transaction, toTransactionParam(ref));
+
+      return next;
+    });
   };
 
   /*
@@ -342,7 +472,12 @@ export const StockStatusScreen = () => {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        next.delete('sel');
+
+        /*
+         * **고른 LOT에 매달린 키를 함께 뗀다.** 이력 기간·쪽·고른 거래는 그 LOT의 이력을
+         * 가리키는 값이라, `sel`만 지우면 아무도 읽지 않는 상태가 주소에 남는다.
+         */
+        for (const key of Object.values(SELECTION_KEYS)) next.delete(key);
 
         return next;
       },
@@ -360,25 +495,29 @@ export const StockStatusScreen = () => {
    *
    * | 참조 | 언제 부르나 | 이름이 보이는 자리 | 복구 |
    * | --- | --- | --- | --- |
-   * | 창고 | 항상 | 조건 줄 선택칸 · 조건 칩 | **조건 줄** |
-   * | 위치 | **창고를 고른 뒤** | 조건 줄 · 위치별 보기의 그룹 헤더·열 | **조건 줄** |
-   * | 품목 | 항상 | 조건 줄 · 세 보기의 품목 열·그룹 헤더 | **조건 줄** |
-   * | LOT | **품목 + LOT별 보기** | 조건 줄 · LOT별 보기의 LOT 열 | **조건 줄** |
-   * | 단위 | 항상 | 세 보기의 단위 열 · **LOT 상세의 수량·보류** | **목록 구획 · 상세 구획** |
+   * | 창고 | 항상 | 조건 줄 선택칸 · 조건 칩 · **거래 라인의 출발·도착 창고** | **조건 줄 · 라인 표** |
+   * | 위치 | **창고를 고른 뒤** | 조건 줄 · 위치별 보기의 그룹 헤더·열 · **거래 라인의 출발·도착 위치** | **조건 줄 · 라인 표** |
+   * | 품목 | 항상 | 조건 줄 · 세 보기의 품목 열·그룹 헤더 · **거래 라인의 품목** | **조건 줄 · 라인 표** |
+   * | LOT | **품목 + LOT별 보기** | 조건 줄 · LOT별 보기의 LOT 열 · **거래 라인의 LOT** | **조건 줄 · 라인 표** |
+   * | 단위 | 항상 | 세 보기의 단위 열 · LOT 상세의 수량·보류 · **거래 라인의 단위** | **목록 · 상세 · 라인 표** |
    * | 소유처 | 항상 | 세 보기의 소유 열 · **LOT 상세의 발급처** | **목록 구획 · 상세 구획** |
    *
    * 앞 넷이 조건 줄인 이유가 이 표의 요점이다 — 넷 다 **선택칸에 이름이 실린다.**
    * 뒤 둘은 조건에 없어 표에서만 보이므로 목록 구획이 소유한다.
    *
-   * 뒤 둘의 복구가 **두 자리에 있는 이유**: 같은 참조가 두 구획에서 이름을 낸다. 규칙은
-   * 「그 이름이 실제로 실패로 보이는 자리에 둔다」이므로, 상세를 읽는 사람이 실패를 보면서
-   * 위 구획까지 올라가 버튼을 찾게 두지 않는다. **두 버튼이 부르는 대상은 정확히 같은 둘**이라
-   * 「문구가 적은 대상 = 다시 부르는 대상」 규칙은 양쪽 모두에서 지켜진다.
+   * 복구가 **여러 자리에 있는 이유**: 같은 참조가 여러 구획에서 이름을 낸다. 규칙은
+   * 「그 이름이 실제로 실패로 보이는 자리에 둔다」이므로, 아래 구획을 읽는 사람이 실패를
+   * 보면서 위 구획까지 올라가 버튼을 찾게 두지 않는다. **각 버튼이 부르는 대상은 그 구획의
+   * 문구가 적은 대상과 정확히 같다** — 그래야 눌렀을 때 문구가 말한 것만큼 고쳐진다.
+   *
+   * 이력 목록(헤더)에는 **참조가 하나도 없다** — 코드와 날짜뿐이라 복구할 이름이 없다.
+   * 이름을 내는 것은 그 아래 라인 표다.
    *
    * **일곱째 참조가 생기면 이 표에 먼저 줄을 더한다.**
    */
   const filterReferences = [warehouses, locations, items, lots];
   const listReferences = [uoms, partners];
+  const lineReferences = [items, lots, warehouses, locations, uoms];
 
   const retryFilterReferences = (): void => {
     for (const reference of filterReferences) reference.refetch();
@@ -386,6 +525,10 @@ export const StockStatusScreen = () => {
 
   const retryListReferences = (): void => {
     for (const reference of listReferences) reference.refetch();
+  };
+
+  const retryLineReferences = (): void => {
+    for (const reference of lineReferences) reference.refetch();
   };
 
   /**
@@ -502,6 +645,58 @@ export const StockStatusScreen = () => {
     );
   };
 
+  /**
+   * 이력 구획의 **아랫단** — 고른 거래의 라인. 넷 중 하나만 낸다.
+   *
+   * **라인 조회가 실패해도 위 이력 목록은 그대로 둔다.** 배너를 이 자리에만 내는 것이 그
+   * 규칙을 코드로 지키는 형태다 — 실패한 것은 고른 거래 한 벌뿐이다.
+   * 같은 이유로 이력 조회 실패는 LOT 상세와 잔액 목록을 가리지 않는다(각 구획이 자기 배너를 낸다).
+   */
+  const transactionLinePane = (scopeWarehouseId: number): ReactNode => {
+    if (selectedTransaction === null) {
+      return (
+        <EmptyState
+          size="sm"
+          title={t.history.empty.noSelectionTitle}
+          description={t.history.empty.noSelectionDescription}
+        />
+      );
+    }
+
+    if (transactionDetail.isError) {
+      return (
+        <LoadErrorBanner
+          error={transactionDetail.error}
+          onRetry={() => {
+            void transactionDetail.refetch();
+          }}
+        />
+      );
+    }
+
+    if (transactionDetail.data === undefined) {
+      return (
+        <div role="status" aria-label={t.loading.transactionLines}>
+          <SkeletonText lines={3} />
+        </div>
+      );
+    }
+
+    return (
+      <TransactionLineTable
+        lines={transactionDetail.data.lines}
+        /* **위치 이름을 풀 수 있는 범위**다 — 이 구획을 여는 자리(`historyScope`)가 정한다. */
+        scopeWarehouseId={scopeWarehouseId}
+        itemLookup={items}
+        lotLookup={lots}
+        warehouseLookup={warehouses}
+        locationLookup={locations}
+        uomLookup={uoms}
+        onRetryReferences={retryLineReferences}
+      />
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -545,6 +740,9 @@ export const StockStatusScreen = () => {
                 void list.refetch();
 
                 if (selectedLotId !== null) void lotDetail.refetch();
+                /* 이력도 같은 이유로 함께 부른다 — 기간이 없으면 부를 것이 없다. */
+                if (historyQuery !== null) void history.refetch();
+                if (selectedTransaction !== null) void transactionDetail.refetch();
               }}
             >
               {t.actions.refresh}
@@ -635,6 +833,53 @@ export const StockStatusScreen = () => {
       {view === 'lot' && !list.isError && (
         <section className="pane" aria-label={t.panes.detail}>
           {detailPane()}
+        </section>
+      )}
+
+      {/*
+       * **셋째 구획 — 고른 LOT을 골랐을 때만 낸다.** 이력은 「이 LOT이 언제 얼마나
+       * 움직였나」라는 물음이라 가리킬 LOT이 없으면 물음 자체가 성립하지 않는다.
+       * 상세 구획처럼 「고르세요」를 두지 않는 이유가 그것이다 — 그 안내는 위 구획이 이미 낸다.
+       *
+       * **상세가 실패해도 낸다.** 이력은 고른 LOT 번호에만 매달리고 상세 응답을 쓰지 않는다 —
+       * 한쪽이 실패했다고 다른 쪽을 감추면 사용자가 쓸 수 있는 것까지 잃는다.
+       */}
+      {historyScope !== null && !list.isError && (
+        <section className="pane" aria-label={t.panes.history}>
+          {/* 이력 조회 실패는 이 구획 안에만 낸다 — 위 목록과 LOT 상세를 가리지 않는다. */}
+          {history.isError && (
+            <LoadErrorBanner
+              error={history.error}
+              onRetry={() => {
+                void history.refetch();
+              }}
+            />
+          )}
+
+          {!history.isError && (
+            <TransactionPane
+              appliedPeriod={historyPeriod}
+              rows={historyRows}
+              isLoading={history.isPending && historyQuery !== null}
+              hasQuery={historyQuery !== null}
+              pageView={historyPageView}
+              selected={selectedTransaction}
+              onSearch={(nextPeriod) => {
+                applyHistory(nextPeriod);
+              }}
+              onToggleSelect={toggleSelectTransaction}
+              /* 이력 쪽 이동(수명 표 11행) — 기간은 그대로 두고 고른 거래를 비운다. */
+              onChangePage={(nextPage) => {
+                applyHistory(historyPeriod, nextPage);
+              }}
+            />
+          )}
+
+          {/*
+           * 라인은 이력 목록이 실패하면 낼 것이 없다 — 고를 줄이 화면에 없다.
+           * 반대 방향(라인 실패)은 위 이력 목록을 가리지 않는다.
+           */}
+          {!history.isError && transactionLinePane(historyScope.warehouseId)}
         </section>
       )}
     </>

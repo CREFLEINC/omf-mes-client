@@ -2433,6 +2433,8 @@ const stockStatus = {
      * 일이 된다.
      */
     detail: 'LOT 상세',
+    /** 상세와 나란한 셋째 구획이다. 같은 LOT을 다른 질문(언제 얼마나 움직였나)으로 본다. */
+    history: '수불 이력',
   },
   /** 보기 탭. 값은 주소 키 `view`와 같다. */
   views: {
@@ -2497,6 +2499,8 @@ const stockStatus = {
   loading: {
     balances: '재고 잔액을 불러오는 중',
     lotDetail: 'LOT 상세를 불러오는 중',
+    history: '수불 이력을 불러오는 중',
+    transactionLines: '거래 라인을 불러오는 중',
   },
   /** 잔액 표의 머리글. 열 구성과 폭의 근거는 screens/stock-status/balance-table.tsx에 있다. */
   table: {
@@ -2688,6 +2692,78 @@ const stockStatus = {
        */
       suspectMaterialPath:
         '의심자재 등록은 품질관리 > 의심자재 등록(W-03-03)에서 합니다. 이 화면은 조회만 합니다.',
+    },
+  },
+  /**
+   * 수불 이력 구획 — LOT 상세와 나란한 셋째 구획이다. 같은 LOT에 대한 다른 질문
+   * (「언제 얼마나 움직였나」)을 답한다.
+   *
+   * **기간을 성능 문제로 말하지 않는다.** 계약이 영업일 범위를 필수로 두어 기간 없이는
+   * 조회 자체가 불가능하다 — 「기간을 줄이면 빨라집니다」로 적으면 사용자가 비운 채 기다린다.
+   *
+   * **이 구획에는 선택칸이 없다**(계획 결정 14). 거래 유형·원천 전표 유형은 값 목록이
+   * 확정되지 않아 자리표시가 비고, 「조회해야 선택지가 생긴다」는 순환이 된다.
+   */
+  history: {
+    periodFrom: '영업일 시작',
+    periodTo: '영업일 종료',
+    /** 왜 기간이 필요한지와 기본값을 함께 밝힌다 — 둘 다 없으면 사용자가 빈 칸을 의심한다. */
+    periodNote:
+      '수불 원장은 영업일로 나뉘어 있어 기간이 있어야 조회할 수 있습니다. LOT을 고르면 최근 1개월이 채워집니다.',
+    table: {
+      businessDate: '영업일',
+      transactionNo: '거래 번호',
+      transactionType: '거래 유형',
+      sourceDocumentType: '원천 전표',
+      status: '상태',
+      /** 단말에서 행위가 일어난 시각이다. 서버가 받은 시각과 벌어질 수 있다. */
+      occurredAt: '발생 시각',
+      /** 고르면 그 거래의 라인이 아래에 열린다. 「상세」가 아니라 무엇이 열리는지 적는다. */
+      select: '라인',
+    },
+    /*
+     * 취소가 행을 지우지 않고 **역처리 행을 더한다**(계약). 그 사실만 표식으로 밝히고
+     * 대상 거래의 번호는 내지 않는다 — 이름을 풀 참조가 이 화면에 없다.
+     */
+    reversal: '역처리',
+    showLines: '보기',
+    hideLines: '닫기',
+    /* 접근 이름에 **거래 번호**를 넣는다 — 「보기」가 줄마다 되풀이되면 어느 거래인지 모른다. */
+    showLinesRow: (transactionNo: string): string => `${transactionNo} 라인 보기`,
+    hideLinesRow: (transactionNo: string): string => `${transactionNo} 라인 닫기`,
+    empty: {
+      /* 기간을 채우기 전에는 요청이 나가지 않는다 — 그것을 「없습니다」로 말하지 않는다. */
+      notQueriedTitle: '아직 조회하지 않았습니다',
+      notQueriedDescription: '영업일 범위를 채운 뒤 조회하세요.',
+      beyondLastTitle: '이 쪽에는 이력이 없습니다',
+      beyondLastDescription: '첫 쪽으로 이동하세요.',
+      noResultTitle: '이 기간에 움직인 기록이 없습니다',
+      noResultDescription: '영업일 범위를 넓힌 뒤 다시 조회하세요.',
+      noSelectionTitle: '고른 거래가 없습니다',
+      noSelectionDescription: '위 표에서 거래를 고르면 그 거래의 라인이 여기에 보입니다.',
+    },
+    lines: {
+      title: '거래 라인',
+      item: '품목',
+      lot: 'LOT',
+      qty: '수량',
+      uom: '단위',
+      fromWarehouse: '출발 창고',
+      fromLocation: '출발 위치',
+      toWarehouse: '도착 창고',
+      toLocation: '도착 위치',
+      /*
+       * **위치 이름은 조건 줄에서 고른 창고의 것만 풀 수 있다** — 계약이 위치 목록을
+       * 창고별로만 내려 준다. 다른 창고의 위치를 「알 수 없음」으로 적으면 *값이 잘못됐다*는
+       * 뜻이 되어 정반대로 읽히므로(#47), 풀 수 없는 이유를 그대로 적는다.
+       */
+      otherWarehouseLocation: '(다른 창고의 위치)',
+      scopeNote:
+        '위치 이름은 조건 줄에서 고른 창고의 것만 풀립니다. 다른 창고로 오간 라인은 위치 이름 대신 그 사실을 적습니다.',
+      emptyTitle: '이 거래에 라인이 없습니다',
+      /** 문구가 적은 대상과 「다시 시도」가 다시 부르는 대상이 같아야 한다. */
+      referencesFailed:
+        '품목·LOT·창고·위치·단위 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
     },
   },
   /** 조회 시점 스냅샷임을 밝힌다 — 집계는 언제나 이미 과거다. */

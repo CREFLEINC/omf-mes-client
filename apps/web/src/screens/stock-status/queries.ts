@@ -3,18 +3,24 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import type { BusinessPeriodQuery } from './business-period';
 import type { BalanceFilterQuery } from './filters';
 import type { SortQuery } from './sort';
 import {
   toBalanceView,
   toLotDetailView,
+  toTransactionDetailView,
+  toTransactionView,
   type BalanceListResult,
   type LotDetailView,
+  type TransactionDetailView,
+  type TransactionListResult,
+  type TransactionRef,
 } from './types';
 import type { GroupByQuery } from './view-axis';
 
 /**
- * 이 화면의 읽기 — 잔액 목록과 고른 LOT의 상세 둘이다.
+ * 이 화면의 읽기 — 잔액 목록 · 고른 LOT의 상세 · 그 LOT의 수불 이력 · 고른 거래의 라인 넷이다.
  *
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
  * 문자열 변수로 넘기면 타입 검사가 풀린다.
@@ -137,6 +143,104 @@ export const useLotDetail = (lotId: number | null): UseQueryResult<LotDetailView
       }
 
       return fetchLotDetail(client, lotId);
+    },
+  });
+};
+
+/**
+ * 수불 이력의 쿼리 전체.
+ *
+ * **영업일 범위가 이 타입에서 필수다** — 계약에서도 필수이고(빼면 `pnpm typecheck`가 잡는다),
+ * 목 서버는 기간 없이 부르면 400을 준다. 기간 없는 요청을 만들 수 있는 자리를 없애면
+ * 그 경로가 화면에서 열리지 않는다(`BalanceListQuery`의 `warehouseId`와 같은 갈래다).
+ *
+ * `lotId`도 필수다. 이 구획은 **고른 LOT의** 이력이라 좁히는 조건 없이 부를 자리가 없다 —
+ * 빼면 그 창고 전체의 이력이 와서 사용자가 고른 LOT과 무관한 줄을 읽는다.
+ */
+export type TransactionListQuery = BusinessPeriodQuery & {
+  lotId: number;
+  /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
+  page?: number;
+};
+
+export const transactionKeys = {
+  list: (query: TransactionListQuery | null) =>
+    ['stock-status-transactions', 'list', query] as const,
+  detail: (ref: TransactionRef | null) => ['stock-status-transactions', 'detail', ref] as const,
+};
+
+const fetchTransactions = async (
+  client: Client,
+  query: TransactionListQuery,
+): Promise<TransactionListResult> => {
+  const data = await runRequest(() => client.GET('/inventory/transactions', { params: { query } }));
+
+  return { items: data.items.map(toTransactionView), page: data.page };
+};
+
+/**
+ * 고른 LOT의 수불 이력.
+ *
+ * **영업일 범위가 없으면 부르지 않는다**(`query`가 `null`이다 — 계획 결정 14).
+ * 계약이 기간을 필수로 두는 것은 원장이 영업일로 나뉘어 저장되기 때문이며,
+ * **성능이 아니라 가능·불가능의 문제**다. 형식만 보고 통과시키면 400이 돌아와
+ * 사용자에게는 「조회가 늘 실패한다」로만 보인다 — 그래서 없는 날짜까지
+ * `business-period.ts`가 미리 가른다.
+ */
+export const useTransactionList = (
+  query: TransactionListQuery | null,
+): UseQueryResult<TransactionListResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: transactionKeys.list(query),
+    enabled: query !== null,
+    queryFn: () => {
+      if (query === null) {
+        throw new Error('영업일 범위가 없으면 수불 이력을 조회하지 않습니다.');
+      }
+
+      return fetchTransactions(client, query);
+    },
+  });
+};
+
+const fetchTransactionDetail = async (
+  client: Client,
+  ref: TransactionRef,
+): Promise<TransactionDetailView> => {
+  const data = await runRequest(() =>
+    client.GET('/inventory/transactions/{businessDate}/{inventoryTransactionId}', {
+      params: {
+        path: { businessDate: ref.businessDate, inventoryTransactionId: ref.transactionId },
+      },
+    }),
+  );
+
+  return toTransactionDetailView(data);
+};
+
+/**
+ * 고른 거래의 라인.
+ *
+ * **영업일이 경로 조각으로 함께 간다** — 계약이 영업일을 식별자의 일부로 두어(원장이
+ * 영업일로 나뉜다) 번호만으로는 행을 찾을 수 없다. 그래서 `TransactionRef`가 둘을 함께
+ * 나르고, 주소도 둘을 함께 담는다.
+ */
+export const useTransactionDetail = (
+  ref: TransactionRef | null,
+): UseQueryResult<TransactionDetailView> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: transactionKeys.detail(ref),
+    enabled: ref !== null,
+    queryFn: () => {
+      if (ref === null) {
+        throw new Error('거래를 고르기 전에는 라인을 조회하지 않습니다.');
+      }
+
+      return fetchTransactionDetail(client, ref);
     },
   });
 };

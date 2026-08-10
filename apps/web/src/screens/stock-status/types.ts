@@ -14,6 +14,9 @@ import type { components } from '@omf-mes/api-client';
 
 type InventoryBalanceResponse = components['schemas']['InventoryBalance'];
 type LotDetailResponse = components['schemas']['LotDetailResponse'];
+type InventoryTransactionResponse = components['schemas']['InventoryTransaction'];
+type InventoryTransactionDetailResponse =
+  components['schemas']['InventoryTransactionDetailResponse'];
 
 export type PageMeta = components['schemas']['PageMeta'];
 
@@ -99,10 +102,11 @@ export const toBalanceView = (data: InventoryBalanceResponse): BalanceView => ({
  * 여기서 나온 값은 React key와 그룹 키로만 쓰이며 **셀 텍스트가 되지 않는다** —
  * 표시되는 값으로 옮기는 자리를 두지 않는 것이 #44를 구조로 막는 형태다.
  *
- * **번호를 문자열로 만드는 자리가 이 슬라이스에 셋 있고 전부 표의 행 키다** — 잔액 줄(여기),
- * 보류(`lot-hold-table.tsx`), 외부 식별자(`lot-detail-pane.tsx`). 뒤 둘은 키가 한 조각뿐이라
- * 이 함수를 거치지 않는다. **셋 중 어느 것도 렌더되지 않는다는 것이 규칙**이고, 표기 경로에
- * 번호를 담는 자리는 하나도 없다.
+ * **번호를 문자열로 만드는 자리가 이 슬라이스에 다섯 있고 전부 표의 행 키다** — 잔액 줄(여기),
+ * 보류(`lot-hold-table.tsx`), 외부 식별자(`lot-detail-pane.tsx`), 수불 이력 줄
+ * (`transaction-pane.tsx` — 영업일과 번호를 잇는다), 거래 라인(`transaction-line-table.tsx`).
+ * 뒤 넷은 키가 한두 조각뿐이라 이 함수를 거치지 않는다.
+ * **다섯 중 어느 것도 렌더되지 않는다는 것이 규칙**이고, 표기 경로에 번호를 담는 자리는 없다.
  */
 const toIdentityKey = (value: string | number | null): string =>
   value === null ? '-' : String(value);
@@ -233,6 +237,107 @@ export const toLotDetailView = (data: LotDetailResponse): LotDetailView => ({
     uomId: hold.uomId ?? null,
     releaseCondition: hold.releaseCondition ?? null,
     remarks: hold.remarks ?? null,
+  })),
+});
+
+/**
+ * 수불 이력 한 줄 — **헤더다.** 계약이 수량·품목·창고를 헤더에 담지 않는다.
+ *
+ * **번호로만 이어진 필드를 옮기지 않는다** — `plantId`·`sourceDocumentId`·
+ * `reversalOfTransactionId`가 그렇다. 담을 자리가 없으면 화면으로 샐 경로도 없다(#44).
+ * 특히 `sourceDocumentId`는 원천 전표를 가리키지만 그 이름을 풀 참조가 이 화면에 없다 —
+ * 「어느 전표에서 왔는가」는 전표 화면의 질문이다.
+ */
+export interface TransactionView {
+  inventoryTransactionId: number;
+  /** **식별자의 일부다** — 이 값 없이는 상세를 부를 수 없다(경로 조각 둘 중 하나). */
+  businessDate: string;
+  transactionNo: string;
+  transactionTypeCode: string;
+  sourceDocumentTypeCode: string;
+  statusCode: string;
+  /** 단말에서 행위가 일어난 시각. 서버가 받은 시각(`recordedAt`)과 벌어질 수 있다. */
+  occurredAt: string;
+  /**
+   * 역처리 거래인가. **대상 거래의 번호를 담지 않는다**(#44) — 그 번호를 이름으로 풀 참조가
+   * 이 화면에 없고, 취소가 행을 지우지 않고 역처리 행을 더한다는 사실만 알면 목록을 읽을 수 있다.
+   */
+  isReversal: boolean;
+}
+
+/** 수불 이력 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toTransactionView = (data: InventoryTransactionResponse): TransactionView => ({
+  inventoryTransactionId: data.inventoryTransactionId,
+  businessDate: data.businessDate,
+  transactionNo: data.transactionNo,
+  transactionTypeCode: data.transactionTypeCode,
+  sourceDocumentTypeCode: data.sourceDocumentTypeCode,
+  statusCode: data.statusCode,
+  occurredAt: data.occurredAt,
+  /* 번호가 아니라 **있다·없다**만 옮긴다 — 이 자리에서 번호를 버려야 아래로 새지 않는다. */
+  isReversal: (data.reversalOfTransactionId ?? null) !== null,
+});
+
+/** 이력 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */
+export interface TransactionListResult {
+  items: TransactionView[];
+  page: PageMeta;
+}
+
+/**
+ * 고른 거래를 가리키는 것. **영업일과 번호가 함께여야 한다** —
+ * 계약이 영업일을 식별자의 일부로 두어(원장이 영업일로 나뉜다) 번호만으로는 행을 찾을 수 없다.
+ */
+export interface TransactionRef {
+  businessDate: string;
+  transactionId: number;
+}
+
+/**
+ * 거래 라인 한 줄 — **수량이 여기 있다.** 헤더에는 없다.
+ *
+ * 옮기지 않는 것: 이동 전후의 품질·재고 상태 코드, 이 거래 직후의 잔액
+ * (`fromQtyAfterTransaction`·`toQtyAfterTransaction`), 소유·핸들링 유닛.
+ * 이번 화면이 답하는 질문은 「언제 얼마나 어디서 어디로 움직였나」이고, 상태와 시점 잔액은
+ * 그 질문의 다음 질문이다 — 열을 늘리면 축 열(품목)이 짓눌린다.
+ */
+export interface TransactionLineView {
+  inventoryTransactionLineId: number;
+  lineNo: number;
+  itemId: number;
+  /** 라인이 LOT을 가리키지 않을 수 있다(LOT 관리 대상이 아닌 품목). */
+  lotId: number | null;
+  qty: number;
+  uomId: number;
+  /** 입고 라인에는 출발지가 없다 — 비는 것이 정상이다. */
+  fromWarehouseId: number | null;
+  fromLocationId: number | null;
+  /** 출고 라인에는 도착지가 없다. */
+  toWarehouseId: number | null;
+  toLocationId: number | null;
+}
+
+export interface TransactionDetailView {
+  transaction: TransactionView;
+  lines: TransactionLineView[];
+}
+
+/** 거래 상세 응답을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toTransactionDetailView = (
+  data: InventoryTransactionDetailResponse,
+): TransactionDetailView => ({
+  transaction: toTransactionView(data.inventoryTransaction),
+  lines: data.lines.map((line) => ({
+    inventoryTransactionLineId: line.inventoryTransactionLineId,
+    lineNo: line.lineNo,
+    itemId: line.itemId,
+    lotId: line.lotId ?? null,
+    qty: line.qty,
+    uomId: line.uomId,
+    fromWarehouseId: line.fromWarehouseId ?? null,
+    fromLocationId: line.fromLocationId ?? null,
+    toWarehouseId: line.toWarehouseId ?? null,
+    toLocationId: line.toLocationId ?? null,
   })),
 });
 

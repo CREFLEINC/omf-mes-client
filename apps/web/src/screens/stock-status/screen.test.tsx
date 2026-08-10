@@ -1,5 +1,6 @@
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -11,6 +12,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { defaultBusinessPeriod } from './business-period';
 import {
   expiredLotDetail,
   heldLotDetail,
@@ -22,6 +24,8 @@ import {
   lotViewFixtures,
   partnerFixtures,
   plainLotDetail,
+  transactionDetailResponse,
+  transactionResponseFixtures,
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
@@ -39,6 +43,7 @@ const LOTS_PATH = '/trace/lots';
 const UOMS_PATH = '/mdm/uoms';
 const PARTNERS_PATH = '/mdm/partners';
 const LOT_DETAIL_PATH = '/trace/lots/9401';
+const TRANSACTIONS_PATH = '/inventory/transactions';
 
 /** 창고가 걸린 주소. 이 화면은 창고 없이는 조회하지 않으므로 대부분의 검사가 여기서 시작한다. */
 const WITH_WAREHOUSE = '?wh=9101';
@@ -171,6 +176,63 @@ const failingLotDetailRoute = (status = 500): StubRoute => ({
   match: (request) => request.method === 'GET' && isLotDetailPath(new URL(request.url).pathname),
   respond: () => jsonResponse({ message: '' }, { status }),
 });
+
+/** 스텁이 응답할 거래 상세 경로. 목록(`/inventory/transactions`)과 갈라야 한다. */
+const isTransactionDetailPath = (pathname: string): boolean =>
+  /^\/inventory\/transactions\/[^/]+\/[^/]+$/.test(pathname);
+
+/**
+ * 상세 경로로 **나간 요청 전부**. 번호·영업일 자리가 무엇이든 센다 —
+ * `/inventory/transactions/undefined/0` 같은 잘못된 경로도
+ * 「부르지 않았다」를 깨뜨리는 요청이다.
+ */
+const transactionDetailRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => isTransactionDetailPath(request.url.pathname));
+
+const historyRoute = (
+  page?: Partial<{ page: number; size: number; total: number }>,
+): StubRoute => ({
+  match: (request) => isGet(request, TRANSACTIONS_PATH),
+  respond: () => jsonResponse(listBody(transactionResponseFixtures, page)),
+});
+
+const emptyHistoryRoute = (): StubRoute => ({
+  match: (request) => isGet(request, TRANSACTIONS_PATH),
+  respond: () => jsonResponse(listBody([])),
+});
+
+const failingHistoryRoute = (status = 500): StubRoute => ({
+  match: (request) => isGet(request, TRANSACTIONS_PATH),
+  respond: () => jsonResponse({ message: '' }, { status }),
+});
+
+/**
+ * 거래 상세. **어느 영업일·번호로 불러도 응답한다** — 「부르지 않았다」를 증명하려면
+ * 부를 수 있는 스텁이 있어야 한다(계획 §12-6).
+ *
+ * **계약 모양의 본문을 준다.** 이 응답은 화면 타입과 키 이름이 달라
+ * (`inventoryTransaction` ↔ `transaction`) 화면 타입을 그대로 주면 스텁이 계약과
+ * 다른 것을 말한다 — 변환이 통째로 검사되지 않은 채 통과한다.
+ */
+const transactionDetailRoute = (
+  detail: components['schemas']['InventoryTransactionDetailResponse'],
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' && isTransactionDetailPath(new URL(request.url).pathname),
+  respond: () => jsonResponse(detail),
+});
+
+const failingTransactionDetailRoute = (status = 500): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' && isTransactionDetailPath(new URL(request.url).pathname),
+  respond: () => jsonResponse({ message: '' }, { status }),
+});
+
+/** 이력 구획이 부르는 둘. LOT을 고르면 기간이 함께 채워져 곧바로 나간다. */
+const historyRoutes = (): StubRoute[] => [
+  historyRoute(),
+  transactionDetailRoute(transactionDetailResponse()),
+];
 
 /** 유효기한 표식은 「오늘」에 매인다 — 화면과 픽스처가 같은 날을 본다. */
 const TODAY = new Date();
@@ -1668,7 +1730,7 @@ describe('StockStatusScreen — LOT 고르기', () => {
 
   it('고르면 주소에 sel이 붙고 상세를 1회 부른다', async () => {
     const { requests, user } = renderScreen(
-      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
       LOT_VIEW,
     );
 
@@ -1689,7 +1751,7 @@ describe('StockStatusScreen — LOT 고르기', () => {
    */
   it('다시 그려도 상세 요청이 늘지 않는다', async () => {
     const { requests, user } = renderScreen(
-      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
       LOT_VIEW,
     );
 
@@ -1711,7 +1773,12 @@ describe('StockStatusScreen — LOT 고르기', () => {
    */
   it('고르기가 쪽·조건·보기·정렬을 바꾸지 않는다', async () => {
     const { requests, user } = renderScreen(
-      [balanceRoute({ total: 300 }), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      [
+        balanceRoute({ total: 300 }),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        ...historyRoutes(),
+        ...lookupRoutes(),
+      ],
       `${LOT_VIEW}&sort=onHandQty&page=3`,
     );
 
@@ -1735,7 +1802,7 @@ describe('StockStatusScreen — LOT 고르기', () => {
 
   it('다시 누르면 선택이 풀리고 구획이 되돌아간다', async () => {
     const { user } = renderScreen(
-      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
       LOT_VIEW,
     );
 
@@ -1755,7 +1822,7 @@ describe('StockStatusScreen — LOT 고르기', () => {
   /* 보기를 바꾸면 고른 LOT이 새 결과에 없다 — 수명 표 1행이 `sel`을 함께 비운다. */
   it('보기를 바꾸면 상세 구획이 사라진다', async () => {
     const { user } = renderScreen(
-      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...lookupRoutes()],
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
       LOT_VIEW,
     );
 
@@ -2018,5 +2085,642 @@ describe('StockStatusScreen — 상세 조회 실패', () => {
     await screen.findByRole('button', { name: messages.common.retry });
 
     expect(screen.queryByRole('region', { name: t.panes.detail })).not.toBeInTheDocument();
+  });
+});
+
+/** 이력 구획을 여는 주소 — LOT을 고른 상태에 기간이 채워져 있다. */
+const WITH_HISTORY = `${LOT_VIEW}&sel=9401&hfrom=2026-07-10&hto=2026-08-10`;
+
+const historyPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.history });
+
+const historyRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requestsTo(requests, TRANSACTIONS_PATH);
+
+/** 이력 목록의 표. 잔액 표·보류 표·라인 표와 갈라야 한다. */
+const historyTable = (): HTMLElement =>
+  within(historyPane()).getByRole('table', { name: t.panes.history });
+
+const openFirstTransaction = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(
+    await screen.findByRole('button', { name: t.history.showLinesRow('SAMPLE-IT-0001') }),
+  );
+};
+
+describe('StockStatusScreen — 이력 기간의 수명', () => {
+  /*
+   * **LOT을 고르면 기간이 채워진다**(수명 표 6행 · C51). 영업일 범위 없이는 이력을 부를 수
+   * 없으므로, 비워 두면 LOT을 고를 때마다 사용자가 두 칸을 손으로 채워야 한다.
+   */
+  it('LOT을 고르면 주소에 최근 1개월이 채워지고 이력을 1회 부른다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      LOT_VIEW,
+    );
+
+    await selectFirstLot(user);
+
+    await waitFor(() => {
+      expect(historyRequests(requests)).toHaveLength(1);
+    });
+
+    const expected = defaultBusinessPeriod(new Date());
+    const query = lastQuery(requests, TRANSACTIONS_PATH);
+
+    expect(currentLocation()).toContain(`hfrom=${expected.from}`);
+    expect(currentLocation()).toContain(`hto=${expected.to}`);
+    expect(query?.get('businessDateFrom')).toBe(expected.from);
+    expect(query?.get('businessDateTo')).toBe(expected.to);
+  });
+
+  /* **이력이 고른 LOT으로 좁혀진다** — 빼면 그 창고 전체의 이력이 와서 무관한 줄을 읽는다. */
+  it('이력 요청에 고른 LOT이 실린다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await screen.findByRole('region', { name: t.panes.history });
+
+    await waitFor(() => {
+      expect(historyRequests(requests)).toHaveLength(1);
+    });
+
+    expect(lastQuery(requests, TRANSACTIONS_PATH)?.get('lotId')).toBe('9401');
+  });
+
+  /* 기본값을 실으면 같은 조회의 요청 URL이 두 가지가 된다. */
+  it('첫 쪽과 크기를 싣지 않는다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await waitFor(() => {
+      expect(historyRequests(requests)).toHaveLength(1);
+    });
+
+    const query = lastQuery(requests, TRANSACTIONS_PATH);
+
+    expect(query?.has('page')).toBe(false);
+    expect(query?.has('size')).toBe(false);
+  });
+
+  /*
+   * **기간이 없으면 요청을 만들지 않는다**(계획 결정 14 · C52). 계약이 기간을 필수로 두어
+   * 빼면 400이다 — 성능이 아니라 가능·불가능의 문제다.
+   */
+  it('기간이 없으면 이력을 부르지 않고 「아직 조회하지 않았다」를 낸다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    await screen.findByText(t.history.empty.notQueriedTitle);
+
+    expect(historyRequests(requests)).toHaveLength(0);
+    /* 실패도 결과 없음도 아니다 — 셋을 뭉개면 안내가 시키는 조치가 원인과 어긋난다. */
+    expect(screen.queryByText(t.history.empty.noResultTitle)).not.toBeInTheDocument();
+    expect(within(historyPane()).getByText(t.reasons.historyNeedsPeriod)).toBeInTheDocument();
+  });
+
+  /*
+   * **자릿수만 보면 안 된다**(C52). `2026-02-31`은 형식이 맞지만 없는 날짜라, 통과시키면
+   * 그대로 요청에 실려 400이 돌아온다 — 사용자에게는 「조회가 늘 실패한다」로만 보인다.
+   */
+  it('없는 날짜로는 이력을 부르지 않는다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401&hfrom=2026-02-31&hto=2026-08-10`,
+    );
+
+    await screen.findByText(t.history.empty.notQueriedTitle);
+
+    expect(historyRequests(requests)).toHaveLength(0);
+    expect(within(historyPane()).getByText(t.reasons.historyNeedsPeriod)).toBeInTheDocument();
+  });
+
+  /* **둘 다 필수다** — W-01-09와 다르다(그 화면은 한쪽만으로도 조회한다). */
+  it('한쪽 날짜만 채운 기간으로는 이력을 부르지 않는다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401&hfrom=2026-07-10`,
+    );
+
+    await screen.findByText(t.history.empty.notQueriedTitle);
+
+    expect(historyRequests(requests)).toHaveLength(0);
+  });
+
+  it('뒤집힌 기간으로는 이력을 부르지 않고 다른 사유를 낸다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401&hfrom=2026-08-10&hto=2026-07-10`,
+    );
+
+    await screen.findByText(t.history.empty.notQueriedTitle);
+
+    expect(historyRequests(requests)).toHaveLength(0);
+    expect(within(historyPane()).getByText(t.reasons.historyPeriodReversed)).toBeInTheDocument();
+  });
+
+  /*
+   * **이력은 고른 LOT에 매달린다.** 읽는 자리에서 그렇게 판정하지 않으면 `sel` 없는 주소에서
+   * 이력을 한 번 부르고 나서 구획도 없이 버린다 — 사용자에게는 아무 일도 없는데 요청만 는다.
+   */
+  it('고른 LOT이 없으면 기간이 있어도 이력을 부르지 않는다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      `${LOT_VIEW}&hfrom=2026-07-10&hto=2026-08-10`,
+    );
+
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    expect(historyRequests(requests)).toHaveLength(0);
+    expect(screen.queryByRole('region', { name: t.panes.history })).not.toBeInTheDocument();
+  });
+
+  /*
+   * **이력 조건은 잔액 조건을 건드리지 않는다**(수명 표 9행). 기간을 바꿔 조회해도
+   * 보기·조건·정렬·쪽이 그대로여야 사용자가 보던 목록이 유지된다.
+   */
+  it('기간을 바꿔 조회하면 주소와 요청이 함께 바뀌고 잔액 조건은 그대로다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        balanceRoute({ total: 300 }),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        ...historyRoutes(),
+        ...lookupRoutes(),
+      ],
+      `${WITH_HISTORY}&sort=onHandQty&page=3`,
+    );
+
+    await screen.findByRole('region', { name: t.panes.history });
+
+    const balanceBefore = requestsTo(requests, BALANCES_PATH).length;
+
+    await user.clear(screen.getByLabelText(t.history.periodFrom));
+    await user.type(screen.getByLabelText(t.history.periodFrom), '2026-05-01');
+    await user.click(within(historyPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(lastQuery(requests, TRANSACTIONS_PATH)?.get('businessDateFrom')).toBe('2026-05-01');
+    });
+
+    expect(currentLocation()).toContain('hfrom=2026-05-01');
+    expect(currentLocation()).toContain('sort=onHandQty');
+    expect(currentLocation()).toContain('page=3');
+    expect(currentLocation()).toContain('sel=9401');
+    /* 잔액 조회는 다시 나가지 않는다 — 그 조건이 하나도 바뀌지 않았다. */
+    expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(balanceBefore);
+  });
+});
+
+describe('StockStatusScreen — 이력 쪽과 고른 거래', () => {
+  /*
+   * **영업일과 번호가 함께 경로에 실린다**(C57). 계약이 영업일을 식별자의 일부로 두어
+   * 번호만으로는 행을 찾을 수 없다.
+   */
+  it('거래를 고르면 영업일과 번호가 경로에 실려 1회 부른다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await openFirstTransaction(user);
+
+    await waitFor(() => {
+      expect(transactionDetailRequests(requests)).toHaveLength(1);
+    });
+
+    expect(transactionDetailRequests(requests)[0]?.url.pathname).toBe(
+      '/inventory/transactions/2026-08-06/9901',
+    );
+    expect(currentLocation()).toContain('tx=2026-08-06%3A9901');
+  });
+
+  /* 짝 방향 — 다른 영업일의 줄을 고르면 그 영업일이 실린다(번호만 실어도 통과하는 것을 막는다). */
+  it('다른 영업일의 거래를 고르면 그 영업일이 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: t.history.showLinesRow('SAMPLE-IT-0002') }),
+    );
+
+    await waitFor(() => {
+      expect(transactionDetailRequests(requests)).toHaveLength(1);
+    });
+
+    expect(transactionDetailRequests(requests)[0]?.url.pathname).toBe(
+      '/inventory/transactions/2026-08-07/9902',
+    );
+  });
+
+  /* 고르기 전에는 부를 대상이 없다 — 화면에 들어온 것만으로 생기는 조회가 아니다. */
+  it('고르기 전에는 라인을 부르지 않고 「고른 거래가 없습니다」를 낸다', async () => {
+    const { requests } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await screen.findByText(t.history.empty.noSelectionTitle);
+
+    expect(transactionDetailRequests(requests)).toHaveLength(0);
+  });
+
+  it('다시 누르면 선택이 풀리고 라인 표가 사라진다', async () => {
+    const { user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await openFirstTransaction(user);
+
+    await screen.findByText(t.history.lines.scopeNote);
+
+    await user.click(
+      screen.getByRole('button', { name: t.history.hideLinesRow('SAMPLE-IT-0001') }),
+    );
+
+    await screen.findByText(t.history.empty.noSelectionTitle);
+
+    expect(currentLocation()).not.toContain('tx=');
+  });
+
+  /*
+   * **이력 쪽 이동이 고른 거래를 비운다**(수명 표 11행 · C59). 남기면 아래 라인 표가
+   * 위에 보이지 않는 거래를 가리킨 채 열려 있다.
+   */
+  it('이력 쪽을 옮기면 고른 거래가 풀리고 잔액 쪽은 그대로다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        balanceRoute({ total: 300 }),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        historyRoute({ total: 120 }),
+        transactionDetailRoute(transactionDetailResponse()),
+        ...lookupRoutes(),
+      ],
+      `${WITH_HISTORY}&page=3`,
+    );
+
+    await openFirstTransaction(user);
+
+    await screen.findByText(t.history.lines.scopeNote);
+
+    await user.click(within(historyPane()).getByRole('button', { name: t.actions.nextPage }));
+
+    await waitFor(() => {
+      expect(lastQuery(requests, TRANSACTIONS_PATH)?.get('page')).toBe('2');
+    });
+
+    expect(currentLocation()).toContain('hpage=2');
+    expect(currentLocation()).not.toContain('tx=');
+    /* 잔액 쪽은 이력 쪽과 다른 조회다 — 함께 움직이지 않는다. */
+    expect(currentLocation()).toContain('page=3');
+  });
+
+  /* 기간을 바꾸면 그 거래가 새 목록에 없을 수 있다(수명 표 9행). */
+  it('기간을 바꿔 조회하면 고른 거래가 풀린다', async () => {
+    const { user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await openFirstTransaction(user);
+
+    await screen.findByText(t.history.lines.scopeNote);
+
+    await user.clear(screen.getByLabelText(t.history.periodTo));
+    await user.type(screen.getByLabelText(t.history.periodTo), '2026-08-20');
+    await user.click(within(historyPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('tx=');
+    });
+
+    expect(screen.getByText(t.history.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
+  /* 주소는 손으로 고쳐지는 자리다 — 반쪽짜리 식별자로 경로를 만들지 않는다. */
+  it('깨진 tx로는 라인을 부르지 않는다', async () => {
+    for (const broken of ['abc', '2026-02-31%3A9901', '2026-08-06%3A0', '9901']) {
+      const { requests } = renderScreen(
+        [
+          balanceRoute(),
+          lotDetailRoute(heldLotDetail(TODAY)),
+          ...historyRoutes(),
+          ...lookupRoutes(),
+        ],
+        `${WITH_HISTORY}&tx=${broken}`,
+      );
+
+      await screen.findAllByText(t.history.empty.noSelectionTitle);
+
+      expect(transactionDetailRequests(requests)).toHaveLength(0);
+      cleanup();
+    }
+  });
+});
+
+describe('StockStatusScreen — 이력의 빈 상태와 실패', () => {
+  /* 조회했는데 0건인 것과 조회하지 않은 것은 다르다 — 사용자가 할 조치가 다르다. */
+  it('이력이 0건이면 「기록이 없다」이고 미조회가 아니다', async () => {
+    renderScreen(
+      [
+        balanceRoute(),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        emptyHistoryRoute(),
+        transactionDetailRoute(transactionDetailResponse()),
+        ...lookupRoutes(),
+      ],
+      WITH_HISTORY,
+    );
+
+    await screen.findByText(t.history.empty.noResultTitle);
+
+    expect(screen.queryByText(t.history.empty.notQueriedTitle)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **이력이 실패해도 위 두 구획은 그대로 보인다**(C60). 실패한 것은 이력 한 벌뿐인데
+   * 화면 전체를 덮으면 사용자가 목록과 상세까지 못 쓰게 된다.
+   */
+  it('이력 실패가 LOT 상세와 잔액 목록을 가리지 않는다', async () => {
+    renderScreen(
+      [
+        balanceRoute(),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        failingHistoryRoute(),
+        transactionDetailRoute(transactionDetailResponse()),
+        ...lookupRoutes(),
+      ],
+      WITH_HISTORY,
+    );
+
+    const retry = await within(historyPane()).findByRole('button', {
+      name: messages.common.retry,
+    });
+
+    expect(historyPane()).toContainElement(retry);
+    /* 위 두 구획이 여전히 그려져 있다. */
+    expect(screen.getByText(t.detail.quantitiesNote)).toBeInTheDocument();
+    expect(
+      within(within(listPane()).getByRole('table')).getAllByText('SAMPLE-LOT-0001').length,
+    ).toBeGreaterThan(0);
+  });
+
+  /* 실패를 「없습니다」로 말하지 않는다 — 자료가 없는 줄 알고 기간을 넓히게 된다. */
+  it('이력 실패를 빈 상태로 말하지 않는다', async () => {
+    renderScreen(
+      [
+        balanceRoute(),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        failingHistoryRoute(),
+        transactionDetailRoute(transactionDetailResponse()),
+        ...lookupRoutes(),
+      ],
+      WITH_HISTORY,
+    );
+
+    await within(historyPane()).findByRole('button', { name: messages.common.retry });
+
+    expect(screen.queryByText(t.history.empty.noResultTitle)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.history.empty.notQueriedTitle)).not.toBeInTheDocument();
+  });
+
+  /* 권한이 없으면 다시 시도가 사용자가 할 수 있는 조치가 아니다. */
+  it('이력에 권한이 없으면 다시 시도를 내지 않는다', async () => {
+    renderScreen(
+      [
+        balanceRoute(),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        failingHistoryRoute(403),
+        transactionDetailRoute(transactionDetailResponse()),
+        ...lookupRoutes(),
+      ],
+      WITH_HISTORY,
+    );
+
+    const pane = within(await screen.findByRole('region', { name: t.panes.history }));
+
+    expect(await pane.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(pane.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  /*
+   * **라인이 실패해도 위 이력 목록은 그대로 보인다.** 실패한 것은 고른 거래 한 벌뿐이다 —
+   * 반대 방향(이력 실패가 상세를 가리지 않는다)과 짝을 이룬다.
+   */
+  it('라인 실패가 이력 목록을 가리지 않는다', async () => {
+    const { user } = renderScreen(
+      [
+        balanceRoute(),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        historyRoute(),
+        failingTransactionDetailRoute(),
+        ...lookupRoutes(),
+      ],
+      WITH_HISTORY,
+    );
+
+    await openFirstTransaction(user);
+
+    await within(historyPane()).findByRole('button', { name: messages.common.retry });
+
+    expect(within(historyTable()).getByText('SAMPLE-IT-0001')).toBeInTheDocument();
+    expect(screen.queryByText(t.history.empty.noSelectionTitle)).not.toBeInTheDocument();
+  });
+
+  /* 목록이 실패하면 고를 LOT이 없다 — 이력 구획도 낼 것이 없다. */
+  it('잔액 목록이 실패하면 이력 구획을 내지 않는다', async () => {
+    renderScreen(
+      [
+        failingBalanceRoute(500),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        ...historyRoutes(),
+        ...lookupRoutes(),
+      ],
+      WITH_HISTORY,
+    );
+
+    await screen.findByRole('button', { name: messages.common.retry });
+
+    expect(screen.queryByRole('region', { name: t.panes.history })).not.toBeInTheDocument();
+  });
+});
+
+describe('StockStatusScreen — 이력과 다른 구획의 관계', () => {
+  /*
+   * **새로고침은 화면이 보고 있는 것 전부를 다시 부른다**(수명 표 8행). 이력만 낡은 채로
+   * 두면 그 위의 「기준 {시각}」이 화면 일부에 대해 거짓이 된다.
+   */
+  it('새로고침이 이력과 라인도 다시 부르고 주소를 바꾸지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await openFirstTransaction(user);
+
+    await screen.findByText(t.history.lines.scopeNote);
+
+    const historyBefore = historyRequests(requests).length;
+    const lineBefore = transactionDetailRequests(requests).length;
+    const before = currentLocation();
+
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    await waitFor(() => {
+      expect(transactionDetailRequests(requests).length).toBeGreaterThan(lineBefore);
+    });
+
+    expect(historyRequests(requests).length).toBeGreaterThan(historyBefore);
+    expect(currentLocation()).toBe(before);
+  });
+
+  /*
+   * 짝 방향 — **기간이 없으면 이력을 부를 대상이 없다.** 이 단언이 없으면 「전부 다시 부른다」가
+   * 「아무 때나 부른다」로 넓어져도 드러나지 않는다.
+   */
+  it('기간이 없으면 새로고침이 이력을 부르지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      `${LOT_VIEW}&sel=9401`,
+    );
+
+    await screen.findByText(t.history.empty.notQueriedTitle);
+
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, BALANCES_PATH).length).toBeGreaterThan(1);
+    });
+
+    expect(historyRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * **보기·조건·정렬·쪽이 바뀌면 이력 키도 함께 사라진다**(수명 표 1~5행).
+   * `toSearchParams`가 그 키들을 만들지 않는 한 가지로 다섯 행이 함께 지켜진다.
+   */
+  it('보기를 바꾸면 이력 기간과 고른 거래가 주소에서 사라진다', async () => {
+    const { user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await openFirstTransaction(user);
+
+    await screen.findByText(t.history.lines.scopeNote);
+
+    await user.click(screen.getByRole('tab', { name: t.views.item }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('hfrom=');
+    });
+
+    expect(currentLocation()).not.toContain('hto=');
+    expect(currentLocation()).not.toContain('tx=');
+    expect(currentLocation()).not.toContain('sel=');
+    expect(screen.queryByRole('region', { name: t.panes.history })).not.toBeInTheDocument();
+  });
+
+  /* 잔액 조건을 바꿔 조회할 때도 같다 — 새 결과에 그 LOT이 있다는 보장이 없다. */
+  it('잔액 조건을 바꿔 조회하면 이력 키가 함께 사라진다', async () => {
+    const { user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await screen.findByRole('region', { name: t.panes.history });
+
+    await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('sel=');
+    });
+
+    expect(currentLocation()).not.toContain('hfrom=');
+    expect(currentLocation()).not.toContain('tx=');
+  });
+
+  /*
+   * **고른 LOT에 매달린 키를 함께 뗀다**(수명 표 7행). `sel`만 지우면 아무도 읽지 않는
+   * 상태가 주소에 남는다 — 이 저장소가 반복해 없애 온 형태다.
+   */
+  it('결과에 없는 LOT으로 바뀌면 이력 키도 함께 사라진다', async () => {
+    const { user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+      'wh=9101&view=lot&item=9301&sel=9999&hfrom=2026-07-10&hto=2026-08-10&tx=2026-08-06%3A9901',
+    );
+
+    await screen.findByRole('region', { name: t.panes.history });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('sel=');
+    });
+
+    expect(currentLocation()).not.toContain('hfrom=');
+    expect(currentLocation()).not.toContain('hto=');
+    expect(currentLocation()).not.toContain('tx=');
+  });
+
+  /* 이 화면은 조회 전용이다 — 이력 구획을 열어도 쓰기가 하나도 없다. */
+  it('이력과 라인을 열어도 쓰기 요청이 없다', async () => {
+    const { requests, user } = renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await openFirstTransaction(user);
+
+    await screen.findByText(t.history.lines.scopeNote);
+
+    expect(requests.every((request) => request.method === 'GET')).toBe(true);
+  });
+
+  /*
+   * **라인 표의 참조 복구는 그 표가 이름을 내는 다섯을 부른다**(계획 결정 9).
+   * 문구가 적은 대상과 다시 부르는 대상이 어긋나면 눌러도 한쪽은 실패인 채로 남는다.
+   */
+  it('라인 표의 다시 시도가 품목·LOT·창고·위치·단위를 함께 다시 부른다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        balanceRoute(),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        ...historyRoutes(),
+        failingLookupRoute(UOMS_PATH),
+        ...lookupRoutes(),
+      ],
+      WITH_HISTORY,
+    );
+
+    await openFirstTransaction(user);
+
+    await screen.findByText(t.history.lines.referencesFailed);
+
+    const before = [ITEMS_PATH, LOTS_PATH, WAREHOUSES_PATH, LOCATIONS_PATH, UOMS_PATH].map(
+      (path) => requestsTo(requests, path).length,
+    );
+
+    await user.click(within(historyPane()).getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, UOMS_PATH).length).toBeGreaterThan(before[4] ?? 0);
+    });
+
+    for (const [index, path] of [
+      ITEMS_PATH,
+      LOTS_PATH,
+      WAREHOUSES_PATH,
+      LOCATIONS_PATH,
+    ].entries()) {
+      expect(requestsTo(requests, path).length).toBeGreaterThan(before[index] ?? 0);
+    }
   });
 });

@@ -1,5 +1,7 @@
+import type { components } from '@omf-mes/api-client';
+
 import { EXPIRY_SOON_DAYS } from './expiry';
-import type { BalanceView, LotDetailView } from './types';
+import type { BalanceView, LotDetailView, TransactionDetailView, TransactionView } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -11,8 +13,8 @@ import type { BalanceView, LotDetailView } from './types';
  *
  * **내부 번호(FK)는 서로 겹치지 않는 대역으로 나눈다** — 9100대(창고) · 9200대(위치) ·
  * 9300대(품목) · 9400대(LOT) · 9500대(단위) · 9600대(거래처) · 9700대(보류) ·
- * 9800대(외부 식별자). 「표 어디에도 내부 번호가 렌더되지 않는다」를 검사할 때 수량 같은
- * 정상 숫자와 헷갈리지 않게 하기 위해서다.
+ * 9800대(외부 식별자) · 9900대(수불 거래) · 9950대(거래 라인). 「표 어디에도 내부 번호가
+ * 렌더되지 않는다」를 검사할 때 수량 같은 정상 숫자와 헷갈리지 않게 하기 위해서다.
  * 수량은 전부 세 자리 이하로 두어 네 자리 번호와 섞이지 않는다.
  */
 
@@ -283,3 +285,183 @@ export const expiredLotDetail = (today: Date): LotDetailView => ({
     expiryDate: shiftDays(today, -1),
   },
 });
+
+/**
+ * 수불 이력 두 줄. **역처리인 줄과 아닌 줄**을 함께 담는다 —
+ * 표식이 값에 따라 붙는지 짝으로 확인할 수 있어야 한다.
+ *
+ * - 9901 — 보통의 입고 거래. `reversalOfTransactionId`가 없다
+ * - 9902 — **역처리 거래.** 영업일이 9901과 다르다 — 상세 경로에 영업일이 함께 실리는지
+ *   판정하려면 줄마다 영업일이 달라야 한다(번호만 실어도 통과하는 단언을 막는다)
+ */
+const RECEIPT_TRANSACTION: TransactionView = {
+  inventoryTransactionId: 9901,
+  businessDate: '2026-08-06',
+  transactionNo: 'SAMPLE-IT-0001',
+  transactionTypeCode: 'SAMPLE_TX_T_A',
+  sourceDocumentTypeCode: 'SAMPLE_SRC_T_A',
+  statusCode: 'SAMPLE_TX_S_A',
+  occurredAt: '2026-08-06T09:12:00+09:00',
+  isReversal: false,
+};
+
+const REVERSAL_TRANSACTION: TransactionView = {
+  inventoryTransactionId: 9902,
+  businessDate: '2026-08-07',
+  transactionNo: 'SAMPLE-IT-0002',
+  transactionTypeCode: 'SAMPLE_TX_T_B',
+  sourceDocumentTypeCode: 'SAMPLE_SRC_T_B',
+  statusCode: 'SAMPLE_TX_S_A',
+  occurredAt: '2026-08-07T14:30:00+09:00',
+  isReversal: true,
+};
+
+export const transactionFixtures: TransactionView[] = [RECEIPT_TRANSACTION, REVERSAL_TRANSACTION];
+
+/**
+ * **계약 모양**의 같은 두 줄. 화면 타입과 키 이름이 달라(`isReversal` ↔
+ * `reversalOfTransactionId`) 화면 타입을 그대로 응답 본문으로 줄 수 없다 —
+ * 주면 스텁이 계약과 다른 것을 말하고, 변환이 통째로 검사되지 않은 채 통과한다.
+ *
+ * 위 화면 타입과 짝이 맞는지는 `types.test.ts`가 변환을 돌려 값으로 고정한다.
+ */
+const RECEIPT_TRANSACTION_RESPONSE: components['schemas']['InventoryTransaction'] = {
+  inventoryTransactionId: 9901,
+  businessDate: '2026-08-06',
+  transactionNo: 'SAMPLE-IT-0001',
+  transactionTypeCode: 'SAMPLE_TX_T_A',
+  plantId: 9001,
+  occurredAt: '2026-08-06T09:12:00+09:00',
+  recordedAt: '2026-08-06T09:13:00+09:00',
+  sourceDocumentTypeCode: 'SAMPLE_SRC_T_A',
+  sourceDocumentId: 9021,
+  statusCode: 'SAMPLE_TX_S_A',
+};
+
+export const transactionResponseFixtures: components['schemas']['InventoryTransaction'][] = [
+  RECEIPT_TRANSACTION_RESPONSE,
+  {
+    inventoryTransactionId: 9902,
+    businessDate: '2026-08-07',
+    transactionNo: 'SAMPLE-IT-0002',
+    transactionTypeCode: 'SAMPLE_TX_T_B',
+    plantId: 9001,
+    occurredAt: '2026-08-07T14:30:00+09:00',
+    recordedAt: '2026-08-07T14:31:00+09:00',
+    sourceDocumentTypeCode: 'SAMPLE_SRC_T_B',
+    sourceDocumentId: 9022,
+    statusCode: 'SAMPLE_TX_S_A',
+    /* 역처리 거래 — 화면은 대상 번호를 내지 않고 「역처리」 표식만 낸다. */
+    reversalOfTransactionId: 9901,
+    reversalOfBusinessDate: '2026-08-06',
+  },
+];
+
+/**
+ * 고른 거래의 라인 셋. 이동 방향 세 갈래를 한 벌에 담는다.
+ *
+ * - 9951 — **도착지만 있다**(입고). LOT과 단위가 참조 목록에 있다
+ * - 9952 — **출발지만 있다**(출고). LOT이 **`null`**이다(LOT 관리 대상이 아닌 품목)
+ * - 9953 — **둘 다 있다**(이동). 출발 창고가 **조건 줄에서 고른 창고가 아니다** —
+ *   그 창고의 위치는 이름을 풀 수 없다는 사실을 값으로 만든다
+ */
+export const transactionLineFixtures = (): TransactionDetailView => ({
+  transaction: RECEIPT_TRANSACTION,
+  lines: [
+    {
+      inventoryTransactionLineId: 9951,
+      lineNo: 1,
+      itemId: 9301,
+      lotId: 9401,
+      qty: 120,
+      uomId: 9501,
+      fromWarehouseId: null,
+      fromLocationId: null,
+      toWarehouseId: 9101,
+      toLocationId: 9201,
+    },
+    {
+      inventoryTransactionLineId: 9952,
+      lineNo: 2,
+      itemId: 9301,
+      lotId: null,
+      qty: 30,
+      uomId: 9501,
+      fromWarehouseId: 9101,
+      fromLocationId: 9201,
+      toWarehouseId: null,
+      toLocationId: null,
+    },
+    {
+      inventoryTransactionLineId: 9953,
+      lineNo: 3,
+      itemId: 9301,
+      lotId: 9401,
+      qty: 15,
+      uomId: 9501,
+      fromWarehouseId: 9102,
+      fromLocationId: 9299,
+      toWarehouseId: 9101,
+      toLocationId: 9201,
+    },
+  ],
+});
+
+/**
+ * **계약 모양**의 같은 거래 상세. 화면 타입과 바깥 키 이름이 다르고
+ * (`transaction` ↔ `inventoryTransaction`) 라인에 화면이 옮기지 않는 필드가 더 있다 —
+ * 그 필드들이 **화면 어디에도 나오지 않는다**를 값으로 검사할 수 있게 일부러 담는다.
+ */
+export const transactionDetailResponse =
+  (): components['schemas']['InventoryTransactionDetailResponse'] => ({
+    inventoryTransaction: RECEIPT_TRANSACTION_RESPONSE,
+    lines: [
+      {
+        inventoryTransactionLineId: 9951,
+        inventoryTransactionId: 9901,
+        businessDate: '2026-08-06',
+        lineNo: 1,
+        itemId: 9301,
+        lotId: 9401,
+        qty: 120,
+        uomId: 9501,
+        toWarehouseId: 9101,
+        toLocationId: 9201,
+        toQualityStatusCode: 'SAMPLE_Q_A',
+        toInventoryStatusCode: 'SAMPLE_I_A',
+        ownershipTypeCode: 'SAMPLE_OWN_A',
+        toQtyAfterTransaction: 120,
+      },
+      {
+        inventoryTransactionLineId: 9952,
+        inventoryTransactionId: 9901,
+        businessDate: '2026-08-06',
+        lineNo: 2,
+        itemId: 9301,
+        lotId: null,
+        qty: 30,
+        uomId: 9501,
+        fromWarehouseId: 9101,
+        fromLocationId: 9201,
+        ownershipTypeCode: 'SAMPLE_OWN_A',
+        fromQtyAfterTransaction: 90,
+      },
+      {
+        inventoryTransactionLineId: 9953,
+        inventoryTransactionId: 9901,
+        businessDate: '2026-08-06',
+        lineNo: 3,
+        itemId: 9301,
+        lotId: 9401,
+        qty: 15,
+        uomId: 9501,
+        fromWarehouseId: 9102,
+        fromLocationId: 9299,
+        toWarehouseId: 9101,
+        toLocationId: 9201,
+        ownershipTypeCode: 'SAMPLE_OWN_A',
+        ownerPartnerId: 9601,
+        handlingUnitId: 9701,
+      },
+    ],
+  });

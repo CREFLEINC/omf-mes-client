@@ -3,12 +3,17 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_FILTERS,
   readFilters,
+  readHistoryPage,
+  readHistoryPeriod,
   readPage,
   readSelectedLotId,
+  readSelectedTransaction,
   resolveFilters,
+  SELECTION_KEYS,
   toBalanceFilterQuery,
   toFilterChips,
   toSearchParams,
+  toTransactionParam,
   type BalanceFilters,
   type FilterChipNames,
 } from './filters';
@@ -324,5 +329,106 @@ describe('readSelectedLotId — 고른 LOT', () => {
     for (const raw of ['sel=0', 'sel=-1', 'sel=1.5', 'sel=abc', 'sel=']) {
       expect(readSelectedLotId(params(raw))).toBeNull();
     }
+  });
+});
+
+describe('readHistoryPeriod — 이력의 영업일 범위', () => {
+  it('주소의 hfrom·hto를 그대로 읽는다', () => {
+    expect(readHistoryPeriod(params('hfrom=2026-07-10&hto=2026-08-10'))).toEqual({
+      from: '2026-07-10',
+      to: '2026-08-10',
+    });
+  });
+
+  it('없으면 빈 기간이다', () => {
+    expect(readHistoryPeriod(params(''))).toEqual({ from: '', to: '' });
+  });
+
+  /*
+   * **읽는 자리에서 걸러 내지 않는다.** 성한지는 `business-period.ts`가 한 곳에서 정하고
+   * 그 판정이 곧 사용자에게 낼 사유가 된다 — 여기서 지우면 「왜 조회가 안 되는가」를
+   * 말할 근거가 사라지고, 깨진 값이 조용히 빈 값으로 바뀌어 사유가 어긋난다.
+   */
+  it('깨진 날짜도 지우지 않고 그대로 읽는다', () => {
+    expect(readHistoryPeriod(params('hfrom=2026-02-31&hto=nope'))).toEqual({
+      from: '2026-02-31',
+      to: 'nope',
+    });
+  });
+});
+
+describe('readHistoryPage — 이력의 쪽', () => {
+  it('주소의 hpage를 번호로 읽는다', () => {
+    expect(readHistoryPage(params('hpage=3'))).toBe(3);
+  });
+
+  /* 잔액 쪽과 **따로 센다** — 서로 다른 조회다. */
+  it('잔액 쪽을 이력 쪽으로 읽지 않는다', () => {
+    expect(readHistoryPage(params('page=5'))).toBe(1);
+  });
+
+  it('이상한 값은 첫 쪽으로 본다', () => {
+    for (const raw of ['hpage=0', 'hpage=-2', 'hpage=1.5', 'hpage=abc', 'hpage=']) {
+      expect(readHistoryPage(params(raw))).toBe(1);
+    }
+  });
+});
+
+describe('readSelectedTransaction — 고른 거래', () => {
+  /* **영업일과 번호가 함께여야 한다** — 계약이 둘을 함께 경로 조각으로 받는다. */
+  it('영업일과 번호를 함께 읽는다', () => {
+    expect(readSelectedTransaction(params('tx=2026-08-06:9901'))).toEqual({
+      businessDate: '2026-08-06',
+      transactionId: 9901,
+    });
+  });
+
+  it('없으면 고르지 않은 것이다', () => {
+    expect(readSelectedTransaction(params(''))).toBeNull();
+  });
+
+  /*
+   * 주소는 손으로 고쳐지는 자리다. 여기서 막지 않으면
+   * `/inventory/transactions/undefined/0` 같은 요청이 나간다.
+   */
+  it('반쪽이거나 깨진 값은 고르지 않은 것으로 읽는다', () => {
+    for (const raw of [
+      'tx=9901',
+      'tx=2026-08-06',
+      'tx=2026-08-06:',
+      'tx=:9901',
+      'tx=2026-08-06:0',
+      'tx=2026-08-06:abc',
+      /* **없는 날짜다.** 자릿수만 보면 통과해 그대로 경로에 실린다. */
+      'tx=2026-02-31:9901',
+      'tx=2026-8-6:9901',
+    ]) {
+      expect(readSelectedTransaction(params(raw))).toBeNull();
+    }
+  });
+
+  /* 쓰는 자리와 읽는 자리가 짝이다 — 한쪽만 고쳐지면 심은 값을 자기가 못 읽는다. */
+  it('만든 값을 그대로 되읽는다', () => {
+    const ref = { businessDate: '2026-08-06', transactionId: 9901 };
+
+    expect(readSelectedTransaction(params(`tx=${toTransactionParam(ref)}`))).toEqual(ref);
+  });
+});
+
+describe('toSearchParams — 고르는 쪽의 키를 만들지 않는다', () => {
+  /*
+   * 수명 표 1~5행이 이 한 가지로 함께 지켜진다 — 보기·조건·정렬·쪽이 바뀌면 고른 LOT이
+   * 새 결과에 없을 수 있고, 이력 기간·쪽·고른 거래는 그 LOT에 매달린 값이다.
+   */
+  it('sel·hfrom·hto·hpage·tx가 결과에 없다', () => {
+    const next = toSearchParams('lot', filters({ warehouse: '9101', item: '9301' }), 'itemCode', 3);
+
+    for (const key of Object.values(SELECTION_KEYS)) {
+      expect(next.has(key)).toBe(false);
+    }
+
+    /* 선행 단언 — 만들어야 하는 키는 실제로 만든다. */
+    expect(next.get('wh')).toBe('9101');
+    expect(next.get('page')).toBe('3');
   });
 });

@@ -1,7 +1,19 @@
 import type { components } from '@omf-mes/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { toBalanceView, toLotDetailView, toRowKey } from './types';
+import {
+  transactionDetailResponse,
+  transactionFixtures,
+  transactionLineFixtures,
+  transactionResponseFixtures,
+} from './fixtures';
+import {
+  toBalanceView,
+  toLotDetailView,
+  toRowKey,
+  toTransactionDetailView,
+  toTransactionView,
+} from './types';
 
 type InventoryBalanceResponse = components['schemas']['InventoryBalance'];
 type LotDetailResponse = components['schemas']['LotDetailResponse'];
@@ -270,5 +282,100 @@ describe('toLotDetailView — LOT 상세를 화면 타입으로 옮긴다', () =
     });
 
     expect(detail.holds.map((hold) => hold.lotHoldId)).toEqual([9801, 9802]);
+  });
+});
+
+type InventoryTransactionResponse = components['schemas']['InventoryTransaction'];
+
+/** 계약이 필수로 정한 필드만 담은 최소 응답. 역처리 필드가 통째로 빠진 형태다. */
+const MINIMAL_TRANSACTION: InventoryTransactionResponse = {
+  inventoryTransactionId: 9901,
+  businessDate: '2026-08-06',
+  transactionNo: 'SAMPLE-IT-0001',
+  transactionTypeCode: 'SAMPLE_TX_T_A',
+  plantId: 9001,
+  occurredAt: '2026-08-06T09:12:00+09:00',
+  recordedAt: '2026-08-06T09:13:00+09:00',
+  sourceDocumentTypeCode: 'SAMPLE_SRC_T_A',
+  sourceDocumentId: 9021,
+  statusCode: 'SAMPLE_TX_S_A',
+};
+
+describe('toTransactionView — 이력 한 줄을 옮기는 유일한 지점', () => {
+  /*
+   * **번호로만 이어진 필드를 옮기지 않는다**(#44). 담을 자리가 없으면 화면으로 샐 경로도 없다 —
+   * 특히 `sourceDocumentId`는 그 이름을 풀 참조가 이 화면에 아예 없다.
+   */
+  it('원천 전표 번호와 공장 번호를 담지 않는다', () => {
+    const view = toTransactionView(MINIMAL_TRANSACTION);
+
+    expect(Object.keys(view)).not.toContain('sourceDocumentId');
+    expect(Object.keys(view)).not.toContain('plantId');
+    expect(Object.keys(view)).not.toContain('reversalOfTransactionId');
+    /* 선행 단언 — 유형 코드는 옮긴다(전부 안 옮기면 위 단언이 저절로 통과한다). */
+    expect(view.sourceDocumentTypeCode).toBe('SAMPLE_SRC_T_A');
+  });
+
+  /* 역처리 여부는 **있다·없다**로만 옮긴다 — 대상 거래의 번호를 이 자리에서 버린다. */
+  it('역처리 대상이 있으면 표식만 참이 된다', () => {
+    expect(toTransactionView(MINIMAL_TRANSACTION).isReversal).toBe(false);
+    expect(
+      toTransactionView({ ...MINIMAL_TRANSACTION, reversalOfTransactionId: 9900 }).isReversal,
+    ).toBe(true);
+    /* `null`로 온 경우도 「없다」다 — 키 부재와 갈라 두면 판정이 자리마다 달라진다. */
+    expect(
+      toTransactionView({ ...MINIMAL_TRANSACTION, reversalOfTransactionId: null }).isReversal,
+    ).toBe(false);
+  });
+});
+
+describe('toTransactionDetailView — 거래 상세를 옮기는 유일한 지점', () => {
+  /* 바깥 키 이름이 계약과 다르다(`inventoryTransaction` → `transaction`). */
+  it('헤더와 라인을 화면 타입으로 옮긴다', () => {
+    const view = toTransactionDetailView(transactionDetailResponse());
+
+    expect(view.transaction.transactionNo).toBe('SAMPLE-IT-0001');
+    expect(view.lines).toHaveLength(3);
+  });
+
+  /*
+   * **화면이 쓰지 않는 라인 필드를 담지 않는다.** 담아 두면 다음 사람이 「이미 있으니
+   * 그리자」로 읽어 열이 늘고, 축 열이 짓눌린다(계획 결정 13-2와 같은 갈래).
+   */
+  it('이동 전후 상태·시점 잔액·소유를 담지 않는다', () => {
+    const [line] = toTransactionDetailView(transactionDetailResponse()).lines;
+
+    for (const key of [
+      'toQualityStatusCode',
+      'toInventoryStatusCode',
+      'toQtyAfterTransaction',
+      'fromQtyAfterTransaction',
+      'ownershipTypeCode',
+      'ownerPartnerId',
+      'handlingUnitId',
+    ]) {
+      expect(Object.keys(line ?? {})).not.toContain(key);
+    }
+
+    /* 선행 단언 — 그리는 필드는 옮긴다. */
+    expect(line?.qty).toBe(120);
+  });
+
+  /* 입고 라인에는 출발지가 없다 — 빠진 키와 `null`을 한 갈래로 모은다. */
+  it('빠진 이동 전후 필드를 null로 모은다', () => {
+    const [receipt] = toTransactionDetailView(transactionDetailResponse()).lines;
+
+    expect(receipt?.fromWarehouseId).toBeNull();
+    expect(receipt?.fromLocationId).toBeNull();
+    expect(receipt?.toWarehouseId).toBe(9101);
+  });
+
+  /*
+   * **계약 모양 픽스처와 화면 타입 픽스처가 짝이다.** 둘을 따로 적어 두었으므로 한쪽만
+   * 고쳐지면 부품 테스트가 계약과 다른 값을 검사하게 된다 — 여기서 값으로 묶어 둔다.
+   */
+  it('계약 모양 픽스처를 옮기면 화면 타입 픽스처와 같다', () => {
+    expect(toTransactionDetailView(transactionDetailResponse())).toEqual(transactionLineFixtures());
+    expect(transactionResponseFixtures.map(toTransactionView)).toEqual(transactionFixtures);
   });
 });
