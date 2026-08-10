@@ -221,6 +221,28 @@ const failingLinesRoute = (status = 500): StubRoute => ({
 });
 
 /**
+ * 다시 부르면 **줄 구성이 달라지는** 라인 응답.
+ *
+ * 발주가 고쳐지거나 다른 사용자가 먼저 처리해 줄이 사라지는 일이 실제로 있다.
+ * 같은 본문을 돌려주면 캐시가 참조를 그대로 유지해 **초안 되돌림이 아예 일어나지 않으므로**,
+ * 그 자리를 검사하려면 내용이 실제로 달라져야 한다.
+ */
+const shrinkingLinesRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, LINES_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse({
+        items: call === 1 ? purchaseOrderLineFixtures : purchaseOrderLineFixtures.slice(1),
+      });
+    },
+  };
+};
+
+/**
  * 발주 상세 스텁. **부를 수 있게 두는 것이 요점이다** —
  * 스텁이 없으면 하네스가 던져 「부르지 않았다」를 증명할 수 없다.
  */
@@ -1962,6 +1984,39 @@ describe('OverReceiptSplitScreen — 취소와 초안 파기 확인', () => {
     await user.click(screen.getByRole('button', { name: messages.common.cancel }));
 
     expect(screen.getByRole('dialog', { name: t.dialog.discardTitle })).toBeInTheDocument();
+  });
+
+  /*
+   * **사라진 줄의 초안은 함께 사라진다**(수명 표 4행 — 초안은 라인 응답으로 새로 만든다).
+   *
+   * 초안은 특정 줄에 묶여 있다. 그 줄이 없어졌는데 값이 남으면 **화면에 보이지 않는 값** 때문에
+   * 확인 창이 뜬다 — 사용자는 무엇을 버리라는 것인지 알 수 없고, 그 값은 어디에도 실리지 않는다.
+   * 라인 응답을 되돌림 신호에서 빼면 이 자리가 그대로 재현된다.
+   */
+  it('라인 목록이 달라져 줄이 사라지면 그 줄의 초안도 사라진다', async () => {
+    const { queryClient, user } = renderScreen([shrinkingLinesRoute(), ...allRoutes()]);
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+    await user.type(qtyInput(1), '66');
+
+    /* 짝 방향 — 실제로 값이 들어가 있다. */
+    expect(qtyInput(1)).toHaveValue(66);
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: poKeys.lines(9001) });
+    });
+
+    /* 1번 줄이 사라졌다 — 남은 줄만 보인다. */
+    await waitFor(() => {
+      expect(screen.queryByLabelText(t.lineTable.arrivedQtyLabel(1))).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(currentLocation()).not.toContain('po=');
   });
 
   /* 짝 방향 — 버릴 것이 없으면 확인을 받지 않는다. 늘 물으면 사용자가 읽지 않고 누른다. */
