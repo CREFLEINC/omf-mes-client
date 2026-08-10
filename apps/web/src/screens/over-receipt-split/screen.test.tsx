@@ -953,6 +953,30 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
   });
 
   /*
+   * **M11의 나머지 절반** — 위 단언은 주소의 **문자열 값**만 본다. 같은 값으로 갱신하면
+   * 값은 그대로이고 **히스토리만 글자마다 한 칸씩 쌓이는데**, M11이 막으려던 결함이 정확히
+   * 그것이라 값 단언으로는 닿지 않는다.
+   *
+   * 그래서 히스토리 **길이**를 본다 — 두 글자를 친 뒤 뒤로 한 번에 고르기 이전으로 돌아오면
+   * 입력이 기록을 늘리지 않은 것이다(M03이 쓰는 것과 같은 형태).
+   */
+  it('수량을 여러 글자 쳐도 뒤로 한 번에 고르기 이전으로 돌아온다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    // 두 글자다 — 한 글자면 기록이 한 칸만 늘어 「고르기」와 구분되지 않는다.
+    await selectAndType(user, '66');
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+
+    // 짝 방향 — 실제로 고르기 이전 상태다(주소만 되돌고 구획이 열려 있으면 안 된다).
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
+  /*
    * **M10** — 되돌림을 목록 응답이나 파생 객체에 반응시키면, 목록이 다시 오는 순간
    * 사용자가 치던 수량이 사라진다(#43의 입력 형).
    */
@@ -1045,6 +1069,34 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
 
     expect(currentLocation()).toContain('po=9002');
     expect(screen.queryByLabelText(t.lineTable.arrivedQtyLabel(1))).not.toBeInTheDocument();
+  });
+
+  /*
+   * **수명 표 4행의 짝 방향** — 위의 「사라지지 않는다」 셋만으로는 **되돌림을 아예 없앤**
+   * 변경이 통과한다. 「되돌리지 말아야 할 때 되돌리지 않는다」와 「되돌려야 할 때 되돌린다」는
+   * 서로를 대신하지 못하며, 한쪽만 두면 항상-참에 가까운 단언이 된다(계획 §5.2).
+   *
+   * **같은 발주로 되돌아오는 경로를 쓴다** — 라인 응답이 캐시에서 그대로 오므로
+   * 되돌림을 깨우는 것은 고른 발주의 변화뿐이다. 다른 발주를 고르는 경로(위)로는
+   * 라인 자체가 달라져 이 자리가 검사되지 않는다.
+   */
+  it('해제했다가 같은 발주를 다시 고르면 앞서 친 수량이 되살아나지 않는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await selectAndType(user, '66');
+
+    // 짝 방향 — 되살아나지 않는다를 말하려면 먼저 실제로 들어가 있어야 한다.
+    expect(qtyInput(1)).toHaveValue(66);
+
+    await user.click(
+      screen.getByRole('button', { name: t.actions.deselectRow('PO-2026-900001') }),
+    );
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+
+    expect(qtyInput(1)).toHaveValue(null);
   });
 
   /*

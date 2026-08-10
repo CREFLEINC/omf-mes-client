@@ -72,20 +72,17 @@ describe('buildPoColumns — 열 구성과 폭', () => {
     expect(absorbing.map((column) => column.key)).toEqual(['supplier']);
   });
 
+  /*
+   * **흡수 열의 예산까지 세어야 뜻이 있다.** 지정 폭 합만 재면 그 합이 표 폭에 가까울 때
+   * 흡수 열에 남는 것이 사실상 없는 상태를 통과시킨다 — W-01-07 브라우저 확인에서
+   * 실제로 흡수 열이 82px로 렌더돼 주 식별자가 낱말 단위로 쪼개졌다.
+   *
+   * `지정합 + 예산 ≤ 928`은 `928 − 지정합 ≥ 예산`과 **같은 부등식이다.** 둘을 나란히 두면
+   * 감지기가 둘인 것처럼 보이지만 하나다 — 완료 조건(C18)의 낱말에 맞춰 합의 형태로만 적는다.
+   */
   it('지정 폭 합에 흡수 열 예산을 더해도 표 하한 안이다', () => {
     expect(specifiedWidthOf(columnsWith()) + CODE_NAME_COLUMN_PX).toBeLessThanOrEqual(
       WIDE_TABLE_MIN_PX,
-    );
-  });
-
-  /*
-   * **합만 세면 흡수 열이 몇십 px밖에 못 받는 상태를 통과시킨다** — 지정 합이 표 폭에 가까우면
-   * 고정 배치에서 그 열에 남는 것이 사실상 없다(W-01-07 브라우저 확인에서 실제로 난 결함이다).
-   * 그래서 **남는 폭까지 함께 단언한다.**
-   */
-  it('표 하한에서 흡수 열이 받는 폭이 「코드 · 이름」 하한 이상이다', () => {
-    expect(WIDE_TABLE_MIN_PX - specifiedWidthOf(columnsWith())).toBeGreaterThanOrEqual(
-      CODE_NAME_COLUMN_PX,
     );
   });
 });

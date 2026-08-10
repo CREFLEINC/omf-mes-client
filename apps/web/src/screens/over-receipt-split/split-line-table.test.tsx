@@ -104,16 +104,13 @@ describe('buildSplitLineColumns — 열 구성과 폭', () => {
     ]);
   });
 
+  /*
+   * 흡수 열의 예산까지 세어야 뜻이 있다 — 근거는 `po-table.test.tsx`의 같은 자리에 있다.
+   * `지정합 + 예산 ≤ 928`과 `928 − 지정합 ≥ 예산`은 같은 부등식이라 하나만 적는다.
+   */
   it('지정 폭 합에 흡수 열 예산을 더해도 표 하한 안이다', () => {
     expect(specifiedWidthOf(columnsWith()) + CODE_NAME_COLUMN_PX).toBeLessThanOrEqual(
       WIDE_TABLE_MIN_PX,
-    );
-  });
-
-  /* 합만 세면 흡수 열이 몇십 px밖에 못 받는 상태를 통과시킨다 — 남는 폭까지 함께 단언한다. */
-  it('표 하한에서 흡수 열이 받는 폭이 「코드 · 이름」 하한 이상이다', () => {
-    expect(WIDE_TABLE_MIN_PX - specifiedWidthOf(columnsWith())).toBeGreaterThanOrEqual(
-      CODE_NAME_COLUMN_PX,
     );
   });
 });
