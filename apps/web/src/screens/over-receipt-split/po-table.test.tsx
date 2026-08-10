@@ -31,7 +31,12 @@ const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
 });
 
 const columnsWith = (supplierLookup: ReferenceSource = source()): Column<PoView>[] =>
-  buildPoColumns({ selectedPoId: null, supplierLookup, onToggleSelect: () => undefined });
+  buildPoColumns({
+    selectedPoId: null,
+    supplierLookup,
+    isLocked: false,
+    onToggleSelect: () => undefined,
+  });
 
 const renderTable = (overrides: Partial<PoTableProps> = {}) => {
   const onFirstPage = vi.fn<() => void>();
@@ -45,6 +50,7 @@ const renderTable = (overrides: Partial<PoTableProps> = {}) => {
       isBeyondLast={false}
       selectedPoId={null}
       supplierLookup={source()}
+      isLocked={false}
       onFirstPage={onFirstPage}
       onToggleSelect={onToggleSelect}
       onRetryReferences={onRetryReferences}
@@ -168,6 +174,33 @@ describe('PoTable — 고르기', () => {
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('PO-2026-900001') }));
 
     expect(onToggleSelect).toHaveBeenCalledWith(9001);
+  });
+
+  /*
+   * 등록을 보내는 중에 대상을 바꾸면 **앞 발주의 등록 결과가 지금 보는 발주의 맥락에**
+   * 나타난다. 중복 전송이 생기지는 않지만 무엇이 어느 발주에 등록됐는지가 흐려진다.
+   */
+  it('보내는 중에는 대상을 바꾸는 길이 닫힌다', async () => {
+    const { onToggleSelect, user } = renderTable({ isLocked: true });
+
+    const target = screen.getByRole('button', {
+      name: t.actions.selectRow('PO-2026-900001'),
+    });
+
+    expect(target).toBeDisabled();
+
+    await user.click(target);
+
+    expect(onToggleSelect).not.toHaveBeenCalled();
+  });
+
+  /* 짝 방향 — 평상시에는 열려 있다. 늘 닫혀 있으면 위 단언이 항상 참이 된다. */
+  it('보내는 중이 아니면 선택이 열려 있다', () => {
+    renderTable();
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('PO-2026-900001') }),
+    ).toBeEnabled();
   });
 
   /* 접근 이름에 내부 번호를 넣으면 그것이 화면 밖으로 새는 또 하나의 경로가 된다. */

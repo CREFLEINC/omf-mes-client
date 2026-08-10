@@ -9,6 +9,7 @@ import { InspectionStandardScreen } from '../screens/inspection-standard/screen'
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
+import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
@@ -41,6 +42,12 @@ export const appRouter = createBrowserRouter([
        * 낱말로 두어 화면과 계약의 대응이 주소에서 읽히게 한다. 뒤따르는 W-01 화면들이 그대로 쓴다.
        */
       { path: 'logistics/inbound-schedule', element: <InboundScheduleScreen /> },
+      /*
+       * W-01-03 — 도메인 01의 **첫 쓰기 화면**이다. 앞머리는 같은 규칙(사이드바 섹션)을 따르고,
+       * 차례는 업무 순서를 따른다 — 도착 예정을 보고(입하 예정) 도착을 처리한 뒤(초과 입하 분리)
+       * 그 결과를 재고에서 확인한다.
+       */
+      { path: 'logistics/over-receipt-split', element: <OverReceiptSplitScreen /> },
       /*
        * W-01-07 — 앞머리는 **사이드바 섹션(도메인)을 따른다.** 계약 경로와 같아지는 경우가
        * 많지만 그것이 근거는 아니다: 이 화면의 계약 경로는 `/inventory/**`·`/trace/**`인데

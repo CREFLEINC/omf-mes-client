@@ -17,6 +17,12 @@ export interface SelectFieldProps {
    * **판단 기준은 코드값이 아니라 선택지 문구 길이다.**
    */
   wide?: boolean;
+  /**
+   * 전송 중처럼 **값을 바꿔도 이번 요청에 실리지 않는** 자리에만 잠근다(옵트인).
+   *
+   * 조회 조건 칸은 잠그지 않는다 — 잠그면 지금 걸린 조건을 해제할 방법이 사라진다.
+   */
+  disabled?: boolean;
 }
 
 /**
@@ -27,9 +33,9 @@ export interface SelectFieldProps {
  *
  * 보조 문구는 감추지 않고 항상 보이는 DOM 텍스트로 렌더하고 `aria-describedby`로 잇는다.
  *
- * **비활성 상태를 두지 않는다** — 이 화면의 선택칸은 잠기는 자리가 없다.
- * 참조 목록이 아직 오지 않았거나 실패했을 때도 칸은 열어 둔다. 잠그면 지금 걸린 조건을
- * 해제할 방법이 사라진다.
+ * **잠그는 것은 옵트인이다** — 참조 목록이 아직 오지 않았거나 실패했을 때도 조회 조건 칸은
+ * 열어 둔다. 잠그면 지금 걸린 조건을 해제할 방법이 사라진다. 잠기는 자리는 **전송 중**처럼
+ * 값을 바꿔도 이번 요청에 실리지 않는 곳뿐이다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -41,6 +47,7 @@ export const SelectField = ({
   note,
   placeholder,
   wide = false,
+  disabled = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -59,6 +66,7 @@ export const SelectField = ({
         value={value === '' && !hasEmptyOption ? null : value}
         onChange={onChange}
         placeholder={placeholder}
+        disabled={disabled}
         aria-describedby={note === undefined ? undefined : noteId}
       />
       {note !== undefined && (

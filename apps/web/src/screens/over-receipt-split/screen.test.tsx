@@ -1,3 +1,4 @@
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -22,8 +23,11 @@ import {
 } from './fixtures';
 import { poKeys } from './queries';
 import { OverReceiptSplitScreen } from './screen';
+import { DELIVERY_NOTE_NO_MAX } from './validation';
 
 const t = messages.overReceiptSplit;
+
+type SplitRequestBody = components['schemas']['InboundReceiptSplitRequest'];
 
 const ROUTE = '/logistics/over-receipt-split';
 const LIST_PATH = '/logistics/purchase-orders';
@@ -60,22 +64,58 @@ const INTERNAL_IDS = ['9001', '9002', '9003', '9101', '9102', '9201', '9401', '9
 interface RecordedRequest {
   method: string;
   url: URL;
+  /**
+   * 쓰기 요청의 본문. 읽기에는 `null`이다.
+   *
+   * **실제로 나간 본문을 본다.** 요청 조립 함수를 단위로 검사하는 것만으로는
+   * 「화면이 그 함수를 부르지 않고 다른 값을 보냈다」를 잡을 수 없다.
+   */
+  body: unknown;
+  headers: Headers;
 }
 
-/** 요청을 기록하면서 스텁 규칙으로 응답한다. 규칙에 없는 요청은 하네스가 던져 스텁 누락을 드러낸다. */
+/**
+ * 요청을 기록하면서 스텁 규칙으로 응답한다. 규칙에 없는 요청은 하네스가 던져 스텁 누락을 드러낸다.
+ *
+ * `hold`에 든 경로는 **기록한 뒤에** 붙잡아 둔다 — 「보내는 중에 몇 번 나갔는가」를
+ * 세려면 응답이 오기 전에 이미 기록돼 있어야 한다.
+ */
 const createRecordingFetch = (
   routes: StubRoute[],
-): { fetch: StubFetch; requests: RecordedRequest[] } => {
+  hold: string[] = [],
+): { fetch: StubFetch; requests: RecordedRequest[]; release: () => void } => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch(routes);
+  let release = (): void => {
+    /* 아래 Promise 생성자가 곧바로 채운다. */
+  };
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
 
   const fetch: StubFetch = async (request) => {
-    requests.push({ method: request.method, url: new URL(request.url) });
+    /* 본문은 한 번만 읽을 수 있다 — 복제해 읽어야 스텁이 같은 요청을 다시 다룰 수 있다. */
+    const body: unknown = request.method === 'GET' ? null : await request.clone().json();
+
+    requests.push({
+      method: request.method,
+      url: new URL(request.url),
+      body,
+      headers: request.headers,
+    });
+
+    if (hold.includes(new URL(request.url).pathname)) await gate;
 
     return stub(request);
   };
 
-  return { fetch, requests };
+  return {
+    fetch,
+    requests,
+    release: () => {
+      release();
+    },
+  };
 };
 
 const isGet = (request: Request, pathname: string): boolean =>
@@ -181,6 +221,28 @@ const failingLinesRoute = (status = 500): StubRoute => ({
 });
 
 /**
+ * 다시 부르면 **줄 구성이 달라지는** 라인 응답.
+ *
+ * 발주가 고쳐지거나 다른 사용자가 먼저 처리해 줄이 사라지는 일이 실제로 있다.
+ * 같은 본문을 돌려주면 캐시가 참조를 그대로 유지해 **초안 되돌림이 아예 일어나지 않으므로**,
+ * 그 자리를 검사하려면 내용이 실제로 달라져야 한다.
+ */
+const shrinkingLinesRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, LINES_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse({
+        items: call === 1 ? purchaseOrderLineFixtures : purchaseOrderLineFixtures.slice(1),
+      });
+    },
+  };
+};
+
+/**
  * 발주 상세 스텁. **부를 수 있게 두는 것이 요점이다** —
  * 스텁이 없으면 하네스가 던져 「부르지 않았다」를 증명할 수 없다.
  */
@@ -193,11 +255,47 @@ const detailRoute = (): StubRoute => ({
     }),
 });
 
-/** 등록 경로 스텁. 같은 이유로 **부를 수 있게** 둔다 — PR ①은 이 경로를 부르지 않는다. */
-const splitRoute = (): StubRoute => ({
-  match: (request) =>
-    request.method === 'POST' && new URL(request.url).pathname === SPLIT_PATH,
-  respond: () => jsonResponse({ created: [] }, { status: 201 }),
+/**
+ * 만들어진 전표 한 건의 응답 본문.
+ *
+ * **내부 번호를 함께 담는다** — 화면이 그것을 내지 않는다는 것을 검사하려면
+ * 응답에 실제로 들어 있어야 한다. 담지 않으면 그 단언이 늘 참이 된다.
+ */
+const createdReceipt = (inboundReceiptId: number, inboundReceiptNo: string) => ({
+  inboundReceiptId,
+  inboundReceiptNo,
+  supplierId: 9101,
+  plantId: 9201,
+  receiptDatetime: '2026-08-06T09:12:00+09:00',
+  statusCode: 'SAMPLE_IR_STATUS_A',
+});
+
+const CREATED_ONE = [createdReceipt(9601, 'IR-2026-900010')];
+const CREATED_TWO = [createdReceipt(9601, 'IR-2026-900010'), createdReceipt(9602, 'IR-2026-900011')];
+
+const isSplitPost = (request: Request): boolean =>
+  request.method === 'POST' && new URL(request.url).pathname === SPLIT_PATH;
+
+/**
+ * 등록 경로 스텁. **부를 수 있게 두는 것이 요점이다** —
+ * 「부르지 않았다」를 증명하려면 부를 수 있는 스텁이 있어야 한다.
+ */
+const splitRoute = (created: unknown[] = CREATED_ONE): StubRoute => ({
+  match: isSplitPost,
+  respond: () => jsonResponse({ created }, { status: 201 }),
+});
+
+const failingSplitRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: isSplitPost,
+  respond: () => jsonResponse(body, { status }),
+});
+
+/** 응답 자체가 오지 않는 실패. 상태 코드가 없어 화면이 다른 갈래로 다뤄야 한다. */
+const offlineSplitRoute = (): StubRoute => ({
+  match: isSplitPost,
+  respond: () => {
+    throw new Error('연결이 끊겼습니다');
+  },
 });
 
 /** 이 화면이 닿을 수 있는 경로를 전부 스텁으로 둔 한 벌. */
@@ -262,12 +360,14 @@ const renderScreen = (
   routes: StubRoute[],
   search = '',
   navigateTo = '',
+  hold: string[] = [],
 ): {
   requests: RecordedRequest[];
   queryClient: QueryClient;
+  release: () => void;
   user: ReturnType<typeof userEvent.setup>;
 } => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
   const { queryClient } = renderWithProviders(
     <>
@@ -279,7 +379,7 @@ const renderScreen = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, queryClient, user: userEvent.setup() };
+  return { requests, queryClient, release, user: userEvent.setup() };
 };
 
 /**
@@ -999,6 +1099,16 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
     await user.type(qtyInput(1), text);
   };
 
+  /**
+   * 초안을 버리게 되는 조작은 **확인 창을 거친다.** 친 수량이 말없이 사라지면
+   * 사용자는 무엇을 잃었는지도 알 수 없다.
+   *
+   * 여기서 확인 버튼을 찾지 못하면 그 자체로 실패한다 — 「확인 없이 버렸다」가 곧 결함이다.
+   */
+  const confirmDiscard = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await user.click(await screen.findByRole('button', { name: t.actions.discardDraft }));
+  };
+
   /* **M11** — 입력마다 주소를 바꾸면 글자 하나에 뒤로가기 기록이 한 칸씩 쌓인다. */
   it('수량 입력이 주소를 바꾸지 않는다', async () => {
     const { user } = renderScreen(allRoutes());
@@ -1092,6 +1202,7 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
 
     await user.type(screen.getByLabelText(t.fields.q), 'PO-2026-9');
     await user.click(screen.getByRole('button', { name: messages.common.search }));
+    await confirmDiscard(user);
 
     await screen.findByText(t.empty.noSelectionTitle);
 
@@ -1108,6 +1219,7 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
     await selectAndType(user);
 
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+    await confirmDiscard(user);
 
     await screen.findByText(t.empty.noSelectionTitle);
 
@@ -1120,6 +1232,7 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
 
     await selectAndType(user);
     await selectPo(user, 'PO-2026-900002');
+    await confirmDiscard(user);
 
     await screen.findByText(t.empty.noLinesTitle);
 
@@ -1147,6 +1260,7 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
     await user.click(
       screen.getByRole('button', { name: t.actions.deselectRow('PO-2026-900001') }),
     );
+    await confirmDiscard(user);
     await screen.findByText(t.empty.noSelectionTitle);
 
     await selectPo(user, 'PO-2026-900001');
@@ -1178,9 +1292,9 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
   });
 });
 
-describe('OverReceiptSplitScreen — PR ①에는 쓰기가 없다', () => {
+describe('OverReceiptSplitScreen — 누르기 전에는 쓰기가 없다', () => {
   /*
-   * **M22** — 이 화면은 등록을 아직 갖지 않는다. 라우트에 붙지 않는 이유도 같다.
+   * **M22** — 등록 버튼을 누르기 전에는 어떤 쓰기도 나가지 않는다.
    * **경로 전체로 센다** — 어느 한 조작에서만 새는 쓰기를 놓치지 않으려면
    * 조회·쪽 이동·고르기·수량 입력을 모두 지난 뒤에 판정해야 한다.
    */
@@ -1213,15 +1327,944 @@ describe('OverReceiptSplitScreen — PR ①에는 쓰기가 없다', () => {
     expect(requestsTo(requests, SPLIT_PATH)).toHaveLength(0);
   });
 
-  /* 세 모드 버튼과 결과 구획은 PR ②의 것이다 — 반쪽 등록 수단을 두지 않는다. */
-  it('등록·취소 버튼을 두지 않는다', async () => {
+  /*
+   * **등록 구획은 대상을 고른 뒤에만 열린다.** 고르기 전에 폼을 내면 무엇을 등록하는지
+   * 없는 채로 입력만 받게 된다 — 그 값은 어느 발주에도 묶이지 않는다.
+   */
+  it('발주를 고르기 전에는 등록 구획이 없다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('PO-2026-900001');
+
+    expect(
+      screen.queryByRole('button', { name: t.actions.registerBoth }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(t.fields.receiptDatetime)).not.toBeInTheDocument();
+
+    /* 짝 방향 — 고르면 실제로 열린다. 「늘 없다」로 통과하지 않게 한다. */
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+
+    expect(screen.getByRole('button', { name: t.actions.registerBoth })).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toBeInTheDocument();
+  });
+});
+
+/**
+ * 등록 — **되돌릴 수 없는 쓰기다.**
+ *
+ * 여기서 잘못 나간 요청은 화면이 되돌릴 수 없다(계약의 취소는 승인을 탄다). 그래서
+ * 「무엇이 나갔는가」를 **실제로 나간 본문**으로 판정한다 — 요청 조립 함수를 단위로만
+ * 검사하면 「화면이 그 함수를 부르지 않았다」를 잡을 수 없다.
+ */
+const RECEIPT_DATETIME = '2026-08-06T09:12';
+
+/** 라인 수량과 입하 일시를 채운다. 고르는 절차와 갈라 둔다 — 등록 뒤에는 다시 고르지 않는다. */
+const fillDraft = async (
+  user: ReturnType<typeof userEvent.setup>,
+  qty: Record<number, string> = { 1: '66' },
+): Promise<void> => {
+  for (const [lineNo, text] of Object.entries(qty)) {
+    await user.type(qtyInput(Number(lineNo)), text);
+  }
+
+  await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
+};
+
+const setupRegister = async (
+  user: ReturnType<typeof userEvent.setup>,
+  qty: Record<number, string> = { 1: '66' },
+): Promise<void> => {
+  await screen.findByText('PO-2026-900001');
+  await selectPo(user, 'PO-2026-900001');
+  await screen.findByText(t.lineTable.orderedPair(100, 40));
+  await fillDraft(user, qty);
+};
+
+const clickRegister = async (
+  user: ReturnType<typeof userEvent.setup>,
+  label: string = t.actions.registerBoth,
+): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: label }));
+};
+
+const splitRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requestsTo(requests, SPLIT_PATH);
+
+/** 마지막으로 나간 등록 본문. **계약 타입으로 읽는다** — 형태가 어긋나면 타입 검사가 잡는다. */
+const lastSplitBody = (requests: RecordedRequest[]): SplitRequestBody => {
+  const sent = splitRequests(requests);
+
+  expect(sent.length).toBeGreaterThan(0);
+
+  return sent[sent.length - 1]?.body as SplitRequestBody;
+};
+
+describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
+  /*
+   * **M25** — 버튼과 갈래가 1:1이다. 늘 `BOTH`를 보내면 「정량분만 받기로 했다」는
+   * 판단이 요청에서 사라져 받지 않기로 한 초과분까지 전표가 된다.
+   */
+  it.each([
+    [t.actions.registerBoth, 'BOTH'],
+    [t.actions.registerNormalOnly, 'NORMAL_ONLY'],
+    [t.actions.registerExcessOnly, 'EXCESS_ONLY'],
+  ])('%s를 누르면 %s가 실린다', async (label, mode) => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await clickRegister(user, label);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(lastSplitBody(requests).mode).toBe(mode);
+  });
+
+  it('분리 등록은 두 part를 함께 보낸다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    const body = lastSplitBody(requests);
+
+    /* 9401은 잔량 60 · 허용 5라 한도가 65다 — 66은 정량 65 · 초과 1로 갈린다. */
+    expect(body.normal?.lines).toEqual([
+      {
+        purchaseOrderLineId: 9401,
+        itemId: 9301,
+        receivedQty: 65,
+        uomId: 9501,
+        supplierLotMissing: false,
+      },
+    ]);
+    expect(body.excess?.lines).toEqual([
+      { itemId: 9301, receivedQty: 1, uomId: 9501, supplierLotMissing: false },
+    ]);
+  });
+
+  /*
+   * **M23의 화면 몫** — 이슈 §6이 금지한 경로다. 단위 검사만으로는 화면이 다른 값을
+   * 조립해 보내는 경우를 잡을 수 없어 **실제로 나간 본문**으로 본다.
+   */
+  it('초과분 라인에는 발주 라인 번호가 실리지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    const body = lastSplitBody(requests);
+
+    expect(Object.keys(body.excess?.lines[0] ?? {})).not.toContain('purchaseOrderLineId');
+    /* 짝 방향 — 정량분에는 실린다. 「양쪽에서 뺐다」로 통과하지 않게 한다. */
+    expect(body.normal?.lines[0]?.purchaseOrderLineId).toBe(9401);
+  });
+
+  /* 같은 도착을 나눈 것이라 머리 값이 갈리면 안 된다. 예외 사유만 초과분에 붙는다. */
+  it('머리 값은 두 part에 같이 실리고 초과 사유는 초과분에만 실린다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await user.type(screen.getByLabelText(t.fields.deliveryNoteNo), 'SAMPLE-DN-01');
+    await user.type(screen.getByLabelText(t.fields.exceptionReason), '합성 사유');
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    const body = lastSplitBody(requests);
+
+    expect(body.normal?.deliveryNoteNo).toBe('SAMPLE-DN-01');
+    expect(body.excess?.deliveryNoteNo).toBe('SAMPLE-DN-01');
+    expect(body.normal?.supplierId).toBe(body.excess?.supplierId);
+    expect(body.excess?.exceptionReason).toBe('합성 사유');
+    expect(Object.keys(body.normal ?? {})).not.toContain('exceptionReason');
+  });
+
+  /*
+   * **C24** — 계약이 「영업일과 발생 시각은 바깥에서 한 번만 받는다」고 적었고,
+   * 영업일은 **입하 일시의 날짜**에서 나온다(승인 13-5).
+   */
+  it('영업일과 발생 시각이 바깥에 한 번만 실린다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    const body = lastSplitBody(requests);
+
+    expect(body.businessDate).toBe('2026-08-06');
+    expect(body.occurredAt).toMatch(/[+-]\d{2}:\d{2}$/);
+    expect(Object.keys(body.normal ?? {})).not.toContain('businessDate');
+    expect(Object.keys(body.excess ?? {})).not.toContain('occurredAt');
+  });
+
+  /* 계약이 전 쓰기에 멱등 키를 요구한다. 없으면 서버가 400으로 되돌린다. */
+  it('멱등 키를 실어 보낸다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(splitRequests(requests)[0]?.headers.get('Idempotency-Key')).toMatch(
+      /^[0-9a-f-]{36}$/i,
+    );
+  });
+});
+
+describe('OverReceiptSplitScreen — 보낼 수 없는 조합', () => {
+  const blockedButton = (label: string): HTMLElement =>
+    screen.getByRole('button', { name: label });
+
+  /* **M29의 화면 몫** — 라인이 하나도 없으면 어느 갈래로도 보낼 수 없다(계약: 최소 1행). */
+  it('수량을 넣지 않으면 세 버튼이 모두 잠기고 같은 사유를 낸다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+
+    expect(blockedButton(t.actions.registerBoth)).toBeDisabled();
+    expect(blockedButton(t.actions.registerNormalOnly)).toBeDisabled();
+    expect(blockedButton(t.actions.registerExcessOnly)).toBeDisabled();
+    expect(screen.getAllByText(t.actionReasons.noQty)).toHaveLength(3);
+
+    await clickRegister(user);
+
+    expect(splitRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * **M27의 화면 몫** — 초과분이 없는데 분리 등록이 열리면 `excess` 없는 `BOTH`가 나간다.
+   * 목 서버는 그것을 201로 통과시키므로(실측) 막는 곳은 화면뿐이다.
+   */
+  it('초과분이 없으면 분리 등록만 잠긴다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    /* 한도(65) 안쪽이라 전부 정량분이다. */
+    await setupRegister(user, { 1: '10' });
+
+    expect(blockedButton(t.actions.registerBoth)).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.bothNeedsExcess)).toBeInTheDocument();
+    /* 짝 방향 — 정량분만 저장은 열려 있다. 「전부 잠갔다」로 통과하지 않게 한다. */
+    expect(blockedButton(t.actions.registerNormalOnly)).toBeEnabled();
+
+    await clickRegister(user);
+
+    expect(splitRequests(requests)).toHaveLength(0);
+  });
+
+  /* 반대쪽 — 9402는 꼭 맞게 받았고 허용치가 0이라 도착한 전부가 초과분이다. */
+  it('정량분이 없으면 정량분만 저장이 잠긴다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user, { 2: '12' });
+
+    expect(blockedButton(t.actions.registerNormalOnly)).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.normalOnlyNeedsNormal)).toBeInTheDocument();
+    expect(blockedButton(t.actions.registerExcessOnly)).toBeEnabled();
+
+    await clickRegister(user, t.actions.registerNormalOnly);
+
+    expect(splitRequests(requests)).toHaveLength(0);
+  });
+});
+
+describe('OverReceiptSplitScreen — 머리 입력과 수량을 고치기 전에는 보내지 않는다', () => {
+  /* 계약 필수인데 입력칸이 있는 유일한 값이다. 비면 두 part의 입하 일시를 만들 수 없다. */
+  it('입하 일시가 비면 인라인 오류를 내고 보내지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+    await user.type(qtyInput(1), '66');
+
+    await clickRegister(user);
+
+    expect(await screen.findByText(t.errors.receiptDatetimeRequired)).toBeInTheDocument();
+    expect(splitRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * **C26** — 계약이 100자로 정했다. 붙여넣기로 들어오는 값이라 `user.paste`로 만든다 —
+   * 이 칸에 `maxLength`를 두지 않은 이유가 바로 그것이다(조용히 자르면 다른 번호가 실린다).
+   */
+  it('거래명세서번호 101자는 인라인 오류이고 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await user.click(screen.getByLabelText(t.fields.deliveryNoteNo));
+    await user.paste('A'.repeat(101));
+
+    await clickRegister(user);
+
+    expect(
+      await screen.findByText(t.errors.deliveryNoteNoTooLong(DELIVERY_NOTE_NO_MAX)),
+    ).toBeInTheDocument();
+    expect(splitRequests(requests)).toHaveLength(0);
+  });
+
+  /* 짝 방향 — 100자는 통과한다. 경계 한쪽만 보면 부등호 방향이 남는다. */
+  it('거래명세서번호 100자는 그대로 나간다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await user.click(screen.getByLabelText(t.fields.deliveryNoteNo));
+    await user.paste('A'.repeat(100));
+
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(lastSplitBody(requests).normal?.deliveryNoteNo).toBe('A'.repeat(100));
+  });
+
+  /*
+   * 사유가 붙은 줄을 그대로 두고 보내면 **그 줄만 빠진 전표**가 만들어진다 —
+   * 되돌릴 수 없는 쓰기라 빠뜨린 줄을 나중에 알아채도 화면이 고칠 수 없다.
+   */
+  it('고치지 않은 수량이 남아 있으면 보내지 않고 사유를 낸다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    /* `0`은 계약이 막는 값이다(`exclusiveMinimum: 0`). 숫자 칸이라 글자는 아예 들어가지 않는다. */
+    await setupRegister(user, { 1: '66', 2: '0' });
+
+    /* 짝 방향 — 1번 줄이 갈려 있어 버튼 자체는 열려 있다. */
+    expect(screen.getByRole('button', { name: t.actions.registerBoth })).toBeEnabled();
+
+    await clickRegister(user);
+
+    expect(await screen.findByText(t.errors.qtyInvalidBlocked)).toBeInTheDocument();
+    expect(splitRequests(requests)).toHaveLength(0);
+  });
+
+  /* 고치면 안내가 사라진다 — 남아 있으면 무엇이 아직 막혔는지 알 수 없다. */
+  it('수량을 고치면 막았다는 안내가 사라진다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await setupRegister(user, { 1: '66', 2: '0' });
+    await clickRegister(user);
+
+    expect(await screen.findByText(t.errors.qtyInvalidBlocked)).toBeInTheDocument();
+
+    await user.clear(qtyInput(2));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.errors.qtyInvalidBlocked)).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('OverReceiptSplitScreen — 전송 중', () => {
+  /*
+   * **M37 · C27** — 공통 쓰기 훅이 호출마다 새 멱등 키를 만들어 연타가 그대로 전표 두 벌이
+   * 된다. 서버가 재전송으로 보지 못하므로 **화면이 두 번째 요청 자체를 막아야** 한다.
+   */
+  it('전송 중에는 연타해도 요청이 1회다', async () => {
+    const { requests, release, user } = renderScreen(allRoutes(), '', '', [SPLIT_PATH]);
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    await clickRegister(user);
+    await clickRegister(user);
+
+    expect(splitRequests(requests)).toHaveLength(1);
+
+    release();
+  });
+
+  it('전송 중에는 세 버튼과 취소가 모두 잠긴다', async () => {
+    const { requests, release, user } = renderScreen(allRoutes(), '', '', [SPLIT_PATH]);
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(screen.getByRole('button', { name: t.actions.registerBoth })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.registerNormalOnly })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.registerExcessOnly })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.cancel })).toBeDisabled();
+
+    release();
+  });
+
+  /*
+   * **대상을 바꾸는 길도 함께 닫는다.** 열어 두면 사용자가 초안을 버리고 다른 발주로 옮긴 뒤
+   * **앞 발주의 등록 결과가 지금 보는 발주의 맥락에** 나타난다 — 중복 전송은 없지만
+   * 「무엇이 어느 발주에 등록됐는가」가 화면에서 흐려진다. 되돌릴 수 없는 쓰기에서 가장 비싼 혼선이다.
+   */
+  it('전송 중에는 목록 선택·조회·쪽 이동도 잠긴다', async () => {
+    const { requests, release, user } = renderScreen(
+      [listRoute(purchaseOrderFixtures, { total: 120 }), ...allRoutes()],
+      '',
+      '',
+      [SPLIT_PATH],
+    );
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('PO-2026-900002') }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.nextPage })).toBeDisabled();
+
+    release();
+  });
+
+  /*
+   * 짝 방향 — 응답이 오면 길이 다시 열린다. 닫힌 채로 남으면 등록을 마친 사용자가
+   * 다음 발주로 갈 방법이 없다.
+   */
+  it('응답이 오면 목록 조작이 다시 열린다', async () => {
+    const { requests, release, user } = renderScreen(
+      [listRoute(purchaseOrderFixtures, { total: 120 }), ...allRoutes()],
+      '',
+      '',
+      [SPLIT_PATH],
+    );
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    release();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: t.actions.selectRow('PO-2026-900002') }),
+      ).toBeEnabled();
+    });
+
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.actions.nextPage })).toBeEnabled();
+  });
+
+  /*
+   * 눈에 보이는 컨트롤을 전부 잠가도 디자인 시스템이 잠금을 받지 않는 자리(조건 칩의 ×)가
+   * 남는다. 그 길로 들어와도 대상이 바뀌지 않는다 — **주소가 그대로임을 값으로 본다.**
+   */
+  it('전송 중에는 조건 칩을 지워도 대상이 바뀌지 않는다', async () => {
+    const { requests, release, user } = renderScreen(
+      [filteringListRoute(), ...allRoutes()],
+      '?q=PO-2026-900001',
+      '',
+      [SPLIT_PATH],
+    );
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+    await fillDraft(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    const before = currentLocation();
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveQ }));
+
+    expect(currentLocation()).toBe(before);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    release();
+  });
+});
+
+describe('OverReceiptSplitScreen — 등록 성공', () => {
+  /* 앞에 둔 규칙이 먼저 맞는다 — 기본 등록 스텁을 가린다. */
+  const renderSuccess = (created: unknown[] = CREATED_TWO) =>
+    renderScreen([splitRoute(created), ...allRoutes()]);
+
+  /* **M42의 화면 몫** — 두 건이 만들어졌다는 것이 이 화면의 요점이다. */
+  it('만들어진 전표 번호가 전부 보이고 건수가 밝혀진다', async () => {
+    const { user } = renderSuccess();
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    expect(await screen.findByText(t.result.count(2))).toBeInTheDocument();
+    expect(screen.getByText('IR-2026-900010')).toBeInTheDocument();
+    expect(screen.getByText('IR-2026-900011')).toBeInTheDocument();
+  });
+
+  it('한 건만 만들어져도 건수를 밝힌다', async () => {
+    const { user } = renderSuccess(CREATED_ONE);
+
+    await setupRegister(user);
+    await clickRegister(user, t.actions.registerNormalOnly);
+
+    expect(await screen.findByText(t.result.count(1))).toBeInTheDocument();
+  });
+
+  /*
+   * **M40의 화면 몫 · C29** — 응답에는 내부 번호가 들어 있는데 화면 어디에도 나오지 않는다.
+   * 짝 방향(전표 번호는 보인다)을 선행으로 둔다.
+   */
+  it('성공 표시에 내부 번호가 없다', async () => {
+    const { user } = renderSuccess();
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText('IR-2026-900010');
+
+    const result = screen.getByRole('status', { name: t.panes.result });
+
+    for (const id of ['9601', '9602']) {
+      expect(result.textContent ?? '').not.toContain(id);
+    }
+  });
+
+  /*
+   * **M38 · 수명 표 8행** — 초안을 비우는 것은 **이중 제출 완화의 한 층**이다.
+   * 비우지 않으면 성공한 뒤에도 같은 수량이 남아 한 번 더 보낼 수 있다.
+   * 고른 발주는 **유지한다** — 등록 결과를 그 자리에서 확인해야 한다.
+   */
+  it('성공하면 초안이 비고 고른 발주는 유지된다', async () => {
+    const { user } = renderSuccess();
+
+    await setupRegister(user);
+
+    /* 짝 방향 — 실제로 값이 들어가 있다. */
+    expect(qtyInput(1)).toHaveValue(66);
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+
+    await clickRegister(user);
+    await screen.findByText(t.result.count(2));
+
+    await waitFor(() => {
+      expect(qtyInput(1)).toHaveValue(null);
+    });
+
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue('');
+    expect(currentLocation()).toContain('po=9001');
+    expect(screen.getByText(t.lineTable.orderedPair(100, 40))).toBeInTheDocument();
+  });
+
+  /*
+   * **M39 · 수명 표 8행** — 등록 뒤 같은 발주의 누적 입하가 늘었다. 다시 부르지 않으면
+   * 화면이 **등록 전 숫자**를 그대로 보이면서 「정량 · 초과」를 그 값으로 계산한다.
+   */
+  it('성공하면 라인을 다시 부른다', async () => {
+    const { requests, user } = renderSuccess();
+
+    await setupRegister(user);
+
+    const before = requestsTo(requests, LINES_PATH).length;
+
+    await clickRegister(user);
+    await screen.findByText(t.result.count(2));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LINES_PATH).length).toBeGreaterThan(before);
+    });
+  });
+});
+
+describe('OverReceiptSplitScreen — 등록 실패 3갈래', () => {
+  const renderFailing = (route: StubRoute) => renderScreen([route, ...allRoutes()]);
+
+  const VALIDATION_BODY = {
+    errors: [
+      { scope: 'field', field: 'deliveryNoteNo', code: 'INVALID', message: '합성 서버 문구' },
+    ],
+  };
+
+  /* **M43** — 실패했는데 입력을 지우면 사용자가 처음부터 다시 친다(수명 표 9행). */
+  it('검증 실패는 서버 문구를 내고 입력이 남는다', async () => {
+    const { user } = renderFailing(failingSplitRoute(400, VALIDATION_BODY));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    expect(await screen.findByText('합성 서버 문구')).toBeInTheDocument();
+    expect(qtyInput(1)).toHaveValue(66);
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+  });
+
+  /**
+   * **서버 필드 오류는 그 칸에 붙는다.**
+   *
+   * 「문구가 화면 어딘가에 있다」만 보면 화면이 아는 필드 목록(`knownFields`)이 끊겨
+   * 같은 문구가 통째로 **배너로** 옮겨 가도 통과한다. 두 표면은 사용자에게 전혀 다르다 —
+   * 배너는 「무엇을 고쳐야 하는지」를 가리키지 못한다.
+   */
+  it('서버가 준 필드 오류가 그 입력칸에 붙는다', async () => {
+    const { user } = renderFailing(failingSplitRoute(400, VALIDATION_BODY));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText('합성 서버 문구');
+
+    const field = screen.getByLabelText(t.fields.deliveryNoteNo);
+
+    expect(field).toHaveAccessibleDescription(/합성 서버 문구/);
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /*
+   * 짝 방향 — **인라인으로 소화한 오류는 배너로 두 번 나오지 않는다.** 두 곳에 같은 문구가
+   * 뜨면 고칠 곳이 둘인 것처럼 읽힌다. 배너 자리(`.banner-slot`)가 아예 비어 있는지로 본다.
+   */
+  it('인라인으로 소화한 오류는 배너에 나오지 않는다', async () => {
+    const { user } = renderFailing(failingSplitRoute(400, VALIDATION_BODY));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText('합성 서버 문구');
+
+    /* 배너가 아예 서지 않는다 — 인라인이 전부 소화하면 배너에 남길 것이 없다. */
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  /*
+   * 짝 방향 — **화면이 모르는 필드는 배너로 올라간다.** 인라인으로 낼 자리를 고를 수 없어
+   * 삼키면 어디에도 보이지 않는 오류가 된다. 위 단언이 「배너를 아예 그리지 않는다」로
+   * 굳어 버리지 않게 한다.
+   */
+  it('화면이 모르는 필드의 오류는 배너로 올라간다', async () => {
+    const { user } = renderFailing(
+      failingSplitRoute(400, {
+        errors: [
+          { scope: 'field', field: 'lines[0].receivedQty', code: 'INVALID', message: '합성 라인 문구' },
+        ],
+      }),
+    );
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    const banner = await screen.findByRole('alert');
+
+    expect(banner).toHaveTextContent('합성 라인 문구');
+    expect(screen.getByLabelText(t.fields.deliveryNoteNo)).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+
+  /*
+   * **고치면 걷힌다.** 서버가 준 오류가 그 칸을 고치는 동안에도 남아 있으면, 사용자는
+   * 방금 고친 값이 여전히 잘못된 것으로 읽는다 — 무엇을 더 고쳐야 하는지 알 수 없다.
+   */
+  it('그 칸을 다시 치면 서버가 준 오류가 걷힌다', async () => {
+    const { user } = renderFailing(failingSplitRoute(400, VALIDATION_BODY));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText('합성 서버 문구');
+
+    await user.type(screen.getByLabelText(t.fields.deliveryNoteNo), 'A');
+
+    await waitFor(() => {
+      expect(screen.queryByText('합성 서버 문구')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText(t.fields.deliveryNoteNo)).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+
+  /*
+   * 짝 방향 — **다른 칸을 고치는 것으로는 걷히지 않는다.** 아무 입력에나 반응해 지우면
+   * 아직 유효한 오류가 사라져, 고치지 않은 값을 그대로 다시 보내게 된다.
+   */
+  it('다른 칸을 고쳐도 그 오류는 남는다', async () => {
+    const { user } = renderFailing(failingSplitRoute(400, VALIDATION_BODY));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText('합성 서버 문구');
+
+    await user.type(screen.getByLabelText(t.fields.remarks), '합성 비고');
+
+    expect(screen.getByText('합성 서버 문구')).toBeInTheDocument();
+  });
+
+  /*
+   * **M46** — 권한 없음은 다시 시도해도 풀리지 않는다. 재시도 수단을 내면
+   * 사용자가 같은 실패를 되풀이한다.
+   */
+  it('권한 없음은 그 사유를 내고 다시 시도를 권하지 않는다', async () => {
+    const { user } = renderFailing(failingSplitRoute(403));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.notes.registerRecheck)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **M45 · C32** — 응답을 받지 못했으면 등록됐는지 알 수 없다. 확인 없이 다시 보내면
+   * 같은 입하가 전표 두 벌로 남는다 — 공통 문구만으로는 그 위험이 전해지지 않는다.
+   */
+  it('응답이 없으면 확인 안내가 함께 나온다', async () => {
+    const { user } = renderFailing(offlineSplitRoute());
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.registerRecheck)).toBeInTheDocument();
+  });
+
+  /* 세 갈래의 문구가 서로 다르다 — 같은 문구를 쓰면 사용자가 할 조치를 가릴 수 없다. */
+  it('검증 실패에는 연결 안내를 내지 않는다', async () => {
+    const { user } = renderFailing(failingSplitRoute(400, VALIDATION_BODY));
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText('합성 서버 문구');
+
+    expect(screen.queryByText(messages.httpError.offline)).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **M44 · C31** — 부분 실패가 없는 한 트랜잭션이라 건별 결과를 그리지 않는다.
+   * 앞선 성공의 번호가 남아 있으면 「일부는 됐다」로 읽힌다.
+   */
+  it('성공한 뒤 다시 실패하면 결과 구획이 사라진다', async () => {
+    let shouldFail = false;
+    const { user } = renderScreen([
+      {
+        match: isSplitPost,
+        respond: () =>
+          shouldFail
+            ? jsonResponse(VALIDATION_BODY, { status: 400 })
+            : jsonResponse({ created: CREATED_TWO }, { status: 201 }),
+      },
+      ...allRoutes(),
+    ]);
+
+    await setupRegister(user);
+    await clickRegister(user);
+    await screen.findByText(t.result.count(2));
+
+    shouldFail = true;
+
+    /* 성공으로 초안이 비었으니 다시 채운다 — 고른 발주는 그대로다(수명 표 8행). */
+    await fillDraft(user);
+    await clickRegister(user);
+
+    await screen.findByText('합성 서버 문구');
+
+    expect(screen.queryByRole('status', { name: t.panes.result })).not.toBeInTheDocument();
+    expect(screen.queryByText('IR-2026-900010')).not.toBeInTheDocument();
+  });
+});
+
+describe('OverReceiptSplitScreen — 취소와 초안 파기 확인', () => {
+  /*
+   * **M47** — 이 화면의 「취소」는 저장 전 복귀다. 계약의 입하 취소는 승인을 타며
+   * 이 화면이 부를 수 있는 것이 아니다.
+   *
+   * **요청 수 자체를 센다.** 「쓰기가 나가지 않았다」만 보면 취소 경로에 붙인 조회
+   * (되돌리려고 다시 부르기 같은 것)가 그대로 통과한다 — 취소는 **아무것도 부르지 않는다.**
+   */
+  it('취소는 어떤 요청도 보내지 않고 선택을 비운다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+
+    /* 짝 방향 — 여기까지 실제로 요청이 여럿 나갔다(아무것도 안 부르고 통과하지 않게 한다). */
+    expect(requests.length).toBeGreaterThan(3);
+
+    const before = requests.length;
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    expect(currentLocation()).not.toContain('po=');
+    expect(requests.slice(before)).toHaveLength(0);
+  });
+
+  /* **C33** — 친 값이 있으면 확인을 받는다. 말없이 사라지면 무엇을 잃었는지도 알 수 없다. */
+  it('초안이 있으면 취소가 확인 창을 거친다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    /* 아직 아무것도 잃지 않았다 — 창이 뜬 것만으로 초안이 사라지면 확인의 뜻이 없다. */
+    expect(screen.getByRole('dialog', { name: t.dialog.discardTitle })).toBeInTheDocument();
+    expect(qtyInput(1)).toHaveValue(66);
+
+    await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
+
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    expect(currentLocation()).not.toContain('po=');
+    expect(splitRequests(requests)).toHaveLength(0);
+  });
+
+  it('계속 입력을 누르면 아무것도 잃지 않는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: t.dialog.discardTitle }),
+      ).not.toBeInTheDocument();
+    });
+
+    expect(qtyInput(1)).toHaveValue(66);
+    expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+    expect(currentLocation()).toContain('po=9001');
+  });
+
+  /* 머리 입력만 채워도 버릴 것이 있다 — 라인 수량만 보면 나머지가 말없이 사라진다. */
+  it('머리 입력만 채워도 확인을 받는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+    await user.type(screen.getByLabelText(t.fields.remarks), '합성 비고');
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.getByRole('dialog', { name: t.dialog.discardTitle })).toBeInTheDocument();
+  });
+
+  /*
+   * **사라진 줄의 초안은 함께 사라진다**(수명 표 4행 — 초안은 라인 응답으로 새로 만든다).
+   *
+   * 초안은 특정 줄에 묶여 있다. 그 줄이 없어졌는데 값이 남으면 **화면에 보이지 않는 값** 때문에
+   * 확인 창이 뜬다 — 사용자는 무엇을 버리라는 것인지 알 수 없고, 그 값은 어디에도 실리지 않는다.
+   * 라인 응답을 되돌림 신호에서 빼면 이 자리가 그대로 재현된다.
+   */
+  it('라인 목록이 달라져 줄이 사라지면 그 줄의 초안도 사라진다', async () => {
+    const { queryClient, user } = renderScreen([shrinkingLinesRoute(), ...allRoutes()]);
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+    await user.type(qtyInput(1), '66');
+
+    /* 짝 방향 — 실제로 값이 들어가 있다. */
+    expect(qtyInput(1)).toHaveValue(66);
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: poKeys.lines(9001) });
+    });
+
+    /* 1번 줄이 사라졌다 — 남은 줄만 보인다. */
+    await waitFor(() => {
+      expect(screen.queryByLabelText(t.lineTable.arrivedQtyLabel(1))).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(currentLocation()).not.toContain('po=');
+  });
+
+  /* 짝 방향 — 버릴 것이 없으면 확인을 받지 않는다. 늘 물으면 사용자가 읽지 않고 누른다. */
+  it('버릴 것이 없으면 확인 창이 뜨지 않는다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await screen.findByText('PO-2026-900001');
     await selectPo(user, 'PO-2026-900001');
     await screen.findByText(t.lineTable.orderedPair(100, 40));
 
-    expect(screen.queryByRole('button', { name: messages.common.save })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: messages.common.cancel })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /* **M36의 화면 몫 · C34** — 창 안 선택 목록이 잘리는 결함이 걸릴 자리를 만들지 않는다. */
+  it('확인 창에 선택칸이 없다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await setupRegister(user);
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    const dialog = screen.getByRole('dialog', { name: t.dialog.discardTitle });
+
+    expect(within(dialog).getByText(messages.common.discardChangesConfirm)).toBeInTheDocument();
+    expect(within(dialog).queryAllByRole('combobox')).toHaveLength(0);
+  });
+});
+
+describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
+  /* **M48 · C35** — 갈 곳이 아직 없다. 자리를 두되 사유를 밝히고 이동시키지 않는다. */
+  it('잠겨 있고 사유가 보이며 어떤 경로로도 이동하지 않는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+
+    const before = currentLocation();
+    const target = screen.getByRole('button', { name: t.actions.createPurchaseOrder });
+
+    expect(target).toBeDisabled();
+    expect(
+      screen.getByText(t.actionReasons.createPurchaseOrderUnavailable),
+    ).toBeInTheDocument();
+
+    await user.click(target);
+
+    expect(currentLocation()).toBe(before);
+    expect(
+      within(screen.getByRole('region', { name: t.panes.register })).queryAllByRole('link'),
+    ).toHaveLength(0);
   });
 });

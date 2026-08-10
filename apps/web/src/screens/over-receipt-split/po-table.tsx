@@ -13,6 +13,11 @@ const orEmptyMark = (value: string | null): ReactNode => value ?? t.values.empty
 export interface PoColumnsInput {
   selectedPoId: number | null;
   supplierLookup: ReferenceSource;
+  /**
+   * 등록을 보내는 중인가. 참이면 **대상을 바꾸는 길을 닫는다** —
+   * 보내는 중에 다른 발주로 옮기면 앞 발주의 등록 결과가 지금 보는 발주의 맥락에 나타난다.
+   */
+  isLocked: boolean;
   onToggleSelect: (purchaseOrderId: number) => void;
 }
 
@@ -44,6 +49,7 @@ export interface PoColumnsInput {
 export const buildPoColumns = ({
   selectedPoId,
   supplierLookup,
+  isLocked,
   onToggleSelect,
 }: PoColumnsInput): Column<PoView>[] => [
   { key: 'purchaseOrderNo', header: t.table.purchaseOrderNo, width: '160px' },
@@ -92,6 +98,7 @@ export const buildPoColumns = ({
         <Button
           variant="outlined"
           size="sm"
+          disabled={isLocked}
           aria-label={
             selected
               ? t.actions.deselectRow(row.purchaseOrderNo)
@@ -133,11 +140,12 @@ export const PoTable = ({
   isBeyondLast,
   selectedPoId,
   supplierLookup,
+  isLocked,
   onFirstPage,
   onToggleSelect,
   onRetryReferences,
 }: PoTableProps) => {
-  const columns = buildPoColumns({ selectedPoId, supplierLookup, onToggleSelect });
+  const columns = buildPoColumns({ selectedPoId, supplierLookup, isLocked, onToggleSelect });
 
   if (isLoading) {
     return (
@@ -155,7 +163,7 @@ export const PoTable = ({
         title={t.empty.beyondLastTitle}
         description={t.empty.beyondLastDescription}
         action={
-          <Button variant="outlined" onClick={onFirstPage}>
+          <Button variant="outlined" disabled={isLocked} onClick={onFirstPage}>
             {t.actions.goFirstPage}
           </Button>
         }

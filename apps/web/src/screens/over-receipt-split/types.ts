@@ -14,8 +14,17 @@ import type { components } from '@omf-mes/api-client';
 
 type PurchaseOrderResponse = components['schemas']['PurchaseOrder'];
 type PurchaseOrderLineResponse = components['schemas']['PurchaseOrderLine'];
+type InboundReceiptResponse = components['schemas']['InboundReceipt'];
 
 export type PageMeta = components['schemas']['PageMeta'];
+
+/**
+ * 저장 갈래. **계약에서 끌어온다** — 손으로 적은 유니온은 계약이 갈래를 늘려도 조용히 남는다.
+ *
+ * **기본값을 두지 않는다**(이슈 §6). 세 갈래는 각각 다른 버튼이고, 무엇을 저장하는지는
+ * 누르기 전에 정해져야 한다.
+ */
+export type SplitMode = components['schemas']['InboundReceiptSplitRequest']['mode'];
 
 /**
  * 화면이 다루는 발주 한 건.
@@ -106,3 +115,60 @@ export interface SelectOption {
   value: string;
   label: string;
 }
+
+/**
+ * 라인 바깥의 초안 — **두 전표에 함께 실리는 머리 입력과 초과분에만 실리는 두 칸**이다.
+ *
+ * 라인 초안과 갈라 두는 이유는 되돌아가는 신호가 다르기 때문이다. 라인 초안은 라인 응답이
+ * 오면 그 응답으로 새로 만들어지지만, 머리 입력은 **고른 발주가 바뀔 때만** 비워진다 —
+ * 라인을 다시 부르는 것만으로 치던 비고가 사라지면 안 된다.
+ *
+ * **친 글자를 그대로 들고 있는다.** 날짜·시각을 `Date`로 강제해 들고 있으면 아직 완성되지 않은
+ * 입력(`2026-08-0`)이 그 자리에서 사라진다.
+ */
+export interface HeaderDraft {
+  /** `datetime-local` 입력의 값(`YYYY-MM-DDTHH:mm`). offset이 없어 보낼 때 붙인다 */
+  receiptDatetime: string;
+  deliveryNoteNo: string;
+  remarks: string;
+  /** 값 목록이 확정되지 않아 선택지가 비어 있다 — 지금은 늘 빈 문자열이다(계획 결정 14) */
+  exceptionTypeCode: string;
+  exceptionReason: string;
+}
+
+export const EMPTY_HEADER_DRAFT: HeaderDraft = {
+  receiptDatetime: '',
+  deliveryNoteNo: '',
+  remarks: '',
+  exceptionTypeCode: '',
+  exceptionReason: '',
+};
+
+/**
+ * 버릴 것이 있는가. 대상을 바꾸거나 취소할 때 확인을 받을지 정한다(계획 결정 10).
+ *
+ * **다섯 칸을 모두 본다.** 한 칸만 보면 나머지 넷에 친 값이 확인 없이 사라진다.
+ * 공백만 친 칸은 버릴 값이 아니다 — 라인 수량(`hasAnyQty`)과 같은 기준이다.
+ */
+export const hasAnyHeaderValue = (header: HeaderDraft): boolean =>
+  Object.values(header).some((text) => text.trim() !== '');
+
+/**
+ * 만들어진 전표 한 건 — **화면이 내는 값만 담는다.**
+ *
+ * `inboundReceiptNo`는 사용자가 나중에 이 전표를 찾을 때 쓰는 **업무 번호**라 내는 것이 맞다.
+ * `inboundReceiptId`는 내부 번호(FK)이므로 타입에 자리를 두지 않는다 — 자리가 없으면
+ * 결과 구획으로 샐 경로도 없다(#44). 이 구분이 이 화면에서 처음 갈리는 자리다.
+ *
+ * `statusCode`는 값으로 분기하지 않고 그대로 보인다(공유계약 G-2).
+ */
+export interface CreatedReceiptView {
+  inboundReceiptNo: string;
+  statusCode: string;
+}
+
+/** 등록 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toCreatedReceiptView = (data: InboundReceiptResponse): CreatedReceiptView => ({
+  inboundReceiptNo: data.inboundReceiptNo,
+  statusCode: data.statusCode,
+});
