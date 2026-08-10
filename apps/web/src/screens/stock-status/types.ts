@@ -102,11 +102,16 @@ export const toBalanceView = (data: InventoryBalanceResponse): BalanceView => ({
  * 여기서 나온 값은 React key와 그룹 키로만 쓰이며 **셀 텍스트가 되지 않는다** —
  * 표시되는 값으로 옮기는 자리를 두지 않는 것이 #44를 구조로 막는 형태다.
  *
- * **번호를 문자열로 만드는 자리가 이 슬라이스에 다섯 있고 전부 표의 행 키다** — 잔액 줄(여기),
- * 보류(`lot-hold-table.tsx`), 외부 식별자(`lot-detail-pane.tsx`), 수불 이력 줄
- * (`transaction-pane.tsx` — 영업일과 번호를 잇는다), 거래 라인(`transaction-line-table.tsx`).
- * 뒤 넷은 키가 한두 조각뿐이라 이 함수를 거치지 않는다.
- * **다섯 중 어느 것도 렌더되지 않는다는 것이 규칙**이고, 표기 경로에 번호를 담는 자리는 없다.
+ * 번호를 문자열로 만드는 자리는 **두 갈래뿐이고 어느 쪽도 렌더되지 않는다.**
+ *
+ * 1. **표의 행 키 다섯** — 잔액 줄(여기), 보류(`lot-hold-table.tsx`), 외부 식별자
+ *    (`lot-detail-pane.tsx`), 수불 이력 줄(`transaction-pane.tsx` — 영업일과 번호를 잇는다),
+ *    거래 라인(`transaction-line-table.tsx`). 뒤 넷은 키가 한두 조각뿐이라 이 함수를 거치지 않는다.
+ * 2. **주소에 적는 값** — `sel`·`hpage`(`screen.tsx`의 고르기·쪽 핸들러)와
+ *    `tx`(`filters.ts`의 `toTransactionParam`). 주소가 내부 번호를 담는 것은 결정 4가 정한
+ *    형태다 — 새로고침·뒤로가기·공유가 같은 LOT과 거래를 열어야 한다.
+ *
+ * **표기 경로에 번호를 담는 자리는 하나도 없다**는 것이 규칙이고, 그것이 #44를 구조로 막는다.
  */
 const toIdentityKey = (value: string | number | null): string =>
   value === null ? '-' : String(value);
