@@ -18,10 +18,10 @@ const view = (overrides: Partial<PageView> = {}): PageView => ({
   ...overrides,
 });
 
-const renderNav = (overrides: Partial<PageView> = {}) => {
+const renderNav = (overrides: Partial<PageView> = {}, isLocked = false) => {
   const onChange = vi.fn<(page: number) => void>();
 
-  render(<PageNav view={view(overrides)} onChange={onChange} />);
+  render(<PageNav view={view(overrides)} isLocked={isLocked} onChange={onChange} />);
 
   return { onChange, user: userEvent.setup() };
 };
@@ -41,6 +41,17 @@ describe('PageNav — 쪽 이동', () => {
 
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
     expect(onChange).toHaveBeenCalledWith(3);
+  });
+
+  /*
+   * 등록을 보내는 중에 쪽을 옮기면 고른 발주가 풀려, **앞 발주의 등록 결과가 다른 맥락에**
+   * 나타난다. 갈 수 있는 쪽이어도 그동안은 닫는다.
+   */
+  it('보내는 중에는 갈 수 있는 쪽도 닫힌다', () => {
+    renderNav({}, true);
+
+    expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.nextPage })).toBeDisabled();
   });
 
   it('갈 수 없는 쪽의 버튼은 비활성이다', () => {

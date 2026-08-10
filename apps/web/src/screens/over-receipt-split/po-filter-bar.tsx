@@ -17,6 +17,11 @@ export interface PoFilterBarProps {
   chipNames: FilterChipNames;
   /** 참조 선택지의 한계(잘림·실패) 안내. 밝히지 않으면 값이 사라진 것으로 읽힌다. */
   supplierNote?: string;
+  /**
+   * 등록을 보내는 중인가. 참이면 **조회와 초기화를 닫는다** — 조건이 바뀌면 고른 발주가
+   * 풀려, 보내는 중인 등록의 결과가 다른 맥락에 나타난다.
+   */
+  isLocked: boolean;
   onSearch: (filters: PoFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: 'supplier' | 'q') => void;
@@ -41,6 +46,7 @@ export const PoFilterBar = ({
   supplierOptions,
   chipNames,
   supplierNote,
+  isLocked,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -120,8 +126,10 @@ export const PoFilterBar = ({
          */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
-            <Button onClick={search}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={onReset}>
+            <Button disabled={isLocked} onClick={search}>
+              {messages.common.search}
+            </Button>
+            <Button variant="outlined" disabled={isLocked} onClick={onReset}>
               {messages.common.reset}
             </Button>
           </div>

@@ -1717,6 +1717,99 @@ describe('OverReceiptSplitScreen — 전송 중', () => {
 
     release();
   });
+
+  /*
+   * **대상을 바꾸는 길도 함께 닫는다.** 열어 두면 사용자가 초안을 버리고 다른 발주로 옮긴 뒤
+   * **앞 발주의 등록 결과가 지금 보는 발주의 맥락에** 나타난다 — 중복 전송은 없지만
+   * 「무엇이 어느 발주에 등록됐는가」가 화면에서 흐려진다. 되돌릴 수 없는 쓰기에서 가장 비싼 혼선이다.
+   */
+  it('전송 중에는 목록 선택·조회·쪽 이동도 잠긴다', async () => {
+    const { requests, release, user } = renderScreen(
+      [listRoute(purchaseOrderFixtures, { total: 120 }), ...allRoutes()],
+      '',
+      '',
+      [SPLIT_PATH],
+    );
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('PO-2026-900002') }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.nextPage })).toBeDisabled();
+
+    release();
+  });
+
+  /*
+   * 짝 방향 — 응답이 오면 길이 다시 열린다. 닫힌 채로 남으면 등록을 마친 사용자가
+   * 다음 발주로 갈 방법이 없다.
+   */
+  it('응답이 오면 목록 조작이 다시 열린다', async () => {
+    const { requests, release, user } = renderScreen(
+      [listRoute(purchaseOrderFixtures, { total: 120 }), ...allRoutes()],
+      '',
+      '',
+      [SPLIT_PATH],
+    );
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    release();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: t.actions.selectRow('PO-2026-900002') }),
+      ).toBeEnabled();
+    });
+
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.actions.nextPage })).toBeEnabled();
+  });
+
+  /*
+   * 눈에 보이는 컨트롤을 전부 잠가도 디자인 시스템이 잠금을 받지 않는 자리(조건 칩의 ×)가
+   * 남는다. 그 길로 들어와도 대상이 바뀌지 않는다 — **주소가 그대로임을 값으로 본다.**
+   */
+  it('전송 중에는 조건 칩을 지워도 대상이 바뀌지 않는다', async () => {
+    const { requests, release, user } = renderScreen(
+      [filteringListRoute(), ...allRoutes()],
+      '?q=PO-2026-900001',
+      '',
+      [SPLIT_PATH],
+    );
+
+    await screen.findByText('PO-2026-900001');
+    await selectPo(user, 'PO-2026-900001');
+    await screen.findByText(t.lineTable.orderedPair(100, 40));
+    await fillDraft(user);
+    await clickRegister(user);
+
+    await waitFor(() => {
+      expect(splitRequests(requests)).toHaveLength(1);
+    });
+
+    const before = currentLocation();
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveQ }));
+
+    expect(currentLocation()).toBe(before);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    release();
+  });
 });
 
 describe('OverReceiptSplitScreen — 등록 성공', () => {

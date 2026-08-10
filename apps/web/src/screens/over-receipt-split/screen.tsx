@@ -94,7 +94,12 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * **되돌릴 수 없는 쓰기다.** 계약의 입하 취소는 승인을 타므로(실측) 잘못 만들어진 전표를
  * 이 화면이 되돌릴 수 없다. 그래서 보내기 전에 세 겹으로 막는다 —
  * ① 갈래별 활성 조건(계약의 조건부 필수) ② 머리 입력 검증 ③ 고치지 않은 수량.
- * 그리고 보내는 중에는 **모든 버튼을 잠근다**(계획 결정 13).
+ *
+ * **보내는 중에는 화면 전체를 잠근다**(계획 결정 13). 등록 세 갈래와 취소·입력칸뿐 아니라
+ * **대상을 바꾸는 길**(목록의 선택·해제 · 조건 조회·초기화 · 쪽 이동)도 함께 닫는다 —
+ * 열어 두면 사용자가 초안을 버리고 다른 발주로 옮긴 뒤 **앞 발주의 등록 결과가 지금 보는
+ * 발주의 맥락에 나타난다.** 중복 전송이 생기지는 않지만 「무엇이 어느 발주에 등록됐는가」가
+ * 화면에서 흐려지고, 그것이 이 화면에서 가장 비싼 혼선이다. 전송은 짧다.
  */
 export const OverReceiptSplitScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -231,6 +236,22 @@ export const OverReceiptSplitScreen = () => {
    */
   const selectedRow = rows.find((row) => row.purchaseOrderId === selectedPoId) ?? null;
 
+  const register = useSplitRegister({
+    purchaseOrderId: selectedPoId,
+    onSuccess: (data) => {
+      setCreated(data.created.map(toCreatedReceiptView));
+      /*
+       * **초안을 비운다**(수명 표 8행 · 이중 제출 완화의 한 층). 라인 재조회에 얹지 않는
+       * 이유는 같은 응답이 오면 캐시가 참조를 그대로 유지해 되돌림 effect가 깨어나지 않기
+       * 때문이다 — 그러면 등록에 성공했는데 수량이 남아 한 번 더 보낼 수 있다.
+       */
+      setDrafts(EMPTY_DRAFTS);
+      setHeader(EMPTY_HEADER_DRAFT);
+      setLocalFieldErrors(NO_FIELD_ERRORS);
+      setQtyBlockShown(false);
+    },
+  });
+
   /** 버릴 것이 있는가. 라인 수량과 머리 입력을 **함께** 본다 — 한쪽만 보면 나머지가 말없이 사라진다. */
   const hasDraft = hasAnyQty(drafts) || hasAnyHeaderValue(header);
 
@@ -272,6 +293,13 @@ export const OverReceiptSplitScreen = () => {
    * 확인 창이 의미를 잃고 사용자가 읽지 않고 누르게 된다.
    */
   const requestIntent = (intent: DiscardIntent): void => {
+    /*
+     * **보내는 중에는 대상을 바꾸지 않는다.** 눈에 보이는 컨트롤은 전부 잠가 두었으나,
+     * 조건 칩의 ×처럼 디자인 시스템이 잠금을 받지 않는 자리가 남는다 — 그 길로 들어와도
+     * 앞 발주의 등록 결과가 다른 발주 맥락에 놓이지 않도록 여기서 한 번 더 막는다.
+     */
+    if (register.isSaving) return;
+
     if (hasDraft) {
       setPendingDiscard(intent);
 
@@ -331,22 +359,6 @@ export const OverReceiptSplitScreen = () => {
   const changeQty = (purchaseOrderLineId: number, text: string): void => {
     setDrafts((prev) => setDraftQty(prev, purchaseOrderLineId, text));
   };
-
-  const register = useSplitRegister({
-    purchaseOrderId: selectedPoId,
-    onSuccess: (data) => {
-      setCreated(data.created.map(toCreatedReceiptView));
-      /*
-       * **초안을 비운다**(수명 표 8행 · 이중 제출 완화의 한 층). 라인 재조회에 얹지 않는
-       * 이유는 같은 응답이 오면 캐시가 참조를 그대로 유지해 되돌림 effect가 깨어나지 않기
-       * 때문이다 — 그러면 등록에 성공했는데 수량이 남아 한 번 더 보낼 수 있다.
-       */
-      setDrafts(EMPTY_DRAFTS);
-      setHeader(EMPTY_HEADER_DRAFT);
-      setLocalFieldErrors(NO_FIELD_ERRORS);
-      setQtyBlockShown(false);
-    },
-  });
 
   /** 실제로 요청에 실릴 라인 수. **세는 자리와 보내는 자리가 같다** — 갈리면 빈 part가 나간다. */
   const parts = toSplitParts(splitLines);
@@ -590,6 +602,7 @@ export const OverReceiptSplitScreen = () => {
           supplierOptions={toSelectOptions(suppliers)}
           chipNames={{ supplier: describeReference(supplierReference) }}
           supplierNote={lookupNote(suppliers)}
+          isLocked={register.isSaving}
           onSearch={(nextFilters) => {
             applyQuery(nextFilters);
           }}
@@ -609,6 +622,7 @@ export const OverReceiptSplitScreen = () => {
               isBeyondLast={pageView.isBeyondLast}
               selectedPoId={selectedPoId}
               supplierLookup={suppliers}
+              isLocked={register.isSaving}
               onFirstPage={() => {
                 applyQuery(filters);
               }}
@@ -618,6 +632,7 @@ export const OverReceiptSplitScreen = () => {
             {!list.isPending && (
               <PageNav
                 view={pageView}
+                isLocked={register.isSaving}
                 onChange={(nextPage) => {
                   applyQuery(filters, nextPage);
                 }}

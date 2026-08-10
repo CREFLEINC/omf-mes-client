@@ -23,6 +23,7 @@ const renderBar = (overrides: Partial<PoFilterBarProps> = {}) => {
       appliedFilters={DEFAULT_FILTERS}
       supplierOptions={SUPPLIER_OPTIONS}
       chipNames={{ supplier: 'SAMPLE-SUP-01 · 합성 공급사 가' }}
+      isLocked={false}
       onSearch={onSearch}
       onRemoveFilter={onRemoveFilter}
       onReset={onReset}
@@ -117,6 +118,7 @@ describe('PoFilterBar — 주소가 정본이다', () => {
         appliedFilters={{ supplier: '', q: '', openOnly: true }}
         supplierOptions={SUPPLIER_OPTIONS}
         chipNames={{ supplier: '' }}
+        isLocked={false}
         onSearch={() => undefined}
         onRemoveFilter={() => undefined}
         onReset={() => undefined}
@@ -137,6 +139,7 @@ describe('PoFilterBar — 주소가 정본이다', () => {
         appliedFilters={{ supplier: '', q: 'PO-2026-8', openOnly: false }}
         supplierOptions={SUPPLIER_OPTIONS}
         chipNames={{ supplier: '' }}
+        isLocked={false}
         onSearch={() => undefined}
         onRemoveFilter={() => undefined}
         onReset={() => undefined}
@@ -201,5 +204,24 @@ describe('PoFilterBar — 선택지의 한계', () => {
 
     expect(screen.getByText(t.filters.lookupFailed)).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.fields.supplier })).toBeEnabled();
+  });
+
+  /*
+   * 등록을 보내는 중에 조건을 바꾸면 고른 발주가 풀려, **앞 발주의 등록 결과가 다른 맥락에**
+   * 나타난다. 조건 없이도 열려 있던 조회를 이때만 닫는다.
+   */
+  it('보내는 중에는 조회와 초기화가 닫힌다', () => {
+    renderBar({ isLocked: true });
+
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();
+  });
+
+  /* 짝 방향 — 평상시에는 둘 다 열려 있다. 늘 닫혀 있으면 위 단언이 항상 참이 된다. */
+  it('보내는 중이 아니면 조회와 초기화가 열려 있다', () => {
+    renderBar();
+
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeEnabled();
   });
 });
