@@ -2444,6 +2444,31 @@ describe('StockStatusScreen — 이력의 빈 상태와 실패', () => {
   });
 
   /*
+   * **응답이 실어 보낸 내부 번호가 화면에 서지 않는다**(#44). 계약 모양 스텁이라
+   * `sourceDocumentId`·`plantId`가 실제로 응답에 들어 있다 — 화면 타입이 그것을 담지 않아
+   * 샐 경로가 없다는 것을 **응답에서 화면까지** 한 번에 본다.
+   */
+  it('응답의 원천 전표 번호와 공장 번호가 이력 표에 나오지 않는다', async () => {
+    renderScreen(
+      [balanceRoute(), lotDetailRoute(heldLotDetail(TODAY)), ...historyRoutes(), ...lookupRoutes()],
+      WITH_HISTORY,
+    );
+
+    await screen.findByRole('region', { name: t.panes.history });
+
+    const body = (await within(historyPane()).findByRole('table', { name: t.panes.history }))
+      .textContent;
+
+    /* 선행 단언 — 내야 하는 것은 실제로 그려져 있다(아무것도 안 그려도 통과하지 않게 한다). */
+    expect(body).toContain('SAMPLE-IT-0001');
+    expect(body).toContain('SAMPLE_SRC_T_A');
+
+    for (const leaked of ['9021', '9022', '9001', '9901', '9902']) {
+      expect(body).not.toContain(leaked);
+    }
+  });
+
+  /*
    * **이력이 실패해도 위 두 구획은 그대로 보인다**(C60). 실패한 것은 이력 한 벌뿐인데
    * 화면 전체를 덮으면 사용자가 목록과 상세까지 못 쓰게 된다.
    */
