@@ -32,27 +32,44 @@ const PERIOD = { from: '2026-07-10', to: '2026-08-10' };
 const pageView = (total = transactionFixtures.length) =>
   toPageView({ page: 1, size: 50, total }, transactionFixtures.length);
 
+/** 성한 조회 한 벌. **다시 그릴 때도 같은 값에서 시작해야** 되돌림 판정이 뜻을 갖는다. */
+const baseProps = (): TransactionPaneProps => ({
+  appliedPeriod: PERIOD,
+  rows: transactionFixtures,
+  isLoading: false,
+  hasQuery: true,
+  pageView: pageView(),
+  isError: false,
+  error: undefined,
+  selected: null,
+  onRetry: () => undefined,
+  onSearch: () => undefined,
+  onToggleSelect: () => undefined,
+  onChangePage: () => undefined,
+});
+
 const renderPane = (overrides: Partial<TransactionPaneProps> = {}) => {
   const onSearch = vi.fn<TransactionPaneProps['onSearch']>();
   const onToggleSelect = vi.fn<TransactionPaneProps['onToggleSelect']>();
   const onChangePage = vi.fn<TransactionPaneProps['onChangePage']>();
+  const onRetry = vi.fn<TransactionPaneProps['onRetry']>();
 
   const view = render(
     <TransactionPane
-      appliedPeriod={PERIOD}
-      rows={transactionFixtures}
-      isLoading={false}
-      hasQuery
-      pageView={pageView()}
-      selected={null}
+      {...baseProps()}
       onSearch={onSearch}
       onToggleSelect={onToggleSelect}
       onChangePage={onChangePage}
+      onRetry={onRetry}
       {...overrides}
     />,
   );
 
-  return { onSearch, onToggleSelect, onChangePage, view, user: userEvent.setup() };
+  const rerender = (next: Partial<TransactionPaneProps> = {}): void => {
+    view.rerender(<TransactionPane {...baseProps()} {...next} />);
+  };
+
+  return { onSearch, onToggleSelect, onChangePage, onRetry, rerender, user: userEvent.setup() };
 };
 
 const table = (): HTMLElement => screen.getByRole('table');
@@ -242,49 +259,79 @@ describe('TransactionPane — 기간 조건', () => {
    * 고치던 날짜가 사라지지 않아야 한다 — 조회 응답이 도착해 다시 그려질 때가 그 자리다.
    */
   it('같은 값의 새 객체를 다시 받아도 고치던 날짜가 남는다', async () => {
-    const { view, user } = renderPane();
+    const { rerender, user } = renderPane();
 
     const from = screen.getByLabelText(t.history.periodFrom);
 
     await user.clear(from);
     await user.type(from, '2026-05-01');
 
-    view.rerender(
-      <TransactionPane
-        appliedPeriod={{ ...PERIOD }}
-        rows={transactionFixtures}
-        isLoading={false}
-        hasQuery
-        pageView={pageView()}
-        selected={null}
-        onSearch={() => undefined}
-        onToggleSelect={() => undefined}
-        onChangePage={() => undefined}
-      />,
-    );
+    rerender({ appliedPeriod: { ...PERIOD } });
 
     expect(screen.getByLabelText(t.history.periodFrom)).toHaveValue('2026-05-01');
   });
 
   /* 주소가 정본이다 — 값이 실제로 달라지면 고치던 값도 그 값으로 되돌아간다. */
   it('적용된 기간이 달라지면 칸이 따라간다', () => {
-    const { view } = renderPane();
+    const { rerender } = renderPane();
 
-    view.rerender(
-      <TransactionPane
-        appliedPeriod={{ from: '2026-01-01', to: '2026-01-31' }}
-        rows={transactionFixtures}
-        isLoading={false}
-        hasQuery
-        pageView={pageView()}
-        selected={null}
-        onSearch={() => undefined}
-        onToggleSelect={() => undefined}
-        onChangePage={() => undefined}
-      />,
-    );
+    rerender({ appliedPeriod: { from: '2026-01-01', to: '2026-01-31' } });
 
     expect(screen.getByLabelText(t.history.periodFrom)).toHaveValue('2026-01-01');
+  });
+});
+
+describe('TransactionPane — 조회 실패', () => {
+  /**
+   * **실패해도 조건 줄은 남는다.** 감추면 사용자가 기간을 고칠 수단을 잃어 같은 기간으로
+   * 다시 부르는 것 말고는 할 수 있는 일이 없다 — 같은 화면 잔액 구획이 「조건을 고칠 수단이
+   * 사라지면 안 된다」로 쓰는 규칙과 반대가 된다.
+   */
+  it('실패해도 기간 두 칸과 조회 버튼이 남는다', () => {
+    renderPane({ isError: true, error: undefined, rows: [] });
+
+    expect(screen.getByLabelText(t.history.periodFrom)).toBeEnabled();
+    expect(screen.getByLabelText(t.history.periodTo)).toBeEnabled();
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
+  });
+
+  /* 실패한 기간을 고쳐 다시 부를 수 있다 — 이 구획의 조치가 「같은 요청 재시도」뿐이 아니다. */
+  it('실패 상태에서 기간을 고쳐 다시 조회할 수 있다', async () => {
+    const { onSearch, user } = renderPane({ isError: true, error: undefined, rows: [] });
+
+    await user.clear(screen.getByLabelText(t.history.periodFrom));
+    await user.type(screen.getByLabelText(t.history.periodFrom), '2026-08-01');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(onSearch).toHaveBeenCalledWith({ from: '2026-08-01', to: PERIOD.to });
+  });
+
+  /*
+   * **실패는 빈 상태가 아니다.** 「기록이 없다」로 내면 사용자가 자료가 없는 줄 알고 기간을
+   * 넓히는데, 무엇을 해도 결과가 같다. 표 자리는 배너가 맡는다.
+   */
+  it('표 자리를 배너가 대신하고 빈 상태를 내지 않는다', () => {
+    renderPane({ isError: true, error: undefined, rows: [] });
+
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText(t.history.empty.noResultTitle)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.history.empty.notQueriedTitle)).not.toBeInTheDocument();
+  });
+
+  /* 실패한 조회에는 넘길 쪽이 없다 — 쪽 이동을 내면 같은 실패를 부르는 버튼이 된다. */
+  it('실패하면 쪽 이동을 내지 않는다', () => {
+    renderPane({ isError: true, error: undefined, rows: [] });
+
+    expect(screen.queryByRole('navigation', { name: t.pageNav.label })).not.toBeInTheDocument();
+  });
+
+  /* 짝 방향 — 성공하면 배너가 없고 표가 그려진다(위 단언들이 저절로 통과하지 않게 한다). */
+  it('성공하면 배너를 내지 않는다', () => {
+    renderPane();
+
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
   });
 });
 

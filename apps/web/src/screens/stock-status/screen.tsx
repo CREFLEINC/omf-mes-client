@@ -846,34 +846,35 @@ export const StockStatusScreen = () => {
        */}
       {historyScope !== null && !list.isError && (
         <section className="pane" aria-label={t.panes.history}>
-          {/* 이력 조회 실패는 이 구획 안에만 낸다 — 위 목록과 LOT 상세를 가리지 않는다. */}
-          {history.isError && (
-            <LoadErrorBanner
-              error={history.error}
-              onRetry={() => {
-                void history.refetch();
-              }}
-            />
-          )}
-
-          {!history.isError && (
-            <TransactionPane
-              appliedPeriod={historyPeriod}
-              rows={historyRows}
-              isLoading={history.isPending && historyQuery !== null}
-              hasQuery={historyQuery !== null}
-              pageView={historyPageView}
-              selected={selectedTransaction}
-              onSearch={(nextPeriod) => {
-                applyHistory(nextPeriod);
-              }}
-              onToggleSelect={toggleSelectTransaction}
-              /* 이력 쪽 이동(수명 표 11행) — 기간은 그대로 두고 고른 거래를 비운다. */
-              onChangePage={(nextPage) => {
-                applyHistory(historyPeriod, nextPage);
-              }}
-            />
-          )}
+          {/*
+           * **실패해도 이 구획을 통째로 감추지 않는다.** 배너는 표 자리만 대신하고
+           * 기간 두 칸과 조회는 남는다 — 감추면 사용자가 기간을 고칠 수단을 잃고,
+           * 권한 없음이면 「다시 시도」도 없어 이 구획에서 할 수 있는 조치가 0이 된다.
+           * 잔액 구획이 「조건을 고칠 수단이 사라지면 안 된다」로 쓰는 규칙과 같은 형태다.
+           *
+           * 이력 조회 실패는 **이 구획 안에만** 낸다 — 위 목록과 LOT 상세를 가리지 않는다.
+           */}
+          <TransactionPane
+            appliedPeriod={historyPeriod}
+            rows={historyRows}
+            isLoading={history.isPending && historyQuery !== null}
+            hasQuery={historyQuery !== null}
+            pageView={historyPageView}
+            isError={history.isError}
+            error={history.error}
+            onRetry={() => {
+              void history.refetch();
+            }}
+            selected={selectedTransaction}
+            onSearch={(nextPeriod) => {
+              applyHistory(nextPeriod);
+            }}
+            onToggleSelect={toggleSelectTransaction}
+            /* 이력 쪽 이동(수명 표 11행) — 기간은 그대로 두고 고른 거래를 비운다. */
+            onChangePage={(nextPage) => {
+              applyHistory(historyPeriod, nextPage);
+            }}
+          />
 
           {/*
            * 라인은 이력 목록이 실패하면 낼 것이 없다 — 고를 줄이 화면에 없다.

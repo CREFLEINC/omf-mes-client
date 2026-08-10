@@ -2562,6 +2562,62 @@ describe('StockStatusScreen — 이력의 빈 상태와 실패', () => {
     expect(screen.queryByText(t.history.empty.notQueriedTitle)).not.toBeInTheDocument();
   });
 
+  /*
+   * **실패해도 기간을 고칠 수단이 남는다.** 조건 줄까지 감추면 사용자가 할 수 있는 일이
+   * 「같은 기간으로 다시 부르기」뿐이고, 권한 없음이면 그 하나마저 없어 조치가 0이 된다.
+   * 잔액 구획의 「조건을 고칠 수단이 사라지면 안 된다」와 같은 규칙이다.
+   */
+  it('이력이 실패해도 기간을 고쳐 다시 조회할 수 있다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        balanceRoute(),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        failingHistoryRoute(),
+        transactionDetailRoute(transactionDetailResponse()),
+        ...lookupRoutes(),
+      ],
+      WITH_HISTORY,
+    );
+
+    await within(historyPane()).findByRole('button', { name: messages.common.retry });
+
+    const before = historyRequests(requests).length;
+
+    /* 조건 줄이 남아 있다 — 없으면 이 조작 자체를 할 수 없다. */
+    await user.clear(screen.getByLabelText(t.history.periodFrom));
+    await user.type(screen.getByLabelText(t.history.periodFrom), '2026-08-01');
+    await user.click(within(historyPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(historyRequests(requests).length).toBeGreaterThan(before);
+    });
+
+    /* 고친 기간이 실제로 실린다 — 버튼만 눌리고 같은 요청이 나가면 고친 뜻이 없다. */
+    expect(lastQuery(requests, TRANSACTIONS_PATH)?.get('businessDateFrom')).toBe('2026-08-01');
+    expect(currentLocation()).toContain('hfrom=2026-08-01');
+  });
+
+  /* 권한이 없어도 기간을 고칠 수단은 남는다 — 그것이 이 구획에서 할 수 있는 유일한 조치다. */
+  it('권한이 없어도 기간 두 칸과 조회는 남는다', async () => {
+    renderScreen(
+      [
+        balanceRoute(),
+        lotDetailRoute(heldLotDetail(TODAY)),
+        failingHistoryRoute(403),
+        transactionDetailRoute(transactionDetailResponse()),
+        ...lookupRoutes(),
+      ],
+      WITH_HISTORY,
+    );
+
+    const pane = within(await screen.findByRole('region', { name: t.panes.history }));
+
+    await pane.findByText(messages.httpError.forbidden);
+
+    expect(screen.getByLabelText(t.history.periodFrom)).toBeEnabled();
+    expect(pane.getByRole('button', { name: messages.common.search })).toBeEnabled();
+  });
+
   /* 권한이 없으면 다시 시도가 사용자가 할 수 있는 조치가 아니다. */
   it('이력에 권한이 없으면 다시 시도를 내지 않는다', async () => {
     renderScreen(

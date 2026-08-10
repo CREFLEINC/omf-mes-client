@@ -12,6 +12,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { formatTransactionAt } from './as-of';
 import { resolveBusinessPeriod, type BusinessPeriod } from './business-period';
+import { LoadErrorBanner } from './load-error-banner';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { TransactionRef, TransactionView } from './types';
@@ -172,6 +173,13 @@ export interface TransactionPaneProps extends TransactionColumnDeps {
    */
   hasQuery: boolean;
   pageView: PageView;
+  /**
+   * 조회가 실패했는가. **표 자리만 배너로 바뀌고 조건 줄은 남는다** —
+   * 사유와 복구는 아래 둘이 나른다.
+   */
+  isError: boolean;
+  error: unknown;
+  onRetry: () => void;
   onSearch: (period: BusinessPeriod) => void;
   onChangePage: (page: number) => void;
 }
@@ -188,6 +196,12 @@ export interface TransactionPaneProps extends TransactionColumnDeps {
  * 않아 자리표시가 비고, 「조회해야 선택지가 생긴다」는 순환이 된다. 조건이 날짜 두 칸뿐이라
  * 이 구획을 나중에 창으로 옮기더라도 #45(창 안 선택칸이 잘린다)가 걸릴 자리가 없다.
  *
+ * **표 자리에 오는 것이 넷이고 이 부품이 그 넷을 다 정한다** — 실패 배너 · 조회 중 표기 ·
+ * 빈 상태 세 갈래 · 표. 바깥에서 실패를 먼저 갈라 구획을 통째로 감추면 **조건 줄까지 사라져**
+ * 사용자가 기간을 고칠 수단을 잃는다(같은 화면 잔액 구획의 「조건을 고칠 수단이 사라지면
+ * 안 된다」와 반대가 된다). 실패가 권한 없음이면 「다시 시도」도 없어 그 구획에서 할 수 있는
+ * 조치가 0이 된다 — 조건 줄이 남아야 기간을 좁혀 다시 부를 수 있다.
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const TransactionPane = ({
@@ -196,7 +210,10 @@ export const TransactionPane = ({
   isLoading,
   hasQuery,
   pageView,
+  isError,
+  error,
   selected,
+  onRetry,
   onSearch,
   onToggleSelect,
   onChangePage,
@@ -330,7 +347,14 @@ export const TransactionPane = ({
       {/* 기간이 왜 필요한지와 기본값을 밝힌다 — 성능이 아니라 가능·불가능의 문제다. */}
       <p className="field-note">{t.history.periodNote}</p>
 
-      {isLoading ? (
+      {/*
+       * 표 자리에 오는 넷. 순서가 뜻을 정한다 — **실패가 맨 앞이다.**
+       * 실패를 빈 상태로 말하면 사용자가 기록이 없는 줄 알고 기간을 넓히는데,
+       * 무엇을 해도 결과가 같다. 조건 줄은 이 갈래 **밖에** 있어 어느 경우에도 남는다.
+       */}
+      {isError ? (
+        <LoadErrorBanner error={error} onRetry={onRetry} />
+      ) : isLoading ? (
         <div role="status" aria-label={t.loading.history}>
           <SkeletonText lines={3} />
         </div>
