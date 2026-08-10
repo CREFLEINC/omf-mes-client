@@ -117,6 +117,28 @@ const filteringListRoute = (): StubRoute => ({
 });
 
 /**
+ * 부를 때마다 **내용이 달라지는** 목록.
+ *
+ * 다시 부르기가 같은 본문을 돌려주면 캐시가 구조 공유로 **같은 참조를 그대로 유지**해,
+ * 「목록 응답을 되돌림 의존성에 넣었다」는 결함이 드러나지 않는다 —
+ * 목록이 실제로 달라지는 경우(다른 사용자가 그 사이에 등록했다)를 만들어야 그 결함이 잡힌다.
+ */
+const changingListRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, LIST_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse(
+        listBody(purchaseOrderFixtures, { total: purchaseOrderFixtures.length + call }),
+      );
+    },
+  };
+};
+
+/**
  * 참조 목록 응답. **`page`를 인자로 받는다** — 기본값(`total === items.length`)만 쓰면
  * 「잘렸다」 갈래가 영영 만들어지지 않아 그 판정이 통째로 검사되지 않는다.
  */
@@ -934,8 +956,11 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
    * **M10** — 되돌림을 목록 응답이나 파생 객체에 반응시키면, 목록이 다시 오는 순간
    * 사용자가 치던 수량이 사라진다(#43의 입력 형).
    */
-  it('목록을 다시 불러도 치던 수량이 사라지지 않는다', async () => {
-    const { requests, queryClient, user } = renderScreen(allRoutes());
+  it('목록을 다시 불러 내용이 달라져도 치던 수량이 사라지지 않는다', async () => {
+    const { requests, queryClient, user } = renderScreen([
+      changingListRoute(),
+      ...allRoutes().slice(1),
+    ]);
 
     await selectAndType(user);
 
@@ -948,6 +973,11 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
     await waitFor(() => {
       expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(before);
     });
+
+    // 짝 방향 — 목록이 실제로 갱신됐다(같은 응답이면 참조가 그대로라 결함이 드러나지 않는다).
+    await screen.findByText(
+      t.pageNav.range(1, purchaseOrderFixtures.length, purchaseOrderFixtures.length + 2),
+    );
 
     expect(qtyInput(1)).toHaveValue(66);
   });
