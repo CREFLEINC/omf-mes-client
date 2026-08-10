@@ -603,6 +603,45 @@ describe('OverReceiptSplitScreen — 조회 실패', () => {
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
   });
 
+  /*
+   * **목록 실패 + 주소에 고른 발주**. 목록이 실패하면 행 목록이 빈 채로 남아 고른 행을 찾을 수 없고,
+   * 정리 effect도 결과를 못 받아 물러난다. 그 자리에서 골격을 내면 **기다리라고 말하는데
+   * 기다려서 풀리지 않고**, 실제로 나간 라인 조회의 실패까지 로딩이 덮는다.
+   */
+  it('목록이 실패한 채 발주가 골라져 있으면 아래 구획이 골격에 갇히지 않는다', async () => {
+    renderScreen(
+      [failingListRoute(500), ...allRoutes().slice(1)],
+      '?po=9001',
+    );
+
+    await screen.findByText(t.empty.listFailedTitle);
+
+    expect(screen.queryByRole('status', { name: t.loading.lines })).not.toBeInTheDocument();
+    // 「고르지 않았다」로 말하지 않는다 — 사용자는 골랐고, 막힌 것은 목록이다.
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
+  });
+
+  /* 라인까지 실패해도 마찬가지다 — 그 실패가 「불러오는 중」으로 가려지면 안 된다. */
+  it('목록과 라인이 함께 실패해도 로딩으로 가리지 않는다', async () => {
+    renderScreen(
+      [
+        failingListRoute(500),
+        failingLinesRoute(),
+        otherLinesRoute(),
+        detailRoute(),
+        splitRoute(),
+        ...lookupRoutes(),
+      ],
+      '?po=9001',
+    );
+
+    await screen.findByText(t.empty.listFailedTitle);
+
+    expect(screen.queryByRole('status', { name: t.loading.lines })).not.toBeInTheDocument();
+    // 짝 방향 — 목록 실패 배너는 그대로 있어 복구 수단이 사라지지 않는다.
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+  });
+
   it('라인 조회에 실패하면 아래 구획에 배너가 나온다', async () => {
     const { requests, user } = renderScreen([
       listRoute(),
@@ -836,6 +875,23 @@ describe('OverReceiptSplitScreen — 참조 표기 네 갈래', () => {
     ]);
 
     expect(await screen.findByText(t.filters.lookupTruncated)).toBeInTheDocument();
+  });
+
+  /*
+   * **짝 방향** — 잘리지 않았으면 밝히지 않는다. 이 단언이 없으면 「받은 건수와 전체가 같아도
+   * 잘렸다고 본다」는 판정이 통과해, **완전한 목록에도 상시 거짓 경고**가 붙는다.
+   * 사용자에게는 「이 선택지는 믿을 수 없다」로 읽히므로 무해한 어긋남이 아니다.
+   */
+  it('선택지가 잘리지 않았으면 그 안내를 내지 않는다', async () => {
+    renderScreen(allRoutes());
+
+    // 짝 방향 — 선택지가 실제로 그려진 뒤에 판정한다(아직 안 왔으면 안내도 없다).
+    await screen.findByText('PO-2026-900001');
+    await waitFor(() => {
+      expect(screen.getAllByText(SUPPLIER_LABEL).length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByText(t.filters.lookupTruncated)).not.toBeInTheDocument();
   });
 });
 

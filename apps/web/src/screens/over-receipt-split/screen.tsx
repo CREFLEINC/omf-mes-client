@@ -255,10 +255,29 @@ export const OverReceiptSplitScreen = () => {
     }
 
     /*
-     * 고른 번호는 있는데 그 행이 아직 없다 — 목록을 기다리는 중이다.
-     * 정리 effect가 결과를 보고 판정할 때까지는 「고르지 않았다」로 되돌리지 않는다.
+     * 고른 번호는 있는데 그 행이 없다. 두 갈래이고 **사용자가 할 조치가 다르다.**
+     *
+     * **잣대는 「목록 조회가 성립했는가」다**(W-01-07이 세운 형태). 목록이 실패하면 행 목록이
+     * 빈 채로 남고 정리 effect도 결과를 못 받아 물러나므로, 여기서 골격을 내면 **기다리라고
+     * 말하는데 기다려서 풀리지 않는다.** 라인 조회는 실제로 나가는데 그 실패까지 로딩이 덮는다 —
+     * 이 슬라이스가 `load-error-banner.tsx`에 적은 「실패를 빈 상태로 보이지 않는다」와 어긋난다.
+     *
+     * 라인 값을 받아도 구획을 열 수 없다 — **제목줄이 쓰는 발주의 값이 목록 응답에만 있다.**
+     * 그래서 라인 실패 갈래로 넘기지 않고 목록을 되살리라고 말한다(복구 수단은 위 배너에 있다).
      */
     if (selectedRow === null) {
+      if (list.isError) {
+        return (
+          <EmptyState
+            size="sm"
+            live
+            title={t.empty.listFailedTitle}
+            description={t.empty.listFailedDescription}
+          />
+        );
+      }
+
+      /* 목록을 기다리는 중이다. 정리 effect가 결과를 보고 판정할 때까지 되돌리지 않는다. */
       return (
         <div role="status" aria-label={t.loading.lines}>
           <SkeletonText lines={2} />

@@ -2904,6 +2904,13 @@ const overReceiptSplit = {
     beyondLastDescription: '첫 쪽으로 이동하세요.',
     noSelectionTitle: '발주를 고르면 라인이 보입니다',
     noSelectionDescription: '위 목록에서 초과 도착이 생긴 발주를 골라 「선택」을 누르세요.',
+    /*
+     * 주소에 고른 발주가 있는데 **목록 조회가 실패한** 자리. 골격(「불러오는 중」)을 내면
+     * 기다리라고 말하는데 기다려서 풀리지 않는다 — 빈 상태로 내는 것보다 나쁘다.
+     * 라인 값은 받을 수 있어도 **제목줄에 낼 발주의 값이 목록 응답에만 있어** 구획을 열 수 없다.
+     */
+    listFailedTitle: '대상 발주를 불러오지 못해 이 발주를 열 수 없습니다',
+    listFailedDescription: '위의 「다시 시도」로 목록을 불러온 뒤 다시 고르세요.',
     noLinesTitle: '이 발주에는 라인이 없습니다',
     noLinesDescription: '발주에 담긴 품목 줄이 하나도 없어 받을 것을 정할 수 없습니다.',
   },

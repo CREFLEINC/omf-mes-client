@@ -152,20 +152,27 @@ export interface FilterChipNames {
   supplier: string;
 }
 
-/** 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다. */
+/**
+ * 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다.
+ *
+ * **칩의 판정 기준을 요청의 판정 기준과 같게 둔다.** 둘이 갈리면 손으로 고친 주소
+ * (`?q=%20%20`)에서 **조건은 걸리지 않는데 칩만 뜬다** — 사용자는 칩을 보고 조건이 걸린 줄 알고,
+ * 결과가 그대로인 이유를 화면 어디에서도 읽을 수 없다. 다듬은 값으로 재고 다듬은 값을 보인다.
+ */
 export const toFilterChips = (filters: PoFilters, names: FilterChipNames): FilterChip[] => {
-  const candidates: FilterChip[] = [
-    {
-      key: 'supplier',
-      label: t.filters.chipSupplier(names.supplier),
-      removeLabel: t.filters.chipRemoveSupplier,
-    },
-    { key: 'q', label: t.filters.chipQ(filters.q), removeLabel: t.filters.chipRemoveQ },
+  const query = normalizeQuery(filters.q);
+
+  const candidates: [FilterChip, string][] = [
+    [
+      {
+        key: 'supplier',
+        label: t.filters.chipSupplier(names.supplier),
+        removeLabel: t.filters.chipRemoveSupplier,
+      },
+      readNumberFilter(filters.supplier),
+    ],
+    [{ key: 'q', label: t.filters.chipQ(query), removeLabel: t.filters.chipRemoveQ }, query],
   ];
 
-  return candidates.filter((chip) => filters[chip.key] !== '');
+  return candidates.filter(([, value]) => value !== '').map(([chip]) => chip);
 };
-
-/** 걸린 조건이 하나라도 있는가. 조건 칩 줄을 낼지 정한다. */
-export const hasAnyFilter = (filters: PoFilters): boolean =>
-  filters.supplier !== '' || normalizeQuery(filters.q) !== '';

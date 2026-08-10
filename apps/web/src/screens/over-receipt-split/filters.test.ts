@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,6 +11,8 @@ import {
   toSearchParams,
   type PoFilters,
 } from './filters';
+
+const t = messages.overReceiptSplit;
 
 const params = (search: string): URLSearchParams => new URLSearchParams(search);
 
@@ -181,6 +184,28 @@ describe('toFilterChips — 적용된 조건 칩', () => {
 
     expect(chip?.label).toContain('SAMPLE-SUP-01 · 합성 공급사 가');
     expect(chip?.label).not.toContain('9101');
+  });
+
+  /*
+   * **칩의 판정 기준이 요청의 판정 기준과 같아야 한다.** 갈리면 손으로 고친 주소(`?q=%20%20`)에서
+   * 조건은 걸리지 않는데 칩만 떠, 사용자는 조건이 걸린 줄 알고 결과가 그대로인 이유를 읽을 수 없다.
+   */
+  it('공백만 친 검색어는 칩이 되지 않는다 — 요청에도 실리지 않는 값이다', () => {
+    const blank = filters({ q: '   ' });
+
+    expect(toFilterChips(blank, { supplier: '' })).toEqual([]);
+    expect(toFilterQuery(blank).q).toBeUndefined();
+  });
+
+  it('칩에 담기는 검색어도 다듬은 값이다', () => {
+    const [chip] = toFilterChips(filters({ q: '  PO-2026-9  ' }), { supplier: '' });
+
+    expect(chip?.label).toBe(t.filters.chipQ('PO-2026-9'));
+  });
+
+  /* 정수가 아닌 공급사 번호는 조건으로 받지 않는다 — 칩도 같은 기준으로 뜬다. */
+  it('정수가 아닌 공급사 번호는 칩이 되지 않는다', () => {
+    expect(toFilterChips(filters({ supplier: 'abc' }), { supplier: '가' })).toEqual([]);
   });
 
   /* 「제거」가 둘이면 어느 조건을 푸는 것인지 알 수 없다. */
