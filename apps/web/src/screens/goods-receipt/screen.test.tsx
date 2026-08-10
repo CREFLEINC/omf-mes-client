@@ -2249,6 +2249,8 @@ describe('GoodsReceiptScreen — 실패 세 갈래', () => {
 
     expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
     expect(screen.queryByText(t.notes.postRecheck)).not.toBeInTheDocument();
+    /* **M49** — ①~④는 한 트랜잭션이라 부분 실패가 없다. 건별 결과를 그릴 것이 없다. */
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
   });
 
   /*
@@ -2260,6 +2262,7 @@ describe('GoodsReceiptScreen — 실패 세 갈래', () => {
 
     expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
     expect(screen.getByText(t.notes.postRecheck)).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
   });
 
   it('검증 실패에는 그 안내가 붙지 않는다', async () => {
@@ -2267,6 +2270,7 @@ describe('GoodsReceiptScreen — 실패 세 갈래', () => {
 
     expect(await screen.findByText(messages.httpError.title)).toBeInTheDocument();
     expect(screen.queryByText(t.notes.postRecheck)).not.toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
   });
 
   /* 실패한 뒤 고치고 다시 보낼 수 있어야 한다 — 막히면 처음부터 다시 친다. */
