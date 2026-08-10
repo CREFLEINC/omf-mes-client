@@ -2560,6 +2560,11 @@ describe('StockStatusScreen — 이력의 빈 상태와 실패', () => {
 
     expect(screen.queryByText(t.history.empty.noResultTitle)).not.toBeInTheDocument();
     expect(screen.queryByText(t.history.empty.notQueriedTitle)).not.toBeInTheDocument();
+    /*
+     * 아래 라인 자리도 내지 않는다 — 「위 표에서 거래를 고르면」이라고 말하는데 그 표가
+     * 실패로 없다. 할 수 없는 일을 시키는 안내다.
+     */
+    expect(screen.queryByText(t.history.empty.noSelectionTitle)).not.toBeInTheDocument();
   });
 
   /*
