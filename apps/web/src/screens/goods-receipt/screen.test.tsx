@@ -302,6 +302,35 @@ const lookupRoutes = (): StubRoute[] => [
   locationsRoute(),
 ];
 
+/** 다시 부르면 품목 이름이 달라진 뒤의 표기. 참조가 **실제로 다시 도착했는지**를 재는 잣대다. */
+const CHANGED_ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 품목 가(갱신)';
+
+/**
+ * 부를 때마다 **이름이 달라지는** 품목 목록.
+ *
+ * 다시 부르기가 같은 본문을 돌려주면 캐시가 구조 공유로 **같은 참조를 그대로 유지**해,
+ * 「참조가 도착하면 치던 값이 되돌아간다」는 결함이 드러나지 않는다. 첫 응답은 그대로 두어
+ * 다른 단언의 기준 이름이 흔들리지 않게 한다.
+ */
+const changingItemRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, ITEMS_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse(
+        listBody(
+          call === 1
+            ? itemFixtures
+            : itemFixtures.map((item) => ({ ...item, itemName: '합성 품목 가(갱신)' })),
+        ),
+      );
+    },
+  };
+};
+
 /** 입고 처리 뒤 다시 읽는 자재 LOT 상세. **입고 응답에는 LOT 상태가 없다.** */
 const lotDetailRoute = (statusCode = 'SAMPLE_LOT_STATUS_A'): StubRoute => ({
   match: (request) => isGet(request, LOT_DETAIL_PATH),
@@ -2400,10 +2429,15 @@ describe('GoodsReceiptScreen — 초안이 사라지지 않는다', () => {
 
     await openPostPane(user);
     await fillDraft(user);
+    /* 첫 목록이 실제로 적용된 뒤에 다시 부른다 — 기준이 없으면 「다시 왔다」를 셀 수 없다. */
+    await screen.findByText(t.pageNav.range(1, 3, 4));
 
     await act(async () => {
       await queryClient.invalidateQueries({ queryKey: irKeys.lists });
     });
+
+    /* 새 목록이 실제로 적용된 뒤에 본다 — 적용 전에 검사하면 늘 참인 단언이 된다. */
+    await screen.findByText(t.pageNav.range(1, 3, 5));
 
     expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
     expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toHaveTextContent(
@@ -2416,12 +2450,23 @@ describe('GoodsReceiptScreen — 초안이 사라지지 않는다', () => {
 
   /* 참조가 늦게 도착하는 것도 같다 — 이름이 채워지는 것이 입력을 지울 이유가 되지 않는다. */
   it('참조가 다시 도착해도 확정 입력이 되돌아가지 않는다', async () => {
-    const { queryClient } = await setupReadyToPost();
+    fillCodeLists();
+
+    const { user, queryClient } = renderScreen(allRoutes([changingItemRoute()]), '?ir=9001');
+
+    await openPostPane(user);
+    await fillDraft(user);
 
     await act(async () => {
       await queryClient.invalidateQueries({ queryKey: ['goods-receipt-lookups'] });
     });
 
+    /* 새 이름이 실제로 적용된 뒤에 본다 — 적용 전에 검사하면 늘 참인 단언이 된다. */
+    await screen.findAllByText(CHANGED_ITEM_LABEL);
+
     expect(screen.getByLabelText(t.fields.receiptDatetime)).toHaveValue(RECEIPT_DATETIME);
+    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toHaveTextContent(
+      WAREHOUSE_LABEL,
+    );
   });
 });
