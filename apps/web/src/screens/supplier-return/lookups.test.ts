@@ -1,0 +1,126 @@
+import { messages } from '@omf-mes/i18n';
+import { describe, expect, it } from 'vitest';
+
+import {
+  describeReference,
+  isLotHeld,
+  lookupNote,
+  toReference,
+  type LotReferenceSource,
+  type ReferenceSource,
+} from './lookups';
+
+const t = messages.supplierReturn;
+
+const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
+  entries: [{ value: '9701', label: 'SAMPLE-WH-01 · 합성 창고 가', isActive: true }],
+  isError: false,
+  isLoading: false,
+  truncated: false,
+  ...overrides,
+});
+
+const lotSource = (overrides: Partial<LotReferenceSource> = {}): LotReferenceSource => ({
+  entries: [
+    { value: '9601', label: 'LOT-2026-900010', isActive: true, held: false },
+    { value: '9602', label: 'LOT-2026-900011', isActive: true, held: true },
+  ],
+  isError: false,
+  isLoading: false,
+  truncated: false,
+  ...overrides,
+});
+
+describe('toReference', () => {
+  it('목록에 있으면 이름으로 푼다', () => {
+    expect(toReference(source(), 9701)).toEqual({
+      kind: 'named',
+      label: 'SAMPLE-WH-01 · 합성 창고 가',
+    });
+  });
+
+  /**
+   * **#47을 재생산하지 않는 자리다.** 본 자료가 참조보다 먼저 오면 정상 값이 「알 수 없음」으로
+   * 보이는데, 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
+   */
+  it('아직 오지 않은 것과 목록에 없는 것을 가른다', () => {
+    expect(toReference(source({ entries: [], isLoading: true }), 9701)).toEqual({ kind: 'loading' });
+    expect(toReference(source({ entries: [] }), 9701)).toEqual({ kind: 'unknown' });
+  });
+
+  /* 못 받은 목록으로 「그 값이 목록에 없다」를 판정하면 정상 값에 잘못된 값이라는 표를 붙인다. */
+  it('실패가 미도착·목록에 없음보다 앞선다', () => {
+    expect(toReference(source({ isError: true, isLoading: true, entries: [] }), 9701)).toEqual({
+      kind: 'failed',
+    });
+  });
+
+  it('가리키는 번호가 없으면 알 수 없음이다', () => {
+    expect(toReference(source(), null)).toEqual({ kind: 'unknown' });
+    expect(toReference(source(), undefined)).toEqual({ kind: 'unknown' });
+  });
+
+  /** **어느 갈래에도 번호를 담지 않는다**(#44). 담을 자리가 없으면 화면으로 샐 경로도 없다. */
+  it.each([
+    ['named', source(), 9701],
+    ['unknown', source({ entries: [] }), 9701],
+    ['loading', source({ entries: [], isLoading: true }), 9701],
+    ['failed', source({ isError: true }), 9701],
+  ] as const)('%s 갈래가 번호를 담지 않는다', (_kind, given, id) => {
+    expect(JSON.stringify(toReference(given, id))).not.toContain('9701');
+  });
+});
+
+describe('describeReference', () => {
+  it('네 갈래의 문구가 서로 다르다', () => {
+    const labels = [
+      describeReference({ kind: 'named', label: '합성 창고 가' }),
+      describeReference({ kind: 'unknown' }),
+      describeReference({ kind: 'loading' }),
+      describeReference({ kind: 'failed' }),
+    ];
+
+    expect(new Set(labels).size).toBe(4);
+    expect(labels[1]).toBe(t.values.unknown);
+    expect(labels[2]).toBe(t.values.referenceLoading);
+    expect(labels[3]).toBe(t.values.referenceFailed);
+  });
+});
+
+describe('lookupNote', () => {
+  it('정상이면 안내가 없다', () => {
+    expect(lookupNote(source())).toBeUndefined();
+  });
+
+  it('잘리면 그 사실을 밝힌다', () => {
+    expect(lookupNote(source({ truncated: true }))).toBe(t.filters.lookupTruncated);
+  });
+
+  /* 첫 조회가 잘린 목록을 주고 다시 부르기가 실패하면 둘이 함께 참이 된다. */
+  it('실패가 잘림보다 앞선다', () => {
+    expect(lookupNote(source({ truncated: true, isError: true }))).toBe(t.filters.lookupFailed);
+  });
+});
+
+describe('isLotHeld', () => {
+  /**
+   * 반품해도 LOT 보류는 유지된다(착수 이슈 §6) — 사용자가 그 사실을 아는 자리가 화면에
+   * 있어야 한다. **표식은 표시일 뿐이며 선택을 막지 않는다.**
+   */
+  it('보류 중인 LOT을 가려낸다', () => {
+    expect(isLotHeld(lotSource(), 9602)).toBe(true);
+    expect(isLotHeld(lotSource(), 9601)).toBe(false);
+  });
+
+  /**
+   * **모르는 것을 「보류 아님」으로 말하지 않는다** — 표식을 내지 않을 뿐이다.
+   * 그 칸의 이름 표기가 이미 「아직 못 풀었다」를 네 갈래로 말하고 있다.
+   */
+  it.each([
+    ['목록에 없음', lotSource({ entries: [] })],
+    ['미도착', lotSource({ entries: [], isLoading: true })],
+    ['실패', lotSource({ isError: true, entries: [] })],
+  ])('%s이면 표식을 내지 않는다', (_case, given) => {
+    expect(isLotHeld(given, 9602)).toBe(false);
+  });
+});
