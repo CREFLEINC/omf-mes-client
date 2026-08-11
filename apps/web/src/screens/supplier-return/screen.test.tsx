@@ -31,7 +31,7 @@ import {
 } from './fixtures';
 import { SELECTION_KEYS } from './filters';
 import { LOT_PAGE_SIZE } from './lookups';
-import { BALANCE_PAGE_SIZE, receiptKeys } from './queries';
+import { BALANCE_PAGE_SIZE, balanceKeys, receiptKeys } from './queries';
 import { SupplierReturnScreen } from './screen';
 
 const t = messages.supplierReturn;
@@ -2439,6 +2439,44 @@ describe('SupplierReturnScreen — 확인 창', () => {
    * 그대로라 창을 닫는 effect가 깨어나지 않는다 — 즉 **창은 열려 있는데 보낼 줄이 없는 상태**가
    * 실제로 만들어진다. 여기서 확인을 누르면, 보내는 자리가 다시 보지 않는 한 사라진 줄이 나간다.
    */
+  it('창이 열린 동안 상한이 줄면 확인해도 요청이 나가지 않는다', async () => {
+    fillCodeLists();
+
+    const { requests, queryClient, user } = renderScreen(
+      allRoutes([changingBalancesRoute()]),
+      '?gr=9001',
+    );
+
+    await screen.findAllByText(ITEM_LABEL);
+    /* 상한(120) 안이지만 **한 번 줄면 넘는** 수량이다 — 그 사이가 이 잣대의 자리다. */
+    await pickLine(user, 1, '115');
+    await fillReturnForm(user);
+
+    expect(submitButton()).not.toBeDisabled();
+
+    await openConfirm(user);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    /* 다른 사람이 그 LOT을 먼저 반품했다 — 잔액만 새로 오고 **줄 집합은 그대로**다. */
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: balanceKeys.onHand(9701, 9301) });
+    });
+
+    await screen.findByText(t.lineTable.onHandQtyPair(ON_HAND_9601 - 10, UOM_LABEL));
+
+    /* 대상도 줄도 그대로다 — 창을 닫는 effect도, 빈 라인 가드도 여기서는 서지 않는다. */
+    expect(currentLocation()).toContain('gr=9001');
+    expect(qtyBox(1)).toHaveValue('115');
+
+    await confirmSubmit(user);
+
+    expect(issueRequests(requests)).toHaveLength(0);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    /* 짝 방향 — 왜 나가지 않았는지가 화면에 남는다. */
+    expect(submitButton()).toBeDisabled();
+    expect(submitButton()).toHaveAccessibleDescription(t.reasons.selectQtyInvalid);
+  });
+
   it('창이 열린 동안 고른 줄이 사라지면 확인해도 요청이 나가지 않는다', async () => {
     const { requests, queryClient, user } = await setupReadyToSubmit(
       allRoutes([changingLinesRoute()]),
