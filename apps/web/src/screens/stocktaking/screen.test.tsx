@@ -1598,6 +1598,15 @@ describe('StocktakingScreen — 개시 요청', () => {
       within(listPane()).getByRole('button', { name: t.actions.selectRow('IC-2026-900011') }),
     ).toBeDisabled();
     expect(within(openPane()).getByLabelText(t.fields.countType)).toBeDisabled();
+    /*
+     * **취소도 함께 잠긴다.** 이 한 줄이 `requestDiscardOpenDraft`의 핸들러 가드를 「등가」로
+     * 분류한 **전제**다 — 그 가드가 닿을 수 없는 것은 이 버튼이 잠겨 있기 때문이므로, 이 겹이
+     * 무방비면 **두 겹이 함께 조용히 사라진다.** 그러면 전송 중 취소 → 파기가 결과 구획과
+     * 실패 배너를 지워 **지금 무엇이 나가는 중인지 화면이 말하지 못한다.**
+     */
+    expect(
+      within(openPane()).getByRole('button', { name: messages.common.cancel }),
+    ).toBeDisabled();
 
     /* 잠금을 우회하는 길(핸들러 직접 호출)로도 대상이 바뀌지 않는다. */
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
