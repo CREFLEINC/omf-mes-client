@@ -35,6 +35,7 @@ const columnsWith = (warehouseLookup: ReferenceSource = source()): Column<CountV
   buildCountColumns({
     selectedCountId: null,
     warehouseLookup,
+    isLocked: false,
     onToggleSelect: () => undefined,
   });
 
@@ -52,6 +53,7 @@ const renderTable = (overrides: Partial<CountTableProps> = {}) => {
       isBeyondLast={false}
       selectedCountId={null}
       warehouseLookup={source()}
+      isLocked={false}
       onFirstPage={onFirstPage}
       onToggleSelect={onToggleSelect}
       onRetryReferences={onRetryReferences}
@@ -100,6 +102,21 @@ describe('buildCountColumns — 열 구성과 폭', () => {
     expect(WIDE_TABLE_MIN_PX - specifiedWidthOf(columnsWith())).toBeGreaterThanOrEqual(
       CODE_NAME_COLUMN_PX,
     );
+  });
+
+  /*
+   * **S-1**(PR ② 착수 조건) — **정렬을 열지 않는다**는 규칙이 부품 주석에만 있고 세는 자리가
+   * 없었다. 디자인 시스템 `Table`에는 서버 정렬 배선이 있으나 **계약의 실사 목록 조회에 `sort`
+   * 쿼리가 없다**(실측 — 어긋남 3). 열에 `sortable: true`를 붙이면 헤더가 button이 되어 누를 수
+   * 있게 되는데, 눌러도 서버는 그 조건을 모르고 화면은 **지금 쪽 안에서만** 다시 늘어놓는다 —
+   * 사용자에게는 「정렬했는데 다른 쪽의 값이 안 따라온다」로 보인다.
+   */
+  it('어느 열도 정렬을 열지 않는다', () => {
+    const columns = columnsWith();
+
+    /* 짝 방향 — 열이 실제로 일곱이다(열이 없어서 통과하는 것이 아니다). */
+    expect(columns).toHaveLength(7);
+    expect(columns.filter((column) => column.sortable === true)).toEqual([]);
   });
 });
 
@@ -199,6 +216,33 @@ describe('CountTable — 선택과 빈 상태', () => {
     expect(
       screen.getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }),
     ).toBeInTheDocument();
+  });
+
+  /*
+   * **C26** — 전송 중에는 행의 선택 버튼과 「첫 쪽으로」가 잠긴다(수명 표 18행).
+   * 다른 실사로 옮기면 **앞 요청의 결과가 그 실사 맥락에 나타난다.**
+   */
+  it('전송 중에는 행 선택이 잠긴다', () => {
+    renderTable({ isLocked: true });
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('IC-2026-900011') }),
+    ).toBeDisabled();
+  });
+
+  it('전송 중에는 첫 쪽으로 가는 버튼도 잠긴다', () => {
+    renderTable({ rows: [], isBeyondLast: true, isLocked: true });
+
+    expect(screen.getByRole('button', { name: t.actions.goFirstPage })).toBeDisabled();
+  });
+
+  /* 짝 방향 — 잠기지 않았을 때는 행 선택이 열려 있다. */
+  it('전송 중이 아니면 행 선택이 열려 있다', () => {
+    renderTable();
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('IC-2026-900011') }),
+    ).not.toBeDisabled();
   });
 
   /*

@@ -17,6 +17,7 @@ const baseProps = (overrides: Partial<CountFilterBarProps> = {}): CountFilterBar
   countTypeOptions: [],
   statusOptions: [],
   chipNames: { warehouse: WAREHOUSE_LABEL },
+  isLocked: false,
   onSearch: vi.fn<(filters: CountFilters) => void>(),
   onRemoveFilter: vi.fn<(key: ChipFilterKey) => void>(),
   onReset: vi.fn<() => void>(),
@@ -89,6 +90,37 @@ describe('CountFilterBar — 조건 줄', () => {
     });
 
     expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **C26** — 전송 중에는 조회·초기화가 잠긴다(수명 표 18행). 둘 다 고른 실사를 비우는 길이라,
+   * 열어 두면 앞 요청의 결과가 다른 조건의 맥락에 나타난다.
+   */
+  it('전송 중에는 조회와 초기화가 잠긴다', () => {
+    renderBar({ isLocked: true });
+
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();
+  });
+
+  /*
+   * 짝 방향 — 잠기지 않았을 때는 열려 있다. 그리고 **조건 칸 자체는 전송 중에도 잠그지
+   * 않는다**: 칸을 고쳐도 조회가 나가지 않아 잃는 것이 없고, 잠그면 지금 걸린 조건을 읽고
+   * 고칠 방법까지 사라진다.
+   */
+  it('전송 중에도 조건 칸은 잠기지 않는다', () => {
+    renderBar({ isLocked: true });
+
+    expect(screen.getByLabelText(t.fields.warehouse)).not.toBeDisabled();
+    expect(screen.getByLabelText(t.fields.plannedDateFrom)).not.toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: t.fields.inProgressOnly })).not.toBeDisabled();
+  });
+
+  it('전송 중이 아니면 조회와 초기화가 열려 있다', () => {
+    renderBar();
+
+    expect(screen.getByRole('button', { name: messages.common.search })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).not.toBeDisabled();
   });
 
   /* 기본 기간이 없다는 사실을 밝히지 않으면 비어 있는 칸이 고장으로 읽힌다. */

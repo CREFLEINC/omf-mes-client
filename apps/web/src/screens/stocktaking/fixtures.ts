@@ -78,7 +78,7 @@ export const summaryResponse = (
   overrides: Partial<InventoryCountSummaryResponse> = {},
 ): InventoryCountSummaryResponse => ({ ...BASE_SUMMARY, ...overrides });
 
-/** 상세 응답 본문 — 헤더와 요약이 한 벌로 온다. */
+/** 상세 응답 본문 — 헤더와 요약이 한 벌로 온다. 개시 201 응답도 같은 모양이다. */
 export const countDetailBody = (
   countOverrides: Partial<InventoryCountResponse> = {},
   summaryOverrides: Partial<InventoryCountSummaryResponse> = {},
@@ -86,6 +86,34 @@ export const countDetailBody = (
   inventoryCount: countResponse(countOverrides),
   summary: summaryResponse(summaryOverrides),
 });
+
+/**
+ * **개시로 만들어진 실사**의 번호. 목록 픽스처 셋(9001~9003) 어디에도 없다 —
+ * 방금 만든 실사가 **지금 조건의 목록에 걸리지 않을 수 있다**는 사실이 이 화면의 전제이고
+ * (그래서 단계를 목록 소속이 아니라 상세 200으로 판정한다), 겹치면 그 전제를 검사할 수 없다.
+ */
+export const OPENED_COUNT_ID = 9004;
+
+export const OPENED_COUNT_NO = 'IC-2026-900014';
+
+/**
+ * 개시 201 응답. **요약이 갓 만들어진 실사의 모양이다** — 라인은 서버가 장부에서 만들었고
+ * 아직 아무것도 세지 않았다. 9001의 요약(40/25/15/6)과 숫자가 하나도 겹치지 않아,
+ * 개시 뒤 아래 구획이 **새 실사의 값**으로 바뀌는지 값으로 가려낼 수 있다.
+ */
+export const openedCountDetailBody = () =>
+  countDetailBody(
+    {
+      inventoryCountId: OPENED_COUNT_ID,
+      inventoryCountNo: OPENED_COUNT_NO,
+      countTypeCode: 'SAMPLE_COUNT_TYPE_C',
+      warehouseId: 9101,
+      plannedDate: '2026-08-12',
+      blindCount: true,
+      statusCode: 'SAMPLE_COUNT_STATUS_C',
+    },
+    { plannedCount: 31, countedCount: 0, uncountedCount: 31, varianceCount: 0 },
+  );
 
 const BASE_LINE: InventoryCountLineResponse = {
   inventoryCountLineId: 9401,
