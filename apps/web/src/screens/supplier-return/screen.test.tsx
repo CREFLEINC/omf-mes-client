@@ -2371,6 +2371,11 @@ describe('SupplierReturnScreen — 확인 창', () => {
     );
     expect(within(dialog).getByText(t.dialog.submitNoUndoHere)).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.submitLotHoldKept)).toBeInTheDocument();
+
+    /* **M50 · C50** — 창에도 내부 번호가 없다. 공급사는 **이름으로** 다시 보인다. */
+    for (const id of INTERNAL_IDS) {
+      expect(dialog.textContent ?? '').not.toContain(id);
+    }
   });
 
   /* **M43·M44 · C40** — 창 둘 다 선택칸이 없다(#45가 걸릴 자리를 만들지 않는다). */
