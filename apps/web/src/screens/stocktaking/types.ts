@@ -150,15 +150,22 @@ export interface CountListResult {
  * 보이는 상태가 생긴다 — **어느 갈래가 보이는지 타입이 정하고** 새 결과가 앞 결과를 덮는다.
  * 수명 표의 「결과 구획」이 열 하나로 서는 근거도 이것이다.
  *
- * **이 PR에는 갈래가 하나뿐이다.** PR ③이 `saved`(치환한 줄 수), PR ④가 `closed`(상태 코드와
- * 요약)를 더한다 — 그때 `kind`로 가르는 자리가 `result-pane.tsx`에 생긴다. 지금 갈래를 미리
+ * **이 PR에는 갈래가 둘이다.** PR ④가 `closed`(상태 코드와 요약)를 더한다. 지금 갈래를 미리
  * 세우지 않는 것은 쓰이지 않는 갈래가 먼저 서 있으면 어느 것이 실제로 나오는지 읽을 수 없기
  * 때문이다.
  *
  * **내부 번호를 담지 않는다**(#44). 만들어진 실사의 내부 번호는 화면이 주소(`ct`)로만 쓰며,
- * 이 타입에 자리가 없어 결과 구획으로 샐 경로가 없다.
+ * 위치도 **이름으로 풀어** 담는다 — 이 타입에 번호 자리가 없어 결과 구획으로 샐 경로가 없다.
  */
-export type ResultView = { kind: 'opened'; countNo: string };
+export type ResultView =
+  | { kind: 'opened'; countNo: string }
+  /**
+   * 한 위치를 치환했다.
+   *
+   * `replacedLineCount`는 **서버가 되돌려 준 배열의 길이**다 — 화면이 보낸 줄 수가 아니다.
+   * 둘이 갈리면 그 자리가 「보낸 것과 저장된 것이 다르다」는 사실을 드러낸다.
+   */
+  | { kind: 'saved'; locationLabel: string; replacedLineCount: number };
 
 /**
  * 선택 목록의 원본 항목.
