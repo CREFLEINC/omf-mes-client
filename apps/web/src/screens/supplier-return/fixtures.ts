@@ -162,6 +162,65 @@ export const locationFixtures = [
   },
 ];
 
+/**
+ * 재고 잔액. **`groupBy=LOT`으로 받은 모양**이라 위치 축이 접혀 있다(`locationId`가 없다).
+ *
+ * 이 화면은 이 응답을 **반품 수량의 상한을 만드는 데만** 쓴다. 픽스처가 담는 까다로운 입력:
+ *
+ * - **9601이 두 줄이다** — 계약이 「소유 구분은 어떤 축에서도 합치지 않는다」고 적어 한 LOT이
+ *   갈려 내려온다. 더하지 않으면 상한이 실제보다 좁아 **정당한 반품이 막힌다**(합계 120)
+ * - **`availableQty`가 `onHandQty`와 크게 다르다** — 보류된 자재라 가용이 거의 없다.
+ *   상한을 가용으로 바꾸면 **이 화면의 주 용도가 막힌다**는 것을 이 값이 드러낸다(감지기 M32)
+ * - **9603이 보유 0이다** — `includeZero=true`라서 온 줄이다. 끄면 이 줄이 아예 오지 않아
+ *   「0이라 없다」와 「잘려서 없다」가 뭉개진다
+ * - **9602(품목 9302)의 줄이 없다** — 「확인하지 못함」 갈래를 실제 값으로 만든다
+ */
+export const balanceFixtures = [
+  {
+    groupBy: 'LOT' as const,
+    warehouseId: 9701,
+    itemId: 9301,
+    lotId: 9601,
+    ownershipTypeCode: 'SAMPLE_OWNERSHIP_A',
+    onHandQty: 80,
+    reservedQty: 60,
+    pickedQty: 5,
+    blockedQty: 5,
+    availableQty: 10,
+    uomId: 9501,
+  },
+  {
+    groupBy: 'LOT' as const,
+    warehouseId: 9701,
+    itemId: 9301,
+    lotId: 9601,
+    ownershipTypeCode: 'SAMPLE_OWNERSHIP_B',
+    onHandQty: 40,
+    reservedQty: 35,
+    pickedQty: 0,
+    blockedQty: 0,
+    availableQty: 5,
+    uomId: 9501,
+  },
+  {
+    groupBy: 'LOT' as const,
+    warehouseId: 9701,
+    itemId: 9301,
+    lotId: 9603,
+    ownershipTypeCode: 'SAMPLE_OWNERSHIP_A',
+    onHandQty: 0,
+    reservedQty: 0,
+    pickedQty: 0,
+    blockedQty: 0,
+    availableQty: 0,
+    /** 9403의 단위와 같다 — 단위 어긋남이 아니라 **보유 0**을 재는 줄이다. */
+    uomId: 9599,
+  },
+];
+
+/** 9601의 두 줄을 더한 상한. 화면 단언이 이 수를 되풀이해 적지 않게 한다. */
+export const ON_HAND_9601 = 120;
+
 /** 화면 어디에도 나와서는 안 되는 내부 번호(FK). 업무 번호와 겹치지 않는 대역이다. */
 export const INTERNAL_IDS = [
   '9001',

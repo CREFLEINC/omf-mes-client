@@ -1,10 +1,13 @@
 import type { ApiClient } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, toApiError } from '../../patterns/request';
 import type { ReceiptFilterQuery } from './filters';
+import { isTruncated } from './lookups';
+import type { BalanceSource } from './on-hand';
 import {
+  toBalanceView,
   toReceiptLineView,
   toReceiptView,
   type ReceiptDetailResult,
@@ -12,12 +15,13 @@ import {
 } from './types';
 
 /**
- * 이 화면의 요청 — **이 회차에는 읽기 둘뿐이다.**
+ * 이 화면의 요청 — **이 회차에는 읽기 셋이다.**
  *
  * | 언제 | 무엇 |
  * | --- | --- |
  * | 첫 진입 | 입고 전표 목록 · **창고 목록**(`lookups.ts`) |
  * | 전표를 고르면 | **그 전표의 상세** — 헤더와 라인이 한 번에 온다 |
+ * | 전표를 고르면 | **그 전표의 품목별 재고 잔액** — 반품 수량의 상한을 만든다 |
  * | 「반품 처리」 확인 | `POST /logistics/goods-issues` — **뒤따르는 회차에서 생긴다** |
  *
  * **라인을 따로 부르지 않는다.** 계약의 입고 상세가 `{goodsReceipt, lines}`를 함께 주고
@@ -54,6 +58,22 @@ export const receiptKeys = {
   list: (query: ReceiptListQuery) => [...RECEIPT_LIST_KEY, query] as const,
   detail: (goodsReceiptId: number | null) =>
     ['supplier-return-goods-receipts', 'detail', goodsReceiptId] as const,
+};
+
+/**
+ * 잔액 조회의 쪽 크기.
+ *
+ * **이 값에는 계약 근거가 없다** — 생성물이 수치 제약과 쿼리 기본값을 싣지 않는다.
+ * 한 품목·한 창고의 LOT이 몇 건인지 화면이 알 수 없으므로 어떤 값을 넣어도 잘릴 수 있다.
+ * 잘렸다는 사실을 밝히고 **상한으로 쓰지 않는 것**이 보장이고, 이 값은 그 일이 **덜 일어나게**
+ * 할 뿐이다. 서버가 상한을 두고 400을 돌려주면 이 상수부터 의심한다 — 고칠 자리는 하나다.
+ */
+export const BALANCE_PAGE_SIZE = 200;
+
+/** 잔액은 **창고와 품목마다** 캐시가 갈린다 — 한 요청이 그 짝의 잔액만 담는다. */
+export const balanceKeys = {
+  onHand: (warehouseId: number, itemId: number) =>
+    ['supplier-return-balances', warehouseId, itemId] as const,
 };
 
 const fetchGoodsReceipts = async (
@@ -129,6 +149,103 @@ export const useGoodsReceiptDetail = (
       return fetchGoodsReceiptDetail(client, goodsReceiptId);
     },
   });
+};
+
+/** 잔액 조회 결과에 복구 경로를 붙인 것. 실패하면 사용자가 할 수 있는 조치가 재시도뿐이다. */
+export interface BalanceLookupResult extends BalanceSource {
+  refetch: () => void;
+}
+
+/** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
+const EMPTY_ITEM_BALANCES: BalanceSource['items'] = [];
+
+/**
+ * 고른 전표의 라인이 가리키는 **품목마다** 재고 잔액을 받는다.
+ *
+ * **반품 수량의 상한을 만드는 데만 쓴다** — 목록으로 그리지 않는다. 상한을 만드는 규칙 자체는
+ * `on-hand.ts` 한 곳에 있고 이 훅은 자료만 나른다.
+ *
+ * **`groupBy=LOT`으로 받는다.** 반품 라인은 자재 LOT 단위이고, 계약이 축을 하나만 채워 내리므로
+ * (`groupBy`가 LOT이면 위치가 빈다) 위치까지 좁힌 상한은 얻을 수 없다 — 그 한계는
+ * `on-hand.ts`가 적어 두었다.
+ *
+ * **`includeZero=true`가 중요하다**(감지기 M26). 끄면 보유가 0인 LOT이 아예 오지 않아
+ * 「0이라 없다」와 「잘려서 없다」를 가를 수 없고, 화면은 0인 줄을 **확인하지 못한 줄**로 읽어
+ * 막지 않는다 — 없는 자재를 되돌려 보내게 된다.
+ *
+ * **품목마다 한 번 부른다.** 번호 여러 개로 한 번에 조회하는 수단이 계약에 없다(실측).
+ * 캐시 키가 창고+품목이라 같은 품목의 줄이 여럿이어도 요청은 한 번이다.
+ *
+ * **전표를 고르기 전에는 부르지 않는다.** 창고 번호가 상세 응답에서 오므로 그전에는 조건을
+ * 만들 수 없다 — `?? 0` 같은 대체값으로 메우면 **없는 창고의 조건으로 요청이 나간다.**
+ */
+export const useOnHandBalances = (
+  warehouseId: number | null,
+  itemIds: readonly number[],
+): BalanceLookupResult => {
+  const { client } = useApiClient();
+
+  /*
+   * 중복을 없애는 이유는 요청 수가 아니라 **결과의 모양** 때문이다. 캐시 키가 품목마다
+   * 하나라 중복을 남겨도 나가는 요청 수는 같지만, 남기면 같은 품목이 `items`에 여러 번
+   * 들어와 상한을 찾는 쪽이 어느 것을 볼지가 순서에 달리게 된다.
+   */
+  const uniqueItemIds = [...new Set(itemIds)].sort((left, right) => left - right);
+
+  const results = useQueries({
+    queries: uniqueItemIds.map((itemId) => ({
+      queryKey: balanceKeys.onHand(warehouseId ?? 0, itemId),
+      enabled: warehouseId !== null,
+      queryFn: () => {
+        if (warehouseId === null) {
+          throw new Error('입고 전표를 고르기 전에는 재고 잔액을 조회하지 않습니다.');
+        }
+
+        return runRequest(() =>
+          client.GET('/inventory/balances', {
+            params: {
+              query: {
+                warehouseId,
+                itemId,
+                groupBy: 'LOT',
+                includeZero: true,
+                size: BALANCE_PAGE_SIZE,
+              },
+            },
+          }),
+        );
+      },
+    })),
+  });
+
+  return {
+    /*
+     * **품목별로 나눠 낸다.** 한 품목의 실패를 전체 실패로 뭉치면 멀쩡히 받은 품목의 줄까지
+     * 상한을 잃는다 — 그 줄들은 화면이 막아 줄 수 있는데도 못 막게 된다.
+     */
+    items:
+      warehouseId === null
+        ? EMPTY_ITEM_BALANCES
+        : uniqueItemIds.map((itemId, index) => {
+            const result = results[index];
+            const data = result?.data;
+
+            return {
+              itemId,
+              entries: data?.items.map(toBalanceView) ?? [],
+              isLoading: result?.isPending ?? true,
+              isError: result?.isError ?? false,
+              truncated: data !== undefined && isTruncated(data.page, data.items.length),
+            };
+          }),
+    isError: results.some((result) => result.isError),
+    truncated: results.some(
+      (result) => result.data !== undefined && isTruncated(result.data.page, result.data.items.length),
+    ),
+    refetch: () => {
+      for (const result of results) void result.refetch();
+    },
+  };
 };
 
 /**

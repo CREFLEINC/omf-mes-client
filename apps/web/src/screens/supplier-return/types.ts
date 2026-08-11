@@ -21,6 +21,7 @@ import type { components } from '@omf-mes/api-client';
 
 export type ReceiptResponse = components['schemas']['GoodsReceipt'];
 export type ReceiptLineResponse = components['schemas']['GoodsReceiptLine'];
+export type BalanceResponse = components['schemas']['InventoryBalance'];
 
 export type PageMeta = components['schemas']['PageMeta'];
 
@@ -83,6 +84,39 @@ export const toReceiptLineView = (data: ReceiptLineResponse): ReceiptLineView =>
   receiptQty: data.receiptQty,
   uomId: data.uomId,
   destinationLocationId: data.destinationLocationId,
+});
+
+/**
+ * 화면이 다루는 재고 잔액 한 줄. **반품 수량의 상한을 만드는 데만 쓴다** — 목록으로 그리지 않는다.
+ *
+ * **가용 수량(`availableQty`)에 자리를 두지 않는다**(계획 결정 9 · 완료 조건 C34).
+ * 그 값은 보유에서 예약·피킹·**보류**를 뺀 것인데, 보류된 자재 LOT을 되돌려 보내는 것이 이
+ * 화면의 주 용도다 — 상한으로 쓰면 **반품해야 할 것을 화면이 막는다.** 타입에 자리가 없으면
+ * 나중에 그 값을 집어 오는 경로도 없다.
+ *
+ * 예약·피킹·보류 수량과 소유·품질·재고 상태 코드도 담지 않는다. 이 화면의 판단(얼마까지
+ * 되돌려 보낼 수 있는가)에 쓰이지 않고, 코드는 값 목록이 확정되지 않아 해석할 수도 없다.
+ */
+export interface BalanceView {
+  /**
+   * 어느 자재 LOT의 잔액인가. **`groupBy`가 LOT이 아닌 줄에는 오지 않는다**(계약) —
+   * 그래서 없음을 없음으로 옮긴다. `?? 0`으로 메우면 **0번 LOT의 잔액**이라는 없는 사실이
+   * 만들어지고, 그것이 어느 줄의 상한으로 읽힐 수 있다.
+   */
+  lotId: number | null;
+  onHandQty: number;
+  /**
+   * 그 수량의 단위. **비교하기 전에 라인의 단위와 같은지 본다** — 다르면 100과 5를 견주는
+   * 셈이 되고, 화면에는 단위를 옮기는 수단이 없다.
+   */
+  uomId: number;
+}
+
+/** 잔액 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toBalanceView = (data: BalanceResponse): BalanceView => ({
+  lotId: data.lotId ?? null,
+  onHandQty: data.onHandQty,
+  uomId: data.uomId,
 });
 
 /** 목록 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */

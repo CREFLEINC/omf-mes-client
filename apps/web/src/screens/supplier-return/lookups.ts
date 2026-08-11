@@ -139,8 +139,14 @@ export const isLotHeld = (source: LotReferenceSource, lotId: number | null): boo
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ENTRIES: LookupEntry[] = [];
 
-/** 서버가 보낸 전체 건수가 받은 건수보다 많으면 잘린 것이다. */
-const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
+/**
+ * 서버가 보낸 전체 건수가 받은 건수보다 많으면 잘린 것이다.
+ *
+ * **재고 잔액 조회도 이 규칙을 쓴다**(`queries.ts`). 잘림 판정이 두 곳에 각각 있으면 한쪽만
+ * 고쳐져 「이름은 잘렸다는데 수량은 멀쩡하다고 하는」 어긋난 화면이 된다 — 이름이든 수량이든
+ * 「일부만 받았다」는 사실은 하나다.
+ */
+export const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
 
 /**
  * 선택칸·표 아래에 붙일 안내. 밝히지 않으면 사용자가 **불완전한 목록을 완전한 것으로 읽고**

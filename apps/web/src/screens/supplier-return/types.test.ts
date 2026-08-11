@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   formatDateTime,
+  toBalanceView,
   toReceiptLineView,
   toReceiptView,
+  type BalanceResponse,
   type ReceiptLineResponse,
   type ReceiptResponse,
 } from './types';
@@ -111,6 +113,81 @@ describe('toReceiptLineView', () => {
   it('수량 0과 소수를 그대로 옮긴다', () => {
     expect(toReceiptLineView({ ...lineResponse, receiptQty: 0 }).receiptQty).toBe(0);
     expect(toReceiptLineView({ ...lineResponse, receiptQty: 12.5 }).receiptQty).toBe(12.5);
+  });
+});
+
+/**
+ * 재고 잔액 한 줄. **이 화면은 상한을 만드는 데만 쓴다** — 목록으로 그리지 않는다.
+ *
+ * 예약·피킹·보류 수량과 가용 수량이 함께 오는데 **가용 수량을 담지 않는 것이 요점이다**
+ * (계획 결정 9 · 완료 조건 C34). 담아 두면 언젠가 상한으로 읽히고, 그러면 보류된 자재 LOT을
+ * 되돌려 보내는 이 화면의 주 용도가 막힌다.
+ */
+const balanceResponse: BalanceResponse = {
+  groupBy: 'LOT',
+  warehouseId: 9701,
+  itemId: 9301,
+  lotId: 9601,
+  ownershipTypeCode: 'SAMPLE_OWNERSHIP_A',
+  onHandQty: 80,
+  reservedQty: 60,
+  pickedQty: 5,
+  blockedQty: 5,
+  availableQty: 10,
+  uomId: 9501,
+};
+
+describe('toBalanceView', () => {
+  it('보유 수량·자재 LOT·단위 셋만 옮긴다', () => {
+    expect(toBalanceView(balanceResponse)).toEqual({
+      lotId: 9601,
+      onHandQty: 80,
+      uomId: 9501,
+    });
+  });
+
+  /**
+   * **M32** — `onHandQty`를 `availableQty`로 바꾸면 이 단언이 무너진다. 두 값이 다른 응답을
+   * 쓰는 것이 그 잣대의 전제다(80 ≠ 10).
+   */
+  it('보유 수량으로 옮긴다 — 가용 수량이 아니다', () => {
+    expect(toBalanceView(balanceResponse).onHandQty).toBe(80);
+    expect(balanceResponse.availableQty).not.toBe(balanceResponse.onHandQty);
+  });
+
+  it('예약·피킹·보류·가용 수량과 소유·상태 코드를 담지 않는다', () => {
+    const view: Record<string, unknown> = { ...toBalanceView(balanceResponse) };
+
+    for (const key of [
+      'reservedQty',
+      'pickedQty',
+      'blockedQty',
+      'availableQty',
+      'ownershipTypeCode',
+      'qualityStatusCode',
+      'inventoryStatusCode',
+      'groupBy',
+      'warehouseId',
+      'itemId',
+      'heldLotCount',
+    ]) {
+      expect(view).not.toHaveProperty(key);
+    }
+  });
+
+  /**
+   * `groupBy`가 LOT이 아닌 줄은 `lotId`가 비어서 온다(계약). 그 줄을 어느 LOT의 것으로도
+   * 읽지 않으려면 **없음을 없음으로** 옮겨야 한다 — `?? 0`으로 메우면 0번 LOT의 잔액이 된다.
+   */
+  it('자재 LOT이 오지 않으면 없음으로 옮긴다', () => {
+    expect(toBalanceView({ ...balanceResponse, lotId: null }).lotId).toBeNull();
+    expect(toBalanceView({ ...balanceResponse, lotId: undefined }).lotId).toBeNull();
+  });
+
+  /** 계약이 「음수 허용 품목에서는 음수가 올 수 있다」고 적었다 — 삼키지 않는다. */
+  it('보유 수량이 0이나 음수여도 그대로 옮긴다', () => {
+    expect(toBalanceView({ ...balanceResponse, onHandQty: 0 }).onHandQty).toBe(0);
+    expect(toBalanceView({ ...balanceResponse, onHandQty: -3 }).onHandQty).toBe(-3);
   });
 });
 
