@@ -45,9 +45,9 @@ describe('closeBlockReason — 요약의 두 건수만 본다', () => {
    * 건수를 인용하지 않으면 사용자는 얼마나 남았는지 알 수 없어 언제 끝나는지 가늠할 수 없다.
    */
   it.each([1, 15, 60])('미실사가 %i건이면 그 건수를 인용해 막는다', (uncountedCount) => {
-    expect(closeBlockReason({ summary: summaryOf({ uncountedCount }), hasClosedInSession: false })).toBe(
-      t.actionReasons.closeUncounted(uncountedCount),
-    );
+    expect(
+      closeBlockReason({ summary: summaryOf({ uncountedCount }), hasClosedInSession: false }),
+    ).toBe(t.actionReasons.closeUncounted(uncountedCount));
   });
 
   /*
@@ -55,9 +55,9 @@ describe('closeBlockReason — 요약의 두 건수만 본다', () => {
    * 두지 않는다」로 못 박은 자리라, 이 사유에는 「그래도 마감」이 붙지 않는다.
    */
   it.each([1, 6, 12])('차이가 %i건이면 그 건수를 인용해 막는다', (varianceCount) => {
-    expect(closeBlockReason({ summary: summaryOf({ varianceCount }), hasClosedInSession: false })).toBe(
-      t.actionReasons.closeVariance(varianceCount),
-    );
+    expect(
+      closeBlockReason({ summary: summaryOf({ varianceCount }), hasClosedInSession: false }),
+    ).toBe(t.actionReasons.closeVariance(varianceCount));
   });
 
   /*
@@ -87,9 +87,9 @@ describe('closeBlockReason — 요약의 두 건수만 본다', () => {
     ['미실사가 남은', { uncountedCount: 15 }],
     ['차이가 남은', { varianceCount: 6 }],
   ])('%s 요약이라도 이번 세션에서 마감했으면 그 사실을 먼저 말한다', (_label, overrides) => {
-    expect(
-      closeBlockReason({ summary: summaryOf(overrides), hasClosedInSession: true }),
-    ).toBe(t.actionReasons.closeAlreadyClosed);
+    expect(closeBlockReason({ summary: summaryOf(overrides), hasClosedInSession: true })).toBe(
+      t.actionReasons.closeAlreadyClosed,
+    );
   });
 
   /*
@@ -130,6 +130,8 @@ describe('closeBlockReason — 요약의 두 건수만 본다', () => {
     ['계획', 'plannedCount'],
     ['카운트', 'countedCount'],
   ])('%s 건수가 빠져 와도 마감 판정은 그대로다', (_label, field) => {
-    expect(closeBlockReason({ summary: summaryWithout(field), hasClosedInSession: false })).toBeNull();
+    expect(
+      closeBlockReason({ summary: summaryWithout(field), hasClosedInSession: false }),
+    ).toBeNull();
   });
 });

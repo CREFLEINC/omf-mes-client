@@ -130,7 +130,8 @@ const toLayout = (result: ResultView): ResultLayout => {
 export const ResultPane = ({ result }: ResultPaneProps): ReactNode => {
   const layout = toLayout(result);
   /* 잠긴 컨트롤은 포커스를 받지 못한다 — 사유를 이어 두어야 읽힌다(배치 규범 4). */
-  const adjustmentReasonId = `${useId()}-adjustment-reason`;
+  const reasonIdRoot = useId();
+  const adjustmentReasonId = `${reasonIdRoot}-adjustment-reason`;
 
   return (
     /* 사용자가 부르지 않은 시점에 나타나는 내용이라 살아 있는 영역으로 알린다. */

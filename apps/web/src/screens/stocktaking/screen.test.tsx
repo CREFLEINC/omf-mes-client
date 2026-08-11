@@ -4213,6 +4213,53 @@ describe('StocktakingScreen — 마감 실패', () => {
   });
 
   /*
+   * **리뷰 R-1 — 마감 실패는 자기 실사보다 오래 살지 않는다**(수명 표 1~4·6행).
+   *
+   * 「서버 실패 = 유지」의 근거는 **초안이 있는 쓰기**의 것이었다. 마감에는 초안이 없어
+   * 남길 이유가 없고, 남으면 실사 A의 「이미 마감된 실사입니다」가 **실사 B의 상세 아래**에
+   * 선 채 B의 마감 버튼은 활성이 된다 — 한 화면이 서로 어긋나는 두 말을 동시에 한다.
+   * 사용자가 그 말을 믿으면 **마감해야 할 실사를 마감하지 않고** 목록을 뒤진다.
+   *
+   * **짝 방향을 함께 센다** — 같은 실사 안에서 위치만 옮기는 것은 대상이 바뀐 것이 아니다
+   * (5행). 사라지는 쪽만 재면 「늘 지운다」로 바꿔도 통과하는데, 그러면 마감이 왜 막혔는지
+   * 읽기도 전에 배너가 사라진다.
+   */
+  it('마감 실패 배너가 다른 실사를 고르면 사라지고 같은 실사 안에서는 남는다', async () => {
+    const stateLockedMessage = '이미 마감된 실사입니다.';
+
+    const { user } = await setupClosable(
+      allRoutes([
+        closableDetailRoute(),
+        closableDetailRoute(OTHER_DETAIL_PATH, CLOSABLE_SUMMARY, { inventoryCountId: 9003 }),
+        failingCloseRoute(400, {
+          errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: stateLockedMessage }],
+        }),
+      ]),
+    );
+
+    await closeCount(user);
+
+    expect(await screen.findByText(stateLockedMessage)).toBeInTheDocument();
+
+    /* 짝 방향 — 같은 실사 안에서 위치를 골라도 남는다(5행). */
+    await chooseOption(user, detailPane(), t.fields.location, LOCATION_LABEL);
+    await waitForLines();
+
+    expect(screen.getByText(stateLockedMessage)).toBeInTheDocument();
+
+    await selectCount(user, 'IC-2026-900013');
+
+    await waitFor(() => {
+      expect(screen.queryByText(stateLockedMessage)).not.toBeInTheDocument();
+    });
+
+    /* 새 실사의 마감은 열려 있다 — 배너만 사라지고 판정이 함께 잠기지 않는다. */
+    await waitFor(() => {
+      expect(closeButton()).not.toBeDisabled();
+    });
+  });
+
+  /*
    * **짝 방향 — 응답이 온 실패에는 그 한 줄을 붙이지 않는다**(개시가 세운 형태).
    *
    * 마감에서 그 뒤집힘은 특히 비싸다: 「이미 마감됐는지 확인한 뒤 시도하세요」가 **권한이
