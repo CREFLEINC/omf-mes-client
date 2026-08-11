@@ -15,11 +15,24 @@ const SAVED: ResultView = {
   replacedLineCount: 3,
 };
 
+/**
+ * 마감 결과. **상태 코드는 서버가 준 값 그대로**이고, 픽스처가 실제로 쓰는 합성 값이다 —
+ * 화면이 이 값으로 분기하면 그 자리에서 걸린다(감지기 M59).
+ */
+const CLOSED: ResultView = {
+  kind: 'closed',
+  countNo: 'IC-2026-900011',
+  statusCode: 'SAMPLE_COUNT_STATUS_A',
+  summary: { plannedCount: 40, countedCount: 40, uncountedCount: 0, varianceCount: 0 },
+};
+
 const renderPane = (result: ResultView = OPENED) => render(<ResultPane result={result} />);
 
 const resultRegion = (): HTMLElement => screen.getByRole('status', { name: t.result.label });
 
 const savedRegion = (): HTMLElement => screen.getByRole('status', { name: t.result.savedLabel });
+
+const closedRegion = (): HTMLElement => screen.getByRole('status', { name: t.result.closedLabel });
 
 describe('ResultPane — 개시 갈래', () => {
   /* **C29** — 만들어진 실사의 **업무 번호**를 낸다. 그것이 사용자가 나중에 찾을 때 쓰는 값이다. */
@@ -131,5 +144,114 @@ describe('ResultPane — 저장 갈래', () => {
 
     expect(within(savedRegion()).queryAllByRole('link')).toHaveLength(0);
     expect(within(savedRegion()).queryAllByRole('button')).toHaveLength(0);
+  });
+});
+
+describe('ResultPane — 마감 갈래', () => {
+  /*
+   * **계획 결정 14** — 갈래가 셋이 됐어도 **한 자리에 하나만** 보인다. 라벨까지 갈리는 것이
+   * 그 규칙의 실물이라, 마감 결과가 섰을 때 앞 두 갈래의 라벨·안내가 함께 서 있으면 안 된다.
+   */
+  it('마감 갈래에는 앞 두 갈래가 보이지 않는다', () => {
+    renderPane(CLOSED);
+
+    expect(closedRegion()).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.openedNote)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.savedNote)).not.toBeInTheDocument();
+  });
+
+  /** 무엇을 마감했는지 — **업무 번호**로 낸다. 사용자가 나중에 이 실사를 찾을 때 쓰는 값이다. */
+  it('마감한 실사번호를 낸다', () => {
+    renderPane(CLOSED);
+
+    expect(within(closedRegion()).getByText(t.result.closedNo)).toBeInTheDocument();
+    expect(within(closedRegion()).getByText('IC-2026-900011')).toBeInTheDocument();
+  });
+
+  /*
+   * **완료 조건 C57 · 감지기 M59** — 상태 코드를 **그대로** 낸다.
+   *
+   * 실측 근거가 있다: 목 서버의 `:close` 200 응답이 `IN_PROGRESS`를 되돌려 준다. 값으로
+   * 「마감됨」을 판정했다면 그 자리에서 거짓말을 한다 — 값 집합이 확정되지도 않았다
+   * (`omf-mes#64` · 공유계약 G-2).
+   *
+   * **픽스처가 실제로 쓰는 값 둘로 센다.** 코드가 달라져도 라벨·안내가 그대로여야 한다 —
+   * 한 값만 재면 그 값에만 붙는 분기를 넣어도 통과한다.
+   */
+  it.each(['SAMPLE_COUNT_STATUS_A', 'SAMPLE_COUNT_STATUS_C'])(
+    '상태 코드 %s를 해석하지 않고 그대로 낸다',
+    (statusCode) => {
+      renderPane({ ...CLOSED, statusCode });
+
+      expect(within(closedRegion()).getByText(t.result.closedStatus)).toBeInTheDocument();
+      expect(within(closedRegion()).getByText(statusCode)).toBeInTheDocument();
+      /* 안내가 코드에 따라 갈리지 않는다 — 갈리면 화면이 값을 해석한 것이다. */
+      expect(within(closedRegion()).getByText(t.result.closedNote)).toBeInTheDocument();
+    },
+  );
+
+  /*
+   * **마감 시점의 요약이 결과에 박혀 있다.** 그 뒤 다른 실사를 골라 위 구획의 요약이 바뀌어도
+   * 「무엇을 마감했는가」가 흔들리지 않는다 — 위 구획을 다시 읽으라고만 하면 그 순간의 사실이
+   * 어디에도 남지 않는다.
+   */
+  it('마감 시점의 요약 4칸을 그대로 낸다', () => {
+    renderPane({
+      ...CLOSED,
+      summary: { plannedCount: 40, countedCount: 38, uncountedCount: 0, varianceCount: 0 },
+    });
+
+    for (const label of [t.detail.planned, t.detail.counted, t.detail.uncounted, t.detail.variance]) {
+      expect(within(closedRegion()).getByText(label)).toBeInTheDocument();
+    }
+
+    expect(within(closedRegion()).getByText(t.detail.countValue(40))).toBeInTheDocument();
+    expect(within(closedRegion()).getByText(t.detail.countValue(38))).toBeInTheDocument();
+  });
+
+  /*
+   * **완료 조건 C58 · 감지기 M58** — 「조정 등록」은 **자리만 두고 이동시키지 않는다**
+   * (착수 이슈 §5 ⚠). W-01-12는 이번에 나가지 않았고 승인 계약도 없다.
+   *
+   * 비활성 버튼과 **늘 보이는 사유**를 `aria-describedby`로 잇는다(배치 규범 4) —
+   * 잠긴 컨트롤은 포커스를 받지 못해 사유를 이어 두지 않으면 읽히지 않는다.
+   */
+  it('조정 등록이 비활성이고 사유가 이어져 있다', () => {
+    renderPane(CLOSED);
+
+    const action = within(closedRegion()).getByRole('button', { name: t.actions.adjustment });
+
+    expect(action).toBeDisabled();
+    expect(within(closedRegion()).getByText(t.actionReasons.adjustmentPending)).toBeInTheDocument();
+    expect(action.getAttribute('aria-describedby')).not.toBeNull();
+  });
+
+  /*
+   * **감지기 M58 — 어떤 경로로도 이동하지 않는다.** 링크가 하나라도 있으면 아직 없는 화면으로
+   * 가는 길이 생긴다. 앞 두 갈래에는 버튼 자체가 없고(그 잣대가 이미 서 있다) 마감 갈래에는
+   * 비활성 버튼 **하나만** 있어야 한다 — 개수까지 세지 않으면 옆에 링크를 하나 더 붙여도 통과한다.
+   */
+  it('마감 갈래에 링크가 없고 버튼은 잠긴 조정 등록 하나뿐이다', () => {
+    renderPane(CLOSED);
+
+    expect(within(closedRegion()).queryAllByRole('link')).toHaveLength(0);
+    expect(within(closedRegion()).queryAllByRole('button')).toHaveLength(1);
+  });
+
+  /*
+   * **#44 · 감지기 M57** — 마감 결과에도 내부 번호가 없다. 받는 타입에 자리가 없어 낼 값이
+   * 없고, 요약 건수는 화면에 나오는 정상 숫자라 번호 대역과 겹치지 않게 골랐다.
+   */
+  it('내부 번호를 내지 않는다', () => {
+    const { container } = renderPane(CLOSED);
+
+    /* 짝 방향 — 업무 번호는 실제로 보인다. */
+    expect(within(closedRegion()).getByText('IC-2026-900011')).toBeInTheDocument();
+
+    for (const internalId of ['9001', '9101', '9701']) {
+      expect(container.textContent ?? '').not.toContain(internalId);
+    }
   });
 });
