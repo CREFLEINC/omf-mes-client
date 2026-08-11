@@ -2650,16 +2650,31 @@ describe('StocktakingScreen — 블라인드 실사', () => {
    *
    * 열은 **실사 헤더가 정하고**, 값이 빠진 줄은 **그 줄이 사정을 밝힌다**. 둘은 다른 층이다.
    */
-  it('비블라인드 헤더에서는 장부가 빠진 줄이 있어도 두 열이 남는다', async () => {
+  it.each<[string, unknown[], number]>([
+    [
+      '첫 줄만 빠져 와도',
+      [blindCountLineResponse(), countLineFixtures[1], countLineFixtures[2]],
+      2,
+    ],
+    /*
+     * **전 줄이 빠져 오는 판까지 센다.** 「첫 줄로 판정」·「하나라도 빠지면」은 위 판이 잡지만
+     * **「전 줄이 빠져야 블라인드」**는 빠져나간다 — 규칙이 「헤더가 정한다」이므로 잣대도
+     * 줄 판정이 취할 수 있는 **형태 전체**를 덮어야 한다(승계의 격상 규칙).
+     */
+    [
+      '전 줄이 빠져 와도',
+      [
+        blindCountLineResponse(),
+        blindCountLineResponse({ inventoryCountLineId: 9402, lineNo: 2, lotId: null }),
+        blindCountLineResponse({ inventoryCountLineId: 9403, lineNo: 3, uomId: 9502 }),
+      ],
+      6,
+    ],
+  ])('비블라인드 헤더에서는 %s 두 열이 남는다', async (_label, items, notProvidedCount) => {
     renderScreen(
       allRoutes([
         detailRoute(DETAIL_PATH, countDetailBody({ blindCount: false })),
-        linesRoute(LINES_PATH, [
-          /* **첫 줄**이 빠진 것으로 둔다 — 「첫 줄로 판정」·「하나라도 빠지면」 두 형태를 함께 잡는다. */
-          blindCountLineResponse(),
-          countLineFixtures[1],
-          countLineFixtures[2],
-        ]),
+        linesRoute(LINES_PATH, items),
       ]),
       AT_LOCATION,
     );
@@ -2670,15 +2685,34 @@ describe('StocktakingScreen — 블라인드 실사', () => {
     expect(within(lineTable()).getByText(t.lineTable.systemQty)).toBeInTheDocument();
     expect(within(lineTable()).getByText(t.lineTable.variance)).toBeInTheDocument();
 
-    /* 짝 방향 — 값이 빠진 줄은 **그 두 칸에서** 사정을 밝힌다(열이 사라져서 통과하는 것이 아니다). */
-    expect(screen.getAllByText(t.values.qtyNotProvided)).toHaveLength(2);
     /*
-     * 나머지 줄의 장부 수량은 그대로 읽힌다 — 단위 참조가 도착한 뒤에 잰다.
-     * 단위는 참조가 푸는 「코드 · 이름」이다(부품 테스트가 주는 짧은 라벨과 다르다).
+     * 짝 방향 — 값이 빠진 줄은 **그 두 칸에서** 사정을 밝힌다(열이 사라져서 통과하는 것이
+     * 아니다). 줄마다 두 칸이므로 건수가 줄 수의 두 배다.
      */
-    expect(
-      await screen.findByText(t.lineTable.qtyWithUom('40', UOM_LABEL)),
-    ).toBeInTheDocument();
+    expect(screen.getAllByText(t.values.qtyNotProvided)).toHaveLength(notProvidedCount);
+  });
+
+  /*
+   * 짝 방향의 나머지 절반 — **값이 온 줄은 그대로 읽힌다.** 위 두 판이 「없음」만 세므로
+   * 이 단언이 없으면 「전 줄이 없음으로 찍혀도」 통과한다.
+   * 단위는 참조가 푸는 「코드 · 이름」이다(부품 테스트가 주는 짧은 라벨과 다르다).
+   */
+  it('값이 온 줄의 장부 수량은 단위와 함께 읽힌다', async () => {
+    renderScreen(
+      allRoutes([
+        detailRoute(DETAIL_PATH, countDetailBody({ blindCount: false })),
+        linesRoute(LINES_PATH, [
+          blindCountLineResponse(),
+          countLineFixtures[1],
+          countLineFixtures[2],
+        ]),
+      ]),
+      AT_LOCATION,
+    );
+
+    await waitForLines();
+
+    expect(await screen.findByText(t.lineTable.qtyWithUom('40', UOM_LABEL))).toBeInTheDocument();
   });
 
   it('사유 선택지가 비어 있어도 전 줄만 채우면 저장이 열린다', async () => {
