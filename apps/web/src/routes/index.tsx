@@ -13,6 +13,7 @@ import { MasterChangeScreen } from '../screens/master-change/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
+import { StocktakingScreen } from '../screens/stocktaking/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
@@ -61,6 +62,15 @@ export const appRouter = createBrowserRouter([
        * 사용자와 개발자 모두 섹션과 주소를 대응시킬 수 없다.
        */
       { path: 'logistics/stock-status', element: <StockStatusScreen /> },
+      /*
+       * W-01-04 — 같은 규칙(사이드바 섹션)이고 차례도 업무 순서다: 재고를 확인한 뒤
+       * (재고 현황·상태 조회) 장부와 실물을 맞춘다(재고실사).
+       *
+       * **네 PR이 함께 여는 자리다.** 개시·결과 등록·마감이 다 서기 전에는 이 줄을 두지
+       * 않았다 — 마감할 수 없는 「재고실사」 화면을 노출하면 마감 없는 전표가 쌓인다
+       * (정책 §5.2 — 접근 불가능한 경계).
+       */
+      { path: 'logistics/stocktaking', element: <StocktakingScreen /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

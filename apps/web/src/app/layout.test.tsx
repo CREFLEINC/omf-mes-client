@@ -176,6 +176,22 @@ describe('AppLayout', () => {
   });
 
   /*
+   * W-01-04도 같은 「자재창고」 섹션에 항목만 더한다. **차례가 업무 순서다** — 재고를 확인한
+   * 뒤(재고 현황·상태 조회) 장부와 실물을 맞춘다(재고실사). 계약 경로는 `/inventory/**`이지만
+   * 주소 앞머리는 여기서도 **섹션을 따른다.**
+   */
+  it('사이드바 자재창고 섹션에 재고실사 메뉴가 함께 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByRole('link', { name: '재고실사' })).toHaveAttribute(
+      'href',
+      '/logistics/stocktaking',
+    );
+  });
+
+  /*
    * **섹션이 새로 생기지 않았음**을 값으로 고정한다 — 항목이 늘어도 분류는 셋 그대로다.
    * 알려진 섹션 셋이 사이드바의 링크를 **빠짐없이** 담고 있는지로 판정한다. 넷째 섹션이
    * 생기면 그 안의 링크가 이 합집합 밖으로 나와 곧바로 걸린다.
@@ -235,6 +251,7 @@ describe('AppLayout', () => {
       '/logistics/over-receipt-split',
       '/logistics/goods-receipt',
       '/logistics/stock-status',
+      '/logistics/stocktaking',
       '/system/users-roles',
     ]);
   });
