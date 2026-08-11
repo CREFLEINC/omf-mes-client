@@ -4286,7 +4286,7 @@ describe('StocktakingScreen — 마감 중 잠금', () => {
     [string, (request: Request) => boolean, (user: ReturnType<typeof userEvent.setup>) => Promise<void>]
   >([
     [
-      '개시',
+      '개시가',
       isOpenRequest,
       async (user) => {
         await fillOpenDraft(user);
@@ -4295,14 +4295,14 @@ describe('StocktakingScreen — 마감 중 잠금', () => {
       },
     ],
     [
-      '치환',
+      '치환이',
       isReplaceRequest,
       async (user) => {
         await fillAllQty(user);
         await user.click(saveButton());
       },
     ],
-  ])('%s가 나가는 중에도 마감 버튼이 잠긴다', async (_label, hold, act) => {
+  ])('%s 나가는 중에도 마감 버튼이 잠긴다', async (_label, hold, act) => {
     fillCodeLists();
 
     const { requests, release, user } = await setupClosable(
