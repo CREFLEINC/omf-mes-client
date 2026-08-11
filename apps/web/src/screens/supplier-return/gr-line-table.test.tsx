@@ -374,6 +374,26 @@ describe('GrLineTable — 줄 선택', () => {
     );
   });
 
+  /**
+   * **잠긴 줄의 칸은 비어 있다.** 체크된 채로 보이면 화면이 어긋난 두 말을 한다 —
+   * 눈에는 골라진 줄로 보이는데 요약은 「아직 고른 줄이 없습니다」라고 적는다.
+   * 앞 잣대는 `disabled`와 사유만 보아 이 자리를 지나가지 않았다.
+   */
+  it('고를 수 없는 줄은 초안에 있어도 체크되지 않고 요약에도 들지 않는다', () => {
+    const draft = setDraftQty(
+      toggleLineSelection(toggleLineSelection(EMPTY_LINE_DRAFT, 9401), 9403),
+      9401,
+      '10',
+    );
+
+    renderTable({ rows: rowsFrom(draft) });
+
+    expect(selectBox(3)).not.toBeChecked();
+    /* 짝 방향 — 같은 초안에 든 **고를 수 있는** 줄은 실제로 체크되고 요약에 든다. */
+    expect(selectBox(1)).toBeChecked();
+    expect(screen.getByText(t.selection.summary(1, 10, UOM_LABEL))).toBeInTheDocument();
+  });
+
   it('고를 수 있는 줄에는 사유가 붙지 않는다', () => {
     renderTable();
 

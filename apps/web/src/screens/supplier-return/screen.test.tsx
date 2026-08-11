@@ -183,6 +183,31 @@ const changingDetailRoute = (): StubRoute => {
   };
 };
 
+/**
+ * 부를 때마다 **줄 구성이 달라지는** 상세 — 둘째 호출부터 첫 줄이 빠진다.
+ *
+ * **헤더만 바꾸는 스텁으로는 이 갈래를 재지 못한다.** 캐시의 구조 공유가 내용이 같은 `lines`
+ * 배열의 **참조를 그대로 유지**하므로, 되돌림 의존성에 라인 배열을 넣어도 effect가 깨어나지
+ * 않는다 — 결함이 있는데 아무도 울지 않는다.
+ *
+ * 이 상태는 실제로 일어난다: **다른 사람이 그 줄을 먼저 반품한 뒤** 사용자가 「다시 조회」를
+ * 누르는 형태다.
+ */
+const changingLinesRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, DETAIL_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse(
+        detailBody(0, call === 1 ? goodsReceiptLineFixtures : goodsReceiptLineFixtures.slice(1)),
+      );
+    },
+  };
+};
+
 const otherDetailRoute = (): StubRoute => ({
   match: (request) => isGet(request, OTHER_DETAIL_PATH),
   respond: () => jsonResponse({ goodsReceipt: goodsReceiptFixtures[1], lines: [] }),
@@ -1706,6 +1731,8 @@ describe('SupplierReturnScreen — 줄 선택과 반품 수량', () => {
 
     expect(selectBox(3)).toBeDisabled();
     expect(qtyBox(3)).toBeDisabled();
+    /* 잠긴 줄이 **체크된 채로** 보이면 화면이 요약과 어긋난 두 말을 한다. */
+    expect(selectBox(3)).not.toBeChecked();
     expect(screen.getByText(t.reasons.lineQtyNotPositive)).toBeInTheDocument();
   });
 
@@ -1767,8 +1794,11 @@ describe('SupplierReturnScreen — 줄 선택과 반품 수량', () => {
 
 describe('SupplierReturnScreen — 줄 초안의 수명', () => {
   /**
-   * **M27 · #43** — 되돌림 의존성에 라인·참조·잔액 응답이 들어가면 갱신이 도착할 때마다
-   * **치던 값이 사라진다.** 「다시 조회」는 값을 버리려고 누르는 것이 아니다(수명 표 10행).
+   * **M27 · #43 — 내용이 같은 응답이 다시 온 갈래.**
+   *
+   * 되돌림 의존성에 **상세 응답 객체**가 들어가면 이 갈래에서 값이 사라진다. 다만 캐시의
+   * 구조 공유 때문에 **`lines` 배열의 참조는 그대로 유지**되므로, 라인 배열을 넣은 형태는
+   * 이 잣대를 지나간다 — 그 갈래는 바로 아래 테스트가 맡는다.
    */
   it('다시 조회해도 고른 줄과 친 수량이 남는다', async () => {
     const { user } = renderScreen(allRoutes([changingListRoute(), changingDetailRoute()]));
@@ -1786,6 +1816,39 @@ describe('SupplierReturnScreen — 줄 초안의 수명', () => {
 
     expect(qtyBox(1)).toHaveValue('10');
     expect(selectBox(1)).toBeChecked();
+  });
+
+  /**
+   * **M27 · #43 — 줄 구성이 실제로 달라진 갈래**(수명 표 10행 · 계획 결정 8).
+   *
+   * 「다시 조회」는 값을 버리려고 누르는 것이 아니다. 사라진 줄의 초안은 **표에 있는 줄만
+   * 세는 것**으로 걸러지므로 **지우지 않아도 된다** — 지우면 다른 사람이 그 전표의 다른 줄을
+   * 먼저 반품한 것만으로 **사용자가 치던 수량이 말없이 사라진다.**
+   *
+   * 앞 줄이 빠져 **표시 순번이 하나 당겨지는데도** 초안이 그 줄에 그대로 매여 있어야 한다 —
+   * 초안의 키가 자리가 아니라 라인 번호임을 함께 잰다.
+   */
+  it('줄 하나가 사라져도 남은 줄에 친 수량이 살아 있다', async () => {
+    const { user } = renderScreen(allRoutes([changingListRoute(), changingLinesRoute()]));
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.click(selectBox(2));
+    await user.type(qtyBox(2), '10');
+
+    await refresh(user);
+
+    /* 줄이 실제로 하나 빠졌다 — 같은 응답이 다시 와서 통과한 것이 아니다. */
+    await waitFor(() => {
+      expect(screen.getAllByRole('textbox', { name: /번째 줄 반품 수량$/ })).toHaveLength(
+        goodsReceiptLineFixtures.length - 1,
+      );
+    });
+
+    expect(qtyBox(1)).toHaveValue('10');
+    expect(selectBox(1)).toBeChecked();
+    expect(screen.getByText(t.selection.summary(1, 10, UOM_LABEL))).toBeInTheDocument();
   });
 
   /** 참조·잔액이 늦게 도착해도 초안을 건드리지 않는다(수명 표 9행). */
