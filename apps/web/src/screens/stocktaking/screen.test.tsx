@@ -3915,6 +3915,15 @@ describe('StocktakingScreen — 마감 성공', () => {
     expect(within(result).getByText('IC-2026-900011')).toBeInTheDocument();
     expect(within(result).getByText(CLOSED_STATUS)).toBeInTheDocument();
     expect(within(result).getAllByText(t.detail.countValue(40))).toHaveLength(2);
+
+    /*
+     * **#44 · 감지기 M57** — 짝 방향. 업무 번호가 보이는 것만 재면 그 자리에 **내부 번호를
+     * 대신 넣는** 뮤턴트가 「업무 번호가 없다」로만 걸린다 — 무엇이 대신 섰는지도 재야
+     * 그 자리가 번호가 새는 경로인지 아닌지 갈린다.
+     */
+    for (const internalId of INTERNAL_IDS) {
+      expect(result.textContent ?? '').not.toContain(internalId);
+    }
   });
 
   /*
