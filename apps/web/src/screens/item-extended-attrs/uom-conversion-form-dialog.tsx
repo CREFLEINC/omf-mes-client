@@ -2,6 +2,7 @@ import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { DateField } from './date-field';
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
@@ -44,8 +45,6 @@ export const UomConversionFormDialog = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const rateId = useId();
-  const fromId = useId();
-  const toId = useId();
 
   const change = (patch: Partial<UomConversionDraft>) => {
     setValues((prev) => ({ ...prev, ...patch }));
@@ -138,29 +137,22 @@ export const UomConversionFormDialog = ({
           />
         </div>
 
-        <div className="field-cell">
-          <FieldLabel htmlFor={fromId} label={t.fields.effectiveFrom} required />
-          <TextField
-            id={fromId}
-            type="date"
-            value={values.effectiveFrom}
-            onChange={(event) => change({ effectiveFrom: event.target.value })}
-            error={errors.effectiveFrom}
-            aria-required
-          />
-        </div>
+        {/* 날짜 입력은 DS `DatePicker`다(변경 통지 #63). */}
+        <DateField
+          label={t.fields.effectiveFrom}
+          required
+          value={values.effectiveFrom}
+          onChange={(effectiveFrom) => change({ effectiveFrom })}
+          error={errors.effectiveFrom}
+        />
 
         {/* 비우면 무기한이다 — 계약이 널을 허용한다. */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={toId} label={t.fields.effectiveTo} />
-          <TextField
-            id={toId}
-            type="date"
-            value={values.effectiveTo}
-            onChange={(event) => change({ effectiveTo: event.target.value })}
-            error={errors.effectiveTo}
-          />
-        </div>
+        <DateField
+          label={t.fields.effectiveTo}
+          value={values.effectiveTo}
+          onChange={(effectiveTo) => change({ effectiveTo })}
+          error={errors.effectiveTo}
+        />
       </div>
     </Dialog>
   );

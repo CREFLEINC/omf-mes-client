@@ -10,6 +10,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { pickDate } from '../../test/date-picker';
 import { inspectionPlanFixtures, inspectionPlanVersionFixtures } from './fixtures';
 import { InspectionStandardScreen } from './screen';
 
@@ -1260,9 +1261,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await user.click(await within(versionPane()).findByRole('button', { name: '버전 등록' }));
 
     const form = screen.getByRole('region', { name: '버전 정보' });
-    fireEvent.change(within(form).getByLabelText('유효시작'), {
-      target: { value: '2026-08-01' },
-    });
+    await pickDate(user, within(form).getByLabelText('유효시작'), '2026-08-01');
     await user.click(within(form).getByRole('combobox', { name: '샘플링 방법' }));
     await user.click(screen.getByRole('option', { name: '선택지 준비 중' }));
     await user.click(within(form).getByRole('combobox', { name: '검사 주기' }));
@@ -1277,6 +1276,8 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
 
     const body = JSON.parse(post?.body ?? '{}') as Record<string, unknown>;
     expect(body.inspectionPlanId).toBe(3001);
+    // 달력에서 고른 날이 그대로 요청에 실린다 — 입력 수단이 바뀌어도 나가는 값의 형식은 그대로다.
+    expect(body.effectiveFrom).toBe('2026-08-01');
     expect('planVersion' in body).toBe(false);
     expect('statusCode' in body).toBe(false);
   });
@@ -1395,7 +1396,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await user.click(await within(versionPane()).findByRole('button', { name: '버전 등록' }));
 
     const form = screen.getByRole('region', { name: '버전 정보' });
-    fireEvent.change(within(form).getByLabelText('유효시작'), { target: { value: '2026-08-01' } });
+    await pickDate(user, within(form).getByLabelText('유효시작'), '2026-08-01');
     await user.click(within(form).getByRole('button', { name: '버전 등록' }));
 
     expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(2);
@@ -1592,8 +1593,8 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
 
     const form = await awaitVersionForm();
-    fireEvent.change(within(form).getByLabelText('유효시작'), { target: { value: '2026-09-01' } });
-    fireEvent.change(within(form).getByLabelText('유효종료'), { target: { value: '2026-08-01' } });
+    await pickDate(user, within(form).getByLabelText('유효시작'), '2026-09-01');
+    await pickDate(user, within(form).getByLabelText('유효종료'), '2026-08-01');
     await user.click(within(form).getByRole('button', { name: '저장' }));
 
     expect(

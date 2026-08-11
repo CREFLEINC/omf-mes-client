@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { pickDate } from '../../test/date-picker';
 import type { SelectOption } from './types';
 import { createUomConversionDraft, type UomConversionDraft } from './uom-conversion-draft';
 import { UomConversionFormDialog } from './uom-conversion-form-dialog';
@@ -187,8 +188,7 @@ describe('UomConversionFormDialog — 중복 (M29)', () => {
       screen.getByText('변환 전·변환 후·유효 시작이 같은 줄이 이미 있습니다.'),
     ).toBeInTheDocument();
 
-    await user.clear(screen.getByLabelText('유효 시작'));
-    await user.type(screen.getByLabelText('유효 시작'), '2026-06-01');
+    await pickDate(user, screen.getByLabelText('유효 시작'), '2026-06-01');
 
     expect(
       screen.queryByText('변환 전·변환 후·유효 시작이 같은 줄이 이미 있습니다.'),

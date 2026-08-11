@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { pickRange } from '../../test/date-picker';
 import { EventFilterBar, type EventFilterBarProps } from './event-filter-bar';
 import { EMPTY_FILTERS } from './filters';
 
@@ -24,31 +25,36 @@ const renderBar = (overrides: Partial<EventFilterBarProps> = {}) => {
 };
 
 describe('EventFilterBar — 조회 기간', () => {
-  it('주소에 반영된 기간이 두 칸에 들어 있다', () => {
+  it('주소에 반영된 기간이 컨트롤에 들어 있다', () => {
     renderBar();
 
-    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-08-01');
-    expect(screen.getByLabelText('기간 종료')).toHaveValue('2026-08-07');
+    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-08-01 ~ 2026-08-07');
   });
 
   /* 트리거 모델은 「모아서 적용」이다 — 고치는 동안 조회가 나가면 반쯤 지운 기간으로 요청이 나간다. */
   it('고친 기간은 조회를 눌러야 올라간다', async () => {
     const { onSearch, user } = renderBar();
 
-    await user.clear(screen.getByLabelText('기간 시작'));
-    await user.type(screen.getByLabelText('기간 시작'), '2026-07-20');
+    /*
+      * **양끝을 모두 적용값과 다른 날로 옮긴다.** 종료를 적용값과 같은 날로 고르면
+      * 컨트롤이 새 종료를 버려도 결과가 같아, 기간의 절반이 무보증으로 남는다.
+      */
+    await pickRange(user, screen.getByLabelText('조회 기간'), '2026-07-20', '2026-07-25');
 
     expect(onSearch).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: '조회' }));
 
-    expect(onSearch).toHaveBeenCalledWith({ from: '2026-07-20', to: '2026-08-07' }, EMPTY_FILTERS);
+    expect(onSearch).toHaveBeenCalledWith({ from: '2026-07-20', to: '2026-07-25' }, EMPTY_FILTERS);
   });
 
-  it('기간을 비우면 조회가 잠기고 사유가 보이며 조회가 올라가지 않는다', async () => {
-    const { onSearch, user } = renderBar();
-
-    await user.clear(screen.getByLabelText('기간 시작'));
+  /*
+   * **빈 기간은 주소에서 온다.** 기간 컨트롤에는 고른 날짜를 다시 비우는 수단이 없어
+   * 「비운다」는 조작이 없어졌지만, 주소는 사용자가 직접 고칠 수 있고 조회 조건의 정본은 주소다.
+   * 막아야 할 상태는 그대로 있으므로 그 상태에서 잣대를 댄다.
+   */
+  it('기간이 비어 있으면 조회가 잠기고 사유가 보이며 조회가 올라가지 않는다', () => {
+    const { onSearch } = renderBar({ appliedPeriod: { from: '', to: '' } });
 
     const searchButton = screen.getByRole('button', { name: '조회' });
     expect(searchButton).toBeDisabled();
@@ -61,11 +67,8 @@ describe('EventFilterBar — 조회 기간', () => {
     expect(onSearch).not.toHaveBeenCalled();
   });
 
-  it('기간이 역전되면 잠기고 다른 사유가 보인다', async () => {
-    const { user } = renderBar();
-
-    await user.clear(screen.getByLabelText('기간 종료'));
-    await user.type(screen.getByLabelText('기간 종료'), '2026-07-01');
+  it('기간이 역전되면 잠기고 다른 사유가 보인다', () => {
+    renderBar({ appliedPeriod: { from: '2026-08-07', to: '2026-07-01' } });
 
     const searchButton = screen.getByRole('button', { name: '조회' });
     expect(searchButton).toBeDisabled();
@@ -74,6 +77,22 @@ describe('EventFilterBar — 조회 기간', () => {
     expect(document.getElementById(reasonId)).toHaveTextContent(
       '기간 종료는 기간 시작보다 앞설 수 없습니다.',
     );
+  });
+
+  /*
+   * 두 칸일 때는 종료를 시작보다 앞에 **넣을 수 있었고** 화면이 그것을 막았다.
+   * 한 컨트롤이 된 뒤에는 역순으로 눌러도 뒤집힌 쌍이 만들어지지 않는다 —
+   * 컴포넌트가 시작을 다시 잡고 **아직 완결되지 않은 기간은 값이 되지 않는다.**
+   * 반쯤 고른 기간이 조회로 새어 나가지 않는지가 이 화면의 「모아서 적용」이 지키려는 것이다.
+   */
+  it('역순으로 누른 반쪽 기간은 조회로 새어 나가지 않는다', async () => {
+    const { onSearch, user } = renderBar();
+
+    // 늦은 날을 먼저, 이른 날을 나중에 누른다.
+    await pickRange(user, screen.getByLabelText('조회 기간'), '2026-08-20', '2026-08-05');
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    expect(onSearch).toHaveBeenCalledWith({ from: '2026-08-01', to: '2026-08-07' }, EMPTY_FILTERS);
   });
 
   it('기간이 갖춰지면 사유가 사라지고 잠금도 풀린다', () => {
@@ -85,15 +104,15 @@ describe('EventFilterBar — 조회 기간', () => {
     expect(searchButton).not.toHaveAttribute('aria-describedby');
   });
 
-  it('바깥에서 기간이 바뀌면 두 칸이 따라간다 — 뒤로가기가 칸을 되돌린다', () => {
+  it('바깥에서 기간이 바뀌면 컨트롤이 따라간다 — 뒤로가기가 값을 되돌린다', () => {
     const props = baseProps();
     const { rerender } = render(<EventFilterBar {...props} />);
 
-    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-08-01');
+    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-08-01 ~ 2026-08-07');
 
     rerender(<EventFilterBar {...props} appliedPeriod={{ from: '2026-07-01', to: '2026-07-31' }} />);
 
-    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-01');
+    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-07-01 ~ 2026-07-31');
   });
 
   /*
@@ -106,8 +125,7 @@ describe('EventFilterBar — 조회 기간', () => {
     const { rerender } = render(<EventFilterBar {...props} />);
     const user = userEvent.setup();
 
-    await user.clear(screen.getByLabelText('기간 시작'));
-    await user.type(screen.getByLabelText('기간 시작'), '2026-07-20');
+    await pickRange(user, screen.getByLabelText('조회 기간'), '2026-07-20', '2026-07-25');
     await user.type(screen.getByLabelText('대상'), '9101');
 
     // 값은 같고 참조만 새로운 객체를 내려보낸다.
@@ -119,7 +137,7 @@ describe('EventFilterBar — 조회 기간', () => {
       />,
     );
 
-    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-20');
+    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-07-20 ~ 2026-07-25');
     expect(screen.getByLabelText('대상')).toHaveValue(9101);
   });
 

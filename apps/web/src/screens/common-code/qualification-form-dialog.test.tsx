@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { pickDate } from '../../test/date-picker';
 import { createQualificationDraft, type QualificationDraft } from './qualification-draft';
 import { QualificationFormDialog } from './qualification-form-dialog';
 
@@ -45,7 +46,7 @@ describe('QualificationFormDialog — 확인은 저장이 아니다 (C65)', () =
 
     await user.click(screen.getByLabelText('자격 유형'));
     await user.click(screen.getByRole('option', { name: /선택지 준비 중/ }));
-    await user.type(screen.getByLabelText('유효 시작'), '2026-08-01');
+    await pickDate(user, screen.getByLabelText('유효 시작'), '2026-08-01');
     await user.click(screen.getByRole('button', { name: '확인' }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
@@ -173,7 +174,7 @@ describe('QualificationFormDialog — 검증 (C69·C71·C72)', () => {
     await user.click(screen.getByRole('button', { name: '확인' }));
     expect(screen.getAllByText('유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.')).toHaveLength(2);
 
-    await user.clear(screen.getByLabelText('유효 시작'));
+    await pickDate(user, screen.getByLabelText('유효 시작'), '2026-07-25');
 
     expect(screen.queryAllByText('유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.')).toHaveLength(
       0,
@@ -192,7 +193,7 @@ describe('QualificationFormDialog — 검증 (C69·C71·C72)', () => {
     await user.click(screen.getByRole('button', { name: '확인' }));
     expect(screen.getAllByText('유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.')).toHaveLength(2);
 
-    await user.clear(screen.getByLabelText('유효 종료'));
+    await pickDate(user, screen.getByLabelText('유효 종료'), '2026-08-20');
 
     expect(screen.queryAllByText('유효 종료는 유효 시작과 같거나 그 뒤여야 합니다.')).toHaveLength(
       0,
@@ -205,7 +206,7 @@ describe('QualificationFormDialog — 검증 (C69·C71·C72)', () => {
     await user.click(screen.getByRole('button', { name: '확인' }));
     expect(screen.getAllByText('필수 입력 항목입니다.')).toHaveLength(2);
 
-    await user.type(screen.getByLabelText('유효 시작'), '2026-08-01');
+    await pickDate(user, screen.getByLabelText('유효 시작'), '2026-08-01');
 
     expect(screen.getAllByText('필수 입력 항목입니다.')).toHaveLength(1);
   });

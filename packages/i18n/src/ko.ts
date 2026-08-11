@@ -23,6 +23,11 @@ const common = {
   retry: '다시 시도',
   includeInactive: '미사용 포함',
   discardChangesConfirm: '입력한 내용이 저장되지 않았습니다. 변경을 파기할까요?',
+  /*
+   * 날짜 칸이 비었을 때 트리거에 보이는 글자. `TextField type="date"`는 브라우저가 `yyyy-mm-dd`
+   * 마스크를 그려 줬지만 `DatePicker`의 트리거는 우리가 넣지 않으면 빈 칸으로 남는다.
+   */
+  selectDate: '날짜 선택',
 } as const;
 
 /**
@@ -1799,8 +1804,11 @@ const masterChange = {
   title: '마스터 변경관리',
   breadcrumbRoot: '기준정보',
   fields: {
-    periodFrom: '기간 시작',
-    periodTo: '기간 종료',
+    /*
+     * 기간은 **한 컨트롤**이다(변경 통지 #63) — 시작·종료 두 칸이 `DatePicker mode="range"`
+     * 하나로 합쳐졌다. 라벨도 하나여야 해서 두 칸 시절의 이름을 그대로 둘 수 없다.
+     */
+    period: '조회 기간',
     targetType: '대상 종류',
     targetId: '대상',
     eventType: '사건 종류',

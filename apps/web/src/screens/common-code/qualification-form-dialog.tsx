@@ -2,6 +2,7 @@ import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { DateField } from './date-field';
 import { FieldLabel } from './field-label';
 import type { QualificationDraft } from './qualification-draft';
 import { QUALIFICATION_TYPE_OPTIONS } from './qualification-options';
@@ -46,8 +47,6 @@ export const QualificationFormDialog = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const certificateId = useId();
-  const fromId = useId();
-  const toId = useId();
 
   const change = (patch: Partial<QualificationDraft>) => {
     setValues((prev) => ({ ...prev, ...patch }));
@@ -133,29 +132,22 @@ export const QualificationFormDialog = ({
           />
         </div>
 
-        <div className="field-cell">
-          <FieldLabel htmlFor={fromId} label={t.fields.validFrom} required />
-          <TextField
-            id={fromId}
-            type="date"
-            value={values.validFrom}
-            onChange={(event) => change({ validFrom: event.target.value })}
-            error={errors.validFrom}
-            aria-required
-          />
-        </div>
+        {/* 날짜 입력은 DS `DatePicker`다(변경 통지 #63). */}
+        <DateField
+          label={t.fields.validFrom}
+          required
+          value={values.validFrom}
+          onChange={(validFrom) => change({ validFrom })}
+          error={errors.validFrom}
+        />
 
         {/* 비우면 무기한이다 — 계약이 널을 허용한다. */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={toId} label={t.fields.validTo} />
-          <TextField
-            id={toId}
-            type="date"
-            value={values.validTo}
-            onChange={(event) => change({ validTo: event.target.value })}
-            error={errors.validTo}
-          />
-        </div>
+        <DateField
+          label={t.fields.validTo}
+          value={values.validTo}
+          onChange={(validTo) => change({ validTo })}
+          error={errors.validTo}
+        />
       </div>
     </Dialog>
   );

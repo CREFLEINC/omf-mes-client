@@ -47,8 +47,8 @@ describe('CodeValueFormPane — 필드', () => {
     expect(screen.getByLabelText('코드')).toHaveValue('SYN-CV-01');
     expect(screen.getByLabelText('코드명')).toHaveValue('합성 코드값 A');
     expect(screen.getByLabelText('정렬 순서')).toHaveValue(10);
-    expect(screen.getByLabelText('유효 시작')).toHaveValue('2026-07-01');
-    expect(screen.getByLabelText('유효 종료')).toHaveValue('2026-12-31');
+    expect(screen.getByLabelText('유효 시작')).toHaveTextContent('2026-07-01');
+    expect(screen.getByLabelText('유효 종료')).toHaveTextContent('2026-12-31');
   });
 
   it('필수 칸에 필수 표시가 붙고 유효기간에는 붙지 않는다', () => {

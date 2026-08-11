@@ -11,6 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { pickDate } from '../../test/date-picker';
 import {
   codeGroupFixtures,
   codeValueFixtures,
@@ -1263,16 +1264,16 @@ describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C
       ),
   };
 
-  const openCodeValueForm = async (routes: StubRoute[] = []) => {
+  const openCodeValueForm = async (routes: StubRoute[] = [], codeValueId = 2001) => {
     const rendered = renderScreen(
       [
         codeGroupListRoute(),
         codeGroupDetailRoute(),
         codeValueListRoute(),
-        codeValueDetailRoute(),
+        codeValueDetailRoute(codeValueId),
         ...routes,
       ],
-      '?grp=1001&val=2001',
+      `?grp=1001&val=${String(codeValueId)}`,
     );
     // 구획은 불러오는 중에도 있다 — 입력칸이 나와야 상세가 도착한 것이다.
     await screen.findByLabelText('코드명');
@@ -1308,7 +1309,7 @@ describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C
 
     expect(screen.getByLabelText('코드')).toHaveValue('SYN-CV-01');
     expect(screen.getByLabelText('정렬 순서')).toHaveValue(30);
-    expect(screen.getByLabelText('유효 시작')).toHaveValue('2026-07-01');
+    expect(screen.getByLabelText('유효 시작')).toHaveTextContent('2026-07-01');
   });
 
   /* C36 — 코드값의 코드는 참조 건수를 셀 수 없어 수정에서 언제나 잠긴다(계약). */
@@ -1426,8 +1427,7 @@ describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C
   it('유효 종료가 유효 시작보다 앞이면 두 칸 모두에 오류가 뜨고 요청이 나가지 않는다', async () => {
     const { requests, user } = await openCodeValueForm([updateRoute]);
 
-    await user.clear(screen.getByLabelText('유효 종료'));
-    await user.type(screen.getByLabelText('유효 종료'), '2026-01-01');
+    await pickDate(user, screen.getByLabelText('유효 종료'), '2026-01-01');
     await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
 
     expect(
@@ -1436,10 +1436,16 @@ describe('CommonCodeScreen — 코드값 상세와 수정 (C30·C31·C32·C33·C
     expect(requests.some((request) => request.method === 'PUT')).toBe(false);
   });
 
+  /*
+   * **유효 종료가 비어 있는 줄(2003)을 연다.** 예전에는 채워진 칸을 비워서 이 상태를 만들었지만
+   * `DatePicker`에는 고른 날짜를 다시 비우는 수단이 없다(0.2.0 실측 · 통지 #63에 물어 둔 사항).
+   * 사용자가 닿을 수 있는 길로 같은 것을 잰다 — 비어 있는 채로 저장하면 널이 그대로 나가는가.
+   */
   it('유효기간이 한쪽만 있으면 막지 않는다', async () => {
-    const { requests, user } = await openCodeValueForm([updateRoute]);
+    const { requests, user } = await openCodeValueForm([updateRoute], 2003);
 
-    await user.clear(screen.getByLabelText('유효 종료'));
+    // 저장은 고친 것이 있어야 열린다 — 유효기간과 무관한 칸을 건드려 연다.
+    await user.type(screen.getByLabelText('코드명'), 'X');
     await user.click(within(codeValueFormPane()).getByRole('button', { name: '저장' }));
 
     const put = await waitFor(() => {
@@ -3473,7 +3479,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     const dialog = screen.getByRole('dialog');
     await user.click(within(dialog).getByLabelText('자격 유형'));
     await user.click(screen.getByRole('option', { name: /선택지 준비 중/ }));
-    await user.type(within(dialog).getByLabelText('유효 시작'), '2026-08-01');
+    await pickDate(user, within(dialog).getByLabelText('유효 시작'), '2026-08-01');
     await user.click(within(dialog).getByRole('button', { name: '확인' }));
 
     await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));

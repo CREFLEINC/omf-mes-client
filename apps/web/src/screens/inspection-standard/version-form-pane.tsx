@@ -8,6 +8,7 @@ import {
   SAMPLING_METHOD_OPTIONS,
   ensureOption,
 } from './code-options';
+import { DateField } from './date-field';
 import { FieldLabel } from './field-label';
 import type { VersionStatusView } from './plan-version-status';
 import { SelectField } from './select-field';
@@ -64,7 +65,6 @@ export const VersionFormPane = ({
 }: VersionFormPaneProps) => {
   const versionLabelId = useId();
   const statusLabelId = useId();
-  const effectiveFromId = useId();
   const samplingQtyId = useId();
 
   const isLocked = status !== null && !status.isEditable;
@@ -111,26 +111,21 @@ export const VersionFormPane = ({
           </div>
         )}
 
-        {/* DS에 DatePicker가 없다(고정 커밋 기준). 날짜 입력은 TextField의 date 형을 쓴다. */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={effectiveFromId} label={t.fields.effectiveFrom} required />
-          <TextField
-            id={effectiveFromId}
-            type="date"
-            value={values.effectiveFrom}
-            onChange={(event) => onChange({ effectiveFrom: event.target.value })}
-            disabled={isLocked}
-            error={fieldErrors.effectiveFrom}
-            aria-required
-          />
-        </div>
+        {/* 날짜 입력은 DS `DatePicker`다(변경 통지 #63). 유효기간 두 칸은 각각 단일 모드다. */}
+        <DateField
+          label={t.fields.effectiveFrom}
+          required
+          value={values.effectiveFrom}
+          onChange={(effectiveFrom) => onChange({ effectiveFrom })}
+          disabled={isLocked}
+          error={fieldErrors.effectiveFrom}
+        />
 
         {/* 유효종료는 「지정하지 않음」이 정상 값이라 필수 표시를 붙이지 않는다. */}
-        <TextField
-          type="date"
+        <DateField
           label={t.fields.effectiveTo}
           value={values.effectiveTo}
-          onChange={(event) => onChange({ effectiveTo: event.target.value })}
+          onChange={(effectiveTo) => onChange({ effectiveTo })}
           disabled={isLocked}
           error={fieldErrors.effectiveTo}
         />
