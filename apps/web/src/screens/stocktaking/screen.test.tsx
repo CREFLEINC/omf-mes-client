@@ -12,6 +12,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  blindCountLineResponse,
   countDetailBody,
   countFixtures,
   countLineFixtures,
@@ -633,6 +634,9 @@ const setupReadyToOpen = async (
 const SAMPLE_REASON = 'SAMPLE_VARIANCE_REASON_D';
 
 const LOCATION_LABEL = 'SAMPLE-LOC-01 · 합성 위치 가';
+
+/** 참조가 푸는 단위 이름. **「코드 · 이름」**이라 부품 테스트가 주는 짧은 라벨과 다르다. */
+const UOM_LABEL = 'SAMPLE-EA · 합성 단위 개';
 
 /** 실사 9001과 위치 9701을 고른 상태의 주소. 라인 표가 열리는 최소 조건이다. */
 const AT_LOCATION = `?ct=9001&loc=${String(LOCATION_ID)}`;
@@ -2633,6 +2637,50 @@ describe('StocktakingScreen — 블라인드 실사', () => {
    * 없는데 없는 값을 0으로 보고 판정하면 **전 줄이 차이 있는 줄**이 되어, 코드 목록이 확정되지
    * 않은 지금은 블라인드 실사의 저장이 통째로 막힌다.
    */
+  /*
+   * **M-10(검증 담당 지적) — 「블라인드는 헤더가 정한다」의 갈리는 상태.**
+   *
+   * 지금까지의 픽스처에서는 블라인드 헤더와 `systemQty` 부재가 **늘 함께** 와서, 헤더로 판정하든
+   * 줄마다 판정하든 같은 답이 나왔다 — 두 판정을 가를 자료가 없었다.
+   *
+   * **계약과 런타임이 어긋나는 자리를 그대로 만든다**(결정 4 · 어긋남 1): `systemQty`는
+   * `required`인데 설명은 「블라인드 실사에서는 내려보내지 않는다」다. **비블라인드 실사인데
+   * 어떤 줄의 수량이 빠져 오는** 상태가 그 어긋남의 실물이고, 그때 줄마다 판정하면
+   * **장부·차이 열이 통째로 사라진다** — 사용자는 열이 왜 없는지 화면 어디에서도 읽을 수 없다.
+   *
+   * 열은 **실사 헤더가 정하고**, 값이 빠진 줄은 **그 줄이 사정을 밝힌다**. 둘은 다른 층이다.
+   */
+  it('비블라인드 헤더에서는 장부가 빠진 줄이 있어도 두 열이 남는다', async () => {
+    renderScreen(
+      allRoutes([
+        detailRoute(DETAIL_PATH, countDetailBody({ blindCount: false })),
+        linesRoute(LINES_PATH, [
+          /* **첫 줄**이 빠진 것으로 둔다 — 「첫 줄로 판정」·「하나라도 빠지면」 두 형태를 함께 잡는다. */
+          blindCountLineResponse(),
+          countLineFixtures[1],
+          countLineFixtures[2],
+        ]),
+      ]),
+      AT_LOCATION,
+    );
+
+    await waitForLines();
+
+    /* 헤더가 비블라인드이므로 두 열은 그대로 있다. */
+    expect(within(lineTable()).getByText(t.lineTable.systemQty)).toBeInTheDocument();
+    expect(within(lineTable()).getByText(t.lineTable.variance)).toBeInTheDocument();
+
+    /* 짝 방향 — 값이 빠진 줄은 **그 두 칸에서** 사정을 밝힌다(열이 사라져서 통과하는 것이 아니다). */
+    expect(screen.getAllByText(t.values.qtyNotProvided)).toHaveLength(2);
+    /*
+     * 나머지 줄의 장부 수량은 그대로 읽힌다 — 단위 참조가 도착한 뒤에 잰다.
+     * 단위는 참조가 푸는 「코드 · 이름」이다(부품 테스트가 주는 짧은 라벨과 다르다).
+     */
+    expect(
+      await screen.findByText(t.lineTable.qtyWithUom('40', UOM_LABEL)),
+    ).toBeInTheDocument();
+  });
+
   it('사유 선택지가 비어 있어도 전 줄만 채우면 저장이 열린다', async () => {
     const { requests, user } = renderScreen(blindRoutes(), AT_LOCATION);
 
@@ -3156,6 +3204,63 @@ describe('StocktakingScreen — 저장 중 잠금', () => {
     release();
 
     await screen.findByRole('status', { name: t.result.savedLabel });
+  });
+
+  /*
+   * **M-9(검증 담당 지적) — 「어느 쓰기가 나가는 중인가」도 축이다.**
+   *
+   * 저장 버튼에는 잠금 겹이 **셋**이다: `loading={replace.isSaving}`(설치본 `Button`이
+   * `disabled`와 합친다 — 실측) · `|| isLocked` · `submitSave`의 핸들러 가드.
+   * **치환이 나가는 중**에는 셋이 서로를 덮어 하나를 빼도 관측되지 않는다(정상적 다중 방어).
+   * 그런데 **개시가 나가는 중**에는 `loading`이 거짓이라 **`|| isLocked` 하나만** 남는다 —
+   * 그 판을 재는 자리가 없으면 겹 하나가 조용히 사라져도 아무도 모른다.
+   *
+   * 무너지면 개시가 나가는 동안 저장을 눌러 **되돌릴 수 없는 쓰기와 파괴적 쓰기가 동시에**
+   * 나간다. 공통 훅이 호출마다 새 멱등 키를 만들어 서버는 둘을 별개의 요청으로 본다.
+   *
+   * **`submitSave`의 `isLocked` 가드를 「등가」로 분류하는 전제도 이 단언이다** — 첫째 겹이
+   * 여기서 고정돼야 둘째 겹을 등가로 둘 수 있다(승계 규칙: 첫째 겹의 감지기를 먼저 확인한다).
+   */
+  it('개시가 나가는 중에도 저장 버튼이 잠긴다', async () => {
+    fillCodeLists();
+
+    const { requests, release, user } = await setupAtLocation(
+      allRoutes(),
+      AT_LOCATION,
+      '',
+      isOpenRequest,
+    );
+
+    await fillAllQty(user);
+
+    /* 짝 방향 — 보내기 전에는 열려 있다(늘 잠겨 있어서 통과하는 것이 아니다). */
+    expect(saveButton()).not.toBeDisabled();
+
+    await fillOpenDraft(user);
+    await user.click(openButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
+
+    await waitFor(() => {
+      expect(openRequests(requests)).toHaveLength(1);
+    });
+
+    expect(saveButton()).toBeDisabled();
+
+    /*
+     * **치환은 나가는 중이 아니다.** 이 줄이 이 테스트의 요점이다 — `loading` 겹이 서 있지
+     * 않은 판이라 `|| isLocked` 하나만 재고 있다.
+     */
+    expect(replaceRequests(requests)).toHaveLength(0);
+
+    /* 표 안 두 칸과 위치 선택칸도 같은 이유로 함께 잠긴다. */
+    expect(qtyField(1)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.location)).toBeDisabled();
+
+    release();
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain(`ct=${String(OPENED_COUNT_ID)}`);
+    });
   });
 
   /*
