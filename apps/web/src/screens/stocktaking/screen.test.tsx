@@ -4449,5 +4449,18 @@ describe('StocktakingScreen — 마감 중 잠금', () => {
     expect(screen.queryByRole('status', { name: t.result.closedLabel })).not.toBeInTheDocument();
     /* 짝 방향 — 지금 보는 실사(9003)는 마감할 수 있다. */
     expect(closeButton()).not.toBeDisabled();
+
+    /*
+     * **그러나 마감한 사실은 남아 있다.** 되돌아온 9001은 이미 마감됐으므로 다시 마감할 수
+     * 없어야 한다 — 결과 구획은 「지금 보는 것에 대한 말」이라 대상이 바뀌면 사라지지만,
+     * 마감은 **되돌릴 수 없는 사실**이라 대상이 바뀌어도 남는다. 두 수명이 갈리는 자리다.
+     */
+    await selectCount(user, 'IC-2026-900011');
+
+    await waitFor(() => {
+      expect(closeButton()).toBeDisabled();
+    });
+    expect(within(detailPane()).getByText(t.actionReasons.closeAlreadyClosed)).toBeInTheDocument();
+    expect(closeRequests(requests)).toHaveLength(1);
   });
 });
