@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { pickDate } from '../../test/date-picker';
 import { createBuMapDraft, type BuMapDraft } from './bu-map-draft';
 import { BuMapFormDialog } from './bu-map-form-dialog';
 import type { SelectOption } from './types';
@@ -143,8 +144,7 @@ describe('BuMapFormDialog — 검증', () => {
     await user.click(screen.getByRole('button', { name: '확인' }));
     expect(screen.getAllByText('유효 종료는 유효 시작과 같거나 뒤여야 합니다.')).toHaveLength(2);
 
-    await user.clear(screen.getByLabelText('유효 종료'));
-    await user.type(screen.getByLabelText('유효 종료'), '2026-04-01');
+    await pickDate(user, screen.getByLabelText('유효 종료'), '2026-04-01');
 
     expect(
       screen.queryByText('유효 종료는 유효 시작과 같거나 뒤여야 합니다.'),

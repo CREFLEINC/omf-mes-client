@@ -10,6 +10,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { pickDate } from '../../test/date-picker';
 import {
   bomComponentFixtures,
   bomFixtures,
@@ -1431,7 +1432,7 @@ const addBuMapRow = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await within(dialog).findByLabelText('대상 품목'));
   await user.click(screen.getByRole('option', { name: 'SYN-ITEM-01 · 합성 품목 A' }));
 
-  await user.type(within(dialog).getByLabelText('유효 시작'), '2026-05-01');
+  await pickDate(user, within(dialog).getByLabelText('유효 시작'), '2026-05-01');
 
   await user.click(within(dialog).getByRole('button', { name: '확인' }));
 };
@@ -1957,7 +1958,7 @@ describe('ItemExtendedAttrsScreen — 사업부 매핑 편집 창', () => {
     const pane = await findBuMapPane();
     await user.click(within(pane).getAllByRole('button', { name: /매핑 수정$/ })[0]!);
 
-    expect(within(buMapDialog()).getByLabelText('유효 시작')).toHaveValue('2026-01-01');
+    expect(within(buMapDialog()).getByLabelText('유효 시작')).toHaveTextContent('2026-01-01');
   });
 
   /* 로컬 검증에서 막힌 줄은 표에 들어가지 않는다 — 저장 시점에야 거부되면 안 된다. */
@@ -1972,7 +1973,7 @@ describe('ItemExtendedAttrsScreen — 사업부 매핑 편집 창', () => {
     await user.click(screen.getByRole('option', { name: 'SYN-BU-01 · 합성 사업부 A' }));
     await user.click(within(dialog).getByLabelText('받는 사업부'));
     await user.click(screen.getByRole('option', { name: 'SYN-BU-01 · 합성 사업부 A' }));
-    await user.type(within(dialog).getByLabelText('유효 시작'), '2026-05-01');
+    await pickDate(user, within(dialog).getByLabelText('유효 시작'), '2026-05-01');
 
     await user.click(within(dialog).getByRole('button', { name: '확인' }));
 
@@ -2065,7 +2066,7 @@ const addUomConversionRow = async (user: ReturnType<typeof userEvent.setup>) => 
   await user.click(screen.getByRole('option', { name: 'SYN-UOM-03 · 합성 단위 C' }));
 
   await user.type(within(dialog).getByLabelText('환산 비율'), '1.5');
-  await user.type(within(dialog).getByLabelText('유효 시작'), '2026-05-01');
+  await pickDate(user, within(dialog).getByLabelText('유효 시작'), '2026-05-01');
 
   await user.click(within(dialog).getByRole('button', { name: '확인' }));
 };
@@ -2797,7 +2798,7 @@ describe('ItemExtendedAttrsScreen — 사업부 매핑은 중복을 막지 않�
     await user.click(within(dialog).getByRole('button', { name: '찾기' }));
     await user.click(await within(dialog).findByLabelText('대상 품목'));
     await user.click(screen.getByRole('option', { name: 'SYN-ITEM-02 · 합성 품목 B' }));
-    await user.type(within(dialog).getByLabelText('유효 시작'), '2026-01-01');
+    await pickDate(user, within(dialog).getByLabelText('유효 시작'), '2026-01-01');
 
     await user.click(within(dialog).getByRole('button', { name: '확인' }));
 
