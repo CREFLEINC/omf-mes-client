@@ -86,21 +86,28 @@ const readNumberFilter = (raw: string): string =>
 
 /**
  * **자릿수뿐 아니라 실제로 있는 날짜인지도 본다.** `2026-02-31`은 자릿수가 맞지만 없는 날이라
- * 그대로 보내면 조회가 늘 실패하는데 화면에는 조건이 걸린 것처럼 보인다.
+ * 그대로 보내면 요청이 늘 400으로 되돌아오는데 화면에는 값이 제대로 들어간 것처럼 보인다.
  * `Date`로 되짚어 같은 날짜가 나오는지 확인한다.
+ *
+ * **이 슬라이스에서 날짜가 달력에 있는지 재는 유일한 자리다.** 조회 조건(계획일 범위)과
+ * 개시 폼의 계획일이 같은 규칙을 써야 한다 — 갈리면 한쪽은 버리고 한쪽은 받는 값이 생겨,
+ * 주소에서는 사라진 날짜가 개시 요청에는 실린다(`validation.ts`가 이 함수를 쓴다).
  */
-const readDateFilter = (raw: string): string => {
+export const isCalendarDate = (raw: string): boolean => {
   const matched = DATE_PATTERN.exec(raw);
 
-  if (matched === null) return '';
+  if (matched === null) return false;
 
   const [, year, month, day] = matched;
   const at = new Date(`${String(year)}-${String(month)}-${String(day)}T00:00:00Z`);
 
-  if (Number.isNaN(at.getTime())) return '';
+  if (Number.isNaN(at.getTime())) return false;
 
-  return at.toISOString().slice(0, 10) === raw ? raw : '';
+  return at.toISOString().slice(0, 10) === raw;
 };
+
+/** 조건으로 받을 수 있는 날짜만 남긴다. 달력에 없는 날은 **조건이 아니다**. */
+const readDateFilter = (raw: string): string => (isCalendarDate(raw) ? raw : '');
 
 /**
  * 공백만 친 값은 조건이 아니다 — 주소에 남기면 조건이 걸린 것처럼 보인다.
