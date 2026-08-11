@@ -3,13 +3,14 @@ import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { locationFixtures } from './fixtures';
+import { locationFixtures, PARTNER_LABEL, partnerFixtures } from './fixtures';
 import {
   describeReference,
   isLotHeld,
   lookupNote,
   toReference,
   useLocationOptions,
+  usePartnerOptions,
   type LotReferenceSource,
   type ReferenceSource,
 } from './lookups';
@@ -206,5 +207,99 @@ describe('useLocationOptions', () => {
     });
 
     expect(paths).toEqual([LOCATIONS_PATH]);
+  });
+});
+
+const PARTNERS_PATH = '/mdm/partners';
+
+const partnersFetch = (
+  page: Partial<{ page: number; size: number; total: number }> = {},
+): { fetch: ReturnType<typeof createStubFetch>; urls: URL[] } => {
+  const urls: URL[] = [];
+  const stub = createStubFetch([
+    {
+      match: (request: Request): boolean =>
+        request.method === 'GET' && new URL(request.url).pathname === PARTNERS_PATH,
+      respond: (): Response =>
+        jsonResponse({
+          items: partnerFixtures,
+          page: { page: 1, size: 50, total: partnerFixtures.length, ...page },
+        }),
+    },
+  ]);
+
+  return {
+    urls,
+    fetch: async (request) => {
+      urls.push(new URL(request.url));
+
+      return stub(request);
+    },
+  };
+};
+
+describe('usePartnerOptions', () => {
+  it('전표를 고르기 전에는 조회가 서지 않는다', async () => {
+    const { fetch, urls } = partnersFetch();
+    const { result } = renderHookWithProviders(() => usePartnerOptions(false), { fetch });
+
+    await settle();
+
+    expect(urls).toEqual([]);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  /** 짝 방향 — 고른 뒤에는 실제로 나가고 「코드 · 이름」으로 읽힌다. */
+  it('고른 뒤에는 코드와 이름을 함께 낸다', async () => {
+    const { fetch, urls } = partnersFetch();
+    const { result } = renderHookWithProviders(() => usePartnerOptions(true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries.length).toBe(partnerFixtures.length);
+    });
+
+    expect(urls.map((url) => url.pathname)).toEqual([PARTNERS_PATH]);
+    expect(result.current.entries[0]?.label).toBe(PARTNER_LABEL);
+  });
+
+  /*
+   * **미사용 거래처를 함께 받지 않는다.** 다른 다섯 참조와 갈리는 자리다 — 여기는 새 전표에
+   * 실을 값을 **고르는** 곳이라, 미사용 값을 목록에 두면 유효하지 않은 도착지를 고를 수 있다.
+   * 유효성 판정은 서버가 하며 기본 조회가 유효한 것만 내린다.
+   */
+  it('미사용 포함 조건을 싣지 않는다', async () => {
+    const { fetch, urls } = partnersFetch();
+
+    renderHookWithProviders(() => usePartnerOptions(true), { fetch });
+
+    await waitFor(() => {
+      expect(urls.length).toBe(1);
+    });
+
+    expect(urls[0]?.searchParams.has('includeInactive')).toBe(false);
+  });
+
+  /*
+   * 계약에 **번호로 한 건을 받는 경로가 없어** 잘린 뒤쪽의 거래처는 고를 길이 아예 없다 —
+   * 감추면 사용자가 「그런 거래처가 없다」로 결론짓는다.
+   */
+  it('전체 건수가 받은 건수보다 많으면 잘린 것으로 낸다', async () => {
+    const { fetch } = partnersFetch({ total: partnerFixtures.length + 1 });
+    const { result } = renderHookWithProviders(() => usePartnerOptions(true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.truncated).toBe(true);
+    });
+  });
+
+  it('잘리지 않았으면 그렇게 낸다', async () => {
+    const { fetch } = partnersFetch();
+    const { result } = renderHookWithProviders(() => usePartnerOptions(true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries.length).toBe(partnerFixtures.length);
+    });
+
+    expect(result.current.truncated).toBe(false);
   });
 });

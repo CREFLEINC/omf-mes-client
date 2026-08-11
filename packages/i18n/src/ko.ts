@@ -3901,6 +3901,10 @@ const supplierReturn = {
      */
     issuedDate: '출고 일자',
     issuedTime: '출고 시각',
+    /** 확인 창과 결과가 쓰는 **합친 표기**. 두 칸이 한 값(`issuedAt`)이라는 사실이 여기서 보인다. */
+    issuedAt: '출고 일시',
+    /** 화면이 파생해 함께 보내는 값. **사용자가 넣는 칸이 없다.** */
+    businessDate: '영업일',
     replacementExpected: '대체입고 예정',
     sendToErp: 'ERP 송신',
     remarks: '비고',
