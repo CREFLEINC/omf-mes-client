@@ -14,16 +14,19 @@ import {
 } from '../../test/api-harness';
 import { pickRange } from '../../test/date-picker';
 import {
+  balanceFixtures,
   goodsReceiptFixtures,
   goodsReceiptLineFixtures,
   INTERNAL_IDS,
   itemFixtures,
   locationFixtures,
   lotFixtures,
+  ON_HAND_9601,
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
 import { LOT_PAGE_SIZE } from './lookups';
+import { BALANCE_PAGE_SIZE } from './queries';
 import { SupplierReturnScreen } from './screen';
 
 const t = messages.supplierReturn;
@@ -208,13 +211,30 @@ const linesPathRoute = (): StubRoute => ({
 
 /** 이 회차가 부르지 않아야 하는 나머지 경로. 마찬가지로 부를 수 있게 둔다. */
 const laterPhaseRoutes = (): StubRoute[] => [
-  { match: (request) => isGet(request, BALANCES_PATH), respond: () => jsonResponse(listBody([])) },
   { match: (request) => isGet(request, PARTNERS_PATH), respond: () => jsonResponse(listBody([])) },
   {
     match: (request) => request.method === 'POST' && new URL(request.url).pathname === ISSUES_PATH,
     respond: () => jsonResponse({}, { status: 201 }),
   },
 ];
+
+/** 재고 잔액은 **품목마다** 부른다 — 요청의 `itemId`에 맞는 것만 돌려준다. */
+const balancesRoute = (
+  page?: Partial<{ page: number; size: number; total: number }>,
+): StubRoute => ({
+  match: (request) => isGet(request, BALANCES_PATH),
+  respond: (request) => {
+    const itemId = new URL(request.url).searchParams.get('itemId');
+    const items = balanceFixtures.filter((balance) => String(balance.itemId) === itemId);
+
+    return jsonResponse(listBody(items, page));
+  },
+});
+
+const failingBalancesRoute = (): StubRoute => ({
+  match: (request) => isGet(request, BALANCES_PATH),
+  respond: () => jsonResponse({ message: '' }, { status: 500 }),
+});
 
 const lookupRoute = (
   pathname: string,
@@ -278,6 +298,7 @@ const allRoutes = (extra: StubRoute[] = []): StubRoute[] => [
   otherDetailRoute(),
   missingDetailRoute(),
   linesPathRoute(),
+  balancesRoute(),
   ...laterPhaseRoutes(),
   ...lookupRoutes(),
 ];
@@ -373,6 +394,7 @@ const KNOWN_PATHS = [
   UOMS_PATH,
   LOTS_PATH,
   LOCATIONS_PATH,
+  BALANCES_PATH,
 ];
 
 /** 확립 규칙 「요청 계수는 경로 전체를 센다」의 단언 형태 — 기록만이 아니라 **판정도** 전체를 본다. */
@@ -435,6 +457,21 @@ const search = async (user: ReturnType<typeof userEvent.setup>): Promise<void> =
 
 const refresh = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+};
+
+const selectBox = (ordinal: number): HTMLElement =>
+  screen.getByRole('checkbox', { name: t.lineTable.selectLabel(ordinal) });
+
+const qtyBox = (ordinal: number): HTMLElement =>
+  screen.getByRole('textbox', { name: t.lineTable.returnQtyLabel(ordinal) });
+
+/** 아래 구획이 그려질 때까지 기다린다 — 참조 이름이 풀린 시점이 그 신호다. */
+const openReceipt = async (
+  user: ReturnType<typeof userEvent.setup>,
+  goodsReceiptNo = 'GR-2026-900001',
+): Promise<void> => {
+  await selectReceipt(user, goodsReceiptNo);
+  await screen.findAllByText(ITEM_LABEL);
 };
 
 /**
@@ -541,16 +578,28 @@ describe('SupplierReturnScreen — 첫 진입 조회', () => {
     expect(requests.length).toBeGreaterThan(0);
   });
 
-  /** 잔액·거래처는 뒤따르는 회차의 것이다 — 지금 부르면 쓰지 않는 자료를 받는다. */
-  it('잔액·거래처를 부르지 않는다', async () => {
+  /** 거래처는 뒤따르는 회차(반품 정보)의 것이다 — 지금 부르면 쓰지 않는 자료를 받는다. */
+  it('거래처를 부르지 않는다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await screen.findByText('GR-2026-900001');
-    await selectReceipt(user, 'GR-2026-900001');
-    await screen.findAllByText(ITEM_LABEL);
+    await openReceipt(user);
+
+    expect(requestsTo(requests, PARTNERS_PATH)).toHaveLength(0);
+  });
+
+  /**
+   * **M25** — 잔액 조회는 고른 전표의 **창고와 품목**이 있어야 성립한다. `enabled`를 없애면
+   * 없는 창고의 조건으로 요청이 나가고, 화면이 스스로 만든 실패를 사용자에게 보이게 된다.
+   */
+  it('전표를 고르기 전에는 잔액을 부르지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
 
     expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(0);
-    expect(requestsTo(requests, PARTNERS_PATH)).toHaveLength(0);
+    /* **경로 전체를 센다** — 대체값을 단 다른 경로로 새어 나간 요청도 잡는다. */
+    expectNoUnknownPath(requests);
   });
 });
 
@@ -1343,5 +1392,453 @@ describe('SupplierReturnScreen — 값 목록이 확정되지 않은 코드', ()
       messages.pendingCode.placeholder,
     );
     expect(screen.getAllByText(messages.pendingCode.note).length).toBe(2);
+  });
+});
+
+describe('SupplierReturnScreen — 보유 수량 조회', () => {
+  /**
+   * **C20** — 다섯 조건이 전부 실려야 한다. `includeZero`를 빼면 보유가 0인 LOT이 아예 오지
+   * 않아 「0이라 없다」와 「잘려서 없다」가 뭉개지고, 화면이 그 줄을 막지 않게 된다(M26).
+   */
+  it('창고·품목·묶는 축·0 포함·쪽 크기를 함께 싣는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    const balances = requestsTo(requests, BALANCES_PATH);
+
+    expect(balances.length).toBeGreaterThan(0);
+    expect(Object.fromEntries(balances[0]?.url.searchParams ?? [])).toEqual({
+      warehouseId: '9701',
+      itemId: '9301',
+      groupBy: 'LOT',
+      includeZero: 'true',
+      size: String(BALANCE_PAGE_SIZE),
+    });
+  });
+
+  /** 번호 여러 개를 한 번에 받는 조건이 계약에 없다 — **품목마다 한 번**이고 중복은 없앤다. */
+  it('품목마다 한 번씩 부르고 같은 품목은 한 번만 부른다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(t.lineTable.onHandQtyPair(ON_HAND_9601, UOM_LABEL)).length,
+      ).toBeGreaterThan(0);
+    });
+
+    expect(
+      requestsTo(requests, BALANCES_PATH)
+        .map((request) => request.url.searchParams.get('itemId'))
+        .sort(),
+    ).toEqual(['9301', '9302']);
+  });
+
+  /**
+   * **`03_verification_t1_r2.md` 관찰 2** — 「전표를 고른 뒤」 갈래에도 경로 전체를 센다.
+   * 스텁 경로가 늘어난 지금은 「스텁이 없어 하네스가 던진다」에만 기댈 수 없다.
+   */
+  it('전표를 고른 뒤에도 예상 밖 경로로 요청이 나가지 않는다', async () => {
+    const { requests, queryClient, user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    expectNoUnknownPath(requests);
+    expectNoFailedQuery(queryClient);
+  });
+
+  /** **M23** — 못 구한 상한을 0이나 무제한으로 읽으면 막거나 다 통과한다. */
+  it('그 LOT의 잔액이 없는 줄은 확인하지 못함으로 낸다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await screen.findByText(t.values.onHandUnknown);
+    expect(screen.getByText(t.reasons.onHandUnknownNote)).toBeInTheDocument();
+  });
+
+  /** 같은 LOT이 소유 구분으로 갈려 와도 **더한 값**이 상한이다(80 + 40). */
+  it('같은 LOT의 여러 줄을 더해 보인다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(t.lineTable.onHandQtyPair(ON_HAND_9601, UOM_LABEL)).length,
+      ).toBeGreaterThan(0);
+    });
+  });
+
+  it('잔액 조회가 실패하면 사유와 복구 경로가 붙는다', async () => {
+    const { requests, user } = renderScreen(allRoutes([failingBalancesRoute()]));
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await screen.findByText(t.reasons.balancesFailed);
+
+    const before = requestsTo(requests, BALANCES_PATH).length;
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, BALANCES_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
+  /** 잘림은 실패와 갈린다 — 상한으로 쓰지 않는다는 사실을 밝히고 복구 버튼은 붙이지 않는다. */
+  it('잔액 목록이 잘리면 상한으로 쓰지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([balancesRoute({ total: balanceFixtures.length + 1 })]),
+    );
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await screen.findByText(t.reasons.balancesTruncated);
+    expect(screen.getAllByText(t.values.onHandUnknown).length).toBeGreaterThan(0);
+  });
+
+  /** 전표를 바꾸면 **그 전표의 창고**로 다시 부른다 — 앞 창고의 잔액이 상한으로 남으면 안 된다. */
+  it('다른 전표를 고르면 그 전표의 창고로 다시 부른다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+    await selectReceipt(user, 'GR-2026-900002');
+
+    await waitFor(() => {
+      expect(screen.getByText(t.empty.noLinesTitle)).toBeInTheDocument();
+    });
+
+    /* 9002의 라인이 0건이라 부를 품목이 없다 — 앞 전표의 조건으로 다시 나가지도 않는다. */
+    expect(
+      requestsTo(requests, BALANCES_PATH).every(
+        (request) => request.url.searchParams.get('warehouseId') === '9701',
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('SupplierReturnScreen — 줄 선택과 반품 수량', () => {
+  /** **M22 · 승인 13-7** — 입고 수량으로 채우면 전량 반품이 기본값처럼 보인다. */
+  it('반품 수량 칸이 빈 칸으로 시작한다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    expect(qtyBox(1)).toHaveValue('');
+    expect(qtyBox(2)).toHaveValue('');
+    /* 짝 방향 — 입고 수량은 실제로 그려져 있다(아무것도 안 그려서 통과한 것이 아니다). */
+    expect(screen.getByText(t.lineTable.receiptQtyPair(100, UOM_LABEL))).toBeInTheDocument();
+  });
+
+  it('줄을 고르고 수량을 치면 요약이 그만큼 늘어난다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    expect(screen.getByText(t.selection.none)).toBeInTheDocument();
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '10');
+
+    expect(screen.getByText(t.selection.summary(1, 10, UOM_LABEL))).toBeInTheDocument();
+  });
+
+  it('고른 줄을 다시 누르면 풀린다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.click(selectBox(1));
+    await user.click(selectBox(1));
+
+    expect(selectBox(1)).not.toBeChecked();
+    expect(screen.getByText(t.selection.none)).toBeInTheDocument();
+  });
+
+  /** **M21** — 계약이 `exclusiveMinimum: 0`이라 0도 보낼 수 없다. */
+  it('수량 0을 인라인 오류로 막는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '0');
+
+    expect(screen.getByText(t.errors.qtyNotPositive)).toBeInTheDocument();
+    expect(screen.getByText(t.reasons.selectQtyInvalid)).toBeInTheDocument();
+  });
+
+  it('숫자가 아닌 글자를 인라인 오류로 막는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '열개');
+
+    expect(screen.getByText(t.errors.qtyNotNumber)).toBeInTheDocument();
+  });
+
+  /** **M24** — 상한 비교가 없으면 보유보다 많은 수량이 그대로 나간다. */
+  it('보유 수량을 넘으면 인라인 오류로 막는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(t.lineTable.onHandQtyPair(ON_HAND_9601, UOM_LABEL)).length,
+      ).toBeGreaterThan(0);
+    });
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '121');
+
+    expect(screen.getByText(t.errors.qtyOverOnHand(ON_HAND_9601))).toBeInTheDocument();
+    expect(screen.getByText(t.reasons.selectQtyInvalid)).toBeInTheDocument();
+  });
+
+  it('상한과 같은 값은 막지 않는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(t.lineTable.onHandQtyPair(ON_HAND_9601, UOM_LABEL)).length,
+      ).toBeGreaterThan(0);
+    });
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), String(ON_HAND_9601));
+
+    expect(screen.queryByText(t.errors.qtyOverOnHand(ON_HAND_9601))).not.toBeInTheDocument();
+    expect(screen.getByText(t.selection.summary(1, ON_HAND_9601, UOM_LABEL))).toBeInTheDocument();
+  });
+
+  /**
+   * **승인 13-6 · C23** — 상한을 확인하지 못한 줄은 **막지 않는다.** 막으면 LOT이 많은
+   * 창고에서 정당한 반품이 영영 불가능해진다.
+   */
+  it('상한을 확인하지 못한 줄은 아무리 큰 수량이어도 막지 않는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await screen.findByText(t.values.onHandUnknown);
+
+    await user.click(selectBox(2));
+    await user.type(qtyBox(2), '999999');
+
+    for (const reason of [t.reasons.selectQtyInvalid, t.reasons.selectQtyMissing, t.reasons.selectNone]) {
+      expect(screen.queryByText(reason)).not.toBeInTheDocument();
+    }
+  });
+
+  /** **C25** — 고른 줄만 수량이 필수다. 고르지 않은 줄이 비어 있어도 막히지 않는다. */
+  it('고르지 않은 줄의 빈 수량은 막지 않는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '10');
+
+    expect(qtyBox(2)).toHaveValue('');
+    expect(screen.queryByText(t.reasons.selectQtyMissing)).not.toBeInTheDocument();
+  });
+
+  /** **C26 · M29** — 고를 수 없는 줄은 잠기고 사유가 함께 보인다. */
+  it('고를 수 없는 줄은 사유와 함께 잠긴다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    expect(selectBox(3)).toBeDisabled();
+    expect(qtyBox(3)).toBeDisabled();
+    expect(screen.getByText(t.reasons.lineQtyNotPositive)).toBeInTheDocument();
+  });
+
+  /** 줄마다 값을 따로 들고 있는다 — 한 줄을 치면 다른 줄이 지워지는 일이 없어야 한다. */
+  it('한 줄에 쳐도 다른 줄의 값이 남는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.type(qtyBox(1), '10');
+    await user.type(qtyBox(2), '5');
+
+    expect(qtyBox(1)).toHaveValue('10');
+    expect(qtyBox(2)).toHaveValue('5');
+  });
+
+  /** **C32** — 무엇을 얼마나 보낼지 정할 뿐, 이 회차에도 쓰기가 나가지 않는다. */
+  it('줄을 고르고 수량을 쳐도 쓰기 요청이 없다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '10');
+
+    expect(requestsTo(requests, ISSUES_PATH)).toHaveLength(0);
+    expect(requests.map((request) => request.method)).toEqual(requests.map(() => 'GET'));
+    expect(requests.map((request) => request.body)).toEqual(requests.map(() => null));
+    expect(requests.length).toBeGreaterThan(0);
+  });
+
+  /** 반품을 보내는 버튼이 아직 없다 — 결과를 볼 수 없는 채로 재고가 움직여서는 안 된다. */
+  it('반품을 보내는 버튼이 없다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    for (const button of screen.getAllByRole('button')) {
+      expect(button.textContent ?? '').not.toContain('반품 처리');
+    }
+  });
+
+  it('줄을 골라도 두 구획 어디에도 내부 번호가 없다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '10');
+
+    expect(screen.getAllByText(ITEM_LABEL).length).toBeGreaterThan(0);
+    expectNoInternalIds();
+  });
+});
+
+describe('SupplierReturnScreen — 줄 초안의 수명', () => {
+  /**
+   * **M27 · #43** — 되돌림 의존성에 라인·참조·잔액 응답이 들어가면 갱신이 도착할 때마다
+   * **치던 값이 사라진다.** 「다시 조회」는 값을 버리려고 누르는 것이 아니다(수명 표 10행).
+   */
+  it('다시 조회해도 고른 줄과 친 수량이 남는다', async () => {
+    const { user } = renderScreen(allRoutes([changingListRoute(), changingDetailRoute()]));
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '10');
+
+    await refresh(user);
+
+    /* 상세가 실제로 다시 왔다 — 응답이 안 바뀌어서 통과한 것이 아니다. */
+    await screen.findByText('SAMPLE_GR_STATUS_CALL_2');
+
+    expect(qtyBox(1)).toHaveValue('10');
+    expect(selectBox(1)).toBeChecked();
+  });
+
+  /** 참조·잔액이 늦게 도착해도 초안을 건드리지 않는다(수명 표 9행). */
+  it('잔액이 늦게 도착해도 친 수량이 사라지지 않는다', async () => {
+    const { release, user } = renderScreen(allRoutes(), '', '', [BALANCES_PATH]);
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.type(qtyBox(1), '10');
+
+    release();
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(t.lineTable.onHandQtyPair(ON_HAND_9601, UOM_LABEL)).length,
+      ).toBeGreaterThan(0);
+    });
+
+    expect(qtyBox(1)).toHaveValue('10');
+  });
+
+  /** 대상이 바뀌면 앞 전표의 수량은 뜻을 잃는다(수명 표 4행) — 남으면 남의 전표의 수량이 실린다. */
+  it('다른 전표를 고르면 초안이 비워진다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '10');
+
+    await selectReceipt(user, 'GR-2026-900002');
+    await screen.findByText(t.empty.noLinesTitle);
+
+    await selectReceipt(user, 'GR-2026-900001');
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(qtyBox(1)).toHaveValue('');
+    expect(selectBox(1)).not.toBeChecked();
+  });
+
+  /**
+   * **주소를 바꾸는 길이 클릭 핸들러만이 아니다.** 뒤로가기·앞으로가기·주소 직접 편집은
+   * 핸들러를 거치지 않으므로, 비우기를 핸들러에 두면 그 경로가 통째로 샌다.
+   */
+  it('주소로 대상을 바꿔도 초안이 비워진다', async () => {
+    const { user } = renderScreen(allRoutes(), '?gr=9001', '?gr=9002');
+
+    await screen.findAllByText(ITEM_LABEL);
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '10');
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.empty.noLinesTitle);
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(qtyBox(1)).toHaveValue('');
+    expect(selectBox(1)).not.toBeChecked();
+  });
+
+  /** 조건을 바꾸면 `gr`가 풀리고 초안도 함께 비워진다(수명 표 1행). */
+  it('조건을 바꾸면 초안이 비워진다', async () => {
+    const { user } = renderScreen(allRoutes(), '?gr=9001');
+
+    await screen.findAllByText(ITEM_LABEL);
+
+    await user.click(selectBox(1));
+    await user.type(qtyBox(1), '10');
+
+    await user.type(screen.getByLabelText(t.fields.q), 'GR-2026');
+    await search(user);
+
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(qtyBox(1)).toHaveValue('');
+    expect(selectBox(1)).not.toBeChecked();
   });
 });

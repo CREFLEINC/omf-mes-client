@@ -4,16 +4,28 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  balanceFixtures,
+  goodsReceiptLine,
   goodsReceiptLineFixtures,
   INTERNAL_IDS,
   itemFixtures,
   locationFixtures,
   lotFixtures,
+  ON_HAND_9601,
   uomFixtures,
 } from './fixtures';
 import { TABLE_MIN_WIDTH_PX } from './gr-table';
 import { buildGrLineColumns, GrLineTable, type GrLineTableProps } from './gr-line-table';
+import {
+  EMPTY_LINE_DRAFT,
+  setDraftQty,
+  toggleLineSelection,
+  type LineDraft,
+} from './line-draft';
 import type { LotReferenceSource, ReferenceSource } from './lookups';
+import type { BalanceSource, ItemBalance } from './on-hand';
+import { toReturnLineRows, type ReturnLineRow } from './return-selection';
+import { toBalanceView } from './types';
 
 const t = messages.supplierReturn;
 
@@ -72,13 +84,58 @@ const lotSource = (overrides: Partial<LotReferenceSource> = {}): LotReferenceSou
   ...overrides,
 });
 
-const baseProps = (overrides: Partial<GrLineTableProps> = {}): GrLineTableProps => ({
-  rows: goodsReceiptLineFixtures,
+/** 품목 9301의 잔액이 실제로 온 상태. 9302(9402의 품목)의 줄은 없다 — 「확인하지 못함」 갈래다. */
+const balanceSource = (overrides: Partial<ItemBalance> = {}): BalanceSource => {
+  const items: ItemBalance[] = [
+    {
+      itemId: 9301,
+      entries: balanceFixtures.filter((row) => row.itemId === 9301).map(toBalanceView),
+      isLoading: false,
+      isError: false,
+      truncated: false,
+      ...overrides,
+    },
+    {
+      itemId: 9302,
+      entries: [],
+      isLoading: false,
+      isError: false,
+      truncated: false,
+    },
+  ];
+
+  return {
+    items,
+    isError: items.some((item) => item.isError),
+    truncated: items.some((item) => item.truncated),
+  };
+};
+
+const rowsFrom = (draft: LineDraft = EMPTY_LINE_DRAFT, balances = balanceSource()): ReturnLineRow[] =>
+  toReturnLineRows(goodsReceiptLineFixtures, draft, balances);
+
+const columnInput = () => ({
   itemLookup: itemSource(),
   uomLookup: uomSource(),
   lotLookup: lotSource(),
   locationLookup: locationSource(),
+  reasonIdPrefix: 'test-reason',
+  onToggleSelect: vi.fn(),
+  onChangeQty: vi.fn(),
+});
+
+const baseProps = (overrides: Partial<GrLineTableProps> = {}): GrLineTableProps => ({
+  rows: rowsFrom(),
+  itemLookup: itemSource(),
+  uomLookup: uomSource(),
+  lotLookup: lotSource(),
+  locationLookup: locationSource(),
+  hasBalanceError: false,
+  hasBalanceTruncated: false,
+  onToggleSelect: vi.fn(),
+  onChangeQty: vi.fn(),
   onRetryReferences: vi.fn(),
+  onRetryBalances: vi.fn(),
   ...overrides,
 });
 
@@ -89,13 +146,14 @@ const renderTable = (overrides: Partial<GrLineTableProps> = {}) => {
   return { ...props, ...result, user: userEvent.setup() };
 };
 
+const selectBox = (ordinal: number): HTMLElement =>
+  screen.getByRole('checkbox', { name: t.lineTable.selectLabel(ordinal) });
+
+const qtyBox = (ordinal: number): HTMLElement =>
+  screen.getByRole('textbox', { name: t.lineTable.returnQtyLabel(ordinal) });
+
 describe('buildGrLineColumns — 열 폭 예산', () => {
-  const columns = buildGrLineColumns({
-    itemLookup: itemSource(),
-    uomLookup: uomSource(),
-    lotLookup: lotSource(),
-    locationLookup: locationSource(),
-  });
+  const columns = buildGrLineColumns(columnInput());
 
   /** **M30** — 흡수 열이 둘이 되면 「코드 · 이름」이 낱말 단위로 쪼개진다. */
   it('흡수 열이 정확히 하나다', () => {
@@ -108,20 +166,20 @@ describe('buildGrLineColumns — 열 폭 예산', () => {
       0,
     );
 
-    expect(fixed).toBe(408);
+    expect(fixed).toBe(720);
     expect(TABLE_MIN_WIDTH_PX - fixed).toBeGreaterThanOrEqual(184);
   });
 
-  /**
-   * **이 회차의 열은 넷이다** — 읽기 전용이다. 선택·보유 수량·반품 수량 세 열은 줄을 고르고
-   * 수량을 넣는 회차에서 붙는다.
-   */
-  it('열이 넷이다', () => {
+  /** 선택·보유 수량·반품 수량 세 열이 붙어 일곱이 됐다(계획 §5.5). */
+  it('열이 일곱이고 차례가 정해져 있다', () => {
     expect(columns.map((column) => column.key)).toEqual([
+      'select',
       'item',
       'lot',
       'location',
       'receiptQty',
+      'onHandQty',
+      'returnQty',
     ]);
   });
 
@@ -141,11 +199,22 @@ describe('GrLineTable — 참조 표기', () => {
     expect(screen.getByText(t.lineTable.receiptQtyPair(100, UOM_LABEL))).toBeInTheDocument();
   });
 
+  /**
+   * 입고 수량 칸을 **자리로 집는다.** 9403은 수량이 0이고 단위 이름도 안 풀려 보유 수량 칸과
+   * 글자가 같아지는데, 글자로 집으면 어느 칸을 잰 것인지가 흐려진다.
+   */
   it('수량이 소수여도 0이어도 그대로 낸다', () => {
     renderTable();
 
     expect(screen.getByText(t.lineTable.receiptQtyPair(12.5, UOM_LABEL))).toBeInTheDocument();
-    expect(screen.getByText(t.lineTable.receiptQtyPair(0, t.values.unknown))).toBeInTheDocument();
+
+    const row = screen.getAllByRole('row')[3];
+
+    if (row === undefined) throw new Error('9403의 줄이 없다');
+
+    expect(within(row).getAllByRole('cell')[4]?.textContent).toBe(
+      t.lineTable.receiptQtyPair(0, t.values.unknown),
+    );
   });
 
   /** **M28 · 짝 방향 단언** — 이름이 실제로 보이고, 그 자리에 번호가 없다(#44). */
@@ -156,6 +225,26 @@ describe('GrLineTable — 참조 표기', () => {
 
     for (const id of INTERNAL_IDS) {
       expect(container.textContent ?? '').not.toContain(id);
+    }
+  });
+
+  /**
+   * 접근 이름과 사유 `id`에도 내부 번호를 넣지 않는다 — 글자는 아니지만 DOM에 남고,
+   * 한 번 쓰기 시작하면 접근 이름으로도 샌다.
+   */
+  it('접근 이름과 id 속성에도 내부 번호가 없다', () => {
+    const { container } = renderTable();
+
+    for (const element of container.querySelectorAll('[aria-label], [id], [aria-describedby]')) {
+      const attributes = [
+        element.getAttribute('aria-label') ?? '',
+        element.getAttribute('id') ?? '',
+        element.getAttribute('aria-describedby') ?? '',
+      ].join(' ');
+
+      for (const id of INTERNAL_IDS) {
+        expect(attributes).not.toContain(id);
+      }
     }
   });
 
@@ -176,8 +265,7 @@ describe('GrLineTable — 참조 표기', () => {
 
     /*
      * 9402의 품목 · 9403의 LOT·위치 셋이 제 칸을 통째로 차지한다.
-     * 9403의 단위도 목록에 없으나 수량 표기 안에 붙어 있어 따로 세지 않는다 —
-     * 그 갈래는 바로 위 단언(`receiptQtyPair(0, unknown)`)이 잰다.
+     * 9403의 단위도 목록에 없으나 수량 표기 안에 붙어 있어 따로 세지 않는다.
      */
     expect(screen.getAllByText(t.values.unknown).length).toBe(3);
   });
@@ -197,17 +285,18 @@ describe('GrLineTable — LOT 보류 표식', () => {
   it('표식은 색이 아니라 글자다', () => {
     renderTable();
 
-    const marker = screen.getByText(t.values.lotHeld);
+    expect(screen.getByText(t.values.lotHeld).textContent).toBe(t.values.lotHeld);
+  });
 
-    expect(marker.textContent).toBe(t.values.lotHeld);
+  /** **보류가 선택을 막지 않는다** — 보류된 자재를 되돌려 보내는 것이 이 화면의 주 용도다. */
+  it('보류 중인 LOT의 줄도 고를 수 있다', () => {
+    renderTable();
+
+    expect(selectBox(2)).toBeEnabled();
   });
 
   it('보류가 아닌 LOT에는 표식이 없다', () => {
-    const row = goodsReceiptLineFixtures[0];
-
-    if (row === undefined) throw new Error('픽스처가 비어 있다');
-
-    renderTable({ rows: [row] });
+    renderTable({ rows: toReturnLineRows([goodsReceiptLine()], EMPTY_LINE_DRAFT, balanceSource()) });
 
     expect(screen.queryByText(t.values.lotHeld)).not.toBeInTheDocument();
   });
@@ -228,13 +317,304 @@ describe('GrLineTable — LOT 보류 표식', () => {
   });
 
   it('보류가 없으면 그 안내도 없다', () => {
-    const row = goodsReceiptLineFixtures[0];
-
-    if (row === undefined) throw new Error('픽스처가 비어 있다');
-
-    renderTable({ rows: [row] });
+    renderTable({ rows: toReturnLineRows([goodsReceiptLine()], EMPTY_LINE_DRAFT, balanceSource()) });
 
     expect(screen.queryByText(t.notes.lotHold)).not.toBeInTheDocument();
+  });
+});
+
+describe('GrLineTable — 줄 선택', () => {
+  it('고를 수 있는 줄마다 선택칸이 있다', () => {
+    renderTable();
+
+    expect(selectBox(1)).toBeEnabled();
+    expect(selectBox(2)).toBeEnabled();
+  });
+
+  it('누르면 그 줄의 번호로 알린다', async () => {
+    const { onToggleSelect, user } = renderTable();
+
+    await user.click(selectBox(1));
+
+    expect(onToggleSelect).toHaveBeenCalledExactlyOnceWith(9401);
+  });
+
+  /** **부품이 스스로 판정하지 않는다**(C31) — 골라졌는지는 받은 줄이 말한다. */
+  it('골라진 줄의 칸이 켜져 있다', () => {
+    renderTable({ rows: rowsFrom(toggleLineSelection(EMPTY_LINE_DRAFT, 9401)) });
+
+    expect(selectBox(1)).toBeChecked();
+    expect(selectBox(2)).not.toBeChecked();
+  });
+
+  /**
+   * **M29** — 고를 수 없는 줄은 잠기고 **사유가 함께** 보인다. `disabled`만 두고 사유를 떼면
+   * 사용자가 무엇을 해야 풀리는지 알 수 없고, 사유만 두고 잠금을 떼면 고를 수 없는 줄이
+   * 요청에 실린다.
+   */
+  it('고를 수 없는 줄은 사유와 함께 잠긴다', () => {
+    renderTable();
+
+    const box = selectBox(3);
+
+    expect(box).toBeDisabled();
+    expect(screen.getByText(t.reasons.lineQtyNotPositive)).toBeInTheDocument();
+
+    const describedBy = box.getAttribute('aria-describedby');
+
+    expect(describedBy).not.toBeNull();
+    expect(document.getElementById(describedBy ?? '')?.textContent).toBe(
+      t.reasons.lineQtyNotPositive,
+    );
+  });
+
+  it('고를 수 있는 줄에는 사유가 붙지 않는다', () => {
+    renderTable();
+
+    expect(selectBox(1).getAttribute('aria-describedby')).toBeNull();
+    expect(screen.queryByText(t.reasons.lineMissingValues)).not.toBeInTheDocument();
+  });
+
+  /** 값이 빠진 줄은 다른 사유로 잠긴다 — 두 사유가 갈려야 사용자가 원인을 안다. */
+  it('값이 빠진 줄은 그 사유로 잠긴다', () => {
+    renderTable({
+      rows: toReturnLineRows([goodsReceiptLine({ lotId: 0 })], EMPTY_LINE_DRAFT, balanceSource()),
+    });
+
+    expect(selectBox(1)).toBeDisabled();
+    expect(screen.getByText(t.reasons.lineMissingValues)).toBeInTheDocument();
+  });
+});
+
+describe('GrLineTable — 반품 수량 입력', () => {
+  /** **M22 · 승인 13-7** — 입고 수량으로 채우면 전량 반품이 기본값처럼 보인다. */
+  it('수량 칸이 빈 칸으로 시작한다', () => {
+    renderTable();
+
+    expect(qtyBox(1)).toHaveValue('');
+    expect(qtyBox(2)).toHaveValue('');
+  });
+
+  it('빈 칸으로 시작한다는 사실을 표 위에서 밝힌다', () => {
+    renderTable();
+
+    expect(screen.getByText(t.notes.returnQtyEmptyStart)).toBeInTheDocument();
+  });
+
+  it('치면 그 줄의 번호와 친 글자를 알린다', async () => {
+    const { onChangeQty, user } = renderTable();
+
+    await user.type(qtyBox(1), '7');
+
+    expect(onChangeQty).toHaveBeenCalledExactlyOnceWith(9401, '7');
+  });
+
+  it('친 글자를 그대로 보인다', () => {
+    renderTable({ rows: rowsFrom(setDraftQty(EMPTY_LINE_DRAFT, 9401, '0.')) });
+
+    expect(qtyBox(1)).toHaveValue('0.');
+  });
+
+  it('고를 수 없는 줄의 수량 칸은 사유와 함께 잠긴다', () => {
+    renderTable();
+
+    const box = qtyBox(3);
+
+    expect(box).toBeDisabled();
+
+    const describedBy = box.getAttribute('aria-describedby') ?? '';
+
+    expect(
+      describedBy
+        .split(' ')
+        .map((id) => document.getElementById(id)?.textContent)
+        .filter((text) => text === t.reasons.lineQtyNotPositive),
+    ).toHaveLength(1);
+  });
+
+  /**
+   * **생산자를 지나가는가**(C31) — 오류 문구는 받은 줄에서 온다. 부품이 값을 다시 읽어
+   * 판정하면 이 단언이 무너진다(수량 `50`은 그 자체로는 아무 오류도 만들지 않는다).
+   */
+  it('오류를 부품이 다시 판정하지 않고 받은 것을 낸다', () => {
+    const [row] = rowsFrom(setDraftQty(EMPTY_LINE_DRAFT, 9401, '50'));
+
+    if (row === undefined) throw new Error('줄이 없다');
+
+    renderTable({ rows: [{ ...row, error: '합성 오류 문구' }] });
+
+    expect(screen.getByText('합성 오류 문구')).toBeInTheDocument();
+  });
+
+  it('오류가 없으면 오류 표시가 서지 않는다', () => {
+    renderTable({ rows: rowsFrom(setDraftQty(EMPTY_LINE_DRAFT, 9401, '50')) });
+
+    expect(qtyBox(1)).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByText(t.errors.qtyOverOnHand(ON_HAND_9601))).not.toBeInTheDocument();
+  });
+
+  it('상한을 넘긴 줄에 그 사유가 붙는다', () => {
+    renderTable({ rows: rowsFrom(setDraftQty(EMPTY_LINE_DRAFT, 9401, '121')) });
+
+    expect(screen.getByText(t.errors.qtyOverOnHand(ON_HAND_9601))).toBeInTheDocument();
+    expect(qtyBox(1)).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /**
+   * **`getRowId` 감지기** — 이 표에는 이제 **줄에 매인 입력칸**이 있다. 행 식별자를 떼면 React
+   * key가 인덱스가 되어, 앞 줄이 사라질 때 **치고 있던 칸의 DOM 노드가 대신 지워진다** —
+   * 포커스와 캐럿이 말없이 다른 줄의 칸으로 옮겨 간다.
+   */
+  it('앞 줄이 사라져도 치고 있던 칸의 포커스가 남는다', async () => {
+    const lines = goodsReceiptLineFixtures.slice(0, 2);
+    const { rerender, user } = renderTable({
+      rows: toReturnLineRows(lines, EMPTY_LINE_DRAFT, balanceSource()),
+    });
+
+    await user.click(qtyBox(2));
+
+    expect(document.activeElement).toBe(qtyBox(2));
+
+    rerender(
+      <GrLineTable
+        {...baseProps({
+          rows: toReturnLineRows(lines.slice(1), EMPTY_LINE_DRAFT, balanceSource()),
+        })}
+      />,
+    );
+
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(document.activeElement).toBe(qtyBox(1));
+  });
+});
+
+describe('GrLineTable — 보유 수량', () => {
+  /** 같은 LOT의 여러 줄이 더해진 값이다(80 + 40) — 소유 구분으로 갈려 내려온다. */
+  it('확인한 줄에 수량과 단위를 함께 낸다', () => {
+    renderTable();
+
+    expect(
+      screen.getAllByText(t.lineTable.onHandQtyPair(ON_HAND_9601, UOM_LABEL)).length,
+    ).toBeGreaterThan(0);
+  });
+
+  /** **M23** — 못 구한 것을 0이나 무제한으로 읽으면 정당한 반품이 막히거나 다 통과한다. */
+  it('그 LOT의 잔액이 없으면 확인하지 못함으로 낸다', () => {
+    renderTable();
+
+    expect(screen.getByText(t.values.onHandUnknown)).toBeInTheDocument();
+  });
+
+  it('아직 오지 않았으면 불러오는 중으로 낸다', () => {
+    renderTable({ rows: rowsFrom(EMPTY_LINE_DRAFT, balanceSource({ isLoading: true })) });
+
+    expect(screen.getAllByText(t.values.onHandLoading).length).toBeGreaterThan(0);
+  });
+
+  /**
+   * **승인 13-6** — 확인하지 못한 줄이 있으면 **막지 않는다는 사실**을 밝힌다.
+   * 밝히지 않으면 사용자가 화면이 다 재어 준 줄 알고 보낸다.
+   */
+  it('확인하지 못한 줄이 있으면 막지 않는다는 사실을 밝힌다', () => {
+    renderTable();
+
+    expect(screen.getByText(t.reasons.onHandUnknownNote)).toBeInTheDocument();
+  });
+
+  it('전부 확인했으면 그 안내를 내지 않는다', () => {
+    renderTable({ rows: rowsFrom().filter((row) => row.onHand.kind === 'known') });
+
+    expect(screen.queryByText(t.reasons.onHandUnknownNote)).not.toBeInTheDocument();
+  });
+
+  /** 잔액 조회 실패는 이름 참조 실패와 따로 낸다 — 사용자가 할 판단이 다르다. */
+  it('잔액 조회가 실패하면 사유와 복구 경로를 낸다', async () => {
+    const { onRetryBalances, user } = renderTable({ hasBalanceError: true });
+
+    expect(screen.getByText(t.reasons.balancesFailed)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    expect(onRetryBalances).toHaveBeenCalledTimes(1);
+  });
+
+  /** 잘림에는 복구 버튼을 붙이지 않는다 — 다시 불러도 같은 쪽이 온다. */
+  it('잔액 목록이 잘리면 사실만 밝힌다', () => {
+    renderTable({ hasBalanceTruncated: true });
+
+    expect(screen.getByText(t.reasons.balancesTruncated)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  it('정상이면 잔액 실패·잘림 안내가 없다', () => {
+    renderTable();
+
+    expect(screen.queryByText(t.reasons.balancesFailed)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.reasons.balancesTruncated)).not.toBeInTheDocument();
+  });
+});
+
+describe('GrLineTable — 고른 줄 요약', () => {
+  /** **C33** — 화면에 보이는 줄 수와 합계가 실제로 보낼 줄에서 나온다. */
+  it('고른 줄 수와 합계를 낸다', () => {
+    const draft = setDraftQty(toggleLineSelection(EMPTY_LINE_DRAFT, 9401), 9401, '10');
+
+    renderTable({ rows: rowsFrom(draft) });
+
+    expect(screen.getByText(t.selection.summary(1, 10, UOM_LABEL))).toBeInTheDocument();
+  });
+
+  it('아무 줄도 고르지 않았으면 그 사실을 낸다', () => {
+    renderTable();
+
+    expect(screen.getByText(t.selection.none)).toBeInTheDocument();
+  });
+
+  /** **C29** — 다음 단계로 갈 수 없는 사유가 화면에서 읽힌다. */
+  it('갈 수 없는 사유를 낸다', () => {
+    renderTable();
+
+    expect(screen.getByText(t.reasons.selectNone)).toBeInTheDocument();
+  });
+
+  it('고른 줄의 수량이 비면 그 사유를 낸다', () => {
+    renderTable({ rows: rowsFrom(toggleLineSelection(EMPTY_LINE_DRAFT, 9401)) });
+
+    expect(screen.getByText(t.reasons.selectQtyMissing)).toBeInTheDocument();
+  });
+
+  it('갖춰지면 사유를 거둔다', () => {
+    const draft = setDraftQty(toggleLineSelection(EMPTY_LINE_DRAFT, 9401), 9401, '10');
+
+    renderTable({ rows: rowsFrom(draft) });
+
+    for (const reason of [t.reasons.selectNone, t.reasons.selectQtyMissing, t.reasons.selectQtyInvalid]) {
+      expect(screen.queryByText(reason)).not.toBeInTheDocument();
+    }
+  });
+
+  /** 단위가 섞이면 합계를 내지 않는다 — 더한 수에 뜻이 없다. */
+  it('단위가 섞이면 합계 대신 그 사실을 낸다', () => {
+    const lines = [goodsReceiptLine(), goodsReceiptLine({ goodsReceiptLineId: 9402, uomId: 9599 })];
+    const draft = setDraftQty(
+      setDraftQty(toggleLineSelection(toggleLineSelection(EMPTY_LINE_DRAFT, 9401), 9402), 9401, '10'),
+      9402,
+      '5',
+    );
+
+    renderTable({ rows: toReturnLineRows(lines, draft, balanceSource()) });
+
+    expect(screen.getByText(t.selection.summaryMixedUom(2))).toBeInTheDocument();
+  });
+
+  /** **부품이 스스로 세지 않는다**(C31) — 골라졌다고 표시된 줄만 센다. */
+  it('요약을 부품이 다시 세지 않고 받은 줄에서 낸다', () => {
+    const draft = setDraftQty(toggleLineSelection(EMPTY_LINE_DRAFT, 9401), 9401, '10');
+    const rows = rowsFrom(draft).map((row) => ({ ...row, isSelected: false }));
+
+    renderTable({ rows });
+
+    expect(screen.getByText(t.selection.none)).toBeInTheDocument();
   });
 });
 
@@ -249,8 +629,7 @@ describe('GrLineTable — 빈 상태와 실패', () => {
 
   /**
    * **넷을 각각 잰다.** 안내 문구가 「품목·단위·자재 LOT·위치」 넷을 다 이름으로 적고 있으므로
-   * 판정도 넷을 다 보아야 한다 — 하나만 재면 나머지 셋 중 어느 항이 빠져도 아무도 울지
-   * 않고, 그 참조만 실패했을 때 **사유 줄도 「다시 시도」도 나오지 않아 복구 수단이 사라진다.**
+   * 판정도 넷을 다 보아야 한다 — 하나만 재면 그 참조만 실패했을 때 **복구 수단이 사라진다.**
    */
   const eachReference: [string, () => Partial<GrLineTableProps>][] = [
     ['품목', () => ({ itemLookup: itemSource({ isError: true }) })],
@@ -270,8 +649,7 @@ describe('GrLineTable — 빈 상태와 실패', () => {
   });
 
   /**
-   * **잘림은 실패와 따로 낸다.** 실패는 「이름을 못 받았다」이고 잘림은 「일부만 받았다」인데,
-   * 잘린 목록으로 이름을 풀면 정상 값이 「알 수 없음」으로 찍힌다.
+   * **잘림은 실패와 따로 낸다.** 잘린 목록으로 이름을 풀면 정상 값이 「알 수 없음」으로 찍힌다.
    * **복구 버튼을 붙이지 않는다** — 다시 불러도 같은 쪽이 온다.
    */
   const eachTruncated: [string, () => Partial<GrLineTableProps>][] = [
@@ -297,12 +675,10 @@ describe('GrLineTable — 빈 상태와 실패', () => {
 });
 
 describe('GrLineTable — 이 회차의 경계', () => {
-  /** 줄을 고르는 수단은 아직 없다 — 없는 판정을 화면이 먼저 말하지 않는다. */
-  it('줄을 고르는 컨트롤이 없다', () => {
+  /** 반품을 보내는 버튼은 아직 없다 — 결과를 볼 수 없는 채로 재고가 움직여서는 안 된다. */
+  it('표 안에 버튼이 없다', () => {
     renderTable();
 
-    expect(within(screen.getByRole('table')).queryAllByRole('checkbox')).toHaveLength(0);
     expect(within(screen.getByRole('table')).queryAllByRole('button')).toHaveLength(0);
-    expect(within(screen.getByRole('table')).queryAllByRole('textbox')).toHaveLength(0);
   });
 });
