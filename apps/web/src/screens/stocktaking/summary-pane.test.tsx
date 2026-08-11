@@ -108,6 +108,27 @@ describe('SummaryPane — 요약 4칸', () => {
     expect(within(group).queryByText('15')).not.toBeInTheDocument();
   });
 
+  /*
+   * **자릿수 구분·반올림을 붙이지 않는다.** 화면이 값을 손대는 자리를 만들면 「서버가 준 대로
+   * 보인다」가 곧 깨진다. 세 자리 픽스처로는 그 규칙이 아무것도 재지 못한다 — 서식을 붙여도
+   * 결과가 같기 때문이다. 착수 이슈가 「창고 하나에 수백~수천 건」이라 했고 계약 예시도 네
+   * 자리이므로 **실서버 값은 네 자리를 예사로 넘는다.**
+   */
+  it('네 자리가 넘는 건수에 자릿수 구분을 붙이지 않는다', () => {
+    renderPane({
+      summary: toCountSummaryView(
+        summaryResponse({ plannedCount: 1240, countedCount: 1180, uncountedCount: 60, varianceCount: 12 }),
+      ),
+    });
+
+    const group = summaryGroup();
+
+    expect(within(group).getByText('1240')).toBeInTheDocument();
+    expect(within(group).getByText('1180')).toBeInTheDocument();
+    expect(within(group).queryByText('1,240')).not.toBeInTheDocument();
+    expect(within(group).queryByText('1,180')).not.toBeInTheDocument();
+  });
+
   it('0건도 그대로 보인다', () => {
     renderPane({
       summary: toCountSummaryView(

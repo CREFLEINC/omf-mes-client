@@ -960,6 +960,50 @@ describe('StocktakingScreen — 그 실사가 없을 때', () => {
     expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
   });
 
+  /*
+   * **수명 표 1·2·3행의 「404 안내 = 비운다」.** 「세운다」와 「남는다」만 지키면 반쪽이다 —
+   * 안내를 거두는 자리가 무너지면, 조건을 바꿔 새 결과를 멀쩡히 받은 뒤에도 아래 구획에
+   * 「고른 실사를 찾을 수 없습니다」가 **계속 서 있다.** 그 안내가 무엇을 가리키는지 화면
+   * 어디에서도 읽을 수 없고, 거두는 다른 경로는 실사를 다시 고르는 것뿐이다.
+   *
+   * 세 조작(조건 변경·초기화·쪽 이동)이 **`applyQuery` 한 자리를 함께 지난다.** 그래서
+   * 서로 다른 호출부 둘(조건 줄의 「조회」 · 쪽 이동의 「다음」)을 골라 그 자리를 양쪽에서 센다.
+   */
+  it('404 안내 뒤 조건을 바꿔 조회하면 안내를 거둔다', async () => {
+    const { user } = renderScreen(allRoutes(), '?ct=9999');
+
+    await screen.findByText(t.empty.notFoundTitle);
+
+    await user.click(screen.getByRole('checkbox', { name: t.fields.inProgressOnly }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?prog=1`);
+    });
+
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    /* 짝 — 아래 구획이 사라지는 것이 아니라 「아직 고르지 않았다」로 돌아온다. */
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
+  it('404 안내 뒤 쪽을 옮기면 안내를 거둔다', async () => {
+    const { user } = renderScreen(
+      allRoutes([listRoute(countFixtures, { total: 120 })]),
+      '?ct=9999',
+    );
+
+    await screen.findByText(t.empty.notFoundTitle);
+
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?page=2`);
+    });
+
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
   /* 정리한 뒤 다른 실사를 고르면 앞의 안내를 거둔다 — 남으면 요약 옆에 「없습니다」가 함께 선다. */
   it('다시 고르면 없음 안내를 거둔다', async () => {
     const { user } = renderScreen(allRoutes(), '?ct=9999');

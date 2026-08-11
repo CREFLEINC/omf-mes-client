@@ -88,6 +88,13 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 무관하게 상세를 부를 수 있다. 목록 소속으로 판정하면 **조건이 좁아 목록에 없는 실사를 고른
  * 상태가 지워진다** — 특히 개시 직후(PR ②)에 새 실사가 지금 조건에 안 걸리면 방금 만든 것이
  * 즉시 사라진다.
+ *
+ * **디자인 시스템의 `Stepper`를 쓰지 않는다.** 설치본에 실재하고(`a554d11`) 이 화면은 3단계
+ * 전표라 가장 먼저 손이 가는 부품이지만, 그리려면 **셋째 단계(마감)의 완료를 화면이 알아야
+ * 하는데 알 수 없다** — `statusCode` 값으로 분기할 수 없고(G-2) 세션 밖에서 마감된 것은
+ * 이 화면에 아무 흔적도 남기지 않는다. 부분만 참인 진행 표시는 「아직 마감되지 않았다」는
+ * **잘못된 확신**을 준다. 단계는 요약 4칸과 액션의 사유 문구가 말한다.
+ * 단계 개념이 실제로 커지는 PR ②~④에서 이 판단이 다시 흔들릴 자리라 여기 적어 둔다.
  */
 export const StocktakingScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -176,7 +183,7 @@ export const StocktakingScreen = () => {
    * 주소에서 `ct`를 지우고 나면 화면은 그 사정을 말할 근거를 잃는다 — 「아직 고르지 않았다」와
    * 글자가 같아지므로 사용자는 자기가 무엇을 눌렀는지 되짚을 수 없다.
    */
-  const [hasNotFoundNotice, setNotFoundNotice] = useState(false);
+  const [hasNotFoundNotice, setHasNotFoundNotice] = useState(false);
 
   /*
    * **상세가 404면 고른 실사를 주소에서 정리한다**(수명 표 6행).
@@ -191,7 +198,7 @@ export const StocktakingScreen = () => {
     if (selectedCountId === null) return;
     if (!isDetailNotFound) return;
 
-    setNotFoundNotice(true);
+    setHasNotFoundNotice(true);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -209,7 +216,7 @@ export const StocktakingScreen = () => {
    * 함께 서 있게 된다. **고른 식별자가 생기는 순간에만** 반응한다.
    */
   useEffect(() => {
-    if (selectedCountId !== null) setNotFoundNotice(false);
+    if (selectedCountId !== null) setHasNotFoundNotice(false);
   }, [selectedCountId]);
 
   /**
@@ -220,7 +227,7 @@ export const StocktakingScreen = () => {
    * 함께 풀린다(수명 표 1~3행).
    */
   const applyQuery = (nextFilters: CountFilters, nextPage = 1): void => {
-    setNotFoundNotice(false);
+    setHasNotFoundNotice(false);
     setSearchParams(toSearchParams(nextFilters, nextPage));
   };
 
@@ -232,7 +239,7 @@ export const StocktakingScreen = () => {
       next.set(SELECTION_KEYS.count, String(inventoryCountId));
     }
 
-    setNotFoundNotice(false);
+    setHasNotFoundNotice(false);
     setSearchParams(next);
   };
 

@@ -63,6 +63,24 @@ describe('CountFilterBar — 조건 줄', () => {
     expect(screen.getByLabelText(t.fields.warehouse)).toBeInTheDocument();
   });
 
+  /*
+   * **「전체」가 값이 빈 선택지로 들어 있다.** 두지 않으면 창고를 한 번 고른 뒤
+   * **선택칸 안에서는 해제할 수단이 사라진다**(칩의 ×로는 여전히 풀리므로 막다른 길은 아니다).
+   * 자리표시 코드 칸에는 두지 않는다 — 그쪽은 고를 값 자체가 아직 없다.
+   */
+  it('창고 선택칸의 첫 선택지가 값이 빈 「전체」다', async () => {
+    const { user } = renderBar();
+
+    await user.click(screen.getByLabelText(t.fields.warehouse));
+
+    const options = screen.getAllByRole('option');
+
+    expect(options[0]).toHaveTextContent(t.filters.all);
+    /* 짝 — 실제 선택지도 함께 있다(「전체」만 있어서 통과하는 것이 아니다). */
+    expect(options).toHaveLength(2);
+    expect(options[1]).toHaveTextContent(WAREHOUSE_LABEL);
+  });
+
   /** 값 목록이 오면 안내가 걷힌다 — 남으면 고를 수 있는데도 준비 중이라 말하는 거짓말이 된다. */
   it('선택지가 차면 안내가 걷힌다', () => {
     renderBar({
@@ -128,19 +146,43 @@ describe('CountFilterBar — 조건 줄', () => {
     expect(screen.getByRole('checkbox', { name: t.fields.inProgressOnly })).toBeChecked();
   });
 
-  /* 짝 방향 — 주소가 **실제로 바뀌면** 편집 중인 값도 그 값으로 되돌아간다. */
-  it('적용된 조건이 달라지면 그 값으로 되돌아간다', async () => {
+  /*
+   * 짝 방향 — 주소가 **실제로 바뀌면** 편집 중인 값도 그 값으로 되돌아간다.
+   *
+   * **여섯 축을 전부 센다.** 되돌림 판정은 조건 객체가 아니라 **값 여섯**에 걸려 있는데
+   * (그것이 이 부품의 #43 방어다), 한 축만 검사하면 나머지 다섯이 의존성에서 빠져도 드러나지
+   * 않는다. 이 저장소에는 ESLint 설정이 없어 `react-hooks/exhaustive-deps`도 그 배열을
+   * 지켜 주지 않는다 — 도구가 없으면 단언이 그 자리를 대신해야 한다.
+   *
+   * 무너지면 이렇게 된다 — 「진행 중만」을 켜고 조회한 뒤 **뒤로가기**를 누르면 주소에서
+   * `prog`가 빠지고 목록도 전체로 다시 조회되는데 **확인칸만 켜진 채 남는다.**
+   * 「주소가 정본이다」라는 이 화면의 전제가 화면 위에서 깨져 보인다.
+   *
+   * **되돌림을 재는 자리(계획일 시작)와 바꾸는 축을 따로 둔다** — 같으면 「되돌아간 것」과
+   * 「새 값이 그대로 온 것」이 구분되지 않는다. `from` 축만은 그 둘이 겹치므로 새 적용값으로
+   * 되돌아왔는지를 본다.
+   */
+  const REVERT_AXES: { axis: string; applied: Partial<CountFilters> }[] = [
+    { axis: 'warehouse', applied: { warehouse: '9101' } },
+    { axis: 'from', applied: { from: '2026-08-31' } },
+    { axis: 'to', applied: { to: '2026-08-31' } },
+    { axis: 'countType', applied: { countType: 'SAMPLE_COUNT_TYPE_A' } },
+    { axis: 'status', applied: { status: 'SAMPLE_COUNT_STATUS_A' } },
+    { axis: 'inProgressOnly', applied: { inProgressOnly: true } },
+  ];
+
+  it.each(REVERT_AXES)('적용된 $axis가 달라지면 고치던 값이 되돌아간다', async ({ applied }) => {
     const { rerender, user } = renderBar();
 
-    await user.click(screen.getByRole('checkbox', { name: t.fields.inProgressOnly }));
+    await user.type(screen.getByLabelText(t.fields.plannedDateFrom), '2026-08-01');
 
-    rerender(
-      <CountFilterBar
-        {...baseProps({ appliedFilters: { ...DEFAULT_FILTERS, warehouse: '9101' } })}
-      />,
-    );
+    expect(screen.getByLabelText(t.fields.plannedDateFrom)).toHaveValue('2026-08-01');
 
-    expect(screen.getByRole('checkbox', { name: t.fields.inProgressOnly })).not.toBeChecked();
+    const nextApplied = { ...DEFAULT_FILTERS, ...applied };
+
+    rerender(<CountFilterBar {...baseProps({ appliedFilters: nextApplied })} />);
+
+    expect(screen.getByLabelText(t.fields.plannedDateFrom)).toHaveValue(nextApplied.from);
   });
 });
 
