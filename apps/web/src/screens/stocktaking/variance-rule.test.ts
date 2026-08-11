@@ -10,8 +10,11 @@ const SYSTEM_QTY = 100;
 const view = (overrides: Parameters<typeof countLineResponse>[0] = {}) =>
   toCountLineView(countLineResponse({ systemQty: SYSTEM_QTY, ...overrides }));
 
-const required = (raw: string, systemQty: number | null = SYSTEM_QTY): boolean =>
-  isReasonRequired({ systemQty, qty: parseCountedQty(raw) });
+const required = (
+  raw: string,
+  systemQty: number | null = SYSTEM_QTY,
+  isBlind = false,
+): boolean => isReasonRequired({ isBlind, systemQty, qty: parseCountedQty(raw) });
 
 describe('isReasonRequired — 차이 사유의 조건부 필수', () => {
   /*
@@ -43,13 +46,25 @@ describe('isReasonRequired — 차이 사유의 조건부 필수', () => {
   });
 
   /*
-   * **완료 조건 C39 · 어긋남 5** — 블라인드에서는 장부 수량이 내려오지 않아(계약 설명)
-   * 견줄 값이 없다. 없는 값을 0으로 보고 판정하면 **전 줄이 차이 있는 줄이 되어** 차이 사유가
-   * 늘 필수가 되고, 코드 목록이 확정되지 않은 지금은 블라인드 실사의 저장이 통째로 막힌다.
+   * **완료 조건 C39 · 어긋남 5 · 리뷰 R-1** — 블라인드는 **실사 헤더가 정한다.**
+   *
+   * **장부 수량이 실려 와도 판정하지 않는다.** 계약에서 `systemQty`는 **필수**이고
+   * 「블라인드에서는 내려보내지 않는다」는 설명문뿐이라(결정 4 · 어긋남 1) **스키마를 따르는
+   * 서버는 블라인드에서도 값을 보낸다.** 그때 줄의 값으로만 끊으면 화면은 **열은 감춰 놓고
+   * 전 줄에 사유를 요구하고**, 코드 목록이 확정되지 않은 지금은 블라인드 실사의 저장이 통째로
+   * 막힌다 — 사용자는 장부도 차이도 볼 수 없어 왜 막혔는지 읽을 수 없다.
    */
-  it('블라인드에서는 장부가 없어 판정하지 않는다', () => {
-    expect(required('98', null)).toBe(false);
-    expect(required('0', null)).toBe(false);
+  it('블라인드 헤더에서는 장부가 실려 와도 판정하지 않는다', () => {
+    /* 짝 방향 — 같은 값이 비블라인드에서는 필수를 세운다(늘 거짓이라 통과하는 것이 아니다). */
+    expect(required('98', SYSTEM_QTY, false)).toBe(true);
+    expect(required('98', SYSTEM_QTY, true)).toBe(false);
+    expect(required('0', 0, true)).toBe(false);
+  });
+
+  /** 둘째 겹 — **비블라인드인데 값이 빠져 온** 어긋남에서도 견줄 것이 없기는 마찬가지다. */
+  it('장부가 오지 않은 줄은 헤더와 무관하게 판정하지 않는다', () => {
+    expect(required('98', null, false)).toBe(false);
+    expect(required('0', null, false)).toBe(false);
   });
 
   /** 계약이 필수라고 말해도 런타임에 없을 수 있는 값을 그대로 넘겨도 같은 결론이다(결정 4). */
@@ -57,9 +72,9 @@ describe('isReasonRequired — 차이 사유의 조건부 필수', () => {
     const blind = toCountLineView(blindCountLineResponse());
 
     expect(blind.systemQty).toBeNull();
-    expect(isReasonRequired({ systemQty: blind.systemQty, qty: parseCountedQty('98') })).toBe(
-      false,
-    );
+    expect(
+      isReasonRequired({ isBlind: false, systemQty: blind.systemQty, qty: parseCountedQty('98') }),
+    ).toBe(false);
   });
 });
 

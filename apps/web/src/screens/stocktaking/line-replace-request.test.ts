@@ -28,7 +28,8 @@ const filledSame = (): LineDrafts =>
     EMPTY_LINE_DRAFTS,
   );
 
-const rowsOf = (drafts: LineDrafts = EMPTY_LINE_DRAFTS) => toLineRows(lines, drafts);
+const rowsOf = (drafts: LineDrafts = EMPTY_LINE_DRAFTS, isBlind = false) =>
+  toLineRows({ lines, drafts, isBlind });
 
 const blockReasonOf = (
   drafts: LineDrafts = EMPTY_LINE_DRAFTS,
@@ -196,6 +197,7 @@ describe('replaceBlockReason — 저장이 왜 막혔는가', () => {
   it('전 줄이 준비되면 막지 않는다', () => {
     expect(blockReasonOf(filledSame())).toBeNull();
   });
+
 });
 
 describe('toLineReplace — 치환 본문', () => {
@@ -278,7 +280,7 @@ describe('toLineReplace — 치환 본문', () => {
     const withGhost = setDraftQty(filledSame(), 9499, '999');
     const body = toLineReplace({
       locationId: LOCATION_ID,
-      rows: toLineRows(lines, withGhost),
+      rows: toLineRows({ lines, drafts: withGhost, isBlind: false }),
       now: BEFORE_MIDNIGHT,
     });
 

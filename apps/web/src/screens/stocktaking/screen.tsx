@@ -1,7 +1,7 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
@@ -329,6 +329,20 @@ export const StocktakingScreen = () => {
   const lines = useInventoryCountLines(selectedCountId, selectedLocationId);
   const lineItems = lines.data?.items ?? EMPTY_LINES;
 
+  /**
+   * 이 실사가 블라인드인가 — **열 구성과 사유 규칙이 함께 읽는 하나의 축**이다(리뷰 R-1).
+   *
+   * **실사 헤더가 정한다.** 줄마다 `systemQty`가 왔는지로 판정하면 두 가지가 갈린다:
+   * ①한 줄만 빠진 어긋난 응답에서 **열이 나타났다 사라지고**(M-10) ②계약을 그대로 따르는
+   * 서버가 블라인드에서도 값을 보낼 때 **열은 감춰 놓고 전 줄에 사유를 요구한다**(R-1).
+   * 계약에서 `systemQty`는 **필수**이고 「블라인드에서는 내려보내지 않는다」는 설명문뿐이라
+   * (결정 4 · 어긋남 1) 두 판정은 언제든 갈릴 수 있다.
+   *
+   * 상세가 오기 전에는 라인 구획 자체가 그려지지 않는다(`detailPane`이 `detail.data`를 먼저
+   * 본다) — 이 값이 거짓으로 읽히는 동안 화면에 보이는 것이 없다.
+   */
+  const isBlindCount = detail.data?.count.blindCount ?? false;
+
   /* 위치를 고르기 전에는 라인 표가 없다 — 그 표가 쓰는 참조 셋도 부르지 않는다. */
   const hasLocation = selectedLocationId !== null;
   const items = useItemLookup(hasLocation);
@@ -371,6 +385,18 @@ export const StocktakingScreen = () => {
 
   /** 쓰기 결과와 그 대상(수명 표 「결과 구획」 열). `null`이면 아직 아무것도 만들지 않았다. */
   const [result, setResult] = useState<ResultState | null>(null);
+
+  /**
+   * **지금 주소가 가리키는 대상.** 늦게 도착한 응답이 「보내던 그 대상이 아직 그대로인가」를
+   * 물을 수 있어야 한다 — 콜백이 붙든 클로저 값은 보낸 시점에 얼어 있어 스스로와 견줄 수 없다.
+   *
+   * 커밋 뒤에 갱신한다(렌더 중에 쓰지 않는다) — 응답은 커밋이 끝난 뒤에 오므로 늦지 않다.
+   */
+  const selectionRef = useRef({ countId: selectedCountId, locationId: selectedLocationId });
+
+  useEffect(() => {
+    selectionRef.current = { countId: selectedCountId, locationId: selectedLocationId };
+  }, [selectedCountId, selectedLocationId]);
 
   /** 개시 확인 창이 열려 있는가. **확인하기 전에는 요청이 나가지 않는다**(완료 조건 C23). */
   const [isOpenConfirmVisible, setOpenConfirmVisible] = useState(false);
@@ -437,6 +463,21 @@ export const StocktakingScreen = () => {
        * 초안이 남으면 저장된 값 위에 같은 글자가 겹쳐 무엇이 저장된 것인지 알 수 없다.
        */
       setLineDrafts(EMPTY_LINE_DRAFTS);
+
+      /*
+       * **보내던 사이에 대상이 바뀌었으면 결과를 세우지 않는다**(수명 표 5행 · 리뷰 R-4).
+       *
+       * 전송 중 잠금은 컨트롤과 핸들러 두 겹인데 **뒤로가기·앞으로가기·주소 직접 편집은 그 둘을
+       * 다 거치지 않는다**(W-01-10 R-1이 확인 창으로 실증한 형태). 그 길로 위치가 바뀌면 이
+       * 콜백은 **클릭 시점 클로저의 옛 대상**을 들고 있어, 그대로 세우면 「위치를 고르면 라인이
+       * 보입니다」 빈 상태 아래에 **앞 위치의 저장 결과**가 선다.
+       *
+       * 지금 대상은 렌더가 아니라 **ref**로 읽는다 — 클로저 값은 보낸 시점에 얼어 있어
+       * 스스로와 견줄 수 없다.
+       */
+      const now = selectionRef.current;
+
+      if (now.countId !== selectedCountId || now.locationId !== selectedLocationId) return;
 
       setResult({
         inventoryCountId: selectedCountId,
@@ -505,6 +546,13 @@ export const StocktakingScreen = () => {
    * 고르기·해제)도 결과 구획을 비우는데, `loc`가 생기기 전에는 그 조작 자체가 없었다 —
    * 축을 늘리지 않으면 **같은 실사 안에서 위치만 옮겼을 때** 앞 위치의 저장 결과가 새 위치의
    * 라인 표 아래에 그대로 서 있다.
+   *
+   * **늦게 도착한 결과는 이 effect가 잡지 못한다**(리뷰 R-4). 전송 중에 주소가 바뀌면
+   * ①이 effect는 그때 이미 돌았고(그 시점 `result`는 `null`이다 — `submitSave`가 비웠다)
+   * ②응답이 뒤에 도착해 `onSuccess`가 결과를 세우며 ③의존성이 그대로라 다시 돌지 않는다.
+   * 그 갈래는 **세우는 자리**(`replace`의 `onSuccess`)가 보낸 대상과 지금 대상을 대조해 막는다 —
+   * 여기에 `result`를 의존성으로 더하면 **개시 성공이 함께 걸린다**: 개시는 주소를 새 실사로
+   * 옮기는데, 옮김이 적용되기 전 렌더에서 결과만 먼저 서면 짝이 어긋난 것으로 보여 지워진다.
    */
   useEffect(() => {
     setResult((current) => {
@@ -826,7 +874,7 @@ export const StocktakingScreen = () => {
    * 표의 줄 — **표가 그리는 값과 보낼 값이 같은 재료에서 나온다**(`line-replace-request.ts`).
    * 두 곳에서 따로 만들면 사용자가 확인한 것과 다른 전표가 나간다.
    */
-  const lineRows = toLineRows(lineItems, lineDrafts);
+  const lineRows = toLineRows({ lines: lineItems, drafts: lineDrafts, isBlind: isBlindCount });
 
   /**
    * 이 위치의 라인을 **전부 받았는가.** 못 받았으면 저장을 차단한다(계획 결정 8) —
@@ -888,7 +936,7 @@ export const StocktakingScreen = () => {
    * 표 안 입력칸이 없는 표가 잠시 서 있게 된다. **줄이 0건인 갈래는 `Table.empty`가 맡는다**
    * (감지기 M34) — 바깥에서 0건을 가르면 `empty`가 닿을 수 없는 죽은 가지가 된다.
    */
-  const linesPane = (isBlind: boolean): ReactNode => {
+  const linesPane = (): ReactNode => {
     if (selectedLocationId === null) {
       return (
         <EmptyState
@@ -917,7 +965,7 @@ export const StocktakingScreen = () => {
           rows={lineRows}
           isLoading={lines.isPending}
           isTruncated={isLineListTruncated}
-          isBlind={isBlind}
+          isBlind={isBlindCount}
           itemLookup={items}
           uomLookup={uoms}
           lotLookup={lots}
@@ -1045,7 +1093,7 @@ export const StocktakingScreen = () => {
           }}
         />
 
-        {linesPane(count.blindCount)}
+        {linesPane()}
 
         {/* 이력은 **실사 하나에 대한 것**이라 위치와 무관하게 늘 자리에 있다. */}
         <HistoryPane />

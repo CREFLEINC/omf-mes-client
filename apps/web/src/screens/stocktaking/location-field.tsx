@@ -28,8 +28,12 @@ export interface LocationFieldProps {
  * 치환은 좁혀 받은 목록을 그대로 덮어써 **보이지 않던 줄을 미실사로 되돌린다.**
  *
  * **「고르지 않음」을 값이 빈 선택지로 둔다.** 두지 않으면 한 번 고른 뒤에 해제할 방법이 칸
- * 안에 없어지고, 사용자는 라인 구획을 닫으려고 실사 선택을 풀게 된다(조건 줄의 「전체」와 같은
- * 형태다). 여기서는 **빈 값도 고른 값**이라 자리표시로 대신하지 않는다.
+ * 안에 없어지고, 사용자는 라인 구획을 닫으려고 실사 선택을 풀게 된다. 여기서는 **빈 값도 고른
+ * 값**이라 자리표시로 대신하지 않는다.
+ *
+ * **조건 줄의 「전체」를 재사용하지 않는다**(리뷰 R-5). 자리는 같아 보여도 뜻이 다르다 —
+ * 조건 줄의 「전체」는 「좁히지 않는다」이고, 여기서 그렇게 읽히면 「**전체 위치**를 대상으로
+ * 한다」가 된다. 이 부품이 조건 줄을 떠난 이유가 바로 그 독법을 없애려는 것이었다.
  *
  * **실패의 복구 버튼이 이 칸에 붙는다**(계획 결정 17). 위치를 못 받으면 라인 표 자체가 열리지
  * 않으므로 표 아래에 두면 **보이지도 않는 실패의 복구 버튼**이 된다.
@@ -48,7 +52,7 @@ export const LocationField = ({
     <SelectField
       wide
       label={t.fields.location}
-      options={[{ value: '', label: t.filters.all }, ...options]}
+      options={[{ value: '', label: t.values.locationNotChosen }, ...options]}
       value={value}
       note={lookupNote(lookup)}
       disabled={isLocked}

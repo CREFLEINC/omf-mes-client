@@ -81,6 +81,17 @@ export interface LineRowView {
   isReady: boolean;
 }
 
+export interface LineRowsInput {
+  lines: readonly CountLineView[];
+  drafts: LineDrafts;
+  /**
+   * **실사 헤더가 정한 블라인드 여부**(리뷰 R-1). 열 구성과 **같은 축**을 사유 규칙에도 태운다 —
+   * 줄의 `systemQty`로만 끊으면, 계약을 그대로 따르는 서버가 블라인드에서도 값을 보낼 때
+   * **열은 감춰 놓고 전 줄에 사유를 요구**하게 된다.
+   */
+  isBlind: boolean;
+}
+
 /**
  * 응답의 줄들과 초안을 합쳐 표의 줄로 옮긴다.
  *
@@ -88,16 +99,13 @@ export interface LineRowView {
  * 그래서 이 함수는 라인 응답이 도착해도 초안을 만들지 않으며, 되돌림 축이 **고른 위치 하나**로
  * 남는다(#43 · 감지기 M35).
  */
-export const toLineRows = (
-  lines: readonly CountLineView[],
-  drafts: LineDrafts,
-): LineRowView[] =>
+export const toLineRows = ({ lines, drafts, isBlind }: LineRowsInput): LineRowView[] =>
   lines.map((line) => {
     const qtyText = readDraftQty(drafts, line);
     const reasonCode = readDraftReason(drafts, line);
     const qty = parseCountedQty(qtyText);
     const reason = parseVarianceReason(reasonCode);
-    const reasonRequired = isReasonRequired({ systemQty: line.systemQty, qty });
+    const reasonRequired = isReasonRequired({ isBlind, systemQty: line.systemQty, qty });
 
     return {
       line,

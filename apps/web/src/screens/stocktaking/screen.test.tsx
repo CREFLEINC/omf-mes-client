@@ -2355,7 +2355,7 @@ describe('StocktakingScreen — 위치와 라인 조회', () => {
     expect(currentLocation()).toContain(`loc=${String(LOCATION_ID)}`);
 
     await user.click(screen.getByLabelText(t.fields.location));
-    await user.click(screen.getByRole('option', { name: t.filters.all }));
+    await user.click(screen.getByRole('option', { name: t.values.locationNotChosen }));
 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('loc=');
@@ -2538,7 +2538,7 @@ describe('StocktakingScreen — 라인 초안', () => {
     await user.type(qtyField(1), '98');
 
     await user.click(screen.getByLabelText(t.fields.location));
-    await user.click(screen.getByRole('option', { name: t.filters.all }));
+    await user.click(screen.getByRole('option', { name: t.values.locationNotChosen }));
 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('loc=');
@@ -2713,6 +2713,68 @@ describe('StocktakingScreen — 블라인드 실사', () => {
     await waitForLines();
 
     expect(await screen.findByText(t.lineTable.qtyWithUom('40', UOM_LABEL))).toBeInTheDocument();
+  });
+
+  /*
+   * **리뷰 R-1(Major)이 고친 자리 — 블라인드는 열뿐 아니라 규칙에도 헤더가 정한다.**
+   *
+   * 계약에서 `systemQty`는 **필수**이고 「블라인드에서는 내려보내지 않는다」는 **설명문**뿐이다
+   * (결정 4 · 어긋남 1) — **스키마를 따르는 서버는 블라인드에서도 값을 보낸다.**
+   * 그때 줄의 값으로만 사유 필수를 끊으면 화면은 **열은 감춰 놓고 전 줄에 사유를 요구하고**,
+   * 코드 목록이 확정되지 않은 지금은 **블라인드 실사의 저장이 통째로 막힌다** —
+   * 사용자는 장부도 차이도 볼 수 없어 왜 막혔는지 화면 어디에서도 읽을 수 없다.
+   */
+  it('장부가 실려 와도 블라인드 헤더면 사유를 요구하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([
+        detailRoute(DETAIL_PATH, countDetailBody({ blindCount: true })),
+        /* **값이 실려 온다** — 열은 감춰지지만 줄에는 장부 수량이 그대로 있다. */
+        linesRoute(LINES_PATH, countLineFixtures),
+      ]),
+      AT_LOCATION,
+    );
+
+    await waitForLines();
+
+    /* 열은 헤더가 정한 대로 감춰진다. */
+    expect(within(lineTable()).queryByText(t.lineTable.systemQty)).not.toBeInTheDocument();
+
+    /* 장부(100·40·7)와 **다른** 값을 친다 — 줄로 판정하면 전 줄이 차이 있는 줄이 된다. */
+    await user.type(qtyField(1), '98');
+    await user.type(qtyField(2), '41');
+    await user.type(qtyField(3), '0');
+
+    expect(screen.queryByText(t.actionReasons.saveReasonListPending)).not.toBeInTheDocument();
+    expect(saveButton()).not.toBeDisabled();
+
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+  });
+
+  /*
+   * **짝 방향** — 같은 줄·같은 입력이 **비블라인드 헤더**에서는 사유를 요구한다.
+   * 이 단언이 없으면 「사유 판정을 통째로 없앤다」가 위 테스트를 통과한다.
+   */
+  it('같은 줄이라도 비블라인드 헤더면 사유를 요구한다', async () => {
+    const { user } = renderScreen(
+      allRoutes([
+        detailRoute(DETAIL_PATH, countDetailBody({ blindCount: false })),
+        linesRoute(LINES_PATH, countLineFixtures),
+      ]),
+      AT_LOCATION,
+    );
+
+    await waitForLines();
+
+    await user.type(qtyField(1), '98');
+    await user.type(qtyField(2), '41');
+    await user.type(qtyField(3), '0');
+
+    expect(screen.getByText(t.actionReasons.saveReasonListPending)).toBeInTheDocument();
+    expect(saveButton()).toBeDisabled();
   });
 
   it('사유 선택지가 비어 있어도 전 줄만 채우면 저장이 열린다', async () => {
@@ -3067,7 +3129,7 @@ describe('StocktakingScreen — 저장 성공', () => {
     await saveOne(user);
 
     await user.click(screen.getByLabelText(t.fields.location));
-    await user.click(screen.getByRole('option', { name: t.filters.all }));
+    await user.click(screen.getByRole('option', { name: t.values.locationNotChosen }));
 
     await waitFor(() => {
       expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
@@ -3295,6 +3357,50 @@ describe('StocktakingScreen — 저장 중 잠금', () => {
     await waitFor(() => {
       expect(currentLocation()).toContain(`ct=${String(OPENED_COUNT_ID)}`);
     });
+  });
+
+  /*
+   * **리뷰 R-4가 고친 자리 — 전송 중 주소 편집.**
+   *
+   * 전송 중 잠금은 컨트롤과 핸들러 두 겹인데 **뒤로가기·앞으로가기·주소 직접 편집은 그 둘을
+   * 다 거치지 않는다**(W-01-10 R-1이 확인 창으로 실증한 형태). 그 길로 위치가 풀리면
+   * 응답이 뒤에 도착해 **클릭 시점 클로저의 옛 위치**로 결과를 세우고, 「위치를 고르면 라인이
+   * 보입니다」 빈 상태 **아래에 앞 위치의 저장 결과**가 선다.
+   *
+   * 결과 정리 effect는 이 갈래를 잡지 못한다 — 주소가 바뀐 시점에 이미 돌았고 그때 결과는
+   * 비어 있었다(`submitSave`가 비웠다). **세우는 자리**가 대상을 한 번 더 대조해야 한다.
+   */
+  it('저장 중 주소로 위치가 풀리면 앞 위치의 결과가 서지 않는다', async () => {
+    const { requests, release, user } = await setupAtLocation(
+      allRoutes(),
+      AT_LOCATION,
+      'ct=9001',
+      isReplaceRequest,
+    );
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+
+    const detailBefore = requestsTo(requests, DETAIL_PATH).length;
+
+    /* 잠금 두 겹을 다 거치지 않는 길 — 주소만 바뀐다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.empty.noLocationTitle);
+
+    release();
+
+    /* 응답이 도착해 성공 처리가 끝난 것을 **긍정 단언**으로 기다린다(무효화가 상세를 다시 부른다). */
+    await waitFor(() => {
+      expect(requestsTo(requests, DETAIL_PATH).length).toBeGreaterThan(detailBefore);
+    });
+
+    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+    /* 짝 방향 — 화면은 「위치를 고르지 않았다」를 그대로 말하고 있다. */
+    expect(screen.getByText(t.empty.noLocationTitle)).toBeInTheDocument();
   });
 
   /*

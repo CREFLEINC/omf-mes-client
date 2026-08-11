@@ -24,9 +24,9 @@ const WIDE_TABLE_MIN_PX = 928;
 /** 「코드 · 이름」이 한 줄에 들어가는 폭(`docs/layout-conventions.md`의 선례 값). */
 const CODE_NAME_COLUMN_PX = 184;
 
-const REASON_OPTIONS: SelectOption[] = [
-  { value: 'SAMPLE_VARIANCE_REASON_D', label: 'SAMPLE_VARIANCE_REASON_D' },
-];
+const REASON_CODE = 'SAMPLE_VARIANCE_REASON_D';
+
+const REASON_OPTIONS: SelectOption[] = [{ value: REASON_CODE, label: REASON_CODE }];
 
 const toPx = (width: string | undefined): number =>
   width === undefined ? 0 : Number.parseInt(width, 10);
@@ -59,7 +59,8 @@ const lotLookup = source([{ value: '9601', label: 'LOT-2026-900010', isActive: t
 
 const lines = countLineFixtures.map(toCountLineView);
 
-const rowsOf = (drafts: LineDrafts = EMPTY_LINE_DRAFTS): LineRowView[] => toLineRows(lines, drafts);
+const rowsOf = (drafts: LineDrafts = EMPTY_LINE_DRAFTS, isBlind = false): LineRowView[] =>
+  toLineRows({ lines, drafts, isBlind });
 
 const columnsWith = (overrides: Partial<CountLineColumnsInput> = {}): Column<LineRowView>[] =>
   buildCountLineColumns({
@@ -352,7 +353,7 @@ describe('CountLineTable — 차이 칸', () => {
   it('수량이 오지 않은 줄은 그 사정을 밝힌다', () => {
     const missing = [toCountLineView(blindCountLineResponse())];
 
-    renderTable({ rows: toLineRows(missing, EMPTY_LINE_DRAFTS) });
+    renderTable({ rows: toLineRows({ lines: missing, drafts: EMPTY_LINE_DRAFTS, isBlind: false }) });
 
     expect(screen.getAllByText(t.values.qtyNotProvided)).toHaveLength(2);
   });

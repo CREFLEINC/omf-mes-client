@@ -62,7 +62,7 @@ describe('LocationField — 결과 등록의 축', () => {
     const { onChange, user } = renderField({ value: '9701' });
 
     await user.click(trigger());
-    await user.click(screen.getByRole('option', { name: t.filters.all }));
+    await user.click(screen.getByRole('option', { name: t.values.locationNotChosen }));
 
     expect(onChange).toHaveBeenCalledWith(null);
   });
