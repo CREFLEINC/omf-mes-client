@@ -139,10 +139,13 @@ export const readSelectedCountId = (params: URLSearchParams): number | null => {
 };
 
 /**
- * 고른 위치의 번호. 라인 조회와 치환 요청이 쓰는 축이며 그 자리는 PR ③에 있다.
+ * 고른 위치의 번호. 라인 조회의 `locationId`와 치환 요청이 쓰는 축이며 **그 소비처는 PR ③이다.**
  *
- * **이 PR에서도 읽는다** — 조건·쪽·실사가 바뀔 때 함께 비워지는지 주소로 판정해야 하고
- * (수명 표 1~4행), 그 규칙은 라인 표가 생기기 전에도 지켜져야 한다.
+ * **이 PR에는 이 값을 읽는 화면 코드가 없다.** 그런데도 여기 두는 것은 `loc`가 **이미 살아 있는
+ * 주소 키**이기 때문이다 — 화면이 404 정리와 실사 선택에서 이 키를 지우고(수명 표 4·6행),
+ * C04·C05가 그 비움을 판정한다. 키는 사는데 그 키를 해석하는 규칙만 없으면, `ct`와 같아야 할
+ * 규칙(양수 정수만 뜻이 있다)이 PR ③에서 따로 다시 세워지고 그때 갈릴 수 있다.
+ * 읽는 규칙을 `ct`와 **한 자리에 나란히** 두고 단위 테스트로 고정해 둔다.
  */
 export const readSelectedLocationId = (params: URLSearchParams): number | null => {
   const raw = readNumberFilter(params.get(SELECTION_KEYS.location) ?? '');

@@ -133,6 +133,22 @@ const detailRoute = (
   respond: () => jsonResponse(body),
 });
 
+/**
+ * 9003의 상세. **9001과 값이 하나도 겹치지 않는다.**
+ *
+ * 겹치면 「다른 실사를 골랐는데 앞 실사의 요약이 그대로 보인다」를 값으로 가려낼 수 없다 —
+ * 상세 캐시 키가 실사 번호를 잃으면 정확히 그 일이 난다.
+ */
+const OTHER_DETAIL_BODY = countDetailBody(
+  {
+    inventoryCountId: 9003,
+    inventoryCountNo: 'IC-2026-900013',
+    countTypeCode: 'SAMPLE_COUNT_TYPE_B',
+    plannedDate: '2026-08-07',
+  },
+  { plannedCount: 12, countedCount: 7, uncountedCount: 5, varianceCount: 3 },
+);
+
 const missingDetailRoute = (): StubRoute => ({
   match: (request) => isGet(request, MISSING_DETAIL_PATH),
   respond: () => jsonResponse({ message: '' }, { status: 404 }),
@@ -178,7 +194,7 @@ const allRoutes = (extra: StubRoute[] = []): StubRoute[] => [
   ...extra,
   listRoute(),
   detailRoute(),
-  detailRoute(OTHER_DETAIL_PATH, countDetailBody({ inventoryCountId: 9003 })),
+  detailRoute(OTHER_DETAIL_PATH, OTHER_DETAIL_BODY),
   missingDetailRoute(),
   warehousesRoute(),
   ...futureRoutes(),
@@ -257,12 +273,29 @@ const renderScreen = (
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === pathname);
 
+/**
+ * **한 실사에 매달린 경로로 나간 요청 전부.** 경로 하나만 세면 **잘못된 번호로 나간 요청이
+ * 「부르지 않았다」를 통과한다** — `enabled` 가드가 무너지면 번호 자리에 `0`이나 `undefined`가
+ * 박힌 경로로 나가는데, `/inventory/counts/9001`만 세는 단언은 그것을 보지 못한다.
+ *
+ * 계획 §5.2가 「요청 계수는 경로 전체를 센다」로 못 박은 자리이고, M13이 이미 그 형태로
+ * 구현돼 있다 — M18도 같은 잣대를 쓴다. 접두에는 상세·라인·마감이 모두 걸리며,
+ * 이 PR에서는 셋 다 0이어야 하므로 더 엄한 잣대가 맞다.
+ */
+const COUNT_SCOPED_PREFIX = '/inventory/counts/';
+
+const countScopedRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname.startsWith(COUNT_SCOPED_PREFIX));
+
 const lastQuery = (requests: RecordedRequest[], pathname: string): URLSearchParams | undefined =>
   requestsTo(requests, pathname).at(-1)?.url.searchParams;
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
 const listTable = (): HTMLElement => screen.getByRole('table');
+
+const summaryGroup = (): HTMLElement =>
+  screen.getByRole('group', { name: t.detail.summaryLabel });
 
 const selectCount = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -329,15 +362,18 @@ describe('StocktakingScreen — 첫 진입 조회', () => {
   });
 
   /*
-   * **M18** — 고른 실사가 없으면 상세를 부를 대상이 없다. `enabled`를 없애면 `ct` 없이도
-   * 상세 경로로 요청이 나간다(그 경로는 번호 없이는 만들어지지도 않는다).
+   * **M18** — 고른 실사가 없으면 상세를 부를 대상이 없다. `enabled`와 가드를 없애면 번호 자리에
+   * `0`이 박힌 경로로 요청이 나간다 — **경로 하나만 세면 그 요청이 「부르지 않았다」를 통과한다.**
+   * 그래서 실사에 매달린 경로 전체를 센다(계획 §5.2 · M13과 같은 잣대).
    */
-  it('고르지 않았으면 상세를 부르지 않는다', async () => {
+  it('고르지 않았으면 실사에 매달린 어떤 경로도 부르지 않는다', async () => {
     const { requests } = renderScreen(allRoutes());
 
     await waitForList();
 
-    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
+    expect(countScopedRequests(requests)).toHaveLength(0);
+    /* 짝 방향 — 목록은 실제로 불렀다(아무 요청도 안 나가서 통과하는 것이 아니다). */
+    expect(requestsTo(requests, LIST_PATH)).toHaveLength(1);
     expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
   });
 
@@ -621,6 +657,40 @@ describe('StocktakingScreen — 실사 고르기와 요약', () => {
     expect(requestsTo(requests, LINES_PATH)).toHaveLength(0);
   });
 
+  /*
+   * **고른 실사마다 상세 캐시가 갈린다.** 캐시 키가 실사 번호를 잃으면 다른 실사를 골라도
+   * ①새 요청이 나가지 않고 ②앞 실사의 요약 4칸이 그대로 남는다 — 그 숫자가 마감 가능
+   * 여부를 정하는 값이라(PR ④) 낡은 채로 남으면 **다른 실사의 요약을 보고 마감을 판단**하게 된다.
+   *
+   * 두 방향을 함께 단언한다 — 요청이 실제로 나갔는가, 그리고 **그 응답의 값이 보이는가.**
+   */
+  it('다른 실사를 고르면 그 실사를 새로 부르고 요약이 바뀐다', async () => {
+    const { requests, user } = renderScreen(allRoutes(), '?ct=9001');
+
+    await screen.findByRole('group', { name: t.detail.summaryLabel });
+
+    expect(within(summaryGroup()).getByText('40')).toBeInTheDocument();
+
+    await selectCount(user, 'IC-2026-900013');
+
+    await waitFor(() => {
+      expect(requestsTo(requests, OTHER_DETAIL_PATH)).toHaveLength(1);
+    });
+
+    await waitFor(() => {
+      expect(within(summaryGroup()).getByText('12')).toBeInTheDocument();
+    });
+
+    const summary = summaryGroup();
+
+    expect(within(summary).getByText('7')).toBeInTheDocument();
+    expect(within(summary).getByText('5')).toBeInTheDocument();
+    expect(within(summary).getByText('3')).toBeInTheDocument();
+    /* 앞 실사의 숫자가 한 칸이라도 남아 있으면 안 된다. */
+    expect(within(summary).queryByText('40')).not.toBeInTheDocument();
+    expect(within(summary).queryByText('25')).not.toBeInTheDocument();
+  });
+
   it('고르면 주소에 실사 번호가 실리고 쪽이 유지된다', async () => {
     const { user } = renderScreen(allRoutes([listRoute(countFixtures, { total: 120 })]), '?page=2');
 
@@ -721,7 +791,8 @@ describe('StocktakingScreen — 참조 풀이', () => {
     await selectCount(user, 'IC-2026-900011');
     await screen.findByRole('group', { name: t.detail.summaryLabel });
 
-    expect(screen.getAllByText(WAREHOUSE_LABEL)).not.toHaveLength(0);
+    /* 표의 두 줄(9001·9003)과 제목줄 하나 — 건수를 못 박아야 「이름이 보인다」가 실제 단언이 된다. */
+    expect(screen.getAllByText(WAREHOUSE_LABEL)).toHaveLength(3);
     expect(screen.getByText(t.values.unknown)).toBeInTheDocument();
 
     const panes = [
@@ -808,7 +879,7 @@ describe('StocktakingScreen — 다시 조회', () => {
    * 짝 방향 — **고른 실사가 없으면 상세를 부를 대상이 없다.** 이 단언이 없으면
    * 「전부 다시 부른다」가 「아무 때나 부른다」로 넓어져도 드러나지 않는다.
    */
-  it('고르지 않았으면 다시 조회가 상세를 부르지 않는다', async () => {
+  it('고르지 않았으면 다시 조회가 실사에 매달린 경로를 부르지 않는다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
@@ -821,7 +892,8 @@ describe('StocktakingScreen — 다시 조회', () => {
       expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(listBefore);
     });
 
-    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
+    /* 번호 자리가 무엇으로 채워지든 잡는다 — 경로 하나만 세면 `…/0`이 빠져나간다. */
+    expect(countScopedRequests(requests)).toHaveLength(0);
   });
 
   /** 아무것도 하지 않는 동안 요청이 늘지 않는다 — 이 화면은 스스로 갱신하지 않는다. */
@@ -841,10 +913,17 @@ describe('StocktakingScreen — 다시 조회', () => {
 
 describe('StocktakingScreen — 그 실사가 없을 때', () => {
   /*
-   * **C15** — 상세가 404면 주소에서 고른 실사와 위치를 정리하고, **무엇이 왜 사라졌는지**를
-   * 안내로 남긴다. 정리만 하고 말하지 않으면 「아직 고르지 않았다」와 구분되지 않는다.
+   * **C15 · 정정 1-2의 「404 안내」 열** — 상세가 404면 주소에서 고른 실사와 위치를 정리하고,
+   * **무엇이 왜 사라졌는지**를 안내로 남긴다.
+   *
+   * **정리가 끝난 뒤에 판정한다.** 정리 전 렌더에서는 상세가 404라는 사실만으로도 안내가
+   * 그려지므로, 그 시점에 `findByText`로 해소되는 단언은 **안내의 수명을 재지 못한다** —
+   * 안내 상태를 세우지 않아도(또는 세우고 곧바로 지워도) 통과한다.
+   * 지켜야 하는 것은 「`ct`가 사라진 뒤에도 안내가 남는가」이고, 그 짝이 「미선택 문구가
+   * 나오지 않는가」다. 주소를 지운 뒤 「아직 고르지 않았다」로 되돌아가면 사용자는 자기가
+   * 무엇을 눌렀는지 되짚을 수 없다.
    */
-  it('상세가 404면 고른 실사·위치를 주소에서 정리하고 안내한다', async () => {
+  it('상세가 404면 주소를 정리하고 그 뒤에도 안내가 남는다', async () => {
     renderScreen(allRoutes(), '?wh=9101&ct=9999&loc=9701');
 
     await screen.findByText(t.empty.notFoundTitle);
@@ -852,13 +931,19 @@ describe('StocktakingScreen — 그 실사가 없을 때', () => {
     await waitFor(() => {
       expect(currentLocation()).toBe(`${ROUTE}?wh=9101`);
     });
+
+    expect(screen.getByText(t.empty.notFoundTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
   });
 
   /*
    * **M20** — 정리를 클릭 핸들러에 두면 **뒤로가기·앞으로가기·주소 직접 편집이 통째로 샌다.**
    * 화면 바깥에서 주소만 갈아 끼워 그 경로를 만든다.
+   *
+   * 여기서도 **정리가 끝난 뒤**에 안내의 잔존을 함께 본다 — 두 경로(첫 진입·주소 편집)가
+   * 같은 수명을 지켜야 한다.
    */
-  it('주소만 바뀌어 없는 실사를 가리켜도 정리된다', async () => {
+  it('주소만 바뀌어 없는 실사를 가리켜도 정리되고 안내가 남는다', async () => {
     const { user } = renderScreen(allRoutes(), '', 'ct=9999');
 
     await waitForList();
@@ -870,6 +955,9 @@ describe('StocktakingScreen — 그 실사가 없을 때', () => {
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
     });
+
+    expect(screen.getByText(t.empty.notFoundTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
   });
 
   /* 정리한 뒤 다른 실사를 고르면 앞의 안내를 거둔다 — 남으면 요약 옆에 「없습니다」가 함께 선다. */

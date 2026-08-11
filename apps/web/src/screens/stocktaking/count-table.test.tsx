@@ -109,10 +109,14 @@ describe('CountTable — 값 표기', () => {
 
     const table = screen.getByRole('table');
 
+    /*
+     * **건수를 못 박는다.** `getAllByText`는 0건이면 스스로 던지므로 「0건이 아니다」는 늘 참이라
+     * 아무것도 재지 못한다 — 픽스처 세 줄 중 몇 줄이 그 값을 갖는지가 실제 단언이다.
+     */
     expect(within(table).getByText('IC-2026-900011')).toBeInTheDocument();
-    expect(within(table).getAllByText('SAMPLE_COUNT_TYPE_A')).not.toHaveLength(0);
-    expect(within(table).getAllByText('2026-08-06')).not.toHaveLength(0);
-    expect(within(table).getAllByText('SAMPLE_COUNT_STATUS_A')).not.toHaveLength(0);
+    expect(within(table).getAllByText('SAMPLE_COUNT_TYPE_A')).toHaveLength(2);
+    expect(within(table).getAllByText('2026-08-06')).toHaveLength(2);
+    expect(within(table).getAllByText('SAMPLE_COUNT_STATUS_A')).toHaveLength(2);
   });
 
   /* **C18** — 참·거짓이 읽히는 말로 나온다. `true`/`false`가 그대로 나오면 값이 읽히지 않는다. */
@@ -121,7 +125,8 @@ describe('CountTable — 값 표기', () => {
 
     const table = screen.getByRole('table');
 
-    expect(within(table).getAllByText('아니오')).not.toHaveLength(0);
+    /* 세 줄 중 둘이 블라인드가 아니고 하나가 블라인드다 — 건수까지 못 박는다. */
+    expect(within(table).getAllByText('아니오')).toHaveLength(2);
     expect(within(table).getByText('예')).toBeInTheDocument();
     expect(within(table).queryByText('true')).not.toBeInTheDocument();
     expect(within(table).queryByText('false')).not.toBeInTheDocument();
