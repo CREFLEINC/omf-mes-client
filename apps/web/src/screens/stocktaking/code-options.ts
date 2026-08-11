@@ -82,6 +82,20 @@ export const toCodeOptionSets = (values: CodeValueLists): CodeOptionSets => ({
 export const isCountTypeListPending = (sets: CodeOptionSets): boolean =>
   sets.countType.length === 0;
 
+/**
+ * 차이 사유를 **고를 수 있는가** — 조건부 필수라 잠기는 범위가 개시와 다르다(승인 G1).
+ *
+ * 이 값이 참이어도 **막히는 것은 차이가 있는 줄이 있는 위치뿐이다.** 차이가 없는 위치는
+ * 사유가 필요 없어 그대로 저장된다 — 그 갈림을 판정하는 자리는 `line-replace-request.ts`이고,
+ * 여기는 「고를 값이 있는가」만 답한다.
+ *
+ * **`countType`과 한 함수로 묶지 않는다.** 묶으면 실사 유형이 확정되지 않은 동안 차이 없는
+ * 위치의 저장까지 막히고, 반대로 차이 사유만 확정되면 개시가 열리는 것처럼 보인다 —
+ * 두 코드의 필수도가 다르다는 사실이 판정 함수의 개수로 드러나야 한다.
+ */
+export const isVarianceReasonListPending = (sets: CodeOptionSets): boolean =>
+  sets.varianceReason.length === 0;
+
 /** 선택지가 왜 비어 있는지 밝히는 안내. **차면 거둔다** — 남으면 화면이 거짓말을 한다. */
 export const codeNote = (options: readonly SelectOption[]): string | undefined =>
   options.length === 0 ? messages.pendingCode.note : undefined;

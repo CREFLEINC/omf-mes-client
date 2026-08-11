@@ -7,8 +7,8 @@ import { messages } from '@omf-mes/i18n';
  * `api-client`는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이 유지된다.
  *
  * 이 화면은 **실사 전표를 읽고 쓴다.** 읽기는 `GET /inventory/counts`·같은 경로의 상세와
- * `/lines`·창고·위치이고, 쓰기는 개시·라인 치환·마감 셋이다(PR ②~④).
- * **이 PR은 읽기까지다** — 쓰기 요청을 만드는 자리가 이 슬라이스에 아직 없다.
+ * `/lines`·참조 다섯이고, 쓰기는 개시·라인 치환·마감 셋이다.
+ * **이 PR까지 쓰기 둘이 섰다** — 마감(PR ④)만 남았다.
  *
  * 이 파일은 이 화면이 소유한다. **다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다** —
  * 형태가 같아도 리소스 이름이 박힌 타입을 공유하면 한 화면의 계약 변화가 다른 화면을 끌고 간다.
@@ -140,6 +140,21 @@ export const toCountLineView = (data: InventoryCountLineResponse): CountLineView
 /** 목록 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */
 export interface CountListResult {
   items: CountView[];
+  page: PageMeta;
+}
+
+/**
+ * 한 위치의 라인 조회 결과.
+ *
+ * **`page`를 쪽 이동에 쓰지 않는다** — 이 표에는 쪽이 없다. 한 위치는 한 번에 받아야 하고
+ * (치환이 위치 전체를 덮으므로) `page.total`은 **전건을 받았는지 재는 데만** 쓴다
+ * (`line-replace-request.ts`의 잘림 판정 · 계획 결정 8).
+ *
+ * **치환 응답도 같은 모양이다** — 그래서 저장 결과의 「치환한 줄」이 **서버가 되돌려 준 배열의
+ * 길이**가 된다.
+ */
+export interface CountLineListResult {
+  items: CountLineView[];
   page: PageMeta;
 }
 

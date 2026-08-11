@@ -5,10 +5,13 @@ import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
 import type { CountFilterQuery } from './filters';
+import { LOCATION_LINE_PAGE_SIZE } from './line-replace-request';
 import {
   toCountDetailView,
+  toCountLineView,
   toCountView,
   type CountDetailView,
+  type CountLineListResult,
   type CountListResult,
 } from './types';
 import { OPEN_FORM_FIELDS } from './validation';
@@ -25,8 +28,8 @@ import { OPEN_FORM_FIELDS } from './validation';
  * | 「이 위치 실사 완료」 | `PUT …/lines` — **파괴적 치환** | ③ |
  * | 「마감」 확인 | `POST …:close` — **되돌릴 수 없다** | ④ |
  *
- * **이 PR은 읽기 둘과 쓰기 하나까지다.** 쓰기 셋은 잠금 규약이 서로 달라(**없음** / 선택 /
- * 필수) 각각의 PR에서 배선한다 — 여기 있는 개시가 그중 잠금이 **없는** 하나다.
+ * **이 PR은 읽기 셋과 쓰기 둘까지다.** 쓰기 셋은 잠금 규약이 서로 달라(**없음** / 선택 /
+ * 필수) 각각의 PR에서 배선한다 — 개시가 잠금이 **없는** 하나이고, 치환이 **선택**인 하나다.
  *
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
  * 문자열 변수로 넘기면 타입 검사가 풀린다.
@@ -60,6 +63,12 @@ export const countKeys = {
   /** 상세는 **실사마다** 갈린다 — 다른 실사를 골랐다가 되돌아와도 캐시가 그대로다. */
   detail: (inventoryCountId: number | null) =>
     ['inventory-counts', 'detail', inventoryCountId] as const,
+  /** 한 실사의 라인 전부. **치환 성공 뒤 이 앞머리로 한 번에 무효화한다.** */
+  linesOf: (inventoryCountId: number | null) =>
+    ['inventory-counts', 'lines', inventoryCountId] as const,
+  /** 라인은 **실사와 위치 둘 다로** 갈린다 — 위치를 옮겼다 되돌아와도 앞 위치의 줄이 안 보인다. */
+  lines: (inventoryCountId: number | null, locationId: number | null) =>
+    ['inventory-counts', 'lines', inventoryCountId, locationId] as const,
 };
 
 const fetchInventoryCounts = async (
@@ -151,8 +160,65 @@ export const isCountNotFound = (error: unknown): boolean => {
   return apiError.kind === 'http' && apiError.status === 404;
 };
 
+const fetchInventoryCountLines = async (
+  client: Client,
+  inventoryCountId: number,
+  locationId: number,
+): Promise<CountLineListResult> => {
+  const data = await runRequest(() =>
+    client.GET('/inventory/counts/{inventoryCountId}/lines', {
+      params: {
+        path: { inventoryCountId },
+        /*
+         * **좁히는 조건을 만들지 않는다**(계획 결정 6 · 감지기 M44). 계약에
+         * `uncountedOnly`·`varianceOnly`·`itemId`가 있으나 그 조건으로 받은 목록을 치환에
+         * 실으면 **나머지가 미실사로 되돌아간다** — 조건을 쓰는 자리가 없으면 그 사고 경로가
+         * 코드에 없다.
+         *
+         * `size`를 싣는 것은 **이 조회 하나뿐이다**(목록은 서버 기본값을 쓴다). 한 위치는
+         * 한 번에 받아야 하기 때문이며, 그래도 잘리면 저장을 차단한다(계획 결정 8).
+         */
+        query: { locationId, size: LOCATION_LINE_PAGE_SIZE },
+      },
+    }),
+  );
+
+  return { items: data.items.map(toCountLineView), page: data.page };
+};
+
+/**
+ * 고른 위치의 라인.
+ *
+ * **실사와 위치가 둘 다 있어야 조회가 성립한다**(완료 조건 C31 · 감지기 M33). 하나라도 없으면
+ * 부르지 않는다 — 「조회가 성립하지 않는데 하위 요청만 나가 스켈레톤에 갇힌다」(W-01-07 Minor)를
+ * 막는 자리이고, `?? 0` 같은 대체값으로 메우면 **없는 실사·위치의 경로로 요청이 나간다.**
+ *
+ * **응답 갈래가 200뿐이다**(실측) — 이 오퍼레이션에는 403도 404도 없다. 그래도 배너는 갈래를
+ * 갖는다: 계약에 없다는 것이 게이트웨이가 막지 않는다는 뜻은 아니다.
+ */
+export const useInventoryCountLines = (
+  inventoryCountId: number | null,
+  locationId: number | null,
+): UseQueryResult<CountLineListResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: countKeys.lines(inventoryCountId, locationId),
+    enabled: inventoryCountId !== null && locationId !== null,
+    queryFn: () => {
+      if (inventoryCountId === null || locationId === null) {
+        throw new Error('실사와 위치를 고르기 전에는 라인을 조회하지 않습니다.');
+      }
+
+      return fetchInventoryCountLines(client, inventoryCountId, locationId);
+    },
+  });
+};
+
 type InventoryCountCreate = components['schemas']['InventoryCountCreate'];
 type InventoryCountDetailResponse = components['schemas']['InventoryCountDetailResponse'];
+type InventoryCountLineReplace = components['schemas']['InventoryCountLineReplace'];
+type InventoryCountLineListResponse = components['schemas']['InventoryCountLineListResponse'];
 
 export interface InventoryCountOpenOptions {
   /** 만들어진 실사. **화면 타입으로 옮겨 넘긴다** — 계약 응답이 화면 코드로 새지 않는다. */
@@ -196,6 +262,73 @@ export const useInventoryCountOpen = (
     knownFields: OPEN_FORM_FIELDS,
     onSuccess: (data) => {
       options.onSuccess(toCountDetailView(data));
+    },
+  });
+};
+
+export interface InventoryCountLineReplaceOptions {
+  /** 어느 실사의 라인인가. **없으면 보낼 수 없다** — 경로 조각이라 지어낼 수 없다. */
+  inventoryCountId: number | null;
+  /** 치환 결과. **서버가 되돌려 준 줄**을 화면 타입으로 옮겨 넘긴다. */
+  onSuccess: (result: CountLineListResult) => void;
+}
+
+/**
+ * 한 위치의 라인 치환 — **이 화면의 둘째 쓰기이고 파괴적이다.**
+ *
+ * 계약이 「여기 없는 기존 라인은 미실사로 되돌린다」라 적었다. 되돌릴 수 **있는** 유일한 쓰기이나
+ * (같은 위치를 다시 치환하면 된다) 그 되돌림도 **무엇이 사라졌는지 알아야** 할 수 있다 —
+ * 그래서 전 줄 필수·잘림 차단·빈 배열 금지가 `line-replace-request.ts`에 겹으로 서 있다.
+ *
+ * **낙관적 잠금이 선택이다**(`IfMatchVersionOptional` — 실측). 세 쓰기 중 이 하나만 그렇다:
+ * 개시에는 `If-Match`가 아예 없고 마감은 필수다. 계약이 그 이유도 적었다 — 「오프라인에서도
+ * 쓰는 오퍼레이션에서는 선택이다. 큐에 쌓인 요청은 토큰을 싣지 않는다」(현장 단말이 같은
+ * 경로를 쓴다).
+ *
+ * **그래서 공통 훅의 `etagPath`를 쓰지 않는다.** 그 규약은 「없으면 보내지 않고 멈춘다」
+ * (`staleToken`)인데, 여기서는 **없어도 보내는 것이 계약이 정한 동작**이다(완료 조건 C46).
+ * 대신 요청 함수가 보관소를 직접 보고 **있으면 싣는다** — 훅을 고치면 `patterns/` 변경이라
+ * 높은 위험이고 다른 소비 화면 10여 개가 함께 바뀐다(계획 결정 16).
+ *
+ * **화면이 아는 필드 이름이 없다**(`knownFields: []`). 계약이 줄마다의 오류를 어떤 이름으로
+ * 주는지 정하지 않았고(실측), 지어내 맞추면 **엉뚱한 줄에 붙는다** — 표 안 입력칸은 줄마다
+ * 있어 한 칸만 틀려도 사용자가 다른 줄을 고친다. 전부 배너로 올려 서버 문구를 그대로 낸다.
+ *
+ * **성공 뒤 상세와 라인을 함께 무효화한다**(승인 13-7 · 감지기 M47). 치환 200 응답에 `ETag`가
+ * 없어(실측) 마감의 `If-Match`가 낡고, 요약 4칸도 낡는다 — 상세를 다시 읽는 한 번이 둘을 다
+ * 해결한다. 라인만 다시 부르면 **요약이 낡은 채로 마감 버튼의 활성 여부를 정한다**(PR ④).
+ */
+export const useInventoryCountLineReplace = (
+  options: InventoryCountLineReplaceOptions,
+): MasterWriteResult<InventoryCountLineReplace> => {
+  const { client, etags } = useApiClient();
+  const { inventoryCountId } = options;
+
+  return useMasterWrite<InventoryCountLineReplace, InventoryCountLineListResponse>({
+    request: (body, headers) => {
+      if (inventoryCountId === null) {
+        throw new Error('실사를 고르기 전에는 라인을 치환하지 않습니다.');
+      }
+
+      /* 토큰은 **상세 조회가 남긴 것**이다 — 치환·마감 응답에는 `ETag`가 없다(실측). */
+      const ifMatch = etags.ifMatch(`/inventory/counts/${String(inventoryCountId)}`);
+
+      return client.PUT('/inventory/counts/{inventoryCountId}/lines', {
+        params: {
+          path: { inventoryCountId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            ...(ifMatch === undefined ? {} : { 'If-Match': ifMatch }),
+          },
+        },
+        body,
+      });
+    },
+    etagPath: null,
+    invalidateKeys: [countKeys.detail(inventoryCountId), countKeys.linesOf(inventoryCountId)],
+    knownFields: [],
+    onSuccess: (data) => {
+      options.onSuccess({ items: data.items.map(toCountLineView), page: data.page });
     },
   });
 };

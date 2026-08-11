@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -22,10 +22,15 @@ import type { LookupEntry, PageMeta } from './types';
  * | 단위 | `/mdm/uoms` | 라인 표의 수량 표기 | **아래 구획** | **위치를 고른 뒤** | ③ |
  * | 자재 LOT | `/trace/lots?itemId=` | 라인 표의 칸 | **아래 구획** | **위치를 고른 뒤** | ③ |
  *
- * **이 PR이 부르는 참조는 창고 하나다.** 나머지 넷은 보이는 자리가 전부 PR ③의 부품이라
- * 지금 부르면 아무도 읽지 않는 요청이 되고, 훅만 두면 아무도 부르지 않는 코드가 된다 —
- * 어느 쪽도 「닿을 수 없는 가지를 만들지 않는다」(계획 §5.2)에 어긋난다. 표는 전체를 적어
- * 두어 **뒤 PR이 이 자리에 붙는다**는 것이 이 파일에서 읽히게 한다.
+ * **다섯이 다 섰다.** 「언제 부르나」가 셋으로 갈리는 것이 이 표의 요점이다 —
+ * 이름이 나타나는 **시점**이 다르기 때문이다. 창고는 목록 응답만으로 곧바로 그려지고,
+ * 위치 선택칸은 실사를 골라 **창고를 알아야** 부를 수 있으며(계약이 `warehouseId`를 필수로
+ * 요구한다), 라인 표의 칸 셋은 **라인 응답이 와야** 그려진다 — 라인을 기다리는 동안 도착할
+ * 여유가 있어 미리 받을 이득이 없고 첫 진입의 요청 수만 이유 없이 는다.
+ *
+ * **복구 버튼의 자리도 갈린다.** 위치는 못 받으면 라인 표 자체가 열리지 않으므로 복구가
+ * **위치 선택칸**에 붙고, 나머지 셋은 표 아래에 붙는다 — 표 아래에 몰면 위치 실패는
+ * **보이지도 않는 실패의 복구 버튼**이 된다(W-01-10이 공장에서 겪은 자리).
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
@@ -126,8 +131,24 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
   return undefined;
 };
 
+/**
+ * 자재 LOT 조회의 쪽 크기.
+ *
+ * **다섯 참조 중 여기에만 쪽 크기를 싣는다.** 나머지 넷은 기준정보라 서버 기본값으로 충분하다.
+ * **이 값에는 계약 근거가 없다** — `size`에 `maximum`이 없어(실측) 화면이 정한 완화값이며
+ * 보장이 아니다. 자재 LOT은 다섯 중 유일한 **거래 기록**이라 한 품목의 LOT이 시간이 갈수록
+ * 쌓인다 — 그래도 잘리면 `truncated`가 그 사실을 밝힌다(라인 표의 안내).
+ */
+export const LOT_PAGE_SIZE = 200;
+
 export const lookupKeys = {
   warehouses: ['stocktaking-lookups', 'warehouses'] as const,
+  /** 위치는 **창고마다** 캐시가 갈린다 — 계약이 창고를 필수 조건으로 요구한다. */
+  locations: (warehouseId: number) => ['stocktaking-lookups', 'locations', warehouseId] as const,
+  items: ['stocktaking-lookups', 'items'] as const,
+  uoms: ['stocktaking-lookups', 'uoms'] as const,
+  /** LOT은 **품목마다** 캐시가 갈린다 — 한 요청이 한 품목의 LOT만 담기 때문이다. */
+  lots: (itemId: number) => ['stocktaking-lookups', 'lots', itemId] as const,
 };
 
 /**
@@ -165,6 +186,167 @@ export const useWarehouseLookup = (): LookupResult => {
     isLoading: query.isPending,
     refetch: () => {
       void query.refetch();
+    },
+  };
+};
+
+/**
+ * 위치 — **결과 등록의 축이고, 실사를 고른 뒤에만 부를 수 있다.**
+ *
+ * 계약이 `warehouseId`를 **필수 쿼리**로 요구한다(실측) — 창고를 모르면 요청 자체가
+ * 성립하지 않으므로 실사 상세가 도착해 창고를 알기 전에는 부르지 않는다. 「조회가 성립하지
+ * 않는데 하위 요청만 나가 스켈레톤에 갇힌다」(W-01-07 Minor)를 구조로 막는 자리다.
+ *
+ * **미사용 위치를 빼지 않고 표식만 붙인다.** 지금은 쓰지 않는 위치에 남은 재고를 세는 것이
+ * 실사의 목적 중 하나라, 빼면 그 위치의 라인을 볼 방법이 사라진다.
+ */
+export const useLocationLookup = (warehouseId: number | null): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.locations(warehouseId ?? 0),
+    enabled: warehouseId !== null,
+    queryFn: () => {
+      if (warehouseId === null) {
+        throw new Error('창고를 알기 전에는 위치를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/locations', {
+          params: { query: { warehouseId, includeInactive: true } },
+        }),
+      );
+    },
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.locationId),
+        label: `${item.locationCode} · ${item.locationName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: warehouseId !== null && query.isPending,
+    refetch: () => {
+      void query.refetch();
+    },
+  };
+};
+
+/**
+ * 품목 — 라인 표의 품목 칸이 쓴다.
+ *
+ * **위치를 고르기 전에는 부르지 않는다**(`enabled`) — 단위·LOT과 **같은 부품·같은 시점**이다.
+ * 이름이 필요한 라인 표 자체가 라인 응답을 기다리므로 미리 받아 둘 이득이 없다.
+ */
+export const useItemLookup = (enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.items,
+    enabled,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/items', { params: { query: { includeInactive: true } } })),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.itemId),
+        label: `${item.itemCode} · ${item.itemName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: enabled && query.isPending,
+    refetch: () => {
+      void query.refetch();
+    },
+  };
+};
+
+/** 단위 — 라인 표의 **수량 표기**에서만 보인다(단위 열을 따로 두지 않는다). */
+export const useUomLookup = (enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.uoms,
+    enabled,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.uomId),
+        label: `${item.uomCode} · ${item.uomName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: enabled && query.isPending,
+    refetch: () => {
+      void query.refetch();
+    },
+  };
+};
+
+/**
+ * 자재 LOT — 라인 표의 LOT 칸이 쓴다.
+ *
+ * **번호 여러 개로 한 번에 조회하는 수단이 계약에 없다**(실측: `/trace/lots`의 조건은
+ * `itemId`·`plantId`·`statusCode`·`q` 등이고 번호 목록을 받는 조건이 없다). 그래서
+ * **라인이 가리키는 품목마다 한 번씩 받아 번호로 맞춘다**(W-01-07·W-01-10이 세운 형태).
+ *
+ * 품목으로 좁히지 않고 전체를 받으면 첫 쪽에 없는 LOT이 전부 「목록에 없음」이 되어
+ * **정상 값이 잘못된 값으로 보인다**(#47이 금지한 표기).
+ */
+export const useLotLookup = (itemIds: readonly number[], enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  /*
+   * 같은 품목의 줄이 여럿이면 요청도 여러 번 나간다 — 중복을 먼저 없앤다.
+   * 정렬은 캐시 키를 안정시키려는 것이 아니라(키는 품목마다 따로다) 요청 순서를 읽기 쉽게 둔다.
+   */
+  const uniqueItemIds = [...new Set(itemIds)].sort((left, right) => left - right);
+
+  const results = useQueries({
+    queries: uniqueItemIds.map((itemId) => ({
+      queryKey: lookupKeys.lots(itemId),
+      enabled,
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/trace/lots', { params: { query: { itemId, size: LOT_PAGE_SIZE } } }),
+        ),
+    })),
+  });
+
+  const loaded = results.flatMap((result) => (result.data === undefined ? [] : [result.data]));
+
+  return {
+    entries: loaded.flatMap((data) =>
+      data.items.map((item) => ({
+        value: String(item.lotId),
+        label: item.lotNo,
+        /* LOT에는 사용 여부 필드가 없다 — 폐기·소진은 `statusCode`가 나르며 그것은 표식이 아니다. */
+        isActive: true,
+      })),
+    ),
+    truncated: loaded.some((data) => isTruncated(data.page, data.items.length)),
+    /* 하나라도 실패하면 실패다 — 일부만 받은 목록으로 「목록에 없음」을 판정할 수 없다. */
+    isError: results.some((result) => result.isError),
+    isLoading: enabled && results.some((result) => result.isPending),
+    refetch: () => {
+      for (const result of results) void result.refetch();
     },
   };
 };

@@ -5,6 +5,7 @@ import {
   codeNote,
   codePlaceholder,
   isCountTypeListPending,
+  isVarianceReasonListPending,
   PLACEHOLDER_STOCKTAKING_CODES,
   toCodeOptionSets,
 } from './code-options';
@@ -119,6 +120,37 @@ describe('isCountTypeListPending — 개시가 통째로 막히는가', () => {
         }),
       ),
     ).toBe(true);
+  });
+});
+
+describe('isVarianceReasonListPending — 차이 사유를 고를 수 있는가', () => {
+  /* **M40 · 승인 G1** — 지금은 고를 값이 없다. 막히는 범위는 차이가 있는 위치뿐이다. */
+  it('지금의 자리표시로는 고를 값이 없다', () => {
+    expect(isVarianceReasonListPending(toCodeOptionSets(PLACEHOLDER_STOCKTAKING_CODES))).toBe(true);
+  });
+
+  it('차이 사유가 차면 고를 수 있다', () => {
+    expect(
+      isVarianceReasonListPending(
+        toCodeOptionSets({ countType: [], status: [], varianceReason: ['SAMPLE_VARIANCE_REASON_A'] }),
+      ),
+    ).toBe(false);
+  });
+
+  /**
+   * **두 판정이 서로 갈린다.** 묶으면 실사 유형이 확정되지 않은 동안 차이 없는 위치의 저장까지
+   * 막히고, 반대로 차이 사유만 확정되면 개시가 열리는 것처럼 보인다 — 필수도가 다르다는 사실이
+   * 판정 함수의 개수로 드러나야 한다.
+   */
+  it('실사 유형만 차 있으면 차이 사유는 여전히 비어 있다', () => {
+    const sets = toCodeOptionSets({
+      countType: ['SAMPLE_COUNT_TYPE_A'],
+      status: [],
+      varianceReason: [],
+    });
+
+    expect(isCountTypeListPending(sets)).toBe(false);
+    expect(isVarianceReasonListPending(sets)).toBe(true);
   });
 });
 

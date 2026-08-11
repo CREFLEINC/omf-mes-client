@@ -7,10 +7,12 @@ import { useSearchParams } from 'react-router';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
   isCountTypeListPending,
+  isVarianceReasonListPending,
   PLACEHOLDER_STOCKTAKING_CODES,
   toCodeOptionSets,
 } from './code-options';
 import { CountFilterBar } from './count-filter-bar';
+import { CountLineTable } from './count-line-table';
 import { CountTable } from './count-table';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import {
@@ -19,17 +21,37 @@ import {
   readFilters,
   readPage,
   readSelectedCountId,
+  readSelectedLocationId,
   SELECTION_KEYS,
   toFilterQuery,
   toSearchParams,
   type ChipFilterKey,
   type CountFilters,
 } from './filters';
+import { HistoryPane } from './history-pane';
+import {
+  EMPTY_LINE_DRAFTS,
+  hasAnyLineDraftValue,
+  setDraftQty,
+  setDraftReason,
+  type LineDrafts,
+} from './line-draft';
+import {
+  isLinesTruncated,
+  replaceBlockReason,
+  toLineReplace,
+  toLineRows,
+} from './line-replace-request';
 import { LoadErrorBanner } from './load-error-banner';
+import { LocationField } from './location-field';
 import {
   describeReference,
   lookupNote,
   toReference,
+  useItemLookup,
+  useLocationLookup,
+  useLotLookup,
+  useUomLookup,
   useWarehouseLookup,
   type LookupResult,
 } from './lookups';
@@ -41,12 +63,20 @@ import { toPageView } from './pagination';
 import {
   isCountNotFound,
   useInventoryCountDetail,
+  useInventoryCountLineReplace,
+  useInventoryCountLines,
   useInventoryCountOpen,
   useInventoryCounts,
 } from './queries';
 import { ResultPane } from './result-pane';
 import { SummaryPane } from './summary-pane';
-import { describeBlindCount, type CountView, type ResultView, type SelectOption } from './types';
+import {
+  describeBlindCount,
+  type CountLineView,
+  type CountView,
+  type ResultView,
+  type SelectOption,
+} from './types';
 import { openBlockReason, OPEN_FIELD_NAMES, validateOpenDraft } from './validation';
 
 const t = messages.stocktaking;
@@ -54,18 +84,32 @@ const t = messages.stocktaking;
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: CountView[] = [];
 
+/** 같은 이유로 라인도 고정 참조를 쓴다 — 이 배열이 참조 조회의 입력이 된다. */
+const EMPTY_LINES: CountLineView[] = [];
+
+/** 어느 초안을 버리려는가. `null`이면 파기 확인 창이 닫혀 있다. */
+type DiscardTarget = 'open' | 'lines';
+
 /** 같은 이유로 오류 없음도 고정 참조를 쓴다. */
 const NO_FIELD_ERRORS: Record<string, string> = {};
 
 /**
- * 결과 구획에 보이는 것과, 그것이 **어느 실사에 대한 것인가**.
+ * 결과 구획에 보이는 것과, 그것이 **어느 실사·어느 위치에 대한 것인가**.
  *
- * 번호는 화면에 나오지 않는다(#44) — 결과가 지금 보는 실사의 것인지 가리는 데만 쓴다.
+ * 번호는 화면에 나오지 않는다(#44) — 결과가 지금 보는 대상의 것인지 가리는 데만 쓴다.
  * 이 짝이 없으면 대상이 바뀐 뒤에도 앞 결과가 남아, 사용자는 방금 고른 실사가 방금 개시된
  * 것이라고 읽는다.
+ *
+ * **축이 둘인 것이 PR ③에서 실물이 됐다**(수명 표 5행 — 위치를 바꾸면 결과 구획을 비운다).
+ * PR ②에는 `loc`가 없어 실사 하나로 충분했는데, 위치가 생기자 **같은 실사 안에서 위치만
+ * 옮기는 조작**이 가능해졌다 — 축을 늘리지 않으면 앞 위치의 저장 결과가 새 위치의 라인 표
+ * 아래에 그대로 서 있다.
+ *
+ * 개시 결과는 `locationId`가 `null`이다 — 개시 성공이 `loc`를 비우므로(11행) 짝이 맞는다.
  */
 interface ResultState {
-  inventoryCountId: number;
+  inventoryCountId: number | null;
+  locationId: number | null;
   view: ResultView;
 }
 
@@ -88,10 +132,9 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 배치는 상하로 쌓는다 — 위: 조건 줄과 실사 목록 / 아래: 고른 실사의 제목줄과 요약 4칸.
  * 조회 조건과 고른 실사·위치는 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
  *
- * **이 PR은 읽기까지다.** 개시(PR ②) · 결과 등록(PR ③) · 마감(PR ④)이 이 컨테이너에 차례로
- * 붙는다. 그때까지 **라우트·사이드바에 등록하지 않는다**(정책 §5.2 — 접근 불가능한 경계):
- * 실사를 개시할 수도 마감할 수도 없는 「재고실사」 화면을 노출하면 미완성 기능을 사용자에게
- * 내보이는 것이다.
+ * **이 PR까지 개시(②)와 결과 등록(③)이 섰고 마감(④)이 남았다.** 그때까지 **라우트·사이드바에
+ * 등록하지 않는다**(정책 §5.2 — 접근 불가능한 경계): 실사를 마감할 수 없는 「재고실사」 화면을
+ * 노출하면 마감 없는 전표가 쌓인다.
  *
  * ---
  *
@@ -105,8 +148,8 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * | 단계 | 아는 근거 | 보이는 것 | 할 수 있는 것 | 주소 | PR |
  * | :-: | --- | --- | --- | --- | :-: |
  * | **S0** 고르기 전 | `ct`가 없다 | 조건 줄 · 실사 목록 · 쪽 이동 (+개시 구획) | 조회 · 초기화 · 쪽 이동 · 실사 고르기 (+개시) | `?wh&from&to&ty&st&prog&page` | ① (+②) |
- * | **S1** 실사를 골랐다 | `ct`가 있고 **상세가 200** | 위 + 제목줄 · **요약 4칸** (+위치 선택칸 · 마감 · 이력) | 위 + 다시 조회 (+위치 고르기 · 마감) | `+&ct` | ① (+③④) |
- * | **S2** 위치를 골랐다 | `ct`·`loc`가 있고 라인이 도착했다 | 위 + 라인 표 | 위 + 실물·사유 입력 · 저장 | `+&loc` | ③ |
+ * | **S1** 실사를 골랐다 | `ct`가 있고 **상세가 200** | 위 + 제목줄 · **요약 4칸** · 위치 선택칸 · 이력 구획(비활성) (+마감) | 위 + 다시 조회 · 위치 고르기 (+마감) | `+&ct` | ①③ (+④) |
+ * | **S2** 위치를 골랐다 | `ct`·`loc`가 있고 라인이 도착했다 | 위 + **라인 표(실물 수량·차이 사유 입력)** · 치환 안내 | 위 + 실물·사유 입력 · **이 위치 실사 완료** · 취소 | `+&loc` | ③ |
  * | **S3** 이번 세션에서 마감했다 | **이 화면의 마감 성공 결과** | 위 + 마감 결과 | **조회만** | `ct` 유지 | ④ |
  * | **S4** 그 실사가 없다 | **상세가 404** | 안내 「고른 실사를 찾을 수 없습니다」 | 다시 고르기 | `ct`·`loc` 제거 | ① |
  *
@@ -130,8 +173,10 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
 export const StocktakingScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  /** 「실사 개시」의 비활성 사유를 버튼에 잇는 id(배치 규범 4). */
-  const openReasonId = `${useId()}-open-reason`;
+  /** 두 액션의 비활성 사유를 각 버튼에 잇는 id(배치 규범 4). 한 뿌리에서 갈라 쓴다. */
+  const reasonIdRoot = useId();
+  const openReasonId = `${reasonIdRoot}-open-reason`;
+  const saveReasonId = `${reasonIdRoot}-save-reason`;
 
   /**
    * **무엇이 바뀔 때 무엇을 비우는가 — 수명 표**(계획 결정 3).
@@ -140,11 +185,11 @@ export const StocktakingScreen = () => {
    * 비대칭이 생긴다(조건을 바꾸면 아래 구획이 닫히는데 쪽을 옮기면 안 닫히는 식).
    *
    * **표는 화면 전체(PR ①~④)의 것이고, ★ 열이 이 PR까지 실물로 있는 상태다.**
-   * 나머지 열(라인 초안·마감 플래그)은 뒤 PR에서 생기며, 그때 이 표에 행을 더하지 않아도
-   * 되도록 지금 함께 적어 둔다. **열아홉째 조작이 생기면 행을 먼저 더하고, 열이 생겨도
-   * 마찬가지다** — 표에 오르지 않은 상태는 규칙이 닿지 않는 사각이 된다.
+   * 남은 열(마감 플래그)은 PR ④에서 생기며, 그때 이 표에 행을 더하지 않아도 되도록 지금 함께
+   * 적어 둔다. **열아홉째 조작이 생기면 행을 먼저 더하고, 열이 생겨도 마찬가지다** —
+   * 표에 오르지 않은 상태는 규칙이 닿지 않는 사각이 된다.
    *
-   * | # | 조작 | 조건 6종★ | `page`★ | `ct`★ | `loc`★ | **404 안내★** | 개시 초안★ | 라인 초안 | 결과 구획★ | 열린 창★ | **서버 실패★** | 마감 플래그 |
+   * | # | 조작 | 조건 6종★ | `page`★ | `ct`★ | `loc`★ | **404 안내★** | 개시 초안★ | **라인 초안★** | 결과 구획★ | 열린 창★ | **서버 실패★** | 마감 플래그 |
    * | :-: | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
    * | 1 | 조건 변경·조회 | 바뀐다 | **첫 쪽** | **비운다** | **비운다** | **비운다** | 유지 | **비운다** | 비운다 | **닫는다** | 유지 | **비운다** |
    * | 2 | 초기화 | **비운다** | 첫 쪽 | 비운다 | 비운다 | **비운다** | 유지 | 비운다 | 비운다 | **닫는다** | 유지 | 비운다 |
@@ -199,7 +244,19 @@ export const StocktakingScreen = () => {
    *   **되돌림 effect가 아예 없다** — 목록·상세·참조 응답이 도착해도 반응할 자리가 없으므로
    *   「치던 값이 사라진다」가 구조적으로 생기지 않는다. 「다시 조회」도 값을 버리려고 누르는
    *   것이 아니다.
+   * - **9·10행이 라인 초안을 건드리지 않는 이유는 같은 자리의 더 아픈 형태다**(감지기 M35).
+   *   라인 초안은 줄마다 칸이 둘이고 한 위치에 수십 줄이 있어, 한 번 사라지면 다시 치는 비용이
+   *   개시 초안과 비교되지 않는다. 되돌림 effect의 의존성은 **`loc` 하나뿐**이며
+   *   `useMemo` 파생 객체·라인 응답 배열을 넣지 않는다. 라인 응답으로 초안 키를 미리 깔지
+   *   않는 것(`line-draft.ts`)이 그 축을 하나로 **묶어 두는** 구조다 — 키를 깔면 「응답이
+   *   도착했다」가 초안을 만드는 사건이 되어 의존성이 늘 수밖에 없다.
+   * - **1~5행이 라인 초안을 비우는 이유**: 다섯 조작이 전부 `loc`를 바꾸거나 비운다. 초안은
+   *   **그 위치의 그 줄들**에 묶인 값이라 대상이 바뀌면 뜻을 잃는다 — 남으면 다른 위치의
+   *   같은 순번 줄에 앞 위치의 수량이 실린다.
    * - **12행이 초안을 비우지 않는 이유**: 실패했는데 입력을 지우면 처음부터 다시 친다.
+   * - **13행이 라인 초안을 비우고 `loc`를 유지하는 이유**: 저장한 값은 서버가 들고 있고
+   *   화면은 그것을 다시 읽는다 — 초안이 남으면 **저장된 값 위에 같은 글자가 겹쳐** 무엇이
+   *   저장된 것인지 알 수 없다. `loc`는 유지해야 방금 무엇을 저장했는지 화면에 남는다.
    * - **18행이 대상을 바꾸는 길까지 잠그는 이유**(W-01-03이 세운 규칙): 열어 두면 사용자가 다른
    *   실사·조건·쪽으로 옮긴 뒤 **앞 요청의 결과가 지금 보는 맥락에 나타난다.** 눈에 보이는
    *   컨트롤을 잠그는 것과 별도로 핸들러가 한 번 더 막는다 — 조건 칩의 ×처럼 디자인 시스템이
@@ -235,6 +292,7 @@ export const StocktakingScreen = () => {
   const filters = useMemo<CountFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const selectedCountId = readSelectedCountId(searchParams);
+  const selectedLocationId = readSelectedLocationId(searchParams);
 
   /*
    * **조건이 하나도 없어도 조회한다.** 들어오자마자 진행 중인 실사가 보여야 무엇을 고를 수
@@ -257,6 +315,29 @@ export const StocktakingScreen = () => {
   const detail = useInventoryCountDetail(selectedCountId);
   const isDetailNotFound = detail.isError && isCountNotFound(detail.error);
 
+  /*
+   * **위치는 실사의 창고를 알아야 부를 수 있다**(계약이 `warehouseId`를 필수 쿼리로 요구한다).
+   * 상세가 도착하기 전에는 조회가 성립하지 않으므로 부르지 않는다 — 성립하지 않는 조회를
+   * 내보내면 스켈레톤에 갇힌다(W-01-07 Minor).
+   */
+  const locations = useLocationLookup(detail.data?.count.warehouseId ?? null);
+
+  /*
+   * **실사와 위치가 둘 다 있어야 라인이 성립한다**(완료 조건 C31 · 감지기 M33).
+   * 좁히는 조건을 만들지 않았으므로 이 응답의 줄이 곧 **그 위치의 전 줄**이다.
+   */
+  const lines = useInventoryCountLines(selectedCountId, selectedLocationId);
+  const lineItems = lines.data?.items ?? EMPTY_LINES;
+
+  /* 위치를 고르기 전에는 라인 표가 없다 — 그 표가 쓰는 참조 셋도 부르지 않는다. */
+  const hasLocation = selectedLocationId !== null;
+  const items = useItemLookup(hasLocation);
+  const uoms = useUomLookup(hasLocation);
+  const lots = useLotLookup(
+    lineItems.flatMap((line) => (line.lotId === null ? [] : [line.itemId])),
+    hasLocation,
+  );
+
   /**
    * 방금 고른 실사가 **없었다**는 사실(수명 표 6행의 「404 안내」 열).
    *
@@ -275,6 +356,14 @@ export const StocktakingScreen = () => {
   const [openDraft, setOpenDraft] = useState<OpenDraft>(EMPTY_OPEN_DRAFT);
 
   /**
+   * 라인 입력. **주소에 싣지 않는다** — 줄마다 칸이 둘이라 주소가 통째로 초안이 된다.
+   *
+   * **성기다**(`line-draft.ts`) — 치지 않은 줄은 키가 없다. 그래서 라인 응답이 도착해도
+   * 초안을 만들 일이 없고, 되돌림 축이 **고른 위치 하나**로 남는다(#43 · 감지기 M35).
+   */
+  const [lineDrafts, setLineDrafts] = useState<LineDrafts>(EMPTY_LINE_DRAFTS);
+
+  /**
    * 보내기 전에 화면이 잡은 오류. **「실사 개시」를 누른 뒤에만 세운다** — 치는 도중에 붉은
    * 글씨를 띄우면 아직 넣지도 않은 칸이 잘못된 것처럼 보인다.
    */
@@ -286,8 +375,14 @@ export const StocktakingScreen = () => {
   /** 개시 확인 창이 열려 있는가. **확인하기 전에는 요청이 나가지 않는다**(완료 조건 C23). */
   const [isOpenConfirmVisible, setOpenConfirmVisible] = useState(false);
 
-  /** 초안 파기 확인 창이 열려 있는가. */
-  const [isDiscardConfirmVisible, setDiscardConfirmVisible] = useState(false);
+  /**
+   * 초안 파기 확인 창이 **어느 초안**을 두고 열려 있는가. `null`이면 닫혀 있다.
+   *
+   * **초안이 둘인데 창은 하나다**(계획 결정 15). 창을 둘 두면 둘이 동시에 열리는 상태가
+   * 생기고, 열림 여부를 불리언 둘로 들고 있으면 「어느 것을 버리는 창인가」가 확인 버튼의
+   * 핸들러에만 남아 화면이 그것을 말하지 못한다 — 대상을 상태에 담아 그 자리를 없앤다.
+   */
+  const [discardTarget, setDiscardTarget] = useState<DiscardTarget | null>(null);
 
   const open = useInventoryCountOpen({
     onSuccess: (opened) => {
@@ -313,6 +408,8 @@ export const StocktakingScreen = () => {
        */
       setResult({
         inventoryCountId: opened.count.inventoryCountId,
+        /* 개시 성공은 `loc`를 비운다(수명 표 11행) — 짝이 맞아야 결과가 남는다. */
+        locationId: null,
         view: { kind: 'opened', countNo: opened.count.inventoryCountNo },
       });
 
@@ -327,10 +424,42 @@ export const StocktakingScreen = () => {
   });
 
   /**
-   * 보내는 중인가. **대상을 바꾸는 길을 전부 닫는다**(수명 표 18행 · 중복 전송 완화의 한 층) —
-   * 조건 줄·목록 선택·쪽 이동·개시 입력·두 버튼이 함께 잠긴다.
+   * 위치를 고른 라벨. **결과 구획이 번호가 아니라 이름을 받는다**(#44) —
+   * 저장 성공 시점에 풀어 담아 두면 그 뒤 참조가 다시 오더라도 결과 문구가 흔들리지 않는다.
    */
-  const isLocked = open.isSaving;
+  const locationLabel = describeReference(toReference(locations, selectedLocationId));
+
+  const replace = useInventoryCountLineReplace({
+    inventoryCountId: selectedCountId,
+    onSuccess: (saved) => {
+      /*
+       * **초안을 비운다**(수명 표 13행). 저장한 값은 서버가 들고 있고 화면이 다시 읽으므로,
+       * 초안이 남으면 저장된 값 위에 같은 글자가 겹쳐 무엇이 저장된 것인지 알 수 없다.
+       */
+      setLineDrafts(EMPTY_LINE_DRAFTS);
+
+      setResult({
+        inventoryCountId: selectedCountId,
+        /* `loc`는 유지된다(13행) — 방금 무엇을 저장했는지 화면에 남아야 결과를 읽는다. */
+        locationId: selectedLocationId,
+        view: {
+          kind: 'saved',
+          locationLabel,
+          /* **서버가 되돌려 준 배열의 길이다** — 화면이 보낸 줄 수가 아니다. */
+          replacedLineCount: saved.items.length,
+        },
+      });
+    },
+  });
+
+  /**
+   * 보내는 중인가. **대상을 바꾸는 길을 전부 닫는다**(수명 표 18행 · 중복 전송 완화의 한 층) —
+   * 조건 줄·목록 선택·쪽 이동·**위치 선택**·개시 입력·**표 안 두 칸**·버튼들이 함께 잠긴다.
+   *
+   * **쓰기 둘을 한 값으로 묶는다.** 어느 쪽이 나가는 중이든 대상이 바뀌면 안 되는 것은 같고,
+   * 갈라 두면 「개시 중에는 위치를 바꿀 수 있다」 같은 반쪽 상태가 생긴다.
+   */
+  const isLocked = open.isSaving || replace.isSaving;
 
   /*
    * **주소가 바뀌면 열린 창을 닫는다**(수명 표 1~6행 · W-01-10 리뷰 R-1).
@@ -344,8 +473,23 @@ export const StocktakingScreen = () => {
    */
   useEffect(() => {
     setOpenConfirmVisible(false);
-    setDiscardConfirmVisible(false);
+    setDiscardTarget(null);
   }, [searchParams]);
+
+  /*
+   * **위치가 바뀌면 라인 초안을 비운다**(수명 표 1~5행 · #43의 이 화면 형태).
+   *
+   * **의존성이 `loc` 하나뿐인 것이 이 effect의 전부다**(감지기 M35). 라인 응답이나 그것에서
+   * 파생한 객체를 넣으면 **응답이 도착할 때마다 치던 값이 사라진다** — 「다시 조회」는 값을
+   * 버리려고 누르는 것이 아니고(10행), 저장 실패 뒤 목록이 갱신되는 것도 마찬가지다.
+   *
+   * 조건 변경·초기화·쪽 이동·실사 고르기·404 정리가 **전부 `loc`를 비우므로** 이 한 자리가
+   * 다섯 조작을 덮는다. 줄 집합이 바뀌어 없어진 줄의 초안은 여기서가 아니라 **요청 조립에서
+   * 교차로 걸러진다**(`line-replace-request.ts` · 감지기 M46) — 그래야 축이 하나로 남는다.
+   */
+  useEffect(() => {
+    setLineDrafts(EMPTY_LINE_DRAFTS);
+  }, [selectedLocationId]);
 
   /*
    * **결과가 자기 실사에서 떨어지면 스스로 사라진다**(수명 표 1~6행).
@@ -354,18 +498,24 @@ export const StocktakingScreen = () => {
    * 실사를 방금 만든 것으로 읽는다. 조건 변경·초기화·쪽 이동·실사 고르기/해제·404 정리가
    * **전부 `ct`를 바꾸므로** 이 한 자리가 여섯 조작을 덮는다.
    *
-   * 개시 성공(11행)은 `ct`를 그 결과의 실사로 옮기므로 번호가 맞아 남는다.
+   * 개시 성공(11행)은 `ct`를 그 결과의 실사로 옮기고 `loc`를 비우므로 두 축이 다 맞아 남는다.
+   * 저장 성공(13행)은 둘 다 그대로 두므로 이 effect가 아예 다시 돌지 않는다.
    *
-   * **축이 하나 더 필요해지는 시점을 적어 둔다**: 수명 표 5행(위치 고르기·해제)도 결과 구획을
-   * 비우는데, `loc`는 이 PR에 아직 없어 그 조작 자체가 없다. PR ③이 위치를 들이면 결과가
-   * 매이는 축이 **`ct`와 `loc` 둘**이 되고, 그때 이 판정에 `loc`를 더해야 한다 —
-   * 더하지 않으면 위치를 옮겨도 앞 위치의 저장 결과가 그대로 서 있다.
+   * **축이 둘인 것이 PR ③에서 실물이 됐다**(PR ② 주석이 예고한 자리). 수명 표 5행(위치
+   * 고르기·해제)도 결과 구획을 비우는데, `loc`가 생기기 전에는 그 조작 자체가 없었다 —
+   * 축을 늘리지 않으면 **같은 실사 안에서 위치만 옮겼을 때** 앞 위치의 저장 결과가 새 위치의
+   * 라인 표 아래에 그대로 서 있다.
    */
   useEffect(() => {
-    setResult((current) =>
-      current === null || current.inventoryCountId === selectedCountId ? current : null,
-    );
-  }, [selectedCountId]);
+    setResult((current) => {
+      if (current === null) return current;
+
+      const isSameTarget =
+        current.inventoryCountId === selectedCountId && current.locationId === selectedLocationId;
+
+      return isSameTarget ? current : null;
+    });
+  }, [selectedCountId, selectedLocationId]);
 
   /*
    * **상세가 404면 고른 실사를 주소에서 정리한다**(수명 표 6행).
@@ -430,15 +580,38 @@ export const StocktakingScreen = () => {
   };
 
   /**
+   * 위치를 고르거나 푼다(수명 표 5행). **고른 실사는 그대로 둔다** — 같은 실사 안에서
+   * 위치만 옮기는 것이 이 화면의 정상 경로다.
+   *
+   * `toSearchParams`가 `ct`·`loc`를 만들지 않으므로 둘 다 여기서 덧붙인다 — 조건·쪽이 바뀔 때
+   * 함께 풀리는 규칙(1~3행)을 그 비대칭이 지킨다.
+   */
+  const selectLocation = (locationId: number | null): void => {
+    if (isLocked) return;
+
+    const next = toSearchParams(filters, page);
+
+    if (selectedCountId !== null) next.set(SELECTION_KEYS.count, String(selectedCountId));
+    if (locationId !== null) next.set(SELECTION_KEYS.location, String(locationId));
+
+    setSearchParams(next);
+  };
+
+  /**
    * **화면이 보고 있는 조회를 전부 다시 한다**(수명 표 10행).
    *
    * 목록만 다시 부르면 요약 4칸이 낡은 채로 남아 **갱신된 값과 갱신되지 않은 값이 한 화면에
    * 섞인다**(W-01-07의 Major 지적). 요약은 마감 가능 여부를 정하는 값이라(PR ④) 낡으면
-   * 그 판단 자체가 낡는다.
+   * 그 판단 자체가 낡는다. **라인도 같은 이유로 함께 부른다** — 다른 사람이 그 위치를 치환하면
+   * 화면의 줄 집합이 낡고, 낡은 줄로 저장하면 **없어진 줄을 되살리거나 새 줄을 미실사로
+   * 되돌린다.**
    *
-   * **고른 실사가 없으면 상세를 부르지 않는다.** 설치본의 `Query.fetch`는 `enabled`를 보지
-   * 않아 `refetch()`가 비활성 쿼리에서도 `queryFn`을 실행한다 — 지금은 `queryFn`이 던져서
-   * 요청이 나가지 않지만 그것은 **가드가 막는 것**이지 훅이 무동작인 것이 아니다.
+   * **고르지 않은 것은 부르지 않는다.** 설치본의 `Query.fetch`는 `enabled`를 보지 않아
+   * `refetch()`가 비활성 쿼리에서도 `queryFn`을 실행한다 — 지금은 `queryFn`이 던져서 요청이
+   * 나가지 않지만 그것은 **가드가 막는 것**이지 훅이 무동작인 것이 아니다.
+   *
+   * **초안은 유지된다.** 「다시 조회」는 값을 버리려고 누르는 것이 아니다 —
+   * 라인 초안 되돌림 effect가 `loc`에만 매여 있어 이 조작으로는 돌지 않는다.
    *
    * 조건·쪽·선택은 하나도 바꾸지 않는다.
    */
@@ -446,6 +619,7 @@ export const StocktakingScreen = () => {
     void list.refetch();
 
     if (selectedCountId !== null) void detail.refetch();
+    if (selectedCountId !== null && selectedLocationId !== null) void lines.refetch();
   };
 
   const codeOptions = toCodeOptionSets(PLACEHOLDER_STOCKTAKING_CODES);
@@ -490,6 +664,21 @@ export const StocktakingScreen = () => {
   };
 
   /**
+   * 표 안 두 칸을 고친다.
+   *
+   * **서버 오류를 거두는 자리가 없다** — 개시 폼과 갈리는 자리다. 계약이 줄마다의 오류를 어떤
+   * 이름으로 주는지 정하지 않아 이 화면이 서버 오류를 칸에 붙이지 못하고 전부 배너로 받는다
+   * (`queries.ts`의 `knownFields: []`). 붙이지 않은 오류는 거둘 자리도 없다.
+   */
+  const changeLineQty = (inventoryCountLineId: number, text: string): void => {
+    setLineDrafts((prev) => setDraftQty(prev, inventoryCountLineId, text));
+  };
+
+  const changeLineReason = (inventoryCountLineId: number, code: string): void => {
+    setLineDrafts((prev) => setDraftReason(prev, inventoryCountLineId, code));
+  };
+
+  /**
    * 초안을 실제로 버린다(수명 표 17행).
    *
    * **결과 구획과 실패 배너도 함께 거둔다.** 「버린다」는 앞서 한 시도를 통째로 물리는 것이라,
@@ -499,9 +688,23 @@ export const StocktakingScreen = () => {
     setOpenDraft(EMPTY_OPEN_DRAFT);
     setLocalFieldErrors(NO_FIELD_ERRORS);
     setResult(null);
-    setDiscardConfirmVisible(false);
+    setDiscardTarget(null);
     setOpenConfirmVisible(false);
     open.reset();
+  };
+
+  /**
+   * 라인 초안을 실제로 버린다(수명 표 17행).
+   *
+   * **개시 초안을 건드리지 않는다.** 둘은 서로 다른 것을 가리킨다 — 개시 초안은 **만들 실사**,
+   * 라인 초안은 **고른 위치의 줄들**이다. 취소 하나가 둘을 다 지우면 개시 구획에서 치던 값이
+   * 아래 구획의 취소에 사라진다.
+   */
+  const discardLineDrafts = (): void => {
+    setLineDrafts(EMPTY_LINE_DRAFTS);
+    setResult(null);
+    setDiscardTarget(null);
+    replace.reset();
   };
 
   /**
@@ -509,17 +712,32 @@ export const StocktakingScreen = () => {
    *
    * 버릴 것이 없으면 곧바로 한다 — 아무것도 잃지 않는 조작에까지 확인을 받으면 확인 창이
    * 의미를 잃고 사용자가 읽지 않고 누르게 된다. 그때도 결과 구획과 배너는 거둬진다.
+   *
+   * **두 초안이 같은 창을 쓰되 대상을 밝힌다**(`discardTarget`) — 창은 하나이고 무엇을 버리는지는
+   * 상태가 안다.
    */
   const requestDiscardOpenDraft = (): void => {
     if (isLocked) return;
 
     if (hasAnyOpenDraftValue(openDraft)) {
-      setDiscardConfirmVisible(true);
+      setDiscardTarget('open');
 
       return;
     }
 
     discardOpenDraft();
+  };
+
+  const requestDiscardLineDrafts = (): void => {
+    if (isLocked) return;
+
+    if (hasAnyLineDraftValue(lineDrafts)) {
+      setDiscardTarget('lines');
+
+      return;
+    }
+
+    discardLineDrafts();
   };
 
   /**
@@ -605,6 +823,156 @@ export const StocktakingScreen = () => {
   };
 
   /**
+   * 표의 줄 — **표가 그리는 값과 보낼 값이 같은 재료에서 나온다**(`line-replace-request.ts`).
+   * 두 곳에서 따로 만들면 사용자가 확인한 것과 다른 전표가 나간다.
+   */
+  const lineRows = toLineRows(lineItems, lineDrafts);
+
+  /**
+   * 이 위치의 라인을 **전부 받았는가.** 못 받았으면 저장을 차단한다(계획 결정 8) —
+   * 못 받은 줄이 치환에 실리지 않아 **미실사로 되돌아가기** 때문이다. 경고가 아니라 차단이다.
+   */
+  const isLineListTruncated =
+    lines.data !== undefined && isLinesTruncated(lines.data.page, lineItems.length);
+
+  /**
+   * 저장이 왜 막혔는가. 보낼 수 있으면 `null`이다.
+   *
+   * **버튼과 보내는 자리가 둘 다 이것을 부른다**(계획 결정 3의 구현 규칙 4). 저장에는 확인
+   * 창이 없어(승인 13-5) 그 사이가 벌어지지 않는 것처럼 보이지만, **라인 응답은 뒤에서 다시
+   * 온다** — 「다시 조회」나 저장 실패 뒤 무효화로 줄 집합이 바뀌면 버튼을 그린 렌더의 판정이
+   * 낡는다. 특히 **잘림은 줄의 사정이 아니라 응답의 사정**이라 본문 조립이 잡아 낼 수 없다.
+   */
+  const findSaveBlocked = (): string | null =>
+    replaceBlockReason({
+      rows: lineRows,
+      isTruncated: isLineListTruncated,
+      isReasonListPending: isVarianceReasonListPending(codeOptions),
+    });
+
+  const saveBlockedReason = findSaveBlocked();
+
+  /**
+   * 한 위치를 치환한다. **확인 창을 두지 않는다**(승인 13-5) — 치환은 되돌릴 수 있고
+   * (같은 위치를 다시 치환) 유실 위험은 **전 줄 필수**와 **잘림 차단**이 창보다 강하게 막는다.
+   * 창이 지킬 것이 없는데 위치마다 되풀이되는 조작에 마찰만 더한다. 대신 치환의 뜻을 표 위
+   * 안내가 늘 밝힌다.
+   */
+  const submitSave = (): void => {
+    if (isLocked) return;
+    if (selectedLocationId === null) return;
+    if (findSaveBlocked() !== null) return;
+
+    const body = toLineReplace({
+      locationId: selectedLocationId,
+      rows: lineRows,
+      /* 시각은 **여기서 한 번만** 만든다 — 조립 안에서 부르면 고정 시각으로 검사할 수 없다. */
+      now: new Date(),
+    });
+
+    /*
+     * **전 줄 필수의 마지막 겹**(감지기 M38). 위의 사유 판정이 뚫려도 본문이 없으면 나가지
+     * 않는다 — 「친 줄만 보낸다」가 이 화면에서 가장 큰 사고 경로라 겹을 둘로 둔다.
+     */
+    if (body === null) return;
+
+    /* 실패하면 결과 구획이 비어 있어야 한다(수명 표 14행). */
+    setResult(null);
+    replace.write(body);
+  };
+
+  /**
+   * 라인 구획. **위치를 고르기 전에는 구획 자체를 렌더하지 않는다**(계획 §12-11).
+   *
+   * 빈 표를 그려 두면 「이 위치에 라인이 없다」와 「아직 위치를 안 골랐다」가 같은 화면이 되고,
+   * 표 안 입력칸이 없는 표가 잠시 서 있게 된다. **줄이 0건인 갈래는 `Table.empty`가 맡는다**
+   * (감지기 M34) — 바깥에서 0건을 가르면 `empty`가 닿을 수 없는 죽은 가지가 된다.
+   */
+  const linesPane = (isBlind: boolean): ReactNode => {
+    if (selectedLocationId === null) {
+      return (
+        <EmptyState
+          size="sm"
+          title={t.empty.noLocationTitle}
+          description={t.empty.noLocationDescription}
+        />
+      );
+    }
+
+    /* 조회 실패를 「라인이 없습니다」로 내면 자료가 없는 줄 안다 — 배너와 복구 경로를 낸다. */
+    if (lines.isError) {
+      return (
+        <LoadErrorBanner
+          error={lines.error}
+          onRetry={() => {
+            void lines.refetch();
+          }}
+        />
+      );
+    }
+
+    return (
+      <>
+        <CountLineTable
+          rows={lineRows}
+          isLoading={lines.isPending}
+          isTruncated={isLineListTruncated}
+          isBlind={isBlind}
+          itemLookup={items}
+          uomLookup={uoms}
+          lotLookup={lots}
+          reasonOptions={codeOptions.varianceReason}
+          isLocked={isLocked}
+          onChangeQty={changeLineQty}
+          onChangeReason={changeLineReason}
+          onRetryReferences={() => {
+            items.refetch();
+            uoms.refetch();
+            lots.refetch();
+          }}
+        />
+
+        {/*
+         * 저장 실패는 **네 갈래**다(완료 조건 C48) — 검증(400) · 권한(403) · **충돌(409)** ·
+         * 응답 없음. **409에만 「최신 불러오기」를 낸다**(감지기 M48): 다시 읽어야 풀리는 것은
+         * 충돌뿐이고, 다른 오류에 내면 사용자가 **입력만 버리게 된다.**
+         */}
+        <SaveErrorBanner error={replace.error} onReload={refreshAll} />
+
+        {/*
+         * **응답을 받지 못한 실패에만 한 줄을 더한다.** 개시와 달리 되돌릴 수는 있으나
+         * (같은 위치를 다시 치환) 확인 없이 다시 보내면 그 위치가 **다시 통째로** 바뀐다.
+         */}
+        {replace.error?.kind === 'network' && <p className="field-error">{t.notes.saveRecheck}</p>}
+
+        <div className="form-actions">
+          {/* 취소가 저장보다 앞에 선다 — 파괴적인 것이 손 가까이 있으면 안 된다. */}
+          <Button variant="text" disabled={isLocked} onClick={requestDiscardLineDrafts}>
+            {messages.common.cancel}
+          </Button>
+
+          <div className="field-cell">
+            <Button
+              variant="outlined"
+              disabled={saveBlockedReason !== null || isLocked}
+              loading={replace.isSaving}
+              aria-describedby={saveBlockedReason === null ? undefined : saveReasonId}
+              onClick={submitSave}
+            >
+              {t.actions.saveLocation}
+            </Button>
+            {saveBlockedReason !== null && (
+              <span id={saveReasonId} className="field-note">
+                {saveBlockedReason}
+              </span>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  /**
    * 아래 구획. **넷 중 하나만 낸다** — 사용자가 할 조치가 서로 다르다.
    *
    * 404를 맨 앞에 둔다: 그 갈래는 `ct`를 지우고 나면 「아직 고르지 않았다」와 구분되지 않으므로,
@@ -652,16 +1020,36 @@ export const StocktakingScreen = () => {
       );
     }
 
+    const count = detail.data.count;
+
     return (
-      <SummaryPane
-        count={detail.data.count}
-        summary={detail.data.summary}
-        /*
-         * 참조를 **이름으로 풀어 넘긴다** — 제목줄 부품 안에 번호를 문자열로 만드는 자리를
-         * 두지 않으면 그 값이 화면으로 샐 경로도 없다(#44).
-         */
-        warehouseName={describeReference(toReference(warehouses, detail.data.count.warehouseId))}
-      />
+      <>
+        <SummaryPane
+          count={count}
+          summary={detail.data.summary}
+          /*
+           * 참조를 **이름으로 풀어 넘긴다** — 제목줄 부품 안에 번호를 문자열로 만드는 자리를
+           * 두지 않으면 그 값이 화면으로 샐 경로도 없다(#44).
+           */
+          warehouseName={describeReference(toReference(warehouses, count.warehouseId))}
+        />
+
+        <LocationField
+          lookup={locations}
+          options={toSelectOptions(locations)}
+          value={selectedLocationId === null ? '' : String(selectedLocationId)}
+          isLocked={isLocked}
+          onChange={selectLocation}
+          onRetry={() => {
+            locations.refetch();
+          }}
+        />
+
+        {linesPane(count.blindCount)}
+
+        {/* 이력은 **실사 하나에 대한 것**이라 위치와 무관하게 늘 자리에 있다. */}
+        <HistoryPane />
+      </>
     );
   };
 
@@ -836,11 +1224,15 @@ export const StocktakingScreen = () => {
         />
       )}
 
-      {isDiscardConfirmVisible && (
+      {/*
+       * **초안이 둘인데 창은 하나다**(계획 결정 15). 무엇을 버리는지는 `discardTarget`이
+       * 알고, 문구는 공통(`messages.common.discardChangesConfirm`)이라 어느 초안이든 뜻이 같다.
+       */}
+      {discardTarget !== null && (
         <DiscardConfirmDialog
-          onConfirm={discardOpenDraft}
+          onConfirm={discardTarget === 'open' ? discardOpenDraft : discardLineDrafts}
           onClose={() => {
-            setDiscardConfirmVisible(false);
+            setDiscardTarget(null);
           }}
         />
       )}
