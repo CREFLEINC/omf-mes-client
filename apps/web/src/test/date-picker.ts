@@ -33,6 +33,22 @@ const calendarOf = (trigger: HTMLElement): HTMLElement => {
 const cellOf = (calendar: HTMLElement, date: string): HTMLElement | null =>
   calendar.querySelector<HTMLElement>(`td[data-date="${date}"]`);
 
+/**
+ * 누를 수 있는 셀을 집는다. **`min`/`max` 밖의 셀은 눌러도 아무 일이 없다** —
+ * 그대로 누르고 성공으로 돌아오면 아무것도 고르지 않았는데 감지기가 통과한다.
+ * 고를 수 없는 날을 고르라고 한 것은 감지기가 틀린 것이므로 조용히 넘기지 않고 세운다.
+ */
+const enabledCellOf = (calendar: HTMLElement, date: string): HTMLElement => {
+  const cell = cellOf(calendar, date);
+
+  if (cell === null) throw new Error(`${date} 셀을 찾지 못했다`);
+  if (cell.getAttribute('aria-disabled') === 'true') {
+    throw new Error(`${date}는 고를 수 없는 날이다`);
+  }
+
+  return cell;
+};
+
 /** 지금 보이는 달의 아무 날. 목표 날짜가 앞인지 뒤인지 재는 기준으로만 쓴다. */
 const visibleDateOf = (calendar: HTMLElement): string => {
   const anyCell = calendar.querySelector<HTMLElement>('td[data-date]');
@@ -53,12 +69,12 @@ const goToMonthOf = async (user: User, calendar: HTMLElement, date: string): Pro
   for (let step = 0; step < MAX_MONTH_STEPS; step += 1) {
     if (cellOf(calendar, date) !== null) return;
 
-    const forward = date > visibleDateOf(calendar);
-    const nav = calendar.querySelector<HTMLElement>(
-      `button[aria-label="${forward ? '다음 달' : '이전 달'}"]`,
+    const isForward = date > visibleDateOf(calendar);
+    const nav = calendar.querySelector<HTMLButtonElement>(
+      `button[aria-label="${isForward ? '다음 달' : '이전 달'}"]`,
     );
 
-    if (nav === null || (nav as HTMLButtonElement).disabled) {
+    if (nav === null || nav.disabled) {
       throw new Error(`달력을 ${date}까지 넘길 수 없다`);
     }
 
@@ -79,10 +95,7 @@ export const pickDate = async (user: User, trigger: HTMLElement, date: string): 
   const calendar = calendarOf(trigger);
   await goToMonthOf(user, calendar, date);
 
-  const cell = cellOf(calendar, date);
-  if (cell === null) throw new Error(`${date} 셀을 찾지 못했다`);
-
-  await user.click(cell);
+  await user.click(enabledCellOf(calendar, date));
 };
 
 /**
@@ -102,12 +115,8 @@ export const pickRange = async (
   const calendar = calendarOf(trigger);
 
   await goToMonthOf(user, calendar, from);
-  const fromCell = cellOf(calendar, from);
-  if (fromCell === null) throw new Error(`${from} 셀을 찾지 못했다`);
-  await user.click(fromCell);
+  await user.click(enabledCellOf(calendar, from));
 
   await goToMonthOf(user, calendar, to);
-  const toCell = cellOf(calendar, to);
-  if (toCell === null) throw new Error(`${to} 셀을 찾지 못했다`);
-  await user.click(toCell);
+  await user.click(enabledCellOf(calendar, to));
 };

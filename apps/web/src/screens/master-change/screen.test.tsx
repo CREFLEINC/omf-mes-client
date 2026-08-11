@@ -253,25 +253,32 @@ describe('MasterChangeScreen — 기간 필수 조회', () => {
     const { requests, user } = renderScreen([listRoute()], '?from=2026-08-01&to=2026-08-06');
     await screen.findByText('SAMPLE_EVENT_A');
 
-    await pickRange(user, screen.getByLabelText('조회 기간'), '2026-07-20', '2026-08-06');
+    // 시작·종료를 **모두** 적용값과 다른 날로 옮긴다 — 한끝만 옮기면 나머지 한끝이 무보증으로 남는다.
+    await pickRange(user, screen.getByLabelText('조회 기간'), '2026-07-20', '2026-07-25');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).toContain('from=2026-07-20');
-    expect(requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams.get('occurredFrom')).toContain(
-      '2026-07-20',
-    );
+    expect(currentLocation()).toContain('to=2026-07-25');
+
+    const searched = requestsTo(requests, LIST_PATH).at(-1)?.url.searchParams;
+    expect(searched?.get('occurredFrom')).toContain('2026-07-20');
+    expect(searched?.get('occurredTo')).toContain('2026-07-25');
   });
 
   /*
-   * 버튼의 비활성만 보면 못 잡는다 — 요청 횟수까지 단언해야 「보내기 전에 막는다」가 지켜진다.
-   * 기간을 비우는 조작은 컨트롤에 없어졌으므로 **주소로 비어 있는 기간이 들어온 경우**를 잰다.
+   * **반쪽 기간**이다 — 아래 「비어 있으면」(`?from=&to=`)과 다른 상태이며, 기간 컨트롤이
+   * 한쪽만 고르고 멈춘 채 공유된 주소가 이 모습이다. 두 키가 다 있는데 값이 반쪽이라
+   * 「기간이 아예 없음」으로 읽어 기본 기간을 채우면 남의 주소가 다른 기간을 조회한다.
+   * 채워 넣지도 조회하지도 않고 잠근 채 둔다.
    */
-  it('기간이 비면 조회가 잠기고 요청이 나가지 않는다', async () => {
+  it('기간이 한쪽만 채워져 있으면 조회가 잠기고 요청이 나가지 않는다', async () => {
     const { requests } = renderScreen([listRoute()], '?from=2026-08-01&to=');
     await screen.findByRole('button', { name: '조회' });
 
     expect(screen.getByRole('button', { name: '조회' })).toBeDisabled();
     expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
+    // 기본 기간으로 덮어쓰지 않았다 — 사용자가 적어 넣은 시작이 그대로 남아 있다.
+    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-08-01');
   });
 
   it('주소의 기간이 비어 있으면 조회하지 않고 기간을 고르라고 안내한다', async () => {
@@ -293,13 +300,13 @@ describe('MasterChangeScreen — 기간 필수 조회', () => {
     );
     await screen.findByRole('status', { name: '변경 이력 목록을 불러오는 중' });
 
-    await pickRange(user, screen.getByLabelText('조회 기간'), '2026-07-20', '2026-08-06');
-    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-07-20 ~ 2026-08-06');
+    await pickRange(user, screen.getByLabelText('조회 기간'), '2026-07-20', '2026-07-25');
+    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-07-20 ~ 2026-07-25');
 
     release();
     await screen.findByText('SAMPLE_EVENT_A');
 
-    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-07-20 ~ 2026-08-06');
+    expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-07-20 ~ 2026-07-25');
   });
 
   /*

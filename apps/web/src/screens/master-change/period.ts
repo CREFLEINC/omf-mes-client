@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
  * 조회 기간 — 이 화면의 **필수** 조회 조건이다.
  *
  * 계약이 `occurredFrom`·`occurredTo`를 필수로 두고 `date-time`을 요구한다. 날짜만 보내거나
- * 초를 빼면 서버가 거부하므로(400), 화면은 날짜 두 칸으로 받고 여기서 RFC3339로 바꿔 보낸다.
+ * 초를 빼면 서버가 거부하므로(400), 화면은 시작·종료 날짜를 받고 여기서 RFC3339로 바꿔 보낸다.
  *
  * 순수 함수만 둔다 — `new Date()`도 `toISOString()`도 부르지 않는다.
  * 함수 안에서 부르면 실행 환경의 시각·시간대에 따라 결과가 달라져 테스트가 환경을 검사하게 된다.
@@ -22,7 +22,7 @@ const t = messages.masterChange;
  */
 export const DEFAULT_PERIOD_DAYS = 7;
 
-/** 화면이 받는 값. `<input type="date">`가 주는 `YYYY-MM-DD` 그대로다. */
+/** 화면이 받는 값. DS `DatePicker`가 주는 `YYYY-MM-DD` 그대로다. */
 export interface PeriodInput {
   from: string;
   to: string;
@@ -76,7 +76,7 @@ export const validatePeriod = (input: PeriodInput): string | null => {
 };
 
 /**
- * 날짜 두 칸을 서버가 받는 형태로 바꾼다.
+ * 기간의 두 끝을 서버가 받는 형태로 바꾼다.
  *
  * **종료는 그날 23:59:59다.** 00:00:00으로 만들면 마지막 날에 생긴 이력이 전부 빠져
  * 사용자에게는 「오늘 바뀐 것이 안 보인다」로 나타난다.

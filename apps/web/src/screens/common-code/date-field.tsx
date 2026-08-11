@@ -43,7 +43,7 @@ export const DateField = ({
   const id = useId();
   const noteId = `${id}-note`;
   // 지금 고칠 수 있는 것을 먼저 보인다 — 오류가 있으면 안내를 밀어낸다.
-  const message = error ?? note ?? undefined;
+  const message = error ?? note;
 
   return (
     <div className="field-cell">
