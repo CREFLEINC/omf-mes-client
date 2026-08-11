@@ -92,6 +92,11 @@ export const openBlockReason = (input: OpenGateInput): string | null => {
  * **계획일은 달력에 있는 날인지까지 본다.** 자릿수만 보면 `2026-02-31`이 통과해 서버가
  * 400으로 되돌리는데, 개시 요청은 그때 이미 나간 뒤다. 판정은 조회 조건과 **같은 함수**를
  * 쓴다(`filters.ts`의 `isCalendarDate`) — 갈리면 주소에서는 버려진 날짜가 요청에는 실린다.
+ *
+ * **이 검사가 둘째 층인 것을 밝혀 둔다.** 첫째 층은 네이티브 `type="date"`이며, 그것이 도는
+ * 브라우저에서는 달력에 없는 날짜가 애초에 값이 되지 않는다(빈 값이 되고 「계획일을 넣으세요」
+ * 사유가 맡는다). 이 층은 **날짜 칸이 글자 칸으로 낮아지는 환경**을 위한 것이다 — 그때는
+ * 사용자가 아무 글자나 칠 수 있고, 개시는 되돌릴 수 없어 서버에 맡길 수 없다.
  */
 export const validateOpenDraft = (draft: OpenDraft): Record<string, string> => {
   const errors: Record<string, string> = {};

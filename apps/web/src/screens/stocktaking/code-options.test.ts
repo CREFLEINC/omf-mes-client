@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   codeNote,
   codePlaceholder,
+  isCountTypeListPending,
   PLACEHOLDER_STOCKTAKING_CODES,
   toCodeOptionSets,
 } from './code-options';
@@ -85,6 +86,39 @@ describe('toCodeOptionSets', () => {
     expect(sets.countType).toEqual([]);
     expect(sets.status).toEqual([]);
     expect(sets.varianceReason).toEqual([]);
+  });
+});
+
+describe('isCountTypeListPending — 개시가 통째로 막히는가', () => {
+  /* **M23 · 승인 G1** — 지금은 고를 값이 없어 개시가 열리지 않는다. */
+  it('지금의 자리표시로는 개시가 막힌다', () => {
+    expect(isCountTypeListPending(toCodeOptionSets(PLACEHOLDER_STOCKTAKING_CODES))).toBe(true);
+  });
+
+  /** **M19** — 배열이 차는 순간 막힘이 풀린다. 고칠 자리가 `code-options.ts` 하나라는 약속이다. */
+  it('실사 유형이 차면 막힘이 풀린다', () => {
+    expect(
+      isCountTypeListPending(
+        toCodeOptionSets({ countType: ['SAMPLE_COUNT_TYPE_A'], status: [], varianceReason: [] }),
+      ),
+    ).toBe(false);
+  });
+
+  /*
+   * **필수도로 갈라 적용한다**(승인 G1). 차이 사유는 **조건부 필수**라 잠기는 범위가 다르고
+   * (차이가 있는 위치만 · PR ③), 상태 코드는 조회 조건이라 아무것도 막지 않는다 —
+   * 셋을 한 판정에 묶으면 차이가 없는 위치의 저장까지 개시와 함께 막힌다.
+   */
+  it('다른 둘만 차 있으면 개시는 여전히 막힌다', () => {
+    expect(
+      isCountTypeListPending(
+        toCodeOptionSets({
+          countType: [],
+          status: ['SAMPLE_COUNT_STATUS_A'],
+          varianceReason: ['SAMPLE_VARIANCE_REASON_A'],
+        }),
+      ),
+    ).toBe(true);
   });
 });
 

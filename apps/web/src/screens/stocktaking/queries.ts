@@ -1,7 +1,8 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
 import type { CountFilterQuery } from './filters';
 import {
@@ -10,6 +11,7 @@ import {
   type CountDetailView,
   type CountListResult,
 } from './types';
+import { OPEN_FORM_FIELDS } from './validation';
 
 /**
  * 이 화면의 요청.
@@ -23,9 +25,8 @@ import {
  * | 「이 위치 실사 완료」 | `PUT …/lines` — **파괴적 치환** | ③ |
  * | 「마감」 확인 | `POST …:close` — **되돌릴 수 없다** | ④ |
  *
- * **이 PR은 읽기 둘까지다.** 쓰기 셋은 잠금 규약이 서로 달라(없음 / 선택 / 필수) 각각의
- * PR에서 배선한다 — 이 파일에 쓰기 훅이 하나도 없다는 것이 「PR ①은 쓰기를 부르지 않는다」의
- * 구조적 근거다(완료 조건 C13).
+ * **이 PR은 읽기 둘과 쓰기 하나까지다.** 쓰기 셋은 잠금 규약이 서로 달라(**없음** / 선택 /
+ * 필수) 각각의 PR에서 배선한다 — 여기 있는 개시가 그중 잠금이 **없는** 하나다.
  *
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
  * 문자열 변수로 넘기면 타입 검사가 풀린다.
@@ -148,4 +149,53 @@ export const isCountNotFound = (error: unknown): boolean => {
   const apiError = toApiError(error);
 
   return apiError.kind === 'http' && apiError.status === 404;
+};
+
+type InventoryCountCreate = components['schemas']['InventoryCountCreate'];
+type InventoryCountDetailResponse = components['schemas']['InventoryCountDetailResponse'];
+
+export interface InventoryCountOpenOptions {
+  /** 만들어진 실사. **화면 타입으로 옮겨 넘긴다** — 계약 응답이 화면 코드로 새지 않는다. */
+  onSuccess: (detail: CountDetailView) => void;
+}
+
+/**
+ * 실사 개시 — **이 화면의 첫째 쓰기이고 되돌릴 수 없다.**
+ *
+ * **공통 쓰기 훅을 그대로 쓰고 고치지 않는다**(계획 결정 16). 이름에 「마스터」가 들어 있으나
+ * 그 훅은 리소스 이름을 알지 않는다 — 요청 함수·잠금 토큰 경로·무효화 키·화면이 아는 필드만
+ * 받는다. 이름 변경은 `patterns/` 변경(높은 위험)이라 별도 작업으로 남긴다.
+ *
+ * **잠금 토큰이 없다**(`etagPath: null`). 이 오퍼레이션에는 `If-Match`가 아예 없고(실측)
+ * 응답 갈래도 201·400·403뿐이라 충돌(409)이 나오지 않는다 — 저장 실패 배너에 「최신 불러오기」가
+ * 뜨지 않는 이유가 그것이다. **세 쓰기 중 잠금 규약이 없는 것은 이 하나뿐이다**(치환은 선택,
+ * 마감은 필수).
+ *
+ * **목록을 무효화한다.** 개시로 실사 전표가 하나 늘어나므로 목록이 낡는다 — 방금 만든 실사가
+ * 목록에 보이지 않으면 사용자는 만들어졌는지 확인할 길이 없다. **상세는 함께 무효화되지
+ * 않는다**(캐시 앞머리가 갈려 있다) — 새 실사의 상세는 `ct`가 옮겨 가면서 새로 뜬다.
+ *
+ * **남은 위험**: 응답을 받지 못한 뒤 다시 누르면 공통 훅이 **새 멱등 키**를 만들어 서버가
+ * 재전송으로 보지 못한다. 제출 단위로 키를 고정하면 풀리는 문제이나 그것은 `patterns/` 변경이라
+ * 범위 밖이다 — 화면 차원 완화 셋(전송 중 전면 잠금 · 성공 후 초안 비움 · 응답 없음 안내)으로
+ * 다룬다.
+ */
+export const useInventoryCountOpen = (
+  options: InventoryCountOpenOptions,
+): MasterWriteResult<InventoryCountCreate> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<InventoryCountCreate, InventoryCountDetailResponse>({
+    request: (body, headers) =>
+      client.POST('/inventory/counts', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body,
+      }),
+    etagPath: null,
+    invalidateKeys: [countKeys.lists],
+    knownFields: OPEN_FORM_FIELDS,
+    onSuccess: (data) => {
+      options.onSuccess(toCountDetailView(data));
+    },
+  });
 };

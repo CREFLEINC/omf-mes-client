@@ -20,9 +20,10 @@ import type { SelectOption, StocktakingCodeKey } from './types';
  * | `varianceReason` | 결과 등록 — 차이 사유 | **조건부 필수** | **차이가 있는 위치만** 저장이 막힌다(PR ③) |
  * | `status` | 조회 조건 | 선택 | 아무것도 막히지 않는다. 조건 칸이 비고 안내가 붙는다 |
  *
- * **이 PR에서 쓰이는 것은 조회 조건 둘**(실사 유형·상태)이고 둘 다 조회를 막지 않는다 —
- * 값 목록이 없으면 그 조건으로 좁힐 수 없을 뿐, 목록은 조건 없이도 보인다.
- * 잠금 판정과 그 사유 문구는 **막히는 조작이 생기는 PR**이 소유한다.
+ * **잠금 판정은 이 파일이 소유하고 사유 문구는 그 조작이 소유한다.** 「고를 값이 있는가」는
+ * 값 목록의 사정이라 여기서 재고(`isCountTypeListPending`), 「그래서 무엇이 막히는가」는
+ * 그 조작의 사정이라 `validation.ts`가 문구로 낸다 — 화면이 배열 길이를 직접 세면 같은 판정이
+ * 자리마다 다시 생긴다.
  *
  * **값이 확정되면 이 파일의 배열만 채우면 된다.** 화면·검증·요청 조립은 배열을 읽을 뿐이라
  * 다른 자리를 고칠 필요가 없고, 채우는 순간 개시와 저장이 저절로 살아난다.
@@ -67,6 +68,19 @@ export const toCodeOptionSets = (values: CodeValueLists): CodeOptionSets => ({
   status: toOptions(values.status),
   varianceReason: toOptions(values.varianceReason),
 });
+
+/**
+ * 개시가 **통째로** 막히는가 — 실사 유형은 요청 필수인데 고를 값 자체가 없다(승인 G1).
+ *
+ * 「아직 안 골랐다」와 다르다. 고를 것이 없는데 「고르세요」라고 말하면 사용자가 자기가 놓친
+ * 것을 찾다가 화면을 고장으로 읽는다 — 그래서 사유 문구가 갈린다(`validation.ts`).
+ *
+ * **차이 사유(`varianceReason`)를 함께 보지 않는다.** 그쪽은 조건부 필수라 잠기는 범위가
+ * 다르고(차이가 있는 위치만 · PR ③), 여기 묶으면 차이가 없는 위치의 저장까지 막힌다 —
+ * 필수도로 갈라 적용한다는 승인 G1의 요점이 그 갈림이다.
+ */
+export const isCountTypeListPending = (sets: CodeOptionSets): boolean =>
+  sets.countType.length === 0;
 
 /** 선택지가 왜 비어 있는지 밝히는 안내. **차면 거둔다** — 남으면 화면이 거짓말을 한다. */
 export const codeNote = (options: readonly SelectOption[]): string | undefined =>

@@ -18,10 +18,10 @@ const view = (overrides: Partial<PageView> = {}): PageView => ({
   ...overrides,
 });
 
-const renderNav = (overrides: Partial<PageView> = {}) => {
+const renderNav = (overrides: Partial<PageView> = {}, isLocked = false) => {
   const onChange = vi.fn<(page: number) => void>();
 
-  render(<PageNav view={view(overrides)} onChange={onChange} />);
+  render(<PageNav view={view(overrides)} isLocked={isLocked} onChange={onChange} />);
 
   return { onChange, user: userEvent.setup() };
 };
@@ -56,6 +56,17 @@ describe('PageNav', () => {
 
     expect(screen.getByRole('button', { name: t.actions.prevPage })).not.toBeDisabled();
     expect(screen.getByRole('button', { name: t.actions.nextPage })).not.toBeDisabled();
+  });
+
+  /*
+   * **C26** — 전송 중에는 갈 수 있는 쪽까지 잠긴다(수명 표 18행). 쪽 이동은 고른 실사를
+   * 비우는 길이라, 열어 두면 앞 요청의 결과가 다른 쪽 맥락에 나타난다.
+   */
+  it('전송 중에는 갈 수 있는 쪽도 잠긴다', () => {
+    renderNav({}, true);
+
+    expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.nextPage })).toBeDisabled();
   });
 
   /* 이름 없는 탐색 영역이 여럿이면 스크린리더가 어느 것이 무엇인지 말할 수 없다. */

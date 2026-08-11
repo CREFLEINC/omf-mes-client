@@ -26,6 +26,11 @@ export interface CountFilterBarProps {
   chipNames: FilterChipNames;
   /** 참조 선택지의 한계(잘림·실패) 안내. 밝히지 않으면 값이 사라진 것으로 읽힌다. */
   warehouseNote?: string;
+  /**
+   * 전송 중인가. **조회·초기화만 잠근다** — 조건 칸 자체는 열어 둔다(잠그면 지금 걸린 조건을
+   * 해제할 방법이 사라지고, 칸을 고쳐도 조회가 나가지 않아 잃는 것이 없다).
+   */
+  isLocked: boolean;
   onSearch: (filters: CountFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: ChipFilterKey) => void;
@@ -58,6 +63,7 @@ export const CountFilterBar = ({
   statusOptions,
   chipNames,
   warehouseNote,
+  isLocked,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -188,12 +194,16 @@ export const CountFilterBar = ({
 
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
-         * 비활성 사유가 붙는 자리가 없다 — 조건 없이도 조회가 열려 있다.
+         * 조건 때문에 잠기는 자리는 없다 — 조건 없이도 조회가 열려 있다.
+         * **전송 중에만 잠긴다**(수명 표 18행) — 조회·초기화는 고른 실사를 비우는 길이라,
+         * 보내는 동안 열어 두면 앞 요청의 결과가 다른 맥락에 나타난다.
          */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
-            <Button onClick={search}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={onReset}>
+            <Button disabled={isLocked} onClick={search}>
+              {messages.common.search}
+            </Button>
+            <Button variant="outlined" disabled={isLocked} onClick={onReset}>
               {messages.common.reset}
             </Button>
           </div>

@@ -10,6 +10,8 @@ const t = messages.stocktaking;
 export interface CountColumnsInput {
   selectedCountId: number | null;
   warehouseLookup: ReferenceSource;
+  /** 전송 중인가. 다른 실사로 옮기면 **앞 요청의 결과가 그 실사 맥락에 나타난다**. */
+  isLocked: boolean;
   onToggleSelect: (inventoryCountId: number) => void;
 }
 
@@ -41,6 +43,7 @@ export interface CountColumnsInput {
 export const buildCountColumns = ({
   selectedCountId,
   warehouseLookup,
+  isLocked,
   onToggleSelect,
 }: CountColumnsInput): Column<CountView>[] => [
   { key: 'inventoryCountNo', header: t.table.inventoryCountNo, width: '168px' },
@@ -88,6 +91,7 @@ export const buildCountColumns = ({
         <Button
           variant="outlined"
           size="sm"
+          disabled={isLocked}
           aria-label={
             selected
               ? t.actions.deselectRow(row.inventoryCountNo)
@@ -132,11 +136,12 @@ export const CountTable = ({
   isBeyondLast,
   selectedCountId,
   warehouseLookup,
+  isLocked,
   onFirstPage,
   onToggleSelect,
   onRetryReferences,
 }: CountTableProps) => {
-  const columns = buildCountColumns({ selectedCountId, warehouseLookup, onToggleSelect });
+  const columns = buildCountColumns({ selectedCountId, warehouseLookup, isLocked, onToggleSelect });
 
   if (isLoading) {
     return (
@@ -154,7 +159,7 @@ export const CountTable = ({
         title={t.empty.beyondLastTitle}
         description={t.empty.beyondLastDescription}
         action={
-          <Button variant="outlined" onClick={onFirstPage}>
+          <Button variant="outlined" disabled={isLocked} onClick={onFirstPage}>
             {t.actions.goFirstPage}
           </Button>
         }

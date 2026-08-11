@@ -35,6 +35,7 @@ const columnsWith = (warehouseLookup: ReferenceSource = source()): Column<CountV
   buildCountColumns({
     selectedCountId: null,
     warehouseLookup,
+    isLocked: false,
     onToggleSelect: () => undefined,
   });
 
@@ -52,6 +53,7 @@ const renderTable = (overrides: Partial<CountTableProps> = {}) => {
       isBeyondLast={false}
       selectedCountId={null}
       warehouseLookup={source()}
+      isLocked={false}
       onFirstPage={onFirstPage}
       onToggleSelect={onToggleSelect}
       onRetryReferences={onRetryReferences}
@@ -214,6 +216,33 @@ describe('CountTable — 선택과 빈 상태', () => {
     expect(
       screen.getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }),
     ).toBeInTheDocument();
+  });
+
+  /*
+   * **C26** — 전송 중에는 행의 선택 버튼과 「첫 쪽으로」가 잠긴다(수명 표 18행).
+   * 다른 실사로 옮기면 **앞 요청의 결과가 그 실사 맥락에 나타난다.**
+   */
+  it('전송 중에는 행 선택이 잠긴다', () => {
+    renderTable({ isLocked: true });
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('IC-2026-900011') }),
+    ).toBeDisabled();
+  });
+
+  it('전송 중에는 첫 쪽으로 가는 버튼도 잠긴다', () => {
+    renderTable({ rows: [], isBeyondLast: true, isLocked: true });
+
+    expect(screen.getByRole('button', { name: t.actions.goFirstPage })).toBeDisabled();
+  });
+
+  /* 짝 방향 — 잠기지 않았을 때는 행 선택이 열려 있다. */
+  it('전송 중이 아니면 행 선택이 열려 있다', () => {
+    renderTable();
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('IC-2026-900011') }),
+    ).not.toBeDisabled();
   });
 
   /*
