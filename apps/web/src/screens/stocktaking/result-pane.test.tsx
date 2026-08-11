@@ -54,4 +54,18 @@ describe('ResultPane — 개시 갈래', () => {
 
     expect(within(resultRegion()).getByText(t.result.openedNote)).toBeInTheDocument();
   });
+
+  /*
+   * **어디로도 이동하지 않는다.** 만들어진 실사는 같은 화면의 아래 구획에서 이어 다루므로
+   * 갈 곳이 없다 — 링크나 버튼을 두면 없는 화면으로 가는 경로가 생긴다. PR ④의 「조정 등록」이
+   * 같은 규칙을 더 센 형태로 받으므로(이슈 §5 ⚠) 그 잣대를 여기서 미리 세워 둔다.
+   */
+  it('결과 구획에 이동 수단을 두지 않는다', () => {
+    renderPane();
+
+    /* 짝 방향 — 구획은 실제로 그려졌다. */
+    expect(within(resultRegion()).getByText('IC-2026-900014')).toBeInTheDocument();
+    expect(within(resultRegion()).queryAllByRole('link')).toHaveLength(0);
+    expect(within(resultRegion()).queryAllByRole('button')).toHaveLength(0);
+  });
 });

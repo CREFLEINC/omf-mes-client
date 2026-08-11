@@ -1418,6 +1418,28 @@ describe('StocktakingScreen — 개시 확인 창', () => {
 
 describe('StocktakingScreen — 개시 요청', () => {
   /*
+   * **아래 단언들이 딛고 선 전제를 먼저 고정한다.** 개시로 만들어지는 실사가 목록 셋 가운데
+   * 하나와 겹치면 「방금 만든 실사가 지금 조건의 목록에 없어도 아래 구획이 열린다」가 무엇을
+   * 재는지 알 수 없게 된다 — 목록에 있어서 열린 것인지 상세가 200이라 열린 것인지 갈리지 않는다.
+   */
+  it('개시로 만들어지는 실사가 목록 셋과 겹치지 않는다', () => {
+    expect(countFixtures.map((count) => count.inventoryCountId)).not.toContain(OPENED_COUNT_ID);
+  });
+
+  /*
+   * **취소가 개시보다 앞에 선다.** 되돌릴 수 없는 것이 손 가까이 있으면 안 된다 —
+   * 두 버튼의 차례가 뒤집히면 서둘러 누르는 손이 개시에 먼저 닿는다.
+   */
+  it('취소가 실사 개시보다 앞에 선다', async () => {
+    await setupReadyToOpen();
+
+    const cancel = within(openPane()).getByRole('button', { name: messages.common.cancel });
+    const following = cancel.compareDocumentPosition(openButton()) & Node.DOCUMENT_POSITION_FOLLOWING;
+
+    expect(following).not.toBe(0);
+  });
+
+  /*
    * **C28** — 요청 본문이 넷이고 **`If-Match`를 보내지 않는다.** 이 오퍼레이션에는 낙관적
    * 잠금이 아예 없어(실측) 빈 토큰을 실으면 계약 위반이 된다. `Idempotency-Key`는 전 쓰기에
    * 필수라 늘 실린다.
@@ -1463,7 +1485,13 @@ describe('StocktakingScreen — 개시 요청', () => {
       expect(currentLocation()).toBe(`${ROUTE}?wh=9101&ct=${String(OPENED_COUNT_ID)}`);
     });
 
-    /* 결과 구획이 업무 번호를 낸다. */
+    /*
+     * 결과 구획이 업무 번호를 내고, **아래 구획 안에** 선다(계획 §5.5 배치) — 바로 위에
+     * 그 실사의 제목줄과 요약이 함께 서서 「무엇을 만들었고 지금 어떤 상태인가」가 이어진다.
+     */
+    expect(
+      within(detailPane()).getByRole('status', { name: t.result.label }),
+    ).toBeInTheDocument();
     expect(
       within(screen.getByRole('status', { name: t.result.label })).getByText(OPENED_COUNT_NO),
     ).toBeInTheDocument();

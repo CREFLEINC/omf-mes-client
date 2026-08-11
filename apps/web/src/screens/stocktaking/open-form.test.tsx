@@ -92,6 +92,19 @@ describe('OpenForm — 개시 입력 칸', () => {
     expect(screen.getByText(t.notes.openLead)).toBeInTheDocument();
   });
 
+  /*
+   * **필수 표시(*)를 붙이지 않는다.** 넷 중 셋이 필수라 표시가 거의 모든 칸에 붙어 뜻을
+   * 잃는다 — 무엇이 모자라는지는 「실사 개시」 옆의 사유 한 줄이 **한 번에 하나씩** 가리킨다.
+   */
+  it('라벨에 필수 표시를 붙이지 않는다', () => {
+    const { container } = renderForm();
+
+    /* 짝 방향 — 라벨은 실제로 넷 다 있다(아무것도 안 그려서 통과하는 것이 아니다). */
+    expect(screen.getByLabelText(t.fields.countType)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.plannedDate)).toBeInTheDocument();
+    expect(container.textContent ?? '').not.toContain('*');
+  });
+
   it('초안의 값이 그대로 보인다', () => {
     renderForm({
       countTypeOptions: [{ value: SAMPLE_COUNT_TYPE, label: SAMPLE_COUNT_TYPE }],
@@ -144,6 +157,22 @@ describe('OpenForm — 오류와 잠금', () => {
     renderForm();
 
     expect(screen.queryByText(t.errors.plannedDateInvalid)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **선택지의 사정과 값의 오류를 함께 낸다.** 「고를 값이 아직 없다」와 「고른 값이 너무
+   * 길다」는 서로 다른 사정이라, 한쪽이 다른 쪽을 덮으면 사용자가 무엇을 해야 하는지 잃는다.
+   * 둘 다 **항상 보이는 글자**로 서고 `aria-describedby`가 둘을 함께 가리킨다.
+   */
+  it('선택지 안내와 오류가 한 칸에 함께 선다', () => {
+    renderForm({ fieldErrors: { [OPEN_FIELD_NAMES.countType]: t.errors.codeTooLong(50) } });
+
+    const countType = screen.getByLabelText(t.fields.countType);
+    const describedBy = countType.getAttribute('aria-describedby') ?? '';
+
+    expect(screen.getByText(messages.pendingCode.note)).toBeInTheDocument();
+    expect(screen.getByText(t.errors.codeTooLong(50))).toBeInTheDocument();
+    expect(describedBy.split(' ')).toHaveLength(2);
   });
 
   /*
