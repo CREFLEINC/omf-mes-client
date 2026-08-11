@@ -261,6 +261,38 @@ const failingBalancesRoute = (): StubRoute => ({
   respond: () => jsonResponse({ message: '' }, { status: 500 }),
 });
 
+/**
+ * 부를 때마다 **보유 수량이 줄어드는** 잔액 — 다른 사람이 그 LOT을 먼저 반품한 형태다.
+ *
+ * 「다시 조회」가 잔액을 실제로 다시 부르고 **그 응답을 화면에 반영하는지**를 재려면 값이
+ * 달라져야 한다. 같은 본문이 돌아오면 요청 수만 늘고 글자는 그대로라, 응답을 버리는 결함과
+ * 구분되지 않는다.
+ */
+const changingBalancesRoute = (): StubRoute => {
+  const callsByItem = new Map<string, number>();
+
+  return {
+    match: (request) => isGet(request, BALANCES_PATH),
+    respond: (request) => {
+      const itemId = new URL(request.url).searchParams.get('itemId') ?? '';
+      const call = (callsByItem.get(itemId) ?? 0) + 1;
+
+      callsByItem.set(itemId, call);
+
+      /* 9601은 소유 구분으로 두 줄이라 줄마다 5씩 빠지면 합계가 10 줄어든다. */
+      const items = balanceFixtures
+        .filter((balance) => String(balance.itemId) === itemId)
+        .map((balance) =>
+          balance.lotId === 9601
+            ? { ...balance, onHandQty: balance.onHandQty - (call - 1) * 5 }
+            : balance,
+        );
+
+      return jsonResponse(listBody(items));
+    },
+  };
+};
+
 const lookupRoute = (
   pathname: string,
   items: unknown[],
@@ -1111,8 +1143,38 @@ describe('SupplierReturnScreen — 다시 조회', () => {
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(2);
   });
 
+  /**
+   * **보유 수량도 함께 부른다.** 앞 잣대가 든 피해(「다른 사람이 먼저 반품한다」)로 바뀌는 것은
+   * 줄 집합만이 아니라 **그 LOT에 남은 양**이고, **성공한 잔액을 다시 부를 길은 이 버튼뿐이다**
+   * (표 아래 「다시 시도」는 조회가 실패했을 때만 그려진다).
+   *
+   * 낡은 상한은 「보유 수량 …보다 많이 되돌려 보낼 수 없습니다」라는 **사실이 아닌 문장으로
+   * 정당한 반품을 막는다** — 승인 13-6이 물리친 바로 그 형태다.
+   */
+  it('잔액도 함께 부르고 보유 수량이 실제로 갱신된다', async () => {
+    const { requests, user } = renderScreen(allRoutes([changingBalancesRoute()]));
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+    await screen.findAllByText(t.lineTable.onHandQtyPair(ON_HAND_9601, UOM_LABEL));
+
+    const before = requestsTo(requests, BALANCES_PATH).length;
+
+    await refresh(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, BALANCES_PATH).length).toBeGreaterThan(before);
+    });
+
+    /* 값이 실제로 갱신됐는지까지 본다 — 요청 수만 세면 응답을 버리는 결함을 놓친다. */
+    await screen.findAllByText(t.lineTable.onHandQtyPair(ON_HAND_9601 - 10, UOM_LABEL));
+    expect(
+      screen.queryByText(t.lineTable.onHandQtyPair(ON_HAND_9601, UOM_LABEL)),
+    ).not.toBeInTheDocument();
+  });
+
   /** 고르지 않았으면 상세 조회가 성립하지 않는다 — 부르면 없는 전표의 경로로 요청이 나간다. */
-  it('고르지 않았으면 상세를 부르지 않는다', async () => {
+  it('고르지 않았으면 상세도 잔액도 부르지 않는다', async () => {
     const { requests, user } = renderScreen(allRoutes([changingListRoute()]));
 
     await screen.findByText('GR-2026-900001');
@@ -1123,6 +1185,8 @@ describe('SupplierReturnScreen — 다시 조회', () => {
     });
 
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
+    /* 잔액에는 가드가 없다 — 만들어진 조회가 0건이라 **자료 구조가** 이것을 지킨다. */
+    expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(0);
   });
 
   /**
