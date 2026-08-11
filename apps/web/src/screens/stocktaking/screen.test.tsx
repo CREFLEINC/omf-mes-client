@@ -2973,6 +2973,37 @@ describe('StocktakingScreen — 저장 실패', () => {
     expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
   });
 
+  /*
+   * **훑기로 찾은 사각** — 서버가 **줄에 붙는 필드 오류**를 주는 갈래.
+   *
+   * 이 화면은 표 안 입력칸을 줄마다 갖는데 계약이 **줄마다의 오류를 어떤 이름으로 주는지
+   * 정하지 않았다**(실측). 그래서 화면이 아는 필드를 두지 않고 **전부 배너로 올린다**
+   * (`queries.ts`의 `knownFields: []`). 그 목록에 이름을 하나라도 채우면 그 오류가 인라인으로
+   * 분류되는데 **인라인으로 낼 자리가 없어 조용히 사라진다** — 사용자에게는 「저장을 눌렀는데
+   * 아무 일도 없다」로 보인다. 개시 폼(PR ②)과 정반대로 가는 자리라 잣대를 세워 둔다.
+   */
+  it('서버가 줄에 붙인 필드 오류도 삼키지 않고 배너로 낸다', async () => {
+    const { user } = await setupAtLocation(
+      allRoutes([
+        failingReplaceRoute(400, {
+          errors: [
+            {
+              scope: 'field',
+              code: 'INVALID',
+              field: 'countedQty',
+              message: '2번 줄 실물 수량을 확인하세요.',
+            },
+          ],
+        }),
+      ]),
+    );
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    expect(await screen.findByText('2번 줄 실물 수량을 확인하세요.')).toBeInTheDocument();
+  });
+
   it('응답이 오지 않으면 다시 보내기 전에 확인하라고 밝힌다', async () => {
     const { user } = await setupAtLocation(allRoutes([offlineReplaceRoute()]));
 
