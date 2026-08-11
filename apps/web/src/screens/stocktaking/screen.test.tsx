@@ -262,6 +262,27 @@ const offlineOpenRoute = (): StubRoute => ({
   },
 });
 
+/**
+ * 첫 개시는 되고 **둘째 개시가 막히는** 갈래.
+ *
+ * 결과 구획을 세운 **뒤에** 실패하는 순서를 만드는 유일한 수단이다 — 실패 테스트가 늘 빈
+ * 화면에서 시작하면 「실패하면 결과 구획을 비운다」(수명 표 12행)가 아무것도 재지 못한다.
+ */
+const openThenForbiddenRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: isOpenRequest,
+    respond: () => {
+      call += 1;
+
+      return call === 1
+        ? jsonResponse(openedCountDetailBody(), { status: 201 })
+        : jsonResponse({ message: '' }, { status: 403 });
+    },
+  };
+};
+
 /** 뒤 PR의 경로들. **부를 수 있게 두는 것이 요점이다** — 부르지 않음을 증명할 수 있어야 한다. */
 const futureRoutes = (): StubRoute[] => [
   { match: (request) => isGet(request, LINES_PATH), respond: () => jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } }) },
@@ -1291,6 +1312,37 @@ describe('StocktakingScreen — 개시가 잠겨 있는 동안', () => {
   });
 
   /*
+   * **M-4** — **버튼이 열려 있는데도 보낼 수 없는 상태**가 실제로 있다. 버튼의 잠금은
+   * 「비어 있는가」만 보고(`openBlockReason`), 형식·길이는 `validateOpenDraft`가 본다 —
+   * 그래서 고른 코드가 상한을 넘으면 **버튼은 열린 채로 남는다.**
+   *
+   * 그 상태에서 눌렀을 때 **창을 열지 않고 그 칸에 오류를 붙이는 것**이 `requestOpen`의
+   * 사전 판정이다. 판정이 없으면 확인 창이 먼저 뜨고, 사용자는 상한을 넘은 코드를 확인한 뒤
+   * **되돌릴 수 없는 전표**를 보내려다 서버 400을 받는다 — 확인 창이 거짓 안심을 준다.
+   */
+  it('버튼이 열려 있어도 코드가 상한을 넘으면 창이 열리지 않는다', async () => {
+    const tooLongCode = 'A'.repeat(51);
+
+    fillCodeLists([tooLongCode]);
+
+    const { requests, user } = renderScreen(allRoutes());
+
+    await waitForList();
+    await chooseOption(user, openPane(), t.fields.countType, tooLongCode);
+    await chooseOption(user, openPane(), t.fields.warehouse, WAREHOUSE_LABEL);
+    await user.type(within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
+
+    /* 짝 방향 — 버튼은 실제로 열려 있다(잠겨 있어서 창이 안 뜨는 것이 아니다). */
+    expect(openButton()).not.toBeDisabled();
+
+    await user.click(openButton());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(within(openPane()).getByText(t.errors.codeTooLong(50))).toBeInTheDocument();
+    expect(openRequests(requests)).toHaveLength(0);
+  });
+
+  /*
    * **C21의 첫 층** — 계획일 칸이 **달력에 없는 날짜를 값으로 받지 않는다.** 네이티브
    * `type="date"`가 그것을 걸러 값이 비고, 그 뒤는 「계획일을 넣으세요」 사유가 맡는다.
    *
@@ -1558,6 +1610,55 @@ describe('StocktakingScreen — 개시 요청', () => {
       expect(currentLocation()).toContain(`ct=${String(OPENED_COUNT_ID)}`);
     });
   });
+
+  /*
+   * **M-5 · M26의 둘째 겹** — 위 테스트가 재는 것은 **컨트롤 잠금**(눈에 보이는 첫째 겹)이다.
+   * 그 겹만으로는 모자란 자리가 실재한다: **조건 칩의 ×는 디자인 시스템이 잠금을 받지 않아**
+   * (`StatusChipProps`에 `disabled`가 없다 — 실측) 전송 중에도 눌린다.
+   *
+   * 그 길로 들어오면 조건이 바뀌면서 `ct`가 풀리고, 잠시 뒤 도착한 **앞 요청의 결과가 다른
+   * 조건의 맥락에 나타난다.** 그래서 `applyQuery`가 스스로 한 번 더 막는다 — 이 테스트는
+   * **경로 가드 단독**을 겨눈다(컨트롤 잠금은 이 경로에 아예 없다).
+   */
+  it('전송 중에는 잠금을 받지 않는 조건 칩의 ×로도 대상이 바뀌지 않는다', async () => {
+    const { requests, release, user } = await setupReadyToOpen(
+      allRoutes(),
+      '?wh=9101',
+      '',
+      isOpenRequest,
+    );
+
+    await user.click(openButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
+
+    await waitFor(() => {
+      expect(openRequests(requests)).toHaveLength(1);
+    });
+
+    const before = currentLocation();
+    const listBefore = requestsTo(requests, LIST_PATH).filter(
+      (request) => request.method === 'GET',
+    ).length;
+    const removeChip = within(listPane()).getByRole('button', {
+      name: t.filters.chipRemoveWarehouse,
+    });
+
+    /* 짝 방향 — 이 버튼은 실제로 눌린다(잠겨 있어서 아무 일도 안 나는 것이 아니다). */
+    expect(removeChip).not.toBeDisabled();
+
+    await user.click(removeChip);
+
+    expect(currentLocation()).toBe(before);
+    expect(
+      requestsTo(requests, LIST_PATH).filter((request) => request.method === 'GET'),
+    ).toHaveLength(listBefore);
+
+    release();
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain(`ct=${String(OPENED_COUNT_ID)}`);
+    });
+  });
 });
 
 describe('StocktakingScreen — 개시 실패', () => {
@@ -1605,6 +1706,41 @@ describe('StocktakingScreen — 개시 실패', () => {
 
     expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
     expect(screen.getByText(t.notes.openRecheck)).toBeInTheDocument();
+  });
+
+  /*
+   * **M-6 · 수명 표 12행** — 실패하면 **결과 구획을 비운다.** 이 명제는 **앞선 개시가
+   * 성공한 뒤에 실패하는 순서**로만 잴 수 있다 — 빈 화면에서 시작하는 실패 테스트는 결과
+   * 구획이 원래 없으므로 아무것도 재지 못한다.
+   *
+   * 무너지면 방금 만든 실사번호가 **실패 배너 옆에 그대로 서 있고**, 사용자는 둘째 개시도
+   * 성공한 것으로 읽는다 — 되돌릴 수 없는 전표를 하나 더 만들려 들 이유가 생긴다.
+   */
+  it('앞선 개시가 성공한 뒤 실패하면 결과 구획을 거둔다', async () => {
+    const { user } = await setupReadyToOpen(allRoutes([openThenForbiddenRoute()]));
+
+    await user.click(openButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
+
+    /* 첫 개시는 성공한다 — 결과 구획이 실제로 선다. */
+    expect(
+      await screen.findByRole('status', { name: t.result.label }),
+    ).toBeInTheDocument();
+
+    /* 성공이 초안을 비웠으므로 둘째 개시를 위해 다시 채운다. */
+    await fillOpenDraft(user);
+    await user.click(openButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+
+    /*
+     * **거두는 것은 「방금 만들었다」는 결과뿐이다.** 첫 실사는 실제로 있고 `ct`가 그것을
+     * 가리키므로 제목줄에는 그대로 남는다 — 둘을 뭉개면 「실패했으니 앞서 만든 것도 없다」로
+     * 읽히고, 사용자는 있는 전표를 한 번 더 만들려 든다.
+     */
+    expect(within(detailPane()).getByText(OPENED_COUNT_NO)).toBeInTheDocument();
   });
 
   /* 짝 방향 — 응답이 온 실패에는 그 한 줄을 붙이지 않는다. 붙이면 늘 참인 안내가 된다. */

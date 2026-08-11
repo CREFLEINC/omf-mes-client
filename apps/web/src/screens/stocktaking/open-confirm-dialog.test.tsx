@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -75,6 +75,21 @@ describe('OpenConfirmDialog — 보낼 값을 그대로 다시 보인다', () =>
     expect(within(dialog()).queryAllByRole('combobox')).toHaveLength(0);
     expect(within(dialog()).queryAllByRole('textbox')).toHaveLength(0);
     expect(within(dialog()).queryAllByRole('checkbox')).toHaveLength(0);
+  });
+
+  /*
+   * **스크림 클릭으로 닫히지 않는다**(`closeOnBackdropClick={false}`). 실수로 닫혀도 초안이
+   * 남아 잃는 것은 없지만, **되돌릴 수 없는 조작을 확인하는 창이 스치는 클릭에 사라지면
+   * 확인 자체가 형식이 된다** — 파기 확인 창과 갈리는 자리이고, 그 갈림이 규칙이다.
+   *
+   * 설치본은 `<dialog>` 자신이 클릭 대상일 때만 닫기를 부른다(실측) — 그 자리를 그대로 누른다.
+   */
+  it('스크림을 눌러도 닫히지 않는다', () => {
+    const { onClose } = renderDialog();
+
+    fireEvent.click(dialog());
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   /* 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */

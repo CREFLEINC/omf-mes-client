@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -37,6 +37,19 @@ describe('DiscardConfirmDialog — 초안 파기 확인', () => {
     expect(within(dialog()).queryAllByRole('combobox')).toHaveLength(0);
     expect(within(dialog()).queryAllByRole('textbox')).toHaveLength(0);
     expect(within(dialog()).queryAllByRole('checkbox')).toHaveLength(0);
+  });
+
+  /*
+   * **스크림 클릭으로 닫히는 것을 막지 않는다.** 실수로 닫혀도 초안이 그대로 남아 잃는 것이
+   * 없다 — 되돌릴 수 없는 개시 확인 창과 **갈리는 자리**이고, 그 갈림이 규칙이다.
+   * 두 창을 같은 잣대로 재야 갈림이 실제로 지켜지는지 알 수 있어 짝으로 세운다.
+   */
+  it('스크림을 누르면 닫힌다', () => {
+    const { onClose } = renderDialog();
+
+    fireEvent.click(dialog());
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   /* 문구가 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */
