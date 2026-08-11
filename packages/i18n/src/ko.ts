@@ -3848,6 +3848,176 @@ const stocktaking = {
   },
 } as const;
 
+/**
+ * W-01-05 공급사 반품 처리.
+ *
+ * **이 묶음의 PR ① 몫은 「무엇을 되돌려 보낼지 고르기 전에 보는 것」까지다** —
+ * 대상 입고 전표를 조건으로 찾고, 한 건을 골라 그 라인을 읽는 데까지. 줄 선택·반품 수량·
+ * 반품 처리의 문구는 뒤따르는 회차에서 이 묶음에 더해진다.
+ *
+ * **상태말을 화면 문구로 만들지 않는다.** 입고 유형·상태 코드의 값 집합이 확정되지 않아
+ * 화면이 값을 해석하면 값이 정해질 때 조용히 틀린다 — 서버가 준 코드를 그대로 낸다.
+ *
+ * **「반품할 수 있다/없다」를 이 회차의 문구가 말하지 않는다.** 그 판정은 줄 선택이 생길 때
+ * 함께 온다 — 없는 판정을 문구가 먼저 말하면 화면이 확인하지 않은 것을 말하는 것이 된다.
+ */
+const supplierReturn = {
+  title: '공급사 반품 처리',
+  breadcrumbRoot: '자재창고',
+  panes: {
+    list: '대상 입고 전표 목록',
+    lines: '고른 입고 전표의 라인',
+  },
+  fields: {
+    warehouse: '창고',
+    /**
+     * 계약의 `receiptDateFrom`·`receiptDateTo`를 **한 컨트롤**이 함께 고른다.
+     * **기본 기간을 심지 않는다**(W-01-09가 세운 규칙).
+     */
+    period: '입고일',
+    /** 값 목록이 확정되지 않아 선택지가 비어 있다 — 안내는 `pendingCode`가 맡는다. */
+    receiptType: '입고 유형',
+    status: '상태',
+    q: '입고번호 검색',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+    /** 화면이 보고 있는 조회를 전부 다시 한다 — 목록만 다시 부르면 낡은 값과 새 값이 섞인다. */
+    refresh: '다시 조회',
+    select: '선택',
+    deselect: '선택 해제',
+    /*
+     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 입고번호를 넣어 어느 건인지 밝히되,
+     * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「선택」으로 이 버튼을 부를 수 없다.
+     * **내부 번호를 접근 이름에 넣지 않는다** — 그것이 화면 밖으로 새는 또 하나의 경로다.
+     */
+    selectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택`,
+    deselectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택 해제`,
+  },
+  filters: {
+    all: '전체',
+    /** 기본 기간이 없다는 사실은 화면에서 읽혀야 한다 — 빈 칸이 고장으로 읽히지 않게 한다. */
+    periodNote:
+      '기간을 정하지 않으면 서버가 정한 기본 범위가 보입니다. 좁히려면 입고일을 고르세요.',
+    /**
+     * 기간 칩에만 해제 버튼이 없는 이유.
+     *
+     * 날짜 컨트롤이 한 번 고른 값을 개별로 비우는 수단을 아직 주지 않아, 기간을 푸는 길이
+     * 「초기화」뿐이다. 사용자가 ×를 찾다가 못 찾는 것보다 왜 없는지를 밝히는 편이 낫다.
+     */
+    periodClearNote: '입고일은 「초기화」로만 비울 수 있습니다. 다른 조건은 조건표의 ×로 풉니다.',
+    lookupFailed: '이름 목록을 불러오지 못했습니다. 다시 시도해 주세요.',
+    lookupTruncated:
+      '이름 목록이 일부만 왔습니다. 찾는 값이 목록에 없을 수 있습니다 — 없어진 것이 아닙니다.',
+    chipWarehouse: (name: string): string => `창고: ${name}`,
+    chipPeriodBoth: (from: string, to: string): string => `입고일: ${from} ~ ${to}`,
+    chipPeriodFrom: (from: string): string => `입고일: ${from}부터`,
+    chipPeriodTo: (to: string): string => `입고일: ${to}까지`,
+    chipReceiptType: (code: string): string => `입고 유형: ${code}`,
+    chipStatus: (code: string): string => `상태: ${code}`,
+    chipQ: (q: string): string => `검색어: ${q}`,
+    chipRemoveWarehouse: '창고 조건 해제',
+    chipRemoveReceiptType: '입고 유형 조건 해제',
+    chipRemoveStatus: '상태 조건 해제',
+    chipRemoveQ: '검색어 조건 해제',
+  },
+  loading: {
+    goodsReceipts: '대상 입고 전표 목록을 불러오는 중',
+    detail: '고른 입고 전표를 불러오는 중',
+  },
+  empty: {
+    noResultTitle: '조건에 맞는 입고 전표가 없습니다',
+    noResultDescription: '기간을 넓히거나 조건을 풀어 다시 조회해 보세요.',
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '앞 쪽으로 돌아가면 결과를 볼 수 있습니다.',
+    noSelectionTitle: '아직 입고 전표를 고르지 않았습니다',
+    noSelectionDescription: '위 목록에서 되돌려 보낼 자재가 들어 있는 입고 전표를 고르세요.',
+    noLinesTitle: '이 입고 전표에는 라인이 없습니다',
+    noLinesDescription: '다른 입고 전표를 고르거나 담당자에게 확인해 주세요.',
+    /**
+     * 고른 번호가 서버에 없다. **다시 시도로 풀리지 않는다** — 다시 고르라고 말한다.
+     *
+     * 「목록을 못 불러와 고른 전표를 열 수 없다」는 갈래는 두지 않는다 — 아래 구획이 쓰는
+     * 값이 전부 상세 응답에서 오므로 목록이 실패해도 고른 전표는 그대로 열린다.
+     */
+    notFoundTitle: '고른 입고 전표를 찾을 수 없습니다',
+    notFoundDescription: '이미 지워졌거나 주소의 번호가 잘못됐습니다. 목록에서 다시 고르세요.',
+  },
+  /** 실패·한계 안내는 그 대상으로 시작한다(배치 규범 4). */
+  reasons: {
+    /**
+     * **문구에 적은 대상과 「다시 시도」가 다시 부르는 대상이 같아야 한다.** 다르면 눌러도
+     * 한쪽은 실패인 채로 남는데 문구는 둘 다 고쳐질 것처럼 말한다.
+     */
+    referencesFailed: '창고 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+    lineReferencesFailed:
+      '품목·단위·자재 LOT·위치 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+    /**
+     * **잘림은 실패와 다르다.** 이름 목록이 앞쪽만 오면 그 뒤의 정상 값이 「알 수 없음」으로
+     * 찍히는데, 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
+     * 다시 불러도 같은 쪽이 오므로 복구 버튼을 붙이지 않고 사실만 밝힌다.
+     */
+    lineReferencesTruncated:
+      '품목·단위·자재 LOT·위치 이름 목록이 일부만 왔습니다. 이름 자리의 「알 수 없음」은 값이 잘못된 것이 아니라 이 목록에 아직 없다는 뜻일 수 있습니다.',
+  },
+  /** 목록 표의 머리글. 열 구성과 폭의 근거는 screens/supplier-return/gr-table.tsx에 있다. */
+  table: {
+    goodsReceiptNo: '입고번호',
+    warehouse: '창고',
+    receiptType: '입고 유형',
+    receiptDatetime: '입고 일시',
+    status: '상태',
+    select: '선택',
+  },
+  /** 라인 표의 머리글과 칸 문구. 폭의 근거는 screens/supplier-return/gr-line-table.tsx에 있다. */
+  lineTable: {
+    item: '품목',
+    lot: '자재 LOT',
+    location: '위치',
+    receiptQty: '입고 수량',
+    /** 「100 SAMPLE-EA」 — 단위 열을 따로 두지 않고 수량 표기에 붙인다(W-01-03이 세운 처리). */
+    receiptQtyPair: (receiptQty: number, uom: string): string => `${String(receiptQty)} ${uom}`,
+  },
+  /** 고른 입고 전표의 제목줄. */
+  summary: {
+    label: '고른 입고 전표',
+    goodsReceiptNo: '입고번호',
+    warehouse: '창고',
+    receiptDatetime: '입고 일시',
+    receiptType: '입고 유형',
+    status: '상태',
+  },
+  notes: {
+    /**
+     * 보류 표식이 뜻하는 것. **해제 수단을 두지 않는다** — 보류를 걸고 푸는 것은 품질 쪽
+     * 소관이고, 되돌려 보냈다고 보류가 풀리지도 않는다.
+     */
+    lotHold: '「보류」 표식이 붙은 자재 LOT은 품질 보류 중입니다. 이 화면에서 풀 수 없습니다.',
+  },
+  values: {
+    /** 이름 목록에 그 번호가 없다. **값이 잘못됐다는 뜻이 아니다** — 목록이 잘렸을 수도 있다. */
+    unknown: '알 수 없음',
+    referenceLoading: '이름 불러오는 중',
+    referenceFailed: '이름 불러오기 실패',
+    /*
+     * 「값이 없는 자리」 표기(「—」)를 두지 않는다 — 이 화면이 그리는 값에 nullable이 하나도
+     * 없다. 계획 §4.1의 PR ②·③ 표에도 그런 자리가 없다. 쓰이지 않는 문구를 미리 두면
+     * 나중에 「없음」과 「못 풀었음」이 같은 글자로 뭉개진다.
+     */
+    inactiveSuffix: ' (미사용)',
+    /** 자재 LOT이 보류 중임을 밝히는 표식. **색에만 기대지 않는다** — 글자로 낸다. */
+    lotHeld: '보류',
+  },
+  pageNav: {
+    label: '쪽 이동',
+    range: (from: number, to: number, total: number): string =>
+      `${String(from)}–${String(to)} / 전체 ${String(total)}건`,
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -3871,6 +4041,7 @@ export const ko = {
   overReceiptSplit,
   goodsReceipt,
   stocktaking,
+  supplierReturn,
 } as const;
 
 export type Messages = typeof ko;
