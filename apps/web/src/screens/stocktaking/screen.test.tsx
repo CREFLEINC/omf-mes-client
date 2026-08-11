@@ -3958,6 +3958,14 @@ describe('StocktakingScreen — 마감 성공', () => {
     expect(
       within(screen.getByRole('group', { name: t.detail.label })).getByText('IC-2026-900011'),
     ).toBeInTheDocument();
+
+    /*
+     * **주소가 바뀐 뒤에도 결과가 서 있다.** 앞의 `findBy`는 결과가 **나타나기만** 하면
+     * 통과한다 — 마감 결과를 방금 비운 `loc`에 매어 두면 결과 정리 effect가 곧바로 거둬
+     * 가는데, 그 사라짐은 나타남을 기다린 단언에 잡히지 않는다. 마감 성공이 `loc`를 비우는
+     * 것과 결과가 **`loc` 없는 상태에 매이는 것**은 한 짝이라 여기서 함께 잰다.
+     */
+    expect(closedRegion()).toBeInTheDocument();
   });
 
   /*
