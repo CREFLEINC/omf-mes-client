@@ -70,4 +70,13 @@ describe('appRouter', () => {
   it('정상품 입하 처리가 자재창고 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/logistics/goods-receipt');
   });
+
+  /*
+   * W-01-04도 계약 경로(`/inventory/**`)가 아니라 **섹션**을 따른다. 화면 슬라이스 폴더
+   * 이름(`stocktaking`)과 주소의 마지막 조각을 같게 두어 둘을 맞춰 보기 쉽게 한다.
+   */
+  it('재고실사가 자재창고 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/logistics/stocktaking');
+    expect(routedPaths()).not.toContain('/inventory/stocktaking');
+  });
 });

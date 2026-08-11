@@ -96,6 +96,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/logistics/stock-status" icon="inventory">
               재고 현황·상태 조회
             </NavItem>
+            {/*
+             * W-01-04 — **차례가 업무 순서다.** 예정을 보고 · 도착을 처리하고 · 창고로
+             * 받아들이고 · 재고를 확인한 뒤 **장부와 실물을 맞춘다.** 실사가 그 끝에 서는
+             * 것은 앞의 넷이 남긴 결과를 대상으로 삼기 때문이다.
+             */}
+            <NavItem to="/logistics/stocktaking" icon="checklist">
+              재고실사
+            </NavItem>
           </SidebarSection>
           {/*
            * 사용자·역할·권한은 기준정보가 아니라 **시스템 운영**이다 —
