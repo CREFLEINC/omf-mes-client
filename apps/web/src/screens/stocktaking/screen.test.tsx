@@ -2594,6 +2594,64 @@ describe('StocktakingScreen — 라인 초안', () => {
   });
 });
 
+describe('StocktakingScreen — 블라인드 실사', () => {
+  /**
+   * 블라인드 실사를 고른 상태. 상세는 `blindCount: true`이고 라인 응답에는 **장부·차이 수량이
+   * 아예 오지 않는다**(계약 설명 — 결정 4 · 어긋남 1).
+   */
+  const blindRoutes = (): StubRoute[] =>
+    allRoutes([
+      detailRoute(DETAIL_PATH, countDetailBody({ blindCount: true })),
+      linesRoute(
+        LINES_PATH,
+        countLineFixtures.map((line) => {
+          const { systemQty: _s, varianceQty: _v, ...rest } = line;
+
+          return rest;
+        }),
+      ),
+    ]);
+
+  /*
+   * **완료 조건 C42 · 감지기 M30** — 화면이 실사 헤더의 블라인드 여부를 표로 **실제로
+   * 넘기는가.** 부품 테스트는 `isBlind` prop을 직접 주므로 그 배선이 끊겨도 통과한다.
+   */
+  it('장부 수량 열과 차이 열이 함께 없다', async () => {
+    renderScreen(blindRoutes(), AT_LOCATION);
+
+    await waitForLines();
+
+    expect(within(lineTable()).queryByText(t.lineTable.systemQty)).not.toBeInTheDocument();
+    expect(within(lineTable()).queryByText(t.lineTable.variance)).not.toBeInTheDocument();
+    /* 짝 방향 — 나머지 열은 그대로 있다(표가 통째로 사라져서 통과하는 것이 아니다). */
+    expect(within(lineTable()).getByText(t.lineTable.countedQty)).toBeInTheDocument();
+    expect(within(lineTable()).getByText(t.lineTable.reason)).toBeInTheDocument();
+  });
+
+  /*
+   * **완료 조건 C39** — 블라인드에서는 **사유를 필수로 만들지 않는다.** 장부가 없어 견줄 값이
+   * 없는데 없는 값을 0으로 보고 판정하면 **전 줄이 차이 있는 줄**이 되어, 코드 목록이 확정되지
+   * 않은 지금은 블라인드 실사의 저장이 통째로 막힌다.
+   */
+  it('사유 선택지가 비어 있어도 전 줄만 채우면 저장이 열린다', async () => {
+    const { requests, user } = renderScreen(blindRoutes(), AT_LOCATION);
+
+    await waitForLines();
+    await user.type(qtyField(1), '98');
+    await user.type(qtyField(2), '41');
+    await user.type(qtyField(3), '0');
+
+    expect(screen.queryByText(t.actionReasons.saveReasonListPending)).not.toBeInTheDocument();
+    expect(saveButton()).not.toBeDisabled();
+
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+  });
+});
+
 describe('StocktakingScreen — 저장 잠금', () => {
   /*
    * **완료 조건 C36 · 감지기 M38** — 전 줄을 채우기 전에는 저장이 잠기고 **남은 줄 수**가
