@@ -3355,6 +3355,164 @@ const goodsReceipt = {
   },
 } as const;
 
+/**
+ * W-01-04(재고실사).
+ *
+ * **낱말을 가려 쓴다.** 「장부 수량」은 시스템이 아는 수량이고 「실물 수량」은 현장에서 센 수량이며
+ * 「차이」는 그 둘의 차다 — **차이는 서버가 계산한다.** 화면이 세거나 빼지 않는다.
+ *
+ * **「마감됨」·「진행 중」 같은 상태말을 화면 문구로 만들지 않는다.** 상태 코드의 값 집합이
+ * 확정되지 않아(공유계약 G-2) 화면이 값을 해석하면 값이 정해질 때 조용히 틀린다 —
+ * 서버가 준 코드를 그대로 낸다.
+ *
+ * **「미실사」는 요약이 준 건수를 부를 때만 쓴다.** 줄 하나를 두고 미실사인지 판정하는 문구를
+ * 만들지 않는다 — 화면은 그것을 판정할 수 없다(착수 이슈 §4).
+ */
+const stocktaking = {
+  title: '재고실사',
+  breadcrumbRoot: '자재창고',
+  panes: {
+    list: '실사 목록',
+    detail: '고른 실사',
+  },
+  fields: {
+    warehouse: '창고',
+    /** 계약의 `plannedDateFrom`·`plannedDateTo`. **기본 기간을 심지 않는다**(W-01-09가 세운 규칙). */
+    plannedDateFrom: '계획일 시작',
+    plannedDateTo: '계획일 종료',
+    /** 값 목록이 확정되지 않아 선택지가 비어 있다 — 안내는 `pendingCode`가 맡는다. */
+    countType: '실사 유형',
+    status: '상태',
+    inProgressOnly: '진행 중만',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+    select: '선택',
+    deselect: '선택 해제',
+    /*
+     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 실사번호를 넣어 어느 건인지 밝히되,
+     * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「선택」으로 이 버튼을 부를 수 없다.
+     * **내부 번호를 접근 이름에 넣지 않는다** — 그것이 화면 밖으로 새는 또 하나의 경로다.
+     */
+    selectRow: (inventoryCountNo: string): string => `${inventoryCountNo} 선택`,
+    deselectRow: (inventoryCountNo: string): string => `${inventoryCountNo} 선택 해제`,
+    /** 목록과 고른 실사를 **함께** 다시 부른다 — 한쪽만 부르면 낡은 값과 새 값이 섞인다. */
+    refresh: '다시 조회',
+  },
+  loading: {
+    counts: '실사 목록을 불러오는 중',
+    detail: '고른 실사를 불러오는 중',
+  },
+  /** 목록 표의 머리글. 열 구성과 폭의 근거는 screens/stocktaking/count-table.tsx에 있다. */
+  table: {
+    inventoryCountNo: '실사번호',
+    warehouse: '창고',
+    countType: '실사 유형',
+    plannedDate: '계획일',
+    blindCount: '블라인드',
+    status: '상태',
+    select: '선택',
+  },
+  /**
+   * 고른 실사의 제목줄과 **요약 4칸**.
+   *
+   * **요약은 서버가 계산해 내려준다**(착수 이슈 §6 ⭐). 창고 하나의 라인이 수백~수천 건이라
+   * 화면이 전 라인을 받아 세면 쪽과 어긋난다 — 그 사실을 안내로 밝힌다.
+   */
+  detail: {
+    label: '고른 실사',
+    inventoryCountNo: '실사번호',
+    countType: '실사 유형',
+    warehouse: '창고',
+    plannedDate: '계획일',
+    blindCount: '블라인드 실사',
+    status: '상태',
+    summaryLabel: '실사 진행 요약',
+    planned: '계획 라인',
+    counted: '카운트',
+    uncounted: '미실사',
+    variance: '차이',
+    /** 요약 4칸의 단위. 넷 다 「건」이다. */
+    countUnit: '건',
+    summaryNote:
+      '요약 건수는 서버가 계산해 함께 내려준 값입니다. 화면이 라인을 세지 않습니다.',
+    /*
+     * **블라인드는 개시 폼에만 컨트롤을 둔다**(계획 결정 4). 실사 헤더를 고치는 오퍼레이션이
+     * 계약에 없어(실측) 비활성 컨트롤을 두면 「언젠가 켜질 것」으로 읽힌다 — 읽기 전용 표기로 낸다.
+     */
+    blindNote:
+      '블라인드 실사에서는 장부 수량이 내려오지 않아 장부·차이 수량이 보이지 않습니다. 개시한 뒤에는 바꿀 수 없습니다.',
+  },
+  filters: {
+    all: '전체',
+    lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+    lookupFailed: '선택지를 불러오지 못했습니다.',
+    /* 기본 기간을 심지 않는다는 사실은 화면에서 읽혀야 한다 — 비어 있는 것이 고장으로 읽히지 않게 한다. */
+    periodNote: '계획일을 비워 두면 기간을 좁히지 않고 전체를 봅니다.',
+    chipWarehouse: (value: string): string => `창고: ${value}`,
+    /** 한쪽만 넣은 기간도 조건이다 — 그 사실이 칩에서 읽혀야 한다. */
+    chipPeriodBoth: (from: string, to: string): string => `계획일: ${from} ~ ${to}`,
+    chipPeriodFrom: (from: string): string => `계획일: ${from}부터`,
+    chipPeriodTo: (to: string): string => `계획일: ${to}까지`,
+    chipCountType: (value: string): string => `실사 유형: ${value}`,
+    chipStatus: (value: string): string => `상태: ${value}`,
+    chipInProgress: '진행 중만',
+    chipRemoveWarehouse: '창고 조건 제거',
+    chipRemovePeriod: '계획일 조건 제거',
+    chipRemoveCountType: '실사 유형 조건 제거',
+    chipRemoveStatus: '상태 조건 제거',
+    chipRemoveInProgress: '진행 중만 조건 제거',
+  },
+  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/stocktaking/page-nav.tsx에 있다. */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+  /** 빈 상태는 **세 갈래**다. 사용자가 할 조치가 서로 다르다(완료 조건 C07). */
+  empty: {
+    noResultTitle: '조건에 맞는 실사가 없습니다',
+    noResultDescription: '조건을 줄이거나 계획일 범위를 넓힌 뒤 다시 조회하세요.',
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
+    noSelectionTitle: '실사를 고르면 진행 상황이 보입니다',
+    noSelectionDescription: '위 목록에서 실사를 골라 「선택」을 누르세요.',
+    /*
+     * 상세가 404다. **주소에 남은 실사 번호를 화면이 스스로 정리한다** — 남겨 두면
+     * 아래 구획이 없는 실사를 가리킨 채 주소만 남는다(수명 표 6행).
+     */
+    notFoundTitle: '고른 실사를 찾을 수 없습니다',
+    notFoundDescription: '지워졌거나 주소의 번호가 잘못됐습니다. 위 목록에서 다시 고르세요.',
+  },
+  /** 실패·비활성 사유는 그 대상으로 시작한다(배치 규범 4). */
+  reasons: {
+    /*
+     * **문구에 적은 대상과 「다시 시도」가 다시 부르는 대상이 같아야 한다.** 다르면 눌러도
+     * 한쪽은 실패인 채로 남는데 문구는 둘 다 고쳐질 것처럼 말한다.
+     */
+    warehouseReferenceFailed:
+      '창고 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+  },
+  values: {
+    /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+    empty: '—',
+    /** 이름 목록은 왔는데 그 안에 없다 — **값이 잘못됐다**는 신호다. */
+    unknown: '알 수 없음',
+    /** 이름 목록이 아직 오지 않았다. 「알 수 없음」으로 쓰면 정상 값이 잘못된 값으로 읽힌다. */
+    referenceLoading: '이름 불러오는 중',
+    /** 이름 목록 조회가 실패했다. 값이 없는 것과 다르다. */
+    referenceFailed: '이름을 불러오지 못했습니다',
+    inactiveSuffix: ' (미사용)',
+    /** 블라인드 여부. **읽히는 말로 낸다** — `true`·`false`를 그대로 내면 값이 읽히지 않는다. */
+    blindYes: '예',
+    blindNo: '아니오',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -3377,6 +3535,7 @@ export const ko = {
   stockStatus,
   overReceiptSplit,
   goodsReceipt,
+  stocktaking,
 } as const;
 
 export type Messages = typeof ko;
