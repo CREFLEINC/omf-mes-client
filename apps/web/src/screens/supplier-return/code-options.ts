@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { SelectOption } from './types';
+import type { ReturnCodeKey, SelectOption } from './types';
 
 /**
  * 값 목록이 확정되지 않은 코드 **여섯**을 한 파일에 격리한다.
@@ -29,13 +29,7 @@ import type { SelectOption } from './types';
  * 앞 넷은 **반품 정보**에, 뒤 둘은 **조회 조건**에 놓인다. 한 파일이 여섯을 함께 갖는 이유는
  * 값이 확정될 때 고칠 자리를 하나로 두기 위해서다.
  */
-export type SupplierReturnCodeKey =
-  | 'issueType'
-  | 'sourceDocumentType'
-  | 'destinationType'
-  | 'reason'
-  | 'receiptType'
-  | 'status';
+export type SupplierReturnCodeKey = ReturnCodeKey | 'receiptType' | 'status';
 
 /**
  * 계약이 **요청 필수**로 요구하는 넷.
@@ -48,7 +42,7 @@ export type SupplierReturnCodeKey =
  * `reason`은 계약 스키마에서 nullable이지만 설명이 「반품·기타 출고에서는 필수」라
  * **설명을 따른다**(계획 §5.4-4).
  */
-export const REQUIRED_CODE_KEYS: readonly SupplierReturnCodeKey[] = [
+export const REQUIRED_CODE_KEYS: readonly ReturnCodeKey[] = [
   'issueType',
   'sourceDocumentType',
   'destinationType',
