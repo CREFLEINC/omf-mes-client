@@ -33,6 +33,18 @@ describe('toPageView', () => {
     expect(toPageView({ page: 1, size: 50, total: 0 }, 0).isBeyondLast).toBe(false);
   });
 
+  /**
+   * **경계는 쪽 밖이 아니다.** 부등호가 한 칸 밀리면 `page === totalPages`가 「쪽 밖」이 되고,
+   * 가장 나쁜 갈래는 **끝 쪽이 곧 첫 쪽인 때**다 — 서버가 건수는 있다면서 빈 쪽을 주면
+   * 화면이 **첫 쪽에 서서 「첫 쪽으로」**를 내고, 눌러도 같은 자리에 머문다.
+   */
+  it('마지막 쪽은 쪽 밖이 아니다', () => {
+    expect(toPageView({ page: 3, size: 50, total: 120 }, 0).isBeyondLast).toBe(false);
+    expect(toPageView({ page: 1, size: 50, total: 3 }, 0).isBeyondLast).toBe(false);
+    /* 짝 방향 — 한 칸만 넘어가면 쪽 밖이다. */
+    expect(toPageView({ page: 4, size: 50, total: 120 }, 0).isBeyondLast).toBe(true);
+  });
+
   /* 서버가 0을 주면 나눗셈이 무한대가 된다 — 계산이 깨지지 않게 하한을 둔다. */
   it('쪽 크기·쪽 번호가 0이어도 계산이 깨지지 않는다', () => {
     const view = toPageView({ page: 0, size: 0, total: 3 }, 3);

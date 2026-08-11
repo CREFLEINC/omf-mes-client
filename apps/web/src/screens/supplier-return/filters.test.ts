@@ -51,6 +51,23 @@ describe('readFilters', () => {
     expect(readFilters(params(`wh=${raw}`)).warehouse).toBe('');
   });
 
+  /**
+   * **상한 쪽에서도 같은 실패가 되살아난다.** 자릿수 상한이 없으면 22자리 이상이 통과하고,
+   * `Number()`가 그것을 `1e+21`로 바꿔 요청 URL에 지수 표기가 실린다 — 조건이 걸린 것처럼
+   * 보이는데 조회가 늘 실패한다.
+   */
+  it('지수 표기가 될 만큼 긴 번호를 받지 않는다', () => {
+    expect(readFilters(params('wh=1000000000000000000000')).warehouse).toBe('');
+    expect(readPage(params('page=1000000000000000000000'))).toBe(1);
+    expect(readSelectedReceiptId(params('gr=1000000000000000000000'))).toBeNull();
+  });
+
+  /* 짝 방향 — 계약의 식별자는 64비트 정수다. 있을 법한 큰 번호는 그대로 받는다. */
+  it('안전 정수 범위의 큰 번호는 그대로 받는다', () => {
+    expect(readFilters(params('wh=999999999999999')).warehouse).toBe('999999999999999');
+    expect(readSelectedReceiptId(params('gr=123456789012'))).toBe(123456789012);
+  });
+
   /* 자릿수가 맞아도 없는 날은 조건이 아니다 — 보내면 조회가 늘 실패하는데 조건은 걸린 듯 보인다. */
   it.each(['2026-13-01', '2026-02-31', '2026-8-6', '20260806', 'yesterday'])(
     '없는 날짜(%s)를 받지 않는다',

@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { codeNote, codePlaceholder } from './code-options';
+import { FieldLabel } from './field-label';
 import {
   DEFAULT_FILTERS,
   toFilterChips,
@@ -155,9 +156,7 @@ export const GrFilterBar = ({
          * 다른 층이다.
          */}
         <div className="field-cell">
-          <span className="field-label">
-            <label htmlFor={periodId}>{t.fields.period}</label>
-          </span>
+          <FieldLabel htmlFor={periodId} label={t.fields.period} />
           <DatePicker
             id={periodId}
             mode="range"

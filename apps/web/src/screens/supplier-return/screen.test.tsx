@@ -242,6 +242,25 @@ const failingLookupRoute = (pathname: string): StubRoute => ({
   respond: () => jsonResponse({ message: '' }, { status: 500 }),
 });
 
+/**
+ * 품목 **하나만** 실패하는 자재 LOT 조회.
+ *
+ * 품목마다 한 번씩 부르므로 **일부만 실패하는 것이 정상 갈래**다. 그때 집계가 「하나라도
+ * 실패하면 실패」가 아니면, 실패한 품목의 LOT이 **「이름 불러오기 실패」가 아니라
+ * 「알 수 없음」**으로 찍힌다 — 이 화면이 그 문구를 *값이 잘못됐다는 신호*로 정의해 두었으므로
+ * **#47이 그대로 재생산된다.**
+ */
+const partialFailingLotsRoute = (failingItemId: string): StubRoute => ({
+  match: (request) => isGet(request, LOTS_PATH),
+  respond: (request) => {
+    const itemId = new URL(request.url).searchParams.get('itemId');
+
+    if (itemId === failingItemId) return jsonResponse({ message: '' }, { status: 500 });
+
+    return jsonResponse(listBody(lotFixtures.filter((lot) => String(lot.itemId) === itemId)));
+  },
+});
+
 /** 참조 다섯. 화면이 이름으로 풀 수 있는 정상 상태다. */
 const lookupRoutes = (): StubRoute[] => [
   lookupRoute(WAREHOUSES_PATH, warehouseFixtures),
@@ -385,9 +404,23 @@ const expectNoFailedQuery = (queryClient: QueryClient): void => {
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
-const listTable = (): HTMLElement => screen.getAllByRole('table')[0] as HTMLElement;
+/**
+ * 위·아래 구획의 표를 차례로 집는다.
+ *
+ * **형 단언으로 누르지 않는다** — 표가 없으면 무엇을 집으려 했는지 말하고 세운다.
+ * `as`로 누르면 없을 때 `within(undefined)`가 내는 알아보기 힘든 실패로 바뀐다.
+ */
+const tableAt = (index: number, label: string): HTMLElement => {
+  const table = screen.getAllByRole('table')[index];
 
-const lineTable = (): HTMLElement => screen.getAllByRole('table')[1] as HTMLElement;
+  if (table === undefined) throw new Error(`${label} 표가 없다`);
+
+  return table;
+};
+
+const listTable = (): HTMLElement => tableAt(0, '입고 전표 목록');
+
+const lineTable = (): HTMLElement => tableAt(1, '입고 라인');
 
 const selectReceipt = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -919,6 +952,69 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
 
     expect(await screen.findByText(t.reasons.lineReferencesTruncated)).toBeInTheDocument();
   });
+
+  /**
+   * **짝 방향** — 잘림을 한 방향으로만 재면 「늘 잘렸다」로 굳어져도 아무도 울지 않는다.
+   * 그러면 정상 목록에도 「일부만 왔습니다 … 없어진 것이 아닙니다」가 서서 **화면이 늘
+   * 거짓말을 한다.** 잘림을 계산하는 자리는 부등호 한 칸이라 이 방향이 없으면 무방비다.
+   */
+  it('잘리지 않았으면 그 안내를 내지 않는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+
+    /* 짝 방향의 짝 — 이름은 실제로 풀렸다(아무것도 안 그려서 통과한 것이 아니다). */
+    expect(screen.getAllByText(WAREHOUSE_LABEL).length).toBeGreaterThan(0);
+    expect(screen.queryByText(t.filters.lookupTruncated)).not.toBeInTheDocument();
+
+    await selectReceipt(user, 'GR-2026-900001');
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(screen.queryByText(t.reasons.lineReferencesTruncated)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **부분 실패는 실패다.** 품목마다 한 번씩 부르므로 둘 중 하나만 실패하는 것이 정상
+   * 갈래인데, 집계가 「전부 실패해야 실패」로 굳으면 실패한 품목의 LOT이 **「알 수 없음」**으로
+   * 찍힌다 — 이 화면이 그 문구를 *값이 잘못됐다는 신호*로 정의해 두었으므로 **#47 재생산**이다.
+   * 소비자(가드·표시)는 촘촘한데 **생산자(집계)를 지나가는 단언**이 없던 자리다.
+   */
+  it('품목 하나만 LOT 조회에 실패해도 실패로 낸다', async () => {
+    const { user } = renderScreen(allRoutes([partialFailingLotsRoute('9302')]));
+
+    await screen.findByText('GR-2026-900001');
+    await selectReceipt(user, 'GR-2026-900001');
+
+    expect(await screen.findByText(t.reasons.lineReferencesFailed)).toBeInTheDocument();
+    /* LOT 칸은 「알 수 없음」이 아니라 「이름 불러오기 실패」다. */
+    expect(screen.getAllByText(t.values.referenceFailed)).toHaveLength(
+      goodsReceiptLineFixtures.length,
+    );
+    /* 실패 상태에서는 보류 표식도 내지 않는다 — 부분 자료로 단정하지 않는다. */
+    expect(screen.queryByText(t.values.lotHeld)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **위 구획의 #47 자리.** 목록 응답이 창고 응답보다 먼저 오는 것은 흔한 순서이고, 그때
+   * 미도착이 「알 수 없음」으로 뭉개지면 **첫 진입에 사용자가 가장 먼저 보는 칸**이 전부
+   * 잘못된 값이라는 신호가 된다. 아래 구획(품목)은 재고 있었으나 위 구획만 비어 있었다.
+   */
+  it('창고 이름이 아직 오지 않은 동안 알 수 없음으로 내지 않는다', async () => {
+    const { release } = renderScreen(allRoutes(), '', '', [WAREHOUSES_PATH]);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(t.values.referenceLoading)).toHaveLength(
+        goodsReceiptFixtures.length,
+      );
+    });
+
+    expect(screen.queryByText(t.values.unknown)).not.toBeInTheDocument();
+
+    release();
+
+    /* 짝 방향 — 도착하면 실제로 이름이 풀린다. */
+    expect(await screen.findAllByText(WAREHOUSE_LABEL)).toHaveLength(1);
+  });
 });
 
 describe('SupplierReturnScreen — 다시 조회', () => {
@@ -1068,6 +1164,32 @@ describe('SupplierReturnScreen — 없는 전표', () => {
 
     /* 짝 방향 — 안내가 사라질 뿐 아니라 고른 전표가 실제로 열린다. */
     expect(await screen.findByRole('group', { name: t.summary.label })).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **수명 표 1~3행의 「404 안내」 열(비운다).** 앞의 두 단언은 전표를 **다시 고르는** 길만
+   * 재는데, 그 길은 클릭 핸들러와 effect가 이중으로 덮고 있다. 「404 안내를 비운다」를
+   * 실제로 지키는 자리는 **조건 변경·초기화·쪽 이동이 함께 지나는 `applyQuery` 하나**이고
+   * 그 하나가 무방비였다 — 무너지면 새 결과가 위에 멀쩡히 그려지는데 아래에는 「찾을 수
+   * 없습니다」가 계속 서 있다.
+   *
+   * (같은 형태가 W-01-04 PR #61에서 지적되고 고쳐진 적이 있다 — 재발 자리다.)
+   */
+  it('새로 조회하면 404 안내를 거둔다', async () => {
+    const { user } = renderScreen(allRoutes(), '?gr=9003');
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+
+    await user.type(screen.getByLabelText(t.fields.q), 'GR');
+    await search(user);
+
+    /* 안내가 사라지고 「아직 고르지 않았다」로 돌아온다 — 초기화·쪽 이동도 같은 자리를 지난다. */
+    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
     expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
   });
 

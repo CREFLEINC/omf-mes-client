@@ -64,7 +64,19 @@ export const SELECTION_KEYS = {
   goodsReceipt: 'gr',
 } as const;
 
-const POSITIVE_INTEGER = /^\d+$/;
+/**
+ * 조건으로 받아들이는 번호의 모양.
+ *
+ * **자릿수에 상한을 둔다.** `^\d+$`만 두면 22자리 이상이 통과하는데, 그 값을 `Number()`에
+ * 넘기면 `1e+21`이 되고 요청 URL에 **`page=1e%2B21`**로 실린다 — 이 함수가 막겠다고 적은
+ * 「이상한 값이 URL에 실려 조회 전체가 실패한다」가 상한 쪽에서 그대로 되살아난다.
+ *
+ * **15자리로 끊는 이유**: 안전 정수 범위(`Number.MAX_SAFE_INTEGER`는 16자리) 안이라
+ * `Number()`가 값을 조용히 바꾸지 않고, 지수 표기가 나타나는 21자리에도 한참 못 미친다.
+ * 계약의 식별자는 64비트 정수이므로 더 짧게 끊으면(예: 9자리) 서버가 낼 수 있는 정당한
+ * 번호를 화면이 조용히 버릴 수 있다 — **막는 것과 버리는 것 사이에서 이 자리를 골랐다.**
+ */
+const POSITIVE_INTEGER = /^\d{1,15}$/;
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -109,6 +121,12 @@ export const readFilters = (params: URLSearchParams): ReceiptFilters => ({
   to: readDateFilter(params.get(URL_KEYS.to) ?? ''),
   receiptType: normalizeText(params.get(URL_KEYS.receiptType) ?? ''),
   status: normalizeText(params.get(URL_KEYS.status) ?? ''),
+  /*
+   * **검색어만 원문 그대로 읽는다** — 다듬지 않는 것이 빠뜨린 것이 아니다.
+   * 이 값은 검색칸에 그대로 서야 하므로(친 공백이 말없이 사라지면 사용자가 자기가 무엇을
+   * 쳤는지 되짚을 수 없다) 다듬기는 **쓰는 자리**가 한다 — 요청 조립·칩·주소 셋 다
+   * `normalizeText`를 거치므로 공백만인 검색어는 어디에도 실리지 않는다.
+   */
   q: params.get(URL_KEYS.q) ?? '',
 });
 

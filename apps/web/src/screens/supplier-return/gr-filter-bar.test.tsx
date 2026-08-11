@@ -236,15 +236,24 @@ describe('GrFilterBar — 조건 칩', () => {
       .getByText(t.filters.chipPeriodBoth('2026-08-01', '2026-08-05'))
       .closest('.filter-bar');
 
-    expect(chipRow).not.toBeNull();
+    /* 형 단언으로 누르지 않는다 — 없으면 무엇을 집으려 했는지 말하고 세운다. */
+    if (!(chipRow instanceof HTMLElement)) throw new Error('조건 칩 줄을 찾지 못했다');
+
     /* 칩 다섯 중 넷만 ×를 갖는다 — 어떤 이름이든 하나가 더 붙으면 이 수가 어긋난다. */
-    expect(within(chipRow as HTMLElement).getAllByRole('button')).toHaveLength(4);
+    expect(within(chipRow).getAllByRole('button')).toHaveLength(4);
     expect(screen.getByText(t.filters.periodClearNote)).toBeInTheDocument();
   });
 
-  it('걸린 기간이 없으면 그 안내도 없다', () => {
-    renderBar();
+  /**
+   * **상태를 덜 만들면 공허하게 통과한다.** 조건이 하나도 없는 상태로 재면 「기간이 없으면」이
+   * 아니라 「**칩이 하나도 없으면**」을 재는 것이 되어, 판정 기준을 기간 유무에서 칩 유무로
+   * 갈아 끼워도 지나간다. **칩은 서되 기간 칩만 없는** 상태를 만들어 이름이 말하는 것을 잰다.
+   */
+  it('다른 조건만 걸렸으면 기간 안내를 내지 않는다', () => {
+    renderBar({ appliedFilters: { ...DEFAULT_FILTERS, warehouse: '9701' } });
 
+    /* 짝 방향 — 칩은 실제로 서 있다(아무것도 없어서 통과한 것이 아니다). */
+    expect(screen.getByText(t.filters.chipWarehouse(WAREHOUSE_LABEL))).toBeInTheDocument();
     expect(screen.queryByText(t.filters.periodClearNote)).not.toBeInTheDocument();
   });
 });

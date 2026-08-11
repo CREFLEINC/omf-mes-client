@@ -247,8 +247,20 @@ describe('GrLineTable — 빈 상태와 실패', () => {
     expect(screen.getByText(t.empty.noLinesTitle)).toBeInTheDocument();
   });
 
-  it('참조 실패에는 사유와 다시 시도를 함께 낸다', async () => {
-    const { onRetryReferences, user } = renderTable({ lotLookup: lotSource({ isError: true }) });
+  /**
+   * **넷을 각각 잰다.** 안내 문구가 「품목·단위·자재 LOT·위치」 넷을 다 이름으로 적고 있으므로
+   * 판정도 넷을 다 보아야 한다 — 하나만 재면 나머지 셋 중 어느 항이 빠져도 아무도 울지
+   * 않고, 그 참조만 실패했을 때 **사유 줄도 「다시 시도」도 나오지 않아 복구 수단이 사라진다.**
+   */
+  const eachReference: [string, () => Partial<GrLineTableProps>][] = [
+    ['품목', () => ({ itemLookup: itemSource({ isError: true }) })],
+    ['단위', () => ({ uomLookup: uomSource({ isError: true }) })],
+    ['자재 LOT', () => ({ lotLookup: lotSource({ isError: true }) })],
+    ['위치', () => ({ locationLookup: locationSource({ isError: true }) })],
+  ];
+
+  it.each(eachReference)('%s 참조만 실패해도 사유와 다시 시도를 낸다', async (_name, overrides) => {
+    const { onRetryReferences, user } = renderTable(overrides());
 
     expect(screen.getByText(t.reasons.lineReferencesFailed)).toBeInTheDocument();
 
@@ -262,8 +274,15 @@ describe('GrLineTable — 빈 상태와 실패', () => {
    * 잘린 목록으로 이름을 풀면 정상 값이 「알 수 없음」으로 찍힌다.
    * **복구 버튼을 붙이지 않는다** — 다시 불러도 같은 쪽이 온다.
    */
-  it('잘림은 사실만 밝히고 복구 버튼을 붙이지 않는다', () => {
-    renderTable({ lotLookup: lotSource({ truncated: true }) });
+  const eachTruncated: [string, () => Partial<GrLineTableProps>][] = [
+    ['품목', () => ({ itemLookup: itemSource({ truncated: true }) })],
+    ['단위', () => ({ uomLookup: uomSource({ truncated: true }) })],
+    ['자재 LOT', () => ({ lotLookup: lotSource({ truncated: true }) })],
+    ['위치', () => ({ locationLookup: locationSource({ truncated: true }) })],
+  ];
+
+  it.each(eachTruncated)('%s 목록만 잘려도 사실을 밝히고 복구 버튼을 붙이지 않는다', (_name, overrides) => {
+    renderTable(overrides());
 
     expect(screen.getByText(t.reasons.lineReferencesTruncated)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
