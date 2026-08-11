@@ -160,6 +160,19 @@ describe('GrFilterBar — 값 목록이 확정되지 않은 코드', () => {
     expect(screen.getAllByText(messages.pendingCode.note).length).toBeGreaterThan(0);
   });
 
+  /**
+   * 고를 것이 하나도 없는데 「전체」만 있으면 **목록이 준비된 것처럼 보인다.**
+   * 왜 비었는지는 안내가 말한다.
+   */
+  it('비어 있는 코드 칸에는 「전체」도 붙지 않는다', () => {
+    renderBar();
+
+    expect(screen.getByLabelText(t.fields.receiptType)).not.toHaveTextContent(t.filters.all);
+    expect(screen.getByLabelText(t.fields.status)).not.toHaveTextContent(t.filters.all);
+    /* 짝 방향 — 선택지가 있는 칸에는 「전체」가 있다. */
+    expect(screen.getByLabelText(t.fields.warehouse)).toHaveTextContent(t.filters.all);
+  });
+
   /* **차면 거둔다** — 남으면 화면이 거짓말을 한다. */
   it('선택지가 차면 안내를 거둔다', () => {
     renderBar({

@@ -750,6 +750,39 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
     }
   });
 
+  /**
+   * 계약이 보류 여부를 **선택 필드**로 두었다(실측) — 키가 아예 오지 않는 갈래가 실재한다.
+   * **없는 것을 보류로 읽으면 보류가 아닌 LOT에 표식이 붙는다** — 그쪽이 더 나쁜 거짓말이다.
+   */
+  it('보류 여부가 오지 않으면 표식을 내지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([
+        {
+          match: (request) => isGet(request, LOTS_PATH),
+          respond: (request) => {
+            const itemId = new URL(request.url).searchParams.get('itemId');
+
+            return jsonResponse(
+              listBody(
+                lotFixtures
+                  .filter((lot) => String(lot.itemId) === itemId)
+                  .map(({ held: _held, ...rest }) => rest),
+              ),
+            );
+          },
+        },
+      ]),
+    );
+
+    await screen.findByText('GR-2026-900001');
+    await selectReceipt(user, 'GR-2026-900001');
+
+    /* 짝 방향 — LOT 이름은 실제로 풀렸다(아무것도 안 그려서 통과한 것이 아니다). */
+    expect(await screen.findByText('LOT-2026-900011')).toBeInTheDocument();
+    expect(screen.queryByText(t.values.lotHeld)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.notes.lotHold)).not.toBeInTheDocument();
+  });
+
   /** **M10 · 짝 방향 단언** — 이름이 실제로 보이고, 두 구획 어디에도 번호가 없다(#44). */
   it('두 구획 어디에도 내부 번호가 없다', async () => {
     const { user } = renderScreen(allRoutes());
