@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EMPTY_LINE_DRAFT,
+  hasAnyLineDraftValue,
   isLineSelected,
   parseReturnQty,
   readDraftQty,
@@ -194,5 +195,35 @@ describe('줄 선택 집합', () => {
 
     expect(after).not.toBe(EMPTY_LINE_DRAFT);
     expect(isLineSelected(EMPTY_LINE_DRAFT, 9401)).toBe(false);
+  });
+});
+
+/**
+ * **버릴 것이 있는가** — 「입력 지우기」를 열지 말지 가르는 자리다.
+ *
+ * 두 조각을 각각 봐야 하는 이유는 **선택을 풀어도 친 수량이 남기** 때문이다. 고른 줄이
+ * 0이어도 수량이 남아 있으면 지울 것이 있고, 그것을 말없이 지우면 무엇을 잃었는지도 모른다.
+ */
+describe('hasAnyLineDraftValue — 버릴 것이 있는가', () => {
+  it('빈 초안에는 버릴 것이 없다', () => {
+    expect(hasAnyLineDraftValue(EMPTY_LINE_DRAFT)).toBe(false);
+  });
+
+  it('고른 줄만 있어도 버릴 것이 있다', () => {
+    expect(hasAnyLineDraftValue(toggleLineSelection(EMPTY_LINE_DRAFT, 9401))).toBe(true);
+  });
+
+  /* 선택을 풀어도 수량이 남는다 — 그 상태에서 「버릴 것이 없다」로 읽으면 값이 말없이 사라진다. */
+  it('선택을 푼 뒤 수량만 남아도 버릴 것이 있다', () => {
+    const typed = setDraftQty(toggleLineSelection(EMPTY_LINE_DRAFT, 9401), 9401, '10');
+
+    expect(hasAnyLineDraftValue(toggleLineSelection(typed, 9401))).toBe(true);
+  });
+
+  /* 쳤다가 지운 칸은 버릴 것이 아니다 — 키는 남지만 값이 빈 칸이다. */
+  it('쳤다가 지운 칸만 남으면 버릴 것이 없다', () => {
+    const cleared = setDraftQty(setDraftQty(EMPTY_LINE_DRAFT, 9401, '10'), 9401, '');
+
+    expect(hasAnyLineDraftValue(cleared)).toBe(false);
   });
 });
