@@ -3313,6 +3313,24 @@ describe('StocktakingScreen — 저장 실패', () => {
   });
 
   /*
+   * **짝 방향 — 응답이 온 실패에는 그 한 줄을 붙이지 않는다**(개시가 세운 형태).
+   *
+   * 붙이면 **늘 참인 안내**가 된다: 서버가 400으로 「이 값은 못 받는다」고 답한 경우에도
+   * 「저장됐는지 다시 조회로 확인하세요」가 서서, 사용자는 **나가지도 않은 저장**을 확인하러
+   * 간다. 응답 없음 갈래만 재는 단언은 이 뒤집힘을 보지 못한다 — 갈래를 가르는 것이
+   * 이 한 줄의 전부이므로 양쪽을 함께 센다.
+   */
+  it('응답이 온 실패에는 그 안내를 붙이지 않는다', async () => {
+    const { user } = await setupAtLocation(allRoutes([failingReplaceRoute(403)]));
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.saveRecheck)).not.toBeInTheDocument();
+  });
+
+  /*
    * **감지기 M48** — **409에만** 「최신 불러오기」를 낸다. 다시 읽어야 풀리는 것은 충돌뿐이고,
    * 다른 오류에 내면 사용자가 **입력만 버리게 된다.**
    */
@@ -4192,6 +4210,24 @@ describe('StocktakingScreen — 마감 실패', () => {
     expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
     expect(screen.getByText(t.notes.closeRecheck)).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /*
+   * **짝 방향 — 응답이 온 실패에는 그 한 줄을 붙이지 않는다**(개시가 세운 형태).
+   *
+   * 마감에서 그 뒤집힘은 특히 비싸다: 「이미 마감됐는지 확인한 뒤 시도하세요」가 **권한이
+   * 없어 애초에 나가지도 못한** 실패에까지 서면, 사용자는 마감되지 않은 실사를 마감된 것으로
+   * 의심하고 목록을 뒤진다 — 되돌릴 수 없는 조작이라 그 의심의 값이 크다.
+   */
+  it('응답이 온 실패에는 그 안내를 붙이지 않는다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), failingCloseRoute(403)]),
+    );
+
+    await closeCount(user);
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.closeRecheck)).not.toBeInTheDocument();
   });
 
   /*
