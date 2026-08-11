@@ -322,6 +322,34 @@ const linesRoute = (
  * 「표에서 사라진 줄의 초안이 요청에 실리지 않는다」(감지기 M46)를 화면 수준에서 만드는 유일한
  * 수단이다 — 초안은 남아 있는데 표의 줄 집합만 줄어드는 상태가 그때 생긴다.
  */
+/**
+ * 부를 때마다 **내용이 달라지는** 라인 목록.
+ *
+ * 다시 부르기가 같은 본문을 돌려주면 캐시가 구조 공유로 **같은 참조를 그대로 유지**해,
+ * 「라인 응답이 도착하면 치던 값이 되돌아간다」는 결함이 드러나지 않는다 — 되돌림 의존성에
+ * 응답 배열을 넣어도 그 배열이 새 참조가 아니면 effect가 돌지 않기 때문이다.
+ * 목록에서 같은 함정을 이미 한 번 밟았다(PR ①의 `changingListRoute`).
+ *
+ * **줄 집합은 그대로 두고 값만 바꾼다** — 줄이 사라지면 다른 규칙(사라진 줄 제외)이 함께 걸려
+ * 무엇이 이 테스트를 죽였는지 가릴 수 없다.
+ */
+const changingLinesRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, LINES_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse(
+        lineListBody(
+          countLineFixtures.map((line) => ({ ...line, varianceQty: (line.varianceQty ?? 0) - call })),
+        ),
+      );
+    },
+  };
+};
+
 const shrinkingLinesRoute = (): StubRoute => {
   let call = 0;
 
@@ -2450,8 +2478,16 @@ describe('StocktakingScreen — 라인 초안', () => {
       },
     ],
   ])('%s 라인 초안이 남는다', async (_label, act) => {
+    /*
+     * **라인 응답이 부를 때마다 달라지게 둔다.** 같은 본문이 오면 캐시가 구조 공유로 같은
+     * 참조를 유지해, 되돌림 의존성에 응답을 넣어도 effect가 돌지 않는다 — 그러면 이 단언이
+     * 무엇도 재지 못한다(PR ①의 `changingListRoute`가 목록에서 같은 함정을 밟은 자리).
+     */
     const { user } = await setupAtLocation(
-      allRoutes([{ match: (request) => isGet(request, LOTS_PATH), respond: () => jsonResponse({ message: '' }, { status: 500 }) }]),
+      allRoutes([
+        changingLinesRoute(),
+        { match: (request) => isGet(request, LOTS_PATH), respond: () => jsonResponse({ message: '' }, { status: 500 }) },
+      ]),
     );
 
     await user.type(qtyField(1), '98');
