@@ -2370,7 +2370,17 @@ describe('StocktakingScreen — 위치와 라인 조회', () => {
    * 조회를 붙여 두면 아무도 읽지 않는 응답이 오가고, 그 경로가 나중에 「이미 되는 것」으로 읽힌다.
    */
   it('이력 구획이 비활성이고 요청을 늘리지 않는다', async () => {
-    const { requests } = await setupAtLocation();
+    /*
+     * **위치를 고르기 전에 잰다.** 라인 표가 열린 뒤에는 참조 셋이 이미 나가 있어, 이력에
+     * 조회를 붙여도 **이미 부르는 경로**를 하나 더 부르는 것이 되어 집합이 그대로다 —
+     * 그 상태에서 세면 이 단언이 무엇도 재지 못한다.
+     */
+    const { requests } = renderScreen(allRoutes(), '?ct=9001');
+
+    await screen.findByLabelText(t.fields.location);
+    await waitFor(() => {
+      expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
+    });
 
     const historyButton = within(
       screen.getByRole('group', { name: t.history.label }),
@@ -2378,9 +2388,9 @@ describe('StocktakingScreen — 위치와 라인 조회', () => {
 
     expect(historyButton).toBeDisabled();
 
-    /* 나간 경로의 집합에 이력이 쓸 만한 경로가 하나도 없다. */
+    /* 나간 경로의 **집합 그대로** — 이력이 쓸 만한 경로가 하나도 늘지 않았다. */
     expect([...new Set(requests.map((request) => request.url.pathname))].sort()).toEqual(
-      [LIST_PATH, DETAIL_PATH, WAREHOUSES_PATH, LOCATIONS_PATH, LINES_PATH, ITEMS_PATH, UOMS_PATH, LOTS_PATH].sort(),
+      [LIST_PATH, DETAIL_PATH, WAREHOUSES_PATH, LOCATIONS_PATH].sort(),
     );
   });
 });
