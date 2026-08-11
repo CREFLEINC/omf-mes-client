@@ -79,4 +79,14 @@ describe('appRouter', () => {
     expect(routedPaths()).toContain('/logistics/stocktaking');
     expect(routedPaths()).not.toContain('/inventory/stocktaking');
   });
+
+  /*
+   * W-01-05의 계약 경로는 `/logistics/goods-issues`(출고)인데 화면 주소는 **공급사 반품**이다 —
+   * 주소는 계약 리소스가 아니라 **화면**을 가리킨다. 같은 경로를 일반 출고·기타 출고가 함께
+   * 쓰므로(착수 이슈 §6) 리소스 이름을 주소로 삼으면 세 화면이 한 주소를 다투게 된다.
+   */
+  it('공급사 반품 처리가 자재창고 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/logistics/supplier-return');
+    expect(routedPaths()).not.toContain('/logistics/goods-issues');
+  });
 });

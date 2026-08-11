@@ -18,6 +18,11 @@ export const TABLE_MIN_WIDTH_PX = 928;
 export interface GrColumnsInput {
   selectedReceiptId: number | null;
   warehouseLookup: ReferenceSource;
+  /**
+   * 전송 중인가. **전표를 바꾸는 길을 함께 닫는다** — 열어 두면 사용자가 다른 전표로 옮긴 뒤
+   * 앞 요청의 결과가 지금 보는 맥락에 나타난다.
+   */
+  isLocked: boolean;
   onToggleSelect: (goodsReceiptId: number) => void;
 }
 
@@ -56,6 +61,7 @@ export interface GrColumnsInput {
 export const buildGrColumns = ({
   selectedReceiptId,
   warehouseLookup,
+  isLocked,
   onToggleSelect,
 }: GrColumnsInput): Column<ReceiptView>[] => [
   { key: 'goodsReceiptNo', header: t.table.goodsReceiptNo, width: '168px' },
@@ -103,6 +109,7 @@ export const buildGrColumns = ({
           aria-label={
             selected ? t.actions.deselectRow(row.goodsReceiptNo) : t.actions.selectRow(row.goodsReceiptNo)
           }
+          disabled={isLocked}
           onClick={() => {
             onToggleSelect(row.goodsReceiptId);
           }}
@@ -138,11 +145,12 @@ export const GrTable = ({
   isBeyondLast,
   selectedReceiptId,
   warehouseLookup,
+  isLocked,
   onFirstPage,
   onToggleSelect,
   onRetryReferences,
 }: GrTableProps) => {
-  const columns = buildGrColumns({ selectedReceiptId, warehouseLookup, onToggleSelect });
+  const columns = buildGrColumns({ selectedReceiptId, warehouseLookup, isLocked, onToggleSelect });
 
   if (isLoading) {
     return (
@@ -160,7 +168,7 @@ export const GrTable = ({
         title={t.empty.beyondLastTitle}
         description={t.empty.beyondLastDescription}
         action={
-          <Button variant="outlined" onClick={onFirstPage}>
+          <Button variant="outlined" disabled={isLocked} onClick={onFirstPage}>
             {t.actions.goFirstPage}
           </Button>
         }

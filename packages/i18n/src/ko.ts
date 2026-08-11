@@ -3933,8 +3933,12 @@ const supplierReturn = {
     discardDrafts: '입력 지우기',
     /** 창의 버튼은 「확인/취소」가 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */
     keepEditing: '계속 입력',
-    confirmSubmit: '반품 처리',
-    confirmDiscard: '입력 지우기',
+    /**
+     * **창 안의 확인 버튼은 이름이 다르다.** 구획의 「반품 처리」와 글자가 같으면 사용자가
+     * 어느 것을 눌렀는지 되짚을 수 없고, 음성 조작이 둘 중 무엇을 가리키는지도 정해지지 않는다.
+     */
+    confirmSubmit: '반품 처리 실행',
+    confirmDiscard: '입력 지우기 실행',
   },
   /** 컨트롤이 잠긴 사유. **잠근 자리 옆에서 읽혀야 한다**(배치 규범 4). */
   actionReasons: {
@@ -4095,6 +4099,11 @@ const supplierReturn = {
      * 남아 있는 양이고 반품 수량의 상한이다. 키를 갈라 두면 한쪽 문구만 고칠 수 있다.
      */
     onHandQtyPair: (onHandQty: number, uom: string): string => `${String(onHandQty)} ${uom}`,
+    /**
+     * 확인 창과 결과 구획이 쓰는 **반품 수량 표기**. 입고·보유 수량과 글자 모양이 같아도 뜻이
+     * 다르다 — 이쪽은 **실제로 나가는 양**이다. 키를 갈라 두면 한쪽 문구만 고칠 수 있다.
+     */
+    returnQtyPair: (issueQty: number, uom: string): string => `${String(issueQty)} ${uom}`,
     /**
      * 표 안 컨트롤의 접근 이름. 보이는 글자가 줄마다 같으므로 **어느 줄인지**를 이름에 넣는다.
      *

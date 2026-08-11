@@ -1,9 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { QueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -12,9 +12,11 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { pickRange } from '../../test/date-picker';
+import { pickDate, pickRange } from '../../test/date-picker';
 import {
   balanceFixtures,
+  goodsIssue,
+  goodsIssueLineFixtures,
   goodsReceiptFixtures,
   goodsReceiptLineFixtures,
   INTERNAL_IDS,
@@ -22,14 +24,71 @@ import {
   locationFixtures,
   lotFixtures,
   ON_HAND_9601,
+  PARTNER_LABEL,
+  partnerFixtures,
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
+import { SELECTION_KEYS } from './filters';
 import { LOT_PAGE_SIZE } from './lookups';
-import { BALANCE_PAGE_SIZE } from './queries';
+import { BALANCE_PAGE_SIZE, receiptKeys } from './queries';
 import { SupplierReturnScreen } from './screen';
 
 const t = messages.supplierReturn;
+
+/**
+ * **값 목록만 갈아 끼운다.**
+ *
+ * 자리표시 상수는 지금 **비어 있고**(`code-options.test.ts`가 그 사실을 고정한다) 비어 있는
+ * 동안에는 「반품 처리」가 잠긴다. 그런데 이 화면의 값어치는 **잠금이 풀린 뒤에 무엇이
+ * 일어나는가**에 있다 — 요청에 무엇이 실리는지, 전송 중에 무엇이 닫히는지, 성공·실패가
+ * 어떻게 보이는지는 배열이 채워진 상태에서만 확인할 수 있다.
+ *
+ * 판정·선택지 만들기·검증은 실물 그대로이고 바뀌는 것은 「값 목록이 왔다」는 사실 하나다 —
+ * 값 목록이 확정되면 실제로 그 한 가지만 달라진다. 매 테스트 앞에서 빈 배열로 되돌려,
+ * 아무것도 채우지 않은 테스트는 **지금의 화면**을 본다.
+ */
+const { codeValues } = vi.hoisted(() => ({
+  codeValues: {
+    issueType: [] as string[],
+    sourceDocumentType: [] as string[],
+    destinationType: [] as string[],
+    reason: [] as string[],
+    receiptType: [] as string[],
+    status: [] as string[],
+  },
+}));
+
+vi.mock('./code-options', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./code-options')>();
+
+  return { ...actual, PLACEHOLDER_SUPPLIER_RETURN_CODES: codeValues };
+});
+
+/** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
+const SAMPLE_ISSUE_TYPE = 'SAMPLE_ISSUE_TYPE_A';
+const SAMPLE_SOURCE_TYPE = 'SAMPLE_SOURCE_TYPE_A';
+const SAMPLE_DESTINATION_TYPE = 'SAMPLE_DESTINATION_TYPE_A';
+const SAMPLE_REASON = 'SAMPLE_REASON_A';
+
+const clearCodeLists = (): void => {
+  codeValues.issueType = [];
+  codeValues.sourceDocumentType = [];
+  codeValues.destinationType = [];
+  codeValues.reason = [];
+  codeValues.receiptType = [];
+  codeValues.status = [];
+};
+
+/** 값 목록이 확정된 뒤. **배열만 채운다** — 다른 자리는 손대지 않는다. */
+const fillCodeLists = (): void => {
+  codeValues.issueType = [SAMPLE_ISSUE_TYPE];
+  codeValues.sourceDocumentType = [SAMPLE_SOURCE_TYPE];
+  codeValues.destinationType = [SAMPLE_DESTINATION_TYPE];
+  codeValues.reason = [SAMPLE_REASON];
+};
+
+beforeEach(clearCodeLists);
 
 const ROUTE = '/logistics/supplier-return';
 const LIST_PATH = '/logistics/goods-receipts';
@@ -66,6 +125,8 @@ const LOCATION_LABEL = 'SAMPLE-LOC-A1 · 합성 열 가1';
 interface RecordedRequest {
   method: string;
   url: URL;
+  /** 실제로 실려 나간 헤더. **보내지 않았음**을 증명하려면 보낼 수 있는 자리를 봐야 한다. */
+  headers: Headers;
   /**
    * 쓰기 요청의 본문. 읽기에는 `null`이다.
    *
@@ -97,7 +158,12 @@ const createRecordingFetch = (
     /* 본문은 한 번만 읽을 수 있다 — 복제해 읽어야 스텁이 같은 요청을 다시 다룰 수 있다. */
     const body: unknown = request.method === 'GET' ? null : await request.clone().json();
 
-    requests.push({ method: request.method, url: new URL(request.url), body });
+    requests.push({
+      method: request.method,
+      url: new URL(request.url),
+      headers: new Headers(request.headers),
+      body,
+    });
 
     if (hold.includes(new URL(request.url).pathname)) await gate;
 
@@ -234,14 +300,42 @@ const linesPathRoute = (): StubRoute => ({
     }),
 });
 
-/** 이 회차가 부르지 않아야 하는 나머지 경로. 마찬가지로 부를 수 있게 둔다. */
-const laterPhaseRoutes = (): StubRoute[] => [
-  { match: (request) => isGet(request, PARTNERS_PATH), respond: () => jsonResponse(listBody([])) },
-  {
-    match: (request) => request.method === 'POST' && new URL(request.url).pathname === ISSUES_PATH,
-    respond: () => jsonResponse({}, { status: 201 }),
+/** 거래처(공급사) 목록 — 반품 정보의 선택칸이 쓴다. */
+const partnersRoute = (
+  items: unknown[] = partnerFixtures,
+  page?: Partial<{ page: number; size: number; total: number }>,
+): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: () => jsonResponse(listBody(items, page)),
+});
+
+const failingPartnersRoute = (): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: () => jsonResponse({ message: '' }, { status: 500 }),
+});
+
+/** 반품 처리(쓰기)의 성공 응답. **서버가 되돌려 준 줄이 화면이 보낸 줄과 다르다** — 결과 구획이 응답을 그리는지 재려면 달라야 한다. */
+const postRoute = (): StubRoute => ({
+  match: (request) => request.method === 'POST' && new URL(request.url).pathname === ISSUES_PATH,
+  respond: () =>
+    jsonResponse(
+      { goodsIssue: goodsIssue(), lines: goodsIssueLineFixtures },
+      { status: 201, headers: { ETag: '42' } },
+    ),
+});
+
+/** 실패 네 갈래 중 응답이 있는 셋. 네트워크 갈래는 스텁이 던져 만든다. */
+const failingPostRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: (request) => request.method === 'POST' && new URL(request.url).pathname === ISSUES_PATH,
+  respond: () => jsonResponse(body, { status }),
+});
+
+const brokenPostRoute = (): StubRoute => ({
+  match: (request) => request.method === 'POST' && new URL(request.url).pathname === ISSUES_PATH,
+  respond: () => {
+    throw new TypeError('Failed to fetch');
   },
-];
+});
 
 /** 재고 잔액은 **품목마다** 부른다 — 요청의 `itemId`에 맞는 것만 돌려준다. */
 const balancesRoute = (
@@ -356,7 +450,8 @@ const allRoutes = (extra: StubRoute[] = []): StubRoute[] => [
   missingDetailRoute(),
   linesPathRoute(),
   balancesRoute(),
-  ...laterPhaseRoutes(),
+  partnersRoute(),
+  postRoute(),
   ...lookupRoutes(),
 ];
 
@@ -452,6 +547,9 @@ const KNOWN_PATHS = [
   LOTS_PATH,
   LOCATIONS_PATH,
   BALANCES_PATH,
+  PARTNERS_PATH,
+  /** 이 회차에 생긴 유일한 쓰기. **경로가 하나뿐**이라 이 목록에 드는 것이 곧 규칙이다. */
+  ISSUES_PATH,
 ];
 
 /** 확립 규칙 「요청 계수는 경로 전체를 센다」의 단언 형태 — 기록만이 아니라 **판정도** 전체를 본다. */
@@ -551,6 +649,92 @@ const expectNoInternalIds = (): void => {
   }
 };
 
+/** 반품 처리 버튼. 잠긴 채로도 잡히므로 **잠금과 사유를 함께** 잰다. */
+const submitButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.submit });
+
+const discardButton = (): HTMLElement =>
+  screen.getByRole('button', { name: t.actions.discardDrafts });
+
+/** 실제로 나간 쓰기. **경로와 method를 함께** 본다 — 한쪽만 세면 다른 경로의 쓰기를 놓친다. */
+const issueRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'POST' && request.url.pathname === ISSUES_PATH,
+  );
+
+const chooseOption = async (
+  user: ReturnType<typeof userEvent.setup>,
+  fieldLabel: string,
+  optionLabel: string,
+): Promise<void> => {
+  await user.click(screen.getByRole('combobox', { name: fieldLabel }));
+  await user.click(screen.getByRole('option', { name: optionLabel }));
+};
+
+/**
+ * 시각 입력칸에 값을 넣는다. **글자 단위로 치지 않는다** — `type="time"`은 시·분 세그먼트를
+ * 따로 받아 `09:12`를 그대로 치면 마지막 글자만 분에 남는다.
+ */
+const setIssuedTime = (value: string): void => {
+  fireEvent.change(screen.getByLabelText(t.fields.issuedTime), { target: { value } });
+};
+
+/** 반품 정보를 전부 채운다. **코드 값 목록이 채워져 있어야** 고를 수 있다. */
+const fillReturnForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await chooseOption(user, t.fields.supplier, PARTNER_LABEL);
+  await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
+  await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
+  await chooseOption(user, t.fields.destinationType, SAMPLE_DESTINATION_TYPE);
+  await chooseOption(user, t.fields.reason, SAMPLE_REASON);
+  await pickDate(user, screen.getByLabelText(t.fields.issuedDate), '2026-08-06');
+  setIssuedTime('09:12');
+};
+
+/** 줄 하나를 고르고 수량을 친 상태. 보낼 것이 갖춰지기 직전까지 간다. */
+const pickLine = async (
+  user: ReturnType<typeof userEvent.setup>,
+  ordinal = 1,
+  qty = '30',
+): Promise<void> => {
+  await user.click(selectBox(ordinal));
+  await user.type(qtyBox(ordinal), qty);
+};
+
+/** 「반품 처리」가 열린 상태까지 — 값 목록을 채우고 줄·수량·반품 정보를 모두 넣는다. */
+const setupReadyToSubmit = async (
+  routes: StubRoute[] = allRoutes(),
+  search = '',
+  navigateTo = '',
+  hold: string[] = [],
+): Promise<ReturnType<typeof renderScreen>> => {
+  fillCodeLists();
+
+  const rendered = renderScreen(routes, search, navigateTo, hold);
+
+  /*
+   * **주소가 이미 전표를 가리키면 누르지 않는다** — 그 상태에서 선택 버튼을 누르면 고른 것을
+   * 도로 푼다. 아래 구획이 열린 신호(참조 이름이 풀린 것)를 두 길에서 똑같이 기다린다.
+   */
+  if (search.includes(`${SELECTION_KEYS.goodsReceipt}=`)) {
+    await screen.findAllByText(ITEM_LABEL);
+  } else {
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(rendered.user);
+  }
+
+  await pickLine(rendered.user);
+  await fillReturnForm(rendered.user);
+
+  return rendered;
+};
+
+const openConfirm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(submitButton());
+};
+
+const confirmSubmit = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: t.actions.confirmSubmit }));
+};
+
 describe('SupplierReturnScreen — 첫 진입 조회', () => {
   /*
    * **M01** — 기본 기간을 심으면 첫 요청에 날짜가 실리고, 사용자는 왜 그 기간만 보이는지
@@ -635,14 +819,33 @@ describe('SupplierReturnScreen — 첫 진입 조회', () => {
     expect(requests.length).toBeGreaterThan(0);
   });
 
-  /** 거래처는 뒤따르는 회차(반품 정보)의 것이다 — 지금 부르면 쓰지 않는 자료를 받는다. */
-  it('거래처를 부르지 않는다', async () => {
+  /**
+   * **C19의 여섯째 참조** — 거래처는 **반품 정보 구획**이 쓴다. 그 구획도 상세 응답을
+   * 기다리므로 고르기 전에 부르면 첫 진입의 요청 수만 이유 없이 는다.
+   */
+  it('전표를 고르기 전에는 거래처를 부르지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+
+    expect(requestsTo(requests, PARTNERS_PATH)).toHaveLength(0);
+  });
+
+  /** 짝 방향 — 고른 뒤에는 **한 번** 부른다(아예 안 부르는 것이 아니다). */
+  it('전표를 고르면 거래처를 한 번 부른다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await screen.findByText('GR-2026-900001');
     await openReceipt(user);
 
-    expect(requestsTo(requests, PARTNERS_PATH)).toHaveLength(0);
+    await waitFor(() => {
+      expect(requestsTo(requests, PARTNERS_PATH)).toHaveLength(1);
+    });
+
+    /* 미사용 거래처를 함께 받지 않는다 — **고르는 값**이라 읽는 참조와 갈린다. */
+    expect(requestsTo(requests, PARTNERS_PATH)[0]?.url.searchParams.has('includeInactive')).toBe(
+      false,
+    );
   });
 
   /**
@@ -1366,7 +1569,8 @@ describe('SupplierReturnScreen — 없는 전표', () => {
         otherDetailRoute(),
         missingDetailRoute(),
         linesPathRoute(),
-        ...laterPhaseRoutes(),
+        partnersRoute(),
+        postRoute(),
         ...lookupRoutes(),
       ],
       '?gr=9001',
@@ -1832,16 +2036,20 @@ describe('SupplierReturnScreen — 줄 선택과 반품 수량', () => {
     expect(requests.length).toBeGreaterThan(0);
   });
 
-  /** 반품을 보내는 버튼이 아직 없다 — 결과를 볼 수 없는 채로 재고가 움직여서는 안 된다. */
-  it('반품을 보내는 버튼이 없다', async () => {
+  /**
+   * **C35** — 버튼은 생겼으나 **값 목록이 비어 있는 동안에는 잠긴 채로만 보인다.**
+   * 눌러도 아무 일이 없는 것이 아니라 **누를 수 없고 왜 그런지가 읽힌다.**
+   */
+  it('반품 처리 버튼이 잠긴 채로 사유와 함께 보인다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await screen.findByText('GR-2026-900001');
     await openReceipt(user);
 
-    for (const button of screen.getAllByRole('button')) {
-      expect(button.textContent ?? '').not.toContain('반품 처리');
-    }
+    const button = await screen.findByRole('button', { name: t.actions.submit });
+
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription(t.actionReasons.codeListPending);
   });
 
   it('줄을 골라도 두 구획 어디에도 내부 번호가 없다', async () => {
@@ -1998,5 +2206,772 @@ describe('SupplierReturnScreen — 줄 초안의 수명', () => {
 
     expect(qtyBox(1)).toHaveValue('');
     expect(selectBox(1)).not.toBeChecked();
+  });
+});
+
+/**
+ * **G1의 전환 — 배열이 차면 반품 처리가 살아난다.**
+ *
+ * 값 목록이 확정될 때 고칠 자리가 `code-options.ts`의 배열 하나뿐이라는 것이 이 화면의
+ * 설계다. 배열만 채우고 다른 자리를 손대지 않은 채 화면이 열리는지를 여기서 고정한다.
+ */
+describe('SupplierReturnScreen — 코드 목록이 채워지면', () => {
+  /* **M41 · C35** — 잠금을 상수로 굳히면 배열이 차도 열리지 않는다. */
+  it('사유가 「목록 미확정」에서 「고르세요」로 바뀐다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    expect(submitButton()).toBeDisabled();
+    expect(submitButton()).not.toHaveAccessibleDescription(t.actionReasons.codeListPending);
+    /* 줄이 먼저다 — 무엇을 보낼지가 누구에게 보낼지보다 앞선다(화면 차례 그대로). */
+    expect(submitButton()).toHaveAccessibleDescription(t.reasons.selectNone);
+  });
+
+  it('준비 중 안내가 사라지고 코드를 고를 수 있다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    const pane = screen.getByRole('region', { name: t.panes.form });
+
+    expect(within(pane).queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
+
+    await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
+
+    expect(screen.getByRole('combobox', { name: t.fields.issueType })).toHaveTextContent(
+      SAMPLE_ISSUE_TYPE,
+    );
+  });
+
+  /* 다 채우면 실제로 열린다 — 여기까지 와야 「차면 활성」이 값으로 고정된다. */
+  it('줄과 반품 정보를 다 채우면 반품 처리가 열린다', async () => {
+    const { requests } = await setupReadyToSubmit();
+
+    expect(submitButton()).not.toBeDisabled();
+    /* 짝 방향 — 열렸다고 저절로 나가지는 않는다. */
+    expect(issueRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * **C35** — 값 목록이 비어 있는 동안에는 **요청이 0회**다. 잠금이 풀리지 않으므로 확인 창도
+   * 열리지 않는다.
+   */
+  it('값 목록이 비어 있으면 줄과 수량을 채워도 잠긴 채 요청이 없다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+    await pickLine(user);
+
+    expect(submitButton()).toBeDisabled();
+    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.codeListPending);
+    expect(issueRequests(requests)).toHaveLength(0);
+  });
+
+  /* **C36** — 공급사와 출고 일시가 비면 각각 그 사유로 잠긴다. */
+  it('공급사를 고르지 않으면 그 사유로 잠긴다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+    await pickLine(user);
+    await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
+
+    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsSupplier);
+  });
+
+  it('출고 일자와 시각이 비면 각각 그 사유로 잠긴다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+    await pickLine(user);
+    await chooseOption(user, t.fields.supplier, PARTNER_LABEL);
+    await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
+    await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
+    await chooseOption(user, t.fields.destinationType, SAMPLE_DESTINATION_TYPE);
+    await chooseOption(user, t.fields.reason, SAMPLE_REASON);
+
+    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsIssuedDate);
+
+    await pickDate(user, screen.getByLabelText(t.fields.issuedDate), '2026-08-06');
+
+    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsIssuedTime);
+  });
+
+  /*
+   * **C37** — 계약이 코드에 `maxLength: 50`을 두었고 목이 51자를 400으로 되돌린다.
+   * 값 목록이 채워질 때 그 값의 길이를 화면이 정하지 않으므로 **화면도 잰다.**
+   */
+  it('코드가 상한을 넘으면 인라인 오류를 내고 보내지 않는다', async () => {
+    fillCodeLists();
+    codeValues.reason = ['A'.repeat(51)];
+
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+    await pickLine(user);
+    await chooseOption(user, t.fields.supplier, PARTNER_LABEL);
+    await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
+    await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
+    await chooseOption(user, t.fields.destinationType, SAMPLE_DESTINATION_TYPE);
+    await chooseOption(user, t.fields.reason, 'A'.repeat(51));
+    await pickDate(user, screen.getByLabelText(t.fields.issuedDate), '2026-08-06');
+    setIssuedTime('09:12');
+
+    await openConfirm(user);
+
+    /* 창이 열리지 않고 그 칸에 오류가 선다 — 되돌릴 수 없는 요청은 나가기 전에 막는다. */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText(t.errors.codeTooLong(50))).toBeInTheDocument();
+    expect(issueRequests(requests)).toHaveLength(0);
+  });
+});
+
+describe('SupplierReturnScreen — 확인 창', () => {
+  /* **M42 · C38** — 버튼에서 곧바로 보내면 되돌릴 수 없는 조작에 확인이 없어진다. */
+  it('누르면 창이 먼저 뜨고 확인 전에는 요청이 없다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openConfirm(user);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(issueRequests(requests)).toHaveLength(0);
+  });
+
+  /* **C39** — 창이 보이는 값이 **폼에 넣은 값과 같다.** 창에서 처음 보는 값이 있으면 안 된다. */
+  it('창이 공급사·코드 넷·출고 일시·영업일·줄을 그대로 보인다', async () => {
+    const { user } = await setupReadyToSubmit();
+
+    await openConfirm(user);
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(dialog).toHaveTextContent(PARTNER_LABEL);
+    expect(dialog).toHaveTextContent(SAMPLE_ISSUE_TYPE);
+    expect(dialog).toHaveTextContent(SAMPLE_SOURCE_TYPE);
+    expect(dialog).toHaveTextContent(SAMPLE_DESTINATION_TYPE);
+    expect(dialog).toHaveTextContent(SAMPLE_REASON);
+    expect(dialog).toHaveTextContent('2026-08-06 09:12');
+    expect(within(dialog).getByText(t.dialog.businessDateDerived('2026-08-06'))).toBeInTheDocument();
+    expect(dialog).toHaveTextContent(
+      t.dialog.linePair(ITEM_LABEL, 'LOT-2026-900010', t.lineTable.returnQtyPair(30, UOM_LABEL)),
+    );
+    expect(within(dialog).getByText(t.dialog.submitNoUndoHere)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.dialog.submitLotHoldKept)).toBeInTheDocument();
+  });
+
+  /* **M43·M44 · C40** — 창 둘 다 선택칸이 없다(#45가 걸릴 자리를 만들지 않는다). */
+  it('두 창 안에 선택칸이 없다', async () => {
+    const { user } = await setupReadyToSubmit();
+
+    await openConfirm(user);
+    expect(within(screen.getByRole('dialog')).queryAllByRole('combobox')).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    await user.click(discardButton());
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog')).queryAllByRole('combobox')).toHaveLength(0);
+  });
+
+  /*
+   * **M35 · C42** — 창이 열린 채 **주소로** 대상이 바뀌면 창이 닫힌다. 이 길은 클릭 핸들러를
+   * 거치지 않아 잠금·가드가 닿지 않는다(뒤로가기·앞으로가기·주소 직접 편집).
+   */
+  it('창이 열린 채 주소로 대상이 바뀌면 닫히고 요청이 없다', async () => {
+    const { requests, user } = await setupReadyToSubmit(allRoutes(), '?gr=9001', 'gr=9002');
+
+    await openConfirm(user);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(issueRequests(requests)).toHaveLength(0);
+  });
+
+  /* 대상이 그대로면 창이 남아 있어야 한다 — 늘 닫으면 확인 창 자체가 쓸모없어진다. */
+  it('대상이 그대로면 창이 남는다', async () => {
+    const { user } = await setupReadyToSubmit();
+
+    await openConfirm(user);
+    await user.type(screen.getByLabelText(t.fields.remarks), '합');
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('계속 입력을 누르면 창이 닫히고 요청이 나가지 않는다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openConfirm(user);
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(issueRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * **M45 — 보내는 자리의 재검사가 홀로 서는 자리.**
+   *
+   * 창이 열린 동안 **다른 사람이 그 줄을 먼저 반품하면** 다시 조회에서 줄이 사라진다. 대상은
+   * 그대로라 창을 닫는 effect가 깨어나지 않는다 — 즉 **창은 열려 있는데 보낼 줄이 없는 상태**가
+   * 실제로 만들어진다. 여기서 확인을 누르면, 보내는 자리가 다시 보지 않는 한 사라진 줄이 나간다.
+   */
+  it('창이 열린 동안 고른 줄이 사라지면 확인해도 요청이 나가지 않는다', async () => {
+    const { requests, queryClient, user } = await setupReadyToSubmit(
+      allRoutes([changingLinesRoute()]),
+      '?gr=9001',
+    );
+
+    await openConfirm(user);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: receiptKeys.detail(9001) });
+    });
+
+    /* 새 라인 응답이 실제로 적용된 뒤에 본다 — 적용 전에 검사하면 늘 참인 단언이 된다. */
+    await waitFor(() => {
+      expect(screen.queryByRole('checkbox', { name: t.lineTable.selectLabel(3) })).toBeNull();
+    });
+
+    /* 대상은 그대로다 — 창을 닫는 effect가 깨어나지 않았음을 값으로 밝힌다. */
+    expect(currentLocation()).toContain('gr=9001');
+
+    await confirmSubmit(user);
+
+    expect(issueRequests(requests)).toHaveLength(0);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    /* 짝 방향 — 왜 나가지 않았는지가 화면에 남는다. */
+    expect(submitButton()).toBeDisabled();
+    expect(submitButton()).toHaveAccessibleDescription(t.reasons.selectNone);
+  });
+});
+
+describe('SupplierReturnScreen — 실제로 보내는 것', () => {
+  /**
+   * **M40 · C43 · 위험 1** — 이 화면에서 가장 비싼 한 줄이다.
+   *
+   * 목은 `postImmediately`를 생략해도 201을 준다(실측) — 빠뜨리면 전표만 만들어지고 전기되지
+   * 않는데 화면은 성공으로 보이며, **이 화면에는 나중에 전기할 수단이 없다.**
+   */
+  it('본문에 `postImmediately: true`와 `sendToErp`가 늘 실린다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(issueRequests(requests)).toHaveLength(1);
+    });
+
+    const body = issueRequests(requests)[0]?.body as Record<string, unknown>;
+
+    expect(body.postImmediately).toBe(true);
+    expect(body.sendToErp).toBe(true);
+    expect(Object.keys(body)).toEqual(
+      expect.arrayContaining(['postImmediately', 'sendToErp']),
+    );
+  });
+
+  /* **C43·C44·C45·C46** — 계약이 요구하는 열이 전부, 고른 전표와 표의 줄에서 나온다. */
+  it('본문이 고른 전표와 표의 줄에서 나온다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(issueRequests(requests)).toHaveLength(1);
+    });
+
+    const body = issueRequests(requests)[0]?.body as Record<string, unknown>;
+
+    expect(body.sourceDocumentId).toBe(9001);
+    expect(body.sourceWarehouseId).toBe(9701);
+    expect(body.destinationId).toBe(9901);
+    expect(body.issueTypeCode).toBe(SAMPLE_ISSUE_TYPE);
+    expect(body.sourceDocumentTypeCode).toBe(SAMPLE_SOURCE_TYPE);
+    expect(body.destinationTypeCode).toBe(SAMPLE_DESTINATION_TYPE);
+    expect(body.reasonCode).toBe(SAMPLE_REASON);
+    expect(body.issuedAt).toMatch(/^2026-08-06T09:12:00[+-]\d{2}:\d{2}$/);
+    expect(body.businessDate).toBe('2026-08-06');
+    expect(body.occurredAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
+    expect(body.lines).toEqual([
+      { itemId: 9301, lotId: 9601, issueQty: 30, uomId: 9501, sourceLocationId: 9801 },
+    ]);
+  });
+
+  /*
+   * **M39** — 고르지 않은 줄은 실리지 않는다. 초안에 수량이 남아 있어도 마찬가지다
+   * (선택을 풀어도 친 값을 지우지 않으므로 실제로 일어나는 상태다).
+   */
+  it('고르지 않은 줄의 수량은 실리지 않는다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    /* 둘째 줄에 값을 쳐 두고 고르지는 않는다 — 칸이 잠기지 않은 줄이라야 성립한다. */
+    await user.type(qtyBox(2), '5');
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(issueRequests(requests)).toHaveLength(1);
+    });
+
+    const body = issueRequests(requests)[0]?.body as { lines: unknown[] };
+
+    expect(body.lines).toHaveLength(1);
+  });
+
+  /*
+   * **C47** — 새 전표에는 매길 버전이 없다. 화면이 들고 있는 토큰은 **고른 입고 전표**의
+   * 것이라 실으면 서로 다른 자원의 버전을 비교하게 된다.
+   */
+  it('`If-Match`를 보내지 않고 멱등 키는 보낸다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(issueRequests(requests)).toHaveLength(1);
+    });
+
+    const headers = issueRequests(requests)[0]?.headers;
+
+    expect(headers?.has('If-Match')).toBe(false);
+    /* 짝 방향 — 계약이 필수로 두는 헤더는 실제로 실렸다(헤더 자체가 빠진 것이 아니다). */
+    expect(headers?.get('Idempotency-Key') ?? '').not.toBe('');
+  });
+
+  /* **C55** — 전기·취소·라인 치환 경로를 부르지 않는다. 부르는 자리 자체가 없다. */
+  it('전기·취소·라인 치환 경로로 나가지 않는다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(issueRequests(requests)).toHaveLength(1);
+    });
+
+    expect(
+      requests
+        .filter((request) => request.url.pathname !== ISSUES_PATH)
+        .map((request) => request.url.pathname)
+        .filter((pathname) => pathname.startsWith('/logistics/goods-issues')),
+    ).toEqual([]);
+    expectNoUnknownPath(requests);
+  });
+});
+
+describe('SupplierReturnScreen — 전송 중', () => {
+  /*
+   * **C41 · M33** — 응답을 붙잡아 둔 채 연타해도 요청은 **1회**다. 멱등 키가 호출마다 새로
+   * 만들어지므로(이 저장소 이슈로 추적 중) 두 번 나가면 **전표 두 벌**이 된다.
+   */
+  it('연타해도 요청이 1회이고 컨트롤이 잠긴다', async () => {
+    const { requests, release, user } = await setupReadyToSubmit(allRoutes(), '', '', [
+      ISSUES_PATH,
+    ]);
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(issueRequests(requests)).toHaveLength(1);
+    });
+
+    /* 첫째 겹 — 눈에 보이는 컨트롤이 전부 닫혔다. */
+    expect(submitButton()).toBeDisabled();
+    expect(discardButton()).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.refresh })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') })).toBeDisabled();
+    expect(selectBox(1)).toBeDisabled();
+    expect(qtyBox(1)).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.supplier })).toBeDisabled();
+
+    await user.click(submitButton());
+
+    expect(issueRequests(requests)).toHaveLength(1);
+
+    release();
+
+    await screen.findByRole('status', { name: t.result.label });
+  });
+
+  /**
+   * **M34(둘째 겹)** — 조건 칩의 ×는 디자인 시스템이 잠금을 받지 않아 **열려 있다.**
+   * 그 길로 들어오면 조건이 바뀌며 고른 전표가 풀리고, 앞서 보낸 반품의 결과가 **다른 전표
+   * 맥락에** 나타난다. 첫째 겹이 닿지 않는 자리라 핸들러 가드가 홀로 막는다.
+   */
+  it('전송 중에는 조건 칩의 ×로도 대상이 바뀌지 않는다', async () => {
+    const { release, user } = await setupReadyToSubmit(allRoutes(), '?q=GR&gr=9001', '', [
+      ISSUES_PATH,
+    ]);
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    const chip = screen.getByRole('button', { name: t.filters.chipRemoveQ });
+
+    /* 짝 방향 — ×는 실제로 눌리는 상태다(잠겨서 아무 일이 없는 것이 아니다). */
+    expect(chip).not.toBeDisabled();
+
+    await user.click(chip);
+
+    expect(currentLocation()).toContain('q=GR');
+    expect(currentLocation()).toContain('gr=9001');
+
+    release();
+
+    await screen.findByRole('status', { name: t.result.label });
+  });
+});
+
+describe('SupplierReturnScreen — 처리 성공', () => {
+  /** 성공 상태까지 간다. 돌려주는 것은 그 회차의 기록과 조작 수단이다. */
+  const succeed = async (
+    routes: StubRoute[] = allRoutes(),
+    search = '',
+  ): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = await setupReadyToSubmit(routes, search);
+
+    await openConfirm(rendered.user);
+    await confirmSubmit(rendered.user);
+    await screen.findByRole('status', { name: t.result.label });
+
+    return rendered;
+  };
+
+  /*
+   * **C48** — 초안 두 벌이 비고 `gr`는 남는다. 초안이 남으면 **한 번 더 누르는 사고**가 생기고,
+   * `gr`가 사라지면 방금 무엇으로부터 반품했는지 화면에서 읽을 수 없다.
+   */
+  it('초안 두 벌이 비고 고른 전표는 남는다', async () => {
+    await succeed(allRoutes(), '?gr=9001');
+
+    expect(selectBox(1)).not.toBeChecked();
+    expect(qtyBox(1)).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: t.fields.supplier })).not.toHaveTextContent(
+      PARTNER_LABEL,
+    );
+    expect(currentLocation()).toContain('gr=9001');
+  });
+
+  /*
+   * **C48 · 캐시 키 분리** — 목록·상세·잔액은 다시 부르고 **이름 참조 여섯은 부르지 않는다.**
+   * 앞머리를 한 키로 묶었다면 이름까지 함께 날아가 요청이 이유 없이 늘고, 그때 상세가 새
+   * 참조로 오며 **치던 값이 사라지는** 길이 열린다.
+   */
+  it('목록·상세·잔액을 다시 부르고 이름 참조는 다시 부르지 않는다', async () => {
+    const { requests } = await succeed(allRoutes(), '?gr=9001');
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH)).toHaveLength(2);
+    });
+
+    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(2);
+    /* 잔액은 고유 품목 둘이라 한 회차에 2건씩이다. */
+    expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(4);
+
+    expect(requestsTo(requests, ITEMS_PATH)).toHaveLength(1);
+    expect(requestsTo(requests, UOMS_PATH)).toHaveLength(1);
+    expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
+    expect(requestsTo(requests, PARTNERS_PATH)).toHaveLength(1);
+    expect(requestsTo(requests, WAREHOUSES_PATH)).toHaveLength(1);
+  });
+
+  /*
+   * **C49 · M36 · M37** — 결과가 **서버가 준 것만** 말한다. 목이 `postImmediately: true`에도
+   * `DRAFT`를 되돌려 주므로 상태 코드로 「전기 완료」를 판정했다면 그 자리에서 거짓말을 한다.
+   */
+  it('전표 번호·상태 코드·서버가 준 줄·ERP 적재를 낸다', async () => {
+    await succeed();
+
+    const pane = screen.getByRole('status', { name: t.result.label });
+
+    expect(pane).toHaveTextContent('GI-2026-950001');
+    expect(pane).toHaveTextContent('SAMPLE_GI_STATUS_A');
+    expect(within(pane).getByText(t.result.erpQueued)).toBeInTheDocument();
+    expect(within(pane).getByText(t.result.notConfirmed)).toBeInTheDocument();
+    expect(pane.textContent ?? '').not.toContain('재고가 차감');
+    expect(pane.textContent ?? '').not.toContain('전기 완료');
+  });
+
+  /*
+   * **서버가 준 배열을 그린다** — 화면이 보낸 줄은 하나인데 응답은 둘이다. 화면이 센 줄 수를
+   * 쓰면 이 둘이 갈리는 것을 아무도 보지 못한다.
+   */
+  it('줄 목록이 화면이 보낸 줄이 아니라 서버가 준 줄이다', async () => {
+    await succeed();
+
+    const pane = screen.getByRole('status', { name: t.result.label });
+
+    expect(pane).toHaveTextContent(
+      t.result.linePair(ITEM_LABEL, 'LOT-2026-900010', t.lineTable.returnQtyPair(30, UOM_LABEL)),
+    );
+    expect(pane).toHaveTextContent('LOT-2026-900011');
+  });
+
+  /* **C50 · M50** — 결과 어디에도 내부 번호가 없고 도착지 이름을 풀지 않는다. */
+  it('결과에 내부 번호가 없다', async () => {
+    await succeed();
+
+    const pane = screen.getByRole('status', { name: t.result.label });
+
+    /* 짝 방향 — 이름과 업무 번호는 실제로 그려졌다. */
+    expect(pane.textContent ?? '').toContain(ITEM_LABEL);
+    expect(pane.textContent ?? '').toContain('GI-2026-950001');
+
+    for (const id of INTERNAL_IDS) {
+      expect(pane.textContent ?? '').not.toContain(id);
+    }
+  });
+
+  /* 성공 뒤에는 확인 창이 닫혀 있고 실패 배너도 없다(수명 표 11행). */
+  it('창이 닫히고 배너가 없다', async () => {
+    await succeed();
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.httpError.title)).not.toBeInTheDocument();
+  });
+});
+
+describe('SupplierReturnScreen — 처리 실패', () => {
+  /** 실패까지 간다. 응답 갈래만 바꿔 같은 자리를 네 번 지난다. */
+  const fail = async (route: StubRoute): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = await setupReadyToSubmit(allRoutes([route]));
+
+    await openConfirm(rendered.user);
+    await confirmSubmit(rendered.user);
+
+    return rendered;
+  };
+
+  /*
+   * **C51** — 400은 서버가 준 문구를 그대로 내고 **입력이 남는다.** 지우면 처음부터 다시 친다.
+   */
+  it('검증 실패는 서버 문구를 내고 입력이 남는다', async () => {
+    await fail(
+      failingPostRoute(400, {
+        errors: [{ scope: 'field', field: 'remarks', code: 'INVALID', message: '합성 서버 오류' }],
+      }),
+    );
+
+    expect(await screen.findByText('합성 서버 오류')).toBeInTheDocument();
+    expect(qtyBox(1)).toHaveValue('30');
+    expect(screen.getByRole('combobox', { name: t.fields.supplier })).toHaveTextContent(
+      PARTNER_LABEL,
+    );
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
+  /* **M51** — 같은 권한으로 다시 불러도 같은 답이 온다. 재시도를 권하지 않는다. */
+  it('권한 없음은 다른 문구이고 「최신 불러오기」가 없다', async () => {
+    await fail(failingPostRoute(403));
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: messages.conflict.reloadAction }),
+    ).not.toBeInTheDocument();
+  });
+
+  /*
+   * **M51 · C51** — 충돌만 다시 읽어 풀린다. 다른 갈래에 「최신 불러오기」를 내면
+   * 사용자가 입력만 버리게 된다.
+   */
+  it('충돌에만 「최신 불러오기」가 붙는다', async () => {
+    await fail(failingPostRoute(409, { conflictCause: 'user', message: '' }));
+
+    expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: messages.conflict.reloadAction })).toBeInTheDocument();
+  });
+
+  /*
+   * **M52 · C52** — 응답을 받지 못한 갈래에만 「전달됐는지 확인할 수 없습니다」가 붙는다.
+   * 멱등 키가 호출마다 새로 만들어져 그대로 다시 누르면 **반품이 두 번 나갈 수 있다.**
+   */
+  it('응답이 없으면 확인 불가 안내가 함께 붙는다', async () => {
+    await fail(brokenPostRoute());
+
+    expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.submitRecheck)).toBeInTheDocument();
+  });
+
+  it('다른 갈래에는 확인 불가 안내가 붙지 않는다', async () => {
+    await fail(failingPostRoute(403));
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.submitRecheck)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **성공 뒤 실패** — 앞 성공의 전표 번호가 남아 있으면 사용자가 그것을 방금 만들어진
+   * 것으로 읽는다(수명 표 12행).
+   */
+  it('성공 뒤 다시 보내 실패하면 결과가 사라지고 배너가 선다', async () => {
+    let call = 0;
+    const flakyRoute: StubRoute = {
+      match: (request) => request.method === 'POST' && new URL(request.url).pathname === ISSUES_PATH,
+      respond: () => {
+        call += 1;
+
+        return call === 1
+          ? jsonResponse({ goodsIssue: goodsIssue(), lines: goodsIssueLineFixtures }, { status: 201 })
+          : jsonResponse({ message: '' }, { status: 403 });
+      },
+    };
+
+    const { user } = await setupReadyToSubmit(allRoutes([flakyRoute]));
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+    await screen.findByRole('status', { name: t.result.label });
+
+    /* 초안이 비었으니 다시 채운다 — 성공이 초안을 비우는 것이 이 화면의 규칙이다. */
+    await pickLine(user);
+    await fillReturnForm(user);
+    await openConfirm(user);
+    await confirmSubmit(user);
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * **실패 배너는 자기 대상보다 오래 살지 않는다** — 세 형태를 각각 잰다.
+ *
+ * 안 지움(M46) · 너무 지움(M47) · 늘 지움(M48). 셋 중 하나만 재면 나머지 둘이 조용히 뚫린다.
+ */
+describe('SupplierReturnScreen — 실패 배너의 수명', () => {
+  const failOnce = async (search: string): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = await setupReadyToSubmit(allRoutes([failingPostRoute(403)]), search);
+
+    await openConfirm(rendered.user);
+    await confirmSubmit(rendered.user);
+    await screen.findByText(messages.httpError.forbidden);
+
+    return rendered;
+  };
+
+  /* **M48(늘 지움)** — 정리 effect의 의존성이 무너지면 매 렌더 지워져 **배너가 아예 안 보인다.** */
+  it('실패한 자리에 배너가 그대로 선다', async () => {
+    const { user } = await failOnce('?gr=9001');
+
+    /* 렌더를 여러 번 유발해도 남는다 — 「늘 지움」이면 여기서 사라진다. */
+    await user.type(screen.getByLabelText(t.fields.remarks), '합성');
+
+    expect(screen.getByText(messages.httpError.forbidden)).toBeInTheDocument();
+  });
+
+  /* **M47(너무 지움)** — 줄 선택·수량·정보 입력은 같은 대상에 대한 조작이라 배너가 남아야 한다. */
+  it('줄 선택과 수량을 바꿔도 배너가 남는다', async () => {
+    const { user } = await failOnce('?gr=9001');
+
+    await user.click(selectBox(2));
+    await user.type(qtyBox(2), '5');
+
+    expect(screen.getByText(messages.httpError.forbidden)).toBeInTheDocument();
+  });
+
+  /* **M46(안 지움)** — 전표가 바뀌면 배너가 가리킬 것이 없다. 남으면 화면이 어긋난 두 말을 한다. */
+  it('다른 전표로 옮기면 배너가 사라진다', async () => {
+    const { user } = await failOnce('?gr=9001');
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+  });
+
+  /* 주소로 대상이 바뀌는 길도 같다 — 클릭 핸들러를 거치지 않는다. */
+  it('주소로 대상이 바뀌어도 배너가 사라진다', async () => {
+    const { user } = await setupReadyToSubmit(
+      allRoutes([failingPostRoute(403)]),
+      '?gr=9001',
+      'gr=9002',
+    );
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+    await screen.findByText(messages.httpError.forbidden);
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+  });
+});
+
+describe('SupplierReturnScreen — 입력 지우기', () => {
+  /* 버릴 것이 없으면 잠긴다 — 눌러도 아무 일이 없는 버튼은 화면을 고장으로 읽히게 한다. */
+  it('버릴 것이 없으면 잠기고 사유가 붙는다', async () => {
+    fillCodeLists();
+
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    expect(discardButton()).toBeDisabled();
+    expect(discardButton()).toHaveAccessibleDescription(t.actionReasons.nothingToDiscard);
+  });
+
+  /* **C40의 짝** — 친 값이 말없이 사라지지 않는다. 확인 창을 거쳐야 지워진다. */
+  it('두 초안을 확인 창을 거쳐 함께 버린다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await user.click(discardButton());
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.confirmDiscard }));
+
+    expect(qtyBox(1)).toHaveValue('');
+    expect(selectBox(1)).not.toBeChecked();
+    expect(screen.getByRole('combobox', { name: t.fields.supplier })).not.toHaveTextContent(
+      PARTNER_LABEL,
+    );
+    /* **서버를 부르지 않는다** — 이 화면의 「버리기」는 보내기 전 복귀다. */
+    expect(issueRequests(requests)).toHaveLength(0);
+  });
+
+  it('계속 입력을 누르면 초안이 그대로다', async () => {
+    const { user } = await setupReadyToSubmit();
+
+    await user.click(discardButton());
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    expect(qtyBox(1)).toHaveValue('30');
   });
 });

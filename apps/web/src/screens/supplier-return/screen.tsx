@@ -1,9 +1,15 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { PLACEHOLDER_SUPPLIER_RETURN_CODES, toCodeOptionSets } from './code-options';
+import { SaveErrorBanner } from '../../patterns/master';
+import {
+  isRequiredCodeListPending,
+  PLACEHOLDER_SUPPLIER_RETURN_CODES,
+  toCodeOptionSets,
+} from './code-options';
+import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import {
   clearFilter,
   DEFAULT_FILTERS,
@@ -20,7 +26,14 @@ import { GrFilterBar } from './gr-filter-bar';
 import { GrLineTable } from './gr-line-table';
 import { GrTable } from './gr-table';
 import {
+  toBusinessDate,
+  toGoodsIssueRequest,
+  toIssuedLocal,
+  toReturnLines,
+} from './issue-request';
+import {
   EMPTY_LINE_DRAFT,
+  hasAnyLineDraftValue,
   setDraftQty,
   toggleLineSelection,
   type LineDraft,
@@ -33,6 +46,7 @@ import {
   useItemOptions,
   useLocationOptions,
   useLotOptions,
+  usePartnerOptions,
   useUomOptions,
   useWarehouseOptions,
   type LookupResult,
@@ -44,16 +58,33 @@ import {
   useGoodsReceiptDetail,
   useGoodsReceipts,
   useOnHandBalances,
+  useSupplierReturnPost,
 } from './queries';
 import { ReceiptSummaryPane } from './receipt-summary-pane';
-import { toReturnLineRows } from './return-selection';
-import type { ReceiptLineView, ReceiptView, SelectOption } from './types';
+import { ResultPane, type ResultLineSummary } from './result-pane';
+import { ReturnForm } from './return-form';
+import { describeReturnSelection, toReturnLineRows } from './return-selection';
+import { SubmitConfirmDialog, type SubmitLineSummary } from './submit-confirm-dialog';
+import {
+  EMPTY_RETURN_DRAFT,
+  formatDateTime,
+  hasAnyReturnDraftValue,
+  toReturnResultView,
+  type ReceiptLineView,
+  type ReceiptView,
+  type ReturnCodeKey,
+  type ReturnDraft,
+  type ReturnResultView,
+  type SelectOption,
+} from './types';
+import { returnBlockReason, validateReturnDraft } from './validation';
 
 const t = messages.supplierReturn;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: ReceiptView[] = [];
 const EMPTY_LINES: ReceiptLineView[] = [];
+const NO_FIELD_ERRORS: Record<string, string> = {};
 
 /**
  * 참조 목록을 선택지로 옮긴다.
@@ -75,10 +106,13 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 라인 표. 조회 조건과 고른 전표는 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은
  * 결과를 낸다.
  *
- * **이 회차에도 쓰기가 없다.** 무엇을 얼마나 되돌려 보낼지 정하는 데까지이고, 반품 정보·확인
- * 창·처리·결과는 뒤따르는 회차에서 이 컨테이너에 붙는다. 그때까지 이 화면은 **라우트에도
- * 사이드바에도 등록되지 않는다** — 반품할 수 없는 「공급사 반품 처리」를 노출하면 미완성 기능을
- * 사용자에게 내보이는 것이다.
+ * **쓰기는 하나이고 되돌릴 수 없다.** 「반품 처리」 한 번이 출고 전표를 만들고 **곧바로
+ * 전기해 재고를 차감한다**(착수 이슈 §6 — 두 번 호출로 나누지 않는다). 계약의 출고 취소는
+ * 승인을 타며 다른 화면 소관이라 **이 화면에는 되돌릴 수단이 없다** — 확인 창이 그 사실을
+ * 그대로 말하고, 결과 구획은 **화면이 확인한 것만** 말한다.
+ *
+ * **이 회차에서 화면이 열린다** — 라우트와 사이드바에 등록된다. 앞 회차들이 노출을 미룬 것은
+ * 반품할 수 없는 「공급사 반품 처리」가 미완성 기능으로 보이기 때문이었다.
  *
  * **대상의 원천이 입고 전표인 이유**(계획 결정 2): 계약이 요구하는 반품 라인 다섯(품목·
  * 자재 LOT·수량·단위·출발 위치)을 재고 잔액은 축 하나만 채워 내려 만들 수 없고, 입고 라인은
@@ -93,9 +127,9 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * | 단계 | 화면이 이 단계를 아는 근거 | 보이는 것 | 할 수 있는 것 | 주소 |
  * | :-: | --- | --- | --- | --- |
  * | **S0** 고르기 전 | `gr`이 없다 | 조건 줄 · 목록 · 쪽 | 조회 · 초기화 · 쪽 이동 · 고르기 | `?wh&from&to&ty&st&q&page` |
- * | **S1** 전표를 골랐다 | `gr`이 있고 **상세가 200** | 위 + 제목줄 · 라인 표 | 위 + **줄 고르기 · 반품 수량 입력** | `+&gr` |
- * | **S2** 보낼 것이 갖춰졌다 | **줄이 하나 이상 골라졌고 전 검증을 통과했다** | 위 + 「갈 수 있다」 | (다음 회차) 반품 처리 | 같음 |
- * | **S3** 이번 세션에서 처리했다 | 처리 성공 결과 | — | — | **다음 회차** |
+ * | **S1** 전표를 골랐다 | `gr`이 있고 **상세가 200** | 위 + 제목줄 · 라인 표 · **반품 정보 구획** | 위 + **줄 고르기 · 반품 수량 입력 · 반품 정보 입력** | `+&gr` |
+ * | **S2** 보낼 것이 갖춰졌다 | **줄이 하나 이상 골라졌고 전 검증을 통과했다** | 위 + 「반품 처리」 활성 | 위 + **반품 처리** | 같음 |
+ * | **S3** 이번 세션에서 처리했다 | **이 화면의 처리 성공 결과** | 위 + **결과 구획** | 조회 · 다시 고르기(초안은 비었다) | `gr` 유지 |
  * | **S4** 그 전표가 없다 | **상세가 404** | 안내 「고른 입고 전표를 찾을 수 없습니다」 | 다시 고르기 | `gr` 제거 |
  *
  * **화면이 모르는 것을 밝힌다.** 이미 취소됐거나 반품이 끝난 전표를 골라도 화면은 S1로
@@ -114,26 +148,26 @@ export const SupplierReturnScreen = () => {
    * 「비운다」와 「비우지 않는다」를 이 표 한 곳에 모은다. 규칙이 흩어지면 한쪽만 고쳐져
    * 비대칭이 생긴다(조건을 바꾸면 아래 구획이 닫히는데 쪽을 옮기면 안 닫히는 식).
    *
-   * **뒤 세 열은 이 회차에 아직 없다.** 열을 지우지 않고 남겨 두는 이유는, 표에 오르지 않은
-   * 상태가 규칙이 닿지 않는 사각이 되기 때문이다 — 창·배너가 생길 때 **행을 다시 세는
-   * 대신 그 열만 채운다.** 이번 회차에 **「초안」 열이 실제 상태가 됐다**(줄 선택·반품 수량).
+   * **이 회차에 마지막 세 열이 실제 상태가 됐다** — 결과 구획·열린 창·실패 배너. 앞 회차가
+   * 열을 미리 세워 둔 덕분에 **행을 다시 세지 않고 그 열만 채웠다.** 초안 열은 이제 두 벌이다
+   * (줄 선택·반품 수량 / 반품 정보).
    *
-   * | # | 조작 | 조건 5종 | `page` | `gr` | **404 안내** | **초안** | 결과 구획 | 열린 창 | 실패 배너 |
+   * | # | 조작 | 조건 5종 | `page` | `gr` | **404 안내** | **초안 2벌** | 결과 구획 | 열린 창 | 실패 배너 |
    * | :-: | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-   * | 1 | 조건 변경·조회 | 바뀐다 | **첫 쪽** | **비운다** | **비운다** | 비운다 | 비운다 | 닫는다 | 비운다 |
-   * | 2 | 초기화 | **비운다** | 첫 쪽 | 비운다 | **비운다** | 비운다 | 비운다 | 닫는다 | 비운다 |
-   * | 3 | 쪽 이동 | 유지 | 옮긴 쪽 | **비운다** | **비운다** | 비운다 | 비운다 | 닫는다 | 비운다 |
-   * | 4 | 전표 고르기·해제 | 유지 | **유지** | 넣고 뺀다 | **비운다** | 비운다 | 비운다 | 닫는다 | 비운다 |
-   * | 5 | **상세가 404** | 유지 | 유지 | **비운다** | **세운다** | 비운다 | 비운다 | 닫는다 | 비운다 |
-   * | 6 | 줄 고르기·해제 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | 유지 | 유지 | 유지 |
-   * | 7 | 반품 수량 입력 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | 유지 | 유지 | 유지 |
-   * | 8 | 반품 정보 입력 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | 유지 | 유지 | 유지 |
-   * | 9 | 목록·상세·참조 응답 도착 | 유지 | 유지 | 유지 | 유지 | **건드리지 않는다** | 유지 | 유지 | 유지 |
+   * | 1 | 조건 변경·조회 | 바뀐다 | **첫 쪽** | **비운다** | **비운다** | 비운다 | **비운다** | **닫는다** | **비운다** |
+   * | 2 | 초기화 | **비운다** | 첫 쪽 | 비운다 | **비운다** | 비운다 | **비운다** | **닫는다** | **비운다** |
+   * | 3 | 쪽 이동 | 유지 | 옮긴 쪽 | **비운다** | **비운다** | 비운다 | **비운다** | **닫는다** | **비운다** |
+   * | 4 | 전표 고르기·해제 | 유지 | **유지** | 넣고 뺀다 | **비운다** | 비운다 | **비운다** | **닫는다** | **비운다** |
+   * | 5 | **상세가 404** | 유지 | 유지 | **비운다** | **세운다** | 비운다 | **비운다** | **닫는다** | **비운다** |
+   * | 6 | 줄 고르기·해제 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **유지** | 유지 | **유지** |
+   * | 7 | 반품 수량 입력 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **유지** | 유지 | **유지** |
+   * | 8 | 반품 정보 입력 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **유지** | 유지 | **유지** |
+   * | 9 | 목록·상세·참조·잔액 응답 도착 | 유지 | 유지 | 유지 | 유지 | **건드리지 않는다** | 유지 | 유지 | 유지 |
    * | 10 | **다시 조회** | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 | 유지 |
-   * | 11 | 처리 성공 | 유지 | 유지 | **유지** | 유지 | 비운다 | 채운다 | 닫혀 있다 | 비운다 |
-   * | 12 | 처리 실패 | 유지 | 유지 | 유지 | 유지 | **유지** | 비운다 | 닫혀 있다 | **세운다** |
-   * | 13 | 취소(초안 파기) | 유지 | 유지 | 유지 | 유지 | 비운다 | 비운다 | 닫는다 | 비운다 |
-   * | 14 | 전송 중 | 잠긴다 | 잠긴다 | 잠긴다 | 유지 | 잠긴다 | 유지 | 유지 | 유지 |
+   * | 11 | **처리 성공** | 유지 | 유지 | **유지** | 유지 | **비운다** | **채운다** | 닫혀 있다 | 비운다 |
+   * | 12 | 처리 실패 | 유지 | 유지 | 유지 | 유지 | **유지** | **비운다** | 닫혀 있다 | **세운다** |
+   * | 13 | 입력 지우기(초안 파기) | 유지 | 유지 | 유지 | 유지 | **비운다** | **비운다** | 닫는다 | **비운다** |
+   * | 14 | **전송 중** | 잠긴다 | 잠긴다 | 잠긴다 | 유지 | 잠긴다 | 유지 | 유지 | 유지 |
    *
    * **왜 이렇게 정했는가**(이 회차가 실제로 지키는 것)
    *
@@ -153,6 +187,20 @@ export const SupplierReturnScreen = () => {
    *   (`return-selection.ts`) — 지우지 않아도 요약에도 요청에도 실리지 않는다.
    * - **10행이 목록만이 아니라 상세를 함께 부르는 이유**: W-01-07의 Major 지적 그대로다 —
    *   목록만 다시 부르면 **갱신된 값과 갱신되지 않은 값이 한 화면에 섞인다.**
+   * - **1~5행이 창을 닫는 이유**: 확인 창이 열린 채 주소가 바뀌면 **사용자가 확인한 것과
+   *   나가는 것이 갈린다.** 뒤로가기·앞으로가기·주소 직접 편집은 클릭 핸들러를 거치지 않으므로
+   *   창 닫기는 **고른 식별자에 묶인 effect**가 한다.
+   * - **1~5행이 실패 배너를 비우는 이유**: **배너는 자기 대상보다 오래 살지 않는다.** 이
+   *   화면의 실패는 「이 입고 전표에서 이 줄들을 이만큼 반품하려 했는데 거절당했다」는 사실이라
+   *   매인 대상이 `gr`다 — 없어지면 배너가 가리킬 것이 없다.
+   * - **6~8행이 배너를 유지하는 이유**: 같은 대상에 대한 사실이 아직 유효하다. 사용자가 거절
+   *   사유를 읽으며 값을 고치는 중이다 — 여기서 지우면 무엇이 거절됐는지 모르는 채 다시 보낸다.
+   * - **11행이 `gr`를 유지하면서 초안을 비우는 이유**: 방금 무엇으로부터 반품했는지 화면에
+   *   남아 있어야 결과를 읽을 수 있다. 그러나 **같은 줄이 그대로 골라져 있으면 한 번 더 누르는
+   *   사고가 생긴다** — 멱등 키가 호출마다 새로 만들어져 그 한 번이 전표 두 벌이 된다.
+   * - **12행이 초안을 비우지 않는 이유**: 실패했는데 입력을 지우면 처음부터 다시 친다.
+   * - **14행이 대상을 바꾸는 길까지 잠그는 이유**: 열어 두면 사용자가 다른 전표로 옮긴 뒤
+   *   **앞 요청의 결과가 지금 보는 맥락에 나타난다.**
    */
   /*
    * **주소가 바뀔 때만 새 참조를 만든다.** 렌더마다 새 객체를 만들면 내용이 같아도 참조가 달라,
@@ -217,6 +265,12 @@ export const SupplierReturnScreen = () => {
     lineRows.map((line) => line.itemId),
   );
 
+  /*
+   * 거래처는 **반품 정보 구획이 그려질 때** 쓴다 — 그 구획도 상세 응답을 기다리므로 미리 받아
+   * 둘 이득이 없다. 앞 참조 다섯과 달리 **고르는 값**이라 미사용 거래처를 함께 받지 않는다.
+   */
+  const partners = usePartnerOptions(hasSelection);
+
   /**
    * 줄 선택과 반품 수량 초안 — **아직 보내지 않은 입력**이다(수명 표의 「초안」 열).
    *
@@ -237,6 +291,95 @@ export const SupplierReturnScreen = () => {
   }, [selectedReceiptId]);
 
   /**
+   * 반품 정보 초안 — 누구에게·무엇으로·언제 되돌려 보내는가(수명 표의 「초안 2벌」 중 둘째).
+   *
+   * **줄 초안과 갈라 둔다.** 하나로 묶으면 「줄만 비우고 정보는 남긴다」 같은 갈래를 만들 수
+   * 없고, 무엇보다 **되돌림 축이 같아야 한다는 사실이 자료 구조에서 사라진다** — 둘 다 `gr`에
+   * 매여 있고 그 사실을 아래 두 effect가 각각 지킨다.
+   */
+  const [returnDraft, setReturnDraft] = useState<ReturnDraft>(EMPTY_RETURN_DRAFT);
+
+  /** 만들어진 반품 전표. `null`이면 아직 처리하지 않았거나 마지막 시도가 실패했다 */
+  const [result, setResult] = useState<ReturnResultView | null>(null);
+
+  /**
+   * 보내기 전에 화면이 잡은 오류. **「반품 처리」를 누른 뒤에만 세운다** —
+   * 치는 도중에 붉은 글씨를 띄우면 아직 넣지도 않은 칸이 잘못된 것처럼 보인다.
+   */
+  const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>(NO_FIELD_ERRORS);
+
+  /** 반품 처리 확인 창이 열려 있는가. **확인하기 전에는 요청이 나가지 않는다** */
+  const [isConfirmOpen, setConfirmOpen] = useState(false);
+
+  /** 초안 파기 확인 창이 열려 있는가. 두 초안을 **함께** 버린다 */
+  const [isDiscardOpen, setDiscardOpen] = useState(false);
+
+  const post = useSupplierReturnPost({
+    goodsReceiptId: selectedReceiptId,
+    onSuccess: (data) => {
+      setResult(toReturnResultView(data.goodsIssue, data.lines));
+      /*
+       * **초안 두 벌을 비운다**(수명 표 11행 · 중복 전송 완화의 한 층). 같은 줄이 그대로
+       * 골라져 있으면 한 번 더 누르는 사고가 생기는데, 멱등 키가 호출마다 새로 만들어져
+       * (이 저장소 이슈로 추적 중) 그 한 번이 **전표 두 벌**이 된다.
+       *
+       * 재조회에 얹지 않는 이유는 같은 응답이 오면 캐시가 참조를 그대로 유지해 되돌림 effect가
+       * 깨어나지 않기 때문이다 — 그러면 처리에 성공했는데 입력이 남는다.
+       */
+      setLineDraft(EMPTY_LINE_DRAFT);
+      setReturnDraft(EMPTY_RETURN_DRAFT);
+      setLocalFieldErrors(NO_FIELD_ERRORS);
+    },
+  });
+
+  /**
+   * 전송 중인가 — **첫째 겹의 원천이다.**
+   *
+   * 이 값 하나가 컨트롤 전부(조회·초기화·쪽 이동·전표 선택·줄 선택·수량·반품 정보·두 버튼)를
+   * 닫고, **잠금을 받지 않는 컨트롤**(조건 칩의 ×)은 핸들러 가드(둘째 겹)가 막는다.
+   */
+  const isLocked = post.isSaving;
+
+  /*
+   * **대상이 바뀌면 이 대상에 매인 것을 함께 거둔다**(수명 표 1~5행).
+   *
+   * 반품 정보 초안·결과 구획·창 둘이 여기 있다. 창이 여기 있어야 하는 이유는, 확인 창이
+   * 「지금 고른 전표에서 이 줄들을 이만큼 보낸다」는 확인이기 때문이다 — 대상이 바뀌면 그
+   * 확인은 뜻을 잃는데 열린 채로 두면 **사용자가 확인한 것과 실제로 나가는 것이 갈린다.**
+   * 그 길은 클릭 핸들러의 잠금·가드가 닿지 않는다(뒤로가기·앞으로가기·주소 직접 편집).
+   *
+   * **의존성은 `gr` 하나뿐이다**(#43). 라인·참조·잔액 응답이나 `useMemo` 파생 객체를 넣으면
+   * 갱신이 도착할 때마다 **치던 값이 사라진다.** 위 effect와 갈라 둔 것은 그쪽의 「의존성이
+   * `gr` 하나뿐」이 줄 초안을 지키는 규칙이라 다른 일을 얹으면 무엇을 지키는지 읽히지 않아서다.
+   */
+  useEffect(() => {
+    setReturnDraft(EMPTY_RETURN_DRAFT);
+    setLocalFieldErrors(NO_FIELD_ERRORS);
+    setResult(null);
+    setConfirmOpen(false);
+    setDiscardOpen(false);
+  }, [selectedReceiptId]);
+
+  /*
+   * **실패 배너는 자기 대상보다 오래 살지 않는다**(수명 표 1~5행 · 앞 화면의 리뷰가 세운 규칙).
+   *
+   * 이 화면의 실패는 「이 입고 전표에서 이 줄들을 이만큼 반품하려 했는데 거절당했다」는
+   * 사실이라 매인 대상이 `gr`다. 전표 A의 「권한이 없습니다」가 **전표 B의 라인 표 위에** 서면
+   * 사용자는 B도 막힌 것으로 읽는다 — 한 화면이 서로 어긋나는 두 말을 동시에 한다.
+   *
+   * **줄 선택·수량·반품 정보 입력에는 반응하지 않는다**(6~8행). 같은 대상에 대한 사실이 아직
+   * 유효하고, 사용자는 거절 사유를 읽으며 값을 고치는 중이다.
+   *
+   * **의존성은 고른 전표 하나다.** `post.reset`은 렌더마다 새 참조라(공통 훅이 `useMutation`
+   * 결과를 물고 있다) 의존성에 넣으면 **매 렌더 배너가 지워져** 실패가 아예 보이지 않는다.
+   */
+  useEffect(() => {
+    if (post.error === null) return;
+
+    post.reset();
+  }, [selectedReceiptId]);
+
+  /**
    * 표가 그릴 줄. **판정을 여기서 만들지 않는다** — 고를 수 있는가·골라졌는가·상한을 넘었는가는
    * 전부 `return-selection.ts` 한 곳에서 나오고, 표와 요약이 같은 결과를 본다(완료 조건 C31).
    *
@@ -244,6 +387,15 @@ export const SupplierReturnScreen = () => {
    * 않으므로 요약에도 뒤따르는 회차의 요청에도 실리지 않는다.
    */
   const lineTableRows = toReturnLineRows(lineRows, lineDraft, balances);
+
+  /**
+   * 무엇을 얼마나 보낼 것인가. **화면이 한 번만 부르고 아래로 나눠 준다**(완료 조건 C31).
+   *
+   * 라인 표의 요약도, 「반품 처리」의 활성 판정도, 확인 창의 줄 목록도, 요청 조립의 입력도
+   * 전부 이 한 결과에서 나온다 — 부르는 자리가 둘이면 같은 함수라도 **한쪽 인자만 바뀌었을 때
+   * 표와 버튼이 서로 다른 말을 한다.**
+   */
+  const selection = describeReturnSelection(lineTableRows);
 
   /**
    * 방금 고른 전표가 **없었다**는 사실(수명 표 5행의 「404 안내」 열).
@@ -294,6 +446,18 @@ export const SupplierReturnScreen = () => {
    * (수명 표 1~3행).
    */
   const applyQuery = (nextFilters: ReceiptFilters, nextPage = 1): void => {
+    /*
+     * **전송 중에는 대상을 바꾸지 않는다** — 잠금의 **둘째 겹**이다(수명 표 14행).
+     *
+     * 눈에 보이는 컨트롤은 전부 잠가 두었으나 **조건 칩의 ×는 잠기지 않는다** — 디자인 시스템
+     * `Chip`이 그 prop을 갖고 있지 않다(실측). 그 길로 들어오면 조건이 바뀌며 `gr`가 풀리고,
+     * 앞서 보낸 반품의 결과가 **다른 전표 맥락에** 나타난다.
+     *
+     * 여기가 이 화면에서 **가드가 홀로 서는 유일한 자리**다. 나머지 호출부(조회·초기화·
+     * 첫 쪽으로·쪽 이동)는 컨트롤이 이미 잠겨 있어 이 줄에 닿지 않는다.
+     */
+    if (isLocked) return;
+
     setHasNotFoundNotice(false);
     setSearchParams(toSearchParams(nextFilters, nextPage));
   };
@@ -367,6 +531,15 @@ export const SupplierReturnScreen = () => {
   };
 
   /**
+   * 거래처의 복구 경로도 **자기 구획이 소유한다**(계획 결정 17). 라인 표의 이름 넷과 갈라 두는
+   * 이유는 안내 문구가 적은 대상과 다시 부르는 대상이 어긋나면 눌러도 한쪽은 실패인 채로
+   * 남는데 문구는 둘 다 고쳐질 것처럼 말하기 때문이다.
+   */
+  const retryPartners = (): void => {
+    partners.refetch();
+  };
+
+  /**
    * 잔액의 복구 경로는 **참조와 갈라 둔다.** 안내 문구가 적은 대상과 다시 부르는 대상이
    * 어긋나면 눌러도 한쪽은 실패인 채로 남는데 문구는 둘 다 고쳐질 것처럼 말한다 — 이름을
    * 못 받은 것과 수량을 못 받은 것은 사용자가 할 판단도 다르다.
@@ -385,6 +558,261 @@ export const SupplierReturnScreen = () => {
    * 배열이 차는 순간 화면이 달라지는 것을 화면 수준에서 잴 수 있게 하기 위해서다.
    */
   const codeOptions = toCodeOptionSets(PLACEHOLDER_SUPPLIER_RETURN_CODES);
+
+  /** 잠긴 두 버튼의 사유를 잇는 `id`. 사유는 **잠근 자리 옆에서** 읽혀야 한다(배치 규범 4). */
+  const blockReasonId = useId();
+  const discardReasonId = `${blockReasonId}-discard`;
+
+  /**
+   * 버릴 것이 있는가. **두 초안을 함께 본다** — 한쪽만 보면 나머지가 확인 없이 사라진다.
+   * 없으면 「입력 지우기」를 잠근다: 눌러도 아무 일이 없는 버튼은 화면을 고장으로 읽히게 한다.
+   */
+  const hasDraft = hasAnyLineDraftValue(lineDraft) || hasAnyReturnDraftValue(returnDraft);
+
+  /**
+   * 두 초안을 함께 버린다(수명 표 13행). **서버를 부르지 않는다** — 보내기 전 복귀이고,
+   * 이 화면의 취소에 해당하는 오퍼레이션은 01 도메인 계약에 없다(착수 이슈 §6).
+   *
+   * **결과 구획과 실패 배너도 함께 거둔다.** 「버린다」는 앞서 한 시도를 통째로 물리는 것이라,
+   * 방금 만든 전표 번호나 거절 사유만 남으면 무엇이 지금 상태인지 알 수 없다.
+   */
+  const discardDrafts = (): void => {
+    setLineDraft(EMPTY_LINE_DRAFT);
+    setReturnDraft(EMPTY_RETURN_DRAFT);
+    setLocalFieldErrors(NO_FIELD_ERRORS);
+    setResult(null);
+    post.reset();
+  };
+
+  /** 표기 헬퍼 — 확인 창과 결과 구획이 **같은 규칙으로** 이름과 수량을 읽는다. */
+  const itemNameOf = (itemId: number): string => describeReference(toReference(items, itemId));
+  const lotNameOf = (lotId: number): string => describeReference(toReference(lots, lotId));
+  const qtyTextOf = (qty: number, uomId: number): string =>
+    t.lineTable.returnQtyPair(qty, describeReference(toReference(uoms, uomId)));
+
+  /**
+   * 확인 창이 보일 줄. **요청에 실릴 줄과 같은 자리에서 나온다** — 읽을 수 없는 수량인 줄은
+   * 요청 조립이 거르므로 여기서도 걸러야 「확인한 것과 나가는 것」이 갈리지 않는다.
+   */
+  const submitLines: SubmitLineSummary[] = selection.selectedRows.flatMap((row) =>
+    row.qty.kind === 'qty'
+      ? [
+          {
+            ordinal: row.ordinal,
+            item: itemNameOf(row.line.itemId),
+            lot: lotNameOf(row.line.lotId),
+            qty: qtyTextOf(row.qty.value, row.line.uomId),
+          },
+        ]
+      : [],
+  );
+
+  /**
+   * 결과가 보일 줄. **서버가 되돌려 준 배열에서 나온다**(계획 결정 13) — 화면이 보낸 줄을
+   * 되비추면 서버가 무엇을 만들었는지가 아니라 화면이 무엇을 보냈는지를 말하는 것이 된다.
+   */
+  const resultLines: ResultLineSummary[] =
+    result?.lines.map((line, index) => ({
+      ordinal: index + 1,
+      item: itemNameOf(line.itemId),
+      lot: lotNameOf(line.lotId),
+      qty: qtyTextOf(line.issueQty, line.uomId),
+    })) ?? [];
+
+  /**
+   * 반품 정보 구획. **고른 전표가 있을 때만 그린다** — 대상이 없는데 공급사·코드를 받으면
+   * 그 입력이 무엇에 대한 것인지 화면이 말할 수 없다.
+   *
+   * 고른 전표를 **인자로 받는다** — 여기까지 왔다는 것이 곧 대상이 있다는 뜻이라, 안쪽에서
+   * 다시 `null` 가지를 만들지 않는다.
+   */
+  const returnPane = (receipt: ReceiptView): ReactNode => {
+    const fieldErrors = { ...post.fieldErrors, ...localFieldErrors };
+    const blockReason = returnBlockReason({
+      isCodeListPending: isRequiredCodeListPending(codeOptions),
+      draft: returnDraft,
+      selection: selection.ready,
+    });
+
+    /**
+     * 보낼 수 있는 상태인가. **활성 조건과 길이를 함께 본다.**
+     *
+     * 창을 여는 자리와 실제로 보내는 자리가 **둘 다** 이것을 부른다 — 「버튼이 막았으니
+     * 여기서는 안 봐도 된다」가 성립하려면 버튼과 전송 사이에 상태가 바뀔 수 없어야 하는데,
+     * **확인 창이 그 사이를 벌려 놓는다.** 창이 열려 있는 동안 다른 사람이 그 줄을 먼저
+     * 반품하고 사용자가 「다시 조회」를 누르면 고른 줄이 사라질 수 있다.
+     */
+    const findBlocked = (): Record<string, string> | null => {
+      const errors = validateReturnDraft(returnDraft);
+
+      if (Object.keys(errors).length > 0) return errors;
+
+      return blockReason === null ? null : {};
+    };
+
+    /** 확인 창을 연다. 막히면 **창을 열지 않고 요청도 만들지 않는다.** */
+    const openConfirm = (): void => {
+      const blocked = findBlocked();
+
+      setLocalFieldErrors(blocked ?? NO_FIELD_ERRORS);
+
+      if (blocked !== null) return;
+
+      setConfirmOpen(true);
+    };
+
+    /**
+     * 보낸다. **보내기 직전에 한 번 더 본다.**
+     *
+     * 막혀 있으면 **창을 닫고 보내지 않는다** — 여기서 그냥 보내면 되돌릴 수 없는 전표가
+     * 빈 코드나 사라진 줄로 나간다(계약에 `minLength`도 `minItems`도 없어 서버가 받는다).
+     */
+    const submit = (): void => {
+      setConfirmOpen(false);
+
+      const blocked = findBlocked();
+
+      if (blocked !== null) {
+        setLocalFieldErrors(blocked);
+
+        return;
+      }
+
+      const body = toGoodsIssueRequest({
+        receipt,
+        lines: toReturnLines(selection.selectedRows),
+        draft: returnDraft,
+        /* 발생 시각은 **제출 순간**이다. 순수 함수에 넘겨 그 사실이 인자로 드러나게 한다. */
+        now: new Date(),
+      });
+
+      /* 조립이 마지막으로 거른다 — 빈 라인은 계약이 막지 않는다(`minItems` 부재). */
+      if (body === null) return;
+
+      /* 실패하면 결과 구획이 비어 있어야 한다(수명 표 12행) — 앞 성공의 번호가 남으면 오해한다. */
+      setResult(null);
+      post.write(body);
+    };
+
+    const changeCode = (key: ReturnCodeKey, value: string): void => {
+      setReturnDraft((prev) => ({ ...prev, codes: { ...prev.codes, [key]: value } }));
+    };
+
+    return (
+      <>
+        <ReturnForm
+          values={returnDraft}
+          supplierOptions={toSelectOptions(partners)}
+          /*
+           * 잘림은 **선택칸에 붙이고** 실패는 복구 버튼과 함께 폼이 따로 낸다 — 잘림은 다시
+           * 불러도 같은 쪽이 오므로 사용자가 할 조치가 없고, 실패는 있다.
+           */
+          supplierNote={partners.truncated ? t.reasons.partnersTruncated : undefined}
+          hasSupplierError={partners.isError}
+          codeOptions={codeOptions}
+          fieldErrors={fieldErrors}
+          isLocked={isLocked}
+          onChangeSupplier={(value) => {
+            setReturnDraft((prev) => ({ ...prev, supplier: value }));
+          }}
+          onChangeCode={changeCode}
+          onChangeIssuedDate={(value) => {
+            setReturnDraft((prev) => ({ ...prev, issuedDate: value }));
+          }}
+          onChangeIssuedTime={(value) => {
+            setReturnDraft((prev) => ({ ...prev, issuedTime: value }));
+          }}
+          onChangeReplacementExpected={(value) => {
+            setReturnDraft((prev) => ({ ...prev, replacementExpected: value }));
+          }}
+          onChangeSendToErp={(value) => {
+            setReturnDraft((prev) => ({ ...prev, sendToErp: value }));
+          }}
+          onChangeRemarks={(value) => {
+            setReturnDraft((prev) => ({ ...prev, remarks: value }));
+          }}
+          onRetrySupplierOptions={retryPartners}
+        />
+
+        {/*
+         * 저장 실패는 **네 갈래**다(계획 결정 14). 배너가 검증 실패(400)·권한 없음(403)·
+         * 저장 충돌(409)·응답 없음(네트워크)의 문구를 갈라 내고, **409에만** 「최신 불러오기」가
+         * 붙는다 — 다시 읽어 풀리는 것은 충돌뿐이라 다른 갈래에 내면 입력만 버리게 된다.
+         */}
+        <SaveErrorBanner error={post.error} onReload={refreshAll} />
+
+        {/*
+         * **응답을 받지 못한 실패에만 한 줄을 더한다.** 공통 문구는 「다시 시도하세요」로 끝나는데,
+         * 이 화면에서 확인 없이 다시 보내면 같은 반품이 전표 두 벌로 남는다 — 공통 쓰기 훅이
+         * 호출마다 새 멱등 키를 만들어 서버가 재전송으로 보지 못한다.
+         */}
+        {post.error?.kind === 'network' && <p className="field-error">{t.notes.submitRecheck}</p>}
+
+        <div className="form-actions">
+          {/* 지우기가 반품 처리보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다. */}
+          <div className="field-cell">
+            <Button
+              variant="text"
+              disabled={!hasDraft || isLocked}
+              aria-describedby={hasDraft ? undefined : discardReasonId}
+              onClick={() => {
+                setDiscardOpen(true);
+              }}
+            >
+              {t.actions.discardDrafts}
+            </Button>
+            {!hasDraft && (
+              <span id={discardReasonId} className="field-note">
+                {t.actionReasons.nothingToDiscard}
+              </span>
+            )}
+          </div>
+
+          <div className="field-cell">
+            <Button
+              disabled={blockReason !== null || isLocked}
+              loading={isLocked}
+              aria-describedby={blockReason === null ? undefined : blockReasonId}
+              onClick={openConfirm}
+            >
+              {t.actions.submit}
+            </Button>
+            {blockReason !== null && (
+              <span id={blockReasonId} className="field-note">
+                {blockReason}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {isConfirmOpen && (
+          <SubmitConfirmDialog
+            summary={{
+              supplierName: describeReference(
+                toReference(partners, returnDraft.supplier === '' ? null : Number(returnDraft.supplier)),
+              ),
+              issueTypeCode: returnDraft.codes.issueType,
+              sourceDocumentTypeCode: returnDraft.codes.sourceDocumentType,
+              destinationTypeCode: returnDraft.codes.destinationType,
+              reasonCode: returnDraft.codes.reason,
+              issuedAt: formatDateTime(toIssuedLocal(returnDraft)),
+              businessDate: toBusinessDate(toIssuedLocal(returnDraft)),
+              replacementExpected: returnDraft.replacementExpected,
+              sendToErp: returnDraft.sendToErp,
+              remarks: returnDraft.remarks,
+              lines: submitLines,
+              /* 상한을 확인하지 못한 줄이 **보낼 줄에 섞여 있을 때만** 밝힌다(위험 10). */
+              hasUnknownOnHand: selection.selectedRows.some((row) => row.onHand.kind !== 'known'),
+            }}
+            onConfirm={submit}
+            onClose={() => {
+              setConfirmOpen(false);
+            }}
+          />
+        )}
+      </>
+    );
+  };
 
   /**
    * 아래 구획. **다섯 중 하나만 낸다** — 사용자가 할 조치가 서로 다르다.
@@ -463,6 +891,9 @@ export const SupplierReturnScreen = () => {
            */
           hasBalanceError={balances.isError}
           hasBalanceTruncated={balances.truncated}
+          isLocked={isLocked}
+          /* 판정은 **화면이 한 번 부른 결과**를 넘긴다 — 표와 버튼이 같은 것을 본다(C31). */
+          selection={selection}
           onToggleSelect={(goodsReceiptLineId) => {
             setLineDraft((prev) => toggleLineSelection(prev, goodsReceiptLineId));
           }}
@@ -476,13 +907,26 @@ export const SupplierReturnScreen = () => {
     );
   };
 
+  /**
+   * 반품 정보 구획을 열 대상. **라인 표가 그려지는 조건과 같다** — 조건이 갈리면 표는 없는데
+   * 폼만 있는 상태가 생기고, 사용자는 무엇에 대한 입력인지 모른 채 값을 넣는다.
+   */
+  const returnTarget =
+    selectedReceiptId !== null &&
+    !hasNotFoundNotice &&
+    !isDetailNotFound &&
+    !detail.isError &&
+    detailData !== undefined
+      ? detailData.receipt
+      : null;
+
   return (
     <>
       <PageHeader
         title={t.title}
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
         actions={
-          <Button variant="outlined" size="sm" onClick={refreshAll}>
+          <Button variant="outlined" size="sm" disabled={isLocked} onClick={refreshAll}>
             {t.actions.refresh}
           </Button>
         }
@@ -507,6 +951,7 @@ export const SupplierReturnScreen = () => {
           receiptTypeOptions={codeOptions.receiptType}
           statusOptions={codeOptions.status}
           chipNames={{ warehouse: describeReference(warehouseReference) }}
+          isLocked={isLocked}
           onSearch={(nextFilters) => {
             applyQuery(nextFilters);
           }}
@@ -526,6 +971,7 @@ export const SupplierReturnScreen = () => {
               isBeyondLast={pageView.isBeyondLast}
               selectedReceiptId={selectedReceiptId}
               warehouseLookup={warehouses}
+              isLocked={isLocked}
               onFirstPage={() => {
                 applyQuery(filters);
               }}
@@ -535,6 +981,7 @@ export const SupplierReturnScreen = () => {
             {!list.isPending && (
               <PageNav
                 view={pageView}
+                isLocked={isLocked}
                 onChange={(nextPage) => {
                   applyQuery(filters, nextPage);
                 }}
@@ -547,6 +994,39 @@ export const SupplierReturnScreen = () => {
       <section className="pane" aria-label={t.panes.lines}>
         {detailPane()}
       </section>
+
+      {/*
+       * 반품 정보는 **라인 표가 그려지는 조건과 같은 조건**으로 연다 — 갈리면 표는 없는데
+       * 폼만 있는 상태가 생기고, 사용자는 무엇에 대한 입력인지 모른 채 값을 넣는다.
+       */}
+      {returnTarget !== null && (
+        <section className="pane" aria-label={t.panes.form}>
+          {returnPane(returnTarget)}
+        </section>
+      )}
+
+      {/*
+       * 결과는 **따로 선 구획**이다. 반품 정보 폼 안에 두면 다음 처리를 준비하는 입력과 방금
+       * 만들어진 번호가 섞인다. 이름은 부품이 `role="status"`로 갖는다 — 구획에도 같은 이름을
+       * 붙이면 두 번 읽힌다.
+       */}
+      {result !== null && (
+        <section className="pane">
+          <ResultPane result={result} lines={resultLines} />
+        </section>
+      )}
+
+      {isDiscardOpen && (
+        <DiscardConfirmDialog
+          onConfirm={() => {
+            discardDrafts();
+            setDiscardOpen(false);
+          }}
+          onClose={() => {
+            setDiscardOpen(false);
+          }}
+        />
+      )}
     </>
   );
 };

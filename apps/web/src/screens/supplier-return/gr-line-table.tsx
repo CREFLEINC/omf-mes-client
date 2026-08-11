@@ -10,7 +10,7 @@ import {
   type ReferenceSource,
 } from './lookups';
 import { describeOnHand } from './on-hand';
-import { describeReturnSelection, type ReturnLineRow } from './return-selection';
+import type { ReturnLineRow, ReturnSelectionView } from './return-selection';
 
 const t = messages.supplierReturn;
 
@@ -21,6 +21,14 @@ export interface GrLineColumnsInput {
   locationLookup: ReferenceSource;
   /** 잠금 사유 `id`의 앞머리. 고를 수 없는 줄의 두 컨트롤을 한 사유에 잇는다. */
   reasonIdPrefix: string;
+  /**
+   * 전송 중인가. **줄 선택과 수량도 대상을 바꾸는 길이다** — 보내는 중에 값이 바뀌면
+   * 사용자가 확인한 것과 나가는 것이 갈린다.
+   *
+   * 고를 수 없는 줄의 잠금(`blocked`)과 **뜻이 다르다.** 그쪽은 「이 줄은 되돌려 보낼 수
+   * 없다」이고 이쪽은 「지금은 아무 줄도 못 고친다」다 — 그래서 사유도 갈라 붙인다.
+   */
+  isLocked: boolean;
   onToggleSelect: (goodsReceiptLineId: number) => void;
   onChangeQty: (goodsReceiptLineId: number, text: string) => void;
 }
@@ -66,6 +74,7 @@ export const buildGrLineColumns = ({
   lotLookup,
   locationLookup,
   reasonIdPrefix,
+  isLocked,
   onToggleSelect,
   onChangeQty,
 }: GrLineColumnsInput): Column<ReturnLineRow>[] => {
@@ -91,7 +100,7 @@ export const buildGrLineColumns = ({
             aria-label={t.lineTable.selectLabel(row.ordinal)}
             aria-describedby={blocked ? reasonIdOf(row) : undefined}
             checked={row.isSelected}
-            disabled={blocked}
+            disabled={blocked || isLocked}
             onChange={() => {
               onToggleSelect(row.line.goodsReceiptLineId);
             }}
@@ -174,7 +183,7 @@ export const buildGrLineColumns = ({
               aria-label={t.lineTable.returnQtyLabel(row.ordinal)}
               aria-describedby={blocked ? reasonIdOf(row) : undefined}
               value={row.qtyText}
-              disabled={blocked}
+              disabled={blocked || isLocked}
               error={row.error}
               onChange={(event) => {
                 onChangeQty(row.line.goodsReceiptLineId, event.target.value);
@@ -197,6 +206,13 @@ export interface GrLineTableProps extends Omit<GrLineColumnsInput, 'reasonIdPref
   /** 잔액 조회가 **하나라도** 실패했는가. 줄마다의 사정은 그 줄의 보유 수량 칸이 말한다. */
   hasBalanceError: boolean;
   hasBalanceTruncated: boolean;
+  /**
+   * 고른 줄의 요약과 판정. **화면이 한 번 부른 결과를 받는다**(완료 조건 C31).
+   *
+   * 이 표가 직접 부르면 「반품 처리」 버튼과 판정 호출이 둘로 갈린다 — 같은 함수라도 부르는
+   * 자리가 둘이면 한쪽 인자만 바뀌었을 때 표와 버튼이 서로 다른 말을 한다.
+   */
+  selection: ReturnSelectionView;
   onRetryReferences: () => void;
   onRetryBalances: () => void;
 }
@@ -220,6 +236,8 @@ export const GrLineTable = ({
   locationLookup,
   hasBalanceError,
   hasBalanceTruncated,
+  isLocked,
+  selection,
   onToggleSelect,
   onChangeQty,
   onRetryReferences,
@@ -232,15 +250,10 @@ export const GrLineTable = ({
     lotLookup,
     locationLookup,
     reasonIdPrefix,
+    isLocked,
     onToggleSelect,
     onChangeQty,
   });
-
-  /**
-   * **판정은 한 곳에서 온다**(완료 조건 C31). 이 표가 세는 것이 아니라, 줄에 실린 「골라졌다」를
-   * 그대로 세는 함수를 부른다 — 뒤따르는 회차의 「반품 처리」 버튼도 같은 함수를 본다.
-   */
-  const selection = describeReturnSelection(rows);
 
   /* 이 구획이 이름을 내는 참조 넷 중 **하나라도** 실패하면 안내와 복구 수단을 낸다. */
   const hasReferenceError =
@@ -327,7 +340,7 @@ export const GrLineTable = ({
       {hasBalanceError && (
         <div className="field-cell">
           <span className="field-note">{t.reasons.balancesFailed}</span>
-          <Button variant="outlined" size="sm" onClick={onRetryBalances}>
+          <Button variant="outlined" size="sm" disabled={isLocked} onClick={onRetryBalances}>
             {messages.common.retry}
           </Button>
         </div>
@@ -336,7 +349,7 @@ export const GrLineTable = ({
       {hasReferenceError && (
         <div className="field-cell">
           <span className="field-note">{t.reasons.lineReferencesFailed}</span>
-          <Button variant="outlined" size="sm" onClick={onRetryReferences}>
+          <Button variant="outlined" size="sm" disabled={isLocked} onClick={onRetryReferences}>
             {messages.common.retry}
           </Button>
         </div>
