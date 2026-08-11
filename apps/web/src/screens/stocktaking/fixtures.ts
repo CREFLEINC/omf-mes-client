@@ -88,6 +88,19 @@ export const countDetailBody = (
 });
 
 /**
+ * **마감 조건을 채운** 요약(승인 13-6 — 미실사와 차이가 둘 다 0).
+ *
+ * 기본 요약(40/25/15/6)과 달리 마감이 **열리는** 유일한 모양이다. 계획·카운트가 40으로 같은
+ * 것이 그 뜻이다 — 계획한 줄을 다 셌고 어긋난 줄이 없다.
+ */
+export const CLOSABLE_SUMMARY: InventoryCountSummaryResponse = {
+  plannedCount: 40,
+  countedCount: 40,
+  uncountedCount: 0,
+  varianceCount: 0,
+};
+
+/**
  * **개시로 만들어진 실사**의 번호. 목록 픽스처 셋(9001~9003) 어디에도 없다 —
  * 방금 만든 실사가 **지금 조건의 목록에 걸리지 않을 수 있다**는 사실이 이 화면의 전제이고
  * (그래서 단계를 목록 소속이 아니라 상세 200으로 판정한다), 겹치면 그 전제를 검사할 수 없다.

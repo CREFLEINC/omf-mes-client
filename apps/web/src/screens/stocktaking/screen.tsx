@@ -5,6 +5,9 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { CloseConfirmDialog } from './close-confirm-dialog';
+import { closeBlockReason } from './close-guard';
+import { toCountClose } from './close-request';
 import {
   isCountTypeListPending,
   isVarianceReasonListPending,
@@ -62,6 +65,7 @@ import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import {
   isCountNotFound,
+  useInventoryCountClose,
   useInventoryCountDetail,
   useInventoryCountLineReplace,
   useInventoryCountLines,
@@ -73,6 +77,7 @@ import { SummaryPane } from './summary-pane';
 import {
   describeBlindCount,
   type CountLineView,
+  type CountSummaryView,
   type CountView,
   type ResultView,
   type SelectOption,
@@ -132,9 +137,10 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 배치는 상하로 쌓는다 — 위: 조건 줄과 실사 목록 / 아래: 고른 실사의 제목줄과 요약 4칸.
  * 조회 조건과 고른 실사·위치는 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
  *
- * **이 PR까지 개시(②)와 결과 등록(③)이 섰고 마감(④)이 남았다.** 그때까지 **라우트·사이드바에
- * 등록하지 않는다**(정책 §5.2 — 접근 불가능한 경계): 실사를 마감할 수 없는 「재고실사」 화면을
- * 노출하면 마감 없는 전표가 쌓인다.
+ * **이 PR에서 개시 → 결과 등록 → 마감이 다 섰고, 그래서 화면이 함께 열린다**(라우트·사이드바).
+ * 앞선 세 PR이 노출을 미룬 이유가 여기서 풀린다 — 개시만 되면 결과를 못 넣는 반쪽이고,
+ * 결과 등록까지만 되면 **마감 없는 전표가 쌓인다.** 끝까지 진행할 수 있게 된 지금 한 번에 연다
+ * (정책 §5.2 — 접근 불가능한 경계).
  *
  * ---
  *
@@ -147,10 +153,10 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  *
  * | 단계 | 아는 근거 | 보이는 것 | 할 수 있는 것 | 주소 | PR |
  * | :-: | --- | --- | --- | --- | :-: |
- * | **S0** 고르기 전 | `ct`가 없다 | 조건 줄 · 실사 목록 · 쪽 이동 (+개시 구획) | 조회 · 초기화 · 쪽 이동 · 실사 고르기 (+개시) | `?wh&from&to&ty&st&prog&page` | ① (+②) |
- * | **S1** 실사를 골랐다 | `ct`가 있고 **상세가 200** | 위 + 제목줄 · **요약 4칸** · 위치 선택칸 · 이력 구획(비활성) (+마감) | 위 + 다시 조회 · 위치 고르기 (+마감) | `+&ct` | ①③ (+④) |
+ * | **S0** 고르기 전 | `ct`가 없다 | 조건 줄 · 실사 목록 · 쪽 이동 · 개시 구획 | 조회 · 초기화 · 쪽 이동 · 실사 고르기 · 개시 | `?wh&from&to&ty&st&prog&page` | ①② |
+ * | **S1** 실사를 골랐다 | `ct`가 있고 **상세가 200** | 위 + 제목줄 · **요약 4칸** · 위치 선택칸 · **마감 액션** · 이력 구획(비활성) | 위 + 다시 조회 · 위치 고르기 · **마감**(요약 조건 충족 시) | `+&ct` | ①③④ |
  * | **S2** 위치를 골랐다 | `ct`·`loc`가 있고 라인이 도착했다 | 위 + **라인 표(실물 수량·차이 사유 입력)** · 치환 안내 | 위 + 실물·사유 입력 · **이 위치 실사 완료** · 취소 | `+&loc` | ③ |
- * | **S3** 이번 세션에서 마감했다 | **이 화면의 마감 성공 결과** | 위 + 마감 결과 | **조회만** | `ct` 유지 | ④ |
+ * | **S3** 이번 세션에서 마감했다 | **이 화면의 마감 성공 결과**(`closedCountId`) | 제목줄 · 요약 4칸 · **마감 결과**(「조정 등록」 비활성) · 이력 구획 | **조회만** — 위치 선택·저장·마감이 닫힌다 | `ct` 유지 · `loc` 제거 | ④ |
  * | **S4** 그 실사가 없다 | **상세가 404** | 안내 「고른 실사를 찾을 수 없습니다」 | 다시 고르기 | `ct`·`loc` 제거 | ① |
  *
  * **화면이 모르는 것을 밝힌다.** 세션 밖에서 **이미 마감된 실사**를 골라도 화면은 S1로 보인다.
@@ -173,10 +179,11 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
 export const StocktakingScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  /** 두 액션의 비활성 사유를 각 버튼에 잇는 id(배치 규범 4). 한 뿌리에서 갈라 쓴다. */
+  /** 세 액션의 비활성 사유를 각 버튼에 잇는 id(배치 규범 4). 한 뿌리에서 갈라 쓴다. */
   const reasonIdRoot = useId();
   const openReasonId = `${reasonIdRoot}-open-reason`;
   const saveReasonId = `${reasonIdRoot}-save-reason`;
+  const closeReasonId = `${reasonIdRoot}-close-reason`;
 
   /**
    * **무엇이 바뀔 때 무엇을 비우는가 — 수명 표**(계획 결정 3).
@@ -184,12 +191,11 @@ export const StocktakingScreen = () => {
    * 「비운다」와 「비우지 않는다」를 이 표 한 곳에 모은다. 규칙이 흩어지면 한쪽만 고쳐져
    * 비대칭이 생긴다(조건을 바꾸면 아래 구획이 닫히는데 쪽을 옮기면 안 닫히는 식).
    *
-   * **표는 화면 전체(PR ①~④)의 것이고, ★ 열이 이 PR까지 실물로 있는 상태다.**
-   * 남은 열(마감 플래그)은 PR ④에서 생기며, 그때 이 표에 행을 더하지 않아도 되도록 지금 함께
-   * 적어 둔다. **열아홉째 조작이 생기면 행을 먼저 더하고, 열이 생겨도 마찬가지다** —
+   * **표의 열이 이 PR에서 다 찼다** — 마지막 열(마감 플래그)이 여기서 실물이 된다.
+   * **열아홉째 조작이 생기면 행을 먼저 더하고, 열이 생겨도 마찬가지다** —
    * 표에 오르지 않은 상태는 규칙이 닿지 않는 사각이 된다.
    *
-   * | # | 조작 | 조건 6종★ | `page`★ | `ct`★ | `loc`★ | **404 안내★** | 개시 초안★ | **라인 초안★** | 결과 구획★ | 열린 창★ | **서버 실패★** | 마감 플래그 |
+   * | # | 조작 | 조건 6종 | `page` | `ct` | `loc` | **404 안내** | 개시 초안 | **라인 초안** | 결과 구획 | 열린 창 | **서버 실패** | **마감 플래그** |
    * | :-: | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
    * | 1 | 조건 변경·조회 | 바뀐다 | **첫 쪽** | **비운다** | **비운다** | **비운다** | 유지 | **비운다** | 비운다 | **닫는다** | 유지 | **비운다** |
    * | 2 | 초기화 | **비운다** | 첫 쪽 | 비운다 | 비운다 | **비운다** | 유지 | 비운다 | 비운다 | **닫는다** | 유지 | 비운다 |
@@ -210,7 +216,20 @@ export const StocktakingScreen = () => {
    * | 17 | 취소(초안 파기) | 유지 | 유지 | 유지 | 유지 | 유지 | **비운다** | **비운다** | 비운다 | **닫는다** | **비운다** | 유지 |
    * | 18 | **전송 중** | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 유지 | 잠긴다 | 잠긴다 | 유지 | 유지 | 유지 | 유지 |
    *
-   * **왜 이렇게 정했는가**(이 PR에 실물이 있는 것만)
+   * **왜 이렇게 정했는가**
+   *
+   * - **마감 플래그가 「이 실사를 이번 세션에서 마감했다」인 이유**: 세션 밖에서 마감된 실사는
+   *   화면이 알 수 없다(단계 전이 표) — 상태 코드로 분기하지 않기 때문이다. 그래서 이 열이
+   *   막는 것은 **이 화면이 스스로 아는 것 하나**뿐이고, 나머지는 서버가 400 `STATE_LOCKED`로
+   *   되돌린다.
+   * - **1~4·6·11행이 마감 플래그를 비우고 5행이 유지하는 이유**: 플래그는 **그 실사에 매인
+   *   사실**이다 — 대상이 바뀌면 뜻을 잃고, 같은 실사 안에서 위치만 옮기는 것은 대상이 바뀐
+   *   것이 아니다. 규칙의 실물은 결과 구획과 **같은 형태**다: 플래그가 자기 실사 번호를 들고
+   *   있고(`closedCountId`) 주소의 `ct`와 어긋나면 스스로 거짓이 된다 — 여섯 조작이 전부
+   *   `ct`를 바꾸므로 한 자리가 여섯을 덮는다. 되돌아왔을 때 다시 참이 되는 것도 옳다:
+   *   **마감은 되돌릴 수 없으므로** 그 실사를 두 번 마감하려 드는 길이 그만큼 막힌다.
+   * - **16·17행이 마감 플래그를 유지하는 이유**: 마감 실패는 「마감하지 않았다」이고 취소는
+   *   초안을 버리는 것이라, 둘 다 **이미 마감한 사실**을 물리지 못한다.
    *
    * - **1~3행이 `ct`·`loc`를 비우는 이유**: 조건·쪽이 바뀌면 고른 실사가 새 결과에 없을 수
    *   있다. 규칙의 실물은 `toSearchParams`가 **`ct`·`loc`를 만들지 않는 것**이다 — 세 조작이
@@ -294,6 +313,36 @@ export const StocktakingScreen = () => {
   const selectedCountId = readSelectedCountId(searchParams);
   const selectedLocationId = readSelectedLocationId(searchParams);
 
+  /**
+   * **이번 세션에서 마감한 실사**(수명 표 「마감 플래그」 열).
+   *
+   * 번호를 들고 있는 것이 이 상태의 전부다 — 불리언으로 두면 「어느 실사를 마감했는가」가
+   * 사라져, 대상이 바뀔 때 비우는 규칙을 effect로 따로 세워야 하고 그 자리가 사각이 된다.
+   * 결과 구획이 자기 실사 번호를 들고 있는 것과 **같은 형태**다.
+   *
+   * **조회의 성립 여부까지 정하므로 다른 상태보다 먼저 선다** — 마감한 실사에서는 라인 구획이
+   * 통째로 닫히고, 닫힌 구획은 요청도 보내지 않는다(이력 구획이 세운 규칙과 같다).
+   */
+  const [closedCountId, setClosedCountId] = useState<number | null>(null);
+
+  /**
+   * 지금 보는 실사를 **이번 세션에서 마감했는가**(단계 S3).
+   *
+   * 주소의 `ct`와 어긋나면 저절로 거짓이다 — 조건 변경·초기화·쪽 이동·실사 고르기·404 정리·
+   * 개시 성공이 전부 `ct`를 바꾸므로 수명 표의 여섯 행을 이 한 줄이 덮는다(수명 표 1~4·6·11행).
+   * 위치만 옮기는 조작은 `ct`를 건드리지 않아 플래그가 그대로다(5행).
+   */
+  const hasClosedInSession = closedCountId !== null && closedCountId === selectedCountId;
+
+  /**
+   * 라인 구획이 살아 있는 위치. **마감한 실사에서는 고른 위치가 없는 것과 같다**(완료 조건 C57).
+   *
+   * 주소에 `loc`가 남아 있어도(마감 성공이 비우지만 주소 직접 편집으로 되살릴 수 있다) 편집
+   * 구획을 열지 않고 **그 구획이 쓰는 조회 셋도 보내지 않는다** — 아무도 읽지 않는 응답이
+   * 오가면 그 경로가 나중에 「이미 되는 것」으로 읽힌다(이력 구획이 세운 규칙 · 완료 조건 C49).
+   */
+  const activeLocationId = hasClosedInSession ? null : selectedLocationId;
+
   /*
    * **조건이 하나도 없어도 조회한다.** 들어오자마자 진행 중인 실사가 보여야 무엇을 고를 수
    * 있는지 안다 — 빈 화면으로 시작하면 조건을 먼저 정해야 하는 줄 안다.
@@ -326,7 +375,7 @@ export const StocktakingScreen = () => {
    * **실사와 위치가 둘 다 있어야 라인이 성립한다**(완료 조건 C31 · 감지기 M33).
    * 좁히는 조건을 만들지 않았으므로 이 응답의 줄이 곧 **그 위치의 전 줄**이다.
    */
-  const lines = useInventoryCountLines(selectedCountId, selectedLocationId);
+  const lines = useInventoryCountLines(selectedCountId, activeLocationId);
   const lineItems = lines.data?.items ?? EMPTY_LINES;
 
   /**
@@ -344,7 +393,7 @@ export const StocktakingScreen = () => {
   const isBlindCount = detail.data?.count.blindCount ?? false;
 
   /* 위치를 고르기 전에는 라인 표가 없다 — 그 표가 쓰는 참조 셋도 부르지 않는다. */
-  const hasLocation = selectedLocationId !== null;
+  const hasLocation = activeLocationId !== null;
   const items = useItemLookup(hasLocation);
   const uoms = useUomLookup(hasLocation);
   const lots = useLotLookup(
@@ -400,6 +449,16 @@ export const StocktakingScreen = () => {
 
   /** 개시 확인 창이 열려 있는가. **확인하기 전에는 요청이 나가지 않는다**(완료 조건 C23). */
   const [isOpenConfirmVisible, setOpenConfirmVisible] = useState(false);
+
+  /**
+   * 마감 확인 창이 열려 있는가. **확인하기 전에는 요청이 나가지 않는다**(완료 조건 C54).
+   *
+   * 개시 창과 **따로 둔다.** 하나로 묶으면 「어느 확인인가」가 확인 버튼의 핸들러에만 남고,
+   * 두 창이 동시에 열릴 수 없다는 사실도 상태가 아니라 우연이 된다 — 파기 창이 대상을 상태에
+   * 담아 하나로 합쳐진 것과 반대 방향인데, 그쪽은 **같은 조작(버리기)**이고 이쪽은 다른
+   * 조작이다.
+   */
+  const [isCloseConfirmVisible, setCloseConfirmVisible] = useState(false);
 
   /**
    * 초안 파기 확인 창이 **어느 초안**을 두고 열려 있는가. `null`이면 닫혀 있다.
@@ -494,13 +553,71 @@ export const StocktakingScreen = () => {
   });
 
   /**
+   * 마감. **되돌릴 수 없는 마지막 쓰기다.**
+   *
+   * 성공하면 `ct`는 그대로 두고 `loc`를 비운다(수명 표 15행) — 마감한 실사는 더 고칠 수 없어
+   * 편집 구획이 열려 있을 이유가 없고, 무엇을 마감했는지는 남아 있어야 결과를 읽는다.
+   */
+  const close = useInventoryCountClose({
+    inventoryCountId: selectedCountId,
+    onSuccess: (closed) => {
+      /*
+       * **마감은 되돌릴 수 없으므로 대상이 바뀌어도 이 사실은 남는다**(수명 표 15행).
+       * 아래의 대상 대조보다 **먼저** 세운다 — 보내는 사이에 주소로 다른 실사를 보러 갔다가
+       * 되돌아왔을 때 마감 버튼이 다시 열리면, 이미 마감한 실사를 한 번 더 마감하려 든다.
+       */
+      setClosedCountId(selectedCountId);
+
+      /*
+       * **보내던 사이에 대상이 바뀌었으면 여기서 멈춘다**(치환의 같은 자리와 한 형태 — 리뷰 R-4).
+       * 전송 중 잠금은 컨트롤과 핸들러 두 겹인데 **뒤로가기·앞으로가기·주소 직접 편집은 그 둘을
+       * 다 거치지 않는다.** 그대로 두면 지금 보는 실사의 주소에서 `loc`를 지우고 **앞 실사의
+       * 마감 결과**를 그 아래에 세운다.
+       */
+      const now = selectionRef.current;
+
+      if (now.countId !== selectedCountId) return;
+
+      /* 마감하면 더 고칠 수 없다 — 남은 초안은 보낼 곳이 없다(수명 표 15행). */
+      setLineDrafts(EMPTY_LINE_DRAFTS);
+
+      /*
+       * **`loc`만 비운다.** `toSearchParams`가 `ct`·`loc`를 만들지 않으므로 `ct`만 도로
+       * 붙이면 된다 — 개시 성공이 `ct`를 옮기는 것과 짝을 이루는 비대칭이다.
+       */
+      const next = toSearchParams(filters, page);
+
+      if (selectedCountId !== null) next.set(SELECTION_KEYS.count, String(selectedCountId));
+
+      setSearchParams(next);
+
+      setResult({
+        inventoryCountId: selectedCountId,
+        /* 마감 성공은 `loc`를 비운다(15행) — 짝이 맞아야 결과가 남는다(개시와 같은 모양). */
+        locationId: null,
+        view: {
+          kind: 'closed',
+          /* **응답이 준 값을 그대로 담는다** — 화면이 「마감됨」을 판정하지 않는다(감지기 M59). */
+          countNo: closed.count.inventoryCountNo,
+          statusCode: closed.count.statusCode,
+          summary: closed.summary,
+        },
+      });
+    },
+  });
+
+  /**
    * 보내는 중인가. **대상을 바꾸는 길을 전부 닫는다**(수명 표 18행 · 중복 전송 완화의 한 층) —
    * 조건 줄·목록 선택·쪽 이동·**위치 선택**·개시 입력·**표 안 두 칸**·버튼들이 함께 잠긴다.
    *
-   * **쓰기 둘을 한 값으로 묶는다.** 어느 쪽이 나가는 중이든 대상이 바뀌면 안 되는 것은 같고,
+   * **쓰기 셋을 한 값으로 묶는다.** 어느 쪽이 나가는 중이든 대상이 바뀌면 안 되는 것은 같고,
    * 갈라 두면 「개시 중에는 위치를 바꿀 수 있다」 같은 반쪽 상태가 생긴다.
+   *
+   * **어느 쓰기가 나가는 중인가도 축이다.** 버튼마다 잠금 겹이 여럿인데(`loading`·이 값·
+   * 핸들러 가드) `loading`은 **자기 쓰기가 나갈 때만** 참이라, 다른 쓰기가 나가는 판에서는
+   * 이 값 하나가 홀로 막는다 — 그 판을 재지 않으면 겹 하나가 조용히 사라져도 아무도 모른다.
    */
-  const isLocked = open.isSaving || replace.isSaving;
+  const isLocked = open.isSaving || replace.isSaving || close.isSaving;
 
   /*
    * **주소가 바뀌면 열린 창을 닫는다**(수명 표 1~6행 · W-01-10 리뷰 R-1).
@@ -514,6 +631,7 @@ export const StocktakingScreen = () => {
    */
   useEffect(() => {
     setOpenConfirmVisible(false);
+    setCloseConfirmVisible(false);
     setDiscardTarget(null);
   }, [searchParams]);
 
@@ -667,7 +785,8 @@ export const StocktakingScreen = () => {
     void list.refetch();
 
     if (selectedCountId !== null) void detail.refetch();
-    if (selectedCountId !== null && selectedLocationId !== null) void lines.refetch();
+    /* 마감으로 라인 구획이 닫혔으면 다시 조회도 그 경로를 부르지 않는다(`activeLocationId`). */
+    if (selectedCountId !== null && activeLocationId !== null) void lines.refetch();
   };
 
   const codeOptions = toCodeOptionSets(PLACEHOLDER_STOCKTAKING_CODES);
@@ -930,6 +1049,100 @@ export const StocktakingScreen = () => {
   };
 
   /**
+   * 마감이 왜 막혔는가. 마감할 수 있으면 `null`이다.
+   *
+   * **버튼과 보내는 자리가 둘 다 이것을 부른다**(계획 결정 3의 구현 규칙 4). 마감에는 확인
+   * 창이 있어 **버튼을 누른 시점과 요청이 나가는 시점 사이가 벌어진다** — 그 사이에 상세를
+   * 다시 읽어 요약이 바뀌거나(다른 사람이 그 위치를 치환하면 미실사·차이가 되살아난다)
+   * 주소로 대상이 바뀔 수 있다. 「버튼이 막았으니 여기서는 안 봐도 된다」가 성립하지 않는다.
+   *
+   * **요약을 인자로 받는다** — 상세가 도착한 자리에서만 부르므로 「요약이 없을 때」라는 닿을
+   * 수 없는 갈래를 만들지 않는다(계획 §12-11).
+   */
+  const findCloseBlocked = (summary: CountSummaryView): string | null =>
+    closeBlockReason({ summary, hasClosedInSession });
+
+  /** 마감 확인 창을 연다. 막히면 **창을 열지 않고 요청도 만들지 않는다.** */
+  const requestClose = (summary: CountSummaryView): void => {
+    if (isLocked) return;
+    if (findCloseBlocked(summary) !== null) return;
+
+    setCloseConfirmVisible(true);
+  };
+
+  /**
+   * 마감을 보낸다. **보내기 직전에 한 번 더 본다.**
+   *
+   * 막혀 있으면 **창을 닫고 보내지 않는다** — 여기서 그냥 보내면 미실사나 차이가 남은 실사가
+   * **되돌릴 수 없이** 마감된다. 확인 창이 열린 사이 상세가 다시 도착해 요약이 바뀔 수 있고,
+   * 그때 나가는 요청은 사용자가 확인한 것과 다른 것이 된다.
+   */
+  const submitClose = (): void => {
+    setCloseConfirmVisible(false);
+
+    const summary = detail.data?.summary;
+
+    if (summary === undefined) return;
+    if (isLocked) return;
+    if (findCloseBlocked(summary) !== null) return;
+
+    /* 실패하면 결과 구획이 비어 있어야 한다(수명 표 16행) — 앞 성공의 값이 남으면 오해한다. */
+    setResult(null);
+    /* 시각은 **여기서 한 번만** 만든다 — 조립 안에서 부르면 고정 시각으로 검사할 수 없다. */
+    close.write(toCountClose(new Date()));
+  };
+
+  /**
+   * 마감 액션. **고른 실사 하나에 대한 것**이라 위치와 무관하게 늘 자리에 있다 —
+   * 라인 표 아래에 서는 차례가 업무 순서다(위치들을 다 채운 뒤에 실사를 끝낸다).
+   *
+   * 취소 버튼을 두지 않는다 — 마감에는 **버릴 초안이 없다.** 보내는 값은 영업일 하나이고
+   * 화면이 파생한다.
+   */
+  const closeActionPane = (summary: CountSummaryView): ReactNode => {
+    const blockedReason = findCloseBlocked(summary);
+
+    return (
+      <>
+        {/*
+         * 마감 실패는 **네 갈래**다(완료 조건 C59) — 검증(400) · 권한(403) · **충돌(409)** ·
+         * 응답 없음. 400에는 **상태 잠김**(`STATE_LOCKED`)이 함께 온다: 세션 밖에서 이미 마감된
+         * 실사를 고르면 화면은 그것을 모르고(단계 전이 표) 서버가 그 사유와 함께 되돌린다.
+         * **409에만 「최신 불러오기」를 낸다**(다시 읽어야 풀리는 것은 충돌뿐이다).
+         */}
+        <SaveErrorBanner error={close.error} onReload={refreshAll} />
+
+        {/*
+         * **응답을 받지 못한 실패에만 한 줄을 더한다.** 개시와 같은 무게다 — 다시 여는
+         * 오퍼레이션이 없어 두 번 마감되면 되돌릴 수 없다.
+         */}
+        {close.error?.kind === 'network' && <p className="field-error">{t.notes.closeRecheck}</p>}
+
+        <div className="form-actions">
+          <div className="field-cell">
+            <Button
+              variant="outlined"
+              disabled={blockedReason !== null || isLocked}
+              loading={close.isSaving}
+              aria-describedby={blockedReason === null ? undefined : closeReasonId}
+              onClick={() => {
+                requestClose(summary);
+              }}
+            >
+              {t.actions.close}
+            </Button>
+            {blockedReason !== null && (
+              <span id={closeReasonId} className="field-note">
+                {blockedReason}
+              </span>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  /**
    * 라인 구획. **위치를 고르기 전에는 구획 자체를 렌더하지 않는다**(계획 §12-11).
    *
    * 빈 표를 그려 두면 「이 위치에 라인이 없다」와 「아직 위치를 안 골랐다」가 같은 화면이 되고,
@@ -937,7 +1150,7 @@ export const StocktakingScreen = () => {
    * (감지기 M34) — 바깥에서 0건을 가르면 `empty`가 닿을 수 없는 죽은 가지가 된다.
    */
   const linesPane = (): ReactNode => {
-    if (selectedLocationId === null) {
+    if (activeLocationId === null) {
       return (
         <EmptyState
           size="sm"
@@ -1082,20 +1295,42 @@ export const StocktakingScreen = () => {
           warehouseName={describeReference(toReference(warehouses, count.warehouseId))}
         />
 
-        <LocationField
-          lookup={locations}
-          options={toSelectOptions(locations)}
-          value={selectedLocationId === null ? '' : String(selectedLocationId)}
-          isLocked={isLocked}
-          onChange={selectLocation}
-          onRetry={() => {
-            locations.refetch();
-          }}
-        />
+        {/*
+         * **마감한 실사에서는 편집 구획이 통째로 닫힌다**(단계 S3 · 완료 조건 C57).
+         *
+         * 컨트롤을 잠그는 것으로 그치지 않고 **구획 자체를 렌더하지 않는다** — 잠긴 입력칸이
+         * 줄마다 서 있으면 「언젠가 다시 열리는 것」으로 읽히고, 잠금 겹이 하나라도 뚫리면
+         * 되돌릴 수 없이 마감한 실사의 라인이 다시 치환된다. 자리가 왜 비었는지는 안내가
+         * 밝힌다 — 밝히지 않으면 화면이 고장으로 읽힌다.
+         */}
+        {hasClosedInSession ? (
+          <EmptyState
+            size="sm"
+            live
+            title={t.empty.closedTitle}
+            description={t.empty.closedDescription}
+          />
+        ) : (
+          <>
+            <LocationField
+              lookup={locations}
+              options={toSelectOptions(locations)}
+              value={selectedLocationId === null ? '' : String(selectedLocationId)}
+              isLocked={isLocked}
+              onChange={selectLocation}
+              onRetry={() => {
+                locations.refetch();
+              }}
+            />
 
-        {linesPane()}
+            {linesPane()}
+          </>
+        )}
 
-        {/* 이력은 **실사 하나에 대한 것**이라 위치와 무관하게 늘 자리에 있다. */}
+        {/* 마감은 **실사 하나에 대한 것**이라 위치와 무관하게 늘 자리에 있다. */}
+        {closeActionPane(detail.data.summary)}
+
+        {/* 이력도 **실사 하나에 대한 것**이라 위치와 무관하게 늘 자리에 있다. */}
         <HistoryPane />
       </>
     );
@@ -1268,6 +1503,30 @@ export const StocktakingScreen = () => {
           onConfirm={submitOpen}
           onClose={() => {
             setOpenConfirmVisible(false);
+          }}
+        />
+      )}
+
+      {/*
+       * 마감 확인 창. **상세가 있을 때만 열린다** — 창이 보이는 것이 실사번호·창고·계획일과
+       * 요약 4칸이라 상세 없이는 그릴 것이 없다. 여는 자리(`requestClose`)가 이미 상세가
+       * 도착한 구획 안이므로 이 조건은 **창이 열린 사이 상세가 사라지는** 갈래를 맡는다.
+       */}
+      {isCloseConfirmVisible && detail.data !== undefined && (
+        <CloseConfirmDialog
+          summary={{
+            countNo: detail.data.count.inventoryCountNo,
+            /*
+             * **이름으로 풀어 넘긴다**(#44). 풀지 못한 갈래(미도착·목록에 없음·실패)도 그
+             * 사정이 문구로 오며, 어느 갈래에도 번호가 담기지 않는다.
+             */
+            warehouseName: describeReference(toReference(warehouses, detail.data.count.warehouseId)),
+            plannedDate: detail.data.count.plannedDate,
+            summary: detail.data.summary,
+          }}
+          onConfirm={submitClose}
+          onClose={() => {
+            setCloseConfirmVisible(false);
           }}
         />
       )}

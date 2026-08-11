@@ -13,6 +13,7 @@ import {
 } from '../../test/api-harness';
 import {
   blindCountLineResponse,
+  CLOSABLE_SUMMARY,
   countDetailBody,
   countFixtures,
   countLineFixtures,
@@ -686,6 +687,100 @@ const setupAtLocation = async (
   await waitForLines();
 
   return rendered;
+};
+
+/* ── PR ④ — 마감·노출 ─────────────────────────────────────────────────────── */
+
+/** 실사 9001을 고른 상태의 주소. 마감 액션이 서는 최소 조건이다(위치는 필요 없다). */
+const AT_COUNT = '?ct=9001';
+
+/**
+ * 상세가 남기는 **낙관적 잠금 토큰**.
+ *
+ * 마감은 `If-Match`가 **필수**라(실측 — 목이 토큰 없는 마감을 400으로 되돌린다) 토큰이 없으면
+ * 공통 훅이 보내지 않고 멈춘다. 그 갈래를 따로 재려면 **토큰이 있는 판이 기본**이어야 한다.
+ */
+const DETAIL_ETAG = '"7"';
+
+/** 마감 성공 응답의 상태 코드. **상세와 다른 값**이라 「응답이 준 값을 그대로 낸다」가 관측된다. */
+const CLOSED_STATUS = 'SAMPLE_COUNT_STATUS_D';
+
+/**
+ * **마감할 수 있는** 상세 + 토큰. 미실사와 차이가 둘 다 0이라야 마감이 열린다(승인 13-6).
+ *
+ * 기본 상세(15/6)는 마감이 잠긴 판이라 이 화면의 **보통 상태**이고, 이 라우트가 그 예외다.
+ */
+const closableDetailRoute = (
+  pathname = DETAIL_PATH,
+  summary: Record<string, unknown> = CLOSABLE_SUMMARY,
+  count: Record<string, unknown> = {},
+): StubRoute => ({
+  match: (request) => isGet(request, pathname),
+  respond: () =>
+    jsonResponse(countDetailBody(count, summary), { headers: { ETag: DETAIL_ETAG } }),
+});
+
+/**
+ * **어느 실사의 것이든** 마감 경로. 번호 자리를 열어 두는 것이 요점이다 —
+ * `9001` 하나만 세는 단언은 잘못된 번호로 나간 마감을 「부르지 않았다」로 통과시킨다(승계 3).
+ */
+const CLOSE_PATH_PATTERN = /^\/inventory\/counts\/[^/]+:close$/;
+
+const isCloseRequest = (request: Request): boolean =>
+  request.method === 'POST' && CLOSE_PATH_PATTERN.test(new URL(request.url).pathname);
+
+const closeRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'POST' && CLOSE_PATH_PATTERN.test(request.url.pathname),
+  );
+
+/**
+ * 마감 200 — **응답에 `ETag`가 없고 상태 코드가 상세와 다르다**(둘 다 실측).
+ *
+ * 목 서버의 `:close` 200이 `IN_PROGRESS`를 되돌려 주는 것이 「값으로 마감됨을 판정하지
+ * 않는다」의 실측 근거다(계획 결정 12). 여기서는 합성 코드로 같은 상황을 만든다.
+ */
+const closingRoute = (): StubRoute => ({
+  match: isCloseRequest,
+  respond: () => jsonResponse(countDetailBody({ statusCode: CLOSED_STATUS }, CLOSABLE_SUMMARY)),
+});
+
+const failingCloseRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: isCloseRequest,
+  respond: () => jsonResponse(body, { status }),
+});
+
+const offlineCloseRoute = (): StubRoute => ({
+  match: isCloseRequest,
+  respond: () => {
+    throw new TypeError('Failed to fetch');
+  },
+});
+
+const closeButton = (): HTMLElement =>
+  within(detailPane()).getByRole('button', { name: t.actions.close });
+
+const closedRegion = (): HTMLElement => screen.getByRole('status', { name: t.result.closedLabel });
+
+/** 마감할 수 있는 실사를 고른 상태로 화면을 띄우고 요약 4칸까지 기다린다. */
+const setupClosable = async (
+  routes: StubRoute[] = allRoutes([closableDetailRoute(), closingRoute()]),
+  search = AT_COUNT,
+  navigateTo = '',
+  hold: (request: Request) => boolean = () => false,
+) => {
+  const rendered = renderScreen(routes, search, navigateTo, hold);
+
+  await waitForList();
+  await screen.findByRole('group', { name: t.detail.summaryLabel });
+
+  return rendered;
+};
+
+/** 확인 창까지 거쳐 마감을 실제로 보낸다. */
+const closeCount = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(closeButton());
+  await user.click(screen.getByRole('button', { name: t.actions.confirmClose }));
 };
 
 describe('StocktakingScreen — 첫 진입 조회', () => {
@@ -3438,5 +3533,881 @@ describe('StocktakingScreen — 저장 중 잠금', () => {
     release();
 
     await screen.findByRole('status', { name: t.result.savedLabel });
+  });
+});
+
+describe('StocktakingScreen — 마감 잠금과 활성', () => {
+  /*
+   * **완료 조건 C51·C52·C53 · 감지기 M54·M55** — 마감은 **요약 두 숫자로만** 열린다.
+   *
+   * 계획 §11.4가 지목한 요약 네 벌을 그대로 센다. 화면 수준에서 재는 이유는 **잣대가 요약에서
+   * 버튼까지 이어져 있는지**가 여기서만 관측되기 때문이다 — 단위 테스트는 판정 함수가 옳다는
+   * 것까지만 말하고, 그 답이 실제로 버튼에 닿았는지는 말하지 않는다.
+   */
+  it.each<[string, Record<string, number>, string | null]>([
+    ['둘 다 0이면', CLOSABLE_SUMMARY, null],
+    ['미실사가 남으면', { ...CLOSABLE_SUMMARY, uncountedCount: 60 }, t.actionReasons.closeUncounted(60)],
+    ['차이가 남으면', { ...CLOSABLE_SUMMARY, varianceCount: 12 }, t.actionReasons.closeVariance(12)],
+    [
+      '둘 다 남으면',
+      { ...CLOSABLE_SUMMARY, uncountedCount: 60, varianceCount: 12 },
+      t.actionReasons.closeUncounted(60),
+    ],
+  ])('%s 마감이 그에 맞게 열리고 잠긴다', async (_label, summary, reason) => {
+    await setupClosable(allRoutes([closableDetailRoute(DETAIL_PATH, summary), closingRoute()]));
+
+    if (reason === null) {
+      expect(closeButton()).not.toBeDisabled();
+      expect(closeButton().getAttribute('aria-describedby')).toBeNull();
+
+      return;
+    }
+
+    expect(closeButton()).toBeDisabled();
+    expect(within(detailPane()).getByText(reason)).toBeInTheDocument();
+    /* 잠긴 컨트롤은 포커스를 받지 못한다 — 사유를 이어 두어야 읽힌다(배치 규범 4). */
+    expect(closeButton().getAttribute('aria-describedby')).not.toBeNull();
+  });
+
+  /*
+   * **상태 코드로 분기하지 않는다**(공유계약 G-2 · 계획 결정 2). 요약이 같으면 상태 코드가
+   * 달라도 판정이 같아야 한다 — 값 집합이 확정되지 않아(`omf-mes#64`) 코드로 「마감할 수 있는
+   * 상태」를 가르면 값이 정해질 때 **조용히 틀린다.**
+   *
+   * 픽스처가 실제로 쓰는 코드 둘로 센다. 한 값만 재면 그 값에만 붙는 분기를 넣어도 통과한다.
+   */
+  it.each(['SAMPLE_COUNT_STATUS_A', 'SAMPLE_COUNT_STATUS_B'])(
+    '상태 코드가 %s여도 요약이 조건을 채우면 마감이 열린다',
+    async (statusCode) => {
+      await setupClosable(
+        allRoutes([
+          closableDetailRoute(DETAIL_PATH, CLOSABLE_SUMMARY, { statusCode }),
+          closingRoute(),
+        ]),
+      );
+
+      /* 짝 방향 — 그 코드가 실제로 화면에 서 있다(다른 실사를 보고 통과하는 것이 아니다). */
+      expect(within(detailPane()).getByText(statusCode)).toBeInTheDocument();
+      expect(closeButton()).not.toBeDisabled();
+    },
+  );
+
+  /*
+   * **계약이 필수라 말한 값이 응답에서 빠져 오는 판**(승계 — 라인의 장부 수량에서 이미 겪은
+   * 어긋남). 마감 판정의 근거가 요약 4칸뿐이라, 건수가 수로 오지 않으면 `> 0`이 조용히 거짓이
+   * 되어 **마감이 열린다** — 되돌릴 수 없는 쓰기가 근거 없이 나가는 길이다.
+   *
+   * 두 축을 갈라 센다. 화면 배선에도 만드는 것이 요점이다 — 단위에만 두면 그 방어가 버튼까지
+   * 닿았는지 아무도 모른다.
+   */
+  it.each(['uncountedCount', 'varianceCount'])(
+    '요약에서 %s가 빠져 오면 마감이 잠긴다',
+    async (field) => {
+      const partial: Record<string, number> = { ...CLOSABLE_SUMMARY };
+
+      delete partial[field];
+
+      await setupClosable(
+        allRoutes([
+          {
+            /*
+             * **요약 묶음을 통째로 갈아 끼운다.** 픽스처의 덮어쓰기 통로로는 키를 뺄 수 없다 —
+             * 기본값 위에 얹는 구조라 빠뜨린 키가 기본값으로 되메워진다.
+             */
+            match: (request) => isGet(request, DETAIL_PATH),
+            respond: () =>
+              jsonResponse(
+                { ...countDetailBody({}, CLOSABLE_SUMMARY), summary: partial },
+                { headers: { ETag: DETAIL_ETAG } },
+              ),
+          },
+          closingRoute(),
+        ]),
+      );
+
+      expect(closeButton()).toBeDisabled();
+      expect(
+        within(detailPane()).getByText(t.actionReasons.closeSummaryUnavailable),
+      ).toBeInTheDocument();
+    },
+  );
+
+  /*
+   * **짝 방향** — 같은 화면에서 값이 다 오면 열린다. 이것이 없으면 「늘 잠긴다」로 바꿔도
+   * 위 단언들이 전부 통과한다.
+   */
+  it('요약이 다 오면 같은 화면에서 마감이 열린다', async () => {
+    await setupClosable();
+
+    expect(closeButton()).not.toBeDisabled();
+    expect(
+      within(detailPane()).queryByText(t.actionReasons.closeSummaryUnavailable),
+    ).not.toBeInTheDocument();
+  });
+
+  /* 마감은 **실사 하나에 대한 것**이라 위치를 고르지 않아도 자리에 있다(단계 S1). */
+  it('위치를 고르지 않아도 마감 액션이 서 있다', async () => {
+    await setupClosable();
+
+    expect(closeButton()).toBeInTheDocument();
+    expect(screen.getByText(t.empty.noLocationTitle)).toBeInTheDocument();
+  });
+});
+
+describe('StocktakingScreen — 마감 확인 창', () => {
+  /*
+   * **완료 조건 C54** — 확인 창이 먼저 뜨고 **확인하기 전에는 요청이 0회**다.
+   * 마감은 되돌릴 수 없으므로 버튼에서 곧바로 보내면 무엇을 마감하는지 볼 기회 자체가 없다.
+   */
+  it('마감을 누르면 창이 먼저 뜨고 요청이 나가지 않는다', async () => {
+    const { requests, user } = await setupClosable();
+
+    await user.click(closeButton());
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(closeRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * **완료 조건 C55** — 창이 **요약 4칸과 되돌릴 수 없음**을 밝히고 **선택칸이 없다**(#45).
+   * 부품 테스트가 창의 구성을 재고, 여기서는 **화면이 실제로 그 값을 넘겼는지**를 잰다.
+   */
+  it('창이 마감할 실사와 요약 4칸을 보이고 선택칸이 없다', async () => {
+    const { user } = await setupClosable();
+
+    await user.click(closeButton());
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText('IC-2026-900011')).toBeInTheDocument();
+    expect(within(dialog).getByText(WAREHOUSE_LABEL)).toBeInTheDocument();
+    expect(within(dialog).getAllByText(t.detail.countValue(40))).toHaveLength(2);
+    expect(within(dialog).getAllByText(t.detail.countValue(0))).toHaveLength(2);
+    expect(within(dialog).getByText(t.dialog.closeIrreversible)).toBeInTheDocument();
+    expect(within(dialog).queryAllByRole('combobox')).toHaveLength(0);
+    /* **#44** — 창 어디에도 내부 번호가 없다. */
+    expect(dialog.textContent ?? '').not.toContain('9101');
+  });
+
+  it('마감하지 않음을 누르면 창만 닫히고 요청이 나가지 않는다', async () => {
+    const { requests, user } = await setupClosable();
+
+    await user.click(closeButton());
+    await user.click(screen.getByRole('button', { name: t.actions.keepCounting }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(closeRequests(requests)).toHaveLength(0);
+    /* 짝 방향 — 마감은 여전히 할 수 있다(창만 닫혔다). */
+    expect(closeButton()).not.toBeDisabled();
+  });
+
+  /*
+   * **완료 조건 C60 · 감지기 M52** — 창이 **열린 채 대상이 바뀌면 창이 닫히고 요청이 0회**다
+   * (W-01-10 리뷰 R-1). 뒤로가기·앞으로가기·주소 직접 편집은 클릭 핸들러를 거치지 않으므로
+   * 핸들러에 창 닫기를 두면 그 경로가 통째로 샌다.
+   *
+   * **축이 다섯이다** — 파기 창(M42)이 이미 다섯으로 늘어난 자리이고 마감 창도 같다.
+   * 「위치 고르기」를 빠뜨리면 **같은 실사 안에서 위치만 옮기는** 조작이 사각으로 남는다:
+   * 그때도 확인 창은 닫혀야 한다(수명 표 5행).
+   */
+  it.each<[string, (user: ReturnType<typeof userEvent.setup>) => Promise<void>]>([
+    [
+      '조건 변경·조회',
+      async (user) => {
+        await user.click(
+          within(listPane()).getByRole('checkbox', { name: t.fields.inProgressOnly }),
+        );
+        await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
+      },
+    ],
+    [
+      '초기화',
+      async (user) => {
+        await user.click(within(listPane()).getByRole('button', { name: messages.common.reset }));
+      },
+    ],
+    [
+      '쪽 이동',
+      async (user) => {
+        await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+      },
+    ],
+    [
+      '실사 고르기',
+      async (user) => {
+        await selectCount(user, 'IC-2026-900013');
+      },
+    ],
+    [
+      '위치 고르기',
+      async (user) => {
+        await chooseOption(user, detailPane(), t.fields.location, LOCATION_LABEL);
+      },
+    ],
+  ])('창이 열린 채 %s가 일어나면 창이 닫힌다', async (_label, act) => {
+    const { requests, user } = await setupClosable(
+      allRoutes([
+        closableDetailRoute(),
+        closableDetailRoute(OTHER_DETAIL_PATH, CLOSABLE_SUMMARY, { inventoryCountId: 9003 }),
+        closingRoute(),
+        listRoute(countFixtures, { total: 120 }),
+      ]),
+      `${AT_COUNT}&wh=9101`,
+    );
+
+    await user.click(closeButton());
+
+    /* 짝 방향 — 조작 전에는 실제로 열려 있었다(원래 안 열려서 통과하는 것이 아니다). */
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await act(user);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(closeRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * 두 겹의 둘째 — **보내는 자리가 스스로 한 번 더 본다**(계획 결정 3의 구현 규칙 4).
+   *
+   * 창이 열린 사이 **상세가 다시 도착해 요약이 바뀌면** 버튼의 판정은 이미 낡았다. 다른
+   * 사람이 그 위치를 치환하면 미실사·차이가 되살아나는데, 그대로 보내면 **조건을 못 채운
+   * 실사가 되돌릴 수 없이 마감된다.** 「다시 조회」는 주소를 바꾸지 않아 창 수명 effect가
+   * 닫아 주지 않는다 — 그래서 이 겹이 필요하다.
+   */
+  it('창이 열린 사이 요약이 조건을 잃으면 확인해도 보내지 않는다', async () => {
+    let call = 0;
+
+    const { requests, user } = await setupClosable(
+      allRoutes([
+        {
+          match: (request) => isGet(request, DETAIL_PATH),
+          respond: () => {
+            call += 1;
+
+            return jsonResponse(
+              countDetailBody(
+                {},
+                call === 1 ? CLOSABLE_SUMMARY : { ...CLOSABLE_SUMMARY, uncountedCount: 3 },
+              ),
+              { headers: { ETag: DETAIL_ETAG } },
+            );
+          },
+        },
+        closingRoute(),
+      ]),
+    );
+
+    await user.click(closeButton());
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    await screen.findByText(t.actionReasons.closeUncounted(3));
+
+    await user.click(screen.getByRole('button', { name: t.actions.confirmClose }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(closeRequests(requests)).toHaveLength(0);
+  });
+});
+
+describe('StocktakingScreen — 마감 요청', () => {
+  /*
+   * **완료 조건 C56 · 감지기 M56** — 본문이 `businessDate` 하나이고 **`If-Match`가 실린다.**
+   *
+   * 세 쓰기의 잠금 규약이 여기서 갈린다 — 개시는 헤더 자체가 없고(C28), 치환은 있으면 싣고
+   * (C46), 마감은 **없으면 보내지 않는다.** 토큰은 **상세 조회가 남긴 것**이다(치환·마감
+   * 200에 `ETag`가 없다 — 실왕복 재확인).
+   */
+  it('본문이 영업일 하나이고 상세가 준 토큰을 If-Match에 싣는다', async () => {
+    const { requests, user } = await setupClosable();
+
+    await closeCount(user);
+
+    await waitFor(() => {
+      expect(closeRequests(requests)).toHaveLength(1);
+    });
+
+    const sent = closeRequests(requests)[0];
+
+    expect(Object.keys(sent?.body as Record<string, unknown>)).toEqual(['businessDate']);
+    expect(sent?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+    expect(sent?.headers.get('Idempotency-Key')).not.toBeNull();
+    /* 마감이 나간 경로가 그 실사의 것이다 — 번호 자리가 어긋나면 이 단언이 걸린다. */
+    expect(sent?.url.pathname).toBe(CLOSE_PATH);
+  });
+
+  /*
+   * **완료 조건 C56의 반쪽 — 토큰이 없으면 보내지 않고 안내한다.**
+   *
+   * 치환과 **정반대**다(C46 — 없어도 보낸다). 계약이 마감에서는 `If-Match`를 필수로 요구하고
+   * 목이 토큰 없는 마감을 400으로 되돌리는 것을 실왕복으로 확인했다 — 빈 토큰을 실어 보내면
+   * **되돌릴 수 없는 쓰기가 계약 위반으로 나갔다가 거절된다.** 공통 훅의 `staleToken` 경로가
+   * 그 자리를 맡는다.
+   */
+  it('상세가 토큰을 남기지 않았으면 보내지 않고 안내한다', async () => {
+    const { requests, user } = await setupClosable(
+      allRoutes([
+        /* `ETag` 헤더가 없는 상세 — 다른 값은 그대로다. */
+        {
+          match: (request) => isGet(request, DETAIL_PATH),
+          respond: () => jsonResponse(countDetailBody({}, CLOSABLE_SUMMARY)),
+        },
+        closingRoute(),
+      ]),
+    );
+
+    await closeCount(user);
+
+    expect(await screen.findByText(messages.save.staleToken)).toBeInTheDocument();
+    expect(closeRequests(requests)).toHaveLength(0);
+    /* 결과 구획이 서지 않는다 — 보내지 않았는데 마감된 것처럼 보이면 안 된다. */
+    expect(screen.queryByRole('status', { name: t.result.closedLabel })).not.toBeInTheDocument();
+  });
+});
+
+describe('StocktakingScreen — 마감 성공', () => {
+  /*
+   * **완료 조건 C57 · 감지기 M59** — 성공하면 **응답이 준 상태 코드를 그대로** 보인다.
+   *
+   * 실측 근거가 있다: 목 서버의 `:close` 200 응답이 `IN_PROGRESS`를 되돌려 준다. 화면이 값으로
+   * 「마감됨」을 판정했다면 그 자리에서 거짓말을 한다. 여기서는 상세(`SAMPLE_COUNT_STATUS_A`)와
+   * **다른 코드**가 응답으로 와, 화면이 어느 쪽을 내는지 값으로 갈린다.
+   */
+  it('마감 결과가 응답의 상태 코드와 요약을 그대로 낸다', async () => {
+    const { user } = await setupClosable();
+
+    await closeCount(user);
+
+    const result = await screen.findByRole('status', { name: t.result.closedLabel });
+
+    expect(within(result).getByText('IC-2026-900011')).toBeInTheDocument();
+    expect(within(result).getByText(CLOSED_STATUS)).toBeInTheDocument();
+    expect(within(result).getAllByText(t.detail.countValue(40))).toHaveLength(2);
+  });
+
+  /*
+   * **완료 조건 C57 · 감지기 M60** — 마감 뒤 **편집이 닫힌다**(단계 S3).
+   *
+   * `loc`가 주소에서 빠지고 위치 선택칸과 라인 표가 사라진다. 컨트롤을 잠그는 것으로 그치지
+   * 않는 이유는 잠금 겹이 하나라도 뚫리면 **되돌릴 수 없이 마감한 실사의 라인이 다시
+   * 치환되기** 때문이다.
+   */
+  it('마감하면 고른 위치가 풀리고 편집 구획이 닫힌다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingRoute()]),
+      `${AT_COUNT}&loc=${String(LOCATION_ID)}`,
+    );
+
+    await waitForLines();
+    await closeCount(user);
+
+    await screen.findByRole('status', { name: t.result.closedLabel });
+
+    expect(currentLocation()).not.toContain('loc=');
+    expect(screen.getByText(t.empty.closedTitle)).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.fields.location)).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(t.lineTable.countedQtyLabel(1)),
+    ).not.toBeInTheDocument();
+    expect(
+      within(detailPane()).queryByRole('button', { name: t.actions.saveLocation }),
+    ).not.toBeInTheDocument();
+    /* 고른 실사는 그대로다(수명 표 15행) — 무엇을 마감했는지 화면에 남아야 결과를 읽는다. */
+    expect(currentLocation()).toContain('ct=9001');
+    expect(
+      within(screen.getByRole('group', { name: t.detail.label })).getByText('IC-2026-900011'),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * **닫힌 구획은 요청도 보내지 않는다**(이력 구획이 세운 규칙 · 완료 조건 C49와 같은 성질).
+   *
+   * 마감 성공이 `loc`를 비우지만 **주소 직접 편집으로 되살릴 수 있다** — 그때 라인과 참조
+   * 셋이 다시 나가면 아무도 읽지 않는 응답이 오가고, 그 경로가 나중에 「이미 되는 것」으로
+   * 읽힌다. 편집이 닫힌 것이 컨트롤의 사정이 아니라 **조회의 사정**이기도 하다는 뜻이다.
+   */
+  it('마감 뒤 주소로 위치를 되살려도 라인을 부르지 않는다', async () => {
+    const { requests, user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingRoute()]),
+      AT_COUNT,
+      `ct=9001&loc=${String(LOCATION_ID)}`,
+    );
+
+    await closeCount(user);
+    await screen.findByRole('status', { name: t.result.closedLabel });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain(`loc=${String(LOCATION_ID)}`);
+    });
+
+    expect(lineRequests(requests)).toHaveLength(0);
+    expect(requestsTo(requests, ITEMS_PATH)).toHaveLength(0);
+    expect(screen.getByText(t.empty.closedTitle)).toBeInTheDocument();
+  });
+
+  /*
+   * **다시 마감하지 못한다.** 마감은 되돌릴 수 없으므로 두 벌째 요청이 나가면 서버가 400
+   * `STATE_LOCKED`로 되돌리는데, 그 전에 화면이 막는 것이 옳다 — 공통 훅이 호출마다 새 멱등
+   * 키를 만들어 서버는 둘을 별개의 요청으로 본다(이슈 #55).
+   */
+  it('마감한 실사는 다시 마감할 수 없고 사유가 보인다', async () => {
+    const { requests, user } = await setupClosable();
+
+    await closeCount(user);
+    await screen.findByRole('status', { name: t.result.closedLabel });
+
+    expect(closeButton()).toBeDisabled();
+    expect(within(detailPane()).getByText(t.actionReasons.closeAlreadyClosed)).toBeInTheDocument();
+    expect(closeRequests(requests)).toHaveLength(1);
+  });
+
+  /*
+   * **마감 플래그가 그 실사에 매여 있다**(수명 표 4행). 다른 실사를 고르면 결과가 사라지고
+   * **그 실사는 마감할 수 있다** — 플래그가 화면 전체의 것이면 한 번 마감한 뒤로는 아무
+   * 실사도 마감할 수 없게 된다.
+   */
+  it('다른 실사를 고르면 마감 결과가 사라지고 그 실사는 마감할 수 있다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([
+        closableDetailRoute(),
+        closableDetailRoute(OTHER_DETAIL_PATH, CLOSABLE_SUMMARY, { inventoryCountId: 9003 }),
+        closingRoute(),
+      ]),
+    );
+
+    await closeCount(user);
+    await screen.findByRole('status', { name: t.result.closedLabel });
+
+    await selectCount(user, 'IC-2026-900013');
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('status', { name: t.result.closedLabel }),
+      ).not.toBeInTheDocument();
+    });
+
+    expect(closeButton()).not.toBeDisabled();
+    expect(screen.queryByText(t.empty.closedTitle)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **목록과 상세를 다시 읽는다.** 마감으로 상태 코드와 요약이 바뀌므로 둘 다 낡는다 —
+   * 목록을 두면 마감한 실사가 「진행 중」으로 보이고, 상세를 두면 요약이 마감 전 값으로 남는다.
+   *
+   * **요청 수로 잰다** — 같은 본문이 돌아오면 캐시가 구조 공유로 참조를 유지해 값 비교로는
+   * 다시 읽었는지 알 수 없다.
+   */
+  it('마감 성공 뒤 목록과 상세를 다시 부른다', async () => {
+    const { requests, user } = await setupClosable();
+
+    const listBefore = requestsTo(requests, LIST_PATH).length;
+    const detailBefore = requestsTo(requests, DETAIL_PATH).length;
+
+    await closeCount(user);
+    await screen.findByRole('status', { name: t.result.closedLabel });
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(listBefore);
+    });
+    expect(requestsTo(requests, DETAIL_PATH).length).toBeGreaterThan(detailBefore);
+  });
+
+  /* 「다시 조회」는 대상을 바꾸지 않는다 — 마감 결과가 남는다(수명 표 10행). */
+  it('다시 조회해도 마감 결과가 남는다', async () => {
+    const { user } = await setupClosable();
+
+    await closeCount(user);
+    await screen.findByRole('status', { name: t.result.closedLabel });
+
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    expect(closedRegion()).toBeInTheDocument();
+  });
+});
+
+describe('StocktakingScreen — 조정 등록', () => {
+  /*
+   * **완료 조건 C58 · 감지기 M58** — 「조정 등록」은 **자리만 두고 이동시키지 않는다**
+   * (착수 이슈 §5 ⚠). W-01-12는 이번에 나가지 않았고 승인 계약도 없다.
+   *
+   * 부품 테스트가 비활성과 사유를 재고, 여기서는 **눌러도 어디로도 가지 않음**을 잰다 —
+   * 주소가 그대로이고 링크가 없다는 두 축이다.
+   */
+  it('조정 등록을 눌러도 주소가 바뀌지 않고 링크가 없다', async () => {
+    const { user } = await setupClosable();
+
+    await closeCount(user);
+
+    const result = await screen.findByRole('status', { name: t.result.closedLabel });
+    const action = within(result).getByRole('button', { name: t.actions.adjustment });
+    const before = currentLocation();
+
+    expect(action).toBeDisabled();
+
+    await user.click(action);
+
+    expect(currentLocation()).toBe(before);
+    expect(within(result).queryAllByRole('link')).toHaveLength(0);
+    expect(within(detailPane()).getByText(t.actionReasons.adjustmentPending)).toBeInTheDocument();
+  });
+});
+
+describe('StocktakingScreen — 마감 실패', () => {
+  /*
+   * **완료 조건 C59** — 실패가 **네 갈래**이고 문구가 서로 다르다.
+   *
+   * 400에는 갈래가 하나 더 있다 — **상태 잠김**(`STATE_LOCKED`). 세션 밖에서 이미 마감된
+   * 실사를 고르면 화면은 그것을 모르고(단계 전이 표 — 상태 코드로 분기하지 않는다) 서버가
+   * 그 사유와 함께 되돌린다. 다시 읽어도 풀리지 않는 상태라 검증 실패와 문구가 갈려야 한다.
+   */
+  it.each<[string, number, unknown, string]>([
+    [
+      '검증 실패',
+      400,
+      { errors: [{ scope: 'screen', code: 'INVALID', message: '미실사가 남아 있습니다.' }] },
+      '미실사가 남아 있습니다.',
+    ],
+    [
+      '상태 잠김',
+      400,
+      { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '이미 마감된 실사입니다.' }] },
+      messages.stateLocked.title,
+    ],
+    ['권한 없음', 403, { message: '' }, messages.httpError.forbidden],
+    ['저장 충돌', 409, { conflictCause: 'user' }, messages.conflict.user],
+  ])('%s면 그 사유를 낸다', async (_label, status, body, expected) => {
+    const { requests, user } = await setupClosable(
+      allRoutes([closableDetailRoute(), failingCloseRoute(status, body)]),
+    );
+
+    await closeCount(user);
+
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+    expect(closeRequests(requests)).toHaveLength(1);
+
+    /* 실패했으니 결과 구획이 서지 않는다. */
+    expect(screen.queryByRole('status', { name: t.result.closedLabel })).not.toBeInTheDocument();
+    /* 창은 닫혀 있다 — 남으면 실패 배너 위에 활성인 「실사 마감 실행」이 서 있게 된다. */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    /* 마감하지 못했으니 편집도 닫히지 않는다(수명 표 16행 — 마감 플래그를 세우지 않는다). */
+    expect(screen.queryByText(t.empty.closedTitle)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **감지기와 같은 성질 — 409에만 「최신 불러오기」를 낸다.** 다시 읽어야 풀리는 것은 충돌뿐이고,
+   * **상태 잠김에 내면 눌러도 풀리지 않는 길**을 가리킨다.
+   */
+  it.each<[string, number, unknown, boolean]>([
+    ['저장 충돌', 409, { conflictCause: 'user' }, true],
+    ['검증 실패', 400, { message: '' }, false],
+    [
+      '상태 잠김',
+      400,
+      { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '이미 마감된 실사입니다.' }] },
+      false,
+    ],
+    ['권한 없음', 403, { message: '' }, false],
+  ])('%s에서 최신 불러오기가 %s', async (_label, status, body, shown) => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), failingCloseRoute(status, body)]),
+    );
+
+    await closeCount(user);
+    await screen.findByRole('alert');
+
+    const reload = screen.queryByRole('button', { name: messages.conflict.reloadAction });
+
+    expect(reload === null).toBe(!shown);
+  });
+
+  /*
+   * **응답을 받지 못한 갈래에만 한 줄을 더한다.** 개시와 같은 무게다 — 다시 여는 오퍼레이션이
+   * 없어 두 번 마감되면 되돌릴 수 없다. 저장(치환)과 갈리는 자리이며 그 갈림이 문구에 있다.
+   */
+  it('응답이 오지 않으면 다시 보내기 전에 확인하라고 밝힌다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), offlineCloseRoute()]),
+    );
+
+    await closeCount(user);
+
+    expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.closeRecheck)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /*
+   * **서버가 필드에 붙인 오류도 삼키지 않는다**(승계 — `knownFields`의 갈림).
+   *
+   * 마감이 보내는 값은 `businessDate` 하나인데 **그 값을 넣는 입력칸이 화면에 없다**(실행
+   * 시각에서 파생한다). 이름을 `knownFields`에 채우면 그 오류가 인라인으로 분류되는데
+   * **붙일 칸이 없어 조용히 사라진다** — 사용자에게는 「마감을 눌렀는데 아무 일도 없다」로
+   * 보인다. 치환과 결론은 같지만 이유가 다른 자리라 잣대를 따로 세운다.
+   */
+  it('서버가 영업일에 붙인 필드 오류도 삼키지 않고 배너로 낸다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([
+        closableDetailRoute(),
+        failingCloseRoute(400, {
+          errors: [
+            {
+              scope: 'field',
+              code: 'INVALID',
+              field: 'businessDate',
+              message: '영업일이 마감 기간을 벗어났습니다.',
+            },
+          ],
+        }),
+      ]),
+    );
+
+    await closeCount(user);
+
+    expect(await screen.findByText('영업일이 마감 기간을 벗어났습니다.')).toBeInTheDocument();
+  });
+
+  /*
+   * **승계 교훈 — 「성공 뒤 실패」 순서를 만든다.** 실패 테스트가 늘 빈 화면에서 시작하면
+   * 「실패하면 결과 구획을 비운다」(수명 표 16행)가 아무것도 재지 못한다.
+   *
+   * 마감은 성공하면 다시 누를 수 없으므로(플래그가 막는다) **앞선 저장이 세운 결과** 위에서
+   * 마감을 실패시킨다 — 같은 대상에서 결과 구획이 실제로 거둬지는 유일한 순서다.
+   */
+  it('앞선 저장이 성공한 뒤 마감이 실패하면 결과 구획이 비고 창이 서 있지 않다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), failingCloseRoute(403)]),
+      `${AT_COUNT}&loc=${String(LOCATION_ID)}`,
+    );
+
+    await waitForLines();
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    /* 저장 결과가 실제로 선다 — 이 뒤라야 「거둔다」를 잴 수 있다. */
+    await screen.findByRole('status', { name: t.result.savedLabel });
+
+    await closeCount(user);
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('StocktakingScreen — 마감 중 잠금', () => {
+  /*
+   * **감지기 M51의 첫째 겹 — 컨트롤 잠금.** 전송 중에는 대상을 바꾸는 길이 함께 잠기고,
+   * 연타해도 요청이 1회다(공통 훅이 호출마다 새 멱등 키를 만든다 — 이슈 #55).
+   *
+   * 마감이 특히 아픈 자리다: 두 벌이 나가면 **되돌릴 수 없는 조작이 두 번** 일어난다.
+   */
+  it('마감 중에는 대상을 바꿀 수 없고 연타해도 요청이 1회다', async () => {
+    const { requests, release, user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingRoute()]),
+      `${AT_COUNT}&loc=${String(LOCATION_ID)}`,
+      '',
+      isCloseRequest,
+    );
+
+    await waitForLines();
+    await closeCount(user);
+
+    await waitFor(() => {
+      expect(closeRequests(requests)).toHaveLength(1);
+    });
+
+    expect(closeButton()).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.location)).toBeDisabled();
+    expect(qtyField(1)).toBeDisabled();
+    expect(saveButton()).toBeDisabled();
+    expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(
+      within(listPane()).getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }),
+    ).toBeDisabled();
+
+    await user.click(closeButton());
+
+    expect(closeRequests(requests)).toHaveLength(1);
+
+    release();
+
+    await screen.findByRole('status', { name: t.result.closedLabel });
+  });
+
+  /*
+   * **감지기 M51의 둘째 겹 — 경로 가드 단독.** 조건 칩의 ×는 디자인 시스템이 잠금을 받지 않아
+   * (`StatusChipProps`에 `disabled`가 없다 — 실측) 전송 중에도 눌린다. 그 길로 들어오면
+   * 조건이 바뀌면서 `ct`가 풀리고 **앞 요청의 결과가 다른 맥락에 나타난다.**
+   */
+  it('마감 중에는 잠금을 받지 않는 조건 칩의 ×로도 대상이 바뀌지 않는다', async () => {
+    const { requests, release, user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingRoute()]),
+      `${AT_COUNT}&wh=9101`,
+      '',
+      isCloseRequest,
+    );
+
+    await closeCount(user);
+
+    await waitFor(() => {
+      expect(closeRequests(requests)).toHaveLength(1);
+    });
+
+    const before = currentLocation();
+    const removeChip = within(listPane()).getByRole('button', {
+      name: t.filters.chipRemoveWarehouse,
+    });
+
+    /* 짝 방향 — 이 버튼은 실제로 눌린다(잠겨 있어서 아무 일도 안 나는 것이 아니다). */
+    expect(removeChip).not.toBeDisabled();
+
+    await user.click(removeChip);
+
+    expect(currentLocation()).toBe(before);
+
+    release();
+
+    await screen.findByRole('status', { name: t.result.closedLabel });
+  });
+
+  /*
+   * **「어느 쓰기가 나가는 중인가」도 축이다 — 이제 셋이다**(검증 담당 승계).
+   *
+   * 버튼마다 잠금 겹이 여럿인데 `loading`은 **자기 쓰기가 나갈 때만** 참이라, 다른 쓰기가
+   * 나가는 판에서는 `isLocked` 하나가 홀로 막는다. 그 판을 재지 않으면 겹 하나가 조용히
+   * 사라져도 아무도 모른다 — 무너지면 **되돌릴 수 없는 쓰기 둘이 동시에** 나간다.
+   *
+   * 개시·치환 두 축을 갈라 센다. 한 축만 재면 다른 축의 잠금을 지워도 잡히지 않는다.
+   */
+  it.each<
+    [string, (request: Request) => boolean, (user: ReturnType<typeof userEvent.setup>) => Promise<void>]
+  >([
+    [
+      '개시',
+      isOpenRequest,
+      async (user) => {
+        await fillOpenDraft(user);
+        await user.click(openButton());
+        await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
+      },
+    ],
+    [
+      '치환',
+      isReplaceRequest,
+      async (user) => {
+        await fillAllQty(user);
+        await user.click(saveButton());
+      },
+    ],
+  ])('%s가 나가는 중에도 마감 버튼이 잠긴다', async (_label, hold, act) => {
+    fillCodeLists();
+
+    const { requests, release, user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingRoute()]),
+      `${AT_COUNT}&loc=${String(LOCATION_ID)}`,
+      '',
+      hold,
+    );
+
+    await waitForLines();
+
+    /* 짝 방향 — 보내기 전에는 열려 있다(늘 잠겨 있어서 통과하는 것이 아니다). */
+    expect(closeButton()).not.toBeDisabled();
+
+    await act(user);
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method !== 'GET')).toHaveLength(1);
+    });
+
+    expect(closeButton()).toBeDisabled();
+    /* 마감은 나가는 중이 아니다 — 자기 `loading` 겹이 서 있지 않은 판이라는 것이 요점이다. */
+    expect(closeRequests(requests)).toHaveLength(0);
+
+    release();
+  });
+
+  /*
+   * **역방향 — 마감이 나가는 중에는 저장이 잠긴다.** 위 판의 짝이며, 셋째 쓰기가 생기면서
+   * 이 축이 실제로 늘었다. 무너지면 마감이 나가는 동안 **파괴적 치환**이 함께 나간다.
+   */
+  it('마감이 나가는 중에는 저장 버튼도 잠긴다', async () => {
+    const { requests, release, user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingRoute()]),
+      `${AT_COUNT}&loc=${String(LOCATION_ID)}`,
+      '',
+      isCloseRequest,
+    );
+
+    await waitForLines();
+    await fillAllQty(user);
+
+    /* 짝 방향 — 마감을 보내기 전에는 저장이 열려 있다. */
+    expect(saveButton()).not.toBeDisabled();
+
+    await closeCount(user);
+
+    await waitFor(() => {
+      expect(closeRequests(requests)).toHaveLength(1);
+    });
+
+    expect(saveButton()).toBeDisabled();
+    expect(replaceRequests(requests)).toHaveLength(0);
+
+    release();
+
+    await screen.findByRole('status', { name: t.result.closedLabel });
+  });
+
+  /*
+   * **전송 중 주소 편집**(리뷰 R-4가 고친 자리의 마감 판).
+   *
+   * 전송 중 잠금은 컨트롤과 핸들러 두 겹인데 뒤로가기·앞으로가기·주소 직접 편집은 그 둘을 다
+   * 거치지 않는다. 그 길로 대상이 바뀌면 응답이 뒤에 도착해 **앞 실사의 마감 결과**가 지금
+   * 보는 실사 아래에 선다.
+   *
+   * **다만 「마감했다」는 사실은 남는다** — 마감은 되돌릴 수 없으므로 되돌아왔을 때 다시
+   * 마감하려 드는 길이 열려 있으면 안 된다. 결과 구획과 플래그의 수명이 여기서 갈린다.
+   */
+  it('마감 중 주소로 대상이 바뀌면 앞 실사의 결과가 서지 않는다', async () => {
+    const { requests, release, user } = await setupClosable(
+      allRoutes([
+        closableDetailRoute(),
+        closableDetailRoute(OTHER_DETAIL_PATH, CLOSABLE_SUMMARY, { inventoryCountId: 9003 }),
+        closingRoute(),
+      ]),
+      AT_COUNT,
+      'ct=9003',
+      isCloseRequest,
+    );
+
+    await closeCount(user);
+
+    await waitFor(() => {
+      expect(closeRequests(requests)).toHaveLength(1);
+    });
+
+    /* 잠금 두 겹을 다 거치지 않는 길 — 주소만 바뀐다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('ct=9003');
+    });
+
+    const listBefore = requestsTo(requests, LIST_PATH).length;
+
+    release();
+
+    /* 응답이 도착해 성공 처리가 끝난 것을 **긍정 단언**으로 기다린다(무효화가 목록을 다시 부른다). */
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(listBefore);
+    });
+
+    expect(screen.queryByRole('status', { name: t.result.closedLabel })).not.toBeInTheDocument();
+    /* 짝 방향 — 지금 보는 실사(9003)는 마감할 수 있다. */
+    expect(closeButton()).not.toBeDisabled();
   });
 });
