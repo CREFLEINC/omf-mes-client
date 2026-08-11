@@ -1809,8 +1809,6 @@ const masterChange = {
      * 하나로 합쳐졌다. 라벨도 하나여야 해서 두 칸 시절의 이름을 그대로 둘 수 없다.
      */
     period: '조회 기간',
-    periodFrom: '기간 시작',
-    periodTo: '기간 종료',
     targetType: '대상 종류',
     targetId: '대상',
     eventType: '사건 종류',

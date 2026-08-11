@@ -1,4 +1,4 @@
-import { Button, Chip, Select, TextField } from '@crefle/web-ui';
+import { Button, Chip, DatePicker, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -53,6 +53,7 @@ export const EventFilterBar = ({
 }: EventFilterBarProps) => {
   const reasonId = useId();
   const fieldId = useId();
+  const periodId = useId();
 
   const [period, setPeriod] = useState<PeriodInput>(appliedPeriod);
   const [filters, setFilters] = useState<EventFilters>(appliedFilters);
@@ -113,22 +114,27 @@ export const EventFilterBar = ({
   return (
     <>
       <div className="filter-bar">
-        <TextField
-          type="date"
-          label={t.fields.periodFrom}
-          value={period.from}
-          onChange={(event) => {
-            setPeriod((prev) => ({ ...prev, from: event.target.value }));
-          }}
-        />
-        <TextField
-          type="date"
-          label={t.fields.periodTo}
-          value={period.to}
-          onChange={(event) => {
-            setPeriod((prev) => ({ ...prev, to: event.target.value }));
-          }}
-        />
+        {/*
+         * 기간은 **한 컨트롤**이다(변경 통지 #63) — 시작·종료 두 칸이 아니라 `mode="range"` 하나다.
+         * 주소 키(`from`·`to`)와 요청 파라미터는 그대로다. 바뀐 것은 고르는 수단뿐이다.
+         *
+         * 컴포넌트가 **완결된 쌍만, 그것도 from ≤ to로만** 방출한다. 그래서 이 컨트롤을 거친
+         * 역전은 생기지 않지만 `validatePeriod`는 그대로 둔다 — 주소는 사용자가 직접 고칠 수 있고
+         * 조회 조건의 정본은 주소다. 컨트롤이 막는 것과 화면이 막는 것은 다른 층이다.
+         */}
+        <div className="field-cell">
+          <label className="field-label" htmlFor={periodId}>
+            {t.fields.period}
+          </label>
+          <DatePicker
+            id={periodId}
+            mode="range"
+            value={[period.from === '' ? null : period.from, period.to === '' ? null : period.to]}
+            onChange={([from, to]) => {
+              setPeriod({ from, to });
+            }}
+          />
+        </div>
 
         {codeSelects.map((select) => (
           /*
