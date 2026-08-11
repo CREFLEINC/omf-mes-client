@@ -11,7 +11,7 @@ import {
   type CountLineTableProps,
 } from './count-line-table';
 import { blindCountLineResponse, countLineFixtures } from './fixtures';
-import { EMPTY_LINE_DRAFTS, setDraftQty, type LineDrafts } from './line-draft';
+import { EMPTY_LINE_DRAFTS, setDraftQty, setDraftReason, type LineDrafts } from './line-draft';
 import { toLineRows, type LineRowView } from './line-replace-request';
 import type { ReferenceSource } from './lookups';
 import { toCountLineView, type SelectOption } from './types';
@@ -296,6 +296,43 @@ describe('CountLineTable — 표 안 입력 두 칸', () => {
     await user.click(screen.getByRole('option', { name: 'SAMPLE_VARIANCE_REASON_D' }));
 
     expect(onChangeReason).toHaveBeenCalledWith(9401, 'SAMPLE_VARIANCE_REASON_D');
+  });
+
+  /*
+   * **리뷰 R-3이 잣대를 세운 자리 — 「이 줄에 사유가 필요하다」는 줄 표시.**
+   *
+   * 사유 칸의 `invalid`가 `row.isReasonRequired`를 받는 것이 「필수 표시를 화면이 지어내지
+   * 않는다」의 실물이다. 무너지면 저장은 「사유가 필요한 줄이 N줄 있습니다」로 막히는데
+   * **어느 줄인지 가리키는 표시가 사라져** 사용자가 수십 줄에서 그 N줄을 눈으로 찾아야 한다.
+   *
+   * 짝 방향을 함께 센다 — 차이가 없는 줄까지 서면 표 전체가 붉어져 뜻을 잃는다.
+   */
+  it('차이가 있는 줄의 사유 칸만 필수 표시가 선다', () => {
+    /* 1번 줄만 장부(100)와 다르게 치고, 2번 줄은 장부(40)와 같게 친다. */
+    const drafts = setDraftQty(setDraftQty(EMPTY_LINE_DRAFTS, 9401, '98'), 9402, '40');
+
+    renderTable({ rows: rowsOf(drafts) });
+
+    expect(screen.getByLabelText(t.lineTable.reasonLabel(1))).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(screen.getByLabelText(t.lineTable.reasonLabel(2))).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+
+  /** 사유를 고르면 그 줄의 표시가 걷힌다 — 「필요하다」가 「채웠다」로 바뀌는 것이 읽혀야 한다. */
+  it('사유를 고르면 필수 표시가 걷힌다', () => {
+    const drafts = setDraftReason(setDraftQty(EMPTY_LINE_DRAFTS, 9401, '98'), 9401, REASON_CODE);
+
+    renderTable({ rows: rowsOf(drafts) });
+
+    expect(screen.getByLabelText(t.lineTable.reasonLabel(1))).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
   });
 
   /*

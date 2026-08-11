@@ -198,6 +198,49 @@ describe('replaceBlockReason — 저장이 왜 막혔는가', () => {
     expect(blockReasonOf(filledSame())).toBeNull();
   });
 
+  /*
+   * **차례가 뜻을 정한다**(리뷰 R-2가 잣대를 세운 자리).
+   *
+   * 이 함수는 「앞선 사유가 참인 동안 뒤의 사유를 내면 사용자가 **할 수 없는 조치**를
+   * 가리킨다」를 설계로 적었는데, **겹치는 판을 만들지 않으면 차례가 고정되지 않는다** —
+   * 한 사유만 참인 입력으로는 어느 순서로 늘어놓아도 같은 답이 나온다.
+   *
+   * 아래는 **두 사유가 동시에 참인** 입력이다. 각 줄에서 「앞선 것」이 나와야 한다.
+   */
+  it.each<[string, () => string | null, string]>([
+    [
+      '잘림 + 전 줄 미입력',
+      /* 잘린 위치를 **처음 열면** 늘 이 짝이다 — 빈 칸으로 시작하므로 전 줄이 비어 있다. */
+      () => blockReasonOf(EMPTY_LINE_DRAFTS, { isTruncated: true }),
+      t.actionReasons.saveTruncated,
+    ],
+    [
+      '줄 0건 + 잘림',
+      () =>
+        replaceBlockReason({ rows: [], isTruncated: true, isReasonListPending: false }),
+      t.actionReasons.saveTruncated,
+    ],
+    [
+      '전 줄 미입력 + 형식 오류',
+      () => blockReasonOf(setDraftQty(EMPTY_LINE_DRAFTS, lines[0]?.inventoryCountLineId ?? 0, '-1')),
+      t.actionReasons.saveIncompleteQty(2),
+    ],
+    [
+      '사유 미선택 + 사유 길이 오류',
+      () =>
+        blockReasonOf(
+          setDraftReason(
+            setDraftQty(filledSame(), lines[0]?.inventoryCountLineId ?? 0, '98'),
+            lines[1]?.inventoryCountLineId ?? 0,
+            'A'.repeat(CODE_MAX + 1),
+          ),
+        ),
+      t.actionReasons.saveNeedsReason(1),
+    ],
+  ])('%s이 겹치면 앞선 사유를 낸다', (_label, act, expected) => {
+    expect(act()).toBe(expected);
+  });
+
 });
 
 describe('toLineReplace — 치환 본문', () => {
