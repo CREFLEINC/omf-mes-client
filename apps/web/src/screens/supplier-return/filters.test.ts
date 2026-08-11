@@ -62,6 +62,21 @@ describe('readFilters', () => {
     expect(readSelectedReceiptId(params('gr=1000000000000000000000'))).toBeNull();
   });
 
+  /**
+   * **위쪽 모서리를 함께 고정한다**(PR ① 리뷰 재확인 관찰).
+   *
+   * 상한을 16자리로 늘리면 `Number('9999999999999999')`가 `10000000000000000`으로 **조용히
+   * 바뀐다** — `Number.MAX_SAFE_INTEGER`(9007199254740991)를 넘기기 때문이다. 아래 짝 방향
+   * 단언만으로는 그 한 칸이 재어지지 않아, 15를 고른 근거(「`Number()`가 값을 바꾸지 않는다」)가
+   * 잣대로 남지 않는다.
+   */
+  it('안전 정수 범위 밖의 16자리 번호를 받지 않는다', () => {
+    expect(Number('9999999999999999')).toBeGreaterThan(Number.MAX_SAFE_INTEGER);
+    expect(readFilters(params('wh=9999999999999999')).warehouse).toBe('');
+    expect(readPage(params('page=9999999999999999'))).toBe(1);
+    expect(readSelectedReceiptId(params('gr=9999999999999999'))).toBeNull();
+  });
+
   /* 짝 방향 — 계약의 식별자는 64비트 정수다. 있을 법한 큰 번호는 그대로 받는다. */
   it('안전 정수 범위의 큰 번호는 그대로 받는다', () => {
     expect(readFilters(params('wh=999999999999999')).warehouse).toBe('999999999999999');
