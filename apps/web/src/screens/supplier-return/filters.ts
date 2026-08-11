@@ -208,15 +208,18 @@ export type ChipFilterKey = 'warehouse' | 'period' | 'receiptType' | 'status' | 
  */
 export type RemovableChipKey = Exclude<ChipFilterKey, 'period'>;
 
-export interface FilterChip {
-  key: ChipFilterKey;
-  label: string;
-  /**
-   * 제거 버튼의 접근 이름. **`null`이면 그 칩에는 ×가 없다.**
-   * 「제거」가 둘이면 어느 조건을 푸는 것인지 알 수 없으므로 조건 이름을 담는다.
-   */
-  removeLabel: string | null;
-}
+/**
+ * 조건 칩 하나.
+ *
+ * **갈래로 나눠 둔다** — 그려야 ×가 있는 칩만 해제 핸들러를 받는다. 하나의 모양에
+ * `removeLabel: string | null`로 두면 읽는 쪽이 `null` 검사를 통과한 뒤에도 키를 좁히지 못해
+ * 형 단언이 필요해지고, 그 단언은 나중에 기간 칩에 ×를 다는 것을 막지 못한다.
+ *
+ * `removeLabel`은 제거 버튼의 접근 이름이다 — 「제거」가 둘이면 어느 조건을 푸는지 알 수 없다.
+ */
+export type FilterChip =
+  | { key: 'period'; label: string; removeLabel: null }
+  | { key: RemovableChipKey; label: string; removeLabel: string };
 
 /**
  * 참조 조건의 표시 이름. **화면이 이름으로 풀어 넘긴다.**
