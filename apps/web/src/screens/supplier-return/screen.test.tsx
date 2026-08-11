@@ -2378,6 +2378,32 @@ describe('SupplierReturnScreen — 확인 창', () => {
     }
   });
 
+  /*
+   * **위험 10** — 상한을 확인하지 못한 줄이 **보낼 줄에 섞여 있을 때만** 그 사실을 밝힌다.
+   * 늘 세워 두면 전부 확인된 화면에서도 사용자가 상한이 없는 줄 알고, 세우지 않으면
+   * 확인하지 못한 채 보내는 사실이 어디에도 남지 않는다.
+   */
+  it('상한을 확인하지 못한 줄이 섞이면 창이 그 사실을 밝힌다', async () => {
+    const { user } = await setupReadyToSubmit();
+
+    await openConfirm(user);
+
+    /* 짝 방향 — 확인된 줄만 골랐을 때는 그 안내가 없다. */
+    expect(
+      within(screen.getByRole('dialog')).queryByText(t.dialog.submitOnHandUnknown),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    /* 둘째 줄은 그 품목의 잔액이 아예 오지 않는다 — 「확인하지 못함」 갈래다. */
+    await pickLine(user, 2, '5');
+    await openConfirm(user);
+
+    expect(
+      within(screen.getByRole('dialog')).getByText(t.dialog.submitOnHandUnknown),
+    ).toBeInTheDocument();
+  });
+
   /* **M43·M44 · C40** — 창 둘 다 선택칸이 없다(#45가 걸릴 자리를 만들지 않는다). */
   it('두 창 안에 선택칸이 없다', async () => {
     const { user } = await setupReadyToSubmit();
