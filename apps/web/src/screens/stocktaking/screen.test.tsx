@@ -3313,6 +3313,44 @@ describe('StocktakingScreen — 저장 실패', () => {
   });
 
   /*
+   * **치환 실패는 자기 위치보다 오래 살지 않는다**(수명 표 5행 · 계획 정정 5 · 마감 R-1과 동형).
+   *
+   * 「서버 실패 = 유지」의 근거는 「**초안은 남는데** 왜 거절됐는지만 사라지면 같은 값을 그대로
+   * 다시 보낸다」인데, **5행은 라인 초안을 비우는 행**이라 그 근거가 거꾸로 선다 — 초안이
+   * 사라진 자리에 앞 위치의 거절 사유만 남으면 위치 A의 「권한이 없습니다」가 **위치 B의 빈
+   * 표 위**에 서고, 사용자는 B도 막힌 것으로 읽어 셀 수 있는 위치를 건너뛴다.
+   *
+   * **짝 방향을 함께 센다** — 같은 위치 안에서 값을 고치는 것은 대상이 바뀐 것이 아니다(8행).
+   * 사라지는 쪽만 재면 「늘 지운다」로 바꿔도 통과하는데, 그러면 왜 막혔는지 읽기도 전에
+   * 배너가 사라진다.
+   */
+  it('저장 실패 배너가 다른 위치를 고르면 사라지고 같은 위치 안에서는 남는다', async () => {
+    const { user } = await setupAtLocation(allRoutes([failingReplaceRoute(403)]));
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+
+    /* 짝 방향 — 같은 위치 안에서 값을 고쳐도 남는다(8행). */
+    await user.type(qtyField(1), '5');
+
+    expect(screen.getByText(messages.httpError.forbidden)).toBeInTheDocument();
+
+    await chooseOption(user, detailPane(), t.fields.location, 'SAMPLE-LOC-03 · 합성 위치 다');
+    await waitForLines();
+
+    await waitFor(() => {
+      expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+    });
+
+    /* 새 위치의 저장은 열린다 — 배너만 사라지고 판정이 함께 잠기지 않는다. */
+    await fillAllQty(user);
+
+    expect(saveButton()).not.toBeDisabled();
+  });
+
+  /*
    * **짝 방향 — 응답이 온 실패에는 그 한 줄을 붙이지 않는다**(개시가 세운 형태).
    *
    * 붙이면 **늘 참인 안내**가 된다: 서버가 400으로 「이 값은 못 받는다」고 답한 경우에도
