@@ -20,6 +20,7 @@ import {
   warehouseFixtures,
 } from './fixtures';
 import { StocktakingScreen } from './screen';
+import { OPEN_FIELD_NAMES } from './validation';
 
 const t = messages.stocktaking;
 
@@ -1445,6 +1446,70 @@ describe('StocktakingScreen — 개시 확인 창', () => {
   });
 
   /*
+   * **R-3 — 창 수명은 「주소 전체」에 묶인다**(수명 표 1~6행).
+   *
+   * 위 테스트가 바꾸는 것은 **`ct` 하나**라, effect의 축을 `selectedCountId`로 좁혀도 통과한다 —
+   * 그러면 **`ct`가 없는 상태(S0)에서 조건·쪽만 바뀔 때** 창이 그대로 남는다. 수명 표는
+   * 조건 변경·초기화·쪽 이동에도 「닫는다」라고 적혀 있으므로 **축마다 하나씩** 센다.
+   *
+   * 형태는 PR ① R-2(조건 되돌림 6축 `it.each`)가 세운 것을 그대로 쓴다 — **범위 있는 규칙은
+   * 잣대도 같은 범위로 세운다.** 좁은 앵커 하나로 갈음하면 잣대가 규칙보다 좁아진다.
+   *
+   * **`ct`가 없는 주소에서 시작한다** — 그래야 「`ct`가 바뀌어서 닫혔다」로 통과하지 않는다.
+   */
+  it.each<[string, (user: ReturnType<typeof userEvent.setup>) => Promise<void>]>([
+    [
+      '조건 변경·조회',
+      async (user) => {
+        await user.click(
+          within(listPane()).getByRole('checkbox', { name: t.fields.inProgressOnly }),
+        );
+        await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
+      },
+    ],
+    [
+      '초기화',
+      async (user) => {
+        await user.click(within(listPane()).getByRole('button', { name: messages.common.reset }));
+      },
+    ],
+    [
+      '쪽 이동',
+      async (user) => {
+        await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+      },
+    ],
+    [
+      '실사 고르기',
+      async (user) => {
+        await selectCount(user, 'IC-2026-900011');
+      },
+    ],
+  ])('창이 열린 채 %s가 일어나면 창이 닫힌다', async (_label, act) => {
+    fillCodeLists();
+
+    /* 쪽 이동 축을 위해 갈 곳이 남은 목록을 준다 — 「다음」이 잠겨 있으면 그 축을 못 잰다. */
+    const { requests, user } = renderScreen(
+      allRoutes([listRoute(countFixtures, { total: 120 })]),
+      '?wh=9101',
+    );
+
+    await waitForList();
+    await fillOpenDraft(user);
+    await user.click(openButton());
+
+    /* 짝 방향 — 조작 전에는 실제로 열려 있었다(원래 안 열려서 통과하는 것이 아니다). */
+    expect(confirmDialog()).toBeInTheDocument();
+
+    await act(user);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(openRequests(requests)).toHaveLength(0);
+  });
+
+  /*
    * 두 겹의 둘째 — **보내는 자리가 스스로 한 번 더 본다**(계획 결정 3의 구현 규칙 4).
    * 창이 열린 사이 초안이 보낼 수 없는 상태가 되면, 창의 확인 버튼을 눌러도 **창을 닫고
    * 보내지 않는다.** 「버튼이 막았으니 여기서는 안 봐도 된다」는 창이 그 사이를 벌려 놓았으므로
@@ -1701,6 +1766,13 @@ describe('StocktakingScreen — 개시 실패', () => {
     expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
     /* 409 갈래가 없다 — 「최신 불러오기」가 뜰 자리가 없다. */
     expect(screen.queryByRole('button', { name: messages.conflict.reloadAction })).not.toBeInTheDocument();
+    /*
+     * **R-2 · 수명 표 12행** — 실패해도 **확인 창은 닫혀 있다.** 성공 경로에서는 주소가
+     * 바뀌면서 창 수명 effect가 우연히 닫아 주지만 **실패 경로에는 그 우연이 없다** —
+     * 남으면 실패 배너 위에 활성인 「실사 개시 실행」이 서 있고(전송 중 잠금은 응답이
+     * 도착하면 풀린다) 다시 누르는 순간 새 멱등 키로 **두 벌째 전표**가 나간다.
+     */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   /*
@@ -1715,6 +1787,8 @@ describe('StocktakingScreen — 개시 실패', () => {
 
     expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
     expect(screen.getByText(t.notes.openRecheck)).toBeInTheDocument();
+    /* **R-2** — 응답이 오지 않은 갈래에서도 창은 닫혀 있다(여기가 두 벌째 전표에 가장 가깝다). */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   /*
@@ -1750,6 +1824,92 @@ describe('StocktakingScreen — 개시 실패', () => {
      * 읽히고, 사용자는 있는 전표를 한 번 더 만들려 든다.
      */
     expect(within(detailPane()).getByText(OPENED_COUNT_NO)).toBeInTheDocument();
+    /* **R-2** — 둘째 시도가 실패한 뒤에도 창은 닫혀 있다. */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /*
+   * **R-1 · 서버가 준 실패 상태의 수명**(수명 표 「서버 실패」 열).
+   *
+   * 기존 400 감지기는 응답을 `scope: 'screen'`으로 태워 **배너 갈래만** 지난다 — 그래서
+   * `OPEN_FIELD_NAMES` ↔ `OPEN_FORM_FIELDS` ↔ `open-form`의 `fieldErrors[…]`로 이어지는
+   * **인라인 배선 전체가 한 번도 실행되지 않았다.** 여기서 `scope: 'field'` 한 갈래를 태워
+   * 그 배선의 **세 매듭**을 잇달아 센다.
+   *
+   * 무너지면 서버가 「창고를 확인하세요」라고 콕 집어 주는데 화면은 그것을 배너로만 내고,
+   * 사용자는 **어느 칸이 문제인지 모른 채** 되돌릴 수 없는 개시를 다시 시도한다.
+   */
+  it('서버가 준 필드 오류가 그 칸에 붙고, 고치면 걷히고, 버리면 배너까지 사라진다', async () => {
+    const serverMessage = '창고를 확인하세요.';
+    const { user } = await setupReadyToOpen(
+      allRoutes([
+        failingOpenRoute(400, {
+          errors: [
+            {
+              scope: 'field',
+              field: OPEN_FIELD_NAMES.warehouse,
+              code: 'INVALID',
+              message: serverMessage,
+            },
+          ],
+        }),
+      ]),
+    );
+
+    await user.click(openButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
+
+    /* ① 그 칸 옆에 선다 — 배너가 아니다. 창고 선택칸이 `invalid`로 표시된다. */
+    expect(await within(openPane()).findByText(serverMessage)).toBeInTheDocument();
+    expect(within(openPane()).getByLabelText(t.fields.warehouse)).toBeInvalid();
+    /*
+     * 배너에는 그 문구가 없다 — 인라인으로 소화한 것을 배너로 또 내면 같은 오류가 두 번
+     * 보이고, 사용자는 칸이 둘 잘못된 줄 안다.
+     */
+    expect(within(openPane()).getAllByText(serverMessage)).toHaveLength(1);
+
+    /* ② 그 칸을 다시 고치면 걷힌다 — 남으면 이미 고친 값 옆에 붉은 글씨가 서 있다. */
+    await chooseOption(user, openPane(), t.fields.warehouse, WAREHOUSE_LABEL);
+
+    expect(within(openPane()).queryByText(serverMessage)).not.toBeInTheDocument();
+    expect(within(openPane()).getByLabelText(t.fields.warehouse)).not.toBeInvalid();
+  });
+
+  /*
+   * **R-1의 셋째 매듭** — 초안을 버리면 **실패 배너까지 함께 거둔다**(`open.reset()`).
+   * 「버린다」는 앞서 한 시도를 통째로 물리는 것이라, 오류가 남으면 무엇이 지금 상태인지
+   * 화면이 말할 수 없다. 배너 갈래로 태워 **배너와 필드 오류가 같은 조작에 함께** 사라지는지 본다.
+   */
+  it('실패한 뒤 초안을 버리면 배너와 필드 오류가 함께 사라진다', async () => {
+    const serverMessage = '창고를 확인하세요.';
+    const { user } = await setupReadyToOpen(
+      allRoutes([
+        failingOpenRoute(400, {
+          errors: [
+            { scope: 'screen', code: 'INVALID', message: '보낼 수 없는 값이 있습니다.' },
+            {
+              scope: 'field',
+              field: OPEN_FIELD_NAMES.warehouse,
+              code: 'INVALID',
+              message: serverMessage,
+            },
+          ],
+        }),
+      ]),
+    );
+
+    await user.click(openButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
+
+    /* 짝 방향 — 배너와 인라인이 실제로 **갈려서** 함께 서 있다. */
+    expect(await screen.findByText('보낼 수 없는 값이 있습니다.')).toBeInTheDocument();
+    expect(within(openPane()).getByText(serverMessage)).toBeInTheDocument();
+
+    await user.click(within(openPane()).getByRole('button', { name: messages.common.cancel }));
+    await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
+
+    expect(screen.queryByText('보낼 수 없는 값이 있습니다.')).not.toBeInTheDocument();
+    expect(within(openPane()).queryByText(serverMessage)).not.toBeInTheDocument();
   });
 
   /* 짝 방향 — 응답이 온 실패에는 그 한 줄을 붙이지 않는다. 붙이면 늘 참인 안내가 된다. */

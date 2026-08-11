@@ -41,6 +41,22 @@ describe('OpenConfirmDialog — 보낼 값을 그대로 다시 보인다', () =>
   });
 
   /*
+   * **N-1 — 나열 차례가 세 자리에서 같아야 한다**(개시 폼의 칸 · 버튼 사유 · 이 창).
+   * 무엇을 세는가 → 어디를 세는가 → 언제 세는가 → 어떻게 세는가. 갈리면 사용자가 폼에서
+   * 확인한 것과 창에서 다시 읽는 것을 **눈으로 맞춰 볼 수 없다** — 값이 다 보여도 확인의
+   * 비용이 올라간다. 존재만 세면 차례를 통째로 뒤집어도 통과한다.
+   */
+  it('나열 차례가 개시 폼의 칸 차례와 같다', () => {
+    renderDialog();
+
+    expect(
+      within(dialog())
+        .getAllByRole('term')
+        .map((node) => node.textContent),
+    ).toEqual([t.fields.countType, t.fields.warehouse, t.fields.plannedDate, t.fields.blindCount]);
+  });
+
+  /*
    * **이름을 풀지 못한 창고도 그 사정을 그대로 낸다**(#44 · 참조 4갈래). 번호를 대신 내면
    * 사용자가 뜻을 모르는 값을 확인하고 되돌릴 수 없는 전표를 만든다. 빈 칸으로 두지도 않는다 —
    * 빠뜨린 것인지 없는 것인지 구분되지 않는다.
