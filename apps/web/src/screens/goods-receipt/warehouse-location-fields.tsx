@@ -32,11 +32,19 @@ const toWarehouseOptions = (warehouses: readonly WarehouseView[]): SelectOption[
   }));
 
 /**
- * 목록의 한계를 밝히는 안내. **실패가 잘림보다 앞선다** — 둘이 겹치는 자리가 실제로 있다
- * (첫 조회가 잘린 목록을 주고 다시 부르기가 실패하면 낡은 자료와 실패가 함께 참이 된다).
+ * 목록의 한계를 밝히는 안내.
+ *
+ * **차례가 뜻을 정한다** — 실패 → 아직 안 옴 → 잘림.
+ *
+ * - **실패가 앞선다**: 둘이 겹치는 자리가 실제로 있다(첫 조회가 잘린 목록을 주고 다시 부르기가
+ *   실패하면 낡은 자료와 실패가 함께 참이 된다).
+ * - **「아직 안 옴」을 반드시 말한다**: 목록이 오는 동안 선택칸은 선택지 0건으로 그려지는데,
+ *   그 모습은 「이 창고에는 위치가 없다」와 글자가 같다. 이 화면이 참조 표기에서 지키는 규칙
+ *   (미도착을 「알 수 없음」으로 내지 않는다)이 선택지 목록에서도 같아야 한다.
  */
 const listNote = (list: OptionListResult<unknown>): string | undefined => {
   if (list.isError) return t.filters.lookupFailed;
+  if (list.isLoading) return t.filters.lookupLoading;
   if (list.truncated) return t.filters.lookupTruncated;
 
   return undefined;

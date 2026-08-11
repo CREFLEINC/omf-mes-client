@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -53,6 +53,20 @@ describe('DiscardConfirmDialog', () => {
     const { onConfirm, onClose, user } = renderDialog();
 
     await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  /*
+   * **스크림 클릭으로 닫히는 것을 막지 않는다** — 실수로 닫혀도 초안이 그대로 남아 잃는 것이
+   * 없다. **제출 확인 창과 갈리는 자리다**(그쪽은 되돌릴 수 없는 조작이라 막는다).
+   * 닫아도 버리지 않는다는 것까지 함께 본다.
+   */
+  it('스크림을 누르면 닫히고 버리지는 않는다', () => {
+    const { onConfirm, onClose } = renderDialog();
+
+    fireEvent.click(screen.getByRole('dialog'));
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();

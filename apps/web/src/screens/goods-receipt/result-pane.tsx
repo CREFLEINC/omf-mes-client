@@ -36,7 +36,12 @@ export interface ResultPaneProps {
  * 이번 화면은 한 줄만 확정하므로 숫자가 뜻을 더하지 않고, 라인이 늘면 문구가 갈린다.
  */
 const ledgerText = (result: GoodsReceiptResultView): string => {
-  if (result.lineCount === 0 || result.ledgerLineCount === 0) return t.result.ledgerNone;
+  /*
+   * **「하나도 없다」가 먼저다.** 라인이 0줄인 경우도 여기서 함께 걸린다 —
+   * `ledgerLineCount`는 `lineCount`를 넘을 수 없으므로(만드는 자리가 라인을 세어 만든다)
+   * 라인이 0이면 원장도 0이다. 두 조건을 따로 두면 하나가 늘 같은 답을 내는 죽은 가지가 된다.
+   */
+  if (result.ledgerLineCount === 0) return t.result.ledgerNone;
   if (result.ledgerLineCount === result.lineCount) return t.result.ledgerAll;
 
   return t.result.ledgerSome;

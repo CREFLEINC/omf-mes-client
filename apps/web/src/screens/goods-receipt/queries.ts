@@ -230,11 +230,16 @@ export const useLocationOptions = (warehouseId: number | null): OptionListResult
   };
 };
 
-/** 입고 처리 뒤 다시 읽은 자재 LOT의 상태. 아직 읽지 않았으면 `statusCode`가 `null`이다. */
+/**
+ * 입고 처리 뒤 다시 읽은 자재 LOT의 상태. 아직 읽지 않았으면 `statusCode`가 `null`이다.
+ *
+ * **진행 중 여부를 따로 나르지 않는다.** 이 응답의 `statusCode`는 계약 필수라 값이 오면
+ * 반드시 채워진다 — 즉 `null`이 곧 「아직 오지 않았다」이고, 그 위에 `isLoading`을 더 두면
+ * 둘 중 하나는 늘 같은 답을 내는 죽은 가지가 된다.
+ */
 export interface LotStatusResult {
   statusCode: string | null;
   isError: boolean;
-  isLoading: boolean;
 }
 
 /**
@@ -267,7 +272,6 @@ export const useLotStatus = (lotId: number | null): LotStatusResult => {
   return {
     statusCode: query.data?.lot.statusCode ?? null,
     isError: query.isError,
-    isLoading: lotId !== null && query.isPending,
   };
 };
 

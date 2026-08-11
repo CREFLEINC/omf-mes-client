@@ -109,11 +109,15 @@ describe('ResultPane — 수불 원장', () => {
     expect(screen.getByText(t.result.ledgerSome)).toBeInTheDocument();
   });
 
-  /* 라인이 0줄이면 「전 줄에 생겼다」가 아니라 「오지 않았다」다. */
-  it('라인이 없으면 전 줄에 생겼다고 말하지 않는다', () => {
+  /**
+   * **0줄과 0건이 겹치는 경계.** 「전부 생겼는가」(`ledgerLineCount === lineCount`)를 먼저 보면
+   * 0 == 0이 참이라 아무것도 없는데 「전 줄에 생겼다」고 말한다 — 차례가 뜻을 정하는 자리다.
+   */
+  it('라인도 원장도 없으면 전 줄에 생겼다고 말하지 않는다', () => {
     renderPane({ lineCount: 0, ledgerLineCount: 0 });
 
     expect(screen.getByText(t.result.ledgerNone)).toBeInTheDocument();
+    expect(screen.queryByText(t.result.ledgerAll)).not.toBeInTheDocument();
   });
 });
 

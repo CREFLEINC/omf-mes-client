@@ -158,6 +158,42 @@ describe('WarehouseLocationFields — 목록의 한계', () => {
     expect(screen.queryByText(t.filters.lookupTruncated)).not.toBeInTheDocument();
   });
 
+  /*
+   * **「아직 안 옴」과 「없다」를 가른다.** 목록이 오는 동안 선택칸은 선택지 0건으로 그려지는데
+   * 그 모습은 「이 창고에는 위치가 없다」와 글자가 같다 — 이 화면이 참조 표기에서 지키는
+   * 구분(미도착을 「알 수 없음」으로 내지 않는다)이 선택지 목록에서도 같아야 한다.
+   */
+  it('창고 목록이 오는 중이면 그 사실을 밝힌다', () => {
+    renderFields({ warehouses: list<WarehouseView>([], { isLoading: true }) });
+
+    expect(warehouseBox()).toHaveAccessibleDescription(t.filters.lookupLoading);
+  });
+
+  it('위치 목록이 오는 중이면 그 사실을 밝힌다', () => {
+    renderFields({
+      warehouseValue: '9701',
+      locations: list<LocationView>([], { isLoading: true }),
+    });
+
+    expect(locationBox()).toHaveAccessibleDescription(t.filters.lookupLoading);
+  });
+
+  /* 짝 방향 — 도착한 빈 목록은 「오는 중」이 아니다. 그때는 정말 고를 것이 없다. */
+  it('도착한 빈 목록에는 오는 중 안내를 내지 않는다', () => {
+    renderFields({ warehouseValue: '9701', locations: list<LocationView>([]) });
+
+    expect(screen.queryByText(t.filters.lookupLoading)).not.toBeInTheDocument();
+  });
+
+  /* 실패가 앞선다 — 못 받은 것을 「오는 중」이라 하면 기다려도 풀리지 않는다. */
+  it('실패와 오는 중이 함께 참이면 실패를 낸다', () => {
+    renderFields({
+      warehouses: list<WarehouseView>([], { isError: true, isLoading: true }),
+    });
+
+    expect(warehouseBox()).toHaveAccessibleDescription(t.filters.lookupFailed);
+  });
+
   /* 실패는 잘림과 다르다 — 다시 부르면 풀릴 수 있으므로 복구 수단을 함께 낸다. */
   it('선택지 조회가 실패하면 사유와 다시 시도가 함께 나온다', async () => {
     const { onRetryOptions, user } = renderFields({

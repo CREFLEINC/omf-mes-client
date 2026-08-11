@@ -1835,6 +1835,34 @@ describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
     );
   });
 
+  /*
+   * **오는 중과 없음을 가른다.** 창고를 고른 직후 위치 목록이 오는 동안 선택칸은 선택지
+   * 0건으로 그려지는데, 밝히지 않으면 「이 창고에는 위치가 없다」로 읽힌다.
+   */
+  it('위치 목록이 오는 동안 그 사실을 밝힌다', async () => {
+    fillCodeLists();
+
+    const { user, release } = renderScreen(allRoutes(), '?ir=9001', '', [LOCATIONS_PATH]);
+
+    await openPostPane(user);
+    await chooseOption(user, t.fields.warehouse, WAREHOUSE_LABEL);
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: t.fields.location })).toHaveAccessibleDescription(
+        t.filters.lookupLoading,
+      );
+    });
+
+    await act(async () => {
+      release();
+    });
+
+    /* 짝 방향 — 도착하면 안내를 거둔다. 늘 뜨는 안내는 아무것도 말하지 않는다. */
+    await waitFor(() => {
+      expect(screen.queryByText(t.filters.lookupLoading)).not.toBeInTheDocument();
+    });
+  });
+
   /* **C29** — 요청에 싣는 공장은 입하 전표의 값이다. 어긋나면 눈에 보이되 막지는 않는다. */
   it('고른 창고의 공장이 전표와 다르면 그 사실을 밝힌다', async () => {
     const { user } = await setupReadyToPost();
@@ -1884,6 +1912,78 @@ describe('GoodsReceiptScreen — 제출 확인 창', () => {
     expect(within(dialog).queryAllByRole('combobox')).toHaveLength(0);
     /* 짝 방향 — 폼에는 선택칸이 그대로 있다(창만 비어 있다). */
     expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0);
+  });
+
+  /**
+   * **확인 창이 열린 채 대상이 바뀌는 경로.**
+   *
+   * 뒤로가기·앞으로가기·주소 직접 편집은 클릭 핸들러를 거치지 않아 전송 중 잠금도 경로 가드도
+   * 닿지 않는다. 창이 남으면 **사용자가 확인한 줄과 실제로 나가는 줄이 갈리고**, 초안이 함께
+   * 비워지므로 빈 코드·번호 0으로 되돌릴 수 없는 전표가 나간다.
+   */
+  it('확인 창이 열린 채 주소로 줄이 바뀌면 창이 닫힌다', async () => {
+    fillCodeLists();
+
+    const { user, requests } = renderScreen(
+      allRoutes(),
+      '?ir=9001&line=9401',
+      'ir=9001&line=9402',
+    );
+
+    await screen.findAllByText(ITEM_LABEL);
+    await fillDraft(user);
+    await clickPost(user);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('line=9402');
+    });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(postRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * **짝 방향이자 마지막 겹** — 창이 어떤 이유로든 남더라도 **보내는 자리가 한 번 더 본다.**
+   * 「버튼이 막았으니 여기서는 안 봐도 된다」가 성립하려면 버튼과 전송 사이에 상태가 바뀔 수
+   * 없어야 하는데, 확인 창이 그 사이를 벌려 놓는다.
+   */
+  it('대상이 바뀐 뒤에는 확인을 눌러도 요청이 나가지 않는다', async () => {
+    fillCodeLists();
+
+    const { user, requests } = renderScreen(
+      allRoutes(),
+      '?ir=9001&line=9401',
+      'ir=9001&line=9402',
+    );
+
+    await screen.findAllByText(ITEM_LABEL);
+    await fillDraft(user);
+    await clickPost(user);
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('line=9402');
+    });
+
+    /* 창이 닫혔으므로 확인 버튼이 없다 — 대신 새 대상의 입고 처리가 잠겨 있음을 본다. */
+    expect(screen.queryByRole('button', { name: t.actions.confirmPost })).not.toBeInTheDocument();
+    expect(postButton()).toBeDisabled();
+    expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsWarehouse);
+    expect(postRequests(requests)).toHaveLength(0);
+  });
+
+  /* 대상이 그대로면 창이 남아 있어야 한다 — 늘 닫으면 확인 창 자체가 쓸모없어진다. */
+  it('대상이 그대로면 확인 창이 남는다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await clickPost(user);
+    await user.type(screen.getByLabelText(t.fields.remarks), '합');
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('계속 입력을 누르면 창이 닫히고 요청이 나가지 않는다', async () => {
@@ -2155,6 +2255,38 @@ describe('GoodsReceiptScreen — 성공', () => {
       expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
     });
     expect(await screen.findByText('SAMPLE_LOT_STATUS_A')).toBeInTheDocument();
+  });
+
+  /**
+   * **짝 방향** — 「성공한 뒤에만」이 이 결정의 절반이다. 전표·줄을 고르는 것만으로 부르면
+   * 「Release가 걸렸다」의 증거가 되지 못한다(입고 처리 전의 상태를 보여 주게 된다).
+   * 이 슬라이스는 같은 갈래의 「부르지 않는다」를 전부 요청 수로 고정한다.
+   */
+  it('성공하기 전에는 자재 LOT을 다시 부르지 않는다', async () => {
+    const { user, requests } = await setupReadyToPost();
+
+    /* 줄을 고르고 확정 입력까지 다 채운 상태다 — 그래도 아직 부르지 않는다. */
+    expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(0);
+
+    await clickPost(user);
+    await confirmPost(user);
+    await screen.findByRole('status', { name: t.result.label });
+
+    /* 짝 방향 — 성공한 뒤에는 실제로 부른다(스텁이 있는데도 0회가 아니다). */
+    await waitFor(() => {
+      expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(1);
+    });
+  });
+
+  /* 실패한 뒤에도 부르지 않는다 — 만들어지지 않은 전표의 증거를 찾을 이유가 없다. */
+  it('실패한 뒤에도 자재 LOT을 다시 부르지 않는다', async () => {
+    const { user, requests } = await setupReadyToPost(allRoutes([failingGoodsReceiptRoute(400)]));
+
+    await clickPost(user);
+    await confirmPost(user);
+    await screen.findByText(messages.httpError.title);
+
+    expect(requestsTo(requests, LOT_DETAIL_PATH)).toHaveLength(0);
   });
 
   it('자재 LOT 재조회가 실패하면 그 사실을 밝힌다', async () => {

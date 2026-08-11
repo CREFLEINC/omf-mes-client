@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -132,5 +132,18 @@ describe('SubmitConfirmDialog — 버튼', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  /*
+   * **스치는 클릭에 사라지지 않는다** — 되돌릴 수 없는 조작을 확인하는 창이 스크림 클릭으로
+   * 닫히면 확인 자체가 형식이 된다. **파기 확인 창과 갈리는 자리이고**(그쪽은 실수로 닫혀도
+   * 잃는 것이 없어 막지 않는다) 그 대비가 이 화면 설계의 일부라 값으로 고정한다.
+   */
+  it('스크림을 눌러도 닫히지 않는다', () => {
+    const { onClose } = renderDialog();
+
+    fireEvent.click(screen.getByRole('dialog'));
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
