@@ -29,6 +29,11 @@ export interface IrLineColumnsInput {
   lotLookup: ReferenceSource;
   /** 사유 텍스트의 `id` 앞머리. 비활성 버튼과 사유를 `aria-describedby`로 잇는 데 쓴다 */
   reasonIdPrefix: string;
+  /**
+   * 입고 처리를 보내는 중인가. 참이면 **줄을 바꾸는 길을 닫는다** — 보내는 중에 다른 줄로
+   * 옮기면 앞 줄의 처리 결과가 지금 보는 줄의 맥락에 나타난다.
+   */
+  isLocked: boolean;
   onToggleSelect: (inboundReceiptLineId: number) => void;
 }
 
@@ -61,6 +66,7 @@ export const buildIrLineColumns = ({
   uomLookup,
   lotLookup,
   reasonIdPrefix,
+  isLocked,
   onToggleSelect,
 }: IrLineColumnsInput): Column<IrLineView>[] => [
   {
@@ -138,6 +144,7 @@ export const buildIrLineColumns = ({
         <Button
           variant="outlined"
           size="sm"
+          disabled={isLocked}
           aria-label={
             selected ? t.actions.deselectLine(row.lineNo) : t.actions.selectLine(row.lineNo)
           }
@@ -203,6 +210,7 @@ export const IrLineTable = ({
   lotLookup,
   selectedLineId,
   selectedLine,
+  isLocked,
   onToggleSelect,
   onRetryReferences,
 }: IrLineTableProps) => {
@@ -214,6 +222,7 @@ export const IrLineTable = ({
     uomLookup,
     lotLookup,
     reasonIdPrefix,
+    isLocked,
     onToggleSelect,
   });
 

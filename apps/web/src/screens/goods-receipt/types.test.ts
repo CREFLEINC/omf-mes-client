@@ -1,7 +1,17 @@
 import type { components } from '@omf-mes/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { formatDateTime, toIrLineView, toIrView } from './types';
+import {
+  EMPTY_CODE_DRAFT,
+  EMPTY_RECEIPT_DRAFT,
+  formatDateTime,
+  hasAnyDraftValue,
+  toGoodsReceiptResultView,
+  toIrLineView,
+  toIrView,
+  toLocationView,
+  toWarehouseView,
+} from './types';
 
 type InboundReceiptResponse = components['schemas']['InboundReceipt'];
 type InboundReceiptLineResponse = components['schemas']['InboundReceiptLine'];
@@ -160,5 +170,173 @@ describe('formatDateTime', () => {
   it('형식이 아니면 원문을 그대로 낸다', () => {
     expect(formatDateTime('2026-08-06')).toBe('2026-08-06');
     expect(formatDateTime('')).toBe('');
+  });
+});
+
+type WarehouseResponse = components['schemas']['Warehouse'];
+type LocationResponse = components['schemas']['Location'];
+type GoodsReceiptResponse = components['schemas']['GoodsReceipt'];
+type GoodsReceiptLineResponse = components['schemas']['GoodsReceiptLine'];
+
+const warehouseResponse = (overrides: Partial<WarehouseResponse> = {}): WarehouseResponse => ({
+  warehouseId: 9701,
+  plantId: 9201,
+  businessUnitId: 9251,
+  warehouseCode: 'SAMPLE-WH-01',
+  warehouseName: '합성 창고 가',
+  warehouseTypeCode: 'SAMPLE_WH_TYPE_A',
+  managementLevelCode: 'SAMPLE_WH_LEVEL_A',
+  isExternal: false,
+  isActive: true,
+  ...overrides,
+});
+
+const locationResponse = (overrides: Partial<LocationResponse> = {}): LocationResponse => ({
+  locationId: 9802,
+  warehouseId: 9701,
+  parentLocationId: 9801,
+  locationCode: 'SAMPLE-LOC-A1',
+  locationName: '합성 열 가1',
+  locationTypeCode: 'SAMPLE_LOC_TYPE_A',
+  allowMixedItem: true,
+  allowMixedLot: true,
+  isActive: true,
+  ...overrides,
+});
+
+describe('toWarehouseView', () => {
+  it('화면이 쓰는 값만 옮긴다', () => {
+    expect(toWarehouseView(warehouseResponse())).toEqual({
+      warehouseId: 9701,
+      warehouseCode: 'SAMPLE-WH-01',
+      warehouseName: '합성 창고 가',
+      plantId: 9201,
+    });
+  });
+
+  /*
+   * 사용 여부를 담지 않는다 — 창고 목록은 `includeInactive`를 켜지 않으므로 표식을 붙일 값이
+   * 없고, 담을 자리가 없으면 표식이 어긋날 경로도 생기지 않는다.
+   */
+  it('사용 여부를 담지 않는다', () => {
+    expect(Object.keys(toWarehouseView(warehouseResponse()))).not.toContain('isActive');
+  });
+});
+
+describe('toLocationView', () => {
+  it('상위 위치 번호를 함께 옮긴다 — 1단 그룹을 접는 열쇠다', () => {
+    expect(toLocationView(locationResponse()).parentLocationId).toBe(9801);
+  });
+
+  /* 키 없음과 `null`을 한 값으로 모은다 — 갈리면 「상위가 없다」 판정이 자리마다 달라진다. */
+  it('상위가 없거나 키가 없으면 둘 다 null이다', () => {
+    expect(toLocationView(locationResponse({ parentLocationId: null })).parentLocationId).toBeNull();
+    expect(
+      toLocationView(locationResponse({ parentLocationId: undefined })).parentLocationId,
+    ).toBeNull();
+  });
+});
+
+const goodsReceiptResult = (
+  overrides: Partial<GoodsReceiptResponse> = {},
+): GoodsReceiptResponse => ({
+  goodsReceiptId: 9901,
+  goodsReceiptNo: 'GR-2026-800001',
+  receiptTypeCode: 'SAMPLE_RECEIPT_TYPE_A',
+  plantId: 9201,
+  warehouseId: 9701,
+  receiptDatetime: '2026-08-06T09:12:00+09:00',
+  statusCode: 'SAMPLE_GR_STATUS_A',
+  sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+  sourceDocumentId: 9001,
+  ...overrides,
+});
+
+const goodsReceiptLine = (
+  overrides: Partial<GoodsReceiptLineResponse> = {},
+): GoodsReceiptLineResponse => ({
+  goodsReceiptLineId: 9902,
+  goodsReceiptId: 9901,
+  lineNo: 1,
+  itemId: 9301,
+  lotId: 9601,
+  receiptQty: 100,
+  uomId: 9501,
+  qualityStatusCode: 'SAMPLE_QUALITY_A',
+  inventoryStatusCode: 'SAMPLE_INVENTORY_A',
+  destinationLocationId: 9802,
+  inventoryTransactionLineId: 9903,
+  ...overrides,
+});
+
+describe('toGoodsReceiptResultView', () => {
+  it('업무 번호와 상태 코드를 옮긴다', () => {
+    const view = toGoodsReceiptResultView(goodsReceiptResult(), [goodsReceiptLine()]);
+
+    expect(view.goodsReceiptNo).toBe('GR-2026-800001');
+    expect(view.statusCode).toBe('SAMPLE_GR_STATUS_A');
+  });
+
+  /* **#44** — 내부 번호를 담을 자리가 없으면 결과 구획으로 샐 경로도 없다. */
+  it('내부 번호를 담을 자리가 없다', () => {
+    const view = toGoodsReceiptResultView(goodsReceiptResult(), [goodsReceiptLine()]);
+
+    for (const key of ['goodsReceiptId', 'goodsReceiptLineId', 'lotId', 'inventoryTransactionLineId']) {
+      expect(Object.keys(view)).not.toContain(key);
+    }
+  });
+
+  /*
+   * 계약이 `erpMessageQueued`를 선택 필드로 두었다 — **키가 없는 것을 참으로 접지 않는다.**
+   * 갈래를 가르는 것은 `erp-status.ts`이고 여기서는 값을 그대로 나른다.
+   */
+  it('ERP 적재 여부를 접지 않고 그대로 나른다', () => {
+    expect(
+      toGoodsReceiptResultView(goodsReceiptResult(), [goodsReceiptLine()]).erpMessageQueued,
+    ).toBeUndefined();
+    expect(
+      toGoodsReceiptResultView(goodsReceiptResult({ erpMessageQueued: false }), []).erpMessageQueued,
+    ).toBe(false);
+  });
+
+  it('원장 라인은 유무만 센다 — null과 키 없음을 함께 없는 것으로 본다', () => {
+    const view = toGoodsReceiptResultView(goodsReceiptResult(), [
+      goodsReceiptLine(),
+      goodsReceiptLine({ goodsReceiptLineId: 9904, inventoryTransactionLineId: null }),
+      goodsReceiptLine({ goodsReceiptLineId: 9905, inventoryTransactionLineId: undefined }),
+    ]);
+
+    expect(view.lineCount).toBe(3);
+    expect(view.ledgerLineCount).toBe(1);
+  });
+});
+
+describe('hasAnyDraftValue', () => {
+  it('아무것도 넣지 않았으면 버릴 것이 없다', () => {
+    expect(hasAnyDraftValue(EMPTY_RECEIPT_DRAFT)).toBe(false);
+  });
+
+  /* 한쪽만 보면 나머지가 확인 없이 사라진다 — 다섯 자리를 모두 본다. */
+  it.each([
+    ['warehouse', { warehouse: '9701' }],
+    ['location', { location: '9802' }],
+    ['receiptDatetime', { receiptDatetime: '2026-08-06T09:12' }],
+    ['remarks', { remarks: '합성 비고' }],
+  ] as const)('%s만 넣어도 버릴 것이 있다', (_name, patch) => {
+    expect(hasAnyDraftValue({ ...EMPTY_RECEIPT_DRAFT, ...patch })).toBe(true);
+  });
+
+  it('코드만 골라도 버릴 것이 있다', () => {
+    expect(
+      hasAnyDraftValue({
+        ...EMPTY_RECEIPT_DRAFT,
+        codes: { ...EMPTY_CODE_DRAFT, qualityStatus: 'SAMPLE_QUALITY_A' },
+      }),
+    ).toBe(true);
+  });
+
+  /* 공백만 친 비고는 보낼 값이 없다 — 그것 때문에 파기 확인을 띄우면 확인 창이 값을 잃는다. */
+  it('공백만 친 비고는 버릴 것으로 세지 않는다', () => {
+    expect(hasAnyDraftValue({ ...EMPTY_RECEIPT_DRAFT, remarks: '   ' })).toBe(false);
   });
 });

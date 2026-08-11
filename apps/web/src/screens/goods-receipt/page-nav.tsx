@@ -7,6 +7,8 @@ const t = messages.goodsReceipt;
 
 export interface PageNavProps {
   view: PageView;
+  /** 입고 처리를 보내는 중인가. 참이면 쪽을 옮기지 않는다 — 옮기면 고른 전표가 풀린다 */
+  isLocked: boolean;
   onChange: (page: number) => void;
 }
 
@@ -21,13 +23,13 @@ export interface PageNavProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const PageNav = ({ view, onChange }: PageNavProps) => (
+export const PageNav = ({ view, isLocked, onChange }: PageNavProps) => (
   <nav className="form-actions" aria-label={t.pageNav.label}>
     <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
     <Button
       variant="outlined"
       size="sm"
-      disabled={!view.canPrev}
+      disabled={!view.canPrev || isLocked}
       onClick={() => {
         onChange(view.page - 1);
       }}
@@ -37,7 +39,7 @@ export const PageNav = ({ view, onChange }: PageNavProps) => (
     <Button
       variant="outlined"
       size="sm"
-      disabled={!view.canNext}
+      disabled={!view.canNext || isLocked}
       onClick={() => {
         onChange(view.page + 1);
       }}

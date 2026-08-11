@@ -20,6 +20,7 @@ const renderBar = (overrides: Partial<IrFilterBarProps> = {}) => {
       appliedFilters={DEFAULT_FILTERS}
       supplierOptions={[{ value: '9101', label: SUPPLIER_LABEL }]}
       chipNames={{ supplier: SUPPLIER_LABEL }}
+      isLocked={false}
       onSearch={onSearch}
       onRemoveFilter={onRemoveFilter}
       onReset={onReset}
@@ -111,6 +112,7 @@ describe('IrFilterBar — 조건 줄', () => {
         appliedFilters={{ ...DEFAULT_FILTERS }}
         supplierOptions={[{ value: '9101', label: SUPPLIER_LABEL }]}
         chipNames={{ supplier: SUPPLIER_LABEL }}
+        isLocked={false}
         onSearch={vi.fn()}
         onRemoveFilter={vi.fn()}
         onReset={vi.fn()}
@@ -131,6 +133,7 @@ describe('IrFilterBar — 조건 줄', () => {
         appliedFilters={{ ...DEFAULT_FILTERS, q: 'IR-9999' }}
         supplierOptions={[{ value: '9101', label: SUPPLIER_LABEL }]}
         chipNames={{ supplier: SUPPLIER_LABEL }}
+        isLocked={false}
         onSearch={vi.fn()}
         onRemoveFilter={vi.fn()}
         onReset={vi.fn()}
@@ -182,5 +185,27 @@ describe('IrFilterBar — 조건 칩', () => {
     expect(
       screen.getByText(t.filters.chipPeriodBoth('2026-08-01', '2026-08-31')),
     ).toBeInTheDocument();
+  });
+
+  /*
+   * **M34의 한 겹** — 전송 중에 조건을 다시 걸면 고른 전표가 풀려, 앞 전표의 처리 결과가
+   * 다른 맥락에 나타난다.
+   */
+  it('전송 중에는 조회와 초기화가 잠긴다', () => {
+    renderBar({ isLocked: true });
+
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();
+  });
+
+  /*
+   * **조건 칸 자체는 잠그지 않는다**(배치 규범 3). 값을 고쳐도 누르기 전에는 조회가 나가지
+   * 않으므로 잠글 이유가 없고, 잠그면 지금 걸린 조건을 읽을 수만 있는 상태가 된다.
+   */
+  it('전송 중에도 조건 칸은 열려 있다', () => {
+    renderBar({ isLocked: true });
+
+    expect(screen.getByLabelText(t.fields.q)).not.toBeDisabled();
+    expect(screen.getByLabelText(t.fields.supplier)).not.toBeDisabled();
   });
 });

@@ -83,6 +83,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               초과 입하 분리
             </NavItem>
             {/*
+             * W-01-10 — **차례가 업무 순서다.** 도착을 처리한 뒤(초과 입하 분리) 창고로
+             * 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.
+             */}
+            <NavItem to="/logistics/goods-receipt" icon="inventory_2">
+              정상품 입하 처리
+            </NavItem>
+            {/*
              * W-01-07 — 같은 도메인이라 **섹션을 새로 만들지 않는다.** 계약 경로가
              * `/inventory/**`·`/trace/**`이지만 주소 앞머리는 이 섹션을 따른다.
              */}

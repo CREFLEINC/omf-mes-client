@@ -52,6 +52,26 @@ describe('toReference', () => {
     expect(toReference(source({ entries: [], isLoading: true }), 9101)).toEqual({ kind: 'loading' });
   });
 
+  /**
+   * **잘림을 네 갈래에 섞지 않는다.**
+   *
+   * 잘린 것은 「고를 수 없는 값이 생겼다」이지 「받은 이름을 믿을 수 없다」가 아니다.
+   * 「잘렸으니 확신할 수 없다 → 알 수 없음」으로 접으면 **정상 값에 *값이 잘못됐다*는 표를
+   * 붙이는 것**이라, 이 화면이 막으려는 #47을 잘림 쪽에서 되살린다.
+   * 잘렸다는 사실은 구획의 안내가 따로 밝힌다.
+   */
+  it('목록이 잘려도 그 안에 있는 값은 이름으로 낸다', () => {
+    expect(toReference(source({ truncated: true }), 9101)).toEqual({
+      kind: 'named',
+      label: 'SAMPLE-SUP-01 · 합성 공급사 가',
+    });
+  });
+
+  /* 짝 방향 — 잘린 목록에 **없는** 값은 그대로 「목록에 없음」이다. */
+  it('잘린 목록에 없는 값은 목록에 없음이다', () => {
+    expect(toReference(source({ truncated: true }), 9999)).toEqual({ kind: 'unknown' });
+  });
+
   /* 실패가 미도착보다 앞선다 — 둘이 함께 참인 순간이 있고, 사용자가 할 조치가 다르다. */
   it('실패가 미도착보다 앞선다', () => {
     expect(toReference(source({ isError: true, isLoading: true }), 9101)).toEqual({

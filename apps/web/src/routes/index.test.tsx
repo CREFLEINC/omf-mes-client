@@ -62,4 +62,12 @@ describe('appRouter', () => {
   it('초과 입하 분리가 자재창고 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/logistics/over-receipt-split');
   });
+
+  /*
+   * W-01-10의 계약 경로는 `/logistics/goods-receipts`(복수)인데 화면 주소는 단수다 —
+   * 주소는 **계약 리소스가 아니라 화면**을 가리키므로 다른 화면들과 같은 형태를 쓴다.
+   */
+  it('정상품 입하 처리가 자재창고 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/logistics/goods-receipt');
+  });
 });

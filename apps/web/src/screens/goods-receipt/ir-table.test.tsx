@@ -32,7 +32,12 @@ const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
 });
 
 const columnsWith = (supplierLookup: ReferenceSource = source()): Column<IrView>[] =>
-  buildIrColumns({ selectedIrId: null, supplierLookup, onToggleSelect: () => undefined });
+  buildIrColumns({
+    selectedIrId: null,
+    supplierLookup,
+    isLocked: false,
+    onToggleSelect: () => undefined,
+  });
 
 const renderTable = (overrides: Partial<IrTableProps> = {}) => {
   const onFirstPage = vi.fn<() => void>();
@@ -46,6 +51,7 @@ const renderTable = (overrides: Partial<IrTableProps> = {}) => {
       isBeyondLast={false}
       selectedIrId={null}
       supplierLookup={source()}
+      isLocked={false}
       onFirstPage={onFirstPage}
       onToggleSelect={onToggleSelect}
       onRetryReferences={onRetryReferences}
@@ -151,6 +157,37 @@ describe('IrTable — 대상 입하 전표 목록 표', () => {
     expect(
       screen.getByRole('button', { name: t.actions.deselectRow('IR-2026-900001') }),
     ).toBeInTheDocument();
+  });
+
+  /*
+   * **M34의 한 겹** — 전송 중에 대상을 바꾸면 앞 전표의 처리 결과가 지금 보는 전표의
+   * 맥락에 나타난다. 눈에 보이는 컨트롤을 전부 닫는다.
+   */
+  it('전송 중에는 행의 선택 버튼이 잠기고 눌러도 알리지 않는다', async () => {
+    const { onToggleSelect, user } = renderTable({ isLocked: true });
+
+    const button = screen.getByRole('button', { name: t.actions.selectRow('IR-2026-900001') });
+
+    expect(button).toBeDisabled();
+
+    await user.click(button);
+
+    expect(onToggleSelect).not.toHaveBeenCalled();
+  });
+
+  /* 짝 방향 — 전송 중이 아니면 열려 있다. */
+  it('전송 중이 아니면 선택 버튼이 열려 있다', () => {
+    renderTable();
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('IR-2026-900001') }),
+    ).not.toBeDisabled();
+  });
+
+  it('전송 중에는 첫 쪽으로 버튼도 잠긴다', () => {
+    renderTable({ rows: [], isBeyondLast: true, isLocked: true });
+
+    expect(screen.getByRole('button', { name: t.actions.goFirstPage })).toBeDisabled();
   });
 
   /* 「결과가 없다」와 「이 쪽에는 없다」는 사용자가 할 조치가 다르다. */
