@@ -22,8 +22,6 @@ import type { components } from '@omf-mes/api-client';
 export type ReceiptResponse = components['schemas']['GoodsReceipt'];
 export type ReceiptLineResponse = components['schemas']['GoodsReceiptLine'];
 
-type WarehouseResponse = components['schemas']['Warehouse'];
-
 export type PageMeta = components['schemas']['PageMeta'];
 
 /**
@@ -130,25 +128,14 @@ export interface SelectOption {
   label: string;
 }
 
-/**
- * 화면이 다루는 창고 한 건.
+/*
+ * **창고 전용 화면 타입을 두지 않는다.**
  *
- * **`plantId`를 담지 않는다.** 이 화면은 창고를 조건으로 쓰고 이름으로 보일 뿐이라 공장이
- * 쓰이는 자리가 없다 — 담으면 낼 수 있는 번호가 하나 는다.
+ * 이 화면에서 창고는 **이름으로만** 쓰인다 — 조건 줄의 선택지 · 목록 표의 칸 · 제목줄, 셋 다
+ * 「코드 · 이름」 한 줄이다. 그 변환은 참조 풀이가 이미 하고 있으므로(`lookups.ts`의
+ * `useWarehouseOptions`) 중간 타입을 하나 더 두면 **지나지 않는 변환기**가 남는다.
+ * 계획 §4.1의 PR ②·③ 표에도 창고를 값으로 다루는 자리가 없다(공급사는 거래처에서 고른다).
  */
-export interface WarehouseView {
-  warehouseId: number;
-  warehouseCode: string;
-  warehouseName: string;
-  isActive: boolean;
-}
-
-export const toWarehouseView = (data: WarehouseResponse): WarehouseView => ({
-  warehouseId: data.warehouseId,
-  warehouseCode: data.warehouseCode,
-  warehouseName: data.warehouseName,
-  isActive: data.isActive,
-});
 
 /** 계약의 date-time 문자열에서 표기용 조각을 뽑는다. */
 const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;

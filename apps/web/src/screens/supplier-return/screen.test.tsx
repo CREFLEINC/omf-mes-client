@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { QueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
@@ -314,12 +315,13 @@ const renderScreen = (
   hold: string[] = [],
 ): {
   requests: RecordedRequest[];
+  queryClient: QueryClient;
   release: () => void;
   user: ReturnType<typeof userEvent.setup>;
 } => {
   const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
-  renderWithProviders(
+  const { queryClient } = renderWithProviders(
     <>
       <SupplierReturnScreen />
       <LocationProbe />
@@ -329,11 +331,57 @@ const renderScreen = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, release, user: userEvent.setup() };
+  return { requests, queryClient, release, user: userEvent.setup() };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === pathname);
+
+/**
+ * 이 화면이 부를 수 있는 경로 전부.
+ *
+ * **여기 없는 경로로 나간 요청은 그 자체가 결함이다** — 경로마다 세는 단언은 **예상 경로 집합
+ * 밖으로** 나간 요청을 하나도 보지 못한다. 「고르지 않았는데 상세를 부른다」가 `…/0`처럼
+ * 대체값을 단 경로로 나가면 목록 계수에도 상세 계수에도 걸리지 않는다.
+ */
+const KNOWN_PATHS = [
+  LIST_PATH,
+  DETAIL_PATH,
+  OTHER_DETAIL_PATH,
+  MISSING_DETAIL_PATH,
+  WAREHOUSES_PATH,
+  ITEMS_PATH,
+  UOMS_PATH,
+  LOTS_PATH,
+  LOCATIONS_PATH,
+];
+
+/** 확립 규칙 「요청 계수는 경로 전체를 센다」의 단언 형태 — 기록만이 아니라 **판정도** 전체를 본다. */
+const expectNoUnknownPath = (requests: RecordedRequest[]): void => {
+  expect(
+    requests
+      .filter((request) => !KNOWN_PATHS.includes(request.url.pathname))
+      .map((request) => `${request.method} ${request.url.pathname}`),
+  ).toEqual([]);
+};
+
+/**
+ * 화면이 **쓸모없는 실패를 만들지 않았는가.**
+ *
+ * 성립하지 않는 조회를 불러 두면 요청이 나가지 않아도 그 쿼리는 실패로 앉는다 — 지금은
+ * 아래 구획이 그 실패보다 「아직 고르지 않았다」를 먼저 보아 눈에 띄지 않지만, 갈래 차례가
+ * 한 번만 바뀌면 **고르지도 않았는데 실패 배너가 서는** 화면이 된다.
+ * 요청 수만 세는 단언은 이 자리를 보지 못한다.
+ */
+const expectNoFailedQuery = (queryClient: QueryClient): void => {
+  expect(
+    queryClient
+      .getQueryCache()
+      .getAll()
+      .filter((query) => query.state.status === 'error')
+      .map((query) => JSON.stringify(query.queryKey)),
+  ).toEqual([]);
+};
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
@@ -735,6 +783,47 @@ describe('SupplierReturnScreen — 전표를 고른 뒤', () => {
     expect(lots[0]?.url.searchParams.get('size')).toBe(String(LOT_PAGE_SIZE));
   });
 
+  /**
+   * **미사용 값을 빼지 않고 받는다.** 빼면 그 값을 참조하는 과거 입고의 이름이 빈 채로
+   * 남아 **정상 값이 「알 수 없음」으로 보인다**(#47 계열). 자재 LOT에는 사용 여부 조건
+   * 자체가 없어 이 조건이 붙지 않는다.
+   */
+  it('참조 조회가 미사용까지 받는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await selectReceipt(user, 'GR-2026-900001');
+    await screen.findByText(LOCATION_LABEL);
+
+    for (const path of [WAREHOUSES_PATH, ITEMS_PATH, UOMS_PATH, LOCATIONS_PATH]) {
+      const sent = requestsTo(requests, path);
+
+      expect(sent).toHaveLength(1);
+      expect(sent[0]?.url.searchParams.get('includeInactive')).toBe('true');
+    }
+
+    /* 자재 LOT에는 사용 여부가 없다 — 없는 조건을 지어내 싣지 않는다. */
+    expect(requestsTo(requests, LOTS_PATH)[0]?.url.searchParams.has('includeInactive')).toBe(false);
+  });
+
+  /**
+   * **미사용 창고를 선택지에서 빼지 않고 표식만 붙인다** — 빼면 그 창고로 들어온 과거 입고를
+   * 조건으로 찾을 방법이 사라진다. 표식이 없으면 사용자가 지금 쓰는 창고와 구분하지 못한다.
+   */
+  it('미사용 창고를 선택지에 남기고 표식을 붙인다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await user.click(screen.getByLabelText(t.fields.warehouse));
+
+    expect(
+      screen.getByText(`SAMPLE-WH-02 · 합성 창고 나${t.values.inactiveSuffix}`),
+    ).toBeInTheDocument();
+    /* 짝 방향 — 쓰는 창고에는 표식이 붙지 않는다(목록 칸과 선택지 둘에서 보인다). */
+    expect(screen.getAllByText(WAREHOUSE_LABEL).length).toBeGreaterThan(0);
+    expect(screen.queryByText(`${WAREHOUSE_LABEL}${t.values.inactiveSuffix}`)).not.toBeInTheDocument();
+  });
+
   /** **M14** — 보류 중인 LOT에 표식이 붙고 푸는 수단이 화면 어디에도 없다(착수 이슈 §6). */
   it('보류 중인 LOT에 표식이 붙고 푸는 수단이 없다', async () => {
     const { user } = renderScreen(allRoutes());
@@ -866,6 +955,44 @@ describe('SupplierReturnScreen — 다시 조회', () => {
     expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
   });
 
+  /**
+   * 앞 단언은 **상세 경로 하나만** 센다 — 대체값을 단 경로(`…/0`)로 나가면 목록 계수에도
+   * 상세 계수에도 걸리지 않는다. 확립 규칙 「요청 계수는 경로 전체를 센다」를 **판정에도**
+   * 적용해, 이 화면이 부를 수 있는 경로 **집합 밖**으로 나간 요청을 잡는다.
+   */
+  it('고르지 않은 채 다시 조회해도 예상 밖 경로로 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes([changingListRoute()]));
+
+    await screen.findByText('GR-2026-900001');
+    await refresh(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH)).toHaveLength(2);
+    });
+
+    expectNoUnknownPath(requests);
+    /* 짝 방향 — 읽기는 실제로 나갔다(아무 요청도 없어서 통과한 것이 아니다). */
+    expect(requests.length).toBeGreaterThan(1);
+  });
+
+  /**
+   * 요청이 나가지 않는 것만으로는 모자란다. 성립하지 않는 조회를 **불러 두면** 그 쿼리가
+   * 실패로 앉고, 지금은 아래 구획이 그 실패보다 「아직 고르지 않았다」를 먼저 보아 눈에
+   * 띄지 않는다 — 갈래 차례가 한 번만 바뀌면 **고르지도 않았는데 실패 배너가 서는** 화면이 된다.
+   */
+  it('고르지 않은 채 다시 조회해도 쓸모없는 실패를 만들지 않는다', async () => {
+    const { queryClient, requests, user } = renderScreen(allRoutes([changingListRoute()]));
+
+    await screen.findByText('GR-2026-900001');
+    await refresh(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH)).toHaveLength(2);
+    });
+
+    expectNoFailedQuery(queryClient);
+  });
+
   /** 「다시 조회」는 값을 버리려고 누르는 것이 아니다 — 조건·쪽·선택을 하나도 바꾸지 않는다. */
   it('조건·쪽·고른 전표를 바꾸지 않는다', async () => {
     const { user } = renderScreen(allRoutes([changingListRoute()]), '?q=GR&page=2&gr=9001');
@@ -919,6 +1046,52 @@ describe('SupplierReturnScreen — 없는 전표', () => {
 
     await waitFor(() => {
       expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    });
+  });
+
+  /**
+   * 앞 단언은 **버튼 클릭**으로만 다시 고른다 — 그 길은 클릭 핸들러가 안내를 거두므로
+   * effect가 없어도 지나간다. effect가 **유일한 방어**인 것은 주소 경로(뒤로가기·앞으로가기·
+   * 주소 직접 편집)뿐이고, 거기서 안내가 남으면 **유효한 전표의 제목줄과 라인 표가 통째로
+   * 가려진다** — 화면이 있는 것을 없다고 말하게 된다(W-01-10 R-1이 지목한 형태).
+   */
+  it('주소로 유효한 번호를 넣어도 그 안내를 거둔다', async () => {
+    const { user } = renderScreen(allRoutes(), '?gr=9003', 'gr=9001');
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    /* 짝 방향 — 안내가 사라질 뿐 아니라 고른 전표가 실제로 열린다. */
+    expect(await screen.findByRole('group', { name: t.summary.label })).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **정리가 뒤로가기 기록을 늘리지 않는다.** 늘리면 뒤로 눌렀을 때 없는 전표를 가리키는
+   * 주소로 되돌아가 같은 정리가 되풀이되고, 사용자는 **앞 화면으로 빠져나갈 수 없다.**
+   */
+  it('404 정리가 뒤로가기 기록을 늘리지 않는다', async () => {
+    const { user } = renderScreen(allRoutes(), '?q=GR', 'gr=9003');
+
+    await screen.findByText('GR-2026-900001');
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    /* 한 칸 뒤로 가면 **없는 전표 주소가 아니라** 그 앞의 조회 상태로 돌아간다. */
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?q=GR`);
     });
   });
 

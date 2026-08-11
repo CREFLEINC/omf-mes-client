@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -224,12 +224,21 @@ describe('GrFilterBar — 조건 칩', () => {
    * **기간 칩에는 ×가 없다**(계획 §13-5 안 A) — 날짜 컨트롤이 값을 개별로 비우는 수단을
    * 주지 않아 눌러도 값이 남는다. 그 사실을 안내가 밝힌다.
    */
-  it('기간 칩에는 해제 버튼이 없고 그 사실을 밝힌다', () => {
+  /**
+   * **이름이 아니라 개수로 잰다.** 「입고일 조건 해제」라는 이름의 ×가 없는지만 보면
+   * **다른 이름을 단 ×를 놓친다** — 막으려는 것은 특정 문구가 아니라 눌러도 값이 남는
+   * 버튼이 기간 칩에 생기는 일이다.
+   */
+  it('기간 칩에만 해제 버튼이 없고 그 사실을 밝힌다', () => {
     renderBar({ appliedFilters: applied });
 
-    expect(
-      screen.queryByRole('button', { name: /입고일 조건 해제/ }),
-    ).not.toBeInTheDocument();
+    const chipRow = screen
+      .getByText(t.filters.chipPeriodBoth('2026-08-01', '2026-08-05'))
+      .closest('.filter-bar');
+
+    expect(chipRow).not.toBeNull();
+    /* 칩 다섯 중 넷만 ×를 갖는다 — 어떤 이름이든 하나가 더 붙으면 이 수가 어긋난다. */
+    expect(within(chipRow as HTMLElement).getAllByRole('button')).toHaveLength(4);
     expect(screen.getByText(t.filters.periodClearNote)).toBeInTheDocument();
   });
 

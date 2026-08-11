@@ -69,6 +69,28 @@ describe('useGoodsReceiptDetail', () => {
     expect(result.current.isError).toBe(false);
   });
 
+  /**
+   * **다시 부르기는 `enabled`를 보지 않는다**(설치본 실측) — 「다시 조회」가 성립하지 않는
+   * 조회를 불러도 요청이 나가서는 안 되고, 그것을 막는 것은 `queryFn`의 가드뿐이다.
+   * 마운트만 재는 앞 감지기는 이 경로를 지나가지 않으므로 **여기서 단독으로 잰다.**
+   *
+   * 실패 상태로 앉는 것까지 막는 것은 이 가드의 몫이 아니다 — 그것은 부르는 쪽이 막고,
+   * 화면 수준 감지기가 「쓸모없는 실패를 만들지 않는다」로 잰다.
+   */
+  it('고르지 않은 채 다시 불러도 요청이 나가지 않는다', async () => {
+    const { fetch, paths } = recordingFetch();
+    const { result } = renderHookWithProviders(() => useGoodsReceiptDetail(null), { fetch });
+
+    await settle();
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+    await settle();
+
+    expect(paths).toEqual([]);
+  });
+
   /** 짝 방향 — 고르면 실제로 나간다(아무것도 안 불러서 통과한 것이 아니다). */
   it('고르면 그 전표의 경로로 한 번 나간다', async () => {
     const { fetch, paths } = recordingFetch();

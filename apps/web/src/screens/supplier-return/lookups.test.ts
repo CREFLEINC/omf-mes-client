@@ -120,11 +120,24 @@ describe('isLotHeld', () => {
    * **모르는 것을 「보류 아님」으로 말하지 않는다** — 표식을 내지 않을 뿐이다.
    * 그 칸의 이름 표기가 이미 「아직 못 풀었다」를 네 갈래로 말하고 있다.
    */
+  /**
+   * **부분 자료로 표식을 붙이지 않는다.**
+   *
+   * 미도착·실패 갈래를 `entries: []`로 두면 가드가 있으나 없으나 `find()`가 `undefined`를 주어
+   * **그 가드가 재어지지 않는다.** 실제로는 자재 LOT을 **품목마다** 조회하므로(`useLotOptions`)
+   * 품목 둘 중 하나만 실패하거나 늦게 오면 **`isError`·`isLoading`이 참인데 `entries`는 차
+   * 있는** 상태가 된다. 그때 가드가 없으면 이름 칸에는 「불러오기 실패」를 내면서 그 옆에
+   * 보류 표식을 붙이는 어긋난 두 말이 나온다 — 그래서 **차 있는 상태로** 잰다.
+   */
   it.each([
     ['목록에 없음', lotSource({ entries: [] })],
-    ['미도착', lotSource({ entries: [], isLoading: true })],
-    ['실패', lotSource({ isError: true, entries: [] })],
+    ['일부만 도착', lotSource({ isLoading: true })],
+    ['일부가 실패', lotSource({ isError: true })],
   ])('%s이면 표식을 내지 않는다', (_case, given) => {
+    /* 짝 방향 — 뒤 둘은 그 번호가 목록에 **있는** 상태다(없어서 통과한 것이 아니다). */
+    expect(given.entries.some((entry) => entry.value === '9602' && entry.held)).toBe(
+      given.entries.length > 0,
+    );
     expect(isLotHeld(given, 9602)).toBe(false);
   });
 });
