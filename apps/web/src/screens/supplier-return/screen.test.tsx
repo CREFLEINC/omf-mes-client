@@ -1158,12 +1158,14 @@ describe('SupplierReturnScreen — 다시 조회', () => {
     await openReceipt(user);
     await screen.findAllByText(t.lineTable.onHandQtyPair(ON_HAND_9601, UOM_LABEL));
 
-    const before = requestsTo(requests, BALANCES_PATH).length;
+    /* 라인이 가리키는 품목이 둘이라 한 벌이 2건이다. */
+    expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(2);
 
     await refresh(user);
 
+    /* 한 벌이 더 나간다 — 더도 덜도 아니다(다시 부르기가 폭주하지 않는다). */
     await waitFor(() => {
-      expect(requestsTo(requests, BALANCES_PATH).length).toBeGreaterThan(before);
+      expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(4);
     });
 
     /* 값이 실제로 갱신됐는지까지 본다 — 요청 수만 세면 응답을 버리는 결함을 놓친다. */
