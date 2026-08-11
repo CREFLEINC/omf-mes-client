@@ -151,4 +151,23 @@ describe('SummaryPane — 요약 4칸', () => {
 
     expect(within(summaryGroup()).getAllByText(t.detail.countUnit)).toHaveLength(4);
   });
+
+  /*
+   * **S-2**(PR ② 착수 조건) — `StatCard`의 **`status`(색 점)와 `delta`를 쓰지 않는다**는 규칙이
+   * 부품 주석에만 있고 세는 자리가 없었다. 색만으로 「마감할 수 있다/없다」를 전하면 명도 대비·
+   * 색각 이상에서 뜻이 사라지고, 증감은 견줄 앞 값이 없어 지어내는 것이 된다. 판정의 정본은
+   * 마감 버튼의 사유 텍스트다(PR ④).
+   *
+   * **접근 이름으로 재지 않는다.** 설치본은 `role`·`aria-label`을 `statusLabel`이 있을 때만
+   * 붙이므로 `status`만 붙은 형태는 접근 이름이 생기지 않아 빠져나간다 — 늘 렌더되는
+   * `data-status`(상태 점)와 `data-direction`(증감)을 잣대로 쓴다.
+   */
+  it('요약 4칸에 상태 점과 증감 표시를 붙이지 않는다', () => {
+    const { container } = renderPane();
+
+    /* 짝 방향 — 네 칸이 실제로 그려졌다(아무것도 안 그려서 통과하는 것이 아니다). */
+    expect(within(summaryGroup()).getAllByText(t.detail.countUnit)).toHaveLength(4);
+    expect(container.querySelectorAll('[data-status]')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-direction]')).toHaveLength(0);
+  });
 });

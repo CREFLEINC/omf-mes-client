@@ -101,6 +101,21 @@ describe('buildCountColumns — 열 구성과 폭', () => {
       CODE_NAME_COLUMN_PX,
     );
   });
+
+  /*
+   * **S-1**(PR ② 착수 조건) — **정렬을 열지 않는다**는 규칙이 부품 주석에만 있고 세는 자리가
+   * 없었다. 디자인 시스템 `Table`에는 서버 정렬 배선이 있으나 **계약의 실사 목록 조회에 `sort`
+   * 쿼리가 없다**(실측 — 어긋남 3). 열에 `sortable: true`를 붙이면 헤더가 button이 되어 누를 수
+   * 있게 되는데, 눌러도 서버는 그 조건을 모르고 화면은 **지금 쪽 안에서만** 다시 늘어놓는다 —
+   * 사용자에게는 「정렬했는데 다른 쪽의 값이 안 따라온다」로 보인다.
+   */
+  it('어느 열도 정렬을 열지 않는다', () => {
+    const columns = columnsWith();
+
+    /* 짝 방향 — 열이 실제로 일곱이다(열이 없어서 통과하는 것이 아니다). */
+    expect(columns).toHaveLength(7);
+    expect(columns.filter((column) => column.sortable === true)).toEqual([]);
+  });
 });
 
 describe('CountTable — 값 표기', () => {
