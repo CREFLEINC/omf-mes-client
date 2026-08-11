@@ -116,6 +116,19 @@ describe('toOnHand — 창고+LOT 합계를 상한으로 만든다', () => {
   });
 
   /**
+   * **잘림이 「목록에 없음」보다 앞선다.** 잘린 목록에서 못 찾은 것을 「그 LOT이 없다」로
+   * 판정하면 **못 받은 것을 없는 것으로 뭉개는** 것이다(#47) — 받은 쪽에 그 LOT이 없는 것은
+   * 잘린 뒤쪽에 있다는 뜻일 수 있다. 앞 잣대는 「찾은」 갈래라 이 순서를 지나가지 않는다.
+   */
+  it('잘렸고 받은 목록에 그 LOT이 없어도 잘림으로 낸다', () => {
+    const source = balanceSource([
+      itemBalance({ entries: [entry({ lotId: 9602 })], truncated: true }),
+    ]);
+
+    expect(toOnHand(source, line)).toEqual({ kind: 'unknown', reason: 'truncated' });
+  });
+
+  /**
    * **실패를 「목록에 없음」으로 말하지 않는다**(#47의 갈래). 못 받은 것과 0인 것은 사용자가
    * 할 판단이 다르다 — 실패는 다시 시도로 풀리고 0은 풀리지 않는다.
    */

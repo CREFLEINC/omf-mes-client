@@ -401,6 +401,44 @@ describe('GrLineTable — 줄 선택', () => {
     expect(screen.queryByText(t.reasons.lineMissingValues)).not.toBeInTheDocument();
   });
 
+  /**
+   * **사유는 줄마다 갈린다.** 잠긴 줄이 둘 이상일 때 `id`가 같으면 ⓐ 같은 `id`가 DOM에 여럿
+   * 생기고 ⓑ 둘째 줄의 두 컨트롤이 **첫 줄의 사유**를 가리켜 **틀린 사유를 읽어 준다** —
+   * 사유가 두 갈래(값 없음 / 수량 0 이하)라 실제로 어긋난 안내가 만들어진다.
+   *
+   * 기본 픽스처에는 잠기는 줄이 하나뿐이라 이 상태 자체가 만들어지지 않았다.
+   */
+  it('잠긴 줄이 둘이면 각 줄의 두 칸이 자기 줄의 사유를 가리킨다', () => {
+    const rows = toReturnLineRows(
+      [
+        goodsReceiptLine({ goodsReceiptLineId: 9404, lotId: 0 }),
+        goodsReceiptLine({ goodsReceiptLineId: 9405, receiptQty: 0 }),
+      ],
+      EMPTY_LINE_DRAFT,
+      balanceSource(),
+    );
+
+    renderTable({ rows });
+
+    const firstId = selectBox(1).getAttribute('aria-describedby') ?? '';
+    const secondId = selectBox(2).getAttribute('aria-describedby') ?? '';
+
+    expect(firstId).not.toBe('');
+    expect(firstId).not.toBe(secondId);
+
+    /* 같은 `id`가 둘 이상 생기지 않는다 — 무엇을 가리키는지가 갈린다. */
+    for (const id of [firstId, secondId]) {
+      expect([...document.querySelectorAll('[id]')].filter((node) => node.id === id)).toHaveLength(1);
+    }
+
+    expect(document.getElementById(firstId)?.textContent).toBe(t.reasons.lineMissingValues);
+    expect(document.getElementById(secondId)?.textContent).toBe(t.reasons.lineQtyNotPositive);
+
+    /* 수량 칸도 같은 짝을 가리킨다 — 한 줄 안에서 두 컨트롤이 사유를 공유하는 형태다. */
+    expect(qtyBox(1).getAttribute('aria-describedby')).toContain(firstId);
+    expect(qtyBox(2).getAttribute('aria-describedby')).toContain(secondId);
+  });
+
   /** 값이 빠진 줄은 다른 사유로 잠긴다 — 두 사유가 갈려야 사용자가 원인을 안다. */
   it('값이 빠진 줄은 그 사유로 잠긴다', () => {
     renderTable({

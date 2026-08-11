@@ -73,6 +73,22 @@ describe('parseReturnQty — 세 갈래를 가른다', () => {
     });
   });
 
+  /**
+   * **`Number()`를 쓰는 이유가 이 자리다.** `parseFloat`는 꼬리 쓰레기를 잘라 `'10abc'`를
+   * `10`으로 읽는다 — 사용자가 잘못 친 값이 **조용히 다른 수량으로** 나가게 된다.
+   * 「숫자가 아니다」를 `'abc'`류로만 재면 두 함수가 같은 답을 내는 입력만 지나간다.
+   */
+  it('꼬리에 글자가 붙은 수를 받지 않는다', () => {
+    expect(parseReturnQty('10abc')).toEqual({
+      kind: 'invalid',
+      message: t.errors.qtyNotNumber,
+    });
+    expect(parseReturnQty('10 20')).toEqual({
+      kind: 'invalid',
+      message: t.errors.qtyNotNumber,
+    });
+  });
+
   /** 「0.」은 소수를 치는 도중이다 — 숫자로 읽히고 0이므로 양수 사유로 막힌다. */
   it('치는 도중의 0.도 양수 사유로 막는다', () => {
     expect(parseReturnQty('0.')).toEqual({
