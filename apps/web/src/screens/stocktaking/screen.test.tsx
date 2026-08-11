@@ -1276,6 +1276,32 @@ describe('StocktakingScreen — 다시 조회', () => {
   });
 
   /*
+   * **같은 규칙이 라인까지 닿는다**(PR ③에서 늘어난 축). 라인을 빼고 다시 부르면 **다른
+   * 사람이 그 위치를 치환한 뒤에도 화면의 줄 집합이 낡은 채로 남고**, 낡은 줄로 저장하면
+   * 없어진 줄을 되살리거나 새 줄을 미실사로 되돌린다 — 치환이 파괴적이라 목록·상세보다
+   * 결과가 더 나쁘다.
+   */
+  it('위치까지 골랐으면 라인도 함께 다시 부른다', async () => {
+    const { requests, user } = await setupAtLocation();
+
+    const listBefore = requestsTo(requests, LIST_PATH).length;
+    const detailBefore = requestsTo(requests, DETAIL_PATH).length;
+    const linesBefore = lineRequests(requests).filter((request) => request.method === 'GET').length;
+
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    await waitFor(() => {
+      expect(
+        lineRequests(requests).filter((request) => request.method === 'GET').length,
+      ).toBeGreaterThan(linesBefore);
+    });
+
+    /* 셋이 함께 간다 — 하나만 빠져도 낡은 값과 새 값이 한 화면에 섞인다. */
+    expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(listBefore);
+    expect(requestsTo(requests, DETAIL_PATH).length).toBeGreaterThan(detailBefore);
+  });
+
+  /*
    * 짝 방향 — **고른 실사가 없으면 상세를 부를 대상이 없다.** 이 단언이 없으면
    * 「전부 다시 부른다」가 「아무 때나 부른다」로 넓어져도 드러나지 않는다.
    */
