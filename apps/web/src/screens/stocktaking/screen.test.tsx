@@ -4031,13 +4031,16 @@ describe('StocktakingScreen — 마감 성공', () => {
 
     await selectCount(user, 'IC-2026-900013');
 
+    /*
+     * **새 실사의 상세가 도착한 뒤에 잰다.** 결과 구획은 주소가 바뀌는 즉시 사라지지만 마감
+     * 버튼은 상세가 와야 그려진다 — 사라짐만 기다리고 버튼을 동기로 찾으면 **아직 스켈레톤인
+     * 판에서만 깨지는** 잣대가 된다.
+     */
     await waitFor(() => {
-      expect(
-        screen.queryByRole('status', { name: t.result.closedLabel }),
-      ).not.toBeInTheDocument();
+      expect(closeButton()).not.toBeDisabled();
     });
 
-    expect(closeButton()).not.toBeDisabled();
+    expect(screen.queryByRole('status', { name: t.result.closedLabel })).not.toBeInTheDocument();
     expect(screen.queryByText(t.empty.closedTitle)).not.toBeInTheDocument();
   });
 
@@ -4057,10 +4060,14 @@ describe('StocktakingScreen — 마감 성공', () => {
     await closeCount(user);
     await screen.findByRole('status', { name: t.result.closedLabel });
 
+    /*
+     * **둘을 한 기다림 안에서 잰다.** 무효화 둘이 함께 나가지만 도착 차례는 정해져 있지 않다 —
+     * 하나만 기다리고 다른 하나를 동기로 단언하면 **차례가 뒤집힌 판에서만 깨지는** 잣대가 된다.
+     */
     await waitFor(() => {
       expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(listBefore);
+      expect(requestsTo(requests, DETAIL_PATH).length).toBeGreaterThan(detailBefore);
     });
-    expect(requestsTo(requests, DETAIL_PATH).length).toBeGreaterThan(detailBefore);
   });
 
   /* 「다시 조회」는 대상을 바꾸지 않는다 — 마감 결과가 남는다(수명 표 10행). */
@@ -4455,8 +4462,11 @@ describe('StocktakingScreen — 마감 중 잠금', () => {
     });
 
     expect(screen.queryByRole('status', { name: t.result.closedLabel })).not.toBeInTheDocument();
-    /* 짝 방향 — 지금 보는 실사(9003)는 마감할 수 있다. */
-    expect(closeButton()).not.toBeDisabled();
+
+    /* 짝 방향 — 지금 보는 실사(9003)는 마감할 수 있다(그 상세가 도착한 뒤에 잰다). */
+    await waitFor(() => {
+      expect(closeButton()).not.toBeDisabled();
+    });
 
     /*
      * **그러나 마감한 사실은 남아 있다.** 되돌아온 9001은 이미 마감됐으므로 다시 마감할 수
