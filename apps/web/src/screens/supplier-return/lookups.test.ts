@@ -1,11 +1,15 @@
 import { messages } from '@omf-mes/i18n';
+import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
+import { locationFixtures } from './fixtures';
 import {
   describeReference,
   isLotHeld,
   lookupNote,
   toReference,
+  useLocationOptions,
   type LotReferenceSource,
   type ReferenceSource,
 } from './lookups';
@@ -122,5 +126,72 @@ describe('isLotHeld', () => {
     ['실패', lotSource({ isError: true, entries: [] })],
   ])('%s이면 표식을 내지 않는다', (_case, given) => {
     expect(isLotHeld(given, 9602)).toBe(false);
+  });
+});
+
+/**
+ * 적치 위치 조회의 **성립 조건**을 재는 자리.
+ *
+ * 상세 조회와 같은 형태로 두 겹이다 — **① `enabled`**(창고가 없으면 조회 자체를 열지 않는다)와
+ * **② `queryFn`의 가드**. 화면 수준에서 요청 수만 세면 ①을 떼어도 ②가 요청을 막아 아무
+ * 단언도 실패하지 않는다. 계약이 창고를 **필수 쿼리**로 두었으므로 ①이 풀린 채 ②가 대체값으로
+ * 바뀌면 **화면이 스스로 만든 실패**를 사용자에게 보이게 된다. 여기서 ①을 단독으로 잰다.
+ */
+const LOCATIONS_PATH = '/mdm/locations';
+
+const locationsRoute = {
+  match: (request: Request): boolean =>
+    request.method === 'GET' && new URL(request.url).pathname === LOCATIONS_PATH,
+  respond: (): Response =>
+    jsonResponse({ items: locationFixtures, page: { page: 1, size: 50, total: locationFixtures.length } }),
+};
+
+const recordingFetch = (): { fetch: ReturnType<typeof createStubFetch>; paths: string[] } => {
+  const paths: string[] = [];
+  const stub = createStubFetch([locationsRoute]);
+
+  return {
+    paths,
+    fetch: async (request) => {
+      paths.push(new URL(request.url).pathname);
+
+      return stub(request);
+    },
+  };
+};
+
+/**
+ * 던져진 실패가 상태로 앉을 시간을 준다 — **동기로 곧바로 단언하면 놓친다.**
+ * `queryFn`이 던져도 그 실패는 마이크로태스크를 한 바퀴 돈 뒤에야 쿼리 상태가 된다.
+ */
+const settle = async (): Promise<void> => {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  });
+};
+
+describe('useLocationOptions', () => {
+  it('창고가 없으면 조회가 서지 않는다', async () => {
+    const { fetch, paths } = recordingFetch();
+    const { result } = renderHookWithProviders(() => useLocationOptions(null), { fetch });
+
+    await settle();
+
+    expect(paths).toEqual([]);
+    /* 조회가 **아예 서지 않았다** — 섰다가 가드에 막힌 것이 아니다. */
+    expect(result.current.isError).toBe(false);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  /** 짝 방향 — 창고가 있으면 그 조건으로 실제로 나간다. */
+  it('창고가 있으면 그 창고로 조회한다', async () => {
+    const { fetch, paths } = recordingFetch();
+    const { result } = renderHookWithProviders(() => useLocationOptions(9701), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries.length).toBe(locationFixtures.length);
+    });
+
+    expect(paths).toEqual([LOCATIONS_PATH]);
   });
 });
