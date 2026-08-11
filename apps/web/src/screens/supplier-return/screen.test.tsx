@@ -1452,6 +1452,35 @@ describe('SupplierReturnScreen — 보유 수량 조회', () => {
     expectNoFailedQuery(queryClient);
   });
 
+  /**
+   * **미도착을 「확인하지 못함」으로 말하지 않는다**(#47의 갈래 · PR ① R-5와 같은 형태).
+   *
+   * 훅의 `isLoading` 배선이 끊기면 잔액이 오는 중인 줄이 **상한을 못 구한 줄**로 찍히고,
+   * 「막지 않습니다」 안내까지 함께 선다 — 사용자는 화면이 재어 주지 못한다고 읽는데 사실은
+   * 오는 중이다. 부품에 값을 넣어 재는 테스트는 이 **계산**을 지나가지 않는다.
+   */
+  it('잔액이 아직 오지 않은 동안 확인하지 못함으로 내지 않는다', async () => {
+    const { release, user } = renderScreen(allRoutes(), '', '', [BALANCES_PATH]);
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+
+    expect(screen.getAllByText(t.values.onHandLoading).length).toBe(
+      goodsReceiptLineFixtures.length,
+    );
+    expect(screen.queryByText(t.values.onHandUnknown)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.reasons.onHandUnknownNote)).not.toBeInTheDocument();
+
+    release();
+
+    /* 짝 방향 — 도착하면 실제로 수량이 선다(늘 「불러오는 중」이라 통과한 것이 아니다). */
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(t.lineTable.onHandQtyPair(ON_HAND_9601, UOM_LABEL)).length,
+      ).toBeGreaterThan(0);
+    });
+  });
+
   /** **M23** — 못 구한 상한을 0이나 무제한으로 읽으면 막거나 다 통과한다. */
   it('그 LOT의 잔액이 없는 줄은 확인하지 못함으로 낸다', async () => {
     const { user } = renderScreen(allRoutes());

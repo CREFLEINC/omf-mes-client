@@ -324,11 +324,17 @@ describe('GrLineTable — LOT 보류 표식', () => {
 });
 
 describe('GrLineTable — 줄 선택', () => {
-  it('고를 수 있는 줄마다 선택칸이 있다', () => {
+  /**
+   * **부정 방향의 짝** — 「고를 수 없는 줄은 잠긴다」만 재면 **전부 잠가도** 통과한다.
+   * 두 칸이 다 열려 있는 줄이 실제로 있어야 잠금이 조건부임을 잰 것이 된다.
+   */
+  it('고를 수 있는 줄의 두 칸은 잠기지 않는다', () => {
     renderTable();
 
     expect(selectBox(1)).toBeEnabled();
     expect(selectBox(2)).toBeEnabled();
+    expect(qtyBox(1)).toBeEnabled();
+    expect(qtyBox(2)).toBeEnabled();
   });
 
   it('누르면 그 줄의 번호로 알린다', async () => {
