@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
 import type { CodeValueFormValues } from './code-value-types';
+import { DateField } from './date-field';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 
@@ -61,8 +62,6 @@ export const CodeValueFormPane = ({
   const codeId = useId();
   const nameId = useId();
   const orderId = useId();
-  const fromId = useId();
-  const toId = useId();
 
   return (
     <section className="pane" aria-label={t.formPaneTitle}>
@@ -111,28 +110,23 @@ export const CodeValueFormPane = ({
           />
         </div>
 
-        {/* 계약이 널을 허용한다 — 비우는 것이 정상 값이라 필수 표시를 붙이지 않는다. */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={fromId} label={t.fields.effectiveFrom} />
-          <TextField
-            id={fromId}
-            type="date"
-            value={values.effectiveFrom}
-            onChange={(event) => onChange({ effectiveFrom: event.target.value })}
-            error={fieldErrors.effectiveFrom}
-          />
-        </div>
+        {/*
+         * 날짜 입력은 DS `DatePicker`다(변경 통지 #63).
+         * 계약이 널을 허용한다 — 비우는 것이 정상 값이라 필수 표시를 붙이지 않는다.
+         */}
+        <DateField
+          label={t.fields.effectiveFrom}
+          value={values.effectiveFrom}
+          onChange={(effectiveFrom) => onChange({ effectiveFrom })}
+          error={fieldErrors.effectiveFrom}
+        />
 
-        <div className="field-cell">
-          <FieldLabel htmlFor={toId} label={t.fields.effectiveTo} />
-          <TextField
-            id={toId}
-            type="date"
-            value={values.effectiveTo}
-            onChange={(event) => onChange({ effectiveTo: event.target.value })}
-            error={fieldErrors.effectiveTo}
-          />
-        </div>
+        <DateField
+          label={t.fields.effectiveTo}
+          value={values.effectiveTo}
+          onChange={(effectiveTo) => onChange({ effectiveTo })}
+          error={fieldErrors.effectiveTo}
+        />
       </div>
 
       <div className="form-actions">
