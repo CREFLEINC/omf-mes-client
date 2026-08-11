@@ -302,6 +302,31 @@ const lookupRoutes = (): StubRoute[] => [
   locationsRoute(),
 ];
 
+/**
+ * 부를 때마다 **고르지 않은 줄의 값이 달라지는** 라인 응답.
+ *
+ * 고른 줄(9401)은 그대로 두어 **대상은 바뀌지 않은 채 초안 되돌림만 깨어나는** 상태를 만든다 —
+ * 확인 창이 열린 동안 라인 응답이 다시 도착하면 실제로 일어나는 일이다.
+ */
+const changingLinesRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, LINES_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse({
+        items: inboundReceiptLineFixtures.map((line) =>
+          line.inboundReceiptLineId === 9402
+            ? { ...line, expiryDate: `2027-08-0${String(call)}` }
+            : line,
+        ),
+      });
+    },
+  };
+};
+
 /** 다시 부르면 품목 이름이 달라진 뒤의 표기. 참조가 **실제로 다시 도착했는지**를 재는 잣대다. */
 const CHANGED_ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 품목 가(갱신)';
 
@@ -1974,6 +1999,46 @@ describe('GoodsReceiptScreen — 제출 확인 창', () => {
     expect(postButton()).toBeDisabled();
     expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsWarehouse);
     expect(postRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * **보내는 자리의 재검사가 홀로 서는 자리.**
+   *
+   * 라인 응답이 다시 도착하면 초안이 되돌아간다(수명 표 7·9행의 짝 — 대상이 그대로라
+   * 창을 닫는 effect는 깨어나지 않는다). 즉 **창은 열려 있는데 초안은 비어 있는 상태**가
+   * 실제로 만들어진다. 여기서 확인을 누르면, 보내는 자리가 다시 보지 않는 한
+   * 빈 코드·번호 0으로 되돌릴 수 없는 전표가 나간다.
+   */
+  it('확인 창이 열린 동안 초안이 비워지면 확인해도 요청이 나가지 않는다', async () => {
+    fillCodeLists();
+
+    const { user, queryClient, requests } = renderScreen(
+      allRoutes([changingLinesRoute()]),
+      '?ir=9001&line=9401',
+    );
+
+    await screen.findAllByText(ITEM_LABEL);
+    await fillDraft(user);
+    await clickPost(user);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: irKeys.lines(9001) });
+    });
+    /* 새 라인 응답이 실제로 적용된 뒤에 본다 — 적용 전에 검사하면 늘 참인 단언이 된다. */
+    await screen.findByText('2027-08-02');
+
+    /* 대상은 그대로다 — 창을 닫는 effect가 깨어나지 않았음을 값으로 밝힌다. */
+    expect(currentLocation()).toContain('line=9401');
+
+    await confirmPost(user);
+
+    expect(postRequests(requests)).toHaveLength(0);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    /* 짝 방향 — 왜 나가지 않았는지가 화면에 남는다. */
+    expect(postButton()).toBeDisabled();
+    expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsWarehouse);
   });
 
   /* 대상이 그대로면 창이 남아 있어야 한다 — 늘 닫으면 확인 창 자체가 쓸모없어진다. */
