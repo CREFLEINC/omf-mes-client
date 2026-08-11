@@ -3769,6 +3769,37 @@ describe('StocktakingScreen — 마감 확인 창', () => {
   });
 
   /*
+   * **창이 「가려진」 것과 「닫힌」 것을 가른다.**
+   *
+   * 위 다섯 축 가운데 조건 변경·초기화·쪽 이동은 `ct`를 비우는데, 그러면 상세가 사라지면서
+   * 창도 **함께 보이지 않게 된다** — 수명 규칙이 없어도 그 세 축의 단언은 통과한다.
+   * 창의 열림 상태가 남아 있는지는 **대상을 다시 고르는 순간** 드러난다: 남아 있으면 상세가
+   * 돌아오면서 **확인 창이 다른 맥락에 되붙는다.** 사용자는 자기가 언제 연 창인지 모른 채
+   * 「실사 마감 실행」을 누른다.
+   */
+  it('조건을 바꿔 실사가 풀린 뒤 다시 골라도 마감 창이 서지 않는다', async () => {
+    const { requests, user } = await setupClosable();
+
+    await user.click(closeButton());
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.click(within(listPane()).getByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    /* 같은 실사를 다시 고른다 — 상세가 돌아오면 가려져 있던 창이 되살아난다. */
+    await selectCount(user, 'IC-2026-900011');
+
+    await screen.findByRole('group', { name: t.detail.summaryLabel });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(closeRequests(requests)).toHaveLength(0);
+  });
+
+  /*
    * 두 겹의 둘째 — **보내는 자리가 스스로 한 번 더 본다**(계획 결정 3의 구현 규칙 4).
    *
    * 창이 열린 사이 **상세가 다시 도착해 요약이 바뀌면** 버튼의 판정은 이미 낡았다. 다른
