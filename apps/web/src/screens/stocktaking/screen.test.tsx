@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -12,11 +12,18 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  blindCountLineResponse,
   countDetailBody,
   countFixtures,
+  countLineFixtures,
+  itemFixtures,
+  LOCATION_ID,
+  locationFixtures,
+  lotFixtures,
   OPENED_COUNT_ID,
   OPENED_COUNT_NO,
   openedCountDetailBody,
+  uomFixtures,
   warehouseFixtures,
 } from './fixtures';
 import { StocktakingScreen } from './screen';
@@ -74,15 +81,26 @@ const OPENED_DETAIL_PATH = `/inventory/counts/${String(OPENED_COUNT_ID)}`;
 const MISSING_DETAIL_PATH = '/inventory/counts/9999';
 const WAREHOUSES_PATH = '/mdm/warehouses';
 
+const LINES_PATH = '/inventory/counts/9001/lines';
+const OTHER_LINES_PATH = '/inventory/counts/9003/lines';
+const LOCATIONS_PATH = '/mdm/locations';
+const ITEMS_PATH = '/mdm/items';
+const UOMS_PATH = '/mdm/uoms';
+const LOTS_PATH = '/trace/lots';
+
 /**
- * 이 화면이 **뒤 PR에서** 부를 경로들. **지금은 부르지 않는다** — 그것을 증명하려고 스텁을 둔다.
+ * 이 화면이 **PR ④에서** 부를 경로. **지금은 부르지 않는다** — 그것을 증명하려고 스텁을 둔다.
  *
  * 스텁을 두지 않으면 하네스가 던져 「부르지 않았다」와 「불렀는데 실패했다」가 구분되지 않는다.
- * 쓰기 셋을 전부 두는 것이 **C13의 잣대**다 — 기록된 모든 요청의 method가 GET이어야 한다.
  */
-const LINES_PATH = '/inventory/counts/9001/lines';
-const LOCATIONS_PATH = '/mdm/locations';
 const CLOSE_PATH = '/inventory/counts/9001:close';
+
+/**
+ * **어느 실사의 것이든** 라인 경로. 번호 자리를 열어 두는 것이 요점이다 —
+ * `enabled` 가드가 무너지면 `…/0/lines`·`…/undefined/lines`로 나가는데, `9001` 하나만 세는
+ * 단언은 그것을 보지 못한다(PR ① 검증 담당의 승계 3 — 경로 접두 계수를 M33에 그대로 적용).
+ */
+const LINES_PATH_PATTERN = /^\/inventory\/counts\/[^/]+\/lines$/;
 
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 창고 가';
 const INACTIVE_WAREHOUSE_LABEL = 'SAMPLE-WH-03 · 합성 창고 다';
@@ -284,19 +302,135 @@ const openThenForbiddenRoute = (): StubRoute => {
   };
 };
 
-/** 뒤 PR의 경로들. **부를 수 있게 두는 것이 요점이다** — 부르지 않음을 증명할 수 있어야 한다. */
-const futureRoutes = (): StubRoute[] => [
-  { match: (request) => isGet(request, LINES_PATH), respond: () => jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } }) },
-  { match: (request) => isGet(request, LOCATIONS_PATH), respond: () => jsonResponse(listBody([])) },
-  {
-    match: (request) => request.method === 'PUT' && new URL(request.url).pathname === LINES_PATH,
-    respond: () => jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } }),
+/** 라인 목록 응답. `page.total`이 받은 건수보다 크면 **잘린 것**이다(계획 결정 8). */
+const lineListBody = (items: unknown[], total = items.length) => ({
+  items,
+  page: { page: 1, size: 200, total },
+});
+
+const linesRoute = (
+  pathname = LINES_PATH,
+  items: unknown[] = countLineFixtures,
+  total?: number,
+): StubRoute => ({
+  match: (request) => isGet(request, pathname),
+  respond: () => jsonResponse(lineListBody(items, total)),
+});
+
+/**
+ * 부를 때마다 **줄 하나가 사라지는** 라인 목록.
+ *
+ * 「표에서 사라진 줄의 초안이 요청에 실리지 않는다」(감지기 M46)를 화면 수준에서 만드는 유일한
+ * 수단이다 — 초안은 남아 있는데 표의 줄 집합만 줄어드는 상태가 그때 생긴다.
+ */
+/**
+ * 부를 때마다 **내용이 달라지는** 라인 목록.
+ *
+ * 다시 부르기가 같은 본문을 돌려주면 캐시가 구조 공유로 **같은 참조를 그대로 유지**해,
+ * 「라인 응답이 도착하면 치던 값이 되돌아간다」는 결함이 드러나지 않는다 — 되돌림 의존성에
+ * 응답 배열을 넣어도 그 배열이 새 참조가 아니면 effect가 돌지 않기 때문이다.
+ * 목록에서 같은 함정을 이미 한 번 밟았다(PR ①의 `changingListRoute`).
+ *
+ * **줄 집합은 그대로 두고 값만 바꾼다** — 줄이 사라지면 다른 규칙(사라진 줄 제외)이 함께 걸려
+ * 무엇이 이 테스트를 죽였는지 가릴 수 없다.
+ */
+const changingLinesRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, LINES_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse(
+        lineListBody(
+          countLineFixtures.map((line) => ({ ...line, varianceQty: (line.varianceQty ?? 0) - call })),
+        ),
+      );
+    },
+  };
+};
+
+const shrinkingLinesRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, LINES_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse(lineListBody(call === 1 ? countLineFixtures : countLineFixtures.slice(0, 2)));
+    },
+  };
+};
+
+const locationsRoute = (
+  items: unknown[] = locationFixtures,
+  page?: Partial<{ page: number; size: number; total: number }>,
+): StubRoute => ({
+  match: (request) => isGet(request, LOCATIONS_PATH),
+  respond: () => jsonResponse(listBody(items, page)),
+});
+
+const failingLocationsRoute = (): StubRoute => ({
+  match: (request) => isGet(request, LOCATIONS_PATH),
+  respond: () => jsonResponse({ message: '' }, { status: 500 }),
+});
+
+const isReplaceRequest = (request: Request): boolean =>
+  request.method === 'PUT' && LINES_PATH_PATTERN.test(new URL(request.url).pathname);
+
+/** 치환 200 — **응답에 `ETag`가 없다**(실측). 그래서 성공 뒤 상세를 다시 읽는다. */
+const replaceRoute = (items: unknown[] = countLineFixtures): StubRoute => ({
+  match: isReplaceRequest,
+  respond: () => jsonResponse(lineListBody(items)),
+});
+
+const failingReplaceRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: isReplaceRequest,
+  respond: () => jsonResponse(body, { status }),
+});
+
+const offlineReplaceRoute = (): StubRoute => ({
+  match: isReplaceRequest,
+  respond: () => {
+    throw new TypeError('Failed to fetch');
   },
-  {
-    match: (request) => request.method === 'POST' && new URL(request.url).pathname === CLOSE_PATH,
-    respond: () => jsonResponse(countDetailBody()),
-  },
+});
+
+/**
+ * 첫 저장은 되고 **둘째 저장이 막히는** 갈래.
+ *
+ * 결과 구획을 세운 **뒤에** 실패하는 순서를 만드는 유일한 수단이다 — 실패 테스트가 늘 빈
+ * 화면에서 시작하면 「실패하면 결과 구획을 비운다」(수명 표 14행)가 아무것도 재지 못한다.
+ */
+const replaceThenForbiddenRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: isReplaceRequest,
+    respond: () => {
+      call += 1;
+
+      return call === 1
+        ? jsonResponse(lineListBody(countLineFixtures))
+        : jsonResponse({ message: '' }, { status: 403 });
+    },
+  };
+};
+
+/** 라인 표가 이름을 내는 참조 셋. **위치를 고른 뒤에만 불린다.** */
+const lineLookupRoutes = (): StubRoute[] => [
+  { match: (request) => isGet(request, ITEMS_PATH), respond: () => jsonResponse(listBody(itemFixtures)) },
+  { match: (request) => isGet(request, UOMS_PATH), respond: () => jsonResponse(listBody(uomFixtures)) },
+  { match: (request) => isGet(request, LOTS_PATH), respond: () => jsonResponse(listBody(lotFixtures)) },
 ];
+
+/** PR ④의 경로. **부를 수 있게 두는 것이 요점이다** — 부르지 않음을 증명할 수 있어야 한다. */
+const closeRoute = (): StubRoute => ({
+  match: (request) => request.method === 'POST' && new URL(request.url).pathname === CLOSE_PATH,
+  respond: () => jsonResponse(countDetailBody()),
+});
 
 /** 이 화면이 닿을 수 있는 경로를 전부 스텁으로 둔 한 벌. */
 const allRoutes = (extra: StubRoute[] = []): StubRoute[] => [
@@ -309,7 +443,12 @@ const allRoutes = (extra: StubRoute[] = []): StubRoute[] => [
   missingDetailRoute(),
   warehousesRoute(),
   openRoute(),
-  ...futureRoutes(),
+  locationsRoute(),
+  linesRoute(),
+  linesRoute(OTHER_LINES_PATH, []),
+  replaceRoute(),
+  ...lineLookupRoutes(),
+  closeRoute(),
 ];
 
 /** 주소가 실제로 어떻게 바뀌는지 본다 — 수명 표를 판정할 유일한 근거다. */
@@ -490,6 +629,65 @@ const setupReadyToOpen = async (
   return rendered;
 };
 
+/* ── PR ③ — 결과 등록 ──────────────────────────────────────────────────────── */
+
+const SAMPLE_REASON = 'SAMPLE_VARIANCE_REASON_D';
+
+const LOCATION_LABEL = 'SAMPLE-LOC-01 · 합성 위치 가';
+
+/** 참조가 푸는 단위 이름. **「코드 · 이름」**이라 부품 테스트가 주는 짧은 라벨과 다르다. */
+const UOM_LABEL = 'SAMPLE-EA · 합성 단위 개';
+
+/** 실사 9001과 위치 9701을 고른 상태의 주소. 라인 표가 열리는 최소 조건이다. */
+const AT_LOCATION = `?ct=9001&loc=${String(LOCATION_ID)}`;
+
+/** 값 목록이 확정된 뒤의 차이 사유. **배열만 갈아 끼운다** — 다른 자리는 실물 그대로다. */
+const fillReasonList = (values: string[] = [SAMPLE_REASON]): void => {
+  codeValues.varianceReason = values;
+};
+
+/** 라인 경로로 나간 요청 전부 — **번호 자리를 열어 둔다**(승계 3). */
+const lineRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => LINES_PATH_PATTERN.test(request.url.pathname));
+
+const replaceRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  lineRequests(requests).filter((request) => request.method === 'PUT');
+
+const lineTable = (): HTMLElement =>
+  within(detailPane()).getAllByRole('table').at(-1) ?? screen.getByRole('table');
+
+const qtyField = (lineNo: number): HTMLElement =>
+  screen.getByLabelText(t.lineTable.countedQtyLabel(lineNo));
+
+const saveButton = (): HTMLElement =>
+  within(detailPane()).getByRole('button', { name: t.actions.saveLocation });
+
+/** 라인 표가 그려질 때까지 기다린다. 이 뒤라야 표 안 입력을 잴 수 있다. */
+const waitForLines = async (): Promise<void> => {
+  await screen.findByLabelText(t.lineTable.countedQtyLabel(1));
+};
+
+/** 그 위치의 전 줄을 **장부와 같은 수량**으로 채운다 — 차이가 없는 위치의 정상 경로다. */
+const fillAllQty = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.type(qtyField(1), '100');
+  await user.type(qtyField(2), '40');
+  await user.type(qtyField(3), '7');
+};
+
+/** 위치를 고른 상태로 화면을 띄우고 라인 표까지 기다린다. */
+const setupAtLocation = async (
+  routes: StubRoute[] = allRoutes(),
+  search = AT_LOCATION,
+  navigateTo = '',
+  hold: (request: Request) => boolean = () => false,
+) => {
+  const rendered = renderScreen(routes, search, navigateTo, hold);
+
+  await waitForLines();
+
+  return rendered;
+};
+
 describe('StocktakingScreen — 첫 진입 조회', () => {
   /*
    * **M01** — 기본 기간을 심으면 첫 요청에 날짜가 실리고, 사용자는 왜 그 기간만 보이는지
@@ -559,21 +757,38 @@ describe('StocktakingScreen — 첫 진입 조회', () => {
    * 경로를 스텁으로 두고, **기록된 모든 요청**의 method가 GET인지 본다. 경로 하나만 세면
    * 잘못된 경로로 나간 요청이 「부르지 않았다」를 통과한다.
    *
-   * PR ②에서 개시가 붙었으나 그것은 **확인 창을 거쳐야만** 나간다 — 이 흐름에는 그 조작이
-   * 없으므로 여전히 전부 읽기여야 한다.
+   * PR ②·③에서 쓰기 둘이 붙었으나 개시는 **확인 창을 거쳐야** 나가고 치환은 **전 줄을 채워야**
+   * 나간다 — 이 흐름에는 그 조작이 없으므로 여전히 전부 읽기여야 한다.
+   *
+   * **잣대를 「0」에서 「의도한 경로만」으로 옮기되 접두 계수를 버리지 않는다**(PR ① 검증 담당의
+   * 승계 4). PR ③이 위치 조회를 실제로 부르기 시작해 「위치 경로 0회」는 더 이상 성립하지
+   * 않는데, 그때 **경로 하나 세기로 되돌아가면** M-3이 재발한다 — 나간 경로의 **집합**을 통째로
+   * 견줘 의도하지 않은 경로가 하나라도 늘면 걸리게 둔다.
    */
-  it('어떤 쓰기 요청도 보내지 않는다', async () => {
+  it('어떤 쓰기 요청도 보내지 않고 의도한 경로만 부른다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
     await selectCount(user, 'IC-2026-900011');
     await screen.findByRole('group', { name: t.detail.summaryLabel });
+    await screen.findByLabelText(t.fields.location);
 
     expect(requests).not.toHaveLength(0);
     expect(requests.map((request) => request.method)).toEqual(requests.map(() => 'GET'));
-    expect(requestsTo(requests, LINES_PATH)).toHaveLength(0);
-    expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(0);
-    expect(requestsTo(requests, CLOSE_PATH)).toHaveLength(0);
+
+    /* 나간 경로의 집합 그대로. 실사에 매달린 것은 **상세 하나**뿐이다. */
+    expect([...new Set(requests.map((request) => request.url.pathname))].sort()).toEqual([
+      LIST_PATH,
+      DETAIL_PATH,
+      LOCATIONS_PATH,
+      WAREHOUSES_PATH,
+    ].sort());
+
+    /* 짝 방향 — 위치는 실제로 불렀다(부르지 않아서 통과하는 것이 아니다). */
+    expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
+    expect(countScopedRequests(requests).map((request) => request.url.pathname)).toEqual([
+      DETAIL_PATH,
+    ]);
   });
 
   /*
@@ -1062,6 +1277,32 @@ describe('StocktakingScreen — 다시 조회', () => {
     expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(listBefore);
     /* 다시 조회는 조건·선택을 하나도 바꾸지 않는다(수명 표 10행). */
     expect(currentLocation()).toBe(before);
+  });
+
+  /*
+   * **같은 규칙이 라인까지 닿는다**(PR ③에서 늘어난 축). 라인을 빼고 다시 부르면 **다른
+   * 사람이 그 위치를 치환한 뒤에도 화면의 줄 집합이 낡은 채로 남고**, 낡은 줄로 저장하면
+   * 없어진 줄을 되살리거나 새 줄을 미실사로 되돌린다 — 치환이 파괴적이라 목록·상세보다
+   * 결과가 더 나쁘다.
+   */
+  it('위치까지 골랐으면 라인도 함께 다시 부른다', async () => {
+    const { requests, user } = await setupAtLocation();
+
+    const listBefore = requestsTo(requests, LIST_PATH).length;
+    const detailBefore = requestsTo(requests, DETAIL_PATH).length;
+    const linesBefore = lineRequests(requests).filter((request) => request.method === 'GET').length;
+
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    await waitFor(() => {
+      expect(
+        lineRequests(requests).filter((request) => request.method === 'GET').length,
+      ).toBeGreaterThan(linesBefore);
+    });
+
+    /* 셋이 함께 간다 — 하나만 빠져도 낡은 값과 새 값이 한 화면에 섞인다. */
+    expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(listBefore);
+    expect(requestsTo(requests, DETAIL_PATH).length).toBeGreaterThan(detailBefore);
   });
 
   /*
@@ -2041,5 +2282,1161 @@ describe('StocktakingScreen — 결과 구획의 수명', () => {
     await user.click(screen.getByRole('button', { name: t.actions.refresh }));
 
     expect(screen.getByRole('status', { name: t.result.label })).toBeInTheDocument();
+  });
+});
+
+describe('StocktakingScreen — 위치와 라인 조회', () => {
+  /*
+   * **감지기 M33 · 완료 조건 C31** — 실사를 고르기 전에는 위치를, 위치를 고르기 전에는 라인을
+   * 부르지 않는다.
+   *
+   * **경로 하나를 세지 않는다**(PR ① 검증 담당의 승계 3). `enabled` 가드가 무너지면 번호 자리에
+   * `0`이나 `undefined`가 박힌 경로로 나가는데, `…/9001/lines`만 세는 단언은 그것을 보지
+   * 못한다 — 번호 자리를 연 무늬로 **경로 전체**를 센다.
+   */
+  it('실사를 고르기 전에는 위치도 라인도 부르지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes());
+
+    await waitForList();
+
+    expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(0);
+    expect(lineRequests(requests)).toHaveLength(0);
+    /* 짝 방향 — 목록은 실제로 불렀다(아무 요청도 안 나가서 통과하는 것이 아니다). */
+    expect(requestsTo(requests, LIST_PATH)).toHaveLength(1);
+  });
+
+  it('위치를 고르기 전에는 라인을 부르지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes(), '?ct=9001');
+
+    await screen.findByLabelText(t.fields.location);
+    await waitFor(() => {
+      expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
+    });
+
+    expect(lineRequests(requests)).toHaveLength(0);
+    expect(screen.getByText(t.empty.noLocationTitle)).toBeInTheDocument();
+  });
+
+  /** 라인 표가 쓰는 참조 셋도 **위치를 고른 뒤에** 부른다 — 미리 받아 둘 이득이 없다. */
+  it('위치를 고르기 전에는 라인 표의 참조 셋을 부르지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes(), '?ct=9001');
+
+    await screen.findByLabelText(t.fields.location);
+
+    for (const path of [ITEMS_PATH, UOMS_PATH, LOTS_PATH]) {
+      expect(requestsTo(requests, path)).toHaveLength(0);
+    }
+  });
+
+  /*
+   * **완료 조건 C32·C33 · 감지기 M44** — 라인 요청에 `locationId`와 쪽 크기만 실리고
+   * **좁히는 조건이 실리지 않는다.** 좁혀 받은 목록으로 치환하면 나머지가 미실사로 되돌아간다 —
+   * 이 화면에서 가장 큰 사고 경로라 요청 URL에서 직접 잰다.
+   */
+  it('라인 요청에 좁히는 조건이 실리지 않는다', async () => {
+    const { requests } = await setupAtLocation();
+
+    const query = lastQuery(requests, LINES_PATH);
+
+    expect([...(query?.keys() ?? [])].sort()).toEqual(['locationId', 'size']);
+    expect(query?.get('locationId')).toBe(String(LOCATION_ID));
+    expect(Number(query?.get('size'))).toBeGreaterThan(0);
+
+    for (const narrowing of ['uncountedOnly', 'varianceOnly', 'itemId']) {
+      expect(query?.has(narrowing)).toBe(false);
+    }
+  });
+
+  /** 위치를 고르면 주소에 실려 새로고침·공유가 같은 위치를 연다. 고른 실사는 그대로 남는다. */
+  it('위치를 고르면 주소에 실리고 고른 실사가 남는다', async () => {
+    const { user } = await setupAtLocation();
+
+    expect(currentLocation()).toContain('ct=9001');
+    expect(currentLocation()).toContain(`loc=${String(LOCATION_ID)}`);
+
+    await user.click(screen.getByLabelText(t.fields.location));
+    await user.click(screen.getByRole('option', { name: t.values.locationNotChosen }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('loc=');
+    });
+    expect(currentLocation()).toContain('ct=9001');
+  });
+
+  /*
+   * **위치 참조 복원**(PR ① 계획 정정 1 · 승계 1) — 위치가 창고와 **같은 4갈래 기계**로 붙고,
+   * 어느 갈래에도 내부 번호가 없다(완료 조건 C11 · #44).
+   */
+  it('위치 이름이 참조로 풀리고 번호가 보이지 않는다', async () => {
+    await setupAtLocation();
+
+    /* 짝 방향 — 이름은 실제로 보인다. */
+    expect(screen.getAllByText(LOCATION_LABEL).length).toBeGreaterThan(0);
+
+    /*
+     * **구획 안에서만 센다.** 주소에는 `loc=9701`이 실려 있어야 하고(새로고침·공유가 같은
+     * 위치를 열어야 한다) 그것을 비추는 것은 테스트의 주소 표시기다 — 화면이 내는 텍스트와
+     * 섞으면 #44를 재는 단언이 자기 하네스에 걸린다.
+     */
+    expect(detailPane().textContent ?? '').not.toContain(String(LOCATION_ID));
+  });
+
+  it('위치 목록을 불러오지 못하면 사유와 다시 시도가 선다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([failingLocationsRoute()]),
+      '?ct=9001',
+    );
+
+    await screen.findByText(t.reasons.locationReferenceFailed);
+
+    const before = requestsTo(requests, LOCATIONS_PATH).length;
+
+    await user.click(
+      within(detailPane()).getByRole('button', { name: messages.common.retry }),
+    );
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LOCATIONS_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
+  /** **감지기 M34** — 그 위치에 줄이 없는 갈래는 표의 `empty`가 맡는다. */
+  it('그 위치에 라인이 없으면 표의 빈 상태가 보인다', async () => {
+    renderScreen(allRoutes([linesRoute(LINES_PATH, [])]), AT_LOCATION);
+
+    await screen.findByText(t.empty.noLinesTitle);
+
+    expect(within(detailPane()).getAllByRole('table').length).toBeGreaterThan(0);
+  });
+
+  it('라인 조회가 실패하면 빈 상태가 아니라 배너를 낸다', async () => {
+    renderScreen(
+      allRoutes([
+        { match: (request) => isGet(request, LINES_PATH), respond: () => jsonResponse({ message: '' }, { status: 500 }) },
+      ]),
+      AT_LOCATION,
+    );
+
+    await screen.findByText(messages.httpError.loadTitle);
+
+    expect(screen.queryByText(t.empty.noLinesTitle)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noLocationTitle)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **완료 조건 C49 · 감지기 M49** — 이력 구획은 비활성이고 **어떤 요청도 보내지 않는다.**
+   * 조회를 붙여 두면 아무도 읽지 않는 응답이 오가고, 그 경로가 나중에 「이미 되는 것」으로 읽힌다.
+   */
+  it('이력 구획이 비활성이고 요청을 늘리지 않는다', async () => {
+    /*
+     * **위치를 고르기 전에 잰다.** 라인 표가 열린 뒤에는 참조 셋이 이미 나가 있어, 이력에
+     * 조회를 붙여도 **이미 부르는 경로**를 하나 더 부르는 것이 되어 집합이 그대로다 —
+     * 그 상태에서 세면 이 단언이 무엇도 재지 못한다.
+     */
+    const { requests } = renderScreen(allRoutes(), '?ct=9001');
+
+    await screen.findByLabelText(t.fields.location);
+    await waitFor(() => {
+      expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
+    });
+
+    const historyButton = within(
+      screen.getByRole('group', { name: t.history.label }),
+    ).getByRole('button', { name: t.history.action });
+
+    expect(historyButton).toBeDisabled();
+
+    /* 나간 경로의 **집합 그대로** — 이력이 쓸 만한 경로가 하나도 늘지 않았다. */
+    expect([...new Set(requests.map((request) => request.url.pathname))].sort()).toEqual(
+      [LIST_PATH, DETAIL_PATH, WAREHOUSES_PATH, LOCATIONS_PATH].sort(),
+    );
+  });
+});
+
+describe('StocktakingScreen — 라인 초안', () => {
+  /*
+   * **완료 조건 C35 · 감지기 M32** — 위치를 열면 실물 수량 칸이 **전부 빈 칸**이다.
+   * 서버가 준 값으로 채워 두면 사용자가 그대로 저장하는 순간 세지 않은 줄이 「0개를 셌다」가 된다.
+   */
+  it('위치를 열면 실물 수량 칸이 전부 빈 칸이다', async () => {
+    await setupAtLocation();
+
+    /* 짝 방향 — 서버는 실제로 값을 줬다(없어서 비어 보이는 것이 아니다). */
+    expect(countLineFixtures[0]?.countedQty).toBe(98);
+
+    for (const lineNo of [1, 2, 3]) {
+      expect(qtyField(lineNo)).toHaveValue('');
+    }
+  });
+
+  it('친 값이 그 줄에만 남는다', async () => {
+    const { user } = await setupAtLocation();
+
+    await user.type(qtyField(2), '40');
+
+    expect(qtyField(1)).toHaveValue('');
+    expect(qtyField(2)).toHaveValue('40');
+    expect(qtyField(3)).toHaveValue('');
+  });
+
+  /*
+   * **감지기 M35 · #43** — 되돌림 축이 **`loc` 하나뿐**임을 여러 축으로 센다
+   * (PR ② 승계의 격상 규칙: 범위 있는 규칙은 잣대도 같은 범위로).
+   *
+   * 라인 응답·목록 응답·참조 응답이 도착해도, 개시 초안을 쳐도 라인 초안은 그대로여야 한다 —
+   * 되돌림 의존성에 그중 하나라도 들어가면 **치던 값이 사라진다.**
+   */
+  it.each<[string, (user: ReturnType<typeof userEvent.setup>) => Promise<void>]>([
+    [
+      '다시 조회로 라인·상세·목록이 함께 와도',
+      async (user) => {
+        await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+      },
+    ],
+    [
+      '라인 표의 참조를 다시 불러도',
+      async (user) => {
+        await user.click(
+          within(detailPane()).getByRole('button', { name: messages.common.retry }),
+        );
+      },
+    ],
+    [
+      '개시 초안을 쳐도',
+      async (user) => {
+        await user.type(within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
+      },
+    ],
+  ])('%s 라인 초안이 남는다', async (_label, act) => {
+    /*
+     * **라인 응답이 부를 때마다 달라지게 둔다.** 같은 본문이 오면 캐시가 구조 공유로 같은
+     * 참조를 유지해, 되돌림 의존성에 응답을 넣어도 effect가 돌지 않는다 — 그러면 이 단언이
+     * 무엇도 재지 못한다(PR ①의 `changingListRoute`가 목록에서 같은 함정을 밟은 자리).
+     */
+    const { user } = await setupAtLocation(
+      allRoutes([
+        changingLinesRoute(),
+        { match: (request) => isGet(request, LOTS_PATH), respond: () => jsonResponse({ message: '' }, { status: 500 }) },
+      ]),
+    );
+
+    await user.type(qtyField(1), '98');
+    await act(user);
+
+    await waitFor(() => {
+      expect(qtyField(1)).toHaveValue('98');
+    });
+  });
+
+  /*
+   * **수명 표 5행 — 반대 방향.** 위치가 바뀌면 초안은 뜻을 잃는다.
+   * 남으면 다른 위치의 같은 순번 줄에 앞 위치의 수량이 실린다.
+   */
+  it('위치를 바꾸면 라인 초안이 비워진다', async () => {
+    const { user } = await setupAtLocation();
+
+    await user.type(qtyField(1), '98');
+
+    await user.click(screen.getByLabelText(t.fields.location));
+    await user.click(screen.getByRole('option', { name: t.values.locationNotChosen }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('loc=');
+    });
+
+    await user.click(screen.getByLabelText(t.fields.location));
+    await user.click(screen.getByRole('option', { name: LOCATION_LABEL }));
+
+    await waitForLines();
+
+    expect(qtyField(1)).toHaveValue('');
+  });
+
+  /** 취소는 **버릴 것이 있을 때만** 확인을 받고, 그 창은 라인 초안만 버린다. */
+  it('취소를 누르면 확인 창을 거쳐 라인 초안만 버린다', async () => {
+    fillCodeLists();
+
+    const { user } = await setupAtLocation();
+
+    await user.type(within(openPane()).getByLabelText(t.fields.plannedDate), '2026-08-12');
+    await user.type(qtyField(1), '98');
+
+    await user.click(within(detailPane()).getByRole('button', { name: messages.common.cancel }));
+    await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
+
+    expect(qtyField(1)).toHaveValue('');
+    /* 개시 초안은 남는다 — 서로 다른 것을 가리키는 두 초안이다. */
+    expect(within(openPane()).getByLabelText(t.fields.plannedDate)).toHaveValue('2026-08-12');
+  });
+
+  /*
+   * **감지기 M42** — 파기 확인 창이 열린 채 **주소로 대상이 바뀌면** 창이 닫힌다.
+   *
+   * **축을 열거해 각각 센다**(PR ② 승계의 격상 규칙). PR ②는 넷이었고 위치가 생기면서
+   * **다섯**이 됐다 — 「위치 고르기」가 늘어난 축이다. 좁은 앵커 하나로 갈음하면 나머지 축이
+   * 그대로 빠져나간다.
+   */
+  it.each<[string, string]>([
+    ['조건 변경·조회', 'wh=9101'],
+    ['초기화', ''],
+    ['쪽 이동', 'page=2'],
+    ['실사 고르기', 'ct=9003'],
+    ['위치 고르기', `ct=9001&loc=9702`],
+  ])('파기 창이 열린 채 %s가 일어나면 창이 닫힌다', async (_label, to) => {
+    const { user } = await setupAtLocation(allRoutes(), AT_LOCATION, to);
+
+    await user.type(qtyField(1), '98');
+    await user.click(within(detailPane()).getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('StocktakingScreen — 블라인드 실사', () => {
+  /**
+   * 블라인드 실사를 고른 상태. 상세는 `blindCount: true`이고 라인 응답에는 **장부·차이 수량이
+   * 아예 오지 않는다**(계약 설명 — 결정 4 · 어긋남 1).
+   */
+  const blindRoutes = (): StubRoute[] =>
+    allRoutes([
+      detailRoute(DETAIL_PATH, countDetailBody({ blindCount: true })),
+      linesRoute(
+        LINES_PATH,
+        countLineFixtures.map((line) => {
+          const { systemQty: _s, varianceQty: _v, ...rest } = line;
+
+          return rest;
+        }),
+      ),
+    ]);
+
+  /*
+   * **완료 조건 C42 · 감지기 M30** — 화면이 실사 헤더의 블라인드 여부를 표로 **실제로
+   * 넘기는가.** 부품 테스트는 `isBlind` prop을 직접 주므로 그 배선이 끊겨도 통과한다.
+   */
+  it('장부 수량 열과 차이 열이 함께 없다', async () => {
+    renderScreen(blindRoutes(), AT_LOCATION);
+
+    await waitForLines();
+
+    expect(within(lineTable()).queryByText(t.lineTable.systemQty)).not.toBeInTheDocument();
+    expect(within(lineTable()).queryByText(t.lineTable.variance)).not.toBeInTheDocument();
+    /* 짝 방향 — 나머지 열은 그대로 있다(표가 통째로 사라져서 통과하는 것이 아니다). */
+    expect(within(lineTable()).getByText(t.lineTable.countedQty)).toBeInTheDocument();
+    expect(within(lineTable()).getByText(t.lineTable.reason)).toBeInTheDocument();
+  });
+
+  /*
+   * **완료 조건 C39** — 블라인드에서는 **사유를 필수로 만들지 않는다.** 장부가 없어 견줄 값이
+   * 없는데 없는 값을 0으로 보고 판정하면 **전 줄이 차이 있는 줄**이 되어, 코드 목록이 확정되지
+   * 않은 지금은 블라인드 실사의 저장이 통째로 막힌다.
+   */
+  /*
+   * **M-10(검증 담당 지적) — 「블라인드는 헤더가 정한다」의 갈리는 상태.**
+   *
+   * 지금까지의 픽스처에서는 블라인드 헤더와 `systemQty` 부재가 **늘 함께** 와서, 헤더로 판정하든
+   * 줄마다 판정하든 같은 답이 나왔다 — 두 판정을 가를 자료가 없었다.
+   *
+   * **계약과 런타임이 어긋나는 자리를 그대로 만든다**(결정 4 · 어긋남 1): `systemQty`는
+   * `required`인데 설명은 「블라인드 실사에서는 내려보내지 않는다」다. **비블라인드 실사인데
+   * 어떤 줄의 수량이 빠져 오는** 상태가 그 어긋남의 실물이고, 그때 줄마다 판정하면
+   * **장부·차이 열이 통째로 사라진다** — 사용자는 열이 왜 없는지 화면 어디에서도 읽을 수 없다.
+   *
+   * 열은 **실사 헤더가 정하고**, 값이 빠진 줄은 **그 줄이 사정을 밝힌다**. 둘은 다른 층이다.
+   */
+  it.each<[string, unknown[], number]>([
+    [
+      '첫 줄만 빠져 와도',
+      [blindCountLineResponse(), countLineFixtures[1], countLineFixtures[2]],
+      2,
+    ],
+    /*
+     * **전 줄이 빠져 오는 판까지 센다.** 「첫 줄로 판정」·「하나라도 빠지면」은 위 판이 잡지만
+     * **「전 줄이 빠져야 블라인드」**는 빠져나간다 — 규칙이 「헤더가 정한다」이므로 잣대도
+     * 줄 판정이 취할 수 있는 **형태 전체**를 덮어야 한다(승계의 격상 규칙).
+     */
+    [
+      '전 줄이 빠져 와도',
+      [
+        blindCountLineResponse(),
+        blindCountLineResponse({ inventoryCountLineId: 9402, lineNo: 2, lotId: null }),
+        blindCountLineResponse({ inventoryCountLineId: 9403, lineNo: 3, uomId: 9502 }),
+      ],
+      6,
+    ],
+  ])('비블라인드 헤더에서는 %s 두 열이 남는다', async (_label, items, notProvidedCount) => {
+    renderScreen(
+      allRoutes([
+        detailRoute(DETAIL_PATH, countDetailBody({ blindCount: false })),
+        linesRoute(LINES_PATH, items),
+      ]),
+      AT_LOCATION,
+    );
+
+    await waitForLines();
+
+    /* 헤더가 비블라인드이므로 두 열은 그대로 있다. */
+    expect(within(lineTable()).getByText(t.lineTable.systemQty)).toBeInTheDocument();
+    expect(within(lineTable()).getByText(t.lineTable.variance)).toBeInTheDocument();
+
+    /*
+     * 짝 방향 — 값이 빠진 줄은 **그 두 칸에서** 사정을 밝힌다(열이 사라져서 통과하는 것이
+     * 아니다). 줄마다 두 칸이므로 건수가 줄 수의 두 배다.
+     */
+    expect(screen.getAllByText(t.values.qtyNotProvided)).toHaveLength(notProvidedCount);
+  });
+
+  /*
+   * 짝 방향의 나머지 절반 — **값이 온 줄은 그대로 읽힌다.** 위 두 판이 「없음」만 세므로
+   * 이 단언이 없으면 「전 줄이 없음으로 찍혀도」 통과한다.
+   * 단위는 참조가 푸는 「코드 · 이름」이다(부품 테스트가 주는 짧은 라벨과 다르다).
+   */
+  it('값이 온 줄의 장부 수량은 단위와 함께 읽힌다', async () => {
+    renderScreen(
+      allRoutes([
+        detailRoute(DETAIL_PATH, countDetailBody({ blindCount: false })),
+        linesRoute(LINES_PATH, [
+          blindCountLineResponse(),
+          countLineFixtures[1],
+          countLineFixtures[2],
+        ]),
+      ]),
+      AT_LOCATION,
+    );
+
+    await waitForLines();
+
+    expect(await screen.findByText(t.lineTable.qtyWithUom('40', UOM_LABEL))).toBeInTheDocument();
+  });
+
+  /*
+   * **리뷰 R-1(Major)이 고친 자리 — 블라인드는 열뿐 아니라 규칙에도 헤더가 정한다.**
+   *
+   * 계약에서 `systemQty`는 **필수**이고 「블라인드에서는 내려보내지 않는다」는 **설명문**뿐이다
+   * (결정 4 · 어긋남 1) — **스키마를 따르는 서버는 블라인드에서도 값을 보낸다.**
+   * 그때 줄의 값으로만 사유 필수를 끊으면 화면은 **열은 감춰 놓고 전 줄에 사유를 요구하고**,
+   * 코드 목록이 확정되지 않은 지금은 **블라인드 실사의 저장이 통째로 막힌다** —
+   * 사용자는 장부도 차이도 볼 수 없어 왜 막혔는지 화면 어디에서도 읽을 수 없다.
+   */
+  it('장부가 실려 와도 블라인드 헤더면 사유를 요구하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([
+        detailRoute(DETAIL_PATH, countDetailBody({ blindCount: true })),
+        /* **값이 실려 온다** — 열은 감춰지지만 줄에는 장부 수량이 그대로 있다. */
+        linesRoute(LINES_PATH, countLineFixtures),
+      ]),
+      AT_LOCATION,
+    );
+
+    await waitForLines();
+
+    /* 열은 헤더가 정한 대로 감춰진다. */
+    expect(within(lineTable()).queryByText(t.lineTable.systemQty)).not.toBeInTheDocument();
+
+    /* 장부(100·40·7)와 **다른** 값을 친다 — 줄로 판정하면 전 줄이 차이 있는 줄이 된다. */
+    await user.type(qtyField(1), '98');
+    await user.type(qtyField(2), '41');
+    await user.type(qtyField(3), '0');
+
+    expect(screen.queryByText(t.actionReasons.saveReasonListPending)).not.toBeInTheDocument();
+    expect(saveButton()).not.toBeDisabled();
+
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+  });
+
+  /*
+   * **짝 방향** — 같은 줄·같은 입력이 **비블라인드 헤더**에서는 사유를 요구한다.
+   * 이 단언이 없으면 「사유 판정을 통째로 없앤다」가 위 테스트를 통과한다.
+   */
+  it('같은 줄이라도 비블라인드 헤더면 사유를 요구한다', async () => {
+    const { user } = renderScreen(
+      allRoutes([
+        detailRoute(DETAIL_PATH, countDetailBody({ blindCount: false })),
+        linesRoute(LINES_PATH, countLineFixtures),
+      ]),
+      AT_LOCATION,
+    );
+
+    await waitForLines();
+
+    await user.type(qtyField(1), '98');
+    await user.type(qtyField(2), '41');
+    await user.type(qtyField(3), '0');
+
+    expect(screen.getByText(t.actionReasons.saveReasonListPending)).toBeInTheDocument();
+    expect(saveButton()).toBeDisabled();
+  });
+
+  it('사유 선택지가 비어 있어도 전 줄만 채우면 저장이 열린다', async () => {
+    const { requests, user } = renderScreen(blindRoutes(), AT_LOCATION);
+
+    await waitForLines();
+    await user.type(qtyField(1), '98');
+    await user.type(qtyField(2), '41');
+    await user.type(qtyField(3), '0');
+
+    expect(screen.queryByText(t.actionReasons.saveReasonListPending)).not.toBeInTheDocument();
+    expect(saveButton()).not.toBeDisabled();
+
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+  });
+});
+
+describe('StocktakingScreen — 저장 잠금', () => {
+  /*
+   * **완료 조건 C36 · 감지기 M38** — 전 줄을 채우기 전에는 저장이 잠기고 **남은 줄 수**가
+   * 사유에 보인다. 눌러도 요청이 나가지 않는다(버튼이 잠겨 있어서 통과하는 것이 아니라,
+   * 요청 수를 함께 센다).
+   */
+  it('전 줄을 채우기 전에는 저장이 잠기고 남은 줄 수가 보인다', async () => {
+    const { requests, user } = await setupAtLocation();
+
+    expect(saveButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.saveIncompleteQty(3))).toBeInTheDocument();
+
+    await user.type(qtyField(1), '100');
+
+    expect(screen.getByText(t.actionReasons.saveIncompleteQty(2))).toBeInTheDocument();
+
+    await user.click(saveButton());
+
+    expect(replaceRequests(requests)).toHaveLength(0);
+  });
+
+  /** **완료 조건 C37** — 0은 허용되고 음수는 막힌다. 계약이 `minimum: 0`이다. */
+  it('0으로 전 줄을 채우면 저장이 열리고 음수는 막힌다', async () => {
+    const { user } = await setupAtLocation();
+
+    await user.type(qtyField(1), '0');
+    await user.type(qtyField(2), '0');
+    await user.type(qtyField(3), '0');
+
+    /* 세 줄 다 장부와 달라져 사유가 필요하다 — 0이 「형식 오류」로 막힌 것이 아니다. */
+    expect(screen.getByText(t.actionReasons.saveReasonListPending)).toBeInTheDocument();
+
+    await user.clear(qtyField(1));
+    await user.type(qtyField(1), '-1');
+
+    expect(screen.getByText(t.actionReasons.saveInvalidQty(1))).toBeInTheDocument();
+  });
+
+  /*
+   * **완료 조건 C38 · 감지기 M40 · 승인 G1** — 차이가 있는 줄이 있으면 사유 목록이 비어 있는
+   * 동안 저장이 막히고, **배열이 차면 열린다.** 값이 확정되면 `code-options.ts`의 배열만
+   * 채우면 된다는 약속이 이 전환이다.
+   */
+  it('차이가 있으면 사유 목록이 빌 때 막히고 차면 열린다', async () => {
+    const { user } = await setupAtLocation();
+
+    await user.type(qtyField(1), '98');
+    await user.type(qtyField(2), '40');
+    await user.type(qtyField(3), '7');
+
+    expect(saveButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.saveReasonListPending)).toBeInTheDocument();
+
+    /* 배열만 갈아 끼우고 화면을 다시 띄운다 — 실제로 값이 확정되면 이 한 가지만 달라진다. */
+    cleanup();
+    fillReasonList();
+
+    const filled = await setupAtLocation();
+
+    await filled.user.type(qtyField(1), '98');
+    await filled.user.type(qtyField(2), '40');
+    await filled.user.type(qtyField(3), '7');
+
+    expect(screen.getByText(t.actionReasons.saveNeedsReason(1))).toBeInTheDocument();
+
+    await filled.user.click(screen.getByLabelText(t.lineTable.reasonLabel(1)));
+    await filled.user.click(screen.getByRole('option', { name: SAMPLE_REASON }));
+
+    expect(saveButton()).not.toBeDisabled();
+  });
+
+  /*
+   * **승인 G1의 갈림이 실물이 되는 자리** — 차이가 **없는** 위치는 사유 목록이 비어 있어도
+   * 그대로 저장된다. 개시가 통째로 막히는 것(`countTypeCode`는 요청 필수)과 갈리는 지점이다.
+   */
+  it('차이가 없는 위치는 사유 목록이 비어 있어도 저장이 열린다', async () => {
+    const { requests, user } = await setupAtLocation();
+
+    await fillAllQty(user);
+
+    expect(saveButton()).not.toBeDisabled();
+
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+  });
+
+  /*
+   * **완료 조건 C34 · 감지기 M31** — 잘리면 **표식이 보이고 저장이 차단된다.**
+   * 전 줄을 채웠어도 막힌다: 못 받은 줄은 채울 수조차 없기 때문이다.
+   */
+  it('라인이 잘리면 전 줄을 채워도 저장이 막힌다', async () => {
+    const { requests, user } = await setupAtLocation(
+      allRoutes([linesRoute(LINES_PATH, countLineFixtures, countLineFixtures.length + 1)]),
+    );
+
+    await fillAllQty(user);
+
+    expect(screen.getByText(t.reasons.linesTruncated)).toBeInTheDocument();
+    expect(saveButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.saveTruncated)).toBeInTheDocument();
+
+    await user.click(saveButton());
+
+    expect(replaceRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * **감지기 M37** — 줄이 하나도 없으면 보내지 않는다. 빈 배열은 그 위치를 통째로 미실사로
+   * 되돌리는 요청이고 목 서버는 그것을 200으로 받는다(실측). 막는 곳이 화면뿐이다.
+   */
+  it('그 위치에 줄이 없으면 저장이 막힌다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([linesRoute(LINES_PATH, [])]),
+      AT_LOCATION,
+    );
+
+    await screen.findByText(t.empty.noLinesTitle);
+
+    expect(saveButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.saveNoLines)).toBeInTheDocument();
+
+    await user.click(saveButton());
+
+    expect(replaceRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * **승계 교훈 — 「버튼이 열려 있는데 보낼 수 없는 상태」를 만들어 본다**(완료 조건 C40).
+   * 값 목록은 서버가 내려주므로 **51자짜리 코드가 선택지에 실릴 수 있다.**
+   */
+  it('사유가 50자를 넘으면 인라인 오류가 붙고 요청이 나가지 않는다', async () => {
+    const tooLong = 'A'.repeat(51);
+
+    cleanup();
+    fillReasonList([tooLong]);
+
+    const { requests, user } = await setupAtLocation();
+
+    await user.type(qtyField(1), '98');
+    await user.type(qtyField(2), '40');
+    await user.type(qtyField(3), '7');
+
+    await user.click(screen.getByLabelText(t.lineTable.reasonLabel(1)));
+    await user.click(screen.getByRole('option', { name: tooLong }));
+
+    expect(screen.getByText(t.errors.codeTooLong(50))).toBeInTheDocument();
+    expect(saveButton()).toBeDisabled();
+
+    await user.click(saveButton());
+
+    expect(replaceRequests(requests)).toHaveLength(0);
+  });
+});
+
+describe('StocktakingScreen — 치환 요청', () => {
+  /*
+   * **완료 조건 C44·C45** — 본문이 넷이고 `lines`가 **표에 있는 전 줄**이며 값이 표의 줄에서
+   * 온다. 단위 테스트가 조립을 재고, 여기서는 **실제로 나간 본문**을 잰다.
+   */
+  it('보낸 본문이 위치·영업일·발생 시각·전 줄이다', async () => {
+    const { requests, user } = await setupAtLocation();
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+
+    const body = replaceRequests(requests)[0]?.body as {
+      locationId: number;
+      businessDate: string;
+      occurredAt: string;
+      lines: { inventoryCountLineId: number; countedQty: number }[];
+    };
+
+    expect(Object.keys(body).sort()).toEqual([
+      'businessDate',
+      'lines',
+      'locationId',
+      'occurredAt',
+    ]);
+    expect(body.locationId).toBe(LOCATION_ID);
+    expect(body.lines).toHaveLength(countLineFixtures.length);
+    expect(body.lines.map((line) => line.inventoryCountLineId)).toEqual(
+      countLineFixtures.map((line) => line.inventoryCountLineId),
+    );
+    expect(body.lines.map((line) => line.countedQty)).toEqual([100, 40, 7]);
+  });
+
+  /*
+   * **완료 조건 C46** — 낙관적 잠금이 **선택**이다(실측). 상세 조회가 토큰을 남겼으면 싣는다.
+   * 개시(`If-Match` 없음)·마감(필수)과 갈리는 자리다.
+   */
+  it('상세가 준 토큰을 If-Match에 싣는다', async () => {
+    const { requests, user } = await setupAtLocation(
+      allRoutes([
+        {
+          match: (request) => isGet(request, DETAIL_PATH),
+          respond: () => jsonResponse(countDetailBody(), { headers: { ETag: '"7"' } }),
+        },
+      ]),
+    );
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+
+    expect(replaceRequests(requests)[0]?.headers.get('If-Match')).toBe('"7"');
+    expect(replaceRequests(requests)[0]?.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  /**
+   * **토큰이 없어도 보낸다.** 계약이 「오프라인에서도 쓰는 오퍼레이션에서는 선택이다」라 적었고
+   * (현장 단말이 같은 경로를 쓴다), 공통 훅의 「없으면 멈춘다」 규약을 그대로 쓰면 이 화면은
+   * 토큰이 없다는 이유로 **저장 자체를 못 한다.**
+   */
+  it('토큰이 없어도 보낸다', async () => {
+    const { requests, user } = await setupAtLocation();
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+
+    expect(replaceRequests(requests)[0]?.headers.has('If-Match')).toBe(false);
+    expect(screen.queryByText(messages.save.staleToken)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **감지기 M46** — 표에서 **사라진 줄**의 초안은 실리지 않는다. 다시 조회로 줄 집합이 줄어든
+   * 뒤에도 초안 키는 남아 있는데, 요청 조립이 표의 줄과 교차로 걸러 낸다.
+   */
+  it('표에서 사라진 줄은 요청에 실리지 않는다', async () => {
+    const { requests, user } = await setupAtLocation(allRoutes([shrinkingLinesRoute()]));
+
+    await fillAllQty(user);
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(t.lineTable.countedQtyLabel(3))).not.toBeInTheDocument();
+    });
+
+    /* 남은 두 줄의 초안은 그대로다(수명 표 10행) — 그래서 곧바로 저장할 수 있다. */
+    expect(qtyField(1)).toHaveValue('100');
+
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+
+    const body = replaceRequests(requests)[0]?.body as {
+      lines: { inventoryCountLineId: number }[];
+    };
+
+    expect(body.lines).toHaveLength(2);
+    expect(body.lines.map((line) => line.inventoryCountLineId)).not.toContain(9403);
+  });
+});
+
+describe('StocktakingScreen — 저장 성공', () => {
+  const saveOne = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await fillAllQty(user);
+    await user.click(saveButton());
+    await screen.findByRole('status', { name: t.result.savedLabel });
+  };
+
+  /*
+   * **완료 조건 C47 · 감지기 M47 · 승인 13-7** — 성공 뒤 **상세와 라인을 함께** 다시 읽는다.
+   * 치환 200 응답에 `ETag`가 없어(실측) 마감의 `If-Match`가 낡고 요약 4칸도 낡는다 —
+   * 라인만 다시 부르면 **요약이 낡은 채로 마감 버튼의 활성 여부를 정한다.**
+   */
+  it('성공 뒤 상세와 라인을 함께 다시 읽는다', async () => {
+    const { requests, user } = await setupAtLocation();
+
+    const detailBefore = requestsTo(requests, DETAIL_PATH).length;
+    const linesBefore = lineRequests(requests).filter((request) => request.method === 'GET').length;
+
+    await saveOne(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, DETAIL_PATH).length).toBeGreaterThan(detailBefore);
+    });
+    await waitFor(() => {
+      expect(
+        lineRequests(requests).filter((request) => request.method === 'GET').length,
+      ).toBeGreaterThan(linesBefore);
+    });
+  });
+
+  /** 초안이 비고 `loc`가 유지된다(수명 표 13행) — 방금 무엇을 저장했는지 화면에 남는다. */
+  it('성공하면 초안이 비고 고른 위치가 남는다', async () => {
+    const { user } = await setupAtLocation();
+
+    await saveOne(user);
+
+    expect(currentLocation()).toContain(`loc=${String(LOCATION_ID)}`);
+    expect(qtyField(1)).toHaveValue('');
+  });
+
+  /** 결과 구획이 **서버가 되돌려 준 줄 수**와 위치 이름을 낸다. */
+  it('결과 구획이 치환한 위치와 줄 수를 낸다', async () => {
+    const { user } = await setupAtLocation();
+
+    await saveOne(user);
+
+    const result = screen.getByRole('status', { name: t.result.savedLabel });
+
+    expect(within(result).getByText(LOCATION_LABEL)).toBeInTheDocument();
+    expect(
+      within(result).getByText(t.result.savedCount(countLineFixtures.length)),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * **수명 표 5행 — 결과가 매이는 축이 둘이다.** 같은 실사 안에서 위치만 옮겨도 앞 위치의
+   * 저장 결과가 사라져야 한다. 축을 `ct` 하나로 두면 새 위치의 라인 표 아래에 그대로 서 있다.
+   */
+  it('위치를 바꾸면 저장 결과가 사라진다', async () => {
+    const { user } = await setupAtLocation();
+
+    await saveOne(user);
+
+    await user.click(screen.getByLabelText(t.fields.location));
+    await user.click(screen.getByRole('option', { name: t.values.locationNotChosen }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+    });
+  });
+
+  /** **수명 표 10행** — 「다시 조회」는 값을 버리려고 누르는 것이 아니다. 결과가 남는다. */
+  it('다시 조회해도 저장 결과가 남는다', async () => {
+    const { user } = await setupAtLocation();
+
+    await saveOne(user);
+    await user.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    expect(screen.getByRole('status', { name: t.result.savedLabel })).toBeInTheDocument();
+  });
+});
+
+describe('StocktakingScreen — 저장 실패', () => {
+  /*
+   * **완료 조건 C48** — 실패가 **네 갈래**이고 문구가 서로 다르며 **입력이 남는다.**
+   * 개시(세 갈래)와 갈리는 자리는 **409**다 — 낙관적 잠금이 선택으로나마 있기 때문이다.
+   */
+  it.each<[string, number, string]>([
+    ['검증 실패', 400, '실물 수량을 확인하세요.'],
+    ['권한 없음', 403, messages.httpError.forbidden],
+    ['저장 충돌', 409, messages.conflict.user],
+  ])('%s면 그 사유를 내고 입력이 남는다', async (_label, status, expected) => {
+    const body =
+      status === 400
+        ? { errors: [{ scope: 'screen', code: 'INVALID', message: '실물 수량을 확인하세요.' }] }
+        : status === 409
+          ? { conflictCause: 'user' }
+          : { message: '' };
+
+    const { user } = await setupAtLocation(allRoutes([failingReplaceRoute(status, body)]));
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await screen.findByText(expected);
+
+    expect(qtyField(1)).toHaveValue('100');
+    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+  });
+
+  /*
+   * **훑기로 찾은 사각** — 서버가 **줄에 붙는 필드 오류**를 주는 갈래.
+   *
+   * 이 화면은 표 안 입력칸을 줄마다 갖는데 계약이 **줄마다의 오류를 어떤 이름으로 주는지
+   * 정하지 않았다**(실측). 그래서 화면이 아는 필드를 두지 않고 **전부 배너로 올린다**
+   * (`queries.ts`의 `knownFields: []`). 그 목록에 이름을 하나라도 채우면 그 오류가 인라인으로
+   * 분류되는데 **인라인으로 낼 자리가 없어 조용히 사라진다** — 사용자에게는 「저장을 눌렀는데
+   * 아무 일도 없다」로 보인다. 개시 폼(PR ②)과 정반대로 가는 자리라 잣대를 세워 둔다.
+   */
+  it('서버가 줄에 붙인 필드 오류도 삼키지 않고 배너로 낸다', async () => {
+    const { user } = await setupAtLocation(
+      allRoutes([
+        failingReplaceRoute(400, {
+          errors: [
+            {
+              scope: 'field',
+              code: 'INVALID',
+              field: 'countedQty',
+              message: '2번 줄 실물 수량을 확인하세요.',
+            },
+          ],
+        }),
+      ]),
+    );
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    expect(await screen.findByText('2번 줄 실물 수량을 확인하세요.')).toBeInTheDocument();
+  });
+
+  it('응답이 오지 않으면 다시 보내기 전에 확인하라고 밝힌다', async () => {
+    const { user } = await setupAtLocation(allRoutes([offlineReplaceRoute()]));
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await screen.findByText(t.notes.saveRecheck);
+
+    expect(qtyField(1)).toHaveValue('100');
+  });
+
+  /*
+   * **감지기 M48** — **409에만** 「최신 불러오기」를 낸다. 다시 읽어야 풀리는 것은 충돌뿐이고,
+   * 다른 오류에 내면 사용자가 **입력만 버리게 된다.**
+   */
+  it.each<[string, number, boolean]>([
+    ['저장 충돌', 409, true],
+    ['검증 실패', 400, false],
+    ['권한 없음', 403, false],
+  ])('%s에서 최신 불러오기가 %s', async (_label, status, shown) => {
+    const body = status === 409 ? { conflictCause: 'user' } : { message: '' };
+
+    const { user } = await setupAtLocation(allRoutes([failingReplaceRoute(status, body)]));
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await screen.findByRole('alert');
+
+    const reload = screen.queryByRole('button', { name: messages.conflict.reloadAction });
+
+    expect(reload === null).toBe(!shown);
+  });
+
+  /*
+   * **승계 교훈 — 「성공 뒤 실패」 순서를 만든다.** 실패 테스트가 늘 빈 화면에서 시작하면
+   * 「실패하면 결과 구획을 비운다」(수명 표 14행)가 아무것도 재지 못한다.
+   */
+  it('성공한 뒤 실패하면 결과 구획이 비고 창이 서 있지 않다', async () => {
+    const { user } = await setupAtLocation(allRoutes([replaceThenForbiddenRoute()]));
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+    await screen.findByRole('status', { name: t.result.savedLabel });
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await screen.findByText(messages.httpError.forbidden);
+
+    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('StocktakingScreen — 저장 중 잠금', () => {
+  /*
+   * **감지기 M41의 첫째 겹 — 컨트롤 잠금.** 전송 중에는 대상을 바꾸는 길과 표 안 두 칸이
+   * 함께 잠기고, 연타해도 요청이 1회다(공통 훅이 호출마다 새 멱등 키를 만든다 — 이슈 #55).
+   */
+  it('저장 중에는 대상을 바꿀 수 없고 연타해도 요청이 1회다', async () => {
+    const { requests, release, user } = await setupAtLocation(
+      allRoutes(),
+      AT_LOCATION,
+      '',
+      isReplaceRequest,
+    );
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+
+    expect(saveButton()).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.location)).toBeDisabled();
+    expect(qtyField(1)).toBeDisabled();
+    expect(screen.getByLabelText(t.lineTable.reasonLabel(1))).toBeDisabled();
+    expect(within(listPane()).getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(
+      within(listPane()).getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }),
+    ).toBeDisabled();
+    expect(
+      within(detailPane()).getByRole('button', { name: messages.common.cancel }),
+    ).toBeDisabled();
+
+    await user.click(saveButton());
+
+    expect(replaceRequests(requests)).toHaveLength(1);
+
+    release();
+
+    await screen.findByRole('status', { name: t.result.savedLabel });
+  });
+
+  /*
+   * **M-9(검증 담당 지적) — 「어느 쓰기가 나가는 중인가」도 축이다.**
+   *
+   * 저장 버튼에는 잠금 겹이 **셋**이다: `loading={replace.isSaving}`(설치본 `Button`이
+   * `disabled`와 합친다 — 실측) · `|| isLocked` · `submitSave`의 핸들러 가드.
+   * **치환이 나가는 중**에는 셋이 서로를 덮어 하나를 빼도 관측되지 않는다(정상적 다중 방어).
+   * 그런데 **개시가 나가는 중**에는 `loading`이 거짓이라 **`|| isLocked` 하나만** 남는다 —
+   * 그 판을 재는 자리가 없으면 겹 하나가 조용히 사라져도 아무도 모른다.
+   *
+   * 무너지면 개시가 나가는 동안 저장을 눌러 **되돌릴 수 없는 쓰기와 파괴적 쓰기가 동시에**
+   * 나간다. 공통 훅이 호출마다 새 멱등 키를 만들어 서버는 둘을 별개의 요청으로 본다.
+   *
+   * **`submitSave`의 `isLocked` 가드를 「등가」로 분류하는 전제도 이 단언이다** — 첫째 겹이
+   * 여기서 고정돼야 둘째 겹을 등가로 둘 수 있다(승계 규칙: 첫째 겹의 감지기를 먼저 확인한다).
+   */
+  it('개시가 나가는 중에도 저장 버튼이 잠긴다', async () => {
+    fillCodeLists();
+
+    const { requests, release, user } = await setupAtLocation(
+      allRoutes(),
+      AT_LOCATION,
+      '',
+      isOpenRequest,
+    );
+
+    await fillAllQty(user);
+
+    /* 짝 방향 — 보내기 전에는 열려 있다(늘 잠겨 있어서 통과하는 것이 아니다). */
+    expect(saveButton()).not.toBeDisabled();
+
+    await fillOpenDraft(user);
+    await user.click(openButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
+
+    await waitFor(() => {
+      expect(openRequests(requests)).toHaveLength(1);
+    });
+
+    expect(saveButton()).toBeDisabled();
+
+    /*
+     * **치환은 나가는 중이 아니다.** 이 줄이 이 테스트의 요점이다 — `loading` 겹이 서 있지
+     * 않은 판이라 `|| isLocked` 하나만 재고 있다.
+     */
+    expect(replaceRequests(requests)).toHaveLength(0);
+
+    /* 표 안 두 칸과 위치 선택칸도 같은 이유로 함께 잠긴다. */
+    expect(qtyField(1)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.location)).toBeDisabled();
+
+    release();
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain(`ct=${String(OPENED_COUNT_ID)}`);
+    });
+  });
+
+  /*
+   * **리뷰 R-4가 고친 자리 — 전송 중 주소 편집.**
+   *
+   * 전송 중 잠금은 컨트롤과 핸들러 두 겹인데 **뒤로가기·앞으로가기·주소 직접 편집은 그 둘을
+   * 다 거치지 않는다**(W-01-10 R-1이 확인 창으로 실증한 형태). 그 길로 위치가 풀리면
+   * 응답이 뒤에 도착해 **클릭 시점 클로저의 옛 위치**로 결과를 세우고, 「위치를 고르면 라인이
+   * 보입니다」 빈 상태 **아래에 앞 위치의 저장 결과**가 선다.
+   *
+   * 결과 정리 effect는 이 갈래를 잡지 못한다 — 주소가 바뀐 시점에 이미 돌았고 그때 결과는
+   * 비어 있었다(`submitSave`가 비웠다). **세우는 자리**가 대상을 한 번 더 대조해야 한다.
+   */
+  it('저장 중 주소로 위치가 풀리면 앞 위치의 결과가 서지 않는다', async () => {
+    const { requests, release, user } = await setupAtLocation(
+      allRoutes(),
+      AT_LOCATION,
+      'ct=9001',
+      isReplaceRequest,
+    );
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+
+    const detailBefore = requestsTo(requests, DETAIL_PATH).length;
+
+    /* 잠금 두 겹을 다 거치지 않는 길 — 주소만 바뀐다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.empty.noLocationTitle);
+
+    release();
+
+    /* 응답이 도착해 성공 처리가 끝난 것을 **긍정 단언**으로 기다린다(무효화가 상세를 다시 부른다). */
+    await waitFor(() => {
+      expect(requestsTo(requests, DETAIL_PATH).length).toBeGreaterThan(detailBefore);
+    });
+
+    expect(screen.queryByRole('status', { name: t.result.savedLabel })).not.toBeInTheDocument();
+    /* 짝 방향 — 화면은 「위치를 고르지 않았다」를 그대로 말하고 있다. */
+    expect(screen.getByText(t.empty.noLocationTitle)).toBeInTheDocument();
+  });
+
+  /*
+   * **감지기 M41의 둘째 겹 — 경로 가드 단독.** 조건 칩의 ×는 디자인 시스템이 잠금을 받지 않아
+   * (`StatusChipProps`에 `disabled`가 없다 — 실측) 전송 중에도 눌린다. 그 길로 들어오면 조건이
+   * 바뀌면서 `ct`·`loc`가 풀리고 **앞 요청의 결과가 다른 맥락에 나타난다.**
+   */
+  it('저장 중에는 잠금을 받지 않는 조건 칩의 ×로도 대상이 바뀌지 않는다', async () => {
+    const { requests, release, user } = await setupAtLocation(
+      allRoutes(),
+      `${AT_LOCATION}&wh=9101`,
+      '',
+      isReplaceRequest,
+    );
+
+    await fillAllQty(user);
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(replaceRequests(requests)).toHaveLength(1);
+    });
+
+    const before = currentLocation();
+    const removeChip = within(listPane()).getByRole('button', {
+      name: t.filters.chipRemoveWarehouse,
+    });
+
+    /* 짝 방향 — 이 버튼은 실제로 눌린다(잠겨 있어서 아무 일도 안 나는 것이 아니다). */
+    expect(removeChip).not.toBeDisabled();
+
+    await user.click(removeChip);
+
+    expect(currentLocation()).toBe(before);
+
+    release();
+
+    await screen.findByRole('status', { name: t.result.savedLabel });
   });
 });

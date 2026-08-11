@@ -170,3 +170,96 @@ export const warehouseFixtures = [
     isActive: false,
   },
 ];
+
+/** 라인 픽스처가 쓰는 위치. 주소의 `loc`와 라인 조회의 `locationId`가 이 값이다. */
+export const LOCATION_ID = 9701;
+
+/**
+ * 한 위치의 실사 라인 **셋**. 화면이 다뤄야 하는 까다로운 줄을 일부러 담는다.
+ *
+ * - 9401 — **장부와 실물이 다르다**(100 대 98). 차이 사유가 필수가 되는 줄이다
+ * - 9402 — **장부와 실물이 같고 자재 LOT이 `null`**이다. 「빈 값이지 참조 실패가 아니다」의 자리
+ * - 9403 — **품목이 참조 목록에 없고**(9303) 저장된 실물이 0이다. 「목록에 없음」 갈래
+ *
+ * 셋의 저장된 실물 수량이 전부 다르다 — 「친 값이 저장된 값과 다르면 낡음 표식」(완료 조건 C41)을
+ * 한 줄만 겨냥해 만들 수 있다.
+ */
+export const countLineFixtures: InventoryCountLineResponse[] = [
+  countLineResponse(),
+  countLineResponse({
+    inventoryCountLineId: 9402,
+    lineNo: 2,
+    itemId: 9302,
+    lotId: null,
+    systemQty: 40,
+    countedQty: 40,
+    varianceQty: 0,
+    varianceReasonCode: null,
+  }),
+  countLineResponse({
+    inventoryCountLineId: 9403,
+    lineNo: 3,
+    itemId: 9303,
+    lotId: 9602,
+    systemQty: 7,
+    countedQty: 0,
+    varianceQty: -7,
+    uomId: 9502,
+    varianceReasonCode: null,
+  }),
+];
+
+/**
+ * 위치 목록. **실사의 창고로 좁혀 받는다**(계약이 `warehouseId`를 필수로 요구한다).
+ *
+ * 9702는 **미사용 위치**다 — 창고와 같이 미사용 값을 빼지 않고 표식만 붙인다.
+ * 9703은 어느 라인도 쓰지 않는다 — 「선택지에는 있으나 라인이 없는 위치」를 만든다.
+ */
+export const locationFixtures = [
+  {
+    locationId: LOCATION_ID,
+    warehouseId: 9101,
+    locationCode: 'SAMPLE-LOC-01',
+    locationName: '합성 위치 가',
+    locationTypeCode: 'SAMPLE_LOC_TYPE_A',
+    allowMixedItem: true,
+    isActive: true,
+  },
+  {
+    locationId: 9702,
+    warehouseId: 9101,
+    locationCode: 'SAMPLE-LOC-02',
+    locationName: '합성 위치 나',
+    locationTypeCode: 'SAMPLE_LOC_TYPE_A',
+    allowMixedItem: true,
+    isActive: false,
+  },
+  {
+    locationId: 9703,
+    warehouseId: 9101,
+    locationCode: 'SAMPLE-LOC-03',
+    locationName: '합성 위치 다',
+    locationTypeCode: 'SAMPLE_LOC_TYPE_A',
+    allowMixedItem: true,
+    isActive: true,
+  },
+];
+
+/** 품목 목록. **9303은 여기 없다** — 라인 9403이 「목록에 없음」 갈래를 만든다. */
+export const itemFixtures = [
+  { itemId: 9301, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목 가', isActive: true },
+  { itemId: 9302, itemCode: 'SAMPLE-ITEM-02', itemName: '합성 품목 나', isActive: true },
+];
+
+export const uomFixtures = [
+  { uomId: 9501, uomCode: 'SAMPLE-EA', uomName: '합성 단위 개', isActive: true },
+  { uomId: 9502, uomCode: 'SAMPLE-BOX', uomName: '합성 단위 상자', isActive: true },
+];
+
+/**
+ * 자재 LOT 목록. **품목으로 좁혀 받는다** — 번호 여러 개로 한 번에 조회하는 수단이 계약에 없다.
+ *
+ * 9602(9403의 LOT)는 여기 없다 — 그 줄의 품목(9303)이 참조 목록에 없어 LOT도 못 받는
+ * **연쇄를 그대로 재현한다.**
+ */
+export const lotFixtures = [{ lotId: 9601, lotNo: 'LOT-2026-900010', itemId: 9301 }];
