@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { LookupEntry, PageMeta, SelectOption, StepView } from './types';
+import type { ApproverDisplay, LookupEntry, PageMeta, SelectOption } from './types';
 
 /**
  * 내부 번호(FK)로 이어진 값을 이름으로 푸는 참조.
@@ -150,7 +150,7 @@ export const toBusinessUnitOptions = (entries: readonly LookupEntry[]): SelectOp
  * **이름이 없으면 부서만으로 이름을 만들지도, 번호를 내지도 않는다.** 「합성부서」만 적으면
  * 사용자는 부서가 결재한다고 읽는데 1차의 승인자는 언제나 사람이다.
  */
-export const describeApprover = (step: StepView): string => {
+export const describeApprover = (step: ApproverDisplay): string => {
   if (step.approverName === null) return t.values.approverUnknown;
 
   return step.approverDepartmentName === null

@@ -1,12 +1,13 @@
 import { routeToFormValues } from './route-request';
+import { toStepDrafts, type StepDraft } from './step-draft';
 import type {
+  AppUser,
   ApprovalRoute,
   ApprovalRouteStep,
   RouteFormValues,
   RouteView,
-  StepView,
 } from './types';
-import { toRouteView, toStepView } from './types';
+import { toRouteView } from './types';
 
 /**
  * 합성 테스트 자료.
@@ -141,4 +142,40 @@ export const stepFixtures: ApprovalRouteStep[] = [
   },
 ];
 
-export const stepViewFixtures: StepView[] = stepFixtures.map(toStepView);
+export const stepDraftFixtures: StepDraft[] = toStepDrafts(stepFixtures);
+
+/**
+ * 승인자 후보 셋. **9301은 이미 결재선 9001의 1단계에 있다** — 같은 승인자를 두 단계에 두는
+ * 길(경고하되 막지 않는다)을 화면에서 실제로 걸을 수 있어야 한다.
+ *
+ * 계약의 사용자 목록은 **부서 번호만** 준다 — 단계 응답이 주는 표시용 부서 이름에 해당하는
+ * 값이 없어 픽스처에도 그 자리가 없다.
+ */
+export const userFixtures: AppUser[] = [
+  {
+    appUserId: 9301,
+    loginId: 'sample.user1',
+    userName: '합성 승인자1',
+    departmentId: 9401,
+    statusCode: 'SAMPLE-STATUS',
+    isActive: true,
+  },
+  {
+    appUserId: 9304,
+    loginId: 'sample.user4',
+    userName: '합성 승인자4',
+    departmentId: null,
+    statusCode: 'SAMPLE-STATUS',
+    isActive: true,
+  },
+  {
+    appUserId: 9305,
+    loginId: 'sample.user5',
+    userName: '합성 승인자5',
+    departmentId: 9401,
+    statusCode: 'SAMPLE-STATUS',
+    isActive: true,
+  },
+];
+
+export const APPROVER_OPTION_LABEL = '합성 승인자4 · sample.user4';

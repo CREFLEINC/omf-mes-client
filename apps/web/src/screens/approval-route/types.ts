@@ -11,6 +11,10 @@ import type { components } from '@omf-mes/api-client';
 
 export type ApprovalRoute = components['schemas']['ApprovalRoute'];
 export type ApprovalRouteStep = components['schemas']['ApprovalRouteStep'];
+export type ApprovalRouteStepInput = components['schemas']['ApprovalRouteStepInput'];
+export type ApprovalRouteStepsReplace = components['schemas']['ApprovalRouteStepsReplace'];
+/** 승인자 후보. 단계를 **고를 때만** 쓴다 — 이미 저장된 단계의 이름은 단계 응답이 준다. */
+export type AppUser = components['schemas']['AppUser'];
 export type PageMeta = components['schemas']['PageMeta'];
 
 /** 선택 목록의 원본 항목. 사용 여부를 함께 들고 있어야 미사용 값에 표식을 붙일 수 있다. */
@@ -101,34 +105,17 @@ export const toRouteView = (route: ApprovalRoute): RouteView => ({
 });
 
 /**
- * 단계 표시 값.
+ * 승인자 한 사람을 표기하는 데 필요한 것 전부.
  *
- * **승인자 번호를 담지 않는다.** 계약이 표시용 이름을 함께 내려 주므로 화면이 사용자 목록을
- * 다시 부를 일이 없고, 이름을 못 풀었을 때 번호를 대신 낼 이유도 없다 —
- * 담을 자리가 없으면 화면으로 샐 경로도 없다. 단계를 편집하는 회차가 그 번호를 쓰지만,
- * 그때는 계약 타입에서 직접 초안을 만든다.
+ * **번호를 담지 않는다.** 계약이 표시용 이름을 함께 내려 주므로 화면이 사용자 목록을 다시
+ * 부를 일이 없고, 이름을 못 풀었을 때 번호를 대신 낼 이유도 없다 — 표기 함수가 번호를
+ * 받지 않으면 화면으로 샐 경로도 없다.
+ *
+ * 저장된 단계와 편집 중인 초안이 **같은 형태로 표기된다**(`step-draft.ts`의 `StepDraft`가
+ * 이 형태를 만족한다) — 표기 규칙이 둘로 갈리면 편집 전후로 같은 사람이 다르게 보인다.
  */
-export interface StepView {
-  approvalRouteStepId: number;
-  stepNo: number;
+export interface ApproverDisplay {
   /** 없으면 `null`. 번호로 대신하지 않고 「확인할 수 없습니다」로 적는다. */
   approverName: string | null;
   approverDepartmentName: string | null;
-  /** 거짓이면 그 단계에서 결재가 멈춘다. 화면이 경고하되 막지 않는다. */
-  approverIsActive: boolean;
 }
-
-/**
- * 서버가 빈 문구를 주는 일이 실제로 있다. `??`는 빈 문자열을 통과시켜
- * 승인자 칸을 이유 없이 비운다 — 없는 것과 같이 다룬다.
- */
-const toDisplayName = (value: string | undefined): string | null =>
-  value === undefined || value === '' ? null : value;
-
-export const toStepView = (step: ApprovalRouteStep): StepView => ({
-  approvalRouteStepId: step.approvalRouteStepId,
-  stepNo: step.stepNo,
-  approverName: toDisplayName(step.approverName),
-  approverDepartmentName: toDisplayName(step.approverDepartmentName),
-  approverIsActive: step.approverIsActive,
-});

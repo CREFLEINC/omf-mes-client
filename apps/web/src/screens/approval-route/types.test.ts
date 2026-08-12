@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { toRouteView, toStepView } from './types';
-import type { ApprovalRoute, ApprovalRouteStep } from './types';
+import { toRouteView } from './types';
+import type { ApprovalRoute } from './types';
 
 /**
  * 응답 → 화면 타입.
@@ -17,17 +17,6 @@ const route = (patch: Partial<ApprovalRoute> = {}): ApprovalRoute => ({
   isActive: true,
   stepCount: 2,
   inProgressCount: 3,
-  ...patch,
-});
-
-const step = (patch: Partial<ApprovalRouteStep> = {}): ApprovalRouteStep => ({
-  approvalRouteStepId: 9101,
-  stepNo: 1,
-  approverTypeCode: 'USER',
-  approverUserId: 9201,
-  approverName: '합성 승인자1',
-  approverDepartmentName: '합성부서',
-  approverIsActive: true,
   ...patch,
 });
 
@@ -68,41 +57,5 @@ describe('toRouteView', () => {
       stepCount: 0,
       inProgressCount: 0,
     });
-  });
-});
-
-describe('toStepView', () => {
-  it('표시 이름을 응답 값 그대로 옮긴다', () => {
-    const view = toStepView(step());
-
-    expect(view.approverName).toBe('합성 승인자1');
-    expect(view.approverDepartmentName).toBe('합성부서');
-    expect(view.approverIsActive).toBe(true);
-  });
-
-  it('이름이 오지 않으면 null이고, 화면 타입에 승인자 번호를 담지 않는다', () => {
-    const view = toStepView(step({ approverName: undefined, approverDepartmentName: undefined }));
-
-    // 선행 단언 — 담을 것을 담고 있어야 「담지 않는다」가 뜻을 갖는다.
-    expect(view.stepNo).toBe(1);
-    expect(view.approverName).toBeNull();
-    expect(view.approverDepartmentName).toBeNull();
-    // 번호를 담을 자리가 없으면 화면으로 샐 경로도 없다.
-    expect(Object.keys(view)).not.toContain('approverUserId');
-    expect(JSON.stringify(view)).not.toContain('9201');
-  });
-
-  it('빈 문자열 이름을 이름으로 세우지 않는다', () => {
-    // 서버가 빈 문구를 주는 일이 실제로 있다. 빈 이름을 통과시키면 승인자 칸이 이유 없이 빈다.
-    const view = toStepView(step({ approverName: '', approverDepartmentName: '' }));
-
-    expect(view.approverName).toBeNull();
-    expect(view.approverDepartmentName).toBeNull();
-  });
-
-  it('승인자가 사용 중지 상태면 그 사실을 옮긴다', () => {
-    const view = toStepView(step({ approverIsActive: false }));
-
-    expect(view.approverIsActive).toBe(false);
   });
 });
