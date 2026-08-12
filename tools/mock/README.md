@@ -13,7 +13,7 @@ pnpm mock:smoke    # 대표 경로 smoke 테스트
 
 | 변수 | 기본값 | 뜻 |
 | --- | --- | --- |
-| `OMF_SPEC_PATH` | `../omf/deliverables/openapi/` 아래 `mdm-기준정보.json`, `logistics-01자재창고.json` (형제 클론) | OpenAPI 정본 경로. **쉼표로 여러 벌**을 준다. 하나만 줘도 된다 |
+| `OMF_SPEC_PATH` | `tools/mock/resolve-spec.mjs`의 `DEFAULT_SPEC_PATHS` — 형제 클론 `../omf/deliverables/openapi/` 아래의 계약 벌들 | OpenAPI 정본 경로. **쉼표로 여러 벌**을 준다. 하나만 줘도 된다 |
 | `MOCK_PORT` | `4010` | 목 서버 포트 |
 
 ## 정본 규칙
