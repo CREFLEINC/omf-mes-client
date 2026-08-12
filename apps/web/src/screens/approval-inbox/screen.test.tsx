@@ -2059,6 +2059,25 @@ describe('결재 — 실패 배너가 매인 대상', () => {
   });
 
   /**
+   * **창을 여닫아도 남는다**(수명 표 11·12행). 지난 시도가 실패한 것은 아직 참이고,
+   * 보낼 때 공통 쓰기 훅이 스스로 지운다 — 열자마자 지우면 창을 닫은 뒤 **왜 다시 보내려
+   * 했는지**가 사라지고, 닫을 때 지우면 취소를 누른 대가로 사유를 잃는다.
+   */
+  it('창을 다시 열고 닫아도 남는다', async () => {
+    const { user } = await renderDecision(failOnce());
+
+    await sendFailingApprove(user);
+
+    await user.click(approveButton());
+    expect(within(confirmDialog()).queryByText(messages.conflict.user)).toBeNull();
+    expect(screen.getByText(messages.conflict.user)).toBeVisible();
+
+    await user.click(confirmButton(messages.common.cancel));
+
+    expect(screen.getByText(messages.conflict.user)).toBeVisible();
+  });
+
+  /**
    * **늘 지움** — 정리 의존성에 응답 객체를 넣거나 배열을 없애면 배너가 아예 보이지 않는다.
    *
    * **다시 그려진 것을 눈으로 확인한 뒤에 잰다.** 「요청이 늘었다」까지만 기다리면 응답이
