@@ -17,6 +17,10 @@ export type ApprovalRequestDetail = components['schemas']['ApprovalRequestDetail
 export type ApprovalStep = components['schemas']['ApprovalStep'];
 export type ApprovalTarget = components['schemas']['ApprovalTarget'];
 export type PageMeta = components['schemas']['PageMeta'];
+/** 승인 본문 — **계약이 몸통 자체를 선택으로 두었고 `comment`도 선택이다.** */
+export type ApprovalDecision = components['schemas']['ApprovalDecision'];
+/** 반려 본문 — 몸통이 필수이고 `comment`가 `minLength: 1`로 필수다. */
+export type ApprovalRejection = components['schemas']['ApprovalRejection'];
 
 export interface SelectOption {
   value: string;
