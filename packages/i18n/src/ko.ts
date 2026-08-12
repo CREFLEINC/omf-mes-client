@@ -4632,9 +4632,15 @@ const approvalInbox = {
     approvalRequestNo: '요청번호',
     reason: '사유',
     requestedByName: '상신자',
-    requestedAt: '상신일',
+    /** 목록 열 이름. 계약이 이 값을 시각까지 실어 주고 목록도 시각까지 보인다. */
+    requestedAt: '상신 일시',
     status: '상태',
     approvalTypeCode: '승인 유형',
+    /**
+     * 조건 줄의 기간 라벨. **열 이름과 낱말이 다른 것이 맞다** — 계약의 두 조건
+     * (`requestedAtFrom`·`requestedAtTo`)이 `format: date`라 **날짜 단위로** 좁힌다.
+     * 여기에 「일시」를 쓰면 시각까지 지정할 수 있다고 읽힌다.
+     */
     period: '상신일',
     q: '요청번호 검색',
   },

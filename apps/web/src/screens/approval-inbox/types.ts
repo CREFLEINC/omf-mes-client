@@ -62,7 +62,8 @@ export interface RequestRow {
   /** 코드 문자열 그대로. 값 목록이 확정되면 사람이 읽는 이름이 이 자리에 온다(`omf-mes#64`). */
   approvalTypeCode: string;
   requesterName: string;
-  requestedDate: string;
+  /** `2026-08-06 09:12`. **시각까지 담는다** — 계약이 이 값을 `date-time`으로 둔다. */
+  requestedAtText: string;
   statusCode: string;
   reasonFirstLine: string;
 }
@@ -82,18 +83,31 @@ export const firstLineOf = (reason: string): string =>
     .find((line) => line.trim() !== '')
     ?.trim() ?? '';
 
-/**
- * 상신일 칸. 계약의 `date-time`에서 **날짜 조각만** 뽑는다.
- *
- * **실행 환경 시간대로 옮기지 않는다.** 서버가 적어 보낸 벽시계 날짜가 현장이 쓰는 날짜이고,
- * 옮기면 같은 요청이 보는 사람마다 다른 날에 올라온 것으로 보인다(`master-change`와 같은 규율).
- *
- * 형식이 아니면 원문을 그대로 낸다 — 자료를 잃는 것보다 낫다.
- */
-const DATE_PART_PATTERN = /^(\d{4}-\d{2}-\d{2})T/;
+/** 계약의 date-time 문자열에서 표기용 조각을 뽑는다. */
+const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
 
-export const toRequestedDate = (requestedAt: string): string =>
-  DATE_PART_PATTERN.exec(requestedAt)?.[1] ?? requestedAt;
+/**
+ * 상신 일시 표기(`2026-08-06 09:12`).
+ *
+ * **시각까지 낸다.** 계약이 이 값을 `date-time`으로 두었고, 결재함에서는 같은 날 올라온
+ * 요청들의 앞뒤가 곧 결재 차례를 읽는 단서다 — 날짜만 내면 그 순서가 사라진다.
+ *
+ * **실행 환경 시간대로 옮기지 않는다.** 문자열에 실려 온 offset은 상신이 일어난 곳의 시각이고,
+ * 보는 사람의 시간대로 옮기면 같은 요청이 사람마다 다른 시각에 올라온 것으로 보인다.
+ *
+ * **형식이 아니면 원문을 그대로 낸다.** 서버가 보낸 값을 화면이 삼키지 않는다 —
+ * 「—」로 바꾸면 값이 없는 것과 못 알아본 것이 구분되지 않는다.
+ *
+ * **형식을 새로 짓지 않았다.** 이 저장소가 여섯 화면에서 쓰는 규칙 그대로다(연·월·일 + 시·분).
+ * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 함수를 참조하지 않는다.
+ */
+export const formatDateTime = (value: string): string => {
+  const matched = RFC3339_PATTERN.exec(value);
+
+  if (matched === null) return value;
+
+  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+};
 
 /**
  * 계약 응답 한 건을 목록 행으로 옮긴다.
@@ -114,7 +128,7 @@ export const toRequestRow = (request: ApprovalRequest): RequestRow => {
     approvalTypeCode: request.approvalTypeCode,
     requesterName:
       request.requestedByName === '' ? t.values.unknownRequester : request.requestedByName,
-    requestedDate: toRequestedDate(request.requestedAt),
+    requestedAtText: formatDateTime(request.requestedAt),
     statusCode: request.statusCode,
     reasonFirstLine: reasonFirstLine === '' ? t.values.emptyReason : reasonFirstLine,
   };

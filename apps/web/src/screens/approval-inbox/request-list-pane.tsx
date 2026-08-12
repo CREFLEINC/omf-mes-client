@@ -12,7 +12,7 @@ const t = messages.approvalInbox;
  * 표의 열 폭.
  *
  * **흡수 열은 사유 하나뿐이고 나머지 다섯은 폭을 지정한다.** 흡수 열이 둘이면 좁은 화면에서
- * 둘 다 짓눌린다. 지정 폭의 합은 **612px**이고, 사유에 **316px**을 예산으로 잡으면 합이
+ * 둘 다 짓눌린다. 지정 폭의 합은 **660px**이고, 사유에 **268px**을 예산으로 잡으면 합이
  * `.wide-table`의 최소 폭(58rem = 928px)에 딱 맞는다 — 앞선 화면들이 쓴 방법과 같다
  * (흡수 열에도 예산을 주고 그 합으로 하한을 맞춘다).
  *
@@ -21,9 +21,9 @@ const t = messages.approvalInbox;
  * | 요청번호 | 140px | `SYNTH-REQ-001` 형식 한 줄 |
  * | 승인 유형 | 160px | 코드 문자열 그대로. 밑줄 낀 긴 코드가 한 줄에 들어가는 폭 |
  * | 상신자 | 96px | 사람 이름 |
- * | 상신일 | 112px | `YYYY-MM-DD` + 여백 |
+ * | **상신 일시** | **160px** | `2026-08-06 09:12` 한 줄. **일시 열의 저장소 전례 값 그대로다** |
  * | 상태 | 104px | 코드 문자열 그대로 |
- * | **사유 첫 줄** | **미지정(예산 316px)** | 남는 폭을 흡수하는 유일한 열 |
+ * | **사유 첫 줄** | **미지정(예산 268px)** | 남는 폭을 흡수하는 유일한 열 |
  *
  * **열 여섯은 설계 스펙이 확정한 필드 목록 그대로다.** 대상 표시명을 여기 두지 않는다 —
  * 대상은 상세 구획 소관이다. 진행 단계도 두지 않는다. 값 목록이 확정돼 유형이 사람이 읽는
@@ -33,12 +33,12 @@ export const REQUEST_COLUMN_WIDTH = {
   approvalRequestNo: '140px',
   approvalTypeCode: '160px',
   requester: '96px',
-  requestedDate: '112px',
+  requestedAt: '160px',
   status: '104px',
 } as const;
 
 /** 흡수 열(사유)의 예산. 지정 폭 합과 더해 최소 폭에 맞춘다 — 이 값이 곧 그 열의 하한이다. */
-export const REASON_COLUMN_BUDGET_PX = 316;
+export const REASON_COLUMN_BUDGET_PX = 268;
 
 /** `.wide-table`이 주는 표 최소 폭(58rem). 배치 규범 문서가 근거를 갖는다. */
 export const WIDE_TABLE_MIN_WIDTH_PX = 928;
@@ -119,10 +119,11 @@ export const RequestListPane = ({
       render: (row) => row.requesterName,
     },
     {
-      key: 'requestedDate',
+      key: 'requestedAt',
       header: t.fields.requestedAt,
-      width: REQUEST_COLUMN_WIDTH.requestedDate,
-      render: (row) => row.requestedDate,
+      width: REQUEST_COLUMN_WIDTH.requestedAt,
+      /* **시각까지 낸다** — 같은 날 올라온 요청들의 앞뒤가 결재 차례를 읽는 단서다. */
+      render: (row) => row.requestedAtText,
     },
     {
       key: 'status',

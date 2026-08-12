@@ -63,7 +63,7 @@ describe('열 폭 예산', () => {
       'approvalRequestNo',
       'approvalTypeCode',
       'requester',
-      'requestedDate',
+      'requestedAt',
       'status',
     ]);
   });
@@ -74,8 +74,13 @@ describe('열 폭 예산', () => {
       0,
     );
 
-    expect(specified).toBe(612);
+    expect(specified).toBe(660);
     expect(specified + REASON_COLUMN_BUDGET_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_WIDTH_PX);
+  });
+
+  /** 일시 칸은 `2026-08-06 09:12`이 한 줄에 들어가야 한다 — 접히면 행 높이가 무너진다. */
+  it('상신 일시 칸이 일시 표기의 저장소 전례 폭을 갖는다', () => {
+    expect(REQUEST_COLUMN_WIDTH.requestedAt).toBe('160px');
   });
 });
 
@@ -95,6 +100,22 @@ describe('RequestListPane — 확정된 여섯 열', () => {
       t.fields.status,
       t.fields.reason,
     ]);
+  });
+
+  /**
+   * **날짜만 그리면 통과하지 못한다.** 픽스처의 시각이 서로 다르고, 같은 날 올라온 요청이
+   * 있어 날짜만으로는 행을 가릴 수도 없다.
+   */
+  it('상신 일시를 시각까지 낸다', () => {
+    const { container } = renderPane();
+    const text = container.textContent ?? '';
+
+    expect(screen.getByText('2026-08-06 14:20')).toBeInTheDocument();
+    /* 앞자리 0이 붙는 시각도 그대로 읽힌다. */
+    expect(screen.getByText('2026-08-05 09:05')).toBeInTheDocument();
+    /* 날짜만 그리는 구현은 이 두 단언을 함께 넘지 못한다. */
+    expect(text).toContain('14:20');
+    expect(text).toContain('18:40');
   });
 
   it('승인 유형 열이 서고 코드를 그대로 낸다', () => {
