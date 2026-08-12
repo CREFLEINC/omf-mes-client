@@ -3447,6 +3447,62 @@ describe('SupplierReturnScreen — 전송 중 주소가 바뀌면', () => {
   });
 
   /*
+   * **R3-6** — 실패는 채널이 둘이다: 배너와 **그 칸에 붙는 인라인 필드 오류.** 400이 전부
+   * 인라인으로 소화되면 배너는 아예 서지 않으므로, 배너만 매달면 **인라인 쪽이 그대로 샌다** —
+   * 9001의 「이 사유는 쓸 수 없습니다」가 9002의 사유 칸에 붙고 접근 이름까지 이어진다.
+   */
+  it('늦게 도착한 인라인 필드 오류가 다른 전표의 칸에 붙지 않는다', async () => {
+    const { release } = await navigateWhileSending(
+      allRoutes([
+        failingPostRoute(400, {
+          errors: [
+            { scope: 'field', field: 'reasonCode', code: 'INVALID', message: '합성 사유 오류' },
+          ],
+        }),
+      ]),
+    );
+
+    release();
+
+    await waitFor(() => {
+      expect(discardButton()).not.toBeDisabled();
+    });
+
+    expect(screen.queryByText('합성 사유 오류')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: t.fields.reason }),
+    ).not.toHaveAccessibleDescription(expect.stringContaining('합성 사유 오류'));
+  });
+
+  /*
+   * **R3-7** — 정리 effect가 **비등가임을 값으로 못 박는다.** 읽는 자리 매임만 있으면 대상을
+   * 떠난 동안에는 가려지지만 **되돌아오는 순간 되살아난다** — 그 실패는 이미 화면에서 수명을
+   * 다했는데 사용자는 방금 일어난 일로 읽는다.
+   */
+  it('대상을 떠났다가 되돌아와도 앞 실패가 되살아나지 않는다', async () => {
+    const { user } = await setupReadyToSubmit(allRoutes([failingPostRoute(403)]), '?gr=9001');
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+    await screen.findByText(messages.httpError.forbidden);
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await screen.findAllByText(ITEM_LABEL);
+
+    /* 짝 방향 — 되돌아온 것이 실제로 그 전표다(화면이 열려 있다). */
+    expect(currentLocation()).toContain('gr=9001');
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+  });
+
+  /*
    * **짝 방향** — 대상이 그대로면 결과가 선다. 늘 버리면 성공을 확인할 자리가 사라진다.
    */
   it('대상이 그대로면 늦게 도착한 결과가 선다', async () => {

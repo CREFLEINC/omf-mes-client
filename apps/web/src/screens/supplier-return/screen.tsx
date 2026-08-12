@@ -378,14 +378,27 @@ export const SupplierReturnScreen = () => {
   const isLocked = post.isSaving;
 
   /**
-   * 지금 화면이 보일 수 있는 실패. **다른 전표로 옮긴 뒤 도착한 실패는 보이지 않는다.**
+   * 이 되먹임이 **지금 보고 있는 전표의 것인가.**
    *
    * 성공은 세우는 자리가 화면에 있어 거기서 걸렀지만(위 `onSuccess`), **실패는 공통 쓰기 훅의
    * 안쪽 상태**라 화면이 세우는 자리를 갖지 않는다 — 그래서 **읽는 자리에서** 매단다.
    * 되돌아와도 되살아나지 않는다: 대상을 떠난 순간 그 사실은 화면에서 수명을 다했고,
-   * 배너 정리 effect가 그 뒤에 거둔다(「자기 대상보다 오래 살지 않는다」의 일관된 귀결).
+   * 정리 effect가 그 뒤에 거둔다(「자기 대상보다 오래 살지 않는다」의 일관된 귀결).
    */
-  const currentError = submittedReceiptId === selectedReceiptId ? post.error : null;
+  const isFeedbackForCurrentTarget = submittedReceiptId === selectedReceiptId;
+
+  /** 지금 화면이 보일 수 있는 배너. **다른 전표로 옮긴 뒤 도착한 실패는 보이지 않는다.** */
+  const currentError = isFeedbackForCurrentTarget ? post.error : null;
+
+  /**
+   * 지금 화면이 그 칸에 붙일 수 있는 **인라인 필드 오류.**
+   *
+   * **실패는 채널이 둘이고 축이 하나여야 한다.** 400이 전부 인라인으로 소화되면 배너는 아예
+   * 서지 않으므로, 배너만 매달면 인라인 쪽이 그대로 샌다 — 전표 A의 「이 사유는 쓸 수
+   * 없습니다」가 **전표 B의 사유 칸에** 붙고 접근 이름까지 이어진다. 400은 **그 제출에 대한
+   * 판정**이라 매인 대상이 배너와 같다.
+   */
+  const currentFieldErrors = isFeedbackForCurrentTarget ? post.fieldErrors : NO_FIELD_ERRORS;
 
   /**
    * 서버가 준 되먹임이 **하나라도 남아 있는가**(배너 또는 인라인 필드 오류).
@@ -710,7 +723,8 @@ export const SupplierReturnScreen = () => {
    * 다시 `null` 가지를 만들지 않는다.
    */
   const returnPane = (receipt: ReceiptView): ReactNode => {
-    const fieldErrors = { ...post.fieldErrors, ...localFieldErrors };
+    /* 서버가 준 것은 `gr`에 매이고(위), 화면이 잡은 것은 유지되는 초안과 함께 산다. */
+    const fieldErrors = { ...currentFieldErrors, ...localFieldErrors };
     const blockReason = returnBlockReason({
       isCodeListPending: isRequiredCodeListPending(codeOptions),
       draft: returnDraft,
