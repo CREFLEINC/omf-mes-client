@@ -46,9 +46,16 @@ interface RecordedRequest {
 
 const createRecordingFetch = (
   routes: StubRoute[],
-): { fetch: StubFetch; requests: RecordedRequest[] } => {
+  hold: (request: Request) => boolean = () => false,
+): { fetch: StubFetch; requests: RecordedRequest[]; release: () => void } => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch(routes);
+  let release = (): void => {
+    /* 아래 Promise 생성자가 곧바로 채운다. */
+  };
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
 
   const fetch: StubFetch = async (request) => {
     const raw = request.method === 'GET' ? '' : await request.clone().text();
@@ -60,10 +67,19 @@ const createRecordingFetch = (
       body: raw === '' ? null : (JSON.parse(raw) as unknown),
     });
 
+    /* 기록한 **뒤에** 붙잡는다 — 기다리는 동안 무엇이 잠기는가를 재려면 이미 기록돼 있어야 한다. */
+    if (hold(request)) await gate;
+
     return stub(request);
   };
 
-  return { fetch, requests };
+  return {
+    fetch,
+    requests,
+    release: () => {
+      release();
+    },
+  };
 };
 
 const isGet = (request: Request, pathname: string): boolean =>
@@ -99,7 +115,8 @@ const allRoutes = (extra: StubRoute[] = []): StubRoute[] => [
   },
   {
     match: (request) =>
-      request.method === 'GET' && /^\/app\/approval-routes\/[^/]+$/.test(new URL(request.url).pathname),
+      request.method === 'GET' &&
+      /^\/app\/approval-routes\/[^/]+$/.test(new URL(request.url).pathname),
     respond: () => jsonResponse(createdRouteFixture, { headers: { ETag: 'detail-token' } }),
   },
   {
@@ -158,8 +175,13 @@ const renderScreen = (
   routes: StubRoute[],
   search = '',
   navigateTo = '',
-): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  hold?: (request: Request) => boolean,
+): {
+  requests: RecordedRequest[];
+  release: () => void;
+  user: ReturnType<typeof userEvent.setup>;
+} => {
+  const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
   renderWithProviders(
     <>
@@ -171,7 +193,7 @@ const renderScreen = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, user: userEvent.setup() };
+  return { requests, release, user: userEvent.setup() };
 };
 
 const listRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
@@ -400,7 +422,8 @@ describe('ApprovalRouteScreen(등록) — 성공 뒤 목록', () => {
         jsonResponse(listBody(created ? [...routeFixtures, createdRouteFixture] : routeFixtures)),
     };
     const markCreated: StubRoute = {
-      match: (request) => request.method === 'POST' && new URL(request.url).pathname === ROUTES_PATH,
+      match: (request) =>
+        request.method === 'POST' && new URL(request.url).pathname === ROUTES_PATH,
       respond: () => {
         created = true;
 
@@ -473,5 +496,44 @@ describe('ApprovalRouteScreen(등록) — 실패 배너의 매임', () => {
     // 선행 단언 — 폼이 실제로 다시 섰어야 「배너가 없다」가 뜻을 갖는다.
     expect(within(reopened).getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
     expect(screen.queryByText('합성 등록 거절')).not.toBeInTheDocument();
+  });
+});
+
+describe('ApprovalRouteScreen(등록) — 전송 중 바깥 주소 이동', () => {
+  const holdCreate = (request: Request): boolean =>
+    request.method === 'POST' && new URL(request.url).pathname === ROUTES_PATH;
+
+  /**
+   * **등록의 결과는 새로 생긴 자원이지 그때 보던 대상이 아니다.**
+   *
+   * 대상이 바뀌었다고 이 되먹임을 버리면 결재선은 서버에 만들어졌는데 화면은 토스트도,
+   * 이동도, 목록 갱신도 하지 않는다 — 계획 결정 15가 막으려던 「사용 중인데 단계가 0인
+   * 결재선」이 아무도 모르게 남는다.
+   */
+  it('등록이 나가는 중에 대상이 바뀌어도 잠금이 살아 있고 만든 결재선으로 옮겨 간다', async () => {
+    const { requests, release, user } = renderScreen(allRoutes(), '', '', holdCreate);
+
+    const pane = await openCreateForm(user);
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.submitCreate }));
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    /* 바깥에서 등록 표시를 떨군다 — 잠금 문을 지나지 않는 길이다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationText()).not.toContain('new=');
+    });
+
+    /* 공동 잠금이 살아 있다 — 요청은 아직 날아가는 중이다. */
+    expect(screen.getByRole('button', { name: t.actions.create })).toBeDisabled();
+
+    release();
+
+    expect(await screen.findByText(messages.common.created)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9004');
+    });
   });
 });

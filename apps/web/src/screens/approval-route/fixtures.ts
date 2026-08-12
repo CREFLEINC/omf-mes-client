@@ -1,5 +1,11 @@
 import { routeToFormValues } from './route-request';
-import type { ApprovalRoute, ApprovalRouteStep, RouteFormValues, RouteView, StepView } from './types';
+import type {
+  ApprovalRoute,
+  ApprovalRouteStep,
+  RouteFormValues,
+  RouteView,
+  StepView,
+} from './types';
 import { toRouteView, toStepView } from './types';
 
 /**
@@ -85,7 +91,9 @@ export const routeViewFixtures: RouteView[] = routeFixtures.map(toRouteView);
  * 9001을 폼에 세운 값. 「고친 것이 없다」의 기준이 되는 자리다.
  * **응답 픽스처에서 파생시킨다** — 손으로 적으면 둘이 조용히 어긋난다.
  */
-export const routeFormValuesFixture: RouteFormValues = routeToFormValues(toRouteView(routeWithUnit));
+export const routeFormValuesFixture: RouteFormValues = routeToFormValues(
+  toRouteView(routeWithUnit),
+);
 
 /**
  * 등록이 만들어 내는 결재선. **단계가 0이고 사용 중이다** — 계약이 등록 본문에 단계를 받지

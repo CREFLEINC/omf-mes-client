@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -42,6 +42,22 @@ describe('DiscardConfirmDialog', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  /**
+   * **스크림 클릭으로 닫히는 것을 막지 않는다.**
+   *
+   * 실수로 닫혀도 초안이 그대로 남아 잃는 것이 없다 — 사용 전환 창이 **일부러 막는 것**과
+   * 정확히 반대 자리다(`activation-dialog.test.tsx`가 그 반대 방향을 잰다).
+   * 두 창을 짝으로 재야 규칙이 「막는다」가 아니라 「여기는 막고 저기는 연다」로 읽힌다.
+   */
+  it('스크림을 누르면 닫힌다', () => {
+    const onClose = vi.fn();
+
+    render(<DiscardConfirmDialog onConfirm={vi.fn()} onClose={onClose} />);
+    fireEvent.click(screen.getByRole('dialog'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   /** #45 — 창 본문이 펼침 목록을 자른다. 걸릴 자리를 만들지 않는 것으로 피한다. */

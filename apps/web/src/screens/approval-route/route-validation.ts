@@ -32,7 +32,8 @@ export const ROUTE_FORM_FIELDS: readonly string[] = [
 ];
 
 /** 친 글자를 값 구간의 한쪽으로 읽은 결과. **빈 칸은 오류가 아니다** — 「그 방향으로 제한하지 않는다」는 뜻이다. */
-export type RangeParse = { kind: 'empty' } | { kind: 'invalid' } | { kind: 'number'; value: number };
+export type RangeParse =
+  { kind: 'empty' } | { kind: 'invalid' } | { kind: 'number'; value: number };
 
 /**
  * `Number()`는 빈 문자열과 공백을 `0`으로 읽고 `Infinity`를 숫자로 읽는다 — 둘 다 여기서

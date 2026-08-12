@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -120,6 +120,31 @@ describe('ActivationDialog — 창의 경계', () => {
 
     expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.cancel })).toBeDisabled();
+  });
+
+  /**
+   * **스크림 클릭으로 닫히지 않는다.**
+   *
+   * 되돌리기에 다른 사람의 업무가 걸린 확인 창이 실수로 사라지면 사용자는 자기가 무엇을
+   * 취소했는지 모른다 — 초안 파기 창이 **일부러 열어 두는 것**과 정확히 반대 자리다
+   * (`discard-confirm-dialog.test.tsx`가 그 반대 방향을 잰다).
+   */
+  it('스크림을 눌러도 닫히지 않는다', () => {
+    const { props } = renderDialog();
+
+    fireEvent.click(screen.getByRole('dialog'));
+
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  /** 짝 방향 — 닫는 길 자체는 열려 있어야 한다. 안 그러면 위 단언이 「닫을 길이 없다」와 같아진다. */
+  it('취소를 누르면 닫힌다', async () => {
+    const user = userEvent.setup();
+    const { props } = renderDialog();
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
   /** 실패해도 창을 닫지 않는다 — 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */

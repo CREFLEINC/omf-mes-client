@@ -15,7 +15,10 @@ const route = (overrides: Partial<ApprovalRoute> = {}): ApprovalRoute => ({
   ...overrides,
 });
 
-const probe = (items: ApprovalRoute[], overrides: Partial<DuplicateProbe> = {}): DuplicateProbe => ({
+const probe = (
+  items: ApprovalRoute[],
+  overrides: Partial<DuplicateProbe> = {},
+): DuplicateProbe => ({
   items,
   total: items.length,
   isLoading: false,

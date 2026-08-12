@@ -77,7 +77,13 @@ const createRecordingFetch = (
     return stub(request);
   };
 
-  return { fetch, requests, release: () => { release(); } };
+  return {
+    fetch,
+    requests,
+    release: () => {
+      release();
+    },
+  };
 };
 
 const isGet = (request: Request, pathname: string): boolean =>
@@ -159,6 +165,20 @@ const writeRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 const detailRoute = (route: unknown = routeFixtures[0]): StubRoute => ({
   match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
   respond: () => jsonResponse(route, { headers: { ETag: 'token-0' } }),
+});
+
+/**
+ * 번호에 맞는 결재선을 돌려준다. **대상이 바뀌는 길을 재려면** 두 대상이 서로 다른 값을
+ * 보여야 한다 — 같은 몸통을 주면 「남의 값이 새 대상에 찍혔다」가 드러나지 않는다.
+ */
+const detailRouteById = (): StubRoute => ({
+  match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
+  respond: (request) => {
+    const id = Number(new URL(request.url).pathname.split('/').pop());
+    const found = routeFixtures.find((route) => route.approvalRouteId === id) ?? routeFixtures[0];
+
+    return jsonResponse(found, { headers: { ETag: `token-${String(id)}` } });
+  },
 });
 
 const failingDetailRoute = (status = 500): StubRoute => ({
@@ -354,10 +374,7 @@ const waitForForm = async (): Promise<HTMLElement> => screen.findByLabelText(t.f
 const saveButton = (): HTMLElement => screen.getByRole('button', { name: messages.common.save });
 
 /** 값 구간 하한을 고쳐 폼을 더럽힌다. 「고친 것이 없다」 잠금을 푸는 가장 짧은 길이다. */
-const dirtyForm = async (
-  user: ReturnType<typeof userEvent.setup>,
-  text = '7',
-): Promise<void> => {
+const dirtyForm = async (user: ReturnType<typeof userEvent.setup>, text = '7'): Promise<void> => {
   const field = await waitForForm();
 
   await user.clear(field);
@@ -1355,10 +1372,7 @@ describe('ApprovalRouteScreen — 수정 저장', () => {
    */
   it('수정 요청이 상세 경로에서 꺼낸 If-Match와 멱등 키를 싣는다', async () => {
     const versioned = createVersionedDetail();
-    const { requests, user } = renderScreen(
-      allRoutes([versioned.route, updateRoute()]),
-      SELECTED,
-    );
+    const { requests, user } = renderScreen(allRoutes([versioned.route, updateRoute()]), SELECTED);
 
     await dirtyForm(user);
     await user.click(saveButton());
@@ -1380,10 +1394,7 @@ describe('ApprovalRouteScreen — 수정 저장', () => {
    */
   it('저장에 성공하면 상세를 다시 불러 두 번째 저장이 새 토큰을 싣는다', async () => {
     const versioned = createVersionedDetail();
-    const { requests, user } = renderScreen(
-      allRoutes([versioned.route, updateRoute()]),
-      SELECTED,
-    );
+    const { requests, user } = renderScreen(allRoutes([versioned.route, updateRoute()]), SELECTED);
 
     await dirtyForm(user, '7');
     const before = detailRequests(requests).length;
@@ -1514,10 +1525,7 @@ describe('ApprovalRouteScreen — 활성 중복 선검사', () => {
   });
 
   it('같은 유형·사업부로 사용 중인 결재선이 있으면 저장 전에 막힌다', async () => {
-    const { requests, user } = renderScreen(
-      allRoutes([probeRoute([OTHER_ACTIVE])]),
-      SELECTED,
-    );
+    const { requests, user } = renderScreen(allRoutes([probeRoute([OTHER_ACTIVE])]), SELECTED);
 
     await dirtyForm(user);
 
@@ -1531,10 +1539,7 @@ describe('ApprovalRouteScreen — 활성 중복 선검사', () => {
 
   /** 빼지 않으면 자기 자신 때문에 수정이 **늘** 막힌다. */
   it('선검사가 자기 자신을 제외한다', async () => {
-    const { requests, user } = renderScreen(
-      allRoutes([probeRoute([routeFixtures[0]])]),
-      SELECTED,
-    );
+    const { requests, user } = renderScreen(allRoutes([probeRoute([routeFixtures[0]])]), SELECTED);
 
     await dirtyForm(user);
     await waitFor(() => {
@@ -1559,10 +1564,7 @@ describe('ApprovalRouteScreen — 활성 중복 선검사', () => {
   });
 
   it('사업부를 지정하면 전 사업부 공통본은 중복이 아니다', async () => {
-    const { requests, user } = renderScreen(
-      allRoutes([probeRoute([routeFixtures[1]])]),
-      SELECTED,
-    );
+    const { requests, user } = renderScreen(allRoutes([probeRoute([routeFixtures[1]])]), SELECTED);
 
     await dirtyForm(user);
     await waitFor(() => {
@@ -1585,10 +1587,7 @@ describe('ApprovalRouteScreen — 활성 중복 선검사', () => {
 
   /** 잘린 목록으로 「없다」고 판정하면 있는 중복을 못 본다 — 조용한 잘림을 만들지 않는다. */
   it('조준 조회가 잘리면 판정하지 않고 막지도 않는다', async () => {
-    const { user } = renderScreen(
-      allRoutes([probeRoute([OTHER_ACTIVE], { total: 5 })]),
-      SELECTED,
-    );
+    const { user } = renderScreen(allRoutes([probeRoute([OTHER_ACTIVE], { total: 5 })]), SELECTED);
 
     await dirtyForm(user);
 
@@ -1602,10 +1601,7 @@ describe('ApprovalRouteScreen — 활성 중복 선검사', () => {
    * 그 행은 조준 조회가 이미 실어 왔으므로 **추가 조회 없이** 그 번호로 옮긴다.
    */
   it('막혔을 때 기존 결재선으로 옮겨 가고 그 길에 추가 조회가 없다', async () => {
-    const { requests, user } = renderScreen(
-      allRoutes([probeRoute([OTHER_ACTIVE])]),
-      SELECTED,
-    );
+    const { requests, user } = renderScreen(allRoutes([probeRoute([OTHER_ACTIVE])]), SELECTED);
 
     await dirtyForm(user);
     await screen.findByText(t.actionReasons.duplicateActive);
@@ -1641,16 +1637,15 @@ describe('ApprovalRouteScreen — 사용 전환', () => {
 
   /** 창이 말해야 하는 셋 — 무엇이 막히는가 · 진행 중인 것은 어떻게 되는가 · 되돌릴 수 있는가. */
   it('확인 창이 막히는 것·진행 중 건수·되돌릴 수 있음을 밝힌다', async () => {
-    const { user } = renderScreen(
-      allRoutes([activationRoute('deactivate', INACTIVE)]),
-      SELECTED,
-    );
+    const { user } = renderScreen(allRoutes([activationRoute('deactivate', INACTIVE)]), SELECTED);
 
     await openDeactivate(user);
 
     const dialog = activationDialog();
 
-    expect(within(dialog).getByText(t.dialog.deactivateBlocks('SAMPLE-TYPE-A'))).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(t.dialog.deactivateBlocks('SAMPLE-TYPE-A')),
+    ).toBeInTheDocument();
     /* 건수는 결재선 응답이 실어 온 값이다 — 화면이 세지 않는다. */
     expect(within(dialog).getByText(t.dialog.deactivateInProgress(3))).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.deactivateReversible)).toBeInTheDocument();
@@ -1718,9 +1713,7 @@ describe('ApprovalRouteScreen — 사용 전환', () => {
     const activateButton = await screen.findByRole('button', { name: t.actions.activate });
 
     await user.click(activateButton);
-    await user.click(
-      within(activationDialog()).getByRole('button', { name: t.actions.activate }),
-    );
+    await user.click(within(activationDialog()).getByRole('button', { name: t.actions.activate }));
 
     await waitFor(() => {
       expect(activationRequests(requests, 'activate')).toHaveLength(1);
@@ -1870,7 +1863,9 @@ describe('ApprovalRouteScreen — 사용 전환', () => {
    */
   it('끄기에 실패하면 창이 열린 채 사유가 창 안에 선다', async () => {
     const { user } = renderScreen(
-      allRoutes([failingActivationRoute('deactivate', 409, { conflictCause: 'user', message: '' })]),
+      allRoutes([
+        failingActivationRoute('deactivate', 409, { conflictCause: 'user', message: '' }),
+      ]),
       SELECTED,
     );
 
@@ -2227,5 +2222,252 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
       expect(screen.queryByText(messages.common.discardChangesConfirm)).not.toBeInTheDocument();
     });
     expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
+  });
+});
+
+/**
+ * **전송 중에 주소가 바깥에서 바뀌는 길** — 뒤로가기·앞으로가기·주소 직접 편집.
+ *
+ * 이 길은 화면의 클릭 핸들러를 지나지 않아 전송 중 잠금 문(`applyUserNavigation`)에 걸리지
+ * 않는다. 그래서 대상이 바뀌고, 그때 배너·창 정리가 깨어난다 — 그 정리가 **나가는 중인
+ * 요청까지 끊으면** 무효화·성공·실패·공동 잠금이 통째로 사라진다.
+ *
+ * **끊는 것과 감추는 것은 다르다.** 규칙(「결과는 자기 대상보다 오래 살지 않는다」)이 요구하는
+ * 것은 *보이지 않는 것*이지 *일어나지 않는 것*이 아니다 — 서버에는 이미 갔다.
+ */
+describe('ApprovalRouteScreen — 전송 중 바깥 주소 이동', () => {
+  const holdUpdate = (request: Request): boolean =>
+    request.method === 'PUT' && isDetailPath(new URL(request.url).pathname);
+  const holdDeactivate = (request: Request): boolean =>
+    request.method === 'POST' && isActionPath(new URL(request.url).pathname, 'deactivate');
+
+  const createButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.create });
+
+  it('수정이 나가는 중에 대상이 바뀌어도 잠금·무효화·성공 알림이 살아 있다', async () => {
+    const { requests, release, user } = renderScreen(
+      allRoutes([detailRouteById(), updateRoute()]),
+      SELECTED,
+      '?ar=9003',
+      holdUpdate,
+    );
+
+    await dirtyForm(user, '77');
+    await user.click(saveButton());
+    await waitFor(() => {
+      expect(updateRequests(requests)).toHaveLength(1);
+    });
+
+    /* 바깥에서 대상을 갈아 끼운다 — 잠금 문을 지나지 않는 길이다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9003');
+    });
+
+    /* ① 공동 잠금이 살아 있다 — 요청은 아직 날아가는 중이다. */
+    expect(createButton()).toBeDisabled();
+
+    const beforeDetail = detailRequests(requests).length;
+
+    release();
+
+    /* ② 성공이 사라지지 않는다. */
+    expect(await screen.findByText(messages.common.saved)).toBeInTheDocument();
+    /* ③ 무효화가 살아 있다 — 이것이 없으면 다음 저장이 낡은 토큰으로 나간다. */
+    await waitFor(() => {
+      expect(detailRequests(requests).length).toBeGreaterThan(beforeDetail);
+    });
+  });
+
+  /** **남의 값을 새 대상의 초안에 찍지 않는다** — 되먹임은 그 요청이 겨눈 대상에 맨다. */
+  it('수정 결과가 새 대상의 폼을 덮지 않는다', async () => {
+    const saved = { ...routeFixtures[0], minValue: 42, maxValue: 999 };
+    const { requests, release, user } = renderScreen(
+      allRoutes([detailRouteById(), updateRoute(saved)]),
+      SELECTED,
+      '?ar=9003',
+      holdUpdate,
+    );
+
+    await dirtyForm(user, '77');
+    await user.click(saveButton());
+    await waitFor(() => {
+      expect(updateRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.notes.approvalTypeFixed);
+
+    release();
+    await screen.findByText(messages.common.saved);
+
+    /* 9003의 하한은 0이다 — 9001에 보낸 저장의 응답(42)이 여기 앉으면 안 된다. */
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('0');
+    });
+  });
+
+  /** 실패도 같은 자리에서 사라진다 — 400·403·409가 배너 없이 증발하면 안 된다. */
+  it('수정이 실패해도 그 결과가 삼켜지지 않고 잠금이 제때 풀린다', async () => {
+    const { requests, release, user } = renderScreen(
+      allRoutes([
+        detailRouteById(),
+        failingUpdateRoute(409, { conflictCause: 'user', message: '' }),
+      ]),
+      SELECTED,
+      '?ar=9003',
+      holdUpdate,
+    );
+
+    await dirtyForm(user, '77');
+    await user.click(saveButton());
+    await waitFor(() => {
+      expect(updateRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    expect(createButton()).toBeDisabled();
+
+    release();
+
+    /* 잠금이 **도착한 뒤에** 풀린다 — 끊어서가 아니라 끝나서 풀리는 것이다. */
+    await waitFor(() => {
+      expect(createButton()).toBeEnabled();
+    });
+    /* 그러나 남의 대상의 거절 사유를 이 화면에 세우지는 않는다 — 감추는 것이 규칙이다. */
+    expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
+  });
+
+  it('끄기가 나가는 중에 대상이 바뀌어도 잠금·무효화·성공 알림이 살아 있다', async () => {
+    const { requests, release, user } = renderScreen(
+      allRoutes([
+        detailRouteById(),
+        activationRoute('deactivate', { ...routeFixtures[0], isActive: false }),
+      ]),
+      SELECTED,
+      '?ar=9003',
+      holdDeactivate,
+    );
+
+    await waitForForm();
+    await user.click(screen.getByRole('button', { name: messages.common.deactivate }));
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9003');
+    });
+
+    expect(createButton()).toBeDisabled();
+
+    const beforeDetail = detailRequests(requests).length;
+
+    release();
+
+    expect(await screen.findByText(messages.common.saved)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(detailRequests(requests).length).toBeGreaterThan(beforeDetail);
+    });
+  });
+});
+
+describe('ApprovalRouteScreen — 확인 창이 열린 사이 상태가 뒤집히면', () => {
+  /**
+   * **열린 창의 뜻은 열 때 정해지고, 대상의 상태는 그 뒤에도 바뀐다.**
+   *
+   * 「다시 조회」는 잠기지 않고 다른 사람이 먼저 상태를 바꿀 수도 있다. 그때 폼의 액션은
+   * 반대쪽으로 바뀌지만 **열린 창의 뜻은 그대로**라, 확인하면 이미 꺼진 것에 `:deactivate`가,
+   * 이미 켜진 것에 `:activate`가 나간다 — 뒤엣것은 계약이 400으로 막아 **사용자가 이유를 알
+   * 수 없는 거절**이 된다.
+   */
+  it('끄기 창이 열린 사이 이미 꺼졌으면 보내지 않고 창을 닫는다', async () => {
+    let flipped = false;
+    const flippingDetail: StubRoute = {
+      match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
+      respond: () => {
+        const body = flipped ? { ...routeFixtures[0], isActive: false } : routeFixtures[0];
+
+        flipped = true;
+
+        return jsonResponse(body, { headers: { ETag: 'token-0' } });
+      },
+    };
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        flippingDetail,
+        probeRoute(),
+        activationRoute('deactivate', { ...routeFixtures[0], isActive: false }),
+      ]),
+      SELECTED,
+    );
+
+    await waitForForm();
+    await user.click(screen.getByRole('button', { name: messages.common.deactivate }));
+    expect(activationDialog()).toBeInTheDocument();
+
+    /* 창이 열린 채 상세가 다시 온다 — 그 사이 다른 사람이 이미 껐다. */
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await screen.findByRole('button', { name: t.actions.activate });
+
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(writeRequests(requests)).toHaveLength(0);
+  });
+
+  /** 짝 방향 — 상태가 그대로면 확인이 그대로 나간다. 안 그러면 「아무것도 안 보낸다」와 같아진다. */
+  it('상태가 그대로면 확인이 요청을 보낸다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([activationRoute('deactivate', { ...routeFixtures[0], isActive: false })]),
+      SELECTED,
+    );
+
+    await waitForForm();
+    await user.click(screen.getByRole('button', { name: messages.common.deactivate }));
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+  });
+});
+
+describe('ApprovalRouteScreen — 「확인하지 못했습니다」의 범위', () => {
+  /** 밝힐 때만 밝힌다 — 구경만 하는 사용자에게 저장 안내를 띄우지 않는다. */
+  it('꺼진 결재선을 고르기만 하면 조준 조회가 실패해도 안내가 뜨지 않는다', async () => {
+    const { requests } = renderScreen(
+      allRoutes([detailRoute({ ...routeFixtures[0], isActive: false }), failingProbeRoute()]),
+      SELECTED,
+    );
+
+    // 선행 단언 — 조준 조회는 실제로 나갔고(켜기 판정에 필요하다) 실패했다.
+    await screen.findByRole('button', { name: t.actions.activate });
+    await waitFor(() => {
+      expect(probeRequests(requests)).toHaveLength(1);
+    });
+
+    expect(screen.queryByText(t.notes.duplicateUnknown)).not.toBeInTheDocument();
+  });
+
+  it('고치기 시작하면 그 안내가 선다', async () => {
+    const { user } = renderScreen(
+      allRoutes([detailRoute({ ...routeFixtures[0], isActive: false }), failingProbeRoute()]),
+      SELECTED,
+    );
+
+    await dirtyForm(user, '77');
+
+    expect(await screen.findByText(t.notes.duplicateUnknown)).toBeInTheDocument();
   });
 });

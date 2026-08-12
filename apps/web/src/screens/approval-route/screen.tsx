@@ -132,7 +132,8 @@ interface FormDraft {
  * | 13 | **끄기·켜기 성공** | 유지 | 유지 | 유지 | 유지 | **유지** | **닫는다** | 비운다 |
  * | 14 | 끄기·켜기 실패 | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 창 안에 **세운다** |
  * | 15 | 취소(초안 파기) | 유지 | 유지 | 유지 | 유지 | **되돌린다** | 닫는다 | 비운다 |
- * | 16 | **전송 중** | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 유지 | 유지 |
+ * | 16 | **전송 중**(화면 안 조작) | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 유지 | 유지 |
+ * | 17 | **전송 중 · 바깥 주소 이동** | 바뀐다 | 바뀐다 | 바뀐다 | 바뀐다 | **새 대상에서 다시 세운다** | **닫는다** | **비운다** |
  *
  * **왜 이렇게 정했는가**
  *
@@ -151,6 +152,13 @@ interface FormDraft {
  * - **14행이 창을 닫지 않는 이유**: 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다.
  * - **16행이 대상을 바꾸는 길까지 잠그는 이유**: 열어 두면 사용자가 다른 결재선으로 옮긴 뒤
  *   **앞 요청의 결과가 지금 보는 맥락에 나타난다.**
+ * - **17행이 16행과 갈리는 이유**: 뒤로가기·앞으로가기·주소 직접 편집은 **화면의 클릭
+ *   핸들러를 지나지 않아** 16행의 잠금 문에 걸리지 않는다. 셸 셋 중 Capacitor의 하드웨어
+ *   뒤로가기도 이 길이다 — **막을 수 없는 길이므로 막는 대신 다룬다.**
+ *   화면은 새 대상으로 옮겨 가되 **나가는 중인 요청을 끊지 않는다**(§`resetEditing`) —
+ *   끊으면 무효화·성공·실패·공동 잠금이 함께 사라져 서버에는 갔는데 화면만 없던 일로 친다.
+ *   도착한 결과 중 **대상에 매인 것**(초안 재세움·창 닫기·배너)은 내지 않고, **대상과 무관한
+ *   것**(무효화·성공 알림·등록이 만든 자원으로의 이동)은 그대로 한다.
  *
  * ## 토큰 수명 표 (계획 결정 12 — 이 화면의 중심)
  *
@@ -350,6 +358,32 @@ export const ApprovalRouteScreen = () => {
   };
 
   /**
+   * **지금 대상**을 참조로 들고 있는다.
+   *
+   * 쓰기의 되먹임은 그 요청을 **보낸 렌더의 값**을 들고 도착한다. 그것이 「지금」의 것인지
+   * 알려면 도착 시점의 대상이 필요한데, 그 값은 렌더에 갇혀 있어 참조로만 꺼낼 수 있다.
+   * **매임의 축은 그대로 `editTargetKey` 하나**이고 참조는 그 축을 시간 너머로 옮길 뿐이다.
+   */
+  const editTargetKeyRef = useRef(editTargetKey);
+  editTargetKeyRef.current = editTargetKey;
+
+  /** 보낸 대상과 지금 대상이 같은가. 도착한 되먹임 중 **대상에 매인 것**만 이 문을 지난다. */
+  const isSameTarget = (sentTargetKey: string | null): boolean =>
+    editTargetKeyRef.current === sentTargetKey;
+
+  /**
+   * 훅에 남아 있는 쓰기 결과가 **남의 것**인가.
+   *
+   * 대상이 바뀌는 순간 나가는 중이던 요청은 **끊지 않는다**(§`resetEditing`). 그 결과가
+   * 나중에 도착하면 지금 보는 대상과 무관하므로 **화면에 내지 않는다** — 「결과는 자기
+   * 대상보다 오래 살지 않는다」가 요구하는 것은 *보이지 않는 것*이지 *일어나지 않는 것*이
+   * 아니다. 서버에는 이미 갔다.
+   *
+   * 셋이 한 벌의 잠금을 나눠 써서 **한 번에 하나만 나간다** — 그래서 깃발 하나로 족하다.
+   */
+  const [isWriteResultStale, setIsWriteResultStale] = useState(false);
+
+  /**
    * 등록 — **`If-Match`가 없다.** 아직 없는 자원이라 잠글 대상이 없다.
    *
    * 201이 `ETag`를 주지만 그것은 **컬렉션 경로**(`/app/approval-routes`)에 캡처되어 상세
@@ -372,6 +406,10 @@ export const ApprovalRouteScreen = () => {
        * **단계가 0인 채로 사용 중인 결재선**이 방치된다(계획 결정 15).
        *
        * 사용자 조작이 아니라 **이 쓰기 자신의 이동**이라 잠금 문을 지나지 않는다.
+       *
+       * **대상 가드를 두지 않는다.** 등록의 결과는 *새로 생긴 자원*이지 그때 보던 대상이
+       * 아니다 — 보내는 사이에 사용자가 다른 데로 갔더라도 그 자원은 여전히 사용 중이고
+       * 단계가 0이라 상신을 막는다. 옮겨 가지 않으면 그것을 아는 사람이 없다.
        */
       applySearchParams(toSelectionSearchParams(filters, page, saved.approvalRouteId));
       toast.show({ variant: 'success', description: messages.common.created });
@@ -400,12 +438,20 @@ export const ApprovalRouteScreen = () => {
     invalidateKeys: [routeKeys.all],
     knownFields: ROUTE_FORM_FIELDS,
     onSuccess: (saved) => {
+      /* 저장은 일어났다 — 대상이 바뀌었다고 그 사실까지 감추지 않는다. */
+      toast.show({ variant: 'success', description: messages.common.saved });
+
+      /*
+       * **이 값이 앉을 자리는 그 대상뿐이다.** 보내는 사이에 다른 결재선으로 옮겨 갔다면
+       * 새 대상의 초안에 **남의 값을 찍게 된다** — 무효화·토스트와 달리 이것은 대상에 매인다.
+       */
+      if (!isSameTarget(editTargetKey)) return;
+
       setFieldErrors({});
       /* **서버 응답이 정본이다.** 보낸 값을 그대로 두면 서버가 조정한 결과를 놓친다. */
       const next = routeToFormValues(toRouteView(saved));
 
       setDraft((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
-      toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
 
@@ -438,8 +484,13 @@ export const ApprovalRouteScreen = () => {
     /* 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다. */
     knownFields: [],
     onSuccess: () => {
-      setDialog(null);
+      /* 전환은 일어났다 — 대상이 바뀌었어도 그 사실은 알린다. */
       toast.show({ variant: 'success', description: messages.common.saved });
+
+      /* 창은 그 대상의 것이다. 대상이 바뀌었으면 정리 effect가 이미 닫았다. */
+      if (!isSameTarget(editTargetKey)) return;
+
+      setDialog(null);
     },
   });
 
@@ -496,11 +547,34 @@ export const ApprovalRouteScreen = () => {
    *
    * **초안은 여기서 다루지 않는다.** 초안은 세울 값이 도착하는 시점이 따로 있어 렌더 중
    * 동기화가 맡는다 — 두 자리가 같은 것을 지우면 어느 쪽이 정본인지 흐려진다.
+   *
+   * ## 나가는 중인 쓰기는 **건드리지 않는다**
+   *
+   * 공통 훅의 `reset()`은 진행 중 mutation에서 **옵저버를 떼어 낸다**. 옵저버가 떨어지면
+   * 그 호출에 매달린 되먹임이 통째로 오지 않는다 — **무효화도, 성공도, 실패도, 공동 잠금의
+   * 해제도**. 그러면 이 화면이 스스로 못 박은 것 둘이 동시에 깨진다: 「하나가 나가는 중에는
+   * 나머지도 잠근다」와 「모든 쓰기 성공 뒤 상세를 무효화한다」. 요청은 이미 서버에 갔는데
+   * 화면만 없던 일로 친다.
+   *
+   * **끊는 것과 감추는 것은 다르다.** 「결과는 자기 대상보다 오래 살지 않는다」가 요구하는
+   * 것은 그 결과가 *보이지 않는 것*이지 *일어나지 않는 것*이 아니다. 그래서 여기서는
+   * 깃발만 세우고(`isWriteResultStale`), 도착한 결과를 화면에 내지 않는 일은 렌더가 맡는다.
+   * 낡은 결과의 실제 정리는 **그것이 끝난 뒤 다음 대상 변경**이 한다.
    */
   const resetEditing = (): void => {
-    createWrite.reset();
-    updateWrite.reset();
-    activationWrite.reset();
+    let hasPending = false;
+
+    for (const write of [createWrite, updateWrite, activationWrite]) {
+      if (write.isSaving) {
+        hasPending = true;
+        continue;
+      }
+
+      write.reset();
+    }
+
+    if (hasPending) setIsWriteResultStale(true);
+
     setFieldErrors({});
     setDialog(null);
   };
@@ -566,6 +640,9 @@ export const ApprovalRouteScreen = () => {
 
     if (Object.keys(errors).length > 0) return;
 
+    /* 지금 보내는 것은 **이 대상의 것**이다 — 앞선 낡은 결과의 깃발을 내린다. */
+    setIsWriteResultStale(false);
+
     if (isCreating) {
       createWrite.write(draft.values);
 
@@ -611,8 +688,14 @@ export const ApprovalRouteScreen = () => {
   };
 
   /**
-   * 전환 확인. **보내는 자리가 스스로 한 번 더 본다** — 창이 열려 있는 동안 주소가 바뀌어
-   * 대상이 사라졌을 수 있다. 그때는 보내지 않고 창을 닫는다.
+   * 전환 확인. **보내는 자리가 스스로 한 번 더 본다.**
+   *
+   * 창이 열려 있는 동안 세 가지가 달라질 수 있다 — 대상이 **사라지고**(주소가 바뀐다),
+   * 켜기의 **잠금 사유가 생기고**(조준 조회가 늦게 도착한다), 대상의 **사용 여부가 뒤집힌다**
+   * (「다시 조회」는 잠기지 않고, 다른 사람이 먼저 바꿀 수도 있다). 셋 다 보내지 않고 창을 닫는다.
+   *
+   * 사용 여부가 뒤집힌 자리를 보지 않으면 **이미 꺼진 것에 `:deactivate`가, 이미 켜진 것에
+   * `:activate`가** 나간다 — 뒤엣것은 계약이 400으로 막아 사용자가 이유를 알 수 없는 거절을 받는다.
    */
   const handleConfirmActivation = (): void => {
     if (dialog !== 'deactivate' && dialog !== 'activate') return;
@@ -623,12 +706,24 @@ export const ApprovalRouteScreen = () => {
       return;
     }
 
-    if (dialog === 'activate' && activateBlockedReason({ stepCount: route.stepCount, duplicate: activateDuplicate }) !== null) {
+    /* 열려는 조작과 지금 상태가 맞는가. 끄기는 켜져 있을 때만, 켜기는 꺼져 있을 때만 뜻이 있다. */
+    if (dialog === 'deactivate' ? !route.isActive : route.isActive) {
       setDialog(null);
 
       return;
     }
 
+    if (
+      dialog === 'activate' &&
+      activateBlockedReason({ stepCount: route.stepCount, duplicate: activateDuplicate }) !== null
+    ) {
+      setDialog(null);
+
+      return;
+    }
+
+    /* 지금 보내는 것은 **이 대상의 것**이다 — 앞선 낡은 결과의 깃발을 내린다. */
+    setIsWriteResultStale(false);
     activationWrite.write(dialog);
   };
 
@@ -646,14 +741,22 @@ export const ApprovalRouteScreen = () => {
    * **네트워크 갈래에만 붙는다.** 서버가 거절한 요청은 전달된 것이 확실하다.
    */
   const writeFailureSlot = (
-    error: ReturnType<typeof useMasterWrite<never, never>>['error'],
+    write: ReturnType<typeof useMasterWrite<never, never>>,
     onReload?: () => void,
-  ) => (
-    <>
-      <SaveErrorBanner error={error} onReload={onReload} />
-      {error?.kind === 'network' && <p className="field-note">{t.notes.networkUnconfirmed}</p>}
-    </>
-  );
+  ) => {
+    /* 남의 대상에 보낸 요청의 거절 사유를 이 화면에 세우지 않는다 — **감추는 것이 규칙이다.** */
+    const error = isWriteResultStale ? null : write.error;
+
+    return (
+      <>
+        <SaveErrorBanner error={error} onReload={onReload} />
+        {error?.kind === 'network' && <p className="field-note">{t.notes.networkUnconfirmed}</p>}
+      </>
+    );
+  };
+
+  /** 인라인 오류도 같은 문을 지난다 — 배너만 감추면 칸 옆에 남의 오류가 남는다. */
+  const serverFieldErrors = isWriteResultStale ? {} : activeWrite.fieldErrors;
 
   const formPane = (mode: 'create' | 'edit') => {
     if (draft === null) return null;
@@ -665,19 +768,25 @@ export const ApprovalRouteScreen = () => {
         values={draft.values}
         onChange={changeValues}
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
-        fieldErrors={{ ...activeWrite.fieldErrors, ...fieldErrors }}
+        fieldErrors={{ ...serverFieldErrors, ...fieldErrors }}
         /* 등록에는 저장 충돌이 없다(잠글 대상이 없다) — 「최신 불러오기」를 낼 자리가 아니다. */
         banner={
           mode === 'create'
-            ? writeFailureSlot(createWrite.error)
-            : writeFailureSlot(updateWrite.error, reloadDetail)
+            ? writeFailureSlot(createWrite)
+            : writeFailureSlot(updateWrite, reloadDetail)
         }
         approvalTypeOptions={approvalTypeOptions}
         businessUnitOptions={toBusinessUnitOptions(businessUnits.entries)}
         businessUnitNote={lookupNote(businessUnits)}
-        /* 확인해야 할 때만 「확인하지 못했다」가 참이다 — 부르지도 않은 판정을 안내로 내지 않는다. */
+        /*
+         * **저장할 뜻이 있을 때만 밝힌다.** 조준 조회는 꺼진 결재선을 고르기만 해도 나가지만
+         * (켜기 판정에 필요하다) 그때 이 안내를 내면 **구경만 하는 사용자에게 저장 안내**가 뜬다.
+         * 「밝힐 때만 밝힌다」 — 안내가 걸리는 자리를 저장 판정이 걸리는 자리와 맞춘다.
+         */
         duplicateUnknownNote={
-          needsDuplicateCheck && saveDuplicate.kind === 'unknown' ? t.notes.duplicateUnknown : null
+          (isCreating || isDirty) && saveDuplicate.kind === 'unknown'
+            ? t.notes.duplicateUnknown
+            : null
         }
         onOpenExisting={
           existingDuplicateRouteId === null
@@ -848,7 +957,7 @@ export const ApprovalRouteScreen = () => {
           stepCount={route.stepCount}
           isSaving={activationWrite.isSaving}
           /* 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다. */
-          banner={writeFailureSlot(activationWrite.error, reloadDetail)}
+          banner={writeFailureSlot(activationWrite, reloadDetail)}
           onClose={() => {
             setDialog(null);
             activationWrite.reset();

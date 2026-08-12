@@ -132,7 +132,11 @@ export const RouteFormPane = ({
     route === null
       ? []
       : [
-          { key: 'approvalTypeCode', label: t.fields.approvalTypeCode, value: route.approvalTypeCode },
+          {
+            key: 'approvalTypeCode',
+            label: t.fields.approvalTypeCode,
+            value: route.approvalTypeCode,
+          },
           {
             key: 'status',
             label: t.fields.status,
@@ -287,7 +291,11 @@ export const RouteFormPane = ({
          * 등록에서 「취소」는 **폼을 닫는 것**이라 고친 것이 없어도 눌러야 한다.
          * 수정에서는 **기준값으로 되돌리는 것**이라 고친 것이 있을 때만 의미가 있다.
          */}
-        <Button variant="outlined" disabled={isLocked || (!isCreate && !isDirty)} onClick={onCancel}>
+        <Button
+          variant="outlined"
+          disabled={isLocked || (!isCreate && !isDirty)}
+          onClick={onCancel}
+        >
           {messages.common.cancel}
         </Button>
 
