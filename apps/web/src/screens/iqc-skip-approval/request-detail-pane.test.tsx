@@ -18,6 +18,19 @@ const renderPane = (request: ApprovalRequest): HTMLElement => {
 
 describe('toVisibleLine', () => {
   /**
+   * **상수가 정말 U+00A0인지부터 잰다.**
+   *
+   * 보통 공백과 눈으로 구분되지 않아, 옮겨 쓰는 사이 U+0020으로 바뀌어도 화면은 겉보기에
+   * 멀쩡하고 아래 시험들도 전부 통과한다 — **기대값이 그 상수를 다시 쓰기 때문**이다.
+   * 그 자기참조를 끊는 자리가 여기다. 코드 포인트로 못 박고 보통 공백이 아님을 짝으로 둔다.
+   */
+  it('줄바꿈 없는 공백이 정말 U+00A0이다 — 보통 공백이 아니다', () => {
+    expect(NO_BREAK_SPACE).toBe('\u00a0');
+    expect(NO_BREAK_SPACE).not.toBe(' ');
+    expect(NO_BREAK_SPACE.codePointAt(0)).toBe(0x00a0);
+  });
+
+  /**
    * **자료 층이 지킨 것을 표기 층이 도로 삼키지 않게 한다.** 블록 상자 첫머리의 보통 공백은
    * HTML이 축약하고, 빈 상자는 높이가 0이라 문단 구분이 남지 않는다.
    */
@@ -27,6 +40,8 @@ describe('toVisibleLine', () => {
 
   it('줄 앞 들여쓰기를 줄바꿈 없는 공백으로 바꾼다 — 그 자리가 축약되지 않는다', () => {
     expect(toVisibleLine('  - 항목')).toBe(`${NO_BREAK_SPACE.repeat(2)}- 항목`);
+    /* 축약되는 공백이 하나도 남지 않았다 — 위 단언만으로는 상수가 무엇이든 통과한다. */
+    expect(toVisibleLine('  - 항목').startsWith(' ')).toBe(false);
   });
 
   it('들여쓰기가 없으면 그대로 둔다', () => {
@@ -143,6 +158,11 @@ describe('RequestDetailPane — 사유 전문', () => {
     const lines = [...screen.getByRole('group', { name: t.panes.reason }).querySelectorAll('p')];
 
     expect(lines[1]?.textContent).toBe(`${NO_BREAK_SPACE.repeat(2)}- 들여쓴 항목`);
+    /*
+     * **상수를 다시 쓰지 않고 잰다.** 위 단언은 상수가 보통 공백이어도 통과한다 — 그때
+     * 브라우저는 그 두 칸을 축약해 들여쓰기가 사라진다. 그리는 자리에서도 자기참조를 끊는다.
+     */
+    expect(/^\u00a0\u00a0-/.test(lines[1]?.textContent ?? '')).toBe(true);
   });
 
   it('한 줄뿐인 사유도 그대로 선다', () => {
