@@ -613,21 +613,30 @@ export const SupplierReturnScreen = () => {
     t.lineTable.returnQtyPair(qty, describeReference(toReference(uoms, uomId)));
 
   /**
-   * 확인 창이 보일 줄. **요청에 실릴 줄과 같은 자리에서 나온다** — 읽을 수 없는 수량인 줄은
-   * 요청 조립이 거르므로 여기서도 걸러야 「확인한 것과 나가는 것」이 갈리지 않는다.
+   * **실제로 보낼 줄.** 요청 본문의 `lines`가 이 배열 그대로다.
+   *
+   * **확인 창도 이 배열에서 나온다**(바로 아래) — 「확인한 것과 나가는 것이 갈리지 않는다」를
+   * 규칙이 아니라 **자료 구조로** 지키는 자리다. 창이 자기 목록을 따로 만들면 두 곳의 거르는
+   * 조건이 갈릴 수 있고, 그때 **창에 뜨는데 요청에는 없는 줄**(또는 그 반대)이 생긴다.
+   * 이 화면이 가장 경계한 어긋남이 정확히 그 형태다(계획 결정 12).
+   *
+   * 고르지 않았는데 수량이 남은 줄이 **정상적으로 존재한다** — 선택을 풀어도 친 값을 지우지
+   * 않기 때문이다(PR ② 판단 ④). 그 줄이 창에 뜨면 사용자는 보내지 않을 것을 확인하게 된다.
    */
-  const submitLines: SubmitLineSummary[] = selection.selectedRows.flatMap((row) =>
-    row.qty.kind === 'qty'
-      ? [
-          {
-            ordinal: row.ordinal,
-            item: itemNameOf(row.line.itemId),
-            lot: lotNameOf(row.line.lotId),
-            qty: qtyTextOf(row.qty.value, row.line.uomId),
-          },
-        ]
-      : [],
-  );
+  const submitInputs = toReturnLines(selection.selectedRows);
+
+  /**
+   * 확인 창이 보일 줄 — **보낼 줄을 이름으로 옮긴 것뿐이다.** 거르지도 더하지도 않는다.
+   *
+   * 순번은 **보낼 줄 안에서의 차례**다. 창은 순번을 글자로 내지 않고 줄을 가르는 데만 쓰므로
+   * (내부 번호를 쓰지 않기 위한 것이다 · #44) 표의 순번과 달라도 뜻을 잃지 않는다.
+   */
+  const submitLines: SubmitLineSummary[] = submitInputs.map((line, index) => ({
+    ordinal: index + 1,
+    item: itemNameOf(line.itemId),
+    lot: lotNameOf(line.lotId),
+    qty: qtyTextOf(line.issueQty, line.uomId),
+  }));
 
   /**
    * 결과가 보일 줄. **서버가 되돌려 준 배열에서 나온다**(계획 결정 13) — 화면이 보낸 줄을
@@ -702,7 +711,8 @@ export const SupplierReturnScreen = () => {
 
       const body = toGoodsIssueRequest({
         receipt,
-        lines: toReturnLines(selection.selectedRows),
+        /* **확인 창이 보인 그 배열이다** — 여기서 다시 만들면 확인한 것과 나가는 것이 갈린다. */
+        lines: submitInputs,
         draft: returnDraft,
         /* 발생 시각은 **제출 순간**이다. 순수 함수에 넘겨 그 사실이 인자로 드러나게 한다. */
         now: new Date(),

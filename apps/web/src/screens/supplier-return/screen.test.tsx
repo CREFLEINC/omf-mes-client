@@ -3146,3 +3146,98 @@ describe('SupplierReturnScreen — 대상이 바뀔 때 두 초안', () => {
     expect(screen.getByRole('status', { name: t.result.label })).toBeInTheDocument();
   });
 });
+
+/**
+ * **확인 창의 줄 = 실제로 보낼 줄.**
+ *
+ * 「확인한 것과 나가는 것이 갈린다」가 이 화면이 가장 경계한 어긋남이다(계획 결정 12).
+ * 창과 요청이 각자 목록을 만들면 거르는 조건이 갈릴 수 있고, 그때 **창에 뜨는데 요청에는 없는
+ * 줄**(또는 그 반대)이 생긴다. 그 갈림이 **정상 경로로 실제로 만들어지는** 상태를 세워서 잰다 —
+ * 선택을 풀어도 친 수량이 남으므로(PR ② 판단 ④) **고르지 않았는데 수량이 있는 줄**이 실재한다.
+ */
+describe('SupplierReturnScreen — 확인 창과 요청의 줄이 같다', () => {
+  /** 창에 그려진 줄 문구를 차례대로 모은다. */
+  const dialogLineTexts = (): string[] =>
+    [...screen.getByRole('dialog').querySelectorAll('li')].map(
+      (item) => item.textContent ?? '',
+    );
+
+  /** 요청 본문의 줄을 **창과 같은 규칙으로** 문구로 옮긴다 — 둘을 견줄 유일한 방법이다. */
+  const requestLineTexts = (requests: RecordedRequest[]): string[] => {
+    const body = issueRequests(requests)[0]?.body as {
+      lines: { itemId: number; lotId: number; issueQty: number }[];
+    };
+    const itemNames: Record<number, string> = { 9301: ITEM_LABEL, 9302: t.values.unknown };
+    const lotNames: Record<number, string> = {
+      9601: 'LOT-2026-900010',
+      9602: 'LOT-2026-900011',
+    };
+
+    return body.lines.map((line) =>
+      t.dialog.linePair(
+        itemNames[line.itemId] ?? '',
+        lotNames[line.lotId] ?? '',
+        t.lineTable.returnQtyPair(line.issueQty, UOM_LABEL),
+      ),
+    );
+  };
+
+  /*
+   * **U60** — 창을 고른 줄이 아니라 표의 전 줄에서 만들면, 고르지 않았는데 수량이 남은 줄이
+   * **창에만** 뜬다. 사용자는 보내지 않을 것을 확인하게 된다.
+   */
+  it('고르지 않았는데 수량이 남은 줄은 창에도 요청에도 없다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    /* 둘째 줄을 골라 수량을 친 뒤 **선택만 푼다** — 친 값은 그대로 남는다(승인된 동작). */
+    await user.click(selectBox(2));
+    await user.type(qtyBox(2), '5');
+    await user.click(selectBox(2));
+
+    expect(qtyBox(2)).toHaveValue('5');
+    expect(selectBox(2)).not.toBeChecked();
+
+    await openConfirm(user);
+
+    /* 짝 방향 — 고른 줄은 창에 실제로 있다(아무것도 안 그려서 통과한 것이 아니다). */
+    expect(dialogLineTexts()).toEqual([
+      t.dialog.linePair(ITEM_LABEL, 'LOT-2026-900010', t.lineTable.returnQtyPair(30, UOM_LABEL)),
+    ]);
+
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(issueRequests(requests)).toHaveLength(1);
+    });
+
+    const body = issueRequests(requests)[0]?.body as { lines: { lotId: number }[] };
+
+    expect(body.lines.map((line) => line.lotId)).toEqual([9601]);
+  });
+
+  /*
+   * **창과 요청을 직접 견준다.** 한쪽만 재면 둘이 함께 틀어졌을 때 아무도 울지 않는다 —
+   * 줄이 여럿이고 이름을 못 푼 줄이 섞인 상태로 잰다.
+   */
+  it('창이 보인 줄과 요청에 실린 줄이 차례까지 같다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    /* 둘째 줄(품목 이름을 못 푸는 줄)을 더 고른다 — 표기 갈래가 섞여야 대조가 헐겁지 않다. */
+    await user.click(selectBox(2));
+    await user.type(qtyBox(2), '5');
+
+    await openConfirm(user);
+
+    const shown = dialogLineTexts();
+
+    expect(shown).toHaveLength(2);
+
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(issueRequests(requests)).toHaveLength(1);
+    });
+
+    expect(requestLineTexts(requests)).toEqual(shown);
+  });
+});
