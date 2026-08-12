@@ -4852,6 +4852,117 @@ const approvalInbox = {
   },
 } as const;
 
+/**
+ * W-01-02 긴급 IQC 생략 한도승인.
+ *
+ * **결재함(W-CO-09)과 같은 계약을 소비하지만 문구를 나눠 갖는다** — 한 묶음을 두 화면이
+ * 함께 쓰면 한쪽의 문구 변경이 다른 화면을 조용히 끌고 간다. 형태가 같은 문장이 있어도
+ * 그것은 같은 결론에 따로 이른 것이지 공유물이 아니다.
+ *
+ * 이 회차(목록·조건)가 쓰는 것만 둔다. 상세·결재의 문구는 그 회차가 이 묶음에 더한다 —
+ * **쓰이지 않는 문구를 미리 두지 않는다**(무엇이 렌더되는지 흐려진다).
+ */
+const iqcSkipApproval = {
+  /**
+   * 화면 이름은 **설계 스펙의 이름 그대로**다. 화면 안에 한도 구간이 그려지지 않지만
+   * (그릴 값이 요청에 없다 — `omf-mes#88`) 이름을 고칠 권한은 클라이언트에 없다.
+   */
+  title: '긴급 IQC 생략 한도승인',
+  /** 스펙의 breadcrumb가 정본이다 — 이 화면은 자재창고 업무의 승인 자리다. */
+  breadcrumbRoot: '자재창고',
+  panes: {
+    list: '승인 요청 목록',
+    detail: '고른 요청',
+  },
+  /**
+   * **승인 유형 코드가 확정되기 전까지 상시로 서는 안내**(`omf-mes#64`).
+   *
+   * 이 화면이 자기 대상을 좁히는 축은 승인 유형 하나인데 그 값이 아직 없다. 그래서 지금은
+   * **내가 승인자인 요청이 전부** 보이고, 화면은 그 사실을 감추지 않는다 — 감추면 사용자가
+   * 「여기 있는 것은 전부 IQC 생략 건」이라고 믿고 남의 유형을 결재한다.
+   *
+   * **값이 오면 이 안내는 사라진다.** 안내를 남기면 화면이 거짓말을 한다.
+   */
+  typePendingNote:
+    '승인 유형 코드가 아직 정해지지 않아 이 화면은 내가 승인자인 요청을 모두 보입니다. 유형 열과 사유로 긴급 IQC 생략 건인지 확인하세요.',
+  fields: {
+    approvalRequestNo: '요청번호',
+    approvalTypeCode: '승인 유형',
+    /** 대상 문서의 **표시명**. 서버가 만든 이름이라 화면이 짓지 않는다. */
+    target: '대상',
+    reason: '사유',
+    requestedByName: '상신자',
+    /**
+     * 목록 열 이름. **조건 줄의 「상신일」과 낱말이 다른 것이 맞다** — 계약이 이 값을
+     * `date-time`으로 내려 목록도 시각까지 보이지만, 좁히는 조건은 `format: date`라
+     * 날짜 단위다. 같은 낱말을 쓰면 시각까지 지정할 수 있다고 읽힌다.
+     */
+    requestedAt: '상신 일시',
+    status: '상태',
+    /** 조건 줄의 기간 라벨. 위 주석의 뒤쪽 근거가 이 자리다. */
+    period: '상신일',
+    q: '요청번호 검색',
+    /**
+     * 계약 파라미터(`pendingOnly`)를 그대로 드러낸 확인칸이다. **기본이 켜짐**이라
+     * 이 화면에 들어오면 결재 대기부터 보이고, 끄면 끝난 건까지 함께 보인다.
+     */
+    pendingOnly: '결재 대기만 보기',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+    /** 목록을 다시 부른다. 회차가 늘면 그때 늘어난 조회도 **함께** 부른다. */
+    reload: '다시 조회',
+    /*
+     * 요청번호 하나로 이름이 선다 — 계약이 그 값을 UNIQUE로 두었다.
+     * 보이는 글자를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 하고,
+     * **내부 번호는 접근 이름에도 넣지 않는다.**
+     */
+    selectRow: (approvalRequestNo: string): string => `${approvalRequestNo} 선택`,
+  },
+  loading: {
+    list: '승인 요청 목록 불러오는 중',
+  },
+  filters: {
+    all: '전체',
+    chipStatus: (value: string): string => `상태: ${value}`,
+    chipPeriod: (from: string, to: string): string => `상신일: ${from} ~ ${to}`,
+    chipPeriodFrom: (from: string): string => `상신일: ${from}부터`,
+    chipPeriodTo: (to: string): string => `상신일: ${to}까지`,
+    chipKeyword: (value: string): string => `요청번호: ${value}`,
+    chipRemoveStatus: '상태 조건 제거',
+    chipRemovePeriod: '상신일 조건 제거',
+    chipRemoveKeyword: '요청번호 조건 제거',
+  },
+  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/iqc-skip-approval/page-nav.tsx에 있다. */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+  /** 빈 상태는 **세 갈래**다. 사용자가 할 조치가 서로 다르다. */
+  empty: {
+    noResultTitle: '조건에 맞는 승인 요청이 없습니다',
+    /** **이 화면에는 탭이 없다** — 넓히는 수단이 확인칸 하나라 그것을 가리킨다. */
+    noResultDescription: '조건을 줄이거나 「결재 대기만 보기」를 꺼 보세요.',
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
+    noSelectionTitle: '요청을 고르면 자세한 내용이 보입니다',
+    noSelectionDescription: '위 목록에서 요청번호를 누르세요.',
+  },
+  values: {
+    /** 이름이 오지 않았다. **번호를 대신 내지 않는다**(`omf-mes#44`). */
+    unknownRequester: '상신자를 확인할 수 없습니다',
+    /** 대상 표시명이 비어 왔다. 서버가 만드는 값이라 화면이 지어낼 근거가 없다. */
+    unknownTarget: '대상 이름을 확인할 수 없습니다',
+    /** 사유는 필수 값이라 빈 경우가 정상은 아니다. 그래도 빈 칸을 내지 않고 사실을 적는다. */
+    emptyReason: '사유가 비어 있습니다',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -4878,6 +4989,7 @@ export const ko = {
   supplierReturn,
   approvalRoute,
   approvalInbox,
+  iqcSkipApproval,
 } as const;
 
 export type Messages = typeof ko;
