@@ -3044,3 +3044,105 @@ describe('SupplierReturnScreen — 입력 지우기', () => {
     expect(qtyBox(1)).toHaveValue('30');
   });
 });
+
+/**
+ * **초안 두 벌의 수명이 갈린다**(계획 수명 표 1~5행).
+ *
+ * 매인 대상이 다르다 — 줄·수량은 **그 전표의 줄**에, 반품 정보는 **반품이라는 행위**에 매인다.
+ * 한쪽만 재면 나머지가 조용히 함께 비워지거나 함께 남는다. **양방향으로 잰다.**
+ */
+describe('SupplierReturnScreen — 대상이 바뀔 때 두 초안', () => {
+  /** 9001에서 줄·수량과 반품 정보를 채운 뒤 9002로 옮긴다. */
+  const moveToOtherReceipt = async (): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = await setupReadyToSubmit(allRoutes(), '?gr=9001');
+
+    await rendered.user.click(
+      screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') }),
+    );
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    return rendered;
+  };
+
+  /*
+   * **U34** — 같은 공급사에 여러 전표를 잇달아 되돌려 보내는 것이 흔한 쓰임이다. 전표를
+   * 옮길 때마다 공급사·코드 넷·일시를 다시 치게 하면 사용자는 값을 잃지 않으려고 전표를
+   * 한 번에 하나씩만 다루게 된다.
+   */
+  it('전표를 옮겨도 반품 정보는 그대로 남는다', async () => {
+    await moveToOtherReceipt();
+
+    expect(screen.getByRole('combobox', { name: t.fields.supplier })).toHaveTextContent(
+      PARTNER_LABEL,
+    );
+    expect(screen.getByRole('combobox', { name: t.fields.issueType })).toHaveTextContent(
+      SAMPLE_ISSUE_TYPE,
+    );
+    expect(screen.getByRole('combobox', { name: t.fields.sourceDocumentType })).toHaveTextContent(
+      SAMPLE_SOURCE_TYPE,
+    );
+    expect(screen.getByRole('combobox', { name: t.fields.destinationType })).toHaveTextContent(
+      SAMPLE_DESTINATION_TYPE,
+    );
+    expect(screen.getByRole('combobox', { name: t.fields.reason })).toHaveTextContent(
+      SAMPLE_REASON,
+    );
+    expect(screen.getByLabelText(t.fields.issuedDate)).toHaveTextContent('2026-08-06');
+    expect(screen.getByLabelText(t.fields.issuedTime)).toHaveValue('09:12');
+  });
+
+  /*
+   * **짝 방향** — 줄·수량은 같은 조작에서 **비워진다.** 앞 전표의 줄 번호는 새 전표에서 뜻이
+   * 없고, 그대로 두면 남의 전표의 수량이 실린다. 9002는 라인이 0건이라 표에 칸이 없으므로
+   * 되돌아와서 본다.
+   */
+  it('전표를 옮기면 줄과 수량은 비워진다', async () => {
+    const { user } = await moveToOtherReceipt();
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(selectBox(1)).not.toBeChecked();
+    expect(qtyBox(1)).toHaveValue('');
+    /* 짝의 짝 — 반품 정보는 되돌아온 뒤에도 그대로다. */
+    expect(screen.getByRole('combobox', { name: t.fields.supplier })).toHaveTextContent(
+      PARTNER_LABEL,
+    );
+  });
+
+  /*
+   * **U33** — 결과 구획은 **그 전표에 매인 사실**이다. 남으면 전표 A의 「반품 전표를
+   * 만들었습니다」가 전표 B의 라인 표 아래에 그대로 선다(실패 배너와 같은 문법).
+   */
+  it('전표를 옮기면 앞 전표의 결과 구획이 사라진다', async () => {
+    const { user } = await setupReadyToSubmit(allRoutes(), '?gr=9001');
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+    await screen.findByRole('status', { name: t.result.label });
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
+  /* 짝 방향 — 같은 전표에 머무는 동안에는 결과가 남는다(늘 지우면 결과를 읽을 수 없다). */
+  it('같은 전표에 머무는 동안에는 결과가 남는다', async () => {
+    const { user } = await setupReadyToSubmit(allRoutes(), '?gr=9001');
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+    await screen.findByRole('status', { name: t.result.label });
+
+    await user.type(screen.getByLabelText(t.fields.remarks), '합성');
+
+    expect(screen.getByRole('status', { name: t.result.label })).toBeInTheDocument();
+  });
+});
