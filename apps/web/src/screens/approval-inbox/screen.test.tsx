@@ -1,3 +1,4 @@
+import type { ApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -22,6 +23,7 @@ import {
   requestFixtures,
   stalledDetail,
 } from './fixtures';
+import { requestDetailPath } from './queries';
 import { ApprovalInboxScreen } from './screen';
 import type { ApprovalRequestDetail } from './types';
 
@@ -121,9 +123,17 @@ const countRoute = (total = 0): StubRoute => ({
  * 스텁이 있어야 한다. 방법도 가리지 않는다: 쓰기가 잘못 나가면 스텁 누락이 아니라
  * 「쓰기가 나갔다」로 잡혀야 한다.
  */
+/**
+ * 상세 200이 실어 오는 잠금 토큰.
+ *
+ * **이 리소스에서 `ETag`를 주는 응답은 상세 하나뿐이다**(계약 실측) — 목록·건수에는 없다.
+ * 그래서 목록·건수 스텁에는 이 헤더를 붙이지 않는다.
+ */
+const DETAIL_ETAG = '"9"';
+
 const detailRoute = (detail: ApprovalRequestDetail = contradictoryMyTurnDetail): StubRoute => ({
   match: (request) => isDetailPath(new URL(request.url).pathname),
-  respond: () => jsonResponse(detail),
+  respond: () => jsonResponse(detail, { headers: { ETag: DETAIL_ETAG } }),
 });
 
 const failingDetailRoute = (status: number): StubRoute => ({
@@ -182,10 +192,14 @@ const renderScreen = (
   routes: StubRoute[],
   search = '',
   navigateTo = '',
-): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
+): {
+  requests: RecordedRequest[];
+  user: ReturnType<typeof userEvent.setup>;
+  apiClient: ApiClient;
+} => {
   const { fetch, requests } = createRecordingFetch(routes);
 
-  renderWithProviders(
+  const { apiClient } = renderWithProviders(
     <>
       <ApprovalInboxScreen />
       <LocationProbe />
@@ -195,7 +209,7 @@ const renderScreen = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, user: userEvent.setup() };
+  return { requests, user: userEvent.setup(), apiClient };
 };
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
@@ -697,6 +711,32 @@ describe('요청 고르기', () => {
       expect(detailRequests(requests)).toHaveLength(1);
     });
     expect(detailRequests(requests)[0]?.url.pathname).toBe('/app/approval-requests/9001');
+    /*
+     * **토큰을 꺼낼 경로가 곧 이 조회가 지나간 경로다.** 둘이 갈리면 결재가 토큰을 찾지
+     * 못해 요청이 아예 나가지 않는다(「눌러도 아무 일이 없다」).
+     */
+    expect(requestDetailPath(9001)).toBe(detailRequests(requests)[0]?.url.pathname);
+  });
+
+  it('상세 200이 상세 경로에 잠금 토큰을 남긴다 — 결재가 토큰을 얻는 유일한 자리다', async () => {
+    const { requests, apiClient } = renderScreen(defaultRoutes(), '?rq=9001');
+
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
+
+    expect(apiClient.etags.ifMatch(requestDetailPath(9001))).toBe(DETAIL_ETAG);
+  });
+
+  it('목록·건수 응답은 토큰을 남기지 않는다 — 목록 행에서 바로 결재할 수 없는 이유다', async () => {
+    const { requests, apiClient } = renderScreen(defaultRoutes(3));
+
+    await waitForList();
+    await waitFor(() => {
+      expect(countRequests(requests)).toHaveLength(1);
+    });
+
+    expect(apiClient.etags.ifMatch(REQUESTS_PATH)).toBeUndefined();
   });
 
   it('고르기를 풀면 상세를 다시 부르지 않는다', async () => {
