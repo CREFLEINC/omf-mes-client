@@ -387,6 +387,14 @@ export const SupplierReturnScreen = () => {
    */
   const currentError = submittedReceiptId === selectedReceiptId ? post.error : null;
 
+  /**
+   * 서버가 준 되먹임이 **하나라도 남아 있는가**(배너 또는 인라인 필드 오류).
+   *
+   * 둘을 함께 보는 이유는 **한쪽만 서는 경우가 실재하기 때문**이다 — 400의 필드 오류가 전부
+   * 인라인으로 소화되면 배너로 남을 것이 없어 `error`가 `null`이 된다.
+   */
+  const hasSaveFeedback = post.error !== null || Object.keys(post.fieldErrors).length > 0;
+
   /*
    * **대상이 바뀌면 그 대상에 매인 것만 거둔다**(수명 표 1~5행).
    *
@@ -431,11 +439,16 @@ export const SupplierReturnScreen = () => {
    * **줄 선택·수량·반품 정보 입력에는 반응하지 않는다**(6~8행). 같은 대상에 대한 사실이 아직
    * 유효하고, 사용자는 거절 사유를 읽으며 값을 고치는 중이다.
    *
+   * **배너만이 아니라 인라인 필드 오류도 거둔다.** 400이 **전부 인라인으로 소화되면** 배너로
+   * 남을 것이 없어 `error`는 `null`이고 `fieldErrors`만 선다 — 배너 유무만 보고 물러나면
+   * 전표 A의 「이 사유는 쓸 수 없습니다」가 **전표 B의 사유 칸에** 붙은 채 남는다. 반품 정보
+   * 초안이 유지되므로(수명 표 1~5행) 그 칸이 실제로 화면에 계속 있다는 것이 이 자리의 요점이다.
+   *
    * **의존성은 고른 전표 하나다.** `post.reset`은 렌더마다 새 참조라(공통 훅이 `useMutation`
    * 결과를 물고 있다) 의존성에 넣으면 **매 렌더 배너가 지워져** 실패가 아예 보이지 않는다.
    */
   useEffect(() => {
-    if (post.error === null) return;
+    if (!hasSaveFeedback) return;
 
     post.reset();
   }, [selectedReceiptId]);

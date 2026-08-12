@@ -3312,6 +3312,34 @@ describe('SupplierReturnScreen — 서버 필드 오류의 자리', () => {
   });
 
   /*
+   * **배너 정리 effect가 지키는 실질** — 서버가 준 **인라인 필드 오류**도 자기 대상보다 오래
+   * 살지 않는다.
+   *
+   * 배너 자체는 읽는 자리에서도 매여 있지만(늦게 도착한 실패를 거르는 겹), 필드 오류는 폼으로
+   * 흘러 들어가 **그 칸에 붙은 채** 남는다 — 전표 A의 「이 사유는 쓸 수 없습니다」가 전표 B의
+   * 사유 칸에 서면 사용자는 고르지도 않은 값이 거절된 것으로 읽는다.
+   */
+  it('전표를 옮기면 서버가 준 필드 오류도 사라진다', async () => {
+    const { user } = await failWithFieldError('reasonCode', '합성 사유 오류');
+
+    /* 짝 방향 — 옮기기 전에는 그 칸에 실제로 붙어 있었다. */
+    expect(screen.getByRole('combobox', { name: t.fields.reason })).toHaveAccessibleDescription(
+      expect.stringContaining('합성 사유 오류'),
+    );
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    expect(screen.queryByText('합성 사유 오류')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: t.fields.reason }),
+    ).not.toHaveAccessibleDescription(expect.stringContaining('합성 사유 오류'));
+  });
+
+  /*
    * **짝 방향** — 화면에 칸이 없는 이름의 오류는 **배너로 올라간다.** 인라인으로 흘려보내면
    * 어디에도 표시되지 않는 오류가 된다(그래서 목록에 담지 않는다).
    */
