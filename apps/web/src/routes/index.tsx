@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
+import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
 import { CommonCodeScreen } from '../screens/common-code/screen';
@@ -92,6 +93,15 @@ export const appRouter = createBrowserRouter([
        * 내보이는 것이다(정책 §5.2 — 접근 불가능한 경계).
        */
       { path: 'logistics/supplier-return', element: <SupplierReturnScreen /> },
+      /*
+       * W-CO-09 — 앞머리는 같은 규칙(사이드바 섹션)이고 계약 경로(`/app/**`)를 따르지 않는다.
+       * 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**여서 섹션을 새로 연다.
+       *
+       * **세 PR이 함께 여는 자리다.** 목록·상세까지만 선 상태에서는 이 줄을 두지 않았다 —
+       * 결재할 수 없는 「결재함」을 노출하면 사용자가 **자기 차례인 요청을 보면서 아무것도
+       * 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
+       */
+      { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

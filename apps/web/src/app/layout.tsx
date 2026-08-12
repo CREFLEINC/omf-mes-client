@@ -114,6 +114,19 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             </NavItem>
           </SidebarSection>
           {/*
+           * W-CO-09 — 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**다.
+           * 결재선 정의(W-06-15)가 「시스템 관리」에 든 것은 그것이 **운영 설정**이기
+           * 때문이고, 올라온 결재를 처리하는 일은 그것과 축이 다르다.
+           *
+           * **자재창고 뒤·시스템 관리 앞이다** — 업무를 하는 섹션들을 붙여 두고 운영 설정을
+           * 끝에 남긴다. 뒤따르는 승인 화면들이 이 섹션에 들어온다.
+           */}
+          <SidebarSection label="승인">
+            <NavItem to="/approval/inbox" icon="inbox">
+              결재함
+            </NavItem>
+          </SidebarSection>
+          {/*
            * 사용자·역할·권한은 기준정보가 아니라 **시스템 운영**이다 —
            * 기준정보 섹션에 넣으면 「창고·Location」 옆에 서서 분류가 무너진다.
            */}
