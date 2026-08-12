@@ -54,7 +54,7 @@ export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => {
         </div>
       ) : (
         /* 사유는 감추지 않는다 — 비활성 컨트롤은 포커스를 받지 못해 툴팁으로는 닿을 수 없다. */
-        <DisabledAction label={t.target.open} reason={describeOpenBlock(openState)} />
+        <DisabledAction label={t.target.open} reason={describeOpenBlock(openState)} size="sm" />
       )}
 
       <p className="field-note">{t.target.note}</p>

@@ -207,15 +207,18 @@ describe('AppLayout', () => {
   });
 
   /*
-   * **섹션이 새로 생기지 않았음**을 값으로 고정한다 — 항목이 늘어도 분류는 셋 그대로다.
-   * 알려진 섹션 셋이 사이드바의 링크를 **빠짐없이** 담고 있는지로 판정한다. 넷째 섹션이
-   * 생기면 그 안의 링크가 이 합집합 밖으로 나와 곧바로 걸린다.
+   * **알려진 섹션이 사이드바의 링크를 빠짐없이 담는다**를 값으로 고정한다. 섹션이 하나 더
+   * 생기면 그 안의 링크가 이 합집합 밖으로 나와 곧바로 걸린다 — 분류를 늘리는 일은
+   * 화면 하나를 더하는 일과 무게가 다르므로 **말없이 지나가지 않게** 한다.
+   *
+   * **넷이 된 것은 W-CO-09에서다.** 결재함은 기준정보(무엇을 정해 두는가)도 자재창고
+   * (물건이 오가는 일)도 시스템 관리(운영 설정)도 아닌, **올라온 결재를 처리하는 일**이다.
    */
-  it('사이드바 섹션이 셋 그대로이고 모든 항목이 그 안에 있다', () => {
+  it('사이드바 섹션이 넷이고 모든 항목이 그 안에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const sections = ['기준정보', '자재창고', '시스템 관리'].map(
+    const sections = ['기준정보', '자재창고', '승인', '시스템 관리'].map(
       (label) => within(sidebar).getByText(label).parentElement,
     );
 
@@ -261,6 +264,26 @@ describe('AppLayout', () => {
     expect(links.indexOf('/system/approval-route')).toBe(links.indexOf('/system/users-roles') + 1);
   });
 
+  /**
+   * **결재함은 자기 섹션을 갖는다** — 기준정보도 시스템 운영도 아니라 일하는 자리다.
+   * 결재선 정의(운영 설정)와 같은 섹션에 넣으면 「설정하는 화면」과 「일하는 화면」이 섞인다.
+   */
+  it('사이드바에 승인 섹션의 결재함 메뉴가 시스템 관리 앞에 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByText('승인')).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: '결재함' })).toHaveAttribute(
+      'href',
+      '/approval/inbox',
+    );
+    expect(links.indexOf('/approval/inbox')).toBeLessThan(links.indexOf('/system/users-roles'));
+  });
+
   /* 새 섹션을 더하면서 기존 섹션의 구성이 흔들리지 않았는지 함께 본다. */
   it('기준정보 섹션의 항목 순서와 경로가 그대로다', () => {
     renderLayout('본문 내용');
@@ -287,6 +310,7 @@ describe('AppLayout', () => {
       '/logistics/stock-status',
       '/logistics/stocktaking',
       '/logistics/supplier-return',
+      '/approval/inbox',
       '/system/users-roles',
       '/system/approval-route',
     ]);

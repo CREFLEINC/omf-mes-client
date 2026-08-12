@@ -99,4 +99,15 @@ describe('appRouter', () => {
     expect(routedPaths()).toContain('/system/approval-route');
     expect(routedPaths()).not.toContain('/master-data/approval-route');
   });
+
+  /*
+   * W-CO-09의 계약 경로는 `/app/approval-requests`인데 주소는 `/approval/inbox`다 —
+   * 근거는 여기서도 **섹션**이다. 결재함은 결재선 정의(운영 설정)와 달리 **일하는 자리**라
+   * 「시스템 관리」에 들어가지 않고 자기 섹션을 갖는다.
+   */
+  it('결재함이 승인 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/approval/inbox');
+    expect(routedPaths()).not.toContain('/system/approval-inbox');
+    expect(routedPaths()).not.toContain('/app/approval-requests');
+  });
 });

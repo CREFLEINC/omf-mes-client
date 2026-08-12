@@ -210,6 +210,26 @@ export const stalledDetail: ApprovalRequestDetail = {
   ],
 };
 
+/**
+ * 9001을 **결재한 직후의 상세** — 승인·반려 200이 실어 오는 몸통이다.
+ *
+ * 내 단계가 결재돼 더 이상 내 차례가 아니고, 그래서 **결재하기 전과 눈에 띄게 다르다** —
+ * 「응답 그대로 갱신했는가」를 재려면 갱신 전후가 화면에서 갈려야 한다.
+ */
+export const decidedDetail: ApprovalRequestDetail = {
+  request: { ...multilineReasonRequest, currentStepNo: 3, isMyTurn: false },
+  steps: [
+    ...contradictoryMyTurnDetail.steps,
+    step(2, '합성 승인자2', {
+      decisionCode: 'SAMPLE-DECISION-APPROVED',
+      decisionAt: '2026-08-06T16:10:00+09:00',
+      /** 이 글자가 화면에 나타나는 것이 곧 「응답으로 갈아 끼웠다」의 증거다. */
+      decisionComment: '합성 결재 직후에 남은 의견',
+      isMine: true,
+    }),
+  ],
+};
+
 /** 열 수 있다는데 **화면 ID가 오지 않은** 대상. 스키마상 가능한 조합이라 화면이 다뤄야 한다. */
 export const noScreenIdTargetDetail: ApprovalRequestDetail = {
   request: {
