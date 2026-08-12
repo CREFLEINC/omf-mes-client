@@ -4303,10 +4303,13 @@ const approvalRoute = {
     /** 목록·상세·단계를 **함께** 다시 부른다. 목록만 부르면 갱신된 값과 낡은 값이 섞인다. */
     reload: '다시 조회',
     /*
-     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 승인 유형을 넣어 어느 줄인지 밝히되
-     * 보이는 글자를 그대로 담는다. **내부 번호를 접근 이름에 넣지 않는다.**
+     * 행 안의 버튼은 보이는 글자가 행마다 같을 수 있다 — 같은 승인 유형의 사업부 지정본과
+     * 전 사업부 공통본이 함께 서기 때문이다. 그래서 사업부 **이름**을 함께 담는다.
+     * 보이는 글자(승인 유형)를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 하고,
+     * **내부 번호는 접근 이름에도 넣지 않는다.**
      */
-    selectRow: (approvalTypeCode: string): string => `${approvalTypeCode} 선택`,
+    selectRow: (approvalTypeCode: string, businessUnitLabel: string): string =>
+      `${approvalTypeCode} · ${businessUnitLabel} 선택`,
   },
   loading: {
     list: '결재선 목록 불러오는 중',
