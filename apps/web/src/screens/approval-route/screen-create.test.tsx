@@ -1,0 +1,356 @@
+import { messages } from '@omf-mes/i18n';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useLocation, useNavigate } from 'react-router';
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  createStubFetch,
+  jsonResponse,
+  renderWithProviders,
+  type StubFetch,
+  type StubRoute,
+} from '../../test/api-harness';
+import { businessUnitFixtures, createdRouteFixture, routeFixtures } from './fixtures';
+import { ApprovalRouteScreen } from './screen';
+
+/**
+ * **승인 유형 값 목록이 확정된 뒤의 등록 경로**를 미리 재는 자리.
+ *
+ * 지금 `code-options.ts`의 배열은 비어 있고(`omf-mes#64`) 그동안 등록 버튼은 잠긴 채다 —
+ * 그래서 **등록 요청이 실제로 무엇을 싣고 나가는지**를 다른 어떤 방법으로도 볼 수 없다.
+ * 값 목록이 확정되는 회차가 이 파일을 지우는 회차이고, 그때까지 이 파일이
+ * 「배열만 채우면 살아난다」를 화면 수준에서 증명한다.
+ *
+ * **자리표시 상수 하나만 갈아 끼운다.** 요청·응답은 다른 화면 테스트와 똑같이 스텁 fetch가
+ * 맡는다 — 계약 왕복을 흉내 내지 않는다.
+ */
+vi.mock('./code-options', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./code-options')>();
+
+  return { ...actual, PLACEHOLDER_APPROVAL_TYPE_CODES: ['SAMPLE-TYPE-A', 'SAMPLE-TYPE-C'] };
+});
+
+const t = messages.approvalRoute;
+
+const ROUTE = '/system/approval-route';
+const ROUTES_PATH = '/app/approval-routes';
+const BUSINESS_UNITS_PATH = '/mdm/business-units';
+
+interface RecordedRequest {
+  method: string;
+  url: URL;
+  headers: Headers;
+  body: unknown;
+}
+
+const createRecordingFetch = (
+  routes: StubRoute[],
+): { fetch: StubFetch; requests: RecordedRequest[] } => {
+  const requests: RecordedRequest[] = [];
+  const stub = createStubFetch(routes);
+
+  const fetch: StubFetch = async (request) => {
+    const raw = request.method === 'GET' ? '' : await request.clone().text();
+
+    requests.push({
+      method: request.method,
+      url: new URL(request.url),
+      headers: new Headers(request.headers),
+      body: raw === '' ? null : (JSON.parse(raw) as unknown),
+    });
+
+    return stub(request);
+  };
+
+  return { fetch, requests };
+};
+
+const isGet = (request: Request, pathname: string): boolean =>
+  request.method === 'GET' && new URL(request.url).pathname === pathname;
+
+/** 조준 조회는 목록과 같은 경로를 쓰되 `size` 상수를 싣는다. */
+const isProbe = (request: Request): boolean =>
+  isGet(request, ROUTES_PATH) && new URL(request.url).searchParams.has('size');
+
+const listBody = (items: unknown[]) => ({
+  items,
+  page: { page: 1, size: 20, total: items.length },
+});
+
+const probeRoute = (items: unknown[] = []): StubRoute => ({
+  match: isProbe,
+  respond: () => jsonResponse(listBody(items)),
+});
+
+const createRoute = (saved: unknown = createdRouteFixture): StubRoute => ({
+  match: (request) => request.method === 'POST' && new URL(request.url).pathname === ROUTES_PATH,
+  /* 계약이 201에 `ETag`를 싣지만 그것은 **컬렉션 경로**에 캡처된다 — 상세 토큰이 되지 않는다. */
+  respond: () => jsonResponse(saved, { status: 201, headers: { ETag: 'collection-token' } }),
+});
+
+const allRoutes = (extra: StubRoute[] = []): StubRoute[] => [
+  ...extra,
+  probeRoute(),
+  createRoute(),
+  {
+    match: (request) => isGet(request, ROUTES_PATH) && !isProbe(request),
+    respond: () => jsonResponse(listBody(routeFixtures)),
+  },
+  {
+    match: (request) =>
+      request.method === 'GET' && /^\/app\/approval-routes\/[^/]+$/.test(new URL(request.url).pathname),
+    respond: () => jsonResponse(createdRouteFixture, { headers: { ETag: 'detail-token' } }),
+  },
+  {
+    match: (request) =>
+      request.method === 'GET' &&
+      /^\/app\/approval-routes\/[^/]+\/steps$/.test(new URL(request.url).pathname),
+    respond: () => jsonResponse({ items: [] }),
+  },
+  {
+    match: (request) => isGet(request, BUSINESS_UNITS_PATH),
+    respond: () => jsonResponse(listBody(businessUnitFixtures)),
+  },
+];
+
+const LocationProbe = () => {
+  const location = useLocation();
+
+  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+};
+
+const BackProbe = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigate(-1);
+      }}
+    >
+      뒤로
+    </button>
+  );
+};
+
+const renderScreen = (
+  routes: StubRoute[],
+  search = '',
+): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
+  const { fetch, requests } = createRecordingFetch(routes);
+
+  renderWithProviders(
+    <>
+      <ApprovalRouteScreen />
+      <LocationProbe />
+      <BackProbe />
+    </>,
+    { fetch, route: `${ROUTE}${search}` },
+  );
+
+  return { requests, user: userEvent.setup() };
+};
+
+const locationText = (): string => screen.getByTestId('location').textContent ?? '';
+
+const createRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.method === 'POST' && request.url.pathname === ROUTES_PATH);
+
+const probeRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => isProbe(new Request(request.url)));
+
+/** 등록 폼을 열고 승인 유형을 고른 상태까지 간다. */
+const openCreateForm = async (
+  user: ReturnType<typeof userEvent.setup>,
+  approvalTypeCode = 'SAMPLE-TYPE-C',
+): Promise<HTMLElement> => {
+  await screen.findByText('SAMPLE-TYPE-B');
+  await user.click(screen.getByRole('button', { name: t.actions.create }));
+
+  const pane = await screen.findByRole('region', { name: t.panes.create });
+
+  await user.click(within(pane).getByRole('combobox', { name: t.fields.approvalTypeCode }));
+  await user.click(screen.getByRole('option', { name: approvalTypeCode }));
+
+  return pane;
+};
+
+describe('ApprovalRouteScreen(등록) — 값 목록이 차면 등록이 열린다', () => {
+  /** **잠금을 상수로 굳히면** 값 목록이 확정돼도 화면이 살아나지 않는다. */
+  it('선택지가 차면 자리표시 안내가 사라지고 유형을 고를 수 있다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    const pane = await openCreateForm(user);
+
+    expect(within(pane).queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
+    expect(within(pane).queryByText(t.actionReasons.createPendingCode)).not.toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: t.actions.submitCreate })).toBeEnabled();
+  });
+
+  it('유형을 고르기 전에는 사유와 함께 잠겨 있다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await screen.findByText('SAMPLE-TYPE-B');
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+
+    const pane = await screen.findByRole('region', { name: t.panes.create });
+
+    expect(within(pane).getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
+    expect(within(pane).getByText(t.actionReasons.createNoType)).toBeInTheDocument();
+  });
+});
+
+describe('ApprovalRouteScreen(등록) — 요청', () => {
+  /**
+   * **등록에는 `If-Match`가 없다.** 아직 없는 자원이라 잠글 대상이 없고, 상세 경로를 주면
+   * 토큰을 찾지 못해 **요청이 나가지 않고 멈춘다**(「등록을 눌러도 아무 일이 없다」).
+   */
+  it('등록 요청이 멱등 키를 싣고 If-Match는 싣지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    const pane = await openCreateForm(user);
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.submitCreate }));
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    const sent = createRequests(requests)[0];
+
+    expect(sent?.headers.get('Idempotency-Key')).not.toBeNull();
+    expect(sent?.headers.has('If-Match')).toBe(false);
+  });
+
+  /** 비운 칸은 **`null`로** 실린다 — 생략으로 비우면 무엇을 보내는지 코드에서 사라진다. */
+  it('등록 본문이 네 필드를 명시하고 비운 칸은 null이다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    const pane = await openCreateForm(user);
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.submitCreate }));
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    expect(createRequests(requests)[0]?.body).toEqual({
+      approvalTypeCode: 'SAMPLE-TYPE-C',
+      businessUnitId: null,
+      minValue: null,
+      maxValue: null,
+    });
+  });
+
+  it('값 구간을 채우면 그 값이 실린다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    const pane = await openCreateForm(user);
+
+    await user.type(within(pane).getByLabelText(t.fields.minValue), '0');
+    await user.type(within(pane).getByLabelText(t.fields.maxValue), '500');
+    await user.click(within(pane).getByRole('button', { name: t.actions.submitCreate }));
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    /* 하한 0은 값이다 — 「없음」으로 줄이면 뜻이 바뀐다. */
+    expect(createRequests(requests)[0]?.body).toMatchObject({ minValue: 0, maxValue: 500 });
+  });
+});
+
+describe('ApprovalRouteScreen(등록) — 성공한 뒤', () => {
+  /**
+   * **주소 갱신은 한 번뿐이다**(`new` 해제 + `ar` 설정을 한 patch로). 두 번 갱신하면 그 사이에
+   * 「고른 것도 만드는 것도 아닌」 주소가 히스토리에 남아, 뒤로가기가 사용자가 본 적 없는
+   * 화면으로 떨어진다.
+   */
+  it('새 결재선을 열고 히스토리가 한 칸만 는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    const pane = await openCreateForm(user);
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.submitCreate }));
+
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9004');
+    });
+    expect(locationText()).not.toContain('new=');
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(locationText()).toContain('new=1');
+    });
+  });
+
+  /**
+   * **등록 직후는 늘 「사용 중인데 단계가 0인 결재선」이다**(계획 결정 15) — 계약이 등록
+   * 본문에 단계를 받지 않고 신규는 항상 사용 중이다. 그 유형의 상신은 그 순간 400이므로
+   * 화면이 무엇을 더 해야 하는지 말한다.
+   */
+  it('단계 구획이 빈 상태로 열리고 무엇을 더 해야 하는지 말한다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    const pane = await openCreateForm(user);
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.submitCreate }));
+
+    expect(await screen.findByText(t.empty.noStepsTitle)).toBeInTheDocument();
+    expect(screen.getByText(t.empty.noStepsDescription)).toBeInTheDocument();
+  });
+
+  /** 새 결재선의 상세를 부른다 — **그 조회가 잠금 토큰을 확보한다**(201의 토큰은 컬렉션 경로에 있다). */
+  it('새 결재선의 상세를 부른다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    const pane = await openCreateForm(user);
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.submitCreate }));
+
+    await waitFor(() => {
+      expect(
+        requests.filter((request) => request.url.pathname === '/app/approval-routes/9004'),
+      ).not.toHaveLength(0);
+    });
+  });
+});
+
+describe('ApprovalRouteScreen(등록) — 활성 중복 선검사', () => {
+  /** 등록에는 뺄 자기 행이 없다 — 조준 조회가 낸 사용 중 결재선은 모두 중복이다. */
+  it('같은 유형·사업부로 사용 중인 결재선이 있으면 등록 전에 막힌다', async () => {
+    const clash = { ...createdRouteFixture, approvalRouteId: 9007, businessUnitId: null };
+    const { requests, user } = renderScreen(allRoutes([probeRoute([clash])]));
+
+    const pane = await openCreateForm(user);
+
+    expect(await screen.findByText(t.actionReasons.duplicateActive)).toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
+    expect(createRequests(requests)).toHaveLength(0);
+  });
+
+  it('유형을 고른 뒤에야 조준 조회가 나간다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('SAMPLE-TYPE-B');
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+
+    const pane = await screen.findByRole('region', { name: t.panes.create });
+
+    expect(probeRequests(requests)).toHaveLength(0);
+
+    /* 조건 줄에도 같은 이름의 선택칸이 있다 — 폼 구획 안에서 집는다. */
+    await user.click(within(pane).getByRole('combobox', { name: t.fields.approvalTypeCode }));
+    await user.click(screen.getByRole('option', { name: 'SAMPLE-TYPE-C' }));
+
+    await waitFor(() => {
+      expect(probeRequests(requests)).toHaveLength(1);
+    });
+    expect(probeRequests(requests)[0]?.url.searchParams.get('approvalTypeCode')).toBe(
+      'SAMPLE-TYPE-C',
+    );
+  });
+});

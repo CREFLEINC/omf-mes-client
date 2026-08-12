@@ -1,4 +1,5 @@
-import type { ApprovalRoute, ApprovalRouteStep, RouteView, StepView } from './types';
+import { routeToFormValues } from './route-request';
+import type { ApprovalRoute, ApprovalRouteStep, RouteFormValues, RouteView, StepView } from './types';
 import { toRouteView, toStepView } from './types';
 
 /**
@@ -41,17 +42,19 @@ export const INACTIVE_BUSINESS_UNIT_LABEL = 'SAMPLE-BU-02 · 합성사업부 나
  * 결재선 셋. **9001과 9002는 승인 유형이 같고 사업부만 다르다** —
  * 「사업부 지정본과 전 사업부 공통본은 다른 결재선이다」가 목록에서 읽혀야 한다.
  */
+const routeWithUnit: ApprovalRoute = {
+  approvalRouteId: 9001,
+  approvalTypeCode: 'SAMPLE-TYPE-A',
+  businessUnitId: 9101,
+  minValue: 100,
+  maxValue: 500,
+  isActive: true,
+  stepCount: 2,
+  inProgressCount: 3,
+};
+
 export const routeFixtures: ApprovalRoute[] = [
-  {
-    approvalRouteId: 9001,
-    approvalTypeCode: 'SAMPLE-TYPE-A',
-    businessUnitId: 9101,
-    minValue: 100,
-    maxValue: 500,
-    isActive: true,
-    stepCount: 2,
-    inProgressCount: 3,
-  },
+  routeWithUnit,
   {
     approvalRouteId: 9002,
     approvalTypeCode: 'SAMPLE-TYPE-A',
@@ -77,6 +80,27 @@ export const routeFixtures: ApprovalRoute[] = [
 ];
 
 export const routeViewFixtures: RouteView[] = routeFixtures.map(toRouteView);
+
+/**
+ * 9001을 폼에 세운 값. 「고친 것이 없다」의 기준이 되는 자리다.
+ * **응답 픽스처에서 파생시킨다** — 손으로 적으면 둘이 조용히 어긋난다.
+ */
+export const routeFormValuesFixture: RouteFormValues = routeToFormValues(toRouteView(routeWithUnit));
+
+/**
+ * 등록이 만들어 내는 결재선. **단계가 0이고 사용 중이다** — 계약이 등록 본문에 단계를 받지
+ * 않고 신규는 항상 사용 중이라, 만든 그 순간 「사용 중인데 단계가 0인 결재선」이 생긴다.
+ */
+export const createdRouteFixture: ApprovalRoute = {
+  approvalRouteId: 9004,
+  approvalTypeCode: 'SAMPLE-TYPE-C',
+  businessUnitId: null,
+  minValue: null,
+  maxValue: null,
+  isActive: true,
+  stepCount: 0,
+  inProgressCount: 0,
+};
 
 /** 결재선 9001의 단계 셋. 정상 · 승인자 사용 중지 · 이름 미도착. */
 export const stepFixtures: ApprovalRouteStep[] = [
