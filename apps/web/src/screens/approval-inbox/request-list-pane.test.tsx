@@ -56,7 +56,38 @@ const renderPane = ({
   return { ...result, onSelect, onChangePage, user: userEvent.setup() };
 };
 
-describe('열 폭 예산', () => {
+/**
+ * **표에 실제로 전달된 열 폭.** 상수가 아니라 산출물을 읽는다.
+ *
+ * 상수는 「무엇이 폭을 가져야 하는가」의 선언일 뿐이고, 표가 받는 것은 열 정의다. 둘을 잇지
+ * 않으면 열 정의에만 폭을 박거나, 한 줄을 지우거나, 두 열의 폭을 맞바꿔도 상수가 그대로라
+ * 잣대가 침묵한다.
+ *
+ * 디자인 시스템 `Table`은 열마다 `<col>`을 그리고 **폭이 없으면 `style`을 붙이지 않는다**
+ * (설치본 실측). 그래서 `<col>` 집합이 곧 「어느 열이 폭을 갖고 그 값이 무엇인가」다.
+ * 이 표에는 선택 열도 순서 이동 열도 없어 `<col>` 차례가 열 차례와 같다.
+ */
+const renderedColumnWidths = (container: HTMLElement): (string | null)[] =>
+  [...container.querySelectorAll<HTMLElement>('colgroup col')].map((col) =>
+    col.style.width === '' ? null : col.style.width,
+  );
+
+/**
+ * 열 정의가 가져야 할 폭 — **차례까지 포함해** 상수에서 만든다.
+ * 마지막 `null`이 흡수 열(사유)이다.
+ */
+const EXPECTED_COLUMN_WIDTHS: (string | null)[] = [
+  REQUEST_COLUMN_WIDTH.approvalRequestNo,
+  REQUEST_COLUMN_WIDTH.approvalTypeCode,
+  REQUEST_COLUMN_WIDTH.requester,
+  REQUEST_COLUMN_WIDTH.requestedAt,
+  REQUEST_COLUMN_WIDTH.status,
+  null,
+];
+
+const pxOf = (width: string): number => Number.parseInt(width, 10);
+
+describe('열 폭 예산 — 선언(상수)', () => {
   it('흡수 열은 사유 하나뿐이다', () => {
     /* 흡수 열이 둘이면 좁은 화면에서 둘 다 짓눌린다. */
     expect(Object.keys(REQUEST_COLUMN_WIDTH)).toEqual([
@@ -70,7 +101,7 @@ describe('열 폭 예산', () => {
 
   it('지정 폭과 흡수 예산의 합이 표 최소 폭 안이다', () => {
     const specified = Object.values(REQUEST_COLUMN_WIDTH).reduce(
-      (sum, width) => sum + Number.parseInt(width, 10),
+      (sum, width) => sum + pxOf(width),
       0,
     );
 
@@ -81,6 +112,45 @@ describe('열 폭 예산', () => {
   /** 일시 칸은 `2026-08-06 09:12`이 한 줄에 들어가야 한다 — 접히면 행 높이가 무너진다. */
   it('상신 일시 칸이 일시 표기의 저장소 전례 폭을 갖는다', () => {
     expect(REQUEST_COLUMN_WIDTH.requestedAt).toBe('160px');
+  });
+});
+
+/**
+ * **선언이 아니라 산출물을 재는 자리.** 위 세 단언은 상수가 무엇을 말하는지만 보고,
+ * 그 상수가 표까지 닿았는지는 보지 않는다 — 열 정의에만 폭을 박거나, 한 줄을 지우거나,
+ * 두 열의 폭을 맞바꾸면 상수는 그대로라 위 셋이 침묵한다.
+ *
+ * 여기서는 표가 실제로 받은 열 정의(`<col>`)를 읽어 **합·흡수 열 개수·열마다의 폭·차례**를
+ * 함께 잰다. 넷을 한 자리에 두는 이유는 셋 중 하나만으로는 못 잡는 결함이 각각 있기 때문이다 —
+ * 합만 재면 폭 맞바꿈이, 개수만 재면 폭 초과가, 차례를 빼면 키↔폭 결속이 새 나간다.
+ */
+describe('열 폭 예산 — 산출물(열 정의)', () => {
+  it('표가 받은 폭이 열마다·차례대로 선언과 같다', () => {
+    const { container } = renderPane();
+
+    /* 선행 단언 — 열이 실제로 여섯이어야 폭 목록을 견주는 것이 뜻을 갖는다. */
+    expect(screen.getAllByRole('columnheader')).toHaveLength(6);
+    expect(renderedColumnWidths(container)).toEqual(EXPECTED_COLUMN_WIDTHS);
+  });
+
+  it('폭 없는 열이 정확히 하나다 — 그 하나가 남는 폭을 흡수한다', () => {
+    const { container } = renderPane();
+    const widths = renderedColumnWidths(container);
+
+    expect(widths).toHaveLength(6);
+    expect(widths.filter((width) => width === null)).toHaveLength(1);
+    /* 흡수 열은 **마지막**(사유)이다 — 자리가 바뀌면 확정 필드 차례가 어긋난 것이다. */
+    expect(widths.at(-1)).toBeNull();
+  });
+
+  it('표가 받은 지정 폭의 합과 흡수 예산이 표 최소 폭 안이다', () => {
+    const { container } = renderPane();
+    const specified = renderedColumnWidths(container)
+      .filter((width): width is string => width !== null)
+      .reduce((sum, width) => sum + pxOf(width), 0);
+
+    expect(specified).toBe(660);
+    expect(specified + REASON_COLUMN_BUDGET_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_WIDTH_PX);
   });
 });
 

@@ -531,6 +531,27 @@ describe('조회 조건', () => {
 });
 
 describe('쪽 이동', () => {
+  /**
+   * **서버가 준 쪽이 정본이다.**
+   *
+   * 주소의 쪽 번호를 표시에 쓰면 서버가 다른 쪽을 돌려줬을 때(범위 밖 요청을 서버가 잘라
+   * 첫 쪽을 주는 경우 등) **표시와 내용이 어긋난다** — 사용자는 5쪽을 보고 있다고 읽는데
+   * 화면에는 1쪽의 행이 서 있다. 계산은 `pagination.ts`가 이미 재므로 여기서는
+   * **컨테이너가 어느 쪽을 넘기는가**(배선)를 잰다.
+   */
+  it('주소의 쪽과 서버가 준 쪽이 다르면 서버 쪽으로 읽힌다', async () => {
+    renderScreen(
+      [listRoute(requestFixtures, { page: 1, size: 20, total: 45 }), countRoute(), detailRoute()],
+      '?page=5',
+    );
+
+    await waitForList();
+
+    /* 서버가 첫 쪽을 줬으므로 범위도 첫 쪽의 것이고 이전으로 갈 수 없다. */
+    expect(screen.getByText('1–4 / 전체 45건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
+  });
+
   it('쪽만 옮기고 고른 요청을 비운다', async () => {
     const { requests, user } = renderScreen(
       [listRoute(requestFixtures, { total: 120 }), countRoute(), detailRoute()],

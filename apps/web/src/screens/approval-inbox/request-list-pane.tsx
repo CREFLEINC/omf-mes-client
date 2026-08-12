@@ -188,7 +188,11 @@ export const RequestListPane = ({
 
   return (
     <>
-      {/* 열이 일곱이라 좁은 화면에서는 짓누르는 대신 가로로 넘긴다(배치 규범 문서의 `.wide-table`). */}
+      {/*
+       * 여섯 열의 폭 예산이 최소 928px이라 좁은 화면에서는 짓누르는 대신 가로로 넘긴다
+       * (배치 규범 문서의 `.wide-table`). 넘침이 곧 가로 스크롤이 되는 상자는 디자인 시스템
+       * `Table`이 이미 갖고 있다 — 우리가 만들지 않는다.
+       */}
       <div className="wide-table">
         <Table
           density="compact"
