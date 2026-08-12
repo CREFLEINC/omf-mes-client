@@ -3315,3 +3315,114 @@ describe('SupplierReturnScreen — 서버 필드 오류의 자리', () => {
     expect(screen.getByText('합성 창고 오류')).toBeInTheDocument();
   });
 });
+
+/**
+ * **전송 중 주소가 바뀌는 셋째 길** — 뒤로가기·앞으로가기·주소 직접 편집.
+ *
+ * 잠금 두 겹(컨트롤 `disabled` · 핸들러 가드)은 이 길에 닿지 않는다. **잠글 수 없는 길**이므로
+ * 막는 방법은 하나뿐이다 — **도착한 응답을 그 요청이 겨눈 전표에 매다는 것.** 매달지 않으면
+ * 전표 A의 결과·거절 사유가 **전표 B 위에** 서고, 유지돼야 할 반품 정보 초안이 지워진다.
+ */
+describe('SupplierReturnScreen — 전송 중 주소가 바뀌면', () => {
+  /** 전송 중에 9001 → 9002로 주소를 옮긴 상태까지 간다. 응답은 아직 붙잡혀 있다. */
+  const navigateWhileSending = async (
+    routes: StubRoute[],
+  ): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = await setupReadyToSubmit(routes, '?gr=9001', 'gr=9002', [ISSUES_PATH]);
+
+    await openConfirm(rendered.user);
+    await confirmSubmit(rendered.user);
+
+    await waitFor(() => {
+      expect(issueRequests(rendered.requests)).toHaveLength(1);
+    });
+
+    await rendered.user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    /* 응답이 오기 전에는 어느 쪽도 서 있지 않다 — 뒤 단언이 늘 참이 되지 않게 먼저 못 박는다. */
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+
+    return rendered;
+  };
+
+  /*
+   * **R3-1 성공 갈래** — 9001의 결과가 9002 화면에 서면 사용자는 방금 고른 전표를 방금
+   * 만든 것으로 읽는다.
+   */
+  it('늦게 도착한 성공 결과가 다른 전표 위에 서지 않는다', async () => {
+    const { requests, release, user } = await navigateWhileSending(allRoutes());
+
+    release();
+
+    /* 무효화가 도는 것이 응답이 처리됐다는 신호다 — 그 뒤에 본다. */
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH).length).toBeGreaterThan(1);
+    });
+
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+    expect(screen.queryByText('GI-2026-950001')).not.toBeInTheDocument();
+
+    /*
+     * **유지돼야 할 초안이 살아 있다**(수명 표 1~5행 · 정정 4). 늦게 도착한 성공이 초안을
+     * 비우면 그 결정이 이 경로에서만 조용히 깨진다.
+     */
+    expect(screen.getByRole('combobox', { name: t.fields.supplier })).toHaveTextContent(
+      PARTNER_LABEL,
+    );
+    expect(screen.getByLabelText(t.fields.issuedTime)).toHaveValue('09:12');
+
+    /* 초안이 남았으니 버릴 수단도 열려 있다. */
+    await waitFor(() => {
+      expect(discardButton()).not.toBeDisabled();
+    });
+
+    /* 되돌아가도 남의 결과가 되살아나지 않는다 — 그 반품의 결과를 볼 자리는 이미 없다. */
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await screen.findAllByText(ITEM_LABEL);
+
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
+  /*
+   * **R3-1 실패 갈래** — 코드가 배너 매임의 근거로 든 문장이 바로 이 화면이다:
+   * 「전표 A의 **「권한이 없습니다」**가 전표 B의 라인 표 위에 서면 사용자는 B도 막힌 것으로 읽는다」.
+   */
+  it('늦게 도착한 실패 배너가 다른 전표 위에 서지 않는다', async () => {
+    const { release } = await navigateWhileSending(allRoutes([failingPostRoute(403)]));
+
+    release();
+
+    /* 전송이 끝나 잠금이 풀리는 것이 응답이 처리됐다는 신호다. */
+    await waitFor(() => {
+      expect(discardButton()).not.toBeDisabled();
+    });
+
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.notes.submitRecheck)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **짝 방향** — 대상이 그대로면 결과가 선다. 늘 버리면 성공을 확인할 자리가 사라진다.
+   */
+  it('대상이 그대로면 늦게 도착한 결과가 선다', async () => {
+    const { release, user } = await setupReadyToSubmit(allRoutes(), '?gr=9001', '', [
+      ISSUES_PATH,
+    ]);
+
+    await openConfirm(user);
+    await confirmSubmit(user);
+
+    expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+
+    release();
+
+    expect(await screen.findByRole('status', { name: t.result.label })).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: t.result.label })).toHaveTextContent(
+      'GI-2026-950001',
+    );
+  });
+});

@@ -1,6 +1,6 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
@@ -322,9 +322,38 @@ export const SupplierReturnScreen = () => {
   /** 초안 파기 확인 창이 열려 있는가. 두 초안을 **함께** 버린다 */
   const [isDiscardOpen, setDiscardOpen] = useState(false);
 
+  /**
+   * **마지막으로 보낸 요청이 겨눈 전표.**
+   *
+   * 전송 중에 주소가 바뀌는 길이 있다 — 뒤로가기·앞으로가기·주소 직접 편집은 잠금도 핸들러
+   * 가드도 거치지 않는다(**잠글 수 없는 셋째 길**). 이미 나간 요청은 그 길을 따라가지 않으므로,
+   * 도착한 되먹임이 **어느 전표의 것인지**를 화면이 스스로 알아야 한다.
+   */
+  const [submittedReceiptId, setSubmittedReceiptId] = useState<number | null>(null);
+
+  /**
+   * 지금 고른 전표를 **응답이 도착한 뒤에도** 읽는 자리.
+   *
+   * 성공 핸들러는 **보낸 시점 렌더의 클로저**라 그 안의 `selectedReceiptId`는 「보낼 때의 값」이다.
+   * 「지금 값」과 견주려면 렌더를 건너뛰고 살아 있는 자리가 하나 필요하다.
+   */
+  const selectedReceiptIdRef = useRef(selectedReceiptId);
+
+  useEffect(() => {
+    selectedReceiptIdRef.current = selectedReceiptId;
+  }, [selectedReceiptId]);
+
   const post = useSupplierReturnPost({
     goodsReceiptId: selectedReceiptId,
     onSuccess: (data) => {
+      /*
+       * **늦게 도착한 결과는 조용히 버린다.** 보낸 뒤 대상이 바뀌었다면 그 반품의 결과를 볼
+       * 자리가 화면에 이미 없다 — 세우면 전표 A의 「반품 전표를 만들었습니다」가 **전표 B의
+       * 라인 표 아래에** 서고, 이어지는 초안 비움이 **유지돼야 할 반품 정보**(수명 표 1~5행)를
+       * 지운다. 여기서 왼쪽은 **지금** 값이고 오른쪽은 **보낼 때** 값이다.
+       */
+      if (selectedReceiptIdRef.current !== selectedReceiptId) return;
+
       setResult(toReturnResultView(data.goodsIssue, data.lines));
       /*
        * **초안 두 벌을 비운다**(수명 표 11행 · 중복 전송 완화의 한 층). 같은 줄이 그대로
@@ -347,6 +376,16 @@ export const SupplierReturnScreen = () => {
    * 닫고, **잠금을 받지 않는 컨트롤**(조건 칩의 ×)은 핸들러 가드(둘째 겹)가 막는다.
    */
   const isLocked = post.isSaving;
+
+  /**
+   * 지금 화면이 보일 수 있는 실패. **다른 전표로 옮긴 뒤 도착한 실패는 보이지 않는다.**
+   *
+   * 성공은 세우는 자리가 화면에 있어 거기서 걸렀지만(위 `onSuccess`), **실패는 공통 쓰기 훅의
+   * 안쪽 상태**라 화면이 세우는 자리를 갖지 않는다 — 그래서 **읽는 자리에서** 매단다.
+   * 되돌아와도 되살아나지 않는다: 대상을 떠난 순간 그 사실은 화면에서 수명을 다했고,
+   * 배너 정리 effect가 그 뒤에 거둔다(「자기 대상보다 오래 살지 않는다」의 일관된 귀결).
+   */
+  const currentError = submittedReceiptId === selectedReceiptId ? post.error : null;
 
   /*
    * **대상이 바뀌면 그 대상에 매인 것만 거둔다**(수명 표 1~5행).
@@ -723,6 +762,8 @@ export const SupplierReturnScreen = () => {
 
       /* 실패하면 결과 구획이 비어 있어야 한다(수명 표 12행) — 앞 성공의 번호가 남으면 오해한다. */
       setResult(null);
+      /* **이 요청이 겨눈 전표를 적어 둔다** — 도착한 되먹임이 어느 전표의 것인지 가르는 기준이다. */
+      setSubmittedReceiptId(receipt.goodsReceiptId);
       post.write(body);
     };
 
@@ -771,14 +812,16 @@ export const SupplierReturnScreen = () => {
          * 저장 충돌(409)·응답 없음(네트워크)의 문구를 갈라 내고, **409에만** 「최신 불러오기」가
          * 붙는다 — 다시 읽어 풀리는 것은 충돌뿐이라 다른 갈래에 내면 입력만 버리게 된다.
          */}
-        <SaveErrorBanner error={post.error} onReload={refreshAll} />
+        <SaveErrorBanner error={currentError} onReload={refreshAll} />
 
         {/*
          * **응답을 받지 못한 실패에만 한 줄을 더한다.** 공통 문구는 「다시 시도하세요」로 끝나는데,
          * 이 화면에서 확인 없이 다시 보내면 같은 반품이 전표 두 벌로 남는다 — 공통 쓰기 훅이
          * 호출마다 새 멱등 키를 만들어 서버가 재전송으로 보지 못한다.
          */}
-        {post.error?.kind === 'network' && <p className="field-error">{t.notes.submitRecheck}</p>}
+        {currentError?.kind === 'network' && (
+          <p className="field-error">{t.notes.submitRecheck}</p>
+        )}
 
         <div className="form-actions">
           {/* 지우기가 반품 처리보다 앞에 선다 — 되돌릴 수 없는 것이 손 가까이 있으면 안 된다. */}
@@ -821,7 +864,10 @@ export const SupplierReturnScreen = () => {
           <SubmitConfirmDialog
             summary={{
               supplierName: describeReference(
-                toReference(partners, returnDraft.supplier === '' ? null : Number(returnDraft.supplier)),
+                toReference(
+                  partners,
+                  returnDraft.supplier === '' ? null : Number(returnDraft.supplier),
+                ),
               ),
               issueTypeCode: returnDraft.codes.issueType,
               sourceDocumentTypeCode: returnDraft.codes.sourceDocumentType,
