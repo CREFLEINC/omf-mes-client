@@ -20,7 +20,9 @@ describe('describeLoadError', () => {
   it('갈래마다 다른 사유를 낸다', () => {
     expect(describeLoadError({ kind: 'network' })).toBe(messages.httpError.offline);
     expect(describeLoadError({ kind: 'http', status: 403 })).toBe(messages.httpError.forbidden);
-    expect(describeLoadError({ kind: 'http', status: 500, message: '서버 오류' })).toBe('서버 오류');
+    expect(describeLoadError({ kind: 'http', status: 500, message: '서버 오류' })).toBe(
+      '서버 오류',
+    );
   });
 
   it('서버가 빈 문구를 주면 본문을 지우지 않는다', () => {

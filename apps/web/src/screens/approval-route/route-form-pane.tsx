@@ -19,7 +19,9 @@ const describeValueRange = (route: RouteView): string => {
     return t.values.rangeBoth(String(minValue), String(maxValue));
   }
 
-  return minValue === null ? t.values.rangeTo(String(maxValue)) : t.values.rangeFrom(String(minValue));
+  return minValue === null
+    ? t.values.rangeTo(String(maxValue))
+    : t.values.rangeFrom(String(minValue));
 };
 
 interface SummaryItem {

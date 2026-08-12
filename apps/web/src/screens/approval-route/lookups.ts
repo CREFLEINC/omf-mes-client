@@ -59,10 +59,7 @@ export interface LookupResult extends ReferenceSource {
  * **어느 갈래에도 번호를 담지 않는다.** 담을 자리가 없으면 화면으로 샐 경로도 없다.
  */
 export type ReferenceState =
-  | { kind: 'named'; label: string }
-  | { kind: 'unknown' }
-  | { kind: 'loading' }
-  | { kind: 'failed' };
+  { kind: 'named'; label: string } | { kind: 'unknown' } | { kind: 'loading' } | { kind: 'failed' };
 
 /**
  * 참조 하나를 표기 상태로 옮긴다.

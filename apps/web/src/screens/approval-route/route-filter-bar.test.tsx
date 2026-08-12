@@ -215,6 +215,8 @@ describe('RouteFilterBar — 조건 칩', () => {
   it('조건이 없으면 칩도 없다', () => {
     renderBar();
 
-    expect(screen.queryByRole('button', { name: t.filters.chipRemoveKeyword })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.filters.chipRemoveKeyword }),
+    ).not.toBeInTheDocument();
   });
 });

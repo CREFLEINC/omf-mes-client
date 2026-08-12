@@ -18,7 +18,10 @@ const businessUnitLabel = (businessUnitId: number | null): string =>
 const baseProps = (overrides: Partial<RouteListPaneProps> = {}): RouteListPaneProps => ({
   routes: routeViewFixtures,
   isLoading: false,
-  pageView: toPageView({ page: 1, size: 20, total: routeViewFixtures.length }, routeViewFixtures.length),
+  pageView: toPageView(
+    { page: 1, size: 20, total: routeViewFixtures.length },
+    routeViewFixtures.length,
+  ),
   onChangePage: vi.fn(),
   selectedRouteId: null,
   onSelect: vi.fn(),
@@ -92,7 +95,11 @@ describe('RouteListPane — 고르기', () => {
   it('행을 누르면 그 결재선 번호를 준다', async () => {
     const { onSelect, user } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SAMPLE-TYPE-B', BUSINESS_UNIT_LABEL) }));
+    await user.click(
+      screen.getByRole('button', {
+        name: t.actions.selectRow('SAMPLE-TYPE-B', BUSINESS_UNIT_LABEL),
+      }),
+    );
 
     expect(onSelect).toHaveBeenCalledWith(9003);
   });

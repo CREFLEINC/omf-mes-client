@@ -74,8 +74,7 @@ export const readPage = (params: URLSearchParams): number => {
  * 등록 폼이 열려 있는가. **값이 켜짐 표시일 때만 참이다** —
  * 값을 느슨하게 받으면 「어떤 표기가 정본인가」가 흐려진다.
  */
-export const isCreating = (params: URLSearchParams): boolean =>
-  params.get(URL_KEYS.create) === ON;
+export const isCreating = (params: URLSearchParams): boolean => params.get(URL_KEYS.create) === ON;
 
 /**
  * 주소가 가리키는 결재선.
@@ -107,7 +106,8 @@ export const toSearchParams = (filters: RouteFilters, page: number): URLSearchPa
   const next = new URLSearchParams();
   const keyword = keywordOf(filters.q);
 
-  if (filters.approvalTypeCode !== '') next.set(URL_KEYS.approvalTypeCode, filters.approvalTypeCode);
+  if (filters.approvalTypeCode !== '')
+    next.set(URL_KEYS.approvalTypeCode, filters.approvalTypeCode);
   if (filters.businessUnitId !== '') next.set(URL_KEYS.businessUnitId, filters.businessUnitId);
   if (keyword !== '') next.set(URL_KEYS.q, keyword);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
@@ -227,12 +227,6 @@ export const toFilterChips = (
 
   return chips;
 };
-
-export const hasAnyFilter = (filters: RouteFilters): boolean =>
-  filters.approvalTypeCode !== '' ||
-  filters.businessUnitId !== '' ||
-  keywordOf(filters.q) !== '' ||
-  filters.includeInactive;
 
 /**
  * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.

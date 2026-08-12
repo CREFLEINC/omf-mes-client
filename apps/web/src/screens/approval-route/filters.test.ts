@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_FILTERS,
   clearFilter,
-  hasAnyFilter,
   isCreating,
   readFilters,
   readPage,
@@ -155,7 +154,9 @@ describe('toRouteListQuery', () => {
   it('activeOnly를 어느 경우에도 빼지 않는다', () => {
     // 계약에 기본값이 없다 — 생략하면 서버가 무엇을 내리는지 정해져 있지 않다.
     for (const includeInactive of [true, false]) {
-      expect(Object.keys(toRouteListQuery(filters({ includeInactive }), 1))).toContain('activeOnly');
+      expect(Object.keys(toRouteListQuery(filters({ includeInactive }), 1))).toContain(
+        'activeOnly',
+      );
     }
   });
 
@@ -231,14 +232,7 @@ describe('toFilterChips', () => {
   });
 });
 
-describe('hasAnyFilter · clearFilter', () => {
-  it('걸린 조건이 하나라도 있으면 참이다', () => {
-    expect(hasAnyFilter(DEFAULT_FILTERS)).toBe(false);
-    expect(hasAnyFilter(filters({ q: '   ' }))).toBe(false);
-    expect(hasAnyFilter(filters({ q: 'SAMPLE' }))).toBe(true);
-    expect(hasAnyFilter(filters({ includeInactive: true }))).toBe(true);
-  });
-
+describe('clearFilter', () => {
   it('조건 하나만 푼다', () => {
     const applied = filters({ businessUnitId: '9101', includeInactive: true, q: 'SAMPLE' });
 

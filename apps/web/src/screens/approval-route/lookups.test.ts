@@ -64,7 +64,9 @@ describe('toReference', () => {
 
   it('아직 오지 않았으면 「목록에 없음」이 아니다', () => {
     // 미도착을 「알 수 없음」으로 쓰면 정상 값이 잘못된 값으로 읽힌다.
-    expect(toReference(source({ entries: [], isLoading: true }), 9101)).toEqual({ kind: 'loading' });
+    expect(toReference(source({ entries: [], isLoading: true }), 9101)).toEqual({
+      kind: 'loading',
+    });
   });
 
   it('실패는 미도착보다 앞선다', () => {
@@ -110,7 +112,9 @@ describe('toBusinessUnit', () => {
     expect(toBusinessUnit(source({ entries: [], isLoading: true }), 9101)).toEqual({
       kind: 'loading',
     });
-    expect(toBusinessUnit(source({ entries: [], isError: true }), 9101)).toEqual({ kind: 'failed' });
+    expect(toBusinessUnit(source({ entries: [], isError: true }), 9101)).toEqual({
+      kind: 'failed',
+    });
   });
 
   it('어느 갈래에도 내부 번호가 없다', () => {

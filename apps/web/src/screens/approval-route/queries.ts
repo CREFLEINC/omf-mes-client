@@ -23,8 +23,14 @@ export interface StepListResponse {
 }
 
 export const routeKeys = {
+  /**
+   * 이 슬라이스의 조회 전부를 덮는 뿌리 키. **이 회차에는 소비처가 없다** — 쓰기가 붙는
+   * 회차(등록·수정·사용 전환·단계 치환)가 성공 뒤 무효화 대상으로 쓴다. 그 회차의 규칙이
+   * 「모든 쓰기 뒤 결재선 상세를 무효화한다」 하나이므로 무효화 범위도 한 자리에 둔다.
+   */
   all: ['approval-routes'] as const,
-  list: (filters: RouteFilters, page: number) => ['approval-routes', 'list', filters, page] as const,
+  list: (filters: RouteFilters, page: number) =>
+    ['approval-routes', 'list', filters, page] as const,
   detail: (approvalRouteId: number) => ['approval-routes', 'detail', approvalRouteId] as const,
   steps: (approvalRouteId: number) => ['approval-routes', 'steps', approvalRouteId] as const,
 };
@@ -59,9 +65,7 @@ export const useRouteList = (
  * 목록 행에도 같은 필드가 실려 오지만 상세를 따로 부른다 — 고른 결재선이 지금 보는 쪽에
  * 없을 수 있고(주소로 들어온 경우), 이어지는 회차의 잠금 토큰이 이 응답으로 온다.
  */
-export const useRouteDetail = (
-  approvalRouteId: number | null,
-): UseQueryResult<ApprovalRoute> => {
+export const useRouteDetail = (approvalRouteId: number | null): UseQueryResult<ApprovalRoute> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -87,9 +91,7 @@ export const useRouteDetail = (
  * 상세와 같은 조건으로 열린다. 응답이 승인자 이름을 함께 실어 오므로 이 조회 하나로
  * 단계 표가 완성된다.
  */
-export const useRouteSteps = (
-  approvalRouteId: number | null,
-): UseQueryResult<StepListResponse> => {
+export const useRouteSteps = (approvalRouteId: number | null): UseQueryResult<StepListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({

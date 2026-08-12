@@ -11,9 +11,7 @@ const t = messages.approvalRoute;
 const [withUnit, allUnits, inactiveRoute] = routeViewFixtures as [RouteView, RouteView, RouteView];
 
 const renderPane = (overrides: Partial<RouteFormPaneProps> = {}) =>
-  render(
-    <RouteFormPane route={withUnit} businessUnitLabel={BUSINESS_UNIT_LABEL} {...overrides} />,
-  );
+  render(<RouteFormPane route={withUnit} businessUnitLabel={BUSINESS_UNIT_LABEL} {...overrides} />);
 
 describe('RouteFormPane — 값 표기', () => {
   it('승인 유형과 사업부를 낸다', () => {

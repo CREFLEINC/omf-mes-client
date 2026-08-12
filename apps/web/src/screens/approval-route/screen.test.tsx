@@ -73,7 +73,8 @@ const failingListRoute = (status = 500): StubRoute => ({
 });
 
 /** 상세 경로인가. 목록(`/app/approval-routes`)과 갈라야 한다. */
-const isDetailPath = (pathname: string): boolean => /^\/app\/approval-routes\/[^/]+$/.test(pathname);
+const isDetailPath = (pathname: string): boolean =>
+  /^\/app\/approval-routes\/[^/]+$/.test(pathname);
 const isStepsPath = (pathname: string): boolean =>
   /^\/app\/approval-routes\/[^/]+\/steps$/.test(pathname);
 
@@ -456,7 +457,10 @@ describe('ApprovalRouteScreen — 목록', () => {
    * 여기서는 **컨테이너가 어느 쪽을 넘기는가**(배선)를 잰다.
    */
   it('주소의 쪽과 서버가 준 쪽이 다르면 서버 쪽으로 읽힌다', async () => {
-    renderScreen(allRoutes([listRoute(routeFixtures, { page: 1, size: 20, total: 45 })]), '?page=5');
+    renderScreen(
+      allRoutes([listRoute(routeFixtures, { page: 1, size: 20, total: 45 })]),
+      '?page=5',
+    );
 
     await waitForList();
 
@@ -466,7 +470,9 @@ describe('ApprovalRouteScreen — 목록', () => {
 
   it('참조 목록이 잘리면 그 사실을 밝힌다', async () => {
     renderScreen(
-      allRoutes([businessUnitRoute(businessUnitFixtures, { total: businessUnitFixtures.length + 1 })]),
+      allRoutes([
+        businessUnitRoute(businessUnitFixtures, { total: businessUnitFixtures.length + 1 }),
+      ]),
     );
 
     await waitForList();
@@ -681,6 +687,74 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
   });
 
+  /**
+   * **안내가 멀쩡한 상세를 덮지 않는다.**
+   *
+   * 오른쪽 구획은 「찾을 수 없음」을 **맨 앞에서** 본다. 404 정리로 매임이 선 뒤 **조건은
+   * 그대로인 채 선택만 다시 붙는 길**(앞으로가기·주소 직접 편집)에서 가드가 없으면,
+   * 방금 연 결재선의 내용 대신 「고른 결재선을 찾을 수 없습니다」가 뜬다 — 화면이 거짓말한다.
+   *
+   * 앞선 감지기는 **서명이 바뀌는 절반**만 지난다. 여기는 서명이 그대로인 절반이다.
+   */
+  it('404 정리 뒤 같은 조건에서 다른 결재선을 열면 안내가 아니라 내용이 선다', async () => {
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        {
+          match: (request: Request) =>
+            request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
+          respond: (request: Request) =>
+            new URL(request.url).pathname.endsWith('9001')
+              ? jsonResponse({ message: '' }, { status: 404 })
+              : jsonResponse(routeFixtures[2]),
+        },
+        stepsRoute(),
+        businessUnitRoute(),
+        usersRoute(),
+      ],
+      SELECTED,
+      '?ar=9003',
+    );
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(locationText()).not.toContain('ar=');
+    });
+
+    // 조건은 그대로 두고 선택만 바깥에서 다시 붙인다 — 서명은 바뀌지 않는다.
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await screen.findByRole('region', { name: t.panes.steps });
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **매임 서명에는 쪽도 들어간다.**
+   *
+   * 주석과 수명 표가 매임을 「조건·**쪽**의 서명」이라 적었다. 조건이 같고 쪽만 바깥에서
+   * 바뀌는 길(뒤로가기로 앞 쪽에 돌아가기 · 주소의 `page`만 손으로 고치기)에서 앞 쪽의
+   * 안내가 새 쪽 위에 남으면 「안내는 자기 대상보다 오래 살지 않는다」가 이 축에서만 깨진다.
+   */
+  it('404 안내는 쪽만 바뀌어도 사라진다', async () => {
+    const { user } = renderScreen(
+      allRoutes([failingDetailRoute(404), listRoute(routeFixtures, { total: 45 })]),
+      SELECTED,
+      '?page=2',
+    );
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(locationText()).not.toContain('ar=');
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
   it('404 안내는 조건을 바꾸면 사라진다', async () => {
     const { user } = renderScreen(allRoutes([failingDetailRoute(404)]), SELECTED);
 
@@ -718,6 +792,55 @@ describe('ApprovalRouteScreen — 다시 조회', () => {
     await waitFor(() => {
       expect(stepsRequests(requests).length).toBe(before.steps + 1);
     });
+  });
+
+  /**
+   * **참조도 함께 다시 부른다.**
+   *
+   * 사업부 참조가 실패하면 조건 줄에 「선택지를 불러오지 못했습니다」가 서고 목록의 사업부
+   * 칸이 「이름을 불러오지 못했습니다」로 바뀌는데, 그 안내에는 재시도 버튼이 없다.
+   * 「다시 조회」의 이 한 줄이 **참조 실패의 유일한 복구 경로**다.
+   */
+  it('사업부 참조도 함께 다시 부른다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await waitForList();
+
+    const before = requests.filter(
+      (request) => request.url.pathname === BUSINESS_UNITS_PATH,
+    ).length;
+
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    await waitFor(() => {
+      expect(
+        requests.filter((request) => request.url.pathname === BUSINESS_UNITS_PATH).length,
+      ).toBe(before + 1);
+    });
+  });
+
+  it('참조가 실패해도 「다시 조회」로 이름을 되살릴 수 있다', async () => {
+    // 짝 방향 — 복구 경로가 실제로 이름을 되살리는지까지 잰다.
+    let hasFailed = false;
+    const flakyBusinessUnits: StubRoute = {
+      match: (request) => isGet(request, BUSINESS_UNITS_PATH),
+      respond: () => {
+        if (hasFailed) return jsonResponse(listBody(businessUnitFixtures));
+        hasFailed = true;
+
+        return jsonResponse({ message: '' }, { status: 500 });
+      },
+    };
+
+    const { user } = renderScreen(allRoutes([flakyBusinessUnits]));
+
+    await waitForList();
+    expect(await screen.findByText(t.filters.lookupFailed)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    expect(await screen.findByText(BUSINESS_UNIT_LABEL)).toBeInTheDocument();
+    expect(screen.queryByText(t.filters.lookupFailed)).not.toBeInTheDocument();
   });
 
   it('고르지 않았으면 상세·단계를 부르지 않는다', async () => {

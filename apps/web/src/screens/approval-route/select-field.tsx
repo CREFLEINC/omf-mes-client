@@ -4,6 +4,17 @@ import { useId } from 'react';
 import { FieldLabel } from './field-label';
 import type { SelectOption } from './types';
 
+/**
+ * **넷은 이 회차에 넘어오지 않는다** — `required`·`disabled`·`disabledReason`·`error`.
+ *
+ * 읽기 회차에는 폼이 없어 필수 표시도 검증 오류도 비활성 사유도 설 자리가 없고,
+ * 조건 줄이 쓰는 것은 `note` 하나다. **등록·수정 폼이 붙는 회차(PR ③)가 넷을 함께 쓴다** —
+ * 승인 유형이 등록의 유일한 필수 필드이고(`required`), 값 목록이 비는 동안 등록 칸이
+ * 잠기며(`disabled`+`disabledReason`), 짝 제약·필수 위반이 인라인으로 선다(`error`).
+ *
+ * 그때까지 **네 갈래는 검사되지 않은 채 실린다.** 부품을 두 벌 만들지 않으려고 형태를
+ * 미리 갖춘 것이며, 그 사실을 감추지 않는다.
+ */
 export interface SelectFieldProps {
   label: string;
   options: SelectOption[];

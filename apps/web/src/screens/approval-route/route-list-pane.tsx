@@ -74,7 +74,10 @@ export const RouteListPane = ({
         <button
           type="button"
           className="link-cell"
-          aria-label={t.actions.selectRow(row.approvalTypeCode, businessUnitLabel(row.businessUnitId))}
+          aria-label={t.actions.selectRow(
+            row.approvalTypeCode,
+            businessUnitLabel(row.businessUnitId),
+          )}
           aria-current={row.approvalRouteId === selectedRouteId ? 'true' : undefined}
           onClick={() => {
             onSelect(row.approvalRouteId);

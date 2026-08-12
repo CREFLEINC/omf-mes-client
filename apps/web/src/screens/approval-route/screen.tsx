@@ -104,9 +104,19 @@ export const ApprovalRouteScreen = () => {
   const listContextKey = toSearchParams(filters, page).toString();
   const [missingContextKey, setMissingContextKey] = useState<string | null>(null);
 
-  /* effect의 의존성을 하나로 두기 위해 지금 값을 참조로 들고 있는다. */
+  /**
+   * 아래 404 effect의 **의존성을 하나로 두기 위해** 지금 서명을 참조로 들고 있는다.
+   * 의존성에 서명을 넣으면 조건·쪽이 바뀔 때마다 effect가 깨어나 안내를 다시 세운다.
+   *
+   * **동기화를 렌더가 아니라 effect가 한다.** 렌더 중에 참조를 쓰면 버려진 렌더가 남긴 값을
+   * 뒤의 effect가 읽을 여지가 생긴다(React 지침). 이 effect를 404 effect **앞에** 선언해
+   * 같은 커밋에서 참조가 먼저 갱신되게 한다 — effect는 선언 순서대로 실행된다.
+   */
   const listContextKeyRef = useRef(listContextKey);
-  listContextKeyRef.current = listContextKey;
+
+  useEffect(() => {
+    listContextKeyRef.current = listContextKey;
+  }, [listContextKey]);
 
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isRouteNotFound =

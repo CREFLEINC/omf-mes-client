@@ -2,6 +2,10 @@ export interface FieldLabelProps {
   /** 이 라벨이 가리키는 컨트롤의 id */
   htmlFor: string;
   label: string;
+  /**
+   * **이 회차에는 넘어오지 않는다.** 읽기 화면에 필수 입력칸이 없다 —
+   * 등록 폼이 붙는 회차(PR ③)의 승인 유형 칸이 첫 소비처다.
+   */
   required?: boolean;
 }
 
