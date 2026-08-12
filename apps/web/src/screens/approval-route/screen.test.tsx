@@ -814,6 +814,34 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     expect(sent[0]?.url.searchParams.has('includeInactive')).toBe(false);
   });
 
+  /**
+   * **잘림 판정의 이음매를 잰다.** 단위(문구 고르기)와 부품(문구 렌더)만 재면 그 사이의
+   * `page.total > 받은 건수`가 어느 잣대도 지나지 않는다 — 사업부 참조에는 이 이음매가
+   * 이미 서 있다. 밝히지 않으면 사용자는 불완전한 목록을 완전한 것으로 읽고 「그런 사람이
+   * 없다」로 결론짓는다.
+   */
+  it('승인자 목록이 잘리면 그 사실을 밝힌다', async () => {
+    renderScreen(
+      allRoutes([usersRoute(userFixtures, { total: userFixtures.length + 1 })]),
+      SELECTED,
+    );
+
+    await screen.findByRole('region', { name: t.panes.steps });
+
+    expect(await screen.findByText(t.notes.approverListTruncated)).toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 잘리지 않았으면 밝히지 않는다. 늘 세워 두면 안내가 배경이 된다. */
+  it('승인자 목록이 온전하면 잘림 표식이 없다', async () => {
+    renderScreen(allRoutes(), SELECTED);
+
+    const pane = await screen.findByRole('region', { name: t.panes.steps });
+
+    // 선행 단언 — 선택지가 실제로 서 있어야 「표식이 없다」가 뜻을 갖는다.
+    expect(within(pane).getByRole('combobox', { name: t.fields.approver })).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.approverListTruncated)).not.toBeInTheDocument();
+  });
+
   /** 목록만 보는 사용자에게까지 나가면 첫 진입의 조회가 이유 없이 하나 는다. */
   it('결재선을 고르기 전에는 사용자 목록을 부르지 않는다', async () => {
     const { requests } = renderScreen(allRoutes());
@@ -3078,6 +3106,57 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * **서버가 다른 내용을 준 재조회에도 되돌아가지 않는다.**
+   *
+   * 앞 감지기는 **같은 내용**의 재조회까지만 문다 — 캐시가 구조 공유로 객체 동일성을 지켜
+   * 주기 때문에, 응답을 의존성 삼아 초안을 다시 세우는 형태(현실에서 가장 흔한 오류)가
+   * 그 잣대를 그대로 지나간다. **내용이 실제로 달라진 재조회**로 재야 그 형태가 붙잡힌다.
+   */
+  it('서버가 다른 단계를 준 재조회도 고치던 순서를 덮지 않는다', async () => {
+    let stepHits = 0;
+    const changingSteps: StubRoute = {
+      match: (request) => request.method === 'GET' && isStepsPath(new URL(request.url).pathname),
+      respond: () => {
+        stepHits += 1;
+
+        /* 두 번째부터는 **한 줄만** 준다 — 초안을 덮으면 표가 1줄로 줄어 곧바로 드러난다. */
+        return jsonResponse({ items: stepHits === 1 ? stepFixtures : [stepFixtures[0]] });
+      },
+    };
+    let detailHits = 0;
+    const changingDetail: StubRoute = {
+      match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
+      respond: () => {
+        detailHits += 1;
+
+        return jsonResponse(
+          { ...routeFixtures[0], inProgressCount: detailHits },
+          { headers: { ETag: `token-${String(detailHits)}` } },
+        );
+      },
+    };
+
+    const { user } = renderScreen(allRoutes([changingSteps, changingDetail]), SELECTED);
+
+    await stepPane();
+    await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[0] as HTMLElement);
+
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    /* 선행 단언 — 다시 조회가 실제로 끝났고 서버가 **다른 자료**를 줬다. */
+    await waitFor(() => {
+      expect(screen.getByText(t.notes.inProgressSome(detailHits))).toBeInTheDocument();
+    });
+    expect(stepHits).toBeGreaterThan(1);
+
+    /* 그런데도 고치던 순서가 그대로다 — 초안은 응답이 아니라 대상 키에 매여 있다. */
+    expect(stepRows()).toHaveLength(stepFixtures.length + 1);
+    expect(
+      within(stepRows()[1] as HTMLElement).getByText('합성 승인자2 · 합성부서 나'),
+    ).toBeInTheDocument();
+  });
+
   /** 폼과 단계는 **다른 오퍼레이션**이다 — 한쪽을 고치는 중에 다른 쪽이 되돌아가면 안 된다. */
   it('폼을 고쳐도 단계 초안이 그대로다', async () => {
     const { user } = renderScreen(allRoutes(), SELECTED);
@@ -3165,6 +3244,78 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
       expect(stepRows()).toHaveLength(stepFixtures.length + 1);
     });
     expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('100');
+  });
+});
+
+/**
+ * **넷째 배너의 매임.** 「배너·결과는 자기 대상보다 오래 살지 않는다」는 이 저장소가 반복
+ * 결함으로 못 박은 부류이고 폼 배너에는 짝이 셋 서 있는데, 이 회차가 만든 단계 배너에는
+ * 하나도 없었다 — 계획 §11.3의 뮤테이션 목록에도, 실행 담당의 훑기에도 빠졌던 자리다.
+ *
+ * **양방향으로 잰다.** 한 방향만 재면 「아예 안 지운다」와 「아무 때나 지운다」 중 하나가
+ * 반드시 통과한다.
+ */
+describe('ApprovalRouteScreen — 단계 배너의 매임', () => {
+  const CONFLICT = { conflictCause: 'user', message: '' };
+
+  const failStepsSave = async (
+    search = SELECTED,
+    navigateTo = '',
+  ): Promise<{ user: ReturnType<typeof userEvent.setup> }> => {
+    const { user } = renderScreen(
+      allRoutes([detailRouteById(), failingStepsReplaceRoute(409, CONFLICT)]),
+      search,
+      navigateTo,
+    );
+
+    await stepPane();
+    await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[0] as HTMLElement);
+    await user.click(saveStepsButton());
+    await screen.findByText(messages.conflict.user);
+
+    return { user };
+  };
+
+  /**
+   * **안 지움 쪽.** 대상이 바뀌는 동안은 「내 것이 아니다」가 배너를 감추지만, 그것만으로는
+   * 훅에 남은 실패가 사라지지 않는다 — **돌아오면 다시 선다.** 그러면 결재선 B를 들렀다 온
+   * 사용자에게 손대지도 않은 거절 사유가 서 있게 된다.
+   */
+  it('단계 실패 배너가 대상을 떠났다 돌아와도 살아 있지 않다', async () => {
+    const { user } = await failStepsSave(SELECTED, '?ar=9003');
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9003');
+    });
+
+    // 선행 단언 — 떠난 자리에서는 감춰져 있어야 「돌아와도 없다」가 뜻을 갖는다.
+    expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9001');
+    });
+    await stepPane();
+
+    expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **너무 지움 쪽.** 단계를 더 고치는 동안 사유가 사라지면 사용자는 무엇 때문에 거절당했는지
+   * 잃는다 — 그 사유를 읽으면서 고치는 것이 이 배너가 서 있는 이유다.
+   */
+  it('단계 실패 배너가 단계를 더 고쳐도 남는다', async () => {
+    const { user } = await failStepsSave();
+
+    await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[1] as HTMLElement);
+    expect(screen.getByText(messages.conflict.user)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.removeStep(1) }));
+    expect(screen.getByText(messages.conflict.user)).toBeInTheDocument();
+
+    await addStep(user);
+    expect(screen.getByText(messages.conflict.user)).toBeInTheDocument();
   });
 });
 
