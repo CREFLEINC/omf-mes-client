@@ -3340,6 +3340,29 @@ describe('SupplierReturnScreen — 서버 필드 오류의 자리', () => {
   });
 
   /*
+   * **정리 effect가 필드 오류 쪽에서도 비등가임을 못 박는다**(배너 쪽 R3-7의 짝).
+   *
+   * 읽는 자리 매임만 있으면 대상을 떠난 동안에는 가려지지만 **되돌아오는 순간 되살아난다** —
+   * 이미 수명을 다한 거절 사유가 그 칸에 다시 붙고 사용자는 방금 일어난 일로 읽는다.
+   */
+  it('대상을 떠났다가 되돌아와도 앞 필드 오류가 되살아나지 않는다', async () => {
+    const { user } = await failWithFieldError('reasonCode', '합성 사유 오류');
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900002') }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await screen.findAllByText(ITEM_LABEL);
+
+    /* 짝 방향 — 되돌아온 것이 실제로 그 전표다. */
+    expect(currentLocation()).toContain('gr=9001');
+    expect(screen.queryByText('합성 사유 오류')).not.toBeInTheDocument();
+  });
+
+  /*
    * **짝 방향** — 화면에 칸이 없는 이름의 오류는 **배너로 올라간다.** 인라인으로 흘려보내면
    * 어디에도 표시되지 않는 오류가 된다(그래서 목록에 담지 않는다).
    */
