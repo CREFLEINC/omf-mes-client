@@ -1072,6 +1072,30 @@ describe('ApprovalRouteScreen — 다시 조회', () => {
     });
   });
 
+  /**
+   * **승인자 선택지도 참조다.** 사람이 들고 나는 동안 낡는데, 이 목록에는 재시도 버튼이 없다 —
+   * 「다시 조회」가 그 복구 경로다. 결재선을 고른 뒤에만 부르므로 그 안에서 잰다.
+   */
+  it('승인자 선택지도 함께 다시 부른다', async () => {
+    const { requests, user } = renderScreen(allRoutes(), SELECTED);
+
+    await screen.findByRole('region', { name: t.panes.steps });
+
+    const usersCount = (): number =>
+      requests.filter((request) => request.url.pathname === USERS_PATH).length;
+
+    // 선행 단언 — 고른 뒤 한 번은 이미 나갔어야 「한 번 더 나갔다」가 뜻을 갖는다.
+    await waitFor(() => {
+      expect(usersCount()).toBe(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    await waitFor(() => {
+      expect(usersCount()).toBe(2);
+    });
+  });
+
   it('참조가 실패해도 「다시 조회」로 이름을 되살릴 수 있다', async () => {
     // 짝 방향 — 복구 경로가 실제로 이름을 되살리는지까지 잰다.
     let hasFailed = false;
