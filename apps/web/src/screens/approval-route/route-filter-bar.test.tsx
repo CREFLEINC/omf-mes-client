@@ -99,14 +99,19 @@ describe('RouteFilterBar — 모아서 적용', () => {
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('');
   });
 
-  it('같은 조건이 다시 와도 치던 값을 지우지 않는다', async () => {
-    // 부모는 렌더할 때마다 주소에서 값을 새로 읽으므로 내용이 같아도 참조가 달라진다.
-    const props = baseProps();
-    const { rerender } = render(<RouteFilterBar {...props} />);
+  /**
+   * 부모는 렌더할 때마다 주소에서 값을 새로 읽으므로 **내용이 같아도 참조가 달라진다**
+   * (조회 응답이 도착해 다시 그려질 때가 그렇다). 되돌림을 참조에 반응시키면 그때마다
+   * 사용자가 치던 값이 사라진다 — 그래서 **일부러 매번 새 객체를 준다.**
+   */
+  it('내용이 같은 새 조건 객체가 와도 치던 값을 지우지 않는다', async () => {
+    const { rerender } = render(
+      <RouteFilterBar {...baseProps({ appliedFilters: { ...DEFAULT_FILTERS } })} />,
+    );
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(t.fields.q), 'SAMPLE');
-    rerender(<RouteFilterBar {...baseProps()} />);
+    rerender(<RouteFilterBar {...baseProps({ appliedFilters: { ...DEFAULT_FILTERS } })} />);
 
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('SAMPLE');
   });
