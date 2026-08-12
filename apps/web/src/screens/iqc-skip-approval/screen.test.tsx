@@ -42,12 +42,22 @@ interface RecordedRequest {
  *
  * **경로를 가리지 않고 전부 기록한다** — 「부르지 않았다」를 증명하려면 잘못된 경로로 나간
  * 요청도 잡혀야 한다.
+ *
+ * `hold`가 참을 내는 요청은 **기록한 뒤에** 붙잡아 둔다 — 「응답을 기다리는 동안 무엇이
+ * 보이는가」를 재려면 요청이 나간 사실은 이미 보여야 한다. 고정 지연을 쓰지 않고 **문**으로
+ * 두는 이유는 부하·타이밍에 기대는 시험을 만들지 않기 위해서다(#52·#99).
  */
 const createRecordingFetch = (
   routes: StubRoute[],
-): { fetch: StubFetch; requests: RecordedRequest[] } => {
+  hold: (request: Request) => boolean = () => false,
+): { fetch: StubFetch; requests: RecordedRequest[]; release: () => void } => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch(routes);
+
+  let release = (): void => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
 
   const fetch: StubFetch = async (request) => {
     /* 본문은 한 번만 읽을 수 있다 — 복제해 읽어야 스텁이 같은 요청을 다시 다룰 수 있다. */
@@ -60,10 +70,12 @@ const createRecordingFetch = (
       body: text === '' ? undefined : (JSON.parse(text) as unknown),
     });
 
+    if (hold(request)) await gate;
+
     return stub(request);
   };
 
-  return { fetch, requests };
+  return { fetch, requests, release };
 };
 
 /**
@@ -132,8 +144,13 @@ const BackProbe = () => {
 const renderScreen = (
   routes: StubRoute[],
   search = '',
-): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  hold?: (request: Request) => boolean,
+): {
+  requests: RecordedRequest[];
+  release: () => void;
+  user: ReturnType<typeof userEvent.setup>;
+} => {
+  const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
   renderWithProviders(
     <>
@@ -144,7 +161,7 @@ const renderScreen = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, user: userEvent.setup() };
+  return { requests, release, user: userEvent.setup() };
 };
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
@@ -628,6 +645,34 @@ describe('빈 상태 세 갈래', () => {
         t.empty.noSelectionTitle,
       ),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * **부품에 로딩 상태를 잇는 배선을 재는 자리.**
+ *
+ * 부품 시험은 `isLoading`을 받아 무엇을 그리는지까지만 보고, **컨테이너가 그 값에 무엇을
+ * 매는지**는 보지 않는다 — 그 자리를 상수 거짓으로 굳혀도 부품 시험은 전건 통과한다
+ * (독립 검증이 실제로 그렇게 확인했다). 그때 화면은 응답이 오기 전에 **빈 표**를 그려
+ * 「조건에 맞는 승인 요청이 없습니다」라고 말하고, 사용자는 자료가 없는 줄 알고 조건을 넓힌다.
+ *
+ * 그래서 여기서는 **응답을 붙잡아 둔 채** 무엇이 서는지 보고, 놓아 준 뒤 무엇이 바뀌는지를
+ * 짝으로 잰다. 고정 지연을 쓰지 않는다 — 기다림은 문을 여는 것으로만 끝난다(#52·#99).
+ */
+describe('불러오는 중', () => {
+  it('응답이 오기 전에는 뼈대가 서고 빈 상태 문구도 표도 없다', async () => {
+    const { release } = renderScreen([listRoute()], '', () => true);
+
+    expect(await screen.findByRole('status', { name: t.loading.list })).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noResultTitle)).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+    /* 짝 양성 — 도착하면 뼈대가 사라지고 표가 선다. 이것이 없으면 「영영 뼈대」도 통과한다. */
+    release();
+
+    await waitForList();
+
+    expect(screen.queryByRole('status', { name: t.loading.list })).not.toBeInTheDocument();
   });
 });
 
