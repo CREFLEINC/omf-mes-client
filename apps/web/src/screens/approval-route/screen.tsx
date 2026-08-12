@@ -7,7 +7,14 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { ActivationDialog, type ActivationIntent } from './activation-dialog';
-import { PLACEHOLDER_APPROVAL_TYPE_CODES, toApprovalTypeOptions } from './code-options';
+import { approverNote, useApproverLookup, type ApproverOption } from './approver-options';
+import {
+  ENABLED_APPROVER_TYPE_CODES,
+  PLACEHOLDER_APPROVAL_TYPE_CODES,
+  approverTypeNote,
+  toApprovalTypeOptions,
+  toApproverTypeOptions,
+} from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { judgeDuplicate, type DuplicateProbe } from './duplicate-check';
 import {
@@ -39,6 +46,7 @@ import {
   useRouteDetail,
   useRouteList,
   useRouteSteps,
+  type StepListResponse,
 } from './queries';
 import { RouteFilterBar } from './route-filter-bar';
 import { RouteFormPane } from './route-form-pane';
@@ -57,11 +65,21 @@ import {
   saveBlockedReason,
   validateRouteForm,
 } from './route-validation';
+import {
+  createStepDraft,
+  moveStepDraft,
+  removeStepDraft,
+  stepRemoveBlockedReason,
+  stepSaveBlockedReason,
+  toStepDrafts,
+  toStepsReplaceBody,
+  type StepDraft,
+} from './step-draft';
 import { StepPane } from './step-pane';
 import {
   toRouteView,
-  toStepView,
   type ApprovalRoute,
+  type ApprovalRouteStepsReplace,
   type RouteFilters,
   type RouteFormValues,
 } from './types';
@@ -84,6 +102,21 @@ interface FormDraft {
   key: string;
   baseline: RouteFormValues;
   values: RouteFormValues;
+}
+
+/**
+ * 단계 초안과 그것이 매인 대상.
+ *
+ * 폼 초안과 **같은 형태이되 다른 벌이다.** 둘은 다른 오퍼레이션이라 한쪽을 고치는 중에
+ * 다른 쪽이 되돌아가면 안 된다 — 한 벌로 합치면 그 규칙을 세울 자리가 없어진다.
+ *
+ * `baseline`은 서버에서 온 순서다. **순서만 달라도 「고쳤다」로 본다** — 이 화면에서 순서는
+ * 보기 방식이 아니라 저장되는 자료다.
+ */
+interface StepDraftState {
+  key: string;
+  baseline: StepDraft[];
+  values: StepDraft[];
 }
 
 /**
@@ -112,28 +145,32 @@ interface FormDraft {
  *
  * ## 수명 표 (계획 결정 4)
  *
- * 표에 오르지 않은 상태는 규칙이 닿지 않는 사각이 된다. **스무째 조작이나 넷째 쓰기가 생기면
- * 표에 행을 먼저 더한 뒤에 코드를 고친다.** 단계 초안은 아직 없다(PR ④가 열을 더한다).
+ * 표에 오르지 않은 상태는 규칙이 닿지 않는 사각이 된다. **스무째 조작이나 다섯째 쓰기가
+ * 생기면 표에 행을 먼저 더한 뒤에 코드를 고친다.** 넷째 쓰기(단계 치환)가 서면서
+ * **단계 초안·단계 배너 두 열과 8·18행이 더해졌다.**
  *
- * | # | 조작 | 조건 4종 | `page` | `ar` | `new` | 폼 초안 | **열린 창** | **폼 배너** |
- * | :-: | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
- * | 1 | 조건 변경·조회 | 바뀐다 | **첫 쪽** | **비운다** | **끈다** | **비운다** | **닫는다** | **비운다** |
- * | 2 | 초기화 | **비운다** | 첫 쪽 | 비운다 | 끈다 | 비운다 | 닫는다 | 비운다 |
- * | 3 | 쪽 이동 | 유지 | 옮긴 쪽 | **비운다** | **끈다** | 비운다 | 닫는다 | 비운다 |
- * | 4 | 결재선 고르기·해제 | 유지 | **유지** | 넣고 뺀다 | 끈다 | **비운다** | 닫는다 | 비운다 |
- * | 5 | 「새 결재선」 | 유지 | 유지 | **비운다** | **켠다** | **빈 값으로 세운다** | 닫는다 | 비운다 |
- * | 6 | **상세가 404** | 유지 | 유지 | **비운다** | 끈다 | 비운다 | 닫는다 | 비운다 |
- * | 7 | 폼 입력 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | 유지 | **유지** |
- * | 8 | 목록·상세·참조 **응답 도착** | 유지 | 유지 | 유지 | 유지 | **건드리지 않는다** | 유지 | 유지 |
- * | 9 | **다시 조회**(새로고침) | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 |
- * | 10 | **폼 저장 성공(수정)** | 유지 | 유지 | 유지 | 끈다 | **서버 응답으로 다시 세운다** | 닫혀 있다 | 비운다 |
- * | 11 | **폼 저장 성공(등록)** | 유지 | 유지 | **새 번호를 넣는다** | **끈다** | 새 대상에서 다시 세운다 | 닫혀 있다 | 비운다 |
- * | 12 | 폼 저장 실패 | 유지 | 유지 | 유지 | 유지 | **유지** | 닫혀 있다 | **세운다** |
- * | 13 | **끄기·켜기 성공** | 유지 | 유지 | 유지 | 유지 | **유지** | **닫는다** | 비운다 |
- * | 14 | 끄기·켜기 실패 | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 창 안에 **세운다** |
- * | 15 | 취소(초안 파기) | 유지 | 유지 | 유지 | 유지 | **되돌린다** | 닫는다 | 비운다 |
- * | 16 | **전송 중**(화면 안 조작) | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 유지 | 유지 |
- * | 17 | **전송 중 · 바깥 주소 이동** | 바뀐다 | 바뀐다 | 바뀐다 | 바뀐다 | **새 대상에서 다시 세운다** | **닫는다** | **비운다** |
+ * | # | 조작 | 조건 4종 | `page` | `ar` | `new` | 폼 초안 | **단계 초안** | **열린 창** | **폼 배너** | **단계 배너** |
+ * | :-: | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+ * | 1 | 조건 변경·조회 | 바뀐다 | **첫 쪽** | **비운다** | **끈다** | **비운다** | **비운다** | **닫는다** | **비운다** | **비운다** |
+ * | 2 | 초기화 | **비운다** | 첫 쪽 | 비운다 | 끈다 | 비운다 | 비운다 | 닫는다 | 비운다 | 비운다 |
+ * | 3 | 쪽 이동 | 유지 | 옮긴 쪽 | **비운다** | **끈다** | 비운다 | 비운다 | 닫는다 | 비운다 | 비운다 |
+ * | 4 | 결재선 고르기·해제 | 유지 | **유지** | 넣고 뺀다 | 끈다 | **비운다** | **비운다** | 닫는다 | 비운다 | 비운다 |
+ * | 5 | 「새 결재선」 | 유지 | 유지 | **비운다** | **켠다** | **빈 값으로 세운다** | **없다** | 닫는다 | 비운다 | 비운다 |
+ * | 6 | **상세가 404** | 유지 | 유지 | **비운다** | 끈다 | 비운다 | 비운다 | 닫는다 | 비운다 | 비운다 |
+ * | 7 | 폼 입력 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **유지** | 유지 | **유지** | 유지 |
+ * | 8 | **단계 추가·삭제·순서 이동** | 유지 | 유지 | 유지 | 유지 | **유지** | 바뀐다 | 유지 | 유지 | **유지** |
+ * | 9 | 목록·상세·단계·참조 **응답 도착** | 유지 | 유지 | 유지 | 유지 | **건드리지 않는다** | **건드리지 않는다** | 유지 | 유지 | 유지 |
+ * | 10 | **다시 조회**(새로고침) | 유지 | 유지 | 유지 | 유지 | **유지** | **유지** | 유지 | 유지 | 유지 |
+ * | 11 | **폼 저장 성공(수정)** | 유지 | 유지 | 유지 | 끈다 | **서버 응답으로 다시 세운다** | 유지 | 닫혀 있다 | 비운다 | 유지 |
+ * | 12 | **폼 저장 성공(등록)** | 유지 | 유지 | **새 번호를 넣는다** | **끈다** | 새 대상에서 다시 세운다 | **새 대상에서 세운다** | 닫혀 있다 | 비운다 | 비운다 |
+ * | 13 | 폼 저장 실패 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 닫혀 있다 | **세운다** | 유지 |
+ * | 14 | **단계 저장 성공** | 유지 | 유지 | 유지 | 유지 | **유지** | **서버 응답으로 다시 세운다** | 닫혀 있다 | 유지 | 비운다 |
+ * | 15 | 단계 저장 실패 | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 닫혀 있다 | 유지 | **세운다** |
+ * | 16 | **끄기·켜기 성공** | 유지 | 유지 | 유지 | 유지 | **유지** | **유지** | **닫는다** | 비운다 | 유지 |
+ * | 17 | 끄기·켜기 실패 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 창 안에 **세운다** |
+ * | 18 | 취소(초안 파기) | 유지 | 유지 | 유지 | 유지 | **되돌린다** | **되돌린다** | 닫는다 | 비운다 | 비운다 |
+ * | 19 | **전송 중**(화면 안 조작) | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 유지 | 유지 | 유지 |
+ * | 20 | **전송 중 · 바깥 주소 이동** | 바뀐다 | 바뀐다 | 바뀐다 | 바뀐다 | **새 대상에서 다시 세운다** | **새 대상에서 세운다** | **닫는다** | **비운다** | **비운다** |
  *
  * **왜 이렇게 정했는가**
  *
@@ -141,19 +178,23 @@ interface FormDraft {
  *   대상이 바뀌면 배너가 가리킬 것이 없고, 열린 창은 사용자가 확인한 것과 나가는 것을 가른다 —
  *   앞 결재선을 끄려고 연 창이 다음 결재선을 끄게 된다. 뒤로가기·주소 직접 편집은 클릭 핸들러를
  *   거치지 않으므로 **`editTargetKey`에 묶인 effect 한 곳**이 그 일을 한다.
- * - **8행이 이 화면의 #43 자리다**: 응답 도착이 초안을 되돌리면 「치던 값이 사라진다」가
- *   재현된다. 초안은 **응답 객체가 아니라 대상 키**에 매여 있다.
- * - **10·13행이 초안을 「서버 응답으로 다시 세우거나 유지하는」 이유**: 서버가 정본이다.
- *   보낸 값을 그대로 두면 서버가 조정한 결과(파생값 `stepCount`·`inProgressCount`)를 놓친다.
+ * - **7~8행이 서로의 초안을 유지하는 이유**: 폼과 단계는 **다른 오퍼레이션**이다. 한쪽을
+ *   고치는 중에 다른 쪽이 되돌아가면 사용자가 잃는 것이 생긴다. 다만 **저장 순서는 강제한다** —
+ *   폼이 더러우면 단계 저장이 잠긴다(둘이 한 벌의 토큰을 나눠 쓴다).
+ * - **9행이 이 화면의 #43 자리다**: 응답 도착이 초안을 되돌리면 「치던 값이 사라진다」가
+ *   재현된다. 두 초안 모두 **응답 객체가 아니라 대상 키**에 매여 있다.
+ * - **11·14·16행이 초안을 「서버 응답으로 다시 세우거나 유지하는」 이유**: 서버가 정본이다.
+ *   보낸 값을 그대로 두면 서버가 조정한 결과(파생값 `stepCount`·`inProgressCount`,
+ *   새로 매겨진 단계 번호와 승인자의 부서 이름)를 놓친다.
  *   반면 사용 전환은 **폼 필드가 아니라서**(계약이 `isActive`를 PUT에서 뺐다) 켜고 끄는 일이
  *   편집 중인 값을 버릴 이유가 없다.
- * - **11행이 주소를 한 번만 갱신하는 이유**: `new` 해제와 `ar` 설정을 **한 patch로** 한다.
+ * - **12행이 주소를 한 번만 갱신하는 이유**: `new` 해제와 `ar` 설정을 **한 patch로** 한다.
  *   두 번 갱신하면 그 사이에 「고른 것도 만드는 것도 아닌」 한 프레임이 히스토리에 남는다.
- * - **14행이 창을 닫지 않는 이유**: 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다.
- * - **16행이 대상을 바꾸는 길까지 잠그는 이유**: 열어 두면 사용자가 다른 결재선으로 옮긴 뒤
+ * - **15행이 창을 닫지 않는 이유**: 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다.
+ * - **19행이 대상을 바꾸는 길까지 잠그는 이유**: 열어 두면 사용자가 다른 결재선으로 옮긴 뒤
  *   **앞 요청의 결과가 지금 보는 맥락에 나타난다.**
- * - **17행이 16행과 갈리는 이유**: 뒤로가기·앞으로가기·주소 직접 편집은 **화면의 클릭
- *   핸들러를 지나지 않아** 16행의 잠금 문에 걸리지 않는다. 셸 셋 중 Capacitor의 하드웨어
+ * - **20행이 19행과 갈리는 이유**: 뒤로가기·앞으로가기·주소 직접 편집은 **화면의 클릭
+ *   핸들러를 지나지 않아** 19행의 잠금 문에 걸리지 않는다. 셸 셋 중 Capacitor의 하드웨어
  *   뒤로가기도 이 길이다 — **막을 수 없는 길이므로 막는 대신 다룬다.**
  *   화면은 새 대상으로 옮겨 가되 **나가는 중인 요청을 끊지 않는다**(§`resetEditing`) —
  *   끊으면 무효화·성공·실패·공동 잠금이 함께 사라져 서버에는 갔는데 화면만 없던 일로 친다.
@@ -170,7 +211,15 @@ interface FormDraft {
  * | 등록 `POST /app/approval-routes` | **없음**(`null`) | 준다(201) | **컬렉션 경로** — 상세 토큰이 되지 않는다 | **부른다**(새 번호를 고르면 상세 조회가 토큰을 확보) |
  * | 수정 `PUT /{id}` | **상세 경로** | 계약상 **선택**이다 | 주면 상세 경로 | **부른다**(주지 않는 서버에서도 살아야 한다) |
  * | 끄기·켜기 `POST /{id}:deactivate`·`:activate` | **상세 경로** | 준다(200) | **액션 경로** — **상세 토큰이 낡는다** | **반드시 부른다** |
- * | 단계 치환 `PUT /{id}/steps`(PR ④) | **상세 경로**(결재선 토큰) | **주지 않는다** | 없음 | **반드시 부른다** |
+ * | 단계 치환 `PUT /{id}/steps` | **상세 경로**(결재선 토큰) | **주지 않는다** | 없음 | **반드시 부른다** |
+ *
+ * **넷째 줄이 이 표를 만든 이유다.** 하위 컬렉션의 쓰기인데 잠금 토큰이 **부모의 것**이고
+ * (계약: `If-Match`는 결재선의 판 번호다), 200 응답에 `ETag`가 아예 없다. 그래서 서버가
+ * 그 저장으로 결재선의 판 번호를 올리는지 화면이 알 길이 없다 — 올린다면 다시 받지 않은
+ * 토큰은 낡은 것이고, 올리지 않아도 다시 받아 손해가 없다. **어느 쪽이든 안전한 처리**를 택한다.
+ *
+ * 다른 화면의 하위 컬렉션 치환(공정 순서)을 그대로 베끼면 이 자리가 깨진다 — 그쪽은
+ * `If-Match`가 아예 없어 `etagPath`가 `null`이고, 여기서 그러면 토큰 없이 나가 400이다.
  *
  * **규칙 하나로 요약한다 — 모든 쓰기 성공 뒤 `routeKeys.all`을 무효화한다.** 빠뜨리면
  * 두 번째 저장이 조용히 409로 죽거나, 훅이 토큰을 못 찾아 **요청을 보내지 않고 멈춘다**
@@ -193,6 +242,8 @@ export const ApprovalRouteScreen = () => {
   const detail = useRouteDetail(selectedRouteId);
   const steps = useRouteSteps(selectedRouteId);
   const businessUnits = useBusinessUnitLookup();
+  /* 승인자 후보는 **고른 뒤에만** 부른다 — 단계를 편집할 자리가 그때 열린다. */
+  const approvers = useApproverLookup(selectedRouteId !== null);
 
   /**
    * 404 안내가 매인 대상. **조건·쪽의 서명**이며, 그것이 바뀌면 안내가 가리킬 것이 없다.
@@ -227,7 +278,6 @@ export const ApprovalRouteScreen = () => {
     selectedRouteId === null && missingContextKey !== null && missingContextKey === listContextKey;
 
   const routes = useMemo(() => (list.data?.items ?? []).map(toRouteView), [list.data]);
-  const stepViews = useMemo(() => (steps.data?.items ?? []).map(toStepView), [steps.data]);
 
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, routes.length);
 
@@ -248,7 +298,14 @@ export const ApprovalRouteScreen = () => {
       ? null
       : String(selectedRouteId);
 
+  /**
+   * 단계 초안이 매인 대상. **`editTargetKey`와 갈린다** — 등록 중에는 단계 구획이 아예 없다
+   * (등록 본문에 단계를 실을 수 없고 치환은 결재선 번호를 요구한다 — 붙일 자원이 없다).
+   */
+  const stepTargetKey: string | null = selectedRouteId === null ? null : String(selectedRouteId);
+
   const [draft, setDraft] = useState<FormDraft | null>(null);
+  const [stepDraft, setStepDraft] = useState<StepDraftState | null>(null);
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<DialogKind | null>(null);
@@ -279,7 +336,38 @@ export const ApprovalRouteScreen = () => {
 
   const isDirty = draft !== null && !isSameRouteValues(draft.values, draft.baseline);
 
+  /*
+   * 단계 초안도 같은 규율로 세운다 — 다만 **매인 대상이 다르다.** 단계는 등록 중에 존재하지
+   * 않으므로(붙일 자원이 아직 없다) `editTargetKey`가 아니라 고른 결재선 번호에 맨다.
+   *
+   * **응답이 다시 와도 여기서 되돌리지 않는다**(수명 표 9행) — 저장 뒤 갱신은 그 저장의
+   * 응답이 맡고(14행), 무효화로 뒤따라 오는 재조회는 이미 세워진 초안을 건드리지 않는다.
+   */
+  if (stepTargetKey === null) {
+    if (stepDraft !== null) setStepDraft(null);
+  } else if (stepDraft !== null && stepDraft.key !== stepTargetKey) {
+    setStepDraft(null);
+  } else if (stepDraft === null && steps.data !== undefined) {
+    const seeded = toStepDrafts(steps.data.items);
+
+    setStepDraft({ key: stepTargetKey, baseline: seeded, values: seeded });
+  }
+
+  /*
+   * **「단계만 더러운 상태」를 읽는 자리가 없다 — 그것이 이 화면의 결정이다.**
+   *
+   * 단계 초안이 더러운지는 `step-draft.ts`의 저장 가능 판정이 안에서 스스로 본다(「고친 것이
+   * 없으면 저장이 막힌다」). 화면 쪽에는 그 값을 쓸 자리가 없는데, **취소가 폼의 조작**이기
+   * 때문이다 — 취소는 폼이 더러울 때만 열리고 파기는 그때 두 초안을 함께 되돌린다.
+   *
+   * 그래서 **단계만 고친 상태의 되돌리기는 대상을 다시 고르는 것**뿐이다(수명 표 4행).
+   * 단계에 전용 되돌리기를 두려면 조작 집합이 하나 늘고 수명 표에 행이 하나 는다 — 설계가
+   * 요구하지 않은 조작이라 지어내지 않는다. 그 판단을 여기 적어 두는 이유는, 읽는 곳 없는
+   * `isStepDirty`를 남겨 두면 다음 사람이 「쓰려다 만 자리」로 읽고 되살리기 때문이다.
+   */
+
   const approvalTypeOptions = toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES);
+  const approverTypeOptions = toApproverTypeOptions(ENABLED_APPROVER_TYPE_CODES);
 
   /**
    * 활성 중복 **조준 조회**가 필요한 자리는 셋뿐이다 — 등록(유형을 골랐다) · 수정(고친 것이
@@ -350,6 +438,8 @@ export const ApprovalRouteScreen = () => {
     if (selectedRouteId !== null) {
       void detail.refetch();
       void steps.refetch();
+      /* 승인자 후보도 참조다 — 사람이 들고 나는 동안 낡는다. 고른 뒤에만 부르므로 여기 안이다. */
+      approvers.refetch();
     }
   };
 
@@ -499,10 +589,58 @@ export const ApprovalRouteScreen = () => {
   });
 
   /**
+   * 단계 치환 — **하위 컬렉션의 쓰기인데 잠금 토큰이 부모의 것이다**(계약: `If-Match`는
+   * 결재선의 판 번호다). 그래서 `etagPath`가 **결재선 상세 경로**다. 다른 화면의 하위
+   * 컬렉션 치환을 그대로 베끼면 여기가 깨진다 — 그쪽은 `If-Match`가 아예 없어 `null`이고,
+   * 여기서 `null`을 주면 토큰 없이 나가 서버가 400을 낸다.
+   *
+   * **200 응답에 `ETag`가 없다.** 그 저장이 결재선의 판 번호를 올리는지 계약이 밝히지 않으므로
+   * 성공 뒤 상세를 **반드시** 다시 부른다 — 올린다면 낡은 토큰을 갈아야 하고, 올리지 않아도
+   * 다시 받아 손해가 없다. 빠뜨리면 이어지는 저장이 조용히 409다.
+   *
+   * **본문이 보낼 수 없는 상태면 요청 자체를 만들지 않는다.** 승인자를 확인할 수 없는 행이나
+   * 빈 배열은 계약이 400으로 막는 자리이고, 목은 그중 앞엣것을 200으로 받는다 —
+   * 막는 곳이 화면뿐이라 **보내는 자리가 스스로 한 번 더 본다.**
+   */
+  const stepsWrite = useMasterWrite<ApprovalRouteStepsReplace, StepListResponse>({
+    request: (body, headers) =>
+      client.PUT('/app/approval-routes/{approvalRouteId}/steps', {
+        params: {
+          path: { approvalRouteId: selectedRouteId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body,
+      }),
+    etagPath: selectedRouteId === null ? null : routeDetailPath(selectedRouteId),
+    invalidateKeys: [routeKeys.all],
+    /* 단계에는 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다. */
+    knownFields: [],
+    onSuccess: (saved) => {
+      /* 저장은 일어났다 — 대상이 바뀌었다고 그 사실까지 감추지 않는다. */
+      toast.show({ variant: 'success', description: messages.common.saved });
+
+      /*
+       * **이 값이 앉을 자리는 그 대상뿐이다.** 보내는 사이에 다른 결재선으로 옮겨 갔다면
+       * 새 대상의 단계 표에 **남의 순서를 찍게 된다.**
+       */
+      if (!isSameTarget(editTargetKey)) return;
+
+      /* **서버 응답이 정본이다.** 새로 매겨진 단계 번호와 승인자의 부서 이름이 여기 있다. */
+      const next = toStepDrafts(saved.items);
+
+      setStepDraft((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+    },
+  });
+
+  /**
    * **네 쓰기가 한 벌의 잠금 토큰을 나눠 쓴다.** 하나가 나가는 중에는 나머지도 잠근다 —
    * 동시에 나가면 뒤엣것이 반드시 409이고, 그 실패는 사용자가 한 일과 이어지지 않는다.
    */
-  const isLocked = createWrite.isSaving || updateWrite.isSaving || activationWrite.isSaving;
+  const isLocked =
+    createWrite.isSaving || updateWrite.isSaving || activationWrite.isSaving || stepsWrite.isSaving;
 
   /** 지금 모드의 쓰기. 등록과 수정이 한 폼을 쓰므로 배너·오류·진행 표시도 한 곳에서 골라 쓴다. */
   const activeWrite = isCreating ? createWrite : updateWrite;
@@ -576,11 +714,15 @@ export const ApprovalRouteScreen = () => {
    * 나가는 중인 쓰기를 건드리지 않는 규율은 `resetIfIdle`이 갖는다 — **이 화면에서 `reset()`을
    * 부르는 자리는 넷이고**(대상 변경 · 창 닫기 · 창 열기 · 초안 파기) 그중 하나라도 규율을
    * 비껴가면 같은 결함의 두 번째 문이 열린다.
+   *
+   * **넷째 쓰기도 여기를 지난다.** 단계 배너는 고른 결재선에 매이는데, 대상이 바뀌는 길은
+   * `editTargetKey`가 바뀌는 길과 같다(등록 폼으로 들어가도 단계 구획은 사라진다).
    */
   const resetEditing = (): void => {
     resetIfIdle(createWrite);
     resetIfIdle(updateWrite);
     resetIfIdle(activationWrite);
+    resetIfIdle(stepsWrite);
     setFieldErrors({});
     setDialog(null);
   };
@@ -672,11 +814,19 @@ export const ApprovalRouteScreen = () => {
     if (isCreating) closeCreateForm();
   };
 
-  /** 파기는 **서버를 부르지 않는다** — 초안을 기준값으로 되돌리거나 등록 폼을 닫을 뿐이다. */
+  /**
+   * 파기는 **서버를 부르지 않는다** — 초안을 기준값으로 되돌리거나 등록 폼을 닫을 뿐이다.
+   *
+   * **두 초안을 함께 되돌린다.** 창이 묻는 것은 「이 결재선을 고치던 것」 전체이고, 폼만
+   * 되돌리면 저장하지 않은 단계 순서가 남아 「파기했는데 남아 있는」 자리가 생긴다.
+   * 단계 초안만 고친 상태에서는 이 길에 닿지 않는다 — 취소는 폼이 더러울 때만 열린다.
+   */
   const handleDiscard = (): void => {
     setDialog(null);
     setFieldErrors({});
     resetIfIdle(activeWrite);
+    resetIfIdle(stepsWrite);
+    setStepDraft((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
 
     if (isCreating) {
       closeCreateForm();
@@ -685,6 +835,66 @@ export const ApprovalRouteScreen = () => {
     }
 
     setDraft((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+  };
+
+  /**
+   * 단계 저장이 막힌 사유. **버튼의 잠금과 보내는 자리의 재판정이 같은 값을 본다** —
+   * 갈리면 「버튼은 눌리는데 아무 일이 없는」 자리나 그 반대가 생긴다.
+   */
+  const stepSaveDisabledReason =
+    stepDraft === null
+      ? null
+      : stepSaveBlockedReason({
+          drafts: stepDraft.values,
+          baseline: stepDraft.baseline,
+          isRouteFormDirty: isDirty,
+        });
+
+  /** 단계 초안을 갈아 끼우는 **유일한 자리**. 순서를 다루는 규칙은 전부 `step-draft.ts`가 갖는다. */
+  const changeStepDrafts = (next: StepDraft[]): void => {
+    setStepDraft((prev) => (prev === null ? prev : { ...prev, values: next }));
+  };
+
+  const handleAddStep = (approver: ApproverOption): void => {
+    if (stepDraft === null || isLocked) return;
+
+    const created = createStepDraft(approver);
+
+    /* 승인자 없는 행은 만들지 않는다 — 그런 행이 서면 저장 자체가 막힌다. */
+    if (created === null) return;
+
+    changeStepDrafts([...stepDraft.values, created]);
+  };
+
+  const handleRemoveStep = (draftId: string): void => {
+    if (stepDraft === null || isLocked) return;
+    /* 마지막 한 단계는 지울 수 없다 — 버튼의 잠금만 믿지 않는다. */
+    if (stepRemoveBlockedReason(stepDraft.values.length) !== null) return;
+
+    changeStepDrafts(removeStepDraft(stepDraft.values, draftId));
+  };
+
+  const handleReorderStep = (from: number, to: number): void => {
+    if (stepDraft === null || isLocked) return;
+
+    changeStepDrafts(moveStepDraft(stepDraft.values, from, to));
+  };
+
+  /**
+   * 단계 치환 저장. **보내는 자리가 스스로 한 번 더 본다** — 잠금 사유가 있으면 보내지 않고,
+   * 본문을 만들 수 없으면(승인자 미확인·빈 배열) 요청 자체를 만들지 않는다.
+   */
+  const handleSaveSteps = (): void => {
+    if (stepDraft === null || selectedRouteId === null || isLocked) return;
+    if (stepSaveDisabledReason !== null) return;
+
+    const body = toStepsReplaceBody(stepDraft.values);
+
+    if (body === null) return;
+
+    /* 지금 보내는 것은 **이 대상의 것**이다 — 도착한 결과를 견줄 축을 여기서 세운다. */
+    setWriteTargetKey(editTargetKey);
+    stepsWrite.write(body);
   };
 
   const openActivationDialog = (intent: ActivationIntent): void => {
@@ -872,7 +1082,13 @@ export const ApprovalRouteScreen = () => {
       <>
         {formPane('edit')}
         <StepPane
-          steps={stepViews}
+          /*
+           * **대상마다 새로 세운다.** 추가 줄에서 고른 승인자는 그 구획 안에만 있는 값이라
+           * 수명 표에 열이 없다 — 대신 대상이 바뀌면 부품째 다시 서게 해 앞 결재선에 넣으려던
+           * 사람이 다음 결재선의 추가 줄에 남지 않게 한다.
+           */
+          key={String(selectedRouteId)}
+          drafts={stepDraft === null ? null : stepDraft.values}
           isLoading={steps.isPending}
           loadError={
             steps.isError ? (
@@ -884,6 +1100,18 @@ export const ApprovalRouteScreen = () => {
               />
             ) : null
           }
+          /* 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다 — 버릴 입력이 없다. */
+          banner={writeFailureSlot(stepsWrite, reloadDetail)}
+          approverOptions={approvers.options}
+          approverNote={approverNote(approvers)}
+          approverTypeOptions={approverTypeOptions}
+          approverTypeNote={approverTypeNote(approverTypeOptions)}
+          isLocked={isLocked}
+          saveDisabledReason={stepSaveDisabledReason}
+          onAdd={handleAddStep}
+          onRemove={handleRemoveStep}
+          onReorder={handleReorderStep}
+          onSave={handleSaveSteps}
         />
       </>
     );

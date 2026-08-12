@@ -11,7 +11,7 @@ import {
   toReference,
 } from './lookups';
 import type { LookupResult, ReferenceSource } from './lookups';
-import type { LookupEntry, StepView } from './types';
+import type { ApproverDisplay, LookupEntry } from './types';
 
 /**
  * 참조 표기.
@@ -44,12 +44,9 @@ const lookup = (patch: Partial<LookupResult> = {}): LookupResult => ({
   ...patch,
 });
 
-const step = (patch: Partial<StepView> = {}): StepView => ({
-  approvalRouteStepId: 9201,
-  stepNo: 1,
+const step = (patch: Partial<ApproverDisplay> = {}): ApproverDisplay => ({
   approverName: '합성 승인자1',
   approverDepartmentName: '합성부서',
-  approverIsActive: true,
   ...patch,
 });
 

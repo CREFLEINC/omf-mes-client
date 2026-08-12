@@ -89,4 +89,14 @@ describe('appRouter', () => {
     expect(routedPaths()).toContain('/logistics/supplier-return');
     expect(routedPaths()).not.toContain('/logistics/goods-issues');
   });
+
+  /*
+   * W-06-15의 계약 경로는 `/app/**`이고 주소 앞머리는 `/system/`이다 — 근거는 여기서도
+   * **섹션**이다. 결재선은 마스터이지만 창고·품목 같은 업무 기준정보가 아니라 운영 설정이라
+   * 사용자·역할·권한과 같은 섹션에 선다.
+   */
+  it('결재선 정의가 시스템 관리 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/system/approval-route');
+    expect(routedPaths()).not.toContain('/master-data/approval-route');
+  });
 });

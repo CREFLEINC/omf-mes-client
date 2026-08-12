@@ -43,3 +43,52 @@ export const codeNote = (options: readonly SelectOption[]): string | undefined =
 
 /** 선택칸 트리거에 보이는 자리표시 문구. */
 export const codePlaceholder = (): string => messages.pendingCode.placeholder;
+
+/**
+ * 승인자 구분 — **승인 유형과 사정이 다르다.**
+ *
+ * 승인 유형은 값 목록 자체가 없어 선택지가 비지만, 승인자 구분은 **계약이 셋을 못 박았고
+ * 그중 하나만 1차에 열린다.** 계약이 그 이유까지 적었다 — 역할·부서는 상신할 때 사람을 고를
+ * 입력이 물리 모델에 없다. 그래서 여기서는 **지어낼 것이 없고, 감출 이유도 없다.**
+ *
+ * **잠긴 선택지를 감추지 않는다.** 감추면 사용자는 역할·부서 결재가 아예 없는 기능이라고
+ * 읽는다. 보이되 잠그고 사유를 붙이면 「지금은 아니다」가 읽힌다.
+ *
+ * 추적: 역할·부서 승인자 미결 — **`omf-mes#69`**. 비공개 저장소이므로 번호로만 참조한다.
+ */
+export const APPROVER_TYPE_CODES = ['USER', 'ROLE', 'DEPARTMENT'] as const;
+
+export type ApproverTypeCode = (typeof APPROVER_TYPE_CODES)[number];
+
+/**
+ * 1차에 고를 수 있는 구분 — **여기 하나가 잠금의 유일한 근거다.**
+ *
+ * `omf-mes#69`가 열리면 이 배열에 값을 더하는 것만으로 선택지가 살아난다. 잠금을 부품 안에
+ * 상수로 굳히면 그때 고칠 자리를 찾아 헤매게 된다(승인 유형의 자리표시 배열과 같은 규율).
+ */
+export const ENABLED_APPROVER_TYPE_CODES: readonly ApproverTypeCode[] = ['USER'];
+
+const APPROVER_TYPE_LABELS: Record<ApproverTypeCode, string> = {
+  USER: messages.approvalRoute.values.approverTypeUser,
+  ROLE: messages.approvalRoute.values.approverTypeRole,
+  DEPARTMENT: messages.approvalRoute.values.approverTypeDepartment,
+};
+
+/**
+ * 계약의 세 값을 모두 선택지로 낸다. **열린 것만 고를 수 있다.**
+ *
+ * 디자인 시스템 `Select`가 옵션별 잠금을 지원하므로(설치본 실측) 잠긴 값을 목록에서 빼지 않고
+ * 잠근 채로 보인다 — 「고를 수 없다」와 「없다」는 다른 사실이다.
+ */
+export const toApproverTypeOptions = (enabledCodes: readonly ApproverTypeCode[]): SelectOption[] =>
+  APPROVER_TYPE_CODES.map((code) => ({
+    value: code,
+    label: APPROVER_TYPE_LABELS[code],
+    disabled: !enabledCodes.includes(code),
+  }));
+
+/** 잠긴 선택지가 하나라도 있으면 왜 잠겼는지 밝힌다. **전부 열리면 거둔다.** */
+export const approverTypeNote = (options: readonly SelectOption[]): string | undefined =>
+  options.some((option) => option.disabled === true)
+    ? messages.approvalRoute.notes.approverTypePending
+    : undefined;
