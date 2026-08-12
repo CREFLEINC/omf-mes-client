@@ -3241,3 +3241,77 @@ describe('SupplierReturnScreen — 확인 창과 요청의 줄이 같다', () =>
     expect(requestLineTexts(requests)).toEqual(shown);
   });
 });
+
+/**
+ * **서버가 준 필드 오류가 그 칸에 붙는다**(C51의 인라인 쪽 절반).
+ *
+ * `validation.ts`가 「어느 이름을 담고 어느 이름을 담지 않는가」를 길게 정해 둔 자리이며,
+ * 그 목록이 **비면 오류가 전부 배너로 올라간다** — 화면은 「무엇이 잘못됐다」만 알고
+ * **어느 칸이 잘못됐는지**는 말하지 못한다. 담는 쪽과 비우는 쪽을 함께 잰다.
+ */
+describe('SupplierReturnScreen — 서버 필드 오류의 자리', () => {
+  const failWithFieldError = async (
+    field: string,
+    message: string,
+  ): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = await setupReadyToSubmit(
+      allRoutes([
+        failingPostRoute(400, {
+          errors: [{ scope: 'field', field, code: 'INVALID', message }],
+        }),
+      ]),
+    );
+
+    await openConfirm(rendered.user);
+    await confirmSubmit(rendered.user);
+    await screen.findByText(message);
+
+    return rendered;
+  };
+
+  /* **U44** — 목록이 비면 이 오류가 배너로 올라가 그 칸이 무엇인지 화면에서 읽을 수 없다. */
+  it('반품 사유 오류가 그 선택칸에 붙는다', async () => {
+    await failWithFieldError('reasonCode', '합성 사유 오류');
+
+    expect(screen.getByRole('combobox', { name: t.fields.reason })).toHaveAccessibleDescription(
+      expect.stringContaining('합성 사유 오류'),
+    );
+  });
+
+  it('공급사 오류가 그 선택칸에 붙는다', async () => {
+    await failWithFieldError('destinationId', '합성 공급사 오류');
+
+    expect(screen.getByRole('combobox', { name: t.fields.supplier })).toHaveAccessibleDescription(
+      expect.stringContaining('합성 공급사 오류'),
+    );
+  });
+
+  /* 날짜와 시각은 **한 값**이라 그 오류를 두 칸이 함께 가리킨다. */
+  it('출고 일시 오류를 날짜 칸과 시각 칸이 함께 가리킨다', async () => {
+    await failWithFieldError('issuedAt', '합성 일시 오류');
+
+    expect(screen.getByLabelText(t.fields.issuedTime)).toHaveAccessibleDescription(
+      expect.stringContaining('합성 일시 오류'),
+    );
+    expect(screen.getByLabelText(t.fields.issuedDate)).toHaveAccessibleDescription(
+      expect.stringContaining('합성 일시 오류'),
+    );
+  });
+
+  /*
+   * **짝 방향** — 화면에 칸이 없는 이름의 오류는 **배너로 올라간다.** 인라인으로 흘려보내면
+   * 어디에도 표시되지 않는 오류가 된다(그래서 목록에 담지 않는다).
+   */
+  it('화면에 칸이 없는 필드의 오류는 배너로 올라간다', async () => {
+    await failWithFieldError('sourceWarehouseId', '합성 창고 오류');
+
+    /* 어느 입력칸도 이 오류를 가리키지 않는다 — 그런데도 화면에는 보인다. */
+    for (const control of screen.getAllByRole('combobox')) {
+      expect(control).not.toHaveAccessibleDescription(
+        expect.stringContaining('합성 창고 오류'),
+      );
+    }
+
+    expect(screen.getByText('합성 창고 오류')).toBeInTheDocument();
+  });
+});
