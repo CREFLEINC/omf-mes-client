@@ -2019,12 +2019,14 @@ describe('ApprovalRouteScreen — 저장 실패 갈래', () => {
 describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
   const CONFLICT = { conflictCause: 'user', message: '' };
 
-  const failThenSelect = async (): Promise<{
+  const failThenSelect = async (
+    extra: StubRoute[] = [],
+  ): Promise<{
     requests: RecordedRequest[];
     user: ReturnType<typeof userEvent.setup>;
   }> => {
     const { requests, user } = renderScreen(
-      allRoutes([failingUpdateRoute(409, CONFLICT)]),
+      allRoutes([...extra, failingUpdateRoute(409, CONFLICT)]),
       SELECTED,
     );
 
@@ -2076,15 +2078,38 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
   });
 
   /**
-   * **렌더마다 지워지지도 않는다.** 정리 effect의 의존성을 비우거나 매 렌더 새로 만들어지는
-   * 함수 참조를 넣으면 배너가 서자마자 사라져 사용자가 이유를 볼 수 없다.
+   * **렌더마다·응답마다 지워지지도 않는다.** 정리 effect의 의존성에 응답을 넣거나 배열을
+   * 비우면 배너가 서자마자 사라져 사용자가 이유를 볼 수 없다.
+   *
+   * **응답이 실제로 달라져야 이 감지기가 뜻을 갖는다.** 같은 값을 돌려주면 캐시가 객체
+   * 동일성을 지켜 주어(구조 공유) 「응답을 의존성에 넣었다」는 오류가 드러나지 않는다.
    */
   it('실패 배너가 다른 응답이 도착해도 남는다', async () => {
-    const { user } = await failThenSelect();
+    let hits = 0;
+    const changingDetail: StubRoute = {
+      match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
+      respond: () => {
+        hits += 1;
+
+        return jsonResponse(
+          { ...routeFixtures[0], inProgressCount: hits },
+          { headers: { ETag: `token-${String(hits)}` } },
+        );
+      },
+    };
+
+    const { user } = await failThenSelect([changingDetail]);
+
+    const beforeHits = hits;
 
     await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    /* 상세가 **다른 값**으로 다시 도착한 것을 먼저 확인한다. */
     await waitFor(() => {
-      expect(screen.getByText(messages.conflict.user)).toBeInTheDocument();
+      expect(hits).toBeGreaterThan(beforeHits);
+    });
+    await waitFor(() => {
+      expect(screen.getByText(t.notes.inProgressSome(hits))).toBeInTheDocument();
     });
 
     expect(screen.getByText(messages.conflict.user)).toBeInTheDocument();
