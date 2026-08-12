@@ -2058,20 +2058,96 @@ describe('결재 — 실패 배너가 매인 대상', () => {
     expect(screen.getByText(messages.conflict.user)).toBeVisible();
   });
 
-  /** **늘 지움** — 의존성 배열을 없애거나 `reset` 참조를 넣으면 배너가 아예 보이지 않는다. */
-  it('다시 조회로 화면이 다시 그려져도 남는다', async () => {
-    const { requests, user } = await renderDecision(failOnce());
+  /**
+   * **늘 지움** — 정리 의존성에 응답 객체를 넣거나 배열을 없애면 배너가 아예 보이지 않는다.
+   *
+   * **다시 그려진 것을 눈으로 확인한 뒤에 잰다.** 「요청이 늘었다」까지만 기다리면 응답이
+   * 도착하기 전에 단언이 끝나, 정리가 도는 자리를 지나치지 않은 채 통과할 수 있다.
+   */
+  it('다시 조회로 상세가 새로 와도 남는다', async () => {
+    let served = 0;
+    const changingDetail: StubRoute = {
+      match: (request) => isDetailPath(new URL(request.url).pathname),
+      respond: () => {
+        served += 1;
+
+        return jsonResponse(
+          served === 1
+            ? contradictoryMyTurnDetail
+            : {
+                ...contradictoryMyTurnDetail,
+                steps: [
+                  { ...contradictoryMyTurnDetail.steps[0], decisionComment: '합성 재조회 뒤 의견' },
+                ],
+              },
+          { headers: { ETag: DETAIL_ETAG } },
+        );
+      },
+    };
+
+    const { user } = await renderDecision(
+      decisionRoutes([
+        changingDetail,
+        failingApproveRoute(409, { conflictCause: 'user', message: '' }),
+      ]),
+    );
 
     await sendFailingApprove(user);
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
 
-    const before = listRequests(requests).length;
+    /* 새 상세가 실제로 그려졌다 — 여기까지 와야 정리 effect가 도는 자리를 지났다. */
+    expect(await screen.findByText('합성 재조회 뒤 의견')).toBeVisible();
+    expect(screen.getByText(messages.conflict.user)).toBeVisible();
+  });
+});
+
+/**
+ * 초안이 매인 대상 — **배너와 같은 축(`decisionTargetKey`)이지만 다른 값이다.**
+ *
+ * 배너는 「보낸 대상과 지금 대상이 같은가」로도 한 번 걸러지지만 초안은 그렇지 않다 —
+ * 정리가 도는 자리가 없으면 **앞 요청에 쓴 반려 사유가 다음 요청에 그대로 실린다.**
+ */
+describe('결재 — 의견 초안이 매인 대상', () => {
+  it('다른 요청으로 옮기면 적어 둔 의견이 남지 않는다', async () => {
+    const { user } = await renderDecision();
+
+    await user.type(commentBox(), '9001에만 해당하는 합성 반려 사유');
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rq=9002');
+    });
+    expect(commentBox()).toHaveValue('');
+  });
+
+  /** 짝 방향 — 같은 요청을 보는 동안에는 지워지지 않는다(응답이 다시 와도 그렇다). */
+  it('같은 요청을 보는 동안 다시 조회해도 의견이 남는다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await user.type(commentBox(), '합성 반려 사유');
+
+    const before = detailRequests(requests).length;
 
     await user.click(screen.getByRole('button', { name: t.actions.reload }));
     await waitFor(() => {
-      expect(listRequests(requests).length).toBeGreaterThan(before);
+      expect(detailRequests(requests).length).toBeGreaterThan(before);
     });
 
-    expect(screen.getByText(messages.conflict.user)).toBeVisible();
+    expect(commentBox()).toHaveValue('합성 반려 사유');
+  });
+
+  /** 앞 요청의 창이 살아남으면 **그 창이 다음 요청을 결재한다** — 대상이 바뀌면 닫는다. */
+  it('창이 열린 채 주소로 대상이 바뀌면 창이 닫히고 요청이 나가지 않는다', async () => {
+    const { requests, user } = await renderDecision(decisionRoutes(), '?rq=9001', 'rq=9002');
+
+    await openRejectDialog(user);
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(writeRequests(requests)).toHaveLength(0);
+    expect(commentBox()).toHaveValue('');
   });
 });
 
