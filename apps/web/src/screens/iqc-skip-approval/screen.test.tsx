@@ -13,7 +13,11 @@ import {
 } from '../../test/api-harness';
 import { pickRange } from '../../test/date-picker';
 import { IQC_SKIP_APPROVAL_TYPE_CODE } from './code-options';
-import { SECOND_LINE_OF_MULTILINE_REASON, requestFixtures } from './fixtures';
+import {
+  FIRST_LINE_OF_MULTILINE_REASON,
+  SECOND_LINE_OF_MULTILINE_REASON,
+  requestFixtures,
+} from './fixtures';
 import { IqcSkipApprovalScreen } from './screen';
 
 const t = messages.iqcSkipApproval;
@@ -218,7 +222,15 @@ describe('첫 진입', () => {
     expect(table.getAllByText('합성 상신자1').length).toBe(2);
     /* 상신 일시는 **시각까지** 보인다 — 날짜만 그리면 여기서 멈춘다. */
     expect(table.getByText('2026-08-06 14:20')).toBeInTheDocument();
-    /* 사유는 첫 줄만 온다 — 전문이 새면 여기서 드러난다. */
+    /*
+     * 사유는 첫 줄만 온다.
+     *
+     * **짝 양성이 먼저다.** 「둘째 줄이 없다」만 두면 전문을 그대로 넣는 구현이 그대로
+     * 지나간다 — 그때 그 칸의 글자는 두 줄이 이어 붙은 **한 문자열**이라 둘째 줄만으로는
+     * 걸리지 않는다(뮤테이션으로 확인했다). 첫 줄이 **그 칸의 전부**여야 통과하는 단언을
+     * 앞에 두어야 그 구현이 여기서 멈춘다.
+     */
+    expect(table.getByText(FIRST_LINE_OF_MULTILINE_REASON)).toBeInTheDocument();
     expect(screen.queryByText(SECOND_LINE_OF_MULTILINE_REASON)).not.toBeInTheDocument();
   });
 
@@ -493,8 +505,12 @@ describe('조회 조건', () => {
     });
   });
 
-  it('조건 칩의 ×가 그 조건만 푼다', async () => {
-    const { user } = renderScreen([listRoute()], '?q=SYNTH&from=2026-08-01&to=2026-08-31');
+  /** 칩의 ×도 조건 변경이다 — 수명 표 1행을 그대로 지난다(범위 유지 · 첫 쪽 · 선택 비움). */
+  it('조건 칩의 ×가 그 조건만 풀고 범위는 남긴 채 쪽과 선택을 비운다', async () => {
+    const { user } = renderScreen(
+      [listRoute()],
+      '?q=SYNTH&from=2026-08-01&to=2026-08-31&pd=0&page=2&rq=9001',
+    );
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: t.filters.chipRemovePeriod }));
@@ -504,6 +520,9 @@ describe('조회 조건', () => {
     });
 
     expect(currentLocation()).toContain('q=SYNTH');
+    expect(currentLocation()).toContain('pd=0');
+    expect(currentLocation()).not.toContain('page=');
+    expect(currentLocation()).not.toContain('rq=');
   });
 });
 
@@ -553,7 +572,11 @@ describe('쪽 이동', () => {
   it('쪽만 옮기고 고른 요청을 비운다', async () => {
     const { requests, user } = renderScreen(
       [listRoute(requestFixtures, { page: 1, size: 2, total: 8 })],
-      '?q=SYNTH&rq=9001',
+      /*
+       * **확인칸을 꺼 둔 채로 옮긴다.** 켠 채로 재면 `pd`가 주소에 적히지 않아
+       * 「쪽 이동이 범위를 유지한다」 칸이 어느 구현에서도 같아 보인다(수명 표 4행).
+       */
+      '?q=SYNTH&pd=0&rq=9001',
     );
 
     await waitForList();
@@ -564,10 +587,12 @@ describe('쪽 이동', () => {
     });
 
     expect(currentLocation()).toContain('q=SYNTH');
+    expect(currentLocation()).toContain('pd=0');
     expect(currentLocation()).not.toContain('rq=');
     await waitFor(() => {
       expect(lastListQuery(requests)?.get('page')).toBe('2');
     });
+    expect(lastListQuery(requests)?.get('pendingOnly')).toBeNull();
   });
 });
 
