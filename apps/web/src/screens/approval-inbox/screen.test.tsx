@@ -1,6 +1,6 @@
 import type { ApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -17,6 +17,7 @@ import {
   SECOND_LINE_OF_MULTILINE_REASON,
   contradictoryMyTurnDetail,
   contradictoryNotMyTurnDetail,
+  decidedDetail,
   finishedDetail,
   noScreenIdTargetDetail,
   outOfListDetail,
@@ -35,6 +36,10 @@ const REQUESTS_PATH = '/app/approval-requests';
 interface RecordedRequest {
   method: string;
   url: URL;
+  /** 보낸 헤더. 잠금 토큰과 멱등 키가 **실제로 실렸는지**는 여기서만 잴 수 있다. */
+  headers: Headers;
+  /** 보낸 본문(JSON). 본문이 없으면 `undefined`다 — 「빈 객체」와 구분한다. */
+  body: unknown;
 }
 
 /**
@@ -42,20 +47,39 @@ interface RecordedRequest {
  *
  * **경로를 가리지 않고 전부 기록한다** — 「부르지 않았다」를 증명하려면 잘못된 경로로 나간
  * 요청도 잡혀야 한다.
+ *
+ * `hold`가 참을 내는 요청은 **기록한 뒤에** 붙잡아 둔다 — 「기다리는 동안 무엇이 잠기는가」를
+ * 재려면 요청이 나간 사실은 이미 보여야 한다.
  */
 const createRecordingFetch = (
   routes: StubRoute[],
-): { fetch: StubFetch; requests: RecordedRequest[] } => {
+  hold: (request: Request) => boolean = () => false,
+): { fetch: StubFetch; requests: RecordedRequest[]; release: () => void } => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch(routes);
 
+  let release = (): void => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
   const fetch: StubFetch = async (request) => {
-    requests.push({ method: request.method, url: new URL(request.url) });
+    /* 본문은 한 번만 읽을 수 있다 — 복제해 읽어야 스텁이 같은 요청을 다시 다룰 수 있다. */
+    const text = await request.clone().text();
+
+    requests.push({
+      method: request.method,
+      url: new URL(request.url),
+      headers: request.headers,
+      body: text === '' ? undefined : (JSON.parse(text) as unknown),
+    });
+
+    if (hold(request)) await gate;
 
     return stub(request);
   };
 
-  return { fetch, requests };
+  return { fetch, requests, release };
 };
 
 /**
@@ -72,9 +96,20 @@ const isCountUrl = (url: URL): boolean =>
 const isListUrl = (url: URL): boolean =>
   url.pathname === REQUESTS_PATH && !url.searchParams.has('myTurnOnly');
 
-/** 상세 경로로 **나간 요청 전부**. 번호 자리가 무엇이든 센다 — 잘못된 경로도 「부르지 않았다」를 깬다. */
+/**
+ * 상세 경로로 **나간 요청 전부**. 번호 자리가 무엇이든 센다 — 잘못된 경로도 「부르지 않았다」를 깬다.
+ *
+ * **액션 경로(`…:approve`·`…:reject`)는 빼고 센다.** 액션 경로도 슬래시로는 한 조각이라
+ * 가르지 않으면 결재 요청이 「상세를 불렀다」로 잡혀, 성공 뒤 무효화를 재는 눈금이 무너진다.
+ */
 const isDetailPath = (pathname: string): boolean =>
-  /^\/app\/approval-requests\/[^/]+$/.test(pathname);
+  /^\/app\/approval-requests\/[^/:]+$/.test(pathname);
+
+/** 결재 액션 경로. **번호 자리를 가리지 않는다** — 엉뚱한 번호로 나간 결재도 잡혀야 한다. */
+const isApprovePath = (pathname: string): boolean =>
+  /^\/app\/approval-requests\/[^/]+:approve$/.test(pathname);
+const isRejectPath = (pathname: string): boolean =>
+  /^\/app\/approval-requests\/[^/]+:reject$/.test(pathname);
 
 const listRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => isListUrl(request.url));
@@ -85,6 +120,10 @@ const detailRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 /** 쓰기로 나간 요청 전부. **경로를 가리지 않고 센다** — 잘못된 경로로 나간 쓰기도 잡아야 한다. */
 const writeRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.method !== 'GET');
+const approveRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => isApprovePath(request.url.pathname));
+const rejectRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => isRejectPath(request.url.pathname));
 
 const lastListQuery = (requests: RecordedRequest[]): URLSearchParams | undefined =>
   listRequests(requests).at(-1)?.url.searchParams;
@@ -143,6 +182,45 @@ const failingDetailRoute = (status: number): StubRoute => ({
 
 const defaultRoutes = (total = 0): StubRoute[] => [listRoute(), countRoute(total), detailRoute()];
 
+/**
+ * 결재 200이 실어 오는 토큰. **상세의 것과 다르다** — 쓰기의 `ETag`가 액션 경로에 앉아
+ * 상세 토큰이 낡는다는 사실이 이 값의 존재 이유다.
+ */
+const DECIDED_ETAG = '"10"';
+
+const approveRoute = (detail: ApprovalRequestDetail = decidedDetail): StubRoute => ({
+  match: (request) => isApprovePath(new URL(request.url).pathname),
+  respond: () => jsonResponse(detail, { headers: { ETag: DECIDED_ETAG } }),
+});
+
+const rejectRoute = (detail: ApprovalRequestDetail = decidedDetail): StubRoute => ({
+  match: (request) => isRejectPath(new URL(request.url).pathname),
+  respond: () => jsonResponse(detail, { headers: { ETag: DECIDED_ETAG } }),
+});
+
+const failingApproveRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: (request) => isApprovePath(new URL(request.url).pathname),
+  respond: () => jsonResponse(body, { status }),
+});
+
+/** 응답 자체가 오지 않는 실패. **상태 코드가 없는 갈래**라 던져서 만든다. */
+const offlineApproveRoute = (): StubRoute => ({
+  match: (request) => isApprovePath(new URL(request.url).pathname),
+  respond: () => {
+    throw new TypeError('네트워크가 끊겼습니다');
+  },
+});
+
+/** 결재까지 여는 기본 스텁 한 벌. 앞에 놓은 규칙이 먼저 걸린다. */
+const decisionRoutes = (extra: StubRoute[] = []): StubRoute[] => [
+  ...extra,
+  listRoute(),
+  countRoute(),
+  detailRoute(),
+  approveRoute(),
+  rejectRoute(),
+];
+
 /** 고른 요청 구획. 어떤 갈래에서도 **이 구획 자체는 늘 선다**. */
 const detailPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.detail });
 
@@ -192,12 +270,14 @@ const renderScreen = (
   routes: StubRoute[],
   search = '',
   navigateTo = '',
+  hold?: (request: Request) => boolean,
 ): {
   requests: RecordedRequest[];
+  release: () => void;
   user: ReturnType<typeof userEvent.setup>;
   apiClient: ApiClient;
 } => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
   const { apiClient } = renderWithProviders(
     <>
@@ -209,7 +289,7 @@ const renderScreen = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, user: userEvent.setup(), apiClient };
+  return { requests, release, user: userEvent.setup(), apiClient };
 };
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
@@ -916,8 +996,12 @@ describe('다시 조회', () => {
   });
 });
 
-describe('이 회차의 경계', () => {
-  it('어떤 쓰기 요청도 보내지 않는다', async () => {
+describe('조회만 하는 조작', () => {
+  /**
+   * **읽는 조작은 무엇 하나도 쓰지 않는다.** 결재가 붙은 뒤에도 그대로여야 한다 —
+   * 조회·탭·쪽이 쓰기를 부르기 시작하면 사용자가 「보기만 했는데」 결재가 나간다.
+   */
+  it('조회·탭 전환·다시 조회로는 쓰기가 나가지 않는다', async () => {
     const { requests, user } = renderScreen(defaultRoutes(3), '?rq=9001');
 
     await waitForList();
@@ -973,7 +1057,11 @@ describe('고른 요청 — 정보·대상·진행', () => {
     await screen.findByRole('group', { name: t.panes.progress });
   };
 
-  it('세 구획이 이 차례로 선다 — 사유가 대상보다 위다', async () => {
+  /**
+   * 차례가 뜻이다 — **무엇을 결재하는가(사유 → 대상) → 어디까지 왔는가 → 결정한다.**
+   * 결재 구획이 맨 아래인 이유: 위 셋을 읽고 나서 누르는 것이 이 화면의 일이다.
+   */
+  it('네 구획이 이 차례로 선다 — 사유가 대상보다 위이고 결재가 맨 아래다', async () => {
     await renderSelected();
 
     const groups = [...detailPane().querySelectorAll('[role="group"][aria-label]')].map((group) =>
@@ -984,6 +1072,7 @@ describe('고른 요청 — 정보·대상·진행', () => {
       t.panes.request,
       t.panes.target,
       t.panes.progress,
+      t.panes.decision,
     ]);
   });
 
@@ -1340,5 +1429,756 @@ describe('고름 ≠ 보임 — 주소가 가리키는 것을 읽을 수 있는�
     await waitForList();
 
     expect(screen.getByRole('button', { name: messages.common.search })).toBeInTheDocument();
+  });
+});
+
+/* =========================================================================
+ * 결재 — 되돌릴 수 없는 쓰기 둘.
+ *
+ * 부품 시험이 잰 것은 「컨트롤이 잠기는가」였다. 여기서 재는 것은 그 너머다 —
+ * **요청이 실제로 나갔는가 · 몇 번 · 어느 경로로 · 어떤 헤더와 본문을 싣고 · 성공한 뒤
+ * 무엇이 다시 불리는가.** 단위로는 잡을 수 없는 것들이다.
+ * ====================================================================== */
+
+/** 결재할 수 있는 상태(9001 · 서버가 「내 차례」라고 한 요청)까지 세운다. */
+const renderDecision = async (
+  routes: StubRoute[] = decisionRoutes(),
+  search = '?rq=9001',
+  navigateTo = '',
+  hold?: (request: Request) => boolean,
+): Promise<ReturnType<typeof renderScreen>> => {
+  const rendered = renderScreen(routes, search, navigateTo, hold);
+
+  await screen.findByRole('group', { name: t.panes.decision });
+
+  return rendered;
+};
+
+const decisionPane = (): HTMLElement => screen.getByRole('group', { name: t.panes.decision });
+const approveButton = (): HTMLElement =>
+  within(decisionPane()).getByRole('button', { name: t.decision.approve });
+const rejectButton = (): HTMLElement =>
+  within(decisionPane()).getByRole('button', { name: t.decision.reject });
+const commentBox = (): HTMLElement => screen.getByLabelText(t.decision.commentLabel);
+const confirmDialog = (): HTMLElement => screen.getByRole('dialog');
+const confirmButton = (label: string): HTMLElement =>
+  within(confirmDialog()).getByRole('button', { name: label });
+
+/** 의견을 적고 반려 창을 연다 — 반려 갈래가 되풀이하는 채비다. */
+const openRejectDialog = async (
+  user: ReturnType<typeof userEvent.setup>,
+  comment = '합성 반려 사유',
+): Promise<void> => {
+  await user.type(commentBox(), comment);
+  await user.click(rejectButton());
+};
+
+/** 결재를 붙잡아 둔다. **조회까지 붙잡으면 구획이 서기도 전에 멈춘다.** */
+const holdApprove = (request: Request): boolean => isApprovePath(new URL(request.url).pathname);
+
+describe('결재 — 상시 문구', () => {
+  /**
+   * **자물쇠 문구는 사라지는 자리에 두지 않는다.** 승인이 무엇을 하고 무엇을 하지 않는지는
+   * 결재함을 보는 내내 참인 사실이라, 알림처럼 몇 초 뒤 없어지면 다시 확인할 방법이 없다.
+   */
+  it('버튼 위 상시 자리에 서고 내 차례가 아니어도 사라지지 않는다', async () => {
+    await renderDecision(decisionRoutes([detailRoute(contradictoryNotMyTurnDetail)]), '?rq=9003');
+
+    expect(within(decisionPane()).getByText(t.decision.lockNote)).toBeVisible();
+    /* 짝 방향 — 그 상태에서 버튼이 실제로 잠겨 있다(문구만 남고 잠금이 풀린 것이 아니다). */
+    expect(approveButton()).toBeDisabled();
+  });
+
+  it('결재에 성공한 뒤 알림에는 그 문장이 없다', async () => {
+    const { user } = await renderDecision();
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    const toast = await screen.findByText(t.toast.approved);
+
+    expect(toast.closest('[role="status"], [role="alert"]')?.textContent).not.toContain(
+      t.decision.lockNote,
+    );
+    /* 사라지지 않는 자리에는 그대로 있다 — 「어디에도 없다」로 통과하지 않게 짝을 둔다. */
+    expect(within(decisionPane()).getByText(t.decision.lockNote)).toBeVisible();
+  });
+});
+
+describe('결재 — 내 차례 판정(첫째 겹)', () => {
+  /**
+   * **서버 값을 따른다.** 이 픽스처는 단계 배열로 다시 계산하면 「내 차례」가 되는데
+   * 서버가 아니라고 했다 — 배열을 훑는 코드가 들어오면 여기서 드러난다.
+   */
+  it('서버가 아니라고 하면 배열로 맞아도 잠기고 요청이 나가지 않는다', async () => {
+    const { requests, user } = await renderDecision(
+      decisionRoutes([detailRoute(contradictoryNotMyTurnDetail)]),
+      '?rq=9003',
+    );
+
+    expect(approveButton()).toBeDisabled();
+    expect(rejectButton()).toBeDisabled();
+    expect(approveButton()).toHaveAccessibleDescription(
+      t.decision.blockedNotMyTurn(t.decision.approve),
+    );
+
+    await user.click(approveButton());
+    await user.click(rejectButton());
+
+    expect(writeRequests(requests)).toHaveLength(0);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  /** 짝 방향 — 서버가 맞다고 하면 배열로 아니어도 열린다. */
+  it('서버가 맞다고 하면 배열로 아니어도 승인이 열린다', async () => {
+    await renderDecision();
+
+    expect(approveButton()).toBeEnabled();
+  });
+
+  /** 승인자가 없어 멈춘 요청도 **오류가 아니라 잠긴 안내**다 — 기다리는 것이 정상이다. */
+  it('멈춘 요청에서도 경보를 세우지 않고 사유만 붙인다', async () => {
+    await renderDecision(decisionRoutes([detailRoute(stalledDetail)]), '?rq=9004');
+
+    expect(within(decisionPane()).queryByRole('alert')).toBeNull();
+    expect(rejectButton()).toHaveAccessibleDescription(
+      t.decision.blockedNotMyTurn(t.decision.reject),
+    );
+  });
+});
+
+describe('결재 — 확인 창', () => {
+  it('승인을 눌러도 확인하기 전에는 요청이 나가지 않는다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await user.click(approveButton());
+
+    expect(confirmDialog()).toBeInTheDocument();
+    expect(writeRequests(requests)).toHaveLength(0);
+  });
+
+  it('반려도 확인하기 전에는 요청이 나가지 않는다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await openRejectDialog(user);
+
+    expect(confirmDialog()).toBeInTheDocument();
+    expect(writeRequests(requests)).toHaveLength(0);
+  });
+
+  /** 창이 보여 주는 것과 나가는 것이 같은 값에서 온다 — 갈리면 확인의 뜻이 없다. */
+  it('창이 구획에 적은 의견을 그대로 보여 준다', async () => {
+    const { user } = await renderDecision();
+
+    await user.type(commentBox(), '  합성 승인 의견  ');
+    await user.click(approveButton());
+
+    expect(within(confirmDialog()).getByText('합성 승인 의견')).toBeVisible();
+  });
+
+  /** 창 안에 선택칸을 두지 않는다(`omf-mes#45` — 창 본문이 펼침 목록을 자른다). */
+  it('두 창 어디에도 선택칸이 없다', async () => {
+    const { user } = await renderDecision();
+
+    await user.click(approveButton());
+    expect(within(confirmDialog()).queryAllByRole('combobox')).toHaveLength(0);
+
+    await user.click(confirmButton(messages.common.cancel));
+    await openRejectDialog(user);
+
+    expect(within(confirmDialog()).queryAllByRole('combobox')).toHaveLength(0);
+  });
+
+  /**
+   * **창을 닫는 것은 고치러 나가는 길이다**(수명 표 12행). 초안을 비우면 사용자가 방금 적은
+   * 반려 사유를 **취소를 누른 대가로** 잃는다.
+   */
+  it('창을 닫아도 적어 둔 의견이 남는다', async () => {
+    const { user } = await renderDecision();
+
+    await openRejectDialog(user);
+    await user.click(confirmButton(messages.common.cancel));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(commentBox()).toHaveValue('합성 반려 사유');
+  });
+
+  /**
+   * **Escape는 막을 수 없다** — native `<dialog>`가 `cancel`을 내고 디자인 시스템이 그것을
+   * 닫기 요청으로 무조건 잇는다. 규율은 「닫히지 않게」가 아니라 「닫혀도 무너지지 않게」다.
+   */
+  it('Escape로 닫혀도 의견이 남고 요청은 나가지 않는다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await openRejectDialog(user);
+    /*
+     * jsdom은 Escape를 native `<dialog>`의 취소로 잇지 않는다 — 브라우저가 내는
+     * `cancel` 이벤트를 직접 만들어 **디자인 시스템이 그것을 닫기로 잇는 길**을 잰다.
+     */
+    fireEvent(confirmDialog(), new Event('cancel', { bubbles: false, cancelable: true }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(commentBox()).toHaveValue('합성 반려 사유');
+    expect(writeRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * **보내는 자리가 스스로 한 번 더 본다.** 창이 열린 사이 상세가 다시 와 내 차례가
+   * 끝났는데 확인이 그대로 나가면, 서버는 400으로 되돌리고 사용자는 **이유를 알 수 없는
+   * 거절**을 본다.
+   */
+  it('창이 열린 사이 내 차례가 끝나면 보내지 않고 창을 닫는다', async () => {
+    let decided = false;
+    const flippingDetail: StubRoute = {
+      match: (request) => isDetailPath(new URL(request.url).pathname),
+      respond: () => {
+        const body = decided ? decidedDetail : contradictoryMyTurnDetail;
+
+        decided = true;
+
+        return jsonResponse(body, { headers: { ETag: DETAIL_ETAG } });
+      },
+    };
+
+    const { requests, user } = await renderDecision(decisionRoutes([flippingDetail]));
+
+    await user.click(approveButton());
+    expect(confirmDialog()).toBeInTheDocument();
+
+    /* 창이 열린 채 상세가 다시 온다 — 그 사이 앞 단계가 움직였다. */
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await screen.findByText(t.progress.notMyTurn);
+
+    await user.click(confirmButton(t.decision.approve));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(writeRequests(requests)).toHaveLength(0);
+  });
+
+  /** 짝 방향 — 상태가 그대로면 확인이 그대로 나간다. 안 그러면 「아무것도 안 보낸다」와 같다. */
+  it('상태가 그대로면 확인이 요청을 보낸다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+  });
+});
+
+describe('결재 — 본문과 헤더', () => {
+  it('승인 본문에 빈 의견을 싣지 않는다 — 키 자체가 없다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+    expect(approveRequests(requests)[0]?.body).toEqual({});
+  });
+
+  /** 짝 방향 — 「늘 빈 객체」로도 위가 통과하므로 차 있는 쪽을 함께 잰다. */
+  it('승인 의견이 차 있으면 다듬은 값을 싣는다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await user.type(commentBox(), '  합성 승인 의견  ');
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+    expect(approveRequests(requests)[0]?.body).toEqual({ comment: '합성 승인 의견' });
+  });
+
+  it('반려 본문이 다듬은 의견을 싣는다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await openRejectDialog(user, '  합성 반려 사유  ');
+    await user.click(confirmButton(t.decision.reject));
+
+    await waitFor(() => {
+      expect(rejectRequests(requests)).toHaveLength(1);
+    });
+    expect(rejectRequests(requests)[0]?.body).toEqual({ comment: '합성 반려 사유' });
+    /* 승인 경로로 새지 않는다 — 두 조작이 같은 창을 쓰므로 갈림을 함께 잰다. */
+    expect(approveRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * **막는 곳이 화면뿐이다.** 목 서버가 공백만인 반려 의견을 200으로 받는다 —
+   * 버튼이 이미 막지만 창이 열린 사이 값이 비면 보내는 자리가 걸러야 한다.
+   */
+  it('창이 열린 사이 의견이 비면 보내지 않고 인라인 오류를 낸다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await openRejectDialog(user);
+
+    /* 창 뒤의 입력칸을 화면 밖 경로로 비운다 — 버튼이 만들지 못하는 상태다. */
+    fireEvent.change(commentBox(), { target: { value: '   ' } });
+    await user.click(confirmButton(t.decision.reject));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(writeRequests(requests)).toHaveLength(0);
+    expect(screen.getByText(t.decision.commentRequired)).toBeVisible();
+  });
+
+  /**
+   * **잠금 토큰은 상세 경로에서만 온다.** 액션 경로로 꺼내면 그 경로의 토큰이 비어 있어
+   * 훅이 요청을 만들지 않고 멈춘다 — 「눌러도 아무 일이 없다」가 그 증상이다.
+   */
+  it('If-Match가 상세 200이 준 토큰이고 멱등 키가 uuid로 실린다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+
+    const sent = approveRequests(requests)[0];
+
+    expect(sent?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+    /* 액션 경로가 주는 토큰이 실리면 안 된다 — 그 값은 이 요청 뒤에야 생긴다. */
+    expect(sent?.headers.get('If-Match')).not.toBe(DECIDED_ETAG);
+    expect(sent?.headers.get('Idempotency-Key')).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  it('반려도 같은 토큰 규약을 지킨다', async () => {
+    const { requests, user } = await renderDecision();
+
+    await openRejectDialog(user);
+    await user.click(confirmButton(t.decision.reject));
+
+    await waitFor(() => {
+      expect(rejectRequests(requests)).toHaveLength(1);
+    });
+    expect(rejectRequests(requests)[0]?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+  });
+});
+
+describe('결재 — 성공한 뒤', () => {
+  /**
+   * **목록·건수·상세가 함께 갱신된다.** 목록만 무효화하면 상세가 낡아 **방금 승인한 요청의
+   * 승인 버튼이 다시 활성으로 남고**, 다음 쓰기가 낡은 토큰으로 나가 조용히 409가 된다.
+   */
+  it('목록·대기 건수·상세를 모두 다시 부른다', async () => {
+    const { requests, user } = await renderDecision();
+
+    const before = {
+      list: listRequests(requests).length,
+      count: countRequests(requests).length,
+      detail: detailRequests(requests).length,
+    };
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    await waitFor(() => {
+      expect(listRequests(requests).length).toBeGreaterThan(before.list);
+    });
+    await waitFor(() => {
+      expect(countRequests(requests).length).toBeGreaterThan(before.count);
+    });
+    await waitFor(() => {
+      expect(detailRequests(requests).length).toBeGreaterThan(before.detail);
+    });
+  });
+
+  it('반려에 성공한 뒤에도 셋을 모두 다시 부른다', async () => {
+    const { requests, user } = await renderDecision();
+
+    const before = {
+      list: listRequests(requests).length,
+      count: countRequests(requests).length,
+      detail: detailRequests(requests).length,
+    };
+
+    await openRejectDialog(user);
+    await user.click(confirmButton(t.decision.reject));
+
+    await waitFor(() => {
+      expect(listRequests(requests).length).toBeGreaterThan(before.list);
+    });
+    await waitFor(() => {
+      expect(countRequests(requests).length).toBeGreaterThan(before.count);
+    });
+    await waitFor(() => {
+      expect(detailRequests(requests).length).toBeGreaterThan(before.detail);
+    });
+  });
+
+  /**
+   * **선택을 유지한다.** 승인하면 그 요청은 「내 결재 대기」에서 빠지는데, 그때 `rq`까지
+   * 비우면 사용자가 **방금 자기가 무엇을 했는지 확인할 자리**를 잃는다.
+   */
+  it('고른 요청이 그대로 남고 창이 닫히며 알림이 뜬다', async () => {
+    const { user } = await renderDecision();
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    expect(await screen.findByText(t.toast.approved)).toBeVisible();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(currentLocation()).toContain('rq=9001');
+  });
+
+  /**
+   * **응답이 정본이다.** 무효화가 부른 재조회가 도착하기 전까지의 빈 구간을 응답이 메운다 —
+   * 그 재조회를 붙잡아 두어 **응답만으로 갱신됐는지**를 가른다.
+   */
+  it('상세가 결재 응답 그대로 갱신된다 — 재조회를 기다리지 않는다', async () => {
+    let served = 0;
+    const slowSecondDetail: StubRoute = {
+      match: (request) => isDetailPath(new URL(request.url).pathname),
+      respond: () => {
+        served += 1;
+
+        return jsonResponse(contradictoryMyTurnDetail, { headers: { ETag: DETAIL_ETAG } });
+      },
+    };
+
+    const { release, user } = await renderDecision(
+      decisionRoutes([slowSecondDetail]),
+      '?rq=9001',
+      '',
+      /* 첫 조회는 통과시키고 **무효화가 부른 재조회만** 붙잡는다. */
+      (request) => isDetailPath(new URL(request.url).pathname) && served >= 1,
+    );
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    /* 재조회가 아직 오지 않았는데도 결재 응답의 값이 보인다. */
+    expect(await screen.findByText('합성 결재 직후에 남은 의견')).toBeVisible();
+    expect(within(decisionPane()).getByText(t.decision.lockNote)).toBeVisible();
+
+    release();
+  });
+
+  it('성공한 뒤 의견 입력칸이 비워진다', async () => {
+    const { user } = await renderDecision();
+
+    await openRejectDialog(user);
+    await user.click(confirmButton(t.decision.reject));
+
+    await screen.findByText(t.toast.rejected);
+    expect(commentBox()).toHaveValue('');
+  });
+});
+
+describe('결재 — 실패 갈래', () => {
+  const failing = (status: number, body?: unknown): StubRoute[] =>
+    decisionRoutes([failingApproveRoute(status, body)]);
+
+  /** 실패해도 **적은 의견이 남는다** — 다시 치게 만들면 되돌릴 수 없는 조작이 더 위험해진다. */
+  const sendAndFail = async (routes: StubRoute[]): Promise<ReturnType<typeof userEvent.setup>> => {
+    const { user } = await renderDecision(routes);
+
+    await user.type(commentBox(), '합성 승인 의견');
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    return user;
+  };
+
+  it('필드 오류는 그 입력칸에 붙고 의견이 남는다', async () => {
+    await sendAndFail(
+      failing(400, {
+        errors: [{ scope: 'field', field: 'comment', code: 'INVALID', message: '합성 필드 오류' }],
+      }),
+    );
+
+    expect(await screen.findByText('합성 필드 오류')).toBeVisible();
+    expect(commentBox()).toHaveValue('합성 승인 의견');
+    /* 창은 닫힌다 — 고칠 자리가 구획이라 열어 두면 손댈 수 없다. */
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('다시 읽어도 풀리지 않는 상태는 그렇게 말한다', async () => {
+    await sendAndFail(
+      failing(400, {
+        errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '합성 잠금 사유' }],
+      }),
+    );
+
+    expect(await screen.findByText(messages.stateLocked.title)).toBeVisible();
+    expect(screen.getByText('합성 잠금 사유')).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: messages.conflict.reloadAction }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('권한 없음은 다른 문구로 말한다', async () => {
+    await sendAndFail(failing(403));
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeVisible();
+    expect(screen.queryByText(messages.stateLocked.description)).toBeNull();
+  });
+
+  it('대상 없음은 일반 실패 문구로 말한다', async () => {
+    await sendAndFail(failing(404));
+
+    expect(await screen.findByText(messages.httpError.description)).toBeVisible();
+  });
+
+  /** **409에만 「최신 불러오기」가 붙는다** — 다른 실패에 권하면 적어 둔 의견만 버리게 된다. */
+  it('충돌에는 최신 불러오기가 붙는다', async () => {
+    await sendAndFail(failing(409, { conflictCause: 'user', message: '' }));
+
+    expect(await screen.findByText(messages.conflict.user)).toBeVisible();
+    expect(screen.getByRole('button', { name: messages.conflict.reloadAction })).toBeVisible();
+  });
+
+  /**
+   * **응답을 받지 못한 요청만이 「갔는지 모르는」 요청이다.** 400·403·409는 서버가 답한
+   * 것이라 결재가 일어나지 않았음이 확실하다 — 거기까지 이 문장을 붙이면 없는 불안을 만든다.
+   */
+  it('네트워크 갈래에만 전달 여부 안내가 붙는다', async () => {
+    const { user } = await renderDecision(decisionRoutes([offlineApproveRoute()]));
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    expect(await screen.findByText(messages.httpError.offline)).toBeVisible();
+    expect(screen.getByText(t.decision.deliveryUnknown)).toBeVisible();
+  });
+
+  it('충돌에는 전달 여부 안내가 붙지 않는다', async () => {
+    await sendAndFail(failing(409, { conflictCause: 'user', message: '' }));
+
+    await screen.findByText(messages.conflict.user);
+    expect(screen.queryByText(t.decision.deliveryUnknown)).toBeNull();
+  });
+
+  /**
+   * **409 뒤의 길이 실제로 열린다.** 「최신 불러오기」가 상세를 다시 불러 **새 토큰**을
+   * 확보하지 않으면 다음 시도가 또 409다 — 같은 값이 두 번 실리는지로 판정한다.
+   */
+  it('최신 불러오기가 상세를 다시 불러 다음 요청의 토큰이 달라진다', async () => {
+    let served = 0;
+    const rotatingDetail: StubRoute = {
+      match: (request) => isDetailPath(new URL(request.url).pathname),
+      respond: () => {
+        served += 1;
+
+        return jsonResponse(contradictoryMyTurnDetail, {
+          headers: { ETag: `"token-${String(served)}"` },
+        });
+      },
+    };
+
+    const { requests, user } = await renderDecision(
+      decisionRoutes([
+        rotatingDetail,
+        {
+          match: (request) => isApprovePath(new URL(request.url).pathname),
+          respond: () =>
+            approveRequests(requests).length === 1
+              ? jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })
+              : jsonResponse(decidedDetail, { headers: { ETag: DECIDED_ETAG } }),
+        },
+      ]),
+    );
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    const reload = await screen.findByRole('button', { name: messages.conflict.reloadAction });
+    const beforeDetail = detailRequests(requests).length;
+
+    await user.click(reload);
+
+    await waitFor(() => {
+      expect(detailRequests(requests).length).toBeGreaterThan(beforeDetail);
+    });
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(2);
+    });
+
+    const [first, second] = approveRequests(requests);
+
+    expect(first?.headers.get('If-Match')).toBe('"token-1"');
+    expect(second?.headers.get('If-Match')).not.toBe(first?.headers.get('If-Match'));
+  });
+});
+
+describe('결재 — 실패 배너가 매인 대상', () => {
+  const failOnce = (): StubRoute[] =>
+    decisionRoutes([failingApproveRoute(409, { conflictCause: 'user', message: '' })]);
+
+  const sendFailingApprove = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+    await screen.findByText(messages.conflict.user);
+  };
+
+  /** **안 지움** — 대상이 바뀌면 앞 요청의 판정이 남아 있어서는 안 된다. */
+  it('다른 요청으로 옮기면 사라진다', async () => {
+    const { user } = await renderDecision(failOnce());
+
+    await sendFailingApprove(user);
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(messages.conflict.user)).toBeNull();
+    });
+  });
+
+  /**
+   * **너무 지움** — 정리 의존성에 초안을 넣으면 의견을 한 글자 칠 때마다 사유가 사라진다.
+   * 사용자는 그 사유를 **보면서** 고쳐야 한다.
+   */
+  it('의견을 고쳐도 남는다', async () => {
+    const { user } = await renderDecision(failOnce());
+
+    await sendFailingApprove(user);
+    await user.type(commentBox(), '가');
+
+    expect(screen.getByText(messages.conflict.user)).toBeVisible();
+  });
+
+  /** **늘 지움** — 의존성 배열을 없애거나 `reset` 참조를 넣으면 배너가 아예 보이지 않는다. */
+  it('다시 조회로 화면이 다시 그려져도 남는다', async () => {
+    const { requests, user } = await renderDecision(failOnce());
+
+    await sendFailingApprove(user);
+
+    const before = listRequests(requests).length;
+
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await waitFor(() => {
+      expect(listRequests(requests).length).toBeGreaterThan(before);
+    });
+
+    expect(screen.getByText(messages.conflict.user)).toBeVisible();
+  });
+});
+
+describe('결재 — 전송 중', () => {
+  /**
+   * **연타해도 요청은 1회다.** 공통 쓰기 훅이 호출마다 새 멱등 키를 만들어(`omf-mes#55`)
+   * 두 번 나가면 서버에는 **다른 요청 둘**로 보인다 — 화면의 잠금이 그 자리를 막는 첫째 겹이다.
+   */
+  it('연타해도 요청이 1회이고 컨트롤이 잠긴다', async () => {
+    const { requests, release, user } = await renderDecision(
+      decisionRoutes(),
+      '?rq=9001',
+      '',
+      holdApprove,
+    );
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+
+    /* 첫째 겹 — 눈에 보이는 컨트롤이 닫혔다. */
+    expect(commentBox()).toBeDisabled();
+    expect(approveButton()).toBeDisabled();
+    expect(rejectButton()).toBeDisabled();
+    expect(confirmButton(t.decision.approve)).toBeDisabled();
+
+    await user.click(confirmButton(t.decision.approve));
+
+    expect(approveRequests(requests)).toHaveLength(1);
+
+    release();
+    await screen.findByText(t.toast.approved);
+  });
+
+  /**
+   * **둘째 겹** — 탭·목록 행·조건 칩·쪽은 잠금을 받지 않는다. 그 길로 대상이 바뀌면
+   * 나가는 중인 결재의 결과가 **다른 요청의 맥락에** 나타난다.
+   */
+  it('탭·목록 행·쪽으로도 대상이 바뀌지 않는다', async () => {
+    const { requests, release, user } = await renderDecision(
+      [listRoute(requestFixtures, { total: 120 }), countRoute(), detailRoute(), approveRoute()],
+      '?rq=9001',
+      '',
+      holdApprove,
+    );
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(tabFor(t.tabs.requested));
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-002') }));
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    expect(currentLocation()).toContain('rq=9001');
+    expect(currentLocation()).not.toContain('tab=requested');
+    expect(currentLocation()).not.toContain('page=2');
+
+    release();
+    await screen.findByText(t.toast.approved);
+  });
+
+  /**
+   * **바깥에서 주소가 바뀌는 길** — 뒤로가기·앞으로가기·주소 직접 편집은 잠금 문을 지나지
+   * 않는다. 그때 창·배너 정리가 깨어나는데, 그 정리가 **나가는 중인 요청까지 끊으면**
+   * 무효화·성공·잠금 해제가 통째로 사라진다. 서버에는 이미 갔는데 화면만 없던 일로 친다.
+   */
+  it('전송 중 주소로 대상이 바뀌어도 무효화와 성공이 살아 있다', async () => {
+    const { requests, release, user } = await renderDecision(
+      decisionRoutes(),
+      '?rq=9001',
+      'rq=9002',
+      holdApprove,
+    );
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rq=9002');
+    });
+
+    /* ① 창이 닫혔다 — 열린 채로 두면 다음 요청을 결재하는 창이 된다. */
+    expect(screen.queryByRole('dialog')).toBeNull();
+    /* ② 공동 잠금이 살아 있다 — 요청은 아직 날아가는 중이다. */
+    expect(approveButton()).toBeDisabled();
+
+    const beforeList = listRequests(requests).length;
+
+    release();
+
+    /* ③ 성공이 사라지지 않는다. */
+    expect(await screen.findByText(t.toast.approved)).toBeVisible();
+    /* ④ 무효화가 살아 있다 — 없으면 다음 결재가 낡은 토큰으로 나간다. */
+    await waitFor(() => {
+      expect(listRequests(requests).length).toBeGreaterThan(beforeList);
+    });
+    /* ⑤ 남의 결과를 새 대상에 찍지 않는다. */
+    expect(screen.queryByText('합성 결재 직후에 남은 의견')).toBeNull();
   });
 });
