@@ -278,3 +278,39 @@ describe('ReturnForm — 반품 정보 구획', () => {
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
   });
 });
+
+/**
+ * **보조 문구와 오류가 함께 있으면 둘 다 접근 이름에 잇는다**(R3-3).
+ *
+ * **오늘 도달 가능한 상태다** — 공급사 칸은 거래처 목록 잘림 안내(`note`)와 서버가 준 도착지
+ * 오류(`error`)를 **함께** 받을 수 있다. 하나만 이으면 나머지가 화면에는 보이는데 **이름에서
+ * 사라져**, 스크린리더 사용자에게는 잘림 안내가 통째로 없는 것과 같다.
+ */
+describe('ReturnForm — 보조 문구와 오류가 함께 있을 때', () => {
+  const supplierBox = (): HTMLElement =>
+    screen.getByRole('combobox', { name: t.fields.supplier });
+
+  it('둘 다 접근 이름에 이어진다', () => {
+    renderForm({
+      supplierNote: t.reasons.partnersTruncated,
+      fieldErrors: { destinationId: '합성 공급사 오류' },
+    });
+
+    /* 짝 방향 — 둘 다 화면에도 실제로 있다(이름에만 있고 글자가 없으면 안 된다). */
+    expect(screen.getByText(t.reasons.partnersTruncated)).toBeInTheDocument();
+    expect(screen.getByText('합성 공급사 오류')).toBeInTheDocument();
+
+    expect(supplierBox()).toHaveAccessibleDescription(
+      expect.stringContaining(t.reasons.partnersTruncated),
+    );
+    expect(supplierBox()).toHaveAccessibleDescription(
+      expect.stringContaining('합성 공급사 오류'),
+    );
+  });
+
+  it('하나만 있으면 그것만 이어진다', () => {
+    renderForm({ supplierNote: t.reasons.partnersTruncated });
+
+    expect(supplierBox()).toHaveAccessibleDescription(t.reasons.partnersTruncated);
+  });
+});

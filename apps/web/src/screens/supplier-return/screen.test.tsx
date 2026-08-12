@@ -3114,6 +3114,19 @@ describe('SupplierReturnScreen — 대상이 바뀔 때 두 초안', () => {
   });
 
   /*
+   * **R3-2** — 정정 4가 만든 **새 상태**를 겨눈다: 전표를 옮긴 직후에는 **줄 초안만 비고
+   * 반품 정보는 남는다.** 「버릴 것이 있는가」가 줄 초안만 본다면 그 상태에서 「입력 지우기」가
+   * 잠기고 **「지울 입력이 없습니다」라는 사실이 아닌 문장**이 서며, 남은 초안을 버릴 수단이
+   * 화면에서 사라진다.
+   */
+  it('줄만 빈 상태에서도 입력 지우기가 열려 있다', async () => {
+    await moveToOtherReceipt();
+
+    expect(discardButton()).not.toBeDisabled();
+    expect(discardButton()).not.toHaveAccessibleDescription(t.actionReasons.nothingToDiscard);
+  });
+
+  /*
    * **U33** — 결과 구획은 **그 전표에 매인 사실**이다. 남으면 전표 A의 「반품 전표를
    * 만들었습니다」가 전표 B의 라인 표 아래에 그대로 선다(실패 배너와 같은 문법).
    */
