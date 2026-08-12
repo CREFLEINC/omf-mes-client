@@ -84,6 +84,22 @@ export const firstLineOf = (reason: string): string =>
     ?.trim() ?? '';
 
 /**
+ * 사람이 읽는 이름 — **이 슬라이스의 이름 자리가 전부 이 판정 하나를 지난다.**
+ *
+ * 상신자·승인자·대상 표시명 셋 다 계약이 필수로 두었으나 **빈 문자열도 공백만인 값도 스키마를
+ * 통과한다.** 그때 화면은 번호를 대신 내지 않고 그 사실을 적는다(`omf-mes#44`).
+ *
+ * **판정을 한 자리에 두는 이유**: 자리마다 따로 적으면 한쪽은 `=== ''`이고 다른 쪽은 `.trim()`이
+ * 되어, 공백만인 이름이 온 **같은 요청이 목록에서는 빈 칸, 상세에서는 안내**로 보인다.
+ * 어느 쪽이 옳으냐보다 **한 화면 안에서 갈리지 않는 것**이 먼저다.
+ *
+ * **이름 안의 공백은 건드리지 않는다.** 판정에만 `trim`을 쓰고 값은 실려 온 그대로 낸다 —
+ * 서버가 만든 표기를 화면이 고쳐 쓸 근거가 없다.
+ */
+export const readableName = (value: string, whenMissing: string): string =>
+  value.trim() === '' ? whenMissing : value;
+
+/**
  * 사유 **전문**을 줄 단위로 나눈다. 상세 구획이 쓰는 자리다 — 목록은 첫 줄만 낸다.
  *
  * **줄바꿈이 뜻을 나른다.** 계약이 이 리소스의 업무 값을 사유 **하나**로 두어(수량·금액
@@ -141,8 +157,7 @@ export const toRequestRow = (request: ApprovalRequest): RequestRow => {
     approvalRequestId: request.approvalRequestId,
     approvalRequestNo: request.approvalRequestNo,
     approvalTypeCode: request.approvalTypeCode,
-    requesterName:
-      request.requestedByName === '' ? t.values.unknownRequester : request.requestedByName,
+    requesterName: readableName(request.requestedByName, t.values.unknownRequester),
     requestedAtText: formatDateTime(request.requestedAt),
     statusCode: request.statusCode,
     reasonFirstLine: reasonFirstLine === '' ? t.values.emptyReason : reasonFirstLine,
@@ -174,8 +189,7 @@ export interface RequestDetailView {
 export const toRequestDetailView = (request: ApprovalRequest): RequestDetailView => ({
   approvalRequestNo: request.approvalRequestNo,
   approvalTypeCode: request.approvalTypeCode,
-  requesterName:
-    request.requestedByName.trim() === '' ? t.values.unknownRequester : request.requestedByName,
+  requesterName: readableName(request.requestedByName, t.values.unknownRequester),
   requestedAtText: formatDateTime(request.requestedAt),
   statusCode: request.statusCode,
   reasonLines: toReasonLines(request.reason),

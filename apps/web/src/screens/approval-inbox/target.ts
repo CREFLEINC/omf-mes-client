@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import { screenPathOf, type ScreenRouteTable } from './screen-routes';
-import type { ApprovalTarget } from './types';
+import { readableName, type ApprovalTarget } from './types';
 
 /**
  * 대상 「열기」의 판정.
@@ -83,6 +83,8 @@ export const describeOpenBlock = (block: TargetOpenBlock): string => {
  *
  * 비어 오면 사실을 적는다. **`targetId`도 `targetTypeCode`도 대신 내지 않는다**(`omf-mes#44`) —
  * 번호는 사용자에게 아무 뜻이 없고, 유형 코드로 이름을 지어내면 그것이 곧 금지된 매핑표다.
+ *
+ * 「비어 있다」의 판정은 이 슬라이스의 이름 자리가 함께 쓰는 것 하나다(`readableName`).
  */
 export const describeTargetName = (target: ApprovalTarget): string =>
-  target.displayName.trim() === '' ? t.values.unknownTarget : target.displayName;
+  readableName(target.displayName, t.values.unknownTarget);

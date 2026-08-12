@@ -5,6 +5,7 @@ import type { ApprovalRequest } from './types';
 import {
   firstLineOf,
   formatDateTime,
+  readableName,
   toReasonLines,
   toRequestDetailView,
   toRequestRow,
@@ -132,6 +133,16 @@ describe('toRequestRow', () => {
     expect(row.requesterName).not.toContain('9301');
   });
 
+  it('공백만인 상신자 이름도 비어 있는 것과 같이 다룬다', () => {
+    /*
+     * 계약이 이 필드를 필수로 두었으나 공백만인 값은 스키마를 통과한다. 여기서 걸러 내지
+     * 않으면 목록에는 빈 칸이 서고 **상세에는 안내가 서서 같은 요청이 두 얼굴을 갖는다.**
+     */
+    expect(toRequestRow({ ...baseRequest, requestedByName: '   ' }).requesterName).toBe(
+      t.values.unknownRequester,
+    );
+  });
+
   it('사유가 비면 빈 칸이 아니라 그 사실을 적는다', () => {
     const row = toRequestRow({ ...baseRequest, reason: '  \n ' });
 
@@ -221,5 +232,34 @@ describe('toRequestDetailView', () => {
 
     expect(view.requesterName).toBe(t.values.unknownRequester);
     expect(view.requesterName).not.toContain('9301');
+  });
+
+  it('공백만인 상신자 이름을 목록과 **같은** 판정으로 다룬다', () => {
+    const spaced = { ...baseRequest, requestedByName: '   ' };
+
+    /* 한 화면 안에서 같은 요청이 두 얼굴을 갖지 않는다 — 판정이 한 자리에 있어야 지켜진다. */
+    expect(toRequestDetailView(spaced).requesterName).toBe(toRequestRow(spaced).requesterName);
+    expect(toRequestDetailView(spaced).requesterName).toBe(t.values.unknownRequester);
+  });
+});
+
+describe('readableName', () => {
+  it('실려 온 이름을 그대로 낸다', () => {
+    expect(readableName('합성 상신자1', t.values.unknownRequester)).toBe('합성 상신자1');
+  });
+
+  it('빈 값과 공백만인 값을 같이 다룬다 — 이름 자리의 판정은 한 모양이다', () => {
+    expect(readableName('', t.values.unknownRequester)).toBe(t.values.unknownRequester);
+    expect(readableName('   ', t.values.unknownRequester)).toBe(t.values.unknownRequester);
+    expect(readableName('\t\n', t.values.unknownRequester)).toBe(t.values.unknownRequester);
+  });
+
+  it('이름 안의 공백은 건드리지 않는다', () => {
+    expect(readableName('  합성 상신자1  ', t.values.unknownRequester)).toBe('  합성 상신자1  ');
+  });
+
+  it('자리마다 다른 대체 문구를 받는다 — 무엇이 없는지가 자리마다 다르다', () => {
+    expect(readableName('', t.values.unknownApprover)).toBe(t.values.unknownApprover);
+    expect(readableName('', t.values.unknownTarget)).toBe(t.values.unknownTarget);
   });
 });

@@ -1,7 +1,12 @@
 import type { StepStatus } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { formatDateTime, type ApprovalRequestDetail, type ApprovalStep } from './types';
+import {
+  formatDateTime,
+  readableName,
+  type ApprovalRequestDetail,
+  type ApprovalStep,
+} from './types';
 
 /**
  * 결재 진행 — **단계 배열을 그릴 값으로 옮기는 유일한 자리.**
@@ -127,7 +132,7 @@ export const toStepProgressViews = (
   steps.map((step) => ({
     stepNo: step.stepNo,
     status: statusOf(step, rejectionCodes),
-    approverLabel: step.approverName.trim() === '' ? t.values.unknownApprover : step.approverName,
+    approverLabel: readableName(step.approverName, t.values.unknownApprover),
     decisionCode: filled(step.decisionCode),
     decisionAtText: (() => {
       const decisionAt = filled(step.decisionAt);
