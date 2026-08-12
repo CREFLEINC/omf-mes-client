@@ -327,33 +327,24 @@ export const ApprovalInboxScreen = () => {
   const [writeTargetKey, setWriteTargetKey] = useState<string | null>(null);
 
   /**
-   * **지금 대상**을 참조로 들고 있는다.
-   *
-   * 쓰기의 되먹임은 그 요청을 **보낸 렌더의 값**을 들고 도착한다. 그것이 「지금」의 것인지
-   * 알려면 도착 시점의 대상이 필요한데, 그 값은 렌더에 갇혀 있어 참조로만 꺼낼 수 있다.
-   * **매임의 축은 그대로 `decisionTargetKey` 하나**이고 참조는 그 축을 시간 너머로 옮길 뿐이다.
-   */
-  const decisionTargetKeyRef = useRef(decisionTargetKey);
-  decisionTargetKeyRef.current = decisionTargetKey;
-
-  /** 보낸 대상과 지금 대상이 같은가. 도착한 되먹임 중 **대상에 매인 것**만 이 문을 지난다. */
-  const isSameTarget = (sentTargetKey: string | null): boolean =>
-    decisionTargetKeyRef.current === sentTargetKey;
-
-  /**
    * 결재가 끝난 뒤 — **선택을 유지하고 상세를 응답으로 갈아 끼운다**(수명 표 13행).
-   *
-   * **알림은 대상 가드 밖이다.** 결재는 실제로 일어났고, 보내는 사이에 다른 요청으로 옮겨
-   * 갔다고 그 사실까지 감추지 않는다. 안쪽 갱신만 대상에 맨다 — **남의 상세에 이 응답을
-   * 찍으면** 그 요청이 결재된 것처럼 보인다.
    *
    * **응답이 정본이다.** 무효화가 부른 재조회가 도착하기 전까지의 빈 구간을 이 값이 메운다 —
    * 방금 누른 결재가 결재 진행에 곧바로 반영되지 않으면 사용자는 눌리지 않은 줄 안다.
+   *
+   * **「지금 대상인가」를 여기서 다시 묻지 않는다.** 앞선 화면(`approval-route`)은 도착한
+   * 응답을 **지금 보고 있는 폼의 초안**에 찍었기 때문에 대상 가드가 필요했다. 여기서는
+   * 응답이 앉는 자리가 **보낸 요청의 캐시 키**(`sentRequestId`)라, 사용자가 그사이 어디로
+   * 갔든 그 값은 언제나 제 자리에 앉는다 — 가드를 두면 **한 번도 참이 되지 않는 가지**가 된다.
+   * 대상이 갈릴 때 가려야 하는 것은 *보이는 것*(배너·인라인 오류)이고, 그 몫은
+   * `isWriteResultMine`이 갖는다.
+   *
+   * 알림도 대상을 가리지 않는다 — 결재는 실제로 일어났고, 보내는 사이에 다른 요청으로 옮겨
+   * 갔다고 그 사실까지 감추지 않는다.
    */
   const finishDecision = (
     kind: DecisionKind,
     saved: ApprovalRequestDetail,
-    sentTargetKey: string | null,
     sentRequestId: number,
   ): void => {
     toast.show({
@@ -361,9 +352,6 @@ export const ApprovalInboxScreen = () => {
       description: kind === 'approve' ? t.toast.approved : t.toast.rejected,
     });
     setDialogKind(null);
-
-    if (!isSameTarget(sentTargetKey)) return;
-
     setComment('');
     setLocalCommentError(null);
     queryClient.setQueryData(inboxKeys.detail(sentRequestId), saved);
@@ -389,7 +377,7 @@ export const ApprovalInboxScreen = () => {
     invalidateKeys: [inboxKeys.all],
     knownFields: DECISION_KNOWN_FIELDS,
     onSuccess: (saved) => {
-      finishDecision('approve', saved, decisionTargetKey, selectedRequestId ?? 0);
+      finishDecision('approve', saved, selectedRequestId ?? 0);
     },
   });
 
@@ -410,7 +398,7 @@ export const ApprovalInboxScreen = () => {
     invalidateKeys: [inboxKeys.all],
     knownFields: DECISION_KNOWN_FIELDS,
     onSuccess: (saved) => {
-      finishDecision('reject', saved, decisionTargetKey, selectedRequestId ?? 0);
+      finishDecision('reject', saved, selectedRequestId ?? 0);
     },
   });
 
