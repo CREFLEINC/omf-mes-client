@@ -1099,15 +1099,28 @@ describe('고름 ≠ 보임 — 주소가 가리키는 것을 읽을 수 있는�
   });
 
   it('없는 요청을 정리해도 히스토리가 늘지 않는다', async () => {
-    const { user } = renderScreen([listRoute(), countRoute(), failingDetailRoute(404)], '?rq=9909');
+    const { user } = renderScreen(
+      [listRoute(), countRoute(), failingDetailRoute(404)],
+      '?q=OTHER',
+      'rq=9909&q=SYNTH',
+    );
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
 
     await screen.findByText(t.empty.notFoundTitle);
     await user.click(screen.getByRole('button', { name: '뒤로' }));
 
-    /* 정리가 히스토리를 늘렸다면 뒤로가기가 같은 자리(rq=9909)로 되돌아간다. */
+    /*
+     * **앞자리를 서로 다른 조건으로 둔다.** 정리가 히스토리를 늘렸다면 뒤로가기가 없는
+     * 요청을 가리키던 자리로 되돌아가고, 거기서 다시 404가 나 같은 정리가 되풀이되므로
+     * 결코 `q=OTHER`로 돌아오지 못한다. 두 자리가 같은 조건이면 밀려난 칸이 보이지 않아
+     * 이 시험이 아무것도 재지 못한다.
+     */
     await waitFor(() => {
-      expect(currentLocation()).not.toContain('rq=9909');
+      expect(currentLocation()).toContain('q=OTHER');
     });
+    expect(currentLocation()).not.toContain('rq=');
   });
 
   it('조건을 바꾸면 없음 안내를 거둔다 — 안내가 가리킬 것이 없어진다', async () => {
@@ -1120,6 +1133,26 @@ describe('고름 ≠ 보임 — 주소가 가리키는 것을 읽을 수 있는�
       expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
     });
     expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+  });
+
+  it('거둔 안내가 같은 조건으로 돌아와도 되살아나지 않는다', async () => {
+    /*
+     * 안내는 「이 조건으로 보고 있던 동안」에 매여 있다. 조작할 때 함께 거두지 않으면
+     * 매인 서명이 남아, 탭을 돌아 원래 자리로 오는 것만으로 있지도 않은 실패가 되살아난다.
+     */
+    const { user } = renderScreen([listRoute(), countRoute(), failingDetailRoute(404)], '?rq=9909');
+
+    await screen.findByText(t.empty.notFoundTitle);
+    await user.click(tabFor(t.tabs.requested));
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    await user.click(tabFor(t.tabs.pending));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('tab=');
+    });
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
   });
 
   it('볼 권한이 없으면 다른 안내를 내고 고른 번호를 정리하지 않는다', async () => {
