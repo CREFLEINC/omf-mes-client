@@ -39,10 +39,18 @@ const URL_KEYS = {
  *
  * 이 화면에 들어오는 이유가 「지금 내가 판정할 것」이라, 첫 화면이 끝난 건까지 함께 보이면
  * 사용자가 매번 좁혀야 한다. 기본값이라 **켜져 있을 때는 주소에 적지 않는다.**
+ *
+ * **이 값을 읽는 자리가 셋이다** — 주소 읽기(`readPendingOnly`) · 주소 쓰기(`toSearchParams`) ·
+ * 「초기화」(`screen.tsx`). 셋 다 이 상수를 지나야 기본값이 뒤집히는 날 한 자리만 고쳐져
+ * 「초기화했더니 조회 범위가 딴판」이 되는 일이 없다.
+ *
+ * **다만 주소 키의 뜻 자체가 기본값의 표현이다** — 「기본과 다른 상태만 적는다」라서 지금은
+ * `pd=0`(꺼짐)만 적힌다. 기본값을 뒤집으려면 이 상수와 함께 **키 규약도 다시 정해야 한다**
+ * (그때 `pd=0`이 「켜짐」을 뜻하게 두면 주소를 읽는 사람이 속는다).
  */
 export const PENDING_ONLY_DEFAULT = true;
 
-/** 확인칸을 **끈** 상태만 주소에 적는다. 켜진 것은 기본값이라 적을 것이 없다. */
+/** 기본과 **다른** 상태만 주소에 적는다. 지금 그것은 「꺼짐」이다(위 주석의 단서를 함께 읽는다). */
 const PENDING_ONLY_OFF = '0';
 
 const POSITIVE_INTEGER = /^\d+$/;
@@ -120,7 +128,9 @@ export const readFilters = (params: URLSearchParams): RequestFilters => ({
  * 끈 적 없는데 끝난 건까지 보이게 된다.
  */
 export const readPendingOnly = (params: URLSearchParams): boolean =>
-  params.get(URL_KEYS.pendingOnly) !== PENDING_ONLY_OFF;
+  params.get(URL_KEYS.pendingOnly) === PENDING_ONLY_OFF
+    ? !PENDING_ONLY_DEFAULT
+    : PENDING_ONLY_DEFAULT;
 
 /** 주소가 가리키는 쪽. 이상한 값은 첫 쪽으로 본다 — 주소는 손으로 고쳐지는 자리다. */
 export const readPage = (params: URLSearchParams): number => {
@@ -159,7 +169,8 @@ export const toSearchParams = (
   if (from !== '') next.set(URL_KEYS.from, from);
   if (to !== '') next.set(URL_KEYS.to, to);
   if (keyword !== '') next.set(URL_KEYS.q, keyword);
-  if (!pendingOnly) next.set(URL_KEYS.pendingOnly, PENDING_ONLY_OFF);
+  /* 기본과 다른 상태만 적는다 — 기본값을 아는 자리는 상수 하나뿐이다. */
+  if (pendingOnly !== PENDING_ONLY_DEFAULT) next.set(URL_KEYS.pendingOnly, PENDING_ONLY_OFF);
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
   return next;
@@ -229,7 +240,10 @@ export interface RequestListQuery {
  * **유형 코드를 인자로 받는다.** 상수를 여기서 직접 읽으면 「값이 확정되면 조건이 실린다」는
  * 전환을 잴 수 없다 — 인자로 두면 두 방향을 단위 시험이 고정하고, 화면은 상수를 넘기기만 한다.
  *
- * **상신일을 그대로 싣는다.** 계약이 `format: date`(날짜)라 시각·시간대를 붙이면 400이다.
+ * **상신일을 그대로 싣는다.** 계약이 이 두 파라미터를 `format: date`(날짜)로 두었다 —
+ * 시각·시간대를 붙이면 계약을 벗어난 값이 되는데, **이 오퍼레이션에는 400 갈래가 없어**
+ * (응답은 200과 403뿐이다) 서버가 그런 값에 무엇을 하는지 정해져 있지도 않다. 같은 이유로
+ * 실존하지 않는 날짜도 화면이 보내기 전에 거른다(`dateOf` · 이 파일 머리의 같은 근거).
  */
 export const toRequestListQuery = (
   filters: RequestFilters,

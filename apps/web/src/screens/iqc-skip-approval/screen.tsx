@@ -11,6 +11,7 @@ import {
 } from './code-options';
 import {
   EMPTY_FILTERS,
+  PENDING_ONLY_DEFAULT,
   clearFilter,
   readFilters,
   readPage,
@@ -241,9 +242,13 @@ export const IqcSkipApprovalScreen = () => {
           onRemoveFilter={(key: FilterChipKey) => {
             apply(clearFilter(filters, key), pendingOnly);
           }}
-          /* 수명 표 2행 — 「처음 상태」에는 켜진 확인칸도 든다. */
+          /*
+           * 수명 표 2행 — 「처음 상태」에는 켜진 확인칸도 든다.
+           * **리터럴을 쓰지 않는다**: 기본값이 뒤집히는 날 이 자리만 남으면
+           * 「초기화했더니 조회 범위가 딴판」이 된다.
+           */
           onReset={() => {
-            apply(EMPTY_FILTERS, true);
+            apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT);
           }}
         />
 
