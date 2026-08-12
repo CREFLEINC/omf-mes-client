@@ -83,6 +83,37 @@ export const firstLineOf = (reason: string): string =>
     .find((line) => line.trim() !== '')
     ?.trim() ?? '';
 
+/**
+ * 사람이 읽는 이름 — **이 슬라이스의 이름 자리가 전부 이 판정 하나를 지난다.**
+ *
+ * 상신자·승인자·대상 표시명 셋 다 계약이 필수로 두었으나 **빈 문자열도 공백만인 값도 스키마를
+ * 통과한다.** 그때 화면은 번호를 대신 내지 않고 그 사실을 적는다(`omf-mes#44`).
+ *
+ * **판정을 한 자리에 두는 이유**: 자리마다 따로 적으면 한쪽은 `=== ''`이고 다른 쪽은 `.trim()`이
+ * 되어, 공백만인 이름이 온 **같은 요청이 목록에서는 빈 칸, 상세에서는 안내**로 보인다.
+ * 어느 쪽이 옳으냐보다 **한 화면 안에서 갈리지 않는 것**이 먼저다.
+ *
+ * **이름 안의 공백은 건드리지 않는다.** 판정에만 `trim`을 쓰고 값은 실려 온 그대로 낸다 —
+ * 서버가 만든 표기를 화면이 고쳐 쓸 근거가 없다.
+ */
+export const readableName = (value: string, whenMissing: string): string =>
+  value.trim() === '' ? whenMissing : value;
+
+/**
+ * 사유 **전문**을 줄 단위로 나눈다. 상세 구획이 쓰는 자리다 — 목록은 첫 줄만 낸다.
+ *
+ * **줄바꿈이 뜻을 나른다.** 계약이 이 리소스의 업무 값을 사유 **하나**로 두어(수량·금액
+ * 컬럼이 물리 모델에 없다) 상신자가 여러 줄로 근거를 적는다. 한 줄로 이어 붙이면 목록·문단
+ * 구분이 사라져 무엇이 무엇의 근거인지 읽을 수 없게 된다.
+ *
+ * **가운데 빈 줄과 줄 안의 공백을 건드리지 않는다** — 문단 구분과 들여쓴 목록이 사유의
+ * 일부다. 걷어 내는 것은 CRLF의 캐리지 리턴뿐이며, 그것은 글자가 아니라 줄바꿈의 일부다.
+ *
+ * **자르거나 줄이지 않는다.** 요약은 목록의 일이고 여기는 전문을 보는 자리다.
+ */
+export const toReasonLines = (reason: string): string[] =>
+  reason.trim() === '' ? [t.values.emptyReason] : reason.split(/\r?\n/);
+
 /** 계약의 date-time 문자열에서 표기용 조각을 뽑는다. */
 const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
 
@@ -126,10 +157,40 @@ export const toRequestRow = (request: ApprovalRequest): RequestRow => {
     approvalRequestId: request.approvalRequestId,
     approvalRequestNo: request.approvalRequestNo,
     approvalTypeCode: request.approvalTypeCode,
-    requesterName:
-      request.requestedByName === '' ? t.values.unknownRequester : request.requestedByName,
+    requesterName: readableName(request.requestedByName, t.values.unknownRequester),
     requestedAtText: formatDateTime(request.requestedAt),
     statusCode: request.statusCode,
     reasonFirstLine: reasonFirstLine === '' ? t.values.emptyReason : reasonFirstLine,
   };
 };
+
+/**
+ * 고른 요청의 정보 구획이 **보이는 값 전부**. 여섯이며 목록의 여섯과 **한 자리만 다르다** —
+ * 사유가 첫 줄이 아니라 **전문**이다. 상세를 여는 이유가 곧 그 전문을 읽는 것이다.
+ *
+ * **행 식별자조차 담지 않는다.** 목록의 행은 고르는 대상이라 `approvalRequestId`가 필요했지만
+ * 상세는 이미 골라진 것을 그리는 자리라 그 번호를 쓸 데가 없다 — 담지 않으면 샐 경로도 없다.
+ *
+ * **대상·결재 진행을 담지 않는다.** 같은 응답에서 오지만 각자 자기 구획이 있고, 여기에
+ * 옮겨 담는 순간 이 구획이 그것을 그릴 수 있게 된다.
+ */
+export interface RequestDetailView {
+  approvalRequestNo: string;
+  /** 코드 문자열 그대로. 값 목록이 확정되면 사람이 읽는 이름이 이 자리에 온다(`omf-mes#64`). */
+  approvalTypeCode: string;
+  requesterName: string;
+  requestedAtText: string;
+  statusCode: string;
+  /** 사유 **전문**. 줄마다 한 칸이며 목록의 첫 줄 규칙이 여기에는 걸리지 않는다. */
+  reasonLines: string[];
+}
+
+/** 상세 응답의 요청 몸통을 정보 구획이 그릴 값으로 옮긴다. */
+export const toRequestDetailView = (request: ApprovalRequest): RequestDetailView => ({
+  approvalRequestNo: request.approvalRequestNo,
+  approvalTypeCode: request.approvalTypeCode,
+  requesterName: readableName(request.requestedByName, t.values.unknownRequester),
+  requestedAtText: formatDateTime(request.requestedAt),
+  statusCode: request.statusCode,
+  reasonLines: toReasonLines(request.reason),
+});

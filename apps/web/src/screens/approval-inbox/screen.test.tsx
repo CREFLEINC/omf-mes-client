@@ -1,3 +1,4 @@
+import type { ApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -12,8 +13,19 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { pickRange } from '../../test/date-picker';
-import { SECOND_LINE_OF_MULTILINE_REASON, requestFixtures } from './fixtures';
+import {
+  SECOND_LINE_OF_MULTILINE_REASON,
+  contradictoryMyTurnDetail,
+  contradictoryNotMyTurnDetail,
+  finishedDetail,
+  noScreenIdTargetDetail,
+  outOfListDetail,
+  requestFixtures,
+  stalledDetail,
+} from './fixtures';
+import { requestDetailPath } from './queries';
 import { ApprovalInboxScreen } from './screen';
+import type { ApprovalRequestDetail } from './types';
 
 const t = messages.approvalInbox;
 
@@ -47,16 +59,18 @@ const createRecordingFetch = (
 };
 
 /**
- * 대기 건수 조회인가. **목록과 같은 경로를 쓰지만 `size`를 싣는 것이 다르다** —
- * 목록은 서버 기본값을 쓰므로 `size`를 싣지 않는다(`filters.ts`).
+ * 대기 건수 조회인가. **목록과 같은 경로를 쓰지만 조건이 다르다** — 건수는 `myTurnOnly`로
+ * 걸러지고 목록의 어느 탭도 그 축을 싣지 않는다(`tabs.ts`).
  *
- * 두 조회를 갈라 세어야 「목록을 1회 불렀다」와 「건수를 1회 불렀다」가 서로를 가리지 않는다.
+ * **`size` 유무로 가르지 않는다.** 목록에 쪽 크기 선택이 붙는 날 두 조회가 조용히 뒤섞인다 —
+ * 판별식이 「제품이 지금 `size`를 안 싣는다」는 **바뀔 수 있는 구현**에 매이면 안 된다.
+ * `myTurnOnly`가 곧 「대기 건수」의 정의다(계약이 그 파라미터를 그렇게 적었다).
  */
 const isCountUrl = (url: URL): boolean =>
-  url.pathname === REQUESTS_PATH && url.searchParams.has('size');
+  url.pathname === REQUESTS_PATH && url.searchParams.has('myTurnOnly');
 
 const isListUrl = (url: URL): boolean =>
-  url.pathname === REQUESTS_PATH && !url.searchParams.has('size');
+  url.pathname === REQUESTS_PATH && !url.searchParams.has('myTurnOnly');
 
 /** 상세 경로로 **나간 요청 전부**. 번호 자리가 무엇이든 센다 — 잘못된 경로도 「부르지 않았다」를 깬다. */
 const isDetailPath = (pathname: string): boolean =>
@@ -106,14 +120,31 @@ const countRoute = (total = 0): StubRoute => ({
 
 /**
  * 상세. **어느 번호로 불러도 응답한다** — 「부르지 않았다」를 증명하려면 부를 수 있는
- * 스텁이 있어야 한다.
+ * 스텁이 있어야 한다. 방법도 가리지 않는다: 쓰기가 잘못 나가면 스텁 누락이 아니라
+ * 「쓰기가 나갔다」로 잡혀야 한다.
  */
-const detailRoute = (): StubRoute => ({
+/**
+ * 상세 200이 실어 오는 잠금 토큰.
+ *
+ * **이 리소스에서 `ETag`를 주는 응답은 상세 하나뿐이다**(계약 실측) — 목록·건수에는 없다.
+ * 그래서 목록·건수 스텁에는 이 헤더를 붙이지 않는다.
+ */
+const DETAIL_ETAG = '"9"';
+
+const detailRoute = (detail: ApprovalRequestDetail = contradictoryMyTurnDetail): StubRoute => ({
   match: (request) => isDetailPath(new URL(request.url).pathname),
-  respond: () => jsonResponse({ request: requestFixtures[0], steps: [] }),
+  respond: () => jsonResponse(detail, { headers: { ETag: DETAIL_ETAG } }),
+});
+
+const failingDetailRoute = (status: number): StubRoute => ({
+  match: (request) => isDetailPath(new URL(request.url).pathname),
+  respond: () => jsonResponse({ message: '' }, { status }),
 });
 
 const defaultRoutes = (total = 0): StubRoute[] => [listRoute(), countRoute(total), detailRoute()];
+
+/** 고른 요청 구획. 어떤 갈래에서도 **이 구획 자체는 늘 선다**. */
+const detailPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.detail });
 
 /** 주소가 실제로 어떻게 바뀌는지 본다 — 수명 표를 판정할 유일한 근거다. */
 const LocationProbe = () => {
@@ -161,10 +192,14 @@ const renderScreen = (
   routes: StubRoute[],
   search = '',
   navigateTo = '',
-): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
+): {
+  requests: RecordedRequest[];
+  user: ReturnType<typeof userEvent.setup>;
+  apiClient: ApiClient;
+} => {
   const { fetch, requests } = createRecordingFetch(routes);
 
-  renderWithProviders(
+  const { apiClient } = renderWithProviders(
     <>
       <ApprovalInboxScreen />
       <LocationProbe />
@@ -174,7 +209,7 @@ const renderScreen = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, user: userEvent.setup() };
+  return { requests, user: userEvent.setup(), apiClient };
 };
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
@@ -183,8 +218,16 @@ const requestTable = (): HTMLElement => screen.getByRole('table');
 
 const tabFor = (label: string): HTMLElement => screen.getByRole('tab', { name: new RegExp(label) });
 
+/**
+ * 목록이 도착할 때까지 기다린다.
+ *
+ * **표 안에서 찾는다** — 같은 요청번호가 아래 구획에도 서므로, 화면 전체에서 찾으면
+ * 「목록이 왔다」와 「상세가 왔다」가 서로를 가린다.
+ */
 const waitForList = async (): Promise<void> => {
-  await screen.findByText('SYNTH-REQ-001');
+  await waitFor(() => {
+    expect(within(requestTable()).getByText('SYNTH-REQ-001')).toBeInTheDocument();
+  });
 };
 
 describe('첫 진입', () => {
@@ -523,10 +566,24 @@ describe('조회 조건', () => {
 
     const query = lastListQuery(requests);
 
+    /* 양성 앵커 — 조회가 실제로 나갔다. 이것이 없으면 아래 넷이 공허하게 통과할 수 있다. */
+    expect(query?.get('assignedToMe')).toBe('true');
+
     expect(query?.get('page')).toBeNull();
     expect(query?.get('requestedAtFrom')).toBeNull();
     expect(query?.get('requestedAtTo')).toBeNull();
     expect(query?.get('q')).toBeNull();
+  });
+
+  it('식별자가 아닌 고른 요청 번호로는 상세를 부르지 않는다', async () => {
+    const { requests } = renderScreen(defaultRoutes(), '?rq=xyz');
+
+    await waitForList();
+
+    /* 짝 방향 — 목록은 실제로 나갔다. */
+    expect(listRequests(requests)).toHaveLength(1);
+    expect(detailRequests(requests)).toHaveLength(0);
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
   });
 });
 
@@ -633,16 +690,110 @@ describe('요청 고르기', () => {
     expect(listRequests(requests)).toHaveLength(before);
   });
 
-  it('이 회차에는 상세를 부르지 않는다 — 골라도 마찬가지다', async () => {
+  it('고르기 전에는 상세를 부르지 않는다 — 경로를 가리지 않고 센다', async () => {
+    const { requests } = renderScreen(defaultRoutes(3));
+
+    await waitForList();
+    await waitFor(() => {
+      expect(countRequests(requests)).toHaveLength(1);
+    });
+
+    expect(detailRequests(requests)).toHaveLength(0);
+  });
+
+  it('고르면 그 요청의 상세를 한 번 부른다', async () => {
     const { requests, user } = renderScreen(defaultRoutes());
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
 
     await waitFor(() => {
-      expect(currentLocation()).toContain('rq=9001');
+      expect(detailRequests(requests)).toHaveLength(1);
     });
-    expect(detailRequests(requests)).toHaveLength(0);
+    expect(detailRequests(requests)[0]?.url.pathname).toBe('/app/approval-requests/9001');
+    /*
+     * **토큰을 꺼낼 경로가 곧 이 조회가 지나간 경로다.** 둘이 갈리면 결재가 토큰을 찾지
+     * 못해 요청이 아예 나가지 않는다(「눌러도 아무 일이 없다」).
+     */
+    expect(requestDetailPath(9001)).toBe(detailRequests(requests)[0]?.url.pathname);
+  });
+
+  it('상세 200이 상세 경로에 잠금 토큰을 남긴다 — 결재가 토큰을 얻는 유일한 자리다', async () => {
+    const { requests, apiClient } = renderScreen(defaultRoutes(), '?rq=9001');
+
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
+
+    expect(apiClient.etags.ifMatch(requestDetailPath(9001))).toBe(DETAIL_ETAG);
+  });
+
+  it('목록·건수 응답은 토큰을 남기지 않는다 — 목록 행에서 바로 결재할 수 없는 이유다', async () => {
+    const { requests, apiClient } = renderScreen(defaultRoutes(3));
+
+    await waitForList();
+    await waitFor(() => {
+      expect(countRequests(requests)).toHaveLength(1);
+    });
+
+    expect(apiClient.etags.ifMatch(REQUESTS_PATH)).toBeUndefined();
+  });
+
+  it('고르기를 풀면 상세를 다시 부르지 않는다', async () => {
+    const { requests, user } = renderScreen(defaultRoutes(), '?rq=9001');
+
+    await waitForList();
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-001/ }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('rq=');
+    });
+    expect(detailRequests(requests)).toHaveLength(1);
+  });
+
+  /*
+   * 위 시험들은 **고르지 않은 상태 → A** 이거나 **A → 같은 A(해제)** 뿐이다.
+   * **A가 걸린 채 B를 누르는 길**은 사용자가 가장 자주 밟는 길인데 어느 시험도 지나지 않아,
+   * 앞 선택이 그대로 남는 구현(사용자에게는 「눌러도 아무 일이 없다」)이 통과할 수 있었다.
+   */
+  it('다른 요청을 누르면 선택이 그쪽으로 옮겨간다 — 앞 선택이 남지 않는다', async () => {
+    const { requests, user } = renderScreen(defaultRoutes(), '?rq=9001');
+
+    await waitForList();
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-002/ }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rq=9002');
+    });
+    expect(currentLocation()).not.toContain('rq=9001');
+
+    /* 옮겨간 쪽의 상세를 실제로 부른다 — 주소만 바뀌고 읽는 것이 그대로면 소용이 없다. */
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(2);
+    });
+    expect(detailRequests(requests)[1]?.url.pathname).toBe(requestDetailPath(9002));
+  });
+
+  it('선택을 옮겨도 보이는 행과 조건은 그대로다', async () => {
+    const { user } = renderScreen(defaultRoutes(), '?rq=9001&page=2&q=SYNTH&tab=requested');
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-003/ }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rq=9003');
+    });
+    expect(currentLocation()).toContain('page=2');
+    expect(currentLocation()).toContain('q=SYNTH');
+    expect(currentLocation()).toContain('tab=requested');
   });
 });
 
@@ -726,6 +877,35 @@ describe('다시 조회', () => {
     expect(countRequests(requests)).toHaveLength(2);
   });
 
+  it('고른 요청이 있으면 상세도 함께 부른다 — 갱신된 목록 옆에 낡은 상세가 서면 안 된다', async () => {
+    const { requests, user } = renderScreen(defaultRoutes(3), '?rq=9001');
+
+    await waitForList();
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(2);
+    });
+    expect(listRequests(requests)).toHaveLength(2);
+    expect(countRequests(requests)).toHaveLength(2);
+  });
+
+  it('고르지 않았으면 상세는 부를 대상이 없다', async () => {
+    const { requests, user } = renderScreen(defaultRoutes(3));
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    await waitFor(() => {
+      expect(listRequests(requests)).toHaveLength(2);
+    });
+    expect(detailRequests(requests)).toHaveLength(0);
+  });
+
   it('아무 조건도 비우지 않는다 — 새로고침이 조건 변경으로 둔갑하면 안 된다', async () => {
     const { user } = renderScreen(defaultRoutes(), '?q=SYNTH&page=2&rq=9001');
 
@@ -738,13 +918,16 @@ describe('다시 조회', () => {
 
 describe('이 회차의 경계', () => {
   it('어떤 쓰기 요청도 보내지 않는다', async () => {
-    const { requests, user } = renderScreen(defaultRoutes(3));
+    const { requests, user } = renderScreen(defaultRoutes(3), '?rq=9001');
 
     await waitForList();
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
 
-    await user.click(tabFor(t.tabs.requested));
-    await user.click(screen.getByRole('button', { name: messages.common.search }));
     await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+    await user.click(tabFor(t.tabs.requested));
 
     await waitFor(() => {
       expect(listRequests(requests).length).toBeGreaterThan(1);
@@ -776,5 +959,386 @@ describe('이 회차의 경계', () => {
     await waitFor(() => {
       expect(lastListQuery(requests)?.get('requestedByMe')).toBe('true');
     });
+  });
+});
+
+describe('고른 요청 — 정보·대상·진행', () => {
+  const renderSelected = async (
+    detail: ApprovalRequestDetail = contradictoryMyTurnDetail,
+    search = '?rq=9001',
+  ): Promise<void> => {
+    renderScreen([listRoute(), countRoute(), detailRoute(detail)], search);
+
+    await waitForList();
+    await screen.findByRole('group', { name: t.panes.progress });
+  };
+
+  it('세 구획이 이 차례로 선다 — 사유가 대상보다 위다', async () => {
+    await renderSelected();
+
+    const groups = [...detailPane().querySelectorAll('[role="group"][aria-label]')].map((group) =>
+      group.getAttribute('aria-label'),
+    );
+
+    expect(groups.filter((label) => label !== t.panes.reason)).toEqual([
+      t.panes.request,
+      t.panes.target,
+      t.panes.progress,
+    ]);
+  });
+
+  it('사유 전문이 보이고 목록이 자른 둘째 줄이 여기서는 살아 있다', async () => {
+    await renderSelected();
+
+    const reason = screen.getByRole('group', { name: t.panes.reason });
+
+    expect([...reason.children].map((line) => line.textContent)).toEqual([
+      '합성 사유 첫 줄',
+      SECOND_LINE_OF_MULTILINE_REASON,
+    ]);
+  });
+
+  it('상세·대상·진행 어디에도 내부 번호가 없다', async () => {
+    await renderSelected();
+
+    const text = detailPane().textContent ?? '';
+
+    /* 짝 방향 — 사람이 읽는 값은 실제로 그려진다. */
+    expect(text).toContain('SYNTH-REQ-001');
+    expect(text).toContain('합성 상신자1');
+    expect(text).toContain('합성 승인자1');
+
+    for (const internal of ['9001', '9301', '9401', '9501']) {
+      expect(text).not.toContain(internal);
+    }
+  });
+
+  it('대상 표시명을 그대로 내고 유형 코드로 이름을 지어내지 않는다', async () => {
+    await renderSelected();
+
+    const target = screen.getByRole('group', { name: t.panes.target });
+
+    expect(within(target).getByText('합성 대상 문서 가')).toBeVisible();
+    expect(target.textContent).not.toContain('SAMPLE-TARGET-A');
+    expect(within(target).getByText(t.target.note)).toBeVisible();
+  });
+
+  it('빈 매핑표에서는 열기가 잠기고 그 갈래의 사유가 붙는다', async () => {
+    await renderSelected();
+
+    const open = screen.getByRole('button', { name: t.target.open });
+
+    expect(open).toBeDisabled();
+    expect(open).toHaveAccessibleDescription(t.target.blockedUnmapped);
+  });
+
+  it('열 수 없다고 온 대상은 그 사실로 잠긴다', async () => {
+    await renderSelected(finishedDetail, '?rq=9002');
+
+    expect(screen.getByRole('button', { name: t.target.open })).toHaveAccessibleDescription(
+      t.target.blockedNotOpenable,
+    );
+  });
+
+  it('화면 ID가 오지 않은 대상은 또 다른 사유로 잠긴다', async () => {
+    await renderSelected(noScreenIdTargetDetail);
+
+    expect(screen.getByRole('button', { name: t.target.open })).toHaveAccessibleDescription(
+      t.target.blockedNoScreenId,
+    );
+  });
+
+  it('대상 표시명이 비어 오면 번호를 대신 내지 않는다', async () => {
+    await renderSelected(contradictoryNotMyTurnDetail, '?rq=9003');
+
+    const target = screen.getByRole('group', { name: t.panes.target });
+
+    expect(within(target).getByText(t.values.unknownTarget)).toBeVisible();
+    expect(target.textContent).not.toContain('9403');
+  });
+});
+
+describe('고른 요청 — 순차 판정은 서버 값이다', () => {
+  const renderDetail = async (detail: ApprovalRequestDetail, search: string): Promise<void> => {
+    renderScreen([listRoute(), countRoute(), detailRoute(detail)], search);
+
+    await screen.findByRole('group', { name: t.panes.progress });
+  };
+
+  it('현재 단계가 서버가 준 번호다 — 단계 배열로 다시 세지 않는다', async () => {
+    /* 모순 픽스처: 서버 2 / 3, 배열로 다시 세면 1이다. */
+    await renderDetail(contradictoryMyTurnDetail, '?rq=9001');
+
+    const progress = screen.getByRole('group', { name: t.panes.progress });
+
+    expect(within(progress).getByText(t.progress.position(2, 3))).toBeVisible();
+    expect(within(progress).queryByText(t.progress.position(1, 3))).not.toBeInTheDocument();
+  });
+
+  it('현재 단계가 전체보다 커도 그대로 낸다', async () => {
+    await renderDetail(contradictoryNotMyTurnDetail, '?rq=9003');
+
+    expect(screen.getByText(t.progress.position(2, 1))).toBeVisible();
+  });
+
+  it('끝난 요청은 종료라고 적고 0으로 메우지 않는다', async () => {
+    await renderDetail(finishedDetail, '?rq=9002');
+
+    expect(screen.getByText(t.progress.finished(2))).toBeVisible();
+  });
+
+  it('내 차례가 서버 값이다 — 배열로는 아닌데 서버가 맞다고 한 경우', async () => {
+    await renderDetail(contradictoryMyTurnDetail, '?rq=9001');
+
+    expect(screen.getByText(t.progress.myTurn)).toBeVisible();
+    expect(screen.queryByText(t.progress.notMyTurn)).not.toBeInTheDocument();
+  });
+
+  it('내 차례가 서버 값이다 — 배열로는 맞는데 서버가 아니라고 한 경우', async () => {
+    await renderDetail(contradictoryNotMyTurnDetail, '?rq=9003');
+
+    expect(screen.getByText(t.progress.notMyTurn)).toBeVisible();
+    expect(screen.queryByText(t.progress.myTurn)).not.toBeInTheDocument();
+  });
+
+  it('결재 결과·시각·의견을 응답 값 그대로 낸다', async () => {
+    await renderDetail(contradictoryMyTurnDetail, '?rq=9001');
+
+    const progress = screen.getByRole('group', { name: t.panes.progress });
+
+    expect(within(progress).getByText('SAMPLE-DECISION-APPROVED')).toBeVisible();
+    expect(within(progress).getByText('2026-08-06 15:02')).toBeVisible();
+    expect(within(progress).getByText('합성 결재 의견 하나')).toBeVisible();
+  });
+
+  it('세로로 그리고 결재된 단계의 노드가 번호로 덮인다', async () => {
+    await renderDetail(contradictoryMyTurnDetail, '?rq=9001');
+
+    const progress = screen.getByRole('group', { name: t.panes.progress });
+    const list = progress.querySelector('ol');
+
+    expect(list).toHaveAttribute('data-orientation', 'vertical');
+    expect(progress.querySelector('li[data-status] span[aria-hidden="true"]')?.textContent).toBe(
+      '1',
+    );
+  });
+
+  it('반려 자리표시가 빈 동안에는 어떤 단계도 반려로 그려지지 않는다', async () => {
+    await renderDetail(finishedDetail, '?rq=9002');
+
+    const progress = screen.getByRole('group', { name: t.panes.progress });
+    const items = [...progress.querySelectorAll('li[data-status]')];
+
+    expect(items).toHaveLength(2);
+    expect(items.map((item) => item.getAttribute('data-status'))).toEqual(['complete', 'complete']);
+  });
+
+  it('승인자 이름이 없어 멈춘 요청은 오류가 아니라 안내다', async () => {
+    await renderDetail(stalledDetail, '?rq=9004');
+
+    const progress = screen.getByRole('group', { name: t.panes.progress });
+
+    expect(within(progress).queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
+    expect(within(progress).getByText(t.values.unknownApprover)).toBeVisible();
+    expect(within(progress).getByText(t.progress.waitingCurrent)).toBeVisible();
+    expect(progress.textContent).not.toContain('9501');
+  });
+});
+
+describe('고름 ≠ 보임 — 주소가 가리키는 것을 읽을 수 있는가', () => {
+  it('상세가 오기 전에도 빈 구간이 남지 않는다', () => {
+    renderScreen(defaultRoutes(), '?rq=9001');
+
+    expect(screen.getByRole('status', { name: t.loading.detail })).toBeInTheDocument();
+  });
+
+  it('목록에 없는 요청이어도 읽을 수 있으면 그대로 보인다', async () => {
+    renderScreen([listRoute(), countRoute(), detailRoute(outOfListDetail)], '?rq=9909');
+
+    await waitForList();
+
+    expect(await within(detailPane()).findByText('SYNTH-REQ-909')).toBeVisible();
+    /* 목록이 그 요청을 담지 않았다는 것이 이 시험의 전제다. */
+    expect(within(requestTable()).queryByText('SYNTH-REQ-909')).not.toBeInTheDocument();
+  });
+
+  it('없는 요청이면 안내를 내고 주소에서 그 번호를 정리한다', async () => {
+    const { requests } = renderScreen(
+      [listRoute(), countRoute(), failingDetailRoute(404)],
+      '?rq=9909&q=SYNTH',
+    );
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeVisible();
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('rq=');
+    });
+    /* 조건은 그대로다 — 정리하는 것은 고른 번호 하나뿐이다. */
+    expect(currentLocation()).toContain('q=SYNTH');
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
+    expect(detailRequests(requests)).toHaveLength(1);
+  });
+
+  it('없는 요청을 정리해도 히스토리가 늘지 않는다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), countRoute(), failingDetailRoute(404)],
+      '?q=OTHER',
+      'rq=9909&q=SYNTH',
+    );
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await screen.findByText(t.empty.notFoundTitle);
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    /*
+     * **앞자리를 서로 다른 조건으로 둔다.** 정리가 히스토리를 늘렸다면 뒤로가기가 없는
+     * 요청을 가리키던 자리로 되돌아가고, 거기서 다시 404가 나 같은 정리가 되풀이되므로
+     * 결코 `q=OTHER`로 돌아오지 못한다. 두 자리가 같은 조건이면 밀려난 칸이 보이지 않아
+     * 이 시험이 아무것도 재지 못한다.
+     */
+    await waitFor(() => {
+      expect(currentLocation()).toContain('q=OTHER');
+    });
+    expect(currentLocation()).not.toContain('rq=');
+  });
+
+  it('조건을 바꾸면 없음 안내를 거둔다 — 안내가 가리킬 것이 없어진다', async () => {
+    const { user } = renderScreen([listRoute(), countRoute(), failingDetailRoute(404)], '?rq=9909');
+
+    await screen.findByText(t.empty.notFoundTitle);
+    await user.click(tabFor(t.tabs.requested));
+
+    await waitFor(() => {
+      expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
+    });
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+  });
+
+  it('거둔 안내가 같은 조건으로 돌아와도 되살아나지 않는다', async () => {
+    /*
+     * 안내는 「이 조건으로 보고 있던 동안」에 매여 있다. 조작할 때 함께 거두지 않으면
+     * 매인 서명이 남아, 탭을 돌아 원래 자리로 오는 것만으로 있지도 않은 실패가 되살아난다.
+     */
+    const { user } = renderScreen([listRoute(), countRoute(), failingDetailRoute(404)], '?rq=9909');
+
+    await screen.findByText(t.empty.notFoundTitle);
+    await user.click(tabFor(t.tabs.requested));
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    await user.click(tabFor(t.tabs.pending));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('tab=');
+    });
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
+  });
+
+  /*
+   * 위 두 시험은 **탭 클릭**으로만 조작한다. 그 길은 조작 핸들러를 지나 안내를 먼저 거두므로
+   * **첫째 겹**만 재는 셈이다. 안내가 「이 조건으로 보고 있던 동안」이라는 **서명에 매여
+   * 있다는 것**은 핸들러를 지나지 않는 길에서만 드러난다 — 주소 직접 편집과 뒤로가기가
+   * 그 길이고, 서명 매임이 존재하는 이유도 바로 그 둘이다.
+   */
+  it('주소를 직접 고쳐 조건이 바뀌어도 없음 안내가 남지 않는다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), countRoute(), failingDetailRoute(404)],
+      '?rq=9909',
+      'q=OTHER',
+    );
+
+    await screen.findByText(t.empty.notFoundTitle);
+
+    /* 클릭 핸들러를 거치지 않는 길 — 안내를 거두는 자리를 지나지 않는다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('q=OTHER');
+    });
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
+  });
+
+  it('뒤로가기로 앞 조건에 돌아가도 없음 안내가 따라오지 않는다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), countRoute(), failingDetailRoute(404)],
+      '?q=OTHER',
+      'rq=9909&q=SYNTH',
+    );
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.empty.notFoundTitle);
+
+    /* 안내는 `q=SYNTH`로 보고 있던 동안에 매였다. 뒤로가면 앞 조건(`q=OTHER`)이 선다. */
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('q=OTHER');
+    });
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
+  });
+
+  it('볼 권한이 없으면 다른 안내를 내고 고른 번호를 정리하지 않는다', async () => {
+    const { requests } = renderScreen(
+      [listRoute(), countRoute(), failingDetailRoute(403)],
+      '?rq=9909',
+    );
+
+    expect(await screen.findByText(t.empty.forbiddenTitle)).toBeVisible();
+
+    /*
+     * **「사라지지 않았다」는 가라앉은 뒤에 잰다.** 안내가 뜨자마자 동기로 재면 아직
+     * 일어나지 않은 정리를 못 본 채 통과한다 — 짝이 되는 404 시험은 기다려서 재는데
+     * 이쪽만 그러지 않으면 「403은 정리하지 않는다」 절반이 통째로 침묵한다.
+     * 목록과 건수가 도착할 때까지 두어 여러 렌더와 effect가 지나가게 한다.
+     */
+    await waitForList();
+    await waitFor(() => {
+      expect(countRequests(requests)).toHaveLength(1);
+    });
+
+    /* 있는데 내 것이 아닌 것이다 — 지우면 무엇을 열려 했는지 잃는다. */
+    expect(currentLocation()).toContain('rq=9909');
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.forbiddenTitle)).toBeVisible();
+  });
+
+  it('볼 권한이 없을 때는 다시 시도를 내지 않는다', async () => {
+    renderScreen([listRoute(), countRoute(), failingDetailRoute(403)], '?rq=9909');
+
+    await screen.findByText(t.empty.forbiddenTitle);
+
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  it('그 밖의 실패는 배너와 다시 시도이고, 누르면 상세를 다시 부른다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(), countRoute(), failingDetailRoute(500)],
+      '?rq=9001',
+    );
+
+    expect(await screen.findByText(messages.httpError.loadTitle)).toBeVisible();
+    expect(currentLocation()).toContain('rq=9001');
+
+    const before = detailRequests(requests).length;
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(detailRequests(requests).length).toBe(before + 1);
+    });
+  });
+
+  it('상세가 실패해도 목록과 조건 줄은 살아 있다', async () => {
+    renderScreen([listRoute(), countRoute(), failingDetailRoute(500)], '?rq=9001');
+
+    await screen.findByText(messages.httpError.loadTitle);
+    await waitForList();
+
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeInTheDocument();
   });
 });

@@ -11,6 +11,7 @@ import {
   toRequestListQuery,
   toSearchParams,
   toSelectionSearchParams,
+  withoutSelection,
 } from './filters';
 import type { InboxFilters } from './types';
 
@@ -154,6 +155,38 @@ describe('toSelectionSearchParams', () => {
 
   it('고른 것이 없으면 그 자리를 만들지 않는다', () => {
     expect(toSelectionSearchParams(filledFilters, 'pending', 1, null).has('rq')).toBe(false);
+  });
+});
+
+describe('withoutSelection', () => {
+  it('고른 요청만 뺀다 — 조건·탭·쪽은 그대로다', () => {
+    const next = withoutSelection(
+      new URLSearchParams('tab=requested&ty=SAMPLE-TYPE-A&page=2&rq=9001'),
+    );
+
+    expect(next.has('rq')).toBe(false);
+    expect(next.get('tab')).toBe('requested');
+    expect(next.get('ty')).toBe('SAMPLE-TYPE-A');
+    expect(next.get('page')).toBe('2');
+  });
+
+  it('화면이 모르는 값도 남긴다 — 주소를 다시 조립하지 않는다', () => {
+    const next = withoutSelection(new URLSearchParams('rq=9001&unknown=synthetic'));
+
+    expect(next.get('unknown')).toBe('synthetic');
+    expect(next.has('rq')).toBe(false);
+  });
+
+  it('고른 것이 없어도 나머지를 건드리지 않는다', () => {
+    expect(withoutSelection(new URLSearchParams('q=SYNTH')).toString()).toBe('q=SYNTH');
+  });
+
+  it('넘겨받은 것을 고치지 않는다 — 부르는 자리의 값이 뒤에서 바뀌면 안 된다', () => {
+    const source = new URLSearchParams('rq=9001&q=SYNTH');
+
+    withoutSelection(source);
+
+    expect(source.get('rq')).toBe('9001');
   });
 });
 
