@@ -1576,6 +1576,22 @@ describe('결재 — 확인 창', () => {
     expect(within(confirmDialog()).getByText('합성 승인 의견')).toBeVisible();
   });
 
+  /**
+   * **공백만 친 것은 적지 않은 것과 같다** — 창이 그 사실을 말한다.
+   *
+   * 창이 입력값을 날것 그대로 보이면 이 자리에 빈 칸이 서서 「무언가 적힌 채 승인된다」로
+   * 읽힌다. 실제로 나가는 본문에는 `comment` 키가 없다.
+   */
+  it('공백만 친 의견은 승인 창이 「의견 없음」으로 말한다', async () => {
+    const { user } = await renderDecision();
+
+    await user.type(commentBox(), '   ');
+    await user.click(approveButton());
+
+    expect(within(confirmDialog()).getByText(t.dialog.noComment)).toBeVisible();
+    expect(within(confirmDialog()).queryByText(t.dialog.commentHeading)).toBeNull();
+  });
+
   /** 창 안에 선택칸을 두지 않는다(`omf-mes#45` — 창 본문이 펼침 목록을 자른다). */
   it('두 창 어디에도 선택칸이 없다', async () => {
     const { user } = await renderDecision();
