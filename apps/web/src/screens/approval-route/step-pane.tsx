@@ -226,8 +226,12 @@ export const StepPane = ({
       {/*
        * 사유를 담는 자리. 행마다 버튼이 서지만 사유는 하나라 한 번만 렌더하고 `aria-describedby`로
        * 잇는다 — 행마다 같은 문장을 되풀이하면 스크린리더가 목록을 읽는 내내 그것을 반복한다.
+       *
+       * **지울 것이 없으면 내지 않는다.** 사유는 삭제 버튼의 설명이라 그 버튼이 없으면 가리킬
+       * 대상이 없고, 빈 상태 안내 옆에 서면 「지울 것도 없는데 지울 수 없다」가 된다.
+       * 판정 함수는 건드리지 않는다 — 핸들러와 버튼의 잠금이 같은 함수를 보고 있다.
        */}
-      {drafts !== null && removeDisabledReason !== null && (
+      {drafts !== null && drafts.length > 0 && removeDisabledReason !== null && (
         <span id={removeReasonId} className="field-note">
           {removeDisabledReason}
         </span>
@@ -238,6 +242,11 @@ export const StepPane = ({
           {/*
            * 승인자 구분 — 1차에는 사용자만 열린다. **잠긴 선택지를 감추지 않는다**(`omf-mes#69`).
            * 값이 하나뿐이라 고를 것이 없지만, 그 사실을 보이는 것이 이 칸의 일이다.
+           *
+           * **`disabledReason`을 주지 않는다.** 그 prop이 묻는 것은 「왜 잠겼는가」인데 여기
+           * 담을 값(역할·부서를 열지 않았다 · 목록이 잘렸다)은 그 답이 아니다 — 이 칸이 잠기는
+           * 이유는 **전송 중**이고, 그것은 저장 버튼의 진행 표시가 이미 말한다. 잠긴 동안은
+           * 고를 수 없으므로 「무엇을 고를 수 있는가」의 안내도 그 사이에는 읽을 일이 없다.
            */}
           <SelectField
             label={t.fields.approverType}
@@ -245,7 +254,6 @@ export const StepPane = ({
             value="USER"
             note={approverTypeNote}
             disabled={isLocked}
-            disabledReason={approverTypeNote}
             onChange={() => {
               /* 열린 값이 하나뿐이라 바뀔 값이 없다. 치환 본문의 구분은 상수이며 이 칸을 읽지 않는다. */
             }}
@@ -257,7 +265,6 @@ export const StepPane = ({
             value={approverValue}
             note={approverNote}
             disabled={isLocked}
-            disabledReason={approverNote}
             onChange={setApproverValue}
           />
 

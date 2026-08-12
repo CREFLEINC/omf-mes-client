@@ -2766,7 +2766,15 @@ const addStep = async (
 const singleStepFixture = [stepFixtures[0]];
 
 describe('ApprovalRouteScreen — 단계 편집', () => {
-  it('승인자를 골라 단계를 더하면 표에 줄이 는다', async () => {
+  /**
+   * **더한 단계는 맨 뒤에 선다.**
+   *
+   * 이 화면에서 **배열 위치가 곧 단계 번호**다(계약: 배열 순서가 `stepNo` 1..N이 된다).
+   * 앞에 끼우면 방금 넣은 승인자가 **1단계**가 되는데, 표는 「순서 1」로 정직하게 그리고
+   * 저장도 성공한다 — 사용자는 마지막에 넣은 사람이 맨 앞 결재자가 된 것을 **저장한 뒤에야**
+   * 알고, 결재선에는 물리 삭제 경로가 없다. 그래서 **줄 수만 세지 않고 자리를 본다.**
+   */
+  it('승인자를 골라 단계를 더하면 맨 뒤에 한 줄이 는다', async () => {
     const { user } = renderScreen(allRoutes(), SELECTED);
 
     await stepPane();
@@ -2776,6 +2784,12 @@ describe('ApprovalRouteScreen — 단계 편집', () => {
 
     expect(stepRows()).toHaveLength(stepFixtures.length + 2);
     expect(screen.getByText('합성 승인자4')).toBeInTheDocument();
+    /* 머리글이 첫 줄이므로 마지막 줄이 곧 마지막 단계다. */
+    expect(within(stepRows().at(-1) as HTMLElement).getByText('합성 승인자4')).toBeInTheDocument();
+    /* 짝 방향 — 앞줄은 그대로다. 뒤에 붙였다는 것은 앞을 밀지 않았다는 뜻이기도 하다. */
+    expect(
+      within(stepRows()[1] as HTMLElement).getByText('합성 승인자1 · 합성부서 가'),
+    ).toBeInTheDocument();
   });
 
   /** **그 행만** 지운다 — 옆줄이 함께 사라지면 사용자는 저장하기 전까지 알 수 없다. */
@@ -2877,6 +2891,12 @@ describe('ApprovalRouteScreen — 단계 치환 저장', () => {
       expect(Object.keys(step).sort()).toEqual(['approverTypeCode', 'approverUserId']);
       expect(step.approverTypeCode).toBe('USER');
     }
+    /*
+     * **더한 승인자가 본문의 맨 뒤다.** 배열 위치가 곧 단계 번호이므로, 앞에 끼우면 방금 넣은
+     * 사람이 1단계로 저장된다 — 표에서 자리를 보는 단언과 짝이다(그쪽은 보이는 것, 이쪽은 나가는 것).
+     */
+    expect(body.steps.at(-1)?.approverUserId).toBe(9304);
+    expect(body.steps.map((step) => step.approverUserId)).toEqual([9301, 9302, 9303, 9304]);
   });
 
   /**
@@ -3341,6 +3361,38 @@ describe('ApprovalRouteScreen — 단계 저장이 나가는 중', () => {
 
     expect(screen.getByRole('button', { name: t.actions.create })).toBeDisabled();
     expect(screen.getByLabelText(t.fields.minValue)).toBeDisabled();
+
+    release();
+    await screen.findByText(messages.common.saved);
+  });
+
+  /**
+   * **네 쓰기의 잣대를 대칭으로 둔다.** 앞 세 쓰기에는 「연타해도 요청이 1회」가 서 있는데
+   * 넷째에만 없으면, 잠금이 이 쓰기에서만 풀려도 아무도 모른다.
+   */
+  it('연타해도 치환 요청이 1회이고 단계 구획이 잠긴다', async () => {
+    const { requests, release, user } = renderScreen(
+      allRoutes([stepsReplaceRoute()]),
+      SELECTED,
+      '',
+      holdStepsReplace,
+    );
+
+    await stepPane();
+    await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[0] as HTMLElement);
+    await user.click(saveStepsButton());
+    await waitFor(() => {
+      expect(stepsReplaceRequests(requests)).toHaveLength(1);
+    });
+
+    /* 첫째 겹 — 이 구획에서 눈에 보이는 것들이 닫혔다. */
+    expect(saveStepsButton()).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.removeStep(1) })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.approver })).toBeDisabled();
+
+    await user.click(saveStepsButton());
+
+    expect(stepsReplaceRequests(requests)).toHaveLength(1);
 
     release();
     await screen.findByText(messages.common.saved);

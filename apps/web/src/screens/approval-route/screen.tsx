@@ -67,7 +67,6 @@ import {
 } from './route-validation';
 import {
   createStepDraft,
-  isSameStepDrafts,
   moveStepDraft,
   removeStepDraft,
   stepRemoveBlockedReason,
@@ -354,7 +353,18 @@ export const ApprovalRouteScreen = () => {
     setStepDraft({ key: stepTargetKey, baseline: seeded, values: seeded });
   }
 
-  const isStepDirty = stepDraft !== null && !isSameStepDrafts(stepDraft.values, stepDraft.baseline);
+  /*
+   * **「단계만 더러운 상태」를 읽는 자리가 없다 — 그것이 이 화면의 결정이다.**
+   *
+   * 단계 초안이 더러운지는 `step-draft.ts`의 저장 가능 판정이 안에서 스스로 본다(「고친 것이
+   * 없으면 저장이 막힌다」). 화면 쪽에는 그 값을 쓸 자리가 없는데, **취소가 폼의 조작**이기
+   * 때문이다 — 취소는 폼이 더러울 때만 열리고 파기는 그때 두 초안을 함께 되돌린다.
+   *
+   * 그래서 **단계만 고친 상태의 되돌리기는 대상을 다시 고르는 것**뿐이다(수명 표 4행).
+   * 단계에 전용 되돌리기를 두려면 조작 집합이 하나 늘고 수명 표에 행이 하나 는다 — 설계가
+   * 요구하지 않은 조작이라 지어내지 않는다. 그 판단을 여기 적어 두는 이유는, 읽는 곳 없는
+   * `isStepDirty`를 남겨 두면 다음 사람이 「쓰려다 만 자리」로 읽고 되살리기 때문이다.
+   */
 
   const approvalTypeOptions = toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES);
   const approverTypeOptions = toApproverTypeOptions(ENABLED_APPROVER_TYPE_CODES);

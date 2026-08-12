@@ -241,6 +241,29 @@ describe('StepPane — 삭제', () => {
 
     expect(screen.getByRole('button', { name: t.actions.removeStep(1) })).toBeDisabled();
   });
+
+  /**
+   * **지울 것이 없으면 「지울 수 없다」고 말하지 않는다.**
+   *
+   * 사유는 삭제 버튼의 설명이라 그 버튼이 없으면 가리킬 대상이 없다 — 빈 상태 안내
+   * (「이 결재선에는 결재 단계가 없습니다」) 옆에 서면 사용자는 지울 것도 없는 화면에서
+   * 지울 수 없다는 말을 읽는다. `aria-describedby`가 가리키는 요소도 없는 고아 `id`가 된다.
+   */
+  it('단계가 0줄이면 삭제 사유가 서지 않는다', () => {
+    renderPane({ drafts: [] });
+
+    // 선행 단언 — 실제로 빈 상태여야 이 감지기가 뜻을 갖는다.
+    expect(screen.getByText(t.empty.noStepsTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.actions.removeStep(1) })).toBeNull();
+    expect(screen.queryByText(t.actionReasons.stepRemoveLast)).toBeNull();
+  });
+
+  /** 짝 방향 — 한 줄이면 사유가 서고, 그것이 그 버튼의 설명이다. */
+  it('단계가 한 줄이면 삭제 사유가 선다', () => {
+    renderPane({ drafts: [draftOf(9301, 'a')] });
+
+    expect(screen.getByText(t.actionReasons.stepRemoveLast)).toBeInTheDocument();
+  });
 });
 
 /**

@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import type { ApproverOption } from './approver-options';
-import type { ApprovalRouteStep, ApprovalRouteStepsReplace } from './types';
+import type { ApprovalRouteStep, ApprovalRouteStepInput, ApprovalRouteStepsReplace } from './types';
 
 /**
  * 결재 단계 초안 — **되돌릴 수 없는 치환의 본문을 만드는 자리**다.
@@ -165,7 +165,11 @@ export const toStepsReplaceBody = (
 ): ApprovalRouteStepsReplace | null => {
   if (drafts.length === 0) return null;
 
-  const steps = [];
+  /*
+   * **계약 타입으로 못 박는다.** 타입 없이 쌓으면 필드를 하나 더 싣는 실수가 `{ steps }`를
+   * 돌려주는 시점에야 걸린다 — 한 걸음 늦고, 그 사이의 코드가 그것을 정상으로 읽는다.
+   */
+  const steps: ApprovalRouteStepInput[] = [];
 
   for (const draft of drafts) {
     if (draft.approverUserId === null) return null;
