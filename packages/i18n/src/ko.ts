@@ -4262,6 +4262,162 @@ const supplierReturn = {
   },
 } as const;
 
+/**
+ * W-06-15 결재선 정의. **이 회차(PR ②)는 읽기뿐이다** — 등록·수정·사용 전환·단계 편집의
+ * 문구는 뒤 회차가 더한다. 지금 없는 어휘가 있는 것이 이 블록의 정확한 상태다.
+ *
+ * **승인 유형 값을 지어내지 않는다.** 값 목록이 확정되지 않아 선택지가 비어 있고, 왜 비었는지는
+ * 공용 `pendingCode`가 말한다. 계약의 예시값도 문구로 옮기지 않는다.
+ *
+ * **내부 번호를 문구로 만들지 않는다.** 사업부도 승인자도 이름을 못 풀면 그 사실을 적고
+ * 번호를 대신 내지 않는다 — 번호를 담을 자리가 문구에도 없어야 새는 경로가 없다.
+ *
+ * **화면이 아는 것만 말한다.** 「이 결재선이 지금 상신에 쓰입니다」라고 말하지 않는다 —
+ * 같은 유형·사업부로 사용 중인 결재선이 둘 이상일 수 있고 고르는 규칙은 서버가 갖는다.
+ */
+const approvalRoute = {
+  title: '결재선 정의',
+  breadcrumbRoot: '시스템 관리',
+  panes: {
+    list: '결재선 목록',
+    detail: '고른 결재선',
+    steps: '결재 단계',
+  },
+  fields: {
+    approvalTypeCode: '승인 유형',
+    businessUnit: '사업부',
+    valueRange: '값 구간',
+    /** 목록 열 이름. 폼의 「사용 여부」와 달리 한 낱말이라야 64px 칸에서 접히지 않는다. */
+    status: '사용',
+    stepCount: '단계',
+    inProgressCount: '진행 중',
+    stepNo: '순서',
+    approver: '승인자',
+    approverStatus: '상태',
+    q: '승인 유형 검색',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+    /** 목록·상세·단계를 **함께** 다시 부른다. 목록만 부르면 갱신된 값과 낡은 값이 섞인다. */
+    reload: '다시 조회',
+    /*
+     * 행 안의 버튼은 보이는 글자가 행마다 같을 수 있다 — 같은 승인 유형의 사업부 지정본과
+     * 전 사업부 공통본이 함께 서기 때문이다. 그래서 사업부 **이름**을 함께 담는다.
+     * 보이는 글자(승인 유형)를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 하고,
+     * **내부 번호는 접근 이름에도 넣지 않는다.**
+     */
+    selectRow: (approvalTypeCode: string, businessUnitLabel: string): string =>
+      `${approvalTypeCode} · ${businessUnitLabel} 선택`,
+  },
+  loading: {
+    list: '결재선 목록 불러오는 중',
+    detail: '결재선 상세 불러오는 중',
+    steps: '결재 단계 불러오는 중',
+  },
+  filters: {
+    all: '전체',
+    lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+    lookupFailed: '선택지를 불러오지 못했습니다.',
+    /**
+     * 「미사용 포함」의 방향은 화면 어휘이고 계약 파라미터는 그 반대다. 뒤집는 자리는
+     * `filters.ts` 한 곳이며 문구는 다른 화면과 같은 말(`common.includeInactive`)을 쓴다.
+     */
+    chipApprovalType: (value: string): string => `승인 유형: ${value}`,
+    chipBusinessUnit: (value: string): string => `사업부: ${value}`,
+    chipKeyword: (value: string): string => `검색어: ${value}`,
+    chipRemoveApprovalType: '승인 유형 조건 제거',
+    chipRemoveBusinessUnit: '사업부 조건 제거',
+    chipRemoveKeyword: '검색어 조건 제거',
+    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+  },
+  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/approval-route/page-nav.tsx에 있다. */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+  /** 빈 상태는 **네 갈래**다. 사용자가 할 조치가 서로 다르다(완료 조건 C15). */
+  empty: {
+    noResultTitle: '조건에 맞는 결재선이 없습니다',
+    noResultDescription: '조건을 줄이거나 「미사용 포함」을 켠 뒤 다시 조회하세요.',
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
+    noSelectionTitle: '결재선을 고르면 내용과 결재 단계가 보입니다',
+    noSelectionDescription: '왼쪽 목록에서 승인 유형을 누르세요.',
+    /*
+     * 상세가 404다. **주소에 남은 결재선 번호를 화면이 스스로 정리한다** — 남겨 두면
+     * 오른쪽 구획이 없는 결재선을 가리킨 채 주소만 남는다(수명 표 **5행**).
+     */
+    notFoundTitle: '고른 결재선을 찾을 수 없습니다',
+    notFoundDescription: '지워졌거나 주소의 번호가 잘못됐습니다. 왼쪽 목록에서 다시 고르세요.',
+    /** 결재선은 골랐는데 단계가 0이다. 「아직 안 골랐다」와 다른 사정이다. */
+    noStepsTitle: '이 결재선에는 결재 단계가 없습니다',
+    noStepsDescription: '단계가 없으면 이 유형의 상신이 거부됩니다.',
+  },
+  values: {
+    /** 이름 목록은 왔는데 그 안에 없다 — **값이 잘못됐다**는 신호다. */
+    unknown: '알 수 없음',
+    /** 이름 목록이 아직 오지 않았다. 「알 수 없음」으로 쓰면 정상 값이 잘못된 값으로 읽힌다. */
+    referenceLoading: '이름 불러오는 중',
+    /** 이름 목록 조회가 실패했다. 값이 없는 것과 다르다. */
+    referenceFailed: '이름을 불러오지 못했습니다',
+    inactiveSuffix: ' (미사용)',
+    /**
+     * 사업부를 비운 결재선. **빈 값이 아니라 확정된 뜻이다** — 「알 수 없음」이나 대시로 두면
+     * 자료가 빠진 것으로 읽혀 정반대가 된다. 참조 조회가 실패해도 이 뜻은 흔들리지 않는다.
+     */
+    allBusinessUnits: '전 사업부 공통',
+    active: '사용 중',
+    inactive: '사용 안 함',
+    /** 단계가 0인 결재선. 색이 아니라 글자로 낸다. */
+    noSteps: '단계 없음',
+    /** 값 구간을 비운 결재선. 「전 사업부 공통」과 같은 성격의 확정된 뜻이다. */
+    fullRange: '전 구간',
+    rangeFrom: (min: string): string => `${min} 이상`,
+    rangeTo: (max: string): string => `${max} 이하`,
+    rangeBoth: (min: string, max: string): string => `${min} ~ ${max}`,
+    /**
+     * 계약이 승인자 이름을 필수로 두지 않았다. **번호를 대신 내지 않는다** —
+     * 내부 번호는 사용자가 쓰지 않는 값이고, 한 번 화면에 서면 그것이 식별자로 읽힌다.
+     */
+    approverUnknown: '승인자 정보를 확인할 수 없습니다',
+    approverActive: '사용 중',
+    approverInactive: '사용 중지됨',
+  },
+  notes: {
+    /**
+     * 값 구간은 입력만 받고 1차에서는 아무것도 고르지 않는다. 밝히지 않으면 사용자가
+     * 이 구간으로 결재선이 갈린다고 믿는다.
+     */
+    valueRangeUnused: '1차에서는 이 값 구간으로 결재선을 고르지 않습니다.',
+    /**
+     * **진행 중 건수는 상시 자리에 둔다.** 사용 중지 확인 창에만 두면, 결재선을 고치는
+     * 사람은 자기가 무엇에 영향을 주지 *않는지*를 끝내 모른다.
+     *
+     * **소급하지 않는다는 사실을 여기서 되풀이하지 않는다.** 단계 구획의 상시 세 줄이 그것을
+     * 늘 말하고 있어, 건수가 0일 때는 가리킬 대상도 없는 문장이 바로 아래 줄과 겹쳐 선다.
+     * 이 자리의 고유 정보는 **건수**다.
+     */
+    inProgressSome: (count: number): string =>
+      `진행 중인 요청 ${String(count)}건이 있습니다. 이 요청들은 지금의 결재선으로 끝납니다.`,
+    inProgressNone: '진행 중인 요청이 없습니다.',
+    /**
+     * 단계 구획의 **상시 안내 세 줄**. 성공 알림에 붙이지 않는다 — 알림은 사라지고,
+     * 이 셋은 결재선을 보는 내내 참인 사실이다.
+     */
+    stepGuideApproverAbsent: '승인자가 자리를 비우면 그 단계에서 요청이 멈춥니다.',
+    stepGuideNotRetroactive: '결재선을 고쳐도 진행 중인 요청에는 반영되지 않습니다.',
+    stepGuideRejectResubmit:
+      '진행 중인 요청에 바뀐 결재선을 태우려면 반려한 뒤 다시 상신해야 합니다.',
+    /** 승인자가 사용 중지 상태다. 색에만 기대지 않도록 글자로 함께 낸다. */
+    approverInactiveWarning: '이 승인자는 사용 중지 상태입니다 — 결재가 멈춥니다.',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -4286,6 +4442,7 @@ export const ko = {
   goodsReceipt,
   stocktaking,
   supplierReturn,
+  approvalRoute,
 } as const;
 
 export type Messages = typeof ko;
