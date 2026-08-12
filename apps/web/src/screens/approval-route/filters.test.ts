@@ -12,6 +12,7 @@ import {
   toFilterChips,
   toRouteListQuery,
   toSearchParams,
+  toSelectionSearchParams,
 } from './filters';
 import type { RouteFilters } from './types';
 
@@ -117,6 +118,28 @@ describe('toSearchParams', () => {
     expect(next.get('q')).toBe('SAMPLE');
     expect(next.has('ar')).toBe(false);
     expect(next.has('new')).toBe(false);
+  });
+});
+
+describe('toSelectionSearchParams', () => {
+  it('조건과 쪽을 그대로 두고 선택만 얹는다', () => {
+    const next = toSelectionSearchParams(filters({ q: 'SAMPLE' }), 3, 9001);
+
+    expect(next.get('q')).toBe('SAMPLE');
+    expect(next.get('page')).toBe('3');
+    expect(next.get('ar')).toBe('9001');
+  });
+
+  it('선택을 풀면 그 자리만 사라진다', () => {
+    const next = toSelectionSearchParams(filters({ q: 'SAMPLE' }), 3, null);
+
+    expect(next.get('q')).toBe('SAMPLE');
+    expect(next.has('ar')).toBe(false);
+  });
+
+  it('등록 중 표시를 남기지 않는다', () => {
+    // 두 자리가 함께 서지 않는다 — 주소를 만드는 쪽도 그 규칙을 지킨다.
+    expect(toSelectionSearchParams(filters(), 1, 9001).has('new')).toBe(false);
   });
 });
 

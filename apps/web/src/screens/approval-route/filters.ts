@@ -117,6 +117,27 @@ export const toSearchParams = (filters: RouteFilters, page: number): URLSearchPa
 };
 
 /**
+ * 선택을 얹은 주소.
+ *
+ * **조건과 쪽은 그대로 두고 선택 자리만 다시 세운다** — 결재선을 고르는 것은 보이는 행을
+ * 바꾸지 않으므로 조건을 비울 이유가 없다(조건을 비우는 규칙은 `toSearchParams`가 갖는다).
+ *
+ * **등록 중 표시는 이 함수를 지나며 사라진다.** 두 자리가 함께 서지 않는다는 규칙을
+ * 주소를 만드는 쪽과 읽는 쪽이 나눠 갖는다.
+ */
+export const toSelectionSearchParams = (
+  filters: RouteFilters,
+  page: number,
+  approvalRouteId: number | null,
+): URLSearchParams => {
+  const next = toSearchParams(filters, page);
+
+  if (approvalRouteId !== null) next.set(URL_KEYS.selected, String(approvalRouteId));
+
+  return next;
+};
+
+/**
  * 계약이 쓰는 쿼리 이름.
  *
  * **`activeOnly`는 선택이 아니다.** 계약에 기본값이 없어 생략하면 서버가 무엇을 내리는지

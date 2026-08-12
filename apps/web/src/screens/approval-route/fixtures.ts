@@ -32,6 +32,12 @@ export const businessUnitFixtures = [
 export const BUSINESS_UNIT_LABEL = 'SAMPLE-BU-01 · 합성사업부 가';
 
 /**
+ * 미사용 사업부의 이름. **표기에는 미사용 표식이 붙지 않는다** — 표식은 고르는 자리
+ * (선택지)에만 붙고, 이미 그 사업부를 가리키는 결재선의 이름은 그대로 읽혀야 한다.
+ */
+export const INACTIVE_BUSINESS_UNIT_LABEL = 'SAMPLE-BU-02 · 합성사업부 나';
+
+/**
  * 결재선 셋. **9001과 9002는 승인 유형이 같고 사업부만 다르다** —
  * 「사업부 지정본과 전 사업부 공통본은 다른 결재선이다」가 목록에서 읽혀야 한다.
  */
