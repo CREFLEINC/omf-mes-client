@@ -3114,6 +3114,21 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
   it('대상이 바뀌면 추가 줄에서 고르던 승인자가 사라진다', async () => {
     const { user } = renderScreen(allRoutes([detailRouteById()]), SELECTED, '?ar=9003');
 
+    /*
+     * **먼저 두 대상을 모두 받아 둔다.** 새 대상의 상세가 아직 없으면 구획이 자리 표시로
+     * 바뀌었다가 다시 서면서 추가 줄이 저절로 비는데, 그러면 이 감지기가 재는 것이
+     * 「대상에 매인 구획」이 아니라 「조회가 늦다」는 사정이 된다.
+     */
+    await stepPane();
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9003');
+    });
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9001');
+    });
+
     const pane = await stepPane();
 
     await user.click(within(pane).getByRole('combobox', { name: t.fields.approver }));
@@ -3129,13 +3144,11 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
       expect(locationText()).toContain('ar=9003');
     });
 
-    await waitFor(() => {
-      expect(
-        within(screen.getByRole('region', { name: t.panes.steps })).getByRole('combobox', {
-          name: t.fields.approver,
-        }),
-      ).not.toHaveTextContent(APPROVER_OPTION_LABEL);
-    });
+    expect(
+      within(screen.getByRole('region', { name: t.panes.steps })).getByRole('combobox', {
+        name: t.fields.approver,
+      }),
+    ).not.toHaveTextContent(APPROVER_OPTION_LABEL);
   });
 
   /** 창이 묻는 것은 「이 결재선을 고치던 것」 전체다 — 폼만 되돌리면 단계 순서가 남는다. */
