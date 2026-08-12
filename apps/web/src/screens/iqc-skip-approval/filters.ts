@@ -94,9 +94,19 @@ export const EMPTY_FILTERS: RequestFilters = {
   q: '',
 };
 
-/** 주소가 담은 조회 조건. **뜻을 잃은 값은 읽는 자리에서 걷어 낸다.** */
+/**
+ * 주소가 담은 조회 조건. **뜻을 잃은 값은 읽는 자리에서 걷어 낸다.**
+ *
+ * 네 조건이 **모두** 위생 판정을 지난다 — 상태 코드는 `codeOf`, 날짜는 `dateOf`, 검색어는
+ * 뒤이어 `keywordOf`가 받는다. 한 축만 판정 밖에 두면 그 축으로만 「어떤 요청도 걸리지 않는
+ * 조건」이 주소·요청·칩 세 자리에 그대로 흘러간다.
+ *
+ * **여기 한 자리에서 거르는 이유**: 주소·요청·칩은 이 함수의 결과를 받으므로 읽는 자리가
+ * 막으면 셋이 함께 낫는다. 자리마다 따로 적으면 한쪽만 고쳐져 「요청에는 안 실리는데 칩은
+ * 서 있는」 어긋남이 생긴다.
+ */
 export const readFilters = (params: URLSearchParams): RequestFilters => ({
-  statusCode: params.get(URL_KEYS.statusCode) ?? '',
+  statusCode: codeOf(params.get(URL_KEYS.statusCode)),
   from: dateOf(params.get(URL_KEYS.from) ?? ''),
   to: dateOf(params.get(URL_KEYS.to) ?? ''),
   q: params.get(URL_KEYS.q) ?? '',

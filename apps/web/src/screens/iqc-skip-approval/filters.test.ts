@@ -62,6 +62,46 @@ describe('readFilters', () => {
   });
 });
 
+/**
+ * **주소 키마다 위생 판정을 지난다 — 상태 코드도 예외가 아니다.**
+ *
+ * 날짜는 실존 되짚기, 쪽·`rq`는 식별자, `pd`는 「모르는 값 = 기본값」, 검색어는 `trim`을 지나는데
+ * 상태 코드만 원문 비교였다. `?st=%20%20`으로 들어오면 **어떤 요청도 걸리지 않는 조건**이
+ * 요청에 실리고 주소에 다시 적히며 **라벨이 빈 칩**이 선다 — 사용자에게는 「내 결재 대기
+ * 0건」으로 읽힌다. 판정 화면에서 그 오독은 화면을 떠나는 신호다.
+ *
+ * **읽는 자리 하나가 막는다.** 주소·요청·칩 셋은 그 결과를 받으므로 여기서 걸러지면 함께 낫는다.
+ */
+describe('상태 코드 위생 — 주소는 손으로 고쳐지는 자리다', () => {
+  const blank = readFilters(params('st=%20%20'));
+
+  it('공백만인 상태 코드는 조건이 아니다', () => {
+    expect(blank.statusCode).toBe('');
+  });
+
+  it('요청에 실리지 않는다', () => {
+    expect(toRequestListQuery(blank, true, 1, null).statusCode).toBeUndefined();
+  });
+
+  it('주소에 다시 적히지 않는다', () => {
+    expect(toSearchParams(blank, true, 1).get('st')).toBeNull();
+  });
+
+  it('칩이 되지 않는다 — 라벨이 빈 칩은 무엇을 푸는 것인지 말하지 못한다', () => {
+    expect(toFilterChips(blank)).toEqual([]);
+  });
+
+  /** 짝 양성 — 값이 있는 코드는 그대로 지나야 「걸러진다」가 뜻을 갖는다. */
+  it('값이 있는 상태 코드는 앞뒤 공백만 걷고 그대로 지난다', () => {
+    const kept = readFilters(params('st=%20SAMPLE-STATUS-OPEN%20'));
+
+    expect(kept.statusCode).toBe('SAMPLE-STATUS-OPEN');
+    expect(toRequestListQuery(kept, true, 1, null).statusCode).toBe('SAMPLE-STATUS-OPEN');
+    expect(toSearchParams(kept, true, 1).get('st')).toBe('SAMPLE-STATUS-OPEN');
+    expect(toFilterChips(kept)[0]?.key).toBe('statusCode');
+  });
+});
+
 describe('readPendingOnly — 기본이 켜짐이다', () => {
   it('주소에 아무것도 없으면 켜져 있다', () => {
     expect(readPendingOnly(params(''))).toBe(true);
