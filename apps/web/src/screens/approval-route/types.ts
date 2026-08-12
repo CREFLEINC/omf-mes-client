@@ -46,6 +46,25 @@ export interface RouteFilters {
 }
 
 /**
+ * 등록·수정 폼이 들고 있는 값. **전부 문자열이다** — 입력칸이 다루는 것이 문자열이고,
+ * 계약 표현(숫자·`null`)으로의 변환은 `route-request.ts` 한 곳이 맡는다.
+ * 중간에 숫자로 바꿔 두면 「비웠다」와 「0을 쳤다」가 폼 안에서 갈리지 않는다.
+ *
+ * **`isActive`가 없다.** 계약이 사용 여부를 전용 액션(`:deactivate`·`:activate`)으로만
+ * 바꾸게 했다 — 폼 값으로 두면 저장 본문에 실릴 여지가 생긴다.
+ *
+ * **`approvalTypeCode`는 등록에서만 입력칸이다.** 수정 본문에 그 키가 아예 없어(계약)
+ * 수정 폼에서는 읽기 표시로만 선다. 폼 값에는 늘 담아 두어 등록·수정이 한 벌을 쓴다.
+ */
+export interface RouteFormValues {
+  approvalTypeCode: string;
+  /** 비면 「전 사업부 공통」이다 — 조회 조건의 「전체 사업부」와 다른 뜻이다. */
+  businessUnitId: string;
+  minValue: string;
+  maxValue: string;
+}
+
+/**
  * 목록 행과 상세가 함께 쓰는 결재선 표시 값.
  *
  * **계약의 세 상태를 화면의 두 상태로 줄이는 것이 이 타입의 일이다.** 계약의 선택 필드는

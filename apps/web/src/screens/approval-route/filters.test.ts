@@ -8,10 +8,12 @@ import {
   readFilters,
   readPage,
   readSelectedRouteId,
+  toCreateSearchParams,
   toFilterChips,
   toRouteListQuery,
   toSearchParams,
   toSelectionSearchParams,
+  withoutSelection,
 } from './filters';
 import type { RouteFilters } from './types';
 
@@ -139,6 +141,51 @@ describe('toSelectionSearchParams', () => {
   it('등록 중 표시를 남기지 않는다', () => {
     // 두 자리가 함께 서지 않는다 — 주소를 만드는 쪽도 그 규칙을 지킨다.
     expect(toSelectionSearchParams(filters(), 1, 9001).has('new')).toBe(false);
+  });
+});
+
+describe('toCreateSearchParams', () => {
+  it('조건과 쪽을 그대로 두고 등록 표시만 얹는다', () => {
+    const next = toCreateSearchParams(filters({ q: 'SAMPLE' }), 3);
+
+    expect(next.get('q')).toBe('SAMPLE');
+    expect(next.get('page')).toBe('3');
+    expect(next.get('new')).toBe('1');
+  });
+
+  it('고른 결재선을 남기지 않는다', () => {
+    // 두 자리는 함께 서지 않는다 — 주소를 만드는 쪽도 그 규칙을 지킨다.
+    expect(toCreateSearchParams(filters(), 1).has('ar')).toBe(false);
+  });
+
+  it('등록 표시가 켜지면 고른 결재선이 없는 것으로 읽힌다', () => {
+    // 짝 방향 — 만드는 쪽과 읽는 쪽이 같은 규칙을 갖는지까지 잰다.
+    const next = toCreateSearchParams(filters(), 1);
+
+    expect(isCreating(next)).toBe(true);
+    expect(readSelectedRouteId(next)).toBeNull();
+  });
+});
+
+describe('withoutSelection', () => {
+  it('선택 자리만 걷어 낸다', () => {
+    const next = withoutSelection(new URLSearchParams('q=SAMPLE&page=3&ar=9001'));
+
+    expect(next.has('ar')).toBe(false);
+    expect(next.get('q')).toBe('SAMPLE');
+    expect(next.get('page')).toBe('3');
+  });
+
+  it('원래 주소를 고치지 않는다', () => {
+    const original = new URLSearchParams('ar=9001');
+
+    withoutSelection(original);
+
+    expect(original.get('ar')).toBe('9001');
+  });
+
+  it('선택이 없어도 그대로 둔다', () => {
+    expect(withoutSelection(new URLSearchParams('q=SAMPLE')).get('q')).toBe('SAMPLE');
   });
 });
 

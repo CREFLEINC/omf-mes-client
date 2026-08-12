@@ -138,6 +138,39 @@ export const toSelectionSearchParams = (
 };
 
 /**
+ * 등록 폼을 연 주소.
+ *
+ * **`ar`가 함께 서지 않는다** — `toSearchParams`가 선택 자리를 만들지 않으므로 이 함수가
+ * 얹는 것은 등록 표시 하나뿐이다. 두 자리가 함께 설 수 없다는 규칙을 주소를 **만드는** 쪽과
+ * **읽는** 쪽(`readSelectedRouteId`)이 나눠 갖는다.
+ *
+ * 조건과 쪽은 그대로 둔다 — 등록 폼을 여는 것은 왼쪽 목록에 보이는 행을 바꾸지 않는다.
+ */
+export const toCreateSearchParams = (filters: RouteFilters, page: number): URLSearchParams => {
+  const next = toSearchParams(filters, page);
+
+  next.set(URL_KEYS.create, ON);
+
+  return next;
+};
+
+/**
+ * 지금 주소에서 **선택 자리만** 걷어 낸다. 상세가 404일 때 쓴다 — 조건·쪽·등록 표시는
+ * 그대로 두어야 사용자가 보던 목록이 유지된다.
+ *
+ * **주소 키 이름이 이 파일 밖으로 새지 않게 하려는 것이 이 함수의 목적이다.** 화면이
+ * `'ar'`을 직접 지우면 키를 고칠 때 고칠 자리가 둘이 되고, 그중 하나를 빠뜨리면
+ * 「지운 줄 알았는데 남아 있는」 자리가 생긴다.
+ */
+export const withoutSelection = (params: URLSearchParams): URLSearchParams => {
+  const next = new URLSearchParams(params);
+
+  next.delete(URL_KEYS.selected);
+
+  return next;
+};
+
+/**
  * 계약이 쓰는 쿼리 이름.
  *
  * **`activeOnly`는 선택이 아니다.** 계약에 기본값이 없어 생략하면 서버가 무엇을 내리는지
