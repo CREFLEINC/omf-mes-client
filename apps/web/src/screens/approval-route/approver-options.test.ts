@@ -13,7 +13,6 @@ const userAt = (index: number): AppUser => userFixtures[index] as AppUser;
 const lookup = (overrides: Partial<ApproverLookup> = {}): ApproverLookup => ({
   options: [],
   isError: false,
-  isLoading: false,
   truncated: false,
   refetch: () => undefined,
   ...overrides,

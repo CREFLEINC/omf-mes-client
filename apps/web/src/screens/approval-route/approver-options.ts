@@ -39,10 +39,14 @@ export interface ApproverOption extends SelectOption {
   isActive: boolean;
 }
 
+/**
+ * **「불러오는 중」 갈래가 없다.** 사업부 참조는 이미 저장된 번호를 푸는 자리라 미도착과
+ * 「목록에 없음」을 갈라야 하지만, 여기서는 아직 오지 않은 목록이 곧 **비어 있는 선택지**이고
+ * 그때 사용자가 할 일은 기다리는 것뿐이다 — 읽는 곳이 없는 필드를 형태만 맞추려고 두지 않는다.
+ */
 export interface ApproverLookup {
   options: ApproverOption[];
   isError: boolean;
-  isLoading: boolean;
   /** 목록이 잘렸으면 참. **읽는 쪽이 이 값을 볼 수 있어야** 고를 수 없는 사람이 생긴 것을 밝힌다. */
   truncated: boolean;
   refetch: () => void;
@@ -107,6 +111,11 @@ export const approverKeys = {
  *
  * **결재선 쓰기의 무효화 범위에 넣지 않는다**(`routeKeys.all` 바깥의 열쇠를 쓴다) —
  * 결재선을 저장했다고 사용자 마스터가 바뀌지는 않는다.
+ *
+ * **「미사용 포함」을 켜지 않는다.** 계약의 사용자 목록은 기본으로 사용 중인 것만 내려주고,
+ * 여기서 고른 값은 **새 단계로 저장된다** — 이미 사용 중지된 사람을 고르게 두면 그 단계에서
+ * 결재가 멈춘다. 반대로 **이미 단계에 있던 승인자가 나중에 사용 중지된 경우**는 단계 응답의
+ * 사용 여부가 거짓으로 와서 경고로 드러나며, 그쪽은 지우게 하지 않고 알리기만 한다.
  */
 export const useApproverLookup = (enabled: boolean): ApproverLookup => {
   const { client } = useApiClient();
@@ -123,8 +132,6 @@ export const useApproverLookup = (enabled: boolean): ApproverLookup => {
     options: data === undefined ? EMPTY_OPTIONS : toApproverOptions(data.items),
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
-    /* 부르지 않는 동안은 「불러오는 중」이 아니다 — 아직 필요하지 않을 뿐이다. */
-    isLoading: enabled && query.isPending,
     refetch: () => {
       void query.refetch();
     },

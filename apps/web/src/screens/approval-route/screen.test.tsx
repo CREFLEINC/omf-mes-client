@@ -797,6 +797,23 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     });
   });
 
+  /**
+   * **미사용 사용자를 고르게 두지 않는다.** 여기서 고른 값은 새 단계로 저장되므로 이미
+   * 사용 중지된 사람을 넣으면 그 단계에서 결재가 멈춘다. 계약의 사용자 목록은 기본으로
+   * 사용 중인 것만 내려주므로 **「미사용 포함」을 켜지 않는 것**이 그 규칙의 이행이다.
+   */
+  it('승인자 조회가 「미사용 포함」을 켜지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes(), SELECTED);
+
+    await screen.findByRole('region', { name: t.panes.steps });
+
+    const sent = requests.filter((request) => request.url.pathname === USERS_PATH);
+
+    // 선행 단언 — 조회가 실제로 나갔어야 「그 조건을 싣지 않았다」가 뜻을 갖는다.
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.url.searchParams.has('includeInactive')).toBe(false);
+  });
+
   /** 목록만 보는 사용자에게까지 나가면 첫 진입의 조회가 이유 없이 하나 는다. */
   it('결재선을 고르기 전에는 사용자 목록을 부르지 않는다', async () => {
     const { requests } = renderScreen(allRoutes());
@@ -2982,6 +2999,29 @@ describe('ApprovalRouteScreen — 단계 치환 저장', () => {
     expect(stepsReplaceRequests(requests)).toHaveLength(0);
   });
 
+  /**
+   * **사용자 마스터는 결재선 쓰기의 무효화 범위 밖이다.** 결재선을 저장했다고 사람이 들고
+   * 나지는 않는다 — 같은 뿌리 키에 두면 저장할 때마다 쓰지도 않을 조회가 하나씩 더 나간다.
+   */
+  it('단계를 저장해도 사용자 목록을 다시 부르지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes([stepsReplaceRoute()]), SELECTED);
+
+    await stepPane();
+    await waitFor(() => {
+      expect(requests.filter((request) => request.url.pathname === USERS_PATH)).toHaveLength(1);
+    });
+
+    await user.click(screen.getAllByRole('button', { name: '아래로 이동' })[0] as HTMLElement);
+    await user.click(saveStepsButton());
+    await screen.findByText(messages.common.saved);
+
+    /* 상세는 다시 온다 — 그것과 견주어야 「사용자 목록만 그대로다」가 뜻을 갖는다. */
+    await waitFor(() => {
+      expect(detailRequests(requests).length).toBeGreaterThan(1);
+    });
+    expect(requests.filter((request) => request.url.pathname === USERS_PATH)).toHaveLength(1);
+  });
+
   /** **승인자가 사용 중지여도 막지 않는다** — 막으면 다른 단계를 고치는 것까지 불가능해진다. */
   it('사용 중지된 승인자가 있어도 저장할 수 있다', async () => {
     const { requests, user } = renderScreen(allRoutes([stepsReplaceRoute()]), SELECTED);
@@ -3063,6 +3103,38 @@ describe('ApprovalRouteScreen — 단계 초안 수명', () => {
 
     await waitFor(() => {
       expect(stepRows()).toHaveLength(stepFixtures.length + 1);
+    });
+  });
+
+  /**
+   * 추가 줄에서 고른 승인자는 그 구획 안에만 있는 값이라 수명 표에 열이 없다 —
+   * 대신 **대상이 바뀌면 구획째 다시 선다.** 앞 결재선에 넣으려던 사람이 다음 결재선의
+   * 추가 줄에 남아 있으면, 사용자는 그것을 자기가 고른 것으로 읽는다.
+   */
+  it('대상이 바뀌면 추가 줄에서 고르던 승인자가 사라진다', async () => {
+    const { user } = renderScreen(allRoutes([detailRouteById()]), SELECTED, '?ar=9003');
+
+    const pane = await stepPane();
+
+    await user.click(within(pane).getByRole('combobox', { name: t.fields.approver }));
+    await user.click(screen.getByRole('option', { name: APPROVER_OPTION_LABEL }));
+
+    // 선행 단언 — 실제로 골라져 있어야 「사라졌다」가 뜻을 갖는다.
+    expect(within(pane).getByRole('combobox', { name: t.fields.approver })).toHaveTextContent(
+      APPROVER_OPTION_LABEL,
+    );
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9003');
+    });
+
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole('region', { name: t.panes.steps })).getByRole('combobox', {
+          name: t.fields.approver,
+        }),
+      ).not.toHaveTextContent(APPROVER_OPTION_LABEL);
     });
   });
 
