@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -102,6 +102,21 @@ describe('ApproveDialog', () => {
 
     expect(within(dialog()).queryByRole('button', { name: messages.common.close })).toBeNull();
     expect(within(dialog()).getAllByRole('button')).toHaveLength(2);
+  });
+
+  /**
+   * **나가는 길의 나머지 반쪽.** X 손잡이만 잠그고 스크림을 열어 두면 잠근 적이 없는 것과 같다 —
+   * 되돌릴 수 없는 확인 창이 창 밖을 잘못 눌러 사라지면 사용자는 자기가 무엇을 취소했는지 모른다.
+   *
+   * 디자인 시스템은 스크림 클릭을 **`<dialog>` 자신이 클릭 대상일 때**로 판정한다(패널은 그 안의
+   * 자식이다). 그래서 창 요소를 직접 눌러 그 길을 잰다.
+   */
+  it('스크림을 눌러도 닫히지 않는다', () => {
+    const { onClose } = renderDialog();
+
+    fireEvent.click(dialog());
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('확인을 누르면 승인을 보낸다', async () => {

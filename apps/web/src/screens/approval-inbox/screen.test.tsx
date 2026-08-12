@@ -2329,3 +2329,103 @@ describe('결재 — 전송 중', () => {
     expect(screen.queryByText(messages.conflict.user)).toBeNull();
   });
 });
+
+/**
+ * **상세를 더는 읽을 수 없게 된 뒤의 확인 창** — 리뷰 t3 Major가 짚은 자리.
+ *
+ * react-query는 재조회가 실패해도 **마지막 성공 데이터를 남긴다.** 그래서 「데이터가 있는가」만
+ * 묻는 조건은 「지금 읽을 수 있는가」를 묻지 않는다. 그 틈에서 화면은 「권한이 없습니다」라고
+ * 말하면서 그 위에 **되돌릴 수 없는 승인 창**을 세운 채였다.
+ *
+ * 실브라우저 도달 경로: `refetchOnReconnect`가 기본 참이고 `staleTime`이 30초라, 확인 창을
+ * 30초 넘게 연 채 네트워크가 끊겼다 붙으면 상세가 재조회된다 — 산업용 패널 PC의 무선 환경은
+ * 이 화면이 `deliveryUnknown` 문구로 이미 상정한 조건이다.
+ */
+describe('결재 — 상세를 읽을 수 없게 된 뒤', () => {
+  /** 첫 조회는 통과시키고 **두 번째부터** 실패시킨다 — 창을 열 상태는 서야 한다. */
+  const failingSecondDetail = (status: number): StubRoute => {
+    let served = 0;
+
+    return {
+      match: (request) => isDetailPath(new URL(request.url).pathname),
+      respond: () => {
+        served += 1;
+
+        return served === 1
+          ? jsonResponse(contradictoryMyTurnDetail, { headers: { ETag: DETAIL_ETAG } })
+          : jsonResponse({ message: '' }, { status });
+      },
+    };
+  };
+
+  it('승인 창이 열린 사이 상세가 500이면 창이 사라지고 쓰기가 나가지 않는다', async () => {
+    const { requests, user } = await renderDecision(decisionRoutes([failingSecondDetail(500)]));
+
+    await user.click(approveButton());
+    expect(confirmDialog()).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await screen.findByText(messages.httpError.loadTitle);
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(writeRequests(requests)).toHaveLength(0);
+  });
+
+  /** **승인·반려 대칭** — 한쪽만 막으면 다른 쪽이 같은 자리로 샌다. */
+  it('반려 창이 열린 사이 상세가 500이면 창이 사라지고 쓰기가 나가지 않는다', async () => {
+    const { requests, user } = await renderDecision(decisionRoutes([failingSecondDetail(500)]));
+
+    await openRejectDialog(user);
+    expect(confirmDialog()).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await screen.findByText(messages.httpError.loadTitle);
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(writeRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * **403은 결재 구획을 걷어 내고 「볼 권한이 없습니다」를 세운다.** 그 위에 창이 남으면
+   * 화면이 볼 수 없다고 말하는 요청을 사용자가 결재하게 된다.
+   */
+  it('상세가 403이면 안내가 서고 창이 남지 않는다', async () => {
+    const { requests, user } = await renderDecision(decisionRoutes([failingSecondDetail(403)]));
+
+    await user.click(approveButton());
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await screen.findByText(t.empty.forbiddenTitle);
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(writeRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * **창이 스스로 되살아나지 않는다.** 숨기기만 하고 상태를 내려 두지 않으면, 사용자가
+   * 「다시 시도」로 상세를 되찾는 순간 **누른 적 없는 확인 창**이 다시 떠 있다.
+   */
+  it('다시 시도로 상세가 돌아와도 창이 되살아나지 않는다', async () => {
+    let served = 0;
+    const flakyDetail: StubRoute = {
+      match: (request) => isDetailPath(new URL(request.url).pathname),
+      respond: () => {
+        served += 1;
+
+        return served === 2
+          ? jsonResponse({ message: '' }, { status: 500 })
+          : jsonResponse(contradictoryMyTurnDetail, { headers: { ETag: DETAIL_ETAG } });
+      },
+    };
+
+    const { user } = await renderDecision(decisionRoutes([flakyDetail]));
+
+    await user.click(approveButton());
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await screen.findByText(messages.httpError.loadTitle);
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+    await screen.findByRole('group', { name: t.panes.decision });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});

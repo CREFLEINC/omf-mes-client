@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -78,6 +78,15 @@ describe('RejectDialog', () => {
 
     expect(within(dialog()).queryByRole('button', { name: messages.common.close })).toBeNull();
     expect(within(dialog()).getAllByRole('button')).toHaveLength(2);
+  });
+
+  /** 승인 창과 같은 규율 — **한쪽 창만 좁히면 다른 쪽이 열린 문이 된다.** */
+  it('스크림을 눌러도 닫히지 않는다', () => {
+    const { onClose } = renderDialog();
+
+    fireEvent.click(dialog());
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('확인을 누르면 반려를 보낸다', async () => {
