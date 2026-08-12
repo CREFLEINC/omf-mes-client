@@ -80,22 +80,27 @@ const listBody = (
   page: Partial<{ page: number; size: number; total: number }> = {},
 ) => ({ items, page: { page: 1, size: 20, total: items.length, ...page } });
 
+/**
+ * 목록. **방법을 가리지 않고 응답한다** — 「쓰기를 보내지 않았다」를 증명하려면 쓰기가
+ * 나갔을 때 그것이 **기록되고 응답까지 받아야** 한다. 방법으로 거르면 잘못 나간 쓰기가
+ * 스텁 누락으로 터져, 감지기가 잰 것이 「쓰기가 없다」가 아니라 「스텁이 없다」가 된다.
+ */
 const listRoute = (
   items: unknown[] = requestFixtures,
   page?: Partial<{ page: number; size: number; total: number }>,
 ): StubRoute => ({
-  match: (request) => request.method === 'GET' && isListUrl(new URL(request.url)),
+  match: (request) => isListUrl(new URL(request.url)),
   respond: () => jsonResponse(listBody(items, page)),
 });
 
 const failingListRoute = (status = 500): StubRoute => ({
-  match: (request) => request.method === 'GET' && isListUrl(new URL(request.url)),
+  match: (request) => isListUrl(new URL(request.url)),
   respond: () => jsonResponse({ message: '' }, { status }),
 });
 
 /** 대기 건수. **본문은 한 건만 온다** — 화면이 읽는 것은 `page.total`뿐이다. */
 const countRoute = (total = 0): StubRoute => ({
-  match: (request) => request.method === 'GET' && isCountUrl(new URL(request.url)),
+  match: (request) => isCountUrl(new URL(request.url)),
   respond: () => jsonResponse({ items: [], page: { page: 1, size: 1, total } }),
 });
 
