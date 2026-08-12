@@ -729,6 +729,29 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
   });
 
   /**
+   * **매임 서명은 「지금」 조건이어야 한다.**
+   *
+   * 404 effect는 의존성을 하나로 두려고 서명을 참조로 읽는다. 그 참조를 갱신하는 동기화가
+   * 빠지거나 404 effect **뒤에** 서면, 참조에 첫 렌더의 서명이 굳어 **조건을 한 번이라도
+   * 바꾼 뒤의 404에서는 안내가 정리 직후 사라진다.**
+   */
+  it('조건을 바꾼 뒤 404가 나도 그 조건 위에 안내가 남는다', async () => {
+    const { user } = renderScreen(allRoutes([failingDetailRoute(404)]), '', '?q=SAMPLE&ar=9001');
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(locationText()).not.toContain('ar=');
+    });
+
+    // 첫 렌더의 서명(조건 없음)으로 굳었다면 여기서 안내가 사라진다.
+    expect(locationText()).toContain('q=SAMPLE');
+    expect(screen.getByText(t.empty.notFoundTitle)).toBeInTheDocument();
+  });
+
+  /**
    * **매임 서명에는 쪽도 들어간다.**
    *
    * 주석과 수명 표가 매임을 「조건·**쪽**의 서명」이라 적었다. 조건이 같고 쪽만 바깥에서

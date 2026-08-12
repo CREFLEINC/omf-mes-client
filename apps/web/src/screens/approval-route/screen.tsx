@@ -1,6 +1,6 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
@@ -104,34 +104,25 @@ export const ApprovalRouteScreen = () => {
   const listContextKey = toSearchParams(filters, page).toString();
   const [missingContextKey, setMissingContextKey] = useState<string | null>(null);
 
-  /**
-   * 아래 404 effect의 **의존성을 하나로 두기 위해** 지금 서명을 참조로 들고 있는다.
-   * 의존성에 서명을 넣으면 조건·쪽이 바뀔 때마다 effect가 깨어나 안내를 다시 세운다.
-   *
-   * **동기화를 렌더가 아니라 effect가 한다.** 렌더 중에 참조를 쓰면 버려진 렌더가 남긴 값을
-   * 뒤의 effect가 읽을 여지가 생긴다(React 지침). 이 effect를 404 effect **앞에** 선언해
-   * 같은 커밋에서 참조가 먼저 갱신되게 한다 — effect는 선언 순서대로 실행된다.
-   */
-  const listContextKeyRef = useRef(listContextKey);
-
-  useEffect(() => {
-    listContextKeyRef.current = listContextKey;
-  }, [listContextKey]);
-
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isRouteNotFound =
     detailError !== null && detailError.kind === 'http' && detailError.status === 404;
 
   /**
-   * 상세가 404면 주소에 남은 번호를 정리한다.
+   * 상세가 404면 주소에 남은 번호를 정리하고, **그 순간의 서명**에 안내를 맨다.
    *
    * **히스토리를 늘리지 않는다**(`replace`) — 늘리면 뒤로가기가 없는 결재선으로 되돌아가고,
    * 그 자리에서 다시 404가 나 같은 정리가 되풀이된다.
+   *
+   * **서명을 참조로 우회하지 않고 의존성에 그대로 둔다.** 참조로 두면 「참조를 언제 갱신하는가」가
+   * effect 선언 순서에 매인 보이지 않는 규약이 되고, 그 규약은 잣대로 붙잡히지 않는다.
+   * 의존성에 두면 조건·쪽이 바뀔 때 effect가 깨어나지만 **404가 아니면 곧바로 되돌아간다** —
+   * 404인 채로 조건만 바뀌는 길에서는 새 서명에 다시 매이는 것이 옳은 동작이다.
    */
   useEffect(() => {
     if (!isRouteNotFound) return;
 
-    setMissingContextKey(listContextKeyRef.current);
+    setMissingContextKey(listContextKey);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -141,7 +132,7 @@ export const ApprovalRouteScreen = () => {
       },
       { replace: true },
     );
-  }, [isRouteNotFound, setSearchParams]);
+  }, [isRouteNotFound, listContextKey, setSearchParams]);
 
   const isRouteMissing =
     selectedRouteId === null && missingContextKey !== null && missingContextKey === listContextKey;
