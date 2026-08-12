@@ -112,6 +112,28 @@ describe('RouteFormPane — 진행 중 건수 상시 표시', () => {
 
     expect(screen.getByText(t.notes.inProgressSome(7))).toBeInTheDocument();
   });
+
+  /**
+   * **사용 중지된 결재선에서야말로 이 문구가 필요하다.**
+   *
+   * 결재선을 끈 사람이 「그럼 이미 돌고 있는 것들은?」을 확인할 자리가 여기다 —
+   * 끄기 확인 창은 닫히면 사라지지만 이 자리는 남는다. 사용 여부로 가리면
+   * 문구가 존재하는 이유 그 자체가 사라진다.
+   */
+  it('사용 중지된 결재선에서도 진행 중 안내가 남는다', () => {
+    renderPane({ route: { ...inactiveRoute, inProgressCount: 2 } });
+
+    // 선행 단언 — 실제로 미사용 결재선이어야 이 감지기가 뜻을 갖는다.
+    expect(screen.getByText(t.values.inactive)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.inProgressSome(2))).toBeInTheDocument();
+  });
+
+  it('사용 중지되고 진행 중인 요청도 없으면 그 사실을 말한다', () => {
+    renderPane({ route: inactiveRoute });
+
+    expect(screen.getByText(t.values.inactive)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.inProgressNone)).toBeInTheDocument();
+  });
 });
 
 describe('RouteFormPane — 이 회차의 경계', () => {

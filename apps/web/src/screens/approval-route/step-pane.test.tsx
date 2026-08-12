@@ -86,6 +86,30 @@ describe('StepPane — 상시 안내', () => {
     expect(screen.getByText(t.notes.stepGuideNotRetroactive)).toBeInTheDocument();
     expect(screen.getByText(t.notes.stepGuideRejectResubmit)).toBeInTheDocument();
   });
+
+  /**
+   * **표가 무엇으로 채워졌는지와 무관하다.** 표 자리에 실패 배너나 자리 표시가 서 있어도
+   * 세 줄은 결재선을 보는 내내 참인 사실이다 — 표에 딸린 것으로 두면 표가 비는 순간
+   * 함께 사라진다.
+   */
+  it('조회에 실패해도 세 줄이 남는다', () => {
+    renderPane({ steps: [], loadError: <p>단계 조회 실패 배너</p> });
+
+    // 선행 단언 — 실제로 실패 상태여야 이 감지기가 뜻을 갖는다.
+    expect(screen.getByText('단계 조회 실패 배너')).toBeInTheDocument();
+    expect(screen.getByText(t.notes.stepGuideApproverAbsent)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.stepGuideNotRetroactive)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.stepGuideRejectResubmit)).toBeInTheDocument();
+  });
+
+  it('불러오는 중에도 세 줄이 남는다', () => {
+    renderPane({ steps: [], isLoading: true });
+
+    expect(screen.getByRole('status', { name: t.loading.steps })).toBeInTheDocument();
+    expect(screen.getByText(t.notes.stepGuideApproverAbsent)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.stepGuideNotRetroactive)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.stepGuideRejectResubmit)).toBeInTheDocument();
+  });
 });
 
 describe('StepPane — 빈 상태와 실패', () => {

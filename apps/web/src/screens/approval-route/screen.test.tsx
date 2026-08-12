@@ -427,6 +427,43 @@ describe('ApprovalRouteScreen — 목록', () => {
     await screen.findAllByText(BUSINESS_UNIT_LABEL);
   });
 
+  /**
+   * **참조를 「미사용 포함」으로 부른다.**
+   *
+   * 기본 조회는 사용 중인 것만 내려준다 — 결재선은 사업부보다 오래 살므로, 좁혀 받으면
+   * 사용 중지된 사업부를 가리키는 결재선이 **「알 수 없음」으로 표기된다.** 그것은
+   * *값이 잘못됐다*는 뜻이라 정반대로 읽힌다(#44·#47의 형태).
+   */
+  it('사업부 참조를 「미사용 포함」으로 부른다', async () => {
+    const { requests } = renderScreen(allRoutes());
+
+    await waitForList();
+
+    const calls = requests.filter((request) => request.url.pathname === BUSINESS_UNITS_PATH);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url.searchParams.get('includeInactive')).toBe('true');
+
+    // 짝 방향 — 미사용 사업부를 가리키는 결재선의 이름이 실제로 풀린다.
+    expect(await screen.findByText(INACTIVE_BUSINESS_UNIT_LABEL)).toBeInTheDocument();
+  });
+
+  /**
+   * **서버가 준 쪽이 정본이다.**
+   *
+   * 주소의 쪽 번호를 표시에 쓰면 서버가 다른 쪽을 돌려줬을 때(범위 밖 요청을 서버가 잘라
+   * 첫 쪽을 주는 경우 등) **표시와 내용이 어긋난다.** 계산은 `pagination.ts`가 이미 재므로
+   * 여기서는 **컨테이너가 어느 쪽을 넘기는가**(배선)를 잰다.
+   */
+  it('주소의 쪽과 서버가 준 쪽이 다르면 서버 쪽으로 읽힌다', async () => {
+    renderScreen(allRoutes([listRoute(routeFixtures, { page: 1, size: 20, total: 45 })]), '?page=5');
+
+    await waitForList();
+
+    expect(screen.getByText('1–3 / 전체 45건')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
+  });
+
   it('참조 목록이 잘리면 그 사실을 밝힌다', async () => {
     renderScreen(
       allRoutes([businessUnitRoute(businessUnitFixtures, { total: businessUnitFixtures.length + 1 })]),
@@ -575,6 +612,55 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
 
     await screen.findByRole('region', { name: t.panes.steps });
     expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **매임 기구의 본체를 재는 자리.**
+   *
+   * 404 안내는 세 방향으로 재야 뜻이 선다 — 「뜬다」·「사라진다」·**「주소가 정리된 뒤에도 남는다」**.
+   * 셋째가 빠지면 매임(`missingContextKey`)을 통째로 지워도 앞 둘이 통과한다.
+   *
+   * 정리 직후 `isRouteNotFound`는 거짓이 된다(고른 것이 없으니 상세 조회가 성립하지 않는다).
+   * 그 순간 안내를 붙잡는 것은 매임뿐이며, 없으면 안내가 **한 프레임 번쩍이고 사라져**
+   * 사용자는 자기 선택이 왜 사라졌는지 알 수 없다.
+   */
+  it('404로 주소의 번호가 정리된 뒤에도 안내가 남는다', async () => {
+    renderScreen(allRoutes([failingDetailRoute(404)]), SELECTED);
+
+    // 주소가 먼저 정리되는 것을 기다린다 — **그 뒤가 이 감지기의 자리다.**
+    await waitFor(() => {
+      expect(locationText()).not.toContain('ar=');
+    });
+
+    expect(screen.getByText(t.empty.notFoundTitle)).toBeInTheDocument();
+    // 짝 방향 — 「고르지 않았다」로 바뀌어 버리는 것이 이 결함의 실제 모습이다.
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **404 정리는 히스토리를 늘리지 않는다.**
+   *
+   * 늘리면 뒤로가기가 없는 결재선으로 되돌아가고, 그 자리에서 다시 404가 나 같은 정리가
+   * 되풀이된다 — 뒤로가기가 사실상 막힌다. 조건이 다른 주소에서 출발해야 한 칸 뒤가
+   * 「처음 주소」인지 「없는 결재선」인지 갈린다.
+   */
+  it('404 정리가 뒤로가기를 막지 않는다', async () => {
+    const { user } = renderScreen(allRoutes([failingDetailRoute(404)]), '?q=SAMPLE', SELECTED);
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(locationText()).not.toContain('ar=');
+    });
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    // 정리가 자리를 밀어 넣었다면 한 칸 뒤는 처음 주소가 아니라 **없는 결재선**이다.
+    await waitFor(() => {
+      expect(locationText()).toBe(`${ROUTE}?q=SAMPLE`);
+    });
   });
 
   /**
