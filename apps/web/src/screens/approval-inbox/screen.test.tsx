@@ -57,16 +57,18 @@ const createRecordingFetch = (
 };
 
 /**
- * 대기 건수 조회인가. **목록과 같은 경로를 쓰지만 `size`를 싣는 것이 다르다** —
- * 목록은 서버 기본값을 쓰므로 `size`를 싣지 않는다(`filters.ts`).
+ * 대기 건수 조회인가. **목록과 같은 경로를 쓰지만 조건이 다르다** — 건수는 `myTurnOnly`로
+ * 걸러지고 목록의 어느 탭도 그 축을 싣지 않는다(`tabs.ts`).
  *
- * 두 조회를 갈라 세어야 「목록을 1회 불렀다」와 「건수를 1회 불렀다」가 서로를 가리지 않는다.
+ * **`size` 유무로 가르지 않는다.** 목록에 쪽 크기 선택이 붙는 날 두 조회가 조용히 뒤섞인다 —
+ * 판별식이 「제품이 지금 `size`를 안 싣는다」는 **바뀔 수 있는 구현**에 매이면 안 된다.
+ * `myTurnOnly`가 곧 「대기 건수」의 정의다(계약이 그 파라미터를 그렇게 적었다).
  */
 const isCountUrl = (url: URL): boolean =>
-  url.pathname === REQUESTS_PATH && url.searchParams.has('size');
+  url.pathname === REQUESTS_PATH && url.searchParams.has('myTurnOnly');
 
 const isListUrl = (url: URL): boolean =>
-  url.pathname === REQUESTS_PATH && !url.searchParams.has('size');
+  url.pathname === REQUESTS_PATH && !url.searchParams.has('myTurnOnly');
 
 /** 상세 경로로 **나간 요청 전부**. 번호 자리가 무엇이든 센다 — 잘못된 경로도 「부르지 않았다」를 깬다. */
 const isDetailPath = (pathname: string): boolean =>
@@ -549,6 +551,9 @@ describe('조회 조건', () => {
     await waitForList();
 
     const query = lastListQuery(requests);
+
+    /* 양성 앵커 — 조회가 실제로 나갔다. 이것이 없으면 아래 넷이 공허하게 통과할 수 있다. */
+    expect(query?.get('assignedToMe')).toBe('true');
 
     expect(query?.get('page')).toBeNull();
     expect(query?.get('requestedAtFrom')).toBeNull();
