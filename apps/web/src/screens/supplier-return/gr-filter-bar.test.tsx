@@ -17,6 +17,7 @@ const baseProps = (overrides: Partial<GrFilterBarProps> = {}): GrFilterBarProps 
   receiptTypeOptions: [],
   statusOptions: [],
   chipNames: { warehouse: WAREHOUSE_LABEL },
+  isLocked: false,
   onSearch: vi.fn(),
   onRemoveFilter: vi.fn(),
   onReset: vi.fn(),
@@ -270,5 +271,29 @@ describe('GrFilterBar — 선택지의 한계', () => {
     renderBar();
 
     expect(screen.getByText(t.filters.periodNote)).toBeInTheDocument();
+  });
+});
+
+/**
+ * **전송 중 잠금의 첫째 겹**(M33).
+ *
+ * 조회와 초기화는 **고른 전표를 푸는 길**이라 전송 중에 열어 두면 앞 요청의 결과가 다른
+ * 맥락에 나타난다. 조건 칸은 잠그지 않는다(배치 규범 3) — 고쳐도 「조회」 전에는 나가지 않는다.
+ */
+describe('GrFilterBar — 전송 중 잠금', () => {
+  it('전송 중에는 조회와 초기화가 잠기고 조건 칸은 열려 있다', () => {
+    renderBar({ isLocked: true });
+
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();
+    /* 짝 방향 — 조건은 여전히 고칠 수 있다. */
+    expect(screen.getByLabelText(t.fields.q)).not.toBeDisabled();
+  });
+
+  it('전송 중이 아니면 둘 다 열려 있다', () => {
+    renderBar();
+
+    expect(screen.getByRole('button', { name: messages.common.search })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.reset })).not.toBeDisabled();
   });
 });

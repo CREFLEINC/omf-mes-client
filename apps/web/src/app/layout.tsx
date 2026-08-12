@@ -104,6 +104,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/logistics/stocktaking" icon="checklist">
               재고실사
             </NavItem>
+            {/*
+             * W-01-05 — **차례가 업무 순서다.** 예정 → 도착 → 입고 → 재고 확인 → 실사 뒤에
+             * **되돌려 보내기**가 선다. 반품은 앞의 다섯이 남긴 결과(입고된 자재)를 대상으로
+             * 삼으므로 그것들보다 앞에 둘 자리가 없다.
+             */}
+            <NavItem to="/logistics/supplier-return" icon="assignment_return">
+              공급사 반품 처리
+            </NavItem>
           </SidebarSection>
           {/*
            * 사용자·역할·권한은 기준정보가 아니라 **시스템 운영**이다 —

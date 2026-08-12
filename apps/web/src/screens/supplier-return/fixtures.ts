@@ -1,4 +1,4 @@
-import type { ReceiptLineView, ReceiptView } from './types';
+import type { IssueLineResponse, IssueResponse, ReceiptLineView, ReceiptView } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -13,7 +13,8 @@ import type { ReceiptLineView, ReceiptView } from './types';
  * `INBOUND_RECEIPT`). 예시를 픽스처에 쓰면 나중에 「확정 값」으로 읽힌다.
  *
  * **내부 번호(FK)는 서로 겹치지 않는 대역으로 나눈다** — 9000대(입고 전표) · 9300대(품목) ·
- * 9400대(입고 라인) · 9500대(단위) · 9600대(자재 LOT) · 9700대(창고) · 9800대(적치 위치).
+ * 9400대(입고 라인) · 9450대(반품 라인) · 9500대(단위) · 9600대(자재 LOT) · 9700대(창고) ·
+ * 9800대(적치 위치) · 9900대(거래처) · 9950대(반품 전표).
  * 「표 어디에도 내부 번호가 렌더되지 않는다」를 검사할 때 수량 같은 정상 숫자와 헷갈리지 않게
  * 하기 위해서다. 업무 번호에 내부 번호가 **부분 문자열로 들어가지 않도록** 대역을 갈라 두었다.
  */
@@ -221,6 +222,82 @@ export const balanceFixtures = [
 /** 9601의 두 줄을 더한 상한. 화면 단언이 이 수를 되풀이해 적지 않게 한다. */
 export const ON_HAND_9601 = 120;
 
+/**
+ * 거래처(공급사) 목록. **되돌려 보낼 상대를 사용자가 여기서 고른다.**
+ *
+ * 미사용 거래처를 담지 않는다 — 이 화면의 공급사 칸은 **고르는 값**이라 기본 조회(유효한 것만)를
+ * 그대로 쓴다. 회사명은 지어낸 대역이다(공개 저장소 경계).
+ */
+export const partnerFixtures = [
+  {
+    partnerId: 9901,
+    partnerCode: 'SAMPLE-SUP-01',
+    partnerName: '(주)합성부품',
+    isActive: true,
+  },
+  {
+    partnerId: 9902,
+    partnerCode: 'SAMPLE-SUP-02',
+    partnerName: '(주)합성소재',
+    isActive: true,
+  },
+];
+
+/** 첫 공급사의 화면 표기. 단언이 이 글자를 되풀이해 적지 않게 한다. */
+export const PARTNER_LABEL = 'SAMPLE-SUP-01 · (주)합성부품';
+
+const BASE_ISSUE: IssueResponse = {
+  goodsIssueId: 9951,
+  goodsIssueNo: 'GI-2026-950001',
+  issueTypeCode: 'SAMPLE_ISSUE_TYPE_A',
+  sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+  sourceDocumentId: 9001,
+  sourceWarehouseId: 9701,
+  destinationTypeCode: 'SAMPLE_DESTINATION_TYPE_A',
+  destinationId: 9901,
+  issuedAt: '2026-08-06T09:12:00+09:00',
+  /**
+   * **목이 `postImmediately: true`에도 이 값을 되돌려 준다**(실측). 화면이 이 값으로
+   * 「전기 완료」를 판정했다면 그 자리에서 거짓말을 한다 — 그래서 픽스처도 그대로 둔다.
+   */
+  statusCode: 'SAMPLE_GI_STATUS_A',
+  reasonCode: 'SAMPLE_REASON_A',
+  replacementExpected: false,
+  erpMessageQueued: true,
+};
+
+export const goodsIssue = (overrides: Partial<IssueResponse> = {}): IssueResponse => ({
+  ...BASE_ISSUE,
+  ...overrides,
+});
+
+/**
+ * 만들어진 반품 전표의 줄 둘. **서버가 되돌려 준 모양**이다 — 화면이 보낸 것과 같을 필요가 없고,
+ * 결과 구획이 **서버가 준 배열**을 그리는지 재려면 오히려 달라야 한다(줄 수가 다르다).
+ */
+export const goodsIssueLineFixtures: IssueLineResponse[] = [
+  {
+    goodsIssueLineId: 9451,
+    goodsIssueId: 9951,
+    lineNo: 1,
+    itemId: 9301,
+    lotId: 9601,
+    issueQty: 30,
+    uomId: 9501,
+    sourceLocationId: 9801,
+  },
+  {
+    goodsIssueLineId: 9452,
+    goodsIssueId: 9951,
+    lineNo: 2,
+    itemId: 9302,
+    lotId: 9602,
+    issueQty: 5,
+    uomId: 9501,
+    sourceLocationId: 9802,
+  },
+];
+
 /** 화면 어디에도 나와서는 안 되는 내부 번호(FK). 업무 번호와 겹치지 않는 대역이다. */
 export const INTERNAL_IDS = [
   '9001',
@@ -242,4 +319,9 @@ export const INTERNAL_IDS = [
   '9801',
   '9802',
   '9899',
+  '9901',
+  '9902',
+  '9951',
+  '9451',
+  '9452',
 ];

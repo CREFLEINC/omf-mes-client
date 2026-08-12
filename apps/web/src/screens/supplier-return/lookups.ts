@@ -25,8 +25,10 @@ import type { LookupEntry, LotEntry, PageMeta } from './types';
  * | 단위 | 라인 표의 수량 표기 | **아래 구획** | 같은 위 |
  * | 자재 LOT | 라인 표의 LOT 칸 · **보류 표식** | **아래 구획** | 같은 위. **품목마다 한 번** |
  * | 위치 | 라인 표의 위치 칸 | **아래 구획** | 같은 위(**전표의 창고**로 조회) |
+ * | **거래처(공급사)** | **반품 정보의 공급사 선택칸 · 확인 창 · 결과 구획** | **아래 구획** | **전표를 고른 뒤** |
  *
- * 거래처(공급사)는 반품 정보가 쓰는 여섯째 참조이고 뒤따르는 회차에서 이 표에 더해진다.
+ * **거래처만 성질이 다르다.** 앞 다섯은 서버가 준 번호를 **이름으로 푸는** 참조이고, 거래처는
+ * 사용자가 **고르는** 값이다 — 그래서 미사용 여부를 다루는 방식도 갈린다(아래 훅의 주석).
  *
  * **창고만 미리 받는 이유**는 그 이름이 나타나는 **시점**이 다르기 때문이다. 조건 줄과 목록
  * 표의 창고 칸은 **목록 응답만으로** 곧바로 그려지지만, 라인 표의 칸은 **상세 응답이 와야**
@@ -187,6 +189,7 @@ export const lookupKeys = {
   lots: (itemId: number) => ['supplier-return-lookups', 'lots', itemId] as const,
   /** 위치는 **창고마다** 갈린다 — 계약이 창고를 필수 조건으로 둔다. */
   locations: (warehouseId: number) => ['supplier-return-lookups', 'locations', warehouseId] as const,
+  partners: ['supplier-return-lookups', 'partners'] as const,
 };
 
 /**
@@ -406,6 +409,57 @@ export const useLocationOptions = (warehouseId: number | null): LookupResult => 
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
     isLoading: warehouseId !== null && query.isPending,
+    refetch: () => {
+      void query.refetch();
+    },
+  };
+};
+
+/**
+ * 거래처 — 반품 정보의 **공급사 선택칸**이 쓴다. 되돌려 보낼 상대를 사용자가 여기서 고른다.
+ *
+ * **자동으로 끌어오지 않는다**(계획 결정 11). 입고 전표에 공급사 필드가 없고(실측), 원천
+ * 문서를 따라 올라가려면 원천 문서 유형의 값 목록이 있어야 하는데 그것이 없다 —
+ * **추론 경로를 만들면 값이 정해질 때 조용히 틀린다.**
+ *
+ * **미사용 거래처를 함께 받지 않는다.** 앞 다섯 참조와 갈리는 자리다: 그쪽은 과거 전표가
+ * 가리키는 번호를 **읽어 이름으로 푸는** 곳이라 미사용 값도 있어야 이름이 보이지만, 여기는
+ * **새 전표에 실을 값을 고르는** 곳이다. 미사용 거래처를 고르게 두면 되돌릴 수 없는 전표에
+ * 유효하지 않은 도착지가 실린다 — 유효성 판정은 서버가 하며 기본 조회가 유효한 것만 내린다
+ * (공유계약 G-8). 그래서 표식이 아니라 **목록에서 빼는 것**이 맞는 처리다.
+ *
+ * **잘리면 표식을 낸다.** 계약에 **번호로 한 건을 받는 경로가 없어**(실측: `q`·`page`·`size`뿐)
+ * 잘린 뒤쪽의 거래처는 이 화면에서 고를 길이 아예 없다 — 감추면 사용자가 「그런 거래처가
+ * 없다」로 결론짓는다. 그 한계는 착수 이슈에 질문으로 올린다(계획 §5.4-7).
+ *
+ * **전표를 고르기 전에는 부르지 않는다**(`enabled`) — 반품 정보 구획 자체가 그때 그려진다.
+ */
+export const usePartnerOptions = (enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.partners,
+    enabled,
+    queryFn: () => runRequest(() => client.GET('/mdm/partners')),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.partnerId),
+        /*
+         * **「코드 · 이름」으로 낸다.** 거래처 코드는 업무 번호라 사람이 상대를 가르는 데 쓰고,
+         * 내부 번호(`partnerId`)는 어느 갈래에도 담기지 않는다(#44). 다른 참조 다섯과 같은
+         * 모양이라 사용자가 칸마다 다른 읽기 규칙을 익힐 필요가 없다.
+         */
+        label: `${item.partnerCode} · ${item.partnerName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: enabled && query.isPending,
     refetch: () => {
       void query.refetch();
     },

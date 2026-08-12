@@ -192,6 +192,21 @@ describe('AppLayout', () => {
   });
 
   /*
+   * W-01-05도 같은 「자재창고」 섹션에 항목만 더한다. **차례가 업무 순서다** — 실사로 장부와
+   * 실물을 맞춘 뒤 **되돌려 보낸다.** 반품은 앞의 다섯이 남긴 결과를 대상으로 삼는다.
+   */
+  it('사이드바 자재창고 섹션에 공급사 반품 처리 메뉴가 함께 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByRole('link', { name: '공급사 반품 처리' })).toHaveAttribute(
+      'href',
+      '/logistics/supplier-return',
+    );
+  });
+
+  /*
    * **섹션이 새로 생기지 않았음**을 값으로 고정한다 — 항목이 늘어도 분류는 셋 그대로다.
    * 알려진 섹션 셋이 사이드바의 링크를 **빠짐없이** 담고 있는지로 판정한다. 넷째 섹션이
    * 생기면 그 안의 링크가 이 합집합 밖으로 나와 곧바로 걸린다.
@@ -252,6 +267,7 @@ describe('AppLayout', () => {
       '/logistics/goods-receipt',
       '/logistics/stock-status',
       '/logistics/stocktaking',
+      '/logistics/supplier-return',
       '/system/users-roles',
     ]);
   });

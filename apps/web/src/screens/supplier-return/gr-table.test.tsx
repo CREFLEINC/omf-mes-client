@@ -29,6 +29,7 @@ const baseProps = (overrides: Partial<GrTableProps> = {}): GrTableProps => ({
   isBeyondLast: false,
   selectedReceiptId: null,
   warehouseLookup: warehouseSource(),
+  isLocked: false,
   onFirstPage: vi.fn(),
   onToggleSelect: vi.fn(),
   onRetryReferences: vi.fn(),
@@ -46,6 +47,7 @@ describe('buildGrColumns — 열 폭 예산', () => {
   const columns = buildGrColumns({
     selectedReceiptId: null,
     warehouseLookup: warehouseSource(),
+    isLocked: false,
     onToggleSelect: vi.fn(),
   });
 
@@ -194,5 +196,42 @@ describe('GrTable — 표 구조', () => {
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(
       goodsReceiptFixtures.length + 1,
     );
+  });
+});
+
+/**
+ * **전송 중 잠금의 첫째 겹**(M33).
+ *
+ * 반품이 나가는 중에 다른 전표로 옮기면 **앞 요청의 결과가 지금 보는 맥락에 나타난다.**
+ * 그 길을 닫는 겹은 둘인데(컨트롤 잠금 · 핸들러 가드) 여기서 **첫째 겹을 단독으로 잰다** —
+ * 둘째 겹만 있으면 사용자는 눌러 놓고 아무 일도 안 일어나는 화면을 본다.
+ */
+describe('GrTable — 전송 중 잠금', () => {
+  it('전송 중에는 선택 버튼이 잠긴다', () => {
+    renderTable({ isLocked: true });
+
+    for (const row of goodsReceiptFixtures) {
+      expect(
+        screen.getByRole('button', { name: t.actions.selectRow(row.goodsReceiptNo) }),
+      ).toBeDisabled();
+    }
+  });
+
+  /** 짝 방향 — 전송 중이 아니면 열려 있다. */
+  it('전송 중이 아니면 선택 버튼이 열려 있다', () => {
+    renderTable();
+
+    for (const row of goodsReceiptFixtures) {
+      expect(
+        screen.getByRole('button', { name: t.actions.selectRow(row.goodsReceiptNo) }),
+      ).not.toBeDisabled();
+    }
+  });
+
+  /* 쪽 밖 안내의 「첫 쪽으로」도 대상을 바꾸는 길이라 함께 닫는다. */
+  it('전송 중에는 「첫 쪽으로」도 잠긴다', () => {
+    renderTable({ rows: [], isBeyondLast: true, isLocked: true });
+
+    expect(screen.getByRole('button', { name: t.actions.goFirstPage })).toBeDisabled();
   });
 });

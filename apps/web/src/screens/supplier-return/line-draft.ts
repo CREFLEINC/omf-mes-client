@@ -95,6 +95,17 @@ export const setDraftQty = (
   qtyTexts: { ...draft.qtyTexts, [goodsReceiptLineId]: text },
 });
 
+/**
+ * 버릴 것이 있는가. **고른 줄과 친 글자를 함께 본다** — 한쪽만 보면 나머지가 확인 없이 사라진다.
+ *
+ * **선택을 풀어도 친 수량이 남는다**는 사실 때문에 두 조각을 각각 봐야 한다. 고른 줄이 0이어도
+ * 수량이 남아 있으면 「지울 것이 있다」이고, 그것을 말없이 지우면 사용자는 무엇을 잃었는지도
+ * 모른다.
+ */
+export const hasAnyLineDraftValue = (draft: LineDraft): boolean =>
+  draft.selectedLineIds.length > 0 ||
+  Object.values(draft.qtyTexts).some((text) => text !== '');
+
 /** 그 줄이 초안에서 골라져 있는가. **고를 수 있는 줄인지는 여기서 보지 않는다**(`return-selection.ts`의 몫). */
 export const isLineSelected = (draft: LineDraft, goodsReceiptLineId: number): boolean =>
   draft.selectedLineIds.includes(goodsReceiptLineId);

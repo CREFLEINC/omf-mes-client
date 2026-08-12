@@ -1,7 +1,8 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
 import type { ReceiptFilterQuery } from './filters';
 import { isTruncated } from './lookups';
@@ -13,6 +14,7 @@ import {
   type ReceiptDetailResult,
   type ReceiptListResult,
 } from './types';
+import { RETURN_FORM_FIELDS } from './validation';
 
 /**
  * 이 화면의 요청 — **이 회차에는 읽기 셋이다.**
@@ -70,10 +72,18 @@ export const receiptKeys = {
  */
 export const BALANCE_PAGE_SIZE = 200;
 
-/** 잔액은 **창고와 품목마다** 캐시가 갈린다 — 한 요청이 그 짝의 잔액만 담는다. */
+/**
+ * 잔액은 **창고와 품목마다** 캐시가 갈린다 — 한 요청이 그 짝의 잔액만 담는다.
+ *
+ * 앞머리를 상수로 따로 두는 이유는 **반품 성공 뒤 잔액 전체를 한 번에 무효화**하기 위해서다.
+ * 짝을 일일이 세어 무효화하면 화면이 그때 들고 있던 품목만 새로 받고, 그 사이에 줄 구성이
+ * 바뀌었으면 새 품목의 상한이 낡은 채로 남는다.
+ */
+const BALANCE_KEY = ['supplier-return-balances'] as const;
+
 export const balanceKeys = {
   onHand: (warehouseId: number, itemId: number) =>
-    ['supplier-return-balances', warehouseId, itemId] as const,
+    [...BALANCE_KEY, warehouseId, itemId] as const,
 };
 
 const fetchGoodsReceipts = async (
@@ -218,34 +228,105 @@ export const useOnHandBalances = (
     })),
   });
 
-  return {
-    /*
-     * **품목별로 나눠 낸다.** 한 품목의 실패를 전체 실패로 뭉치면 멀쩡히 받은 품목의 줄까지
-     * 상한을 잃는다 — 그 줄들은 화면이 막아 줄 수 있는데도 못 막게 된다.
-     */
-    items:
-      warehouseId === null
-        ? EMPTY_ITEM_BALANCES
-        : uniqueItemIds.map((itemId, index) => {
-            const result = results[index];
-            const data = result?.data;
+  /*
+   * **품목별로 나눠 낸다.** 한 품목의 실패를 전체 실패로 뭉치면 멀쩡히 받은 품목의 줄까지
+   * 상한을 잃는다 — 그 줄들은 화면이 막아 줄 수 있는데도 못 막게 된다.
+   */
+  const items: BalanceSource['items'] =
+    warehouseId === null
+      ? EMPTY_ITEM_BALANCES
+      : uniqueItemIds.map((itemId, index) => {
+          const result = results[index];
+          const data = result?.data;
 
-            return {
-              itemId,
-              entries: data?.items.map(toBalanceView) ?? [],
-              isLoading: result?.isPending ?? true,
-              isError: result?.isError ?? false,
-              truncated: data !== undefined && isTruncated(data.page, data.items.length),
-            };
-          }),
+          return {
+            itemId,
+            entries: data?.items.map(toBalanceView) ?? [],
+            isLoading: result?.isPending ?? true,
+            isError: result?.isError ?? false,
+            truncated: data !== undefined && isTruncated(data.page, data.items.length),
+          };
+        });
+
+  return {
+    items,
     isError: results.some((result) => result.isError),
-    truncated: results.some(
-      (result) => result.data !== undefined && isTruncated(result.data.page, result.data.items.length),
-    ),
+    /*
+     * **품목별 판정에서 접어 올린다.** 같은 「잘렸는가」를 두 자리에서 각각 계산하면 한쪽만
+     * 고쳐져 「표 아래는 잘렸다는데 줄은 멀쩡하다고 하는」 어긋난 화면이 된다 — 집계는 줄의
+     * 사실을 모으는 것이지 다시 재는 것이 아니다.
+     */
+    truncated: items.some((item) => item.truncated),
     refetch: () => {
       for (const result of results) void result.refetch();
     },
   };
+};
+
+type GoodsIssueCreate = components['schemas']['GoodsIssueCreate'];
+type GoodsIssueDetailResponse = components['schemas']['GoodsIssueDetailResponse'];
+
+export interface SupplierReturnPostOptions {
+  /** 성공 뒤 다시 부를 대상. 반품으로 달라지는 것이 이 전표와 그 창고의 잔액이다 */
+  goodsReceiptId: number | null;
+  onSuccess: (data: GoodsIssueDetailResponse) => void;
+}
+
+/**
+ * 반품 처리 — **이 화면의 유일한 쓰기이고 되돌릴 수 없다.**
+ *
+ * **한 요청이 두 가지 일을 한다**(`postImmediately: true` · `issue-request.ts`) — 출고 전표를
+ * 만들고 곧바로 전기한다. 착수 이슈 §6이 2회 호출을 금지했고, 계약의 전기 오퍼레이션을 이
+ * 화면은 부르지 않는다.
+ *
+ * **일반 출고와 경로를 나누지 않는다**(착수 이슈 §6의 ⭐). 일반 출고·반품·기타 출고가 같은
+ * 경로를 쓰고 `issueTypeCode`로만 갈린다 — 나누면 같은 전표가 세 벌로 갈라지고 조회가 세 곳을
+ * 봐야 한다.
+ *
+ * **공통 쓰기 훅을 그대로 쓰고 고치지 않는다**(계획 결정 16). 이름에 「마스터」가 들어 있으나
+ * 그 훅은 리소스 이름을 알지 않는다 — 요청 함수·잠금 토큰 경로·무효화 키·화면이 아는 필드만 받는다.
+ *
+ * **잠금 토큰을 보내지 않는다**(`etagPath: null` · 계획 결정 6). 이 요청은 **새 전표를 만들어**
+ * 매길 버전이 없고, 화면이 들고 있는 토큰은 **고른 입고 전표**의 것이라 실으면 서로 다른
+ * 자원의 버전을 비교하게 된다. 계약이 이 자리의 `If-Match`를 **선택**으로 둔 이유도 같다
+ * (오프라인 큐에 쌓인 요청은 토큰을 싣지 않는다 — 공유계약 C-9).
+ *
+ * **그래도 409를 다룬다.** 계약이 이 오퍼레이션에 409를 두었으므로(실측) 토큰을 안 보내도
+ * 서버가 다른 이유로 충돌을 낼 수 있다 — `SaveErrorBanner`가 그 갈래에만 「최신 불러오기」를 낸다.
+ *
+ * **성공 뒤 세 가지를 다시 부른다.** ① 목록 — 그 전표의 상태가 달라질 수 있다 ② 상세 —
+ * 라인이 달라질 수 있다 ③ **잔액** — 방금 차감된 값이 곧 다음 반품의 상한이다. 가르는 잣대는
+ * 「화면이 그 값으로 막고 푸느냐」이고, 셋 다 그렇다.
+ *
+ * **캐시 키의 앞머리가 갈려 있어 이 무효화가 셋만 건드린다**(완료 조건 C48). 목록·상세·잔액이
+ * 한 앞머리를 썼다면 목록 하나를 새로 받으려 해도 상세와 잔액이 함께 날아가고, 그때 상세가
+ * 새 참조로 와 **치던 값이 사라진다**(#43의 형태). 이름 참조 여섯은 여기 들지 않는다 —
+ * 반품으로 창고·품목·거래처의 이름이 달라지지 않는다.
+ *
+ * **남은 위험**: 응답을 받지 못한 뒤 다시 누르면 훅이 **새 멱등 키**를 만들어 서버가 재전송으로
+ * 보지 못한다. 제출 단위로 키를 고정하면 풀리는 문제이나 그것은 `patterns/` 변경이라 범위 밖이다 —
+ * 화면 차원 완화 셋(전송 중 전면 잠금 · 성공 후 초안 비움 · **응답 없음 안내**)으로 다룬다.
+ */
+export const useSupplierReturnPost = (
+  options: SupplierReturnPostOptions,
+): MasterWriteResult<GoodsIssueCreate> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<GoodsIssueCreate, GoodsIssueDetailResponse>({
+    request: (body, headers) =>
+      client.POST('/logistics/goods-issues', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body,
+      }),
+    etagPath: null,
+    invalidateKeys: [
+      RECEIPT_LIST_KEY,
+      receiptKeys.detail(options.goodsReceiptId),
+      BALANCE_KEY,
+    ],
+    knownFields: RETURN_FORM_FIELDS,
+    onSuccess: options.onSuccess,
+  });
 };
 
 /**

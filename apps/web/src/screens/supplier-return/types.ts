@@ -22,6 +22,8 @@ import type { components } from '@omf-mes/api-client';
 export type ReceiptResponse = components['schemas']['GoodsReceipt'];
 export type ReceiptLineResponse = components['schemas']['GoodsReceiptLine'];
 export type BalanceResponse = components['schemas']['InventoryBalance'];
+export type IssueResponse = components['schemas']['GoodsIssue'];
+export type IssueLineResponse = components['schemas']['GoodsIssueLine'];
 
 export type PageMeta = components['schemas']['PageMeta'];
 
@@ -161,6 +163,123 @@ export interface SelectOption {
   value: string;
   label: string;
 }
+
+/**
+ * 반품 정보가 받는 코드 **넷** — 계약이 요청 필수로 요구하는 것들이다.
+ *
+ * **조회 조건의 코드 둘(입고 유형·상태)과 갈라 둔다.** 둘은 비어 있어도 아무것도 막지 않지만
+ * 이 넷은 하나라도 비면 **반품 처리 전체**가 막힌다. 한 타입으로 뭉치면 초안이 쓰지 않는
+ * 키까지 들고 다니게 되고, 「무엇이 필수인가」가 자료 구조에서 읽히지 않는다.
+ *
+ * 선택지를 만드는 쪽(`code-options.ts`)이 이 타입을 넓혀 여섯을 다룬다 — 반대 방향으로 두면
+ * 타입 파일이 선택지 파일을 참조해 서로를 부르게 된다.
+ */
+export type ReturnCodeKey = 'issueType' | 'sourceDocumentType' | 'destinationType' | 'reason';
+
+/**
+ * 반품 정보 초안 — **아직 보내지 않은 입력**이다(수명 표의 「반품 정보 초안」 열).
+ *
+ * **주소에 싣지 않는다.** 글자마다 뒤로가기 기록이 쌓이고, 화면이 조회 조건과 입력을 같은
+ * 통로로 다루게 된다.
+ *
+ * **친 글자를 그대로 들고 있는다** — 번호로 강제해 들고 있으면 「고르지 않음」과 「0번」이
+ * 구분되지 않는다. 번호로 옮기는 자리는 요청 조립 한 곳이다(`issue-request.ts`).
+ */
+export interface ReturnDraft {
+  /** 고른 공급사의 번호를 글자로. 빈 문자열이 「아직 고르지 않았다」다. */
+  readonly supplier: string;
+  readonly codes: Readonly<Record<ReturnCodeKey, string>>;
+  /** `YYYY-MM-DD`. 달력 컨트롤이 이 모양으로만 방출한다. */
+  readonly issuedDate: string;
+  /** `HH:mm`. 시각 입력칸이 이 모양으로만 방출한다. */
+  readonly issuedTime: string;
+  readonly replacementExpected: boolean;
+  readonly sendToErp: boolean;
+  readonly remarks: string;
+}
+
+/**
+ * 빈 초안.
+ *
+ * **`sendToErp`만 참으로 시작한다** — 착수 이슈 §4가 「송신 토글은 두되 기본값을 켜짐으로
+ * 고정」하라고 적었고 계약의 기본값도 참이다. 나머지는 전부 비어 있다: **출고 일시를 지금
+ * 시각으로 미리 채우지 않는다.** 채우면 사용자가 확인하지 않은 시각이 되돌릴 수 없는 전표에
+ * 실리고, 어제 나간 것을 오늘 등록하는 흔한 경우에 조용히 틀린다.
+ */
+export const EMPTY_RETURN_DRAFT: ReturnDraft = {
+  supplier: '',
+  codes: { issueType: '', sourceDocumentType: '', destinationType: '', reason: '' },
+  issuedDate: '',
+  issuedTime: '',
+  replacementExpected: false,
+  sendToErp: true,
+  remarks: '',
+};
+
+/**
+ * 버릴 것이 있는가. **모든 칸을 함께 본다** — 한쪽만 보면 나머지가 확인 없이 사라진다.
+ *
+ * `sendToErp`는 **기본값에서 달라졌을 때만** 초안으로 센다. 늘 참으로 시작하므로 그대로 두면
+ * 「아무것도 넣지 않았는데 버릴 것이 있다」가 되어 파기 확인 창이 늘 뜬다.
+ */
+export const hasAnyReturnDraftValue = (draft: ReturnDraft): boolean =>
+  draft.supplier !== '' ||
+  Object.values(draft.codes).some((code) => code !== '') ||
+  draft.issuedDate !== '' ||
+  draft.issuedTime !== '' ||
+  draft.replacementExpected ||
+  !draft.sendToErp ||
+  draft.remarks !== '';
+
+/**
+ * 만들어진 반품 전표의 줄 하나. **서버가 되돌려 준 값이다** — 화면이 보낸 값을 되비추지 않는다.
+ *
+ * `goodsIssueLineId`·`goodsIssueId`·`lineNo`를 담지 않는다. 앞 둘은 내부 번호라 낼 것이
+ * 아니고(#44), 줄번호는 서버가 부여한 순번이라 사용자에게 뜻이 적다(라인 표에도 없다).
+ */
+export interface ReturnResultLineView {
+  itemId: number;
+  lotId: number;
+  issueQty: number;
+  uomId: number;
+}
+
+/**
+ * 반품 처리 결과 — **화면이 확인한 것만 담는다**(계획 결정 13).
+ *
+ * 담지 않는 것: 내부 번호(`goodsIssueId`) · 재고 차감량 · 전기 완료 여부. 앞의 것은 #44이고
+ * 뒤의 둘은 **응답에 없다** — 자리를 두지 않으면 화면이 확인하지 않은 것을 말할 경로도 없다.
+ *
+ * `statusCode`는 **그대로 담고 값으로 분기하지 않는다**(공유계약 G-2). 목이
+ * `postImmediately: true`에도 `DRAFT`를 되돌려 주는 것이 실측됐다 — 값으로 「전기 완료」를
+ * 판정했다면 그 자리에서 거짓말을 한다.
+ */
+export interface ReturnResultView {
+  goodsIssueNo: string;
+  statusCode: string;
+  /**
+   * ERP 송신 대기열 적재 여부. **계약이 선택 필드로 두어 오지 않을 수 있다** —
+   * `?? true`로 접으면 아무 근거 없이 「적재됐다」로 읽힌다. 없음을 없음으로 옮긴다.
+   */
+  erpMessageQueued: boolean | null;
+  lines: ReturnResultLineView[];
+}
+
+/** 응답 한 벌을 결과 타입으로 옮기는 **유일한 지점**이다. */
+export const toReturnResultView = (
+  issue: IssueResponse,
+  lines: readonly IssueLineResponse[],
+): ReturnResultView => ({
+  goodsIssueNo: issue.goodsIssueNo,
+  statusCode: issue.statusCode,
+  erpMessageQueued: issue.erpMessageQueued ?? null,
+  lines: lines.map((line) => ({
+    itemId: line.itemId,
+    lotId: line.lotId,
+    issueQty: line.issueQty,
+    uomId: line.uomId,
+  })),
+});
 
 /*
  * **창고 전용 화면 타입을 두지 않는다.**

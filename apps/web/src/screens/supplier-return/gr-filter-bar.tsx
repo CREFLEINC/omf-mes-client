@@ -31,6 +31,17 @@ export interface GrFilterBarProps {
   statusOptions: SelectOption[];
   /** 조건 칩에 실을 참조 이름. 번호를 문구로 만드는 자리를 두지 않기 위한 것이다(#44). */
   chipNames: FilterChipNames;
+  /**
+   * 전송 중인가. **조회와 초기화만 잠근다** — 둘은 고른 전표를 푸는 길이라 전송 중에 열어
+   * 두면 앞 요청의 결과가 다른 맥락에 나타난다.
+   *
+   * **조건 칸은 잠그지 않는다**(배치 규범 3) — 잠그면 지금 걸린 조건을 읽을 수만 있고 고칠 수
+   * 없는 상태가 된다. 고쳐도 「조회」를 누르기 전에는 아무것도 나가지 않는다.
+   *
+   * **조건 칩의 ×도 잠기지 않는다** — 디자인 시스템 `Chip`이 그 prop을 갖고 있지 않다(실측).
+   * 그 길은 화면의 핸들러 가드(둘째 겹)가 막는다.
+   */
+  isLocked: boolean;
   onSearch: (filters: ReceiptFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. **기간은 들어오지 않는다.** */
   onRemoveFilter: (key: RemovableChipKey) => void;
@@ -62,6 +73,7 @@ export const GrFilterBar = ({
   receiptTypeOptions,
   statusOptions,
   chipNames,
+  isLocked,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -206,8 +218,10 @@ export const GrFilterBar = ({
          */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
-            <Button onClick={search}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={reset}>
+            <Button disabled={isLocked} onClick={search}>
+              {messages.common.search}
+            </Button>
+            <Button variant="outlined" disabled={isLocked} onClick={reset}>
               {messages.common.reset}
             </Button>
           </div>

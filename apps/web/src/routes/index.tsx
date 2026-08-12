@@ -14,6 +14,7 @@ import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
 import { StocktakingScreen } from '../screens/stocktaking/screen';
+import { SupplierReturnScreen } from '../screens/supplier-return/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
@@ -71,6 +72,16 @@ export const appRouter = createBrowserRouter([
        * (정책 §5.2 — 접근 불가능한 경계).
        */
       { path: 'logistics/stocktaking', element: <StocktakingScreen /> },
+      /*
+       * W-01-05 — 같은 규칙(사이드바 섹션)이고 차례도 업무 순서다: 예정 → 초과 분리 →
+       * 입고 처리 → 재고 확인 → 실사 → **반품**. 되돌려 보내는 것은 앞의 다섯이 남긴
+       * 결과를 대상으로 삼는다.
+       *
+       * **세 PR이 함께 여는 자리다.** 대상 조회·줄 선택까지만 선 상태에서는 이 줄을 두지
+       * 않았다 — 반품할 수 없는 「공급사 반품 처리」를 노출하면 미완성 기능을 사용자에게
+       * 내보이는 것이다(정책 §5.2 — 접근 불가능한 경계).
+       */
+      { path: 'logistics/supplier-return', element: <SupplierReturnScreen /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

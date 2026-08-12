@@ -24,7 +24,7 @@ import {
 } from './line-draft';
 import type { LotReferenceSource, ReferenceSource } from './lookups';
 import type { BalanceSource, ItemBalance } from './on-hand';
-import { toReturnLineRows, type ReturnLineRow } from './return-selection';
+import { describeReturnSelection, toReturnLineRows, type ReturnLineRow } from './return-selection';
 import { toBalanceView } from './types';
 
 const t = messages.supplierReturn;
@@ -120,24 +120,37 @@ const columnInput = () => ({
   lotLookup: lotSource(),
   locationLookup: locationSource(),
   reasonIdPrefix: 'test-reason',
+  isLocked: false,
   onToggleSelect: vi.fn(),
   onChangeQty: vi.fn(),
 });
 
-const baseProps = (overrides: Partial<GrLineTableProps> = {}): GrLineTableProps => ({
-  rows: rowsFrom(),
-  itemLookup: itemSource(),
-  uomLookup: uomSource(),
-  lotLookup: lotSource(),
-  locationLookup: locationSource(),
-  hasBalanceError: false,
-  hasBalanceTruncated: false,
-  onToggleSelect: vi.fn(),
-  onChangeQty: vi.fn(),
-  onRetryReferences: vi.fn(),
-  onRetryBalances: vi.fn(),
-  ...overrides,
-});
+/**
+ * 기본 props.
+ *
+ * **판정을 화면이 부른 결과로 받는다**(완료 조건 C31). 표가 스스로 부르면 「반품 처리」
+ * 버튼과 호출 자리가 둘로 갈린다 — 여기서도 줄과 판정이 **같은 입력에서** 나오게 묶는다.
+ */
+const baseProps = (overrides: Partial<GrLineTableProps> = {}): GrLineTableProps => {
+  const rows = overrides.rows ?? rowsFrom();
+
+  return {
+    rows,
+    itemLookup: itemSource(),
+    uomLookup: uomSource(),
+    lotLookup: lotSource(),
+    locationLookup: locationSource(),
+    hasBalanceError: false,
+    hasBalanceTruncated: false,
+    isLocked: false,
+    selection: describeReturnSelection(rows),
+    onToggleSelect: vi.fn(),
+    onChangeQty: vi.fn(),
+    onRetryReferences: vi.fn(),
+    onRetryBalances: vi.fn(),
+    ...overrides,
+  };
+};
 
 const renderTable = (overrides: Partial<GrLineTableProps> = {}) => {
   const props = baseProps(overrides);
@@ -744,5 +757,55 @@ describe('GrLineTable — 이 회차의 경계', () => {
     renderTable();
 
     expect(within(screen.getByRole('table')).queryAllByRole('button')).toHaveLength(0);
+  });
+});
+
+/**
+ * **전송 중 잠금의 첫째 겹**(M33).
+ *
+ * 보내는 중에 줄 선택이나 수량이 바뀌면 **사용자가 확인한 것과 나가는 것이 갈린다.**
+ * 고를 수 없는 줄의 잠금(`blocked`)과 뜻이 다르므로 두 잠금이 서로를 지우지 않는지도 잰다.
+ */
+describe('GrLineTable — 전송 중 잠금', () => {
+  it('전송 중에는 선택칸과 수량칸이 모두 잠긴다', () => {
+    renderTable({ isLocked: true });
+
+    for (const ordinal of [1, 2, 3]) {
+      expect(selectBox(ordinal)).toBeDisabled();
+      expect(qtyBox(ordinal)).toBeDisabled();
+    }
+  });
+
+  /** 짝 방향 — 전송 중이 아니면 고를 수 있는 줄이 열려 있다. */
+  it('전송 중이 아니면 고를 수 있는 줄이 열려 있다', () => {
+    renderTable();
+
+    expect(selectBox(1)).not.toBeDisabled();
+    expect(qtyBox(1)).not.toBeDisabled();
+  });
+
+  /*
+   * 두 잠금이 서로를 지우지 않는다 — 전송이 끝나도 **고를 수 없는 줄은 그대로 잠겨 있어야**
+   * 하고, 그 사유도 그대로 붙어 있어야 한다.
+   */
+  it('전송 중이어도 고를 수 없는 줄의 사유가 그대로 붙는다', () => {
+    renderTable({ isLocked: true });
+
+    expect(selectBox(3)).toHaveAccessibleDescription(t.reasons.lineQtyNotPositive);
+  });
+
+  /*
+   * **판정을 받아서 쓴다**(C31 · 관찰 1의 이행). 표가 스스로 세면 「반품 처리」 버튼과 판정
+   * 호출이 둘로 갈린다 — 받은 요약을 그대로 낸다.
+   */
+  it('요약과 사유가 받은 판정에서 나온다', () => {
+    const rows = rowsFrom();
+
+    renderTable({
+      rows,
+      selection: { ...describeReturnSelection(rows), count: 7, totalQty: 70, totalUomId: 9501 },
+    });
+
+    expect(screen.getByText(t.selection.summary(7, 70, UOM_LABEL))).toBeInTheDocument();
   });
 });
