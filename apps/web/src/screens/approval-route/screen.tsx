@@ -372,16 +372,20 @@ export const ApprovalRouteScreen = () => {
     editTargetKeyRef.current === sentTargetKey;
 
   /**
-   * 훅에 남아 있는 쓰기 결과가 **남의 것**인가.
+   * 마지막으로 보낸 쓰기가 **겨눈 대상**. 셋이 한 벌의 잠금을 나눠 써서 한 번에 하나만 나간다.
    *
-   * 대상이 바뀌는 순간 나가는 중이던 요청은 **끊지 않는다**(§`resetEditing`). 그 결과가
-   * 나중에 도착하면 지금 보는 대상과 무관하므로 **화면에 내지 않는다** — 「결과는 자기
-   * 대상보다 오래 살지 않는다」가 요구하는 것은 *보이지 않는 것*이지 *일어나지 않는 것*이
-   * 아니다. 서버에는 이미 갔다.
+   * 대상이 바뀌는 순간 나가는 중이던 요청은 **끊지 않는다**(§`resetIfIdle`). 그 결과가
+   * 나중에 도착하면 **지금 대상과 견주어** 낼지 정한다 — 「결과는 자기 대상보다 오래 살지
+   * 않는다」가 요구하는 것은 *보이지 않는 것*이지 *일어나지 않는 것*이 아니다. 서버에는 이미 갔다.
    *
-   * 셋이 한 벌의 잠금을 나눠 써서 **한 번에 하나만 나간다** — 그래서 깃발 하나로 족하다.
+   * **성공 갈래와 같은 축이다.** 「한 번 세워지면 다음 쓰기까지 내려가지 않는 깃발」로 가리면
+   * 두 축의 정밀도가 갈려, 들렀다 **돌아온** 대상의 거절 사유까지 삼킨다 — 그 사유는 남의
+   * 것이 아니라 지금 보는 대상의 것이다.
    */
-  const [isWriteResultStale, setIsWriteResultStale] = useState(false);
+  const [writeTargetKey, setWriteTargetKey] = useState<string | null>(null);
+
+  /** 훅에 남아 있는 쓰기 결과가 지금 보는 대상의 것인가. */
+  const isWriteResultMine = writeTargetKey === editTargetKey;
 
   /**
    * 등록 — **`If-Match`가 없다.** 아직 없는 자원이라 잠글 대상이 없다.
@@ -504,6 +508,27 @@ export const ApprovalRouteScreen = () => {
   const activeWrite = isCreating ? createWrite : updateWrite;
 
   /**
+   * **나가는 중인 쓰기는 건드리지 않는다.**
+   *
+   * 공통 훅의 `reset()`은 진행 중 mutation에서 **옵저버를 떼어 낸다**. 옵저버가 떨어지면
+   * 그 호출에 매달린 되먹임이 통째로 오지 않는다 — **무효화도, 성공도, 실패도, 공동 잠금의
+   * 해제도**. 그러면 이 화면이 스스로 못 박은 것 둘이 동시에 깨진다: 「하나가 나가는 중에는
+   * 나머지도 잠근다」와 「모든 쓰기 성공 뒤 상세를 무효화한다」. 요청은 이미 서버에 갔는데
+   * 화면만 없던 일로 친다.
+   *
+   * **끊는 것과 감추는 것은 다르다.** 도착한 결과를 화면에 낼지는 `isWriteResultMine`이
+   * 정하고, 여기서는 **끝난 것만** 거둔다.
+   *
+   * `reset()`을 부르는 **모든 자리**가 이 함수를 지난다 — 자리마다 판정을 적으면 언젠가
+   * 하나가 갈린다.
+   */
+  const resetIfIdle = (write: { isSaving: boolean; reset: () => void }): void => {
+    if (write.isSaving) return;
+
+    write.reset();
+  };
+
+  /**
    * **사용자가** 대상을 바꾸는 길. 전송 중에는 지나가지 못한다(수명 표 16행).
    *
    * 첫째 겹은 컨트롤의 `disabled`인데 **목록 행·조건 칩·쪽 이동은 잠금을 받지 않는다** —
@@ -548,33 +573,14 @@ export const ApprovalRouteScreen = () => {
    * **초안은 여기서 다루지 않는다.** 초안은 세울 값이 도착하는 시점이 따로 있어 렌더 중
    * 동기화가 맡는다 — 두 자리가 같은 것을 지우면 어느 쪽이 정본인지 흐려진다.
    *
-   * ## 나가는 중인 쓰기는 **건드리지 않는다**
-   *
-   * 공통 훅의 `reset()`은 진행 중 mutation에서 **옵저버를 떼어 낸다**. 옵저버가 떨어지면
-   * 그 호출에 매달린 되먹임이 통째로 오지 않는다 — **무효화도, 성공도, 실패도, 공동 잠금의
-   * 해제도**. 그러면 이 화면이 스스로 못 박은 것 둘이 동시에 깨진다: 「하나가 나가는 중에는
-   * 나머지도 잠근다」와 「모든 쓰기 성공 뒤 상세를 무효화한다」. 요청은 이미 서버에 갔는데
-   * 화면만 없던 일로 친다.
-   *
-   * **끊는 것과 감추는 것은 다르다.** 「결과는 자기 대상보다 오래 살지 않는다」가 요구하는
-   * 것은 그 결과가 *보이지 않는 것*이지 *일어나지 않는 것*이 아니다. 그래서 여기서는
-   * 깃발만 세우고(`isWriteResultStale`), 도착한 결과를 화면에 내지 않는 일은 렌더가 맡는다.
-   * 낡은 결과의 실제 정리는 **그것이 끝난 뒤 다음 대상 변경**이 한다.
+   * 나가는 중인 쓰기를 건드리지 않는 규율은 `resetIfIdle`이 갖는다 — **이 화면에서 `reset()`을
+   * 부르는 자리는 넷이고**(대상 변경 · 창 닫기 · 창 열기 · 초안 파기) 그중 하나라도 규율을
+   * 비껴가면 같은 결함의 두 번째 문이 열린다.
    */
   const resetEditing = (): void => {
-    let hasPending = false;
-
-    for (const write of [createWrite, updateWrite, activationWrite]) {
-      if (write.isSaving) {
-        hasPending = true;
-        continue;
-      }
-
-      write.reset();
-    }
-
-    if (hasPending) setIsWriteResultStale(true);
-
+    resetIfIdle(createWrite);
+    resetIfIdle(updateWrite);
+    resetIfIdle(activationWrite);
     setFieldErrors({});
     setDialog(null);
   };
@@ -640,8 +646,8 @@ export const ApprovalRouteScreen = () => {
 
     if (Object.keys(errors).length > 0) return;
 
-    /* 지금 보내는 것은 **이 대상의 것**이다 — 앞선 낡은 결과의 깃발을 내린다. */
-    setIsWriteResultStale(false);
+    /* 지금 보내는 것은 **이 대상의 것**이다 — 도착한 결과를 견줄 축을 여기서 세운다. */
+    setWriteTargetKey(editTargetKey);
 
     if (isCreating) {
       createWrite.write(draft.values);
@@ -670,7 +676,7 @@ export const ApprovalRouteScreen = () => {
   const handleDiscard = (): void => {
     setDialog(null);
     setFieldErrors({});
-    activeWrite.reset();
+    resetIfIdle(activeWrite);
 
     if (isCreating) {
       closeCreateForm();
@@ -683,7 +689,7 @@ export const ApprovalRouteScreen = () => {
 
   const openActivationDialog = (intent: ActivationIntent): void => {
     // 창을 열 때 앞선 전환 실패 배너를 걷는다 — 지금 하려는 일과 무관한 안내다.
-    activationWrite.reset();
+    resetIfIdle(activationWrite);
     setDialog(intent);
   };
 
@@ -722,8 +728,8 @@ export const ApprovalRouteScreen = () => {
       return;
     }
 
-    /* 지금 보내는 것은 **이 대상의 것**이다 — 앞선 낡은 결과의 깃발을 내린다. */
-    setIsWriteResultStale(false);
+    /* 지금 보내는 것은 **이 대상의 것**이다 — 도착한 결과를 견줄 축을 여기서 세운다. */
+    setWriteTargetKey(editTargetKey);
     activationWrite.write(dialog);
   };
 
@@ -745,7 +751,7 @@ export const ApprovalRouteScreen = () => {
     onReload?: () => void,
   ) => {
     /* 남의 대상에 보낸 요청의 거절 사유를 이 화면에 세우지 않는다 — **감추는 것이 규칙이다.** */
-    const error = isWriteResultStale ? null : write.error;
+    const error = isWriteResultMine ? write.error : null;
 
     return (
       <>
@@ -755,8 +761,8 @@ export const ApprovalRouteScreen = () => {
     );
   };
 
-  /** 인라인 오류도 같은 문을 지난다 — 배너만 감추면 칸 옆에 남의 오류가 남는다. */
-  const serverFieldErrors = isWriteResultStale ? {} : activeWrite.fieldErrors;
+  /** 인라인 오류도 같은 문을 지난다 — 배너만 감추면 새 대상의 칸 옆에 남의 오류가 붙는다. */
+  const serverFieldErrors = isWriteResultMine ? activeWrite.fieldErrors : {};
 
   const formPane = (mode: 'create' | 'edit') => {
     if (draft === null) return null;
@@ -959,8 +965,13 @@ export const ApprovalRouteScreen = () => {
           /* 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다. */
           banner={writeFailureSlot(activationWrite, reloadDetail)}
           onClose={() => {
+            /*
+             * **창에서 나가는 길은 바닥 버튼 둘뿐이 아니다** — Escape가 남아 있고 그것은
+             * 막을 수 없다(native `<dialog>`의 `cancel`). 그 길로 나갈 때 나가는 중인
+             * 요청을 끊으면 대상 이동과 똑같이 무효화·성공·잠금이 함께 사라진다.
+             */
             setDialog(null);
-            activationWrite.reset();
+            resetIfIdle(activationWrite);
           }}
           onConfirm={handleConfirmActivation}
         />

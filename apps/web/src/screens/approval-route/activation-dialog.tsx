@@ -39,8 +39,14 @@ export interface ActivationDialogProps {
  * DS `design-system-v2-webui#68`)이 아직 고쳐지지 않았다 — 고칠 수 없는 결함은
  * 걸릴 자리를 만들지 않는 것으로 피한다. 여기 필요한 것은 문장 셋과 버튼 둘뿐이다.
  *
- * **스크림 클릭으로 닫히지 않게 한다.** 되돌리기에 다른 사람의 업무가 걸린 확인 창이 실수로
- * 사라지면 사용자는 자기가 무엇을 취소했는지 모른다.
+ * **나가는 길을 바닥 버튼 둘로 좁힌다.** 되돌리기에 다른 사람의 업무가 걸린 확인 창이
+ * 실수로 사라지면 사용자는 자기가 무엇을 취소했는지 모른다 — 그 이유는 스크림에만이 아니라
+ * **창 머리의 X 손잡이에도 그대로** 적용된다. 디자인 시스템은 그것을 기본으로 그리고
+ * **진행 상태를 받지 않아 전송 중에도 눌린다** — 한쪽 문만 잠그면 잠근 적이 없는 것과 같다.
+ *
+ * **Escape는 막지 못한다.** native `<dialog>`가 `cancel`을 내고 디자인 시스템이 그것을
+ * 닫기 요청으로 무조건 잇는다. 그래서 이 창의 규율은 「닫히지 않게」가 아니라
+ * **「닫혀도 나가는 요청이 무너지지 않게」**이고, 그 몫은 창을 여닫는 쪽(`screen.tsx`)에 있다.
  *
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
@@ -62,6 +68,7 @@ export const ActivationDialog = ({
       onClose={onClose}
       size="sm"
       closeOnBackdropClick={false}
+      showCloseButton={false}
       title={isDeactivate ? t.dialog.deactivateTitle : t.dialog.activateTitle}
       footer={
         <>

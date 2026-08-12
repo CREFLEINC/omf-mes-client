@@ -114,12 +114,52 @@ describe('ActivationDialog — 창의 경계', () => {
     expect(container.textContent).not.toContain('9001');
   });
 
-  /** 전송 중에는 연타로 두 번 나가지 않게 한다 — 멱등 키가 호출마다 새로 만들어진다(#55). */
-  it('전송 중에는 두 버튼이 모두 잠긴다', () => {
+  /**
+   * **창에서 나가는 길을 바닥 둘로 좁힌다.**
+   *
+   * 디자인 시스템 `Dialog`는 머리에 X 손잡이를 기본으로 그리는데 **그 손잡이는 진행 상태를
+   * 받지 않는다** — 전송 중에도 눌린다. 스크림을 막은 이유(「되돌리기에 다른 사람의 업무가
+   * 걸린 확인 창이 실수로 사라지면 안 된다」)가 이 손잡이에도 그대로 적용된다.
+   * 한쪽 문만 잠그면 잠근 적이 없는 것과 같다.
+   */
+  it('창 머리에 닫기 손잡이를 두지 않는다', () => {
+    renderDialog();
+
+    // 선행 단언 — 나가는 길 자체는 있어야 한다. 없으면 이 단언이 「갇힌 창」과 구별되지 않는다.
+    expect(screen.getByRole('button', { name: messages.common.cancel })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.close })).toBeNull();
+  });
+
+  /**
+   * 전송 중에는 연타로 두 번 나가지 않게 한다 — 멱등 키가 호출마다 새로 만들어진다(#55).
+   *
+   * **버튼을 이름으로 세지 않고 창 안의 모든 버튼을 센다** — 나가는 길이 하나 늘면
+   * 이름을 아는 잣대는 그 길을 비껴간다.
+   */
+  it('전송 중에는 창 안의 모든 버튼이 잠긴다', () => {
     renderDialog({ isSaving: true });
 
-    expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeDisabled();
-    expect(screen.getByRole('button', { name: messages.common.cancel })).toBeDisabled();
+    const buttons = screen.getAllByRole('button');
+
+    // 선행 단언 — 버튼이 실제로 있어야 「전부 잠겼다」가 뜻을 갖는다.
+    expect(buttons.length).toBeGreaterThan(1);
+    for (const button of buttons) expect(button).toBeDisabled();
+  });
+
+  /**
+   * **Escape는 막을 수 없다** — native `<dialog>`가 `cancel`을 내고 디자인 시스템이 그것을
+   * 닫기 요청으로 무조건 잇는다. 그러므로 「닫히지 않게」가 아니라 **「닫혀도 무너지지 않게」**가
+   * 이 화면의 규율이다(`screen.test.tsx`의 「창을 닫아도 전환의 되먹임이 끊기지 않는다」).
+   */
+  it('Escape는 닫기 요청으로 이어진다', () => {
+    const { props } = renderDialog({ isSaving: true });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
   /**

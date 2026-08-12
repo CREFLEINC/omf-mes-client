@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -2469,5 +2469,147 @@ describe('ApprovalRouteScreen — 「확인하지 못했습니다」의 범위',
     await dirtyForm(user, '77');
 
     expect(await screen.findByText(t.notes.duplicateUnknown)).toBeInTheDocument();
+  });
+});
+
+describe('ApprovalRouteScreen — 전송 중 확인 창에서 나가기', () => {
+  const holdDeactivate = (request: Request): boolean =>
+    request.method === 'POST' && isActionPath(new URL(request.url).pathname, 'deactivate');
+
+  /**
+   * **Escape는 막을 수 없다.** native `<dialog>`가 `cancel`을 내고 디자인 시스템이 그것을
+   * 닫기 요청으로 무조건 잇는다 — 주소를 건드리지 않고도 창에서 나갈 수 있다.
+   *
+   * 그러므로 규율은 「닫히지 않게」가 아니라 **「닫혀도 무너지지 않게」**다. 창을 닫는 길이
+   * 나가는 중인 요청의 옵저버를 떼면, 대상 이동과 똑같이 무효화·성공·잠금이 함께 사라진다 —
+   * 이 화면의 토큰 수명 표가 「반드시 부른다」고 적은 재조회가 그때 빠진다.
+   */
+  it('창을 닫아도 전환의 되먹임이 끊기지 않는다', async () => {
+    const versioned = createVersionedDetail();
+    const { requests, release, user } = renderScreen(
+      allRoutes([
+        versioned.route,
+        probeRoute(),
+        activationRoute('deactivate', { ...routeFixtures[0], isActive: false }),
+      ]),
+      SELECTED,
+      '',
+      holdDeactivate,
+    );
+
+    await waitForForm();
+    await user.click(screen.getByRole('button', { name: messages.common.deactivate }));
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    versioned.setBody({ ...routeFixtures[0], isActive: false });
+
+    /* 창에서 나간다 — 주소는 그대로다. */
+    fireEvent(activationDialog(), new Event('cancel', { bubbles: false, cancelable: true }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    /* ① 공동 잠금이 살아 있다 — 요청은 아직 날아가는 중이다. */
+    expect(screen.getByRole('button', { name: t.actions.create })).toBeDisabled();
+
+    const beforeDetail = detailRequests(requests).length;
+
+    release();
+
+    /* ② 성공이 사라지지 않는다. ③ 무효화가 살아 있다. */
+    expect(await screen.findByText(messages.common.saved)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(detailRequests(requests).length).toBeGreaterThan(beforeDetail);
+    });
+  });
+});
+
+describe('ApprovalRouteScreen — 되먹임의 매임은 실패에도 같은 축이다', () => {
+  const CONFLICT = { conflictCause: 'user', message: '' };
+
+  const holdUpdate = (request: Request): boolean =>
+    request.method === 'PUT' && isDetailPath(new URL(request.url).pathname);
+
+  /**
+   * **「감추는 것이 규칙이다」를 과잉 적용하지 않는다.**
+   *
+   * 보내는 사이에 다른 결재선을 들렀다 **돌아왔다면** 그 거절 사유는 남의 것이 아니라
+   * **지금 보는 대상의 것**이다. 성공 갈래는 「그 요청이 겨눈 대상」과 지금 대상을 견주는데
+   * 실패 갈래만 한 번 세워지면 내려가지 않는 깃발로 가리면, 있는 것이 안 보인다.
+   */
+  it('들렀다 돌아온 대상의 거절 사유는 그대로 선다', async () => {
+    const { requests, release, user } = renderScreen(
+      allRoutes([detailRouteById(), failingUpdateRoute(409, CONFLICT)]),
+      SELECTED,
+      '?ar=9003',
+      holdUpdate,
+    );
+
+    await dirtyForm(user, '77');
+    await user.click(saveButton());
+    await waitFor(() => {
+      expect(updateRequests(requests)).toHaveLength(1);
+    });
+
+    /*
+     * 9001 → 9003 → 다시 9001. 도착 시점의 대상은 처음과 같다.
+     *
+     * **오갈 때 둘 다 바깥 길을 쓴다** — 전송 중에는 화면 안의 길(목록 행)이 잠겨 있고,
+     * 바로 그 잠금 때문에 이 갈래가 **뒤로가기로만** 열린다.
+     */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9003');
+    });
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+    await waitFor(() => {
+      expect(locationText()).toContain('ar=9001');
+    });
+
+    release();
+
+    expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
+  });
+
+  /**
+   * 짝 방향 — **인라인 오류도 같은 문을 지난다.** 배너만 감추면 새 대상의 칸 옆에
+   * 남의 오류가 붙어, 사용자가 고치지도 않은 값이 잘못됐다고 읽는다.
+   */
+  it('남의 필드 오류가 새 대상의 칸에 붙지 않는다', async () => {
+    const FIELD_ERROR = {
+      errors: [{ scope: 'field', field: 'minValue', code: 'INVALID', message: '합성 필드 오류' }],
+    };
+    const { requests, release, user } = renderScreen(
+      allRoutes([detailRouteById(), failingUpdateRoute(400, FIELD_ERROR)]),
+      SELECTED,
+      '?ar=9003',
+      holdUpdate,
+    );
+
+    await dirtyForm(user, '77');
+    await user.click(saveButton());
+    await waitFor(() => {
+      expect(updateRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.notes.approvalTypeFixed);
+
+    release();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.create })).toBeEnabled();
+    });
+
+    // 선행 단언 — 9003의 폼이 실제로 서 있다.
+    expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('0');
+    expect(screen.queryByText('합성 필드 오류')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.minValue)).not.toHaveAccessibleDescription(
+      '합성 필드 오류',
+    );
   });
 });
