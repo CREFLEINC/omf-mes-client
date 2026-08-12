@@ -4599,6 +4599,105 @@ const approvalRoute = {
   },
 } as const;
 
+/**
+ * W-CO-09 결재함. 올라온 승인 요청을 모아 보고 결재하는 자리다.
+ *
+ * **판정을 화면이 다시 말하지 않는다.** 「지금 몇 단계인가」·「내 차례인가」는 서버가 판정해
+ * 내려 주므로 문구도 그 값을 그대로 옮기는 형태만 둔다 — 화면이 사유를 지어내면
+ * 서버와 갈리는 순간 사용자에게 거짓 확신을 준다.
+ */
+const approvalInbox = {
+  title: '결재함',
+  breadcrumbRoot: '승인',
+  panes: {
+    list: '승인 요청 목록',
+    detail: '고른 요청',
+  },
+  /**
+   * 탭은 **조회 조건 그 자체**다. 이름이 곧 그 탭이 무엇을 보여 주는지여야 한다 —
+   * 「내 결재 대기」와 「내가 올린 것」은 걸러 내는 축이 서로 다르다(내가 승인자인가 / 내가 올렸는가).
+   */
+  tabs: {
+    label: '결재함 보기',
+    pending: '내 결재 대기',
+    requested: '내가 올린 것',
+    all: '전체',
+    /**
+     * 대기 건수 뱃지의 접근 이름. 수치만 읽히면 무엇의 수인지 알 수 없다.
+     * **탭이 보여 주는 목록의 건수가 아니라 「지금 내가 결재할 수 있는」 건수다.**
+     */
+    pendingBadge: (count: number): string => `대기 ${String(count)}건`,
+  },
+  fields: {
+    approvalRequestNo: '요청번호',
+    reason: '사유',
+    requestedByName: '상신자',
+    /** 목록 열 이름. 계약이 이 값을 시각까지 실어 주고 목록도 시각까지 보인다. */
+    requestedAt: '상신 일시',
+    status: '상태',
+    approvalTypeCode: '승인 유형',
+    /**
+     * 조건 줄의 기간 라벨. **열 이름과 낱말이 다른 것이 맞다** — 계약의 두 조건
+     * (`requestedAtFrom`·`requestedAtTo`)이 `format: date`라 **날짜 단위로** 좁힌다.
+     * 여기에 「일시」를 쓰면 시각까지 지정할 수 있다고 읽힌다.
+     */
+    period: '상신일',
+    q: '요청번호 검색',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+    /** 목록과 대기 건수를 **함께** 다시 부른다. 한쪽만 부르면 갱신된 값과 낡은 값이 섞인다. */
+    reload: '다시 조회',
+    /*
+     * 요청번호 하나로 이름이 선다 — 계약이 그 값을 UNIQUE로 두었다.
+     * 보이는 글자를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 하고,
+     * **내부 번호는 접근 이름에도 넣지 않는다.**
+     */
+    selectRow: (approvalRequestNo: string): string => `${approvalRequestNo} 선택`,
+  },
+  loading: {
+    list: '승인 요청 목록 불러오는 중',
+  },
+  filters: {
+    all: '전체',
+    chipApprovalType: (value: string): string => `승인 유형: ${value}`,
+    chipStatus: (value: string): string => `상태: ${value}`,
+    chipPeriod: (from: string, to: string): string => `상신일: ${from} ~ ${to}`,
+    chipPeriodFrom: (from: string): string => `상신일: ${from}부터`,
+    chipPeriodTo: (to: string): string => `상신일: ${to}까지`,
+    chipKeyword: (value: string): string => `요청번호: ${value}`,
+    chipRemoveApprovalType: '승인 유형 조건 제거',
+    chipRemoveStatus: '상태 조건 제거',
+    chipRemovePeriod: '상신일 조건 제거',
+    chipRemoveKeyword: '요청번호 조건 제거',
+  },
+  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/approval-inbox/page-nav.tsx에 있다. */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+  /** 빈 상태는 **세 갈래**다. 사용자가 할 조치가 서로 다르다(완료 조건 C12). */
+  empty: {
+    noResultTitle: '조건에 맞는 승인 요청이 없습니다',
+    noResultDescription: '조건을 줄이거나 다른 탭에서 다시 조회하세요.',
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
+    noSelectionTitle: '요청을 고르면 자세한 내용이 보입니다',
+    noSelectionDescription: '위 목록에서 요청번호를 누르세요.',
+  },
+  values: {
+    /** 이름이 오지 않았다. **번호를 대신 내지 않는다.** */
+    unknownRequester: '상신자를 확인할 수 없습니다',
+    /** 사유는 필수 값이라 빈 경우가 정상은 아니다. 그래도 빈 칸을 내지 않고 사실을 적는다. */
+    emptyReason: '사유가 비어 있습니다',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -4624,6 +4723,7 @@ export const ko = {
   stocktaking,
   supplierReturn,
   approvalRoute,
+  approvalInbox,
 } as const;
 
 export type Messages = typeof ko;
