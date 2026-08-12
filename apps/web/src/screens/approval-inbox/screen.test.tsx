@@ -754,6 +754,47 @@ describe('요청 고르기', () => {
     });
     expect(detailRequests(requests)).toHaveLength(1);
   });
+
+  /*
+   * 위 시험들은 **고르지 않은 상태 → A** 이거나 **A → 같은 A(해제)** 뿐이다.
+   * **A가 걸린 채 B를 누르는 길**은 사용자가 가장 자주 밟는 길인데 어느 시험도 지나지 않아,
+   * 앞 선택이 그대로 남는 구현(사용자에게는 「눌러도 아무 일이 없다」)이 통과할 수 있었다.
+   */
+  it('다른 요청을 누르면 선택이 그쪽으로 옮겨간다 — 앞 선택이 남지 않는다', async () => {
+    const { requests, user } = renderScreen(defaultRoutes(), '?rq=9001');
+
+    await waitForList();
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-002/ }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rq=9002');
+    });
+    expect(currentLocation()).not.toContain('rq=9001');
+
+    /* 옮겨간 쪽의 상세를 실제로 부른다 — 주소만 바뀌고 읽는 것이 그대로면 소용이 없다. */
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(2);
+    });
+    expect(detailRequests(requests)[1]?.url.pathname).toBe(requestDetailPath(9002));
+  });
+
+  it('선택을 옮겨도 보이는 행과 조건은 그대로다', async () => {
+    const { user } = renderScreen(defaultRoutes(), '?rq=9001&page=2&q=SYNTH&tab=requested');
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: /SYNTH-REQ-003/ }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rq=9003');
+    });
+    expect(currentLocation()).toContain('page=2');
+    expect(currentLocation()).toContain('q=SYNTH');
+    expect(currentLocation()).toContain('tab=requested');
+  });
 });
 
 describe('빈 상태와 조회 실패', () => {

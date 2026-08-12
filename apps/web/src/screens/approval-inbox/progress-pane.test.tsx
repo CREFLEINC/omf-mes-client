@@ -68,6 +68,22 @@ const stepNodeTexts = (pane: HTMLElement): (string | null)[] =>
     (item) => item.querySelector('span[aria-hidden="true"]')?.textContent ?? null,
   );
 
+/**
+ * 단계 하나의 **이름 칸과 보조 라벨 칸**.
+ *
+ * 디자인 시스템이 `<li>` 안에 노드 → 라벨 묶음 → (연결선) 순으로 세우고, 라벨 묶음 안에
+ * 이름과 보조 라벨을 그 차례로 둔다(설치본 실측). 클래스 이름이 해시라 **자리로** 짚는다.
+ *
+ * 이 구분이 필요한 이유: 「디자인 시스템의 상태 낱말이 스크린리더 전용이라 **보이는 글자는
+ * 보조 라벨이 맡는다**」가 이 구획의 중심 주장인데, 글자가 화면 어딘가에 있다는 것만으로는
+ * 그 주장이 지켜졌는지 알 수 없다 — 이름 칸으로 옮겨도 `getByText`는 똑같이 찾는다.
+ */
+const stepSlots = (item: HTMLElement): { label: Element | null; description: Element | null } => {
+  const stack = item.children[1];
+
+  return { label: stack?.children[0] ?? null, description: stack?.children[1] ?? null };
+};
+
 describe('ProgressPane — 배치', () => {
   it('세로로 그린다 — 단계마다 보조 라벨이 다행으로 붙는다', () => {
     const pane = renderPane([step()]);
@@ -159,6 +175,40 @@ describe('ProgressPane — 단계', () => {
     expect(within(pane).getByText(t.progress.waitingPending)).toBeVisible();
   });
 
+  it('보이는 글자가 이름 칸이 아니라 보조 라벨 칸에 선다', () => {
+    const pane = renderPane([
+      step({
+        decisionCode: 'SAMPLE-DECISION-APPROVED',
+        decisionAt: '2026-08-06T15:02:00+09:00',
+        decisionComment: '합성 결재 의견',
+        isMine: true,
+      }),
+    ]);
+
+    const { label, description } = stepSlots(stepItems(pane)[0] ?? pane);
+
+    /* 이름 칸은 승인자 이름만 맡는다 — 결과가 여기로 흘러들면 단계 이름이 문장이 된다. */
+    expect(label?.textContent).toContain('합성 승인자1');
+    for (const shown of [
+      'SAMPLE-DECISION-APPROVED',
+      '2026-08-06 15:02',
+      '합성 결재 의견',
+      t.progress.mine,
+    ]) {
+      expect(description?.textContent).toContain(shown);
+      expect(label?.textContent).not.toContain(shown);
+    }
+  });
+
+  it('결재 전 단계의 대기 글자도 보조 라벨 칸에 선다', () => {
+    const pane = renderPane([step({ isCurrent: true })]);
+
+    const { label, description } = stepSlots(stepItems(pane)[0] ?? pane);
+
+    expect(description?.textContent).toContain(t.progress.waitingCurrent);
+    expect(label?.textContent).not.toContain(t.progress.waitingCurrent);
+  });
+
   it('내 단계에 표식을 붙이고 남의 단계에는 붙이지 않는다', () => {
     const pane = renderPane([step({ isMine: true }), step({ stepNo: 2, isMine: false })]);
 
@@ -179,8 +229,12 @@ describe('ProgressPane — 단계', () => {
   it('결재된 단계의 노드도 번호다 — 체크 글리프가 승인됨을 함의하지 않는다', () => {
     const pane = renderPane([step({ stepNo: 1, decisionCode: 'SAMPLE-DECISION-APPROVED' })]);
 
+    /*
+     * 기본 글리프가 섰다면 노드 글자가 아이콘 리거처 이름(`check`)이 된다 — 디자인 시스템이
+     * 아이콘을 `<svg>`가 아니라 리거처 `<span>`으로 그린다(설치본 실측). 그래서 「번호다」를
+     * 재는 것이 곧 「글리프가 아니다」를 재는 것이고, 따로 `svg`를 찾는 단언은 공허하다.
+     */
     expect(stepNodeTexts(pane)).toEqual(['1']);
-    expect(stepItems(pane)[0]?.querySelector('svg')).toBeNull();
   });
 
   it('진행 중인 단계에만 현재 표식이 붙는다', () => {
