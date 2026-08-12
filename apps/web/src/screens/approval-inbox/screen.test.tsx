@@ -1195,13 +1195,75 @@ describe('고름 ≠ 보임 — 주소가 가리키는 것을 읽을 수 있는�
     expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
   });
 
+  /*
+   * 위 두 시험은 **탭 클릭**으로만 조작한다. 그 길은 조작 핸들러를 지나 안내를 먼저 거두므로
+   * **첫째 겹**만 재는 셈이다. 안내가 「이 조건으로 보고 있던 동안」이라는 **서명에 매여
+   * 있다는 것**은 핸들러를 지나지 않는 길에서만 드러난다 — 주소 직접 편집과 뒤로가기가
+   * 그 길이고, 서명 매임이 존재하는 이유도 바로 그 둘이다.
+   */
+  it('주소를 직접 고쳐 조건이 바뀌어도 없음 안내가 남지 않는다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), countRoute(), failingDetailRoute(404)],
+      '?rq=9909',
+      'q=OTHER',
+    );
+
+    await screen.findByText(t.empty.notFoundTitle);
+
+    /* 클릭 핸들러를 거치지 않는 길 — 안내를 거두는 자리를 지나지 않는다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('q=OTHER');
+    });
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
+  });
+
+  it('뒤로가기로 앞 조건에 돌아가도 없음 안내가 따라오지 않는다', async () => {
+    const { user } = renderScreen(
+      [listRoute(), countRoute(), failingDetailRoute(404)],
+      '?q=OTHER',
+      'rq=9909&q=SYNTH',
+    );
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.empty.notFoundTitle);
+
+    /* 안내는 `q=SYNTH`로 보고 있던 동안에 매였다. 뒤로가면 앞 조건(`q=OTHER`)이 선다. */
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('q=OTHER');
+    });
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeVisible();
+  });
+
   it('볼 권한이 없으면 다른 안내를 내고 고른 번호를 정리하지 않는다', async () => {
-    renderScreen([listRoute(), countRoute(), failingDetailRoute(403)], '?rq=9909');
+    const { requests } = renderScreen(
+      [listRoute(), countRoute(), failingDetailRoute(403)],
+      '?rq=9909',
+    );
 
     expect(await screen.findByText(t.empty.forbiddenTitle)).toBeVisible();
-    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+
+    /*
+     * **「사라지지 않았다」는 가라앉은 뒤에 잰다.** 안내가 뜨자마자 동기로 재면 아직
+     * 일어나지 않은 정리를 못 본 채 통과한다 — 짝이 되는 404 시험은 기다려서 재는데
+     * 이쪽만 그러지 않으면 「403은 정리하지 않는다」 절반이 통째로 침묵한다.
+     * 목록과 건수가 도착할 때까지 두어 여러 렌더와 effect가 지나가게 한다.
+     */
+    await waitForList();
+    await waitFor(() => {
+      expect(countRequests(requests)).toHaveLength(1);
+    });
+
     /* 있는데 내 것이 아닌 것이다 — 지우면 무엇을 열려 했는지 잃는다. */
     expect(currentLocation()).toContain('rq=9909');
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.forbiddenTitle)).toBeVisible();
   });
 
   it('볼 권한이 없을 때는 다시 시도를 내지 않는다', async () => {
