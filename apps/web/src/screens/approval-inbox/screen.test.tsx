@@ -306,6 +306,25 @@ describe('탭', () => {
     expect(query?.get('assignedToMe')).toBe('true');
     expect(tabFor(t.tabs.pending)).toHaveAttribute('aria-selected', 'true');
   });
+
+  /*
+   * 수명 표 3행의 「조건 유지」. 탭은 「누구의 것인가」이고 조건은 「무엇인가」다 —
+   * 축을 바꿨다고 방금 좁힌 범위를 버리면 사용자가 같은 조건을 다시 친다.
+   */
+  it('탭을 옮겨도 조건은 그대로다', async () => {
+    const { requests, user } = renderScreen(defaultRoutes(), '?q=SYNTH&ty=SAMPLE-TYPE-A');
+
+    await waitForList();
+    await user.click(tabFor(t.tabs.requested));
+
+    await waitFor(() => {
+      expect(lastListQuery(requests)?.get('requestedByMe')).toBe('true');
+    });
+
+    expect(currentLocation()).toContain('q=SYNTH');
+    expect(lastListQuery(requests)?.get('q')).toBe('SYNTH');
+    expect(lastListQuery(requests)?.get('approvalTypeCode')).toBe('SAMPLE-TYPE-A');
+  });
 });
 
 describe('대기 건수', () => {
@@ -427,6 +446,30 @@ describe('조회 조건', () => {
     });
   });
 
+  /*
+   * 수명 표 1·2행의 「탭 유지」. 조건은 탭 안에서 좁히는 것이라, 조건을 고쳤다고 보던 자리가
+   * 바뀌면 사용자가 남의 결재함으로 튕겨 나간다.
+   */
+  it('조건을 바꾸거나 초기화해도 보고 있던 탭은 그대로다', async () => {
+    const { requests, user } = renderScreen(defaultRoutes(), '?tab=requested&q=SYNTH');
+
+    await waitForList();
+    await user.type(screen.getByLabelText(t.fields.q), '-002');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('q=SYNTH-002');
+    });
+    expect(currentLocation()).toContain('tab=requested');
+
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?tab=requested`);
+    });
+    expect(lastListQuery(requests)?.get('requestedByMe')).toBe('true');
+  });
+
   it('조건 칩의 ×가 그 조건만 푼다', async () => {
     const { user } = renderScreen(defaultRoutes(), '?q=SYNTH&from=2026-08-01&to=2026-08-31');
 
@@ -474,6 +517,23 @@ describe('쪽 이동', () => {
     expect(currentLocation()).not.toContain('rq=');
     expect(lastListQuery(requests)?.get('page')).toBe('2');
   });
+
+  /* 수명 표 4행의 「탭 유지」. 쪽은 지금 보고 있는 목록 안의 자리다. */
+  it('쪽을 옮겨도 보고 있던 탭은 그대로다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(requestFixtures, { total: 120 }), countRoute(), detailRoute()],
+      '?tab=requested',
+    );
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('page=2');
+    });
+    expect(currentLocation()).toContain('tab=requested');
+    expect(lastListQuery(requests)?.get('requestedByMe')).toBe('true');
+  });
 });
 
 describe('요청 고르기', () => {
@@ -504,7 +564,7 @@ describe('요청 고르기', () => {
   });
 
   it('고르는 것이 보이는 행을 바꾸지 않는다', async () => {
-    const { requests, user } = renderScreen(defaultRoutes(), '?page=2&q=SYNTH');
+    const { requests, user } = renderScreen(defaultRoutes(), '?tab=requested&page=2&q=SYNTH');
 
     await waitForList();
 
@@ -515,7 +575,10 @@ describe('요청 고르기', () => {
     await waitFor(() => {
       expect(currentLocation()).toContain('rq=9001');
     });
+    /* 조건·탭·쪽 셋 다 그대로다 — 고르기는 목록을 다시 부르지 않는다(수명 표 5행). */
     expect(currentLocation()).toContain('page=2');
+    expect(currentLocation()).toContain('tab=requested');
+    expect(currentLocation()).toContain('q=SYNTH');
     expect(listRequests(requests)).toHaveLength(before);
   });
 

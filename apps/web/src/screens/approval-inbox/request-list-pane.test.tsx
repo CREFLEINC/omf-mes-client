@@ -132,9 +132,12 @@ describe('RequestListPane — 보이는 값', () => {
     expect(screen.getByText(t.values.finished)).toBeInTheDocument();
   });
 
-  it('승인 유형 열을 두지 않는다', () => {
+  it('승인 유형 열을 두지 않는다 — 무엇에 대한 결재인지는 대상이 말한다', () => {
     renderPane();
 
+    /* 선행 단언 — 열이 실제로 서 있어야 「그 열이 없다」가 뜻을 갖는다. */
+    expect(screen.getByRole('columnheader', { name: t.fields.target })).toBeInTheDocument();
+    expect(screen.getAllByRole('columnheader')).toHaveLength(7);
     expect(
       screen.queryByRole('columnheader', { name: t.fields.approvalTypeCode }),
     ).not.toBeInTheDocument();

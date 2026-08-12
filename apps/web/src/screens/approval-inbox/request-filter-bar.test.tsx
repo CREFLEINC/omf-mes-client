@@ -157,6 +157,13 @@ describe('RequestFilterBar — 조건 칩', () => {
   it('조건이 없으면 칩도 없다', () => {
     renderBar();
 
-    expect(screen.queryByText(/조건 제거/)).not.toBeInTheDocument();
+    /* 선행 단언 — 조건 줄이 실제로 그려져야 「칩이 없다」가 뜻을 갖는다. */
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.filters.chipRemoveKeyword }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.filters.chipRemovePeriod }),
+    ).not.toBeInTheDocument();
   });
 });
