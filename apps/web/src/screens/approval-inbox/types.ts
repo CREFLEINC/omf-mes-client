@@ -45,26 +45,26 @@ export interface InboxFilters {
 }
 
 /**
- * 목록 한 행이 **보이는 값 전부**.
+ * 목록 한 행이 **보이는 값 전부**. 여섯이며 **설계 스펙이 확정한 필드 목록 그대로**다 —
+ * 화면이 열을 더하거나 다른 값으로 바꾸지 않는다.
  *
  * **내부 번호를 담지 않는다**(`requestedBy`·`targetId`·`targetTypeCode`). 계약이 표시용 이름을
  * 함께 내려 주므로 화면이 번호를 낼 이유가 없고, 이 타입이 번호를 나르지 않으면 어느 칸에서도
  * 샐 경로가 없다. `approvalRequestId`만 남는데 그것은 **행을 식별하고 고르는 데만** 쓰이며
  * 어느 칸에도 그려지지 않는다. `approvalRequestNo`는 업무 번호라 그대로 낸다.
  *
- * **승인 유형 코드를 담지 않는다.** 목록에 그 열을 두지 않기 때문이다 — 무엇에 대한 결재인지는
- * 대상 표시명이 이미 말하고, 걸어 둔 유형 조건은 조건 칩이 보인다(계획 §5.5).
+ * **대상 표시명을 담지 않는다.** 대상은 상세 구획 소관이라 목록에 오지 않는다.
+ * **진행 단계도 담지 않는다.** 확정 필드 목록에 없다 — 결재 진행은 상세가 그린다.
  */
 export interface RequestRow {
   approvalRequestId: number;
   approvalRequestNo: string;
-  targetName: string;
-  reasonFirstLine: string;
+  /** 코드 문자열 그대로. 값 목록이 확정되면 사람이 읽는 이름이 이 자리에 온다(`omf-mes#64`). */
+  approvalTypeCode: string;
   requesterName: string;
   requestedDate: string;
   statusCode: string;
-  /** 「2 / 3」·「종료」. **서버가 준 두 값만 쓴다** — 단계 배열을 세지 않는다(계획 결정 7). */
-  progressLabel: string;
+  reasonFirstLine: string;
 }
 
 /**
@@ -83,17 +83,6 @@ export const firstLineOf = (reason: string): string =>
     ?.trim() ?? '';
 
 /**
- * 목록의 「단계」 칸.
- *
- * **`currentStepNo`와 `totalStepNo`를 그대로 잇는다.** 목록 응답에는 단계 배열이 아예 없고,
- * 있더라도 세지 않는다 — 순차 판정의 정본은 서버다(계획 결정 7).
- *
- * 현재 단계가 비어 있으면 「종료」다. `?? 0`으로 메우면 **끝난 요청이 0단계로 보인다.**
- */
-export const toProgressLabel = (currentStepNo: number | null, totalStepNo: number): string =>
-  currentStepNo === null ? t.values.finished : t.values.progress(currentStepNo, totalStepNo);
-
-/**
  * 상신일 칸. 계약의 `date-time`에서 **날짜 조각만** 뽑는다.
  *
  * **실행 환경 시간대로 옮기지 않는다.** 서버가 적어 보낸 벽시계 날짜가 현장이 쓰는 날짜이고,
@@ -109,9 +98,12 @@ export const toRequestedDate = (requestedAt: string): string =>
 /**
  * 계약 응답 한 건을 목록 행으로 옮긴다.
  *
- * 이름·표시명이 비어 있으면 **번호를 대신 내지 않는다**(`omf-mes#44`). 계약이 두 값을 필수로
+ * 상신자 이름이 비어 있으면 **번호를 대신 내지 않는다**(`omf-mes#44`). 계약이 그 값을 필수로
  * 두었으나 빈 문자열은 스키마상 통과하며, 그 자리에서 번호를 꺼내는 것이 이 저장소가 이미
  * 두 번 재생산한 결함이다.
+ *
+ * **응답의 다른 필드를 여기서 끌어오지 않는다.** 대상·진행 단계는 목록의 값이 아니다 —
+ * 옮겨 담는 순간 어느 칸에든 그릴 수 있게 되고, 그것이 확정 필드 목록을 넘는 첫걸음이 된다.
  */
 export const toRequestRow = (request: ApprovalRequest): RequestRow => {
   const reasonFirstLine = firstLineOf(request.reason);
@@ -119,13 +111,11 @@ export const toRequestRow = (request: ApprovalRequest): RequestRow => {
   return {
     approvalRequestId: request.approvalRequestId,
     approvalRequestNo: request.approvalRequestNo,
-    targetName:
-      request.target.displayName === '' ? t.values.unknownTarget : request.target.displayName,
-    reasonFirstLine: reasonFirstLine === '' ? t.values.emptyReason : reasonFirstLine,
+    approvalTypeCode: request.approvalTypeCode,
     requesterName:
       request.requestedByName === '' ? t.values.unknownRequester : request.requestedByName,
     requestedDate: toRequestedDate(request.requestedAt),
     statusCode: request.statusCode,
-    progressLabel: toProgressLabel(request.currentStepNo, request.totalStepNo),
+    reasonFirstLine: reasonFirstLine === '' ? t.values.emptyReason : reasonFirstLine,
   };
 };

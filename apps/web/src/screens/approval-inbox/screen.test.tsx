@@ -230,9 +230,37 @@ describe('첫 진입', () => {
 
     await waitForList();
 
-    expect(within(requestTable()).getByText('합성 대상 문서 나')).toBeInTheDocument();
+    const table = within(requestTable());
+
+    expect(table.getByText('SAMPLE-TYPE-B')).toBeInTheDocument();
+    expect(table.getAllByText('합성 상신자1').length).toBe(2);
     /* 사유는 첫 줄만 온다 — 전문이 새면 여기서 드러난다. */
     expect(screen.queryByText(SECOND_LINE_OF_MULTILINE_REASON)).not.toBeInTheDocument();
+  });
+
+  /**
+   * 확정 필드 목록을 화면 수준에서도 고정한다 — 부품 시험만으로는 컨테이너가 다른 표를
+   * 끼워 넣어도 드러나지 않는다.
+   */
+  it('목록이 확정된 여섯 열로만 그려진다', async () => {
+    renderScreen(defaultRoutes());
+
+    await waitForList();
+
+    const headers = within(requestTable())
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent);
+
+    expect(headers).toEqual([
+      t.fields.approvalRequestNo,
+      t.fields.approvalTypeCode,
+      t.fields.requestedByName,
+      t.fields.requestedAt,
+      t.fields.status,
+      t.fields.reason,
+    ]);
+    /* 대상 표시명은 응답에 실려 오지만 목록의 값이 아니다. */
+    expect(within(requestTable()).queryByText('합성 대상 문서 나')).not.toBeInTheDocument();
   });
 });
 

@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import type { ApprovalRequest } from './types';
-import { firstLineOf, toProgressLabel, toRequestRow, toRequestedDate } from './types';
+import { firstLineOf, toRequestRow, toRequestedDate } from './types';
 
 const t = messages.approvalInbox;
 
@@ -52,26 +52,6 @@ describe('firstLineOf', () => {
   });
 });
 
-describe('toProgressLabel', () => {
-  it('서버가 준 두 값을 그대로 잇는다', () => {
-    expect(toProgressLabel(2, 3)).toBe('2 / 3');
-  });
-
-  it('첫 단계도 같은 형태다', () => {
-    expect(toProgressLabel(1, 1)).toBe('1 / 1');
-  });
-
-  it('현재 단계가 비어 있으면 종료다 — 0으로 메우지 않는다', () => {
-    expect(toProgressLabel(null, 3)).toBe(t.values.finished);
-    expect(toProgressLabel(null, 3)).not.toContain('0');
-  });
-
-  it('현재 단계가 전체보다 커도 서버 값을 그대로 낸다', () => {
-    /* 목 서버가 실제로 이런 응답을 준다 — 화면이 고쳐 쓰지 않는다(계획 결정 7). */
-    expect(toProgressLabel(2, 1)).toBe('2 / 1');
-  });
-});
-
 describe('toRequestedDate', () => {
   it('date-time에서 날짜만 뽑는다 — 실행 환경 시간대로 옮기지 않는다', () => {
     expect(toRequestedDate('2026-08-06T14:20:00+09:00')).toBe('2026-08-06');
@@ -84,30 +64,43 @@ describe('toRequestedDate', () => {
 });
 
 describe('toRequestRow', () => {
-  it('목록 행이 보이는 값만 담는다', () => {
+  it('확정된 여섯 값만 담는다 — 행 식별자를 빼면 그것이 목록이 아는 전부다', () => {
     const row = toRequestRow(baseRequest);
 
     expect(row).toEqual({
       approvalRequestId: 9001,
       approvalRequestNo: 'SYNTH-REQ-001',
-      targetName: '합성 대상 문서 A',
-      reasonFirstLine: '첫 줄 사유',
+      approvalTypeCode: 'SAMPLE-TYPE-A',
       requesterName: '합성 상신자1',
       requestedDate: '2026-08-06',
       statusCode: 'SAMPLE-STATUS-A',
-      progressLabel: '2 / 3',
+      reasonFirstLine: '첫 줄 사유',
     });
+  });
+
+  it('대상과 진행 단계를 옮겨 담지 않는다 — 상세 구획 소관이다', () => {
+    const row = toRequestRow(baseRequest);
+    const keys = Object.keys(row);
+
+    /* 짝 방향 — 담아야 할 값은 실제로 담긴다. 아무것도 담지 않아도 아래 단언은 통과한다. */
+    expect(row.approvalTypeCode).toBe('SAMPLE-TYPE-A');
+    expect(row.reasonFirstLine).toBe('첫 줄 사유');
+
+    expect(keys).not.toContain('targetName');
+    expect(keys).not.toContain('progressLabel');
+    expect(keys).not.toContain('currentStepNo');
+    expect(keys).not.toContain('totalStepNo');
   });
 
   it('내부 번호를 담지 않는다 — 담기지 않으면 화면으로 샐 경로도 없다', () => {
     const row = toRequestRow(baseRequest);
 
+    /* 짝 방향 — 이름은 실제로 담긴다. */
+    expect(row.requesterName).toBe('합성 상신자1');
+
     expect(Object.keys(row)).not.toContain('requestedBy');
     expect(Object.keys(row)).not.toContain('targetId');
     expect(Object.keys(row)).not.toContain('targetTypeCode');
-    /* 짝 방향 — 이름은 실제로 담긴다. 아무것도 담지 않아도 위 단언은 통과한다. */
-    expect(row.requesterName).toBe('합성 상신자1');
-    expect(row.targetName).toBe('합성 대상 문서 A');
   });
 
   it('상신자 이름이 비면 번호를 대신 내지 않는다', () => {
@@ -117,25 +110,15 @@ describe('toRequestRow', () => {
     expect(row.requesterName).not.toContain('9301');
   });
 
-  it('대상 표시명이 비면 번호를 대신 내지 않는다', () => {
-    const row = toRequestRow({
-      ...baseRequest,
-      target: { ...baseRequest.target, displayName: '' },
-    });
-
-    expect(row.targetName).toBe(t.values.unknownTarget);
-    expect(row.targetName).not.toContain('9401');
-  });
-
   it('사유가 비면 빈 칸이 아니라 그 사실을 적는다', () => {
     const row = toRequestRow({ ...baseRequest, reason: '  \n ' });
 
     expect(row.reasonFirstLine).toBe(t.values.emptyReason);
   });
 
-  it('종료된 요청의 진행은 종료다', () => {
-    const row = toRequestRow({ ...baseRequest, currentStepNo: null });
-
-    expect(row.progressLabel).toBe(t.values.finished);
+  it('유형 코드를 화면 낱말로 바꾸지 않는다', () => {
+    expect(
+      toRequestRow({ ...baseRequest, approvalTypeCode: 'SAMPLE-TYPE-Z' }).approvalTypeCode,
+    ).toBe('SAMPLE-TYPE-Z');
   });
 });

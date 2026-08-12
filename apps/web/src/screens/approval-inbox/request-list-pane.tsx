@@ -11,26 +11,34 @@ const t = messages.approvalInbox;
 /**
  * 표의 열 폭.
  *
- * **흡수 열은 사유 하나뿐이고 나머지 여섯은 폭을 지정한다.** 흡수 열이 둘이면 좁은 화면에서
- * 둘 다 짓눌린다. 지정 폭의 합은 **732px**이고, 사유에 **196px**을 예산으로 잡으면 합이
+ * **흡수 열은 사유 하나뿐이고 나머지 다섯은 폭을 지정한다.** 흡수 열이 둘이면 좁은 화면에서
+ * 둘 다 짓눌린다. 지정 폭의 합은 **612px**이고, 사유에 **316px**을 예산으로 잡으면 합이
  * `.wide-table`의 최소 폭(58rem = 928px)에 딱 맞는다 — 앞선 화면들이 쓴 방법과 같다
  * (흡수 열에도 예산을 주고 그 합으로 하한을 맞춘다).
  *
- * **승인 유형 열을 두지 않는다.** 열을 늘리는 것보다 줄이는 것이 먼저다 — 무엇에 대한
- * 결재인지는 대상 표시명이 이미 말하고, 걸어 둔 유형 조건은 조건 칩이 보인다. 값 목록이
- * 확정돼 유형이 사람이 읽는 이름이 되면 그때 열을 더한다.
+ * | 열 | 폭 | 근거 |
+ * | --- | ---: | --- |
+ * | 요청번호 | 140px | `SYNTH-REQ-001` 형식 한 줄 |
+ * | 승인 유형 | 160px | 코드 문자열 그대로. 밑줄 낀 긴 코드가 한 줄에 들어가는 폭 |
+ * | 상신자 | 96px | 사람 이름 |
+ * | 상신일 | 112px | `YYYY-MM-DD` + 여백 |
+ * | 상태 | 104px | 코드 문자열 그대로 |
+ * | **사유 첫 줄** | **미지정(예산 316px)** | 남는 폭을 흡수하는 유일한 열 |
+ *
+ * **열 여섯은 설계 스펙이 확정한 필드 목록 그대로다.** 대상 표시명을 여기 두지 않는다 —
+ * 대상은 상세 구획 소관이다. 진행 단계도 두지 않는다. 값 목록이 확정돼 유형이 사람이 읽는
+ * 이름이 되면 라벨만 바뀌고 열 구성은 그대로다.
  */
 export const REQUEST_COLUMN_WIDTH = {
   approvalRequestNo: '140px',
-  target: '200px',
+  approvalTypeCode: '160px',
   requester: '96px',
   requestedDate: '112px',
   status: '104px',
-  progress: '80px',
 } as const;
 
 /** 흡수 열(사유)의 예산. 지정 폭 합과 더해 최소 폭에 맞춘다 — 이 값이 곧 그 열의 하한이다. */
-export const REASON_COLUMN_BUDGET_PX = 196;
+export const REASON_COLUMN_BUDGET_PX = 316;
 
 /** `.wide-table`이 주는 표 최소 폭(58rem). 배치 규범 문서가 근거를 갖는다. */
 export const WIDE_TABLE_MIN_WIDTH_PX = 928;
@@ -52,12 +60,12 @@ export interface RequestListPaneProps {
 /**
  * 요청 목록 — 결재할 것을 찾아 고르는 자리.
  *
- * **열은 일곱이다**(요청번호·대상·사유·상신자·상신일·상태·단계). 계약이 이 리소스의 업무 값을
- * **사유 하나**로 두었고 수량·금액 컬럼이 아예 없어, 사유의 첫 줄이 곧 요약 자리다 —
- * 별도의 요약 열을 만들지 않는다.
+ * **열은 여섯이다**(요청번호·승인 유형·상신자·상신일·상태·사유 첫 줄). 계약이 이 리소스의
+ * 업무 값을 **사유 하나**로 두었고 수량·금액 컬럼이 아예 없어, 사유의 첫 줄이 곧 요약 자리다 —
+ * 별도의 요약 열을 만들지 않는다(`omf-mes#87`).
  *
- * **단계 칸은 서버가 준 두 값을 그대로 잇는다**(`types.ts`의 `toProgressLabel`).
- * 목록 응답에 단계 배열이 없고, 있더라도 세지 않는다 — 순차 판정의 정본은 서버다.
+ * **필드 목록은 설계가 확정한 것이고 화면이 바꾸지 않는다.** 대상 표시명·진행 단계는 응답에
+ * 실려 오지만 이 표의 값이 아니다 — 대상과 결재 진행은 상세 구획 소관이다.
  *
  * **정렬 가능한 열도 선택 열도 두지 않는다.** 계약의 목록 쿼리에 정렬 파라미터가 없고
  * 일괄로 할 쓰기가 없다 — 눌러도 아무 일이 없는 칸이 된다.
@@ -83,11 +91,11 @@ export const RequestListPane = ({
           type="button"
           className="link-cell"
           /*
-           * 보이는 글자(요청번호)를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 하고,
-           * 대상 이름을 덧붙여 같은 문서에 오른 요청들을 갈라 부를 수 있게 한다.
+           * 보이는 글자(요청번호)를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 한다.
+           * 계약이 요청번호를 UNIQUE로 두어 행마다 이름이 갈린다.
            * **내부 번호는 접근 이름에도 넣지 않는다.**
            */
-          aria-label={t.actions.selectRow(row.approvalRequestNo, row.targetName)}
+          aria-label={t.actions.selectRow(row.approvalRequestNo)}
           aria-current={row.approvalRequestId === selectedRequestId ? 'true' : undefined}
           onClick={() => {
             onSelect(row.approvalRequestId);
@@ -98,17 +106,11 @@ export const RequestListPane = ({
       ),
     },
     {
-      key: 'target',
-      header: t.fields.target,
-      width: REQUEST_COLUMN_WIDTH.target,
-      /* 서버가 만든 표시명을 **그대로** 낸다 — 유형 코드로 분기해 이름을 지어내지 않는다. */
-      render: (row) => row.targetName,
-    },
-    {
-      key: 'reason',
-      header: t.fields.reason,
-      /* 남는 폭을 흡수하는 유일한 열. 예산은 `REASON_COLUMN_BUDGET_PX`가 갖는다. */
-      render: (row) => row.reasonFirstLine,
+      key: 'approvalTypeCode',
+      header: t.fields.approvalTypeCode,
+      width: REQUEST_COLUMN_WIDTH.approvalTypeCode,
+      /* 코드 문자열 그대로다 — 값 목록이 확정되기 전에 화면이 이름을 지어내지 않는다. */
+      render: (row) => row.approvalTypeCode,
     },
     {
       key: 'requester',
@@ -130,11 +132,10 @@ export const RequestListPane = ({
       render: (row) => row.statusCode,
     },
     {
-      key: 'progress',
-      header: t.fields.step,
-      width: REQUEST_COLUMN_WIDTH.progress,
-      align: 'end',
-      render: (row) => row.progressLabel,
+      key: 'reason',
+      header: t.fields.reason,
+      /* 남는 폭을 흡수하는 유일한 열. 예산은 `REASON_COLUMN_BUDGET_PX`가 갖는다. */
+      render: (row) => row.reasonFirstLine,
     },
   ];
 

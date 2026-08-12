@@ -4630,13 +4630,10 @@ const approvalInbox = {
   },
   fields: {
     approvalRequestNo: '요청번호',
-    target: '대상',
     reason: '사유',
     requestedByName: '상신자',
     requestedAt: '상신일',
     status: '상태',
-    /** 목록 열 이름. 「2 / 3」·「종료」가 서는 자리라 한 낱말이라야 80px 칸에서 접히지 않는다. */
-    step: '단계',
     approvalTypeCode: '승인 유형',
     period: '상신일',
     q: '요청번호 검색',
@@ -4648,11 +4645,11 @@ const approvalInbox = {
     /** 목록과 대기 건수를 **함께** 다시 부른다. 한쪽만 부르면 갱신된 값과 낡은 값이 섞인다. */
     reload: '다시 조회',
     /*
-     * 행 안의 버튼은 보이는 글자가 행마다 같을 수 있다 — 같은 대상에 요청이 여러 번 오를 수 있다.
-     * 그래서 대상 이름을 함께 담는다. **내부 번호는 접근 이름에도 넣지 않는다.**
+     * 요청번호 하나로 이름이 선다 — 계약이 그 값을 UNIQUE로 두었다.
+     * 보이는 글자를 그대로 담아 음성 조작이 그 말로 이 버튼을 부를 수 있게 하고,
+     * **내부 번호는 접근 이름에도 넣지 않는다.**
      */
-    selectRow: (approvalRequestNo: string, targetName: string): string =>
-      `${approvalRequestNo} · ${targetName} 선택`,
+    selectRow: (approvalRequestNo: string): string => `${approvalRequestNo} 선택`,
   },
   loading: {
     list: '승인 요청 목록 불러오는 중',
@@ -4688,13 +4685,8 @@ const approvalInbox = {
     noSelectionDescription: '위 목록에서 요청번호를 누르세요.',
   },
   values: {
-    /** 「지금 단계 / 전체 단계」. **두 값 모두 서버가 준 것이다** — 단계 배열로 세지 않는다. */
-    progress: (current: number, total: number): string => `${String(current)} / ${String(total)}`,
-    /** 지금 결재를 기다리는 단계가 없다. 계약이 그 자리를 비워 내려 준다. */
-    finished: '종료',
     /** 이름이 오지 않았다. **번호를 대신 내지 않는다.** */
     unknownRequester: '상신자를 확인할 수 없습니다',
-    unknownTarget: '대상을 확인할 수 없습니다',
     /** 사유는 필수 값이라 빈 경우가 정상은 아니다. 그래도 빈 칸을 내지 않고 사실을 적는다. */
     emptyReason: '사유가 비어 있습니다',
   },

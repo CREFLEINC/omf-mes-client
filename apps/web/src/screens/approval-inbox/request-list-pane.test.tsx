@@ -61,11 +61,10 @@ describe('열 폭 예산', () => {
     /* 흡수 열이 둘이면 좁은 화면에서 둘 다 짓눌린다. */
     expect(Object.keys(REQUEST_COLUMN_WIDTH)).toEqual([
       'approvalRequestNo',
-      'target',
+      'approvalTypeCode',
       'requester',
       'requestedDate',
       'status',
-      'progress',
     ]);
   });
 
@@ -75,19 +74,69 @@ describe('열 폭 예산', () => {
       0,
     );
 
-    expect(specified).toBe(732);
+    expect(specified).toBe(612);
     expect(specified + REASON_COLUMN_BUDGET_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_WIDTH_PX);
   });
 });
 
+describe('RequestListPane — 확정된 여섯 열', () => {
+  /**
+   * 필드 목록은 설계가 확정했고 화면이 바꾸지 않는다. 이 단언이 그 목록을 **차례까지** 고정한다 —
+   * 열 하나를 더하거나 다른 값으로 갈아 끼우면 여기서 멈춘다.
+   */
+  it('머리글이 확정 목록 그대로이고 차례도 같다', () => {
+    renderPane();
+
+    expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
+      t.fields.approvalRequestNo,
+      t.fields.approvalTypeCode,
+      t.fields.requestedByName,
+      t.fields.requestedAt,
+      t.fields.status,
+      t.fields.reason,
+    ]);
+  });
+
+  it('승인 유형 열이 서고 코드를 그대로 낸다', () => {
+    renderPane();
+
+    expect(
+      screen.getByRole('columnheader', { name: t.fields.approvalTypeCode }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('SAMPLE-TYPE-A').length).toBe(2);
+    expect(screen.getByText('SAMPLE-TYPE-B')).toBeInTheDocument();
+  });
+
+  it('대상 표시명을 목록에 내지 않는다 — 대상은 상세 구획 소관이다', () => {
+    const { container } = renderPane();
+    const text = container.textContent ?? '';
+
+    /* 선행 단언 — 열이 실제로 서 있어야 「그 값이 없다」가 뜻을 갖는다. */
+    expect(screen.getAllByRole('columnheader')).toHaveLength(6);
+    expect(text).toContain('SAMPLE-TYPE-A');
+
+    for (const request of requestFixtures) {
+      if (request.target.displayName !== '') expect(text).not.toContain(request.target.displayName);
+    }
+  });
+
+  it('진행 단계를 목록에 내지 않는다', () => {
+    const { container } = renderPane();
+    const text = container.textContent ?? '';
+
+    expect(text).toContain('SYNTH-REQ-001');
+    expect(text).not.toContain('2 / 3');
+    expect(text).not.toContain('2 / 1');
+  });
+});
+
 describe('RequestListPane — 보이는 값', () => {
-  it('요청번호와 이름을 낸다', () => {
+  it('요청번호와 상신자 이름을 낸다', () => {
     renderPane();
 
     expect(screen.getByText('SYNTH-REQ-001')).toBeInTheDocument();
-    /* 같은 상신자·같은 대상이 여러 행에 선다 — 그것이 이 픽스처가 담은 사실이다. */
+    /* 같은 상신자가 여러 행에 선다 — 그것이 이 픽스처가 담은 사실이다. */
     expect(screen.getAllByText('합성 상신자1').length).toBe(2);
-    expect(screen.getAllByText('합성 대상 문서 가').length).toBe(2);
   });
 
   it('내부 번호를 어느 칸에도 내지 않는다', () => {
@@ -119,28 +168,6 @@ describe('RequestListPane — 보이는 값', () => {
     renderPane();
 
     expect(screen.getByText(t.values.unknownRequester)).toBeInTheDocument();
-    expect(screen.getByText(t.values.unknownTarget)).toBeInTheDocument();
-  });
-
-  it('진행은 서버가 준 두 값 그대로다', () => {
-    renderPane();
-
-    expect(screen.getByText('2 / 3')).toBeInTheDocument();
-    /* 현재 단계가 전체보다 큰 응답도 고쳐 쓰지 않는다. */
-    expect(screen.getByText('2 / 1')).toBeInTheDocument();
-    /* 끝난 요청은 「종료」다 — 0으로 메우지 않는다. */
-    expect(screen.getByText(t.values.finished)).toBeInTheDocument();
-  });
-
-  it('승인 유형 열을 두지 않는다 — 무엇에 대한 결재인지는 대상이 말한다', () => {
-    renderPane();
-
-    /* 선행 단언 — 열이 실제로 서 있어야 「그 열이 없다」가 뜻을 갖는다. */
-    expect(screen.getByRole('columnheader', { name: t.fields.target })).toBeInTheDocument();
-    expect(screen.getAllByRole('columnheader')).toHaveLength(7);
-    expect(
-      screen.queryByRole('columnheader', { name: t.fields.approvalTypeCode }),
-    ).not.toBeInTheDocument();
   });
 });
 
@@ -153,19 +180,15 @@ describe('RequestListPane — 고르기', () => {
     expect(onSelect).toHaveBeenCalledWith(9001);
   });
 
-  it('고르기 버튼의 이름이 대상까지 담는다 — 같은 대상에 요청이 여러 번 오를 수 있다', () => {
+  it('고르기 버튼의 이름이 행마다 갈린다 — 계약이 요청번호를 UNIQUE로 두었다', () => {
     renderPane();
 
-    expect(
-      screen.getByRole('button', {
-        name: t.actions.selectRow('SYNTH-REQ-001', '합성 대상 문서 가'),
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', {
-        name: t.actions.selectRow('SYNTH-REQ-004', '합성 대상 문서 가'),
-      }),
-    ).toBeInTheDocument();
+    const names = requestRowFixtures.map((row) => t.actions.selectRow(row.approvalRequestNo));
+
+    expect(new Set(names).size).toBe(requestRowFixtures.length);
+    for (const name of names) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
   });
 
   it('고른 행을 표시한다', () => {
