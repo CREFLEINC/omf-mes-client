@@ -577,6 +577,24 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
   });
 
+  /**
+   * **주소가 바깥에서 바뀌는 길**(뒤로가기·앞으로가기·주소 직접 편집)은 화면의 클릭 핸들러를
+   * 지나지 않는다. 안내를 핸들러에서만 거두면 이 길로 들어온 새 조건 위에 앞 대상의 안내가
+   * 그대로 서 있게 된다 — 매임을 조건·쪽의 서명으로 세우는 이유다.
+   */
+  it('404 안내는 주소가 바깥에서 바뀌어도 사라진다', async () => {
+    const { user } = renderScreen(allRoutes([failingDetailRoute(404)]), SELECTED, '?q=SAMPLE');
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
   it('404 안내는 조건을 바꾸면 사라진다', async () => {
     const { user } = renderScreen(allRoutes([failingDetailRoute(404)]), SELECTED);
 
