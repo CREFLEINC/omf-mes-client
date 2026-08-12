@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
+import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
 import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
@@ -40,6 +41,15 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/master-change', element: <MasterChangeScreen /> },
       /* W-CO-02 — 기준정보가 아니라 시스템 운영이라 경로 앞머리를 가른다. */
       { path: 'system/users-roles', element: <UsersRolesScreen /> },
+      /*
+       * W-06-15 — 같은 규칙(사이드바 섹션)이다. 결재선은 마스터이지만 창고·품목 같은 업무
+       * 기준정보가 아니라 **운영 설정**이고, 그 승인자가 곧 사용자·역할·권한의 사용자다.
+       *
+       * **네 PR이 함께 여는 자리다.** 단계를 세울 수 없는 상태에서는 이 줄을 두지 않았다 —
+       * 단계가 0인 결재선만 만들 수 있는 화면을 노출하면 그 유형의 상신이 전부 거부된다
+       * (정책 §5.2 — 접근 불가능한 경계).
+       */
+      { path: 'system/approval-route', element: <ApprovalRouteScreen /> },
       /*
        * W-01-09 — 자재창고(도메인 01)의 첫 화면. 앞머리를 계약 경로(`/logistics/**`)와 같은
        * 낱말로 두어 화면과 계약의 대응이 주소에서 읽히게 한다. 뒤따르는 W-01 화면들이 그대로 쓴다.

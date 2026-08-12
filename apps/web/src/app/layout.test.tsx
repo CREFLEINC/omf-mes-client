@@ -242,6 +242,25 @@ describe('AppLayout', () => {
     );
   });
 
+  /**
+   * **차례가 순서다** — 승인자를 정할 수 있게 된 다음에 결재선을 세운다.
+   * 결재선은 마스터이지만 창고·품목 같은 업무 기준정보가 아니라 운영 설정이라 이 섹션에 든다.
+   */
+  it('사이드바에 시스템 관리 섹션의 결재선 정의 메뉴가 사용자·역할·권한 뒤에 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByRole('link', { name: '결재선 정의' })).toHaveAttribute(
+      'href',
+      '/system/approval-route',
+    );
+    expect(links.indexOf('/system/approval-route')).toBe(links.indexOf('/system/users-roles') + 1);
+  });
+
   /* 새 섹션을 더하면서 기존 섹션의 구성이 흔들리지 않았는지 함께 본다. */
   it('기준정보 섹션의 항목 순서와 경로가 그대로다', () => {
     renderLayout('본문 내용');
@@ -269,6 +288,7 @@ describe('AppLayout', () => {
       '/logistics/stocktaking',
       '/logistics/supplier-return',
       '/system/users-roles',
+      '/system/approval-route',
     ]);
   });
 

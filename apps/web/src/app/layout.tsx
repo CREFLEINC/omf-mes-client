@@ -121,6 +121,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/system/users-roles" icon="manage_accounts">
               사용자·역할·권한
             </NavItem>
+            {/*
+             * W-06-15 — **차례가 순서다.** 승인자를 정할 수 있게 된 다음에 결재선을 세운다.
+             * 결재선은 마스터이지만 업무 기준정보가 아니라 운영 설정이라 이 섹션에 든다.
+             */}
+            <NavItem to="/system/approval-route" icon="approval">
+              결재선 정의
+            </NavItem>
           </SidebarSection>
         </Sidebar>
       }
