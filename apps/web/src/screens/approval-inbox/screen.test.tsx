@@ -2276,4 +2276,40 @@ describe('결재 — 전송 중', () => {
     /* ⑤ 남의 결과를 새 대상에 찍지 않는다. */
     expect(screen.queryByText('합성 결재 직후에 남은 의견')).toBeNull();
   });
+
+  /**
+   * **실패도 자기 대상보다 오래 살지 않는다.**
+   *
+   * 나가는 중인 쓰기는 끊지 않으므로(`resetIfIdle`) 대상이 바뀐 뒤에 실패가 도착한다.
+   * 그것을 그대로 그리면 **9001의 거절 사유가 9002를 보는 화면에** 선다 — 사용자는 자기가
+   * 건드린 적 없는 요청이 거절된 줄 안다. 정리 effect는 그 순간 나가는 중이라 비켜 갔고,
+   * 막는 것은 「도착한 결과가 지금 대상의 것인가」 하나뿐이다.
+   */
+  it('전송 중 대상이 바뀌면 뒤늦게 온 실패가 새 대상에 서지 않는다', async () => {
+    const { requests, release, user } = await renderDecision(
+      decisionRoutes([failingApproveRoute(409, { conflictCause: 'user', message: '' })]),
+      '?rq=9001',
+      'rq=9002',
+      holdApprove,
+    );
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rq=9002');
+    });
+
+    release();
+
+    /* 잠금이 풀린 것으로 실패가 도착한 것을 안다 — 도착 전에 단언하면 늘 통과한다. */
+    await waitFor(() => {
+      expect(approveButton()).toBeEnabled();
+    });
+    expect(screen.queryByText(messages.conflict.user)).toBeNull();
+  });
 });
