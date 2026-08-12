@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -120,6 +120,25 @@ const LocationProbe = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
+/**
+ * **화면 바깥에서** 주소를 갈아 끼운다. 뒤로가기·앞으로가기·주소 직접 편집이 이 경로다 —
+ * 셋 모두 화면의 클릭 핸들러를 거치지 않는다.
+ */
+const SearchProbe = ({ to }: { to: string }) => {
+  const [, setSearchParams] = useSearchParams();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setSearchParams(new URLSearchParams(to));
+      }}
+    >
+      주소 이동
+    </button>
+  );
+};
+
 const BackProbe = () => {
   const navigate = useNavigate();
 
@@ -138,6 +157,7 @@ const BackProbe = () => {
 const renderScreen = (
   routes: StubRoute[],
   search = '',
+  navigateTo = '',
 ): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
   const { fetch, requests } = createRecordingFetch(routes);
 
@@ -146,12 +166,21 @@ const renderScreen = (
       <ApprovalRouteScreen />
       <LocationProbe />
       <BackProbe />
+      <SearchProbe to={navigateTo} />
     </>,
     { fetch, route: `${ROUTE}${search}` },
   );
 
   return { requests, user: userEvent.setup() };
 };
+
+const listRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) =>
+      request.method === 'GET' &&
+      request.url.pathname === ROUTES_PATH &&
+      !request.url.searchParams.has('size'),
+  );
 
 const locationText = (): string => screen.getByTestId('location').textContent ?? '';
 
@@ -352,5 +381,97 @@ describe('ApprovalRouteScreen(등록) — 활성 중복 선검사', () => {
     expect(probeRequests(requests)[0]?.url.searchParams.get('approvalTypeCode')).toBe(
       'SAMPLE-TYPE-C',
     );
+  });
+});
+
+describe('ApprovalRouteScreen(등록) — 성공 뒤 목록', () => {
+  /**
+   * **등록도 「모든 쓰기 성공 뒤 무효화한다」의 네 조작 중 하나다**(계획 결정 12).
+   *
+   * 등록에는 잠금 토큰이 없어 무효화를 빠뜨려도 다음 저장이 죽지는 않는다 — 그래서 토큰을
+   * 재는 감지기들이 이 자리를 지나친다. 남는 결함은 **왼쪽 목록이 방금 만든 결재선을 담지
+   * 못한 채로 있는 것**이고, 사용자에게는 「등록했다는데 목록에 없다」로 보인다.
+   */
+  it('등록에 성공하면 목록이 다시 와서 방금 만든 결재선을 담는다', async () => {
+    let created = false;
+    const growingList: StubRoute = {
+      match: (request) => isGet(request, ROUTES_PATH) && !isProbe(request),
+      respond: () =>
+        jsonResponse(listBody(created ? [...routeFixtures, createdRouteFixture] : routeFixtures)),
+    };
+    const markCreated: StubRoute = {
+      match: (request) => request.method === 'POST' && new URL(request.url).pathname === ROUTES_PATH,
+      respond: () => {
+        created = true;
+
+        return jsonResponse(createdRouteFixture, {
+          status: 201,
+          headers: { ETag: 'collection-token' },
+        });
+      },
+    };
+
+    const { requests, user } = renderScreen(allRoutes([markCreated, growingList]));
+
+    const pane = await openCreateForm(user);
+    const before = listRequests(requests).length;
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.submitCreate }));
+
+    await waitFor(() => {
+      expect(listRequests(requests).length).toBeGreaterThan(before);
+    });
+
+    /* 요청이 한 번 더 나간 것으로 그치지 않고 **목록에 실제로 서는지**까지 본다. */
+    const listPane = screen.getByRole('region', { name: t.panes.list });
+
+    await waitFor(() => {
+      expect(within(listPane).getByText('SAMPLE-TYPE-C')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('ApprovalRouteScreen(등록) — 실패 배너의 매임', () => {
+  const REJECTED = {
+    errors: [{ scope: 'screen', code: 'SYNTH_REJECTED', message: '합성 등록 거절' }],
+  };
+
+  const failingCreateRoute = (): StubRoute => ({
+    match: (request) => request.method === 'POST' && new URL(request.url).pathname === ROUTES_PATH,
+    respond: () => jsonResponse(REJECTED, { status: 400 }),
+  });
+
+  /**
+   * **매임을 이름 하나로 세우는 이득이 여기 있다**(전례 PR #91 R3-6).
+   *
+   * 등록 갈래에서는 고른 결재선 번호가 **내내 없다** — 정리를 그 번호에만 매면 등록 폼을
+   * 닫았다 다시 열어도 앞선 거절 사유가 새 폼 위에 그대로 선다. 「고른 결재선과 등록 폼은
+   * 함께 성립하지 않는 하나의 자리」라는 규칙은 두 자리를 **한 이름**으로 볼 때만 성립한다.
+   *
+   * **핸들러를 거치지 않는 길로 잰다.** 「취소」는 스스로 배너를 거두므로 그 길로는 매임이
+   * 옳은지 알 수 없다 — 뒤로가기·주소 직접 편집이 effect가 존재하는 이유다.
+   */
+  it('등록 실패 배너가 폼을 닫았다 다시 열면 사라진다', async () => {
+    const { user } = renderScreen(allRoutes([failingCreateRoute()]), '', '');
+
+    const pane = await openCreateForm(user);
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.submitCreate }));
+    expect(await screen.findByText('합성 등록 거절')).toBeInTheDocument();
+
+    /* 화면 바깥에서 등록 표시를 떨군다 — 클릭 핸들러를 지나지 않는 길이다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(locationText()).not.toContain('new=');
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.create }));
+
+    const reopened = await screen.findByRole('region', { name: t.panes.create });
+
+    // 선행 단언 — 폼이 실제로 다시 섰어야 「배너가 없다」가 뜻을 갖는다.
+    expect(within(reopened).getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
+    expect(screen.queryByText('합성 등록 거절')).not.toBeInTheDocument();
   });
 });

@@ -1766,6 +1766,47 @@ describe('ApprovalRouteScreen — 사용 전환', () => {
   });
 
   /**
+   * **켜기는 폼을 저장하지 않는다** — 그러므로 중복 판정의 사업부는 **서버가 준 값**이지
+   * 편집 중인 폼 값이 아니다. 두 판정을 한 줄로 합치면 고치던 값 때문에 켜기가 잘못 막히거나
+   * 잘못 열린다.
+   *
+   * 같은 조준 조회 응답 하나로 **저장은 막히고 켜기는 열리는** 것이 그 사실의 증거다 —
+   * 저장은 폼 값(9102 · 충돌)을 보고, 켜기는 서버 값(9101 · 충돌 아님)을 본다.
+   */
+  it('켜기 중복 판정이 폼 값이 아니라 서버 값을 본다', async () => {
+    const inactiveWithUnit = { ...routeFixtures[0], isActive: false };
+    const clashOnOtherUnit = {
+      ...routeFixtures[0],
+      approvalRouteId: 9005,
+      businessUnitId: 9102,
+      isActive: true,
+    };
+    const { user } = renderScreen(
+      allRoutes([detailRoute(inactiveWithUnit), probeRoute([clashOnOtherUnit])]),
+      SELECTED,
+    );
+
+    /* 선행 단언 — 고치기 전에는 켜기가 열려 있다(서버 사업부 9101에 충돌이 없다). */
+    expect(await screen.findByRole('button', { name: t.actions.activate })).toBeEnabled();
+
+    const pane = screen.getByRole('region', { name: t.panes.detail });
+
+    await user.click(within(pane).getByRole('combobox', { name: t.fields.businessUnit }));
+    /* 고르는 자리라 미사용 표식이 붙는다 — 빼면 그 사업부가 걸린 결재선을 만들 길이 사라진다. */
+    await user.click(
+      screen.getByRole('option', {
+        name: `${INACTIVE_BUSINESS_UNIT_LABEL}${t.values.inactiveSuffix}`,
+      }),
+    );
+
+    /* 폼 값(9102)은 충돌이라 **저장은** 막힌다 — 판정이 실제로 돌았다는 증거다. */
+    expect(await screen.findByText(t.actionReasons.duplicateActive)).toBeInTheDocument();
+    /* 그런데도 **켜기는** 열려 있다 — 켜기가 보는 것은 서버 값이기 때문이다. */
+    expect(screen.getByRole('button', { name: t.actions.activate })).toBeEnabled();
+    expect(screen.queryByText(t.actionReasons.activateDuplicate)).not.toBeInTheDocument();
+  });
+
+  /**
    * **창은 자기 대상보다 오래 살지 않는다.** 살아남으면 앞 결재선을 끄려고 연 창이
    * 다음 결재선을 끈다 — 쓰기 대상은 지금 주소를 읽기 때문이다.
    */
@@ -1949,11 +1990,24 @@ describe('ApprovalRouteScreen — 저장 실패 갈래', () => {
     return requests;
   };
 
-  /** 화면이 아는 필드의 오류는 **그 칸 옆으로** 간다 — 배너로 뭉개면 어디를 고칠지 알 수 없다. */
-  it('필드 오류는 인라인으로 서고 입력이 남는다', async () => {
+  /**
+   * 화면이 아는 필드의 오류는 **그 칸 옆으로** 간다 — 배너로 뭉개면 어디를 고칠지 알 수 없다.
+   *
+   * **「글자가 어딘가 있다」로는 부족하다.** 그 단언만 두면 오류가 배너로 밀려도 통과한다 —
+   * `knownFields`를 잘못 채우면 정확히 그 일이 일어난다(입력칸 없는 이름을 채우면 반대로
+   * **어디에도 보이지 않는** 오류가 된다 · 계획 결정 16 · W-01-04 정정 4).
+   * 그래서 **그 칸의 접근 설명에 붙었는지**를 잰다.
+   */
+  it('필드 오류가 그 입력칸에 붙고 입력이 남는다', async () => {
     await saveWith(failingUpdateRoute(400, FIELD_ERROR));
 
-    expect(await screen.findByText('합성 필드 오류')).toBeInTheDocument();
+    await screen.findByText('합성 필드 오류');
+
+    expect(screen.getByLabelText(t.fields.minValue)).toHaveAccessibleDescription('합성 필드 오류');
+    /* 짝 방향 — 오류는 그 칸에만 붙는다. 다른 칸까지 붉어지면 어디를 고칠지 다시 흐려진다. */
+    expect(screen.getByLabelText(t.fields.maxValue)).not.toHaveAccessibleDescription(
+      '합성 필드 오류',
+    );
     expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('77');
   });
 
