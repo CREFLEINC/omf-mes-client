@@ -19,6 +19,7 @@ const specPathOf = (fileName) =>
 const DEFAULT_SPEC_PATHS = [
   specPathOf('mdm-기준정보.json'),
   specPathOf('logistics-01자재창고.json'),
+  specPathOf('app-공통.json'),
 ];
 
 /**

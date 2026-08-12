@@ -11399,6 +11399,1002 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/approval-routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 결재선 목록
+         * @description 화면이 유형·사업부·사용 여부로 거른다. 근거: W-06-15 §3
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 승인 유형 */
+                    approvalTypeCode?: string;
+                    businessUnitId?: number;
+                    /** @description 참이면 사용 중만 */
+                    activeOnly?: boolean;
+                    /** @description 승인 유형 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["ApprovalRoute"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 결재선 등록
+         * @description 같은 (approvalTypeCode, businessUnitId) 로 활성 결재선이 이미 있으면 400 이다 — 물리 모델에 유일 제약이 없어 계약이 막는다. 근거: W-06-15 §5-3 · 공유계약 B-12
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRouteCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRoute"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=STATE_LOCKED 는 재로드해도 풀리지 않는다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/approval-routes/{approvalRouteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approvalRouteId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 결재선 상세
+         * @description 근거: W-06-15 §3
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    approvalRouteId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRoute"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 결재선 수정
+         * @description 승인 유형은 바꾸지 않는다 — 바꾸면 다른 결재선이다. 근거: W-06-15 §4-A · 공유계약 B-4
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    approvalRouteId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRouteUpdate"];
+                };
+            };
+            responses: {
+                /** @description 수정됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRoute"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=STATE_LOCKED 는 재로드해도 풀리지 않는다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/approval-routes/{approvalRouteId}:deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approvalRouteId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 결재선 사용 중지
+         * @description 물리 삭제는 제공하지 않는다(공유계약 B-4). ⚠ 중지하면 그 유형의 상신이 400 이 된다 — 화면이 무엇이 막히는지 먼저 보인다. 진행 중인 요청은 그대로 진행된다(공유계약 J-9). 근거: W-06-15 §5-6
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    approvalRouteId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 중지됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRoute"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/approval-routes/{approvalRouteId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approvalRouteId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 결재선 다시 사용
+         * @description 중지한 결재선을 되살린다. 같은 (approvalTypeCode, businessUnitId) 로 이미 활성인 것이 있으면 400 이다. 단계가 0 개면 400 이다 — 되살려도 상신이 거부된다. 근거: W-06-15 §5-9
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    approvalRouteId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRoute"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=STATE_LOCKED 는 재로드해도 풀리지 않는다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/approval-routes/{approvalRouteId}/steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approvalRouteId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 결재 단계 목록
+         * @description stepNo 오름차순. 근거: W-06-15 §4-B
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    approvalRouteId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 단계 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRouteStepListResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 결재 단계 전체 치환 (순서 포함)
+         * @description 화면이 최종 순서를 통째로 보내고 서버가 한 트랜잭션으로 반영한다. uq_approval_route_step UNIQUE(route, step_no) 가 걸려 있어 두 단계를 맞바꾸면 중간 상태가 반드시 제약을 위반한다 — 행 단위 저장이 원리적으로 불가능하다(공유계약 A-5 · B-11).
+         *
+         *     approval_route_step 에는 version_no 가 없으므로 낙관적 잠금은 마스터의 토큰으로 판정한다 — If-Match 는 approval_route.version_no 다.
+         *
+         *     ⚠ 이 치환은 진행 중인 요청에 소급하지 않는다. approval_step 은 상신 시점에 전개되고 기록 전용이다(공유계약 J-9).
+         *
+         *     빈 배열은 400 이다 — 단계가 없는 결재선은 상신을 거부하게 된다. 근거: W-06-15 §5-5·§5-7 · §6
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    approvalRouteId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRouteStepsReplace"];
+                };
+            };
+            responses: {
+                /** @description 치환됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRouteStepListResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=STATE_LOCKED 는 재로드해도 풀리지 않는다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/approval-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 승인 요청 목록
+         * @description 결재함이 쓰는 목록이다. assignedToMe 는 「로그인 사용자가 approver_id 인 단계가 있는 요청」이고, pendingOnly 와 함께 쓰면 「내 결재 대기」 탭이 된다(공유계약 J-3 — 역할 기반 필터가 아니다).
+         *
+         *     targetTypeCode·targetId 로 거르면 업무 화면이 「이 문서의 승인 상태」를 찾을 수 있다 — goods_issue·purchase_order 에는 approval_request_id 컬럼이 없어 이 경로가 유일한 방법이다.
+         *
+         *     근거: W-CO-09 §3·§5-8
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 로그인 사용자가 승인자인 요청만 */
+                    assignedToMe?: boolean;
+                    /** @description 로그인 사용자가 올린 요청만 */
+                    requestedByMe?: boolean;
+                    /** @description 참이면 아직 끝나지 않은 요청만 */
+                    pendingOnly?: boolean;
+                    /** @description 참이면 지금 내가 결재할 수 있는 것만 — 상단 대기 건수의 근거 */
+                    myTurnOnly?: boolean;
+                    approvalTypeCode?: string;
+                    statusCode?: string;
+                    /** @description 업무 화면이 자기 문서의 승인 상태를 찾을 때 targetId 와 함께 쓴다 */
+                    targetTypeCode?: string;
+                    targetId?: number;
+                    /** @description 상신일 시작 */
+                    requestedAtFrom?: string;
+                    /** @description 상신일 종료 */
+                    requestedAtTo?: string;
+                    /** @description 요청번호 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["ApprovalRequest"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/approval-requests/{approvalRequestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approvalRequestId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 승인 요청 상세 (결재선 진행 포함)
+         * @description ⚠ 대상 문서의 내용은 내리지 않는다 — 결재함은 대상 상세를 그리지 않고 원 화면을 연다(공유계약 J-10). 근거: W-CO-09 §5-2 승인자도 상신자도 아니면 403 이다 — 목록에 오지 않는 요청은 상세도 열리지 않는다.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    approvalRequestId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestDetail"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/approval-requests/{approvalRequestId}:approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approvalRequestId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 승인
+         * @description ⭐ 승인은 자물쇠를 풀 뿐 실행하지 않는다. 이 오퍼레이션은 approval_request 의 상태만 바꾸고 전기·출고·조정 반영은 대상 화면이 별도로 한다 — 01 계약의 :post 가 「승인 전이면 400」인 것과 짝이다(공유계약 J-8).
+         *
+         *     순차 결재를 계약이 강제한다 — 앞 단계가 전부 승인이 아니면 400(code=NOT_YOUR_TURN)이다. 물리 모델에 이 제약이 없으므로 화면 검증만으로는 API 를 직접 불러 뚫린다(W-CO-09 §5-4).
+         *
+         *     결재는 되돌릴 수 없다 — approval_step 이 기록 전용이라 수정·취소 오퍼레이션을 두지 않는다(공유계약 J-6). 번복은 새 요청이다. 근거: W-CO-09 §5-6·§5-7
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    approvalRequestId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalDecision"];
+                };
+            };
+            responses: {
+                /** @description 승인됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestDetail"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=STATE_LOCKED 는 재로드해도 풀리지 않는다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/approval-requests/{approvalRequestId}:reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approvalRequestId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 반려
+         * @description 의견이 필수다 — ApprovalRejection.comment 를 비우면 400 이다. 결재는 되돌릴 수 없고 번복은 새 요청이므로, 반려 사유가 없으면 상신자가 같은 요청을 그대로 다시 올린다(공유계약 A-12 · J-6).
+         *
+         *     순차 규칙은 승인과 같다 — 내 차례가 아니면 400(code=NOT_YOUR_TURN)이다. 근거: W-CO-09 §5-5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    approvalRequestId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRejection"];
+                };
+            };
+            responses: {
+                /** @description 반려됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestDetail"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=STATE_LOCKED 는 재로드해도 풀리지 않는다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/document-issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 발행 이력 조회
+         * @description 회차가 쌓인 그대로 돌려준다. 대상 하나의 이력을 보려면 targetTypeCode 와 targetId 를 함께 준다 — targetId 만으로는 유형이 갈리지 않는다.
+         */
+        get: operations["listDocumentIssues"];
+        put?: never;
+        /**
+         * 발행 · 재발행
+         * @description 대상마다 회차를 매겨 기록을 만든다. 이미 발행된 대상이면 회차가 오르고 재발행 사유가 필수다.
+         *
+         *     인쇄하지 않는다 — 이 호출은 기록만 만든다. 이미지는 별도로 받아 프린터로 보내고 결과를 따로 보고한다. 프린터가 죽어도 기록은 남는다.
+         */
+        post: operations["createDocumentIssues"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/document-issues/{documentIssueLogId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 발행 기록 식별자.
+                 * @example 44001
+                 */
+                documentIssueLogId: number;
+            };
+            cookie?: never;
+        };
+        /** 발행 기록 한 건 */
+        get: operations["getDocumentIssue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/document-issues/{documentIssueLogId}/rendition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 발행 기록 식별자.
+                 * @example 44001
+                 */
+                documentIssueLogId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 출력물 이미지 · 문서
+         * @description 서버가 그린 결과를 돌려준다. 클라이언트는 레이아웃을 그리지 않는다 — 단말마다 출력물이 달라지지 않게 하기 위함이다.
+         *
+         *     회차를 인쇄면에 넣어 그린다. 데이터에만 회차가 있으면 현장에서 몇 번째 출력물인지 구분할 수 없다.
+         *
+         *     미리보기와 인쇄가 같은 경로다. 미리 보고 인쇄한 것과 실제 인쇄물이 다르면 안 된다.
+         */
+        get: operations["getDocumentRendition"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/document-issues/{documentIssueLogId}:report-print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 발행 기록 식별자.
+                 * @example 44001
+                 */
+                documentIssueLogId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 인쇄 결과 보고
+         * @description 물리 인쇄가 끝난 뒤(또는 실패한 뒤) 결과를 남긴다. 발행 기록을 되돌리지 않는다 — 실패는 재발행으로 처리하고, 그 재발행의 사유가 「인쇄 실패」다.
+         *
+         *     이 경로가 없으면 발행 기록이 곧 인쇄 성공으로 읽혀, 실제로는 안 나온 라벨이 나온 것으로 남는다.
+         */
+        post: operations["reportPrintOutcome"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/printers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 프린터 목록 · 상태
+         * @description 이 단말이 쓸 수 있는 프린터와 그 상태. 화면 머리에 상시 보인다 — 인쇄가 안 될 때 사용자가 가장 먼저 보는 곳이다.
+         */
+        get: operations["listPrinters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/document-issues/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 대상별 발행 요약 — 목록 화면용
+         * @description 여러 대상의 발행 현황을 **한 번에** 돌려준다.
+         *
+         *     목록 화면은 행마다 「이미 발행됐는가」를 알아야 액션을 활성할 수 있는데(재발행 사유 입력 · 이력 보기), 대상이 수백 건이면 건별 조회로는 그릴 수 없다. 개체 단위 출력물은 한 작업이 수백 건이다.
+         *
+         *     발행한 적 없는 대상도 `issueCount: 0` 으로 함께 돌려준다 — 빠뜨리면 화면이 「모른다」와 「없다」를 구분할 수 없다.
+         */
+        get: operations["getDocumentIssueSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -17140,6 +18136,536 @@ export interface components {
              */
             reversalBusinessDate?: string | null;
         };
+        /**
+         * @description 결재선 정의. 승인 유형과 사업부로 고른다.
+         *
+         *     ⚠ 물리 모델에 유일 제약이 없어 같은 (approvalTypeCode, businessUnitId) 로 활성 결재선이 여럿 생길 수 있다. 선택 규칙을 계약이 정본으로 갖는다 — ① 사업부 지정본이 전 사업부 공통본(businessUnitId=null)을 이긴다 ② 그러고도 둘 이상이면 상신이 400(code=ROUTE_AMBIGUOUS)이다. 서버가 임의로 하나를 고르지 않는다. 근거: W-06-15 §5-3 · 공유계약 B-12
+         */
+        ApprovalRoute: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            approvalRouteId: number;
+            /**
+             * @description 승인 유형. 값 목록은 공통코드 소관이며 아직 확정되지 않았다 — W-06-15 §8-2
+             * @example DISPOSAL_REQUEST
+             */
+            approvalTypeCode: string;
+            /**
+             * Format: int64
+             * @description 비우면 전 사업부 공통 결재선이다
+             * @example 1001
+             */
+            businessUnitId?: number | null;
+            /**
+             * @description 값 구간 하한. ⚠ 1차에서는 쓰지 않는다 — 비교할 값이 approval_request 에 없고 금액 컬럼이 물리 모델에 0건이라 값의 성격은 수량이다(공유계약 J-2)
+             * @example 100
+             */
+            minValue?: number | null;
+            /**
+             * @description 값 구간 상한. 둘 다 있을 때만 max >= min 을 검사한다(ck_approval_route_range)
+             * @example 500
+             */
+            maxValue?: number | null;
+            /**
+             * @description 끄면 그 유형의 상신이 400 이 된다 — 상신할 곳이 없는 요청을 만들지 않는다
+             * @example true
+             */
+            isActive: boolean;
+            /**
+             * @description 결재 단계 수. 파생값이며 0 이면 상신이 거부된다
+             * @example 2
+             */
+            stepCount: number;
+            /**
+             * @description 이 결재선으로 진행 중인 요청 수. 결재선을 고쳐도 이 요청들은 옛 결재선으로 끝난다 — 화면이 그것을 보인다(공유계약 J-9)
+             * @example 3
+             */
+            inProgressCount: number;
+        };
+        /** @description 결재선 등록. isActive 는 받지 않는다 — 신규는 항상 사용 중이다. 같은 (approvalTypeCode, businessUnitId) 로 활성 결재선이 이미 있으면 400 이다. */
+        ApprovalRouteCreate: {
+            /** @example DISPOSAL_REQUEST */
+            approvalTypeCode: string;
+            /**
+             * Format: int64
+             * @description 비우면 전 사업부 공통
+             * @example 1001
+             */
+            businessUnitId?: number | null;
+            /**
+             * @description 1차 미사용
+             * @example 100
+             */
+            minValue?: number | null;
+            /**
+             * @description 1차 미사용
+             * @example 500
+             */
+            maxValue?: number | null;
+        };
+        /**
+         * @description 결재선 수정. 승인 유형은 신규만 — 바꾸면 다른 결재선이 된다. isActive 는 사용 중지·재사용 액션으로만 바꾼다.
+         *
+         *     PUT 이므로 보내지 않은 필드는 비워진다 — 사업부를 비우면 전 사업부 공통 결재선이 되고, 값 구간을 비우면 전 구간이 된다. 부분 수정 경로는 두지 않는다.
+         */
+        ApprovalRouteUpdate: {
+            /**
+             * Format: int64
+             * @description 비우면 전 사업부 공통
+             * @example 1001
+             */
+            businessUnitId?: number | null;
+            /**
+             * @description 1차 미사용
+             * @example 100
+             */
+            minValue?: number | null;
+            /**
+             * @description 1차 미사용
+             * @example 500
+             */
+            maxValue?: number | null;
+        };
+        /** @description 결재 단계. ⚠ 1차에서는 approverTypeCode 가 USER 인 것만 받는다 — ROLE·DEPARTMENT 는 상신 시 사람을 고를 입력이 물리 모델에 없다(mdm.department 에 관리자 컬럼 0건 · app.role 에 부서 축 없음). 근거: W-06-15 §5-2 · 공유계약 J-3 */
+        ApprovalRouteStep: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            approvalRouteStepId: number;
+            /**
+             * @description 1 부터. uq_approval_route_step UNIQUE(route, step_no)
+             * @example 1
+             */
+            stepNo: number;
+            /**
+             * @description 1차는 USER 만 유효하다
+             * @example USER
+             * @enum {string}
+             */
+            approverTypeCode: "USER" | "ROLE" | "DEPARTMENT";
+            /**
+             * Format: int64
+             * @description approverTypeCode=USER 일 때 필수
+             * @example 1001
+             */
+            approverUserId?: number | null;
+            /**
+             * Format: int64
+             * @description 1차 미사용
+             * @example 1001
+             */
+            approverRoleId?: number | null;
+            /**
+             * Format: int64
+             * @description 1차 미사용
+             * @example 1001
+             */
+            approverDepartmentId?: number | null;
+            /**
+             * @description 표시용. 화면이 사용자 목록을 다시 부르지 않게 한다
+             * @example 김품질
+             */
+            approverName?: string;
+            /**
+             * @description 표시용
+             * @example 품질팀
+             */
+            approverDepartmentName?: string;
+            /**
+             * @description 승인자가 사용 중지 상태면 거짓. 결재가 멈추므로 화면이 경고한다 — 대리·위임은 이번 범위 밖이다
+             * @example true
+             */
+            approverIsActive: boolean;
+        };
+        /** @description 치환 요청의 한 단계. stepNo 는 보내지 않는다 — 배열 순서가 곧 순서다. */
+        ApprovalRouteStepInput: {
+            /**
+             * @description USER 외의 값은 400(code=APPROVER_TYPE_NOT_SUPPORTED)이다
+             * @example USER
+             * @enum {string}
+             */
+            approverTypeCode: "USER" | "ROLE" | "DEPARTMENT";
+            /**
+             * Format: int64
+             * @description approverTypeCode=USER 일 때 필수
+             * @example 1001
+             */
+            approverUserId?: number | null;
+            /**
+             * Format: int64
+             * @description 1차 미사용
+             * @example 1001
+             */
+            approverRoleId?: number | null;
+            /**
+             * Format: int64
+             * @description 1차 미사용
+             * @example 1001
+             */
+            approverDepartmentId?: number | null;
+        };
+        ApprovalRouteStepListResponse: {
+            items: components["schemas"]["ApprovalRouteStep"][];
+        };
+        /** @description 결재 단계 전체 치환. 화면이 최종 순서를 통째로 보내고 서버가 한 트랜잭션으로 반영한다. */
+        ApprovalRouteStepsReplace: {
+            /** @description 배열 순서가 stepNo 1..N 이 된다. 빈 배열은 400 — 단계가 없으면 상신이 거부된다 */
+            steps: components["schemas"]["ApprovalRouteStepInput"][];
+        };
+        /** @description 승인 대상. approval_request 는 target_type_code + target_id 다형 참조로 대상을 가리키고 유형↔테이블 규약이 아직 없다(#68). 그래서 계약이 표시명과 열 화면을 함께 내려 준다 — 화면이 「이 유형은 저 화면」 표를 갖지 않는다. 근거: W-CO-09 §5-2 · 공유계약 A-10 보강 */
+        ApprovalTarget: {
+            /** @example GOODS_ISSUE */
+            targetTypeCode: string;
+            /**
+             * Format: int64
+             * @example 4412
+             */
+            targetId: number;
+            /**
+             * @description 사람이 읽는 대상 이름. 서버가 만든다
+             * @example 기타 출고 · 문서 #4412
+             */
+            displayName: string;
+            /**
+             * @description 대상을 여는 화면 ID. 규약이 정해지면 이 값만 바뀐다 — 프런트는 화면 ID → 경로 매핑 하나만 갖는다
+             * @example W-01-06
+             */
+            screenId?: string;
+            /**
+             * @description 열 화면이 없으면 거짓. 화면은 버튼을 비활성하고 사유를 보인다(공유계약 G-3)
+             * @example true
+             */
+            openable: boolean;
+        };
+        /** @description 결재 기록. 기록 전용이라 한 번 쓰면 고치지 않는다 — version_no 가 없다(공유계약 J-6). */
+        ApprovalStep: {
+            /** @example 1 */
+            stepNo: number;
+            /**
+             * Format: int64
+             * @description 상신 시점에 사람으로 확정된다(공유계약 J-3)
+             * @example 1001
+             */
+            approverId: number;
+            /** @example 김품질 */
+            approverName: string;
+            /**
+             * @description 비어 있으면 아직 결재하지 않은 단계다. 값 목록은 공통코드 소관이다
+             * @example APPROVED
+             */
+            decisionCode?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T15:02:00+09:00
+             */
+            decisionAt?: string | null;
+            /**
+             * @description 반려 시 필수다 — 상신자가 무엇을 고쳐야 하는지 알아야 재상신이 성립한다(공유계약 A-12)
+             * @example 수량 확인함
+             */
+            decisionComment?: string | null;
+            /**
+             * @description 로그인 사용자가 이 단계의 승인자인가
+             * @example false
+             */
+            isMine: boolean;
+            /**
+             * @description 지금 결재할 차례인가. 앞 단계가 전부 승인이고 이 단계가 아직 결재되지 않았을 때만 참이다
+             * @example true
+             */
+            isCurrent: boolean;
+        };
+        /** @description 승인 요청. ⚠ 업무 값이 reason 하나뿐이다 — 수량·금액·품목 컬럼이 물리 모델에 0건이라 목록 요약을 만들 수 없고 사유가 요약을 겸한다. 상신 화면이 사유 형식을 유도해야 하는 이유다(공유계약 A-12 보강). 요청 생성(:request-approval)은 각 도메인 계약 소관이다 — 이 파일은 조회와 결재만 갖는다. */
+        ApprovalRequest: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            approvalRequestId: number;
+            /**
+             * @description UNIQUE
+             * @example AP-2026-0087
+             */
+            approvalRequestNo: string;
+            /** @example DISPOSAL_REQUEST */
+            approvalTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            requestedBy: number;
+            /** @example 박물류 */
+            requestedByName: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T14:20:00+09:00
+             */
+            requestedAt: string;
+            /**
+             * @description 값 목록은 공통코드 소관이다
+             * @example IN_PROGRESS
+             */
+            statusCode: string;
+            /**
+             * @description NOT NULL. 목록에서는 첫 줄이 요약 자리에 온다
+             * @example 불량창고 장기 체류분 12건 폐기 처리 — 2026-07 실사 차이분
+             */
+            reason: string;
+            target: components["schemas"]["ApprovalTarget"];
+            /**
+             * @description 지금 결재를 기다리는 단계. 종료됐으면 비어 있다
+             * @example 2
+             */
+            currentStepNo: number | null;
+            /** @example 2 */
+            totalStepNo: number;
+            /**
+             * @description 로그인 사용자가 지금 결재할 수 있는가. 목록의 「내 결재 대기」 탭이 이 값으로 걸러진다
+             * @example true
+             */
+            isMyTurn: boolean;
+        };
+        /** @description 요청 상세. 결재선 진행을 단계 배열로 함께 내린다 — 화면이 두 번 부르지 않는다. */
+        ApprovalRequestDetail: {
+            request: components["schemas"]["ApprovalRequest"];
+            steps: components["schemas"]["ApprovalStep"][];
+        };
+        /** @description 승인 의견. 선택 입력이다. 반려는 의견이 필수이므로 스키마가 다르다(ApprovalRejection). */
+        ApprovalDecision: {
+            /**
+             * @description approval_step.decision_comment 에 들어간다
+             * @example 수량 확인함
+             */
+            comment?: string;
+        };
+        /** @description 반려. 의견이 필수다 — 결재는 되돌릴 수 없고 번복은 새 요청이므로, 사유가 없으면 상신자가 같은 요청을 그대로 다시 올린다(공유계약 A-12 · J-6). */
+        ApprovalRejection: {
+            /**
+             * @description approval_step.decision_comment 에 들어간다. 상신자가 무엇을 고쳐야 하는지 알 수 있게 쓴다
+             * @example 수량 근거가 부족합니다 — 실사 차이표를 첨부해 다시 올려 주세요
+             */
+            comment: string;
+        };
+        /** @description 무엇을 대상으로 발행했는가. targetType 을 먼저 보고 판정한다 — 개체 단위 출력물은 targetId 와 lotId 가 서로 다른 것을 가리킨다. */
+        DocumentTarget: {
+            /**
+             * @description 대상 유형. 이 값이 targetId 의 해석을 정한다.
+             * @example LOT
+             */
+            targetTypeCode: string;
+            /**
+             * Format: int64
+             * @example 90101
+             */
+            targetId: number;
+            /**
+             * @description 화면에 그대로 쓰는 표시명. 클라이언트가 조립하지 않는다.
+             * @example LOT-SAMPLE-0001
+             */
+            displayName: string;
+            /**
+             * @description 이 대상을 여는 화면. 목록에서 원본으로 이동할 때 쓴다.
+             * @example P-02-07
+             */
+            screenId?: string;
+        };
+        /** @description 발행 기록 한 건. 회차가 오르면 새 행이고 이전 회차는 남는다. */
+        DocumentIssue: {
+            /**
+             * Format: int64
+             * @example 44001
+             */
+            documentIssueLogId: number;
+            /**
+             * @description 출력물 종류(라벨·검사성적서·추적보고서 등).
+             * @example LABEL
+             */
+            documentTypeCode: string;
+            target: components["schemas"]["DocumentTarget"];
+            /**
+             * Format: int64
+             * @description 소속 LOT. 대상이 LOT 자신이면 targetId 와 같고, 개체 단위 출력물이면 다르다.
+             * @example 90101
+             */
+            lotId?: number | null;
+            /** @example LOT-SAMPLE-0001 */
+            lotNo?: string | null;
+            /**
+             * @description 발행 회차. 1 이 최초이고 2 이상이 재발행이다. 서버가 매긴다.
+             * @example 2
+             */
+            issueSeq: number;
+            /**
+             * @description 재발행 사유. 회차가 2 이상이면 반드시 있다.
+             * @example PRINT_FAILED
+             */
+            reissueReasonCode?: string | null;
+            /** @example 인쇄 실패 */
+            reissueReasonName?: string | null;
+            /**
+             * Format: int64
+             * @example 3101
+             */
+            issuedBy: number;
+            /** @example 샘플 작업자 */
+            issuedByName: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-07T09:12:30Z
+             */
+            issuedAt: string;
+            /**
+             * Format: int64
+             * @example 210
+             */
+            terminalId?: number | null;
+            /** @example 샘플 POP 단말 */
+            terminalName?: string | null;
+            /** @example label-printer-a */
+            printerName?: string | null;
+            /**
+             * @description 물리 인쇄 결과. 발행 기록과 별개다 — 기록이 남고 인쇄만 실패하는 경우가 정상적으로 생긴다. 보고 전에는 PENDING 이다.
+             * @example SUCCEEDED
+             * @enum {string}
+             */
+            printOutcome: "PENDING" | "SUCCEEDED" | "FAILED";
+            /** @example null */
+            remarks?: string | null;
+        };
+        /** @description 발행 요청. 대상이 여럿이면 한 번에 보낸다 — 개체 단위 출력물은 수백 건이 한 작업이라 건별 호출로 나누면 부분 실패가 생긴다. */
+        DocumentIssueCreate: {
+            /** @example LABEL */
+            documentTypeCode: string;
+            /**
+             * @description 한 트랜잭션으로 처리한다. 하나라도 실패하면 전건 실패다.
+             * @example [
+             *       {
+             *         "targetTypeCode": "SERIAL",
+             *         "targetId": 771205,
+             *         "lotId": 90101
+             *       }
+             *     ]
+             */
+            targets: {
+                /** @example SERIAL */
+                targetTypeCode: string;
+                /**
+                 * Format: int64
+                 * @example 771205
+                 */
+                targetId: number;
+                /**
+                 * Format: int64
+                 * @example 90101
+                 */
+                lotId?: number | null;
+            }[];
+            /**
+             * @description 재발행 사유. 대상 중 하나라도 이미 발행된 것이 있으면 **필수**다 — 없으면 422 다.
+             *
+             *     신규와 재발행이 섞여 들어와도 **한 번만 받는다.** 서버는 회차가 2 이상인 기록에만 이 값을 남긴다 — 신규 기록에 재발행 사유가 붙으면 이력이 거짓이 된다.
+             * @example PRINT_FAILED
+             */
+            reissueReasonCode?: string | null;
+            /**
+             * Format: int64
+             * @example 210
+             */
+            terminalId?: number | null;
+            /** @example label-printer-a */
+            printerName?: string | null;
+            /** @example null */
+            remarks?: string | null;
+        };
+        DocumentIssueListResponse: {
+            items: components["schemas"]["DocumentIssue"][];
+            page: components["schemas"]["PageMeta"];
+        };
+        /** @description 발행 결과. 인쇄는 아직 하지 않았다 — 이미지를 받아 프린터로 보낸 뒤 결과를 따로 보고한다. */
+        DocumentIssueBatchResponse: {
+            items: components["schemas"]["DocumentIssue"][];
+            /** @example 480 */
+            issuedCount: number;
+        };
+        /** @description 물리 인쇄 결과 보고. 발행 기록을 지우거나 되돌리지 않는다 — 실패는 재발행으로 처리한다. */
+        PrintOutcomeReport: {
+            /**
+             * @example FAILED
+             * @enum {string}
+             */
+            outcome: "SUCCEEDED" | "FAILED";
+            /**
+             * @description 실패 사유. outcome 이 FAILED 면 필수다.
+             * @example 용지 걸림
+             */
+            failureReason?: string | null;
+        };
+        /** @description 이 단말이 쓸 수 있는 프린터. 상태를 화면 머리에 상시 보인다. */
+        Printer: {
+            /** @example label-printer-a */
+            printerName: string;
+            /** @example 샘플 라벨 프린터 A */
+            displayName: string;
+            /**
+             * @example READY
+             * @enum {string}
+             */
+            status: "READY" | "BUSY" | "OFFLINE" | "ERROR";
+            /**
+             * @description 사람이 읽는 상태 설명. 클라이언트가 status 로 문구를 조립하지 않는다.
+             * @example 대기 중
+             */
+            statusMessage?: string | null;
+            /** @example true */
+            isDefault: boolean;
+            /**
+             * @example [
+             *       "LABEL"
+             *     ]
+             */
+            supportedDocumentTypeCodes?: string[];
+        };
+        PrinterListResponse: {
+            items: components["schemas"]["Printer"][];
+        };
+        /** @description 대상 하나의 발행 현황 요약. 목록 화면이 행마다 「이미 발행됐는가 · 몇 회차인가」를 판정하는 입력이다. */
+        DocumentIssueSummary: {
+            /** @example HANDLING_UNIT */
+            targetTypeCode: string;
+            /**
+             * Format: int64
+             * @example 55021
+             */
+            targetId: number;
+            /**
+             * @description 발행 횟수. 0 이면 아직 발행하지 않았다 — 재발행 사유가 필요 없다.
+             * @example 2
+             */
+            issueCount: number;
+            /**
+             * @description 마지막 회차. 발행한 적이 없으면 null 이다.
+             * @example 2
+             */
+            lastIssueSeq?: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-08-07T09:12:30Z
+             */
+            lastIssuedAt?: string | null;
+            /**
+             * @description 마지막 인쇄 결과. FAILED 면 화면이 재발행을 권한다.
+             * @example FAILED
+             * @enum {string|null}
+             */
+            lastPrintOutcome?: "PENDING" | "SUCCEEDED" | "FAILED" | null;
+        };
+        DocumentIssueSummaryResponse: {
+            /** @description 요청한 대상 전건을 돌려준다 — 발행한 적 없는 대상도 `issueCount: 0` 으로 들어간다. 빠진 행이 있으면 화면이 「모른다」와 「없다」를 구분할 수 없다. */
+            items: components["schemas"]["DocumentIssueSummary"][];
+        };
     };
     responses: never;
     parameters: {
@@ -17155,4 +18681,299 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    listDocumentIssues: {
+        parameters: {
+            query?: {
+                documentTypeCode?: string;
+                /** @description targetId 와 함께 준다. 하나만 주면 400 이다. */
+                targetTypeCode?: string;
+                targetId?: number;
+                /** @description 소속 LOT 로 찾는다. 개체 단위 출력물을 LOT 단위로 모아 볼 때 쓴다. */
+                lotId?: number;
+                issuedFrom?: string;
+                issuedTo?: string;
+                printOutcome?: "PENDING" | "SUCCEEDED" | "FAILED";
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 발행 이력. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentIssueListResponse"];
+                };
+            };
+            /** @description targetTypeCode 와 targetId 중 하나만 주었다. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createDocumentIssues: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 전 쓰기 API 필수. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentIssueCreate"];
+            };
+        };
+        responses: {
+            /** @description 발행 기록 생성. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentIssueBatchResponse"];
+                };
+            };
+            /** @description 이 단말에 출력 권한이 없다. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 재발행인데 사유가 없다. 또는 대상이 발행 대상이 아니다(불량 판정분 등). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getDocumentIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 발행 기록 식별자.
+                 * @example 44001
+                 */
+                documentIssueLogId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 발행 기록. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentIssue"];
+                };
+            };
+            /** @description 없다. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getDocumentRendition: {
+        parameters: {
+            query?: {
+                /** @description 라벨은 이미지이고 성적서·보고서는 문서다. 발행 종류가 지원하지 않는 형식이면 422 다. */
+                format?: "png" | "pdf";
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description 발행 기록 식별자.
+                 * @example 44001
+                 */
+                documentIssueLogId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 렌더링 결과. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                    "application/pdf": string;
+                };
+            };
+            /** @description 없다. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 이 발행 종류가 지원하지 않는 형식이다. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reportPrintOutcome: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 전 쓰기 API 필수. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /**
+                 * @description 발행 기록 식별자.
+                 * @example 44001
+                 */
+                documentIssueLogId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrintOutcomeReport"];
+            };
+        };
+        responses: {
+            /** @description 보고 반영. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentIssue"];
+                };
+            };
+            /** @description 없다. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FAILED 인데 사유가 없다. 또는 이미 보고된 건이다. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPrinters: {
+        parameters: {
+            query?: {
+                /** @description 주지 않으면 요청 단말 기준이다. */
+                terminalId?: number;
+                /** @description 이 종류를 찍을 수 있는 프린터만 거른다. */
+                documentTypeCode?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 프린터 목록. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrinterListResponse"];
+                };
+            };
+        };
+    };
+    getDocumentIssueSummary: {
+        parameters: {
+            query: {
+                /**
+                 * @description 대상 유형. 한 번에 한 유형만 묻는다 — 유형이 섞이면 `targetId` 의 뜻이 갈린다.
+                 * @example HANDLING_UNIT
+                 */
+                targetTypeCode: string;
+                /**
+                 * @description 대상 식별자 목록. 발행 상한과 같은 1000 이다.
+                 * @example [
+                 *       55021,
+                 *       55022,
+                 *       55023
+                 *     ]
+                 */
+                targetIds: number[];
+                /**
+                 * @description 주면 그 종류만 센다. 한 대상에 라벨과 성적서가 따로 붙을 수 있다.
+                 * @example LABEL
+                 */
+                documentTypeCode?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 대상별 요약 — 요청한 전건. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentIssueSummaryResponse"];
+                };
+            };
+            /** @description `targetIds` 가 비었거나 상한을 넘었다. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+}

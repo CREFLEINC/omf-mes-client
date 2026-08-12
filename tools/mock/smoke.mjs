@@ -10,13 +10,15 @@ const mergedSpecPath = writeMergedSpec(specPaths);
 const port = process.env.MOCK_PORT ?? '4010';
 const baseUrl = `http://127.0.0.1:${port}`;
 
-// 대표 경로 4종 — 리소스 패턴별 하나씩 (마스터 형 · 버전 마스터 형 · 연계 실행) + 계약 벌마다 하나.
-// `/logistics/asns` 는 두 번째 계약(자재창고)에서 온 경로다 — 병합본이 서빙되고 있음을 여기서 확인한다.
+// 대표 경로 5종 — 리소스 패턴별 하나씩 (마스터 형 · 버전 마스터 형 · 연계 실행) + 계약 벌마다 하나.
+// `/logistics/asns` 는 두 번째 계약(자재창고), `/app/approval-routes` 는 세 번째 계약(공통)에서 온
+// 경로다 — 계약 벌이 하나라도 병합본에서 빠지면 여기서 먼저 드러난다.
 const REPRESENTATIVE_PATHS = [
   '/mdm/warehouses',
   '/planning/routings',
   '/integration/messages',
   '/logistics/asns',
+  '/app/approval-routes',
 ];
 
 const spec = JSON.parse(readFileSync(mergedSpecPath, 'utf-8'));
