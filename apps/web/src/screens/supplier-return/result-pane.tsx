@@ -101,6 +101,11 @@ export const ResultPane = ({ result, lines }: ResultPaneProps) => (
     <p>{t.result.lines}</p>
     <p className="field-note">{t.result.linesNote}</p>
     <ul>
+      {/*
+       * `key`가 사실상 배열 인덱스다. **여기서는 그 규칙을 지나간다** — 줄이 순수 텍스트이고
+       * 지역 상태가 없으며, 이 목록은 **서버 응답이 통째로 갈릴 때만** 바뀐다(제자리 재정렬이
+       * 없다). 내부 번호를 키로 쓰지 않기 위한 것이며(#44) 받는 타입에 그 자리조차 없다.
+       */}
       {lines.map((line) => (
         <li key={line.ordinal}>{t.result.linePair(line.item, line.lot, line.qty)}</li>
       ))}

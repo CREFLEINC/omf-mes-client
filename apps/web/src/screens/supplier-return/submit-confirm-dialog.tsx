@@ -140,6 +140,12 @@ export const SubmitConfirmDialog = ({ summary, onConfirm, onClose }: SubmitConfi
      */}
     <p>{t.dialog.lineCount(summary.lines.length)}</p>
     <ul>
+      {/*
+       * `key`가 사실상 배열 인덱스다(순번이 그 자리에서 매겨진다). **여기서는 그 규칙을
+       * 지나간다** — 줄이 순수 텍스트이고 지역 상태가 없으며, 이 목록은 제자리에서 재정렬되지
+       * 않는다(값이 바뀌면 창째 다시 그려진다). 내부 번호를 키로 쓰지 않기 위한 것이며(#44)
+       * 받는 타입에 그 자리조차 두지 않았다.
+       */}
       {summary.lines.map((line) => (
         <li key={line.ordinal}>{t.dialog.linePair(line.item, line.lot, line.qty)}</li>
       ))}

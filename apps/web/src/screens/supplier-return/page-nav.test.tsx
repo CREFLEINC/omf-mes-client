@@ -38,7 +38,9 @@ describe('PageNav', () => {
   });
 
   it('갈 곳이 없으면 잠긴다', () => {
-    render(<PageNav view={view({ canPrev: false, canNext: false })} isLocked={false} onChange={vi.fn()} />);
+    render(
+      <PageNav view={view({ canPrev: false, canNext: false })} isLocked={false} onChange={vi.fn()} />,
+    );
 
     expect(screen.getByRole('button', { name: t.actions.prevPage })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.actions.nextPage })).toBeDisabled();
