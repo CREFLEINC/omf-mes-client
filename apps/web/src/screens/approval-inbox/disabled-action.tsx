@@ -1,10 +1,23 @@
-import { Button } from '@crefle/web-ui';
+import { Button, type ButtonSize, type ButtonVariant } from '@crefle/web-ui';
 import { useId } from 'react';
 
 export interface DisabledActionProps {
   label: string;
   /** 「무엇이 막혔는지 + 누가 풀 수 있는지」를 담는다. 컨트롤 이름으로 시작한다. */
   reason: string;
+  /**
+   * 주 액션(승인·반려)이 막힌 자리에는 `filled`를 쓴다 — 활성일 때와 같은 위계로 보여야
+   * 사용자가 「어느 버튼이 원래 주 액션인지」를 잃지 않는다.
+   *
+   * 기본은 `outlined`다. `text`는 잠기면 흐린 글자만 남아 버튼으로 읽히지 않는다.
+   */
+  variant?: Extract<ButtonVariant, 'filled' | 'outlined'>;
+  /**
+   * 잠기지 않았을 때의 그 버튼과 **같은 크기**여야 한다 — 잠길 때만 크기가 바뀌면
+   * 활성 버튼과 나란히 선 줄이 어긋난다. 「열기」는 구획 안 부 액션이라 `sm`이고,
+   * 승인·반려는 이 화면의 주 액션이라 기본 크기다.
+   */
+  size?: ButtonSize;
 }
 
 /**
@@ -13,17 +26,20 @@ export interface DisabledActionProps {
  * - 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더하고 `aria-describedby`로 잇는다.
  *   **비활성 컨트롤은 포커스를 받지 못해** 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다.
  * - 사유는 그 컨트롤 바로 아래 왼쪽 가장자리를 맞춰 놓는다(`.field-cell`).
- * - `variant`를 받지 않는다 — 이 회차에 잠기는 액션은 「열기」 하나이고 부 액션이다.
- *   주 액션이 잠기는 자리(승인·반려)가 생기면 그때 위계를 나누는 값이 함께 검사된다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const DisabledAction = ({ label, reason }: DisabledActionProps) => {
+export const DisabledAction = ({
+  label,
+  reason,
+  variant = 'outlined',
+  size,
+}: DisabledActionProps) => {
   const noteId = useId();
 
   return (
     <div className="field-cell">
-      <Button variant="outlined" size="sm" disabled aria-describedby={noteId}>
+      <Button variant={variant} size={size} disabled aria-describedby={noteId}>
         {label}
       </Button>
       <span id={noteId} className="field-note">
