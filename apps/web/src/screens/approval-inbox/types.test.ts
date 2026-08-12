@@ -2,7 +2,13 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import type { ApprovalRequest } from './types';
-import { firstLineOf, formatDateTime, toRequestRow } from './types';
+import {
+  firstLineOf,
+  formatDateTime,
+  toReasonLines,
+  toRequestDetailView,
+  toRequestRow,
+} from './types';
 
 const t = messages.approvalInbox;
 
@@ -136,5 +142,84 @@ describe('toRequestRow', () => {
     expect(
       toRequestRow({ ...baseRequest, approvalTypeCode: 'SAMPLE-TYPE-Z' }).approvalTypeCode,
     ).toBe('SAMPLE-TYPE-Z');
+  });
+});
+
+describe('toReasonLines', () => {
+  it('줄을 나눠 낸다 — 상세는 전문이고 줄바꿈이 뜻을 나른다', () => {
+    expect(toReasonLines('첫 줄\n둘째 줄')).toEqual(['첫 줄', '둘째 줄']);
+  });
+
+  it('CRLF도 같은 자리에서 나눈다 — 캐리지 리턴이 글자로 남지 않는다', () => {
+    expect(toReasonLines('첫 줄\r\n둘째 줄')).toEqual(['첫 줄', '둘째 줄']);
+  });
+
+  it('가운데 빈 줄을 지우지 않는다 — 문단 구분이 사유의 일부다', () => {
+    expect(toReasonLines('첫 줄\n\n셋째 줄')).toEqual(['첫 줄', '', '셋째 줄']);
+  });
+
+  it('줄 안의 공백을 건드리지 않는다 — 들여쓴 목록이 무너지지 않는다', () => {
+    expect(toReasonLines('머리\n  - 항목')).toEqual(['머리', '  - 항목']);
+  });
+
+  it('내용이 하나도 없으면 빈 칸 대신 그 사실을 적는다', () => {
+    expect(toReasonLines('   \n\t')).toEqual([t.values.emptyReason]);
+  });
+
+  it('한 줄뿐이면 그 줄 하나다 — 자르거나 이어 붙이지 않는다', () => {
+    const long = '아주 길게 이어지는 한 줄짜리 사유'.repeat(50);
+
+    expect(toReasonLines(long)).toEqual([long]);
+  });
+});
+
+describe('toRequestDetailView', () => {
+  it('보이는 값 여섯만 담는다', () => {
+    expect(toRequestDetailView(baseRequest)).toEqual({
+      approvalRequestNo: 'SYNTH-REQ-001',
+      approvalTypeCode: 'SAMPLE-TYPE-A',
+      requesterName: '합성 상신자1',
+      requestedAtText: '2026-08-06 14:20',
+      statusCode: 'SAMPLE-STATUS-A',
+      reasonLines: ['첫 줄 사유', '둘째 줄은 더 길게 적힌 설명이다'],
+    });
+  });
+
+  it('내부 번호를 담지 않는다 — 담기지 않으면 화면으로 샐 경로도 없다', () => {
+    const view = toRequestDetailView(baseRequest);
+
+    /* 짝 방향 — 담아야 할 값은 실제로 담긴다. */
+    expect(view.approvalRequestNo).toBe('SYNTH-REQ-001');
+    expect(view.requesterName).toBe('합성 상신자1');
+
+    const keys = Object.keys(view);
+
+    expect(keys).not.toContain('approvalRequestId');
+    expect(keys).not.toContain('requestedBy');
+    expect(keys).not.toContain('targetId');
+    expect(keys).not.toContain('targetTypeCode');
+  });
+
+  it('대상과 진행 단계를 옮겨 담지 않는다 — 각자 자기 구획이 있다', () => {
+    const keys = Object.keys(toRequestDetailView(baseRequest));
+
+    expect(keys).not.toContain('target');
+    expect(keys).not.toContain('currentStepNo');
+    expect(keys).not.toContain('totalStepNo');
+    expect(keys).not.toContain('isMyTurn');
+  });
+
+  it('사유는 첫 줄이 아니라 전문이다 — 목록과 다른 자리다', () => {
+    const view = toRequestDetailView(baseRequest);
+
+    expect(view.reasonLines).toHaveLength(2);
+    expect(view.reasonLines[1]).toBe('둘째 줄은 더 길게 적힌 설명이다');
+  });
+
+  it('상신자 이름이 비면 번호를 대신 내지 않는다', () => {
+    const view = toRequestDetailView({ ...baseRequest, requestedByName: '' });
+
+    expect(view.requesterName).toBe(t.values.unknownRequester);
+    expect(view.requesterName).not.toContain('9301');
   });
 });

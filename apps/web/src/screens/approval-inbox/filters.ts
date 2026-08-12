@@ -156,6 +156,21 @@ export const toSelectionSearchParams = (
 };
 
 /**
+ * 고른 요청만 주소에서 뺀다. **조건·탭·쪽은 손대지 않는다**(수명 표 6행).
+ *
+ * `toSearchParams`로 다시 만들지 않고 **지금 주소에서 한 칸만 빼는** 이유: 이 길은 상세가
+ * 404일 때 지나는 자리라, 화면이 아는 조건으로 주소를 다시 조립하면 주소에만 있고 화면은
+ * 모르는 값(다른 화면이 붙였을 수 있다)이 함께 사라진다.
+ */
+export const withoutSelection = (params: URLSearchParams): URLSearchParams => {
+  const next = new URLSearchParams(params);
+
+  next.delete(URL_KEYS.selected);
+
+  return next;
+};
+
+/**
  * 계약이 쓰는 쿼리 이름.
  *
  * **`size`가 없다.** 서버 기본값을 쓴다 — 화면이 정한 크기를 심으면 그것이 계약처럼 굳는다.
