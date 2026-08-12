@@ -74,7 +74,11 @@ export const ProgressPane = ({ view }: ProgressPaneProps) => {
       {items.length === 0 ? (
         <p className="field-note">{t.progress.noSteps}</p>
       ) : (
-        <Stepper aria-label={t.panes.progress} orientation="vertical" size="sm" steps={items} />
+        /*
+         * **이름을 붙이지 않는다.** 감싼 구획이 이미 「결재 진행」으로 불리고 있어, 목록에도
+         * 같은 이름을 주면 스크린리더가 「결재 진행, 그룹 → 결재 진행, 목록」으로 두 번 읽는다.
+         */
+        <Stepper orientation="vertical" size="sm" steps={items} />
       )}
     </div>
   );

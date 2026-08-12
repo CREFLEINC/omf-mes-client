@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { TargetPane } from './target-pane';
@@ -8,7 +9,7 @@ import { TargetPane } from './target-pane';
 const t = messages.approvalInbox;
 
 const renderPane = (
-  props: Partial<React.ComponentProps<typeof TargetPane>> = {},
+  props: Partial<ComponentProps<typeof TargetPane>> = {},
 ): { onOpen: ReturnType<typeof vi.fn> } => {
   const onOpen = vi.fn();
 
