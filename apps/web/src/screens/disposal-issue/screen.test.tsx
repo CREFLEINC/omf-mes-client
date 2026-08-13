@@ -3802,3 +3802,58 @@ describe('DisposalIssueScreen — 잠금이 닿지 않는 두 길', () => {
     expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
   });
 });
+
+describe('DisposalIssueScreen — 나가는 중인 연쇄는 끊지 않는다', () => {
+  /**
+   * **`omf-mes#96`의 자리**(감지기 M79).
+   *
+   * 공통 훅의 `reset()`은 진행 중 mutation에서 **옵저버를 떼어 낸다** — 그러면 그 호출에
+   * 매달린 되먹임이 통째로 오지 않는다. 이 화면에서 그 피해는 특히 크다: 전표 생성의 성공이
+   * 오지 않으면 **연쇄의 둘째 요청이 시작조차 하지 않아** 서버에는 전표가 남고 화면은 그
+   * 사실을 영영 말하지 않는다 — 사용자가 볼 수 없는 미상신 전표가 조용히 쌓인다.
+   *
+   * 그래서 대상이 바뀌어도 **끊지 않고**, 도착한 결과를 **어느 자리에 낼지만** 매임 이름이 정한다.
+   */
+  it('보내는 동안 주소로 대상을 바꿔도 상신까지 이어진다', async () => {
+    const { requests, user, release } = await setupReadyToSubmit(
+      allRoutes([
+        ...chainRoutes(),
+        {
+          match: (request) => isGet(request, MISSING_DETAIL_PATH),
+          respond: () =>
+            jsonResponse({
+              goodsReceipt: goodsReceiptResponseFixtures[1],
+              lines: receiptLineResponseFixtures,
+            }),
+        },
+      ]),
+      undefined,
+      [ISSUES_PATH],
+      '?gr=9001',
+      '?gr=9002',
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, ISSUES_PATH)).toHaveLength(1);
+    });
+
+    /* 잠금이 닿지 않는 길로 대상을 바꾼다 — 이미 나간 요청은 그 길을 따라가지 않는다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    release();
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    /* **연쇄가 끝까지 간다** — 전표만 만들어 놓고 멈추지 않는다. */
+    await waitFor(() => {
+      expect(writesTo(requests, CREATED_APPROVAL_PATH)).toHaveLength(1);
+    });
+
+    /* 그러나 결과는 **자기 대상의 자리에서만** 보인다(매임 이름). */
+    expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+  });
+});
