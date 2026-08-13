@@ -3014,9 +3014,26 @@ describe('DisposalIssueScreen — 확인 창을 지나야 나간다', () => {
   });
 
   /**
-   * **보내는 자리가 스스로 한 번 더 본다**(감지기 M55·M60). 창이 열린 사이에 상태가 바뀔 수
-   * 있으므로 「버튼이 막았으니 여기서는 안 봐도 된다」가 성립하지 않는다.
+   * **보내는 자리가 스스로 한 번 더 본다**(감지기 M55).
+   *
+   * **겹을 떼어내고 잰다.** 줄이 풀리는 경우는 본문 조립(마지막 겹)이 어차피 막으므로 그것만
+   * 재면 재판정이 없어도 통과한다 — 상신 사유는 **전표 생성 본문에 들어가지 않아** 조립이
+   * 보지 못하는 값이다. 사유가 빈 채로 지나가면 **전표는 만들어지고 상신은 시작조차 못 한다.**
    */
+  it('창이 열린 사이에 사유가 비면 전표도 만들지 않는다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openSubmitConfirm(user);
+    /* 창 뒤의 칸을 비운다 — 창은 그 사실을 모르고, 전표 생성 본문도 이 값을 담지 않는다. */
+    fireEvent.change(screen.getByLabelText(t.formFields.submitReason), { target: { value: '  ' } });
+    await confirmSubmit(user);
+
+    expect(writesTo(requests, ISSUES_PATH)).toHaveLength(0);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText(t.errors.reasonRequired)).toBeInTheDocument();
+  });
+
+  /** 줄이 풀리는 길도 같은 자리가 막는다 — 조립이 마지막 겹으로 한 번 더 거른다. */
   it('창이 열린 사이에 줄이 풀리면 보내지 않는다', async () => {
     const { requests, user } = await setupReadyToSubmit();
 
