@@ -193,8 +193,10 @@ export const toSearchParams = (filters: ReceiptFilters, page: number): URLSearch
  * 계약이 쓰는 쿼리 이름.
  *
  * `plantId`·`size`는 싣지 않는다 — 공장은 이 화면의 조건 축이 아니고, 쪽 크기는 서버
- * 기본값을 쓴다. **이 회차에는 예외가 없다** — 하나뿐인 참조 조회(창고)도 쪽 크기를 싣지
- * 않는다. 잘릴 수 있는 조회(자재 LOT·재고 잔액)가 붙는 회차에서 그 상수가 생긴다.
+ * 기본값을 쓴다. **예외는 잘릴 수 있는 조회 둘뿐이다** — 자재 LOT(`lookups.ts`의
+ * `LOT_PAGE_SIZE`)과 재고 잔액(`queries.ts`의 `BALANCE_PAGE_SIZE`). 둘 다 **거래 기록**이라
+ * 한 품목의 줄이 시간이 갈수록 쌓이고, 그 상수는 잘림을 **덜 일어나게** 할 뿐 막지 못한다
+ * — 막는 것은 잘림 표식이다. 기준정보 조회(창고·품목·단위·위치)는 서버 기본값을 그대로 쓴다.
  */
 export interface ReceiptFilterQuery {
   warehouseId?: number;
