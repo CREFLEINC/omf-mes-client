@@ -2032,22 +2032,52 @@ describe('DisposalIssueScreen — 탭 둘', () => {
 
   /**
    * 감지기 M37 — **활성 탭의 `content`에만 내용을 담는다.** 디자인 시스템 `Tabs`는 패널을 전부
-   * 렌더하고 비활성만 감추므로, 두 패널에 내용을 두면 숨은 탭의 표가 접근성 트리에 남고
-   * 이름으로 집는 조작·시험이 숨은 글자를 잡는다. **두 방향으로 잰다.**
+   * 렌더하고 비활성만 `hidden`으로 감춘다(구현 실측). **두 방향으로 잰다.**
+   *
+   * **역할(role)로 재지 않고 DOM을 직접 센다.** `getByRole`은 `hidden`이 붙은 가지를 접근성
+   * 트리에서 빼므로, 두 패널에 내용을 다 담아도 역할 질의로는 **잡히지 않는다**(뮤테이션
+   * 실측 — 이 감지기가 처음 형태로는 죽지 않았다). 그런데 숨은 패널은 **DOM에 그대로 있고**
+   * 그 안의 표·조회·입력칸이 함께 살아 있다 — 그 사실을 재려면 문서를 세는 수밖에 없다.
    */
   it('비활성 탭의 내용이 DOM에 없다', async () => {
+    const paneCount = (label: string): number =>
+      document.querySelectorAll(`section[aria-label="${label}"]`).length;
+
     const { user } = renderScreen(allRoutes());
 
     await waitForList();
 
-    expect(screen.getByRole('region', { name: t.panes.list })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: t.panes.historyList })).not.toBeInTheDocument();
+    expect(paneCount(t.panes.list)).toBe(1);
+    expect(paneCount(t.panes.historyList)).toBe(0);
+    expect(paneCount(t.panes.historyDetail)).toBe(0);
 
     await openTab(user, t.tabs.history);
     await waitForIssueList();
 
-    expect(screen.getByRole('region', { name: t.panes.historyList })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: t.panes.list })).not.toBeInTheDocument();
+    expect(paneCount(t.panes.historyList)).toBe(1);
+    expect(paneCount(t.panes.list)).toBe(0);
+    expect(paneCount(t.panes.lines)).toBe(0);
+  });
+
+  /**
+   * 같은 규칙의 다른 관측 경로 — **숨은 탭의 표가 문서에 남지 않는다.**
+   *
+   * 구획을 세는 것만으로는 「구획은 없는데 표만 남는」 형태를 놓친다. 표가 남으면 그 표의
+   * 행·버튼이 문서에 살아 있어 자동화·보조기술이 닿고, 같은 이름의 컨트롤이 둘이 된다.
+   */
+  it('비활성 탭의 표가 문서에 남지 않는다', async () => {
+    const { user } = renderScreen(allRoutes(), '?gr=9001');
+
+    await waitForLines();
+
+    /* 발의 탭: 대상 목록 표 + 라인 표 둘뿐이다. */
+    expect(document.querySelectorAll('table')).toHaveLength(2);
+
+    await openTab(user, t.tabs.history);
+    await waitForIssueList();
+
+    /* 이력 탭: 이력 목록 표 하나뿐이다(품의를 고르지 않아 라인 표가 없다). */
+    expect(document.querySelectorAll('table')).toHaveLength(1);
   });
 
   /**
@@ -2412,6 +2442,29 @@ describe('DisposalIssueScreen — 결재 진행', () => {
     expect(reason.querySelectorAll('p')).toHaveLength(3);
     expect(within(reason).getByText('합성 폐기 사유 첫 줄')).toBeInTheDocument();
     expect(within(reason).getByText('둘째 문단 — 근거를 적는 자리')).toBeInTheDocument();
+  });
+
+  /**
+   * **이력 탭의 두 구획 어디에도 내부 번호가 없다**(`omf-mes#44`).
+   *
+   * 이 탭이 특히 위험하다 — 출고 상세 응답이 **승인 요청 식별자를 실어 오고** 화면은 그 값으로
+   * 조회를 한다. 조회에 쓰는 값이 그리는 값으로 새는 것은 한 줄이면 되는 일이라, 부품 시험만으로
+   * 두지 않고 **실제 응답이 도는 화면 수준에서도** 짝으로 잰다.
+   */
+  it('이력 목록과 고른 품의 구획에 내부 번호가 없다', async () => {
+    renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    await waitForIssueLines();
+
+    /* 짝 방향 — 업무 번호와 이름은 실제로 보인다(아무것도 안 그려서 통과한 것이 아니다). */
+    expect(within(historyListPane()).getByText('GI-2026-950001')).toBeInTheDocument();
+    expect(within(historyDetailPane()).getByText(ITEM_LABEL)).toBeInTheDocument();
+
+    for (const pane of [historyListPane(), historyDetailPane()]) {
+      for (const id of INTERNAL_IDS) {
+        expect(pane.textContent ?? '').not.toContain(id);
+      }
+    }
   });
 
   /** 결재 진행에도 내부 번호가 새지 않는다(`omf-mes#44`) — 짝으로 단언한다. */
