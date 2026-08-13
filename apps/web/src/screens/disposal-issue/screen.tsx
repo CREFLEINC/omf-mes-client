@@ -935,6 +935,33 @@ export const DisposalIssueScreen = () => {
     collectResubmitRef.current();
   }, [issueTargetKey]);
 
+  /**
+   * **창은 자기 맥락보다 오래 살지 않는다**(수명 표 8·25행).
+   *
+   * 탭을 옮기거나 상세를 더는 읽을 수 없으면 창이 그려지지 않는데, **감추는 것과 상태를
+   * 내리는 것은 다른 일이다** — 감추기만 하면 열림 상태가 선 채 남아, 사용자가 그 탭으로
+   * 돌아오거나 「다시 조회」로 상세를 되찾는 순간 **누른 적 없는 확인 창**이 떠 있다.
+   * 되돌릴 수 없는 조작의 확인이 저절로 되살아나는 것이다(전례 W-CO-09가 실측한 자리).
+   *
+   * **의존성이 원시값 둘뿐이다.** 상세 응답 객체를 넣으면 참조가 새로 올 때마다 —
+   * 「다시 조회」 한 번에 — 열린 창이 닫힌다(`omf-mes#43`의 형태).
+   */
+  const hasReceiptDetail = detailData !== undefined;
+  const hasIssueDetail = issueDetailData !== undefined;
+
+  useEffect(() => {
+    if (isDisposalTab && hasReceiptDetail) return;
+
+    setSubmitConfirmOpen(false);
+    setDiscardOpen(false);
+  }, [isDisposalTab, hasReceiptDetail]);
+
+  useEffect(() => {
+    if (isHistoryTab && hasIssueDetail) return;
+
+    setResubmitConfirmOpen(false);
+  }, [isHistoryTab, hasIssueDetail]);
+
   /*
    * **상세가 404면 고른 전표를 주소에서 정리한다**(수명 표 5행 · 완료 조건 C20).
    *

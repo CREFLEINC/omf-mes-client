@@ -3857,3 +3857,44 @@ describe('DisposalIssueScreen — 나가는 중인 연쇄는 끊지 않는다', 
     expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
   });
 });
+
+describe('DisposalIssueScreen — 창은 자기 맥락보다 오래 살지 않는다', () => {
+  /**
+   * **감추는 것과 상태를 내리는 것은 다른 일이다**(수명 표 8행).
+   *
+   * 탭을 옮기면 창이 그려지지 않지만, 열림 상태가 선 채 남으면 돌아왔을 때 **누른 적 없는
+   * 확인 창**이 떠 있다 — 되돌릴 수 없는 조작의 확인이 저절로 되살아나는 것이다.
+   */
+  it('탭을 옮겼다 돌아와도 확인 창이 다시 뜨지 않는다', async () => {
+    const { user } = await setupReadyToSubmit(
+      allRoutes(chainRoutes()),
+      undefined,
+      [],
+      '?gr=9001',
+      '?tab=history&gr=9001',
+    );
+
+    await openSubmitConfirm(user);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    /*
+     * **주소로 탭을 옮긴다.** 창이 열려 있는 동안 화면의 컨트롤은 스크림 뒤에 있어 눌리지
+     * 않는다 — 뒤로가기·주소 직접 편집은 그 스크림을 지나지 않는 길이라 이 잣대가 그 길을 쓴다.
+     */
+    fireEvent.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('tab=history');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('tab=history');
+    });
+    await waitForLines();
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
