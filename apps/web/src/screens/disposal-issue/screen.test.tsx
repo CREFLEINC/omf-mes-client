@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 import type { QueryClient } from '@tanstack/react-query';
+import { StrictMode } from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
@@ -579,11 +580,20 @@ const BackProbe = () => {
   );
 };
 
+/**
+ * 앱과 같은 **엄격 모드**로 그릴지. 기본은 아니다.
+ *
+ * `app/main.tsx`가 `<StrictMode>`를 쓰므로 개발 모드에서는 effect가 **두 번** 발화한다 —
+ * 되돌릴 수 없는 요청을 보내는 effect가 그 이중 발화에 한 번 더 나가지 않는지는 **그 조건으로
+ * 그려야만** 잴 수 있다. 모든 잣대를 그렇게 그리지 않는 이유는 이중 발화가 요청 수를 두 배로
+ * 만들어 다른 계수 단언을 흐리기 때문이다.
+ */
 const renderScreen = (
   routes: StubRoute[],
   search = '',
   navigateTo = '',
   hold: string[] = [],
+  strict = false,
 ): {
   requests: RecordedRequest[];
   queryClient: QueryClient;
@@ -592,13 +602,17 @@ const renderScreen = (
 } => {
   const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
-  const { queryClient } = renderWithProviders(
+  const tree = (
     <>
       <DisposalIssueScreen />
       <LocationProbe />
       <BackProbe />
       <SearchProbe to={navigateTo} />
-    </>,
+    </>
+  );
+
+  const { queryClient } = renderWithProviders(
+    strict ? <StrictMode>{tree}</StrictMode> : tree,
     { fetch, route: `${ROUTE}${search}` },
   );
 
@@ -2887,10 +2901,11 @@ const setupReadyToSubmit = async (
   hold: string[] = [],
   search = '?gr=9001',
   navigateTo = '',
+  strict = false,
 ): Promise<ReturnType<typeof renderScreen>> => {
   fillFormCodeLists();
 
-  const rendered = renderScreen(routes, search, navigateTo, hold);
+  const rendered = renderScreen(routes, search, navigateTo, hold, strict);
 
   await waitForLines();
   await rendered.user.click(lineCheckbox(1));
@@ -3920,10 +3935,326 @@ describe('DisposalIssueScreen — 열린 창이 갱신에 닫히지 않는다', 
     /* 창이 열려 있는 동안 화면의 버튼은 스크림 뒤에 있다 — 갱신만 일으키고 창은 건드리지 않는다. */
     fireEvent.click(screen.getByRole('button', { name: t.actions.refresh }));
 
+    /*
+     * **둘째 응답의 값을 기다린다.** 첫 응답의 값(`09:11`)은 초기 적재로 이미 서 있어,
+     * 그것을 기다리면 재조회가 닿기도 전에 대기가 풀린다 — 잣대가 아무것도 재지 않는다
+     * (검증 t4 문제 4). 갱신이 **실제로 화면에 닿은 뒤** 창을 본다.
+     */
     await waitFor(() => {
-      expect(within(linesPane()).getByText('2026-08-06 09:11')).toBeInTheDocument();
+      expect(within(linesPane()).getByText('2026-08-06 09:12')).toBeInTheDocument();
     });
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
+/**
+ * 서버가 **필드에 매긴** 400. `scope: 'field'`인 항목은 그 이름의 칸이 화면에 있을 때
+ * **인라인**으로 서고 배너에는 남지 않는다(공통 쓰기 훅의 분해 규칙).
+ */
+const fieldErrorBody = (field: string, message: string) => ({
+  errors: [{ scope: 'field', field, code: 'SAMPLE_INVALID', message }],
+});
+
+const SAMPLE_ISSUED_AT_ERROR = '출고 일시가 영업일과 맞지 않습니다';
+const SAMPLE_REASON_ERROR = '사유가 결재선 규칙에 맞지 않습니다';
+
+describe('DisposalIssueScreen — 400이 필드에 매겨져 올 때', () => {
+  /**
+   * **화면이 아는 이름의 오류는 그 칸 옆에 선다**(완료 조건 C66의 「400 필드」 갈래).
+   *
+   * 배너로만 내면 사용자는 **어느 칸을 고쳐야 하는지** 읽을 수 없다 — 폼에 칸이 여덟이라
+   * 「출고 일시가 …」 한 줄이 위에 떠 있어도 어디를 손댈지 알 수 없다.
+   */
+  it('등록 400의 필드 오류가 그 칸 옆에 서고 배너로 새지 않는다', async () => {
+    const { user } = await setupReadyToSubmit(
+      allRoutes([
+        failingCreateRoute(400, fieldErrorBody('issuedAt', SAMPLE_ISSUED_AT_ERROR)),
+      ]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await screen.findByText(SAMPLE_ISSUED_AT_ERROR);
+
+    /* 그 칸이 자기 오류를 가리킨다 — 글자만 어딘가에 있는 것과 다르다. */
+    expect(screen.getByLabelText(t.formFields.issuedDate)).toHaveAccessibleDescription(
+      SAMPLE_ISSUED_AT_ERROR,
+    );
+    /* 짝 방향 — 같은 문장이 배너로 한 번 더 서지 않는다(인라인으로 소화됐다). */
+    expect(screen.getAllByText(SAMPLE_ISSUED_AT_ERROR)).toHaveLength(1);
+    expect(screen.queryByText(messages.httpError.description)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **상신 400의 사유 오류는 상신 사유 칸에 선다.** 폐기 사유 코드(`reasonCode`)와 상신 사유
+   * (`reason`)가 서로 다른 키라 두 칸이 섞이지 않는 것도 여기서 함께 재진다.
+   */
+  it('상신 400의 사유 오류가 상신 사유 칸에 선다', async () => {
+    const { user } = await setupReadyToSubmit(
+      allRoutes([
+        createRoute(),
+        createdDetailRoute(),
+        failingApprovalSubmitRoute(400, fieldErrorBody('reason', SAMPLE_REASON_ERROR)),
+      ]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await screen.findByText(SAMPLE_REASON_ERROR);
+
+    expect(screen.getByLabelText(t.formFields.submitReason)).toHaveAccessibleDescription(
+      expect.stringContaining(SAMPLE_REASON_ERROR),
+    );
+    /* 폐기 사유 선택칸은 그 오류를 받지 않는다 — 서로 다른 계약 필드다. */
+    expect(screen.getByLabelText(t.formFields.reason)).not.toHaveAccessibleDescription(
+      expect.stringContaining(SAMPLE_REASON_ERROR),
+    );
+  });
+
+  /**
+   * **필드 오류만 오고 배너용 오류가 없는 400**이 이 자리의 요점이다(검증 t4 문제 2④).
+   *
+   * 그때 훅의 `error`는 `null`이라 배너를 보는 판정만으로는 **실패를 알아채지 못하고**,
+   * 결과 구획이 「올리는 중」에 영영 머문다 — 전표는 만들어졌고 상신은 실패했는데 화면은
+   * 진행 중이라고 말한다. 실패의 채널이 둘이라 **둘을 함께 봐야** 한다.
+   */
+  it('필드 오류만 온 상신 400에서도 부분 실패라고 말한다', async () => {
+    const { user } = await setupReadyToSubmit(
+      allRoutes([
+        createRoute(),
+        createdDetailRoute(),
+        failingApprovalSubmitRoute(400, fieldErrorBody('reason', SAMPLE_REASON_ERROR)),
+      ]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await screen.findByText(t.result.partialTitle('GI-2026-950004'));
+
+    expect(within(resultPane()).getByText(t.result.partialDescription)).toBeInTheDocument();
+    /* 짝 방향 — 「올리는 중」에 머물지 않는다. */
+    expect(within(resultPane()).queryByText(t.result.submitting)).not.toBeInTheDocument();
+  });
+});
+
+describe('DisposalIssueScreen — 재상신의 실패 갈래', () => {
+  const setupResubmit = async (
+    extra: StubRoute[],
+  ): Promise<ReturnType<typeof renderScreen>> => {
+    const rendered = renderScreen(
+      allRoutes([...extra, notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9502`,
+    );
+
+    await screen.findByRole('region', { name: t.resubmit.label });
+    await rendered.user.type(screen.getByLabelText(t.formFields.submitReason), '이어서 상신');
+    await rendered.user.click(resubmitButton());
+    await confirmSubmit(rendered.user);
+
+    return rendered;
+  };
+
+  /**
+   * **결재선이 없으면 400이다**(계약 명시 · 승인 기록 정정 1-5). 그 400이 실제로 닿는 자리가
+   * 여기이며, 화면은 **원인을 지어내지 않고 서버 문구를 그대로** 낸다 — 코드로 갈라 「결재선이
+   * 없습니다」를 덧붙이면 다른 이유로 온 400에도 같은 안내가 붙는다.
+   */
+  it('400의 서버 문구를 그대로 내고 사유 입력이 남는다', async () => {
+    await setupResubmit([
+      failingApprovalSubmitRoute(
+        400,
+        { message: '결재선이 설정되지 않았습니다' },
+        RESUBMIT_APPROVAL_PATH,
+      ),
+    ]);
+
+    await screen.findByText('결재선이 설정되지 않았습니다');
+
+    expect(screen.getByLabelText(t.formFields.submitReason)).toHaveValue('이어서 상신');
+  });
+
+  it('403은 권한 문구를 내고 최신 불러오기를 붙이지 않는다', async () => {
+    await setupResubmit([failingApprovalSubmitRoute(403, { message: '' }, RESUBMIT_APPROVAL_PATH)]);
+
+    await screen.findByText(messages.httpError.forbidden);
+
+    expect(
+      screen.queryByRole('button', { name: messages.conflict.reloadAction }),
+    ).not.toBeInTheDocument();
+  });
+
+  /** **409에만 「최신 불러오기」가 붙는다** — 다시 읽어 풀리는 것은 충돌뿐이다. */
+  it('409에는 최신 불러오기가 붙고 누르면 상세를 다시 부른다', async () => {
+    const { requests, user } = await setupResubmit([
+      failingApprovalSubmitRoute(
+        409,
+        { conflictCause: 'user', message: '' },
+        RESUBMIT_APPROVAL_PATH,
+      ),
+    ]);
+
+    await screen.findByText(messages.conflict.user);
+
+    const before = requestsTo(requests, MISSING_ISSUE_DETAIL_PATH).length;
+
+    await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, MISSING_ISSUE_DETAIL_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
+  /** **네트워크 갈래에만** 확인 안내를 낸다 — 확인 없이 다시 보내면 결재 요청이 두 벌이 된다. */
+  it('네트워크 끊김에만 「전달됐는지 확인할 수 없습니다」가 붙는다', async () => {
+    await setupResubmit([
+      {
+        match: (request) => isPost(request, RESUBMIT_APPROVAL_PATH),
+        respond: () => {
+          throw new TypeError('network down');
+        },
+      },
+    ]);
+
+    await screen.findByText(t.notes.submitRecheck);
+  });
+});
+
+describe('DisposalIssueScreen — 「최신 불러오기」가 실제로 다시 읽는다', () => {
+  /**
+   * **409 뒤의 길**(완료 조건 C65 후반 · 검증 t4 문제 1).
+   *
+   * 상신이 409로 막히면 낡은 것은 **그 전표의 잠금 토큰**이다 — 「최신 불러오기」는 **그
+   * 자리에서** 출고 상세를 다시 읽어야 한다. 탭을 옮기면 그 조회가 새로 마운트돼 어차피 새
+   * 토큰이 오므로, **탭을 옮기지 않고** 요청 수로 잰다: 버튼이 무동작이면 이 잣대가 죽는다.
+   */
+  it('버튼을 누르면 그 자리에서 출고 상세를 다시 부른다', async () => {
+    const { requests, user } = await setupReadyToSubmit(
+      allRoutes([
+        createRoute(),
+        rotatingCreatedDetailRoute(),
+        failingApprovalSubmitRoute(409, { conflictCause: 'user', message: '' }),
+      ]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await screen.findByText(messages.conflict.user);
+
+    const before = requestsTo(requests, CREATED_DETAIL_PATH).length;
+
+    expect(before).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, CREATED_DETAIL_PATH).length).toBe(before + 1);
+    });
+
+    /* 다시 읽은 토큰이 **새것**이다 — 그래야 이어서 상신할 때 409가 풀린다. */
+    expect(currentLocation()).not.toContain('tab=history');
+  });
+});
+
+describe('DisposalIssueScreen — 연쇄 가운데의 틈', () => {
+  /**
+   * **토큰을 얻는 사이에도 잠겨 있다**(잠금의 첫째 겹 · 검증 t4 문제 5①).
+   *
+   * 전표 생성과 상신 사이에 상세 조회가 하나 드는데, 그 사이에는 **두 쓰기 모두 「보내는 중」이
+   * 아니다.** 그 틈을 덮지 않으면 잠금이 잠깐 풀려 사용자가 탭·목록·쪽으로 **대상을 바꿀 수
+   * 있고**, 그때 이미 나간 연쇄의 결과가 다른 맥락에 도착한다.
+   */
+  it('토큰을 얻는 동안에도 탭과 조회가 잠겨 있다', async () => {
+    const { requests, user, release } = await setupReadyToSubmit(
+      allRoutes(chainRoutes()),
+      undefined,
+      [CREATED_DETAIL_PATH],
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    /* 전표는 이미 만들어졌고 상신은 아직 나가지 않았다 — 그 사이가 이 잣대의 자리다. */
+    await waitFor(() => {
+      expect(requestsTo(requests, CREATED_DETAIL_PATH)).toHaveLength(1);
+    });
+
+    expect(writesTo(requests, CREATED_APPROVAL_PATH)).toHaveLength(0);
+    expect(screen.getByRole('tab', { name: t.tabs.history })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.refresh })).toBeDisabled();
+
+    release();
+
+    await waitFor(() => {
+      expect(writesTo(requests, CREATED_APPROVAL_PATH)).toHaveLength(1);
+    });
+  });
+
+  /**
+   * **같은 연쇄를 두 번 보내지 않는다**(검증 t4 문제 5②).
+   *
+   * 앱은 엄격 모드로 그려져 개발 중에는 effect가 **두 번 발화한다.** 그 자리에서 보내는 것이
+   * **되돌릴 수 없는 상신**이므로, 막지 않으면 같은 품의의 결재 요청이 두 벌 생긴다 — 멱등 키가
+   * 호출마다 새로 만들어져(`omf-mes#55`) 서버도 재전송으로 보지 못한다.
+   */
+  it('엄격 모드의 이중 발화에도 상신이 1회다', async () => {
+    const { requests, user } = await setupReadyToSubmit(
+      allRoutes(chainRoutes()),
+      undefined,
+      [],
+      '?gr=9001',
+      '',
+      true,
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await screen.findByText(t.result.submittedTitle('GI-2026-950004'));
+
+    expect(writesTo(requests, CREATED_APPROVAL_PATH)).toHaveLength(1);
+    expect(writesTo(requests, ISSUES_PATH)).toHaveLength(1);
+  });
+});
+
+describe('DisposalIssueScreen — 버릴 것이 있는가', () => {
+  /**
+   * **두 초안을 함께 본다**(이월 항목 `hasAnyLineDraftValue`의 소비 · 검증 t4 문제 5③).
+   *
+   * 줄만 골랐을 때 「입력 지우기」가 잠기면 **골라 둔 줄과 친 수량이 확인 없이 남는다** —
+   * 사용자는 지울 수단이 없다고 읽고, 그 상태로 다른 전표를 고르면 값이 말없이 사라진다.
+   */
+  it('줄만 골라도 「입력 지우기」가 열린다', async () => {
+    const { user } = renderScreen(allRoutes(chainRoutes()), '?gr=9001');
+
+    await waitForLines();
+
+    const discard = screen.getByRole('button', { name: t.actions.discardDrafts });
+
+    /* 짝 방향 — 아무것도 없을 때는 잠기고 사유가 붙는다. */
+    expect(discard).toBeDisabled();
+    expect(discard).toHaveAccessibleDescription(t.actionReasons.nothingToDiscard);
+
+    await user.click(lineCheckbox(1));
+
+    expect(screen.getByRole('button', { name: t.actions.discardDrafts })).toBeEnabled();
+  });
+
+  /** 품의 정보만 채워도 마찬가지다 — 어느 한쪽만 보면 나머지가 확인 없이 사라진다. */
+  it('품의 정보만 채워도 「입력 지우기」가 열린다', async () => {
+    const { user } = renderScreen(allRoutes(chainRoutes()), '?gr=9001');
+
+    await waitForLines();
+    await user.type(screen.getByLabelText(t.formFields.submitReason), '사유');
+
+    expect(screen.getByRole('button', { name: t.actions.discardDrafts })).toBeEnabled();
   });
 });
