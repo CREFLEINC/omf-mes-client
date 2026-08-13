@@ -193,7 +193,8 @@ export const toSearchParams = (filters: ReceiptFilters, page: number): URLSearch
  * 계약이 쓰는 쿼리 이름.
  *
  * `plantId`·`size`는 싣지 않는다 — 공장은 이 화면의 조건 축이 아니고, 쪽 크기는 서버
- * 기본값을 쓴다(참조 조회만 예외로 상수를 싣는다).
+ * 기본값을 쓴다. **이 회차에는 예외가 없다** — 하나뿐인 참조 조회(창고)도 쪽 크기를 싣지
+ * 않는다. 잘릴 수 있는 조회(자재 LOT·재고 잔액)가 붙는 회차에서 그 상수가 생긴다.
  */
 export interface ReceiptFilterQuery {
   warehouseId?: number;

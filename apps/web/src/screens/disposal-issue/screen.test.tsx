@@ -946,6 +946,44 @@ describe('DisposalIssueScreen — 폐기 대상 창고 좁힘', () => {
     );
     expect(requestsTo(requests, LIST_PATH)[0]?.url.searchParams.has('warehouseId')).toBe(false);
   });
+
+  /**
+   * **좁힘 밖 창고를 주소로 걸었을 때 — 표 쪽과 대칭인 칩 쪽 규칙.**
+   *
+   * 좁힘이 살아난 뒤에도 주소는 사람이 직접 고칠 수 있고, 그렇게 걸린 창고는 **선택지에 없다.**
+   * 그때 화면이 그 조건을 말할 수 있는 자리는 **조건 칩 하나뿐**이므로, 칩의 이름 풀이가
+   * **좁히지 않은 참조**를 써야 한다. 좁힌 목록으로 풀면 칩이 「창고: 알 수 없음」으로 서는데,
+   * 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다(`omf-mes#47`이 금지한 표기).
+   *
+   * 「선택칸에는 서지 않지만 조건은 걸려 있고 칩이 그것을 이름으로 말한다」가 이 화면이
+   * 그 상황을 받아들일 만하다고 판정한 근거다 — 그 문장을 이 감지기가 잰다.
+   */
+  it('좁힘 밖 창고를 주소로 걸어도 칩이 이름으로 말한다', async () => {
+    fillDefectWarehouseTypes();
+
+    const { requests, user } = renderScreen(allRoutes(), '?wh=9702');
+
+    await screen.findByText('GR-2026-900001');
+
+    /* ① 칩이 그 창고를 **이름으로** 말한다 — 번호도 「알 수 없음」도 아니다. */
+    expect(screen.getByText(t.filters.chipWarehouse(OTHER_WAREHOUSE_LABEL))).toBeInTheDocument();
+    expect(
+      screen.queryByText(t.filters.chipWarehouse(t.values.unknown)),
+    ).not.toBeInTheDocument();
+
+    /* ② 조건은 실제로 걸려 있다 — 칩만 뜨고 조회는 그대로인 상태가 아니다. */
+    expect(requestsTo(requests, LIST_PATH)[0]?.url.searchParams.get('warehouseId')).toBe('9702');
+
+    /* ③ 그런데 선택칸 선택지에는 없다 — 좁힘이 살아 있다는 짝 방향. */
+    const listbox = await openOptions(user, t.fields.warehouse);
+
+    expect(
+      within(listbox).queryByRole('option', {
+        name: `${OTHER_WAREHOUSE_LABEL}${t.values.inactiveSuffix}`,
+      }),
+    ).not.toBeInTheDocument();
+    expect(within(listbox).getByRole('option', { name: WAREHOUSE_LABEL })).toBeInTheDocument();
+  });
 });
 
 describe('DisposalIssueScreen — 조건 칩', () => {
