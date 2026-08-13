@@ -5031,14 +5031,55 @@ describe('DisposalIssueScreen — 처리 전송 중 잠금', () => {
 
     await user.click(postButton());
 
+    /*
+     * **확인 경로가 다시 열리지 않는다.** 버튼이 잠겼는지만 보면 첫째 겹이 풀렸을 때도 요청
+     * 수는 그대로라 통과한다 — 창이 다시 열리면 확인 한 번으로 **재고가 두 번 빠진다.**
+     */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(writesTo(requests, POST_PATH)).toHaveLength(1);
 
     release();
   });
 
   /**
-   * **전송 중에는 대상을 바꾸지 못한다**(둘째 겹 · 감지기 M75). 대상이 바뀌면 나가는 중인
-   * 전기의 결과가 다른 품의 맥락에 도착한다.
+   * **둘째 겹을 첫째 겹에서 떼어내고 잰다**(감지기 M75).
+   *
+   * 눈에 보이는 컨트롤은 전송 중에 전부 잠기지만 **이력 조건 칩의 ×는 잠기지 않는다** —
+   * 디자인 시스템 `Chip`이 그 prop을 갖고 있지 않다(실측). 그 길로 들어오면 조건이 바뀌며
+   * 고른 품의가 풀리고, **나가는 중인 전기의 결과가 다른 품의 맥락에** 도착한다. 막는 것은
+   * **문 하나의 가드**이며, 탭 잠금만 재면 그 가드를 지워도 아무 잣대가 물리지 않는다.
+   */
+  it('보내는 동안 이력 조건 칩의 ×를 눌러도 주소가 바뀌지 않는다', async () => {
+    const { user, release } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute()]),
+      `${HISTORY_SEARCH}&iq=GI&gi=9501`,
+      '',
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postButton()).toBeDisabled();
+    });
+
+    const before = currentLocation();
+    const chipRemove = screen.getByRole('button', { name: t.historyFilters.chipRemoveQ });
+
+    /* 첫째 겹이 없는 자리다 — 실제로 눌린다는 것을 짝으로 굳힌다. */
+    expect(chipRemove).toBeEnabled();
+
+    await user.click(chipRemove);
+
+    expect(currentLocation()).toBe(before);
+
+    release();
+  });
+
+  /**
+   * **전송 중에는 탭도 바뀌지 않는다**(첫째 겹). 탭이 바뀌면 보내는 자리가 화면에서 사라져
+   * 도착한 되먹임이 설 곳을 잃는다.
    */
   it('보내는 동안 탭을 눌러도 주소가 바뀌지 않는다', async () => {
     const { user, release } = await setupReadyToPost(
@@ -5071,11 +5112,22 @@ describe('DisposalIssueScreen — 처리 창과 결과의 수명', () => {
    * 요청은 나가지 않는다 — 뒤로가기·주소 편집은 클릭 핸들러를 거치지 않는다.
    */
   it('창이 열린 채 주소로 품의가 바뀌면 창이 닫히고 요청이 0회다', async () => {
+    /*
+     * **두 품의의 상세를 미리 받아 둔다.** 새 품의의 상세를 아직 못 받은 사이에는 아래 구획이
+     * 통째로 사라져 창도 함께 사라지므로, 그 상태로 재면 **매임에 매인 정리**가 지워져도
+     * 잣대가 통과한다 — 사용자가 두 품의를 오가는 흔한 경로가 바로 이 자리다.
+     */
     const { requests, user } = await setupReadyToPost(
       allRoutes([postableDetailRoute(), postRoute(), notSubmittedDetailRoute()]),
-      `${HISTORY_SEARCH}&gi=9501`,
+      `${HISTORY_SEARCH}&gi=9502`,
       `${HISTORY_SEARCH.slice(1)}&gi=9502`,
     );
+
+    await screen.findByText(t.resubmit.lead);
+    await selectIssue(user, 'GI-2026-950001');
+    await waitFor(() => {
+      expect(postButton()).toBeEnabled();
+    });
 
     await user.click(postButton());
 
@@ -5083,6 +5135,8 @@ describe('DisposalIssueScreen — 처리 창과 결과의 수명', () => {
 
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
 
+    /* 짝 방향 — 새 품의의 구획이 **끊김 없이** 서 있다(상세가 캐시에 있다). */
+    expect(screen.getByText(t.resubmit.lead)).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
@@ -5118,6 +5172,44 @@ describe('DisposalIssueScreen — 처리 창과 결과의 수명', () => {
     await waitFor(() => {
       expect(requestsTo(requests, ISSUES_PATH).length).toBeGreaterThan(beforeList);
     });
+  });
+
+  /**
+   * **감추는 것과 상태를 내리는 것은 다른 일이다**(수명 표 8·25행).
+   *
+   * 탭을 옮기면 창이 그려지지 않지만, 열림 상태가 선 채 남으면 돌아왔을 때 **누른 적 없는
+   * 확인 창**이 떠 있다 — 되돌릴 수 없는 조작 가운데 가장 무거운 것의 확인이 저절로
+   * 되살아나는 것이다(전례 W-CO-09가 실측한 자리).
+   */
+  it('탭을 옮겼다 돌아와도 처리 확인 창이 다시 뜨지 않는다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      '?gi=9501',
+    );
+
+    await user.click(postButton());
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    /*
+     * **주소로 탭을 옮긴다.** 창이 열려 있는 동안 화면의 컨트롤은 스크림 뒤에 있어 눌리지
+     * 않는다 — 뒤로가기·주소 직접 편집은 그 스크림을 지나지 않는 길이라 이 잣대가 그 길을 쓴다.
+     */
+    fireEvent.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('tab=history');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('tab=history');
+    });
+    await screen.findByRole('region', { name: t.post.label });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   /**
@@ -5277,6 +5369,72 @@ describe('DisposalIssueScreen — 처리 배너의 매임', () => {
     await openTab(user, t.tabs.history);
 
     expect(screen.getByText(messages.httpError.forbidden)).toBeInTheDocument();
+  });
+
+  /**
+   * **주소는 잠글 수 없다**(W-01-05 R3-1의 셋째 길 · 감지기 M76). 뒤로가기·주소 직접 편집은
+   * 잠금도 문의 가드도 거치지 않으므로, 그 길로 품의가 바뀐 뒤 **뒤늦게 도착한 실패**는 새
+   * 품의의 자리에 서면 안 된다 — 판정이 **읽는 자리**에 있어야 한다.
+   *
+   * **나가는 중인 쓰기는 끊지 않으므로**(`resetIfIdle`) 정리 effect가 지워 주기를 기대할 수 없다.
+   */
+  it('보내는 동안 주소로 품의를 바꾸면 뒤늦게 온 실패가 서지 않는다', async () => {
+    const { user, release } = await setupReadyToPost(
+      allRoutes([
+        postableDetailRoute(),
+        failingPostRoute(403),
+        notSubmittedDetailRoute(),
+      ]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      `${HISTORY_SEARCH.slice(1)}&gi=9502`,
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postButton()).toBeDisabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    release();
+
+    /* 새 품의의 구획이 실제로 선다 — 「거기에 배너가 없다」를 잴 수 있는 상태다. */
+    await screen.findByText(t.resubmit.lead);
+
+    /* 나가던 쓰기가 끝났음을 잠금 사유가 미상신 사유로 바뀌는 것으로 잰다. */
+    await waitFor(() => {
+      expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsSubmission);
+    });
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+  });
+
+  /** 같은 길로 온 **성공**도 마찬가지다 — 되돌릴 수 없는 조작의 결과가 남의 품의 아래 서면 안 된다. */
+  it('보내는 동안 주소로 품의를 바꾸면 뒤늦게 온 결과가 서지 않는다', async () => {
+    const { user, release } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      `${HISTORY_SEARCH.slice(1)}&gi=9502`,
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postButton()).toBeDisabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    release();
+
+    await screen.findByText(t.resubmit.lead);
+
+    await waitFor(() => {
+      expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsSubmission);
+    });
+    expect(screen.queryByRole('region', { name: t.result.postLabel })).not.toBeInTheDocument();
   });
 
   /** **렌더마다 지워지지 않는다**(감지기 M78) — 정리 의존성에 `reset` 참조를 넣으면 그렇게 된다. */
