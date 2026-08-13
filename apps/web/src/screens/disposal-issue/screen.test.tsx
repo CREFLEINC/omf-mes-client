@@ -3218,27 +3218,19 @@ describe('DisposalIssueScreen — 연쇄가 끝난 뒤', () => {
     await screen.findByRole('region', { name: t.panes.historyDetail });
   });
 
-  /**
-   * **상신 성공 뒤 무효화가 실제 재조회로 이어진다**(완료 조건 C65 · 감지기 M59).
-   *
-   * 상신 응답에 `ETag`가 없어(실측) 상세를 다시 부르지 않으면 다음 쓰기가 **낡은 토큰**으로
-   * 나간다. 무효화는 그 조회가 **서 있는 자리에서** 재조회로 나타나므로, 만들어진 품의를 열어
-   * 상세가 실제로 다시 불리는지 본다 — 캐시 안쪽을 들여다보는 대신 **요청 수로** 잰다.
-   */
-  it('만들어진 품의를 열면 상세를 다시 부른다', async () => {
-    const { requests, user } = await setupReadyToSubmit();
+  /** 만들어진 품의를 열면 그 전표의 상세가 화면에 선다 — 결과에서 이력으로 이어지는 길이다. */
+  it('만들어진 품의를 열면 그 전표의 상세가 선다', async () => {
+    const { user } = await setupReadyToSubmit();
 
     await openSubmitConfirm(user);
     await confirmSubmit(user);
     await screen.findByText(t.result.submittedTitle('GI-2026-950004'));
 
-    const beforeOpen = requestsTo(requests, CREATED_DETAIL_PATH).length;
-
     await user.click(screen.getByRole('button', { name: t.actions.openIssue }));
 
-    await waitFor(() => {
-      expect(requestsTo(requests, CREATED_DETAIL_PATH).length).toBeGreaterThan(beforeOpen);
-    });
+    const detail = await screen.findByRole('region', { name: t.panes.historyDetail });
+
+    expect(within(detail).getByText('GI-2026-950004')).toBeInTheDocument();
   });
 });
 
@@ -3632,5 +3624,69 @@ describe('DisposalIssueScreen — 재상신도 보내는 자리가 다시 본다
     expect(writesTo(requests, RESUBMIT_APPROVAL_PATH)).toHaveLength(0);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByText(t.errors.reasonRequired)).toBeInTheDocument();
+  });
+});
+
+describe('DisposalIssueScreen — 상신 성공 뒤 무효화', () => {
+  /**
+   * **상신 성공 뒤 이력 목록·출고 상세가 다시 불린다**(완료 조건 C65 · 감지기 M59).
+   *
+   * 상신 응답에 `ETag`가 **없어**(실측) 상세를 다시 부르지 않으면 다음 쓰기가 **낡은 토큰**으로
+   * 나가 409로 막힌다. 목록도 함께 부르는 이유는 그 전표의 상태가 달라지기 때문이다 —
+   * 한쪽만 부르면 **갱신된 값과 낡은 값이 한 화면에 섞인다**(W-01-07의 Major 지적).
+   *
+   * **서 있는 조회로 잰다.** 무효화는 그 조회에 옵저버가 붙어 있을 때 재조회로 나타나므로,
+   * 이력 탭에서 재상신해 목록·상세가 **화면에 선 채로** 다시 불리는지 본다 — 캐시 안쪽을
+   * 들여다보는 대신 요청 수로 잰다.
+   */
+  it('재상신에 성공하면 이력 목록과 그 전표의 상세를 다시 부른다', async () => {
+    let submitted = false;
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        {
+          match: (request) => isPost(request, RESUBMIT_APPROVAL_PATH),
+          respond: () => {
+            submitted = true;
+
+            return jsonResponse({ approvalRequestId: 9523 }, { status: 202 });
+          },
+        },
+        {
+          /* **상신 뒤에는 서버가 승인 요청 값을 실어 준다** — 그 사실이 화면에 오는 길이 재조회다. */
+          match: (request) => isGet(request, MISSING_ISSUE_DETAIL_PATH),
+          respond: () =>
+            jsonResponse(
+              issueDetailBody(goodsIssueLineResponseFixtures, {
+                ...goodsIssueResponseFixtures[1],
+                ...(submitted ? { approvalRequestId: 9523 } : {}),
+              }),
+              { headers: { ETag: '"token-9502"' } },
+            ),
+        },
+      ]),
+      `${HISTORY_SEARCH}&gi=9502`,
+    );
+
+    await screen.findByRole('region', { name: t.resubmit.label });
+
+    const beforeList = requestsTo(requests, ISSUES_PATH).length;
+    const beforeDetail = requestsTo(requests, MISSING_ISSUE_DETAIL_PATH).length;
+
+    await user.type(screen.getByLabelText(t.formFields.submitReason), '이어서 상신');
+    await user.click(resubmitButton());
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUES_PATH).length).toBeGreaterThan(beforeList);
+    });
+    await waitFor(() => {
+      expect(requestsTo(requests, MISSING_ISSUE_DETAIL_PATH).length).toBeGreaterThan(beforeDetail);
+    });
+
+    /* 다시 부른 상세가 실제로 화면을 바꾼다 — 「아직 상신되지 않았습니다」가 사라진다. */
+    await waitFor(() => {
+      expect(screen.queryByText(t.progress.notSubmittedTitle)).not.toBeInTheDocument();
+    });
   });
 });
