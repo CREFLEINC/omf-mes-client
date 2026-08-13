@@ -684,6 +684,30 @@ describe('DisposalIssueScreen — 수명 표', () => {
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('GR-2026');
   });
 
+  /**
+   * 「다시 조회」는 **화면이 보고 있는 조회**를 다시 한다 — 이 회차에 그것은 목록 하나다.
+   *
+   * **참조(창고 이름)는 함께 부르지 않는다.** 기준정보는 이 조작으로 달라지지 않고, 다시
+   * 부르면 표의 창고 칸이 잠깐 「불러오는 중」으로 되돌아간다. 못 받았을 때의 복구는 목록
+   * 구획의 「다시 시도」가 따로 갖는다 — 그 둘을 한 버튼에 묶으면 문구가 적은 대상과 실제로
+   * 다시 부르는 대상이 어긋난다.
+   */
+  it('다시 조회가 목록만 다시 부르고 참조는 건드리지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes([changingListRoute()]));
+
+    await screen.findByText('GR-2026-900001');
+
+    expect(requestsTo(requests, WAREHOUSES_PATH)).toHaveLength(1);
+
+    await refresh(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LIST_PATH)).toHaveLength(2);
+    });
+
+    expect(requestsTo(requests, WAREHOUSES_PATH)).toHaveLength(1);
+  });
+
   /** 「다시 조회」는 조건·쪽·선택을 하나도 바꾸지 않는다(14행). */
   it('다시 조회가 조건과 선택을 그대로 둔다', async () => {
     const { requests, user } = renderScreen(allRoutes([changingListRoute()]), '?q=GR&gr=9001');
