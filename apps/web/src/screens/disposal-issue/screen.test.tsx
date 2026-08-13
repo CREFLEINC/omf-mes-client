@@ -3898,3 +3898,32 @@ describe('DisposalIssueScreen — 창은 자기 맥락보다 오래 살지 않�
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
+
+describe('DisposalIssueScreen — 열린 창이 갱신에 닫히지 않는다', () => {
+  /**
+   * **`omf-mes#43`의 창 쪽 자리.** 창을 거두는 규칙의 잣대를 **응답 객체**에 매달면, 「다시
+   * 조회」 한 번에 — 사용자가 아무것도 누르지 않았는데 — **확인 창이 사라진다.** 그때 사용자는
+   * 자기가 무엇을 눌러 창이 닫혔는지 되짚을 수 없다.
+   *
+   * 상세를 부를 때마다 **내용이 달라지는** 스텁을 쓴다 — 같은 본문이면 캐시가 참조를 그대로
+   * 유지해 이 결함이 드러나지 않는다.
+   */
+  it('상세가 다시 도착해도 확인 창이 열려 있다', async () => {
+    const { user } = await setupReadyToSubmit(
+      allRoutes([...chainRoutes(), changingDetailRoute()]),
+    );
+
+    await openSubmitConfirm(user);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    /* 창이 열려 있는 동안 화면의 버튼은 스크림 뒤에 있다 — 갱신만 일으키고 창은 건드리지 않는다. */
+    fireEvent.click(screen.getByRole('button', { name: t.actions.refresh }));
+
+    await waitFor(() => {
+      expect(within(linesPane()).getByText('2026-08-06 09:11')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
