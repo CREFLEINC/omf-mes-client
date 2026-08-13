@@ -92,8 +92,12 @@ const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
  * 정수가 아닌 번호는 조건으로 받지 않는다. 그대로 `Number()`에 넘기면 `NaN`이 요청 URL에 실려
  * **조회 전체가 400으로 실패**하고, 사용자에게는 「조회가 늘 안 된다」로만 보인다.
  * 주소를 손으로 고친 경우가 이 자리다.
+ *
+ * **두 탭이 이 판정을 함께 쓴다**(`history-filters.ts`가 이 모듈에서 가져다 쓴다).
+ * 조건 목록은 탭마다 갈라 두되 **「이 값이 뜻이 있는가」는 한 곳에서만 정한다** — 갈리면
+ * 한쪽 주소만 이상한 값을 통과시켜, 같은 주소를 고쳐도 탭에 따라 다른 요청이 나간다.
  */
-const readNumberFilter = (raw: string): string =>
+export const readNumberFilter = (raw: string): string =>
   POSITIVE_INTEGER.test(raw) && Number(raw) >= 1 ? raw : '';
 
 /**
@@ -101,7 +105,7 @@ const readNumberFilter = (raw: string): string =>
  * 그대로 보내면 조회가 늘 실패하는데 화면에는 조건이 걸린 것처럼 보인다.
  * `Date`로 되짚어 같은 날짜가 나오는지 확인한다.
  */
-const readDateFilter = (raw: string): string => {
+export const readDateFilter = (raw: string): string => {
   const matched = DATE_PATTERN.exec(raw);
 
   if (matched === null) return '';
@@ -121,7 +125,7 @@ const readDateFilter = (raw: string): string => {
  * 요청에 실리고 칩도 「상태:  」로 뜬다 — 사용자가 만들 수 없는 값이지만(선택지가 비어 있다)
  * 주소는 손으로 고쳐지는 자리다.
  */
-const normalizeText = (raw: string): string => raw.trim();
+export const normalizeText = (raw: string): string => raw.trim();
 
 export const readFilters = (params: URLSearchParams): ReceiptFilters => ({
   warehouse: readNumberFilter(params.get(URL_KEYS.warehouse) ?? ''),

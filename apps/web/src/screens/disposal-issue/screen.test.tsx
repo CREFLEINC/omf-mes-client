@@ -14,13 +14,18 @@ import {
 } from '../../test/api-harness';
 import { pickRange } from '../../test/date-picker';
 import {
+  approvalRequestDetailFixture,
   balanceResponseFixturesByItem,
+  contradictoryApprovalDetailFixture,
+  goodsIssueLineResponseFixtures,
+  goodsIssueResponseFixtures,
   goodsReceiptResponseFixtures,
   INTERNAL_IDS,
   itemFixtures,
   locationFixtures,
   lotFixturesByItem,
   receiptLineResponseFixtures,
+  SAMPLE_APPROVED_STATUS,
   SAMPLE_DEFECT_WAREHOUSE_TYPE,
   uomFixtures,
   warehouseFixtures,
@@ -39,7 +44,7 @@ const t = messages.disposalIssue;
  * 판정·선택지 만들기·좁힘은 실물 그대로이고 바뀌는 것은 「값 목록이 왔다」는 사실 하나다.
  * 매 테스트 앞에서 빈 배열로 되돌려, 아무것도 채우지 않은 테스트는 **지금의 화면**을 본다.
  */
-const { codeValues, defectTypeCodes } = vi.hoisted(() => ({
+const { codeValues, defectTypeCodes, approvedStatusCodes } = vi.hoisted(() => ({
   codeValues: {
     issueType: [] as string[],
     sourceDocumentType: [] as string[],
@@ -48,8 +53,14 @@ const { codeValues, defectTypeCodes } = vi.hoisted(() => ({
     reason: [] as string[],
     receiptType: [] as string[],
     status: [] as string[],
+    issueStatus: [] as string[],
   },
   defectTypeCodes: [] as string[],
+  /**
+   * 승인 완료를 뜻하는 상태 코드. **비어 있는 것이 지금의 사실이고**, 채웠을 때 결재 진행
+   * 구획의 안내가 달라지는 것을 재는 자리다(전환 감지기).
+   */
+  approvedStatusCodes: [] as string[],
 }));
 
 vi.mock('./code-options', async (importOriginal) => {
@@ -62,6 +73,17 @@ vi.mock('./code-options', async (importOriginal) => {
   };
 });
 
+/**
+ * 승인 축의 자리표시도 같은 방식으로 갈아 끼운다 — **판정은 실물 그대로**이고 바뀌는 것은
+ * 「값 목록이 왔다」는 사실 하나다. 채웠을 때 결재 진행 구획이 달라지지 않으면 그 자리표시는
+ * 죽은 가지다.
+ */
+vi.mock('./approval-progress', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./approval-progress')>();
+
+  return { ...actual, APPROVED_APPROVAL_STATUS_CODES: approvedStatusCodes };
+});
+
 /** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
 const SAMPLE_RECEIPT_TYPE = 'SAMPLE_GR_TYPE_A';
 const SAMPLE_RECEIPT_STATUS = 'SAMPLE_GR_STATUS_A';
@@ -69,7 +91,11 @@ const SAMPLE_RECEIPT_STATUS = 'SAMPLE_GR_STATUS_A';
 beforeEach(() => {
   codeValues.receiptType = [];
   codeValues.status = [];
+  codeValues.issueType = [];
+  codeValues.reason = [];
+  codeValues.issueStatus = [];
   defectTypeCodes.length = 0;
+  approvedStatusCodes.length = 0;
 });
 
 const fillCodeLists = (): void => {
@@ -79,6 +105,10 @@ const fillCodeLists = (): void => {
 
 const fillDefectWarehouseTypes = (): void => {
   defectTypeCodes.push(SAMPLE_DEFECT_WAREHOUSE_TYPE);
+};
+
+const fillApprovedStatusCodes = (): void => {
+  approvedStatusCodes.push(SAMPLE_APPROVED_STATUS);
 };
 
 const ROUTE = '/logistics/disposal-issue';
@@ -94,14 +124,21 @@ const UOMS_PATH = '/mdm/uoms';
 const LOTS_PATH = '/trace/lots';
 const LOCATIONS_PATH = '/mdm/locations';
 
+/** 「처리 이력」 탭이 부르는 경로들. 고른 품의는 9501이고 그 승인 요청은 9521이다. */
+const ISSUES_PATH = '/logistics/goods-issues';
+const ISSUE_DETAIL_PATH = '/logistics/goods-issues/9501';
+const MISSING_ISSUE_DETAIL_PATH = '/logistics/goods-issues/9502';
+const APPROVAL_DETAIL_PATH = '/app/approval-requests/9521';
+
 /**
  * 이 회차가 **부르지 않아야 하는** 경로. 뒤 회차에서 쓰이거나 계약에 있으나 이 화면이 쓰지
  * 않는 자리다. **부를 수 있게 스텁을 두는 것이 요점이다** — 부르지 않음을 증명하려면 부를 수
  * 있어야 한다.
  */
 const LINES_PATH = '/logistics/goods-receipts/9001/lines';
-const ISSUES_PATH = '/logistics/goods-issues';
-const APPROVAL_PATH = '/app/approval-requests';
+const ISSUE_LINES_PATH = '/logistics/goods-issues/9501/lines';
+/** 승인 요청 **목록**. 이슈 §4가 지시한 경로이나 대상 유형 값이 없어 성립하지 않는다(결정 10). */
+const APPROVAL_LIST_PATH = '/app/approval-requests';
 
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 폐기창고 가';
 const OTHER_WAREHOUSE_LABEL = 'SAMPLE-WH-02 · 합성 자재창고 나';
@@ -273,6 +310,73 @@ const lineReferenceRoutes = (): StubRoute[] => [
   },
 ];
 
+const issueListRoute = (
+  items: unknown[] = goodsIssueResponseFixtures,
+  page?: Partial<{ page: number; size: number; total: number }>,
+): StubRoute => ({
+  match: (request) => isGet(request, ISSUES_PATH),
+  respond: () => jsonResponse(listBody(items, page)),
+});
+
+const failingIssueListRoute = (status: number): StubRoute => ({
+  match: (request) => isGet(request, ISSUES_PATH),
+  respond: () => jsonResponse({ message: '' }, { status }),
+});
+
+const issueDetailBody = (
+  lines: unknown[] = goodsIssueLineResponseFixtures,
+  issue: unknown = goodsIssueResponseFixtures[0],
+) => ({ goodsIssue: issue, lines });
+
+const issueDetailRoute = (
+  lines?: unknown[],
+  issue?: unknown,
+  pathname = ISSUE_DETAIL_PATH,
+): StubRoute => ({
+  match: (request) => isGet(request, pathname),
+  respond: () => jsonResponse(issueDetailBody(lines, issue)),
+});
+
+const failingIssueDetailRoute = (status: number, pathname = ISSUE_DETAIL_PATH): StubRoute => ({
+  match: (request) => isGet(request, pathname),
+  respond: () => jsonResponse({ message: '' }, { status }),
+});
+
+/**
+ * 부를 때마다 **내용이 달라지는** 이력 목록·상세·승인 요청.
+ *
+ * 같은 본문을 돌려주면 캐시가 구조 공유로 같은 참조를 유지해 「다시 불렀는가」가 화면에
+ * 드러나지 않는다 — 새로고침이 세 경로를 함께 부르는지 재려면 각자 달라져야 한다.
+ */
+const changingApprovalRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, APPROVAL_DETAIL_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse({
+        ...approvalRequestDetailFixture,
+        request: {
+          ...approvalRequestDetailFixture.request,
+          statusCode: `SAMPLE_AP_STATUS_${String(call)}`,
+        },
+      });
+    },
+  };
+};
+
+const approvalRoute = (detail: unknown = approvalRequestDetailFixture): StubRoute => ({
+  match: (request) => isGet(request, APPROVAL_DETAIL_PATH),
+  respond: () => jsonResponse(detail),
+});
+
+const failingApprovalRoute = (status: number): StubRoute => ({
+  match: (request) => isGet(request, APPROVAL_DETAIL_PATH),
+  respond: () => jsonResponse({ message: '' }, { status }),
+});
+
 /**
  * 이 회차가 부르지 않아야 하는 경로들. **부를 수 있게 둔다** — 스텁이 없으면 하네스가 던져
  * 「부르지 않았다」와 「불렀는데 실패했다」가 구분되지 않는다.
@@ -286,9 +390,13 @@ const laterPhaseRoutes = (): StubRoute[] => [
         listBody([{ ...receiptLineResponseFixtures[0], receiptQty: LINES_ONLY_QTY }]),
       ),
   },
-  { match: (request) => isGet(request, APPROVAL_PATH), respond: () => jsonResponse(listBody([])) },
   {
-    match: (request) => isGet(request, ISSUES_PATH),
+    match: (request) => isGet(request, ISSUE_LINES_PATH),
+    respond: () => jsonResponse(listBody(goodsIssueLineResponseFixtures)),
+  },
+  /* 이슈 §4가 지시한 승인 요청 **목록** 경로. 화면은 이것을 쓰지 않는다(계획 결정 10). */
+  {
+    match: (request) => isGet(request, APPROVAL_LIST_PATH),
     respond: () => jsonResponse(listBody([])),
   },
   {
@@ -304,6 +412,9 @@ const allRoutes = (extra: StubRoute[] = []): StubRoute[] => [
   warehousesRoute(),
   detailRoute(),
   balancesRoute(),
+  issueListRoute(),
+  issueDetailRoute(),
+  approvalRoute(),
   ...lineReferenceRoutes(),
   ...laterPhaseRoutes(),
 ];
@@ -395,6 +506,10 @@ const KNOWN_PATHS = [
   UOMS_PATH,
   LOTS_PATH,
   LOCATIONS_PATH,
+  ISSUES_PATH,
+  ISSUE_DETAIL_PATH,
+  MISSING_ISSUE_DETAIL_PATH,
+  APPROVAL_DETAIL_PATH,
 ];
 
 const expectNoUnknownPath = (requests: RecordedRequest[]): void => {
@@ -1812,6 +1927,621 @@ describe('DisposalIssueScreen — 이 회차에도 쓰기가 없다', () => {
 
     await waitFor(() => {
       expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(2);
+    });
+
+    expect(requests.map((request) => request.method)).toEqual(requests.map(() => 'GET'));
+    expectNoUnknownPath(requests);
+  });
+});
+
+/* ─────────────────────────  「처리 이력」 탭  ───────────────────────── */
+
+const HISTORY_SEARCH = '?tab=history';
+
+const historyListPane = (): HTMLElement =>
+  screen.getByRole('region', { name: t.panes.historyList });
+
+const historyDetailPane = (): HTMLElement =>
+  screen.getByRole('region', { name: t.panes.historyDetail });
+
+const historyTable = (): HTMLElement => {
+  const table = within(historyListPane()).getAllByRole('table')[0];
+
+  if (table === undefined) throw new Error('처리 이력 목록 표가 없다');
+
+  return table;
+};
+
+const waitForIssueList = async (): Promise<void> => {
+  await waitFor(() => {
+    expect(within(historyTable()).getByText('GI-2026-950001')).toBeInTheDocument();
+  });
+};
+
+const selectIssue = async (
+  user: ReturnType<typeof userEvent.setup>,
+  goodsIssueNo: string,
+): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: t.actions.selectIssueRow(goodsIssueNo) }));
+};
+
+const openTab = async (
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+): Promise<void> => {
+  await user.click(screen.getByRole('tab', { name: label }));
+};
+
+/** 고른 품의의 라인이 실제로 그려질 때까지 기다린다. */
+const waitForIssueLines = async (): Promise<void> => {
+  await within(historyDetailPane()).findByText('SAMPLE-LOT-0001');
+};
+
+describe('DisposalIssueScreen — 탭 둘', () => {
+  it('탭이 둘이고 이름이 스펙 문면 그대로다', async () => {
+    renderScreen(allRoutes());
+
+    await waitForList();
+
+    expect(screen.getAllByRole('tab')).toHaveLength(2);
+    expect(screen.getByRole('tab', { name: t.tabs.disposal })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: t.tabs.history })).toBeInTheDocument();
+  });
+
+  /**
+   * **결재는 이 화면이 하지 않는다**(승인 기록 정정 1-2). 밝히지 않으면 사용자가 여기서
+   * 결재할 수 있다고 믿고 있지도 않은 승인 버튼을 찾아 헤맨다.
+   */
+  it('탭 줄에 결재를 어디서 하는지 적는다', async () => {
+    renderScreen(allRoutes());
+
+    await waitForList();
+
+    expect(screen.getByText(t.tabs.note)).toBeInTheDocument();
+  });
+
+  /** 감지기 M32 — 탭을 컴포넌트 상태로만 들고 있으면 이 단언이 무너진다. */
+  it('탭 전환이 주소에 실리고 그 주소로 다시 들어가면 같은 탭이 열린다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await waitForList();
+    await openTab(user, t.tabs.history);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}${HISTORY_SEARCH}`);
+    });
+
+    await waitForIssueList();
+
+    renderScreen(allRoutes(), HISTORY_SEARCH);
+
+    expect(screen.getAllByRole('tab', { selected: true })[0]).toHaveAccessibleName(t.tabs.history);
+  });
+
+  /** 기본값을 주소에 적으면 같은 화면의 주소가 두 가지가 된다. */
+  it('기본 탭은 주소에 적히지 않는다', async () => {
+    const { user } = renderScreen(allRoutes(), HISTORY_SEARCH);
+
+    await waitForIssueList();
+    await openTab(user, t.tabs.disposal);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+  });
+
+  /**
+   * 감지기 M37 — **활성 탭의 `content`에만 내용을 담는다.** 디자인 시스템 `Tabs`는 패널을 전부
+   * 렌더하고 비활성만 감추므로, 두 패널에 내용을 두면 숨은 탭의 표가 접근성 트리에 남고
+   * 이름으로 집는 조작·시험이 숨은 글자를 잡는다. **두 방향으로 잰다.**
+   */
+  it('비활성 탭의 내용이 DOM에 없다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await waitForList();
+
+    expect(screen.getByRole('region', { name: t.panes.list })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.historyList })).not.toBeInTheDocument();
+
+    await openTab(user, t.tabs.history);
+    await waitForIssueList();
+
+    expect(screen.getByRole('region', { name: t.panes.historyList })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.list })).not.toBeInTheDocument();
+  });
+
+  /**
+   * 감지기 M38 — **보이지 않는 탭의 조회는 나가지 않는다.** 두 탭의 조건과 선택이 한 주소에
+   * 함께 살아 있어 값만으로는 조회가 성립하므로, 탭을 조회의 조건으로 넘기지 않으면 숨은 탭의
+   * 목록이 배경에서 왕복한다. **경로 전체를 세어** 판정한다.
+   */
+  it('발의 탭에 있는 동안 출고 목록을 부르지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes(), '?gr=9001');
+
+    await waitForLines();
+
+    expect(requestsTo(requests, ISSUES_PATH)).toHaveLength(0);
+    expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(0);
+    expect(requestsTo(requests, APPROVAL_DETAIL_PATH)).toHaveLength(0);
+    expectNoUnknownPath(requests);
+  });
+
+  it('이력 탭에 있는 동안 입고 목록·상세·잔액을 부르지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes(), `${HISTORY_SEARCH}&gr=9001&gi=9501`);
+
+    await waitForIssueLines();
+
+    expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
+    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
+    expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(0);
+    expectNoUnknownPath(requests);
+  });
+
+  /** 「다시 조회」도 그 탭의 것만 부른다 — 버튼 하나로 규칙이 깨지면 안 된다. */
+  it('이력 탭의 다시 조회가 입고 목록을 부르지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes(), HISTORY_SEARCH);
+
+    await waitForIssueList();
+    await refresh(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUES_PATH).length).toBeGreaterThan(1);
+    });
+
+    expect(requestsTo(requests, LIST_PATH)).toHaveLength(0);
+  });
+
+  /**
+   * 감지기 M39 — **탭 전환은 아무것도 비우지 않는다**(수명 표 8행). 탭은 보는 자리를 바꿀 뿐
+   * 대상을 바꾸지 않는다 — 두 대상이 각자 살아 있어야 「발의해 놓고 이력에서 이어서 다룬다」가
+   * 성립한다.
+   */
+  it('탭을 오갔다 돌아와도 두 선택과 줄 초안이 그대로다', async () => {
+    const { user } = renderScreen(allRoutes(), '?gr=9001&gi=9501');
+
+    await waitForLines();
+    await user.click(lineCheckbox(1));
+    await user.type(qtyInput(1), '5');
+
+    await openTab(user, t.tabs.history);
+    await waitForIssueLines();
+
+    /* 이력 탭에서도 고른 품의가 그대로 열린다. */
+    expect(within(historyDetailPane()).getByText('GI-2026-950001')).toBeInTheDocument();
+
+    await openTab(user, t.tabs.disposal);
+    await waitForLines();
+
+    expect(lineCheckbox(1)).toBeChecked();
+    expect(qtyInput(1)).toHaveValue('5');
+    expect(currentLocation()).toBe(`${ROUTE}?gr=9001&gi=9501`);
+  });
+
+  it('탭 전환이 이력 조건과 대상 조건을 함께 나른다', async () => {
+    const { user } = renderScreen(allRoutes(), '?q=GR&iq=GI');
+
+    await waitForList();
+    await openTab(user, t.tabs.history);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?tab=history&q=GR&iq=GI`);
+    });
+  });
+});
+
+describe('DisposalIssueScreen — 이력 조건', () => {
+  /** 감지기 M33 — 조건을 컴포넌트 상태로만 들고 있으면 이 단언이 무너진다. */
+  it('이력 조건이 주소에 실리고 요청에 계약 이름으로 나간다', async () => {
+    const { requests, user } = renderScreen(allRoutes(), HISTORY_SEARCH);
+
+    await waitForIssueList();
+    await user.type(screen.getByLabelText(t.historyFields.q), 'GI-2026');
+    await search(user);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?tab=history&iq=GI-2026`);
+    });
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUES_PATH)).toHaveLength(2);
+    });
+
+    expect(requestsTo(requests, ISSUES_PATH)[1]?.url.searchParams.get('q')).toBe('GI-2026');
+  });
+
+  it('첫 진입에는 조건이 하나도 실리지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes(), HISTORY_SEARCH);
+
+    await waitForIssueList();
+
+    const issueRequests = requestsTo(requests, ISSUES_PATH);
+
+    expect(issueRequests).toHaveLength(1);
+    expect([...(issueRequests[0]?.url.searchParams.keys() ?? [])]).toEqual([]);
+  });
+
+  /**
+   * 감지기 M34 — **이력 조건이 바뀌면 고른 품의가 함께 풀린다**(수명 표 9행). 조건이 좁아지면
+   * 그 품의가 새 결과에 없을 수 있다.
+   */
+  it('이력 조건을 바꾸면 고른 품의가 풀린다', async () => {
+    const { user } = renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    await waitForIssueLines();
+    await user.type(screen.getByLabelText(t.historyFields.q), 'GI');
+    await search(user);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?tab=history&iq=GI`);
+    });
+
+    expect(within(historyDetailPane()).getByText(t.empty.historyNoSelectionTitle)).toBeInTheDocument();
+  });
+
+  it('초기화도 고른 품의를 푼다', async () => {
+    const { user } = renderScreen(allRoutes(), `${HISTORY_SEARCH}&iq=GI&gi=9501`);
+
+    await waitForIssueLines();
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?tab=history`);
+    });
+  });
+
+  /**
+   * **범위 있는 규칙은 잣대도 같은 범위로.** 이력 조건을 바꾸는 것은 대상 탭의 선택과 조건을
+   * 건드리는 일이 아니다 — 함께 지우면 이력을 한 번 훑었다고 발의하던 것이 사라진다.
+   */
+  it('이력 조건 변경이 대상 조건과 고른 전표를 건드리지 않는다', async () => {
+    const { user } = renderScreen(allRoutes(), `${HISTORY_SEARCH}&q=GR&gr=9001`);
+
+    await waitForIssueList();
+    await user.type(screen.getByLabelText(t.historyFields.q), 'GI');
+    await search(user);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?tab=history&q=GR&iq=GI&gr=9001`);
+    });
+  });
+
+  it('이력 쪽 이동이 그 탭의 쪽만 옮기고 품의 선택을 푼다', async () => {
+    const { user } = renderScreen(
+      allRoutes([issueListRoute(goodsIssueResponseFixtures, { total: 120 })]),
+      `${HISTORY_SEARCH}&page=3&gi=9501`,
+    );
+
+    await waitForIssueLines();
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?tab=history&page=3&ipage=2`);
+    });
+  });
+});
+
+describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
+  /** 감지기 M35 — 고르기 전에 부르면 이 단언이 무너진다. **경로 전체를 세어** 판정한다. */
+  it('고르기 전에는 부르지 않고 고르면 한 번 부른다', async () => {
+    const { requests, user } = renderScreen(allRoutes(), HISTORY_SEARCH);
+
+    await waitForIssueList();
+
+    expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(0);
+    expect(requestsTo(requests, APPROVAL_DETAIL_PATH)).toHaveLength(0);
+
+    await selectIssue(user, 'GI-2026-950001');
+    await waitForIssueLines();
+
+    expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(1);
+    expectNoUnknownPath(requests);
+  });
+
+  it('고른 품의의 값과 라인이 그려진다', async () => {
+    renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    await waitForIssueLines();
+
+    const pane = historyDetailPane();
+
+    expect(within(pane).getByText('GI-2026-950001')).toBeInTheDocument();
+    expect(within(pane).getByText('2026-08-08 14:20')).toBeInTheDocument();
+    expect(within(pane).getByText(WAREHOUSE_LABEL)).toBeInTheDocument();
+    expect(within(pane).getByText(ITEM_LABEL)).toBeInTheDocument();
+    expect(within(pane).getByText(t.values.posted)).toBeInTheDocument();
+    expect(within(pane).getByText(t.values.notPosted)).toBeInTheDocument();
+  });
+
+  /** 감지기 M36 — 없는 품의를 가리키는 주소는 정리한다(수명 표 11행). */
+  it('출고 상세가 404면 안내가 서고 gi를 주소에서 정리한다', async () => {
+    renderScreen(
+      allRoutes([failingIssueDetailRoute(404, MISSING_ISSUE_DETAIL_PATH)]),
+      `${HISTORY_SEARCH}&gi=9502`,
+    );
+
+    expect(await screen.findByText(t.empty.issueNotFoundTitle)).toBeVisible();
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?tab=history`);
+    });
+  });
+
+  it('404 정리가 대상 탭의 조건과 선택을 건드리지 않는다', async () => {
+    renderScreen(
+      allRoutes([failingIssueDetailRoute(404, MISSING_ISSUE_DETAIL_PATH)]),
+      `${HISTORY_SEARCH}&q=GR&gr=9001&gi=9502`,
+    );
+
+    await screen.findByText(t.empty.issueNotFoundTitle);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?tab=history&q=GR&gr=9001`);
+    });
+  });
+
+  /** 감지기 M41 — 목록만 다시 부르면 갱신된 값과 낡은 값이 한 화면에 섞인다. */
+  it('다시 조회가 이력 목록·상세·승인 요청을 함께 부른다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([changingApprovalRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+    );
+
+    await waitForIssueLines();
+
+    expect(requestsTo(requests, ISSUES_PATH)).toHaveLength(1);
+    expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(1);
+    expect(requestsTo(requests, APPROVAL_DETAIL_PATH)).toHaveLength(1);
+
+    await refresh(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUES_PATH)).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(requestsTo(requests, APPROVAL_DETAIL_PATH)).toHaveLength(2);
+    });
+  });
+
+  it('이력 목록 조회 실패는 배너와 다시 시도를 낸다', async () => {
+    const { requests, user } = renderScreen(allRoutes([failingIssueListRoute(500)]), HISTORY_SEARCH);
+
+    expect(await screen.findByText(messages.httpError.loadTitle)).toBeInTheDocument();
+    /* 실패를 빈 상태로 오인시키지 않는다 — 짝으로 단언한다. */
+    expect(screen.queryByText(t.empty.historyNoResultTitle)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUES_PATH).length).toBeGreaterThan(1);
+    });
+  });
+});
+
+describe('DisposalIssueScreen — 결재 진행', () => {
+  /**
+   * 감지기 M43·M44 — **값이 있을 때만 부르고, 그 값을 그대로 경로에 옮긴다**(계획 결정 10).
+   * `enabled`를 없애면 `/app/approval-requests/0`이 나가고, 값을 가공하면 남의 요청을 연다.
+   */
+  it('승인 요청 값이 있으면 한 번 부르고 경로 조각이 응답 값과 같다', async () => {
+    const { requests } = renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    await waitForIssueLines();
+
+    const approvalRequests = requestsTo(requests, APPROVAL_DETAIL_PATH);
+
+    expect(approvalRequests).toHaveLength(1);
+    /* 응답이 실어 준 값과 **문자열로 같다** — 접두어도 변환도 없다. */
+    expect(approvalRequests[0]?.url.pathname).toBe(
+      `/app/approval-requests/${String(goodsIssueResponseFixtures[0]?.approvalRequestId)}`,
+    );
+    expectNoUnknownPath(requests);
+  });
+
+  /**
+   * 감지기 M43의 반대 방향 — 값이 없으면 **부르지 않고** 그 사실을 말한다(A0).
+   * `?? 0`으로 메우면 있지도 않은 요청을 여는 요청이 나간다.
+   */
+  it('미상신 품의에는 승인 조회가 나가지 않고 그 사실을 밝힌다', async () => {
+    const { requests } = renderScreen(
+      allRoutes([
+        issueDetailRoute(goodsIssueLineResponseFixtures, goodsIssueResponseFixtures[1], MISSING_ISSUE_DETAIL_PATH),
+      ]),
+      `${HISTORY_SEARCH}&gi=9502`,
+    );
+
+    expect(await screen.findByText(t.progress.notSubmittedTitle)).toBeVisible();
+
+    expect(
+      requests.filter((request) => request.url.pathname.startsWith('/app/approval-requests')),
+    ).toHaveLength(0);
+    expectNoUnknownPath(requests);
+  });
+
+  /**
+   * **이슈 §4가 지시한 목록 경로를 쓰지 않는다**(계획 §5.4-3 · 결정 10). 대상 유형 코드의 값
+   * 목록이 확정되지 않아 조건을 실을 수 없고, 대상 번호만 실으면 유형이 다른 문서의 요청이 섞인다.
+   */
+  it('승인 요청 목록 경로로는 부르지 않는다', async () => {
+    const { requests } = renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    await waitForIssueLines();
+
+    expect(requestsTo(requests, APPROVAL_LIST_PATH)).toHaveLength(0);
+    /* 짝 방향 — 대신 상세 경로로는 실제로 불렀다. */
+    expect(requestsTo(requests, APPROVAL_DETAIL_PATH)).toHaveLength(1);
+  });
+
+  it('결재 진행이 세로 단계로 그려지고 서버가 준 단계 번호가 선다', async () => {
+    renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    await waitForIssueLines();
+
+    const progress = await screen.findByRole('group', { name: t.progress.label });
+
+    expect(within(progress).getByText(t.progress.position(2, 2))).toBeInTheDocument();
+    expect(within(progress).getByText('합성 승인자 가')).toBeInTheDocument();
+    expect(within(progress).getByText('SAMPLE_DECISION_A')).toBeInTheDocument();
+    expect(within(progress).getByText(t.progress.waitingCurrent)).toBeInTheDocument();
+  });
+
+  /**
+   * 감지기 M47 — **위치는 서버가 준 두 수 그대로다.** 배열을 훑어 다시 세면 모순 응답에서
+   * 서버와 갈리고, 갈리는 순간 화면이 서버가 말하지 않은 것을 말하게 된다.
+   */
+  it('서버 값과 배열 재계산이 어긋나는 응답에서도 서버 값을 따른다', async () => {
+    renderScreen(
+      allRoutes([approvalRoute(contradictoryApprovalDetailFixture)]),
+      `${HISTORY_SEARCH}&gi=9501`,
+    );
+
+    const progress = await screen.findByRole('group', { name: t.progress.label });
+
+    expect(within(progress).getByText(t.progress.position(3, 3))).toBeInTheDocument();
+    /* 짝 방향 — 배열을 세어 만든 값(1 / 1)이 아니다. */
+    expect(within(progress).queryByText(t.progress.position(1, 1))).not.toBeInTheDocument();
+  });
+
+  it('상신 사유 전문이 줄 단위로 보인다', async () => {
+    renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    const reason = await screen.findByRole('group', { name: t.progress.reason });
+
+    expect(reason.querySelectorAll('p')).toHaveLength(3);
+    expect(within(reason).getByText('합성 폐기 사유 첫 줄')).toBeInTheDocument();
+    expect(within(reason).getByText('둘째 문단 — 근거를 적는 자리')).toBeInTheDocument();
+  });
+
+  /** 결재 진행에도 내부 번호가 새지 않는다(`omf-mes#44`) — 짝으로 단언한다. */
+  it('결재 진행 구획에 내부 번호가 없다', async () => {
+    renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    const progress = await screen.findByRole('group', { name: t.progress.label });
+
+    expect(within(progress).getByText('AP-2026-800001')).toBeInTheDocument();
+
+    for (const id of INTERNAL_IDS) {
+      expect(progress.textContent ?? '').not.toContain(id);
+    }
+  });
+});
+
+describe('DisposalIssueScreen — 결재 진행을 못 읽었을 때', () => {
+  /**
+   * **화면 배너를 세우지 않고 위 두 구획은 그대로 산다**(수명 표 26행 · 완료 조건 C41).
+   * 결재 진행은 판단을 돕는 자료이지 이 품의를 다루는 전제가 아니다.
+   */
+  it('403이어도 품의 정보와 라인이 그대로 서고 화면 배너가 없다', async () => {
+    renderScreen(allRoutes([failingApprovalRoute(403)]), `${HISTORY_SEARCH}&gi=9501`);
+
+    await waitForIssueLines();
+
+    const pane = historyDetailPane();
+
+    expect(await within(pane).findByText(t.progress.forbiddenTitle)).toBeVisible();
+    expect(within(pane).getByText('GI-2026-950001')).toBeInTheDocument();
+    expect(within(pane).getByText(ITEM_LABEL)).toBeInTheDocument();
+    expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
+    /* 403에는 다시 시도를 내지 않는다 — 같은 권한으로 다시 불러도 같은 답이 온다. */
+    expect(within(pane).queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  it('404·500에는 다시 시도가 있고 누르면 다시 부른다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([failingApprovalRoute(500)]),
+      `${HISTORY_SEARCH}&gi=9501`,
+    );
+
+    await waitForIssueLines();
+
+    const pane = historyDetailPane();
+
+    expect(await within(pane).findByText(t.progress.loadFailedTitle)).toBeVisible();
+
+    await user.click(within(pane).getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, APPROVAL_DETAIL_PATH).length).toBeGreaterThan(1);
+    });
+  });
+
+  it('못 읽어도 할 수 있는 일이 달라지지 않는다는 사실을 밝힌다', async () => {
+    renderScreen(allRoutes([failingApprovalRoute(404)]), `${HISTORY_SEARCH}&gi=9501`);
+
+    expect(await screen.findByText(t.progress.loadFailedNote)).toBeVisible();
+  });
+});
+
+describe('DisposalIssueScreen — 승인 뒤에 남은 일', () => {
+  /**
+   * **계약이 못 박은 사실이라 늘 선다.** 승인은 상태만 바꾸고 재고는 전기가 움직인다 —
+   * 승인만 받아 놓고 잊는 일을 막는 자리다(이슈 §6).
+   */
+  it('승인이 재고를 차감하지 않는다는 사실이 보인다', async () => {
+    renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    expect(await screen.findByText(t.progress.postSeparateNote)).toBeVisible();
+  });
+
+  /** 자리표시가 비어 있는 지금은 화면이 승인 완료를 판정하지 못한다 — 그 사실을 밝힌다. */
+  it('자리표시가 비어 있으면 판정하지 못한다고 말한다', async () => {
+    renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    expect(await screen.findByText(t.progress.unjudgeableNote)).toBeVisible();
+    expect(screen.queryByText(t.progress.approvedNotPostedNote)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **전환 감지기** — 자리표시를 채우면 승인된 품의에 안내가 서고 판정 불가 안내가 사라진다.
+   * 채워졌을 때 살아나는 것을 재지 않으면 그 자리표시는 죽은 가지다.
+   */
+  it('자리표시를 채우면 승인 뒤 안내가 선다', async () => {
+    fillApprovedStatusCodes();
+
+    renderScreen(
+      allRoutes([issueDetailRoute(goodsIssueLineResponseFixtures.map((line) => ({ ...line, inventoryTransactionLineId: null })))]),
+      `${HISTORY_SEARCH}&gi=9501`,
+    );
+
+    expect(await screen.findByText(t.progress.approvedNotPostedNote)).toBeVisible();
+    expect(screen.queryByText(t.progress.unjudgeableNote)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **이미 전기된 전표에 「재고는 아직 차감되지 않았습니다」는 거짓이다.** 승인 자리표시가
+   * 채워져 있어도 라인이 원장에 갔으면 그 문장을 내지 않는다.
+   */
+  it('이미 전기된 전표에는 승인 뒤 안내를 내지 않는다', async () => {
+    fillApprovedStatusCodes();
+
+    renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    await waitForIssueLines();
+
+    expect(await screen.findByText(t.progress.postSeparateNote)).toBeVisible();
+    expect(screen.queryByText(t.progress.approvedNotPostedNote)).not.toBeInTheDocument();
+  });
+});
+
+describe('DisposalIssueScreen — 이력 탭에도 쓰기가 없다', () => {
+  /**
+   * **기록된 모든 요청의 method가 `GET`이다**(완료 조건 C48). 탭을 오가고 품의를 고르고
+   * 다시 조회까지 해도 쓰기가 하나도 나가지 않는다.
+   */
+  it('탭을 오가고 품의를 골라도 어떤 쓰기 요청도 보내지 않는다', async () => {
+    const { requests, user } = renderScreen(allRoutes(), '?gr=9001');
+
+    await waitForLines();
+    await openTab(user, t.tabs.history);
+    await waitForIssueList();
+    await selectIssue(user, 'GI-2026-950001');
+    await waitForIssueLines();
+    await refresh(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUES_PATH).length).toBeGreaterThan(1);
     });
 
     expect(requests.map((request) => request.method)).toEqual(requests.map(() => 'GET'));

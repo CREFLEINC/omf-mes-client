@@ -4274,6 +4274,23 @@ const disposalIssue = {
     list: '폐기 대상 입고 전표 목록',
     /** 고른 전표의 제목줄과 라인 표가 함께 서는 구획. 폐기 정보 구획은 뒤 회차에 생긴다. */
     lines: '고른 입고 전표',
+    /** 「처리 이력」 탭의 조건 줄과 출고 전표 목록. */
+    historyList: '처리 이력 목록',
+    /** 고른 품의의 제목줄·라인 표·결재 진행이 함께 서는 구획. */
+    historyDetail: '고른 품의',
+  },
+  /**
+   * 탭 둘. **차례가 곧 업무 차례다** — 품의를 올리고(발의), 올라간 품의를 나중에 처리한다.
+   *
+   * **탭 줄에 「결재는 결재함에서 합니다」를 밝힌다.** 이 화면은 승인·반려를 하지 않고
+   * 결재 진행을 읽기만 한다 — 밝히지 않으면 사용자가 여기서 결재할 수 있다고 믿고
+   * 있지도 않은 승인 버튼을 찾아 헤맨다.
+   */
+  tabs: {
+    label: '폐기 품의 화면 탭',
+    disposal: '품의 발의',
+    history: '처리 이력',
+    note: '결재는 결재함에서 합니다. 이 화면은 품의를 올리고, 승인이 끝난 품의를 기타출고로 처리합니다.',
   },
   fields: {
     warehouse: '창고',
@@ -4302,6 +4319,9 @@ const disposalIssue = {
      */
     selectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택`,
     deselectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택 해제`,
+    /** 이력 목록 행의 버튼. 같은 이유로 **출고번호**를 접근 이름에 넣는다. */
+    selectIssueRow: (goodsIssueNo: string): string => `${goodsIssueNo} 선택`,
+    deselectIssueRow: (goodsIssueNo: string): string => `${goodsIssueNo} 선택 해제`,
   },
   /** 폐기 수량 칸의 오류. **줄마다 그 칸 아래에 선다** — 어느 줄이 잘못됐는지 표에서 읽힌다. */
   errors: {
@@ -4363,9 +4383,44 @@ const disposalIssue = {
     chipRemoveStatus: '상태 조건 해제',
     chipRemoveQ: '검색어 조건 해제',
   },
+  /**
+   * 「처리 이력」 탭의 조회 조건.
+   *
+   * **대상 조건과 키를 갈라 둔다**(`historyFields` ↔ `fields`). 두 탭이 같은 낱말을 쓰면
+   * 한쪽 문구만 고치는 순간 다른 탭이 조용히 따라 바뀐다 — 「입고일」과 「출고일」이 그 자리다.
+   *
+   * **창고 조건이 없다.** 계약의 출고 목록에 `sourceWarehouseId`가 있으나 이 탭의 조건 축은
+   * **폐기 사유**다(계획 §5.5) — 창고는 열로만 보인다. 조건을 늘리는 것보다 줄이는 것이 먼저다.
+   */
+  historyFields: {
+    period: '출고일',
+    issueType: '출고 유형',
+    reason: '폐기 사유',
+    status: '상태',
+    q: '출고번호 검색',
+  },
+  historyFilters: {
+    periodNote: '출고일을 비워 두면 기간을 좁히지 않고 전체를 봅니다.',
+    periodClearNote: '출고일은 「초기화」로만 비울 수 있습니다. 다른 조건은 조건표의 ×로 풉니다.',
+    chipPeriodBoth: (from: string, to: string): string => `출고일: ${from} ~ ${to}`,
+    chipPeriodFrom: (from: string): string => `출고일: ${from}부터`,
+    chipPeriodTo: (to: string): string => `출고일: ${to}까지`,
+    chipIssueType: (code: string): string => `출고 유형: ${code}`,
+    chipReason: (code: string): string => `폐기 사유: ${code}`,
+    chipStatus: (code: string): string => `상태: ${code}`,
+    chipQ: (q: string): string => `검색어: ${q}`,
+    chipRemoveIssueType: '출고 유형 조건 해제',
+    chipRemoveReason: '폐기 사유 조건 해제',
+    chipRemoveStatus: '상태 조건 해제',
+    chipRemoveQ: '검색어 조건 해제',
+  },
   loading: {
     goodsReceipts: '폐기 대상 입고 전표 목록을 불러오는 중',
     detail: '고른 입고 전표를 불러오는 중',
+    goodsIssues: '처리 이력 목록을 불러오는 중',
+    issueDetail: '고른 품의를 불러오는 중',
+    /** 결재 진행만 늦게 오는 일이 흔하다 — 그 구획 안에서만 뼈대를 세운다. */
+    approvalRequest: '결재 진행을 불러오는 중',
   },
   empty: {
     noResultTitle: '조건에 맞는 입고 전표가 없습니다',
@@ -4384,6 +4439,20 @@ const disposalIssue = {
      */
     notFoundTitle: '고른 입고 전표를 찾을 수 없습니다',
     notFoundDescription: '이미 지워졌거나 주소의 번호가 잘못됐습니다. 목록에서 다시 고르세요.',
+    /**
+     * 「처리 이력」 탭의 빈 상태. **대상 탭의 문구를 돌려쓰지 않는다** — 「입고 전표가 없다」와
+     * 「품의가 없다」는 사용자가 할 조치가 다르고, 한쪽 낱말을 고칠 때 다른 탭이 따라 바뀌면 안 된다.
+     */
+    historyNoResultTitle: '조건에 맞는 품의가 없습니다',
+    historyNoResultDescription: '기간을 넓히거나 조건을 풀어 다시 조회해 보세요.',
+    historyBeyondLastTitle: '이 쪽에는 결과가 없습니다',
+    historyBeyondLastDescription: '앞 쪽으로 돌아가면 결과를 볼 수 있습니다.',
+    historyNoSelectionTitle: '아직 품의를 고르지 않았습니다',
+    historyNoSelectionDescription: '위 목록에서 내용과 결재 진행을 볼 품의를 고르세요.',
+    noIssueLinesTitle: '이 품의에는 라인이 없습니다',
+    noIssueLinesDescription: '다른 품의를 고르거나 담당자에게 확인해 주세요.',
+    issueNotFoundTitle: '고른 품의를 찾을 수 없습니다',
+    issueNotFoundDescription: '이미 지워졌거나 주소의 번호가 잘못됐습니다. 목록에서 다시 고르세요.',
   },
   /** 실패·한계 안내는 그 대상으로 시작한다(배치 규범 4). */
   reasons: {
@@ -4516,6 +4585,137 @@ const disposalIssue = {
     lotHeld: '보류',
     /** 미사용 값을 목록에서 빼지 않고 표식만 붙인다 — 빼면 과거 입고를 조건으로 찾을 수 없다. */
     inactiveSuffix: ' (미사용)',
+    /**
+     * 아직 결재에 올라가지 않은 품의의 표식. **`approvalRequestId`가 있는가로만 갈린다**
+     * (계획 결정 7) — 상태 코드를 읽지 않는다. 이 표식이 붙은 전표는 등록에는 성공하고
+     * 상신에는 이르지 못한 중간 상태이며, 이 탭이 그것을 **숨기지 않고 보이는 자리**다.
+     */
+    notSubmitted: '미상신',
+    /**
+     * 전기 표식 두 갈래. **라인의 원장 라인 번호가 있는가로만 갈린다**(계획 결정 7) —
+     * 계약이 그 필드를 「전기로 생긴 원장 라인」이라 적었다. 상태 코드로 판정하지 않는다:
+     * 목이 전기 뒤에도 초안 상태를 그대로 주는 것이 실측됐다.
+     */
+    posted: '전기됨',
+    notPosted: '전기 전',
+    /**
+     * ERP 적재 표기 세 갈래. **「전송됨」이라 적지 않는다** — 계약이 「적재이지 전송이 아니다」라고
+     * 못 박았다. 값이 아예 오지 않는 갈래를 따로 두는 이유는 계약이 이 필드를 선택으로 두어서다.
+     */
+    erpQueued: 'ERP 대기열에 적재됨',
+    erpNotQueued: 'ERP 대기열에 적재되지 않음',
+    erpUnknown: 'ERP 적재 여부가 오지 않았습니다',
+    /** 사유 코드가 비어 온 품의. **코드를 지어내지 않는다** — 없다는 사실을 적는다. */
+    noReasonCode: '사유 코드 없음',
+    /** 이름이 비어 오면 **번호를 대신 내지 않는다**(`omf-mes#44`). */
+    unknownRequester: '상신자 이름을 확인할 수 없습니다',
+    unknownApprover: '승인자 이름을 확인할 수 없습니다',
+    emptyReason: '사유가 비어 있습니다',
+  },
+  /**
+   * 처리 이력 목록 표의 머리글. 열 구성과 폭의 근거는 screens/disposal-issue/gi-table.tsx에 있다.
+   *
+   * **출고 유형 열이 없다.** 이 화면의 이력은 전부 기타 출고라 값이 한 가지이고, 조건 축인
+   * **폐기 사유**가 더 많은 것을 말한다(계획 §5.5).
+   */
+  historyTable: {
+    goodsIssueNo: '출고번호',
+    warehouse: '창고',
+    reason: '폐기 사유',
+    issuedAt: '출고 일시',
+    status: '상태',
+    select: '선택',
+  },
+  /**
+   * 품의 라인 표의 머리글. 폭의 근거는 screens/disposal-issue/issue-line-table.tsx에 있다.
+   *
+   * **줄번호·단위 열을 두지 않는다** — 서버가 부여한 순번은 사용자에게 뜻이 적고, 단위는
+   * 수량 표기에 붙인다(W-01-03이 세운 처리).
+   */
+  issueLineTable: {
+    item: '품목',
+    lot: '자재 LOT',
+    location: '위치',
+    issueQty: '폐기 수량',
+    posted: '전기',
+    issueQtyPair: (issueQty: number, uom: string): string => `${String(issueQty)} ${uom}`,
+  },
+  /** 고른 품의의 제목줄. */
+  issueSummary: {
+    label: '고른 품의',
+    goodsIssueNo: '출고번호',
+    issueType: '출고 유형',
+    reason: '폐기 사유',
+    issuedAt: '출고 일시',
+    status: '상태',
+    warehouse: '창고',
+    erp: 'ERP 적재',
+  },
+  /**
+   * 결재 진행 구획.
+   *
+   * **이 화면은 결재하지 않는다.** 결재함(W-CO-09)이 쓰는 「내 차례입니다」·「내 단계」 표기를
+   * 여기 두지 않는다 — 두면 이 화면이 결재함처럼 읽히고, 사용자는 있지도 않은 승인 버튼을
+   * 찾는다. 여기서 말하는 것은 **어디까지 왔는가**뿐이다.
+   */
+  progress: {
+    label: '결재 진행',
+    /** 「2 / 3 단계」·「결재 종료 · 전체 2단계」 — **서버가 준 두 수 그대로다.** */
+    position: (current: number, total: number): string =>
+      `${String(current)} / ${String(total)} 단계`,
+    finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,
+    noSteps: '결재 단계가 아직 없습니다.',
+    /** 결재 전 단계의 **보이는 글자**. 디자인 시스템의 상태 낱말은 스크린리더 전용이다. */
+    waitingCurrent: '결재를 기다리는 중',
+    waitingPending: '앞 단계가 끝나기를 기다리는 중',
+    requestNo: '승인 요청번호',
+    approvalType: '승인 유형',
+    status: '상태',
+    requester: '상신자',
+    requestedAt: '상신일',
+    reason: '상신 사유',
+    /**
+     * 아직 상신되지 않은 품의(계획 결정 6·7 · 승인 기록 정정 1-1).
+     *
+     * **등록에는 성공하고 상신에는 이르지 못한 전표가 실제로 남는다.** 이 탭이 그것을 찾아
+     * 이어서 상신하는 자리이며, 상신 수단 자체는 뒤따르는 회차가 이 구획에 붙인다.
+     * **지금 없는 것을 있다고 적지 않는다** — 무엇이 안 된 상태인지만 밝힌다.
+     */
+    notSubmittedTitle: '아직 상신되지 않았습니다',
+    notSubmittedDescription:
+      '이 품의는 결재에 올라가지 않았습니다. 상신해야 결재가 시작되고, 승인이 끝난 뒤에 기타출고로 처리할 수 있습니다.',
+    /**
+     * 전표에 승인 요청 값이 실려 왔는데 조회할 수 있는 값이 아니다.
+     * **없는 값을 0으로 메워 부르지 않는다** — 그러면 남의 요청을 열거나 헛도는 요청이 나간다.
+     */
+    unusableTitle: '상신 여부를 확인할 수 없습니다',
+    unusableDescription:
+      '이 전표에 실려 온 승인 요청 값이 조회할 수 있는 값이 아닙니다. 담당자에게 확인해 주세요.',
+    loadFailedTitle: '결재 진행을 불러오지 못했습니다',
+    forbiddenTitle: '이 요청의 결재 진행을 볼 권한이 없습니다',
+    forbiddenDescription:
+      '승인자도 상신자도 아니면 결재 진행이 열리지 않습니다. 담당자에게 확인해 주세요.',
+    notFoundTitle: '결재 진행을 찾을 수 없습니다',
+    notFoundDescription: '승인 요청이 지워졌거나 이 전표와 이어지지 않습니다.',
+    /**
+     * **못 읽어도 이 품의로 할 수 있는 일은 달라지지 않는다**(계획 결정 3·9).
+     * 결재 진행은 판단을 돕는 자료이지 처리의 전제가 아니다 — 막는 것은 서버다.
+     */
+    loadFailedNote: '결재 진행을 읽지 못해도 이 품의로 할 수 있는 일은 달라지지 않습니다.',
+    /**
+     * **계약이 못 박은 사실**이라 화면이 지어내는 것이 아니다 — 승인은 상태만 바꾸고
+     * 재고는 전기가 움직인다. 승인만 받아 놓고 잊는 일을 막는 자리다.
+     */
+    postSeparateNote:
+      '승인은 재고를 차감하지 않습니다. 승인이 끝난 뒤 「기타출고 처리」를 따로 진행해야 출고가 일어납니다.',
+    /** 승인 완료를 뜻하는 상태 코드가 확정되기 전까지 화면이 못 하는 판정을 밝힌다. */
+    unjudgeableNote: '승인이 끝났는지 화면이 판정하지 못합니다. 위 단계와 상태 코드를 보고 판단하세요.',
+    /**
+     * 자리표시가 채워졌고, 그 요청이 승인 상태이며, **아직 한 줄도 전기되지 않았을 때만** 선다
+     * (승인 기록 정정 1-4). 셋 중 하나라도 어긋나면 화면이 확인하지 않은 것을 말하게 된다.
+     */
+    approvedNotPostedNote:
+      '승인되었습니다. 재고는 아직 차감되지 않았습니다 — 「기타출고 처리」를 진행하세요.',
   },
   pageNav: {
     label: '쪽 이동',

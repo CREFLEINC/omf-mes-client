@@ -1,4 +1,13 @@
-import type { BalanceResponse, ReceiptLineView, ReceiptView, WarehouseResponse } from './types';
+import type {
+  ApprovalRequestDetailResponse,
+  ApprovalStepResponse,
+  BalanceResponse,
+  IssueLineView,
+  IssueView,
+  ReceiptLineView,
+  ReceiptView,
+  WarehouseResponse,
+} from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -11,10 +20,11 @@ import type { BalanceResponse, ReceiptLineView, ReceiptView, WarehouseResponse }
  * **계약의 `@example` 값을 쓰지 않는다.** 예시를 픽스처에 쓰면 나중에 「확정 값」으로 읽힌다.
  *
  * **내부 번호(FK)는 서로 겹치지 않는 대역으로 나눈다** — 9000대(입고 전표) · 9100대(공장) ·
- * 9200대(원천 문서) · 9300대(품목) · 9400대(입고 라인) · 9600대(자재 LOT) · 9700대(창고) ·
- * 9800대(단위) · 9900대(위치). 「표 어디에도 내부 번호가 렌더되지 않는다」를 검사할 때
- * 수량 같은 정상 숫자와 헷갈리지 않게 하기 위해서다. 업무 번호에 내부 번호가 **부분 문자열로
- * 들어가지 않도록** 대역을 갈라 두었다.
+ * 9200대(원천 문서) · 9300대(품목) · 9400대(입고 라인) · 9500대(**출고 전표·출고 라인·승인
+ * 요청·사람·원장 라인·도착지**) · 9600대(자재 LOT) · 9700대(창고) · 9800대(단위) ·
+ * 9900대(위치). 「표 어디에도 내부 번호가 렌더되지 않는다」를 검사할 때 수량 같은 정상 숫자와
+ * 헷갈리지 않게 하기 위해서다. 업무 번호에 내부 번호가 **부분 문자열로 들어가지 않도록**
+ * 대역을 갈라 두었다(`GI-2026-950001`이 담는 네 글자 토막은 `9500`·`5000`·`0001`뿐이다).
  */
 
 const BASE_RECEIPT: ReceiptView = {
@@ -264,6 +274,181 @@ export const balanceResponseFixturesByItem: Record<number, BalanceResponse[]> = 
   ] as BalanceResponse[],
 };
 
+/**
+ * 「처리 이력」 탭이 쓰는 출고 전표(= 폐기 품의) 셋. 화면이 다뤄야 하는 까다로운 입력을 담는다.
+ *
+ * - 9501 — **상신됐다**(승인 요청 9521). 값이 전부 채워져 있다
+ * - 9502 — **미상신**이다(`approvalRequestId` 없음). 사유 코드도 없고 ERP 적재 값도 오지 않았다
+ *   — 세 「없음」 갈래를 한 건이 함께 만든다
+ * - 9503 — 창고 번호가 **참조 목록에 없다.** 「목록에 없음」 갈래를 실제 값으로 만든다
+ */
+export const goodsIssueFixtures: IssueView[] = [
+  {
+    goodsIssueId: 9501,
+    goodsIssueNo: 'GI-2026-950001',
+    issueTypeCode: 'SAMPLE_GI_TYPE_A',
+    sourceWarehouseId: 9701,
+    issuedAt: '2026-08-08T14:20:00+09:00',
+    statusCode: 'SAMPLE_GI_STATUS_A',
+    reasonCode: 'SAMPLE_GI_REASON_A',
+    approvalRequestId: 9521,
+    erpMessageQueued: true,
+  },
+  {
+    goodsIssueId: 9502,
+    goodsIssueNo: 'GI-2026-950002',
+    issueTypeCode: 'SAMPLE_GI_TYPE_A',
+    sourceWarehouseId: 9702,
+    issuedAt: '2026-08-09T10:05:00+09:00',
+    statusCode: 'SAMPLE_GI_STATUS_B',
+    reasonCode: null,
+    approvalRequestId: null,
+    erpMessageQueued: null,
+  },
+  {
+    goodsIssueId: 9503,
+    goodsIssueNo: 'GI-2026-950003',
+    issueTypeCode: 'SAMPLE_GI_TYPE_A',
+    sourceWarehouseId: 9799,
+    issuedAt: '2026-08-10T08:40:00+09:00',
+    statusCode: 'SAMPLE_GI_STATUS_A',
+    reasonCode: 'SAMPLE_GI_REASON_B',
+    approvalRequestId: 9522,
+    erpMessageQueued: false,
+  },
+];
+
+/**
+ * 목록 응답에 실리는 모양. **화면이 버리는 값이 응답에 있어야** 옮기기가 실제로 고르는지 보인다.
+ *
+ * 「없음」인 세 필드는 **키 자체를 두지 않는다** — 계약이 선택으로 둔 필드는 널로도 오지만
+ * 아예 오지 않기도 하고, 옮기기가 두 갈래를 다 없음으로 접는지 여기서 실제로 갈린다.
+ */
+export const goodsIssueResponseFixtures = goodsIssueFixtures.map((view) => ({
+  ...view,
+  sourceDocumentTypeCode: 'SAMPLE_SRC_TYPE_A',
+  sourceDocumentId: 9001,
+  destinationTypeCode: 'SAMPLE_DEST_TYPE_A',
+  destinationId: 9561,
+  replacementExpected: false,
+  ...(view.reasonCode === null ? { reasonCode: undefined } : {}),
+  ...(view.approvalRequestId === null ? { approvalRequestId: undefined } : {}),
+  ...(view.erpMessageQueued === null ? { erpMessageQueued: undefined } : {}),
+}));
+
+/**
+ * 고른 품의(9501)의 라인 둘.
+ *
+ * - 9511 — **전기됐다**(원장 라인 9531). 「전기됨」 갈래를 실제 값으로 만든다
+ * - 9512 — **전기 전이다.** 두 표식이 한 표에 함께 서는지 재는 줄이며, 품목·단위가 9511과
+ *   달라 참조 두 벌과 단위 표기가 함께 검사된다
+ */
+export const goodsIssueLineFixtures: IssueLineView[] = [
+  {
+    goodsIssueLineId: 9511,
+    itemId: 9301,
+    lotId: 9601,
+    issueQty: 40,
+    uomId: 9801,
+    sourceLocationId: 9901,
+    inventoryTransactionLineId: 9531,
+  },
+  {
+    goodsIssueLineId: 9512,
+    itemId: 9302,
+    lotId: 9603,
+    issueQty: 5,
+    uomId: 9802,
+    sourceLocationId: 9902,
+    inventoryTransactionLineId: null,
+  },
+];
+
+export const goodsIssueLineResponseFixtures = goodsIssueLineFixtures.map((line, index) => ({
+  ...line,
+  goodsIssueId: 9501,
+  lineNo: index + 1,
+  pickingLineId: null,
+}));
+
+const approvalStep = (overrides: Partial<ApprovalStepResponse> = {}): ApprovalStepResponse => ({
+  stepNo: 1,
+  approverId: 9551,
+  approverName: '합성 승인자 가',
+  decisionCode: 'SAMPLE_DECISION_A',
+  decisionAt: '2026-08-08T15:02:00+09:00',
+  decisionComment: '합성 결재 의견',
+  isMine: false,
+  isCurrent: false,
+  ...overrides,
+});
+
+/**
+ * 승인 요청 상세 한 건.
+ *
+ * **목이 내려주는 예시를 그대로 쓰지 않는다**(계획 §5.4-23) — 목의 승인 요청 예시는 이 화면을
+ * 그린 것이라 값을 베끼면 계약 예시값이 픽스처에 들어간다.
+ *
+ * - 사유가 **여러 줄**이다 — 전문의 줄바꿈이 유지되는지 재는 자리다
+ * - 둘째 단계는 **결재 전이고 승인자 이름이 비어 있다** — 「번호를 대신 내지 않는다」가
+ *   실제 값으로 걸린다
+ */
+export const approvalRequestDetailFixture: ApprovalRequestDetailResponse = {
+  request: {
+    approvalRequestId: 9521,
+    approvalRequestNo: 'AP-2026-800001',
+    approvalTypeCode: 'SAMPLE_AP_TYPE_A',
+    requestedBy: 9541,
+    requestedByName: '합성 상신자 가',
+    /* **출고 일시와 다른 시각이다** — 상신은 등록 뒤에 일어나고, 같으면 두 값을 가려 볼 수 없다. */
+    requestedAt: '2026-08-08T14:35:00+09:00',
+    statusCode: 'SAMPLE_AP_STATUS_A',
+    reason: '합성 폐기 사유 첫 줄\n\n둘째 문단 — 근거를 적는 자리',
+    target: {
+      targetTypeCode: 'SAMPLE_TARGET_TYPE_A',
+      targetId: 9501,
+      displayName: '합성 대상 문서',
+      openable: false,
+    },
+    currentStepNo: 2,
+    totalStepNo: 2,
+    isMyTurn: false,
+  },
+  steps: [
+    approvalStep(),
+    approvalStep({
+      stepNo: 2,
+      approverId: 9552,
+      approverName: '',
+      decisionCode: null,
+      decisionAt: null,
+      decisionComment: null,
+      isCurrent: true,
+    }),
+  ],
+};
+
+/**
+ * **서버 값과 배열 재계산이 어긋나는** 상세(목 실측 형태 · 감지기 M47).
+ *
+ * `currentStepNo`가 단계 수보다 크고, 그 하나뿐인 단계는 **결재됐는데 `isCurrent`가 참**이다.
+ * 배열을 훑어 위치를 다시 매기는 구현은 여기서 서버 값과 갈린다.
+ */
+export const contradictoryApprovalDetailFixture: ApprovalRequestDetailResponse = {
+  request: {
+    ...approvalRequestDetailFixture.request,
+    currentStepNo: 3,
+    totalStepNo: 3,
+  },
+  steps: [approvalStep({ stepNo: 1, isCurrent: true })],
+};
+
+/** 반려 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
+export const SAMPLE_REJECTION_DECISION = 'SAMPLE_DECISION_A';
+
+/** 승인 완료 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
+export const SAMPLE_APPROVED_STATUS = 'SAMPLE_AP_STATUS_A';
+
 /** 화면 어디에도 나와서는 안 되는 내부 번호(FK). 업무 번호와 겹치지 않는 대역이다. */
 export const INTERNAL_IDS = [
   '9001',
@@ -276,6 +461,18 @@ export const INTERNAL_IDS = [
   '9401',
   '9402',
   '9403',
+  '9501',
+  '9502',
+  '9503',
+  '9511',
+  '9512',
+  '9521',
+  '9522',
+  '9531',
+  '9541',
+  '9551',
+  '9552',
+  '9561',
   '9601',
   '9602',
   '9603',
