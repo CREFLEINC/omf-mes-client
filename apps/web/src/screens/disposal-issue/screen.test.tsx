@@ -3608,3 +3608,29 @@ describe('DisposalIssueScreen — 결과 구획에 번호가 새지 않는다', 
     }
   });
 });
+
+describe('DisposalIssueScreen — 재상신도 보내는 자리가 다시 본다', () => {
+  /**
+   * **보내는 자리가 스스로 한 번 더 본다**(감지기 M60). 확인 창이 버튼과 전송 사이를 벌려
+   * 놓으므로 「버튼이 막았으니 여기서는 안 봐도 된다」가 성립하지 않는다 — 창이 열린 사이에
+   * 사유가 비면 **공백만인 사유가 결재에 오른다**(목이 그것을 202로 받는다).
+   */
+  it('창이 열린 사이에 사유가 비면 보내지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([approvalSubmitRoute(RESUBMIT_APPROVAL_PATH), notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9502`,
+    );
+
+    await screen.findByRole('region', { name: t.resubmit.label });
+    await user.type(screen.getByLabelText(t.formFields.submitReason), '이어서 상신');
+    await user.click(resubmitButton());
+
+    /* 창 뒤의 칸을 비운다 — 창은 그 사실을 모른다. */
+    fireEvent.change(screen.getByLabelText(t.formFields.submitReason), { target: { value: '   ' } });
+    await confirmSubmit(user);
+
+    expect(writesTo(requests, RESUBMIT_APPROVAL_PATH)).toHaveLength(0);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText(t.errors.reasonRequired)).toBeInTheDocument();
+  });
+});
