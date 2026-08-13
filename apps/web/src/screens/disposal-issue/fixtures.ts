@@ -170,7 +170,17 @@ export const receiptLineResponseFixtures: ReceiptLineResponseShape[] = receiptLi
   }),
 );
 
-/** 라인 표가 이름을 푸는 참조 넷. **목록에 없는 번호**(9603 LOT · 9302 품목)를 일부러 남긴다. */
+/**
+ * 라인 표가 이름을 푸는 참조 넷. **세 줄이 가리키는 번호를 전부 담는다** — 품목 둘·단위 둘·
+ * LOT 셋·위치 둘이라 정상 갈래에서 이름이 다 풀린다.
+ *
+ * **「목록에 없음」 갈래를 픽스처에서 만들지 않는다.** 그 갈래는 부품 테스트가 `entries: []`로
+ * 덮어써서 만든다(`gr-line-table.test.tsx`) — 픽스처를 비워 만들면 그 대역이 「없어야 하는
+ * 번호」로 읽혀, 다음 사람이 자료를 고칠 때 정상 갈래까지 함께 무너진다.
+ *
+ * 미사용 값(9302 품목)은 **목록에 남기고 표식만 붙인다** — 빼면 그 품목을 참조하는 과거
+ * 입고의 이름이 비어 보인다.
+ */
 export const itemFixtures = [
   { itemId: 9301, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 자재 가', isActive: true },
   { itemId: 9302, itemCode: 'SAMPLE-ITEM-02', itemName: '합성 자재 나', isActive: false },

@@ -291,6 +291,11 @@ export const DisposalIssueScreen = () => {
    * (수명 표 1~3행).
    */
   const applyQuery = (nextFilters: ReceiptFilters, nextPage = 1): void => {
+    /*
+     * **새 조회는 앞의 「없음」 안내를 거둔다.** 없어진 전표는 방금 한 조작과 무관한 사정인데,
+     * 남겨 두면 새 결과 옆에서 화면이 그 사정을 계속 말한다.
+     */
+    setNotFoundNotice(false);
     setSearchParams(toSearchParams(nextFilters, nextPage));
   };
 
@@ -312,21 +317,40 @@ export const DisposalIssueScreen = () => {
    * **클릭 핸들러가 아니라 고른 식별자와 상세 응답에 묶는다.** 뒤로가기·앞으로가기·주소 직접
    * 편집은 핸들러를 거치지 않고 `gr`만 바꾸므로, 핸들러에 두면 그 경로가 통째로 샌다.
    *
+   * **`replace`로 바꿔 정리가 뒤로가기 기록을 늘리지 않게 한다** — 늘리면 뒤로 눌렀을 때
+   * 없는 전표를 가리키는 주소로 되돌아가 같은 정리가 되풀이되고, 사용자는 **앞 화면으로
+   * 빠져나갈 수 없다.**
+   *
    * 조건·쪽은 하나도 바꾸지 않는다 — 없어진 전표 하나 때문에 사용자가 좁혀 둔 조건까지
    * 되돌리면 처음부터 다시 찾아야 한다.
    */
   useEffect(() => {
+    if (selectedReceiptId === null) return;
     if (!isDetailNotFound) return;
 
     setNotFoundNotice(true);
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
 
-      next.delete(SELECTION_KEYS.goodsReceipt);
+        next.delete(SELECTION_KEYS.goodsReceipt);
 
-      return next;
-    });
-  }, [isDetailNotFound, setSearchParams]);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [selectedReceiptId, isDetailNotFound, setSearchParams]);
+
+  /*
+   * 다시 고르면 앞의 안내를 거둔다 — 남으면 새로 고른 전표의 제목줄 옆에 「찾을 수 없습니다」가
+   * 함께 서 있게 된다. **고른 식별자가 생기는 순간에만** 반응한다.
+   *
+   * 클릭 핸들러(`toggleSelectReceipt`)에도 같은 줄이 있으나 **이 effect가 정본이다** —
+   * 뒤로가기·앞으로가기·주소 직접 편집으로 `gr`가 다시 생기는 경로는 핸들러를 거치지 않는다.
+   */
+  useEffect(() => {
+    if (selectedReceiptId !== null) setNotFoundNotice(false);
+  }, [selectedReceiptId]);
 
   /**
    * **화면이 보고 있는 조회를 전부 다시 한다**(수명 표 14행 · 감지기 M18).

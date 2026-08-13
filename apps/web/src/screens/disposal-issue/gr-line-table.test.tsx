@@ -26,7 +26,7 @@ import {
 import { EMPTY_LINE_DRAFT, setDraftQty, toggleLineSelection, type LineDraft } from './line-draft';
 import type { LotReferenceSource, ReferenceSource } from './lookups';
 import type { BalanceSource, ItemBalance } from './on-hand';
-import { toBalanceView } from './types';
+import { toBalanceView, type ReceiptLineView } from './types';
 
 const t = messages.disposalIssue;
 
@@ -132,9 +132,10 @@ const columnInput = () => ({
   onChangeQty: vi.fn(),
 });
 
-const renderTable = (overrides: Partial<GrLineTableProps> = {}) => {
+const baseProps = (overrides: Partial<GrLineTableProps> = {}): GrLineTableProps => {
   const rows = overrides.rows ?? rowsFrom();
-  const props: GrLineTableProps = {
+
+  return {
     rows,
     itemLookup: itemSource(),
     uomLookup: uomSource(),
@@ -150,11 +151,21 @@ const renderTable = (overrides: Partial<GrLineTableProps> = {}) => {
     onRetryBalances: vi.fn(),
     ...overrides,
   };
-
-  render(<GrLineTable {...props} />);
-
-  return { props, user: userEvent.setup() };
 };
+
+const renderTable = (overrides: Partial<GrLineTableProps> = {}) => {
+  const props = baseProps(overrides);
+  const { rerender } = render(<GrLineTable {...props} />);
+
+  return { props, rerender, user: userEvent.setup() };
+};
+
+/** 줄에 매인 두 컨트롤. **표시 순번으로 집는다** — 내부 번호를 접근 이름에 넣지 않는다. */
+const qtyBox = (ordinal: number): HTMLElement =>
+  screen.getByRole('textbox', { name: t.lineTable.disposalQtyLabel(ordinal) });
+
+const selectBox = (ordinal: number): HTMLElement =>
+  screen.getByRole('checkbox', { name: t.lineTable.selectLabel(ordinal) });
 
 /**
  * **열 폭 예산**(완료 조건 C31).
@@ -357,6 +368,75 @@ describe('GrLineTable — 폐기 수량 칸', () => {
     expect(screen.getByText(t.reasons.lineMissingValues)).toBeInTheDocument();
     expect(checkbox.getAttribute('aria-describedby')).toBe(input.getAttribute('aria-describedby'));
     expect(checkbox.getAttribute('aria-describedby')).not.toBeNull();
+  });
+
+  /**
+   * **잠금 사유 `id`가 줄마다 갈린다**(전례 감지기 이식 — 리뷰 t2 Major ②).
+   *
+   * 갈리지 않으면 **DOM에 같은 `id`가 여럿** 생기고 `aria-describedby`가 첫 요소로 풀려,
+   * 3번 줄의 체크박스가 **2번 줄의 사유를 읽는다.** 이 표는 사유가 둘(값 없음 / 수량 0 이하)로
+   * 갈리므로 실제로 **다른 문장**을 가리키게 된다 — 스크린리더 사용자에게 조용히 틀린다.
+   */
+  it('잠긴 줄이 둘이면 각 줄의 두 칸이 자기 줄의 사유를 가리킨다', () => {
+    const rows = toDisposalLineRows(
+      [
+        { ...(receiptLineFixtures[0] as ReceiptLineView), goodsReceiptLineId: 9404, lotId: 0 },
+        { ...(receiptLineFixtures[0] as ReceiptLineView), goodsReceiptLineId: 9405, receiptQty: 0 },
+      ],
+      EMPTY_LINE_DRAFT,
+      balanceSource(),
+    );
+
+    renderTable({ rows, selection: describeDisposalSelection(rows) });
+
+    const firstId = selectBox(1).getAttribute('aria-describedby') ?? '';
+    const secondId = selectBox(2).getAttribute('aria-describedby') ?? '';
+
+    expect(firstId).not.toBe('');
+    expect(firstId).not.toBe(secondId);
+
+    /* 같은 `id`가 둘 이상 생기지 않는다 — 무엇을 가리키는지가 갈린다. */
+    for (const id of [firstId, secondId]) {
+      expect([...document.querySelectorAll('[id]')].filter((node) => node.id === id)).toHaveLength(
+        1,
+      );
+    }
+
+    expect(document.getElementById(firstId)?.textContent).toBe(t.reasons.lineMissingValues);
+    expect(document.getElementById(secondId)?.textContent).toBe(t.reasons.lineQtyNotPositive);
+
+    /* 수량 칸도 같은 짝을 가리킨다 — 한 줄 안에서 두 컨트롤이 사유를 공유하는 형태다. */
+    expect(qtyBox(1).getAttribute('aria-describedby')).toContain(firstId);
+    expect(qtyBox(2).getAttribute('aria-describedby')).toContain(secondId);
+  });
+
+  /**
+   * **`getRowId` 감지기**(전례 이식 — 리뷰 t2 Major ②). 이 표에는 **줄에 매인 입력칸**이 있다.
+   *
+   * 행 식별자를 떼면 React key가 인덱스가 되어, 앞 줄이 사라질 때 **치고 있던 칸의 DOM 노드가
+   * 대신 지워진다** — 포커스와 캐럿이 말없이 다른 줄의 칸으로 옮겨 간다. 그 표에서 사용자는
+   * **친 값이 다른 줄로 옮겨 붙은 것을 알아채지 못한 채** 폐기 수량을 확정한다.
+   */
+  it('앞 줄이 사라져도 치고 있던 칸의 포커스가 남는다', async () => {
+    const lines = receiptLineFixtures.slice(0, 2);
+    const { rerender, user } = renderTable({
+      rows: toDisposalLineRows(lines, EMPTY_LINE_DRAFT, balanceSource()),
+    });
+
+    await user.click(qtyBox(2));
+
+    expect(document.activeElement).toBe(qtyBox(2));
+
+    rerender(
+      <GrLineTable
+        {...baseProps({
+          rows: toDisposalLineRows(lines.slice(1), EMPTY_LINE_DRAFT, balanceSource()),
+        })}
+      />,
+    );
+
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(document.activeElement).toBe(qtyBox(1));
   });
 
   /**

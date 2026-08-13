@@ -1328,6 +1328,115 @@ describe('DisposalIssueScreen — 상세가 없는 전표', () => {
     expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
   });
 
+  /**
+   * **정리가 뒤로가기 기록을 늘리지 않는다**(전례 감지기 이식 — 리뷰 t2 Major ①).
+   *
+   * 늘리면 뒤로 눌렀을 때 **없는 전표를 가리키는 주소로 되돌아가** 같은 정리가 되풀이되고,
+   * 사용자는 **앞 화면으로 빠져나갈 수 없다.** 주소를 바깥에서 갈아 끼워(뒤로가기·주소 직접
+   * 편집과 같은 경로) 히스토리가 실제로 몇 칸 쌓였는지를 잰다.
+   */
+  it('404 정리가 뒤로가기 기록을 늘리지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([failingDetailRoute(404, MISSING_DETAIL_PATH)]),
+      '?q=GR',
+      'gr=9002',
+    );
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    /* 한 칸 뒤로 가면 **없는 전표 주소가 아니라** 그 앞의 조회 상태로 돌아간다. */
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?q=GR`);
+    });
+  });
+
+  /**
+   * **새 조회·초기화가 안내를 거둔다**(리뷰 t2 Minor ③).
+   *
+   * 안내를 끄는 자리가 클릭 핸들러 하나뿐이면, 404로 안내가 선 뒤 조건을 바꿔 조회하거나
+   * 초기화를 눌러도 그 문장이 화면에 남는다 — **방금 한 조작과 무관한 사정을 화면이 계속
+   * 말한다.** 지적 ①과 같은 뿌리(핸들러에만 두면 다른 경로가 샌다)다.
+   */
+  it('새 조회와 초기화가 없음 안내를 거둔다', async () => {
+    const { user } = renderScreen(
+      allRoutes([failingDetailRoute(404, MISSING_DETAIL_PATH)]),
+      '?gr=9002',
+    );
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.fields.q), 'GR');
+    await search(user);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?q=GR`);
+    });
+
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
+  it('초기화도 없음 안내를 거둔다', async () => {
+    const { user } = renderScreen(
+      allRoutes([failingDetailRoute(404, MISSING_DETAIL_PATH)]),
+      '?q=GR&gr=9002',
+    );
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **안내는 자기 사정보다 오래 살지 않는다 — 주소로 오간 경우에도**(전례 이식분의 짝 감지기).
+   *
+   * 안내를 거두는 자리가 클릭 핸들러뿐이면 **뒤로가기·앞으로가기·주소 직접 편집**으로 `gr`가
+   * 다시 생기는 경로가 통째로 샌다. 화면이 안내를 그리는 조건은 「고른 전표가 없다」이므로
+   * 전표를 고른 동안에는 어긋남이 **가려져 있다가**, 그 전표를 놓는 순간 **아무것도 404가
+   * 아닌데 「찾을 수 없습니다」가 되살아난다.** 그래서 셋을 이어서 잰다:
+   * 404 → 주소로 **성한 전표** 고르기 → 뒤로 눌러 **선택 놓기**.
+   */
+  it('주소로 성한 전표를 고른 뒤 놓아도 없음 안내가 되살아나지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([failingDetailRoute(404, MISSING_DETAIL_PATH)]),
+      '?gr=9002',
+      'gr=9001',
+    );
+
+    expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
+
+    /* 클릭 핸들러를 거치지 않는 길로 성한 전표를 고른다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitForLines();
+
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+
+    /* 다시 핸들러를 거치지 않고 선택을 놓는다 — 안내를 그리는 조건이 되살아나는 자리다. */
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+
+    expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
   /** 다시 고르면 안내가 사라진다 — 「없다」가 화면에 눌어붙지 않는다. */
   it('다시 고르면 없음 안내가 사라진다', async () => {
     const { user } = renderScreen(

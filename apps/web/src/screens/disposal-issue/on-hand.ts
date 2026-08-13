@@ -99,7 +99,9 @@ export const toOnHand = (source: BalanceSource, line: ReceiptLineView): OnHand =
    * 한 LOT의 상한으로 쓰면 상한이 실제보다 몇 배 느슨해진다 — 그 줄로 확인했다고 말하느니
    * 확인하지 못한 것으로 두는 편이 정확하고, 막지 않으므로 업무도 서지 않는다.
    */
-  const rows = item.entries.filter((entry) => entry.groupBy === 'LOT' && entry.lotId === line.lotId);
+  const rows = item.entries.filter(
+    (entry) => entry.groupBy === 'LOT' && entry.lotId === line.lotId,
+  );
 
   if (rows.length === 0) return { kind: 'unknown', reason: 'notFound' };
 
@@ -122,7 +124,10 @@ export const toOnHand = (source: BalanceSource, line: ReceiptLineView): OnHand =
  * 상한 판정 결과. **「막지 않는다」와 「재지 못했다」를 가른다** — 둘을 뭉치면 상한을 못 구한
  * 줄이 「통과했다」로 읽혀, 화면이 확인한 적 없는 것을 확인한 척하게 된다.
  */
-export type QtyLimit = { kind: 'within' } | { kind: 'over'; message: string } | { kind: 'unmeasured' };
+export type QtyLimit =
+  | { kind: 'within' }
+  | { kind: 'over'; message: string }
+  | { kind: 'unmeasured' };
 
 /**
  * 친 수량이 상한 안인가.
