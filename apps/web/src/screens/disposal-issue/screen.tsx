@@ -1,8 +1,25 @@
-import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import {
+  Breadcrumb,
+  Button,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+  Tabs,
+  type TabItem,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import {
+  hasPostedLine,
+  isApprovalJudgePending,
+  readSubmission,
+  toRequestProgressView,
+  APPROVED_APPROVAL_STATUS_CODES,
+  REJECTION_DECISION_CODES,
+} from './approval-progress';
+import { ApprovalProgressPane, type ApprovalProgressState } from './approval-progress-pane';
 import {
   DEFECT_WAREHOUSE_TYPE_CODES,
   isDefectWarehouseTypePending,
@@ -23,9 +40,25 @@ import {
   type ReceiptFilters,
   type RemovableChipKey,
 } from './filters';
+import { GiFilterBar } from './gi-filter-bar';
+import { GiTable } from './gi-table';
 import { GrFilterBar } from './gr-filter-bar';
 import { GrLineTable } from './gr-line-table';
 import { GrTable } from './gr-table';
+import {
+  clearIssueFilter,
+  DEFAULT_ISSUE_FILTERS,
+  HISTORY_SELECTION_KEYS,
+  readIssueFilters,
+  readIssuePage,
+  readSelectedIssueId,
+  toHistorySearchParams,
+  toIssueFilterQuery,
+  type IssueFilters,
+  type RemovableIssueChipKey,
+} from './history-filters';
+import { IssueDetailPane } from './issue-detail-pane';
+import { IssueLineTable } from './issue-line-table';
 import {
   EMPTY_LINE_DRAFT,
   setDraftQty,
@@ -46,19 +79,41 @@ import {
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import {
+  isIssueNotFound,
   isReceiptNotFound,
+  useApprovalRequest,
+  useGoodsIssueDetail,
+  useGoodsIssues,
   useGoodsReceiptDetail,
   useGoodsReceipts,
   useOnHandBalances,
 } from './queries';
 import { ReceiptSummaryPane } from './receipt-summary-pane';
-import type { ReceiptLineView, ReceiptView, SelectOption, WarehouseEntry } from './types';
+import {
+  DISPOSAL_ISSUE_TABS,
+  readTab,
+  TAB_KEY,
+  tabLabel,
+  toTabParam,
+  type DisposalIssueTab,
+} from './tabs';
+import type {
+  IssueLineView,
+  IssueView,
+  ReceiptLineView,
+  ReceiptView,
+  SelectOption,
+  WarehouseEntry,
+} from './types';
 
 const t = messages.disposalIssue;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ROWS: ReceiptView[] = [];
 const EMPTY_LINES: ReceiptLineView[] = [];
+const EMPTY_ISSUE_ROWS: IssueView[] = [];
+const EMPTY_ISSUE_LINES: IssueLineView[] = [];
+const NO_ITEM_IDS: number[] = [];
 
 /**
  * 참조 목록을 선택지로 옮긴다.
@@ -74,15 +129,26 @@ const toSelectOptions = (entries: readonly WarehouseEntry[]): SelectOption[] =>
   }));
 
 /**
- * W-01-06 컨테이너 — **폐기할 자재가 들어 있는 입고 전표를 고르는 화면**이다.
+ * W-01-06 컨테이너 — **폐기 품의를 올릴 대상을 고르고, 이미 올라간 품의를 읽는 화면**이다.
  *
- * 배치는 상하로 쌓는다 — 위: 조건 줄과 대상 입고 전표 목록 / 아래: 고른 전표의 제목줄과 라인 표.
- * 조회 조건과 고른 전표는 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
+ * **탭이 둘이고 대상이 둘이다.** 「품의 발의」 탭은 고른 **입고 전표**(`gr`)를 다루고,
+ * 「처리 이력」 탭은 고른 **품의**(`gi`)를 다룬다. 두 대상은 서로를 비우지 않는다 —
+ * 발의해 놓고 이력에서 이어서 다루는 것이 이 화면의 정상 경로이기 때문이다(수명 표 8행).
  *
- * **이 회차에도 쓰기가 없다**(완료 조건 C30). 폐기 정보·품의 등록·상신·기타출고 처리는
+ * **결재는 이 화면이 하지 않는다.** 승인·반려는 결재함(W-CO-09)이 소유하고 여기서는
+ * 결재 진행을 **읽기만** 한다 — 탭 줄의 안내가 그 사실을 밝힌다.
+ *
+ * 배치는 각 탭 안에서 상하로 쌓는다 — 위: 조건 줄과 목록 / 아래: 고른 것의 구획.
+ * 탭·조회 조건·고른 것은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
+ *
+ * **이 회차에도 쓰기가 없다**(완료 조건 C48). 폐기 정보·품의 등록·상신·기타출고 처리는
  * 뒤따르는 회차에서 이 컨테이너에 붙는다. 그때까지 이 화면은 **라우트에도 사이드바에도
  * 등록되지 않는다** — 폐기 품의를 올릴 수 없는 「폐기 품의·기타출고」를 노출하면 승인까지
  * 받아 놓고 아무것도 할 수 없는 화면을 사용자에게 내보이는 것이다.
+ *
+ * **보이지 않는 탭의 조회는 나가지 않는다.** 두 탭의 조건과 선택이 한 주소에 함께 살아 있어
+ * 값만으로는 조회가 성립한다 — 탭을 조회의 조건으로 함께 넘기지 않으면 숨은 탭의 목록·상세·
+ * 승인 요청이 배경에서 왕복한다(감지기 M38).
  *
  * **대상의 원천이 입고 전표인 이유**(계획 결정 2): 계약이 요구하는 출고 라인 다섯(품목·
  * 자재 LOT·수량·단위·출발 위치)을 재고 잔액은 축 하나만 채워 내려 만들 수 없고, 입고 라인은
@@ -105,16 +171,35 @@ const toSelectOptions = (entries: readonly WarehouseEntry[]): SelectOption[] =>
  *
  * | 단계 | 화면이 이 단계를 아는 근거 | 보이는 것 | 할 수 있는 것 | 주소 |
  * | :-: | --- | --- | --- | --- |
- * | **S0** 고르기 전 | `gr`이 없다 | 조건 줄 · 목록 · 쪽 · **고르기 전 안내** | 조회 · 초기화 · 쪽 이동 · 고르기 | `?wh&from&to&ty&st&q&page` |
+ * | **S0** 고르기 전 | 「품의 발의」 탭 · `gr`이 없다 | 조건 줄 · 목록 · 쪽 · **고르기 전 안내** | 조회 · 초기화 · 쪽 이동 · 고르기 | `?tab&wh&from&to&ty&st&q&page` |
  * | **S1** 전표를 골랐다 | `gr`이 있고 **상세가 200** | 위 + 제목줄 · 라인 표 | 위 + 줄 고르기 · 폐기 수량 | `+&gr` |
  * | **S2** 보낼 것이 갖춰졌다 | 줄이 하나 이상 골라졌고 전 검증 통과 | 위 + **요약이 「보낼 수 있다」로 바뀐다** | 위 + 품의 등록 — **다음 회차** | 같음 |
  * | **S3** 이번 세션에서 등록했다 | 등록 성공 결과 | — | — | **다음 회차** |
  * | **S4** 그 전표가 없다 | **상세가 404** | 안내 「고른 입고 전표를 찾을 수 없습니다」 | `gr`를 주소에서 정리한다 | `gr` 제거 |
+ * | **H0** 이력에서 고르기 전 | 「처리 이력」 탭 · `gi`가 없다 | 이력 조건 줄 · 목록 · 쪽 · **고르기 전 안내** | 조회 · 초기화 · 쪽 이동 · 고르기 | `?tab=history&i*&ipage` |
+ * | **H1** 품의를 골랐다 | `gi`가 있고 **출고 상세가 200** | 위 + 품의 정보 · 라인 표 · **결재 진행 구획** | 위 + 상신·처리 — **뒤 회차** | `+&gi` |
+ * | **H2** 그 품의가 없다 | **출고 상세가 404** | 안내 「고른 품의를 찾을 수 없습니다」 | `gi`를 주소에서 정리한다 | `gi` 제거 |
  *
- * **이 회차가 서는 단계는 S0·S1·S2·S4다.** S2의 「할 수 있는 것」인 품의 등록은 아직 없고,
- * 그 자리는 **요약과 사유**가 맡는다 — 판정은 여기서 서고 버튼만 뒤에 온다. 버튼 없는 판정을
- * 만드는 것이 죽은 가지가 아닌 이유는, 그 판정이 **표 아래 요약과 사유로 실제로 보이기**
+ * **이 회차가 서는 단계는 S0·S1·S2·S4·H0·H1·H2다.** S2의 「할 수 있는 것」인 품의 등록은 아직
+ * 없고, 그 자리는 **요약과 사유**가 맡는다 — 판정은 여기서 서고 버튼만 뒤에 온다. 버튼 없는
+ * 판정을 만드는 것이 죽은 가지가 아닌 이유는, 그 판정이 **표 아래 요약과 사유로 실제로 보이기**
  * 때문이다(무엇이 모자라 못 보내는지 사용자가 지금도 읽는다).
+ *
+ * **H1 안에 결재 진행의 하위 상태 다섯이 있다.** 이것은 단계가 아니라 **한 구획의 상태**이며,
+ * 어느 것이어도 H1의 다른 구획은 바뀌지 않는다 — 결재 진행은 판단을 돕는 자료이지 처리의
+ * 전제가 아니기 때문이다(수명 표 26행 · `approval-progress-pane.tsx`의 표).
+ *
+ * | 하위 상태 | 근거 |
+ * | :-: | --- |
+ * | **A0 미상신** | 출고 상세의 `approvalRequestId`가 **없다** |
+ * | **A0′ 쓸 수 없는 값** | 값은 있으나 조회 조각으로 쓸 수 없다 — 미상신도 상신도 아니다 |
+ * | **A1 부르는 중** | 승인 요청 조회 진행 중 |
+ * | **A2 읽었다** | 승인 요청 상세가 200 |
+ * | **A3 읽을 수 없다** | 403·404·네트워크 — **화면 배너를 세우지 않는다** |
+ *
+ * **H2를 404로만 판정하고 403을 별도로 가르지 않는 이유**: 물류 두 상세에는 **403이 없다**
+ * (입고·출고 상세 모두 200과 404 둘뿐 — 실측). 403 갈래를 만들면 닿을 수 없는 가지가 된다.
+ * 403이 있는 것은 **승인 요청 상세뿐**이고 그것이 A3다.
  *
  * **화면이 모르는 것을 밝힌다.** 이미 폐기됐거나 취소된 전표를 골라도 화면은 막지 않는다.
  * 값 목록이 정해지면 그때 막아도 늦지 않고, 지금 막으면 **값이 정해질 때 조용히 틀린다.**
@@ -169,10 +254,18 @@ export const DisposalIssueScreen = () => {
    * | 25 | **상세를 더는 읽을 수 없다** | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | **닫는다** | 유지 |
    * | 26 | **승인 요청 조회 실패** | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | **유지** | **유지** | **유지** |
    *
-   * **이 회차가 실제로 지키는 것은 1~6·13·14행의 「조건」·`gr`·「줄」 세 열이다.**
+   * **이 회차가 실제로 지키는 것은 1~6·8~11·13·14행의 「조건」·`gr`·「줄」·「이력」·`gi` 다섯 열이다.**
    *
    * - **1~3행이 `gr`를 비우는 이유**: 조건·쪽이 바뀌면 고른 전표가 새 결과에 없을 수 있다.
    *   `toSearchParams`가 **`gr`를 만들지 않으므로** 이 세 행이 한 자리에서 함께 지켜진다.
+   * - **8행(탭 전환)이 아무것도 비우지 않는 이유**: 탭은 **보는 자리**를 바꿀 뿐 대상을 바꾸지
+   *   않는다. 두 탭이 서로 다른 대상(`gr`·`gi`)을 갖고 각자 살아 있어야 「발의해 놓고 이력에서
+   *   이어서 다룬다」가 성립한다.
+   * - **9~11행이 `gi`를 비우는 이유**: 이력 조건·쪽이 바뀌면 고른 품의가 새 결과에 없을 수 있다.
+   *   `toHistorySearchParams`가 **`gi`를 만들지 않으므로** 그 규칙이 한 자리에서 지켜진다.
+   *   그리고 **`gr`와 대상 조건은 건드리지 않는다** — 범위 있는 규칙은 잣대도 같은 범위로.
+   * - **26행이 아무것도 건드리지 않는 이유**: 결재 진행은 판단을 돕는 자료이지 처리의 전제가
+   *   아니다 — 못 읽었다고 고른 품의가 풀리거나 화면 배너가 서면 사용자는 나머지까지 못 믿는다.
    * - **4행이 쪽을 유지하는 이유**: 보이는 행이 그대로다. 3쪽에서 하나 골랐다고 1쪽으로 튀면 안 된다.
    * - **1~5행이 줄 초안을 함께 비우는 이유**: 앞 전표에서 고른 줄과 친 수량은 새 전표에서 뜻을
    *   잃는다. 다섯 행이 전부 **`gr`가 달라지는 자리**이므로 되돌림은 **`gr` 하나에 매인 effect**
@@ -195,9 +288,20 @@ export const DisposalIssueScreen = () => {
    * 이 값을 되돌림 기준으로 삼는 조건 줄이 **부모가 다시 그려질 때마다** 입력을 덮어쓴다
    * (`omf-mes#43`). `searchParams`는 주소가 바뀔 때만 새 참조다.
    */
+  const tab = readTab(searchParams);
+  const isDisposalTab = tab === 'disposal';
+  const isHistoryTab = tab === 'history';
+
   const filters = useMemo<ReceiptFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
   const selectedReceiptId = readSelectedReceiptId(searchParams);
+
+  const historyFilters = useMemo<IssueFilters>(
+    () => readIssueFilters(searchParams),
+    [searchParams],
+  );
+  const historyPage = readIssuePage(searchParams);
+  const selectedIssueId = readSelectedIssueId(searchParams);
 
   /*
    * **조건이 하나도 없어도 조회한다.** 들어오자마자 폐기할 수 있는 입고가 보여야 무엇을
@@ -207,53 +311,87 @@ export const DisposalIssueScreen = () => {
    */
   const listQuery = { ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) };
 
-  const list = useGoodsReceipts(listQuery);
+  const list = useGoodsReceipts(listQuery, isDisposalTab);
   const rows = list.data?.items ?? EMPTY_ROWS;
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
-  /* 창고는 첫 진입에 받는다 — 조건 줄과 목록 표가 첫 화면부터 이 이름을 쓴다. */
+  /* 창고는 첫 진입에 받는다 — **두 탭의 목록 표가 모두 이 이름을 쓴다.** */
   const warehouses = useWarehouseOptions();
 
-  const detail = useGoodsReceiptDetail(selectedReceiptId);
+  const detail = useGoodsReceiptDetail(selectedReceiptId, isDisposalTab);
   const detailData = detail.data;
   const lineRows = detailData?.lines ?? EMPTY_LINES;
   const isDetailNotFound = detail.isError && isReceiptNotFound(detail.error);
 
-  /*
-   * 품목·단위·자재 LOT·위치는 **라인 표가 그려질 때** 쓴다 — 그 표는 상세 응답을 기다리므로
-   * 미리 받아 둘 이득이 없고, 고르기 전에 부르면 첫 진입의 요청 수만 이유 없이 는다.
+  /* 이력 목록·상세도 같은 형태다 — **그 탭이 서 있을 때만** 성립한다. */
+  const historyQuery = {
+    ...toIssueFilterQuery(historyFilters),
+    ...(historyPage > 1 ? { page: historyPage } : {}),
+  };
+
+  const issueList = useGoodsIssues(historyQuery, isHistoryTab);
+  const issueRows = issueList.data?.items ?? EMPTY_ISSUE_ROWS;
+  const issuePageView = toPageView(
+    issueList.data?.page ?? { page: historyPage, size: 0, total: 0 },
+    issueRows.length,
+  );
+
+  const issueDetail = useGoodsIssueDetail(selectedIssueId, isHistoryTab);
+  const issueDetailData = issueDetail.data;
+  const issueLineRows = issueDetailData?.lines ?? EMPTY_ISSUE_LINES;
+  const isIssueDetailNotFound = issueDetail.isError && isIssueNotFound(issueDetail.error);
+
+  /**
+   * 이 품의가 상신됐는가 — **판정은 `approval-progress.ts` 한 곳에서 나온다.**
+   *
+   * 여기서 다시 판정하면 두 자리가 갈리고, 갈리는 순간 `/app/approval-requests/0` 같은
+   * 요청이 나가거나 상신된 품의가 미상신으로 보인다.
    */
-  const hasSelection = selectedReceiptId !== null;
-  const items = useItemOptions(hasSelection);
-  const uoms = useUomOptions(hasSelection);
+  const submission = readSubmission(issueDetailData?.issue.approvalRequestId);
+  const approvalRequest = useApprovalRequest(submission, isHistoryTab);
+
+  /*
+   * 품목·단위·자재 LOT·위치는 **아래 구획의 라인 표가 그려질 때** 쓴다 — 그 표는 상세 응답을
+   * 기다리므로 미리 받아 둘 이득이 없고, 고르기 전에 부르면 첫 진입의 요청 수만 이유 없이 는다.
+   *
+   * **활성 탭의 줄만 이름을 푼다.** 두 탭의 라인이 함께 살아 있어도 보이는 것은 하나뿐이고,
+   * 둘의 품목을 합쳐 부르면 보이지 않는 표를 위한 요청이 나간다.
+   */
+  const lineItemIds = isHistoryTab
+    ? issueLineRows.map((line) => line.itemId)
+    : lineRows.map((line) => line.itemId);
+  const lineWarehouseId = isHistoryTab
+    ? (issueDetailData?.issue.sourceWarehouseId ?? null)
+    : (detailData?.receipt.warehouseId ?? null);
+  const hasLineSelection = isHistoryTab ? selectedIssueId !== null : selectedReceiptId !== null;
+
+  const items = useItemOptions(hasLineSelection);
+  const uoms = useUomOptions(hasLineSelection);
 
   /*
    * 자재 LOT은 **라인이 가리키는 품목마다** 받는다 — 번호 여러 개로 한 번에 조회하는 수단이
    * 계약에 없다. 라인이 오기 전에는 품목이 없어 요청도 없다.
    */
-  const lots = useLotOptions(
-    lineRows.map((line) => line.itemId),
-    hasSelection,
-  );
+  const lots = useLotOptions(lineItemIds, hasLineSelection);
 
   /*
    * 위치는 **그 전표의 창고**로 조회한다 — 계약이 창고를 필수 조건으로 두었다.
    * 상세가 오기 전에는 창고 번호가 없어 요청도 없다. `?? 0` 같은 대체값으로 메우면
    * **없는 창고의 조건으로 요청이 나간다.**
    */
-  const locations = useLocationOptions(detailData?.receipt.warehouseId ?? null);
+  const locations = useLocationOptions(lineWarehouseId);
 
   /*
-   * 재고 잔액은 **폐기 수량의 상한**을 만드는 데만 쓴다. 위치와 같은 조건(그 전표의 창고)으로
-   * 부르고, 라인이 가리키는 **품목마다 한 번씩** 받아 자재 LOT으로 맞춘다(`on-hand.ts`).
+   * 재고 잔액은 **폐기 수량의 상한**을 만드는 데만 쓴다 — 「품의 발의」 탭에서만 쓰인다.
+   * 이미 만들어진 품의의 라인에는 상한이 뜻이 없다(수량이 이미 정해져 서버에 갔다).
    *
    * **조건 줄의 창고를 쓰지 않는다.** 그 값은 비어 있을 수 있고, 값 목록이 확정되면 선택지가
    * 폐기 대상 유형으로 좁혀진다 — 좁힌 조건을 축으로 쓰면 좁힘 밖 창고의 전표를 골랐을 때
    * **남의 창고 잔액이 상한이 된다.**
    */
   const balances = useOnHandBalances(
-    detailData?.receipt.warehouseId ?? null,
-    lineRows.map((line) => line.itemId),
+    isDisposalTab ? (detailData?.receipt.warehouseId ?? null) : null,
+    isDisposalTab ? lineRows.map((line) => line.itemId) : NO_ITEM_IDS,
   );
 
   /**
@@ -283,12 +421,68 @@ export const DisposalIssueScreen = () => {
    */
   const [hasNotFoundNotice, setNotFoundNotice] = useState(false);
 
+  /** 같은 사실의 이력 쪽(수명 표 11행) — **두 안내를 하나로 묶지 않는다.** */
+  const [hasIssueNotFoundNotice, setIssueNotFoundNotice] = useState(false);
+
   /**
-   * 조건·쪽을 적용한다. **주소를 한 번만 갱신한다** — 조건과 쪽을 따로 갱신하면 뒤로가기
+   * **사용자가 대상을 바꾸는 길이 지나는 한 문**(구현 규칙 5).
+   *
+   * 한 주소가 탭·대상 조건·이력 조건·두 선택을 함께 싣는다. 조립을 자리마다 손으로 하면
+   * 「대상 조건을 바꿨더니 이력 조건까지 사라졌다」가 조용히 생긴다 — **무엇을 남기고 무엇을
+   * 비우는가가 이 함수의 인자로만 정해진다.**
+   *
+   * 두 하위 조립기(`toSearchParams`·`toHistorySearchParams`)는 **선택(`gr`·`gi`)을 만들지
+   * 않는다.** 그래서 조건·쪽이 바뀌는 자리에서 그 선택을 다시 실어 주지 않으면 저절로 풀리고,
+   * 유지해야 하는 자리에서만 명시적으로 실린다.
+   */
+  const toScreenParams = (next: {
+    tab: DisposalIssueTab;
+    filters: ReceiptFilters;
+    page: number;
+    historyFilters: IssueFilters;
+    historyPage: number;
+    goodsReceiptId: number | null;
+    goodsIssueId: number | null;
+  }): URLSearchParams => {
+    const params = new URLSearchParams();
+    const tabParam = toTabParam(next.tab);
+
+    if (tabParam !== null) params.set(TAB_KEY, tabParam);
+
+    for (const [key, value] of toSearchParams(next.filters, next.page)) params.set(key, value);
+
+    for (const [key, value] of toHistorySearchParams(next.historyFilters, next.historyPage)) {
+      params.set(key, value);
+    }
+
+    if (next.goodsReceiptId !== null) {
+      params.set(SELECTION_KEYS.goodsReceipt, String(next.goodsReceiptId));
+    }
+
+    if (next.goodsIssueId !== null) {
+      params.set(HISTORY_SELECTION_KEYS.goodsIssue, String(next.goodsIssueId));
+    }
+
+    return params;
+  };
+
+  /** 지금 주소가 담고 있는 것 전부. 한 자리만 바꾸는 조작이 나머지를 그대로 나른다. */
+  const currentAddress = {
+    tab,
+    filters,
+    page,
+    historyFilters,
+    historyPage,
+    goodsReceiptId: selectedReceiptId,
+    goodsIssueId: selectedIssueId,
+  };
+
+  /**
+   * 대상 조건·쪽을 적용한다. **주소를 한 번만 갱신한다** — 조건과 쪽을 따로 갱신하면 뒤로가기
    * 기록이 두 칸 늘어 사용자가 뒤로 눌렀는데 같은 자리로 돌아온 것처럼 보인다.
    *
-   * `toSearchParams`가 `gr`를 만들지 않으므로 조건·쪽이 바뀌면 고른 전표가 함께 풀린다
-   * (수명 표 1~3행).
+   * **`gr`를 싣지 않아** 조건·쪽이 바뀌면 고른 전표가 함께 풀리고(수명 표 1~3행),
+   * **`gi`와 이력 조건은 그대로 나른다** — 다른 탭의 대상은 이 조작과 무관하다.
    */
   const applyQuery = (nextFilters: ReceiptFilters, nextPage = 1): void => {
     /*
@@ -296,19 +490,71 @@ export const DisposalIssueScreen = () => {
      * 남겨 두면 새 결과 옆에서 화면이 그 사정을 계속 말한다.
      */
     setNotFoundNotice(false);
-    setSearchParams(toSearchParams(nextFilters, nextPage));
+    setSearchParams(
+      toScreenParams({
+        ...currentAddress,
+        filters: nextFilters,
+        page: nextPage,
+        goodsReceiptId: null,
+      }),
+    );
   };
 
   /** 고르고 푸는 것은 **보이는 행을 바꾸지 않는다**(수명 표 4행). */
   const toggleSelectReceipt = (goodsReceiptId: number): void => {
-    const next = toSearchParams(filters, page);
-
-    if (goodsReceiptId !== selectedReceiptId) {
-      next.set(SELECTION_KEYS.goodsReceipt, String(goodsReceiptId));
-    }
-
     setNotFoundNotice(false);
-    setSearchParams(next);
+    setSearchParams(
+      toScreenParams({
+        ...currentAddress,
+        goodsReceiptId: goodsReceiptId === selectedReceiptId ? null : goodsReceiptId,
+      }),
+    );
+  };
+
+  /**
+   * 이력 조건·쪽을 적용한다. **`gi`를 싣지 않아** 고른 품의가 함께 풀리고(수명 표 9행),
+   * **`gr`와 대상 조건·쪽은 그대로 나른다** — 범위 있는 규칙은 잣대도 같은 범위로.
+   */
+  const applyHistoryQuery = (nextFilters: IssueFilters, nextPage = 1): void => {
+    setIssueNotFoundNotice(false);
+    setSearchParams(
+      toScreenParams({
+        ...currentAddress,
+        historyFilters: nextFilters,
+        historyPage: nextPage,
+        goodsIssueId: null,
+      }),
+    );
+  };
+
+  const toggleSelectIssue = (goodsIssueId: number): void => {
+    setIssueNotFoundNotice(false);
+    setSearchParams(
+      toScreenParams({
+        ...currentAddress,
+        goodsIssueId: goodsIssueId === selectedIssueId ? null : goodsIssueId,
+      }),
+    );
+  };
+
+  /**
+   * 탭을 바꾼다. **아무것도 비우지 않는다**(수명 표 8행).
+   *
+   * 탭은 **보는 자리**를 바꿀 뿐 대상을 바꾸지 않는다 — 두 탭이 서로 다른 대상을 갖고 각자
+   * 살아 있어야 「발의해 놓고 이력에서 이어서 다룬다」가 성립한다. 비우면 탭을 잠깐 확인하고
+   * 돌아왔을 때 고르던 것이 통째로 사라진다.
+   */
+  const changeTab = (nextTab: string): void => {
+    /*
+     * **탭 목록을 손으로 한 번 더 적지 않는다.** 정본은 `DISPOSAL_ISSUE_TABS` 하나이고,
+     * 여기 목록을 따로 두면 셋째 탭이 생길 때 이 줄을 잊어 **그 탭 버튼이 말없이 아무 일도
+     * 하지 않는다.** 모르는 값을 걸러 내는 규칙은 주소를 읽는 자리(`readTab`)와 같다.
+     */
+    const target = DISPOSAL_ISSUE_TABS.find((value) => value === nextTab);
+
+    if (target === undefined || target === tab) return;
+
+    setSearchParams(toScreenParams({ ...currentAddress, tab: target }));
   };
 
   /*
@@ -352,6 +598,28 @@ export const DisposalIssueScreen = () => {
     if (selectedReceiptId !== null) setNotFoundNotice(false);
   }, [selectedReceiptId]);
 
+  /* 이력 쪽의 같은 자리 두 곳(수명 표 11행). **규칙이 둘로 갈리지 않게 형태를 맞춘다.** */
+  useEffect(() => {
+    if (selectedIssueId === null) return;
+    if (!isIssueDetailNotFound) return;
+
+    setIssueNotFoundNotice(true);
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+
+        next.delete(HISTORY_SELECTION_KEYS.goodsIssue);
+
+        return next;
+      },
+      { replace: true },
+    );
+  }, [selectedIssueId, isIssueDetailNotFound, setSearchParams]);
+
+  useEffect(() => {
+    if (selectedIssueId !== null) setIssueNotFoundNotice(false);
+  }, [selectedIssueId]);
+
   /**
    * **화면이 보고 있는 조회를 전부 다시 한다**(수명 표 14행 · 감지기 M18).
    *
@@ -367,18 +635,37 @@ export const DisposalIssueScreen = () => {
    * 쿼리에서도 `queryFn`을 실행한다 — 지금은 `queryFn`이 던져서 요청이 나가지 않지만 그것은
    * **가드가 막는 것**이지 훅이 무동작인 것이 아니다.
    *
+   * **보고 있는 탭의 것만 부른다.** 숨은 탭의 조회는 성립하지 않는데 `refetch()`는 `enabled`를
+   * 보지 않으므로, 탭으로 가르지 않으면 「이 탭에 있는 동안 저 목록을 부르지 않는다」가 이
+   * 버튼 하나로 깨진다.
+   *
    * 조건·쪽·선택·초안은 하나도 바꾸지 않는다.
    */
   const refreshAll = (): void => {
-    void list.refetch();
+    if (isDisposalTab) {
+      void list.refetch();
 
-    if (selectedReceiptId !== null) void detail.refetch();
+      if (selectedReceiptId !== null) void detail.refetch();
+
+      /*
+       * 잔액에는 가드가 따로 없다 — 고르기 전에는 라인이 없어 **만들어진 조회 자체가 0건**이라
+       * 순회할 것이 없다. 「고르지 않았으면 부르지 않는다」가 자료 구조로 지켜지는 자리다.
+       */
+      balances.refetch();
+
+      return;
+    }
+
+    void issueList.refetch();
+
+    if (selectedIssueId !== null) void issueDetail.refetch();
 
     /*
-     * 잔액에는 가드가 따로 없다 — 고르기 전에는 라인이 없어 **만들어진 조회 자체가 0건**이라
-     * 순회할 것이 없다. 「고르지 않았으면 부르지 않는다」가 자료 구조로 지켜지는 자리다.
+     * **결재 진행도 함께 부른다**(완료 조건 C47). 목록·상세만 다시 부르면 방금 결재된 건이
+     * 앞 단계 그대로 서 있고, 사용자는 그 낡은 진행을 보고 처리 여부를 판단한다.
+     * 상신되지 않은 품의에는 부를 것이 없다 — 그 판정은 `submission` 하나가 갖는다.
      */
-    balances.refetch();
+    if (submission.kind === 'submitted') void approvalRequest.refetch();
   };
 
   /**
@@ -459,18 +746,43 @@ export const DisposalIssueScreen = () => {
     toReference(warehouses, detailData?.receipt.warehouseId ?? null),
   );
 
-  return (
-    <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
-        actions={
-          <Button variant="outlined" size="sm" onClick={refreshAll}>
-            {t.actions.refresh}
-          </Button>
-        }
-      />
+  /** 고른 품의의 창고 이름. 같은 이유로 **좁히지 않은 참조**로 푼다. */
+  const issueWarehouseName = describeReference(
+    toReference(warehouses, issueDetailData?.issue.sourceWarehouseId ?? null),
+  );
 
+  /**
+   * 결재 진행 구획이 설 갈래 — **판정을 한 자리에 모은다.**
+   *
+   * 갈래를 그리는 자리에서 각자 판정하면 「부르는 중인데 미상신이라고 말하는」 어긋남이 생긴다.
+   * 순서가 뜻을 정한다: **상신 여부가 조회 상태보다 앞선다** — 부르지 않는 갈래에서 조회 상태를
+   * 먼저 보면 영영 오지 않을 응답을 기다리는 뼈대가 선다.
+   */
+  const approvalState = ((): ApprovalProgressState => {
+    if (submission.kind === 'notSubmitted') return { kind: 'notSubmitted' };
+    if (submission.kind === 'unusable') return { kind: 'unusable' };
+    if (approvalRequest.isError) return { kind: 'failed', error: approvalRequest.error };
+    if (approvalRequest.data === undefined) return { kind: 'loading' };
+
+    return {
+      kind: 'ready',
+      view: toRequestProgressView(
+        approvalRequest.data,
+        REJECTION_DECISION_CODES,
+        APPROVED_APPROVAL_STATUS_CODES,
+      ),
+    };
+  })();
+
+  /**
+   * 이력 라인 표의 참조 실패. **넷을 하나로 접어 넘긴다** — 안내 문구가 넷을 함께 적고
+   * 「다시 시도」가 넷을 함께 부르므로, 판정도 같은 범위여야 문구와 조치가 어긋나지 않는다.
+   */
+  const hasLineReferenceError =
+    items.isError || uoms.isError || lots.isError || locations.isError;
+
+  const disposalTabContent: ReactNode = (
+    <>
       {/* 조회 실패는 빈 상태로 오인시키지 않는다 — 「없습니다」로 내면 자료가 없는 줄 안다. */}
       {list.isError && (
         <LoadErrorBanner
@@ -563,10 +875,7 @@ export const DisposalIssueScreen = () => {
 
         {detailData !== undefined && (
           <>
-            <ReceiptSummaryPane
-              receipt={detailData.receipt}
-              warehouseName={detailWarehouseName}
-            />
+            <ReceiptSummaryPane receipt={detailData.receipt} warehouseName={detailWarehouseName} />
 
             <GrLineTable
               rows={lineTableRows}
@@ -593,6 +902,168 @@ export const DisposalIssueScreen = () => {
           </>
         )}
       </section>
+    </>
+  );
+
+  const historyTabContent: ReactNode = (
+    <>
+      {issueList.isError && (
+        <LoadErrorBanner
+          error={issueList.error}
+          onRetry={() => {
+            void issueList.refetch();
+          }}
+        />
+      )}
+
+      <section className="pane" aria-label={t.panes.historyList}>
+        <GiFilterBar
+          appliedFilters={historyFilters}
+          /*
+           * **출고 유형·폐기 사유는 폐기 정보 폼과 같은 값 목록을 쓴다** — 같은 공통코드라
+           * 갈라 두면 값이 확정될 때 채울 자리가 둘이 된다(`code-options.ts`).
+           * **상태만 따로다** — 출고 전표의 상태는 입고 전표의 상태와 다른 값 목록이다.
+           */
+          issueTypeOptions={codeOptions.issueType}
+          reasonOptions={codeOptions.reason}
+          statusOptions={codeOptions.issueStatus}
+          onSearch={(nextFilters) => {
+            applyHistoryQuery(nextFilters);
+          }}
+          onRemoveFilter={(key: RemovableIssueChipKey) => {
+            applyHistoryQuery(clearIssueFilter(historyFilters, key));
+          }}
+          onReset={() => {
+            applyHistoryQuery(DEFAULT_ISSUE_FILTERS);
+          }}
+        />
+
+        {!issueList.isError && (
+          <>
+            <GiTable
+              rows={issueRows}
+              isLoading={issueList.isPending}
+              isBeyondLast={issuePageView.isBeyondLast}
+              selectedIssueId={selectedIssueId}
+              warehouseLookup={warehouses}
+              onFirstPage={() => {
+                applyHistoryQuery(historyFilters);
+              }}
+              onToggleSelect={toggleSelectIssue}
+              onRetryReferences={retryReferences}
+            />
+            {!issueList.isPending && (
+              <PageNav
+                view={issuePageView}
+                onChange={(nextPage) => {
+                  applyHistoryQuery(historyFilters, nextPage);
+                }}
+              />
+            )}
+          </>
+        )}
+      </section>
+
+      {/* 아래 구획 — 대상 탭과 **같은 네 갈래**다. 형태를 맞춰야 규칙이 둘로 갈리지 않는다. */}
+      <section className="pane" aria-label={t.panes.historyDetail}>
+        {hasIssueNotFoundNotice && selectedIssueId === null && (
+          <EmptyState
+            size="sm"
+            live
+            title={t.empty.issueNotFoundTitle}
+            description={t.empty.issueNotFoundDescription}
+          />
+        )}
+
+        {!hasIssueNotFoundNotice && selectedIssueId === null && (
+          <EmptyState
+            size="sm"
+            title={t.empty.historyNoSelectionTitle}
+            description={t.empty.historyNoSelectionDescription}
+          />
+        )}
+
+        {selectedIssueId !== null && issueDetailData === undefined && (
+          <div role="status" aria-label={t.loading.issueDetail}>
+            <SkeletonText lines={3} />
+          </div>
+        )}
+
+        {issueDetailData !== undefined && (
+          <>
+            <IssueDetailPane issue={issueDetailData.issue} warehouseName={issueWarehouseName} />
+
+            <IssueLineTable
+              rows={issueLineRows}
+              itemLookup={items}
+              uomLookup={uoms}
+              lotLookup={lots}
+              locationLookup={locations}
+              hasReferenceError={hasLineReferenceError}
+              onRetryReferences={retryLineReferences}
+            />
+
+            {/*
+             * 결재 진행. **못 읽어도 위 두 구획은 그대로 산다**(수명 표 26행) —
+             * 판단을 돕는 자료이지 이 품의를 다루는 전제가 아니다.
+             */}
+            <ApprovalProgressPane
+              state={approvalState}
+              /*
+               * **자리표시를 화면이 읽어 넘긴다** — 부품이 상수를 직접 읽으면 「채워지면 무엇이
+               * 달라지는가」를 화면 수준에서 잴 수 없어 그 자리가 죽은 가지가 된다.
+               */
+              isJudgePending={isApprovalJudgePending(APPROVED_APPROVAL_STATUS_CODES)}
+              hasPosted={hasPostedLine(issueLineRows)}
+              onRetry={() => {
+                void approvalRequest.refetch();
+              }}
+            />
+          </>
+        )}
+      </section>
+    </>
+  );
+
+  /**
+   * 탭 둘. **활성 탭의 `content`에만 내용을 담는다.**
+   *
+   * 디자인 시스템 `Tabs`는 패널을 전부 렌더하고 비활성만 감춘다(구현 실측) — 두 패널에 내용을
+   * 두면 숨은 탭의 표가 접근성 트리에 남고, 이름으로 집는 조작·시험이 숨은 글자를 잡는다.
+   */
+  const tabItems: TabItem[] = [
+    {
+      value: 'disposal',
+      label: tabLabel('disposal'),
+      content: isDisposalTab ? disposalTabContent : null,
+    },
+    {
+      value: 'history',
+      label: tabLabel('history'),
+      content: isHistoryTab ? historyTabContent : null,
+    },
+  ];
+
+  return (
+    <>
+      <PageHeader
+        title={t.title}
+        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        actions={
+          <Button variant="outlined" size="sm" onClick={refreshAll}>
+            {t.actions.refresh}
+          </Button>
+        }
+      />
+      {/*
+       * **탭 줄 안내**(승인 기록 정정 1-2). 이 화면은 승인·반려를 하지 않고 결재 진행을
+       * 읽기만 한다 — 밝히지 않으면 사용자가 여기서 결재할 수 있다고 믿고 있지도 않은
+       * 승인 버튼을 찾아 헤맨다. 탭 안이 아니라 **탭 줄 위**에 두는 이유는 이 사실이 두 탭에
+       * 함께 걸리기 때문이다.
+       */}
+      <p className="field-note">{t.tabs.note}</p>
+
+      <Tabs aria-label={t.tabs.label} items={tabItems} value={tab} onChange={changeTab} />
     </>
   );
 };

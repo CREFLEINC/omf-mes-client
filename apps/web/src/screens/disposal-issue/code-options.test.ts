@@ -28,12 +28,24 @@ describe('자리표시 — 지금의 사실', () => {
    * **값을 지어내지 않는 것이 이 파일의 목적이다.** 계약의 `@example`도 심지 않는다 —
    * 그것은 예시이지 확정이 아니다.
    */
-  it('코드 일곱의 값 목록이 전부 비어 있다', () => {
+  it('코드 여덟의 값 목록이 전부 비어 있다', () => {
     expect(Object.values(PLACEHOLDER_DISPOSAL_ISSUE_CODES).every((values) => values.length === 0)).toBe(
       true,
     );
-    /* 짝 방향 — 키가 실제로 일곱이다(빈 객체라 통과한 것이 아니다). */
-    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).toHaveLength(7);
+    /* 짝 방향 — 키가 실제로 여덟이다(빈 객체라 통과한 것이 아니다). */
+    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).toHaveLength(8);
+  });
+
+  /**
+   * **출고 전표 상태와 입고 전표 상태를 한 키로 묶지 않는다.** 두 값 목록은 서로 다른 공통코드라
+   * 한쪽이 확정될 때 다른 쪽 선택칸까지 함께 열리면 화면이 없는 선택지를 내놓게 된다.
+   *
+   * 반대로 **출고 유형·폐기 사유는 한 키를 함께 쓴다** — 폐기 정보 폼이 고르는 값과 이력 조건이
+   * 거르는 값이 **같은 공통코드**이고, 갈라 두면 값이 확정될 때 채울 자리가 둘이 된다.
+   */
+  it('출고 상태와 입고 상태의 자리가 갈려 있다', () => {
+    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).toContain('issueStatus');
+    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).toContain('status');
   });
 
   it('불량창고 유형의 자리표시도 비어 있다', () => {
@@ -78,8 +90,8 @@ describe('toCodeOptionSets', () => {
     ]);
   });
 
-  it('일곱을 모두 옮긴다', () => {
-    expect(Object.keys(toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES))).toHaveLength(7);
+  it('여덟을 모두 옮긴다', () => {
+    expect(Object.keys(toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES))).toHaveLength(8);
   });
 });
 

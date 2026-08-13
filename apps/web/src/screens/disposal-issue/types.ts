@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
 /**
  * W-01-06 화면 슬라이스의 계약.
@@ -7,25 +8,39 @@ import type { components } from '@omf-mes/api-client';
  * 유지된다.
  *
  * 이 화면은 **폐기 대상을 입고 전표에서 골라 출고 전표(폐기 품의)를 만들고 상신한다.**
- * **이 회차(PR ②)까지에도 쓰기가 없다** — 대상 전표를 고르고 **그 전표의 어느 줄을 얼마나
- * 폐기할지 정하는** 데까지다.
+ * **이 회차(PR ③)까지에도 쓰기가 없다** — 대상 전표를 고르고 **그 전표의 어느 줄을 얼마나
+ * 폐기할지 정하며**, 이미 올라간 품의를 찾아 **내용과 결재 진행을 읽는** 데까지다.
  *
  * **대상의 원천이 입고 전표인 이유**(계획 결정 2): 계약이 요구하는 출고 라인 한 줄은
  * 품목·자재 LOT·수량·단위·출발 위치 다섯이 전부 필수인데, 재고 잔액은 축 하나만 채워 내려
  * (`groupBy`가 LOT이면 위치가 비고, LOCATION이면 LOT이 빈다) 다섯을 채울 수 없다.
  * 입고 라인은 다섯을 그대로 준다 — 적치 목적지가 곧 폐기 출고의 출발 위치다.
  *
- * **이 회차의 타입은 입고 전표 헤더·라인과 재고 잔액까지다.** 출고 전표·승인 요청의 화면
- * 타입은 그 값을 실제로 읽는 회차에서 생긴다 — 미리 두면 아무도 지나지 않는 변환기가 남는다.
+ * **이 회차의 타입은 입고 전표 헤더·라인 · 재고 잔액 · 출고 전표 헤더·라인 · 승인 요청까지다.**
+ * 쓰기 본문(등록·상신·전기)의 타입은 그 요청을 실제로 보내는 회차에서 생긴다 — 미리 두면
+ * 아무도 지나지 않는 변환기가 남는다.
  *
  * 이 파일은 이 화면이 소유한다. **다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다** —
  * 형태가 같아도 리소스 이름이 박힌 타입을 공유하면 한 화면의 계약 변화가 다른 화면을 끌고 간다.
  */
 
+const t = messages.disposalIssue;
+
 export type ReceiptResponse = components['schemas']['GoodsReceipt'];
 export type ReceiptLineResponse = components['schemas']['GoodsReceiptLine'];
 export type BalanceResponse = components['schemas']['InventoryBalance'];
 export type WarehouseResponse = components['schemas']['Warehouse'];
+
+/** 출고 전표(= 폐기 품의) 헤더와 라인. **이 화면이 만들고 처리하는 전표다.** */
+export type IssueResponse = components['schemas']['GoodsIssue'];
+export type IssueLineResponse = components['schemas']['GoodsIssueLine'];
+
+/**
+ * 승인 요청 상세. **결재선 진행을 단계 배열로 함께 내린다** — 계약이 그렇게 적었고,
+ * 그래서 단계 전용 조회를 만들지 않는다.
+ */
+export type ApprovalRequestDetailResponse = components['schemas']['ApprovalRequestDetail'];
+export type ApprovalStepResponse = components['schemas']['ApprovalStep'];
 
 export type PageMeta = components['schemas']['PageMeta'];
 
@@ -156,6 +171,128 @@ export interface ReceiptDetailResult {
   receipt: ReceiptView;
   lines: ReceiptLineView[];
 }
+
+/**
+ * 화면이 다루는 출고 전표(= 폐기 품의) 한 건.
+ *
+ * **`approvalRequestId`를 담는 이유가 이 타입의 요점이다.** 「이 품의가 상신됐는가」를
+ * **그 값이 있는가로만** 판정하고(계획 결정 7 · 공유계약 G-2), 있으면 그 값을 **그대로**
+ * 승인 요청 조회의 경로 조각으로 옮긴다(결정 10). 값이 없으면 부르지 않는다 —
+ * `?? 0`으로 메우면 **0번 요청**을 여는 요청이 나간다.
+ *
+ * **화면에는 그 번호가 나가지 않는다**(`omf-mes#44`). 조회에만 쓰이고, 사용자가 보는 것은
+ * 조회로 얻은 승인 요청**번호**(`AP-…`)다.
+ *
+ * **도착지·원천 문서를 담지 않는다.** 이 화면이 그리지도 보내지도 않는 값이고 낼 것이
+ * 번호밖에 없다. **대체 입고 예정(`replacementExpected`)도 담지 않는다** — 반품 축이다.
+ */
+export interface IssueView {
+  goodsIssueId: number;
+  goodsIssueNo: string;
+  issueTypeCode: string;
+  /** 그 전표가 나간 창고. 이름 풀이와 **그 전표 라인의 위치 이름 조회**의 조건이 된다. */
+  sourceWarehouseId: number;
+  issuedAt: string;
+  statusCode: string;
+  /** 폐기 사유 코드. 계약이 선택으로 두어 **없이 오는 전표가 실재한다.** */
+  reasonCode: string | null;
+  /** 상신 여부의 **유일한 근거**. 없으면 아직 결재에 올라가지 않은 전표다. */
+  approvalRequestId: number | null;
+  /**
+   * ERP 송신 **대기열에 적재**됐는가. 계약이 「적재이지 전송이 아니다」라고 못 박았다 —
+   * 화면도 「전송됨」이라 적지 않는다. 계약이 선택으로 두어 **오지 않는 갈래가 따로 있다.**
+   */
+  erpMessageQueued: boolean | null;
+}
+
+/** 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toIssueView = (data: IssueResponse): IssueView => ({
+  goodsIssueId: data.goodsIssueId,
+  goodsIssueNo: data.goodsIssueNo,
+  issueTypeCode: data.issueTypeCode,
+  sourceWarehouseId: data.sourceWarehouseId,
+  issuedAt: data.issuedAt,
+  statusCode: data.statusCode,
+  reasonCode: data.reasonCode ?? null,
+  approvalRequestId: data.approvalRequestId ?? null,
+  erpMessageQueued: data.erpMessageQueued ?? null,
+});
+
+/**
+ * 화면이 다루는 출고 라인 한 줄.
+ *
+ * **원장 라인 번호를 담는다** — 「이 줄이 전기됐는가」를 그 값의 유무로만 판정하기 때문이다
+ * (계획 결정 7). 계약이 그 필드를 「전기로 생긴 원장 라인」이라 적었고, 상태 코드로 판정하면
+ * 조용히 틀린다: 목이 전기 뒤에도 초안 상태를 그대로 주는 것이 실측됐다.
+ * **화면에 나가는 것은 번호가 아니라 표식이다**(`omf-mes#44`).
+ *
+ * **줄번호·전표 번호·피킹 라인은 담지 않는다.** 서버가 부여한 순번은 사용자에게 뜻이 적고
+ * (계획 §5.5), 피킹은 생산 불출 축이라 폐기 품의에 오지 않는다.
+ */
+export interface IssueLineView {
+  goodsIssueLineId: number;
+  itemId: number;
+  lotId: number;
+  issueQty: number;
+  uomId: number;
+  sourceLocationId: number;
+  inventoryTransactionLineId: number | null;
+}
+
+/** 라인 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toIssueLineView = (data: IssueLineResponse): IssueLineView => ({
+  goodsIssueLineId: data.goodsIssueLineId,
+  itemId: data.itemId,
+  lotId: data.lotId,
+  issueQty: data.issueQty,
+  uomId: data.uomId,
+  sourceLocationId: data.sourceLocationId,
+  inventoryTransactionLineId: data.inventoryTransactionLineId ?? null,
+});
+
+/** 이력 목록 조회 결과. */
+export interface IssueListResult {
+  items: IssueView[];
+  page: PageMeta;
+}
+
+/**
+ * 출고 상세 조회 결과. **헤더와 라인이 한 번에 온다**(`GoodsIssueDetailResponse`).
+ * 라인 전용 경로가 계약에 있으나 부르면 같은 값을 한 번 더 받는다.
+ */
+export interface IssueDetailResult {
+  issue: IssueView;
+  lines: IssueLineView[];
+}
+
+/**
+ * 사람이 읽는 이름 — **이름 자리가 전부 이 판정 하나를 지난다.**
+ *
+ * 상신자·승인자 이름은 계약이 필수로 두었으나 **빈 문자열도 공백만인 값도 스키마를
+ * 통과한다.** 그때 화면은 번호를 대신 내지 않고 그 사실을 적는다(`omf-mes#44`).
+ *
+ * **판정을 한 자리에 두는 이유**: 자리마다 따로 적으면 한쪽은 `=== ''`이고 다른 쪽은
+ * `.trim()`이 되어, 같은 요청이 어디서는 빈 칸으로 어디서는 안내로 보인다.
+ *
+ * **이름 안의 공백은 건드리지 않는다.** 판정에만 다듬기를 쓰고 값은 실려 온 그대로 낸다.
+ */
+export const readableName = (value: string, whenMissing: string): string =>
+  value.trim() === '' ? whenMissing : value;
+
+/**
+ * 상신 사유 **전문**을 줄 단위로 나눈다.
+ *
+ * **줄바꿈이 뜻을 나른다.** 계약이 승인 요청의 업무 값을 사유 **하나**로 두어(수량·금액
+ * 컬럼이 물리 모델에 없다) 상신자가 여러 줄로 근거를 적는다 — 한 줄로 이어 붙이면 문단
+ * 구분이 사라져 무엇이 무엇의 근거인지 읽을 수 없다.
+ *
+ * **가운데 빈 줄과 줄 안의 공백을 건드리지 않는다** — 문단 구분과 들여쓴 목록이 사유의
+ * 일부다. 걷어 내는 것은 CRLF의 캐리지 리턴뿐이며 그것은 글자가 아니라 줄바꿈의 일부다.
+ *
+ * **자르거나 줄이지 않는다.** 이 화면은 사유의 전문을 보는 자리다.
+ */
+export const toReasonLines = (reason: string): string[] =>
+  reason.trim() === '' ? [t.values.emptyReason] : reason.split(/\r?\n/);
 
 /**
  * 선택 목록의 원본 항목.

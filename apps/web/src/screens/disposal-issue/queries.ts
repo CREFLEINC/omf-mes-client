@@ -3,26 +3,40 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, toApiError } from '../../patterns/request';
+import type { Submission } from './approval-progress';
 import type { ReceiptFilterQuery } from './filters';
+import type { IssueFilterQuery } from './history-filters';
 import { isTruncated } from './lookups';
 import type { BalanceSource } from './on-hand';
 import {
   toBalanceView,
+  toIssueLineView,
+  toIssueView,
   toReceiptLineView,
   toReceiptView,
+  type ApprovalRequestDetailResponse,
+  type IssueDetailResult,
+  type IssueListResult,
   type ReceiptDetailResult,
   type ReceiptListResult,
 } from './types';
 
 /**
- * 이 화면의 요청 — **이 회차에는 읽기 넷이다**(참조 다섯은 `lookups.ts`).
+ * 이 화면의 요청 — **이 회차에는 읽기 일곱이다**(참조 다섯은 `lookups.ts`).
  *
  * | 언제 | 무엇 |
  * | --- | --- |
- * | 첫 진입 | 폐기 대상 입고 전표 목록 · **창고 목록**(`lookups.ts`) |
+ * | 「품의 발의」 탭 첫 진입 | 폐기 대상 입고 전표 목록 · **창고 목록**(`lookups.ts`) |
  * | 전표를 고르면 | **그 전표의 상세** — 헤더와 라인이 한 번에 온다 |
  * | 전표를 고르면 | **그 전표의 품목별 재고 잔액** — 폐기 수량의 상한을 만든다 |
+ * | 「처리 이력」 탭에 서면 | **출고 전표 목록** — 이미 올라간 품의를 찾는다 |
+ * | 품의를 고르면 | **그 전표의 상세** — 헤더와 라인이 한 번에 온다 |
+ * | 그 품의에 승인 요청 값이 있으면 | **승인 요청 상세** — 결재 진행이 함께 온다 |
  * | 「품의 등록」·「상신」·「기타출고 처리」 | 쓰기 셋 — **뒤 회차에서 생긴다** |
+ *
+ * **보이지 않는 탭의 조회는 나가지 않는다.** 두 탭의 조건과 선택이 한 주소에 함께 살아 있어
+ * (수명 표 8행) 값만으로는 조회가 성립하므로, 훅마다 **탭이 서 있는가**를 함께 받는다 —
+ * 받지 않으면 숨은 탭의 목록·상세·승인 요청이 배경에서 왕복한다.
  *
  * **라인을 따로 부르지 않는다.** 계약의 입고 상세가 `{goodsReceipt, lines}`를 함께 주고
  * **라인 목록에 쪽 정보가 없다**(실측) — 전건이 온다는 뜻이라 라인 잘림 판정이 이 화면에 없다.
@@ -58,6 +72,49 @@ export const receiptKeys = {
   list: (query: ReceiptListQuery) => [...RECEIPT_LIST_KEY, query] as const,
   detail: (goodsReceiptId: number | null) =>
     ['disposal-issue-goods-receipts', 'detail', goodsReceiptId] as const,
+};
+
+/**
+ * 이력 목록 조회의 쿼리 전체. **채운 조건만 키가 실린다.**
+ */
+export type IssueListQuery = IssueFilterQuery & {
+  /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
+  page?: number;
+};
+
+/**
+ * 출고 전표(= 폐기 품의) 쪽의 캐시 키.
+ *
+ * **입고 쪽 키와 앞머리를 갈라 둔다** — 겹치면 한 탭의 무효화가 다른 탭의 조회를 함께 끌고
+ * 간다. 목록과 상세도 갈라 둔다: 목록만 다시 부르려는데 상세까지 무효화되면, 그때 도착하는
+ * 새 참조가 초안을 되돌린다(`omf-mes#43`).
+ *
+ * **뿌리를 상수로 따로 두는 이유**는 쓰기가 붙는 회차에 **성공 뒤 이 하나를 무효화**하기
+ * 위해서다 — 목록·상세가 함께 갱신돼야 「상신했는데 미상신으로 보이는」 상태가 생기지 않는다.
+ */
+const ISSUE_ROOT_KEY = 'disposal-issue-goods-issues';
+
+export const issueKeys = {
+  all: [ISSUE_ROOT_KEY] as const,
+  list: (query: IssueListQuery) => [ISSUE_ROOT_KEY, 'list', query] as const,
+  detail: (goodsIssueId: number | null) => [ISSUE_ROOT_KEY, 'detail', goodsIssueId] as const,
+};
+
+/**
+ * 승인 요청 쪽의 캐시 키.
+ *
+ * **출고 전표 키와 갈라 둔다** — 다른 계약(`/app/**`)의 자원이고, 이 화면은 그것을 읽기만 한다.
+ */
+export const approvalKeys = {
+  /**
+   * 이 자원의 조회를 덮는 뿌리 키. **쓰기가 붙는 회차에 상신·전기 성공 뒤 이 하나를 무효화한다** —
+   * 결재 진행이 함께 갱신돼야 「상신했는데 아직 상신되지 않았다고 말하는」 화면이 생기지 않는다.
+   * 지금은 소비처가 없고, 그 사실을 적어 두는 것이 「쓰이지 않는 자리」와 「아직 쓰이지 않는
+   * 자리」를 가른다.
+   */
+  all: ['disposal-issue-approval-requests'] as const,
+  detail: (approvalRequestId: number | null) =>
+    ['disposal-issue-approval-requests', 'detail', approvalRequestId] as const,
 };
 
 /**
@@ -107,12 +164,20 @@ const fetchGoodsReceipts = async (
  *
  * **이미 폐기된 전표를 가려내지 않는다.** 계약에 그 조건이 없고 상태 코드로 거르는 것은
  * 공유계약이 금지한다 — 화면이 값을 해석하면 값이 정해질 때 조용히 틀린다.
+ *
+ * **「품의 발의」 탭이 서 있을 때만 부른다.** 탭을 함께 받는 것을 선택으로 두지 않는 이유는,
+ * 기본값이 참이면 새 탭이 생길 때 이 자리를 고치는 것을 잊어도 아무 신호가 없기 때문이다 —
+ * 그때 숨은 탭의 목록이 배경에서 왕복한다.
  */
-export const useGoodsReceipts = (query: ReceiptListQuery): UseQueryResult<ReceiptListResult> => {
+export const useGoodsReceipts = (
+  query: ReceiptListQuery,
+  enabled: boolean,
+): UseQueryResult<ReceiptListResult> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: receiptKeys.list(query),
+    enabled,
     queryFn: () => fetchGoodsReceipts(client, query),
   });
 };
@@ -145,18 +210,139 @@ const fetchGoodsReceiptDetail = async (
  */
 export const useGoodsReceiptDetail = (
   goodsReceiptId: number | null,
+  enabled: boolean,
 ): UseQueryResult<ReceiptDetailResult> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: receiptKeys.detail(goodsReceiptId),
-    enabled: goodsReceiptId !== null,
+    enabled: enabled && goodsReceiptId !== null,
     queryFn: () => {
       if (goodsReceiptId === null) {
         throw new Error('입고 전표를 고르기 전에는 상세를 조회하지 않습니다.');
       }
 
       return fetchGoodsReceiptDetail(client, goodsReceiptId);
+    },
+  });
+};
+
+const fetchGoodsIssues = async (
+  client: Client,
+  query: IssueListQuery,
+): Promise<IssueListResult> => {
+  const data = await runRequest(() => client.GET('/logistics/goods-issues', { params: { query } }));
+
+  return { items: data.items.map(toIssueView), page: data.page };
+};
+
+/**
+ * 이미 올라간 폐기 품의(출고 전표) 목록.
+ *
+ * **「처리 이력」 탭이 서 있을 때만 부른다.** 두 탭의 조건이 한 주소에 함께 살아 있어 값만으로는
+ * 조회가 성립한다 — 탭을 함께 보지 않으면 숨은 탭의 목록이 배경에서 왕복하고, 「이 탭에 있는
+ * 동안 저 목록을 부르지 않는다」를 잴 수도 없다.
+ *
+ * **유형으로 좁혀 부르지 않는다.** 「기타 출고만 보인다」로 좁히려면 출고 유형 코드 값을 화면이
+ * 정해야 하는데 그 값 목록이 확정되지 않았다(`omf-mes#64`) — 좁힘은 사용자가 조건으로 건다.
+ *
+ * **정렬을 열지 않는다** — 계약의 출고 목록에 정렬 파라미터가 없고(실측), 화면 안에서만
+ * 정렬하면 쪽과 어긋난다.
+ */
+export const useGoodsIssues = (
+  query: IssueListQuery,
+  enabled: boolean,
+): UseQueryResult<IssueListResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: issueKeys.list(query),
+    enabled,
+    queryFn: () => fetchGoodsIssues(client, query),
+  });
+};
+
+const fetchGoodsIssueDetail = async (
+  client: Client,
+  goodsIssueId: number,
+): Promise<IssueDetailResult> => {
+  const data = await runRequest(() =>
+    client.GET('/logistics/goods-issues/{goodsIssueId}', {
+      params: { path: { goodsIssueId } },
+    }),
+  );
+
+  return {
+    issue: toIssueView(data.goodsIssue),
+    lines: data.lines.map(toIssueLineView),
+  };
+};
+
+/**
+ * 고른 품의의 상세 — **헤더와 라인이 한 번에 온다.**
+ *
+ * **이 조회가 단계 판정의 근거다**(계획 결정 3). 200이면 H1, 404면 H2다 — 목록에 그 전표가
+ * 있는지로 판정하지 않는다. `gi`는 경로 조각이라 목록과 무관하게 상세를 부를 수 있고, 목록
+ * 소속으로 판정하면 **조건이 좁아 목록에 없는 품의를 고른 상태가 지워진다.**
+ *
+ * **결재 진행의 뿌리도 이 응답이다** — 여기 실려 오는 승인 요청 값이 있어야 그 조회가 성립한다
+ * (계획 결정 10). 그래서 상세를 건너뛰고 목록 행에서 바로 결재 진행을 열지 않는다.
+ *
+ * **잠금 토큰도 이 응답으로만 온다**(실측 — 목록 200에는 `ETag`가 없다). 쓰기가 붙는 회차의
+ * 상신·전기가 이 경로에서 토큰을 꺼낸다.
+ */
+export const useGoodsIssueDetail = (
+  goodsIssueId: number | null,
+  enabled: boolean,
+): UseQueryResult<IssueDetailResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: issueKeys.detail(goodsIssueId),
+    enabled: enabled && goodsIssueId !== null,
+    queryFn: () => {
+      if (goodsIssueId === null) {
+        throw new Error('품의를 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return fetchGoodsIssueDetail(client, goodsIssueId);
+    },
+  });
+};
+
+/**
+ * 고른 품의의 **결재 진행** — 승인 요청 상세 하나로 온다(계약이 `steps`를 함께 내린다).
+ *
+ * **전표가 준 식별자로 곧바로 부른다**(계획 결정 10 · 승인 기록 §13-4 안 A). 승인 요청 **목록**을
+ * 대상 유형·대상 번호로 걸러 찾는 길은 지금 성립하지 않는다 — 대상 유형 코드의 값 목록이
+ * 확정되지 않아 조건을 실을 수 없고, 대상 번호만 실으면 유형이 다른 문서의 요청이 섞인다.
+ *
+ * **상신 판정을 인자로 받는다.** 「부를 수 있는가」는 `approval-progress.ts` 한 곳이 정하고
+ * 이 훅은 그 결과를 나른다 — 여기서 다시 판정하면 두 자리가 갈리고, 갈리는 순간
+ * `/app/approval-requests/0` 같은 요청이 나간다.
+ *
+ * **응답의 `ETag`를 쓰지 않는다** — 이 화면은 승인 요청에 쓰기를 하지 않는다.
+ */
+export const useApprovalRequest = (
+  submission: Submission,
+  enabled: boolean,
+): UseQueryResult<ApprovalRequestDetailResponse> => {
+  const { client } = useApiClient();
+  const approvalRequestId = submission.kind === 'submitted' ? submission.approvalRequestId : null;
+
+  return useQuery({
+    queryKey: approvalKeys.detail(approvalRequestId),
+    enabled: enabled && approvalRequestId !== null,
+    queryFn: () => {
+      if (approvalRequestId === null) {
+        throw new Error('상신되지 않은 품의의 결재 진행은 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/app/approval-requests/{approvalRequestId}', {
+          params: { path: { approvalRequestId } },
+        }),
+      );
     },
   });
 };
@@ -281,6 +467,39 @@ export const useOnHandBalances = (
  * 그래도 다른 갈래를 남겨 둔다: 네트워크 끊김과 게이트웨이 오류는 계약에 적히지 않는다.
  */
 export const isReceiptNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
+/**
+ * 그 출고 전표가 **없는가**(404).
+ *
+ * **출고 상세의 실패 갈래도 404뿐이다**(실측 — 응답이 200과 404 둘이다). **403 갈래를 만들지
+ * 않는다** — 계약에 없어 닿을 수 없는 가지가 된다. 403이 있는 것은 **승인 요청 상세뿐**이고
+ * 그 갈래는 결재 진행 구획이 갖는다.
+ */
+export const isIssueNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
+/**
+ * 결재 진행을 **볼 권한이 없는가**(403).
+ *
+ * 계약이 「승인자도 상신자도 아니면 403」이라고 적었다 — 같은 권한으로 다시 불러도 같은 답이
+ * 오므로 **「다시 시도」를 붙이지 않는다.** 404·네트워크와 갈라야 하는 이유는 사용자가 할
+ * 조치가 다르기 때문이다.
+ */
+export const isApprovalForbidden = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 403;
+};
+
+/** 그 승인 요청이 **없는가**(404). 전표는 값을 가리키는데 요청이 사라진 자리다. */
+export const isApprovalNotFound = (error: unknown): boolean => {
   const apiError = toApiError(error);
 
   return apiError.kind === 'http' && apiError.status === 404;

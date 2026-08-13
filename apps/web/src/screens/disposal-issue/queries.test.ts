@@ -8,7 +8,12 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  approvalRequestDetailFixture,
   balanceResponseFixturesByItem,
+  goodsIssueFixtures,
+  goodsIssueLineFixtures,
+  goodsIssueLineResponseFixtures,
+  goodsIssueResponseFixtures,
   goodsReceiptFixtures,
   goodsReceiptResponseFixtures,
   receiptLineFixtures,
@@ -16,9 +21,15 @@ import {
 } from './fixtures';
 import {
   BALANCE_PAGE_SIZE,
+  approvalKeys,
   balanceKeys,
+  isIssueNotFound,
   isReceiptNotFound,
+  issueKeys,
   receiptKeys,
+  useApprovalRequest,
+  useGoodsIssueDetail,
+  useGoodsIssues,
   useGoodsReceiptDetail,
   useGoodsReceipts,
   useOnHandBalances,
@@ -28,6 +39,9 @@ import {
 const LIST_PATH = '/logistics/goods-receipts';
 const DETAIL_PATH = '/logistics/goods-receipts/9001';
 const BALANCES_PATH = '/inventory/balances';
+const ISSUES_PATH = '/logistics/goods-issues';
+const ISSUE_DETAIL_PATH = '/logistics/goods-issues/9501';
+const APPROVAL_PATH = '/app/approval-requests';
 
 const listFetch = (): { fetch: ReturnType<typeof createStubFetch>; urls: URL[] } => {
   const urls: URL[] = [];
@@ -83,7 +97,7 @@ describe('receiptKeys', () => {
 describe('useGoodsReceipts', () => {
   const render = (query: ReceiptListQuery) => {
     const { fetch, urls } = listFetch();
-    const hook = renderHookWithProviders(() => useGoodsReceipts(query), { fetch });
+    const hook = renderHookWithProviders(() => useGoodsReceipts(query, true), { fetch });
 
     return { ...hook, urls };
   };
@@ -144,7 +158,7 @@ describe('useGoodsReceipts', () => {
         respond: () => jsonResponse({ message: '' }, { status: 500 }),
       },
     ]);
-    const { result } = renderHookWithProviders(() => useGoodsReceipts({}), { fetch });
+    const { result } = renderHookWithProviders(() => useGoodsReceipts({}, true), { fetch });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
@@ -184,7 +198,7 @@ describe('useGoodsReceiptDetail', () => {
    */
   it('고르기 전에는 요청이 나가지 않는다', async () => {
     const { fetch, urls } = recording([detailRoute()]);
-    const { result } = renderHookWithProviders(() => useGoodsReceiptDetail(null), { fetch });
+    const { result } = renderHookWithProviders(() => useGoodsReceiptDetail(null, true), { fetch });
 
     await waitFor(() => {
       expect(result.current.isPending).toBe(true);
@@ -197,7 +211,7 @@ describe('useGoodsReceiptDetail', () => {
   /** **헤더와 라인이 한 번에 온다** — 라인 전용 경로를 따로 부르지 않는다. */
   it('헤더와 라인을 함께 화면 타입으로 옮긴다', async () => {
     const { fetch, urls } = recording([detailRoute()]);
-    const { result } = renderHookWithProviders(() => useGoodsReceiptDetail(9001), { fetch });
+    const { result } = renderHookWithProviders(() => useGoodsReceiptDetail(9001, true), { fetch });
 
     await waitFor(() => {
       expect(result.current.data).toBeDefined();
@@ -223,7 +237,7 @@ describe('isReceiptNotFound', () => {
         },
       ]);
 
-    const notFound = renderHookWithProviders(() => useGoodsReceiptDetail(9001), {
+    const notFound = renderHookWithProviders(() => useGoodsReceiptDetail(9001, true), {
       fetch: build(404).fetch,
     });
     await waitFor(() => {
@@ -231,7 +245,7 @@ describe('isReceiptNotFound', () => {
     });
     expect(isReceiptNotFound(notFound.result.current.error)).toBe(true);
 
-    const serverError = renderHookWithProviders(() => useGoodsReceiptDetail(9001), {
+    const serverError = renderHookWithProviders(() => useGoodsReceiptDetail(9001, true), {
       fetch: build(500).fetch,
     });
     await waitFor(() => {
@@ -362,5 +376,266 @@ describe('useOnHandBalances', () => {
     });
 
     expect(result.current.items[0]?.truncated).toBe(true);
+  });
+});
+
+describe('issueKeys · approvalKeys', () => {
+  it('이력 조건이 캐시 키에 들어간다', () => {
+    expect(issueKeys.list({ q: 'GI' })).not.toEqual(issueKeys.list({ q: 'GI-2026' }));
+  });
+
+  /** 목록·상세의 앞머리를 갈라 둔다 — 목록만 다시 부르려는데 상세까지 무효화되면 안 된다. */
+  it('목록과 상세의 앞머리가 갈려 있다', () => {
+    expect(issueKeys.list({}).slice(0, 2)).toEqual(['disposal-issue-goods-issues', 'list']);
+    expect(issueKeys.detail(9501).slice(0, 2)).toEqual(['disposal-issue-goods-issues', 'detail']);
+  });
+
+  /** 입고 쪽 키와 겹치지 않는다 — 겹치면 한쪽 무효화가 다른 탭의 조회를 함께 끌고 간다. */
+  it('입고 전표 키와 갈려 있다', () => {
+    expect(issueKeys.list({})[0]).not.toBe(receiptKeys.list({})[0]);
+  });
+
+  it('승인 요청 키가 요청마다 갈린다', () => {
+    expect(approvalKeys.detail(9521)).not.toEqual(approvalKeys.detail(9522));
+  });
+});
+
+describe('useGoodsIssues', () => {
+  const issueListFetch = (): { fetch: ReturnType<typeof createStubFetch>; urls: URL[] } => {
+    const urls: URL[] = [];
+
+    const fetch = createStubFetch([
+      {
+        match: (request) => new URL(request.url).pathname === ISSUES_PATH,
+        respond: (request) => {
+          urls.push(new URL(request.url));
+
+          return jsonResponse({
+            items: goodsIssueResponseFixtures,
+            page: { page: 1, size: 50, total: goodsIssueResponseFixtures.length },
+          });
+        },
+      },
+    ]);
+
+    return { fetch, urls };
+  };
+
+  it('응답을 화면 타입으로 옮긴다', async () => {
+    const { fetch } = issueListFetch();
+    const { result } = renderHookWithProviders(() => useGoodsIssues({}, true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.items).toEqual(goodsIssueFixtures);
+    });
+  });
+
+  /** 탭이 서지 않은 동안에는 부르지 않는다 — 보이지 않는 탭의 조회가 나가면 헛돈다. */
+  it('열려 있지 않으면 요청이 나가지 않는다', async () => {
+    const { fetch, urls } = issueListFetch();
+    const { result } = renderHookWithProviders(() => useGoodsIssues({}, false), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(true);
+    });
+
+    expect(urls).toHaveLength(0);
+    /* 성립하지 않는 조회를 실패로 앉히지도 않는다. */
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('채운 조건을 계약 이름 그대로 싣는다', async () => {
+    const { fetch, urls } = issueListFetch();
+
+    renderHookWithProviders(
+      () => useGoodsIssues({ issuedAtFrom: '2026-08-01', statusCode: 'CODE_C', page: 2 }, true),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(urls).toHaveLength(1);
+    });
+
+    const query = urls[0]?.searchParams;
+
+    expect(query?.get('issuedAtFrom')).toBe('2026-08-01');
+    expect(query?.get('statusCode')).toBe('CODE_C');
+    expect(query?.get('page')).toBe('2');
+    /* 쪽 크기는 서버 기본값을 쓴다. */
+    expect(query?.has('size')).toBe(false);
+  });
+});
+
+describe('useGoodsIssueDetail', () => {
+  const detailRoute = (): StubRoute => ({
+    match: (request) => new URL(request.url).pathname === ISSUE_DETAIL_PATH,
+    respond: () =>
+      jsonResponse({
+        goodsIssue: goodsIssueResponseFixtures[0],
+        lines: goodsIssueLineResponseFixtures,
+      }),
+  });
+
+  it('고르기 전에는 요청이 나가지 않는다', async () => {
+    const urls: URL[] = [];
+    const fetch = createStubFetch([
+      {
+        match: (request) => {
+          urls.push(new URL(request.url));
+
+          return true;
+        },
+        respond: () => jsonResponse({}),
+      },
+    ]);
+
+    const { result } = renderHookWithProviders(() => useGoodsIssueDetail(null, true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(true);
+    });
+
+    expect(urls).toHaveLength(0);
+  });
+
+  /** 탭이 서지 않은 동안에는 고른 품의가 있어도 부르지 않는다. */
+  it('열려 있지 않으면 고른 품의가 있어도 부르지 않는다', async () => {
+    const urls: URL[] = [];
+    const fetch = createStubFetch([
+      {
+        match: (request) => {
+          urls.push(new URL(request.url));
+
+          return true;
+        },
+        respond: () => jsonResponse({}),
+      },
+    ]);
+
+    renderHookWithProviders(() => useGoodsIssueDetail(9501, false), { fetch });
+
+    await waitFor(() => {
+      expect(urls).toHaveLength(0);
+    });
+  });
+
+  it('헤더와 라인을 함께 화면 타입으로 옮긴다', async () => {
+    const fetch = createStubFetch([detailRoute()]);
+    const { result } = renderHookWithProviders(() => useGoodsIssueDetail(9501, true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.issue).toEqual(goodsIssueFixtures[0]);
+    });
+
+    expect(result.current.data?.lines).toEqual(goodsIssueLineFixtures);
+  });
+});
+
+describe('useApprovalRequest', () => {
+  const approvalRoute = (): { route: StubRoute; urls: URL[] } => {
+    const urls: URL[] = [];
+
+    return {
+      urls,
+      route: {
+        match: (request) => new URL(request.url).pathname.startsWith(APPROVAL_PATH),
+        respond: (request) => {
+          urls.push(new URL(request.url));
+
+          return jsonResponse(approvalRequestDetailFixture);
+        },
+      },
+    };
+  };
+
+  /**
+   * **값이 없으면 부르지 않는다**(계획 결정 10). `?? 0`으로 메우면
+   * `/app/approval-requests/0`이 나가 남의 요청을 열거나 헛돈다.
+   */
+  it('상신되지 않은 품의에는 요청이 나가지 않는다', async () => {
+    const { route, urls } = approvalRoute();
+    const { result } = renderHookWithProviders(
+      () => useApprovalRequest({ kind: 'notSubmitted' }, true),
+      { fetch: createStubFetch([route]) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(true);
+    });
+
+    expect(urls).toHaveLength(0);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('쓸 수 없는 값에도 요청이 나가지 않는다', async () => {
+    const { route, urls } = approvalRoute();
+
+    renderHookWithProviders(() => useApprovalRequest({ kind: 'unusable' }, true), {
+      fetch: createStubFetch([route]),
+    });
+
+    await waitFor(() => {
+      expect(urls).toHaveLength(0);
+    });
+  });
+
+  /** **서버가 준 식별자를 그대로 경로 조각으로 옮긴다** — 가공하면 다른 요청을 연다. */
+  it('받은 값을 그대로 경로에 싣는다', async () => {
+    const { route, urls } = approvalRoute();
+    const { result } = renderHookWithProviders(
+      () => useApprovalRequest({ kind: 'submitted', approvalRequestId: 9521 }, true),
+      { fetch: createStubFetch([route]) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(approvalRequestDetailFixture);
+    });
+
+    expect(urls).toHaveLength(1);
+    expect(urls[0]?.pathname).toBe('/app/approval-requests/9521');
+  });
+
+  it('열려 있지 않으면 부르지 않는다', async () => {
+    const { route, urls } = approvalRoute();
+
+    renderHookWithProviders(
+      () => useApprovalRequest({ kind: 'submitted', approvalRequestId: 9521 }, false),
+      { fetch: createStubFetch([route]) },
+    );
+
+    await waitFor(() => {
+      expect(urls).toHaveLength(0);
+    });
+  });
+});
+
+describe('isIssueNotFound', () => {
+  const failing = (status: number): StubRoute => ({
+    match: (request) => new URL(request.url).pathname === ISSUE_DETAIL_PATH,
+    respond: () => jsonResponse({ message: '' }, { status }),
+  });
+
+  it('404면 없음이다', async () => {
+    const { result } = renderHookWithProviders(() => useGoodsIssueDetail(9501, true), {
+      fetch: createStubFetch([failing(404)]),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(isIssueNotFound(result.current.error)).toBe(true);
+  });
+
+  it('404가 아니면 없음이 아니다', async () => {
+    const { result } = renderHookWithProviders(() => useGoodsIssueDetail(9501, true), {
+      fetch: createStubFetch([failing(500)]),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(isIssueNotFound(result.current.error)).toBe(false);
   });
 });
