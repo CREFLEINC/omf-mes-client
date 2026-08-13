@@ -220,6 +220,11 @@ const failingDetailRoute = (status: number, pathname = DETAIL_PATH): StubRoute =
  *
  * 다시 부르기가 같은 본문을 돌려주면 캐시가 구조 공유로 **같은 참조를 그대로 유지**해,
  * 「상세 응답이 도착하면 치던 값이 되돌아간다」는 결함이 드러나지 않는다(감지기 M30).
+ *
+ * **헤더만 바꾸는 것으로는 모자란다.** 구조 공유는 **부분마다** 견주므로, 라인 내용이 같으면
+ * `lines` 배열은 앞의 참조를 그대로 유지한다 — 정리 effect의 의존성에 그 배열을 넣는 결함이
+ * 그대로 통과한다(뮤테이션 실측). 그래서 **라인도 함께 달라지게** 한다: 초안이 매인 줄 번호는
+ * 그대로 두고, 초안 판정에 쓰이지 않는 **셋째 줄의 입고 수량**만 회차마다 바꾼다.
  */
 const changingDetailRoute = (): StubRoute => {
   let call = 0;
@@ -234,7 +239,9 @@ const changingDetailRoute = (): StubRoute => {
           ...goodsReceiptResponseFixtures[0],
           receiptDatetime: `2026-08-06T09:${String(10 + call).padStart(2, '0')}:00+09:00`,
         },
-        lines: receiptLineResponseFixtures,
+        lines: receiptLineResponseFixtures.map((line, index) =>
+          index === 2 ? { ...line, receiptQty: line.receiptQty + call } : line,
+        ),
       });
     },
   };
