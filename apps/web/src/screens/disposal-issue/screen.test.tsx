@@ -5313,6 +5313,41 @@ describe('DisposalIssueScreen — 처리 실패의 갈래', () => {
     });
   });
 
+  /**
+   * **앞의 성공이 새 시도의 실패 옆에 남지 않는다**(수명 표 22행). 처리한 뒤 다시 눌러
+   * 거절당했는데 「처리했습니다」가 그대로 서 있으면, 사용자는 **무엇이 지금 상태인지**
+   * 알 수 없다 — 되돌릴 수 없는 조작의 사후 상태에 대한 거짓 진술이 된다.
+   */
+  it('성공 뒤 다시 눌러 실패하면 앞의 결과 구획이 사라진다', async () => {
+    let calls = 0;
+
+    const { user } = await setupReadyToPost(
+      allRoutes([
+        postableDetailRoute(),
+        {
+          match: (request) => isPost(request, POST_PATH),
+          respond: () => {
+            calls += 1;
+
+            return calls === 1
+              ? jsonResponse(goodsIssueResponseFixtures[0])
+              : jsonResponse({ message: '' }, { status: 403 });
+          },
+        },
+      ]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByRole('region', { name: t.result.postLabel });
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByText(messages.httpError.forbidden);
+
+    expect(screen.queryByRole('region', { name: t.result.postLabel })).not.toBeInTheDocument();
+  });
+
   /** 실패해도 **구획은 살아 있다** — 고친 뒤 다시 누를 수 있어야 한다. */
   it('실패 뒤에도 처리 버튼이 다시 열린다', async () => {
     const { user } = await setupReadyToPost(

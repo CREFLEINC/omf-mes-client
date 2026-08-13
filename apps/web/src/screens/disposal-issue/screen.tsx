@@ -2152,7 +2152,20 @@ export const DisposalIssueScreen = () => {
              * 처리 결과 — **자기 대상보다 오래 살지 않는다.** 매임 이름이 지금 고른 품의와
              * 다르면 서지 않는다.
              */}
-            {postResult !== null && isPostForCurrentTarget && <PostResultPane issue={postResult} />}
+            {postResult !== null && isPostForCurrentTarget && (
+              <PostResultPane
+                /*
+                 * **낼 값만 골라 넘긴다**(`omf-mes#44`). 응답 전체를 그대로 넘기면 그 안에
+                 * 내부 번호가 함께 들어가고, 뒤에 한 줄을 더 그릴 때 그것이 화면으로 새는 길이
+                 * 열린다 — 상신 결과 구획(`toResultSummary`)과 같은 형태다.
+                 */
+                issue={{
+                  goodsIssueNo: postResult.goodsIssueNo,
+                  statusCode: postResult.statusCode,
+                  erpMessageQueued: postResult.erpMessageQueued,
+                }}
+              />
+            )}
 
             {isResubmitConfirmOpen && (
               <ResubmitConfirmDialog
