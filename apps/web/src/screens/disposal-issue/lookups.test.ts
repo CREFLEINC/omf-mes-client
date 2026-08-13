@@ -2,14 +2,32 @@ import { messages } from '@omf-mes/i18n';
 import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { warehouseFixtures } from './fixtures';
+import {
+  createStubFetch,
+  jsonResponse,
+  renderHookWithProviders,
+  type StubRoute,
+} from '../../test/api-harness';
+import {
+  itemFixtures,
+  locationFixtures,
+  lotFixturesByItem,
+  uomFixtures,
+  warehouseFixtures,
+} from './fixtures';
 import {
   describeReference,
+  isLotHeld,
   isTruncated,
+  LOT_PAGE_SIZE,
   lookupNote,
   toReference,
+  useItemOptions,
+  useLocationOptions,
+  useLotOptions,
+  useUomOptions,
   useWarehouseOptions,
+  type LotReferenceSource,
   type ReferenceSource,
 } from './lookups';
 
@@ -202,5 +220,284 @@ describe('useWarehouseOptions', () => {
 
     expect(result.current.entries).toEqual([]);
     expect(typeof result.current.refetch).toBe('function');
+  });
+});
+
+const ITEMS_PATH = '/mdm/items';
+const UOMS_PATH = '/mdm/uoms';
+const LOTS_PATH = '/trace/lots';
+const LOCATIONS_PATH = '/mdm/locations';
+
+const recording = (
+  routes: StubRoute[],
+): { fetch: ReturnType<typeof createStubFetch>; urls: URL[] } => {
+  const urls: URL[] = [];
+  const stub = createStubFetch(routes);
+
+  return {
+    fetch: (request) => {
+      urls.push(new URL(request.url));
+
+      return stub(request);
+    },
+    urls,
+  };
+};
+
+const listBody = (items: unknown[], total = items.length) => ({
+  items,
+  page: { page: 1, size: 50, total },
+});
+
+const route = (pathname: string, respond: StubRoute['respond']): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === pathname,
+  respond,
+});
+
+describe('useItemOptions · useUomOptions', () => {
+  /**
+   * **전표를 고르기 전에는 부르지 않는다.** 이름이 필요한 라인 표 자체가 상세 응답을
+   * 기다리므로 미리 받아 둘 이득이 없고, 첫 진입의 요청 수만 이유 없이 는다.
+   */
+  it('고르기 전에는 요청이 나가지 않는다', async () => {
+    const { fetch, urls } = recording([
+      route(ITEMS_PATH, () => jsonResponse(listBody(itemFixtures))),
+      route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures))),
+    ]);
+    const { result } = renderHookWithProviders(
+      () => ({ items: useItemOptions(false), uoms: useUomOptions(false) }),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.items.isLoading).toBe(false);
+    });
+
+    expect(urls).toEqual([]);
+    /* 「아직 안 불렀다」를 **불러오는 중**으로 말하지 않는다 — 그러면 이름 칸이 영영 회색이다. */
+    expect(result.current.uoms.isLoading).toBe(false);
+  });
+
+  it('「코드 · 이름」으로 풀고 미사용까지 받아 온다', async () => {
+    const { fetch, urls } = recording([
+      route(ITEMS_PATH, () => jsonResponse(listBody(itemFixtures))),
+      route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures))),
+    ]);
+    const { result } = renderHookWithProviders(
+      () => ({ items: useItemOptions(true), uoms: useUomOptions(true) }),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.items.entries).toHaveLength(itemFixtures.length);
+      expect(result.current.uoms.entries).toHaveLength(uomFixtures.length);
+    });
+
+    expect(result.current.items.entries[0]).toEqual({
+      value: '9301',
+      label: 'SAMPLE-ITEM-01 · 합성 자재 가',
+      isActive: true,
+    });
+    expect(result.current.uoms.entries[0]?.label).toBe('SAMPLE-UOM-EA · 합성 낱개');
+    expect(result.current.items.entries.some((entry) => !entry.isActive)).toBe(true);
+
+    for (const url of urls) {
+      expect(url.searchParams.get('includeInactive')).toBe('true');
+    }
+  });
+
+  it('잘리면 그 사실을 낸다', async () => {
+    const { fetch } = recording([
+      route(ITEMS_PATH, () => jsonResponse(listBody(itemFixtures, 500))),
+    ]);
+    const { result } = renderHookWithProviders(() => useItemOptions(true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.truncated).toBe(true);
+    });
+  });
+
+  /**
+   * **기준정보 조회는 쪽 크기를 싣지 않는다**(`filters.ts`의 문면과 짝). 예외는 **잘릴 수
+   * 있는 거래 기록 둘**(자재 LOT·재고 잔액)뿐이다 — 그 사실이 한 곳에만 적혀 있으면
+   * 나중에 상수가 늘어도 아무도 모른다.
+   */
+  it('창고·품목·단위·위치는 쪽 크기를 싣지 않는다', async () => {
+    const { fetch, urls } = recording([
+      route(WAREHOUSES_PATH, () => jsonResponse(listBody(warehouseFixtures))),
+      route(ITEMS_PATH, () => jsonResponse(listBody(itemFixtures))),
+      route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures))),
+      route(LOCATIONS_PATH, () => jsonResponse(listBody(locationFixtures))),
+    ]);
+    const { result } = renderHookWithProviders(
+      () => ({
+        warehouses: useWarehouseOptions(),
+        items: useItemOptions(true),
+        uoms: useUomOptions(true),
+        locations: useLocationOptions(9701),
+      }),
+      { fetch },
+    );
+
+    /* 짝 방향 — 네 조회가 실제로 나가 응답까지 도착했다. 0건이면 「싣지 않는다」가 공허하다. */
+    await waitFor(() => {
+      expect(result.current.warehouses.entries.length).toBeGreaterThan(0);
+      expect(result.current.items.entries.length).toBeGreaterThan(0);
+      expect(result.current.uoms.entries.length).toBeGreaterThan(0);
+      expect(result.current.locations.entries.length).toBeGreaterThan(0);
+    });
+
+    expect(urls).toHaveLength(4);
+
+    for (const url of urls) {
+      expect(url.searchParams.has('size')).toBe(false);
+    }
+  });
+});
+
+describe('useLotOptions', () => {
+  const lotsRoute = (): StubRoute =>
+    route(LOTS_PATH, (request) => {
+      const itemId = Number(new URL(request.url).searchParams.get('itemId'));
+
+      return jsonResponse(listBody(lotFixturesByItem[itemId] ?? []));
+    });
+
+  it('고르기 전에는 요청이 나가지 않는다', async () => {
+    const { fetch, urls } = recording([lotsRoute()]);
+    const { result } = renderHookWithProviders(() => useLotOptions([9301], false), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(urls).toEqual([]);
+  });
+
+  /**
+   * **품목마다 한 번씩 받아 번호로 맞춘다** — 번호 여러 개로 한 번에 조회하는 수단이 계약에
+   * 없다(실측). 같은 품목이 줄에 여럿이어도 요청은 한 번이다.
+   */
+  it('품목마다 한 번 부르고 중복 품목은 한 번만 부른다', async () => {
+    const { fetch, urls } = recording([lotsRoute()]);
+    const { result } = renderHookWithProviders(() => useLotOptions([9301, 9301, 9302], true), {
+      fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(3);
+    });
+
+    expect(urls.map((url) => url.searchParams.get('itemId')).sort()).toEqual(['9301', '9302']);
+  });
+
+  /** **쪽 크기를 명시한다** — 거래 기록이라 한 품목의 LOT이 시간이 갈수록 쌓인다. */
+  it('쪽 크기를 싣는다', async () => {
+    const { fetch, urls } = recording([lotsRoute()]);
+    const { result } = renderHookWithProviders(() => useLotOptions([9301], true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(2);
+    });
+
+    expect(urls[0]?.searchParams.get('size')).toBe(String(LOT_PAGE_SIZE));
+  });
+
+  /** LOT 번호를 라벨로 낸다 — 「코드 · 이름」이 아니다. 보류 여부는 응답이 함께 준다. */
+  it('LOT 번호를 라벨로 내고 보류를 나른다', async () => {
+    const { fetch } = recording([lotsRoute()]);
+    const { result } = renderHookWithProviders(() => useLotOptions([9301], true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(2);
+    });
+
+    expect(result.current.entries[0]).toEqual({
+      value: '9601',
+      label: 'SAMPLE-LOT-0001',
+      isActive: true,
+      held: false,
+    });
+    expect(result.current.entries[1]?.held).toBe(true);
+  });
+
+  /** **하나라도 실패하면 실패다** — 일부만 받은 목록으로 「목록에 없음」을 판정할 수 없다. */
+  it('한 품목이 실패하면 전체가 실패다', async () => {
+    const { fetch } = recording([
+      route(LOTS_PATH, (request) =>
+        new URL(request.url).searchParams.get('itemId') === '9302'
+          ? jsonResponse({ message: '' }, { status: 500 })
+          : jsonResponse(listBody(lotFixturesByItem[9301] ?? [])),
+      ),
+    ]);
+    const { result } = renderHookWithProviders(() => useLotOptions([9301, 9302], true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+  });
+});
+
+describe('isLotHeld', () => {
+  const lotSource = (overrides: Partial<LotReferenceSource> = {}): LotReferenceSource => ({
+    entries: [
+      { value: '9601', label: 'SAMPLE-LOT-0001', isActive: true, held: false },
+      { value: '9602', label: 'SAMPLE-LOT-0002', isActive: true, held: true },
+    ],
+    isError: false,
+    isLoading: false,
+    truncated: false,
+    ...overrides,
+  });
+
+  it('보류인 LOT만 참이다', () => {
+    expect(isLotHeld(lotSource(), 9602)).toBe(true);
+    expect(isLotHeld(lotSource(), 9601)).toBe(false);
+  });
+
+  /**
+   * **모르는 것을 「보류 아님」으로 말하지 않는다** — 표식을 내지 않을 뿐이다.
+   * 같은 칸의 이름 표기가 이미 「아직 못 풀었다」를 네 갈래로 말한다.
+   */
+  it('못 풀었거나 번호가 없으면 표식을 내지 않는다', () => {
+    expect(isLotHeld(lotSource({ isError: true }), 9602)).toBe(false);
+    expect(isLotHeld(lotSource({ isLoading: true }), 9602)).toBe(false);
+    expect(isLotHeld(lotSource(), null)).toBe(false);
+    expect(isLotHeld(lotSource(), 9699)).toBe(false);
+  });
+});
+
+describe('useLocationOptions', () => {
+  const locationsRoute = (): StubRoute =>
+    route(LOCATIONS_PATH, () => jsonResponse(listBody(locationFixtures)));
+
+  /**
+   * **창고 번호가 없으면 부르지 않는다.** 계약이 창고를 필수 조건으로 두어 없이 부르면
+   * 실패한다 — `?? 0`으로 메우면 **없는 창고의 조건으로 요청이 나간다.**
+   */
+  it('창고가 없으면 요청이 나가지 않는다', async () => {
+    const { fetch, urls } = recording([locationsRoute()]);
+    const { result } = renderHookWithProviders(() => useLocationOptions(null), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(urls).toEqual([]);
+  });
+
+  it('고른 전표의 창고로 조회하고 미사용까지 받아 온다', async () => {
+    const { fetch, urls } = recording([locationsRoute()]);
+    const { result } = renderHookWithProviders(() => useLocationOptions(9701), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(locationFixtures.length);
+    });
+
+    expect(Object.fromEntries(urls[0]?.searchParams ?? [])).toEqual({
+      warehouseId: '9701',
+      includeInactive: 'true',
+    });
+    expect(result.current.entries[0]?.label).toBe('SAMPLE-LOC-01 · 합성 적치 가');
   });
 });

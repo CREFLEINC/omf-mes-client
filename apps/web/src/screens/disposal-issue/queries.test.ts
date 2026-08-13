@@ -1,11 +1,33 @@
 import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { goodsReceiptFixtures, goodsReceiptResponseFixtures } from './fixtures';
-import { receiptKeys, useGoodsReceipts, type ReceiptListQuery } from './queries';
+import {
+  createStubFetch,
+  jsonResponse,
+  renderHookWithProviders,
+  type StubRoute,
+} from '../../test/api-harness';
+import {
+  balanceResponseFixturesByItem,
+  goodsReceiptFixtures,
+  goodsReceiptResponseFixtures,
+  receiptLineFixtures,
+  receiptLineResponseFixtures,
+} from './fixtures';
+import {
+  BALANCE_PAGE_SIZE,
+  balanceKeys,
+  isReceiptNotFound,
+  receiptKeys,
+  useGoodsReceiptDetail,
+  useGoodsReceipts,
+  useOnHandBalances,
+  type ReceiptListQuery,
+} from './queries';
 
 const LIST_PATH = '/logistics/goods-receipts';
+const DETAIL_PATH = '/logistics/goods-receipts/9001';
+const BALANCES_PATH = '/inventory/balances';
 
 const listFetch = (): { fetch: ReturnType<typeof createStubFetch>; urls: URL[] } => {
   const urls: URL[] = [];
@@ -33,9 +55,28 @@ describe('receiptKeys', () => {
     expect(receiptKeys.list({ q: 'GR' })).not.toEqual(receiptKeys.list({ q: 'GR-2026' }));
   });
 
-  /** 목록의 앞머리를 따로 둔다 — 뒤 회차의 상세·이력과 무효화 범위를 가르기 위해서다. */
+  /** 목록의 앞머리를 따로 둔다 — 상세·잔액과 무효화 범위를 가르기 위해서다. */
   it('앞머리가 목록임을 밝힌다', () => {
     expect(receiptKeys.list({}).slice(0, 2)).toEqual(['disposal-issue-goods-receipts', 'list']);
+  });
+
+  /**
+   * **목록과 상세의 앞머리가 갈려 있다**(`omf-mes#43` 방지). 하나로 묶으면 목록만 다시
+   * 부르려 해도 상세까지 함께 무효화되고, 그때 상세 응답이 새 참조로 오면서 **치던 값이
+   * 사라진다.** 초안이 생긴 이 회차부터 그 위험이 실제 피해다.
+   */
+  it('목록과 상세의 앞머리가 갈려 있다', () => {
+    expect(receiptKeys.detail(9001).slice(0, 2)).toEqual([
+      'disposal-issue-goods-receipts',
+      'detail',
+    ]);
+    expect(receiptKeys.detail(9001)[1]).not.toBe(receiptKeys.list({})[1]);
+  });
+
+  /** 잔액은 **창고와 품목마다** 갈린다 — 한 요청이 그 짝의 잔액만 담기 때문이다. */
+  it('잔액 키가 창고와 품목으로 갈린다', () => {
+    expect(balanceKeys.onHand(9701, 9301)).not.toEqual(balanceKeys.onHand(9701, 9302));
+    expect(balanceKeys.onHand(9701, 9301)).not.toEqual(balanceKeys.onHand(9702, 9301));
   });
 });
 
@@ -108,5 +149,218 @@ describe('useGoodsReceipts', () => {
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
+  });
+});
+
+const recording = (
+  routes: StubRoute[],
+): { fetch: ReturnType<typeof createStubFetch>; urls: URL[] } => {
+  const urls: URL[] = [];
+  const stub = createStubFetch(routes);
+
+  return {
+    fetch: (request) => {
+      urls.push(new URL(request.url));
+
+      return stub(request);
+    },
+    urls,
+  };
+};
+
+const detailRoute = (): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === DETAIL_PATH,
+  respond: () =>
+    jsonResponse({
+      goodsReceipt: goodsReceiptResponseFixtures[0],
+      lines: receiptLineResponseFixtures,
+    }),
+});
+
+describe('useGoodsReceiptDetail', () => {
+  /**
+   * **고르기 전에는 부르지 않는다**(감지기 M17). 스텁을 두고도 요청이 0건이어야 「부르지
+   * 않았다」와 「불렀는데 실패했다」가 구분된다.
+   */
+  it('고르기 전에는 요청이 나가지 않는다', async () => {
+    const { fetch, urls } = recording([detailRoute()]);
+    const { result } = renderHookWithProviders(() => useGoodsReceiptDetail(null), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(true);
+    });
+
+    expect(urls).toEqual([]);
+    expect(result.current.isError).toBe(false);
+  });
+
+  /** **헤더와 라인이 한 번에 온다** — 라인 전용 경로를 따로 부르지 않는다. */
+  it('헤더와 라인을 함께 화면 타입으로 옮긴다', async () => {
+    const { fetch, urls } = recording([detailRoute()]);
+    const { result } = renderHookWithProviders(() => useGoodsReceiptDetail(9001), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data).toBeDefined();
+    });
+
+    expect(result.current.data?.receipt).toEqual(goodsReceiptFixtures[0]);
+    expect(result.current.data?.lines).toEqual(receiptLineFixtures);
+    expect(urls).toHaveLength(1);
+  });
+});
+
+describe('isReceiptNotFound', () => {
+  /**
+   * **404만 「없다」로 읽는다.** 다른 실패와 갈라야 하는 이유는 사용자가 할 조치가 다르기
+   * 때문이다 — 없는 전표는 다시 시도해도 나타나지 않는다.
+   */
+  it('404가 아니면 없음이 아니다', async () => {
+    const build = (status: number) =>
+      recording([
+        {
+          match: (request) => new URL(request.url).pathname === DETAIL_PATH,
+          respond: () => jsonResponse({ message: '' }, { status }),
+        },
+      ]);
+
+    const notFound = renderHookWithProviders(() => useGoodsReceiptDetail(9001), {
+      fetch: build(404).fetch,
+    });
+    await waitFor(() => {
+      expect(notFound.result.current.isError).toBe(true);
+    });
+    expect(isReceiptNotFound(notFound.result.current.error)).toBe(true);
+
+    const serverError = renderHookWithProviders(() => useGoodsReceiptDetail(9001), {
+      fetch: build(500).fetch,
+    });
+    await waitFor(() => {
+      expect(serverError.result.current.isError).toBe(true);
+    });
+    expect(isReceiptNotFound(serverError.result.current.error)).toBe(false);
+  });
+});
+
+describe('useOnHandBalances', () => {
+  const balancesRoute = (): StubRoute => ({
+    match: (request) => new URL(request.url).pathname === BALANCES_PATH,
+    respond: (request) => {
+      const itemId = Number(new URL(request.url).searchParams.get('itemId'));
+      const items = balanceResponseFixturesByItem[itemId] ?? [];
+
+      return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+    },
+  });
+
+  /**
+   * **전표를 고르기 전에는 부르지 않는다**(감지기 M20). 창고 번호가 상세 응답에서 오므로
+   * 그전에는 조건을 만들 수 없다 — `?? 0`으로 메우면 **없는 창고의 조건으로 요청이 나간다.**
+   */
+  it('창고가 없으면 요청이 나가지 않고 실패로도 앉지 않는다', async () => {
+    const { fetch, urls } = recording([balancesRoute()]);
+    const { result } = renderHookWithProviders(() => useOnHandBalances(null, [9301]), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual([]);
+    });
+
+    expect(urls).toEqual([]);
+    expect(result.current.isError).toBe(false);
+  });
+
+  /**
+   * **품목마다 한 번 부른다**(감지기 M21). 같은 품목의 줄이 여럿이어도 요청은 한 번이다 —
+   * 라인마다 부르면 같은 품목이 둘일 때 두 번 나간다.
+   */
+  it('품목마다 한 번 부르고 조건 넷을 싣는다', async () => {
+    const { fetch, urls } = recording([balancesRoute()]);
+    const { result } = renderHookWithProviders(
+      () => useOnHandBalances(9701, [9301, 9301, 9302]),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.items).toHaveLength(2);
+    });
+
+    expect(urls).toHaveLength(2);
+    expect(Object.fromEntries(urls[0]?.searchParams ?? [])).toEqual({
+      warehouseId: '9701',
+      itemId: '9301',
+      groupBy: 'LOT',
+      includeZero: 'true',
+      size: String(BALANCE_PAGE_SIZE),
+    });
+  });
+
+  /** 잔액 줄을 화면 타입으로 옮긴다 — **가용 수량은 옮기지 않는다**(`types.ts`). */
+  it('품목별로 나눠 담는다', async () => {
+    const { fetch } = recording([balancesRoute()]);
+    const { result } = renderHookWithProviders(() => useOnHandBalances(9701, [9301, 9302]), {
+      fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.items.every((item) => !item.isLoading)).toBe(true);
+    });
+
+    expect(result.current.items.map((item) => item.itemId)).toEqual([9301, 9302]);
+    expect(result.current.items[0]?.entries).toEqual([
+      { groupBy: 'LOT', lotId: 9601, onHandQty: 80, uomId: 9801 },
+      { groupBy: 'LOT', lotId: 9602, onHandQty: 0, uomId: 9801 },
+    ]);
+  });
+
+  /**
+   * **한 품목의 실패를 전체 실패로 뭉치지 않는다.** 뭉치면 멀쩡히 받은 품목의 줄까지 상한을
+   * 잃는다 — 그 줄들은 화면이 막아 줄 수 있는데도 못 막게 된다.
+   */
+  it('한 품목이 실패해도 다른 품목의 잔액은 남는다', async () => {
+    const { fetch } = recording([
+      {
+        match: (request) => new URL(request.url).pathname === BALANCES_PATH,
+        respond: (request) => {
+          const itemId = Number(new URL(request.url).searchParams.get('itemId'));
+
+          if (itemId === 9302) return jsonResponse({ message: '' }, { status: 500 });
+
+          const items = balanceResponseFixturesByItem[itemId] ?? [];
+
+          return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+        },
+      },
+    ]);
+    const { result } = renderHookWithProviders(() => useOnHandBalances(9701, [9301, 9302]), {
+      fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.items[0]?.isError).toBe(false);
+    expect(result.current.items[0]?.entries).toHaveLength(2);
+    expect(result.current.items[1]?.isError).toBe(true);
+  });
+
+  /** 잘림은 **줄의 사실을 모아** 접어 올린다 — 두 자리에서 각각 재면 한쪽만 고쳐진다. */
+  it('한 품목이라도 잘리면 전체가 잘린 것이다', async () => {
+    const { fetch } = recording([
+      {
+        match: (request) => new URL(request.url).pathname === BALANCES_PATH,
+        respond: () =>
+          jsonResponse({
+            items: balanceResponseFixturesByItem[9301] ?? [],
+            page: { page: 1, size: 50, total: 500 },
+          }),
+      },
+    ]);
+    const { result } = renderHookWithProviders(() => useOnHandBalances(9701, [9301]), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.truncated).toBe(true);
+    });
+
+    expect(result.current.items[0]?.truncated).toBe(true);
   });
 });

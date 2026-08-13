@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDateTime, toReceiptView, type ReceiptResponse } from './types';
+import {
+  formatDateTime,
+  toBalanceView,
+  toReceiptLineView,
+  toReceiptView,
+  type BalanceResponse,
+  type ReceiptLineResponse,
+  type ReceiptResponse,
+} from './types';
 
 /** 계약 응답 한 건. **화면이 읽지 않는 필드도 실어** 옮기기가 실제로 고르는지 본다. */
 const response = (overrides: Partial<ReceiptResponse> = {}): ReceiptResponse => ({
@@ -55,6 +63,107 @@ describe('toReceiptView', () => {
     const view = toReceiptView(response({ statusCode: '알 수 없는 코드' }));
 
     expect(view.statusCode).toBe('알 수 없는 코드');
+  });
+});
+
+/** 라인 응답 한 줄. **화면이 읽지 않는 필드도 실어** 옮기기가 실제로 고르는지 본다. */
+const lineResponse = (overrides: Partial<ReceiptLineResponse> = {}): ReceiptLineResponse => ({
+  goodsReceiptLineId: 9401,
+  goodsReceiptId: 9001,
+  lineNo: 1,
+  inboundReceiptLineId: 9501,
+  itemId: 9301,
+  lotId: 9601,
+  receiptQty: 100,
+  uomId: 9801,
+  qualityStatusCode: 'SAMPLE_QUALITY_A',
+  inventoryStatusCode: 'SAMPLE_INVENTORY_A',
+  destinationLocationId: 9901,
+  inventoryTransactionLineId: 9111,
+  ...overrides,
+});
+
+describe('toReceiptLineView', () => {
+  /** 폐기 라인이 요구하는 다섯(품목·LOT·수량·단위·출발 위치)과 줄을 가르는 번호만 옮긴다. */
+  it('화면이 쓰는 여섯만 옮긴다', () => {
+    expect(toReceiptLineView(lineResponse())).toEqual({
+      goodsReceiptLineId: 9401,
+      itemId: 9301,
+      lotId: 9601,
+      receiptQty: 100,
+      uomId: 9801,
+      destinationLocationId: 9901,
+    });
+  });
+
+  /**
+   * 짝 방향 — **자리를 두지 않은 값은 옮겨지지 않는다.**
+   *
+   * 품질·재고 상태를 담지 않는 것은 이 화면이 **상태 코드로 줄을 가르지 않기** 때문이고
+   * (공유계약 G-2), 원장 라인·줄번호·전표 번호는 낼 것이 번호밖에 없다(`omf-mes#44`).
+   */
+  it('상태 코드·줄번호·원장 라인·전표 번호는 옮기지 않는다', () => {
+    const view: Record<string, unknown> = { ...toReceiptLineView(lineResponse()) };
+
+    for (const key of [
+      'goodsReceiptId',
+      'lineNo',
+      'inboundReceiptLineId',
+      'qualityStatusCode',
+      'inventoryStatusCode',
+      'inventoryTransactionLineId',
+    ]) {
+      expect(view).not.toHaveProperty(key);
+    }
+  });
+});
+
+/** 잔액 응답 한 줄. 화면이 쓰지 않는 수량·코드도 함께 실어 옮기기가 고르는지 본다. */
+const balanceResponse = (overrides: Partial<BalanceResponse> = {}): BalanceResponse =>
+  ({
+    groupBy: 'LOT',
+    itemId: 9301,
+    lotId: 9601,
+    warehouseId: 9701,
+    ownershipTypeCode: 'SAMPLE_OWNERSHIP_A',
+    onHandQty: 100,
+    reservedQty: 20,
+    pickedQty: 5,
+    blockedQty: 30,
+    availableQty: 45,
+    uomId: 9801,
+    ...overrides,
+  }) as BalanceResponse;
+
+describe('toBalanceView', () => {
+  it('묶은 축·LOT·보유 수량·단위만 옮긴다', () => {
+    expect(toBalanceView(balanceResponse())).toEqual({
+      groupBy: 'LOT',
+      lotId: 9601,
+      onHandQty: 100,
+      uomId: 9801,
+    });
+  });
+
+  /**
+   * **가용 수량에 자리를 두지 않는다**(계획 결정 4). 보유에서 예약·피킹·**보류**를 뺀 값인데,
+   * 폐기 대상은 바로 그 보류·차단된 재고일 가능성이 크다 — 상한으로 쓰면 **폐기해야 할 것을
+   * 화면이 막는다.** 자리가 없으면 나중에 그 값을 집어 오는 경로도 없다.
+   */
+  it('가용·예약·피킹·보류 수량은 옮기지 않는다', () => {
+    const view: Record<string, unknown> = { ...toBalanceView(balanceResponse()) };
+
+    for (const key of ['availableQty', 'reservedQty', 'pickedQty', 'blockedQty']) {
+      expect(view).not.toHaveProperty(key);
+    }
+  });
+
+  /**
+   * **없음을 없음으로 옮긴다.** 계약은 `lotId`를 「`groupBy`가 LOT일 때 채워진다」로 두었다 —
+   * `?? 0`으로 메우면 **0번 LOT의 잔액**이라는 없는 사실이 만들어지고 어느 줄의 상한으로 읽힌다.
+   */
+  it('LOT이 없는 줄은 없음으로 옮긴다', () => {
+    expect(toBalanceView(balanceResponse({ groupBy: 'ITEM', lotId: undefined })).lotId).toBeNull();
   });
 });
 
