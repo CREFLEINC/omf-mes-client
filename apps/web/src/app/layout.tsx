@@ -112,6 +112,18 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/logistics/supplier-return" icon="assignment_return">
               공급사 반품 처리
             </NavItem>
+            {/*
+             * W-01-02 — **자재창고 업무의 승인 자리**다. 결재라는 일 때문에 「승인」 섹션이
+             * 떠오르지만, 이 화면이 판정하는 것은 **자재 입하 검사를 생략할 것인가**이고
+             * 그 판단의 맥락(입하·재고·입고)이 이 섹션에 다 있다. 설계 스펙의 breadcrumb도
+             * 「자재창고」다 — 결재함은 **올라온 결재를 두루 처리하는 자리**라 축이 다르다.
+             *
+             * **기존 항목 뒤에 둔다.** 앞의 여섯이 물건이 오가는 순서이고, 이것은 그 흐름
+             * 위에서 예외를 허가하는 일이라 순서에 끼워 넣을 자리가 없다.
+             */}
+            <NavItem to="/logistics/iqc-skip-approval" icon="approval">
+              긴급 IQC 생략 한도승인
+            </NavItem>
           </SidebarSection>
           {/*
            * W-CO-09 — 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**다.

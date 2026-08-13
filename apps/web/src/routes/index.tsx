@@ -10,6 +10,7 @@ import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
+import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
@@ -93,6 +94,16 @@ export const appRouter = createBrowserRouter([
        * 내보이는 것이다(정책 §5.2 — 접근 불가능한 경계).
        */
       { path: 'logistics/supplier-return', element: <SupplierReturnScreen /> },
+      /*
+       * W-01-02 — 계약 경로는 결재함과 같은 `/app/approval-requests`인데 주소 앞머리는
+       * **사이드바 섹션을 따라** `/logistics/`다. 판정하는 것이 자재 입하 검사의 생략이라
+       * 그 판단의 맥락이 이 섹션에 있다(설계 스펙의 breadcrumb도 「자재창고」다).
+       *
+       * **세 PR이 함께 여는 자리다.** 목록·상세까지만 선 상태에서는 이 줄을 두지 않았다 —
+       * 결재할 수 없는 판정 화면을 노출하면 승인자가 **판단 근거를 다 보고서도 아무것도
+       * 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
+       */
+      { path: 'logistics/iqc-skip-approval', element: <IqcSkipApprovalScreen /> },
       /*
        * W-CO-09 — 앞머리는 같은 규칙(사이드바 섹션)이고 계약 경로(`/app/**`)를 따르지 않는다.
        * 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**여서 섹션을 새로 연다.

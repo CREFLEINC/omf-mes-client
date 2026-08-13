@@ -258,6 +258,36 @@ export const noStepsDetail: ApprovalRequestDetail = {
   steps: [],
 };
 
+/** 결재를 마친 뒤의 상태 코드. **앞의 상태와 눈에 띄게 다르다** — 갱신을 재는 표식이다. */
+export const DECIDED_STATUS_CODE = 'SAMPLE-STATUS-DECIDED';
+
+/**
+ * **결재 응답이 되돌려 주는 상세.** 9001번 요청이 결재를 마친 모습이다.
+ *
+ * 앞의 상세(`contradictoryDetail`)와 **세 자리가 다르다** — 상태 코드 · `isMyTurn` ·
+ * 그 단계에 남은 결재 의견. 「응답 그대로 갈아 끼운다」를 재려면 갈아 끼운 것이 무엇인지
+ * 화면에서 보여야 하고, 한 자리만 다르면 그 자리를 우연히 맞히는 구현도 통과한다.
+ *
+ * **`isMyTurn`이 거짓으로 온다.** 결재한 요청의 버튼이 다시 열려 있으면 사용자가 두 번
+ * 누르고, 두 번째는 서버가 400으로 되돌린다 — 무효화를 빠뜨렸을 때 나타나는 증상이 이것이다.
+ */
+export const decidedDetail: ApprovalRequestDetail = {
+  request: {
+    ...multilineReasonRequest,
+    target: targetFixtures.noScreenId,
+    statusCode: DECIDED_STATUS_CODE,
+    isMyTurn: false,
+  },
+  steps: [
+    step(1, 9501, '합성 승인자1', {
+      decisionCode: SAMPLE_DECISION_CODE_B,
+      decisionAt: '2026-08-06T16:30:00+09:00',
+      decisionComment: '합성 결재를 마친 의견',
+      isMine: true,
+    }),
+  ],
+};
+
 /**
  * 요청번호로 상세를 찾는다. **화면 시험의 스텁이 이것으로 답한다** —
  * 어느 요청을 골라도 그에 맞는 상세가 오게 해야 「고른 것과 다른 상세가 왔다」를 잴 수 있다.
