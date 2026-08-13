@@ -145,10 +145,7 @@ export const isApproved = (code: string, approvedCodes: readonly string[]): bool
  * 없어 그 자리가 죽은 가지가 된다(감지기 M64).
  */
 export type PostApproval =
-  | { kind: 'judgePending' }
-  | { kind: 'unread' }
-  | { kind: 'approved' }
-  | { kind: 'notApproved' };
+  { kind: 'judgePending' } | { kind: 'unread' } | { kind: 'approved' } | { kind: 'notApproved' };
 
 export const readPostApproval = (
   approvedCodes: readonly string[],

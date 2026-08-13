@@ -180,6 +180,21 @@ type SubmitChain =
 const NO_CHAIN: SubmitChain = { kind: 'none' };
 
 /**
+ * 사유 전문의 첫 줄. **빈 배열이 오지 않는다는 사실을 타입으로 좁히는 자리**다.
+ *
+ * `toReasonLines`가 빈 사유에도 자리표시 한 줄을 넣어 되돌려 주므로(`types.ts`) 이 배열은 늘
+ * 1행 이상이다. 그 사실을 `?? ''` 같은 대체값으로 적으면 **닿을 수 없는 갈래**가 코드에 남고,
+ * 「빈 문자열로 접지 않는다」는 규율과 접는 모양이 한 줄에 함께 서게 된다.
+ */
+const firstReasonLine = (lines: readonly string[]): string => {
+  const [first] = lines;
+
+  if (first === undefined) throw new Error('사유 전문은 늘 한 줄 이상이다.');
+
+  return first;
+};
+
+/**
  * 참조 목록을 선택지로 옮긴다.
  *
  * **미사용 값을 빼지 않고 표식만 붙인다.** 창고를 `includeInactive=true`로 받는 이유는
@@ -1627,7 +1642,13 @@ export const DisposalIssueScreen = () => {
    */
   const postReasonSummary: PostReasonSummary =
     approvalState.kind === 'ready'
-      ? { kind: 'known', firstLine: approvalState.view.reasonLines[0] ?? '' }
+      ? /*
+         * **대체값을 두지 않는다**(리뷰 t5 N2). `toReasonLines`가 빈 사유에 자리표시 한 줄을
+         * 넣어 되돌려 주므로 이 배열은 **늘 1행 이상**이고, `?? ''`는 닿을 수 없는 자리다 —
+         * 바로 위 규율이 「빈 문자열로 접지 않는다」인데 접는 모양의 대체값을 함께 두면
+         * 다음 사람이 그 규율을 「지키지 않아도 되는 것」으로 읽는다.
+         */
+        { kind: 'known', firstLine: firstReasonLine(approvalState.view.reasonLines) }
       : { kind: 'unread' };
 
   /** 확인 창을 연다. 막히면 **창을 열지 않고 요청도 만들지 않는다.** */

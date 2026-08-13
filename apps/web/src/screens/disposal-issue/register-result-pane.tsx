@@ -113,8 +113,16 @@ export const RegisterResultPane = ({
           <dd>{issue.goodsIssueNo}</dd>
         </div>
         <div className="field-cell">
-          {/* 상태 코드를 **그대로** 낸다 — 값 목록이 확정되지 않아 뜻을 옮길 근거가 없다. */}
-          <dt className="field-label">{t.result.statusCode}</dt>
+          {/*
+           * 상태 코드를 **그대로** 낸다 — 값 목록이 확정되지 않아 뜻을 옮길 근거가 없다.
+           *
+           * **어느 시점의 값인지를 라벨이 밝힌다**(리뷰 t5 M2). 이 값은 **전표를 만들 때**
+           * 서버가 준 것이고, 그 뒤 상신·전기로 달라진다 — 밝히지 않으면 같은 전표를 두 탭이
+           * 서로 다른 상태로 말하는 것처럼 읽힌다. 지금 상태를 여기서 다시 읽어 오지 않는
+           * 이유는 그러면 이 구획이 상세 조회에 매여 **치던 값이 사라지는 축**(`omf-mes#43`)이
+           * 하나 늘기 때문이다.
+           */}
+          <dt className="field-label">{t.result.createdStatusCode}</dt>
           <dd>{issue.statusCode}</dd>
         </div>
       </dl>

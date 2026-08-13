@@ -294,8 +294,8 @@ describe('postBlockReason — 처리를 잠글 근거', () => {
 
   /** **차례가 뜻을 정한다** — 미상신이면 승인 여부를 말할 것이 없으므로 그 사유가 앞선다. */
   it('미상신이면 승인 사유보다 상신 사유가 앞선다', () => {
-    expect(
-      postBlockReason({ submission: 'notSubmitted', approval: { kind: 'notApproved' } }),
-    ).toBe(t.actionReasons.postNeedsSubmission);
+    expect(postBlockReason({ submission: 'notSubmitted', approval: { kind: 'notApproved' } })).toBe(
+      t.actionReasons.postNeedsSubmission,
+    );
   });
 });

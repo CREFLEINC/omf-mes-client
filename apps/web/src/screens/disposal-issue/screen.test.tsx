@@ -4987,6 +4987,79 @@ describe('DisposalIssueScreen — 처리 성공 뒤', () => {
   });
 
   /**
+   * **다시 부른 상세가 화면의 진술을 뒤집는다**(리뷰 t5 M3). 무효화를 요청 수로만 재면
+   * **두 끝이 따로 재어질 뿐** 이어지지 않는다 — 「다시 불렀다」와 「그래서 화면이 달라졌다」
+   * 사이가 비어 있으면, 뿌리 하나를 잘못 겨눠도 요청 수는 그대로라 아무도 울지 않는다.
+   *
+   * 되돌릴 수 없는 쓰기의 **사후 상태**를 화면이 말하는 자리라(#127 Major의 축) 값이 있다:
+   * 전기 뒤 상세가 **원장 라인 번호를 실어 오면** 라인 표의 표식이 「전기 전」에서 「전기됨」이
+   * 되고, 결재 진행의 **「재고는 아직 차감되지 않았습니다」가 사라진다**(그 문장이 거짓이 됐다).
+   *
+   * 승인 자리표시를 채워 두는 이유는 그 안내가 **채워졌을 때만** 서기 때문이다 —
+   * 두 방향(있다 → 없다)을 한 잣대에서 재려면 먼저 서 있어야 한다.
+   */
+  it('성공 뒤 다시 부른 상세가 전기 표식을 세우고 승인 뒤 안내를 거둔다', async () => {
+    fillApprovedStatusCodes();
+
+    let posted = false;
+
+    const { user } = await setupReadyToPost(
+      allRoutes([
+        {
+          /* **전기 전후로 다른 상세를 준다** — 전기됐다는 사실이 화면에 오는 길이 재조회다. */
+          match: (request) => isGet(request, ISSUE_DETAIL_PATH),
+          respond: () =>
+            jsonResponse(
+              issueDetailBody(
+                posted
+                  ? goodsIssueLineResponseFixtures.map((line, index) => ({
+                      ...line,
+                      inventoryTransactionLineId: 9541 + index,
+                    }))
+                  : postableIssueLines,
+              ),
+              { headers: { ETag: ISSUE_DETAIL_ETAG } },
+            ),
+        },
+        {
+          match: (request) => isPost(request, POST_PATH),
+          respond: () => {
+            posted = true;
+
+            return jsonResponse(goodsIssueResponseFixtures[0]);
+          },
+        },
+      ]),
+    );
+
+    /* 전기 전 — 표식은 「전기 전」이고 승인 뒤 안내가 서 있다. */
+    const detailPane = historyDetailPane();
+
+    expect(await within(detailPane).findByText(t.progress.approvedNotPostedNote)).toBeVisible();
+    expect(within(detailPane).getAllByText(t.values.notPosted).length).toBe(
+      goodsIssueLineResponseFixtures.length,
+    );
+    expect(within(detailPane).queryByText(t.values.posted)).not.toBeInTheDocument();
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByRole('region', { name: t.result.postLabel });
+
+    /* 전기 뒤 — 다시 부른 상세가 두 진술을 함께 뒤집는다. */
+    await waitFor(() => {
+      expect(within(historyDetailPane()).getAllByText(t.values.posted).length).toBe(
+        goodsIssueLineResponseFixtures.length,
+      );
+    });
+    await waitFor(() => {
+      expect(
+        within(historyDetailPane()).queryByText(t.progress.approvedNotPostedNote),
+      ).not.toBeInTheDocument();
+    });
+    expect(within(historyDetailPane()).queryByText(t.values.notPosted)).not.toBeInTheDocument();
+  });
+
+  /**
    * **잔액도 함께 무효화한다** — 이 쓰기만 재고를 움직였다. 낡은 상한으로 다음 품의를 올리면
    * **이미 없어진 자재를 폐기하려 한다.**
    *
