@@ -392,6 +392,9 @@ const approvalStep = (overrides: Partial<ApprovalStepResponse> = {}): ApprovalSt
  * - 사유가 **여러 줄**이다 — 전문의 줄바꿈이 유지되는지 재는 자리다
  * - 둘째 단계는 **결재 전이고 승인자 이름이 비어 있다** — 「번호를 대신 내지 않는다」가
  *   실제 값으로 걸린다
+ * - **단계 번호가 비연속(1·4)이다** — 연속으로 두면 `stepNo`를 배열 인덱스+1로 다시 매기는
+ *   결함이 **값이 같아 가려진다**(검증 t3 관찰 ①). 결재선의 단계가 지워지거나 건너뛴 요청이
+ *   실재하므로 지어낸 자료도 아니다
  */
 export const approvalRequestDetailFixture: ApprovalRequestDetailResponse = {
   request: {
@@ -410,14 +413,14 @@ export const approvalRequestDetailFixture: ApprovalRequestDetailResponse = {
       displayName: '합성 대상 문서',
       openable: false,
     },
-    currentStepNo: 2,
-    totalStepNo: 2,
+    currentStepNo: 4,
+    totalStepNo: 4,
     isMyTurn: false,
   },
   steps: [
     approvalStep(),
     approvalStep({
-      stepNo: 2,
+      stepNo: 4,
       approverId: 9552,
       approverName: '',
       decisionCode: null,

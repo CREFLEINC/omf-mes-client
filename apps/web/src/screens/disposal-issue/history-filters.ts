@@ -211,10 +211,7 @@ export const toIssueFilterChips = (filters: IssueFilters): IssueFilterChip[] => 
   const query = normalizeText(filters.q);
 
   const candidates: [IssueFilterChip, string][] = [
-    [
-      { key: 'period', label: periodLabel(from, to), removeLabel: null },
-      from === '' ? to : from,
-    ],
+    [{ key: 'period', label: periodLabel(from, to), removeLabel: null }, from === '' ? to : from],
     [
       {
         key: 'issueType',

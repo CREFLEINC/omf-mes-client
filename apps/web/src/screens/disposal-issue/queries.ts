@@ -106,6 +106,12 @@ export const issueKeys = {
  * **출고 전표 키와 갈라 둔다** — 다른 계약(`/app/**`)의 자원이고, 이 화면은 그것을 읽기만 한다.
  */
 export const approvalKeys = {
+  /**
+   * 이 자원의 조회를 덮는 뿌리 키. **쓰기가 붙는 회차에 상신·전기 성공 뒤 이 하나를 무효화한다** —
+   * 결재 진행이 함께 갱신돼야 「상신했는데 아직 상신되지 않았다고 말하는」 화면이 생기지 않는다.
+   * 지금은 소비처가 없고, 그 사실을 적어 두는 것이 「쓰이지 않는 자리」와 「아직 쓰이지 않는
+   * 자리」를 가른다.
+   */
   all: ['disposal-issue-approval-requests'] as const,
   detail: (approvalRequestId: number | null) =>
     ['disposal-issue-approval-requests', 'detail', approvalRequestId] as const,
@@ -221,7 +227,10 @@ export const useGoodsReceiptDetail = (
   });
 };
 
-const fetchGoodsIssues = async (client: Client, query: IssueListQuery): Promise<IssueListResult> => {
+const fetchGoodsIssues = async (
+  client: Client,
+  query: IssueListQuery,
+): Promise<IssueListResult> => {
   const data = await runRequest(() => client.GET('/logistics/goods-issues', { params: { query } }));
 
   return { items: data.items.map(toIssueView), page: data.page };

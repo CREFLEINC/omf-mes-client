@@ -4,12 +4,20 @@ import type { ReactNode } from 'react';
 
 import type { RequestProgressView, StepProgressView } from './approval-progress';
 import { describeLoadError } from './load-error-banner';
-import { isApprovalForbidden } from './queries';
+import { isApprovalForbidden, isApprovalNotFound } from './queries';
 import { toApiError } from '../../patterns/request';
 
 const t = messages.disposalIssue;
 
-const NO_BREAK_SPACE = ' ';
+/**
+ * 줄바꿈 없는 공백(U+00A0).
+ *
+ * **escape로 적고 `export`한다**(전례 `iqc-skip-approval`과 같은 형태). 원시 글자로 두면 저장소의
+ * 「비가시 공백 정리」 한 번이 **제품과 시험을 함께 지나** `toVisibleLine`을 무동작으로 만드는데,
+ * 기대값이 같은 글자를 다시 쓰고 있으면 감지기가 아무 말도 하지 않는다(자기참조 · 리뷰 t3 실측).
+ * `export`는 시험이 이 값을 **문자열 리터럴이 아니라 상수로** 참조하게 하려는 것이다.
+ */
+export const NO_BREAK_SPACE = '\u00a0';
 
 /**
  * 사유 한 줄을 **보이는 글자**로 만든다.
@@ -41,7 +49,7 @@ export const toVisibleLine = (line: string): string => {
  * | `unusable` | 값은 있으나 조회 조각으로 쓸 수 없다 | 그 사실만 밝힌다 |
  * | `loading` | 승인 요청 조회 진행 중 | 뼈대 |
  * | `ready` | 승인 요청 상세가 200 | 요청 정보 · 사유 전문 · 세로 단계 |
- * | `failed` | 403·404·네트워크 | 구획 안 안내(**403에는 다시 시도가 없다**) |
+ * | `failed` | **403 · 404 · 그 밖** 셋으로 다시 갈린다 | 구획 안 안내(**403에만 다시 시도가 없다**) |
  *
  * **어느 갈래에서도 화면 배너를 세우지 않는다.** 결재 진행은 **판단을 돕는 자료이지 처리의
  * 전제가 아니다**(계획 결정 3·9) — 못 읽었다고 화면 전체가 실패로 보이면 사용자는 품의 정보와
@@ -149,22 +157,46 @@ interface FailedProgressProps {
 }
 
 /**
- * 못 읽었을 때. **화면 배너를 세우지 않고 이 구획 안에서만 말한다** — 결재 진행은 판단을 돕는
- * 자료이지 처리의 전제가 아니라, 못 읽었다고 품의 정보와 라인까지 실패로 보이면 안 된다.
+ * 못 읽었을 때 — **세 갈래다.** 화면 배너를 세우지 않고 이 구획 안에서만 말한다: 결재 진행은
+ * 판단을 돕는 자료이지 처리의 전제가 아니라, 못 읽었다고 품의 정보와 라인까지 실패로 보이면 안 된다.
  *
- * **403에는 「다시 시도」를 내지 않는다.** 계약이 「승인자도 상신자도 아니면 403」이라 적었고,
+ * | 갈래 | 화면이 하는 말 | 「다시 시도」 |
+ * | :-: | --- | :-: |
+ * | **403** | 「이 요청의 결재 진행을 볼 권한이 없습니다」 | **없다** |
+ * | **404** | 「결재 진행을 찾을 수 없습니다」 | 있다 |
+ * | 그 밖(네트워크·5xx) | 「결재 진행을 불러오지 못했습니다」 + 서버 문구 | 있다 |
+ *
+ * **셋 다 계약이 실제로 내는 갈래다** — 승인 요청 상세의 응답은 200·403·404다(생성물 실측).
+ * 문구만 두고 갈래를 만들지 않으면 그 문구가 **닿을 수 없는 가지**가 된다(리뷰 t3 Minor ④).
+ *
+ * **403에만 「다시 시도」를 내지 않는다.** 계약이 「승인자도 상신자도 아니면 403」이라 적었고
  * 같은 권한으로 다시 불러도 같은 답이 온다 — 누를 수 있는 조치를 주면 사용자를 헛돌게 한다.
+ * **404에는 남긴다**: 여기 404는 「전표가 가리키는 요청이 지금 보이지 않는다」이고, 방금 상신한
+ * 건이 승인 축에 아직 안 보이는 순간이 실재한다 — 권한과 달리 **다시 부르면 달라질 수 있다.**
  */
 const FailedProgress = ({ error, onRetry }: FailedProgressProps) => {
   const forbidden = isApprovalForbidden(error);
+  const notFound = isApprovalNotFound(error);
+
+  const title = ((): string => {
+    if (forbidden) return t.progress.forbiddenTitle;
+
+    return notFound ? t.progress.notFoundTitle : t.progress.loadFailedTitle;
+  })();
+
+  const description = ((): string => {
+    if (forbidden) return t.progress.forbiddenDescription;
+
+    return notFound ? t.progress.notFoundDescription : describeLoadError(toApiError(error));
+  })();
 
   return (
     <>
       <EmptyState
         size="sm"
         live
-        title={forbidden ? t.progress.forbiddenTitle : t.progress.loadFailedTitle}
-        description={forbidden ? t.progress.forbiddenDescription : describeLoadError(toApiError(error))}
+        title={title}
+        description={description}
         action={
           forbidden ? undefined : (
             <Button variant="outlined" onClick={onRetry}>
@@ -226,7 +258,7 @@ const ReadyProgress = ({ view, isJudgePending, hasPosted }: ReadyProgressProps) 
        */}
       <div className="field-cell">
         <span className="field-label">{t.progress.reason}</span>
-        <div role="group" aria-label={t.progress.reason}>
+        <div role="group" aria-label={t.progress.reasonPane}>
           {view.reasonLines.map((line, index) => (
             <p key={`${String(index)}:${line}`}>{toVisibleLine(line)}</p>
           ))}

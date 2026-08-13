@@ -228,7 +228,13 @@ describe('toIssueFilterChips — 걸린 조건이 보인다', () => {
    */
   it('기간 칩에만 해제 버튼이 없다', () => {
     const chips = toIssueFilterChips(
-      filters({ from: '2026-08-01', issueType: 'CODE_A', reason: 'CODE_B', status: 'CODE_C', q: 'GI' }),
+      filters({
+        from: '2026-08-01',
+        issueType: 'CODE_A',
+        reason: 'CODE_B',
+        status: 'CODE_C',
+        q: 'GI',
+      }),
     );
 
     expect(chips.find((chip) => chip.key === 'period')?.removeLabel).toBeNull();
@@ -239,7 +245,13 @@ describe('toIssueFilterChips — 걸린 조건이 보인다', () => {
 
   it('칩 차례가 조건 줄의 컨트롤 차례와 같다', () => {
     const chips = toIssueFilterChips(
-      filters({ from: '2026-08-01', issueType: 'CODE_A', reason: 'CODE_B', status: 'CODE_C', q: 'GI' }),
+      filters({
+        from: '2026-08-01',
+        issueType: 'CODE_A',
+        reason: 'CODE_B',
+        status: 'CODE_C',
+        q: 'GI',
+      }),
     );
 
     expect(chips.map((chip) => chip.key)).toEqual(['period', 'issueType', 'reason', 'status', 'q']);

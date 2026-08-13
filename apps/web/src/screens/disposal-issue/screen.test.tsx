@@ -293,6 +293,12 @@ const balancesRoute = (): StubRoute => ({
   },
 });
 
+/** 참조 다섯 중 **하나만** 실패시킨다 — 넷을 접는 판정의 범위를 재는 자리다. */
+const failingReferenceRoute = (pathname: string): StubRoute => ({
+  match: (request) => isGet(request, pathname),
+  respond: () => jsonResponse({ message: '' }, { status: 500 }),
+});
+
 const lineReferenceRoutes = (): StubRoute[] => [
   { match: (request) => isGet(request, ITEMS_PATH), respond: () => jsonResponse(listBody(itemFixtures)) },
   { match: (request) => isGet(request, UOMS_PATH), respond: () => jsonResponse(listBody(uomFixtures)) },
@@ -2250,6 +2256,56 @@ describe('DisposalIssueScreen — 이력 조건', () => {
   });
 });
 
+describe('DisposalIssueScreen — 대상 조건의 범위', () => {
+  /*
+   * **수명 표 1~3행의 거울 방향**(리뷰 t3 Major ①).
+   *
+   * 이력 쪽 범위는 「이력 조건 변경이 대상 조건과 고른 전표를 건드리지 않는다」가 이미 재고
+   * 있었으나, **대상 쪽 범위를 재는 잣대가 없었다.** 한쪽만 있으면 「범위 있는 규칙은 잣대도
+   * 같은 범위로」가 절반만 지켜지고, `toScreenParams`는 인자 일곱을 받는 한 문이라 **인자 하나를
+   * 손으로 더하는 것만으로** 「대상 조건을 바꿨더니 이력 조건까지 사라졌다」가 만들어진다.
+   *
+   * 세 조작을 **각각** 잰다 — 조건 변경·초기화·쪽 이동이 수명 표에서 서로 다른 행이고,
+   * 실제로도 `applyQuery`를 부르는 자리가 셋이라 한 자리만 고쳐지는 일이 생긴다.
+   */
+  it('대상 조건 변경이 이력 조건과 고른 품의를 건드리지 않는다', async () => {
+    const { user } = renderScreen(allRoutes(), '?iq=GI&gr=9001&gi=9501');
+
+    await waitForList();
+    await user.type(screen.getByLabelText(t.fields.q), 'GR');
+    await search(user);
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?q=GR&iq=GI&gi=9501`);
+    });
+  });
+
+  it('대상 초기화가 이력 조건과 고른 품의를 건드리지 않는다', async () => {
+    const { user } = renderScreen(allRoutes(), '?q=GR&iq=GI&gr=9001&gi=9501');
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?iq=GI&gi=9501`);
+    });
+  });
+
+  it('대상 쪽 이동이 이력 조건과 고른 품의를 건드리지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([listRoute(goodsReceiptResponseFixtures, { total: 120 })]),
+      '?iq=GI&gr=9001&gi=9501',
+    );
+
+    await waitForList();
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}?page=2&iq=GI&gi=9501`);
+    });
+  });
+});
+
 describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
   /** 감지기 M35 — 고르기 전에 부르면 이 단언이 무너진다. **경로 전체를 세어** 판정한다. */
   it('고르기 전에는 부르지 않고 고르면 한 번 부른다', async () => {
@@ -2350,6 +2406,57 @@ describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
   });
 });
 
+describe('DisposalIssueScreen — 이력 라인 표의 참조 실패', () => {
+  /*
+   * **넷 중 어느 하나가 실패해도 사유와 「다시 시도」가 선다**(리뷰 t3 Minor ②).
+   *
+   * 안내 문구가 품목·단위·자재 LOT·위치 **넷을 함께** 적고 「다시 시도」가 **넷을 함께** 부르므로,
+   * 판정도 같은 범위여야 문구와 조치가 어긋나지 않는다. 접기를 하나로 좁히면 나머지 셋이
+   * 실패했을 때 **복구 경로가 통째로 사라진다** — 품목만 보고 판정하는 형태가 그 결함이다.
+   *
+   * **품목이 아닌 축 둘로 잰다.** 품목으로만 재면 「`items.isError` 하나만 본다」는 결함이
+   * 그대로 통과한다.
+   */
+  it('자재 LOT만 실패해도 사유와 다시 시도가 선다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([failingReferenceRoute(LOTS_PATH)]),
+      `${HISTORY_SEARCH}&gi=9501`,
+    );
+
+    const pane = historyDetailPane();
+
+    expect(await within(pane).findByText(t.reasons.lineReferencesFailed)).toBeVisible();
+
+    await user.click(within(pane).getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, LOTS_PATH).length).toBeGreaterThan(1);
+    });
+  });
+
+  it('위치만 실패해도 사유가 선다', async () => {
+    renderScreen(
+      allRoutes([failingReferenceRoute(LOCATIONS_PATH)]),
+      `${HISTORY_SEARCH}&gi=9501`,
+    );
+
+    expect(
+      await within(historyDetailPane()).findByText(t.reasons.lineReferencesFailed),
+    ).toBeVisible();
+  });
+
+  /** 짝 방향 — 다섯이 다 성공하면 사유도 「다시 시도」도 서지 않는다. */
+  it('참조가 다 성공하면 사유가 서지 않는다', async () => {
+    renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
+
+    await waitForIssueLines();
+
+    expect(
+      within(historyDetailPane()).queryByText(t.reasons.lineReferencesFailed),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('DisposalIssueScreen — 결재 진행', () => {
   /**
    * 감지기 M43·M44 — **값이 있을 때만 부르고, 그 값을 그대로 경로에 옮긴다**(계획 결정 10).
@@ -2411,8 +2518,13 @@ describe('DisposalIssueScreen — 결재 진행', () => {
 
     const progress = await screen.findByRole('group', { name: t.progress.label });
 
-    expect(within(progress).getByText(t.progress.position(2, 2))).toBeInTheDocument();
+    expect(within(progress).getByText(t.progress.position(4, 4))).toBeInTheDocument();
     expect(within(progress).getByText('합성 승인자 가')).toBeInTheDocument();
+    /*
+     * **노드에 서버가 준 단계 번호가 선다**(검증 t3 관찰 ①). 픽스처의 단계 번호가 비연속(1·4)이라
+     * 배열 인덱스+1로 다시 매기는 결함이 여기서 값으로 갈린다 — 연속이면 가려진다.
+     */
+    expect(within(progress).getByText('4')).toBeInTheDocument();
     expect(within(progress).getByText('SAMPLE_DECISION_A')).toBeInTheDocument();
     expect(within(progress).getByText(t.progress.waitingCurrent)).toBeInTheDocument();
   });
@@ -2437,7 +2549,7 @@ describe('DisposalIssueScreen — 결재 진행', () => {
   it('상신 사유 전문이 줄 단위로 보인다', async () => {
     renderScreen(allRoutes(), `${HISTORY_SEARCH}&gi=9501`);
 
-    const reason = await screen.findByRole('group', { name: t.progress.reason });
+    const reason = await screen.findByRole('group', { name: t.progress.reasonPane });
 
     expect(reason.querySelectorAll('p')).toHaveLength(3);
     expect(within(reason).getByText('합성 폐기 사유 첫 줄')).toBeInTheDocument();

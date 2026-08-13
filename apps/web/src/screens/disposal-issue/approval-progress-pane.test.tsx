@@ -3,12 +3,10 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  toRequestProgressView,
-  type RequestProgressView,
-} from './approval-progress';
+import { toRequestProgressView, type RequestProgressView } from './approval-progress';
 import {
   ApprovalProgressPane,
+  NO_BREAK_SPACE,
   toVisibleLine,
   type ApprovalProgressPaneProps,
 } from './approval-progress-pane';
@@ -20,7 +18,9 @@ const t = messages.disposalIssue;
 const view = (approvedCodes: readonly string[] = []): RequestProgressView =>
   toRequestProgressView(approvalRequestDetailFixture, [], approvedCodes);
 
-const baseProps = (overrides: Partial<ApprovalProgressPaneProps> = {}): ApprovalProgressPaneProps => ({
+const baseProps = (
+  overrides: Partial<ApprovalProgressPaneProps> = {},
+): ApprovalProgressPaneProps => ({
   state: { kind: 'ready', view: view() },
   isJudgePending: true,
   hasPosted: false,
@@ -78,7 +78,7 @@ describe('ApprovalProgressPane — 다섯 갈래', () => {
     expect(screen.getByText('SAMPLE_AP_TYPE_A')).toBeInTheDocument();
     expect(screen.getByText('합성 상신자 가')).toBeInTheDocument();
     expect(screen.getByText('2026-08-08 14:35')).toBeInTheDocument();
-    expect(screen.getByText(t.progress.position(2, 2))).toBeInTheDocument();
+    expect(screen.getByText(t.progress.position(4, 4))).toBeInTheDocument();
   });
 });
 
@@ -114,8 +114,43 @@ describe('ApprovalProgressPane — 못 읽었을 때', () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  it('403과 다른 실패의 안내가 서로 다르다', () => {
-    expect(t.progress.forbiddenTitle).not.toBe(t.progress.loadFailedTitle);
+  /**
+   * **404를 그 밖의 실패와 가른다**(리뷰 t3 Minor ④). 계약이 이 조회에 404를 두었고(생성물 실측),
+   * 「전표가 가리키는 요청이 지금 보이지 않는다」와 「불러오지 못했다」는 사용자가 읽는 사정이
+   * 다르다 — 문구만 두고 갈래를 만들지 않으면 그 문구가 닿을 수 없는 가지가 된다.
+   */
+  it('404는 그 밖의 실패와 다른 안내를 낸다', () => {
+    renderPane({ state: { kind: 'failed', error: httpError(404) } });
+
+    expect(screen.getByText(t.progress.notFoundTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.progress.loadFailedTitle)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.progress.forbiddenTitle)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **404에는 「다시 시도」를 남긴다.** 권한과 달리 다시 부르면 달라질 수 있다 —
+   * 방금 상신한 건이 승인 축에 아직 안 보이는 순간이 실재한다.
+   */
+  it('404에는 다시 시도가 있다', async () => {
+    const { onRetry, user } = renderPane({ state: { kind: 'failed', error: httpError(404) } });
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('그 밖의 실패는 일반 안내를 낸다', () => {
+    renderPane({ state: { kind: 'failed', error: httpError(500) } });
+
+    expect(screen.getByText(t.progress.loadFailedTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.progress.notFoundTitle)).not.toBeInTheDocument();
+  });
+
+  it('세 갈래의 안내가 서로 다르다', () => {
+    expect(
+      new Set([t.progress.forbiddenTitle, t.progress.notFoundTitle, t.progress.loadFailedTitle])
+        .size,
+    ).toBe(3);
   });
 });
 
@@ -130,7 +165,7 @@ describe('ApprovalProgressPane — 단계 표기', () => {
     const list = screen.getByRole('list');
 
     expect(within(list).getByText('1')).toBeInTheDocument();
-    expect(within(list).getByText('2')).toBeInTheDocument();
+    expect(within(list).getByText('4')).toBeInTheDocument();
   });
 
   /**
@@ -182,17 +217,28 @@ describe('ApprovalProgressPane — 사유 전문', () => {
   it('사유를 줄 단위로 낸다', () => {
     renderPane();
 
-    const reason = screen.getByRole('group', { name: t.progress.reason });
+    const reason = screen.getByRole('group', { name: t.progress.reasonPane });
 
     expect(reason.querySelectorAll('p')).toHaveLength(3);
     expect(within(reason).getByText('합성 폐기 사유 첫 줄')).toBeInTheDocument();
     expect(within(reason).getByText('둘째 문단 — 근거를 적는 자리')).toBeInTheDocument();
   });
 
+  /**
+   * **기대값이 같은 글자를 다시 쓰면 자기참조가 된다.** 제품의 U+00A0을 보통 공백으로 바꿔도
+   * 시험이 원시 글자를 적고 있으면 「비가시 공백 정리」 한 번이 둘을 함께 지나 감지기가 죽지
+   * 않는다 — 리뷰 t3이 실측한 자리다. 그 고리를 코드 포인트로 끊는다(전례 `iqc-skip-approval`).
+   */
+  it('줄바꿈 없는 공백이 정말 U+00A0이다 — 보통 공백이 아니다', () => {
+    expect(NO_BREAK_SPACE).toBe('\u00a0');
+    expect(NO_BREAK_SPACE).not.toBe(' ');
+    expect(NO_BREAK_SPACE.codePointAt(0)).toBe(0x00a0);
+  });
+
   /** 빈 줄과 들여쓴 줄은 HTML에서 접힌다 — 글자를 세워 상자가 높이를 갖게 한다. */
   it('빈 줄과 들여쓰기가 보이는 글자로 남는다', () => {
-    expect(toVisibleLine('')).toBe(' ');
-    expect(toVisibleLine('  들여쓴 줄')).toBe('  들여쓴 줄');
+    expect(toVisibleLine('')).toBe(NO_BREAK_SPACE);
+    expect(toVisibleLine('  들여쓴 줄')).toBe(`${NO_BREAK_SPACE.repeat(2)}들여쓴 줄`);
     expect(toVisibleLine('보통 줄')).toBe('보통 줄');
   });
 

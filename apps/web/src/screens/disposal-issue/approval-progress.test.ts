@@ -35,10 +35,11 @@ const step = (overrides: Partial<ApprovalStepResponse> = {}): ApprovalStepRespon
   ...overrides,
 });
 
-const line = (overrides: Partial<IssueLineView> = {}): IssueLineView => ({
-  ...goodsIssueLineFixtures[0],
-  ...overrides,
-} as IssueLineView);
+const line = (overrides: Partial<IssueLineView> = {}): IssueLineView =>
+  ({
+    ...goodsIssueLineFixtures[0],
+    ...overrides,
+  }) as IssueLineView;
 
 describe('자리표시 — 지금은 비어 있다', () => {
   /*
@@ -115,7 +116,9 @@ describe('전기 여부 — 원장 라인 유무로만 갈린다', () => {
   it('한 줄이라도 전기됐으면 그 전표는 전기가 시작된 것이다', () => {
     expect(hasPostedLine(goodsIssueLineFixtures)).toBe(true);
     expect(
-      hasPostedLine(goodsIssueLineFixtures.map((row) => ({ ...row, inventoryTransactionLineId: null }))),
+      hasPostedLine(
+        goodsIssueLineFixtures.map((row) => ({ ...row, inventoryTransactionLineId: null })),
+      ),
     ).toBe(false);
   });
 
@@ -152,7 +155,10 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
    * (목 실측), 그때 「진행 중」으로 그리면 사용자가 이미 끝난 단계를 기다린다.
    */
   it('결재 기록이 있으면 차례 표시보다 그것이 앞선다', () => {
-    const views = toStepProgressViews([step({ decisionCode: 'SAMPLE_DECISION_A', isCurrent: true })], []);
+    const views = toStepProgressViews(
+      [step({ decisionCode: 'SAMPLE_DECISION_A', isCurrent: true })],
+      [],
+    );
 
     expect(views[0]?.status).toBe('complete');
   });
@@ -165,9 +171,10 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
 
   /* 전환 감지기 — 채우면 그 코드의 단계가 반려로 그려진다. */
   it('반려 자리표시를 채우면 그 코드가 반려가 된다', () => {
-    const views = toStepProgressViews([step({ decisionCode: SAMPLE_REJECTION_DECISION })], [
-      SAMPLE_REJECTION_DECISION,
-    ]);
+    const views = toStepProgressViews(
+      [step({ decisionCode: SAMPLE_REJECTION_DECISION })],
+      [SAMPLE_REJECTION_DECISION],
+    );
 
     expect(views[0]?.status).toBe('rejected');
   });
@@ -225,7 +232,9 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
    * 읽히고, 사용자는 있지도 않은 승인 버튼을 찾는다.
    */
   it('내 단계 표식을 나르지 않는다', () => {
-    const view: Record<string, unknown> = { ...toStepProgressViews([step({ isMine: true })], [])[0] };
+    const view: Record<string, unknown> = {
+      ...toStepProgressViews([step({ isMine: true })], [])[0],
+    };
 
     expect(view).not.toHaveProperty('isMine');
   });
@@ -247,11 +256,7 @@ describe('toRequestProgressView — 구획이 그리는 것 전부', () => {
 
   /* 사유는 **전문**이고 줄바꿈이 유지된다 — 첫 줄만 내는 것은 목록의 일이다. */
   it('사유 전문을 줄 단위로 낸다', () => {
-    expect(view.reasonLines).toEqual([
-      '합성 폐기 사유 첫 줄',
-      '',
-      '둘째 문단 — 근거를 적는 자리',
-    ]);
+    expect(view.reasonLines).toEqual(['합성 폐기 사유 첫 줄', '', '둘째 문단 — 근거를 적는 자리']);
   });
 
   /**
@@ -259,7 +264,7 @@ describe('toRequestProgressView — 구획이 그리는 것 전부', () => {
    * 갈리는 순간 화면이 서버가 말하지 않은 것을 말하게 된다.
    */
   it('위치를 서버가 준 두 수로 말한다', () => {
-    expect(view.positionText).toBe(t.progress.position(2, 2));
+    expect(view.positionText).toBe(t.progress.position(4, 4));
   });
 
   it('모순되는 응답에서도 서버 값을 따른다', () => {
@@ -279,7 +284,7 @@ describe('toRequestProgressView — 구획이 그리는 것 전부', () => {
       [],
     );
 
-    expect(finished.positionText).toBe(t.progress.finished(2));
+    expect(finished.positionText).toBe(t.progress.finished(4));
   });
 
   /**
@@ -301,9 +306,9 @@ describe('toRequestProgressView — 구획이 그리는 것 전부', () => {
   /* 전환 감지기 — 자리표시가 채워지면 그 상태의 요청이 승인으로 읽힌다. */
   it('승인 자리표시를 채우면 그 요청이 승인으로 읽힌다', () => {
     expect(view.isApproved).toBe(false);
-    expect(toRequestProgressView(approvalRequestDetailFixture, [], [SAMPLE_APPROVED_STATUS]).isApproved).toBe(
-      true,
-    );
+    expect(
+      toRequestProgressView(approvalRequestDetailFixture, [], [SAMPLE_APPROVED_STATUS]).isApproved,
+    ).toBe(true);
   });
 
   it('결재하는 화면의 표기를 나르지 않는다', () => {

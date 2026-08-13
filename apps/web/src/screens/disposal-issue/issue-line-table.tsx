@@ -82,9 +82,7 @@ export const buildIssueLineColumns = ({
          * 보류 표식은 **알리는 것이지 막는 것이 아니다.** 폐기는 보류·차단된 자재를 덜어
          * 내는 일이고, 여기는 이미 만들어진 전표라 막을 것도 없다. **색에만 기대지 않는다.**
          */}
-        {isLotHeld(lotLookup, row.lotId) && (
-          <span className="field-note">{t.values.lotHeld}</span>
-        )}
+        {isLotHeld(lotLookup, row.lotId) && <span className="field-note">{t.values.lotHeld}</span>}
       </>
     ),
   },

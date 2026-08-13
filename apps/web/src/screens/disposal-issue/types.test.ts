@@ -319,7 +319,8 @@ describe('toIssueLineView', () => {
    */
   it('전기되지 않은 줄은 원장 라인이 없음이다', () => {
     expect(
-      toIssueLineView(issueLineResponse({ inventoryTransactionLineId: null })).inventoryTransactionLineId,
+      toIssueLineView(issueLineResponse({ inventoryTransactionLineId: null }))
+        .inventoryTransactionLineId,
     ).toBeNull();
     expect(
       toIssueLineView(issueLineResponse({ inventoryTransactionLineId: undefined }))

@@ -89,7 +89,14 @@ import {
   useOnHandBalances,
 } from './queries';
 import { ReceiptSummaryPane } from './receipt-summary-pane';
-import { DEFAULT_TAB, readTab, tabLabel, toTabParam, type DisposalIssueTab } from './tabs';
+import {
+  DISPOSAL_ISSUE_TABS,
+  readTab,
+  TAB_KEY,
+  tabLabel,
+  toTabParam,
+  type DisposalIssueTab,
+} from './tabs';
 import type {
   IssueLineView,
   IssueView,
@@ -440,7 +447,7 @@ export const DisposalIssueScreen = () => {
     const params = new URLSearchParams();
     const tabParam = toTabParam(next.tab);
 
-    if (tabParam !== null) params.set('tab', tabParam);
+    if (tabParam !== null) params.set(TAB_KEY, tabParam);
 
     for (const [key, value] of toSearchParams(next.filters, next.page)) params.set(key, value);
 
@@ -538,10 +545,16 @@ export const DisposalIssueScreen = () => {
    * 돌아왔을 때 고르던 것이 통째로 사라진다.
    */
   const changeTab = (nextTab: string): void => {
-    if (nextTab === tab) return;
-    if (nextTab !== 'disposal' && nextTab !== 'history') return;
+    /*
+     * **탭 목록을 손으로 한 번 더 적지 않는다.** 정본은 `DISPOSAL_ISSUE_TABS` 하나이고,
+     * 여기 목록을 따로 두면 셋째 탭이 생길 때 이 줄을 잊어 **그 탭 버튼이 말없이 아무 일도
+     * 하지 않는다.** 모르는 값을 걸러 내는 규칙은 주소를 읽는 자리(`readTab`)와 같다.
+     */
+    const target = DISPOSAL_ISSUE_TABS.find((value) => value === nextTab);
 
-    setSearchParams(toScreenParams({ ...currentAddress, tab: nextTab }));
+    if (target === undefined || target === tab) return;
+
+    setSearchParams(toScreenParams({ ...currentAddress, tab: target }));
   };
 
   /*

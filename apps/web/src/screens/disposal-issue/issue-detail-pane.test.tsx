@@ -10,10 +10,11 @@ const t = messages.disposalIssue;
 
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 폐기창고 가';
 
-const issue = (overrides: Partial<IssueView> = {}): IssueView => ({
-  ...goodsIssueFixtures[0],
-  ...overrides,
-} as IssueView);
+const issue = (overrides: Partial<IssueView> = {}): IssueView =>
+  ({
+    ...goodsIssueFixtures[0],
+    ...overrides,
+  }) as IssueView;
 
 const renderPane = (overrides: Partial<IssueView> = {}) =>
   render(<IssueDetailPane issue={issue(overrides)} warehouseName={WAREHOUSE_LABEL} />);

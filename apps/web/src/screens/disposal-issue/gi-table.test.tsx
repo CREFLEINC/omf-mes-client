@@ -125,6 +125,28 @@ describe('GiTable — 행 표기', () => {
   });
 
   /**
+   * **상태 코드가 실제로 그 행에 그려진다**(검증 t3 관찰 ②).
+   *
+   * 이 열은 `render`가 없어 표가 값을 그대로 그리는데, 그 자리는 계획이 **「승인 후 미출고」를
+   * 대신 보이는 역할**을 맡긴 곳이다(별도 표식을 만들지 않는 근거) — 열 선언만 재고 값이
+   * 나가는지 보지 않으면, 키가 살아 있는 채로 값이 비어도 아무도 모른다.
+   */
+  it('상태 코드가 행마다 그려진다', () => {
+    renderTable();
+
+    const rowOf = (goodsIssueNo: string): HTMLElement => {
+      const row = screen.getByText(goodsIssueNo).closest('tr');
+
+      if (row === null) throw new Error('행을 찾지 못했다');
+
+      return row;
+    };
+
+    expect(within(rowOf('GI-2026-950001')).getByText('SAMPLE_GI_STATUS_A')).toBeInTheDocument();
+    expect(within(rowOf('GI-2026-950002')).getByText('SAMPLE_GI_STATUS_B')).toBeInTheDocument();
+  });
+
+  /**
    * **사유 코드가 없이 오는 전표가 실재한다.** 빈 칸으로 두면 값이 없는 것인지 화면이 못 그린
    * 것인지 구분되지 않는다 — 코드를 지어내지 않고 그 사실을 적는다.
    */
@@ -178,7 +200,9 @@ describe('GiTable — 고르기', () => {
   it('행마다 어느 건인지 밝힌 버튼이 있다', async () => {
     const { onToggleSelect, user } = renderTable();
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectIssueRow('GI-2026-950001') }));
+    await user.click(
+      screen.getByRole('button', { name: t.actions.selectIssueRow('GI-2026-950001') }),
+    );
 
     expect(onToggleSelect).toHaveBeenCalledWith(9501);
   });

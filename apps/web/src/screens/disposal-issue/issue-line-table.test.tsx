@@ -168,7 +168,9 @@ describe('IssueLineTable — 행 표기', () => {
   it('참조가 아직 오지 않았으면 그 사실을 낸다', () => {
     renderTable({ itemLookup: itemSource({ entries: [], isLoading: true }) });
 
-    expect(screen.getAllByText(t.values.referenceLoading).length).toBe(goodsIssueLineFixtures.length);
+    expect(screen.getAllByText(t.values.referenceLoading).length).toBe(
+      goodsIssueLineFixtures.length,
+    );
   });
 
   it('참조 실패는 사유와 복구 경로를 함께 낸다', async () => {
