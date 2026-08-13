@@ -26,10 +26,8 @@ const ISSUE: CreatedIssueSummary = {
   ],
 };
 
-const renderPane = (
-  outcome: SubmitOutcome,
-  overrides: Partial<RegisterResultPaneProps> = {},
-) => render(<RegisterResultPane outcome={outcome} onOpenIssue={vi.fn()} {...overrides} />);
+const renderPane = (outcome: SubmitOutcome, overrides: Partial<RegisterResultPaneProps> = {}) =>
+  render(<RegisterResultPane outcome={outcome} onOpenIssue={vi.fn()} {...overrides} />);
 
 describe('RegisterResultPane — 갈래별 문장', () => {
   it('상신까지 끝나면 올렸다고 말한다', () => {
@@ -118,14 +116,11 @@ describe('RegisterResultPane — 확인한 것만 말한다', () => {
    * 「승인이 끝나면 … 차감합니다」는 **앞으로 할 일**이라 사실이고, 「차감됐습니다」는 거짓이다.
    * 낱말 하나로 재지 않고 **끝난 것처럼 말하는 어미**를 잰다.
    */
-  it.each(['차감됐', '차감했', '차감되었'])(
-    '재고가 %s다고 지난 일로 말하지 않는다',
-    (past) => {
-      const { container } = renderPane({ kind: 'submitted', issue: ISSUE });
+  it.each(['차감됐', '차감했', '차감되었'])('재고가 %s다고 지난 일로 말하지 않는다', (past) => {
+    const { container } = renderPane({ kind: 'submitted', issue: ISSUE });
 
-      expect(container.textContent ?? '').not.toContain(past);
-    },
-  );
+    expect(container.textContent ?? '').not.toContain(past);
+  });
 });
 
 describe('RegisterResultPane — 이어서 다루는 길', () => {

@@ -25,8 +25,18 @@ const SUMMARY: SubmitSummary = {
   businessDate: '2026-08-11',
   remarks: '',
   lines: [
-    { ordinal: 1, item: 'SAMPLE-ITEM-01 · 합성 자재 가', lot: 'SAMPLE-LOT-0001', qty: '10 SAMPLE-UOM-EA' },
-    { ordinal: 2, item: 'SAMPLE-ITEM-02 · 합성 자재 나', lot: 'SAMPLE-LOT-0003', qty: '2 SAMPLE-UOM-BX' },
+    {
+      ordinal: 1,
+      item: 'SAMPLE-ITEM-01 · 합성 자재 가',
+      lot: 'SAMPLE-LOT-0001',
+      qty: '10 SAMPLE-UOM-EA',
+    },
+    {
+      ordinal: 2,
+      item: 'SAMPLE-ITEM-02 · 합성 자재 나',
+      lot: 'SAMPLE-LOT-0003',
+      qty: '2 SAMPLE-UOM-BX',
+    },
   ],
   reason: '불량 판정분 폐기\n\n  입고 검사 부적합 12박스',
   reasonFirstLine: '불량 판정분 폐기',
@@ -35,12 +45,7 @@ const SUMMARY: SubmitSummary = {
 
 const renderDialog = (overrides: Partial<SubmitConfirmDialogProps> = {}) =>
   render(
-    <SubmitConfirmDialog
-      summary={SUMMARY}
-      onConfirm={vi.fn()}
-      onClose={vi.fn()}
-      {...overrides}
-    />,
+    <SubmitConfirmDialog summary={SUMMARY} onConfirm={vi.fn()} onClose={vi.fn()} {...overrides} />,
   );
 
 describe('SubmitConfirmDialog 보이는 것', () => {

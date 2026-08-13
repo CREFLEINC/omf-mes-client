@@ -292,11 +292,7 @@ export const toIssueDetailResult = (data: {
  * 옮기는 한 자리에서 밝힌다**(`issue-request.ts`).
  */
 export type DisposalCodeKey =
-  | 'issueType'
-  | 'sourceDocumentType'
-  | 'destinationType'
-  | 'disposalAccount'
-  | 'reason';
+  'issueType' | 'sourceDocumentType' | 'destinationType' | 'disposalAccount' | 'reason';
 
 /**
  * 품의 정보 초안 — **아직 보내지 않은 입력**이다(수명 표의 「폐기」 열).

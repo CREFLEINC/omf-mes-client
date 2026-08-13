@@ -61,8 +61,7 @@ const block = (
   draft: DisposalDraft = FILLED_DRAFT,
   lists: CodeValueLists = FILLED_LISTS,
   selection: DisposalReadyState = READY,
-): string | null =>
-  disposalBlockReason({ codeOptions: toCodeOptionSets(lists), draft, selection });
+): string | null => disposalBlockReason({ codeOptions: toCodeOptionSets(lists), draft, selection });
 
 describe('disposalBlockReason', () => {
   /**
@@ -77,28 +76,34 @@ describe('disposalBlockReason', () => {
     expect(block()).toBeNull();
   });
 
-  it.each(['issueType', 'sourceDocumentType', 'destinationType', 'disposalAccount', 'reason'] as const)(
-    '값 목록 다섯 중 %s 하나만 비어도 잠긴다',
-    (key) => {
-      expect(block(FILLED_DRAFT, { ...FILLED_LISTS, [key]: [] })).toBe(
-        t.actionReasons.codeListPending,
-      );
-    },
-  );
+  it.each([
+    'issueType',
+    'sourceDocumentType',
+    'destinationType',
+    'disposalAccount',
+    'reason',
+  ] as const)('값 목록 다섯 중 %s 하나만 비어도 잠긴다', (key) => {
+    expect(block(FILLED_DRAFT, { ...FILLED_LISTS, [key]: [] })).toBe(
+      t.actionReasons.codeListPending,
+    );
+  });
 
   /** 무엇을 보내는가(줄)가 누구에게·언제(폼)보다 앞이다 — 화면에 놓인 차례 그대로다. */
   it('줄 판정의 사유를 그대로 낸다', () => {
     expect(block(FILLED_DRAFT, FILLED_LISTS, BLOCKED)).toBe(BLOCKED.reason);
   });
 
-  it.each(['issueType', 'sourceDocumentType', 'destinationType', 'disposalAccount', 'reason'] as const)(
-    '코드 %s를 고르지 않으면 잠긴다',
-    (key) => {
-      const draft = { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, [key]: '  ' } };
+  it.each([
+    'issueType',
+    'sourceDocumentType',
+    'destinationType',
+    'disposalAccount',
+    'reason',
+  ] as const)('코드 %s를 고르지 않으면 잠긴다', (key) => {
+    const draft = { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, [key]: '  ' } };
 
-      expect(block(draft)).toBe(t.actionReasons.needsCodes);
-    },
-  );
+    expect(block(draft)).toBe(t.actionReasons.needsCodes);
+  });
 
   it('출고 일자·시각이 비면 각각의 사유가 나온다', () => {
     expect(block({ ...FILLED_DRAFT, issuedDate: '' })).toBe(t.actionReasons.needsIssuedDate);
@@ -209,12 +214,16 @@ describe('화면이 아는 필드', () => {
   });
 
   /** 화면이 값을 정하지 않는 필드는 담지 않는다 — 고른 전표·표의 줄·파생·상수에서 온다. */
-  it.each(['sourceDocumentId', 'sourceWarehouseId', 'businessDate', 'occurredAt', 'lines', 'postImmediately'])(
-    '%s는 담지 않는다',
-    (field) => {
-      expect(DISPOSAL_FORM_FIELDS).not.toContain(field);
-    },
-  );
+  it.each([
+    'sourceDocumentId',
+    'sourceWarehouseId',
+    'businessDate',
+    'occurredAt',
+    'lines',
+    'postImmediately',
+  ])('%s는 담지 않는다', (field) => {
+    expect(DISPOSAL_FORM_FIELDS).not.toContain(field);
+  });
 
   /** 상신 본문의 필드는 사유 하나다 — 넓히면 남의 오류가 사유 칸에 붙는다. */
   it('상신이 아는 필드는 사유 하나다', () => {

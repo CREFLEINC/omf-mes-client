@@ -22,7 +22,12 @@ const SUMMARY: ResubmitSummary = {
 
 const renderDialog = (overrides: Partial<ResubmitConfirmDialogProps> = {}) =>
   render(
-    <ResubmitConfirmDialog summary={SUMMARY} onConfirm={vi.fn()} onClose={vi.fn()} {...overrides} />,
+    <ResubmitConfirmDialog
+      summary={SUMMARY}
+      onConfirm={vi.fn()}
+      onClose={vi.fn()}
+      {...overrides}
+    />,
   );
 
 describe('ResubmitConfirmDialog', () => {
