@@ -4521,6 +4521,69 @@ describe('DisposalIssueScreen — 떠난 뒤 돌아왔을 때', () => {
    * 돌아온 자리에도 서지 않는다** — 대상을 떠난 순간 그 사실은 화면에서 수명을 다했고 정리
    * effect가 거둔다. 만들어진 전표에 닿는 길은 주소의 `gi`와 「처리 이력」 탭이다.
    */
+  /**
+   * **나가는 중이면 매임을 지우지 않는다**(검증 t5 P1의 짝 — 발의 자리에도 같은 규율이 있다).
+   *
+   * 아래 잣대와 **방향이 반대다**: 저쪽은 「떠난 채로 끝났으면 서지 않는다」이고 이쪽은
+   * 「**아직 나가는 중에 돌아오면 선다**」이다. 둘을 함께 두어야 정리자의 가드가 양쪽에서
+   * 고정된다 — 가드를 지우면 이쪽만 무너지고, 가드를 「늘 지키기」로 넓히면 저쪽이 무너진다.
+   *
+   * 여기서 지켜지는 것은 **전표가 만들어졌다는 사실**이다. 매임이 지워지면 방금 만든 전표
+   * 번호가 화면 어디에도 서지 않아, 사용자는 **전표가 생겼는지조차 알 수 없다.**
+   */
+  it('전송 중 떠났다가 돌아오면 만들어진 전표가 결과 구획에 선다', async () => {
+    const { user, release } = await setupReadyToSubmit(
+      allRoutes([
+        ...chainRoutes(),
+        {
+          match: (request) => isGet(request, MISSING_DETAIL_PATH),
+          respond: () =>
+            jsonResponse({
+              goodsReceipt: goodsReceiptResponseFixtures[1],
+              lines: receiptLineResponseFixtures,
+            }),
+        },
+      ]),
+      undefined,
+      /*
+       * **둘째 요청을 붙잡는다.** 첫째 요청을 붙잡으면 그 사이 연쇄는 아직 `none`이라 지워도
+       * 지워질 것이 없다 — **전표는 만들어졌고 상신이 나가는 중**인 국면이라야 「지키지 않으면
+       * 무엇을 잃는가」가 실제로 드러난다.
+       */
+      [CREATED_APPROVAL_PATH],
+      '?gr=9001',
+      '?gr=9002',
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    /* 전표는 이미 만들어졌다 — 그 사실이 결과 구획에 서 있는 상태에서 떠난다. */
+    await screen.findByText(t.result.createdTitle('GI-2026-950004'));
+
+    /* 주소로 떠난다 — 잠금도 문의 가드도 거치지 않는 길이다. */
+    fireEvent.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    /* **아직 나가는 중에** 되돌아온다 — 정리자가 여기서 한 번 더 돈다. */
+    fireEvent.click(screen.getByRole('button', { name: '뒤로' }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9001');
+    });
+    await waitForLines();
+
+    /* 돌아온 자리에 **전표가 만들어졌다는 사실이 그대로** 서 있다 — 아직 나가는 중이다. */
+    expect(within(resultPane()).getByText('GI-2026-950004')).toBeInTheDocument();
+
+    release();
+
+    expect(
+      await within(resultPane()).findByText(t.result.submittedTitle('GI-2026-950004')),
+    ).toBeVisible();
+  });
+
   it('전송 중 떠났다가 다시 고르면 결과 구획이 서지 않는다', async () => {
     const { requests, user, release } = await setupReadyToSubmit(
       allRoutes([
@@ -5210,6 +5273,46 @@ describe('DisposalIssueScreen — 처리 창과 결과의 수명', () => {
     await screen.findByRole('region', { name: t.post.label });
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /**
+   * **나가는 중이면 매임을 지우지 않는다**(`omf-mes#96`의 짝 · 검증 t5 P1).
+   *
+   * 정리자는 「끝난 것만」 거둔다. 나가는 중인 전기의 매임까지 지우면 **도착한 결과가 어느
+   * 품의의 것인지 가를 근거가 사라져**, 되돌릴 수 없는 조작의 결과가 **화면 어디에도 서지
+   * 않는다** — 사용자는 재고가 움직였는지 화면에서 확인할 길을 잃는다.
+   *
+   * 주소로 떠났다가 **아직 나가는 중에** 돌아오는 길이 그 자리다 — 잠금도 문의 가드도 거치지
+   * 않는 셋째 길이라 정리자가 두 번 도는데, 그때 가드가 없으면 매임이 통째로 지워진다.
+   * 「떠난 채로 끝났으면 서지 않는다」(아래 잣대)와 **짝**이며 방향이 반대다.
+   */
+  it('전송 중 떠났다가 돌아오면 뒤늦게 온 결과가 선다', async () => {
+    const { user, release } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      `${HISTORY_SEARCH.slice(1)}&gi=9502`,
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await waitFor(() => {
+      expect(postButton()).toBeDisabled();
+    });
+
+    /* 주소로 떠난다 — 잠금도 문의 가드도 거치지 않는 길이다. */
+    fireEvent.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.resubmit.lead);
+
+    /* **아직 나가는 중에** 되돌아온다 — 정리자가 여기서 한 번 더 돈다. */
+    fireEvent.click(screen.getByRole('button', { name: '뒤로' }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gi=9501');
+    });
+
+    release();
+
+    expect(await screen.findByRole('region', { name: t.result.postLabel })).toBeVisible();
   });
 
   /**
