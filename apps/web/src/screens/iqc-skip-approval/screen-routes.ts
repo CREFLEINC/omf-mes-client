@@ -32,8 +32,16 @@ export const SCREEN_ROUTES: ScreenRouteTable = {};
 /**
  * 그 화면 ID가 이 앱의 어느 주소인가. 표에 없으면 `null`이다 — **없음을 값으로 낸다.**
  *
- * **빈 화면 ID는 표를 뒤지지 않는다.** 계약이 `screenId`를 선택 필드로 두어 빈 문자열이
- * 스키마를 통과하는데, 그것을 열쇠로 쓰면 표에 실수로 들어간 빈 열쇠가 아무 대상이나 열게 된다.
+ * **표에 넣지 않은 열쇠는 표에 없는 것이다.** 막을 것이 둘이고 둘 다 서버가 보낸 값이 그대로
+ * 열쇠가 되는 데서 온다.
+ *
+ * | 막는 것 | 그대로 두면 |
+ * | --- | --- |
+ * | **빈 화면 ID** | 계약이 `screenId`를 선택 필드로 두어 빈 문자열이 스키마를 통과한다. 표에 실수로 들어간 빈 열쇠가 **아무 대상이나** 열게 된다 |
+ * | **프로토타입에서 온 열쇠** | 표가 객체 리터럴이라 `toString`·`constructor`가 **함수**를 낸다. 없음을 뜻하는 `null`이 아니라서 걸러지지 않고, 「열기」가 살아 있는 버튼으로 서서 누르면 그 함수가 경로 자리에 실려 간다 |
+ *
+ * 타입은 이 둘을 막지 못한다 — `Record<string, string>`이 모든 문자열 열쇠가 문자열 값을
+ * 낸다고 약속한 것처럼 보이지만, 그 약속은 **표에 넣은 열쇠에만** 걸린다.
  */
 export const screenPathOf = (screenId: string, routes: ScreenRouteTable): string | null =>
-  screenId === '' ? null : (routes[screenId] ?? null);
+  screenId === '' || !Object.hasOwn(routes, screenId) ? null : (routes[screenId] ?? null);

@@ -43,6 +43,23 @@ describe('judgeTargetOpen — 잠기는 세 갈래', () => {
   });
 
   /**
+   * **프로토타입에서 온 낱말로는 열리지 않는다.**
+   *
+   * 표가 객체 리터럴이라 `toString`·`constructor` 같은 화면 ID가 오면 조회가 함수를 낸다.
+   * 그것이 걸러지지 않으면 이 판정이 `{ kind: 'open', path: <함수> }`를 내고, 「열기」가
+   * **살아 있는 버튼**으로 서서 누르면 함수가 경로 자리에 실려 간다 — 이 구획의 규율
+   * (「잠겨 있고 왜 잠겼는지 말한다」)이 그 갈래에서만 깨진다.
+   */
+  it.each(['toString', 'constructor', 'valueOf'])(
+    '프로토타입에서 온 화면 ID %s는 열림이 되지 않는다',
+    (screenId) => {
+      const target = { ...targetFixtures.mapped, screenId };
+
+      expect(judgeTargetOpen(target, FILLED_ROUTES)).toEqual({ kind: 'unmapped' });
+    },
+  );
+
+  /**
    * **전환 감지기**(M28) — 표에 줄이 생기면 그것만으로 열린다.
    * 잠금을 상수로 굳힌 구현은 여기서 걸린다.
    */

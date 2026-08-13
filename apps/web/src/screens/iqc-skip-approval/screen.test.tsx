@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import {
   createStubFetch,
@@ -228,6 +228,11 @@ const currentLocation = (): string => screen.getByTestId('location').textContent
  * 놓친다. 이 기록기는 **바뀔 때마다** 담을 뿐이라 고정 지연도 도착 순서 가정도 두지 않는다.
  *
  * 렌더 전에 세워야 첫 프레임부터 잡힌다.
+ *
+ * **정리를 시험 수명에 맨다.** `stop()`은 호출자 코드 끝에 있어, 그 앞의 기다림이 타임아웃으로
+ * 던지면 닿지 못한다. `document.body`는 이 파일의 시험들이 나눠 쓰므로 그때 관측자가 남아
+ * **뒤따르는 시험의 DOM 변경마다** 아무도 읽지 않는 배열에 글자를 쌓는다 — 판정을 바꾸지는
+ * 않지만 실패 원인을 흐린다.
  */
 const watchRenderedText = (): { stop: () => string[] } => {
   const frames: string[] = [document.body.textContent ?? ''];
@@ -236,6 +241,9 @@ const watchRenderedText = (): { stop: () => string[] } => {
   });
 
   observer.observe(document.body, { subtree: true, childList: true, characterData: true });
+  onTestFinished(() => {
+    observer.disconnect();
+  });
 
   return {
     stop: () => {
@@ -722,11 +730,17 @@ describe('빈 상태 세 갈래', () => {
 
     await waitForList();
 
-    expect(
-      within(screen.getByRole('region', { name: t.panes.detail })).getByText(
-        t.empty.noSelectionTitle,
-      ),
-    ).toBeInTheDocument();
+    const pane = within(screen.getByRole('region', { name: t.panes.detail }));
+
+    expect(pane.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    /*
+     * **짝 방향 — 이것은 라이브 리전이 아니다.** 들어오자마자 늘 서 있는 안내라 읽어 줄 변화가
+     * 없다. 이 단언이 없으면 「전부 라이브 리전」도 통과하고, 그러면 404·403 쪽 구분이 무의미해진다.
+     *
+     * **구획 안에서 본다** — 목록 위 유형 코드 안내도 라이브 리전이라(그쪽은 조회 결과에 따라
+     * 서고 사라진다) 화면 전체에서 세면 무엇을 잰 것인지 흐려진다.
+     */
+    expect(pane.queryByRole('status')).not.toBeInTheDocument();
   });
 });
 
@@ -1038,6 +1052,38 @@ describe('상세를 읽을 수 없을 때', () => {
     });
     /* 조건은 그대로다 — 정리되는 것은 고른 번호 하나뿐이다(수명 표 6행). */
     expect(currentLocation()).toContain('q=SYNTH');
+  });
+
+  /**
+   * **응답을 기다리다 나타난 안내는 라이브 리전이어야 한다.**
+   *
+   * 404 안내는 사용자의 조작 없이 **응답이 온 뒤** 선다 — 화면을 보고 있지 않은 사람에게는
+   * 아무 일도 일어나지 않은 것과 같다. 그래서 이 화면은 정적인 「고르세요」에는 라이브 리전을
+   * 주지 않고 **나타나는 안내에만** 준다(디자인 시스템이 그 구분을 `live`로 둔다).
+   *
+   * 그 구분을 재는 자리가 없으면 리팩터링이 조용히 지워도 아무도 모른다 — 화면은 그대로 보이고
+   * 읽어 주는 것만 사라진다.
+   */
+  it('404 안내가 라이브 리전으로 선다', async () => {
+    renderScreen(defaultRoutes(), '?rq=9999');
+
+    const pane = within(await screen.findByRole('region', { name: t.panes.detail }));
+
+    /*
+     * **안내가 선 뒤에 그 자리의 역할을 본다.** 불러오는 중의 뼈대도 라이브 리전이라
+     * (그것도 나타나는 것이라 옳다) 역할만 먼저 찾으면 뼈대를 집는다.
+     */
+    expect(await pane.findByText(t.empty.notFoundTitle)).toBeVisible();
+    expect(pane.getByRole('status')).toHaveTextContent(t.empty.notFoundTitle);
+  });
+
+  it('403 안내도 라이브 리전으로 선다', async () => {
+    renderScreen([listRoute(), failingDetailRoute(403)], '?rq=9001');
+
+    const pane = within(await screen.findByRole('region', { name: t.panes.detail }));
+
+    expect(await pane.findByText(t.empty.forbiddenTitle)).toBeVisible();
+    expect(pane.getByRole('status')).toHaveTextContent(t.empty.forbiddenTitle);
   });
 
   /**

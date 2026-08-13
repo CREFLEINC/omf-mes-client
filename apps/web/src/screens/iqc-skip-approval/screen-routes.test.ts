@@ -41,4 +41,27 @@ describe('screenPathOf', () => {
   it('빈 화면 ID는 표를 뒤지지 않는다', () => {
     expect(screenPathOf('', { '': MAPPED_SCREEN_PATH })).toBeNull();
   });
+
+  /**
+   * **표에 넣지 않은 열쇠는 표에 없는 것이다** — 빈 열쇠 방어와 같은 갈래의 남은 한 축이다.
+   *
+   * 표가 객체 리터럴이라 프로토타입 체인이 살아 있다. 화면 ID가 `toString`·`constructor`처럼
+   * 오면 조회가 **함수**를 내고, 없음을 뜻하는 `null`이 아니라서 걸러지지 않는다. 타입도
+   * 막지 못한다(`Record<string, string>`이 그 키를 문자열로 약속한 것처럼 보인다).
+   *
+   * 그대로 두면 「열기」가 **살아 있는 버튼**으로 서고 눌렀을 때 함수가 경로 자리에 실려 간다.
+   */
+  it.each(['toString', 'constructor', 'valueOf', 'hasOwnProperty', '__proto__'])(
+    '프로토타입에서 온 열쇠 %s는 화면 ID가 아니다',
+    (screenId) => {
+      expect(screenPathOf(screenId, SCREEN_ROUTES)).toBeNull();
+      /* 표가 채워진 뒤에도 같다 — 이 조회는 표가 서고 나서도 그대로 남는 코드다. */
+      expect(screenPathOf(screenId, { [MAPPED_SCREEN_ID]: MAPPED_SCREEN_PATH })).toBeNull();
+    },
+  );
+
+  /** 짝 방향 — 막는 것은 **프로토타입에서 온 것**뿐이다. 같은 낱말을 표에 넣으면 그것은 열린다. */
+  it('같은 낱말이라도 표에 실제로 넣었으면 그 값을 낸다', () => {
+    expect(screenPathOf('toString', { toString: MAPPED_SCREEN_PATH })).toBe(MAPPED_SCREEN_PATH);
+  });
 });
