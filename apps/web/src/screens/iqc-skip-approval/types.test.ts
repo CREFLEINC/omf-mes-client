@@ -2,7 +2,14 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { requestFixtures } from './fixtures';
-import { firstLineOf, formatDateTime, readableName, toRequestRow } from './types';
+import {
+  firstLineOf,
+  formatDateTime,
+  readableName,
+  toReasonLines,
+  toRequestDetailView,
+  toRequestRow,
+} from './types';
 import type { ApprovalRequest } from './types';
 
 const t = messages.iqcSkipApproval;
@@ -116,5 +123,83 @@ describe('toRequestRow', () => {
     const row = toRequestRow(multiline as ApprovalRequest);
 
     expect(JSON.stringify(row)).not.toContain(multiline?.target.targetTypeCode ?? '');
+  });
+});
+
+/**
+ * 사유 **전문**. 목록의 첫 줄 규칙(`firstLineOf`)이 여기에는 걸리지 않는다 —
+ * 상세는 상신자가 적은 그대로를 보이는 자리다.
+ */
+describe('toReasonLines', () => {
+  it('줄마다 한 칸으로 나눈다 — 이어 붙이면 문단 구분이 사라진다', () => {
+    expect(toReasonLines('첫 줄\n둘째 줄')).toEqual(['첫 줄', '둘째 줄']);
+  });
+
+  it('가운데 빈 줄을 지우지 않는다 — 문단 구분이 사유의 일부다', () => {
+    expect(toReasonLines('첫 문단\n\n둘째 문단')).toEqual(['첫 문단', '', '둘째 문단']);
+  });
+
+  it('들여쓴 줄의 공백을 걷어 내지 않는다 — 목록 표기가 사유의 일부다', () => {
+    expect(toReasonLines('머리말\n  - 들여쓴 항목')).toEqual(['머리말', '  - 들여쓴 항목']);
+  });
+
+  it('CRLF에서 캐리지 리턴이 글자로 남지 않는다', () => {
+    expect(toReasonLines('첫 줄\r\n둘째 줄')).toEqual(['첫 줄', '둘째 줄']);
+  });
+
+  it('자르거나 줄이지 않는다 — 요약은 목록의 일이다', () => {
+    const long = '가'.repeat(300);
+
+    expect(toReasonLines(long)).toEqual([long]);
+  });
+
+  it('내용이 없으면 빈 칸 대신 그 사실을 적는다', () => {
+    expect(toReasonLines('\n  \n')).toEqual([t.values.emptyReason]);
+  });
+});
+
+describe('toRequestDetailView', () => {
+  const [multiline] = requestFixtures;
+
+  it('상세가 보이는 값 여섯을 담는다 — 사유는 전문이다', () => {
+    const view = toRequestDetailView(multiline as ApprovalRequest);
+
+    expect(view.approvalRequestNo).toBe('SYNTH-REQ-001');
+    expect(view.approvalTypeCode).toBe('SAMPLE-TYPE-A');
+    expect(view.requesterName).toBe('합성 상신자1');
+    expect(view.requestedAtText).toBe('2026-08-06 14:20');
+    expect(view.statusCode).toBe('SAMPLE-STATUS-OPEN');
+    expect(view.reasonLines).toHaveLength(2);
+  });
+
+  it('상세가 나르는 값에 내부 번호가 없다 — 행 식별자조차 담지 않는다', () => {
+    const view = toRequestDetailView(multiline as ApprovalRequest);
+
+    expect(Object.keys(view).sort()).toEqual([
+      'approvalRequestNo',
+      'approvalTypeCode',
+      'reasonLines',
+      'requestedAtText',
+      'requesterName',
+      'statusCode',
+    ]);
+    expect(JSON.stringify(view)).not.toContain(String(multiline?.approvalRequestId));
+    expect(JSON.stringify(view)).not.toContain(String(multiline?.requestedBy));
+    expect(JSON.stringify(view)).not.toContain(String(multiline?.target.targetId));
+  });
+
+  it('대상과 결재 진행을 담지 않는다 — 각자 자기 구획이 있다', () => {
+    const view = toRequestDetailView(multiline as ApprovalRequest);
+
+    expect(JSON.stringify(view)).not.toContain(multiline?.target.displayName ?? '');
+    expect(JSON.stringify(view)).not.toContain(multiline?.target.targetTypeCode ?? '');
+  });
+
+  it('이름이 비어 오면 대체 문구가 서고 번호가 서지 않는다', () => {
+    const nameless = requestFixtures.find((request) => request.requestedByName === '');
+    const view = toRequestDetailView(nameless as ApprovalRequest);
+
+    expect(view.requesterName).toBe(t.values.unknownRequester);
+    expect(JSON.stringify(view)).not.toContain(String(nameless?.requestedBy));
   });
 });

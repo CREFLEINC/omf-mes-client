@@ -1,4 +1,10 @@
-import type { ApprovalRequest, ApprovalTarget, RequestRow } from './types';
+import type {
+  ApprovalRequest,
+  ApprovalRequestDetail,
+  ApprovalStep,
+  ApprovalTarget,
+  RequestRow,
+} from './types';
 import { toRequestRow } from './types';
 
 /**
@@ -31,6 +37,33 @@ const target = (
   displayName,
   openable,
 });
+
+/**
+ * 대상 **네 갈래**. 「열기」의 판정이 갈리는 자리 전부다 —
+ * 열림 하나와 잠김 셋(계약이 못 연다고 했다 / 화면 ID가 없다 / 이 앱에 그 화면이 없다).
+ *
+ * **화면 ID는 합성 대역**(`W-99-99`·`W-99-98`)이다. 실재하는 화면 ID를 심으면 매핑표에 줄이
+ * 생기는 날 이 픽스처가 뜻하지 않게 「열림」으로 넘어간다.
+ */
+export const targetFixtures = {
+  /** 열 수 있고 갈 곳도 안다 — **매핑표에 그 줄이 있을 때만** 열린다. */
+  mapped: { ...target(9401, '합성 대상 문서 가', 'SAMPLE-TARGET-A'), screenId: 'W-99-99' },
+  /** 열 수 있다는데 어느 화면인지 오지 않았다(스키마상 가능한 조합). */
+  noScreenId: target(9402, '합성 대상 문서 나', 'SAMPLE-TARGET-B'),
+  /** 계약이 열 수 없다고 내려 줬다. **화면 ID가 실려 와도 이 말이 이긴다.** */
+  notOpenable: {
+    ...target(9403, '합성 대상 문서 다', 'SAMPLE-TARGET-C', false),
+    screenId: 'W-99-99',
+  },
+  /** 화면은 아는데 이 앱에 그 화면이 없다. */
+  unmapped: { ...target(9404, '합성 대상 문서 라', 'SAMPLE-TARGET-D'), screenId: 'W-99-98' },
+  /** 표시명이 비어 왔다 — **번호도 유형 코드도 대신 내지 않는다**(`omf-mes#44`). */
+  nameless: target(9405, '', 'SAMPLE-TARGET-A'),
+} as const;
+
+/** 매핑표를 채우는 시험이 쓰는 열쇠와 값. **어느 화면 ID가 열리는지를 한 곳에 둔다.** */
+export const MAPPED_SCREEN_ID = 'W-99-99';
+export const MAPPED_SCREEN_PATH = '/synthetic/mapped-screen';
 
 /**
  * 승인 요청 넷.
@@ -124,3 +157,117 @@ export const SECOND_LINE_OF_MULTILINE_REASON =
 
 /** 목록에 **와야 하는** 첫 줄. 위 단언의 선행 짝이다. */
 export const FIRST_LINE_OF_MULTILINE_REASON = '합성 사유 첫 줄';
+
+/* ---------------------------------------------------------------------- *
+ * 상세 — 요청 몸통 + 결재 단계 배열.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * 결재 결과 코드 **합성값**. 어느 코드가 승인이고 어느 코드가 반려인지 **화면은 모른다**
+ * (`omf-mes#64`) — 픽스처도 그 뜻을 담지 않는다. 이름이 `A`·`B`인 것이 그 사실이다.
+ */
+export const SAMPLE_DECISION_CODE_A = 'SAMPLE-DECISION-A';
+export const SAMPLE_DECISION_CODE_B = 'SAMPLE-DECISION-B';
+
+const step = (
+  stepNo: number,
+  approverId: number,
+  approverName: string,
+  overrides: Partial<ApprovalStep> = {},
+): ApprovalStep => ({
+  stepNo,
+  approverId,
+  approverName,
+  isMine: false,
+  isCurrent: false,
+  ...overrides,
+});
+
+/**
+ * **자기모순 픽스처 ①** — 서버 값과 배열 재계산이 어긋난다.
+ *
+ * | 서버가 말하는 것 | 배열을 훑으면 |
+ * | --- | --- |
+ * | `currentStepNo`가 **2** | 단계가 하나뿐이라 인덱스+1은 **1** |
+ * | `totalStepNo`가 **3** | `steps.length`는 **1** |
+ * | `isMyTurn`이 **참** | 미결 단계가 없어 **거짓** |
+ *
+ * 목 서버가 실제로 이런 상세를 내려 준다(계획 §6.3 실측). 재계산하는 구현은 이 픽스처에서
+ * 곧바로 어긋나고, 서버 값을 그대로 쓰는 구현만 통과한다(M19·M20).
+ *
+ * **결재 기록이 있는데 `isCurrent`가 참**인 것도 같은 갈래다 — 그때 「진행 중」으로 그리면
+ * 사용자가 이미 끝난 단계를 기다린다.
+ */
+export const contradictoryDetail: ApprovalRequestDetail = {
+  request: { ...multilineReasonRequest, target: targetFixtures.noScreenId },
+  steps: [
+    step(1, 9501, '합성 승인자1', {
+      decisionCode: SAMPLE_DECISION_CODE_A,
+      decisionAt: '2026-08-06T15:02:00+09:00',
+      decisionComment: '합성 결재 의견 하나',
+      isMine: true,
+      isCurrent: true,
+    }),
+  ],
+};
+
+/**
+ * **자기모순 픽스처 ②** — 어긋남의 **반대 방향**이다.
+ *
+ * 서버는 `isMyTurn`이 **거짓**이라는데, 배열로는 「앞 단계가 결재됐고 지금 단계가 미결이며
+ * 내 것」이라 **참**으로 읽힌다. 한 방향만 두면 「늘 서버 값을 낸다」와 「늘 거짓을 낸다」가
+ * 구분되지 않는다.
+ *
+ * `currentStepNo`가 **`null`**(결재 종료)인 갈래도 여기서 함께 선다 — **`?? 0`으로 메우면
+ * 「0 / 2 단계」라는 없는 말이 나온다**(§5.4-18).
+ */
+export const finishedDetail: ApprovalRequestDetail = {
+  request: { ...singleLineReasonRequest, target: targetFixtures.notOpenable },
+  steps: [
+    step(1, 9501, '합성 승인자1', {
+      decisionCode: SAMPLE_DECISION_CODE_B,
+      decisionAt: '2026-08-05T10:00:00+09:00',
+      isMine: false,
+      isCurrent: false,
+    }),
+    /** 미결이고 지금 차례이며 내 단계인데, **서버는 내 차례가 아니라고 말한다.** */
+    step(2, 9502, '합성 승인자2', { isMine: true, isCurrent: true }),
+  ],
+};
+
+/**
+ * 승인자 이름이 **비어 온** 상세. 그때 화면은 `approverId`를 대신 내지 않는다(`omf-mes#44`).
+ *
+ * 결재 의견이 없는 단계와 결재 전 단계도 함께 담는다 — 선택 필드가 비어 있을 때
+ * 보조 라벨이 빈 칸을 그리지 않는지 재는 자리다.
+ */
+export const namelessApproverDetail: ApprovalRequestDetail = {
+  request: { ...namelessRequest, target: targetFixtures.nameless },
+  steps: [
+    step(1, 9503, '', {
+      decisionCode: SAMPLE_DECISION_CODE_A,
+      decisionAt: '2026-08-04T19:00:00+09:00',
+    }),
+    step(2, 9504, '합성 승인자3', { isCurrent: true }),
+  ],
+};
+
+/** 단계 배열이 **비어 온** 상세. 계약이 배열을 필수로 두었으나 빈 배열은 스키마를 통과한다. */
+export const noStepsDetail: ApprovalRequestDetail = {
+  request: { ...blankLeadingReasonRequest, target: targetFixtures.unmapped },
+  steps: [],
+};
+
+/**
+ * 요청번호로 상세를 찾는다. **화면 시험의 스텁이 이것으로 답한다** —
+ * 어느 요청을 골라도 그에 맞는 상세가 오게 해야 「고른 것과 다른 상세가 왔다」를 잴 수 있다.
+ */
+export const detailFixtures: ApprovalRequestDetail[] = [
+  contradictoryDetail,
+  finishedDetail,
+  namelessApproverDetail,
+  noStepsDetail,
+];
+
+export const detailOf = (approvalRequestId: number): ApprovalRequestDetail | undefined =>
+  detailFixtures.find((detail) => detail.request.approvalRequestId === approvalRequestId);
