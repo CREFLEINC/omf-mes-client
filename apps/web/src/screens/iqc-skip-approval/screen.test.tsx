@@ -220,6 +220,32 @@ const renderScreen = (
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
+/**
+ * 화면에 **한때라도** 나타난 글자를 프레임마다 남긴다.
+ *
+ * 갈래 하나가 **정리 전 한 프레임에만** 서는 경우가 있어, 가라앉은 뒤의 화면만 보면 그 갈래가
+ * 무엇이었는지 알 수 없다 — `findBy*`·`waitFor`는 「나타날 때까지」만 기다려 스쳐 지나간 것을
+ * 놓친다. 이 기록기는 **바뀔 때마다** 담을 뿐이라 고정 지연도 도착 순서 가정도 두지 않는다.
+ *
+ * 렌더 전에 세워야 첫 프레임부터 잡힌다.
+ */
+const watchRenderedText = (): { stop: () => string[] } => {
+  const frames: string[] = [document.body.textContent ?? ''];
+  const observer = new MutationObserver(() => {
+    frames.push(document.body.textContent ?? '');
+  });
+
+  observer.observe(document.body, { subtree: true, childList: true, characterData: true });
+
+  return {
+    stop: () => {
+      observer.disconnect();
+
+      return frames;
+    },
+  };
+};
+
 const requestTable = (): HTMLElement => screen.getByRole('table');
 
 const pendingCheckbox = (): HTMLElement =>
@@ -1012,6 +1038,58 @@ describe('상세를 읽을 수 없을 때', () => {
     });
     /* 조건은 그대로다 — 정리되는 것은 고른 번호 하나뿐이다(수명 표 6행). */
     expect(currentLocation()).toContain('q=SYNTH');
+  });
+
+  /**
+   * **정리가 가라앉은 뒤에도 「찾을 수 없습니다」가 남는다** — 갈래 **차례**가 그것을 정한다.
+   *
+   * 정리가 끝나면 고른 요청이 없어져 「고르세요」 갈래의 조건이 참이 된다. 그것을 먼저 보면
+   * 안내가 「고르세요」로 바뀌어 **사용자가 방금 무슨 일이 있었는지 화면에서 사라진다** —
+   * 없는 요청을 열려 했다는 사실이 한때 스쳐 지나갈 뿐 남지 않는다.
+   *
+   * **앞선 404 시험들은 이 자리를 재지 못한다.** 그것들은 `findBy*`로 안내가 **나타나는**
+   * 순간까지만 기다려 **정리 직전의 한때 렌더**만으로 만족된다. 여기서는 **주소가 가라앉기를
+   * 먼저 기다린 뒤 동기로** 화면을 본다 — 그 시점에 ①을 세우는 조건은 `isRequestMissing`
+   * 하나뿐이라, 차례를 뒤집거나 그 조건을 빼면 곧바로 갈린다.
+   */
+  it('정리가 끝난 뒤에도 찾을 수 없다는 안내가 남는다 — 「고르세요」로 바뀌지 않는다', async () => {
+    renderScreen(defaultRoutes(), '?rq=9999');
+
+    await waitForList();
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+
+    expect(screen.getByText(t.empty.notFoundTitle)).toBeVisible();
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **정리가 가라앉기 전에도 404는 404다** — 그 한때에 오류 배너가 스치지 않는다.
+   *
+   * 갈래 ①이 `isRequestNotFound`와 `isRequestMissing`을 **둘 다** 보는 이유가 이것이다.
+   * 앞엣것만 빼면 응답이 온 순간부터 정리가 끝나기까지 한 프레임 동안 「그 밖의 실패」 갈래가
+   * 서서 **누를 수 있는 「다시 시도」가 스쳐 지나간다** — 그 사이 눌리면 없는 요청을 다시 부른다.
+   *
+   * **가라앉은 뒤의 화면만 보면 그 프레임이 보이지 않는다.** `findBy*`·`waitFor`는 「나타날
+   * 때까지」만 기다려 스쳐 지나간 것을 놓친다. 그래서 **바뀔 때마다 기록해** 지나간 프레임을
+   * 함께 본다 — 고정 지연도, 도착 순서 가정도 쓰지 않는다(#52·#99).
+   */
+  it('404가 오면 정리 전에도 안내다 — 「다시 시도」가 한때도 서지 않는다', async () => {
+    const frames = watchRenderedText();
+
+    renderScreen(defaultRoutes(), '?rq=9999');
+
+    await waitForList();
+    await waitFor(() => {
+      expect(currentLocation()).toBe(ROUTE);
+    });
+
+    const seen = frames.stop();
+
+    /* 짝 양성 — 안내는 실제로 그려졌다. 「아무것도 안 보였다」로는 통과하지 않는다. */
+    expect(seen.some((frame) => frame.includes(t.empty.notFoundTitle))).toBe(true);
+    expect(seen.every((frame) => !frame.includes(messages.common.retry))).toBe(true);
   });
 
   /**
