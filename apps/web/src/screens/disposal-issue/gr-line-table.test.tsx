@@ -585,6 +585,42 @@ describe('GrLineTable — 빈 상태와 복구', () => {
     expect(props.onRetryReferences).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * **접기가 넷을 함께 본다**(전례 리뷰 t3 Minor ②의 후속 — PR ④에서 닫는다).
+   *
+   * 안내 문구가 넷을 함께 적고 「다시 시도」가 넷을 함께 부르므로 **판정도 같은 범위여야**
+   * 문구와 조치가 어긋나지 않는다. 품목 하나로만 재면 접기를 좁혀도 잣대가 아무 말도 하지
+   * 않는다 — 그때 자재 LOT만 못 받은 사용자는 이름 자리에 「알 수 없음」만 보고 **왜 그런지도,
+   * 무엇을 눌러야 하는지도** 화면에서 읽을 수 없다.
+   */
+  it.each([
+    ['품목', { itemLookup: itemSource({ entries: [], isError: true }) }],
+    ['단위', { uomLookup: uomSource({ entries: [], isError: true }) }],
+    ['자재 LOT', { lotLookup: lotSource({ entries: [], isError: true }) }],
+    ['위치', { locationLookup: locationSource({ entries: [], isError: true }) }],
+  ])('%s만 실패해도 안내와 복구 경로가 함께 선다', async (_name, overrides) => {
+    const { props, user } = renderTable(overrides);
+
+    expect(screen.getByText(t.reasons.lineReferencesFailed)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    /* 문구만 서고 복구가 다른 대상을 부르면 눌러도 그 자리는 실패인 채로 남는다. */
+    expect(props.onRetryReferences).toHaveBeenCalledTimes(1);
+  });
+
+  /** 잘림 접기도 **같은 범위**다 — 한쪽만 잘려도 그 사실이 화면에 있어야 한다. */
+  it.each([
+    ['품목', { itemLookup: itemSource({ truncated: true }) }],
+    ['단위', { uomLookup: uomSource({ truncated: true }) }],
+    ['자재 LOT', { lotLookup: lotSource({ truncated: true }) }],
+    ['위치', { locationLookup: locationSource({ truncated: true }) }],
+  ])('%s만 잘려도 그 사실을 밝힌다', (_name, overrides) => {
+    renderTable(overrides);
+
+    expect(screen.getByText(t.reasons.lineReferencesTruncated)).toBeInTheDocument();
+  });
+
   /** **잘림은 실패와 따로 낸다** — 다시 불러도 같은 쪽이 오므로 복구 버튼을 붙이지 않는다. */
   it('잘림은 사실만 밝히고 복구 버튼을 붙이지 않는다', () => {
     renderTable({

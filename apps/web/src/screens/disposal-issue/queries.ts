@@ -1,7 +1,8 @@
-import type { ApiClient } from '@omf-mes/api-client';
-import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import type { ApiClient, components } from '@omf-mes/api-client';
+import { useQueries, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest, toApiError } from '../../patterns/request';
 import type { Submission } from './approval-progress';
 import type { ReceiptFilterQuery } from './filters';
@@ -10,7 +11,7 @@ import { isTruncated } from './lookups';
 import type { BalanceSource } from './on-hand';
 import {
   toBalanceView,
-  toIssueLineView,
+  toIssueDetailResult,
   toIssueView,
   toReceiptLineView,
   toReceiptView,
@@ -20,6 +21,7 @@ import {
   type ReceiptDetailResult,
   type ReceiptListResult,
 } from './types';
+import { DISPOSAL_FORM_FIELDS, SUBMIT_FORM_FIELDS } from './validation';
 
 /**
  * 이 화면의 요청 — **이 회차에는 읽기 일곱이다**(참조 다섯은 `lookups.ts`).
@@ -272,10 +274,7 @@ const fetchGoodsIssueDetail = async (
     }),
   );
 
-  return {
-    issue: toIssueView(data.goodsIssue),
-    lines: data.lines.map(toIssueLineView),
-  };
+  return toIssueDetailResult(data);
 };
 
 /**
@@ -503,4 +502,157 @@ export const isApprovalNotFound = (error: unknown): boolean => {
   const apiError = toApiError(error);
 
   return apiError.kind === 'http' && apiError.status === 404;
+};
+
+type GoodsIssueCreate = components['schemas']['GoodsIssueCreate'];
+type GoodsIssueDetailResponse = components['schemas']['GoodsIssueDetailResponse'];
+type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];
+type ApprovalRequestRef = components['schemas']['ApprovalRequestRef'];
+
+/**
+ * 출고 상세의 요청 경로 — **잠금 토큰이 앉는 유일한 자리다.**
+ *
+ * 토큰 보관소가 **요청 URL의 경로별로** `ETag`를 담으므로(실측) 상신의 `If-Match`는 이 경로에서
+ * 꺼내야 한다. 컬렉션 경로(`/logistics/goods-issues`)를 주면 **목록 조회와 열쇠가 겹치고**,
+ * 액션 경로(`…:request-approval`)를 주면 토큰이 늘 비어 훅이 요청을 만들지 않고 멈춘다 —
+ * 「눌러도 아무 일이 없다」가 그 증상이다(전례 W-CO-02·W-06-15 · 감지기 M58).
+ *
+ * **등록 201도 `ETag`를 준다**(실측). 그 토큰은 **컬렉션 경로**에 앉으므로 쓰지 않는다 —
+ * 지금은 목록이 토큰을 주지 않아 우연히 덮이지 않을 뿐이고, 그 우연에 기대는 결합을 만들지 않는다.
+ */
+export const issueDetailPath = (goodsIssueId: number): string =>
+  `/logistics/goods-issues/${String(goodsIssueId)}`;
+
+/**
+ * 상신 직전에 **출고 상세를 한 번 부른다** — 잠금 토큰을 그 경로에 앉히는 자리다.
+ *
+ * 「품의 상신」 한 번이 요청 둘을 잇는데(승인 기록 정정 1-1) 둘째 요청의 `If-Match`는 계약이
+ * 「같은 리소스의 **상세 GET 200**이 내려주는 값」이라고 못 박았다. 그래서 연쇄 가운데에 이
+ * 조회가 선다 — 없으면 방금 만든 전표의 토큰이 어디에도 없어 상신이 시작조차 되지 않는다.
+ *
+ * **캐시를 함께 채운다.** 같은 열쇠(`issueKeys.detail`)로 부르므로 사용자가 「이 품의 열기」로
+ * 이력 탭에 가면 그 전표가 이미 와 있다 — 조회를 두 벌로 만들지 않는 것이 요점이다.
+ *
+ * **실패해도 던지는 것을 부르는 자리가 받는다.** 토큰을 못 얻은 채 상신하면 공통 훅이 요청을
+ * 만들지 않고 「최신 상태를 불러오지 못했습니다」를 세운다 — 그 자리가 이미 있으므로 여기서
+ * 갈래를 새로 만들지 않는다.
+ */
+export const useIssueDetailFetcher = (): ((goodsIssueId: number) => Promise<IssueDetailResult>) => {
+  const { client } = useApiClient();
+  const queryClient = useQueryClient();
+
+  return (goodsIssueId) =>
+    queryClient.fetchQuery({
+      queryKey: issueKeys.detail(goodsIssueId),
+      queryFn: () => fetchGoodsIssueDetail(client, goodsIssueId),
+    });
+};
+
+export interface CreateGoodsIssueOptions {
+  onSuccess: (data: IssueDetailResult) => void;
+}
+
+/**
+ * 폐기 품의 전표를 만든다 — **연쇄의 첫째 요청**이다.
+ *
+ * **전기하지 않는다**(`postImmediately: false` · `issue-request.ts`). 이 화면의 업무는 승인을
+ * 먼저 받는 것이고, 재고가 움직이는 것은 승인 뒤의 「기타출고 처리」다.
+ *
+ * **일반 출고와 경로를 나누지 않는다**(착수 이슈 §6). 일반 출고·반품·기타 출고가 같은 경로를
+ * 쓰고 `issueTypeCode`로만 갈린다.
+ *
+ * **잠금 토큰을 보내지 않는다**(`etagPath: null`). 새 전표라 매길 버전이 없고 계약도 이 자리의
+ * `If-Match`를 선택으로 두었다 — 화면이 들고 있는 토큰은 **다른 자원**(고른 입고 전표나 앞서
+ * 다룬 품의)의 것이라 실으면 서로 다른 자원의 버전을 비교하게 된다.
+ *
+ * **성공 뒤 이 슬라이스의 출고 뿌리를 무효화한다.** 방금 만든 전표가 이력 목록에 있어야
+ * 사용자가 이어서 다룰 수 있다. **잔액은 무효화하지 않는다** — 전기하지 않았으므로 재고가
+ * 움직이지 않았고, 무효화하면 「바뀌지도 않은 값을 다시 받는」 요청이 늘 뿐이다.
+ *
+ * **응답을 화면 타입으로 옮겨 넘긴다**(`toIssueDetailResult`) — 상세 조회와 같은 자리를 지나야
+ * 방금 만든 전표와 다시 읽은 전표가 서로 다른 값을 보이지 않는다.
+ */
+export const useCreateGoodsIssue = (
+  options: CreateGoodsIssueOptions,
+): MasterWriteResult<GoodsIssueCreate> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<GoodsIssueCreate, GoodsIssueDetailResponse>({
+    request: (body, headers) =>
+      client.POST('/logistics/goods-issues', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body,
+      }),
+    etagPath: null,
+    invalidateKeys: [issueKeys.all],
+    knownFields: DISPOSAL_FORM_FIELDS,
+    onSuccess: (data) => {
+      options.onSuccess(toIssueDetailResult(data));
+    },
+  });
+};
+
+export interface RequestApprovalOptions {
+  /**
+   * 상신할 전표. **연쇄에서는 방금 만든 전표**이고 이력 탭에서는 고른 품의다 —
+   * 두 자리가 같은 훅을 지나므로 규칙이 갈리지 않는다.
+   */
+  goodsIssueId: number | null;
+  onSuccess: (data: ApprovalRequestRef) => void;
+}
+
+/**
+ * 만들어진 전표를 결재에 올린다 — **연쇄의 둘째 요청**이자 이력 탭의 재상신이다.
+ *
+ * **`If-Match`가 필수다**(계약 · 목이 없는 요청을 400으로 되돌린다 — 실측). 토큰은 **늘 출고
+ * 상세 경로**에서 꺼낸다(`issueDetailPath`).
+ *
+ * **응답에 `ETag`가 없다**(실측). 그래서 성공 뒤 **뿌리 키를 무효화해 상세를 다시 부른다** —
+ * 다시 부르지 않으면 다음 쓰기가 낡은 토큰으로 나가 409가 된다(감지기 M59).
+ *
+ * **승인 요청도 함께 무효화한다.** 상신으로 생기는 것이 그 요청이고, 결재 진행 구획이 그것을
+ * 읽는다 — 무효화하지 않으면 「상신했는데 아직 상신되지 않았다고 말하는」 화면이 남는다.
+ *
+ * **결재선이 없으면 400이다**(계약 명시 · 승인 기록 정정 1-5). 그 갈래를 코드로 가르지 않고
+ * **서버 문구를 그대로** 배너에 낸다 — 원인을 화면이 지어내면 다른 이유로 온 400에도 같은
+ * 안내가 붙는다(계획 결정 16).
+ *
+ * **응답이 내부 식별자 하나뿐이다**(`ApprovalRequestRef`) — 화면에 낼 번호가 없다(`omf-mes#44`).
+ * 승인 요청**번호**는 결재 진행 조회가 얻는다.
+ */
+export const useRequestApproval = (
+  options: RequestApprovalOptions,
+): MasterWriteResult<ApprovalRequestCreate> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<ApprovalRequestCreate, ApprovalRequestRef>({
+    request: (body, headers) => {
+      /*
+       * **없는 값을 0으로 메우지 않는다**(승인 기록 정정 4-① · 리뷰 Nit C3).
+       *
+       * `etagPath`가 `null`이 되면 공통 훅은 그것을 「잠금이 필요 없다」로 읽어 요청을 **그대로
+       * 내보낸다** — 대체값을 두면 `…/0:request-approval`이 실제로 나갈 수 있는 모양이 된다.
+       * 지금은 두 호출부가 그렇게 부르지 않지만, 그 사실에 기대는 대신 **여기서 멈춘다**
+       * (조회 훅의 가드와 같은 형태).
+       */
+      if (options.goodsIssueId === null) {
+        throw new Error('상신할 전표를 고르기 전에는 상신하지 않습니다.');
+      }
+
+      return client.POST('/logistics/goods-issues/{goodsIssueId}:request-approval', {
+        params: {
+          path: { goodsIssueId: options.goodsIssueId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body,
+      });
+    },
+    etagPath: options.goodsIssueId === null ? null : issueDetailPath(options.goodsIssueId),
+    invalidateKeys: [issueKeys.all, approvalKeys.all],
+    knownFields: SUBMIT_FORM_FIELDS,
+    onSuccess: options.onSuccess,
+  });
 };

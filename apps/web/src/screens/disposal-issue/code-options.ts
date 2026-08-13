@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { SelectOption, WarehouseEntry } from './types';
+import type { DisposalCodeKey, SelectOption, WarehouseEntry } from './types';
 
 /**
  * 값 목록이 확정되지 않은 코드를 **한 파일에 격리한다.**
@@ -43,16 +43,13 @@ import type { SelectOption, WarehouseEntry } from './types';
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-/** 이 화면이 자리표시로 다루는 선택지 코드 여덟. */
-export type DisposalIssueCodeKey =
-  | 'issueType'
-  | 'sourceDocumentType'
-  | 'destinationType'
-  | 'disposalAccount'
-  | 'reason'
-  | 'receiptType'
-  | 'status'
-  | 'issueStatus';
+/**
+ * 이 화면이 자리표시로 다루는 선택지 코드 여덟.
+ *
+ * **폼의 다섯을 여기서 다시 적지 않는다**(`types.ts`가 정본이다) — 두 곳에 적으면 한쪽에만
+ * 키가 늘어 「폼에는 있는데 값 목록에는 없는」 코드가 생기고, 그때 필수 판정이 그 칸을 세지 않는다.
+ */
+export type DisposalIssueCodeKey = DisposalCodeKey | 'receiptType' | 'status' | 'issueStatus';
 
 /**
  * 계약이 **등록 필수**로 요구하는 다섯.
@@ -68,7 +65,7 @@ export type DisposalIssueCodeKey =
  * `reason`은 계약 스키마에서 nullable이지만 설명이 「반품·기타 출고에서는 필수」라
  * **설명을 따른다**(계획 §5.4-17).
  */
-export const REQUIRED_CODE_KEYS: readonly DisposalIssueCodeKey[] = [
+export const REQUIRED_CODE_KEYS: readonly DisposalCodeKey[] = [
   'issueType',
   'sourceDocumentType',
   'destinationType',

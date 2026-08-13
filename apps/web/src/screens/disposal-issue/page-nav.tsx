@@ -6,6 +6,11 @@ import type { PageView } from './pagination';
 const t = messages.disposalIssue;
 
 export interface PageNavProps {
+  /**
+   * 전송 중인가. **첫째 겹**이다 — 쪽을 옮기면 고른 전표가 풀려(수명 표 3행) 나가는 중인
+   * 상신의 결과가 다른 맥락에 도착한다. 핸들러 가드(둘째 겹)와 짝이다.
+   */
+  isLocked?: boolean;
   view: PageView;
   onChange: (page: number) => void;
 }
@@ -25,13 +30,13 @@ export interface PageNavProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const PageNav = ({ view, onChange }: PageNavProps) => (
+export const PageNav = ({ view, isLocked = false, onChange }: PageNavProps) => (
   <nav className="form-actions" aria-label={t.pageNav.label}>
     <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
     <Button
       variant="outlined"
       size="sm"
-      disabled={!view.canPrev}
+      disabled={!view.canPrev || isLocked}
       onClick={() => {
         onChange(view.page - 1);
       }}
@@ -41,7 +46,7 @@ export const PageNav = ({ view, onChange }: PageNavProps) => (
     <Button
       variant="outlined"
       size="sm"
-      disabled={!view.canNext}
+      disabled={!view.canNext || isLocked}
       onClick={() => {
         onChange(view.page + 1);
       }}

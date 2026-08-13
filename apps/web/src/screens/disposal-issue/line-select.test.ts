@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { describeLineSelect, isLineSelectable } from './line-select';
+import { describeLineSelect } from './line-select';
 import type { ReceiptLineView } from './types';
 
 const t = messages.disposalIssue;
@@ -73,13 +73,5 @@ describe('describeLineSelect', () => {
     } as ReceiptLineView;
 
     expect(describeLineSelect(withCodes)).toEqual({ kind: 'selectable' });
-  });
-});
-
-describe('isLineSelectable', () => {
-  /** 판정이 **한 곳에서** 나온다 — 표·화면·요청 조립이 각자 판정하면 규칙이 갈린다. */
-  it('describeLineSelect의 갈래를 그대로 따른다', () => {
-    expect(isLineSelectable(line())).toBe(true);
-    expect(isLineSelectable(line({ itemId: 0 }))).toBe(false);
   });
 });

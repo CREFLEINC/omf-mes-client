@@ -25,6 +25,11 @@ export interface GiFilterBarProps {
   issueTypeOptions: SelectOption[];
   reasonOptions: SelectOption[];
   statusOptions: SelectOption[];
+  /**
+   * 전송 중인가. **첫째 겹**이다 — 조건이 바뀌면 고른 품의가 풀려(수명 표 9행) 나가는 중인
+   * 상신의 결과가 다른 맥락에 도착한다. 핸들러 가드(둘째 겹)와 짝이다.
+   */
+  isLocked?: boolean;
   onSearch: (filters: IssueFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. **기간은 들어오지 않는다.** */
   onRemoveFilter: (key: RemovableIssueChipKey) => void;
@@ -53,6 +58,7 @@ export const GiFilterBar = ({
   issueTypeOptions,
   reasonOptions,
   statusOptions,
+  isLocked = false,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -125,6 +131,7 @@ export const GiFilterBar = ({
             id={periodId}
             mode="range"
             placeholder={messages.common.selectDate}
+            disabled={isLocked}
             value={[
               filters.from === '' ? null : filters.from,
               filters.to === '' ? null : filters.to,
@@ -141,6 +148,7 @@ export const GiFilterBar = ({
           value={filters.issueType}
           note={codeNote(issueTypeOptions)}
           placeholder={issueTypeOptions.length === 0 ? codePlaceholder() : t.filters.all}
+          disabled={isLocked}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, issueType: value }));
           }}
@@ -152,6 +160,7 @@ export const GiFilterBar = ({
           value={filters.reason}
           note={codeNote(reasonOptions)}
           placeholder={reasonOptions.length === 0 ? codePlaceholder() : t.filters.all}
+          disabled={isLocked}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, reason: value }));
           }}
@@ -163,6 +172,7 @@ export const GiFilterBar = ({
           value={filters.status}
           note={codeNote(statusOptions)}
           placeholder={statusOptions.length === 0 ? codePlaceholder() : t.filters.all}
+          disabled={isLocked}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, status: value }));
           }}
@@ -171,6 +181,7 @@ export const GiFilterBar = ({
         <SearchInput
           label={t.historyFields.q}
           value={filters.q}
+          disabled={isLocked}
           onChange={(event) => {
             setFilters((prev) => ({ ...prev, q: event.target.value }));
           }}
@@ -181,8 +192,10 @@ export const GiFilterBar = ({
         {/* 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1). */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
-            <Button onClick={search}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={reset}>
+            <Button disabled={isLocked} onClick={search}>
+              {messages.common.search}
+            </Button>
+            <Button variant="outlined" disabled={isLocked} onClick={reset}>
               {messages.common.reset}
             </Button>
           </div>

@@ -8,8 +8,8 @@ import { messages } from '@omf-mes/i18n';
  * 유지된다.
  *
  * 이 화면은 **폐기 대상을 입고 전표에서 골라 출고 전표(폐기 품의)를 만들고 상신한다.**
- * **이 회차(PR ③)까지에도 쓰기가 없다** — 대상 전표를 고르고 **그 전표의 어느 줄을 얼마나
- * 폐기할지 정하며**, 이미 올라간 품의를 찾아 **내용과 결재 진행을 읽는** 데까지다.
+ * **이 회차(PR ④)에 쓰기가 둘 생긴다** — 전표 생성과 상신이며, 사용자 조작은 「품의 상신」
+ * 한 번이다(승인 기록 정정 1-1). 기타출고 처리(전기)는 뒤 회차다.
  *
  * **대상의 원천이 입고 전표인 이유**(계획 결정 2): 계약이 요구하는 출고 라인 한 줄은
  * 품목·자재 LOT·수량·단위·출발 위치 다섯이 전부 필수인데, 재고 잔액은 축 하나만 채워 내려
@@ -264,6 +264,99 @@ export interface IssueDetailResult {
   issue: IssueView;
   lines: IssueLineView[];
 }
+
+/**
+ * 헤더와 라인을 함께 주는 응답을 화면 타입으로 옮기는 **유일한 지점**이다.
+ *
+ * **상세 조회와 전표 생성이 같은 모양을 돌려준다**(계약 실측 — 둘 다 `GoodsIssueDetailResponse`).
+ * 옮기기를 자리마다 손으로 적으면 한쪽만 고쳐져 **방금 만든 전표와 다시 읽은 전표가 서로 다른
+ * 값을 보이게** 된다 — 이 화면에서 그 둘은 같은 전표다.
+ */
+export const toIssueDetailResult = (data: {
+  goodsIssue: IssueResponse;
+  lines: IssueLineResponse[];
+}): IssueDetailResult => ({
+  issue: toIssueView(data.goodsIssue),
+  lines: data.lines.map(toIssueLineView),
+});
+
+/**
+ * 품의 정보 폼이 다루는 코드 다섯.
+ *
+ * **다섯이 전부 계약의 등록 필수 자리다**(계획 결정 8) — 값 목록이 비어 있는 동안 이 화면으로는
+ * 폐기 품의를 올릴 수 없다. 조회 조건의 코드는 이 union에 들지 않는다(`code-options.ts`가
+ * 넓혀 쓴다) — 비어 있어도 아무것도 막지 않아 성질이 다르다.
+ *
+ * `disposalAccount`(폐기 계정)만 이름이 계약 필드와 다르다. 계약에 그 이름의 필드가 없고
+ * 가장 가까운 자리가 도착지 식별자라(계획 §5.4-4 · 결정 8의 넷째 줄) **그 가정을 이름이 아니라
+ * 옮기는 한 자리에서 밝힌다**(`issue-request.ts`).
+ */
+export type DisposalCodeKey =
+  'issueType' | 'sourceDocumentType' | 'destinationType' | 'disposalAccount' | 'reason';
+
+/**
+ * 품의 정보 초안 — **아직 보내지 않은 입력**이다(수명 표의 「폐기」 열).
+ *
+ * **상신 사유가 여기 함께 있는 것이 이 화면의 형태다**(승인 기록 정정 1-1). 사용자 조작이
+ * 「품의 상신」 하나이고 그 한 번에 전표 생성과 상신이 잇달아 나가므로, 사유는 **보내기 전에
+ * 이 폼에서 받는다.** 이력 탭의 재상신은 자기 초안을 따로 갖는다 — 매인 대상이 다르기 때문이다
+ * (이쪽은 고른 입고 전표, 그쪽은 고른 품의).
+ *
+ * **주소에 싣지 않는다.** 글자마다 뒤로가기 기록이 쌓이고, 화면이 조회 조건과 입력을 같은
+ * 통로로 다루게 된다.
+ *
+ * **친 글자를 그대로 들고 있는다** — 번호로 강제해 들고 있으면 「고르지 않음」과 「0번」이
+ * 구분되지 않는다. 번호로 옮기는 자리는 요청 조립 한 곳이다(`issue-request.ts`).
+ */
+export interface DisposalDraft {
+  readonly codes: Readonly<Record<DisposalCodeKey, string>>;
+  /** `YYYY-MM-DD`. 달력 컨트롤이 이 모양으로만 방출한다. */
+  readonly issuedDate: string;
+  /** `HH:mm`. 시각 입력칸이 이 모양으로만 방출한다. */
+  readonly issuedTime: string;
+  readonly remarks: string;
+  /**
+   * 상신 사유. **결재함 목록에서 첫 줄이 요약을 겸한다**(공유계약 A-12 보강 · 계약 명시).
+   *
+   * **최소 길이를 화면이 정하지 않는다**(승인 기록 §13-6 안 A). 정해진 규칙이 다르면 정당한
+   * 사유가 막히고, 글자 수를 화면이 지어내는 것이 된다 — 막는 것은 빈 값과 공백만이고
+   * 나머지는 자리표시 문구·보조 문구·확인 창이 **유도**한다.
+   */
+  readonly reason: string;
+}
+
+/**
+ * 빈 초안.
+ *
+ * **미리 채우는 값이 하나도 없다.** 출고 일시를 지금 시각으로 채우면 사용자가 확인하지 않은
+ * 시각이 되돌릴 수 없는 전표에 실리고, 어제 폐기한 것을 오늘 올리는 흔한 경우에 조용히 틀린다.
+ */
+export const EMPTY_DISPOSAL_DRAFT: DisposalDraft = {
+  codes: {
+    issueType: '',
+    sourceDocumentType: '',
+    destinationType: '',
+    disposalAccount: '',
+    reason: '',
+  },
+  issuedDate: '',
+  issuedTime: '',
+  remarks: '',
+  reason: '',
+};
+
+/**
+ * 버릴 것이 있는가. **모든 칸을 함께 본다** — 한쪽만 보면 나머지가 확인 없이 사라진다.
+ *
+ * 「입력 지우기」가 줄 초안과 이 초안을 **함께** 버리므로, 판정도 두 자리에서 함께 나와야
+ * 「지울 것이 없다」는 잠금이 실제와 어긋나지 않는다(`line-draft.ts`의 짝).
+ */
+export const hasAnyDisposalDraftValue = (draft: DisposalDraft): boolean =>
+  Object.values(draft.codes).some((code) => code !== '') ||
+  draft.issuedDate !== '' ||
+  draft.issuedTime !== '' ||
+  draft.remarks !== '' ||
+  draft.reason !== '';
 
 /**
  * 사람이 읽는 이름 — **이름 자리가 전부 이 판정 하나를 지난다.**

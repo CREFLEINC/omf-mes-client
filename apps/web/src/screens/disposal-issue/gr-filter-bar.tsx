@@ -40,6 +40,11 @@ export interface GrFilterBarProps {
   statusOptions: SelectOption[];
   /** 조건 칩에 실을 참조 이름. 번호를 문구로 만드는 자리를 두지 않기 위한 것이다(`omf-mes#44`). */
   chipNames: FilterChipNames;
+  /**
+   * 전송 중인가. **첫째 겹**이다 — 조건·선택이 바뀌면 고른 대상이 풀려(수명 표 1~3·9행)
+   * 나가는 중인 상신의 결과가 다른 맥락에 도착한다. 핸들러 가드(둘째 겹)와 짝이다.
+   */
+  isLocked?: boolean;
   onSearch: (filters: ReceiptFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. **기간은 들어오지 않는다.** */
   onRemoveFilter: (key: RemovableChipKey) => void;
@@ -75,6 +80,7 @@ export const GrFilterBar = ({
   receiptTypeOptions,
   statusOptions,
   chipNames,
+  isLocked = false,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -155,6 +161,7 @@ export const GrFilterBar = ({
           options={withAll(warehouseOptions)}
           value={filters.warehouse}
           note={warehouseNote}
+          disabled={isLocked}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, warehouse: value }));
           }}
@@ -174,6 +181,7 @@ export const GrFilterBar = ({
             id={periodId}
             mode="range"
             placeholder={messages.common.selectDate}
+            disabled={isLocked}
             value={[
               filters.from === '' ? null : filters.from,
               filters.to === '' ? null : filters.to,
@@ -190,6 +198,7 @@ export const GrFilterBar = ({
           value={filters.receiptType}
           note={codeNote(receiptTypeOptions)}
           placeholder={receiptTypeOptions.length === 0 ? codePlaceholder() : t.filters.all}
+          disabled={isLocked}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, receiptType: value }));
           }}
@@ -201,6 +210,7 @@ export const GrFilterBar = ({
           value={filters.status}
           note={codeNote(statusOptions)}
           placeholder={statusOptions.length === 0 ? codePlaceholder() : t.filters.all}
+          disabled={isLocked}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, status: value }));
           }}
@@ -209,6 +219,7 @@ export const GrFilterBar = ({
         <SearchInput
           label={t.fields.q}
           value={filters.q}
+          disabled={isLocked}
           onChange={(event) => {
             setFilters((prev) => ({ ...prev, q: event.target.value }));
           }}
@@ -222,8 +233,10 @@ export const GrFilterBar = ({
          */}
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
-            <Button onClick={search}>{messages.common.search}</Button>
-            <Button variant="outlined" onClick={reset}>
+            <Button disabled={isLocked} onClick={search}>
+              {messages.common.search}
+            </Button>
+            <Button variant="outlined" disabled={isLocked} onClick={reset}>
               {messages.common.reset}
             </Button>
           </div>

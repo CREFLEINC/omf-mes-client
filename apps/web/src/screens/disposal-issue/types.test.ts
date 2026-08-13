@@ -2,9 +2,12 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
+  EMPTY_DISPOSAL_DRAFT,
   formatDateTime,
+  hasAnyDisposalDraftValue,
   readableName,
   toBalanceView,
+  toIssueDetailResult,
   toIssueLineView,
   toIssueView,
   toReasonLines,
@@ -372,5 +375,46 @@ describe('toReasonLines', () => {
   it('사유가 비었으면 그 사실을 적는다', () => {
     expect(toReasonLines('')).toEqual([t.values.emptyReason]);
     expect(toReasonLines('   ')).toEqual([t.values.emptyReason]);
+  });
+});
+
+describe('toIssueDetailResult', () => {
+  /**
+   * **상세 조회와 전표 생성이 같은 모양을 돌려준다**(계약 실측). 옮기기가 한 자리라
+   * 방금 만든 전표와 다시 읽은 전표가 서로 다른 값을 보이는 일이 생기지 않는다.
+   */
+  it('헤더와 라인을 함께 옮긴다', () => {
+    const result = toIssueDetailResult({
+      goodsIssue: issueResponse(),
+      lines: [issueLineResponse()],
+    });
+
+    expect(result.issue.goodsIssueNo).toBe(issueResponse().goodsIssueNo);
+    expect(result.lines).toHaveLength(1);
+    expect(result.lines[0]?.issueQty).toBe(issueLineResponse().issueQty);
+  });
+
+  it('라인이 없는 전표도 그대로 옮긴다', () => {
+    expect(toIssueDetailResult({ goodsIssue: issueResponse(), lines: [] }).lines).toEqual([]);
+  });
+});
+
+describe('hasAnyDisposalDraftValue', () => {
+  it('빈 초안에는 버릴 것이 없다', () => {
+    expect(hasAnyDisposalDraftValue(EMPTY_DISPOSAL_DRAFT)).toBe(false);
+  });
+
+  /**
+   * **모든 칸을 함께 본다.** 한쪽만 보면 나머지가 확인 없이 사라진다 — 「입력 지우기」가
+   * 줄 초안과 이 초안을 함께 버리는 자리라, 판정이 좁으면 잠긴 버튼 뒤로 값이 남는다.
+   */
+  it.each([
+    ['codes', { codes: { ...EMPTY_DISPOSAL_DRAFT.codes, issueType: 'SAMPLE_GI_TYPE_A' } }],
+    ['issuedDate', { issuedDate: '2026-08-11' }],
+    ['issuedTime', { issuedTime: '09:30' }],
+    ['remarks', { remarks: '비고' }],
+    ['reason', { reason: '사유' }],
+  ] as const)('%s 하나만 채워도 버릴 것이 있다', (_name, patch) => {
+    expect(hasAnyDisposalDraftValue({ ...EMPTY_DISPOSAL_DRAFT, ...patch })).toBe(true);
   });
 });
