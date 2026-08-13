@@ -18,10 +18,11 @@ import {
   type ApprovalRequestDetailResponse,
   type IssueDetailResult,
   type IssueListResult,
+  type IssueView,
   type ReceiptDetailResult,
   type ReceiptListResult,
 } from './types';
-import { DISPOSAL_FORM_FIELDS, SUBMIT_FORM_FIELDS } from './validation';
+import { DISPOSAL_FORM_FIELDS, POST_FORM_FIELDS, SUBMIT_FORM_FIELDS } from './validation';
 
 /**
  * 이 화면의 요청 — **이 회차에는 읽기 일곱이다**(참조 다섯은 `lookups.ts`).
@@ -34,7 +35,8 @@ import { DISPOSAL_FORM_FIELDS, SUBMIT_FORM_FIELDS } from './validation';
  * | 「처리 이력」 탭에 서면 | **출고 전표 목록** — 이미 올라간 품의를 찾는다 |
  * | 품의를 고르면 | **그 전표의 상세** — 헤더와 라인이 한 번에 온다 |
  * | 그 품의에 승인 요청 값이 있으면 | **승인 요청 상세** — 결재 진행이 함께 온다 |
- * | 「품의 등록」·「상신」·「기타출고 처리」 | 쓰기 셋 — **뒤 회차에서 생긴다** |
+ * | 「품의 상신」 | 쓰기 둘을 잇는다 — 전표 생성 → (토큰을 얻는 상세 조회) → 상신 |
+ * | 「기타출고 처리」 | **재고를 움직이는 쓰기** — 이 화면의 마지막 쓰기다 |
  *
  * **보이지 않는 탭의 조회는 나가지 않는다.** 두 탭의 조건과 선택이 한 주소에 함께 살아 있어
  * (수명 표 8행) 값만으로는 조회가 성립하므로, 훅마다 **탭이 서 있는가**를 함께 받는다 —
@@ -139,6 +141,17 @@ export const BALANCE_PAGE_SIZE = 200;
 const BALANCE_KEY = ['disposal-issue-balances'] as const;
 
 export const balanceKeys = {
+  /**
+   * 잔액 조회 전체를 덮는 뿌리 키. **전기 성공 뒤 이 하나를 무효화한다** — 그 순간 재고가
+   * 실제로 움직였으므로 화면이 들고 있는 상한은 낡았고, 낡은 상한으로 다음 품의를 올리면
+   * **이미 없어진 자재를 폐기하려 한다.**
+   *
+   * **전표 생성 뒤에는 무효화하지 않는다** — 그때는 아무것도 움직이지 않았다
+   * (`postImmediately: false`). 짝을 일일이 세어 무효화하지 않는 이유는, 그러면 화면이 그때
+   * 들고 있던 품목만 새로 받고 그 사이에 줄 구성이 바뀌었으면 새 품목의 상한이 낡은 채로 남기
+   * 때문이다.
+   */
+  all: BALANCE_KEY,
   onHand: (warehouseId: number, itemId: number) => [...BALANCE_KEY, warehouseId, itemId] as const,
 };
 
@@ -508,6 +521,8 @@ type GoodsIssueCreate = components['schemas']['GoodsIssueCreate'];
 type GoodsIssueDetailResponse = components['schemas']['GoodsIssueDetailResponse'];
 type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];
 type ApprovalRequestRef = components['schemas']['ApprovalRequestRef'];
+type PostRequest = components['schemas']['PostRequest'];
+type GoodsIssueResponse = components['schemas']['GoodsIssue'];
 
 /**
  * 출고 상세의 요청 경로 — **잠금 토큰이 앉는 유일한 자리다.**
@@ -654,5 +669,69 @@ export const useRequestApproval = (
     invalidateKeys: [issueKeys.all, approvalKeys.all],
     knownFields: SUBMIT_FORM_FIELDS,
     onSuccess: options.onSuccess,
+  });
+};
+
+export interface PostGoodsIssueOptions {
+  /** 전기할 전표. **이력에서 고른 품의**다 — 이 조작에 다른 출처가 없다. */
+  goodsIssueId: number | null;
+  onSuccess: (data: IssueView) => void;
+}
+
+/**
+ * 승인이 끝난 폐기 품의를 **실제 출고로 처리한다** — 계약이 「재고가 움직이는 순간」이라 적은 자리다.
+ *
+ * **승인 전이면 서버가 400으로 되돌린다**(계약 명시). 화면은 그 잠금을 흉내 내지 않고
+ * (승인 완료 코드가 미확정이다 · `omf-mes#64`) 400을 **서버 문구 그대로** 배너에 낸다 —
+ * 코드로 분기해 원인을 지어내면 다른 이유로 온 400에도 같은 안내가 붙는다(계획 결정 16).
+ *
+ * **`If-Match`가 필수다.** 토큰은 **늘 출고 상세 경로**에서 꺼낸다(`issueDetailPath`) — 상신과
+ * 같은 규칙이고, 액션 경로를 주면 토큰이 비어 훅이 요청을 만들지 않는다(감지기 M58과 같은 형태).
+ *
+ * **응답에 `ETag`가 없고 헤더만 온다**(실측 — 라인이 없다). 그래서 성공 뒤 **세 뿌리를
+ * 무효화한다**:
+ *
+ * | 뿌리 | 왜 |
+ * | --- | --- |
+ * | 출고(목록·상세) | 그 전표의 상태와 **라인의 원장 라인 번호**가 달라진다. 다시 부르지 않으면 「전기 전」 표식이 그대로 남고 다음 쓰기가 **낡은 토큰**으로 나간다 |
+ * | 승인 요청 | 결재 진행 구획이 그 요청을 읽는다 — 함께 부르지 않으면 갱신된 값과 낡은 값이 한 화면에 섞인다 |
+ * | **재고 잔액** | **이 조작이 재고를 움직였다.** 낡은 상한으로 다음 품의를 올리면 이미 없어진 자재를 폐기하려 한다 — 전표 생성 뒤에 무효화하지 않는 것과 갈리는 자리다 |
+ *
+ * **응답을 화면 타입으로 옮겨 넘긴다**(`toIssueView`) — 목록·상세와 같은 자리를 지나야 방금
+ * 처리한 전표와 다시 읽은 전표가 서로 다른 값을 보이지 않는다.
+ */
+export const usePostGoodsIssue = (
+  options: PostGoodsIssueOptions,
+): MasterWriteResult<PostRequest> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<PostRequest, GoodsIssueResponse>({
+    request: (body, headers) => {
+      /*
+       * **없는 값을 0으로 메우지 않는다.** `etagPath`가 `null`이 되면 공통 훅은 그것을
+       * 「잠금이 필요 없다」로 읽어 요청을 **그대로 내보낸다** — 대체값을 두면 `…/0:post`가
+       * 실제로 나갈 수 있는 모양이 되고, 그것은 **남의 전표를 전기하는** 요청이다.
+       */
+      if (options.goodsIssueId === null) {
+        throw new Error('처리할 품의를 고르기 전에는 전기하지 않습니다.');
+      }
+
+      return client.POST('/logistics/goods-issues/{goodsIssueId}:post', {
+        params: {
+          path: { goodsIssueId: options.goodsIssueId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body,
+      });
+    },
+    etagPath: options.goodsIssueId === null ? null : issueDetailPath(options.goodsIssueId),
+    invalidateKeys: [issueKeys.all, approvalKeys.all, balanceKeys.all],
+    knownFields: POST_FORM_FIELDS,
+    onSuccess: (data) => {
+      options.onSuccess(toIssueView(data));
+    },
   });
 };

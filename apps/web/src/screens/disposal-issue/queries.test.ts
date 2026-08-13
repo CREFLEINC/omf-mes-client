@@ -398,6 +398,22 @@ describe('issueKeys · approvalKeys', () => {
   it('승인 요청 키가 요청마다 갈린다', () => {
     expect(approvalKeys.detail(9521)).not.toEqual(approvalKeys.detail(9522));
   });
+
+  /**
+   * **잔액 뿌리가 짝별 키를 전부 덮는다.** 전기 성공 뒤 이 하나를 무효화해야 화면이 그때 들고
+   * 있던 품목만이 아니라 잔액 전체가 낡은 것으로 표시된다.
+   */
+  it('잔액 뿌리가 짝별 키의 앞머리다', () => {
+    expect(balanceKeys.onHand(9701, 9301).slice(0, balanceKeys.all.length)).toEqual([
+      ...balanceKeys.all,
+    ]);
+  });
+
+  /** 출고·승인 키와 겹치지 않는다 — 겹치면 한쪽 무효화가 남의 조회를 함께 끌고 간다. */
+  it('잔액 뿌리가 출고·승인 키와 갈려 있다', () => {
+    expect(balanceKeys.all[0]).not.toBe(issueKeys.all[0]);
+    expect(balanceKeys.all[0]).not.toBe(approvalKeys.all[0]);
+  });
 });
 
 describe('useGoodsIssues', () => {

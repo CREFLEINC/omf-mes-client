@@ -34,6 +34,7 @@ import {
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
+import { balanceKeys } from './queries';
 import { DisposalIssueScreen } from './screen';
 
 const t = messages.disposalIssue;
@@ -136,6 +137,10 @@ const CREATED_DETAIL_PATH = '/logistics/goods-issues/9504';
 const CREATED_APPROVAL_PATH = '/logistics/goods-issues/9504:request-approval';
 /** 이력 탭에서 이어서 상신하는 자리(미상신 전표 9502). */
 const RESUBMIT_APPROVAL_PATH = '/logistics/goods-issues/9502:request-approval';
+/** 기타출고 처리 — **재고가 움직이는 자리**. 고른 품의(9501)의 전기 경로다. */
+const POST_PATH = '/logistics/goods-issues/9501:post';
+/** 미상신 전표의 전기 경로. **부를 수 있게 두고 「부르지 않았다」를 증명한다.** */
+const MISSING_POST_PATH = '/logistics/goods-issues/9502:post';
 const MISSING_ISSUE_DETAIL_PATH = '/logistics/goods-issues/9502';
 const APPROVAL_DETAIL_PATH = '/app/approval-requests/9521';
 
@@ -520,6 +525,14 @@ const laterPhaseRoutes = (): StubRoute[] => [
     match: (request) => request.method === 'POST' && new URL(request.url).pathname === ISSUES_PATH,
     respond: () => jsonResponse({}, { status: 201 }),
   },
+  /*
+   * **미상신 전표의 전기 경로.** 화면은 이 전표에서 처리를 잠그므로 부르지 않는다 — 부를 수
+   * 있게 두어야 「잠갔다」와 「스텁이 없어 던졌다」가 구분된다.
+   */
+  {
+    match: (request) => isPost(request, MISSING_POST_PATH),
+    respond: () => jsonResponse(goodsIssueResponseFixtures[1]),
+  },
 ];
 
 /** 이 화면이 닿을 수 있는 경로를 전부 스텁으로 둔 한 벌. */
@@ -645,6 +658,8 @@ const KNOWN_PATHS = [
   CREATED_DETAIL_PATH,
   CREATED_APPROVAL_PATH,
   RESUBMIT_APPROVAL_PATH,
+  POST_PATH,
+  MISSING_POST_PATH,
 ];
 
 const expectNoUnknownPath = (requests: RecordedRequest[]): void => {
@@ -4421,6 +4436,52 @@ describe('DisposalIssueScreen — 「최신 불러오기」가 실패할 때', (
     });
     expect(screen.queryByText(t.notes.reloadFailed)).not.toBeInTheDocument();
   });
+
+  /**
+   * **「입력 지우기」가 그 안내를 함께 거둔다**(PR ④ 리뷰 N1 · 수명 표 23행).
+   *
+   * 파기는 앞서 한 시도를 **통째로 물리는 것**이라 결과 구획도 배너도 함께 사라지는데, 다시
+   * 읽기 실패 안내만 남으면 화면이 **가리킬 전표조차 없는 상태에서** 「이어서 상신하세요」라고
+   * 말한다. 새 상태를 수명 표에 올리지 않으면 정리하는 자리가 이렇게 하나씩 빠진다.
+   */
+  it('입력 지우기가 재조회 실패 안내를 함께 거둔다', async () => {
+    let detailCalls = 0;
+
+    const { user } = await setupReadyToSubmit(
+      allRoutes([
+        createRoute(),
+        {
+          match: (request) => isGet(request, CREATED_DETAIL_PATH),
+          respond: () => {
+            detailCalls += 1;
+
+            return detailCalls === 1
+              ? jsonResponse(createdDetailBody(), { headers: { ETag: CREATED_DETAIL_ETAG } })
+              : jsonResponse({ message: '' }, { status: 500 });
+          },
+        },
+        failingApprovalSubmitRoute(409, { conflictCause: 'user', message: '' }),
+      ]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+    await screen.findByText(messages.conflict.user);
+
+    await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+    await screen.findByText(t.notes.reloadFailed);
+
+    /* 파기 버튼은 버릴 것이 있어야 열린다 — 성공 뒤 비워진 초안을 다시 채운다. */
+    await fillDisposalForm(user);
+    await user.click(screen.getByRole('button', { name: t.actions.discardDrafts }));
+    await user.click(screen.getByRole('button', { name: t.actions.confirmDiscard }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.notes.reloadFailed)).not.toBeInTheDocument();
+    });
+    /* 짝 방향 — 같은 조작이 결과 구획도 함께 거둔다(둘이 함께 사라져야 앞뒤가 맞는다). */
+    expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+  });
 });
 
 describe('DisposalIssueScreen — 「이 품의 열기」도 잠금 안에 있다', () => {
@@ -4460,6 +4521,69 @@ describe('DisposalIssueScreen — 떠난 뒤 돌아왔을 때', () => {
    * 돌아온 자리에도 서지 않는다** — 대상을 떠난 순간 그 사실은 화면에서 수명을 다했고 정리
    * effect가 거둔다. 만들어진 전표에 닿는 길은 주소의 `gi`와 「처리 이력」 탭이다.
    */
+  /**
+   * **나가는 중이면 매임을 지우지 않는다**(검증 t5 P1의 짝 — 발의 자리에도 같은 규율이 있다).
+   *
+   * 아래 잣대와 **방향이 반대다**: 저쪽은 「떠난 채로 끝났으면 서지 않는다」이고 이쪽은
+   * 「**아직 나가는 중에 돌아오면 선다**」이다. 둘을 함께 두어야 정리자의 가드가 양쪽에서
+   * 고정된다 — 가드를 지우면 이쪽만 무너지고, 가드를 「늘 지키기」로 넓히면 저쪽이 무너진다.
+   *
+   * 여기서 지켜지는 것은 **전표가 만들어졌다는 사실**이다. 매임이 지워지면 방금 만든 전표
+   * 번호가 화면 어디에도 서지 않아, 사용자는 **전표가 생겼는지조차 알 수 없다.**
+   */
+  it('전송 중 떠났다가 돌아오면 만들어진 전표가 결과 구획에 선다', async () => {
+    const { user, release } = await setupReadyToSubmit(
+      allRoutes([
+        ...chainRoutes(),
+        {
+          match: (request) => isGet(request, MISSING_DETAIL_PATH),
+          respond: () =>
+            jsonResponse({
+              goodsReceipt: goodsReceiptResponseFixtures[1],
+              lines: receiptLineResponseFixtures,
+            }),
+        },
+      ]),
+      undefined,
+      /*
+       * **둘째 요청을 붙잡는다.** 첫째 요청을 붙잡으면 그 사이 연쇄는 아직 `none`이라 지워도
+       * 지워질 것이 없다 — **전표는 만들어졌고 상신이 나가는 중**인 국면이라야 「지키지 않으면
+       * 무엇을 잃는가」가 실제로 드러난다.
+       */
+      [CREATED_APPROVAL_PATH],
+      '?gr=9001',
+      '?gr=9002',
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    /* 전표는 이미 만들어졌다 — 그 사실이 결과 구획에 서 있는 상태에서 떠난다. */
+    await screen.findByText(t.result.createdTitle('GI-2026-950004'));
+
+    /* 주소로 떠난다 — 잠금도 문의 가드도 거치지 않는 길이다. */
+    fireEvent.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    /* **아직 나가는 중에** 되돌아온다 — 정리자가 여기서 한 번 더 돈다. */
+    fireEvent.click(screen.getByRole('button', { name: '뒤로' }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9001');
+    });
+    await waitForLines();
+
+    /* 돌아온 자리에 **전표가 만들어졌다는 사실이 그대로** 서 있다 — 아직 나가는 중이다. */
+    expect(within(resultPane()).getByText('GI-2026-950004')).toBeInTheDocument();
+
+    release();
+
+    expect(
+      await within(resultPane()).findByText(t.result.submittedTitle('GI-2026-950004')),
+    ).toBeVisible();
+  });
+
   it('전송 중 떠났다가 다시 고르면 결과 구획이 서지 않는다', async () => {
     const { requests, user, release } = await setupReadyToSubmit(
       allRoutes([
@@ -4500,5 +4624,1137 @@ describe('DisposalIssueScreen — 떠난 뒤 돌아왔을 때', () => {
     expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
     /* 짝 방향 — 만들어진 품의는 주소에 남아 있어 이력에서 이어 다룰 수 있다. */
     expect(currentLocation()).toContain('gi=9504');
+  });
+});
+
+/* ------------------------------------------------------------------------- *
+ * 기타출고 처리 — 재고가 실제로 움직이는 자리(계획 결정 9·14·15)
+ * ------------------------------------------------------------------------- */
+
+/** 고른 품의(9501) 상세의 잠금 토큰. **전기의 `If-Match`가 여기서 온다.** */
+const ISSUE_DETAIL_ETAG = '"token-9501"';
+
+/**
+ * 처리할 수 있는 품의(9501)의 상세 — **상신됐고 아직 전기되지 않았다.**
+ *
+ * 기본 픽스처는 한 줄이 이미 전기된 전표라 「이미 전기된 줄이 있습니다」 갈래에 걸린다.
+ * 처리의 정상 경로를 재는 자리에서는 그 갈래를 빼고 본다 — **토큰은 함께 준다**(계약 실측).
+ */
+const postableIssueLines = goodsIssueLineResponseFixtures.map((line) => ({
+  ...line,
+  inventoryTransactionLineId: null,
+}));
+
+const postableDetailRoute = (etag = ISSUE_DETAIL_ETAG): StubRoute => ({
+  match: (request) => isGet(request, ISSUE_DETAIL_PATH),
+  respond: () => jsonResponse(issueDetailBody(postableIssueLines), { headers: { ETag: etag } }),
+});
+
+/** 줄 둘의 단위를 맞춘 상세 — 확인 창의 **합계 수량**을 실제 값으로 재는 자리다. */
+const sameUomDetailRoute = (): StubRoute => ({
+  match: (request) => isGet(request, ISSUE_DETAIL_PATH),
+  respond: () =>
+    jsonResponse(
+      issueDetailBody(postableIssueLines.map((line) => ({ ...line, uomId: 9801 }))),
+      { headers: { ETag: ISSUE_DETAIL_ETAG } },
+    ),
+});
+
+/**
+ * 전기 200. **응답이 헤더만이고 `ETag`가 없다**(실측) — 성공 뒤 뿌리를 무효화해야 하는 근거다.
+ *
+ * **상태 코드가 전기 전과 같다.** 목이 전기 뒤에도 초안 상태를 그대로 주는 것이 실측됐고
+ * (계획 §5.4-20), 화면이 그 값으로 「전기 완료」를 판정하면 **그 자리에서 거짓말**이 된다.
+ */
+const postRoute = (issue: unknown = goodsIssueResponseFixtures[0]): StubRoute => ({
+  match: (request) => isPost(request, POST_PATH),
+  respond: () => jsonResponse(issue),
+});
+
+const failingPostRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: (request) => isPost(request, POST_PATH),
+  respond: () => jsonResponse(body, { status }),
+});
+
+const postButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.postIssue });
+
+const confirmPost = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: t.actions.confirmPost }));
+};
+
+/**
+ * 낡은 것으로 표시된 잔액 조회의 수.
+ *
+ * 잔액은 「품의 발의」 탭의 조회라 처리 순간에는 옵저버가 없다 — 요청 수로는 무효화를 잴 수
+ * 없어 **캐시가 낡은 것으로 표시됐는가**로 잰다.
+ */
+const invalidatedBalanceCount = (queryClient: QueryClient): number =>
+  queryClient
+    .getQueryCache()
+    .getAll()
+    .filter((query) => query.queryKey[0] === balanceKeys.all[0])
+    .filter((query) => query.state.isInvalidated).length;
+
+/** 처리할 수 있는 품의를 고른 상태까지 간다. **자리표시는 건드리지 않는다** — 지금의 화면이다. */
+const setupReadyToPost = async (
+  routes: StubRoute[] = allRoutes([postableDetailRoute(), postRoute()]),
+  search = `${HISTORY_SEARCH}&gi=9501`,
+  navigateTo = '',
+  hold: string[] = [],
+): Promise<ReturnType<typeof renderScreen>> => {
+  const rendered = renderScreen(routes, search, navigateTo, hold);
+
+  await screen.findByRole('region', { name: t.post.label });
+
+  return rendered;
+};
+
+describe('DisposalIssueScreen — 기타출고 처리가 열리는 조건', () => {
+  /**
+   * **잠그지 않고 밝힌다**(승인 기록 §13-2 안 1 · 완료 조건 C67). 승인 완료를 뜻하는 상태
+   * 코드가 확정되지 않아 화면이 판정할 근거가 없다 — 잠그면 승인된 건까지 막혀 화면이 통째로
+   * 무용해지고, 막는 것은 서버다.
+   */
+  it('상신된 품의에서 버튼이 열려 있고 판정하지 못한다는 사실이 보인다', async () => {
+    await setupReadyToPost();
+
+    expect(postButton()).toBeEnabled();
+    expect(screen.getByText(t.post.unjudgeableNote)).toBeVisible();
+  });
+
+  /**
+   * **《처리하면 일어나는 일》 세 문장이 상시 자리에 있다**(완료 조건 C68 · 감지기 M66).
+   * 버튼이 열려 있든 잠겨 있든 같은 자리에 선다.
+   */
+  it('세 문장이 버튼 위 상시 자리에 있다', async () => {
+    await setupReadyToPost();
+
+    const pane = screen.getByRole('region', { name: t.post.label });
+
+    expect(within(pane).getByText(t.post.effectDeducts)).toBeVisible();
+    expect(within(pane).getByText(t.post.effectApprovalIsNotPosting)).toBeVisible();
+    expect(within(pane).getByText(t.post.effectNoUndoHere)).toBeVisible();
+  });
+
+  /**
+   * **미상신 전표는 잠근다**(완료 조건 C69 · 감지기 M65) — 승인 요청 값이 없다는 것은 승인이
+   * 있을 수 없다는 뜻이고, 그것은 화면이 값 유무로 확실히 아는 사실이다. **구획은 선다** —
+   * 감추면 「왜 여기서는 처리할 수 없는가」에 화면이 답하지 못한다.
+   */
+  it('미상신 품의에서는 잠기고 사유가 버튼 옆에서 읽힌다', async () => {
+    await setupReadyToPost(
+      allRoutes([notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9502`,
+    );
+
+    expect(postButton()).toBeDisabled();
+    expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsSubmission);
+    /* 짝 방향 — 잠겨 있어도 세 문장은 그대로 보인다. */
+    expect(screen.getByText(t.post.effectDeducts)).toBeVisible();
+  });
+
+  /** 잠긴 버튼을 눌러도 창이 열리지 않고 요청도 나가지 않는다(첫째 겹). */
+  it('잠긴 버튼을 눌러도 창이 열리지 않고 요청이 0회다', async () => {
+    const { requests, user } = await setupReadyToPost(
+      allRoutes([notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9502`,
+    );
+
+    await user.click(postButton());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(writesTo(requests, MISSING_POST_PATH)).toHaveLength(0);
+  });
+
+  /**
+   * **전환 감지기**(완료 조건 C67 · 감지기 M64). 자리표시를 채우면 **승인 전 전표가 잠기고**
+   * 판정 불가 안내가 사라진다 — 채웠을 때 살아나는 것을 재지 않으면 그 자리표시는 죽은 가지다.
+   */
+  it('자리표시를 채우면 승인 전 전표에서 잠기고 안내가 사라진다', async () => {
+    approvedStatusCodes.push('SAMPLE_AP_STATUS_OTHER');
+
+    await setupReadyToPost();
+
+    expect(postButton()).toBeDisabled();
+    expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNotApproved);
+    expect(screen.queryByText(t.post.unjudgeableNote)).not.toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 자리표시를 채우고 그 요청이 승인 상태면 열린다. 잠금이 상수로 굳지 않았다. */
+  it('자리표시를 채우고 승인됐으면 열린다', async () => {
+    fillApprovedStatusCodes();
+
+    await setupReadyToPost();
+
+    expect(postButton()).toBeEnabled();
+    expect(screen.queryByText(t.post.unjudgeableNote)).not.toBeInTheDocument();
+  });
+});
+
+describe('DisposalIssueScreen — 처리도 확인 창을 지나야 나간다', () => {
+  /** **확인 전에는 요청이 나가지 않는다**(완료 조건 C70) — 재고를 움직이는 조작이다. */
+  it('버튼을 눌러도 창만 열리고 요청이 0회다', async () => {
+    const { requests, user } = await setupReadyToPost();
+
+    await user.click(postButton());
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(writesTo(requests, POST_PATH)).toHaveLength(0);
+  });
+
+  /**
+   * **창이 전표 요약과 화면이 확인하지 못한 것을 함께 보인다**(완료 조건 C71 · 감지기 M68).
+   * 사유 첫 줄은 **결재 진행에서 읽은 값**이다.
+   */
+  it('창이 전표 번호·줄 수·합계 수량·사유 첫 줄과 두 사실을 보인다', async () => {
+    const { user } = await setupReadyToPost(allRoutes([sameUomDetailRoute(), postRoute()]));
+
+    await user.click(postButton());
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText('GI-2026-950001')).toBeVisible();
+    expect(within(dialog).getByText(t.dialog.lineCount(2))).toBeVisible();
+    expect(within(dialog).getByText(`45 ${UOM_LABEL}`)).toBeVisible();
+    expect(within(dialog).getByText('합성 폐기 사유 첫 줄')).toBeVisible();
+    expect(within(dialog).getByText(t.dialog.postDeducts)).toBeVisible();
+    expect(within(dialog).getByText(t.dialog.postNoUndo)).toBeVisible();
+    /* 자리표시가 비어 있으므로 판정하지 못했다는 사실이 함께 선다. */
+    expect(within(dialog).getByText(t.dialog.postJudgePending)).toBeVisible();
+  });
+
+  /** **창 안에 선택칸이 없다**(완료 조건 C79 · `omf-mes#45`). */
+  it('창 안에 선택칸이 없다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await user.click(postButton());
+
+    expect(within(screen.getByRole('dialog')).queryAllByRole('combobox')).toHaveLength(0);
+  });
+
+  /**
+   * **이미 전기된 줄이 있으면 그 사실이 창에 선다.** 값 유무로 판정하며(상태 코드가 아니다)
+   * 막지는 않는다 — 막는 것은 서버이고, 화면은 **한 번 더 움직일 수 있다**는 사실을 밝힌다.
+   */
+  it('이미 전기된 줄이 있는 전표에서는 그 사실이 창에 선다', async () => {
+    const { user } = await setupReadyToPost(allRoutes([postRoute()]));
+
+    await user.click(postButton());
+
+    expect(within(screen.getByRole('dialog')).getByText(t.dialog.postAlreadyPosted)).toBeVisible();
+  });
+
+  /** 짝 방향 — 전기 전 전표에는 그 문장이 없다. */
+  it('전기 전 전표에는 그 문장이 없다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await user.click(postButton());
+
+    expect(screen.queryByText(t.dialog.postAlreadyPosted)).not.toBeInTheDocument();
+  });
+});
+
+describe('DisposalIssueScreen — 전기가 실제로 보내는 것', () => {
+  /**
+   * **본문이 영업일과 발생 시각 둘뿐이고**(완료 조건 C72 · 감지기 M71) 영업일은 **그 전표의
+   * 출고 일시**에서 나온다 — 실행 시각의 날짜를 쓰면 어제 낸 전표가 오늘 자로 원장에 잡힌다.
+   */
+  it('본문이 영업일과 발생 시각 둘이고 영업일이 출고 일시의 날짜다', async () => {
+    const { requests, user } = await setupReadyToPost();
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, POST_PATH)).toHaveLength(1);
+    });
+
+    const sent = writesTo(requests, POST_PATH)[0];
+    const body = sent?.body as { businessDate: string; occurredAt: string };
+
+    expect(Object.keys(body).sort()).toEqual(['businessDate', 'occurredAt']);
+    /* 픽스처 9501의 출고 일시는 2026-08-08이다 — 실행 시각과 무관하다. */
+    expect(body.businessDate).toBe('2026-08-08');
+    expect(body.occurredAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
+  });
+
+  /**
+   * **`If-Match`가 출고 상세 경로에서 온다**(완료 조건 C73 · 감지기 M58과 같은 형태).
+   * 컬렉션 경로를 주면 목록 조회와 열쇠가 겹치고, 액션 경로를 주면 토큰이 비어 요청이
+   * 나가지 않는다.
+   */
+  it('잠금 토큰이 그 전표의 상세 경로에서 오고 멱등 키가 uuid다', async () => {
+    const { requests, user } = await setupReadyToPost();
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, POST_PATH)).toHaveLength(1);
+    });
+
+    const sent = writesTo(requests, POST_PATH)[0];
+
+    expect(sent?.headers.get('If-Match')).toBe(ISSUE_DETAIL_ETAG);
+    expect(sent?.headers.get('Idempotency-Key')).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  /** 예상 밖 경로로 나간 요청이 하나도 없다 — 경로마다 세는 단언이 보지 못하는 자리다. */
+  it('예상 밖 경로로 요청이 나가지 않는다', async () => {
+    const { requests, user, queryClient } = await setupReadyToPost();
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, POST_PATH)).toHaveLength(1);
+    });
+
+    expectNoUnknownPath(requests);
+    expectNoFailedQuery(queryClient);
+  });
+});
+
+describe('DisposalIssueScreen — 처리 성공 뒤', () => {
+  /**
+   * **결과 구획이 서버가 준 값만 말한다**(완료 조건 C74 · 계획 결정 15). ERP는 **「대기열에
+   * 적재됨」**이고 「전송됨」이 아니다 — 계약이 그 둘을 갈라 못 박았다.
+   */
+  it('결과 구획이 서버 상태 코드와 ERP 적재를 말한다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([
+        postableDetailRoute(),
+        postRoute({ ...goodsIssueResponseFixtures[0], statusCode: 'SAMPLE_GI_STATUS_Z' }),
+      ]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    const pane = await screen.findByRole('region', { name: t.result.postLabel });
+
+    expect(within(pane).getByText(t.result.postedTitle('GI-2026-950001'))).toBeVisible();
+    expect(within(pane).getByText('SAMPLE_GI_STATUS_Z')).toBeVisible();
+    expect(within(pane).getByText(t.values.erpQueued)).toBeVisible();
+    expect(pane.textContent ?? '').not.toContain('전송');
+  });
+
+  /**
+   * **상태 코드로 「전기됨」을 판정하지 않는다**(계획 §5.4-20 · 결정 7). 목이 전기 200에도
+   * 초안 상태를 그대로 주므로, 값이 그대로여도 화면은 **200을 받았다는 사실**로 결과를 낸다.
+   */
+  it('상태 코드가 전기 전과 같아도 처리했다고 말한다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    const pane = await screen.findByRole('region', { name: t.result.postLabel });
+
+    /* 응답의 상태가 목록·상세와 같은 값이다 — 그래도 결과가 선다. */
+    expect(within(pane).getByText('SAMPLE_GI_STATUS_A')).toBeVisible();
+    expect(within(pane).getByText(t.result.postedTitle('GI-2026-950001'))).toBeVisible();
+  });
+
+  /**
+   * **성공 뒤 이력 목록·출고 상세·승인 요청을 다시 부른다**(완료 조건 C74 · 감지기 M72).
+   * 목록만 부르면 라인 표의 전기 표식과 결재 진행이 낡은 채로 남아 **갱신된 값과 낡은 값이
+   * 한 화면에 섞인다.**
+   */
+  it('성공 뒤 이력 목록·상세·승인 요청을 다시 부른다', async () => {
+    const { requests, user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), changingApprovalRoute()]),
+    );
+
+    const beforeList = requestsTo(requests, ISSUES_PATH).length;
+    const beforeDetail = requestsTo(requests, ISSUE_DETAIL_PATH).length;
+    const beforeApproval = requestsTo(requests, APPROVAL_DETAIL_PATH).length;
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUES_PATH).length).toBeGreaterThan(beforeList);
+    });
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUE_DETAIL_PATH).length).toBeGreaterThan(beforeDetail);
+    });
+    await waitFor(() => {
+      expect(requestsTo(requests, APPROVAL_DETAIL_PATH).length).toBeGreaterThan(beforeApproval);
+    });
+  });
+
+  /**
+   * **다시 부른 상세가 화면의 진술을 뒤집는다**(리뷰 t5 M3). 무효화를 요청 수로만 재면
+   * **두 끝이 따로 재어질 뿐** 이어지지 않는다 — 「다시 불렀다」와 「그래서 화면이 달라졌다」
+   * 사이가 비어 있으면, 뿌리 하나를 잘못 겨눠도 요청 수는 그대로라 아무도 울지 않는다.
+   *
+   * 되돌릴 수 없는 쓰기의 **사후 상태**를 화면이 말하는 자리라(#127 Major의 축) 값이 있다:
+   * 전기 뒤 상세가 **원장 라인 번호를 실어 오면** 라인 표의 표식이 「전기 전」에서 「전기됨」이
+   * 되고, 결재 진행의 **「재고는 아직 차감되지 않았습니다」가 사라진다**(그 문장이 거짓이 됐다).
+   *
+   * 승인 자리표시를 채워 두는 이유는 그 안내가 **채워졌을 때만** 서기 때문이다 —
+   * 두 방향(있다 → 없다)을 한 잣대에서 재려면 먼저 서 있어야 한다.
+   */
+  it('성공 뒤 다시 부른 상세가 전기 표식을 세우고 승인 뒤 안내를 거둔다', async () => {
+    fillApprovedStatusCodes();
+
+    let posted = false;
+
+    const { user } = await setupReadyToPost(
+      allRoutes([
+        {
+          /* **전기 전후로 다른 상세를 준다** — 전기됐다는 사실이 화면에 오는 길이 재조회다. */
+          match: (request) => isGet(request, ISSUE_DETAIL_PATH),
+          respond: () =>
+            jsonResponse(
+              issueDetailBody(
+                posted
+                  ? goodsIssueLineResponseFixtures.map((line, index) => ({
+                      ...line,
+                      inventoryTransactionLineId: 9541 + index,
+                    }))
+                  : postableIssueLines,
+              ),
+              { headers: { ETag: ISSUE_DETAIL_ETAG } },
+            ),
+        },
+        {
+          match: (request) => isPost(request, POST_PATH),
+          respond: () => {
+            posted = true;
+
+            return jsonResponse(goodsIssueResponseFixtures[0]);
+          },
+        },
+      ]),
+    );
+
+    /* 전기 전 — 표식은 「전기 전」이고 승인 뒤 안내가 서 있다. */
+    const detailPane = historyDetailPane();
+
+    expect(await within(detailPane).findByText(t.progress.approvedNotPostedNote)).toBeVisible();
+    expect(within(detailPane).getAllByText(t.values.notPosted).length).toBe(
+      goodsIssueLineResponseFixtures.length,
+    );
+    expect(within(detailPane).queryByText(t.values.posted)).not.toBeInTheDocument();
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByRole('region', { name: t.result.postLabel });
+
+    /* 전기 뒤 — 다시 부른 상세가 두 진술을 함께 뒤집는다. */
+    await waitFor(() => {
+      expect(within(historyDetailPane()).getAllByText(t.values.posted).length).toBe(
+        goodsIssueLineResponseFixtures.length,
+      );
+    });
+    await waitFor(() => {
+      expect(
+        within(historyDetailPane()).queryByText(t.progress.approvedNotPostedNote),
+      ).not.toBeInTheDocument();
+    });
+    expect(within(historyDetailPane()).queryByText(t.values.notPosted)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **잔액도 함께 무효화한다** — 이 쓰기만 재고를 움직였다. 낡은 상한으로 다음 품의를 올리면
+   * **이미 없어진 자재를 폐기하려 한다.**
+   *
+   * 잔액 조회는 「품의 발의」 탭의 것이라 처리 순간에는 옵저버가 없다 — 요청 수로는 잴 수 없어
+   * **캐시가 낡은 것으로 표시됐는가**로 잰다.
+   */
+  it('성공 뒤 잔액이 낡은 것으로 표시된다', async () => {
+    const { user, queryClient } = renderScreen(
+      allRoutes([postableDetailRoute(), postRoute()]),
+      '?gr=9001',
+    );
+
+    await waitForLines();
+    await openTab(user, t.tabs.history);
+    await waitForIssueList();
+    await selectIssue(user, 'GI-2026-950001');
+    await screen.findByRole('region', { name: t.post.label });
+
+    /* 짝 방향 — 처리 전에는 낡은 잔액이 하나도 없다. */
+    expect(invalidatedBalanceCount(queryClient)).toBe(0);
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(invalidatedBalanceCount(queryClient)).toBeGreaterThan(0);
+    });
+  });
+
+  /**
+   * **세 문장을 사라지는 자리로 옮기지 않는다**(완료 조건 C68 · 감지기 M67). 성공 뒤에도
+   * 상시 자리에 그대로 있고, 결과 구획에는 담기지 않는다.
+   */
+  it('성공 뒤에도 세 문장이 상시 자리에 있고 결과 구획에는 없다', async () => {
+    const { user } = await setupReadyToPost();
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    const result = await screen.findByRole('region', { name: t.result.postLabel });
+    const pane = screen.getByRole('region', { name: t.post.label });
+
+    expect(within(pane).getByText(t.post.effectDeducts)).toBeVisible();
+    expect(result.textContent ?? '').not.toContain(t.post.effectDeducts);
+    expect(result.textContent ?? '').not.toContain(t.post.effectNoUndoHere);
+  });
+
+  /** 성공 뒤 **주소도 탭도 바뀌지 않는다** — 방금 처리한 품의를 보던 자리가 사라지면 안 된다. */
+  it('성공 뒤 주소가 그대로다', async () => {
+    const { user } = await setupReadyToPost();
+
+    const before = currentLocation();
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await screen.findByRole('region', { name: t.result.postLabel });
+
+    expect(currentLocation()).toBe(before);
+  });
+});
+
+describe('DisposalIssueScreen — 처리 전송 중 잠금', () => {
+  /** **전송 중에는 컨트롤과 탭이 잠긴다**(완료 조건 C75 · 감지기 M74). */
+  it('보내는 동안 버튼·목록·탭이 잠긴다', async () => {
+    const { user, release } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      '',
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postButton()).toBeDisabled();
+    });
+
+    expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postLocked);
+    expect(screen.getByRole('button', { name: t.actions.refresh })).toBeDisabled();
+    expect(screen.getByRole('tab', { name: t.tabs.disposal })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+
+    release();
+  });
+
+  /** **연타해도 요청은 1회**다 — 두 번 나가면 재고가 두 번 빠진다(`omf-mes#55`). */
+  it('보내는 동안 연타해도 전기가 1회다', async () => {
+    const { requests, user, release } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      '',
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, POST_PATH)).toHaveLength(1);
+    });
+
+    await user.click(postButton());
+
+    /*
+     * **확인 경로가 다시 열리지 않는다.** 버튼이 잠겼는지만 보면 첫째 겹이 풀렸을 때도 요청
+     * 수는 그대로라 통과한다 — 창이 다시 열리면 확인 한 번으로 **재고가 두 번 빠진다.**
+     */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(writesTo(requests, POST_PATH)).toHaveLength(1);
+
+    release();
+  });
+
+  /**
+   * **둘째 겹을 첫째 겹에서 떼어내고 잰다**(감지기 M75).
+   *
+   * 눈에 보이는 컨트롤은 전송 중에 전부 잠기지만 **이력 조건 칩의 ×는 잠기지 않는다** —
+   * 디자인 시스템 `Chip`이 그 prop을 갖고 있지 않다(실측). 그 길로 들어오면 조건이 바뀌며
+   * 고른 품의가 풀리고, **나가는 중인 전기의 결과가 다른 품의 맥락에** 도착한다. 막는 것은
+   * **문 하나의 가드**이며, 탭 잠금만 재면 그 가드를 지워도 아무 잣대가 물리지 않는다.
+   */
+  it('보내는 동안 이력 조건 칩의 ×를 눌러도 주소가 바뀌지 않는다', async () => {
+    const { user, release } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute()]),
+      `${HISTORY_SEARCH}&iq=GI&gi=9501`,
+      '',
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postButton()).toBeDisabled();
+    });
+
+    const before = currentLocation();
+    const chipRemove = screen.getByRole('button', { name: t.historyFilters.chipRemoveQ });
+
+    /* 첫째 겹이 없는 자리다 — 실제로 눌린다는 것을 짝으로 굳힌다. */
+    expect(chipRemove).toBeEnabled();
+
+    await user.click(chipRemove);
+
+    expect(currentLocation()).toBe(before);
+
+    release();
+  });
+
+  /**
+   * **전송 중에는 탭도 바뀌지 않는다**(첫째 겹). 탭이 바뀌면 보내는 자리가 화면에서 사라져
+   * 도착한 되먹임이 설 곳을 잃는다.
+   */
+  it('보내는 동안 탭을 눌러도 주소가 바뀌지 않는다', async () => {
+    const { user, release } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      '',
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postButton()).toBeDisabled();
+    });
+
+    const before = currentLocation();
+
+    await user.click(screen.getByRole('tab', { name: t.tabs.disposal }));
+
+    expect(currentLocation()).toBe(before);
+
+    release();
+  });
+});
+
+describe('DisposalIssueScreen — 처리 창과 결과의 수명', () => {
+  /**
+   * **창은 자기 대상보다 오래 살지 않는다**(완료 조건 C76). 주소로 대상이 바뀌면 창이 닫히고
+   * 요청은 나가지 않는다 — 뒤로가기·주소 편집은 클릭 핸들러를 거치지 않는다.
+   */
+  it('창이 열린 채 주소로 품의가 바뀌면 창이 닫히고 요청이 0회다', async () => {
+    /*
+     * **두 품의의 상세를 미리 받아 둔다.** 새 품의의 상세를 아직 못 받은 사이에는 아래 구획이
+     * 통째로 사라져 창도 함께 사라지므로, 그 상태로 재면 **매임에 매인 정리**가 지워져도
+     * 잣대가 통과한다 — 사용자가 두 품의를 오가는 흔한 경로가 바로 이 자리다.
+     */
+    const { requests, user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9502`,
+      `${HISTORY_SEARCH.slice(1)}&gi=9502`,
+    );
+
+    await screen.findByText(t.resubmit.lead);
+    await selectIssue(user, 'GI-2026-950001');
+    await waitFor(() => {
+      expect(postButton()).toBeEnabled();
+    });
+
+    await user.click(postButton());
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    /* 짝 방향 — 새 품의의 구획이 **끊김 없이** 서 있다(상세가 캐시에 있다). */
+    expect(screen.getByText(t.resubmit.lead)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(writesTo(requests, POST_PATH)).toHaveLength(0);
+  });
+
+  /**
+   * **나가는 중인 쓰기는 끊지 않는다**(`omf-mes#96` · 감지기 M79). 전송 중 주소로 떠나도
+   * 요청은 끝까지 가고 **무효화가 그대로 일어난다** — `reset()`으로 옵저버를 떼면 그 되먹임이
+   * 통째로 오지 않는다.
+   */
+  it('전송 중 떠나도 무효화가 그대로 일어난다', async () => {
+    const { requests, user, release } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      `${HISTORY_SEARCH.slice(1)}&gi=9502`,
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, POST_PATH)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    const beforeList = requestsTo(requests, ISSUES_PATH).length;
+
+    release();
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUES_PATH).length).toBeGreaterThan(beforeList);
+    });
+  });
+
+  /**
+   * **감추는 것과 상태를 내리는 것은 다른 일이다**(수명 표 8·25행).
+   *
+   * 탭을 옮기면 창이 그려지지 않지만, 열림 상태가 선 채 남으면 돌아왔을 때 **누른 적 없는
+   * 확인 창**이 떠 있다 — 되돌릴 수 없는 조작 가운데 가장 무거운 것의 확인이 저절로
+   * 되살아나는 것이다(전례 W-CO-09가 실측한 자리).
+   */
+  it('탭을 옮겼다 돌아와도 처리 확인 창이 다시 뜨지 않는다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      '?gi=9501',
+    );
+
+    await user.click(postButton());
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    /*
+     * **주소로 탭을 옮긴다.** 창이 열려 있는 동안 화면의 컨트롤은 스크림 뒤에 있어 눌리지
+     * 않는다 — 뒤로가기·주소 직접 편집은 그 스크림을 지나지 않는 길이라 이 잣대가 그 길을 쓴다.
+     */
+    fireEvent.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('tab=history');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('tab=history');
+    });
+    await screen.findByRole('region', { name: t.post.label });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /**
+   * **나가는 중이면 매임을 지우지 않는다**(`omf-mes#96`의 짝 · 검증 t5 P1).
+   *
+   * 정리자는 「끝난 것만」 거둔다. 나가는 중인 전기의 매임까지 지우면 **도착한 결과가 어느
+   * 품의의 것인지 가를 근거가 사라져**, 되돌릴 수 없는 조작의 결과가 **화면 어디에도 서지
+   * 않는다** — 사용자는 재고가 움직였는지 화면에서 확인할 길을 잃는다.
+   *
+   * 주소로 떠났다가 **아직 나가는 중에** 돌아오는 길이 그 자리다 — 잠금도 문의 가드도 거치지
+   * 않는 셋째 길이라 정리자가 두 번 도는데, 그때 가드가 없으면 매임이 통째로 지워진다.
+   * 「떠난 채로 끝났으면 서지 않는다」(아래 잣대)와 **짝**이며 방향이 반대다.
+   */
+  it('전송 중 떠났다가 돌아오면 뒤늦게 온 결과가 선다', async () => {
+    const { user, release } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      `${HISTORY_SEARCH.slice(1)}&gi=9502`,
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await waitFor(() => {
+      expect(postButton()).toBeDisabled();
+    });
+
+    /* 주소로 떠난다 — 잠금도 문의 가드도 거치지 않는 길이다. */
+    fireEvent.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.resubmit.lead);
+
+    /* **아직 나가는 중에** 되돌아온다 — 정리자가 여기서 한 번 더 돈다. */
+    fireEvent.click(screen.getByRole('button', { name: '뒤로' }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gi=9501');
+    });
+
+    release();
+
+    expect(await screen.findByRole('region', { name: t.result.postLabel })).toBeVisible();
+  });
+
+  /**
+   * **결과는 자기 대상보다 오래 살지 않는다.** 다른 품의를 고르면 앞 품의의 처리 결과가
+   * 새 품의 아래 서지 않는다.
+   */
+  it('다른 품의를 고르면 처리 결과가 사라진다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), notSubmittedDetailRoute()]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByRole('region', { name: t.result.postLabel });
+
+    await selectIssue(user, 'GI-2026-950002');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: t.result.postLabel })).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('DisposalIssueScreen — 처리 실패의 갈래', () => {
+  /**
+   * **승인 전 전기의 400은 서버 문구를 그대로 낸다**(계획 결정 16 · §5.4-2). 코드로 분기해
+   * 원인을 지어내면 다른 이유로 온 400에도 같은 안내가 붙는다.
+   */
+  it('400의 서버 문구가 배너에 그대로 선다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([
+        postableDetailRoute(),
+        failingPostRoute(400, {
+          errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '승인이 끝나야 처리할 수 있습니다.' }],
+        }),
+      ]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    expect(await screen.findByText('승인이 끝나야 처리할 수 있습니다.')).toBeVisible();
+    /* 결과 구획은 서지 않는다 — 실패를 성공처럼 말하지 않는다. */
+    expect(screen.queryByRole('region', { name: t.result.postLabel })).not.toBeInTheDocument();
+  });
+
+  it('403은 권한 없음으로 갈린다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), failingPostRoute(403)]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeVisible();
+    expect(screen.queryByText(t.notes.postRecheck)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **네트워크 갈래에만 확인 불가 안내를 낸다**(감지기 M73). 전 갈래에 내면 「응답을 받았고
+   * 거절됐다」는 사실이 「전달됐는지 모른다」로 바뀐다.
+   */
+  it('네트워크 끊김에만 확인 불가 안내가 붙는다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([
+        postableDetailRoute(),
+        {
+          match: (request) => isPost(request, POST_PATH),
+          respond: () => {
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    expect(await screen.findByText(t.notes.postRecheck)).toBeVisible();
+  });
+
+  /** **409에만 「최신 불러오기」가 붙고** 그 길이 실제로 상세를 다시 읽는다. */
+  it('409 뒤 최신 불러오기가 상세를 다시 읽는다', async () => {
+    const { requests, user } = await setupReadyToPost(
+      allRoutes([
+        postableDetailRoute(),
+        failingPostRoute(409, { conflictCause: 'user', message: '' }),
+      ]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByText(messages.conflict.user);
+
+    const before = requestsTo(requests, ISSUE_DETAIL_PATH).length;
+
+    await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUE_DETAIL_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
+  /**
+   * **앞의 성공이 새 시도의 실패 옆에 남지 않는다**(수명 표 22행). 처리한 뒤 다시 눌러
+   * 거절당했는데 「처리했습니다」가 그대로 서 있으면, 사용자는 **무엇이 지금 상태인지**
+   * 알 수 없다 — 되돌릴 수 없는 조작의 사후 상태에 대한 거짓 진술이 된다.
+   */
+  it('성공 뒤 다시 눌러 실패하면 앞의 결과 구획이 사라진다', async () => {
+    let calls = 0;
+
+    const { user } = await setupReadyToPost(
+      allRoutes([
+        postableDetailRoute(),
+        {
+          match: (request) => isPost(request, POST_PATH),
+          respond: () => {
+            calls += 1;
+
+            return calls === 1
+              ? jsonResponse(goodsIssueResponseFixtures[0])
+              : jsonResponse({ message: '' }, { status: 403 });
+          },
+        },
+      ]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByRole('region', { name: t.result.postLabel });
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByText(messages.httpError.forbidden);
+
+    expect(screen.queryByRole('region', { name: t.result.postLabel })).not.toBeInTheDocument();
+  });
+
+  /** 실패해도 **구획은 살아 있다** — 고친 뒤 다시 누를 수 있어야 한다. */
+  it('실패 뒤에도 처리 버튼이 다시 열린다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), failingPostRoute(403)]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByText(messages.httpError.forbidden);
+
+    expect(postButton()).toBeEnabled();
+  });
+});
+
+describe('DisposalIssueScreen — 처리 배너의 매임', () => {
+  /**
+   * **자기 대상이 바뀌면 사라진다**(완료 조건 C77 · 감지기 M76). 품의 A의 실패가 품의 B의
+   * 라인 표 아래 서면 사용자는 B도 막힌 것으로 읽는다.
+   */
+  it('다른 품의를 고르면 처리 실패 배너가 사라진다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), failingPostRoute(403), notSubmittedDetailRoute()]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByText(messages.httpError.forbidden);
+
+    await selectIssue(user, 'GI-2026-950002');
+
+    await waitFor(() => {
+      expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+    });
+  });
+
+  /**
+   * **다른 대상의 변경으로는 사라지지 않는다**(완료 조건 C77 · 감지기 M76). 두 배너를 한
+   * 매임으로 묶으면 입고 전표를 바꿨을 때 이력 탭의 판정까지 사라진다 — 범위 있는 규칙은
+   * 잣대도 같은 범위로.
+   */
+  it('입고 전표를 바꿔도 처리 실패 배너가 남는다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), failingPostRoute(403)]),
+      `?gr=9001&${HISTORY_SEARCH.slice(1)}&gi=9501`,
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByText(messages.httpError.forbidden);
+
+    await openTab(user, t.tabs.disposal);
+    await waitForLines();
+    await selectReceipt(user, 'GR-2026-900002');
+    await openTab(user, t.tabs.history);
+
+    expect(screen.getByText(messages.httpError.forbidden)).toBeInTheDocument();
+  });
+
+  /**
+   * **주소는 잠글 수 없다**(W-01-05 R3-1의 셋째 길 · 감지기 M76). 뒤로가기·주소 직접 편집은
+   * 잠금도 문의 가드도 거치지 않으므로, 그 길로 품의가 바뀐 뒤 **뒤늦게 도착한 실패**는 새
+   * 품의의 자리에 서면 안 된다 — 판정이 **읽는 자리**에 있어야 한다.
+   *
+   * **나가는 중인 쓰기는 끊지 않으므로**(`resetIfIdle`) 정리 effect가 지워 주기를 기대할 수 없다.
+   */
+  it('보내는 동안 주소로 품의를 바꾸면 뒤늦게 온 실패가 서지 않는다', async () => {
+    const { user, release } = await setupReadyToPost(
+      allRoutes([
+        postableDetailRoute(),
+        failingPostRoute(403),
+        notSubmittedDetailRoute(),
+      ]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      `${HISTORY_SEARCH.slice(1)}&gi=9502`,
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postButton()).toBeDisabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    release();
+
+    /* 새 품의의 구획이 실제로 선다 — 「거기에 배너가 없다」를 잴 수 있는 상태다. */
+    await screen.findByText(t.resubmit.lead);
+
+    /* 나가던 쓰기가 끝났음을 잠금 사유가 미상신 사유로 바뀌는 것으로 잰다. */
+    await waitFor(() => {
+      expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsSubmission);
+    });
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+  });
+
+  /** 같은 길로 온 **성공**도 마찬가지다 — 되돌릴 수 없는 조작의 결과가 남의 품의 아래 서면 안 된다. */
+  it('보내는 동안 주소로 품의를 바꾸면 뒤늦게 온 결과가 서지 않는다', async () => {
+    const { user, release } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9501`,
+      `${HISTORY_SEARCH.slice(1)}&gi=9502`,
+      [POST_PATH],
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(postButton()).toBeDisabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    release();
+
+    await screen.findByText(t.resubmit.lead);
+
+    await waitFor(() => {
+      expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsSubmission);
+    });
+    expect(screen.queryByRole('region', { name: t.result.postLabel })).not.toBeInTheDocument();
+  });
+
+  /** **렌더마다 지워지지 않는다**(감지기 M78) — 정리 의존성에 `reset` 참조를 넣으면 그렇게 된다. */
+  it('다시 조회로 응답이 도착해도 처리 실패 배너가 남는다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), failingPostRoute(403), changingApprovalRoute()]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+    await screen.findByText(messages.httpError.forbidden);
+
+    await refresh(user);
+
+    /* 갱신이 실제로 도착한다 — 승인 요청 응답이 회차마다 달라 상태 코드가 바뀐다. */
+    await screen.findByText('SAMPLE_AP_STATUS_2');
+
+    expect(screen.getByText(messages.httpError.forbidden)).toBeInTheDocument();
+  });
+});
+
+describe('DisposalIssueScreen — 처리도 보내는 자리가 다시 본다', () => {
+  /**
+   * **보내는 자리가 스스로 한 번 더 본다**(감지기 M70). 확인 창이 버튼과 전송 사이를 벌려
+   * 놓으므로 「버튼이 막았으니 여기서는 안 봐도 된다」가 성립하지 않는다 — 창이 열린 사이에
+   * 상세가 갱신돼 미상신 전표가 되면 **승인 없이 재고가 움직인다.**
+   */
+  it('창이 열린 사이에 미상신으로 바뀌면 보내지 않는다', async () => {
+    let submitted = true;
+
+    const { requests, user } = await setupReadyToPost(
+      allRoutes([
+        {
+          match: (request) => isGet(request, ISSUE_DETAIL_PATH),
+          respond: () =>
+            jsonResponse(
+              issueDetailBody(postableIssueLines, {
+                ...goodsIssueResponseFixtures[0],
+                ...(submitted ? {} : { approvalRequestId: undefined }),
+              }),
+              { headers: { ETag: ISSUE_DETAIL_ETAG } },
+            ),
+        },
+        postRoute(),
+      ]),
+    );
+
+    await user.click(postButton());
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    /* 창 뒤에서 상세가 갱신된다 — 창은 그 사실을 모른다. */
+    submitted = false;
+    await refresh(user);
+    await waitFor(() => {
+      expect(screen.getByText(t.progress.notSubmittedTitle)).toBeInTheDocument();
+    });
+
+    await confirmPost(user);
+
+    expect(writesTo(requests, POST_PATH)).toHaveLength(0);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('DisposalIssueScreen — 승인 조회가 실패해도', () => {
+  /**
+   * **결재 진행은 판단을 돕는 자료이지 처리의 전제가 아니다**(완료 조건 C78 · 수명 표 26행).
+   * 못 읽었다고 처리가 잠기면, 볼 권한이 없는 사람은 승인이 끝난 뒤에도 영영 처리할 수 없다.
+   */
+  it('처리 버튼이 그대로 열려 있고 창이 그 사실을 적는다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), failingApprovalRoute(403)]),
+    );
+
+    await screen.findByText(t.progress.forbiddenTitle);
+
+    expect(postButton()).toBeEnabled();
+
+    await user.click(postButton());
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText(t.dialog.postProgressUnread)).toBeVisible();
+    expect(within(dialog).queryByText(t.dialog.postReasonFirstLine)).not.toBeInTheDocument();
+  });
+
+  /** 자리표시가 채워져 있어도 **못 읽은 것은 「승인되지 않았다」가 아니다** — 잠그지 않는다. */
+  it('자리표시가 채워져 있어도 진행을 못 읽었으면 잠기지 않는다', async () => {
+    fillApprovedStatusCodes();
+
+    await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), failingApprovalRoute(404)]),
+    );
+
+    await screen.findByText(t.progress.notFoundTitle);
+
+    expect(postButton()).toBeEnabled();
+  });
+
+  /** 결과 구획도 그대로다 — 처리한 뒤 승인 조회가 실패해도 처리 사실은 남는다. */
+  it('처리한 뒤 승인 조회가 실패해도 결과가 남는다', async () => {
+    const { user } = await setupReadyToPost(
+      allRoutes([postableDetailRoute(), postRoute(), failingApprovalRoute(403)]),
+    );
+
+    await user.click(postButton());
+    await confirmPost(user);
+
+    expect(await screen.findByRole('region', { name: t.result.postLabel })).toBeVisible();
   });
 });

@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { Submission } from './approval-progress';
+import type { PostApproval, Submission } from './approval-progress';
 import { isRequiredCodeListPending, REQUIRED_CODE_KEYS, type CodeOptionSets } from './code-options';
 import type { DisposalReadyState } from './disposal-selection';
 import { readReason } from './reason-draft';
@@ -79,6 +79,15 @@ export const DISPOSAL_FORM_FIELDS: readonly string[] = [
  */
 export const SUBMIT_FORM_FIELDS: readonly string[] = ['reason'];
 
+/**
+ * 전기에서 이 화면이 소유한 입력칸 이름 — **하나도 없다.**
+ *
+ * 전기 본문은 전표에서 파생한 두 값뿐이고(`post-request.ts`) 사용자가 치는 칸이 없다. 그래서
+ * 서버가 준 필드 오류도 **붙일 칸이 없어** 전부 배너로 올라간다 — 여기에 이름을 하나라도
+ * 넣으면 **어디에도 보이지 않는 오류**가 생긴다. 빈 배열이 이 화면의 사실이다.
+ */
+export const POST_FORM_FIELDS: readonly string[] = [];
+
 const isBlank = (value: string): boolean => value.trim() === '';
 
 /** 「품의 상신」을 열지 말지 가르는 입력. */
@@ -142,6 +151,42 @@ export const resubmitBlockReason = (input: ResubmitGateInput): string | null => 
   if (input.submission === 'submitted') return t.actionReasons.alreadySubmitted;
   if (input.submission === 'unusable') return t.actionReasons.submissionUnknown;
   if (readReason(input.reason).kind === 'empty') return t.actionReasons.needsReason;
+
+  return null;
+};
+
+/** 「기타출고 처리」를 열지 말지 가르는 입력. */
+export interface PostGateInput {
+  /**
+   * 상신 여부 세 갈래. **판정은 `approval-progress.ts`에서 온다.**
+   *
+   * **`unusable`을 잠그지 않는다** — 재상신과 갈리는 자리다. 저쪽은 되풀이하면 **결재 요청이
+   * 두 벌**이 되지만, 여기서 잘못 누르면 돌아오는 것은 **서버의 400**이다. 값이 실려 온 이상
+   * 승인이 끝나 있을 수 있고, 그때 잠그면 정당한 처리가 영영 막힌다.
+   */
+  submission: Submission['kind'];
+  /** 승인 판정 네 갈래. **자리표시가 비거나 진행을 못 읽었으면 잠그지 않는다**(§13-2 안 1) */
+  approval: PostApproval;
+}
+
+/**
+ * 왜 막혔는지. 처리할 수 있으면 `null`이다.
+ *
+ * **화면이 확실히 아는 것만 잠근다.**
+ *
+ * | 사정 | 근거 | 잠그는가 |
+ * | --- | --- | :-: |
+ * | 미상신 | 승인 요청 값이 **없다** — 승인이 있을 수 없다 | **잠근다** |
+ * | 자리표시가 찼고 승인 전 | 그 요청의 상태가 승인 집합에 **없다** | **잠근다** |
+ * | 자리표시가 비었다 | 어떤 코드가 승인인지 **모른다** | 잠그지 않는다 |
+ * | 결재 진행을 못 읽었다 | 판정할 자료가 **없다** | 잠그지 않는다 |
+ * | 상신 여부를 확인할 수 없다 | 값이 왔으나 쓸 수 없다 | 잠그지 않는다 |
+ *
+ * **차례가 뜻을 정한다** — 상신조차 되지 않았으면 승인 여부를 말할 것이 없으므로 그 사유가 앞선다.
+ */
+export const postBlockReason = (input: PostGateInput): string | null => {
+  if (input.submission === 'notSubmitted') return t.actionReasons.postNeedsSubmission;
+  if (input.approval.kind === 'notApproved') return t.actionReasons.postNotApproved;
 
   return null;
 };

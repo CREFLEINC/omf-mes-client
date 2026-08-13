@@ -6,6 +6,7 @@ import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
 import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
+import { DisposalIssueScreen } from '../screens/disposal-issue/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
@@ -94,6 +95,20 @@ export const appRouter = createBrowserRouter([
        * 내보이는 것이다(정책 §5.2 — 접근 불가능한 경계).
        */
       { path: 'logistics/supplier-return', element: <SupplierReturnScreen /> },
+      /*
+       * W-01-06 — 같은 규칙(사이드바 섹션)이고 차례도 업무 순서다: 예정 → 초과 분리 → 입고
+       * 처리 → 재고 확인 → 실사 → 반품 → **폐기**. 못 쓰게 된 자재를 장부에서 덜어내는 일이라
+       * 앞의 여섯이 남긴 결과를 대상으로 삼는다.
+       *
+       * 계약 경로는 반품과 같은 `/logistics/goods-issues`인데 주소는 **화면**을 가리킨다 —
+       * 일반 출고·반품·기타 출고가 한 경로를 쓰므로(착수 이슈 §6) 리소스 이름을 주소로 삼으면
+       * 세 화면이 한 주소를 다투게 된다.
+       *
+       * **다섯 PR이 함께 여는 자리다.** 상신까지만 선 상태에서는 이 줄을 두지 않았다 —
+       * 처리할 수 없는 화면을 노출하면 사용자가 **승인까지 받아 놓고 아무것도 할 수 없다**
+       * (정책 §5.2 — 접근 불가능한 경계).
+       */
+      { path: 'logistics/disposal-issue', element: <DisposalIssueScreen /> },
       /*
        * W-01-02 — 계약 경로는 결재함과 같은 `/app/approval-requests`인데 주소 앞머리는
        * **사이드바 섹션을 따라** `/logistics/`다. 판정하는 것이 자재 입하 검사의 생략이라

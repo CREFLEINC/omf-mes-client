@@ -77,6 +77,21 @@ describe('RegisterResultPane — 갈래별 문장', () => {
 });
 
 describe('RegisterResultPane — 확인한 것만 말한다', () => {
+  /**
+   * **어느 시점의 값인지를 라벨이 밝힌다**(리뷰 t5 M2). 이 구획은 「이번 세션에 만든 전표의
+   * 기록」이라 그 뒤 상신·전기로 서버 상태가 달라진다 — 시점을 밝히지 않으면 같은 전표를
+   * 두 탭이 서로 다른 상태로 말하는 것처럼 읽힌다. **처리 결과 구획의 라벨과 갈라 둔다**:
+   * 그쪽은 방금 받은 응답의 값이라 시점을 따로 밝힐 것이 없다.
+   */
+  it('상태 라벨이 만들 때의 값임을 밝히고 지금 상태라고 적지 않는다', () => {
+    renderPane({ kind: 'submitted', issue: ISSUE });
+
+    expect(screen.getByText(t.result.createdStatusCode)).toBeVisible();
+    /* 짝 방향 — 값은 그대로 서 있다(라벨만 시점을 밝힌다). */
+    expect(screen.getByText(ISSUE.statusCode)).toBeVisible();
+    expect(screen.queryByText(t.result.statusCode)).not.toBeInTheDocument();
+  });
+
   it('서버가 준 상태 코드와 라인을 그대로 낸다', () => {
     renderPane({ kind: 'submitted', issue: ISSUE });
 

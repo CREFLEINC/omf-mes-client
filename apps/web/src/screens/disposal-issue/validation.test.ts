@@ -10,6 +10,8 @@ import {
   CODE_MAX,
   disposalBlockReason,
   DISPOSAL_FORM_FIELDS,
+  postBlockReason,
+  POST_FORM_FIELDS,
   resubmitBlockReason,
   SUBMIT_FORM_FIELDS,
   validateDisposalDraft,
@@ -228,5 +230,72 @@ describe('화면이 아는 필드', () => {
   /** 상신 본문의 필드는 사유 하나다 — 넓히면 남의 오류가 사유 칸에 붙는다. */
   it('상신이 아는 필드는 사유 하나다', () => {
     expect(SUBMIT_FORM_FIELDS).toEqual(['reason']);
+  });
+
+  /**
+   * 전기에는 **입력칸이 없다** — 본문 두 값이 전부 전표에서 파생한다. 이름을 하나라도 담으면
+   * 붙일 칸이 없는 오류가 어디에도 보이지 않게 된다.
+   */
+  it('전기가 아는 필드는 없다', () => {
+    expect(POST_FORM_FIELDS).toEqual([]);
+  });
+});
+
+describe('postBlockReason — 처리를 잠글 근거', () => {
+  /**
+   * **미상신 전표는 잠근다**(완료 조건 C69). 승인 요청 값이 없다는 것은 승인이 있을 수 없다는
+   * 뜻이고, 그것은 화면이 **값 유무로 확실히 아는 사실**이다.
+   */
+  it('미상신이면 잠그고 그 사유를 낸다', () => {
+    expect(
+      postBlockReason({ submission: 'notSubmitted', approval: { kind: 'judgePending' } }),
+    ).toBe(t.actionReasons.postNeedsSubmission);
+  });
+
+  /**
+   * **자리표시가 비어 있는 동안은 잠그지 않는다**(승인 기록 §13-2 안 1 · 완료 조건 C67).
+   * 잠그면 승인된 건까지 막혀 화면이 통째로 무용해진다 — 막는 것은 서버다.
+   */
+  it('상신됐고 자리표시가 비면 잠그지 않는다', () => {
+    expect(postBlockReason({ submission: 'submitted', approval: { kind: 'judgePending' } })).toBe(
+      null,
+    );
+  });
+
+  /** **전환 감지기**(감지기 M64) — 자리표시가 채워지고 승인 전이면 그때 잠긴다. */
+  it('자리표시가 채워지고 승인 전이면 잠근다', () => {
+    expect(postBlockReason({ submission: 'submitted', approval: { kind: 'notApproved' } })).toBe(
+      t.actionReasons.postNotApproved,
+    );
+  });
+
+  /** 짝 방향 — 승인됐으면 열린다. 잠금이 상수로 굳지 않았음을 함께 잰다. */
+  it('승인됐으면 잠그지 않는다', () => {
+    expect(postBlockReason({ submission: 'submitted', approval: { kind: 'approved' } })).toBe(null);
+  });
+
+  /**
+   * **결재 진행을 못 읽었어도 잠그지 않는다**(완료 조건 C78) — 못 읽은 것은 「승인되지
+   * 않았다」가 아니다.
+   */
+  it('진행을 못 읽었으면 잠그지 않는다', () => {
+    expect(postBlockReason({ submission: 'submitted', approval: { kind: 'unread' } })).toBe(null);
+  });
+
+  /**
+   * **상신 여부를 확인할 수 없는 전표도 잠그지 않는다** — 재상신과 갈리는 자리다. 저쪽은
+   * 되풀이하면 결재 요청이 두 벌이 되지만, 여기서 잘못 누르면 돌아오는 것은 서버의 400이다.
+   */
+  it('상신 여부를 확인할 수 없으면 잠그지 않는다', () => {
+    expect(postBlockReason({ submission: 'unusable', approval: { kind: 'judgePending' } })).toBe(
+      null,
+    );
+  });
+
+  /** **차례가 뜻을 정한다** — 미상신이면 승인 여부를 말할 것이 없으므로 그 사유가 앞선다. */
+  it('미상신이면 승인 사유보다 상신 사유가 앞선다', () => {
+    expect(postBlockReason({ submission: 'notSubmitted', approval: { kind: 'notApproved' } })).toBe(
+      t.actionReasons.postNeedsSubmission,
+    );
   });
 });
