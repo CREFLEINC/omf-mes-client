@@ -487,3 +487,56 @@ export const INTERNAL_IDS = [
   '9901',
   '9902',
 ];
+
+/**
+ * 「품의 상신」이 만드는 전표. **목록 픽스처와 겹치지 않는 번호**(9504)를 쓴다 —
+ * 이미 있는 전표와 같은 번호면 「방금 만든 것」과 「목록에 있던 것」이 구분되지 않는다.
+ *
+ * **상신 전의 모양이다** — `approvalRequestId`가 오지 않는다. 전표 생성은 전기도 상신도 하지
+ * 않으므로(`postImmediately: false`) 라인의 원장 라인도 비어 있다.
+ */
+export const createdIssueResponseFixture = {
+  goodsIssueId: 9504,
+  goodsIssueNo: 'GI-2026-950004',
+  issueTypeCode: 'SAMPLE_GI_TYPE_A',
+  sourceDocumentTypeCode: 'SAMPLE_SRC_TYPE_A',
+  sourceDocumentId: 9001,
+  sourceWarehouseId: 9701,
+  destinationTypeCode: 'SAMPLE_DEST_TYPE_A',
+  destinationId: 9561,
+  issuedAt: '2026-08-11T09:30:00+09:00',
+  statusCode: 'SAMPLE_GI_STATUS_B',
+  reasonCode: 'SAMPLE_GI_REASON_A',
+  replacementExpected: false,
+  erpMessageQueued: false,
+};
+
+/** 만들어진 전표의 라인 하나. **보낸 값이 아니라 서버가 되돌려 준 값이다.** */
+export const createdIssueLineResponseFixtures = [
+  {
+    goodsIssueLineId: 9513,
+    goodsIssueId: 9504,
+    lineNo: 1,
+    itemId: 9301,
+    lotId: 9601,
+    issueQty: 10,
+    uomId: 9801,
+    sourceLocationId: 9901,
+    pickingLineId: null,
+    inventoryTransactionLineId: null,
+  },
+];
+
+/**
+ * 값 목록이 확정됐다고 가정할 때 쓰는 **품의 정보 코드 다섯**. 계약의 `@example` 값이 아니다.
+ *
+ * 폐기 계정만 숫자 꼴인 이유는 그 값이 **도착지 식별자로 간다는 가정** 때문이다
+ * (계획 §13-5 · `issue-request.ts`의 `toDestinationId`) — 값 목록이 오면 그 가정도 함께 답을 받는다.
+ */
+export const SAMPLE_FORM_CODES = {
+  issueType: 'SAMPLE_GI_TYPE_A',
+  sourceDocumentType: 'SAMPLE_SRC_TYPE_A',
+  destinationType: 'SAMPLE_DEST_TYPE_A',
+  disposalAccount: '8801',
+  reason: 'SAMPLE_GI_REASON_A',
+};

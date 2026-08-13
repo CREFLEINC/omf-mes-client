@@ -60,6 +60,3 @@ export const describeLineSelect = (line: ReceiptLineView): LineSelectState => {
 
   return { kind: 'selectable' };
 };
-
-export const isLineSelectable = (line: ReceiptLineView): boolean =>
-  describeLineSelect(line).kind === 'selectable';

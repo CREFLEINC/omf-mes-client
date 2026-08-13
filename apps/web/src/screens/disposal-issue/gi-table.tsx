@@ -20,6 +20,11 @@ export const HISTORY_TABLE_MIN_WIDTH_PX = 928;
 export interface GiColumnsInput {
   selectedIssueId: number | null;
   warehouseLookup: ReferenceSource;
+  /**
+   * 전송 중인가. **첫째 겹**이다 — 고른 품의가 바뀌면 나가는 중인 상신의 결과가 다른 맥락에
+   * 도착한다(수명 표 10행). 핸들러 가드(둘째 겹)와 짝이다.
+   */
+  isLocked?: boolean;
   onToggleSelect: (goodsIssueId: number) => void;
 }
 
@@ -60,6 +65,7 @@ export interface GiColumnsInput {
 export const buildGiColumns = ({
   selectedIssueId,
   warehouseLookup,
+  isLocked = false,
   onToggleSelect,
 }: GiColumnsInput): Column<IssueView>[] => [
   {
@@ -120,6 +126,7 @@ export const buildGiColumns = ({
         <Button
           variant="outlined"
           size="sm"
+          disabled={isLocked}
           aria-label={
             selected
               ? t.actions.deselectIssueRow(row.goodsIssueNo)
@@ -162,11 +169,12 @@ export const GiTable = ({
   isBeyondLast,
   selectedIssueId,
   warehouseLookup,
+  isLocked = false,
   onFirstPage,
   onToggleSelect,
   onRetryReferences,
 }: GiTableProps) => {
-  const columns = buildGiColumns({ selectedIssueId, warehouseLookup, onToggleSelect });
+  const columns = buildGiColumns({ selectedIssueId, warehouseLookup, isLocked, onToggleSelect });
 
   if (isLoading) {
     return (
@@ -184,7 +192,7 @@ export const GiTable = ({
         title={t.empty.historyBeyondLastTitle}
         description={t.empty.historyBeyondLastDescription}
         action={
-          <Button variant="outlined" onClick={onFirstPage}>
+          <Button variant="outlined" disabled={isLocked} onClick={onFirstPage}>
             {t.actions.goFirstPage}
           </Button>
         }
@@ -223,7 +231,7 @@ export const GiTable = ({
       {warehouseLookup.isError && (
         <div className="field-cell">
           <span className="field-note">{t.reasons.referencesFailed}</span>
-          <Button variant="outlined" size="sm" onClick={onRetryReferences}>
+          <Button variant="outlined" size="sm" disabled={isLocked} onClick={onRetryReferences}>
             {messages.common.retry}
           </Button>
         </div>

@@ -18,6 +18,11 @@ export const TABLE_MIN_WIDTH_PX = 928;
 export interface GrColumnsInput {
   selectedReceiptId: number | null;
   warehouseLookup: ReferenceSource;
+  /**
+   * 전송 중인가. **첫째 겹**이다 — 고른 대상이 바뀌면 나가는 중인 상신의 결과가 다른 맥락에
+   * 도착한다(수명 표 4·10행). 핸들러 가드(둘째 겹)와 짝이다.
+   */
+  isLocked?: boolean;
   onToggleSelect: (goodsReceiptId: number) => void;
 }
 
@@ -62,6 +67,7 @@ export interface GrColumnsInput {
 export const buildGrColumns = ({
   selectedReceiptId,
   warehouseLookup,
+  isLocked = false,
   onToggleSelect,
 }: GrColumnsInput): Column<ReceiptView>[] => [
   { key: 'goodsReceiptNo', header: t.table.goodsReceiptNo, width: '168px' },
@@ -105,6 +111,7 @@ export const buildGrColumns = ({
         <Button
           variant="outlined"
           size="sm"
+          disabled={isLocked}
           aria-label={
             selected
               ? t.actions.deselectRow(row.goodsReceiptNo)
@@ -146,11 +153,17 @@ export const GrTable = ({
   isBeyondLast,
   selectedReceiptId,
   warehouseLookup,
+  isLocked = false,
   onFirstPage,
   onToggleSelect,
   onRetryReferences,
 }: GrTableProps) => {
-  const columns = buildGrColumns({ selectedReceiptId, warehouseLookup, onToggleSelect });
+  const columns = buildGrColumns({
+    selectedReceiptId,
+    warehouseLookup,
+    isLocked,
+    onToggleSelect,
+  });
 
   if (isLoading) {
     return (
@@ -168,7 +181,7 @@ export const GrTable = ({
         title={t.empty.beyondLastTitle}
         description={t.empty.beyondLastDescription}
         action={
-          <Button variant="outlined" onClick={onFirstPage}>
+          <Button variant="outlined" disabled={isLocked} onClick={onFirstPage}>
             {t.actions.goFirstPage}
           </Button>
         }
@@ -207,7 +220,7 @@ export const GrTable = ({
       {warehouseLookup.isError && (
         <div className="field-cell">
           <span className="field-note">{t.reasons.referencesFailed}</span>
-          <Button variant="outlined" size="sm" onClick={onRetryReferences}>
+          <Button variant="outlined" size="sm" disabled={isLocked} onClick={onRetryReferences}>
             {messages.common.retry}
           </Button>
         </div>
