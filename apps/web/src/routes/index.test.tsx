@@ -110,4 +110,16 @@ describe('appRouter', () => {
     expect(routedPaths()).not.toContain('/system/approval-inbox');
     expect(routedPaths()).not.toContain('/app/approval-requests');
   });
+
+  /*
+   * W-01-02는 결재함과 **같은 계약 경로**를 쓰는데 주소가 다르다 — 근거가 계약이 아니라
+   * **섹션**임을 두 화면이 나란히 보여 주는 자리다. 이 화면이 판정하는 것은 자재 입하
+   * 검사의 생략이라 그 판단의 맥락이 「자재창고」에 있고, 결재함은 올라온 결재를 두루
+   * 처리하는 자리라 축이 다르다.
+   */
+  it('긴급 IQC 생략 한도승인이 자재창고 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/logistics/iqc-skip-approval');
+    expect(routedPaths()).not.toContain('/approval/iqc-skip');
+    expect(routedPaths()).not.toContain('/approval/iqc-skip-approval');
+  });
 });

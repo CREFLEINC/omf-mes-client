@@ -207,6 +207,35 @@ describe('AppLayout', () => {
   });
 
   /*
+   * W-01-02도 같은 「자재창고」 섹션에 항목만 더한다. 계약 경로는 결재함과 같은 `/app/**`
+   * 인데 주소 앞머리는 여기서도 **섹션을 따른다** — 판정하는 것이 자재 입하 검사의 생략이라
+   * 그 판단의 맥락(입하·재고·입고)이 이 섹션에 있다.
+   *
+   * **기존 여섯 항목 뒤다.** 앞의 여섯이 물건이 오가는 순서이고 이것은 그 흐름 위에서
+   * 예외를 허가하는 일이라, 순서 사이에 끼워 넣을 자리가 없다.
+   */
+  it('사이드바 자재창고 섹션의 끝에 긴급 IQC 생략 한도승인 메뉴가 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByRole('link', { name: '긴급 IQC 생략 한도승인' })).toHaveAttribute(
+      'href',
+      '/logistics/iqc-skip-approval',
+    );
+    expect(links.indexOf('/logistics/iqc-skip-approval')).toBe(
+      links.indexOf('/logistics/supplier-return') + 1,
+    );
+    /* 「승인」 섹션이 아니다 — 결재함과 같은 자리에 서면 두 화면의 축이 흐려진다. */
+    expect(links.indexOf('/logistics/iqc-skip-approval')).toBeLessThan(
+      links.indexOf('/approval/inbox'),
+    );
+  });
+
+  /*
    * **알려진 섹션이 사이드바의 링크를 빠짐없이 담는다**를 값으로 고정한다. 섹션이 하나 더
    * 생기면 그 안의 링크가 이 합집합 밖으로 나와 곧바로 걸린다 — 분류를 늘리는 일은
    * 화면 하나를 더하는 일과 무게가 다르므로 **말없이 지나가지 않게** 한다.
@@ -310,6 +339,7 @@ describe('AppLayout', () => {
       '/logistics/stock-status',
       '/logistics/stocktaking',
       '/logistics/supplier-return',
+      '/logistics/iqc-skip-approval',
       '/approval/inbox',
       '/system/users-roles',
       '/system/approval-route',

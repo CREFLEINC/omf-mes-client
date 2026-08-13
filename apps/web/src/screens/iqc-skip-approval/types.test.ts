@@ -1,11 +1,16 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { requestFixtures } from './fixtures';
+import {
+  FIRST_LINE_OF_MULTILINE_REASON,
+  SECOND_LINE_OF_MULTILINE_REASON,
+  requestFixtures,
+} from './fixtures';
 import {
   firstLineOf,
   formatDateTime,
   readableName,
+  toDecisionSubject,
   toReasonLines,
   toRequestDetailView,
   toRequestRow,
@@ -201,5 +206,66 @@ describe('toRequestDetailView', () => {
 
     expect(view.requesterName).toBe(t.values.unknownRequester);
     expect(JSON.stringify(view)).not.toContain(String(nameless?.requestedBy));
+  });
+});
+
+/**
+ * 확인 창이 다시 보이는 **대상 요약**. 오결재 방어의 마지막 자리다(계획 §13-2 셋째 방어).
+ *
+ * **승인 유형 코드가 미확정인 동안 이 화면에는 다른 유형의 요청이 섞여 온다**(`omf-mes#64`).
+ * 목록 위 안내가 「유형과 사유로 확인하라」고 말하므로, 되돌릴 수 없는 확인 직전에 그
+ * 확인 수단이 같은 자리에 다시 서야 한다.
+ */
+describe('toDecisionSubject', () => {
+  const [multiline] = requestFixtures;
+
+  it('확인 창이 다시 보일 다섯 값을 담는다', () => {
+    const subject = toDecisionSubject(multiline as ApprovalRequest);
+
+    expect(subject.approvalRequestNo).toBe('SYNTH-REQ-001');
+    expect(subject.approvalTypeCode).toBe('SAMPLE-TYPE-A');
+    expect(subject.targetName).toBe('합성 대상 문서 가');
+    expect(subject.requesterName).toBe('합성 상신자1');
+    expect(subject.reasonFirstLine).toBe(FIRST_LINE_OF_MULTILINE_REASON);
+  });
+
+  /** 요약이라도 **번호를 나르지 않는다**(`omf-mes#44`) — 담지 않으면 창에서 샐 경로가 없다. */
+  it('내부 번호를 담지 않는다', () => {
+    const subject = toDecisionSubject(multiline as ApprovalRequest);
+
+    expect(Object.keys(subject).sort()).toEqual([
+      'approvalRequestNo',
+      'approvalTypeCode',
+      'reasonFirstLine',
+      'requesterName',
+      'targetName',
+    ]);
+    expect(JSON.stringify(subject)).not.toContain(String(multiline?.approvalRequestId));
+    expect(JSON.stringify(subject)).not.toContain(String(multiline?.requestedBy));
+    expect(JSON.stringify(subject)).not.toContain(String(multiline?.target.targetId));
+  });
+
+  /** 사유는 **첫 줄**이다 — 확인 창은 읽는 자리가 아니라 확인하는 자리라 전문이 오면 묻힌다. */
+  it('사유는 첫 줄만 담고 둘째 줄을 담지 않는다', () => {
+    const subject = toDecisionSubject(multiline as ApprovalRequest);
+
+    expect(subject.reasonFirstLine).not.toContain(SECOND_LINE_OF_MULTILINE_REASON);
+  });
+
+  it('이름이 비어 오면 대체 문구가 서고 번호가 서지 않는다', () => {
+    const nameless = requestFixtures.find((request) => request.requestedByName === '');
+    const subject = toDecisionSubject(nameless as ApprovalRequest);
+
+    expect(subject.requesterName).toBe(t.values.unknownRequester);
+    expect(subject.targetName).toBe(t.values.unknownTarget);
+    expect(JSON.stringify(subject)).not.toContain(String(nameless?.requestedBy));
+    expect(JSON.stringify(subject)).not.toContain(String(nameless?.target.targetId));
+  });
+
+  /** 사유가 비어 와도 빈 칸을 내지 않는다 — 확인 창의 한 줄이 통째로 사라지면 안 된다. */
+  it('사유가 비어 오면 그 사실을 적는다', () => {
+    const blank = { ...(multiline as ApprovalRequest), reason: '\n  \n' };
+
+    expect(toDecisionSubject(blank).reasonFirstLine).toBe(t.values.emptyReason);
   });
 });

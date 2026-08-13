@@ -18,6 +18,10 @@ export type ApprovalRequestDetail = components['schemas']['ApprovalRequestDetail
 export type ApprovalStep = components['schemas']['ApprovalStep'];
 export type ApprovalTarget = components['schemas']['ApprovalTarget'];
 export type PageMeta = components['schemas']['PageMeta'];
+/** 승인 본문. **몸통 자체가 선택**이고 그 안의 의견도 선택이다(계약 실측). */
+export type ApprovalDecision = components['schemas']['ApprovalDecision'];
+/** 반려 본문. **몸통이 필수**이고 의견도 필수다 — 두 스키마가 갈린 이유가 그것이다. */
+export type ApprovalRejection = components['schemas']['ApprovalRejection'];
 
 export interface SelectOption {
   value: string;
@@ -212,3 +216,43 @@ export const toRequestDetailView = (request: ApprovalRequest): RequestDetailView
   statusCode: request.statusCode,
   reasonLines: toReasonLines(request.reason),
 });
+
+/**
+ * 확인 창이 **다시 보이는 값 다섯**. 오결재 방어의 마지막 자리다(계획 §13-2 셋째 방어).
+ *
+ * **왜 창에서 한 번 더 보이는가.** 승인 유형 코드가 미확정인 동안 이 화면은 내가 승인자인
+ * 요청을 **전부** 보인다(`omf-mes#64`). 목록 위 안내가 「유형과 사유로 긴급 IQC 생략 건인지
+ * 확인하라」고 말하므로, **되돌릴 수 없는 확인을 누르기 직전에** 그 확인 수단이 같은 자리에
+ * 다시 서야 한다 — 목록에서 한 줄 잘못 누른 것이 창을 지나며 걸러지는 유일한 길이다.
+ *
+ * **다섯인 이유.** 요청번호(무엇을)·유형(어느 갈래를)·대상(무엇에 붙는)·상신자(누가 올린)에
+ * **사유 첫 줄**(왜)을 더한다. 유형 코드가 미확정인 동안 갈래를 실제로 가려 주는 것은
+ * 사유 쪽이고, 상신자는 「내가 기다리던 그 건인가」를 가리는 값이다.
+ *
+ * **내부 번호를 담지 않는다.** 요약이라도 규율은 같다 — 담지 않으면 창에서 샐 경로가 없다.
+ * 상신 일시를 담지 않는 이유는 다르다: 그것은 **고르는 단서**이지 확인의 단서가 아니고,
+ * 창이 길어질수록 확인해야 할 값이 스크롤 밖으로 밀린다.
+ */
+export interface DecisionSubject {
+  approvalRequestNo: string;
+  /** 코드 문자열 그대로. 값 목록이 확정되기 전에 화면이 이름을 지어내지 않는다. */
+  approvalTypeCode: string;
+  /** 대상 표시명. **서버가 만든 이름**이라 화면이 짓지 않는다. */
+  targetName: string;
+  requesterName: string;
+  /** 사유의 **첫 줄**. 창은 읽는 자리가 아니라 확인하는 자리라 전문이 오면 다른 값이 묻힌다. */
+  reasonFirstLine: string;
+}
+
+/** 상세 응답의 요청 몸통을 확인 창이 다시 보일 요약으로 옮긴다. */
+export const toDecisionSubject = (request: ApprovalRequest): DecisionSubject => {
+  const reasonFirstLine = firstLineOf(request.reason);
+
+  return {
+    approvalRequestNo: request.approvalRequestNo,
+    approvalTypeCode: request.approvalTypeCode,
+    targetName: readableName(request.target.displayName, t.values.unknownTarget),
+    requesterName: readableName(request.requestedByName, t.values.unknownRequester),
+    reasonFirstLine: reasonFirstLine === '' ? t.values.emptyReason : reasonFirstLine,
+  };
+};
