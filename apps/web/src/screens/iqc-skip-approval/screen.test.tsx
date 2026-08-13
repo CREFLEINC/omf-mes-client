@@ -2407,6 +2407,40 @@ describe('결재 — 전송 중', () => {
   });
 
   /**
+   * **조건 칩도 같은 문을 지난다.** 위 시험과 갈라 두는 이유: 한 시험에 여러 길을 몰아넣으면
+   * 먼저 오는 단언이 먼저 터져 **칩 하나만 문 밖에 있어도 드러나지 않는다.**
+   * 칩은 고른 요청을 건드리지 않고 조건만 푸는 길이라 잣대도 조건 쪽에 둔다.
+   */
+  it('전송 중 조건 칩으로도 조건이 풀리지 않는다', async () => {
+    const { requests, release, user } = await renderDecision(
+      decisionRoutes(),
+      /* 조건 하나를 걸어 둔다 — 칩이 서 있어야 그 길을 잴 수 있다. */
+      '?rq=9001&q=SYNTH',
+      holdApprove,
+    );
+
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveKeyword }));
+
+    expect(currentLocation()).toContain('q=SYNTH');
+
+    release();
+    await screen.findByText(t.toast.approved);
+
+    /* 짝 방향 — 잠금이 풀리면 같은 칩이 그 조건을 실제로 푼다(늘 남는 것이 아니다). */
+    await user.click(screen.getByRole('button', { name: t.filters.chipRemoveKeyword }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('q=SYNTH');
+    });
+  });
+
+  /**
    * **바깥에서 주소가 바뀌는 길** — 뒤로가기·앞으로가기·주소 직접 편집은 잠금 문을 지나지
    * 않는다. 그때 창·배너 정리가 깨어나는데, 그 정리가 **나가는 중인 요청까지 끊으면**
    * 무효화·성공·잠금 해제가 통째로 사라진다(`omf-mes#96`). 서버에는 이미 갔는데 화면만
