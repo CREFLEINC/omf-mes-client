@@ -16,6 +16,7 @@ import { SaveErrorBanner } from '../../patterns/master';
 import {
   hasPostedLine,
   isApprovalJudgePending,
+  readPostApproval,
   readSubmission,
   toRequestProgressView,
   APPROVED_APPROVAL_STATUS_CODES,
@@ -90,6 +91,10 @@ import {
 } from './lookups';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
+import { PostConfirmDialog, type PostReasonSummary } from './post-confirm-dialog';
+import { PostPane } from './post-pane';
+import { toPostRequest } from './post-request';
+import { PostResultPane } from './post-result-pane';
 import {
   isIssueNotFound,
   isReceiptNotFound,
@@ -101,6 +106,7 @@ import {
   useGoodsReceipts,
   useIssueDetailFetcher,
   useOnHandBalances,
+  usePostGoodsIssue,
   useRequestApproval,
 } from './queries';
 import { firstLineOf, readReason, toApprovalRequest } from './reason-draft';
@@ -131,7 +137,12 @@ import {
   type SelectOption,
   type WarehouseEntry,
 } from './types';
-import { disposalBlockReason, resubmitBlockReason, validateDisposalDraft } from './validation';
+import {
+  disposalBlockReason,
+  postBlockReason,
+  resubmitBlockReason,
+  validateDisposalDraft,
+} from './validation';
 
 const t = messages.disposalIssue;
 
@@ -194,17 +205,24 @@ const toSelectOptions = (entries: readonly WarehouseEntry[]): SelectOption[] =>
  * 배치는 각 탭 안에서 상하로 쌓는다 — 위: 조건 줄과 목록 / 아래: 고른 것의 구획.
  * 탭·조회 조건·고른 것은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
  *
- * **이 회차에 쓰기가 둘 생긴다**(전표 생성 · 상신). 사용자 조작은 「품의 상신」 **한 번**이고
- * 그 한 번이 요청 둘을 잇는다(승인 기록 정정 1-1) — 계약에 「등록하고 상신한다」가 없어
- * 두 요청이며, 그 사이에 **잠금 토큰을 얻는 상세 조회**가 하나 더 든다.
+ * **쓰기가 셋이고 시점이 다르다**(전표 생성 · 상신 · **전기**). 앞의 둘은 「품의 상신」
+ * **한 번**의 조작이 잇고(승인 기록 정정 1-1 — 계약에 「등록하고 상신한다」가 없어 두 요청이며
+ * 그 사이에 **잠금 토큰을 얻는 상세 조회**가 하나 더 든다), 셋째는 **사람의 결재를 지난 뒤**에
+ * 「처리 이력」 탭에서 따로 눌린다.
  *
  * **중간 상태를 숨기지 않는다.** 「전표는 만들어졌고 상신이 실패했다」가 실재하는 상태이고,
  * 그때 화면은 통째로 실패라고도 통째로 성공이라고도 말하지 않는다 — 그 전표는 **「처리 이력」
  * 탭에서 이어서 상신**한다. 상신 자리가 둘이면 규칙이 둘이 되므로, **이미 만들어진 전표를
  * 올리는 자리는 이력 탭 하나**다(계획 결정 6).
  *
- * **기타출고 처리(전기)는 아직 없다.** 그때까지 이 화면은 **라우트에도 사이드바에도 등록되지
- * 않는다** — 승인까지 받아 놓고 재고를 뺄 수 없는 화면을 사용자에게 내보이는 것이 된다.
+ * **재고가 움직이는 자리는 「기타출고 처리」 하나뿐이다.** 전표 생성은 장부에 아무것도 하지
+ * 않고(`postImmediately: false`) 상신은 결재를 시작할 뿐이며, 원장이 바뀌는 순간은 전기다.
+ * **승인이 끝났는지는 화면이 판정하지 못한다**(승인 완료 코드가 미확정 · `omf-mes#64`) —
+ * 그래서 **잠그지 않고 밝히며**, 승인 전이면 서버가 400으로 되돌린다(승인 기록 §13-2 안 1).
+ *
+ * **이 회차에 화면이 열린다.** 라우트와 사이드바에 등록하는 것을 마지막 회차에 둔 이유는,
+ * 처리할 수 없는 화면을 노출하면 사용자가 **승인까지 받아 놓고 아무것도 할 수 없기** 때문이다
+ * (정책 §5.2 — 접근 불가능한 경계).
  *
  * **보이지 않는 탭의 조회는 나가지 않는다.** 두 탭의 조건과 선택이 한 주소에 함께 살아 있어
  * 값만으로는 조회가 성립한다 — 탭을 조회의 조건으로 함께 넘기지 않으면 숨은 탭의 목록·상세·
@@ -237,7 +255,8 @@ const toSelectOptions = (entries: readonly WarehouseEntry[]): SelectOption[] =>
  * | **S3** 이번 세션에서 올렸다 | 전표 생성 성공 | 위 + **상신 결과 구획**(전표 번호 · 상태 · 라인 · 「이 품의 열기」) | 조회 · 다시 고르기 · **이 품의 열기** | `gr` 유지 · `gi` 채움 |
  * | **S4** 그 전표가 없다 | **상세가 404** | 안내 「고른 입고 전표를 찾을 수 없습니다」 | `gr`를 주소에서 정리한다 | `gr` 제거 |
  * | **H0** 이력에서 고르기 전 | 「처리 이력」 탭 · `gi`가 없다 | 이력 조건 줄 · 목록 · 쪽 · **고르기 전 안내** | 조회 · 초기화 · 쪽 이동 · 고르기 | `?tab=history&i*&ipage` |
- * | **H1** 품의를 골랐다 | `gi`가 있고 **출고 상세가 200** | 위 + 품의 정보 · 라인 표 · **결재 진행 구획** · **상신 구획** | 위 + **재상신**(미상신일 때) · 처리 — **뒤 회차** | `+&gi` |
+ * | **H1** 품의를 골랐다 | `gi`가 있고 **출고 상세가 200** | 위 + 품의 정보 · 라인 표 · **결재 진행 구획** · **상신 구획** · **처리 구획** | 위 + **재상신**(미상신일 때) · **기타출고 처리** | `+&gi` |
+ * | **H3** 이번 세션에서 처리했다 | 전기 성공 | 위 + **처리 결과 구획**(상태 · ERP 적재) | 위와 같다 — 처리는 되돌릴 수 없다 | `gi` 유지 |
  * | **H2** 그 품의가 없다 | **출고 상세가 404** | 안내 「고른 품의를 찾을 수 없습니다」 | `gi`를 주소에서 정리한다 | `gi` 제거 |
  *
  * **S3이 세 갈래로 갈린다** — 전표 생성은 끝났고 상신이 ① 진행 중이거나 ② 끝났거나
@@ -277,19 +296,22 @@ export const DisposalIssueScreen = () => {
    * 「비운다」와 「비우지 않는다」를 이 표 한 곳에 모은다. 규칙이 흩어지면 한쪽만 고쳐져
    * 비대칭이 생긴다(조건을 바꾸면 아래 구획이 닫히는데 쪽을 옮기면 안 닫히는 식).
    *
-   * **「처리」 열만 아직 없다**(기타출고 처리가 뒤 회차다). 열을 지우지 않고 남겨 두는 이유는,
-   * 표에 오르지 않은 상태가 규칙이 닿지 않는 사각이 되기 때문이다 — 그 쓰기가 생길 때
-   * **행을 다시 세는 대신 그 열만 채운다.**
+   * **이 회차에 「처리」 열이 채워진다** — 표에 오르지 않은 상태가 규칙이 닿지 않는 사각이
+   * 되므로 그 쓰기가 생기는 지금 **행을 다시 세는 대신 그 열만 채웠다.**
    *
    * 열 이름: 조건 = 대상 조건 6종 · `gr` = 고른 입고 전표 · 줄 = 줄·수량 초안 ·
    * 폐기 = **품의 정보 초안**(코드 다섯·출고 일시·비고와 **상신 사유**) · 이력 = 이력 조건 ·
    * `gi` = 고른 품의 · 사유 = **이력 탭의 재상신 사유 초안** · 등록 = 상신 결과 구획 ·
-   * 처리 = 처리 결과 · 창 = 열린 창 · 배너 = 실패 배너
+   * 처리 = **처리 결과 구획** · 창 = 열린 창 · 배너 = 실패 배너
    *
    * **「폐기」 열이 상신 사유를 함께 담는다**(승인 기록 정정 1-1). 계획은 사유를 이력 탭에만
    * 두었으나 조작이 한 버튼이 되면서 사유가 발의 자리로 왔다 — 매인 대상이 **고른 입고 전표**
    * 쪽이므로 「사유」 열이 아니라 이 열의 규칙을 따른다. 「사유」 열은 이력 탭의 재상신 초안이
    * 그대로 물려받는다.
+   *
+   * **「배너」 열에 「다시 읽기 실패」 안내가 함께 든다**(PR ④ 리뷰 N1). 그것은 쓰기의 실패가
+   * 아니라 **다시 읽기의 실패**라 훅의 오류와 갈라 두었는데, 갈라 둔 상태가 이 표에 오르지
+   * 않아 23행(초안 파기)에서만 거둬지지 않았다 — 새 상태는 표에 **먼저** 올린다.
    *
    * | # | 조작 | 조건 | `gr` | 줄 | 폐기 | 이력 | `gi` | 사유 | 등록 | 처리 | 창 | 배너 |
    * | :-: | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
@@ -315,13 +337,17 @@ export const DisposalIssueScreen = () => {
    * | 20 | 상신 실패 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 | 닫는다 | **세운다** |
    * | 21 | **처리 성공** | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 | **채운다** | 닫는다 | 비운다 |
    * | 22 | 처리 실패 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 비운다 | 닫는다 | **세운다** |
-   * | 23 | 초안 파기(취소) | 유지 | 유지 | **비운다** | **비운다** | 유지 | 유지 | **비운다** | 비운다 | 비운다 | 닫는다 | **비운다** |
+   * | 23 | 초안 파기(취소) | 유지 | 유지 | **비운다** | **비운다** | 유지 | 유지 | 유지 | 비운다 | 유지 | 닫는다 | **등록분만 비운다** |
    * | 24 | **전송 중** | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 잠긴다 | 유지 | 유지 | 유지 | 유지 |
    * | 25 | **상세를 더는 읽을 수 없다** | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | **닫는다** | 유지 |
    * | 26 | **승인 요청 조회 실패** | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | **유지** | **유지** | **유지** |
    *
-   * **이 회차가 지키는 것은 「처리」 열을 뺀 전부다.** 21·22행(처리 성공·실패)만 뒤 회차에
-   * 남는다.
+   * **23행이 「사유」·「처리」를 유지하는 이유**(계획 문면에서 좁힌 자리): 「입력 지우기」는
+   * **발의 자리의 버튼**이고 매인 대상이 고른 입고 전표다. 이력 탭의 재상신 초안과 처리 결과는
+   * 고른 **품의**에 매여 있어, 함께 버리면 **범위 있는 규칙을 넓은 잣대로 재는 것**이 된다 —
+   * 다른 탭에서 적던 사유가 여기 버튼 한 번에 사라진다. 배너도 같은 이유로 등록분만 거둔다.
+   * 그 대신 **다시 읽기 실패 안내는 거둔다**: 그것은 방금 물린 연쇄가 남긴 것이라, 파기 뒤에는
+   * 가리킬 전표조차 없다(PR ④ 리뷰 N1).
    *
    * ### 토큰 수명 표 (계획 결정 13)
    *
@@ -337,14 +363,18 @@ export const DisposalIssueScreen = () => {
    * | 재고 잔액·참조 | — | 주지 않는다 | — | — |
    * | **전표 생성** | **`null`**(새 전표라 매길 버전이 없다) | 준다(201) | **컬렉션 경로** — **쓰지 않는다** | 출고 뿌리 무효화 |
    * | **상신** | **출고 상세 경로** | **주지 않는다** | — | **출고·승인 뿌리 무효화** |
-   * | 전기 | 출고 상세 경로 | 주지 않는다 | — | 뿌리 무효화 — **뒤 회차** |
+   * | **전기** | **출고 상세 경로** | **주지 않는다**(헤더만 온다) | — | **출고·승인·잔액 뿌리 무효화** |
    *
    * **규칙 넷.** ① `etagPath`는 **늘 출고 상세 경로**다 — 컬렉션 경로를 주면 목록 조회와 열쇠가
    * 겹치고, 액션 경로를 주면 토큰이 비어 훅이 요청을 만들지 않고 멈춘다(「눌러도 아무 일이
-   * 없다」). ② 상신 응답에 `ETag`가 **없으므로** 성공 뒤 뿌리를 무효화해 상세를 다시 부른다 —
+   * 없다」). ② 상신·전기 응답에 `ETag`가 **없으므로** 성공 뒤 뿌리를 무효화해 상세를 다시 부른다 —
    * 그래야 다음 쓰기의 토큰이 새것이 된다. ③ 전표 생성은 `etagPath: null`이라 토큰 없이 나간다
    * (계약이 허용). ④ **409 뒤의 길**은 「최신 불러오기」가 출고 상세를 다시 불러 새 토큰을 얻는
    * 것이다.
+   *
+   * **전기만 잔액 뿌리를 함께 무효화한다** — 이 쓰기만 재고를 움직이기 때문이다. 전표 생성·
+   * 상신 뒤에 잔액을 다시 받으면 **바뀌지도 않은 값을 부르는 요청**이 늘 뿐이고, 전기 뒤에 받지
+   * 않으면 낡은 상한으로 다음 품의를 올려 **이미 없어진 자재를 폐기하려 한다.**
    *
    * **연쇄 가운데의 상세 조회가 ①의 귀결이다** — 방금 만든 전표의 토큰은 **컬렉션 경로**에
    * 앉으므로 상신이 쓸 수 없다. 그래서 전표 생성과 상신 사이에 상세 조회가 한 번 든다.
@@ -633,7 +663,25 @@ export const DisposalIssueScreen = () => {
 
   const [isSubmitConfirmOpen, setSubmitConfirmOpen] = useState(false);
   const [isResubmitConfirmOpen, setResubmitConfirmOpen] = useState(false);
+  const [isPostConfirmOpen, setPostConfirmOpen] = useState(false);
   const [isDiscardOpen, setDiscardOpen] = useState(false);
+
+  /**
+   * 처리 결과 — **서버가 되돌려 준 전표**다(수명 표의 「처리」 열).
+   *
+   * **전기 응답은 헤더만 준다**(계약 실측 — 라인이 없다). 라인은 무효화가 다시 부른 상세가
+   * 채우므로, 이 값은 결과 구획이 말할 상태와 ERP 적재만 담는다.
+   */
+  const [postResult, setPostResult] = useState<IssueView | null>(null);
+
+  /**
+   * 그 처리가 겨눈 품의(**재상신과 같은 매임 축**). 결과 구획과 처리 배너가 이 값에 매인다 —
+   * 대상이 바뀌면 앞 품의의 처리 결과가 새 품의의 라인 표 아래 서지 않는다.
+   *
+   * **재상신의 매임과 갈라 둔다.** 같은 품의를 가리키는 값이지만 **세워지는 시점이 다르다** —
+   * 하나로 묶으면 재상신에 실패한 뒤 처리하면 앞의 실패 배너가 처리 결과와 함께 선다.
+   */
+  const [postTargetKey, setPostTargetKey] = useState<string | null>(null);
 
   /**
    * 지금 무엇에 매여 있는가 — **이름 둘**(계획 결정 12).
@@ -768,20 +816,38 @@ export const DisposalIssueScreen = () => {
   });
 
   /**
+   * 기타출고 처리 — **이 화면에서 재고를 움직이는 유일한 쓰기다.**
+   *
+   * 성공하면 ① 서버가 되돌려 준 전표를 결과 구획에 세우고 ② 창을 닫는다. **주소도 탭도 바꾸지
+   * 않는다** — 방금 처리한 품의를 보던 자리가 말없이 사라지면 결과를 읽을 수 없다.
+   *
+   * **무효화는 훅이 한다**(`queries.ts`) — 목록·상세·승인 요청·**잔액**이 함께 갱신돼야
+   * 라인 표의 전기 표식과 다음 품의의 상한이 방금 일어난 일을 반영한다.
+   */
+  const postWrite = usePostGoodsIssue({
+    goodsIssueId: selectedIssueId,
+    onSuccess: (posted) => {
+      setPostResult(posted);
+      setPostConfirmOpen(false);
+    },
+  });
+
+  /**
    * 지금 무엇이 나가는 중인가 — **첫째 겹의 원천이다.**
    *
    * 이 값 하나가 컨트롤 전부(조회·초기화·쪽 이동·전표 선택·줄 선택·수량·품의 정보·**탭**)를
    * 닫고, 잠금을 받지 않는 컨트롤(조건 칩의 ×)은 핸들러 가드(둘째 겹)가 막는다.
    *
-   * **세 쓰기를 함께 본다.** 연쇄 가운데의 틈(토큰을 얻는 사이)까지 덮지 않으면 그 순간
-   * 잠금이 풀려 **연타로 전표가 두 벌** 만들어진다 — 멱등 키가 호출마다 새로 만들어져
-   * 서버가 재전송으로 보지 못하는 한계(`omf-mes#55`)와 겹치는 자리다.
+   * **쓰기 넷을 함께 본다**(전표 생성 · 연쇄 상신 · 재상신 · **전기**). 연쇄 가운데의 틈
+   * (토큰을 얻는 사이)까지 덮지 않으면 그 순간 잠금이 풀려 **연타로 전표가 두 벌** 만들어진다 —
+   * 멱등 키가 호출마다 새로 만들어져 서버가 재전송으로 보지 못하는 한계(`omf-mes#55`)와
+   * 겹치는 자리다. **전기에서 그 한계는 재고가 두 번 빠지는 것**이라 무게가 더 크다.
    */
   const isChainPending =
     createWrite.isSaving ||
     chainSubmitWrite.isSaving ||
     (chain.kind === 'created' && !chain.tokenSettled);
-  const isLocked = isChainPending || resubmitWrite.isSaving;
+  const isLocked = isChainPending || resubmitWrite.isSaving || postWrite.isSaving;
 
   /**
    * **사용자가 대상을 바꾸는 길이 지나는 한 문**(계획 결정 12의 구현 규칙 5).
@@ -987,6 +1053,22 @@ export const DisposalIssueScreen = () => {
     setResubmitReason('');
     setLocalResubmitError(undefined);
     resetIfIdle(resubmitWrite);
+
+    /*
+     * 처리 쪽도 **같은 매임 축**이라 같은 자리에서 거둔다(수명 표 9~11행). 자리를 둘로 두면
+     * 품의를 바꿨을 때 한쪽만 거둬져 **앞 품의의 처리 결과가 새 품의 아래** 선다.
+     *
+     * **나가는 중이면 매임을 지우지 않는다**(연쇄 정리와 같은 규율). 매임을 지우면 도착한
+     * 결과가 어느 품의의 것인지 가를 근거가 사라져, 되돌릴 수 없는 조작의 결과가 화면 어디에도
+     * 서지 않는다.
+     */
+    setPostConfirmOpen(false);
+    resetIfIdle(postWrite);
+
+    if (!postWrite.isSaving) {
+      setPostResult(null);
+      setPostTargetKey(null);
+    }
   };
 
   useEffect(() => {
@@ -1018,6 +1100,7 @@ export const DisposalIssueScreen = () => {
     if (isHistoryTab && hasIssueDetail) return;
 
     setResubmitConfirmOpen(false);
+    setPostConfirmOpen(false);
   }, [isHistoryTab, hasIssueDetail]);
 
   /*
@@ -1257,6 +1340,7 @@ export const DisposalIssueScreen = () => {
    */
   const isChainForCurrentTarget = chainTargetKey === registerTargetKey;
   const isResubmitForCurrentTarget = resubmitTargetKey === issueTargetKey;
+  const isPostForCurrentTarget = postTargetKey === issueTargetKey;
 
   /**
    * 재상신 확인 창이 보일 합계. **단위가 섞이면 합계를 내지 않는다** — 100 개와 5 상자를 더한
@@ -1287,6 +1371,15 @@ export const DisposalIssueScreen = () => {
     ? (createWrite.error ?? chainSubmitWrite.error)
     : null;
   const resubmitError = isResubmitForCurrentTarget ? resubmitWrite.error : null;
+
+  /**
+   * 처리 실패 배너. **재상신 배너와 자리도 매임도 갈라 둔다** — 같은 품의를 다루지만 사용자가
+   * 누른 것이 다르고, 하나로 묶으면 상신 실패가 처리 구획 아래에 서서 무엇이 실패했는지 흐려진다.
+   *
+   * **승인 전 전기의 400도 여기로 온다**(계약 명시). 코드로 분기해 원인을 지어내지 않고
+   * 서버 문구를 그대로 낸다 — 결재선이 없어 오는 400과 같은 규율이다(계획 결정 16).
+   */
+  const postError = isPostForCurrentTarget ? postWrite.error : null;
 
   /**
    * 서버가 준 되먹임이 **하나라도 남아 있는가**(배너 또는 인라인 필드 오류).
@@ -1392,8 +1485,12 @@ export const DisposalIssueScreen = () => {
    * **결과 구획과 실패 배너도 함께 거둔다.** 「버린다」는 앞서 한 시도를 통째로 물리는 것이라,
    * 방금 만든 전표 번호나 거절 사유만 남으면 무엇이 지금 상태인지 알 수 없다.
    *
-   * **이력 탭의 사유 초안은 건드리지 않는다.** 이 버튼은 발의 자리의 것이고, 매인 대상이 다른
-   * 초안까지 버리면 범위 있는 규칙을 넓은 잣대로 재는 것이 된다.
+   * **이력 탭의 사유 초안·처리 결과는 건드리지 않는다.** 이 버튼은 발의 자리의 것이고, 매인
+   * 대상이 다른 것까지 버리면 범위 있는 규칙을 넓은 잣대로 재는 것이 된다.
+   *
+   * **다시 읽기 실패 안내도 함께 거둔다**(PR ④ 리뷰 N1 · 수명 표 23행). 그 안내는 방금 물린
+   * 연쇄가 남긴 것이라, 파기 뒤에는 **가리킬 전표조차 없다** — 남으면 화면이 없는 전표를 두고
+   * 「이어서 상신하세요」라고 말한다.
    */
   const discardDrafts = (): void => {
     setLineDraft(EMPTY_LINE_DRAFT);
@@ -1402,6 +1499,7 @@ export const DisposalIssueScreen = () => {
     setDiscardOpen(false);
     setChain(NO_CHAIN);
     setChainTargetKey(null);
+    setReloadFailure(false);
     resetIfIdle(createWrite);
     resetIfIdle(chainSubmitWrite);
   };
@@ -1506,6 +1604,59 @@ export const DisposalIssueScreen = () => {
       ),
     };
   })();
+
+  /**
+   * 기타출고 처리 — **이 화면에서 되돌릴 수 없는 정도가 가장 큰 조작이다.**
+   *
+   * 판정을 `validation.ts` 한 곳에서 받아 **버튼과 보내는 자리가 같은 값을 본다**(둘째 겹).
+   * 승인 판정 자체는 `approval-progress.ts`가 만든다 — 자리표시를 읽는 곳이 하나여야
+   * 「채우면 잠긴다」를 시험이 잴 수 있다.
+   */
+  const postApproval = readPostApproval(
+    APPROVED_APPROVAL_STATUS_CODES,
+    approvalState.kind === 'ready' ? approvalState.view : null,
+  );
+  const postBlock = postBlockReason({ submission: submission.kind, approval: postApproval });
+
+  /**
+   * 확인 창이 되보일 상신 사유 — **결재 진행에서 읽은 값이다.**
+   *
+   * 못 읽었으면 낼 것이 없고 창이 그 사실을 적는다(완료 조건 C71). **빈 문자열로 접지 않는다** —
+   * 그러면 「사유가 비어 온 요청」과 「못 읽었다」가 같은 모양이 되고, 창은 둘 중 어느 사실도
+   * 정확히 말할 수 없다.
+   */
+  const postReasonSummary: PostReasonSummary =
+    approvalState.kind === 'ready'
+      ? { kind: 'known', firstLine: approvalState.view.reasonLines[0] ?? '' }
+      : { kind: 'unread' };
+
+  /** 확인 창을 연다. 막히면 **창을 열지 않고 요청도 만들지 않는다.** */
+  const openPostConfirm = (): void => {
+    if (postBlock !== null) return;
+
+    setPostConfirmOpen(true);
+  };
+
+  /**
+   * 전기를 보낸다. **보내기 직전에 한 번 더 본다**(둘째 겹 · 감지기 M70).
+   *
+   * 확인 창이 버튼과 전송 사이를 벌려 놓는다 — 그 사이에 「다시 조회」로 상세가 갱신돼 미상신
+   * 전표가 되거나 승인 판정이 달라질 수 있고, 그때 그냥 보내면 **재고가 승인 없이 움직인다.**
+   * 막혀 있으면 **창을 닫고 보내지 않는다.**
+   *
+   * **앞 결과를 먼저 비운다**(수명 표 22행) — 실패했는데 앞의 성공이 그대로 서 있으면 무엇이
+   * 지금 상태인지 알 수 없다.
+   */
+  const sendPost = (issue: IssueView): void => {
+    setPostConfirmOpen(false);
+
+    if (postBlock !== null) return;
+
+    setPostResult(null);
+    /* **이 처리가 겨눈 품의를 적어 둔다** — 도착한 되먹임이 어느 품의의 것인지 가르는 기준이다. */
+    setPostTargetKey(issueTargetKey);
+    postWrite.write(toPostRequest({ issue, now: new Date() }));
+  };
 
   /**
    * 이력 라인 표의 참조 실패. **넷을 하나로 접어 넘긴다** — 안내 문구가 넷을 함께 적고
@@ -1943,6 +2094,65 @@ export const DisposalIssueScreen = () => {
             {resubmitError?.kind === 'network' && (
               <p className="field-error">{t.notes.submitRecheck}</p>
             )}
+
+            {/*
+             * 기타출고 처리 — **재고가 실제로 움직이는 자리다.**
+             *
+             * **미상신 전표에서도 잠긴 채로 선다**(재상신 구획과 같은 판단) — 감추면
+             * 「왜 여기서는 처리할 수 없는가」에 화면이 답하지 못하고, 사용자는 승인을 받아 놓고
+             * 어디서 처리하는지 찾아 헤맨다.
+             *
+             * **승인이 끝났는지 화면이 판정하지 못하는 동안에도 잠그지 않는다**(승인 기록
+             * §13-2 안 1) — 잠그면 승인된 건까지 막혀 화면이 통째로 무용해진다. 막는 것은
+             * 서버이고 계약이 그 사실을 적었다.
+             */}
+            <PostPane
+              approval={postApproval}
+              blockReason={postBlock}
+              isLocked={isLocked}
+              onOpenConfirm={openPostConfirm}
+            />
+
+            <SaveErrorBanner error={postError} onReload={refreshAll} />
+
+            {/*
+             * **응답을 받지 못한 처리에만** 한 줄을 더한다(다섯째 겹). 확인 없이 다시 보내면
+             * 같은 전표가 두 번 전기될 수 있다 — 공통 쓰기 훅이 호출마다 새 멱등 키를 만들어
+             * 서버가 재전송으로 보지 못한다(`omf-mes#55`). **확인할 것이 상신과 다르다**:
+             * 전표가 만들어졌는가가 아니라 **재고가 움직였는가**다.
+             */}
+            {postError?.kind === 'network' && <p className="field-error">{t.notes.postRecheck}</p>}
+
+            {/* **창은 열 때만 붙인다** — 닫혀도 남아 있으면 지난 값이 DOM에 살아 있게 된다. */}
+            {isPostConfirmOpen && (
+              <PostConfirmDialog
+                summary={{
+                  goodsIssueNo: issueDetailData.issue.goodsIssueNo,
+                  lineCount: issueLineRows.length,
+                  totalQtyText: issueTotalQtyText,
+                  reason: postReasonSummary,
+                  /*
+                   * **자리표시가 비었다는 사실을 창이 다시 적는다.** 구획의 상시 안내를 읽고
+                   * 지나쳤어도 확인 직전에 한 번 더 만난다.
+                   */
+                  isJudgePending: isApprovalJudgePending(APPROVED_APPROVAL_STATUS_CODES),
+                  /* 값 유무로만 판정한다 — 상태 코드로 읽으면 조용히 틀린다(계획 결정 7). */
+                  hasPostedLine: hasPostedLine(issueLineRows),
+                }}
+                onConfirm={() => {
+                  sendPost(issueDetailData.issue);
+                }}
+                onClose={() => {
+                  setPostConfirmOpen(false);
+                }}
+              />
+            )}
+
+            {/*
+             * 처리 결과 — **자기 대상보다 오래 살지 않는다.** 매임 이름이 지금 고른 품의와
+             * 다르면 서지 않는다.
+             */}
+            {postResult !== null && isPostForCurrentTarget && <PostResultPane issue={postResult} />}
 
             {isResubmitConfirmOpen && (
               <ResubmitConfirmDialog

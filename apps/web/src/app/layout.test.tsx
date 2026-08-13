@@ -207,11 +207,33 @@ describe('AppLayout', () => {
   });
 
   /*
+   * W-01-06도 같은 「자재창고」 섹션에 항목만 더한다. **차례가 업무 순서다** — 되돌려 보낸
+   * 뒤(반품) 못 쓰게 된 것을 **장부에서 덜어낸다**(폐기). 반품과 같은 계약 경로를 쓰지만
+   * 주소는 **화면**을 가리킨다.
+   */
+  it('사이드바 자재창고 섹션에 폐기 품의·기타출고 메뉴가 공급사 반품 처리 뒤에 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByRole('link', { name: '폐기 품의·기타출고' })).toHaveAttribute(
+      'href',
+      '/logistics/disposal-issue',
+    );
+    expect(links.indexOf('/logistics/disposal-issue')).toBe(
+      links.indexOf('/logistics/supplier-return') + 1,
+    );
+  });
+
+  /*
    * W-01-02도 같은 「자재창고」 섹션에 항목만 더한다. 계약 경로는 결재함과 같은 `/app/**`
    * 인데 주소 앞머리는 여기서도 **섹션을 따른다** — 판정하는 것이 자재 입하 검사의 생략이라
    * 그 판단의 맥락(입하·재고·입고)이 이 섹션에 있다.
    *
-   * **기존 여섯 항목 뒤다.** 앞의 여섯이 물건이 오가는 순서이고 이것은 그 흐름 위에서
+   * **물건이 오가는 항목들 뒤다.** 앞의 것들이 오가는 순서이고 이것은 그 흐름 위에서
    * 예외를 허가하는 일이라, 순서 사이에 끼워 넣을 자리가 없다.
    */
   it('사이드바 자재창고 섹션의 끝에 긴급 IQC 생략 한도승인 메뉴가 있다', () => {
@@ -227,7 +249,7 @@ describe('AppLayout', () => {
       '/logistics/iqc-skip-approval',
     );
     expect(links.indexOf('/logistics/iqc-skip-approval')).toBe(
-      links.indexOf('/logistics/supplier-return') + 1,
+      links.indexOf('/logistics/disposal-issue') + 1,
     );
     /* 「승인」 섹션이 아니다 — 결재함과 같은 자리에 서면 두 화면의 축이 흐려진다. */
     expect(links.indexOf('/logistics/iqc-skip-approval')).toBeLessThan(
@@ -339,6 +361,7 @@ describe('AppLayout', () => {
       '/logistics/stock-status',
       '/logistics/stocktaking',
       '/logistics/supplier-return',
+      '/logistics/disposal-issue',
       '/logistics/iqc-skip-approval',
       '/approval/inbox',
       '/system/users-roles',

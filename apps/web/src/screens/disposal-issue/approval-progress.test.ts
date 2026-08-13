@@ -7,6 +7,7 @@ import {
   isApprovalJudgePending,
   isApproved,
   isLinePosted,
+  readPostApproval,
   readSubmission,
   REJECTION_DECISION_CODES,
   toRequestProgressView,
@@ -66,6 +67,43 @@ describe('자리표시 — 지금은 비어 있다', () => {
   it('자리표시를 채우면 그 코드만 승인이 된다', () => {
     expect(isApproved(SAMPLE_APPROVED_STATUS, [SAMPLE_APPROVED_STATUS])).toBe(true);
     expect(isApproved('SAMPLE_AP_STATUS_B', [SAMPLE_APPROVED_STATUS])).toBe(false);
+  });
+});
+
+describe('readPostApproval — 처리를 잠글 근거가 있는가', () => {
+  /**
+   * **자리표시가 비어 있는 동안은 판정하지 않는다**(승인 기록 §13-2 안 1).
+   *
+   * 여기서 「승인되지 않았다」로 접으면 **승인된 건까지 처리할 수 없어** 화면이 통째로
+   * 무용해진다 — 잠금이 위험을 줄이는 것이 아니라 옮긴다. 막는 것은 서버다(승인 전이면 400).
+   */
+  it('자리표시가 비면 읽은 진행이 무엇이든 판정을 미룬다', () => {
+    expect(readPostApproval([], { isApproved: false })).toEqual({ kind: 'judgePending' });
+    expect(readPostApproval([], { isApproved: true })).toEqual({ kind: 'judgePending' });
+    expect(readPostApproval([], null)).toEqual({ kind: 'judgePending' });
+  });
+
+  /**
+   * **전환 감지기**(감지기 M64) — 자리표시를 채우면 승인 전 전표가 잠기고 승인된 전표는 열린다.
+   * 채웠을 때 살아나는 것을 재지 않으면 그 자리표시는 죽은 가지다.
+   */
+  it('자리표시를 채우면 승인 여부로 갈린다', () => {
+    expect(readPostApproval([SAMPLE_APPROVED_STATUS], { isApproved: true })).toEqual({
+      kind: 'approved',
+    });
+    expect(readPostApproval([SAMPLE_APPROVED_STATUS], { isApproved: false })).toEqual({
+      kind: 'notApproved',
+    });
+  });
+
+  /**
+   * **결재 진행을 못 읽은 것은 「승인되지 않았다」가 아니다**(계획 결정 3 · 완료 조건 C78).
+   *
+   * 403·404·네트워크로 못 읽었을 때 잠그면, 볼 권한이 없는 사람은 승인이 끝난 뒤에도 영영
+   * 처리할 수 없다 — 결재 진행은 판단을 돕는 자료이지 처리의 전제가 아니다.
+   */
+  it('자리표시가 찼어도 진행을 못 읽었으면 잠그지 않는다', () => {
+    expect(readPostApproval([SAMPLE_APPROVED_STATUS], null)).toEqual({ kind: 'unread' });
   });
 });
 

@@ -127,6 +127,40 @@ export const isApprovalJudgePending = (approvedCodes: readonly string[]): boolea
 export const isApproved = (code: string, approvedCodes: readonly string[]): boolean =>
   approvedCodes.includes(code);
 
+/**
+ * 「기타출고 처리」를 잠글 근거가 화면에 있는가 — **네 갈래**다(승인 기록 §13-2 안 1).
+ *
+ * | 갈래 | 언제 | 처리 버튼 |
+ * | --- | --- | :-: |
+ * | `judgePending` | **자리표시가 비어 있다** — 어떤 코드가 승인인지 화면이 모른다 | **열려 있다** |
+ * | `unread` | 자리표시는 찼는데 **결재 진행을 못 읽었다**(403·404·네트워크·부르는 중) | **열려 있다** |
+ * | `approved` | 자리표시가 찼고 그 요청이 승인 상태다 | 열려 있다 |
+ * | `notApproved` | 자리표시가 찼고 승인 상태가 **아니다** | **잠긴다** + 사유 |
+ *
+ * **앞의 두 갈래가 이 함수의 요점이다.** 모르는 것을 「승인되지 않았다」로 접으면 **승인된
+ * 건까지 처리할 수 없어** 화면이 통째로 무용해진다 — 잠금이 위험을 줄이는 것이 아니라 옮긴다.
+ * 잠금의 정본은 서버이고 계약이 그것을 명시했다(승인 전이면 400). 화면은 **아는 것만 말한다.**
+ *
+ * 자리표시를 **인자로 받는다** — 안에서 읽으면 「채워졌을 때 무엇이 잠기는가」를 시험이 잴 길이
+ * 없어 그 자리가 죽은 가지가 된다(감지기 M64).
+ */
+export type PostApproval =
+  | { kind: 'judgePending' }
+  | { kind: 'unread' }
+  | { kind: 'approved' }
+  | { kind: 'notApproved' };
+
+export const readPostApproval = (
+  approvedCodes: readonly string[],
+  /** 읽어 낸 결재 진행. **못 읽었으면 `null`이다** — 그 사실과 「승인되지 않았다」는 다르다. */
+  progress: Pick<RequestProgressView, 'isApproved'> | null,
+): PostApproval => {
+  if (isApprovalJudgePending(approvedCodes)) return { kind: 'judgePending' };
+  if (progress === null) return { kind: 'unread' };
+
+  return progress.isApproved ? { kind: 'approved' } : { kind: 'notApproved' };
+};
+
 /** 그려진 단계 하나. **여기 있는 값은 전부 응답에서 온 것이거나 그 사실을 옮긴 글자다.** */
 export interface StepProgressView {
   /** 서버가 매긴 단계 번호. **배열 차례로 다시 매기지 않는다.** */

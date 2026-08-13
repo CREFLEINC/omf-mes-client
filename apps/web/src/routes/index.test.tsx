@@ -91,6 +91,17 @@ describe('appRouter', () => {
   });
 
   /*
+   * W-01-06은 반품과 **같은 계약 경로**(`/logistics/goods-issues`)를 쓰는데 주소가 다르다 —
+   * 일반 출고·반품·기타 출고가 그 경로를 함께 쓰므로(착수 이슈 §6) 리소스 이름을 주소로
+   * 삼으면 세 화면이 한 주소를 다툰다. 주소는 계약 리소스가 아니라 **화면**을 가리킨다.
+   */
+  it('폐기 품의·기타출고가 자재창고 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/logistics/disposal-issue');
+    expect(routedPaths()).not.toContain('/logistics/goods-issues');
+    expect(routedPaths()).not.toContain('/approval/disposal-issue');
+  });
+
+  /*
    * W-06-15의 계약 경로는 `/app/**`이고 주소 앞머리는 `/system/`이다 — 근거는 여기서도
    * **섹션**이다. 결재선은 마스터이지만 창고·품목 같은 업무 기준정보가 아니라 운영 설정이라
    * 사용자·역할·권한과 같은 섹션에 선다.

@@ -29,8 +29,11 @@ export interface IssueDetailPaneProps {
  *
  * **값이 오지 않는 갈래를 따로 둔다.** 계약이 이 필드를 선택으로 두어 실제로 오지 않는 응답이
  * 있고, 그때 「적재되지 않음」으로 적으면 화면이 확인하지 않은 것을 말하는 것이 된다.
+ *
+ * **처리 결과 구획도 이 함수를 쓴다**(`post-result-pane.tsx`). 세 갈래를 두 자리에서 각자 적으면
+ * 한쪽만 고쳐질 때 같은 값이 두 낱말로 보인다 — 표기 규칙은 한 곳에서 나온다.
  */
-const describeErp = (erpMessageQueued: boolean | null): string => {
+export const describeErp = (erpMessageQueued: boolean | null): string => {
   if (erpMessageQueued === null) return t.values.erpUnknown;
 
   return erpMessageQueued ? t.values.erpQueued : t.values.erpNotQueued;
