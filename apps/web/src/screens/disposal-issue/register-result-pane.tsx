@@ -44,6 +44,14 @@ export type SubmitOutcome =
 export interface RegisterResultPaneProps {
   outcome: SubmitOutcome;
   /**
+   * 전송 중인가. **이 버튼도 잠금 안에 있다**(리뷰 Nit C1).
+   *
+   * 대상을 바꾸는 길이 전부 한 문을 지나므로 보내는 동안에는 이 조작도 그 문에서 막힌다 —
+   * 잠그지 않으면 **눌러도 아무 일이 없는 버튼**이 되고, 그 형태는 이 저장소가 되풀이해
+   * 결함으로 부르는 것이다. 사유는 버튼 옆에 선다(배치 규범 4).
+   */
+  isLocked?: boolean;
+  /**
    * 만들어진 품의를 이력 탭에서 연다. **탭을 말없이 바꾸지 않는다**(계획 결정 6) —
    * 누르는 것은 사용자이고, 그래야 방금 무엇을 만들었는지 보던 자리가 사라지지 않는다.
    */
@@ -64,8 +72,13 @@ export interface RegisterResultPaneProps {
  *
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
-export const RegisterResultPane = ({ outcome, onOpenIssue }: RegisterResultPaneProps) => {
+export const RegisterResultPane = ({
+  outcome,
+  isLocked = false,
+  onOpenIssue,
+}: RegisterResultPaneProps) => {
   const { issue } = outcome;
+  const lockedReasonId = `${issue.goodsIssueNo}-open-locked`;
 
   return (
     <section className="pane" aria-label={t.result.label}>
@@ -114,9 +127,21 @@ export const RegisterResultPane = ({ outcome, onOpenIssue }: RegisterResultPaneP
       </ul>
 
       <div className="form-actions">
-        <Button variant="outlined" onClick={onOpenIssue}>
-          {t.actions.openIssue}
-        </Button>
+        <div className="field-cell">
+          <Button
+            variant="outlined"
+            disabled={isLocked}
+            aria-describedby={isLocked ? lockedReasonId : undefined}
+            onClick={onOpenIssue}
+          >
+            {t.actions.openIssue}
+          </Button>
+          {isLocked && (
+            <span id={lockedReasonId} className="field-note">
+              {t.actionReasons.openIssueLocked}
+            </span>
+          )}
+        </div>
       </div>
     </section>
   );

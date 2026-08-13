@@ -621,6 +621,16 @@ export const DisposalIssueScreen = () => {
   const [localResubmitError, setLocalResubmitError] = useState<string | undefined>(undefined);
 
   /** 확인 창 셋. **확인하기 전에는 요청이 나가지 않는다.** */
+  /**
+   * 「최신 불러오기」가 **실패했는가**(리뷰 Major M2).
+   *
+   * 그 버튼은 저장 충돌을 푸는 유일한 길이라, 재조회가 실패했는데 화면이 그대로면 사용자에게는
+   * 「눌러도 아무 일이 없다」로 나타난다 — 이 저장소가 되풀이해 결함으로 부르는 형태다.
+   * 공통 쓰기 훅의 오류와 **갈라 둔다**: 이것은 쓰기의 실패가 아니라 **다시 읽기의 실패**이고,
+   * 사용자가 할 조치도 다르다.
+   */
+  const [hasReloadFailure, setReloadFailure] = useState(false);
+
   const [isSubmitConfirmOpen, setSubmitConfirmOpen] = useState(false);
   const [isResubmitConfirmOpen, setResubmitConfirmOpen] = useState(false);
   const [isDiscardOpen, setDiscardOpen] = useState(false);
@@ -633,6 +643,22 @@ export const DisposalIssueScreen = () => {
    */
   const registerTargetKey = selectedReceiptId === null ? null : String(selectedReceiptId);
   const issueTargetKey = selectedIssueId === null ? null : String(selectedIssueId);
+
+  /**
+   * **나가는 중인 쓰기는 건드리지 않는다**(`omf-mes#96`).
+   *
+   * 공통 훅의 `reset()`은 진행 중 mutation에서 **옵저버를 떼어 낸다.** 옵저버가 떨어지면 그
+   * 호출에 매달린 되먹임이 통째로 오지 않는다 — **무효화도, 성공도, 실패도, 잠금 해제도.**
+   * 요청은 이미 서버에 갔는데 화면만 없던 일로 친다.
+   *
+   * **끊는 것과 감추는 것은 다르다.** 도착한 결과를 화면에 낼지는 매임 이름 둘이 정하고,
+   * 여기서는 **끝난 것만** 거둔다. `reset()`을 부르는 자리가 전부 이 함수를 지난다.
+   */
+  const resetIfIdle = (write: { isSaving: boolean; reset: () => void }): void => {
+    if (write.isSaving) return;
+
+    write.reset();
+  };
 
   /** 잠금 토큰을 확보하는 자리 — 연쇄 가운데의 상세 조회다(`queries.ts`). */
   const fetchIssueDetail = useIssueDetailFetcher();
@@ -647,7 +673,12 @@ export const DisposalIssueScreen = () => {
    */
   const createWrite = useCreateGoodsIssue({
     onSuccess: (created) => {
-      setChain({ kind: 'created', issue: created, reason: disposalDraft.reason, tokenSettled: false });
+      setChain({
+        kind: 'created',
+        issue: created,
+        reason: disposalDraft.reason,
+        tokenSettled: false,
+      });
       setLineDraft(EMPTY_LINE_DRAFT);
       setDisposalDraft(EMPTY_DISPOSAL_DRAFT);
       setLocalFieldErrors(NO_FIELD_ERRORS);
@@ -684,7 +715,9 @@ export const DisposalIssueScreen = () => {
   const chainSubmitWrite = useRequestApproval({
     goodsIssueId: chain.kind === 'created' ? chain.issue.issue.goodsIssueId : null,
     onSuccess: () => {
-      setChain((prev) => (prev.kind === 'created' ? { kind: 'submitted', issue: prev.issue } : prev));
+      setChain((prev) =>
+        prev.kind === 'created' ? { kind: 'submitted', issue: prev.issue } : prev,
+      );
       setSubmitConfirmOpen(false);
     },
   });
@@ -701,6 +734,36 @@ export const DisposalIssueScreen = () => {
       setResubmitReason('');
       setLocalResubmitError(undefined);
       setResubmitConfirmOpen(false);
+
+      /*
+       * **발의 자리의 연쇄도 함께 올린다**(수명 표 19행 · 리뷰 Major M1).
+       *
+       * 이 화면에는 같은 전표를 말하는 자리가 둘이다 — 발의 탭의 결과 구획과 이력 탭의 결재
+       * 진행. 여기서 상신에 성공했는데 저쪽이 「아직 상신되지 않았습니다」를 계속 말하면,
+       * 화면이 **올라간 품의를 올라가지 않은 것으로** 말하는 셈이다. 「올라가지 않은 품의를
+       * 올라간 것으로 말하지 않는다」의 짝이며, 되돌릴 수 없는 쓰기의 사후 상태에 대한
+       * 거짓 진술이라 무게가 같다.
+       *
+       * **같은 전표일 때만 손댄다.** 매임 축이 전표이므로 남의 전표를 올린 것으로 발의 자리의
+       * 사실이 달라지면 안 된다(범위 있는 규칙은 잣대도 같은 범위로).
+       *
+       * **전표를 만든 사실은 남긴다** — 결과 구획을 통째로 거두지 않고 문면만 올린다.
+       */
+      const isSameIssue =
+        chain.kind === 'created' && chain.issue.issue.goodsIssueId === selectedIssueId;
+
+      if (!isSameIssue) return;
+
+      setChain((prev) =>
+        prev.kind === 'created' ? { kind: 'submitted', issue: prev.issue } : prev,
+      );
+
+      /*
+       * 그 실패는 뒤이은 상신으로 뜻을 잃었다 — 배너도 함께 거둔다(나가는 중이면 두고).
+       * **여기도 같은 전표일 때만이다** — 남의 전표를 올린 것으로 발의 자리의 실패가 지워지면
+       * 결과 구획이 실패를 잃고 「올리는 중」으로 되돌아간다(이 자리의 잣대가 그것을 잡았다).
+       */
+      resetIfIdle(chainSubmitWrite);
     },
   });
 
@@ -823,22 +886,6 @@ export const DisposalIssueScreen = () => {
   };
 
   /**
-   * **나가는 중인 쓰기는 건드리지 않는다**(`omf-mes#96`).
-   *
-   * 공통 훅의 `reset()`은 진행 중 mutation에서 **옵저버를 떼어 낸다.** 옵저버가 떨어지면 그
-   * 호출에 매달린 되먹임이 통째로 오지 않는다 — **무효화도, 성공도, 실패도, 잠금 해제도.**
-   * 요청은 이미 서버에 갔는데 화면만 없던 일로 친다.
-   *
-   * **끊는 것과 감추는 것은 다르다.** 도착한 결과를 화면에 낼지는 매임 이름 둘이 정하고,
-   * 여기서는 **끝난 것만** 거둔다. `reset()`을 부르는 자리가 전부 이 함수를 지난다.
-   */
-  const resetIfIdle = (write: { isSaving: boolean; reset: () => void }): void => {
-    if (write.isSaving) return;
-
-    write.reset();
-  };
-
-  /**
    * 연쇄의 둘째 요청을 **토큰을 얻은 뒤에** 보낸다.
    *
    * **클릭 핸들러가 아니라 연쇄 상태에 묶는다.** 첫째 요청의 성공 핸들러에서 곧바로 보낼 수
@@ -875,8 +922,12 @@ export const DisposalIssueScreen = () => {
 
     /*
      * **보내는 자리가 스스로 한 번 더 본다**(계획 §5.2). 목이 공백만인 사유를 202로 받으므로
-     * 막는 곳이 화면뿐이고, 여기가 연쇄에서 그 마지막 겹이다 — 사유가 비면 전표만 남고
-     * 결과 구획이 그 사실을 말한다.
+     * 막는 곳이 화면뿐이고, 여기가 연쇄에서 그 마지막 겹이다.
+     *
+     * **여기서 되돌아가면 결과 구획이 「올리는 중」에 머문다** — 훅이 아무 실패도 받지 않아
+     * 화면에 실패의 근거가 없다(리뷰 Nit C4). 버튼 잠금과 `startSubmitChain`의 재판정이 이미
+     * 닫아 지금은 닿을 수 없는 자리이고, 그 사실을 적어 두는 것이 다음 사람이 앞의 두 겹을
+     * 「없어도 되는 것」으로 읽지 않게 한다.
      */
     if (body === null) return;
 
@@ -912,6 +963,7 @@ export const DisposalIssueScreen = () => {
     setSubmitConfirmOpen(false);
     setDiscardOpen(false);
     setLocalFieldErrors(NO_FIELD_ERRORS);
+    setReloadFailure(false);
     resetIfIdle(createWrite);
     resetIfIdle(chainSubmitWrite);
 
@@ -1327,6 +1379,7 @@ export const DisposalIssueScreen = () => {
 
     /* 앞 연쇄의 결과가 새 연쇄의 자리에 남아 있으면 무엇이 지금 상태인지 알 수 없다. */
     setChain(NO_CHAIN);
+    setReloadFailure(false);
     /* **이 연쇄가 겨눈 전표를 적어 둔다** — 도착한 되먹임이 어느 전표의 것인지 가르는 기준이다. */
     setChainTargetKey(registerTargetKey);
     createWrite.write(body);
@@ -1362,8 +1415,17 @@ export const DisposalIssueScreen = () => {
    * 않는 「최신 불러오기」가 된다.
    */
   const reloadRegisterTarget = (): void => {
+    setReloadFailure(false);
+
     if (chain.kind === 'created') {
-      void fetchIssueDetail(chain.issue.issue.goodsIssueId);
+      /*
+       * **거부를 받는다**(리뷰 Major M2). 짝인 연쇄의 토큰 확보(`createWrite.onSuccess`)와
+       * 같은 규율이다 — 받지 않으면 아무도 처리하지 않는 거부가 떠돌고, 화면은 눌린 적 없는
+       * 것처럼 가만히 있는다.
+       */
+      void fetchIssueDetail(chain.issue.issue.goodsIssueId).catch(() => {
+        setReloadFailure(true);
+      });
 
       return;
     }
@@ -1618,6 +1680,9 @@ export const DisposalIssueScreen = () => {
               <p className="field-error">{t.notes.submitRecheck}</p>
             )}
 
+            {/* 다시 읽기의 실패는 쓰기의 실패와 **갈라 낸다** — 사용자가 할 조치가 다르다. */}
+            {hasReloadFailure && <p className="field-error">{t.notes.reloadFailed}</p>}
+
             {/*
              * **한 번 눌러 요청이 둘 나간다**는 사실을 버튼 앞에서 밝힌다(승인 기록 정정 1-1).
              * 밝히지 않으면 「상신했는데 전표만 생겼다」는 중간 실패가 까닭 없는 일이 된다.
@@ -1726,6 +1791,7 @@ export const DisposalIssueScreen = () => {
                   issue: toResultSummary(chain.issue),
                 }
           }
+          isLocked={isLocked}
           onOpenIssue={() => {
             openCreatedIssue(chain.issue.issue.goodsIssueId);
           }}

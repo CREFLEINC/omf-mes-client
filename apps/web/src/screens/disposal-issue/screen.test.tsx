@@ -4258,3 +4258,247 @@ describe('DisposalIssueScreen — 버릴 것이 있는가', () => {
     expect(screen.getByRole('button', { name: t.actions.discardDrafts })).toBeEnabled();
   });
 });
+
+describe('DisposalIssueScreen — 복구 경로를 끝까지 밟은 뒤', () => {
+  /**
+   * **재상신에 성공하면 발의 자리도 그 사실을 따라간다**(리뷰 Major M1 · 수명 표 19행).
+   *
+   * 이 화면이 세운 규율의 반대 방향을 막는 자리다 — 「올라가지 않은 품의를 올라간 것으로
+   * 말하지 않는다」의 짝으로, **올라간 품의를 올라가지 않은 것으로** 말해서도 안 된다.
+   * 같은 전표를 가리키는 두 자리(발의의 결과 구획 · 이력의 결재 진행)가 서로 다른 사실을
+   * 말하면 사용자는 재상신이 먹히지 않은 줄 알고 다른 길을 찾는다.
+   */
+  it('재상신 성공 뒤 발의 탭이 부분 실패라고 말하지 않는다', async () => {
+    let submitCalls = 0;
+
+    const { user } = await setupReadyToSubmit(
+      allRoutes([
+        createRoute(),
+        createdDetailRoute(),
+        {
+          /* 첫 상신은 실패하고(부분 실패) 이어서 상신하는 둘째만 성공한다. */
+          match: (request) => isPost(request, CREATED_APPROVAL_PATH),
+          respond: () => {
+            submitCalls += 1;
+
+            return submitCalls === 1
+              ? jsonResponse({ message: '' }, { status: 500 })
+              : jsonResponse({ approvalRequestId: 9523 }, { status: 202 });
+          },
+        },
+      ]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+    await screen.findByText(t.result.partialTitle('GI-2026-950004'));
+
+    /* 복구 경로 — 「이 품의 열기」로 이력 탭에 가서 이어서 상신한다. */
+    await user.click(screen.getByRole('button', { name: t.actions.openIssue }));
+    await screen.findByRole('region', { name: t.resubmit.label });
+    await user.type(screen.getByLabelText(t.formFields.submitReason), '이어서 상신');
+    await user.click(resubmitButton());
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.formFields.submitReason)).toHaveValue('');
+    });
+
+    /* 발의 탭으로 돌아온다. */
+    await user.click(screen.getByRole('tab', { name: t.tabs.disposal }));
+    await waitForLines();
+
+    /* 짝 방향 — 결과 구획은 서 있고(전표를 만든 사실은 남는다) 문면만 달라진다. */
+    expect(
+      within(resultPane()).getByText(t.result.submittedTitle('GI-2026-950004')),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(t.result.partialTitle('GI-2026-950004'))).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.partialDescription)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.notSubmittedYet)).not.toBeInTheDocument();
+    /* 실패 배너도 함께 거둔다 — 그 실패는 뒤이은 상신으로 뜻을 잃었다. */
+    expect(screen.queryByText(messages.httpError.description)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **다른 품의를 재상신해도 연쇄는 그대로다.** 매임 축이 전표이므로, 이력에서 **남의 전표**를
+   * 올린 것으로 발의 자리의 사실이 달라지면 안 된다(범위 있는 규칙은 잣대도 같은 범위로).
+   */
+  it('다른 전표를 재상신하면 발의 자리의 부분 실패가 남는다', async () => {
+    const { user } = await setupReadyToSubmit(
+      allRoutes([
+        createRoute(),
+        createdDetailRoute(),
+        failingApprovalSubmitRoute(500),
+        approvalSubmitRoute(RESUBMIT_APPROVAL_PATH),
+        notSubmittedDetailRoute(),
+      ]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+    await screen.findByText(t.result.partialTitle('GI-2026-950004'));
+
+    /* 이력 탭에서 **다른** 미상신 전표(9502)를 골라 올린다. */
+    fireEvent.click(screen.getByRole('tab', { name: t.tabs.history }));
+    await screen.findByText('GI-2026-950002');
+    await user.click(
+      screen.getByRole('button', { name: t.actions.selectIssueRow('GI-2026-950002') }),
+    );
+    await screen.findByRole('region', { name: t.resubmit.label });
+    await user.type(screen.getByLabelText(t.formFields.submitReason), '다른 전표를 올린다');
+    await user.click(resubmitButton());
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.formFields.submitReason)).toHaveValue('');
+    });
+
+    await user.click(screen.getByRole('tab', { name: t.tabs.disposal }));
+    await waitForLines();
+
+    expect(
+      within(resultPane()).getByText(t.result.partialTitle('GI-2026-950004')),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('DisposalIssueScreen — 「최신 불러오기」가 실패할 때', () => {
+  /**
+   * **다시 읽기가 실패하면 화면이 그 사실을 말한다**(리뷰 Major M2).
+   *
+   * 이 버튼은 409를 푸는 유일한 길이다. 재조회가 실패했는데 아무 변화도 없으면 사용자에게는
+   * 「눌러도 아무 일이 없다」로 나타나고, 거부가 아무도 받지 않은 채 떠돈다 — 짝인 연쇄 쪽
+   * (`createWrite.onSuccess`)은 이미 같은 호출을 받아 두고 있다.
+   */
+  it('재조회가 실패하면 그 사실이 화면에 선다', async () => {
+    let detailCalls = 0;
+
+    const { user } = await setupReadyToSubmit(
+      allRoutes([
+        createRoute(),
+        {
+          /* 토큰은 한 번 주고, 「최신 불러오기」의 재조회에서 실패한다. */
+          match: (request) => isGet(request, CREATED_DETAIL_PATH),
+          respond: () => {
+            detailCalls += 1;
+
+            return detailCalls === 1
+              ? jsonResponse(createdDetailBody(), { headers: { ETag: CREATED_DETAIL_ETAG } })
+              : jsonResponse({ message: '' }, { status: 500 });
+          },
+        },
+        failingApprovalSubmitRoute(409, { conflictCause: 'user', message: '' }),
+      ]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+    await screen.findByText(messages.conflict.user);
+
+    await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+
+    await screen.findByText(t.notes.reloadFailed);
+  });
+
+  /** 성공하면 그 안내가 서지 않는다 — 짝 방향으로 굳힌다. */
+  it('재조회에 성공하면 그 안내가 서지 않는다', async () => {
+    const { user } = await setupReadyToSubmit(
+      allRoutes([
+        createRoute(),
+        rotatingCreatedDetailRoute(),
+        failingApprovalSubmitRoute(409, { conflictCause: 'user', message: '' }),
+      ]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+    await screen.findByText(messages.conflict.user);
+
+    await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+
+    await waitFor(() => {
+      expect(screen.getByText(messages.conflict.user)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(t.notes.reloadFailed)).not.toBeInTheDocument();
+  });
+});
+
+describe('DisposalIssueScreen — 「이 품의 열기」도 잠금 안에 있다', () => {
+  /**
+   * **눌러도 아무 일이 없는 버튼을 두지 않는다**(리뷰 Nit C1 · 배치 규범 4).
+   *
+   * 상신이 나가는 동안 결과 구획은 이미 서 있는데, 그때 이 버튼을 누르면 문의 가드가 막아
+   * 주소가 그대로다 — 화면의 다른 컨트롤은 전부 잠기고 사유가 붙는 자리에서 이 하나만
+   * 규칙 밖이면 사용자는 화면을 고장으로 읽는다.
+   */
+  it('보내는 동안에는 잠기고 사유가 붙는다', async () => {
+    const { user, release } = await setupReadyToSubmit(allRoutes(chainRoutes()), undefined, [
+      CREATED_APPROVAL_PATH,
+    ]);
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    const open = await screen.findByRole('button', { name: t.actions.openIssue });
+
+    expect(open).toBeDisabled();
+    expect(open).toHaveAccessibleDescription(t.actionReasons.openIssueLocked);
+
+    release();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.openIssue })).toBeEnabled();
+    });
+  });
+});
+
+describe('DisposalIssueScreen — 떠난 뒤 돌아왔을 때', () => {
+  /**
+   * **결과는 자기 대상보다 오래 살지 않는다**(리뷰 Minor M3·T2의 짝).
+   *
+   * 전송 중 주소로 떠나면 연쇄는 끝까지 가지만(다른 잣대가 잰다) 그 결과는 **떠난 자리에도,
+   * 돌아온 자리에도 서지 않는다** — 대상을 떠난 순간 그 사실은 화면에서 수명을 다했고 정리
+   * effect가 거둔다. 만들어진 전표에 닿는 길은 주소의 `gi`와 「처리 이력」 탭이다.
+   */
+  it('전송 중 떠났다가 다시 고르면 결과 구획이 서지 않는다', async () => {
+    const { requests, user, release } = await setupReadyToSubmit(
+      allRoutes([
+        ...chainRoutes(),
+        {
+          match: (request) => isGet(request, MISSING_DETAIL_PATH),
+          respond: () =>
+            jsonResponse({
+              goodsReceipt: goodsReceiptResponseFixtures[1],
+              lines: receiptLineResponseFixtures,
+            }),
+        },
+      ]),
+      undefined,
+      [ISSUES_PATH],
+      '?gr=9001',
+      '?gr=9002',
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, ISSUES_PATH)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    release();
+
+    await waitFor(() => {
+      expect(writesTo(requests, CREATED_APPROVAL_PATH)).toHaveLength(1);
+    });
+
+    /* 앞 대상을 다시 고른다 — 그래도 결과는 되살아나지 않는다. */
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await waitForLines();
+
+    expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+    /* 짝 방향 — 만들어진 품의는 주소에 남아 있어 이력에서 이어 다룰 수 있다. */
+    expect(currentLocation()).toContain('gi=9504');
+  });
+});

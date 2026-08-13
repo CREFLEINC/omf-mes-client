@@ -626,17 +626,30 @@ export const useRequestApproval = (
   const { client } = useApiClient();
 
   return useMasterWrite<ApprovalRequestCreate, ApprovalRequestRef>({
-    request: (body, headers) =>
-      client.POST('/logistics/goods-issues/{goodsIssueId}:request-approval', {
+    request: (body, headers) => {
+      /*
+       * **없는 값을 0으로 메우지 않는다**(승인 기록 정정 4-① · 리뷰 Nit C3).
+       *
+       * `etagPath`가 `null`이 되면 공통 훅은 그것을 「잠금이 필요 없다」로 읽어 요청을 **그대로
+       * 내보낸다** — 대체값을 두면 `…/0:request-approval`이 실제로 나갈 수 있는 모양이 된다.
+       * 지금은 두 호출부가 그렇게 부르지 않지만, 그 사실에 기대는 대신 **여기서 멈춘다**
+       * (조회 훅의 가드와 같은 형태).
+       */
+      if (options.goodsIssueId === null) {
+        throw new Error('상신할 전표를 고르기 전에는 상신하지 않습니다.');
+      }
+
+      return client.POST('/logistics/goods-issues/{goodsIssueId}:request-approval', {
         params: {
-          path: { goodsIssueId: options.goodsIssueId ?? 0 },
+          path: { goodsIssueId: options.goodsIssueId },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
             'If-Match': headers['If-Match'] ?? '',
           },
         },
         body,
-      }),
+      });
+    },
     etagPath: options.goodsIssueId === null ? null : issueDetailPath(options.goodsIssueId),
     invalidateKeys: [issueKeys.all, approvalKeys.all],
     knownFields: SUBMIT_FORM_FIELDS,
