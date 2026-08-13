@@ -2346,6 +2346,95 @@ describe('결재 — 의견 초안이 매인 대상', () => {
 
 describe('결재 — 전송 중', () => {
   /**
+   * **「닫혀도 나가는 요청이 무너지지 않게」의 본체.**
+   *
+   * 두 창의 주석이 규율을 그렇게 적었다 — Escape는 막을 수 없으므로(native `<dialog>`가
+   * `cancel`을 내고 디자인 시스템이 그것을 닫기로 무조건 잇는다) 규율은 「닫히지 않게」가
+   * 아니라 **「닫혀도 무너지지 않게」**이고, 그 몫은 창을 여닫는 쪽에 있다.
+   *
+   * **보내기 전 Escape와 다른 자리다.** 앞의 시험(「Escape로 닫혀도 의견이 남고 요청은 나가지
+   * 않는다」)은 아직 아무것도 나가지 않은 때를 잰다. 규율이 실제로 걸리는 것은 **나가는 중**
+   * 이다 — 그때 `closeDecisionDialog`가 `reset()`을 부르면 옵저버가 떨어져 **무효화도 성공도
+   * 잠금 해제도 오지 않는다.** 그 함수가 창만 내린다는 사실에 잣대가 없으면, 다음 사람이
+   * 거기에 「닫으면 정리한다」를 더해도 시험이 조용히 통과한다.
+   */
+  it('전송 중 Escape로 창이 닫혀도 무효화와 성공이 살아 있다', async () => {
+    const { requests, release, user } = await renderDecision(
+      decisionRoutes(),
+      '?rq=9001',
+      holdApprove,
+    );
+
+    await user.type(commentBox(), '합성 승인 의견');
+    await user.click(approveButton());
+    await user.click(confirmButton(t.decision.approve));
+    await waitFor(() => {
+      expect(approveRequests(requests)).toHaveLength(1);
+    });
+
+    /* jsdom은 Escape를 native `<dialog>`의 취소로 잇지 않는다 — 브라우저가 내는 이벤트를 직접 만든다. */
+    fireEvent(confirmDialog(), new Event('cancel', { bubbles: false, cancelable: true }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    /* ① 창을 닫는 것이 요청을 다시 내지도, 되돌리지도 않는다. */
+    expect(approveRequests(requests)).toHaveLength(1);
+    /* ② 공동 잠금이 살아 있다 — 요청은 아직 날아가는 중이다. */
+    expect(approveButton()).toBeDisabled();
+
+    const beforeList = listRequests(requests).length;
+
+    release();
+
+    /* ③ 성공이 사라지지 않는다. */
+    expect(await screen.findByText(t.toast.approved)).toBeVisible();
+    /* ④ 무효화가 살아 있다 — 없으면 다음 결재가 낡은 토큰으로 나간다. */
+    await waitFor(() => {
+      expect(listRequests(requests).length).toBeGreaterThan(beforeList);
+    });
+    /* ⑤ 성공 뒤 정리는 그대로 일어난다 — 창을 닫은 것이 그 길을 끊지 않았다. */
+    await waitFor(() => {
+      expect(commentBox()).toHaveValue('');
+    });
+  });
+
+  /**
+   * **승인·반려 대칭** — 규율의 몸통은 `closeDecisionDialog` 하나지만 창마다 그것을 받는
+   * 배선이 따로 있다. 한쪽만 재면 다른 창이 다른 `onClose`를 받아도 드러나지 않는다.
+   */
+  it('반려도 전송 중 Escape에 같은 규율을 지킨다', async () => {
+    const { requests, release, user } = await renderDecision(
+      decisionRoutes(),
+      '?rq=9001',
+      (request) => isRejectPath(new URL(request.url).pathname),
+    );
+
+    await openRejectDialog(user);
+    await user.click(confirmButton(t.decision.reject));
+    await waitFor(() => {
+      expect(rejectRequests(requests)).toHaveLength(1);
+    });
+
+    fireEvent(confirmDialog(), new Event('cancel', { bubbles: false, cancelable: true }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(rejectRequests(requests)).toHaveLength(1);
+
+    const beforeList = listRequests(requests).length;
+
+    release();
+
+    expect(await screen.findByText(t.toast.rejected)).toBeVisible();
+    await waitFor(() => {
+      expect(listRequests(requests).length).toBeGreaterThan(beforeList);
+    });
+  });
+
+  /**
    * **연타해도 요청은 1회다.** 공통 쓰기 훅이 호출마다 새 멱등 키를 만들어(`omf-mes#55`)
    * 두 번 나가면 서버에는 **다른 요청 둘**로 보인다 — 화면의 잠금이 그 자리를 막는 첫째 겹이다.
    */

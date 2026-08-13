@@ -63,6 +63,28 @@ describe('DecisionSubjectSummary', () => {
     ]);
   });
 
+  /**
+   * **구획 이름을 목록 바깥에 둔다** — `role`을 `<dl>`에 직접 걸면 그 목록 의미가 덮이고
+   * 안의 `<dt>`·`<dd>`가 **소유자를 잃는다.**
+   *
+   * 이 슬라이스의 다른 값 구획(`request-detail-pane.tsx`)이 이미 반대 형태다 —
+   * `role="group"`을 두른 `div`가 맨 `<dl>`을 감싼다. 한 슬라이스 안에서 같은 것을 두 형태로
+   * 쓰면 다음 사람이 어느 쪽을 베낄지 알 수 없고, 접근성 이름과 목록 구조 중 하나를 잃는다.
+   */
+  it('구획 이름을 두른 것이 정의 목록 자신이 아니다', () => {
+    renderSummary();
+
+    const group = screen.getByRole('group', { name: t.panes.decisionSubject });
+
+    expect(group.tagName).not.toBe('DL');
+    /* 짝 방향 — 목록이 그 안에 살아 있고 다섯 짝을 그대로 갖는다. */
+    const list = group.querySelector('dl');
+
+    expect(list).not.toBeNull();
+    expect(list?.querySelectorAll('dt')).toHaveLength(5);
+    expect(list?.querySelectorAll('dd')).toHaveLength(5);
+  });
+
   /** 유형 코드는 **코드 그대로**다 — 값 목록이 확정되기 전에 이름을 지어내면 그것이 매핑표다. */
   it('유형 코드를 이름으로 바꾸지 않는다', () => {
     const other = requestFixtures.find((request) => request.approvalTypeCode === 'SAMPLE-TYPE-B');
