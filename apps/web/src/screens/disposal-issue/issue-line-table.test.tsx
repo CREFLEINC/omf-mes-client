@@ -195,6 +195,23 @@ describe('IssueLineTable — 행 표기', () => {
   });
 });
 
+describe('IssueLineTable — 읽기만 하는 표', () => {
+  /**
+   * **이 표에는 입력칸도 선택칸도 없다.** 이미 만들어져 서버에 간 전표의 라인이라 이 화면에서
+   * 고치지 않는다 — 입력칸이 하나라도 있으면 「고칠 수 있다」는 뜻이 되고, 계약에는 그 자리에
+   * 쓸 오퍼레이션이 이 화면 소관으로 열려 있지 않다.
+   */
+  it('입력칸도 선택칸도 두지 않는다', () => {
+    renderTable();
+
+    expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    expect(screen.queryAllByRole('combobox')).toHaveLength(0);
+    /* 짝 방향 — 표는 실제로 그려져 있다(빈 화면이라 통과한 것이 아니다). */
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+});
+
 describe('IssueLineTable — 전기 표식', () => {
   const rowOf = (label: string): HTMLElement => {
     const row = screen.getByText(label).closest('tr');
