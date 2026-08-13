@@ -4254,6 +4254,145 @@ const supplierReturn = {
 } as const;
 
 /**
+ * W-01-06 폐기 품의·기타출고. **이 회차(PR ①)는 대상 입고 전표를 조건으로 좁혀 고르는
+ * 데까지다** — 줄 선택·폐기 수량·처리 이력·품의 등록·상신·기타출고 처리의 문구는 뒤 회차가
+ * 더한다. 지금 없는 어휘가 있는 것이 이 블록의 정확한 상태다.
+ *
+ * **코드 값을 지어내지 않는다.** 입고 유형·상태·창고 유형의 값 목록이 확정되지 않아 선택지가
+ * 비어 있고, 왜 비었는지는 공용 `pendingCode`가 말한다. 계약의 예시값도 문구로 옮기지 않는다.
+ *
+ * **내부 번호를 문구로 만들지 않는다.** 창고 이름을 못 풀면 그 사실을 적고 번호를 대신 내지
+ * 않는다 — 번호를 담을 자리가 문구에도 없어야 새는 경로가 없다.
+ *
+ * **화면이 아는 것만 말한다.** 「이 창고가 불량창고입니다」라고 말하지 않는다 — 창고 유형의
+ * 값 목록이 아직 없어 화면이 그것을 판정할 근거가 없다.
+ */
+const disposalIssue = {
+  title: '폐기 품의·기타출고',
+  breadcrumbRoot: '자재창고',
+  panes: {
+    list: '폐기 대상 입고 전표 목록',
+    /** 고른 전표로 보일 것은 뒤 회차에 생긴다. 지금은 「고르기 전」 안내만 이 구획에 선다. */
+    lines: '고른 입고 전표',
+  },
+  fields: {
+    warehouse: '창고',
+    /**
+     * 계약의 `receiptDateFrom`·`receiptDateTo`를 **한 컨트롤**이 함께 고른다.
+     * **기본 기간을 심지 않는다**(W-01-09가 세운 규칙).
+     */
+    period: '입고일',
+    /** 값 목록이 확정되지 않아 선택지가 비어 있다 — 안내는 `pendingCode`가 맡는다. */
+    receiptType: '입고 유형',
+    status: '상태',
+    q: '입고번호 검색',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+    /** 화면이 보고 있는 조회를 전부 다시 한다 — 목록만 다시 부르면 낡은 값과 새 값이 섞인다. */
+    refresh: '다시 조회',
+    select: '선택',
+    deselect: '선택 해제',
+    /*
+     * 행 안의 버튼은 보이는 글자가 행마다 같다. 접근 이름에 입고번호를 넣어 어느 건인지 밝히되,
+     * 보이는 글자를 그대로 담는다 — 담지 않으면 음성 조작이 「선택」으로 이 버튼을 부를 수 없다.
+     * **내부 번호를 접근 이름에 넣지 않는다** — 그것이 화면 밖으로 새는 또 하나의 경로다.
+     */
+    selectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택`,
+    deselectRow: (goodsReceiptNo: string): string => `${goodsReceiptNo} 선택 해제`,
+  },
+  filters: {
+    all: '전체',
+    /**
+     * 기본 기간을 심지 않는다는 사실은 화면에서 읽혀야 한다 — 비어 있는 것이 고장으로
+     * 읽히지 않게 한다.
+     *
+     * **화면이 확인한 것만 말한다.** 계약의 입고 목록에서 입고일 두 조건은 기본값이 선언되지
+     * 않은 순수 선택 파라미터이고(같은 오퍼레이션의 쪽·쪽 크기에는 기본값이 적혀 있다),
+     * 화면은 기간이 비면 날짜 키를 아예 싣지 않는다 — 「서버가 정한 기본 범위」가 실재하는지
+     * 화면도 계약도 말할 수 없다. 있지도 않은 범위를 적으면 사용자가 결과가 잘린 줄 알고
+     * 조건을 잘못 넓힌다. 저장소가 이미 쓰고 있는 표현(입하 예정·생산 계획)에 맞춘다.
+     */
+    periodNote: '입고일을 비워 두면 기간을 좁히지 않고 전체를 봅니다.',
+    /**
+     * 기간 칩에만 해제 버튼이 없는 이유.
+     *
+     * 날짜 컨트롤이 한 번 고른 값을 개별로 비우는 수단을 아직 주지 않아, 기간을 푸는 길이
+     * 「초기화」뿐이다. 사용자가 ×를 찾다가 못 찾는 것보다 왜 없는지를 밝히는 편이 낫다.
+     */
+    periodClearNote: '입고일은 「초기화」로만 비울 수 있습니다. 다른 조건은 조건표의 ×로 풉니다.',
+    lookupFailed: '이름 목록을 불러오지 못했습니다. 다시 시도해 주세요.',
+    lookupTruncated:
+      '이름 목록이 일부만 왔습니다. 찾는 값이 목록에 없을 수 있습니다 — 없어진 것이 아닙니다.',
+    /**
+     * **창고를 화면이 좁히지 못한다는 사실을 밝힌다.**
+     *
+     * 폐기 대상은 불량 판정을 받아 들어온 자재이고 그것이 놓이는 창고가 정해져 있으나,
+     * 창고 유형의 값 목록이 아직 없어 「이 창고가 그 창고인가」를 화면이 판정할 수 없다.
+     * 감추고 전체를 보이면 사용자는 목록이 좁혀진 것으로 읽는다 — **좁히지 못했다는 사실이
+     * 화면에 있어야** 사용자가 자기 눈으로 고른다.
+     */
+    warehouseTypePending:
+      '폐기 대상 창고를 화면이 가려내지 못해 모든 창고를 보입니다. 폐기할 자재가 놓인 창고를 직접 고르세요.',
+    chipWarehouse: (name: string): string => `창고: ${name}`,
+    chipPeriodBoth: (from: string, to: string): string => `입고일: ${from} ~ ${to}`,
+    chipPeriodFrom: (from: string): string => `입고일: ${from}부터`,
+    chipPeriodTo: (to: string): string => `입고일: ${to}까지`,
+    chipReceiptType: (code: string): string => `입고 유형: ${code}`,
+    chipStatus: (code: string): string => `상태: ${code}`,
+    chipQ: (q: string): string => `검색어: ${q}`,
+    chipRemoveWarehouse: '창고 조건 해제',
+    chipRemoveReceiptType: '입고 유형 조건 해제',
+    chipRemoveStatus: '상태 조건 해제',
+    chipRemoveQ: '검색어 조건 해제',
+  },
+  loading: {
+    goodsReceipts: '폐기 대상 입고 전표 목록을 불러오는 중',
+  },
+  empty: {
+    noResultTitle: '조건에 맞는 입고 전표가 없습니다',
+    noResultDescription: '기간을 넓히거나 조건을 풀어 다시 조회해 보세요.',
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '앞 쪽으로 돌아가면 결과를 볼 수 있습니다.',
+    noSelectionTitle: '아직 입고 전표를 고르지 않았습니다',
+    noSelectionDescription: '위 목록에서 폐기할 자재가 들어 있는 입고 전표를 고르세요.',
+  },
+  /** 실패·한계 안내는 그 대상으로 시작한다(배치 규범 4). */
+  reasons: {
+    /**
+     * **문구에 적은 대상과 「다시 시도」가 다시 부르는 대상이 같아야 한다.** 다르면 눌러도
+     * 한쪽은 실패인 채로 남는데 문구는 둘 다 고쳐질 것처럼 말한다.
+     */
+    referencesFailed: '창고 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+  },
+  /** 목록 표의 머리글. 열 구성과 폭의 근거는 screens/disposal-issue/gr-table.tsx에 있다. */
+  table: {
+    goodsReceiptNo: '입고번호',
+    warehouse: '창고',
+    receiptType: '입고 유형',
+    receiptDatetime: '입고 일시',
+    status: '상태',
+    select: '선택',
+  },
+  values: {
+    /** 참조를 못 푼 네 갈래 중 셋. **어느 갈래에도 번호를 담지 않는다**(`omf-mes#44`). */
+    unknown: '알 수 없음',
+    referenceLoading: '불러오는 중',
+    referenceFailed: '이름을 불러오지 못했습니다',
+    /** 미사용 값을 목록에서 빼지 않고 표식만 붙인다 — 빼면 과거 입고를 조건으로 찾을 수 없다. */
+    inactiveSuffix: ' (미사용)',
+  },
+  pageNav: {
+    label: '쪽 이동',
+    range: (from: number, to: number, total: number): string =>
+      `${String(from)}–${String(to)} / 전체 ${String(total)}건`,
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+} as const;
+
+/**
  * W-06-15 결재선 정의. **이 회차(PR ②)는 읽기뿐이다** — 등록·수정·사용 전환·단계 편집의
  * 문구는 뒤 회차가 더한다. 지금 없는 어휘가 있는 것이 이 블록의 정확한 상태다.
  *
@@ -5185,6 +5324,7 @@ export const ko = {
   goodsReceipt,
   stocktaking,
   supplierReturn,
+  disposalIssue,
   approvalRoute,
   approvalInbox,
   iqcSkipApproval,
