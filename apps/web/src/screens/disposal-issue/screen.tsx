@@ -727,10 +727,13 @@ export const DisposalIssueScreen = () => {
    * 된다 — 자리마다 손으로 막으면 한 곳을 잊고 그 길로 대상이 바뀌어 **앞서 보낸 품의의 결과가
    * 다른 전표 맥락에** 나타난다.
    */
-  const applyUserNavigation = (next: Parameters<typeof toScreenParams>[0]): void => {
-    if (isLocked) return;
+  const applyUserNavigation = (next: Parameters<typeof toScreenParams>[0]): boolean => {
+    /* 지나갔는지를 되돌려 준다 — 막힌 조작이 딸린 뒷일(안내 거두기)까지 하지 않게 한다. */
+    if (isLocked) return false;
 
     setSearchParams(toScreenParams(next));
+
+    return true;
   };
 
   /**
@@ -741,30 +744,29 @@ export const DisposalIssueScreen = () => {
    * **`gi`와 이력 조건은 그대로 나른다** — 다른 탭의 대상은 이 조작과 무관하다.
    */
   const applyQuery = (nextFilters: ReceiptFilters, nextPage = 1): void => {
-    if (isLocked) return;
-
-    /*
-     * **새 조회는 앞의 「없음」 안내를 거둔다.** 없어진 전표는 방금 한 조작과 무관한 사정인데,
-     * 남겨 두면 새 결과 옆에서 화면이 그 사정을 계속 말한다.
-     */
-    setNotFoundNotice(false);
-    applyUserNavigation({
+    const moved = applyUserNavigation({
       ...currentAddress,
       filters: nextFilters,
       page: nextPage,
       goodsReceiptId: null,
     });
+
+    /*
+     * **새 조회는 앞의 「없음」 안내를 거둔다.** 없어진 전표는 방금 한 조작과 무관한 사정인데,
+     * 남겨 두면 새 결과 옆에서 화면이 그 사정을 계속 말한다. **문을 지나지 못했으면 거두지도
+     * 않는다** — 조회가 일어나지 않았는데 안내만 사라지면 화면이 앞뒤가 맞지 않는다.
+     */
+    if (moved) setNotFoundNotice(false);
   };
 
   /** 고르고 푸는 것은 **보이는 행을 바꾸지 않는다**(수명 표 4행). */
   const toggleSelectReceipt = (goodsReceiptId: number): void => {
-    if (isLocked) return;
-
-    setNotFoundNotice(false);
-    applyUserNavigation({
+    const moved = applyUserNavigation({
       ...currentAddress,
       goodsReceiptId: goodsReceiptId === selectedReceiptId ? null : goodsReceiptId,
     });
+
+    if (moved) setNotFoundNotice(false);
   };
 
   /**
@@ -772,25 +774,23 @@ export const DisposalIssueScreen = () => {
    * **`gr`와 대상 조건·쪽은 그대로 나른다** — 범위 있는 규칙은 잣대도 같은 범위로.
    */
   const applyHistoryQuery = (nextFilters: IssueFilters, nextPage = 1): void => {
-    if (isLocked) return;
-
-    setIssueNotFoundNotice(false);
-    applyUserNavigation({
+    const moved = applyUserNavigation({
       ...currentAddress,
       historyFilters: nextFilters,
       historyPage: nextPage,
       goodsIssueId: null,
     });
+
+    if (moved) setIssueNotFoundNotice(false);
   };
 
   const toggleSelectIssue = (goodsIssueId: number): void => {
-    if (isLocked) return;
-
-    setIssueNotFoundNotice(false);
-    applyUserNavigation({
+    const moved = applyUserNavigation({
       ...currentAddress,
       goodsIssueId: goodsIssueId === selectedIssueId ? null : goodsIssueId,
     });
+
+    if (moved) setIssueNotFoundNotice(false);
   };
 
   /**
@@ -813,6 +813,7 @@ export const DisposalIssueScreen = () => {
 
     if (target === undefined || target === tab) return;
 
+    /* **잠금은 문 하나에만 있다** — 여기서 한 번 더 막으면 그 문의 규칙을 지워도 아무 일이 없다. */
     applyUserNavigation({ ...currentAddress, tab: target });
   };
 

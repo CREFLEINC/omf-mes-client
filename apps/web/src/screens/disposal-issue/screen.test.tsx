@@ -2885,10 +2885,12 @@ const setupReadyToSubmit = async (
   routes: StubRoute[] = allRoutes(chainRoutes()),
   reason?: string,
   hold: string[] = [],
+  search = '?gr=9001',
+  navigateTo = '',
 ): Promise<ReturnType<typeof renderScreen>> => {
   fillFormCodeLists();
 
-  const rendered = renderScreen(routes, '?gr=9001', '', hold);
+  const rendered = renderScreen(routes, search, navigateTo, hold);
 
   await waitForLines();
   await rendered.user.click(lineCheckbox(1));
@@ -3705,5 +3707,98 @@ describe('DisposalIssueScreen — 상신 성공 뒤 무효화', () => {
     await waitFor(() => {
       expect(screen.queryByText(t.progress.notSubmittedTitle)).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('DisposalIssueScreen — 잠금이 닿지 않는 두 길', () => {
+  /**
+   * **둘째 겹을 첫째 겹에서 떼어내고 잰다**(감지기 M75).
+   *
+   * 눈에 보이는 컨트롤은 전송 중에 전부 잠기지만 **조건 칩의 ×는 잠기지 않는다** — 디자인
+   * 시스템 `Chip`이 그 prop을 갖고 있지 않다(실측). 그 길로 들어오면 조건이 바뀌며 고른 전표가
+   * 풀리고, 앞서 보낸 품의의 결과가 **다른 전표 맥락에** 나타난다. 막는 것은 **문 하나의 가드**다.
+   */
+  it('보내는 동안 조건 칩의 ×를 눌러도 주소가 바뀌지 않는다', async () => {
+    const { user, release } = await setupReadyToSubmit(
+      allRoutes(chainRoutes()),
+      undefined,
+      [ISSUES_PATH],
+      '?gr=9001&q=GR',
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    const before = currentLocation();
+    const chipRemove = screen.getByRole('button', { name: t.filters.chipRemoveQ });
+
+    /* 첫째 겹이 없는 자리다 — 실제로 눌린다는 것을 짝으로 굳힌다. */
+    expect(chipRemove).toBeEnabled();
+
+    await user.click(chipRemove);
+
+    expect(currentLocation()).toBe(before);
+
+    release();
+  });
+
+  /**
+   * **주소는 잠글 수 없다**(W-01-05 R3-1의 셋째 길). 뒤로가기·앞으로가기·주소 직접 편집은
+   * 잠금도 가드도 거치지 않으므로, 그 길로 대상이 바뀐 뒤 도착한 실패는 **새 대상의 자리에
+   * 서면 안 된다** — 매임 이름이 그것을 막는다(감지기 M76).
+   *
+   * **나가는 중인 쓰기는 끊지 않는다**(`resetIfIdle`) — 그래서 정리 effect가 지워 주기를
+   * 기대할 수 없고, 판정이 **읽는 자리**에 있어야 한다.
+   */
+  it('보내는 동안 주소로 대상을 바꾸면 뒤늦게 온 실패가 서지 않는다', async () => {
+    const { user, release } = await setupReadyToSubmit(
+      allRoutes([
+        failingCreateRoute(403),
+        /* **새 대상의 구획이 실제로 서야** 「거기에 배너가 서지 않는다」를 잴 수 있다. */
+        {
+          match: (request) => isGet(request, MISSING_DETAIL_PATH),
+          respond: () =>
+            jsonResponse({
+              goodsReceipt: goodsReceiptResponseFixtures[1],
+              lines: receiptLineResponseFixtures,
+            }),
+        },
+      ]),
+      undefined,
+      [ISSUES_PATH],
+      '?gr=9001',
+      '?gr=9002',
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    /* 화면 바깥에서 주소를 갈아 끼운다 — 잠금이 닿지 않는 길이다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    release();
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9002');
+    });
+
+    /*
+     * 짝 방향 — 새 대상의 구획이 멀쩡히 서 있다(아무것도 안 그려서 통과한 것이 아니다).
+     * **아래 구획 안에서 본다** — 같은 입고번호가 위 목록 표에도 있다.
+     */
+    await waitFor(() => {
+      expect(within(linesPane()).getByText('GR-2026-900002')).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText(t.formFields.submitReason)).toBeInTheDocument();
+
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
   });
 });
