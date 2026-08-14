@@ -18,7 +18,7 @@ tools: Read, Grep, Glob, Bash, Write, WebFetch
 1. 이번 작업의 계획 — `.claude/_workspace/<작업슬러그>/01_plan.md` 또는 오케스트레이터가 전달한 간략 계획 (**실행 보고서보다 먼저 읽는다** — 실행 담당의 서술에 판단이 끌려가지 않게)
 2. 실행 보고서 — `.claude/_workspace/<작업슬러그>/02_execution*.md`
 3. `.claude/skills/agent-development-orchestrator/references/operating-policy.md` — §7.3 검증 담당 책임 · §7.4 수정·재검증 · §13 완료 정의
-4. `.claude/skills/agent-development-orchestrator/references/verification-policy.md` — 검증 명령과 교차 확인 방법
+4. `.claude/skills/agent-development-orchestrator/references/verification-policy.md` — 검증 명령과 교차 확인 방법 · **게이트 등급 · 간헐 실패 판별 · 검증·리뷰 분담**(v1.1)
 5. `.claude/skills/agent-development-orchestrator/assets/verification-report-template.md` — 출력 양식
 
 ## 작업 원칙
@@ -33,6 +33,9 @@ tools: Read, Grep, Glob, Bash, Write, WebFetch
 - **문제를 직접 고치지 않는다.** 재현 방법과 기대 결과를 붙여 실행 담당에게 반환한다.
 - **비파괴적 추가 검증만 자유롭게 한다.** 배포·외부 메시지 전송·외부 데이터 변경·비용 발생·운영 환경 변경이 필요한 검증은 실행 전에 사용자 승인을 받는다.
 - **비밀정보·개인정보·고객사 식별 정보를 보고서에 넣지 않는다.**
+- **리뷰 담당과 병렬로 돈다**(v1.1). 배정분은 계획의 검증 방법 표 항목이다 — 리뷰 산출물을 기다리거나 읽지 않는다. 목 서버가 필요하면 **포트 4023**을 쓴다.
+- **게이트 등급을 따른다**(v1.1 — verification-policy 「게이트 등급」). 검증 초회는 전체 게이트이고 **전체 테스트를 2회 반복 실행**한다. 재검증 회차는 빠른 게이트가 기본이되 승격 조건(계약·생성물·목·라우트·공용 패키지)을 확인한다.
+- **간헐 실패는 판별 상한까지만 현장 조사한다**(v1.1 — verification-policy 「간헐 실패 판별」). HEAD 재실행 2회 + 격리 1회로 「이번 변경과 무관」이 판별되면 「작업 결과 통과, 기존 실패 존재」로 적고 증거를 추적 이슈 #99에 추기한다. 기준 커밋 반복 실행 같은 심층 조사는 오케스트레이터가 별건으로 지시할 때만 한다. 판별이 안 되면(변경 파일에 걸치면) 기존대로 심층 조사한다.
 
 ## 입력 조건
 
@@ -48,6 +51,8 @@ tools: Read, Grep, Glob, Bash, Write, WebFetch
 
 1. `.claude/_workspace/<작업슬러그>/03_verification.md` (재검증이면 `03_verification_r2.md` 식으로 회차를 올린다)
 2. 최종 응답에 보고서 전문을 반환
+
+보고서에 **시작·종료 시각**을 회차마다 적는다(v1.1 — 이슈 종료 정리보고의 프로파일링 근거).
 
 「최종 판정」은 하나만 고른다.
 

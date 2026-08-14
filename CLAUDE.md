@@ -63,6 +63,8 @@ OMF-MES 사용자 프로그램의 클라이언트 모노레포. **React + TypeSc
 
 **운영 정책 버전:** v1.0
 
+**저장소 적용 버전:** v1.1
+
 **상세 절차:** `.claude/skills/agent-development-orchestrator/` 참조
 
 **변경 이력:**
@@ -70,6 +72,7 @@ OMF-MES 사용자 프로그램의 클라이언트 모노레포. **React + TypeSc
 | 날짜 | 변경 내용 | 대상 | 사유 |
 | ---- | --------- | ---- | ---- |
 | 2026-08-05 | Agent Coding 개발 하네스 구성 | 전체 | 초기 구성 |
+| 2026-08-14 | 저장소 적용 v1.1 — 리뷰 성문화·검증·리뷰 병렬화·게이트 등급·간헐 실패 이관·사본 체크리스트·이슈 정리보고 양식 | `.claude/skills/agent-development-orchestrator/` · `.claude/agents/` | W-01-06 프로파일링 4개 병목 + 정리보고 표준화 |
 
 ---
 
