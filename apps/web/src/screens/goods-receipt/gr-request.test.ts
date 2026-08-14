@@ -163,8 +163,11 @@ describe('toGoodsReceiptRequest — 되돌릴 수 없는 쓰기의 본문', () =
 
   /*
    * **값 넷을 전부 지난다.** 하나만 시험하면 목록에서 빠진 값이 있어도 알 수 없다 —
-   * 되풀이의 대상을 `INVENTORY_STATUS_CODES`에서 뽑아, 계약이 값을 늘려 목록이 자라면
-   * 이 시험도 함께 자란다.
+   * 되풀이의 대상을 `INVENTORY_STATUS_CODES`에서 뽑으므로 목록이 곧 시험 범위다.
+   *
+   * 마지막 줄의 `4`는 **그물이다.** 계수가 달라지면 여기서 멈춘다 — 계약이 다섯째 값을 들이면
+   * 이 시험은 저절로 자라는 것이 아니라 **깨져서 사람을 부른다.** 값 목록의 계수 변화는
+   * 조용히 지나가면 안 되는 사건이다.
    */
   it('계약이 정한 값 넷을 모두 그대로 싣는다', () => {
     for (const code of Object.keys(INVENTORY_STATUS_CODES)) {
@@ -175,7 +178,7 @@ describe('toGoodsReceiptRequest — 되돌릴 수 없는 쓰기의 본문', () =
       expect(body.lines[0]?.inventoryStatusCode).toBe(code);
     }
 
-    /* 짝 방향 — 목록이 실제로 넷이다. 빈 목록이면 위 되풀이가 아무것도 재지 않고 통과한다. */
+    /* 짝 방향 겸 그물 — 빈 목록이면 위 되풀이가 아무것도 재지 않고 통과한다. 계수가 바뀌면 운다. */
     expect(Object.keys(INVENTORY_STATUS_CODES)).toHaveLength(4);
   });
 
@@ -197,9 +200,15 @@ describe('toGoodsReceiptRequest — 되돌릴 수 없는 쓰기의 본문', () =
     ).toBeNull();
   });
 
-  /* 비슷하게 생긴 값도 계약의 값이 아니다 — 「비슷하면 통과」로 짜면 여기서 운다. */
+  /*
+   * 비슷하게 생긴 값도 계약의 값이 아니다 — 「비슷하면 통과」로 짜면 여기서 운다.
+   *
+   * `toString`이 목록에 있는 이유는 따로다. 판정을 `in`이나 `INVENTORY_STATUS_CODES[value]`로
+   * 「단순화」하면 **`Object.prototype`의 이름이 계약 값으로 통과해** 되돌릴 수 없는 쓰기에
+   * `inventoryStatusCode: "toString"`이 실린다. 그 선택(`Object.hasOwn`)을 이 한 값이 고정한다.
+   */
   it('계약 값과 비슷하기만 한 코드도 막는다', () => {
-    for (const lookalike of ['available', 'AVAILABLE_X', ' AVAILABLE X ', 'ON HOLD']) {
+    for (const lookalike of ['available', 'AVAILABLE_X', ' AVAILABLE X ', 'ON HOLD', 'toString']) {
       expect(
         toGoodsReceiptRequest(
           input({ draft: { ...DRAFT, codes: { ...DRAFT.codes, inventoryStatus: lookalike } } }),

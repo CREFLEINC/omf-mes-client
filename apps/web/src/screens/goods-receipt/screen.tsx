@@ -616,6 +616,14 @@ export const GoodsReceiptScreen = () => {
         return;
       }
 
+      /*
+       * 실패하면 결과 구획이 비어 있어야 한다(수명 표 11행) — 앞 성공의 번호가 남으면 오해한다.
+       *
+       * **되돌아가는 갈래보다 앞에 둔다.** 아래 조립이 본문을 만들지 못해 아무것도 나가지 않았는데
+       * 앞 전표의 번호가 남아 있으면, 사용자는 방금 누른 처리가 그 번호를 만들었다고 읽는다.
+       */
+      setResult(null);
+
       const body = toGoodsReceiptRequest({
         inboundReceipt,
         lines: toReceiptLines([line]),
@@ -624,11 +632,17 @@ export const GoodsReceiptScreen = () => {
         now: new Date(),
       });
 
-      /* 조립이 마지막으로 거른다 — 계약이 모르는 재고 상태 코드는 화면이 막지 못한다. */
+      /*
+       * 조립이 마지막으로 거른다 — 계약이 모르는 재고 상태 코드는 화면이 막지 못한다.
+       *
+       * **여기서 되돌아가면 사용자는 아무 되먹임도 받지 못한다** — 결과 구획은 위에서 비웠고,
+       * 훅이 아무 실패도 받지 않아 실패 문구도 서지 않는다. 자리표시(`code-options.ts`의
+       * `inventoryStatus: []`)가 비어 있어 지금은 닿을 수 없는 자리이고, **자리표시를 여는
+       * 회차가 사유 문구와 함께 다뤄야 한다.** 그 사실을 적어 두는 것이 다음 사람이 이 겹을
+       * 「없어도 되는 것」으로 읽지 않게 한다.
+       */
       if (body === null) return;
 
-      /* 실패하면 결과 구획이 비어 있어야 한다(수명 표 11행) — 앞 성공의 번호가 남으면 오해한다. */
-      setResult(null);
       post.write(body);
     };
 

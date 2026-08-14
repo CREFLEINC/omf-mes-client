@@ -56,12 +56,31 @@ describe('자리표시 상수', () => {
     expect(PLACEHOLDER_GOODS_RECEIPT_CODES.inventoryStatus).toEqual([]);
     expect(isRequiredCodeListPending(toCodeOptionSets(PLACEHOLDER_GOODS_RECEIPT_CODES))).toBe(true);
 
-    /* 짝 방향 — 계약의 값 넷을 심으면 잠금이 풀린다. 그래서 심지 않는다. */
-    expect(
-      isRequiredCodeListPending(
-        toCodeOptionSets({ ...SAMPLE_CODES, inventoryStatus: Object.keys(INVENTORY_STATUS_CODES) }),
-      ),
-    ).toBe(false);
+    /*
+     * 짝 방향 — **재고 상태 축만 갈라서** 잰다. `SAMPLE_CODES`는 다섯이 이미 차 있어, 그 위에
+     * 값을 얹기만 하면 무엇을 얹어도 통과한다(리뷰 R-M3). 같은 집합에서 이 축만 비우고·채워
+     * 잠금이 그 축 때문에 갈리는지를 본다.
+     */
+    const withoutInventory = toCodeOptionSets({ ...SAMPLE_CODES, inventoryStatus: [] });
+    const withContractCodes = toCodeOptionSets({
+      ...SAMPLE_CODES,
+      inventoryStatus: Object.keys(INVENTORY_STATUS_CODES),
+    });
+
+    expect(isRequiredCodeListPending(withoutInventory)).toBe(true);
+    expect(isRequiredCodeListPending(withContractCodes)).toBe(false);
+
+    /*
+     * 심기는 값이 **계약이 아는 넷 그대로**인지도 잰다. 목록을 여기 한 번 더 적는 것은 중복이
+     * 아니라 그물이다 — `gr-request.ts`의 파생과 갈리면 여기서 멈춘다. 이것이 없으면 위 두 줄은
+     * 「비었나 찼나」만 재고, 무엇을 심었는지는 재지 않는다.
+     */
+    expect(withContractCodes.inventoryStatus.map((option) => option.value)).toEqual([
+      'AVAILABLE',
+      'IN_TRANSIT',
+      'ON_HOLD',
+      'BLOCKED',
+    ]);
   });
 
   it('필수는 넷이고 사유는 그중에 없다', () => {

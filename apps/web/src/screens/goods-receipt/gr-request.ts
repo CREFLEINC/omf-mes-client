@@ -47,6 +47,23 @@ export const INVENTORY_STATUS_CODES = {
   BLOCKED: true,
 } as const satisfies Record<InventoryStatusCode, true>;
 
+/**
+ * **계약이 실제로 좁혀 두었는가**를 타입으로 못박는다.
+ *
+ * 위 파생은 한 방향으로만 운다 — 계약이 값을 늘리거나 이름을 바꾸면 `Record`가 깨지지만,
+ * 계약이 **다시 자유 문자열로 넓어지면** `Record<string, true>`가 네 키로도 충족돼 아무것도
+ * 울지 않는다. 그때 아래 판정은 **계약에 없는 제약**이 되어, 서버가 아는 다섯째 값이 와도
+ * 화면이 말없이 아무것도 보내지 않는다. 이 유니온의 근거가 아직 「1차 제안안」이라 실제로
+ * 되넓어질 수 있다 — 그때 여기서 컴파일이 멈춘다(리뷰 R-M5).
+ *
+ * ⛔ **지우지 않는다.** 아무 데서도 읽지 않는 것이 이 상수의 형태다 — 하는 일이 대입 그
+ * 자체이고, 대입이 성립하지 않으면 `tsc`가 멈춘다(`InventoryStatusCode`가 `string`으로
+ * 넓어지면 이 타입이 `never`가 되어 `true`를 받지 못한다).
+ */
+type InventoryStatusIsNarrowed = string extends InventoryStatusCode ? never : true;
+
+const INVENTORY_STATUS_IS_NARROWED: InventoryStatusIsNarrowed = true;
+
 /** 계약이 아는 재고 상태 코드인가. 다듬은 뒤의 값을 그대로 받는다 — 「비슷하면 통과」가 없다. */
 const isInventoryStatusCode = (value: string): value is InventoryStatusCode =>
   Object.hasOwn(INVENTORY_STATUS_CODES, value);

@@ -2214,6 +2214,48 @@ describe('GoodsReceiptScreen — 실제로 나가는 요청', () => {
     });
     expect(postRequests(requests)).toHaveLength(0);
   });
+
+  /*
+   * **되돌아가는 갈래에서도 앞 성공의 결과 구획을 남기지 않는다**(수명 표 11행).
+   *
+   * 본문이 만들어지지 않아 아무것도 나가지 않았는데 **앞 전표의 번호가 결과 구획에 그대로**
+   * 있으면, 사용자는 방금 누른 처리가 그 번호를 만들었다고 읽는다 — 되돌릴 수 없는 쓰기
+   * 화면에서 가장 나쁜 오해다. 그래서 앞 결과를 비우는 자리가 **되돌아가는 갈래보다 앞**에
+   * 있어야 한다. 이 감지기가 그 차례를 고정한다(리뷰 R-M2).
+   */
+  it('계약이 모르는 코드로 다시 처리하면 앞 성공의 결과 구획이 남지 않는다', async () => {
+    fillCodeLists();
+    codeValues.inventoryStatus = [SAMPLE_INVENTORY, 'SAMPLE_INVENTORY_A'];
+
+    const { user, requests } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+    await fillDraft(user);
+    await clickPost(user);
+    await confirmPost(user);
+
+    /* 선행 양성 — 첫 처리는 실제로 성공했고 결과 구획에 번호가 섰다. */
+    await screen.findByRole('status', { name: t.result.label });
+    expect(screen.getByText('GR-2026-800001')).toBeInTheDocument();
+
+    /* 두 번째 시도 — 이번엔 계약이 모르는 값을 고른다(성공 뒤 초안은 비어 있다 · 수명 표 10행). */
+    await chooseOption(user, t.fields.warehouse, WAREHOUSE_LABEL);
+    await chooseOption(user, t.fields.location, LOCATION_LABEL);
+    await chooseOption(user, t.fields.receiptType, SAMPLE_RECEIPT_TYPE);
+    await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
+    await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
+    await chooseOption(user, t.fields.inventoryStatus, 'SAMPLE_INVENTORY_A');
+    await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
+
+    await clickPost(user);
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+    });
+    /* 짝 방향 — 결과가 사라진 것은 새 전표가 나가서가 아니다. 두 번째 요청은 없다. */
+    expect(postRequests(requests)).toHaveLength(1);
+  });
 });
 
 describe('GoodsReceiptScreen — 전송 중 잠금', () => {
