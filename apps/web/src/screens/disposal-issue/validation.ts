@@ -2,10 +2,11 @@ import { messages } from '@omf-mes/i18n';
 
 import type { PostApproval, Submission } from './approval-progress';
 import {
-  isDisposalPartnerListPending,
+  canChooseDisposalPartner,
   isRequiredCodeListPending,
   REQUIRED_CODE_KEYS,
   type CodeOptionSets,
+  type DisposalPartnerCondition,
 } from './code-options';
 import type { DisposalReadyState } from './disposal-selection';
 import { readDisposalDestination } from './issue-request';
@@ -121,13 +122,18 @@ export interface DisposalGateInput {
    */
   selection: DisposalReadyState;
   /**
-   * 폐기 거래처 선택지. **도착지 사유가 둘로 갈리는 근거다** — 고를 것이 있는가 없는가로
-   * 사용자가 할 수 있는 조치가 달라진다(`code-options.ts`의 `isDisposalPartnerListPending`).
+   * 폐기 거래처 선택칸의 **사정 한 값**(`code-options.ts`의 `readDisposalPartnerCondition`).
+   * 도착지 사유가 **셋으로** 갈리는 근거다 — 고를 수 있는가 · 아직 값 목록이 없는가 ·
+   * 불러오지 못했거나 없는가에 따라 사용자가 할 수 있는 조치가 다르다.
    *
-   * 목록 자체를 받는 이유는 「채워졌을 때 무엇이 달라지는가」를 감지기가 실제로 잴 수 있게
+   * ⛔ **목록 길이를 여기서 다시 세지 않는다**(리뷰 Major B1·Minor M2). 길이로 판정하면
+   * 조회 실패·0건에서도 「값 목록이 확정되면 열린다」고 말하게 되고, 같은 칸의 안내·자리표시와
+   * **한 컨트롤이 서로 다른 사실을 말하는** 상태가 된다. 사정은 **한 원천**에서 온다.
+   *
+   * 사정을 인자로 받는 이유는 「채워졌을 때 무엇이 달라지는가」를 감지기가 실제로 잴 수 있게
    * 하기 위해서다 — 자리표시 상수를 여기서 직접 읽으면 그 전환을 시험할 길이 없다.
    */
-  disposalPartnerOptions: readonly SelectOption[];
+  disposalPartner: DisposalPartnerCondition;
 }
 
 /**
@@ -138,9 +144,11 @@ export interface DisposalGateInput {
  * 화면에 놓인 차례다: **무엇을 보내는가**(위의 라인 표) → **어떤 전표인가**(폼의 코드·일시·
  * **도착지**) → **왜 올리는가**(맨 아래 요청 사유).
  *
- * **도착지 사유가 둘로 갈린다**(변경 통지 #128 §4 ⛔). 같은 잠금이지만 사용자가 할 수 있는
- * 조치가 다르다 — 선택칸이 열려 있으면 「고르거나 체크하십시오」이고, 잠겨 있으면 고를 것이
- * 없으므로 **체크만** 가리킨다. 하나로 두면 고를 것이 없는 사용자에게 고르라고 말한다.
+ * **도착지 사유가 셋으로 갈린다**(변경 통지 #128 §4 ⛔ · 리뷰 Minor M2). 같은 잠금이지만
+ * 사용자가 할 수 있는 조치와 **기다리면 열리는지**가 다르다 — 선택칸이 열려 있으면
+ * 「고르거나 체크하십시오」, 값 목록이 아직 없으면 「준비되지 않았습니다」(확정되면 열린다),
+ * 불러오지 못했거나 0건이면 「지금 고를 수 있는 거래처가 없습니다」(기다린다고 열리지 않는다).
+ * 하나로 두면 고를 것이 없는 사용자에게 고르라고 말하거나, 열리지 않을 것을 기다리게 한다.
  */
 export const disposalBlockReason = (input: DisposalGateInput): string | null => {
   if (isRequiredCodeListPending(input.codeOptions)) return t.actionReasons.codeListPending;
@@ -152,9 +160,13 @@ export const disposalBlockReason = (input: DisposalGateInput): string | null => 
   if (input.draft.issuedTime === '') return t.actionReasons.needsIssuedTime;
 
   if (readDisposalDestination(input.draft) === null) {
-    return isDisposalPartnerListPending(input.disposalPartnerOptions)
+    if (canChooseDisposalPartner(input.disposalPartner)) {
+      return t.actionReasons.needsDisposalDestination;
+    }
+
+    return input.disposalPartner === 'rolePending'
       ? t.actionReasons.disposalPartnerPending
-      : t.actionReasons.needsDisposalDestination;
+      : t.actionReasons.disposalPartnerUnavailable;
   }
 
   if (readReason(input.draft.reason).kind === 'empty') return t.actionReasons.needsReason;

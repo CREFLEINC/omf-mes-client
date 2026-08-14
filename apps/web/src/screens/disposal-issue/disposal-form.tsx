@@ -2,7 +2,15 @@ import { Checkbox, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
-import { codeNote, codePlaceholder, type CodeOptionSets } from './code-options';
+import {
+  canChooseDisposalPartner,
+  codeNote,
+  codePlaceholder,
+  disposalPartnerNote,
+  disposalPartnerPlaceholder,
+  type CodeOptionSets,
+  type DisposalPartnerCondition,
+} from './code-options';
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
 import type { DisposalCodeKey, DisposalDraft, SelectOption } from './types';
@@ -23,14 +31,17 @@ export interface DisposalFormProps {
    */
   disposalPartnerOptions: readonly SelectOption[];
   /**
-   * 그 선택칸의 한계 안내 — **화면이 정해 넘긴다**(조건 줄의 창고 칸과 같은 형태).
+   * 그 선택칸이 **어떤 사정인가** — 화면이 정해 넘기는 **한 값**(리뷰 Major B1).
    *
-   * 칸이 비는 사정이 셋인데(역할 코드 미확정 · 조회 실패 · 목록 잘림) **뒤 둘은 조회를 소유한
-   * 화면만 안다.** 부품이 목록 길이로 사유를 지어내면 「불러오지 못했는데 준비 중이라 적힌」
-   * 칸이 되고, 사용자는 기다리면 열릴 것으로 읽는다. **자체 폐기로 잠긴 사유만 이 부품이
-   * 안다** — 그 값은 초안에 있다.
+   * 칸이 비는 사정이 넷인데(역할 코드 미확정 · 오는 중 · 조회 실패 · 0건) **뒤 셋은 조회를
+   * 소유한 화면만 안다.** 부품이 목록 길이로 사유를 지어내면 「불러오지 못했는데 준비 중이라
+   * 적힌」 칸이 되고, 사용자는 기다리면 열릴 것으로 읽는다.
+   *
+   * ⛔ **안내·자리표시·잠금을 이 한 값에서 함께 만든다.** 셋을 따로 정하면 한 컨트롤이 서로
+   * 다른 사실을 말한다 — 실제로 앞 회차에서 얼굴은 「준비 중」인데 설명은 「불러오지 못했다」인
+   * 상태가 있었다. **자체 폐기로 잠긴 사유만 이 부품이 안다** — 그 값은 초안에 있다.
    */
-  disposalPartnerNote?: string;
+  disposalPartnerCondition: DisposalPartnerCondition;
   /** 계약 필드 이름으로 매긴 오류. 화면이 잡은 것과 서버가 준 것이 여기서 합쳐져 온다. */
   fieldErrors: Record<string, string>;
   /** 전송 중인가. **첫째 겹**이다 — 핸들러 가드(둘째 겹)와 짝이다. */
@@ -90,7 +101,7 @@ export const DisposalForm = ({
   values,
   codeOptions,
   disposalPartnerOptions,
-  disposalPartnerNote,
+  disposalPartnerCondition,
   fieldErrors,
   isLocked,
   onChangeCode,
@@ -107,12 +118,16 @@ export const DisposalForm = ({
 
   /*
    * 선택칸의 안내가 **둘로 갈린다** — 사용자가 정한 결과(자체 폐기)와 목록 쪽 사정(역할 코드
-   * 미확정 · 조회 실패 · 잘림)은 할 수 있는 조치가 다르다. 같은 문구로 뭉치면 체크를 풀어도
-   * 열리지 않는 칸으로 읽는다. **체크가 앞이다** — 그때는 목록 사정이 뜻이 없다.
+   * 미확정 · 오는 중 · 조회 실패 · 0건)은 할 수 있는 조치가 다르다. 같은 문구로 뭉치면 체크를
+   * 풀어도 열리지 않는 칸으로 읽는다. **체크가 앞이다** — 그때는 목록 사정이 뜻이 없다.
    *
-   * 목록 쪽 사정은 **조회를 소유한 화면이 정해 넘긴다**(`disposalPartnerNote`).
+   * 목록 쪽 사정은 **한 값에서** 나온다(`disposalPartnerCondition`) — 안내·자리표시·잠금이
+   * 같은 원천을 보므로 셋이 서로 다른 사실을 말할 수 없다(리뷰 Major B1).
    */
-  const partnerNote = values.isSelfDisposal ? t.form.selfDisposalChosen : disposalPartnerNote;
+  const partnerNote = values.isSelfDisposal
+    ? t.form.selfDisposalChosen
+    : disposalPartnerNote(disposalPartnerCondition);
+  const canChoosePartner = canChooseDisposalPartner(disposalPartnerCondition);
 
   /**
    * 코드 칸 셋은 모양이 같다 — 선택지·안내·자리표시·오류를 같은 규칙으로 만든다.
@@ -220,14 +235,25 @@ export const DisposalForm = ({
           options={[...disposalPartnerOptions]}
           value={values.disposalPartnerId}
           note={partnerNote}
-          /* 서버가 준 거래처 오류가 **고칠 칸 옆에** 선다(`DISPOSAL_FORM_FIELDS`가 정한 자리). */
+          /*
+           * 서버가 준 거래처 오류가 **고칠 칸 옆에** 선다(`DISPOSAL_FORM_FIELDS`가 정한 자리).
+           *
+           * ⚠ **잠긴 칸에 붙으면 눈으로만 닿는다**(리뷰 Minor M3). `disabled` 컨트롤은 초점
+           * 순회에서 빠져 `aria-describedby`가 스크린리더·키보드 경로로 이어지지 않는다. 오류를
+           * 삼키지 않는 쪽을 택했고 그 사실은 시험이 값으로 고정한다 — 「잠긴 칸의 오류는
+           * 배너로」로 바꾸려면 `DISPOSAL_FORM_FIELDS`를 조건부로 만들어야 해서 이 단위 밖이다.
+           * 회차 종료 질문에 이 사실을 함께 올린다.
+           */
           error={fieldErrors.destinationId}
-          placeholder={disposalPartnerOptions.length === 0 ? codePlaceholder() : undefined}
+          placeholder={disposalPartnerPlaceholder(disposalPartnerCondition)}
           /*
            * **체크하면 고를 수 없다**(#128 문면). 값 비움은 화면의 전이(`withSelfDisposal`)가
            * 맡는다 — 여기서 비우면 잠금과 비움이 두 자리로 갈려 한쪽만 도는 경로가 생긴다.
+           *
+           * **고를 것이 없을 때 잠그는 판정도 같은 원천에서 온다** — 목록 길이를 여기서 다시
+           * 세면 안내는 「불러오지 못했다」인데 칸은 열려 있는 어긋남이 생긴다.
            */
-          disabled={isLocked || values.isSelfDisposal || disposalPartnerOptions.length === 0}
+          disabled={isLocked || values.isSelfDisposal || !canChoosePartner}
           onChange={onChangeDisposalPartner}
         />
       </div>

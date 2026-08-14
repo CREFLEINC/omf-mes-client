@@ -35,7 +35,7 @@ const FILLED_PARTNERS = [{ value: '9251', label: 'SAMPLE-PARTNER-01 · 합성 �
  */
 const filledPartners = (): Partial<DisposalFormProps> => ({
   disposalPartnerOptions: FILLED_PARTNERS,
-  disposalPartnerNote: undefined,
+  disposalPartnerCondition: 'ready',
 });
 
 const renderForm = (overrides: Partial<DisposalFormProps> = {}) =>
@@ -45,7 +45,7 @@ const renderForm = (overrides: Partial<DisposalFormProps> = {}) =>
       codeOptions={toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES)}
       disposalPartnerOptions={[]}
       /* 지금의 사실 — 역할 코드가 미확정이라 선택지 조회가 나가지 않는다(화면이 정해 넘긴다). */
-      disposalPartnerNote={messages.pendingCode.note}
+      disposalPartnerCondition="rolePending"
       fieldErrors={{}}
       isLocked={false}
       onChangeCode={noop}
@@ -155,11 +155,57 @@ describe('DisposalForm 도착지', () => {
    * 소유한 화면만 안다.** 부품이 목록 길이로 사유를 지어내면 「불러오지 못했는데 준비 중이라
    * 적힌」 칸이 되고, 사용자는 기다리면 열릴 것으로 읽는다.
    */
-  it('화면이 준 안내를 그 칸 아래에 낸다', () => {
-    renderForm({ disposalPartnerNote: t.filters.lookupFailed });
+  it('화면이 준 사정에서 안내와 자리표시가 함께 나온다', () => {
+    renderForm({ disposalPartnerCondition: 'failed' });
 
-    expect(screen.getByLabelText(t.formFields.disposalPartner)).toHaveAccessibleDescription(
-      expect.stringContaining(t.filters.lookupFailed),
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.filters.lookupFailed));
+    /* ⛔ **얼굴과 설명이 같은 사실을 말한다**(리뷰 Major B1) — 트리거가 「준비 중」이면 안 된다. */
+    expect(partner).toHaveTextContent(t.form.partnerFailedPlaceholder);
+    expect(partner).not.toHaveTextContent(messages.pendingCode.placeholder);
+    expect(partner).toBeDisabled();
+  });
+
+  /**
+   * **목록은 왔는데 0건**인 갈래. 「준비 중」과 갈라 둔다 — 이쪽은 기다려도 열리지 않는다.
+   * 앞 회차에는 이 갈래에 **아무 설명도 서지 않았다**(리뷰 탐침 P-3).
+   */
+  it('0건이면 그 사실을 안내와 자리표시가 함께 말한다', () => {
+    renderForm({ disposalPartnerCondition: 'empty' });
+
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.form.partnerEmptyNote));
+    expect(partner).toHaveTextContent(t.form.partnerEmptyPlaceholder);
+    expect(partner).not.toHaveTextContent(messages.pendingCode.placeholder);
+  });
+
+  /**
+   * **낡은 목록이 남은 채 다시 부르기가 실패한 갈래.** 실제로 닿는다 — 캐시가 앞 응답을 들고
+   * 있는 동안 재조회가 실패하면 **목록은 있는데 사정은 「실패」**다.
+   *
+   * 그때도 **사정이 정본이다.** 목록 길이로 잠금을 판정하면 안내는 「불러오지 못했습니다」인데
+   * 칸은 열려 있는 어긋남이 된다 — 사용자는 낡은 목록에서 고르고도 무엇이 실패했는지 모른다.
+   */
+  it('낡은 목록이 남아 있어도 실패면 잠근다', () => {
+    renderForm({ disposalPartnerOptions: FILLED_PARTNERS, disposalPartnerCondition: 'failed' });
+
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toBeDisabled();
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.filters.lookupFailed));
+  });
+
+  /** **오는 중에는 「없다」고 말하지 않는다** — 트리거가 그 사실만 적고 안내는 서지 않는다. */
+  it('오는 중이면 불러오는 중이라 말한다', () => {
+    renderForm({ disposalPartnerCondition: 'loading' });
+
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toHaveTextContent(t.values.referenceLoading);
+    expect(partner).not.toHaveAccessibleDescription(
+      expect.stringContaining(t.form.partnerEmptyNote),
     );
   });
 
@@ -170,7 +216,7 @@ describe('DisposalForm 도착지', () => {
   it('선택지가 차 있어도 잘림 안내는 남는다', () => {
     renderForm({
       disposalPartnerOptions: FILLED_PARTNERS,
-      disposalPartnerNote: t.filters.lookupTruncated,
+      disposalPartnerCondition: 'truncated',
     });
 
     const partner = screen.getByLabelText(t.formFields.disposalPartner);
@@ -355,8 +401,8 @@ describe('DisposalForm 잠금', () => {
   /** **첫째 겹**이다 — 전송 중에 값이 바뀌면 확인한 것과 나가는 것이 갈린다. */
   it('전송 중에는 모든 칸이 잠긴다', () => {
     renderForm({
+      ...filledPartners(),
       codeOptions: FILLED_CODES,
-      disposalPartnerOptions: FILLED_PARTNERS,
       isLocked: true,
     });
 

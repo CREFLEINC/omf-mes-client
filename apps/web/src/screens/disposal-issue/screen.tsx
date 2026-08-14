@@ -30,6 +30,7 @@ import {
   isDisposalPartnerRolePending,
   narrowToDefectWarehouses,
   PLACEHOLDER_DISPOSAL_ISSUE_CODES,
+  readDisposalPartnerCondition,
   toCodeOptionSets,
 } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
@@ -1345,16 +1346,19 @@ export const DisposalIssueScreen = () => {
   const disposalPartnerOptions = disposalPartners.entries;
 
   /**
-   * 그 선택칸의 한계 안내. **못 불러온 것이 먼저다** — 목록을 받지도 못했는데 「준비 중」이라
-   * 말하면 사용자가 기다리면 열릴 것으로 읽는다. 창고 칸과 같은 차례이고 같은 이유다.
+   * 그 선택칸의 **사정 한 값** — 안내·자리표시·칸 잠금·버튼 잠금 사유가 전부 여기서 나온다
+   * (리뷰 Major B1·Minor M2).
    *
-   * 역할 코드가 채워지고 조회가 성공하면 **셋 다 사라진다**.
+   * ⛔ **소비처마다 목록 길이를 다시 세지 않는다.** 앞 회차는 안내만 이 자리에서 만들고
+   * 자리표시·잠금·버튼 사유는 각자 길이로 판정해, 조회가 실패한 칸이 **얼굴로는 「준비 중」**
+   * 이라 말하고 설명으로는 「불러오지 못했다」고 말하는 상태가 됐다. 원천이 하나면 갈릴 수 없다.
+   *
+   * 역할 코드가 채워지고 조회가 성공하면 안내도 자리표시도 **함께** 사라진다.
    */
-  const disposalPartnerNote =
-    lookupNote(disposalPartners) ??
-    (isDisposalPartnerRolePending(DISPOSAL_PARTNER_ROLE_CODE)
-      ? messages.pendingCode.note
-      : undefined);
+  const disposalPartnerCondition = readDisposalPartnerCondition(
+    disposalPartners,
+    isDisposalPartnerRolePending(DISPOSAL_PARTNER_ROLE_CODE),
+  );
 
   /**
    * 표가 그릴 줄. **판정을 여기서 만들지 않는다**(감지기 M24·M31) — 고를 수 있는가·골라졌는가·
@@ -1497,8 +1501,8 @@ export const DisposalIssueScreen = () => {
     codeOptions,
     draft: disposalDraft,
     selection: selection.ready,
-    /* 잠금 사유가 두 갈래로 갈리는 근거 — 고를 것이 있는가 없는가(#128 §4). */
-    disposalPartnerOptions: disposalPartnerOptions,
+    /* 잠금 사유가 세 갈래로 갈리는 근거 — 고를 수 있는가, 없다면 왜 없는가(#128 §4 · 리뷰 M2). */
+    disposalPartner: disposalPartnerCondition,
   });
 
   /**
@@ -1929,7 +1933,7 @@ export const DisposalIssueScreen = () => {
               values={disposalDraft}
               codeOptions={codeOptions}
               disposalPartnerOptions={disposalPartnerOptions}
-              disposalPartnerNote={disposalPartnerNote}
+              disposalPartnerCondition={disposalPartnerCondition}
               fieldErrors={formFieldErrors}
               isLocked={isLocked}
               onChangeCode={(key: DisposalCodeKey, value) => {

@@ -410,6 +410,37 @@ const partnersRoute = (): StubRoute => ({
     ),
 });
 
+/** 선택지 조회만 실패시킨다 — 이름 풀이는 멀쩡해야 「그 칸의 사정」이 갈린다. */
+const failingPartnersRoute = (): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: (request) =>
+    new URL(request.url).searchParams.has('roleTypeCode')
+      ? jsonResponse({ message: '' }, { status: 500 })
+      : jsonResponse(listBody(partnerFixtures)),
+});
+
+/** 서버가 **전체 건수를 더 크게** 준다 — 앞쪽 일부만 받았다는 사실이 표식으로 나와야 한다. */
+const truncatedPartnersRoute = (): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: (request) =>
+    jsonResponse(
+      new URL(request.url).searchParams.has('roleTypeCode')
+        ? listBody(partnerFixtures.slice(0, 1), { total: 120 })
+        : listBody(partnerFixtures),
+    ),
+});
+
+/** 목록은 **왔는데 0건**이다 — 「아직 오지 않았다」와 다른 사실이다. */
+const emptyPartnersRoute = (): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: (request) =>
+    jsonResponse(
+      new URL(request.url).searchParams.has('roleTypeCode')
+        ? listBody([])
+        : listBody(partnerFixtures),
+    ),
+});
+
 const issueListRoute = (
   items: unknown[] = goodsIssueResponseFixtures,
   page?: Partial<{ page: number; size: number; total: number }>,
@@ -6168,6 +6199,93 @@ describe('DisposalIssueScreen — 폐기 거래처 선택지가 열리는 조건
     await user.click(partnerBox());
 
     expect(screen.getByRole('option', { name: PARTNER_LABEL })).toBeInTheDocument();
+  });
+
+  /**
+   * **조회가 실패하면 안내도 트리거도 그 사실을 말한다**(리뷰 Major B1).
+   *
+   * 앞 회차에는 안내만 화면이 만들고 자리표시는 목록 길이로 지어내, **얼굴은 「선택지 준비 중」
+   * 인데 설명은 「불러오지 못했습니다」**인 칸이 됐다. 한 컨트롤이 두 사실을 동시에 말하면
+   * 사용자는 기다리면 열릴 것으로 읽는다 — 실패는 기다린다고 풀리지 않는다.
+   */
+  it('선택지 조회가 실패하면 칸의 안내와 트리거가 함께 실패를 말한다', async () => {
+    fillFormCodeLists();
+    fillPartnerRole();
+
+    const { user } = renderScreen(allRoutes([failingPartnersRoute()]), '?gr=9001');
+
+    await waitForLines();
+    await waitFor(() => {
+      expect(partnerBox()).toHaveAccessibleDescription(
+        expect.stringContaining(t.filters.lookupFailed),
+      );
+    });
+
+    expect(partnerBox()).toHaveTextContent(t.form.partnerFailedPlaceholder);
+    expect(partnerBox()).not.toHaveTextContent(messages.pendingCode.placeholder);
+    expect(partnerBox()).toBeDisabled();
+
+    /* 버튼 사유도 같은 원천에서 나온다 — 「아직 준비되지 않았습니다」라고 말하지 않는다. */
+    await user.click(lineCheckbox(1));
+    await user.type(qtyInput(1), '10');
+    await fillDisposalForm(user, '불량 판정분 폐기', false);
+
+    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.disposalPartnerUnavailable);
+  });
+
+  /**
+   * **잘림 표식이 그 칸에 닿는다**(계획 §5 T4-2의 「잘림 표식을 낸다」 · 리뷰 MU-P1).
+   *
+   * 계약에 번호로 한 건을 받는 경로가 없어 잘린 뒤쪽 거래처는 고를 길이 아예 없다 — 감추면
+   * 사용자가 「그런 거래처가 없다」로 결론짓는다. **잘려도 칸은 열려 있다**: 보이는 선택지를
+   * 고르는 데 지장이 없고, 잠그면 있는 것도 못 고른다.
+   */
+  it('선택지 목록이 잘리면 그 사실이 칸에 닿고 칸은 열려 있다', async () => {
+    fillPartnerRole();
+
+    renderScreen(allRoutes([truncatedPartnersRoute()]), '?gr=9001');
+
+    await waitForLines();
+    await waitFor(() => {
+      expect(partnerBox()).toBeEnabled();
+    });
+
+    expect(partnerBox()).toHaveAccessibleDescription(
+      expect.stringContaining(t.filters.lookupTruncated),
+    );
+    /* 고를 수 있는 칸에는 자리표시가 서지 않는다 — 짝 방향. */
+    expect(partnerBox()).not.toHaveTextContent(messages.pendingCode.placeholder);
+  });
+
+  /**
+   * **목록은 왔는데 0건**인 갈래(리뷰 탐침 P-3). 앞 회차에는 트리거가 「준비 중」이라 말하고
+   * 설명은 **아무것도 없었다** — 목록이 이미 왔는데 기다리라고 말하는 상태였다.
+   */
+  it('선택지가 0건이면 그 사실을 말하고 준비 중이라 하지 않는다', async () => {
+    fillFormCodeLists();
+    fillPartnerRole();
+
+    const { user } = renderScreen(allRoutes([emptyPartnersRoute()]), '?gr=9001');
+
+    await waitForLines();
+    await waitFor(() => {
+      expect(partnerBox()).toHaveAccessibleDescription(
+        expect.stringContaining(t.form.partnerEmptyNote),
+      );
+    });
+
+    expect(partnerBox()).toHaveTextContent(t.form.partnerEmptyPlaceholder);
+    expect(partnerBox()).not.toHaveTextContent(messages.pendingCode.placeholder);
+
+    await user.click(lineCheckbox(1));
+    await user.type(qtyInput(1), '10');
+    await fillDisposalForm(user, '불량 판정분 폐기', false);
+
+    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.disposalPartnerUnavailable);
+    /* ⭐ 그래도 자체 폐기로는 열린다(#128 §3). */
+    await user.click(selfDisposalCheckbox());
+
+    expect(submitButton()).toBeEnabled();
   });
 
   /**

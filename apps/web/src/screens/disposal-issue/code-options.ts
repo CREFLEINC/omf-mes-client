@@ -46,6 +46,8 @@ import type { DisposalCodeKey, SelectOption, WarehouseEntry } from './types';
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
+const t = messages.disposalIssue;
+
 /**
  * 이 화면이 자리표시로 다루는 선택지 코드 여섯.
  *
@@ -178,16 +180,101 @@ export const isDefectWarehouseTypePending = (typeCodes: readonly string[]): bool
   typeCodes.length === 0;
 
 /**
- * 폐기 거래처를 고를 수 있는가. **거짓이 되는 순간 칸이 열리고 잠금 사유가 갈린다.**
+ * 폐기 거래처 선택칸이 지금 **어떤 사정인가** — 여섯 갈래(리뷰 Major B1).
  *
- * 창고 유형 판정과 같은 이유로 **목록을 인자로 받는다** — 함수 안에서 상수를 직접 읽으면
- * 「채워졌을 때 무엇이 달라지는가」를 감지기가 잴 수 없어 자리표시가 죽은 가지가 된다.
+ * ⛔ **목록 길이로 사유를 짓지 않기 위한 타입이다.** 「비어 있다」는 사실 하나에 서로 다른
+ * 사정 넷이 겹쳐 있다(역할 코드 미확정 · 오는 중 · 못 불러옴 · 0건). 길이로 판정하면 그 넷이
+ * 한 낱말로 뭉개져, **못 불러온 칸이 「선택지 준비 중」이라 말하는** 형태가 된다 — 얼굴은
+ * 「기다리면 열린다」인데 설명은 「다시 해야 한다」인 컨트롤이다.
  *
- * 이 값을 읽어 잠금 사유를 가르는 자리는 `validation.ts`다. 고를 것이 없는 사용자에게
- * 「고르세요」라고 말하지 않기 위해 사유가 둘로 갈린다.
+ * 이 한 값에서 **안내 · 자리표시 · 잠금 · 버튼 사유**가 모두 나온다. 원천이 하나면 넷이 갈릴 수
+ * 없다 — 갈릴 수 있는 자리를 없애는 것이 이 타입의 목적이다.
  */
-export const isDisposalPartnerListPending = (options: readonly SelectOption[]): boolean =>
-  options.length === 0;
+export type DisposalPartnerCondition =
+  'rolePending' | 'failed' | 'loading' | 'empty' | 'truncated' | 'ready';
+
+/**
+ * 조회 상태와 역할 코드 판정을 **한 사정으로** 읽는다.
+ *
+ * **차례가 뜻을 정한다.** ① 부르지도 않았다(역할 코드 미확정) ② 못 받았다 ③ 오는 중이다
+ * ④ 받았는데 없다 ⑤ 받았는데 잘렸다 ⑥ 받았다. **실패가 미도착보다 앞서고 미도착이 「없다」보다
+ * 앞선다** — 못 받은 목록·아직 안 온 목록으로 「없다」를 판정하면 화면이 확인하지 않은 것을
+ * 말하게 된다(참조 표기가 `omf-mes#47`에서 세운 차례와 같다).
+ *
+ * 조회 결과를 **인자로 받는다** — 훅을 여기서 부르면 이 판정을 값으로 잴 수 없고, 자리표시
+ * 전환과 같은 이유로 죽은 가지가 된다.
+ */
+export const readDisposalPartnerCondition = (
+  lookup: {
+    entries: readonly SelectOption[];
+    isError: boolean;
+    isLoading: boolean;
+    truncated: boolean;
+  },
+  isRolePending: boolean,
+): DisposalPartnerCondition => {
+  if (isRolePending) return 'rolePending';
+  if (lookup.isError) return 'failed';
+  if (lookup.isLoading) return 'loading';
+  if (lookup.entries.length === 0) return 'empty';
+
+  return lookup.truncated ? 'truncated' : 'ready';
+};
+
+/**
+ * 그 칸 아래에 서는 안내. **고를 수 있으면 없다** — 남으면 화면이 거짓말을 한다.
+ *
+ * 「오는 중」에는 안내를 두지 않는다 — 트리거 글자가 이미 그 사실을 말하고 있고, 잠깐 서다
+ * 사라지는 문장은 읽히기 전에 없어진다.
+ */
+export const disposalPartnerNote = (condition: DisposalPartnerCondition): string | undefined => {
+  switch (condition) {
+    case 'rolePending':
+      return messages.pendingCode.note;
+    case 'failed':
+      return t.filters.lookupFailed;
+    case 'empty':
+      return t.form.partnerEmptyNote;
+    case 'truncated':
+      return t.filters.lookupTruncated;
+    case 'loading':
+    case 'ready':
+      return undefined;
+  }
+};
+
+/**
+ * 트리거에 서는 글자. **고를 것이 있으면 없다**(고른 값이나 기본 자리표시가 선다).
+ *
+ * 위 안내와 **같은 사정에서 나온다** — 이것이 B1이 겨눈 자리다. 트리거는 폭에 갇혀 잘리므로
+ * 사정만 짧게 적고, 할 수 있는 조치는 안내가 말한다.
+ */
+export const disposalPartnerPlaceholder = (
+  condition: DisposalPartnerCondition,
+): string | undefined => {
+  switch (condition) {
+    case 'rolePending':
+      return messages.pendingCode.placeholder;
+    case 'failed':
+      return t.form.partnerFailedPlaceholder;
+    case 'loading':
+      return t.values.referenceLoading;
+    case 'empty':
+      return t.form.partnerEmptyPlaceholder;
+    case 'truncated':
+    case 'ready':
+      return undefined;
+  }
+};
+
+/**
+ * 지금 폐기 거래처를 **고를 수 있는가.** 칸의 잠금과 버튼 잠금 사유가 이 판정을 함께 쓴다.
+ *
+ * **잘린 목록도 고를 수 있다** — 앞쪽 일부뿐이라는 사실은 안내가 말하고, 그 안에 찾는 거래처가
+ * 있으면 고르는 데 아무 지장이 없다. 잘렸다고 잠그면 **보이는 선택지를 고를 수 없는** 칸이 된다.
+ */
+export const canChooseDisposalPartner = (condition: DisposalPartnerCondition): boolean =>
+  condition === 'ready' || condition === 'truncated';
 
 /**
  * 폐기 거래처 목록을 **좁힐 수 있는가.** 참이면 선택지 조회를 아예 내보내지 않는다.
