@@ -188,11 +188,18 @@ describe('GiTable — 미상신 표식', () => {
     expect(screen.getAllByText(t.values.notSubmitted)).toHaveLength(1);
   });
 
-  /* 색·아이콘에만 기대지 않는다 — 보이는 글자가 그 사실을 말한다. */
+  /*
+   * 색·아이콘에만 기대지 않는다 — 보이는 글자가 그 사실을 말한다.
+   *
+   * 이 자리가 무는 것은 **표식 하나**(`values.notSubmitted`)이지 승인 축의 낱말 전체가 아니다.
+   * 통지가 지정한 낱말 넷은 각자 그 컨트롤이 서는 시험이 보이는 글자로 따로 문다
+   * (`tabs.test.ts` · `screen.test.tsx` · `resubmit-pane.test.tsx` ·
+   * `submit-confirm-dialog.test.tsx`) — 키로만 조회하는 시험은 값이 되돌아가도 울지 않는다.
+   */
   it('표식이 글자다', () => {
     renderTable();
 
-    expect(screen.getByText(t.values.notSubmitted).textContent).toBe('미상신');
+    expect(screen.getByText(t.values.notSubmitted).textContent).toBe('미요청');
   });
 });
 

@@ -14,8 +14,6 @@ const t = messages.disposalIssue;
 const FILLED_CODES = toCodeOptionSets({
   issueType: ['SAMPLE_GI_TYPE_A'],
   sourceDocumentType: ['SAMPLE_SRC_TYPE_A'],
-  destinationType: ['SAMPLE_DEST_TYPE_A'],
-  disposalAccount: ['9561'],
   reason: ['SAMPLE_GI_REASON_A'],
   receiptType: [],
   status: [],
@@ -44,12 +42,12 @@ const renderForm = (overrides: Partial<DisposalFormProps> = {}) =>
 
 describe('DisposalForm 자리표시', () => {
   /** 값 목록이 비어 있는 동안 고를 것이 없다 — **왜 비었는지**가 화면에 있어야 한다. */
-  it('값 목록이 비면 코드 다섯이 잠기고 사유가 보인다', () => {
+  it('값 목록이 비면 코드 셋이 잠기고 사유가 보인다', () => {
     renderForm();
 
     const boxes = screen.getAllByRole('combobox');
 
-    expect(boxes).toHaveLength(5);
+    expect(boxes).toHaveLength(3);
 
     for (const box of boxes) expect(box).toBeDisabled();
 
@@ -64,17 +62,25 @@ describe('DisposalForm 자리표시', () => {
   });
 
   /**
-   * 폐기 계정은 **자기 사유를 갖는다**(완료 조건 C50). 「값 목록 준비 중」 일반 문구로 뭉개면
-   * 사용자는 다른 코드와 같은 사정으로 읽고 회신을 기다려야 한다는 것을 모른다.
+   * **폐기 계정 칸이 없다 — 잠긴 칸조차 없다**(변경 통지 #124 ⛔ 「비활성이 아니라 없앱니다」).
+   * 회계 계정은 MES 밖의 값이고, 잠근 채 두면 사용자는 언젠가 열릴 칸으로 읽는다.
+   *
+   * **도착지 유형 칸도 함께 없다.** 짝인 도착지 식별자를 공급할 자리가 사라져, 남겨 두면
+   * 한쪽만 실린 본문이 만들어진다(#128 ⛔).
+   *
+   * 남은 셋을 이름으로 먼저 확인해 **짝 양성과 같은 시점**에 잰다 — 아직 아무것도 그려지지
+   * 않은 화면에서 「없다」는 늘 참이다.
    */
-  it('폐기 계정 칸에 그 칸만의 사유가 붙는다', () => {
-    renderForm();
+  it.each(['폐기 계정', '도착지 유형'])('%s 칸이 없다', (label) => {
+    renderForm({ codeOptions: FILLED_CODES });
 
-    const account = screen.getByLabelText(t.formFields.disposalAccount);
+    /* 짝 양성 — 남은 코드 칸 셋이 실제로 서 있다. */
+    expect(screen.getByLabelText(t.formFields.issueType)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.formFields.sourceDocumentType)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.formFields.reason)).toBeInTheDocument();
 
-    expect(account).toBeDisabled();
-    expect(screen.getByText(t.form.disposalAccountPending)).toBeInTheDocument();
-    expect(account).toHaveAccessibleDescription(t.form.disposalAccountPending);
+    expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+    expect(screen.queryByText(label)).not.toBeInTheDocument();
   });
 });
 
@@ -109,7 +115,7 @@ describe('DisposalForm 상신 사유', () => {
     expect(reason).toHaveAccessibleDescription(expect.stringContaining(t.errors.reasonRequired));
   });
 
-  /** 「폐기 사유」(코드)와 「상신 사유」(문장)가 **다른 칸**이다 — 낱말이 비슷해 겹치기 쉽다. */
+  /** 「폐기 사유」(코드)와 「요청 사유」(문장)가 **다른 칸**이다 — 낱말이 비슷해 겹치기 쉽다. */
   it('폐기 사유 코드와 상신 사유가 서로 다른 칸이다', () => {
     renderForm({ codeOptions: FILLED_CODES });
 

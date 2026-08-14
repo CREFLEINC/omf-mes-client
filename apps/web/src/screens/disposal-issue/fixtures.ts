@@ -491,10 +491,10 @@ export const INTERNAL_IDS = [
 ];
 
 /**
- * 「품의 상신」이 만드는 전표. **목록 픽스처와 겹치지 않는 번호**(9504)를 쓴다 —
+ * 「승인 요청」이 만드는 전표. **목록 픽스처와 겹치지 않는 번호**(9504)를 쓴다 —
  * 이미 있는 전표와 같은 번호면 「방금 만든 것」과 「목록에 있던 것」이 구분되지 않는다.
  *
- * **상신 전의 모양이다** — `approvalRequestId`가 오지 않는다. 전표 생성은 전기도 상신도 하지
+ * **승인 요청 전의 모양이다** — `approvalRequestId`가 오지 않는다. 전표 생성은 전기도 요청도 하지
  * 않으므로(`postImmediately: false`) 라인의 원장 라인도 비어 있다.
  */
 export const createdIssueResponseFixture = {
@@ -530,15 +530,12 @@ export const createdIssueLineResponseFixtures = [
 ];
 
 /**
- * 값 목록이 확정됐다고 가정할 때 쓰는 **품의 정보 코드 다섯**. 계약의 `@example` 값이 아니다.
+ * 값 목록이 확정됐다고 가정할 때 쓰는 **폐기 요청 정보 코드 셋**. 계약의 `@example` 값이 아니다.
  *
- * 폐기 계정만 숫자 꼴인 이유는 그 값이 **도착지 식별자로 간다는 가정** 때문이다
- * (계획 §13-5 · `issue-request.ts`의 `toDestinationId`) — 값 목록이 오면 그 가정도 함께 답을 받는다.
+ * **폐기 계정·도착지 유형이 없다**(변경 통지 #124·#128) — 폼에 그 칸이 없어 고를 값도 없다.
  */
 export const SAMPLE_FORM_CODES = {
   issueType: 'SAMPLE_GI_TYPE_A',
   sourceDocumentType: 'SAMPLE_SRC_TYPE_A',
-  destinationType: 'SAMPLE_DEST_TYPE_A',
-  disposalAccount: '8801',
   reason: 'SAMPLE_GI_REASON_A',
 };

@@ -12,19 +12,21 @@ import type { DisposalCodeKey, SelectOption, WarehouseEntry } from './types';
  * 「enum으로 못박으면 값이 정해질 때 계약이 깨진다」는 취지를 적었다.
  *
  * **착수 이슈는 둘(폐기 계정 · 승인 유형·상태)을 적었으나 이 화면에 걸리는 자리는 더 많다**
- * (계획 결정 8 · §5.4-9). 이 회차가 다루는 것은 그중 **여덟 + 창고 유형**이다.
+ * (계획 결정 8 · §5.4-9). 이 화면이 다루는 것은 그중 **여섯 + 창고 유형**이다.
  *
- * | 자리 | 키 | 이 회차에 쓰이나 | 비면 무엇이 막히나 |
- * | --- | --- | :-: | --- |
- * | 폐기 정보 — 출고 유형 · **이력 조건 — 출고 유형** | `issueType` | **이력 조건이 쓴다** | **품의 등록 전체** |
- * | 폐기 정보 — 원천 문서 유형 | `sourceDocumentType` | 뒤 회차 | 같은 위 |
- * | 폐기 정보 — 도착지 유형 | `destinationType` | 뒤 회차 | 같은 위 |
- * | 폐기 정보 — **폐기 계정** | `disposalAccount` | 뒤 회차 | 같은 위 |
- * | 폐기 정보 — 폐기 사유 · **이력 조건 — 폐기 사유** | `reason` | **이력 조건이 쓴다** | 같은 위 |
- * | 대상 조회 조건 — 입고 유형 | `receiptType` | 쓰인다 | 아무것도 막히지 않는다 |
- * | 대상 조회 조건 — 입고 상태 | `status` | 쓰인다 | 아무것도 막히지 않는다 |
- * | **이력 조건 — 출고 상태** | `issueStatus` | **이 회차** | 아무것도 막히지 않는다 |
- * | 창고 선택칸을 좁히는 축 | `DEFECT_WAREHOUSE_TYPE_CODES` | 쓰인다 | 창고가 좁혀지지 않는다 |
+ * | 자리 | 키 | 비면 무엇이 막히나 |
+ * | --- | --- | --- |
+ * | 폐기 정보 — 출고 유형 · **이력 조건 — 출고 유형** | `issueType` | **폐기 요청 등록 전체** |
+ * | 폐기 정보 — 원천 문서 유형 | `sourceDocumentType` | 같은 위 |
+ * | 폐기 정보 — 폐기 사유 · **이력 조건 — 폐기 사유** | `reason` | 같은 위 |
+ * | 대상 조회 조건 — 입고 유형 | `receiptType` | 아무것도 막히지 않는다 |
+ * | 대상 조회 조건 — 입고 상태 | `status` | 아무것도 막히지 않는다 |
+ * | **이력 조건 — 출고 상태** | `issueStatus` | 아무것도 막히지 않는다 |
+ * | 창고 선택칸을 좁히는 축 | `DEFECT_WAREHOUSE_TYPE_CODES` | 창고가 좁혀지지 않는다 |
+ *
+ * **표에서 두 줄이 사라졌다**(변경 통지 #124·#128). 「폐기 계정」은 회계 소관이라 MES가 다루지
+ * 않기로 확정됐고, 「도착지 유형」은 짝인 도착지 식별자를 공급할 자리가 함께 사라졌다 —
+ * 값 목록을 기다리는 것이 아니라 **자리 자체가 없다.**
  *
  * **출고 유형·폐기 사유는 두 자리가 한 키를 함께 쓴다.** 폐기 정보 폼이 고를 값과 이력 조건이
  * 거를 값이 **같은 공통코드**라, 갈라 두면 값이 확정될 때 채울 자리가 둘이 되고 한쪽만 채워지는
@@ -34,7 +36,7 @@ import type { DisposalCodeKey, SelectOption, WarehouseEntry } from './types';
  * **승인 완료를 뜻하는 상태 코드 집합**은 `approval-progress.ts`가 갖는다 — 승인 축 판정이
  * 그 파일 한 곳에 모여 있어야 「채우면 무엇이 살아나는가」를 한 자리에서 읽는다.
  *
- * **결과의 무게**: 필수 다섯이 비어 있는 동안 이 화면으로는 **폐기 품의를 등록할 수 없다.**
+ * **결과의 무게**: 필수 셋이 비어 있는 동안 이 화면으로는 **폐기 요청을 등록할 수 없다.**
  * 대상 조회·줄 선택·수량 입력·처리 이력·결재 진행·기타출고 처리는 그동안에도 쓰인다.
  * 값이 확정되면 **이 파일의 배열만 채우면** 등록이 저절로 살아난다.
  *
@@ -44,32 +46,30 @@ import type { DisposalCodeKey, SelectOption, WarehouseEntry } from './types';
  */
 
 /**
- * 이 화면이 자리표시로 다루는 선택지 코드 여덟.
+ * 이 화면이 자리표시로 다루는 선택지 코드 여섯.
  *
- * **폼의 다섯을 여기서 다시 적지 않는다**(`types.ts`가 정본이다) — 두 곳에 적으면 한쪽에만
+ * **폼의 셋을 여기서 다시 적지 않는다**(`types.ts`가 정본이다) — 두 곳에 적으면 한쪽에만
  * 키가 늘어 「폼에는 있는데 값 목록에는 없는」 코드가 생기고, 그때 필수 판정이 그 칸을 세지 않는다.
  */
 export type DisposalIssueCodeKey = DisposalCodeKey | 'receiptType' | 'status' | 'issueStatus';
 
 /**
- * 계약이 **등록 필수**로 요구하는 다섯.
+ * 계약이 **등록 필수**로 요구하는 셋.
  *
- * `sourceDocumentType`·`destinationType`이 여기 있는 것이 눈에 걸릴 수 있다 — 원천이 입고
- * 전표임을·도착지가 어디임을 가리키는 **구조 값**이라 사용자가 고를 성질이 아니다.
- * 그런데도 자리표시로 두는 이유는, 그 값이 무엇이어야 하는지도 아직 확정되지 않았기 때문이다.
- *
- * `disposalAccount`(폐기 계정)는 **계약에 대응하는 필드 이름이 확정되지 않았다** — 가장 가까운
- * 자리가 도착지 유형·도착지 식별자인데 계약은 그것을 「도착지」로만 적었고 폐기에는 물리적
- * 도착지가 없다. 그래서 값 목록과 배선 자리를 **함께** 미결로 둔다(계획 §5.4-4).
+ * `sourceDocumentType`이 여기 있는 것이 눈에 걸릴 수 있다 — 원천이 입고 전표임을 가리키는
+ * **구조 값**이라 사용자가 고를 성질이 아니다. 그런데도 자리표시로 두는 이유는, 그 값이
+ * 무엇이어야 하는지도 아직 확정되지 않았기 때문이다.
  *
  * `reason`은 계약 스키마에서 nullable이지만 설명이 「반품·기타 출고에서는 필수」라
  * **설명을 따른다**(계획 §5.4-17).
+ *
+ * **다섯에서 셋으로 줄었다**(#124·#128). 줄었어도 **등록은 그대로 잠겨 있다** — 남은 셋의
+ * 값 목록이 여전히 비어 있기 때문이다. 자리를 지우는 일이 사용자에게 무엇을 열어 주는 일이
+ * 되어서는 안 되고, `code-options.test.ts`가 그 사실을 감지기로 고정한다.
  */
 export const REQUIRED_CODE_KEYS: readonly DisposalCodeKey[] = [
   'issueType',
   'sourceDocumentType',
-  'destinationType',
-  'disposalAccount',
   'reason',
 ];
 
@@ -80,7 +80,7 @@ export type CodeValueLists = Record<DisposalIssueCodeKey, readonly string[]>;
 export type CodeOptionSets = Record<DisposalIssueCodeKey, SelectOption[]>;
 
 /**
- * 값 목록 — **여덟 다 비어 있다.**
+ * 값 목록 — **여섯 다 비어 있다.**
  *
  * 자리표시 값을 하나 넣어 두지 않는다. 넣으면 사용자가 그것을 고를 수 있고, 고르면
  * 서버가 모르는 코드가 되돌릴 수 없는 전표에 실린다. 조회 조건 쪽에 넣으면 결과가 늘
@@ -89,8 +89,6 @@ export type CodeOptionSets = Record<DisposalIssueCodeKey, SelectOption[]>;
 export const PLACEHOLDER_DISPOSAL_ISSUE_CODES: CodeValueLists = {
   issueType: [],
   sourceDocumentType: [],
-  destinationType: [],
-  disposalAccount: [],
   reason: [],
   receiptType: [],
   status: [],
@@ -122,8 +120,6 @@ const toOptions = (values: readonly string[]): SelectOption[] =>
 export const toCodeOptionSets = (values: CodeValueLists): CodeOptionSets => ({
   issueType: toOptions(values.issueType),
   sourceDocumentType: toOptions(values.sourceDocumentType),
-  destinationType: toOptions(values.destinationType),
-  disposalAccount: toOptions(values.disposalAccount),
   reason: toOptions(values.reason),
   receiptType: toOptions(values.receiptType),
   status: toOptions(values.status),
@@ -139,7 +135,7 @@ export const toCodeOptionSets = (values: CodeValueLists): CodeOptionSets => ({
  *
  * **조회 조건의 코드 셋은 판정에 들지 않는다** — 비어 있어도 아무것도 막지 않는다.
  *
- * 이 값을 읽어 「품의 등록」을 잠그는 자리는 뒤따르는 회차에 있다. 판정을 여기 두는 이유는
+ * 이 값을 읽어 「승인 요청」을 잠그는 자리는 `validation.ts`다. 판정을 여기 두는 이유는
  * 값이 확정될 때 **고칠 자리가 이 파일 하나**여야 하기 때문이다.
  */
 export const isRequiredCodeListPending = (sets: CodeOptionSets): boolean =>

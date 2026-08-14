@@ -6,7 +6,6 @@ import {
   POST_IMMEDIATELY,
   SEND_TO_ERP,
   toBusinessDate,
-  toDestinationId,
   toDisposalLines,
   toGoodsIssueRequest,
   toIssuedLocal,
@@ -14,15 +13,12 @@ import {
   toOffsetDateTime,
 } from './issue-request';
 import type { DisposalDraft } from './types';
-import { EMPTY_DISPOSAL_DRAFT } from './types';
 
 /** 값 목록이 확정됐다고 가정할 때 쓰는 합성 코드. **계약의 `@example` 값을 쓰지 않는다.** */
 const FILLED_DRAFT: DisposalDraft = {
   codes: {
     issueType: 'SAMPLE_GI_TYPE_A',
     sourceDocumentType: 'SAMPLE_SRC_TYPE_A',
-    destinationType: 'SAMPLE_DEST_TYPE_A',
-    disposalAccount: '9561',
     reason: 'SAMPLE_GI_REASON_A',
   },
   issuedDate: '2026-08-11',
@@ -54,16 +50,11 @@ if (receipt === undefined) throw new Error('픽스처 전표가 없습니다.');
 
 const NOW = new Date('2026-08-12T14:05:09+09:00');
 
-const build = (
-  rows: DisposalLineRow[],
-  draft: DisposalDraft = FILLED_DRAFT,
-  destinationId = toDestinationId(draft.codes.disposalAccount),
-) =>
+const build = (rows: DisposalLineRow[], draft: DisposalDraft = FILLED_DRAFT) =>
   toGoodsIssueRequest({
     receipt,
     lines: toDisposalLines(rows),
     draft,
-    destinationId,
     now: NOW,
   });
 
@@ -106,23 +97,6 @@ describe('toDisposalLines', () => {
   });
 });
 
-describe('toDestinationId', () => {
-  /**
-   * **이 한 줄이 계획 §13-5의 가정이다.** 「폐기 계정」에 해당하는 필드가 계약에 없고 가장 가까운
-   * 자리가 도착지 식별자다(계획 결정 8의 넷째 줄) — 답이 오면 고칠 자리가 여기 하나다.
-   */
-  it('고른 계정 값을 도착지 식별자로 옮긴다', () => {
-    expect(toDestinationId('9561')).toBe(9561);
-  });
-
-  it.each(['', '  ', 'SAMPLE_ACCOUNT', '0', '-1', '1.5', 'Infinity'])(
-    '식별자로 쓸 수 없는 값(%s)은 없음이다',
-    (value) => {
-      expect(toDestinationId(value)).toBeNull();
-    },
-  );
-});
-
 describe('toGoodsIssueRequest', () => {
   it('postImmediately를 늘 거짓으로 명시해 싣는다', () => {
     expect(build([row(0, '10')])?.postImmediately).toBe(false);
@@ -158,6 +132,26 @@ describe('toGoodsIssueRequest', () => {
     expect(build([row(0, '10')])).not.toHaveProperty('replacementExpected');
   });
 
+  /**
+   * **도착지 짝을 통째로 싣지 않는다**(완료 조건 C11 · 변경 통지 #124·#128).
+   *
+   * 폐기 계정이 사라져 도착지 식별자를 공급할 자리가 없어졌다. 도착지 유형만 남기면
+   * **한쪽만 실린 본문**이 만들어지는데 그것이 정확히 서버 400의 조건이다 — 짝은 함께 있거나
+   * 함께 없다. 지금 이 화면이 만드는 본문은 계약이 말하는 **자체 폐기** 형태다.
+   *
+   * **키 존재 여부로 잰다.** 값이 `null`인 것과 키가 없는 것은 서버에게 다른 말이고,
+   * 이 슬라이스의 규율은 「비운 칸은 키를 싣지 않는다」다. `toBeUndefined()`로 재면
+   * `destinationId: undefined`가 실린 본문도 통과한다.
+   */
+  it.each(['destinationTypeCode', 'destinationId'])('본문에 %s 키가 없다', (key) => {
+    const body = build([row(0, '10')]);
+
+    /* 짝 양성 — 본문이 실제로 만들어졌다(널이라 통과한 것이 아니다). */
+    expect(body).not.toBeNull();
+    expect(body).not.toHaveProperty(key);
+    expect(Object.keys(body ?? {})).not.toContain(key);
+  });
+
   it('필드마다 출처가 다르다 — 원천은 전표, 출고 일시는 입력, 발생 시각은 제출 순간이다', () => {
     const body = build([row(0, '10')]);
 
@@ -173,7 +167,7 @@ describe('toGoodsIssueRequest', () => {
     expect(build([row(0, '10')])?.businessDate).not.toBe('2026-08-12');
   });
 
-  it('코드 넷을 다듬어 싣는다', () => {
+  it('코드 셋을 다듬어 싣는다', () => {
     const body = build([row(0, '10')], {
       ...FILLED_DRAFT,
       codes: { ...FILLED_DRAFT.codes, issueType: '  SAMPLE_GI_TYPE_A  ' },
@@ -181,7 +175,6 @@ describe('toGoodsIssueRequest', () => {
 
     expect(body?.issueTypeCode).toBe('SAMPLE_GI_TYPE_A');
     expect(body?.sourceDocumentTypeCode).toBe('SAMPLE_SRC_TYPE_A');
-    expect(body?.destinationTypeCode).toBe('SAMPLE_DEST_TYPE_A');
     expect(body?.reasonCode).toBe('SAMPLE_GI_REASON_A');
   });
 
@@ -208,19 +201,10 @@ describe('toGoodsIssueRequest', () => {
     expect(build([row(0, '10')], blank)).toBeNull();
   });
 
-  it.each(['issueType', 'sourceDocumentType', 'destinationType'] as const)(
-    '%s가 비면 본문을 만들지 않는다',
-    (key) => {
-      const blank = { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, [key]: '' } };
+  it.each(['issueType', 'sourceDocumentType'] as const)('%s가 비면 본문을 만들지 않는다', (key) => {
+    const blank = { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, [key]: '' } };
 
-      expect(build([row(0, '10')], blank)).toBeNull();
-    },
-  );
-
-  /** 폐기 계정이 확정되기 전에는 도착지 식별자를 만들 수 없다 — 그 상태로는 보내지 않는다. */
-  it('도착지 식별자가 없으면 본문을 만들지 않는다', () => {
-    expect(build([row(0, '10')], EMPTY_DISPOSAL_DRAFT, null)).toBeNull();
-    expect(build([row(0, '10')], FILLED_DRAFT, null)).toBeNull();
+    expect(build([row(0, '10')], blank)).toBeNull();
   });
 
   it('출고 일시가 비면 본문을 만들지 않는다', () => {

@@ -13,7 +13,7 @@ const t = messages.disposalIssue;
 export interface DisposalFormProps {
   values: DisposalDraft;
   /**
-   * 값 목록이 확정되지 않은 코드 다섯. **화면이 넘긴다** — 자리표시 상수를 부품이 직접 읽으면
+   * 값 목록이 확정되지 않은 코드 셋. **화면이 넘긴다** — 자리표시 상수를 부품이 직접 읽으면
    * 「값이 확정되면 배열만 채운다」는 전환을 화면 수준에서 잴 수 없다(감지기 M53).
    */
   codeOptions: CodeOptionSets;
@@ -29,24 +29,25 @@ export interface DisposalFormProps {
 }
 
 /**
- * 품의 정보 구획 — **무엇으로·언제·왜 폐기하는지**를 적는 자리다.
+ * 폐기 요청 정보 구획 — **무엇으로·언제·왜 폐기하는지**를 적는 자리다.
  *
- * **창이 아니라 라인 표 아래 구획이다**(계획 결정 14). 선택칸이 다섯이라 창에 넣으면 창 본문이
+ * **창이 아니라 라인 표 아래 구획이다**(계획 결정 14). 선택칸이 여럿이라 창에 넣으면 창 본문이
  * 펼침 목록을 자르는 결함(`omf-mes#45`)에 정면으로 걸린다 — 고칠 수 없는 결함은 **걸릴 자리를
  * 만들지 않는 것**으로 피한다.
  *
- * **상신 사유가 이 폼에 있는 것이 이 화면의 형태다**(승인 기록 정정 1-1). 사용자 조작이
- * 「품의 상신」 하나이고 그 한 번에 전표 생성과 상신이 잇달아 나가므로, 결재에 올릴 문장을
- * **보내기 전에** 여기서 받는다. **「폐기 사유」(코드)와 「상신 사유」(문장)를 갈라 놓고**
+ * **요청 사유가 이 폼에 있는 것이 이 화면의 형태다**(승인 기록 정정 1-1). 사용자 조작이
+ * 「승인 요청」 하나이고 그 한 번에 전표 생성과 승인 요청이 잇달아 나가므로, 결재에 올릴 문장을
+ * **보내기 전에** 여기서 받는다. **「폐기 사유」(코드)와 「요청 사유」(문장)를 갈라 놓고**
  * 보조 문구가 그 차이를 말한다 — 낱말이 비슷해 사용자가 헷갈리는 자리다.
  *
  * **사유 형식을 유도하되 길이를 강제하지 않는다**(공유계약 A-12 · 승인 기록 §13-6). 자리표시
  * 문구의 예시와 보조 문구가 「첫 줄이 결재함 목록의 요약이 된다」를 말하고, 확인 창이 전문과
  * 첫 줄을 나눠 다시 보인다. 글자 수를 화면이 정하면 그것도 지어내는 것이다.
  *
- * **폐기 계정 칸은 잠긴 채로 보인다**(완료 조건 C50 · 착수 이슈 §4). 값 목록이 확정되지 않아
- * 고를 것이 없다 — 감추면 사용자는 이 화면에 없는 개념으로 읽고, 값이 왔을 때 놓을 자리도
- * 사라진다. 잠근 사유는 칸 아래 보이는 글자로 서고 접근 이름에 이어진다(배치 규범 4).
+ * **폐기 계정 칸이 없다 — 잠긴 칸조차 없다**(변경 통지 #124 ⛔). 회계 계정은 MES 밖의 값이라
+ * 「값이 오면 열릴 자리」가 아니고, 잠근 채로 두면 사용자는 언젠가 열릴 칸으로 읽는다.
+ * **도착지 유형 칸도 함께 없다**(#128) — 짝인 도착지 식별자를 공급할 자리가 사라져, 남겨 두면
+ * 한쪽만 실린 전표가 만들어진다.
  *
  * **미리 채우는 값이 없다.** 출고 일시를 지금 시각으로 채우면 사용자가 확인하지 않은 시각이
  * 되돌릴 수 없는 전표에 실리고, 어제 폐기한 것을 오늘 올리는 흔한 경우에 조용히 틀린다.
@@ -75,20 +76,18 @@ export const DisposalForm = ({
   const issuedError = fieldErrors.issuedAt;
 
   /**
-   * 코드 칸 다섯은 모양이 같다 — 선택지·안내·자리표시·오류를 같은 규칙으로 만든다.
+   * 코드 칸 셋은 모양이 같다 — 선택지·안내·자리표시·오류를 같은 규칙으로 만든다.
    * 규칙을 칸마다 손으로 적으면 한 칸만 다르게 고쳐진다.
    */
-  const codeField = (key: DisposalCodeKey, label: string, extraNote?: string) => {
+  const codeField = (key: DisposalCodeKey, label: string) => {
     const options = codeOptions[key];
-    /* 잠긴 사유가 값 목록 안내보다 앞이다 — 고를 것이 없다는 사실이 더 무겁다. */
-    const note = extraNote ?? codeNote(options);
 
     return (
       <SelectField
         label={label}
         options={options}
         value={values.codes[key]}
-        note={note}
+        note={codeNote(options)}
         placeholder={options.length === 0 ? codePlaceholder() : undefined}
         disabled={isLocked || options.length === 0}
         error={fieldErrors[CODE_FIELD_NAMES[key]]}
@@ -104,12 +103,6 @@ export const DisposalForm = ({
       <div className="form-grid">
         {codeField('issueType', t.formFields.issueType)}
         {codeField('sourceDocumentType', t.formFields.sourceDocumentType)}
-        {codeField('destinationType', t.formFields.destinationType)}
-        {/*
-         * **폐기 계정**(착수 이슈 §4 · 계획 §13-5). 값 목록도, 계약의 어느 필드로 가는지도
-         * 확정되지 않았다 — 잠근 채로 보이고 사유를 밝힌다. 값이 오면 이 칸이 그대로 열린다.
-         */}
-        {codeField('disposalAccount', t.formFields.disposalAccount, t.form.disposalAccountPending)}
         {codeField('reason', t.formFields.reason)}
 
         <div className="field-cell">
@@ -168,7 +161,7 @@ export const DisposalForm = ({
       </div>
 
       {/*
-       * **상신 사유는 폼의 마지막 칸이고 폭을 다 쓴다.** 결재함 목록의 요약을 겸하는 문장이라
+       * **요청 사유는 폼의 마지막 칸이고 폭을 다 쓴다.** 결재함 목록의 요약을 겸하는 문장이라
        * (공유계약 A-12) 다른 칸과 같은 격자에 두면 반 폭에 갇혀 쓴 글을 다시 읽을 수 없다.
        */}
       <div className="field-cell">

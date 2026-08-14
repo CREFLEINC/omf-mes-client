@@ -12,13 +12,22 @@ describe('탭 정의', () => {
     expect(DISPOSAL_ISSUE_TABS).toEqual(['disposal', 'history']);
   });
 
-  /* 화면에 들어오는 이유가 「폐기 품의를 올린다」라서 발의 탭이 먼저 선다. */
+  /* 화면에 들어오는 이유가 「폐기 요청을 올린다」라서 그 탭이 먼저 선다. */
   it('기본 탭은 품의 발의다', () => {
     expect(DEFAULT_TAB).toBe('disposal');
   });
 
-  it('탭 이름이 스펙 문면 그대로다', () => {
-    expect(tabLabel('disposal')).toBe('품의 발의');
+  /**
+   * **낱말 교체의 감지기 하나**(변경 통지 #124). MES는 품의서를 기안하지 않으므로 첫 탭은
+   * 「품의 발의」가 아니라 **「폐기 요청」**이다.
+   *
+   * 시험이 문구를 **키로 조회**하면(`t.tabs.disposal`) 값이 무엇이든 늘 통과한다 — 그래서
+   * 통지가 문면으로 지정한 낱말은 **글자를 직접 무는 자리**를 따로 둔다. 나머지 셋
+   * (「승인 요청」·「재요청」·「요청」)은 각자 그 컨트롤이 서는 시험이 문다
+   * (`screen.test.tsx` · `resubmit-pane.test.tsx` · `submit-confirm-dialog.test.tsx`).
+   */
+  it('탭 이름이 통지 문면 그대로다', () => {
+    expect(tabLabel('disposal')).toBe('폐기 요청');
     expect(tabLabel('history')).toBe('처리 이력');
     /* 짝 방향 — 두 이름이 서로 다르다(같으면 어느 탭인지 읽을 수 없다). */
     expect(tabLabel('disposal')).not.toBe(tabLabel('history'));
