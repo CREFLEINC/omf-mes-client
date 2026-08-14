@@ -18,6 +18,7 @@ import {
   REQUIRED_CODE_KEYS,
   toCodeOptionSets,
   type CodeValueLists,
+  type DisposalPartnerCondition,
 } from './code-options';
 import type { SelectOption, WarehouseEntry } from './types';
 
@@ -357,7 +358,7 @@ describe('사정 → 안내 · 자리표시 · 잠금', () => {
       [messages.pendingCode.note, messages.pendingCode.placeholder],
     );
     expect([disposalPartnerNote('failed'), disposalPartnerPlaceholder('failed')]).toEqual([
-      t.filters.lookupFailed,
+      t.form.partnerFailedNote,
       t.form.partnerFailedPlaceholder,
     ]);
     expect([disposalPartnerNote('empty'), disposalPartnerPlaceholder('empty')]).toEqual([
@@ -393,13 +394,64 @@ describe('사정 → 안내 · 자리표시 · 잠금', () => {
    */
   it('잘려도 고를 수 있고 그 사실만 안내한다', () => {
     expect(canChooseDisposalPartner('truncated')).toBe(true);
-    expect(disposalPartnerNote('truncated')).toBe(messages.disposalIssue.filters.lookupTruncated);
+    expect(disposalPartnerNote('truncated')).toBe(messages.disposalIssue.form.partnerTruncatedNote);
     expect(disposalPartnerPlaceholder('truncated')).toBeUndefined();
   });
 
-  it('고를 수 없는 넷이 모두 잠긴다', () => {
-    for (const condition of ['rolePending', 'loading', 'failed', 'empty'] as const) {
-      expect(canChooseDisposalPartner(condition)).toBe(false);
+  /**
+   * **갈래를 손으로 세지 않는다**(리뷰 Minor R-M2 · T3 재리뷰 R-M1이 세운 규율).
+   *
+   * `satisfies`는 **원소가 유니온에 속하는지**만 보고 **빠짐은 보지 않는다** — 손으로 적은
+   * 목록은 갈래가 늘어도 조용히 부분 순회가 된다. `Record<K, true>`는 키 누락을 오류로 만든다.
+   */
+  const ALL_CONDITIONS: Record<DisposalPartnerCondition, true> = {
+    rolePending: true,
+    failed: true,
+    loading: true,
+    empty: true,
+    truncated: true,
+    ready: true,
+  };
+
+  it('여섯 갈래가 전수이고 넷은 고를 수 없다', () => {
+    const conditions = Object.keys(ALL_CONDITIONS) as DisposalPartnerCondition[];
+    const locked = conditions.filter((condition) => !canChooseDisposalPartner(condition));
+
+    expect(conditions).toHaveLength(6);
+    expect(locked.sort()).toEqual(['empty', 'failed', 'loading', 'rolePending'].sort());
+  });
+
+  /**
+   * **잠긴 갈래에는 왜 잠겼는지가 반드시 선다**(사유 없이 잠그지 않는다 — 배치 규범 4).
+   * 갈래를 전수로 돌므로 **새 갈래가 표기를 빠뜨린 채 들어오면** 여기서 먼저 운다.
+   */
+  it('고를 수 없는 갈래는 안내나 자리표시 중 하나라도 반드시 낸다', () => {
+    for (const condition of Object.keys(ALL_CONDITIONS) as DisposalPartnerCondition[]) {
+      if (canChooseDisposalPartner(condition)) continue;
+
+      expect(disposalPartnerNote(condition) ?? disposalPartnerPlaceholder(condition)).toBeDefined();
     }
+  });
+
+  /**
+   * **없는 복구 경로를 가리키지 않는다**(리뷰 Minor R-M1). 이 칸에는 「다시 시도」가 없고
+   * (`PartnerLookupResult`가 `refetch`를 타입째 내지 않는다) 복구는 전표를 다시 고르는 것이다 —
+   * 안내가 할 수 없는 조치를 지시하면 사용자는 찾지 못할 버튼을 찾는다.
+   */
+  it('안내가 다시 시도를 가리키지 않고 낱말이 「선택지」로 통일된다', () => {
+    for (const condition of Object.keys(ALL_CONDITIONS) as DisposalPartnerCondition[]) {
+      const note = disposalPartnerNote(condition);
+
+      if (note === undefined) continue;
+
+      expect(note).not.toContain('다시 시도');
+      /* 한 컨트롤이 같은 것을 두 이름으로 부르지 않는다 — 조건 줄의 「이름 목록」이 아니다. */
+      expect(note).not.toContain('이름 목록');
+    }
+
+    expect(disposalPartnerNote('failed')).not.toBe(messages.disposalIssue.filters.lookupFailed);
+    expect(disposalPartnerNote('truncated')).not.toBe(
+      messages.disposalIssue.filters.lookupTruncated,
+    );
   });
 });

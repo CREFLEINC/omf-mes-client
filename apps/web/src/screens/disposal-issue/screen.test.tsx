@@ -1312,6 +1312,7 @@ describe('DisposalIssueScreen — 조회 실패', () => {
 
     await waitForList();
 
+    /* **조건 줄의 창고 칸은 조건 줄 문구를 쓴다** — 거기에는 「다시 시도」가 실재한다. */
     expect(screen.getByText(t.filters.lookupTruncated)).toBeInTheDocument();
     /* 못 불러온 것이 먼저다 — 잘림이 좁힘 안내를 덮는다. */
     expect(screen.queryByText(t.filters.warehouseTypePending)).not.toBeInTheDocument();
@@ -6217,7 +6218,7 @@ describe('DisposalIssueScreen — 폐기 거래처 선택지가 열리는 조건
     await waitForLines();
     await waitFor(() => {
       expect(partnerBox()).toHaveAccessibleDescription(
-        expect.stringContaining(t.filters.lookupFailed),
+        expect.stringContaining(t.form.partnerFailedNote),
       );
     });
 
@@ -6251,7 +6252,7 @@ describe('DisposalIssueScreen — 폐기 거래처 선택지가 열리는 조건
     });
 
     expect(partnerBox()).toHaveAccessibleDescription(
-      expect.stringContaining(t.filters.lookupTruncated),
+      expect.stringContaining(t.form.partnerTruncatedNote),
     );
     /* 고를 수 있는 칸에는 자리표시가 서지 않는다 — 짝 방향. */
     expect(partnerBox()).not.toHaveTextContent(messages.pendingCode.placeholder);

@@ -11,7 +11,7 @@ import {
 import type { DisposalReadyState } from './disposal-selection';
 import { readDisposalDestination } from './issue-request';
 import { readReason } from './reason-draft';
-import type { DisposalCodeKey, DisposalDraft, SelectOption } from './types';
+import type { DisposalCodeKey, DisposalDraft } from './types';
 
 /**
  * 보내기 전에 화면이 잡는 것.

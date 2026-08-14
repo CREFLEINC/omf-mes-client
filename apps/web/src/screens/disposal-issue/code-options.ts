@@ -218,63 +218,75 @@ export const readDisposalPartnerCondition = (
   if (lookup.isLoading) return 'loading';
   if (lookup.entries.length === 0) return 'empty';
 
+  /*
+   * **0건이 잘림보다 앞이다**(리뷰 Nit R-N3 — 사유와 함께 그대로 둔다). 「앞쪽 일부만 왔다」고
+   * 말하면서 **고를 것을 하나도 주지 못하는** 칸이 「없다」고 말하는 칸보다 나쁘다. 두 사실이
+   * 겹치는 응답(0건인데 전체 건수가 더 큼)은 이 훅이 쪽 인자를 싣지 않아 계약상 오기 어렵다.
+   */
   return lookup.truncated ? 'truncated' : 'ready';
 };
 
 /**
- * 그 칸 아래에 서는 안내. **고를 수 있으면 없다** — 남으면 화면이 거짓말을 한다.
+ * 사정마다의 **표기와 잠금 — 한 표에 모은다.**
  *
- * 「오는 중」에는 안내를 두지 않는다 — 트리거 글자가 이미 그 사실을 말하고 있고, 잠깐 서다
+ * ⛔ **`Record`가 갈래 빠짐을 타입으로 잡는다**(리뷰 Minor R-M2 · 실측으로 택일). 앞 판은 표기
+ * 둘이 각자 `switch`였고 반환 타입이 `string | undefined`라, **유니온에 갈래가 늘어도 아무도
+ * 울지 않고** 그 갈래는 조용히 「안내도 자리표시도 없는 잠긴 칸」이 됐다(리뷰가 일곱째 갈래를
+ * 심어 실증). 같은 슬라이스의 두 전례를 실제로 재 보고 이 형태를 골랐다:
+ *
+ * | 형태 | 일곱째 갈래를 심으면 | 비고 |
+ * | --- | :-: | --- |
+ * | `switch`의 `default`에 `satisfies never` | **TS1360으로 잡는다** | 소비처마다 한 줄씩 필요하고, `canChooseDisposalPartner` 같은 **식**은 스위치로 다시 써야 잡힌다 |
+ * | **`Record<K, …>` 한 표**(채택) | **TS2741로 잡는다** | 한 자리에서 셋을 함께 잡는다. 게다가 **한 사정의 세 표기가 한 줄에** 모여 서로 어긋날 수 없다 |
+ *
+ * 뒤엣것이 이 회차의 명제(「원천이 하나면 갈릴 수 없다」)를 **갈래가 늘어도** 지킨다 —
+ * 새 갈래를 더하면 그 줄의 안내·자리표시·잠금을 **함께** 정하지 않고는 빌드가 되지 않는다.
+ *
+ * **안내는 「오는 중」에 두지 않는다** — 트리거 글자가 이미 그 사실을 말하고 있고, 잠깐 섰다
  * 사라지는 문장은 읽히기 전에 없어진다.
  */
-export const disposalPartnerNote = (condition: DisposalPartnerCondition): string | undefined => {
-  switch (condition) {
-    case 'rolePending':
-      return messages.pendingCode.note;
-    case 'failed':
-      return t.filters.lookupFailed;
-    case 'empty':
-      return t.form.partnerEmptyNote;
-    case 'truncated':
-      return t.filters.lookupTruncated;
-    case 'loading':
-    case 'ready':
-      return undefined;
-  }
+const DISPOSAL_PARTNER_SURFACES: Record<
+  DisposalPartnerCondition,
+  { note?: string; placeholder?: string; canChoose: boolean }
+> = {
+  rolePending: {
+    note: messages.pendingCode.note,
+    placeholder: messages.pendingCode.placeholder,
+    canChoose: false,
+  },
+  /* 조건 줄의 「이름 목록…다시 시도해 주세요」를 돌려쓰지 않는다 — 이 칸에는 다시 시도가 없다. */
+  failed: {
+    note: t.form.partnerFailedNote,
+    placeholder: t.form.partnerFailedPlaceholder,
+    canChoose: false,
+  },
+  loading: { placeholder: t.values.referenceLoading, canChoose: false },
+  empty: {
+    note: t.form.partnerEmptyNote,
+    placeholder: t.form.partnerEmptyPlaceholder,
+    canChoose: false,
+  },
+  /* 잘려도 **고를 수 있다** — 잠그면 보이는 선택지를 고를 수 없는 칸이 된다. */
+  truncated: { note: t.form.partnerTruncatedNote, canChoose: true },
+  ready: { canChoose: true },
 };
+
+/** 그 칸 아래에 서는 안내. **고를 수 있으면 없다** — 남으면 화면이 거짓말을 한다. */
+export const disposalPartnerNote = (condition: DisposalPartnerCondition): string | undefined =>
+  DISPOSAL_PARTNER_SURFACES[condition].note;
 
 /**
  * 트리거에 서는 글자. **고를 것이 있으면 없다**(고른 값이나 기본 자리표시가 선다).
  *
- * 위 안내와 **같은 사정에서 나온다** — 이것이 B1이 겨눈 자리다. 트리거는 폭에 갇혀 잘리므로
+ * 위 안내와 **같은 줄에서 나온다** — 이것이 B1이 겨눈 자리다. 트리거는 폭에 갇혀 잘리므로
  * 사정만 짧게 적고, 할 수 있는 조치는 안내가 말한다.
  */
 export const disposalPartnerPlaceholder = (
   condition: DisposalPartnerCondition,
-): string | undefined => {
-  switch (condition) {
-    case 'rolePending':
-      return messages.pendingCode.placeholder;
-    case 'failed':
-      return t.form.partnerFailedPlaceholder;
-    case 'loading':
-      return t.values.referenceLoading;
-    case 'empty':
-      return t.form.partnerEmptyPlaceholder;
-    case 'truncated':
-    case 'ready':
-      return undefined;
-  }
-};
+): string | undefined => DISPOSAL_PARTNER_SURFACES[condition].placeholder;
 
-/**
- * 지금 폐기 거래처를 **고를 수 있는가.** 칸의 잠금과 버튼 잠금 사유가 이 판정을 함께 쓴다.
- *
- * **잘린 목록도 고를 수 있다** — 앞쪽 일부뿐이라는 사실은 안내가 말하고, 그 안에 찾는 거래처가
- * 있으면 고르는 데 아무 지장이 없다. 잘렸다고 잠그면 **보이는 선택지를 고를 수 없는** 칸이 된다.
- */
 export const canChooseDisposalPartner = (condition: DisposalPartnerCondition): boolean =>
-  condition === 'ready' || condition === 'truncated';
+  DISPOSAL_PARTNER_SURFACES[condition].canChoose;
 
 /**
  * 폐기 거래처 목록을 **좁힐 수 있는가.** 참이면 선택지 조회를 아예 내보내지 않는다.

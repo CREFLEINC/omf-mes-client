@@ -160,7 +160,7 @@ describe('DisposalForm 도착지', () => {
 
     const partner = screen.getByLabelText(t.formFields.disposalPartner);
 
-    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.filters.lookupFailed));
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.form.partnerFailedNote));
     /* ⛔ **얼굴과 설명이 같은 사실을 말한다**(리뷰 Major B1) — 트리거가 「준비 중」이면 안 된다. */
     expect(partner).toHaveTextContent(t.form.partnerFailedPlaceholder);
     expect(partner).not.toHaveTextContent(messages.pendingCode.placeholder);
@@ -194,7 +194,7 @@ describe('DisposalForm 도착지', () => {
     const partner = screen.getByLabelText(t.formFields.disposalPartner);
 
     expect(partner).toBeDisabled();
-    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.filters.lookupFailed));
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.form.partnerFailedNote));
   });
 
   /** **오는 중에는 「없다」고 말하지 않는다** — 트리거가 그 사실만 적고 안내는 서지 않는다. */
@@ -222,7 +222,9 @@ describe('DisposalForm 도착지', () => {
     const partner = screen.getByLabelText(t.formFields.disposalPartner);
 
     expect(partner).toBeEnabled();
-    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.filters.lookupTruncated));
+    expect(partner).toHaveAccessibleDescription(
+      expect.stringContaining(t.form.partnerTruncatedNote),
+    );
   });
 
   /**
