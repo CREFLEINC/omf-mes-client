@@ -49,6 +49,29 @@ describe('ResubmitPane — 미상신 전표', () => {
     expect(onChangeReason).toHaveBeenLastCalledWith('가');
   });
 
+  /**
+   * **통지가 문면으로 지정한 낱말**(#124) — 이 버튼은 「재상신」이 아니라 **「재요청」**이다.
+   *
+   * 나머지 시험은 `t.actions.resubmit` **키로 조회**해서 값이 무엇이든 늘 통과하므로,
+   * 보이는 글자를 직접 무는 자리를 하나 둔다.
+   *
+   * **구획 이름과 짝을 이룬다.** 구획은 「승인 재요청」이고 버튼은 「재요청」이다 —
+   * 구획이 발의 자리의 버튼(`actions.submitDisposal`)과 같은 글자가 되면 서로 다른 키 둘이
+   * 한 문구를 갖게 되고, 왜 이 자리에 「재」요청이 서는지도 이름이 말하지 못한다.
+   */
+  it('버튼의 보이는 글자가 통지 문면 그대로이고 구획 이름과 짝을 이룬다', () => {
+    renderPane();
+
+    expect(screen.getByRole('button', { name: t.actions.resubmit })).toHaveTextContent(/^재요청$/);
+
+    const pane = screen.getByRole('region', { name: t.resubmit.label });
+
+    expect(pane).toBeInTheDocument();
+    /* 짝 — 구획 이름이 버튼 낱말을 담되, 발의 자리의 버튼과 같은 글자가 되지 않는다. */
+    expect(t.resubmit.label).toContain(t.actions.resubmit);
+    expect(t.resubmit.label).not.toBe(t.actions.submitDisposal);
+  });
+
   it('막히지 않았으면 버튼을 눌러 확인 창을 연다', async () => {
     const onOpenConfirm = vi.fn();
     const user = userEvent.setup();

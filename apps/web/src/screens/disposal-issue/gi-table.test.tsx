@@ -191,8 +191,10 @@ describe('GiTable — 미상신 표식', () => {
   /*
    * 색·아이콘에만 기대지 않는다 — 보이는 글자가 그 사실을 말한다.
    *
-   * 글자를 여기서 한 번 더 무는 것이 **낱말 교체의 둘째 감지기**다(#124) — 승인 축의 낱말이
-   * 「상신」으로 되돌아가면 이 자리와 `tabs.test.ts`에서만 운다.
+   * 이 자리가 무는 것은 **표식 하나**(`values.notSubmitted`)이지 승인 축의 낱말 전체가 아니다.
+   * 통지가 지정한 낱말 넷은 각자 그 컨트롤이 서는 시험이 보이는 글자로 따로 문다
+   * (`tabs.test.ts` · `screen.test.tsx` · `resubmit-pane.test.tsx` ·
+   * `submit-confirm-dialog.test.tsx`) — 키로만 조회하는 시험은 값이 되돌아가도 울지 않는다.
    */
   it('표식이 글자다', () => {
     renderTable();

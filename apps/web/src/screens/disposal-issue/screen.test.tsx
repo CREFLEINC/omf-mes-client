@@ -130,7 +130,7 @@ const LOCATIONS_PATH = '/mdm/locations';
 /** 「처리 이력」 탭이 부르는 경로들. 고른 품의는 9501이고 그 승인 요청은 9521이다. */
 const ISSUES_PATH = '/logistics/goods-issues';
 const ISSUE_DETAIL_PATH = '/logistics/goods-issues/9501';
-/** 「품의 상신」이 만드는 전표(9504)와 그 상신 경로. **토큰은 상세 경로에서만 온다.** */
+/** 「승인 요청」이 만드는 전표(9504)와 그 요청 경로. **토큰은 상세 경로에서만 온다.** */
 const CREATED_DETAIL_PATH = '/logistics/goods-issues/9504';
 const CREATED_APPROVAL_PATH = '/logistics/goods-issues/9504:request-approval';
 /** 이력 탭에서 이어서 상신하는 자리(미상신 전표 9502). */
@@ -2903,7 +2903,7 @@ const fillDisposalForm = async (
   if (reason !== '') await user.type(screen.getByLabelText(t.formFields.submitReason), reason);
 };
 
-/** 「품의 상신」이 열린 상태까지 — 값 목록·줄·수량·품의 정보를 모두 넣는다. */
+/** 「승인 요청」이 열린 상태까지 — 값 목록·줄·수량·폐기 요청 정보를 모두 넣는다. */
 const setupReadyToSubmit = async (
   routes: StubRoute[] = allRoutes(chainRoutes()),
   reason?: string,
@@ -2952,7 +2952,7 @@ const notSubmittedDetailRoute = (etag = '"token-9502"'): StubRoute => ({
     }),
 });
 
-describe('DisposalIssueScreen — 「품의 상신」이 열리는 조건', () => {
+describe('DisposalIssueScreen — 「승인 요청」이 열리는 조건', () => {
   /**
    * **자리표시 두 방향의 첫째**(완료 조건 C51 · 감지기 M49·M53). 값 목록이 비어 있는 동안
    * 이 화면으로는 폐기 품의를 올릴 수 없고, **왜 잠겼는지**가 버튼 옆에서 읽힌다.
@@ -2973,6 +2973,20 @@ describe('DisposalIssueScreen — 「품의 상신」이 열리는 조건', () =
     const { user } = await setupReadyToSubmit();
 
     expect(submitButton()).toBeEnabled();
+  });
+
+  /**
+   * **통지가 문면으로 지정한 낱말**(#124) — 이 버튼은 「품의 상신」이 아니라 **「승인 요청」**이다.
+   *
+   * 이 파일의 다른 시험은 버튼을 `t.actions.submitDisposal` **키로 조회**한다 — 상수와 조회가
+   * 같은 값을 보므로 값이 무엇으로 바뀌든 늘 통과한다. 낱말이 통지 이전으로 되돌아가는 것을
+   * 잡으려면 **보이는 글자를 직접 무는 자리**가 있어야 하고, 이 자리가 그 하나다.
+   * 짝이 되는 낱말 셋은 `tabs.test.ts`·`resubmit-pane.test.tsx`·`submit-confirm-dialog.test.tsx`에 있다.
+   */
+  it('버튼의 보이는 글자가 통지 문면 그대로다', async () => {
+    await setupReadyToSubmit();
+
+    expect(submitButton()).toHaveTextContent(/^승인 요청$/);
   });
 
   /** 사유는 **막는 곳이 화면뿐이다** — 목이 공백만인 사유를 202로 받는다(감지기 M56). */
@@ -3264,7 +3278,7 @@ describe('DisposalIssueScreen — 연쇄가 끝난 뒤', () => {
     expect(resultPane().textContent ?? '').not.toContain('9523');
   });
 
-  /** 「이 품의 열기」가 **탭을 옮기고 그 품의를 고른 상태**로 만든다(완료 조건 C59). */
+  /** 「이 요청 열기」가 **탭을 옮기고 그 전표를 고른 상태**로 만든다(완료 조건 C59). */
   it('이 품의 열기가 이력 탭으로 옮기고 그 품의를 고른다', async () => {
     const { user } = await setupReadyToSubmit(
       allRoutes([
@@ -3752,7 +3766,7 @@ describe('DisposalIssueScreen — 상신 성공 뒤 무효화', () => {
       expect(requestsTo(requests, MISSING_ISSUE_DETAIL_PATH).length).toBeGreaterThan(beforeDetail);
     });
 
-    /* 다시 부른 상세가 실제로 화면을 바꾼다 — 「아직 상신되지 않았습니다」가 사라진다. */
+    /* 다시 부른 상세가 실제로 화면을 바꾼다 — 「아직 승인을 요청하지 않았습니다」가 사라진다. */
     await waitFor(() => {
       expect(screen.queryByText(t.progress.notSubmittedTitle)).not.toBeInTheDocument();
     });
@@ -4327,7 +4341,7 @@ describe('DisposalIssueScreen — 복구 경로를 끝까지 밟은 뒤', () => 
     await confirmSubmit(user);
     await screen.findByText(t.result.partialTitle('GI-2026-950004'));
 
-    /* 복구 경로 — 「이 품의 열기」로 이력 탭에 가서 이어서 상신한다. */
+    /* 복구 경로 — 「이 요청 열기」로 이력 탭에 가서 이어서 요청한다. */
     await user.click(screen.getByRole('button', { name: t.actions.openIssue }));
     await screen.findByRole('region', { name: t.resubmit.label });
     await user.type(screen.getByLabelText(t.formFields.submitReason), '이어서 상신');
@@ -4460,7 +4474,7 @@ describe('DisposalIssueScreen — 「최신 불러오기」가 실패할 때', (
    * **「입력 지우기」가 그 안내를 함께 거둔다**(PR ④ 리뷰 N1 · 수명 표 23행).
    *
    * 파기는 앞서 한 시도를 **통째로 물리는 것**이라 결과 구획도 배너도 함께 사라지는데, 다시
-   * 읽기 실패 안내만 남으면 화면이 **가리킬 전표조차 없는 상태에서** 「이어서 상신하세요」라고
+   * 읽기 실패 안내만 남으면 화면이 **가리킬 전표조차 없는 상태에서** 「이어서 요청하세요」라고
    * 말한다. 새 상태를 수명 표에 올리지 않으면 정리하는 자리가 이렇게 하나씩 빠진다.
    */
   it('입력 지우기가 재조회 실패 안내를 함께 거둔다', async () => {
@@ -4503,7 +4517,7 @@ describe('DisposalIssueScreen — 「최신 불러오기」가 실패할 때', (
   });
 });
 
-describe('DisposalIssueScreen — 「이 품의 열기」도 잠금 안에 있다', () => {
+describe('DisposalIssueScreen — 「이 요청 열기」도 잠금 안에 있다', () => {
   /**
    * **눌러도 아무 일이 없는 버튼을 두지 않는다**(리뷰 Nit C1 · 배치 규범 4).
    *
@@ -4704,7 +4718,7 @@ const confirmPost = async (user: ReturnType<typeof userEvent.setup>): Promise<vo
 /**
  * 낡은 것으로 표시된 잔액 조회의 수.
  *
- * 잔액은 「품의 발의」 탭의 조회라 처리 순간에는 옵저버가 없다 — 요청 수로는 무효화를 잴 수
+ * 잔액은 「폐기 요청」 탭의 조회라 처리 순간에는 옵저버가 없다 — 요청 수로는 무효화를 잴 수
  * 없어 **캐시가 낡은 것으로 표시됐는가**로 잰다.
  */
 const invalidatedBalanceCount = (queryClient: QueryClient): number =>
@@ -5082,7 +5096,7 @@ describe('DisposalIssueScreen — 처리 성공 뒤', () => {
    * **잔액도 함께 무효화한다** — 이 쓰기만 재고를 움직였다. 낡은 상한으로 다음 품의를 올리면
    * **이미 없어진 자재를 폐기하려 한다.**
    *
-   * 잔액 조회는 「품의 발의」 탭의 것이라 처리 순간에는 옵저버가 없다 — 요청 수로는 잴 수 없어
+   * 잔액 조회는 「폐기 요청」 탭의 것이라 처리 순간에는 옵저버가 없다 — 요청 수로는 잴 수 없어
    * **캐시가 낡은 것으로 표시됐는가**로 잰다.
    */
   it('성공 뒤 잔액이 낡은 것으로 표시된다', async () => {

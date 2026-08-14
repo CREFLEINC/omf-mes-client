@@ -197,6 +197,21 @@ describe('SubmitConfirmDialog 창의 규율', () => {
     expect(screen.getByRole('button', { name: t.actions.confirmSubmit })).toBeInTheDocument();
   });
 
+  /**
+   * **통지가 문면으로 지정한 낱말**(#124) — 확인 창의 바닥 버튼은 「상신」이 아니라 **「요청」**이다.
+   *
+   * 나머지 시험은 이 버튼을 `t.actions.confirmSubmit` **키로 조회**해서 값이 무엇이든 늘
+   * 통과한다. 낱말이 통지 이전으로 되돌아가는 것을 잡으려면 **보이는 글자를 직접 무는 자리**가
+   * 하나 있어야 한다 — 짝이 되는 낱말 셋도 각자 그 컨트롤이 서는 시험에 같은 형태로 있다.
+   */
+  it('바닥 버튼의 보이는 글자가 통지 문면 그대로다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('button', { name: t.actions.confirmSubmit })).toHaveTextContent(
+      /^요청$/,
+    );
+  });
+
   it('상신을 누르면 알리고, 계속 작성을 누르면 닫는다', async () => {
     const onConfirm = vi.fn();
     const onClose = vi.fn();

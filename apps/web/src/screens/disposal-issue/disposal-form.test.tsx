@@ -115,7 +115,7 @@ describe('DisposalForm 상신 사유', () => {
     expect(reason).toHaveAccessibleDescription(expect.stringContaining(t.errors.reasonRequired));
   });
 
-  /** 「폐기 사유」(코드)와 「상신 사유」(문장)가 **다른 칸**이다 — 낱말이 비슷해 겹치기 쉽다. */
+  /** 「폐기 사유」(코드)와 「요청 사유」(문장)가 **다른 칸**이다 — 낱말이 비슷해 겹치기 쉽다. */
   it('폐기 사유 코드와 상신 사유가 서로 다른 칸이다', () => {
     renderForm({ codeOptions: FILLED_CODES });
 

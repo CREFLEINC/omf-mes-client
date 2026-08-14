@@ -491,10 +491,10 @@ export const INTERNAL_IDS = [
 ];
 
 /**
- * 「품의 상신」이 만드는 전표. **목록 픽스처와 겹치지 않는 번호**(9504)를 쓴다 —
+ * 「승인 요청」이 만드는 전표. **목록 픽스처와 겹치지 않는 번호**(9504)를 쓴다 —
  * 이미 있는 전표와 같은 번호면 「방금 만든 것」과 「목록에 있던 것」이 구분되지 않는다.
  *
- * **상신 전의 모양이다** — `approvalRequestId`가 오지 않는다. 전표 생성은 전기도 상신도 하지
+ * **승인 요청 전의 모양이다** — `approvalRequestId`가 오지 않는다. 전표 생성은 전기도 요청도 하지
  * 않으므로(`postImmediately: false`) 라인의 원장 라인도 비어 있다.
  */
 export const createdIssueResponseFixture = {
