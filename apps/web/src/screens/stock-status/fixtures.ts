@@ -451,7 +451,8 @@ export const transactionDetailResponse =
         toWarehouseId: 9101,
         toLocationId: 9201,
         toQualityStatusCode: 'SAMPLE_Q_A',
-        toInventoryStatusCode: 'SAMPLE_I_A',
+        /* 재고 상태만 합성값이 아니다 — **계약이 값을 넷으로 못박아** 다른 값은 타입이 막는다. */
+        toInventoryStatusCode: 'AVAILABLE',
         ownershipTypeCode: 'SAMPLE_OWN_A',
         toQtyAfterTransaction: 120,
       },

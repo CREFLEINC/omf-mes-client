@@ -5564,6 +5564,8 @@ export interface paths {
                 query?: {
                     /** @description 코드·명칭 검색 */
                     q?: string;
+                    /** @description 역할로 거른다. ⭐ 폐기 출고 화면이 폐기처리 거래처만 고를 때 쓴다(W-01-06 · W-04-10 · DR-013). */
+                    roleTypeCode?: string;
                     includeInactive?: boolean;
                     page?: number;
                     size?: number;
@@ -6290,6 +6292,109 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/partners/{partnerId}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                partnerId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 거래처 역할 목록
+         * @description 이 거래처가 갖는 역할 전부. W-06-06 「거래처 역할」 탭이 읽는다. 근거: DR-013 확정 Q2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    partnerId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PartnerRole"][];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /**
+         * 거래처 역할 교체
+         * @description W-06-06 「거래처 역할」 탭의 저장. ⭐ 목록을 통째로 교체한다 — 역할은 집합이고 (거래처, 역할)이 유일하다. ⛔ 거래처 본체는 고치지 않는다 — ERP 수신 마스터라 MES 는 읽기만 한다.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    partnerId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PartnerRolesReplace"];
+                };
+            };
+            responses: {
+                /** @description 교체됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PartnerRole"][];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -15167,6 +15272,27 @@ export interface components {
              */
             lastReceivedAt?: string | null;
         };
+        /** @description 거래처 역할. ⭐ 거래처 본체는 ERP 수신 마스터이고 역할은 MES 가 관리한다 — ERP 가 주지 않는 구분을 MES 가 덧붙이는 형태다(W-06-06 「작업자」 탭과 같은 원리). */
+        PartnerRole: {
+            /** @description 거래처 역할. 공급사 · 고객 · 외주처 · 폐기처리 등. 한 거래처가 여러 역할을 가질 수 있다. */
+            roleTypeCode: string;
+            /**
+             * @description 역할 표시명. 화면이 그대로 보인다
+             * @example 폐기처리
+             */
+            roleTypeName?: string | null;
+        };
+        /** @description 거래처 역할 통째 교체. 빈 배열이면 역할을 모두 해제한다. */
+        PartnerRolesReplace: {
+            /**
+             * @description 이 거래처가 갖는 역할 전부. ⭐ 통째로 교체한다 — 목록에 없는 역할은 해제된다. 역할은 집합이라 개별 추가·삭제로 두면 화면이 두 번 부르고 중간 상태가 생긴다.
+             * @example [
+             *       "SUPPLIER",
+             *       "DISPOSAL"
+             *     ]
+             */
+            roleTypeCodes: string[];
+        };
         /** @description 승인 요청. 사유는 비울 수 없다 — 데이터가 NOT NULL 로 강제하고, 결재함 목록에서 이 문장이 요약을 겸한다(approval_request 에 업무 값이 reason 하나뿐이다). 승인 진행 상태를 읽고 결재하는 경로는 app-공통 파일이 갖는다. 근거: W-01-11 §5-6 · W-01-06 §5-7 · W-01-13 §5-5 · 공유계약 J-4 · A-12 보강 */
         ApprovalRequestCreate: {
             /**
@@ -15447,15 +15573,16 @@ export interface components {
              */
             sourceWarehouseId: number;
             /**
-             * @description 도착지 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 도착지 유형. 창고 내 이동은 위치, 공급사 반품은 거래처, 생산 투입은 공정이다. ⭐ 폐기 출고에서 폐기 업체가 있으면 폐기 거래처(DISPOSAL_SITE)를 가리키고, 자체 폐기면 도착지 짝을 통째로 비운다 — 나가서 없어지는 물건에는 도착지가 없다.
              * @example WORK_ORDER
              */
-            destinationTypeCode: string;
+            destinationTypeCode?: string | null;
             /**
              * Format: int64
+             * @description 도착지 대상. destinationTypeCode 가 가리키는 테이블의 식별자다 — 대응표는 그 필드의 주석에 있다. ⭐ 자체 폐기면 유형과 함께 비운다.
              * @example 1001
              */
-            destinationId: number;
+            destinationId?: number | null;
             /**
              * Format: date-time
              * @example 2026-08-06T09:12:00+09:00
@@ -15513,15 +15640,16 @@ export interface components {
              */
             sourceWarehouseId: number;
             /**
-             * @description 도착지 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 도착지 유형. 창고 내 이동은 위치, 공급사 반품은 거래처, 생산 투입은 공정이다. ⭐ 폐기 출고에서 폐기 업체가 있으면 폐기 거래처(DISPOSAL_SITE)를 가리키고, 자체 폐기면 도착지 짝을 통째로 비운다 — 나가서 없어지는 물건에는 도착지가 없다.
              * @example WORK_ORDER
              */
-            destinationTypeCode: string;
+            destinationTypeCode?: string | null;
             /**
              * Format: int64
+             * @description 도착지 대상. destinationTypeCode 가 가리키는 테이블의 식별자다 — 대응표는 그 필드의 주석에 있다. ⭐ 자체 폐기면 유형과 함께 비운다.
              * @example 1001
              */
-            destinationId: number;
+            destinationId?: number | null;
             /**
              * Format: date-time
              * @example 2026-08-06T09:12:00+09:00
@@ -15810,15 +15938,16 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 품질 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다.
              * @example RELEASED
              */
             qualityStatusCode: string;
             /**
-             * @description 재고 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 재고 상태. 가용(AVAILABLE) · 운송중(IN_TRANSIT) · 보류(ON_HOLD) · 차단(BLOCKED) 네 가지다.
              * @example AVAILABLE
+             * @enum {string}
              */
-            inventoryStatusCode: string;
+            inventoryStatusCode: "AVAILABLE" | "IN_TRANSIT" | "ON_HOLD" | "BLOCKED";
             /**
              * Format: int64
              * @description 적치 목적지. 라인마다 다를 수 있다. 근거: W-01-10 §5-6
@@ -15857,15 +15986,16 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 품질 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다.
              * @example RELEASED
              */
             qualityStatusCode: string;
             /**
-             * @description 재고 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 재고 상태. 가용(AVAILABLE) · 운송중(IN_TRANSIT) · 보류(ON_HOLD) · 차단(BLOCKED) 네 가지다.
              * @example AVAILABLE
+             * @enum {string}
              */
-            inventoryStatusCode: string;
+            inventoryStatusCode: "AVAILABLE" | "IN_TRANSIT" | "ON_HOLD" | "BLOCKED";
             /**
              * Format: int64
              * @example 1001
@@ -16660,15 +16790,16 @@ export interface components {
              */
             lotId?: number | null;
             /**
-             * @description 품질 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다.
              * @example RELEASED
              */
             qualityStatusCode?: string | null;
             /**
-             * @description 재고 상태. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 재고 상태. 가용(AVAILABLE) · 운송중(IN_TRANSIT) · 보류(ON_HOLD) · 차단(BLOCKED) 네 가지다.
              * @example AVAILABLE
+             * @enum {string|null}
              */
-            inventoryStatusCode?: string | null;
+            inventoryStatusCode?: "AVAILABLE" | "IN_TRANSIT" | "ON_HOLD" | "BLOCKED" | null;
             /**
              * @description 소유 구분. 묶는 축과 무관하게 항상 채워진다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
              * @example OWNED
@@ -17119,10 +17250,17 @@ export interface components {
              * @example 1001
              */
             fromLocationId?: number | null;
-            /** @example RELEASED */
+            /**
+             * @description 전이 전 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다.
+             * @example RELEASED
+             */
             fromQualityStatusCode?: string | null;
-            /** @example AVAILABLE */
-            fromInventoryStatusCode?: string | null;
+            /**
+             * @description 전이 전 재고 상태. 가용(AVAILABLE) · 운송중(IN_TRANSIT) · 보류(ON_HOLD) · 차단(BLOCKED) 네 가지다.
+             * @example AVAILABLE
+             * @enum {string|null}
+             */
+            fromInventoryStatusCode?: "AVAILABLE" | "IN_TRANSIT" | "ON_HOLD" | "BLOCKED" | null;
             /**
              * Format: int64
              * @example 1001
@@ -17133,10 +17271,17 @@ export interface components {
              * @example 1001
              */
             toLocationId?: number | null;
-            /** @example RELEASED */
+            /**
+             * @description 전이 후 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다.
+             * @example RELEASED
+             */
             toQualityStatusCode?: string | null;
-            /** @example AVAILABLE */
-            toInventoryStatusCode?: string | null;
+            /**
+             * @description 전이 후 재고 상태. 가용(AVAILABLE) · 운송중(IN_TRANSIT) · 보류(ON_HOLD) · 차단(BLOCKED) 네 가지다.
+             * @example AVAILABLE
+             * @enum {string|null}
+             */
+            toInventoryStatusCode?: "AVAILABLE" | "IN_TRANSIT" | "ON_HOLD" | "BLOCKED" | null;
             /** @example OWNED */
             ownershipTypeCode: string;
             /**

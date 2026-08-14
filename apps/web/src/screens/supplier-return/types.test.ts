@@ -42,7 +42,8 @@ const lineResponse: ReceiptLineResponse = {
   receiptQty: 100,
   uomId: 9501,
   qualityStatusCode: 'SAMPLE_QUALITY_A',
-  inventoryStatusCode: 'SAMPLE_INVENTORY_A',
+  /* 재고 상태만 합성값이 아니다 — **계약이 값을 넷으로 못박아** 다른 값은 타입이 막는다. */
+  inventoryStatusCode: 'AVAILABLE',
   destinationLocationId: 9801,
   inventoryTransactionLineId: 9903,
 };

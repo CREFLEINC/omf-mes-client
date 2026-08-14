@@ -10,6 +10,7 @@ import {
   toCodeOptionSets,
   type CodeValueLists,
 } from './code-options';
+import { INVENTORY_STATUS_CODES } from './gr-request';
 
 /** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
 const SAMPLE_CODES: CodeValueLists = {
@@ -39,6 +40,47 @@ describe('자리표시 상수', () => {
     for (const example of ['PURCHASE', 'INBOUND_RECEIPT', 'RELEASED', 'AVAILABLE', 'RETURN']) {
       expect(planted).not.toContain(example);
     }
+  });
+
+  /*
+   * **계약이 재고 상태 값을 넷으로 못박은 뒤에도 자리표시는 비어 있다.**
+   *
+   * 계약이 값을 알게 됐으니 선택지도 채우고 싶어지지만, 채우는 순간 「입고 처리」가 열려
+   * 이 화면의 사용자 흐름이 바뀐다 — 계약 문면의 근거가 「1차 제안안」이라 확정 여부를 아직
+   * 묻는 중이고, 여는 것은 이 회차의 일이 아니다. 아래 짝 방향 단언이 **채웠을 때 실제로
+   * 열린다**는 것을 함께 보여 준다 — 그래서 이 감지기는 비어 있음을 헛통과로 넘기지 않는다.
+   *
+   * 값 목록을 `gr-request.ts`에서 가져오므로 계약이 값을 늘려도 이 감지기가 함께 자란다.
+   */
+  it('계약이 값을 넷으로 좁힌 뒤에도 재고 상태 자리표시가 비어 있고 등록이 잠긴 채다', () => {
+    expect(PLACEHOLDER_GOODS_RECEIPT_CODES.inventoryStatus).toEqual([]);
+    expect(isRequiredCodeListPending(toCodeOptionSets(PLACEHOLDER_GOODS_RECEIPT_CODES))).toBe(true);
+
+    /*
+     * 짝 방향 — **재고 상태 축만 갈라서** 잰다. `SAMPLE_CODES`는 다섯이 이미 차 있어, 그 위에
+     * 값을 얹기만 하면 무엇을 얹어도 통과한다(리뷰 R-M3). 같은 집합에서 이 축만 비우고·채워
+     * 잠금이 그 축 때문에 갈리는지를 본다.
+     */
+    const withoutInventory = toCodeOptionSets({ ...SAMPLE_CODES, inventoryStatus: [] });
+    const withContractCodes = toCodeOptionSets({
+      ...SAMPLE_CODES,
+      inventoryStatus: Object.keys(INVENTORY_STATUS_CODES),
+    });
+
+    expect(isRequiredCodeListPending(withoutInventory)).toBe(true);
+    expect(isRequiredCodeListPending(withContractCodes)).toBe(false);
+
+    /*
+     * 심기는 값이 **계약이 아는 넷 그대로**인지도 잰다. 목록을 여기 한 번 더 적는 것은 중복이
+     * 아니라 그물이다 — `gr-request.ts`의 파생과 갈리면 여기서 멈춘다. 이것이 없으면 위 두 줄은
+     * 「비었나 찼나」만 재고, 무엇을 심었는지는 재지 않는다.
+     */
+    expect(withContractCodes.inventoryStatus.map((option) => option.value)).toEqual([
+      'AVAILABLE',
+      'IN_TRANSIT',
+      'ON_HOLD',
+      'BLOCKED',
+    ]);
   });
 
   it('필수는 넷이고 사유는 그중에 없다', () => {

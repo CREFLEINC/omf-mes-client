@@ -66,7 +66,12 @@ vi.mock('./code-options', async (importOriginal) => {
 const SAMPLE_RECEIPT_TYPE = 'SAMPLE_RECEIPT_TYPE_A';
 const SAMPLE_SOURCE_TYPE = 'SAMPLE_SOURCE_TYPE_A';
 const SAMPLE_QUALITY = 'SAMPLE_QUALITY_A';
-const SAMPLE_INVENTORY = 'SAMPLE_INVENTORY_A';
+/**
+ * 재고 상태만 합성값이 아니다. **계약이 값을 넷으로 못박아** 그 밖의 값으로는 요청 본문이
+ * 만들어지지 않는다(`gr-request.ts`) — 합성값을 쓰면 「입고 처리」가 눌려도 아무것도 나가지
+ * 않아, 이 파일의 쓰기 시험들이 무엇을 재는지 알 수 없게 된다.
+ */
+const SAMPLE_INVENTORY = 'AVAILABLE';
 const SAMPLE_REASON = 'SAMPLE_REASON_A';
 
 const clearCodeLists = (): void => {
@@ -2174,6 +2179,82 @@ describe('GoodsReceiptScreen — 실제로 나가는 요청', () => {
     expect(screen.getByText(t.errors.codeTooLong(50))).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(postRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * **계약이 모르는 재고 상태 코드가 선택지에 실려도 되돌릴 수 없는 쓰기는 나가지 않는다.**
+   *
+   * 값 목록은 확정되면 서버가 준 것을 그대로 옮기는데 계약은 값을 넷으로 좁혔다 — 그 밖의
+   * 값이 오면 조립이 본문을 만들지 않고(`gr-request.ts`), 화면은 그 `null`을 받아 **보내지
+   * 않는다.** 화면 쪽 갈래가 없으면 `null`이 그대로 요청 본문으로 나간다.
+   */
+  it('계약이 모르는 재고 상태 코드로는 요청이 나가지 않는다', async () => {
+    fillCodeLists();
+    codeValues.inventoryStatus = ['SAMPLE_INVENTORY_A'];
+
+    const { user, requests } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+    await chooseOption(user, t.fields.warehouse, WAREHOUSE_LABEL);
+    await chooseOption(user, t.fields.location, LOCATION_LABEL);
+    await chooseOption(user, t.fields.receiptType, SAMPLE_RECEIPT_TYPE);
+    await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
+    await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
+    await chooseOption(user, t.fields.inventoryStatus, 'SAMPLE_INVENTORY_A');
+    await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
+
+    await clickPost(user);
+    /* 짝 양성 — 확인 창은 실제로 열린다. 화면이 막는 자리는 여기가 아니다. */
+    await screen.findByRole('dialog');
+    await confirmPost(user);
+
+    /* 음성 단언을 짝 양성과 같은 시점에 잰다 — 창이 닫힌 뒤에 「나가지 않았다」를 본다. */
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(postRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * **되돌아가는 갈래에서도 앞 성공의 결과 구획을 남기지 않는다**(수명 표 11행).
+   *
+   * 본문이 만들어지지 않아 아무것도 나가지 않았는데 **앞 전표의 번호가 결과 구획에 그대로**
+   * 있으면, 사용자는 방금 누른 처리가 그 번호를 만들었다고 읽는다 — 되돌릴 수 없는 쓰기
+   * 화면에서 가장 나쁜 오해다. 그래서 앞 결과를 비우는 자리가 **되돌아가는 갈래보다 앞**에
+   * 있어야 한다. 이 감지기가 그 차례를 고정한다(리뷰 R-M2).
+   */
+  it('계약이 모르는 코드로 다시 처리하면 앞 성공의 결과 구획이 남지 않는다', async () => {
+    fillCodeLists();
+    codeValues.inventoryStatus = [SAMPLE_INVENTORY, 'SAMPLE_INVENTORY_A'];
+
+    const { user, requests } = renderScreen(allRoutes(), '?ir=9001');
+
+    await openPostPane(user);
+    await fillDraft(user);
+    await clickPost(user);
+    await confirmPost(user);
+
+    /* 선행 양성 — 첫 처리는 실제로 성공했고 결과 구획에 번호가 섰다. */
+    await screen.findByRole('status', { name: t.result.label });
+    expect(screen.getByText('GR-2026-800001')).toBeInTheDocument();
+
+    /* 두 번째 시도 — 이번엔 계약이 모르는 값을 고른다(성공 뒤 초안은 비어 있다 · 수명 표 10행). */
+    await chooseOption(user, t.fields.warehouse, WAREHOUSE_LABEL);
+    await chooseOption(user, t.fields.location, LOCATION_LABEL);
+    await chooseOption(user, t.fields.receiptType, SAMPLE_RECEIPT_TYPE);
+    await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
+    await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
+    await chooseOption(user, t.fields.inventoryStatus, 'SAMPLE_INVENTORY_A');
+    await user.type(screen.getByLabelText(t.fields.receiptDatetime), RECEIPT_DATETIME);
+
+    await clickPost(user);
+    await confirmPost(user);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
+    });
+    /* 짝 방향 — 결과가 사라진 것은 새 전표가 나가서가 아니다. 두 번째 요청은 없다. */
+    expect(postRequests(requests)).toHaveLength(1);
   });
 });
 
