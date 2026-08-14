@@ -10,6 +10,7 @@ import {
   toCodeOptionSets,
   type CodeValueLists,
 } from './code-options';
+import { INVENTORY_STATUS_CODES } from './gr-request';
 
 /** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
 const SAMPLE_CODES: CodeValueLists = {
@@ -39,6 +40,28 @@ describe('자리표시 상수', () => {
     for (const example of ['PURCHASE', 'INBOUND_RECEIPT', 'RELEASED', 'AVAILABLE', 'RETURN']) {
       expect(planted).not.toContain(example);
     }
+  });
+
+  /*
+   * **계약이 재고 상태 값을 넷으로 못박은 뒤에도 자리표시는 비어 있다.**
+   *
+   * 계약이 값을 알게 됐으니 선택지도 채우고 싶어지지만, 채우는 순간 「입고 처리」가 열려
+   * 이 화면의 사용자 흐름이 바뀐다 — 계약 문면의 근거가 「1차 제안안」이라 확정 여부를 아직
+   * 묻는 중이고, 여는 것은 이 회차의 일이 아니다. 아래 짝 방향 단언이 **채웠을 때 실제로
+   * 열린다**는 것을 함께 보여 준다 — 그래서 이 감지기는 비어 있음을 헛통과로 넘기지 않는다.
+   *
+   * 값 목록을 `gr-request.ts`에서 가져오므로 계약이 값을 늘려도 이 감지기가 함께 자란다.
+   */
+  it('계약이 값을 넷으로 좁힌 뒤에도 재고 상태 자리표시가 비어 있고 등록이 잠긴 채다', () => {
+    expect(PLACEHOLDER_GOODS_RECEIPT_CODES.inventoryStatus).toEqual([]);
+    expect(isRequiredCodeListPending(toCodeOptionSets(PLACEHOLDER_GOODS_RECEIPT_CODES))).toBe(true);
+
+    /* 짝 방향 — 계약의 값 넷을 심으면 잠금이 풀린다. 그래서 심지 않는다. */
+    expect(
+      isRequiredCodeListPending(
+        toCodeOptionSets({ ...SAMPLE_CODES, inventoryStatus: Object.keys(INVENTORY_STATUS_CODES) }),
+      ),
+    ).toBe(false);
   });
 
   it('필수는 넷이고 사유는 그중에 없다', () => {

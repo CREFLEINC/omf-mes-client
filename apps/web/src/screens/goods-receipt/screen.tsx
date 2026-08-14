@@ -616,17 +616,20 @@ export const GoodsReceiptScreen = () => {
         return;
       }
 
+      const body = toGoodsReceiptRequest({
+        inboundReceipt,
+        lines: toReceiptLines([line]),
+        draft,
+        /* 발생 시각은 **제출 순간**이다. 순수 함수에 넘겨 그 사실이 인자로 드러나게 한다. */
+        now: new Date(),
+      });
+
+      /* 조립이 마지막으로 거른다 — 계약이 모르는 재고 상태 코드는 화면이 막지 못한다. */
+      if (body === null) return;
+
       /* 실패하면 결과 구획이 비어 있어야 한다(수명 표 11행) — 앞 성공의 번호가 남으면 오해한다. */
       setResult(null);
-      post.write(
-        toGoodsReceiptRequest({
-          inboundReceipt,
-          lines: toReceiptLines([line]),
-          draft,
-          /* 발생 시각은 **제출 순간**이다. 순수 함수에 넘겨 그 사실이 인자로 드러나게 한다. */
-          now: new Date(),
-        }),
-      );
+      post.write(body);
     };
 
     return (

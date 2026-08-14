@@ -13,6 +13,7 @@ import type { IrLineView, IrView, ReceiptDraft } from './types';
  * | 자리 | 값 | 근거 |
  * | --- | --- | --- |
  * | `plantId` | **고른 입하 전표의 값** | 원천 문서가 이 입고의 근거다. 창고에도 `plantId`가 있어 두 값이 다를 수 있는데, 창고에서 끌어오면 사용자가 모르는 채 공장이 바뀐다(계획 결정 8) |
+ * | 라인의 `inventoryStatusCode` | **계약이 정한 값 넷 중 하나** | 계약이 자유 문자열에서 유니온으로 좁혔다. 값이 아니면 본문을 만들지 않는다(아래 `isInventoryStatusCode`) |
  * | `sourceDocumentId` | 고른 입하 전표 번호 | 원천이 그것이다 |
  * | `businessDate` | **입고 일시의 날짜** | 계약이 필수로 요구하는데 산출 규칙(야간조 경계 등)이 정의돼 있지 않다. 실행 시각의 날짜를 쓰지 않는 이유는 어제 받은 자재를 오늘 등록하는 것이 흔하기 때문이다 |
  * | **`occurredAt`** | **싣지 않는다** | **이 요청 스키마에 그 필드가 없다**(실측 — `InboundReceiptCreate`에는 있다). 계약에 없는 키를 보내지 않는다 |
@@ -24,6 +25,31 @@ import type { IrLineView, IrView, ReceiptDraft } from './types';
 
 type GoodsReceiptCreate = components['schemas']['GoodsReceiptCreate'];
 type GoodsReceiptLineCreate = components['schemas']['GoodsReceiptLineCreate'];
+
+/** 계약이 정한 재고 상태 코드. **생성물 타입에서 파생한다** — 손으로 적은 이름을 쓰지 않는다. */
+export type InventoryStatusCode = NonNullable<GoodsReceiptLineCreate['inventoryStatusCode']>;
+
+/**
+ * 계약이 정한 값 넷 — **키가 곧 값이다.**
+ *
+ * 배열로 적으면 계약이 값을 늘리거나 이름을 바꿔도 아무것도 울지 않는다. `Record`로 못박아
+ * **빠짐과 오타를 타입 검사가 잡게** 한다 — 하나를 지우면 「속성이 없다」로, 잘못 적으면
+ * 「그런 속성이 없다」로 컴파일이 멈춘다.
+ *
+ * ⛔ 이 목록은 **계약이 아는 값**이지 화면이 고를 수 있는 값이 아니다. 선택지 자리표시
+ * (`code-options.ts`의 `inventoryStatus: []`)를 이 값으로 채우지 않는다 — 채우면 값 목록이
+ * 확정되지 않은 W-01-10의 등록이 열린다. 그 사실은 `code-options.test.ts`가 잰다.
+ */
+export const INVENTORY_STATUS_CODES = {
+  AVAILABLE: true,
+  IN_TRANSIT: true,
+  ON_HOLD: true,
+  BLOCKED: true,
+} as const satisfies Record<InventoryStatusCode, true>;
+
+/** 계약이 아는 재고 상태 코드인가. 다듬은 뒤의 값을 그대로 받는다 — 「비슷하면 통과」가 없다. */
+const isInventoryStatusCode = (value: string): value is InventoryStatusCode =>
+  Object.hasOwn(INVENTORY_STATUS_CODES, value);
 
 /**
  * 요청에 실릴 라인 한 줄. **`lotId`가 `number`다** — 없을 수 있는 값을 여기까지 들이지 않는다.
@@ -127,6 +153,7 @@ const trimmed = (value: string): string => value.trim();
 const toLine = (
   line: ReceiptLineInput,
   draft: ReceiptDraft,
+  inventoryStatusCode: InventoryStatusCode,
 ): GoodsReceiptLineCreate => ({
   inboundReceiptLineId: line.inboundReceiptLineId,
   itemId: line.itemId,
@@ -134,12 +161,24 @@ const toLine = (
   receiptQty: line.receiptQty,
   uomId: line.uomId,
   qualityStatusCode: trimmed(draft.codes.qualityStatus),
-  inventoryStatusCode: trimmed(draft.codes.inventoryStatus),
+  /* 값 넷 중 하나임이 **호출부에서 이미 확인됐다** — 여기서 다시 좁히면 판정이 두 자리가 된다. */
+  inventoryStatusCode,
   destinationLocationId: Number(draft.location),
 });
 
-export const toGoodsReceiptRequest = (input: GoodsReceiptInput): GoodsReceiptCreate => {
+/**
+ * 본문을 만든다. **계약이 모르는 재고 상태 코드면 만들지 않는다**(`null`).
+ *
+ * 계약이 값을 넷으로 좁혔고(`INVENTORY_STATUS_CODES`) 이 오퍼레이션은 되돌릴 수 없다.
+ * 자리표시가 비어 있는 동안은 화면이 이 갈래에 닿지 못하지만, 값 목록이 차면 바로 닿는다 —
+ * **막는 곳이 화면뿐인 자리에서 마지막으로 서는 것이 이 함수다**(형제 슬라이스
+ * `disposal-issue/issue-request.ts`가 같은 이유로 같은 겹을 둔다).
+ */
+export const toGoodsReceiptRequest = (input: GoodsReceiptInput): GoodsReceiptCreate | null => {
   const { draft } = input;
+  const inventoryStatusCode = trimmed(draft.codes.inventoryStatus);
+
+  if (!isInventoryStatusCode(inventoryStatusCode)) return null;
 
   return {
     receiptTypeCode: trimmed(draft.codes.receiptType),
@@ -151,6 +190,6 @@ export const toGoodsReceiptRequest = (input: GoodsReceiptInput): GoodsReceiptCre
     ...optionalText('reasonCode', draft.codes.reason),
     ...optionalText('remarks', draft.remarks),
     businessDate: toBusinessDate(draft.receiptDatetime),
-    lines: input.lines.map((line) => toLine(line, draft)),
+    lines: input.lines.map((line) => toLine(line, draft, inventoryStatusCode)),
   };
 };

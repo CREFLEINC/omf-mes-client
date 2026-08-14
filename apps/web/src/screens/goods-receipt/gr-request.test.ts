@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { inboundReceipt, inboundReceiptLine } from './fixtures';
 import {
+  INVENTORY_STATUS_CODES,
   toBusinessDate,
   toGoodsReceiptRequest,
   toOffsetDateTime,
@@ -13,6 +14,10 @@ import type { ReceiptDraft } from './types';
 /** 제출 순간. **인자로 넘긴다** — 함수 안에서 시각을 읽으면 고정 시각으로 검사할 수 없다. */
 const NOW = new Date('2026-08-11T14:30:00+09:00');
 
+/**
+ * 다른 코드는 합성값인데 재고 상태만 계약의 값이다. **계약이 값을 넷으로 못박아** 그 밖의
+ * 값으로는 본문이 만들어지지 않기 때문이다 — 합성값을 쓰면 아래 시험 전부가 `null`을 읽는다.
+ */
 const DRAFT: ReceiptDraft = {
   warehouse: '9701',
   location: '9802',
@@ -20,7 +25,7 @@ const DRAFT: ReceiptDraft = {
     receiptType: 'SAMPLE_RECEIPT_TYPE_A',
     sourceDocumentType: 'SAMPLE_SOURCE_TYPE_A',
     qualityStatus: 'SAMPLE_QUALITY_A',
-    inventoryStatus: 'SAMPLE_INVENTORY_A',
+    inventoryStatus: 'AVAILABLE',
     reason: '',
   },
   receiptDatetime: '2026-08-06T09:12',
@@ -34,6 +39,22 @@ const input = (overrides: Partial<GoodsReceiptInput> = {}): GoodsReceiptInput =>
   now: NOW,
   ...overrides,
 });
+
+/**
+ * 본문이 **만들어졌다는 전제**로 읽는다. 만들어지지 않는 갈래는 전용 감지기가 따로 잰다.
+ *
+ * `?.`로 넘기지 않고 던지는 이유는, 전제가 깨지면 그 시험이 조용히 `undefined`를 견주며
+ * 통과할 수 있기 때문이다 — 어느 시험이 왜 무너졌는지가 실패 메시지로 읽혀야 한다.
+ */
+const createdBody = (
+  overrides: Partial<GoodsReceiptInput> = {},
+): NonNullable<ReturnType<typeof toGoodsReceiptRequest>> => {
+  const body = toGoodsReceiptRequest(input(overrides));
+
+  if (body === null) throw new Error('본문이 만들어지지 않았다 — 시험의 전제가 깨졌다');
+
+  return body;
+};
 
 describe('toReceiptLines — 입하 라인을 요청 라인으로 옮긴다', () => {
   /* **M29** — 수량·품목·단위·LOT을 화면이 고치지 않는다. 전량 입고라 입력칸도 없다. */
@@ -117,31 +138,95 @@ describe('toGoodsReceiptRequest — 되돌릴 수 없는 쓰기의 본문', () =
    * 사용자가 모르는 채 공장이 바뀐다 — 원천 문서가 이 입고의 근거다(계획 결정 8).
    */
   it('공장은 고른 입하 전표의 값이다', () => {
-    expect(toGoodsReceiptRequest(input()).plantId).toBe(9201);
+    expect(createdBody().plantId).toBe(9201);
   });
 
   it('원천은 고른 입하 전표를 가리킨다', () => {
-    expect(toGoodsReceiptRequest(input()).sourceDocumentId).toBe(9001);
+    expect(createdBody().sourceDocumentId).toBe(9001);
   });
 
   it('창고와 위치를 번호로 옮긴다', () => {
-    const body = toGoodsReceiptRequest(input());
+    const body = createdBody();
 
     expect(body.warehouseId).toBe(9701);
     expect(body.lines[0]?.destinationLocationId).toBe(9802);
   });
 
   it('머리 코드와 라인 코드가 제자리에 실린다', () => {
-    const body = toGoodsReceiptRequest(input());
+    const body = createdBody();
 
     expect(body.receiptTypeCode).toBe('SAMPLE_RECEIPT_TYPE_A');
     expect(body.sourceDocumentTypeCode).toBe('SAMPLE_SOURCE_TYPE_A');
     expect(body.lines[0]?.qualityStatusCode).toBe('SAMPLE_QUALITY_A');
-    expect(body.lines[0]?.inventoryStatusCode).toBe('SAMPLE_INVENTORY_A');
+    expect(body.lines[0]?.inventoryStatusCode).toBe('AVAILABLE');
+  });
+
+  /*
+   * **값 넷을 전부 지난다.** 하나만 시험하면 목록에서 빠진 값이 있어도 알 수 없다 —
+   * 되풀이의 대상을 `INVENTORY_STATUS_CODES`에서 뽑아, 계약이 값을 늘려 목록이 자라면
+   * 이 시험도 함께 자란다.
+   */
+  it('계약이 정한 값 넷을 모두 그대로 싣는다', () => {
+    for (const code of Object.keys(INVENTORY_STATUS_CODES)) {
+      const body = createdBody({
+        draft: { ...DRAFT, codes: { ...DRAFT.codes, inventoryStatus: code } },
+      });
+
+      expect(body.lines[0]?.inventoryStatusCode).toBe(code);
+    }
+
+    /* 짝 방향 — 목록이 실제로 넷이다. 빈 목록이면 위 되풀이가 아무것도 재지 않고 통과한다. */
+    expect(Object.keys(INVENTORY_STATUS_CODES)).toHaveLength(4);
+  });
+
+  /*
+   * **계약이 재고 상태 코드를 값 넷으로 못박았다**(재생성 실측). 그 밖의 값은 서버가 모르는
+   * 코드이고, 이 오퍼레이션은 되돌릴 수 없다 — 마지막 겹으로 여기서 막는다.
+   *
+   * 지금은 자리표시가 비어 있어 화면에서 이 갈래에 닿지 못하지만 **죽은 가지가 아니다**:
+   * 값 목록이 차는 순간 닿고, 형제 슬라이스(`disposal-issue/issue-request.ts`)가 같은 이유로
+   * 같은 겹을 이미 두고 있으며, 이 시험이 함수를 직접 불러 그 갈래를 실제로 지난다.
+   */
+  it('계약이 정한 값이 아닌 재고 상태 코드면 본문을 만들지 않는다', () => {
+    expect(
+      toGoodsReceiptRequest(
+        input({
+          draft: { ...DRAFT, codes: { ...DRAFT.codes, inventoryStatus: 'SAMPLE_INVENTORY_A' } },
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  /* 비슷하게 생긴 값도 계약의 값이 아니다 — 「비슷하면 통과」로 짜면 여기서 운다. */
+  it('계약 값과 비슷하기만 한 코드도 막는다', () => {
+    for (const lookalike of ['available', 'AVAILABLE_X', ' AVAILABLE X ', 'ON HOLD']) {
+      expect(
+        toGoodsReceiptRequest(
+          input({ draft: { ...DRAFT, codes: { ...DRAFT.codes, inventoryStatus: lookalike } } }),
+        ),
+      ).toBeNull();
+    }
+  });
+
+  it('재고 상태 코드가 비면 본문을 만들지 않는다', () => {
+    expect(
+      toGoodsReceiptRequest(
+        input({ draft: { ...DRAFT, codes: { ...DRAFT.codes, inventoryStatus: '' } } }),
+      ),
+    ).toBeNull();
+  });
+
+  /* 다듬어 판정한다 — 선택지에서 고른 값에 공백이 붙어도 계약의 값이면 실린다. */
+  it('앞뒤 공백이 붙은 계약 값은 다듬어 통과한다', () => {
+    const body = createdBody({
+      draft: { ...DRAFT, codes: { ...DRAFT.codes, inventoryStatus: '  ON_HOLD  ' } },
+    });
+
+    expect(body.lines[0]?.inventoryStatusCode).toBe('ON_HOLD');
   });
 
   it('영업일이 입고 일시에서 나온다', () => {
-    expect(toGoodsReceiptRequest(input()).businessDate).toBe('2026-08-06');
+    expect(createdBody().businessDate).toBe('2026-08-06');
   });
 
   /*
@@ -149,58 +234,52 @@ describe('toGoodsReceiptRequest — 되돌릴 수 없는 쓰기의 본문', () =
    * 있다). 계약에 없는 키를 보내지 않는다.
    */
   it('발생 시각을 싣지 않는다', () => {
-    expect(Object.keys(toGoodsReceiptRequest(input()))).not.toContain('occurredAt');
+    expect(Object.keys(createdBody())).not.toContain('occurredAt');
     /* 짝 방향 — 영업일은 실제로 실린다. */
-    expect(Object.keys(toGoodsReceiptRequest(input()))).toContain('businessDate');
+    expect(Object.keys(createdBody())).toContain('businessDate');
   });
 
   it('입고 일시에 offset이 붙는다', () => {
-    expect(/[+-]\d{2}:\d{2}$/.test(toGoodsReceiptRequest(input()).receiptDatetime)).toBe(true);
+    expect(/[+-]\d{2}:\d{2}$/.test(createdBody().receiptDatetime)).toBe(true);
   });
 
   /* 빈 칸은 키 자체를 싣지 않는다 — 빈 문자열은 「빈 값을 넣었다」로 전표에 남는다. */
   it('사유와 비고가 비면 키를 싣지 않는다', () => {
-    const keys = Object.keys(toGoodsReceiptRequest(input()));
+    const keys = Object.keys(createdBody());
 
     expect(keys).not.toContain('reasonCode');
     expect(keys).not.toContain('remarks');
   });
 
   it('사유와 비고를 넣으면 다듬어 싣는다', () => {
-    const body = toGoodsReceiptRequest(
-      input({
-        draft: {
-          ...DRAFT,
-          codes: { ...DRAFT.codes, reason: 'SAMPLE_REASON_A' },
-          remarks: '  합성 비고  ',
-        },
-      }),
-    );
+    const body = createdBody({
+      draft: {
+        ...DRAFT,
+        codes: { ...DRAFT.codes, reason: 'SAMPLE_REASON_A' },
+        remarks: '  합성 비고  ',
+      },
+    });
 
     expect(body.reasonCode).toBe('SAMPLE_REASON_A');
     expect(body.remarks).toBe('합성 비고');
   });
 
   it('코드의 앞뒤 공백을 다듬어 싣는다', () => {
-    const body = toGoodsReceiptRequest(
-      input({
-        draft: { ...DRAFT, codes: { ...DRAFT.codes, receiptType: '  SAMPLE_RECEIPT_TYPE_A  ' } },
-      }),
-    );
+    const body = createdBody({
+      draft: { ...DRAFT, codes: { ...DRAFT.codes, receiptType: '  SAMPLE_RECEIPT_TYPE_A  ' } },
+    });
 
     expect(body.receiptTypeCode).toBe('SAMPLE_RECEIPT_TYPE_A');
   });
 
   /* 라인은 배열로 만든다(계획 결정 3) — 이번엔 길이 1이지만 부품도 요청도 배열을 다룬다. */
   it('라인을 배열로 만든다', () => {
-    const body = toGoodsReceiptRequest(
-      input({
-        lines: toReceiptLines([
-          inboundReceiptLine(),
-          inboundReceiptLine({ inboundReceiptLineId: 9402, lotId: 9602 }),
-        ]),
-      }),
-    );
+    const body = createdBody({
+      lines: toReceiptLines([
+        inboundReceiptLine(),
+        inboundReceiptLine({ inboundReceiptLineId: 9402, lotId: 9602 }),
+      ]),
+    });
 
     expect(body.lines).toHaveLength(2);
     expect(body.lines.every((line) => line.destinationLocationId === 9802)).toBe(true);

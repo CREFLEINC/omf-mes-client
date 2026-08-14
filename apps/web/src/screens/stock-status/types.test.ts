@@ -68,7 +68,8 @@ describe('toBalanceView — 응답을 화면 타입으로 옮기는 유일한 �
       warehouseId: 9101,
       ownerPartnerId: 9601,
       qualityStatusCode: 'SAMPLE_Q_A',
-      inventoryStatusCode: 'SAMPLE_I_A',
+      /* 재고 상태만 합성값이 아니다 — **계약이 값을 넷으로 못박아** 다른 값은 타입이 막는다. */
+      inventoryStatusCode: 'AVAILABLE',
       lastTransactionAt: '2026-08-06T09:12:00+09:00',
     });
 
@@ -78,7 +79,7 @@ describe('toBalanceView — 응답을 화면 타입으로 옮기는 유일한 �
     expect(view.warehouseId).toBe(9101);
     expect(view.ownerPartnerId).toBe(9601);
     expect(view.qualityStatusCode).toBe('SAMPLE_Q_A');
-    expect(view.inventoryStatusCode).toBe('SAMPLE_I_A');
+    expect(view.inventoryStatusCode).toBe('AVAILABLE');
     expect(view.lastTransactionAt).toBe('2026-08-06T09:12:00+09:00');
   });
 
