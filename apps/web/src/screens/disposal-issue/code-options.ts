@@ -23,7 +23,7 @@ import type { DisposalCodeKey, SelectOption, WarehouseEntry } from './types';
  * | 대상 조회 조건 — 입고 상태 | `status` | 아무것도 막히지 않는다 |
  * | **이력 조건 — 출고 상태** | `issueStatus` | 아무것도 막히지 않는다 |
  * | 창고 선택칸을 좁히는 축 | `DEFECT_WAREHOUSE_TYPE_CODES` | 창고가 좁혀지지 않는다 |
- * | **폐기 요청 정보 — 폐기 거래처** | `PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS` | **거래처를 고를 수 없다**(자체 폐기로는 올릴 수 있다) |
+ * | **폐기 요청 정보 — 폐기 거래처** | `DISPOSAL_PARTNER_ROLE_CODE` | **거래처를 고를 수 없다**(자체 폐기로는 올릴 수 있다) |
  *
  * **표에서 두 줄이 사라졌다**(변경 통지 #124·#128). 「폐기 계정」은 회계 소관이라 MES가 다루지
  * 않기로 확정됐고, 「도착지 유형」은 짝인 도착지 식별자를 공급할 자리가 함께 사라졌다 —
@@ -108,19 +108,22 @@ export const PLACEHOLDER_DISPOSAL_ISSUE_CODES: CodeValueLists = {
 export const DEFECT_WAREHOUSE_TYPE_CODES: readonly string[] = [];
 
 /**
- * 폐기 거래처 선택지 — **이 회차에는 채우는 조회가 없다**(변경 통지 #128 §3).
+ * 폐기 거래처 선택지를 좁히는 **역할 코드 — 값이 아직 확정되지 않았다**(변경 통지 #128 §3).
  *
  * 거래처는 값 목록을 기다리는 **공통코드가 아니라 조회로 오는 마스터**라 위 여섯과 한 통에
  * 담지 않는다. 담으면 「코드 값이 확정되면 열린다」는 규칙이 조회에도 걸린 것처럼 읽히고,
- * 필수 코드 판정이 거래처까지 세게 된다.
+ * 필수 코드 판정이 거래처까지 세게 된다. 그래서 자리표시로 두는 것은 목록이 아니라
+ * **목록을 좁히는 조건 한 줄**이다.
  *
- * 목록을 좁힐 **역할 코드가 아직 확정되지 않아** 살아 있는 조회를 붙이는 것은 뒤 회차의
- * 일이다. 좁히지 않은 조회로 채우면 폐기와 무관한 거래처가 폐기 거래처 선택지로 선다 —
- * 그동안 이 자리는 **비어 있는 것이 사실**이고, 칸은 기존 자리표시 셋과 같은 모양으로 잠긴다.
+ * **이 한 줄이 선택지 조회를 여는 열쇠다**(`lookups.ts`의 `useDisposalPartnerOptions`).
+ * 비어 있는 동안은 조회 자체를 내보내지 않는다 — 빈 값으로 부르면 **좁히지 않은 거래처 전부**가
+ * 폐기 거래처 선택지로 서고, 사용자는 폐기와 무관한 상대를 되돌릴 수 없는 전표에 실을 수 있다.
+ *
+ * 값이 확정되면 **이 한 줄만** 채우면 칸이 저절로 살아난다.
  *
  * ⭐ **비어 있어도 화면은 선다**(#128 §3) — 자체 폐기를 체크하면 거래처 없이 요청할 수 있다.
  */
-export const PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS: readonly SelectOption[] = [];
+export const DISPOSAL_PARTNER_ROLE_CODE: string = '';
 
 const toOptions = (values: readonly string[]): SelectOption[] =>
   values.map((code) => ({ value: code, label: code }));
@@ -185,6 +188,19 @@ export const isDefectWarehouseTypePending = (typeCodes: readonly string[]): bool
  */
 export const isDisposalPartnerListPending = (options: readonly SelectOption[]): boolean =>
   options.length === 0;
+
+/**
+ * 폐기 거래처 목록을 **좁힐 수 있는가.** 참이면 선택지 조회를 아예 내보내지 않는다.
+ *
+ * **공백만인 값은 채워진 것이 아니다.** 그대로 질의에 실으면 서버는 좁힐 근거가 없는 조건을
+ * 받고, 화면은 좁혔다고 믿은 목록을 폐기 거래처 선택지로 세운다 — 좁힘이 실패한 것을
+ * 성공으로 읽는 이 형태가 값 목록 자리표시에서 가장 조용한 결함이다.
+ *
+ * 위 두 판정과 같은 이유로 **코드를 인자로 받는다** — 함수 안에서 상수를 직접 읽으면
+ * 「채워졌을 때 무엇이 달라지는가」를 감지기가 잴 수 없어 자리표시가 죽은 가지가 된다.
+ */
+export const isDisposalPartnerRolePending = (roleTypeCode: string): boolean =>
+  roleTypeCode.trim() === '';
 
 /**
  * 창고 선택지를 폐기 대상 창고 유형으로 좁힌다.

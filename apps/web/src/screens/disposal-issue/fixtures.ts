@@ -222,6 +222,32 @@ export const locationFixtures = [
 ];
 
 /**
+ * 거래처 — **폐기 요청의 도착지**(변경 통지 #128). 번호는 도착지 대역(9500대)을 쓴다.
+ *
+ * **미사용 거래처를 한 건 둔다**(9562). 이 화면은 같은 리소스를 **두 가지로** 부르는데
+ * (선택지는 좁혀 받고 미사용을 빼며, 이름 풀이는 좁히지 않고 미사용까지 받는다), 목록에
+ * 미사용 값이 하나도 없으면 그 차이가 값으로 드러나지 않는다.
+ *
+ * **9563은 목록에 없다** — 이미 저장된 전표가 이 목록 밖 거래처를 가리키는 갈래를 만든다.
+ * 그때 화면은 번호를 대신 내지 않고 「알 수 없음」이라 적는다(`omf-mes#44`·`#47`).
+ */
+export const partnerFixtures = [
+  { partnerId: 9561, partnerCode: 'SAMPLE-PT-01', partnerName: '합성 폐기업체 가', isActive: true },
+  {
+    partnerId: 9562,
+    partnerCode: 'SAMPLE-PT-02',
+    partnerName: '합성 폐기업체 나',
+    isActive: false,
+  },
+];
+
+/** 폐기 거래처 선택지·도착지 표기에 쓰이는 라벨. **「코드 · 이름」**이고 번호가 없다. */
+export const PARTNER_LABEL = 'SAMPLE-PT-01 · 합성 폐기업체 가';
+
+/** 역할 코드 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
+export const SAMPLE_PARTNER_ROLE = 'SAMPLE_PARTNER_ROLE_A';
+
+/**
  * 품목별 잔액 응답. **`onHandQty`와 `availableQty`가 다르다** — 상한이 어느 쪽을 쓰는지
  * 화면 수준에서 갈리게 하려면 두 값이 달라야 한다(감지기 M22).
  *
@@ -275,12 +301,16 @@ export const balanceResponseFixturesByItem: Record<number, BalanceResponse[]> = 
 };
 
 /**
- * 「처리 이력」 탭이 쓰는 출고 전표(= 폐기 품의) 셋. 화면이 다뤄야 하는 까다로운 입력을 담는다.
+ * 「처리 이력」 탭이 쓰는 출고 전표(= 폐기 요청) 셋. 화면이 다뤄야 하는 까다로운 입력을 담는다.
  *
- * - 9501 — **상신됐다**(승인 요청 9521). 값이 전부 채워져 있다
- * - 9502 — **미상신**이다(`approvalRequestId` 없음). 사유 코드도 없고 ERP 적재 값도 오지 않았다
- *   — 세 「없음」 갈래를 한 건이 함께 만든다
- * - 9503 — 창고 번호가 **참조 목록에 없다.** 「목록에 없음」 갈래를 실제 값으로 만든다
+ * - 9501 — **상신됐다**(승인 요청 9521). 값이 전부 채워져 있고 **도착지가 목록에 있는 거래처**다
+ * - 9502 — **미상신**이다(`approvalRequestId` 없음). 사유 코드도 없고 ERP 적재 값도 오지 않았으며
+ *   **도착지 짝이 통째로 없다**(= 자체 폐기) — 네 「없음」 갈래를 한 건이 함께 만든다
+ * - 9503 — 창고 번호가 **참조 목록에 없다.** 「목록에 없음」 갈래를 실제 값으로 만들고,
+ *   **도착지 번호도 목록 밖**이라 이름을 풀지 못하는 갈래를 함께 만든다
+ *
+ * **도착지 셋이 서로 다른 갈래를 만든다**(변경 통지 #128) — 짝 있음·짝 없음·못 푼 이름.
+ * ③ 구획이 그 셋을 각각 다른 글자로 말하는지가 이 대비의 값어치다.
  */
 export const goodsIssueFixtures: IssueView[] = [
   {
@@ -291,6 +321,8 @@ export const goodsIssueFixtures: IssueView[] = [
     issuedAt: '2026-08-08T14:20:00+09:00',
     statusCode: 'SAMPLE_GI_STATUS_A',
     reasonCode: 'SAMPLE_GI_REASON_A',
+    destinationTypeCode: 'SAMPLE_DEST_TYPE_A',
+    destinationId: 9561,
     approvalRequestId: 9521,
     erpMessageQueued: true,
   },
@@ -302,6 +334,9 @@ export const goodsIssueFixtures: IssueView[] = [
     issuedAt: '2026-08-09T10:05:00+09:00',
     statusCode: 'SAMPLE_GI_STATUS_B',
     reasonCode: null,
+    /* 자체 폐기 — **짝이 통째로 없다.** 한쪽만 있는 전표는 서버가 만들지 않는다(#128 ⛔). */
+    destinationTypeCode: null,
+    destinationId: null,
     approvalRequestId: null,
     erpMessageQueued: null,
   },
@@ -313,6 +348,8 @@ export const goodsIssueFixtures: IssueView[] = [
     issuedAt: '2026-08-10T08:40:00+09:00',
     statusCode: 'SAMPLE_GI_STATUS_A',
     reasonCode: 'SAMPLE_GI_REASON_B',
+    destinationTypeCode: 'SAMPLE_DEST_TYPE_A',
+    destinationId: 9563,
     approvalRequestId: 9522,
     erpMessageQueued: false,
   },
@@ -321,17 +358,19 @@ export const goodsIssueFixtures: IssueView[] = [
 /**
  * 목록 응답에 실리는 모양. **화면이 버리는 값이 응답에 있어야** 옮기기가 실제로 고르는지 보인다.
  *
- * 「없음」인 세 필드는 **키 자체를 두지 않는다** — 계약이 선택으로 둔 필드는 널로도 오지만
+ * 「없음」인 다섯 필드는 **키 자체를 두지 않는다** — 계약이 선택으로 둔 필드는 널로도 오지만
  * 아예 오지 않기도 하고, 옮기기가 두 갈래를 다 없음으로 접는지 여기서 실제로 갈린다.
+ * **도착지 짝도 그 규칙을 따른다**(변경 통지 #128 — 자체 폐기는 「둘 다 보내지 않는다」).
  */
 export const goodsIssueResponseFixtures = goodsIssueFixtures.map((view) => ({
   ...view,
   sourceDocumentTypeCode: 'SAMPLE_SRC_TYPE_A',
   sourceDocumentId: 9001,
-  destinationTypeCode: 'SAMPLE_DEST_TYPE_A',
-  destinationId: 9561,
   replacementExpected: false,
   ...(view.reasonCode === null ? { reasonCode: undefined } : {}),
+  ...(view.destinationTypeCode === null
+    ? { destinationTypeCode: undefined, destinationId: undefined }
+    : {}),
   ...(view.approvalRequestId === null ? { approvalRequestId: undefined } : {}),
   ...(view.erpMessageQueued === null ? { erpMessageQueued: undefined } : {}),
 }));
@@ -478,6 +517,8 @@ export const INTERNAL_IDS = [
   '9551',
   '9552',
   '9561',
+  '9562',
+  '9563',
   '9601',
   '9602',
   '9603',

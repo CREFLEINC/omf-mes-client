@@ -2,11 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import type { PostApproval, Submission } from './approval-progress';
-import {
-  PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
-  toCodeOptionSets,
-  type CodeValueLists,
-} from './code-options';
+import { toCodeOptionSets, type CodeValueLists } from './code-options';
 import type { DisposalReadyState } from './disposal-selection';
 import type { DisposalDraft, SelectOption } from './types';
 import { EMPTY_DISPOSAL_DRAFT } from './types';
@@ -56,6 +52,12 @@ const UNDECIDED_DRAFT: DisposalDraft = {
   disposalPartnerId: '',
 };
 
+/**
+ * 폐기 거래처 선택지가 **비어 있는 지금의 사실** — 역할 코드가 미확정이라 조회가 나가지 않는다.
+ * 상수를 여기 두는 이유는 「비어 있음」이 값으로 읽히게 하기 위해서다.
+ */
+const NO_PARTNER_OPTIONS: SelectOption[] = [];
+
 /** 폐기 거래처 선택지가 채워진 뒤의 모양. **지금의 사실이 아니라 전환을 재기 위한 입력**이다. */
 const FILLED_PARTNERS: SelectOption[] = [
   { value: '9251', label: 'SAMPLE-PARTNER-01 · 합성 폐기업체 가' },
@@ -84,7 +86,8 @@ const block = (
   draft: DisposalDraft = FILLED_DRAFT,
   lists: CodeValueLists = FILLED_LISTS,
   selection: DisposalReadyState = READY,
-  disposalPartnerOptions: readonly SelectOption[] = PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
+  /* 지금의 사실 — 역할 코드가 미확정이라 선택지 조회가 나가지 않아 목록이 비어 있다. */
+  disposalPartnerOptions: readonly SelectOption[] = NO_PARTNER_OPTIONS,
 ): string | null =>
   disposalBlockReason({
     codeOptions: toCodeOptionSets(lists),
@@ -423,16 +426,30 @@ describe('postBlockReason — 처리를 잠글 근거', () => {
    */
   it('잠그는 갈래가 여전히 둘뿐이다 — 도착지 축으로 새로 잠그지 않는다', () => {
     /*
-     * **갈래 목록을 타입에서 파생한다**(리뷰 Nit N3). 손으로 적으면 유니온에 갈래가 늘었을 때
-     * 「전수」가 조용히 전수가 아니게 된다 — `satisfies`가 빠짐과 오타를 타입 검사로 잡는다.
+     * **갈래 목록을 타입에서 파생한다**(리뷰 Nit N3 · 재리뷰 Minor R-M1).
+     *
+     * ⚠ 앞선 판은 배열에 `satisfies Submission['kind'][]`를 붙이고 「빠짐과 오타를 잡는다」고
+     * 적었는데, **`satisfies`는 빠짐을 잡지 못한다** — 원소가 유니온에 속하는지만 본다.
+     * 실측(이 회차): `PostApproval`에 다섯째 갈래를 더하고 `pnpm typecheck`를 돌렸더니
+     * **5패키지 전부 Done**이었다. 목록은 넷 그대로인데 아무도 울지 않는다.
+     *
+     * **키 맵을 거치면 빠짐이 오류가 된다.** `Record<K, true>`는 유니온의 모든 키를 요구하므로
+     * 갈래가 늘면 그 자리에서 타입 검사가 멈춘다(같은 실측에서 확인). 「전수」라고 적은 시험이
+     * 조용히 부분 순회가 되는 일을 이 형태가 막는다.
      */
-    const submissions = ['notSubmitted', 'submitted', 'unusable'] satisfies Submission['kind'][];
-    const approvals = [
-      'judgePending',
-      'notApproved',
-      'approved',
-      'unread',
-    ] satisfies PostApproval['kind'][];
+    const ALL_SUBMISSIONS: Record<Submission['kind'], true> = {
+      notSubmitted: true,
+      submitted: true,
+      unusable: true,
+    };
+    const ALL_APPROVALS: Record<PostApproval['kind'], true> = {
+      judgePending: true,
+      notApproved: true,
+      approved: true,
+      unread: true,
+    };
+    const submissions = Object.keys(ALL_SUBMISSIONS) as Submission['kind'][];
+    const approvals = Object.keys(ALL_APPROVALS) as PostApproval['kind'][];
     const locked: string[] = [];
 
     for (const submission of submissions) {

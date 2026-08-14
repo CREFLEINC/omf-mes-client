@@ -18,10 +18,19 @@ export interface DisposalFormProps {
    */
   codeOptions: CodeOptionSets;
   /**
-   * 폐기 거래처 선택지. **화면이 넘긴다** — 코드 셋과 같은 이유다. 비어 있으면 칸이 잠기고
-   * 「선택지 준비 중」이 뜬다. 값 목록을 채우는 조회는 뒤 회차가 붙인다.
+   * 폐기 거래처 선택지. **화면이 넘긴다** — 코드 셋과 같은 이유다. 비어 있으면 칸이 잠긴다.
+   * 목록은 역할 코드로 좁힌 조회가 채운다(`lookups.ts`의 `useDisposalPartnerOptions`).
    */
   disposalPartnerOptions: readonly SelectOption[];
+  /**
+   * 그 선택칸의 한계 안내 — **화면이 정해 넘긴다**(조건 줄의 창고 칸과 같은 형태).
+   *
+   * 칸이 비는 사정이 셋인데(역할 코드 미확정 · 조회 실패 · 목록 잘림) **뒤 둘은 조회를 소유한
+   * 화면만 안다.** 부품이 목록 길이로 사유를 지어내면 「불러오지 못했는데 준비 중이라 적힌」
+   * 칸이 되고, 사용자는 기다리면 열릴 것으로 읽는다. **자체 폐기로 잠긴 사유만 이 부품이
+   * 안다** — 그 값은 초안에 있다.
+   */
+  disposalPartnerNote?: string;
   /** 계약 필드 이름으로 매긴 오류. 화면이 잡은 것과 서버가 준 것이 여기서 합쳐져 온다. */
   fieldErrors: Record<string, string>;
   /** 전송 중인가. **첫째 겹**이다 — 핸들러 가드(둘째 겹)와 짝이다. */
@@ -81,6 +90,7 @@ export const DisposalForm = ({
   values,
   codeOptions,
   disposalPartnerOptions,
+  disposalPartnerNote,
   fieldErrors,
   isLocked,
   onChangeCode,
@@ -96,13 +106,13 @@ export const DisposalForm = ({
   const issuedError = fieldErrors.issuedAt;
 
   /*
-   * 선택칸이 잠기는 사유가 **둘**이라 안내도 둘이다 — 사용자가 정한 결과(자체 폐기)와
-   * 화면의 사정(선택지 준비 중)은 할 수 있는 조치가 다르다. 같은 문구로 뭉치면 체크를
-   * 풀어도 열리지 않는 칸으로 읽는다. **체크가 앞이다** — 그때는 준비 여부가 뜻이 없다.
+   * 선택칸의 안내가 **둘로 갈린다** — 사용자가 정한 결과(자체 폐기)와 목록 쪽 사정(역할 코드
+   * 미확정 · 조회 실패 · 잘림)은 할 수 있는 조치가 다르다. 같은 문구로 뭉치면 체크를 풀어도
+   * 열리지 않는 칸으로 읽는다. **체크가 앞이다** — 그때는 목록 사정이 뜻이 없다.
+   *
+   * 목록 쪽 사정은 **조회를 소유한 화면이 정해 넘긴다**(`disposalPartnerNote`).
    */
-  const partnerNote = values.isSelfDisposal
-    ? t.form.selfDisposalChosen
-    : codeNote(disposalPartnerOptions);
+  const partnerNote = values.isSelfDisposal ? t.form.selfDisposalChosen : disposalPartnerNote;
 
   /**
    * 코드 칸 셋은 모양이 같다 — 선택지·안내·자리표시·오류를 같은 규칙으로 만든다.

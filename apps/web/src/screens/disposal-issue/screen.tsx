@@ -25,10 +25,11 @@ import {
 import { ApprovalProgressPane, type ApprovalProgressState } from './approval-progress-pane';
 import {
   DEFECT_WAREHOUSE_TYPE_CODES,
+  DISPOSAL_PARTNER_ROLE_CODE,
   isDefectWarehouseTypePending,
+  isDisposalPartnerRolePending,
   narrowToDefectWarehouses,
   PLACEHOLDER_DISPOSAL_ISSUE_CODES,
-  PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
   toCodeOptionSets,
 } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
@@ -85,16 +86,18 @@ import {
   describeReference,
   lookupNote,
   toReference,
+  useDisposalPartnerOptions,
   useItemOptions,
   useLocationOptions,
   useLotOptions,
+  usePartnerNames,
   useUomOptions,
   useWarehouseOptions,
 } from './lookups';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { PostConfirmDialog, type PostReasonSummary } from './post-confirm-dialog';
-import { PostPane } from './post-pane';
+import { describeIssueDestination, PostPane } from './post-pane';
 import { toPostRequest } from './post-request';
 import { PostResultPane } from './post-result-pane';
 import {
@@ -331,9 +334,14 @@ export const DisposalIssueScreen = () => {
    * 늘 같은 값을 되풀이하고, 언젠가 한쪽만 고쳐져 비대칭이 생긴다.
    *
    * ⚠ **이 표의 낱말은 화면 문구를 따른다**(#124 재리뷰 R1 — 열 이름만 바뀌고 칸이 남았던
-   * 자리를 이 회차에 맞췄다). 「품의 고르기」·「상신 성공/실패」·「상신분」은 표 안에서 각각
-   * 「폐기 요청 고르기」·「승인 요청 성공/실패」·「승인 요청분」이다. **식별자·파일명은 그대로다** —
-   * 통지가 바꾼 것은 사람에게 보이는 낱말이고, 이 표는 그 낱말로 화면을 서술한다.
+   * 자리를 이 회차에 맞췄다). 「품의 고르기」·「상신 성공/실패」는 표 안에서 각각 「폐기 요청
+   * 고르기」·「승인 요청 성공/실패」다. **식별자·파일명은 그대로다** — 통지가 바꾼 것은 사람에게
+   * 보이는 낱말이고, 이 표는 그 낱말로 화면을 서술한다.
+   *
+   * ⚠ **「배너」 칸의 이름은 그 배너를 세운 조작을 가리킨다**(검증 r2 관찰 ⓑ). 셋을 갈라 쓴다 —
+   * **등록분**(발의 탭의 「승인 요청」 연쇄) · **재요청분**(이력 탭의 「재요청」) · **처리분**
+   * (「기타출고 처리」). 9~11행이 거두는 것은 **이력 탭의 두 배너**라 「재요청분·처리분」이고,
+   * 앞서 쓰던 「승인 요청분」은 발의 탭의 등록분과 낱말이 겹쳐 어느 배너인지 가릴 수 없었다.
    *
    * **「폐기」 열이 요청 사유를 함께 담는다**(승인 기록 정정 1-1). 계획은 사유를 이력 탭에만
    * 두었으나 조작이 한 버튼이 되면서 사유가 「폐기 요청」 탭으로 왔다 — 매인 대상이 **고른
@@ -354,9 +362,9 @@ export const DisposalIssueScreen = () => {
    * | 6 | 줄 고르기·수량 입력 | 유지 | 유지 | 바뀐다 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 | **유지** |
    * | 7 | 폐기 정보 입력 | 유지 | 유지 | 유지 | 바뀐다 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 | **유지** |
    * | 8 | **탭 전환** | 유지 | **유지** | **유지** | **유지** | 유지 | **유지** | **유지** | **유지** | **유지** | **닫는다** | 유지 |
-   * | 9 | 이력 조건 변경·조회·초기화·쪽 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **비운다** | **비운다** | 유지 | **비운다** | 닫는다 | 승인 요청분·처리분만 비운다 |
-   * | 10 | 폐기 요청 고르기·해제 | 유지 | 유지 | 유지 | 유지 | 유지 | 넣고 뺀다 | **비운다** | 유지 | **비운다** | 닫는다 | 승인 요청분·처리분만 비운다 |
-   * | 11 | **출고 상세가 404** | 유지 | 유지 | 유지 | 유지 | 유지 | **비운다** | 비운다 | 유지 | 비운다 | 닫는다 | 승인 요청분·처리분만 비운다 |
+   * | 9 | 이력 조건 변경·조회·초기화·쪽 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **비운다** | **비운다** | 유지 | **비운다** | 닫는다 | 재요청분·처리분만 비운다 |
+   * | 10 | 폐기 요청 고르기·해제 | 유지 | 유지 | 유지 | 유지 | 유지 | 넣고 뺀다 | **비운다** | 유지 | **비운다** | 닫는다 | 재요청분·처리분만 비운다 |
+   * | 11 | **출고 상세가 404** | 유지 | 유지 | 유지 | 유지 | 유지 | **비운다** | 비운다 | 유지 | 비운다 | 닫는다 | 재요청분·처리분만 비운다 |
    * | 12 | 사유 입력 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | 유지 | 유지 | 유지 | **유지** |
    * | 13 | 목록·상세·참조·잔액·승인 요청 응답 도착 | 유지 | 유지 | **건드리지 않는다** | **건드리지 않는다** | 유지 | 유지 | **건드리지 않는다** | 유지 | 유지 | 유지 | 유지 |
    * | 14 | **다시 조회**(새로고침) | 유지 | 유지 | **유지** | **유지** | 유지 | 유지 | **유지** | 유지 | 유지 | 유지 | 유지 |
@@ -542,6 +550,28 @@ export const DisposalIssueScreen = () => {
    * **없는 창고의 조건으로 요청이 나간다.**
    */
   const locations = useLocationOptions(lineWarehouseId);
+
+  /*
+   * 폐기 거래처는 **같은 리소스를 두 가지로 부른다**(변경 통지 #128 · `omf-mes#47`).
+   *
+   * | 조회 | 좁히는가 | 어디에 쓰나 | 언제 부르나 |
+   * | --- | :-: | --- | --- |
+   * | 선택지 | **역할 코드로 좁힌다** | 발의 폼의 「폐기 거래처」 칸 | 입고 전표를 고른 뒤 · **역할 코드가 있을 때만** |
+   * | 이름 풀이 | **좁히지 않는다** | ③ 구획의 도착지 표기 | 고른 폐기 요청에 도착지가 **있을 때만** |
+   *
+   * ⛔ **좁힌 조회로 이름을 풀지 않는다.** 이미 저장된 전표는 지금의 역할 좁힘 밖 거래처를
+   * 가리킬 수 있고(역할은 회수될 수 있다), 그때 좁힌 목록으로 풀면 정상 도착지가 「알 수
+   * 없음」으로 찍힌다 — 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
+   */
+  const disposalPartners = useDisposalPartnerOptions(
+    DISPOSAL_PARTNER_ROLE_CODE,
+    isDisposalTab && selectedReceiptId !== null,
+  );
+
+  /* 자체 폐기 전표에는 **풀 이름이 없다** — 도착지가 있을 때만 부른다. */
+  const partnerNames = usePartnerNames(
+    isHistoryTab && (issueDetailData?.issue.destinationId ?? null) !== null,
+  );
 
   /*
    * 재고 잔액은 **폐기 수량의 상한**을 만드는 데만 쓴다 — 「폐기 요청」 탭에서만 쓰인다.
@@ -1306,6 +1336,27 @@ export const DisposalIssueScreen = () => {
   const codeOptions = toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES);
 
   /**
+   * 폐기 거래처 선택지 — **조회가 준 것을 그대로 넘긴다**(변경 통지 #128).
+   *
+   * 역할 코드가 비어 있는 동안은 조회가 나가지 않아 빈 목록이고, 그 사실이 칸의 잠금과
+   * 「승인 요청」의 잠금 사유를 함께 가른다. **자리표시 상수를 부품이 직접 읽지 않는 것**과
+   * 같은 이유로 화면이 넘긴다 — 한 줄을 채웠을 때 화면이 달라지는 것을 화면 수준에서 잰다.
+   */
+  const disposalPartnerOptions = disposalPartners.entries;
+
+  /**
+   * 그 선택칸의 한계 안내. **못 불러온 것이 먼저다** — 목록을 받지도 못했는데 「준비 중」이라
+   * 말하면 사용자가 기다리면 열릴 것으로 읽는다. 창고 칸과 같은 차례이고 같은 이유다.
+   *
+   * 역할 코드가 채워지고 조회가 성공하면 **셋 다 사라진다**.
+   */
+  const disposalPartnerNote =
+    lookupNote(disposalPartners) ??
+    (isDisposalPartnerRolePending(DISPOSAL_PARTNER_ROLE_CODE)
+      ? messages.pendingCode.note
+      : undefined);
+
+  /**
    * 표가 그릴 줄. **판정을 여기서 만들지 않는다**(감지기 M24·M31) — 고를 수 있는가·골라졌는가·
    * 상한을 넘었는가는 전부 `disposal-selection.ts` 한 곳에서 나오고, 표와 요약이 같은 결과를 본다.
    *
@@ -1447,21 +1498,19 @@ export const DisposalIssueScreen = () => {
     draft: disposalDraft,
     selection: selection.ready,
     /* 잠금 사유가 두 갈래로 갈리는 근거 — 고를 것이 있는가 없는가(#128 §4). */
-    disposalPartnerOptions: PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
+    disposalPartnerOptions: disposalPartnerOptions,
   });
 
   /**
    * 폐기한 물건이 어디로 가는가 — **확인 창과 요청 본문이 같은 판정에서 나온다.**
    *
-   * 고른 거래처의 이름은 선택지에서 푼다. 지금은 선택지가 비어 있어 닿지 않는 갈래이지만,
-   * 이름을 **선택지에서** 푸는 것이 규칙이다 — 창이 자기 이름표를 따로 만들면 사용자가 고를 때
+   * 고른 거래처의 이름은 **선택지에서** 푼다 — 창이 자기 이름표를 따로 만들면 사용자가 고를 때
    * 본 글자와 확인 창의 글자가 갈린다.
    */
   const disposalDestination = readDisposalDestination(disposalDraft);
   const disposalPartnerLabel =
-    PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS.find(
-      (option) => option.value === disposalDraft.disposalPartnerId,
-    )?.label ?? null;
+    disposalPartnerOptions.find((option) => option.value === disposalDraft.disposalPartnerId)
+      ?.label ?? null;
 
   /** 버릴 것이 있는가. **두 초안을 함께 본다** — 한쪽만 보면 나머지가 확인 없이 사라진다. */
   const hasDraft = hasAnyLineDraftValue(lineDraft) || hasAnyDisposalDraftValue(disposalDraft);
@@ -1516,8 +1565,11 @@ export const DisposalIssueScreen = () => {
      * 출고 전표가 아니라 입고 축**을 다시 읽는다. 그것이 이 파일이 `reloadRegisterTarget`
      * 주석에 스스로 금지 형태로 적어 둔 「눌러도 풀리지 않는 「최신 불러오기」」다.
      *
-     * 거두는 벌은 **「입력 지우기」와 같다**(`discardDrafts`) — 둘 다 「앞서 한 시도를 통째로
-     * 물린다」이기 때문이다. **나가는 중인 쓰기는 끊지 않는다**(`resetIfIdle` · `omf-mes#96`).
+     * 거두는 벌은 **「입력 지우기」(`discardDrafts`)와 같되 매임 이름 한 줄만 다르다** — 둘 다
+     * 「앞서 한 시도를 통째로 물린다」이지만, 저쪽은 `setChainTargetKey(null)`을 **포함해** 다섯을
+     * 거두고 여기는 그 한 줄을 **일부러 뺀** 넷이다(바로 아래 문단이 그 이유다). 베낄 때 그
+     * 줄까지 가져오면 아래 `resetIfIdle` 둘이 앵커를 잃는다 — 실측으로 확인한 자리다.
+     * **나가는 중인 쓰기는 끊지 않는다**(`resetIfIdle` · `omf-mes#96`).
      *
      * **매임 이름은 여기서 비우지 않는다.** 그것은 「이 되먹임이 지금 보고 있는 대상의
      * 것인가」를 가르는 축이지 되먹임을 **거두는** 수단이 아니다 — 이름만 비우면 훅에는 오류가
@@ -1876,7 +1928,8 @@ export const DisposalIssueScreen = () => {
             <DisposalForm
               values={disposalDraft}
               codeOptions={codeOptions}
-              disposalPartnerOptions={PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS}
+              disposalPartnerOptions={disposalPartnerOptions}
+              disposalPartnerNote={disposalPartnerNote}
               fieldErrors={formFieldErrors}
               isLocked={isLocked}
               onChangeCode={(key: DisposalCodeKey, value) => {
@@ -2205,6 +2258,12 @@ export const DisposalIssueScreen = () => {
             <PostPane
               approval={postApproval}
               blockReason={postBlock}
+              /*
+               * **그 전표가 어디로 가는가**(변경 통지 #128 · 완료 조건 C26). 이름은 **좁히지
+               * 않은** 참조에서 푼다 — 좁힌 선택지로 풀면 좁힘 밖 거래처가 「알 수 없음」이 된다.
+               * 부품은 글자만 받는다(제목줄이 창고 이름을 받는 것과 같은 형태).
+               */
+              destination={describeIssueDestination(issueDetailData.issue, partnerNames)}
               isLocked={isLocked}
               onOpenConfirm={openPostConfirm}
             />

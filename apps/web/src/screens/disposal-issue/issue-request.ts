@@ -95,9 +95,15 @@ export const readDisposalDestination = (
  * 나가는 본문에는 **짝 두 키가 실린다** — 확인한 글자와 나가는 값이 표시 층에서 어긋난다.
  * 못 푼 이름은 이 슬라이스가 이미 정해 둔 낱말(`values.unknown`)로 낸다.
  *
- * **갈래를 빠짐없이 센다.** 마지막 줄의 `never` 대입이 갈래가 늘었을 때 **타입으로** 잡는다 —
+ * **갈래를 빠짐없이 센다.** 마지막의 `never` 대입이 갈래가 늘었을 때 **타입으로** 잡는다 —
  * `if/else`로 두면 새 갈래가 조용히 거래처로 접힌다(짝인 `toDestinationFields`는 이미 타입이
  * 잡는 자리라, 표시 쪽만 느슨하면 비대칭이 된다).
+ *
+ * ⚠ **판정만 타입에 맡기고 값은 안전한 것을 낸다**(선행 회차 재리뷰 R-N2). 앞선 판은
+ * `return destination satisfies never`였는데, 그 형태는 불변식이 깨진 순간 **문자열이 아니라
+ * 객체를 반환한다** — 반환 타입은 `string`인데 값은 객체라 확인 창이 렌더 시점에 터진다.
+ * 지금은 값이 같은 모듈에서만 만들어져 도달 불가하지만, 값이 바깥(응답·저장소)에서 오게 되면
+ * 그 순간이 온다. 빈 글자는 「정하지 않음」과 같은 값이고 창은 그것을 이미 다룰 줄 안다.
  */
 export const describeDisposalDestination = (
   destination: DisposalDestination | null,
@@ -107,7 +113,9 @@ export const describeDisposalDestination = (
   if (destination.kind === 'self') return t.values.selfDisposal;
   if (destination.kind === 'partner') return partnerLabel ?? t.values.unknown;
 
-  return destination satisfies never;
+  destination satisfies never;
+
+  return '';
 };
 
 /**

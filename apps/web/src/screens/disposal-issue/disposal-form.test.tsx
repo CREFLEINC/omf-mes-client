@@ -3,11 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  PLACEHOLDER_DISPOSAL_ISSUE_CODES,
-  PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
-  toCodeOptionSets,
-} from './code-options';
+import { PLACEHOLDER_DISPOSAL_ISSUE_CODES, toCodeOptionSets } from './code-options';
 import { DisposalForm, type DisposalFormProps } from './disposal-form';
 import { EMPTY_DISPOSAL_DRAFT } from './types';
 import { CODE_FIELD_NAMES } from './validation';
@@ -31,12 +27,25 @@ const noop = (): void => {
 /** 폐기 거래처 선택지가 채워진 뒤의 모양 — **전환을 재기 위한 입력**이다. */
 const FILLED_PARTNERS = [{ value: '9251', label: 'SAMPLE-PARTNER-01 · 합성 폐기업체 가' }];
 
+/**
+ * 선택지가 살아난 뒤의 두 값 — **목록과 안내가 함께 바뀐다.**
+ *
+ * 목록만 채우고 안내를 그대로 두면 「고를 수 있는데 준비 중이라 적힌」 칸이 된다. 두 값의
+ * 짝을 여기 한 곳에 두어 시험마다 한쪽만 바꾸는 일이 없게 한다.
+ */
+const filledPartners = (): Partial<DisposalFormProps> => ({
+  disposalPartnerOptions: FILLED_PARTNERS,
+  disposalPartnerNote: undefined,
+});
+
 const renderForm = (overrides: Partial<DisposalFormProps> = {}) =>
   render(
     <DisposalForm
       values={EMPTY_DISPOSAL_DRAFT}
       codeOptions={toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES)}
-      disposalPartnerOptions={PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS}
+      disposalPartnerOptions={[]}
+      /* 지금의 사실 — 역할 코드가 미확정이라 선택지 조회가 나가지 않는다(화면이 정해 넘긴다). */
+      disposalPartnerNote={messages.pendingCode.note}
       fieldErrors={{}}
       isLocked={false}
       onChangeCode={noop}
@@ -129,7 +138,7 @@ describe('DisposalForm 도착지', () => {
 
   /** **전환의 둘째 방향** — 선택지가 차면 열리고 「준비 중」 안내가 사라진다. */
   it('선택지가 차면 열리고 안내를 거둔다', () => {
-    renderForm({ disposalPartnerOptions: FILLED_PARTNERS });
+    renderForm(filledPartners());
 
     const partner = screen.getByLabelText(t.formFields.disposalPartner);
 
@@ -137,6 +146,37 @@ describe('DisposalForm 도착지', () => {
     expect(partner).not.toHaveAccessibleDescription(
       expect.stringContaining(messages.pendingCode.note),
     );
+  });
+
+  /**
+   * **안내는 화면이 정해 넘긴다**(조건 줄의 창고 칸과 같은 형태).
+   *
+   * 선택칸이 비는 사정이 셋인데(역할 코드 미확정 · 조회 실패 · 목록 잘림) **뒤 둘은 조회를
+   * 소유한 화면만 안다.** 부품이 목록 길이로 사유를 지어내면 「불러오지 못했는데 준비 중이라
+   * 적힌」 칸이 되고, 사용자는 기다리면 열릴 것으로 읽는다.
+   */
+  it('화면이 준 안내를 그 칸 아래에 낸다', () => {
+    renderForm({ disposalPartnerNote: t.filters.lookupFailed });
+
+    expect(screen.getByLabelText(t.formFields.disposalPartner)).toHaveAccessibleDescription(
+      expect.stringContaining(t.filters.lookupFailed),
+    );
+  });
+
+  /**
+   * **선택지가 차 있어도 안내가 설 수 있다** — 잘린 목록이 그렇다(계약에 번호로 한 건을 받는
+   * 경로가 없어 뒤쪽 거래처는 고를 길이 아예 없다). 목록 길이로 안내를 가르면 이 갈래가 사라진다.
+   */
+  it('선택지가 차 있어도 잘림 안내는 남는다', () => {
+    renderForm({
+      disposalPartnerOptions: FILLED_PARTNERS,
+      disposalPartnerNote: t.filters.lookupTruncated,
+    });
+
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toBeEnabled();
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.filters.lookupTruncated));
   });
 
   /**
@@ -154,7 +194,7 @@ describe('DisposalForm 도착지', () => {
     );
     unmount();
 
-    renderForm({ disposalPartnerOptions: FILLED_PARTNERS });
+    renderForm(filledPartners());
 
     expect(screen.getByLabelText(t.formFields.disposalPartner)).not.toHaveTextContent(
       messages.pendingCode.placeholder,
@@ -170,8 +210,8 @@ describe('DisposalForm 도착지', () => {
    */
   it('자체 폐기를 체크하면 선택지가 있어도 선택칸이 잠긴다', () => {
     renderForm({
+      ...filledPartners(),
       values: { ...EMPTY_DISPOSAL_DRAFT, isSelfDisposal: true },
-      disposalPartnerOptions: FILLED_PARTNERS,
     });
 
     const partner = screen.getByLabelText(t.formFields.disposalPartner);
@@ -210,7 +250,7 @@ describe('DisposalForm 도착지', () => {
    */
   it('거래처 오류가 계약 필드 이름으로 그 칸에 붙는다', () => {
     renderForm({
-      disposalPartnerOptions: FILLED_PARTNERS,
+      ...filledPartners(),
       fieldErrors: { destinationId: '폐기 역할이 없는 거래처입니다' },
     });
 

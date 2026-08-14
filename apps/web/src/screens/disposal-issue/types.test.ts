@@ -227,7 +227,7 @@ const issueResponse = (overrides: Partial<IssueResponse> = {}): IssueResponse =>
 });
 
 describe('toIssueView', () => {
-  it('화면이 쓰는 아홉만 옮긴다', () => {
+  it('화면이 쓰는 열하나만 옮긴다', () => {
     expect(toIssueView(issueResponse())).toEqual({
       goodsIssueId: 9501,
       goodsIssueNo: 'GI-2026-950001',
@@ -236,28 +236,58 @@ describe('toIssueView', () => {
       issuedAt: '2026-08-08T14:20:00+09:00',
       statusCode: 'SAMPLE_GI_STATUS_A',
       reasonCode: 'SAMPLE_GI_REASON_A',
+      destinationTypeCode: 'SAMPLE_DEST_TYPE_A',
+      destinationId: 9561,
       approvalRequestId: 9521,
       erpMessageQueued: true,
     });
   });
 
   /**
-   * 짝 방향 — **자리를 두지 않은 값은 옮겨지지 않는다.** 도착지·원천 문서·대체 입고는 이
-   * 화면이 그리지도 보내지도 않는 값이고, 도착지·원천 문서는 낼 것이 번호밖에 없다(`omf-mes#44`).
+   * **이 시험은 뒤집힌 것이지 지워진 것이 아니다**(완료 조건 C27 · 변경 통지 #128).
+   *
+   * 앞 회차까지 도착지는 「옮기지 않는」 값이었다 — 낼 것이 **번호밖에 없어서**다(`omf-mes#44`).
+   * 이제 그 번호를 **이름으로 푸는 조회**가 생겼고(`usePartnerNames`), ③ 구획이 「누가
+   * 가져가는가」를 「코드 · 이름」으로 말한다. 옮기는 이유가 그것 하나다 — 번호를 화면에 내려고
+   * 옮기는 것이 아니다.
+   *
+   * **나머지 넷은 여전히 옮기지 않는다.** 원천 문서는 낼 것이 번호밖에 없고, 대체 입고는 반품
+   * 축이며, 비고는 이 화면이 그리지 않는다. 자리를 두지 않으면 화면으로 샐 경로도 없다.
    */
-  it('원천 문서·도착지·대체 입고·비고는 옮기지 않는다', () => {
+  it('도착지 짝은 옮기고 원천 문서·대체 입고·비고는 옮기지 않는다', () => {
     const view: Record<string, unknown> = { ...toIssueView(issueResponse()) };
+
+    expect(view).toHaveProperty('destinationTypeCode');
+    expect(view).toHaveProperty('destinationId');
 
     for (const key of [
       'sourceDocumentTypeCode',
       'sourceDocumentId',
-      'destinationTypeCode',
-      'destinationId',
       'replacementExpected',
       'remarks',
     ]) {
       expect(view).not.toHaveProperty(key);
     }
+  });
+
+  /**
+   * **짝을 함께 옮긴다**(#128 ⛔ — 짝은 함께 있거나 함께 없다). 한쪽만 옮기면 화면이 「도착지가
+   * 있는데 누구인지 모른다」와 「자체 폐기다」를 가를 근거를 잃는다.
+   */
+  it('도착지가 없는 전표는 짝을 함께 없음으로 옮긴다', () => {
+    const view = toIssueView(
+      issueResponse({ destinationTypeCode: undefined, destinationId: undefined }),
+    );
+
+    expect(view.destinationTypeCode).toBeNull();
+    expect(view.destinationId).toBeNull();
+  });
+
+  it('널로 온 도착지도 없음으로 옮긴다', () => {
+    const view = toIssueView(issueResponse({ destinationTypeCode: null, destinationId: null }));
+
+    expect(view.destinationTypeCode).toBeNull();
+    expect(view.destinationId).toBeNull();
   });
 
   /**
@@ -448,6 +478,21 @@ describe('withSelfDisposal', () => {
 
     expect(next.isSelfDisposal).toBe(false);
     expect(next.disposalPartnerId).toBe('');
+  });
+
+  /**
+   * **되돌리는 갈래는 값을 건드리지 않는다**(선행 회차 검증 관찰 O-1).
+   *
+   * 위 짝 방향은 **체크를 거쳐** 재기 때문에 그 시점의 값이 이미 비어 있다 — 되돌리는 갈래가
+   * 값을 더 비워도 통과한다(등가 뮤턴트). 값을 **든 채로** 해제만 걸어야 「비우는 것은 체크
+   * 쪽의 일이다」가 실제로 재어진다. 이 전이는 화면 밖(주소·되살린 초안)에서도 불릴 수 있고,
+   * 그때 해제가 값을 비우면 사용자가 고른 거래처가 **체크를 건드린 적도 없이** 사라진다.
+   */
+  it('값을 든 초안에 해제만 걸면 값이 그대로다', () => {
+    const next = withSelfDisposal({ ...CHOSEN, isSelfDisposal: true }, false);
+
+    expect(next.isSelfDisposal).toBe(false);
+    expect(next.disposalPartnerId).toBe('9251');
   });
 
   /** 범위 있는 규칙은 잣대도 같은 범위로 — 도착지 밖의 칸은 건드리지 않는다. */

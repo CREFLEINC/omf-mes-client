@@ -5,12 +5,13 @@ import {
   codeNote,
   codePlaceholder,
   DEFECT_WAREHOUSE_TYPE_CODES,
+  DISPOSAL_PARTNER_ROLE_CODE,
   isDefectWarehouseTypePending,
   isDisposalPartnerListPending,
+  isDisposalPartnerRolePending,
   isRequiredCodeListPending,
   narrowToDefectWarehouses,
   PLACEHOLDER_DISPOSAL_ISSUE_CODES,
-  PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
   REQUIRED_CODE_KEYS,
   toCodeOptionSets,
   type CodeValueLists,
@@ -167,24 +168,20 @@ describe('isRequiredCodeListPending — 두 방향', () => {
 /**
  * **폐기 거래처 선택지의 전환 감지기**(변경 통지 #128 §3).
  *
- * 이 회차에는 선택지를 채우는 조회가 없다 — 좁힐 역할 코드가 미확정이라 살아 있는 조회는
- * 뒤 회차의 일이다. 그동안 칸은 **기존 자리표시 셋과 같은 모양으로** 잠기고 「선택지 준비 중」이
- * 뜬다. 판정 함수가 **목록을 인자로 받는 이유**는 창고 유형 자리표시와 같다 — 함수 안에서
- * 상수를 직접 읽으면 「차면 무엇이 달라지는가」를 잴 길이 없어 자리표시가 죽은 가지가 된다.
+ * 선택지는 이제 **조회로 온다**(`lookups.ts`의 `useDisposalPartnerOptions`) — 목록을 좁히는
+ * 역할 코드가 비어 있으면 조회 자체가 나가지 않아 선택지도 비어 있고, 칸은 기존 자리표시 셋과
+ * 같은 모양으로 잠긴다. 판정 함수가 **목록을 인자로 받는 이유**는 창고 유형 자리표시와 같다 —
+ * 함수 안에서 상수를 직접 읽으면 「차면 무엇이 달라지는가」를 잴 길이 없어 죽은 가지가 된다.
  */
 describe('폐기 거래처 선택지 — 두 방향', () => {
-  it('이 회차의 선택지는 비어 있다', () => {
-    expect(PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS).toEqual([]);
-  });
-
   it('비어 있으면 준비 중으로 판정한다', () => {
-    expect(isDisposalPartnerListPending(PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS)).toBe(true);
+    expect(isDisposalPartnerListPending([])).toBe(true);
   });
 
   /** **둘째 방향** — 채우면 살아나지 않는 자리표시는 죽은 가지다. */
   it('선택지가 차면 준비 중이 아니다', () => {
     expect(
-      isDisposalPartnerListPending([{ value: '9251', label: 'SAMPLE-PARTNER-01 · 합성 업체 가' }]),
+      isDisposalPartnerListPending([{ value: '9251', label: 'SAMPLE-PT-01 · 합성 폐기업체 가' }]),
     ).toBe(false);
   });
 
@@ -196,6 +193,47 @@ describe('폐기 거래처 선택지 — 두 방향', () => {
   it('거래처를 코드 자리표시 여섯에 섞지 않는다', () => {
     expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).not.toContain('disposalPartner');
     expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).toHaveLength(6);
+  });
+});
+
+/**
+ * **폐기 거래처를 좁히는 역할 코드의 전환 감지기**(변경 통지 #128 §3 — 값 미확정).
+ *
+ * 이 상수가 **선택지 조회를 여는 열쇠**다. 비어 있으면 조회가 나가지 않고(좁히지 않은 목록이
+ * 폐기 거래처 선택지로 서는 것을 막는다) 칸이 잠기며, 한 줄을 채우면 그 값이 질의 조건으로
+ * 실려 나가고 칸이 열린다 — 그 전환을 재지 않으면 자리표시는 죽은 가지다.
+ *
+ * **판정 함수가 상수를 인자로 받는다.** 함수 안에서 직접 읽으면 「채웠을 때 무엇이 달라지는가」를
+ * 시험할 길이 없다(창고 유형 자리표시가 세운 규율을 이유까지 그대로 승계한다).
+ */
+describe('폐기 거래처 역할 코드 — 두 방향', () => {
+  it('역할 코드가 아직 비어 있다', () => {
+    expect(DISPOSAL_PARTNER_ROLE_CODE).toBe('');
+  });
+
+  it('비어 있으면 준비 중으로 판정한다', () => {
+    expect(isDisposalPartnerRolePending(DISPOSAL_PARTNER_ROLE_CODE)).toBe(true);
+  });
+
+  /** **둘째 방향** — 채우면 살아나지 않는 자리표시는 죽은 가지다. */
+  it('역할 코드를 채우면 준비 중이 아니다', () => {
+    expect(isDisposalPartnerRolePending('SAMPLE_PARTNER_ROLE_A')).toBe(false);
+  });
+
+  /**
+   * 공백만인 값은 **채워진 것이 아니다.** 그대로 질의에 실으면 서버가 좁힐 근거 없는 조건을
+   * 받고, 화면은 「좁혔다」고 믿은 목록을 폐기 거래처 선택지로 세운다.
+   */
+  it('공백만인 값도 준비 중으로 본다', () => {
+    expect(isDisposalPartnerRolePending('   ')).toBe(true);
+  });
+
+  /**
+   * **코드 자리표시 여섯에 섞지 않는다.** 역할 코드는 사용자가 고르는 선택지가 아니라
+   * **조회를 좁히는 조건**이라, 한 통에 담으면 필수 코드 판정이 이 값까지 세게 된다.
+   */
+  it('역할 코드를 코드 자리표시 여섯에 섞지 않는다', () => {
+    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).not.toContain('disposalPartnerRole');
   });
 });
 
