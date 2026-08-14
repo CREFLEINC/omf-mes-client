@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
+import type { PostApproval, Submission } from './approval-progress';
 import {
   PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
   toCodeOptionSets,
@@ -177,6 +178,20 @@ describe('disposalBlockReason — 도착지 두 갈래', () => {
   });
 
   /**
+   * **게이트와 조립이 같은 판정을 쓴다**(리뷰 Minor M2 · `screen.tsx`의 「판정은 한 곳에서
+   * 나온다」 규율).
+   *
+   * 여기서 자체 조건(`값이 비었는가`)으로 판정하면 **번호로 읽을 수 없는 값**에서 둘이 갈린다 —
+   * 버튼은 열리는데 조립은 `null`을 내어 **눌러도 아무 일이 없는** 상태가 된다(`if (body ===
+   * null) return;`). 「번호로 못 읽는 값」 갈래가 조립 쪽에만 있으면 그 어긋남을 아무도 잡지 못한다.
+   */
+  it.each(['9251x', '0', '   '])('번호로 읽을 수 없는 거래처 값 %j이면 여전히 잠긴다', (value) => {
+    expect(
+      block({ ...PARTNER_DRAFT, disposalPartnerId: value }, FILLED_LISTS, READY, FILLED_PARTNERS),
+    ).toBe(t.actionReasons.needsDisposalDestination);
+  });
+
+  /**
    * **차례가 뜻을 정한다**(계획 §5 T3-4). 값 목록 미확정 → 무엇을 보내는가 → **어떤
    * 전표인가**(코드·일시·도착지) → 왜 올리는가(요청 사유). 도착지가 사유보다 앞이고
    * 코드·일시보다 뒤다 — 화면에 놓인 차례 그대로다.
@@ -274,19 +289,41 @@ describe('화면이 아는 필드', () => {
    */
   it('폼에 칸이 있는 이름만 담는다', () => {
     expect([...DISPOSAL_FORM_FIELDS].sort()).toEqual(
-      ['issueTypeCode', 'sourceDocumentTypeCode', 'reasonCode', 'issuedAt', 'remarks'].sort(),
+      [
+        'issueTypeCode',
+        'sourceDocumentTypeCode',
+        'reasonCode',
+        'issuedAt',
+        'remarks',
+        'destinationId',
+      ].sort(),
     );
   });
 
   /**
-   * **없앤 칸의 이름은 담지 않는다**(#124 · 짝 규칙). 담아 두면 서버가 그 이름으로 오류를
-   * 되돌렸을 때 **붙일 칸이 없는 인라인 오류**가 되어 어디에도 보이지 않는다.
+   * **`destinationId`는 이제 담는다**(리뷰 Minor M1 · 변경 통지 #128).
    *
-   * 짝 양성은 바로 위 시험이다 — 담는 다섯을 확정한 같은 시점의 음성 단언이다.
+   * 이 파일의 잣대는 「그 이름의 오류를 화면이 **보일 자리가 있는가**」인데, 폐기 거래처
+   * 선택칸이 생기면서 자리가 **생겼다.** 담지 않으면 「없는 거래처」·「폐기 역할이 아니다」류
+   * 400이 고칠 칸 옆이 아니라 배너로만 간다.
    */
-  it.each(['destinationTypeCode', 'destinationId'])('%s는 담지 않는다', (field) => {
-    expect(DISPOSAL_FORM_FIELDS).not.toContain(field);
-    expect(Object.values(CODE_FIELD_NAMES)).not.toContain(field);
+  it('destinationId는 담는다 — 그 오류를 보일 칸이 생겼다', () => {
+    expect(DISPOSAL_FORM_FIELDS).toContain('destinationId');
+  });
+
+  /**
+   * **`destinationTypeCode`는 여전히 담지 않는다**(짝 규칙의 다른 쪽).
+   *
+   * 도착지 유형은 **사용자가 고르는 값이 아니라 상수**다(`DISPOSAL_DESTINATION_TYPE_CODE`) —
+   * 그 이름으로 오는 오류는 고칠 칸이 화면에 없고, 배너가 받아야 사용자가 읽는다.
+   * 코드 셋에도 들지 않는다(폼의 코드 칸은 셋뿐이다).
+   *
+   * 짝 양성은 바로 위 두 시험이다 — 담는 여섯을 확정한 같은 시점의 음성 단언이다.
+   */
+  it('destinationTypeCode는 담지 않는다 — 화면이 고르는 값이 아니다', () => {
+    expect(DISPOSAL_FORM_FIELDS).not.toContain('destinationTypeCode');
+    expect(Object.values(CODE_FIELD_NAMES)).not.toContain('destinationTypeCode');
+    expect(Object.values(CODE_FIELD_NAMES)).not.toContain('destinationId');
   });
 
   /** 화면이 값을 정하지 않는 필드는 담지 않는다 — 고른 전표·표의 줄·파생·상수에서 온다. */
@@ -385,8 +422,17 @@ describe('postBlockReason — 처리를 잠글 근거', () => {
    * 밖에서 생겨도 아무도 울지 않는다 — 열둘을 다 돌아 잠기는 둘을 집합으로 못 박는다.
    */
   it('잠그는 갈래가 여전히 둘뿐이다 — 도착지 축으로 새로 잠그지 않는다', () => {
-    const submissions = ['notSubmitted', 'submitted', 'unusable'] as const;
-    const approvals = ['judgePending', 'notApproved', 'approved', 'unread'] as const;
+    /*
+     * **갈래 목록을 타입에서 파생한다**(리뷰 Nit N3). 손으로 적으면 유니온에 갈래가 늘었을 때
+     * 「전수」가 조용히 전수가 아니게 된다 — `satisfies`가 빠짐과 오타를 타입 검사로 잡는다.
+     */
+    const submissions = ['notSubmitted', 'submitted', 'unusable'] satisfies Submission['kind'][];
+    const approvals = [
+      'judgePending',
+      'notApproved',
+      'approved',
+      'unread',
+    ] satisfies PostApproval['kind'][];
     const locked: string[] = [];
 
     for (const submission of submissions) {

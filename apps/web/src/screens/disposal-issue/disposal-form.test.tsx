@@ -140,6 +140,28 @@ describe('DisposalForm 도착지', () => {
   });
 
   /**
+   * **자리표시 문구도 함께 거둔다**(리뷰 Nit N2).
+   *
+   * 선택지가 찼는데 트리거에 「선택지 준비 중」이 남으면 **고를 수 있는 칸이 준비 중이라고
+   * 말한다.** 안내(`note`)만 재고 자리표시를 재지 않으면 그 갈래가 비어 있다.
+   */
+  it('선택지가 차면 트리거의 자리표시 문구도 사라진다', () => {
+    const { unmount } = renderForm();
+
+    /* **그 칸의 트리거 안에서 본다** — 같은 문구가 잠긴 코드 칸 셋에도 서 있다. */
+    expect(screen.getByLabelText(t.formFields.disposalPartner)).toHaveTextContent(
+      messages.pendingCode.placeholder,
+    );
+    unmount();
+
+    renderForm({ disposalPartnerOptions: FILLED_PARTNERS });
+
+    expect(screen.getByLabelText(t.formFields.disposalPartner)).not.toHaveTextContent(
+      messages.pendingCode.placeholder,
+    );
+  });
+
+  /**
    * **체크하면 선택칸이 잠긴다**(#128 문면 「체크하면 비활성 · 값 비움」 앞쪽).
    *
    * 값을 비우는 뒤쪽은 화면의 상태 전이가 맡고(`withSelfDisposal`) 그 전이는 `types.test.ts`가
@@ -177,6 +199,24 @@ describe('DisposalForm 도착지', () => {
     await user.click(screen.getByLabelText(t.formFields.selfDisposal));
 
     expect(onToggleSelfDisposal).toHaveBeenLastCalledWith(false);
+  });
+
+  /**
+   * **서버가 준 거래처 오류가 그 칸에 붙는다**(리뷰 Minor M1).
+   *
+   * 이 슬라이스의 잣대는 「그 이름의 오류를 화면이 **보일 자리가 있는가**」다 — 칸이 생겼으니
+   * 자리도 생겼다. 배너로만 보내면 「없는 거래처」류 400에서 사용자가 **어느 칸을 고쳐야
+   * 하는지** 알 수 없다.
+   */
+  it('거래처 오류가 계약 필드 이름으로 그 칸에 붙는다', () => {
+    renderForm({
+      disposalPartnerOptions: FILLED_PARTNERS,
+      fieldErrors: { destinationId: '폐기 역할이 없는 거래처입니다' },
+    });
+
+    expect(screen.getByLabelText(t.formFields.disposalPartner)).toHaveAccessibleDescription(
+      expect.stringContaining('폐기 역할이 없는 거래처입니다'),
+    );
   });
 
   /**

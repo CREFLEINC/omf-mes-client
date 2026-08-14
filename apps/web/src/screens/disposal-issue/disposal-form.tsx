@@ -210,6 +210,8 @@ export const DisposalForm = ({
           options={[...disposalPartnerOptions]}
           value={values.disposalPartnerId}
           note={partnerNote}
+          /* 서버가 준 거래처 오류가 **고칠 칸 옆에** 선다(`DISPOSAL_FORM_FIELDS`가 정한 자리). */
+          error={fieldErrors.destinationId}
           placeholder={disposalPartnerOptions.length === 0 ? codePlaceholder() : undefined}
           /*
            * **체크하면 고를 수 없다**(#128 문면). 값 비움은 화면의 전이(`withSelfDisposal`)가

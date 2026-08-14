@@ -48,9 +48,10 @@ export const CODE_MAX = 50;
  * (`disposal-form.tsx`)와 서버 오류를 인라인으로 낼지 가르는 자리(`DISPOSAL_FORM_FIELDS`)가
  * 같은 이름을 봐야, 서버가 준 오류와 화면이 잡은 오류가 같은 칸에 붙는다.
  *
- * **`destinationTypeCode`·`destinationId`가 없다**(변경 통지 #124·#128). 폼에 그 칸이 없으니
- * 여기에도 이름이 없어야 한다 — 담아 두면 서버가 그 이름으로 오류를 되돌렸을 때 **붙일 칸이
- * 없는 인라인 오류**가 되어 어디에도 보이지 않는다.
+ * **도착지 짝 두 이름은 여기 없다**(변경 통지 #124·#128). 이 표는 **코드 선택칸 셋**의 것이고,
+ * 도착지는 코드 칸이 아니다 — 유형은 사용자가 고르지 않는 **상수**이고
+ * (`DISPOSAL_DESTINATION_TYPE_CODE`), 거래처는 코드가 아니라 **조회로 오는 마스터**다.
+ * 거래처 오류가 설 자리는 아래 `DISPOSAL_FORM_FIELDS`가 정한다.
  */
 export const CODE_FIELD_NAMES: Record<DisposalCodeKey, string> = {
   issueType: 'issueTypeCode',
@@ -68,11 +69,18 @@ export const CODE_FIELD_NAMES: Record<DisposalCodeKey, string> = {
  * `sourceDocumentId`·`sourceWarehouseId`·`businessDate`·`occurredAt`·`lines`·`postImmediately`는
  * 화면이 값을 정하지 않는다(고른 전표·표의 줄·파생·상수에서 온다). 담으면 **어디에도 보이지
  * 않는 오류**가 된다 — 배너가 받아야 사용자가 읽는다.
+ *
+ * **`destinationId`는 담고 `destinationTypeCode`는 담지 않는다**(변경 통지 #128 · 같은 잣대).
+ * 폐기 거래처 선택칸이 생겨 거래처 오류를 **보일 자리가 생겼고**, 도착지 유형은 여전히
+ * 사용자가 고르는 값이 아니라 상수라 고칠 칸이 없다. 선택칸이 아직 잠겨 있어 지금은 그 오류가
+ * 올 수 없지만, **자리를 미리 정해 두지 않으면** 선택지가 살아나는 회차가 「없는 거래처」류
+ * 400을 배너로만 받는 상태를 그대로 물려받는다.
  */
 export const DISPOSAL_FORM_FIELDS: readonly string[] = [
   ...Object.values(CODE_FIELD_NAMES),
   'issuedAt',
   'remarks',
+  'destinationId',
 ];
 
 /**

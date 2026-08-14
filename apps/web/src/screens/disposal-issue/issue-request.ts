@@ -90,8 +90,14 @@ export const readDisposalDestination = (
  * **확인 창도 이 파일의 함수를 쓴다** — `toIssuedLocal`과 같은 규율이다. 창이 따로 판정하면
  * 「사용자가 확인한 글자」와 「요청에 실리는 값」이 갈린다.
  *
- * **이름을 풀지 못하면 번호를 대신 내지 않는다**(`omf-mes#44`). 빈 글자를 내고 창의 빈 값
- * 규칙이 「없음」으로 옮긴다 — 이름을 풀어 보이는 일은 ③ 구획을 다루는 뒤 회차의 몫이다.
+ * **이름을 풀지 못하면 번호를 대신 내지 않고, 「없음」으로 접지도 않는다**(리뷰 Minor M3 ·
+ * `omf-mes#44`). 「없음」은 **넣지 않은 값**을 뜻하는데(창의 빈 값 규칙) 거래처를 골랐다면
+ * 나가는 본문에는 **짝 두 키가 실린다** — 확인한 글자와 나가는 값이 표시 층에서 어긋난다.
+ * 못 푼 이름은 이 슬라이스가 이미 정해 둔 낱말(`values.unknown`)로 낸다.
+ *
+ * **갈래를 빠짐없이 센다.** 마지막 줄의 `never` 대입이 갈래가 늘었을 때 **타입으로** 잡는다 —
+ * `if/else`로 두면 새 갈래가 조용히 거래처로 접힌다(짝인 `toDestinationFields`는 이미 타입이
+ * 잡는 자리라, 표시 쪽만 느슨하면 비대칭이 된다).
  */
 export const describeDisposalDestination = (
   destination: DisposalDestination | null,
@@ -99,8 +105,9 @@ export const describeDisposalDestination = (
 ): string => {
   if (destination === null) return '';
   if (destination.kind === 'self') return t.values.selfDisposal;
+  if (destination.kind === 'partner') return partnerLabel ?? t.values.unknown;
 
-  return partnerLabel ?? '';
+  return destination satisfies never;
 };
 
 /**

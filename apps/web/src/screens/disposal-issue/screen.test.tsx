@@ -3259,6 +3259,8 @@ describe('DisposalIssueScreen — 연쇄가 실제로 보내는 것', () => {
 
     const body = writesTo(requests, ISSUES_PATH)[0]?.body as Record<string, unknown>;
 
+    /* 짝 양성 — 본문이 실제로 나갔다(빈 객체라 통과한 것이 아니다 · 리뷰 Nit N6). */
+    expect(body.issueTypeCode).toBe(SAMPLE_FORM_CODES.issueType);
     expect(Object.keys(body)).not.toContain('destinationTypeCode');
     expect(Object.keys(body)).not.toContain('destinationId');
   });
@@ -4645,6 +4647,111 @@ describe('DisposalIssueScreen — 「최신 불러오기」가 실패할 때', (
     });
     /* 짝 방향 — 같은 조작이 결과 구획도 함께 거둔다(둘이 함께 사라져야 앞뒤가 맞는다). */
     expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
+  /**
+   * **보내기 직전 재판정에 막히면 앞 시도의 되먹임이 통째로 사라진다**(리뷰 Major B1·B2 ·
+   * 수명 표 27행).
+   *
+   * 결과 구획·실패 배너·「최신 불러오기」·재조회 실패 안내는 **한 시도의 되먹임 한 벌**이다.
+   * 한 벌 중 일부만 거두면 화면이 앞뒤가 안 맞는 말을 한다 — 특히 **가리킬 전표가 없어진
+   * 충돌 배너**가 남으면, 그 배너의 「최신 불러오기」는 충돌한 출고 전표가 아니라 입고 축을
+   * 다시 읽어 **눌러도 풀리지 않는 버튼**이 된다(이 파일이 `reloadRegisterTarget` 주석에
+   * 스스로 금지 형태로 적어 둔 그것이다).
+   *
+   * 네 단언이 각각 다른 자리를 문다: 결과 구획(`chain`) · 배너(쓰기 훅의 오류 + 매임 이름) ·
+   * 「최신 불러오기」(배너에 딸린 버튼) · 재조회 실패 안내(`hasReloadFailure`). **넷을 함께
+   * 재야** 「한 벌로 거둔다」가 값으로 굳는다 — 셋만 재면 나머지 하나를 비우는 줄을 지워도
+   * 아무도 울지 않는다.
+   */
+  it('창이 열린 사이 줄이 풀리면 배너·최신 불러오기·재조회 실패 안내가 함께 사라진다', async () => {
+    let detailCalls = 0;
+
+    const { requests, user } = await setupReadyToSubmit(
+      allRoutes([
+        createRoute(),
+        {
+          /* 토큰은 한 번 주고, 「최신 불러오기」의 재조회에서 실패한다. */
+          match: (request) => isGet(request, CREATED_DETAIL_PATH),
+          respond: () => {
+            detailCalls += 1;
+
+            return detailCalls === 1
+              ? jsonResponse(createdDetailBody(), { headers: { ETag: CREATED_DETAIL_ETAG } })
+              : jsonResponse({ message: '' }, { status: 500 });
+          },
+        },
+        failingApprovalSubmitRoute(409, { conflictCause: 'user', message: '' }),
+      ]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    /* 선행 양성 — 전표는 만들어졌고 상신이 409로 막혀 배너와 부분 실패 구획이 섰다. */
+    await screen.findByText(messages.conflict.user);
+    expect(screen.getByRole('region', { name: t.result.label })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+    await screen.findByText(t.notes.reloadFailed);
+
+    /* 두 번째 시도 — 등록 성공으로 비워진 초안을 다시 채운다(수명 표 17행). */
+    await user.click(lineCheckbox(1));
+    await user.type(qtyInput(1), '10');
+    await fillDisposalForm(user);
+
+    await openSubmitConfirm(user);
+    await screen.findByRole('dialog');
+
+    /* 창이 열린 사이에 줄이 풀린다 — 라인 표는 창 뒤에 그대로 살아 있다(수명 표 6행). */
+    fireEvent.click(lineCheckbox(1));
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+    });
+    /* 배너와 그 배너에 딸린 버튼이 함께 사라진다 — 남으면 가리킬 전표가 없는 충돌이 된다. */
+    expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: messages.conflict.reloadAction }),
+    ).not.toBeInTheDocument();
+    /* 재조회 실패 안내도 같은 벌이다(인계 ①의 나머지 절반 · PR ④ 리뷰 N1과 같은 형태). */
+    expect(screen.queryByText(t.notes.reloadFailed)).not.toBeInTheDocument();
+    /* 짝 방향 — 되먹임이 사라진 것은 새 전표가 나가서가 아니다. 전표 생성은 한 번뿐이다. */
+    expect(writesTo(requests, ISSUES_PATH)).toHaveLength(1);
+  });
+
+  /**
+   * **등록 실패의 배너도 같은 벌이다**(리뷰 Major B1의 짝 자리).
+   *
+   * 위 잣대는 **상신** 실패(409)의 배너를 잰다. 실패 배너는 등록 실패와 상신 실패가 **같은
+   * 자리에 서므로**(`registerError = createWrite.error ?? chainSubmitWrite.error`), 한쪽만
+   * 재면 다른 쪽 훅을 거두는 줄을 지워도 아무도 울지 않는다 — 두 훅을 각각 문다.
+   *
+   * 이 갈래에는 전표가 아예 없어 결과 구획이 서지 않는다(이미 잣대가 있다). 그래서 여기서
+   * 재는 것은 **배너 하나**다.
+   */
+  it('등록이 실패한 뒤 창이 열린 사이 줄이 풀리면 그 배너도 사라진다', async () => {
+    const { requests, user } = await setupReadyToSubmit(allRoutes([failingCreateRoute(403)]));
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    /* 선행 양성 — 등록이 막혀 배너가 섰다(전표가 없어 결과 구획은 서지 않는다). */
+    await screen.findByText(messages.httpError.forbidden);
+
+    /* 등록이 실패했으므로 초안은 그대로다(수명 표 18행) — 다시 채우지 않는다. */
+    await openSubmitConfirm(user);
+    await screen.findByRole('dialog');
+
+    fireEvent.click(lineCheckbox(1));
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+    });
+    /* 짝 방향 — 배너가 사라진 것은 새 요청이 나가서가 아니다. */
+    expect(writesTo(requests, ISSUES_PATH)).toHaveLength(1);
   });
 });
 

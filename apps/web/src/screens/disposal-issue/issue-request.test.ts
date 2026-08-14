@@ -317,6 +317,18 @@ describe('readDisposalDestination', () => {
   );
 
   /**
+   * **앞뒤 공백을 뗀다** — 이 슬라이스가 보내는 값마다 지키는 규율이고, 떼지 않으면
+   * `'^\d+$'`에 걸려 **고른 거래처가 조용히 「고르지 않음」이 된다.** 위 `'   '` 갈래는
+   * 다듬지 않아도 같은 답이라 이 사실의 짝이 되지 못한다.
+   */
+  it('거래처 값의 앞뒤 공백을 떼고 읽는다', () => {
+    expect(readDisposalDestination({ ...PARTNER_DRAFT, disposalPartnerId: ' 9251 ' })).toEqual({
+      kind: 'partner',
+      partnerId: 9251,
+    });
+  });
+
+  /**
    * **짝의 한쪽만 든 값은 타입이 막는다**(완료 조건 C17의 「타입 수준」).
    *
    * `@ts-expect-error`는 **오류가 나지 않으면 그 자리에서 실패한다** — 판별 유니온이 느슨해져
@@ -352,14 +364,18 @@ describe('describeDisposalDestination', () => {
   });
 
   /**
-   * **내부 번호를 대신 내지 않는다**(`omf-mes#44`). 이름을 풀지 못하면 빈 글자를 내고,
-   * 창의 빈 값 규칙이 그것을 「없음」으로 옮긴다 — 번호를 보이면 그 번호가 화면 밖으로 샌다.
+   * **내부 번호를 대신 내지 않고 「없음」으로 접지도 않는다**(`omf-mes#44` · 리뷰 Minor M3).
+   *
+   * 「없음」은 **넣지 않은 값**을 뜻하는데, 거래처를 골랐다면 나가는 본문에는 짝 두 키가
+   * 실린다 — 그때 창이 「도착지: 없음」이라 적으면 확인한 글자와 나가는 값이 어긋난다.
    */
-  it('이름을 풀지 못해도 번호를 대신 내지 않는다', () => {
-    expect(describeDisposalDestination({ kind: 'partner', partnerId: 9251 }, null)).toBe('');
-    expect(describeDisposalDestination({ kind: 'partner', partnerId: 9251 }, null)).not.toContain(
-      '9251',
-    );
+  it('이름을 풀지 못하면 그 사실을 내고 번호는 내지 않는다', () => {
+    const text = describeDisposalDestination({ kind: 'partner', partnerId: 9251 }, null);
+
+    expect(text).toBe(t.values.unknown);
+    expect(text).not.toContain('9251');
+    /* 「넣지 않은 값」과 갈린다 — 두 사정이 같은 글자로 보이면 사용자가 가를 수 없다. */
+    expect(text).not.toBe(t.values.empty);
   });
 
   it('아직 정하지 않았으면 빈 글자다', () => {
