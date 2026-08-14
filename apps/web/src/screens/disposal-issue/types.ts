@@ -315,6 +315,23 @@ export interface DisposalDraft {
   readonly issuedTime: string;
   readonly remarks: string;
   /**
+   * **자체 폐기인가**(외부 업체 없음) — 변경 통지 #128.
+   *
+   * 체크와 거래처 선택이 **함께 있어야 하는 이유**가 이 자리다. 「아직 안 골랐다」와
+   * 「자체 폐기라 없다」는 나가는 본문에서 똑같이 「도착지 두 키가 없음」으로 보이므로,
+   * 체크가 없으면 화면이 그 둘을 가를 수 없다 — 그래서 통지가 체크박스를 뺄 수 없다고 적었다.
+   */
+  readonly isSelfDisposal: boolean;
+  /**
+   * 고른 폐기 거래처. **선택지의 값 그대로**(문자열)를 들고 있는다 — 번호로 강제해 들고 있으면
+   * 「고르지 않음」과 「0번」이 구분되지 않는다. 번호로 옮기는 자리는 요청 조립 한 곳이다
+   * (`issue-request.ts`의 `readDisposalDestination`).
+   *
+   * **자체 폐기를 체크하면 비어 있다**(`withSelfDisposal`) — 체크와 값이 함께 남는 조합은
+   * 존재하지 않는다.
+   */
+  readonly disposalPartnerId: string;
+  /**
    * 요청 사유. **결재함 목록에서 첫 줄이 요약을 겸한다**(공유계약 A-12 보강 · 계약 명시).
    *
    * **최소 길이를 화면이 정하지 않는다**(승인 기록 §13-6 안 A). 정해진 규칙이 다르면 정당한
@@ -339,8 +356,26 @@ export const EMPTY_DISPOSAL_DRAFT: DisposalDraft = {
   issuedDate: '',
   issuedTime: '',
   remarks: '',
+  /* **미리 체크하지 않는다.** 자체 폐기는 사용자가 정하는 사실이지 화면의 기본값이 아니다. */
+  isSelfDisposal: false,
+  disposalPartnerId: '',
   reason: '',
 };
+
+/**
+ * 자체 폐기 체크를 반영한 초안 — **체크하면 고른 거래처를 함께 비운다**(변경 통지 #128 문면).
+ *
+ * 값을 남긴 채 칸만 잠그면 「체크했는데 거래처가 실린」 초안이 남고, 그 초안은 짝을 만드는
+ * 자리에서 어느 쪽으로도 읽힐 수 있다. **그 조합이 아예 만들어지지 않게** 전이를 이 함수
+ * 하나로 모은다 — 화면 핸들러에서 손으로 비우면 다른 경로에서 한쪽만 바뀐다.
+ *
+ * 체크를 풀 때 **비운 값을 되살리지 않는다.** 되살리려면 지운 값을 어딘가 들고 있어야 하는데,
+ * 그것은 「체크하면 값을 비운다」와 같은 말이 아니다.
+ */
+export const withSelfDisposal = (draft: DisposalDraft, isSelfDisposal: boolean): DisposalDraft =>
+  isSelfDisposal
+    ? { ...draft, isSelfDisposal: true, disposalPartnerId: '' }
+    : { ...draft, isSelfDisposal: false };
 
 /**
  * 버릴 것이 있는가. **모든 칸을 함께 본다** — 한쪽만 보면 나머지가 확인 없이 사라진다.
@@ -353,6 +388,8 @@ export const hasAnyDisposalDraftValue = (draft: DisposalDraft): boolean =>
   draft.issuedDate !== '' ||
   draft.issuedTime !== '' ||
   draft.remarks !== '' ||
+  draft.isSelfDisposal ||
+  draft.disposalPartnerId !== '' ||
   draft.reason !== '';
 
 /**

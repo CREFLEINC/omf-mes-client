@@ -1,10 +1,16 @@
 import { messages } from '@omf-mes/i18n';
 
 import type { PostApproval, Submission } from './approval-progress';
-import { isRequiredCodeListPending, REQUIRED_CODE_KEYS, type CodeOptionSets } from './code-options';
+import {
+  isDisposalPartnerListPending,
+  isRequiredCodeListPending,
+  REQUIRED_CODE_KEYS,
+  type CodeOptionSets,
+} from './code-options';
 import type { DisposalReadyState } from './disposal-selection';
+import { readDisposalDestination } from './issue-request';
 import { readReason } from './reason-draft';
-import type { DisposalCodeKey, DisposalDraft } from './types';
+import type { DisposalCodeKey, DisposalDraft, SelectOption } from './types';
 
 /**
  * 보내기 전에 화면이 잡는 것.
@@ -42,9 +48,10 @@ export const CODE_MAX = 50;
  * (`disposal-form.tsx`)와 서버 오류를 인라인으로 낼지 가르는 자리(`DISPOSAL_FORM_FIELDS`)가
  * 같은 이름을 봐야, 서버가 준 오류와 화면이 잡은 오류가 같은 칸에 붙는다.
  *
- * **`destinationTypeCode`·`destinationId`가 없다**(변경 통지 #124·#128). 폼에 그 칸이 없으니
- * 여기에도 이름이 없어야 한다 — 담아 두면 서버가 그 이름으로 오류를 되돌렸을 때 **붙일 칸이
- * 없는 인라인 오류**가 되어 어디에도 보이지 않는다.
+ * **도착지 짝 두 이름은 여기 없다**(변경 통지 #124·#128). 이 표는 **코드 선택칸 셋**의 것이고,
+ * 도착지는 코드 칸이 아니다 — 유형은 사용자가 고르지 않는 **상수**이고
+ * (`DISPOSAL_DESTINATION_TYPE_CODE`), 거래처는 코드가 아니라 **조회로 오는 마스터**다.
+ * 거래처 오류가 설 자리는 아래 `DISPOSAL_FORM_FIELDS`가 정한다.
  */
 export const CODE_FIELD_NAMES: Record<DisposalCodeKey, string> = {
   issueType: 'issueTypeCode',
@@ -62,11 +69,18 @@ export const CODE_FIELD_NAMES: Record<DisposalCodeKey, string> = {
  * `sourceDocumentId`·`sourceWarehouseId`·`businessDate`·`occurredAt`·`lines`·`postImmediately`는
  * 화면이 값을 정하지 않는다(고른 전표·표의 줄·파생·상수에서 온다). 담으면 **어디에도 보이지
  * 않는 오류**가 된다 — 배너가 받아야 사용자가 읽는다.
+ *
+ * **`destinationId`는 담고 `destinationTypeCode`는 담지 않는다**(변경 통지 #128 · 같은 잣대).
+ * 폐기 거래처 선택칸이 생겨 거래처 오류를 **보일 자리가 생겼고**, 도착지 유형은 여전히
+ * 사용자가 고르는 값이 아니라 상수라 고칠 칸이 없다. 선택칸이 아직 잠겨 있어 지금은 그 오류가
+ * 올 수 없지만, **자리를 미리 정해 두지 않으면** 선택지가 살아나는 회차가 「없는 거래처」류
+ * 400을 배너로만 받는 상태를 그대로 물려받는다.
  */
 export const DISPOSAL_FORM_FIELDS: readonly string[] = [
   ...Object.values(CODE_FIELD_NAMES),
   'issuedAt',
   'remarks',
+  'destinationId',
 ];
 
 /**
@@ -106,6 +120,14 @@ export interface DisposalGateInput {
    * **그대로** 낸다. 두 곳이 각자 판정하면 표에는 멀쩡한데 버튼이 잠기거나 그 반대가 된다.
    */
   selection: DisposalReadyState;
+  /**
+   * 폐기 거래처 선택지. **도착지 사유가 둘로 갈리는 근거다** — 고를 것이 있는가 없는가로
+   * 사용자가 할 수 있는 조치가 달라진다(`code-options.ts`의 `isDisposalPartnerListPending`).
+   *
+   * 목록 자체를 받는 이유는 「채워졌을 때 무엇이 달라지는가」를 감지기가 실제로 잴 수 있게
+   * 하기 위해서다 — 자리표시 상수를 여기서 직접 읽으면 그 전환을 시험할 길이 없다.
+   */
+  disposalPartnerOptions: readonly SelectOption[];
 }
 
 /**
@@ -113,8 +135,12 @@ export interface DisposalGateInput {
  *
  * **차례가 뜻을 정한다.** 값 목록이 없다는 사정이 가장 앞이다 — 그 상태에서는 나머지를 아무리
  * 채워도 열리지 않으므로, 다른 사유를 먼저 내면 사용자가 할 수 없는 조치를 가리킨다. 그다음은
- * 화면에 놓인 차례다: **무엇을 보내는가**(위의 라인 표) → **어떤 전표인가**(폼의 코드·일시) →
- * **왜 올리는가**(맨 아래 요청 사유).
+ * 화면에 놓인 차례다: **무엇을 보내는가**(위의 라인 표) → **어떤 전표인가**(폼의 코드·일시·
+ * **도착지**) → **왜 올리는가**(맨 아래 요청 사유).
+ *
+ * **도착지 사유가 둘로 갈린다**(변경 통지 #128 §4 ⛔). 같은 잠금이지만 사용자가 할 수 있는
+ * 조치가 다르다 — 선택칸이 열려 있으면 「고르거나 체크하십시오」이고, 잠겨 있으면 고를 것이
+ * 없으므로 **체크만** 가리킨다. 하나로 두면 고를 것이 없는 사용자에게 고르라고 말한다.
  */
 export const disposalBlockReason = (input: DisposalGateInput): string | null => {
   if (isRequiredCodeListPending(input.codeOptions)) return t.actionReasons.codeListPending;
@@ -124,6 +150,13 @@ export const disposalBlockReason = (input: DisposalGateInput): string | null => 
   }
   if (input.draft.issuedDate === '') return t.actionReasons.needsIssuedDate;
   if (input.draft.issuedTime === '') return t.actionReasons.needsIssuedTime;
+
+  if (readDisposalDestination(input.draft) === null) {
+    return isDisposalPartnerListPending(input.disposalPartnerOptions)
+      ? t.actionReasons.disposalPartnerPending
+      : t.actionReasons.needsDisposalDestination;
+  }
+
   if (readReason(input.draft.reason).kind === 'empty') return t.actionReasons.needsReason;
 
   return null;

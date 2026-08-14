@@ -22,6 +22,7 @@ const SUMMARY: SubmitSummary = {
   issuedAt: '2026-08-11 09:30',
   businessDate: '2026-08-11',
   remarks: '',
+  destination: t.values.selfDisposal,
   lines: [
     {
       ordinal: 1,
@@ -59,6 +60,36 @@ describe('SubmitConfirmDialog 보이는 것', () => {
     expect(within(dialog).getByText('SAMPLE_SRC_TYPE_A')).toBeInTheDocument();
     expect(within(dialog).getByText('SAMPLE_GI_REASON_A')).toBeInTheDocument();
     expect(within(dialog).getByText('2026-08-11 09:30')).toBeInTheDocument();
+  });
+
+  /**
+   * **도착지를 한 행으로 보인다**(완료 조건 C19 · 변경 통지 #128).
+   *
+   * 없앤 「도착지 유형」·「폐기 계정」 두 행 자리에 **한 행**이 선다 — 사용자가 정한 것은
+   * 유형과 번호 둘이 아니라 「어디로 가는가」 하나이고, 나가는 본문의 두 키는 그 하나에서
+   * 따라온다(`describeDisposalDestination`).
+   */
+  it('도착지 한 행을 보인다', () => {
+    renderDialog();
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText(t.formFields.destination)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.values.selfDisposal)).toBeInTheDocument();
+  });
+
+  /** 고른 거래처도 **같은 한 행**에 선다 — 갈래마다 자리가 달라지면 사용자가 찾아야 한다. */
+  it('폐기 거래처를 골랐으면 그 이름이 같은 자리에 선다', () => {
+    renderDialog({
+      summary: { ...SUMMARY, destination: 'SAMPLE-PARTNER-01 · 합성 폐기업체 가' },
+    });
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText(t.formFields.destination)).toBeInTheDocument();
+    expect(within(dialog).getByText('SAMPLE-PARTNER-01 · 합성 폐기업체 가')).toBeInTheDocument();
+    /* 짝 방향 — 자체 폐기 글자가 함께 서지 않는다(두 갈래가 한 자리를 나눠 쓴다). */
+    expect(within(dialog).queryByText(t.values.selfDisposal)).not.toBeInTheDocument();
   });
 
   /**

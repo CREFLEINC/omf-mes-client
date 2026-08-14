@@ -6,9 +6,11 @@ import {
   codePlaceholder,
   DEFECT_WAREHOUSE_TYPE_CODES,
   isDefectWarehouseTypePending,
+  isDisposalPartnerListPending,
   isRequiredCodeListPending,
   narrowToDefectWarehouses,
   PLACEHOLDER_DISPOSAL_ISSUE_CODES,
+  PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
   REQUIRED_CODE_KEYS,
   toCodeOptionSets,
   type CodeValueLists,
@@ -159,6 +161,41 @@ describe('isRequiredCodeListPending — 두 방향', () => {
     const values = { ...filledRequired(), receiptType: [], status: [] };
 
     expect(isRequiredCodeListPending(toCodeOptionSets(values))).toBe(false);
+  });
+});
+
+/**
+ * **폐기 거래처 선택지의 전환 감지기**(변경 통지 #128 §3).
+ *
+ * 이 회차에는 선택지를 채우는 조회가 없다 — 좁힐 역할 코드가 미확정이라 살아 있는 조회는
+ * 뒤 회차의 일이다. 그동안 칸은 **기존 자리표시 셋과 같은 모양으로** 잠기고 「선택지 준비 중」이
+ * 뜬다. 판정 함수가 **목록을 인자로 받는 이유**는 창고 유형 자리표시와 같다 — 함수 안에서
+ * 상수를 직접 읽으면 「차면 무엇이 달라지는가」를 잴 길이 없어 자리표시가 죽은 가지가 된다.
+ */
+describe('폐기 거래처 선택지 — 두 방향', () => {
+  it('이 회차의 선택지는 비어 있다', () => {
+    expect(PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS).toEqual([]);
+  });
+
+  it('비어 있으면 준비 중으로 판정한다', () => {
+    expect(isDisposalPartnerListPending(PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS)).toBe(true);
+  });
+
+  /** **둘째 방향** — 채우면 살아나지 않는 자리표시는 죽은 가지다. */
+  it('선택지가 차면 준비 중이 아니다', () => {
+    expect(
+      isDisposalPartnerListPending([{ value: '9251', label: 'SAMPLE-PARTNER-01 · 합성 업체 가' }]),
+    ).toBe(false);
+  });
+
+  /**
+   * **공통코드 자리표시에 섞지 않는다.** 폐기 거래처는 값 목록을 기다리는 코드가 아니라
+   * **조회로 오는 마스터**다 — 한 통에 담으면 「코드 값이 확정되면 열린다」는 규칙이 조회에도
+   * 걸린 것처럼 읽히고, 필수 코드 판정이 거래처까지 세게 된다.
+   */
+  it('거래처를 코드 자리표시 여섯에 섞지 않는다', () => {
+    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).not.toContain('disposalPartner');
+    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).toHaveLength(6);
   });
 });
 
