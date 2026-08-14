@@ -73,6 +73,7 @@ OMF-MES 사용자 프로그램의 클라이언트 모노레포. **React + TypeSc
 | ---- | --------- | ---- | ---- |
 | 2026-08-05 | Agent Coding 개발 하네스 구성 | 전체 | 초기 구성 |
 | 2026-08-14 | 저장소 적용 v1.1 — 리뷰 성문화·검증·리뷰 병렬화·게이트 등급·간헐 실패 이관·사본 체크리스트·이슈 정리보고 양식 | `.claude/skills/agent-development-orchestrator/` · `.claude/agents/` | W-01-06 프로파일링 4개 병목 + 정리보고 표준화 |
+| 2026-08-14 | 운영 정책을 저장소 자체 관리로 전환 — 정본·배포본 동기화 체계와 매니페스트 폐지(정책 본문 무변경) | `.claude/skills/agent-development-orchestrator/` | 외부 정본 관리 부담 제거 — 사용자 결정 |
 
 ---
 
