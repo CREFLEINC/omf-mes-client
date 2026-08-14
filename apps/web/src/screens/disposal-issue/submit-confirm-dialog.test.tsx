@@ -18,8 +18,6 @@ const SUMMARY: SubmitSummary = {
   warehouseName: 'SAMPLE-WH-01 · 합성 폐기창고 가',
   issueTypeCode: 'SAMPLE_GI_TYPE_A',
   sourceDocumentTypeCode: 'SAMPLE_SRC_TYPE_A',
-  destinationTypeCode: 'SAMPLE_DEST_TYPE_A',
-  disposalAccount: 'SAMPLE_ACCOUNT_A',
   reasonCode: 'SAMPLE_GI_REASON_A',
   issuedAt: '2026-08-11 09:30',
   businessDate: '2026-08-11',
@@ -59,10 +57,25 @@ describe('SubmitConfirmDialog 보이는 것', () => {
     expect(within(dialog).getByText('SAMPLE-WH-01 · 합성 폐기창고 가')).toBeInTheDocument();
     expect(within(dialog).getByText('SAMPLE_GI_TYPE_A')).toBeInTheDocument();
     expect(within(dialog).getByText('SAMPLE_SRC_TYPE_A')).toBeInTheDocument();
-    expect(within(dialog).getByText('SAMPLE_DEST_TYPE_A')).toBeInTheDocument();
-    expect(within(dialog).getByText('SAMPLE_ACCOUNT_A')).toBeInTheDocument();
     expect(within(dialog).getByText('SAMPLE_GI_REASON_A')).toBeInTheDocument();
     expect(within(dialog).getByText('2026-08-11 09:30')).toBeInTheDocument();
+  });
+
+  /**
+   * **없앤 두 칸은 확인 창에도 서지 않는다**(#124 · #128). 사용자가 확인한 글자와 나가는 값은
+   * 같은 자리에서 나와야 하는데, 본문이 싣지 않는 값을 창이 보이면 그 둘이 갈린다.
+   *
+   * 위 「전표·코드·일시를 다시 보인다」가 짝 양성이고, 여기서는 같은 창을 그린 뒤 잰다.
+   */
+  it.each(['폐기 계정', '도착지 유형'])('%s 행이 없다', (label) => {
+    renderDialog();
+
+    const dialog = screen.getByRole('dialog');
+
+    /* 짝 양성 — 창이 실제로 요약 행을 그렸다. */
+    expect(within(dialog).getByText(t.formFields.issueType)).toBeInTheDocument();
+
+    expect(within(dialog).queryByText(label)).not.toBeInTheDocument();
   });
 
   /** 사용자가 넣은 적 없는 값이 전표에 실린다 — **값 자체가** 파생임을 밝힌다. */

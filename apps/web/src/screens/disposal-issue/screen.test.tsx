@@ -53,8 +53,6 @@ const { codeValues, defectTypeCodes, approvedStatusCodes } = vi.hoisted(() => ({
   codeValues: {
     issueType: [] as string[],
     sourceDocumentType: [] as string[],
-    destinationType: [] as string[],
-    disposalAccount: [] as string[],
     reason: [] as string[],
     receiptType: [] as string[],
     status: [] as string[],
@@ -2862,12 +2860,10 @@ describe('DisposalIssueScreen — 이력 탭에도 쓰기가 없다', () => {
  * 품의 상신 — 전표 생성과 상신을 잇는 한 버튼(승인 기록 정정 1-1)
  * ------------------------------------------------------------------------- */
 
-/** 품의 정보의 코드 다섯을 채운다. **채워야 「품의 상신」이 열린다**(전환 감지기 M53). */
+/** 품의 정보의 코드 셋을 채운다. **채워야 「승인 요청」이 열린다**(전환 감지기 M53). */
 const fillFormCodeLists = (): void => {
   codeValues.issueType = [SAMPLE_FORM_CODES.issueType];
   codeValues.sourceDocumentType = [SAMPLE_FORM_CODES.sourceDocumentType];
-  codeValues.destinationType = [SAMPLE_FORM_CODES.destinationType];
-  codeValues.disposalAccount = [SAMPLE_FORM_CODES.disposalAccount];
   codeValues.reason = [SAMPLE_FORM_CODES.reason];
 };
 
@@ -2900,8 +2896,6 @@ const fillDisposalForm = async (
 ): Promise<void> => {
   await chooseOption(user, t.formFields.issueType, SAMPLE_FORM_CODES.issueType);
   await chooseOption(user, t.formFields.sourceDocumentType, SAMPLE_FORM_CODES.sourceDocumentType);
-  await chooseOption(user, t.formFields.destinationType, SAMPLE_FORM_CODES.destinationType);
-  await chooseOption(user, t.formFields.disposalAccount, SAMPLE_FORM_CODES.disposalAccount);
   await chooseOption(user, t.formFields.reason, SAMPLE_FORM_CODES.reason);
   await pickDate(user, screen.getByLabelText(t.formFields.issuedDate), '2026-08-11');
   setIssuedTime('09:30');
@@ -3136,10 +3130,35 @@ describe('DisposalIssueScreen — 연쇄가 실제로 보내는 것', () => {
     expect(body.issuedAt).toMatch(/^2026-08-11T09:30:00/);
     expect(body.businessDate).toBe('2026-08-11');
     expect(body.reasonCode).toBe(SAMPLE_FORM_CODES.reason);
-    expect(body.destinationId).toBe(Number(SAMPLE_FORM_CODES.disposalAccount));
     expect(body.lines).toEqual([
       { itemId: 9301, lotId: 9601, issueQty: 10, uomId: 9801, sourceLocationId: 9901 },
     ]);
+  });
+
+  /**
+   * **경로 전체가 도착지 짝을 싣지 않는다**(완료 조건 C11 · #124·#128).
+   *
+   * `issue-request.test.ts`가 조립 함수 하나를 재고, 여기서는 **사용자가 실제로 눌러 나간
+   * 본문**을 잰다 — 화면이 조립 함수를 지나 다른 자리에서 두 키를 얹을 길이 없다는 것까지
+   * 이 자리가 고정한다. 값이 아니라 **키 존재 여부**로 재는 이유는 `null`을 싣는 것과
+   * 키를 생략하는 것이 서버에게 다른 말이기 때문이다.
+   */
+  it('나가는 본문에 도착지 두 키가 없다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, ISSUES_PATH)).toHaveLength(1);
+    });
+
+    const body = writesTo(requests, ISSUES_PATH)[0]?.body as Record<string, unknown>;
+
+    /* 짝 양성 — 본문이 실제로 나갔다(빈 객체라 통과한 것이 아니다). */
+    expect(body.issueTypeCode).toBe(SAMPLE_FORM_CODES.issueType);
+    expect(Object.keys(body)).not.toContain('destinationTypeCode');
+    expect(Object.keys(body)).not.toContain('destinationId');
   });
 
   /**

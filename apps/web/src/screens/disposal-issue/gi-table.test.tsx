@@ -188,11 +188,16 @@ describe('GiTable — 미상신 표식', () => {
     expect(screen.getAllByText(t.values.notSubmitted)).toHaveLength(1);
   });
 
-  /* 색·아이콘에만 기대지 않는다 — 보이는 글자가 그 사실을 말한다. */
+  /*
+   * 색·아이콘에만 기대지 않는다 — 보이는 글자가 그 사실을 말한다.
+   *
+   * 글자를 여기서 한 번 더 무는 것이 **낱말 교체의 둘째 감지기**다(#124) — 승인 축의 낱말이
+   * 「상신」으로 되돌아가면 이 자리와 `tabs.test.ts`에서만 운다.
+   */
   it('표식이 글자다', () => {
     renderTable();
 
-    expect(screen.getByText(t.values.notSubmitted).textContent).toBe('미상신');
+    expect(screen.getByText(t.values.notSubmitted).textContent).toBe('미요청');
   });
 });
 

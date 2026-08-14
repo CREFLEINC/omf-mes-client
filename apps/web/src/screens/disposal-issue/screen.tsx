@@ -66,7 +66,6 @@ import { IssueDetailPane } from './issue-detail-pane';
 import { IssueLineTable } from './issue-line-table';
 import {
   toBusinessDate,
-  toDestinationId,
   toDisposalLines,
   toGoodsIssueRequest,
   toIssuedLocal,
@@ -1477,7 +1476,6 @@ export const DisposalIssueScreen = () => {
       /* **확인 창이 보인 그 배열이다** — 여기서 다시 만들면 확인한 것과 나가는 것이 갈린다. */
       lines: submitInputs,
       draft: disposalDraft,
-      destinationId: toDestinationId(disposalDraft.codes.disposalAccount),
       /* 발생 시각은 **제출 순간**이다. 순수 함수에 넘겨 그 사실이 인자로 드러나게 한다. */
       now: new Date(),
     });
@@ -1906,8 +1904,6 @@ export const DisposalIssueScreen = () => {
                   warehouseName: detailWarehouseName,
                   issueTypeCode: disposalDraft.codes.issueType,
                   sourceDocumentTypeCode: disposalDraft.codes.sourceDocumentType,
-                  destinationTypeCode: disposalDraft.codes.destinationType,
-                  disposalAccount: disposalDraft.codes.disposalAccount,
                   reasonCode: disposalDraft.codes.reason,
                   issuedAt: formatDateTime(toIssuedLocal(disposalDraft)),
                   businessDate: toBusinessDate(toIssuedLocal(disposalDraft)),

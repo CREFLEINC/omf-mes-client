@@ -29,8 +29,6 @@ export interface SubmitSummary {
   warehouseName: string;
   issueTypeCode: string;
   sourceDocumentTypeCode: string;
-  destinationTypeCode: string;
-  disposalAccount: string;
   reasonCode: string;
   /** 「2026-08-11 09:30」 — 보이는 표기 그대로 */
   issuedAt: string;
@@ -38,7 +36,7 @@ export interface SubmitSummary {
   businessDate: string;
   remarks: string;
   lines: readonly SubmitLineSummary[];
-  /** 상신 사유 **전문**. 줄바꿈이 유지된다 */
+  /** 요청 사유 **전문**. 줄바꿈이 유지된다 */
   reason: string;
   /** 결재함 목록에서 요약을 겸할 첫 줄. **전문과 나눠 보인다**(완료 조건 C62) */
   reasonFirstLine: string;
@@ -67,12 +65,6 @@ const toRows = (summary: SubmitSummary): SummaryRow[] => [
     label: t.formFields.sourceDocumentType,
     value: summary.sourceDocumentTypeCode,
   },
-  {
-    key: 'destinationType',
-    label: t.formFields.destinationType,
-    value: summary.destinationTypeCode,
-  },
-  { key: 'disposalAccount', label: t.formFields.disposalAccount, value: summary.disposalAccount },
   { key: 'reasonCode', label: t.formFields.reason, value: summary.reasonCode },
   { key: 'issuedAt', label: t.formFields.issuedDate, value: summary.issuedAt },
   /* 파생값임을 **값 자체가** 밝힌다 — 라벨만으로는 사용자가 자기가 넣은 값으로 읽는다. */
@@ -85,17 +77,17 @@ const toRows = (summary: SubmitSummary): SummaryRow[] => [
 ];
 
 /**
- * 품의 상신 확인 — **되돌릴 수 없는 조작 앞의 마지막 층이다.**
+ * 승인 요청 확인 — **되돌릴 수 없는 조작 앞의 마지막 층이다.**
  *
  * **이 조작 한 번에 요청이 둘 나간다**(승인 기록 정정 1-1) — 전표를 만들고 이어서 결재에
- * 올린다. 창이 그 사실을 적는 이유는, 「상신했는데 전표만 생겼다」는 중간 실패가 실재하고
- * 그때 사용자가 무슨 일이 일어난 것인지 알아야 하기 때문이다.
+ * 올린다. 창이 그 사실을 적는 이유는, 「승인을 요청했는데 전표만 생겼다」는 중간 실패가
+ * 실재하고 그때 사용자가 무슨 일이 일어난 것인지 알아야 하기 때문이다.
  *
  * **재고는 아직 움직이지 않는다.** 이 화면에서 재고가 빠지는 순간은 승인 뒤의 「기타출고 처리」
  * 하나뿐이고, 창이 그 경계를 분명히 한다 — 사용자가 여기서 재고가 빠졌다고 믿으면 승인 뒤의
  * 처리를 잊는다(계약이 「승인은 상태만 바꾼다」라고 못 박은 자리).
  *
- * **상신은 되돌릴 수 없다.** 반려된 뒤 다시 올릴 수는 있으나 그것은 **새 요청**이다(스펙 §6).
+ * **승인 요청은 되돌릴 수 없다.** 반려된 뒤 다시 올릴 수는 있으나 그것은 **새 요청**이다(스펙 §6).
  * 「취소할 수 있습니다」로 읽히지 않게 정확히 적는다.
  *
  * **사유 전문과 첫 줄을 나눠 보인다**(완료 조건 C62). 결재함 목록에서 요약을 겸하는 것이

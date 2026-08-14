@@ -26,8 +26,6 @@ const FILLED_DRAFT: DisposalDraft = {
   codes: {
     issueType: 'SAMPLE_GI_TYPE_A',
     sourceDocumentType: 'SAMPLE_SRC_TYPE_A',
-    destinationType: 'SAMPLE_DEST_TYPE_A',
-    disposalAccount: '9561',
     reason: 'SAMPLE_GI_REASON_A',
   },
   issuedDate: '2026-08-11',
@@ -36,12 +34,10 @@ const FILLED_DRAFT: DisposalDraft = {
   reason: '합성 폐기 사유',
 };
 
-/** 값 목록이 확정된 상태. **다섯을 다 채운다** — 하나만 비어도 판정이 「준비 중」으로 접힌다. */
+/** 값 목록이 확정된 상태. **셋을 다 채운다** — 하나만 비어도 판정이 「준비 중」으로 접힌다. */
 const FILLED_LISTS: CodeValueLists = {
   issueType: ['SAMPLE_GI_TYPE_A'],
   sourceDocumentType: ['SAMPLE_SRC_TYPE_A'],
-  destinationType: ['SAMPLE_DEST_TYPE_A'],
-  disposalAccount: ['9561'],
   reason: ['SAMPLE_GI_REASON_A'],
   receiptType: [],
   status: [],
@@ -51,8 +47,6 @@ const FILLED_LISTS: CodeValueLists = {
 const EMPTY_LISTS: CodeValueLists = {
   issueType: [],
   sourceDocumentType: [],
-  destinationType: [],
-  disposalAccount: [],
   reason: [],
   receiptType: [],
   status: [],
@@ -78,34 +72,28 @@ describe('disposalBlockReason', () => {
     expect(block()).toBeNull();
   });
 
-  it.each([
-    'issueType',
-    'sourceDocumentType',
-    'destinationType',
-    'disposalAccount',
-    'reason',
-  ] as const)('값 목록 다섯 중 %s 하나만 비어도 잠긴다', (key) => {
-    expect(block(FILLED_DRAFT, { ...FILLED_LISTS, [key]: [] })).toBe(
-      t.actionReasons.codeListPending,
-    );
-  });
+  it.each(['issueType', 'sourceDocumentType', 'reason'] as const)(
+    '값 목록 셋 중 %s 하나만 비어도 잠긴다',
+    (key) => {
+      expect(block(FILLED_DRAFT, { ...FILLED_LISTS, [key]: [] })).toBe(
+        t.actionReasons.codeListPending,
+      );
+    },
+  );
 
   /** 무엇을 보내는가(줄)가 누구에게·언제(폼)보다 앞이다 — 화면에 놓인 차례 그대로다. */
   it('줄 판정의 사유를 그대로 낸다', () => {
     expect(block(FILLED_DRAFT, FILLED_LISTS, BLOCKED)).toBe(BLOCKED.reason);
   });
 
-  it.each([
-    'issueType',
-    'sourceDocumentType',
-    'destinationType',
-    'disposalAccount',
-    'reason',
-  ] as const)('코드 %s를 고르지 않으면 잠긴다', (key) => {
-    const draft = { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, [key]: '  ' } };
+  it.each(['issueType', 'sourceDocumentType', 'reason'] as const)(
+    '코드 %s를 고르지 않으면 잠긴다',
+    (key) => {
+      const draft = { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, [key]: '  ' } };
 
-    expect(block(draft)).toBe(t.actionReasons.needsCodes);
-  });
+      expect(block(draft)).toBe(t.actionReasons.needsCodes);
+    },
+  );
 
   it('출고 일자·시각이 비면 각각의 사유가 나온다', () => {
     expect(block({ ...FILLED_DRAFT, issuedDate: '' })).toBe(t.actionReasons.needsIssuedDate);
@@ -203,16 +191,19 @@ describe('화면이 아는 필드', () => {
    */
   it('폼에 칸이 있는 이름만 담는다', () => {
     expect([...DISPOSAL_FORM_FIELDS].sort()).toEqual(
-      [
-        'issueTypeCode',
-        'sourceDocumentTypeCode',
-        'destinationTypeCode',
-        'destinationId',
-        'reasonCode',
-        'issuedAt',
-        'remarks',
-      ].sort(),
+      ['issueTypeCode', 'sourceDocumentTypeCode', 'reasonCode', 'issuedAt', 'remarks'].sort(),
     );
+  });
+
+  /**
+   * **없앤 칸의 이름은 담지 않는다**(#124 · 짝 규칙). 담아 두면 서버가 그 이름으로 오류를
+   * 되돌렸을 때 **붙일 칸이 없는 인라인 오류**가 되어 어디에도 보이지 않는다.
+   *
+   * 짝 양성은 바로 위 시험이다 — 담는 다섯을 확정한 같은 시점의 음성 단언이다.
+   */
+  it.each(['destinationTypeCode', 'destinationId'])('%s는 담지 않는다', (field) => {
+    expect(DISPOSAL_FORM_FIELDS).not.toContain(field);
+    expect(Object.values(CODE_FIELD_NAMES)).not.toContain(field);
   });
 
   /** 화면이 값을 정하지 않는 필드는 담지 않는다 — 고른 전표·표의 줄·파생·상수에서 온다. */

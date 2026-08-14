@@ -281,18 +281,17 @@ export const toIssueDetailResult = (data: {
 });
 
 /**
- * 품의 정보 폼이 다루는 코드 다섯.
+ * 폐기 요청 정보 폼이 다루는 코드 셋.
  *
- * **다섯이 전부 계약의 등록 필수 자리다**(계획 결정 8) — 값 목록이 비어 있는 동안 이 화면으로는
- * 폐기 품의를 올릴 수 없다. 조회 조건의 코드는 이 union에 들지 않는다(`code-options.ts`가
+ * **셋이 전부 계약의 등록 필수 자리다**(계획 결정 8) — 값 목록이 비어 있는 동안 이 화면으로는
+ * 폐기 요청을 올릴 수 없다. 조회 조건의 코드는 이 union에 들지 않는다(`code-options.ts`가
  * 넓혀 쓴다) — 비어 있어도 아무것도 막지 않아 성질이 다르다.
  *
- * `disposalAccount`(폐기 계정)만 이름이 계약 필드와 다르다. 계약에 그 이름의 필드가 없고
- * 가장 가까운 자리가 도착지 식별자라(계획 §5.4-4 · 결정 8의 넷째 줄) **그 가정을 이름이 아니라
- * 옮기는 한 자리에서 밝힌다**(`issue-request.ts`).
+ * **다섯에서 셋으로 줄었다**(변경 통지 #124·#128). 폐기 계정은 회계 소관이라 MES가 다루지
+ * 않고, 도착지 유형은 짝인 도착지 식별자를 공급할 자리가 함께 사라져 **한쪽만 실린 전표**가
+ * 만들어지지 않게 같이 없앴다 — 잠긴 칸으로 남기지 않고 **정의째** 없앤다.
  */
-export type DisposalCodeKey =
-  'issueType' | 'sourceDocumentType' | 'destinationType' | 'disposalAccount' | 'reason';
+export type DisposalCodeKey = 'issueType' | 'sourceDocumentType' | 'reason';
 
 /**
  * 품의 정보 초안 — **아직 보내지 않은 입력**이다(수명 표의 「폐기」 열).
@@ -335,8 +334,6 @@ export const EMPTY_DISPOSAL_DRAFT: DisposalDraft = {
   codes: {
     issueType: '',
     sourceDocumentType: '',
-    destinationType: '',
-    disposalAccount: '',
     reason: '',
   },
   issuedDate: '',

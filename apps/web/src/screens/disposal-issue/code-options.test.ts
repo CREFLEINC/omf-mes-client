@@ -28,12 +28,39 @@ describe('자리표시 — 지금의 사실', () => {
    * **값을 지어내지 않는 것이 이 파일의 목적이다.** 계약의 `@example`도 심지 않는다 —
    * 그것은 예시이지 확정이 아니다.
    */
-  it('코드 여덟의 값 목록이 전부 비어 있다', () => {
-    expect(Object.values(PLACEHOLDER_DISPOSAL_ISSUE_CODES).every((values) => values.length === 0)).toBe(
-      true,
+  it('코드 여섯의 값 목록이 전부 비어 있다', () => {
+    expect(
+      Object.values(PLACEHOLDER_DISPOSAL_ISSUE_CODES).every((values) => values.length === 0),
+    ).toBe(true);
+    /* 짝 방향 — 키가 실제로 여섯이다(빈 객체라 통과한 것이 아니다). */
+    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).toHaveLength(6);
+  });
+
+  /**
+   * **여섯이 전부다 — 없앤 자리가 정말 없다**(변경 통지 #124 · 짝 규칙).
+   *
+   * 폐기 계정은 회계 소관이라 자리째 없앴고, 도착지 유형은 짝인 도착지 식별자를 공급할 자리가
+   * 함께 사라져 **한쪽만 실린 본문**이 만들어지지 않게 같이 없앴다. 값만 비워 두면 「나중에 채울
+   * 자리」로 남아 다음 사본으로 전파된다.
+   *
+   * **집합을 그대로 견준다**(`not.toContain`이 아니라 `toEqual`). 없앤 이름을 시험이 다시 적으면
+   * 그 이름이 저장소에 남아, 「이 화면에 그런 자리가 없다」가 검색으로도 사실이 되지 못한다.
+   * 집합 견줌은 되살아난 자리도 새로 는 자리도 함께 잡는다.
+   */
+  it('자리표시 여섯이 그 여섯 그대로다', () => {
+    const expected = [
+      'issueType',
+      'sourceDocumentType',
+      'reason',
+      'receiptType',
+      'status',
+      'issueStatus',
+    ];
+
+    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES).sort()).toEqual([...expected].sort());
+    expect(Object.keys(toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).sort()).toEqual(
+      [...expected].sort(),
     );
-    /* 짝 방향 — 키가 실제로 여덟이다(빈 객체라 통과한 것이 아니다). */
-    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).toHaveLength(8);
   });
 
   /**
@@ -53,17 +80,13 @@ describe('자리표시 — 지금의 사실', () => {
   });
 
   /**
-   * 등록 필수는 **다섯**이다. 착수 이슈는 둘(폐기 계정 · 승인 유형·상태)만 미결로 적었으나
-   * 계약이 등록에 요구하는 코드가 이만큼이다(계획 §5.4-9).
+   * 등록 필수는 **셋**이다. 폐기 계정과 도착지 유형을 없애면서 다섯에서 줄었다(#124).
+   *
+   * **줄어도 등록은 그대로 잠겨 있다** — 남은 셋의 값 목록이 여전히 비어 있기 때문이다.
+   * 아래 「지금은 값이 없어 참이다」가 그 사실을 함께 잰다.
    */
-  it('등록 필수 코드가 다섯이다', () => {
-    expect([...REQUIRED_CODE_KEYS]).toEqual([
-      'issueType',
-      'sourceDocumentType',
-      'destinationType',
-      'disposalAccount',
-      'reason',
-    ]);
+  it('등록 필수 코드가 셋이다', () => {
+    expect([...REQUIRED_CODE_KEYS]).toEqual(['issueType', 'sourceDocumentType', 'reason']);
   });
 });
 
@@ -90,14 +113,14 @@ describe('toCodeOptionSets', () => {
     ]);
   });
 
-  it('여덟을 모두 옮긴다', () => {
-    expect(Object.keys(toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES))).toHaveLength(8);
+  it('여섯을 모두 옮긴다', () => {
+    expect(Object.keys(toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES))).toHaveLength(6);
   });
 });
 
 /**
  * **전환 감지기** — 자리표시가 채워졌을 때 살아나는 것을 재지 않으면 그것은 죽은 가지다.
- * 이 판정을 읽어 「품의 등록」을 잠그는 자리는 뒤따르는 회차에 있고, 판정을 여기 두는 이유는
+ * 이 판정을 읽어 「승인 요청」을 잠그는 자리는 `validation.ts`이고, 판정을 여기 두는 이유는
  * 값이 확정될 때 **고칠 자리가 이 파일 하나**여야 하기 때문이다.
  */
 describe('isRequiredCodeListPending — 두 방향', () => {
@@ -105,20 +128,25 @@ describe('isRequiredCodeListPending — 두 방향', () => {
     ...PLACEHOLDER_DISPOSAL_ISSUE_CODES,
     issueType: ['SAMPLE_ISSUE_TYPE_A'],
     sourceDocumentType: ['SAMPLE_SRC_TYPE_A'],
-    destinationType: ['SAMPLE_DEST_TYPE_A'],
-    disposalAccount: ['SAMPLE_ACCOUNT_A'],
     reason: ['SAMPLE_REASON_A'],
   });
 
+  /**
+   * **등록 잠금이 이번 변경으로 열리지 않는다**(완료 조건 C14의 잣대). 필수가 다섯에서 셋으로
+   * 줄었어도 남은 셋이 여전히 비어 있어 판정은 그대로 참이다 — 자리를 지우는 일이 사용자에게
+   * 무엇을 열어 주는 일이 되어서는 안 된다.
+   */
   it('지금은 값이 없어 참이다', () => {
-    expect(isRequiredCodeListPending(toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES))).toBe(true);
+    expect(isRequiredCodeListPending(toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES))).toBe(
+      true,
+    );
   });
 
-  it('다섯이 모두 차면 거짓이 된다', () => {
+  it('셋이 모두 차면 거짓이 된다', () => {
     expect(isRequiredCodeListPending(toCodeOptionSets(filledRequired()))).toBe(false);
   });
 
-  it('다섯 중 하나만 비어도 참이다', () => {
+  it('셋 중 하나만 비어도 참이다', () => {
     for (const key of REQUIRED_CODE_KEYS) {
       const values = { ...filledRequired(), [key]: [] };
 
@@ -169,9 +197,9 @@ describe('불량창고 좁힘 — 두 방향', () => {
   });
 
   it('자리표시를 채우면 그 유형만 남는다', () => {
-    expect(narrowToDefectWarehouses(entries, ['SAMPLE_WH_TYPE_B']).map((entry) => entry.value)).toEqual(
-      ['9702'],
-    );
+    expect(
+      narrowToDefectWarehouses(entries, ['SAMPLE_WH_TYPE_B']).map((entry) => entry.value),
+    ).toEqual(['9702']);
   });
 
   it('유형이 둘이면 둘 다 남는다', () => {

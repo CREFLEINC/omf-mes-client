@@ -530,15 +530,12 @@ export const createdIssueLineResponseFixtures = [
 ];
 
 /**
- * 값 목록이 확정됐다고 가정할 때 쓰는 **품의 정보 코드 다섯**. 계약의 `@example` 값이 아니다.
+ * 값 목록이 확정됐다고 가정할 때 쓰는 **폐기 요청 정보 코드 셋**. 계약의 `@example` 값이 아니다.
  *
- * 폐기 계정만 숫자 꼴인 이유는 그 값이 **도착지 식별자로 간다는 가정** 때문이다
- * (계획 §13-5 · `issue-request.ts`의 `toDestinationId`) — 값 목록이 오면 그 가정도 함께 답을 받는다.
+ * **폐기 계정·도착지 유형이 없다**(변경 통지 #124·#128) — 폼에 그 칸이 없어 고를 값도 없다.
  */
 export const SAMPLE_FORM_CODES = {
   issueType: 'SAMPLE_GI_TYPE_A',
   sourceDocumentType: 'SAMPLE_SRC_TYPE_A',
-  destinationType: 'SAMPLE_DEST_TYPE_A',
-  disposalAccount: '8801',
   reason: 'SAMPLE_GI_REASON_A',
 };

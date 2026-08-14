@@ -17,8 +17,13 @@ describe('탭 정의', () => {
     expect(DEFAULT_TAB).toBe('disposal');
   });
 
-  it('탭 이름이 스펙 문면 그대로다', () => {
-    expect(tabLabel('disposal')).toBe('품의 발의');
+  /**
+   * **낱말 교체의 감지기다**(변경 통지 #124). MES는 품의서를 기안하지 않으므로 첫 탭은
+   * 「품의 발의」가 아니라 **「폐기 요청」**이다 — 문구를 문자열로 무는 시험이 이 슬라이스에
+   * 이것 하나뿐이라(실측) 낱말이 되돌아가면 여기서만 운다.
+   */
+  it('탭 이름이 통지 문면 그대로다', () => {
+    expect(tabLabel('disposal')).toBe('폐기 요청');
     expect(tabLabel('history')).toBe('처리 이력');
     /* 짝 방향 — 두 이름이 서로 다르다(같으면 어느 탭인지 읽을 수 없다). */
     expect(tabLabel('disposal')).not.toBe(tabLabel('history'));

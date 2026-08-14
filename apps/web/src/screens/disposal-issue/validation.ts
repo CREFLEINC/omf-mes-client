@@ -15,11 +15,11 @@ import type { DisposalCodeKey, DisposalDraft } from './types';
  * | --- | --- |
  * | 필수 값(헤더 열·라인 다섯) | 계약 타입 + `issue-request.ts`가 늘 채운다 |
  * | **무엇을 얼마나 보내는가**(줄 선택·수량·상한) | `disposal-selection.ts` — 이 파일은 그 판정을 **받아서 낸다** |
- * | **조건부 필수**(코드 다섯·출고 일시·**상신 사유**) | 이 파일의 `disposalBlockReason` — 버튼 활성/비활성과 사유 |
+ * | **조건부 필수**(코드 셋·출고 일시·**요청 사유**) | 이 파일의 `disposalBlockReason` — 버튼 활성/비활성과 사유 |
  * | **길이·형식** | 이 파일의 `validateDisposalDraft` — 인라인 오류 |
  *
  * **막는 곳이 화면뿐인 자리가 셋 있다**(계획 §6.3 실측). 목이 `lines: []`를 201로, `reasonCode`
- * 생략을 201로, **상신 사유 공백만을 202로** 통과시킨다 — 「보내 보고 서버가 막아 주기」를
+ * 생략을 201로, **요청 사유 공백만을 202로** 통과시킨다 — 「보내 보고 서버가 막아 주기」를
  * 기대할 수 없다. 그래서 같은 규칙이 **버튼(첫째 겹) · 보내는 자리의 재판정(둘째 겹) ·
  * 본문 조립(마지막 겹)** 세 곳에 선다.
  *
@@ -42,14 +42,13 @@ export const CODE_MAX = 50;
  * (`disposal-form.tsx`)와 서버 오류를 인라인으로 낼지 가르는 자리(`DISPOSAL_FORM_FIELDS`)가
  * 같은 이름을 봐야, 서버가 준 오류와 화면이 잡은 오류가 같은 칸에 붙는다.
  *
- * **`disposalAccount`만 이름이 다르다** — 계약에 「폐기 계정」 필드가 없어 도착지 식별자로
- * 옮긴다는 가정이 여기에도 걸린다(계획 §13-5 · `issue-request.ts`의 `toDestinationId`).
+ * **`destinationTypeCode`·`destinationId`가 없다**(변경 통지 #124·#128). 폼에 그 칸이 없으니
+ * 여기에도 이름이 없어야 한다 — 담아 두면 서버가 그 이름으로 오류를 되돌렸을 때 **붙일 칸이
+ * 없는 인라인 오류**가 되어 어디에도 보이지 않는다.
  */
 export const CODE_FIELD_NAMES: Record<DisposalCodeKey, string> = {
   issueType: 'issueTypeCode',
   sourceDocumentType: 'sourceDocumentTypeCode',
-  destinationType: 'destinationTypeCode',
-  disposalAccount: 'destinationId',
   reason: 'reasonCode',
 };
 
@@ -71,9 +70,9 @@ export const DISPOSAL_FORM_FIELDS: readonly string[] = [
 ];
 
 /**
- * 상신에서 이 화면이 소유한 입력칸 이름 — **사유 하나뿐이다.**
+ * 승인 요청에서 이 화면이 소유한 입력칸 이름 — **사유 하나뿐이다.**
  *
- * 상신 본문의 필드가 그것 하나라(계약) 넓히면 남의 오류가 사유 칸에 붙는다. 결재선이 없어
+ * 요청 본문의 필드가 그것 하나라(계약) 넓히면 남의 오류가 사유 칸에 붙는다. 결재선이 없어
  * 400이 오는 갈래(계약 명시)는 **필드 오류가 아니라 배너**로 간다 — 사용자가 고칠 칸이 화면에
  * 없기 때문이다. **코드로 분기해 원인을 지어내지 않고 서버 문구를 그대로 낸다**(계획 결정 16).
  */
@@ -90,7 +89,7 @@ export const POST_FORM_FIELDS: readonly string[] = [];
 
 const isBlank = (value: string): boolean => value.trim() === '';
 
-/** 「품의 상신」을 열지 말지 가르는 입력. */
+/** 「승인 요청」을 열지 말지 가르는 입력. */
 export interface DisposalGateInput {
   /**
    * 코드 선택지. **값 목록 자체가 없는 것**과 「아직 안 골랐다」를 가르는 근거다
@@ -115,7 +114,7 @@ export interface DisposalGateInput {
  * **차례가 뜻을 정한다.** 값 목록이 없다는 사정이 가장 앞이다 — 그 상태에서는 나머지를 아무리
  * 채워도 열리지 않으므로, 다른 사유를 먼저 내면 사용자가 할 수 없는 조치를 가리킨다. 그다음은
  * 화면에 놓인 차례다: **무엇을 보내는가**(위의 라인 표) → **어떤 전표인가**(폼의 코드·일시) →
- * **왜 올리는가**(맨 아래 상신 사유).
+ * **왜 올리는가**(맨 아래 요청 사유).
  */
 export const disposalBlockReason = (input: DisposalGateInput): string | null => {
   if (isRequiredCodeListPending(input.codeOptions)) return t.actionReasons.codeListPending;
@@ -130,21 +129,21 @@ export const disposalBlockReason = (input: DisposalGateInput): string | null => 
   return null;
 };
 
-/** 이력 탭의 「재상신」을 열지 말지 가르는 입력. */
+/** 이력 탭의 「재요청」을 열지 말지 가르는 입력. */
 export interface ResubmitGateInput {
   /**
-   * 상신 여부 **세 갈래**. **판정은 `approval-progress.ts`에서 온다** — 여기서 다시 판정하면
-   * 「미상신이라 적어 놓고 재상신은 잠긴」 어긋난 화면이 생긴다.
+   * 승인 요청 여부 **세 갈래**. **판정은 `approval-progress.ts`에서 온다** — 여기서 다시
+   * 판정하면 「미요청이라 적어 놓고 재요청은 잠긴」 어긋난 화면이 생긴다.
    *
-   * 셋째 갈래(`unusable`)를 미상신으로 접지 않는 것이 이 자리의 요점이다 — 값이 실려 온 이상
-   * **이미 올라갔을 수 있고**, 그때 다시 올리면 같은 품의의 결재 요청이 두 벌이 된다.
+   * 셋째 갈래(`unusable`)를 미요청으로 접지 않는 것이 이 자리의 요점이다 — 값이 실려 온 이상
+   * **이미 올라갔을 수 있고**, 그때 다시 올리면 같은 건의 결재 요청이 두 벌이 된다.
    */
   submission: Submission['kind'];
   reason: string;
 }
 
 /**
- * 왜 막혔는지. **상신 여부가 사유보다 앞이다** — 이미 올라간 건에 「사유를 적으세요」는
+ * 왜 막혔는지. **승인 요청 여부가 사유보다 앞이다** — 이미 올라간 건에 「사유를 적으세요」는
  * 사용자가 해 봐야 열리지 않는 조치를 가리킨다.
  */
 export const resubmitBlockReason = (input: ResubmitGateInput): string | null => {
@@ -158,9 +157,9 @@ export const resubmitBlockReason = (input: ResubmitGateInput): string | null => 
 /** 「기타출고 처리」를 열지 말지 가르는 입력. */
 export interface PostGateInput {
   /**
-   * 상신 여부 세 갈래. **판정은 `approval-progress.ts`에서 온다.**
+   * 승인 요청 여부 세 갈래. **판정은 `approval-progress.ts`에서 온다.**
    *
-   * **`unusable`을 잠그지 않는다** — 재상신과 갈리는 자리다. 저쪽은 되풀이하면 **결재 요청이
+   * **`unusable`을 잠그지 않는다** — 재요청과 갈리는 자리다. 저쪽은 되풀이하면 **결재 요청이
    * 두 벌**이 되지만, 여기서 잘못 누르면 돌아오는 것은 **서버의 400**이다. 값이 실려 온 이상
    * 승인이 끝나 있을 수 있고, 그때 잠그면 정당한 처리가 영영 막힌다.
    */
@@ -176,13 +175,21 @@ export interface PostGateInput {
  *
  * | 사정 | 근거 | 잠그는가 |
  * | --- | --- | :-: |
- * | 미상신 | 승인 요청 값이 **없다** — 승인이 있을 수 없다 | **잠근다** |
+ * | 승인 요청 전 | 승인 요청 값이 **없다** — 승인이 있을 수 없다 | **잠근다** |
  * | 자리표시가 찼고 승인 전 | 그 요청의 상태가 승인 집합에 **없다** | **잠근다** |
  * | 자리표시가 비었다 | 어떤 코드가 승인인지 **모른다** | 잠그지 않는다 |
  * | 결재 진행을 못 읽었다 | 판정할 자료가 **없다** | 잠그지 않는다 |
- * | 상신 여부를 확인할 수 없다 | 값이 왔으나 쓸 수 없다 | 잠그지 않는다 |
+ * | 승인 요청 여부를 확인할 수 없다 | 값이 왔으나 쓸 수 없다 | 잠그지 않는다 |
  *
- * **차례가 뜻을 정한다** — 상신조차 되지 않았으면 승인 여부를 말할 것이 없으므로 그 사유가 앞선다.
+ * **차례가 뜻을 정한다** — 승인 요청조차 올라가지 않았으면 승인 여부를 말할 것이 없으므로
+ * 그 사유가 앞선다.
+ *
+ * ⭐ **이 잠금의 근거는 MES 내부 승인 정책이다**(변경 통지 #124 · 결정 기록 DR-009). 선행
+ * 회차는 「승인 없이 출고할 수 없습니다」를 외부 요구서 항목에서 끌어왔으나, MES가 품의서를
+ * 기안하지 않기로 확정되면서 그 근거는 사라지고 **「작업자 요청 → 권한자 승인」이라는 MES
+ * 내부 규칙**이 그 자리를 그대로 잇는다. 잠금 자체는 달라지지 않으므로 아래 두 갈래도
+ * 그대로 둔다 — 근거만 여기 적어 두는 이유는, 적어 두지 않으면 다음 사람이 없어진 외부
+ * 요구서를 다시 찾아 배선하기 때문이다.
  */
 export const postBlockReason = (input: PostGateInput): string | null => {
   if (input.submission === 'notSubmitted') return t.actionReasons.postNeedsSubmission;
@@ -197,7 +204,7 @@ export const postBlockReason = (input: PostGateInput): string | null => {
  * **보낼 값의 길이를 잰다.** 요청 조립이 앞뒤 공백을 떼고 보내므로 여기서도 뗀 값을 재야
  * 「50자로 보내는데 화면은 51자라고 막는」 어긋남이 생기지 않는다.
  *
- * **상신 사유는 잠금 사유와 인라인 오류를 함께 갖는다.** 버튼 옆 사유는 「무엇을 해야 열리는가」를
+ * **요청 사유는 잠금 사유와 인라인 오류를 함께 갖는다.** 버튼 옆 사유는 「무엇을 해야 열리는가」를
  * 말하고, 인라인 오류는 **고칠 칸 옆에** 선다 — 폼이 길어 버튼과 사유 칸이 한눈에 들어오지 않는다.
  */
 export const validateDisposalDraft = (draft: DisposalDraft): Record<string, string> => {
