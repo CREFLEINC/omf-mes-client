@@ -35,6 +35,14 @@ export interface SubmitSummary {
   /** **파생값이다.** 사용자가 넣은 적 없는 값이므로 창이 그 사실을 함께 밝힌다 */
   businessDate: string;
   remarks: string;
+  /**
+   * 폐기한 물건이 어디로 가는가 — 「자체 폐기」 또는 **고른 거래처의 이름**(#128).
+   *
+   * **한 값으로 받는다.** 나가는 본문의 두 키는 이 하나에서 따라오므로(도착지 유형은 상수다)
+   * 창이 유형과 번호를 따로 보이면 사용자가 정하지 않은 것을 확인하게 된다. 판정과 글자는
+   * `issue-request.ts`가 만든다 — **확인한 글자와 나가는 값이 같은 자리에서 나온다.**
+   */
+  destination: string;
   lines: readonly SubmitLineSummary[];
   /** 요청 사유 **전문**. 줄바꿈이 유지된다 */
   reason: string;
@@ -74,6 +82,11 @@ const toRows = (summary: SubmitSummary): SummaryRow[] => [
     value: t.dialog.businessDateDerived(summary.businessDate),
   },
   { key: 'remarks', label: t.formFields.remarks, value: summary.remarks },
+  /*
+   * **도착지는 한 행이다** — 없앤 「도착지 유형」·「폐기 계정」 두 행 자리에 선다. 사용자가
+   * 정한 것은 「어디로 가는가」 하나이고 본문의 두 키는 거기서 따라온다.
+   */
+  { key: 'destination', label: t.formFields.destination, value: summary.destination },
 ];
 
 /**

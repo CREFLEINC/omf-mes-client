@@ -6,6 +6,7 @@ import {
   formatDateTime,
   hasAnyDisposalDraftValue,
   readableName,
+  withSelfDisposal,
   toBalanceView,
   toIssueDetailResult,
   toIssueLineView,
@@ -14,6 +15,7 @@ import {
   toReceiptLineView,
   toReceiptView,
   type BalanceResponse,
+  type DisposalDraft,
   type IssueLineResponse,
   type IssueResponse,
   type ReceiptLineResponse,
@@ -415,7 +417,55 @@ describe('hasAnyDisposalDraftValue', () => {
     ['issuedTime', { issuedTime: '09:30' }],
     ['remarks', { remarks: '비고' }],
     ['reason', { reason: '사유' }],
+    /* 도착지 짝도 **사용자가 정한 값**이다 — 빠지면 체크만 해 둔 초안이 잠긴 버튼 뒤로 남는다. */
+    ['isSelfDisposal', { isSelfDisposal: true }],
+    ['disposalPartnerId', { disposalPartnerId: '9251' }],
   ] as const)('%s 하나만 채워도 버릴 것이 있다', (_name, patch) => {
     expect(hasAnyDisposalDraftValue({ ...EMPTY_DISPOSAL_DRAFT, ...patch })).toBe(true);
+  });
+});
+
+/**
+ * 자체 폐기 체크의 **상태 전이**(완료 조건 C16 · 변경 통지 #128 「체크하면 비활성 · 값 비움」).
+ *
+ * 비활성만 하고 값을 남기면 「체크했는데 거래처가 실린」 초안이 만들어진다 — 그 조합이
+ * **존재할 수 없어야** 하므로 전이를 한 함수에 가두고 여기서 잰다. 화면 핸들러에서 손으로
+ * 비우면 다른 경로(주소·되돌림)에서 한쪽만 바뀐다.
+ */
+describe('withSelfDisposal', () => {
+  const CHOSEN: DisposalDraft = { ...EMPTY_DISPOSAL_DRAFT, disposalPartnerId: '9251' };
+
+  it('체크하면 고른 거래처를 함께 비운다', () => {
+    const next = withSelfDisposal(CHOSEN, true);
+
+    expect(next.isSelfDisposal).toBe(true);
+    expect(next.disposalPartnerId).toBe('');
+  });
+
+  /** 짝 방향 — 체크를 풀면 체크만 풀린다. 비운 값을 되살리지 않는다(되살릴 자리가 없다). */
+  it('체크를 풀면 체크만 풀린다', () => {
+    const next = withSelfDisposal(withSelfDisposal(CHOSEN, true), false);
+
+    expect(next.isSelfDisposal).toBe(false);
+    expect(next.disposalPartnerId).toBe('');
+  });
+
+  /** 범위 있는 규칙은 잣대도 같은 범위로 — 도착지 밖의 칸은 건드리지 않는다. */
+  it('다른 칸은 그대로 둔다', () => {
+    const draft: DisposalDraft = {
+      ...CHOSEN,
+      codes: { ...CHOSEN.codes, issueType: 'SAMPLE_GI_TYPE_A' },
+      issuedDate: '2026-08-11',
+      issuedTime: '09:30',
+      remarks: '합성 비고',
+      reason: '합성 사유',
+    };
+    const next = withSelfDisposal(draft, true);
+
+    expect(next.codes).toEqual(draft.codes);
+    expect(next.issuedDate).toBe('2026-08-11');
+    expect(next.issuedTime).toBe('09:30');
+    expect(next.remarks).toBe('합성 비고');
+    expect(next.reason).toBe('합성 사유');
   });
 });

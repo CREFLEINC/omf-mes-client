@@ -28,6 +28,7 @@ import {
   isDefectWarehouseTypePending,
   narrowToDefectWarehouses,
   PLACEHOLDER_DISPOSAL_ISSUE_CODES,
+  PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
   toCodeOptionSets,
 } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
@@ -65,6 +66,8 @@ import {
 import { IssueDetailPane } from './issue-detail-pane';
 import { IssueLineTable } from './issue-line-table';
 import {
+  describeDisposalDestination,
+  readDisposalDestination,
   toBusinessDate,
   toDisposalLines,
   toGoodsIssueRequest,
@@ -126,6 +129,7 @@ import {
   EMPTY_DISPOSAL_DRAFT,
   formatDateTime,
   hasAnyDisposalDraftValue,
+  withSelfDisposal,
   type DisposalCodeKey,
   type DisposalDraft,
   type IssueDetailResult,
@@ -314,12 +318,22 @@ export const DisposalIssueScreen = () => {
    * 되므로 그 쓰기가 생기는 지금 **행을 다시 세는 대신 그 열만 채웠다.**
    *
    * 열 이름: 조건 = 대상 조건 6종 · `gr` = 고른 입고 전표 · 줄 = 줄·수량 초안 ·
-   * 폐기 = **폐기 요청 정보 초안**(**코드 셋**·출고 일시·비고와 **요청 사유**) · 이력 = 이력 조건 ·
-   * `gi` = 고른 폐기 요청 · 사유 = **이력 탭의 재요청 사유 초안** · 등록 = 요청 결과 구획 ·
-   * 처리 = **처리 결과 구획** · 창 = 열린 창 · 배너 = 실패 배너
+   * 폐기 = **폐기 요청 정보 초안**(**코드 셋**·출고 일시·비고·**도착지 짝**과 **요청 사유**) ·
+   * 이력 = 이력 조건 · `gi` = 고른 폐기 요청 · 사유 = **이력 탭의 재요청 사유 초안** ·
+   * 등록 = 요청 결과 구획 · 처리 = **처리 결과 구획** · 창 = 열린 창 · 배너 = 실패 배너
    *
    * ⚠ **「폐기」 열의 코드는 셋이다** — 폐기 계정과 도착지 유형을 없애면서 다섯에서 줄었다
    * (변경 통지 #124·#128). 이 표가 정본이므로 뒤 회차가 이 열에 컨트롤을 더할 때 여기부터 읽는다.
+   *
+   * ⚠ **「폐기」 열이 도착지 짝을 함께 담는다**(#128 · 이 회차에서 더했다) — 자체 폐기 체크와
+   * 폐기 거래처 선택이다. **열을 새로 세우지 않는 이유**는 되돌림 축이 코드 셋과 **같기**
+   * 때문이다(둘 다 고른 입고 전표에 매인 발의 초안이다). 열을 갈라 두면 모든 행에서 두 열이
+   * 늘 같은 값을 되풀이하고, 언젠가 한쪽만 고쳐져 비대칭이 생긴다.
+   *
+   * ⚠ **이 표의 낱말은 화면 문구를 따른다**(#124 재리뷰 R1 — 열 이름만 바뀌고 칸이 남았던
+   * 자리를 이 회차에 맞췄다). 「품의 고르기」·「상신 성공/실패」·「상신분」은 표 안에서 각각
+   * 「폐기 요청 고르기」·「승인 요청 성공/실패」·「요청분」이다. **식별자·파일명은 그대로다** —
+   * 통지가 바꾼 것은 사람에게 보이는 낱말이고, 이 표는 그 낱말로 화면을 서술한다.
    *
    * **「폐기」 열이 요청 사유를 함께 담는다**(승인 기록 정정 1-1). 계획은 사유를 이력 탭에만
    * 두었으나 조작이 한 버튼이 되면서 사유가 「폐기 요청」 탭으로 왔다 — 매인 대상이 **고른
@@ -340,9 +354,9 @@ export const DisposalIssueScreen = () => {
    * | 6 | 줄 고르기·수량 입력 | 유지 | 유지 | 바뀐다 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 | **유지** |
    * | 7 | 폐기 정보 입력 | 유지 | 유지 | 유지 | 바뀐다 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 | **유지** |
    * | 8 | **탭 전환** | 유지 | **유지** | **유지** | **유지** | 유지 | **유지** | **유지** | **유지** | **유지** | **닫는다** | 유지 |
-   * | 9 | 이력 조건 변경·조회·초기화·쪽 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **비운다** | **비운다** | 유지 | **비운다** | 닫는다 | 상신·처리분만 비운다 |
-   * | 10 | 품의 고르기·해제 | 유지 | 유지 | 유지 | 유지 | 유지 | 넣고 뺀다 | **비운다** | 유지 | **비운다** | 닫는다 | 상신·처리분만 비운다 |
-   * | 11 | **출고 상세가 404** | 유지 | 유지 | 유지 | 유지 | 유지 | **비운다** | 비운다 | 유지 | 비운다 | 닫는다 | 상신·처리분만 비운다 |
+   * | 9 | 이력 조건 변경·조회·초기화·쪽 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | **비운다** | **비운다** | 유지 | **비운다** | 닫는다 | 요청·처리분만 비운다 |
+   * | 10 | 폐기 요청 고르기·해제 | 유지 | 유지 | 유지 | 유지 | 유지 | 넣고 뺀다 | **비운다** | 유지 | **비운다** | 닫는다 | 요청·처리분만 비운다 |
+   * | 11 | **출고 상세가 404** | 유지 | 유지 | 유지 | 유지 | 유지 | **비운다** | 비운다 | 유지 | 비운다 | 닫는다 | 요청·처리분만 비운다 |
    * | 12 | 사유 입력 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 바뀐다 | 유지 | 유지 | 유지 | **유지** |
    * | 13 | 목록·상세·참조·잔액·승인 요청 응답 도착 | 유지 | 유지 | **건드리지 않는다** | **건드리지 않는다** | 유지 | 유지 | **건드리지 않는다** | 유지 | 유지 | 유지 | 유지 |
    * | 14 | **다시 조회**(새로고침) | 유지 | 유지 | **유지** | **유지** | 유지 | 유지 | **유지** | 유지 | 유지 | 유지 | 유지 |
@@ -350,8 +364,8 @@ export const DisposalIssueScreen = () => {
    * | 16 | 창 닫기(취소·Escape·스크림) | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | **닫는다** | **유지** |
    * | 17 | **등록 성공** | 유지 | **유지** | **비운다** | **비운다** | 유지 | **채운다** | 유지 | **채운다** | 유지 | 닫는다 | 비운다 |
    * | 18 | 등록 실패 | 유지 | 유지 | **유지** | **유지** | 유지 | 유지 | 유지 | 비운다 | 유지 | 닫는다 | **세운다** |
-   * | 19 | **상신 성공** | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | **비운다** | 유지 | 유지 | 닫는다 | 비운다 |
-   * | 20 | 상신 실패 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 | 닫는다 | **세운다** |
+   * | 19 | **승인 요청 성공** | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | **비운다** | 유지 | 유지 | 닫는다 | 비운다 |
+   * | 20 | 승인 요청 실패 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 | 닫는다 | **세운다** |
    * | 21 | **처리 성공** | 유지 | 유지 | 유지 | 유지 | 유지 | **유지** | 유지 | 유지 | **채운다** | 닫는다 | 비운다 |
    * | 22 | 처리 실패 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 유지 | 비운다 | 닫는다 | **세운다** |
    * | 23 | 초안 파기(취소) | 유지 | 유지 | **비운다** | **비운다** | 유지 | 유지 | 유지 | 비운다 | 유지 | 닫는다 | **등록분만 비운다** |
@@ -1424,7 +1438,22 @@ export const DisposalIssueScreen = () => {
     codeOptions,
     draft: disposalDraft,
     selection: selection.ready,
+    /* 잠금 사유가 두 갈래로 갈리는 근거 — 고를 것이 있는가 없는가(#128 §4). */
+    disposalPartnerOptions: PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
   });
+
+  /**
+   * 폐기한 물건이 어디로 가는가 — **확인 창과 요청 본문이 같은 판정에서 나온다.**
+   *
+   * 고른 거래처의 이름은 선택지에서 푼다. 지금은 선택지가 비어 있어 닿지 않는 갈래이지만,
+   * 이름을 **선택지에서** 푸는 것이 규칙이다 — 창이 자기 이름표를 따로 만들면 사용자가 고를 때
+   * 본 글자와 확인 창의 글자가 갈린다.
+   */
+  const disposalDestination = readDisposalDestination(disposalDraft);
+  const disposalPartnerLabel =
+    PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS.find(
+      (option) => option.value === disposalDraft.disposalPartnerId,
+    )?.label ?? null;
 
   /** 버릴 것이 있는가. **두 초안을 함께 본다** — 한쪽만 보면 나머지가 확인 없이 사라진다. */
   const hasDraft = hasAnyLineDraftValue(lineDraft) || hasAnyDisposalDraftValue(disposalDraft);
@@ -1466,6 +1495,17 @@ export const DisposalIssueScreen = () => {
   const startSubmitChain = (receipt: ReceiptView): void => {
     setSubmitConfirmOpen(false);
 
+    /*
+     * **앞 연쇄의 결과를 되돌아가는 갈래보다 먼저 비운다**(수명 표 17·18행).
+     *
+     * 아래 두 가드는 아무것도 보내지 않고 되돌아간다. 그때 앞 전표의 번호가 결과 구획에
+     * 그대로 있으면 **사용자는 방금 누른 요청이 그 번호를 만들었다고 읽는다** — 되돌릴 수
+     * 없는 쓰기 화면에서 가장 나쁜 오해다. 「최신 불러오기」 실패 안내도 함께 거둔다: 그것은
+     * 앞 연쇄가 남긴 것이라, 앞 결과를 비운 뒤에는 **가리킬 전표조차 없다.**
+     */
+    setChain(NO_CHAIN);
+    setReloadFailure(false);
+
     const blocked = findRegisterBlocked();
 
     if (blocked !== null) {
@@ -1483,12 +1523,9 @@ export const DisposalIssueScreen = () => {
       now: new Date(),
     });
 
-    /* 조립이 마지막으로 거른다 — 빈 라인·빈 코드는 계약이 막지 않는다. */
+    /* 조립이 마지막으로 거른다 — 빈 라인·빈 코드·정하지 않은 도착지는 계약이 막지 않는다. */
     if (body === null) return;
 
-    /* 앞 연쇄의 결과가 새 연쇄의 자리에 남아 있으면 무엇이 지금 상태인지 알 수 없다. */
-    setChain(NO_CHAIN);
-    setReloadFailure(false);
     /* **이 연쇄가 겨눈 전표를 적어 둔다** — 도착한 되먹임이 어느 전표의 것인지 가르는 기준이다. */
     setChainTargetKey(registerTargetKey);
     createWrite.write(body);
@@ -1809,13 +1846,14 @@ export const DisposalIssueScreen = () => {
             />
 
             {/*
-             * 품의 정보 — **어떤 전표로·언제·왜 폐기하는가.** 창이 아니라 구획인 이유는
-             * 선택칸이 다섯이라 창에 넣으면 펼침 목록이 잘리는 결함(`omf-mes#45`)에 걸리기
-             * 때문이다. 고칠 수 없는 결함은 **걸릴 자리를 만들지 않는 것**으로 피한다.
+             * 폐기 요청 정보 — **어떤 전표로·언제·왜·어디로 폐기하는가.** 창이 아니라 구획인
+             * 이유는 선택칸이 여럿이라 창에 넣으면 펼침 목록이 잘리는 결함(`omf-mes#45`)에
+             * 걸리기 때문이다. 고칠 수 없는 결함은 **걸릴 자리를 만들지 않는 것**으로 피한다.
              */}
             <DisposalForm
               values={disposalDraft}
               codeOptions={codeOptions}
+              disposalPartnerOptions={PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS}
               fieldErrors={formFieldErrors}
               isLocked={isLocked}
               onChangeCode={(key: DisposalCodeKey, value) => {
@@ -1829,6 +1867,16 @@ export const DisposalIssueScreen = () => {
               }}
               onChangeRemarks={(value) => {
                 setDisposalDraft((prev) => ({ ...prev, remarks: value }));
+              }}
+              /*
+               * **비움까지 한 전이로 처리한다**(`withSelfDisposal`) — 체크만 반영하고 값을
+               * 따로 비우면 두 자리가 갈려 한쪽만 도는 경로가 생긴다.
+               */
+              onToggleSelfDisposal={(value) => {
+                setDisposalDraft((prev) => withSelfDisposal(prev, value));
+              }}
+              onChangeDisposalPartner={(value) => {
+                setDisposalDraft((prev) => ({ ...prev, disposalPartnerId: value }));
               }}
               onChangeReason={(value) => {
                 setDisposalDraft((prev) => ({ ...prev, reason: value }));
@@ -1911,6 +1959,11 @@ export const DisposalIssueScreen = () => {
                   issuedAt: formatDateTime(toIssuedLocal(disposalDraft)),
                   businessDate: toBusinessDate(toIssuedLocal(disposalDraft)),
                   remarks: disposalDraft.remarks,
+                  /* 「자체 폐기」 또는 고른 거래처 — **나가는 값과 같은 판정에서 나온다.** */
+                  destination: describeDisposalDestination(
+                    disposalDestination,
+                    disposalPartnerLabel,
+                  ),
                   lines: submitLines,
                   reason: disposalDraft.reason,
                   reasonFirstLine: firstLineOf(disposalDraft.reason),

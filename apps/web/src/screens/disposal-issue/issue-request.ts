@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
 import type { DisposalLineRow } from './disposal-selection';
 import type { DisposalDraft, ReceiptView } from './types';
@@ -17,7 +18,7 @@ import type { DisposalDraft, ReceiptView } from './types';
  * | `sendToErp` | **계약 기본과 같은 상수** | 계획은 「싣지 않는다」였으나 **생성물 타입이 이 필드를 필수로 요구한다**(실측 — 기본값이 선언된 필드를 선택으로 내리지 않는다). 화면이 정하는 값이 아니므로 **토글을 두지 않고** 계약 기본과 같은 값을 그대로 싣는다 — 보내는 것과 생략하는 것의 서버 동작이 같다. 폐기 출고의 송신 여부가 정해지면 **이 상수 하나만** 고친다(질문 게시) |
  * | `replacementExpected` | **싣지 않는다** | 반품 축의 값이다 |
  * | `sourceDocumentId`·`sourceWarehouseId` | **고른 입고 전표** | 폐기의 근거 문서가 그 전표이고, 자재가 놓인 창고가 그 전표의 창고다 |
- * | **`destinationTypeCode`·`destinationId`** | **싣지 않는다 — 짝 통째로** | 폐기 계정이 없어져 도착지 식별자를 공급할 자리가 사라졌다(#124). 한쪽만 실으면 서버가 400을 낸다(#128 ⛔) — **짝은 함께 있거나 함께 없다.** 지금 이 화면이 만드는 본문은 계약이 말하는 **자체 폐기** 형태다 |
+ * | **`destinationTypeCode`·`destinationId`** | **판별 유니온이 정한다 — 짝 통째로** | 한쪽만 실으면 서버가 400을 낸다(#128 ⛔) — **짝은 함께 있거나 함께 없다.** 자체 폐기면 두 키를 **아예 싣지 않고**(`null`도 아니다), 폐기 거래처를 골랐으면 둘을 **함께** 싣는다. 한쪽만 실리는 경로가 타입 수준에 없다(`DisposalDestination`) |
  * | `issuedAt` | **사용자가 적은 출고 일시** | 계약 설명이 「출고일」이다 |
  * | **`occurredAt`** | **제출 순간** | 공유계약 C-1. `issuedAt`과 갈라 싣는다 — 어제 폐기한 것을 오늘 올리면 두 값이 실제로 갈린다 |
  * | `businessDate` | **출고 일시의 날짜** | 산출 규칙(야간조 경계 등)이 정의돼 있지 않다. 실행 시각의 날짜를 쓰지 않는 이유가 위와 같다 |
@@ -31,6 +32,93 @@ import type { DisposalDraft, ReceiptView } from './types';
 
 type GoodsIssueCreate = components['schemas']['GoodsIssueCreate'];
 type GoodsIssueLineUpsert = components['schemas']['GoodsIssueLineUpsert'];
+
+const t = messages.disposalIssue;
+
+/**
+ * 폐기 출고의 도착지 유형 — **통지 #128 §1이 문면으로 지정한 값 하나다.**
+ *
+ * 계약은 이 코드의 값 목록을 확정하지 않았고(자리표시 규율 G-2가 막는 자리다), 그래서
+ * 화면이 **고르게 하지 않고 상수로 못 박는다** — 폐기 거래처를 골랐다는 사실이 곧 유형이다.
+ * 값이 나중에 달라지면 **이 한 줄만** 고친다(위험 R3 · 선행 회차가 세운 「가정을 한 줄에
+ * 가둔다」와 같은 형태). 확정 여부는 질문으로 올라가 있다.
+ */
+export const DISPOSAL_DESTINATION_TYPE_CODE = 'DISPOSAL_SITE';
+
+/**
+ * 폐기한 물건이 어디로 가는가 — **짝을 한 값으로 묶은 판별 유니온.**
+ *
+ * 계약이 `destinationTypeCode`·`destinationId`를 선택으로 완화했지만 **한쪽만 보내면 400**이다
+ * (#128 ⛔). 두 값을 따로 들고 있으면 한쪽만 채워진 상태가 타입 수준에서 **표현 가능**해지고,
+ * 표현 가능한 것은 언젠가 만들어진다 — 그래서 갈래를 둘로 못 박아 그 상태를 없앤다.
+ *
+ * `self`가 필드를 하나도 갖지 않는 것이 요점이다. 「자체 폐기」는 값이 비어 있는 상태가
+ * 아니라 **다른 종류의 사실**이고, 그 사실이 나가는 본문에서는 「두 키가 없음」으로 나타난다.
+ */
+export type DisposalDestination = { kind: 'self' } | { kind: 'partner'; partnerId: number };
+
+/** 선택지의 값 글자를 거래처 번호로 읽는다. **양의 정수만 번호다.** */
+const POSITIVE_INTEGER = /^\d+$/;
+
+/**
+ * 초안의 두 칸을 도착지 한 값으로 읽는다. **정하지 않았으면 `null`이다.**
+ *
+ * **체크가 이긴다.** 전이 함수(`withSelfDisposal`)가 체크할 때 고른 거래처를 비우므로 화면에서는
+ * 두 값이 함께 서지 않지만, 그 전이를 지나지 않은 초안이 들어와도 **한쪽만 실린 본문**이
+ * 만들어지면 안 된다.
+ *
+ * **번호로 읽을 수 없는 값은 고르지 않은 것으로 본다.** `Number('')`는 0이고 `Number('9301x')`는
+ * `NaN`이라, 그대로 옮기면 **0번 거래처**나 `NaN`이 되돌릴 수 없는 전표에 실린다.
+ */
+export const readDisposalDestination = (
+  draft: Pick<DisposalDraft, 'isSelfDisposal' | 'disposalPartnerId'>,
+): DisposalDestination | null => {
+  if (draft.isSelfDisposal) return { kind: 'self' };
+
+  const value = draft.disposalPartnerId.trim();
+
+  if (!POSITIVE_INTEGER.test(value)) return null;
+
+  const partnerId = Number(value);
+
+  return partnerId === 0 ? null : { kind: 'partner', partnerId };
+};
+
+/**
+ * 확인 창이 보이는 도착지 한 줄.
+ *
+ * **확인 창도 이 파일의 함수를 쓴다** — `toIssuedLocal`과 같은 규율이다. 창이 따로 판정하면
+ * 「사용자가 확인한 글자」와 「요청에 실리는 값」이 갈린다.
+ *
+ * **이름을 풀지 못하면 번호를 대신 내지 않는다**(`omf-mes#44`). 빈 글자를 내고 창의 빈 값
+ * 규칙이 「없음」으로 옮긴다 — 이름을 풀어 보이는 일은 ③ 구획을 다루는 뒤 회차의 몫이다.
+ */
+export const describeDisposalDestination = (
+  destination: DisposalDestination | null,
+  partnerLabel: string | null,
+): string => {
+  if (destination === null) return '';
+  if (destination.kind === 'self') return t.values.selfDisposal;
+
+  return partnerLabel ?? '';
+};
+
+/**
+ * 도착지를 본문의 두 키로 편다. **짝이 함께 나가거나 함께 빠진다.**
+ *
+ * 자체 폐기에 `null`을 싣지 않는 이유는 이 슬라이스의 규율이 「비운 칸은 키 자체를 싣지
+ * 않는다」이기 때문이다(#128이 둘 다 허용했다). 서버에게 `null`과 키 없음이 같은 뜻이어도,
+ * 한 슬라이스가 자리마다 다른 형태를 쓰면 다음 사람이 어느 쪽이 규칙인지 알 수 없다.
+ */
+const toDestinationFields = (
+  destination: DisposalDestination,
+): Partial<Pick<GoodsIssueCreate, 'destinationTypeCode' | 'destinationId'>> =>
+  destination.kind === 'self'
+    ? {}
+    : {
+        destinationTypeCode: DISPOSAL_DESTINATION_TYPE_CODE,
+        destinationId: destination.partnerId,
+      };
 
 /**
  * **전기하지 않고 만들기만 한다.**
@@ -198,13 +286,17 @@ export const toGoodsIssueRequest = (input: DisposalRequestInput): GoodsIssueCrea
   if (reasonCode === '') return null;
   if (draft.issuedDate === '' || draft.issuedTime === '') return null;
 
+  /*
+   * **도착지를 정하지 않았으면 만들지 않는다**(#128). 계약이 두 필드를 선택으로 완화해
+   * **서버가 막지 않으므로**, 정하지 않은 채 나가면 「자체 폐기」로 저장된다 — 사용자가
+   * 확인한 사실이 아닌 것이 되돌릴 수 없는 전표에 남는다.
+   */
+  const destination = readDisposalDestination(draft);
+
+  if (destination === null) return null;
+
   const issuedLocal = toIssuedLocal(draft);
 
-  /*
-   * **도착지 짝을 여기서 얹지 않는다**(#124·#128). `null`을 싣지도 않는다 — 이 슬라이스의
-   * 규율은 「비운 칸은 키 자체를 싣지 않는다」이고, 짝의 한쪽만 실린 본문은 서버가 400으로
-   * 되돌린다. 짝을 다시 붙이는 것은 자체 폐기·폐기 거래처를 함께 다루는 뒤 회차의 일이다.
-   */
   return {
     issueTypeCode,
     sourceDocumentTypeCode,
@@ -214,6 +306,7 @@ export const toGoodsIssueRequest = (input: DisposalRequestInput): GoodsIssueCrea
     reasonCode,
     sendToErp: SEND_TO_ERP,
     postImmediately: POST_IMMEDIATELY,
+    ...toDestinationFields(destination),
     ...optionalText('remarks', draft.remarks),
     businessDate: toBusinessDate(issuedLocal),
     occurredAt: toOccurredAt(input.now),

@@ -2889,16 +2889,27 @@ const submitButton = (): HTMLElement =>
 
 const resubmitButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.resubmit });
 
-/** 품의 정보를 전부 채운다. **코드 값 목록이 채워져 있어야** 고를 수 있다. */
+const selfDisposalCheckbox = (): HTMLElement => screen.getByLabelText(t.formFields.selfDisposal);
+
+/**
+ * 품의 정보를 전부 채운다. **코드 값 목록이 채워져 있어야** 고를 수 있다.
+ *
+ * **도착지도 채운다**(변경 통지 #128) — 정하지 않으면 「승인 요청」이 잠긴다. 이 화면에서
+ * 지금 고를 수 있는 갈래는 **자체 폐기 하나**다: 폐기 거래처 선택지를 채우는 조회가 아직
+ * 없어 칸이 잠겨 있다. 「정하지 않은 상태」를 재는 잣대는 `withDestination`을 끈다.
+ */
 const fillDisposalForm = async (
   user: ReturnType<typeof userEvent.setup>,
   reason = '불량 판정분 폐기',
+  withDestination = true,
 ): Promise<void> => {
   await chooseOption(user, t.formFields.issueType, SAMPLE_FORM_CODES.issueType);
   await chooseOption(user, t.formFields.sourceDocumentType, SAMPLE_FORM_CODES.sourceDocumentType);
   await chooseOption(user, t.formFields.reason, SAMPLE_FORM_CODES.reason);
   await pickDate(user, screen.getByLabelText(t.formFields.issuedDate), '2026-08-11');
   setIssuedTime('09:30');
+
+  if (withDestination) await user.click(selfDisposalCheckbox());
 
   if (reason !== '') await user.type(screen.getByLabelText(t.formFields.submitReason), reason);
 };
@@ -2966,6 +2977,63 @@ describe('DisposalIssueScreen — 「승인 요청」이 열리는 조건', () =
 
     expect(submitButton()).toBeDisabled();
     expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.codeListPending);
+  });
+
+  /**
+   * **도착지를 정해야 열린다**(완료 조건 C15·C18 · 변경 통지 #128 §4 ⛔).
+   *
+   * 「체크 없이 거래처도 안 고르면 막는다」가 통지의 문면이고, 그 잠금은 **「승인 요청」
+   * 버튼**에 선다(승인 기록 D-1 안 A — 계약에 전표 헤더를 고치는 경로가 없어 도착지는
+   * 발의 시점에 정해져 생성 본문으로 나간다).
+   *
+   * **사유가 지금 할 수 있는 조치를 가리킨다.** 폐기 거래처 선택지가 아직 없으므로 화면은
+   * 「고르세요」가 아니라 「자체 폐기를 체크하면 올릴 수 있습니다」라고 말한다 — 고를 것이
+   * 없는 사용자에게 고르라고 하면 자기가 놓친 것을 찾다가 화면을 고장으로 읽는다.
+   */
+  it('도착지를 정하지 않으면 잠기고, 자체 폐기를 체크하면 열린다', async () => {
+    fillFormCodeLists();
+
+    const { user } = renderScreen(allRoutes(), '?gr=9001');
+
+    await waitForLines();
+    await user.click(lineCheckbox(1));
+    await user.type(qtyInput(1), '10');
+    await fillDisposalForm(user, '불량 판정분 폐기', false);
+
+    expect(submitButton()).toBeDisabled();
+    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.disposalPartnerPending);
+
+    /* ⭐ **선택지가 없어도 화면은 선다**(#128 §3) — 체크 하나로 열린다. */
+    await user.click(selfDisposalCheckbox());
+
+    expect(submitButton()).toBeEnabled();
+  });
+
+  /**
+   * **폐기 거래처 칸은 잠겨 있고 왜 잠겼는지가 읽힌다**(완료 조건 C15).
+   *
+   * 코드 자리표시 셋과 **같은 모양**이다 — 값 목록을 채우는 조회가 붙기 전까지 고를 것이 없다.
+   */
+  it('폐기 거래처 칸이 잠겨 있고 사유가 이름에 이어진다', async () => {
+    const { user } = renderScreen(allRoutes(), '?gr=9001');
+
+    await waitForLines();
+
+    /* 짝 양성 — 칸이 실제로 서 있다(없어서 통과한 것이 아니다). */
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toBeDisabled();
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(messages.pendingCode.note));
+
+    /*
+     * **체크하면 잠긴 사유가 갈린다**(완료 조건 C16). 같은 잠금이라도 사용자가 정한 결과와
+     * 화면의 사정은 할 수 있는 조치가 다르다 — 한 문구로 뭉치면 체크를 풀어도 열리지 않는
+     * 칸으로 읽는다.
+     */
+    await user.click(selfDisposalCheckbox());
+
+    expect(partner).toBeDisabled();
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.form.selfDisposalChosen));
   });
 
   /** **둘째 방향** — 채우면 살아나지 않는 자리표시는 죽은 가지다. */
@@ -3149,15 +3217,7 @@ describe('DisposalIssueScreen — 연쇄가 실제로 보내는 것', () => {
     ]);
   });
 
-  /**
-   * **경로 전체가 도착지 짝을 싣지 않는다**(완료 조건 C11 · #124·#128).
-   *
-   * `issue-request.test.ts`가 조립 함수 하나를 재고, 여기서는 **사용자가 실제로 눌러 나간
-   * 본문**을 잰다 — 화면이 조립 함수를 지나 다른 자리에서 두 키를 얹을 길이 없다는 것까지
-   * 이 자리가 고정한다. 값이 아니라 **키 존재 여부**로 재는 이유는 `null`을 싣는 것과
-   * 키를 생략하는 것이 서버에게 다른 말이기 때문이다.
-   */
-  it('나가는 본문에 도착지 두 키가 없다', async () => {
+  it('자체 폐기로 올리면 나가는 본문에 도착지 두 키가 없다', async () => {
     const { requests, user } = await setupReadyToSubmit();
 
     await openSubmitConfirm(user);
@@ -3171,6 +3231,34 @@ describe('DisposalIssueScreen — 연쇄가 실제로 보내는 것', () => {
 
     /* 짝 양성 — 본문이 실제로 나갔다(빈 객체라 통과한 것이 아니다). */
     expect(body.issueTypeCode).toBe(SAMPLE_FORM_CODES.issueType);
+    expect(Object.keys(body)).not.toContain('destinationTypeCode');
+    expect(Object.keys(body)).not.toContain('destinationId');
+  });
+
+  /**
+   * **확인한 글자와 나가는 값이 같은 자리에서 나온다**(완료 조건 C19).
+   *
+   * 창이 「자체 폐기」라고 적었으면 본문에는 도착지 두 키가 없어야 한다 — 둘을 **한 잣대에서**
+   * 함께 보지 않으면, 창은 그대로인데 본문만 달라지는 어긋남이 조용히 산다.
+   */
+  it('확인 창이 보인 도착지와 나가는 본문이 같은 사실을 말한다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openSubmitConfirm(user);
+
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByText(t.formFields.destination)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.values.selfDisposal)).toBeInTheDocument();
+
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, ISSUES_PATH)).toHaveLength(1);
+    });
+
+    const body = writesTo(requests, ISSUES_PATH)[0]?.body as Record<string, unknown>;
+
     expect(Object.keys(body)).not.toContain('destinationTypeCode');
     expect(Object.keys(body)).not.toContain('destinationId');
   });
@@ -3340,6 +3428,49 @@ describe('DisposalIssueScreen — 부분 실패', () => {
     expect(
       screen.queryByText(t.result.submittedTitle('GI-2026-950004')),
     ).not.toBeInTheDocument();
+  });
+
+  /**
+   * **되돌아가는 갈래에서도 앞 성공의 결과 구획을 남기지 않는다**(수명 표 17·18행).
+   *
+   * 「승인 요청」은 **보내기 직전에 한 번 더 본다**(둘째 겹). 확인 창이 열린 사이에 상태가
+   * 바뀌어 막히면 아무것도 나가지 않는데, 그때 **앞 전표의 번호가 결과 구획에 그대로** 있으면
+   * 사용자는 방금 누른 요청이 그 번호를 만들었다고 읽는다 — 되돌릴 수 없는 쓰기 화면에서
+   * 가장 나쁜 오해다. 그래서 앞 결과를 비우는 자리가 **되돌아가는 갈래보다 앞**에 있어야 한다.
+   *
+   * 형제 슬라이스가 같은 형태의 감지기를 이미 갖고 있다(입고 처리의 「계약이 모르는 코드로
+   * 다시 처리하면 앞 성공의 결과 구획이 남지 않는다」) — 그쪽은 조립이 막는 갈래이고 이쪽은
+   * 재판정이 막는 갈래다.
+   */
+  it('창이 열린 사이 줄이 풀리면 보내지 않고 앞 성공의 결과 구획도 남지 않는다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    /* 선행 양성 — 첫 요청은 실제로 성공했고 결과 구획에 번호가 섰다. */
+    await screen.findByText(t.result.submittedTitle('GI-2026-950004'));
+
+    /* 두 번째 시도 — 성공 뒤 초안은 비어 있다(수명 표 17행). 다시 다 채운다. */
+    await user.click(lineCheckbox(1));
+    await user.type(qtyInput(1), '10');
+    await fillDisposalForm(user);
+
+    await openSubmitConfirm(user);
+    await screen.findByRole('dialog');
+
+    /*
+     * **창이 열린 사이에 상태가 바뀐다.** 라인 표는 창 뒤에 그대로 살아 있고(수명 표 6행 —
+     * 줄을 고치는 것은 대상을 바꾸는 것이 아니다), 줄이 풀리면 보낼 것이 없어진다.
+     */
+    fireEvent.click(lineCheckbox(1));
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+    });
+    /* 짝 방향 — 결과가 사라진 것은 새 전표가 나가서가 아니다. 두 번째 요청은 없다. */
+    expect(writesTo(requests, ISSUES_PATH)).toHaveLength(1);
   });
 
   /** 전표조차 만들어지지 않았으면 **결과 구획이 서지 않는다** — 없는 전표를 말하면 안 된다. */

@@ -1,11 +1,11 @@
-import { DatePicker, TextField } from '@crefle/web-ui';
+import { Checkbox, DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { codeNote, codePlaceholder, type CodeOptionSets } from './code-options';
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
-import type { DisposalCodeKey, DisposalDraft } from './types';
+import type { DisposalCodeKey, DisposalDraft, SelectOption } from './types';
 import { CODE_FIELD_NAMES } from './validation';
 
 const t = messages.disposalIssue;
@@ -17,6 +17,11 @@ export interface DisposalFormProps {
    * 「값이 확정되면 배열만 채운다」는 전환을 화면 수준에서 잴 수 없다(감지기 M53).
    */
   codeOptions: CodeOptionSets;
+  /**
+   * 폐기 거래처 선택지. **화면이 넘긴다** — 코드 셋과 같은 이유다. 비어 있으면 칸이 잠기고
+   * 「선택지 준비 중」이 뜬다. 값 목록을 채우는 조회는 뒤 회차가 붙인다.
+   */
+  disposalPartnerOptions: readonly SelectOption[];
   /** 계약 필드 이름으로 매긴 오류. 화면이 잡은 것과 서버가 준 것이 여기서 합쳐져 온다. */
   fieldErrors: Record<string, string>;
   /** 전송 중인가. **첫째 겹**이다 — 핸들러 가드(둘째 겹)와 짝이다. */
@@ -25,6 +30,12 @@ export interface DisposalFormProps {
   onChangeIssuedDate: (value: string) => void;
   onChangeIssuedTime: (value: string) => void;
   onChangeRemarks: (value: string) => void;
+  /**
+   * 자체 폐기 체크가 바뀌었다. **값 비움까지 화면이 한 전이로 처리한다**(`withSelfDisposal`) —
+   * 부품이 두 콜백으로 나눠 부르면 한쪽만 도착한 중간 상태가 생긴다.
+   */
+  onToggleSelfDisposal: (isSelfDisposal: boolean) => void;
+  onChangeDisposalPartner: (value: string) => void;
   onChangeReason: (value: string) => void;
 }
 
@@ -46,8 +57,14 @@ export interface DisposalFormProps {
  *
  * **폐기 계정 칸이 없다 — 잠긴 칸조차 없다**(변경 통지 #124 ⛔). 회계 계정은 MES 밖의 값이라
  * 「값이 오면 열릴 자리」가 아니고, 잠근 채로 두면 사용자는 언젠가 열릴 칸으로 읽는다.
- * **도착지 유형 칸도 함께 없다**(#128) — 짝인 도착지 식별자를 공급할 자리가 사라져, 남겨 두면
- * 한쪽만 실린 전표가 만들어진다.
+ * **도착지 유형 칸도 함께 없다**(#128) — 유형은 폐기 거래처를 골랐다는 사실에서 따라오는
+ * 상수라(`DISPOSAL_DESTINATION_TYPE_CODE`) 사용자가 고를 값이 아니다.
+ *
+ * **대신 도착지 컨트롤 둘이 있다**(#128) — 「자체 폐기」 체크와 「폐기 거래처」 선택칸.
+ * ⛔ **③ 승인 후 구획이 아니라 여기 있는 이유**는 계약이 도착지 짝을 전표 **생성** 본문에서만
+ * 실어 나르고 전표 헤더를 고치는 경로가 없기 때문이다(실측 · 승인 기록 D-1 안 A). 승인 뒤에
+ * 두면 사용자가 고른 거래처가 **조용히 사라진다** — 되돌릴 수 없는 쓰기 화면에서 가장 나쁜
+ * 형태다. 시점이 옮겨졌다는 사실은 보조 문구가 밝히고, 어긋남은 이슈로 올라가 있다.
  *
  * **미리 채우는 값이 없다.** 출고 일시를 지금 시각으로 채우면 사용자가 확인하지 않은 시각이
  * 되돌릴 수 없는 전표에 실리고, 어제 폐기한 것을 오늘 올리는 흔한 경우에 조용히 틀린다.
@@ -63,17 +80,29 @@ export interface DisposalFormProps {
 export const DisposalForm = ({
   values,
   codeOptions,
+  disposalPartnerOptions,
   fieldErrors,
   isLocked,
   onChangeCode,
   onChangeIssuedDate,
   onChangeIssuedTime,
   onChangeRemarks,
+  onToggleSelfDisposal,
+  onChangeDisposalPartner,
   onChangeReason,
 }: DisposalFormProps) => {
   const issuedDateId = useId();
   const issuedErrorId = `${issuedDateId}-error`;
   const issuedError = fieldErrors.issuedAt;
+
+  /*
+   * 선택칸이 잠기는 사유가 **둘**이라 안내도 둘이다 — 사용자가 정한 결과(자체 폐기)와
+   * 화면의 사정(선택지 준비 중)은 할 수 있는 조치가 다르다. 같은 문구로 뭉치면 체크를
+   * 풀어도 열리지 않는 칸으로 읽는다. **체크가 앞이다** — 그때는 준비 여부가 뜻이 없다.
+   */
+  const partnerNote = values.isSelfDisposal
+    ? t.form.selfDisposalChosen
+    : codeNote(disposalPartnerOptions);
 
   /**
    * 코드 칸 셋은 모양이 같다 — 선택지·안내·자리표시·오류를 같은 규칙으로 만든다.
@@ -158,7 +187,45 @@ export const DisposalForm = ({
             }}
           />
         </div>
+
+        {/*
+         * **도착지 짝** — 「누가 가져갔는가」(변경 통지 #128). 체크와 선택칸이 **함께** 서는
+         * 이유는 나가는 본문에서 「아직 안 골랐다」와 「자체 폐기라 없다」가 똑같이 「두 키
+         * 없음」으로 보이기 때문이다. 체크가 없으면 그 둘을 화면도 사용자도 가를 수 없다.
+         */}
+        <div className="field-cell">
+          <Checkbox
+            checked={values.isSelfDisposal}
+            disabled={isLocked}
+            onChange={(event) => {
+              onToggleSelfDisposal(event.target.checked);
+            }}
+          >
+            {t.formFields.selfDisposal}
+          </Checkbox>
+        </div>
+
+        <SelectField
+          label={t.formFields.disposalPartner}
+          options={[...disposalPartnerOptions]}
+          value={values.disposalPartnerId}
+          note={partnerNote}
+          placeholder={disposalPartnerOptions.length === 0 ? codePlaceholder() : undefined}
+          /*
+           * **체크하면 고를 수 없다**(#128 문면). 값 비움은 화면의 전이(`withSelfDisposal`)가
+           * 맡는다 — 여기서 비우면 잠금과 비움이 두 자리로 갈려 한쪽만 도는 경로가 생긴다.
+           */
+          disabled={isLocked || values.isSelfDisposal || disposalPartnerOptions.length === 0}
+          onChange={onChangeDisposalPartner}
+        />
       </div>
+
+      {/*
+       * **승인 뒤에는 바꿀 수 없다는 사실을 밝힌다.** 통지는 이 컨트롤을 《승인 후》 구획에
+       * 두라고 했으나 계약에 전표 헤더를 고치는 경로가 없어(실측) 그 시점에는 보낼 통로가
+       * 없다 — 발의 시점으로 옮겼다는 사실이 화면에 없으면 사용자는 나중에 고르려 한다.
+       */}
+      <p className="field-note">{t.form.destinationNote}</p>
 
       {/*
        * **요청 사유는 폼의 마지막 칸이고 폭을 다 쓴다.** 결재함 목록의 요약을 겸하는 문장이라
