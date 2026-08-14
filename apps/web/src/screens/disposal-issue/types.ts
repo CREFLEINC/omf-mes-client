@@ -183,8 +183,13 @@ export interface ReceiptDetailResult {
  * **화면에는 그 번호가 나가지 않는다**(`omf-mes#44`). 조회에만 쓰이고, 사용자가 보는 것은
  * 조회로 얻은 승인 요청**번호**(`AP-…`)다.
  *
- * **도착지·원천 문서를 담지 않는다.** 이 화면이 그리지도 보내지도 않는 값이고 낼 것이
- * 번호밖에 없다. **대체 입고 예정(`replacementExpected`)도 담지 않는다** — 반품 축이다.
+ * **도착지 짝을 담는다**(변경 통지 #128 · 완료 조건 C27). 앞 회차까지 담지 않던 값이다 —
+ * 낼 것이 **번호밖에 없었기** 때문이다. 이제 그 번호를 이름으로 푸는 조회가 생겨(`lookups.ts`의
+ * `usePartnerNames`) ③ 구획이 「누가 가져가는가」를 「코드 · 이름」으로 말한다. **번호를 화면에
+ * 내려고 담는 것이 아니다** — 번호는 이름을 맞춰 보는 데만 쓰이고 어느 표기에도 담기지 않는다.
+ *
+ * **원천 문서를 담지 않는다.** 이 화면이 그리지도 보내지도 않는 값이고 낼 것이 번호밖에 없다.
+ * **대체 입고 예정(`replacementExpected`)도 담지 않는다** — 반품 축이다.
  */
 export interface IssueView {
   goodsIssueId: number;
@@ -196,6 +201,17 @@ export interface IssueView {
   statusCode: string;
   /** 폐기 사유 코드. 계약이 선택으로 두어 **없이 오는 전표가 실재한다.** */
   reasonCode: string | null;
+  /**
+   * 도착지 짝 — **함께 있거나 함께 없다**(#128 ⛔ · 한쪽만 보내면 서버가 400을 낸다).
+   *
+   * 둘 다 없으면 **자체 폐기**다. 「아직 안 골랐다」와 갈리지 않느냐는 물음이 여기서는 서지
+   * 않는다 — 저장된 전표에는 고르는 중인 상태가 없다.
+   *
+   * **유형 코드를 뜻으로 해석하지 않는다.** 값 목록이 확정되지 않아 화면이 뜻을 붙이면 값이
+   * 정해질 때 조용히 틀린다 — 담는 이유는 「짝이 있는가」를 두 값으로 함께 보기 위해서다.
+   */
+  destinationTypeCode: string | null;
+  destinationId: number | null;
   /** 상신 여부의 **유일한 근거**. 없으면 아직 결재에 올라가지 않은 전표다. */
   approvalRequestId: number | null;
   /**
@@ -214,6 +230,9 @@ export const toIssueView = (data: IssueResponse): IssueView => ({
   issuedAt: data.issuedAt,
   statusCode: data.statusCode,
   reasonCode: data.reasonCode ?? null,
+  /* 짝을 **함께** 옮긴다 — 한쪽만 옮기면 「도착지가 있는데 누구인지 모른다」를 가릴 수 없다. */
+  destinationTypeCode: data.destinationTypeCode ?? null,
+  destinationId: data.destinationId ?? null,
   approvalRequestId: data.approvalRequestId ?? null,
   erpMessageQueued: data.erpMessageQueued ?? null,
 });

@@ -3,7 +3,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PostPane, type PostPaneProps } from './post-pane';
+import { PARTNER_LABEL } from './fixtures';
+import type { ReferenceSource } from './lookups';
+import { describeIssueDestination, PostPane, type PostPaneProps } from './post-pane';
 
 const t = messages.disposalIssue;
 
@@ -14,6 +16,7 @@ const renderPane = (overrides: Partial<PostPaneProps> = {}) => {
     <PostPane
       approval={{ kind: 'judgePending' }}
       blockReason={null}
+      destination={t.values.selfDisposal}
       isLocked={false}
       onOpenConfirm={onOpenConfirm}
       {...overrides}
@@ -150,5 +153,128 @@ describe('PostPane — 잠금과 사유', () => {
     await user.click(postButton());
 
     expect(onOpenConfirm).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * **③ 구획이 「누가 가져가는가」를 말한다**(완료 조건 C26 · 변경 통지 #128).
+ *
+ * 재고가 실제로 움직이는 자리라 **처리 직전에** 도착지가 읽혀야 한다 — 통지는 이 구획에
+ * 컨트롤을 두라고 했으나 그 시점에 값을 보낼 계약 통로가 없어(실측) 결정은 발의 시점으로
+ * 옮겨졌고, 여기 남는 것은 **이미 정해진 값을 읽어 보이는 일**이다(승인 기록 D-1 안 A).
+ */
+describe('describeIssueDestination — 세 갈래', () => {
+  const partners = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
+    entries: [{ value: '9561', label: PARTNER_LABEL, isActive: true }],
+    isError: false,
+    isLoading: false,
+    truncated: false,
+    ...overrides,
+  });
+
+  /** 짝이 통째로 없는 것은 **사용자가 정한 사실**이다 — 「없음」이나 「알 수 없음」이 아니다. */
+  it('짝이 없으면 자체 폐기라 말한다', () => {
+    expect(
+      describeIssueDestination(
+        { destinationTypeCode: null, destinationId: null },
+        partners({ entries: [] }),
+      ),
+    ).toBe(t.values.selfDisposal);
+  });
+
+  it('짝이 있으면 「코드 · 이름」으로 말한다', () => {
+    expect(
+      describeIssueDestination(
+        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9561 },
+        partners(),
+      ),
+    ).toBe(PARTNER_LABEL);
+  });
+
+  /**
+   * **이름을 풀지 못하면 그 사실을 밝히고 번호를 대신 내지 않는다**(`omf-mes#44`).
+   * 낱말은 이 슬라이스가 이미 정해 둔 것을 쓴다 — 확인 창의 못 푼 이름과 같은 말이어야
+   * 사용자가 자리마다 다른 읽기 규칙을 익히지 않는다.
+   */
+  it('목록에 없는 거래처는 알 수 없음으로 말한다', () => {
+    expect(
+      describeIssueDestination(
+        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9563 },
+        partners(),
+      ),
+    ).toBe(t.values.unknown);
+  });
+
+  /**
+   * **아직 오지 않은 것·못 받은 것을 「목록에 없음」으로 말하지 않는다**(`omf-mes#47`).
+   * 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
+   */
+  it('미도착·실패를 목록에 없음과 가른다', () => {
+    const target = { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9561 };
+
+    expect(describeIssueDestination(target, partners({ entries: [], isLoading: true }))).toBe(
+      t.values.referenceLoading,
+    );
+    expect(describeIssueDestination(target, partners({ isError: true }))).toBe(
+      t.values.referenceFailed,
+    );
+  });
+
+  /**
+   * **한쪽만 온 전표를 자체 폐기로 읽지 않는다**(#128 ⛔ — 짝은 함께 있거나 함께 없다).
+   * 서버가 유형만 실어 보내면 「누가 가져갔는지 모른다」가 사실이고, 그것을 「외부 업체가
+   * 없다」로 접으면 화면이 확인하지 않은 것을 말하게 된다.
+   */
+  it('짝 한쪽만 온 전표를 자체 폐기로 접지 않는다', () => {
+    expect(
+      describeIssueDestination(
+        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: null },
+        partners(),
+      ),
+    ).toBe(t.values.unknown);
+  });
+
+  /** **어느 갈래에도 번호를 담지 않는다**(`omf-mes#44`) — 담을 자리가 없으면 샐 경로도 없다. */
+  it('어느 갈래에도 번호를 담지 않는다', () => {
+    for (const text of [
+      describeIssueDestination({ destinationTypeCode: null, destinationId: null }, partners()),
+      describeIssueDestination(
+        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9561 },
+        partners(),
+      ),
+      describeIssueDestination(
+        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9563 },
+        partners(),
+      ),
+      describeIssueDestination(
+        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9561 },
+        partners({ isError: true }),
+      ),
+    ]) {
+      expect(text).not.toContain('9561');
+      expect(text).not.toContain('9563');
+    }
+  });
+});
+
+describe('PostPane — 도착지 표시', () => {
+  it('도착지를 라벨과 함께 보인다', () => {
+    renderPane({ destination: PARTNER_LABEL });
+
+    expect(screen.getByText(t.post.destinationLabel)).toBeVisible();
+    expect(screen.getByText(PARTNER_LABEL)).toBeVisible();
+  });
+
+  /**
+   * **잠겨 있을 때도 보인다.** 왜 이 전표를 처리할 수 없는지와 이 전표가 어디로 가는지는
+   * 서로 다른 사실이고, 잠금과 함께 감추면 승인 전에는 도착지를 확인할 길이 사라진다.
+   */
+  it('버튼이 잠겨 있어도 도착지가 보인다', () => {
+    renderPane({
+      destination: t.values.selfDisposal,
+      blockReason: t.actionReasons.postNeedsSubmission,
+    });
+
+    expect(screen.getByText(t.values.selfDisposal)).toBeVisible();
   });
 });

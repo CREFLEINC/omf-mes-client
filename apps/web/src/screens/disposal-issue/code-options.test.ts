@@ -2,20 +2,25 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
+  canChooseDisposalPartner,
   codeNote,
   codePlaceholder,
   DEFECT_WAREHOUSE_TYPE_CODES,
+  DISPOSAL_PARTNER_ROLE_CODE,
+  disposalPartnerNote,
+  disposalPartnerPlaceholder,
   isDefectWarehouseTypePending,
-  isDisposalPartnerListPending,
+  isDisposalPartnerRolePending,
   isRequiredCodeListPending,
   narrowToDefectWarehouses,
   PLACEHOLDER_DISPOSAL_ISSUE_CODES,
-  PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
+  readDisposalPartnerCondition,
   REQUIRED_CODE_KEYS,
   toCodeOptionSets,
   type CodeValueLists,
+  type DisposalPartnerCondition,
 } from './code-options';
-import type { WarehouseEntry } from './types';
+import type { SelectOption, WarehouseEntry } from './types';
 
 const warehouse = (overrides: Partial<WarehouseEntry> = {}): WarehouseEntry => ({
   value: '9701',
@@ -164,28 +169,41 @@ describe('isRequiredCodeListPending — 두 방향', () => {
   });
 });
 
+/** 조회 결과 한 벌 — **고를 수 있는 정상 상태**가 기본값이고, 갈래마다 그 하나만 바꾼다. */
+const lookup = (
+  overrides: Partial<{
+    entries: SelectOption[];
+    isError: boolean;
+    isLoading: boolean;
+    truncated: boolean;
+  }> = {},
+) => ({
+  entries: [{ value: '9561', label: 'SAMPLE-PT-01 · 합성 폐기업체 가' }],
+  isError: false,
+  isLoading: false,
+  truncated: false,
+  ...overrides,
+});
+
+const condition = (overrides = {}, isRolePending = false) =>
+  readDisposalPartnerCondition(lookup(overrides), isRolePending);
+
 /**
  * **폐기 거래처 선택지의 전환 감지기**(변경 통지 #128 §3).
  *
- * 이 회차에는 선택지를 채우는 조회가 없다 — 좁힐 역할 코드가 미확정이라 살아 있는 조회는
- * 뒤 회차의 일이다. 그동안 칸은 **기존 자리표시 셋과 같은 모양으로** 잠기고 「선택지 준비 중」이
- * 뜬다. 판정 함수가 **목록을 인자로 받는 이유**는 창고 유형 자리표시와 같다 — 함수 안에서
- * 상수를 직접 읽으면 「차면 무엇이 달라지는가」를 잴 길이 없어 자리표시가 죽은 가지가 된다.
+ * 선택지는 이제 **조회로 온다**(`lookups.ts`의 `useDisposalPartnerOptions`) — 목록을 좁히는
+ * 역할 코드가 비어 있으면 조회 자체가 나가지 않아 선택지도 비어 있고, 칸은 기존 자리표시 셋과
+ * 같은 모양으로 잠긴다. 판정 함수가 **목록을 인자로 받는 이유**는 창고 유형 자리표시와 같다 —
+ * 함수 안에서 상수를 직접 읽으면 「차면 무엇이 달라지는가」를 잴 길이 없어 죽은 가지가 된다.
  */
 describe('폐기 거래처 선택지 — 두 방향', () => {
-  it('이 회차의 선택지는 비어 있다', () => {
-    expect(PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS).toEqual([]);
-  });
-
-  it('비어 있으면 준비 중으로 판정한다', () => {
-    expect(isDisposalPartnerListPending(PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS)).toBe(true);
+  it('비어 있으면 고를 수 없다고 판정한다', () => {
+    expect(canChooseDisposalPartner(condition({ entries: [] }, true))).toBe(false);
   });
 
   /** **둘째 방향** — 채우면 살아나지 않는 자리표시는 죽은 가지다. */
-  it('선택지가 차면 준비 중이 아니다', () => {
-    expect(
-      isDisposalPartnerListPending([{ value: '9251', label: 'SAMPLE-PARTNER-01 · 합성 업체 가' }]),
-    ).toBe(false);
+  it('선택지가 차면 고를 수 있다', () => {
+    expect(canChooseDisposalPartner(condition())).toBe(true);
   });
 
   /**
@@ -196,6 +214,47 @@ describe('폐기 거래처 선택지 — 두 방향', () => {
   it('거래처를 코드 자리표시 여섯에 섞지 않는다', () => {
     expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).not.toContain('disposalPartner');
     expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).toHaveLength(6);
+  });
+});
+
+/**
+ * **폐기 거래처를 좁히는 역할 코드의 전환 감지기**(변경 통지 #128 §3 — 값 미확정).
+ *
+ * 이 상수가 **선택지 조회를 여는 열쇠**다. 비어 있으면 조회가 나가지 않고(좁히지 않은 목록이
+ * 폐기 거래처 선택지로 서는 것을 막는다) 칸이 잠기며, 한 줄을 채우면 그 값이 질의 조건으로
+ * 실려 나가고 칸이 열린다 — 그 전환을 재지 않으면 자리표시는 죽은 가지다.
+ *
+ * **판정 함수가 상수를 인자로 받는다.** 함수 안에서 직접 읽으면 「채웠을 때 무엇이 달라지는가」를
+ * 시험할 길이 없다(창고 유형 자리표시가 세운 규율을 이유까지 그대로 승계한다).
+ */
+describe('폐기 거래처 역할 코드 — 두 방향', () => {
+  it('역할 코드가 아직 비어 있다', () => {
+    expect(DISPOSAL_PARTNER_ROLE_CODE).toBe('');
+  });
+
+  it('비어 있으면 준비 중으로 판정한다', () => {
+    expect(isDisposalPartnerRolePending(DISPOSAL_PARTNER_ROLE_CODE)).toBe(true);
+  });
+
+  /** **둘째 방향** — 채우면 살아나지 않는 자리표시는 죽은 가지다. */
+  it('역할 코드를 채우면 준비 중이 아니다', () => {
+    expect(isDisposalPartnerRolePending('SAMPLE_PARTNER_ROLE_A')).toBe(false);
+  });
+
+  /**
+   * 공백만인 값은 **채워진 것이 아니다.** 그대로 질의에 실으면 서버가 좁힐 근거 없는 조건을
+   * 받고, 화면은 「좁혔다」고 믿은 목록을 폐기 거래처 선택지로 세운다.
+   */
+  it('공백만인 값도 준비 중으로 본다', () => {
+    expect(isDisposalPartnerRolePending('   ')).toBe(true);
+  });
+
+  /**
+   * **코드 자리표시 여섯에 섞지 않는다.** 역할 코드는 사용자가 고르는 선택지가 아니라
+   * **조회를 좁히는 조건**이라, 한 통에 담으면 필수 코드 판정이 이 값까지 세게 된다.
+   */
+  it('역할 코드를 코드 자리표시 여섯에 섞지 않는다', () => {
+    expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).not.toContain('disposalPartnerRole');
   });
 });
 
@@ -250,5 +309,149 @@ describe('불량창고 좁힘 — 두 방향', () => {
   /** 좁힌 결과가 비는 것도 사실이다 — 없는 것을 전체로 되돌리지 않는다. */
   it('맞는 유형이 하나도 없으면 빈 목록이 된다', () => {
     expect(narrowToDefectWarehouses(entries, ['SAMPLE_WH_TYPE_Z'])).toEqual([]);
+  });
+});
+
+/**
+ * **선택칸의 사정 한 값**(리뷰 Major B1).
+ *
+ * 「비어 있다」는 사실 하나에 서로 다른 사정 넷이 겹쳐 있다. 길이로 판정하면 그 넷이 한 낱말로
+ * 뭉개져 **못 불러온 칸이 「준비 중」이라 말하게** 된다 — 얼굴은 「기다리면 열린다」인데 설명은
+ * 「다시 해야 한다」인 컨트롤이다. 이 판정과 아래 두 표기가 **한 원천**임을 여기서 고정한다.
+ */
+describe('readDisposalPartnerCondition — 여섯 갈래', () => {
+  it('역할 코드가 비면 부르지도 않은 상태다', () => {
+    expect(condition({ entries: [] }, true)).toBe('rolePending');
+  });
+
+  /** **역할 코드가 가장 앞이다** — 부르지도 않았는데 「없다」·「못 불러왔다」로 말할 수 없다. */
+  it('역할 코드가 비면 조회 상태와 무관하게 그 사정이다', () => {
+    expect(condition({ entries: [], isError: true }, true)).toBe('rolePending');
+    expect(condition({ entries: [], isLoading: true }, true)).toBe('rolePending');
+  });
+
+  /**
+   * **실패가 미도착보다 앞서고 미도착이 「없다」보다 앞선다**(`omf-mes#47`이 세운 차례).
+   * 못 받은 목록·아직 안 온 목록으로 「없다」를 판정하면 화면이 확인하지 않은 것을 말한다.
+   */
+  it('실패 · 미도착 · 0건이 그 차례로 갈린다', () => {
+    expect(condition({ entries: [], isError: true, isLoading: true })).toBe('failed');
+    expect(condition({ entries: [], isLoading: true })).toBe('loading');
+    expect(condition({ entries: [] })).toBe('empty');
+  });
+
+  it('잘린 목록과 온전한 목록을 가른다', () => {
+    expect(condition({ truncated: true })).toBe('truncated');
+    expect(condition()).toBe('ready');
+  });
+});
+
+/**
+ * **안내 · 자리표시 · 잠금이 같은 사정에서 나온다.** 셋이 서로 다른 원천을 보면 한 컨트롤이
+ * 서로 다른 사실을 동시에 말한다 — 그것이 B1이 겨눈 자리다.
+ */
+describe('사정 → 안내 · 자리표시 · 잠금', () => {
+  it('사정마다 안내와 자리표시가 짝으로 갈린다', () => {
+    const t = messages.disposalIssue;
+
+    expect([disposalPartnerNote('rolePending'), disposalPartnerPlaceholder('rolePending')]).toEqual(
+      [messages.pendingCode.note, messages.pendingCode.placeholder],
+    );
+    expect([disposalPartnerNote('failed'), disposalPartnerPlaceholder('failed')]).toEqual([
+      t.form.partnerFailedNote,
+      t.form.partnerFailedPlaceholder,
+    ]);
+    expect([disposalPartnerNote('empty'), disposalPartnerPlaceholder('empty')]).toEqual([
+      t.form.partnerEmptyNote,
+      t.form.partnerEmptyPlaceholder,
+    ]);
+    expect([disposalPartnerNote('loading'), disposalPartnerPlaceholder('loading')]).toEqual([
+      undefined,
+      t.values.referenceLoading,
+    ]);
+  });
+
+  /**
+   * ⛔ **못 불러온 칸이 「준비 중」이라 말하지 않는다**(B1의 실증 자리). 두 사정의 글자가
+   * 안내에서도 자리표시에서도 **서로 다르다**는 것을 값으로 못 박는다.
+   */
+  it('실패·0건의 글자가 「준비 중」과 다르다', () => {
+    for (const condition of ['failed', 'empty'] as const) {
+      expect(disposalPartnerNote(condition)).not.toBe(messages.pendingCode.note);
+      expect(disposalPartnerPlaceholder(condition)).not.toBe(messages.pendingCode.placeholder);
+    }
+  });
+
+  /** 고를 수 있으면 **둘 다 거둔다** — 남으면 열린 칸이 못 고른다고 말한다. */
+  it('고를 수 있으면 안내도 자리표시도 없다', () => {
+    expect(disposalPartnerNote('ready')).toBeUndefined();
+    expect(disposalPartnerPlaceholder('ready')).toBeUndefined();
+  });
+
+  /**
+   * **잘린 목록은 고를 수 있다** — 앞쪽 일부뿐이라는 사실은 안내가 말하고, 그 안에 찾는
+   * 거래처가 있으면 고르는 데 지장이 없다. 잠그면 **보이는 선택지를 고를 수 없는** 칸이 된다.
+   */
+  it('잘려도 고를 수 있고 그 사실만 안내한다', () => {
+    expect(canChooseDisposalPartner('truncated')).toBe(true);
+    expect(disposalPartnerNote('truncated')).toBe(messages.disposalIssue.form.partnerTruncatedNote);
+    expect(disposalPartnerPlaceholder('truncated')).toBeUndefined();
+  });
+
+  /**
+   * **갈래를 손으로 세지 않는다**(리뷰 Minor R-M2 · T3 재리뷰 R-M1이 세운 규율).
+   *
+   * `satisfies`는 **원소가 유니온에 속하는지**만 보고 **빠짐은 보지 않는다** — 손으로 적은
+   * 목록은 갈래가 늘어도 조용히 부분 순회가 된다. `Record<K, true>`는 키 누락을 오류로 만든다.
+   */
+  const ALL_CONDITIONS: Record<DisposalPartnerCondition, true> = {
+    rolePending: true,
+    failed: true,
+    loading: true,
+    empty: true,
+    truncated: true,
+    ready: true,
+  };
+
+  it('여섯 갈래가 전수이고 넷은 고를 수 없다', () => {
+    const conditions = Object.keys(ALL_CONDITIONS) as DisposalPartnerCondition[];
+    const locked = conditions.filter((condition) => !canChooseDisposalPartner(condition));
+
+    expect(conditions).toHaveLength(6);
+    expect(locked.sort()).toEqual(['empty', 'failed', 'loading', 'rolePending'].sort());
+  });
+
+  /**
+   * **잠긴 갈래에는 왜 잠겼는지가 반드시 선다**(사유 없이 잠그지 않는다 — 배치 규범 4).
+   * 갈래를 전수로 돌므로 **새 갈래가 표기를 빠뜨린 채 들어오면** 여기서 먼저 운다.
+   */
+  it('고를 수 없는 갈래는 안내나 자리표시 중 하나라도 반드시 낸다', () => {
+    for (const condition of Object.keys(ALL_CONDITIONS) as DisposalPartnerCondition[]) {
+      if (canChooseDisposalPartner(condition)) continue;
+
+      expect(disposalPartnerNote(condition) ?? disposalPartnerPlaceholder(condition)).toBeDefined();
+    }
+  });
+
+  /**
+   * **없는 복구 경로를 가리키지 않는다**(리뷰 Minor R-M1). 이 칸에는 「다시 시도」가 없고
+   * (`PartnerLookupResult`가 `refetch`를 타입째 내지 않는다) 복구는 전표를 다시 고르는 것이다 —
+   * 안내가 할 수 없는 조치를 지시하면 사용자는 찾지 못할 버튼을 찾는다.
+   */
+  it('안내가 다시 시도를 가리키지 않고 낱말이 「선택지」로 통일된다', () => {
+    for (const condition of Object.keys(ALL_CONDITIONS) as DisposalPartnerCondition[]) {
+      const note = disposalPartnerNote(condition);
+
+      if (note === undefined) continue;
+
+      expect(note).not.toContain('다시 시도');
+      /* 한 컨트롤이 같은 것을 두 이름으로 부르지 않는다 — 조건 줄의 「이름 목록」이 아니다. */
+      expect(note).not.toContain('이름 목록');
+    }
+
+    expect(disposalPartnerNote('failed')).not.toBe(messages.disposalIssue.filters.lookupFailed);
+    expect(disposalPartnerNote('truncated')).not.toBe(
+      messages.disposalIssue.filters.lookupTruncated,
+    );
   });
 });

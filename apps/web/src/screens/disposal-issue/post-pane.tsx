@@ -3,8 +3,45 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import type { PostApproval } from './approval-progress';
+import { describeReference, toReference, type ReferenceSource } from './lookups';
+import type { IssueView } from './types';
 
 const t = messages.disposalIssue;
+
+/**
+ * 그 전표가 **어디로 가는가** — 세 갈래(변경 통지 #128 · 완료 조건 C26).
+ *
+ * | 전표의 도착지 짝 | 화면이 말하는 것 |
+ * | --- | --- |
+ * | 둘 다 없다 | **「자체 폐기」** — 외부 업체 없이 직접 폐기한다는 **사용자가 정한 사실**이다 |
+ * | 둘 다 있다 | **「코드 · 이름」** — 이름 풀이 조회가 푼 거래처 |
+ * | 이름을 못 풀었다 | **그 사실을 적는다** — 번호를 대신 내지 않는다(`omf-mes#44`) |
+ *
+ * **한쪽만 온 전표를 자체 폐기로 접지 않는다.** 짝은 함께 있거나 함께 없고(#128 ⛔), 유형만
+ * 실려 온 전표에서 사실인 것은 「누가 가져갔는지 모른다」다 — 그것을 「외부 업체가 없다」로
+ * 접으면 화면이 확인하지 않은 것을 말하게 된다. 그래서 **짝이 통째로 없을 때만** 자체 폐기다.
+ *
+ * ⚠ **「빈 값」의 잣대가 역할 코드 쪽과 다르다**(리뷰 Nit N2). 역할 코드는 공백을 다듬어
+ * 판정하지만(`.trim()`) 여기서는 `null`만 없음으로 본다 — 빈 글자로 온 유형 코드는 「짝이
+ * 한쪽만 온 전표」로 읽혀 「알 수 없음」이 된다. **짝 규율에서는 그쪽이 보수적이라 맞다**:
+ * 서버가 무언가를 실어 보냈다면 자체 폐기라고 단정할 근거가 없다.
+ *
+ * **못 푼 이름·미도착·실패를 갈라 낸다**(`omf-mes#47`) — 이름 풀이의 네 갈래 판정을 그대로
+ * 쓴다. 이 자리에서 다시 판정하면 같은 사실이 화면에서 두 낱말로 보인다.
+ *
+ * 부품이 참조를 **통째로** 받는 것은 이 판정이 네 갈래를 함께 봐야 성립하기 때문이다 —
+ * 이름 하나만 받으면 「목록에 없음」과 「아직 오지 않음」이 똑같이 빈 글자로 온다.
+ */
+export const describeIssueDestination = (
+  issue: Pick<IssueView, 'destinationTypeCode' | 'destinationId'>,
+  partners: ReferenceSource,
+): string => {
+  if (issue.destinationTypeCode === null && issue.destinationId === null) {
+    return t.values.selfDisposal;
+  }
+
+  return describeReference(toReference(partners, issue.destinationId));
+};
 
 export interface PostPaneProps {
   /**
@@ -20,6 +57,13 @@ export interface PostPaneProps {
    * 그 사유를 **그대로** 낸다 — 두 곳이 각자 판정하면 잠긴 이유와 적힌 사유가 갈린다.
    */
   blockReason: string | null;
+  /**
+   * 그 전표가 어디로 가는가 — **글자만 받는다**(`describeIssueDestination`이 만든다).
+   *
+   * 제목줄이 창고 이름을 받는 것과 같은 형태다: 참조의 실패 안내와 복구는 그 이름이 실제로
+   * 실패로 보이는 자리가 소유하고, 이 부품에는 번호를 문자열로 만드는 자리가 없다(`omf-mes#44`).
+   */
+  destination: string;
   /** 전송 중인가. **첫째 겹**이다 — 핸들러 가드(둘째 겹)와 짝이다 */
   isLocked: boolean;
   onOpenConfirm: () => void;
@@ -56,7 +100,13 @@ export interface PostPaneProps {
  *
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
-export const PostPane = ({ approval, blockReason, isLocked, onOpenConfirm }: PostPaneProps) => {
+export const PostPane = ({
+  approval,
+  blockReason,
+  destination,
+  isLocked,
+  onOpenConfirm,
+}: PostPaneProps) => {
   const paneId = useId();
   const blockReasonId = `${paneId}-block`;
   const lockedReasonId = `${paneId}-locked`;
@@ -72,6 +122,22 @@ export const PostPane = ({ approval, blockReason, isLocked, onOpenConfirm }: Pos
   return (
     <section className="pane" aria-label={t.post.label}>
       <p>{t.post.lead}</p>
+
+      {/*
+       * **도착지를 처리 직전에 읽어 보인다**(변경 통지 #128 · 완료 조건 C26). 재고가 실제로
+       * 움직이는 자리라 「누가 가져가는가」가 여기서 확인돼야 하고, **잠겨 있을 때도** 보인다 —
+       * 잠금과 함께 감추면 승인 전에는 도착지를 확인할 길이 사라진다.
+       *
+       * 여기에 **고르는 컨트롤을 두지 않는다**(승인 기록 D-1 안 A). 계약에 전표 헤더를 고치는
+       * 경로가 없어 이 시점에 고른 값은 보낼 통로가 없다 — 두면 사용자가 고른 거래처가
+       * 조용히 사라진다.
+       */}
+      <dl className="filter-bar">
+        <div className="field-cell">
+          <dt className="field-label">{t.post.destinationLabel}</dt>
+          <dd>{destination}</dd>
+        </div>
+      </dl>
 
       {/*
        * **상시 문구는 버튼보다 앞에 둔다.** 뒤에 두면 누르고 난 뒤에야 눈에 들어온다.

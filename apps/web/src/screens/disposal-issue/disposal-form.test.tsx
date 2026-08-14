@@ -3,11 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  PLACEHOLDER_DISPOSAL_ISSUE_CODES,
-  PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
-  toCodeOptionSets,
-} from './code-options';
+import { PLACEHOLDER_DISPOSAL_ISSUE_CODES, toCodeOptionSets } from './code-options';
 import { DisposalForm, type DisposalFormProps } from './disposal-form';
 import { EMPTY_DISPOSAL_DRAFT } from './types';
 import { CODE_FIELD_NAMES } from './validation';
@@ -31,12 +27,25 @@ const noop = (): void => {
 /** 폐기 거래처 선택지가 채워진 뒤의 모양 — **전환을 재기 위한 입력**이다. */
 const FILLED_PARTNERS = [{ value: '9251', label: 'SAMPLE-PARTNER-01 · 합성 폐기업체 가' }];
 
+/**
+ * 선택지가 살아난 뒤의 두 값 — **목록과 안내가 함께 바뀐다.**
+ *
+ * 목록만 채우고 안내를 그대로 두면 「고를 수 있는데 준비 중이라 적힌」 칸이 된다. 두 값의
+ * 짝을 여기 한 곳에 두어 시험마다 한쪽만 바꾸는 일이 없게 한다.
+ */
+const filledPartners = (): Partial<DisposalFormProps> => ({
+  disposalPartnerOptions: FILLED_PARTNERS,
+  disposalPartnerCondition: 'ready',
+});
+
 const renderForm = (overrides: Partial<DisposalFormProps> = {}) =>
   render(
     <DisposalForm
       values={EMPTY_DISPOSAL_DRAFT}
       codeOptions={toCodeOptionSets(PLACEHOLDER_DISPOSAL_ISSUE_CODES)}
-      disposalPartnerOptions={PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS}
+      disposalPartnerOptions={[]}
+      /* 지금의 사실 — 역할 코드가 미확정이라 선택지 조회가 나가지 않는다(화면이 정해 넘긴다). */
+      disposalPartnerCondition="rolePending"
       fieldErrors={{}}
       isLocked={false}
       onChangeCode={noop}
@@ -129,13 +138,92 @@ describe('DisposalForm 도착지', () => {
 
   /** **전환의 둘째 방향** — 선택지가 차면 열리고 「준비 중」 안내가 사라진다. */
   it('선택지가 차면 열리고 안내를 거둔다', () => {
-    renderForm({ disposalPartnerOptions: FILLED_PARTNERS });
+    renderForm(filledPartners());
 
     const partner = screen.getByLabelText(t.formFields.disposalPartner);
 
     expect(partner).toBeEnabled();
     expect(partner).not.toHaveAccessibleDescription(
       expect.stringContaining(messages.pendingCode.note),
+    );
+  });
+
+  /**
+   * **안내는 화면이 정해 넘긴다**(조건 줄의 창고 칸과 같은 형태).
+   *
+   * 선택칸이 비는 사정이 셋인데(역할 코드 미확정 · 조회 실패 · 목록 잘림) **뒤 둘은 조회를
+   * 소유한 화면만 안다.** 부품이 목록 길이로 사유를 지어내면 「불러오지 못했는데 준비 중이라
+   * 적힌」 칸이 되고, 사용자는 기다리면 열릴 것으로 읽는다.
+   */
+  it('화면이 준 사정에서 안내와 자리표시가 함께 나온다', () => {
+    renderForm({ disposalPartnerCondition: 'failed' });
+
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.form.partnerFailedNote));
+    /* ⛔ **얼굴과 설명이 같은 사실을 말한다**(리뷰 Major B1) — 트리거가 「준비 중」이면 안 된다. */
+    expect(partner).toHaveTextContent(t.form.partnerFailedPlaceholder);
+    expect(partner).not.toHaveTextContent(messages.pendingCode.placeholder);
+    expect(partner).toBeDisabled();
+  });
+
+  /**
+   * **목록은 왔는데 0건**인 갈래. 「준비 중」과 갈라 둔다 — 이쪽은 기다려도 열리지 않는다.
+   * 앞 회차에는 이 갈래에 **아무 설명도 서지 않았다**(리뷰 탐침 P-3).
+   */
+  it('0건이면 그 사실을 안내와 자리표시가 함께 말한다', () => {
+    renderForm({ disposalPartnerCondition: 'empty' });
+
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.form.partnerEmptyNote));
+    expect(partner).toHaveTextContent(t.form.partnerEmptyPlaceholder);
+    expect(partner).not.toHaveTextContent(messages.pendingCode.placeholder);
+  });
+
+  /**
+   * **낡은 목록이 남은 채 다시 부르기가 실패한 갈래.** 실제로 닿는다 — 캐시가 앞 응답을 들고
+   * 있는 동안 재조회가 실패하면 **목록은 있는데 사정은 「실패」**다.
+   *
+   * 그때도 **사정이 정본이다.** 목록 길이로 잠금을 판정하면 안내는 「불러오지 못했습니다」인데
+   * 칸은 열려 있는 어긋남이 된다 — 사용자는 낡은 목록에서 고르고도 무엇이 실패했는지 모른다.
+   */
+  it('낡은 목록이 남아 있어도 실패면 잠근다', () => {
+    renderForm({ disposalPartnerOptions: FILLED_PARTNERS, disposalPartnerCondition: 'failed' });
+
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toBeDisabled();
+    expect(partner).toHaveAccessibleDescription(expect.stringContaining(t.form.partnerFailedNote));
+  });
+
+  /** **오는 중에는 「없다」고 말하지 않는다** — 트리거가 그 사실만 적고 안내는 서지 않는다. */
+  it('오는 중이면 불러오는 중이라 말한다', () => {
+    renderForm({ disposalPartnerCondition: 'loading' });
+
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toHaveTextContent(t.values.referenceLoading);
+    expect(partner).not.toHaveAccessibleDescription(
+      expect.stringContaining(t.form.partnerEmptyNote),
+    );
+  });
+
+  /**
+   * **선택지가 차 있어도 안내가 설 수 있다** — 잘린 목록이 그렇다(계약에 번호로 한 건을 받는
+   * 경로가 없어 뒤쪽 거래처는 고를 길이 아예 없다). 목록 길이로 안내를 가르면 이 갈래가 사라진다.
+   */
+  it('선택지가 차 있어도 잘림 안내는 남는다', () => {
+    renderForm({
+      disposalPartnerOptions: FILLED_PARTNERS,
+      disposalPartnerCondition: 'truncated',
+    });
+
+    const partner = screen.getByLabelText(t.formFields.disposalPartner);
+
+    expect(partner).toBeEnabled();
+    expect(partner).toHaveAccessibleDescription(
+      expect.stringContaining(t.form.partnerTruncatedNote),
     );
   });
 
@@ -154,7 +242,7 @@ describe('DisposalForm 도착지', () => {
     );
     unmount();
 
-    renderForm({ disposalPartnerOptions: FILLED_PARTNERS });
+    renderForm(filledPartners());
 
     expect(screen.getByLabelText(t.formFields.disposalPartner)).not.toHaveTextContent(
       messages.pendingCode.placeholder,
@@ -170,8 +258,8 @@ describe('DisposalForm 도착지', () => {
    */
   it('자체 폐기를 체크하면 선택지가 있어도 선택칸이 잠긴다', () => {
     renderForm({
+      ...filledPartners(),
       values: { ...EMPTY_DISPOSAL_DRAFT, isSelfDisposal: true },
-      disposalPartnerOptions: FILLED_PARTNERS,
     });
 
     const partner = screen.getByLabelText(t.formFields.disposalPartner);
@@ -210,7 +298,7 @@ describe('DisposalForm 도착지', () => {
    */
   it('거래처 오류가 계약 필드 이름으로 그 칸에 붙는다', () => {
     renderForm({
-      disposalPartnerOptions: FILLED_PARTNERS,
+      ...filledPartners(),
       fieldErrors: { destinationId: '폐기 역할이 없는 거래처입니다' },
     });
 
@@ -315,8 +403,8 @@ describe('DisposalForm 잠금', () => {
   /** **첫째 겹**이다 — 전송 중에 값이 바뀌면 확인한 것과 나가는 것이 갈린다. */
   it('전송 중에는 모든 칸이 잠긴다', () => {
     renderForm({
+      ...filledPartners(),
       codeOptions: FILLED_CODES,
-      disposalPartnerOptions: FILLED_PARTNERS,
       isLocked: true,
     });
 

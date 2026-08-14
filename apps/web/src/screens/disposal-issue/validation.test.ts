@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { PostApproval, Submission } from './approval-progress';
 import {
-  PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
   toCodeOptionSets,
   type CodeValueLists,
+  type DisposalPartnerCondition,
 } from './code-options';
 import type { DisposalReadyState } from './disposal-selection';
-import type { DisposalDraft, SelectOption } from './types';
+import type { DisposalDraft } from './types';
 import { EMPTY_DISPOSAL_DRAFT } from './types';
 import {
   CODE_FIELD_NAMES,
@@ -56,10 +56,14 @@ const UNDECIDED_DRAFT: DisposalDraft = {
   disposalPartnerId: '',
 };
 
-/** 폐기 거래처 선택지가 채워진 뒤의 모양. **지금의 사실이 아니라 전환을 재기 위한 입력**이다. */
-const FILLED_PARTNERS: SelectOption[] = [
-  { value: '9251', label: 'SAMPLE-PARTNER-01 · 합성 폐기업체 가' },
-];
+/**
+ * 폐기 거래처 선택칸의 **지금의 사정** — 역할 코드가 미확정이라 조회조차 나가지 않는다.
+ * 사정을 값으로 두는 이유는 「왜 고를 수 없는가」가 사유를 가르기 때문이다(리뷰 Minor M2).
+ */
+const ROLE_PENDING: DisposalPartnerCondition = 'rolePending';
+
+/** 선택지가 살아난 뒤의 사정. **지금의 사실이 아니라 전환을 재기 위한 입력**이다. */
+const READY_PARTNERS: DisposalPartnerCondition = 'ready';
 
 /** 값 목록이 확정된 상태. **셋을 다 채운다** — 하나만 비어도 판정이 「준비 중」으로 접힌다. */
 const FILLED_LISTS: CodeValueLists = {
@@ -84,13 +88,14 @@ const block = (
   draft: DisposalDraft = FILLED_DRAFT,
   lists: CodeValueLists = FILLED_LISTS,
   selection: DisposalReadyState = READY,
-  disposalPartnerOptions: readonly SelectOption[] = PLACEHOLDER_DISPOSAL_PARTNER_OPTIONS,
+  /* 지금의 사실 — 역할 코드가 미확정이라 선택지 조회가 나가지 않는다. */
+  disposalPartner: DisposalPartnerCondition = ROLE_PENDING,
 ): string | null =>
   disposalBlockReason({
     codeOptions: toCodeOptionSets(lists),
     draft,
     selection,
-    disposalPartnerOptions,
+    disposalPartner,
   });
 
 describe('disposalBlockReason', () => {
@@ -152,18 +157,54 @@ describe('disposalBlockReason', () => {
  * 선다(승인 기록 D-1 안 A — 계약에 전표 헤더를 고치는 경로가 없어 도착지는 **발의 시점**에
  * 정해져 생성 본문으로 나간다).
  *
- * **사유가 둘로 갈리는 것이 이 묶음의 요점이다.** 고를 것이 없는 사용자에게 「고르세요」라고
- * 말하면, 사용자는 자기가 놓친 것을 찾다가 화면을 고장으로 읽는다 — 이 슬라이스가 코드
- * 자리표시에서 이미 세운 규율을 도착지에도 그대로 적용한다.
+ * **사유가 셋으로 갈리는 것이 이 묶음의 요점이다.** 고를 것이 없는 사용자에게 「고르세요」라고
+ * 말하면 자기가 놓친 것을 찾다가 화면을 고장으로 읽고, 기다려도 열리지 않는 사정에 「아직
+ * 준비되지 않았습니다」라고 말하면 오지 않을 것을 기다린다 — 이 슬라이스가 코드 자리표시에서
+ * 이미 세운 규율을 도착지에도 그대로 적용하되, 「왜 없는가」까지 가른다.
  */
-describe('disposalBlockReason — 도착지 두 갈래', () => {
+describe('disposalBlockReason — 도착지 세 갈래', () => {
   it('선택칸이 잠겨 있으면 자체 폐기를 가리키는 사유가 나온다', () => {
     expect(block(UNDECIDED_DRAFT)).toBe(t.actionReasons.disposalPartnerPending);
   });
 
+  /**
+   * **셋째 갈래**(리뷰 Minor M2) — 불러오지 못했거나 · 오는 중이거나 · 0건이면
+   * 「**아직 준비되지 않았습니다**」라고 말하지 않는다. 그 문구는 「값 목록이 확정되면 열린다」는
+   * 뜻이라 사용자가 **기다리면 된다**고 읽는데, 이 셋은 기다린다고 열린다는 보장이 없다.
+   *
+   * 사유가 **목록 길이가 아니라 사정**에서 나오는 것이 이 갈래가 서는 근거다 — 길이로 판정하면
+   * 넷이 한 낱말로 뭉개진다.
+   */
+  it.each(['failed', 'loading', 'empty'] as const)(
+    '%s이면 지금 고를 수 없다고 말한다 — 「준비 중」이라 하지 않는다',
+    (condition) => {
+      expect(block(UNDECIDED_DRAFT, FILLED_LISTS, READY, condition)).toBe(
+        t.actionReasons.disposalPartnerUnavailable,
+      );
+      expect(block(UNDECIDED_DRAFT, FILLED_LISTS, READY, condition)).not.toBe(
+        t.actionReasons.disposalPartnerPending,
+      );
+    },
+  );
+
+  /** **잘린 목록은 고를 수 있다** — 그때는 「고르거나 체크하십시오」다(안내가 잘림을 따로 말한다). */
+  it('잘린 목록이면 고르라고 말한다', () => {
+    expect(block(UNDECIDED_DRAFT, FILLED_LISTS, READY, 'truncated')).toBe(
+      t.actionReasons.needsDisposalDestination,
+    );
+  });
+
+  /** ⭐ 어느 사정이든 **자체 폐기로는 열린다**(#128 §3) — 사유가 갈려도 그 길은 늘 있다. */
+  it.each(['rolePending', 'failed', 'loading', 'empty'] as const)(
+    '%s이어도 자체 폐기로는 열린다',
+    (condition) => {
+      expect(block(FILLED_DRAFT, FILLED_LISTS, READY, condition)).toBeNull();
+    },
+  );
+
   /** **전환의 둘째 방향** — 선택지가 차면 사유가 「고르거나 체크하십시오」로 바뀐다. */
   it('선택칸이 열려 있으면 고르라고 말한다', () => {
-    expect(block(UNDECIDED_DRAFT, FILLED_LISTS, READY, FILLED_PARTNERS)).toBe(
+    expect(block(UNDECIDED_DRAFT, FILLED_LISTS, READY, READY_PARTNERS)).toBe(
       t.actionReasons.needsDisposalDestination,
     );
   });
@@ -174,7 +215,7 @@ describe('disposalBlockReason — 도착지 두 갈래', () => {
   });
 
   it('거래처를 고르면 열린다', () => {
-    expect(block(PARTNER_DRAFT, FILLED_LISTS, READY, FILLED_PARTNERS)).toBeNull();
+    expect(block(PARTNER_DRAFT, FILLED_LISTS, READY, READY_PARTNERS)).toBeNull();
   });
 
   /**
@@ -187,7 +228,7 @@ describe('disposalBlockReason — 도착지 두 갈래', () => {
    */
   it.each(['9251x', '0', '   '])('번호로 읽을 수 없는 거래처 값 %j이면 여전히 잠긴다', (value) => {
     expect(
-      block({ ...PARTNER_DRAFT, disposalPartnerId: value }, FILLED_LISTS, READY, FILLED_PARTNERS),
+      block({ ...PARTNER_DRAFT, disposalPartnerId: value }, FILLED_LISTS, READY, READY_PARTNERS),
     ).toBe(t.actionReasons.needsDisposalDestination);
   });
 
@@ -423,16 +464,30 @@ describe('postBlockReason — 처리를 잠글 근거', () => {
    */
   it('잠그는 갈래가 여전히 둘뿐이다 — 도착지 축으로 새로 잠그지 않는다', () => {
     /*
-     * **갈래 목록을 타입에서 파생한다**(리뷰 Nit N3). 손으로 적으면 유니온에 갈래가 늘었을 때
-     * 「전수」가 조용히 전수가 아니게 된다 — `satisfies`가 빠짐과 오타를 타입 검사로 잡는다.
+     * **갈래 목록을 타입에서 파생한다**(리뷰 Nit N3 · 재리뷰 Minor R-M1).
+     *
+     * ⚠ 앞선 판은 배열에 `satisfies Submission['kind'][]`를 붙이고 「빠짐과 오타를 잡는다」고
+     * 적었는데, **`satisfies`는 빠짐을 잡지 못한다** — 원소가 유니온에 속하는지만 본다.
+     * 실측(이 회차): `PostApproval`에 다섯째 갈래를 더하고 `pnpm typecheck`를 돌렸더니
+     * **5패키지 전부 Done**이었다. 목록은 넷 그대로인데 아무도 울지 않는다.
+     *
+     * **키 맵을 거치면 빠짐이 오류가 된다.** `Record<K, true>`는 유니온의 모든 키를 요구하므로
+     * 갈래가 늘면 그 자리에서 타입 검사가 멈춘다(같은 실측에서 확인). 「전수」라고 적은 시험이
+     * 조용히 부분 순회가 되는 일을 이 형태가 막는다.
      */
-    const submissions = ['notSubmitted', 'submitted', 'unusable'] satisfies Submission['kind'][];
-    const approvals = [
-      'judgePending',
-      'notApproved',
-      'approved',
-      'unread',
-    ] satisfies PostApproval['kind'][];
+    const ALL_SUBMISSIONS: Record<Submission['kind'], true> = {
+      notSubmitted: true,
+      submitted: true,
+      unusable: true,
+    };
+    const ALL_APPROVALS: Record<PostApproval['kind'], true> = {
+      judgePending: true,
+      notApproved: true,
+      approved: true,
+      unread: true,
+    };
+    const submissions = Object.keys(ALL_SUBMISSIONS) as Submission['kind'][];
+    const approvals = Object.keys(ALL_APPROVALS) as PostApproval['kind'][];
     const locked: string[] = [];
 
     for (const submission of submissions) {

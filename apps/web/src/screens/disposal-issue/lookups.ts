@@ -3,6 +3,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { isDisposalPartnerRolePending } from './code-options';
 import type { LookupEntry, LotEntry, PageMeta, WarehouseEntry } from './types';
 
 /**
@@ -25,6 +26,14 @@ import type { LookupEntry, LotEntry, PageMeta, WarehouseEntry } from './types';
  * | 단위 | 라인 표의 수량 표기 | **라인 구획** | 같은 위 |
  * | 자재 LOT | 라인 표의 LOT 칸 · **보류 표식** | **라인 구획** | 같은 위. **품목마다 한 번** |
  * | 위치 | 라인 표의 위치 칸 | **라인 구획** | 같은 위(**전표의 창고**로 조회) |
+ * | **거래처(선택지)** | **발의 폼의 「폐기 거래처」 칸** | **없음(전표 재선택)** | 전표를 고른 뒤 **AND 역할 코드가 있을 때** |
+ * | **거래처(이름 풀이)** | **③ 구획의 도착지 표기** | **없음(전표 재선택)** | 고른 폐기 요청에 **도착지가 있을 때** |
+ *
+ * **거래처 둘만 복구 칸이 「없음」이다**(변경 통지 #128 · 리뷰 Nit N3). 다른 다섯은 그 이름이
+ * 실패로 보이는 자리에 「다시 시도」를 두지만, 거래처가 서는 두 자리에는 두지 않는다 —
+ * 선택칸은 실패해도 **자체 폐기로 올릴 수 있고**(#128 §3 ⭐), ③ 구획은 되돌릴 수 없는 조작
+ * 버튼 옆이라 부차적인 버튼이 무엇을 누르는 자리인지 흐린다. 그래서 두 훅은 `refetch`를
+ * **타입째 내지 않는다**(`PartnerLookupResult`) — 복구는 전표를 다시 고르는 것이다.
  *
  * **창고만 미리 받는 이유**는 그 이름이 나타나는 **시점**이 다르기 때문이다. 조건 줄과 목록
  * 표의 창고 칸은 **목록 응답만으로** 곧바로 그려지지만, 라인 표의 칸은 **상세 응답이 와야**
@@ -76,6 +85,20 @@ export interface LookupResult extends ReferenceSource {
   entries: LookupEntry[];
   refetch: () => void;
 }
+
+/**
+ * 거래처 조회의 결과 — **`refetch`가 없다.**
+ *
+ * 다른 참조는 실패 안내 옆에 「다시 시도」를 두지만(그 이름이 실제로 실패로 보이는 자리에
+ * 복구 경로가 있어야 한다), 거래처가 서는 두 자리에는 그 버튼을 두지 않는다:
+ * ① 발의 폼의 선택칸 — 잠긴 칸 아래 안내가 실패를 밝히고, 사용자는 그동안에도 **자체 폐기로
+ * 올릴 수 있다** ② ③ 구획 — 되돌릴 수 없는 조작 버튼 옆이라 그 자리에 부차적인 버튼을 더하면
+ * 무엇을 누르는 자리인지 흐려진다. 두 자리 모두 **전표를 다시 고르면 조회가 다시 나간다.**
+ *
+ * 쓰지 않을 `refetch`를 내지 않는 것이 요점이다 — 내면 「이 화면에 복구 경로가 있다」가
+ * 타입 수준의 사실이 되고, 죽은 통로가 다음 사본으로 전파된다.
+ */
+export type PartnerLookupResult = Omit<LookupResult, 'refetch'>;
 
 export interface LotLookupResult extends LotReferenceSource {
   entries: LotEntry[];
@@ -202,6 +225,18 @@ export const lookupKeys = {
   lots: (itemId: number) => ['disposal-issue-lookups', 'lots', itemId] as const,
   /** 위치는 **창고마다** 갈린다 — 계약이 창고를 필수 조건으로 둔다. */
   locations: (warehouseId: number) => ['disposal-issue-lookups', 'locations', warehouseId] as const,
+  /**
+   * 폐기 거래처 **선택지**는 좁히는 역할 코드마다 갈린다 — 코드가 캐시 키에 들어가지 않으면
+   * 값이 바뀌어도 앞 목록이 그대로 선다.
+   */
+  disposalPartners: (roleTypeCode: string) =>
+    ['disposal-issue-lookups', 'disposal-partners', roleTypeCode] as const,
+  /**
+   * 거래처 **이름 풀이**는 선택지와 **다른 키**를 쓴다. 같은 경로를 부르지만 좁힘이 다르므로,
+   * 키를 합치면 좁힌 목록이 이름 풀이 자리에 서서 좁힘 밖 거래처가 「알 수 없음」이 된다
+   * (`omf-mes#47`).
+   */
+  partnerNames: ['disposal-issue-lookups', 'partner-names'] as const,
 };
 
 /**
@@ -383,6 +418,107 @@ export const useLotOptions = (itemIds: readonly number[], enabled: boolean): Lot
     refetch: () => {
       for (const result of results) void result.refetch();
     },
+  };
+};
+
+/**
+ * 폐기 거래처 **선택지** — 발의 폼의 「폐기 거래처」 칸이 쓴다(변경 통지 #128 §3).
+ *
+ * **역할 코드로 좁혀 받는다.** 그 코드가 아직 확정되지 않아 비어 있는 동안은 **조회를 아예
+ * 내보내지 않는다**(`enabled`) — 빈 값으로 부르면 좁히지 않은 거래처 전부가 폐기 거래처
+ * 선택지로 서고, 사용자는 폐기와 무관한 상대를 되돌릴 수 없는 전표에 실을 수 있다.
+ * 판정은 `code-options.ts`가 갖는다 — 값이 확정될 때 고칠 자리가 한 곳이어야 한다.
+ *
+ * **미사용 거래처를 함께 받지 않는다.** 앞 다섯 참조와 갈리는 자리다: 그쪽은 과거 전표가
+ * 가리키는 번호를 **읽어 이름으로 푸는** 곳이라 미사용 값도 있어야 이름이 보이지만, 여기는
+ * **새 전표에 실을 값을 고르는** 곳이다. 유효성 판정은 서버가 하며 기본 조회가 유효한 것만
+ * 내린다(공유계약 G-8) — 표식이 아니라 목록에서 빼는 것이 맞는 처리다.
+ *
+ * **잘리면 표식을 낸다.** 계약에 번호로 한 건을 받는 경로가 없어(실측) 잘린 뒤쪽의 거래처는
+ * 이 화면에서 고를 길이 아예 없다 — 감추면 사용자가 「그런 거래처가 없다」로 결론짓는다.
+ *
+ * **전표를 고르기 전에는 부르지 않는다**(`enabled`) — 폐기 요청 정보 구획 자체가 그때 그려진다.
+ */
+export const useDisposalPartnerOptions = (
+  roleTypeCode: string,
+  enabled: boolean,
+): PartnerLookupResult => {
+  const { client } = useApiClient();
+
+  /* 좁힐 수 없으면 부르지 않는다 — 「좁히지 않은 목록」과 「좁힌 목록」은 다른 자료다. */
+  const isNarrowable = !isDisposalPartnerRolePending(roleTypeCode);
+  const isFetching = enabled && isNarrowable;
+
+  const query = useQuery({
+    queryKey: lookupKeys.disposalPartners(roleTypeCode),
+    enabled: isFetching,
+    queryFn: () => {
+      if (!isNarrowable) {
+        throw new Error('폐기처리 역할 코드가 확정되기 전에는 거래처 선택지를 조회하지 않습니다.');
+      }
+
+      return runRequest(() => client.GET('/mdm/partners', { params: { query: { roleTypeCode } } }));
+    },
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.partnerId),
+        /*
+         * **「코드 · 이름」으로 낸다.** 거래처 코드는 업무 번호라 사람이 상대를 가르는 데 쓰고,
+         * 내부 번호(`partnerId`)는 어느 갈래에도 담기지 않는다(`omf-mes#44`). 다른 참조와 같은
+         * 모양이라 사용자가 칸마다 다른 읽기 규칙을 익힐 필요가 없다.
+         */
+        label: `${item.partnerCode} · ${item.partnerName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: isFetching && query.isPending,
+  };
+};
+
+/**
+ * 거래처 **이름 풀이** — ③ 기타출고 처리 구획의 도착지 표기가 쓴다(변경 통지 #128).
+ *
+ * ⛔ **좁히지 않는다.** 선택지와 같은 경로를 부르지만 역할 코드를 싣지 않는다 — 좁힌 조회로
+ * 이름을 풀면 좁힘 밖의 정상 거래처가 「알 수 없음」으로 찍히고, 그 문구는 *값이 잘못됐다*는
+ * 뜻이라 사용자가 반대로 읽는다(`omf-mes#47`). 이미 저장된 전표는 **지금의 역할 좁힘과 무관한**
+ * 거래처를 가리킬 수 있다: 역할은 나중에 회수될 수 있고, 그때 과거 전표의 도착지가 사라져서는
+ * 안 된다. 좁히는 자리는 **선택지 하나**다.
+ *
+ * **미사용 거래처까지 받는다**(`includeInactive`) — 다른 네 참조와 같은 이유다. 여기서 거래처는
+ * 고르는 값이 아니라 **읽는 값**이라, 빼면 그 전표의 도착지 이름이 비어 보인다.
+ *
+ * **가리키는 도착지가 없으면 부르지 않는다**(`enabled`) — 자체 폐기 전표는 풀 이름이 없다.
+ */
+export const usePartnerNames = (enabled: boolean): PartnerLookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.partnerNames,
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/partners', { params: { query: { includeInactive: true } } }),
+      ),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.partnerId),
+        label: `${item.partnerCode} · ${item.partnerName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: enabled && query.isPending,
   };
 };
 

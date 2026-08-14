@@ -12,6 +12,9 @@ import {
   itemFixtures,
   locationFixtures,
   lotFixturesByItem,
+  PARTNER_LABEL,
+  partnerFixtures,
+  SAMPLE_PARTNER_ROLE,
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
@@ -22,9 +25,11 @@ import {
   LOT_PAGE_SIZE,
   lookupNote,
   toReference,
+  useDisposalPartnerOptions,
   useItemOptions,
   useLocationOptions,
   useLotOptions,
+  usePartnerNames,
   useUomOptions,
   useWarehouseOptions,
   type LotReferenceSource,
@@ -499,5 +504,223 @@ describe('useLocationOptions', () => {
       includeInactive: 'true',
     });
     expect(result.current.entries[0]?.label).toBe('SAMPLE-LOC-01 · 합성 적치 가');
+  });
+});
+
+const PARTNERS_PATH = '/mdm/partners';
+
+/**
+ * 거래처 응답 — **질의에 따라 내용이 달라진다.**
+ *
+ * 좁힌 조회와 좁히지 않은 조회가 **같은 경로**라, 스텁이 늘 같은 목록을 돌려주면 「선택지가
+ * 좁혀 받은 목록인가 이름 풀이 목록인가」를 어떤 감지기도 가를 수 없다 — 캐시 키를 한 벌로
+ * 합쳐 두는 결함이 그대로 통과한다(전례의 두 스텁 형태 중 **내용까지 달라지는** 쪽).
+ */
+const partnersRoute = (total?: number): StubRoute =>
+  route(PARTNERS_PATH, (request) => {
+    const narrowed = new URL(request.url).searchParams.has('roleTypeCode');
+    const items = narrowed ? partnerFixtures.slice(0, 1) : partnerFixtures;
+
+    return jsonResponse(listBody(items, total ?? items.length));
+  });
+
+/**
+ * **선택지 조회의 전환 감지기**(변경 통지 #128 §3 · 완료 조건 C23·C24).
+ *
+ * 역할 코드가 비어 있는 동안은 **부르지 않는 것이 규칙이다** — 빈 값으로 부르면 좁히지 않은
+ * 거래처 전부가 폐기 거래처 선택지로 서고, 사용자는 폐기와 무관한 상대를 되돌릴 수 없는
+ * 전표에 실을 수 있다.
+ */
+describe('useDisposalPartnerOptions — 전환 두 방향', () => {
+  it('역할 코드가 비면 요청이 나가지 않는다', async () => {
+    const { fetch, urls } = recording([partnersRoute()]);
+    const { result } = renderHookWithProviders(() => useDisposalPartnerOptions('', true), {
+      fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(urls).toEqual([]);
+    expect(result.current.entries).toEqual([]);
+  });
+
+  /** 공백만인 값도 채워진 것이 아니다 — 그대로 실으면 좁히지 않은 목록을 좁혔다고 믿는다. */
+  it('공백만인 역할 코드로도 요청이 나가지 않는다', async () => {
+    const { fetch, urls } = recording([partnersRoute()]);
+    const { result } = renderHookWithProviders(() => useDisposalPartnerOptions('   ', true), {
+      fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(urls).toEqual([]);
+  });
+
+  /** 전표를 고르기 전에도 부르지 않는다 — 폼 자체가 상세 응답을 기다린다. */
+  it('전표를 고르기 전에는 요청이 나가지 않는다', async () => {
+    const { fetch, urls } = recording([partnersRoute()]);
+    const { result } = renderHookWithProviders(
+      () => useDisposalPartnerOptions(SAMPLE_PARTNER_ROLE, false),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(urls).toEqual([]);
+  });
+
+  /**
+   * **둘째 방향** — 채우면 살아나지 않는 자리표시는 죽은 가지다. 그 값이 **질의 조건으로
+   * 실려 나가는지**까지 본다: 실리지 않으면 좁히지 않은 목록을 좁혔다고 믿게 된다.
+   */
+  it('역할 코드를 채우면 그 값이 질의로 실려 나간다', async () => {
+    const { fetch, urls } = recording([partnersRoute()]);
+    const { result } = renderHookWithProviders(
+      () => useDisposalPartnerOptions(SAMPLE_PARTNER_ROLE, true),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.entries.length).toBeGreaterThan(0);
+    });
+
+    expect(urls).toHaveLength(1);
+    expect(urls[0]?.searchParams.get('roleTypeCode')).toBe(SAMPLE_PARTNER_ROLE);
+    /* 좁혀 받은 목록이 실제로 온다 — 좁히지 않은 응답을 쓰면 건수가 다르다. */
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0]).toEqual({
+      value: '9561',
+      label: PARTNER_LABEL,
+      isActive: true,
+    });
+  });
+
+  /**
+   * **미사용 거래처를 함께 받지 않는다.** 이름 풀이와 갈리는 자리다 — 여기는 새 전표에 실을
+   * 값을 **고르는** 곳이라, 미사용 값을 목록에 두면 유효하지 않은 도착지를 고를 수 있다.
+   * 유효성 판정은 서버가 하며 기본 조회가 유효한 것만 내린다(공유계약 G-8).
+   */
+  it('미사용 포함 조건을 싣지 않는다', async () => {
+    const { fetch, urls } = recording([partnersRoute()]);
+    const { result } = renderHookWithProviders(
+      () => useDisposalPartnerOptions(SAMPLE_PARTNER_ROLE, true),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.entries.length).toBeGreaterThan(0);
+    });
+
+    expect(urls[0]?.searchParams.has('includeInactive')).toBe(false);
+  });
+
+  /**
+   * 계약에 **번호로 한 건을 받는 경로가 없어**(실측: `q`·`roleTypeCode`·`page`·`size` 등)
+   * 잘린 뒤쪽의 거래처는 이 화면에서 고를 길이 아예 없다 — 감추면 사용자가 「그런 거래처가
+   * 없다」로 결론짓는다. 형제 슬라이스가 같은 한계를 질문으로 올려 두었다.
+   */
+  it('목록이 잘리면 그 사실을 낸다', async () => {
+    const { fetch } = recording([partnersRoute(120)]);
+    const { result } = renderHookWithProviders(
+      () => useDisposalPartnerOptions(SAMPLE_PARTNER_ROLE, true),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.truncated).toBe(true);
+    });
+  });
+
+  it('잘리지 않았으면 그렇게 낸다', async () => {
+    const { fetch } = recording([partnersRoute()]);
+    const { result } = renderHookWithProviders(
+      () => useDisposalPartnerOptions(SAMPLE_PARTNER_ROLE, true),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.entries.length).toBeGreaterThan(0);
+    });
+
+    expect(result.current.truncated).toBe(false);
+  });
+});
+
+/**
+ * **이름 풀이는 좁히지 않는다**(`omf-mes#47` · copy-checklist).
+ *
+ * 좁힌 조회로 이름을 풀면 좁힘 밖의 정상 거래처가 「알 수 없음」으로 보이는데, 그 문구는
+ * *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다. 이미 저장된 전표는 지금의 역할 좁힘과
+ * 무관한 거래처를 가리킬 수 있다 — 역할이 나중에 회수될 수도 있다.
+ */
+describe('usePartnerNames — 좁히지 않는다', () => {
+  it('가리키는 도착지가 없으면 요청이 나가지 않는다', async () => {
+    const { fetch, urls } = recording([partnersRoute()]);
+    const { result } = renderHookWithProviders(() => usePartnerNames(false), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(urls).toEqual([]);
+  });
+
+  it('역할 코드를 싣지 않고 미사용까지 받아 온다', async () => {
+    const { fetch, urls } = recording([partnersRoute()]);
+    const { result } = renderHookWithProviders(() => usePartnerNames(true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(partnerFixtures.length);
+    });
+
+    expect(urls[0]?.searchParams.has('roleTypeCode')).toBe(false);
+    expect(urls[0]?.searchParams.get('includeInactive')).toBe('true');
+    /* 짝 방향 — 미사용 거래처가 실제로 목록에 남는다(빼면 그 전표의 이름이 비어 보인다). */
+    expect(result.current.entries.some((entry) => !entry.isActive)).toBe(true);
+  });
+
+  it('「코드 · 이름」으로 풀고 번호를 담지 않는다', async () => {
+    const { fetch } = recording([partnersRoute()]);
+    const { result } = renderHookWithProviders(() => usePartnerNames(true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(partnerFixtures.length);
+    });
+
+    expect(result.current.entries[0]?.label).toBe(PARTNER_LABEL);
+    expect(result.current.entries[0]?.label).not.toContain('9561');
+  });
+
+  /**
+   * **두 조회가 서로 다른 요청이고 서로 다른 목록을 받는다**(완료 조건 C25).
+   *
+   * 캐시 키를 한 벌로 합치면 먼저 도착한 쪽이 다른 쪽 자리에 서고, 그때 좁힌 목록으로 이름을
+   * 푸는 `omf-mes#47`이 그대로 되살아난다 — 그것을 **건수 차이**로 잰다.
+   */
+  it('선택지 조회와 다른 요청으로 나가고 목록도 다르다', async () => {
+    const { fetch, urls } = recording([partnersRoute()]);
+    const { result } = renderHookWithProviders(
+      () => ({
+        options: useDisposalPartnerOptions(SAMPLE_PARTNER_ROLE, true),
+        names: usePartnerNames(true),
+      }),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.options.entries.length).toBeGreaterThan(0);
+      expect(result.current.names.entries.length).toBeGreaterThan(0);
+    });
+
+    expect(urls).toHaveLength(2);
+    expect(urls.filter((url) => url.searchParams.has('roleTypeCode'))).toHaveLength(1);
+    expect(result.current.options.entries).toHaveLength(1);
+    expect(result.current.names.entries).toHaveLength(partnerFixtures.length);
   });
 });

@@ -27,7 +27,10 @@ import {
   itemFixtures,
   locationFixtures,
   lotFixturesByItem,
+  PARTNER_LABEL,
+  partnerFixtures,
   receiptLineResponseFixtures,
+  SAMPLE_PARTNER_ROLE,
   SAMPLE_APPROVED_STATUS,
   SAMPLE_FORM_CODES,
   SAMPLE_DEFECT_WAREHOUSE_TYPE,
@@ -49,7 +52,7 @@ const t = messages.disposalIssue;
  * 판정·선택지 만들기·좁힘은 실물 그대로이고 바뀌는 것은 「값 목록이 왔다」는 사실 하나다.
  * 매 테스트 앞에서 빈 배열로 되돌려, 아무것도 채우지 않은 테스트는 **지금의 화면**을 본다.
  */
-const { codeValues, defectTypeCodes, approvedStatusCodes } = vi.hoisted(() => ({
+const { codeValues, defectTypeCodes, approvedStatusCodes, partnerRole } = vi.hoisted(() => ({
   codeValues: {
     issueType: [] as string[],
     sourceDocumentType: [] as string[],
@@ -64,6 +67,11 @@ const { codeValues, defectTypeCodes, approvedStatusCodes } = vi.hoisted(() => ({
    * 구획의 안내가 달라지는 것을 재는 자리다(전환 감지기).
    */
   approvedStatusCodes: [] as string[],
+  /**
+   * 폐기 거래처를 좁히는 역할 코드. **비어 있는 것이 지금의 사실이고**, 채웠을 때 선택지 조회가
+   * 나가고 칸이 열리는 것을 재는 자리다(변경 통지 #128 §3 · 완료 조건 C23·C24).
+   */
+  partnerRole: { code: '' },
 }));
 
 vi.mock('./code-options', async (importOriginal) => {
@@ -73,6 +81,13 @@ vi.mock('./code-options', async (importOriginal) => {
     ...actual,
     PLACEHOLDER_DISPOSAL_ISSUE_CODES: codeValues,
     DEFECT_WAREHOUSE_TYPE_CODES: defectTypeCodes,
+    /**
+     * 역할 코드는 **글자 하나**라 배열처럼 내용만 바꿀 그릇이 없다 — 접근자로 낸다.
+     * 바뀌는 것은 「값이 왔다」는 사실 하나이고, 판정·조회·좁힘은 실물 그대로다.
+     */
+    get DISPOSAL_PARTNER_ROLE_CODE(): string {
+      return partnerRole.code;
+    },
   };
 });
 
@@ -99,6 +114,7 @@ beforeEach(() => {
   codeValues.issueStatus = [];
   defectTypeCodes.length = 0;
   approvedStatusCodes.length = 0;
+  partnerRole.code = '';
 });
 
 const fillCodeLists = (): void => {
@@ -114,6 +130,15 @@ const fillApprovedStatusCodes = (): void => {
   approvedStatusCodes.push(SAMPLE_APPROVED_STATUS);
 };
 
+/**
+ * 폐기 거래처 역할 코드를 채운다 — **한 줄이 선택칸을 살린다**(변경 통지 #128 §3).
+ *
+ * 아무것도 채우지 않은 시험은 **지금의 화면**(선택칸이 잠긴 상태)을 본다.
+ */
+const fillPartnerRole = (): void => {
+  partnerRole.code = SAMPLE_PARTNER_ROLE;
+};
+
 const ROUTE = '/logistics/disposal-issue';
 const LIST_PATH = '/logistics/goods-receipts';
 const WAREHOUSES_PATH = '/mdm/warehouses';
@@ -123,6 +148,11 @@ const DETAIL_PATH = '/logistics/goods-receipts/9001';
 const MISSING_DETAIL_PATH = '/logistics/goods-receipts/9002';
 const BALANCES_PATH = '/inventory/balances';
 const ITEMS_PATH = '/mdm/items';
+/**
+ * 거래처 — **한 경로를 두 가지로 부른다**(변경 통지 #128). 선택지는 역할 코드로 좁혀 받고,
+ * 이름 풀이는 좁히지 않는다. 어느 쪽인지는 **질의로만** 갈린다.
+ */
+const PARTNERS_PATH = '/mdm/partners';
 const UOMS_PATH = '/mdm/uoms';
 const LOTS_PATH = '/trace/lots';
 const LOCATIONS_PATH = '/mdm/locations';
@@ -356,7 +386,60 @@ const lineReferenceRoutes = (): StubRoute[] => [
     match: (request) => isGet(request, LOCATIONS_PATH),
     respond: () => jsonResponse(listBody(locationFixtures)),
   },
+  partnersRoute(),
 ];
+
+/**
+ * 거래처 — **질의에 따라 내용이 달라진다.**
+ *
+ * 좁힌 선택지 조회와 좁히지 않은 이름 풀이가 **같은 경로**라, 늘 같은 목록을 돌려주면
+ * 「선택지가 좁혀 받은 목록인가 이름 풀이 목록인가」를 어떤 감지기도 가를 수 없다 — 두 조회를
+ * 한 캐시로 합치는 결함이 그대로 통과한다.
+ *
+ * 좁힌 쪽은 **첫 건만** 낸다(9561). 이름 풀이는 미사용(9562)까지 전부 낸다.
+ */
+const partnersRoute = (): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: (request) =>
+    jsonResponse(
+      listBody(
+        new URL(request.url).searchParams.has('roleTypeCode')
+          ? partnerFixtures.slice(0, 1)
+          : partnerFixtures,
+      ),
+    ),
+});
+
+/** 선택지 조회만 실패시킨다 — 이름 풀이는 멀쩡해야 「그 칸의 사정」이 갈린다. */
+const failingPartnersRoute = (): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: (request) =>
+    new URL(request.url).searchParams.has('roleTypeCode')
+      ? jsonResponse({ message: '' }, { status: 500 })
+      : jsonResponse(listBody(partnerFixtures)),
+});
+
+/** 서버가 **전체 건수를 더 크게** 준다 — 앞쪽 일부만 받았다는 사실이 표식으로 나와야 한다. */
+const truncatedPartnersRoute = (): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: (request) =>
+    jsonResponse(
+      new URL(request.url).searchParams.has('roleTypeCode')
+        ? listBody(partnerFixtures.slice(0, 1), { total: 120 })
+        : listBody(partnerFixtures),
+    ),
+});
+
+/** 목록은 **왔는데 0건**이다 — 「아직 오지 않았다」와 다른 사실이다. */
+const emptyPartnersRoute = (): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: (request) =>
+    jsonResponse(
+      new URL(request.url).searchParams.has('roleTypeCode')
+        ? listBody([])
+        : listBody(partnerFixtures),
+    ),
+});
 
 const issueListRoute = (
   items: unknown[] = goodsIssueResponseFixtures,
@@ -649,6 +732,7 @@ const KNOWN_PATHS = [
   UOMS_PATH,
   LOTS_PATH,
   LOCATIONS_PATH,
+  PARTNERS_PATH,
   ISSUES_PATH,
   ISSUE_DETAIL_PATH,
   MISSING_ISSUE_DETAIL_PATH,
@@ -1228,6 +1312,7 @@ describe('DisposalIssueScreen — 조회 실패', () => {
 
     await waitForList();
 
+    /* **조건 줄의 창고 칸은 조건 줄 문구를 쓴다** — 거기에는 「다시 시도」가 실재한다. */
     expect(screen.getByText(t.filters.lookupTruncated)).toBeInTheDocument();
     /* 못 불러온 것이 먼저다 — 잘림이 좁힘 안내를 덮는다. */
     expect(screen.queryByText(t.filters.warehouseTypePending)).not.toBeInTheDocument();
@@ -6027,5 +6112,436 @@ describe('DisposalIssueScreen — 승인 조회가 실패해도', () => {
     await confirmPost(user);
 
     expect(await screen.findByRole('region', { name: t.result.postLabel })).toBeVisible();
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 폐기 거래처 선택칸 — **역할 코드 한 줄이 여는 자리**(변경 통지 #128 §3)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const partnerBox = (): HTMLElement => screen.getByLabelText(t.formFields.disposalPartner);
+
+/** 실제로 나간 거래처 조회. **질의까지 본다** — 좁힌 것과 좁히지 않은 것이 같은 경로다. */
+const partnerRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname === PARTNERS_PATH);
+
+/**
+ * 역할 코드를 채우고 **거래처를 골라** 요청 직전까지 간다.
+ *
+ * `fillDisposalForm`의 도착지 갈래(자체 폐기 체크)를 끄고 그 자리에 선택칸을 쓴다 —
+ * 이 회차 전까지는 고를 수 없어 닿지 못하던 경로다.
+ */
+const setupReadyWithPartner = async (
+  routes: StubRoute[] = allRoutes(chainRoutes()),
+): Promise<ReturnType<typeof renderScreen>> => {
+  fillFormCodeLists();
+  fillPartnerRole();
+
+  const rendered = renderScreen(routes, '?gr=9001');
+
+  await waitForLines();
+  await rendered.user.click(lineCheckbox(1));
+  await rendered.user.type(qtyInput(1), '10');
+  await fillDisposalForm(rendered.user, '불량 판정분 폐기', false);
+
+  await waitFor(() => {
+    expect(partnerBox()).toBeEnabled();
+  });
+  await chooseOption(rendered.user, t.formFields.disposalPartner, PARTNER_LABEL);
+
+  return rendered;
+};
+
+describe('DisposalIssueScreen — 폐기 거래처 선택지가 열리는 조건', () => {
+  /**
+   * **첫째 방향**(완료 조건 C23). 역할 코드가 비어 있는 동안은 **조회 자체를 내보내지 않는다** —
+   * 빈 값으로 부르면 좁히지 않은 거래처 전부가 폐기 거래처 선택지로 서고, 사용자는 폐기와
+   * 무관한 상대를 되돌릴 수 없는 전표에 실을 수 있다.
+   */
+  it('역할 코드가 비면 선택지 조회가 나가지 않고 칸이 잠긴다', async () => {
+    const { requests } = renderScreen(allRoutes(), '?gr=9001');
+
+    await waitForLines();
+
+    /* 짝 양성 — 칸은 실제로 서 있다(없어서 통과한 것이 아니다). */
+    expect(partnerBox()).toBeInTheDocument();
+    expect(partnerRequests(requests)).toEqual([]);
+    expect(partnerBox()).toBeDisabled();
+    expect(partnerBox()).toHaveAccessibleDescription(
+      expect.stringContaining(messages.pendingCode.note),
+    );
+  });
+
+  /**
+   * **둘째 방향**(완료 조건 C24) — 한 줄을 채우면 조회가 나가고 칸이 살아난다. 그 값이
+   * **질의 조건으로 실려 나가는지**까지 본다: 실리지 않으면 좁히지 않은 목록을 좁혔다고 믿는다.
+   */
+  it('역할 코드를 채우면 그 값이 질의로 실려 나가고 칸이 열린다', async () => {
+    fillPartnerRole();
+
+    const { requests, user } = renderScreen(allRoutes(), '?gr=9001');
+
+    await waitForLines();
+    await waitFor(() => {
+      expect(partnerBox()).toBeEnabled();
+    });
+
+    const calls = partnerRequests(requests);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url.searchParams.get('roleTypeCode')).toBe(SAMPLE_PARTNER_ROLE);
+    /* 안내와 자리표시가 함께 사라진다 — 하나만 거두면 열린 칸이 준비 중이라고 말한다. */
+    expect(partnerBox()).not.toHaveAccessibleDescription(
+      expect.stringContaining(messages.pendingCode.note),
+    );
+    expect(partnerBox()).not.toHaveTextContent(messages.pendingCode.placeholder);
+
+    /* 좁혀 받은 목록이 실제로 선택지로 선다. */
+    await user.click(partnerBox());
+
+    expect(screen.getByRole('option', { name: PARTNER_LABEL })).toBeInTheDocument();
+  });
+
+  /**
+   * **조회가 실패하면 안내도 트리거도 그 사실을 말한다**(리뷰 Major B1).
+   *
+   * 앞 회차에는 안내만 화면이 만들고 자리표시는 목록 길이로 지어내, **얼굴은 「선택지 준비 중」
+   * 인데 설명은 「불러오지 못했습니다」**인 칸이 됐다. 한 컨트롤이 두 사실을 동시에 말하면
+   * 사용자는 기다리면 열릴 것으로 읽는다 — 실패는 기다린다고 풀리지 않는다.
+   */
+  it('선택지 조회가 실패하면 칸의 안내와 트리거가 함께 실패를 말한다', async () => {
+    fillFormCodeLists();
+    fillPartnerRole();
+
+    const { user } = renderScreen(allRoutes([failingPartnersRoute()]), '?gr=9001');
+
+    await waitForLines();
+    await waitFor(() => {
+      expect(partnerBox()).toHaveAccessibleDescription(
+        expect.stringContaining(t.form.partnerFailedNote),
+      );
+    });
+
+    expect(partnerBox()).toHaveTextContent(t.form.partnerFailedPlaceholder);
+    expect(partnerBox()).not.toHaveTextContent(messages.pendingCode.placeholder);
+    expect(partnerBox()).toBeDisabled();
+
+    /* 버튼 사유도 같은 원천에서 나온다 — 「아직 준비되지 않았습니다」라고 말하지 않는다. */
+    await user.click(lineCheckbox(1));
+    await user.type(qtyInput(1), '10');
+    await fillDisposalForm(user, '불량 판정분 폐기', false);
+
+    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.disposalPartnerUnavailable);
+  });
+
+  /**
+   * **잘림 표식이 그 칸에 닿는다**(계획 §5 T4-2의 「잘림 표식을 낸다」 · 리뷰 MU-P1).
+   *
+   * 계약에 번호로 한 건을 받는 경로가 없어 잘린 뒤쪽 거래처는 고를 길이 아예 없다 — 감추면
+   * 사용자가 「그런 거래처가 없다」로 결론짓는다. **잘려도 칸은 열려 있다**: 보이는 선택지를
+   * 고르는 데 지장이 없고, 잠그면 있는 것도 못 고른다.
+   */
+  it('선택지 목록이 잘리면 그 사실이 칸에 닿고 칸은 열려 있다', async () => {
+    fillPartnerRole();
+
+    renderScreen(allRoutes([truncatedPartnersRoute()]), '?gr=9001');
+
+    await waitForLines();
+    await waitFor(() => {
+      expect(partnerBox()).toBeEnabled();
+    });
+
+    expect(partnerBox()).toHaveAccessibleDescription(
+      expect.stringContaining(t.form.partnerTruncatedNote),
+    );
+    /* 고를 수 있는 칸에는 자리표시가 서지 않는다 — 짝 방향. */
+    expect(partnerBox()).not.toHaveTextContent(messages.pendingCode.placeholder);
+  });
+
+  /**
+   * **목록은 왔는데 0건**인 갈래(리뷰 탐침 P-3). 앞 회차에는 트리거가 「준비 중」이라 말하고
+   * 설명은 **아무것도 없었다** — 목록이 이미 왔는데 기다리라고 말하는 상태였다.
+   */
+  it('선택지가 0건이면 그 사실을 말하고 준비 중이라 하지 않는다', async () => {
+    fillFormCodeLists();
+    fillPartnerRole();
+
+    const { user } = renderScreen(allRoutes([emptyPartnersRoute()]), '?gr=9001');
+
+    await waitForLines();
+    await waitFor(() => {
+      expect(partnerBox()).toHaveAccessibleDescription(
+        expect.stringContaining(t.form.partnerEmptyNote),
+      );
+    });
+
+    expect(partnerBox()).toHaveTextContent(t.form.partnerEmptyPlaceholder);
+    expect(partnerBox()).not.toHaveTextContent(messages.pendingCode.placeholder);
+
+    await user.click(lineCheckbox(1));
+    await user.type(qtyInput(1), '10');
+    await fillDisposalForm(user, '불량 판정분 폐기', false);
+
+    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.disposalPartnerUnavailable);
+    /* ⭐ 그래도 자체 폐기로는 열린다(#128 §3). */
+    await user.click(selfDisposalCheckbox());
+
+    expect(submitButton()).toBeEnabled();
+  });
+
+  /**
+   * **잠금 사유가 갈린다**(완료 조건 C23·C24 · 변경 통지 #128 §4 ⛔).
+   *
+   * 고를 것이 없을 때 「고르세요」라고 말하면 사용자는 자기가 놓친 것을 찾다가 화면을 고장으로
+   * 읽는다. 선택지가 살아나는 순간 그 문구가 통지 문면으로 바뀐다.
+   */
+  it('역할 코드를 채우면 버튼의 잠금 사유가 「고르거나 체크하십시오」로 바뀐다', async () => {
+    fillFormCodeLists();
+    fillPartnerRole();
+
+    const { user } = renderScreen(allRoutes(), '?gr=9001');
+
+    await waitForLines();
+    await user.click(lineCheckbox(1));
+    await user.type(qtyInput(1), '10');
+    await fillDisposalForm(user, '불량 판정분 폐기', false);
+
+    await waitFor(() => {
+      expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsDisposalDestination);
+    });
+    expect(submitButton()).toBeDisabled();
+  });
+
+  /**
+   * ⭐ **역할 코드가 없어도 화면은 선다**(#128 §3 · 완료 조건 C28).
+   *
+   * 선택지 조회가 **한 번도 나가지 않은 채로** 자체 폐기 요청이 끝까지 간다 — 값 목록을
+   * 기다리는 것과 이 화면을 쓰는 것이 서로 매이지 않았음을 요청 수와 본문으로 함께 잰다.
+   */
+  it('역할 코드가 비어도 자체 폐기로 요청이 나간다', async () => {
+    const { requests, user } = await setupReadyToSubmit();
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, ISSUES_PATH)).toHaveLength(1);
+    });
+
+    const body = writesTo(requests, ISSUES_PATH)[0]?.body as Record<string, unknown>;
+
+    expect(partnerRequests(requests)).toEqual([]);
+    expect(Object.keys(body)).not.toContain('destinationTypeCode');
+    expect(Object.keys(body)).not.toContain('destinationId');
+    /* 짝 양성 — 본문이 비어서 통과한 것이 아니다. */
+    expect(body.issueTypeCode).toBe(SAMPLE_FORM_CODES.issueType);
+  });
+
+  /**
+   * **거래처를 고르면 짝 두 키가 함께 실린다**(완료 조건 C17의 화면 갈래 · #128 ⛔).
+   *
+   * 조립 함수는 앞 회차에 갈래를 갖췄으나 **선택지가 없어 화면에서는 닿지 못하는 길**이었다 —
+   * 이 회차에 처음으로 사용자가 실제로 지나는 경로가 된다.
+   */
+  it('거래처를 고르면 도착지 짝이 함께 실린다', async () => {
+    const { requests, user } = await setupReadyWithPartner();
+
+    await openSubmitConfirm(user);
+
+    /* 확인한 글자와 나가는 값이 같은 자리에서 나온다 — 창이 먼저 그 거래처를 적는다. */
+    expect(within(screen.getByRole('dialog')).getByText(PARTNER_LABEL)).toBeInTheDocument();
+
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, ISSUES_PATH)).toHaveLength(1);
+    });
+
+    const body = writesTo(requests, ISSUES_PATH)[0]?.body as Record<string, unknown>;
+
+    expect(body.destinationTypeCode).toBe('DISPOSAL_SITE');
+    expect(body.destinationId).toBe(9561);
+  });
+
+  /**
+   * **화면 배선의 앵커**(선행 회차 리뷰 MU-R1 · 완료 조건 C16).
+   *
+   * 「체크하면 값도 비운다」는 전이(`withSelfDisposal`)가 **화면에 실제로 이어져 있는가**를
+   * 재는 자리다. 선행 회차에는 선택지가 비어 있어 값을 든 상태를 만들 수 없었고, 그래서
+   * 배선을 순수 spread(`{ ...prev, isSelfDisposal: value }`)로 바꿔도 아무 시험도 울지 않았다.
+   * 이제 값을 들고 체크할 수 있다 — 화면에서 **고른 거래처가 실제로 사라져야** 한다.
+   */
+  it('체크하면 화면에서도 고른 거래처가 비워진다', async () => {
+    const { user } = await setupReadyWithPartner();
+
+    /* 짝 양성 — 체크 전에는 고른 거래처가 트리거에 서 있다. */
+    expect(partnerBox()).toHaveTextContent(PARTNER_LABEL);
+
+    await user.click(selfDisposalCheckbox());
+
+    expect(partnerBox()).not.toHaveTextContent(PARTNER_LABEL);
+    expect(partnerBox()).toBeDisabled();
+
+    /* 확인 창도 같은 사실을 말한다 — 값과 글자가 한 판정에서 나온다. */
+    await openSubmitConfirm(user);
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText(t.values.selfDisposal)).toBeInTheDocument();
+    expect(within(dialog).queryByText(PARTNER_LABEL)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **체크를 풀어도 비운 값이 되살아나지 않는다**(선행 회차 검증 관찰 O-1의 화면 갈래).
+   *
+   * 되살리려면 지운 값을 어딘가 들고 있어야 하는데, 그것은 「체크하면 값을 비운다」와 같은 말이
+   * 아니다. 되살아나면 사용자는 **체크를 풀었다는 이유만으로** 앞서 고른 거래처가 다시 실리는
+   * 것을 보게 된다 — 되돌릴 수 없는 전표에서 가장 나쁜 되살아남이다.
+   */
+  it('체크를 풀어도 비운 거래처가 되살아나지 않는다', async () => {
+    const { user } = await setupReadyWithPartner();
+
+    await user.click(selfDisposalCheckbox());
+    await user.click(selfDisposalCheckbox());
+
+    expect(selfDisposalCheckbox()).not.toBeChecked();
+    expect(partnerBox()).toBeEnabled();
+    expect(partnerBox()).not.toHaveTextContent(PARTNER_LABEL);
+    /* 다시 고르지 않으면 올릴 수 없다 — 「아직 안 골랐다」로 돌아간 것이다. */
+    expect(submitButton()).toBeDisabled();
+    expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsDisposalDestination);
+  });
+
+  /**
+   * **거래처 400이 그 칸 옆에 선다**(선행 회차 리뷰 M5 — 이 회차에 처음 도달한다).
+   *
+   * 앞 회차가 `destinationId`를 화면 소유 필드에 넣어 두었으나 선택칸이 잠겨 있어 그 오류가
+   * **올 수 없는 상태**였다. 이제 실제로 오고, 배너로만 받으면 사용자는 어느 칸을 고쳐야
+   * 하는지 알 수 없다.
+   */
+  it('거래처 400의 필드 오류가 그 칸 옆에 서고 배너로 새지 않는다', async () => {
+    const SAMPLE_PARTNER_ERROR = '폐기처리 역할이 없는 거래처입니다';
+    const { user } = await setupReadyWithPartner(
+      allRoutes([failingCreateRoute(400, fieldErrorBody('destinationId', SAMPLE_PARTNER_ERROR))]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await screen.findByText(SAMPLE_PARTNER_ERROR);
+
+    expect(partnerBox()).toHaveAccessibleDescription(expect.stringContaining(SAMPLE_PARTNER_ERROR));
+    /* 짝 방향 — 같은 문장이 배너로 한 번 더 서지 않는다(인라인으로 소화됐다). */
+    expect(screen.getAllByText(SAMPLE_PARTNER_ERROR)).toHaveLength(1);
+  });
+
+  /**
+   * **뒷면 — 자체 폐기로 올렸는데 서버가 거래처 오류를 준 경우**(선행 회차 재리뷰가 T4에
+   * 확인하라고 넘긴 갈래).
+   *
+   * 본문에 도착지 두 키가 없으므로 서버가 이 오류를 줄 이유는 없다 — 그래도 오면 화면은
+   * **그 오류를 삼키지 않는다.** 지금의 배선은 계약 필드 이름을 그 칸에 잇는 것이고, 그때 칸은
+   * 자체 폐기로 잠겨 있어 **읽을 수는 있으나 그 자리에서 고칠 수는 없다.** 이 시험은 그 사실을
+   * 값으로 고정해 둔다 — 다음 회차가 「잠긴 칸의 오류를 배너로 올릴 것인가」를 정할 때
+   * 지금 무엇이 일어나는지부터 읽을 수 있어야 한다.
+   */
+  it('자체 폐기로 올린 뒤 온 거래처 오류도 삼키지 않는다', async () => {
+    const SAMPLE_PARTNER_ERROR = '도착지를 확인할 수 없습니다';
+    const { user } = await setupReadyToSubmit(
+      allRoutes([failingCreateRoute(400, fieldErrorBody('destinationId', SAMPLE_PARTNER_ERROR))]),
+    );
+
+    await openSubmitConfirm(user);
+    await confirmSubmit(user);
+
+    await screen.findByText(SAMPLE_PARTNER_ERROR);
+
+    /* 잠긴 칸이라 고칠 수는 없으나 **어느 축의 오류인지는 읽힌다.** */
+    expect(partnerBox()).toBeDisabled();
+    expect(partnerBox()).toHaveAccessibleDescription(expect.stringContaining(SAMPLE_PARTNER_ERROR));
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * ③ 구획의 도착지 — **처리 직전에 「누가 가져가는가」를 읽는다**(완료 조건 C26)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const postPane = (): HTMLElement => screen.getByRole('region', { name: t.post.label });
+
+describe('DisposalIssueScreen — ③ 구획이 말하는 도착지', () => {
+  it('도착지가 있는 전표는 「코드 · 이름」으로 말한다', async () => {
+    await setupReadyToPost();
+
+    await waitFor(() => {
+      expect(within(postPane()).getByText(PARTNER_LABEL)).toBeInTheDocument();
+    });
+    expect(within(postPane()).getByText(t.post.destinationLabel)).toBeInTheDocument();
+  });
+
+  /** 짝이 통째로 없는 것은 **정해진 사실**이다 — 「알 수 없음」이 아니다. */
+  it('짝이 없는 전표는 자체 폐기라 말한다', async () => {
+    await setupReadyToPost(allRoutes([notSubmittedDetailRoute()]), `${HISTORY_SEARCH}&gi=9502`);
+
+    expect(within(postPane()).getByText(t.values.selfDisposal)).toBeInTheDocument();
+  });
+
+  /**
+   * **이름을 풀지 못하면 그 사실을 밝히고 번호를 대신 내지 않는다**(`omf-mes#44`).
+   * 낱말은 확인 창의 못 푼 이름과 **같은 말**이라 사용자가 자리마다 다른 규칙을 익히지 않는다.
+   */
+  it('목록 밖 거래처는 알 수 없음이라 말하고 번호를 내지 않는다', async () => {
+    await setupReadyToPost(
+      allRoutes([
+        issueDetailRoute(
+          goodsIssueLineResponseFixtures,
+          goodsIssueResponseFixtures[2],
+          '/logistics/goods-issues/9503',
+        ),
+        approvalRoute(),
+      ]),
+      `${HISTORY_SEARCH}&gi=9503`,
+    );
+
+    await waitFor(() => {
+      expect(within(postPane()).getByText(t.values.unknown)).toBeInTheDocument();
+    });
+
+    for (const id of INTERNAL_IDS) {
+      expect(within(postPane()).queryByText(new RegExp(id))).not.toBeInTheDocument();
+    }
+  });
+
+  /**
+   * ⛔ **이름 풀이는 좁히지 않는다**(완료 조건 C25 · `omf-mes#47`).
+   *
+   * 이미 저장된 전표는 지금의 역할 좁힘 밖 거래처를 가리킬 수 있다 — 역할은 회수될 수 있고,
+   * 그때 좁힌 목록으로 풀면 정상 도착지가 「알 수 없음」으로 찍힌다. 선택지 조회가 함께 나가는
+   * 상태에서도 이 조회에는 **역할 코드가 실리지 않는다.**
+   */
+  it('이름 풀이 조회는 역할 코드를 싣지 않는다', async () => {
+    fillPartnerRole();
+
+    const { requests } = await setupReadyToPost();
+
+    await waitFor(() => {
+      expect(within(postPane()).getByText(PARTNER_LABEL)).toBeInTheDocument();
+    });
+
+    const calls = partnerRequests(requests);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url.searchParams.has('roleTypeCode')).toBe(false);
+    expect(calls[0]?.url.searchParams.get('includeInactive')).toBe('true');
+  });
+
+  /** 자체 폐기 전표에는 **풀 이름이 없다** — 부를 이유가 없는 요청을 내보내지 않는다. */
+  it('자체 폐기 전표에서는 이름 풀이를 부르지 않는다', async () => {
+    const { requests } = await setupReadyToPost(
+      allRoutes([notSubmittedDetailRoute()]),
+      `${HISTORY_SEARCH}&gi=9502`,
+    );
+
+    expect(within(postPane()).getByText(t.values.selfDisposal)).toBeInTheDocument();
+    expect(partnerRequests(requests)).toEqual([]);
   });
 });
