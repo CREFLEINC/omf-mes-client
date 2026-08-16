@@ -25,11 +25,13 @@ export interface PartnerListResponse {
 }
 
 /**
- * 거래처의 캐시 키. `list`·`roles`가 **같은 뿌리**로 시작하므로
- * `all`을 무효화하면 목록과 역할이 함께 다시 조회된다.
+ * 거래처의 캐시 키.
+ *
+ * **뿌리 하나를 통째로 무효화하는 열쇠를 두지 않는다.** 이 화면의 쓰기는 역할 치환 하나뿐이고
+ * 그것으로 거래처 본체는 바뀌지 않는다 — 목록까지 무효화하면 아무것도 달라지지 않을 조회를
+ * 다시 낸다. 필요해지는 회차에 그 소비처와 함께 만든다.
  */
 export const partnerKeys = {
-  all: ['common-code-partners'] as const,
   list: (filters: PartnerFilters, page: number) =>
     ['common-code-partners', 'list', filters, page] as const,
   roles: (partnerId: number) => ['common-code-partners', 'roles', partnerId] as const,

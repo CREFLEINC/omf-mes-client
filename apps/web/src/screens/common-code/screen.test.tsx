@@ -20,6 +20,8 @@ import {
   partnerRoleFixtures,
   workerFixtures,
 } from './fixtures';
+/* 코드 글자를 시험이 다시 적지 않는다(결정 2) — 리터럴은 어휘 고정 감지기 한 자리에만 둔다. */
+import { PARTNER_ROLE_CODES } from './partner-role-vocab';
 import { CommonCodeScreen } from './screen';
 
 type Editability = components['schemas']['Editability'];
@@ -3960,10 +3962,11 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
   });
 
   /*
-   * C21 — 이 회차는 읽기만 한다. 거래처 경로로 나가는 쓰기가 **0회**여야 한다.
+   * **고르는 것만으로는 아무것도 저장되지 않는다.** 저장은 사용자가 「저장」을 누를 때만
+   * 나간다 — 통째 교체라 무심코 나간 요청 하나가 역할을 통째로 갈아 치운다.
    * 다른 거래처를 눌러 선택을 옮긴 뒤에도 마찬가지다.
    */
-  it('거래처 경로로 나가는 쓰기 요청이 없다', async () => {
+  it('거래처를 고르기만 하면 쓰기 요청이 나가지 않는다', async () => {
     const { requests, user } = renderScreen(
       [partnerListRoute(), partnerRolesRoute(), partnerRolesRoute(9002, [])],
       '?tab=partner&ptn=9001',
@@ -4042,5 +4045,805 @@ describe('CommonCodeScreen — 거래처 조건과 탭 전환 (C11·C15)', () =>
 
     history.back();
     expect(history.search()).toBe(before);
+  });
+});
+
+/* ── 거래처 역할 편집과 통째 교체 저장 (C24~C35) ───────────────────────────── */
+
+/** 어휘 밖 코드. 어휘 표에 없으므로 여기서 짓는다 — 화면이 모르는 값이 이 시험의 요점이다. */
+const UNKNOWN_ROLE_CODE = 'SAMPLE-ROLE-X';
+
+/** 이름과 표식이 붙어 읽히지 않게 사이에 낱말 공백 하나가 든다. */
+const UNKNOWN_ROLE_LABEL = '샘플 역할 엑스 이 화면이 모르는 역할';
+
+const roleCheckbox = (name: string): HTMLElement =>
+  within(partnerRolePane()).getByRole('checkbox', { name });
+
+const partnerSaveButton = (): HTMLElement =>
+  within(partnerRolePane()).getByRole('button', { name: '저장' });
+
+const rolesReplaceRoute = (respond: StubRoute['respond'], partnerId = 9001): StubRoute => ({
+  match: (request) =>
+    request.method === 'PUT' && new URL(request.url).pathname === partnerRolesPath(partnerId),
+  respond,
+});
+
+/**
+ * 서버는 정규화한 결과를 돌려준다 — 화면이 그 응답으로 초안을 다시 세워야 한다.
+ *
+ * 어휘 안 코드는 **표에서 꺼내 쓴다**(결정 2) — 리터럴은 어휘 고정 감지기 한 자리에만 둔다.
+ * `SAMPLE-ROLE-X`는 어휘 표에 없는 값이라 여기서 짓는다.
+ */
+const replacedRoles = [
+  { roleTypeCode: UNKNOWN_ROLE_CODE, roleTypeName: '샘플 역할 엑스' },
+  { roleTypeCode: PARTNER_ROLE_CODES.disposal, roleTypeName: '폐기처리' },
+];
+
+/**
+ * 끝나지 않는 응답. 본문 스트림을 열어 두면 요청은 **보내진 채로** 남는다 —
+ * 「나가는 중」이라는 순간을 시험이 붙잡는 유일한 방법이다.
+ */
+const neverFinishingResponse = (): Response =>
+  new Response(new ReadableStream({ start: () => undefined }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+/**
+ * 시험이 도착 시점을 정하는 응답. 본문 스트림을 열어 둔 채 돌려주고 `release`로 닫는다 —
+ * **응답이 도착하기 전에 다른 거래처로 옮기는** 경로를 재려면 그 사이가 필요하다.
+ */
+const deferredJsonResponse = (
+  status: number,
+): { response: Response; release: (body: unknown) => void } => {
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+
+  const response = new Response(
+    new ReadableStream<Uint8Array>({
+      start: (source) => {
+        controller = source;
+      },
+    }),
+    { status, headers: { 'Content-Type': 'application/json' } },
+  );
+
+  return {
+    response,
+    release: (body) => {
+      controller?.enqueue(new TextEncoder().encode(JSON.stringify(body)));
+      controller?.close();
+    },
+  };
+};
+
+const putRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.method === 'PUT');
+
+const sentRoleCodes = (requests: RecordedRequest[]): unknown => {
+  const body = JSON.parse(putRequests(requests)[0]?.body ?? '{}') as { roleTypeCodes?: unknown };
+
+  return body.roleTypeCodes;
+};
+
+describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
+  /* C24 — 고친 것이 없는데 저장이 열려 있으면 「같은 것을 다시 저장」이 가능해진다. */
+  it('체크를 바꾸기 전에는 저장이 잠겨 있고 바꾸면 열린다', async () => {
+    const { user } = renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    expect(partnerSaveButton()).toBeDisabled();
+
+    await user.click(roleCheckbox('공급사'));
+
+    expect(partnerSaveButton()).toBeEnabled();
+  });
+
+  /*
+   * 체크 순서는 자료가 아니라 조작의 흔적이다 — 순서로 판정하면 껐다가 되돌려 놓아도
+   * 「고쳤다」로 남아 사용자가 아무것도 바꾸지 않은 저장을 낼 수 있다.
+   */
+  it('체크를 껐다 다시 켜면 저장이 다시 잠긴다', async () => {
+    const { user } = renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('고객사'));
+    expect(partnerSaveButton()).toBeEnabled();
+
+    await user.click(roleCheckbox('고객사'));
+    expect(partnerSaveButton()).toBeDisabled();
+  });
+
+  it('취소를 누르면 체크가 서버 상태로 되돌아가고 저장이 다시 잠긴다', async () => {
+    const { user } = renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(within(partnerRolePane()).getByRole('button', { name: '취소' }));
+
+    expect(roleCheckbox('공급사')).not.toBeChecked();
+    expect(partnerSaveButton()).toBeDisabled();
+  });
+
+  /*
+   * C25·C29·C30 — 잃는 것이 없는 저장은 창 없이 바로 나간다.
+   *
+   * ⛔ **`etagPath`가 `null`이어야 요청이 실제로 나간다.** 계약에 이 쓰기의 `If-Match`가 없어
+   * 상세 경로를 주면 토큰을 못 찾고 요청이 나가지 않는다(「저장을 눌러도 아무 일이 없다」).
+   */
+  it('추가만 하는 저장은 확인 창 없이 치환 경로로 나가고 If-Match가 없다', async () => {
+    const { requests, user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    const sent = putRequests(requests)[0];
+    expect(sent?.url.pathname).toBe(partnerRolesPath(9001));
+    expect(sent?.headers.get('Idempotency-Key')).toMatch(UUID);
+    expect(sent?.headers.has('If-Match')).toBe(false);
+  });
+
+  /* C29 — 본문은 **최종 상태 전부**다. 차례는 어휘 다섯 다음 어휘 밖 코드로 고정한다. */
+  it('본문에 최종 상태 전부가 정해진 차례로 실린다', async () => {
+    const { requests, user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    expect(sentRoleCodes(requests)).toEqual([
+      PARTNER_ROLE_CODES.customer,
+      PARTNER_ROLE_CODES.supplier,
+      PARTNER_ROLE_CODES.disposal,
+      UNKNOWN_ROLE_CODE,
+    ]);
+  });
+
+  /* C31 — 성공 알림이 없으면 사용자는 저장이 됐는지 화면을 다시 훑어 확인해야 한다. */
+  it('저장에 성공하면 성공 알림이 뜬다', async () => {
+    const { user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+  });
+
+  /*
+   * C31 — **저장 응답 그 자체로 초안을 다시 세운다.**
+   *
+   * 무효화가 낸 재조회를 **끝내지 않은 채**로 재는 것이 이 시험의 요점이다. 재조회가 곧바로
+   * 상태를 덮어쓰면 「응답으로 다시 세웠는가」와 「재조회가 고쳐 줬는가」가 구분되지 않는다 —
+   * 보낸 목록을 그대로 둔 화면도 통과해 버린다. 실서버에서 재조회가 늦거나 실패하는 동안
+   * 사용자가 보는 것은 **보낸 목록**이 되고, 그것은 서버가 정규화한 결과와 다르다.
+   */
+  it('저장 응답으로 체크 상태를 다시 세운다 — 재조회를 기다리지 않는다', async () => {
+    let rolesCalls = 0;
+
+    const { user } = renderScreen(
+      [
+        partnerListRoute(),
+        {
+          match: (request) => isGet(request, partnerRolesPath(9001)),
+          respond: () => {
+            rolesCalls += 1;
+
+            return rolesCalls === 1 ? jsonResponse(partnerRoleFixtures) : neverFinishingResponse();
+          },
+        },
+        /* 서버는 「공급사를 더한 목록」을 받고도 **고객사·공급사가 빠진 상태**를 돌려준다. */
+        rolesReplaceRoute(() => jsonResponse(replacedRoles)),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    await waitFor(() => {
+      expect(roleCheckbox('고객사')).not.toBeChecked();
+    });
+    expect(roleCheckbox('공급사')).not.toBeChecked();
+    expect(roleCheckbox('폐기 업체')).toBeChecked();
+    /* 서버가 돌려준 것이 기준값이 됐다 — 재조회가 오기 전에 이미 저장이 잠긴다. */
+    expect(partnerSaveButton()).toBeDisabled();
+  });
+
+  /*
+   * C31 — **응답이 저장 전과 값이 같아도 되세운다.**
+   *
+   * 조회 라이브러리는 새 값이 옛 값과 깊이 같으면 **옛 참조를 유지한다**(`replaceEqualDeep`).
+   * 되세우기가 참조 동일성으로 판정하므로, 그때 초안을 비워 주지 않으면 화면이 서버가 말한
+   * 상태가 아니라 **사용자가 고른 상태**를 계속 보인다 — 서버가 저장을 조용히 무시한 경우가
+   * 정확히 그 갈래이고, 무상태 목 서버가 늘 그 갈래다.
+   */
+  it('저장 응답이 저장 전과 값이 같아도 체크를 서버 상태로 다시 세운다', async () => {
+    const { user } = renderScreen(
+      [
+        partnerListRoute(),
+        partnerRolesRoute(),
+        /* 서버가 「받았다」면서 **저장 전과 똑같은 목록**을 돌려준다. */
+        rolesReplaceRoute(() => jsonResponse(partnerRoleFixtures)),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(roleCheckbox('공급사')).not.toBeChecked();
+    });
+    expect(partnerSaveButton()).toBeDisabled();
+  });
+
+  /*
+   * C31 · copy-checklist 11 — **재조회 결과도 화면에 닿는다.** 재조회 스텁이 호출 횟수에 따라
+   * 내용까지 바꾸도록 두어야 「저장 뒤 표시가 갱신됐다」가 헛통과하지 않는다.
+   */
+  it('저장에 성공하면 서버가 돌려준 상태가 정본이 된다', async () => {
+    let current = partnerRoleFixtures;
+
+    const { requests, user } = renderScreen(
+      [
+        partnerListRoute(),
+        {
+          match: (request) => isGet(request, partnerRolesPath(9001)),
+          respond: () => jsonResponse(current),
+        },
+        rolesReplaceRoute(() => {
+          current = replacedRoles;
+          return jsonResponse(replacedRoles);
+        }),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    /* 서버는 「공급사를 더한 목록」을 받고도 **고객사가 빠진 상태**를 돌려준다. */
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    await waitFor(() => {
+      expect(roleCheckbox('고객사')).not.toBeChecked();
+    });
+    expect(roleCheckbox('공급사')).not.toBeChecked();
+    expect(roleCheckbox('폐기 업체')).toBeChecked();
+    /* 서버가 돌려준 것이 기준값이 됐다 — 저장이 다시 잠긴다. */
+    expect(partnerSaveButton()).toBeDisabled();
+
+    /*
+     * **역할 캐시를 무효화한다.** 응답으로 초안을 다시 세우는 것만으로는 캐시에 옛 목록이
+     * 남아, 다른 거래처를 들렀다 돌아오면 저장 전 상태가 되살아난다.
+     */
+    await waitFor(() => {
+      expect(
+        requests.filter(
+          (request) => request.method === 'GET' && request.url.pathname === partnerRolesPath(9001),
+        ),
+      ).toHaveLength(2);
+    });
+  });
+});
+
+describe('CommonCodeScreen — 해제 확인 창 (C25·C26·C27)', () => {
+  /* C25 — 추가만 하는 저장에까지 창을 세우면 확인이 습관이 되어 잃는 저장에서도 읽히지 않는다. */
+  it('해제되는 역할이 없으면 확인 창이 뜨지 않는다', async () => {
+    const { user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /* C26 — 통째 교체라 목록에 없는 역할은 해제된다. 그 이름을 밝히는 것이 유일한 방어다. */
+  it('해제되는 역할이 있으면 확인 창이 그 이름을 밝히고 확인 전에는 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByText('저장하면 아래 역할이 해제됩니다.')).toBeInTheDocument();
+    expect(within(dialog).getByText('고객사')).toBeInTheDocument();
+    expect(putRequests(requests)).toHaveLength(0);
+  });
+
+  /* C26 — 어휘 밖 코드를 빠뜨리면 화면이 모르는 역할이 창에도 나오지 않은 채 사라진다. */
+  it('어휘 밖 역할을 끄면 그 이름도 확인 창에 나온다', async () => {
+    const { user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox(UNKNOWN_ROLE_LABEL));
+    await user.click(partnerSaveButton());
+
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByText('샘플 역할 엑스')).toBeInTheDocument();
+    expect(within(dialog).queryByText('고객사')).not.toBeInTheDocument();
+  });
+
+  it('확인 창에서 계속 편집을 고르면 요청이 나가지 않고 체크가 그대로 남는다', async () => {
+    const { requests, user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '계속 편집' }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(putRequests(requests)).toHaveLength(0);
+    expect(roleCheckbox('고객사')).not.toBeChecked();
+  });
+
+  /* C27 — 계약이 빈 배열을 「전부 해제」로 정의한다. 실제로 만들 수 있는 상태다. */
+  it('전부 해제하면 하나도 남지 않는다는 사실이 함께 나오고 빈 배열이 나간다', async () => {
+    const { requests, user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse([]))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('고객사'));
+    await user.click(roleCheckbox('폐기 업체'));
+    await user.click(roleCheckbox(UNKNOWN_ROLE_LABEL));
+    await user.click(partnerSaveButton());
+
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).getByText('저장하면 이 거래처의 역할이 하나도 남지 않습니다.'),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: '해제하고 저장' }));
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+    expect(sentRoleCodes(requests)).toEqual([]);
+  });
+
+  it('확인하면 남은 역할만 실려 나가고 창이 닫힌다', async () => {
+    const { requests, user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '해제하고 저장' }),
+    );
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+    expect(sentRoleCodes(requests)).toEqual([PARTNER_ROLE_CODES.disposal, UNKNOWN_ROLE_CODE]);
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('CommonCodeScreen — 저장이 나가는 중 (C33)', () => {
+  /* 나가는 중에 체크가 바뀌면 확인한 것과 다른 것이 저장된 것처럼 보인다. */
+  it('구획의 체크칸과 저장·취소가 잠긴다', async () => {
+    const { user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(neverFinishingResponse)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    await waitFor(() => {
+      expect(partnerSaveButton()).toBeDisabled();
+    });
+    expect(roleCheckbox('공급사')).toBeDisabled();
+    expect(within(partnerRolePane()).getByRole('button', { name: '취소' })).toBeDisabled();
+  });
+
+  it('확인 창의 두 버튼도 함께 잠긴다', async () => {
+    const { user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(neverFinishingResponse)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: '해제하고 저장' }));
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: '해제하고 저장' })).toBeDisabled();
+    });
+    expect(within(dialog).getByRole('button', { name: '계속 편집' })).toBeDisabled();
+  });
+});
+
+/**
+ * **나가는 중인 저장은 자기 거래처 밖으로 새지 않는다.**
+ *
+ * `resetIfIdle`가 나가는 중인 쓰기를 거두지 않는 것은 옳다(되먹임을 끊지 않는다 · `omf-mes#96`).
+ * 그래서 거두지 못한 상태가 남는데, **좌 목록은 저장 중에도 잠기지 않으므로** 사용자는 그사이
+ * 다른 거래처를 고를 수 있다. 끊는 것과 가리는 것을 갈라 두 면을 각각 잰다.
+ */
+describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', () => {
+  const twoPartnerRoutes = (): StubRoute[] => [
+    partnerListRoute(),
+    partnerRolesRoute(),
+    partnerRolesRoute(9002, []),
+  ];
+
+  /**
+   * **막는 것과 가리는 것을 가른다.**
+   *
+   * 저장은 한 번에 하나뿐이라 옮겨 간 거래처도 **잠긴다**(막는 것 — 전역). 그러나 그 잠금은
+   * 남의 저장이라는 **다른 사실**이므로 사유가 붙어야 하고, 진행 표시는 돌지 않아야 한다
+   * (가리는 것 — 대상 축). 사유 없는 비활성은 사용자에게 「고장」으로 읽힌다.
+   */
+  it('저장이 나가는 중에 옮겨 간 거래처는 진행 표시 없이 사유와 함께 잠긴다', async () => {
+    const { user } = renderScreen(
+      [...twoPartnerRoutes(), rolesReplaceRoute(neverFinishingResponse)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await waitFor(() => {
+      expect(partnerSaveButton()).toBeDisabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await screen.findByText('지정된 역할이 없습니다');
+
+    const pane = partnerRolePane();
+
+    expect(partnerSaveButton()).toBeDisabled();
+    /*
+     * 진행 표시를 도는 갈래에는 **사유가 없다** — 사유가 보인다는 것이 곧 이 구획이
+     * 남의 저장으로 스피너를 돌리고 있지 않다는 뜻이다.
+     */
+    expect(within(pane).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/)).toBeInTheDocument();
+    expect(within(pane).queryByText(/저장은 역할을 고친 뒤에/)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **두 저장이 겹치지 않는다.** 훅 하나에 요청 하나라, 두 번째 `mutate`는 앞 요청에서
+   * 옵저버를 떼어 낸다 — 앞 저장이 400이면 **어디에도 표시되지 않는 실패**가 되고,
+   * 성공이면 캐시가 저장 전 값으로 남아 다음 통째 교체가 그것을 덮어쓴다.
+   */
+  it('남의 저장이 나가는 중에는 새 거래처의 저장이 시작되지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...twoPartnerRoutes(), rolesReplaceRoute(neverFinishingResponse)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await screen.findByText('지정된 역할이 없습니다');
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(putRequests(requests)).toHaveLength(1);
+    expect(
+      within(partnerRolePane()).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * 확인 창은 **자기 쓰기와 함께만** 선다. 남의 저장 중에 열리면 두 버튼이 잠긴 채
+   * **보낸 적 없는 진행 표시**를 돌며 갇힌다 — 되돌릴 수 없는 저장을 확인하는 창이 거짓말한다.
+   */
+  it('남의 저장이 나가는 중에는 해제 확인 창이 서지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        partnerListRoute(),
+        partnerRolesRoute(),
+        partnerRolesRoute(9002, [{ roleTypeCode: PARTNER_ROLE_CODES.customer }]),
+        rolesReplaceRoute(neverFinishingResponse),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await waitFor(() => {
+      expect(roleCheckbox('고객사')).toBeChecked();
+    });
+
+    /* 해제가 있는 저장이라 잠기지 않았다면 확인 창이 섰을 것이다. */
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(putRequests(requests)).toHaveLength(1);
+  });
+
+  /*
+   * 뒤늦게 온 앞 거래처의 실패가 지금 구획에 서면 사용자는 **손댄 적 없는 거래처가 막힌 줄** 안다.
+   * 계획 D-11이 「남의 실패 배너를 보게 된다」를 금지 사항으로 못 박은 자리다.
+   */
+  it('저장이 뒤늦게 실패해도 그사이 옮겨 간 거래처에 배너가 서지 않는다', async () => {
+    const deferred = deferredJsonResponse(400);
+
+    const { requests, user } = renderScreen(
+      [...twoPartnerRoutes(), rolesReplaceRoute(() => deferred.response)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await screen.findByText('지정된 역할이 없습니다');
+
+    /* 도착 전 — 남의 저장이 나가는 중이라 이 구획이 그 사유로 잠겨 있다. */
+    expect(
+      within(partnerRolePane()).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      deferred.release({
+        message: '',
+        errors: [{ scope: 'screen', code: 'DENIED', message: '저장이 막혔습니다.' }],
+      });
+    });
+
+    /*
+     * **잠금 사유가 갈리는 것으로 실패가 도착한 것을 안다** — 「다른 거래처의 저장이 끝난 뒤에」가
+     * 「역할을 고친 뒤에」로 바뀌는 순간은 나가는 중이던 저장이 끝났을 때뿐이다.
+     * 도착 전에 음성 단언을 하면 늘 통과한다.
+     */
+    await waitFor(() => {
+      expect(within(partnerRolePane()).getByText(/저장은 역할을 고친 뒤에/)).toBeInTheDocument();
+    });
+    expect(within(partnerRolePane()).queryByText('저장이 막혔습니다.')).not.toBeInTheDocument();
+  });
+
+  /*
+   * F-1 — **끊지는 않는다.** 가리는 축을 세운 뒤에도 `resetIfIdle`의 「나가는 중이면 손대지
+   * 않는다」 가드는 살아 있어야 한다. 가드가 없으면 옵저버가 떨어져 **무효화도 성공도 실패도
+   * 오지 않는다** — 서버에는 저장됐는데 화면에는 아무 흔적도 남지 않는다(`omf-mes#96`).
+   */
+  it('저장이 나가는 중에 거래처를 옮겨도 그 저장의 되먹임이 끊기지 않는다', async () => {
+    const deferred = deferredJsonResponse(200);
+
+    const { requests, user } = renderScreen(
+      [...twoPartnerRoutes(), rolesReplaceRoute(() => deferred.response)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    /* 해제가 있는 저장이라 확인 창을 거친다 — 창을 거친 길에서도 같아야 한다. */
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '해제하고 저장' }),
+    );
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await screen.findByText('지정된 역할이 없습니다');
+
+    await act(async () => {
+      deferred.release(replacedRoles);
+    });
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () => {
+  const failedRoute = (status: number): StubRoute =>
+    rolesReplaceRoute(() =>
+      jsonResponse(
+        {
+          message: '',
+          errors: [{ scope: 'screen', code: 'DENIED', message: '저장이 막혔습니다.' }],
+        },
+        { status },
+      ),
+    );
+
+  /* C32 — 창을 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */
+  it('확인 창을 거친 저장이 실패해도 창이 닫히지 않고 사유가 보인다', async () => {
+    const { user } = renderScreen([...partnerRoutes(), failedRoute(400)], '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '해제하고 저장' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByText('저장이 막혔습니다.')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '해제하고 저장' })).toBeInTheDocument();
+  });
+
+  it('권한에 막힌 저장도 창을 닫지 않고 사유를 낸다', async () => {
+    const { user } = renderScreen([...partnerRoutes(), failedRoute(403)], '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '해제하고 저장' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByText('저장이 막혔습니다.')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '해제하고 저장' })).toBeInTheDocument();
+  });
+
+  /*
+   * **화면이 아는 입력칸이 하나도 없다**(`knownFields`가 빈 배열이다). 체크칸에는 계약의
+   * 필드 이름이 붙지 않으므로, 필드 오류를 인라인으로 소화하려 들면 그 오류는 어디에도
+   * 표시되지 않고 조용히 사라진다.
+   */
+  it('필드에 붙은 오류도 배너로 올라온다', async () => {
+    const { user } = renderScreen(
+      [
+        ...partnerRoutes(),
+        rolesReplaceRoute(() =>
+          jsonResponse(
+            {
+              message: '',
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'roleTypeCodes',
+                  code: 'UNKNOWN_CODE',
+                  message: '모르는 역할 코드입니다.',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(
+      await within(partnerRolePane()).findByText('모르는 역할 코드입니다.'),
+    ).toBeInTheDocument();
+  });
+
+  /* 창을 거치지 않는 저장의 실패는 구획 배너가 받는다 — 어디에도 표시되지 않는 실패를 두지 않는다. */
+  it('확인 창 없는 저장이 실패하면 구획 배너에 사유가 나온다', async () => {
+    const { user } = renderScreen([...partnerRoutes(), failedRoute(404)], '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(await within(partnerRolePane()).findByText('저장이 막혔습니다.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /*
+   * C34 — 초안·실패 배너를 남기면 뒤로가기로 돌아왔을 때 **남의 실패 배너**를 보게 된다.
+   * 역할은 고른 거래처에 매인 자료다.
+   */
+  it('거래처 선택이 바뀌면 초안과 저장 실패 배너가 비워진다', async () => {
+    const { user } = renderScreen(
+      [partnerListRoute(), partnerRolesRoute(), partnerRolesRoute(9002, []), failedRoute(400)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await within(partnerRolePane()).findByText('저장이 막혔습니다.');
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await screen.findByText('지정된 역할이 없습니다');
+
+    expect(within(partnerRolePane()).queryByText('저장이 막혔습니다.')).not.toBeInTheDocument();
+    expect(roleCheckbox('공급사')).not.toBeChecked();
+    expect(partnerSaveButton()).toBeDisabled();
+  });
+
+  /* 탭을 옮기면 선택도 주소에서 떨어진다 — 돌아와 같은 거래처를 다시 골라도 초안은 새것이다. */
+  it('탭을 옮겼다 돌아와 같은 거래처를 다시 골라도 초안이 남아 있지 않다', async () => {
+    const { user } = renderScreen(
+      [codeGroupListRoute(), ...partnerRoutes()],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(screen.getByRole('tab', { name: '공통코드' }));
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    await user.click(screen.getByRole('tab', { name: '거래처 역할' }));
+    await user.click(await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' }));
+    await screen.findByText('고객사');
+
+    expect(roleCheckbox('공급사')).not.toBeChecked();
+    expect(partnerSaveButton()).toBeDisabled();
+  });
+
+  /* 조건을 바꾸면 선택이 주소에서 떨어진다 — 편집 중이던 초안이 남을 자리도 없다. */
+  it('조건을 바꾸면 편집 중이던 초안이 남지 않는다', async () => {
+    const { user } = renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(within(partnerPane()).getByRole('checkbox', { name: '미사용 포함' }));
+
+    await screen.findByText('좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다');
+    expect(screen.queryByRole('checkbox', { name: '공급사' })).not.toBeInTheDocument();
   });
 });

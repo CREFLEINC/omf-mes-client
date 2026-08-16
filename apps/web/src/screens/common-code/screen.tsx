@@ -9,6 +9,7 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
@@ -72,7 +73,16 @@ import {
   type LookupResult,
 } from './lookups';
 import { PartnerListPane } from './partner-list-pane';
-import { usePartnerList, usePartnerRoles } from './partner-queries';
+import { partnerKeys, usePartnerList, usePartnerRoles } from './partner-queries';
+import { PartnerRoleConfirmDialog } from './partner-role-confirm-dialog';
+import {
+  isSamePartnerRoleSelection,
+  releasedPartnerRoles,
+  toPartnerRoleChoices,
+  toPartnerRoleDraft,
+  toPartnerRolesPayload,
+  togglePartnerRole,
+} from './partner-role-draft';
 import { PartnerRolePane } from './partner-role-pane';
 import { toPageView } from './pagination';
 import {
@@ -100,6 +110,7 @@ import type {
   CodeGroupFormValues,
   DepartmentFormValues,
   PartnerFilters,
+  PartnerRole,
   ScopedFilters,
 } from './types';
 
@@ -148,6 +159,18 @@ interface QualificationState {
 }
 
 /**
+ * 역할 초안과 그 기준값. 같은 규칙을 쓴다 — **서버 응답 배열이 바뀔 때만** 다시 세운다.
+ *
+ * `source`를 함께 들고 다니는 이유는 초안이 코드만 담기 때문이다 — 어휘 밖 코드의 표시명과
+ * 「원래 붙어 있던 역할」의 판정이 서버 응답에서 나온다.
+ */
+interface PartnerRoleState {
+  source: PartnerRole[];
+  baseline: string[];
+  selected: string[];
+}
+
+/**
  * W-06-06 컨테이너.
  *
  * 조회 조건과 선택은 URL이 소유한다(`?tab=&q=&inactive=1&page=&grp=&new=`) —
@@ -160,6 +183,7 @@ export const CommonCodeScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client } = useApiClient();
+  const queryClient = useQueryClient();
 
   const tab = resolveTab(searchParams.get('tab'));
   const isCodeTab = tab.id === 'code';
@@ -897,22 +921,207 @@ export const CommonCodeScreen = () => {
 
   const partnerRoles = usePartnerRoles(selectedPartnerId);
 
-  /*
-   * 이 탭에는 **비우고 갈 편집 상태가 없다**(읽기 전용) — 조건·선택을 옮길 때 초기화할 초안이
-   * 없다는 뜻이다. 역할을 고치는 회차에서 이 자리에 초안·저장 실패 배너 비우기가 붙는다.
+  const [partnerRoleState, setPartnerRoleState] = useState<PartnerRoleState | null>(null);
+
+  /**
+   * 초안의 출처. 서버 응답 배열이 바뀔 때만 다시 세운다 —
+   * 사용자가 체크를 고치는 동안 캐시가 갱신돼도 편집 중인 선택이 되돌아가지 않는다.
    */
+  const partnerRoleSource = partnerRoles.data ?? null;
+
+  if (partnerRoleSource === null) {
+    if (partnerRoleState !== null) setPartnerRoleState(null);
+  } else if (partnerRoleState?.source !== partnerRoleSource) {
+    const seeded = toPartnerRoleDraft(partnerRoleSource);
+    setPartnerRoleState({ source: partnerRoleSource, baseline: seeded, selected: seeded });
+  }
+
+  const partnerRoleChoices =
+    partnerRoleState === null
+      ? []
+      : toPartnerRoleChoices(partnerRoleState.source, partnerRoleState.selected);
+
+  const isPartnerRoleDirty =
+    partnerRoleState !== null &&
+    !isSamePartnerRoleSelection(partnerRoleState.selected, partnerRoleState.baseline);
+
+  /**
+   * 저장하면 **해제되는** 역할. 확인 창을 세울지 정하는 근거이자 창이 나열하는 목록이다 —
+   * 판정과 표시가 같은 자리에서 나와야 「창이 말한 것」과 「실제로 잃는 것」이 갈리지 않는다.
+   */
+  const releasedRoles =
+    partnerRoleState === null
+      ? []
+      : releasedPartnerRoles(partnerRoleState.source, partnerRoleState.selected);
+
+  /** 확인 창은 **열 때만 붙인다** — 닫힌 창을 남기면 지난 목록이 그대로 살아 있다. */
+  const [isPartnerRoleConfirmOpen, setIsPartnerRoleConfirmOpen] = useState(false);
+
+  /**
+   * 역할 통째 교체.
+   *
+   * ⛔ **`etagPath`가 반드시 `null`이다.** 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없고
+   * 응답에 `409`도 없다 — 거래처 역할은 부여·회수 형이라 낙관적 잠금 대상이 아니다.
+   * 상세 경로를 넘기면 토큰을 찾지 못해 **요청이 나가지 않고 멈춘다**(「저장을 눌러도 아무 일이
+   * 없다」). 같은 슬라이스의 작업자 자격 치환이 같은 형태다. `If-Match`를 **쓰는** 전례
+   * (결재선 단계 치환)는 부모 자원에 `version_no`가 있어 토큰이 존재하는 경우이고 여기와 다르다.
+   *
+   * **무효화는 역할 키 하나뿐이다.** 이 치환으로 거래처 본체가 바뀌지 않으므로 목록까지
+   * 무효화하면 아무것도 달라지지 않을 조회를 다시 낸다.
+   */
+  const partnerRoleWrite = useMasterWrite<readonly string[], PartnerRole[]>({
+    request: (selected, headers) =>
+      client.PUT('/mdm/partners/{partnerId}/roles', {
+        params: {
+          /* 고른 거래처가 없으면 여기까지 오지 않는다 — 저장 컨트롤이 그 상태에 서지 않는다. */
+          path: { partnerId: selectedPartnerId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: toPartnerRolesPayload(partnerRoleState?.source ?? [], selected),
+      }),
+    etagPath: null,
+    invalidateKeys: [partnerKeys.roles(selectedPartnerId ?? 0)],
+    // 체크칸에는 계약의 필드 이름이 붙지 않는다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: (saved) => {
+      /*
+       * **서버 응답이 정본이다.** 보낸 목록을 그대로 두면 서버가 정규화한 결과
+       * (모르는 코드를 버렸다거나 이름을 다시 붙였다거나)를 놓친다.
+       *
+       * 그 응답을 **조회 캐시에 앉힌다.** 지역 상태에만 두면 초안의 출처(조회 캐시)와 어긋나
+       * 바로 다음 렌더에서 초안이 **저장 전 목록으로 되돌아간다** — 위 되세우기 규칙이
+       * 「출처가 바뀌었다」로 읽기 때문이다. 무효화가 낸 재조회는 이 값을 나중에 서버의 것으로
+       * 확인해 준다. 응답이 앉는 자리는 **보낸 요청의 캐시 키**라 그사이 선택이 옮겨 가도
+       * 남의 자리에 앉지 않는다.
+       */
+      queryClient.setQueryData(partnerKeys.roles(selectedPartnerId ?? 0), saved);
+      /*
+       * **초안을 비워 되세우기를 다시 열어 준다.** 조회 라이브러리는 새 값이 옛 값과 깊이 같으면
+       * **옛 참조를 그대로 유지한다**(`replaceEqualDeep`) — 그러면 위 규칙이 「출처가 그대로」로
+       * 읽어 초안이 다시 서지 않고, 화면은 서버가 말한 상태가 아니라 **사용자가 고른 상태**를
+       * 계속 보인다(서버가 저장을 조용히 무시한 경우가 정확히 그 갈래다).
+       * 비워 두면 다음 렌더가 **갱신된 캐시**에서 초안을 다시 세운다.
+       */
+      setPartnerRoleState(null);
+      setIsPartnerRoleConfirmOpen(false);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /**
+   * **나가는 중인 저장이 지금 보고 있는 거래처의 것인가.**
+   *
+   * `resetIfIdle`는 나가는 중인 쓰기를 **거두지 않는다**(옳다 — 되먹임을 끊지 않는다).
+   * 그래서 거두지 못한 상태(`isSaving`·`error`)가 그대로 남는데, 그사이 사용자가 다른 거래처를
+   * 고르면 **손댄 적 없는 거래처에 「저장 중」과 「저장이 막혔습니다」가 선다.** 좌 목록은 저장
+   * 중에도 잠기지 않으므로 특수한 경로가 아니다.
+   *
+   * 끊는 것과 **가리는 것**은 다르다 — 되먹임은 그대로 두고, *보이는 것*만 대상이 같을 때 낸다.
+   * 같은 저장소의 전례 둘이 같은 자리에 같은 축을 두었다(`iqc-skip-approval`의
+   * `isWriteResultMine` · `disposal-issue`의 `isChainForCurrentTarget`).
+   */
+  const [roleWriteTargetId, setRoleWriteTargetId] = useState<number | null>(null);
+
+  const isRoleWriteMine = roleWriteTargetId === selectedPartnerId;
+
+  /**
+   * 저장을 내는 자리는 둘(확인 창 있는 길·없는 길)뿐이고 **둘 다 여기를 지난다.**
+   *
+   * ⛔ **두 번째 저장을 내지 않는다.** 훅 하나에 요청 하나라, 두 번째 `mutate`가 옵저버를
+   * 새 요청으로 옮기면서 **앞 요청에서 옵저버를 떼어 낸다** — 그 순간 앞 저장의 무효화·성공·
+   * 실패가 전부 오지 않는다(`omf-mes#96`이 `reset()`에 대해 말한 것과 같은 상태다).
+   * 앞 저장이 400이었다면 **어디에도 표시되지 않는 실패**가 되고, 성공이었다면 캐시가 저장 전
+   * 값으로 남아 다음 통째 교체가 그것을 덮어쓴다. 잠금(아래 `isPartnerRoleLocked`)이 첫째 겹이고
+   * 이 가드가 둘째 겹이다.
+   */
+  const writePartnerRoles = (selected: readonly string[]) => {
+    if (partnerRoleWrite.isSaving) return;
+
+    setRoleWriteTargetId(selectedPartnerId);
+    partnerRoleWrite.write(selected);
+  };
+
+  /**
+   * **막을 것은 전역이다.** 저장이 하나라도 나가는 중이면 어느 거래처에서도 새 저장을 시작할
+   * 수 없다 — 대상 축(`isRoleWriteMine`)은 *보이는 것*을 가릴 뿐 **막는 데 쓰지 않는다.**
+   * 둘을 뭉치면 남의 저장 중에 새 저장이 열려 위의 겹침이 그대로 일어난다.
+   * 전례(`iqc-skip-approval`)가 같은 화면에서 잠금과 표시를 이렇게 갈라 둔다.
+   */
+  const isPartnerRoleLocked = partnerRoleWrite.isSaving;
+
+  /**
+   * **나가는 중인 쓰기는 건드리지 않는다**(`omf-mes#96`).
+   *
+   * 공통 훅의 `reset()`은 진행 중 mutation에서 옵저버를 떼어 낸다 — 그 호출에 매달린 되먹임이
+   * 통째로 오지 않는다(무효화도, 성공도, 실패도). 요청은 이미 서버에 갔는데 화면만 없던 일로
+   * 친다. **`reset()`을 부르는 자리가 전부 이 함수를 지난다.**
+   */
+  const resetIfIdle = (write: { isSaving: boolean; reset: () => void }): void => {
+    if (write.isSaving) return;
+
+    write.reset();
+  };
+
+  /*
+   * 거래처 탭의 주소 조작 셋은 **역할 편집 상태를 함께 비운다.** 역할은 고른 거래처에 매인
+   * 자료라 보이는 거래처가 달라지면 편집 중이던 초안·저장 실패 배너가 남을 자리가 없다 —
+   * 남기면 뒤로가기로 돌아왔을 때 **남의 실패 배너**를 보게 된다.
+   */
+  const resetPartnerRoleEditing = () => {
+    resetIfIdle(partnerRoleWrite);
+    setIsPartnerRoleConfirmOpen(false);
+    setPartnerRoleState(null);
+  };
+
   const handleSelectPartner = (partnerId: number) => {
+    resetPartnerRoleEditing();
+
     patchSearchParams((next) => {
       next.set(PARTNER_SELECT_KEY, String(partnerId));
     });
   };
 
   const applyPartnerFilters = (next: PartnerFilters) => {
+    resetPartnerRoleEditing();
     setSearchParams(toPartnerSearchParams(tab.id, next, 1));
   };
 
   const changePartnerPage = (nextPage: number) => {
+    resetPartnerRoleEditing();
     setSearchParams(toPartnerSearchParams(tab.id, partnerFilters, nextPage));
+  };
+
+  const togglePartnerRoleChoice = (roleTypeCode: string) => {
+    setPartnerRoleState((prev) =>
+      prev === null ? prev : { ...prev, selected: togglePartnerRole(prev.selected, roleTypeCode) },
+    );
+  };
+
+  /**
+   * 저장 — **잃는 것이 있을 때만 확인을 세운다**(결정 10).
+   *
+   * 추가만 하는 저장에까지 창을 세우면 확인이 습관이 되어 정작 잃는 저장에서도 읽히지 않는다.
+   */
+  const handleSavePartnerRoles = () => {
+    if (partnerRoleState === null) return;
+    /*
+     * 나가는 중인 저장이 있으면 **확인 창도 세우지 않는다.** 창은 자기 쓰기와 함께만 서는데,
+     * 남의 저장 중에 열리면 두 버튼이 잠긴 채 **보낸 적 없는 진행 표시**를 돌며 갇힌다.
+     */
+    if (isPartnerRoleLocked) return;
+
+    if (releasedRoles.length > 0) {
+      setIsPartnerRoleConfirmOpen(true);
+      return;
+    }
+
+    writePartnerRoles(partnerRoleState.selected);
+  };
+
+  const confirmSavePartnerRoles = () => {
+    if (partnerRoleState === null) return;
+
+    writePartnerRoles(partnerRoleState.selected);
   };
 
   /*
@@ -923,6 +1132,7 @@ export const CommonCodeScreen = () => {
     resetCodeGroupEditing();
     resetDepartmentEditing();
     resetQualificationEditing();
+    resetPartnerRoleEditing();
     setSearchParams(tabSearchParams(value));
   };
 
@@ -1425,7 +1635,8 @@ export const CommonCodeScreen = () => {
     return (
       <PartnerRolePane
         partner={selectedPartner}
-        roles={partnerRoles.data ?? []}
+        choices={partnerRoleChoices}
+        hasSavedRole={partnerRoleState !== null && partnerRoleState.baseline.length > 0}
         isRolesLoading={partnerRoles.isPending}
         rolesLoadError={
           partnerRoles.isError ? (
@@ -1435,6 +1646,31 @@ export const CommonCodeScreen = () => {
             />
           ) : null
         }
+        /*
+         * 확인 창이 서 있는 동안에는 실패를 **창 안에서** 낸다 — 두 자리에 같은 배너를 두면
+         * 사용자가 스크림 뒤의 사본을 읽으려 든다.
+         *
+         * **남의 실패는 아예 그리지 않는다**(`isRoleWriteMine`) — 뒤늦게 온 앞 거래처의 실패가
+         * 지금 구획에 서면 사용자는 손댄 적 없는 거래처가 막힌 줄 안다.
+         */
+        banner={
+          isPartnerRoleConfirmOpen || !isRoleWriteMine ? null : (
+            <SaveErrorBanner error={partnerRoleWrite.error} />
+          )
+        }
+        isDirty={isPartnerRoleDirty}
+        /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
+        isLocked={isPartnerRoleLocked}
+        /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
+        isSaving={isRoleWriteMine && partnerRoleWrite.isSaving}
+        onToggleRole={togglePartnerRoleChoice}
+        onSave={handleSavePartnerRoles}
+        onCancel={() => {
+          resetIfIdle(partnerRoleWrite);
+          setPartnerRoleState((prev) =>
+            prev === null ? prev : { ...prev, selected: prev.baseline },
+          );
+        }}
       />
     );
   };
@@ -1553,6 +1789,25 @@ export const CommonCodeScreen = () => {
               onReload={reloadCodeGroupDetail}
             />
           }
+        />
+      )}
+
+      {/*
+       * 역할 해제 확인 창은 **잃는 것이 있을 때만** 선다(결정 10). 통째 교체라 목록에 없는
+       * 역할은 해제되는데, 그 사실을 이름으로 밝히는 것이 이 화면의 유일한 방어다.
+       * 실패해도 창을 닫지 않는다 — 배너를 창 안에 두는 이유가 그것이다.
+       */}
+      {isPartnerRoleConfirmOpen && (
+        <PartnerRoleConfirmDialog
+          released={releasedRoles}
+          willHaveNoRole={partnerRoleState !== null && partnerRoleState.selected.length === 0}
+          isSaving={partnerRoleWrite.isSaving}
+          banner={<SaveErrorBanner error={partnerRoleWrite.error} />}
+          onConfirm={confirmSavePartnerRoles}
+          onClose={() => {
+            setIsPartnerRoleConfirmOpen(false);
+            resetIfIdle(partnerRoleWrite);
+          }}
         />
       )}
     </>
