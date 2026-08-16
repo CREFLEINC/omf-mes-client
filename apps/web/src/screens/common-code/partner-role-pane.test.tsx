@@ -1,25 +1,50 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import { partnerFixtures, partnerRoleFixtures } from './fixtures';
-import { PartnerRolePane } from './partner-role-pane';
+import { toPartnerRoleChoices, toPartnerRoleDraft } from './partner-role-draft';
+import { PartnerRolePane, type PartnerRolePaneProps } from './partner-role-pane';
 /* 코드 글자를 시험이 다시 적지 않는다(결정 2) — 리터럴은 어휘 고정 감지기 한 자리에만 둔다. */
 import { PARTNER_ROLE_CODES } from './partner-role-vocab';
 
-const renderPane = (overrides: Partial<Parameters<typeof PartnerRolePane>[0]> = {}) =>
-  render(
-    <PartnerRolePane
-      partner={partnerFixtures[0]!}
-      roles={partnerRoleFixtures}
-      isRolesLoading={false}
-      rolesLoadError={null}
-      {...overrides}
-    />,
-  );
+const BASELINE = toPartnerRoleDraft(partnerRoleFixtures);
+
+const CHOICES = toPartnerRoleChoices(partnerRoleFixtures, BASELINE);
+
+/** 어휘 밖 코드. 어휘 표에 없으므로 여기서 짓는다 — 화면이 모르는 값이 이 시험의 요점이다. */
+const UNKNOWN_CODE = 'SAMPLE-ROLE-X';
+
+/** 이름과 표식이 붙어 읽히지 않게 사이에 낱말 공백 하나가 든다. */
+const UNKNOWN_LABEL = '샘플 역할 엑스 이 화면이 모르는 역할';
+
+const renderPane = (overrides: Partial<PartnerRolePaneProps> = {}) => {
+  const props: PartnerRolePaneProps = {
+    partner: partnerFixtures[0]!,
+    choices: CHOICES,
+    hasSavedRole: true,
+    isRolesLoading: false,
+    rolesLoadError: null,
+    banner: null,
+    isDirty: false,
+    isSaving: false,
+    onToggleRole: vi.fn<(roleTypeCode: string) => void>(),
+    onSave: vi.fn<() => void>(),
+    onCancel: vi.fn<() => void>(),
+    ...overrides,
+  };
+
+  render(<PartnerRolePane {...props} />);
+
+  return { props, user: userEvent.setup() };
+};
 
 const detailPane = (): HTMLElement => screen.getByRole('region', { name: '거래처 기본 정보' });
 
 const rolePane = (): HTMLElement => screen.getByRole('region', { name: '거래처 역할' });
+
+const roleCheckbox = (name: string): HTMLElement =>
+  within(rolePane()).getByRole('checkbox', { name });
 
 describe('PartnerRolePane — 기본 정보는 고칠 수 없다 (결정 12)', () => {
   /*
@@ -98,14 +123,40 @@ describe('PartnerRolePane — 기본 정보는 고칠 수 없다 (결정 12)', (
   });
 });
 
-describe('PartnerRolePane — 역할 읽기', () => {
-  it('어휘 안의 역할은 이 화면의 표시명으로 낸다', () => {
+describe('PartnerRolePane — 역할 체크칸', () => {
+  /*
+   * 붙어 있지 않은 어휘도 전부 서야 **역할을 붙일 수 있다.** 서버가 준 것만 그리면
+   * 「역할이 없는 거래처에는 역할을 붙일 수 없는」 화면이 된다.
+   */
+  it('어휘 다섯과 붙어 있는 어휘 밖 역할이 체크칸으로 선다', () => {
     renderPane();
 
-    const pane = rolePane();
+    expect(within(rolePane()).getAllByRole('checkbox')).toHaveLength(6);
+  });
 
-    expect(within(pane).getByText('고객사')).toBeInTheDocument();
-    expect(within(pane).getByText('폐기 업체')).toBeInTheDocument();
+  /* 어휘 밖 코드는 **체크된 상태로 시작한다** — 서버에 이미 붙어 있는 역할이다. */
+  it('붙어 있는 역할이 체크돼 있고 나머지는 꺼져 있다', () => {
+    renderPane();
+
+    expect(roleCheckbox('고객사')).toBeChecked();
+    expect(roleCheckbox('폐기 업체')).toBeChecked();
+    expect(roleCheckbox(UNKNOWN_LABEL)).toBeChecked();
+    expect(roleCheckbox('공급사')).not.toBeChecked();
+    expect(roleCheckbox('기타')).not.toBeChecked();
+  });
+
+  /* 서버 응답 순서로 그리면 저장할 때마다 항목이 움직인다 — 차례는 화면이 정한다. */
+  it('어휘 다섯을 먼저, 어휘 밖 코드를 뒤에 세운다', () => {
+    renderPane();
+
+    expect(within(rolePane()).getAllByRole('checkbox')).toEqual([
+      roleCheckbox('고객사'),
+      roleCheckbox('공급사'),
+      roleCheckbox('외주 제작사'),
+      roleCheckbox('폐기 업체'),
+      roleCheckbox('기타'),
+      roleCheckbox(UNKNOWN_LABEL),
+    ]);
   });
 
   /* 어휘 안의 코드는 화면 표시명이 이긴다 — 서버가 준 이름으로 흔들리지 않는다. */
@@ -116,95 +167,159 @@ describe('PartnerRolePane — 역할 읽기', () => {
   });
 
   /*
-   * **어휘 밖 코드를 감추지 않는다.** 통째 교체 저장에서 목록에 없는 역할은 조용히 해제되므로,
-   * 감추면 사용자가 자기가 지우지 않은 것이 사라진 것을 알 방법이 없다.
+   * **어휘 밖 코드를 감추지 않는다**(결정 8). 통째 교체 저장에서 목록에 없는 역할은 조용히
+   * 해제되므로, 감추면 사용자가 자기가 지우지 않은 것이 사라진 것을 알 방법이 없다.
    */
-  it('어휘 밖 역할은 서버가 준 이름과 표식을 함께 낸다', () => {
+  it('어휘 밖 역할에는 모르는 역할 표식이 이름과 떨어져 붙는다', () => {
     renderPane();
 
-    const pane = rolePane();
-
-    expect(within(pane).getByText('샘플 역할 엑스')).toBeInTheDocument();
-    expect(within(pane).getByText('이 화면이 모르는 역할')).toBeInTheDocument();
+    expect(roleCheckbox(UNKNOWN_LABEL)).toBeInTheDocument();
   });
 
   it('어휘 안의 역할에는 모르는 역할 표식이 붙지 않는다', () => {
-    renderPane({
-      roles: [{ roleTypeCode: PARTNER_ROLE_CODES.disposal, roleTypeName: '폐기처리' }],
-    });
-
-    const pane = rolePane();
-
-    expect(within(pane).getByText('폐기 업체')).toBeInTheDocument();
-    expect(within(pane).queryByText('이 화면이 모르는 역할')).not.toBeInTheDocument();
-  });
-
-  /* 서버 응답 순서로 그리면 저장할 때마다 항목이 움직인다 — 차례는 화면이 정한다. */
-  it('어휘 다섯을 먼저, 어휘 밖 코드를 뒤에 세운다', () => {
     renderPane();
 
-    const items = within(rolePane())
-      .getAllByRole('listitem')
-      .map((item) => item.textContent);
-
-    expect(items).toEqual(['고객사', '폐기 업체', '샘플 역할 엑스이 화면이 모르는 역할']);
+    expect(within(rolePane()).getAllByText('이 화면이 모르는 역할')).toHaveLength(1);
   });
 
-  it('역할이 없으면 없다고 낸다', () => {
-    renderPane({ roles: [] });
+  /* 해제하면 이 화면에서 다시 붙일 수 없다 — 그 비대칭을 누르기 전에 밝힌다. */
+  it('어휘 밖 역할에 해제만 된다는 안내가 보이고 그 칸에 이어져 있다', () => {
+    renderPane();
+
+    const note = within(rolePane()).getByText(/이 화면이 모르는 역할은 해제만 할 수 있습니다/);
+
+    expect(roleCheckbox(UNKNOWN_LABEL).getAttribute('aria-describedby')).toBe(
+      note.getAttribute('id'),
+    );
+    expect(roleCheckbox('고객사').getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('어휘 밖 역할이 없으면 그 안내를 내지 않는다', () => {
+    renderPane({ choices: toPartnerRoleChoices([], []) });
+
+    expect(within(rolePane()).getAllByRole('checkbox')).toHaveLength(5);
+    expect(
+      within(rolePane()).queryByText(/이 화면이 모르는 역할은 해제만 할 수 있습니다/),
+    ).not.toBeInTheDocument();
+  });
+
+  it('체크칸을 누르면 그 역할 코드가 올라간다', async () => {
+    const { props, user } = renderPane();
+
+    await user.click(roleCheckbox('공급사'));
+    expect(props.onToggleRole).toHaveBeenCalledWith(PARTNER_ROLE_CODES.supplier);
+
+    await user.click(roleCheckbox(UNKNOWN_LABEL));
+    expect(props.onToggleRole).toHaveBeenCalledWith(UNKNOWN_CODE);
+  });
+});
+
+describe('PartnerRolePane — 역할 구획의 세 갈래 (C19)', () => {
+  /* 붙은 역할이 없다는 사실을 말로도 밝힌다 — 못 불러온 것과 없는 것이 구분돼야 한다. */
+  it('붙은 역할이 하나도 없으면 없다고 밝힌다', () => {
+    renderPane({ choices: toPartnerRoleChoices([], []), hasSavedRole: false });
 
     expect(within(rolePane()).getByText('지정된 역할이 없습니다')).toBeInTheDocument();
   });
 
-  it('불러오는 중에는 목록 대신 진행 안내를 낸다', () => {
-    renderPane({ roles: [], isRolesLoading: true });
+  it('붙은 역할이 있으면 그 문구를 내지 않는다', () => {
+    renderPane();
+
+    expect(within(rolePane()).queryByText('지정된 역할이 없습니다')).not.toBeInTheDocument();
+  });
+
+  it('불러오는 중에는 체크칸 대신 진행 안내를 낸다', () => {
+    renderPane({ choices: [], hasSavedRole: false, isRolesLoading: true });
 
     const pane = rolePane();
 
     expect(
       within(pane).getByRole('status', { name: '거래처 역할을 불러오는 중' }),
     ).toBeInTheDocument();
+    expect(within(pane).queryAllByRole('checkbox')).toHaveLength(0);
     expect(within(pane).queryByText('지정된 역할이 없습니다')).not.toBeInTheDocument();
   });
 
-  /* 실패를 「지정된 역할이 없습니다」로 보이면 **역할이 없는 거래처로 읽힌다.** */
-  it('조회 실패 표시가 있으면 빈 상태를 함께 내지 않는다', () => {
-    renderPane({ roles: [], rolesLoadError: <p>불러오지 못했습니다</p> });
+  /*
+   * 실패를 「지정된 역할이 없습니다」로 보이면 **역할이 없는 거래처로 읽힌다** —
+   * 그 상태에서 저장하면 사용자가 의도한 적 없는 전체 해제가 나간다.
+   */
+  it('조회 실패 표시가 있으면 체크칸도 빈 상태도 내지 않는다', () => {
+    renderPane({
+      choices: [],
+      hasSavedRole: false,
+      rolesLoadError: <p>불러오지 못했습니다</p>,
+    });
 
     const pane = rolePane();
 
     expect(within(pane).getByText('불러오지 못했습니다')).toBeInTheDocument();
+    expect(within(pane).queryAllByRole('checkbox')).toHaveLength(0);
     expect(within(pane).queryByText('지정된 역할이 없습니다')).not.toBeInTheDocument();
-    expect(within(pane).queryAllByRole('listitem')).toHaveLength(0);
+    expect(within(pane).queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
   });
 });
 
-describe('PartnerRolePane — 이 단위에는 편집 수단이 없다', () => {
-  /*
-   * 읽기만 하는 회차다. **비활성 상태로도 두지 않는다** — 죽은 컨트롤은
-   * 「눌러도 아무 일이 없는 버튼」이 되어 사용자를 기다리게 한다.
-   * 값이 실제로 그려진 뒤(양성 앵커)에 잰다.
-   */
-  it('저장·추가·삭제 버튼이 하나도 없다', () => {
+describe('PartnerRolePane — 저장과 취소', () => {
+  it('고친 것이 없으면 저장이 비활성이고 사유가 보인다', () => {
     renderPane();
 
-    expect(within(rolePane()).getByText('고객사')).toBeInTheDocument();
-    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    const save = within(rolePane()).getByRole('button', { name: '저장' });
+
+    expect(save).toBeDisabled();
+    expect(within(rolePane()).getByText(/저장은 역할을 고친 뒤에/)).toBeInTheDocument();
   });
 
-  it('역할을 고치는 확인칸이 없다', () => {
-    renderPane();
+  it('고친 것이 있으면 저장과 취소를 누를 수 있다', async () => {
+    const { props, user } = renderPane({ isDirty: true });
 
-    expect(within(rolePane()).getByText('고객사')).toBeInTheDocument();
-    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    await user.click(within(rolePane()).getByRole('button', { name: '저장' }));
+    await user.click(within(rolePane()).getByRole('button', { name: '취소' }));
+
+    expect(props.onSave).toHaveBeenCalledTimes(1);
+    expect(props.onCancel).toHaveBeenCalledTimes(1);
   });
 
+  /* C33 — 저장이 나가는 중에 체크가 바뀌면 확인한 것과 다른 것이 저장된 것처럼 보인다. */
+  it('저장 중에는 체크칸과 저장·취소가 잠긴다', () => {
+    renderPane({ isDirty: true, isSaving: true });
+
+    const pane = rolePane();
+
+    for (const box of within(pane).getAllByRole('checkbox')) {
+      expect(box).toBeDisabled();
+    }
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(within(pane).getByRole('button', { name: '취소' })).toBeDisabled();
+  });
+
+  it('저장 실패 배너를 받은 자리에 낸다', () => {
+    renderPane({ banner: <p>저장하지 못했습니다</p> });
+
+    expect(within(rolePane()).getByText('저장하지 못했습니다')).toBeInTheDocument();
+  });
+});
+
+describe('PartnerRolePane — 화면이 역할 코드를 지어내지 않는다 (C35)', () => {
   /* 서버가 모르는 코드를 화면이 지어낼 수 있게 되면 저장이 400으로 막힌다. */
   it('역할 코드를 직접 칠 수 있는 칸이 없다', () => {
     renderPane();
 
-    expect(within(rolePane()).getByText('고객사')).toBeInTheDocument();
+    /* 짝 방향 — 체크칸이 실제로 그려졌다(아무것도 없어서 통과하는 것이 아니다). */
+    expect(roleCheckbox('고객사')).toBeInTheDocument();
     /* 우 칸 전체에 입력칸이 없다 — 기본 정보도 값 표기라 칠 자리가 어디에도 없다. */
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+    expect(screen.queryAllByRole('combobox')).toHaveLength(0);
+  });
+
+  /* 역할을 하나씩 더하거나 지우는 요청은 계약에 없다 — 그런 버튼을 두면 눌러도 아무 일이 없다. */
+  it('역할을 개별로 더하거나 지우는 버튼이 없다', () => {
+    renderPane({ isDirty: true });
+
+    const names = within(rolePane())
+      .getAllByRole('button')
+      .map((button) => button.textContent);
+
+    expect(names).toEqual(['취소', '저장']);
   });
 });
