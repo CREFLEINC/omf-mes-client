@@ -1,4 +1,4 @@
-import { AlertBanner, Chip, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
+import { AlertBanner, Chip, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -23,13 +23,35 @@ const orEmptyMark = (value: string | null | undefined): string =>
   value === null || value === undefined || value === '' ? t.values.empty : value;
 
 /**
+ * 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다.
+ *
+ * 같은 슬라이스의 작업자 기본 정보가 세운 형태를 그대로 쓴다. 그쪽 부품은 그 파일 안의
+ * 지역 부품이라 여기서 자기 사본을 갖는다 — 한 자리로 모으는 것은 그 파일까지 건드리는
+ * 별건의 정리이고, 이 회차의 목적(거래처 역할 탭)에 섞지 않는다.
+ */
+const ValueField = ({ label, value }: { label: string; value: string }) => {
+  const labelId = useId();
+
+  return (
+    <div className="field-cell">
+      <span className="field-label" id={labelId}>
+        {label}
+      </span>
+      <p aria-labelledby={labelId}>{value}</p>
+    </div>
+  );
+};
+
+/**
  * 우 칸 — 거래처 기본 정보와 그 거래처의 역할.
  *
- * **기본 정보는 잠긴 칸 + 상시 사유로 낸다**(결정 12 · 화면 스펙 §5-4의 표시 방법).
- * 거래처 본체는 ERP 수신 마스터라 계약에 등록·수정 경로가 없다 — 「할 수 없다」를 감추지 않고,
- * 사유를 항상 보이는 DOM 텍스트로 두고 다섯 칸 모두를 `aria-describedby`로 잇는다
- * (비활성 컨트롤은 포커스를 받지 못해 시각으로만 두면 보조기술이 닿을 수 없다 — 배치 규범 4).
- * 사유 문구는 이미 있는 공통 문구를 쓰고 이 화면 전용 문구를 만들지 않는다.
+ * **기본 정보는 값 표기만 있다**(결정 12 — 표시 방법 정정). 거래처 본체는 ERP 수신 마스터라
+ * 계약에 등록·수정 경로가 **아예 없다** — 그래서 폼 컨트롤을 잠그는 것이 아니라 두지 않는다.
+ * 비활성 입력칸을 두면 「언젠가 열린다」는 뜻이 되는데 그 경로가 없다. 같은 슬라이스의 작업자
+ * 기본 정보(`worker-detail-pane.tsx`)가 세운 형태를 그대로 되풀이한다.
+ *
+ * **「할 수 없다」는 감추지 않는다** — 구획 머리에 사유를 상시 표시한다. 문구는 이미 있는
+ * 공통 문구를 쓰고 이 화면 전용 문구를 만들지 않는다.
  *
  * **내부 번호(`partnerId`)를 내지 않는다** — 주소와 조회에만 쓰는 식별자다.
  *
@@ -45,16 +67,6 @@ export const PartnerRolePane = ({
   isRolesLoading,
   rolesLoadError,
 }: PartnerRolePaneProps) => {
-  const noticeId = useId();
-
-  /** 다섯 칸이 같은 사유를 본다 — 칸마다 같은 문장을 되풀이하면 구획을 읽을 수 없다. */
-  const lockedField = (label: string, value: string) => (
-    <div className="field-cell">
-      {/* 값 갱신 경로가 없다 — `disabled`가 곧 「고칠 수 없다」이므로 변경 처리기를 두지 않는다. */}
-      <TextField label={label} value={value} disabled aria-describedby={noticeId} />
-    </div>
-  );
-
   const roleSlot = (): ReactNode => {
     if (rolesLoadError !== null && rolesLoadError !== undefined) return rolesLoadError;
 
@@ -98,20 +110,27 @@ export const PartnerRolePane = ({
     <>
       <section className="pane" aria-label={t.panes.partnerDetail}>
         <div className="banner-slot">
-          <AlertBanner variant="info">
-            <span id={noticeId}>{messages.editability.receivedFromErp(null)}</span>
-          </AlertBanner>
+          <AlertBanner variant="info">{messages.editability.receivedFromErp(null)}</AlertBanner>
         </div>
 
         <div className="form-grid">
-          {lockedField(t.partner.fields.partnerCode, partner.partnerCode)}
-          {lockedField(t.partner.fields.partnerName, partner.partnerName)}
-          {lockedField(t.partner.fields.country, orEmptyMark(partner.countryCode))}
-          {lockedField(t.partner.fields.erpPartnerCode, orEmptyMark(partner.erpPartnerCode))}
-          {lockedField(
-            t.partner.fields.isActive,
-            partner.isActive ? t.partner.values.active : t.partner.values.inactive,
-          )}
+          <ValueField
+            label={t.partner.fields.partnerCode}
+            value={orEmptyMark(partner.partnerCode)}
+          />
+          <ValueField
+            label={t.partner.fields.partnerName}
+            value={orEmptyMark(partner.partnerName)}
+          />
+          <ValueField label={t.partner.fields.country} value={orEmptyMark(partner.countryCode)} />
+          <ValueField
+            label={t.partner.fields.erpPartnerCode}
+            value={orEmptyMark(partner.erpPartnerCode)}
+          />
+          <ValueField
+            label={t.partner.fields.isActive}
+            value={partner.isActive ? t.partner.values.active : t.partner.values.inactive}
+          />
         </div>
       </section>
 

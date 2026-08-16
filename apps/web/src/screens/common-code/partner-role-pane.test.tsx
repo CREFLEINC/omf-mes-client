@@ -21,40 +21,30 @@ const rolePane = (): HTMLElement => screen.getByRole('region', { name: '거래�
 
 describe('PartnerRolePane — 기본 정보는 고칠 수 없다 (결정 12)', () => {
   /*
-   * 거래처 본체는 **ERP 수신 마스터**다 — 계약에 등록·수정 경로가 없다.
-   * 다섯 칸이 모두 잠겨 있어야 「여기서는 못 고친다」가 화면의 사실이 된다.
+   * 거래처 본체는 **ERP 수신 마스터**다 — 계약에 등록·수정 경로가 아예 없다.
+   * 그래서 폼 컨트롤을 **잠그는 것이 아니라 두지 않는다** — 잠긴 칸은 「언젠가 열린다」는
+   * 뜻이 되는데 그 경로가 없다. 같은 화면의 작업자 기본 정보가 세운 형태를 그대로 되풀이한다.
    */
-  it('기본 정보 다섯 칸이 모두 비활성이다', () => {
+  it('기본 정보 구획에 입력칸이 하나도 없다', () => {
     renderPane();
 
     const pane = detailPane();
 
-    expect(within(pane).getByLabelText('거래처코드')).toBeDisabled();
-    expect(within(pane).getByLabelText('거래처명')).toBeDisabled();
-    expect(within(pane).getByLabelText('국가')).toBeDisabled();
-    expect(within(pane).getByLabelText('ERP 코드')).toBeDisabled();
-    expect(within(pane).getByLabelText('사용 여부')).toBeDisabled();
+    expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('combobox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('checkbox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('spinbutton')).toHaveLength(0);
   });
 
-  /*
-   * 비활성 컨트롤은 포커스를 받지 못해 사유를 시각으로만 두면 보조기술이 닿을 수 없다 —
-   * 항상 보이는 DOM 텍스트로 두고 `aria-describedby`로 잇는다(배치 규범 4).
-   */
-  it('고칠 수 없는 사유가 상시 보이고 다섯 칸이 그것을 가리킨다', () => {
+  /* 「할 수 없다」를 감추지 않는다 — 구획 머리에 사유를 상시 표시한다. */
+  it('구획 머리에 외부 수신본 안내가 보인다', () => {
     renderPane();
 
-    const pane = detailPane();
-    const notice = within(pane).getByText(
-      '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
-    );
-
-    expect(notice).toBeInTheDocument();
-
-    for (const label of ['거래처코드', '거래처명', '국가', 'ERP 코드', '사용 여부']) {
-      expect(within(pane).getByLabelText(label).getAttribute('aria-describedby')).toContain(
-        notice.id,
-      );
-    }
+    expect(
+      within(detailPane()).getByText(
+        '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('거래처코드와 거래처명을 그대로 낸다', () => {
@@ -62,8 +52,19 @@ describe('PartnerRolePane — 기본 정보는 고칠 수 없다 (결정 12)', (
 
     const pane = detailPane();
 
-    expect(within(pane).getByLabelText('거래처코드')).toHaveValue('SAMPLE-PTNR-A');
-    expect(within(pane).getByLabelText('거래처명')).toHaveValue('샘플 거래처 가');
+    expect(within(pane).getByText('SAMPLE-PTNR-A')).toBeInTheDocument();
+    expect(within(pane).getByText('샘플 거래처 가')).toBeInTheDocument();
+  });
+
+  /* 값 표기도 이름을 갖는다 — 라벨이 없으면 무엇의 값인지 보조기술이 읽을 수 없다. */
+  it('값마다 이름이 붙어 있다', () => {
+    renderPane();
+
+    const pane = detailPane();
+
+    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
+    expect(within(pane).getByLabelText('거래처명')).toHaveTextContent('샘플 거래처 가');
+    expect(within(pane).getByLabelText('ERP 코드')).toHaveTextContent('SAMPLE-ERP-A');
   });
 
   /* 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -72,27 +73,26 @@ describe('PartnerRolePane — 기본 정보는 고칠 수 없다 (결정 12)', (
 
     const pane = detailPane();
 
-    expect(within(pane).getByLabelText('국가')).toHaveValue('—');
-    expect(within(pane).getByLabelText('ERP 코드')).toHaveValue('—');
+    expect(within(pane).getByLabelText('국가')).toHaveTextContent('—');
+    expect(within(pane).getByLabelText('ERP 코드')).toHaveTextContent('—');
   });
 
   it('사용 여부를 값으로 낸다', () => {
     renderPane();
-    expect(within(detailPane()).getByLabelText('사용 여부')).toHaveValue('사용 중');
+    expect(within(detailPane()).getByLabelText('사용 여부')).toHaveTextContent('사용 중');
   });
 
   it('미사용 거래처는 미사용으로 낸다', () => {
     renderPane({ partner: partnerFixtures[2]! });
-    expect(within(detailPane()).getByLabelText('사용 여부')).toHaveValue('미사용');
+    expect(within(detailPane()).getByLabelText('사용 여부')).toHaveTextContent('미사용');
   });
 
   /* 내부 번호는 주소와 조회에만 쓴다 — 보이면 사용자가 자료로 읽는다. */
   it('거래처 번호를 화면에 내지 않는다', () => {
     renderPane();
 
-    expect(within(detailPane()).getByLabelText('거래처코드')).toHaveValue('SAMPLE-PTNR-A');
+    expect(within(detailPane()).getByText('SAMPLE-PTNR-A')).toBeInTheDocument();
     expect(screen.queryByText('9001')).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue('9001')).not.toBeInTheDocument();
   });
 });
 
@@ -200,6 +200,7 @@ describe('PartnerRolePane — 이 단위에는 편집 수단이 없다', () => {
     renderPane();
 
     expect(within(rolePane()).getByText('고객사')).toBeInTheDocument();
-    expect(within(rolePane()).queryAllByRole('textbox')).toHaveLength(0);
+    /* 우 칸 전체에 입력칸이 없다 — 기본 정보도 값 표기라 칠 자리가 어디에도 없다. */
+    expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
 });

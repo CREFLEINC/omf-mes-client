@@ -3849,14 +3849,18 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
     expect(requestsTo(requests, partnerRolesPath(9001))).toHaveLength(1);
   });
 
-  /* C17 — 기본 정보는 목록 행에서 온다(계약에 거래처 상세 경로가 없다). */
-  it('고른 거래처의 기본 정보가 잠긴 칸과 사유로 선다', async () => {
+  /*
+   * C17 — 기본 정보는 목록 행에서 온다(계약에 거래처 상세 경로가 없다).
+   * **값 표기만 있다** — 계약에 쓰기 경로가 없어 폼 컨트롤을 잠그는 것이 아니라 두지 않는다.
+   */
+  it('고른 거래처의 기본 정보가 값 표기와 사유로 선다', async () => {
     renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
 
     const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
 
-    expect(within(pane).getByLabelText('거래처코드')).toHaveValue('SAMPLE-PTNR-A');
-    expect(within(pane).getByLabelText('거래처명')).toBeDisabled();
+    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
+    expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('button')).toHaveLength(0);
     expect(
       within(pane).getByText(
         '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
