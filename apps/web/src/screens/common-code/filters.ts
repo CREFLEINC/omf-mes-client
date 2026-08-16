@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { CodeGroupFilters, ScopedFilters } from './types';
+import type { CodeGroupFilters, PartnerFilters, ScopedFilters } from './types';
 
 /**
  * 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
@@ -31,12 +31,29 @@ export const SCOPE_KEYS = {
 
 export type ScopeKey = (typeof SCOPE_KEYS)[keyof typeof SCOPE_KEYS];
 
+/**
+ * 고른 거래처의 주소 키. 다른 선택 자리(`grp`·`val`·`dep`·`wkr`)와 **같은 규칙**으로 읽는다
+ * (`readSelectedId`).
+ */
+export const PARTNER_SELECT_KEY = 'ptn';
+
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소를 손으로 고쳐도 뜻이 흔들리지 않는다. */
 const ON = '1';
 
 const POSITIVE_INTEGER = /^\d+$/;
 
 export const readCodeGroupFilters = (params: URLSearchParams): CodeGroupFilters => ({
+  q: params.get(URL_KEYS.q) ?? '',
+  includeInactive: params.get(URL_KEYS.includeInactive) === ON,
+});
+
+/**
+ * 거래처 탭의 조회 조건.
+ *
+ * **`readCodeGroupFilters`를 돌려쓰지 않는다.** 모양이 같아도 이름이 거짓말을 하게 되고,
+ * 한쪽 탭의 조건이 바뀔 때 다른 탭이 함께 끌려간다.
+ */
+export const readPartnerFilters = (params: URLSearchParams): PartnerFilters => ({
   q: params.get(URL_KEYS.q) ?? '',
   includeInactive: params.get(URL_KEYS.includeInactive) === ON,
 });
@@ -180,6 +197,47 @@ export const toWorkerListQuery = (filters: ScopedFilters, page: number): WorkerL
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
 });
+
+/**
+ * 거래처 탭의 조건 전체를 주소로 옮긴다. 규칙은 `toSearchParams`와 같다 —
+ * 빈 조건은 키 자체를 두지 않고, **선택(`ptn`)을 담지 않는다.**
+ */
+export const toPartnerSearchParams = (
+  tabId: string,
+  filters: PartnerFilters,
+  page: number,
+): URLSearchParams => {
+  const next = new URLSearchParams({ [URL_KEYS.tab]: tabId });
+
+  if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
+  if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
+  if (page > 1) next.set(URL_KEYS.page, String(page));
+
+  return next;
+};
+
+export interface PartnerListQuery {
+  q?: string;
+  includeInactive?: boolean;
+  page?: number;
+}
+
+/**
+ * 거래처 목록 조회 쿼리. 빈 값·꺼진 확인칸·첫 쪽을 싣지 않는 규칙은 다른 목록과 같다.
+ *
+ * **`roleTypeCode`를 싣지 않는다.** 계약에 그 질의가 있으나 이 탭은 역할을 *붙이는* 곳이라
+ * 역할이 아직 없는 거래처가 반드시 보여야 한다 — 좁히면 「역할이 없는 거래처에는 역할을
+ * 붙일 수 없는」 화면이 된다. 좁힘은 선택지를 고르는 화면(W-01-06)의 몫이다.
+ */
+export const toPartnerListQuery = (filters: PartnerFilters, page: number): PartnerListQuery => ({
+  ...(filters.q === '' ? {} : { q: filters.q }),
+  ...(filters.includeInactive ? { includeInactive: true } : {}),
+  ...(page > 1 ? { page } : {}),
+});
+
+/** 거래처 탭에 조건이 걸려 있는가. 빈 상태의 안내가 이 판정으로 갈린다. */
+export const hasAnyPartnerFilter = (filters: PartnerFilters): boolean =>
+  filters.q !== '' || filters.includeInactive;
 
 export interface FilterChip {
   key: keyof CodeGroupFilters;

@@ -940,6 +940,8 @@ const commonCode = {
     code: '공통코드',
     org: '조직(부서)',
     worker: '작업자',
+    /* 탭 이름이 「거래처」가 아니라 「거래처 역할」이다 — 이 탭이 다루는 것은 역할뿐이고 거래처 본체는 읽기만 한다. */
+    partner: '거래처 역할',
   },
   panes: {
     codeGroup: '코드그룹',
@@ -948,6 +950,9 @@ const commonCode = {
     departmentForm: '부서 정보',
     worker: '작업자',
     workerDetail: '작업자 기본 정보',
+    partner: '거래처',
+    partnerDetail: '거래처 기본 정보',
+    partnerRoles: '거래처 역할',
   },
   actions: {
     prevPage: '이전',
@@ -1012,6 +1017,12 @@ const commonCode = {
     workerSearchPlaceholder: '사번 또는 성명',
     department: '부서',
     departmentAll: '전체 부서',
+    /*
+     * 거래처 탭에는 선택 축 필터가 없다 — **역할로 좁히지 않는다.**
+     * 이 탭은 역할을 붙이는 곳이라 역할이 아직 없는 거래처가 반드시 보여야 한다.
+     */
+    partnerSearchLabel: '거래처 검색',
+    partnerSearchPlaceholder: '거래처코드 또는 거래처명',
     chipKeyword: (value: string): string => `검색어: ${value}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
@@ -1027,6 +1038,8 @@ const commonCode = {
     departmentDetail: '부서 정보를 불러오는 중',
     workers: '작업자 목록을 불러오는 중',
     workerDetail: '작업자 정보를 불러오는 중',
+    partners: '거래처 목록을 불러오는 중',
+    partnerRoles: '거래처 역할을 불러오는 중',
   },
   /** 자원 이름 — 여러 자원이 공유하는 문구에 끼워 넣는다. */
   targets: {
@@ -1238,6 +1251,64 @@ const commonCode = {
        */
       duplicatePair:
         '자격 유형과 공정 짝이 이미 있습니다. 공정을 다르게 고르거나 그 줄을 고치세요.',
+    },
+  },
+  /**
+   * 거래처 — **본체는 읽기 전용이다.** ERP에서 받은 마스터라 계약에 쓰기 경로가 없고,
+   * 이 탭이 고치는 것은 역할뿐이다. 고칠 수 없는 사유는 이미 있는 공통 문구
+   * (`editability.receivedFromErp`)를 그대로 쓴다 — 이 화면 전용 문구를 새로 만들지 않는다.
+   *
+   * **내부 번호(`partnerId`)를 문구에 담지 않는다** — 주소와 조회에만 쓰는 식별자다.
+   */
+  partner: {
+    fields: {
+      partnerCode: '거래처코드',
+      partnerName: '거래처명',
+      country: '국가',
+      erpPartnerCode: 'ERP 코드',
+      isActive: '사용 여부',
+    },
+    values: {
+      active: '사용 중',
+      inactive: '미사용',
+    },
+    empty: {
+      noneTitle: '등록된 거래처가 없습니다',
+      /* 「거래처 추가」가 없다 — 없는 조치를 지시하지 않고 어디서 오는 자료인지만 밝힌다. */
+      noneDescription: '거래처는 외부 시스템에서 받아 옵니다. 원본 시스템을 확인하세요.',
+      noMatchTitle: '조건에 맞는 거래처가 없습니다',
+      noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+      notSelected: '좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다',
+      /*
+       * 계약에 거래처 **상세 경로가 없다** — 기본 정보는 지금 목록에 있는 행에서만 온다.
+       * 주소를 손으로 고쳐 목록 밖 거래처를 가리키면 빈 칸을 보이지 않고 그 사실을 밝힌다.
+       */
+      notInListTitle: '고른 거래처가 이 목록에 없습니다',
+      notInListDescription: '조건을 지우거나 목록에서 다시 고르세요.',
+    },
+  },
+  /**
+   * 거래처 역할 — **표시명이 사는 자리.**
+   *
+   * 코드 표기(영문)는 화면 슬라이스의 `partner-role-vocab.ts`가 갖는다. 이름을 코드 파일이
+   * 들고 있으면 문구 정본이 둘이 된다. 반대로 **어휘 밖 코드의 이름은 서버가 준다** —
+   * 화면이 모르는 값에 이름을 지어내지 않는다.
+   */
+  partnerRole: {
+    names: {
+      customer: '고객사',
+      supplier: '공급사',
+      subcontractor: '외주 제작사',
+      disposal: '폐기 업체',
+      other: '기타',
+    },
+    /*
+     * 서버가 어휘 다섯에 없는 코드를 줄 수 있다(계약이 값 목록을 아직 못 박지 않았다).
+     * **감추지 않는다** — 통째 교체 저장에서 목록에 없는 역할은 조용히 해제되기 때문이다.
+     */
+    unknownBadge: '이 화면이 모르는 역할',
+    empty: {
+      noneTitle: '지정된 역할이 없습니다',
     },
   },
   /**

@@ -15,6 +15,13 @@ import type { components } from '@omf-mes/api-client';
 export type CodeGroup = components['schemas']['CodeGroup'];
 export type Department = components['schemas']['Department'];
 export type Worker = components['schemas']['Worker'];
+export type Partner = components['schemas']['Partner'];
+/**
+ * 거래처가 가진 역할 하나. `roleTypeName`은 **서버가 주는 표시명**이며
+ * 어휘 밖 코드를 풀 때만 쓴다 — 어휘 안의 다섯은 `ko.ts`의 표시명이 이긴다
+ * (그래야 다섯 항목의 이름이 서버 상태에 따라 흔들리지 않는다).
+ */
+export type PartnerRole = components['schemas']['PartnerRole'];
 export type PageMeta = components['schemas']['PageMeta'];
 
 /**
@@ -54,6 +61,17 @@ export interface SelectOption {
  * 끈 상태를 값으로 실어 보내면 「보내지 않음」과 「false를 보냄」 두 상태가 생겨 캐시 키가 갈린다.
  */
 export interface CodeGroupFilters {
+  q: string;
+  includeInactive: boolean;
+}
+
+/**
+ * 거래처 탭의 조회 조건. 모양은 `CodeGroupFilters`와 같지만 **타입을 갈라 둔다** —
+ * 한 타입을 두 탭이 나눠 쓰면 한쪽 탭의 조건이 늘 때 다른 탭이 끌려간다.
+ *
+ * **역할 축이 없다.** 이 탭은 역할을 붙이는 곳이라 역할이 아직 없는 거래처가 보여야 한다.
+ */
+export interface PartnerFilters {
   q: string;
   includeInactive: boolean;
 }

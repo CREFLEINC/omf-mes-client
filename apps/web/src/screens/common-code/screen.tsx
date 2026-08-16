@@ -52,11 +52,14 @@ import {
 } from './department-queries';
 import { DEPARTMENT_FORM_FIELDS, validateDepartmentForm } from './department-validation';
 import {
+  PARTNER_SELECT_KEY,
   SCOPE_KEYS,
   readCodeGroupFilters,
   readPage,
+  readPartnerFilters,
   readScopedFilters,
   readSelectedId,
+  toPartnerSearchParams,
   toScopedSearchParams,
   toSearchParams,
 } from './filters';
@@ -68,6 +71,9 @@ import {
   useProcessOptions,
   type LookupResult,
 } from './lookups';
+import { PartnerListPane } from './partner-list-pane';
+import { usePartnerList, usePartnerRoles } from './partner-queries';
+import { PartnerRolePane } from './partner-role-pane';
 import { toPageView } from './pagination';
 import {
   createQualificationDraft,
@@ -93,6 +99,7 @@ import type {
   CodeGroupFilters,
   CodeGroupFormValues,
   DepartmentFormValues,
+  PartnerFilters,
   ScopedFilters,
 } from './types';
 
@@ -158,6 +165,7 @@ export const CommonCodeScreen = () => {
   const isCodeTab = tab.id === 'code';
   const isOrgTab = tab.id === 'org';
   const isWorkerTab = tab.id === 'worker';
+  const isPartnerTab = tab.id === 'partner';
 
   const filters = useMemo<CodeGroupFilters>(
     () => readCodeGroupFilters(searchParams),
@@ -864,6 +872,49 @@ export const CommonCodeScreen = () => {
     qualificationWrite.write(qualificationState.drafts);
   };
 
+  /* ── 거래처 역할 탭 ─────────────────────────────────────────────────────── */
+
+  const partnerFilters = useMemo<PartnerFilters>(
+    () => readPartnerFilters(searchParams),
+    [searchParams],
+  );
+
+  const selectedPartnerId = isPartnerTab ? readSelectedId(searchParams, PARTNER_SELECT_KEY) : null;
+
+  const partnerList = usePartnerList(partnerFilters, page, isPartnerTab);
+  const partners = partnerList.data?.items ?? [];
+
+  const partnerPageView = toPageView(
+    partnerList.data?.page ?? { page, size: 0, total: 0 },
+    partners.length,
+  );
+
+  /**
+   * 고른 거래처의 기본 정보. **계약에 거래처 상세 경로가 없어** 지금 목록에 있는 행에서만 온다 —
+   * 주소를 손으로 고쳐 목록 밖 거래처를 가리키면 채울 자료가 없고, 그 사실을 그대로 밝힌다.
+   */
+  const selectedPartner = partners.find((row) => row.partnerId === selectedPartnerId) ?? null;
+
+  const partnerRoles = usePartnerRoles(selectedPartnerId);
+
+  /*
+   * 이 탭에는 **비우고 갈 편집 상태가 없다**(읽기 전용) — 조건·선택을 옮길 때 초기화할 초안이
+   * 없다는 뜻이다. 역할을 고치는 회차에서 이 자리에 초안·저장 실패 배너 비우기가 붙는다.
+   */
+  const handleSelectPartner = (partnerId: number) => {
+    patchSearchParams((next) => {
+      next.set(PARTNER_SELECT_KEY, String(partnerId));
+    });
+  };
+
+  const applyPartnerFilters = (next: PartnerFilters) => {
+    setSearchParams(toPartnerSearchParams(tab.id, next, 1));
+  };
+
+  const changePartnerPage = (nextPage: number) => {
+    setSearchParams(toPartnerSearchParams(tab.id, partnerFilters, nextPage));
+  };
+
   /*
    * 탭이 바뀌면 그 탭의 처음 상태로 간다. 한쪽 탭의 조건·선택이 남으면
    * 그 탭에 없는 자원을 조회하게 된다.
@@ -1325,10 +1376,96 @@ export const CommonCodeScreen = () => {
     </div>
   );
 
+  /**
+   * 우 칸 — 거래처 기본 정보와 그 거래처의 역할. **이 회차에는 읽기만 한다.**
+   *
+   * 선택 전·목록 실패·불러오는 중·목록 밖 선택을 각각 다른 화면으로 낸다 —
+   * 상세 경로가 없어 기본 정보가 목록에 매여 있으므로 「목록 밖」이 실제로 생기는 상태다.
+   */
+  const renderPartnerRolePane = (): ReactNode => {
+    if (selectedPartnerId === null) {
+      return (
+        <section className="pane" aria-label={t.panes.partnerRoles}>
+          <EmptyState size="sm" title={t.partner.empty.notSelected} />
+        </section>
+      );
+    }
+
+    if (partnerList.isError) {
+      return (
+        <section className="pane" aria-label={t.panes.partnerRoles}>
+          <LoadErrorBanner error={partnerList.error} onRetry={() => void partnerList.refetch()} />
+        </section>
+      );
+    }
+
+    if (partnerList.isPending) {
+      return (
+        <section className="pane" aria-label={t.panes.partnerRoles}>
+          <div role="status" aria-label={t.loading.partners}>
+            <SkeletonText lines={4} />
+          </div>
+        </section>
+      );
+    }
+
+    if (selectedPartner === null) {
+      return (
+        <section className="pane" aria-label={t.panes.partnerRoles}>
+          <EmptyState
+            size="sm"
+            live
+            title={t.partner.empty.notInListTitle}
+            description={t.partner.empty.notInListDescription}
+          />
+        </section>
+      );
+    }
+
+    return (
+      <PartnerRolePane
+        partner={selectedPartner}
+        roles={partnerRoles.data ?? []}
+        isRolesLoading={partnerRoles.isPending}
+        rolesLoadError={
+          partnerRoles.isError ? (
+            <LoadErrorBanner
+              error={partnerRoles.error}
+              onRetry={() => void partnerRoles.refetch()}
+            />
+          ) : null
+        }
+      />
+    );
+  };
+
+  const partnerTabContent = (
+    <div className="two-pane">
+      <PartnerListPane
+        partners={partners}
+        isLoading={partnerList.isPending}
+        appliedFilters={partnerFilters}
+        onApplyFilters={applyPartnerFilters}
+        pageView={partnerPageView}
+        onChangePage={changePartnerPage}
+        selectedPartnerId={selectedPartnerId}
+        onSelect={handleSelectPartner}
+        loadError={
+          partnerList.isError ? (
+            <LoadErrorBanner error={partnerList.error} onRetry={() => void partnerList.refetch()} />
+          ) : null
+        }
+      />
+
+      <div className="pane-stack">{renderPartnerRolePane()}</div>
+    </div>
+  );
+
   const tabContentOf = (tabId: string): ReactNode => {
     if (tabId === 'code') return codeTabContent;
     if (tabId === 'org') return orgTabContent;
-    return workerTabContent;
+    if (tabId === 'worker') return workerTabContent;
+    return partnerTabContent;
   };
 
   return (

@@ -4,7 +4,7 @@ import { COMMON_CODE_TABS, resolveTab, tabSearchParams } from './tabs';
 
 describe('COMMON_CODE_TABS', () => {
   it('탭 정의 배열이 정본이다 — 만든 탭만 들어 있다', () => {
-    expect(COMMON_CODE_TABS.map((tab) => tab.id)).toEqual(['code', 'org', 'worker']);
+    expect(COMMON_CODE_TABS.map((tab) => tab.id)).toEqual(['code', 'org', 'worker', 'partner']);
   });
 
   it('탭마다 서로 다른 주소값을 갖는다', () => {
@@ -65,6 +65,8 @@ describe('tabSearchParams', () => {
         'vinactive',
         'dep',
         'wkr',
+        /* 거래처 탭의 선택 축. 넘기면 그 탭에 없는 거래처의 역할을 조회하게 된다. */
+        'ptn',
         'new',
       ];
 

@@ -1,12 +1,13 @@
 import type { CodeValue } from './code-value-types';
-import type { CodeGroup, Department, Worker } from './types';
+import type { CodeGroup, Department, Partner, PartnerRole, Worker } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
  * 참조하면 예시 값이 배포 번들에 들어간다.
  *
- * 여기 있는 값은 전부 지어낸 합성값이다(`SYN-` 계열). 실제 그룹코드·코드·부서코드·사번·
- * 사람 이름·인증번호를 넣지 않는다(공개 저장소 경계).
+ * 여기 있는 값은 전부 지어낸 합성값이다(`SYN-`·`SAMPLE-` 계열). 실제 그룹코드·코드·부서코드·
+ * 사번·사람 이름·인증번호·거래처를 넣지 않는다(공개 저장소 경계). **계약의 `@example` 값도
+ * 쓰지 않는다** — 예시로 실린 회사명·코드는 우리가 지어낸 값이 아니다.
  */
 
 /**
@@ -119,6 +120,52 @@ export const departmentFixtures: Department[] = [
     businessUnitId: 4001,
     isActive: false,
   },
+];
+
+/**
+ * 거래처 3건.
+ *
+ * 9002는 **국가와 ERP 코드가 널**이고, 9003은 **미사용**이다 —
+ * 「—」 표기와 「(미사용)」 접미를 한 픽스처에서 함께 볼 수 있다.
+ */
+export const partnerFixtures: Partner[] = [
+  {
+    partnerId: 9001,
+    partnerCode: 'SAMPLE-PTNR-A',
+    partnerName: '샘플 거래처 가',
+    countryCode: 'SAMPLE-CTRY',
+    erpPartnerCode: 'SAMPLE-ERP-A',
+    isActive: true,
+  },
+  {
+    partnerId: 9002,
+    partnerCode: 'SAMPLE-PTNR-B',
+    partnerName: '샘플 거래처 나',
+    countryCode: null,
+    erpPartnerCode: null,
+    isActive: true,
+  },
+  {
+    partnerId: 9003,
+    partnerCode: 'SAMPLE-PTNR-C',
+    partnerName: '샘플 거래처 다',
+    countryCode: 'SAMPLE-CTRY',
+    erpPartnerCode: 'SAMPLE-ERP-C',
+    isActive: false,
+  },
+];
+
+/**
+ * 거래처 9001의 역할 3건.
+ *
+ * **차례를 일부러 뒤섞고 어휘 밖 코드를 하나 섞어 둔다** — 화면이 서버가 준 배열 순서를
+ * 그대로 쓰지 않고 자기 차례로 세우는지, 모르는 코드를 감추지 않고 표식과 함께 내는지
+ * 확인하는 것이 이 픽스처의 목적이다.
+ */
+export const partnerRoleFixtures: PartnerRole[] = [
+  { roleTypeCode: 'SAMPLE-ROLE-X', roleTypeName: '샘플 역할 엑스' },
+  { roleTypeCode: 'DISPOSAL', roleTypeName: '폐기처리' },
+  { roleTypeCode: 'CUSTOMER', roleTypeName: null },
 ];
 
 /**

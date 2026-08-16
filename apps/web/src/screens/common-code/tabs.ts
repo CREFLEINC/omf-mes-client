@@ -10,7 +10,7 @@ import { messages } from '@omf-mes/i18n';
 
 const t = messages.commonCode;
 
-export type CommonCodeTabId = 'code' | 'org' | 'worker';
+export type CommonCodeTabId = 'code' | 'org' | 'worker' | 'partner';
 
 export interface CommonCodeTabDefinition {
   /** 주소의 `tab` 값이자 DS `Tabs`의 항목 값 */
@@ -23,6 +23,7 @@ export const COMMON_CODE_TABS: readonly [CommonCodeTabDefinition, ...CommonCodeT
   { id: 'code', label: t.tabs.code },
   { id: 'org', label: t.tabs.org },
   { id: 'worker', label: t.tabs.worker },
+  { id: 'partner', label: t.tabs.partner },
 ];
 
 /**
