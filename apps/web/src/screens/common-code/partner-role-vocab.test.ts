@@ -117,7 +117,11 @@ describe('sortPartnerRoles — 보이는 차례', () => {
       { roleTypeCode: PARTNER_ROLE_CODES.customer },
     ]);
 
-    expect(sorted.map((role) => role.roleTypeCode)).toEqual(['CUSTOMER', 'DISPOSAL', 'OTHER']);
+    expect(sorted.map((role) => role.roleTypeCode)).toEqual([
+      PARTNER_ROLE_CODES.customer,
+      PARTNER_ROLE_CODES.disposal,
+      PARTNER_ROLE_CODES.other,
+    ]);
   });
 
   /* 어휘 밖 코드는 감추지 않는다 — 감추면 통째 교체 저장에서 조용히 해제된다. */
@@ -127,7 +131,10 @@ describe('sortPartnerRoles — 보이는 차례', () => {
       { roleTypeCode: PARTNER_ROLE_CODES.supplier },
     ]);
 
-    expect(sorted.map((role) => role.roleTypeCode)).toEqual(['SUPPLIER', 'SAMPLE-ROLE-X']);
+    expect(sorted.map((role) => role.roleTypeCode)).toEqual([
+      PARTNER_ROLE_CODES.supplier,
+      'SAMPLE-ROLE-X',
+    ]);
   });
 
   it('어휘 밖끼리는 서버가 준 차례를 지킨다 — 화면이 뜻 없는 순서를 지어내지 않는다', () => {
@@ -147,7 +154,10 @@ describe('sortPartnerRoles — 보이는 차례', () => {
 
     const sorted = sortPartnerRoles(roles);
 
-    expect(roles.map((role) => role.roleTypeCode)).toEqual(['OTHER', 'CUSTOMER']);
+    expect(roles.map((role) => role.roleTypeCode)).toEqual([
+      PARTNER_ROLE_CODES.other,
+      PARTNER_ROLE_CODES.customer,
+    ]);
     expect(sorted).not.toBe(roles);
   });
 
@@ -158,7 +168,10 @@ describe('sortPartnerRoles — 보이는 차례', () => {
       { roleTypeCode: PARTNER_ROLE_CODES.disposal, roleTypeName: '폐기처리' },
     ]);
 
-    expect(sorted[0]).toEqual({ roleTypeCode: 'DISPOSAL', roleTypeName: '폐기처리' });
+    expect(sorted[0]).toEqual({
+      roleTypeCode: PARTNER_ROLE_CODES.disposal,
+      roleTypeName: '폐기처리',
+    });
     expect(sorted[1]).toEqual({ roleTypeCode: 'SAMPLE-ROLE-X', roleTypeName: '샘플 역할 엑스' });
   });
 });

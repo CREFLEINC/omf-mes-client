@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import { partnerFixtures, partnerRoleFixtures } from './fixtures';
 import { PartnerRolePane } from './partner-role-pane';
+/* 코드 글자를 시험이 다시 적지 않는다(결정 2) — 리터럴은 어휘 고정 감지기 한 자리에만 둔다. */
+import { PARTNER_ROLE_CODES } from './partner-role-vocab';
 
 const renderPane = (overrides: Partial<Parameters<typeof PartnerRolePane>[0]> = {}) =>
   render(
@@ -127,7 +129,9 @@ describe('PartnerRolePane — 역할 읽기', () => {
   });
 
   it('어휘 안의 역할에는 모르는 역할 표식이 붙지 않는다', () => {
-    renderPane({ roles: [{ roleTypeCode: 'DISPOSAL', roleTypeName: '폐기처리' }] });
+    renderPane({
+      roles: [{ roleTypeCode: PARTNER_ROLE_CODES.disposal, roleTypeName: '폐기처리' }],
+    });
 
     const pane = rolePane();
 

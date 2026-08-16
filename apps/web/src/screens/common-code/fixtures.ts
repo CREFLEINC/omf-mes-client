@@ -1,4 +1,5 @@
 import type { CodeValue } from './code-value-types';
+import { PARTNER_ROLE_CODES } from './partner-role-vocab';
 import type { CodeGroup, Department, Partner, PartnerRole, Worker } from './types';
 
 /**
@@ -163,9 +164,11 @@ export const partnerFixtures: Partner[] = [
  * 확인하는 것이 이 픽스처의 목적이다.
  */
 export const partnerRoleFixtures: PartnerRole[] = [
+  /* 어휘 밖 코드는 어휘 표에 없으므로 여기서 짓는다 — 화면이 모르는 값이 이 픽스처의 요점이다. */
   { roleTypeCode: 'SAMPLE-ROLE-X', roleTypeName: '샘플 역할 엑스' },
-  { roleTypeCode: 'DISPOSAL', roleTypeName: '폐기처리' },
-  { roleTypeCode: 'CUSTOMER', roleTypeName: null },
+  /* 어휘 안 코드는 **표에서 꺼내 쓴다**(결정 2) — 리터럴은 고정 감지기 한 자리에만 둔다. */
+  { roleTypeCode: PARTNER_ROLE_CODES.disposal, roleTypeName: '폐기처리' },
+  { roleTypeCode: PARTNER_ROLE_CODES.customer, roleTypeName: null },
 ];
 
 /**

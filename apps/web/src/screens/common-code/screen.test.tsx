@@ -3793,11 +3793,14 @@ describe('CommonCodeScreen — 거래처 목록 조회 (C14·C16)', () => {
    * 반대 방향도 잰다(뮤테이션에서 살아남은 축) — **보이지 않는 목록을 받아 둘 이유가 없고**,
    * 주소 키(`q`·`inactive`·`page`)를 탭이 공유하므로 「코드그룹을 찾던 말」로 거래처를
    * 조회하게 된다. 그 요청은 화면에 아무것도 그리지 않아 눈으로는 드러나지 않는다.
+   *
+   * **주소에 `ptn`을 실어 둔다.** 없으면 역할 조회는 어차피 나갈 수 없어 아래 두 번째 단언이
+   * 항상 참인 빈 단언이 된다 — 역할 쪽 탭 경계(`isPartnerTab` 삼항)를 지키는 유일한 감지기다.
    */
   it('다른 탭에 있는 동안에는 거래처를 조회하지 않는다', async () => {
     const { requests } = renderScreen(
       [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()],
-      '?q=SYN&grp=1001',
+      '?q=SYN&grp=1001&ptn=9001',
     );
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
@@ -3886,6 +3889,41 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
 
     expect(await screen.findByText('고른 거래처가 이 목록에 없습니다')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '거래처 기본 정보' })).not.toBeInTheDocument();
+  });
+
+  /*
+   * 「이 목록에 없다」는 **목록을 받아 본 뒤에만** 할 수 있는 말이다. 아래 두 갈래에서 그 문면이
+   * 서면 화면이 **사실이 아닌 것**을 말한다 — 못 받았거나 아직 받는 중일 뿐이다.
+   * 좌 목록(C16)과 역할 구획(C19)이 각각 막는 형태를 우 칸에서도 잰다.
+   */
+  it('목록 조회가 실패하면 우 칸이 「목록에 없습니다」로 말하지 않는다', async () => {
+    renderScreen(
+      [
+        {
+          match: (request) => isGet(request, PARTNERS_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+        partnerRolesRoute(),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+
+    const pane = await screen.findByRole('region', { name: '거래처 역할' });
+
+    await waitFor(() => {
+      expect(within(pane).getByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('고른 거래처가 이 목록에 없습니다')).not.toBeInTheDocument();
+  });
+
+  /* 양성 앵커(진행 안내)가 「아직 받는 중인 시점」을 붙잡아 준다 — 음성 단언이 비어 돌지 않는다. */
+  it('목록을 불러오는 동안 우 칸이 「목록에 없습니다」로 말하지 않는다', () => {
+    renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+
+    expect(
+      within(partnerRolePane()).getByRole('status', { name: '거래처 목록을 불러오는 중' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('고른 거래처가 이 목록에 없습니다')).not.toBeInTheDocument();
   });
 
   /* C20 — 어휘 밖 코드를 감추면 통째 교체 저장에서 조용히 해제된다. */
