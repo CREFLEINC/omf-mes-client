@@ -4673,8 +4673,9 @@ const disposalIssue = {
      * 무엇을 할 수 있는지는 칸 아래 안내가 말한다(값 미확정 갈래의 `pendingCode` 짝과 같은 규칙).
      *
      * **불러오는 중에는 「없다」고 말하지 않는다** — 그 갈래의 글자는 참조 표기의 낱말
-     * (`values.referenceLoading`)을 그대로 쓴다. 조회 실패의 안내도 이미 있는 낱말
-     * (`filters.lookupFailed`)을 쓰고, 여기에는 그 짝이 되는 **트리거 글자만** 둔다.
+     * (`values.referenceLoading`)을 그대로 쓴다. **조회 실패는 다르다** — 이 칸은 안내도
+     * 자리표시도 **전용 문면**을 갖는다(바로 아래 `partnerFailedNote`). 조건 줄의
+     * `filters.lookupFailed`를 돌려쓰지 않기로 한 이유는 그 문면의 주석에 적혀 있다.
      */
     partnerFailedPlaceholder: '선택지를 불러오지 못함',
     /**
