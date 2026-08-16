@@ -27,6 +27,7 @@ const renderPane = (overrides: Partial<PartnerRolePaneProps> = {}) => {
     rolesLoadError: null,
     banner: null,
     isDirty: false,
+    isLocked: false,
     isSaving: false,
     onToggleRole: vi.fn<(roleTypeCode: string) => void>(),
     onSave: vi.fn<() => void>(),
@@ -292,7 +293,7 @@ describe('PartnerRolePane — 저장과 취소', () => {
 
   /* C33 — 저장이 나가는 중에 체크가 바뀌면 확인한 것과 다른 것이 저장된 것처럼 보인다. */
   it('저장 중에는 체크칸과 저장·취소가 잠긴다', () => {
-    renderPane({ isDirty: true, isSaving: true });
+    renderPane({ isDirty: true, isLocked: true, isSaving: true });
 
     const pane = rolePane();
 
@@ -301,6 +302,37 @@ describe('PartnerRolePane — 저장과 취소', () => {
     }
     expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
     expect(within(pane).getByRole('button', { name: '취소' })).toBeDisabled();
+  });
+
+  /*
+   * **막는 것과 가리는 것이 갈린다.** 저장은 한 번에 하나뿐이라 다른 거래처의 저장이 나가는
+   * 중이면 여기도 잠긴다(전역). 그러나 그것은 **다른 사실**이므로 사유가 붙어야 하고
+   * 진행 표시는 돌지 않는다 — 사유 없는 비활성은 「고장」으로 읽힌다(배치 규범 4).
+   */
+  it('남의 저장이 나가는 중이면 사유와 함께 잠기고 진행 표시를 돌지 않는다', () => {
+    renderPane({ isDirty: true, isLocked: true, isSaving: false });
+
+    const pane = rolePane();
+
+    expect(within(pane).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(
+      within(pane).getByText('저장은 다른 거래처의 저장이 끝난 뒤에 할 수 있습니다.'),
+    ).toBeInTheDocument();
+    for (const box of within(pane).getAllByRole('checkbox')) {
+      expect(box).toBeDisabled();
+    }
+  });
+
+  /* 내 저장이 나가는 중이면 진행 표시가 사유 자리를 대신한다 — 두 사실을 한 문구로 뭉개지 않는다. */
+  it('내 저장이 나가는 중이면 남의 저장 사유를 내지 않는다', () => {
+    renderPane({ isDirty: true, isLocked: true, isSaving: true });
+
+    const pane = rolePane();
+
+    expect(
+      within(pane).queryByText(/저장은 다른 거래처의 저장이 끝난 뒤에/),
+    ).not.toBeInTheDocument();
+    expect(within(pane).queryByText(/저장은 역할을 고친 뒤에/)).not.toBeInTheDocument();
   });
 
   it('저장 실패 배너를 받은 자리에 낸다', () => {

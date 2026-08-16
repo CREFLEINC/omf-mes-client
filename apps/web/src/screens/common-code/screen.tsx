@@ -1024,11 +1024,30 @@ export const CommonCodeScreen = () => {
 
   const isRoleWriteMine = roleWriteTargetId === selectedPartnerId;
 
-  /** 저장을 내는 자리는 둘(확인 창 있는 길·없는 길)뿐이고 **둘 다 여기를 지난다.** */
+  /**
+   * 저장을 내는 자리는 둘(확인 창 있는 길·없는 길)뿐이고 **둘 다 여기를 지난다.**
+   *
+   * ⛔ **두 번째 저장을 내지 않는다.** 훅 하나에 요청 하나라, 두 번째 `mutate`가 옵저버를
+   * 새 요청으로 옮기면서 **앞 요청에서 옵저버를 떼어 낸다** — 그 순간 앞 저장의 무효화·성공·
+   * 실패가 전부 오지 않는다(`omf-mes#96`이 `reset()`에 대해 말한 것과 같은 상태다).
+   * 앞 저장이 400이었다면 **어디에도 표시되지 않는 실패**가 되고, 성공이었다면 캐시가 저장 전
+   * 값으로 남아 다음 통째 교체가 그것을 덮어쓴다. 잠금(아래 `isPartnerRoleLocked`)이 첫째 겹이고
+   * 이 가드가 둘째 겹이다.
+   */
   const writePartnerRoles = (selected: readonly string[]) => {
+    if (partnerRoleWrite.isSaving) return;
+
     setRoleWriteTargetId(selectedPartnerId);
     partnerRoleWrite.write(selected);
   };
+
+  /**
+   * **막을 것은 전역이다.** 저장이 하나라도 나가는 중이면 어느 거래처에서도 새 저장을 시작할
+   * 수 없다 — 대상 축(`isRoleWriteMine`)은 *보이는 것*을 가릴 뿐 **막는 데 쓰지 않는다.**
+   * 둘을 뭉치면 남의 저장 중에 새 저장이 열려 위의 겹침이 그대로 일어난다.
+   * 전례(`iqc-skip-approval`)가 같은 화면에서 잠금과 표시를 이렇게 갈라 둔다.
+   */
+  const isPartnerRoleLocked = partnerRoleWrite.isSaving;
 
   /**
    * **나가는 중인 쓰기는 건드리지 않는다**(`omf-mes#96`).
@@ -1085,6 +1104,11 @@ export const CommonCodeScreen = () => {
    */
   const handleSavePartnerRoles = () => {
     if (partnerRoleState === null) return;
+    /*
+     * 나가는 중인 저장이 있으면 **확인 창도 세우지 않는다.** 창은 자기 쓰기와 함께만 서는데,
+     * 남의 저장 중에 열리면 두 버튼이 잠긴 채 **보낸 적 없는 진행 표시**를 돌며 갇힌다.
+     */
+    if (isPartnerRoleLocked) return;
 
     if (releasedRoles.length > 0) {
       setIsPartnerRoleConfirmOpen(true);
@@ -1635,7 +1659,9 @@ export const CommonCodeScreen = () => {
           )
         }
         isDirty={isPartnerRoleDirty}
-        /* 잠금과 진행 표시도 대상이 같을 때만 낸다 — 사유 없는 비활성이 남의 구획에 서지 않는다. */
+        /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
+        isLocked={isPartnerRoleLocked}
+        /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
         isSaving={isRoleWriteMine && partnerRoleWrite.isSaving}
         onToggleRole={togglePartnerRoleChoice}
         onSave={handleSavePartnerRoles}

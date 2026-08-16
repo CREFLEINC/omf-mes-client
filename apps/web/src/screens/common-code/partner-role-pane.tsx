@@ -27,6 +27,16 @@ export interface PartnerRolePaneProps {
   /** 저장 실패 배너 슬롯 */
   banner: ReactNode;
   isDirty: boolean;
+  /**
+   * **막을 것 — 전역이다.** 이 화면의 역할 저장은 한 번에 하나뿐이라(훅 하나에 요청 하나),
+   * 다른 거래처의 저장이 나가는 중이면 여기서도 새 저장을 시작할 수 없다. 두 번째를 내면
+   * 앞 저장의 무효화·성공·**실패**가 통째로 오지 않는다.
+   */
+  isLocked: boolean;
+  /**
+   * **가릴 것 — 지금 이 구획의 저장인가.** 진행 표시는 자기 저장에만 돈다 —
+   * 남의 저장으로 스피너를 돌리면 화면이 손댄 적 없는 거래처를 「저장 중」이라고 말한다.
+   */
   isSaving: boolean;
   onToggleRole: (roleTypeCode: string) => void;
   onSave: () => void;
@@ -86,6 +96,7 @@ export const PartnerRolePane = ({
   rolesLoadError,
   banner,
   isDirty,
+  isLocked,
   isSaving,
   onToggleRole,
   onSave,
@@ -93,6 +104,42 @@ export const PartnerRolePane = ({
 }: PartnerRolePaneProps) => {
   const unknownNoteId = useId();
   const hasUnknown = choices.some((choice) => !choice.isKnown);
+
+  /**
+   * 저장 자리의 네 상태. **잠긴 자리에는 반드시 사유가 붙는다**(배치 규범 4) —
+   * 사유 없는 비활성은 사용자에게 「고장」으로 읽힌다.
+   */
+  const saveAction = (): ReactNode => {
+    /* 내 저장이 나가는 중이면 진행 표시가 사유 자리를 대신한다. */
+    if (isSaving) {
+      return (
+        <Button disabled loading>
+          {messages.common.save}
+        </Button>
+      );
+    }
+
+    /* 남의 저장이 나가는 중이다 — 잠그되 **무엇을 기다리는지** 밝힌다. */
+    if (isLocked) {
+      return (
+        <DisabledAction
+          label={messages.common.save}
+          reason={t.partnerRole.actionReasons.saveLockedByOtherPartner}
+        />
+      );
+    }
+
+    if (!isDirty) {
+      return (
+        <DisabledAction
+          label={messages.common.save}
+          reason={t.partnerRole.actionReasons.saveNoChanges}
+        />
+      );
+    }
+
+    return <Button onClick={onSave}>{messages.common.save}</Button>;
+  };
 
   const roleSlot = (): ReactNode => {
     if (rolesLoadError !== null && rolesLoadError !== undefined) return rolesLoadError;
@@ -128,7 +175,7 @@ export const PartnerRolePane = ({
               key={choice.roleTypeCode}
               checked={choice.isSelected}
               /* 나가는 중에 체크가 바뀌면 확인한 것과 다른 것이 저장된 것처럼 보인다. */
-              disabled={isSaving}
+              disabled={isLocked}
               /* 여러 확인칸이 함께 보는 안내라 각 칸에 되풀이하지 않고 하나를 잇는다. */
               aria-describedby={choice.isKnown ? undefined : unknownNoteId}
               onChange={() => {
@@ -160,24 +207,11 @@ export const PartnerRolePane = ({
         )}
 
         <div className="form-actions">
-          <Button variant="outlined" disabled={!isDirty || isSaving} onClick={onCancel}>
+          <Button variant="outlined" disabled={!isDirty || isLocked} onClick={onCancel}>
             {messages.common.cancel}
           </Button>
 
-          {/*
-           * 고친 것이 없으면 주 액션을 **비활성 + 사유**로 둔다(배치 규범 4).
-           * 저장 중에는 진행 표시가 그 자리를 대신하므로 사유를 내지 않는다.
-           */}
-          {isDirty || isSaving ? (
-            <Button disabled={isSaving} loading={isSaving} onClick={onSave}>
-              {messages.common.save}
-            </Button>
-          ) : (
-            <DisabledAction
-              label={messages.common.save}
-              reason={t.partnerRole.actionReasons.saveNoChanges}
-            />
-          )}
+          {saveAction()}
         </div>
       </>
     );

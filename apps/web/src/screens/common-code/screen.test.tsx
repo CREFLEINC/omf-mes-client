@@ -4521,8 +4521,14 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
     partnerRolesRoute(9002, []),
   ];
 
-  /* 손댄 적 없는 거래처가 「저장 중」으로 잠기고, 그 비활성에는 사유조차 없다. */
-  it('저장이 나가는 중에 옮겨 간 거래처는 잠기지 않는다', async () => {
+  /**
+   * **막는 것과 가리는 것을 가른다.**
+   *
+   * 저장은 한 번에 하나뿐이라 옮겨 간 거래처도 **잠긴다**(막는 것 — 전역). 그러나 그 잠금은
+   * 남의 저장이라는 **다른 사실**이므로 사유가 붙어야 하고, 진행 표시는 돌지 않아야 한다
+   * (가리는 것 — 대상 축). 사유 없는 비활성은 사용자에게 「고장」으로 읽힌다.
+   */
+  it('저장이 나가는 중에 옮겨 간 거래처는 진행 표시 없이 사유와 함께 잠긴다', async () => {
     const { user } = renderScreen(
       [...twoPartnerRoutes(), rolesReplaceRoute(neverFinishingResponse)],
       '?tab=partner&ptn=9001',
@@ -4538,11 +4544,79 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
     await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
     await screen.findByText('지정된 역할이 없습니다');
 
-    for (const box of within(partnerRolePane()).getAllByRole('checkbox')) {
-      expect(box).toBeEnabled();
-    }
-    /* 잠겼다면 사유 없는 비활성이 된다 — 사유가 보인다는 것이 곧 진행 표시가 없다는 뜻이다. */
-    expect(within(partnerRolePane()).getByText(/저장은 역할을 고친 뒤에/)).toBeInTheDocument();
+    const pane = partnerRolePane();
+
+    expect(partnerSaveButton()).toBeDisabled();
+    /*
+     * 진행 표시를 도는 갈래에는 **사유가 없다** — 사유가 보인다는 것이 곧 이 구획이
+     * 남의 저장으로 스피너를 돌리고 있지 않다는 뜻이다.
+     */
+    expect(within(pane).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/)).toBeInTheDocument();
+    expect(within(pane).queryByText(/저장은 역할을 고친 뒤에/)).not.toBeInTheDocument();
+  });
+
+  /*
+   * **두 저장이 겹치지 않는다.** 훅 하나에 요청 하나라, 두 번째 `mutate`는 앞 요청에서
+   * 옵저버를 떼어 낸다 — 앞 저장이 400이면 **어디에도 표시되지 않는 실패**가 되고,
+   * 성공이면 캐시가 저장 전 값으로 남아 다음 통째 교체가 그것을 덮어쓴다.
+   */
+  it('남의 저장이 나가는 중에는 새 거래처의 저장이 시작되지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...twoPartnerRoutes(), rolesReplaceRoute(neverFinishingResponse)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await screen.findByText('지정된 역할이 없습니다');
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(putRequests(requests)).toHaveLength(1);
+    expect(
+      within(partnerRolePane()).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * 확인 창은 **자기 쓰기와 함께만** 선다. 남의 저장 중에 열리면 두 버튼이 잠긴 채
+   * **보낸 적 없는 진행 표시**를 돌며 갇힌다 — 되돌릴 수 없는 저장을 확인하는 창이 거짓말한다.
+   */
+  it('남의 저장이 나가는 중에는 해제 확인 창이 서지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        partnerListRoute(),
+        partnerRolesRoute(),
+        partnerRolesRoute(9002, [{ roleTypeCode: PARTNER_ROLE_CODES.customer }]),
+        rolesReplaceRoute(neverFinishingResponse),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await waitFor(() => {
+      expect(roleCheckbox('고객사')).toBeChecked();
+    });
+
+    /* 해제가 있는 저장이라 잠기지 않았다면 확인 창이 섰을 것이다. */
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(putRequests(requests)).toHaveLength(1);
   });
 
   /*
@@ -4566,8 +4640,11 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
 
     await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
     await screen.findByText('지정된 역할이 없습니다');
-    /* 옮겨 간 거래처도 저장할 수 있는 상태로 둔다 — 그래야 실패 도착 시점을 잡을 자리가 생긴다. */
-    await user.click(roleCheckbox('공급사'));
+
+    /* 도착 전 — 남의 저장이 나가는 중이라 이 구획이 그 사유로 잠겨 있다. */
+    expect(
+      within(partnerRolePane()).getByText(/저장은 다른 거래처의 저장이 끝난 뒤에/),
+    ).toBeInTheDocument();
 
     await act(async () => {
       deferred.release({
@@ -4576,9 +4653,13 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
       });
     });
 
-    /* 잠금이 풀린 것으로 실패가 도착한 것을 안다 — 도착 전에 단언하면 늘 통과한다. */
+    /*
+     * **잠금 사유가 갈리는 것으로 실패가 도착한 것을 안다** — 「다른 거래처의 저장이 끝난 뒤에」가
+     * 「역할을 고친 뒤에」로 바뀌는 순간은 나가는 중이던 저장이 끝났을 때뿐이다.
+     * 도착 전에 음성 단언을 하면 늘 통과한다.
+     */
     await waitFor(() => {
-      expect(partnerSaveButton()).toBeEnabled();
+      expect(within(partnerRolePane()).getByText(/저장은 역할을 고친 뒤에/)).toBeInTheDocument();
     });
     expect(within(partnerRolePane()).queryByText('저장이 막혔습니다.')).not.toBeInTheDocument();
   });
