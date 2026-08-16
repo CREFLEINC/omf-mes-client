@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  PARTNER_SELECT_KEY,
   clearFilter,
   clearScopedFilter,
   hasAnyFilter,
+  hasAnyPartnerFilter,
   hasAnyScopedFilter,
   readCodeGroupFilters,
   readPage,
+  readPartnerFilters,
   readScopedFilters,
   readSelectedId,
   toCodeGroupListQuery,
   toDepartmentListQuery,
   toFilterChips,
+  toPartnerListQuery,
+  toPartnerSearchParams,
   toScopedFilterChips,
   toScopedSearchParams,
   toSearchParams,
@@ -356,5 +361,111 @@ describe('clearFilter', () => {
       q: 'SYN',
       includeInactive: false,
     });
+  });
+});
+
+/*
+ * 거래처 탭은 **자기 파서를 갖는다.** 코드그룹 탭과 모양이 같아도 돌려쓰지 않는다 —
+ * 이름이 거짓말을 하게 되고, 한쪽 탭의 조건이 바뀔 때 다른 탭이 끌려간다.
+ */
+describe('readPartnerFilters', () => {
+  it('주소에서 조건을 읽는다', () => {
+    expect(readPartnerFilters(params('?tab=partner&q=SAMPLE&inactive=1'))).toEqual({
+      q: 'SAMPLE',
+      includeInactive: true,
+    });
+  });
+
+  it('조건이 없으면 빈 조건이다', () => {
+    expect(readPartnerFilters(params('?tab=partner'))).toEqual({ q: '', includeInactive: false });
+  });
+
+  it('미사용 포함은 1일 때만 켜진 것으로 본다', () => {
+    expect(readPartnerFilters(params('?inactive=true')).includeInactive).toBe(false);
+    expect(readPartnerFilters(params('?inactive=0')).includeInactive).toBe(false);
+  });
+
+  /* 선택은 조건이 아니다 — 조건 객체에 섞이면 선택만 바뀌어도 조회 캐시 키가 갈린다. */
+  it('고른 거래처를 조건에 담지 않는다', () => {
+    expect('ptn' in readPartnerFilters(params('?ptn=9001'))).toBe(false);
+  });
+});
+
+describe('PARTNER_SELECT_KEY', () => {
+  it('고른 거래처의 주소 키는 ptn이다', () => {
+    expect(PARTNER_SELECT_KEY).toBe('ptn');
+  });
+
+  /* 선택 번호는 다른 자리와 **같은 규칙**으로 읽는다 — 자리마다 따로 해석하지 않는다. */
+  it('선택 번호를 다른 자리와 같은 규칙으로 읽는다', () => {
+    expect(readSelectedId(params('?ptn=9001'), PARTNER_SELECT_KEY)).toBe(9001);
+    expect(readSelectedId(params('?ptn=0'), PARTNER_SELECT_KEY)).toBeNull();
+    expect(readSelectedId(params('?ptn=abc'), PARTNER_SELECT_KEY)).toBeNull();
+  });
+});
+
+describe('toPartnerSearchParams', () => {
+  it('빈 조건과 첫 쪽은 키 자체를 두지 않는다', () => {
+    const next = toPartnerSearchParams('partner', { q: '', includeInactive: false }, 1);
+
+    expect(next.get('tab')).toBe('partner');
+    expect([...next.keys()]).toEqual(['tab']);
+  });
+
+  it('걸린 조건과 두 번째 이후 쪽만 싣는다', () => {
+    const next = toPartnerSearchParams('partner', { q: 'SAMPLE', includeInactive: true }, 3);
+
+    expect(next.get('q')).toBe('SAMPLE');
+    expect(next.get('inactive')).toBe('1');
+    expect(next.get('page')).toBe('3');
+  });
+
+  /* 조건·쪽이 바뀌면 보이는 행이 달라진다 — 선택을 담지 않으므로 선택이 자연히 사라진다. */
+  it('선택 파라미터를 담지 않는다', () => {
+    const next = toPartnerSearchParams('partner', { q: 'SAMPLE', includeInactive: true }, 2);
+
+    for (const key of ['ptn', 'grp', 'val', 'dep', 'wkr', 'new']) {
+      expect(next.has(key)).toBe(false);
+    }
+  });
+});
+
+describe('toPartnerListQuery', () => {
+  it('빈 값·꺼진 확인칸·첫 쪽을 싣지 않는다', () => {
+    expect(toPartnerListQuery({ q: '', includeInactive: false }, 1)).toEqual({});
+  });
+
+  it('걸린 조건만 싣는다', () => {
+    expect(toPartnerListQuery({ q: 'SAMPLE', includeInactive: true }, 2)).toEqual({
+      q: 'SAMPLE',
+      includeInactive: true,
+      page: 2,
+    });
+  });
+
+  it('미사용 포함이 꺼져 있으면 키 자체가 없다', () => {
+    expect(
+      'includeInactive' in toPartnerListQuery({ q: 'SAMPLE', includeInactive: false }, 1),
+    ).toBe(false);
+  });
+
+  /*
+   * **역할로 좁히지 않는다.** 계약에 `roleTypeCode` 질의가 있지만 이 탭은 역할을 *붙이는* 곳이라
+   * 역할이 아직 없는 거래처가 반드시 보여야 한다 — 좁히면 「역할이 없는 거래처에는 역할을
+   * 붙일 수 없는」 화면이 된다.
+   */
+  it('역할 코드를 싣지 않는다', () => {
+    const query = toPartnerListQuery({ q: 'SAMPLE', includeInactive: true }, 2);
+
+    expect('roleTypeCode' in query).toBe(false);
+    expect(Object.keys(query)).toEqual(['q', 'includeInactive', 'page']);
+  });
+});
+
+describe('hasAnyPartnerFilter', () => {
+  it('조건이 하나라도 있으면 참이다', () => {
+    expect(hasAnyPartnerFilter({ q: 'SAMPLE', includeInactive: false })).toBe(true);
+    expect(hasAnyPartnerFilter({ q: '', includeInactive: true })).toBe(true);
+    expect(hasAnyPartnerFilter({ q: '', includeInactive: false })).toBe(false);
   });
 });

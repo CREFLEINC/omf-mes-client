@@ -16,6 +16,8 @@ import {
   codeGroupFixtures,
   codeValueFixtures,
   departmentFixtures,
+  partnerFixtures,
+  partnerRoleFixtures,
   workerFixtures,
 } from './fixtures';
 import { CommonCodeScreen } from './screen';
@@ -302,6 +304,7 @@ describe('CommonCodeScreen — 탭', () => {
       '공통코드',
       '조직(부서)',
       '작업자',
+      '거래처 역할',
     ]);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
@@ -3202,7 +3205,7 @@ describe('CommonCodeScreen — 작업자 조건과 탭 전환', () => {
     expect(await screen.findByRole('button', { name: 'SYN-W-0001' })).toBeInTheDocument();
   });
 
-  it('탭 묶음에 만든 탭 셋이 렌더된다', async () => {
+  it('탭 묶음에 만든 탭 넷이 렌더된다', async () => {
     renderScreen(workerRoutes(), '?tab=worker');
     await screen.findByRole('button', { name: 'SYN-W-0001' });
 
@@ -3214,6 +3217,7 @@ describe('CommonCodeScreen — 작업자 조건과 탭 전환', () => {
       '공통코드',
       '조직(부서)',
       '작업자',
+      '거래처 역할',
     ]);
   });
 });
@@ -3713,5 +3717,330 @@ describe('CommonCodeScreen — 탭마다 자기 선택 축 키를 쓴다', () =>
         '4001',
       );
     });
+  });
+});
+
+/* ── 거래처 역할 탭 ─────────────────────────────────────────────────────────── */
+
+const PARTNERS_PATH = '/mdm/partners';
+
+const partnerRolesPath = (partnerId: number): string =>
+  `${PARTNERS_PATH}/${String(partnerId)}/roles`;
+
+const partnerListRoute = (
+  items = partnerFixtures,
+  pageMeta: PageStub = { page: 1, size: 50, total: partnerFixtures.length },
+): StubRoute => ({
+  match: (request) => isGet(request, PARTNERS_PATH),
+  respond: () => jsonResponse({ items, page: pageMeta }),
+});
+
+/** 역할 목록 — **배열만 온다**(쪽 나눔이 없다 · 계약 실측). */
+const partnerRolesRoute = (partnerId = 9001, roles = partnerRoleFixtures): StubRoute => ({
+  match: (request) => isGet(request, partnerRolesPath(partnerId)),
+  respond: () => jsonResponse(roles),
+});
+
+const partnerRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requestsTo(requests, PARTNERS_PATH);
+
+const partnerPane = (): HTMLElement => screen.getByRole('region', { name: '거래처' });
+
+const partnerRolePane = (): HTMLElement => screen.getByRole('region', { name: '거래처 역할' });
+
+const partnerRoutes = (): StubRoute[] => [partnerListRoute(), partnerRolesRoute()];
+
+describe('CommonCodeScreen — 거래처 목록 조회 (C14·C16)', () => {
+  it('거래처 탭에 들어오면 목록 요청이 한 번 나가고 조건이 없으면 쿼리도 없다', async () => {
+    const { requests } = renderScreen(partnerRoutes(), '?tab=partner');
+
+    expect(await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' })).toBeInTheDocument();
+    expect(partnerRequests(requests)).toHaveLength(1);
+    expect(partnerRequests(requests)[0]?.url.search).toBe('');
+  });
+
+  it('걸린 조건만 요청 쿼리에 실린다', async () => {
+    const { requests } = renderScreen(partnerRoutes(), '?tab=partner&q=SAMPLE&inactive=1&page=2');
+    await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' });
+
+    const sent = partnerRequests(requests)[0];
+    expect(sent?.url.searchParams.get('q')).toBe('SAMPLE');
+    expect(sent?.url.searchParams.get('includeInactive')).toBe('true');
+    expect(sent?.url.searchParams.get('page')).toBe('2');
+  });
+
+  /*
+   * C14 — 이 탭은 역할을 **붙이는** 곳이라 역할이 아직 없는 거래처가 반드시 보여야 한다.
+   * 계약에 `roleTypeCode` 질의가 있다는 사실이 그것을 쓸 이유가 되지 않는다.
+   */
+  it('역할 코드를 목록 쿼리에 싣지 않는다', async () => {
+    const { requests } = renderScreen(partnerRoutes(), '?tab=partner&q=SAMPLE');
+    await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' });
+
+    expect(partnerRequests(requests)[0]?.url.searchParams.has('roleTypeCode')).toBe(false);
+  });
+
+  it('다른 탭의 목록을 함께 조회하지 않는다', async () => {
+    const { requests } = renderScreen(partnerRoutes(), '?tab=partner');
+    await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' });
+
+    expect(codeGroupRequests(requests)).toHaveLength(0);
+    expect(departmentRequests(requests)).toHaveLength(0);
+    expect(workerRequests(requests)).toHaveLength(0);
+  });
+
+  /*
+   * 반대 방향도 잰다(뮤테이션에서 살아남은 축) — **보이지 않는 목록을 받아 둘 이유가 없고**,
+   * 주소 키(`q`·`inactive`·`page`)를 탭이 공유하므로 「코드그룹을 찾던 말」로 거래처를
+   * 조회하게 된다. 그 요청은 화면에 아무것도 그리지 않아 눈으로는 드러나지 않는다.
+   *
+   * **주소에 `ptn`을 실어 둔다.** 없으면 역할 조회는 어차피 나갈 수 없어 아래 두 번째 단언이
+   * 항상 참인 빈 단언이 된다 — 역할 쪽 탭 경계(`isPartnerTab` 삼항)를 지키는 유일한 감지기다.
+   */
+  it('다른 탭에 있는 동안에는 거래처를 조회하지 않는다', async () => {
+    const { requests } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute()],
+      '?q=SYN&grp=1001&ptn=9001',
+    );
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    expect(partnerRequests(requests)).toHaveLength(0);
+    expect(requestsTo(requests, partnerRolesPath(9001))).toHaveLength(0);
+  });
+
+  /* C16 — 실패를 「없습니다」로 보이면 사실과 다른 안내가 된다. */
+  it('거래처 목록 조회에 실패하면 배너를 내고 빈 상태를 함께 내지 않는다', async () => {
+    renderScreen(
+      [
+        {
+          match: (request) => isGet(request, PARTNERS_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+      ],
+      '?tab=partner',
+    );
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByText('등록된 거래처가 없습니다')).not.toBeInTheDocument();
+  });
+});
+
+describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19·C20)', () => {
+  it('거래처를 고르면 역할 요청이 한 번 나가고 주소에 ptn이 붙는다', async () => {
+    const { requests, history, user } = renderScreen(partnerRoutes(), '?tab=partner');
+    await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' });
+
+    // 고르기 전에는 나가지 않는다 — 아직 아무 거래처도 가리키지 않는다.
+    expect(requestsTo(requests, partnerRolesPath(9001))).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-A' }));
+    await screen.findByText('고객사');
+
+    expect(requestsTo(requests, partnerRolesPath(9001))).toHaveLength(1);
+    expect(history.search()).toBe('?tab=partner&ptn=9001');
+    expect(screen.getByRole('button', { name: 'SAMPLE-PTNR-A' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  /* C15 — 주소가 정본이다. 주소로 바로 들어와도 같은 화면이 선다. */
+  it('주소로 바로 들어와도 고른 거래처의 역할이 선다', async () => {
+    const { requests } = renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+
+    expect(await screen.findByText('고객사')).toBeInTheDocument();
+    expect(requestsTo(requests, partnerRolesPath(9001))).toHaveLength(1);
+  });
+
+  /*
+   * C17 — 기본 정보는 목록 행에서 온다(계약에 거래처 상세 경로가 없다).
+   * **값 표기만 있다** — 계약에 쓰기 경로가 없어 폼 컨트롤을 잠그는 것이 아니라 두지 않는다.
+   */
+  it('고른 거래처의 기본 정보가 값 표기와 사유로 선다', async () => {
+    renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+
+    const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
+
+    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
+    expect(within(pane).queryAllByRole('textbox')).toHaveLength(0);
+    expect(within(pane).queryAllByRole('button')).toHaveLength(0);
+    expect(
+      within(pane).getByText(
+        '외부 시스템에서 받은 자료라 여기서 수정할 수 없습니다. 원본 시스템에서 변경하세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('고르기 전에는 무엇이 채워지는지 안내한다', async () => {
+    renderScreen(partnerRoutes(), '?tab=partner');
+    await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' });
+
+    expect(
+      screen.getByText('좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다'),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * 계약에 거래처 **상세 경로가 없다** — 기본 정보는 지금 목록에 있는 행에서만 온다.
+   * 주소를 손으로 고쳐 목록 밖 거래처를 가리키면 빈 칸을 보이지 않고 그 사실을 밝힌다.
+   */
+  it('목록에 없는 거래처를 주소가 가리키면 그 사실을 밝힌다', async () => {
+    renderScreen([partnerListRoute(), partnerRolesRoute(9999, [])], '?tab=partner&ptn=9999');
+
+    expect(await screen.findByText('고른 거래처가 이 목록에 없습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '거래처 기본 정보' })).not.toBeInTheDocument();
+  });
+
+  /*
+   * 「이 목록에 없다」는 **목록을 받아 본 뒤에만** 할 수 있는 말이다. 아래 두 갈래에서 그 문면이
+   * 서면 화면이 **사실이 아닌 것**을 말한다 — 못 받았거나 아직 받는 중일 뿐이다.
+   * 좌 목록(C16)과 역할 구획(C19)이 각각 막는 형태를 우 칸에서도 잰다.
+   */
+  it('목록 조회가 실패하면 우 칸이 「목록에 없습니다」로 말하지 않는다', async () => {
+    renderScreen(
+      [
+        {
+          match: (request) => isGet(request, PARTNERS_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+        partnerRolesRoute(),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+
+    const pane = await screen.findByRole('region', { name: '거래처 역할' });
+
+    await waitFor(() => {
+      expect(within(pane).getByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('고른 거래처가 이 목록에 없습니다')).not.toBeInTheDocument();
+  });
+
+  /* 양성 앵커(진행 안내)가 「아직 받는 중인 시점」을 붙잡아 준다 — 음성 단언이 비어 돌지 않는다. */
+  it('목록을 불러오는 동안 우 칸이 「목록에 없습니다」로 말하지 않는다', () => {
+    renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+
+    expect(
+      within(partnerRolePane()).getByRole('status', { name: '거래처 목록을 불러오는 중' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('고른 거래처가 이 목록에 없습니다')).not.toBeInTheDocument();
+  });
+
+  /* C20 — 어휘 밖 코드를 감추면 통째 교체 저장에서 조용히 해제된다. */
+  it('어휘 밖 역할이 표식과 함께 보인다', async () => {
+    renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    const pane = partnerRolePane();
+    expect(within(pane).getByText('샘플 역할 엑스')).toBeInTheDocument();
+    expect(within(pane).getByText('이 화면이 모르는 역할')).toBeInTheDocument();
+  });
+
+  /* C19 — 실패를 「지정된 역할이 없습니다」로 보이면 역할이 없는 거래처로 읽힌다. */
+  it('역할 조회에 실패하면 배너를 내고 빈 상태를 함께 내지 않는다', async () => {
+    renderScreen(
+      [
+        partnerListRoute(),
+        {
+          match: (request) => isGet(request, partnerRolesPath(9001)),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+      ],
+      '?tab=partner&ptn=9001',
+    );
+
+    expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByText('지정된 역할이 없습니다')).not.toBeInTheDocument();
+  });
+
+  it('역할이 하나도 없으면 없다고 낸다', async () => {
+    renderScreen([partnerListRoute(), partnerRolesRoute(9001, [])], '?tab=partner&ptn=9001');
+
+    expect(await screen.findByText('지정된 역할이 없습니다')).toBeInTheDocument();
+  });
+
+  /*
+   * C21 — 이 회차는 읽기만 한다. 거래처 경로로 나가는 쓰기가 **0회**여야 한다.
+   * 다른 거래처를 눌러 선택을 옮긴 뒤에도 마찬가지다.
+   */
+  it('거래처 경로로 나가는 쓰기 요청이 없다', async () => {
+    const { requests, user } = renderScreen(
+      [partnerListRoute(), partnerRolesRoute(), partnerRolesRoute(9002, [])],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await screen.findByText('지정된 역할이 없습니다');
+
+    const writes = requests.filter(
+      (request) => request.url.pathname.startsWith(PARTNERS_PATH) && request.method !== 'GET',
+    );
+
+    expect(writes).toHaveLength(0);
+  });
+});
+
+describe('CommonCodeScreen — 거래처 조건과 탭 전환 (C11·C15)', () => {
+  it('조건을 바꾸면 선택이 주소에서 사라진다', async () => {
+    const { history, user } = renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(within(partnerPane()).getByRole('checkbox', { name: '미사용 포함' }));
+
+    expect(history.search()).toBe('?tab=partner&inactive=1');
+  });
+
+  it('쪽을 옮기면 선택이 주소에서 사라진다', async () => {
+    const { history, user } = renderScreen(
+      [partnerListRoute(partnerFixtures, { page: 1, size: 2, total: 9 }), partnerRolesRoute()],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(within(partnerPane()).getByRole('button', { name: '다음' }));
+
+    expect(history.search()).toBe('?tab=partner&page=2');
+  });
+
+  /* C11 — 탭마다 목록이 통째로 다르다. 선택 번호를 넘기면 그 탭에 없는 자원을 조회하게 된다. */
+  it('거래처 탭으로 바꾸면 이전 탭의 조건·선택이 사라진다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), codeGroupDetailRoute(), codeValueListRoute(), ...partnerRoutes()],
+      '?q=SYN&inactive=1&page=2&grp=1001',
+    );
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    await user.click(screen.getByRole('tab', { name: '거래처 역할' }));
+
+    expect(history.search()).toBe('?tab=partner');
+    expect(await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' })).toBeInTheDocument();
+  });
+
+  it('거래처 탭에서 다른 탭으로 바꾸면 거래처 조건·선택이 사라진다', async () => {
+    const { history, user } = renderScreen(
+      [codeGroupListRoute(), ...partnerRoutes()],
+      '?tab=partner&q=SAMPLE&inactive=1&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(screen.getByRole('tab', { name: '공통코드' }));
+
+    expect(history.search()).toBe('?tab=code');
+    expect(await screen.findByRole('button', { name: 'SYN-GRP-01' })).toBeInTheDocument();
+  });
+
+  /* 탭 전환도 한 조작이다 — 뒤로가기 한 번이면 직전 주소로 돌아간다. */
+  it('거래처 탭으로 바꾼 뒤 뒤로가기 한 번이면 직전 주소로 돌아간다', async () => {
+    const { history, user } = renderScreen([codeGroupListRoute(), ...partnerRoutes()], '?q=SYN');
+    await screen.findByRole('button', { name: 'SYN-GRP-01' });
+
+    const before = history.search();
+
+    await user.click(screen.getByRole('tab', { name: '거래처 역할' }));
+    await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' });
+
+    history.back();
+    expect(history.search()).toBe(before);
   });
 });
