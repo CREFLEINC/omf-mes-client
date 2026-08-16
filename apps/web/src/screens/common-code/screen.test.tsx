@@ -20,6 +20,8 @@ import {
   partnerRoleFixtures,
   workerFixtures,
 } from './fixtures';
+/* 코드 글자를 시험이 다시 적지 않는다(결정 2) — 리터럴은 어휘 고정 감지기 한 자리에만 둔다. */
+import { PARTNER_ROLE_CODES } from './partner-role-vocab';
 import { CommonCodeScreen } from './screen';
 
 type Editability = components['schemas']['Editability'];
@@ -4048,6 +4050,9 @@ describe('CommonCodeScreen — 거래처 조건과 탭 전환 (C11·C15)', () =>
 
 /* ── 거래처 역할 편집과 통째 교체 저장 (C24~C35) ───────────────────────────── */
 
+/** 어휘 밖 코드. 어휘 표에 없으므로 여기서 짓는다 — 화면이 모르는 값이 이 시험의 요점이다. */
+const UNKNOWN_ROLE_CODE = 'SAMPLE-ROLE-X';
+
 /** 이름과 표식이 붙어 읽히지 않게 사이에 낱말 공백 하나가 든다. */
 const UNKNOWN_ROLE_LABEL = '샘플 역할 엑스 이 화면이 모르는 역할';
 
@@ -4063,10 +4068,15 @@ const rolesReplaceRoute = (respond: StubRoute['respond'], partnerId = 9001): Stu
   respond,
 });
 
-/** 서버는 정규화한 결과를 돌려준다 — 화면이 그 응답으로 초안을 다시 세워야 한다. */
+/**
+ * 서버는 정규화한 결과를 돌려준다 — 화면이 그 응답으로 초안을 다시 세워야 한다.
+ *
+ * 어휘 안 코드는 **표에서 꺼내 쓴다**(결정 2) — 리터럴은 어휘 고정 감지기 한 자리에만 둔다.
+ * `SAMPLE-ROLE-X`는 어휘 표에 없는 값이라 여기서 짓는다.
+ */
 const replacedRoles = [
-  { roleTypeCode: 'SAMPLE-ROLE-X', roleTypeName: '샘플 역할 엑스' },
-  { roleTypeCode: 'DISPOSAL', roleTypeName: '폐기처리' },
+  { roleTypeCode: UNKNOWN_ROLE_CODE, roleTypeName: '샘플 역할 엑스' },
+  { roleTypeCode: PARTNER_ROLE_CODES.disposal, roleTypeName: '폐기처리' },
 ];
 
 /**
@@ -4078,6 +4088,33 @@ const neverFinishingResponse = (): Response =>
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
+
+/**
+ * 시험이 도착 시점을 정하는 응답. 본문 스트림을 열어 둔 채 돌려주고 `release`로 닫는다 —
+ * **응답이 도착하기 전에 다른 거래처로 옮기는** 경로를 재려면 그 사이가 필요하다.
+ */
+const deferredJsonResponse = (
+  status: number,
+): { response: Response; release: (body: unknown) => void } => {
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+
+  const response = new Response(
+    new ReadableStream<Uint8Array>({
+      start: (source) => {
+        controller = source;
+      },
+    }),
+    { status, headers: { 'Content-Type': 'application/json' } },
+  );
+
+  return {
+    response,
+    release: (body) => {
+      controller?.enqueue(new TextEncoder().encode(JSON.stringify(body)));
+      controller?.close();
+    },
+  };
+};
 
 const putRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.method === 'PUT');
@@ -4170,7 +4207,12 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
       expect(putRequests(requests)).toHaveLength(1);
     });
 
-    expect(sentRoleCodes(requests)).toEqual(['CUSTOMER', 'SUPPLIER', 'DISPOSAL', 'SAMPLE-ROLE-X']);
+    expect(sentRoleCodes(requests)).toEqual([
+      PARTNER_ROLE_CODES.customer,
+      PARTNER_ROLE_CODES.supplier,
+      PARTNER_ROLE_CODES.disposal,
+      UNKNOWN_ROLE_CODE,
+    ]);
   });
 
   /* C31 — 성공 알림이 없으면 사용자는 저장이 됐는지 화면을 다시 훑어 확인해야 한다. */
@@ -4225,6 +4267,36 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     expect(roleCheckbox('공급사')).not.toBeChecked();
     expect(roleCheckbox('폐기 업체')).toBeChecked();
     /* 서버가 돌려준 것이 기준값이 됐다 — 재조회가 오기 전에 이미 저장이 잠긴다. */
+    expect(partnerSaveButton()).toBeDisabled();
+  });
+
+  /*
+   * C31 — **응답이 저장 전과 값이 같아도 되세운다.**
+   *
+   * 조회 라이브러리는 새 값이 옛 값과 깊이 같으면 **옛 참조를 유지한다**(`replaceEqualDeep`).
+   * 되세우기가 참조 동일성으로 판정하므로, 그때 초안을 비워 주지 않으면 화면이 서버가 말한
+   * 상태가 아니라 **사용자가 고른 상태**를 계속 보인다 — 서버가 저장을 조용히 무시한 경우가
+   * 정확히 그 갈래이고, 무상태 목 서버가 늘 그 갈래다.
+   */
+  it('저장 응답이 저장 전과 값이 같아도 체크를 서버 상태로 다시 세운다', async () => {
+    const { user } = renderScreen(
+      [
+        partnerListRoute(),
+        partnerRolesRoute(),
+        /* 서버가 「받았다」면서 **저장 전과 똑같은 목록**을 돌려준다. */
+        rolesReplaceRoute(() => jsonResponse(partnerRoleFixtures)),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(roleCheckbox('공급사')).not.toBeChecked();
+    });
     expect(partnerSaveButton()).toBeDisabled();
   });
 
@@ -4389,7 +4461,7 @@ describe('CommonCodeScreen — 해제 확인 창 (C25·C26·C27)', () => {
     await waitFor(() => {
       expect(putRequests(requests)).toHaveLength(1);
     });
-    expect(sentRoleCodes(requests)).toEqual(['DISPOSAL', 'SAMPLE-ROLE-X']);
+    expect(sentRoleCodes(requests)).toEqual([PARTNER_ROLE_CODES.disposal, UNKNOWN_ROLE_CODE]);
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
@@ -4432,6 +4504,117 @@ describe('CommonCodeScreen — 저장이 나가는 중 (C33)', () => {
       expect(within(dialog).getByRole('button', { name: '해제하고 저장' })).toBeDisabled();
     });
     expect(within(dialog).getByRole('button', { name: '계속 편집' })).toBeDisabled();
+  });
+});
+
+/**
+ * **나가는 중인 저장은 자기 거래처 밖으로 새지 않는다.**
+ *
+ * `resetIfIdle`가 나가는 중인 쓰기를 거두지 않는 것은 옳다(되먹임을 끊지 않는다 · `omf-mes#96`).
+ * 그래서 거두지 못한 상태가 남는데, **좌 목록은 저장 중에도 잠기지 않으므로** 사용자는 그사이
+ * 다른 거래처를 고를 수 있다. 끊는 것과 가리는 것을 갈라 두 면을 각각 잰다.
+ */
+describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', () => {
+  const twoPartnerRoutes = (): StubRoute[] => [
+    partnerListRoute(),
+    partnerRolesRoute(),
+    partnerRolesRoute(9002, []),
+  ];
+
+  /* 손댄 적 없는 거래처가 「저장 중」으로 잠기고, 그 비활성에는 사유조차 없다. */
+  it('저장이 나가는 중에 옮겨 간 거래처는 잠기지 않는다', async () => {
+    const { user } = renderScreen(
+      [...twoPartnerRoutes(), rolesReplaceRoute(neverFinishingResponse)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await waitFor(() => {
+      expect(partnerSaveButton()).toBeDisabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await screen.findByText('지정된 역할이 없습니다');
+
+    for (const box of within(partnerRolePane()).getAllByRole('checkbox')) {
+      expect(box).toBeEnabled();
+    }
+    /* 잠겼다면 사유 없는 비활성이 된다 — 사유가 보인다는 것이 곧 진행 표시가 없다는 뜻이다. */
+    expect(within(partnerRolePane()).getByText(/저장은 역할을 고친 뒤에/)).toBeInTheDocument();
+  });
+
+  /*
+   * 뒤늦게 온 앞 거래처의 실패가 지금 구획에 서면 사용자는 **손댄 적 없는 거래처가 막힌 줄** 안다.
+   * 계획 D-11이 「남의 실패 배너를 보게 된다」를 금지 사항으로 못 박은 자리다.
+   */
+  it('저장이 뒤늦게 실패해도 그사이 옮겨 간 거래처에 배너가 서지 않는다', async () => {
+    const deferred = deferredJsonResponse(400);
+
+    const { requests, user } = renderScreen(
+      [...twoPartnerRoutes(), rolesReplaceRoute(() => deferred.response)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await screen.findByText('지정된 역할이 없습니다');
+    /* 옮겨 간 거래처도 저장할 수 있는 상태로 둔다 — 그래야 실패 도착 시점을 잡을 자리가 생긴다. */
+    await user.click(roleCheckbox('공급사'));
+
+    await act(async () => {
+      deferred.release({
+        message: '',
+        errors: [{ scope: 'screen', code: 'DENIED', message: '저장이 막혔습니다.' }],
+      });
+    });
+
+    /* 잠금이 풀린 것으로 실패가 도착한 것을 안다 — 도착 전에 단언하면 늘 통과한다. */
+    await waitFor(() => {
+      expect(partnerSaveButton()).toBeEnabled();
+    });
+    expect(within(partnerRolePane()).queryByText('저장이 막혔습니다.')).not.toBeInTheDocument();
+  });
+
+  /*
+   * F-1 — **끊지는 않는다.** 가리는 축을 세운 뒤에도 `resetIfIdle`의 「나가는 중이면 손대지
+   * 않는다」 가드는 살아 있어야 한다. 가드가 없으면 옵저버가 떨어져 **무효화도 성공도 실패도
+   * 오지 않는다** — 서버에는 저장됐는데 화면에는 아무 흔적도 남지 않는다(`omf-mes#96`).
+   */
+  it('저장이 나가는 중에 거래처를 옮겨도 그 저장의 되먹임이 끊기지 않는다', async () => {
+    const deferred = deferredJsonResponse(200);
+
+    const { requests, user } = renderScreen(
+      [...twoPartnerRoutes(), rolesReplaceRoute(() => deferred.response)],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    /* 해제가 있는 저장이라 확인 창을 거친다 — 창을 거친 길에서도 같아야 한다. */
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '해제하고 저장' }),
+    );
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-B' }));
+    await screen.findByText('지정된 역할이 없습니다');
+
+    await act(async () => {
+      deferred.release(replacedRoles);
+    });
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
   });
 });
 

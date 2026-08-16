@@ -68,6 +68,21 @@ describe('PartnerRoleConfirmDialog — 잃는 것을 전부 밝힌다 (결정 10
     expect(within(dialog()).getByText('이 화면이 모르는 역할')).toBeInTheDocument();
   });
 
+  /*
+   * 이름과 표식이 붙어 읽히지 않게 **낱말 공백 하나**가 든다(페인 쪽과 같은 규율).
+   * 페인은 체크칸의 접근 이름이 그 공백을 재지만 창의 `<li>`에는 접근 이름이 없다 —
+   * `getByText`는 직계 텍스트 노드만 보므로 공백이 없어도 통과한다. 줄 전체를 재야 잡힌다.
+   */
+  it('어휘 밖 역할의 이름과 표식이 붙어 읽히지 않는다', () => {
+    renderDialog();
+
+    const rows = within(dialog())
+      .getAllByRole('listitem')
+      .map((row) => row.textContent);
+
+    expect(rows).toEqual(['고객사', '샘플 역할 엑스 이 화면이 모르는 역할']);
+  });
+
   it('어휘 안 역할만 해제되면 그 표식이 붙지 않는다', () => {
     renderDialog({ released: [RELEASED[0]!] });
 

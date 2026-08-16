@@ -995,10 +995,40 @@ export const CommonCodeScreen = () => {
        * 남의 자리에 앉지 않는다.
        */
       queryClient.setQueryData(partnerKeys.roles(selectedPartnerId ?? 0), saved);
+      /*
+       * **초안을 비워 되세우기를 다시 열어 준다.** 조회 라이브러리는 새 값이 옛 값과 깊이 같으면
+       * **옛 참조를 그대로 유지한다**(`replaceEqualDeep`) — 그러면 위 규칙이 「출처가 그대로」로
+       * 읽어 초안이 다시 서지 않고, 화면은 서버가 말한 상태가 아니라 **사용자가 고른 상태**를
+       * 계속 보인다(서버가 저장을 조용히 무시한 경우가 정확히 그 갈래다).
+       * 비워 두면 다음 렌더가 **갱신된 캐시**에서 초안을 다시 세운다.
+       */
+      setPartnerRoleState(null);
       setIsPartnerRoleConfirmOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
+
+  /**
+   * **나가는 중인 저장이 지금 보고 있는 거래처의 것인가.**
+   *
+   * `resetIfIdle`는 나가는 중인 쓰기를 **거두지 않는다**(옳다 — 되먹임을 끊지 않는다).
+   * 그래서 거두지 못한 상태(`isSaving`·`error`)가 그대로 남는데, 그사이 사용자가 다른 거래처를
+   * 고르면 **손댄 적 없는 거래처에 「저장 중」과 「저장이 막혔습니다」가 선다.** 좌 목록은 저장
+   * 중에도 잠기지 않으므로 특수한 경로가 아니다.
+   *
+   * 끊는 것과 **가리는 것**은 다르다 — 되먹임은 그대로 두고, *보이는 것*만 대상이 같을 때 낸다.
+   * 같은 저장소의 전례 둘이 같은 자리에 같은 축을 두었다(`iqc-skip-approval`의
+   * `isWriteResultMine` · `disposal-issue`의 `isChainForCurrentTarget`).
+   */
+  const [roleWriteTargetId, setRoleWriteTargetId] = useState<number | null>(null);
+
+  const isRoleWriteMine = roleWriteTargetId === selectedPartnerId;
+
+  /** 저장을 내는 자리는 둘(확인 창 있는 길·없는 길)뿐이고 **둘 다 여기를 지난다.** */
+  const writePartnerRoles = (selected: readonly string[]) => {
+    setRoleWriteTargetId(selectedPartnerId);
+    partnerRoleWrite.write(selected);
+  };
 
   /**
    * **나가는 중인 쓰기는 건드리지 않는다**(`omf-mes#96`).
@@ -1061,13 +1091,13 @@ export const CommonCodeScreen = () => {
       return;
     }
 
-    partnerRoleWrite.write(partnerRoleState.selected);
+    writePartnerRoles(partnerRoleState.selected);
   };
 
   const confirmSavePartnerRoles = () => {
     if (partnerRoleState === null) return;
 
-    partnerRoleWrite.write(partnerRoleState.selected);
+    writePartnerRoles(partnerRoleState.selected);
   };
 
   /*
@@ -1595,12 +1625,18 @@ export const CommonCodeScreen = () => {
         /*
          * 확인 창이 서 있는 동안에는 실패를 **창 안에서** 낸다 — 두 자리에 같은 배너를 두면
          * 사용자가 스크림 뒤의 사본을 읽으려 든다.
+         *
+         * **남의 실패는 아예 그리지 않는다**(`isRoleWriteMine`) — 뒤늦게 온 앞 거래처의 실패가
+         * 지금 구획에 서면 사용자는 손댄 적 없는 거래처가 막힌 줄 안다.
          */
         banner={
-          isPartnerRoleConfirmOpen ? null : <SaveErrorBanner error={partnerRoleWrite.error} />
+          isPartnerRoleConfirmOpen || !isRoleWriteMine ? null : (
+            <SaveErrorBanner error={partnerRoleWrite.error} />
+          )
         }
         isDirty={isPartnerRoleDirty}
-        isSaving={partnerRoleWrite.isSaving}
+        /* 잠금과 진행 표시도 대상이 같을 때만 낸다 — 사유 없는 비활성이 남의 구획에 서지 않는다. */
+        isSaving={isRoleWriteMine && partnerRoleWrite.isSaving}
         onToggleRole={togglePartnerRoleChoice}
         onSave={handleSavePartnerRoles}
         onCancel={() => {

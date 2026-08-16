@@ -110,8 +110,17 @@ export const PartnerRolePane = ({
         {/*
          * 체크칸이 전부 꺼져 있는 것만으로도 보이지만 **말로도 밝힌다** —
          * 못 불러온 것과 없는 것이 구분돼야 한다(위 두 갈래와 갈리는 자리다).
+         *
+         * 체크칸이 늘 여섯 서므로 구획이 「비어 있지」 않아 `EmptyState`는 쓰지 않는다. 다만
+         * 그것이 갖고 있던 **안내 영역(`live`)은 유지한다** — 거래처를 옮겨 「역할 없음」이
+         * 새로 뜨는 순간이 보조기술에 읽히지 않으면 좌 목록만 보고 있는 사용자는 그 사실을
+         * 놓친다. 위 로딩 갈래와 함께 서지 않으므로 안내 영역이 둘이 되지 않는다.
          */}
-        {!hasSavedRole && <p className="field-note">{t.partnerRole.empty.noneTitle}</p>}
+        {!hasSavedRole && (
+          <p role="status" className="field-note">
+            {t.partnerRole.empty.noneTitle}
+          </p>
+        )}
 
         <div className="check-group">
           {choices.map((choice) => (

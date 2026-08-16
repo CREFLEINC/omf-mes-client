@@ -222,6 +222,16 @@ describe('PartnerRolePane — 역할 구획의 세 갈래 (C19)', () => {
     expect(within(rolePane()).getByText('지정된 역할이 없습니다')).toBeInTheDocument();
   });
 
+  /*
+   * 거래처를 옮겨 이 문장이 **새로 뜨는 순간**은 좌 목록을 보고 있는 사용자에게 읽혀야 한다 —
+   * 체크칸 여섯은 그대로 서 있어 화면이 바뀐 티가 나지 않는다.
+   */
+  it('그 안내가 안내 영역으로 선다', () => {
+    renderPane({ choices: toPartnerRoleChoices([], []), hasSavedRole: false });
+
+    expect(within(rolePane()).getByRole('status')).toHaveTextContent('지정된 역할이 없습니다');
+  });
+
   it('붙은 역할이 있으면 그 문구를 내지 않는다', () => {
     renderPane();
 
