@@ -74,6 +74,12 @@ export const CodeGroupFormPane = ({
 
   const saveLabel = mode === 'create' ? t.actions.addCodeGroup : messages.common.save;
 
+  /* 사유 문면이 두 벌인 이유: 저장 자리의 **컨트롤 이름이 모드마다 다르고**, 문구는 그 이름으로 시작한다(배치 규범 4-5). */
+  const saveLockedReason =
+    mode === 'create'
+      ? t.codeGroup.actionReasons.addLockedByOtherCodeGroup
+      : t.codeGroup.actionReasons.saveLockedByOtherCodeGroup;
+
   /**
    * 저장 자리의 세 상태. **잠금에서 오는 비활성에는 반드시 사유가 붙는다**(배치 규범 4) —
    * 남의 저장이 왜 내 저장을 막는지는 이 구획 어디에도 드러나지 않아, 사유가 없으면
@@ -83,11 +89,6 @@ export const CodeGroupFormPane = ({
    * **고친 것이 없음**(자기 사정)이라 원인이 사용자가 방금 한 일에 그대로 있다.
    * 형제 구획(자격)과 같은 갈래 순서이며, 자격의 셋째 갈래(중복 짝 차단)에 해당하는 사정이
    * 이 구획에는 없다 — 서버가 거부할 것을 미리 아는 자리가 없다.
-   *
-   * **사유 문구는 등록·수정이 함께 쓴다.** 등록 폼의 주 액션 이름은 「그룹 추가」라 그 갈래에서는
-   * 문형이 컨트롤 이름으로 시작하지 못한다(규범 4-5 · `DisabledAction`의 prop 문서가 같은 것을
-   * 요구한다). 사유가 `aria-describedby`로 그 버튼에 이어지는 것(규범 4-1)은 그대로이며,
-   * **D-9가 이 구획에 잠금 사유 한 키를 승인했다** — 문면을 둘로 나눌지는 계획으로 되돌려 정한다.
    */
   const saveAction = (): ReactNode => {
     /* 내 저장이 나가는 중이면 진행 표시가 사유 자리를 대신한다. */
@@ -101,12 +102,7 @@ export const CodeGroupFormPane = ({
 
     /* 남의 저장이 나가는 중이다 — 잠그되 **무엇을 기다리는지** 밝힌다. */
     if (isLocked) {
-      return (
-        <DisabledAction
-          label={saveLabel}
-          reason={t.codeGroup.actionReasons.saveLockedByOtherCodeGroup}
-        />
-      );
+      return <DisabledAction label={saveLabel} reason={saveLockedReason} />;
     }
 
     return (

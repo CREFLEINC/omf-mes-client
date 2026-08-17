@@ -202,15 +202,20 @@ describe('CodeGroupFormPane — 다른 코드그룹의 저장이 나가는 중',
    * 등록 폼도 같은 저장 자리를 쓴다 — 수정 저장이 나가는 중에 「그룹 추가」를 누르면 이 폼이
    * 그 잠금 안에서 열린다(D-3의 두 훅 잠금). 사유 없이 비활성으로 두면 사용자는 무엇을
    * 기다리는지 알 수 없다.
+   *
+   * **사유는 그 컨트롤의 이름으로 시작한다**(배치 규범 4-5) — 이 폼의 주 액션은 「저장」이
+   * 아니라 「그룹 추가」라 문면도 그 이름의 것이어야 한다.
    */
-  it('등록 폼의 주 액션도 남의 저장이 나가는 중이면 사유와 함께 잠긴다', () => {
+  it('등록 폼의 주 액션도 남의 저장이 나가는 중이면 그 이름의 사유와 함께 잠긴다', () => {
     renderPane({ mode: 'create', isDirty: true, isLocked: true, isSaving: false });
 
     const add = screen.getByRole('button', { name: '그룹 추가' });
 
     expect(add).toBeDisabled();
     expect(
-      screen.getByText('저장은 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.'),
+      screen.getByText('그룹 추가는 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.'),
     ).toBeInTheDocument();
+    /* 수정 자리의 문면이 여기 서면 사용자는 「저장」이라는 없는 버튼을 찾는다. */
+    expect(screen.queryByText(/^저장은 다른 코드그룹의/)).not.toBeInTheDocument();
   });
 });
