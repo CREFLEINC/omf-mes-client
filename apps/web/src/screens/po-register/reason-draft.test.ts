@@ -15,7 +15,7 @@ describe('readReason', () => {
    * 통과시킨다**(계획 §5.2.3 · 이번 회차 목 4021 재실측) — 통과하면 결재함 목록의 요약 자리가
    * 빈 채로 결재에 올라가고, 그 요청은 무엇에 대한 것인지 읽을 수 없다.
    */
-  it.each(['', ' ', '   ', '\n', '\t\n '])('빈 값과 공백만(%j)은 보낼 수 없다', (raw) => {
+  it.each(['', ' ', '   ', '\n', '\r\n', '\t\n '])('빈 값과 공백만(%j)은 보낼 수 없다', (raw) => {
     expect(readReason(raw)).toEqual({ kind: 'empty' });
   });
 
@@ -84,6 +84,23 @@ describe('toApprovalRequest', () => {
  * 확인한 글자와 결재함에 실릴 글자가 갈린다.
  */
 describe('toReasonLines · toVisibleLine', () => {
+  /**
+   * **상수 자신을 기대값으로 쓰는 고리를 끊는다**(사본 체크리스트 6번 · 리뷰 R-25).
+   *
+   * 아래 세 시험은 기대값에 `NO_BREAK_SPACE`를 그대로 쓰므로 **상수가 무엇이든 통과한다** —
+   * 저장소의 「비가시 공백 정리」 한 번이 상수를 보통 공백으로 바꿔도 아무 감지기가 울지 않고,
+   * 그 순간 `toVisibleLine`이 무동작이 되어 확인 창의 빈 줄·들여쓰기가 접힌다(되돌릴 수 없는
+   * 조작의 마지막 확인 층에서 **본 글자와 보낼 글자가 갈린다**).
+   *
+   * 그래서 **코드포인트를 직접** 문다 — escape 표기·`export`와 함께 두 겹째 방어다
+   * (전례 `disposal-issue/approval-progress-pane.test.tsx`와 같은 형태).
+   */
+  it('줄바꿈 없는 공백이 정말 U+00A0이다 — 보통 공백이 아니다', () => {
+    expect(NO_BREAK_SPACE).toBe('\u00a0');
+    expect(NO_BREAK_SPACE).not.toBe(' ');
+    expect(NO_BREAK_SPACE.codePointAt(0)).toBe(0x00a0);
+  });
+
   it('줄바꿈으로 가르고 CRLF도 같이 다룬다', () => {
     expect(toReasonLines('첫 줄\r\n둘째 줄\n\n넷째 줄')).toEqual([
       '첫 줄',

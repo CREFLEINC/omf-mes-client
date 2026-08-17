@@ -123,6 +123,12 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 있고, 대상 전표가 바뀌면 결과와 함께 사유도 거둔다(7행) — 남겨 두면 앞 초과분에 붙일 사유가
  * 다른 발주의 결재에 올라간다. **상신에 실패해도 사유는 남는다**(다시 올릴 길이 그것이다).
  *
+ * **상신 결과는 전표 번호에 매인다**(리뷰 R-24). 나가는 중인 쓰기를 끊지 않으므로 정리
+ * effect가 지나간 뒤 응답이 도착하는 길이 실재한다 — **주소는 잠글 수 없다**(뒤로·앞으로·주소
+ * 편집). 그래서 「올렸다」를 깃발이 아니라 **올린 전표 번호**로 들고, 성공 갈래인지는
+ * **읽는 자리**(`submitPhase`)에서 지금 전표와 대조해 정한다. 정리 effect도 그 값을 함께
+ * 거두지만 그것은 **둘째 겹**이고, 순서에 기대지 않는 쪽이 첫째 겹이다.
+ *
  * **되돌릴 수 없는 쓰기가 둘이고 서로 별개다**(착수 이슈 §6 ③ · 계획 결정 9). 등록 한 번이
  * 상신을 잇지 않고, 상신은 **등록이 끝난 뒤에만** 설 수 있다. 두 쓰기가 각자 확인 창·잠금·
  * 실패 배너를 갖는다 — 한 자리에 뭉치면 어느 쪽이 실패했는지 사용자가 가릴 수 없다.
@@ -173,8 +179,18 @@ export const PoRegisterScreen = () => {
   /** 친 상신 사유 글자 그대로. **판정과 조립은 `reason-draft.ts` 한 곳이 한다** */
   const [submitReason, setSubmitReason] = useState('');
 
-  /** 결재에 올라갔는가. **화면이 확인한 사실만 담는다**(202를 받았다) */
-  const [hasSubmitted, setHasSubmitted] = useState(false);
+  /**
+   * **어느 전표를 결재에 올렸는가**. `null`이면 아직 아무것도 올리지 않았다.
+   *
+   * **불리언으로 들지 않는다**(리뷰 R-24). 이 화면은 나가는 중인 쓰기를 끊지 않으므로
+   * (`resetIfIdle`) 대상을 바꾼 **뒤에** 202가 도착하는 길이 실재한다 — 그때 「올렸다」를
+   * 깃발로만 들고 있으면 **올린 적 없는 전표 위에 「결재에 올렸습니다」**가 서고, 그 갈래에서는
+   * 사유 칸과 버튼이 아예 서지 않아 정작 그 전표를 올릴 길이 사라진다.
+   *
+   * **판정은 읽는 자리에서 한다**(전례 `disposal-issue`의 매임 축과 같은 형태). 정리 effect가
+   * 지워 주기를 기대할 수 없다 — 주소는 잠글 수 없고, 늦게 온 응답은 그 뒤에 도착한다.
+   */
+  const [submittedPurchaseOrderId, setSubmittedPurchaseOrderId] = useState<number | null>(null);
 
   /** 확인을 기다리는 조작. `null`이면 열린 창이 없다 */
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -245,10 +261,31 @@ export const PoRegisterScreen = () => {
    * 그 값은 결재함(W-CO-09)이 정본이고, 여기서 또 읽으면 두 화면이 서로 다른 시점의 값으로
    * 같은 요청을 말하게 된다.
    */
+  /**
+   * 지금 **나가고 있는 상신이 겨눈 전표**와 **화면이 지금 보고 있는 전표**.
+   *
+   * 늦게 도착한 성공을 어느 전표의 것으로 적을지, 그리고 그것이 **지금 보고 있는 전표의
+   * 것인지**를 응답이 온 시점에 알아야 한다 — 둘 다 그 시점에는 렌더 클로저의 값이 낡아 있다.
+   */
+  const submittingPurchaseOrderIdRef = useRef<number | null>(null);
+  const currentPurchaseOrderIdRef = useRef<number | null>(null);
+
+  currentPurchaseOrderIdRef.current = purchaseOrderId;
+
   const submit = useRequestApproval({
     purchaseOrderId,
     onSuccess: () => {
-      setHasSubmitted(true);
+      /* **그 호출이 겨눈 번호**로 적는다 — 지금 보고 있는 전표가 아니라. */
+      const submittedId = submittingPurchaseOrderIdRef.current;
+
+      setSubmittedPurchaseOrderId(submittedId);
+
+      /*
+       * **늦게 온 성공은 적기만 한다.** 사유를 비우거나 창을 닫는 것은 지금 보고 있는 전표의
+       * 조작이라, 남의 전표의 응답이 그것을 건드리면 새 대상에서 치던 사유가 사라진다.
+       */
+      if (submittedId !== currentPurchaseOrderIdRef.current) return;
+
       setSubmitReason('');
       setPending(null);
     },
@@ -321,7 +358,7 @@ export const PoRegisterScreen = () => {
      */
     setPurchaseOrderId(null);
     setSubmitReason('');
-    setHasSubmitted(false);
+    setSubmittedPurchaseOrderId(null);
     resetIfIdle(submit);
   };
 
@@ -509,7 +546,15 @@ export const PoRegisterScreen = () => {
    * 자리마다 따로 판정하면 배너와 버튼이 서로 다른 갈래를 말한다.
    */
   const submitPhase = (): SubmitPhase => {
-    if (hasSubmitted) return 'submitted';
+    /*
+     * **어느 전표를 올렸는지 묻는다**(리뷰 R-24). 「올렸다」를 깃발로만 보면 대상을 바꾼 뒤
+     * 도착한 성공이 **올린 적 없는 전표 위에** 성공 갈래를 세운다 — 되돌릴 수 없는 조작에 대한
+     * 거짓 진술이고, 그 갈래에서는 사유 칸도 버튼도 서지 않아 올릴 길까지 사라진다.
+     */
+    if (submittedPurchaseOrderId !== null && submittedPurchaseOrderId === purchaseOrderId) {
+      return 'submitted';
+    }
+
     if (isSubmitting) return 'submitting';
 
     /*
@@ -599,6 +644,8 @@ export const PoRegisterScreen = () => {
     }
 
     setSubmitStarting(true);
+    /* 이 호출이 겨눈 전표를 적어 둔다 — 응답이 늦게 오면 그때의 화면은 다른 전표를 볼 수 있다. */
+    submittingPurchaseOrderIdRef.current = purchaseOrderId;
 
     void fetchPoDetail(purchaseOrderId)
       .catch(() => undefined)

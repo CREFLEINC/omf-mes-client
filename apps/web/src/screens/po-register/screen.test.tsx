@@ -19,6 +19,7 @@ import {
   inboundReceiptLineFixtures,
   inboundReceiptLineResponse,
   inboundReceiptNoLineFixtures,
+  inboundReceiptResponse,
   itemFixtures,
   partnerFixtures,
   plantFixtures,
@@ -32,6 +33,8 @@ const t = messages.poRegister;
 
 const ROUTE = '/logistics/po-register';
 const RECEIPT_PATH = '/logistics/inbound-receipts/9101';
+/** 두 번째 초과분 — **주소로 대상을 바꾸는 갈래**에서만 쓴다(리뷰 R-24 감지기). */
+const SECOND_RECEIPT_PATH = '/logistics/inbound-receipts/9102';
 const PARTNERS_PATH = '/mdm/partners';
 const BUSINESS_UNITS_PATH = '/mdm/business-units';
 const PLANTS_PATH = '/mdm/plants';
@@ -246,6 +249,42 @@ const conflictThenOkSubmitRoute = (): StubRoute => {
   };
 };
 
+/**
+ * 두 번째 등록이 **다른 전표**를 되돌려 주는 갈래.
+ *
+ * 대상이 바뀌면 만들어지는 발주도 다른 전표다 — 같은 번호를 되돌려 주면 「올린 전표인가」를
+ * 묻는 판정이 우연히 맞아, 늦게 온 성공이 남의 전표 위에 서는 것을 잴 수 없다.
+ */
+const createRouteSequence = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isPost(request, PO_COLLECTION_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse(
+        call === 1
+          ? purchaseOrderDetailBody()
+          : purchaseOrderDetailBody({ purchaseOrderId: 9002, purchaseOrderNo: 'SAMPLE-PO-9002' }),
+        { status: 201, headers: { ETag: CREATE_ETAG } },
+      );
+    },
+  };
+};
+
+/** 두 번째 초과분 전표 — 대상을 바꾸는 갈래를 만드는 값이다. */
+const secondReceiptRoute = (): StubRoute => ({
+  match: (request) => isGet(request, SECOND_RECEIPT_PATH),
+  respond: () =>
+    jsonResponse(
+      inboundReceiptDetailBody(
+        [inboundReceiptLineResponse({ inboundReceiptLineId: 9121, receivedQty: 5 })],
+        inboundReceiptResponse({ inboundReceiptId: 9102, inboundReceiptNo: 'SAMPLE-IR-9102' }),
+      ),
+    ),
+});
+
 const failingCreateRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
   match: (request) => isPost(request, PO_COLLECTION_PATH),
   respond: () => jsonResponse(body, { status }),
@@ -279,6 +318,28 @@ const LocationProbe = () => {
   const location = useLocation();
 
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+};
+
+/**
+ * 주소로 **대상 전표를 바꾼다**.
+ *
+ * 화면 안에는 `receipt`를 바꾸는 조작이 없고 라우트도 아직 닫혀 있지만, **주소는 잠글 수
+ * 없다**(뒤로·앞으로·주소 편집 · 전례가 이름 붙인 자리) — 나가는 중인 쓰기가 그 뒤에 응답을
+ * 되돌리는 길이 여기서 열린다.
+ */
+const TargetSwitchProbe = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigate(`${ROUTE}?receipt=9102`);
+      }}
+    >
+      대상 바꾸기
+    </button>
+  );
 };
 
 /**
@@ -318,6 +379,7 @@ const renderScreen = (
       <PoRegisterScreen />
       <LocationProbe />
       <BackProbe />
+      <TargetSwitchProbe />
     </>,
     { fetch, route: `${ROUTE}${search}` },
   );
@@ -435,6 +497,16 @@ const registerAndSubmit = async (
 
 const submitRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === SUBMIT_PATH);
+
+/**
+ * 결재 진행 조회를 센다 — **여는 잣대와 세는 잣대를 같은 모양으로** 맞춘다(리뷰 R-28).
+ *
+ * 스텁은 `startsWith`로 열어 두므로 정확 일치로 세면 `…/approval-requests/9801` 같은 하위
+ * 경로 호출을 **스텁은 받아 주고 감지기는 세지 못한다.** 이 단언이 계획 결정 11을 지키는
+ * 자리라 그 틈을 남기지 않는다.
+ */
+const approvalRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname.startsWith(APPROVAL_PATH));
 
 describe('W-01-11 신규 P/O 등록 — 진입 맥락(C1)', () => {
   it('맥락이 있으면 입하 상세를 정확히 1회 부르고 전표와 라인을 보인다', async () => {
@@ -678,7 +750,7 @@ describe('이 화면에 두지 않는 것(C10)', () => {
     await waitForSource();
 
     expect(getsTo(requests, PO_COLLECTION_PATH)).toHaveLength(0);
-    expect(requestsTo(requests, APPROVAL_PATH)).toHaveLength(0);
+    expect(approvalRequests(requests)).toHaveLength(0);
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
   });
 
@@ -1248,7 +1320,7 @@ describe('등록 성공(C20·C21·C23·C24)', () => {
     await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
 
     expect(requestsTo(requests, SUBMIT_PATH)).toHaveLength(0);
-    expect(requestsTo(requests, APPROVAL_PATH)).toHaveLength(0);
+    expect(approvalRequests(requests)).toHaveLength(0);
     expect(getsTo(requests, PO_DETAIL_PATH)).toHaveLength(0);
     expect(createRequests(requests)).toHaveLength(1);
     /* 짝 — 상신 자리는 등록 뒤에 실제로 선다(계획 결정 9의 나머지 반쪽). */
@@ -1710,7 +1782,7 @@ describe('상신 성공(C30)', () => {
 
     await screen.findByText(t.result.submittedTitle('SAMPLE-PO-9001'));
 
-    expect(requestsTo(requests, APPROVAL_PATH)).toHaveLength(0);
+    expect(approvalRequests(requests)).toHaveLength(0);
     expect(within(resultPane()).queryAllByRole('table')).toHaveLength(0);
     expect(within(resultPane()).queryAllByRole('list')).toHaveLength(0);
   });
@@ -1883,6 +1955,60 @@ describe('상신 실패(C31)', () => {
 
     await screen.findByText(t.result.submittedTitle('SAMPLE-PO-9001'));
 
+    expect(submitRequests(requests)).toHaveLength(1);
+  });
+
+  /**
+   * **늦게 도착한 성공이 남의 전표 위에 서지 않는다**(리뷰 R-24 · 전례 `disposal-issue`의 매임 축).
+   *
+   * 나가는 중인 쓰기를 끊지 않는 것이 이 화면의 규율이라(`resetIfIdle`), 대상을 바꾼 **뒤에**
+   * 202가 도착하는 길이 실재한다 — **주소는 잠글 수 없다.** 그때 「올렸다」를 깃발로만 들고
+   * 있으면 **올린 적 없는 전표 위에** 성공 갈래가 서고, 그 갈래에서는 사유 칸과 버튼이 서지
+   * 않아 그 전표를 올릴 길까지 사라진다.
+   *
+   * 짝 양성으로 **새 대상의 결과 구획이 실제로 선다**를 함께 잰다 — 「아무것도 안 그려서
+   * 통과」를 막는다.
+   */
+  it('보내는 동안 주소로 대상을 바꾸면 뒤늦게 온 성공이 새 전표 위에 서지 않는다', async () => {
+    const { requests, release, user } = renderScreen(
+      [
+        secondReceiptRoute(),
+        detailRoute(),
+        submitRoute(),
+        createRouteSequence(),
+        ...allRoutes(SINGLE_LINE),
+      ],
+      '?receipt=9101',
+      [SUBMIT_PATH],
+    );
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+    await openSubmitConfirm(user);
+    await user.click(confirmSubmitButton());
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    /* 상신이 붙잡힌 채 대상이 바뀐다 — 정리 effect가 여기서 지나간다. */
+    await user.click(screen.getByRole('button', { name: '대상 바꾸기' }));
+    await screen.findByText('SAMPLE-IR-9102');
+
+    release();
+
+    /* 뒤늦은 202가 도착한 뒤 **새 대상에서** 등록까지 마친다. */
+    await fillHeader(user);
+    await openConfirm(user);
+    await submitConfirm(user);
+
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9002'));
+
+    expect(screen.queryByText(t.result.submittedTitle('SAMPLE-PO-9002'))).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.submittedDescription)).not.toBeInTheDocument();
+    /* 올릴 길도 남아 있다 — 성공 갈래가 서면 이 둘이 사라진다. */
+    expect(reasonInput()).toBeVisible();
+    expect(requestApprovalButton()).toBeVisible();
     expect(submitRequests(requests)).toHaveLength(1);
   });
 });
