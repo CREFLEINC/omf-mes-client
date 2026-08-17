@@ -30,8 +30,10 @@ export interface CodeGroupFormPaneProps {
    * 앞 저장의 무효화·성공·**실패**가 통째로 오지 않는다. 등록과 수정이 **한 저장 자리**를 쓰므로
    * 두 훅 중 하나라도 나가는 중이면 잠긴다.
    *
-   * **입력칸은 잠그지 않는다.** 늦게 온 성공이 남의 폼을 덮지 않도록 상위가 대상을 견주므로,
-   * 여기서 편집까지 막으면 기다리는 동안 아무것도 못 하게 된다.
+   * **입력칸은 잠그지 않는다.** 늦게 온 성공이 **남의** 폼을 덮지 않도록 상위가 대상을 견주므로,
+   * 남의 저장을 기다리는 동안 편집을 막을 이유가 없다. 다만 **자기 저장 중의 편집은 그 성공이
+   * 서버 값으로 덮는다** — 구획 전체를 잠가 그 갈래를 아예 닫는 자격 구획과 갈리는 자리다
+   * (D-6·D-7 · 입력칸마다 사유를 붙이는 비용을 치르지 않기로 한 판단이다).
    */
   isLocked: boolean;
   /**
@@ -72,13 +74,21 @@ export const CodeGroupFormPane = ({
   const nameId = useId();
   const descriptionId = useId();
 
-  const saveLabel = mode === 'create' ? t.actions.addCodeGroup : messages.common.save;
-
-  /* 사유 문면이 두 벌인 이유: 저장 자리의 **컨트롤 이름이 모드마다 다르고**, 문구는 그 이름으로 시작한다(배치 규범 4-5). */
-  const saveLockedReason =
+  /*
+   * 이름과 사유를 **한 쌍으로 고른다.** 사유 문면이 두 벌인 것은 저장 자리의 **컨트롤 이름이
+   * 모드마다 다르기 때문**이고, 문구는 그 이름으로 시작한다(배치 규범 4-5) — 두 값을 따로
+   * 고르면 한쪽만 바꿔 이름과 사유가 어긋나는 짝이 생긴다.
+   */
+  const { saveLabel, saveLockedReason } =
     mode === 'create'
-      ? t.codeGroup.actionReasons.addLockedByOtherCodeGroup
-      : t.codeGroup.actionReasons.saveLockedByOtherCodeGroup;
+      ? {
+          saveLabel: t.actions.addCodeGroup,
+          saveLockedReason: t.codeGroup.actionReasons.addLockedByOtherCodeGroup,
+        }
+      : {
+          saveLabel: messages.common.save,
+          saveLockedReason: t.codeGroup.actionReasons.saveLockedByOtherCodeGroup,
+        };
 
   /**
    * 저장 자리의 세 상태. **잠금에서 오는 비활성에는 반드시 사유가 붙는다**(배치 규범 4) —

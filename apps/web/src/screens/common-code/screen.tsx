@@ -290,6 +290,21 @@ export const CommonCodeScreen = () => {
   const [formState, setFormState] = useState<CodeGroupFormState | null>(null);
 
   /**
+   * **지금 열려 있는 등록 초안의 번호**(D-13).
+   *
+   * 등록 폼은 취소로 닫고 다시 열 수 있고, 그때 서는 것은 **다른 초안**이다. 그런데 등록에는
+   * 아직 자원 번호가 없어(폼 출처도 늘 같은 문자열이다) 수정 경로의 대상 축으로는 두 초안을
+   * 가를 수 없다 — 그래서 **초안을 세울 때마다 새 번호**를 준다. 나가는 중인 등록이 어느
+   * 초안의 것인지는 이 번호로 판정한다.
+   */
+  const [createDraftSession, setCreateDraftSession] = useState(0);
+
+  /** **지금** 열려 있는 초안의 번호. 위 두 ref와 같은 이유로 든다 — 늦게 온 되먹임이 읽는다. */
+  const currentCreateDraftSessionRef = useRef<number>(createDraftSession);
+
+  currentCreateDraftSessionRef.current = createDraftSession;
+
+  /**
    * 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 **주소**가 정한다.
    *
    * 출처가 그대로면 다시 세우지 않아 사용자가 입력하는 동안 값이 서버 값으로 되돌아가지 않는다.
@@ -305,11 +320,17 @@ export const CommonCodeScreen = () => {
   if (codeGroupFormSource === null) {
     if (formState !== null) setFormState(null);
   } else if (formState?.source !== codeGroupFormSource) {
-    const seeded =
-      typeof codeGroupFormSource === 'string'
-        ? emptyCodeGroupFormValues()
-        : codeGroupToFormValues(codeGroupFormSource.codeGroup);
+    const isCreateDraft = typeof codeGroupFormSource === 'string';
+    const seeded = isCreateDraft
+      ? emptyCodeGroupFormValues()
+      : codeGroupToFormValues(codeGroupFormSource.codeGroup);
     setFormState({ source: codeGroupFormSource, baseline: seeded, values: seeded });
+    /*
+     * **초안이 새로 서는 이 자리가 세션의 경계다.** 폼을 열고 닫는 자리가 여럿이라(액션 ·
+     * 취소 · 목록 선택 · 뒤로가기) 그 자리마다 번호를 올리면 한 곳을 빠뜨린다 — 초안을
+     * 세우는 자리는 여기 하나뿐이다. 값을 고치는 것은 초안을 다시 세우지 않으므로 세지 않는다.
+     */
+    if (isCreateDraft) setCreateDraftSession((session) => session + 1);
   }
 
   const isCodeGroupDirty =
@@ -417,9 +438,17 @@ export const CommonCodeScreen = () => {
       /*
        * **늦게 온 등록 성공은 주소를 끌고 가지 않는다.** 등록 모드를 이미 떠난 사용자에게
        * 새 자원으로의 이동은 **보던 화면을 빼앗는** 일이다 — 방금 고른 코드그룹이 사라지고
-       * 그 자리에 처음 보는 그룹이 선다. 등록 폼에 그대로 있을 때만 옮긴다.
+       * 그 자리에 처음 보는 그룹이 선다.
+       *
+       * **모드만 묻지 않는다**(D-13). 닫았다 다시 연 사용자도 「등록 모드」라, 모드만 물으면
+       * 지금 치고 있는 **새 초안**을 두고 앞 초안이 만든 자원으로 끌려간다. 초안 세션까지
+       * 같아야 「그 등록을 낸 그 초안에 그대로 있다」가 된다.
        */
-      if (!isCreatingCodeGroupRef.current) return;
+      const isSameCreateDraft =
+        isCreatingCodeGroupRef.current &&
+        createDraftSession === currentCreateDraftSessionRef.current;
+
+      if (!isSameCreateDraft) return;
 
       setCodeGroupFieldErrors({});
       /*
@@ -486,6 +515,19 @@ export const CommonCodeScreen = () => {
   const isCodeGroupWriteMine = codeGroupWriteTargetId === selectedCodeGroupId;
 
   /**
+   * **나가는 중인 등록이 지금 열려 있는 초안의 것인가**(D-13 — 등록 경로의 같은 축).
+   *
+   * 수정은 자원 번호로 가르지만 등록에는 번호가 없다. 가르는 것은 **초안 세션**이고, 그것이
+   * 이 축의 유일한 차이다. 이 값이 없으면 버린 초안의 실패가 방금 연 초안 위에 선다 —
+   * 사용자는 한 글자 친 초안이 이미 거부된 줄 안다.
+   */
+  const [codeGroupCreateWriteSession, setCodeGroupCreateWriteSession] = useState<number | null>(
+    null,
+  );
+
+  const isCodeGroupCreateWriteMine = codeGroupCreateWriteSession === createDraftSession;
+
+  /**
    * **막을 것은 전역이다.** 저장이 하나라도 나가는 중이면 어느 코드그룹에서도 새 저장을 시작할
    * 수 없다 — 대상 축(`isCodeGroupWriteMine`)은 *보이는 것*을 가릴 뿐 **막는 데 쓰지 않는다.**
    *
@@ -507,7 +549,13 @@ export const CommonCodeScreen = () => {
   const writeCodeGroup = (values: CodeGroupFormValues): void => {
     if (isCodeGroupLocked) return;
 
+    /*
+     * **두 축을 함께 적는다.** 등록과 수정이 한 자리에서 나가므로 어느 쪽이 나갔는지에 따라
+     * 소비처가 갈리는데, 각 폼은 **자기 축만** 읽는다(수정은 자원 번호 · 등록은 초안 세션).
+     * 한쪽만 적으면 그 폼의 되먹임이 영영 「남의 것」이 된다.
+     */
     setCodeGroupWriteTargetId(selectedCodeGroupId);
+    setCodeGroupCreateWriteSession(createDraftSession);
     activeCodeGroupWrite.write(values);
   };
 
@@ -1412,26 +1460,35 @@ export const CommonCodeScreen = () => {
     if (isCreatingCodeGroup) {
       if (formState === null) return null;
 
+      /*
+       * **등록 폼의 소비처 셋도 매임을 지난다**(D-13) — 다만 가르는 축이 자원 번호가 아니라
+       * **초안 세션**이다. 이 폼은 등록 모드일 때만 마운트되지만 그 사실이 초안을 가르지는
+       * 못한다 — 닫았다 다시 열면 같은 모드에서 **다른 초안**이 선다. 세 소비처가 같은 축을
+       * 지나야 남는 자리가 없다(배너 · 필드 오류 · 진행 표시).
+       */
       return (
         <CodeGroupFormPane
           mode="create"
           values={formState.values}
           onChange={changeCodeGroupValues}
-          /*
-           * **등록 폼에는 매임을 따로 두지 않는다.** 이 폼은 등록 모드일 때만 마운트되고
-           * 등록에는 겨눌 대상 번호가 아직 없다 — 아직 없는 자원이 「남의 것」이 될 자리가 없다.
-           * 늦게 온 등록 성공이 화면을 끌고 가는 갈래는 `onSuccess`의 등록 모드 가드가 닫는다.
-           */
-          fieldErrors={{ ...codeGroupCreateWrite.fieldErrors, ...codeGroupFieldErrors }}
+          fieldErrors={{
+            ...(isCodeGroupCreateWriteMine ? codeGroupCreateWrite.fieldErrors : {}),
+            ...codeGroupFieldErrors,
+          }}
           /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={<SaveErrorBanner error={codeGroupCreateWrite.error} />}
+          banner={
+            isCodeGroupCreateWriteMine ? (
+              <SaveErrorBanner error={codeGroupCreateWrite.error} />
+            ) : null
+          }
           /* 등록에서는 코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
           codeLockReason={null}
           deactivateDisabledReason={null}
           isDirty={isCodeGroupDirty}
           /* **막는 것은 전역** — 수정 저장이 나가는 중에 열린 등록 폼도 잠긴다(사유는 페인이 낸다). */
           isLocked={isCodeGroupLocked}
-          isSaving={codeGroupCreateWrite.isSaving}
+          /* **가리는 것은 초안 축** — 버린 초안의 진행 표시가 새 초안 위에서 돌지 않는다. */
+          isSaving={isCodeGroupCreateWriteMine && codeGroupCreateWrite.isSaving}
           onSave={handleSaveCodeGroup}
           onCancel={closeCodeGroupCreateForm}
           onDeactivate={() => undefined}
