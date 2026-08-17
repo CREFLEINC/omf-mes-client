@@ -54,7 +54,7 @@ describe('seedHeaderDraft', () => {
   it('공급사·공장을 승계하고 나머지는 비운 채로 시작한다', () => {
     const receipt = toSourceReceiptView(inboundReceiptResponse());
 
-    expect(seedHeaderDraft(receipt)).toEqual({
+    expect(seedHeaderDraft(receipt.supplierId, receipt.plantId)).toEqual({
       supplierId: '9301',
       businessUnitId: '',
       plantId: '9401',
@@ -64,7 +64,7 @@ describe('seedHeaderDraft', () => {
   });
 
   it('사업부·발주일을 지어내지 않는다 — 넘어온 전표에 없는 값이다', () => {
-    const seeded = seedHeaderDraft(toSourceReceiptView(inboundReceiptResponse()));
+    const seeded = seedHeaderDraft(9301, 9401);
 
     expect(seeded.businessUnitId).toBe(EMPTY_HEADER_DRAFT.businessUnitId);
     expect(seeded.orderDate).toBe(EMPTY_HEADER_DRAFT.orderDate);

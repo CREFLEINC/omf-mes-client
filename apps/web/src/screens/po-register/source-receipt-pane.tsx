@@ -13,6 +13,15 @@ export interface SourceReceiptPaneProps {
   /** 대상으로 확정된 줄. 라인이 한 줄뿐이면 고르지 않아도 확정된다(계획 결정 4) */
   chosenLineId: number | null;
   supplierLookup: ReferenceSource;
+  /**
+   * 사업부 — **이 구획이 이름으로 그리지 않는 유일한 참조**다. 그래도 받는 이유는 복구 수단이
+   * 이 화면에 한 곳뿐이고(다섯을 함께 되살린다), 사업부는 승계 원천이 없는 유일한 필수 값이라
+   * 그 실패에 복구 버튼이 서지 않으면 등록이 영구 잠기기 때문이다.
+   *
+   * 「참조 → 보이는 자리 → 복구」를 자리마다 맞추는 전례 규율과는 여기서 어긋난다 —
+   * 발주 정보 구획이 자기 재시도 수단을 갖게 되면 그때 그쪽으로 옮긴다.
+   */
+  businessUnitLookup: ReferenceSource;
   plantLookup: ReferenceSource;
   itemLookup: ReferenceSource;
   uomLookup: ReferenceSource;
@@ -43,6 +52,7 @@ export const SourceReceiptPane = ({
   lines,
   chosenLineId,
   supplierLookup,
+  businessUnitLookup,
   plantLookup,
   itemLookup,
   uomLookup,
@@ -134,8 +144,19 @@ export const SourceReceiptPane = ({
     },
   ];
 
-  const hasReferenceError =
-    supplierLookup.isError || plantLookup.isError || itemLookup.isError || uomLookup.isError;
+  /**
+   * **안내가 말하는 다섯과 복구가 되살리는 다섯이 같아야 한다.**
+   *
+   * 하나라도 빠뜨리면 그 참조만 실패했을 때 복구 버튼이 화면 어디에도 서지 않는다 —
+   * 문구는 다섯을 실패 목록으로 말하는데 조건은 넷인 상태가 그 형태다.
+   */
+  const hasReferenceError = [
+    supplierLookup,
+    businessUnitLookup,
+    plantLookup,
+    itemLookup,
+    uomLookup,
+  ].some((lookup) => lookup.isError);
 
   return (
     <>

@@ -69,13 +69,18 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * | # | 조작 | `receipt` | `line` | 발주 정보 | 라인 초안 |
  * | :-: | --- | :-: | :-: | :-: | :-: |
  * | 1 | 첫 진입(맥락 있음) | 주소 | 주소 또는 자동 확정 | **승계로 채운다** | **승계 줄 1행** |
- * | 2 | 대상 줄 바꾸기 | 유지 | 바뀐다(`replace`) | **다시 승계한다** | **다시 세운다** |
+ * | 2 | 대상 줄 바꾸기 | 유지 | 바뀐다(`replace`) | **건드리지 않는다** | **다시 세운다** |
  * | 3 | 발주 정보·라인 치기 | 유지 | 유지 | 바뀐다 | 바뀐다 |
  * | 4 | 참조 응답 도착 | 유지 | 유지 | **건드리지 않는다** | **건드리지 않는다** |
- * | 5 | 맥락 없이 진입 | 없음 | 없음 | 비어 있다 | 비어 있다 |
+ * | 5 | **입하 상세 재조회(같은 값)** | 유지 | 유지 | **건드리지 않는다** | 다시 세운다 |
+ * | 6 | 맥락 없이 진입 | 없음 | 없음 | 비어 있다 | 비어 있다 |
  *
- * 4행이 이 화면의 `omf-mes#43` 자리다 — 되돌림 effect의 의존성은 **고른 줄과 입하 응답 둘뿐**이다.
- * 참조 도착·부모 리렌더에 반응하면 사용자가 값을 치는 도중에 입력이 사라진다.
+ * 4·5행이 이 화면의 `omf-mes#43` 자리다. **되돌림 축이 둘이고 서로 다르다**(전례와 같은 형태):
+ *
+ * - **발주 정보** — 축은 **승계 원천 두 값**(공급사·공장 번호)이다. 응답 객체를 축으로 삼으면
+ *   재조회가 새 참조를 주는 순간 사용자가 친 사업부·발주일이 말없이 되돌아간다.
+ * - **라인 초안** — 축은 **고른 줄**이다. 하한 판정의 근거가 그 줄의 입하수량이라, 응답이 달라지면
+ *   초안도 다시 서야 한다. 대상을 바꾸는 것과 응답이 바뀌는 것이 같은 뜻이다.
  */
 export const PoRegisterScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -109,26 +114,36 @@ export const PoRegisterScreen = () => {
   const [header, setHeader] = useState<HeaderDraft>(EMPTY_HEADER_DRAFT);
   const [lines, setLines] = useState<LineDraft[]>(EMPTY_DRAFTS);
 
-  /**
-   * 대상이 정해지면 발주 정보와 라인 1행을 **승계로 세운다**(수명 표 1·2행).
-   *
-   * 의존성은 **고른 줄과 입하 응답 둘뿐이다.** 참조 도착·부모 리렌더는 이 effect를 깨우지
-   * 않는다 — 깨우면 사용자가 치는 도중에 값이 되돌아간다.
-   */
   const chosenLineId = chosenLine?.inboundReceiptLineId ?? null;
 
+  /**
+   * 발주 정보를 승계로 세운다(수명 표 1행).
+   *
+   * **축은 승계 원천 두 값이다.** 입하 상세가 같은 값을 다시 주더라도(재조회) 축이 바뀌지 않아
+   * 친 사업부·발주일·입고 예정일이 남는다 — 응답 객체를 축으로 삼으면 그 자리가 무너진다.
+   * 대상 줄을 바꾸는 것도 이 초안을 되돌리지 않는다(공급사·공장은 전표의 값이라 줄과 무관하다).
+   */
+  const seedSupplierId = sourceData?.receipt.supplierId ?? null;
+  const seedPlantId = sourceData?.receipt.plantId ?? null;
+
   useEffect(() => {
-    if (sourceData === undefined || chosenLine === null) {
-      setHeader(EMPTY_HEADER_DRAFT);
-      setLines(EMPTY_DRAFTS);
+    setHeader(
+      seedSupplierId === null || seedPlantId === null
+        ? EMPTY_HEADER_DRAFT
+        : seedHeaderDraft(seedSupplierId, seedPlantId),
+    );
+  }, [seedSupplierId, seedPlantId]);
 
-      return;
-    }
-
-    setHeader(seedHeaderDraft(sourceData.receipt));
-    setLines([createInheritedLineDraft(chosenLine)]);
-    /* `chosenLine`은 응답 배열에서 찾은 값이라 응답이 같으면 참조도 같다 — 번호로 좁히지 않는다. */
-  }, [sourceData, chosenLine]);
+  /**
+   * 라인 1행을 승계로 세운다(수명 표 2·5행).
+   *
+   * **축은 고른 줄이다.** 하한 판정의 근거가 그 줄의 입하수량이라, 응답이 실제로 달라지면 초안도
+   * 다시 서야 한다 — 낡은 하한으로 판정하면 서버가 막을 값을 화면이 통과시킨다.
+   * `chosenLine`은 응답 배열에서 찾은 값이라 응답이 같으면 참조도 같다.
+   */
+  useEffect(() => {
+    setLines(chosenLine === null ? EMPTY_DRAFTS : [createInheritedLineDraft(chosenLine)]);
+  }, [chosenLine]);
 
   /**
    * 대상을 고른다. **주소를 `replace`로 갱신한다**(사본 체크리스트 1번) —
@@ -164,7 +179,17 @@ export const PoRegisterScreen = () => {
   const registerBlockReason = (): string => {
     if (sourceReceiptId === null) return t.actionReasons.noContext;
     if (sourceData === undefined) return t.actionReasons.sourceNotLoaded;
-    if (chosenLine === null) return t.actionReasons.sourceLineNotChosen;
+
+    if (chosenLine === null) {
+      /*
+       * **고를 줄이 없는 갈래를 가른다.** 줄이 0행인 전표가 넘어오는 경로가 있고(대상 구획도
+       * 그 빈 상태를 그린다), 그때 「줄을 하나 고르세요」로 말하면 할 수 없는 조치를 지시한다.
+       */
+      return sourceData.lines.length === 0
+        ? t.actionReasons.noSourceLines
+        : t.actionReasons.sourceLineNotChosen;
+    }
+
     /* **잘못 친 값이 아직 안 친 칸보다 먼저다** — 지금 고칠 수 있는 것을 먼저 말한다. */
     if (Object.keys(lineValidation.errors).length > 0) return t.actionReasons.lineInvalid;
     if (Object.keys(headerErrors).length > 0) return t.actionReasons.headerIncomplete;
@@ -175,7 +200,13 @@ export const PoRegisterScreen = () => {
 
   const registerReasonId = useId();
 
-  /** 이름이 보이는 자리가 하나뿐이라 복구 수단도 한 곳에 둔다 — 다섯을 함께 다시 부른다. */
+  /**
+   * 참조 실패의 복구 — **이 화면의 복구 자리는 한 곳이고 다섯을 함께 되살린다.**
+   *
+   * 그러려면 복구 버튼이 서는 조건도 다섯이어야 한다(`SourceReceiptPane`이 다섯을 받는 이유).
+   * 사업부는 이 구획에 이름이 보이지 않지만 **승계 원천이 없는 유일한 필수 값**이라, 그 실패에
+   * 복구 수단이 없으면 선택지가 빈 채로 등록이 영구 잠긴다.
+   */
   const retryReferences = (): void => {
     suppliers.refetch();
     businessUnits.refetch();
@@ -212,6 +243,7 @@ export const PoRegisterScreen = () => {
         lines={sourceData.lines}
         chosenLineId={chosenLineId}
         supplierLookup={suppliers}
+        businessUnitLookup={businessUnits}
         plantLookup={plants}
         itemLookup={items}
         uomLookup={uoms}
@@ -267,10 +299,20 @@ export const PoRegisterScreen = () => {
       {sourceData !== undefined && (
         <section className="pane" aria-label={t.panes.lines}>
           {chosenLine === null ? (
+            /*
+             * **줄이 0행이면 다른 말을 한다.** 「줄을 하나 고르세요」는 고를 것이 있을 때만 참이다 —
+             * 등록 사유와 같은 갈래를 여기서도 가른다.
+             */
             <EmptyState
               size="sm"
-              title={t.empty.noTargetTitle}
-              description={t.empty.noTargetDescription}
+              title={
+                sourceData.lines.length === 0 ? t.empty.noSourceLinesTitle : t.empty.noTargetTitle
+              }
+              description={
+                sourceData.lines.length === 0
+                  ? t.empty.noSourceLinesDescription
+                  : t.empty.noTargetDescription
+              }
             />
           ) : (
             <>

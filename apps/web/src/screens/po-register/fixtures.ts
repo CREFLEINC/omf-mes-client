@@ -68,6 +68,15 @@ export const inboundReceiptLineFixtures: InboundReceiptLineResponse[] = [
   }),
 ];
 
+/**
+ * 라인이 **0행**인 입하. 고를 줄도 승계할 줄도 없는 갈래를 만든다.
+ *
+ * 계약이 라인 배열을 비워 내려줄 수 있고(최소 1행 제약은 **등록 요청** 쪽에만 있다) 화면은
+ * 그 상태를 위한 빈 상태를 그린다 — 그 갈래에서 「줄을 하나 고르세요」라고 말하지 않는지를
+ * 재려면 이 픽스처가 있어야 한다.
+ */
+export const inboundReceiptNoLineFixtures: InboundReceiptLineResponse[] = [];
+
 /** 입하 상세 응답 본문. **요청 1회로 머리와 라인이 함께 온다.** */
 export const inboundReceiptDetailBody = (
   lines: InboundReceiptLineResponse[] = inboundReceiptLineFixtures,

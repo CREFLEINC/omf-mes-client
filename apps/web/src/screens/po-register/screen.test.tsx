@@ -17,6 +17,7 @@ import {
   inboundReceiptDetailBody,
   inboundReceiptLineFixtures,
   inboundReceiptLineResponse,
+  inboundReceiptNoLineFixtures,
   itemFixtures,
   partnerFixtures,
   plantFixtures,
@@ -299,6 +300,26 @@ describe('대상 선택(C3·C4)', () => {
     expect(registerButton()).toBeDisabled();
     expect(screen.getByText(t.actionReasons.sourceLineNotChosen)).toBeInTheDocument();
   });
+
+  /**
+   * **고를 줄이 하나도 없는 갈래**(리뷰 R-1).
+   *
+   * 이 갈래에서 「위 구획에서 줄을 하나 고르세요」라고 말하면 사용자가 **할 수 없는 조치**를
+   * 지시하게 된다. 사유·빈 상태 둘 다 0행 전용 문구로 갈리는지 재고, 「고르세요」 문구가
+   * 화면 어디에도 없는지 함께 잰다.
+   */
+  it('라인이 0행이면 「고르세요」가 아니라 승계할 줄이 없다고 말한다', async () => {
+    renderScreen(allRoutes(inboundReceiptNoLineFixtures));
+
+    await waitForSource();
+
+    expect(screen.getByText(t.actionReasons.noSourceLines)).toBeInTheDocument();
+    expect(registerButton()).toBeDisabled();
+    /* 대상 구획의 빈 상태와 발주 라인 구획의 빈 상태가 같은 사실을 말한다. */
+    expect(screen.getAllByText(t.empty.noSourceLinesTitle)).toHaveLength(2);
+    expect(screen.queryByText(t.actionReasons.sourceLineNotChosen)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noTargetTitle)).not.toBeInTheDocument();
+  });
 });
 
 describe('라인 추가·삭제(C5)', () => {
@@ -453,6 +474,41 @@ describe('조회 실패(C11)', () => {
 
     expect(registerButton()).toBeDisabled();
     expect(screen.getByText(t.actionReasons.sourceNotLoaded)).toBeInTheDocument();
+  });
+
+  /**
+   * **사업부 단독 실패**(리뷰 R-2).
+   *
+   * 사업부는 승계 원천이 없는 유일한 필수 값이라 선택지가 비면 채울 방법이 없다.
+   * 그 실패에 복구 버튼이 서지 않으면 등록이 `headerIncomplete`로 영구 잠긴다 —
+   * 다른 넷은 정상인 상태에서 복구 수단이 실제로 서는지 잰다.
+   */
+  it('사업부 조회만 실패해도 복구 수단이 선다', async () => {
+    const { user } = renderScreen([
+      receiptRoute(),
+      failingLookupRoute(BUSINESS_UNITS_PATH),
+      lookupRoute(PARTNERS_PATH, partnerFixtures),
+      lookupRoute(PLANTS_PATH, plantFixtures),
+      lookupRoute(ITEMS_PATH, itemFixtures),
+      lookupRoute(UOMS_PATH, uomFixtures),
+      ...forbiddenRoutes(),
+    ]);
+
+    await waitForSource();
+
+    /* 짝 양성 — 다른 넷은 정상이라 이름이 실제로 풀린다. */
+    await waitFor(() => {
+      expect(within(sourcePane()).getByText(ITEM_LABEL)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(t.reasons.referencesFailed)).toBeInTheDocument();
+    expect(
+      within(sourcePane()).getByRole('button', { name: messages.common.retry }),
+    ).toBeInTheDocument();
+    /* 사업부 칸에는 선택지를 불러오지 못했다는 안내가 붙는다. */
+    expect(screen.getByText(t.lookups.failed)).toBeInTheDocument();
+
+    await user.click(within(sourcePane()).getByRole('button', { name: messages.common.retry }));
   });
 
   it('참조 조회가 실패하면 이름 자리에 사유가 서고 복구 수단이 함께 있다', async () => {

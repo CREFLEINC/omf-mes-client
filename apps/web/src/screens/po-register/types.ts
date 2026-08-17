@@ -107,11 +107,15 @@ export const EMPTY_HEADER_DRAFT: HeaderDraft = {
  *
  * **넘어온 전표에 있는 값만 채운다.** 사업부는 입하 전표에 없고 발주일은 사용자가 정하는 값이라
  * 비운 채로 둔다 — 지어내면 사용자가 확인하지 않은 값이 되돌릴 수 없는 전표에 실린다.
+ *
+ * **전표 객체가 아니라 승계할 두 값을 받는다.** 이 초안을 되세우는 축이 무엇인지가 시그니처에
+ * 드러나야 한다 — 응답 객체를 받으면 화면이 그 객체를 되돌림 축으로 삼게 되고, 같은 값이
+ * 다시 와도(재조회) 친 값이 말없이 되돌아간다(전례가 머리 초안의 축을 좁혀 둔 이유).
  */
-export const seedHeaderDraft = (receipt: SourceReceiptView): HeaderDraft => ({
+export const seedHeaderDraft = (supplierId: number, plantId: number): HeaderDraft => ({
   ...EMPTY_HEADER_DRAFT,
-  supplierId: String(receipt.supplierId),
-  plantId: String(receipt.plantId),
+  supplierId: String(supplierId),
+  plantId: String(plantId),
 });
 
 /**

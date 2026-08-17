@@ -70,27 +70,46 @@ export const validateHeader = (draft: HeaderDraft): Record<string, string> => {
 };
 
 /**
+ * 친 글자의 해석 결과. **세 갈래를 타입으로 가른다** — 미입력 · 형식 오류 · 수.
+ *
+ * **형식 오류를 수의 값역 안에 담지 않는다.** 센티넬(`NaN`)로 두면 검사 한 줄을 빠뜨리는 순간
+ * 그 값이 계산과 요청 본문으로 흘러가 JSON `null`로 직렬화된다 — 되돌릴 수 없는 쓰기에서
+ * 그 사고가 나는 자리를 전례가 타입으로 막아 두었다(전례 `line-draft.ts`의 `QtyParse`).
+ * 보낼 본문을 만드는 회차가 이 파서를 쓰게 되면 그때 export한다.
+ */
+type QtyParse =
+  { kind: 'empty' } | { kind: 'invalid'; message: string } | { kind: 'qty'; value: number };
+
+/**
  * 친 글자를 수량으로 읽는다.
  *
  * `Number()`는 공백을 `0`으로 읽고 `Infinity`를 숫자로 읽는다 — 둘 다 여기서 걸러 낸다.
  * 걸러 내지 않으면 요청 본문에 `0`이나 `null`(직렬화한 `Infinity`)이 실린다.
+ *
+ * 형식 오류 문구를 **인자로 받는다** — 발주수량과 허용치가 같은 규칙을 쓰지만 사용자에게는
+ * 서로 다른 이름으로 말해야 한다.
  */
-const parseNumber = (raw: string): number | null => {
+const parseQty = (raw: string, invalidMessage: string): QtyParse => {
   const text = raw.trim();
 
-  if (text === '') return null;
+  if (text === '') return { kind: 'empty' };
 
   const value = Number(text);
 
-  return Number.isFinite(value) ? value : Number.NaN;
+  if (!Number.isFinite(value)) return { kind: 'invalid', message: invalidMessage };
+
+  return { kind: 'qty', value };
 };
 
 /** 발주수량 한 칸의 오류. 없으면 `null`이다. */
 const orderedQtyError = (line: LineDraft): string | null => {
-  const value = parseNumber(line.orderedQty);
+  const parsed = parseQty(line.orderedQty, t.errors.qtyNotNumber);
 
-  if (value === null) return t.errors.qtyRequired;
-  if (Number.isNaN(value)) return t.errors.qtyNotNumber;
+  if (parsed.kind === 'empty') return t.errors.qtyRequired;
+  if (parsed.kind === 'invalid') return parsed.message;
+
+  const value = parsed.value;
+
   if (value <= 0) return t.errors.qtyNotPositive;
 
   /*
@@ -106,13 +125,19 @@ const orderedQtyError = (line: LineDraft): string | null => {
 
 /** 허용치 한 칸의 오류. 비어 있으면 0으로 보므로 오류가 아니다. */
 const toleranceError = (raw: string): string | null => {
-  const value = parseNumber(raw);
+  const parsed = parseQty(raw, t.errors.toleranceNotNumber);
 
-  if (value === null) return null;
-  if (Number.isNaN(value)) return t.errors.toleranceNotNumber;
-  if (value < 0) return t.errors.toleranceNegative;
+  if (parsed.kind === 'empty') return null;
+  if (parsed.kind === 'invalid') return parsed.message;
 
-  return null;
+  return parsed.value < 0 ? t.errors.toleranceNegative : null;
+};
+
+/** 허용치가 0보다 큰가. **읽을 수 있는 수일 때만 참이다** — 형식 오류는 경고가 아니라 오류다. */
+const isPositiveTolerance = (raw: string): boolean => {
+  const parsed = parseQty(raw, t.errors.toleranceNotNumber);
+
+  return parsed.kind === 'qty' && parsed.value > 0;
 };
 
 export interface LineValidation {
@@ -147,9 +172,7 @@ export const validateLines = (lines: readonly LineDraft[]): LineValidation => {
      * **경고는 막지 않는다.** 허용치를 크게 두는 것은 사용자의 판단이고 계약도 허락한다 —
      * 다만 다음 초과 입하가 같은 처리를 다시 부른다는 사실을 알린다.
      */
-    const over = parseNumber(line.toleranceOverQty);
-
-    if (overError === null && over !== null && over > 0) {
+    if (overError === null && isPositiveTolerance(line.toleranceOverQty)) {
       warnings[lineFieldId(line.key, 'toleranceOverQty')] = t.warnings.toleranceOverPositive;
     }
   }
