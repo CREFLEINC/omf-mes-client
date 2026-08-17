@@ -1546,7 +1546,7 @@ describe('OverReceiptSplitScreen — 보낼 수 없는 조합', () => {
    * **M27의 화면 몫** — 초과분이 없는데 분리 등록이 열리면 `excess` 없는 `BOTH`가 나간다.
    * 목 서버는 그것을 201로 통과시키므로(실측) 막는 곳은 화면뿐이다.
    */
-  it('초과분이 없으면 분리 등록만 잠긴다', async () => {
+  it('초과분이 없으면 초과분을 싣는 두 갈래가 잠긴다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     /* 한도(65) 안쪽이라 전부 정량분이다. */
@@ -1554,6 +1554,13 @@ describe('OverReceiptSplitScreen — 보낼 수 없는 조합', () => {
 
     expect(blockedButton(t.actions.registerBoth)).toBeDisabled();
     expect(screen.getByText(t.actionReasons.bothNeedsExcess)).toBeInTheDocument();
+    /*
+     * **초과분만 저장도 함께 잠긴다** — 초과분을 싣는 갈래는 둘이다. 이 잠금이 곧
+     * 「초과분이 실렸다고 말하는 등록에는 실을 줄이 있다」는 불변식이고, 등록 결과의
+     * 신규 P/O 등록 진입로가 그 불변식 위에 선다(`validation.ts`의 `canSubmit`).
+     */
+    expect(blockedButton(t.actions.registerExcessOnly)).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.excessOnlyNeedsExcess)).toBeInTheDocument();
     /* 짝 방향 — 정량분만 저장은 열려 있다. 「전부 잠갔다」로 통과하지 않게 한다. */
     expect(blockedButton(t.actions.registerNormalOnly)).toBeEnabled();
 
@@ -1802,9 +1809,8 @@ describe('OverReceiptSplitScreen — 전송 중', () => {
 });
 
 describe('OverReceiptSplitScreen — 등록 성공', () => {
-  /* 앞에 둔 규칙이 먼저 맞는다 — 기본 등록 스텁을 가린다. */
-  const renderSuccess = (created: unknown[] = CREATED_TWO) =>
-    renderScreen([splitRoute(created), ...allRoutes()]);
+  /* 만들어질 전표를 스텁 한 벌에 실어 넘긴다 — 같은 경로 규칙을 두 벌 두지 않는다. */
+  const renderSuccess = (created: unknown[] = CREATED_TWO) => renderScreen(allRoutes(created));
 
   /* **M42의 화면 몫** — 두 건이 만들어졌다는 것이 이 화면의 요점이다. */
   it('만들어진 전표 번호가 전부 보이고 건수가 밝혀진다', async () => {
@@ -2296,6 +2302,46 @@ describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
     /* 짝 양성 — 결과 구획은 실제로 섰고 전표번호도 그대로 보인다. */
     expect(within(result).getByText('IR-2026-900010')).toBeInTheDocument();
     expect(within(result).queryAllByRole('link')).toHaveLength(0);
+  });
+
+  /*
+   * **겨눈 갈래가 앞 등록에서 눌어붙지 않는다.**
+   *
+   * 화면은 성공한 뒤에도 그 자리에 남으므로(초안만 비운다) **한 화면에서 갈래를 바꿔 두 번
+   * 등록하는 것**은 실제 조작이다. 겨눈 갈래를 매 제출마다 새로 적지 않고 한 번이라도 참이면
+   * 참으로 두면(`||=` 형태), 앞의 초과분 등록이 뒤의 정량분 전표에 **진입로를 되살린다** —
+   * R-33이 고친 바로 그 결함이 다른 문으로 돌아오는 경로다.
+   *
+   * 링크가 실제로 섰다가 **사라지는 것**까지 한 시험에서 본다. 두 시험으로 가르면 「둘 다
+   * 링크 없음」인 상태가 뒤 시험만 통과시킨다.
+   */
+  it('초과분 갈래로 등록한 뒤 정량분만 저장하면 이동 경로가 사라진다', async () => {
+    const { user } = renderWithCreated(CREATED_ONE);
+
+    await setupRegister(user);
+    await clickRegister(user, t.actions.registerExcessOnly);
+
+    await screen.findByText(t.result.count(1));
+
+    /* 짝 양성 — 첫 등록에서는 길이 실제로 섰다. */
+    expect(
+      within(screen.getByRole('status', { name: t.panes.result })).getAllByRole('link'),
+    ).toHaveLength(1);
+
+    /* 성공하면 초안이 비므로 같은 화면에서 다시 채워 넣는다(수명 표 8행). */
+    await fillDraft(user, { 1: '66' });
+    await clickRegister(user, t.actions.registerNormalOnly);
+
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole('status', { name: t.panes.result })).queryAllByRole('link'),
+      ).toHaveLength(0);
+    });
+
+    /* 짝 양성 — 둘째 등록의 결과 구획도 실제로 서 있다(「구획이 사라져서 통과」를 막는다). */
+    expect(
+      within(screen.getByRole('status', { name: t.panes.result })).getByText('IR-2026-900010'),
+    ).toBeInTheDocument();
   });
 
   /*
