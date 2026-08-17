@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { ConflictCause, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -4326,6 +4326,11 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
    * 문구를 **전용 문구로 못박는다.** 공통 문구(`save.staleToken`)는 「잠시 뒤 다시 저장하세요」라
    * 이 자원에서는 영영 거짓이다 — 공통 훅이 붙이는 코드값이 바뀌어 화면의 갈래가 조용히
    * 공통 문구로 되돌아가면 이 단언이 운다.
+   *
+   * **출구 한 문장까지 함께 잰다.** 사용자가 이 화면에서 스스로 풀 수 없는 상태라, 안내가
+   * 「달라지지 않는다」에서 끝나면 다음에 할 일이 남지 않는다. 기대값을 문구 상수로만 두면 그
+   * 문장을 지워도 기대값이 함께 지워져 아무 감지기도 울지 않으므로(자기참조 침묵) **문면 조각을
+   * 따로 못박는다.**
    */
   it('잠금 토큰을 못 얻으면 저장이 요청을 만들지 않고 사실대로 안내한다', async () => {
     const { requests, user } = renderScreen(
@@ -4341,11 +4346,13 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     await user.click(roleCheckbox('공급사'));
     await user.click(partnerSaveButton());
 
-    expect(
-      await within(partnerRolePane()).findByText(
-        messages.commonCode.partnerRole.saveTokenUnavailable,
-      ),
-    ).toBeInTheDocument();
+    const notice = await within(partnerRolePane()).findByText(
+      messages.commonCode.partnerRole.saveTokenUnavailable,
+    );
+
+    expect(notice).toBeInTheDocument();
+    /* 출구 한 문장 — 문면 조각으로 못박는다(위 주석). */
+    expect(notice).toHaveTextContent('반복되면 담당자에게 알려 주세요');
     /* 「다시 시도하면 풀린다」는 공통 문구가 이 자원에는 서지 않는다. */
     expect(screen.queryByText(messages.save.staleToken)).not.toBeInTheDocument();
     expect(putRequests(requests)).toHaveLength(0);
@@ -4358,8 +4365,9 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
    * 서버가 어휘 밖 역할을 아직 들고 있을 수 있고(D-4의 존재 이유) 토큰도 아직 안 줄 수 있다 —
    * 그 거래처에서 저장을 누르면 확인 창이 먼저 서고 승낙한 뒤에 토큰 벽을 만난다.
    *
-   * 재는 것 셋 — ① 요청이 나가지 않는다 ② **창이 닫히지 않는다**(닫히면 사용자는 승낙이
-   * 받아들여진 줄 안다) ③ 사유가 **창 안에서** 사실대로 보인다.
+   * 재는 것 넷 — ① 요청이 나가지 않는다 ② **창이 닫히지 않는다**(닫히면 사용자는 승낙이
+   * 받아들여진 줄 안다) ③ 사유가 **창 안에서** 사실대로 보인다 ④ **출구 한 문장이 창 안에도
+   * 선다** — 체감이 가장 나쁜 자리다(해제를 승낙한 뒤에 막힌 것을 읽는다).
    */
   it('어휘 밖 역할이 붙은 거래처에서 확인 창을 승낙해도 요청이 나가지 않고 창 안에 사유가 선다', async () => {
     const { requests, user } = renderScreen(
@@ -4381,9 +4389,12 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
 
     await user.click(within(dialog).getByRole('button', { name: '해제하고 저장' }));
 
-    expect(
-      await within(dialog).findByText(messages.commonCode.partnerRole.saveTokenUnavailable),
-    ).toBeInTheDocument();
+    const notice = await within(dialog).findByText(
+      messages.commonCode.partnerRole.saveTokenUnavailable,
+    );
+
+    expect(notice).toBeInTheDocument();
+    expect(notice).toHaveTextContent('반복되면 담당자에게 알려 주세요');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(putRequests(requests)).toHaveLength(0);
   });
@@ -5090,5 +5101,200 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
 
     await screen.findByText('좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다');
     expect(screen.queryByRole('checkbox', { name: '공급사' })).not.toBeInTheDocument();
+  });
+});
+
+/* ── 역할 저장 충돌 (#174) ─────────────────────────────────────────────────── */
+
+/**
+ * 저장 충돌은 **토큰이 흐르기 시작한 뒤에 처음으로 실제로 생길 수 있는 갈래**다. 통째 교체
+ * 저장이라 남이 방금 붙인 역할이 조용히 사라지는 것을 막는 것이 이 보호의 존재 이유이고,
+ * 사용자에게는 「무엇이 막았는가」와 **최신을 받아 오는 수단**이 함께 있어야 한다.
+ *
+ * **화면 전용 문구를 만들지 않는다.** 공통 규약 문구가 원인 셋을 이미 갖고 있고 공통 배너가
+ * 충돌일 때만 「최신 불러오기」를 낸다 — 화면이 할 일은 재조회 핸들러를 넘기는 것 하나다.
+ * 토큰 부재 갈래가 전용 문구를 쓴 이유(「다시 시도하면 풀린다」가 거짓)는 **여기에 없다** —
+ * 충돌은 다시 부르면 실제로 풀린다.
+ *
+ * 목 서버로는 409를 낼 때 요청에 `Prefer` 헤더가 필요하고 화면에는 그 헤더를 실을 자리가
+ * 없다 — 그래서 이 갈래의 판정은 브라우저 확인이 아니라 **여기가 맡는다.**
+ */
+describe('CommonCodeScreen — 역할 저장 충돌 (#174)', () => {
+  const CONFLICT_CAUSES: ConflictCause[] = ['user', 'erpSync', 'workerLease'];
+
+  /** 재조회가 돌려줄 **다른** 부여분. 내용이 갈리는 것이 「되세웠다」의 증거다. */
+  const reloadedRoles: PartnerRoleRow[] = [
+    { roleTypeCode: PARTNER_ROLE_CODES.subcontractor, roleTypeName: null },
+  ];
+
+  /**
+   * 치환은 409로 막고, 역할 조회는 **회차마다 토큰과 내용을 함께 바꾼다** — copy-checklist
+   * 「두 스텁 형태」의 **내용까지 바뀌는 쪽**이다. 같은 구조를 되돌리는 스텁을 쓰면 「값이
+   * 갱신됐다」가 부분 견줌으로 헛통과한다.
+   *
+   * 어휘 밖 코드가 없는 부여분으로 시작한다 — 확인 창은 그것을 주제로 삼는 시험에서만 지난다.
+   */
+  const conflictRoutes = (cause: ConflictCause): StubRoute[] => {
+    let roleCalls = 0;
+
+    return [
+      partnerListRoute(),
+      {
+        match: (request) => isGet(request, partnerRolesPath(9001)),
+        respond: () => {
+          roleCalls += 1;
+
+          return roleCalls === 1
+            ? jsonResponse(vocabularyRoleFixtures, { headers: { ETag: ROLES_ETAG } })
+            : jsonResponse(reloadedRoles, { headers: { ETag: ROLES_ETAG_AFTER_RELOAD } });
+        },
+      },
+      rolesReplaceRoute(() => jsonResponse({ conflictCause: cause, message: '' }, { status: 409 })),
+    ];
+  };
+
+  /* 원인마다 대응 방법이 달라 문구가 갈린다 — 한 문구로 뭉개면 사용자가 다음 행동을 못 정한다. */
+  it.each(CONFLICT_CAUSES)(
+    '충돌 원인 %s에 맞는 문구와 최신 불러오기가 함께 선다',
+    async (cause) => {
+      const { user } = renderScreen(conflictRoutes(cause), '?tab=partner&ptn=9001');
+      await screen.findByText('고객사');
+
+      await user.click(roleCheckbox('공급사'));
+      await user.click(partnerSaveButton());
+
+      const pane = partnerRolePane();
+
+      expect(await within(pane).findByText(messages.conflict[cause])).toBeInTheDocument();
+      expect(within(pane).getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+      /* 잃는 것을 **누르기 전에** 밝힌다 — 누른 뒤에 알리면 되돌릴 수 없다. */
+      expect(within(pane).getByText(messages.conflict.reloadNote)).toBeInTheDocument();
+    },
+  );
+
+  it('최신 불러오기를 누르면 다시 조회하고 배너가 사라지고 초안이 서버 최신값으로 되세워진다', async () => {
+    const { requests, user } = renderScreen(conflictRoutes('user'), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await within(partnerRolePane()).findByText(messages.conflict.user);
+
+    expect(roleGetRequests(requests)).toHaveLength(1);
+
+    await user.click(within(partnerRolePane()).getByRole('button', { name: '최신 불러오기' }));
+
+    /* ① 재조회가 한 건 더 나간다. */
+    await waitFor(() => {
+      expect(roleGetRequests(requests)).toHaveLength(2);
+    });
+
+    /* ③ 초안이 **서버 최신값**으로 되세워진다 — 양성 앵커를 먼저 붙잡는다. */
+    await waitFor(() => {
+      expect(roleCheckbox('외주 제작사')).toBeChecked();
+    });
+    expect(roleCheckbox('고객사')).not.toBeChecked();
+    /* 고치던 체크는 사라진다 — 공통 안내가 미리 밝힌 그 대가다. */
+    expect(roleCheckbox('공급사')).not.toBeChecked();
+    expect(partnerSaveButton()).toBeDisabled();
+
+    /* ② 저장 실패 배너가 사라진다. 음성 단언은 위 양성 앵커가 잡은 시점 뒤에 잰다. */
+    expect(within(partnerRolePane()).queryByText(messages.conflict.user)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * **확인 창을 거친 저장의 충돌** — 사유는 창 안에 서고, 최신 불러오기를 누르면 **창이 닫힌다.**
+   *
+   * 「실패해도 창을 닫지 않는다」는 규율의 이유는 *같은 자리에서 다시 시도할 수 있게* 하려는
+   * 것인데, 다시 불러오기는 **그 시도의 전제(초안)를 버리는 조작**이다. 창이 나열하는 해제
+   * 목록은 사용자의 초안에서 나오므로 초안이 서버값으로 되돌아가면 **해제될 것이 하나도 없다** —
+   * 그대로 두면 「저장하면 아래 역할이 해제됩니다」 아래에 빈 목록이 선 창이 남는다.
+   */
+  it('확인 창을 거친 저장이 충돌하면 창 안에 사유가 서고 최신 불러오기를 누르면 창이 닫힌다', async () => {
+    const { requests, user } = renderScreen(conflictRoutes('user'), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    /* 해제가 있는 저장이라 확인 창을 지난다. */
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: '해제하고 저장' }));
+
+    expect(await within(dialog).findByText(messages.conflict.user)).toBeInTheDocument();
+    /* 배너를 두 자리에 두지 않는다 — 사용자가 스크림 뒤의 사본을 읽으려 든다. */
+    expect(screen.getAllByText(messages.conflict.user)).toHaveLength(1);
+
+    await user.click(within(dialog).getByRole('button', { name: '최신 불러오기' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(roleGetRequests(requests)).toHaveLength(2);
+    });
+    expect(roleCheckbox('외주 제작사')).toBeChecked();
+  });
+
+  /**
+   * **다시 부른 뒤의 저장이 갱신된 토큰으로 나간다** — 이것이 「충돌이 풀린다」의 실제 내용이다.
+   * 배너가 사라지는 것만 재면 같은 낡은 토큰으로 다시 막히는 화면도 통과한다.
+   *
+   * 스텁이 토큰과 내용을 **함께** 바꾸므로, 초안이 되세워진 것과 토큰이 갱신된 것이 같은
+   * 재조회에서 왔다는 사실까지 함께 재진다.
+   */
+  it('다시 부른 뒤의 저장은 갱신된 토큰을 싣는다', async () => {
+    const { requests, user } = renderScreen(conflictRoutes('user'), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await within(partnerRolePane()).findByText(messages.conflict.user);
+
+    expect(putRequests(requests)[0]?.headers.get('If-Match')).toBe(ROLES_ETAG);
+
+    await user.click(within(partnerRolePane()).getByRole('button', { name: '최신 불러오기' }));
+    await waitFor(() => {
+      expect(roleCheckbox('외주 제작사')).toBeChecked();
+    });
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(2);
+    });
+    expect(putRequests(requests)[1]?.headers.get('If-Match')).toBe(ROLES_ETAG_AFTER_RELOAD);
+  });
+
+  /*
+   * **재조회로 풀리지 않는 실패에는 그 버튼을 내지 않는다.** 내면 사용자는 고치던 입력만 버리고
+   * 같은 자리로 되돌아온다 — 공통 배너가 갖는 규율이지만, 화면이 두 자리에 핸들러를 넘긴
+   * 뒤에도 그 규율이 살아 있는지는 여기서만 재진다.
+   */
+  it('충돌이 아닌 저장 실패에는 최신 불러오기가 서지 않는다', async () => {
+    const { user } = renderScreen(
+      [
+        ...vocabularyPartnerRoutes(),
+        rolesReplaceRoute(() =>
+          jsonResponse(
+            {
+              message: '',
+              errors: [{ scope: 'screen', code: 'DENIED', message: '저장이 막혔습니다.' }],
+            },
+            { status: 400 },
+          ),
+        ),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(await within(partnerRolePane()).findByText('저장이 막혔습니다.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
   });
 });

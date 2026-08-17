@@ -1129,6 +1129,30 @@ export const CommonCodeScreen = () => {
     setPartnerRoleState(null);
   };
 
+  /**
+   * 저장 충돌을 푸는 유일한 경로 — **최신을 다시 받아 잠금 토큰까지 갱신한다.**
+   *
+   * 계약이 덮어쓰기 강제를 주지 않으므로 최신 목록을 받아 다시 고르는 수밖에 없고, 고치던
+   * 체크는 사라진다 — 버튼 옆 공통 안내가 **누르기 전에** 그것을 밝힌다.
+   *
+   * ⛔ **자동 재시도를 두지 않는다.** 통째 교체 저장이라 다시 부른 목록 위에서 사용자가 다시
+   * 고르지 않으면 그사이 남이 붙인 역할을 덮어쓴다 — 충돌 보호가 막으려던 바로 그 일이다.
+   *
+   * **있는 규율을 지난다.** 위 `resetPartnerRoleEditing`이 쓰기 거둠(`resetIfIdle` 경유)·확인
+   * 창 닫기·초안 비움을 한자리에 갖고 있다. 새 함수를 지으면 그 셋이 갈라지고, 특히 나가는
+   * 중인 쓰기를 건드리지 않는 가드가 빠진다(`omf-mes#96`).
+   *
+   * **확인 창은 닫힌다.** 창이 나열하는 것은 이번 저장으로 *해제되는* 역할이고 그 목록은
+   * 사용자의 초안에서 나온다 — 초안이 서버값으로 되돌아가면 해제될 것이 하나도 없어져,
+   * 그대로 두면 「저장하면 아래 역할이 해제됩니다」 아래에 빈 목록이 선 창이 남는다.
+   * 「실패해도 창을 닫지 않는다」는 규율의 이유는 *같은 자리에서 다시 시도할 수 있게* 하려는
+   * 것인데, 다시 불러오기는 **그 시도의 전제를 버리는 조작**이라 같은 규율이 걸리지 않는다.
+   */
+  const reloadPartnerRoles = () => {
+    resetPartnerRoleEditing();
+    void partnerRoles.refetch();
+  };
+
   const handleSelectPartner = (partnerId: number) => {
     resetPartnerRoleEditing();
 
@@ -1708,10 +1732,16 @@ export const CommonCodeScreen = () => {
          *
          * **남의 실패는 아예 그리지 않는다**(`isRoleWriteMine`) — 뒤늦게 온 앞 거래처의 실패가
          * 지금 구획에 서면 사용자는 손댄 적 없는 거래처가 막힌 줄 안다.
+         *
+         * **재조회 수단을 함께 넘긴다.** 공통 배너가 **충돌일 때만** 그 버튼을 내므로, 다시
+         * 불러도 풀리지 않는 실패에는 서지 않는다 — 거기서 내면 입력만 버리게 된다.
          */
         banner={
           isPartnerRoleConfirmOpen || !isRoleWriteMine ? null : (
-            <SaveErrorBanner error={toPartnerRoleSaveError(partnerRoleWrite.error)} />
+            <SaveErrorBanner
+              error={toPartnerRoleSaveError(partnerRoleWrite.error)}
+              onReload={reloadPartnerRoles}
+            />
           )
         }
         isDirty={isPartnerRoleDirty}
@@ -1858,7 +1888,17 @@ export const CommonCodeScreen = () => {
           released={releasedRoles}
           willHaveNoRole={partnerRoleState !== null && partnerRoleState.selected.length === 0}
           isSaving={partnerRoleWrite.isSaving}
-          banner={<SaveErrorBanner error={toPartnerRoleSaveError(partnerRoleWrite.error)} />}
+          /*
+           * **창 안에서도 다시 부를 수 있다.** 확인 창을 지나는 저장(해제가 있는 저장)이 충돌하면
+           * 사유가 여기 서므로 회복 수단도 여기 있어야 한다 — 창을 닫아 구획 배너를 찾아가게 하면
+           * 사용자는 승낙이 받아들여진 줄 안다. 누르면 창은 닫힌다(사유는 `reloadPartnerRoles`).
+           */
+          banner={
+            <SaveErrorBanner
+              error={toPartnerRoleSaveError(partnerRoleWrite.error)}
+              onReload={reloadPartnerRoles}
+            />
+          }
           onConfirm={confirmSavePartnerRoles}
           onClose={() => {
             setIsPartnerRoleConfirmOpen(false);
