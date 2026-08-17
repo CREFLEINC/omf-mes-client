@@ -73,7 +73,7 @@ import {
   type LookupResult,
 } from './lookups';
 import { PartnerListPane } from './partner-list-pane';
-import { partnerKeys, usePartnerList, usePartnerRoles } from './partner-queries';
+import { partnerKeys, partnerRolesPath, usePartnerList, usePartnerRoles } from './partner-queries';
 import { PartnerRoleConfirmDialog } from './partner-role-confirm-dialog';
 import {
   isSamePartnerRoleSelection,
@@ -82,6 +82,7 @@ import {
   toPartnerRoleDraft,
   toPartnerRolesPayload,
   togglePartnerRole,
+  type PartnerRoleRow,
 } from './partner-role-draft';
 import { PartnerRolePane } from './partner-role-pane';
 import { toPageView } from './pagination';
@@ -110,7 +111,6 @@ import type {
   CodeGroupFormValues,
   DepartmentFormValues,
   PartnerFilters,
-  PartnerRole,
   ScopedFilters,
 } from './types';
 
@@ -165,7 +165,7 @@ interface QualificationState {
  * 「원래 붙어 있던 역할」의 판정이 서버 응답에서 나온다.
  */
 interface PartnerRoleState {
-  source: PartnerRole[];
+  source: PartnerRoleRow[];
   baseline: string[];
   selected: string[];
 }
@@ -960,26 +960,42 @@ export const CommonCodeScreen = () => {
   /**
    * 역할 통째 교체.
    *
-   * ⛔ **`etagPath`가 반드시 `null`이다.** 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없고
-   * 응답에 `409`도 없다 — 거래처 역할은 부여·회수 형이라 낙관적 잠금 대상이 아니다.
-   * 상세 경로를 넘기면 토큰을 찾지 못해 **요청이 나가지 않고 멈춘다**(「저장을 눌러도 아무 일이
-   * 없다」). 같은 슬라이스의 작업자 자격 치환이 같은 형태다. `If-Match`를 **쓰는** 전례
-   * (결재선 단계 치환)는 부모 자원에 `version_no`가 있어 토큰이 존재하는 경우이고 여기와 다르다.
+   * ⚠ **`etagPath`가 역할 목록 경로다**(계약 재동기화 #173). 계약이 이 쓰기에 `If-Match`를
+   * **필수**로 요구하고 `409`도 함께 붙였다 — 통째로 교체하는 저장이라 보호가 없으면 남이
+   * 방금 붙인 역할이 조용히 사라진다.
+   *
+   * ⛔ **그런데 토큰을 얻을 자리가 아직 없다 — #174 답변 대기.** `/mdm/partners*`의 어느
+   * 응답도 `ETag`를 선언하지 않는다(계약 실측). 그래서 지금은 공통 훅이 토큰을 찾지 못해
+   * **요청을 만들지 않고 안내를 세운다.** 그것이 정직한 상태다 — 빈 `If-Match`를 지어 보내면
+   * 서버가 400으로 되돌리고 사용자는 원인을 읽을 수 없다(공통 훅이 명시적으로 금지한 행위다).
+   * 서버·계약이 `ETag`를 주기 시작하면 **이 자리를 고치지 않아도** 저장이 살아난다.
    *
    * **무효화는 역할 키 하나뿐이다.** 이 치환으로 거래처 본체가 바뀌지 않으므로 목록까지
    * 무효화하면 아무것도 달라지지 않을 조회를 다시 낸다.
    */
-  const partnerRoleWrite = useMasterWrite<readonly string[], PartnerRole[]>({
-    request: (selected, headers) =>
-      client.PUT('/mdm/partners/{partnerId}/roles', {
+  const partnerRoleWrite = useMasterWrite<readonly string[], PartnerRoleRow[]>({
+    request: (selected, headers) => {
+      const ifMatch = headers['If-Match'];
+
+      /*
+       * **없는 값을 빈 글자로 메우지 않는다.** `etagPath`가 있으면 공통 훅은 토큰을 찾지 못한
+       * 순간 요청을 만들지 않고 되돌아간다 — 여기까지 오면 토큰이 있다. 그 사실에 기대는 대신
+       * 여기서 멈추는 이유는, 빈 `If-Match`가 계약 위반이라 서버가 400으로 되돌리고 사용자는
+       * 원인을 읽을 수 없기 때문이다(형제 슬라이스의 상신 가드와 같은 형태).
+       */
+      if (selectedPartnerId === null || ifMatch === undefined) {
+        throw new Error('잠금 토큰 없이 거래처 역할을 저장하지 않습니다.');
+      }
+
+      return client.PUT('/mdm/partners/{partnerId}/roles', {
         params: {
-          /* 고른 거래처가 없으면 여기까지 오지 않는다 — 저장 컨트롤이 그 상태에 서지 않는다. */
-          path: { partnerId: selectedPartnerId ?? 0 },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+          path: { partnerId: selectedPartnerId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'], 'If-Match': ifMatch },
         },
         body: toPartnerRolesPayload(partnerRoleState?.source ?? [], selected),
-      }),
-    etagPath: null,
+      });
+    },
+    etagPath: selectedPartnerId === null ? null : partnerRolesPath(selectedPartnerId),
     invalidateKeys: [partnerKeys.roles(selectedPartnerId ?? 0)],
     // 체크칸에는 계약의 필드 이름이 붙지 않는다 — 필드 오류도 전부 배너로 올린다.
     knownFields: [],

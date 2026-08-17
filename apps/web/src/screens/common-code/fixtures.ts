@@ -1,6 +1,7 @@
 import type { CodeValue } from './code-value-types';
+import type { PartnerRoleRow } from './partner-role-draft';
 import { PARTNER_ROLE_CODES } from './partner-role-vocab';
-import type { CodeGroup, Department, Partner, PartnerRole, Worker } from './types';
+import type { CodeGroup, Department, Partner, Worker } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -163,7 +164,7 @@ export const partnerFixtures: Partner[] = [
  * 그대로 쓰지 않고 자기 차례로 세우는지, 모르는 코드를 감추지 않고 표식과 함께 내는지
  * 확인하는 것이 이 픽스처의 목적이다.
  */
-export const partnerRoleFixtures: PartnerRole[] = [
+export const partnerRoleFixtures: PartnerRoleRow[] = [
   /* 어휘 밖 코드는 어휘 표에 없으므로 여기서 짓는다 — 화면이 모르는 값이 이 픽스처의 요점이다. */
   { roleTypeCode: 'SAMPLE-ROLE-X', roleTypeName: '샘플 역할 엑스' },
   /* 어휘 안 코드는 **표에서 꺼내 쓴다**(결정 2) — 리터럴은 고정 감지기 한 자리에만 둔다. */

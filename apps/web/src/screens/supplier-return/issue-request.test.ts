@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { goodsReceipt, goodsReceiptLine, goodsReceiptLineFixtures } from './fixtures';
 import {
+  DESTINATION_TYPE_CODES,
   POST_IMMEDIATELY,
   toBusinessDate,
   toGoodsIssueRequest,
@@ -19,12 +20,20 @@ import type { ReturnDraft } from './types';
 /** 제출 순간. **인자로 넘긴다** — 함수 안에서 시각을 읽으면 고정 시각으로 검사할 수 없다. */
 const NOW = new Date('2026-08-11T14:30:45+09:00');
 
+/**
+ * 도착지 유형만 **계약이 아는 값**이다 — 계약이 이 코드를 값 셋으로 좁혔고(#173), 조립이
+ * 계약 밖 값을 받으면 본문을 만들지 않는다. 나머지 코드 셋은 값 목록이 아직 열리지 않아
+ * 합성값 그대로다(계약이 `string`으로 두고 있다).
+ * 공급사 반품의 도착지가 거래처라는 것도 #173이 표로 적었다.
+ */
+const DESTINATION_TYPE = 'PARTNER';
+
 const DRAFT: ReturnDraft = {
   supplier: '9901',
   codes: {
     issueType: 'SAMPLE_ISSUE_TYPE_A',
     sourceDocumentType: 'SAMPLE_SOURCE_TYPE_A',
-    destinationType: 'SAMPLE_DESTINATION_TYPE_A',
+    destinationType: DESTINATION_TYPE,
     reason: 'SAMPLE_REASON_A',
   },
   issuedDate: '2026-08-06',
@@ -256,7 +265,7 @@ describe('toGoodsIssueRequest — 되돌릴 수 없는 쓰기의 본문', () => 
           codes: {
             issueType: '  SAMPLE_ISSUE_TYPE_A  ',
             sourceDocumentType: ' SAMPLE_SOURCE_TYPE_A ',
-            destinationType: ' SAMPLE_DESTINATION_TYPE_A ',
+            destinationType: ` ${DESTINATION_TYPE} `,
             reason: ' SAMPLE_REASON_A ',
           },
         },
@@ -265,7 +274,7 @@ describe('toGoodsIssueRequest — 되돌릴 수 없는 쓰기의 본문', () => 
 
     expect(body?.issueTypeCode).toBe('SAMPLE_ISSUE_TYPE_A');
     expect(body?.sourceDocumentTypeCode).toBe('SAMPLE_SOURCE_TYPE_A');
-    expect(body?.destinationTypeCode).toBe('SAMPLE_DESTINATION_TYPE_A');
+    expect(body?.destinationTypeCode).toBe(DESTINATION_TYPE);
     expect(body?.reasonCode).toBe('SAMPLE_REASON_A');
   });
 
@@ -375,5 +384,44 @@ describe('toGoodsIssueRequest — 되돌릴 수 없는 쓰기의 본문', () => 
 
     expect(body).not.toHaveProperty('onHandQty');
     expect(body).not.toHaveProperty('availableQty');
+  });
+});
+
+/**
+ * **계약이 도착지 유형을 값 셋으로 좁혔다**(#173 — 위치 · 거래처 · 폐기 거래처).
+ * 어휘 밖 값은 서버가 400으로 거절한다. 이 화면의 선택지는 아직 **빈 자리표시**라 화면에서는
+ * 닿을 수 없는 갈래지만, 자리표시가 열리는 순간 사용자가 고른 값이 곧장 여기로 온다 —
+ * 되돌릴 수 없는 쓰기의 **마지막 겹**이므로 지금 재 둔다.
+ */
+describe('toGoodsIssueRequest — 도착지 유형 협착 가드', () => {
+  const withDestinationType = (destinationType: string): ReturnRequestInput =>
+    input({ draft: { ...DRAFT, codes: { ...DRAFT.codes, destinationType } } });
+
+  it('계약이 정한 값이 아닌 도착지 유형이면 본문을 만들지 않는다', () => {
+    expect(toGoodsIssueRequest(withDestinationType('SAMPLE_DESTINATION_TYPE_A'))).toBeNull();
+  });
+
+  /* 「비슷하면 통과」 구현을 잡는다 — 대소문자 보정·접두사 제거를 만들지 않는다. */
+  it.each(['partner', 'PARTNER_X', 'PART NER', 'toString'])(
+    '계약 값과 비슷하기만 한 코드(%s)도 막는다',
+    (destinationType) => {
+      expect(toGoodsIssueRequest(withDestinationType(destinationType))).toBeNull();
+    },
+  );
+
+  it('도착지 유형이 비어 있으면 본문을 만들지 않는다', () => {
+    expect(toGoodsIssueRequest(withDestinationType(''))).toBeNull();
+    expect(toGoodsIssueRequest(withDestinationType('   '))).toBeNull();
+  });
+
+  /* 짝 방향 — 계약이 아는 셋은 **하나도 빠짐없이** 지나간다. 막는 쪽만 재면 과잉 차단을 놓친다. */
+  it('계약이 정한 값 셋을 모두 그대로 싣는다', () => {
+    const codes = Object.keys(DESTINATION_TYPE_CODES);
+
+    expect(codes).toHaveLength(3);
+
+    for (const code of codes) {
+      expect(toGoodsIssueRequest(withDestinationType(code))?.destinationTypeCode).toBe(code);
+    }
   });
 });

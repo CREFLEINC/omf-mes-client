@@ -37,6 +37,7 @@ import {
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
+import type { DisposalPartnerRoleCode } from './code-options';
 import { balanceKeys } from './queries';
 import { DisposalIssueScreen } from './screen';
 
@@ -52,27 +53,34 @@ const t = messages.disposalIssue;
  * 판정·선택지 만들기·좁힘은 실물 그대로이고 바뀌는 것은 「값 목록이 왔다」는 사실 하나다.
  * 매 테스트 앞에서 빈 배열로 되돌려, 아무것도 채우지 않은 테스트는 **지금의 화면**을 본다.
  */
-const { codeValues, defectTypeCodes, approvedStatusCodes, partnerRole } = vi.hoisted(() => ({
-  codeValues: {
-    issueType: [] as string[],
-    sourceDocumentType: [] as string[],
-    reason: [] as string[],
-    receiptType: [] as string[],
-    status: [] as string[],
-    issueStatus: [] as string[],
-  },
-  defectTypeCodes: [] as string[],
-  /**
-   * 승인 완료를 뜻하는 상태 코드. **비어 있는 것이 지금의 사실이고**, 채웠을 때 결재 진행
-   * 구획의 안내가 달라지는 것을 재는 자리다(전환 감지기).
-   */
-  approvedStatusCodes: [] as string[],
+const { codeValues, defectTypeCodes, approvedStatusCodes, partnerRole } = vi.hoisted(() => {
   /**
    * 폐기 거래처를 좁히는 역할 코드. **비어 있는 것이 지금의 사실이고**, 채웠을 때 선택지 조회가
    * 나가고 칸이 열리는 것을 재는 자리다(변경 통지 #128 §3 · 완료 조건 C23·C24).
+   *
+   * 타입이 실물과 같다 — 계약이 값을 다섯으로 좁혔으므로(#173) 이 그릇도 그 다섯과 빈 글자만
+   * 받는다. `string`으로 두면 화면이 실제로는 만들 수 없는 상태를 재게 된다.
    */
-  partnerRole: { code: '' },
-}));
+  const partnerRole: { code: DisposalPartnerRoleCode } = { code: '' };
+
+  return {
+    codeValues: {
+      issueType: [] as string[],
+      sourceDocumentType: [] as string[],
+      reason: [] as string[],
+      receiptType: [] as string[],
+      status: [] as string[],
+      issueStatus: [] as string[],
+    },
+    defectTypeCodes: [] as string[],
+    /**
+     * 승인 완료를 뜻하는 상태 코드. **비어 있는 것이 지금의 사실이고**, 채웠을 때 결재 진행
+     * 구획의 안내가 달라지는 것을 재는 자리다(전환 감지기).
+     */
+    approvedStatusCodes: [] as string[],
+    partnerRole,
+  };
+});
 
 vi.mock('./code-options', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./code-options')>();
@@ -84,8 +92,12 @@ vi.mock('./code-options', async (importOriginal) => {
     /**
      * 역할 코드는 **글자 하나**라 배열처럼 내용만 바꿀 그릇이 없다 — 접근자로 낸다.
      * 바뀌는 것은 「값이 왔다」는 사실 하나이고, 판정·조회·좁힘은 실물 그대로다.
+     *
+     * 타입이 실물과 같다 — 계약이 역할 코드를 다섯으로 좁힌 뒤(#173) 이 목만 `string`으로
+     * 두면 자리표시를 「계약 밖 값」으로도 채울 수 있게 되어, 화면이 실제로는 만들 수 없는
+     * 상태를 재게 된다.
      */
-    get DISPOSAL_PARTNER_ROLE_CODE(): string {
+    get DISPOSAL_PARTNER_ROLE_CODE(): DisposalPartnerRoleCode {
       return partnerRole.code;
     },
   };

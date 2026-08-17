@@ -59,7 +59,9 @@ describe('toReference', () => {
    * 「알 수 없음」으로 보이는데, 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
    */
   it('아직 오지 않은 것과 목록에 없는 것을 가른다', () => {
-    expect(toReference(source({ entries: [], isLoading: true }), 9701)).toEqual({ kind: 'loading' });
+    expect(toReference(source({ entries: [], isLoading: true }), 9701)).toEqual({
+      kind: 'loading',
+    });
     expect(toReference(source({ entries: [] }), 9701)).toEqual({ kind: 'unknown' });
   });
 
@@ -127,7 +129,9 @@ describe('isTruncated · lookupNote', () => {
    * 확정되지 않았다는 별개의 사실이고, 화면이 둘을 이어 붙인다.
    */
   it('창고 유형 미확정 안내를 내지 않는다', () => {
-    expect(lookupNote({ isError: false, truncated: false })).not.toBe(t.filters.warehouseTypePending);
+    expect(lookupNote({ isError: false, truncated: false })).not.toBe(
+      t.filters.warehouseTypePending,
+    );
   });
 });
 
@@ -532,6 +536,14 @@ const partnersRoute = (total?: number): StubRoute =>
  * 전표에 실을 수 있다.
  */
 describe('useDisposalPartnerOptions — 전환 두 방향', () => {
+  /**
+   * **공백만인 값은 이제 이 훅에 닿지 못한다**(계약 재동기화 #173).
+   *
+   * 계약이 역할 코드를 다섯으로 좁히면서 인자 타입이 「다섯 또는 빈 글자」가 됐다 — 공백뿐인
+   * 글자는 타입이 먼저 막는다. 그 축을 재던 짝 시험을 여기서 거두고 **판정 자체를 재는 자리**
+   * (`code-options.test.ts`의 「공백만인 값도 준비 중으로 본다」)에 남긴다. 런타임 방어는
+   * 그대로 살아 있고, 역할 코드가 조회·설정으로 **오는 값**이 되면 그때 이 자리로 돌아온다.
+   */
   it('역할 코드가 비면 요청이 나가지 않는다', async () => {
     const { fetch, urls } = recording([partnersRoute()]);
     const { result } = renderHookWithProviders(() => useDisposalPartnerOptions('', true), {
@@ -544,20 +556,6 @@ describe('useDisposalPartnerOptions — 전환 두 방향', () => {
 
     expect(urls).toEqual([]);
     expect(result.current.entries).toEqual([]);
-  });
-
-  /** 공백만인 값도 채워진 것이 아니다 — 그대로 실으면 좁히지 않은 목록을 좁혔다고 믿는다. */
-  it('공백만인 역할 코드로도 요청이 나가지 않는다', async () => {
-    const { fetch, urls } = recording([partnersRoute()]);
-    const { result } = renderHookWithProviders(() => useDisposalPartnerOptions('   ', true), {
-      fetch,
-    });
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    expect(urls).toEqual([]);
   });
 
   /** 전표를 고르기 전에도 부르지 않는다 — 폼 자체가 상세 응답을 기다린다. */

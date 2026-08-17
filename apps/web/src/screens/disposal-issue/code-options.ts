@@ -1,3 +1,4 @@
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { DisposalCodeKey, SelectOption, WarehouseEntry } from './types';
@@ -114,6 +115,31 @@ export const PLACEHOLDER_DISPOSAL_ISSUE_CODES: CodeValueLists = {
  */
 export const DEFECT_WAREHOUSE_TYPE_CODES: readonly string[] = [];
 
+/** 계약이 정한 거래처 역할 코드. **생성물 타입에서 파생한다** — 손으로 적은 유니온을 두지 않는다. */
+type PartnerRoleCode = components['schemas']['PartnerRole']['roleTypeCode'];
+
+/**
+ * **계약이 실제로 좁혀 두었는가**를 타입으로 못박는다.
+ *
+ * 파생은 한 방향으로만 운다 — 계약이 값을 바꾸면 아래 상수가 깨지지만, 계약이 **다시 자유
+ * 문자열로 넓어지면** `string | ''`이 되어 아무것도 울지 않는다. 그때 이 자리의 협착은
+ * 계약에 없는 제약이 되고, 좁힘 조건이 실제로 계약을 따르는지 아무도 다시 묻지 않는다.
+ *
+ * ⛔ **지우지 않는다.** 아무 데서도 읽지 않는 것이 이 상수의 형태다 — 하는 일이 대입 그
+ * 자체이고, 대입이 성립하지 않으면 `tsc`가 멈춘다.
+ */
+type PartnerRoleIsNarrowed = string extends PartnerRoleCode ? never : true;
+
+const PARTNER_ROLE_IS_NARROWED: PartnerRoleIsNarrowed = true;
+
+/**
+ * 폐기 거래처를 좁히는 역할 코드가 가질 수 있는 값 — **계약이 아는 다섯 또는 빈 글자.**
+ *
+ * 빈 글자는 「아직 채워지지 않음」이다. 자리표시 축을 값 하나로 남겨 두어야
+ * 「비면 조회를 내보내지 않는다」는 방어를 감지기가 계속 잴 수 있다.
+ */
+export type DisposalPartnerRoleCode = PartnerRoleCode | '';
+
 /**
  * 폐기 거래처 선택지를 좁히는 **역할 코드 — 명칭·의미는 업무가 확정했다**(2026-08-16 사용자 결정).
  *
@@ -130,8 +156,10 @@ export const DEFECT_WAREHOUSE_TYPE_CODES: readonly string[] = [];
  *
  * **같은 글자의 짝이 하나 더 있다** — `screens/common-code/partner-role-vocab.ts`의
  * `PARTNER_ROLE_CODES.disposal`(역할을 **편집하는** 쪽의 어휘 표). 화면 슬라이스는 서로
- * import하지 않으므로 두 사본이 각자 산다. **한쪽만 고치면 아무 시험도 울지 않는다** — 이쪽을
- * 고칠 때는 저 경로를 함께 연다. (감출 수 없는 한계라 감추지 않고 적는다.)
+ * import하지 않으므로 두 사본이 각자 산다. 이제 **둘 다 계약 타입에서 파생**하므로 계약이 값을
+ * 늘리거나 이름을 바꾸면 두 사본이 함께 컴파일에서 멈춘다. 다만 두 사본이 서로 **다른 값**을
+ * 고르는 어긋남은 타입이 잡지 못한다 — 그 축은 두 파일의 리터럴 고정 감지기가 맡는다.
+ * (감출 수 없는 한계라 감추지 않고 적는다.)
  *
  * **이 한 줄이 선택지 조회를 여는 열쇠다**(`lookups.ts`의 `useDisposalPartnerOptions`).
  * 비면 조회 자체를 내보내지 않는다 — 빈 값으로 부르면 **좁히지 않은 거래처 전부**가 폐기 거래처
@@ -140,12 +168,13 @@ export const DEFECT_WAREHOUSE_TYPE_CODES: readonly string[] = [];
  *
  * ⭐ **거래처를 고르지 않고도 화면은 선다**(#128 §3) — 자체 폐기를 체크하면 거래처 없이 요청한다.
  *
- * ⛔ **`: string`을 떼지 않는다.** 떼면 타입이 `'DISPOSAL'` 리터럴로 좁혀지고, 화면 시험이
- * 이 상수를 갈아 끼우는 접근자 목(`screen.test.tsx`의 `get …(): string`)이 타입에서 어긋난다 —
- * 「값이 왔을 때 화면이 달라지는가」를 재는 구조가 통째로 무너진다. 군더더기로 보이는 명시
- * 타입이지만 시험이 그것에 기대고 있다.
+ * ⛔ **명시 타입을 떼지 않는다.** 떼면 타입이 `'DISPOSAL'` 리터럴로 좁혀지고, 화면 시험이
+ * 이 상수를 갈아 끼우는 접근자 목(`screen.test.tsx`)이 타입에서 어긋난다 — 「값이 왔을 때
+ * 화면이 달라지는가」를 재는 구조가 통째로 무너진다. 군더더기로 보이는 명시 타입이지만
+ * 시험이 그것에 기대고 있다. 다만 이제 그 타입은 `string`이 아니라 **계약이 아는 다섯 또는
+ * 빈 글자**다 — 자리표시 축(빈 글자)은 남기고 계약 밖 값만 막는다.
  */
-export const DISPOSAL_PARTNER_ROLE_CODE: string = 'DISPOSAL';
+export const DISPOSAL_PARTNER_ROLE_CODE: DisposalPartnerRoleCode = 'DISPOSAL';
 
 const toOptions = (values: readonly string[]): SelectOption[] =>
   values.map((code) => ({ value: code, label: code }));
@@ -317,8 +346,12 @@ export const canChooseDisposalPartner = (condition: DisposalPartnerCondition): b
  *
  * 위 두 판정과 같은 이유로 **코드를 인자로 받는다** — 함수 안에서 상수를 직접 읽으면
  * 「채워졌을 때 무엇이 달라지는가」를 감지기가 잴 수 없어 자리표시가 죽은 가지가 된다.
+ *
+ * **타입 술어로 낸다**(계약 재동기화 #173). 거짓이면 호출부가 코드를 계약 유니온으로 좁혀
+ * 받아, 좁힌 질의 조건에 그대로 실을 수 있다 — 타입 단언으로 계약을 우회하지 않는다.
+ * 인자를 `string`으로 받는 것은 공백만인 값을 계속 걸러야 하기 때문이다.
  */
-export const isDisposalPartnerRolePending = (roleTypeCode: string): boolean =>
+export const isDisposalPartnerRolePending = (roleTypeCode: string): roleTypeCode is '' =>
   roleTypeCode.trim() === '';
 
 /**

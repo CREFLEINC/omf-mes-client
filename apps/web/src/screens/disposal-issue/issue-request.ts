@@ -35,15 +35,31 @@ type GoodsIssueLineUpsert = components['schemas']['GoodsIssueLineUpsert'];
 
 const t = messages.disposalIssue;
 
+/** 계약이 정한 도착지 유형. **생성물 타입에서 파생한다** — 손으로 적은 유니온을 두지 않는다. */
+type DestinationTypeCode = NonNullable<GoodsIssueCreate['destinationTypeCode']>;
+
 /**
- * 폐기 출고의 도착지 유형 — **통지 #128 §1이 문면으로 지정한 값 하나다.**
+ * **계약이 실제로 좁혀 두었는가**를 타입으로 못박는다.
  *
- * 계약은 이 코드의 값 목록을 확정하지 않았고(자리표시 규율 G-2가 막는 자리다), 그래서
- * 화면이 **고르게 하지 않고 상수로 못 박는다** — 폐기 거래처를 골랐다는 사실이 곧 유형이다.
- * 값이 나중에 달라지면 **이 한 줄만** 고친다(위험 R3 · 선행 회차가 세운 「가정을 한 줄에
- * 가둔다」와 같은 형태). 확정 여부는 질문으로 올라가 있다.
+ * 파생은 한 방향으로만 운다 — 계약이 값 이름을 바꾸면 아래 상수가 깨지지만, 계약이 **다시
+ * 자유 문자열로 넓어지면** 어떤 글자를 적어도 통과해 아무것도 울지 않는다. 그때 이 상수는
+ * 계약이 아는 값이라는 근거를 잃고도 조용히 되돌릴 수 없는 전표에 실린다.
+ *
+ * ⛔ **지우지 않는다.** 아무 데서도 읽지 않는 것이 이 상수의 형태다 — 하는 일이 대입 그
+ * 자체이고, 대입이 성립하지 않으면 `tsc`가 멈춘다.
  */
-export const DISPOSAL_DESTINATION_TYPE_CODE = 'DISPOSAL_SITE';
+type DestinationTypeIsNarrowed = string extends DestinationTypeCode ? never : true;
+
+const DESTINATION_TYPE_IS_NARROWED: DestinationTypeIsNarrowed = true;
+
+/**
+ * 폐기 출고의 도착지 유형 — **계약이 값 셋으로 확정했다**(#173 — 위치 · 거래처 · 폐기 거래처).
+ *
+ * 화면이 **고르게 하지 않고 상수로 못 박는다** — 폐기 거래처를 골랐다는 사실이 곧 유형이다.
+ * 앞 회차에는 통지 문면만이 근거였고 계약은 자유 문자열이었다. 이제 **타입이 계약에서
+ * 파생**되므로 계약이 이 값의 이름을 바꾸면 여기서 컴파일이 멈춘다.
+ */
+export const DISPOSAL_DESTINATION_TYPE_CODE: DestinationTypeCode = 'DISPOSAL_SITE';
 
 /**
  * 폐기한 물건이 어디로 가는가 — **짝을 한 값으로 묶은 판별 유니온.**

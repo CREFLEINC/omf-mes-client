@@ -185,7 +185,7 @@ describe('describeIssueDestination — 세 갈래', () => {
   it('짝이 있으면 「코드 · 이름」으로 말한다', () => {
     expect(
       describeIssueDestination(
-        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9561 },
+        { destinationTypeCode: 'DISPOSAL_SITE', destinationId: 9561 },
         partners(),
       ),
     ).toBe(PARTNER_LABEL);
@@ -199,7 +199,7 @@ describe('describeIssueDestination — 세 갈래', () => {
   it('목록에 없는 거래처는 알 수 없음으로 말한다', () => {
     expect(
       describeIssueDestination(
-        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9563 },
+        { destinationTypeCode: 'DISPOSAL_SITE', destinationId: 9563 },
         partners(),
       ),
     ).toBe(t.values.unknown);
@@ -210,7 +210,7 @@ describe('describeIssueDestination — 세 갈래', () => {
    * 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
    */
   it('미도착·실패를 목록에 없음과 가른다', () => {
-    const target = { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9561 };
+    const target = { destinationTypeCode: 'DISPOSAL_SITE', destinationId: 9561 };
 
     expect(describeIssueDestination(target, partners({ entries: [], isLoading: true }))).toBe(
       t.values.referenceLoading,
@@ -228,7 +228,7 @@ describe('describeIssueDestination — 세 갈래', () => {
   it('짝 한쪽만 온 전표를 자체 폐기로 접지 않는다', () => {
     expect(
       describeIssueDestination(
-        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: null },
+        { destinationTypeCode: 'DISPOSAL_SITE', destinationId: null },
         partners(),
       ),
     ).toBe(t.values.unknown);
@@ -239,15 +239,15 @@ describe('describeIssueDestination — 세 갈래', () => {
     for (const text of [
       describeIssueDestination({ destinationTypeCode: null, destinationId: null }, partners()),
       describeIssueDestination(
-        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9561 },
+        { destinationTypeCode: 'DISPOSAL_SITE', destinationId: 9561 },
         partners(),
       ),
       describeIssueDestination(
-        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9563 },
+        { destinationTypeCode: 'DISPOSAL_SITE', destinationId: 9563 },
         partners(),
       ),
       describeIssueDestination(
-        { destinationTypeCode: 'SAMPLE_DEST_TYPE_A', destinationId: 9561 },
+        { destinationTypeCode: 'DISPOSAL_SITE', destinationId: 9561 },
         partners({ isError: true }),
       ),
     ]) {

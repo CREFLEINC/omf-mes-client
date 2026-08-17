@@ -5565,7 +5565,7 @@ export interface paths {
                     /** @description 코드·명칭 검색 */
                     q?: string;
                     /** @description 역할로 거른다. ⭐ 폐기 출고 화면이 폐기처리 거래처만 고를 때 쓴다(W-01-06 · W-04-10 · DR-013). */
-                    roleTypeCode?: string;
+                    roleTypeCode?: "CUSTOMER" | "SUPPLIER" | "SUBCONTRACTOR" | "DISPOSAL" | "OTHER";
                     includeInactive?: boolean;
                     page?: number;
                     size?: number;
@@ -6343,7 +6343,7 @@ export interface paths {
         };
         /**
          * 거래처 역할 교체
-         * @description W-06-06 「거래처 역할」 탭의 저장. ⭐ 목록을 통째로 교체한다 — 역할은 집합이고 (거래처, 역할)이 유일하다. ⛔ 거래처 본체는 고치지 않는다 — ERP 수신 마스터라 MES 는 읽기만 한다.
+         * @description W-06-06 「거래처 역할」 탭의 저장. ⭐ 목록을 통째로 교체한다 — 역할은 집합이고 (거래처, 역할)이 유일하다. ⛔ 거래처 본체는 고치지 않는다 — ERP 수신 마스터라 MES 는 읽기만 한다. ⭐ 2026-08-16 보완 — 저장 충돌 보호를 붙였다. 통째로 교체하는 저장이라 보호가 없으면 «남이 방금 붙인 역할»이 조용히 사라진다. 값은 상세 조회의 응답 헤더에서 받는다.
          */
         put: {
             parameters: {
@@ -6351,6 +6351,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     partnerId: number;
@@ -6393,8 +6395,670 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description 충돌 — 남이 먼저 고쳤다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
             };
         };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/terminals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 단말 목록
+         * @description 근거: W-CO-06 §5
+         */
+        get: {
+            parameters: {
+                query?: {
+                    plantId?: number;
+                    terminalTypeCode?: string;
+                    includeInactive?: boolean;
+                    /** @description 단말 코드 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["Terminal"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 단말 등록
+         * @description 근거: W-CO-06 §5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TerminalCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Terminal"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/terminals/{terminalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 단말 한 건 */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    terminalId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Terminal"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 단말 수정
+         * @description ⛔ 단말 코드는 못 바꾼다 — 키다. 근거: W-CO-06 §5 · B-4
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    terminalId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TerminalUpdate"];
+                };
+            };
+            responses: {
+                /** @description 수정됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Terminal"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/terminals/{terminalId}:deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 단말 사용 중지
+         * @description 지우지 않고 끈다 — 그 단말이 남긴 기록이 참조로 남아 있다. 근거: W-CO-06 §5·§6
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    terminalId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 중지됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Terminal"];
+                    };
+                };
+                /** @description 권한에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/terminals/{terminalId}:issue-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 단말 등록 토큰 발급
+         * @description ⭐ 관리웹이 부르고, 받은 토큰을 화면에 «QR 로» 보인다. 기기는 그것을 스캔해 저장한다 — 기기가 서버를 부르지 않으므로 토큰 없이 열리는 경로가 생기지 않는다. ⚠ 재발급해도 «이전 기기가 끊기지 않는다» — 세대를 올릴 자리가 아직 없다. 화면이 그 사실을 경고한다. 근거: M-CO-01 §5-2 B안(2026-08-13 확정) · W-CO-06 §5-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    terminalId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 발급됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TerminalRegistrationToken"];
+                    };
+                };
+                /** @description 권한에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/terminals/{terminalId}/processes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 단말 기능 구성 조회
+         * @description 이 단말에서 어떤 공정의 무엇이 열려 있나. POP 셸이 화면을 그리기 전에 읽는다. 근거: W-CO-06 §5 · P-CO-01 §5-1
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    terminalId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["TerminalProcess"][];
+                        };
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 단말 기능 구성 저장
+         * @description 단말 하나의 공정 구성을 통째로 바꾼다 — 화면의 저장이 단말 단위 한 트랜잭션이다. 빠진 공정은 지워진다. 근거: W-CO-06 §5-3
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    terminalId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TerminalProcessReplace"];
+                };
+            };
+            responses: {
+                /** @description 저장됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["TerminalProcess"][];
+                        };
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/warehouses/{warehouseId}/layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 창고 배치도 조회
+         * @description 도면 한 장과 위치 점들. 도면이 없으면 점만 온다. 근거: W-CO-08 §5
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    warehouseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WarehouseLayout"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 창고 배치도 저장
+         * @description 도면과 점을 통째로 바꾼다 — 화면의 저장이 그 단위다. ⚠ 도면을 갈면 점이 그대로 남는다: 좌표가 비율이라 새 도면에서도 같은 상대 위치를 가리킨다. 그래도 사람이 다시 봐야 하므로 화면이 교체 전에 확인을 받는다. 근거: W-CO-08 §5·§7
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    warehouseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["WarehouseLayoutReplace"];
+                };
+            };
+            responses: {
+                /** @description 저장됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WarehouseLayout"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/partners/{partnerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 거래처 한 건
+         * @description ⭐ 2026-08-16 신설. 그전에는 목록만 있어 화면의 기본 정보가 «지금 목록에 실려 있는 행»에 매여 있었다 — 목록을 다시 부르거나 검색어를 바꾸면 보고 있던 거래처가 사라진다. ⛔ 거래처 본체는 ERP 수신 마스터라 이 경로도 읽기 전용이다 — 고치는 것은 역할뿐이다. 근거: W-06-06 「거래처 역할」 탭 · client#128
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    partnerId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Partner"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -10750,6 +11414,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/logistics/recycle-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 재생재 등록
+         * @description 분쇄재가 생기면 현장이 등록한다. 새 자재 LOT 을 만들고 그 수량만큼 재고를 늘린다 — 한 트랜잭션이다. **LOT 번호는 서버가 매긴다**: 번호를 클라이언트가 정하면 오프라인 두 단말이 같은 번호를 만든다(공유계약 C-2). 그래서 화면이 「번호는 저장 후 정해집니다」를 먼저 말한다. 근거: M-01-12 §5-1·§5-3 · DR-006 확정. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RecycleEntryCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 — LOT 번호가 실려 온다 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecycleEntry"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/logistics/shopfloor-receipts": {
         parameters: {
             query?: never;
@@ -12735,6 +13474,1112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 로그인
+         * @description ⛔ 실패해도 아이디와 비밀번호 중 무엇이 틀렸는지 말하지 않는다 — 계정이 있는지가 새어 나간다. 남은 시도 횟수는 알린다(잠긴 뒤에야 알리지 않기 위해서다). 잠긴 계정은 스스로 풀 수 없다 — 관리자가 푼다. 근거: W-CO-01 §5-1·§5-2
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LoginRequest"];
+                };
+            };
+            responses: {
+                /** @description 로그인됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Session"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 아이디 또는 비밀번호가 맞지 않는다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LoginFailure"];
+                    };
+                };
+                /** @description 실패가 쌓여 잠겼다 — 스스로 풀 수 없다 */
+                423: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/sessions/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 현재 세션
+         * @description 지금 나는 누구이고 어디까지 보는가. 근거: W-CO-01 §5-3
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Session"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** 로그아웃 */
+        delete: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 끝났다 */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/users/me:change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 내 비밀번호 변경
+         * @description ⛔ 현재 비밀번호를 틀려도 계정을 잠그지 않는다 — 로그인과 달리 이미 인증된 본인이기 때문이다. ⛔ 바꾼 뒤 다시 로그인시키지 않는다 — 작업 중일 수 있다. 근거: W-CO-10 §5-2·§5-3
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PasswordChangeRequest"];
+                };
+            };
+            responses: {
+                /** @description 바뀌었다 */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 아이디 또는 비밀번호가 맞지 않는다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 알림 목록
+         * @description 기간을 반드시 받는다 — 알림은 계속 쌓이므로 범위 없이 열면 목록이 끝나지 않는다(공유계약 L-3). 근거: W-CO-03 §5
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 참이면 안 읽은 것만 */
+                    unreadOnly?: boolean;
+                    eventCode?: string;
+                    /** @description 기간 시작 */
+                    occurredFrom: string;
+                    /** @description 기간 종료 */
+                    occurredTo: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["Notification"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 안 읽은 알림 수
+         * @description 셸의 종 배지가 쓴다. ⚠ 조회 화면의 「자동 갱신을 두지 않는다」 규약은 여기 걸리지 않는다 — 셸 배지는 다르다. 화면이 바뀔 때 다시 부른다. 근거: W-CO-03 §8-4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 개수 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example 3 */
+                            unreadCount: number;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notifications/{notificationId}:read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 알림 읽음 처리
+         * @description 목록에서 항목을 열면 자동으로 부른다. 근거: W-CO-03 §5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    notificationId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 읽음으로 표시됐다 */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notifications:read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 모두 읽음
+         * @description 안 읽은 것이 하나라도 있을 때만 화면이 활성한다. 근거: W-CO-03 §5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 몇 건을 읽음으로 바꿨나 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example 12 */
+                            readCount: number;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notification-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 알림 이벤트 목록
+         * @description ⭐ 이 목록의 정본은 계약이다 — 공통코드 마스터에 두면 편집 가능해지고, 코드가 바뀌면 «보내는 쪽»이 조용히 깨진다. 근거: W-CO-03 §8-3 · W-CO-11 §8-3
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["NotificationEvent"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notification-subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 알림 수신자 설정 조회
+         * @description 근거: W-CO-11 §5
+         */
+        get: {
+            parameters: {
+                query?: {
+                    eventCode?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["NotificationSubscription"][];
+                        };
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 알림 수신자 설정 저장
+         * @description 이벤트 하나의 수신자를 통째로 바꾼다 — 화면의 저장이 그 단위다. 빠진 수신자는 지워진다. 근거: W-CO-11 §5
+         */
+        put: {
+            parameters: {
+                query: {
+                    eventCode: string;
+                };
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotificationSubscriptionReplace"];
+                };
+            };
+            responses: {
+                /** @description 저장됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationSubscription"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 공지 목록
+         * @description 근거: W-CO-04 §5
+         */
+        get: {
+            parameters: {
+                query?: {
+                    statusCode?: string;
+                    /** @description 참이면 게시 중인 것만 */
+                    activeOnly?: boolean;
+                    /** @description 제목 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["Notice"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 공지 작성
+         * @description 작성만 한다 — 게시는 따로 누른다. 근거: W-CO-04 §5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NoticeCreate"];
+                };
+            };
+            responses: {
+                /** @description 작성됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notice"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notices/{noticeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 공지 한 건 */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noticeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notice"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 공지 수정
+         * @description ⛔ 게시 전에만 고칠 수 있다 — 게시 후 본문을 고치면 «이미 확인한 사람이 다른 것을 본 것»이 되고, 확인 이력이 무엇에 대한 확인인지 알 수 없어진다. 게시된 공지에 PUT 이 오면 409 다. 근거: W-CO-04 §5
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    noticeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NoticeCreate"];
+                };
+            };
+            responses: {
+                /** @description 수정됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notice"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notices/{noticeId}:publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 공지 게시
+         * @description 게시하면 본문이 잠긴다. 근거: W-CO-04 §5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    noticeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 게시됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notice"];
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notices/{noticeId}:close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 공지 종료
+         * @description 종료일을 앞으로 당긴다. 지우지 않는다 — 확인 이력이 남아야 한다. 근거: W-CO-04 §5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    noticeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 종료됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notice"];
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notices/{noticeId}:acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 공지 확인
+         * @description 읽은 사람이 스스로 누른다. 근거: W-CO-04 §5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    noticeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 확인됐다 */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notices/{noticeId}/acknowledgements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 공지 확인 현황
+         * @description 누가 확인했고 누가 아직 안 했나. 확인을 요구한 공지에서만 관리자가 본다. 근거: W-CO-04 「미확인자 보기」
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 참이면 아직 안 한 사람만 */
+                    pendingOnly?: boolean;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path: {
+                    noticeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["NoticeAcknowledgement"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/dashboard-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 통합 대시보드 집계
+         * @description 카드마다 소유 화면이 따로 있고 이 경로는 «숫자만» 모은다. ⛔ 자동 갱신을 두지 않는다 — 사람이 「갱신」을 누른다. ⛔ 설비종합효율(OEE)은 내지 않는다: 계획 조업 시간의 분모가 되는 휴일·계획 정지를 담을 자리가 아직 없다. 근거: W-CO-05 §5·§8-1
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 기준 날짜. 없으면 오늘 */
+                    baseDate?: string;
+                    plantId?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 집계 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DashboardSummary"];
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -13902,6 +15747,8 @@ export interface components {
              * @example true
              */
             isActive: boolean;
+            /** @description 신재와 재생재를 가르는 MES 안쪽 구분. 기간계로 보내지 않는다 — 기간계에는 신재와 똑같이 처리한다. 근거: DR-006 확정 · M-01-12 §5-B. ⚠ 값 목록이 아직 확정되지 않았다 — 서버가 내려주는 선택지를 그대로 쓴다(공유계약 G-2) */
+            mesCategoryCode?: string;
         };
         /** @description 품목 MES 확장 속성 수정 요청. 원본 4열(itemCode·itemName·itemTypeCode·baseUomId)은 이 요청에 포함하지 않는다 — 항상 읽기 전용(ERP 수신본). 근거: W-06-05 §4-B·§5-1 */
         ItemUpdate: {
@@ -15274,8 +17121,12 @@ export interface components {
         };
         /** @description 거래처 역할. ⭐ 거래처 본체는 ERP 수신 마스터이고 역할은 MES 가 관리한다 — ERP 가 주지 않는 구분을 MES 가 덧붙이는 형태다(W-06-06 「작업자」 탭과 같은 원리). */
         PartnerRole: {
-            /** @description 거래처 역할. 공급사 · 고객 · 외주처 · 폐기처리 등. 한 거래처가 여러 역할을 가질 수 있다. */
-            roleTypeCode: string;
+            /**
+             * @description 거래처 역할. 고객사(CUSTOMER) · 공급사(SUPPLIER) · 외주 제작사(SUBCONTRACTOR) · 폐기 업체(DISPOSAL) · 기타(OTHER) 다섯이다. 한 거래처가 여러 역할을 가질 수 있다. ⭐ 2026-08-16 업무 확정 — 어휘 밖 값은 400 이다.
+             * @example SUPPLIER
+             * @enum {string}
+             */
+            roleTypeCode: "CUSTOMER" | "SUPPLIER" | "SUBCONTRACTOR" | "DISPOSAL" | "OTHER";
             /**
              * @description 역할 표시명. 화면이 그대로 보인다
              * @example 폐기처리
@@ -15291,7 +17142,211 @@ export interface components {
              *       "DISPOSAL"
              *     ]
              */
-            roleTypeCodes: string[];
+            roleTypeCodes: ("CUSTOMER" | "SUPPLIER" | "SUBCONTRACTOR" | "DISPOSAL" | "OTHER")[];
+        };
+        /** @description 설치된 단말 하나. 근거: W-CO-06 §4 */
+        Terminal: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            terminalId: number;
+            /**
+             * @description 설치 후에는 바꾸지 않는다 — 키다
+             * @example POP-A-01
+             */
+            terminalCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: int64
+             * @description 설치 위치. 비어 있을 수 있다
+             * @example 1001
+             */
+            locationId?: number;
+            /** @description 어떤 단말인가 — 고정 스테이션과 손에 드는 기기가 여기서 갈린다. 값 목록은 아직 확정 전이다 */
+            terminalTypeCode: string;
+            statusCode: string;
+            /** @example true */
+            isActive: boolean;
+            /**
+             * Format: date-time
+             * @description 마지막으로 토큰을 발급한 시각
+             * @example 2026-08-13T09:12:00+09:00
+             */
+            tokenIssuedAt?: string;
+            /** @example 1 */
+            versionNo?: number;
+        };
+        TerminalCreate: {
+            /** @example POP-A-01 */
+            terminalCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId?: number;
+            terminalTypeCode: string;
+            statusCode: string;
+        };
+        /** @description ⛔ 단말 코드는 받지 않는다 — 키는 바꾸지 않는다(공유계약 B-4). */
+        TerminalUpdate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId?: number;
+            terminalTypeCode: string;
+            statusCode: string;
+        };
+        /** @description 기기에 넣을 등록용 토큰. ⭐ 관리웹이 이것을 받아 «QR 로 그려» 보이고 기기가 스캔해 읽는다 — 기기는 서버를 부르지 않는다. 그래서 토큰 없이 열리는 경로가 생기지 않는다. 근거: M-CO-01 §5-2 B안 */
+        TerminalRegistrationToken: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            terminalId: number;
+            /** @description 기기가 저장한다. 관리웹은 화면에 QR 로만 보인다 */
+            token: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-13T09:12:00+09:00
+             */
+            issuedAt: string;
+            /**
+             * Format: date-time
+             * @description 만료 1년
+             * @example 2026-08-13T09:12:00+09:00
+             */
+            expiresAt?: string;
+        };
+        /** @description 이 단말에서 이 공정의 무엇을 열어 둘 것인가. ⭐ 이것은 «인증이 아니라 기능 구성»이다 — 오조작을 막는 것이지 보안 경계가 아니다. 보안 경계는 단말 토큰 하나뿐이다. 근거: P-CO-01 §5-1 */
+        TerminalProcess: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            processId: number;
+            /** @example 사출 */
+            processName?: string;
+            /**
+             * @description 입고 스캔을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @example false
+             */
+            canScanIn?: boolean;
+            /**
+             * @description 출고 스캔을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @example false
+             */
+            canScanOut?: boolean;
+            /**
+             * @description 실적 등록을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @example false
+             */
+            canRegisterResult?: boolean;
+            /**
+             * @description 검사 입력을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @example false
+             */
+            canInspect?: boolean;
+            /**
+             * @description 라벨 발행을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @example false
+             */
+            canPrintLabel?: boolean;
+            /**
+             * @description 재고 이동을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @example false
+             */
+            canMoveStock?: boolean;
+            /**
+             * @description 작업 중단 등록을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @example false
+             */
+            canHold?: boolean;
+            /**
+             * @description 현장 승인을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @example false
+             */
+            canApprove?: boolean;
+        };
+        /** @description 단말 하나의 공정 구성을 통째로 바꾼다 — 화면의 저장이 단말 단위 한 트랜잭션이기 때문이다. 빠진 공정은 지워진다. 근거: W-CO-06 §5-3 */
+        TerminalProcessReplace: {
+            items: components["schemas"]["TerminalProcessLine"][];
+        };
+        TerminalProcessLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            processId: number;
+            /** @example false */
+            canScanIn?: boolean;
+            /** @example false */
+            canScanOut?: boolean;
+            /** @example false */
+            canRegisterResult?: boolean;
+            /** @example false */
+            canInspect?: boolean;
+            /** @example false */
+            canPrintLabel?: boolean;
+            /** @example false */
+            canMoveStock?: boolean;
+            /** @example false */
+            canHold?: boolean;
+            /** @example false */
+            canApprove?: boolean;
+        };
+        /** @description 창고 도면 한 장과 그 위에 찍은 위치 점들. 근거: W-CO-08 §5 */
+        WarehouseLayout: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId: number;
+            /**
+             * Format: int64
+             * @description 도면 이미지. 첨부의 다형 참조를 그대로 쓴다 — 대상 유형은 창고다. 비어 있으면 화면이 「도면을 올리세요」를 보인다
+             * @example 1001
+             */
+            drawingAttachmentId?: number;
+            markers: components["schemas"]["WarehouseLayoutMarker"][];
+            /** @example 1 */
+            versionNo?: number;
+        };
+        /** @description 위치 하나가 도면 어디에 있나. ⭐ 좌표는 도면 «비율»이다 — 0 과 1 사이. 픽셀로 두면 도면을 바꿀 때 점이 전부 어긋난다 */
+        WarehouseLayoutMarker: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId: number;
+            /** @example 0.42 */
+            x: number;
+            /** @example 0.18 */
+            y: number;
+        };
+        /** @description 도면과 점을 통째로 바꾼다 — 화면의 저장이 그 단위다. */
+        WarehouseLayoutReplace: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            drawingAttachmentId?: number;
+            markers: components["schemas"]["WarehouseLayoutMarker"][];
         };
         /** @description 승인 요청. 사유는 비울 수 없다 — 데이터가 NOT NULL 로 강제하고, 결재함 목록에서 이 문장이 요약을 겸한다(approval_request 에 업무 값이 reason 하나뿐이다). 승인 진행 상태를 읽고 결재하는 경로는 app-공통 파일이 갖는다. 근거: W-01-11 §5-6 · W-01-06 §5-7 · W-01-13 §5-5 · 공유계약 J-4 · A-12 보강 */
         ApprovalRequestCreate: {
@@ -15573,10 +17628,11 @@ export interface components {
              */
             sourceWarehouseId: number;
             /**
-             * @description 도착지 유형. 창고 내 이동은 위치, 공급사 반품은 거래처, 생산 투입은 공정이다. ⭐ 폐기 출고에서 폐기 업체가 있으면 폐기 거래처(DISPOSAL_SITE)를 가리키고, 자체 폐기면 도착지 짝을 통째로 비운다 — 나가서 없어지는 물건에는 도착지가 없다.
-             * @example WORK_ORDER
+             * @description 도착지 유형. 위치(LOCATION) → mdm.location · 거래처(PARTNER) → mdm.partner · 폐기 거래처(DISPOSAL_SITE) → mdm.partner 셋이다. 창고 내 이동과 생산 투입은 위치, 공급사 반품은 거래처, 폐기는 폐기 거래처를 가리킨다. ⭐ 자체 폐기면 도착지 짝을 통째로 비운다 — 나가서 없어지는 물건에는 도착지가 없다. ⭐ 2026-08-16 업무 확정.
+             * @example DISPOSAL_SITE
+             * @enum {string|null}
              */
-            destinationTypeCode?: string | null;
+            destinationTypeCode?: "LOCATION" | "PARTNER" | "DISPOSAL_SITE" | null;
             /**
              * Format: int64
              * @description 도착지 대상. destinationTypeCode 가 가리키는 테이블의 식별자다 — 대응표는 그 필드의 주석에 있다. ⭐ 자체 폐기면 유형과 함께 비운다.
@@ -15640,10 +17696,11 @@ export interface components {
              */
             sourceWarehouseId: number;
             /**
-             * @description 도착지 유형. 창고 내 이동은 위치, 공급사 반품은 거래처, 생산 투입은 공정이다. ⭐ 폐기 출고에서 폐기 업체가 있으면 폐기 거래처(DISPOSAL_SITE)를 가리키고, 자체 폐기면 도착지 짝을 통째로 비운다 — 나가서 없어지는 물건에는 도착지가 없다.
-             * @example WORK_ORDER
+             * @description 도착지 유형. 위치(LOCATION) → mdm.location · 거래처(PARTNER) → mdm.partner · 폐기 거래처(DISPOSAL_SITE) → mdm.partner 셋이다. 창고 내 이동과 생산 투입은 위치, 공급사 반품은 거래처, 폐기는 폐기 거래처를 가리킨다. ⭐ 자체 폐기면 도착지 짝을 통째로 비운다 — 나가서 없어지는 물건에는 도착지가 없다. ⭐ 2026-08-16 업무 확정.
+             * @example DISPOSAL_SITE
+             * @enum {string|null}
              */
-            destinationTypeCode?: string | null;
+            destinationTypeCode?: "LOCATION" | "PARTNER" | "DISPOSAL_SITE" | null;
             /**
              * Format: int64
              * @description 도착지 대상. destinationTypeCode 가 가리키는 테이블의 식별자다 — 대응표는 그 필드의 주석에 있다. ⭐ 자체 폐기면 유형과 함께 비운다.
@@ -18240,6 +20297,96 @@ export interface components {
              */
             occurredAt: string;
         };
+        /** @description 등록 결과. 서버가 매긴 LOT 번호가 실려 온다 — 화면이 그것을 보인다. */
+        RecycleEntry: {
+            /**
+             * Format: int64
+             * @description 등록 건 자체의 번호. 새로 만든 LOT 의 원천 참조가 이것을 가리킨다 — 원천 유형 코드는 RECYCLE_ENTRY 다
+             * @example 1001
+             */
+            recycleEntryId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /**
+             * @description 서버가 매긴 번호
+             * @example LOT-2026-000045
+             */
+            lotNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /** @example 12.5 */
+            quantity: number;
+            /**
+             * Format: int64
+             * @description 품목의 기본 단위가 그대로 온다
+             * @example 1001
+             */
+            uomId?: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId?: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            locationId?: number;
+            /**
+             * Format: date
+             * @example 2026-08-11
+             */
+            businessDate?: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-11T09:12:00+09:00
+             */
+            occurredAt?: string;
+        };
+        /** @description 재생재 등록. 새 자재 LOT 을 만들고 그 수량만큼 재고를 늘린다. LOT 번호는 서버가 매긴다 — 화면이 미리 보이지 못한다. 근거: M-01-12 §5-1 */
+        RecycleEntryCreate: {
+            /**
+             * Format: int64
+             * @description 재생재 품목. 신재와 다른 행이다 — 재고·투입·출고가 품목으로 서므로 품목이 갈리면 집계가 자동으로 갈린다. 근거: M-01-12 §3-2. ⚠ 이 행은 품목 마스터에 미리 있어야 한다 — 이 경로가 만들지 않는다
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * @description 0 이하는 400 이다. 근거: M-01-12 §6
+             * @example 12.5
+             */
+            quantity: number;
+            /**
+             * Format: int64
+             * @description 기본값은 단말에 묶인 창고다
+             * @example 1001
+             */
+            warehouseId: number;
+            /**
+             * Format: int64
+             * @description 비울 수 없다. 근거: M-01-12 §6
+             * @example 1001
+             */
+            locationId: number;
+            /**
+             * Format: date
+             * @example 2026-08-11
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-11T09:12:00+09:00
+             */
+            occurredAt: string;
+            /** @example 비고 */
+            remarks?: string;
+        };
         /** @description 생산창고 입고. 근거: M-01-09 */
         ShopfloorReceipt: {
             /**
@@ -19170,6 +21317,253 @@ export interface components {
         DocumentIssueSummaryResponse: {
             /** @description 요청한 대상 전건을 돌려준다 — 발행한 적 없는 대상도 `issueCount: 0` 으로 들어간다. 빠진 행이 있으면 화면이 「모른다」와 「없다」를 구분할 수 없다. */
             items: components["schemas"]["DocumentIssueSummary"][];
+        };
+        /** @description 근거: W-CO-01 §5-A */
+        LoginRequest: {
+            /** @example hong.gd */
+            loginId: string;
+            /**
+             * Format: password
+             * @description 평문은 저장하지도 기록하지도 않는다
+             */
+            password: string;
+        };
+        /** @description ⛔ 아이디가 틀렸는지 비밀번호가 틀렸는지 말하지 않는다 — 계정이 있는지가 새어 나간다. 근거: W-CO-01 §5-1 */
+        LoginFailure: {
+            /** @example 아이디 또는 비밀번호가 맞지 않습니다 */
+            message: string;
+            /**
+             * @description 남은 시도 횟수. 잠긴 뒤에야 알리지 않는다. ⚠ 없는 계정에는 오지 않는다 — 그래서 계정 존재가 드러나지만 「잠길 줄 모르는 것」보다 낫다고 판단했다
+             * @example 3
+             */
+            remainingAttempts?: number;
+        };
+        /** @description 로그인 결과이자 「지금 나는 누구이고 어디까지 보는가」. */
+        Session: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            userId: number;
+            /** @example hong.gd */
+            loginId: string;
+            /** @example 홍길동 */
+            userName: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            departmentId?: number;
+            /**
+             * Format: date-time
+             * @description 이번 로그인 «직전» 시각
+             * @example 2026-08-13T09:12:00+09:00
+             */
+            lastLoginAt?: string;
+            /** @description 권한 범위는 사업부·공장 두 축이다. 근거: W-CO-01 §5-3 */
+            scopes: components["schemas"]["SessionScope"][];
+            roles?: string[];
+        };
+        SessionScope: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            businessUnitId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId?: number;
+        };
+        /** @description 현재 비밀번호를 틀려도 계정을 잠그지 않는다 — 이미 인증된 본인이다. 바꾼 뒤 다시 로그인시키지도 않는다. 근거: W-CO-10 §5-2·§5-3 */
+        PasswordChangeRequest: {
+            /** Format: password */
+            currentPassword: string;
+            /**
+             * Format: password
+             * @description 최소 길이만 둔다 — 조합 규칙은 두지 않는다
+             */
+            newPassword: string;
+        };
+        Notification: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            notificationId: number;
+            /** @description 무슨 일이 일어났나. 목록은 이벤트 조회 경로가 준다 */
+            eventCode: string;
+            /** @example 출하검사에서 불합격이 나왔습니다 */
+            message: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-13T09:12:00+09:00
+             */
+            occurredAt: string;
+            /** @example false */
+            read: boolean;
+            /** @description 무엇에 대한 알림인가. LOT → trace.lot · WORK_ORDER → production.work_order · NONCONFORMANCE → quality.nonconformance · APPROVAL_REQUEST → app.approval_request. ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다 */
+            targetTypeCode?: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            targetId?: number;
+        };
+        /** @description 알림 이벤트 목록. ⭐ 이 목록의 정본은 계약이다 — 공통코드 마스터에 두면 편집 가능해지는데, 코드가 바뀌면 보내는 쪽이 깨진다. 근거: W-CO-03 §8-3 */
+        NotificationEvent: {
+            eventCode: string;
+            /** @example 출하검사 불합격 */
+            eventName: string;
+            /** @example 출하검사에서 불합격 판정이 저장됐을 때 */
+            description?: string;
+        };
+        /** @description 이벤트 하나의 수신자 전체. 근거: W-CO-11 §5-A */
+        NotificationSubscription: {
+            eventCode: string;
+            recipients: components["schemas"]["NotificationRecipient"][];
+            /**
+             * @description ⚠ 켜도 보낼 곳이 아직 없다 — 수신처(전화번호)를 담을 자리가 사용자 정보에 없다. 화면이 그 사실을 보인다
+             * @example false
+             */
+            zaloEnabled?: boolean;
+        };
+        /** @description 조직×역할로 묶어 지정하거나 사람을 하나씩 지정한다. 근거: W-CO-11 §5 */
+        NotificationRecipient: {
+            /** @description 어떻게 지정했나. ROLE → 조직×역할 묶음 (businessUnitId + roleId) · USER → 사람 하나 (userId) */
+            recipientTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            businessUnitId?: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            roleId?: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            userId?: number;
+        };
+        /** @description 이벤트 하나의 수신자를 통째로 바꾼다 — 화면의 저장이 그 단위다. */
+        NotificationSubscriptionReplace: {
+            recipients: components["schemas"]["NotificationRecipient"][];
+            /** @example false */
+            zaloEnabled?: boolean;
+        };
+        Notice: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            noticeId: number;
+            /** @example 8월 정기 보전 안내 */
+            title: string;
+            /** @example 8월 20일 09:00~12:00 사이 2호기 정기 보전이 있습니다. */
+            body?: string;
+            /** @description 작성 중 · 게시 중 · 종료 */
+            statusCode: string;
+            /**
+             * Format: date
+             * @example 2026-08-13
+             */
+            startDate: string;
+            /**
+             * Format: date
+             * @example 2026-08-13
+             */
+            endDate?: string;
+            /**
+             * @description 참이면 읽은 사람이 확인을 눌러야 한다
+             * @example true
+             */
+            acknowledgeRequired?: boolean;
+            /** @example 12 */
+            acknowledgedCount?: number;
+            /** @example 30 */
+            targetCount?: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-13T09:12:00+09:00
+             */
+            publishedAt?: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            createdBy?: number;
+            /** @example 1 */
+            versionNo?: number;
+        };
+        NoticeCreate: {
+            /** @example 8월 정기 보전 안내 */
+            title: string;
+            /** @example 8월 20일 09:00~12:00 사이 2호기 정기 보전이 있습니다. */
+            body: string;
+            /**
+             * Format: date
+             * @example 2026-08-13
+             */
+            startDate: string;
+            /**
+             * Format: date
+             * @example 2026-08-13
+             */
+            endDate?: string;
+            /** @example true */
+            acknowledgeRequired?: boolean;
+        };
+        /** @description 누가 확인했고 누가 아직 안 했나. 근거: W-CO-04 「미확인자 보기」 */
+        NoticeAcknowledgement: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            userId: number;
+            /** @example 홍길동 */
+            userName: string;
+            /** @example false */
+            acknowledged: boolean;
+            /**
+             * Format: date-time
+             * @example 2026-08-13T09:12:00+09:00
+             */
+            acknowledgedAt?: string;
+        };
+        /** @description 경영·생산 한눈 보기. ⭐ 카드마다 소유 화면이 따로 있고 이 경로는 «숫자만» 모은다 — 클릭하면 그 화면으로 넘어간다. 근거: W-CO-05 §5 */
+        DashboardSummary: {
+            /**
+             * Format: date
+             * @example 2026-08-13
+             */
+            baseDate: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            plantId?: number;
+            cards: components["schemas"]["DashboardCard"][];
+            /** @description 최근 알람 — 클릭하면 알림센터로 간다 */
+            alerts?: components["schemas"]["Notification"][];
+        };
+        DashboardCard: {
+            /** @description 어느 지표인가. 화면이 이 코드로 드릴다운 대상을 안다 */
+            cardCode: string;
+            /** @example 오늘 생산 수량 */
+            label: string;
+            /** @example 1240 */
+            value: number;
+            /** @example EA */
+            unit?: string;
+            /**
+             * @description 직전 기준일 대비. 비교 대상이 없으면 비운다
+             * @example 0.08
+             */
+            deltaRatio?: number;
         };
     };
     responses: never;
