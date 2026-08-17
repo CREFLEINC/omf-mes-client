@@ -15,6 +15,7 @@ import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
+import { PoRegisterScreen } from '../screens/po-register/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
 import { StocktakingScreen } from '../screens/stocktaking/screen';
@@ -64,6 +65,24 @@ export const appRouter = createBrowserRouter([
        * 그 결과를 재고에서 확인한다.
        */
       { path: 'logistics/over-receipt-split', element: <OverReceiptSplitScreen /> },
+      /*
+       * W-01-11 — **이 저장소에서 처음으로 사이드바에 두지 않는 화면이다.**
+       *
+       * 근거: 이 화면은 **일반 구매 발주를 만드는 곳이 아니다**(착수 이슈 §6 ① · 스펙 §5-2).
+       * 초과 입하분을 사후에 정산하는 자리이고, 무엇을 정산하는지가 주소의 질의값으로 실려야
+       * 화면이 성립한다. 메뉴에 「신규 P/O 등록」이 서면 맥락 없는 진입이 기본 경로가 되고,
+       * 그때 사용자가 하는 일이 곧 일반 구매 발주 등록이다 — 그 오인이 요구사항 위반이다.
+       *
+       * 대안 둘을 버린 이유. **상단 배너로 범위를 밝히고 메뉴에 올리는 것**은 배너가 읽히지
+       * 않는 것을 전제로 설계해야 하므로 진입 자체를 줄이는 편이 싸다(배너는 화면에 그대로
+       * 두었다). **항상 비활성인 메뉴 항목**은 죽은 항목을 남긴다.
+       *
+       * 그래서 **라우트만 연다.** 진입은 초과 입하 분리(W-01-03)의 등록 결과 구획에 전표마다
+       * 서는 링크로만 하고, 그 링크가 이 주소를 가리키는지는 `index.test.tsx`가 잇는다.
+       * 주소 앞머리는 다른 자재창고 화면과 같은 규칙(사이드바 섹션)을 따른다 — 메뉴에 서지
+       * 않아도 이 화면이 속한 업무 묶음은 자재창고이고, 주소가 그 사실을 말해야 한다.
+       */
+      { path: 'logistics/po-register', element: <PoRegisterScreen /> },
       /*
        * W-01-10 — 같은 규칙(사이드바 섹션)을 따르고 차례도 업무 순서다: 도착을 처리한 뒤
        * (초과 입하 분리) 창고로 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.

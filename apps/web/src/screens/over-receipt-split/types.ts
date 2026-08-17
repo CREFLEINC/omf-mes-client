@@ -154,21 +154,32 @@ export const hasAnyHeaderValue = (header: HeaderDraft): boolean =>
   Object.values(header).some((text) => text.trim() !== '');
 
 /**
- * 만들어진 전표 한 건 — **화면이 내는 값만 담는다.**
+ * 만들어진 전표 한 건 — **화면이 내는 값과 다음 화면으로 넘길 열쇠를 담는다.**
  *
  * `inboundReceiptNo`는 사용자가 나중에 이 전표를 찾을 때 쓰는 **업무 번호**라 내는 것이 맞다.
- * `inboundReceiptId`는 내부 번호(FK)이므로 타입에 자리를 두지 않는다 — 자리가 없으면
- * 결과 구획으로 샐 경로도 없다(#44). 이 구분이 이 화면에서 처음 갈리는 자리다.
+ *
+ * `inboundReceiptId`는 내부 번호(FK)다. 앞 회차에는 **자리 자체를 두지 않았다** — 자리가 없으면
+ * 결과 구획으로 샐 경로도 없다는 이유였다(#44). 지금 자리를 여는 근거는 그 값이 **다음 화면
+ * (W-01-11 신규 P/O 등록)으로 무엇을 정산할지 넘기는 열쇠**가 됐다는 것이다. 계약이 그 화면의
+ * 진입을 내부 번호로 받으므로(`GET /logistics/inbound-receipts/{inboundReceiptId}`)
+ * 업무 번호로는 주소를 만들 수 없다.
+ *
+ * **#44의 본뜻은 그대로 지킨다 — 사람에게 보이지 않는다.** 이 값은 **링크의 질의값에만** 실리고
+ * 표시 경로(전표번호·상태·접근 이름)에는 넣지 않는다. 그 사실은 결과 구획 렌더 결과에 이 번호가
+ * 글자로 나타나지 않는다는 감지기가 지킨다(`created-receipts-pane.test.tsx`).
  *
  * `statusCode`는 값으로 분기하지 않고 그대로 보인다(공유계약 G-2).
  */
 export interface CreatedReceiptView {
+  /** 다음 화면으로 넘길 열쇠. **표시하지 않는다** — 링크 질의값 한 자리에만 쓴다 */
+  inboundReceiptId: number;
   inboundReceiptNo: string;
   statusCode: string;
 }
 
 /** 등록 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
 export const toCreatedReceiptView = (data: InboundReceiptResponse): CreatedReceiptView => ({
+  inboundReceiptId: data.inboundReceiptId,
   inboundReceiptNo: data.inboundReceiptNo,
   statusCode: data.statusCode,
 });

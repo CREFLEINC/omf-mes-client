@@ -60,9 +60,15 @@ export const ModeActions = ({
   return (
     <div className="form-actions">
       {/*
-       * 갈 곳이 아직 없는 보조 액션이다. 줄 왼쪽 끝에 두어 등록 갈래와 섞이지 않게 한다
-       * (배치 규범 4 — `.form-actions-secondary`). **버튼으로 둔다** — 링크로 두면
-       * 없는 화면으로 가는 경로가 생기고, 감추면 발주를 못 찾은 사용자가 다음에 할 것을 모른다.
+       * **여기서 시작하지 않는 보조 액션이다.** 줄 왼쪽 끝에 두어 등록 갈래와 섞이지 않게 한다
+       * (배치 규범 4 — `.form-actions-secondary`).
+       *
+       * 갈 화면은 이제 있지만 **이 자리에서는 열지 않는다.** 정산할 초과분 전표가 정해지기 전에
+       * 열면 「무엇을 정산하는지 모르는 발주 등록」이 되고 그것이 곧 일반 구매 발주 등록이다
+       * (착수 이슈 §6 ①). 길은 **등록 결과 구획**에 전표마다 선다(`created-receipts-pane.tsx`).
+       *
+       * **버튼으로 둔다** — 링크로 두면 맥락 없는 진입 경로가 생기고, 감추면 발주를 못 찾은
+       * 사용자가 다음에 할 것을 모른다. 잠금은 유지하고 사유가 그 사정을 말한다.
        */}
       <div className="field-cell form-actions-secondary">
         <Button variant="outlined" disabled aria-describedby={createPoReasonId}>

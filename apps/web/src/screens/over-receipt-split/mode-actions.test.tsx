@@ -90,9 +90,7 @@ describe('ModeActions — 잠긴 이유', () => {
 
     const describedBy = target.getAttribute('aria-describedby') ?? '';
 
-    expect(document.getElementById(describedBy)?.textContent).toBe(
-      t.actionReasons.bothNeedsExcess,
-    );
+    expect(document.getElementById(describedBy)?.textContent).toBe(t.actionReasons.bothNeedsExcess);
   });
 
   /* 짝 방향 — 잠기지 않은 버튼에는 사유가 붙지 않는다. 늘 붙이면 늘 잠긴 것처럼 보인다. */
@@ -154,25 +152,40 @@ describe('ModeActions — 전송 중', () => {
 
 describe('ModeActions — 신규 P/O 등록', () => {
   /*
-   * **M48** — 갈 곳이 아직 없다. 링크로 두면 눌러서 없는 화면으로 가고, 감추면
-   * 발주를 못 찾은 사용자가 다음에 무엇을 할지 알 수 없다. 자리를 두되 사유를 밝힌다.
+   * **M48** — 갈 화면은 이제 있지만 **이 자리에서는 열지 않는다.** 정산할 초과분 전표가
+   * 정해지기 전에 열면 「무엇을 정산하는지 모르는 발주 등록」이 되고, 그것이 곧 이 화면이
+   * 막으려는 일반 구매 발주 등록이다(착수 이슈 §6 ①).
+   *
+   * 그래서 잠금은 그대로 두고 **사유가 새 사실을 말한다** — 「화면이 준비되면」이 아니라
+   * 「초과분 입하를 먼저 등록하면 등록 결과에서 이어진다」. 앞 회차의 문구는 화면이 선 지금
+   * 거짓이 된다.
    */
-  it('자리는 있으나 잠겨 있고 사유가 붙는다', () => {
+  it('자리는 있으나 잠겨 있고 사유가 새 사실을 말한다', () => {
     renderActions();
 
     const target = button(t.actions.createPurchaseOrder);
 
     expect(target).toBeDisabled();
-    expect(
-      screen.getByText(t.actionReasons.createPurchaseOrderUnavailable),
-    ).toBeInTheDocument();
+    expect(screen.getByText(t.actionReasons.createPurchaseOrderUnavailable)).toBeInTheDocument();
     expect(target.getAttribute('aria-describedby')).not.toBeNull();
+    /*
+     * 문구가 **풀리는 조건**을 말하는지 잰다(배치 규범 4-5). 키만 견주면 문구가 「준비 중」류로
+     * 되돌아가도 아무도 울지 않는다 — 그 조건이 이제는 등록 결과 구획에서 참이 된다.
+     */
+    expect(t.actionReasons.createPurchaseOrderUnavailable).toContain('등록 결과');
   });
 
-  /* 어떤 경로로도 이동하지 않는다 — 링크가 하나라도 있으면 이동 경로가 생긴 것이다. */
-  it('이동 경로를 두지 않는다', () => {
+  /*
+   * **이 자리에는 이동 경로가 없다.** 앞 회차의 판정은 「어떤 경로로도 이동하지 않는다」였고,
+   * 지금은 「**등록 전 자리**에는 이동 경로가 없다」로 좁혀 선다 — 길은 사라진 것이 아니라
+   * 등록 결과 구획으로 옮겨 갔고(`created-receipts-pane.test.tsx`가 그쪽을 잰다),
+   * 이 부품은 그 뒤에 서지 않는다.
+   */
+  it('등록 전 자리에는 이동 경로가 없다', () => {
     renderActions();
 
+    /* 짝 양성 — 버튼 자리는 실제로 서 있다. 「아무것도 안 그려서 통과」를 막는다. */
+    expect(button(t.actions.createPurchaseOrder)).toBeInTheDocument();
     expect(screen.queryAllByRole('link')).toHaveLength(0);
     expect(button(t.actions.createPurchaseOrder)).not.toHaveAttribute('href');
   });
