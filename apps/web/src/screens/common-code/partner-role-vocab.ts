@@ -6,9 +6,9 @@ import type { PartnerRole } from './types';
  * 거래처 역할 어휘 다섯 — **코드 표기(영문 글자)가 사는 유일한 자리.**
  *
  * 명칭과 의미는 **업무가 확정했다**(2026-08-16 사용자 결정 — 고객사·공급사·외주 제작사·
- * 폐기 업체·기타). 영문 표기는 **계약이 enum으로 못 박았다**(#173) — 잠정이 아니다.
- * 아래 표는 계약 타입에서 파생한 `PartnerRoleCode`로 검사받으며, 짝이 되는 기대값은
- * `partner-role-vocab.test.ts`가 **리터럴로 고정**해 다른 철자가 오면 운다.
+ * 폐기 업체·기타). 영문 표기도 **계약이 enum으로 확정했다**(#173) — 어휘 밖 값은 서버가
+ * 400으로 거절한다. 아래 표는 계약 타입에서 파생한 `PartnerRoleCode`로 검사받으며, 짝이 되는
+ * 기대값은 `partner-role-vocab.test.ts`가 **리터럴로 고정**해 다른 철자가 오면 운다.
  *
  * **같은 글자의 짝이 하나 더 있다** — `screens/disposal-issue/code-options.ts`의
  * `DISPOSAL_PARTNER_ROLE_CODE`(폐기 거래처 선택지를 **좁히는** 쪽의 조건 한 줄). 화면
