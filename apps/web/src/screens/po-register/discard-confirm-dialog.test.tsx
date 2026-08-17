@@ -40,31 +40,37 @@ describe('DiscardConfirmDialog — 무엇을 잃는가', () => {
   });
 });
 
-describe('DiscardConfirmDialog — 나가는 길이 바닥 버튼 둘뿐이다', () => {
+describe('DiscardConfirmDialog — 닫히는 것이 곧 버리는 것은 아니다', () => {
   /**
-   * **세 방어를 등록 확인 창과 같은 강도로 둔다**(계획 결정 15 · 사본 체크리스트 5번).
+   * **스크림 클릭을 막지 않는다**(계획 결정 15 개정 — 전례 우선 판정 · 사본 체크리스트 5번).
    *
-   * 전례의 버리기 창들은 스크림 클릭을 열어 두었다(실수로 닫혀도 초안이 남으므로). 이 화면은
-   * 계획이 세 창을 **함께** 막기로 정했고, 그 판단의 근거는 이 창의 「버리기」가 **승계된 라인
-   * 1행까지 되세우는** 조작이라는 점이다 — 잃는 것이 친 글자만이 아니다. 스크림이 열려 있으면
-   * 확인 창이 스치는 클릭에 닫히고, 사용자는 자기가 무엇을 취소했는지 알 수 없다.
+   * 이 저장소의 버리기 창 넷이 모두 스크림을 열어 두고 **「닫힘 = 버리지 않음」**을 짝 감지기로
+   * 고정한다. 그 규율을 다섯 번째 화면에서 뒤집으면 규칙이 「막는다」로 굳어, 정작 **되돌릴 수
+   * 없는 창을 막는 이유**(등록 확인 창)와 구분되지 않는다.
+   *
+   * 앞 회차의 「스크림을 눌러도 닫히지 않는다」를 **지우지 않고 이 감지기로 다시 썼다** —
+   * 재는 자리는 같고 기대하는 사실이 바뀌었다: 닫히기는 하되 **아무것도 버리지 않는다.**
    */
-  it('닫기 손잡이가 없다', () => {
+  it('스크림을 누르면 닫히고 버리지는 않는다', () => {
+    const { onClose, onConfirm } = renderDialog();
+
+    fireEvent.click(dialog());
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  /**
+   * **X 손잡이는 두지 않는다.** 나가는 문은 바닥 버튼 둘과 스크림으로 충분하고, 실수 클릭의
+   * 안전성은 위 감지기가 이미 고정한다 — 셋째 문을 더해도 새로 얻는 것이 없다.
+   */
+  it('닫기 손잡이가 없고 바닥 버튼이 둘이다', () => {
     renderDialog();
 
     expect(
       within(dialog()).queryByRole('button', { name: messages.common.close }),
     ).not.toBeInTheDocument();
     expect(within(dialog()).getAllByRole('button')).toHaveLength(2);
-  });
-
-  it('스크림을 눌러도 닫히지 않는다', () => {
-    const { onClose, onConfirm } = renderDialog();
-
-    fireEvent.click(dialog());
-
-    expect(onClose).not.toHaveBeenCalled();
-    expect(onConfirm).not.toHaveBeenCalled();
   });
 
   /** 창 안에 선택칸을 두지 않는다(`omf-mes#45`) — 문장 하나와 버튼 둘뿐이다. */
