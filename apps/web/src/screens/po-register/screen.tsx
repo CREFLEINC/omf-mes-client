@@ -28,11 +28,18 @@ import {
   type LookupResult,
 } from './lookups';
 import { summarizeOrderedQty, toPurchaseOrderCreate } from './po-request';
-import { useCreatePurchaseOrder, useSourceReceipt } from './queries';
+import {
+  useCreatePurchaseOrder,
+  usePurchaseOrderDetailFetcher,
+  useRequestApproval,
+  useSourceReceipt,
+} from './queries';
+import { readReason, toApprovalRequest } from './reason-draft';
 import { RegisterConfirmDialog, type RegisterSummary } from './register-confirm-dialog';
-import { ResultPane } from './result-pane';
+import { ResultPane, type SubmitPhase } from './result-pane';
 import { ScopeBanner } from './scope-banner';
 import { SourceReceiptPane } from './source-receipt-pane';
+import { SubmitConfirmDialog, type SubmitSummary } from './submit-confirm-dialog';
 import {
   headerSeed,
   isHeaderEdited,
@@ -51,7 +58,21 @@ const EMPTY_LINES: SourceLineView[] = [];
 const EMPTY_DRAFTS: LineDraft[] = [];
 
 /** 확인을 기다리는 조작. `null`이면 열린 창이 없다. */
-type PendingAction = 'register' | 'discard';
+type PendingAction = 'register' | 'discard' | 'submit';
+
+/**
+ * 상신의 매임 — **어느 전표를 겨눈 시도인가**와 **그것이 올라갔는가**.
+ *
+ * 둘을 한 자루에 두는 이유는 결과 구획의 상신 갈래 셋(성공·나가는 중·실패)이 **같은 문**을
+ * 지나게 하기 위해서다. 갈래마다 따로 매면 하나를 빠뜨리기 쉽고, 빠뜨린 갈래가 곧 「시도한 적
+ * 없는 전표 위의 진술」이 된다.
+ */
+interface SubmitBinding {
+  /** 그 시도가 겨눈 전표. **지금 보고 있는 전표와 견줄 값**이다 */
+  purchaseOrderId: number;
+  /** 202를 받았는가. 화면이 **확인한 사실**만 담는다 */
+  isSubmitted: boolean;
+}
 
 /**
  * 참조 목록을 선택지로 옮긴다.
@@ -111,6 +132,22 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  *
  * 두 축이 서로 다른 조건에 걸리므로 6행의 두 칸도 **각각 다른 조건**으로 읽는다 — 승계값이
  * 그대로인 채 줄만 달라지면 발주 정보는 남고 라인만 다시 선다.
+ *
+ * **상신 사유 초안은 축이 하나 더 있다** — **만들어진 전표**다. 등록 결과가 서야 사유 칸이
+ * 있고, 대상 전표가 바뀌면 결과와 함께 사유도 거둔다(7행) — 남겨 두면 앞 초과분에 붙일 사유가
+ * 다른 발주의 결재에 올라간다. **상신에 실패해도 사유는 남는다**(다시 올릴 길이 그것이다).
+ *
+ * **상신의 되먹임은 전부 전표 번호에 매인다**(리뷰 R-24·R-30). 나가는 중인 쓰기를 끊지
+ * 않으므로 정리 effect가 지나간 뒤 응답이 도착하는 길이 실재한다 — **주소는 잠글 수 없다**
+ * (뒤로·앞으로·주소 편집). 그래서 상신 상태를 깃발이 아니라 **매임**(`SubmitBinding` — 겨눈
+ * 전표 + 올라갔는가)으로 들고, **성공·나가는 중·실패 셋과 실패 배너·사유 칸의 서버 오류까지
+ * 같은 문**(`boundSubmit`)을 지나게 한다. 갈래마다 따로 매면 하나를 빠뜨리게 되고, 빠뜨린
+ * 갈래가 곧 「시도한 적 없는 전표 위의 진술」이 된다. 정리 effect도 매임을 함께 거두지만
+ * 그것은 **둘째 겹**이고, 순서에 기대지 않는 쪽(읽는 자리 대조)이 첫째 겹이다.
+ *
+ * **되돌릴 수 없는 쓰기가 둘이고 서로 별개다**(착수 이슈 §6 ③ · 계획 결정 9). 등록 한 번이
+ * 상신을 잇지 않고, 상신은 **등록이 끝난 뒤에만** 설 수 있다. 두 쓰기가 각자 확인 창·잠금·
+ * 실패 배너를 갖는다 — 한 자리에 뭉치면 어느 쪽이 실패했는지 사용자가 가릴 수 없다.
  */
 export const PoRegisterScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -146,6 +183,34 @@ export const PoRegisterScreen = () => {
 
   /** 만들어진 전표. `null`이면 아직 등록하지 않았거나 마지막 시도가 실패했다 */
   const [created, setCreated] = useState<CreatedPoView | null>(null);
+
+  /**
+   * 만들어진 전표의 **내부 번호**. 상신에만 쓰고 **그리지 않는다**(`omf-mes#44`).
+   *
+   * 표시 타입(`CreatedPoView`)에 담지 않고 여기 따로 드는 이유가 그것이다 — 그리는 값과 같은
+   * 자루에 있으면 사람이 읽는 자리로 새는 경로가 먼저 생긴다.
+   */
+  const [purchaseOrderId, setPurchaseOrderId] = useState<number | null>(null);
+
+  /** 친 상신 사유 글자 그대로. **판정과 조립은 `reason-draft.ts` 한 곳이 한다** */
+  const [submitReason, setSubmitReason] = useState('');
+
+  /**
+   * **상신의 매임** — 어느 전표를 겨눈 시도이고 그것이 올라갔는가. `null`이면 이 화면에서
+   * 상신을 시도한 적이 없다.
+   *
+   * **깃발로 들지 않는다**(리뷰 R-24·R-30). 이 화면은 나가는 중인 쓰기를 끊지 않으므로
+   * (`resetIfIdle`) 대상을 바꾼 **뒤에** 응답이 도착하는 길이 실재한다 — 그때 결과를 매지 않고
+   * 들면 **시도한 적 없는 전표 위에** 「결재에 올렸습니다」나 앞 전표의 실패 배너가 선다.
+   * 성공만 매고 실패를 두면 절반만 막힌다(R-30이 그 절반이었다).
+   *
+   * **되먹임 셋이 한 문을 지난다** — 성공·나가는 중·실패가 전부 이 매임을 지나므로, 갈래마다
+   * 따로 매다가 하나를 빠뜨리는 형태가 생기지 않는다.
+   *
+   * **판정은 읽는 자리에서 한다**(전례 `disposal-issue`의 매임 축과 같은 형태). 정리 effect가
+   * 지워 주기를 기대할 수 없다 — 주소는 잠글 수 없고, 늦게 온 응답은 그 뒤에 도착한다.
+   */
+  const [submitBinding, setSubmitBinding] = useState<SubmitBinding | null>(null);
 
   /** 확인을 기다리는 조작. `null`이면 열린 창이 없다 */
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -192,16 +257,76 @@ export const PoRegisterScreen = () => {
    * (아래 `isFormLocked`) 남은 값이 다시 보내질 길이 없고, 사용자가 방금 무엇을 보냈는지 읽을 수
    * 있어야 한다.
    *
-   * **내부 번호는 이 회차에서 들지 않는다.** 응답이 함께 주지만(`PoDetailResult.purchaseOrderId`)
-   * 등록만 하는 회차에는 쓸 자리가 없다 — 상신이 붙는 회차가 그 값을 화면 상태로 든다.
-   * 쓰지 않는 값을 미리 들면 그 자리가 사람이 읽는 자리로 새는 경로가 먼저 생긴다(`omf-mes#44`).
+   * **내부 번호를 여기서 든다.** 응답이 표시 타입과 갈라 주므로(`PoDetailResult`) 그리는 값과
+   * 섞이지 않은 채 상신에만 쓰인다 — 상신의 잠금 토큰을 얻을 상세 경로도 이 번호로 만든다.
+   *
+   * **상신 상태는 건드리지 않는다.** 등록에 성공한 시점에는 아직 아무것도 올라가지 않았고,
+   * 사유 칸은 결과 구획이 세운 뒤 사용자가 채운다(착수 이슈 §6 ③).
    */
   const register = useCreatePurchaseOrder({
     onSuccess: (result) => {
       setCreated(result.created);
+      setPurchaseOrderId(result.purchaseOrderId);
       setPending(null);
     },
   });
+
+  /** 잠금 토큰을 확보하는 자리 — 상신 직전의 상세 조회다(계획 결정 10). */
+  const fetchPoDetail = usePurchaseOrderDetailFetcher();
+
+  /**
+   * 상신 — **이 화면의 둘째 쓰기**다. 등록과 **별개 동작**이라 훅도 확인 창도 따로 선다.
+   *
+   * 성공하면 올라갔다는 사실만 적는다 — **진행 상태를 이 화면이 조회하지 않는다**(계획 결정 11).
+   * 그 값은 결재함(W-CO-09)이 정본이고, 여기서 또 읽으면 두 화면이 서로 다른 시점의 값으로
+   * 같은 요청을 말하게 된다.
+   */
+  /**
+   * 지금 **나가고 있는 상신이 겨눈 전표**와 **화면이 지금 보고 있는 전표**.
+   *
+   * 늦게 도착한 성공을 어느 전표의 것으로 적을지, 그리고 그것이 **지금 보고 있는 전표의
+   * 것인지**를 응답이 온 시점에 알아야 한다 — 둘 다 그 시점에는 렌더 클로저의 값이 낡아 있다.
+   */
+  const submittingPurchaseOrderIdRef = useRef<number | null>(null);
+  const currentPurchaseOrderIdRef = useRef<number | null>(null);
+
+  currentPurchaseOrderIdRef.current = purchaseOrderId;
+
+  const submit = useRequestApproval({
+    purchaseOrderId,
+    onSuccess: () => {
+      /* **그 호출이 겨눈 번호**로 적는다 — 지금 보고 있는 전표가 아니라. */
+      const submittedId = submittingPurchaseOrderIdRef.current;
+
+      /*
+       * 매임을 **그 번호로 다시 세운다.** 정리 effect가 이미 지웠을 수 있는데(대상이 바뀌었다)
+       * 그때 지금 보고 있는 번호로 적으면 남의 전표 위에 성공이 선다.
+       */
+      setSubmitBinding(
+        submittedId === null ? null : { purchaseOrderId: submittedId, isSubmitted: true },
+      );
+
+      /*
+       * **늦게 온 성공은 적기만 한다.** 사유를 비우거나 창을 닫는 것은 지금 보고 있는 전표의
+       * 조작이라, 남의 전표의 응답이 그것을 건드리면 새 대상에서 치던 사유가 사라진다.
+       */
+      if (submittedId !== currentPurchaseOrderIdRef.current) return;
+
+      setSubmitReason('');
+      setPending(null);
+    },
+  });
+
+  /**
+   * 상세 조회와 상신 사이의 **틈을 막는 깃발**.
+   *
+   * 확인 창의 실행을 누르면 상세 GET이 먼저 나가는데, 그 응답이 오기 전까지 쓰기 훅은 아직
+   * 나가는 중이 아니다(`isSaving === false`) — 그 틈에 한 번 더 누르면 **연쇄가 두 벌** 돈다.
+   * 공통 훅이 호출마다 새 멱등 키를 만들므로 그것이 그대로 결재 요청 두 건이 된다.
+   */
+  const [isSubmitStarting, setSubmitStarting] = useState(false);
+
+  const isSubmitting = isSubmitStarting || submit.isSaving;
 
   /**
    * **나가는 중인 쓰기는 건드리지 않는다**(사본 체크리스트 4번 · `omf-mes#96`).
@@ -252,6 +377,15 @@ export const PoRegisterScreen = () => {
     setCreated(null);
     setPending(null);
     resetIfIdle(register);
+
+    /*
+     * **상신 자리도 함께 거둔다.** 남겨 두면 앞 초과분에 붙일 사유가 다른 발주의 결재에
+     * 올라가고, 「올렸습니다」가 아직 만들지도 않은 전표 위에 선다.
+     */
+    setPurchaseOrderId(null);
+    setSubmitReason('');
+    setSubmitBinding(null);
+    resetIfIdle(submit);
   };
 
   useEffect(() => {
@@ -372,6 +506,21 @@ export const PoRegisterScreen = () => {
   };
 
   /**
+   * 상신 확인 창이 되보일 요약. **화면이 이미 들고 있는 글자를 넘긴다** — 창이 사유를 다시
+   * 다듬거나 첫 줄을 다시 뽑으면 「사용자가 확인한 것」과 「요청에 실리는 것」이 갈린다.
+   */
+  const submitSummary = (createdPo: CreatedPoView): SubmitSummary => {
+    const state = readReason(submitReason);
+
+    return {
+      purchaseOrderNo: createdPo.purchaseOrderNo,
+      /* 창은 보낼 수 있을 때만 열린다(버튼 잠금) — 그래도 갈래를 지어내지 않고 빈 글자로 둔다. */
+      reason: state.kind === 'ready' ? state.reason : '',
+      reasonFirstLine: state.kind === 'ready' ? state.firstLine : '',
+    };
+  };
+
+  /**
    * 저장 실패 표시 — 배너와 **응답 없음 안내**를 함께 낸다(완료 조건 C25).
    *
    * 멱등 3층 완화의 셋째 층이다. 첫째가 확인 창, 둘째가 전송 중·성공 후 잠금, 셋째가 이것 —
@@ -391,6 +540,97 @@ export const PoRegisterScreen = () => {
       )}
     </>
   );
+
+  /**
+   * 409의 「최신 불러오기」 — **낡은 것은 이 발주의 잠금 토큰이다.**
+   *
+   * 거부는 삼키지 않고 받아 둔다. 실패해도 막다른 길이 아니다 — 「승인 요청」을 다시 누르는
+   * 길이 **같은 조회를 다시 지나므로**, 그때 못 얻으면 「최신 정보를 불러오는 중입니다」가 선다.
+   */
+  const reloadPoDetail = (): void => {
+    if (purchaseOrderId === null) return;
+
+    void fetchPoDetail(purchaseOrderId).catch(() => undefined);
+  };
+
+  /**
+   * **지금 보고 있는 전표가 그 상신의 대상인가** — 상신의 되먹임은 전부 이 문을 지난다.
+   *
+   * `null`이면 이 화면이 지금 전표에 대해 말할 상신이 없다: 시도한 적이 없거나, **나가는 중에
+   * 대상이 바뀌어 그 응답이 남의 것이 됐다.** 갈래 판정·실패 배너·사유 칸의 서버 오류가
+   * 모두 이 값을 본다 — 한 자리라도 빠지면 그 자리에서 남의 전표의 사실이 샌다(리뷰 R-30).
+   */
+  const boundSubmit =
+    submitBinding !== null && submitBinding.purchaseOrderId === purchaseOrderId
+      ? submitBinding
+      : null;
+
+  /**
+   * 상신 실패 표시 — **409에는 「최신 불러오기」를 함께 낸다**(완료 조건 C31).
+   *
+   * 등록과 달리 이 쓰기에는 **잠글 대상이 있다**(계약이 `If-Match`를 필수로 두고 409를 낸다) —
+   * 그래서 재조회 수단을 내는 것이 맞고, 실제로 다시 읽으면 풀린다.
+   *
+   * **친 사유는 이 재조회로 사라지지 않는다.** 다시 읽는 것이 발주 상세 하나뿐이라 공통 배너의
+   * 안내(「입력한 내용은 사라집니다」)보다 잃는 것이 적다 — 그 문구는 폼을 통째로 다시 세우는
+   * 화면들이 함께 쓰는 것이라 여기서 고치지 않는다(공용 패턴 · 이 화면의 범위 밖).
+   */
+  const submitFailureSlot = (): ReactNode =>
+    boundSubmit === null ? null : (
+      <SaveErrorBanner error={submit.error} onReload={reloadPoDetail} />
+    );
+
+  /**
+   * 지금 상신이 어디까지 갔는가. **결과 구획이 그리는 갈래를 한 자리에서 정한다** —
+   * 자리마다 따로 판정하면 배너와 버튼이 서로 다른 갈래를 말한다.
+   */
+  const submitPhase = (): SubmitPhase => {
+    /*
+     * **남의 전표의 되먹임은 이 구획에 서지 않는다**(리뷰 R-24·R-30 · 매임의 문).
+     *
+     * 대상을 바꾼 뒤 도착하는 응답이 실재하므로, 매임을 지나지 않으면 **시도한 적 없는 전표
+     * 위에** 성공·진행·실패가 선다. 성공만 매고 실패를 두면 절반만 막힌다 — 그래서 셋이
+     * 이 한 문을 함께 지난다.
+     */
+    if (boundSubmit === null) return 'idle';
+
+    if (boundSubmit.isSubmitted) return 'submitted';
+    if (isSubmitting) return 'submitting';
+
+    /*
+     * **인라인으로 소화된 실패도 실패다.** 400의 사유 오류는 배너가 아니라 칸에 붙으므로
+     * (`fieldErrors`) 배너만 보면 「아직 아무 일도 없었다」로 읽힌다 — 그러면 상신이 한 번
+     * 튕긴 사실이 화면 어디에도 남지 않는다.
+     */
+    const hasFailed = submit.error !== null || Object.keys(submit.fieldErrors).length > 0;
+
+    return hasFailed ? 'failed' : 'idle';
+  };
+
+  /**
+   * 상신이 막힌 사유. `null`이면 **열려 있다.**
+   *
+   * **나가는 중이 맨 앞이다** — 사유를 아무리 고쳐도 그동안은 열리지 않는다. 「이미 올렸다」는
+   * 갈래를 두지 않는다: 올라간 뒤에는 결과 구획이 이 버튼을 **아예 세우지 않고**(칠 수 있는데
+   * 보낼 수 없는 칸을 남기지 않는다) 결재함 안내가 그 자리를 대신한다.
+   *
+   * **이 잠금은 매임(`boundSubmit`)을 지나지 않는다 — 일부러 그렇게 두었다.**
+   *
+   * 화면이 가르는 것은 둘이다. **진술**(어느 전표에 대해 무엇을 말하는가)은 전표별로 참이어야
+   * 하므로 매임을 지나지만, **조작 허용**은 어느 전표든 나가는 중이면 막는 편이 안전하다.
+   * 잠금까지 매면 대상을 바꾼 뒤 새 전표의 「승인 요청」이 열리고, 그 순간 ① 되돌릴 수 없는
+   * 쓰기 둘이 **한 훅의 상태**(공통 훅은 mutation 하나를 든다)를 나눠 쓰며 ② 겨눈 번호를 담는
+   * **한 칸짜리 ref가 덮여** 늦게 온 앞 전표의 성공이 새 전표의 매임으로 적힌다.
+   *
+   * 이 문구는 그때 **거짓말이 되지 않는다** — 「보내는 중」이라고만 말하고 어느 전표인지
+   * 주장하지 않으며, 풀리는 조건(「응답이 오면」)도 참이다.
+   */
+  const submitBlockReason = (): string | null => {
+    if (isSubmitting) return t.actionReasons.submitting;
+    if (readReason(submitReason).kind === 'empty') return t.actionReasons.reasonRequired;
+
+    return null;
+  };
 
   /** 등록을 **요청한다** — 보내는 것은 확인 창을 지난 뒤다. */
   const requestRegister = (): void => {
@@ -421,6 +661,51 @@ export const PoRegisterScreen = () => {
     }
 
     register.write(body);
+  };
+
+  /**
+   * 상신을 **요청한다** — 보내는 것은 확인 창을 지난 뒤다. 등록과 같은 층 구조다.
+   */
+  const requestSubmit = (): void => {
+    setPending('submit');
+  };
+
+  /**
+   * 확인을 받고 **실제로 올린다** — 요청이 **둘**이다.
+   *
+   * ① 발주 상세를 부른다(잠금 토큰이 그 경로에서만 나온다 · 계획 결정 10)
+   * ② 사유 한 칸을 실어 상신한다
+   *
+   * **창을 닫지 않고 보낸다** — 실패했을 때 창이 닫히면 무엇이 막았는지 모른 채 같은 버튼을
+   * 다시 누른다. 창은 성공했을 때만 닫힌다.
+   *
+   * **상세 조회가 실패해도 갈래를 새로 만들지 않는다.** 토큰을 못 얻은 채 상신하면 공통 훅이
+   * 요청을 만들지 않고 「최신 정보를 불러오는 중입니다」를 세운다 — 그 자리가 이미 있다.
+   *
+   * **매번 다시 부른다.** 조회 훅이 신선도를 무시하도록 두었으므로(`staleTime: 0`) 409를 받은
+   * 뒤 다시 누르면 실제로 새 토큰으로 나간다 — 그것이 이 화면에서 충돌이 풀리는 길이다.
+   */
+  const confirmSubmit = (): void => {
+    const body = toApprovalRequest(submitReason);
+
+    if (body === null || purchaseOrderId === null) {
+      setPending(null);
+
+      return;
+    }
+
+    setSubmitStarting(true);
+    /* 이 호출이 겨눈 전표를 적어 둔다 — 응답이 늦게 오면 그때의 화면은 다른 전표를 볼 수 있다. */
+    submittingPurchaseOrderIdRef.current = purchaseOrderId;
+    /* **시도부터 매인다** — 나가는 중과 실패도 이 전표의 것으로만 읽혀야 한다(리뷰 R-30). */
+    setSubmitBinding({ purchaseOrderId, isSubmitted: false });
+
+    void fetchPoDetail(purchaseOrderId)
+      .catch(() => undefined)
+      .finally(() => {
+        setSubmitStarting(false);
+        submit.write(body);
+      });
   };
 
   /**
@@ -646,7 +931,28 @@ export const PoRegisterScreen = () => {
        */}
       {pending !== 'register' && failureSlot()}
 
-      {created !== null && <ResultPane created={created} />}
+      {/*
+       * **결과 구획이 상신의 자리다**(계획 결정 9). 등록에 성공해야 이 구획이 서므로 「승인
+       * 요청」도 그때 처음 존재한다 — 등록 전에 잠긴 버튼을 세워 두지 않는다.
+       *
+       * 상신 실패 배너도 **한 자리에만** 선다 — 확인 창이 열려 있으면 창 안이고, 닫혀 있으면
+       * 여기다.
+       */}
+      {created !== null && (
+        <ResultPane
+          created={created}
+          phase={submitPhase()}
+          reason={submitReason}
+          reasonError={boundSubmit === null ? undefined : submit.fieldErrors.reason}
+          blockReason={submitBlockReason()}
+          banner={pending === 'submit' ? null : submitFailureSlot()}
+          onChangeReason={(value) => {
+            setSubmitReason(value);
+            submit.clearFieldError('reason');
+          }}
+          onRequestSubmit={requestSubmit}
+        />
+      )}
 
       {pending === 'register' && (
         <RegisterConfirmDialog
@@ -658,6 +964,22 @@ export const PoRegisterScreen = () => {
            * Escape로 닫히는 길은 디자인 시스템이 막을 수단을 주지 않는다. 그래서 이 창의 규율은
            * 「닫히지 않게」가 아니라 **「닫혀도 나가는 요청이 무너지지 않게」**다 — 여기서 쓰기를
            * 되돌리지 않으므로(`reset` 없음) 응답은 그대로 도착해 결과 구획이 선다.
+           */
+          onClose={() => {
+            setPending(null);
+          }}
+        />
+      )}
+
+      {pending === 'submit' && created !== null && (
+        <SubmitConfirmDialog
+          summary={submitSummary(created)}
+          isSaving={isSubmitting}
+          banner={submitFailureSlot()}
+          onConfirm={confirmSubmit}
+          /*
+           * 등록 확인 창과 같은 규율이다 — Escape로 닫혀도 **나가는 요청을 되돌리지 않는다**
+           * (`reset` 없음). 응답은 그대로 도착해 결과 구획의 갈래를 올린다.
            */
           onClose={() => {
             setPending(null);
