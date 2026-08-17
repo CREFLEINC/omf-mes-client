@@ -325,6 +325,19 @@ export const CommonCodeScreen = () => {
     setSearchParams(next);
   };
 
+  /**
+   * **나가는 중인 쓰기는 건드리지 않는다**(`omf-mes#96`).
+   *
+   * 공통 훅의 `reset()`은 진행 중 mutation에서 옵저버를 떼어 낸다 — 그 호출에 매달린 되먹임이
+   * 통째로 오지 않는다(무효화도, 성공도, 실패도). 요청은 이미 서버에 갔는데 화면만 없던 일로
+   * 친다. **`reset()`을 부르는 자리가 전부 이 함수를 지난다.**
+   */
+  const resetIfIdle = (write: { isSaving: boolean; reset: () => void }): void => {
+    if (write.isSaving) return;
+
+    write.reset();
+  };
+
   const selectCodeGroup = (codeGroupId: number) => {
     patchSearchParams((next) => {
       next.set('grp', String(codeGroupId));
@@ -881,17 +894,70 @@ export const CommonCodeScreen = () => {
     knownFields: [],
     onSuccess: (saved) => {
       /*
-       * **서버 응답으로 초안을 다시 세운다.** 서버가 행 번호를 새로 매기므로
-       * 보낸 목록을 그대로 두면 다음 저장이 옛 번호로 도는 것처럼 보인다.
+       * **서버 응답이 정본이다.** 서버가 행 번호를 새로 매기므로 보낸 목록을 그대로 두면
+       * 다음 저장이 옛 번호로 도는 것처럼 보인다.
+       *
+       * 그 응답을 **조회 캐시에 앉힌다.** 지역 상태에만 두면 초안의 출처(조회 캐시)와 어긋나
+       * 바로 다음 렌더에서 초안이 **저장 전 목록으로 되돌아간다** — 위 되세우기 규칙이
+       * 「출처가 바뀌었다」로 읽기 때문이다. 무효화가 낸 재조회는 이 값을 나중에 서버의 것으로
+       * 확인해 준다. 응답이 앉는 자리는 **보낸 요청의 캐시 키**다 — 공통 훅이 `mutate`를 부른
+       * 렌더의 되먹임을 그대로 붙잡으므로 그사이 선택이 옮겨 가도 남의 자리에 앉지 않는다.
        */
-      const next = toQualificationDrafts(saved.items);
-      setQualificationState({ source: saved, baseline: next, drafts: next });
+      queryClient.setQueryData(workerKeys.qualifications(selectedWorkerId ?? 0), saved);
+      /*
+       * **초안을 비워 되세우기를 다시 열어 준다.** 조회 라이브러리는 새 값이 옛 값과 깊이 같으면
+       * **옛 참조를 그대로 유지한다**(`replaceEqualDeep`) — 그러면 위 규칙이 「출처가 그대로」로
+       * 읽어 초안이 다시 서지 않고, 화면은 서버가 말한 상태가 아니라 **사용자가 고친 상태**를
+       * 계속 보인다(서버가 저장을 조용히 무시한 경우가 정확히 그 갈래다).
+       * 비워 두면 다음 렌더가 **갱신된 캐시**에서 초안을 다시 세운다.
+       */
+      setQualificationState(null);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
 
+  /**
+   * **나가는 중인 저장이 지금 보고 있는 작업자의 것인가.**
+   *
+   * `resetIfIdle`는 나가는 중인 쓰기를 **거두지 않는다**(옳다 — 되먹임을 끊지 않는다).
+   * 그래서 거두지 못한 상태(`isSaving`·`error`)가 그대로 남는데, 그사이 사용자가 다른 작업자를
+   * 고르면 **손댄 적 없는 작업자에 「저장 중」과 남의 실패 배너가 선다.** 좌 목록은 저장 중에도
+   * 잠기지 않으므로 특수한 경로가 아니다.
+   *
+   * 끊는 것과 **가리는 것**은 다르다 — 되먹임은 그대로 두고, *보이는 것*만 대상이 같을 때 낸다.
+   * 같은 화면의 거래처 역할 구획이 같은 자리에 같은 축을 두었다(`isRoleWriteMine`).
+   */
+  const [qualificationWriteTargetId, setQualificationWriteTargetId] = useState<number | null>(null);
+
+  const isQualificationWriteMine = qualificationWriteTargetId === selectedWorkerId;
+
+  /**
+   * 저장을 내는 자리는 하나뿐이고 **그 자리가 여기를 지난다.**
+   *
+   * ⛔ **두 번째 저장을 내지 않는다.** 훅 하나에 요청 하나라, 두 번째 `mutate`가 옵저버를
+   * 새 요청으로 옮기면서 **앞 요청에서 옵저버를 떼어 낸다** — 그 순간 앞 저장의 무효화·성공·
+   * 실패가 전부 오지 않는다(`omf-mes#96`이 `reset()`에 대해 말한 것과 같은 상태다).
+   * 잠금(아래 `isQualificationLocked`)이 첫째 겹이고 이 가드가 둘째 겹이다.
+   */
+  const writeQualifications = (drafts: QualificationDraft[]): void => {
+    if (qualificationWrite.isSaving) return;
+
+    setQualificationWriteTargetId(selectedWorkerId);
+    qualificationWrite.write(drafts);
+  };
+
+  /**
+   * **막을 것은 전역이다.** 저장이 나가는 중이면 어느 작업자에서도 새 저장을 시작할 수 없다 —
+   * 대상 축(`isQualificationWriteMine`)은 *보이는 것*을 가릴 뿐 **막는 데 쓰지 않는다.**
+   *
+   * **잠기는 것은 구획 전체다**(자격 추가·행 수정·행 삭제·취소·저장). 성공이 초안을 비워
+   * 되세우기를 다시 열므로, 저장 중 표를 고칠 수 있게 두면 **성공이 그 편집을 조용히 지운다.**
+   * 형제 구획(거래처 역할)이 체크칸까지 전역으로 잠그는 것과 같은 판단이다.
+   */
+  const isQualificationLocked = qualificationWrite.isSaving;
+
   const resetQualificationEditing = () => {
-    qualificationWrite.reset();
+    resetIfIdle(qualificationWrite);
     setEditingQualification(null);
     setQualificationState(null);
   };
@@ -929,7 +995,7 @@ export const CommonCodeScreen = () => {
   };
 
   const openQualificationDialog = (draft: QualificationDraft, isNew: boolean) => {
-    qualificationWrite.reset();
+    resetIfIdle(qualificationWrite);
     setIsEditingNewQualification(isNew);
     setEditingQualification(draft);
   };
@@ -937,7 +1003,7 @@ export const CommonCodeScreen = () => {
   const handleSaveQualifications = () => {
     if (qualificationState === null) return;
 
-    qualificationWrite.write(qualificationState.drafts);
+    writeQualifications(qualificationState.drafts);
   };
 
   /* ── 거래처 역할 탭 ─────────────────────────────────────────────────────── */
@@ -1113,19 +1179,6 @@ export const CommonCodeScreen = () => {
    * 전례(`iqc-skip-approval`)가 같은 화면에서 잠금과 표시를 이렇게 갈라 둔다.
    */
   const isPartnerRoleLocked = partnerRoleWrite.isSaving;
-
-  /**
-   * **나가는 중인 쓰기는 건드리지 않는다**(`omf-mes#96`).
-   *
-   * 공통 훅의 `reset()`은 진행 중 mutation에서 옵저버를 떼어 낸다 — 그 호출에 매달린 되먹임이
-   * 통째로 오지 않는다(무효화도, 성공도, 실패도). 요청은 이미 서버에 갔는데 화면만 없던 일로
-   * 친다. **`reset()`을 부르는 자리가 전부 이 함수를 지난다.**
-   */
-  const resetIfIdle = (write: { isSaving: boolean; reset: () => void }): void => {
-    if (write.isSaving) return;
-
-    write.reset();
-  };
 
   /*
    * 거래처 탭의 주소 조작 셋은 **역할 편집 상태를 함께 비운다.** 역할은 고른 거래처에 매인
@@ -1652,9 +1705,18 @@ export const CommonCodeScreen = () => {
               />
             ) : null
           }
-          banner={<SaveErrorBanner error={qualificationWrite.error} />}
+          /*
+           * **남의 실패는 아예 그리지 않는다**(`isQualificationWriteMine`) — 뒤늦게 온 앞
+           * 작업자의 실패가 지금 구획에 서면 사용자는 손댄 적 없는 작업자가 막힌 줄 안다.
+           */
+          banner={
+            isQualificationWriteMine ? <SaveErrorBanner error={qualificationWrite.error} /> : null
+          }
           isDirty={isQualificationDirty}
-          isSaving={qualificationWrite.isSaving}
+          /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
+          isLocked={isQualificationLocked}
+          /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
+          isSaving={isQualificationWriteMine && qualificationWrite.isSaving}
           onAdd={() => openQualificationDialog(createQualificationDraft(), true)}
           onEdit={(draftId) => {
             const found = qualificationDrafts.find((item) => item.draftId === draftId);
@@ -1665,7 +1727,7 @@ export const CommonCodeScreen = () => {
           }}
           onSave={handleSaveQualifications}
           onCancel={() => {
-            qualificationWrite.reset();
+            resetIfIdle(qualificationWrite);
             setQualificationState((prev) =>
               prev === null ? prev : { ...prev, drafts: prev.baseline },
             );
