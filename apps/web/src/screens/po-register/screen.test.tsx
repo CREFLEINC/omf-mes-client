@@ -2011,6 +2011,165 @@ describe('상신 실패(C31)', () => {
     expect(requestApprovalButton()).toBeVisible();
     expect(submitRequests(requests)).toHaveLength(1);
   });
+
+  /**
+   * **늦게 도착한 「실패」도 남의 전표 위에 서지 않는다**(리뷰 R-30 · 전례가 실제로 재던 방향).
+   *
+   * 성공만 매고 실패를 두면 절반만 막힌다 — 실패의 근거(공통 훅의 오류 상태)는 매이지 않은
+   * 값이라, 앞 전표가 받은 403이 **상신을 시도한 적조차 없는** 새 전표 아래에 배너로 선다.
+   * 화면이 ① 하지 않은 조작의 실패를 단언하고 ② 남의 사유를 이 전표의 사유로 말하게 된다.
+   *
+   * 성공 갈래와 **같은 절차**로 재고 스텁만 403으로 갈아 끼운다.
+   */
+  it('보내는 동안 대상을 바꾸면 뒤늦게 온 실패도 새 전표 위에 서지 않는다', async () => {
+    const { requests, release, user } = renderScreen(
+      [
+        secondReceiptRoute(),
+        detailRoute(),
+        failingSubmitRoute(403),
+        createRouteSequence(),
+        ...allRoutes(SINGLE_LINE),
+      ],
+      '?receipt=9101',
+      [SUBMIT_PATH],
+    );
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+    await openSubmitConfirm(user);
+    await user.click(confirmSubmitButton());
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '대상 바꾸기' }));
+    await screen.findByText('SAMPLE-IR-9102');
+
+    release();
+
+    await fillHeader(user);
+    await openConfirm(user);
+    await submitConfirm(user);
+
+    /* 짝 양성 — 새 대상의 결과 구획이 실제로 선다. */
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9002'));
+
+    expect(
+      screen.queryByText(t.result.submitFailedTitle('SAMPLE-PO-9002')),
+    ).not.toBeInTheDocument();
+    /* 앞 전표가 받은 권한 오류가 이 전표 아래에 서지 않는다. */
+    expect(screen.queryByText(messages.httpError.forbidden)).not.toBeInTheDocument();
+    expect(reasonInput()).toBeVisible();
+    /* 잠긴 사유도 **이 전표의 사정**이다 — 사유를 아직 적지 않았을 뿐, 남의 실패가 아니다. */
+    expect(requestApprovalButton()).toBeVisible();
+    expect(within(resultPane()).getByText(t.actionReasons.reasonRequired)).toBeVisible();
+  });
+
+  /**
+   * **응답이 「새 대상 등록 뒤에」 도착하는 순서**(검증 R2-M3·R2-M4 · 리뷰 R-31).
+   *
+   * 위 두 시험은 응답을 **등록 전에** 놓아준다 — 그 순서에서는 응답이 도착할 때 화면이 아직
+   * 아무 전표도 들고 있지 않아, 「겨눈 번호로 적는가」와 「남의 응답이 화면을 건드리는가」가
+   * 드러나지 않는다. 이 시험이 그 빈칸을 채운다.
+   *
+   * 두 가지를 함께 잰다. ① 늦은 성공이 **자기가 겨눈 전표**의 매임으로 적히는가(지금 보고 있는
+   * 번호로 적으면 새 전표 위에 성공이 선다) ② 늦은 성공이 **새 대상에서 치던 사유**를 지우지
+   * 않는가(같은 가드가 열린 확인 창을 닫는 것도 함께 막는다 — 아래 시험).
+   */
+  it('응답이 새 대상 등록 뒤에 도착해도 성공이 새 전표에 옮겨 붙지 않고 친 사유가 남는다', async () => {
+    const { requests, release, user } = renderScreen(
+      [
+        secondReceiptRoute(),
+        detailRoute(),
+        submitRoute(),
+        createRouteSequence(),
+        ...allRoutes(SINGLE_LINE),
+      ],
+      '?receipt=9101',
+      [SUBMIT_PATH],
+    );
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+    await openSubmitConfirm(user);
+    await user.click(confirmSubmitButton());
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '대상 바꾸기' }));
+    await screen.findByText('SAMPLE-IR-9102');
+
+    /* **등록을 먼저 마치고** 새 대상의 사유까지 친 뒤에 앞 응답을 놓아준다. */
+    await fillHeader(user);
+    await openConfirm(user);
+    await submitConfirm(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9002'));
+    await user.type(reasonInput(), '새 대상 정산 사유');
+
+    release();
+
+    /* 짝 양성 — 앞 상신의 응답이 실제로 도착했다(요청이 하나 나갔고 그 응답을 놓아주었다). */
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(await screen.findByText(t.result.createdTitle('SAMPLE-PO-9002'))).toBeVisible();
+    expect(screen.queryByText(t.result.submittedTitle('SAMPLE-PO-9002'))).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.submittedDescription)).not.toBeInTheDocument();
+    /* 새 대상에서 치던 사유가 남의 응답에 지워지지 않는다. */
+    expect(reasonInput()).toHaveValue('새 대상 정산 사유');
+    expect(requestApprovalButton()).toBeEnabled();
+  });
+
+  /**
+   * **늦은 응답이 새 대상의 열린 창을 닫지 않는다**(리뷰 R-31의 나머지 반쪽).
+   *
+   * 같은 가드가 사유와 창을 함께 지킨다 — 창을 닫으면 사용자가 확인하던 조작이 눈앞에서
+   * 사라지고, 되돌릴 수 없는 등록을 무엇을 보고 눌렀는지 모른 채 다시 누르게 된다.
+   */
+  it('늦게 온 응답이 새 대상에서 열어 둔 확인 창을 닫지 않는다', async () => {
+    const { requests, release, user } = renderScreen(
+      [
+        secondReceiptRoute(),
+        detailRoute(),
+        submitRoute(),
+        createRouteSequence(),
+        ...allRoutes(SINGLE_LINE),
+      ],
+      '?receipt=9101',
+      [SUBMIT_PATH],
+    );
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+    await openSubmitConfirm(user);
+    await user.click(confirmSubmitButton());
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '대상 바꾸기' }));
+    await screen.findByText('SAMPLE-IR-9102');
+
+    /* 새 대상에서 **등록 확인 창을 열어 둔 채** 앞 응답을 받는다. */
+    await fillHeader(user);
+    await openConfirm(user);
+
+    expect(screen.getByRole('dialog')).toBeVisible();
+
+    release();
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(screen.getByText(t.dialog.registerLead)).toBeVisible();
+  });
 });
 
 /**

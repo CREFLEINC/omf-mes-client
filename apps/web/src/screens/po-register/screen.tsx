@@ -61,6 +61,20 @@ const EMPTY_DRAFTS: LineDraft[] = [];
 type PendingAction = 'register' | 'discard' | 'submit';
 
 /**
+ * 상신의 매임 — **어느 전표를 겨눈 시도인가**와 **그것이 올라갔는가**.
+ *
+ * 둘을 한 자루에 두는 이유는 결과 구획의 상신 갈래 셋(성공·나가는 중·실패)이 **같은 문**을
+ * 지나게 하기 위해서다. 갈래마다 따로 매면 하나를 빠뜨리기 쉽고, 빠뜨린 갈래가 곧 「시도한 적
+ * 없는 전표 위의 진술」이 된다.
+ */
+interface SubmitBinding {
+  /** 그 시도가 겨눈 전표. **지금 보고 있는 전표와 견줄 값**이다 */
+  purchaseOrderId: number;
+  /** 202를 받았는가. 화면이 **확인한 사실**만 담는다 */
+  isSubmitted: boolean;
+}
+
+/**
  * 참조 목록을 선택지로 옮긴다.
  *
  * **미사용 값을 빼지 않고 표식만 붙인다** — 참조를 `includeInactive=true`로 받는 이유는
@@ -123,11 +137,13 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 있고, 대상 전표가 바뀌면 결과와 함께 사유도 거둔다(7행) — 남겨 두면 앞 초과분에 붙일 사유가
  * 다른 발주의 결재에 올라간다. **상신에 실패해도 사유는 남는다**(다시 올릴 길이 그것이다).
  *
- * **상신 결과는 전표 번호에 매인다**(리뷰 R-24). 나가는 중인 쓰기를 끊지 않으므로 정리
- * effect가 지나간 뒤 응답이 도착하는 길이 실재한다 — **주소는 잠글 수 없다**(뒤로·앞으로·주소
- * 편집). 그래서 「올렸다」를 깃발이 아니라 **올린 전표 번호**로 들고, 성공 갈래인지는
- * **읽는 자리**(`submitPhase`)에서 지금 전표와 대조해 정한다. 정리 effect도 그 값을 함께
- * 거두지만 그것은 **둘째 겹**이고, 순서에 기대지 않는 쪽이 첫째 겹이다.
+ * **상신의 되먹임은 전부 전표 번호에 매인다**(리뷰 R-24·R-30). 나가는 중인 쓰기를 끊지
+ * 않으므로 정리 effect가 지나간 뒤 응답이 도착하는 길이 실재한다 — **주소는 잠글 수 없다**
+ * (뒤로·앞으로·주소 편집). 그래서 상신 상태를 깃발이 아니라 **매임**(`SubmitBinding` — 겨눈
+ * 전표 + 올라갔는가)으로 들고, **성공·나가는 중·실패 셋과 실패 배너·사유 칸의 서버 오류까지
+ * 같은 문**(`boundSubmit`)을 지나게 한다. 갈래마다 따로 매면 하나를 빠뜨리게 되고, 빠뜨린
+ * 갈래가 곧 「시도한 적 없는 전표 위의 진술」이 된다. 정리 effect도 매임을 함께 거두지만
+ * 그것은 **둘째 겹**이고, 순서에 기대지 않는 쪽(읽는 자리 대조)이 첫째 겹이다.
  *
  * **되돌릴 수 없는 쓰기가 둘이고 서로 별개다**(착수 이슈 §6 ③ · 계획 결정 9). 등록 한 번이
  * 상신을 잇지 않고, 상신은 **등록이 끝난 뒤에만** 설 수 있다. 두 쓰기가 각자 확인 창·잠금·
@@ -180,17 +196,21 @@ export const PoRegisterScreen = () => {
   const [submitReason, setSubmitReason] = useState('');
 
   /**
-   * **어느 전표를 결재에 올렸는가**. `null`이면 아직 아무것도 올리지 않았다.
+   * **상신의 매임** — 어느 전표를 겨눈 시도이고 그것이 올라갔는가. `null`이면 이 화면에서
+   * 상신을 시도한 적이 없다.
    *
-   * **불리언으로 들지 않는다**(리뷰 R-24). 이 화면은 나가는 중인 쓰기를 끊지 않으므로
-   * (`resetIfIdle`) 대상을 바꾼 **뒤에** 202가 도착하는 길이 실재한다 — 그때 「올렸다」를
-   * 깃발로만 들고 있으면 **올린 적 없는 전표 위에 「결재에 올렸습니다」**가 서고, 그 갈래에서는
-   * 사유 칸과 버튼이 아예 서지 않아 정작 그 전표를 올릴 길이 사라진다.
+   * **깃발로 들지 않는다**(리뷰 R-24·R-30). 이 화면은 나가는 중인 쓰기를 끊지 않으므로
+   * (`resetIfIdle`) 대상을 바꾼 **뒤에** 응답이 도착하는 길이 실재한다 — 그때 결과를 매지 않고
+   * 들면 **시도한 적 없는 전표 위에** 「결재에 올렸습니다」나 앞 전표의 실패 배너가 선다.
+   * 성공만 매고 실패를 두면 절반만 막힌다(R-30이 그 절반이었다).
+   *
+   * **되먹임 셋이 한 문을 지난다** — 성공·나가는 중·실패가 전부 이 매임을 지나므로, 갈래마다
+   * 따로 매다가 하나를 빠뜨리는 형태가 생기지 않는다.
    *
    * **판정은 읽는 자리에서 한다**(전례 `disposal-issue`의 매임 축과 같은 형태). 정리 effect가
    * 지워 주기를 기대할 수 없다 — 주소는 잠글 수 없고, 늦게 온 응답은 그 뒤에 도착한다.
    */
-  const [submittedPurchaseOrderId, setSubmittedPurchaseOrderId] = useState<number | null>(null);
+  const [submitBinding, setSubmitBinding] = useState<SubmitBinding | null>(null);
 
   /** 확인을 기다리는 조작. `null`이면 열린 창이 없다 */
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -278,7 +298,13 @@ export const PoRegisterScreen = () => {
       /* **그 호출이 겨눈 번호**로 적는다 — 지금 보고 있는 전표가 아니라. */
       const submittedId = submittingPurchaseOrderIdRef.current;
 
-      setSubmittedPurchaseOrderId(submittedId);
+      /*
+       * 매임을 **그 번호로 다시 세운다.** 정리 effect가 이미 지웠을 수 있는데(대상이 바뀌었다)
+       * 그때 지금 보고 있는 번호로 적으면 남의 전표 위에 성공이 선다.
+       */
+      setSubmitBinding(
+        submittedId === null ? null : { purchaseOrderId: submittedId, isSubmitted: true },
+      );
 
       /*
        * **늦게 온 성공은 적기만 한다.** 사유를 비우거나 창을 닫는 것은 지금 보고 있는 전표의
@@ -358,7 +384,7 @@ export const PoRegisterScreen = () => {
      */
     setPurchaseOrderId(null);
     setSubmitReason('');
-    setSubmittedPurchaseOrderId(null);
+    setSubmitBinding(null);
     resetIfIdle(submit);
   };
 
@@ -528,6 +554,18 @@ export const PoRegisterScreen = () => {
   };
 
   /**
+   * **지금 보고 있는 전표가 그 상신의 대상인가** — 상신의 되먹임은 전부 이 문을 지난다.
+   *
+   * `null`이면 이 화면이 지금 전표에 대해 말할 상신이 없다: 시도한 적이 없거나, **나가는 중에
+   * 대상이 바뀌어 그 응답이 남의 것이 됐다.** 갈래 판정·실패 배너·사유 칸의 서버 오류가
+   * 모두 이 값을 본다 — 한 자리라도 빠지면 그 자리에서 남의 전표의 사실이 샌다(리뷰 R-30).
+   */
+  const boundSubmit =
+    submitBinding !== null && submitBinding.purchaseOrderId === purchaseOrderId
+      ? submitBinding
+      : null;
+
+  /**
    * 상신 실패 표시 — **409에는 「최신 불러오기」를 함께 낸다**(완료 조건 C31).
    *
    * 등록과 달리 이 쓰기에는 **잠글 대상이 있다**(계약이 `If-Match`를 필수로 두고 409를 낸다) —
@@ -537,9 +575,10 @@ export const PoRegisterScreen = () => {
    * 안내(「입력한 내용은 사라집니다」)보다 잃는 것이 적다 — 그 문구는 폼을 통째로 다시 세우는
    * 화면들이 함께 쓰는 것이라 여기서 고치지 않는다(공용 패턴 · 이 화면의 범위 밖).
    */
-  const submitFailureSlot = (): ReactNode => (
-    <SaveErrorBanner error={submit.error} onReload={reloadPoDetail} />
-  );
+  const submitFailureSlot = (): ReactNode =>
+    boundSubmit === null ? null : (
+      <SaveErrorBanner error={submit.error} onReload={reloadPoDetail} />
+    );
 
   /**
    * 지금 상신이 어디까지 갔는가. **결과 구획이 그리는 갈래를 한 자리에서 정한다** —
@@ -547,14 +586,15 @@ export const PoRegisterScreen = () => {
    */
   const submitPhase = (): SubmitPhase => {
     /*
-     * **어느 전표를 올렸는지 묻는다**(리뷰 R-24). 「올렸다」를 깃발로만 보면 대상을 바꾼 뒤
-     * 도착한 성공이 **올린 적 없는 전표 위에** 성공 갈래를 세운다 — 되돌릴 수 없는 조작에 대한
-     * 거짓 진술이고, 그 갈래에서는 사유 칸도 버튼도 서지 않아 올릴 길까지 사라진다.
+     * **남의 전표의 되먹임은 이 구획에 서지 않는다**(리뷰 R-24·R-30 · 매임의 문).
+     *
+     * 대상을 바꾼 뒤 도착하는 응답이 실재하므로, 매임을 지나지 않으면 **시도한 적 없는 전표
+     * 위에** 성공·진행·실패가 선다. 성공만 매고 실패를 두면 절반만 막힌다 — 그래서 셋이
+     * 이 한 문을 함께 지난다.
      */
-    if (submittedPurchaseOrderId !== null && submittedPurchaseOrderId === purchaseOrderId) {
-      return 'submitted';
-    }
+    if (boundSubmit === null) return 'idle';
 
+    if (boundSubmit.isSubmitted) return 'submitted';
     if (isSubmitting) return 'submitting';
 
     /*
@@ -646,6 +686,8 @@ export const PoRegisterScreen = () => {
     setSubmitStarting(true);
     /* 이 호출이 겨눈 전표를 적어 둔다 — 응답이 늦게 오면 그때의 화면은 다른 전표를 볼 수 있다. */
     submittingPurchaseOrderIdRef.current = purchaseOrderId;
+    /* **시도부터 매인다** — 나가는 중과 실패도 이 전표의 것으로만 읽혀야 한다(리뷰 R-30). */
+    setSubmitBinding({ purchaseOrderId, isSubmitted: false });
 
     void fetchPoDetail(purchaseOrderId)
       .catch(() => undefined)
@@ -890,7 +932,7 @@ export const PoRegisterScreen = () => {
           created={created}
           phase={submitPhase()}
           reason={submitReason}
-          reasonError={submit.fieldErrors.reason}
+          reasonError={boundSubmit === null ? undefined : submit.fieldErrors.reason}
           blockReason={submitBlockReason()}
           banner={pending === 'submit' ? null : submitFailureSlot()}
           onChangeReason={(value) => {
