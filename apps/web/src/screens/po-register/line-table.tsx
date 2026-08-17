@@ -17,6 +17,14 @@ export interface LineTableProps {
   uomLookup: ReferenceSource;
   itemOptions: SelectOption[];
   uomOptions: SelectOption[];
+  /**
+   * 표 전체가 잠겼는가. **나가는 중과 이미 등록한 뒤가 같은 잠금을 쓴다**(완료 조건 C19·C24).
+   *
+   * 한 칸이라도 열려 있으면 사용자가 그 칸을 고치고 나서 **자기가 고친 값으로 등록된 줄 알게
+   * 된다** — 나가는 본문은 이미 조립됐고, 등록된 전표는 이 화면에서 고칠 수 없다.
+   * 잠긴 사유는 표 안이 아니라 조작 자리(등록 버튼 옆)에 한 번 선다.
+   */
+  isLocked?: boolean;
   onPatch: (key: string, patch: Partial<Omit<LineDraft, 'key'>>) => void;
   onRemove: (key: string) => void;
 }
@@ -51,11 +59,12 @@ export const LineTable = ({
   uomLookup,
   itemOptions,
   uomOptions,
+  isLocked = false,
   onPatch,
   onRemove,
 }: LineTableProps) => {
   /** 마지막 한 줄은 지울 수 없다 — 라인이 0행이면 계약이 요구하는 최소 1행을 만들 수 없다. */
-  const isRemovable = rows.length > 1;
+  const isRemovable = rows.length > 1 && !isLocked;
 
   const errorOf = (row: LineDraft, field: LineFieldName): string | undefined =>
     errors[lineFieldId(row.key, field)];
@@ -75,6 +84,7 @@ export const LineTable = ({
       fullWidth
       inputMode="decimal"
       aria-label={label}
+      disabled={isLocked}
       value={row[field]}
       error={errorOf(row, field)}
       /* 오류가 있으면 디자인 시스템이 경고 자리를 오류로 대체한다 — 먼저 읽혀야 할 것이 오류다. */
@@ -112,6 +122,7 @@ export const LineTable = ({
             options={itemOptions}
             value={row.itemId === '' ? null : row.itemId}
             invalid={errorOf(row, 'itemId') !== undefined}
+            disabled={isLocked}
             aria-label={t.lineTable.itemLabel(rowIndex + 1)}
             onChange={(value) => {
               onPatch(row.key, { itemId: value });
@@ -132,6 +143,7 @@ export const LineTable = ({
           fullWidth
           inputMode="decimal"
           aria-label={t.lineTable.orderedQtyLabel(rowIndex + 1)}
+          disabled={isLocked}
           value={row.orderedQty}
           error={errorOf(row, 'orderedQty')}
           /* 승계 줄에는 하한이 있다 — 오류가 나기 전에 얼마 이상인지 읽히게 한다. */
@@ -153,6 +165,7 @@ export const LineTable = ({
             options={uomOptions}
             value={row.uomId === '' ? null : row.uomId}
             invalid={errorOf(row, 'uomId') !== undefined}
+            disabled={isLocked}
             aria-label={t.lineTable.uomLabel(rowIndex + 1)}
             onChange={(value) => {
               onPatch(row.key, { uomId: value });

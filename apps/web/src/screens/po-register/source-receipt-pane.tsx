@@ -1,6 +1,6 @@
 import { Button, Chip, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import type { SourceLineView, SourceReceiptView } from './types';
@@ -25,6 +25,15 @@ export interface SourceReceiptPaneProps {
   plantLookup: ReferenceSource;
   itemLookup: ReferenceSource;
   uomLookup: ReferenceSource;
+  /**
+   * 대상을 바꾸는 길이 잠겼는가.
+   *
+   * 나가는 중에 대상이 바뀌면 도착한 결과가 **다른 맥락에 놓인다.** 이미 등록한 뒤에 바뀌면
+   * 만들어진 전표를 보이는 화면이 다른 초과분을 가리킨다 — 두 경우 모두 잠근다.
+   */
+  isLocked?: boolean;
+  /** 잠긴 사유. **잠갔으면 반드시 함께 온다** — 사유 없는 잠금은 죽은 버튼과 구분되지 않는다 */
+  lockedReason?: string;
   onChoose: (inboundReceiptLineId: number) => void;
   onRetryReferences: () => void;
 }
@@ -56,11 +65,19 @@ export const SourceReceiptPane = ({
   plantLookup,
   itemLookup,
   uomLookup,
+  isLocked = false,
+  lockedReason,
   onChoose,
   onRetryReferences,
 }: SourceReceiptPaneProps) => {
   /** 고를 것이 있는가. 한 줄뿐이면 고르는 버튼을 두지 않는다 — 누를 이유가 없는 버튼이다. */
   const isChoosable = lines.length > 1;
+
+  /**
+   * 잠긴 사유가 서는 자리. **줄마다 나누지 않는다** — 사정이 표 전체에 하나뿐이라
+   * 줄마다 사본을 두면 같은 사실이 줄 수만큼 읽힌다(줄 단위로 갈리는 오류와 다른 자리다).
+   */
+  const lockedReasonId = useId();
 
   const summary: SummaryItem[] = [
     { key: 'inboundReceiptNo', label: t.source.inboundReceiptNo, value: receipt.inboundReceiptNo },
@@ -134,6 +151,8 @@ export const SourceReceiptPane = ({
             variant="outlined"
             size="sm"
             aria-label={t.source.chooseRow(row.lineNo)}
+            disabled={isLocked}
+            aria-describedby={isLocked ? lockedReasonId : undefined}
             onClick={() => {
               onChoose(row.inboundReceiptLineId);
             }}
@@ -191,6 +210,16 @@ export const SourceReceiptPane = ({
 
       {lines.length > 0 && (
         <p className="field-note">{isChoosable ? t.source.inheritNote : t.source.singleLineNote}</p>
+      )}
+
+      {/*
+       * 잠긴 사유는 **감추지 않고 항상 보이는 DOM 텍스트**로 렌더해 잇는다 — 잠긴 컨트롤은
+       * 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다(배치 규범 4).
+       */}
+      {isLocked && lockedReason !== undefined && (
+        <p id={lockedReasonId} className="field-note">
+          {lockedReason}
+        </p>
       )}
 
       {hasReferenceError && (

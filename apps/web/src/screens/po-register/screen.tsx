@@ -1,12 +1,15 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { SaveErrorBanner } from '../../patterns/master';
+import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { readSourceLineId, readSourceReceiptId, withSourceLineId } from './entry';
 import { HeaderForm } from './header-form';
 import {
   addLineDraft,
+  areLinesInherited,
   createInheritedLineDraft,
   patchLineDraft,
   removeLineDraft,
@@ -14,7 +17,9 @@ import {
 import { LineTable } from './line-table';
 import { LoadErrorBanner } from './load-error-banner';
 import {
+  describeReference,
   lookupNote,
+  toReference,
   useBusinessUnitOptions,
   useItemOptions,
   usePlantOptions,
@@ -22,12 +27,16 @@ import {
   useUomOptions,
   type LookupResult,
 } from './lookups';
-import { useSourceReceipt } from './queries';
+import { summarizeOrderedQty, toPurchaseOrderCreate } from './po-request';
+import { useCreatePurchaseOrder, useSourceReceipt } from './queries';
+import { RegisterConfirmDialog, type RegisterSummary } from './register-confirm-dialog';
+import { ResultPane } from './result-pane';
 import { ScopeBanner } from './scope-banner';
 import { SourceReceiptPane } from './source-receipt-pane';
 import {
-  EMPTY_HEADER_DRAFT,
-  seedHeaderDraft,
+  headerSeed,
+  isHeaderEdited,
+  type CreatedPoView,
   type HeaderDraft,
   type LineDraft,
   type SelectOption,
@@ -40,7 +49,9 @@ const t = messages.poRegister;
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_LINES: SourceLineView[] = [];
 const EMPTY_DRAFTS: LineDraft[] = [];
-const NO_FIELD_ERRORS: Record<string, string> = {};
+
+/** 확인을 기다리는 조작. `null`이면 열린 창이 없다. */
+type PendingAction = 'register' | 'discard';
 
 /**
  * 참조 목록을 선택지로 옮긴다.
@@ -61,8 +72,14 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * 등록. 진입 맥락(`receipt`·`line`)은 **주소가 소유한다**(계획 결정 2) — 새로고침·뒤로가기·
  * 공유가 같은 초과분을 연다. **친 값은 주소에 싣지 않는다.**
  *
- * **이 회차는 보내지 않는다.** 등록 버튼은 서면서 늘 잠겨 있고, 왜 잠겼는지를 사유가 말한다 —
- * 사유를 감추고 버튼만 두면 눌러도 아무 일이 없는 버튼이 된다. 실제 등록은 뒤따르는 회차가 붙인다.
+ * **등록과 승인 요청은 별개 동작이다**(착수 이슈 §6 ③ · 계획 결정 9). 이 화면의 「등록」 한 번은
+ * 요청 **하나**를 보내고 거기서 멈춘다 — 결재 상신은 별개 조작이고 뒤따르는 회차가 붙인다.
+ * 주 사본이 된 전례는 한 버튼이 등록+상신 두 요청을 이었는데, 그 형태를 그대로 베끼면 이 화면이
+ * 착수 이슈를 어긴다.
+ *
+ * **되돌릴 수 없는 쓰기를 세 겹으로 막는다**(계획 결정 12·16 · 공통 훅이 호출마다 새 멱등 키를
+ * 만든다 — 실측). ① 확인 창 ② 전송 중 전면 잠금 ③ 성공 뒤 폼·버튼 잠금. 두 번 누르는 것이
+ * 그대로 전표 두 벌이 되고, 이 화면에는 되돌릴 경로가 없다(취소는 승인을 탄다).
  *
  * **무엇이 바뀔 때 무엇을 비우는가 — 수명 표.**
  *
@@ -72,15 +89,24 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  * | 2 | 대상 줄 바꾸기 | 유지 | 바뀐다(`replace`) | **건드리지 않는다** | **다시 세운다** |
  * | 3 | 발주 정보·라인 치기 | 유지 | 유지 | 바뀐다 | 바뀐다 |
  * | 4 | 참조 응답 도착 | 유지 | 유지 | **건드리지 않는다** | **건드리지 않는다** |
- * | 5 | **입하 상세 재조회(같은 값)** | 유지 | 유지 | **건드리지 않는다** | 다시 세운다 |
- * | 6 | 맥락 없이 진입 | 없음 | 없음 | 비어 있다 | 비어 있다 |
+ * | 5 | **입하 상세 재조회(같은 값)** | 유지 | 유지 | **건드리지 않는다** | **건드리지 않는다** |
+ * | 6 | 입하 상세 재조회(**값이 달라짐**) | 유지 | 유지 | **건드리지 않는다** | 다시 세운다 |
+ * | 7 | **다른 전표로 주소가 바뀜** | 바뀐다 | 바뀐다 | **다시 세운다** | 다시 세운다 |
+ * | 8 | 맥락 없이 진입 | 없음 | 없음 | 비어 있다 | 비어 있다 |
+ * | 9 | **취소**(버리기 확인 뒤) | 유지 | 유지 | **승계로 되세운다** | **승계 줄 1행으로 되세운다** |
+ * | 10 | **등록 성공** | 유지 | 유지 | 값은 남고 **잠긴다** | 값은 남고 **잠긴다** |
  *
- * 4·5행이 이 화면의 `omf-mes#43` 자리다. **되돌림 축이 둘이고 서로 다르다**(전례와 같은 형태):
+ * 4~6행이 이 화면의 `omf-mes#43` 자리다. **되돌림 축이 둘이고 서로 다르다**(전례와 같은 형태):
  *
- * - **발주 정보** — 축은 **승계 원천 두 값**(공급사·공장 번호)이다. 응답 객체를 축으로 삼으면
- *   재조회가 새 참조를 주는 순간 사용자가 친 사업부·발주일이 말없이 되돌아간다.
- * - **라인 초안** — 축은 **고른 줄**이다. 하한 판정의 근거가 그 줄의 입하수량이라, 응답이 달라지면
- *   초안도 다시 서야 한다. 대상을 바꾸는 것과 응답이 바뀌는 것이 같은 뜻이다.
+ * - **발주 정보** — 축은 **넘어온 전표와 승계 원천 두 값**(전표 번호 · 공급사 · 공장)이다.
+ *   응답 객체를 축으로 삼으면 재조회가 새 참조를 주는 순간 사용자가 친 사업부·발주일이 말없이
+ *   되돌아간다. 반대로 전표 번호를 축에서 빼면 **공급사·공장이 같은 다른 전표**로 옮겨 갈 때
+ *   앞 전표에서 치던 값이 그대로 남는다(7행) — 그래서 축에 전표 번호가 함께 있다.
+ * - **라인 초안** — 축은 **고른 줄**이다. 하한 판정의 근거가 그 줄의 입하수량이라, 응답이 실제로
+ *   달라지면 초안도 다시 서야 한다(6행). 대상을 바꾸는 것과 응답이 바뀌는 것이 같은 뜻이다.
+ *   **같은 값을 다시 받는 것은 그 축을 움직이지 않는다**(5행) — 조회 캐시가 구조를 공유해
+ *   응답이 같으면 `chosenLine`의 참조도 그대로다. 여기서 초안이 다시 서면 사용자가 친 수량이
+ *   재조회 한 번에 말없이 되돌아간다.
  */
 export const PoRegisterScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -111,28 +137,38 @@ export const PoRegisterScreen = () => {
     return sourceLines.find((line) => line.inboundReceiptLineId === urlLineId) ?? null;
   }, [sourceLines, urlLineId]);
 
-  const [header, setHeader] = useState<HeaderDraft>(EMPTY_HEADER_DRAFT);
+  const [header, setHeader] = useState<HeaderDraft>(headerSeed(null, null));
   const [lines, setLines] = useState<LineDraft[]>(EMPTY_DRAFTS);
+
+  /** 만들어진 전표. `null`이면 아직 등록하지 않았거나 마지막 시도가 실패했다 */
+  const [created, setCreated] = useState<CreatedPoView | null>(null);
+
+  /** 확인을 기다리는 조작. `null`이면 열린 창이 없다 */
+  const [pending, setPending] = useState<PendingAction | null>(null);
 
   const chosenLineId = chosenLine?.inboundReceiptLineId ?? null;
 
   /**
    * 발주 정보를 승계로 세운다(수명 표 1행).
    *
-   * **축은 승계 원천 두 값이다.** 입하 상세가 같은 값을 다시 주더라도(재조회) 축이 바뀌지 않아
-   * 친 사업부·발주일·입고 예정일이 남는다 — 응답 객체를 축으로 삼으면 그 자리가 무너진다.
-   * 대상 줄을 바꾸는 것도 이 초안을 되돌리지 않는다(공급사·공장은 전표의 값이라 줄과 무관하다).
+   * **축은 넘어온 전표와 승계 원천 두 값이다.** 입하 상세가 같은 값을 다시 주더라도(재조회)
+   * 축이 바뀌지 않아 친 사업부·발주일·입고 예정일이 남는다 — 응답 객체를 축으로 삼으면 그 자리가
+   * 무너진다. 대상 **줄**을 바꾸는 것도 이 초안을 되돌리지 않는다(공급사·공장은 전표의 값이라
+   * 줄과 무관하다).
+   *
+   * **전표 번호가 축에 함께 있다**(수명 표 7행). 빼면 **공급사·공장이 같은 다른 전표**로 옮겨
+   * 갈 때 승계 원천 두 값이 그대로여서 축이 움직이지 않고, 앞 전표에서 치던 사업부·발주일이
+   * 새 전표의 발주에 실린다 — 전례가 초안 축에 전표 식별자를 둔 이유와 같은 자리다.
    */
   const seedSupplierId = sourceData?.receipt.supplierId ?? null;
   const seedPlantId = sourceData?.receipt.plantId ?? null;
 
+  /** 지금 세워야 할 승계 상태. **초안을 세울 때와 친 값을 견줄 때 같은 값을 쓴다.** */
+  const seededHeader = headerSeed(seedSupplierId, seedPlantId);
+
   useEffect(() => {
-    setHeader(
-      seedSupplierId === null || seedPlantId === null
-        ? EMPTY_HEADER_DRAFT
-        : seedHeaderDraft(seedSupplierId, seedPlantId),
-    );
-  }, [seedSupplierId, seedPlantId]);
+    setHeader(headerSeed(seedSupplierId, seedPlantId));
+  }, [sourceReceiptId, seedSupplierId, seedPlantId]);
 
   /**
    * 라인 1행을 승계로 세운다(수명 표 2·5행).
@@ -144,6 +180,79 @@ export const PoRegisterScreen = () => {
   useEffect(() => {
     setLines(chosenLine === null ? EMPTY_DRAFTS : [createInheritedLineDraft(chosenLine)]);
   }, [chosenLine]);
+
+  /**
+   * 등록 — **이 화면에서 되돌릴 수 없는 쓰기**다.
+   *
+   * 성공하면 결과를 세우고 확인 창을 닫는다. **초안은 비우지 않는다** — 폼이 그 자리에서 잠기므로
+   * (아래 `isFormLocked`) 남은 값이 다시 보내질 길이 없고, 사용자가 방금 무엇을 보냈는지 읽을 수
+   * 있어야 한다.
+   *
+   * **내부 번호는 이 회차에서 들지 않는다.** 응답이 함께 주지만(`PoDetailResult.purchaseOrderId`)
+   * 등록만 하는 회차에는 쓸 자리가 없다 — 상신이 붙는 회차가 그 값을 화면 상태로 든다.
+   * 쓰지 않는 값을 미리 들면 그 자리가 사람이 읽는 자리로 새는 경로가 먼저 생긴다(`omf-mes#44`).
+   */
+  const register = useCreatePurchaseOrder({
+    onSuccess: (result) => {
+      setCreated(result.created);
+      setPending(null);
+    },
+  });
+
+  /**
+   * **나가는 중인 쓰기는 건드리지 않는다**(사본 체크리스트 4번 · `omf-mes#96`).
+   *
+   * 공통 훅의 `reset()`은 진행 중 mutation에서 옵저버를 떼어 낸다 — 떼어 내면 그 호출에 매달린
+   * 되먹임이 통째로 오지 않는다(성공도 실패도 잠금 해제도). 요청은 이미 서버에 갔는데 화면만
+   * 없던 일로 친다. `reset()`을 부르는 자리는 전부 이 함수를 지난다.
+   */
+  const resetIfIdle = (write: { isSaving: boolean; reset: () => void }): void => {
+    if (write.isSaving) return;
+
+    write.reset();
+  };
+
+  /**
+   * **폼이 잠기는 두 사정**(계획 결정 12·16).
+   *
+   * ① 나가는 중 — 연타가 그대로 전표 두 벌이 된다(호출마다 새 멱등 키).
+   * ② 이미 등록했다 — 되돌릴 경로가 없어 두 번째 전표를 지울 수 없다.
+   *
+   * 두 사정이 **같은 잠금을 쓴다.** 조작 자리마다 다른 조건을 쓰면 한 자리가 열린 채로 남고,
+   * 이 화면에서 열린 자리 하나는 전표 한 벌이다.
+   */
+  const isFormLocked = register.isSaving || created !== null;
+
+  /** 잠긴 사유. **잠갔으면 반드시 함께 선다** — 사유 없는 잠금은 죽은 버튼과 구분되지 않는다 */
+  const formLockReason = (): string | undefined => {
+    if (created !== null) return t.actionReasons.alreadyRegistered;
+    if (register.isSaving) return t.actionReasons.saving;
+
+    return undefined;
+  };
+
+  /*
+   * 대상 전표가 바뀌면 **등록 결과와 열린 창을 함께 거둔다**(수명 표 7행).
+   *
+   * 남겨 두면 만들어진 전표를 보이는 구획이 **다른 초과분** 위에 서고, 앞 시도의 실패 배너가
+   * 새 대상의 사유처럼 읽힌다. **나가는 중인 쓰기는 끊지 않는다**(`resetIfIdle`).
+   *
+   * **최신 함수를 ref로 갈아 끼운다**(전례와 같은 형태). 초안·응답·`reset` 참조를 의존성에 넣으면
+   * 한 글자 칠 때마다 배너가 지워지거나(너무 지움) 아예 보이지 않는다(늘 지움).
+   */
+  const collectOnTargetChangeRef = useRef((): void => {
+    /* 자리를 미리 만든다 — 아래에서 매 렌더 최신 함수로 갈아 끼운다. */
+  });
+
+  collectOnTargetChangeRef.current = (): void => {
+    setCreated(null);
+    setPending(null);
+    resetIfIdle(register);
+  };
+
+  useEffect(() => {
+    collectOnTargetChangeRef.current();
+  }, [sourceReceiptId]);
 
   /**
    * 대상을 고른다. **주소를 `replace`로 갱신한다**(사본 체크리스트 1번) —
@@ -173,10 +282,18 @@ export const PoRegisterScreen = () => {
   const headerErrors = validateHeader(header);
 
   /**
-   * 등록이 막힌 사유. **순서가 뜻을 정한다** — 먼저 풀어야 하는 것부터 말한다.
-   * 앞의 사정이 남아 있는데 뒤의 사정을 말하면 사용자가 풀 수 없는 조치를 시도한다.
+   * 등록이 막힌 사유. `null`이면 **열려 있다.**
+   *
+   * **순서가 뜻을 정한다** — 먼저 풀어야 하는 것부터 말한다. 앞의 사정이 남아 있는데 뒤의 사정을
+   * 말하면 사용자가 풀 수 없는 조치를 시도한다.
+   *
+   * **잠금 둘이 맨 앞이다.** 이미 등록했거나 나가는 중이면 폼의 어느 값을 고쳐도 이 버튼은
+   * 열리지 않는다 — 그 사정을 뒤에 두면 「필수를 채우세요」를 읽고 채웠는데도 잠긴 버튼을 본다.
    */
-  const registerBlockReason = (): string => {
+  const registerBlockReason = (): string | null => {
+    if (created !== null) return t.actionReasons.alreadyRegistered;
+    if (register.isSaving) return t.actionReasons.saving;
+
     if (sourceReceiptId === null) return t.actionReasons.noContext;
     if (sourceData === undefined) return t.actionReasons.sourceNotLoaded;
 
@@ -194,11 +311,114 @@ export const PoRegisterScreen = () => {
     if (Object.keys(lineValidation.errors).length > 0) return t.actionReasons.lineInvalid;
     if (Object.keys(headerErrors).length > 0) return t.actionReasons.headerIncomplete;
 
-    /* 보낼 자리가 아직 없다. 값이 다 갖춰졌다는 사실과 보낼 수 없다는 사실을 함께 말한다. */
-    return t.actionReasons.unavailable;
+    return null;
   };
 
   const registerReasonId = useId();
+  const cancelReasonId = useId();
+
+  /**
+   * 버릴 것이 있는가 — **머리와 라인을 함께 본다.** 한쪽만 보면 나머지가 확인 없이 사라진다.
+   *
+   * 승계 상태와 **값으로 견준다**(깃발이 아니다). 쳤다가 되돌린 사용자에게 「버릴 것이 있다」로
+   * 말하면 아무것도 잃지 않는 조작에 확인을 받는 창이 된다.
+   */
+  const hasDraftInput =
+    isHeaderEdited(header, seededHeader) || !areLinesInherited(lines, chosenLine);
+
+  /** 취소가 막힌 사유. `null`이면 되돌릴 값이 있다. */
+  const cancelBlockReason = (): string | null => {
+    if (created !== null) return t.actionReasons.alreadyRegistered;
+    if (register.isSaving) return t.actionReasons.saving;
+
+    return hasDraftInput ? null : t.actionReasons.nothingToDiscard;
+  };
+
+  /** 두 사유를 렌더 한 번에 한 번만 판정한다 — 같은 판정을 자리마다 되부르면 갈릴 여지가 생긴다. */
+  const registerReason = registerBlockReason();
+  const cancelReason = cancelBlockReason();
+
+  /**
+   * 확인 창이 되보일 요약. **화면이 이미 만든 글자를 넘긴다** — 창이 다시 셈하거나 이름을 다시
+   * 풀면 「사용자가 확인한 것」과 「요청에 실리는 것」이 갈린다.
+   */
+  const registerSummary = (): RegisterSummary => {
+    const qty = summarizeOrderedQty(lines);
+
+    return {
+      supplier: describeReference(
+        toReference(suppliers, header.supplierId === '' ? null : Number(header.supplierId)),
+      ),
+      orderDate: header.orderDate,
+      lineCount: lines.length,
+      totalQtyText: qty.total === null ? t.dialog.totalUnreadable : String(qty.total),
+      hasMixedUom: qty.hasMixedUom,
+    };
+  };
+
+  /**
+   * 저장 실패 표시 — 배너와 **응답 없음 안내**를 함께 낸다(완료 조건 C25).
+   *
+   * 멱등 3층 완화의 셋째 층이다. 첫째가 확인 창, 둘째가 전송 중·성공 후 잠금, 셋째가 이것 —
+   * **응답이 오지 않은 요청은 「실패」가 아니라는 사실**을 말한다. 훅이 호출마다 새 멱등 키를
+   * 만들어, 그대로 다시 보내면 서버에는 다른 요청으로 보인다.
+   *
+   * **네트워크 갈래에만 붙는다.** 서버가 거절한 요청은 전달된 것이 확실하다.
+   *
+   * **「최신 불러오기」를 낼 자리가 아니다.** 등록에는 저장 충돌이 없다(계약에 `If-Match`도 409도
+   * 없다) — 잠글 대상이 없는 쓰기에 재조회 수단을 내면 입력만 버리게 된다.
+   */
+  const failureSlot = (): ReactNode => (
+    <>
+      <SaveErrorBanner error={register.error} />
+      {register.error?.kind === 'network' && (
+        <p className="field-note">{t.notes.networkUnconfirmed}</p>
+      )}
+    </>
+  );
+
+  /** 등록을 **요청한다** — 보내는 것은 확인 창을 지난 뒤다. */
+  const requestRegister = (): void => {
+    setPending('register');
+  };
+
+  /**
+   * 확인을 받고 **실제로 보낸다.**
+   *
+   * **창을 닫지 않고 보낸다**(완료 조건 C25). 실패했을 때 창이 닫히면 무엇이 막았는지 모른 채
+   * 같은 버튼을 다시 누른다 — 배너는 창 안에 서고, 창은 성공했을 때만 닫힌다.
+   *
+   * 본문을 만들 수 없으면 **보내지 않고 창을 닫는다.** 버튼 잠금이 이미 막은 길이라 도달하지
+   * 않지만, 도달했다면 폼으로 되돌려 보내는 것이 맞다 — 그 자리에 잠긴 사유가 서 있다.
+   */
+  const confirmRegister = (): void => {
+    const body = toPurchaseOrderCreate({
+      source:
+        chosenLine === null ? null : { inboundReceiptLineId: chosenLine.inboundReceiptLineId },
+      header,
+      lines,
+    });
+
+    if (body === null) {
+      setPending(null);
+
+      return;
+    }
+
+    register.write(body);
+  };
+
+  /**
+   * 친 값을 버리고 **승계 상태로 되세운다**(수명 표 9행).
+   *
+   * 앞 시도의 실패 배너도 함께 거둔다 — 남겨 두면 방금 되돌린 값 때문에 막힌 것처럼 읽힌다.
+   */
+  const confirmDiscard = (): void => {
+    setHeader(headerSeed(seedSupplierId, seedPlantId));
+    setLines(chosenLine === null ? EMPTY_DRAFTS : [createInheritedLineDraft(chosenLine)]);
+    resetIfIdle(register);
+    setPending(null);
+  };
 
   /**
    * 참조 실패의 복구 — **이 화면의 복구 자리는 한 곳이고 다섯을 함께 되살린다.**
@@ -247,6 +467,12 @@ export const PoRegisterScreen = () => {
         plantLookup={plants}
         itemLookup={items}
         uomLookup={uoms}
+        /*
+         * **대상을 바꾸는 길도 잠금 안에 있다.** 나가는 중에 바뀌면 도착한 결과가 다른 맥락에
+         * 놓이고, 이미 등록한 뒤에 바뀌면 만들어진 전표를 보이는 화면이 다른 초과분을 가리킨다.
+         */
+        isLocked={isFormLocked}
+        lockedReason={formLockReason()}
         onChoose={chooseLine}
         onRetryReferences={retryReferences}
       />
@@ -286,11 +512,20 @@ export const PoRegisterScreen = () => {
             supplierNote={lookupNote(suppliers)}
             businessUnitNote={lookupNote(businessUnits)}
             plantNote={lookupNote(plants)}
-            /* 오류는 **등록을 누른 뒤에** 보인다 — 그 배선은 보내는 회차가 붙인다. */
-            fieldErrors={NO_FIELD_ERRORS}
+            /*
+             * **빈 필수 칸의 오류가 곧바로 선다**(완료 조건 C12).
+             *
+             * 이 화면은 필수가 비면 **등록 버튼이 잠긴다** — 그래서 「누른 뒤에 보인다」 규율을
+             * 쓸 수 없다(누를 수 없으므로 영영 보이지 않는다). 잠금 사유는 「필수 항목을 채우세요」
+             * 라고만 말하므로, 어느 칸인지 함께 보이지 않으면 사용자가 다섯 칸을 훑어야 한다.
+             *
+             * **로컬 판정이 서버 오류를 덮는다** — 지금 고칠 수 있는 것을 먼저 보인다.
+             */
+            fieldErrors={{ ...register.fieldErrors, ...headerErrors }}
             supplierWarning={
               supplierChangeWarning(header, sourceData.receipt.supplierId) ?? undefined
             }
+            isLocked={isFormLocked}
             onChange={changeHeader}
           />
         </section>
@@ -324,6 +559,7 @@ export const PoRegisterScreen = () => {
                 uomLookup={uoms}
                 itemOptions={toSelectOptions(items)}
                 uomOptions={toSelectOptions(uoms)}
+                isLocked={isFormLocked}
                 onPatch={patchLine}
                 onRemove={removeLine}
               />
@@ -332,7 +568,7 @@ export const PoRegisterScreen = () => {
 
               <div className="filter-bar">
                 <div className="field-cell">
-                  <Button variant="outlined" onClick={addLine}>
+                  <Button variant="outlined" disabled={isFormLocked} onClick={addLine}>
                     {t.actions.addLine}
                   </Button>
                 </div>
@@ -343,20 +579,83 @@ export const PoRegisterScreen = () => {
       )}
 
       {/*
-       * 등록은 **늘 서고 늘 잠겨 있다**(이 회차 한정). 사유는 감추지 않고 항상 보이는 DOM
-       * 텍스트로 렌더해 `aria-describedby`로 잇는다 — 잠긴 컨트롤은 포커스를 받지 못해
-       * 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다(배치 규범 4).
+       * 잠긴 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다 —
+       * 잠긴 컨트롤은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다
+       * (배치 규범 4). **열려 있으면 사유를 그리지 않는다** — 늘 서 있으면 읽히지 않는다.
        */}
       <div className="form-actions">
         <div className="field-cell">
-          <Button variant="outlined" disabled aria-describedby={registerReasonId}>
+          <Button
+            variant="outlined"
+            disabled={registerReason !== null}
+            aria-describedby={registerReason === null ? undefined : registerReasonId}
+            onClick={requestRegister}
+          >
             {t.actions.register}
           </Button>
-          <span id={registerReasonId} className="field-note">
-            {registerBlockReason()}
-          </span>
+          {registerReason !== null && (
+            <span id={registerReasonId} className="field-note">
+              {registerReason}
+            </span>
+          )}
+        </div>
+
+        <div className="field-cell">
+          {/*
+           * 취소는 **보내기 전 복귀**다 — 서버를 부르지 않는다. 만들어진 전표를 되돌리는 수단이
+           * 아니고(그것은 승인을 탄다), 되돌릴 입력이 없으면 잠긴 채 그 사실을 말한다.
+           */}
+          <Button
+            variant="text"
+            disabled={cancelReason !== null}
+            aria-describedby={cancelReason === null ? undefined : cancelReasonId}
+            onClick={() => {
+              setPending('discard');
+            }}
+          >
+            {t.actions.cancel}
+          </Button>
+          {cancelReason !== null && (
+            <span id={cancelReasonId} className="field-note">
+              {cancelReason}
+            </span>
+          )}
         </div>
       </div>
+
+      {/*
+       * 저장 실패는 **한 자리에만** 선다 — 확인 창이 열려 있으면 창 안이고, 닫혀 있으면 여기다.
+       * 두 자리에 두면 사용자가 스크림 뒤의 사본을 읽으려 든다.
+       */}
+      {pending !== 'register' && failureSlot()}
+
+      {created !== null && <ResultPane created={created} />}
+
+      {pending === 'register' && (
+        <RegisterConfirmDialog
+          summary={registerSummary()}
+          isSaving={register.isSaving}
+          banner={failureSlot()}
+          onConfirm={confirmRegister}
+          /*
+           * Escape로 닫히는 길은 디자인 시스템이 막을 수단을 주지 않는다. 그래서 이 창의 규율은
+           * 「닫히지 않게」가 아니라 **「닫혀도 나가는 요청이 무너지지 않게」**다 — 여기서 쓰기를
+           * 되돌리지 않으므로(`reset` 없음) 응답은 그대로 도착해 결과 구획이 선다.
+           */
+          onClose={() => {
+            setPending(null);
+          }}
+        />
+      )}
+
+      {pending === 'discard' && (
+        <DiscardConfirmDialog
+          onConfirm={confirmDiscard}
+          onClose={() => {
+            setPending(null);
+          }}
+        />
+      )}
     </>
   );
 };

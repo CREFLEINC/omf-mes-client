@@ -115,6 +115,40 @@ describe('SourceReceiptPane — 대상 선택', () => {
 
     expect(props.onChoose).toHaveBeenCalledWith(9112);
   });
+
+  /**
+   * **잠금**(완료 조건 C19·C24의 대상 쪽).
+   *
+   * 나가는 중에 대상이 바뀌면 도착한 결과가 **다른 맥락에 놓인다**. 이미 등록한 뒤에 바뀌면
+   * 만들어진 전표를 보이는 화면이 다른 초과분을 가리키게 된다. 두 경우 모두 잠그되,
+   * **버튼을 감추지 않고** 잠긴 사유를 그 버튼에 잇는다 — 감추면 왜 못 고르는지 알 수 없고,
+   * 사유 없이 잠그면 눌러도 아무 일이 없는 버튼과 구분되지 않는다.
+   */
+  it('잠기면 고르는 버튼이 막히고 사유가 그 버튼에 이어진다', () => {
+    renderPane({ isLocked: true, lockedReason: t.actionReasons.saving });
+
+    const choose = screen.getByRole('button', { name: t.source.chooseRow(1) });
+
+    expect(choose).toBeDisabled();
+    expect(choose).toHaveAccessibleDescription(new RegExp(t.actionReasons.saving));
+    expect(screen.getByText(t.actionReasons.saving)).toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 잠그지 않으면 고를 수 있고 사유도 서지 않는다. */
+  it('잠기지 않으면 고를 수 있고 사유가 없다', () => {
+    renderPane();
+
+    expect(screen.getByRole('button', { name: t.source.chooseRow(1) })).toBeEnabled();
+    expect(screen.queryByText(t.actionReasons.saving)).not.toBeInTheDocument();
+  });
+
+  it('잠긴 버튼을 눌러도 대상이 바뀌지 않는다', async () => {
+    const { props, user } = renderPane({ isLocked: true, lockedReason: t.actionReasons.saving });
+
+    await user.click(screen.getByRole('button', { name: t.source.chooseRow(2) }));
+
+    expect(props.onChoose).not.toHaveBeenCalled();
+  });
 });
 
 /**

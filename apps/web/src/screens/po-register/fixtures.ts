@@ -1,6 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
-import type { LineDraft, SourceLineView } from './types';
+import type { CreatedPoView, HeaderDraft, LineDraft, SourceLineView } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -21,6 +21,8 @@ import type { LineDraft, SourceLineView } from './types';
 
 type InboundReceiptResponse = components['schemas']['InboundReceipt'];
 type InboundReceiptLineResponse = components['schemas']['InboundReceiptLine'];
+type PurchaseOrderResponse = components['schemas']['PurchaseOrder'];
+type PurchaseOrderLineResponse = components['schemas']['PurchaseOrderLine'];
 
 const BASE_RECEIPT: InboundReceiptResponse = {
   inboundReceiptId: 9101,
@@ -100,6 +102,26 @@ export const sourceLineView = (overrides: Partial<SourceLineView> = {}): SourceL
 });
 
 /**
+ * 값이 전부 유효한 머리 초안. **보낼 수 있는 상태가 기본값이다** — 「무엇이 비면 보내지 않는가」를
+ * 재는 시험이 그 칸만 비우면 되고, 다른 칸이 함께 잘못돼 있어 헷갈리는 일이 없다.
+ *
+ * 입고 예정일은 **비운 것이 기본**이다. 계약이 선택으로 둔 값이라 비어 있는 상태가 정상 경로이고,
+ * 「비운 칸은 키 자체를 싣지 않는다」를 그 상태에서 재야 한다.
+ */
+const BASE_HEADER_DRAFT: HeaderDraft = {
+  supplierId: '9301',
+  businessUnitId: '9201',
+  plantId: '9401',
+  orderDate: '2026-08-17',
+  expectedReceiptDate: '',
+};
+
+export const headerDraft = (overrides: Partial<HeaderDraft> = {}): HeaderDraft => ({
+  ...BASE_HEADER_DRAFT,
+  ...overrides,
+});
+
+/**
  * 값이 전부 유효한 라인 초안. **검사하려는 칸만 인자로 어긋나게 둔다** —
  * 기본값이 이미 잘못돼 있으면 어느 규칙이 울었는지 가릴 수 없다.
  */
@@ -150,3 +172,65 @@ export const itemFixtures = [
 export const uomFixtures = [
   { uomId: 9601, uomCode: 'SAMPLE-EA', uomName: '합성 단위 개', isActive: true },
 ];
+
+/**
+ * 등록 201이 되돌려 주는 전표.
+ *
+ * **ERP 발주번호가 기본값으로 들어 있다** — 목 서버가 계약 예시값을 채워 주는 것이 실측이고
+ * (계획 §5.2.3), 「미매칭」 갈래는 그 값을 일부러 비운 인자로 만든다. 두 갈래를 모두 재는 것이
+ * 이 픽스처를 이렇게 둔 이유다.
+ *
+ * 발주 라인 번호는 9700대다 — 응답에 실려 오지만 **화면에 그리지 않는다.**
+ */
+const BASE_PURCHASE_ORDER: PurchaseOrderResponse = {
+  purchaseOrderId: 9001,
+  purchaseOrderNo: 'SAMPLE-PO-9001',
+  erpPurchaseOrderNo: 'SAMPLE-EPO-9001',
+  supplierId: 9301,
+  businessUnitId: 9201,
+  plantId: 9401,
+  orderDate: '2026-08-17',
+  statusCode: 'SAMPLE_PO_STATUS_A',
+};
+
+export const purchaseOrderResponse = (
+  overrides: Partial<PurchaseOrderResponse> = {},
+): PurchaseOrderResponse => ({ ...BASE_PURCHASE_ORDER, ...overrides });
+
+const BASE_PURCHASE_ORDER_LINE: PurchaseOrderLineResponse = {
+  purchaseOrderLineId: 9701,
+  purchaseOrderId: 9001,
+  lineNo: 1,
+  itemId: 9501,
+  orderedQty: 12,
+  uomId: 9601,
+  receivedQty: 0,
+  toleranceOverQty: 0,
+  toleranceUnderQty: 0,
+};
+
+export const purchaseOrderLineResponse = (
+  overrides: Partial<PurchaseOrderLineResponse> = {},
+): PurchaseOrderLineResponse => ({ ...BASE_PURCHASE_ORDER_LINE, ...overrides });
+
+/** 등록 응답 본문. **머리와 라인이 함께 온다** — 상세 조회와 같은 모양이다(계약). */
+export const purchaseOrderDetailBody = (
+  overrides: Partial<PurchaseOrderResponse> = {},
+  lines: PurchaseOrderLineResponse[] = [purchaseOrderLineResponse()],
+): { purchaseOrder: PurchaseOrderResponse; lines: PurchaseOrderLineResponse[] } => ({
+  purchaseOrder: purchaseOrderResponse(overrides),
+  lines,
+});
+
+/** 결과 구획이 받는 표시 타입. **내부 번호가 담기지 않는다**(`omf-mes#44`). */
+const BASE_CREATED_PO: CreatedPoView = {
+  purchaseOrderNo: 'SAMPLE-PO-9001',
+  statusCode: 'SAMPLE_PO_STATUS_A',
+  erpPurchaseOrderNo: 'SAMPLE-EPO-9001',
+  lineCount: 1,
+};
+
+export const createdPoView = (overrides: Partial<CreatedPoView> = {}): CreatedPoView => ({
+  ...BASE_CREATED_PO,
+  ...overrides,
+});

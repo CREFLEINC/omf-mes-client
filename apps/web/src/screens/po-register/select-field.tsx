@@ -20,6 +20,11 @@ export interface SelectFieldProps {
   error?: string;
   /** 막지 않는 안내. 오류와 **갈라 둔다** — 뭉개면 경고가 오류처럼 읽혀 사용자가 값을 되돌린다. */
   warning?: string;
+  /**
+   * 잠겼는가. **사유는 이 부품이 내지 않는다** — 화면의 조작 자리에 한 번 서고, 다섯 칸이 같은
+   * 사정으로 함께 잠기므로 칸마다 되풀이하면 같은 사실이 다섯 번 읽힌다.
+   */
+  disabled?: boolean;
 }
 
 /**
@@ -30,9 +35,6 @@ export interface SelectFieldProps {
  *
  * 보조 문구·오류·경고는 감추지 않고 **항상 보이는 DOM 텍스트**로 렌더하고 `aria-describedby`로
  * 잇는다. 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다.
- *
- * **잠금 prop을 두지 않는다.** 이 회차에서 이 부품이 붙는 자리는 발주 정보뿐이고 아직
- * 나가는 요청이 없다 — 쓰지 않는 통로를 정의째 두지 않는다(사본 체크리스트 7번).
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -46,6 +48,7 @@ export const SelectField = ({
   placeholder,
   error,
   warning,
+  disabled = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -70,6 +73,7 @@ export const SelectField = ({
         value={value === '' ? null : value}
         onChange={onChange}
         placeholder={placeholder}
+        disabled={disabled}
         invalid={error !== undefined}
         aria-required={required || undefined}
         aria-describedby={describedBy === '' ? undefined : describedBy}
