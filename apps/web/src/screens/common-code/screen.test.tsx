@@ -21,6 +21,7 @@ import {
   partnerRoleFixtures,
   workerFixtures,
 } from './fixtures';
+import type { PartnerRoleRow } from './partner-role-draft';
 /* 코드 글자를 시험이 다시 적지 않는다(결정 2) — 리터럴은 어휘 고정 감지기 한 자리에만 둔다. */
 import { PARTNER_ROLE_CODES } from './partner-role-vocab';
 import { CommonCodeScreen } from './screen';
@@ -3758,10 +3759,18 @@ const partnerRolesRoute = (partnerId = 9001, roles = partnerRoleFixtures): StubR
   respond: () => rolesResponse(roles),
 });
 
-/** 잠금 토큰을 주지 않는 역할 목록 — **계약이 `ETag`를 선언하지 않은 지금의 현실**(#174). */
-const partnerRolesRouteWithoutEtag = (partnerId = 9001): StubRoute => ({
+/**
+ * 잠금 토큰을 주지 않는 역할 목록 — **계약이 `ETag`를 선언하지 않은 지금의 현실**(#174).
+ *
+ * 부여분을 인자로 받는다. 기본값은 어휘 밖 코드가 없는 쪽이라 **토큰 축만** 갈리고,
+ * 어휘 밖 코드까지 얹으면 두 갈래가 만나는 실사용 경로가 된다(확인 창 → 토큰 벽).
+ */
+const partnerRolesRouteWithoutEtag = (
+  partnerId = 9001,
+  roles: PartnerRoleRow[] = vocabularyRoleFixtures,
+): StubRoute => ({
   match: (request) => isGet(request, partnerRolesPath(partnerId)),
-  respond: () => jsonResponse(vocabularyRoleFixtures),
+  respond: () => jsonResponse(roles),
 });
 
 const partnerRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
@@ -4233,13 +4242,17 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
   });
 
   /**
-   * **토큰이 없으면 요청을 만들지 않는다**(#174 답변 대기 중인 지금의 현실).
+   * **토큰이 없으면 요청을 만들지 않고, 안내는 이 자원의 사실을 말한다**(#174 답변 대기).
    *
    * 계약이 `If-Match`를 필수로 요구하는데 `/mdm/partners*`의 어느 응답도 `ETag`를 선언하지
    * 않는다. 그 상태에서 화면이 할 수 있는 정직한 일은 **보내지 않고 안내하는 것**이다 —
    * 빈 헤더를 지어 보내면 서버가 400으로 되돌리고 사용자는 원인을 읽을 수 없다.
+   *
+   * 문구를 **전용 문구로 못박는다.** 공통 문구(`save.staleToken`)는 「잠시 뒤 다시 저장하세요」라
+   * 이 자원에서는 영영 거짓이다 — 공통 훅이 붙이는 코드값이 바뀌어 화면의 갈래가 조용히
+   * 공통 문구로 되돌아가면 이 단언이 운다.
    */
-  it('잠금 토큰을 못 얻으면 저장이 요청을 만들지 않고 안내를 세운다', async () => {
+  it('잠금 토큰을 못 얻으면 저장이 요청을 만들지 않고 사실대로 안내한다', async () => {
     const { requests, user } = renderScreen(
       [
         partnerListRoute(),
@@ -4253,7 +4266,50 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     await user.click(roleCheckbox('공급사'));
     await user.click(partnerSaveButton());
 
-    expect(await screen.findByText(messages.save.staleToken)).toBeInTheDocument();
+    expect(
+      await within(partnerRolePane()).findByText(
+        messages.commonCode.partnerRole.saveTokenUnavailable,
+      ),
+    ).toBeInTheDocument();
+    /* 「다시 시도하면 풀린다」는 공통 문구가 이 자원에는 서지 않는다. */
+    expect(screen.queryByText(messages.save.staleToken)).not.toBeInTheDocument();
+    expect(putRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * **두 갈래가 만나는 자리 — 어휘 밖 역할 + 토큰 없음**(리뷰 M-3).
+   *
+   * #174가 답을 주기 전까지 **실사용의 기본값**에 가까운 조합이다: 계약은 구현보다 앞서므로
+   * 서버가 어휘 밖 역할을 아직 들고 있을 수 있고(D-4의 존재 이유), 그 거래처에서 저장을
+   * 누르면 확인 창이 먼저 서고 승낙한 뒤에 토큰 벽을 만난다.
+   *
+   * 재는 것 셋 — ① 요청이 나가지 않는다 ② **창이 닫히지 않는다**(닫히면 사용자는 승낙이
+   * 받아들여진 줄 안다) ③ 사유가 **창 안에서** 사실대로 보인다.
+   */
+  it('어휘 밖 역할이 붙은 거래처에서 확인 창을 승낙해도 요청이 나가지 않고 창 안에 사유가 선다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        partnerListRoute(),
+        partnerRolesRouteWithoutEtag(9001, partnerRoleFixtures),
+        rolesReplaceRoute(() => jsonResponse(replacedRoles)),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    const dialog = await screen.findByRole('dialog');
+    /* 어휘 밖 역할이 해제 목록에 서 있다 — 사용자가 그것을 승낙하는 순간이다. */
+    expect(within(dialog).getByText('샘플 역할 엑스')).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: '해제하고 저장' }));
+
+    expect(
+      await within(dialog).findByText(messages.commonCode.partnerRole.saveTokenUnavailable),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(putRequests(requests)).toHaveLength(0);
   });
 

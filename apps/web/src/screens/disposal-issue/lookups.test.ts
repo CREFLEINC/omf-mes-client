@@ -59,9 +59,7 @@ describe('toReference', () => {
    * 「알 수 없음」으로 보이는데, 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
    */
   it('아직 오지 않은 것과 목록에 없는 것을 가른다', () => {
-    expect(toReference(source({ entries: [], isLoading: true }), 9701)).toEqual({
-      kind: 'loading',
-    });
+    expect(toReference(source({ entries: [], isLoading: true }), 9701)).toEqual({ kind: 'loading' });
     expect(toReference(source({ entries: [] }), 9701)).toEqual({ kind: 'unknown' });
   });
 
@@ -129,9 +127,7 @@ describe('isTruncated · lookupNote', () => {
    * 확정되지 않았다는 별개의 사실이고, 화면이 둘을 이어 붙인다.
    */
   it('창고 유형 미확정 안내를 내지 않는다', () => {
-    expect(lookupNote({ isError: false, truncated: false })).not.toBe(
-      t.filters.warehouseTypePending,
-    );
+    expect(lookupNote({ isError: false, truncated: false })).not.toBe(t.filters.warehouseTypePending);
   });
 });
 

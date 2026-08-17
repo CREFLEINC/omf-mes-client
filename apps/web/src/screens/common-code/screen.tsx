@@ -7,7 +7,7 @@ import {
   Tabs,
   useToast,
 } from '@crefle/web-ui';
-import type { components } from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useMemo, useState } from 'react';
@@ -169,6 +169,43 @@ interface PartnerRoleState {
   baseline: string[];
   selected: string[];
 }
+
+/**
+ * 공통 훅이 잠금 토큰을 못 찾아 멈췄을 때 붙이는 표식. 화면이 그 갈래를 가르는 열쇠다.
+ *
+ * ⛔ **글자를 공통 훅과 나눠 갖는다** — 훅이 이 코드값을 바꾸면 아래 갈래가 조용히 공통
+ * 문구로 되돌아간다. 그래서 화면 감지기(「잠금 토큰을 못 얻으면 …」)가 **전용 문구를
+ * 기대값으로 못박아** 그 순간 울게 해 두었다.
+ */
+const STALE_TOKEN_CODE = 'STALE_TOKEN';
+
+/**
+ * 역할 저장의 실패 안내 — **토큰 부재만 이 화면의 문구로 바꿔 낸다.**
+ *
+ * 공통 문구(`save.staleToken`)는 「잠시 뒤 다시 저장하세요」이고, 그 말은 **다시 시도하면
+ * 풀리는** 자원을 전제한다. 거래처 역할 치환은 계약이 이 자원의 어느 응답에도 `ETag`를
+ * 선언하지 않아(#174 답변 대기) 다시 눌러도 같은 자리에서 멈춘다 — 그대로 두면 사용자가
+ * **없는 조치를 지시받는다.** 체감은 어휘 밖 역할이 붙은 거래처에서 가장 나쁘다: 확인 창에서
+ * 해제를 승낙한 **뒤에** 「잠시 뒤 다시」를 읽는다.
+ *
+ * ⛔ **공통 훅과 공통 문구는 손대지 않는다.** 다시 시도가 실제로 통하는 형제 화면(폐기 출고
+ * 상신 등)에서는 그 문구가 참이라, 공통 자리를 고치면 그쪽이 거짓이 된다. 바꾸는 자리를
+ * **이 화면 하나**로 가둔다.
+ *
+ * 나머지 오류는 **그대로 지나간다** — 서버가 준 문구를 화면이 고쳐 쓰지 않는다.
+ */
+const toPartnerRoleSaveError = (error: ApiError | null): ApiError | null => {
+  if (error === null || error.kind !== 'validation') return error;
+
+  return {
+    kind: 'validation',
+    errors: error.errors.map((item) =>
+      item.code === STALE_TOKEN_CODE
+        ? { ...item, message: messages.commonCode.partnerRole.saveTokenUnavailable }
+        : item,
+    ),
+  };
+};
 
 /**
  * W-06-06 컨테이너.
@@ -1671,7 +1708,7 @@ export const CommonCodeScreen = () => {
          */
         banner={
           isPartnerRoleConfirmOpen || !isRoleWriteMine ? null : (
-            <SaveErrorBanner error={partnerRoleWrite.error} />
+            <SaveErrorBanner error={toPartnerRoleSaveError(partnerRoleWrite.error)} />
           )
         }
         isDirty={isPartnerRoleDirty}
@@ -1818,7 +1855,7 @@ export const CommonCodeScreen = () => {
           released={releasedRoles}
           willHaveNoRole={partnerRoleState !== null && partnerRoleState.selected.length === 0}
           isSaving={partnerRoleWrite.isSaving}
-          banner={<SaveErrorBanner error={partnerRoleWrite.error} />}
+          banner={<SaveErrorBanner error={toPartnerRoleSaveError(partnerRoleWrite.error)} />}
           onConfirm={confirmSavePartnerRoles}
           onClose={() => {
             setIsPartnerRoleConfirmOpen(false);
