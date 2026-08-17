@@ -2067,6 +2067,62 @@ describe('상신 실패(C31)', () => {
   });
 
   /**
+   * **늦게 도착한 「인라인 오류」도 남의 전표의 사유 칸에 붙지 않는다**(리뷰 R-32 · 검증 R3-P1).
+   *
+   * 매임이 덮는 소비처는 셋이다 — 갈래·실패 배너·**사유 칸의 서버 오류**. 앞의 두 갈래는 위
+   * 시험들이 잠갔지만 셋째는 **403으로는 지나가지 않는다**(403에는 필드 오류가 없다).
+   * 400 + `field: 'reason'`을 받은 뒤 대상을 바꾸면, 정리 effect의 `resetIfIdle`이 나가는 중이라
+   * 건너뛰므로 그 필드 오류가 살아남아 **새 전표의 사유 칸**에 붙는다 — 사용자는 자기가 치지도
+   * 않은 사유에 대해 서버가 무엇을 지적했다고 읽는다.
+   *
+   * 위 실패 시험과 **같은 절차**이고 스텁 응답 한 줄만 다르다.
+   */
+  it('보내는 동안 대상을 바꾸면 뒤늦게 온 필드 오류가 새 전표의 사유 칸에 붙지 않는다', async () => {
+    const LATE_REASON_ERROR = '앞 전표의 사유 서버 문구';
+    const { requests, release, user } = renderScreen(
+      [
+        secondReceiptRoute(),
+        detailRoute(),
+        failingSubmitRoute(400, {
+          errors: [
+            { scope: 'field', field: 'reason', code: 'INVALID', message: LATE_REASON_ERROR },
+          ],
+        }),
+        createRouteSequence(),
+        ...allRoutes(SINGLE_LINE),
+      ],
+      '?receipt=9101',
+      [SUBMIT_PATH],
+    );
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+    await openSubmitConfirm(user);
+    await user.click(confirmSubmitButton());
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '대상 바꾸기' }));
+    await screen.findByText('SAMPLE-IR-9102');
+
+    release();
+
+    await fillHeader(user);
+    await openConfirm(user);
+    await submitConfirm(user);
+
+    /* 짝 양성 — 새 대상의 결과 구획과 사유 칸이 실제로 선다. */
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9002'));
+    expect(reasonInput()).toBeVisible();
+
+    expect(screen.queryByText(LATE_REASON_ERROR)).not.toBeInTheDocument();
+    expect(reasonInput()).not.toHaveAccessibleDescription(new RegExp(LATE_REASON_ERROR));
+    expect(reasonInput()).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /**
    * **응답이 「새 대상 등록 뒤에」 도착하는 순서**(검증 R2-M3·R2-M4 · 리뷰 R-31).
    *
    * 위 두 시험은 응답을 **등록 전에** 놓아준다 — 그 순서에서는 응답이 도착할 때 화면이 아직
@@ -2108,6 +2164,17 @@ describe('상신 실패(C31)', () => {
     await submitConfirm(user);
     await screen.findByText(t.result.createdTitle('SAMPLE-PO-9002'));
     await user.type(reasonInput(), '새 대상 정산 사유');
+
+    /*
+     * **잠금은 매지 않는다 — 나가는 중이면 어느 전표든 막는다.**
+     *
+     * 진술(어느 전표에 대해 무엇을 말하는가)은 매이지만 조작 허용은 전역이다. 잠금까지 매면
+     * 여기서 새 대상의 「승인 요청」이 열리고, 그 순간 **겨눈 번호를 담는 한 칸짜리 ref가 덮여**
+     * 늦게 온 앞 전표의 성공이 이 전표의 매임으로 적힌다 — 매임 설계의 전제가 무너지는 자리다.
+     * 사유는 다 쳤으므로 잠긴 사정이 「사유를 적으세요」일 수 없다.
+     */
+    expect(requestApprovalButton()).toBeDisabled();
+    expect(within(resultPane()).getByText(t.actionReasons.submitting)).toBeVisible();
 
     release();
 
