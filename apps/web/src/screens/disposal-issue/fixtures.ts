@@ -244,8 +244,14 @@ export const partnerFixtures = [
 /** 폐기 거래처 선택지·도착지 표기에 쓰이는 라벨. **「코드 · 이름」**이고 번호가 없다. */
 export const PARTNER_LABEL = 'SAMPLE-PT-01 · 합성 폐기업체 가';
 
-/** 역할 코드 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
-export const SAMPLE_PARTNER_ROLE = 'SAMPLE_PARTNER_ROLE_A';
+/**
+ * 역할 코드 자리표시가 채워졌다고 가정할 때 목이 내놓는 코드.
+ *
+ * **계약이 아는 값이되 실물 상수와 다른 값을 고른다**(계약 재동기화 #173). 계약이 이 코드를
+ * 다섯으로 좁혀 합성값은 더 이상 실을 수 없다 — 그렇다고 실물과 **같은** 값을 쓰면 「목이 실제로
+ * 갈아 끼워졌는가」와 「실물 상수를 그냥 읽었는가」가 질의 조건에서 구분되지 않는다.
+ */
+export const SAMPLE_PARTNER_ROLE = 'OTHER';
 
 /**
  * 품목별 잔액 응답. **`onHandQty`와 `availableQty`가 다르다** — 상한이 어느 쪽을 쓰는지
@@ -321,7 +327,7 @@ export const goodsIssueFixtures: IssueView[] = [
     issuedAt: '2026-08-08T14:20:00+09:00',
     statusCode: 'SAMPLE_GI_STATUS_A',
     reasonCode: 'SAMPLE_GI_REASON_A',
-    destinationTypeCode: 'SAMPLE_DEST_TYPE_A',
+    destinationTypeCode: 'DISPOSAL_SITE',
     destinationId: 9561,
     approvalRequestId: 9521,
     erpMessageQueued: true,
@@ -348,7 +354,7 @@ export const goodsIssueFixtures: IssueView[] = [
     issuedAt: '2026-08-10T08:40:00+09:00',
     statusCode: 'SAMPLE_GI_STATUS_A',
     reasonCode: 'SAMPLE_GI_REASON_B',
-    destinationTypeCode: 'SAMPLE_DEST_TYPE_A',
+    destinationTypeCode: 'DISPOSAL_SITE',
     destinationId: 9563,
     approvalRequestId: 9522,
     erpMessageQueued: false,
@@ -545,7 +551,7 @@ export const createdIssueResponseFixture = {
   sourceDocumentTypeCode: 'SAMPLE_SRC_TYPE_A',
   sourceDocumentId: 9001,
   sourceWarehouseId: 9701,
-  destinationTypeCode: 'SAMPLE_DEST_TYPE_A',
+  destinationTypeCode: 'DISPOSAL_SITE',
   destinationId: 9561,
   issuedAt: '2026-08-11T09:30:00+09:00',
   statusCode: 'SAMPLE_GI_STATUS_B',

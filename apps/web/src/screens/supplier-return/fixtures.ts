@@ -253,7 +253,7 @@ const BASE_ISSUE: IssueResponse = {
   sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
   sourceDocumentId: 9001,
   sourceWarehouseId: 9701,
-  destinationTypeCode: 'SAMPLE_DESTINATION_TYPE_A',
+  destinationTypeCode: 'PARTNER',
   destinationId: 9901,
   issuedAt: '2026-08-06T09:12:00+09:00',
   /**

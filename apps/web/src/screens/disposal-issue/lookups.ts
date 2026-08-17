@@ -3,7 +3,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { isDisposalPartnerRolePending } from './code-options';
+import { isDisposalPartnerRolePending, type DisposalPartnerRoleCode } from './code-options';
 import type { LookupEntry, LotEntry, PageMeta, WarehouseEntry } from './types';
 
 /**
@@ -235,7 +235,7 @@ export const lookupKeys = {
    * 「갈린다」고 잴 수는 없다. **잴 수 없는 것을 재는 척하는 감지기를 심지 않는다.** 역할 코드가
    * 조회·설정으로 **오는 값**이 되면 그때 이 축이 도달 가능해지고 감지기를 둘 자리가 생긴다.
    */
-  disposalPartners: (roleTypeCode: string) =>
+  disposalPartners: (roleTypeCode: DisposalPartnerRoleCode) =>
     ['disposal-issue-lookups', 'disposal-partners', roleTypeCode] as const,
   /**
    * 거래처 **이름 풀이**는 선택지와 **다른 키**를 쓴다. 같은 경로를 부르지만 좁힘이 다르므로,
@@ -446,7 +446,7 @@ export const useLotOptions = (itemIds: readonly number[], enabled: boolean): Lot
  * **전표를 고르기 전에는 부르지 않는다**(`enabled`) — 폐기 요청 정보 구획 자체가 그때 그려진다.
  */
 export const useDisposalPartnerOptions = (
-  roleTypeCode: string,
+  roleTypeCode: DisposalPartnerRoleCode,
   enabled: boolean,
 ): PartnerLookupResult => {
   const { client } = useApiClient();
@@ -459,11 +459,18 @@ export const useDisposalPartnerOptions = (
     queryKey: lookupKeys.disposalPartners(roleTypeCode),
     enabled: isFetching,
     queryFn: () => {
-      if (!isNarrowable) {
+      /*
+       * **판정을 여기서 다시 부른다.** 계약이 역할 코드를 다섯으로 좁혀(#173) 질의 조건도
+       * 그 유니온만 받는데, 위 `isNarrowable`은 참·거짓일 뿐이라 코드를 좁혀 주지 못한다.
+       * 술어를 직접 부르면 되돌아간 뒤의 값이 계약 유니온으로 좁혀져 단언 없이 실린다.
+       */
+      if (isDisposalPartnerRolePending(roleTypeCode)) {
         throw new Error('폐기처리 역할 코드가 확정되기 전에는 거래처 선택지를 조회하지 않습니다.');
       }
 
-      return runRequest(() => client.GET('/mdm/partners', { params: { query: { roleTypeCode } } }));
+      const query = { roleTypeCode };
+
+      return runRequest(() => client.GET('/mdm/partners', { params: { query } }));
     },
   });
 

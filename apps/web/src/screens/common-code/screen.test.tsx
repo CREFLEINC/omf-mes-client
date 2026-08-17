@@ -1,4 +1,5 @@
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
@@ -20,6 +21,7 @@ import {
   partnerRoleFixtures,
   workerFixtures,
 } from './fixtures';
+import type { PartnerRoleRow } from './partner-role-draft';
 /* 코드 글자를 시험이 다시 적지 않는다(결정 2) — 리터럴은 어휘 고정 감지기 한 자리에만 둔다. */
 import { PARTNER_ROLE_CODES } from './partner-role-vocab';
 import { CommonCodeScreen } from './screen';
@@ -3737,8 +3739,36 @@ const partnerListRoute = (
   respond: () => jsonResponse({ items, page: pageMeta }),
 });
 
+/**
+ * 역할 조회가 내려 주는 잠금 토큰. 치환의 `If-Match`가 **이 값 그대로**여야 한다.
+ *
+ * ⚠ **지금 계약은 이 헤더를 선언하지 않는다**(#174 답변 대기). 그래도 목이 주는 상태를
+ * 기본으로 두는 이유는, 계약이 치환에 `If-Match`를 **필수**로 요구해(#173) 토큰이 없으면
+ * 저장이 요청조차 만들지 못하기 때문이다 — 「서버가 계약대로 동작할 때」가 이 상태다.
+ * 토큰이 없는 지금의 현실은 `partnerRolesRouteWithoutEtag`가 따로 재현한다.
+ */
+const ROLES_ETAG = '"7"';
+
+/** 역할 목록 응답. **잠금 토큰을 얹는다** — 이 경로가 치환의 `If-Match` 원천이다. */
+const rolesResponse = (roles: unknown): Response =>
+  jsonResponse(roles, { headers: { ETag: ROLES_ETAG } });
+
 /** 역할 목록 — **배열만 온다**(쪽 나눔이 없다 · 계약 실측). */
 const partnerRolesRoute = (partnerId = 9001, roles = partnerRoleFixtures): StubRoute => ({
+  match: (request) => isGet(request, partnerRolesPath(partnerId)),
+  respond: () => rolesResponse(roles),
+});
+
+/**
+ * 잠금 토큰을 주지 않는 역할 목록 — **계약이 `ETag`를 선언하지 않은 지금의 현실**(#174).
+ *
+ * 부여분을 인자로 받는다. 기본값은 어휘 밖 코드가 없는 쪽이라 **토큰 축만** 갈리고,
+ * 어휘 밖 코드까지 얹으면 두 갈래가 만나는 실사용 경로가 된다(확인 창 → 토큰 벽).
+ */
+const partnerRolesRouteWithoutEtag = (
+  partnerId = 9001,
+  roles: PartnerRoleRow[] = vocabularyRoleFixtures,
+): StubRoute => ({
   match: (request) => isGet(request, partnerRolesPath(partnerId)),
   respond: () => jsonResponse(roles),
 });
@@ -4069,6 +4099,24 @@ const rolesReplaceRoute = (respond: StubRoute['respond'], partnerId = 9001): Stu
 });
 
 /**
+ * 어휘 밖 코드가 섞이지 않은 부여분과 그 스텁.
+ *
+ * **저장 경로를 재는 시험이 이것을 쓴다.** `partnerRoleFixtures`에는 어휘 밖 코드가 하나
+ * 섞여 있고, 계약이 그 값을 400으로 거절하게 된 뒤로(#173) 그 거래처의 저장은 **무엇을
+ * 눌러도 해제 확인 창을 지난다** — 그 코드를 실을 수 없어 반드시 잃기 때문이다. 저장의
+ * 다른 축(헤더·본문·잠금·실패)을 재려는 시험이 창의 사정까지 함께 지고 갈 이유가 없다.
+ * 어휘 밖 코드가 **주제**인 시험은 그대로 `partnerRoleFixtures`를 쓴다.
+ */
+const vocabularyRoleFixtures = partnerRoleFixtures.filter(
+  (role) => role.roleTypeCode !== UNKNOWN_ROLE_CODE,
+);
+
+const vocabularyPartnerRoutes = (): StubRoute[] => [
+  partnerListRoute(),
+  partnerRolesRoute(9001, vocabularyRoleFixtures),
+];
+
+/**
  * 서버는 정규화한 결과를 돌려준다 — 화면이 그 응답으로 초안을 다시 세워야 한다.
  *
  * 어휘 안 코드는 **표에서 꺼내 쓴다**(결정 2) — 리터럴은 어휘 고정 감지기 한 자리에만 둔다.
@@ -4164,15 +4212,16 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     expect(partnerSaveButton()).toBeDisabled();
   });
 
-  /*
+  /**
    * C25·C29·C30 — 잃는 것이 없는 저장은 창 없이 바로 나간다.
    *
-   * ⛔ **`etagPath`가 `null`이어야 요청이 실제로 나간다.** 계약에 이 쓰기의 `If-Match`가 없어
-   * 상세 경로를 주면 토큰을 못 찾고 요청이 나가지 않는다(「저장을 눌러도 아무 일이 없다」).
+   * ⚠ **`If-Match`를 싣는다**(계약 재동기화 #173 — 헤더가 필수가 됐다). 토큰은 역할 조회
+   * 응답의 `ETag`에서 온다 — 그 헤더가 없으면 공통 훅이 요청을 만들지 않고 멈춘다(아래
+   * 「토큰이 없으면」 감지기가 그 갈래를 잰다).
    */
-  it('추가만 하는 저장은 확인 창 없이 치환 경로로 나가고 If-Match가 없다', async () => {
+  it('추가만 하는 저장은 확인 창 없이 치환 경로로 나가고 If-Match를 싣는다', async () => {
     const { requests, user } = renderScreen(
-      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      [...vocabularyPartnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
       '?tab=partner&ptn=9001',
     );
     await screen.findByText('고객사');
@@ -4189,13 +4238,85 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     const sent = putRequests(requests)[0];
     expect(sent?.url.pathname).toBe(partnerRolesPath(9001));
     expect(sent?.headers.get('Idempotency-Key')).toMatch(UUID);
-    expect(sent?.headers.has('If-Match')).toBe(false);
+    expect(sent?.headers.get('If-Match')).toBe(ROLES_ETAG);
   });
 
-  /* C29 — 본문은 **최종 상태 전부**다. 차례는 어휘 다섯 다음 어휘 밖 코드로 고정한다. */
+  /**
+   * **토큰이 없으면 요청을 만들지 않고, 안내는 이 자원의 사실을 말한다**(#174 답변 대기).
+   *
+   * 계약이 `If-Match`를 필수로 요구하는데 `/mdm/partners*`의 어느 응답도 `ETag`를 선언하지
+   * 않는다. 그 상태에서 화면이 할 수 있는 정직한 일은 **보내지 않고 안내하는 것**이다 —
+   * 빈 헤더를 지어 보내면 서버가 400으로 되돌리고 사용자는 원인을 읽을 수 없다.
+   *
+   * 문구를 **전용 문구로 못박는다.** 공통 문구(`save.staleToken`)는 「잠시 뒤 다시 저장하세요」라
+   * 이 자원에서는 영영 거짓이다 — 공통 훅이 붙이는 코드값이 바뀌어 화면의 갈래가 조용히
+   * 공통 문구로 되돌아가면 이 단언이 운다.
+   */
+  it('잠금 토큰을 못 얻으면 저장이 요청을 만들지 않고 사실대로 안내한다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        partnerListRoute(),
+        partnerRolesRouteWithoutEtag(),
+        rolesReplaceRoute(() => jsonResponse(replacedRoles)),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(
+      await within(partnerRolePane()).findByText(
+        messages.commonCode.partnerRole.saveTokenUnavailable,
+      ),
+    ).toBeInTheDocument();
+    /* 「다시 시도하면 풀린다」는 공통 문구가 이 자원에는 서지 않는다. */
+    expect(screen.queryByText(messages.save.staleToken)).not.toBeInTheDocument();
+    expect(putRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * **두 갈래가 만나는 자리 — 어휘 밖 역할 + 토큰 없음**(리뷰 M-3).
+   *
+   * #174가 답을 주기 전까지 **실사용의 기본값**에 가까운 조합이다: 계약은 구현보다 앞서므로
+   * 서버가 어휘 밖 역할을 아직 들고 있을 수 있고(D-4의 존재 이유), 그 거래처에서 저장을
+   * 누르면 확인 창이 먼저 서고 승낙한 뒤에 토큰 벽을 만난다.
+   *
+   * 재는 것 셋 — ① 요청이 나가지 않는다 ② **창이 닫히지 않는다**(닫히면 사용자는 승낙이
+   * 받아들여진 줄 안다) ③ 사유가 **창 안에서** 사실대로 보인다.
+   */
+  it('어휘 밖 역할이 붙은 거래처에서 확인 창을 승낙해도 요청이 나가지 않고 창 안에 사유가 선다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        partnerListRoute(),
+        partnerRolesRouteWithoutEtag(9001, partnerRoleFixtures),
+        rolesReplaceRoute(() => jsonResponse(replacedRoles)),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    const dialog = await screen.findByRole('dialog');
+    /* 어휘 밖 역할이 해제 목록에 서 있다 — 사용자가 그것을 승낙하는 순간이다. */
+    expect(within(dialog).getByText('샘플 역할 엑스')).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: '해제하고 저장' }));
+
+    expect(
+      await within(dialog).findByText(messages.commonCode.partnerRole.saveTokenUnavailable),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(putRequests(requests)).toHaveLength(0);
+  });
+
+  /* C29 — 본문은 **최종 상태 전부**다. 차례는 어휘 다섯의 결정된 차례로 고정한다. */
   it('본문에 최종 상태 전부가 정해진 차례로 실린다', async () => {
     const { requests, user } = renderScreen(
-      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      [...vocabularyPartnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
       '?tab=partner&ptn=9001',
     );
     await screen.findByText('고객사');
@@ -4211,14 +4332,47 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
       PARTNER_ROLE_CODES.customer,
       PARTNER_ROLE_CODES.supplier,
       PARTNER_ROLE_CODES.disposal,
-      UNKNOWN_ROLE_CODE,
+    ]);
+  });
+
+  /**
+   * **어휘 밖 코드는 본문에서 빠지고 확인 창이 그것을 든다**(계약 재동기화 #173).
+   *
+   * 앞 회차까지는 그 코드를 그대로 실어 보존했다. 계약이 값 목록을 못 박으면서 그 본문은
+   * 서버가 **통째로 거절하는 요청**이 됐다 — 하나를 지키려다 저장 전체를 막는다.
+   * 지금은 실을 수 있는 것만 싣고, 잃는 사실을 창이 이름으로 밝힌다.
+   */
+  it('어휘 밖 코드는 본문에서 빠지고 확인 창이 그 이름을 밝힌다', async () => {
+    const { requests, user } = renderScreen(
+      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    /* 어휘 밖 체크는 **그대로 둔다** — 사용자가 끄지 않아도 잃는다는 것이 요점이다. */
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('샘플 역할 엑스')).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: '해제하고 저장' }));
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+
+    expect(sentRoleCodes(requests)).toEqual([
+      PARTNER_ROLE_CODES.customer,
+      PARTNER_ROLE_CODES.supplier,
+      PARTNER_ROLE_CODES.disposal,
     ]);
   });
 
   /* C31 — 성공 알림이 없으면 사용자는 저장이 됐는지 화면을 다시 훑어 확인해야 한다. */
   it('저장에 성공하면 성공 알림이 뜬다', async () => {
     const { user } = renderScreen(
-      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      [...vocabularyPartnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
       '?tab=partner&ptn=9001',
     );
     await screen.findByText('고객사');
@@ -4248,7 +4402,9 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
           respond: () => {
             rolesCalls += 1;
 
-            return rolesCalls === 1 ? jsonResponse(partnerRoleFixtures) : neverFinishingResponse();
+            return rolesCalls === 1
+              ? rolesResponse(vocabularyRoleFixtures)
+              : neverFinishingResponse();
           },
         },
         /* 서버는 「공급사를 더한 목록」을 받고도 **고객사·공급사가 빠진 상태**를 돌려준다. */
@@ -4282,9 +4438,9 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     const { user } = renderScreen(
       [
         partnerListRoute(),
-        partnerRolesRoute(),
+        partnerRolesRoute(9001, vocabularyRoleFixtures),
         /* 서버가 「받았다」면서 **저장 전과 똑같은 목록**을 돌려준다. */
-        rolesReplaceRoute(() => jsonResponse(partnerRoleFixtures)),
+        rolesReplaceRoute(() => jsonResponse(vocabularyRoleFixtures)),
       ],
       '?tab=partner&ptn=9001',
     );
@@ -4305,14 +4461,14 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
    * 내용까지 바꾸도록 두어야 「저장 뒤 표시가 갱신됐다」가 헛통과하지 않는다.
    */
   it('저장에 성공하면 서버가 돌려준 상태가 정본이 된다', async () => {
-    let current = partnerRoleFixtures;
+    let current = vocabularyRoleFixtures;
 
     const { requests, user } = renderScreen(
       [
         partnerListRoute(),
         {
           match: (request) => isGet(request, partnerRolesPath(9001)),
-          respond: () => jsonResponse(current),
+          respond: () => rolesResponse(current),
         },
         rolesReplaceRoute(() => {
           current = replacedRoles;
@@ -4353,7 +4509,7 @@ describe('CommonCodeScreen — 해제 확인 창 (C25·C26·C27)', () => {
   /* C25 — 추가만 하는 저장에까지 창을 세우면 확인이 습관이 되어 잃는 저장에서도 읽히지 않는다. */
   it('해제되는 역할이 없으면 확인 창이 뜨지 않는다', async () => {
     const { user } = renderScreen(
-      [...partnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      [...vocabularyPartnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
       '?tab=partner&ptn=9001',
     );
     await screen.findByText('고객사');
@@ -4461,7 +4617,8 @@ describe('CommonCodeScreen — 해제 확인 창 (C25·C26·C27)', () => {
     await waitFor(() => {
       expect(putRequests(requests)).toHaveLength(1);
     });
-    expect(sentRoleCodes(requests)).toEqual([PARTNER_ROLE_CODES.disposal, UNKNOWN_ROLE_CODE]);
+    /* 어휘 밖 코드는 체크가 남아 있어도 실리지 않는다 — 계약이 거절한다(#173). */
+    expect(sentRoleCodes(requests)).toEqual([PARTNER_ROLE_CODES.disposal]);
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
@@ -4472,7 +4629,7 @@ describe('CommonCodeScreen — 저장이 나가는 중 (C33)', () => {
   /* 나가는 중에 체크가 바뀌면 확인한 것과 다른 것이 저장된 것처럼 보인다. */
   it('구획의 체크칸과 저장·취소가 잠긴다', async () => {
     const { user } = renderScreen(
-      [...partnerRoutes(), rolesReplaceRoute(neverFinishingResponse)],
+      [...vocabularyPartnerRoutes(), rolesReplaceRoute(neverFinishingResponse)],
       '?tab=partner&ptn=9001',
     );
     await screen.findByText('고객사');
@@ -4515,9 +4672,14 @@ describe('CommonCodeScreen — 저장이 나가는 중 (C33)', () => {
  * 다른 거래처를 고를 수 있다. 끊는 것과 가리는 것을 갈라 두 면을 각각 잰다.
  */
 describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', () => {
+  /*
+   * 9001의 부여분에서 **어휘 밖 코드를 뺀다.** 계약이 그 값을 거절하게 된 뒤로(#173) 그것이
+   * 붙어 있으면 어떤 저장도 해제 확인 창을 지나는데, 이 구획의 주제는 창이 아니라
+   * **나가는 중인 저장의 매임**이다.
+   */
   const twoPartnerRoutes = (): StubRoute[] => [
     partnerListRoute(),
-    partnerRolesRoute(),
+    partnerRolesRoute(9001, vocabularyRoleFixtures),
     partnerRolesRoute(9002, []),
   ];
 
@@ -4592,7 +4754,7 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
     const { requests, user } = renderScreen(
       [
         partnerListRoute(),
-        partnerRolesRoute(),
+        partnerRolesRoute(9001, vocabularyRoleFixtures),
         partnerRolesRoute(9002, [{ roleTypeCode: PARTNER_ROLE_CODES.customer }]),
         rolesReplaceRoute(neverFinishingResponse),
       ],
@@ -4750,7 +4912,7 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
   it('필드에 붙은 오류도 배너로 올라온다', async () => {
     const { user } = renderScreen(
       [
-        ...partnerRoutes(),
+        ...vocabularyPartnerRoutes(),
         rolesReplaceRoute(() =>
           jsonResponse(
             {
@@ -4782,7 +4944,10 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
 
   /* 창을 거치지 않는 저장의 실패는 구획 배너가 받는다 — 어디에도 표시되지 않는 실패를 두지 않는다. */
   it('확인 창 없는 저장이 실패하면 구획 배너에 사유가 나온다', async () => {
-    const { user } = renderScreen([...partnerRoutes(), failedRoute(404)], '?tab=partner&ptn=9001');
+    const { user } = renderScreen(
+      [...vocabularyPartnerRoutes(), failedRoute(404)],
+      '?tab=partner&ptn=9001',
+    );
     await screen.findByText('고객사');
 
     await user.click(roleCheckbox('공급사'));
@@ -4798,7 +4963,12 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
    */
   it('거래처 선택이 바뀌면 초안과 저장 실패 배너가 비워진다', async () => {
     const { user } = renderScreen(
-      [partnerListRoute(), partnerRolesRoute(), partnerRolesRoute(9002, []), failedRoute(400)],
+      [
+        partnerListRoute(),
+        partnerRolesRoute(9001, vocabularyRoleFixtures),
+        partnerRolesRoute(9002, []),
+        failedRoute(400),
+      ],
       '?tab=partner&ptn=9001',
     );
     await screen.findByText('고객사');

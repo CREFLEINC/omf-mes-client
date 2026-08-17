@@ -15,6 +15,10 @@ import {
  * 짝이 되는 사본이 `screens/disposal-issue/code-options.ts`의 `DISPOSAL_PARTNER_ROLE_CODE`에
  * 있고 그쪽도 자기 리터럴을 고정한다. **한쪽만 고치면 아무도 울지 않는다** — 감출 수 없는
  * 한계라 두 파일 주석이 서로의 경로를 적어 둔다.
+ *
+ * **계약과의 어긋남은 타입이 먼저 잡는다**(#173). 표가 계약 유니온으로 검사받고, 코드 →
+ * 어휘 열쇠 대응표가 계약의 다섯을 빠짐없이 덮어야 컴파일된다. 이 파일이 재는 것은 그 위에
+ * 남는 축 — **어떤 글자인가**다.
  */
 describe('PARTNER_ROLE_CODES — 어휘 다섯의 코드 표기', () => {
   it('다섯 코드가 확정된 글자 그대로다', () => {
@@ -27,6 +31,19 @@ describe('PARTNER_ROLE_CODES — 어휘 다섯의 코드 표기', () => {
 
   it('어휘는 다섯뿐이다 — 화면이 늘리거나 줄이지 않는다', () => {
     expect(Object.keys(PARTNER_ROLE_CODES)).toHaveLength(5);
+  });
+
+  /**
+   * **어휘 다섯이 계약의 다섯을 빠짐없이 덮는다.**
+   *
+   * 대응표가 `Record<PartnerRoleCode, PartnerRoleKey>`라 계약이 값을 늘리면 컴파일이 멈추지만,
+   * 그 표가 실제로 다섯 코드를 **판정에 쓰고 있는지**는 타입이 말해 주지 않는다 — 표를 만들어
+   * 놓고 조회를 다른 자료로 하면 침묵한다. 그래서 판정 쪽에서 한 번 더 센다.
+   */
+  it('어휘 다섯이 모두 아는 코드로 판정된다 — 표와 판정이 같은 자료를 본다', () => {
+    const known = Object.values(PARTNER_ROLE_CODES).filter((code) => isKnownPartnerRole(code));
+
+    expect(known).toHaveLength(5);
   });
 
   it('코드가 서로 겹치지 않는다', () => {
@@ -75,6 +92,19 @@ describe('isKnownPartnerRole — 어휘 밖 판정', () => {
   it('대소문자가 다르면 모르는 코드다', () => {
     expect(isKnownPartnerRole('disposal')).toBe(false);
   });
+
+  /**
+   * **프로토타입 이름이 「아는 코드」가 되면 안 된다.**
+   *
+   * 이 판정은 이제 「치환 본문에 실을 수 있는가」이기도 하다(#173) — 표 조회를 객체 첨자나
+   * `in`으로 「단순화」하면 `toString` 같은 이름이 통과해 되돌릴 수 없는 저장에 실린다.
+   */
+  it.each(['toString', 'constructor', 'hasOwnProperty'])(
+    '프로토타입 이름(%s)은 모르는 코드다',
+    (code) => {
+      expect(isKnownPartnerRole(code)).toBe(false);
+    },
+  );
 });
 
 describe('partnerRoleLabel — 표시명 풀이', () => {

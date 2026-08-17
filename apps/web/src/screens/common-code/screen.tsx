@@ -7,7 +7,7 @@ import {
   Tabs,
   useToast,
 } from '@crefle/web-ui';
-import type { components } from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useMemo, useState } from 'react';
@@ -73,7 +73,7 @@ import {
   type LookupResult,
 } from './lookups';
 import { PartnerListPane } from './partner-list-pane';
-import { partnerKeys, usePartnerList, usePartnerRoles } from './partner-queries';
+import { partnerKeys, partnerRolesPath, usePartnerList, usePartnerRoles } from './partner-queries';
 import { PartnerRoleConfirmDialog } from './partner-role-confirm-dialog';
 import {
   isSamePartnerRoleSelection,
@@ -82,6 +82,7 @@ import {
   toPartnerRoleDraft,
   toPartnerRolesPayload,
   togglePartnerRole,
+  type PartnerRoleRow,
 } from './partner-role-draft';
 import { PartnerRolePane } from './partner-role-pane';
 import { toPageView } from './pagination';
@@ -110,7 +111,6 @@ import type {
   CodeGroupFormValues,
   DepartmentFormValues,
   PartnerFilters,
-  PartnerRole,
   ScopedFilters,
 } from './types';
 
@@ -165,10 +165,47 @@ interface QualificationState {
  * 「원래 붙어 있던 역할」의 판정이 서버 응답에서 나온다.
  */
 interface PartnerRoleState {
-  source: PartnerRole[];
+  source: PartnerRoleRow[];
   baseline: string[];
   selected: string[];
 }
+
+/**
+ * 공통 훅이 잠금 토큰을 못 찾아 멈췄을 때 붙이는 표식. 화면이 그 갈래를 가르는 열쇠다.
+ *
+ * ⛔ **글자를 공통 훅과 나눠 갖는다** — 훅이 이 코드값을 바꾸면 아래 갈래가 조용히 공통
+ * 문구로 되돌아간다. 그래서 화면 감지기(「잠금 토큰을 못 얻으면 …」)가 **전용 문구를
+ * 기대값으로 못박아** 그 순간 울게 해 두었다.
+ */
+const STALE_TOKEN_CODE = 'STALE_TOKEN';
+
+/**
+ * 역할 저장의 실패 안내 — **토큰 부재만 이 화면의 문구로 바꿔 낸다.**
+ *
+ * 공통 문구(`save.staleToken`)는 「잠시 뒤 다시 저장하세요」이고, 그 말은 **다시 시도하면
+ * 풀리는** 자원을 전제한다. 거래처 역할 치환은 계약이 이 자원의 어느 응답에도 `ETag`를
+ * 선언하지 않아(#174 답변 대기) 다시 눌러도 같은 자리에서 멈춘다 — 그대로 두면 사용자가
+ * **없는 조치를 지시받는다.** 체감은 어휘 밖 역할이 붙은 거래처에서 가장 나쁘다: 확인 창에서
+ * 해제를 승낙한 **뒤에** 「잠시 뒤 다시」를 읽는다.
+ *
+ * ⛔ **공통 훅과 공통 문구는 손대지 않는다.** 다시 시도가 실제로 통하는 형제 화면(폐기 출고
+ * 상신 등)에서는 그 문구가 참이라, 공통 자리를 고치면 그쪽이 거짓이 된다. 바꾸는 자리를
+ * **이 화면 하나**로 가둔다.
+ *
+ * 나머지 오류는 **그대로 지나간다** — 서버가 준 문구를 화면이 고쳐 쓰지 않는다.
+ */
+const toPartnerRoleSaveError = (error: ApiError | null): ApiError | null => {
+  if (error === null || error.kind !== 'validation') return error;
+
+  return {
+    kind: 'validation',
+    errors: error.errors.map((item) =>
+      item.code === STALE_TOKEN_CODE
+        ? { ...item, message: messages.commonCode.partnerRole.saveTokenUnavailable }
+        : item,
+    ),
+  };
+};
 
 /**
  * W-06-06 컨테이너.
@@ -960,26 +997,42 @@ export const CommonCodeScreen = () => {
   /**
    * 역할 통째 교체.
    *
-   * ⛔ **`etagPath`가 반드시 `null`이다.** 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없고
-   * 응답에 `409`도 없다 — 거래처 역할은 부여·회수 형이라 낙관적 잠금 대상이 아니다.
-   * 상세 경로를 넘기면 토큰을 찾지 못해 **요청이 나가지 않고 멈춘다**(「저장을 눌러도 아무 일이
-   * 없다」). 같은 슬라이스의 작업자 자격 치환이 같은 형태다. `If-Match`를 **쓰는** 전례
-   * (결재선 단계 치환)는 부모 자원에 `version_no`가 있어 토큰이 존재하는 경우이고 여기와 다르다.
+   * ⚠ **`etagPath`가 역할 목록 경로다**(계약 재동기화 #173). 계약이 이 쓰기에 `If-Match`를
+   * **필수**로 요구하고 `409`도 함께 붙였다 — 통째로 교체하는 저장이라 보호가 없으면 남이
+   * 방금 붙인 역할이 조용히 사라진다.
+   *
+   * ⛔ **그런데 토큰을 얻을 자리가 아직 없다 — #174 답변 대기.** `/mdm/partners*`의 어느
+   * 응답도 `ETag`를 선언하지 않는다(계약 실측). 그래서 지금은 공통 훅이 토큰을 찾지 못해
+   * **요청을 만들지 않고 안내를 세운다.** 그것이 정직한 상태다 — 빈 `If-Match`를 지어 보내면
+   * 서버가 400으로 되돌리고 사용자는 원인을 읽을 수 없다(공통 훅이 명시적으로 금지한 행위다).
+   * 서버·계약이 `ETag`를 주기 시작하면 **이 자리를 고치지 않아도** 저장이 살아난다.
    *
    * **무효화는 역할 키 하나뿐이다.** 이 치환으로 거래처 본체가 바뀌지 않으므로 목록까지
    * 무효화하면 아무것도 달라지지 않을 조회를 다시 낸다.
    */
-  const partnerRoleWrite = useMasterWrite<readonly string[], PartnerRole[]>({
-    request: (selected, headers) =>
-      client.PUT('/mdm/partners/{partnerId}/roles', {
+  const partnerRoleWrite = useMasterWrite<readonly string[], PartnerRoleRow[]>({
+    request: (selected, headers) => {
+      const ifMatch = headers['If-Match'];
+
+      /*
+       * **없는 값을 빈 글자로 메우지 않는다.** `etagPath`가 있으면 공통 훅은 토큰을 찾지 못한
+       * 순간 요청을 만들지 않고 되돌아간다 — 여기까지 오면 토큰이 있다. 그 사실에 기대는 대신
+       * 여기서 멈추는 이유는, 빈 `If-Match`가 계약 위반이라 서버가 400으로 되돌리고 사용자는
+       * 원인을 읽을 수 없기 때문이다(형제 슬라이스의 상신 가드와 같은 형태).
+       */
+      if (selectedPartnerId === null || ifMatch === undefined) {
+        throw new Error('잠금 토큰 없이 거래처 역할을 저장하지 않습니다.');
+      }
+
+      return client.PUT('/mdm/partners/{partnerId}/roles', {
         params: {
-          /* 고른 거래처가 없으면 여기까지 오지 않는다 — 저장 컨트롤이 그 상태에 서지 않는다. */
-          path: { partnerId: selectedPartnerId ?? 0 },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+          path: { partnerId: selectedPartnerId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'], 'If-Match': ifMatch },
         },
         body: toPartnerRolesPayload(partnerRoleState?.source ?? [], selected),
-      }),
-    etagPath: null,
+      });
+    },
+    etagPath: selectedPartnerId === null ? null : partnerRolesPath(selectedPartnerId),
     invalidateKeys: [partnerKeys.roles(selectedPartnerId ?? 0)],
     // 체크칸에는 계약의 필드 이름이 붙지 않는다 — 필드 오류도 전부 배너로 올린다.
     knownFields: [],
@@ -1655,7 +1708,7 @@ export const CommonCodeScreen = () => {
          */
         banner={
           isPartnerRoleConfirmOpen || !isRoleWriteMine ? null : (
-            <SaveErrorBanner error={partnerRoleWrite.error} />
+            <SaveErrorBanner error={toPartnerRoleSaveError(partnerRoleWrite.error)} />
           )
         }
         isDirty={isPartnerRoleDirty}
@@ -1802,7 +1855,7 @@ export const CommonCodeScreen = () => {
           released={releasedRoles}
           willHaveNoRole={partnerRoleState !== null && partnerRoleState.selected.length === 0}
           isSaving={partnerRoleWrite.isSaving}
-          banner={<SaveErrorBanner error={partnerRoleWrite.error} />}
+          banner={<SaveErrorBanner error={toPartnerRoleSaveError(partnerRoleWrite.error)} />}
           onConfirm={confirmSavePartnerRoles}
           onClose={() => {
             setIsPartnerRoleConfirmOpen(false);

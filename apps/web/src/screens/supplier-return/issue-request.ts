@@ -16,6 +16,7 @@ import type { ReceiptView, ReturnDraft } from './types';
  * | `sendToErp` | **초안 값을 늘 명시** | 기본값이 참이지만 기대지 않는다 — 서버 기본이 바뀌면 조용히 달라진다 |
  * | `sourceDocumentId`·`sourceWarehouseId` | **고른 입고 전표** | 원천 문서가 이 반품의 근거이고, 자재가 놓인 창고가 그 전표의 창고다 |
  * | `destinationId` | **사용자가 고른 공급사** | 입고 전표에 공급사 필드가 없고(실측), 원천을 따라 올라가려면 원천 문서 유형 값 목록이 필요한데 그것이 없다(계획 결정 11) |
+ * | **`destinationTypeCode`** | **계약이 정한 값 셋 중 하나** | 계약이 자유 문자열에서 유니온으로 좁혔다(#173). 값이 아니면 본문을 만들지 않는다(아래 `isDestinationTypeCode`) |
  * | `issuedAt` | **사용자가 적은 출고 일시** | 계약 설명이 「출고일」이다 |
  * | **`occurredAt`** | **제출 순간** | 계약 설명이 공유계약 C-1이다. `issuedAt`과 갈라 싣는다 — 어제 나간 것을 오늘 등록하면 두 값이 실제로 갈린다(계획 §5.4-8) |
  * | `businessDate` | **출고 일시의 날짜** | 산출 규칙(야간조 경계 등)이 정의돼 있지 않다. 실행 시각의 날짜를 쓰지 않는 이유는 어제 나간 자재를 오늘 등록하는 것이 흔하기 때문이다(계획 §5.4-9) |
@@ -28,6 +29,45 @@ import type { ReceiptView, ReturnDraft } from './types';
 
 type GoodsIssueCreate = components['schemas']['GoodsIssueCreate'];
 type GoodsIssueLineUpsert = components['schemas']['GoodsIssueLineUpsert'];
+
+/** 계약이 정한 도착지 유형. **생성물 타입에서 파생한다** — 손으로 적은 유니온을 두지 않는다. */
+export type DestinationTypeCode = NonNullable<GoodsIssueCreate['destinationTypeCode']>;
+
+/**
+ * 계약이 아는 도착지 유형 셋 — **키가 곧 값이다.**
+ *
+ * 배열로 적으면 계약이 값을 늘리거나 이름을 바꿔도 아무것도 울지 않는다. `Record`로 못박아
+ * **빠짐과 오타를 타입 검사가 잡게** 한다 — 하나를 지우면 「속성이 없다」로, 잘못 적으면
+ * 「그런 속성이 없다」로 컴파일이 멈춘다(형제 슬라이스의 재고 상태 목록과 같은 형태).
+ *
+ * ⛔ 이 목록은 **계약이 아는 값**이지 화면이 고를 수 있는 값이 아니다. 선택지 자리표시
+ * (`code-options.ts`의 `destinationType: []`)를 이 값으로 채우지 않는다 — 채우면 값 목록이
+ * 확정되지 않은 W-01-05의 반품 처리가 열린다.
+ */
+export const DESTINATION_TYPE_CODES = {
+  LOCATION: true,
+  PARTNER: true,
+  DISPOSAL_SITE: true,
+} as const satisfies Record<DestinationTypeCode, true>;
+
+/**
+ * **계약이 실제로 좁혀 두었는가**를 타입으로 못박는다.
+ *
+ * 위 파생은 한 방향으로만 운다 — 계약이 값을 늘리거나 이름을 바꾸면 `Record`가 깨지지만,
+ * 계약이 **다시 자유 문자열로 넓어지면** `Record<string, true>`가 세 키로도 충족돼 아무것도
+ * 울지 않는다. 그때 아래 판정은 **계약에 없는 제약**이 되어, 서버가 아는 넷째 값이 와도
+ * 화면이 말없이 아무것도 보내지 않는다.
+ *
+ * ⛔ **지우지 않는다.** 아무 데서도 읽지 않는 것이 이 상수의 형태다 — 하는 일이 대입 그
+ * 자체이고, 대입이 성립하지 않으면 `tsc`가 멈춘다.
+ */
+type DestinationTypeIsNarrowed = string extends DestinationTypeCode ? never : true;
+
+const DESTINATION_TYPE_IS_NARROWED: DestinationTypeIsNarrowed = true;
+
+/** 계약이 아는 도착지 유형인가. 다듬은 뒤의 값을 그대로 받는다 — 「비슷하면 통과」가 없다. */
+const isDestinationTypeCode = (value: string): value is DestinationTypeCode =>
+  Object.hasOwn(DESTINATION_TYPE_CODES, value);
 
 /**
  * **등록과 전기를 한 요청으로 보낸다.**
@@ -161,16 +201,25 @@ export interface ReturnRequestInput {
 }
 
 /**
- * 본문을 만든다. **보낼 줄이 하나도 없으면 만들지 않는다**(`null`).
+ * 본문을 만든다. **만들지 않는 갈래가 둘이다**(`null`).
  *
- * 계약 설명은 「최소 1행」인데 스키마에 `minItems`가 없고 **목이 빈 배열을 201로 받는다**
- * (실측) — 막는 곳이 화면뿐이라 이 자리가 **마지막 겹**이다. 버튼 잠금과 보내는 자리의
- * 재판정이 이미 닫아 둔 길이지만, 그 둘이 뚫려도 빈 반품 전표는 만들어지지 않아야 한다.
+ * 1. **보낼 줄이 하나도 없다.** 계약 설명은 「최소 1행」인데 스키마에 `minItems`가 없고
+ *    **목이 빈 배열을 201로 받는다**(실측) — 막는 곳이 화면뿐이라 이 자리가 **마지막 겹**이다.
+ *    버튼 잠금과 보내는 자리의 재판정이 이미 닫아 둔 길이지만, 그 둘이 뚫려도 빈 반품 전표는
+ *    만들어지지 않아야 한다.
+ * 2. **도착지 유형이 계약 밖 값이다**(#173). 계약이 이 코드를 값 셋으로 좁혔고 어휘 밖 값은
+ *    서버가 400으로 거절한다. 지금은 선택지 자리표시가 비어 있어 닿을 수 없지만, 그 배열이
+ *    채워지는 순간 사용자가 고른 값이 곧장 여기로 온다 — 그때 걸러지는 자리가 여기다.
+ *    「비슷하면 통과」를 두지 않는다(대소문자 보정·접두사 제거 없음).
  */
 export const toGoodsIssueRequest = (input: ReturnRequestInput): GoodsIssueCreate | null => {
   if (input.lines.length === 0) return null;
 
   const { draft } = input;
+  const destinationTypeCode = trimmed(draft.codes.destinationType);
+
+  if (!isDestinationTypeCode(destinationTypeCode)) return null;
+
   const issuedLocal = toIssuedLocal(draft);
 
   return {
@@ -178,7 +227,7 @@ export const toGoodsIssueRequest = (input: ReturnRequestInput): GoodsIssueCreate
     sourceDocumentTypeCode: trimmed(draft.codes.sourceDocumentType),
     sourceDocumentId: input.receipt.goodsReceiptId,
     sourceWarehouseId: input.receipt.warehouseId,
-    destinationTypeCode: trimmed(draft.codes.destinationType),
+    destinationTypeCode,
     /* 공급사 선택칸의 값이 곧 도착지다 — 화면이 번호로 옮기는 유일한 자리다. */
     destinationId: Number(draft.supplier),
     issuedAt: toOffsetDateTime(issuedLocal, input.now),

@@ -68,7 +68,15 @@ vi.mock('./code-options', async (importOriginal) => {
 /** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
 const SAMPLE_ISSUE_TYPE = 'SAMPLE_ISSUE_TYPE_A';
 const SAMPLE_SOURCE_TYPE = 'SAMPLE_SOURCE_TYPE_A';
-const SAMPLE_DESTINATION_TYPE = 'SAMPLE_DESTINATION_TYPE_A';
+/**
+ * **도착지 유형만 합성값이 아니다.** 계약이 이 코드를 값 셋으로 좁혔고(#173) 요청 조립이
+ * 계약 밖 값을 받으면 본문을 만들지 않는다 — 합성값을 심으면 전송 단언이 「보내지 않았다」로
+ * 조용히 뒤집힌다. 공급사 반품의 도착지가 거래처라는 것도 #173이 표로 적었다.
+ * 나머지 셋은 계약이 아직 `string`이라 합성값 그대로다.
+ */
+const DESTINATION_TYPE = 'PARTNER';
+/** 계약 밖 도착지 유형. 자리표시가 열린 뒤에도 이런 값이 실리지 않는지 재는 데 쓴다. */
+const OUT_OF_CONTRACT_DESTINATION_TYPE = 'SAMPLE_DESTINATION_TYPE_A';
 const SAMPLE_REASON = 'SAMPLE_REASON_A';
 
 const clearCodeLists = (): void => {
@@ -84,7 +92,7 @@ const clearCodeLists = (): void => {
 const fillCodeLists = (): void => {
   codeValues.issueType = [SAMPLE_ISSUE_TYPE];
   codeValues.sourceDocumentType = [SAMPLE_SOURCE_TYPE];
-  codeValues.destinationType = [SAMPLE_DESTINATION_TYPE];
+  codeValues.destinationType = [DESTINATION_TYPE];
   codeValues.reason = [SAMPLE_REASON];
 };
 
@@ -679,11 +687,14 @@ const setIssuedTime = (value: string): void => {
 };
 
 /** 반품 정보를 전부 채운다. **코드 값 목록이 채워져 있어야** 고를 수 있다. */
-const fillReturnForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+const fillReturnForm = async (
+  user: ReturnType<typeof userEvent.setup>,
+  destinationType: string = DESTINATION_TYPE,
+): Promise<void> => {
   await chooseOption(user, t.fields.supplier, PARTNER_LABEL);
   await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
   await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
-  await chooseOption(user, t.fields.destinationType, SAMPLE_DESTINATION_TYPE);
+  await chooseOption(user, t.fields.destinationType, destinationType);
   await chooseOption(user, t.fields.reason, SAMPLE_REASON);
   await pickDate(user, screen.getByLabelText(t.fields.issuedDate), '2026-08-06');
   setIssuedTime('09:12');
@@ -2300,7 +2311,7 @@ describe('SupplierReturnScreen — 코드 목록이 채워지면', () => {
     await chooseOption(user, t.fields.supplier, PARTNER_LABEL);
     await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
     await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
-    await chooseOption(user, t.fields.destinationType, SAMPLE_DESTINATION_TYPE);
+    await chooseOption(user, t.fields.destinationType, DESTINATION_TYPE);
     await chooseOption(user, t.fields.reason, SAMPLE_REASON);
 
     expect(submitButton()).toHaveAccessibleDescription(t.actionReasons.needsIssuedDate);
@@ -2326,7 +2337,7 @@ describe('SupplierReturnScreen — 코드 목록이 채워지면', () => {
     await chooseOption(user, t.fields.supplier, PARTNER_LABEL);
     await chooseOption(user, t.fields.issueType, SAMPLE_ISSUE_TYPE);
     await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
-    await chooseOption(user, t.fields.destinationType, SAMPLE_DESTINATION_TYPE);
+    await chooseOption(user, t.fields.destinationType, DESTINATION_TYPE);
     await chooseOption(user, t.fields.reason, 'A'.repeat(51));
     await pickDate(user, screen.getByLabelText(t.fields.issuedDate), '2026-08-06');
     setIssuedTime('09:12');
@@ -2336,6 +2347,38 @@ describe('SupplierReturnScreen — 코드 목록이 채워지면', () => {
     /* 창이 열리지 않고 그 칸에 오류가 선다 — 되돌릴 수 없는 요청은 나가기 전에 막는다. */
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByText(t.errors.codeTooLong(50))).toBeInTheDocument();
+    expect(issueRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * **계약이 도착지 유형을 값 셋으로 좁혔다**(#173) — 어휘 밖 값은 서버가 400으로 거절한다.
+   *
+   * 자리표시가 열려도 **계약이 모르는 값으로는 되돌릴 수 없는 쓰기가 나가지 않는다.**
+   * 조립의 가드(`issue-request.ts`)와 호출부의 이른 반환이 함께 닫는 자리이며, 이 감지기가
+   * 없으면 둘 중 어느 겹을 지워도 아무도 울지 않는다.
+   */
+  it('계약이 모르는 도착지 유형이 선택지에 실려도 요청이 나가지 않는다', async () => {
+    fillCodeLists();
+    codeValues.destinationType = [OUT_OF_CONTRACT_DESTINATION_TYPE];
+
+    const { requests, user } = renderScreen(allRoutes());
+
+    await screen.findByText('GR-2026-900001');
+    await openReceipt(user);
+    await pickLine(user);
+    await fillReturnForm(user, OUT_OF_CONTRACT_DESTINATION_TYPE);
+
+    await openConfirm(user);
+
+    /* 창이 실제로 열렸음을 먼저 잡는다 — 음성 단언을 짝 양성과 같은 시점에 잰다. */
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent(OUT_OF_CONTRACT_DESTINATION_TYPE);
+
+    await confirmSubmit(user);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
     expect(issueRequests(requests)).toHaveLength(0);
   });
 });
@@ -2362,7 +2405,7 @@ describe('SupplierReturnScreen — 확인 창', () => {
     expect(dialog).toHaveTextContent(PARTNER_LABEL);
     expect(dialog).toHaveTextContent(SAMPLE_ISSUE_TYPE);
     expect(dialog).toHaveTextContent(SAMPLE_SOURCE_TYPE);
-    expect(dialog).toHaveTextContent(SAMPLE_DESTINATION_TYPE);
+    expect(dialog).toHaveTextContent(DESTINATION_TYPE);
     expect(dialog).toHaveTextContent(SAMPLE_REASON);
     expect(dialog).toHaveTextContent('2026-08-06 09:12');
     expect(within(dialog).getByText(t.dialog.businessDateDerived('2026-08-06'))).toBeInTheDocument();
@@ -2578,7 +2621,7 @@ describe('SupplierReturnScreen — 실제로 보내는 것', () => {
     expect(body.destinationId).toBe(9901);
     expect(body.issueTypeCode).toBe(SAMPLE_ISSUE_TYPE);
     expect(body.sourceDocumentTypeCode).toBe(SAMPLE_SOURCE_TYPE);
-    expect(body.destinationTypeCode).toBe(SAMPLE_DESTINATION_TYPE);
+    expect(body.destinationTypeCode).toBe(DESTINATION_TYPE);
     expect(body.reasonCode).toBe(SAMPLE_REASON);
     expect(body.issuedAt).toMatch(/^2026-08-06T09:12:00[+-]\d{2}:\d{2}$/);
     expect(body.businessDate).toBe('2026-08-06');
@@ -3085,7 +3128,7 @@ describe('SupplierReturnScreen — 대상이 바뀔 때 두 초안', () => {
       SAMPLE_SOURCE_TYPE,
     );
     expect(screen.getByRole('combobox', { name: t.fields.destinationType })).toHaveTextContent(
-      SAMPLE_DESTINATION_TYPE,
+      DESTINATION_TYPE,
     );
     expect(screen.getByRole('combobox', { name: t.fields.reason })).toHaveTextContent(
       SAMPLE_REASON,

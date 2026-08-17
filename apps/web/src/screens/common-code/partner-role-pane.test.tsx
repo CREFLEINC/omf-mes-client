@@ -183,11 +183,14 @@ describe('PartnerRolePane — 역할 체크칸', () => {
     expect(within(rolePane()).getAllByText('이 화면이 모르는 역할')).toHaveLength(1);
   });
 
-  /* 해제하면 이 화면에서 다시 붙일 수 없다 — 그 비대칭을 누르기 전에 밝힌다. */
-  it('어휘 밖 역할에 해제만 된다는 안내가 보이고 그 칸에 이어져 있다', () => {
+  /*
+   * 저장하면 반드시 해제되고 이 화면에서 다시 붙일 수 없다 — 그 비대칭을 누르기 전에 밝힌다.
+   * 근거는 「화면이 모른다」가 아니라 **「서버가 거절한다」**다(#173).
+   */
+  it('어휘 밖 역할에 저장하면 해제된다는 안내가 보이고 그 칸에 이어져 있다', () => {
     renderPane();
 
-    const note = within(rolePane()).getByText(/이 화면이 모르는 역할은 해제만 할 수 있습니다/);
+    const note = within(rolePane()).getByText(/저장에서 거절되기 때문입니다/);
 
     expect(roleCheckbox(UNKNOWN_LABEL).getAttribute('aria-describedby')).toBe(
       note.getAttribute('id'),
@@ -199,9 +202,7 @@ describe('PartnerRolePane — 역할 체크칸', () => {
     renderPane({ choices: toPartnerRoleChoices([], []) });
 
     expect(within(rolePane()).getAllByRole('checkbox')).toHaveLength(5);
-    expect(
-      within(rolePane()).queryByText(/이 화면이 모르는 역할은 해제만 할 수 있습니다/),
-    ).not.toBeInTheDocument();
+    expect(within(rolePane()).queryByText(/저장에서 거절되기 때문입니다/)).not.toBeInTheDocument();
   });
 
   it('체크칸을 누르면 그 역할 코드가 올라간다', async () => {
