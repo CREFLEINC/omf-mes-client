@@ -3761,11 +3761,23 @@ const outsideListPartner: Partner = {
  * ⛔ **`ETag`를 얹지 않는다** — 계약이 이 응답에 선언하지 않는다. 여기서 토큰을 주면 역할
  * 치환의 잠금 토큰이 어느 경로에서 왔는지 갈리지 않고, 상세 경로에서 꺼내는 잘못된 배선도
  * 통과해 버린다(#174가 정정한 그 실수다).
+ *
+ * **모르는 번호면 던진다** — 이 파일의 하네스 규율이 「조용히 두지 않고 던진다」이기 때문이다
+ * (`test/api-harness.tsx`). 픽스처에 없는 번호를 인자 없이 부르면 `JSON.stringify(undefined)`가
+ * 본문 없는 응답을 만들어, 스텁을 잘못 부른 시험이 요란하게 죽는 대신 **상세가 영영 서지 않는
+ * 상태로 굳는다.**
  */
 const partnerDetailRoute = (partnerId = 9001, partner?: Partner): StubRoute => ({
   match: (request) => isGet(request, partnerDetailPath(partnerId)),
-  respond: () =>
-    jsonResponse(partner ?? partnerFixtures.find((row) => row.partnerId === partnerId)),
+  respond: () => {
+    const found = partner ?? partnerFixtures.find((row) => row.partnerId === partnerId);
+
+    if (found === undefined) {
+      throw new Error(`거래처 ${String(partnerId)} 픽스처가 없습니다 — 기본 정보를 넘기세요.`);
+    }
+
+    return jsonResponse(found);
+  },
 });
 
 /**
@@ -4053,8 +4065,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
   });
 
   /**
-   * C14 — **없는 거래처는 안내만 낸다**(결정 D-4). 다시 시도해도 나타나지 않으므로 재시도를
-   * 권하지 않는다.
+   * C14 — **없는 거래처는 안내만 낸다.** 다시 시도해도 나타나지 않으므로 재시도를 권하지 않는다.
    *
    * ⛔ **주소에서 선택을 지우지 않는다.** 형제 화면 셋이 그 정리를 하는 것은 그쪽 상세가 **목록
    * 조건에 매인 선택**이라 조건이 바뀌면 안내가 가리킬 것이 없어지기 때문이다. 거래처 선택 키는
@@ -4089,7 +4100,14 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
     expect(within(pane).getByText('이 화면이 모르는 역할')).toBeInTheDocument();
   });
 
-  /* C19 — 실패를 「지정된 역할이 없습니다」로 보이면 역할이 없는 거래처로 읽힌다. */
+  /**
+   * C19 — 실패를 「지정된 역할이 없습니다」로 보이면 역할이 없는 거래처로 읽힌다.
+   *
+   * ⚠ **기본 정보 구획이 「역할 실패 갈래를 실제로 밟았다」의 앵커다.** 상세 실패와 역할 실패는
+   * 같은 배너 부품을 같은 구획 안에 내므로 문면·범위로는 갈리지 않는다 — 그래서 상세 스텁을
+   * 빠뜨려도 이 시험이 통과해 버린다(상세가 대신 실패해 같은 배너를 낸다). 기본 정보 구획은
+   * **상세가 성공했을 때만** 서므로, 그것을 먼저 잡으면 역할 쪽 실패임이 확정된다.
+   */
   it('역할 조회에 실패하면 배너를 내고 빈 상태를 함께 내지 않는다', async () => {
     renderScreen(
       [
@@ -4103,6 +4121,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
       '?tab=partner&ptn=9001',
     );
 
+    expect(await screen.findByRole('region', { name: '거래처 기본 정보' })).toBeInTheDocument();
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByText('지정된 역할이 없습니다')).not.toBeInTheDocument();
   });
