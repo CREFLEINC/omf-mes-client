@@ -286,6 +286,43 @@ const departmentFormPane = (): HTMLElement => screen.getByRole('region', { name:
 /** 조직 탭의 기본 스텁 묶음. 탭이 열리면 부서 목록과 사업부 선택지가 함께 필요하다. */
 const orgRoutes = (): StubRoute[] => [departmentListRoute(), businessUnitsRoute()];
 
+/**
+ * 끝나지 않는 응답. 본문 스트림을 열어 두면 요청은 **보내진 채로** 남는다 —
+ * 「나가는 중」이라는 순간을 시험이 붙잡는 유일한 방법이다.
+ */
+const neverFinishingResponse = (): Response =>
+  new Response(new ReadableStream({ start: () => undefined }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+/**
+ * 시험이 도착 시점을 정하는 응답. 본문 스트림을 열어 둔 채 돌려주고 `release`로 닫는다 —
+ * **응답이 도착하기 전에 다른 거래처로 옮기는** 경로를 재려면 그 사이가 필요하다.
+ */
+const deferredJsonResponse = (
+  status: number,
+): { response: Response; release: (body: unknown) => void } => {
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+
+  const response = new Response(
+    new ReadableStream<Uint8Array>({
+      start: (source) => {
+        controller = source;
+      },
+    }),
+    { status, headers: { 'Content-Type': 'application/json' } },
+  );
+
+  return {
+    response,
+    release: (body) => {
+      controller?.enqueue(new TextEncoder().encode(JSON.stringify(body)));
+      controller?.close();
+    },
+  };
+};
+
 /** 부서를 고른 뒤에 필요한 스텁까지 포함한 묶음. */
 const orgDetailRoutes = (
   editability: Editability = { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
@@ -3543,6 +3580,80 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     });
   });
 
+  /*
+   * **재조회가 도착하기 전에도 서버 값이 정본이다.**
+   *
+   * 응답을 지역 상태에만 앉히면 초안의 출처(조회 캐시)와 어긋나 **바로 다음 렌더에서 초안이
+   * 저장 전 목록으로 되돌아간다** — 되세우기 규칙이 「출처가 바뀌었다」로 읽기 때문이다.
+   * 위 감지기는 재조회가 곧바로 도착해 그 되돌아감을 덮으므로 이 갈래를 잡지 못한다.
+   * 재조회를 **끝내지 않는 스텁**이 그 사이를 붙잡는다 — 실제로도 재조회가 늦거나 실패하면
+   * 저장 전 값이 그대로 남는다.
+   */
+  it('저장에 성공하면 재조회가 도착하기 전에도 표가 저장 전 값으로 되돌아가지 않는다', async () => {
+    let listCalls = 0;
+
+    const { user } = renderScreen(
+      [
+        ...workerRoutes(),
+        processesRoute(),
+        {
+          match: (request) => isGet(request, qualificationsPath(5001)),
+          /* 첫 조회만 응답한다 — 무효화가 낸 재조회는 열어 둔 채로 둔다. */
+          respond: () => {
+            listCalls += 1;
+
+            return listCalls === 1
+              ? jsonResponse({ items: savedQualifications })
+              : neverFinishingResponse();
+          },
+        },
+        replaceRoute(() => jsonResponse(replacedResponse)),
+      ],
+      '?tab=worker&wkr=5001',
+    );
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-99');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    /* 양성 앵커 — 서버가 돌려준 값이 실제로 섰다. */
+    expect(await screen.findByText('SYN-CERT-77')).toBeInTheDocument();
+    expect(screen.queryByText('SYN-CERT-01')).not.toBeInTheDocument();
+    expect(screen.queryByText('SYN-CERT-99')).not.toBeInTheDocument();
+  });
+
+  /*
+   * **서버가 저장 전과 같은 값을 돌려줘도 서버 값이 정본이다.**
+   *
+   * 조회 라이브러리는 새 값이 옛 값과 깊이 같으면 **옛 참조를 그대로 유지한다**
+   * (`replaceEqualDeep`) — 응답을 캐시에 앉히기만 하면 출처가 바뀌지 않아 되세우기가 열리지
+   * 않고, 화면은 서버가 말한 상태가 아니라 **사용자가 고친 상태**를 계속 보인다.
+   * 서버가 저장을 조용히 무시한 경우가 정확히 그 갈래다.
+   */
+  it('서버가 저장 전과 같은 값을 돌려주면 사용자가 고친 초안이 남지 않는다', async () => {
+    const { user } = renderScreen(
+      [...qualificationRoutes(), replaceRoute(() => jsonResponse({ items: savedQualifications }))],
+      '?tab=worker&wkr=5001',
+    );
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-99');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+    await screen.findByText('SYN-CERT-99');
+
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    /* 양성 앵커 — 저장이 실제로 끝났다. 그 뒤에 「고친 값이 없다」를 잰다. */
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('SYN-CERT-01')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('SYN-CERT-99')).not.toBeInTheDocument();
+  });
+
   /* C74 — 지운 행이 본문에서 빠진다. */
   it('행을 지우고 저장하면 그 행이 본문에서 빠진다', async () => {
     const { requests, user } = renderScreen(
@@ -3674,6 +3785,217 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
 
     expect(await screen.findByText('등록된 자격·인증이 없습니다')).toBeInTheDocument();
     expect(screen.queryByText('SYN-CERT-77')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * **나가는 중인 자격 저장은 자기 작업자 밖으로 새지 않는다.**
+ *
+ * `resetIfIdle`가 나가는 중인 쓰기를 거두지 않는 것은 옳다(되먹임을 끊지 않는다 · `omf-mes#96`).
+ * 그래서 거두지 못한 상태가 남는데, **좌 목록은 저장 중에도 잠기지 않으므로** 사용자는 그사이
+ * 다른 작업자를 고를 수 있다. 끊는 것과 가리는 것을 갈라 두 면을 각각 잰다 —
+ * 같은 화면의 거래처 역할 구획이 세운 형태를 그대로 따른다.
+ */
+describe('CommonCodeScreen — 나가는 중인 자격 저장의 매임과 잠금 (G-30)', () => {
+  /** 옮겨 갈 작업자의 자격. 앞 작업자의 값(`SYN-CERT-01`)과 갈려야 어느 구획을 보는지 가른다. */
+  const otherWorkerQualifications = [
+    {
+      ...savedQualifications[0],
+      workerQualificationId: 8002,
+      workerId: 5002,
+      certificateNo: 'SYN-CERT-02',
+    },
+  ];
+
+  const twoWorkerRoutes = (): StubRoute[] => [
+    ...qualificationRoutes(),
+    workerDetailRoute(5002),
+    {
+      match: (request) => isGet(request, qualificationsPath(5002)),
+      respond: () => jsonResponse({ items: otherWorkerQualifications }),
+    },
+  ];
+
+  /**
+   * 두 작업자의 치환 경로를 **둘 다** 스텁한다. 5002 쪽을 비워 두면 두 번째 저장이 나갔을 때
+   * 하네스가 「스텁 누락」으로 던져, 감지기가 재려는 **요청 수**가 아니라 다른 이유로 실패한다.
+   */
+  const replaceRoute = (workerId: number, respond: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'PUT' && new URL(request.url).pathname === qualificationsPath(workerId),
+    respond,
+  });
+
+  const qualificationSaveButton = (): HTMLElement =>
+    within(qualificationPane()).getByRole('button', { name: '저장' });
+
+  /** 5001에서 행 하나를 지워 저장을 낸다 — 초안을 고치는 가장 짧은 길이다. */
+  const startSaveOnFirstWorker = async (user: ReturnType<typeof userEvent.setup>) => {
+    await screen.findByText('SYN-CERT-01');
+    await user.click(screen.getByRole('button', { name: 'PENDING 자격 삭제' }));
+    await user.click(qualificationSaveButton());
+  };
+
+  const selectSecondWorker = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'SYN-W-0002' }));
+    await screen.findByText('SYN-CERT-02');
+  };
+
+  /**
+   * **막는 것과 가리는 것을 가른다.**
+   *
+   * 저장은 한 번에 하나뿐이라 옮겨 간 작업자도 **잠긴다**(막는 것 — 전역). 그러나 그 잠금은
+   * 남의 저장이라는 **다른 사실**이므로 사유가 붙어야 하고, 진행 표시는 돌지 않아야 한다
+   * (가리는 것 — 대상 축). 사유 없는 비활성은 사용자에게 「고장」으로 읽힌다.
+   */
+  it('저장이 나가는 중에 옮겨 간 작업자는 진행 표시 없이 사유와 함께 잠긴다', async () => {
+    const { user } = renderScreen(
+      [...twoWorkerRoutes(), replaceRoute(5001, neverFinishingResponse)],
+      '?tab=worker&wkr=5001',
+    );
+
+    await startSaveOnFirstWorker(user);
+    await waitFor(() => {
+      expect(qualificationSaveButton()).toBeDisabled();
+    });
+
+    await selectSecondWorker(user);
+
+    const pane = qualificationPane();
+    const save = qualificationSaveButton();
+
+    expect(save).toBeDisabled();
+    expect(
+      within(pane).getByText('저장은 다른 작업자의 저장이 끝난 뒤에 할 수 있습니다.'),
+    ).toBeInTheDocument();
+    /* 남의 저장으로 스피너를 돌리면 화면이 손댄 적 없는 작업자를 「저장 중」이라고 말한다. */
+    expect(save).not.toHaveAttribute('aria-busy', 'true');
+  });
+
+  /*
+   * 뒤늦게 온 앞 작업자의 실패가 지금 구획에 서면 사용자는 **손댄 적 없는 작업자가 막힌 줄** 안다.
+   */
+  it('저장이 뒤늦게 실패해도 그사이 옮겨 간 작업자에 배너가 서지 않는다', async () => {
+    const deferred = deferredJsonResponse(400);
+
+    const { user } = renderScreen(
+      [...twoWorkerRoutes(), replaceRoute(5001, () => deferred.response)],
+      '?tab=worker&wkr=5001',
+    );
+
+    await startSaveOnFirstWorker(user);
+    await selectSecondWorker(user);
+
+    /* 도착 전 — 남의 저장이 나가는 중이라 이 구획이 그 사유로 잠겨 있다. */
+    expect(
+      within(qualificationPane()).getByText(/저장은 다른 작업자의 저장이 끝난 뒤에/),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      deferred.release({
+        message: '',
+        errors: [{ scope: 'screen', code: 'UNIQUE', message: '이미 있는 자격입니다.' }],
+      });
+    });
+
+    /*
+     * **잠금이 풀리는 것으로 실패가 도착한 것을 안다** — 「자격 추가」가 다시 열리는 순간은
+     * 나가는 중이던 저장이 끝났을 때뿐이다. 도착 전에 음성 단언을 하면 늘 통과한다.
+     */
+    await waitFor(() => {
+      expect(within(qualificationPane()).getByRole('button', { name: '자격 추가' })).toBeEnabled();
+    });
+    expect(
+      within(qualificationPane()).queryByText('이미 있는 자격입니다.'),
+    ).not.toBeInTheDocument();
+  });
+
+  /*
+   * **끊지는 않는다.** 가리는 축을 세운 뒤에도 `resetIfIdle`의 「나가는 중이면 손대지 않는다」
+   * 가드는 살아 있어야 한다. 가드가 없으면 옵저버가 떨어져 **무효화도 성공도 실패도 오지
+   * 않는다** — 서버에는 저장됐는데 화면에는 아무 흔적도 남지 않는다(`omf-mes#96`).
+   */
+  it('저장이 나가는 중에 작업자를 옮겨도 그 저장의 되먹임이 끊기지 않는다', async () => {
+    const deferred = deferredJsonResponse(200);
+
+    const { requests, user } = renderScreen(
+      [...twoWorkerRoutes(), replaceRoute(5001, () => deferred.response)],
+      '?tab=worker&wkr=5001',
+    );
+
+    await startSaveOnFirstWorker(user);
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    await selectSecondWorker(user);
+
+    await act(async () => {
+      deferred.release({ items: [] });
+    });
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+  });
+
+  /*
+   * **두 저장이 겹치지 않는다.** 훅 하나에 요청 하나라, 두 번째 `mutate`는 앞 요청에서
+   * 옵저버를 떼어 낸다 — 앞 저장이 400이면 **어디에도 표시되지 않는 실패**가 되고,
+   * 성공이면 캐시가 저장 전 값으로 남는다. 잠긴 컨트롤을 실제로 눌러 그 겹침을 시도한다.
+   */
+  it('남의 저장이 나가는 중에는 옮겨 간 작업자의 저장이 시작되지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        ...twoWorkerRoutes(),
+        replaceRoute(5001, neverFinishingResponse),
+        replaceRoute(5002, neverFinishingResponse),
+      ],
+      '?tab=worker&wkr=5001',
+    );
+
+    await startSaveOnFirstWorker(user);
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    await selectSecondWorker(user);
+    await user.click(screen.getByRole('button', { name: 'PENDING 자격 삭제' }));
+    await user.click(qualificationSaveButton());
+
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    expect(
+      within(qualificationPane()).getByText(/저장은 다른 작업자의 저장이 끝난 뒤에/),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * **구획 전체가 잠긴다.** 성공이 초안을 비워 되세우기를 다시 열므로, 저장 중 표를 고칠 수
+   * 있게 두면 **성공이 그 편집을 조용히 지운다.** 형제 구획(거래처 역할)이 체크칸까지 전역으로
+   * 잠그는 것과 같은 판단이다.
+   */
+  it('저장이 나가는 중에는 자격 구획의 다섯 컨트롤이 모두 잠긴다', async () => {
+    const { user } = renderScreen(
+      [...qualificationRoutes(), replaceRoute(5001, neverFinishingResponse)],
+      '?tab=worker&wkr=5001',
+    );
+
+    await screen.findByText('SYN-CERT-01');
+    await user.click(screen.getByRole('button', { name: 'PENDING 자격 수정' }));
+
+    const dialog = screen.getByRole('dialog');
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-77');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+    await user.click(qualificationSaveButton());
+
+    const pane = qualificationPane();
+
+    await waitFor(() => {
+      expect(within(pane).getByRole('button', { name: '자격 추가' })).toBeDisabled();
+    });
+    expect(within(pane).getByRole('button', { name: 'PENDING 자격 수정' })).toBeDisabled();
+    expect(within(pane).getByRole('button', { name: 'PENDING 자격 삭제' })).toBeDisabled();
+    expect(within(pane).getByRole('button', { name: '취소' })).toBeDisabled();
+    expect(qualificationSaveButton()).toBeDisabled();
   });
 });
 
@@ -4281,43 +4603,6 @@ const replacedRoles = [
   { roleTypeCode: UNKNOWN_ROLE_CODE, roleTypeName: '샘플 역할 엑스' },
   { roleTypeCode: PARTNER_ROLE_CODES.disposal, roleTypeName: '폐기처리' },
 ];
-
-/**
- * 끝나지 않는 응답. 본문 스트림을 열어 두면 요청은 **보내진 채로** 남는다 —
- * 「나가는 중」이라는 순간을 시험이 붙잡는 유일한 방법이다.
- */
-const neverFinishingResponse = (): Response =>
-  new Response(new ReadableStream({ start: () => undefined }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
-
-/**
- * 시험이 도착 시점을 정하는 응답. 본문 스트림을 열어 둔 채 돌려주고 `release`로 닫는다 —
- * **응답이 도착하기 전에 다른 거래처로 옮기는** 경로를 재려면 그 사이가 필요하다.
- */
-const deferredJsonResponse = (
-  status: number,
-): { response: Response; release: (body: unknown) => void } => {
-  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
-
-  const response = new Response(
-    new ReadableStream<Uint8Array>({
-      start: (source) => {
-        controller = source;
-      },
-    }),
-    { status, headers: { 'Content-Type': 'application/json' } },
-  );
-
-  return {
-    response,
-    release: (body) => {
-      controller?.enqueue(new TextEncoder().encode(JSON.stringify(body)));
-      controller?.close();
-    },
-  };
-};
 
 const putRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.method === 'PUT');

@@ -36,6 +36,7 @@ const renderPane = (overrides: Partial<Parameters<typeof QualificationPane>[0]> 
       loadError={null}
       banner={null}
       isDirty
+      isLocked={false}
       isSaving={false}
       onAdd={onAdd}
       onEdit={onEdit}
@@ -193,5 +194,39 @@ describe('QualificationPane — 액션', () => {
 
     expect(screen.getByText('불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+});
+
+describe('QualificationPane — 저장이 나가는 중', () => {
+  /**
+   * **막는 것과 가리는 것이 갈린다.** 저장은 한 번에 하나뿐이라 다른 작업자의 저장이 나가는
+   * 중이면 여기도 잠긴다(전역). 그러나 그것은 **다른 사실**이므로 사유가 붙어야 하고
+   * 진행 표시는 돌지 않는다 — 사유 없는 비활성은 「고장」으로 읽힌다(배치 규범 4).
+   */
+  it('남의 저장이 나가는 중이면 다섯 컨트롤이 사유와 함께 잠기고 진행 표시를 돌지 않는다', () => {
+    renderPane({ isDirty: true, isLocked: true, isSaving: false });
+
+    const save = screen.getByRole('button', { name: '저장' });
+
+    expect(screen.getByRole('button', { name: '자격 추가' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'PENDING 자격 수정' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'PENDING 자격 삭제' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+    expect(save).toBeDisabled();
+    expect(
+      screen.getByText('저장은 다른 작업자의 저장이 끝난 뒤에 할 수 있습니다.'),
+    ).toBeInTheDocument();
+    expect(save).not.toHaveAttribute('aria-busy', 'true');
+  });
+
+  /* 내 저장이 나가는 중이면 진행 표시가 사유 자리를 대신한다 — 두 사실을 한 문구로 뭉개지 않는다. */
+  it('내 저장이 나가는 중이면 진행 표시가 돌고 남의 저장 사유를 내지 않는다', () => {
+    renderPane({ isDirty: true, isLocked: true, isSaving: true });
+
+    const save = screen.getByRole('button', { name: '저장' });
+
+    expect(save).toHaveAttribute('aria-busy', 'true');
+    expect(save).toBeDisabled();
+    expect(screen.queryByText(/저장은 다른 작업자의 저장이 끝난 뒤에/)).not.toBeInTheDocument();
   });
 });
