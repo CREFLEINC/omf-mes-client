@@ -183,3 +183,19 @@ export const toCreatedReceiptView = (data: InboundReceiptResponse): CreatedRecei
   inboundReceiptNo: data.inboundReceiptNo,
   statusCode: data.statusCode,
 });
+
+/**
+ * 한 번의 등록이 남긴 것 — **만들어진 전표와 「초과분이 실렸는가」**.
+ *
+ * 갈래(`mode`)를 그대로 들지 않고 **판정 결과 한 값만** 든다. 갈래를 들면 결과 구획이 「어느
+ * 갈래로 등록했는지」를 표시 값으로 쓸 길이 생기는데, 그것은 「어느 전표가 초과분인지」를
+ * 지어내는 것과 한 걸음 차이다(계획 결정 3). 여기서 필요한 것은 **다음 화면으로 가는 길을
+ * 세울 것인가** 하나뿐이다.
+ *
+ * `false`인 갈래(정량분만 저장)의 전표는 **정의상 초과분이 아니다** — 그 사실의 근거는 응답이
+ * 아니라 사용자가 방금 누른 버튼이라, 화면이 지어내는 것이 아니라 이미 아는 것이다.
+ */
+export interface CreatedResult {
+  hasExcess: boolean;
+  receipts: CreatedReceiptView[];
+}

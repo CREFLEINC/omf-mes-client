@@ -301,13 +301,18 @@ const offlineSplitRoute = (): StubRoute => ({
   },
 });
 
-/** 이 화면이 닿을 수 있는 경로를 전부 스텁으로 둔 한 벌. */
-const allRoutes = (): StubRoute[] => [
+/**
+ * 이 화면이 닿을 수 있는 경로를 전부 스텁으로 둔 한 벌.
+ *
+ * **만들어질 전표를 인자로 받는다** — 같은 경로 규칙을 앞에 한 벌 더 얹어 뒤엣것을 가리면
+ * 도달하지 못하는 규칙이 남아, 읽는 사람이 어느 쪽이 응답하는지 세어 봐야 한다.
+ */
+const allRoutes = (created?: unknown[]): StubRoute[] => [
   listRoute(),
   linesRoute(),
   otherLinesRoute(),
   detailRoute(),
-  splitRoute(),
+  splitRoute(created),
   ...lookupRoutes(),
 ];
 
@@ -2242,8 +2247,7 @@ describe('OverReceiptSplitScreen — 취소와 초안 파기 확인', () => {
  */
 describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
   /* 앞에 둔 규칙이 먼저 맞는다 — 기본 등록 스텁을 가린다. */
-  const renderWithCreated = (created: unknown[] = CREATED_TWO) =>
-    renderScreen([splitRoute(created), ...allRoutes()]);
+  const renderWithCreated = (created: unknown[] = CREATED_TWO) => renderScreen(allRoutes(created));
 
   /* **C35** — 등록 전에는 갈 곳이 정해지지 않았다. 자리를 두되 사유를 밝히고 이동시키지 않는다. */
   it('등록 전에는 잠긴 자리와 사유뿐이고 이동 경로가 없다', async () => {
@@ -2269,8 +2273,54 @@ describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
   });
 
   /*
-   * **C34** — 등록 결과에는 **전표마다** 길이 선다. 두 건일 때 하나로 합치면 어느 전표를
-   * 정산하는지 화면이 지어내야 하는데, 응답은 그것을 알려 주지 않는다(계획 결정 3).
+   * **C34의 갈래 한정 · 화면 몫**(계획 D-14 ② 개정 · 리뷰 R-33) — 「정량분만 저장」으로 만든
+   * 전표에는 다음 화면으로 가는 길이 **서지 않는다.**
+   *
+   * 그 전표는 이미 발주가 있는 수량이라 거기서 P/O를 또 만들면 **중복 발주**가 되고, 취소는
+   * 승인을 타서 이 화면이 되돌릴 수 없다. 이 갈래에서는 요청에 초과분을 싣지 않았다는 사실을
+   * **화면이 1차로 안다** — 응답을 보고 지어내는 것이 아니다.
+   *
+   * 이 경로는 이미 다른 시험이 지나고 있었으나(같은 파일 「한 건만 만들어져도 건수를 밝힌다」)
+   * 결과 구획의 이동 경로를 보는 단언이 없어 잣대 밖이었다.
+   */
+  it('정량분만 저장한 결과에는 이동 경로가 없다', async () => {
+    const { user } = renderWithCreated(CREATED_ONE);
+
+    await setupRegister(user);
+    await clickRegister(user, t.actions.registerNormalOnly);
+
+    await screen.findByText(t.result.count(1));
+
+    const result = screen.getByRole('status', { name: t.panes.result });
+
+    /* 짝 양성 — 결과 구획은 실제로 섰고 전표번호도 그대로 보인다. */
+    expect(within(result).getByText('IR-2026-900010')).toBeInTheDocument();
+    expect(within(result).queryAllByRole('link')).toHaveLength(0);
+  });
+
+  /*
+   * 짝 방향 — **한 건짜리 초과분 갈래**에서는 그 한 건에 길이 선다. 이것이 없으면
+   * 「두 건일 때만 링크」 같은 잘못된 게이트가 위 시험과 아래 시험을 함께 통과한다.
+   */
+  it('초과분만 저장한 결과에는 그 전표에 링크가 선다', async () => {
+    const { user } = renderWithCreated(CREATED_ONE);
+
+    await setupRegister(user);
+    await clickRegister(user, t.actions.registerExcessOnly);
+
+    await screen.findByText(t.result.count(1));
+
+    const result = screen.getByRole('status', { name: t.panes.result });
+
+    expect(within(result).getAllByRole('link')).toHaveLength(1);
+    expect(
+      within(result).getByRole('link', { name: t.result.registerPo('IR-2026-900010') }),
+    ).toHaveAttribute('href', '/logistics/po-register?receipt=9601');
+  });
+
+  /*
+   * **C34** — 초과분이 실린 갈래 안에서는 **전표마다** 길이 선다. 두 건일 때 하나로 합치면
+   * 어느 전표를 정산하는지 화면이 지어내야 하는데, 응답은 그것을 알려 주지 않는다(계획 결정 3).
    */
   it('등록 결과에는 전표마다 링크가 서고 주소에 그 전표가 실린다', async () => {
     const { user } = renderWithCreated();

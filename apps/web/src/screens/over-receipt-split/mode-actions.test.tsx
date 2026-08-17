@@ -169,8 +169,9 @@ describe('ModeActions — 신규 P/O 등록', () => {
     expect(screen.getByText(t.actionReasons.createPurchaseOrderUnavailable)).toBeInTheDocument();
     expect(target.getAttribute('aria-describedby')).not.toBeNull();
     /*
-     * 문구가 **풀리는 조건**을 말하는지 잰다(배치 규범 4-5). 키만 견주면 문구가 「준비 중」류로
-     * 되돌아가도 아무도 울지 않는다 — 그 조건이 이제는 등록 결과 구획에서 참이 된다.
+     * 문구가 **풀리는 조건**을 말하는지 잰다(배치 규범 4의 문형). 키만 견주면 문구가
+     * 「준비 중」류로 되돌아가도 아무도 울지 않는다 — 그 조건이 이제는 등록 결과 구획에서
+     * 참이 된다(초과분이 실린 갈래에 한해).
      */
     expect(t.actionReasons.createPurchaseOrderUnavailable).toContain('등록 결과');
   });

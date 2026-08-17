@@ -22,14 +22,21 @@ const receipt = (
   statusCode,
 });
 
-/** 링크가 있는 부품이라 라우터 안에서 렌더한다 — 밖에서 렌더하면 `Link`가 던진다. */
-const renderPane = (receipts: CreatedReceiptView[]): void => {
+/**
+ * 링크가 있는 부품이라 라우터 안에서 렌더한다 — 밖에서 렌더하면 `Link`가 던진다.
+ *
+ * **초과분이 실린 갈래를 기본으로 둔다** — 링크가 서는 쪽이 이 부품의 주 갈래이고,
+ * 서지 않는 갈래는 그 사실을 재는 시험이 인자로 밝힌다.
+ */
+const renderPane = (receipts: CreatedReceiptView[], hasExcess = true): void => {
   render(
     <MemoryRouter>
-      <CreatedReceiptsPane receipts={receipts} />
+      <CreatedReceiptsPane receipts={receipts} hasExcess={hasExcess} />
     </MemoryRouter>,
   );
 };
+
+const resultPane = (): HTMLElement => screen.getByRole('status', { name: t.panes.result });
 
 describe('CreatedReceiptsPane', () => {
   /*
@@ -127,7 +134,7 @@ describe('CreatedReceiptsPane', () => {
   it('전표마다 다음 화면으로 가는 링크가 선다', () => {
     renderPane([receipt('IR-2026-900010'), receipt('IR-2026-900011', 'SAMPLE_IR_STATUS_A', 9602)]);
 
-    const pane = screen.getByRole('status', { name: t.panes.result });
+    const pane = resultPane();
 
     expect(within(pane).getAllByRole('link')).toHaveLength(2);
     /* 건수만 세면 두 링크가 같은 전표를 가리켜도 통과한다 — 각 전표의 이름으로 다시 찾는다. */
@@ -137,6 +144,54 @@ describe('CreatedReceiptsPane', () => {
     expect(
       within(pane).getByRole('link', { name: t.result.registerPo('IR-2026-900011') }),
     ).toBeInTheDocument();
+  });
+
+  /*
+   * **링크는 이름-값 목록 밖에 선다**(부품 주석이 길게 논증한 배치 — 그 판단에 붙이는 잣대).
+   *
+   * `<dl>` 안으로 옮기면 보조기술이 링크를 **「상태」의 값**으로 읽거나 이름 없는 조각으로
+   * 목록에 섞어 읽는다. 건수·`href`·접근 이름은 셋 다 **위치와 무관**해서, 이 단언이 없으면
+   * 다음 사람이 간격·줄바꿈을 이유로 링크를 목록 안으로 옮겨도 아무도 울지 않는다.
+   */
+  it('링크가 이름-값 목록 안에 있지 않다', () => {
+    renderPane([receipt('IR-2026-900010'), receipt('IR-2026-900011', 'SAMPLE_IR_STATUS_A', 9602)]);
+
+    const pane = resultPane();
+    const definitionList = pane.querySelector('dl');
+
+    /* 짝 양성 — 목록도 링크도 실제로 있다. 둘 다 없으면 아래 0건은 뜻이 없다. */
+    expect(definitionList).not.toBeNull();
+    expect(within(pane).getAllByRole('link')).toHaveLength(2);
+    expect(definitionList?.querySelectorAll('a').length).toBe(0);
+  });
+
+  /*
+   * **C34의 갈래 한정**(계획 D-14 ② 개정 · 리뷰 R-33) — 초과분을 싣지 않은 갈래
+   * (「정량분만 저장」)의 전표에는 다음 화면으로 가는 길을 세우지 않는다.
+   *
+   * 그 전표는 **이미 발주가 있는 수량**이라 거기서 P/O를 또 만들면 중복 발주가 되고, 취소는
+   * 승인을 타서 화면이 되돌릴 수 없다. 「어느 전표가 초과분인가」를 지어내는 것과는 다른
+   * 판정이다 — 여기서 아는 것은 **사용자가 방금 누른 버튼**이다.
+   */
+  it('초과분이 실리지 않은 등록에는 이동 경로가 없다', () => {
+    renderPane([receipt('IR-2026-900010')], false);
+
+    const pane = resultPane();
+
+    /* 짝 양성 — 결과 구획은 실제로 섰고 전표번호·건수도 그대로 보인다. */
+    expect(within(pane).getByText('IR-2026-900010')).toBeInTheDocument();
+    expect(within(pane).getByText(t.result.count(1))).toBeInTheDocument();
+    expect(within(pane).queryAllByRole('link')).toHaveLength(0);
+  });
+
+  /*
+   * 짝 방향 — **한 건짜리 초과분 갈래**(「초과분만 저장」)에서는 그 한 건에 길이 선다.
+   * 이것이 없으면 「건수가 둘일 때만 링크」 같은 잘못된 게이트가 위 두 시험을 함께 통과한다.
+   */
+  it('한 건이어도 초과분이 실렸으면 그 전표에 링크가 선다', () => {
+    renderPane([receipt('IR-2026-900010')]);
+
+    expect(within(resultPane()).getAllByRole('link')).toHaveLength(1);
   });
 
   /*

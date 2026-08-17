@@ -23,6 +23,13 @@ export const poRegisterEntryPath = (inboundReceiptId: number): string =>
 export interface CreatedReceiptsPaneProps {
   /** 만들어진 전표. 갈래에 따라 1건 또는 2건이다 */
   receipts: readonly CreatedReceiptView[];
+  /**
+   * 이 등록에 **초과분이 실렸는가**. 다음 화면(신규 P/O 등록)으로 가는 길을 세울지 가른다.
+   *
+   * **갈래(`mode`)를 받지 않는다** — 받으면 이 구획이 「어느 갈래로 등록했는지」를 표시 값으로
+   * 쓸 길이 생기고, 그것은 「어느 전표가 초과분인지」를 지어내는 것과 한 걸음 차이다.
+   */
+  hasExcess: boolean;
 }
 
 /**
@@ -38,8 +45,13 @@ export interface CreatedReceiptsPaneProps {
  * 자리(전표번호·상태·링크 이름)에는 넣지 않는다. `inboundReceiptNo`는 사용자가 나중에 이
  * 전표를 찾을 때 쓰는 업무 번호라 내는 것이 맞다 — 이 구분이 이 화면에서 처음 갈리는 자리다.
  *
- * **다음 화면으로 가는 길이 전표마다 선다.** 두 건이 만들어졌을 때 하나로 합치면 어느 전표를
- * 정산하는지 화면이 지어내야 하는데, 응답은 그것을 알려 주지 않는다 — 위와 같은 사정이다.
+ * **다음 화면으로 가는 길은 초과분이 실린 등록에만 선다**(계획 D-14 ② 개정 · 리뷰 R-33).
+ * 정량분만 저장한 갈래의 전표는 **이미 발주가 있는 수량**이라 거기서 P/O를 또 만들면 중복
+ * 발주가 되고, 취소는 승인을 타서 화면이 되돌릴 수 없다. 그 갈래에서는 길을 아예 세우지
+ * 않는다 — 도착 화면의 배너로 막는 형태는 이 화면이 사이드바를 버리며 함께 버린 대안이다.
+ *
+ * **초과분이 실린 갈래 안에서는 전표마다 선다.** 두 건이 만들어졌을 때 하나로 합치면 어느
+ * 전표를 정산하는지 화면이 지어내야 하는데, 응답은 그것을 알려 주지 않는다 — 위와 같은 사정이다.
  *
  * **버튼이 아니라 링크로 둔다.** 주소를 갖는 이동이라 새 탭·주소 복사가 그대로 되고,
  * 히스토리가 한 칸만 늘어 뒤로가기 한 번으로 이 결과 화면에 돌아온다.
@@ -47,7 +59,7 @@ export interface CreatedReceiptsPaneProps {
  * **사라지는 알림으로 내지 않는다.** 이 번호는 적어 두거나 옮겨 적을 값이라
  * 몇 초 뒤에 없어지면 안 된다 — 저장 성공을 토스트로 내는 다른 화면과 갈리는 자리다.
  */
-export const CreatedReceiptsPane = ({ receipts }: CreatedReceiptsPaneProps) => (
+export const CreatedReceiptsPane = ({ receipts, hasExcess }: CreatedReceiptsPaneProps) => (
   /* 사용자가 부르지 않은 시점에 나타나는 내용이라 살아 있는 영역으로 알린다. */
   <div role="status" aria-label={t.panes.result}>
     <p>{t.result.count(receipts.length)}</p>
@@ -78,17 +90,21 @@ export const CreatedReceiptsPane = ({ receipts }: CreatedReceiptsPaneProps) => (
     {/*
      * **이름-값 목록 밖에 둔다.** 이동은 이 전표가 **가진 값**이 아니라 그 전표로 하는 일이라,
      * `<dd>`로 넣으면 보조기술이 「상태: …」의 값으로 읽고 `<dl>` 안에 그냥 두면 이름 없는
-     * 조각이 목록에 섞인다. 그래서 목록을 닫고 **자기 줄**에 세운다(배치 규범 4 — 액션 줄).
+     * 조각이 목록에 섞인다. 그래서 목록을 닫고 **자기 줄**에 세운다
+     * (`.filter-bar` — 이 파일 위쪽 `<dl>`과 같은 가로 줄). 이 배치는 감지기가 고정한다 —
+     * 「목록 안에는 링크가 0건」이 그 잣대다(`created-receipts-pane.test.tsx`).
      *
      * **어느 전표의 것인지는 보이는 글자가 밝힌다.** 두 건이면 링크도 둘이라 글자가 같으면
      * 가릴 수 없고, 그때 고르는 것은 사용자 몫이다 — 화면이 어느 쪽이 초과분인지 지어내지 않는다.
      */}
-    <div className="filter-bar">
-      {receipts.map((created) => (
-        <Link key={created.inboundReceiptNo} to={poRegisterEntryPath(created.inboundReceiptId)}>
-          {t.result.registerPo(created.inboundReceiptNo)}
-        </Link>
-      ))}
-    </div>
+    {hasExcess && (
+      <div className="filter-bar">
+        {receipts.map((created) => (
+          <Link key={created.inboundReceiptNo} to={poRegisterEntryPath(created.inboundReceiptId)}>
+            {t.result.registerPo(created.inboundReceiptNo)}
+          </Link>
+        ))}
+      </div>
+    )}
   </div>
 );

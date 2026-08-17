@@ -1,7 +1,7 @@
 import { Breadcrumb, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
@@ -37,13 +37,13 @@ import { PoTable } from './po-table';
 import { ReceiptHeaderForm } from './receipt-header-form';
 import { usePurchaseOrderLines, usePurchaseOrders, useSplitRegister } from './queries';
 import { toSplitLines } from './split-calc';
-import { toSplitParts, toSplitRequest } from './split-request';
+import { includesExcess, toSplitParts, toSplitRequest } from './split-request';
 import { SplitLineTable } from './split-line-table';
 import {
   EMPTY_HEADER_DRAFT,
   hasAnyHeaderValue,
   toCreatedReceiptView,
-  type CreatedReceiptView,
+  type CreatedResult,
   type HeaderDraft,
   type PoLineView,
   type PoView,
@@ -199,16 +199,28 @@ export const OverReceiptSplitScreen = () => {
    */
   const [header, setHeader] = useState<HeaderDraft>(EMPTY_HEADER_DRAFT);
 
-  /** 만들어진 전표. `null`이면 아직 등록하지 않았거나 마지막 시도가 실패했다 */
-  const [created, setCreated] = useState<CreatedReceiptView[] | null>(null);
+  /**
+   * 만들어진 전표와 **그 등록에 초과분이 실렸는가**. `null`이면 아직 등록하지 않았거나 마지막
+   * 시도가 실패했다.
+   *
+   * 둘을 **한 값으로 든다** — 갈래 사실을 따로 들면 전표는 새것인데 갈래는 앞 시도의 것인
+   * 상태가 생기고, 그때 정량분 전표 위에 신규 P/O 등록 진입로가 선다.
+   */
+  const [created, setCreated] = useState<CreatedResult | null>(null);
+
+  /**
+   * 방금 제출한 갈래가 **초과분을 실었는가**. 되먹임(`onSuccess`)에서 읽는다.
+   *
+   * **`savingMode` 상태로는 읽을 수 없다.** 되먹임은 제출한 렌더의 닫힘을 들고 있어 그 렌더의
+   * 옛 값(제출 직전의 `null`)을 본다 — 겨눈 값을 ref에 적고 되먹임에서 읽는 형태는 전례와 같다.
+   */
+  const submittedHasExcessRef = useRef(false);
 
   /**
    * 보내기 전에 화면이 잡은 오류. **등록을 누른 뒤에만 세운다** —
    * 치는 도중에 붉은 글씨를 띄우면 아직 넣지도 않은 칸이 잘못된 것처럼 보인다.
    */
-  const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>(
-    NO_FIELD_ERRORS,
-  );
+  const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>(NO_FIELD_ERRORS);
 
   /** 고치지 않은 수량 때문에 막았다는 사실. 사용자가 고치면 조건이 풀려 저절로 사라진다 */
   const [isQtyBlockShown, setQtyBlockShown] = useState(false);
@@ -239,7 +251,11 @@ export const OverReceiptSplitScreen = () => {
   const register = useSplitRegister({
     purchaseOrderId: selectedPoId,
     onSuccess: (data) => {
-      setCreated(data.created.map(toCreatedReceiptView));
+      setCreated({
+        /* 겨눈 갈래를 그대로 쓴다 — 상태로 읽으면 제출 직전의 옛 값을 본다(위 ref 주석). */
+        hasExcess: submittedHasExcessRef.current,
+        receipts: data.created.map(toCreatedReceiptView),
+      });
       /*
        * **초안을 비운다**(수명 표 8행 · 이중 제출 완화의 한 층). 라인 재조회에 얹지 않는
        * 이유는 같은 응답이 오면 캐시가 참조를 그대로 유지해 되돌림 effect가 깨어나지 않기
@@ -386,6 +402,8 @@ export const OverReceiptSplitScreen = () => {
     /* 실패하면 결과 구획이 비어 있어야 한다(수명 표 9행) — 앞 성공의 번호가 남으면 오해한다. */
     setCreated(null);
     setSavingMode(mode);
+    /* 요청을 만들기 전에 적는다 — 요청 조립과 **같은 판정**을 쓴다(두 곳에서 따로 가르지 않는다). */
+    submittedHasExcessRef.current = includesExcess(mode);
 
     register.write(
       toSplitRequest(mode, {
@@ -658,7 +676,7 @@ export const OverReceiptSplitScreen = () => {
        */}
       {created !== null && (
         <section className="pane">
-          <CreatedReceiptsPane receipts={created} />
+          <CreatedReceiptsPane receipts={created.receipts} hasExcess={created.hasExcess} />
         </section>
       )}
 
