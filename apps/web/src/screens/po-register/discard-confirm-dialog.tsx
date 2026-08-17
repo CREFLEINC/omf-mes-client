@@ -21,8 +21,8 @@ export interface DiscardConfirmDialogProps {
  * 규칙이 「막는다」가 아니라 **「되돌릴 수 없는 창은 막고 버리기 창은 연다」**로 읽혀야 한다.
  * **등록 확인 창과 갈리는 자리다**(그쪽은 되돌릴 수 없는 조작이라 스크림·X를 막는다).
  *
- * X 손잡이는 두지 않는다 — 이 창의 나가는 문은 바닥 버튼 둘과 스크림으로 충분하고, 실수
- * 클릭의 안전성은 스크림 감지기가 이미 고정한다(닫힘 = 버리지 않음).
+ * **X 손잡이도 같은 논리로 남긴다** — 스크림과 마찬가지로 닫기는 「계속 입력」과 같은 뜻이고,
+ * 나가는 길을 반쪽만 전례에 맞추면 규율이 어느 쪽인지 다시 알 수 없게 된다.
  *
  * **창 안에 선택칸을 두지 않는다**(`omf-mes#45`) — 문장 하나와 버튼 둘뿐이다.
  *
@@ -33,7 +33,6 @@ export const DiscardConfirmDialog = ({ onConfirm, onClose }: DiscardConfirmDialo
     open
     onClose={onClose}
     size="sm"
-    showCloseButton={false}
     title={t.dialog.discardTitle}
     footer={
       <>
