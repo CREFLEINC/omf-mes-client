@@ -193,7 +193,8 @@ const BASE_PURCHASE_ORDER: PurchaseOrderResponse = {
   statusCode: 'SAMPLE_PO_STATUS_A',
 };
 
-export const purchaseOrderResponse = (
+/** 소비처가 아래 `purchaseOrderDetailBody` 하나뿐이라 **export하지 않는다**(사본 체크리스트 7번). */
+const purchaseOrderResponse = (
   overrides: Partial<PurchaseOrderResponse> = {},
 ): PurchaseOrderResponse => ({ ...BASE_PURCHASE_ORDER, ...overrides });
 

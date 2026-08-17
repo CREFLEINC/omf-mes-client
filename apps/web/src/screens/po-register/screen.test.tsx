@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -977,6 +977,53 @@ describe('전송 중(C19)', () => {
     await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
   });
 
+  /**
+   * **「닫혀도 나가는 요청이 무너지지 않게」의 본체**(완료 조건 C13의 셋째 방어).
+   *
+   * Escape는 막을 수 없다 — native `<dialog>`가 `cancel`을 내고 디자인 시스템이 그것을 닫기
+   * 요청으로 무조건 잇는다. 규율이 실제로 걸리는 것은 **나가는 중**이다: 그때 `onClose`가
+   * `reset()`을 부르면 공통 훅의 옵저버가 떨어져 **성공도 잠금 해제도 오지 않는다.** 그러면
+   * 사용자는 만들어진 전표를 못 본 채 폼이 다시 열린 화면을 보고 한 번 더 등록한다 —
+   * **전표 두 벌**이다. 그 함수가 창만 내린다는 사실에 잣대가 없으면, 다음 사람이 거기에
+   * 「닫으면 정리한다」를 더해도 시험이 조용히 통과한다(전례 `iqc-skip-approval`·`approval-inbox`).
+   *
+   * jsdom은 Escape 키를 native 취소로 잇지 않으므로 브라우저가 내는 이벤트를 직접 만든다.
+   */
+  it('전송 중 Escape로 창이 닫혀도 등록 결과가 살아 있다', async () => {
+    const { requests, release, user } = renderScreen(registerRoutes(), '?receipt=9101', [
+      PO_COLLECTION_PATH,
+    ]);
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    /* ① 창을 닫는 것이 요청을 다시 내지도, 되돌리지도 않는다. */
+    expect(createRequests(requests)).toHaveLength(1);
+    /* ② 잠금이 살아 있다 — 요청은 아직 날아가는 중이다. */
+    expect(registerButton()).toBeDisabled();
+    expect(screen.getAllByText(t.actionReasons.saving).length).toBeGreaterThan(0);
+
+    release();
+
+    /* ③ 성공이 사라지지 않는다 — 결과 구획이 실제로 선다. */
+    expect(await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'))).toBeVisible();
+    /* ④ 성공 뒤 잠금·사유도 그대로 온다 — 창을 닫은 것이 그 길을 끊지 않았다. */
+    expect(screen.getAllByText(t.actionReasons.alreadyRegistered).length).toBeGreaterThan(0);
+    expect(createRequests(requests)).toHaveLength(1);
+  });
+
   /** 두 번 눌러도 **요청은 한 번**이다 — 잠금이 표시만이면 두 번째 클릭이 그대로 통한다. */
   it('실행 버튼을 두 번 눌러도 요청은 한 번이다', async () => {
     const { requests, release, user } = renderScreen(registerRoutes(), '?receipt=9101', [
@@ -1164,6 +1211,7 @@ describe('등록 실패 네 갈래(C25)', () => {
     await setupAndRegister(user);
 
     expect(await screen.findByText(messages.conflict.user)).toBeVisible();
+    expect(screen.getByRole('dialog')).toBeVisible();
     expect(
       screen.queryByRole('button', { name: messages.conflict.reloadAction }),
     ).not.toBeInTheDocument();
@@ -1180,6 +1228,7 @@ describe('등록 실패 네 갈래(C25)', () => {
 
     expect(await screen.findByText(messages.httpError.offline)).toBeVisible();
     expect(screen.getByText(t.notes.networkUnconfirmed)).toBeVisible();
+    expect(screen.getByRole('dialog')).toBeVisible();
   });
 
   /** 짝 방향 — 서버가 거절한 갈래에는 그 안내가 붙지 않는다. 늘 붙으면 경고가 배경이 된다. */
@@ -1204,6 +1253,44 @@ describe('등록 실패 네 갈래(C25)', () => {
     expect(screen.getByLabelText(t.fields.businessUnit)).toHaveTextContent('합성 사업부 가');
     expect(qtyInput(1)).toHaveValue(12);
     expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
+  /**
+   * **고친 칸의 서버 오류가 사라진다**(부 사본 `changeHeader`와 같은 형태).
+   *
+   * 화면이 잡은 오류는 **빈 칸에만** 생기므로, 400을 받은 칸을 **유효한 값으로 고치면** 로컬
+   * 오류가 걷히면서 서버 오류가 되살아난다 — 방금 고친 칸에 붉은 글씨와 `aria-invalid`가 남고
+   * 사용자는 무엇을 더 고쳐야 하는지 알 수 없다. 지워지는 시점이 다음 저장뿐이면 그 사이가
+   * 통째로 거짓말이 된다.
+   *
+   * **짝 방향을 함께 잰다** — 고치지 않은 칸의 서버 오류는 그대로 남는다(전부 지우면 무엇이
+   * 남았는지 알 수 없다).
+   */
+  it('400을 받은 칸을 고치면 그 칸의 서버 문구만 사라진다', async () => {
+    const TWO_FIELD_BODY = {
+      errors: [
+        { scope: 'field', field: 'supplierId', code: 'INVALID', message: '합성 공급사 서버 문구' },
+        { scope: 'field', field: 'plantId', code: 'INVALID', message: '합성 공장 서버 문구' },
+      ],
+    };
+    const { user } = renderScreen(registerRoutes(failingCreateRoute(400, TWO_FIELD_BODY)));
+
+    await setupAndRegister(user);
+
+    await screen.findByText('합성 공급사 서버 문구');
+    expect(screen.getByLabelText(t.fields.supplier)).toHaveAccessibleDescription(
+      /합성 공급사 서버 문구/,
+    );
+
+    /* 창을 닫고 폼으로 돌아간다 — 고칠 자리는 창 안이 아니라 폼이다. */
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    await user.click(screen.getByLabelText(t.fields.supplier));
+    await user.click(screen.getByRole('option', { name: 'SAMPLE-SUP-02 · 합성 공급사 나' }));
+
+    expect(screen.queryByText('합성 공급사 서버 문구')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.supplier)).not.toHaveAttribute('aria-invalid', 'true');
+    /* 짝 방향 — 고치지 않은 칸의 오류는 남는다. */
+    expect(screen.getByText('합성 공장 서버 문구')).toBeVisible();
   });
 
   /** 실패한 뒤 **다시 보낼 수 있다** — 잠금이 실패에 걸려 남으면 사용자가 화면을 떠나야 한다. */

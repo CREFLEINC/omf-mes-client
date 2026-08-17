@@ -143,6 +143,37 @@ describe('RegisterConfirmDialog — 스치는 클릭으로 닫히지 않는다',
   });
 
   /**
+   * **Escape는 막을 수 없다 — 그래서 규율이 다르다**(사본 체크리스트 5번의 셋째 방어).
+   *
+   * native `<dialog>`가 `cancel`을 내고 디자인 시스템이 그것을 닫기 요청으로 무조건 잇는다.
+   * 규율은 「닫히지 않게」가 아니라 **「닫혀도 무너지지 않게」**이고, 이 부품이 지는 몫은
+   * **그 요청을 등록으로 잇지 않는 것**이다 — 스크림·X를 막아 둔 창이 Escape 한 번에 전표를
+   * 만들면 세 방어가 모두 뜻을 잃는다.
+   *
+   * jsdom은 Escape 키를 native 취소로 잇지 않는다 — 브라우저가 내는 이벤트를 직접 만든다
+   * (전례 `common-code/partner-role-confirm-dialog.test.tsx`·`approval-route/activation-dialog.test.tsx`).
+   * **나가는 중** 갈래는 화면 층이 따로 잰다(`screen.test.tsx`).
+   */
+  it('Escape는 닫기 요청으로 이어지고 등록으로 이어지지 않는다', () => {
+    const { onClose, onConfirm } = renderDialog();
+
+    fireEvent(dialog(), new Event('cancel', { bubbles: false, cancelable: true }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  /** 나가는 중에도 그 길은 같다 — 닫기 요청일 뿐, 두 번째 요청을 만들지 않는다. */
+  it('나가는 중 Escape도 등록으로 이어지지 않는다', () => {
+    const { onClose, onConfirm } = renderDialog({}, true);
+
+    fireEvent(dialog(), new Event('cancel', { bubbles: false, cancelable: true }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  /**
    * **실행 버튼의 글자가 화면의 「등록」과 갈려 있다.** 같은 글자면 창이 열린 동안 두 버튼이
    * 같은 이름으로 서고, 조작하는 쪽도 재는 쪽도 어느 것이 창의 버튼인지 가릴 수 없다.
    */

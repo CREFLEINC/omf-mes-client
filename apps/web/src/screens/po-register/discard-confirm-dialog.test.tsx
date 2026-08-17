@@ -26,17 +26,29 @@ describe('DiscardConfirmDialog — 무엇을 잃는가', () => {
     expect(screen.getByText(t.dialog.discardLead)).toBeVisible();
   });
 
-  it('버리기와 계속 입력이 각각 자기 일을 한다', async () => {
+  it('계속 입력은 닫기만 요청하고 버리지 않는다', async () => {
     const { onConfirm, onClose, user } = renderDialog();
 
     await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  /**
+   * **버리기는 스스로 닫지 않는다**(전례 `goods-receipt`와 같은 축).
+   *
+   * 닫는 것은 화면 몫이다 — 창이 스스로 닫으면 화면이 버리기를 끝내기 전에 사라지고, 그때
+   * 실패하거나 되돌릴 일이 생겨도 사용자에게 말할 자리가 없다. 두 버튼을 한 시험에 합치면
+   * 앞선 클릭이 이미 `onClose`를 불러 이 단언을 세울 수 없다.
+   */
+  it('버리기는 확정만 올리고 스스로 닫지 않는다', async () => {
+    const { onConfirm, onClose, user } = renderDialog();
 
     await user.click(screen.getByRole('button', { name: t.actions.discardDraft }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
 
@@ -44,9 +56,10 @@ describe('DiscardConfirmDialog — 닫히는 것이 곧 버리는 것은 아니�
   /**
    * **스크림 클릭을 막지 않는다**(계획 결정 15 개정 — 전례 우선 판정 · 사본 체크리스트 5번).
    *
-   * 이 저장소의 버리기 창 넷이 모두 스크림을 열어 두고 **「닫힘 = 버리지 않음」**을 짝 감지기로
-   * 고정한다. 그 규율을 다섯 번째 화면에서 뒤집으면 규칙이 「막는다」로 굳어, 정작 **되돌릴 수
-   * 없는 창을 막는 이유**(등록 확인 창)와 구분되지 않는다.
+   * 이 저장소의 버리기 창 **여섯이 모두** 스크림을 열어 두고, **그중 넷이** 「닫힘 = 버리지 않음」을
+   * 짝 감지기로 고정한다(실측 — `disposal-issue`·`over-receipt-split`에는 그 감지기가 없다).
+   * 그 규율을 일곱 번째 화면에서 뒤집으면 규칙이 「막는다」로 굳어, 정작 **되돌릴 수 없는 창을
+   * 막는 이유**(등록 확인 창)와 구분되지 않는다.
    *
    * 앞 회차의 「스크림을 눌러도 닫히지 않는다」를 **지우지 않고 이 감지기로 다시 썼다** —
    * 재는 자리는 같고 기대하는 사실이 바뀌었다: 닫히기는 하되 **아무것도 버리지 않는다.**
@@ -78,10 +91,16 @@ describe('DiscardConfirmDialog — 닫히는 것이 곧 버리는 것은 아니�
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  /** 창 안에 선택칸을 두지 않는다(`omf-mes#45`) — 문장 하나와 버튼 둘뿐이다. */
+  /**
+   * 창 안에 선택칸을 두지 않는다(`omf-mes#45`) — 문장 하나와 버튼 둘뿐이다.
+   *
+   * **짝 양성이 함께 선다**(사본 체크리스트 9번 · 전례 `goods-receipt`와 같은 형태) — 창이
+   * 통째로 그려지지 않아도 음성 단언만으로는 통과한다.
+   */
   it('창 안에 선택칸이 없다', () => {
     renderDialog();
 
+    expect(dialog()).toBeInTheDocument();
     expect(screen.queryAllByRole('combobox')).toHaveLength(0);
   });
 });
