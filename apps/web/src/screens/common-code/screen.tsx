@@ -73,7 +73,14 @@ import {
   type LookupResult,
 } from './lookups';
 import { PartnerListPane } from './partner-list-pane';
-import { partnerKeys, partnerRolesPath, usePartnerList, usePartnerRoles } from './partner-queries';
+import {
+  isPartnerNotFound,
+  partnerKeys,
+  partnerRolesPath,
+  usePartnerDetail,
+  usePartnerList,
+  usePartnerRoles,
+} from './partner-queries';
 import { PartnerRoleConfirmDialog } from './partner-role-confirm-dialog';
 import {
   isSamePartnerRoleSelection,
@@ -183,10 +190,10 @@ const STALE_TOKEN_CODE = 'STALE_TOKEN';
  * 역할 저장의 실패 안내 — **토큰 부재만 이 화면의 문구로 바꿔 낸다.**
  *
  * 공통 문구(`save.staleToken`)는 「잠시 뒤 다시 저장하세요」이고, 그 말은 **다시 시도하면
- * 풀리는** 자원을 전제한다. 거래처 역할 치환은 계약이 이 자원의 어느 응답에도 `ETag`를
- * 선언하지 않아(#174 답변 대기) 다시 눌러도 같은 자리에서 멈춘다 — 그대로 두면 사용자가
- * **없는 조치를 지시받는다.** 체감은 어휘 밖 역할이 붙은 거래처에서 가장 나쁘다: 확인 창에서
- * 해제를 승낙한 **뒤에** 「잠시 뒤 다시」를 읽는다.
+ * 풀리는** 자원을 전제한다. 계약은 이 자원의 토큰 원천을 선언했으나(#174) **서버가 아직 주지
+ * 않는 동안**에는 다시 눌러도 같은 자리에서 멈춘다 — 그대로 두면 사용자가 **없는 조치를
+ * 지시받는다.** 체감은 어휘 밖 역할이 붙은 거래처에서 가장 나쁘다: 확인 창에서 해제를 승낙한
+ * **뒤에** 「잠시 뒤 다시」를 읽는다.
  *
  * ⛔ **공통 훅과 공통 문구는 손대지 않는다.** 다시 시도가 실제로 통하는 형제 화면(폐기 출고
  * 상신 등)에서는 그 문구가 참이라, 공통 자리를 고치면 그쪽이 거짓이 된다. 바꾸는 자리를
@@ -951,10 +958,12 @@ export const CommonCodeScreen = () => {
   );
 
   /**
-   * 고른 거래처의 기본 정보. **계약에 거래처 상세 경로가 없어** 지금 목록에 있는 행에서만 온다 —
-   * 주소를 손으로 고쳐 목록 밖 거래처를 가리키면 채울 자료가 없고, 그 사실을 그대로 밝힌다.
+   * 고른 거래처의 기본 정보. **단건 조회에서 온다**(#173) — 지금 목록에 실려 있는지와 무관하다.
+   *
+   * 목록 행에서 찾아 쓰던 동안에는 조건을 바꾼 뒤·다른 쪽으로 넘어간 뒤·링크를 받은 뒤가 모두
+   * 「채울 자료가 없는」 상태였다. 그 갈래를 없앤 것이 이 조회의 목적이다.
    */
-  const selectedPartner = partners.find((row) => row.partnerId === selectedPartnerId) ?? null;
+  const partnerDetail = usePartnerDetail(selectedPartnerId, isPartnerTab);
 
   const partnerRoles = usePartnerRoles(selectedPartnerId);
 
@@ -1001,11 +1010,14 @@ export const CommonCodeScreen = () => {
    * **필수**로 요구하고 `409`도 함께 붙였다 — 통째로 교체하는 저장이라 보호가 없으면 남이
    * 방금 붙인 역할이 조용히 사라진다.
    *
-   * ⛔ **그런데 토큰을 얻을 자리가 아직 없다 — #174 답변 대기.** `/mdm/partners*`의 어느
-   * 응답도 `ETag`를 선언하지 않는다(계약 실측). 그래서 지금은 공통 훅이 토큰을 찾지 못해
+   * ⛔ **`etagPath`가 역할 목록 경로인 것이 이 배선의 요점이다.** 토큰 보관소는 응답이 온 URL
+   * 경로를 열쇠로 쓰고(`packages/api-client/src/client.ts`), 토큰을 내려주는 조회가 **역할 목록**
+   * 이다(#174). 단건 조회가 생겼다고 그쪽으로 옮기면 꺼내는 자리가 언제나 비어 저장이 다시
+   * 안내에서 멈춘다.
+   *
+   * ⚠ **서버 구현이 오기 전에는 토큰이 오지 않을 수 있다.** 그때 공통 훅은 토큰을 찾지 못해
    * **요청을 만들지 않고 안내를 세운다.** 그것이 정직한 상태다 — 빈 `If-Match`를 지어 보내면
    * 서버가 400으로 되돌리고 사용자는 원인을 읽을 수 없다(공통 훅이 명시적으로 금지한 행위다).
-   * 서버·계약이 `ETag`를 주기 시작하면 **이 자리를 고치지 않아도** 저장이 살아난다.
    *
    * **무효화는 역할 키 하나뿐이다.** 이 치환으로 거래처 본체가 바뀌지 않으므로 목록까지
    * 무효화하면 아무것도 달라지지 않을 조회를 다시 낸다.
@@ -1124,6 +1136,30 @@ export const CommonCodeScreen = () => {
     resetIfIdle(partnerRoleWrite);
     setIsPartnerRoleConfirmOpen(false);
     setPartnerRoleState(null);
+  };
+
+  /**
+   * 저장 충돌을 푸는 유일한 경로 — **최신을 다시 받아 잠금 토큰까지 갱신한다.**
+   *
+   * 계약이 덮어쓰기 강제를 주지 않으므로 최신 목록을 받아 다시 고르는 수밖에 없고, 고치던
+   * 체크는 사라진다 — 버튼 옆 공통 안내가 **누르기 전에** 그것을 밝힌다.
+   *
+   * ⛔ **자동 재시도를 두지 않는다.** 통째 교체 저장이라 다시 부른 목록 위에서 사용자가 다시
+   * 고르지 않으면 그사이 남이 붙인 역할을 덮어쓴다 — 충돌 보호가 막으려던 바로 그 일이다.
+   *
+   * **있는 규율을 지난다.** 위 `resetPartnerRoleEditing`이 쓰기 거둠(`resetIfIdle` 경유)·확인
+   * 창 닫기·초안 비움을 한자리에 갖고 있다. 새 함수를 지으면 그 셋이 갈라지고, 특히 나가는
+   * 중인 쓰기를 건드리지 않는 가드가 빠진다(`omf-mes#96`).
+   *
+   * **확인 창은 닫힌다.** 창이 나열하는 것은 이번 저장으로 *해제되는* 역할이고 그 목록은
+   * 사용자의 초안에서 나온다 — 초안이 서버값으로 되돌아가면 해제될 것이 하나도 없어져,
+   * 그대로 두면 「저장하면 아래 역할이 해제됩니다」 아래에 빈 목록이 선 창이 남는다.
+   * 「실패해도 창을 닫지 않는다」는 규율의 이유는 *같은 자리에서 다시 시도할 수 있게* 하려는
+   * 것인데, 다시 불러오기는 **그 시도의 전제를 버리는 조작**이라 같은 규율이 걸리지 않는다.
+   */
+  const reloadPartnerRoles = () => {
+    resetPartnerRoleEditing();
+    void partnerRoles.refetch();
   };
 
   const handleSelectPartner = (partnerId: number) => {
@@ -1640,10 +1676,11 @@ export const CommonCodeScreen = () => {
   );
 
   /**
-   * 우 칸 — 거래처 기본 정보와 그 거래처의 역할. **이 회차에는 읽기만 한다.**
+   * 우 칸 — 거래처 기본 정보와 그 거래처의 역할. **기본 정보는 읽기만 한다.**
    *
-   * 선택 전·목록 실패·불러오는 중·목록 밖 선택을 각각 다른 화면으로 낸다 —
-   * 상세 경로가 없어 기본 정보가 목록에 매여 있으므로 「목록 밖」이 실제로 생기는 상태다.
+   * 앞단 갈래는 **상세 조회를 기준으로 갈린다**(#173) — 선택 전 · 없는 거래처 · 조회 실패 ·
+   * 불러오는 중. **좌 목록의 사정은 여기를 막지 않는다**: 두 조회가 갈렸으므로 목록이 실패하거나
+   * 아직 오는 중이어도 고른 거래처는 그대로 선다(목록의 실패는 좌 목록이 자기 자리에서 낸다).
    */
   const renderPartnerRolePane = (): ReactNode => {
     if (selectedPartnerId === null) {
@@ -1654,40 +1691,49 @@ export const CommonCodeScreen = () => {
       );
     }
 
-    if (partnerList.isError) {
+    if (partnerDetail.isError) {
+      /*
+       * **없는 거래처와 못 불러온 거래처를 가른다** — 할 수 있는 조치가 다르다. 없는 거래처에
+       * 「다시 시도」를 내면 몇 번을 눌러도 같은 자리로 되돌아온다.
+       *
+       * ⛔ **404는 안내만 낸다 — 주소에서 선택을 지우지 않는다.** 형제 화면 셋이 그 정리를 하는 것은 그쪽
+       * 상세가 **목록 조건에 매인 선택**이라 조건이 바뀌면 안내가 가리킬 것이 없어지기 때문이다.
+       * 거래처 선택 키는 조건과 독립이므로 그 전제가 없다 — 지우면 사용자는 무엇을 열려 했는지
+       * 잃고, 정리가 히스토리를 늘리는 함정까지 함께 들여온다.
+       */
       return (
         <section className="pane" aria-label={t.panes.partnerRoles}>
-          <LoadErrorBanner error={partnerList.error} onRetry={() => void partnerList.refetch()} />
+          {isPartnerNotFound(partnerDetail.error) ? (
+            <EmptyState
+              size="sm"
+              live
+              title={t.partner.empty.notFoundTitle}
+              description={t.partner.empty.notFoundDescription}
+            />
+          ) : (
+            <LoadErrorBanner
+              error={partnerDetail.error}
+              onRetry={() => void partnerDetail.refetch()}
+            />
+          )}
         </section>
       );
     }
 
-    if (partnerList.isPending) {
+    /* 빈 칸을 보이면 자료가 없는 것인지 아직 받는 중인지 구분되지 않는다. */
+    if (partnerDetail.data === undefined) {
       return (
         <section className="pane" aria-label={t.panes.partnerRoles}>
-          <div role="status" aria-label={t.loading.partners}>
+          <div role="status" aria-label={t.loading.partnerDetail}>
             <SkeletonText lines={4} />
           </div>
         </section>
       );
     }
 
-    if (selectedPartner === null) {
-      return (
-        <section className="pane" aria-label={t.panes.partnerRoles}>
-          <EmptyState
-            size="sm"
-            live
-            title={t.partner.empty.notInListTitle}
-            description={t.partner.empty.notInListDescription}
-          />
-        </section>
-      );
-    }
-
     return (
       <PartnerRolePane
-        partner={selectedPartner}
+        partner={partnerDetail.data}
         choices={partnerRoleChoices}
         hasSavedRole={partnerRoleState !== null && partnerRoleState.baseline.length > 0}
         isRolesLoading={partnerRoles.isPending}
@@ -1705,10 +1751,16 @@ export const CommonCodeScreen = () => {
          *
          * **남의 실패는 아예 그리지 않는다**(`isRoleWriteMine`) — 뒤늦게 온 앞 거래처의 실패가
          * 지금 구획에 서면 사용자는 손댄 적 없는 거래처가 막힌 줄 안다.
+         *
+         * **재조회 수단을 함께 넘긴다.** 공통 배너가 **충돌일 때만** 그 버튼을 내므로, 다시
+         * 불러도 풀리지 않는 실패에는 서지 않는다 — 거기서 내면 입력만 버리게 된다.
          */
         banner={
           isPartnerRoleConfirmOpen || !isRoleWriteMine ? null : (
-            <SaveErrorBanner error={toPartnerRoleSaveError(partnerRoleWrite.error)} />
+            <SaveErrorBanner
+              error={toPartnerRoleSaveError(partnerRoleWrite.error)}
+              onReload={reloadPartnerRoles}
+            />
           )
         }
         isDirty={isPartnerRoleDirty}
@@ -1855,7 +1907,17 @@ export const CommonCodeScreen = () => {
           released={releasedRoles}
           willHaveNoRole={partnerRoleState !== null && partnerRoleState.selected.length === 0}
           isSaving={partnerRoleWrite.isSaving}
-          banner={<SaveErrorBanner error={toPartnerRoleSaveError(partnerRoleWrite.error)} />}
+          /*
+           * **창 안에서도 다시 부를 수 있다.** 확인 창을 지나는 저장(해제가 있는 저장)이 충돌하면
+           * 사유가 여기 서므로 회복 수단도 여기 있어야 한다 — 창을 닫아 구획 배너를 찾아가게 하면
+           * 사용자는 승낙이 받아들여진 줄 안다. 누르면 창은 닫힌다(사유는 `reloadPartnerRoles`).
+           */
+          banner={
+            <SaveErrorBanner
+              error={toPartnerRoleSaveError(partnerRoleWrite.error)}
+              onReload={reloadPartnerRoles}
+            />
+          }
           onConfirm={confirmSavePartnerRoles}
           onClose={() => {
             setIsPartnerRoleConfirmOpen(false);

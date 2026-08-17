@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { ConflictCause, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -25,6 +25,7 @@ import type { PartnerRoleRow } from './partner-role-draft';
 /* 코드 글자를 시험이 다시 적지 않는다(결정 2) — 리터럴은 어휘 고정 감지기 한 자리에만 둔다. */
 import { PARTNER_ROLE_CODES } from './partner-role-vocab';
 import { CommonCodeScreen } from './screen';
+import type { Partner } from './types';
 
 type Editability = components['schemas']['Editability'];
 
@@ -3739,15 +3740,60 @@ const partnerListRoute = (
   respond: () => jsonResponse({ items, page: pageMeta }),
 });
 
+const partnerDetailPath = (partnerId: number): string => `${PARTNERS_PATH}/${String(partnerId)}`;
+
+/**
+ * 목록 스텁에 **없는** 거래처. 기본 정보가 목록에서 오지 않는다는 사실이 이 픽스처의 요점이다 —
+ * 조건을 바꾼 뒤·다른 쪽으로 넘어간 뒤·링크를 받은 뒤가 모두 이 상태다.
+ */
+const outsideListPartner: Partner = {
+  partnerId: 9999,
+  partnerCode: 'SAMPLE-PTNR-Z',
+  partnerName: '샘플 거래처 지',
+  countryCode: 'SAMPLE-CTRY',
+  erpPartnerCode: 'SAMPLE-ERP-Z',
+  isActive: true,
+};
+
+/**
+ * 거래처 단건 — **기본 정보의 출처**(#173). 목록에 실려 있는지와 무관하다.
+ *
+ * ⛔ **`ETag`를 얹지 않는다** — 계약이 이 응답에 선언하지 않는다. 여기서 토큰을 주면 역할
+ * 치환의 잠금 토큰이 어느 경로에서 왔는지 갈리지 않고, 상세 경로에서 꺼내는 잘못된 배선도
+ * 통과해 버린다(#174가 정정한 그 실수다).
+ *
+ * **모르는 번호면 던진다** — 이 파일의 하네스 규율이 「조용히 두지 않고 던진다」이기 때문이다
+ * (`test/api-harness.tsx`). 픽스처에 없는 번호를 인자 없이 부르면 `JSON.stringify(undefined)`가
+ * 본문 없는 응답을 만들어, 스텁을 잘못 부른 시험이 요란하게 죽는 대신 **상세가 영영 서지 않는
+ * 상태로 굳는다.**
+ */
+const partnerDetailRoute = (partnerId = 9001, partner?: Partner): StubRoute => ({
+  match: (request) => isGet(request, partnerDetailPath(partnerId)),
+  respond: () => {
+    const found = partner ?? partnerFixtures.find((row) => row.partnerId === partnerId);
+
+    if (found === undefined) {
+      throw new Error(`거래처 ${String(partnerId)} 픽스처가 없습니다 — 기본 정보를 넘기세요.`);
+    }
+
+    return jsonResponse(found);
+  },
+});
+
 /**
  * 역할 조회가 내려 주는 잠금 토큰. 치환의 `If-Match`가 **이 값 그대로**여야 한다.
  *
- * ⚠ **지금 계약은 이 헤더를 선언하지 않는다**(#174 답변 대기). 그래도 목이 주는 상태를
- * 기본으로 두는 이유는, 계약이 치환에 `If-Match`를 **필수**로 요구해(#173) 토큰이 없으면
- * 저장이 요청조차 만들지 못하기 때문이다 — 「서버가 계약대로 동작할 때」가 이 상태다.
- * 토큰이 없는 지금의 현실은 `partnerRolesRouteWithoutEtag`가 따로 재현한다.
+ * **계약이 이 헤더를 선언한다**(#174 — 이 자원의 토큰 원천이 역할 목록 조회로 확정됐다).
+ * 그래서 이것이 기본 상태다. 서버가 아직 주지 않는 상태는 `partnerRolesRouteWithoutEtag`가
+ * 따로 재현한다 — 계약이 치환에 `If-Match`를 **필수**로 요구하므로(#173) 그때 저장은 요청조차
+ * 만들지 못한다.
  */
 const ROLES_ETAG = '"7"';
+
+/**
+ * 재조회가 주는 **다른** 토큰. 값이 갈리는 것 자체가 요점이라 `ROLES_ETAG`와 같아서는 안 된다.
+ */
+const ROLES_ETAG_AFTER_RELOAD = '"8"';
 
 /** 역할 목록 응답. **잠금 토큰을 얹는다** — 이 경로가 치환의 `If-Match` 원천이다. */
 const rolesResponse = (roles: unknown): Response =>
@@ -3760,7 +3806,9 @@ const partnerRolesRoute = (partnerId = 9001, roles = partnerRoleFixtures): StubR
 });
 
 /**
- * 잠금 토큰을 주지 않는 역할 목록 — **계약이 `ETag`를 선언하지 않은 지금의 현실**(#174).
+ * 잠금 토큰을 주지 않는 역할 목록 — **계약은 선언했으나 서버가 아직 주지 않는 상태**(#174).
+ *
+ * 그 상태가 실제로 있을 수 있으므로 갈래를 지운다는 뜻이 아니다 — 계약은 구현보다 앞선다.
  *
  * 부여분을 인자로 받는다. 기본값은 어휘 밖 코드가 없는 쪽이라 **토큰 축만** 갈리고,
  * 어휘 밖 코드까지 얹으면 두 갈래가 만나는 실사용 경로가 된다(확인 창 → 토큰 벽).
@@ -3776,11 +3824,26 @@ const partnerRolesRouteWithoutEtag = (
 const partnerRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, PARTNERS_PATH);
 
+const partnerDetailRequests = (requests: RecordedRequest[], partnerId = 9001): RecordedRequest[] =>
+  requestsTo(requests, partnerDetailPath(partnerId));
+
+/**
+ * 역할 **조회**만 센다 — 치환(`PUT`)이 같은 경로를 쓰므로 경로만으로 걸러 내면 쓰기까지 섞인다.
+ */
+const roleGetRequests = (requests: RecordedRequest[], partnerId = 9001): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'GET' && request.url.pathname === partnerRolesPath(partnerId),
+  );
+
 const partnerPane = (): HTMLElement => screen.getByRole('region', { name: '거래처' });
 
 const partnerRolePane = (): HTMLElement => screen.getByRole('region', { name: '거래처 역할' });
 
-const partnerRoutes = (): StubRoute[] => [partnerListRoute(), partnerRolesRoute()];
+const partnerRoutes = (): StubRoute[] => [
+  partnerListRoute(),
+  partnerDetailRoute(),
+  partnerRolesRoute(),
+];
 
 describe('CommonCodeScreen — 거래처 목록 조회 (C14·C16)', () => {
   it('거래처 탭에 들어오면 목록 요청이 한 번 나가고 조건이 없으면 쿼리도 없다', async () => {
@@ -3826,8 +3889,9 @@ describe('CommonCodeScreen — 거래처 목록 조회 (C14·C16)', () => {
    * 주소 키(`q`·`inactive`·`page`)를 탭이 공유하므로 「코드그룹을 찾던 말」로 거래처를
    * 조회하게 된다. 그 요청은 화면에 아무것도 그리지 않아 눈으로는 드러나지 않는다.
    *
-   * **주소에 `ptn`을 실어 둔다.** 없으면 역할 조회는 어차피 나갈 수 없어 아래 두 번째 단언이
-   * 항상 참인 빈 단언이 된다 — 역할 쪽 탭 경계(`isPartnerTab` 삼항)를 지키는 유일한 감지기다.
+   * **주소에 `ptn`을 실어 둔다.** 없으면 상세·역할 조회는 어차피 나갈 수 없어 아래 두 단언이
+   * 항상 참인 빈 단언이 된다 — 선택에 매인 조회 둘의 탭 경계(`isPartnerTab`)를 지키는 유일한
+   * 감지기다.
    */
   it('다른 탭에 있는 동안에는 거래처를 조회하지 않는다', async () => {
     const { requests } = renderScreen(
@@ -3837,6 +3901,7 @@ describe('CommonCodeScreen — 거래처 목록 조회 (C14·C16)', () => {
     await screen.findByRole('button', { name: 'SYN-GRP-01' });
 
     expect(partnerRequests(requests)).toHaveLength(0);
+    expect(partnerDetailRequests(requests)).toHaveLength(0);
     expect(requestsTo(requests, partnerRolesPath(9001))).toHaveLength(0);
   });
 
@@ -3858,17 +3923,19 @@ describe('CommonCodeScreen — 거래처 목록 조회 (C14·C16)', () => {
 });
 
 describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19·C20)', () => {
-  it('거래처를 고르면 역할 요청이 한 번 나가고 주소에 ptn이 붙는다', async () => {
+  it('거래처를 고르면 상세와 역할 요청이 한 번씩 나가고 주소에 ptn이 붙는다', async () => {
     const { requests, history, user } = renderScreen(partnerRoutes(), '?tab=partner');
     await screen.findByRole('button', { name: 'SAMPLE-PTNR-A' });
 
-    // 고르기 전에는 나가지 않는다 — 아직 아무 거래처도 가리키지 않는다.
+    // 고르기 전에는 나가지 않는다 — 아직 아무 거래처도 가리키지 않는다(C16).
     expect(requestsTo(requests, partnerRolesPath(9001))).toHaveLength(0);
+    expect(partnerDetailRequests(requests)).toHaveLength(0);
 
     await user.click(screen.getByRole('button', { name: 'SAMPLE-PTNR-A' }));
     await screen.findByText('고객사');
 
     expect(requestsTo(requests, partnerRolesPath(9001))).toHaveLength(1);
+    expect(partnerDetailRequests(requests)).toHaveLength(1);
     expect(history.search()).toBe('?tab=partner&ptn=9001');
     expect(screen.getByRole('button', { name: 'SAMPLE-PTNR-A' })).toHaveAttribute(
       'aria-current',
@@ -3885,7 +3952,7 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
   });
 
   /*
-   * C17 — 기본 정보는 목록 행에서 온다(계약에 거래처 상세 경로가 없다).
+   * C17 — 기본 정보는 **단건 조회**에서 온다(#173).
    * **값 표기만 있다** — 계약에 쓰기 경로가 없어 폼 컨트롤을 잠그는 것이 아니라 두지 않는다.
    */
   it('고른 거래처의 기본 정보가 값 표기와 사유로 선다', async () => {
@@ -3913,26 +3980,74 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
   });
 
   /*
-   * 계약에 거래처 **상세 경로가 없다** — 기본 정보는 지금 목록에 있는 행에서만 온다.
-   * 주소를 손으로 고쳐 목록 밖 거래처를 가리키면 빈 칸을 보이지 않고 그 사실을 밝힌다.
+   * **기본 정보는 목록에 매여 있지 않다**(#173 — 단건 조회 신설). 종전에는 목록 밖 거래처를
+   * 주소가 가리키면 채울 자료가 없어 「목록 밖 선택」 안내로 물러섰다. 검색어를 바꾼 뒤·다른
+   * 쪽으로 넘어간 뒤·링크를 받은 뒤가 모두 그 상태였다 — 그 갈래를 정의째 없앤다.
+   *
+   * 역할까지 함께 재는 이유는, 기본 정보만 서고 역할이 서지 않으면 이 탭이 할 일을 못 하기
+   * 때문이다(이 탭이 고치는 것은 역할이다).
    */
-  it('목록에 없는 거래처를 주소가 가리키면 그 사실을 밝힌다', async () => {
-    renderScreen([partnerListRoute(), partnerRolesRoute(9999, [])], '?tab=partner&ptn=9999');
+  it('목록에 없는 거래처를 주소가 가리켜도 기본 정보와 역할이 선다', async () => {
+    renderScreen(
+      [
+        partnerListRoute(),
+        partnerDetailRoute(9999, outsideListPartner),
+        partnerRolesRoute(9999, vocabularyRoleFixtures),
+      ],
+      '?tab=partner&ptn=9999',
+    );
 
-    expect(await screen.findByText('고른 거래처가 이 목록에 없습니다')).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: '거래처 기본 정보' })).not.toBeInTheDocument();
+    const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
+
+    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-Z');
+    expect(await screen.findByText('고객사')).toBeInTheDocument();
   });
 
   /*
-   * 「이 목록에 없다」는 **목록을 받아 본 뒤에만** 할 수 있는 말이다. 아래 두 갈래에서 그 문면이
-   * 서면 화면이 **사실이 아닌 것**을 말한다 — 못 받았거나 아직 받는 중일 뿐이다.
-   * 좌 목록(C16)과 역할 구획(C19)이 각각 막는 형태를 우 칸에서도 잰다.
+   * **좌 목록의 사정이 우 칸을 막지 않는다.** 두 조회가 갈렸으므로 목록이 실패해도 고른 거래처는
+   * 그대로 선다 — 종전에는 목록 실패가 우 칸까지 가렸다. 좌 목록은 자기 자리에서 실패를 낸다.
    */
-  it('목록 조회가 실패하면 우 칸이 「목록에 없습니다」로 말하지 않는다', async () => {
+  it('목록 조회가 실패해도 고른 거래처의 기본 정보와 역할이 선다', async () => {
     renderScreen(
       [
         {
           match: (request) => isGet(request, PARTNERS_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+        partnerDetailRoute(),
+        partnerRolesRoute(),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+
+    const pane = await screen.findByRole('region', { name: '거래처 기본 정보' });
+
+    expect(within(pane).getByLabelText('거래처코드')).toHaveTextContent('SAMPLE-PTNR-A');
+    expect(await screen.findByText('고객사')).toBeInTheDocument();
+    /* 목록 실패는 좌 목록이 낸다 — 우 칸이 대신 말하지 않는다. */
+    expect(within(partnerPane()).getByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+  });
+
+  /*
+   * C14 — 상세를 **불러오는 동안**은 빈 칸이 아니라 진행 안내를 낸다. 빈 칸을 보이면 자료가
+   * 없는 것인지 아직 받는 중인지 구분되지 않는다.
+   */
+  it('상세를 불러오는 동안 진행 안내가 선다', () => {
+    renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+
+    expect(
+      within(partnerRolePane()).getByRole('status', { name: '거래처 정보를 불러오는 중' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '거래처 기본 정보' })).not.toBeInTheDocument();
+  });
+
+  /* C14 — 실패를 「없는 거래처」로 보이면 사실과 다른 안내가 된다. 조치도 다르다(재시도 대 다시 고르기). */
+  it('상세 조회에 실패하면 재시도 배너가 서고 없는 거래처로 말하지 않는다', async () => {
+    renderScreen(
+      [
+        partnerListRoute(),
+        {
+          match: (request) => isGet(request, partnerDetailPath(9001)),
           respond: () => jsonResponse({ message: '' }, { status: 500 }),
         },
         partnerRolesRoute(),
@@ -3945,17 +4060,34 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
     await waitFor(() => {
       expect(within(pane).getByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     });
-    expect(screen.queryByText('고른 거래처가 이 목록에 없습니다')).not.toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    expect(screen.queryByText('고른 거래처를 찾을 수 없습니다')).not.toBeInTheDocument();
   });
 
-  /* 양성 앵커(진행 안내)가 「아직 받는 중인 시점」을 붙잡아 준다 — 음성 단언이 비어 돌지 않는다. */
-  it('목록을 불러오는 동안 우 칸이 「목록에 없습니다」로 말하지 않는다', () => {
-    renderScreen(partnerRoutes(), '?tab=partner&ptn=9001');
+  /**
+   * C14 — **없는 거래처는 안내만 낸다.** 다시 시도해도 나타나지 않으므로 재시도를 권하지 않는다.
+   *
+   * ⛔ **주소에서 선택을 지우지 않는다.** 형제 화면 셋이 그 정리를 하는 것은 그쪽 상세가 **목록
+   * 조건에 매인 선택**이라 조건이 바뀌면 안내가 가리킬 것이 없어지기 때문이다. 거래처 선택 키는
+   * 조건과 독립이므로 그 전제가 없다 — 지우면 사용자는 무엇을 열려 했는지 잃는다.
+   */
+  it('없는 거래처를 주소가 가리키면 안내만 내고 주소는 그대로 둔다', async () => {
+    const { history } = renderScreen(
+      [
+        partnerListRoute(),
+        {
+          match: (request) => isGet(request, partnerDetailPath(9999)),
+          respond: () => jsonResponse({ message: '' }, { status: 404 }),
+        },
+        partnerRolesRoute(9999, []),
+      ],
+      '?tab=partner&ptn=9999',
+    );
 
-    expect(
-      within(partnerRolePane()).getByRole('status', { name: '거래처 목록을 불러오는 중' }),
-    ).toBeInTheDocument();
-    expect(screen.queryByText('고른 거래처가 이 목록에 없습니다')).not.toBeInTheDocument();
+    expect(await screen.findByText('고른 거래처를 찾을 수 없습니다')).toBeInTheDocument();
+    /* 재시도로 풀리지 않는 상태라 그 버튼을 내지 않는다. */
+    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
+    expect(history.search()).toBe('?tab=partner&ptn=9999');
   });
 
   /* C20 — 어휘 밖 코드를 감추면 통째 교체 저장에서 조용히 해제된다. */
@@ -3968,11 +4100,19 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
     expect(within(pane).getByText('이 화면이 모르는 역할')).toBeInTheDocument();
   });
 
-  /* C19 — 실패를 「지정된 역할이 없습니다」로 보이면 역할이 없는 거래처로 읽힌다. */
+  /**
+   * C19 — 실패를 「지정된 역할이 없습니다」로 보이면 역할이 없는 거래처로 읽힌다.
+   *
+   * ⚠ **기본 정보 구획이 「역할 실패 갈래를 실제로 밟았다」의 앵커다.** 상세 실패와 역할 실패는
+   * 같은 배너 부품을 같은 구획 안에 내므로 문면·범위로는 갈리지 않는다 — 그래서 상세 스텁을
+   * 빠뜨려도 이 시험이 통과해 버린다(상세가 대신 실패해 같은 배너를 낸다). 기본 정보 구획은
+   * **상세가 성공했을 때만** 서므로, 그것을 먼저 잡으면 역할 쪽 실패임이 확정된다.
+   */
   it('역할 조회에 실패하면 배너를 내고 빈 상태를 함께 내지 않는다', async () => {
     renderScreen(
       [
         partnerListRoute(),
+        partnerDetailRoute(),
         {
           match: (request) => isGet(request, partnerRolesPath(9001)),
           respond: () => jsonResponse({ message: '' }, { status: 500 }),
@@ -3981,12 +4121,16 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
       '?tab=partner&ptn=9001',
     );
 
+    expect(await screen.findByRole('region', { name: '거래처 기본 정보' })).toBeInTheDocument();
     expect(await screen.findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByText('지정된 역할이 없습니다')).not.toBeInTheDocument();
   });
 
   it('역할이 하나도 없으면 없다고 낸다', async () => {
-    renderScreen([partnerListRoute(), partnerRolesRoute(9001, [])], '?tab=partner&ptn=9001');
+    renderScreen(
+      [partnerListRoute(), partnerDetailRoute(), partnerRolesRoute(9001, [])],
+      '?tab=partner&ptn=9001',
+    );
 
     expect(await screen.findByText('지정된 역할이 없습니다')).toBeInTheDocument();
   });
@@ -3998,7 +4142,13 @@ describe('CommonCodeScreen — 거래처 선택과 역할 읽기 (C15·C17·C19�
    */
   it('거래처를 고르기만 하면 쓰기 요청이 나가지 않는다', async () => {
     const { requests, user } = renderScreen(
-      [partnerListRoute(), partnerRolesRoute(), partnerRolesRoute(9002, [])],
+      [
+        partnerListRoute(),
+        partnerDetailRoute(),
+        partnerDetailRoute(9002),
+        partnerRolesRoute(),
+        partnerRolesRoute(9002, []),
+      ],
       '?tab=partner&ptn=9001',
     );
     await screen.findByText('고객사');
@@ -4026,7 +4176,11 @@ describe('CommonCodeScreen — 거래처 조건과 탭 전환 (C11·C15)', () =>
 
   it('쪽을 옮기면 선택이 주소에서 사라진다', async () => {
     const { history, user } = renderScreen(
-      [partnerListRoute(partnerFixtures, { page: 1, size: 2, total: 9 }), partnerRolesRoute()],
+      [
+        partnerListRoute(partnerFixtures, { page: 1, size: 2, total: 9 }),
+        partnerDetailRoute(),
+        partnerRolesRoute(),
+      ],
       '?tab=partner&ptn=9001',
     );
     await screen.findByText('고객사');
@@ -4113,6 +4267,7 @@ const vocabularyRoleFixtures = partnerRoleFixtures.filter(
 
 const vocabularyPartnerRoutes = (): StubRoute[] => [
   partnerListRoute(),
+  partnerDetailRoute(),
   partnerRolesRoute(9001, vocabularyRoleFixtures),
 ];
 
@@ -4242,20 +4397,87 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
   });
 
   /**
-   * **토큰이 없으면 요청을 만들지 않고, 안내는 이 자원의 사실을 말한다**(#174 답변 대기).
+   * **재조회가 준 새 토큰이 다음 저장에 실린다** — 잠금 토큰의 **갱신 경로**를 잰다(#174).
    *
-   * 계약이 `If-Match`를 필수로 요구하는데 `/mdm/partners*`의 어느 응답도 `ETag`를 선언하지
-   * 않는다. 그 상태에서 화면이 할 수 있는 정직한 일은 **보내지 않고 안내하는 것**이다 —
-   * 빈 헤더를 지어 보내면 서버가 400으로 되돌리고 사용자는 원인을 읽을 수 없다.
+   * 위 감지기는 「토큰을 싣는가」만 잰다. 한 번 잡아 둔 값을 계속 다시 쓰는 화면도 그것을
+   * 통과하는데, 그러면 두 번째 저장은 **낡은 토큰**으로 나가 매번 충돌한다. 지금까지의 스텁은
+   * 회차와 무관하게 같은 토큰을 주어 그 어긋남을 드러낼 수 없었다.
+   *
+   * copy-checklist 「두 스텁 형태」의 **헤더만 바뀌는 쪽**이다 — 내용은 그대로 두고 토큰만
+   * 갈아 「값이 갱신됐다」의 축을 토큰 하나로 가둔다(내용까지 바뀌는 쪽은 충돌 구획이 맡는다).
+   *
+   * 치환 응답에는 `ETag`를 **싣지 않는다.** 실으면 쓰기 응답으로 갱신됐는지 재조회로 갱신됐는지
+   * 갈리지 않는다 — 쓰기 응답 쪽 갱신은 `packages/api-client`의 단위 시험이 이미 덮는다.
+   */
+  it('재조회가 새 토큰을 주면 다음 저장이 그 새 값을 싣는다', async () => {
+    let roleCalls = 0;
+
+    const { requests, user } = renderScreen(
+      [
+        partnerListRoute(),
+        partnerDetailRoute(),
+        {
+          match: (request) => isGet(request, partnerRolesPath(9001)),
+          respond: () => {
+            roleCalls += 1;
+
+            return jsonResponse(vocabularyRoleFixtures, {
+              headers: { ETag: roleCalls === 1 ? ROLES_ETAG : ROLES_ETAG_AFTER_RELOAD },
+            });
+          },
+        },
+        rolesReplaceRoute(() => jsonResponse(vocabularyRoleFixtures)),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+    expect(putRequests(requests)[0]?.headers.get('If-Match')).toBe(ROLES_ETAG);
+
+    /* 무효화가 낸 재조회가 새 토큰을 들고 도착한 뒤에 다시 저장한다. */
+    await waitFor(() => {
+      expect(roleGetRequests(requests)).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(partnerSaveButton()).toBeDisabled();
+    });
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(2);
+    });
+    expect(putRequests(requests)[1]?.headers.get('If-Match')).toBe(ROLES_ETAG_AFTER_RELOAD);
+  });
+
+  /**
+   * **토큰이 없으면 요청을 만들지 않고, 안내는 이 자원의 사실을 말한다.**
+   *
+   * 계약이 `If-Match`를 필수로 요구하고 토큰 원천도 선언했지만(#174), **서버가 그 헤더를 아직
+   * 주지 않는** 상태는 실제로 있을 수 있다. 그때 화면이 할 수 있는 정직한 일은 **보내지 않고
+   * 안내하는 것**이다 — 빈 헤더를 지어 보내면 서버가 400으로 되돌리고 사용자는 원인을 읽을 수 없다.
    *
    * 문구를 **전용 문구로 못박는다.** 공통 문구(`save.staleToken`)는 「잠시 뒤 다시 저장하세요」라
    * 이 자원에서는 영영 거짓이다 — 공통 훅이 붙이는 코드값이 바뀌어 화면의 갈래가 조용히
    * 공통 문구로 되돌아가면 이 단언이 운다.
+   *
+   * **출구 한 문장까지 함께 잰다.** 사용자가 이 화면에서 스스로 풀 수 없는 상태라, 안내가
+   * 「달라지지 않는다」에서 끝나면 다음에 할 일이 남지 않는다. 기대값을 문구 상수로만 두면 그
+   * 문장을 지워도 기대값이 함께 지워져 아무 감지기도 울지 않으므로(자기참조 침묵) **문면 조각을
+   * 따로 못박는다.**
    */
   it('잠금 토큰을 못 얻으면 저장이 요청을 만들지 않고 사실대로 안내한다', async () => {
     const { requests, user } = renderScreen(
       [
         partnerListRoute(),
+        partnerDetailRoute(),
         partnerRolesRouteWithoutEtag(),
         rolesReplaceRoute(() => jsonResponse(replacedRoles)),
       ],
@@ -4266,11 +4488,13 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     await user.click(roleCheckbox('공급사'));
     await user.click(partnerSaveButton());
 
-    expect(
-      await within(partnerRolePane()).findByText(
-        messages.commonCode.partnerRole.saveTokenUnavailable,
-      ),
-    ).toBeInTheDocument();
+    const notice = await within(partnerRolePane()).findByText(
+      messages.commonCode.partnerRole.saveTokenUnavailable,
+    );
+
+    expect(notice).toBeInTheDocument();
+    /* 출구 한 문장 — 문면 조각으로 못박는다(위 주석). */
+    expect(notice).toHaveTextContent('반복되면 담당자에게 알려 주세요');
     /* 「다시 시도하면 풀린다」는 공통 문구가 이 자원에는 서지 않는다. */
     expect(screen.queryByText(messages.save.staleToken)).not.toBeInTheDocument();
     expect(putRequests(requests)).toHaveLength(0);
@@ -4279,17 +4503,19 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
   /**
    * **두 갈래가 만나는 자리 — 어휘 밖 역할 + 토큰 없음**(리뷰 M-3).
    *
-   * #174가 답을 주기 전까지 **실사용의 기본값**에 가까운 조합이다: 계약은 구현보다 앞서므로
-   * 서버가 어휘 밖 역할을 아직 들고 있을 수 있고(D-4의 존재 이유), 그 거래처에서 저장을
-   * 누르면 확인 창이 먼저 서고 승낙한 뒤에 토큰 벽을 만난다.
+   * 서버 구현이 계약을 따라오기 전까지 실제로 만날 수 있는 조합이다: 계약은 구현보다 앞서므로
+   * 서버가 어휘 밖 역할을 아직 들고 있을 수 있고(D-4의 존재 이유) 토큰도 아직 안 줄 수 있다 —
+   * 그 거래처에서 저장을 누르면 확인 창이 먼저 서고 승낙한 뒤에 토큰 벽을 만난다.
    *
-   * 재는 것 셋 — ① 요청이 나가지 않는다 ② **창이 닫히지 않는다**(닫히면 사용자는 승낙이
-   * 받아들여진 줄 안다) ③ 사유가 **창 안에서** 사실대로 보인다.
+   * 재는 것 넷 — ① 요청이 나가지 않는다 ② **창이 닫히지 않는다**(닫히면 사용자는 승낙이
+   * 받아들여진 줄 안다) ③ 사유가 **창 안에서** 사실대로 보인다 ④ **출구 한 문장이 창 안에도
+   * 선다** — 체감이 가장 나쁜 자리다(해제를 승낙한 뒤에 막힌 것을 읽는다).
    */
   it('어휘 밖 역할이 붙은 거래처에서 확인 창을 승낙해도 요청이 나가지 않고 창 안에 사유가 선다', async () => {
     const { requests, user } = renderScreen(
       [
         partnerListRoute(),
+        partnerDetailRoute(),
         partnerRolesRouteWithoutEtag(9001, partnerRoleFixtures),
         rolesReplaceRoute(() => jsonResponse(replacedRoles)),
       ],
@@ -4306,9 +4532,12 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
 
     await user.click(within(dialog).getByRole('button', { name: '해제하고 저장' }));
 
-    expect(
-      await within(dialog).findByText(messages.commonCode.partnerRole.saveTokenUnavailable),
-    ).toBeInTheDocument();
+    const notice = await within(dialog).findByText(
+      messages.commonCode.partnerRole.saveTokenUnavailable,
+    );
+
+    expect(notice).toBeInTheDocument();
+    expect(notice).toHaveTextContent('반복되면 담당자에게 알려 주세요');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(putRequests(requests)).toHaveLength(0);
   });
@@ -4397,6 +4626,7 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     const { user } = renderScreen(
       [
         partnerListRoute(),
+        partnerDetailRoute(),
         {
           match: (request) => isGet(request, partnerRolesPath(9001)),
           respond: () => {
@@ -4438,6 +4668,7 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     const { user } = renderScreen(
       [
         partnerListRoute(),
+        partnerDetailRoute(),
         partnerRolesRoute(9001, vocabularyRoleFixtures),
         /* 서버가 「받았다」면서 **저장 전과 똑같은 목록**을 돌려준다. */
         rolesReplaceRoute(() => jsonResponse(vocabularyRoleFixtures)),
@@ -4466,6 +4697,7 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
     const { requests, user } = renderScreen(
       [
         partnerListRoute(),
+        partnerDetailRoute(),
         {
           match: (request) => isGet(request, partnerRolesPath(9001)),
           respond: () => rolesResponse(current),
@@ -4496,12 +4728,32 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
      * 남아, 다른 거래처를 들렀다 돌아오면 저장 전 상태가 되살아난다.
      */
     await waitFor(() => {
-      expect(
-        requests.filter(
-          (request) => request.method === 'GET' && request.url.pathname === partnerRolesPath(9001),
-        ),
-      ).toHaveLength(2);
+      expect(roleGetRequests(requests)).toHaveLength(2);
     });
+  });
+
+  /**
+   * C17 — **무효화 대상은 역할 키 하나뿐이다.** 역할 치환으로 거래처 본체는 바뀌지 않으므로
+   * 기본 정보·목록까지 무효화하면 아무것도 달라지지 않을 조회를 다시 낸다. 단건 조회가 생긴
+   * 뒤로 그 실수를 저지를 자리가 하나 늘었다.
+   */
+  it('저장에 성공해도 기본 정보와 목록은 다시 조회하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [...vocabularyPartnerRoutes(), rolesReplaceRoute(() => jsonResponse(replacedRoles))],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await screen.findByText('저장했습니다');
+
+    /* 양성 앵커 — 역할은 실제로 다시 조회된다. 음성 단언은 그 시점 뒤에 잰다. */
+    await waitFor(() => {
+      expect(roleGetRequests(requests)).toHaveLength(2);
+    });
+    expect(partnerDetailRequests(requests)).toHaveLength(1);
+    expect(partnerRequests(requests)).toHaveLength(1);
   });
 });
 
@@ -4679,6 +4931,8 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
    */
   const twoPartnerRoutes = (): StubRoute[] => [
     partnerListRoute(),
+    partnerDetailRoute(),
+    partnerDetailRoute(9002),
     partnerRolesRoute(9001, vocabularyRoleFixtures),
     partnerRolesRoute(9002, []),
   ];
@@ -4754,6 +5008,8 @@ describe('CommonCodeScreen — 나가는 중인 저장의 매임 (M-1·F-1)', ()
     const { requests, user } = renderScreen(
       [
         partnerListRoute(),
+        partnerDetailRoute(),
+        partnerDetailRoute(9002),
         partnerRolesRoute(9001, vocabularyRoleFixtures),
         partnerRolesRoute(9002, [{ roleTypeCode: PARTNER_ROLE_CODES.customer }]),
         rolesReplaceRoute(neverFinishingResponse),
@@ -4965,6 +5221,8 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
     const { user } = renderScreen(
       [
         partnerListRoute(),
+        partnerDetailRoute(),
+        partnerDetailRoute(9002),
         partnerRolesRoute(9001, vocabularyRoleFixtures),
         partnerRolesRoute(9002, []),
         failedRoute(400),
@@ -5015,5 +5273,201 @@ describe('CommonCodeScreen — 저장 실패와 초안 수명 (C32·C34)', () =>
 
     await screen.findByText('좌측에서 거래처를 고르면 여기에 그 거래처의 역할이 보입니다');
     expect(screen.queryByRole('checkbox', { name: '공급사' })).not.toBeInTheDocument();
+  });
+});
+
+/* ── 역할 저장 충돌 (#174) ─────────────────────────────────────────────────── */
+
+/**
+ * 저장 충돌은 **토큰이 흐르기 시작한 뒤에 처음으로 실제로 생길 수 있는 갈래**다. 통째 교체
+ * 저장이라 남이 방금 붙인 역할이 조용히 사라지는 것을 막는 것이 이 보호의 존재 이유이고,
+ * 사용자에게는 「무엇이 막았는가」와 **최신을 받아 오는 수단**이 함께 있어야 한다.
+ *
+ * **화면 전용 문구를 만들지 않는다.** 공통 규약 문구가 원인 셋을 이미 갖고 있고 공통 배너가
+ * 충돌일 때만 「최신 불러오기」를 낸다 — 화면이 할 일은 재조회 핸들러를 넘기는 것 하나다.
+ * 토큰 부재 갈래가 전용 문구를 쓴 이유(「다시 시도하면 풀린다」가 거짓)는 **여기에 없다** —
+ * 충돌은 다시 부르면 실제로 풀린다.
+ *
+ * 목 서버로는 409를 낼 때 요청에 `Prefer` 헤더가 필요하고 화면에는 그 헤더를 실을 자리가
+ * 없다 — 그래서 이 갈래의 판정은 브라우저 확인이 아니라 **여기가 맡는다.**
+ */
+describe('CommonCodeScreen — 역할 저장 충돌 (#174)', () => {
+  const CONFLICT_CAUSES: ConflictCause[] = ['user', 'erpSync', 'workerLease'];
+
+  /** 재조회가 돌려줄 **다른** 부여분. 내용이 갈리는 것이 「되세웠다」의 증거다. */
+  const reloadedRoles: PartnerRoleRow[] = [
+    { roleTypeCode: PARTNER_ROLE_CODES.subcontractor, roleTypeName: null },
+  ];
+
+  /**
+   * 치환은 409로 막고, 역할 조회는 **회차마다 토큰과 내용을 함께 바꾼다** — copy-checklist
+   * 「두 스텁 형태」의 **내용까지 바뀌는 쪽**이다. 같은 구조를 되돌리는 스텁을 쓰면 「값이
+   * 갱신됐다」가 부분 견줌으로 헛통과한다.
+   *
+   * 어휘 밖 코드가 없는 부여분으로 시작한다 — 확인 창은 그것을 주제로 삼는 시험에서만 지난다.
+   */
+  const conflictRoutes = (cause: ConflictCause): StubRoute[] => {
+    let roleCalls = 0;
+
+    return [
+      partnerListRoute(),
+      partnerDetailRoute(),
+      {
+        match: (request) => isGet(request, partnerRolesPath(9001)),
+        respond: () => {
+          roleCalls += 1;
+
+          return roleCalls === 1
+            ? jsonResponse(vocabularyRoleFixtures, { headers: { ETag: ROLES_ETAG } })
+            : jsonResponse(reloadedRoles, { headers: { ETag: ROLES_ETAG_AFTER_RELOAD } });
+        },
+      },
+      rolesReplaceRoute(() => jsonResponse({ conflictCause: cause, message: '' }, { status: 409 })),
+    ];
+  };
+
+  /* 원인마다 대응 방법이 달라 문구가 갈린다 — 한 문구로 뭉개면 사용자가 다음 행동을 못 정한다. */
+  it.each(CONFLICT_CAUSES)(
+    '충돌 원인 %s에 맞는 문구와 최신 불러오기가 함께 선다',
+    async (cause) => {
+      const { user } = renderScreen(conflictRoutes(cause), '?tab=partner&ptn=9001');
+      await screen.findByText('고객사');
+
+      await user.click(roleCheckbox('공급사'));
+      await user.click(partnerSaveButton());
+
+      const pane = partnerRolePane();
+
+      expect(await within(pane).findByText(messages.conflict[cause])).toBeInTheDocument();
+      expect(within(pane).getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
+      /* 잃는 것을 **누르기 전에** 밝힌다 — 누른 뒤에 알리면 되돌릴 수 없다. */
+      expect(within(pane).getByText(messages.conflict.reloadNote)).toBeInTheDocument();
+    },
+  );
+
+  it('최신 불러오기를 누르면 다시 조회하고 배너가 사라지고 초안이 서버 최신값으로 되세워진다', async () => {
+    const { requests, user } = renderScreen(conflictRoutes('user'), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await within(partnerRolePane()).findByText(messages.conflict.user);
+
+    expect(roleGetRequests(requests)).toHaveLength(1);
+
+    await user.click(within(partnerRolePane()).getByRole('button', { name: '최신 불러오기' }));
+
+    /* ① 재조회가 한 건 더 나간다. */
+    await waitFor(() => {
+      expect(roleGetRequests(requests)).toHaveLength(2);
+    });
+
+    /* ③ 초안이 **서버 최신값**으로 되세워진다 — 양성 앵커를 먼저 붙잡는다. */
+    await waitFor(() => {
+      expect(roleCheckbox('외주 제작사')).toBeChecked();
+    });
+    expect(roleCheckbox('고객사')).not.toBeChecked();
+    /* 고치던 체크는 사라진다 — 공통 안내가 미리 밝힌 그 대가다. */
+    expect(roleCheckbox('공급사')).not.toBeChecked();
+    expect(partnerSaveButton()).toBeDisabled();
+
+    /* ② 저장 실패 배너가 사라진다. 음성 단언은 위 양성 앵커가 잡은 시점 뒤에 잰다. */
+    expect(within(partnerRolePane()).queryByText(messages.conflict.user)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * **확인 창을 거친 저장의 충돌** — 사유는 창 안에 서고, 최신 불러오기를 누르면 **창이 닫힌다.**
+   *
+   * 「실패해도 창을 닫지 않는다」는 규율의 이유는 *같은 자리에서 다시 시도할 수 있게* 하려는
+   * 것인데, 다시 불러오기는 **그 시도의 전제(초안)를 버리는 조작**이다. 창이 나열하는 해제
+   * 목록은 사용자의 초안에서 나오므로 초안이 서버값으로 되돌아가면 **해제될 것이 하나도 없다** —
+   * 그대로 두면 「저장하면 아래 역할이 해제됩니다」 아래에 빈 목록이 선 창이 남는다.
+   */
+  it('확인 창을 거친 저장이 충돌하면 창 안에 사유가 서고 최신 불러오기를 누르면 창이 닫힌다', async () => {
+    const { requests, user } = renderScreen(conflictRoutes('user'), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    /* 해제가 있는 저장이라 확인 창을 지난다. */
+    await user.click(roleCheckbox('고객사'));
+    await user.click(partnerSaveButton());
+
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: '해제하고 저장' }));
+
+    expect(await within(dialog).findByText(messages.conflict.user)).toBeInTheDocument();
+    /* 배너를 두 자리에 두지 않는다 — 사용자가 스크림 뒤의 사본을 읽으려 든다. */
+    expect(screen.getAllByText(messages.conflict.user)).toHaveLength(1);
+
+    await user.click(within(dialog).getByRole('button', { name: '최신 불러오기' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(roleGetRequests(requests)).toHaveLength(2);
+    });
+    expect(roleCheckbox('외주 제작사')).toBeChecked();
+  });
+
+  /**
+   * **다시 부른 뒤의 저장이 갱신된 토큰으로 나간다** — 이것이 「충돌이 풀린다」의 실제 내용이다.
+   * 배너가 사라지는 것만 재면 같은 낡은 토큰으로 다시 막히는 화면도 통과한다.
+   *
+   * 스텁이 토큰과 내용을 **함께** 바꾸므로, 초안이 되세워진 것과 토큰이 갱신된 것이 같은
+   * 재조회에서 왔다는 사실까지 함께 재진다.
+   */
+  it('다시 부른 뒤의 저장은 갱신된 토큰을 싣는다', async () => {
+    const { requests, user } = renderScreen(conflictRoutes('user'), '?tab=partner&ptn=9001');
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+    await within(partnerRolePane()).findByText(messages.conflict.user);
+
+    expect(putRequests(requests)[0]?.headers.get('If-Match')).toBe(ROLES_ETAG);
+
+    await user.click(within(partnerRolePane()).getByRole('button', { name: '최신 불러오기' }));
+    await waitFor(() => {
+      expect(roleCheckbox('외주 제작사')).toBeChecked();
+    });
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(2);
+    });
+    expect(putRequests(requests)[1]?.headers.get('If-Match')).toBe(ROLES_ETAG_AFTER_RELOAD);
+  });
+
+  /*
+   * **재조회로 풀리지 않는 실패에는 그 버튼을 내지 않는다.** 내면 사용자는 고치던 입력만 버리고
+   * 같은 자리로 되돌아온다 — 공통 배너가 갖는 규율이지만, 화면이 두 자리에 핸들러를 넘긴
+   * 뒤에도 그 규율이 살아 있는지는 여기서만 재진다.
+   */
+  it('충돌이 아닌 저장 실패에는 최신 불러오기가 서지 않는다', async () => {
+    const { user } = renderScreen(
+      [
+        ...vocabularyPartnerRoutes(),
+        rolesReplaceRoute(() =>
+          jsonResponse(
+            {
+              message: '',
+              errors: [{ scope: 'screen', code: 'DENIED', message: '저장이 막혔습니다.' }],
+            },
+            { status: 400 },
+          ),
+        ),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    expect(await within(partnerRolePane()).findByText('저장이 막혔습니다.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
   });
 });
