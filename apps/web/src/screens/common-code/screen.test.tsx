@@ -3938,6 +3938,63 @@ describe('CommonCodeScreen — 나가는 중인 자격 저장의 매임과 잠�
   });
 
   /*
+   * **응답이 앉는 자리는 보낸 요청의 캐시 키다.**
+   *
+   * `onSuccess`는 `mutate`를 부른 렌더에 닫혀 있어(공통 훅이 그것을 `mutate`의 두 번째
+   * 인자로 넘긴다) 그사이 선택이 옮겨 가도 남의 자리에 앉지 않는다 — 「지금 보고 있는」
+   * 작업자 번호를 읽게 되면 앞 작업자의 응답이 **손댄 적 없는 작업자의 표를 덮는다.**
+   * 배너·진행 표시와 달리 이 갈래는 **틀린 자료를 사실처럼 보여 주므로** 가장 조용하다.
+   */
+  it('저장이 나가는 중에 작업자를 옮겨도 그 응답이 옮겨 간 작업자의 표를 덮지 않는다', async () => {
+    const deferred = deferredJsonResponse(200);
+    let otherListCalls = 0;
+
+    const { requests, user } = renderScreen(
+      [
+        ...qualificationRoutes(),
+        workerDetailRoute(5002),
+        {
+          match: (request) => isGet(request, qualificationsPath(5002)),
+          /*
+           * 5002의 **첫 조회만** 응답하고 무효화가 낸 재조회는 열어 둔다.
+           * 재조회가 5002의 자료를 곧바로 다시 세우면 남의 자리에 앉은 응답이 **스쳐 지나가**
+           * 이 감지기가 그 순간을 붙잡지 못한다 — 실제로도 재조회가 늦거나 실패하면
+           * 덮인 값이 그대로 남는다.
+           */
+          respond: () => {
+            otherListCalls += 1;
+
+            return otherListCalls === 1
+              ? jsonResponse({ items: otherWorkerQualifications })
+              : neverFinishingResponse();
+          },
+        },
+        replaceRoute(5001, () => deferred.response),
+      ],
+      '?tab=worker&wkr=5001',
+    );
+
+    await startSaveOnFirstWorker(user);
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    await selectSecondWorker(user);
+
+    /* 5001의 응답은 **빈 목록**이다 — 그 저장이 하나뿐인 행을 지웠다. */
+    await act(async () => {
+      deferred.release({ items: [] });
+    });
+
+    /* 양성 앵커 — 응답이 실제로 도착했다. 그 뒤에 5002의 표를 잰다. */
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(within(qualificationPane()).getByText('SYN-CERT-02')).toBeInTheDocument();
+    expect(
+      within(qualificationPane()).queryByText('등록된 자격·인증이 없습니다'),
+    ).not.toBeInTheDocument();
+  });
+
+  /*
    * **두 저장이 겹치지 않는다.** 훅 하나에 요청 하나라, 두 번째 `mutate`는 앞 요청에서
    * 옵저버를 떼어 낸다 — 앞 저장이 400이면 **어디에도 표시되지 않는 실패**가 되고,
    * 성공이면 캐시가 저장 전 값으로 남는다. 잠긴 컨트롤을 실제로 눌러 그 겹침을 시도한다.
