@@ -323,9 +323,11 @@ const LocationProbe = () => {
 /**
  * 주소로 **대상 전표를 바꾼다**.
  *
- * 화면 안에는 `receipt`를 바꾸는 조작이 없고 라우트도 아직 닫혀 있지만, **주소는 잠글 수
- * 없다**(뒤로·앞으로·주소 편집 · 전례가 이름 붙인 자리) — 나가는 중인 쓰기가 그 뒤에 응답을
- * 되돌리는 길이 여기서 열린다.
+ * 화면 안에는 `receipt`를 바꾸는 조작이 없지만 **주소는 잠글 수 없다**(뒤로·앞으로·주소 편집 ·
+ * 전례가 이름 붙인 자리) — 나가는 중인 쓰기가 그 뒤에 응답을 되돌리는 길이 여기서 열린다.
+ *
+ * **이 갈래는 이제 실제 조작이기도 하다** — 라우트가 열렸고, 초과 입하 분리가 전표를 둘 만들면
+ * 사용자가 결과 구획의 링크 둘을 차례로 눌러 이 화면에 두 번 온다.
  */
 const TargetSwitchProbe = () => {
   const navigate = useNavigate();
@@ -2296,5 +2298,59 @@ describe('재조회와 친 값(이관 ①)', () => {
     expect(screen.getByLabelText(t.fields.businessUnit)).toHaveTextContent('합성 사업부 가');
     expect(screen.getByLabelText(t.fields.supplier)).toHaveTextContent(SUPPLIER_LABEL);
     expect(qtyInput(1)).toHaveValue(20);
+  });
+});
+
+/**
+ * **다른 전표로 옮기면 머리 초안이 새 대상으로 다시 선다**(오케스트레이터 로그 T2 이관 ⑨·⑩).
+ *
+ * 위 시험과 **같은 축의 반대 방향**이다. 되돌림 축을 좁히다 보면 「전표가 바뀌어도 다시 서지
+ * 않는」 쪽으로 지나치기 쉬운데, 그때 앞 전표에서 치던 사업부·발주일이 **새 전표의 발주에**
+ * 그대로 실려 나간다 — 되돌릴 수 없는 쓰기에 사용자가 확인하지 않은 값이 붙는 형태다.
+ *
+ * **공급사·공장이 같은 두 전표**를 쓰는 것이 요점이다. 승계 원천 두 값만 축에 있으면 둘이
+ * 그대로여서 축이 움직이지 않고, 이 결함이 조용히 통과한다. 축에 전표 번호가 함께 있어야
+ * 물린다(전례가 초안 축에 전표 식별자를 둔 이유와 같은 자리).
+ *
+ * 진입 경로가 열린 지금 이 갈래는 실제 조작이 됐다 — W-01-03이 전표 **둘**을 만들면 사용자는
+ * 결과 구획의 링크 둘을 차례로 눌러 이 화면에 두 번 온다.
+ */
+describe('대상 전표 전환과 머리 초안(이관 ⑨)', () => {
+  it('공급사·공장이 같은 다른 전표로 옮기면 친 값이 새 대상에 남지 않는다', async () => {
+    const { user } = renderScreen(
+      [secondReceiptRoute(), ...allRoutes(SINGLE_LINE)],
+      '?receipt=9101',
+    );
+
+    /*
+     * **두 전표를 미리 한 번씩 지나 캐시에 올린다.** 이것이 이 시험의 요점이다 — 처음 가는
+     * 전표는 응답이 오기 전 잠깐 「승계 원천 없음」을 지나므로 축이 무엇이든 초안이 다시 선다.
+     * 캐시에 있는 전표로 옮기면 그 빈 구간이 없어, **축에 전표 번호가 없으면 아무 일도
+     * 일어나지 않는다.** 사용자에게는 링크 둘을 오가는 흔한 경로다(뒤로가기·즐겨찾기도 같다).
+     */
+    await waitForSource();
+    await user.click(screen.getByRole('button', { name: '대상 바꾸기' }));
+    await screen.findByText('SAMPLE-IR-9102');
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+    await screen.findByText('SAMPLE-IR-9101');
+
+    await fillHeader(user);
+
+    /* 짝 양성 — 친 값이 실제로 들어가 있다. 「처음부터 비어 있어서 통과」를 막는다. */
+    expect(screen.getByLabelText(t.fields.businessUnit)).toHaveTextContent('합성 사업부 가');
+
+    await user.click(screen.getByRole('button', { name: '대상 바꾸기' }));
+
+    /* 짝 양성 — 새 대상이 실제로 섰다. 두 전표의 공급사·공장은 같다(승계 원천 무변화). */
+    await screen.findByText('SAMPLE-IR-9102');
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.fields.businessUnit)).not.toHaveTextContent('합성 사업부 가');
+    });
+
+    /* 승계값은 새 전표의 것으로 다시 선다 — 「빈 폼으로 되돌린다」가 아니다. */
+    expect(screen.getByLabelText(t.fields.supplier)).toHaveTextContent(SUPPLIER_LABEL);
+    /* 발주일도 함께 비었다 — 사용자가 정하는 값이라 승계가 없고, 그래서 등록이 다시 잠긴다. */
+    expect(registerButton()).toBeDisabled();
   });
 });

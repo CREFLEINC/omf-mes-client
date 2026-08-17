@@ -61,6 +61,11 @@ export interface SplitCounts {
  *
  * 계약이 요구하는 것은 둘이다 — ① 그 갈래에 필요한 part가 있을 것 ② part의 `lines`가 최소 1행일 것.
  * 라인 수가 0이면 part를 만들 수 없으므로 두 조건이 여기서 하나로 합쳐진다.
+ *
+ * **등록 뒤 화면이 이 잠금에 기대고 있다.** 초과분을 싣는 두 갈래(`BOTH`·`EXCESS_ONLY`)가
+ * 여기서 `excessLines > 0`을 요구하므로, 등록 결과가 「초과분이 실렸다」고 말할 때 실을 줄이
+ * 실제로 있었다는 것이 보장된다 — 그 위에 신규 P/O 등록 진입로가 선다. 이 조건을 느슨하게
+ * 하면 초과분 없는 등록의 전표에 그 진입로가 서고, 정량분 전표에서 중복 발주가 시작된다.
  */
 export const canSubmit = (mode: SplitMode, counts: SplitCounts): boolean => {
   switch (mode) {

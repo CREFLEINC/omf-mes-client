@@ -271,7 +271,10 @@ const createdReceipt = (inboundReceiptId: number, inboundReceiptNo: string) => (
 });
 
 const CREATED_ONE = [createdReceipt(9601, 'IR-2026-900010')];
-const CREATED_TWO = [createdReceipt(9601, 'IR-2026-900010'), createdReceipt(9602, 'IR-2026-900011')];
+const CREATED_TWO = [
+  createdReceipt(9601, 'IR-2026-900010'),
+  createdReceipt(9602, 'IR-2026-900011'),
+];
 
 const isSplitPost = (request: Request): boolean =>
   request.method === 'POST' && new URL(request.url).pathname === SPLIT_PATH;
@@ -298,13 +301,18 @@ const offlineSplitRoute = (): StubRoute => ({
   },
 });
 
-/** 이 화면이 닿을 수 있는 경로를 전부 스텁으로 둔 한 벌. */
-const allRoutes = (): StubRoute[] => [
+/**
+ * 이 화면이 닿을 수 있는 경로를 전부 스텁으로 둔 한 벌.
+ *
+ * **만들어질 전표를 인자로 받는다** — 같은 경로 규칙을 앞에 한 벌 더 얹어 뒤엣것을 가리면
+ * 도달하지 못하는 규칙이 남아, 읽는 사람이 어느 쪽이 응답하는지 세어 봐야 한다.
+ */
+const allRoutes = (created?: unknown[]): StubRoute[] => [
   listRoute(),
   linesRoute(),
   otherLinesRoute(),
   detailRoute(),
-  splitRoute(),
+  splitRoute(created),
   ...lookupRoutes(),
 ];
 
@@ -487,9 +495,7 @@ describe('OverReceiptSplitScreen — 첫 진입 조회', () => {
 
     await screen.findByText('PO-2026-900001');
 
-    expect(within(listTable()).getAllByRole('row')).toHaveLength(
-      purchaseOrderFixtures.length + 1,
-    );
+    expect(within(listTable()).getAllByRole('row')).toHaveLength(purchaseOrderFixtures.length + 1);
     expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
   });
 
@@ -709,10 +715,7 @@ describe('OverReceiptSplitScreen — 조회 실패', () => {
    * 기다려서 풀리지 않고**, 실제로 나간 라인 조회의 실패까지 로딩이 덮는다.
    */
   it('목록이 실패한 채 발주가 골라져 있으면 아래 구획이 골격에 갇히지 않는다', async () => {
-    renderScreen(
-      [failingListRoute(500), ...allRoutes().slice(1)],
-      '?po=9001',
-    );
+    renderScreen([failingListRoute(500), ...allRoutes().slice(1)], '?po=9001');
 
     await screen.findByText(t.empty.listFailedTitle);
 
@@ -807,9 +810,7 @@ describe('OverReceiptSplitScreen — 발주를 고르면 라인이 보인다', (
 
     await screen.findByText(t.lineTable.orderedPair(100, 40));
 
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('PO-2026-900001') }),
-    );
+    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('PO-2026-900001') }));
 
     await screen.findByText(t.empty.noSelectionTitle);
 
@@ -996,9 +997,7 @@ describe('OverReceiptSplitScreen — 참조 표기 네 갈래', () => {
 });
 
 describe('OverReceiptSplitScreen — 도착 수량과 가르기', () => {
-  const selectAndWait = async (
-    user: ReturnType<typeof userEvent.setup>,
-  ): Promise<void> => {
+  const selectAndWait = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
     await screen.findByText('PO-2026-900001');
     await selectPo(user, 'PO-2026-900001');
     await screen.findByText(t.lineTable.orderedPair(100, 40));
@@ -1193,10 +1192,7 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
    * 앞 발주의 수량이 실린다.
    */
   it('조건을 바꾸면 쪽·선택·초안이 함께 비워진다', async () => {
-    const { user } = renderScreen([
-      filteringListRoute(),
-      ...allRoutes().slice(1),
-    ], '?page=2');
+    const { user } = renderScreen([filteringListRoute(), ...allRoutes().slice(1)], '?page=2');
 
     await selectAndType(user);
 
@@ -1257,9 +1253,7 @@ describe('OverReceiptSplitScreen — 초안의 수명', () => {
     // 짝 방향 — 되살아나지 않는다를 말하려면 먼저 실제로 들어가 있어야 한다.
     expect(qtyInput(1)).toHaveValue(66);
 
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('PO-2026-900001') }),
-    );
+    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('PO-2026-900001') }));
     await confirmDiscard(user);
     await screen.findByText(t.empty.noSelectionTitle);
 
@@ -1336,9 +1330,7 @@ describe('OverReceiptSplitScreen — 누르기 전에는 쓰기가 없다', () =
 
     await screen.findByText('PO-2026-900001');
 
-    expect(
-      screen.queryByRole('button', { name: t.actions.registerBoth }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.actions.registerBoth })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(t.fields.receiptDatetime)).not.toBeInTheDocument();
 
     /* 짝 방향 — 고르면 실제로 열린다. 「늘 없다」로 통과하지 않게 한다. */
@@ -1525,15 +1517,12 @@ describe('OverReceiptSplitScreen — 세 갈래 등록', () => {
       expect(splitRequests(requests)).toHaveLength(1);
     });
 
-    expect(splitRequests(requests)[0]?.headers.get('Idempotency-Key')).toMatch(
-      /^[0-9a-f-]{36}$/i,
-    );
+    expect(splitRequests(requests)[0]?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/i);
   });
 });
 
 describe('OverReceiptSplitScreen — 보낼 수 없는 조합', () => {
-  const blockedButton = (label: string): HTMLElement =>
-    screen.getByRole('button', { name: label });
+  const blockedButton = (label: string): HTMLElement => screen.getByRole('button', { name: label });
 
   /* **M29의 화면 몫** — 라인이 하나도 없으면 어느 갈래로도 보낼 수 없다(계약: 최소 1행). */
   it('수량을 넣지 않으면 세 버튼이 모두 잠기고 같은 사유를 낸다', async () => {
@@ -1557,7 +1546,7 @@ describe('OverReceiptSplitScreen — 보낼 수 없는 조합', () => {
    * **M27의 화면 몫** — 초과분이 없는데 분리 등록이 열리면 `excess` 없는 `BOTH`가 나간다.
    * 목 서버는 그것을 201로 통과시키므로(실측) 막는 곳은 화면뿐이다.
    */
-  it('초과분이 없으면 분리 등록만 잠긴다', async () => {
+  it('초과분이 없으면 초과분을 싣는 두 갈래가 잠긴다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     /* 한도(65) 안쪽이라 전부 정량분이다. */
@@ -1565,6 +1554,13 @@ describe('OverReceiptSplitScreen — 보낼 수 없는 조합', () => {
 
     expect(blockedButton(t.actions.registerBoth)).toBeDisabled();
     expect(screen.getByText(t.actionReasons.bothNeedsExcess)).toBeInTheDocument();
+    /*
+     * **초과분만 저장도 함께 잠긴다** — 초과분을 싣는 갈래는 둘이다. 이 잠금이 곧
+     * 「초과분이 실렸다고 말하는 등록에는 실을 줄이 있다」는 불변식이고, 등록 결과의
+     * 신규 P/O 등록 진입로가 그 불변식 위에 선다(`validation.ts`의 `canSubmit`).
+     */
+    expect(blockedButton(t.actions.registerExcessOnly)).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.excessOnlyNeedsExcess)).toBeInTheDocument();
     /* 짝 방향 — 정량분만 저장은 열려 있다. 「전부 잠갔다」로 통과하지 않게 한다. */
     expect(blockedButton(t.actions.registerNormalOnly)).toBeEnabled();
 
@@ -1813,9 +1809,8 @@ describe('OverReceiptSplitScreen — 전송 중', () => {
 });
 
 describe('OverReceiptSplitScreen — 등록 성공', () => {
-  /* 앞에 둔 규칙이 먼저 맞는다 — 기본 등록 스텁을 가린다. */
-  const renderSuccess = (created: unknown[] = CREATED_TWO) =>
-    renderScreen([splitRoute(created), ...allRoutes()]);
+  /* 만들어질 전표를 스텁 한 벌에 실어 넘긴다 — 같은 경로 규칙을 두 벌 두지 않는다. */
+  const renderSuccess = (created: unknown[] = CREATED_TWO) => renderScreen(allRoutes(created));
 
   /* **M42의 화면 몫** — 두 건이 만들어졌다는 것이 이 화면의 요점이다. */
   it('만들어진 전표 번호가 전부 보이고 건수가 밝혀진다', async () => {
@@ -1970,7 +1965,12 @@ describe('OverReceiptSplitScreen — 등록 실패 3갈래', () => {
     const { user } = renderFailing(
       failingSplitRoute(400, {
         errors: [
-          { scope: 'field', field: 'lines[0].receivedQty', code: 'INVALID', message: '합성 라인 문구' },
+          {
+            scope: 'field',
+            field: 'lines[0].receivedQty',
+            code: 'INVALID',
+            message: '합성 라인 문구',
+          },
         ],
       }),
     );
@@ -2159,9 +2159,7 @@ describe('OverReceiptSplitScreen — 취소와 초안 파기 확인', () => {
     await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
 
     await waitFor(() => {
-      expect(
-        screen.queryByRole('dialog', { name: t.dialog.discardTitle }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: t.dialog.discardTitle })).not.toBeInTheDocument();
     });
 
     expect(qtyInput(1)).toHaveValue(66);
@@ -2243,9 +2241,22 @@ describe('OverReceiptSplitScreen — 취소와 초안 파기 확인', () => {
   });
 });
 
+/**
+ * **M48 · C34·C35·C36·C37** — 이 화면에서 신규 P/O 등록으로 가는 길.
+ *
+ * 앞 회차의 판정은 「잠겨 있고 사유가 보이며 **어떤 경로로도 이동하지 않는다**」였다. 갈 화면이
+ * 없었기 때문이다. 그 화면이 선 지금 판정은 **「등록 전에는 이동 경로가 없고, 등록 결과에는
+ * 전표마다 링크가 선다」**로 다시 선다 — 잣대가 사라지는 것이 아니라 **새 사실을 잰다.**
+ *
+ * 「등록 전 0건」은 그대로 남는다. 맥락 없이 여는 경로를 막는 것이 이 화면의 요구사항이고
+ * (착수 이슈 §6 ①), 이제는 **등록 뒤에만 길이 있다**는 것까지 함께 재야 그 요구가 지켜진다.
+ */
 describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
-  /* **M48 · C35** — 갈 곳이 아직 없다. 자리를 두되 사유를 밝히고 이동시키지 않는다. */
-  it('잠겨 있고 사유가 보이며 어떤 경로로도 이동하지 않는다', async () => {
+  /* 앞에 둔 규칙이 먼저 맞는다 — 기본 등록 스텁을 가린다. */
+  const renderWithCreated = (created: unknown[] = CREATED_TWO) => renderScreen(allRoutes(created));
+
+  /* **C35** — 등록 전에는 갈 곳이 정해지지 않았다. 자리를 두되 사유를 밝히고 이동시키지 않는다. */
+  it('등록 전에는 잠긴 자리와 사유뿐이고 이동 경로가 없다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await screen.findByText('PO-2026-900001');
@@ -2256,15 +2267,171 @@ describe('OverReceiptSplitScreen — 신규 P/O 등록', () => {
     const target = screen.getByRole('button', { name: t.actions.createPurchaseOrder });
 
     expect(target).toBeDisabled();
-    expect(
-      screen.getByText(t.actionReasons.createPurchaseOrderUnavailable),
-    ).toBeInTheDocument();
+    expect(screen.getByText(t.actionReasons.createPurchaseOrderUnavailable)).toBeInTheDocument();
 
     await user.click(target);
 
     expect(currentLocation()).toBe(before);
+    /* 등록 구획 전체를 훑는다 — 버튼 하나만 보면 다른 자리에 생긴 링크를 놓친다. */
     expect(
       within(screen.getByRole('region', { name: t.panes.register })).queryAllByRole('link'),
     ).toHaveLength(0);
+  });
+
+  /*
+   * **C34의 갈래 한정 · 화면 몫**(계획 D-14 ② 개정 · 리뷰 R-33) — 「정량분만 저장」으로 만든
+   * 전표에는 다음 화면으로 가는 길이 **서지 않는다.**
+   *
+   * 그 전표는 이미 발주가 있는 수량이라 거기서 P/O를 또 만들면 **중복 발주**가 되고, 취소는
+   * 승인을 타서 이 화면이 되돌릴 수 없다. 이 갈래에서는 요청에 초과분을 싣지 않았다는 사실을
+   * **화면이 1차로 안다** — 응답을 보고 지어내는 것이 아니다.
+   *
+   * 이 경로는 이미 다른 시험이 지나고 있었으나(같은 파일 「한 건만 만들어져도 건수를 밝힌다」)
+   * 결과 구획의 이동 경로를 보는 단언이 없어 잣대 밖이었다.
+   */
+  it('정량분만 저장한 결과에는 이동 경로가 없다', async () => {
+    const { user } = renderWithCreated(CREATED_ONE);
+
+    await setupRegister(user);
+    await clickRegister(user, t.actions.registerNormalOnly);
+
+    await screen.findByText(t.result.count(1));
+
+    const result = screen.getByRole('status', { name: t.panes.result });
+
+    /* 짝 양성 — 결과 구획은 실제로 섰고 전표번호도 그대로 보인다. */
+    expect(within(result).getByText('IR-2026-900010')).toBeInTheDocument();
+    expect(within(result).queryAllByRole('link')).toHaveLength(0);
+  });
+
+  /*
+   * **겨눈 갈래가 앞 등록에서 눌어붙지 않는다.**
+   *
+   * 화면은 성공한 뒤에도 그 자리에 남으므로(초안만 비운다) **한 화면에서 갈래를 바꿔 두 번
+   * 등록하는 것**은 실제 조작이다. 겨눈 갈래를 매 제출마다 새로 적지 않고 한 번이라도 참이면
+   * 참으로 두면(`||=` 형태), 앞의 초과분 등록이 뒤의 정량분 전표에 **진입로를 되살린다** —
+   * R-33이 고친 바로 그 결함이 다른 문으로 돌아오는 경로다.
+   *
+   * 링크가 실제로 섰다가 **사라지는 것**까지 한 시험에서 본다. 두 시험으로 가르면 「둘 다
+   * 링크 없음」인 상태가 뒤 시험만 통과시킨다.
+   */
+  it('초과분 갈래로 등록한 뒤 정량분만 저장하면 이동 경로가 사라진다', async () => {
+    const { user } = renderWithCreated(CREATED_ONE);
+
+    await setupRegister(user);
+    await clickRegister(user, t.actions.registerExcessOnly);
+
+    await screen.findByText(t.result.count(1));
+
+    /* 짝 양성 — 첫 등록에서는 길이 실제로 섰다. */
+    expect(
+      within(screen.getByRole('status', { name: t.panes.result })).getAllByRole('link'),
+    ).toHaveLength(1);
+
+    /* 성공하면 초안이 비므로 같은 화면에서 다시 채워 넣는다(수명 표 8행). */
+    await fillDraft(user, { 1: '66' });
+    await clickRegister(user, t.actions.registerNormalOnly);
+
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole('status', { name: t.panes.result })).queryAllByRole('link'),
+      ).toHaveLength(0);
+    });
+
+    /* 짝 양성 — 둘째 등록의 결과 구획도 실제로 서 있다(「구획이 사라져서 통과」를 막는다). */
+    expect(
+      within(screen.getByRole('status', { name: t.panes.result })).getByText('IR-2026-900010'),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * 짝 방향 — **한 건짜리 초과분 갈래**에서는 그 한 건에 길이 선다. 이것이 없으면
+   * 「두 건일 때만 링크」 같은 잘못된 게이트가 위 시험과 아래 시험을 함께 통과한다.
+   */
+  it('초과분만 저장한 결과에는 그 전표에 링크가 선다', async () => {
+    const { user } = renderWithCreated(CREATED_ONE);
+
+    await setupRegister(user);
+    await clickRegister(user, t.actions.registerExcessOnly);
+
+    await screen.findByText(t.result.count(1));
+
+    const result = screen.getByRole('status', { name: t.panes.result });
+
+    expect(within(result).getAllByRole('link')).toHaveLength(1);
+    expect(
+      within(result).getByRole('link', { name: t.result.registerPo('IR-2026-900010') }),
+    ).toHaveAttribute('href', '/logistics/po-register?receipt=9601');
+  });
+
+  /*
+   * **C34** — 초과분이 실린 갈래 안에서는 **전표마다** 길이 선다. 두 건일 때 하나로 합치면
+   * 어느 전표를 정산하는지 화면이 지어내야 하는데, 응답은 그것을 알려 주지 않는다(계획 결정 3).
+   */
+  it('등록 결과에는 전표마다 링크가 서고 주소에 그 전표가 실린다', async () => {
+    const { user } = renderWithCreated();
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText(t.result.count(2));
+
+    const result = screen.getByRole('status', { name: t.panes.result });
+
+    expect(within(result).getAllByRole('link')).toHaveLength(2);
+    expect(
+      within(result).getByRole('link', { name: t.result.registerPo('IR-2026-900010') }),
+    ).toHaveAttribute('href', '/logistics/po-register?receipt=9601');
+    expect(
+      within(result).getByRole('link', { name: t.result.registerPo('IR-2026-900011') }),
+    ).toHaveAttribute('href', '/logistics/po-register?receipt=9602');
+  });
+
+  /*
+   * **C36** — 링크가 생기면서 내부 번호가 화면 자료로 들어왔다. **주소에만 실리고 글자로는
+   * 나오지 않는다**(#44의 본뜻) — 이 단언은 이제 실제로 값이 흐르는 자리를 잰다.
+   */
+  it('링크가 선 뒤에도 결과 구획 글자에 내부 번호가 없다', async () => {
+    const { user } = renderWithCreated();
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText(t.result.count(2));
+
+    const result = screen.getByRole('status', { name: t.panes.result });
+
+    /* 짝 양성 — 업무 번호는 실제로 보인다. */
+    expect(within(result).getByText('IR-2026-900010')).toBeInTheDocument();
+
+    for (const id of ['9601', '9602']) {
+      expect(result.textContent ?? '').not.toContain(id);
+    }
+  });
+
+  /*
+   * **C37의 화면 몫** — 누르면 그 전표의 맥락을 실은 주소로 이동하고 **뒤로가기 한 번**으로
+   * 이 결과 화면에 돌아온다. 히스토리가 두 칸 늘면 사용자는 같은 결과 화면을 두 번 지나야 한다.
+   *
+   * 도착한 화면이 그 맥락으로 서는지는 **라우트 표를 실제로 태우는 자리**가 잰다
+   * (`routes/index.test.tsx`) — 이 슬라이스의 하네스에는 그 화면의 라우트가 없다.
+   */
+  it('링크를 누르면 그 전표의 주소로 가고 뒤로가기 한 번에 돌아온다', async () => {
+    const { user } = renderWithCreated();
+
+    await setupRegister(user);
+    await clickRegister(user);
+
+    await screen.findByText(t.result.count(2));
+
+    const before = currentLocation();
+
+    await user.click(screen.getByRole('link', { name: t.result.registerPo('IR-2026-900011') }));
+
+    expect(currentLocation()).toBe('/logistics/po-register?receipt=9602');
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    expect(currentLocation()).toBe(before);
   });
 });

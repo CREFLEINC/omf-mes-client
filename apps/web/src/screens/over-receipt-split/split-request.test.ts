@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { purchaseOrder, purchaseOrderLineFixtures } from './fixtures';
 import { toSplitLines } from './split-calc';
 import { EMPTY_HEADER_DRAFT, type HeaderDraft } from './types';
-import { toBusinessDate, toOccurredAt, toSplitParts, toSplitRequest } from './split-request';
+import {
+  includesExcess,
+  toBusinessDate,
+  toOccurredAt,
+  toSplitParts,
+  toSplitRequest,
+} from './split-request';
 
 /**
  * 요청 조립 — **되돌릴 수 없는 쓰기의 본문을 만드는 자리다.**
@@ -153,6 +159,29 @@ describe('toSplitRequest — 세 갈래', () => {
     expect(request.excess?.lines).toHaveLength(1);
     expect(request.normal).toBeUndefined();
     expect(Object.keys(request)).not.toContain('normal');
+  });
+});
+
+/**
+ * **초과분이 실리는 갈래인가** — 요청 본문과 등록 뒤 화면이 **같은 판정**을 쓴다.
+ *
+ * 등록 결과에 신규 P/O 등록 진입로를 세울지가 이 값에 달렸다(계획 D-14 ② 개정). 두 곳에서
+ * 따로 가르면 한쪽만 고쳐진 채 남고, 그때 정량분 전표에 「정산할 초과분」으로 가는 길이 선다.
+ */
+describe('includesExcess — 갈래가 초과분을 싣는가', () => {
+  it('세 갈래를 각각 가른다', () => {
+    expect(includesExcess('BOTH')).toBe(true);
+    expect(includesExcess('EXCESS_ONLY')).toBe(true);
+    expect(includesExcess('NORMAL_ONLY')).toBe(false);
+  });
+
+  /* 요청 조립과 **같은 답**을 내야 한다 — 판정이 갈리면 본문과 화면이 다른 사실을 말한다. */
+  it('요청 본문의 초과분 part 유무와 답이 같다', () => {
+    for (const mode of ['BOTH', 'EXCESS_ONLY', 'NORMAL_ONLY'] as const) {
+      const request = toSplitRequest(mode, input({ 9401: '66' }));
+
+      expect(request.excess !== undefined).toBe(includesExcess(mode));
+    }
   });
 });
 

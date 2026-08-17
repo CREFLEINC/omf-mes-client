@@ -163,6 +163,19 @@ const toExcessPart = (input: SplitInput, lines: LineUpsert[]): SplitPart => ({
 });
 
 /**
+ * 이 갈래가 **초과분을 싣는가.**
+ *
+ * 요청 조립의 `excess` 조건과 **같은 자리에서 온다** — 두 곳에서 따로 판정하면 한쪽만 고쳐진 채
+ * 남는다. 이 값은 요청 본문뿐 아니라 **등록 뒤에도 쓰인다**: 초과분을 싣지 않은 갈래로 만들어진
+ * 전표는 정의상 정량분이므로 그 전표에 신규 P/O 등록 진입로를 세우지 않는다(계획 D-14 ② 개정).
+ *
+ * **「어느 전표가 초과분인가」를 판정하는 것이 아니다.** 그것은 응답이 알려 주지 않아 화면이
+ * 지어내면 안 되는 값이고(계획 결정 3), 여기서 아는 것은 **사용자가 방금 누른 버튼**뿐이다 —
+ * 초과분이 실린 갈래(`BOTH`)에서는 전표별 구분을 여전히 하지 않는다.
+ */
+export const includesExcess = (mode: SplitMode): boolean => mode !== 'NORMAL_ONLY';
+
+/**
  * 세 갈래 중 하나의 요청 본문.
  *
  * **`mode`를 인자로만 받는다** — 기본값을 두면 화면이 갈래를 넘기지 않아도 요청이 만들어져,
@@ -177,7 +190,7 @@ export const toSplitRequest = (mode: SplitMode, input: SplitInput): SplitRequest
   return {
     mode,
     ...(mode === 'EXCESS_ONLY' ? {} : { normal: toSharedPart(input, parts.normal) }),
-    ...(mode === 'NORMAL_ONLY' ? {} : { excess: toExcessPart(input, parts.excess) }),
+    ...(includesExcess(mode) ? { excess: toExcessPart(input, parts.excess) } : {}),
     /* 계약이 「영업일과 발생 시각은 바깥에서 한 번만 받는다」고 적었다 — part에 넣지 않는다. */
     businessDate: toBusinessDate(input.header.receiptDatetime),
     occurredAt: toOccurredAt(input.now),
