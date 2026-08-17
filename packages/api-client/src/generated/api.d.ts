@@ -6345,7 +6345,7 @@ export interface paths {
         };
         /**
          * 거래처 역할 교체
-         * @description W-06-06 「거래처 역할」 탭의 저장. ⭐ 목록을 통째로 교체한다 — 역할은 집합이고 (거래처, 역할)이 유일하다. ⛔ 거래처 본체는 고치지 않는다 — ERP 수신 마스터라 MES 는 읽기만 한다. ⭐ 2026-08-16 보완 — 저장 충돌 보호를 붙였다. 통째로 교체하는 저장이라 보호가 없으면 «남이 방금 붙인 역할»이 조용히 사라진다. 값은 상세 조회의 응답 헤더에서 받는다. ⭐ 2026-08-16 보완 — 저장 충돌 보호를 붙였다. 통째로 교체하는 저장이라 보호가 없으면 «남이 방금 붙인 역할»이 조용히 사라진다. 값은 «역할 목록 조회»(GET …/roles)의 ETag 응답 헤더에서 받는다. ⛔ 거래처 단건 조회 쪽이 아니다 — 거래처 본체는 기간계 수신 자료라 동기화마다 버전이 바뀌어 «역할을 고치지 않은 사용자»까지 저장 충돌을 보게 된다. 잠그는 대상(역할 집합)과 버전 축을 일치시킨다.
+         * @description W-06-06 「거래처 역할」 탭의 저장. ⭐ 목록을 통째로 교체한다 — 역할은 집합이고 (거래처, 역할)이 유일하다. ⛔ 거래처 본체는 고치지 않는다 — ERP 수신 마스터라 MES 는 읽기만 한다. ⭐ 2026-08-16 보완 — 저장 충돌 보호를 붙였다. 통째로 교체하는 저장이라 보호가 없으면 «남이 방금 붙인 역할»이 조용히 사라진다. 값은 «역할 목록 조회»(GET …/roles)의 ETag 응답 헤더에서 받는다. ⛔ 거래처 단건 조회 쪽이 아니다 — 거래처 본체는 기간계 수신 자료라 동기화마다 버전이 바뀌어 «역할을 고치지 않은 사용자»까지 저장 충돌을 보게 된다. 잠그는 대상(역할 집합)과 버전 축을 일치시킨다.
          */
         put: {
             parameters: {
@@ -6546,6 +6546,8 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -6801,6 +6803,8 @@ export interface paths {
                 /** @description 목록 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -9461,6 +9465,8 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -13947,6 +13953,8 @@ export interface paths {
                 /** @description 목록 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -14155,6 +14163,8 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 ⭐ 확인(:acknowledge)은 이 판을 «올리지 않는다» — 잠그는 대상은 공지 «본문»이고 확인은 별개 기록이다. 확인이 쌓일 때마다 판이 오르면 관리자가 본문을 고치려 할 때 「남이 먼저 고쳤다」를 보게 된다. 고친 사람은 없고 읽은 사람만 있는데도. 근거: 공유계약 G-30 — 잠그는 대상과 버전 축을 일치시킨다. */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
