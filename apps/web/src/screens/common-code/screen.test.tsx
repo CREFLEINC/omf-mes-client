@@ -3742,12 +3742,17 @@ const partnerListRoute = (
 /**
  * 역할 조회가 내려 주는 잠금 토큰. 치환의 `If-Match`가 **이 값 그대로**여야 한다.
  *
- * ⚠ **지금 계약은 이 헤더를 선언하지 않는다**(#174 답변 대기). 그래도 목이 주는 상태를
- * 기본으로 두는 이유는, 계약이 치환에 `If-Match`를 **필수**로 요구해(#173) 토큰이 없으면
- * 저장이 요청조차 만들지 못하기 때문이다 — 「서버가 계약대로 동작할 때」가 이 상태다.
- * 토큰이 없는 지금의 현실은 `partnerRolesRouteWithoutEtag`가 따로 재현한다.
+ * **계약이 이 헤더를 선언한다**(#174 — 이 자원의 토큰 원천이 역할 목록 조회로 확정됐다).
+ * 그래서 이것이 기본 상태다. 서버가 아직 주지 않는 상태는 `partnerRolesRouteWithoutEtag`가
+ * 따로 재현한다 — 계약이 치환에 `If-Match`를 **필수**로 요구하므로(#173) 그때 저장은 요청조차
+ * 만들지 못한다.
  */
 const ROLES_ETAG = '"7"';
+
+/**
+ * 재조회가 주는 **다른** 토큰. 값이 갈리는 것 자체가 요점이라 `ROLES_ETAG`와 같아서는 안 된다.
+ */
+const ROLES_ETAG_AFTER_RELOAD = '"8"';
 
 /** 역할 목록 응답. **잠금 토큰을 얹는다** — 이 경로가 치환의 `If-Match` 원천이다. */
 const rolesResponse = (roles: unknown): Response =>
@@ -3760,7 +3765,9 @@ const partnerRolesRoute = (partnerId = 9001, roles = partnerRoleFixtures): StubR
 });
 
 /**
- * 잠금 토큰을 주지 않는 역할 목록 — **계약이 `ETag`를 선언하지 않은 지금의 현실**(#174).
+ * 잠금 토큰을 주지 않는 역할 목록 — **계약은 선언했으나 서버가 아직 주지 않는 상태**(#174).
+ *
+ * 그 상태가 실제로 있을 수 있으므로 갈래를 지운다는 뜻이 아니다 — 계약은 구현보다 앞선다.
  *
  * 부여분을 인자로 받는다. 기본값은 어휘 밖 코드가 없는 쪽이라 **토큰 축만** 갈리고,
  * 어휘 밖 코드까지 얹으면 두 갈래가 만나는 실사용 경로가 된다(확인 창 → 토큰 벽).
@@ -3775,6 +3782,14 @@ const partnerRolesRouteWithoutEtag = (
 
 const partnerRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, PARTNERS_PATH);
+
+/**
+ * 역할 **조회**만 센다 — 치환(`PUT`)이 같은 경로를 쓰므로 경로만으로 걸러 내면 쓰기까지 섞인다.
+ */
+const roleGetRequests = (requests: RecordedRequest[], partnerId = 9001): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'GET' && request.url.pathname === partnerRolesPath(partnerId),
+  );
 
 const partnerPane = (): HTMLElement => screen.getByRole('region', { name: '거래처' });
 
@@ -4242,11 +4257,71 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
   });
 
   /**
-   * **토큰이 없으면 요청을 만들지 않고, 안내는 이 자원의 사실을 말한다**(#174 답변 대기).
+   * **재조회가 준 새 토큰이 다음 저장에 실린다** — 잠금 토큰의 **갱신 경로**를 잰다(#174).
    *
-   * 계약이 `If-Match`를 필수로 요구하는데 `/mdm/partners*`의 어느 응답도 `ETag`를 선언하지
-   * 않는다. 그 상태에서 화면이 할 수 있는 정직한 일은 **보내지 않고 안내하는 것**이다 —
-   * 빈 헤더를 지어 보내면 서버가 400으로 되돌리고 사용자는 원인을 읽을 수 없다.
+   * 위 감지기는 「토큰을 싣는가」만 잰다. 한 번 잡아 둔 값을 계속 다시 쓰는 화면도 그것을
+   * 통과하는데, 그러면 두 번째 저장은 **낡은 토큰**으로 나가 매번 충돌한다. 지금까지의 스텁은
+   * 회차와 무관하게 같은 토큰을 주어 그 어긋남을 드러낼 수 없었다.
+   *
+   * copy-checklist 「두 스텁 형태」의 **헤더만 바뀌는 쪽**이다 — 내용은 그대로 두고 토큰만
+   * 갈아 「값이 갱신됐다」의 축을 토큰 하나로 가둔다(내용까지 바뀌는 쪽은 충돌 구획이 맡는다).
+   *
+   * 치환 응답에는 `ETag`를 **싣지 않는다.** 실으면 쓰기 응답으로 갱신됐는지 재조회로 갱신됐는지
+   * 갈리지 않는다 — 쓰기 응답 쪽 갱신은 `packages/api-client`의 단위 시험이 이미 덮는다.
+   */
+  it('재조회가 새 토큰을 주면 다음 저장이 그 새 값을 싣는다', async () => {
+    let roleCalls = 0;
+
+    const { requests, user } = renderScreen(
+      [
+        partnerListRoute(),
+        {
+          match: (request) => isGet(request, partnerRolesPath(9001)),
+          respond: () => {
+            roleCalls += 1;
+
+            return jsonResponse(vocabularyRoleFixtures, {
+              headers: { ETag: roleCalls === 1 ? ROLES_ETAG : ROLES_ETAG_AFTER_RELOAD },
+            });
+          },
+        },
+        rolesReplaceRoute(() => jsonResponse(vocabularyRoleFixtures)),
+      ],
+      '?tab=partner&ptn=9001',
+    );
+    await screen.findByText('고객사');
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(1);
+    });
+    expect(putRequests(requests)[0]?.headers.get('If-Match')).toBe(ROLES_ETAG);
+
+    /* 무효화가 낸 재조회가 새 토큰을 들고 도착한 뒤에 다시 저장한다. */
+    await waitFor(() => {
+      expect(roleGetRequests(requests)).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(partnerSaveButton()).toBeDisabled();
+    });
+
+    await user.click(roleCheckbox('공급사'));
+    await user.click(partnerSaveButton());
+
+    await waitFor(() => {
+      expect(putRequests(requests)).toHaveLength(2);
+    });
+    expect(putRequests(requests)[1]?.headers.get('If-Match')).toBe(ROLES_ETAG_AFTER_RELOAD);
+  });
+
+  /**
+   * **토큰이 없으면 요청을 만들지 않고, 안내는 이 자원의 사실을 말한다.**
+   *
+   * 계약이 `If-Match`를 필수로 요구하고 토큰 원천도 선언했지만(#174), **서버가 그 헤더를 아직
+   * 주지 않는** 상태는 실제로 있을 수 있다. 그때 화면이 할 수 있는 정직한 일은 **보내지 않고
+   * 안내하는 것**이다 — 빈 헤더를 지어 보내면 서버가 400으로 되돌리고 사용자는 원인을 읽을 수 없다.
    *
    * 문구를 **전용 문구로 못박는다.** 공통 문구(`save.staleToken`)는 「잠시 뒤 다시 저장하세요」라
    * 이 자원에서는 영영 거짓이다 — 공통 훅이 붙이는 코드값이 바뀌어 화면의 갈래가 조용히
@@ -4279,9 +4354,9 @@ describe('CommonCodeScreen — 역할 체크와 저장 (C24·C29·C30)', () => {
   /**
    * **두 갈래가 만나는 자리 — 어휘 밖 역할 + 토큰 없음**(리뷰 M-3).
    *
-   * #174가 답을 주기 전까지 **실사용의 기본값**에 가까운 조합이다: 계약은 구현보다 앞서므로
-   * 서버가 어휘 밖 역할을 아직 들고 있을 수 있고(D-4의 존재 이유), 그 거래처에서 저장을
-   * 누르면 확인 창이 먼저 서고 승낙한 뒤에 토큰 벽을 만난다.
+   * 서버 구현이 계약을 따라오기 전까지 실제로 만날 수 있는 조합이다: 계약은 구현보다 앞서므로
+   * 서버가 어휘 밖 역할을 아직 들고 있을 수 있고(D-4의 존재 이유) 토큰도 아직 안 줄 수 있다 —
+   * 그 거래처에서 저장을 누르면 확인 창이 먼저 서고 승낙한 뒤에 토큰 벽을 만난다.
    *
    * 재는 것 셋 — ① 요청이 나가지 않는다 ② **창이 닫히지 않는다**(닫히면 사용자는 승낙이
    * 받아들여진 줄 안다) ③ 사유가 **창 안에서** 사실대로 보인다.
