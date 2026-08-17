@@ -39,6 +39,15 @@ export const PO_FORM_FIELDS: readonly string[] = [
   'expectedReceiptDate',
 ];
 
+/**
+ * 승인 요청에서 이 화면이 소유한 입력칸 이름 — **사유 하나뿐이다.**
+ *
+ * 요청 본문의 필드가 그것 하나라(계약 `ApprovalRequestCreate`) 넓히면 남의 오류가 사유 칸에
+ * 붙는다. **결재선이 없어 400이 오는 갈래는 배너로 간다** — 사용자가 고칠 칸이 화면에 없기
+ * 때문이다(결재선은 W-06-15가 정한다). 코드로 분기해 원인을 지어내지 않고 서버 문구를 그대로 낸다.
+ */
+export const SUBMIT_FORM_FIELDS: readonly string[] = ['reason'];
+
 /** 줄 안에서 오류·경고가 붙을 수 있는 칸. */
 export type LineFieldName =
   'itemId' | 'orderedQty' | 'uomId' | 'toleranceOverQty' | 'toleranceUnderQty';

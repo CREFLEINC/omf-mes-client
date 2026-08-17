@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import type { QueryClient } from '@tanstack/react-query';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -38,18 +39,30 @@ const ITEMS_PATH = '/mdm/items';
 const UOMS_PATH = '/mdm/uoms';
 
 /**
- * 이 화면이 **부르지 않는다는 것을 증명하려고** 두는 경로들.
+ * 발주 쪽 경로 셋.
  *
- * 스텁을 두지 않으면 하네스가 던져 「부르지 않았다」와 「불렀는데 실패했다」가 구분되지 않는다.
- * 발주 목록 조회는 이 화면이 그리지 않고(계획 §5.10), 결재 진행(`/app/approval-requests`)과
- * 상신(`…:request-approval`)은 각각 결재함과 뒤따르는 회차의 몫이다(계획 결정 9·11).
+ * **등록과 목록이 같은 경로를 쓴다** — 갈리는 것은 메서드다. 그래서 「목록을 부르지 않는다」는
+ * `GET`으로만 세고, 등록은 `POST`로 센다. 상세(`…/9001`)는 **상신의 잠금 토큰이 나오는 자리**라
+ * 목록과 다른 경로이고, 상신은 액션 경로다(계획 결정 10).
  *
- * **등록과 목록이 같은 경로를 쓴다** — 갈리는 것은 메서드다. 그래서 「부르지 않는다」는
- * `GET`으로만 세고, 등록은 `POST`로 센다.
+ * 결재 진행(`/app/approval-requests`)은 이 화면이 **부르지 않는다는 것을 증명하려고** 두는
+ * 경로다 — 스텁을 두지 않으면 하네스가 던져 「부르지 않았다」와 「불렀는데 실패했다」가
+ * 구분되지 않는다(계획 결정 11).
  */
 const PO_COLLECTION_PATH = '/logistics/purchase-orders';
+const PO_DETAIL_PATH = '/logistics/purchase-orders/9001';
 const APPROVAL_PATH = '/app/approval-requests';
 const SUBMIT_PATH = '/logistics/purchase-orders/9001:request-approval';
+
+/**
+ * **등록 201과 상세 200이 서로 다른 토큰을 준다**(둘 다 계약이 `ETag`를 내린다).
+ *
+ * 두 값을 같게 두면 상신이 어느 경로의 토큰을 실었는지 가릴 수 없다 — 컬렉션 경로에 잘못
+ * 앉힌 배선이 「우연히 맞는」 값으로 통과한다(계획 §5.2.1의 함정 · 뮤테이션 M-3).
+ */
+const CREATE_ETAG = 'W/"po-9001-create"';
+const DETAIL_ETAG = 'W/"po-9001-detail"';
+const RELOADED_ETAG = 'W/"po-9001-detail-2"';
 
 const ITEM_LABEL = 'SAMPLE-ITEM-01 · 합성 품목 가';
 const SUPPLIER_LABEL = 'SAMPLE-SUP-01 · 합성 공급사 가';
@@ -156,31 +169,82 @@ const failingReceiptRoute = (status: number): StubRoute => ({
 /**
  * 부를 수 있게 열어 두는 경로. **0건임을 증명하는 것이 목적이다.**
  *
- * 발주 쪽은 **`GET`만** 열어 둔다 — 등록(`POST`)은 같은 경로를 쓰지만 이 화면이 실제로 보내는
- * 요청이라, 한 규칙으로 뭉개면 「목록을 부르지 않는다」와 「등록을 보낸다」가 구분되지 않는다.
+ * 발주 **목록**은 경로를 정확히 맞춰 연다 — `startsWith`로 두면 상세(`…/9001`)까지 함께
+ * 삼켜, 상신이 토큰을 얻으려 부르는 조회가 목록 응답을 받는다.
  */
 const forbiddenRoutes = (): StubRoute[] => [
   {
-    match: (request) =>
-      request.method === 'GET' && new URL(request.url).pathname.startsWith(PO_COLLECTION_PATH),
+    match: (request) => isGet(request, PO_COLLECTION_PATH),
     respond: () => jsonResponse(listBody([])),
   },
   {
     match: (request) => new URL(request.url).pathname.startsWith(APPROVAL_PATH),
     respond: () => jsonResponse(listBody([])),
   },
-  /* 상신 경로도 열어 둔다 — **이 회차가 부르지 않는다**는 것을 세려면 스텁이 있어야 한다. */
-  {
-    match: (request) => isPost(request, SUBMIT_PATH),
-    respond: () => jsonResponse({ approvalRequestId: 9801 }, { status: 202 }),
-  },
 ];
 
-/** 등록이 성공하는 경로. 응답 본문은 계약과 같은 모양(머리 + 라인)이다. */
+/**
+ * 등록이 성공하는 경로. 응답 본문은 계약과 같은 모양(머리 + 라인)이다.
+ *
+ * **201도 `ETag`를 준다**(계약) — 그 토큰은 **컬렉션 경로**에 앉으므로 상신이 집어 가면 안 된다.
+ */
 const createRoute = (body: unknown = purchaseOrderDetailBody()): StubRoute => ({
   match: (request) => isPost(request, PO_COLLECTION_PATH),
-  respond: () => jsonResponse(body, { status: 201 }),
+  respond: () => jsonResponse(body, { status: 201, headers: { ETag: CREATE_ETAG } }),
 });
+
+/** 발주 상세 — **상신의 잠금 토큰이 나오는 유일한 자리**다(계획 결정 10). */
+const detailRoute = (etags: string[] = [DETAIL_ETAG]): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, PO_DETAIL_PATH),
+    respond: () => {
+      const etag = etags[Math.min(call, etags.length - 1)] ?? DETAIL_ETAG;
+
+      call += 1;
+
+      return jsonResponse(purchaseOrderDetailBody(), { headers: { ETag: etag } });
+    },
+  };
+};
+
+const failingDetailRoute = (status: number): StubRoute => ({
+  match: (request) => isGet(request, PO_DETAIL_PATH),
+  respond: () => jsonResponse({ message: '' }, { status }),
+});
+
+/** 상신 202. **응답에 `ETag`가 없다**(계약 실측) — 다음 쓰기의 토큰이 여기서 나오지 않는다. */
+const submitRoute = (): StubRoute => ({
+  match: (request) => isPost(request, SUBMIT_PATH),
+  respond: () => jsonResponse({ approvalRequestId: 9801 }, { status: 202 }),
+});
+
+const failingSubmitRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: (request) => isPost(request, SUBMIT_PATH),
+  respond: () => jsonResponse(body, { status }),
+});
+
+/**
+ * 처음에는 충돌하고 **다음 시도에서는 통과하는** 상신.
+ *
+ * 409는 「다시 읽으면 풀린다」는 뜻이라, 그것이 실제로 풀리는지 재려면 두 번째 시도가 달라야
+ * 한다 — 늘 실패하는 스텁으로는 「눌러도 영영 안 되는」 화면과 구분되지 않는다.
+ */
+const conflictThenOkSubmitRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isPost(request, SUBMIT_PATH),
+    respond: () => {
+      call += 1;
+
+      return call === 1
+        ? jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })
+        : jsonResponse({ approvalRequestId: 9801 }, { status: 202 });
+    },
+  };
+};
 
 const failingCreateRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
   match: (request) => isPost(request, PO_COLLECTION_PATH),
@@ -244,10 +308,12 @@ const renderScreen = (
   requests: RecordedRequest[];
   release: () => void;
   user: ReturnType<typeof userEvent.setup>;
+  /** 재조회를 실제로 일으키는 유일한 수단. 앱에서는 연결 복구가 그 자리다(아래 R-5 감지기) */
+  queryClient: QueryClient;
 } => {
   const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
-  renderWithProviders(
+  const { queryClient } = renderWithProviders(
     <>
       <PoRegisterScreen />
       <LocationProbe />
@@ -256,7 +322,7 @@ const renderScreen = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, release, user: userEvent.setup() };
+  return { requests, release, user: userEvent.setup(), queryClient };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -332,6 +398,43 @@ const setupAndRegister = async (user: ReturnType<typeof userEvent.setup>): Promi
 };
 
 const resultPane = (): HTMLElement => screen.getByRole('region', { name: t.result.label });
+
+/** 상신까지 갈 수 있는 한 벌 — 상세와 상신 경로가 함께 열린다. */
+const approvalRoutes = (
+  submit: StubRoute = submitRoute(),
+  detail: StubRoute = detailRoute(),
+): StubRoute[] => [detail, submit, ...registerRoutes()];
+
+const reasonInput = (): HTMLElement => within(resultPane()).getByLabelText(t.submit.reason);
+
+const requestApprovalButton = (): HTMLElement =>
+  within(resultPane()).getByRole('button', { name: t.actions.requestApproval });
+
+const confirmSubmitButton = (): HTMLElement =>
+  screen.getByRole('button', { name: new RegExp(t.actions.confirmSubmit) });
+
+/** 사유를 치고 확인 창을 **연다.** 실행은 갈라 둔다 — 창만 열린 상태도 재야 한다. */
+const openSubmitConfirm = async (
+  user: ReturnType<typeof userEvent.setup>,
+  reason = '초과 입하분 정산 발주',
+): Promise<void> => {
+  await user.type(reasonInput(), reason);
+  await user.click(requestApprovalButton());
+};
+
+/** 등록을 마치고 상신 확인 창의 실행까지 누른다. */
+const registerAndSubmit = async (
+  user: ReturnType<typeof userEvent.setup>,
+  reason = '초과 입하분 정산 발주',
+): Promise<void> => {
+  await setupAndRegister(user);
+  await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+  await openSubmitConfirm(user, reason);
+  await user.click(confirmSubmitButton());
+};
+
+const submitRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname === SUBMIT_PATH);
 
 describe('W-01-11 신규 P/O 등록 — 진입 맥락(C1)', () => {
   it('맥락이 있으면 입하 상세를 정확히 1회 부르고 전표와 라인을 보인다', async () => {
@@ -1132,9 +1235,13 @@ describe('등록 성공(C20·C21·C23·C24)', () => {
    *
    * 주 사본이 된 전례는 한 버튼이 등록+상신 두 요청을 이었다 — 그 형태를 베끼면 이 화면이
    * 착수 이슈를 어긴다. 요청 로그와 화면을 **함께** 잰다.
+   *
+   * **앞 회차의 「결과 구획에 버튼이 하나도 없다」를 이 사실로 다시 썼다**(정책 §8.1 — 지우지
+   * 않는다). 상신이 붙은 지금 그 자리에는 「승인 요청」이 서지만, **버튼이 서는 것과 요청이
+   * 나가는 것은 다르다** — 등록만으로는 상신도 상세 조회도 0건이다.
    */
-  it('등록만으로는 상신 요청이 나가지 않고 승인 요청 버튼도 없다', async () => {
-    const { requests, user } = renderScreen(registerRoutes());
+  it('등록만으로는 상신 요청이 나가지 않는다 — 자리는 서고 요청은 0건', async () => {
+    const { requests, user } = renderScreen(approvalRoutes());
 
     await setupAndRegister(user);
 
@@ -1142,8 +1249,10 @@ describe('등록 성공(C20·C21·C23·C24)', () => {
 
     expect(requestsTo(requests, SUBMIT_PATH)).toHaveLength(0);
     expect(requestsTo(requests, APPROVAL_PATH)).toHaveLength(0);
+    expect(getsTo(requests, PO_DETAIL_PATH)).toHaveLength(0);
     expect(createRequests(requests)).toHaveLength(1);
-    expect(within(resultPane()).queryAllByRole('button')).toHaveLength(0);
+    /* 짝 — 상신 자리는 등록 뒤에 실제로 선다(계획 결정 9의 나머지 반쪽). */
+    expect(requestApprovalButton()).toBeVisible();
   });
 
   /** 이 화면은 발주 **목록을 조회하지 않는다** — 등록 성공이 없는 목록을 다시 부르지 않는다. */
@@ -1390,5 +1499,450 @@ describe('취소와 버리기 확인 창(C26)', () => {
     await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
 
     expect(screen.getByLabelText(t.fields.businessUnit)).toHaveTextContent('합성 사업부 가');
+  });
+});
+
+/**
+ * **등록과 상신은 별개 동작이다**(착수 이슈 §6 ③ · 계획 결정 9).
+ *
+ * 등록이 끝나야 상신 자리가 서고, 그 자리에서 사유를 적어야 올릴 수 있다.
+ */
+describe('상신 자리와 사유(C27)', () => {
+  /** 등록 **전에는** 올릴 대상 자체가 없다 — 잠긴 버튼을 미리 세워 두지 않는다. */
+  it('등록 전에는 사유 칸도 승인 요청 버튼도 없다', async () => {
+    const { user } = renderScreen(approvalRoutes());
+
+    await waitForSource();
+    await fillHeader(user);
+
+    /* 짝 양성 — 화면은 다 그려졌고 등록은 열려 있다. */
+    expect(registerButton()).toBeEnabled();
+    expect(screen.queryByLabelText(t.submit.reason)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.actions.requestApproval }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * **공백만인 사유는 빈 값과 같다**(완료 조건 C27).
+   *
+   * 목이 공백만을 202로 통과시키므로(실측) 막는 곳이 화면뿐이다 — 통과하면 결재함 목록의
+   * 요약이 빈 요청이 올라간다.
+   */
+  it('사유가 공백만이면 승인 요청이 잠기고 사유가 보이며 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(approvalRoutes());
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+
+    expect(requestApprovalButton()).toBeDisabled();
+    expect(within(resultPane()).getByText(t.actionReasons.reasonRequired)).toBeVisible();
+
+    await user.type(reasonInput(), '   ');
+
+    expect(requestApprovalButton()).toBeDisabled();
+
+    await user.click(requestApprovalButton());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(submitRequests(requests)).toHaveLength(0);
+    expect(getsTo(requests, PO_DETAIL_PATH)).toHaveLength(0);
+  });
+
+  /** 사유를 적으면 열린다 — 짝 방향. 「늘 잠긴다」로 통과하지 않게 한다. */
+  it('사유를 적으면 승인 요청이 열리고 잠긴 사유가 사라진다', async () => {
+    const { user } = renderScreen(approvalRoutes());
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+
+    await user.type(reasonInput(), '정산');
+
+    expect(requestApprovalButton()).toBeEnabled();
+    expect(
+      within(resultPane()).queryByText(t.actionReasons.reasonRequired),
+    ).not.toBeInTheDocument();
+  });
+
+  /** 확인 창은 **친 사유에서 나온 글자**를 보인다 — 창이 다시 다듬거나 뽑지 않는다. */
+  it('확인 창이 사유 전문과 첫 줄을 나눠 보인다', async () => {
+    const { user } = renderScreen(approvalRoutes());
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+
+    await user.type(reasonInput(), '  요약 줄  ');
+    await user.click(requestApprovalButton());
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText('SAMPLE-PO-9001')).toBeVisible();
+    expect(
+      within(within(dialog).getByRole('region', { name: t.dialog.reasonFirstLine })).getByText(
+        '요약 줄',
+      ),
+    ).toBeVisible();
+    expect(within(dialog).getByText(t.dialog.submitApprover)).toBeVisible();
+  });
+});
+
+/**
+ * **상신은 요청 둘을 잇는다**(완료 조건 C28 · 계획 결정 10) — 상세로 토큰을 얻고 그 토큰으로
+ * 올린다. 등록 201이 준 토큰은 **컬렉션 경로**에 앉아 있어 쓸 수 없다.
+ */
+describe('상신 요청(C28·C29)', () => {
+  it('상세 조회 → 상신 순으로 2회 나가고 If-Match가 상세 응답의 ETag와 같다', async () => {
+    const { requests, user } = renderScreen(approvalRoutes());
+
+    await registerAndSubmit(user);
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    const detailCalls = getsTo(requests, PO_DETAIL_PATH);
+    const submitted = submitRequests(requests)[0];
+
+    expect(detailCalls).toHaveLength(1);
+    /* 순서 — 토큰을 얻기 전에 올리면 계약 위반(목이 400으로 되돌린다). */
+    expect(requests.indexOf(detailCalls[0] as RecordedRequest)).toBeLessThan(
+      requests.indexOf(submitted as RecordedRequest),
+    );
+    expect(submitted?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+    /* **등록이 준 토큰이 아니다** — 뮤테이션 M-3이 겨누는 자리. */
+    expect(submitted?.headers.get('If-Match')).not.toBe(CREATE_ETAG);
+    expect(submitted?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  /**
+   * **본문이 사유 하나뿐이다**(완료 조건 C29 · 착수 이슈 §6 ④).
+   *
+   * 승인 유형·승인자·결재선을 화면이 보내지 않는다 — 계약에 자리가 없고, 승인 주체는 결재선
+   * 정의가 정한다.
+   */
+  it('상신 본문의 키가 사유 하나이고 앞뒤 공백이 다듬어져 있다', async () => {
+    const { requests, user } = renderScreen(approvalRoutes());
+
+    await registerAndSubmit(user, '  정산 발주  ');
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    const body = (submitRequests(requests)[0]?.body ?? {}) as Record<string, unknown>;
+
+    expect(Object.keys(body)).toEqual(['reason']);
+    expect(body.reason).toBe('정산 발주');
+  });
+
+  /**
+   * **상세와 상신 사이의 틈에서도 두 번 나가지 않는다.**
+   *
+   * 실행을 누르면 상세 GET이 먼저 나가는데 그 응답이 오기 전에는 쓰기 훅이 아직 나가는 중이
+   * 아니다 — 그 틈에 한 번 더 누르면 연쇄가 두 벌 돌고, 공통 훅이 호출마다 새 멱등 키를
+   * 만들어 결재 요청이 두 건이 된다.
+   */
+  it('상세를 붙잡아 둔 사이에 두 번 눌러도 상신은 한 번만 나간다', async () => {
+    const { requests, release, user } = renderScreen(approvalRoutes(), '?receipt=9101', [
+      PO_DETAIL_PATH,
+    ]);
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+    await openSubmitConfirm(user);
+    await user.click(confirmSubmitButton());
+
+    /* 상세가 붙잡힌 동안 창의 두 버튼이 잠긴다 — 실행 버튼만 잠그면 닫고 다시 누른다. */
+    expect(confirmSubmitButton()).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.keepEditing })).toBeDisabled();
+
+    await user.click(confirmSubmitButton());
+    release();
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+    expect(getsTo(requests, PO_DETAIL_PATH)).toHaveLength(1);
+  });
+
+  /** 나가는 중에는 **사유 칸도 함께 잠긴다** — 보내는 글자와 화면의 글자가 갈리면 안 된다. */
+  it('상신이 나가는 중에는 사유 칸이 잠기고 사유가 보인다', async () => {
+    const { release, user } = renderScreen(approvalRoutes(), '?receipt=9101', [PO_DETAIL_PATH]);
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+    await openSubmitConfirm(user);
+    await user.click(confirmSubmitButton());
+
+    expect(reasonInput()).toBeDisabled();
+    expect(within(resultPane()).getByText(t.actionReasons.submitting)).toBeVisible();
+
+    release();
+  });
+});
+
+/**
+ * **올린 뒤에는 결재함이 정본이다**(완료 조건 C30 · 계획 결정 11).
+ */
+describe('상신 성공(C30)', () => {
+  it('결재에 올렸다고 말하고 결재함을 가리키며 확인 창이 닫힌다', async () => {
+    const { user } = renderScreen(approvalRoutes());
+
+    await registerAndSubmit(user);
+
+    await screen.findByText(t.result.submittedTitle('SAMPLE-PO-9001'));
+
+    expect(within(resultPane()).getByText(t.result.submittedDescription)).toBeVisible();
+    /* 전표번호는 남는다 — 사용자가 옮겨 적는 값이다. */
+    expect(within(resultPane()).getByText('SAMPLE-PO-9001')).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /**
+   * **결재 대기 목록·진행 단계를 두지 않고 그 조회도 하지 않는다**(착수 이슈 §6 ③).
+   *
+   * 음성 단언 앞에 **짝 양성**을 세운다 — 올라간 뒤의 화면을 실제로 그린 상태에서 잰다.
+   */
+  it('결재 진행을 조회하지도 그리지도 않는다', async () => {
+    const { requests, user } = renderScreen(approvalRoutes());
+
+    await registerAndSubmit(user);
+
+    await screen.findByText(t.result.submittedTitle('SAMPLE-PO-9001'));
+
+    expect(requestsTo(requests, APPROVAL_PATH)).toHaveLength(0);
+    expect(within(resultPane()).queryAllByRole('table')).toHaveLength(0);
+    expect(within(resultPane()).queryAllByRole('list')).toHaveLength(0);
+  });
+
+  /**
+   * **상세 키 무효화가 재조회를 부르지 않는다.** 이 화면에는 그 키를 보는 구획이 없다 —
+   * 무효화는 다음 쓰기가 낡은 토큰을 쓰지 않게 하려는 것이고, 응답을 다시 그리려는 것이 아니다.
+   */
+  it('올린 뒤에 상세를 다시 부르지 않고 입하 상세도 그대로다', async () => {
+    const { requests, user } = renderScreen(approvalRoutes());
+
+    await registerAndSubmit(user);
+
+    await screen.findByText(t.result.submittedTitle('SAMPLE-PO-9001'));
+
+    expect(getsTo(requests, PO_DETAIL_PATH)).toHaveLength(1);
+    expect(requestsTo(requests, RECEIPT_PATH)).toHaveLength(1);
+  });
+
+  /** 올린 뒤에는 **다시 올릴 칸과 버튼을 두지 않는다** — 그 자리는 결재함 안내가 대신한다. */
+  it('올린 뒤에는 사유 칸과 승인 요청 버튼이 사라진다', async () => {
+    const { user } = renderScreen(approvalRoutes());
+
+    await registerAndSubmit(user);
+
+    await screen.findByText(t.result.submittedTitle('SAMPLE-PO-9001'));
+
+    expect(screen.queryByLabelText(t.submit.reason)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.actions.requestApproval }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * **상신이 실패해도 전표는 남는다**(완료 조건 C31).
+ *
+ * 통째로 실패라고 말하면 사용자가 처음부터 다시 만들어 전표가 두 벌 남는다.
+ */
+describe('상신 실패(C31)', () => {
+  it('검증 실패는 전표를 남기고 다시 올릴 길을 주며 창이 닫히지 않는다', async () => {
+    const { user } = renderScreen(approvalRoutes(failingSubmitRoute(400)));
+
+    await registerAndSubmit(user);
+
+    expect(await screen.findByText(t.result.submitFailedTitle('SAMPLE-PO-9001'))).toBeVisible();
+    expect(within(resultPane()).getByText(t.result.submitFailedDescription)).toBeVisible();
+    expect(within(resultPane()).getByText('SAMPLE-PO-9001')).toBeVisible();
+    /* 친 사유가 남아 있어야 **다시 올릴 길**이 실제 길이 된다. */
+    expect(reasonInput()).toHaveValue('초과 입하분 정산 발주');
+    expect(requestApprovalButton()).toBeEnabled();
+    expect(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  /** 서버가 사유 칸에 준 오류는 **그 칸에** 붙는다 — 배너로 옮기면 무엇을 고칠지 가리키지 못한다. */
+  it('사유에 대한 서버 오류는 사유 칸에 붙는다', async () => {
+    const { user } = renderScreen(
+      approvalRoutes(
+        failingSubmitRoute(400, {
+          errors: [{ scope: 'field', field: 'reason', code: 'INVALID', message: '합성 사유 문구' }],
+        }),
+      ),
+    );
+
+    await registerAndSubmit(user);
+
+    expect(await screen.findByText('합성 사유 문구')).toBeVisible();
+    expect(reasonInput()).toHaveAccessibleDescription(/합성 사유 문구/);
+    /*
+     * **인라인으로 소화된 실패도 실패다.** 배너로 올라오지 않았다고 「아직 아무 일도 없었다」로
+     * 그리면 상신이 한 번 튕긴 사실이 화면 어디에도 남지 않는다.
+     */
+    expect(screen.getByText(t.result.submitFailedTitle('SAMPLE-PO-9001'))).toBeVisible();
+  });
+
+  it('권한 없음은 권한 문구를 내고 창이 닫히지 않는다', async () => {
+    const { user } = renderScreen(approvalRoutes(failingSubmitRoute(403)));
+
+    await registerAndSubmit(user);
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeVisible();
+    expect(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  /**
+   * **409는 다시 읽으면 풀린다** — 이 화면은 상신 때마다 상세를 다시 부르므로 다시 누르면
+   * 실제로 새 토큰으로 나간다(완료 조건 C31).
+   */
+  it('저장 충돌에는 「최신 불러오기」가 서고 다시 누르면 새 토큰으로 올라간다', async () => {
+    const { requests, user } = renderScreen(
+      approvalRoutes(conflictThenOkSubmitRoute(), detailRoute([DETAIL_ETAG, RELOADED_ETAG])),
+    );
+
+    await registerAndSubmit(user);
+
+    expect(await screen.findByText(messages.conflict.user)).toBeVisible();
+    expect(screen.getByRole('button', { name: messages.conflict.reloadAction })).toBeVisible();
+    expect(screen.getByRole('dialog')).toBeVisible();
+
+    await user.click(confirmSubmitButton());
+
+    await screen.findByText(t.result.submittedTitle('SAMPLE-PO-9001'));
+
+    const submitted = submitRequests(requests);
+
+    expect(submitted).toHaveLength(2);
+    expect(submitted[0]?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+    expect(submitted[1]?.headers.get('If-Match')).toBe(RELOADED_ETAG);
+    expect(getsTo(requests, PO_DETAIL_PATH)).toHaveLength(2);
+  });
+
+  /** 「최신 불러오기」는 **토큰만 다시 받는다** — 친 사유가 사라지지 않는다. */
+  it('「최신 불러오기」를 눌러도 친 사유가 남는다', async () => {
+    const { requests, user } = renderScreen(
+      approvalRoutes(failingSubmitRoute(409, { conflictCause: 'user', message: '' })),
+    );
+
+    await registerAndSubmit(user);
+
+    await screen.findByText(messages.conflict.user);
+    await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+
+    await waitFor(() => {
+      expect(getsTo(requests, PO_DETAIL_PATH)).toHaveLength(2);
+    });
+    expect(reasonInput()).toHaveValue('초과 입하분 정산 발주');
+  });
+
+  /**
+   * **토큰을 얻지 못하면 보내지 않는다**(계획 결정 10 · 공통 훅의 규율).
+   *
+   * 빈 `If-Match`는 계약 위반이라 서버가 400으로 되돌린다 — 사용자가 고칠 수 없는 오류다.
+   */
+  it('상세를 못 부르면 상신을 보내지 않고 그 사실을 말한다', async () => {
+    const { requests, user } = renderScreen(approvalRoutes(submitRoute(), failingDetailRoute(500)));
+
+    await registerAndSubmit(user);
+
+    expect(await screen.findByText(messages.save.staleToken)).toBeVisible();
+    expect(submitRequests(requests)).toHaveLength(0);
+    expect(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  /**
+   * **Escape로 창이 닫혀도 나가는 상신이 무너지지 않는다**(사본 체크리스트 5번의 셋째 방어 ·
+   * 화면 겹).
+   *
+   * 부품은 「Escape를 상신으로 잇지 않는다」를 재고, 여기서는 **닫힌 뒤에도 결과가 도착하는가**를
+   * 잰다 — 창의 `onClose`가 쓰기를 되돌리면(`reset`) 나가는 요청의 되먹임이 통째로 사라진다.
+   */
+  it('전송 중 Escape로 창이 닫혀도 상신 결과가 도착한다', async () => {
+    const { requests, release, user } = renderScreen(approvalRoutes(), '?receipt=9101', [
+      PO_DETAIL_PATH,
+    ]);
+
+    await setupAndRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-PO-9001'));
+    await openSubmitConfirm(user);
+    await user.click(confirmSubmitButton());
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(within(resultPane()).getByText(t.actionReasons.submitting)).toBeVisible();
+
+    release();
+
+    await screen.findByText(t.result.submittedTitle('SAMPLE-PO-9001'));
+
+    expect(submitRequests(requests)).toHaveLength(1);
+  });
+});
+
+/**
+ * **재조회가 친 값을 되돌리지 않는다**(오케스트레이터 로그 T3 이관 ① · 검증 T1 r2 권고 A).
+ *
+ * 머리 초안의 되돌림 축이 응답 객체(`sourceData`)가 되면, 같은 전표를 다시 받는 것만으로 사용자가
+ * 친 사업부·발주일이 말없이 사라진다. 실경로는 **연결 복구 재조회**다 — 앱 기본값이
+ * `refetchOnReconnect: true`라 사용자가 아무것도 하지 않아도 일어난다.
+ *
+ * **호출 횟수에 따라 내용까지 달라지는 스텁**을 쓴다(사본 체크리스트 11번). 같은 값을 다시 주면
+ * 조회 캐시가 구조를 공유해 참조가 그대로라 축이 무엇이든 아무 일도 일어나지 않는다 — 그 스텁으로는
+ * 이 결함을 잡을 수 없다.
+ */
+describe('재조회와 친 값(이관 ①)', () => {
+  it('다른 줄의 값이 달라져 와도 친 값과 고른 줄의 초안이 남는다', async () => {
+    let call = 0;
+    const changingReceiptRoute: StubRoute = {
+      match: (request) => isGet(request, RECEIPT_PATH),
+      respond: () => {
+        call += 1;
+
+        /* 둘째 응답은 **고르지 않은 줄**만 달라진다 — 승계 원천(공급사·공장)은 그대로다. */
+        return jsonResponse(
+          inboundReceiptDetailBody([
+            inboundReceiptLineResponse(),
+            inboundReceiptLineResponse({
+              inboundReceiptLineId: 9112,
+              lineNo: 2,
+              itemId: 9502,
+              receivedQty: call === 1 ? 4 : 7,
+            }),
+          ]),
+        );
+      },
+    };
+
+    const { requests, queryClient, user } = renderScreen(
+      [changingReceiptRoute, ...lookupRoutes(), ...forbiddenRoutes()],
+      '?receipt=9101&line=9111',
+    );
+
+    await waitForSource();
+    await fillHeader(user);
+    await user.clear(qtyInput(1));
+    await user.type(qtyInput(1), '20');
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ['po-register', 'source-receipt', 9101] });
+    });
+
+    /* 짝 양성 — 재조회가 실제로 일어났고 바뀐 값이 대상 구획에 도착했다. */
+    expect(requestsTo(requests, RECEIPT_PATH)).toHaveLength(2);
+    await waitFor(() => {
+      expect(within(sourcePane()).getByText('7')).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText(t.fields.businessUnit)).toHaveTextContent('합성 사업부 가');
+    expect(screen.getByLabelText(t.fields.supplier)).toHaveTextContent(SUPPLIER_LABEL);
+    expect(qtyInput(1)).toHaveValue(20);
   });
 });
