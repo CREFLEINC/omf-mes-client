@@ -6216,6 +6216,162 @@ const iqcSkipApproval = {
   },
 } as const;
 
+/**
+ * W-01-11 신규 P/O 등록. **초과 입하분을 사후에 정산하기 위한 등록 전용 화면이다.**
+ *
+ * 이 회차 몫만 담는다 — 넘어온 초과분을 읽고, 그 줄을 승계한 발주 정보·라인을 치는 데까지다.
+ * 등록·승인 요청·결과 문구는 뒤따르는 회차에서 더한다.
+ *
+ * **「일반 구매 발주를 만드는 곳이 아니다」가 이 화면의 첫 문장이다.** 일반 발주는 바깥에서
+ * 발행돼 들어오고 이 화면은 그 규칙의 예외라, 예외라는 사실을 화면 안에서 늘 밝힌다.
+ *
+ * **상태·승인 유형의 값 목록을 화면이 정하지 않는다.** 서버가 준 값을 그대로 보이고
+ * 값 자체로 분기하지 않는다(공유계약 G-2).
+ */
+const poRegister = {
+  title: '신규 P/O 등록',
+  breadcrumbRoot: '자재창고',
+  panes: {
+    source: '대상 초과분',
+    header: '발주 정보',
+    lines: '발주 라인',
+  },
+  /**
+   * 화면 맨 위에 늘 서는 범위 안내. **맥락이 있든 없든 접지 않는다** —
+   * 이 화면을 일반 발주 등록으로 읽는 것이 이 화면에서 가장 비싼 오해다.
+   */
+  scope: {
+    title: '초과 입하분을 사후에 등록하는 화면입니다',
+    description:
+      '초과 입하 분리에서 넘어온 초과분을 정산할 P/O를 만듭니다. 일반 구매 발주는 이 화면에서 만들지 않습니다.',
+  },
+  fields: {
+    supplier: '공급사',
+    businessUnit: '사업부',
+    plant: '공장',
+    orderDate: '발주일',
+    expectedReceiptDate: '입고 예정일',
+  },
+  /** 넘어온 초과분 — **읽기 전용이다.** 값을 고치는 자리가 아니라 무엇을 정산하는지 밝히는 자리다. */
+  source: {
+    label: '대상 초과분',
+    inboundReceiptNo: '입하번호',
+    supplier: '공급사',
+    plant: '공장',
+    status: '상태',
+    lineNo: '줄번호',
+    item: '품목',
+    receivedQty: '입하수량',
+    uom: '단위',
+    choose: '대상 선택',
+    /** 고른 줄에 붙는 표식. 고른 뒤에는 버튼 자리를 이 표식이 대신한다 */
+    chosen: '대상',
+    /**
+     * 줄마다 같은 글자가 되풀이되므로 접근 이름에 줄번호를 넣되 **보이는 글자를 그대로 담는다** —
+     * 담지 않으면 음성 조작이 「대상 선택」으로 이 버튼을 부를 수 없다.
+     * **내부 번호를 쓰지 않는다** — 그것이 화면 밖으로 새는 또 하나의 경로다.
+     */
+    chooseRow: (lineNo: number): string => `${String(lineNo)}번 줄 대상 선택`,
+    inheritNote:
+      '고른 줄이 발주 라인 1행으로 승계됩니다. 발주수량 기본값은 입하수량이고, 그보다 적게 발주할 수 없습니다.',
+    singleLineNote: '입하 라인이 한 줄이라 그 줄이 대상으로 확정됐습니다.',
+  },
+  /**
+   * 발주 라인 표. **표 안의 입력칸이라 보이는 라벨을 둘 자리가 없다**(배치 규범 3의 이탈 조건) —
+   * 줄번호를 접근 이름에 넣어 어느 줄의 칸인지 밝힌다.
+   */
+  lineTable: {
+    lineNo: '줄번호',
+    item: '품목',
+    orderedQty: '발주수량',
+    uom: '단위',
+    toleranceOver: '초과 허용',
+    toleranceUnder: '부족 허용',
+    rowActions: '행 조작',
+    /** 승계된 줄이라는 표식. 품목·단위를 고를 수 없는 사정을 이 표식이 밝힌다. */
+    inherited: '승계',
+    itemLabel: (lineNo: number): string => `${String(lineNo)}번 줄 품목`,
+    orderedQtyLabel: (lineNo: number): string => `${String(lineNo)}번 줄 발주수량`,
+    uomLabel: (lineNo: number): string => `${String(lineNo)}번 줄 단위`,
+    toleranceOverLabel: (lineNo: number): string => `${String(lineNo)}번 줄 초과 허용`,
+    toleranceUnderLabel: (lineNo: number): string => `${String(lineNo)}번 줄 부족 허용`,
+    /** 승계 줄의 하한. 오류가 나기 전에 얼마 이상인지 읽히게 한다. */
+    minNote: (sourceQty: number): string => `초과분 ${String(sourceQty)} 이상`,
+  },
+  actions: {
+    addLine: '라인 추가',
+    removeLine: (lineNo: number): string => `${String(lineNo)}번 줄 삭제`,
+    register: '등록',
+  },
+  /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(배치 규범 4). */
+  actionReasons: {
+    noContext:
+      '등록은 넘어온 초과분이 있어야 할 수 있습니다. 초과 입하 분리에서 초과분을 등록한 뒤 그 결과에서 이어 오세요.',
+    /** 아직 못 받았거나 못 받게 된 두 사정을 **한 문장이 함께 맡는다** — 사용자가 할 일이 같다. */
+    sourceNotLoaded: '등록은 대상 초과분을 불러온 뒤에 할 수 있습니다.',
+    sourceLineNotChosen:
+      '등록은 대상 초과분을 고른 뒤에 할 수 있습니다. 위 구획에서 줄을 하나 고르세요.',
+    headerIncomplete: '등록은 발주 정보의 필수 항목을 채운 뒤에 할 수 있습니다.',
+    lineInvalid: '등록은 발주 라인의 오류를 고친 뒤에 할 수 있습니다.',
+    /* 보낼 자리가 아직 없다. 사유를 감추고 버튼만 두면 눌러도 아무 일이 없는 버튼이 된다. */
+    unavailable: '등록은 아직 보낼 수 없습니다. 등록 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+  },
+  errors: {
+    supplierRequired: '공급사를 고르세요.',
+    businessUnitRequired: '사업부를 고르세요.',
+    plantRequired: '공장을 고르세요.',
+    orderDateRequired: '발주일을 고르세요.',
+    itemRequired: '품목을 고르세요.',
+    uomRequired: '단위를 고르세요.',
+    qtyRequired: '발주수량을 넣으세요.',
+    qtyNotNumber: '발주수량은 숫자로 넣으세요.',
+    qtyNotPositive: '발주수량은 0보다 커야 합니다.',
+    /** **수량을 문구에 채운다** — 얼마까지 내릴 수 있는지 화면에서 읽혀야 고칠 수 있다. */
+    qtyBelowSource: (sourceQty: number): string =>
+      `초과분 ${String(sourceQty)}보다 적게 발주할 수 없습니다.`,
+    toleranceNotNumber: '허용치는 숫자로 넣으세요.',
+    toleranceNegative: '허용치는 0보다 작을 수 없습니다.',
+  },
+  /** 경고는 **막지 않는다.** 그대로 등록할 수 있고, 다만 무엇이 뒤따르는지 알린다. */
+  warnings: {
+    toleranceOverPositive: '초과 허용치를 크게 두면 다음 초과 입하도 같은 처리가 필요해집니다.',
+    supplierChanged:
+      '승계된 공급사와 다른 곳을 골랐습니다. 초과분을 보낸 곳과 발주를 받는 곳이 갈립니다.',
+  },
+  values: {
+    unknown: '알 수 없음',
+    referenceLoading: '이름 불러오는 중',
+    referenceFailed: '이름 불러오기 실패',
+    empty: '—',
+    inactiveSuffix: ' (미사용)',
+  },
+  lookups: {
+    truncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+    failed: '선택지를 불러오지 못했습니다.',
+  },
+  loading: {
+    sourceReceipt: '대상 초과분을 불러오는 중',
+  },
+  empty: {
+    noContextTitle: '넘어온 초과분이 없습니다',
+    noContextDescription:
+      '초과 입하 분리에서 초과분을 등록하면 그 결과에서 이 화면으로 올 수 있습니다.',
+    noSourceLinesTitle: '이 입하 전표에는 라인이 없습니다',
+    noSourceLinesDescription:
+      '승계할 줄이 없어 발주를 만들 수 없습니다. 대상 전표를 다시 확인하세요.',
+    noTargetTitle: '아직 대상 초과분을 고르지 않았습니다',
+    noTargetDescription: '위 구획에서 줄을 하나 고르면 그 줄이 발주 라인 1행으로 승계됩니다.',
+  },
+  reasons: {
+    referencesFailed:
+      '공급사·사업부·공장·품목·단위 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+  },
+  notes: {
+    /** 줄번호를 화면이 정하지 않는다는 사실(공유계약 A-5). 표의 번호는 위치일 뿐이다. */
+    lineNoAssignedByServer: '줄번호는 등록할 때 배열 순서대로 매겨집니다.',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -6244,6 +6400,7 @@ export const ko = {
   approvalRoute,
   approvalInbox,
   iqcSkipApproval,
+  poRegister,
 } as const;
 
 export type Messages = typeof ko;
