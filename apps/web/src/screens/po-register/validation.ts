@@ -75,30 +75,43 @@ export const validateHeader = (draft: HeaderDraft): Record<string, string> => {
  * **형식 오류를 수의 값역 안에 담지 않는다.** 센티넬(`NaN`)로 두면 검사 한 줄을 빠뜨리는 순간
  * 그 값이 계산과 요청 본문으로 흘러가 JSON `null`로 직렬화된다 — 되돌릴 수 없는 쓰기에서
  * 그 사고가 나는 자리를 전례가 타입으로 막아 두었다(전례 `line-draft.ts`의 `QtyParse`).
- * 보낼 본문을 만드는 회차가 이 파서를 쓰게 되면 그때 export한다.
  */
-type QtyParse =
-  { kind: 'empty' } | { kind: 'invalid'; message: string } | { kind: 'qty'; value: number };
+export type QtyRead = { kind: 'empty' } | { kind: 'invalid' } | { kind: 'qty'; value: number };
 
 /**
- * 친 글자를 수량으로 읽는다.
+ * 친 글자를 수량으로 읽는다. **문구를 모른다.**
  *
  * `Number()`는 공백을 `0`으로 읽고 `Infinity`를 숫자로 읽는다 — 둘 다 여기서 걸러 낸다.
  * 걸러 내지 않으면 요청 본문에 `0`이나 `null`(직렬화한 `Infinity`)이 실린다.
  *
- * 형식 오류 문구를 **인자로 받는다** — 발주수량과 허용치가 같은 규칙을 쓰지만 사용자에게는
- * 서로 다른 이름으로 말해야 한다.
+ * **보낼 본문을 만드는 자리도 이 함수를 쓴다**(`po-request.ts`). 읽는 규칙이 두 벌이면
+ * 화면이 통과시킨 글자를 조립이 다르게 읽어 **확인한 값과 나가는 값이 갈린다.**
  */
-const parseQty = (raw: string, invalidMessage: string): QtyParse => {
+export const readQty = (raw: string): QtyRead => {
   const text = raw.trim();
 
   if (text === '') return { kind: 'empty' };
 
   const value = Number(text);
 
-  if (!Number.isFinite(value)) return { kind: 'invalid', message: invalidMessage };
+  if (!Number.isFinite(value)) return { kind: 'invalid' };
 
   return { kind: 'qty', value };
+};
+
+type QtyParse =
+  { kind: 'empty' } | { kind: 'invalid'; message: string } | { kind: 'qty'; value: number };
+
+/**
+ * 읽은 값에 문구를 붙인다.
+ *
+ * 문구를 **인자로 받는다** — 발주수량과 허용치가 같은 규칙을 쓰지만 사용자에게는 서로 다른
+ * 이름으로 말해야 한다.
+ */
+const parseQty = (raw: string, invalidMessage: string): QtyParse => {
+  const read = readQty(raw);
+
+  return read.kind === 'invalid' ? { kind: 'invalid', message: invalidMessage } : read;
 };
 
 /** 발주수량 한 칸의 오류. 없으면 `null`이다. */

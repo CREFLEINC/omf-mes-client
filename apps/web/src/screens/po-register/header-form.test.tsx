@@ -84,6 +84,45 @@ describe('HeaderForm — 칸 구성', () => {
 });
 
 /**
+ * **잠금**(완료 조건 C19·C24).
+ *
+ * 나가는 중이거나 이미 등록한 뒤에는 **다섯 칸이 함께** 잠긴다. 한 칸이라도 열려 있으면
+ * 사용자가 그 칸을 고치고 나서 자기가 고친 값으로 등록된 줄 알게 된다 — 나가는 본문은 이미
+ * 조립됐고, 등록된 전표는 이 화면에서 고칠 수 없다.
+ */
+describe('HeaderForm — 잠금', () => {
+  it('잠기면 다섯 칸이 모두 막힌다', () => {
+    renderForm({ isLocked: true });
+
+    expect(screen.getByLabelText(t.fields.supplier)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.businessUnit)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.plant)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.orderDate)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.expectedReceiptDate)).toBeDisabled();
+  });
+
+  /** 짝 방향 — 잠그지 않으면 다섯이 다 열려 있다. 「늘 잠긴다」로 통과하지 않게 한다. */
+  it('잠기지 않으면 다섯 칸이 열려 있다', () => {
+    renderForm();
+
+    expect(screen.getByLabelText(t.fields.supplier)).toBeEnabled();
+    expect(screen.getByLabelText(t.fields.businessUnit)).toBeEnabled();
+    expect(screen.getByLabelText(t.fields.plant)).toBeEnabled();
+    expect(screen.getByLabelText(t.fields.orderDate)).toBeEnabled();
+    expect(screen.getByLabelText(t.fields.expectedReceiptDate)).toBeEnabled();
+  });
+
+  it('잠긴 칸을 눌러도 값이 올라가지 않는다', async () => {
+    const { props, user } = renderForm({ isLocked: true });
+
+    await user.click(screen.getByLabelText(t.fields.businessUnit));
+
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+    expect(props.onChange).not.toHaveBeenCalled();
+  });
+});
+
+/**
  * **오류가 자기 칸에 붙는가.** 네 칸에 서로 다른 오류를 함께 실어, 한 칸의 오류가 다른 칸을
  * 가리키지 않는지 잰다 — 접근 설명으로 재므로 「보이기는 하는데 이어지지 않은」 상태도 잡힌다.
  */

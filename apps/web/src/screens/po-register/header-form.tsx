@@ -21,6 +21,13 @@ export interface HeaderFormProps {
   fieldErrors: Record<string, string>;
   /** 막지 않는 안내. 승계값과 다른 공급사를 골랐을 때만 선다(계획 결정 5) */
   supplierWarning?: string;
+  /**
+   * 다섯 칸이 함께 잠겼는가(완료 조건 C19·C24).
+   *
+   * **사유는 이 폼이 내지 않는다** — 나가는 중과 이미 등록한 뒤가 같은 잠금을 쓰고, 그 사정은
+   * 조작 자리(등록 버튼 옆)에 한 번 선다. 칸마다 되풀이하면 같은 사실이 다섯 번 읽힌다.
+   */
+  isLocked?: boolean;
   onChange: (patch: Partial<HeaderDraft>) => void;
 }
 
@@ -48,6 +55,7 @@ export const HeaderForm = ({
   plantNote,
   fieldErrors,
   supplierWarning,
+  isLocked = false,
   onChange,
 }: HeaderFormProps) => {
   const orderDateId = useId();
@@ -65,6 +73,7 @@ export const HeaderForm = ({
         note={supplierNote}
         error={fieldErrors.supplierId}
         warning={supplierWarning}
+        disabled={isLocked}
         onChange={(value) => {
           onChange({ supplierId: value });
         }}
@@ -77,6 +86,7 @@ export const HeaderForm = ({
         value={values.businessUnitId}
         note={businessUnitNote}
         error={fieldErrors.businessUnitId}
+        disabled={isLocked}
         onChange={(value) => {
           onChange({ businessUnitId: value });
         }}
@@ -89,6 +99,7 @@ export const HeaderForm = ({
         value={values.plantId}
         note={plantNote}
         error={fieldErrors.plantId}
+        disabled={isLocked}
         onChange={(value) => {
           onChange({ plantId: value });
         }}
@@ -107,6 +118,7 @@ export const HeaderForm = ({
           mode="single"
           placeholder={messages.common.selectDate}
           value={values.orderDate === '' ? null : values.orderDate}
+          disabled={isLocked}
           invalid={orderDateError !== undefined}
           aria-required
           aria-describedby={orderDateError === undefined ? undefined : orderDateErrorId}
@@ -129,6 +141,7 @@ export const HeaderForm = ({
           mode="single"
           placeholder={messages.common.selectDate}
           value={values.expectedReceiptDate === '' ? null : values.expectedReceiptDate}
+          disabled={isLocked}
           onChange={(value) => {
             onChange({ expectedReceiptDate: value });
           }}

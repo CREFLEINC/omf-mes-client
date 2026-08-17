@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { sourceLineView } from './fixtures';
 import {
   addLineDraft,
+  areLinesInherited,
   createInheritedLineDraft,
   patchLineDraft,
   removeLineDraft,
@@ -71,6 +72,54 @@ describe('removeLineDraft', () => {
     expect(left).toHaveLength(2);
     expect(left[1]?.key).toBe(rows[2]?.key);
     expect(left[1]?.orderedQty).toBe('7');
+  });
+});
+
+/**
+ * **친 값이 있는가**의 라인 쪽 판정 — 버리기 확인 창을 열지 정하는 값이다.
+ *
+ * 「무엇이든 만졌는가」를 깃발로 들지 않는다 — 쳤다가 되돌린 사용자에게 「버릴 것이 있다」로
+ * 말하게 되고, 그 창은 아무것도 잃지 않는 조작에 확인을 받는 창이 된다.
+ *
+ * **키는 견주지 않는다.** 초안 키는 세울 때마다 새로 생기는 값이라, 견주면 같은 값을 다시
+ * 승계한 초안이 늘 「친 값이 있다」가 된다.
+ */
+describe('areLinesInherited', () => {
+  it('승계한 그대로면 친 값이 없다', () => {
+    const source = sourceLineView();
+
+    expect(areLinesInherited([createInheritedLineDraft(source)], source)).toBe(true);
+  });
+
+  it.each([
+    ['발주수량', { orderedQty: '20' }],
+    ['초과 허용', { toleranceOverQty: '5' }],
+    ['부족 허용', { toleranceUnderQty: '1' }],
+    ['품목', { itemId: '9503' }],
+    ['단위', { uomId: '9602' }],
+  ])('%s를 고치면 친 값이 있다', (_field, patch) => {
+    const source = sourceLineView();
+    const inherited = createInheritedLineDraft(source);
+
+    expect(areLinesInherited([{ ...inherited, ...patch }], source)).toBe(false);
+  });
+
+  it('줄을 더하면 친 값이 있다', () => {
+    const source = sourceLineView();
+
+    expect(areLinesInherited(addLineDraft([createInheritedLineDraft(source)]), source)).toBe(false);
+  });
+
+  it('대상을 고르지 않은 화면에서는 줄이 없는 것이 승계 상태다', () => {
+    expect(areLinesInherited([], null)).toBe(true);
+    expect(areLinesInherited([createInheritedLineDraft(sourceLineView())], null)).toBe(false);
+  });
+
+  /** 다른 줄을 승계한 초안은 **이 대상의 승계 상태가 아니다** — 대상이 바뀐 뒤의 갈래다. */
+  it('다른 줄을 승계한 초안은 승계 상태가 아니다', () => {
+    const chosen = sourceLineView({ inboundReceiptLineId: 9112, receivedQty: 4 });
+
+    expect(areLinesInherited([createInheritedLineDraft(sourceLineView())], chosen)).toBe(false);
   });
 });
 

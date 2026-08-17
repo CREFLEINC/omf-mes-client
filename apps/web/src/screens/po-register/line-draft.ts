@@ -35,8 +35,7 @@ const nextKey = (prefix: string): string => {
  *
  * 허용치 기본은 **0을 글자로** 채운다. 비워 두면 보이는 값(빈 칸)과 보내는 값(0)이 갈린다.
  */
-export const createInheritedLineDraft = (line: SourceLineView): LineDraft => ({
-  key: nextKey('source'),
+const inheritedFields = (line: SourceLineView): Omit<LineDraft, 'key'> => ({
   sourceLineId: line.inboundReceiptLineId,
   sourceQty: line.receivedQty,
   itemId: String(line.itemId),
@@ -45,6 +44,43 @@ export const createInheritedLineDraft = (line: SourceLineView): LineDraft => ({
   toleranceOverQty: '0',
   toleranceUnderQty: '0',
 });
+
+export const createInheritedLineDraft = (line: SourceLineView): LineDraft => ({
+  key: nextKey('source'),
+  ...inheritedFields(line),
+});
+
+/**
+ * 승계한 그대로인가 — **친 값이 있는지 판정하는 라인 쪽**이다(버리기 확인 창의 조건).
+ *
+ * **키는 견주지 않는다.** 초안 키는 세울 때마다 새로 생기는 값이라, 견주면 같은 값을 다시
+ * 승계한 초안이 늘 「친 값이 있다」가 된다.
+ *
+ * 대상을 고르지 않은 화면에서는 **줄이 없는 것**이 승계 상태다 — 그때는 버릴 라인도 없다.
+ */
+export const areLinesInherited = (
+  lines: readonly LineDraft[],
+  source: SourceLineView | null,
+): boolean => {
+  if (source === null) return lines.length === 0;
+  if (lines.length !== 1) return false;
+
+  const [only] = lines;
+
+  if (only === undefined) return false;
+
+  const expected = inheritedFields(source);
+
+  return (
+    only.sourceLineId === expected.sourceLineId &&
+    only.sourceQty === expected.sourceQty &&
+    only.itemId === expected.itemId &&
+    only.orderedQty === expected.orderedQty &&
+    only.uomId === expected.uomId &&
+    only.toleranceOverQty === expected.toleranceOverQty &&
+    only.toleranceUnderQty === expected.toleranceUnderQty
+  );
+};
 
 /**
  * 사용자가 더한 빈 줄. **승계 근거가 없다** — 그래서 하한도 없다(계획 결정 5).
