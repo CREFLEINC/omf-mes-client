@@ -73,7 +73,14 @@ import {
   type LookupResult,
 } from './lookups';
 import { PartnerListPane } from './partner-list-pane';
-import { partnerKeys, partnerRolesPath, usePartnerList, usePartnerRoles } from './partner-queries';
+import {
+  isPartnerNotFound,
+  partnerKeys,
+  partnerRolesPath,
+  usePartnerDetail,
+  usePartnerList,
+  usePartnerRoles,
+} from './partner-queries';
 import { PartnerRoleConfirmDialog } from './partner-role-confirm-dialog';
 import {
   isSamePartnerRoleSelection,
@@ -951,10 +958,12 @@ export const CommonCodeScreen = () => {
   );
 
   /**
-   * 고른 거래처의 기본 정보. **계약에 거래처 상세 경로가 없어** 지금 목록에 있는 행에서만 온다 —
-   * 주소를 손으로 고쳐 목록 밖 거래처를 가리키면 채울 자료가 없고, 그 사실을 그대로 밝힌다.
+   * 고른 거래처의 기본 정보. **단건 조회에서 온다**(#173) — 지금 목록에 실려 있는지와 무관하다.
+   *
+   * 목록 행에서 찾아 쓰던 동안에는 조건을 바꾼 뒤·다른 쪽으로 넘어간 뒤·링크를 받은 뒤가 모두
+   * 「채울 자료가 없는」 상태였다. 그 갈래를 없앤 것이 이 조회의 목적이다.
    */
-  const selectedPartner = partners.find((row) => row.partnerId === selectedPartnerId) ?? null;
+  const partnerDetail = usePartnerDetail(selectedPartnerId, isPartnerTab);
 
   const partnerRoles = usePartnerRoles(selectedPartnerId);
 
@@ -1667,10 +1676,11 @@ export const CommonCodeScreen = () => {
   );
 
   /**
-   * 우 칸 — 거래처 기본 정보와 그 거래처의 역할. **이 회차에는 읽기만 한다.**
+   * 우 칸 — 거래처 기본 정보와 그 거래처의 역할. **기본 정보는 읽기만 한다.**
    *
-   * 선택 전·목록 실패·불러오는 중·목록 밖 선택을 각각 다른 화면으로 낸다 —
-   * 상세 경로가 없어 기본 정보가 목록에 매여 있으므로 「목록 밖」이 실제로 생기는 상태다.
+   * 앞단 갈래는 **상세 조회를 기준으로 갈린다**(#173) — 선택 전 · 없는 거래처 · 조회 실패 ·
+   * 불러오는 중. **좌 목록의 사정은 여기를 막지 않는다**: 두 조회가 갈렸으므로 목록이 실패하거나
+   * 아직 오는 중이어도 고른 거래처는 그대로 선다(목록의 실패는 좌 목록이 자기 자리에서 낸다).
    */
   const renderPartnerRolePane = (): ReactNode => {
     if (selectedPartnerId === null) {
@@ -1681,40 +1691,49 @@ export const CommonCodeScreen = () => {
       );
     }
 
-    if (partnerList.isError) {
+    if (partnerDetail.isError) {
+      /*
+       * **없는 거래처와 못 불러온 거래처를 가른다** — 할 수 있는 조치가 다르다. 없는 거래처에
+       * 「다시 시도」를 내면 몇 번을 눌러도 같은 자리로 되돌아온다.
+       *
+       * ⛔ **주소에서 선택을 지우지 않는다**(결정 D-4). 형제 화면 셋이 그 정리를 하는 것은 그쪽
+       * 상세가 **목록 조건에 매인 선택**이라 조건이 바뀌면 안내가 가리킬 것이 없어지기 때문이다.
+       * 거래처 선택 키는 조건과 독립이므로 그 전제가 없다 — 지우면 사용자는 무엇을 열려 했는지
+       * 잃고, 정리가 히스토리를 늘리는 함정까지 함께 들여온다.
+       */
       return (
         <section className="pane" aria-label={t.panes.partnerRoles}>
-          <LoadErrorBanner error={partnerList.error} onRetry={() => void partnerList.refetch()} />
+          {isPartnerNotFound(partnerDetail.error) ? (
+            <EmptyState
+              size="sm"
+              live
+              title={t.partner.empty.notFoundTitle}
+              description={t.partner.empty.notFoundDescription}
+            />
+          ) : (
+            <LoadErrorBanner
+              error={partnerDetail.error}
+              onRetry={() => void partnerDetail.refetch()}
+            />
+          )}
         </section>
       );
     }
 
-    if (partnerList.isPending) {
+    /* 빈 칸을 보이면 자료가 없는 것인지 아직 받는 중인지 구분되지 않는다. */
+    if (partnerDetail.data === undefined) {
       return (
         <section className="pane" aria-label={t.panes.partnerRoles}>
-          <div role="status" aria-label={t.loading.partners}>
+          <div role="status" aria-label={t.loading.partnerDetail}>
             <SkeletonText lines={4} />
           </div>
         </section>
       );
     }
 
-    if (selectedPartner === null) {
-      return (
-        <section className="pane" aria-label={t.panes.partnerRoles}>
-          <EmptyState
-            size="sm"
-            live
-            title={t.partner.empty.notInListTitle}
-            description={t.partner.empty.notInListDescription}
-          />
-        </section>
-      );
-    }
-
     return (
       <PartnerRolePane
-        partner={selectedPartner}
+        partner={partnerDetail.data}
         choices={partnerRoleChoices}
         hasSavedRole={partnerRoleState !== null && partnerRoleState.baseline.length > 0}
         isRolesLoading={partnerRoles.isPending}
