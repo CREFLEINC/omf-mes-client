@@ -36,6 +36,18 @@ export interface SourcePaneProps {
   hasWarehouseError: boolean;
   onRetryWarehouses: () => void;
 
+  /**
+   * 대상을 바꾸는 길이 잠겼는가(C26).
+   *
+   * **대상 전환도 잠금 안에 있다**(전례 `po-register`가 같은 자리에 둔 규율). 나가는 중에
+   * 바뀌면 도착한 되먹임이 다른 맥락에 놓이고, **이미 등록한 뒤에 바뀌면 만들어진 전표를
+   * 보이는 구획이 사라진다** — 사용자가 적어 둘 겨를도 없이 전표번호를 잃는다.
+   *
+   * **사유는 이 구획이 내지 않는다** — 세 컨트롤이 같은 잠금을 쓰고, 그 사정은 등록 조작
+   * 자리에 한 번 선다. 「불러오기」만은 자기 사유를 따로 받는다(그 버튼은 잠기는 사정이 더 많다).
+   */
+  isLocked?: boolean;
+
   /** 「불러오기」가 막힌 사유. `null`이면 열려 있다 */
   loadBlockReason: string | null;
   onLoadVariance: () => void;
@@ -69,6 +81,7 @@ export const SourcePane = ({
   onChangeWarehouse,
   hasWarehouseError,
   onRetryWarehouses,
+  isLocked = false,
   loadBlockReason,
   onLoadVariance,
 }: SourcePaneProps) => {
@@ -84,6 +97,7 @@ export const SourcePane = ({
         name="stock-adjust-source"
         orientation="horizontal"
         value={kind}
+        disabled={isLocked}
         aria-labelledby={kindLabelId}
         onChange={(value) => {
           onChangeKind(value === 'count' ? 'count' : 'direct');
@@ -107,6 +121,7 @@ export const SourcePane = ({
             value={countId}
             note={countNote}
             placeholder={t.source.countPlaceholder}
+            disabled={isLocked}
             onChange={onChangeCount}
           />
 
@@ -155,6 +170,7 @@ export const SourcePane = ({
             note={warehouseNote}
             placeholder={t.source.warehousePlaceholder}
             required
+            disabled={isLocked}
             onChange={onChangeWarehouse}
           />
         </>

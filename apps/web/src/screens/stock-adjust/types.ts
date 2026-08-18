@@ -6,8 +6,8 @@ import type { components } from '@omf-mes/api-client';
  * `api-client`는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이
  * 유지된다.
  *
- * 이 회차가 다루는 것은 **읽기뿐**이다 — 실사 목록 · 실사 차이 라인 · 재고 잔액 · 참조 다섯.
- * 등록·상신·전기는 뒤따르는 회차가 붙인다.
+ * 이 회차가 다루는 것은 **읽기와 등록**이다 — 실사 목록 · 실사 차이 라인 · 재고 잔액 ·
+ * 참조 다섯 · 조정 전표 등록. 상신·전기와 처리 이력은 뒤따르는 회차가 붙인다.
  *
  * 이 파일은 이 화면이 소유한다. **다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다** —
  * 형태가 같아도 리소스 이름이 박힌 타입을 공유하면 한 화면의 계약 변화가 다른 화면을 끌고 간다.
@@ -15,6 +15,7 @@ import type { components } from '@omf-mes/api-client';
 
 type InventoryCountResponse = components['schemas']['InventoryCount'];
 type InventoryCountLineResponse = components['schemas']['InventoryCountLine'];
+type InventoryAdjustmentDetailResponse = components['schemas']['InventoryAdjustmentDetailResponse'];
 
 export type PageMeta = components['schemas']['PageMeta'];
 
@@ -122,6 +123,80 @@ export interface AdjustLineDraft {
   /** 친 글자 그대로. **음수와 「-」 같은 미완성 입력이 지나는 자리다** */
   adjustmentQtyText: string;
 }
+
+/**
+ * 조정 머리의 초안 — **계약이 등록에서 받는 두 값**이다(`reasonCode`·`sendToErp`).
+ *
+ * **상신 사유(`reason`)를 여기 담지 않는다**(D-8). 헤더 사유는 **코드**(값 목록 미확정)이고
+ * 상신 사유는 **자유 텍스트**다 — 둘이 한 자루에 있으면 어느 것이 결재함 요약을 겸하는지
+ * 화면에서 갈리지 않는다. 상신 사유는 뒤따르는 회차가 제 자리에 든다.
+ *
+ * **전표번호·상태를 담지 않는다** — 서버가 정한다(계약 스키마 설명).
+ */
+export interface AdjustHeaderDraft {
+  /** 헤더 사유 코드. **고를 값 목록이 아직 비어 있다**(D-9 · 미결 #64) */
+  reasonCode: string;
+  /**
+   * ERP 송신 여부 — **토글의 상태가 곧 계약 필드다**(D-11 · 미결 #66).
+   *
+   * 자리표시 상수를 두지 않는다: 계약이 이 값을 실제로 받고 설명이 「화면의 송신 토글이 이
+   * 값이다」로 못 박았다. 연계 **방식**은 서버가 정하는 것이라 화면에 표현할 자리가 없다.
+   */
+  sendToErp: boolean;
+}
+
+/**
+ * 아직 아무것도 고르지 않은 머리. **ERP 송신은 계약 기본값과 같은 켬으로 시작한다** —
+ * 화면이 기본값을 따로 정하면 계약이 기본을 바꿀 때 두 곳이 갈린다.
+ */
+export const emptyHeaderDraft = (): AdjustHeaderDraft => ({ reasonCode: '', sendToErp: true });
+
+/**
+ * 버릴 값이 있는가 — **깃발이 아니라 값으로 견준다**.
+ *
+ * 쳤다가 되돌린 사용자에게 「버릴 것이 있다」로 말하면, 아무것도 잃지 않는 조작에 확인 창이 뜬다.
+ */
+export const isHeaderEdited = (draft: AdjustHeaderDraft): boolean => {
+  const seeded = emptyHeaderDraft();
+
+  return draft.reasonCode !== seeded.reasonCode || draft.sendToErp !== seeded.sendToErp;
+};
+
+/**
+ * 만들어진 조정 전표 — **화면이 보이는 값만 담는다.**
+ *
+ * **내부 번호를 담지 않는다**(`omf-mes#44`). 상신·전기가 쓸 번호는 그 회차가 표시 타입과
+ * 갈린 자리에 따로 든다 — 그리는 값과 같은 자루에 있으면 사람이 읽는 자리로 새는 경로가
+ * 먼저 생긴다.
+ *
+ * **상태 코드를 뜻으로 옮기지 않는다**(공유계약 G-2). 서버가 준 글자를 그대로 든다.
+ */
+export interface CreatedAdjustmentView {
+  /** 업무 번호 — 사용자가 나중에 이 전표를 찾을 때 쓴다 */
+  inventoryAdjustmentNo: string;
+  /** 등록 시점의 상태 코드 **그대로** */
+  statusCode: string;
+  /**
+   * ERP 송신 **대기열 적재** 여부.
+   *
+   * 계약이 선택으로 두어 **오지 않는 갈래가 따로 있다** — `?? false`로 접으면 아무 근거 없이
+   * 「적재되지 않았다」로 읽힌다(C23).
+   */
+  erpMessageQueued: boolean | null;
+  /** **서버가 저장한** 라인 수. 화면이 센 수가 아니다 */
+  lineCount: number;
+}
+
+/** 등록 201 응답을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toCreatedAdjustmentView = (
+  data: InventoryAdjustmentDetailResponse,
+): CreatedAdjustmentView => ({
+  inventoryAdjustmentNo: data.inventoryAdjustment.inventoryAdjustmentNo,
+  statusCode: data.inventoryAdjustment.statusCode,
+  /* 없이 오는 길이 실재한다(계약 선택 필드) — 값의 유무를 여기서 한 번에 갈라 둔다. */
+  erpMessageQueued: data.inventoryAdjustment.erpMessageQueued ?? null,
+  lineCount: data.lines.length,
+});
 
 /**
  * 선택 목록의 원본 항목.

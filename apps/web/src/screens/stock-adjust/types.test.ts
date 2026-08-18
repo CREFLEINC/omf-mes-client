@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { countResponse, countVarianceLineResponse } from './fixtures';
-import { toCountOptionView, toCountVarianceLineView } from './types';
+import { adjustmentDetailBody, countResponse, countVarianceLineResponse } from './fixtures';
+import {
+  emptyHeaderDraft,
+  isHeaderEdited,
+  toCountOptionView,
+  toCountVarianceLineView,
+  toCreatedAdjustmentView,
+} from './types';
 
 /**
  * 응답을 화면 타입으로 옮기는 **유일한 지점**들.
@@ -94,5 +100,74 @@ describe('toCountVarianceLineView', () => {
     expect(toCountVarianceLineView(countVarianceLineResponse({ systemQty: 100 })).systemQty).toBe(
       100,
     );
+  });
+});
+
+/**
+ * 조정 머리의 초안 — **계약이 등록에서 받는 두 값**이다.
+ */
+describe('emptyHeaderDraft · isHeaderEdited', () => {
+  /** **기본값이 켬이다**(D-11) — 계약 기본값과 같다. 화면이 따로 정하면 두 곳이 갈린다. */
+  it('ERP 송신은 켠 채로 시작한다', () => {
+    expect(emptyHeaderDraft()).toEqual({ reasonCode: '', sendToErp: true });
+  });
+
+  it('아무것도 고르지 않았으면 버릴 것이 없다', () => {
+    expect(isHeaderEdited(emptyHeaderDraft())).toBe(false);
+  });
+
+  it('사유를 고르면 버릴 것이 생긴다', () => {
+    expect(isHeaderEdited({ reasonCode: 'SAMPLE_AR_A', sendToErp: true })).toBe(true);
+  });
+
+  /** ERP 송신을 끈 것도 사용자가 정한 값이다 — 되돌리면 잃는 것이 있다. */
+  it('ERP 송신을 끄면 버릴 것이 생긴다', () => {
+    expect(isHeaderEdited({ reasonCode: '', sendToErp: false })).toBe(true);
+  });
+});
+
+/**
+ * 등록 201을 화면 타입으로 옮기는 **유일한 지점**.
+ *
+ * **내부 번호를 옮기지 않는다**(`omf-mes#44`) — 자리를 두지 않으면 화면으로 샐 경로도 없다.
+ */
+describe('toCreatedAdjustmentView', () => {
+  it('전표번호와 등록 시점의 상태를 옮긴다', () => {
+    const view = toCreatedAdjustmentView(adjustmentDetailBody());
+
+    expect(view.inventoryAdjustmentNo).toBe('SAMPLE-IA-9301');
+    expect(view.statusCode).toBe('SAMPLE_IA_STATUS_A');
+  });
+
+  /** **서버가 저장한 줄을 센다** — 화면이 보낸 줄 수가 아니라 응답 배열의 길이다. */
+  it('서버가 되돌려 준 줄 수를 센다', () => {
+    expect(toCreatedAdjustmentView(adjustmentDetailBody({ lineCount: 3 })).lineCount).toBe(3);
+  });
+
+  it('내부 번호를 담지 않는다', () => {
+    const view = toCreatedAdjustmentView(adjustmentDetailBody());
+
+    /* 짝 양성 — 업무 번호는 실제로 옮겨진다. 「아무것도 안 옮긴다」로 통과하지 않게 한다. */
+    expect(view.inventoryAdjustmentNo).toBe('SAMPLE-IA-9301');
+    expect(view).not.toHaveProperty('inventoryAdjustmentId');
+  });
+
+  /**
+   * ⭐ **ERP 적재 여부는 세 갈래다**(C23). 계약이 선택으로 두어 오지 않는 갈래가 실재하고,
+   * `?? false`로 접으면 아무 근거 없이 「적재되지 않았다」로 읽힌다.
+   */
+  it.each([
+    [true, true],
+    [false, false],
+  ])('ERP 적재 여부 %o를 그대로 옮긴다', (queued, expected) => {
+    expect(
+      toCreatedAdjustmentView(adjustmentDetailBody({ erpMessageQueued: queued })).erpMessageQueued,
+    ).toBe(expected);
+  });
+
+  it('ERP 적재 여부가 오지 않으면 비운 채로 옮긴다 — 거짓으로 접지 않는다', () => {
+    expect(
+      toCreatedAdjustmentView(adjustmentDetailBody({ erpMessageQueued: null })).erpMessageQueued,
+    ).toBeNull();
   });
 });

@@ -22,6 +22,8 @@ import type { AdjustLineDraft, CountVarianceLineView } from './types';
 type InventoryCountResponse = components['schemas']['InventoryCount'];
 type InventoryCountLineResponse = components['schemas']['InventoryCountLine'];
 type InventoryBalanceResponse = components['schemas']['InventoryBalance'];
+type InventoryAdjustmentDetailResponse = components['schemas']['InventoryAdjustmentDetailResponse'];
+type InventoryAdjustmentLineResponse = components['schemas']['InventoryAdjustmentLine'];
 
 const BASE_COUNT: InventoryCountResponse = {
   inventoryCountId: 9101,
@@ -146,6 +148,62 @@ export const balanceFixtures: InventoryBalanceResponse[] = [
   balanceResponse(),
   balanceResponse({ itemId: 9502, lotId: null, onHandQty: 0, availableQty: 0 }),
 ];
+
+/**
+ * 등록 201이 되돌려 주는 조정 전표 하나.
+ *
+ * **모양이 상세 200과 같다**(계약 실측 — 머리 + 라인). 그래서 이 픽스처 하나로 등록 결과를
+ * 세우고, 뒤따르는 회차의 상세 조회도 같은 모양을 쓴다.
+ *
+ * **계약 예시값(`IA-2026-000031`·`COUNT_VARIANCE`·`REQUESTED`)을 쓰지 않는다** — 목이 채워
+ * 주는 값과 화면이 만든 값이 구분되지 않는다.
+ */
+const BASE_ADJUSTMENT_LINE: InventoryAdjustmentLineResponse = {
+  inventoryAdjustmentLineId: 9311,
+  inventoryAdjustmentId: 9301,
+  lineNo: 1,
+  locationId: 9401,
+  itemId: 9501,
+  lotId: 9701,
+  adjustmentQty: -20,
+  uomId: 9601,
+};
+
+export interface AdjustmentDetailOverrides {
+  inventoryAdjustmentNo?: string;
+  statusCode?: string;
+  /** `null`이면 **응답에 그 키가 없다** — 계약이 선택으로 둔 갈래를 실제 응답으로 만든다 */
+  erpMessageQueued?: boolean | null;
+  /** 서버가 저장했다고 되돌려 주는 줄 수. **화면이 보낸 줄 수와 갈라 두는 것이 요점이다** */
+  lineCount?: number;
+}
+
+export const adjustmentDetailBody = (
+  overrides: AdjustmentDetailOverrides = {},
+): InventoryAdjustmentDetailResponse => {
+  const {
+    inventoryAdjustmentNo = 'SAMPLE-IA-9301',
+    statusCode = 'SAMPLE_IA_STATUS_A',
+    erpMessageQueued = true,
+    lineCount = 1,
+  } = overrides;
+
+  return {
+    inventoryAdjustment: {
+      inventoryAdjustmentId: 9301,
+      inventoryAdjustmentNo,
+      reasonCode: 'SAMPLE_AR_A',
+      statusCode,
+      /* 값이 오지 않는 갈래는 **키 자체가 없는 것**이다 — `null`을 실으면 다른 사실이 된다. */
+      ...(erpMessageQueued === null ? {} : { erpMessageQueued }),
+    },
+    lines: Array.from({ length: lineCount }, (_unused, index) => ({
+      ...BASE_ADJUSTMENT_LINE,
+      inventoryAdjustmentLineId: BASE_ADJUSTMENT_LINE.inventoryAdjustmentLineId + index,
+      lineNo: index + 1,
+    })),
+  };
+};
 
 /**
  * 값이 전부 유효한 라인 초안. **검사하려는 칸만 인자로 어긋나게 둔다** —

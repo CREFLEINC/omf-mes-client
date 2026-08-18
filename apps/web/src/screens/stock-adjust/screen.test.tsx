@@ -1,8 +1,8 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -12,6 +12,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  adjustmentDetailBody,
   balanceFixtures,
   countFixtures,
   countVarianceLineFixtures,
@@ -22,9 +23,33 @@ import {
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
+import { stockAdjustKeys } from './queries';
 import { StockAdjustScreen } from './screen';
 
 const t = messages.stockAdjust;
+
+/**
+ * 조정 사유 값 목록 — **미확정 자리표시를 갈아 끼운다**(전례 `disposal-issue`와 같은 형태).
+ *
+ * **판정·조립·잠금은 실물 그대로**이고 바뀌는 것은 「값 목록이 왔다」는 사실 하나다. 채웠을 때
+ * 등록이 실제로 살아나지 않으면 그 자리표시는 **죽은 가지**이므로, 이 목이 곧 D-9의 시험이다.
+ *
+ * ⚠ 지어낸 합성 코드다 — **계약의 `@example` 값(`COUNT_VARIANCE`)을 쓰지 않는다.**
+ */
+const { codeValues } = vi.hoisted(() => ({ codeValues: { reason: [] as string[] } }));
+
+vi.mock('./code-options', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./code-options')>();
+
+  return { ...actual, PLACEHOLDER_STOCK_ADJUST_CODES: codeValues };
+});
+
+const SAMPLE_REASON = 'SAMPLE_AR_A';
+
+/** 값 목록이 아직 비어 있는 것이 **지금의 사실**이다 — 채우는 시험이 스스로 채운다. */
+beforeEach(() => {
+  codeValues.reason = [];
+});
 
 const ROUTE = '/logistics/stock-adjust';
 
@@ -50,21 +75,69 @@ const INTERNAL_IDS = ['9101', '9111', '9201', '9401', '9501', '9601', '9701'];
 interface RecordedRequest {
   method: string;
   url: URL;
+  /**
+   * 쓰기 요청의 본문. 읽기에는 `null`이다.
+   *
+   * **실제로 나간 본문을 본다.** 조립 함수를 단위로 검사하는 것만으로는 「화면이 그 함수를
+   * 부르지 않고 다른 값을 보냈다」를 잡을 수 없다.
+   */
+  body: unknown;
+  headers: Headers;
 }
 
+/**
+ * 요청을 기록하면서 스텁 규칙으로 응답한다.
+ *
+ * `hold`에 든 경로는 **기록한 뒤에** 붙잡아 둔다 — 「보내는 중에 무엇이 잠기는가」를 재려면
+ * 응답이 오기 전 상태가 화면에 남아 있어야 한다.
+ *
+ * **문을 열면 곧바로 다음 문을 건다.** 한 번 열고 마는 형태면 두 번째 요청이 붙잡히지 않아
+ * 「보내는 중에 버린다」를 **두 번 되풀이하는 경로**를 잴 수 없다 — 그 되풀이가 곧 「앞 전표의
+ * 사실이 쌓이는가」를 가르는 자리다.
+ */
 const createRecordingFetch = (
   routes: StubRoute[],
-): { fetch: StubFetch; requests: RecordedRequest[] } => {
+  hold: string[] = [],
+): { fetch: StubFetch; requests: RecordedRequest[]; release: () => void } => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch(routes);
+  let openGate = (): void => {
+    /* 아래 `armGate`가 곧바로 채운다. */
+  };
+  let gate = Promise.resolve();
+
+  const armGate = (): void => {
+    gate = new Promise<void>((resolve) => {
+      openGate = resolve;
+    });
+  };
+
+  armGate();
 
   return {
     fetch: async (request) => {
-      requests.push({ method: request.method, url: new URL(request.url) });
+      /* 본문은 한 번만 읽을 수 있다 — 복제해 읽어야 스텁이 같은 요청을 다시 다룰 수 있다. */
+      const body: unknown = request.method === 'GET' ? null : await request.clone().json();
+
+      requests.push({
+        method: request.method,
+        url: new URL(request.url),
+        body,
+        headers: request.headers,
+      });
+
+      if (hold.includes(new URL(request.url).pathname)) await gate;
 
       return stub(request);
     },
     requests,
+    release: () => {
+      const open = openGate;
+
+      /* 다음 문을 먼저 걸고 연다 — 순서를 뒤집으면 그 사이에 온 요청이 붙잡히지 않는다. */
+      armGate();
+      open();
+    },
   };
 };
 
@@ -129,10 +202,17 @@ const BackProbe = () => {
   );
 };
 
-const renderScreen = (routes: StubRoute[], search = '?count=9101') => {
-  const { fetch, requests } = createRecordingFetch(routes);
+const renderScreen = (routes: StubRoute[], search = '?count=9101', hold: string[] = []) => {
+  const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
-  renderWithProviders(
+  /**
+   * **조회 캐시를 내준다** — 사용자 조작이 아닌 **배경 재조회**를 재려면 이 손잡이가 필요하다.
+   *
+   * 앱 기본값이 `refetchOnReconnect`를 덮지 않아(참) 활성 조회는 재접속 때 스스로 다시 나가고,
+   * 조회가 실패한 뒤의 「다시 시도」도 폼 잠금 밖에 있다 — **잠금이 막지 못하는 갱신**이 실재한다.
+   * 그 도착을 무효화 한 번으로 재현한다(같은 결과: 활성 조회가 다시 나간다).
+   */
+  const { queryClient } = renderWithProviders(
     <>
       <StockAdjustScreen />
       <LocationProbe />
@@ -141,7 +221,7 @@ const renderScreen = (routes: StubRoute[], search = '?count=9101') => {
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, user: userEvent.setup() };
+  return { requests, release, queryClient, user: userEvent.setup() };
 };
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
@@ -1160,5 +1240,1296 @@ describe('StockAdjustScreen — 장부가 없이 오는 실사', () => {
 
     expect(diffBox(1)).toBeEnabled();
     expect(diffBox(1)).toBeValid();
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 등록 — **이 화면에서 되돌릴 수 없는 첫 쓰기**
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const ADJUSTMENTS_PATH = '/inventory/adjustments';
+
+const isPost = (request: Request, pathname: string): boolean =>
+  request.method === 'POST' && new URL(request.url).pathname === pathname;
+
+/**
+ * 등록이 성공하는 경로. 응답 본문은 계약과 같은 모양(머리 + 라인)이다.
+ *
+ * **201도 `ETag`를 준다**(계약) — 그 토큰은 **컬렉션 경로**에 앉으므로 상신·전기가 집어 가면
+ * 안 된다. 그 배선은 뒤따르는 회차의 것이고, 여기서는 값이 오는 사실만 재현한다.
+ */
+const createRoute = (body: unknown = adjustmentDetailBody()): StubRoute => ({
+  match: (request) => isPost(request, ADJUSTMENTS_PATH),
+  respond: () => jsonResponse(body, { status: 201, headers: { ETag: 'W/"ia-9301"' } }),
+});
+
+/**
+ * 부를 때마다 **다른 전표**를 되돌려 주는 경로.
+ *
+ * 「앞 전표의 사실이 새 등록에 덮이지 않는다」를 재려면 두 번호가 실제로 갈려야 한다 —
+ * 같은 번호를 두 번 주면 덮였는지 남았는지 화면에서 가릴 수 없다.
+ */
+const sequencedCreateRoute = (adjustmentNos: string[]): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isPost(request, ADJUSTMENTS_PATH),
+    respond: () => {
+      const inventoryAdjustmentNo = adjustmentNos[call] ?? adjustmentNos.at(-1) ?? '';
+
+      call += 1;
+
+      return jsonResponse(adjustmentDetailBody({ inventoryAdjustmentNo }), { status: 201 });
+    },
+  };
+};
+
+/** 등록이 서버에 거절되는 경로. 갈래마다 화면이 하는 말이 달라야 한다(C27). */
+const failingCreateRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: (request) => isPost(request, ADJUSTMENTS_PATH),
+  respond: () => jsonResponse(body, { status }),
+});
+
+/** 서버가 **한 칸을 지목해** 거절하는 갈래. 그 칸에 그릴 자리가 있는지에 따라 서는 곳이 갈린다. */
+const fieldErrorRoute = (field: string, message: string): StubRoute =>
+  failingCreateRoute(400, {
+    errors: [{ scope: 'field', field, code: 'SAMPLE_ERR', message }],
+  });
+
+/** 응답이 아예 오지 않는 갈래 — **보내지지 않았다고 단정할 수 없다.** */
+const offlineCreateRoute = (): StubRoute => ({
+  match: (request) => isPost(request, ADJUSTMENTS_PATH),
+  respond: () => {
+    throw new TypeError('Failed to fetch');
+  },
+});
+
+const createRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => isPostRecord(request));
+
+const isPostRecord = (request: RecordedRequest): boolean =>
+  request.method === 'POST' && request.url.pathname === ADJUSTMENTS_PATH;
+
+/** 나간 등록 본문. **실제로 나간 것을 본다.** */
+const lastCreateBody = (requests: RecordedRequest[]): Record<string, unknown> =>
+  (createRequests(requests).at(-1)?.body ?? {}) as Record<string, unknown>;
+
+const sentLines = (requests: RecordedRequest[]): Record<string, unknown>[] =>
+  (lastCreateBody(requests).lines ?? []) as Record<string, unknown>[];
+
+const registerPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.register });
+
+const registerButton = (): HTMLElement =>
+  within(registerPane()).getByRole('button', { name: t.actions.register });
+
+const discardButton = (): HTMLElement =>
+  within(registerPane()).getByRole('button', { name: t.actions.discard });
+
+const confirmRegisterButton = (): HTMLElement =>
+  screen.getByRole('button', { name: new RegExp(t.actions.confirmRegister) });
+
+const reasonField = (): HTMLElement => within(registerPane()).getByLabelText(t.fields.reasonCode);
+
+/** 값 목록이 확정된 뒤의 화면을 만든다 — **자리표시를 채우면 등록이 살아나는지**가 요점이다. */
+const withReasonCodes = (): void => {
+  codeValues.reason = [SAMPLE_REASON];
+};
+
+const chooseReason = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(reasonField());
+  await user.click(screen.getByRole('option', { name: SAMPLE_REASON }));
+};
+
+/** 실사 차이를 불러오고 사유까지 골라 **보낼 수 있는 상태**로 만든다. */
+const readyToRegister = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await loadVariance(user);
+  await chooseReason(user);
+};
+
+/**
+ * 직접 등록 갈래에서 줄 하나를 **끝까지 채운다.**
+ *
+ * 승계 줄과 달리 위치·품목·단위가 비어 있으므로, 채우지 않으면 등록이 「표의 오류」로 잠긴다 —
+ * 그 상태로 등록 갈래를 재면 재려던 것과 다른 사정을 재게 된다.
+ */
+const fillDirectLine = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await startDirectLine(user);
+
+  await user.click(screen.getByLabelText(t.lineTable.locationLabel(1)));
+  await user.click(screen.getByRole('option', { name: LOCATION_LABEL }));
+  await user.click(screen.getByLabelText(t.lineTable.itemLabel(1)));
+  await user.click(screen.getByRole('option', { name: ITEM_LABEL }));
+  await user.click(screen.getByLabelText(t.lineTable.uomLabel(1)));
+  await user.click(screen.getByRole('option', { name: UOM_LABEL }));
+  await user.type(diffBox(1), '-20');
+};
+
+/** 확인 창을 열고 실행까지 누른다. **두 걸음이 갈려 있어야** 창만 열린 상태도 잴 수 있다. */
+const submitRegister = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(registerButton());
+  await user.click(confirmRegisterButton());
+};
+
+const setupAndRegister = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await readyToRegister(user);
+  await submitRegister(user);
+};
+
+/**
+ * **등록이 막힌 사유**(C17).
+ *
+ * 순서가 뜻을 정한다 — 먼저 **고쳐도 풀리지 않는 사정**을 말하고, 그다음이 지금 고칠 수 있는
+ * 것들이다. 뒤집으면 사용자가 고칠 수 있는 것을 다 고친 뒤에야 막다른 벽을 만난다.
+ */
+describe('StockAdjustScreen — 등록이 막힌 사유', () => {
+  it('값 목록이 비어 있으면 등록이 잠기고 그 사정을 말한다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+
+    expect(registerButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.registerReasonPending)).toBeInTheDocument();
+  });
+
+  /** ⭐ **자리표시가 죽은 가지가 아니라는 증거** — 배열을 채우면 사유 갈래가 바뀐다(D-9). */
+  it('값 목록이 채워지면 사정이 「아직 안 골랐다」로 바뀐다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+
+    expect(registerButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.registerNeedsReason)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.registerReasonPending)).not.toBeInTheDocument();
+  });
+
+  /** 짝 양성 — 사유를 고르면 **등록이 실제로 열린다.** */
+  it('사유를 고르면 등록이 열리고 잠긴 사유가 사라진다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes());
+
+    await readyToRegister(user);
+
+    expect(registerButton()).toBeEnabled();
+    expect(registerButton()).not.toHaveAccessibleDescription();
+  });
+
+  it('조정 대상이 없으면 등록이 잠기고 그 사정을 말한다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes(), '');
+
+    await screen.findByText(t.source.directNote);
+    await chooseReason(user);
+
+    expect(registerButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.registerNeedsLines)).toBeInTheDocument();
+  });
+
+  /** 잘못 친 값이 **아직 안 친 칸보다 먼저**다 — 지금 고칠 수 있는 것을 먼저 말한다. */
+  it('줄에 오류가 있으면 등록이 잠기고 그 사정을 말한다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes());
+
+    await readyToRegister(user);
+    await user.clear(diffBox(1));
+
+    expect(registerButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.registerLineInvalid)).toBeInTheDocument();
+  });
+
+  /**
+   * **줄은 있는데 보낼 줄이 없는 갈래.** 계약이 최소 1행을 요구하므로 이대로는 만들 수 없다 —
+   * 「줄이 없습니다」로 말하면 표에 줄이 보이는 사용자가 화면을 고장으로 읽는다.
+   */
+  it('모든 줄이 차이 0이면 등록이 잠기고 그 사정을 말한다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes());
+
+    await readyToRegister(user);
+
+    for (const lineNo of [1, 2, 3]) {
+      await user.clear(diffBox(lineNo));
+      await user.type(diffBox(lineNo), '0');
+    }
+
+    expect(registerButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.registerAllExcluded)).toBeInTheDocument();
+  });
+});
+
+/**
+ * ⭐ **잘린 목록으로 등록하지 않는다**(앞 회차가 세운 `truncated` 판정의 소비처).
+ *
+ * 못 받은 줄은 조정 대상에 실리지 않고 그 차이는 **조정되지 않은 채 남는다** — 되돌릴 수 없는
+ * 쓰기 앞의 조용한 누락이라, 화면은 사실을 밝히는 데서 멈추지 않고 **막는다.**
+ */
+describe('StockAdjustScreen — 실사 차이가 잘린 채로는 등록하지 않는다', () => {
+  const truncatedVarianceRoute = (): StubRoute => ({
+    match: (request) => isGet(request, VARIANCE_PATH),
+    respond: () => jsonResponse(listBody(countVarianceLineFixtures, 12)),
+  });
+
+  it('잘린 채로는 등록이 잠기고 무엇이 남는지 말한다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes([truncatedVarianceRoute()]));
+
+    await readyToRegister(user);
+
+    expect(registerButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.registerVarianceTruncated)).toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 온전히 받았으면 열린다. 「늘 막는다」로 통과하지 않게 한다. */
+  it('온전히 받았으면 등록이 열린다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes());
+
+    await readyToRegister(user);
+
+    expect(registerButton()).toBeEnabled();
+  });
+
+  /**
+   * **직접 등록 갈래는 이 판정에 걸리지 않는다** — 실사 목록이 대상이 아니다.
+   * 잘림 판정을 갈래로 좁히지 않으면 실사와 무관한 조정이 영영 막힌다.
+   */
+  it('직접 등록 갈래는 실사 목록이 잘려도 막히지 않는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(
+      allRoutes([truncatedVarianceRoute(), getRoute(COUNTS_PATH, countFixtures, 9)]),
+      '',
+    );
+
+    await screen.findByText(t.source.directNote);
+    await fillDirectLine(user);
+    await chooseReason(user);
+
+    expect(registerButton()).toBeEnabled();
+  });
+});
+
+/**
+ * **확인 창**(C25) — 되돌릴 수 없는 조작 앞의 마지막 층.
+ */
+describe('StockAdjustScreen — 등록 확인 창', () => {
+  it('등록을 누르면 확인 창이 서고 요청은 아직 나가지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(allRoutes([createRoute()]));
+
+    await readyToRegister(user);
+    await user.click(registerButton());
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(createRequests(requests)).toHaveLength(0);
+  });
+
+  /** **창이 되보이는 값이 실제로 나가는 값과 같다** — 창이 따로 세지 않는다. */
+  it('확인 창이 실릴 줄과 빠질 줄을 밝힌다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes([createRoute()]));
+
+    await readyToRegister(user);
+    await user.click(registerButton());
+
+    const dialog = screen.getByRole('dialog');
+
+    /* 픽스처 세 줄 가운데 하나가 차이 0이다 — 실릴 줄 둘, 빠질 줄 하나. */
+    expect(within(dialog).getByText(t.dialog.includedLineCount(2))).toBeVisible();
+    expect(within(dialog).getByText(t.dialog.excludedLineCount(1))).toBeVisible();
+  });
+
+  it('계속 입력을 누르면 창이 닫히고 요청이 나가지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(allRoutes([createRoute()]));
+
+    await readyToRegister(user);
+    await user.click(registerButton());
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(createRequests(requests)).toHaveLength(0);
+  });
+
+  /** 두 번 눌러도 **요청은 한 번**이다 — 잠금이 표시만이면 두 번째 클릭이 그대로 통한다. */
+  it('실행 버튼을 두 번 눌러도 요청은 한 번이다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(allRoutes([createRoute()]), '?count=9101', [
+      ADJUSTMENTS_PATH,
+    ]);
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(confirmRegisterButton());
+
+    expect(createRequests(requests)).toHaveLength(1);
+
+    release();
+
+    await screen.findByText(t.result.createdTitle('SAMPLE-IA-9301'));
+  });
+
+  /**
+   * **「닫혀도 나가는 요청이 무너지지 않게」의 본체**(사본 체크리스트 5번의 셋째 방어).
+   *
+   * Escape는 막을 수 없다 — native `<dialog>`가 `cancel`을 내고 디자인 시스템이 그것을 닫기
+   * 요청으로 잇는다. 규율이 실제로 걸리는 것은 **나가는 중**이다: 그때 `onClose`가 `reset()`을
+   * 부르면 공통 훅의 옵저버가 떨어져 **성공도 잠금 해제도 오지 않는다.** 그러면 사용자는
+   * 만들어진 전표를 못 본 채 폼이 다시 열린 화면을 보고 한 번 더 등록한다 — **전표 두 벌**이다.
+   *
+   * jsdom은 Escape 키를 native 취소로 잇지 않으므로 브라우저가 내는 이벤트를 직접 만든다.
+   */
+  it('전송 중 Escape로 창이 닫혀도 등록 결과가 살아 있다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(allRoutes([createRoute()]), '?count=9101', [
+      ADJUSTMENTS_PATH,
+    ]);
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    /* ① 창을 닫는 것이 요청을 다시 내지도, 되돌리지도 않는다. */
+    expect(createRequests(requests)).toHaveLength(1);
+    /* ② 잠금이 살아 있다 — 요청은 아직 날아가는 중이다. */
+    expect(registerButton()).toBeDisabled();
+    expect(screen.getAllByText(t.actionReasons.saving).length).toBeGreaterThan(0);
+
+    release();
+
+    /* ③ 성공이 사라지지 않는다 — 결과 구획이 실제로 선다. */
+    expect(await screen.findByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
+    /* ④ 성공 뒤 잠금·사유도 그대로 온다 — 창을 닫은 것이 그 길을 끊지 않았다. */
+    expect(screen.getAllByText(t.actionReasons.alreadyRegistered).length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * **등록 요청**(C18·C20·C21·C22) — 실제로 나간 것을 본다.
+ */
+describe('StockAdjustScreen — 등록 요청', () => {
+  const registerRoutes = (create: StubRoute = createRoute()): StubRoute[] => allRoutes([create]);
+
+  it('확인하면 등록이 정확히 1회 나가고 경로가 컬렉션이다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(registerRoutes());
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+    expect(createRequests(requests)[0]?.url.pathname).toBe(ADJUSTMENTS_PATH);
+  });
+
+  /**
+   * **멱등 키는 실리고 잠금 토큰은 실리지 않는다**(C18 · D-14).
+   *
+   * 계약 parameters에 `If-Match`가 없고 응답에 409가 없다 — 새 전표라 견줄 판이 없다.
+   */
+  it('멱등 키를 싣고 If-Match는 싣지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(registerRoutes());
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    const sent = createRequests(requests)[0];
+
+    expect(sent?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(sent?.headers.has('If-Match')).toBe(false);
+  });
+
+  /** ⭐ **차이 0인 줄이 빠진다**(C19) — 표에 셋이 보였고 나가는 것은 둘이다. */
+  it('차이가 0인 줄이 본문에서 빠진다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(registerRoutes());
+
+    await readyToRegister(user);
+
+    expect(bodyRows()).toHaveLength(3);
+
+    await submitRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+    expect(sentLines(requests)).toHaveLength(2);
+  });
+
+  /** ⭐ **줄이는 조정이 정상 경로다**(C21 · 조심 ② · 뮤테이션 M-2). */
+  it('음수 차이가 그대로 실린다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(registerRoutes());
+
+    await readyToRegister(user);
+    await user.clear(diffBox(1));
+    await user.type(diffBox(1), '-20');
+    await submitRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+    expect(sentLines(requests)[0]?.adjustmentQty).toBe(-20);
+  });
+
+  /** **라인 사유를 싣지 않는다**(C20 · D-7 · 미결 #87). 승계 줄에는 실사 사유가 실려 있다. */
+  it('본문의 라인 키 집합에 사유가 없다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(registerRoutes());
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    const lines = sentLines(requests);
+
+    /* 짝 양성 — 줄은 실제로 실렸고 원천 라인 번호도 함께 갔다. */
+    expect(lines).toHaveLength(2);
+    expect(lines[0]?.inventoryCountLineId).toBe(9111);
+    expect(Object.keys(lines[0] ?? {})).not.toContain('reasonCode');
+  });
+
+  /** **ERP 송신 기본값이 참이다**(C22 · D-11) — 계약 기본값과 같다. */
+  it('ERP 송신이 기본으로 참으로 실린다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(registerRoutes());
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+    expect(lastCreateBody(requests).sendToErp).toBe(true);
+  });
+
+  it('ERP 송신을 끄면 거짓으로 실린다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(registerRoutes());
+
+    await readyToRegister(user);
+    await user.click(within(registerPane()).getByLabelText(t.fields.sendToErp));
+    await submitRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+    expect(lastCreateBody(requests).sendToErp).toBe(false);
+  });
+
+  /** 실사에서 불러왔으면 그 실사가 헤더에 남는다 — 승계 근거가 전표에 남는 자리다. */
+  it('불러온 실사가 본문에 실린다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(registerRoutes());
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+    expect(lastCreateBody(requests).inventoryCountId).toBe(9101);
+  });
+
+  /** **실사 참조가 비어 있는 것이 정상이다**(조심 ⑤) — 직접 등록에는 그 키가 없다. */
+  it('직접 등록이면 실사 참조 키가 본문에 없다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(registerRoutes(), '');
+
+    await screen.findByText(t.source.directNote);
+    await fillDirectLine(user);
+    await chooseReason(user);
+    await submitRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    /* 짝 양성 — 본문은 실제로 만들어졌다. */
+    expect(lastCreateBody(requests).reasonCode).toBe(SAMPLE_REASON);
+    expect(Object.keys(lastCreateBody(requests))).not.toContain('inventoryCountId');
+  });
+
+  /** ⛔ **승인 대기 조건을 등록에도 싣지 않는다**(D-3) — 이 화면의 모든 요청에서 0건이다. */
+  it('등록 요청 주소에 승인 대기 조건이 없다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(registerRoutes());
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+    expect(
+      requests.filter((request) => request.url.search.includes('pendingApprovalOnly')),
+    ).toEqual([]);
+  });
+});
+
+/**
+ * **전송 중**(C28의 앞 절반) — 응답이 오기 전 상태에서 조작 자리가 하나라도 열려 있으면
+ * 그 자리가 전표 한 벌이다.
+ */
+describe('StockAdjustScreen — 보내는 중', () => {
+  it('보내는 중에는 폼·표·대상 전환이 잠기고 사유가 보인다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(allRoutes([createRoute()]), '?count=9101', [
+      ADJUSTMENTS_PATH,
+    ]);
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    expect(screen.getAllByText(t.actionReasons.saving).length).toBeGreaterThan(0);
+    expect(reasonField()).toBeDisabled();
+    expect(within(registerPane()).getByLabelText(t.fields.sendToErp)).toBeDisabled();
+    expect(diffBox(1)).toBeDisabled();
+    expect(addLineButton()).toBeDisabled();
+    expect(registerButton()).toBeDisabled();
+    expect(countField()).toBeDisabled();
+    expect(screen.getByRole('radio', { name: t.source.direct })).toBeDisabled();
+    /* 확인 창의 실행 버튼도 잠긴다 — 창은 아직 열려 있다(실패했을 때 사유를 낼 자리다). */
+    expect(confirmRegisterButton()).toBeDisabled();
+
+    release();
+
+    await screen.findByText(t.result.createdTitle('SAMPLE-IA-9301'));
+  });
+
+  /**
+   * ⭐ **버리기만은 열려 있다** — 서버를 부르지 않는 조작이라 응답을 기다리는 동안 사용자를
+   * 묶어 둘 이유가 없다. 대신 창이 **보낸 등록은 되돌아가지 않는다**는 사실을 밝힌다.
+   */
+  it('보내는 중에도 초안 버리기는 열려 있고 창이 사실을 밝힌다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(allRoutes([createRoute()]), '?count=9101', [
+      ADJUSTMENTS_PATH,
+    ]);
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    expect(discardButton()).toBeEnabled();
+
+    await user.click(discardButton());
+
+    expect(screen.getByText(t.dialog.discardWhileSaving)).toBeVisible();
+
+    release();
+  });
+});
+
+/**
+ * ⭐ **초안 세션**(C28 · D-15) — 등록에는 아직 자원 번호가 없어 두 초안을 가르는 축이 이것뿐이다.
+ *
+ * 되먹임 셋(성공·나가는 중·실패)이 **같은 문**을 지나는지 두 방향으로 잰다.
+ */
+describe('StockAdjustScreen — 버린 초안의 되먹임', () => {
+  /**
+   * 나가는 중에 초안을 버리고 응답을 받는 자리까지 간다.
+   *
+   * `sent`는 **이 시점까지 나갔어야 할 등록 요청 수**다 — 되풀이해 부를 때 앞 요청까지 함께
+   * 세지 않으면 「아직 안 나갔는데 나간 줄 알고」 다음 걸음으로 넘어간다.
+   */
+  const registerThenDiscard = async (
+    user: ReturnType<typeof userEvent.setup>,
+    requests: RecordedRequest[],
+    sent = 1,
+  ): Promise<void> => {
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(sent);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    await user.click(discardButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmDiscard }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+  };
+
+  /**
+   * **늦은 실패가 새 초안 위에 서지 않는다.**
+   *
+   * 앞 초안에서 보낸 요청이 거절돼도 새 초안은 그 거절을 물려받지 않는다 — 사용자는 한 글자도
+   * 치지 않은 초안이 이미 거부된 줄 알게 된다.
+   */
+  it('버린 초안의 400이 새 초안 위에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(
+      allRoutes([
+        failingCreateRoute(400, {
+          errors: [{ scope: 'screen', code: 'SAMPLE_ERR', message: '합성 등록 거절' }],
+        }),
+      ]),
+      '?count=9101',
+      [ADJUSTMENTS_PATH],
+    );
+
+    await registerThenDiscard(user, requests);
+
+    release();
+
+    /*
+     * **응답이 실제로 도착한 시점 뒤에 잰다**(사본 체크리스트 9번). 「보내는 중」 사유가
+     * 새 초안의 사유(줄이 없다)로 갈리는 것이 그 시점의 양성 앵커다 — 도착 전에 「배너가
+     * 없다」를 재면 아직 아무 일도 없는 화면에서 늘 통과한다.
+     */
+    await screen.findByText(t.actionReasons.registerNeedsLines);
+
+    expect(screen.getByText(t.empty.noLinesTitle)).toBeInTheDocument();
+    expect(screen.queryByText('합성 등록 거절')).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **늦은 성공은 감추지 않되 새 초안의 결과로 세우지 않는다.**
+   *
+   * 서버에는 전표가 실제로 만들어졌으므로 사실을 밝히고(사용자가 모르는 전표가 남으면 안 된다),
+   * 결과 구획과 폼 잠금은 **지금 초안의 것이 아니므로** 서지 않는다.
+   *
+   * **이 시험이 `resetIfIdle` 규율의 감지기이기도 하다** — 초안을 버릴 때 `reset()`을 직접
+   * 불렀다면 옵저버가 떨어져 이 성공이 **아예 도착하지 않고**, 아래 안내가 서지 않는다.
+   */
+  it('버린 초안의 201은 사실만 알리고 결과 구획을 세우지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(allRoutes([createRoute()]), '?count=9101', [
+      ADJUSTMENTS_PATH,
+    ]);
+
+    await registerThenDiscard(user, requests);
+
+    release();
+
+    expect(
+      await screen.findByText(t.result.unboundCreatedNote('SAMPLE-IA-9301')),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.alreadyRegistered)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **매임 소비처 넷째 — 사유 칸의 서버 오류**(D-15의 「한 자리라도 빠지면 샌다」).
+   *
+   * 앞 세 갈래(결과 구획·실패 배너·「이미 등록했다」 잠금)는 화면 수준 오류로 재어지는데,
+   * **칸 오류는 다른 통로를 지난다**(공통 훅이 `fieldErrors`로 돌린다) — 그 통로만 매임을
+   * 빠뜨려도 앞 시험들은 전부 통과한다. 그때 사용자는 **한 글자도 치지 않은 새 초안의 사유
+   * 칸이 빨갛게 서 있는** 화면을 본다.
+   */
+  it('버린 초안의 칸 400이 새 초안의 사유 칸에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(
+      allRoutes([fieldErrorRoute('reasonCode', '합성 사유 오류')]),
+      '?count=9101',
+      [ADJUSTMENTS_PATH],
+    );
+
+    await registerThenDiscard(user, requests);
+
+    release();
+
+    /* 응답이 실제로 도착한 시점의 양성 앵커 — 위 400 시험과 같은 형태다. */
+    await screen.findByText(t.actionReasons.registerNeedsLines);
+
+    expect(screen.queryByText('합성 사유 오류')).not.toBeInTheDocument();
+    expect(reasonField()).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /**
+   * ⭐ **앞 전표의 사실은 새 등록이 성공해도 남는다**(리뷰 R-4).
+   *
+   * 매임은 한 자리라, 매임 자체에 이 사실을 실으면 다음 등록이 성공하는 순간 앞 전표의 번호가
+   * 화면에서 사라진다 — 이 갈래를 만든 이유(사용자가 **모르는 전표**가 서버에 남는다)가 그대로
+   * 되돌아온다. 이 슬라이스에는 그 번호를 되찾을 조회 자리가 아직 없다.
+   */
+  it('버린 초안의 전표번호가 다음 등록 성공에 덮이지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(
+      allRoutes([sequencedCreateRoute(['SAMPLE-IA-9301', 'SAMPLE-IA-9302'])]),
+      '?count=9101',
+      [ADJUSTMENTS_PATH],
+    );
+
+    await registerThenDiscard(user, requests);
+
+    release();
+
+    await screen.findByText(t.result.unboundCreatedNote('SAMPLE-IA-9301'));
+
+    /* 새 초안을 다시 세워 등록한다 — 이번에는 버리지 않으므로 결과 구획이 선다. */
+    await user.click(loadButton());
+    await screen.findByRole('table');
+    await chooseReason(user);
+    await submitRegister(user);
+    release();
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(within(pane).getByText('SAMPLE-IA-9302')).toBeVisible();
+    /* 앞 전표의 사실이 그대로 남아 있다 — 덮이지 않는다. */
+    expect(screen.getByText(t.result.unboundCreatedNote('SAMPLE-IA-9301'))).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **버린 초안이 둘이면 두 번호가 **모두** 남는다**(리뷰 R-4의 축 — 쌓기).
+   *
+   * 앞 시험은 「매임과 다른 자리에 있는가」를 재고, 이 시험은 「그 자리가 **덮이지 않고
+   * 쌓이는가**」를 잰다 — 하나만 들면 둘째 사고가 첫째 번호를 지운다. 이 경로는 실재한다:
+   * 보내는 중 버리기가 열려 있어(그 자체가 이 화면의 판단이다) 되풀이할 수 있다.
+   */
+  it('버린 초안이 둘이면 두 전표번호가 모두 남는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(
+      allRoutes([sequencedCreateRoute(['SAMPLE-IA-9301', 'SAMPLE-IA-9302'])]),
+      '?count=9101',
+      [ADJUSTMENTS_PATH],
+    );
+
+    await registerThenDiscard(user, requests);
+    release();
+    await screen.findByText(t.result.unboundCreatedNote('SAMPLE-IA-9301'));
+
+    /* 같은 일을 한 번 더 — 대상을 다시 세우고 보내는 중에 또 버린다. */
+    await user.click(loadButton());
+    await screen.findByRole('table');
+    await registerThenDiscard(user, requests, 2);
+    release();
+
+    expect(
+      await screen.findByText(t.result.unboundCreatedNote('SAMPLE-IA-9301, SAMPLE-IA-9302')),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **매임은 선 뒤에도 끊긴다**(리뷰 R-7 — 앞 회차가 만든 회귀를 닫는 자리).
+   *
+   * 초안 세션을 올리는 자리가 둘인데 하나는 **조작이 아니라 effect**다(`varianceData`가 바뀌면
+   * 돈다) — 폼 잠금은 조작 자리를 막을 뿐 effect를 막지 못한다. 그 갱신이 도착하는 실경로가
+   * 둘 있다: **재접속 재조회**(앱 기본값이 `refetchOnReconnect`를 덮지 않는다)와 **조회 실패 뒤
+   * 「다시 시도」**(그 배너는 잠금 밖에 선다). 여기서는 무효화로 그 도착을 재현한다.
+   *
+   * 그때 **되돌릴 수 없는 쓰기의 영수증이 사라지면** 사용자는 앞 전표를 모른 채 같은 실사에
+   * 두 번째 조정을 만들 수 있다 — 이 슬라이스에는 그 번호를 되찾을 조회 자리가 없다.
+   */
+  it('등록 성공 뒤 실사 차이가 달라져도 그 전표번호는 화면에 남는다', async () => {
+    withReasonCodes();
+
+    let call = 0;
+    const changingVarianceRoute: StubRoute = {
+      match: (request) => isGet(request, VARIANCE_PATH),
+      respond: () => {
+        call += 1;
+
+        return jsonResponse(
+          listBody(
+            call === 1
+              ? countVarianceLineFixtures
+              : [countVarianceLineResponse({ systemQty: 100, countedQty: 93, varianceQty: -7 })],
+          ),
+        );
+      },
+    };
+
+    const { queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute,
+        createRoute(adjustmentDetailBody({ inventoryAdjustmentNo: 'SAMPLE-IA-9303' })),
+      ]),
+    );
+
+    await setupAndRegister(user);
+
+    /* 양성 앵커 — 이 초안의 결과가 실제로 섰다. */
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(within(pane).getByText('SAMPLE-IA-9303')).toBeVisible();
+
+    /* **잠금 밖에서 도는 갱신**이 도착한다 — 사용자가 누른 것이 아니다. */
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    /* 달라진 응답이 실제로 대상을 다시 세운 시점을 앵커로 잡는다(줄이 셋 → 하나). */
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    /*
+     * ⭐ **영수증이 남는다** — 결과 구획은 걷혀도(그 초안의 것이 아니다) 번호는 화면에 선다.
+     *
+     * ⚠ **폼이 다시 열리는 것 자체는 이 회차가 바꾸지 않았다**(앞 회차부터 같은 형태 ·
+     * 리뷰 §3-6 참고 — 처리 이력이 서는 회차에서 재판단). 이 시험이 고정하는 것은
+     * **열린다면 반드시 앞 전표의 사실이 함께 선다**는 짝이다 — 그것이 이 갈래에서 두 번째
+     * 전표를 막는 유일한 방어다.
+     */
+    expect(screen.getByText(t.result.unboundCreatedNote('SAMPLE-IA-9303'))).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 버리지 않았으면 결과가 **이 초안 위에 선다.** 「늘 감춘다」로 통과하지 않게 한다. */
+  it('초안을 그대로 두면 결과 구획이 선다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes([createRoute()]));
+
+    await setupAndRegister(user);
+
+    expect(await screen.findByRole('region', { name: t.result.label })).toBeInTheDocument();
+    expect(
+      screen.queryByText(t.result.unboundCreatedNote('SAMPLE-IA-9301')),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * **초안 버리기** — 서버를 부르지 않는 조작이다.
+ */
+describe('StockAdjustScreen — 초안 버리기', () => {
+  it('버릴 값이 없으면 잠기고 그 사정을 말한다', async () => {
+    renderScreen(allRoutes(), '');
+
+    await screen.findByText(t.source.directNote);
+
+    expect(discardButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.discardNothing)).toBeInTheDocument();
+  });
+
+  it('세운 줄이 있으면 버리기가 열린다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+
+    expect(discardButton()).toBeEnabled();
+  });
+
+  /** 고른 사유만 있어도 버릴 것이 있다 — 머리와 줄을 함께 본다. */
+  it('사유만 골라도 버리기가 열린다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes(), '');
+
+    await screen.findByText(t.source.directNote);
+    await chooseReason(user);
+
+    expect(discardButton()).toBeEnabled();
+  });
+
+  it('버리면 세운 줄과 고른 사유가 함께 사라진다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(allRoutes([createRoute()]));
+
+    await readyToRegister(user);
+    await user.click(discardButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmDiscard }));
+
+    await screen.findByText(t.empty.noLinesTitle);
+
+    expect(reasonField()).toHaveTextContent(t.fields.reasonCodePlaceholder);
+    /* 서버를 부르지 않는 조작이다 — 버리기가 요청을 내지 않는다. */
+    expect(createRequests(requests)).toHaveLength(0);
+  });
+
+  /** 버린 뒤 **다시 불러올 수 있다** — 실사 차이는 서버에 그대로 있다. */
+  it('버린 뒤에도 실사 차이를 다시 불러올 수 있다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+    await user.click(discardButton());
+    await user.click(screen.getByRole('button', { name: t.actions.confirmDiscard }));
+    await screen.findByText(t.empty.noLinesTitle);
+
+    await user.click(loadButton());
+
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(bodyRows()).toHaveLength(3);
+  });
+});
+
+/**
+ * **등록 성공**(C23·C24·C26).
+ */
+describe('StockAdjustScreen — 등록 성공', () => {
+  it('결과 구획에 전표번호와 등록 시점의 상태가 서고 확인 창이 닫힌다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes([createRoute()]));
+
+    await setupAndRegister(user);
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(within(pane).getByText('SAMPLE-IA-9301')).toBeVisible();
+    expect(within(pane).getByText('SAMPLE_IA_STATUS_A')).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /** **서버가 저장한 줄 수**를 낸다 — 화면이 보낸 줄 수(둘)와 갈린 값(셋)으로 잰다. */
+  it('서버가 되돌려 준 줄 수를 낸다 — 화면이 센 수가 아니다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([createRoute(adjustmentDetailBody({ lineCount: 3 }))]),
+    );
+
+    await setupAndRegister(user);
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(sentLines(requests)).toHaveLength(2);
+    expect(within(pane).getByText(t.result.lineCount(3))).toBeVisible();
+  });
+
+  /** ERP 적재 여부가 **오지 않는 갈래**가 화면까지 이어진다(C23) — 거짓으로 접지 않는다. */
+  it('ERP 적재 여부가 오지 않으면 알 수 없다고 말한다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(
+      allRoutes([createRoute(adjustmentDetailBody({ erpMessageQueued: null }))]),
+    );
+
+    await setupAndRegister(user);
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(within(pane).getByText(t.result.erpUnknown)).toBeVisible();
+    expect(within(pane).queryByText(t.result.erpNotQueued)).not.toBeInTheDocument();
+  });
+
+  /**
+   * **성공 뒤 폼과 대상 전환이 잠긴다**(C26).
+   *
+   * 되돌릴 경로가 없어 두 번째 전표를 지울 수 없다 — 그리고 대상을 바꾸면 만들어진 전표를
+   * 보이는 구획이 사라져 사용자가 전표번호를 잃는다.
+   */
+  it('성공 뒤 폼·표·대상 전환이 잠기고 사유가 붙는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes([createRoute()]));
+
+    await setupAndRegister(user);
+    await screen.findByRole('region', { name: t.result.label });
+
+    expect(screen.getAllByText(t.actionReasons.alreadyRegistered).length).toBeGreaterThan(0);
+    expect(reasonField()).toBeDisabled();
+    expect(diffBox(1)).toBeDisabled();
+    expect(addLineButton()).toBeDisabled();
+    expect(registerButton()).toBeDisabled();
+    expect(discardButton()).toBeDisabled();
+    expect(countField()).toBeDisabled();
+    expect(loadButton()).toBeDisabled();
+  });
+
+  /** 성공해도 **같은 요청을 다시 내지 않는다** — 다시 부를 조회가 없다. */
+  it('성공 뒤 실사 차이를 다시 부르지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(allRoutes([createRoute()]));
+
+    await setupAndRegister(user);
+    await screen.findByRole('region', { name: t.result.label });
+
+    expect(requestsTo(requests, VARIANCE_PATH)).toHaveLength(1);
+  });
+
+  /**
+   * ⛔ **목이 채워 준 값에 기대지 않는다**(§5.2.5 실측).
+   *
+   * 목은 등록 응답에 승인 요청 번호와 전기 시각을 계약 예시값으로 채워 준다 — 화면이 그것을
+   * 읽어 「상신됨」·「전기됨」을 그리면 **확인하지 않은 사실**을 말하게 된다.
+   */
+  it('결과 구획에 상신·전기 표기가 없다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes([createRoute()]));
+
+    await setupAndRegister(user);
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(within(pane).getByText('SAMPLE-IA-9301')).toBeVisible();
+    expect(within(pane).queryAllByRole('button')).toHaveLength(0);
+    for (const id of INTERNAL_IDS) {
+      expect(pane.textContent ?? '').not.toContain(`${id} `);
+    }
+  });
+});
+
+/**
+ * **실패 네 갈래**(C27) — 문구가 갈리고 **입력이 유지된다.**
+ */
+describe('StockAdjustScreen — 등록 실패', () => {
+  const registerAndFail = async (
+    user: ReturnType<typeof userEvent.setup>,
+    requests: RecordedRequest[],
+  ): Promise<void> => {
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+  };
+
+  it('400이면 서버 문구가 창 안에 그대로 서고 입력이 남는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        failingCreateRoute(400, {
+          errors: [{ scope: 'screen', code: 'SAMPLE_ERR', message: '합성 등록 거절' }],
+        }),
+      ]),
+    );
+
+    await registerAndFail(user, requests);
+
+    expect(await screen.findByText('합성 등록 거절')).toBeVisible();
+    /* 창은 닫히지 않는다 — 무엇이 막았는지 읽고 다시 시도할 자리다. */
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    expect(bodyRows()).toHaveLength(3);
+    expect(diffBox(1)).toHaveValue('-2');
+  });
+
+  /**
+   * **화면이 아는 칸의 오류는 그 칸에 붙는다** — 배너로 밀면 어느 칸인지 알 수 없다.
+   *
+   * 아래 「그릴 자리가 없는 칸」 시험의 **대조군**이다. 둘이 함께 있어야 「서는 자리가 갈린다」가
+   * 재어지고, 한쪽만 있으면 하네스 탓인지 배선 탓인지 가릴 수 없다.
+   */
+  it('사유 칸의 400은 그 칸에 붙는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([fieldErrorRoute('reasonCode', '합성 사유 오류')]),
+    );
+
+    await registerAndFail(user, requests);
+
+    await waitFor(() => {
+      expect(screen.getByText('합성 사유 오류')).toBeVisible();
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    expect(reasonField()).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /**
+   * ⭐ **그릴 자리가 없는 칸의 400은 배너로 떨어진다** — 어디에도 서지 않고 사라지면 안 된다.
+   *
+   * 공통 훅은 「화면이 아는 칸」으로 선언된 이름을 **배너에서 빼고** 인라인용으로 돌린다.
+   * 그래서 그리는 자리가 없는 이름을 그 목록에 넣으면 서버가 준 거절 사유가 **통째로 사라지고**,
+   * 사용자에게는 「눌렀는데 아무 일도 없다」로 보인다 — 되돌릴 수 없는 쓰기에서 가장 나쁜
+   * 표시 상태다. ERP 송신은 토글이라 오류 슬롯이 없으므로 **배너가 그 자리를 진다.**
+   */
+  it('그릴 자리가 없는 칸의 400은 배너로 선다 — 사라지지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([fieldErrorRoute('sendToErp', '합성 ERP 송신 거절')]),
+    );
+
+    await registerAndFail(user, requests);
+
+    /* 창 안 배너가 그 자리다 — 확인 창은 실패해도 닫히지 않는다. */
+    const dialog = await screen.findByRole('dialog');
+
+    expect(await within(dialog).findByText('합성 ERP 송신 거절')).toBeVisible();
+  });
+
+  /** 고친 칸의 **서버 오류를 함께 지운다** — 안 지우면 방금 고친 칸에 옛 문구가 되살아난다. */
+  it('사유를 다시 고르면 그 칸의 서버 오류가 걷힌다', async () => {
+    codeValues.reason = [SAMPLE_REASON, 'SAMPLE_AR_B'];
+
+    const { requests, user } = renderScreen(
+      allRoutes([fieldErrorRoute('reasonCode', '합성 사유 오류')]),
+    );
+
+    await registerAndFail(user, requests);
+
+    await waitFor(() => {
+      expect(screen.getByText('합성 사유 오류')).toBeVisible();
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+    await user.click(reasonField());
+    await user.click(screen.getByRole('option', { name: 'SAMPLE_AR_B' }));
+
+    expect(screen.queryByText('합성 사유 오류')).not.toBeInTheDocument();
+  });
+
+  it('403이면 권한 문구가 선다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(allRoutes([failingCreateRoute(403)]));
+
+    await registerAndFail(user, requests);
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeVisible();
+  });
+
+  /**
+   * **409에는 「최신 불러오기」를 내지 않는다.**
+   *
+   * 계약에 `If-Match`도 409도 없는 쓰기라 잠글 대상이 없다 — 재조회 수단을 내면 입력만 버리게
+   * 된다. 서버가 그래도 409를 주면 문구는 내되 수단은 내지 않는다.
+   */
+  it('409면 충돌 문구가 서고 최신 불러오기를 내지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([failingCreateRoute(409, { conflictCause: 'user', message: '' })]),
+    );
+
+    await registerAndFail(user, requests);
+
+    expect(await screen.findByText(messages.conflict.user)).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: messages.conflict.reloadAction }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **응답이 오지 않은 요청은 실패가 아니다**(멱등 세 겹의 셋째).
+   *
+   * 훅이 호출마다 새 멱등 키를 만들어, 그대로 다시 보내면 서버에는 다른 요청으로 보인다 —
+   * 전표가 두 벌 남을 수 있다.
+   */
+  it('네트워크가 끊기면 보내졌는지 알 수 없다는 사실을 함께 말한다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(allRoutes([offlineCreateRoute()]));
+
+    await registerAndFail(user, requests);
+
+    expect(await screen.findByText(messages.httpError.offline)).toBeVisible();
+    expect(screen.getByText(t.notes.networkUnconfirmed)).toBeVisible();
+  });
+
+  /**
+   * ⭐ **이 안내의 본체는 금지다**(전례 `poRegister.notes.networkUnconfirmed`가 세운 잣대).
+   *
+   * 전표 두 벌을 막는 것은 확인이 아니라 **하지 않는 것**이다 — 훅이 호출마다 새 멱등 키를
+   * 만들어 「다시 보내기」가 그대로 두 번째 요청이 되기 때문이다. 금지를 선행 확인에 매달면
+   * 「확인하면 다시 보내도 된다」로 읽히고, **확인할 자리가 없는 이 화면에서는 그 조치 자체가
+   * 실행 불가능**하다. 문구를 고칠 때 이 두 성질이 함께 유지되는지를 이 잣대가 잡는다.
+   */
+  it('그 안내가 확인이 아니라 금지를 말한다', () => {
+    expect(t.notes.networkUnconfirmed).toContain('다시 등록하지 마세요');
+    expect(t.notes.networkUnconfirmed).toContain('이 화면에서 확인할 수 없습니다');
+
+    /*
+     * ⭐ **음성 축 — 없는 자리를 가리키지 않는다**(리뷰 R-8).
+     *
+     * 양성 둘만 재면 **두 문장을 그대로 둔 채** 가운데에 없는 탭을 다시 끼운 문면이 통과한다 —
+     * 앞 회차의 지적이 형태만 바꿔 되살아나는 길이다. 이 슬라이스에 조정을 조회할 자리가
+     * 생기는 회차가 이 한 줄을 **의도적으로 지우는 것**이 곧 위 ⚠ 갱신 표지의 이행 기록이 된다.
+     */
+    expect(t.notes.networkUnconfirmed).not.toContain('처리 이력');
+  });
+
+  /** 짝 방향 — 서버가 거절한 요청에는 그 안내가 없다. 전달된 것이 확실하기 때문이다. */
+  it('서버가 거절한 요청에는 그 안내가 없다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(allRoutes([failingCreateRoute(403)]));
+
+    await registerAndFail(user, requests);
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeVisible();
+    expect(screen.queryByText(t.notes.networkUnconfirmed)).not.toBeInTheDocument();
+  });
+
+  /** 실패한 뒤에는 **다시 보낼 수 있다** — 실패가 화면을 잠그지 않는다. */
+  it('실패한 뒤 다시 보내면 요청이 다시 나간다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(allRoutes([failingCreateRoute(403)]));
+
+    await registerAndFail(user, requests);
+
+    await screen.findByText(messages.httpError.forbidden);
+    await user.click(confirmRegisterButton());
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(2);
+    });
   });
 });
