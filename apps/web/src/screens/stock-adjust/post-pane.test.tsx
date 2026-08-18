@@ -104,6 +104,27 @@ describe('PostPane — 접힌 두 번째 선택지', () => {
     expect(within(pane()).getByText(t.post.onlyWithoutRoute)).toBeVisible();
   });
 
+  /**
+   * ⭐ **그 사유가 계약보다 넓게 말하지 않는다**(리뷰 R-3 · N-2의 잣대).
+   *
+   * 위 감지기는 **키를 참조**하므로 문면이 어떻게 바뀌든 따라가며 조용히 통과한다 — 옆 문구
+   * (`networkUnconfirmed`)에는 이미 세워 둔 두 절 잣대를 이 문구에도 세운다.
+   *
+   * 서버가 막는 것은 「승인이 필요한데 **끝나지 않았을 때**」이고 결재선의 존재 자체가 이 길을
+   * 영영 막는 것이 아니다. 넓게 적으면 **승인을 받아 낸 사용자가 이 길을 접고**, 그 조정은
+   * 승인만 받은 채 영영 전기되지 않는다 — 세 문장 ②가 막으려던 바로 그 사고다.
+   */
+  it('상시 사유가 승인이 끝나기 전으로 한정해 말한다', () => {
+    expect(t.post.onlyWithoutRoute).toContain('승인이 끝나기 전에는');
+    expect(t.post.onlyWithoutRoute).toContain('승인이 끝난 뒤에 전기하세요');
+
+    /*
+     * **음성 축** — 한정 없는 절이 되살아나면(또는 덧붙으면) 두 `toContain`이 그대로 통과한다.
+     * 한 문장 안에서 넓은 말과 좁은 말이 함께 서면 사용자는 **앞의 것을 읽는다.**
+     */
+    expect(t.post.onlyWithoutRoute).not.toContain('결재선이 있으면 서버가 전기를 막습니다');
+  });
+
   it('펼치면 두 칸과 전기 버튼이 선다', () => {
     renderPane();
 
