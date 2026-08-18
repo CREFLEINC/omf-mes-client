@@ -30,6 +30,22 @@ describe('MIN_NEW_PASSWORD_LENGTH — 계약에서 옮겨 온 값', () => {
   it('계약이 정한 8이다', () => {
     expect(MIN_NEW_PASSWORD_LENGTH).toBe(8);
   });
+
+  /**
+   * 길이 오류 문구도 **상수를 주입받아** 만들어진다.
+   *
+   * ⚠ 이 파일의 다른 단언은 전부 `t.validation.tooShort(MIN_NEW_PASSWORD_LENGTH)`로 **문구 함수
+   * 대 문구 함수**를 견준다. 그것만으로는 문구가 인자를 무시하고 숫자를 손으로 적어도 전부
+   * 통과한다 — 그 자리를 리터럴 대조로 봉한다(안내 문구 쪽 감지기와 같은 형태).
+   */
+  it('길이 오류 문구가 그 상수를 주입받는다', () => {
+    expect(t.validation.tooShort(MIN_NEW_PASSWORD_LENGTH)).toContain(
+      String(MIN_NEW_PASSWORD_LENGTH),
+    );
+    expect(t.validation.tooShort(MIN_NEW_PASSWORD_LENGTH + 1)).not.toBe(
+      t.validation.tooShort(MIN_NEW_PASSWORD_LENGTH),
+    );
+  });
 });
 
 describe('validatePasswordDraft — 화면이 보내기 전에 잡는 것', () => {
@@ -160,9 +176,10 @@ describe('validatePasswordDraft — 화면이 보내기 전에 잡는 것', () =
 
   /**
    * ⚠ **전례(`login-draft.ts`의 `isFilled`)와 반대로 판단하는 자리다.** 그쪽은 공백만 친 칸을
-   * 빈 칸으로 셌고 아이디 칸을 함께 다루는 화면에서 그 판단이 옳다. 여기서는 세 칸이 전부
-   * 비밀번호이고 **공백도 값의 일부**이며, 가려진 칸에서 공백은 점으로 **보인다** — 무언가 친
-   * 칸을 화면이 「비었다」고 말하면 사용자는 왜 잠겼는지 알 수 없다.
+   * 빈 칸으로 센다 — 그 잣대가 **아이디 칸뿐 아니라 비밀번호 칸에도 그대로 걸려 있고**, 거기서는
+   * 아직 그대로다(별건으로 올린다). 여기서는 세 칸이 전부 비밀번호이고 **공백도 값의 일부**이며,
+   * 가려진 칸에서 공백은 점으로 **보인다** — 무언가 친 칸을 화면이 「비었다」고 말하면 사용자는
+   * 왜 잠겼는지 알 수 없다.
    */
   it('공백만 친 칸도 채운 것으로 센다', () => {
     const spaces = ' '.repeat(MIN_NEW_PASSWORD_LENGTH);

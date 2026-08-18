@@ -49,10 +49,14 @@ export type PasswordFieldErrors = Partial<Record<PasswordFieldName, string>>;
  * 칸이 비었는가. **다듬지 않고 본다.**
  *
  * ⚠ **전례(`login/login-draft.ts`의 `isFilled`)와 반대로 판단하는 자리다.** 그쪽은 공백만 친
- * 칸을 빈 칸으로 셌고, 아이디 칸을 함께 다루는 화면에서 그 판단은 옳다. 여기서는 세 칸이 전부
- * 비밀번호라 사정이 둘 다르다 — 계약이 길이만 재므로 **공백도 값의 일부**이고, 가려진 칸에서
- * 공백은 점으로 **보인다.** 무언가 친 칸을 화면이 「비었다」고 말하면 사용자는 자기가 친 것을
- * 보면서 왜 잠겼는지 알 수 없다.
+ * 칸을 빈 칸으로 센다(`value.trim() !== ''`). 그 판단은 전례의 **아이디 칸**에는 맞지만
+ * **비밀번호 칸에도 같은 잣대가 걸려 있고, 거기서는 문제가 그대로 남아 있다** — 공백으로 된
+ * 비밀번호를 가진 계정은 값을 바르게 치고도 「모두 입력해야 쓸 수 있습니다」를 읽는다.
+ * (전례 쪽 후속은 이 슬라이스의 범위 밖이라 별건으로 올린다 — 여기서 고치지 않는다.)
+ *
+ * 여기서 반대로 가는 근거는 둘이다 — 계약이 길이만 재므로 **공백도 값의 일부**이고, 가려진
+ * 칸에서 공백은 점으로 **보인다.** 무언가 친 칸을 화면이 「비었다」고 말하면 사용자는 자기가
+ * 친 것을 보면서 왜 잠겼는지 알 수 없다.
  */
 const isEmpty = (value: string): boolean => value === '';
 
@@ -77,11 +81,16 @@ export const validatePasswordDraft = (draft: PasswordDraft): PasswordFieldErrors
   if (!isEmpty(draft.newPassword)) {
     if (draft.newPassword.length < MIN_NEW_PASSWORD_LENGTH) {
       errors.newPassword = t.validation.tooShort(MIN_NEW_PASSWORD_LENGTH);
-    } else if (!isEmpty(draft.currentPassword) && draft.newPassword === draft.currentPassword) {
+    } else if (draft.newPassword === draft.currentPassword) {
       /*
        * ⭐ **원문 그대로 비교한다.** 다듬고 비교하면 서버에는 서로 **다른 값**인 둘을 화면이
        * 「같다」고 막아, 사용자가 그 값을 영영 쓸 수 없다. 이력이 필요한 「직전 비밀번호 재사용
        * 금지」와 다른 규칙이다 — 여기서 견주는 것은 지금 이 화면에 있는 두 값뿐이다.
+       *
+       * **현재 비밀번호 칸이 비었는지 따로 보지 않는다.** 바깥 가드가 새 비밀번호를 이미
+       * 「비어 있지 않다」로 좁혔으므로, 두 값이 같다면 현재 비밀번호도 빈 값일 수 없다 —
+       * 그 검사를 두면 **일어날 수 없는 경우가 있는 것처럼** 읽히고, 어떤 뮤테이션도 잴 수
+       * 없는 자리가 된다.
        */
       errors.newPassword = t.validation.sameAsCurrent;
     }

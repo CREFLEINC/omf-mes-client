@@ -21,12 +21,22 @@ const TOO_SHORT = 'S'.repeat(MIN_NEW_PASSWORD_LENGTH - 1);
 
 /**
  * 화면 밖 문구가 섞이지 않게 이 블록의 문구만 훑는다. 함수 문구는 최소 길이를 넣어 펼친다 —
- * 이 블록의 문구 함수는 전부 숫자 하나를 받는다(늘어나면 이 자리를 함께 고친다).
+ * 이 블록의 문구 함수는 전부 숫자 하나를 받는다.
+ *
+ * ⚠ **인자 수를 함께 잰다.** 뒤 회차가 인자 형태가 다른 문구를 더하면 펼치기가 조용히
+ * `undefined`가 섞인 문자열을 만들고, 그때 금칙어 훑기는 **약해진 줄 모르는 채** 통과한다.
+ * 여기서 먼저 깨져야 그 자리를 함께 고친다.
  */
 const blockTexts = (block: Record<string, unknown>): string[] =>
   Object.values(block).flatMap((value): string[] => {
     if (typeof value === 'string') return [value];
-    if (typeof value === 'function') return [String(value(MIN_NEW_PASSWORD_LENGTH))];
+
+    if (typeof value === 'function') {
+      expect(value).toHaveLength(1);
+
+      return [String((value as (argument: number) => string)(MIN_NEW_PASSWORD_LENGTH))];
+    }
+
     if (typeof value === 'object' && value !== null) {
       return blockTexts(value as Record<string, unknown>);
     }
@@ -296,6 +306,46 @@ describe('PasswordChangeScreen — 「변경」의 활성 조건', () => {
     expect(submitButton()).toHaveAttribute('aria-describedby', reason.id);
   });
 
+  /**
+   * ⭐ **배치 규범 4-2 — 사유는 그 컨트롤 바로 아래, 왼쪽 가장자리를 맞춰 선다.** 그 세로 묶음이
+   * 규범 2의 `.field-cell`이고, 형제 화면들이 예외 없이 그 형태를 쓴다(`stock-adjust` ·
+   * `po-register` · `disposal-issue` · 부품 `users-roles/disabled-action.tsx`).
+   *
+   * ⚠ **이 감지기가 재는 CSS 전제**: 액션 줄 `.form-actions`는 `display:flex`에
+   * `justify-content:flex-end`인 **행**이다(`app/app.css`). 그래서 사유를 그 **직속**에 두면
+   * 버튼 아래가 아니라 **오른쪽**에 세 번째 항목으로 선다. 전례(`login/screen.tsx`)의 같은 자식
+   * 구조가 성립했던 것은 그쪽 컨테이너가 flex가 아니라 **블록**(`.login-actions`)이었기
+   * 때문이다 — **컨테이너를 바꿔 옮기면 자식 묶음도 함께 바꿔야 한다.**
+   *
+   * jsdom은 이 저장소의 CSS를 적용하지 않으므로(폭·정렬은 잴 수 없다) 형제 선례
+   * (`item-extended-attrs/disabled-action.test.tsx`)와 같이 **묶음 구조**로 잰다.
+   */
+  it('사유가 「변경」과 같은 세로 묶음(.field-cell) 안에 선다', () => {
+    renderScreen();
+
+    const reason = screen.getByText(t.actionReasons.incomplete);
+    const cell = submitButton().closest('.field-cell');
+
+    expect(cell).not.toBeNull();
+    expect(cell).toContainElement(reason);
+  });
+
+  /**
+   * 칸 열과 액션 줄이 **같은 폭 상한 컨테이너 안**에 선다. 칸 열에만 상한을 주면 넓은 창에서
+   * 칸은 왼쪽 24rem에 서고 취소·변경은 화면 오른쪽 끝으로 갈라진다 — 상한 값 자체는 CSS가
+   * 소유하고(`.password-form`), 여기서는 **두 열이 같은 상한을 지난다**는 구조를 잰다.
+   */
+  it('칸 열과 액션 줄이 같은 폭 상한 컨테이너 안에 선다', () => {
+    const { container } = renderScreen();
+
+    const fields = container.querySelector('.password-fields');
+    const actions = container.querySelector('.form-actions');
+    const capped = fields?.closest('.password-form');
+
+    expect(capped).not.toBeNull();
+    expect(actions?.closest('.password-form')).toBe(capped);
+  });
+
   it('칸은 다 찼지만 규칙이 깨졌으면 잠기고 사유가 칸의 오류를 가리킨다', async () => {
     const { user } = renderScreen();
 
@@ -303,6 +353,24 @@ describe('PasswordChangeScreen — 「변경」의 활성 조건', () => {
 
     expect(submitButton()).toBeDisabled();
     expect(screen.getByText(t.actionReasons.invalid)).toBeInTheDocument();
+  });
+
+  /**
+   * 「공백만 친 칸도 채운 것으로 센다」의 **화면 계층 짝**이다. 판정은 초안이 소유하지만, 그
+   * 판정이 사용자에게 드러나는 자리는 **가려진 칸이 있는 화면**이다 — 점이 보이는데 「모두
+   * 입력하면 쓸 수 있습니다」가 서 있으면 무엇을 더 쳐야 하는지 알 수 없다.
+   */
+  it('세 칸에 공백만 쳐도 「변경」이 열린다', async () => {
+    const { user } = renderScreen();
+
+    const spaces = ' '.repeat(MIN_NEW_PASSWORD_LENGTH);
+
+    await user.type(currentBox(), 'SYN-CURRENT-0002');
+    await user.type(newBox(), spaces);
+    await user.type(confirmBox(), spaces);
+
+    expect(submitButton()).toBeEnabled();
+    expect(screen.queryByText(t.actionReasons.incomplete)).toBeNull();
   });
 
   it('세 칸이 규칙을 만족하면 열리고 사유가 사라진다', async () => {

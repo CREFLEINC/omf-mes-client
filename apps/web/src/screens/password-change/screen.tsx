@@ -97,7 +97,12 @@ export const PasswordChangeScreen = () => {
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
 
-      <form onSubmit={handleSubmit}>
+      {/*
+       * 폼 전체가 **한 폭 상한 안**에 선다(`.password-form`). 칸 열에만 상한을 주면 넓은 창에서
+       * 칸은 왼쪽에 서고 액션 줄은 화면 오른쪽 끝으로 갈라진다 — 액션이 자기가 딸린 칸에서
+       * 멀어지면 무엇을 저장하는 버튼인지 읽히지 않는다.
+       */}
+      <form className="password-form" onSubmit={handleSubmit}>
         <div className="password-fields">
           {/*
            * 현재 비밀번호 칸에는 이 회차가 세울 오류가 없다 — 맞는지 아는 것은 서버뿐이고,
@@ -146,26 +151,37 @@ export const PasswordChangeScreen = () => {
          * 잠긴 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다 —
          * 잠긴 버튼은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다
          * (배치 규범 4-1). **열려 있으면 그리지 않는다** — 늘 서 있으면 읽히지 않는다.
+         *
+         * ⚠ **사유는 버튼과 한 `.field-cell` 안에 든다**(규범 4-2 — 그 컨트롤 **바로 아래**,
+         * 왼쪽 가장자리를 맞춰). 액션 줄 `.form-actions`는 **우측 정렬 flex 행**이라 사유를
+         * 직속에 두면 버튼 아래가 아니라 **오른쪽**에 선다. 전례(`login/screen.tsx`)는 같은 자식
+         * 구조를 쓰면서도 컨테이너가 **블록**(`.login-actions`)이라 성립했다 — 배치 클래스를
+         * 바꿔 옮길 때는 그 클래스의 표시 형식까지 함께 옮겨 와야 한다. 형제 화면들이 예외 없이
+         * 이 묶음을 쓴다(`stock-adjust` · `po-register` · `disposal-issue`).
          */}
         <div className="form-actions">
-          <Button type="button" variant="outlined" onClick={cancel}>
-            {messages.common.cancel}
-          </Button>
+          <div className="field-cell">
+            <Button type="button" variant="outlined" onClick={cancel}>
+              {messages.common.cancel}
+            </Button>
+          </div>
 
-          <Button
-            type="submit"
-            variant="filled"
-            disabled={blockReason !== undefined}
-            aria-describedby={blockReason === undefined ? undefined : reasonId}
-          >
-            {t.actions.submit}
-          </Button>
+          <div className="field-cell">
+            <Button
+              type="submit"
+              variant="filled"
+              disabled={blockReason !== undefined}
+              aria-describedby={blockReason === undefined ? undefined : reasonId}
+            >
+              {t.actions.submit}
+            </Button>
 
-          {blockReason !== undefined && (
-            <span id={reasonId} className="field-note">
-              {blockReason}
-            </span>
-          )}
+            {blockReason !== undefined && (
+              <span id={reasonId} className="field-note">
+                {blockReason}
+              </span>
+            )}
+          </div>
         </div>
       </form>
     </>
