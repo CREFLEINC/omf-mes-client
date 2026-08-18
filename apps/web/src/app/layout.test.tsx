@@ -243,6 +243,36 @@ describe('AppLayout', () => {
   });
 
   /*
+   * **W-01-12 · C46 · D-19** — 같은 「자재창고」 섹션의 **재고실사 바로 뒤**다. 차례가 업무
+   * 순서다: 재고를 확인하고(재고 현황) 장부와 실물을 맞춘 뒤(재고실사) **어긋난 것을 고친다.**
+   *
+   * **앞뒤를 둘 다 잰다** — 실사 다음 칸이면서 반품보다 앞이다. 한쪽만 재면 반대편으로 밀려나도
+   * 통과한다(반품·폐기는 물건을 내보내는 일이라 장부를 맞추는 이 화면보다 뒤여야 한다).
+   *
+   * **W-01-11과 갈리는 자리다** — 그 화면은 맥락 없는 진입이 요구사항 위반이라 메뉴에 두지
+   * 않았는데, 이 화면은 직접 등록이 정상 경로라 메뉴에 선다.
+   */
+  it('사이드바 자재창고 섹션에 재고조정 메뉴가 재고실사 바로 뒤에 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByRole('link', { name: '재고조정' })).toHaveAttribute(
+      'href',
+      '/logistics/stock-adjust',
+    );
+    expect(links.indexOf('/logistics/stock-adjust')).toBe(
+      links.indexOf('/logistics/stocktaking') + 1,
+    );
+    expect(links.indexOf('/logistics/stock-adjust')).toBeLessThan(
+      links.indexOf('/logistics/supplier-return'),
+    );
+  });
+
+  /*
    * W-01-05도 같은 「자재창고」 섹션에 항목만 더한다. **차례가 업무 순서다** — 실사로 장부와
    * 실물을 맞춘 뒤 **되돌려 보낸다.** 반품은 앞의 다섯이 남긴 결과를 대상으로 삼는다.
    */
@@ -435,6 +465,7 @@ describe('AppLayout', () => {
       '/logistics/goods-receipt',
       '/logistics/stock-status',
       '/logistics/stocktaking',
+      '/logistics/stock-adjust',
       '/logistics/supplier-return',
       '/logistics/disposal-issue',
       '/logistics/iqc-skip-approval',

@@ -534,6 +534,12 @@ export const StockAdjustScreen = () => {
   });
 
   cleanMissingCountRef.current = (): void => {
+    /*
+     * **거두지 않고 대상만 고쳐 적는다.** 여기서 지우는 것은 사용자가 바꾼 대상이 아니라
+     * **가리킬 수 없는 대상**이고, 그 실사는 목록에 없어 아무것도 불러오지 못했다 —
+     * 거두면 사용자가 그사이 친 줄과 「없는 실사였다」 안내가 함께 사라진다.
+     */
+    draftTargetCountIdRef.current = null;
     setSearchParams(withoutInventoryCountId(searchParams), { replace: true });
     setCleanedMissingCount(true);
   };
@@ -544,11 +550,42 @@ export const StockAdjustScreen = () => {
     cleanMissingCountRef.current();
   }, [isUrlCountMissing]);
 
-  /** 주소가 실사를 가리키면 실사 갈래다 — 재고실사에서 넘어오는 길과 뒤로가기가 같은 자리다. */
-  useEffect(() => {
-    if (urlCountId === null) return;
+  /**
+   * **지금 세우고 있는 초안이 어느 대상의 것인가.** 주소가 가리키는 대상과 이 값이 갈리면
+   * 초안을 거둔다 — 아래 effect가 그 판정을 진다.
+   *
+   * 첫 렌더의 주소가 곧 첫 대상이다(재고실사에서 넘어오는 길·직접 등록 둘 다).
+   */
+  const draftTargetCountIdRef = useRef<number | null>(urlCountId);
 
-    setSourceKind('count');
+  /**
+   * 주소가 가리키는 대상이 **초안의 대상과 갈리면 거둔다**(D-15 초안 세션 축).
+   *
+   * ⭐ **라우트와 사이드바가 열리며 도달 가능해진 경로다.** 이 화면 안의 주소 갱신은 전부
+   * `replace`라 히스토리를 늘리지 않지만, 사이드바의 「재고조정」은 **같은 라우트로 질의만 다른
+   * 주소를 민다** — 화면이 다시 마운트되지 않은 채 진입 맥락만 바뀌고, 그대로 두면 앞 대상의
+   * 줄이 새 대상 위에 남는다. 뒤로가기·앞으로가기·주소 직접 편집도 같은 문을 지난다.
+   *
+   * **화면 안의 조작과 두 번 겹치지 않는다.** 원천 전환·실사 바꾸기·창고 바꾸기는 스스로
+   * 거두면서 **새 대상을 이 자리에 적고**(`resetDraftForNewTarget`의 인자) 주소를 갈아 끼우므로,
+   * 여기 도달할 때는 이미 같은 값이라 되돌아간다 — 두 번 거두면 막 세운 대상이 사라진다.
+   *
+   * **갈래도 주소를 따른다**(D-2 — 주소가 진입 맥락의 정본이다). 맥락 없는 주소로 들어오면
+   * 직접 등록이고, 실사를 가리키면 실사 갈래다. 화면과 주소가 다른 말을 하지 않는다.
+   */
+  const syncDraftTargetRef = useRef((): void => {
+    /* 자리를 미리 만든다 — 아래에서 매 렌더 최신 함수로 갈아 끼운다. */
+  });
+
+  syncDraftTargetRef.current = (): void => {
+    if (urlCountId === draftTargetCountIdRef.current) return;
+
+    resetDraftForNewTarget(urlCountId);
+    setSourceKind(urlCountId === null ? 'direct' : 'count');
+  };
+
+  useEffect(() => {
+    syncDraftTargetRef.current();
   }, [urlCountId]);
 
   /**
@@ -848,17 +885,22 @@ export const StockAdjustScreen = () => {
   };
 
   /**
-   * 대상이 바뀌면 **세운 것을 거둔다** — 원천·대상 실사·대상 창고·초안 버리기 네 자리가
-   * 이 한 문을 지난다.
+   * 대상이 바뀌면 **세운 것을 거둔다** — 원천·대상 실사·대상 창고·초안 버리기 네 자리와
+   * **주소로 바뀌는 다섯째 자리**(사이드바·뒤로가기·주소 직접 편집)가 이 한 문을 지난다.
    *
    * 자리마다 따로 비우면 한 자리가 빠지고, 그 자리가 곧 「앞 대상의 줄이 새 대상 위에 서는」
    * 경로가 된다.
+   *
+   * **새 대상을 인자로 받는다**(`nextInventoryCountId` — 실사가 아니면 `null`). 거두는 것과
+   * 「이제 어느 대상의 초안인가」를 적는 것이 갈리면, 주소를 보는 effect가 **방금 거둔 자리를
+   * 한 번 더 거둔다** — 그때 사라지는 것은 사용자가 막 세운 새 대상이다.
    *
    * **머리는 여기서 비우지 않는다.** 조정 사유와 ERP 송신은 전표의 값이지 대상의 값이 아니다 —
    * 원천을 바꿨다고 고른 사유가 사라지면 사용자가 같은 값을 다시 고른다. 초안을 통째로 버리는
    * 자리(`confirmDiscard`)만 머리를 함께 비운다.
    */
-  const resetDraftForNewTarget = (): void => {
+  const resetDraftForNewTarget = (nextInventoryCountId: number | null): void => {
+    draftTargetCountIdRef.current = nextInventoryCountId;
     setLines(applySourceChange(lines).keptLines);
     setLoadedCountId(null);
     startDraftSession();
@@ -925,7 +967,8 @@ export const StockAdjustScreen = () => {
   const changeSourceKind = (next: AdjustSourceKind): void => {
     if (next === sourceKind) return;
 
-    resetDraftForNewTarget();
+    /* 직접 등록으로 가면 대상 실사가 사라진다 — 아래에서 주소도 그렇게 고친다. */
+    resetDraftForNewTarget(next === 'direct' ? null : urlCountId);
     setSourceKind(next);
 
     /* 직접 등록 갈래에는 대상 실사가 없다 — 주소에 남겨 두면 화면과 주소가 다른 말을 한다. */
@@ -937,14 +980,15 @@ export const StockAdjustScreen = () => {
   const chooseCount = (value: string): void => {
     if (value === '') return;
 
-    resetDraftForNewTarget();
+    resetDraftForNewTarget(Number(value));
     setSearchParams(withInventoryCountId(searchParams, Number(value)), { replace: true });
   };
 
+  /** 창고를 바꿔도 **대상 실사는 그대로다** — 이 조작은 직접 등록 갈래의 것이라 실사가 없다. */
   const chooseWarehouse = (value: string): void => {
     if (value === warehouseDraft) return;
 
-    resetDraftForNewTarget();
+    resetDraftForNewTarget(urlCountId);
     setWarehouseDraft(value);
   };
 
@@ -1638,7 +1682,8 @@ export const StockAdjustScreen = () => {
    * 않는다**(`resetIfIdle`). 머리는 이 자리에서만 함께 비운다.
    */
   const confirmDiscard = (): void => {
-    resetDraftForNewTarget();
+    /* **대상은 그대로 두고 세운 것만 버린다** — 버리기는 주소를 건드리지 않는다. */
+    resetDraftForNewTarget(urlCountId);
     setHeader(emptyHeaderDraft());
     setPending(null);
   };

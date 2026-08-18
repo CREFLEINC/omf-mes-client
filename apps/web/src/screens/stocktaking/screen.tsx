@@ -60,7 +60,12 @@ import {
 } from './lookups';
 import { OpenConfirmDialog } from './open-confirm-dialog';
 import { OpenForm } from './open-form';
-import { EMPTY_OPEN_DRAFT, hasAnyOpenDraftValue, toCountCreate, type OpenDraft } from './open-request';
+import {
+  EMPTY_OPEN_DRAFT,
+  hasAnyOpenDraftValue,
+  toCountCreate,
+  type OpenDraft,
+} from './open-request';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import {
@@ -609,6 +614,14 @@ export const StocktakingScreen = () => {
         locationId: null,
         view: {
           kind: 'closed',
+          /*
+           * **재고조정으로 잇는 주소의 재료**(D-18). 화면에 그리지 않고 링크 주소로만 쓴다 —
+           * 계약이 조정의 실사 참조를 내부 번호로 받으므로 업무 번호로는 주소를 만들 수 없다(#44).
+           *
+           * **응답이 준 번호다** — 이 화면이 겨눈 `selectedCountId`가 아니라. 둘은 같아야 하지만
+           * 같음을 화면이 보증할 수는 없고, 조정으로 넘기는 것은 **서버가 마감했다고 말한 실사**여야 한다.
+           */
+          inventoryCountId: closed.count.inventoryCountId,
           /* **응답이 준 값을 그대로 담는다** — 화면이 「마감됨」을 판정하지 않는다(감지기 M59). */
           countNo: closed.count.inventoryCountNo,
           statusCode: closed.count.statusCode,
@@ -681,7 +694,6 @@ export const StocktakingScreen = () => {
     if (replace.error === null) return;
 
     replace.reset();
-
   }, [selectedLocationId]);
 
   /*
@@ -737,7 +749,6 @@ export const StocktakingScreen = () => {
     if (close.error === null) return;
 
     close.reset();
-
   }, [selectedCountId]);
 
   /*
@@ -1577,7 +1588,9 @@ export const StocktakingScreen = () => {
              * **이름으로 풀어 넘긴다**(#44). 풀지 못한 갈래(미도착·목록에 없음·실패)도 그
              * 사정이 문구로 오며, 어느 갈래에도 번호가 담기지 않는다.
              */
-            warehouseName: describeReference(toReference(warehouses, detail.data.count.warehouseId)),
+            warehouseName: describeReference(
+              toReference(warehouses, detail.data.count.warehouseId),
+            ),
             plannedDate: detail.data.count.plannedDate,
             summary: detail.data.summary,
           }}
