@@ -6,8 +6,9 @@ import type { components } from '@omf-mes/api-client';
  * `api-client`는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이
  * 유지된다.
  *
- * 이 회차가 다루는 것은 **읽기와 등록**이다 — 실사 목록 · 실사 차이 라인 · 재고 잔액 ·
- * 참조 다섯 · 조정 전표 등록. 상신·전기와 처리 이력은 뒤따르는 회차가 붙인다.
+ * 이 회차가 다루는 것은 **읽기와 등록과 상신**이다 — 실사 목록 · 실사 차이 라인 · 재고 잔액 ·
+ * 참조 다섯 · 조정 전표 등록 · 결재 상신과 그 진행 조회. 전기와 처리 이력은 뒤따르는 회차가
+ * 붙인다.
  *
  * 이 파일은 이 화면이 소유한다. **다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다** —
  * 형태가 같아도 리소스 이름이 박힌 타입을 공유하면 한 화면의 계약 변화가 다른 화면을 끌고 간다.
@@ -16,6 +17,10 @@ import type { components } from '@omf-mes/api-client';
 type InventoryCountResponse = components['schemas']['InventoryCount'];
 type InventoryCountLineResponse = components['schemas']['InventoryCountLine'];
 type InventoryAdjustmentDetailResponse = components['schemas']['InventoryAdjustmentDetailResponse'];
+
+/** 승인 요청 상세 — 계약이 **단계 배열을 함께 내려** 화면이 두 번 부르지 않는다. */
+export type ApprovalRequestDetailResponse = components['schemas']['ApprovalRequestDetail'];
+export type ApprovalStepResponse = components['schemas']['ApprovalStep'];
 
 export type PageMeta = components['schemas']['PageMeta'];
 
@@ -199,6 +204,33 @@ export const toCreatedAdjustmentView = (
 });
 
 /**
+ * 등록 응답 하나가 낳는 **두 값**.
+ *
+ * **번호와 표시를 갈라 둔다** — 상신이 필요로 하는 것은 **내부 번호**(경로 조각과 잠금 토큰의
+ * 열쇠)이고, 결과 구획이 필요로 하는 것은 **표시 타입**이다. 한 타입에 뭉개면 내부 번호가
+ * 그리는 자리까지 따라간다(`omf-mes#44` · 전례 `po-register`의 `PoDetailResult`와 같은 형태).
+ */
+export interface CreatedAdjustmentResult {
+  /** 상신 경로와 `If-Match` 열쇠에만 쓴다. 화면 상태로 들고 **그리지 않는다** */
+  inventoryAdjustmentId: number;
+  created: CreatedAdjustmentView;
+}
+
+/**
+ * 등록 201을 **두 값으로** 옮기는 유일한 지점이다.
+ *
+ * ⛔ **응답의 `approvalRequestId`·`adjustedAt`을 옮기지 않는다.** 목이 그 둘을 계약 예시값으로
+ * 채워 주므로(계획 §5.2.5) 옮기면 방금 만든 전표가 「이미 상신·전기된 것」으로 그려진다 —
+ * 화면이 확인하지 않은 사실이다. **상신 여부는 이 화면이 받은 202가 정한다**(D-13).
+ */
+export const toCreatedAdjustmentResult = (
+  data: InventoryAdjustmentDetailResponse,
+): CreatedAdjustmentResult => ({
+  inventoryAdjustmentId: data.inventoryAdjustment.inventoryAdjustmentId,
+  created: toCreatedAdjustmentView(data),
+});
+
+/**
  * 선택 목록의 원본 항목.
  *
  * **사용 여부로 선택지를 거르지 않고 표식만 붙인다** — 지금은 쓰지 않는 위치·품목을 참조하는
@@ -224,3 +256,39 @@ export interface SelectOption {
   value: string;
   label: string;
 }
+
+/**
+ * 사람이 읽는 이름 — **이름 자리가 전부 이 판정 하나를 지난다.**
+ *
+ * 상신자·승인자 이름은 계약이 필수로 두었으나 **빈 문자열도 공백만인 값도 스키마를 통과한다.**
+ * 그때 화면은 번호를 대신 내지 않고 그 사실을 적는다(`omf-mes#44`).
+ *
+ * **판정을 한 자리에 두는 이유**: 자리마다 따로 적으면 한쪽은 `=== ''`이고 다른 쪽은 `.trim()`이
+ * 되어, 같은 요청이 어디서는 빈 칸으로 어디서는 안내로 보인다.
+ *
+ * **이름 안의 공백은 건드리지 않는다.** 판정에만 다듬기를 쓰고 값은 실려 온 그대로 낸다.
+ */
+export const readableName = (value: string, whenMissing: string): string =>
+  value.trim() === '' ? whenMissing : value;
+
+/** 계약의 date-time 문자열에서 표기용 조각을 뽑는다. */
+const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
+
+/**
+ * 결재 진행이 보이는 시각.
+ *
+ * **실행 환경 시간대로 옮기지 않는다.** 문자열에 실려 온 offset은 그 일이 일어난 곳의 시각이고,
+ * 보는 사람의 시간대로 옮기면 같은 요청이 사람마다 다른 시각으로 보인다.
+ *
+ * **형식이 아니면 원문을 그대로 낸다.** 서버가 보낸 값을 화면이 삼키지 않는다 — 「—」로 바꾸면
+ * 값이 없는 것과 못 알아본 것이 구분되지 않는다.
+ *
+ * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 함수를 참조하지 않는다.
+ */
+export const formatDateTime = (value: string): string => {
+  const matched = RFC3339_PATTERN.exec(value);
+
+  if (matched === null) return value;
+
+  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+};

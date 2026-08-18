@@ -13,6 +13,14 @@ import { useSearchParams } from 'react-router';
 import { SaveErrorBanner } from '../../patterns/master';
 import { AdjustLineTable, type AdjustLineRow } from './adjust-line-table';
 import { summarizeAdjustLines, toInventoryAdjustmentCreate } from './adjust-request';
+import {
+  APPROVED_APPROVAL_STATUS_CODES,
+  REJECTION_DECISION_CODES,
+  isApprovalJudgePending,
+  readSubmission,
+  toRequestProgressView,
+} from './approval-progress';
+import { ApprovalProgressPane, type ApprovalProgressState } from './approval-progress-pane';
 import { toBookQty, type BookQtyState } from './balances';
 import {
   isReasonCodeListPending,
@@ -42,20 +50,25 @@ import {
 } from './lookups';
 import {
   UNASKED_BALANCE,
+  useAdjustmentDetailFetcher,
+  useApprovalRequest,
   useCountVarianceLines,
   useCreateStockAdjustment,
   useInventoryCounts,
   useLocationBalances,
+  useRequestAdjustmentApproval,
 } from './queries';
+import { readReason, toApprovalRequest } from './reason-draft';
 import { RegisterConfirmDialog, type RegisterSummary } from './register-confirm-dialog';
-import { ResultPane } from './result-pane';
+import { ResultPane, type SubmitPhase } from './result-pane';
 import { applySourceChange, initialSourceKind, type AdjustSourceKind } from './source';
 import { SourcePane } from './source-pane';
+import { SubmitConfirmDialog, type SubmitSummary } from './submit-confirm-dialog';
 import { emptyHeaderDraft, isHeaderEdited } from './types';
 import type {
   AdjustHeaderDraft,
   AdjustLineDraft,
-  CreatedAdjustmentView,
+  CreatedAdjustmentResult,
   SelectOption,
 } from './types';
 import { excludedLineCount, validateLines } from './validation';
@@ -66,7 +79,7 @@ const t = messages.stockAdjust;
 const EMPTY_IDS: number[] = [];
 
 /** 확인을 기다리는 조작. `null`이면 열린 창이 없다. */
-type PendingAction = 'register' | 'discard';
+type PendingAction = 'register' | 'discard' | 'submit';
 
 /**
  * 등록의 매임 — **어느 초안을 겨눈 시도인가**와 **그것이 만들어졌는가**(D-15).
@@ -81,8 +94,32 @@ type PendingAction = 'register' | 'discard';
 interface RegisterBinding {
   /** 그 시도가 겨눈 초안 세션. **지금 세우고 있는 초안과 견줄 값**이다 */
   draftSession: number;
-  /** 서버가 만들어 준 전표. `null`이면 아직 응답이 오지 않았거나 실패했다 */
-  created: CreatedAdjustmentView | null;
+  /** 서버가 만들어 준 전표(내부 번호 + 표시 타입). `null`이면 아직 응답이 오지 않았거나 실패했다 */
+  created: CreatedAdjustmentResult | null;
+}
+
+/**
+ * 상신의 매임 — **어느 전표를 겨눈 시도인가**와 **그것이 올라갔는가**(D-15).
+ *
+ * **축이 조정 번호다.** 등록과 달리 이 쓰기에는 자원 번호가 이미 있다 — 배경 재조회가 초안
+ * 세션을 올리면 결과 구획이 걷히고 그 번호도 사라지므로(`boundRegister`), 나가는 중이던 상신의
+ * 응답이 **남의 전표 위에 서는** 길이 실재한다.
+ *
+ * **되먹임 셋(성공·나가는 중·실패)이 전부 이 매임을 지난다** — 갈래마다 따로 매면 하나를
+ * 빠뜨리고, 빠뜨린 갈래가 곧 「시도한 적 없는 전표 위의 진술」이 된다.
+ */
+interface SubmitBinding {
+  /** 그 시도가 겨눈 전표. **지금 보고 있는 전표와 견줄 값**이다 */
+  inventoryAdjustmentId: number;
+  /** 그 전표의 업무 번호. **매임이 끊긴 채 성공했을 때 사람에게 말할 값**이다 */
+  inventoryAdjustmentNo: string;
+  /**
+   * 202가 준 승인 요청 번호. `null`이면 아직 응답이 오지 않았거나 실패했다.
+   *
+   * **화면이 확인한 사실만 담는다** — 등록 응답에도 같은 이름의 값이 실려 오지만(목이 채워 준다)
+   * 그것은 상신의 증거가 아니다(§5.2.5 · C36).
+   */
+  approvalRequestId: number | null;
 }
 
 /**
@@ -179,6 +216,27 @@ export const StockAdjustScreen = () => {
    * 빠지는 것이 바로 이 화면이 한 번 겪은 사고다(리뷰 R-7).
    */
   const [strandedAdjustmentNos, setStrandedAdjustmentNos] = useState<string[]>([]);
+
+  /**
+   * **상신의 매임**과 그 사유 초안.
+   *
+   * `null`이면 이 화면에서 상신을 시도한 적이 없다. 사유는 **전표의 값이 아니라 이 시도의
+   * 값**이라 대상을 버리는 한 문(`resetDraftForNewTarget`)이 함께 거둔다.
+   */
+  const [submitBinding, setSubmitBinding] = useState<SubmitBinding | null>(null);
+  const [submitReason, setSubmitReason] = useState('');
+
+  /**
+   * **매임이 끊긴 채 결재에 올라간 전표들.**
+   *
+   * 등록의 `strandedAdjustmentNos`와 같은 사정이다 — 그 상신은 실제로 일어나 서버에 결재 요청이
+   * 남으므로 감추지 않되, 지금 보고 있는 대상의 결과로 세우지도 않는다(D-15).
+   *
+   * **매임과 다른 자리에 쌓는 것**이 요점이다: 매임은 한 자리라 **뒤이은 상신이 성공하면 덮이고**,
+   * 그 순간 앞 요청의 사실이 화면에서 사라진다. 이 슬라이스에는 아직 그것을 되찾을 조회 자리가
+   * 없다(처리 이력은 뒤따르는 회차).
+   */
+  const [strandedSubmittedNos, setStrandedSubmittedNos] = useState<string[]>([]);
 
   /** 확인을 기다리는 조작. `null`이면 열린 창이 없다 */
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -360,7 +418,7 @@ export const StockAdjustScreen = () => {
          * effect**라 폼 잠금 밖에서 돈다(배경 재조회가 달라진 실사 차이를 물고 오는 길).
          * 그 갈래는 **읽는 자리의 파생**(`strandedNos`)이 잡는다 — 두 겹이다.
          */
-        setStrandedAdjustmentNos((prev) => [...prev, created.inventoryAdjustmentNo]);
+        setStrandedAdjustmentNos((prev) => [...prev, created.created.inventoryAdjustmentNo]);
 
         return;
       }
@@ -368,6 +426,99 @@ export const StockAdjustScreen = () => {
       setPending(null);
     },
   });
+
+  /**
+   * **지금 세우는 초안이 그 등록의 대상인가** — 등록의 되먹임은 전부 이 문을 지난다(D-15).
+   *
+   * `null`이면 이 화면이 지금 초안에 대해 말할 등록이 없다: 시도한 적이 없거나, **나가는 중에
+   * 초안을 버려 그 응답이 남의 것이 됐다.** 결과 구획·실패 배너·사유 칸의 서버 오류·폼 잠금의
+   * 「이미 등록했다」 갈래가 모두 이 값을 본다 — 한 자리라도 빠지면 그 자리에서 남의 초안의
+   * 사실이 샌다.
+   */
+  const boundRegister =
+    registerBinding !== null && registerBinding.draftSession === draftSession
+      ? registerBinding
+      : null;
+
+  /**
+   * 상신이 겨눌 전표. **등록에 성공한 뒤에만 값이 있다.**
+   *
+   * 내부 번호라 **그리지 않는다**(`omf-mes#44`) — 경로 조각과 잠금 토큰의 열쇠(D-14)로만 쓴다.
+   */
+  const adjustmentId = boundRegister?.created?.inventoryAdjustmentId ?? null;
+
+  /**
+   * 지금 나가고 있는 상신이 **겨눈 전표**와 **화면이 지금 보고 있는 전표**.
+   *
+   * 늦게 도착한 성공을 어느 전표의 것으로 적을지, 그리고 그것이 **지금 보고 있는 전표의
+   * 것인지**를 응답이 온 시점에 알아야 한다 — 둘 다 그 시점에는 렌더 클로저의 값이 낡아 있다.
+   */
+  const submittingTargetRef = useRef<{
+    inventoryAdjustmentId: number;
+    inventoryAdjustmentNo: string;
+  } | null>(null);
+  const currentAdjustmentIdRef = useRef<number | null>(null);
+
+  currentAdjustmentIdRef.current = adjustmentId;
+
+  /** 상신 직전에 상세를 한 번 불러 **잠금 토큰을 상세 경로에 앉힌다**(D-14). */
+  const fetchAdjustmentDetail = useAdjustmentDetailFetcher();
+
+  /**
+   * 상신 — **이 화면의 둘째 쓰기이고 등록과 별개 동작**이다.
+   *
+   * 성공하면 **그 호출이 겨눈 전표**로 매임을 다시 세운다 — 지금 보고 있는 전표가 아니라.
+   * 그사이 배경 재조회가 초안 세션을 올렸다면 이 결과는 남의 것이고, 지금 번호로 적으면
+   * **시도한 적 없는 전표 위에** 「올렸습니다」가 선다.
+   */
+  const submit = useRequestAdjustmentApproval({
+    inventoryAdjustmentId: adjustmentId,
+    onSuccess: (ref) => {
+      /* **그 호출이 겨눈 전표**로 적는다 — 지금 보고 있는 전표가 아니라. */
+      const target = submittingTargetRef.current;
+
+      setSubmitBinding(
+        target === null ? null : { ...target, approvalRequestId: ref.approvalRequestId },
+      );
+
+      /*
+       * **늦게 온 성공은 적기만 한다.** 사유를 비우거나 창을 닫는 것은 지금 보고 있는 전표의
+       * 조작이라, 남의 전표의 응답이 그것을 건드리면 새 대상에서 치던 값이 사라진다.
+       */
+      if (target === null || target.inventoryAdjustmentId !== currentAdjustmentIdRef.current) {
+        /*
+         * **도착한 시점에 이미 매임이 끊겨 있으면 쌓는다**(등록 갈래와 같은 규율).
+         *
+         * 매임은 한 자리라 뒤이은 상신이 성공하면 앞 요청의 사실이 덮여 사라지는데, 이 갈래를
+         * 만든 이유가 「사용자가 모르는 결재 요청이 서버에 남는다」였다 — 덮이면 그 사고가
+         * 그대로 되돌아온다. **선 뒤에 끊기는 갈래**는 읽는 자리의 파생이 잡는다(두 겹).
+         */
+        if (target !== null) {
+          setStrandedSubmittedNos((prev) =>
+            prev.includes(target.inventoryAdjustmentNo)
+              ? prev
+              : [...prev, target.inventoryAdjustmentNo],
+          );
+        }
+
+        return;
+      }
+
+      setSubmitReason('');
+      setPending(null);
+    },
+  });
+
+  /**
+   * 상세 조회와 상신 사이의 **틈을 막는 깃발**.
+   *
+   * 확인 창의 실행을 누르면 상세 GET이 먼저 나가는데, 그 응답이 오기 전까지 쓰기 훅은 아직
+   * 나가는 중이 아니다(`isSaving === false`) — 그 틈에 한 번 더 누르면 **연쇄가 두 벌** 돈다.
+   * 공통 훅이 호출마다 새 멱등 키를 만들므로 그것이 그대로 결재 요청 두 건이 된다.
+   */
+  const [isSubmitStarting, setSubmitStarting] = useState(false);
+
+  const isSubmitting = isSubmitStarting || submit.isSaving;
 
   /**
    * **나가는 중인 쓰기는 건드리지 않는다**(사본 체크리스트 4번 · `omf-mes#96`).
@@ -403,6 +554,17 @@ export const StockAdjustScreen = () => {
      * 두되(`resetIfIdle`), 그 응답은 매임(`boundRegister`)이 걸러 낸다 — 두 겹이다.
      */
     resetIfIdle(register);
+
+    /*
+     * **상신 자리도 같은 한 문에서 거둔다**(T2 인계 ③). 남겨 두면 앞 전표에 붙일 사유가 다른
+     * 조정의 결재에 올라가고, 「올렸습니다」가 아직 만들지도 않은 전표 위에 선다.
+     *
+     * 매임을 비우는 것이 **나가는 중인 요청을 끊지는 않는다** — 그 응답은 도착해서 겨눈 번호로
+     * 다시 매이고, 그때 대상이 달라져 있으면 「앞서 보낸 상신이 끝났습니다」로만 남는다.
+     */
+    setSubmitBinding(null);
+    setSubmitReason('');
+    resetIfIdle(submit);
 
     /*
      * **「없는 실사였다」 안내에 수명을 준다**(리뷰 R-4). 남겨 두면 유효한 실사를 고른 뒤에도
@@ -536,19 +698,6 @@ export const StockAdjustScreen = () => {
   const isReasonPending = isReasonCodeListPending(codeOptions);
 
   /**
-   * **지금 세우는 초안이 그 등록의 대상인가** — 등록의 되먹임은 전부 이 문을 지난다(D-15).
-   *
-   * `null`이면 이 화면이 지금 초안에 대해 말할 등록이 없다: 시도한 적이 없거나, **나가는 중에
-   * 초안을 버려 그 응답이 남의 것이 됐다.** 결과 구획·실패 배너·사유 칸의 서버 오류·폼 잠금의
-   * 「이미 등록했다」 갈래가 모두 이 값을 본다 — 한 자리라도 빠지면 그 자리에서 남의 초안의
-   * 사실이 샌다.
-   */
-  const boundRegister =
-    registerBinding !== null && registerBinding.draftSession === draftSession
-      ? registerBinding
-      : null;
-
-  /**
    * **매임이 끊긴 채 만들어진 전표들** — 그 사실은 감추지 않는다.
    *
    * 그 등록은 실제로 일어났으므로 **감추지 않는다** — 감추면 사용자가 만들어진 줄 모르는
@@ -572,7 +721,7 @@ export const StockAdjustScreen = () => {
    */
   const unboundCreatedNo =
     registerBinding !== null && registerBinding.draftSession !== draftSession
-      ? (registerBinding.created?.inventoryAdjustmentNo ?? null)
+      ? (registerBinding.created?.created.inventoryAdjustmentNo ?? null)
       : null;
 
   const strandedNos =
@@ -581,6 +730,60 @@ export const StockAdjustScreen = () => {
       : [...strandedAdjustmentNos, unboundCreatedNo];
 
   const strandedNote = strandedNos.length === 0 ? null : strandedNos.join(', ');
+
+  /**
+   * **지금 보고 있는 전표가 그 상신의 대상인가** — 상신의 되먹임은 전부 이 문을 지난다(D-15).
+   *
+   * `null`이면 이 화면이 지금 전표에 대해 말할 상신이 없다: 시도한 적이 없거나, **나가는 중에
+   * 대상이 바뀌어 그 응답이 남의 것이 됐다.** 결과 구획의 갈래 판정·실패 배너·사유 칸의 서버
+   * 오류·결재 진행 구획이 모두 이 값을 본다 — 한 자리라도 빠지면 그 자리에서 남의 전표의
+   * 사실이 샌다.
+   */
+  const boundSubmit =
+    submitBinding !== null && submitBinding.inventoryAdjustmentId === adjustmentId
+      ? submitBinding
+      : null;
+
+  /**
+   * **매임이 끊긴 채 결재에 올라간 전표들** — 등록 갈래와 같은 두 겹이다.
+   *
+   * | 시점 | 어떻게 생기나 | 무엇이 잡나 |
+   * | --- | --- | --- |
+   * | **도착할 때 이미 끊김** | 나가는 중에 배경 재조회가 대상을 다시 세웠다 | `strandedSubmittedNos` **적재** — 뒤이은 상신이 매임을 덮어도 남는다 |
+   * | **선 뒤에 끊김** | 「올렸습니다」가 선 뒤에 같은 effect가 초안 세션을 올린다 | **이 파생** — 읽는 자리에서 매임을 다시 본다 |
+   *
+   * **판정은 읽는 자리에서 한다**(D-15). 쓰는 자리를 빠짐없이 세었다는 전제에 기대면 그 열거에서
+   * 빠진 자리가 곧 사실이 사라지는 경로가 된다 — 이 슬라이스가 등록에서 한 번 겪은 사고다.
+   *
+   * **같은 번호를 두 번 적지 않는다** — 두 겹이 같은 전표를 가리키는 시점이 있다.
+   *
+   * ⚠ 실패는 이 갈래에서 말하지 않는다. 성공은 서버에 결재 요청이 남아 알려야 하지만, 거절된
+   * 요청은 남는 것이 없다.
+   */
+  const unboundSubmittedNo =
+    submitBinding !== null &&
+    submitBinding.approvalRequestId !== null &&
+    submitBinding.inventoryAdjustmentId !== adjustmentId
+      ? submitBinding.inventoryAdjustmentNo
+      : null;
+
+  const strandedSubmitted =
+    unboundSubmittedNo === null || strandedSubmittedNos.includes(unboundSubmittedNo)
+      ? strandedSubmittedNos
+      : [...strandedSubmittedNos, unboundSubmittedNo];
+
+  const strandedSubmittedNote =
+    strandedSubmitted.length === 0 ? null : strandedSubmitted.join(', ');
+
+  /**
+   * 결재 진행을 부를 수 있는가 — **판정이 한 곳이다**(C36).
+   *
+   * ⛔ **등록 응답의 값으로 부르지 않는다.** 목이 등록 201에 승인 요청 번호를 채워 주므로
+   * (§5.2.5) 그 값으로 부르면 **상신하지 않은 전표의 결재 진행**을 열게 된다 — 화면이 확인하지
+   * 않은 사실이다. 근거는 오직 **이 화면이 받은 202**(`boundSubmit.approvalRequestId`)다.
+   */
+  const submission = readSubmission(boundSubmit?.approvalRequestId ?? null);
+  const approvalRequest = useApprovalRequest(submission);
 
   /**
    * **폼이 잠기는 두 사정**(C26).
@@ -734,9 +937,39 @@ export const StockAdjustScreen = () => {
     return hasDraftInput ? null : t.actionReasons.discardNothing;
   };
 
-  /** 두 사유를 렌더 한 번에 한 번만 판정한다 — 같은 판정을 자리마다 되부르면 갈릴 여지가 생긴다. */
+  /**
+   * 상신이 막힌 사유. `null`이면 **열려 있다.**
+   *
+   * **나가는 중이 맨 앞이다** — 사유를 아무리 고쳐도 그동안은 열리지 않는다. 「이미 올렸다」
+   * 갈래를 두지 않는다: 올라간 뒤에는 결과 구획이 이 버튼을 **아예 세우지 않고**(칠 수 있는데
+   * 보낼 수 없는 칸을 남기지 않는다) 결재 진행 구획이 그 자리를 대신한다.
+   *
+   * ⛔ **승인 축으로 잠그지 않는다**(D-13 · C37). 자리표시(`APPROVED_APPROVAL_STATUS_CODES`)가
+   * 비어 있는 채로 그것을 잠금에 쓰면 버튼이 **영영 잠긴다** — 승인 축의 잠금은 서버가 400으로
+   * 한다(D-12). 이 함수가 그 배열을 읽지 않는 것이 그 규율의 자리다.
+   *
+   * **이 잠금은 매임(`boundSubmit`)을 지나지 않는다 — 일부러 그렇게 두었다.**
+   *
+   * 화면이 가르는 것은 둘이다. **진술**(어느 전표에 대해 무엇을 말하는가)은 전표별로 참이어야
+   * 하므로 매임을 지나지만, **조작 허용**은 어느 전표든 나가는 중이면 막는 편이 안전하다 —
+   * 잠금까지 매면 대상이 바뀐 뒤 새 전표의 「조정 상신」이 열리고, 그 순간 ① 되돌릴 수 없는
+   * 쓰기 둘이 **한 훅의 상태**를 나눠 쓰며(공통 훅은 mutation 하나를 든다) ② 겨눈 전표를 담는
+   * **한 칸짜리 ref가 덮여** 늦게 온 앞 전표의 성공이 새 전표의 매임으로 적힌다.
+   *
+   * 이 문구는 그때 **거짓말이 되지 않는다** — 「올리는 중」이라고만 말하고 어느 전표인지
+   * 주장하지 않으며, 풀리는 조건(「응답이 오면」)도 참이다.
+   */
+  const submitBlockReason = (): string | null => {
+    if (isSubmitting) return t.actionReasons.submitting;
+    if (readReason(submitReason).kind === 'empty') return t.actionReasons.submitReasonRequired;
+
+    return null;
+  };
+
+  /** 세 사유를 렌더 한 번에 한 번만 판정한다 — 같은 판정을 자리마다 되부르면 갈릴 여지가 생긴다. */
   const registerReason = registerBlockReason();
   const discardReason = discardBlockReason();
+  const submitReasonBlocked = submitBlockReason();
 
   /**
    * 머리 입력을 고친다.
@@ -811,6 +1044,80 @@ export const StockAdjustScreen = () => {
     setPending(null);
   };
 
+  /** 확인 창이 되보일 요약. **화면이 이미 만든 값을 넘긴다** — 창이 다시 세면 갈린다. */
+  const submitSummary = (created: CreatedAdjustmentResult): SubmitSummary => {
+    const state = readReason(submitReason);
+
+    return {
+      inventoryAdjustmentNo: created.created.inventoryAdjustmentNo,
+      reason: state.kind === 'ready' ? state.reason : '',
+      reasonFirstLine: state.kind === 'ready' ? state.firstLine : '',
+    };
+  };
+
+  /** 상신을 **요청한다** — 보내는 것은 확인 창을 지난 뒤다. 등록과 같은 층 구조다. */
+  const requestSubmit = (): void => {
+    setPending('submit');
+  };
+
+  /**
+   * 확인을 받고 **실제로 올린다** — 요청이 **둘**이다.
+   *
+   * ① 조정 상세를 부른다(잠금 토큰이 그 경로에서만 나온다 · D-14)
+   * ② 사유 한 칸을 실어 상신한다
+   *
+   * **창을 닫지 않고 보낸다** — 실패했을 때 창이 닫히면 무엇이 막았는지 모른 채 같은 버튼을
+   * 다시 누른다. 창은 성공했을 때만 닫힌다.
+   *
+   * **상세 조회가 실패해도 갈래를 새로 만들지 않는다.** 토큰을 못 얻은 채 상신하면 공통 훅이
+   * 요청을 만들지 않고 「최신 정보를 불러오는 중입니다」를 세운다 — 그 자리가 이미 있다.
+   *
+   * **매번 다시 부른다.** 조회가 신선도를 무시하므로(`staleTime: 0`) 409를 받은 뒤 다시 누르면
+   * 실제로 새 토큰으로 나간다 — 그것이 이 화면에서 충돌이 풀리는 길이다.
+   */
+  const confirmSubmit = (): void => {
+    const body = toApprovalRequest(submitReason);
+    const target = boundRegister?.created ?? null;
+
+    if (body === null || target === null) {
+      setPending(null);
+
+      return;
+    }
+
+    setSubmitStarting(true);
+    /* 이 호출이 겨눈 전표를 적어 둔다 — 응답이 늦게 오면 그때의 화면은 다른 대상을 볼 수 있다. */
+    submittingTargetRef.current = {
+      inventoryAdjustmentId: target.inventoryAdjustmentId,
+      inventoryAdjustmentNo: target.created.inventoryAdjustmentNo,
+    };
+    /* **시도부터 매인다** — 나가는 중과 실패도 이 전표의 것으로만 읽혀야 한다. */
+    setSubmitBinding({
+      inventoryAdjustmentId: target.inventoryAdjustmentId,
+      inventoryAdjustmentNo: target.created.inventoryAdjustmentNo,
+      approvalRequestId: null,
+    });
+
+    void fetchAdjustmentDetail(target.inventoryAdjustmentId)
+      .catch(() => undefined)
+      .finally(() => {
+        setSubmitStarting(false);
+        submit.write(body);
+      });
+  };
+
+  /**
+   * 409의 「최신 불러오기」 — **낡은 것은 이 전표의 잠금 토큰이다.**
+   *
+   * 거부는 삼키지 않고 받아 둔다. 실패해도 막다른 길이 아니다 — 「조정 상신」을 다시 누르는
+   * 길이 **같은 조회를 다시 지나므로**, 그때 못 얻으면 「최신 정보를 불러오는 중입니다」가 선다.
+   */
+  const reloadAdjustmentDetail = (): void => {
+    if (adjustmentId === null) return;
+
+    void fetchAdjustmentDetail(adjustmentId).catch(() => undefined);
+  };
+
   /**
    * 저장 실패 표시 — 배너와 **응답 없음 안내**를 함께 낸다(C27).
    *
@@ -834,6 +1141,84 @@ export const StockAdjustScreen = () => {
         )}
       </>
     );
+
+  /**
+   * 상신 실패 표시 — **409에는 「최신 불러오기」를 함께 낸다.**
+   *
+   * 등록과 달리 이 쓰기에는 **잠글 대상이 있다**(계약이 `If-Match`를 필수로 두고 409를 낸다) —
+   * 그래서 재조회 수단을 내는 것이 맞고, 실제로 다시 읽으면 풀린다.
+   *
+   * **매임을 지난다** — 남의 전표의 실패가 지금 보고 있는 전표 위에 서지 않는다.
+   */
+  const submitFailureSlot = (): ReactNode =>
+    boundSubmit === null ? null : (
+      <SaveErrorBanner error={submit.error} onReload={reloadAdjustmentDetail} />
+    );
+
+  /**
+   * 지금 상신이 어디까지 갔는가. **결과 구획이 그리는 갈래를 한 자리에서 정한다** —
+   * 자리마다 따로 판정하면 배너와 버튼이 서로 다른 갈래를 말한다.
+   */
+  const submitPhase = (): SubmitPhase => {
+    /*
+     * **남의 전표의 되먹임은 이 구획에 서지 않는다**(매임의 문).
+     *
+     * 대상이 바뀐 뒤 도착하는 응답이 실재하므로, 매임을 지나지 않으면 **시도한 적 없는 전표
+     * 위에** 성공·진행·실패가 선다. 성공만 매고 실패를 두면 절반만 막힌다 — 그래서 셋이
+     * 이 한 문을 함께 지난다.
+     */
+    if (boundSubmit === null) return 'idle';
+
+    if (boundSubmit.approvalRequestId !== null) return 'submitted';
+    if (isSubmitting) return 'submitting';
+
+    /*
+     * **인라인으로 소화된 실패도 실패다.** 400의 사유 오류는 배너가 아니라 칸에 붙으므로
+     * (`fieldErrors`) 배너만 보면 「아직 아무 일도 없었다」로 읽힌다 — 그러면 상신이 한 번
+     * 튕긴 사실이 화면 어디에도 남지 않는다.
+     */
+    const hasFailed = submit.error !== null || Object.keys(submit.fieldErrors).length > 0;
+
+    return hasFailed ? 'failed' : 'idle';
+  };
+
+  /**
+   * 결재 진행 구획 — **상신을 확인한 뒤에만 선다**(C36).
+   *
+   * `null`을 내는 것이 「아직 상신되지 않았다」의 표현이다. 구획에 그 갈래를 만들면 **도달할 수
+   * 없는 자리표시**가 남는다(그 판정은 여기서 이미 끝난다).
+   *
+   * 자리표시 두 배열을 **여기서 읽어 넘긴다** — 부품이 직접 읽으면 「채우면 무엇이 달라지는가」를
+   * 화면 수준에서 잴 수 없어 그 자리가 죽은 가지가 된다(D-13 · C37).
+   */
+  const progressSlot = (): ReactNode => {
+    if (submission.kind === 'notSubmitted') return null;
+
+    const state = ((): ApprovalProgressState => {
+      if (submission.kind === 'unusable') return { kind: 'unusable' };
+      if (approvalRequest.isPending) return { kind: 'loading' };
+      if (approvalRequest.isError) return { kind: 'failed', error: approvalRequest.error };
+
+      return {
+        kind: 'ready',
+        view: toRequestProgressView(
+          approvalRequest.data,
+          REJECTION_DECISION_CODES,
+          APPROVED_APPROVAL_STATUS_CODES,
+        ),
+      };
+    })();
+
+    return (
+      <ApprovalProgressPane
+        state={state}
+        isJudgePending={isApprovalJudgePending(APPROVED_APPROVAL_STATUS_CODES)}
+        onRetry={() => {
+          void approvalRequest.refetch();
+        }}
+      />
+    );
+  };
 
   /**
    * 표와 그 줄에 딸린 안내 — **줄이 있어야 뜻이 서는 것만** 여기 둔다.
@@ -1143,10 +1528,41 @@ export const StockAdjustScreen = () => {
             {t.result.unboundCreatedNote(strandedNote)}
           </p>
         )}
+
+        {/*
+         * 매임이 끊긴 채 **결재에 올라간** 전표(같은 갈래의 상신 몫). 서버에 결재 요청이 남았으므로
+         * 감추지 않되, 지금 보고 있는 대상의 결과로 세우지 않는다.
+         */}
+        {strandedSubmittedNote !== null && (
+          <p className="field-note" role="status">
+            {t.result.unboundSubmittedNote(strandedSubmittedNote)}
+          </p>
+        )}
       </section>
 
       {/* **결과 구획은 이 초안의 등록이 성공했을 때만 선다**(매임). */}
-      {boundRegister?.created != null && <ResultPane created={boundRegister.created} />}
+      {boundRegister?.created != null && (
+        <ResultPane
+          created={boundRegister.created.created}
+          phase={submitPhase()}
+          reason={submitReason}
+          /* 남의 전표의 서버 오류가 이 칸에 서지 않는다(매임의 넷째 소비처). */
+          reasonError={boundSubmit === null ? undefined : submit.fieldErrors.reason}
+          blockReason={submitReasonBlocked}
+          /*
+           * 저장 실패는 **한 자리에만** 선다 — 확인 창이 열려 있으면 창 안이고, 닫혀 있으면 여기다.
+           * 두 자리에 두면 사용자가 스크림 뒤의 사본을 읽으려 든다.
+           */
+          banner={pending === 'submit' ? null : submitFailureSlot()}
+          progress={progressSlot()}
+          onChangeReason={(value) => {
+            setSubmitReason(value);
+            /* 고친 칸의 서버 오류를 함께 지운다 — 남겨 두면 고치는 순간에도 빨갛게 서 있다. */
+            submit.clearFieldError('reason');
+          }}
+          onRequestSubmit={requestSubmit}
+        />
+      )}
 
       {pending === 'register' && (
         <RegisterConfirmDialog
@@ -1158,6 +1574,23 @@ export const StockAdjustScreen = () => {
            * Escape로 닫히는 길은 디자인 시스템이 막을 수단을 주지 않는다. 그래서 이 창의 규율은
            * 「닫히지 않게」가 아니라 **「닫혀도 나가는 요청이 무너지지 않게」**다 — 여기서 쓰기를
            * 되돌리지 않으므로(`reset` 없음) 응답은 그대로 도착해 결과 구획이 선다.
+           */
+          onClose={() => {
+            setPending(null);
+          }}
+        />
+      )}
+
+      {pending === 'submit' && boundRegister?.created != null && (
+        <SubmitConfirmDialog
+          summary={submitSummary(boundRegister.created)}
+          isSaving={isSubmitting}
+          banner={submitFailureSlot()}
+          onConfirm={confirmSubmit}
+          /*
+           * 등록 확인 창과 같은 규율이다 — Escape로 닫히는 길은 디자인 시스템이 막을 수단을
+           * 주지 않으므로, **닫혀도 나가는 요청이 무너지지 않게** 한다(여기서 `reset`을 부르지
+           * 않는다). 응답은 그대로 도착해 매임을 지나 결과 구획에 선다.
            */
           onClose={() => {
             setPending(null);

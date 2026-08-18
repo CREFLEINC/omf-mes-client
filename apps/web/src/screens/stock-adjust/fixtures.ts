@@ -1,6 +1,11 @@
 import type { components } from '@omf-mes/api-client';
 
-import type { AdjustLineDraft, CountVarianceLineView } from './types';
+import type {
+  AdjustLineDraft,
+  ApprovalRequestDetailResponse,
+  ApprovalStepResponse,
+  CountVarianceLineView,
+} from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -14,9 +19,9 @@ import type { AdjustLineDraft, CountVarianceLineView } from './types';
  * 계약 예시가 픽스처로 새어 들어오면 「목이 채워 준 값」과 「화면이 만든 값」이 구분되지 않는다.
  *
  * **내부 번호(FK)는 서로 겹치지 않는 대역으로 나눈다** — 9100대(실사·실사 라인) ·
- * 9200대(창고) · **9300대(조정 전표 — 뒤따르는 회차가 쓴다)** · 9400대(위치) · 9500대(품목) ·
- * 9600대(단위) · 9700대(자재 LOT). 「화면 어디에도 내부 번호가 렌더되지 않는다」를 검사할 때
- * 줄번호·수량 같은 정상 숫자와 헷갈리지 않게 하기 위해서다.
+ * 9200대(창고) · **9300대(조정 전표)** · 9400대(위치) · 9500대(품목) · 9600대(단위) ·
+ * 9700대(자재 LOT) · **9800대(승인 요청·결재자)**. 「화면 어디에도 내부 번호가 렌더되지
+ * 않는다」를 검사할 때 줄번호·수량 같은 정상 숫자와 헷갈리지 않게 하기 위해서다.
  */
 
 type InventoryCountResponse = components['schemas']['InventoryCount'];
@@ -24,6 +29,7 @@ type InventoryCountLineResponse = components['schemas']['InventoryCountLine'];
 type InventoryBalanceResponse = components['schemas']['InventoryBalance'];
 type InventoryAdjustmentDetailResponse = components['schemas']['InventoryAdjustmentDetailResponse'];
 type InventoryAdjustmentLineResponse = components['schemas']['InventoryAdjustmentLine'];
+type ApprovalRequestRefResponse = components['schemas']['ApprovalRequestRef'];
 
 const BASE_COUNT: InventoryCountResponse = {
   inventoryCountId: 9101,
@@ -170,32 +176,52 @@ const BASE_ADJUSTMENT_LINE: InventoryAdjustmentLineResponse = {
 };
 
 export interface AdjustmentDetailOverrides {
+  /**
+   * 내부 번호. **두 전표를 가르려면 이 값이 실제로 갈려야 한다** — 상신의 매임 축이 이 번호라,
+   * 같은 번호를 두 번 주면 「앞 전표의 상신이 새 전표 위에 서는가」를 잴 수 없다.
+   */
+  inventoryAdjustmentId?: number;
   inventoryAdjustmentNo?: string;
   statusCode?: string;
   /** `null`이면 **응답에 그 키가 없다** — 계약이 선택으로 둔 갈래를 실제 응답으로 만든다 */
   erpMessageQueued?: boolean | null;
   /** 서버가 저장했다고 되돌려 주는 줄 수. **화면이 보낸 줄 수와 갈라 두는 것이 요점이다** */
   lineCount?: number;
+  /**
+   * ⚠ **목이 채워 주는 값**(계획 §5.2.5 실측 — 결함이 아니다).
+   *
+   * 등록 응답에 승인 요청 번호가 실려 오면 방금 만든 전표가 「이미 상신된 것」으로 보인다.
+   * 화면이 그것을 읽어 진행을 부르거나 「상신됨」을 그리면 **확인하지 않은 사실**을 말하게
+   * 되므로, 이 인자는 **그 유혹을 실제 응답으로 재현하는 자리**다(C36 감지기).
+   */
+  approvalRequestId?: number;
+  /** 같은 이유로 두는 전기 시각. **전기 여부는 이 회차가 판정하지 않는다**(T4 몫) */
+  adjustedAt?: string;
 }
 
 export const adjustmentDetailBody = (
   overrides: AdjustmentDetailOverrides = {},
 ): InventoryAdjustmentDetailResponse => {
   const {
+    inventoryAdjustmentId = 9301,
     inventoryAdjustmentNo = 'SAMPLE-IA-9301',
     statusCode = 'SAMPLE_IA_STATUS_A',
     erpMessageQueued = true,
     lineCount = 1,
+    approvalRequestId,
+    adjustedAt,
   } = overrides;
 
   return {
     inventoryAdjustment: {
-      inventoryAdjustmentId: 9301,
+      inventoryAdjustmentId,
       inventoryAdjustmentNo,
       reasonCode: 'SAMPLE_AR_A',
       statusCode,
       /* 값이 오지 않는 갈래는 **키 자체가 없는 것**이다 — `null`을 실으면 다른 사실이 된다. */
       ...(erpMessageQueued === null ? {} : { erpMessageQueued }),
+      ...(approvalRequestId === undefined ? {} : { approvalRequestId }),
+      ...(adjustedAt === undefined ? {} : { adjustedAt }),
     },
     lines: Array.from({ length: lineCount }, (_unused, index) => ({
       ...BASE_ADJUSTMENT_LINE,
@@ -204,6 +230,89 @@ export const adjustmentDetailBody = (
     })),
   };
 };
+
+/**
+ * 상신 202가 되돌려 주는 것 — **내부 식별자 하나뿐이다**(`ApprovalRequestRef`).
+ *
+ * 화면에 낼 업무 번호가 여기 없다(`omf-mes#44`) — 진행 구획이 그 번호를 **승인 요청 상세**에서
+ * 따로 받는다.
+ */
+export const approvalRequestRefBody = (approvalRequestId = 9801): ApprovalRequestRefResponse => ({
+  approvalRequestId,
+});
+
+const BASE_APPROVAL_STEP: ApprovalStepResponse = {
+  stepNo: 1,
+  approverId: 9811,
+  approverName: '합성 결재자 가',
+  decisionCode: 'SAMPLE_DECISION_A',
+  decisionAt: '2026-08-18T15:02:00+09:00',
+  decisionComment: '합성 결재 의견',
+  /** **결재함이 쓰는 표기다** — 이 화면이 나르지 않는 것을 재려면 참으로 와야 한다(C36). */
+  isMine: true,
+  isCurrent: false,
+};
+
+export const approvalStep = (
+  overrides: Partial<ApprovalStepResponse> = {},
+): ApprovalStepResponse => ({ ...BASE_APPROVAL_STEP, ...overrides });
+
+/**
+ * 승인 요청 상세 한 건.
+ *
+ * - 사유가 **여러 줄**이다 — 전문의 줄바꿈이 유지되는지 재는 자리다
+ * - 둘째 단계는 **결재 전이고 승인자 이름이 비어 있다** — 「번호를 대신 내지 않는다」가 실제
+ *   값으로 걸린다
+ * - **단계 번호가 비연속(1·4)이다** — 연속으로 두면 `stepNo`를 배열 인덱스+1로 다시 매기는
+ *   결함이 **값이 같아 가려진다**
+ * - `isMyTurn`·`isMine`이 **참**이다 — 이 화면이 결재함의 표기를 나르지 않는다는 것을 잴 수
+ *   있어야 한다(C36)
+ *
+ * **계약 예시값(`AP-2026-0087`·`DISPOSAL_REQUEST`·`IN_PROGRESS`·예시 인명)을 쓰지 않는다.**
+ */
+export const approvalRequestDetailBody = (
+  overrides: Partial<ApprovalRequestDetailResponse['request']> = {},
+): ApprovalRequestDetailResponse => ({
+  request: {
+    approvalRequestId: 9801,
+    /* 업무 번호에 내부 번호를 섞지 않는다 — 「9801이 그려지지 않는다」를 잴 수 있어야 한다. */
+    approvalRequestNo: 'SAMPLE-AP-0001',
+    approvalTypeCode: 'SAMPLE_AT_A',
+    requestedBy: 9821,
+    requestedByName: '합성 상신자 가',
+    requestedAt: '2026-08-18T14:35:00+09:00',
+    statusCode: 'SAMPLE_AP_STATUS_A',
+    reason: '합성 조정 사유 첫 줄\n\n둘째 문단 — 근거를 적는 자리',
+    target: {
+      targetTypeCode: 'SAMPLE_TARGET_TYPE_A',
+      targetId: 9301,
+      displayName: '합성 대상 문서',
+      openable: false,
+    },
+    currentStepNo: 4,
+    totalStepNo: 4,
+    isMyTurn: true,
+    ...overrides,
+  },
+  steps: [
+    approvalStep(),
+    approvalStep({
+      stepNo: 4,
+      approverId: 9812,
+      approverName: '',
+      decisionCode: null,
+      decisionAt: null,
+      decisionComment: null,
+      isCurrent: true,
+    }),
+  ],
+});
+
+/** 승인 완료 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
+export const SAMPLE_APPROVED_STATUS = 'SAMPLE_AP_STATUS_A';
+
+/** 반려 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
+export const SAMPLE_REJECTION_DECISION = 'SAMPLE_DECISION_A';
 
 /**
  * 값이 전부 유효한 라인 초안. **검사하려는 칸만 인자로 어긋나게 둔다** —

@@ -8,21 +8,30 @@ import {
   renderHookWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { ApiRequestError } from '../../patterns/request';
 import {
   adjustmentDetailBody,
+  approvalRequestDetailBody,
+  approvalRequestRefBody,
   balanceFixtures,
   countFixtures,
   countVarianceLineFixtures,
 } from './fixtures';
 import {
+  detailPathOf,
+  isApprovalForbidden,
+  isApprovalNotFound,
   stockAdjustKeys,
+  useAdjustmentDetailFetcher,
+  useApprovalRequest,
   useCountVarianceLines,
   useCreateStockAdjustment,
   useInventoryCounts,
   useLocationBalances,
+  useRequestAdjustmentApproval,
   VARIANCE_LINE_PAGE_SIZE,
 } from './queries';
-import type { CreatedAdjustmentView } from './types';
+import type { CreatedAdjustmentResult } from './types';
 
 /**
  * 이 회차의 읽기 셋과 쓰기 하나 — 실사 목록 · 실사 차이 라인 · 재고 잔액 · 조정 등록.
@@ -352,7 +361,7 @@ describe('useCreateStockAdjustment', () => {
 
   it('컬렉션 경로로 POST 한 번을 보낸다', async () => {
     const { fetch, requests } = recordingWriteFetch([createRoute()]);
-    const created: CreatedAdjustmentView[] = [];
+    const created: CreatedAdjustmentResult[] = [];
     const { result } = renderHookWithProviders(
       () =>
         useCreateStockAdjustment({
@@ -396,10 +405,15 @@ describe('useCreateStockAdjustment', () => {
     expect(requests[0]?.headers.has('If-Match')).toBe(false);
   });
 
-  /** 응답을 **화면 타입으로 옮겨** 넘긴다 — 내부 번호는 옮기지 않는다(`omf-mes#44`). */
-  it('되돌려 준 전표를 화면 타입으로 넘긴다', async () => {
+  /**
+   * 응답을 **화면 타입으로 옮겨** 넘긴다.
+   *
+   * **번호와 표시를 갈라 낸다** — 상신이 필요로 하는 것은 내부 번호이고 결과 구획이 필요로
+   * 하는 것은 표시 타입이다(`omf-mes#44`).
+   */
+  it('되돌려 준 전표를 내부 번호와 표시 타입으로 갈라 넘긴다', async () => {
     const { fetch } = recordingWriteFetch([createRoute()]);
-    const created: CreatedAdjustmentView[] = [];
+    const created: CreatedAdjustmentResult[] = [];
     const { result } = renderHookWithProviders(
       () =>
         useCreateStockAdjustment({
@@ -417,10 +431,13 @@ describe('useCreateStockAdjustment', () => {
     });
 
     expect(created[0]).toEqual({
-      inventoryAdjustmentNo: 'SAMPLE-IA-9301',
-      statusCode: 'SAMPLE_IA_STATUS_A',
-      erpMessageQueued: true,
-      lineCount: 1,
+      inventoryAdjustmentId: 9301,
+      created: {
+        inventoryAdjustmentNo: 'SAMPLE-IA-9301',
+        statusCode: 'SAMPLE_IA_STATUS_A',
+        erpMessageQueued: true,
+        lineCount: 1,
+      },
     });
   });
 
@@ -454,5 +471,258 @@ describe('useCreateStockAdjustment', () => {
     });
 
     expect(requests.filter((request) => request.url.pathname === VARIANCE_PATH)).toHaveLength(1);
+  });
+});
+
+/**
+ * ⭐ **잠금 토큰이 앉는 자리**(D-14 · C31) — 이 회차에서 가장 조용히 틀리는 자리다.
+ *
+ * 토큰 보관소가 **요청 URL의 경로별로** `ETag`를 담으므로, 상신의 `If-Match`는 **상세 경로**에서
+ * 꺼내야 한다. 등록 201이 준 토큰은 **컬렉션 경로**에 앉는다.
+ */
+describe('detailPathOf', () => {
+  it('상세 경로를 한 곳에서 짓는다', () => {
+    expect(detailPathOf(9301)).toBe('/inventory/adjustments/9301');
+  });
+
+  /** 컬렉션 경로와 **다른 값**이다 — 같으면 등록 201이 남긴 토큰을 집는다. */
+  it('컬렉션 경로가 아니다', () => {
+    expect(detailPathOf(9301)).not.toBe('/inventory/adjustments');
+  });
+
+  /** 액션 경로도 아니다 — 그 경로에는 토큰이 앉은 적이 없어 요청이 시작조차 되지 않는다. */
+  it('액션 경로가 아니다', () => {
+    expect(detailPathOf(9301)).not.toContain(':request-approval');
+  });
+});
+
+/**
+ * 상신 — **이 화면의 둘째 쓰기**다. 훅 층에서 재는 것은 **계약에 맞는 요청을 만드는가**다.
+ */
+describe('useAdjustmentDetailFetcher · useRequestAdjustmentApproval', () => {
+  const ADJUSTMENTS_PATH = '/inventory/adjustments';
+  const DETAIL_PATH = '/inventory/adjustments/9301';
+  const SUBMIT_PATH = '/inventory/adjustments/9301:request-approval';
+
+  /**
+   * ⭐ **두 응답의 토큰을 다른 값으로 둔다**(뮤테이션 M-3이 겨누는 자리).
+   *
+   * 같은 값을 주면 `etagPath`가 컬렉션 경로로 바뀌어도 **우연히 통과한다** — 그때 감지기는
+   * 아무 말도 하지 않는다.
+   */
+  const COLLECTION_ETAG = 'W/"ia-collection-1"';
+  const DETAIL_ETAG = 'W/"ia-detail-7"';
+
+  const createRoute = (): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === ADJUSTMENTS_PATH,
+    respond: () =>
+      jsonResponse(adjustmentDetailBody(), { status: 201, headers: { ETag: COLLECTION_ETAG } }),
+  });
+
+  const detailRoute = (): StubRoute => ({
+    match: (request) => request.method === 'GET' && new URL(request.url).pathname === DETAIL_PATH,
+    respond: () =>
+      jsonResponse(adjustmentDetailBody(), { status: 200, headers: { ETag: DETAIL_ETAG } }),
+  });
+
+  const submitRoute = (): StubRoute => ({
+    match: (request) => request.method === 'POST' && new URL(request.url).pathname === SUBMIT_PATH,
+    respond: () => jsonResponse(approvalRequestRefBody(), { status: 202 }),
+  });
+
+  const recordingWriteFetch = (
+    routes: StubRoute[],
+  ): { fetch: (request: Request) => Promise<Response>; requests: WriteRequest[] } => {
+    const requests: WriteRequest[] = [];
+    const stub = createStubFetch(routes);
+
+    return {
+      fetch: async (request) => {
+        requests.push({
+          method: request.method,
+          url: new URL(request.url),
+          headers: request.headers,
+        });
+
+        return stub(request);
+      },
+      requests,
+    };
+  };
+
+  const renderSubmitHooks = (fetch: (request: Request) => Promise<Response>) =>
+    renderHookWithProviders(
+      () => ({
+        fetchDetail: useAdjustmentDetailFetcher(),
+        submit: useRequestAdjustmentApproval({
+          inventoryAdjustmentId: 9301,
+          onSuccess: () => undefined,
+        }),
+      }),
+      { fetch },
+    );
+
+  it('상세를 부르면 그 경로로 GET이 나간다', async () => {
+    const { fetch, requests } = recordingWriteFetch([detailRoute()]);
+    const { result } = renderSubmitHooks(fetch);
+
+    await result.current.fetchDetail(9301);
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe('GET');
+    expect(requests[0]?.url.pathname).toBe(DETAIL_PATH);
+  });
+
+  /**
+   * ⭐ **상세가 준 토큰이 상신의 `If-Match`로 실린다**(C31 · D-14).
+   *
+   * 등록 201도 `ETag`를 주지만 그 토큰은 **컬렉션 경로**에 앉는다 — 두 값을 다르게 두었으므로,
+   * 컬렉션 쪽을 집는 구현이면 이 시험이 문다.
+   */
+  it('상세가 준 토큰을 If-Match로 싣는다 — 등록 201의 토큰이 아니다', async () => {
+    const { fetch, requests } = recordingWriteFetch([createRoute(), detailRoute(), submitRoute()]);
+    const { result } = renderHookWithProviders(
+      () => ({
+        register: useCreateStockAdjustment({ onSuccess: () => undefined }),
+        fetchDetail: useAdjustmentDetailFetcher(),
+        submit: useRequestAdjustmentApproval({
+          inventoryAdjustmentId: 9301,
+          onSuccess: () => undefined,
+        }),
+      }),
+      { fetch },
+    );
+
+    /* 등록 201이 컬렉션 경로에 토큰을 앉힌다 — 그 값을 집으면 안 된다. */
+    result.current.register.write({
+      reasonCode: 'SAMPLE_AR_A',
+      sendToErp: true,
+      lines: [{ locationId: 9401, itemId: 9501, uomId: 9601, adjustmentQty: -20 }],
+    });
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.url.pathname === ADJUSTMENTS_PATH)).toHaveLength(
+        1,
+      );
+    });
+
+    await result.current.fetchDetail(9301);
+    result.current.submit.write({ reason: '실사 차이분 조정' });
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.url.pathname === SUBMIT_PATH)).toHaveLength(1);
+    });
+
+    const submitRequest = requests.find((request) => request.url.pathname === SUBMIT_PATH);
+
+    expect(submitRequest?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+    expect(submitRequest?.headers.get('If-Match')).not.toBe(COLLECTION_ETAG);
+    expect(submitRequest?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  /**
+   * **토큰이 없으면 요청을 만들지 않는다**(공통 훅 계약). 빈 `If-Match`는 계약 위반이라 서버가
+   * 400으로 되돌린다 — 보내지 않고 「최신 정보를 불러오는 중입니다」를 세운다.
+   */
+  it('상세를 부르지 않았으면 상신이 나가지 않는다', async () => {
+    const { fetch, requests } = recordingWriteFetch([submitRoute()]);
+    const { result } = renderSubmitHooks(fetch);
+
+    result.current.submit.write({ reason: '실사 차이분 조정' });
+
+    await waitFor(() => {
+      expect(result.current.submit.error).not.toBeNull();
+    });
+
+    expect(requests.filter((request) => request.url.pathname === SUBMIT_PATH)).toHaveLength(0);
+  });
+
+  /** 상신 본문은 **사유 하나뿐이다**(C31) — 승인 유형·결재선이 실릴 자리가 계약에 없다. */
+  it('본문 키 집합이 사유 하나다', async () => {
+    const bodies: unknown[] = [];
+    const stub = createStubFetch([detailRoute(), submitRoute()]);
+    const fetch = async (request: Request): Promise<Response> => {
+      if (request.method === 'POST') bodies.push(await request.clone().json());
+
+      return stub(request);
+    };
+    const { result } = renderSubmitHooks(fetch);
+
+    await result.current.fetchDetail(9301);
+    result.current.submit.write({ reason: '실사 차이분 조정' });
+
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+
+    expect(Object.keys(bodies[0] as Record<string, unknown>)).toEqual(['reason']);
+  });
+});
+
+/**
+ * 결재 진행 — **상신을 확인한 뒤에만 부른다**(C36).
+ */
+describe('useApprovalRequest', () => {
+  const APPROVAL_PATH = '/app/approval-requests/9801';
+
+  const approvalRoute = (status = 200): StubRoute => ({
+    match: (request) => request.method === 'GET' && new URL(request.url).pathname === APPROVAL_PATH,
+    respond: () =>
+      status === 200
+        ? jsonResponse(approvalRequestDetailBody())
+        : jsonResponse({ message: '' }, { status }),
+  });
+
+  it('상신된 요청은 그 번호로 한 번 부른다', async () => {
+    const { fetch, requests } = recordingFetch([approvalRoute()]);
+    const { result } = renderHookWithProviders(
+      () => useApprovalRequest({ kind: 'submitted', approvalRequestId: 9801 }),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data?.request.approvalRequestNo).toBe('SAMPLE-AP-0001');
+    });
+
+    expect(requests.filter((request) => request.url.pathname === APPROVAL_PATH)).toHaveLength(1);
+  });
+
+  /** ⭐ **상신되지 않았으면 부르지 않는다**(C36) — 목이 채워 준 값으로 여는 길을 막는 자리다. */
+  it.each([['notSubmitted' as const], ['unusable' as const]])(
+    '%s 갈래에서는 요청이 0건이다',
+    async (kind) => {
+      const { fetch, requests } = recordingFetch([approvalRoute()]);
+
+      renderHookWithProviders(() => useApprovalRequest({ kind }), { fetch });
+
+      await waitFor(() => {
+        expect(requests).toHaveLength(0);
+      });
+    },
+  );
+});
+
+/**
+ * 못 읽은 갈래를 가른다 — **403에만 다시 시도를 붙이지 않는다**(같은 권한으로 다시 불러도
+ * 같은 답이 온다).
+ */
+describe('isApprovalForbidden · isApprovalNotFound', () => {
+  it('403과 404를 갈라 읽는다', () => {
+    const forbidden = new ApiRequestError({ kind: 'http', status: 403, message: '' });
+    const notFound = new ApiRequestError({ kind: 'http', status: 404, message: '' });
+
+    expect(isApprovalForbidden(forbidden)).toBe(true);
+    expect(isApprovalNotFound(forbidden)).toBe(false);
+    expect(isApprovalNotFound(notFound)).toBe(true);
+    expect(isApprovalForbidden(notFound)).toBe(false);
+  });
+
+  /** 그 밖의 실패는 둘 다 거짓이다 — 셋째 갈래가 서야 서버 문구가 그대로 선다. */
+  it('그 밖의 실패는 둘 다 거짓이다', () => {
+    const serverError = new ApiRequestError({ kind: 'http', status: 500, message: '' });
+
+    expect(isApprovalForbidden(serverError)).toBe(false);
+    expect(isApprovalNotFound(serverError)).toBe(false);
   });
 });

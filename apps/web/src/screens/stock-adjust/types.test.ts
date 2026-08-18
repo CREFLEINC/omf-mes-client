@@ -1,11 +1,15 @@
+import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { adjustmentDetailBody, countResponse, countVarianceLineResponse } from './fixtures';
 import {
   emptyHeaderDraft,
+  formatDateTime,
   isHeaderEdited,
+  readableName,
   toCountOptionView,
   toCountVarianceLineView,
+  toCreatedAdjustmentResult,
   toCreatedAdjustmentView,
 } from './types';
 
@@ -169,5 +173,92 @@ describe('toCreatedAdjustmentView', () => {
     expect(
       toCreatedAdjustmentView(adjustmentDetailBody({ erpMessageQueued: null })).erpMessageQueued,
     ).toBeNull();
+  });
+});
+
+/**
+ * 등록 응답 하나가 낳는 **두 값**(T2 인계 ①).
+ *
+ * 상신이 필요로 하는 것은 **내부 번호**이고 결과 구획이 필요로 하는 것은 **표시 타입**이다.
+ * 한 타입에 뭉개면 내부 번호가 그리는 자리까지 따라간다(`omf-mes#44`).
+ */
+describe('toCreatedAdjustmentResult', () => {
+  it('내부 번호와 표시 타입을 갈라 낸다', () => {
+    const result = toCreatedAdjustmentResult(adjustmentDetailBody());
+
+    expect(result.inventoryAdjustmentId).toBe(9301);
+    expect(result.created.inventoryAdjustmentNo).toBe('SAMPLE-IA-9301');
+  });
+
+  /** 갈라 두는 것이 요점이다 — 표시 타입 쪽에는 그 번호가 없다. */
+  it('표시 타입에는 내부 번호가 없다', () => {
+    const result = toCreatedAdjustmentResult(adjustmentDetailBody());
+
+    expect(result.created).not.toHaveProperty('inventoryAdjustmentId');
+  });
+
+  /**
+   * ⛔ **목이 채워 주는 값을 옮기지 않는다**(계획 §5.2.5 실측).
+   *
+   * 목은 등록 응답에 승인 요청 번호와 전기 시각을 채워 준다 — 그것을 옮겨 「상신됨」·「전기됨」을
+   * 그리면 **화면이 확인하지 않은 사실**을 말하게 된다. 상신 여부는 이 화면이 받은 **202**가
+   * 정한다.
+   */
+  it('응답에 승인 요청 번호가 실려 와도 옮기지 않는다', () => {
+    const result = toCreatedAdjustmentResult(
+      adjustmentDetailBody({ approvalRequestId: 9801, adjustedAt: '2026-08-18T09:12:00+09:00' }),
+    );
+
+    /* 짝 양성 — 옮길 것은 실제로 옮긴다. 「아무것도 안 옮긴다」로 통과하지 않게 한다. */
+    expect(result.inventoryAdjustmentId).toBe(9301);
+    expect(result.created).not.toHaveProperty('approvalRequestId');
+    expect(result.created).not.toHaveProperty('adjustedAt');
+  });
+});
+
+/**
+ * 이름 자리가 **전부 이 판정 하나를 지난다.**
+ *
+ * 상신자·승인자 이름은 계약이 필수로 두었으나 **빈 문자열도 공백만인 값도 스키마를 통과한다.**
+ * 그때 화면은 번호를 대신 내지 않고 그 사실을 적는다(`omf-mes#44`).
+ */
+describe('readableName', () => {
+  it('이름이 있으면 그대로 낸다', () => {
+    expect(readableName('합성 상신자 가', messages.stockAdjust.values.unknown)).toBe(
+      '합성 상신자 가',
+    );
+  });
+
+  it.each(['', '   '])('이름이 %j이면 그 사실을 적는다 — 번호를 대신 내지 않는다', (raw) => {
+    expect(readableName(raw, messages.stockAdjust.values.unknown)).toBe(
+      messages.stockAdjust.values.unknown,
+    );
+  });
+
+  /** 이름 안의 공백은 건드리지 않는다 — 판정에만 다듬기를 쓴다. */
+  it('이름 가운데 공백을 줄이지 않는다', () => {
+    expect(readableName('합성  상신자', messages.stockAdjust.values.unknown)).toBe('합성  상신자');
+  });
+});
+
+/**
+ * 계약의 date-time을 표기용으로 옮긴다.
+ *
+ * **실행 환경 시간대로 옮기지 않는다** — 문자열에 실려 온 offset이 그 일이 일어난 곳의 시각이고,
+ * 보는 사람의 시간대로 옮기면 같은 요청이 사람마다 다른 시각으로 보인다.
+ */
+describe('formatDateTime', () => {
+  it('날짜와 분까지만 낸다', () => {
+    expect(formatDateTime('2026-08-18T14:35:00+09:00')).toBe('2026-08-18 14:35');
+  });
+
+  /** 시간대를 옮기지 않는다 — 실려 온 시각 그대로다. */
+  it('다른 offset이 와도 시각을 옮기지 않는다', () => {
+    expect(formatDateTime('2026-08-18T14:35:00Z')).toBe('2026-08-18 14:35');
+  });
+
+  /** **형식이 아니면 원문을 그대로 낸다** — 「—」로 바꾸면 없는 것과 못 알아본 것이 같아진다. */
+  it('알아보지 못하는 값은 원문 그대로 낸다', () => {
+    expect(formatDateTime('알 수 없는 값')).toBe('알 수 없는 값');
   });
 });
