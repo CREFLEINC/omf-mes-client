@@ -11,8 +11,10 @@ import {
 import { itemFixtures, locationFixtures, lotFixtures } from './fixtures';
 import {
   describeReference,
+  lookupKeys,
   lookupNote,
   lotOptionsFor,
+  LOT_PAGE_SIZE,
   toReference,
   toSelectOptions,
   useLocationLookup,
@@ -47,6 +49,27 @@ const lookup = (overrides: Partial<LookupResult> = {}): LookupResult => ({
   truncated: false,
   refetch: () => undefined,
   ...overrides,
+});
+
+/**
+ * 캐시 키의 모양 — **형제(`stockAdjustKeys`)와 같은 잣대를 받는다.**
+ *
+ * 창고를 축으로 갖는 위치와 품목을 축으로 갖는 LOT은 **그 축이 키에 들어 있어야** 한다.
+ * 빠지면 창고를 바꿔도 앞 창고의 위치 목록이 그대로 서고, 그 목록에 없는 위치가
+ * 「목록에 없음」으로 보인다.
+ */
+describe('lookupKeys', () => {
+  it('읽는 대상마다 앞머리가 갈린다', () => {
+    expect(lookupKeys.warehouses).toEqual(['stock-adjust-lookups', 'warehouses']);
+    expect(lookupKeys.items).toEqual(['stock-adjust-lookups', 'items']);
+  });
+
+  it('위치는 창고마다, LOT은 품목마다 캐시가 갈린다', () => {
+    expect(lookupKeys.locations(9201)).toEqual(['stock-adjust-lookups', 'locations', 9201]);
+    expect(lookupKeys.locations(9202)).not.toEqual(lookupKeys.locations(9201));
+    expect(lookupKeys.lots(9501)).toEqual(['stock-adjust-lookups', 'lots', 9501]);
+    expect(lookupKeys.lots(9502)).not.toEqual(lookupKeys.lots(9501));
+  });
 });
 
 describe('toReference', () => {
@@ -231,6 +254,24 @@ describe('useLotLookup', () => {
     });
 
     expect(urls).toHaveLength(0);
+  });
+
+  /**
+   * **쪽 크기를 실어 부른다.** 자재 LOT은 다섯 참조 중 유일한 거래 기록이라 한 품목의 LOT이
+   * 시간이 갈수록 쌓인다 — 싣지 않으면 서버 기본 쪽 크기에 조용히 잘린다.
+   *
+   * 단언이 상수를 **정본으로** 쓴다(`queries.test.ts`의 `VARIANCE_LINE_PAGE_SIZE` 짝과 같은
+   * 형태). 값을 시험에 다시 적으면 상수만 바뀌었을 때 둘이 어긋난 채로 통과한다.
+   */
+  it('쪽 크기를 실어 부른다', async () => {
+    const { fetch, urls } = recordingFetch([route('/trace/lots', lotFixtures)]);
+    const { result } = renderHookWithProviders(() => useLotLookup([9501], true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(urls[0]?.searchParams.get('size')).toBe(String(LOT_PAGE_SIZE));
   });
 
   it('어느 품목의 LOT인지 항목이 함께 든다 — 선택지를 좁히는 근거다', async () => {

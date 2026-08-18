@@ -405,7 +405,26 @@ export const StockAdjustScreen = () => {
   const hasLineReferenceError = locations.isError || items.isError || uoms.isError || lots.isError;
 
   const hasBalanceError = Object.values(balances.sources).some((source) => source.isError);
-  const hasUnknownBookQty = rows.some((row) => row.bookQty.kind === 'notFound');
+
+  /**
+   * 장부가 「—」인데 **그 이유를 말해 줘야 하는** 줄이 있는가.
+   *
+   * 두 갈래를 함께 본다.
+   *
+   * | 갈래 | 어떻게 나오나 |
+   * | --- | --- |
+   * | 잔액에서 (품목·LOT)을 못 찾았다 | `notFound` |
+   * | **실사가 장부를 내려보내지 않았다**(블라인드 실사) | 승계 줄인데 `countSystemQty`가 없다 |
+   *
+   * ⛔ **`notAsked`를 통째로 더하지 않는다.** 그 갈래에는 「위치를 아직 고르지 않은 갓 더한
+   * 줄」이 함께 들어 있어, 더할 때마다 안내가 떠서 **정상 상태를 사고처럼** 보이게 만든다.
+   * 그래서 블라인드 갈래는 **승계 줄이라는 사실**로 좁혀 가른다 — 그 줄은 사용자가 채울 수
+   * 있는 것이 아무것도 없는데 두 열이 비어 있으므로, 이유 없는 대시로 남으면 안 된다.
+   */
+  const hasUnknownBookQty =
+    rows.some((row) => row.bookQty.kind === 'notFound') ||
+    lines.some((line) => line.countLineId !== null && line.countSystemQty === null);
+
   const hasInheritedReason = lines.some((line) => line.countReasonCode !== null);
 
   /**

@@ -803,6 +803,26 @@ describe('StockAdjustScreen — 조회 실패', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * **참조 복구도 누르면 실제로 되살아난다.** 위 감지기는 버튼이 **서는지**만 재고,
+   * 화면이 그 버튼에 매단 함수가 정말 넷을 다시 부르는지는 이 감지기가 가른다 —
+   * 배선이 끊기면 안내와 버튼은 그대로인 채 아무 일도 일어나지 않는다.
+   */
+  it('참조 실패의 다시 시도를 누르면 그 조회가 다시 나간다', async () => {
+    const { requests, user } = renderScreen(allRoutes([failingRoute(ITEMS_PATH, 500)]));
+
+    await loadVariance(user);
+    await screen.findByText(t.reasons.lineReferencesFailed);
+
+    const before = requestsTo(requests, ITEMS_PATH).length;
+
+    await user.click(within(linesPane()).getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ITEMS_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
   /** 장부 조회가 실패하면 장부 자리에 사유가 서고 그 사실을 밝힌다 — 0으로 접지 않는다. */
   it('장부 조회가 실패하면 장부 자리에 사유가 선다', async () => {
     const { user } = renderScreen(allRoutes([failingRoute(BALANCES_PATH, 500)]), '');
@@ -849,18 +869,25 @@ describe('StockAdjustScreen — 조회 실패', () => {
    * 복구 수단을 그 안쪽에 두면 **화면 전체에 「다시 시도」가 한 개도 없다.**
    */
   it('창고만 실패해도 복구 수단이 서고 그 사실을 창고로 말한다', async () => {
-    const { user } = renderScreen(allRoutes([failingRoute(WAREHOUSES_PATH, 500)]), '');
+    const { requests, user } = renderScreen(allRoutes([failingRoute(WAREHOUSES_PATH, 500)]), '');
 
     await screen.findByText(t.reasons.warehousesFailed);
 
     /* 줄이 0행이라 대상 구획은 빈 상태다 — 그래도 복구가 선다. */
     expect(screen.getByText(t.empty.noLinesTitle)).toBeInTheDocument();
 
-    const retry = within(sourcePane()).getByRole('button', { name: messages.common.retry });
+    /*
+     * **누르면 실제로 되살아나는지를 잰다.** 「버튼이 서 있다」만 재면 누르기 전에도 참이라
+     * 아무것도 재지 않는다 — 배선이 끊겨도 그 막다른 길이 **조용히** 돌아온다.
+     * 화면이 prop에 넘긴 함수가 정말 조회를 다시 부르는지는 여기서만 갈린다.
+     */
+    const before = requestsTo(requests, WAREHOUSES_PATH).length;
 
-    await user.click(retry);
+    await user.click(within(sourcePane()).getByRole('button', { name: messages.common.retry }));
 
-    expect(retry).toBeInTheDocument();
+    await waitFor(() => {
+      expect(requestsTo(requests, WAREHOUSES_PATH).length).toBeGreaterThan(before);
+    });
   });
 
   /**
@@ -1086,6 +1113,34 @@ describe('StockAdjustScreen — 장부가 없이 오는 실사', () => {
 
     expect(cellsOf(0)[3]).toBe(t.values.empty);
     expect(cellsOf(0)[4]).toBe(t.values.empty);
+  });
+
+  /**
+   * **이유 없는 대시를 남기지 않는다**(리뷰 N-3 — 장부를 `null`로 받게 한 수정의 2차 효과).
+   *
+   * 승계 줄은 사용자가 채울 것이 아무것도 없는데 두 열이 통째로 비어 있다 — 왜 비었는지와
+   * 그래도 조정할 수 있다는 것을 함께 말하지 않으면 사용자가 화면을 고장으로 읽는다.
+   */
+  it('왜 비었는지와 그래도 조정할 수 있다는 것을 함께 말한다', async () => {
+    const { user } = renderScreen(allRoutes([blindVarianceRoute()]));
+
+    await loadVariance(user);
+
+    expect(screen.getByText(t.notes.bookQtyOptional)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **짝 방향 — 갓 더한 빈 줄에는 서지 않는다.** 승계 줄이 아닌 `notAsked`까지 더하면
+   * 줄을 더할 때마다 안내가 떠서 정상 상태가 사고처럼 보인다.
+   */
+  it('갓 더한 빈 줄에는 그 안내가 서지 않는다', async () => {
+    const { user } = renderScreen(allRoutes(), '');
+
+    await screen.findByText(t.source.directNote);
+    await startDirectLine(user);
+
+    expect(screen.getByText(t.lineTable.bookQty)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.bookQtyOptional)).not.toBeInTheDocument();
   });
 
   it.each(['undefined', 'NaN'])('%o가 화면에 서지 않는다', async (word) => {
