@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter, useRoutes } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -16,6 +16,15 @@ import {
   plantFixtures,
   uomFixtures,
 } from '../screens/po-register/fixtures';
+import {
+  countFixtures as adjustCountFixtures,
+  itemFixtures as adjustItemFixtures,
+  locationFixtures as adjustLocationFixtures,
+  lotFixtures as adjustLotFixtures,
+  uomFixtures as adjustUomFixtures,
+  warehouseFixtures as adjustWarehouseFixtures,
+} from '../screens/stock-adjust/fixtures';
+import { stockAdjustEntryPath } from '../screens/stocktaking/result-pane';
 import {
   createStubFetch,
   jsonResponse,
@@ -102,6 +111,16 @@ const lookupRoute = (pathname: string, items: unknown[]): StubRoute => ({
   match: (request) => isGet(request, pathname),
   respond: () => jsonResponse(listBody(items)),
 });
+
+/** W-01-12가 첫 진입에 부르는 것들 — 실사 목록과 이름 풀이 다섯. */
+const stockAdjustRoutes = (): StubRoute[] => [
+  lookupRoute('/inventory/counts', adjustCountFixtures),
+  lookupRoute('/mdm/warehouses', adjustWarehouseFixtures),
+  lookupRoute('/mdm/locations', adjustLocationFixtures),
+  lookupRoute('/mdm/items', adjustItemFixtures),
+  lookupRoute('/mdm/uoms', adjustUomFixtures),
+  lookupRoute('/trace/lots', adjustLotFixtures),
+];
 
 /** W-01-11이 첫 진입에 부르는 것들 — 대상 초과분 상세와 이름 풀이 다섯. */
 const poRegisterRoutes = (): StubRoute[] => [
@@ -237,6 +256,97 @@ describe('appRouter', () => {
   it('신규 P/O 등록이 자재창고 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/logistics/po-register');
     expect(routedPaths()).not.toContain('/logistics/purchase-orders');
+  });
+
+  /*
+   * **W-01-12 · C46** — 계약 경로는 `/inventory/adjustments`인데 주소 앞머리는 `/logistics/`다.
+   * 근거는 여기서도 **섹션**이다(D-1) — 재고실사·재고 현황과 한 섹션에 서는 화면이 저 혼자
+   * 계약 앞머리를 쓰면 사용자와 개발자 모두 섹션과 주소를 대응시킬 수 없다.
+   *
+   * **`stock-status`와 한 글자도 겹치지 않는다** — 「재고」로 시작하는 화면이 둘이라 주소가
+   * 비슷하면 손으로 고칠 때 서로의 화면이 열린다.
+   */
+  it('재고조정이 자재창고 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/logistics/stock-adjust');
+    expect(routedPaths()).not.toContain('/inventory/adjustments');
+    expect(routedPaths()).not.toContain('/logistics/stock-status/adjust');
+  });
+});
+
+/**
+ * **W-01-12는 진입 경로가 둘인 첫 화면이다** — 사이드바 항목(D-19)과 재고실사 마감 결과의
+ * 링크(D-18). W-01-11이 링크 하나뿐이었던 것과 갈리는 자리이고, 그 근거는 **직접 등록이
+ * 다른 화면을 거치지 않고 들어오는 정상 경로**라는 것이다(원천이 셋 — 착수 이슈 §6).
+ *
+ * 이 describe가 두 경로를 양쪽에서 잰다 — 메뉴에 있고, 링크가 가리키는 주소가 실재한다.
+ */
+describe('appRouter — 재고조정의 진입 경로', () => {
+  /*
+   * **C46** — 메뉴에 항목이 있다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가
+   * 같은 화면을 열어도 통과하고, 글자만 보면 이름만 같고 다른 곳으로 가는 메뉴가 통과한다.
+   */
+  it('사이드바에 이 화면 항목이 있다', () => {
+    expect(sidebarHrefs()).toContain('/logistics/stock-adjust');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).getByText('재고조정')).toBeInTheDocument();
+  });
+
+  /*
+   * **사이드바 대조와 같은 형태의 이음매다.** 재고실사의 마감 결과 링크와 라우트 표는 서로 다른
+   * 파일에 있고 서로를 참조하지 않는다 — 한쪽만 고치면 죽은 링크가 남는데, 그 슬라이스의 시험은
+   * `href` 글자만 보고 이 화면의 시험은 라우트를 거치지 않아 **어느 쪽도 그 어긋남을 보지 못한다.**
+   */
+  it('재고실사 마감 결과 링크가 가리키는 주소가 라우트 표에 있다', () => {
+    const [pathname] = stockAdjustEntryPath(9001).split('?');
+
+    expect(routedPaths()).toContain(pathname);
+  });
+
+  /*
+   * **C46·C47** — 그 링크의 주소로 들어가면 화면이 **그 실사의 맥락으로** 선다.
+   *
+   * 주소를 손으로 적지 않고 **링크가 만드는 값을 그대로 태운다** — 질의 열쇠(`count`)가 받는
+   * 쪽이 읽는 이름과 어긋나면 여기서 맥락 없는 화면이 서고 이 시험이 운다.
+   */
+  it('그 주소로 들어가면 대상 실사가 실린 화면이 선다', async () => {
+    renderWithProviders(<RoutedApp />, {
+      fetch: createStubFetch(stockAdjustRoutes()),
+      route: stockAdjustEntryPath(9101),
+    });
+
+    expect(
+      await screen.findByRole('radio', { name: messages.stockAdjust.source.count }),
+    ).toBeChecked();
+    /* 목록이 도착해야 고른 실사가 이름으로 선다 — 번호만 실린 주소가 이름으로 풀리는 자리다. */
+    await waitFor(() => {
+      expect(screen.getByLabelText(messages.stockAdjust.source.countField)).toHaveTextContent(
+        'SAMPLE-IC-9101 · 2026-08-17',
+      );
+    });
+  });
+
+  /*
+   * **짝 음성** — 위 시험이 「무엇이든 그리기만 하면 통과」가 되지 않게, 맥락을 뺀 같은 주소가
+   * 실제로 **직접 등록** 갈래를 세우는 것을 함께 잰다(원천이 셋 · 실사 참조 공란이 정상).
+   * 사이드바로 들어오는 길이 바로 이 갈래다.
+   */
+  it('맥락 없이 그 주소로 들어가면 직접 등록 갈래로 선다', async () => {
+    renderWithProviders(<RoutedApp />, {
+      fetch: createStubFetch(stockAdjustRoutes()),
+      route: '/logistics/stock-adjust',
+    });
+
+    expect(
+      await screen.findByRole('radio', { name: messages.stockAdjust.source.direct }),
+    ).toBeChecked();
+    /*
+     * **앞 맥락이 새지 않았다**(전례가 가진 반대 축 — 리뷰 R-6②). 갈래만 재면 「고른 실사는
+     * 그대로인데 라디오만 직접 등록」인 상태를 통과시킨다 — 그 상태가 곧 화면과 주소가 다른
+     * 말을 하는 자리다.
+     */
+    expect(screen.queryByText('SAMPLE-IC-9101 · 2026-08-17')).not.toBeInTheDocument();
   });
 });
 

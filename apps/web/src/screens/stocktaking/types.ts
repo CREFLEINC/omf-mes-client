@@ -167,8 +167,10 @@ export interface CountLineListResult {
  *
  * **이 PR에서 갈래가 셋으로 찼다** — 쓰기 셋이 다 섰다.
  *
- * **내부 번호를 담지 않는다**(#44). 만들어진 실사의 내부 번호는 화면이 주소(`ct`)로만 쓰며,
- * 위치도 **이름으로 풀어** 담는다 — 이 타입에 번호 자리가 없어 결과 구획으로 샐 경로가 없다.
+ * **내부 번호는 마감 갈래에만 있고 그것도 주소 전용이다**(#44 · D-18). 개시·저장 갈래는
+ * 여전히 자리가 없어 샐 경로가 없고, 위치는 **이름으로 풀어** 담는다. 마감 갈래에 한 칸이
+ * 생긴 것은 재고조정(W-01-12)으로 잇는 주소를 만들려면 번호가 필요해서이며, **그리지 않는다**
+ * (부품이 그 값을 `href`로만 쓰고, 렌더 글자에 없음을 감지기가 센다).
  */
 export type ResultView =
   | { kind: 'opened'; countNo: string }
@@ -188,8 +190,18 @@ export type ResultView =
    *
    * `summary`도 **응답이 준 것**이다. 마감한 순간의 진행 상황이 결과에 박혀 있어야, 그 뒤
    * 다른 실사를 골라 위 구획의 요약이 바뀌어도 「무엇을 마감했는가」가 흔들리지 않는다.
+   *
+   * `inventoryCountId`는 **재고조정으로 잇는 주소에만 쓴다**(D-18 · #44). 화면에 그리지 않으며
+   * 그 사실은 부품의 감지기가 센다 — 계약이 조정의 실사 참조를 내부 번호로 받으므로
+   * 업무 번호로는 주소를 만들 수 없다.
    */
-  | { kind: 'closed'; countNo: string; statusCode: string; summary: CountSummaryView };
+  | {
+      kind: 'closed';
+      inventoryCountId: number;
+      countNo: string;
+      statusCode: string;
+      summary: CountSummaryView;
+    };
 
 /**
  * 선택 목록의 원본 항목.

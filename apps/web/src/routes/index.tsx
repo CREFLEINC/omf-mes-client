@@ -19,6 +19,7 @@ import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
 import { RoutingScreen } from '../screens/routing/screen';
+import { StockAdjustScreen } from '../screens/stock-adjust/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
 import { StocktakingScreen } from '../screens/stocktaking/screen';
 import { SupplierReturnScreen } from '../screens/supplier-return/screen';
@@ -122,6 +123,21 @@ export const appRouter = createBrowserRouter([
        * (정책 §5.2 — 접근 불가능한 경계).
        */
       { path: 'logistics/stocktaking', element: <StocktakingScreen /> },
+      /*
+       * W-01-12 — 같은 규칙(사이드바 섹션)이고 차례도 업무 순서다: 재고를 확인하고
+       * (재고 현황) 장부와 실물을 맞춘 뒤(재고실사) **어긋난 것을 고친다**(재고조정).
+       * 계약 경로는 `/inventory/adjustments`인데 주소 앞머리는 섹션을 따른다 — 이름은
+       * `stock-status`(재고 현황)와 한 글자도 겹치지 않게 두었다.
+       *
+       * **여섯 PR이 함께 여는 자리다.** 등록·상신·전기·이력이 다 서기 전에는 이 줄을 두지
+       * 않았다 — 전기할 수 없는 「재고조정」을 노출하면 사용자가 조정 전표를 만들어 놓고
+       * **재고를 실제로 움직이지 못한다**(정책 §5.2 — 접근 불가능한 경계).
+       *
+       * **진입 경로가 둘이다**(W-01-11과 갈리는 자리): 사이드바 항목과 재고실사 마감 결과의
+       * 링크. 메뉴에 두는 근거는 세 원천 중 **직접 등록**이 다른 화면을 거치지 않고 들어오는
+       * 정상 경로라는 것이고(착수 이슈 §6), 링크가 이 주소를 가리키는지는 `index.test.tsx`가 잇는다.
+       */
+      { path: 'logistics/stock-adjust', element: <StockAdjustScreen /> },
       /*
        * W-01-05 — 같은 규칙(사이드바 섹션)이고 차례도 업무 순서다: 예정 → 초과 분리 →
        * 입고 처리 → 재고 확인 → 실사 → **반품**. 되돌려 보내는 것은 앞의 다섯이 남긴

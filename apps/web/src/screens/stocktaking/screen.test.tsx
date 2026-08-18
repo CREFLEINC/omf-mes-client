@@ -27,6 +27,7 @@ import {
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
+import { stockAdjustEntryPath } from './result-pane';
 import { StocktakingScreen } from './screen';
 import { OPEN_FIELD_NAMES } from './validation';
 
@@ -214,10 +215,7 @@ const changingListRoute = (): StubRoute => {
   };
 };
 
-const detailRoute = (
-  pathname = DETAIL_PATH,
-  body: unknown = countDetailBody(),
-): StubRoute => ({
+const detailRoute = (pathname = DETAIL_PATH, body: unknown = countDetailBody()): StubRoute => ({
   match: (request) => isGet(request, pathname),
   respond: () => jsonResponse(body),
 });
@@ -345,7 +343,10 @@ const changingLinesRoute = (): StubRoute => {
 
       return jsonResponse(
         lineListBody(
-          countLineFixtures.map((line) => ({ ...line, varianceQty: (line.varianceQty ?? 0) - call })),
+          countLineFixtures.map((line) => ({
+            ...line,
+            varianceQty: (line.varianceQty ?? 0) - call,
+          })),
         ),
       );
     },
@@ -360,7 +361,9 @@ const shrinkingLinesRoute = (): StubRoute => {
     respond: () => {
       call += 1;
 
-      return jsonResponse(lineListBody(call === 1 ? countLineFixtures : countLineFixtures.slice(0, 2)));
+      return jsonResponse(
+        lineListBody(call === 1 ? countLineFixtures : countLineFixtures.slice(0, 2)),
+      );
     },
   };
 };
@@ -422,9 +425,18 @@ const replaceThenForbiddenRoute = (): StubRoute => {
 
 /** 라인 표가 이름을 내는 참조 셋. **위치를 고른 뒤에만 불린다.** */
 const lineLookupRoutes = (): StubRoute[] => [
-  { match: (request) => isGet(request, ITEMS_PATH), respond: () => jsonResponse(listBody(itemFixtures)) },
-  { match: (request) => isGet(request, UOMS_PATH), respond: () => jsonResponse(listBody(uomFixtures)) },
-  { match: (request) => isGet(request, LOTS_PATH), respond: () => jsonResponse(listBody(lotFixtures)) },
+  {
+    match: (request) => isGet(request, ITEMS_PATH),
+    respond: () => jsonResponse(listBody(itemFixtures)),
+  },
+  {
+    match: (request) => isGet(request, UOMS_PATH),
+    respond: () => jsonResponse(listBody(uomFixtures)),
+  },
+  {
+    match: (request) => isGet(request, LOTS_PATH),
+    respond: () => jsonResponse(listBody(lotFixtures)),
+  },
 ];
 
 /** PR ④의 경로. **부를 수 있게 두는 것이 요점이다** — 부르지 않음을 증명할 수 있어야 한다. */
@@ -559,8 +571,7 @@ const openPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.o
 
 const detailPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.detail });
 
-const summaryGroup = (): HTMLElement =>
-  screen.getByRole('group', { name: t.detail.summaryLabel });
+const summaryGroup = (): HTMLElement => screen.getByRole('group', { name: t.detail.summaryLabel });
 
 const selectCount = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -716,8 +727,7 @@ const closableDetailRoute = (
   count: Record<string, unknown> = {},
 ): StubRoute => ({
   match: (request) => isGet(request, pathname),
-  respond: () =>
-    jsonResponse(countDetailBody(count, summary), { headers: { ETag: DETAIL_ETAG } }),
+  respond: () => jsonResponse(countDetailBody(count, summary), { headers: { ETag: DETAIL_ETAG } }),
 });
 
 /**
@@ -872,12 +882,9 @@ describe('StocktakingScreen — 첫 진입 조회', () => {
     expect(requests.map((request) => request.method)).toEqual(requests.map(() => 'GET'));
 
     /* 나간 경로의 집합 그대로. 실사에 매달린 것은 **상세 하나**뿐이다. */
-    expect([...new Set(requests.map((request) => request.url.pathname))].sort()).toEqual([
-      LIST_PATH,
-      DETAIL_PATH,
-      LOCATIONS_PATH,
-      WAREHOUSES_PATH,
-    ].sort());
+    expect([...new Set(requests.map((request) => request.url.pathname))].sort()).toEqual(
+      [LIST_PATH, DETAIL_PATH, LOCATIONS_PATH, WAREHOUSES_PATH].sort(),
+    );
 
     /* 짝 방향 — 위치는 실제로 불렀다(부르지 않아서 통과하는 것이 아니다). */
     expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
@@ -951,7 +958,9 @@ describe('StocktakingScreen — 조건과 주소', () => {
 
     expect([...(query?.keys() ?? [])]).toEqual([]);
     /* 짝 방향 — 고르지 않은 것으로 읽혀 상세도 부르지 않는다. */
-    expect(requests.filter((request) => request.url.pathname.startsWith('/inventory/counts/'))).toHaveLength(0);
+    expect(
+      requests.filter((request) => request.url.pathname.startsWith('/inventory/counts/')),
+    ).toHaveLength(0);
   });
 
   /*
@@ -1198,9 +1207,7 @@ describe('StocktakingScreen — 실사 고르기와 요약', () => {
 
     await screen.findByRole('group', { name: t.detail.summaryLabel });
 
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }),
-    );
+    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('IC-2026-900011') }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -1619,7 +1626,9 @@ describe('StocktakingScreen — 개시가 잠겨 있는 동안', () => {
     expect(openButton()).not.toBeDisabled();
     /* 짝 방향 — 열렸다고 저절로 나가지는 않는다. */
     expect(openRequests(requests)).toHaveLength(0);
-    expect(within(openPane()).queryByText(t.actionReasons.openCodeListPending)).not.toBeInTheDocument();
+    expect(
+      within(openPane()).queryByText(t.actionReasons.openCodeListPending),
+    ).not.toBeInTheDocument();
   });
 
   /*
@@ -1887,7 +1896,8 @@ describe('StocktakingScreen — 개시 요청', () => {
     await setupReadyToOpen();
 
     const cancel = within(openPane()).getByRole('button', { name: messages.common.cancel });
-    const following = cancel.compareDocumentPosition(openButton()) & Node.DOCUMENT_POSITION_FOLLOWING;
+    const following =
+      cancel.compareDocumentPosition(openButton()) & Node.DOCUMENT_POSITION_FOLLOWING;
 
     expect(following).not.toBe(0);
   });
@@ -1942,9 +1952,7 @@ describe('StocktakingScreen — 개시 요청', () => {
      * 결과 구획이 업무 번호를 내고, **아래 구획 안에** 선다(계획 §5.5 배치) — 바로 위에
      * 그 실사의 제목줄과 요약이 함께 서서 「무엇을 만들었고 지금 어떤 상태인가」가 이어진다.
      */
-    expect(
-      within(detailPane()).getByRole('status', { name: t.result.label }),
-    ).toBeInTheDocument();
+    expect(within(detailPane()).getByRole('status', { name: t.result.label })).toBeInTheDocument();
     expect(
       within(screen.getByRole('status', { name: t.result.label })).getByText(OPENED_COUNT_NO),
     ).toBeInTheDocument();
@@ -1979,12 +1987,7 @@ describe('StocktakingScreen — 개시 요청', () => {
    * 공통 쓰기 훅이 호출마다 새 멱등 키를 만들어 두 번째 요청이 **새 전표**가 된다.
    */
   it('전송 중에는 대상을 바꿀 수 없고 연타해도 요청이 1회다', async () => {
-    const { requests, release, user } = await setupReadyToOpen(
-      allRoutes(),
-      '',
-      '',
-      isOpenRequest,
-    );
+    const { requests, release, user } = await setupReadyToOpen(allRoutes(), '', '', isOpenRequest);
 
     await user.click(openButton());
     await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
@@ -2005,9 +2008,7 @@ describe('StocktakingScreen — 개시 요청', () => {
      * 무방비면 **두 겹이 함께 조용히 사라진다.** 그러면 전송 중 취소 → 파기가 결과 구획과
      * 실패 배너를 지워 **지금 무엇이 나가는 중인지 화면이 말하지 못한다.**
      */
-    expect(
-      within(openPane()).getByRole('button', { name: messages.common.cancel }),
-    ).toBeDisabled();
+    expect(within(openPane()).getByRole('button', { name: messages.common.cancel })).toBeDisabled();
 
     /* 잠금을 우회하는 길(핸들러 직접 호출)로도 대상이 바뀌지 않는다. */
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
@@ -2085,9 +2086,7 @@ describe('StocktakingScreen — 개시 실패', () => {
         ? { errors: [{ scope: 'screen', code: 'INVALID', message: '창고를 확인하세요.' }] }
         : { message: '' };
 
-    const { requests, user } = await setupReadyToOpen(
-      allRoutes([failingOpenRoute(status, body)]),
-    );
+    const { requests, user } = await setupReadyToOpen(allRoutes([failingOpenRoute(status, body)]));
 
     await user.click(openButton());
     await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
@@ -2101,7 +2100,9 @@ describe('StocktakingScreen — 개시 실패', () => {
     /* 결과 구획이 서지 않는다 — 앞 성공의 번호가 남으면 오해한다. */
     expect(screen.queryByRole('status', { name: t.result.label })).not.toBeInTheDocument();
     /* 409 갈래가 없다 — 「최신 불러오기」가 뜰 자리가 없다. */
-    expect(screen.queryByRole('button', { name: messages.conflict.reloadAction })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: messages.conflict.reloadAction }),
+    ).not.toBeInTheDocument();
     /*
      * **R-2 · 수명 표 12행** — 실패해도 **확인 창은 닫혀 있다.** 성공 경로에서는 주소가
      * 바뀌면서 창 수명 effect가 우연히 닫아 주지만 **실패 경로에는 그 우연이 없다** —
@@ -2142,9 +2143,7 @@ describe('StocktakingScreen — 개시 실패', () => {
     await user.click(screen.getByRole('button', { name: t.actions.confirmOpen }));
 
     /* 첫 개시는 성공한다 — 결과 구획이 실제로 선다. */
-    expect(
-      await screen.findByRole('status', { name: t.result.label }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('status', { name: t.result.label })).toBeInTheDocument();
 
     /* 성공이 초안을 비웠으므로 둘째 개시를 위해 다시 채운다. */
     await fillOpenDraft(user);
@@ -2477,18 +2476,13 @@ describe('StocktakingScreen — 위치와 라인 조회', () => {
   });
 
   it('위치 목록을 불러오지 못하면 사유와 다시 시도가 선다', async () => {
-    const { requests, user } = renderScreen(
-      allRoutes([failingLocationsRoute()]),
-      '?ct=9001',
-    );
+    const { requests, user } = renderScreen(allRoutes([failingLocationsRoute()]), '?ct=9001');
 
     await screen.findByText(t.reasons.locationReferenceFailed);
 
     const before = requestsTo(requests, LOCATIONS_PATH).length;
 
-    await user.click(
-      within(detailPane()).getByRole('button', { name: messages.common.retry }),
-    );
+    await user.click(within(detailPane()).getByRole('button', { name: messages.common.retry }));
 
     await waitFor(() => {
       expect(requestsTo(requests, LOCATIONS_PATH).length).toBeGreaterThan(before);
@@ -2507,7 +2501,10 @@ describe('StocktakingScreen — 위치와 라인 조회', () => {
   it('라인 조회가 실패하면 빈 상태가 아니라 배너를 낸다', async () => {
     renderScreen(
       allRoutes([
-        { match: (request) => isGet(request, LINES_PATH), respond: () => jsonResponse({ message: '' }, { status: 500 }) },
+        {
+          match: (request) => isGet(request, LINES_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
       ]),
       AT_LOCATION,
     );
@@ -2535,9 +2532,10 @@ describe('StocktakingScreen — 위치와 라인 조회', () => {
       expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
     });
 
-    const historyButton = within(
-      screen.getByRole('group', { name: t.history.label }),
-    ).getByRole('button', { name: t.history.action });
+    const historyButton = within(screen.getByRole('group', { name: t.history.label })).getByRole(
+      'button',
+      { name: t.history.action },
+    );
 
     expect(historyButton).toBeDisabled();
 
@@ -2591,9 +2589,7 @@ describe('StocktakingScreen — 라인 초안', () => {
     [
       '라인 표의 참조를 다시 불러도',
       async (user) => {
-        await user.click(
-          within(detailPane()).getByRole('button', { name: messages.common.retry }),
-        );
+        await user.click(within(detailPane()).getByRole('button', { name: messages.common.retry }));
       },
     ],
     [
@@ -2611,7 +2607,10 @@ describe('StocktakingScreen — 라인 초안', () => {
     const { user } = await setupAtLocation(
       allRoutes([
         changingLinesRoute(),
-        { match: (request) => isGet(request, LOTS_PATH), respond: () => jsonResponse({ message: '' }, { status: 500 }) },
+        {
+          match: (request) => isGet(request, LOTS_PATH),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
       ]),
     );
 
@@ -3005,10 +3004,7 @@ describe('StocktakingScreen — 저장 잠금', () => {
    * 되돌리는 요청이고 목 서버는 그것을 200으로 받는다(실측). 막는 곳이 화면뿐이다.
    */
   it('그 위치에 줄이 없으면 저장이 막힌다', async () => {
-    const { requests, user } = renderScreen(
-      allRoutes([linesRoute(LINES_PATH, [])]),
-      AT_LOCATION,
-    );
+    const { requests, user } = renderScreen(allRoutes([linesRoute(LINES_PATH, [])]), AT_LOCATION);
 
     await screen.findByText(t.empty.noLinesTitle);
 
@@ -3070,12 +3066,7 @@ describe('StocktakingScreen — 치환 요청', () => {
       lines: { inventoryCountLineId: number; countedQty: number }[];
     };
 
-    expect(Object.keys(body).sort()).toEqual([
-      'businessDate',
-      'lines',
-      'locationId',
-      'occurredAt',
-    ]);
+    expect(Object.keys(body).sort()).toEqual(['businessDate', 'lines', 'locationId', 'occurredAt']);
     expect(body.locationId).toBe(LOCATION_ID);
     expect(body.lines).toHaveLength(countLineFixtures.length);
     expect(body.lines.map((line) => line.inventoryCountLineId)).toEqual(
@@ -3602,8 +3593,16 @@ describe('StocktakingScreen — 마감 잠금과 활성', () => {
    */
   it.each<[string, Record<string, number>, string | null]>([
     ['둘 다 0이면', CLOSABLE_SUMMARY, null],
-    ['미실사가 남으면', { ...CLOSABLE_SUMMARY, uncountedCount: 60 }, t.actionReasons.closeUncounted(60)],
-    ['차이가 남으면', { ...CLOSABLE_SUMMARY, varianceCount: 12 }, t.actionReasons.closeVariance(12)],
+    [
+      '미실사가 남으면',
+      { ...CLOSABLE_SUMMARY, uncountedCount: 60 },
+      t.actionReasons.closeUncounted(60),
+    ],
+    [
+      '차이가 남으면',
+      { ...CLOSABLE_SUMMARY, varianceCount: 12 },
+      t.actionReasons.closeVariance(12),
+    ],
     [
       '둘 다 남으면',
       { ...CLOSABLE_SUMMARY, uncountedCount: 60, varianceCount: 12 },
@@ -4003,9 +4002,7 @@ describe('StocktakingScreen — 마감 성공', () => {
     expect(currentLocation()).not.toContain('loc=');
     expect(screen.getByText(t.empty.closedTitle)).toBeInTheDocument();
     expect(screen.queryByLabelText(t.fields.location)).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText(t.lineTable.countedQtyLabel(1)),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(t.lineTable.countedQtyLabel(1))).not.toBeInTheDocument();
     expect(
       within(detailPane()).queryByRole('button', { name: t.actions.saveLocation }),
     ).not.toBeInTheDocument();
@@ -4139,30 +4136,178 @@ describe('StocktakingScreen — 마감 성공', () => {
   });
 });
 
+/**
+ * **감지기 M58 갱신 — 「이동하지 않는다」에서 「차이가 남았을 때만 이어진다」로**(D-18).
+ *
+ * 앞 회차의 판정 문장은 「조정 등록을 눌러도 주소가 바뀌지 않고 링크가 없다」였고 그 근거는
+ * W-01-12가 아직 없다는 것이었다. 근거가 사라졌으므로 **판정 강도를 유지한 채 사실을 갈아
+ * 끼운다** — 「가지 않는다」 대신 **어디로 가고 몇 칸 늘어나는가**를 잰다. 무력화가 아닌 근거:
+ * 차이 0 갈래가 「0건」을 그대로 세고(아래 짝), 이동 갈래도 주소를 값으로 대조한다.
+ */
 describe('StocktakingScreen — 조정 등록', () => {
-  /*
-   * **완료 조건 C58 · 감지기 M58** — 「조정 등록」은 **자리만 두고 이동시키지 않는다**
-   * (착수 이슈 §5 ⚠). W-01-12는 이번에 나가지 않았고 승인 계약도 없다.
-   *
-   * 부품 테스트가 비활성과 사유를 재고, 여기서는 **눌러도 어디로도 가지 않음**을 잰다 —
-   * 주소가 그대로이고 링크가 없다는 두 축이다.
+  /**
+   * **차이가 남은 채로 마감 응답이 온 갈래.** 화면의 마감 게이트는 상세 요약으로 차이 0을
+   * 요구하지만(`close-guard.ts`), 결과 구획에 담기는 것은 **마감 응답이 준 요약**이다 —
+   * 같은 응답의 상태 코드가 상세와 갈리는 것을 이미 실측했으므로(M59) 요약도 갈릴 수 있다.
    */
-  it('조정 등록을 눌러도 주소가 바뀌지 않고 링크가 없다', async () => {
+  const closingWithVarianceRoute = (
+    countOverrides: Parameters<typeof countDetailBody>[0] = {},
+  ): StubRoute => ({
+    match: isCloseRequest,
+    respond: () =>
+      jsonResponse(
+        countDetailBody(
+          { statusCode: CLOSED_STATUS, ...countOverrides },
+          { ...CLOSABLE_SUMMARY, varianceCount: 3 },
+        ),
+      ),
+  });
+
+  /*
+   * **C47** — 링크가 서고, 누르면 **재고조정 화면의 주소로 그 실사를 실어** 간다.
+   * 주소를 손으로 적지 않고 **부품이 만드는 값을 그대로 태운다** — 질의 열쇠가 받는 쪽이 읽는
+   * 이름과 어긋나면 이 시험이 아니라 `routes/index.test.tsx`의 이음매가 운다.
+   */
+  it('차이가 남은 마감의 조정 등록을 누르면 재고조정 주소로 간다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingWithVarianceRoute()]),
+    );
+
+    await closeCount(user);
+
+    const result = await screen.findByRole('status', { name: t.result.closedLabel });
+
+    await user.click(within(result).getByRole('link', { name: t.actions.adjustment }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(stockAdjustEntryPath(9001));
+    });
+  });
+
+  /*
+   * **C47 — 뒤로가기가 한 칸이다.** 링크는 히스토리에 칸을 하나만 더해야 한다. 실사 화면이
+   * 주소로 대상을 나르는 화면이라(조건·고른 실사가 전부 주소에 있다) 칸이 둘 이상 늘면
+   * 사용자는 뒤로 눌러도 조정 전에 보던 자리로 돌아오지 못한다.
+   */
+  it('조정 등록으로 간 뒤 뒤로가기 한 번이면 마감 결과 자리로 돌아온다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingWithVarianceRoute()]),
+    );
+
+    await closeCount(user);
+
+    const result = await screen.findByRole('status', { name: t.result.closedLabel });
+    const before = currentLocation();
+
+    await user.click(within(result).getByRole('link', { name: t.actions.adjustment }));
+    await waitFor(() => {
+      expect(currentLocation()).toBe(stockAdjustEntryPath(9001));
+    });
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(before);
+    });
+  });
+
+  /*
+   * ⭐ **push와 replace를 실제로 가르는 자리**(검증 V-5 생존 대응).
+   *
+   * 바로 위 시험은 진입 주소(`?ct=9001`)와 마감 뒤 주소가 **글자까지 같아** 링크에 `replace`를
+   * 붙여도 뒤로가기가 같은 주소에 도착해 헛통과한다. 그래서 **앞뒤 주소가 갈리는 상태**에서
+   * 다시 잰다 — 위치까지 고른 채로 들어와(`AT_LOCATION`) 마감하면 마감 성공이 `loc`를 비우므로
+   * 히스토리 앞 항목은 `?ct=9001&loc=…`, 뒤 항목은 `?ct=9001`이 된다.
+   *
+   * 이 상태에서 링크가 `replace`면 뒤로가기가 **`loc`가 붙은 주소**로 떨어져 마감 결과가 사라진다
+   * (그 화면은 위치 편집 구획이 열린 자리다). 링크가 push여야 한 칸 앞이 마감 결과 주소다.
+   */
+  it('마감 앞뒤 주소가 갈려도 뒤로가기 한 번이면 마감 결과 주소로 돌아온다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingWithVarianceRoute()]),
+      AT_LOCATION,
+    );
+
+    await closeCount(user);
+
+    const result = await screen.findByRole('status', { name: t.result.closedLabel });
+    const afterClose = currentLocation();
+
+    /* 짝 양성 — 마감이 실제로 주소를 바꿨다(`loc`가 빠졌다). 갈리지 않으면 이 시험은 무의미하다. */
+    expect(afterClose).toBe(`${ROUTE}${AT_COUNT}`);
+    expect(afterClose).not.toBe(`${ROUTE}${AT_LOCATION}`);
+
+    await user.click(within(result).getByRole('link', { name: t.actions.adjustment }));
+    await waitFor(() => {
+      expect(currentLocation()).toBe(stockAdjustEntryPath(9001));
+    });
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(afterClose);
+    });
+  });
+
+  /*
+   * ⭐ **넘기는 번호는 「응답이 준 것」이지 「화면이 겨눈 것」이 아니다**(검증 V-4 생존 대응).
+   *
+   * 마감 성공 핸들러가 바로 옆 줄에서 `selectedCountId`로 다른 필드를 채우고 있어 **실수로 갈아
+   * 끼우기 쉬운 자리**다. 응답이 **고른 실사와 다른 번호**를 주는 상태에서 링크가 어느 쪽을
+   * 가리키는지 재면 그 실수가 드러난다 — 조정으로 넘기는 것은 **서버가 마감했다고 말한 실사**여야
+   * 한다(같은 응답의 상태 코드에 이미 같은 잣대를 세웠다 — 감지기 M59).
+   */
+  it('마감 응답이 다른 실사를 가리키면 링크도 그 실사를 가리킨다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingWithVarianceRoute({ inventoryCountId: 9102 })]),
+    );
+
+    await closeCount(user);
+
+    const result = await screen.findByRole('status', { name: t.result.closedLabel });
+    const href =
+      within(result).getByRole('link', { name: t.actions.adjustment }).getAttribute('href') ?? '';
+
+    expect(href).toBe(stockAdjustEntryPath(9102));
+    /* 화면이 겨눈 번호(주소의 `ct=9001`)로 떨어지지 않는다 — 그 값이 이 자리의 오답이다. */
+    expect(href).not.toContain('9001');
+  });
+
+  /*
+   * **C48 — 차이가 0인 마감에는 링크도 버튼도 없다.** 기본 마감 응답이 그 갈래다
+   * (`closingRoute`의 요약이 차이 0). 개수를 세지 않으면 잠긴 버튼을 다시 붙여도 통과한다.
+   */
+  it('차이가 0인 마감 결과에는 이동 수단이 하나도 없다', async () => {
     const { user } = await setupClosable();
 
     await closeCount(user);
 
     const result = await screen.findByRole('status', { name: t.result.closedLabel });
-    const action = within(result).getByRole('button', { name: t.actions.adjustment });
-    const before = currentLocation();
 
-    expect(action).toBeDisabled();
-
-    await user.click(action);
-
-    expect(currentLocation()).toBe(before);
+    /* 짝 양성 — 마감 결과 자체는 실제로 섰다. */
+    expect(within(result).getByText(t.result.closedNote)).toBeInTheDocument();
     expect(within(result).queryAllByRole('link')).toHaveLength(0);
-    expect(within(detailPane()).getByText(t.actionReasons.adjustmentPending)).toBeInTheDocument();
+    expect(within(result).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  /*
+   * **C49 — 결과 구획의 글자에 내부 번호가 0건이다.** 이제 화면이 그 번호를 **넘겨준다**
+   * (주소를 만들려면 필요하다) — 값이 없어서 통과하는 것이 아님을 링크 주소가 증명한다.
+   */
+  it('결과 구획이 내부 번호를 주소에만 싣는다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingWithVarianceRoute()]),
+    );
+
+    await closeCount(user);
+
+    const result = await screen.findByRole('status', { name: t.result.closedLabel });
+
+    expect(
+      within(result).getByRole('link', { name: t.actions.adjustment }).getAttribute('href'),
+    ).toContain('9001');
+    expect(result.textContent ?? '').not.toContain('9001');
+    expect(result.textContent ?? '').not.toContain('9101');
   });
 });
 
@@ -4239,9 +4384,7 @@ describe('StocktakingScreen — 마감 실패', () => {
    * 없어 두 번 마감되면 되돌릴 수 없다. 저장(치환)과 갈리는 자리이며 그 갈림이 문구에 있다.
    */
   it('응답이 오지 않으면 다시 보내기 전에 확인하라고 밝힌다', async () => {
-    const { user } = await setupClosable(
-      allRoutes([closableDetailRoute(), offlineCloseRoute()]),
-    );
+    const { user } = await setupClosable(allRoutes([closableDetailRoute(), offlineCloseRoute()]));
 
     await closeCount(user);
 
@@ -4459,7 +4602,11 @@ describe('StocktakingScreen — 마감 중 잠금', () => {
    * 개시·치환 두 축을 갈라 센다. 한 축만 재면 다른 축의 잠금을 지워도 잡히지 않는다.
    */
   it.each<
-    [string, (request: Request) => boolean, (user: ReturnType<typeof userEvent.setup>) => Promise<void>]
+    [
+      string,
+      (request: Request) => boolean,
+      (user: ReturnType<typeof userEvent.setup>) => Promise<void>,
+    ]
   >([
     [
       '개시가',

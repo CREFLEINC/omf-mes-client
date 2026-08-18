@@ -210,7 +210,34 @@ const BackProbe = () => {
   );
 };
 
-const renderScreen = (routes: StubRoute[], search = '?count=9101', hold: string[] = []) => {
+/**
+ * **화면 밖에서 같은 라우트로 미는 이동**(`push`).
+ *
+ * 라우트와 사이드바가 열린 뒤에 생긴 경로다 — 사이드바의 「재고조정」을 누르면 **같은 라우트로
+ * 질의만 다른 주소**가 밀려, 화면이 다시 마운트되지 않은 채 진입 맥락만 바뀐다. 화면 안의
+ * 주소 갱신은 전부 `replace`라(히스토리를 늘리지 않는다) 이 경로는 **바깥에서만** 만들어진다.
+ */
+const MenuProbe = ({ to }: { to: string }) => {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigate(to);
+      }}
+    >
+      메뉴
+    </button>
+  );
+};
+
+const renderScreen = (
+  routes: StubRoute[],
+  search = '?count=9101',
+  hold: string[] = [],
+  menuTo = ROUTE,
+) => {
   const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
   /**
@@ -225,6 +252,7 @@ const renderScreen = (routes: StubRoute[], search = '?count=9101', hold: string[
       <StockAdjustScreen />
       <LocationProbe />
       <BackProbe />
+      <MenuProbe to={menuTo} />
     </>,
     { fetch, route: `${ROUTE}${search}` },
   );
@@ -377,6 +405,26 @@ describe('StockAdjustScreen — 없는 실사 주소 정리', () => {
     await waitForLocation(ROUTE);
   });
 
+  /*
+   * ⚠ **이 갈래만 「주소=갈래」의 예외다**(리뷰 R-2). 주소에서 대상이 사라져도 **실사 갈래에
+   * 남는다** — 대상을 지운 주체가 사용자가 아니라 화면이고, 직접 등록으로 옮기면 「없는
+   * 실사였다」 안내가 **실사 선택칸이 없는 구획**에 서서 화면에 없는 컨트롤을 쓰라고 말한다.
+   *
+   * 문면(같은 이름의 `screen.tsx` 주석)에만 있고 감지기가 없던 자리라, 그 예외를 여기 고정한다 —
+   * 없으면 다음 사람이 「주소가 비면 직접 등록」이라는 일반 규칙을 이 갈래에도 밀어 넣는다.
+   */
+  it('정리해도 실사 갈래에 남는다 — 고를 자리와 안내를 지킨다', async () => {
+    renderScreen(allRoutes(), '?count=9109');
+
+    await screen.findByText(t.source.countNotFoundNote);
+    await waitForLocation(ROUTE);
+
+    expect(screen.getByRole('radio', { name: t.source.count })).toBeChecked();
+    expect(screen.getByRole('radio', { name: t.source.direct })).not.toBeChecked();
+    /* 안내가 가리키는 컨트롤이 실제로 그 자리에 있다 — 갈래가 바뀌면 이 칸이 사라진다. */
+    expect(within(sourcePane()).getByLabelText(t.source.countField)).toBeInTheDocument();
+  });
+
   /**
    * **잘린 목록에서는 판정하지 않는다** — 못 본 것과 없는 것은 다르다. 정상 실사를 가리킨
    * 주소가 지워지면 재고실사에서 넘어온 사용자가 무엇을 조정하려 했는지 잃는다.
@@ -460,6 +508,116 @@ describe('StockAdjustScreen — 실사 차이 승계', () => {
     expect(addLineButton()).toHaveAccessibleDescription(
       new RegExp(t.actionReasons.addLineCountSource),
     );
+  });
+});
+
+/**
+ * ⭐ **라우트와 사이드바가 열리며 도달 가능해진 경로**(T2 검증 인계 · D-15 초안 세션 축).
+ *
+ * 여기까지 이 화면의 주소 갱신은 **전부 `replace`**였고 바깥에서 이 주소를 미는 길도 없어,
+ * 「같은 라우트로 질의만 다른 `push`」는 **도달할 수 없는 형태**였다. 사이드바 항목이 서면서
+ * 그 길이 생긴다 — 실사 맥락으로 세워 둔 대상 위에 **맥락 없는 진입**이 겹치는 자리다.
+ *
+ * **대상이 바뀌었는데 앞 대상의 줄이 남는 것**이 이 화면이 가장 비싸게 치르는 사고다(실사에서
+ * 승계한 줄은 고칠 수 없고 장부가 그 실사에서 온다 — 다른 대상 위에 서면 그 값이 거짓이 된다).
+ * 그래서 **주소가 가리키는 대상과 초안의 대상이 갈리면 거둔다** — 조작으로 바꾸는 세 길
+ * (원천 전환·실사 바꾸기·창고 바꾸기)이 이미 지나는 `resetDraftForNewTarget` 한 문을 함께 쓴다.
+ */
+describe('StockAdjustScreen — 메뉴로 다시 들어오기(같은 라우트 · 질의만 다른 push)', () => {
+  it('실사 맥락을 지우고 들어오면 앞 대상의 줄이 남지 않는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+
+    /* 짝 양성 — 거두기 전에는 실제로 세 줄이 서 있다. */
+    expect(bodyRows()).toHaveLength(3);
+
+    await user.click(screen.getByRole('button', { name: '메뉴' }));
+
+    await waitForLocation(ROUTE);
+    await waitFor(() => {
+      expect(within(linesPane()).queryByRole('table')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(t.empty.noLinesTitle)).toBeInTheDocument();
+  });
+
+  /** 맥락 없이 들어온 것이므로 **주소가 말하는 갈래**로 선다 — 화면과 주소가 갈리지 않는다. */
+  it('실사 맥락을 지우고 들어오면 직접 등록 갈래로 선다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+    await user.click(screen.getByRole('button', { name: '메뉴' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: t.source.direct })).toBeChecked();
+    });
+  });
+
+  /*
+   * **다른 실사로 미는 갈래도 같은 문을 지난다.** 사이드바는 맥락 없는 주소를 밀지만,
+   * 뒤로가기·앞으로가기·주소 직접 편집은 **다른 실사를 가리키는 같은 라우트**를 만들 수 있다 —
+   * 그때 앞 실사의 줄이 남으면 새 실사의 장부 위에 남의 수량이 선다.
+   */
+  it('다른 실사를 가리키는 주소로 들어오면 앞 실사의 줄이 남지 않는다', async () => {
+    const { user } = renderScreen(allRoutes(), '?count=9101', [], `${ROUTE}?count=9102`);
+
+    await loadVariance(user);
+
+    expect(bodyRows()).toHaveLength(3);
+
+    await user.click(screen.getByRole('button', { name: '메뉴' }));
+
+    await waitForLocation(`${ROUTE}?count=9102`);
+    await waitFor(() => {
+      expect(within(linesPane()).queryByRole('table')).not.toBeInTheDocument();
+    });
+    /* 갈래는 실사 그대로다 — 주소가 여전히 실사를 가리킨다. */
+    expect(screen.getByRole('radio', { name: t.source.count })).toBeChecked();
+  });
+
+  /*
+   * **뒤로가기로 실사 맥락이 되돌아오는 갈래.** 메뉴로 나갔다가 뒤로 누르면 앞의 실사 주소가
+   * 다시 서는데, 그사이 직접 등록으로 친 줄이 남으면 **실사 대상 위에 직접 친 줄**이 선다.
+   */
+  it('뒤로가기로 실사 맥락이 돌아오면 그사이 친 줄이 남지 않는다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await waitForCounts();
+    await user.click(screen.getByRole('button', { name: '메뉴' }));
+    await waitForLocation(ROUTE);
+
+    await startDirectLine(user);
+
+    expect(bodyRows()).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitForLocation(`${ROUTE}?count=9101`);
+    await waitFor(() => {
+      expect(within(linesPane()).queryByRole('table')).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('radio', { name: t.source.count })).toBeChecked();
+  });
+
+  /*
+   * ⛔ **화면 안의 조작은 이 문을 **두 번** 지나지 않는다.** 세 조작은 이미 스스로 거두고
+   * 주소를 `replace`로 갈아 끼우므로, 주소 변화에 반응해 또 거두면 **막 세운 대상이 사라진다.**
+   * 실사를 바꾼 직후 불러오기가 정상으로 서는 것이 그 사실이다.
+   */
+  it('화면에서 실사를 바꾼 뒤에도 불러온 대상이 그대로 선다', async () => {
+    const { user } = renderScreen(
+      allRoutes([getRoute(SECOND_VARIANCE_PATH, countVarianceLineFixtures)]),
+    );
+
+    await waitForCounts();
+    await user.click(countField());
+    await user.click(screen.getByRole('option', { name: 'SAMPLE-IC-9102 · 2026-08-18' }));
+    await waitForLocation(`${ROUTE}?count=9102`);
+
+    await user.click(loadButton());
+
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(bodyRows()).toHaveLength(3);
   });
 });
 
