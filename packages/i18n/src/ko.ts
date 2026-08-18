@@ -6650,6 +6650,213 @@ const login = {
   },
 } as const;
 
+/**
+ * W-01-12 재고조정.
+ *
+ * **이 블록에서 가장 조심할 것은 낱말이다.** 이 화면은 잔량을 직접 고치는 자리가 아니라
+ * **차이 수량**을 받는 자리라, 「보유 수량」·「재고 수량」·「현재 수량」처럼 *결과 수량*을 뜻하는
+ * 말을 한 번이라도 쓰면 사용자가 덮어쓰기 화면으로 읽는다. 그래서 수량을 부르는 말은
+ * **장부 · 실물 · 차이** 셋뿐이다.
+ *
+ * **승인·반려를 말하지 않는다.** 결재는 결재함(W-CO-09)이 소유한다 — 이 화면은 조정을 세워
+ * 올리는 쪽이고, 그 사실을 상단 안내가 상시 밝힌다.
+ */
+const stockAdjust = {
+  title: '재고조정',
+  breadcrumbRoot: '자재창고',
+  panes: {
+    source: '조정 원천',
+    lines: '조정 대상',
+  },
+  /**
+   * 화면 맨 위에 늘 서는 범위 안내. **접지 않는다** — 이 화면을 「잔량을 고치는 화면」으로
+   * 읽는 것이 여기서 가장 비싼 오해다.
+   */
+  scope: {
+    title: '조정은 수불 원장에 기록됩니다',
+    description:
+      '잔량을 직접 고치지 않습니다. 이 화면이 받는 값은 장부와 실물의 차이 수량이고, 실물은 장부에 차이를 더해 보여 줍니다.',
+  },
+  /** 결재는 결재함이 소유한다. 이 화면에는 승인·반려 조작이 없다. */
+  approvalNotice: {
+    title: '결재는 결재함에서 합니다',
+    description: '이 화면은 조정을 세우고 올리는 자리입니다. 승인과 반려는 결재함에서 처리합니다.',
+  },
+  /**
+   * 조정 원천. **라디오는 둘이고 자료의 출처는 셋이다** — 실사 차이 · 현장 실측 · 직접 등록.
+   * 뒤의 둘은 실사를 거치지 않으므로 같은 갈래로 들어온다.
+   */
+  source: {
+    kindLabel: '조정 원천',
+    count: '실사 차이',
+    direct: '직접 등록',
+    countField: '대상 실사',
+    countPlaceholder: '실사를 고르세요',
+    warehouseField: '대상 창고',
+    warehousePlaceholder: '창고를 고르세요',
+    /** 직접 등록 갈래에서 실사 참조 자리에 서는 라벨. 값은 「—」다. */
+    countRefLabel: '대상 실사',
+    /**
+     * **실사 참조가 비어 있는 것이 정상이다.** 경고로 읽히지 않게 사실만 적는다 —
+     * 현장 실측과 직접 등록은 실사를 거치지 않는 정상 경로다.
+     */
+    directNote: '현장 실측·직접 등록에는 대상 실사가 없습니다.',
+    loadedNote: (lineCount: number): string =>
+      `실사 차이 ${String(lineCount)}행을 조정 대상으로 가져왔습니다.`,
+    /** 불러온 결과가 0행인 갈래. 「불러오지 못했다」와 다른 말이다. */
+    loadedEmptyNote: '이 실사에는 차이가 있는 줄이 없습니다.',
+    /**
+     * **앞쪽 일부만 왔다**(계약이 이 조회에 페이지네이션을 못 박았다).
+     *
+     * 「N행을 가져왔습니다」로만 말하면 사용자가 그것을 **전부**로 읽고, 조정되지 않은 차이가
+     * 남은 채로 전표가 올라간다 — 되돌릴 수 없는 쓰기 앞의 조용한 누락이다. 그래서 받은 수와
+     * **전체 수를 함께** 말하고, 무엇이 빠졌는지 사용자가 알 수 있게 한다.
+     */
+    loadedTruncatedNote: (lineCount: number, total: number): string =>
+      `차이가 있는 줄 ${String(total)}행 가운데 앞쪽 ${String(lineCount)}행만 가져왔습니다. 나머지는 아직 조정 대상이 아닙니다.`,
+    /** 원천을 바꾸면 세운 대상이 사라진다 — 바꾸기 전에 읽히게 상시 세운다. */
+    changeDiscardNote: (lineCount: number): string =>
+      `원천을 바꾸면 지금 세운 조정 대상 ${String(lineCount)}행이 사라집니다.`,
+    /**
+     * 주소가 가리킨 실사를 목록에서 찾지 못해 주소에서 지웠다.
+     * **목록이 잘렸을 때는 이 판정을 하지 않는다** — 못 본 것과 없는 것은 다르다.
+     */
+    countNotFoundNote:
+      '주소가 가리킨 실사를 목록에서 찾지 못해 대상에서 뺐습니다. 아래에서 실사를 고르세요.',
+  },
+  /**
+   * 조정 라인 표 — **입력칸은 「차이」 하나뿐이다.**
+   *
+   * 「실물」은 장부에 차이를 더한 **파생 값**이라 읽기 전용이다. 실물을 입력칸으로 두면
+   * 그것이 곧 결과 수량 입력이 되어 이 화면이 덮어쓰기 화면으로 읽힌다.
+   */
+  lineTable: {
+    location: '위치',
+    item: '품목',
+    lot: '자재 LOT',
+    bookQty: '장부',
+    actualQty: '실물',
+    adjustmentQty: '차이',
+    rowActions: '행 조작',
+    locationLabel: (lineNo: number): string => `${String(lineNo)}번 줄 위치`,
+    itemLabel: (lineNo: number): string => `${String(lineNo)}번 줄 품목`,
+    lotLabel: (lineNo: number): string => `${String(lineNo)}번 줄 자재 LOT`,
+    uomLabel: (lineNo: number): string => `${String(lineNo)}번 줄 단위`,
+    adjustmentQtyLabel: (lineNo: number): string => `${String(lineNo)}번 줄 차이 수량`,
+    /** 실사에서 승계한 줄이라는 표식. 위치·품목·LOT을 고를 수 없는 사정을 이 표식이 밝힌다. */
+    inherited: '실사 승계',
+    /** 차이가 0인 줄. **오류가 아니라 제외다** — 막지 않고 표식만 붙인다. */
+    excluded: '제외',
+    /**
+     * 실사에서 실려 온 차이 사유. **읽기 전용 표기이고 이 화면이 보내지 않는다** —
+     * 조정 라인에 사유를 담을 자리가 아직 없다.
+     */
+    countReason: (code: string): string => `실사 사유 ${code}`,
+    qtyWithUom: (qty: string, uom: string): string => `${qty} ${uom}`,
+  },
+  /**
+   * 장부 수량 칸의 글자.
+   *
+   * **묻지 않음·목록에 없음은 빈 값 표식(`values.empty`)으로 낸다** — 표 안에서는 자리를
+   * 아끼고, 무엇이 일어났는지는 표 아래 안내(`notes.bookQtyOptional`)가 맡는다. 그래서 이
+   * 블록에는 **사용자가 기다릴지 다시 부를지를 가리는 두 갈래만** 있다.
+   */
+  bookQty: {
+    loading: '장부 확인 중',
+    failed: '장부를 확인하지 못했습니다',
+  },
+  actions: {
+    addLine: '라인 추가',
+    removeLine: (lineNo: number): string => `${String(lineNo)}번 줄 삭제`,
+    loadVariance: '실사 차이 불러오기',
+  },
+  /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다.** 잠갔으면 반드시 함께 선다. */
+  actionReasons: {
+    loadVarianceNeedsCount: '실사 차이 불러오기는 대상 실사를 고른 뒤에 할 수 있습니다.',
+    loadVarianceLoading: '실사 차이 불러오기는 앞선 조회가 끝난 뒤에 다시 할 수 있습니다.',
+    addLineNeedsWarehouse:
+      '라인 추가는 대상 창고를 고른 뒤에 할 수 있습니다. 창고를 골라야 위치와 장부를 확인할 수 있습니다.',
+    /**
+     * 실사 갈래에서는 줄을 더하지 않는다 — 대상은 실사가 정한다.
+     *
+     * **컨트롤 이름으로 시작한다**(배치 규범 4-5). 사정을 주어로 삼는 이탈 조건은 「한 사정이
+     * 여러 조작을 한꺼번에 잠글 때」인데 이것은 「라인 추가」 하나만 잠근다.
+     */
+    addLineCountSource:
+      '라인 추가는 실사 차이 갈래에서 할 수 없습니다. 직접 등록으로 바꾸면 줄을 더할 수 있습니다.',
+  },
+  errors: {
+    adjustmentQtyRequired: '차이 수량을 넣으세요.',
+    adjustmentQtyNotNumber: '차이 수량은 숫자로 넣으세요.',
+    locationRequired: '위치를 고르세요.',
+    itemRequired: '품목을 고르세요.',
+    uomRequired: '단위를 고르세요.',
+  },
+  notes: {
+    /**
+     * 차이가 0인 줄. **막지 않고 무엇이 일어나는지 적는다**(스펙 §6의 자동 제외).
+     * 등록 본문을 만들 때 그 줄이 빠지고 확인 창이 그 수를 다시 밝힌다.
+     */
+    excludedZero: (lineCount: number): string =>
+      `차이가 0인 ${String(lineCount)}행은 등록에서 빠집니다.`,
+    /** 줄이는 조정이 정상 경로라는 사실. 음수를 막지 않는다는 것을 미리 알린다. */
+    negativeAllowed: '줄이는 조정은 차이를 음수로 넣습니다.',
+    /** 실물은 파생 값이다 — 고칠 수 있는 값으로 읽히지 않게 밝힌다. */
+    actualDerived: '실물은 장부에 차이를 더한 값입니다. 직접 고치지 않습니다.',
+    /** 장부를 못 찾아도 등록을 막지 않는다 — 현장 실측은 장부를 모른 채로도 조정한다. */
+    bookQtyOptional: '장부를 확인하지 못한 줄도 조정할 수 있습니다. 차이 수량만 있으면 됩니다.',
+    /** 실사에서 온 사유는 보이기만 한다 — 조정 라인에 사유를 담을 자리가 아직 없다. */
+    lineReasonReadOnly: '실사에서 적은 사유는 참고로만 보입니다. 이 화면에서 고치지 않습니다.',
+    /** 줄번호를 화면이 정하지 않는다(공유계약 A-5). */
+    lineNoAssignedByServer: '줄번호는 등록할 때 배열 순서대로 매겨집니다.',
+    /**
+     * 조정 사유 값 목록이 아직 확정되지 않았다. **채우면 저절로 살아나는 자리**라
+     * 무엇이 막혀 있는지와 언제 풀리는지를 함께 적는다.
+     */
+    reasonCodePending:
+      '조정 사유 값 목록이 아직 확정되지 않았습니다. 값이 확정되면 이 화면에서 조정을 등록할 수 있습니다.',
+  },
+  values: {
+    empty: '—',
+    unknown: '알 수 없음',
+    referenceLoading: '이름 불러오는 중',
+    referenceFailed: '이름 불러오기 실패',
+    inactiveSuffix: ' (미사용)',
+  },
+  lookups: {
+    truncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+    failed: '선택지를 불러오지 못했습니다.',
+  },
+  loading: {
+    varianceLines: '실사 차이를 불러오는 중',
+  },
+  empty: {
+    noLinesTitle: '아직 조정 대상이 없습니다',
+    noLinesCountDescription:
+      '대상 실사를 고르고 「실사 차이 불러오기」를 누르면 차이가 있는 줄이 여기에 섭니다.',
+    noLinesDirectDescription:
+      '대상 창고를 고르고 「라인 추가」를 누르면 줄을 직접 세울 수 있습니다.',
+  },
+  reasons: {
+    /**
+     * **안내가 말하는 넷과 복구가 되살리는 넷이 같다.**
+     *
+     * 하나라도 어긋나면 그 참조만 실패했을 때 사실이 아닌 문구가 서거나 복구가 그 참조를
+     * 되살리지 못한다. 창고는 **원천 구획**이 따로 맡는다(그 이름이 실패로 보이는 자리가
+     * 거기다) — 조건도 문구도 복구도 그쪽에 갈라 두었다.
+     */
+    lineReferencesFailed:
+      '위치·품목·단위·자재 LOT 이름을 불러오지 못했습니다. 이름 자리에 사유가 표시됩니다.',
+    /**
+     * 창고만 실패하는 갈래. **직접 등록은 창고를 고르는 것으로 시작하므로 여기서 막히면
+     * 화면 전체가 막다른 길이 된다** — 그래서 복구 수단이 이 안내와 함께 선다.
+     */
+    warehousesFailed:
+      '창고 이름을 불러오지 못했습니다. 창고를 고르지 못하면 위치와 장부도 확인할 수 없습니다.',
+    balancesFailed: '장부 수량을 불러오지 못했습니다. 장부 자리에 사유가 표시됩니다.',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -6680,6 +6887,7 @@ export const ko = {
   iqcSkipApproval,
   poRegister,
   login,
+  stockAdjust,
 } as const;
 
 export type Messages = typeof ko;
