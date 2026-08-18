@@ -13,6 +13,7 @@ import {
   useCountVarianceLines,
   useInventoryCounts,
   useLocationBalances,
+  VARIANCE_LINE_PAGE_SIZE,
 } from './queries';
 
 /**
@@ -117,10 +118,57 @@ describe('useCountVarianceLines', () => {
     const { result } = renderHookWithProviders(() => useCountVarianceLines(9101), { fetch });
 
     await waitFor(() => {
-      expect(result.current.data).toHaveLength(3);
+      expect(result.current.data?.lines).toHaveLength(3);
     });
 
     expect(requests[0]?.url.searchParams.get('varianceOnly')).toBe('true');
+  });
+
+  /**
+   * **쪽 크기를 싣는다.** 계약이 이 오퍼레이션에 페이지네이션을 못 박았으므로, 싣지 않으면
+   * 서버 기본 쪽 크기에 조용히 잘린다 — 그 목록은 조정 대상 자체를 정한다.
+   */
+  it('쪽 크기를 실어 부른다', async () => {
+    const { fetch, requests } = recordingFetch([
+      getRoute(VARIANCE_PATH, listBody(countVarianceLineFixtures)),
+    ]);
+    const { result } = renderHookWithProviders(() => useCountVarianceLines(9101), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.lines).toHaveLength(3);
+    });
+
+    expect(requests[0]?.url.searchParams.get('size')).toBe(String(VARIANCE_LINE_PAGE_SIZE));
+  });
+
+  /**
+   * **받은 것이 전부인지를 함께 낸다**(리뷰 R-2). 잘린 줄 모르고 「N행을 가져왔습니다」로
+   * 말하면 조정되지 않은 차이가 남은 채로 전표가 올라간다.
+   */
+  it('앞쪽 일부만 왔으면 그 사실과 전체 건수를 함께 낸다', async () => {
+    const { fetch } = recordingFetch([
+      getRoute(VARIANCE_PATH, listBody(countVarianceLineFixtures, 12)),
+    ]);
+    const { result } = renderHookWithProviders(() => useCountVarianceLines(9101), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.truncated).toBe(true);
+    });
+
+    expect(result.current.data?.total).toBe(12);
+    expect(result.current.data?.lines).toHaveLength(3);
+  });
+
+  /** 짝 방향 — 전부 왔으면 잘리지 않았다고 낸다. 「늘 잘렸다」로 통과하지 않게 한다. */
+  it('전부 왔으면 잘리지 않았다고 낸다', async () => {
+    const { fetch } = recordingFetch([
+      getRoute(VARIANCE_PATH, listBody(countVarianceLineFixtures)),
+    ]);
+    const { result } = renderHookWithProviders(() => useCountVarianceLines(9101), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.truncated).toBe(false);
+    });
   });
 
   it('세 열의 값이 계약 그대로 온다', async () => {
@@ -130,7 +178,7 @@ describe('useCountVarianceLines', () => {
     const { result } = renderHookWithProviders(() => useCountVarianceLines(9101), { fetch });
 
     await waitFor(() => {
-      expect(result.current.data?.[0]).toMatchObject({ systemQty: 100, varianceQty: -2 });
+      expect(result.current.data?.lines[0]).toMatchObject({ systemQty: 100, varianceQty: -2 });
     });
   });
 
@@ -162,7 +210,7 @@ describe('useLocationBalances', () => {
     );
 
     await waitFor(() => {
-      expect(result.current[9401]?.isLoading).toBe(false);
+      expect(result.current.sources[9401]?.isLoading).toBe(false);
     });
 
     expect(requests.map((request) => request.url.searchParams.get('locationId'))).toEqual([
@@ -182,7 +230,7 @@ describe('useLocationBalances', () => {
     const { result } = renderHookWithProviders(() => useLocationBalances(9201, [9401]), { fetch });
 
     await waitFor(() => {
-      expect(result.current[9401]?.isLoading).toBe(false);
+      expect(result.current.sources[9401]?.isLoading).toBe(false);
     });
 
     const query = requests[0]?.url.searchParams;
@@ -199,7 +247,7 @@ describe('useLocationBalances', () => {
     const { result } = renderHookWithProviders(() => useLocationBalances(null, [9401]), { fetch });
 
     await waitFor(() => {
-      expect(result.current[9401]?.isAsked).toBe(false);
+      expect(result.current.sources[9401]?.isAsked).toBe(false);
     });
 
     expect(requests).toHaveLength(0);
@@ -210,9 +258,35 @@ describe('useLocationBalances', () => {
     const { result } = renderHookWithProviders(() => useLocationBalances(9201, [9401]), { fetch });
 
     await waitFor(() => {
-      expect(result.current[9401]?.rows).toHaveLength(2);
+      expect(result.current.sources[9401]?.rows).toHaveLength(2);
     });
 
-    expect(result.current[9401]?.rows[0]).toEqual({ itemId: 9501, lotId: 9701, onHandQty: 120 });
+    expect(result.current.sources[9401]?.rows[0]).toEqual({
+      itemId: 9501,
+      lotId: 9701,
+      onHandQty: 120,
+    });
+  });
+
+  /**
+   * **복구 수단을 함께 낸다**(리뷰 R-3 · C16). 없으면 장부 조회가 실패한 사용자에게 남는
+   * 조치가 줄을 지웠다 다시 더하거나 새로고침뿐이다 — 같은 위치를 다시 골라도 관측자가
+   * 그대로라 요청이 다시 나가지 않는다.
+   */
+  it('다시 부르면 그 위치의 요청이 다시 나간다', async () => {
+    const { fetch, requests } = recordingFetch([
+      getRoute(BALANCES_PATH, listBody(balanceFixtures)),
+    ]);
+    const { result } = renderHookWithProviders(() => useLocationBalances(9201, [9401]), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.sources[9401]?.isLoading).toBe(false);
+    });
+
+    result.current.refetch();
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.url.pathname === BALANCES_PATH)).toHaveLength(2);
+    });
   });
 });

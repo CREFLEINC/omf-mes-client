@@ -71,4 +71,28 @@ describe('toCountVarianceLineView', () => {
         .varianceReasonCode,
     ).toBeNull();
   });
+
+  /**
+   * ⭐ **블라인드 실사는 장부를 내려보내지 않는다**(계약 설명 · 생성 타입은 필수라 타입 검사가
+   * 잡지 못한다).
+   *
+   * 그대로 믿으면 장부 칸에 `undefined`가, 실물 칸에 `NaN`이 선다 — 이 슬라이스가 다른 자리마다
+   * 「수를 지어내지 않는다」로 막아 둔 바로 그 사고다. **값의 유무를 이 옮김 지점에서 한 번에
+   * 가른다.**
+   */
+  it('장부가 없이 오면 비운 채로 옮긴다 — 값을 지어내지 않는다', () => {
+    const blind = countVarianceLineResponse();
+
+    /* 계약 설명대로 값을 내려보내지 않은 응답. 생성 타입이 필수라 지우는 것으로 만든다. */
+    delete (blind as { systemQty?: number }).systemQty;
+
+    expect(toCountVarianceLineView(blind).systemQty).toBeNull();
+  });
+
+  /** 짝 방향 — 값이 오면 그대로 옮긴다. 「늘 비운다」로 통과하지 않게 한다. */
+  it('장부가 오면 그 값을 옮긴다', () => {
+    expect(toCountVarianceLineView(countVarianceLineResponse({ systemQty: 100 })).systemQty).toBe(
+      100,
+    );
+  });
 });

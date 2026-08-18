@@ -15,6 +15,17 @@ import { isExcludedLine, lineFieldId, readQty, type LineFieldName } from './vali
 const t = messages.stockAdjust;
 
 /**
+ * `.wide-table`이 표에 주는 최소 폭(`58rem`).
+ *
+ * **선언과 산출물 두 자리를 잇는 값이다**(사본 체크리스트 8번). 시험이 지역 리터럴로 들고
+ * 있으면 그 CSS가 바뀌어도 조용히 어긋나므로, 제품 파일이 내고 시험이 이것을 쓴다.
+ */
+export const WIDE_TABLE_MIN_PX = 928;
+
+/** 「코드 · 이름」이 접히지 않고 한 줄에 들어가는 폭 — 흡수 열의 예산이다. */
+export const ABSORBING_COLUMN_BUDGET_PX = 184;
+
+/**
  * 표가 그리는 한 줄 — 초안과 **그 줄의 장부**다.
  *
  * 장부는 갈래마다 출처가 달라(실사가 준 값 · 잔액 조회) 화면이 먼저 하나로 모아 넘긴다.
@@ -36,7 +47,13 @@ export interface AdjustLineTableProps {
   locationOptions: SelectOption[];
   itemOptions: SelectOption[];
   uomOptions: SelectOption[];
-  /** 전체가 잠겼는가. 잠긴 사유는 표 안이 아니라 조작 자리에 한 번 선다 */
+  /**
+   * 전체가 잠겼는가. 잠긴 사유는 표 안이 아니라 조작 자리에 한 번 선다.
+   *
+   * ⚠ **이 회차에는 넘기는 자리가 없다** — 나가는 쓰기가 0이라 잠글 사정이 아직 없다.
+   * 등록이 붙는 회차가 「나가는 중」과 「이미 등록했다」 두 사정을 이 값으로 넘긴다.
+   * 그때까지 늘 `false`이고, 그 사실을 이 주석이 밝힌다.
+   */
   isLocked?: boolean;
   onPatch: (key: string, patch: Partial<Omit<AdjustLineDraft, 'key'>>) => void;
   onRemove: (key: string) => void;

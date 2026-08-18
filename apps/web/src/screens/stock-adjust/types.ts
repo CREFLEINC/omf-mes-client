@@ -64,8 +64,16 @@ export interface CountVarianceLineView {
   itemId: number;
   lotId: number | null;
   uomId: number;
-  /** 장부 수량 — 이 갈래에서는 잔액 조회 없이 이 값이 곧 장부다(D-6) */
-  systemQty: number;
+  /**
+   * 장부 수량 — 이 갈래에서는 잔액 조회 없이 이 값이 곧 장부다(D-6).
+   *
+   * ⚠ **없이 올 수 있다.** 계약은 이 값을 필수로 두면서 설명에 「블라인드 실사에서는
+   * 내려보내지 않는다」를 적었다 — 생성 타입은 `number`라 **타입 검사가 잡지 못한다.**
+   * 그대로 믿으면 장부 칸에 `undefined`가, 실물 칸에 `NaN`이 선다. 실사 목록을 좁히지
+   * 않으므로(그 조건으로 거르면 고를 수 있어야 할 실사가 사라진다) 블라인드 실사가 선택칸에
+   * 실제로 오른다.
+   */
+  systemQty: number | null;
   /** 실물 − 장부. **서버가 계산한 값이고 화면이 다시 빼지 않는다** */
   varianceQty: number;
   /** 실사에서 적은 사유. **읽기 전용 표기 전용이고 보내지 않는다**(D-7) */
@@ -81,7 +89,8 @@ export const toCountVarianceLineView = (
   itemId: data.itemId,
   lotId: data.lotId ?? null,
   uomId: data.uomId,
-  systemQty: data.systemQty,
+  /* 없이 오는 길이 실재한다(블라인드 실사) — 값의 유무를 여기서 한 번에 갈라 둔다. */
+  systemQty: data.systemQty ?? null,
   varianceQty: data.varianceQty,
   varianceReasonCode: data.varianceReasonCode ?? null,
 });

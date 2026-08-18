@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  ABSORBING_COLUMN_BUDGET_PX,
   AdjustLineTable,
+  WIDE_TABLE_MIN_PX,
   type AdjustLineRow,
   type AdjustLineTableProps,
 } from './adjust-line-table';
@@ -334,11 +336,6 @@ describe('AdjustLineTable — 승계 줄과 더한 줄', () => {
  * 결과를 낸다 — **어느 쪽이든 이 셋 중 하나가 운다.**
  */
 describe('AdjustLineTable — 열 폭', () => {
-  /** `.wide-table`이 표에 주는 최소 폭(58rem). */
-  const WIDE_TABLE_MIN_PX = 928;
-  /** 「코드 · 이름」이 한 줄에 들어가는 폭. */
-  const CODE_NAME_COLUMN_PX = 184;
-
   /** 렌더된 열 폭 — **산출물 쪽을 잰다.** 선언만 읽으면 상수와 산출물이 어긋나도 잡히지 않는다. */
   const renderedColWidths = (): (number | undefined)[] =>
     Array.from(screen.getByRole('table').querySelectorAll('col')).map((col) => {
@@ -362,13 +359,15 @@ describe('AdjustLineTable — 열 폭', () => {
   it('지정 폭 합에 흡수 열 예산을 더해도 표 하한 안이다', () => {
     renderTable();
 
-    expect(specifiedWidthPx() + CODE_NAME_COLUMN_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_PX);
+    expect(specifiedWidthPx() + ABSORBING_COLUMN_BUDGET_PX).toBeLessThanOrEqual(WIDE_TABLE_MIN_PX);
   });
 
   it('흡수 열이 실제로 받는 폭이 예산보다 좁지 않다', () => {
     renderTable();
 
-    expect(WIDE_TABLE_MIN_PX - specifiedWidthPx()).toBeGreaterThanOrEqual(CODE_NAME_COLUMN_PX);
+    expect(WIDE_TABLE_MIN_PX - specifiedWidthPx()).toBeGreaterThanOrEqual(
+      ABSORBING_COLUMN_BUDGET_PX,
+    );
   });
 });
 

@@ -15,6 +15,7 @@ import {
   balanceFixtures,
   countFixtures,
   countVarianceLineFixtures,
+  countVarianceLineResponse,
   itemFixtures,
   locationFixtures,
   lotFixtures,
@@ -145,6 +146,23 @@ const renderScreen = (routes: StubRoute[], search = '?count=9101') => {
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
+/**
+ * 주소가 그 값이 되기를 **기다린다.**
+ *
+ * `MemoryRouter`는 위치 갱신을 `startTransition`으로 감싼다(라우터 실측) — **전환 갱신은
+ * 비긴급이라 부하가 걸리면 늦게 커밋된다.** 같은 문에서 함께 일어난 긴급 갱신(안내 문구)만
+ * 기다린 뒤 주소를 동기로 단언하면, 판정 대상은 옳은데 단언이 앞서서 무너진다.
+ *
+ * **판정 대상을 낮추지 않는다** — 주소가 그 값이 된다는 사실을 그대로 재고, 기다리는 방식만
+ * 전환 갱신에 맞춘다. 「주소가 그대로다」를 재는 음성 단언은 이 취약성에 걸리지 않으므로
+ * 동기로 둔다(기다릴 전환이 없다).
+ */
+const waitForLocation = async (expected: string): Promise<void> => {
+  await waitFor(() => {
+    expect(currentLocation()).toBe(expected);
+  });
+};
+
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname === pathname);
 
@@ -231,7 +249,7 @@ describe('StockAdjustScreen — 진입 맥락', () => {
     await user.click(countField());
     await user.click(screen.getByRole('option', { name: 'SAMPLE-IC-9102 · 2026-08-18' }));
 
-    expect(currentLocation()).toBe(`${ROUTE}?count=9102`);
+    await waitForLocation(`${ROUTE}?count=9102`);
   });
 
   /** 고를 때마다 히스토리가 쌓이면 뒤로가기가 앞선 선택으로 되돌아가 세운 대상이 사라진다. */
@@ -243,7 +261,7 @@ describe('StockAdjustScreen — 진입 맥락', () => {
     await user.click(screen.getByRole('option', { name: 'SAMPLE-IC-9102 · 2026-08-18' }));
     await user.click(screen.getByRole('button', { name: '뒤로' }));
 
-    expect(currentLocation()).toBe(`${ROUTE}?count=9102`);
+    await waitForLocation(`${ROUTE}?count=9102`);
   });
 });
 
@@ -259,7 +277,7 @@ describe('StockAdjustScreen — 없는 실사 주소 정리', () => {
 
     await screen.findByText(t.source.countNotFoundNote);
 
-    expect(currentLocation()).toBe(ROUTE);
+    await waitForLocation(ROUTE);
   });
 
   it('정리가 뒤로가기 기록을 늘리지 않는다', async () => {
@@ -268,7 +286,7 @@ describe('StockAdjustScreen — 없는 실사 주소 정리', () => {
     await screen.findByText(t.source.countNotFoundNote);
     await user.click(screen.getByRole('button', { name: '뒤로' }));
 
-    expect(currentLocation()).toBe(ROUTE);
+    await waitForLocation(ROUTE);
   });
 
   /**
@@ -386,7 +404,7 @@ describe('StockAdjustScreen — 원천 전환', () => {
     await waitForCounts();
     await user.click(screen.getByRole('radio', { name: t.source.direct }));
 
-    expect(currentLocation()).toBe(ROUTE);
+    await waitForLocation(ROUTE);
   });
 
   it('대상 실사를 바꾸면 세운 대상이 사라진다', async () => {
@@ -798,5 +816,294 @@ describe('StockAdjustScreen — 조회 실패', () => {
     await screen.findByText(t.reasons.balancesFailed);
 
     expect(cellsOf(0)[3]).toBe(t.bookQty.failed);
+  });
+
+  /**
+   * **복구 수단이 그 실패가 보이는 자리에 붙는다**(C16). 없으면 사용자에게 남는 조치가
+   * 줄을 지웠다 다시 더하거나 새로고침뿐이다 — 같은 위치를 다시 골라도 다시 나가지 않는다.
+   */
+  it('장부 조회 실패에 다시 시도가 붙고 누르면 다시 나간다', async () => {
+    const { requests, user } = renderScreen(allRoutes([failingRoute(BALANCES_PATH, 500)]), '');
+
+    await screen.findByText(t.source.directNote);
+    await startDirectLine(user);
+
+    await user.click(screen.getByLabelText(t.lineTable.locationLabel(1)));
+    await user.click(screen.getByRole('option', { name: LOCATION_LABEL }));
+
+    await screen.findByText(t.reasons.balancesFailed);
+
+    const before = requestsTo(requests, BALANCES_PATH).length;
+
+    await user.click(within(linesPane()).getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, BALANCES_PATH).length).toBeGreaterThan(before);
+    });
+  });
+
+  /**
+   * ⭐ **창고만 실패해도 막다른 길이 되지 않는다**(리뷰 R-1).
+   *
+   * 창고 선택지가 0건이면 직접 등록 갈래는 줄을 세울 수 없어 대상 구획이 빈 상태로 선다 —
+   * 복구 수단을 그 안쪽에 두면 **화면 전체에 「다시 시도」가 한 개도 없다.**
+   */
+  it('창고만 실패해도 복구 수단이 서고 그 사실을 창고로 말한다', async () => {
+    const { user } = renderScreen(allRoutes([failingRoute(WAREHOUSES_PATH, 500)]), '');
+
+    await screen.findByText(t.reasons.warehousesFailed);
+
+    /* 줄이 0행이라 대상 구획은 빈 상태다 — 그래도 복구가 선다. */
+    expect(screen.getByText(t.empty.noLinesTitle)).toBeInTheDocument();
+
+    const retry = within(sourcePane()).getByRole('button', { name: messages.common.retry });
+
+    await user.click(retry);
+
+    expect(retry).toBeInTheDocument();
+  });
+
+  /**
+   * **안내가 말하는 넷과 조건이 보는 넷이 같다.** 창고만 실패했는데 「위치·품목·단위·자재
+   * LOT을 불러오지 못했습니다」가 서면 그 넷은 정상이라 **사실이 아닌 문구**가 된다.
+   */
+  it('창고만 실패하면 라인 참조 안내는 서지 않는다', async () => {
+    renderScreen(allRoutes([failingRoute(WAREHOUSES_PATH, 500)]), '');
+
+    await screen.findByText(t.reasons.warehousesFailed);
+
+    expect(screen.queryByText(t.reasons.lineReferencesFailed)).not.toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 라인 참조만 실패하면 창고 안내는 서지 않는다. */
+  it('라인 참조만 실패하면 창고 안내는 서지 않는다', async () => {
+    const { user } = renderScreen(allRoutes([failingRoute(ITEMS_PATH, 500)]));
+
+    await loadVariance(user);
+    await screen.findByText(t.reasons.lineReferencesFailed);
+
+    expect(screen.queryByText(t.reasons.warehousesFailed)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * ⭐ **받은 것이 전부인지를 말한다**(리뷰 R-2).
+ *
+ * 계약이 이 조회에 페이지네이션을 못 박았다. 잘린 줄 모르고 「N행을 가져왔습니다」로 말하면
+ * 조정되지 않은 차이가 남은 채로 전표가 올라간다 — 되돌릴 수 없는 쓰기 앞의 조용한 누락이다.
+ */
+describe('StockAdjustScreen — 실사 차이 잘림', () => {
+  const truncatedVarianceRoutes = (): StubRoute[] =>
+    allRoutes([getRoute(VARIANCE_PATH, countVarianceLineFixtures, 12)]);
+
+  it('앞쪽 일부만 왔으면 받은 수와 전체 수를 함께 말한다', async () => {
+    const { user } = renderScreen(truncatedVarianceRoutes());
+
+    await loadVariance(user);
+
+    expect(screen.getByText(t.source.loadedTruncatedNote(3, 12))).toBeInTheDocument();
+  });
+
+  /** 잘린 상태에서 **완결을 주장하지 않는다** — 이 문구가 서면 사용자가 전부로 읽는다. */
+  it('잘렸으면 「전부 가져왔다」로 말하지 않는다', async () => {
+    const { user } = renderScreen(truncatedVarianceRoutes());
+
+    await loadVariance(user);
+
+    expect(screen.getByText(t.source.loadedTruncatedNote(3, 12))).toBeInTheDocument();
+    expect(screen.queryByText(t.source.loadedNote(3))).not.toBeInTheDocument();
+  });
+
+  /** 표를 보지 않는 사용자에게도 닿아야 한다 — 살아 있는 영역으로 알린다. */
+  it('잘림을 살아 있는 영역으로 알린다', async () => {
+    const { user } = renderScreen(truncatedVarianceRoutes());
+
+    await loadVariance(user);
+
+    expect(within(sourcePane()).getByText(t.source.loadedTruncatedNote(3, 12))).toHaveAttribute(
+      'role',
+      'status',
+    );
+  });
+
+  /** 짝 방향 — 전부 왔으면 완결을 말한다. 「늘 잘렸다」로 통과하지 않게 한다. */
+  it('전부 왔으면 완결을 말한다', async () => {
+    const { user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+
+    expect(screen.getByText(t.source.loadedNote(3))).toBeInTheDocument();
+    expect(screen.queryByText(t.source.loadedTruncatedNote(3, 12))).not.toBeInTheDocument();
+  });
+
+  /** 잘림 여부와 무관하게 **받은 줄은 그대로 선다** — 잘렸다고 대상을 비우지 않는다. */
+  it('잘려도 받은 줄은 조정 대상으로 선다', async () => {
+    const { user } = renderScreen(truncatedVarianceRoutes());
+
+    await loadVariance(user);
+
+    expect(bodyRows()).toHaveLength(3);
+  });
+});
+
+/**
+ * **「없는 실사였다」 안내에 수명이 있다**(리뷰 R-4).
+ *
+ * 남겨 두면 유효한 실사를 고른 뒤에도 **이미 한 조치를 계속 지시**하고, 직접 등록으로 바꾸면
+ * 실사 선택칸이 없는 구획에서 **화면에 없는 컨트롤을 쓰라고** 말한다.
+ */
+describe('StockAdjustScreen — 정리 안내의 수명', () => {
+  it('유효한 실사를 고르면 안내가 걷힌다', async () => {
+    const { user } = renderScreen(allRoutes(), '?count=9109');
+
+    await screen.findByText(t.source.countNotFoundNote);
+
+    await user.click(countField());
+    await user.click(screen.getByRole('option', { name: COUNT_LABEL }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.source.countNotFoundNote)).not.toBeInTheDocument();
+    });
+  });
+
+  it('직접 등록으로 바꾸면 안내가 걷힌다 — 없는 컨트롤을 지시하지 않는다', async () => {
+    const { user } = renderScreen(allRoutes(), '?count=9109');
+
+    await screen.findByText(t.source.countNotFoundNote);
+    await user.click(screen.getByRole('radio', { name: t.source.direct }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.source.countNotFoundNote)).not.toBeInTheDocument();
+    });
+  });
+});
+
+/**
+ * ⭐ **「다시 불러오기」의 두 방향**(리뷰 R-6 · 사본 체크리스트 11번).
+ *
+ * 호출 횟수에 따라 **내용이 달라지는 스텁**이 있어야 이 자리가 실제로 물린다 — 같은 구조를
+ * 되돌리는 스텁으로는 「값이 바뀌었다」를 재는 감지기가 부분 견줌으로 헛통과한다.
+ */
+describe('StockAdjustScreen — 같은 실사를 다시 불러오기', () => {
+  /** 부를 때마다 다른 본문을 주는 스텁. 두 번째 호출에서 차이가 달라진다. */
+  const changingVarianceRoute = (): StubRoute => {
+    let call = 0;
+
+    return {
+      match: (request) => isGet(request, VARIANCE_PATH),
+      respond: () => {
+        call += 1;
+
+        return jsonResponse(
+          listBody(
+            call === 1
+              ? countVarianceLineFixtures
+              : [countVarianceLineResponse({ systemQty: 100, countedQty: 93, varianceQty: -7 })],
+          ),
+        );
+      },
+    };
+  };
+
+  /**
+   * ⓐ **같은 값이 다시 와도 친 값이 남는다**(수명 표 6행). 여기서 다시 세우면 재조회 한 번에
+   * 사용자가 친 차이 수량이 말없이 되돌아간다.
+   */
+  it('같은 응답으로 다시 불러오면 친 값이 그대로다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+    await user.clear(diffBox(1));
+    await user.type(diffBox(1), '-33');
+
+    await user.click(loadButton());
+
+    await waitFor(() => {
+      expect(requestsTo(requests, VARIANCE_PATH)).toHaveLength(2);
+    });
+
+    expect(diffBox(1)).toHaveValue('-33');
+  });
+
+  /**
+   * ⓑ **응답이 실제로 달라지면 대상이 다시 선다.** 낡은 장부로 실물을 파생하면 사용자가
+   * 확인하지 않은 수가 화면에 선다.
+   */
+  it('달라진 응답으로 다시 불러오면 대상이 다시 선다', async () => {
+    const { user } = renderScreen(allRoutes([changingVarianceRoute()]));
+
+    await loadVariance(user);
+
+    expect(bodyRows()).toHaveLength(3);
+
+    await user.click(loadButton());
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    expect(diffBox(1)).toHaveValue('-7');
+  });
+
+  /** 다시 누르면 **요청이 실제로 나간다** — 아무 일도 하지 않는 버튼이 아니다. */
+  it('다시 누르면 조회가 다시 나간다', async () => {
+    const { requests, user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+
+    expect(requestsTo(requests, VARIANCE_PATH)).toHaveLength(1);
+
+    await user.click(loadButton());
+
+    await waitFor(() => {
+      expect(requestsTo(requests, VARIANCE_PATH)).toHaveLength(2);
+    });
+  });
+});
+
+/**
+ * ⭐ **블라인드 실사는 장부를 내려보내지 않는다**(리뷰 R-7).
+ *
+ * 그대로 믿으면 장부 칸에 「undefined 개」가, 실물 칸에 「NaN 개」가 선다 — 이 슬라이스가
+ * 다른 자리마다 「수를 지어내지 않는다」로 막아 둔 바로 그 사고다.
+ */
+describe('StockAdjustScreen — 장부가 없이 오는 실사', () => {
+  const blindVarianceRoute = (): StubRoute => {
+    const line: Record<string, unknown> = { ...countVarianceLineResponse() };
+
+    delete line.systemQty;
+
+    return {
+      match: (request) => isGet(request, VARIANCE_PATH),
+      respond: () => jsonResponse(listBody([line])),
+    };
+  };
+
+  it('장부와 실물이 빈 값 표식이고 수를 지어내지 않는다', async () => {
+    const { user } = renderScreen(allRoutes([blindVarianceRoute()]));
+
+    await loadVariance(user);
+
+    expect(cellsOf(0)[3]).toBe(t.values.empty);
+    expect(cellsOf(0)[4]).toBe(t.values.empty);
+  });
+
+  it.each(['undefined', 'NaN'])('%o가 화면에 서지 않는다', async (word) => {
+    const { user } = renderScreen(allRoutes([blindVarianceRoute()]));
+
+    await loadVariance(user);
+
+    expect(screen.getByText(t.lineTable.bookQty)).toBeInTheDocument();
+    expect(within(linesPane()).queryByText(new RegExp(word))).not.toBeInTheDocument();
+  });
+
+  /** 그 줄도 조정할 수 있다 — 장부를 모르는 것과 조정할 수 없는 것은 다르다. */
+  it('장부를 몰라도 그 줄을 조정할 수 있다', async () => {
+    const { user } = renderScreen(allRoutes([blindVarianceRoute()]));
+
+    await loadVariance(user);
+
+    expect(diffBox(1)).toBeEnabled();
+    expect(diffBox(1)).toBeValid();
   });
 });

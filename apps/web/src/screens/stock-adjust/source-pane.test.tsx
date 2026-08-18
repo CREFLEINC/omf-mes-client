@@ -18,6 +18,8 @@ const baseProps = (overrides: Partial<SourcePaneProps> = {}): SourcePaneProps =>
   warehouseOptions: [{ value: '9201', label: 'SAMPLE-WH-01 · 합성 창고 가' }],
   warehouseId: '',
   onChangeWarehouse: vi.fn(),
+  hasWarehouseError: false,
+  onRetryWarehouses: vi.fn(),
   loadBlockReason: null,
   onLoadVariance: vi.fn(),
   ...overrides,
@@ -160,5 +162,43 @@ describe('SourcePane — 직접 등록 갈래', () => {
 
     expect(screen.getByLabelText(t.source.warehouseField)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.actions.loadVariance })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * ⭐ **창고 실패의 복구가 두 갈래 모두에 선다**(리뷰 R-1).
+ *
+ * 창고만 실패하면 직접 등록 갈래는 고를 창고가 없어 줄을 세울 수 없고, 복구 수단을 대상 구획
+ * 안쪽에 두면 그 빈 상태에 가려 **화면 전체에 「다시 시도」가 한 개도 없는** 막다른 길이 된다.
+ *
+ * **안내가 말하는 것과 복구가 되살리는 것이 같다** — 이 블록은 창고 하나를 말하고 창고
+ * 하나를 되살린다.
+ */
+describe('SourcePane — 창고 참조 실패', () => {
+  it('직접 등록 갈래에서 사유와 복구 수단이 함께 선다', async () => {
+    const { props, user } = renderPane({ kind: 'direct', hasWarehouseError: true });
+
+    expect(screen.getByText(t.reasons.warehousesFailed)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    expect(props.onRetryWarehouses).toHaveBeenCalledTimes(1);
+  });
+
+  /** 실사 갈래도 창고 이름을 여기서 보인다 — 그 실패의 복구도 같은 자리다. */
+  it('실사 갈래에서도 사유와 복구 수단이 함께 선다', () => {
+    renderPane({ kind: 'count', hasWarehouseError: true });
+
+    expect(screen.getByText(t.reasons.warehousesFailed)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 실패하지 않으면 서지 않는다. 「늘 뜬다」로 통과하지 않게 한다. */
+  it('실패하지 않으면 서지 않는다', () => {
+    renderPane({ kind: 'direct' });
+
+    expect(screen.getByLabelText(t.source.warehouseField)).toBeInTheDocument();
+    expect(screen.queryByText(t.reasons.warehousesFailed)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
   });
 });

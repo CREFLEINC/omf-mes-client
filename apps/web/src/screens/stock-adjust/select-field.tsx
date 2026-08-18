@@ -13,17 +13,15 @@ export interface SelectFieldProps {
   /** 선택지의 한계(잘림·불러오기 실패)를 밝히는 보조 문구. */
   note?: string;
   placeholder?: string;
-  /**
-   * 그 칸 아래 서는 오류. 화면이 잡은 것과 서버가 준 것이 **같은 칸에** 붙는다.
-   * 보조 문구와 함께 있으면 둘 다 접근 이름에 이어진다 — 하나만 이으면 나머지가 조용히 사라진다.
-   */
-  error?: string;
-  /**
-   * 잠겼는가. **사유는 이 부품이 내지 않는다** — 화면의 조작 자리에 한 번 서고, 같은 사정으로
-   * 여러 칸이 함께 잠기므로 칸마다 되풀이하면 같은 사실이 여러 번 읽힌다.
-   */
-  disabled?: boolean;
 }
+
+/*
+ * **오류·잠금 prop을 두지 않는다**(사본 체크리스트 7번). 이 회차의 두 선택칸(대상 실사·대상
+ * 창고)에는 인라인 오류가 없고 — 고르지 않은 것은 조작 자리의 잠금 사유가 말한다 — 잠글
+ * 사정도 없다(나가는 쓰기가 0이다). 값을 안 넘기고 정의만 남기면 「이 슬라이스에 그 기능이
+ * 없다」가 타입 수준의 사실이 되지 못하고, 죽은 통로가 다음 사본으로 전파된다.
+ * 필요해지는 회차가 그때 되살린다.
+ */
 
 /**
  * 라벨과 보조 문구가 붙는 선택칸.
@@ -44,17 +42,9 @@ export const SelectField = ({
   required = false,
   note,
   placeholder,
-  error,
-  disabled = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
-  const errorId = `${id}-error`;
-
-  /* 둘 다 있으면 **둘 다 잇는다** — 하나만 이으면 나머지가 화면에는 보이는데 이름에서 사라진다. */
-  const describedBy = [note === undefined ? null : noteId, error === undefined ? null : errorId]
-    .filter((candidate): candidate is string => candidate !== null)
-    .join(' ');
 
   return (
     <div className="field-cell">
@@ -65,19 +55,12 @@ export const SelectField = ({
         value={value === '' ? null : value}
         onChange={onChange}
         placeholder={placeholder}
-        disabled={disabled}
-        invalid={error !== undefined}
         aria-required={required || undefined}
-        aria-describedby={describedBy === '' ? undefined : describedBy}
+        aria-describedby={note === undefined ? undefined : noteId}
       />
       {note !== undefined && (
         <span id={noteId} className="field-note">
           {note}
-        </span>
-      )}
-      {error !== undefined && (
-        <span id={errorId} className="field-error">
-          {error}
         </span>
       )}
     </div>

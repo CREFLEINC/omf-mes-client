@@ -41,6 +41,17 @@ describe('createInheritedLineDrafts', () => {
     expect(draft?.countSystemQty).toBe(100);
   });
 
+  /**
+   * 블라인드 실사에서 장부가 없이 온 줄. **그 줄도 승계된다** — 조정할 수 없는 것이 아니라
+   * 장부를 모른 채 조정하는 것이고(C8과 같은 지형), 화면은 장부·실물을 「—」로 낸다.
+   */
+  it('장부가 없는 줄도 승계하되 그 사실을 그대로 들고 있다', () => {
+    const [draft] = createInheritedLineDrafts([countVarianceLineView({ systemQty: null })], 1);
+
+    expect(draft?.countSystemQty).toBeNull();
+    expect(draft?.adjustmentQtyText).toBe('-2');
+  });
+
   /** 승계 근거. 이 값이 있는 줄만 「실사 승계」로 읽히고 위치·품목을 고칠 수 없다. */
   it('원천 실사 라인 번호를 줄이 들고 있다', () => {
     const [draft] = createInheritedLineDrafts([countVarianceLineView()], 1);

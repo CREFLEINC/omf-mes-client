@@ -26,6 +26,16 @@ export interface SourcePaneProps {
   warehouseId: string;
   onChangeWarehouse: (value: string) => void;
 
+  /**
+   * 창고 이름·선택지를 불러오지 못했는가.
+   *
+   * **두 갈래 모두에서 창고가 필요하다** — 직접 등록은 창고를 고르는 것으로 시작하고, 실사
+   * 갈래도 고른 실사의 창고 이름을 여기서 보인다. 그래서 이 실패의 복구는 갈래 안이 아니라
+   * **구획 바닥**에 선다.
+   */
+  hasWarehouseError: boolean;
+  onRetryWarehouses: () => void;
+
   /** 「불러오기」가 막힌 사유. `null`이면 열려 있다 */
   loadBlockReason: string | null;
   onLoadVariance: () => void;
@@ -57,6 +67,8 @@ export const SourcePane = ({
   warehouseNote,
   warehouseId,
   onChangeWarehouse,
+  hasWarehouseError,
+  onRetryWarehouses,
   loadBlockReason,
   onLoadVariance,
 }: SourcePaneProps) => {
@@ -146,6 +158,25 @@ export const SourcePane = ({
             onChange={onChangeWarehouse}
           />
         </>
+      )}
+
+      {/*
+       * **창고 실패의 복구는 갈래 밖에 선다**(리뷰 R-1).
+       *
+       * 창고만 실패하면 직접 등록 갈래는 고를 창고가 없어 「라인 추가」가 잠기고 줄이 0행이
+       * 되는데, 복구 수단을 대상 구획 안쪽에 두면 그 빈 상태에 가려 **화면 전체에 「다시 시도」가
+       * 한 개도 없는** 막다른 길이 된다. 이름이 실패로 보이는 자리가 여기이므로 복구도 여기다.
+       *
+       * **안내가 말하는 것과 복구가 되살리는 것이 같다** — 이 블록은 창고 하나를 말하고
+       * 창고 하나를 되살린다.
+       */}
+      {hasWarehouseError && (
+        <div className="field-cell">
+          <span className="field-note">{t.reasons.warehousesFailed}</span>
+          <Button variant="outlined" size="sm" onClick={onRetryWarehouses}>
+            {messages.common.retry}
+          </Button>
+        </div>
       )}
     </>
   );

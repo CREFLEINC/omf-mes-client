@@ -69,10 +69,40 @@ export const useInventoryCounts = (): UseQueryResult<CountListResult> => {
   });
 };
 
+/**
+ * 실사 차이 라인 조회의 쪽 크기.
+ *
+ * **이 값에는 계약 근거가 없다** — `size`에 `maximum`이 없어 화면이 정한 완화값이며 보장이
+ * 아니다. 계약이 이 오퍼레이션에 「창고 하나의 라인이 수천 건이라 페이지네이션이 필요하다」를
+ * 못 박았으므로 **싣지 않으면 서버 기본 쪽 크기에 조용히 잘린다.** 그래도 잘리면 아래
+ * `truncated`가 그 사실을 밝힌다 — 완화값은 잘림을 줄일 뿐 없애지 못한다.
+ */
+export const VARIANCE_LINE_PAGE_SIZE = 200;
+
+export interface CountVarianceLinesResult {
+  lines: CountVarianceLineView[];
+  /**
+   * 앞쪽 일부만 왔는가.
+   *
+   * **이 값이 이 회차에서 하는 일은 사실을 밝히는 것뿐이다.** 뒤따르는 등록 회차가 같은 값을
+   * **등록 잠금 사유**로 소비한다 — 못 받은 줄은 조정 대상에 실리지 않고, 그 차이는 조정되지
+   * 않은 채 남기 때문이다(주 사본 `stocktaking`이 잘림을 경고가 아니라 차단으로 다룬 근거).
+   * 판정 자리를 지금 세워 두면 그 회차는 소비처만 더하면 된다.
+   */
+  truncated: boolean;
+  /**
+   * 서버가 말한 전체 건수.
+   *
+   * **받은 수만으로는 무엇이 빠졌는지 말할 수 없다.** 「3행을 가져왔다」와 「12행 가운데 3행을
+   * 가져왔다」는 사용자가 할 조치가 다르다.
+   */
+  total: number;
+}
+
 const fetchVarianceLines = async (
   client: Client,
   inventoryCountId: number,
-): Promise<CountVarianceLineView[]> => {
+): Promise<CountVarianceLinesResult> => {
   const data = await runRequest(() =>
     client.GET('/inventory/counts/{inventoryCountId}/lines', {
       params: {
@@ -81,12 +111,16 @@ const fetchVarianceLines = async (
          * **차이가 있는 줄만 받는다.** 조정의 대상은 차이이고, 창고 하나의 라인이 수천 건이라
          * 전부 받으면 사용자가 조정할 줄을 그 안에서 찾아야 한다.
          */
-        query: { varianceOnly: true },
+        query: { varianceOnly: true, size: VARIANCE_LINE_PAGE_SIZE },
       },
     }),
   );
 
-  return data.items.map(toCountVarianceLineView);
+  return {
+    lines: data.items.map(toCountVarianceLineView),
+    truncated: isTruncated(data.page, data.items.length),
+    total: data.page.total,
+  };
 };
 
 /**
@@ -95,10 +129,14 @@ const fetchVarianceLines = async (
  * 실사를 고르는 것만으로 부르지 않는다: 고르는 도중에 스쳐 간 실사마다 요청이 나가고,
  * 그 응답이 도착할 때마다 세운 대상이 다시 서기 때문이다. 「불러오기」는 **대상을 다시 세우는
  * 조작**이라 사용자가 명시해야 한다.
+ *
+ * **받은 것이 전부인지를 함께 낸다.** 이 목록은 조정 대상 자체를 정하므로, 잘린 줄 모르고
+ * 「N행을 가져왔습니다」로 말하면 사용자가 그것을 전부로 읽는다 — 같은 슬라이스가 실사 목록과
+ * 참조 다섯에 이미 세운 규율(「못 본 것과 없는 것은 다르다」)을 여기에도 건다.
  */
 export const useCountVarianceLines = (
   inventoryCountId: number | null,
-): UseQueryResult<CountVarianceLineView[]> => {
+): UseQueryResult<CountVarianceLinesResult> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -148,6 +186,18 @@ const fetchLocationBalance = async (
 /** 위치별 잔액 한 벌. 화면은 줄마다 이 표에서 자기 위치의 것을 꺼내 쓴다. */
 export type BalanceSources = Readonly<Record<number, BalanceSource>>;
 
+export interface LocationBalancesResult {
+  sources: BalanceSources;
+  /**
+   * 실패한 잔액을 다시 부른다.
+   *
+   * **복구 수단은 그 실패가 보이는 자리에 있어야 한다**(C16). 이것이 없으면 장부 조회가
+   * 실패한 사용자에게 남는 조치가 줄을 지웠다 다시 더하거나 새로고침뿐이다 — 같은 위치를
+   * 다시 골라도 관측자가 그대로라 요청이 다시 나가지 않는다.
+   */
+  refetch: () => void;
+}
+
 /**
  * 고른 위치들의 장부 — **위치당 요청 하나**다(D-6 · C7).
  *
@@ -160,7 +210,7 @@ export type BalanceSources = Readonly<Record<number, BalanceSource>>;
 export const useLocationBalances = (
   warehouseId: number | null,
   locationIds: readonly number[],
-): BalanceSources => {
+): LocationBalancesResult => {
   const { client } = useApiClient();
 
   /* 같은 위치의 줄이 여럿이면 요청도 여러 번 나간다 — 중복을 먼저 없앤다. */
@@ -195,7 +245,12 @@ export const useLocationBalances = (
     };
   });
 
-  return sources;
+  return {
+    sources,
+    refetch: () => {
+      for (const result of results) void result.refetch();
+    },
+  };
 };
 
 /** 아직 묻지 않은 위치의 장부. **줄마다 같은 참조를 쓴다** — 매 렌더 새로 만들면 계산이 멈추지 않는다. */

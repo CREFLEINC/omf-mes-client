@@ -42,8 +42,8 @@ import {
   useInventoryCounts,
   useLocationBalances,
 } from './queries';
-import { SourcePane } from './source-pane';
 import { applySourceChange, initialSourceKind, type AdjustSourceKind } from './source';
+import { SourcePane } from './source-pane';
 import type { AdjustLineDraft, SelectOption } from './types';
 import { excludedLineCount, validateLines } from './validation';
 
@@ -231,7 +231,7 @@ export const StockAdjustScreen = () => {
   seedFromVarianceRef.current = (): void => {
     if (varianceData === undefined) return;
 
-    setLines(createInheritedLineDrafts(varianceData, startDraftSession()));
+    setLines(createInheritedLineDrafts(varianceData.lines, startDraftSession()));
   };
 
   useEffect(() => {
@@ -249,6 +249,13 @@ export const StockAdjustScreen = () => {
     setLines(applySourceChange(lines).keptLines);
     setLoadedCountId(null);
     startDraftSession();
+
+    /*
+     * **「없는 실사였다」 안내에 수명을 준다**(리뷰 R-4). 남겨 두면 유효한 실사를 고른 뒤에도
+     * 「아래에서 실사를 고르세요」가 남아 **이미 한 조치를 계속 지시하고**, 직접 등록으로
+     * 바꾸면 그 안내가 **실사 선택칸이 없는 구획**에 서서 화면에 없는 컨트롤을 쓰라고 말한다.
+     */
+    setCleanedMissingCount(false);
   };
 
   const changeSourceKind = (next: AdjustSourceKind): void => {
@@ -308,11 +315,23 @@ export const StockAdjustScreen = () => {
   };
 
   const retryReferences = (): void => {
-    warehouses.refetch();
     locations.refetch();
     items.refetch();
     uoms.refetch();
     lots.refetch();
+  };
+
+  /** 창고만 되살린다 — 그 실패의 안내와 복구가 원천 구획에 함께 선다(리뷰 R-1). */
+  const retryWarehouses = (): void => {
+    warehouses.refetch();
+  };
+
+  /**
+   * 장부를 다시 부른다 — **같은 위치를 다시 골라도 다시 나가지 않는다**(관측자가 그대로다).
+   * 복구 수단이 없으면 사용자에게 남는 조치가 줄을 지웠다 다시 더하거나 새로고침뿐이다.
+   */
+  const retryBalances = (): void => {
+    balances.refetch();
   };
 
   /**
@@ -322,12 +341,17 @@ export const StockAdjustScreen = () => {
    * 찾는다. **못 찾은 것을 0으로 메우지 않는다.**
    */
   const bookQtyOf = (line: AdjustLineDraft): BookQtyState => {
+    /*
+     * **값의 유무 하나로 가른다.** 블라인드 실사는 장부를 내려보내지 않으므로(`types.ts`가
+     * 그 자리에서 `null`로 받는다) 여기서 그 줄은 아래 「묻지 않음」 갈래로 안전하게 떨어진다 —
+     * 「—」가 서고, 실물도 파생되지 않는다.
+     */
     if (line.countSystemQty !== null) return { kind: 'known', qty: line.countSystemQty };
 
     const source =
       line.locationId === ''
         ? UNASKED_BALANCE
-        : (balances[Number(line.locationId)] ?? UNASKED_BALANCE);
+        : (balances.sources[Number(line.locationId)] ?? UNASKED_BALANCE);
 
     return toBookQty(
       source,
@@ -371,13 +395,25 @@ export const StockAdjustScreen = () => {
   const addLineReason = addLineBlockReason();
   const addLineReasonId = useId();
 
-  const hasReferenceError =
-    locations.isError || items.isError || uoms.isError || lots.isError || warehouses.isError;
+  /**
+   * **안내가 말하는 넷과 복구가 되살리는 넷이 같다**(리뷰 R-1 · 전례가 같은 자리에 남긴 규율).
+   *
+   * 창고는 여기 들어오지 않는다 — 그 이름이 실패로 보이는 자리가 **원천 구획**이고, 복구도
+   * 거기 선다. 조건에만 넣고 문구에서 빼면 창고만 실패했을 때 「위치·품목·단위·자재 LOT을
+   * 불러오지 못했습니다」가 서는데, 그 넷은 정상이라 **사실이 아닌 문구**가 된다.
+   */
+  const hasLineReferenceError = locations.isError || items.isError || uoms.isError || lots.isError;
 
-  const hasBalanceError = Object.values(balances).some((source) => source.isError);
+  const hasBalanceError = Object.values(balances.sources).some((source) => source.isError);
   const hasUnknownBookQty = rows.some((row) => row.bookQty.kind === 'notFound');
   const hasInheritedReason = lines.some((line) => line.countReasonCode !== null);
 
+  /**
+   * 표와 그 줄에 딸린 안내 — **줄이 있어야 뜻이 서는 것만** 여기 둔다.
+   *
+   * 복구 블록은 이 함수 **밖**에 있다(리뷰 R-1). 여기 두면 줄이 0행일 때 빈 상태에서 끊겨
+   * 복구 수단이 렌더되지 않고, 참조만 실패한 화면이 막다른 길이 된다.
+   */
   const linesPaneContent = () => {
     if (variance.isPending && loadedCountId !== null) {
       return (
@@ -427,24 +463,40 @@ export const StockAdjustScreen = () => {
         {hasInheritedReason && <p className="field-note">{t.notes.lineReasonReadOnly}</p>}
 
         <p className="field-note">{t.notes.lineNoAssignedByServer}</p>
-
-        {hasBalanceError && (
-          <p className="field-error" role="status">
-            {t.reasons.balancesFailed}
-          </p>
-        )}
-
-        {hasReferenceError && (
-          <div className="field-cell">
-            <span className="field-note">{t.reasons.lineReferencesFailed}</span>
-            <Button variant="outlined" size="sm" onClick={retryReferences}>
-              {messages.common.retry}
-            </Button>
-          </div>
-        )}
       </>
     );
   };
+
+  /**
+   * 참조·장부 실패의 복구 — **빈 상태 가드 밖에 선다.**
+   *
+   * 이름을 못 푸는 것과 장부를 못 받는 것은 **줄이 0행일 때도 참**이고, 오히려 그때가 사용자가
+   * 아무것도 할 수 없는 상태다(고를 값이 없어 줄을 세울 수 없다). 복구를 표 아래에 가두면
+   * 그 상태에서 화면에 「다시 시도」가 한 개도 남지 않는다.
+   */
+  const recoverySlot = () => (
+    <>
+      {hasBalanceError && (
+        <div className="field-cell">
+          <span className="field-error" role="status">
+            {t.reasons.balancesFailed}
+          </span>
+          <Button variant="outlined" size="sm" onClick={retryBalances}>
+            {messages.common.retry}
+          </Button>
+        </div>
+      )}
+
+      {hasLineReferenceError && (
+        <div className="field-cell">
+          <span className="field-note">{t.reasons.lineReferencesFailed}</span>
+          <Button variant="outlined" size="sm" onClick={retryReferences}>
+            {messages.common.retry}
+          </Button>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <>
@@ -501,19 +553,29 @@ export const StockAdjustScreen = () => {
           warehouseNote={lookupNote(warehouses)}
           warehouseId={warehouseDraft}
           onChangeWarehouse={chooseWarehouse}
+          hasWarehouseError={warehouses.isError}
+          onRetryWarehouses={retryWarehouses}
           loadBlockReason={loadBlockReason()}
           onLoadVariance={loadVariance}
         />
 
         {/*
-         * **불러온 결과를 밝힌다.** 0행인 갈래를 따로 말하는 것이 요점이다 — 「불러오지 못했다」와
-         * 「불러왔더니 차이가 없다」는 다른 말이고, 뭉개면 사용자가 조회를 되풀이한다.
+         * **불러온 결과를 밝힌다.** 세 갈래를 가르는 것이 요점이다.
+         *
+         * - 0행 — 「불러오지 못했다」와 「불러왔더니 차이가 없다」는 다른 말이다
+         * - **잘림** — 받은 것을 전부라고 말하면 조정되지 않은 차이가 남은 채로 전표가 올라간다
+         * - 전부 — 그때만 「N행을 가져왔습니다」로 완결을 말할 수 있다
+         *
+         * 잘림은 **살아 있는 영역**으로 알린다(`role="status"`) — 표를 보지 않는 사용자에게도 닿아야
+         * 하고, 이 사실이 뒤따르는 회차에서 등록 잠금 사유가 된다.
          */}
         {loadedCountId !== null && varianceData !== undefined && (
-          <p className="field-note">
-            {varianceData.length === 0
+          <p className={varianceData.truncated ? 'field-error' : 'field-note'} role="status">
+            {varianceData.lines.length === 0
               ? t.source.loadedEmptyNote
-              : t.source.loadedNote(varianceData.length)}
+              : varianceData.truncated
+                ? t.source.loadedTruncatedNote(varianceData.lines.length, varianceData.total)
+                : t.source.loadedNote(varianceData.lines.length)}
           </p>
         )}
       </section>
@@ -536,6 +598,8 @@ export const StockAdjustScreen = () => {
         )}
 
         {linesPaneContent()}
+
+        {recoverySlot()}
 
         <div className="form-actions">
           <div className="field-cell">
