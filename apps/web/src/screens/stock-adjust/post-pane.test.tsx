@@ -15,7 +15,8 @@ const renderPane = (overrides: Partial<PostPaneProps> = {}) => {
   const onChangeDraft = vi.fn();
   const onRequestPost = vi.fn();
 
-  render(
+  /** 같은 부품을 값만 갈아 다시 그린다 — 펼침 전이를 **한 인스턴스에서** 재려면 필요하다. */
+  const element = (extra: Partial<PostPaneProps>) => (
     <PostPane
       inventoryAdjustmentNo="SAMPLE-IA-9301"
       isExpanded
@@ -31,10 +32,21 @@ const renderPane = (overrides: Partial<PostPaneProps> = {}) => {
       onChangeDraft={onChangeDraft}
       onRequestPost={onRequestPost}
       {...overrides}
-    />,
+      {...extra}
+    />
   );
 
-  return { onToggle, onChangeDraft, onRequestPost, user: userEvent.setup() };
+  const view = render(element({}));
+
+  return {
+    onToggle,
+    onChangeDraft,
+    onRequestPost,
+    user: userEvent.setup(),
+    rerender: (extra: Partial<PostPaneProps>): void => {
+      view.rerender(element(extra));
+    },
+  };
 };
 
 const pane = (): HTMLElement => screen.getByRole('region', { name: t.post.label });
@@ -59,6 +71,25 @@ describe('PostPane — 접힌 두 번째 선택지', () => {
     expect(within(pane()).queryByLabelText(t.post.businessDate)).not.toBeInTheDocument();
     expect(within(pane()).queryByLabelText(t.post.occurredAt)).not.toBeInTheDocument();
     expect(within(pane()).queryByRole('button', { name: t.actions.post })).not.toBeInTheDocument();
+  });
+
+  /**
+   * **접혀 있는 동안에는 없는 요소를 가리키지 않는다**(리뷰 R-6).
+   *
+   * 본문이 조건부 렌더라 접히면 그 id를 가진 요소가 **DOM에 없다** — `aria-controls`는 존재하는
+   * 요소를 가리켜야 하고, 없는 id를 가리키면 보조기술이 그 관계를 버린다. 펼치면 다시 가리킨다.
+   */
+  it('aria-controls가 펼쳤을 때만 본문을 가리킨다', () => {
+    const { rerender } = renderPane({ isExpanded: false });
+
+    expect(toggleButton()).not.toHaveAttribute('aria-controls');
+
+    rerender({ isExpanded: true });
+
+    const controls = toggleButton().getAttribute('aria-controls');
+
+    expect(controls).not.toBeNull();
+    expect(document.getElementById(controls ?? '')).not.toBeNull();
   });
 
   /**

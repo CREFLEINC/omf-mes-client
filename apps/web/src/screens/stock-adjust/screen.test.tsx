@@ -3912,6 +3912,14 @@ const failingPostRoute = (status: number, body: unknown = { message: '' }): Stub
   respond: () => jsonResponse(body, { status }),
 });
 
+/** 응답이 아예 오지 않는 갈래 — **재고가 움직였는지 화면이 알 수 없다.** */
+const offlinePostRoute = (): StubRoute => ({
+  match: (request) => isPost(request, POST_PATH),
+  respond: () => {
+    throw new TypeError('Failed to fetch');
+  },
+});
+
 const secondPostRoute = (): StubRoute => ({
   match: (request) => isPost(request, SECOND_POST_PATH),
   respond: () => jsonResponse(postedAdjustmentBody({ statusCode: 'SAMPLE_IA_STATUS_C' })),
@@ -4627,7 +4635,67 @@ describe('StockAdjustScreen — 전기 실패', () => {
     expect(await within(screen.getByRole('dialog')).findByText(message)).toBeVisible();
   });
 
-  it('칸의 400은 그 칸에 붙고 고치면 걷힌다', async () => {
+  /**
+   * ⭐⭐ **두 칸이 대칭이다**(검증 문제 ② — 「인자 반쪽 베끼기」 지형).
+   *
+   * 앞 회차는 영업일 축만 태웠고, 발생 일시 쪽 걷힘을 지워도 전건 통과했다(뮤테이션 V-8 생존).
+   * 그 축이 깨지면 사용자가 발생 일시를 고쳐도 **낡은 서버 문구와 `aria-invalid`가 칸에 남아**
+   * 무엇을 더 고쳐야 하는지 화면이 거짓으로 말한다. 두 칸을 **같은 잣대로** 함께 문다.
+   */
+  it.each([
+    {
+      field: 'businessDate',
+      message: '영업일이 마감된 기간입니다',
+      fix: (): void => {
+        fireEvent.change(businessDateField(), { target: { value: '2026-08-16' } });
+      },
+      changed: businessDateField,
+    },
+    {
+      field: 'occurredAt',
+      message: '발생 일시가 마감된 기간입니다',
+      fix: (): void => {
+        fireEvent.change(occurredAtField(), { target: { value: '2026-08-16T09:00' } });
+      },
+      changed: occurredAtField,
+    },
+  ])('$field 칸의 400은 그 칸에 붙고 고치면 걷힌다', async ({ field, message, fix, changed }) => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingPostRoute(400, {
+          errors: [{ scope: 'field', field, code: 'SAMPLE_ERR', message }],
+        }),
+      ]),
+    );
+
+    await postAndFail(user, requests);
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    expect(within(postPane()).getByText(message)).toBeVisible();
+    expect(changed()).toHaveAttribute('aria-invalid', 'true');
+
+    fix();
+
+    expect(within(postPane()).queryByText(message)).not.toBeInTheDocument();
+    expect(changed()).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /**
+   * ⭐⭐ **인라인으로 소화된 실패도 실패다**(검증 문제 ①).
+   *
+   * 두 칸의 400은 배너가 아니라 **칸에 붙으므로**(`fieldErrors`) 배너만 보면 「아직 아무 일도
+   * 없었다」로 읽힌다 — 그러면 되돌릴 수 없는 쓰기가 한 번 튕긴 사실이 화면 어디에도 남지
+   * 않고, 사용자는 **전표가 남은 줄 모르고 다시 등록해 전표를 두 벌** 만든다.
+   *
+   * 앞 회차의 실패 시험은 전부 `scope: 'screen'`을 함께 주어 `post.error`가 참이었다 — 그래서
+   * 이 축을 지워도 전건 통과했다(뮤테이션 V-7 생존). **칸 범위 하나뿐인 400**으로 문다.
+   */
+  it('칸 범위 하나뿐인 400에도 전표가 남았다는 사실이 선다', async () => {
     withReasonCodes();
 
     const { requests, user } = renderScreen(
@@ -4651,11 +4719,100 @@ describe('StockAdjustScreen — 전기 실패', () => {
     await screen.findByRole('dialog');
     await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
 
+    /* 짝 양성 — 그 400이 실제로 칸에만 붙었다(공통 배너 자리에는 아무것도 없다). */
     expect(within(postPane()).getByText('영업일이 마감된 기간입니다')).toBeVisible();
+    expect(screen.queryByText(messages.httpError.title)).not.toBeInTheDocument();
 
-    fireEvent.change(businessDateField(), { target: { value: '2026-08-16' } });
+    expect(within(postPane()).getByText(t.post.failedTitle('SAMPLE-IA-9301'))).toBeVisible();
+  });
 
-    expect(within(postPane()).queryByText('영업일이 마감된 기간입니다')).not.toBeInTheDocument();
+  /**
+   * ⭐⭐ **응답을 받지 못한 요청은 실패가 아니다**(리뷰 R-1 Blocker · 멱등 완화의 마지막 층).
+   *
+   * 이 화면의 세 쓰기 가운데 **하중이 가장 크다**: 그 전기는 서버에 닿아 **이미 재고를 움직였을
+   * 수 있고**, 되돌리는 경로가 이 화면에 없다. 쓰기 훅이 호출마다 새 멱등 키를 만들고 다시
+   * 누르는 길이 상세 GET을 먼저 지나 **새 잠금 토큰을 앉히므로**, 두 번째 전기를 막는 것은
+   * 이 안내뿐이다.
+   */
+  it('네트워크가 끊기면 재고가 움직였는지 알 수 없다는 사실을 말한다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([etaggedCreateRoute(), detailRoute(), offlinePostRoute()]),
+    );
+
+    await postAndFail(user, requests);
+
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByText(messages.httpError.offline)).toBeVisible();
+    expect(within(dialog).getByText(t.post.networkUnconfirmed)).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    /* 창을 닫아도 그 사실은 구획에 남는다 — 사라지는 글자는 아무것도 막지 못한다. */
+    expect(within(postPane()).getByText(t.post.networkUnconfirmed)).toBeVisible();
+  });
+
+  /**
+   * ⭐⭐ **그때 「재고는 움직이지 않았습니다」를 말하지 않는다**(리뷰 R-1의 본체).
+   *
+   * 그 문장은 **서버가 요청을 되돌려 준 것**을 근거로 하는 말이라, 응답이 오지 않은 갈래에서는
+   * 화면이 확인하지 않은 사실을 **단언**하는 것이 된다. 함께 붙은 「사정을 고쳐 다시 전기할 수
+   * 있습니다」는 그 위에 **재시도를 권하기**까지 한다.
+   */
+  it('네트워크 갈래에서는 재고가 그대로라고 단언하지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([etaggedCreateRoute(), detailRoute(), offlinePostRoute()]),
+    );
+
+    await postAndFail(user, requests);
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    /* 양성 앵커 — 그 갈래가 실제로 화면에 섰다(그 뒤에 음성 단언을 잰다). */
+    expect(within(postPane()).getByText(t.post.networkUnconfirmed)).toBeVisible();
+
+    expect(screen.queryByText(t.post.failedTitle('SAMPLE-IA-9301'))).not.toBeInTheDocument();
+    expect(screen.queryByText(t.post.failedDescription)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **이 안내의 본체는 금지다**(등록 축 `notes.networkUnconfirmed`가 세운 두 절 잣대의 사본).
+   *
+   * 재고 이중 이동을 막는 것은 확인이 아니라 **하지 않는 것**이다 — 금지를 선행 확인에 매달면
+   * 「확인하면 다시 보내도 된다」로 읽히고, **확인할 자리가 없는 이 화면에서는 그 조치 자체가
+   * 실행 불가능**하다. 문구를 고칠 때 두 성질이 함께 유지되는지를 이 잣대가 잡는다.
+   */
+  it('그 안내가 확인이 아니라 금지를 말한다', () => {
+    expect(t.post.networkUnconfirmed).toContain('바로 다시 전기하지 마세요');
+    expect(t.post.networkUnconfirmed).toContain('이 화면에서 확인할 수 없습니다');
+
+    /*
+     * ⭐ **음성 축 — 없는 자리를 가리키지 않는다**(등록 축과 같은 형태). 양성 둘만 재면 두
+     * 문장을 그대로 둔 채 가운데에 없는 탭을 끼운 문면이 통과한다. 처리 이력 탭이 서는 회차가
+     * 이 한 줄을 **의도적으로 지우는 것**이 곧 문구 갱신의 이행 기록이 된다.
+     */
+    expect(t.post.networkUnconfirmed).not.toContain('처리 이력');
+  });
+
+  /** 짝 방향 — 서버가 거절한 요청에는 그 안내가 없다. 전달된 것이 확실하기 때문이다. */
+  it('서버가 거절한 전기에는 그 안내가 없다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([etaggedCreateRoute(), detailRoute(), failingPostRoute(403)]),
+    );
+
+    await postAndFail(user, requests);
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    /* 양성 앵커 — 거절 갈래가 실제로 섰고 「전표는 남았다」가 여기서는 참이다. */
+    expect(within(postPane()).getByText(t.post.failedTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(screen.queryByText(t.post.networkUnconfirmed)).not.toBeInTheDocument();
   });
 
   /** 409는 **다시 읽으면 풀린다** — 최신 불러오기가 상세를 다시 부른다(D-14). */

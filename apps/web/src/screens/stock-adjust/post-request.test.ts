@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   POST_FORM_FIELDS,
@@ -21,6 +21,17 @@ const draft = (overrides: Partial<PostDraft> = {}): PostDraft => ({
   ...overrides,
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+/**
+ * ⚠ **아래 세 감지기는 실행 환경 시간대(+09:00)에 매여 있다** — 고정 시각을 만들어 놓고
+ * **로컬로 읽은 결과**를 KST 기준 리터럴과 대조하기 때문이다(리뷰 R-5). 저장소 전역의 기존
+ * 형태이고(다른 슬라이스 6건이 같은 조건에서 함께 넘어진다) `vitest.config.ts` 한 줄로 닫히는
+ * 자리라 **별건**으로 남긴다. offset 축은 시간대를 갈아 끼워 재므로(아래 `toPostRequest`)
+ * 그 매임이 없다.
+ */
 describe('seedPostDraft', () => {
   it('영업일과 발생 일시를 제출 순간으로 채운다', () => {
     expect(seedPostDraft(NOW)).toEqual({
@@ -136,6 +147,36 @@ describe('toPostRequest', () => {
     )?.occurredAt;
 
     expect(occurredAt).toMatch(/^2026-08-18T14:05:00[+-]\d{2}:\d{2}$/);
+  });
+
+  /*
+   * ⭐ **실행 환경이 UTC 동쪽일 때와 서쪽일 때 부호가 갈린다**(전례 `supplier-return`의 감지기
+   * 사본 · 리뷰 R-2). 고정 시각만으로는 이 갈래를 잴 수 없어 **시간대 자체를 갈아 끼운다** —
+   * 부호를 뒤집는 결함은 한국에서만 돌려 보면 드러나지 않고, 그때 같은 글자가 **18시간 어긋난
+   * 순간**을 가리킨 채 되돌릴 수 없는 전기 본문에 실린다.
+   */
+  it('UTC 동쪽이면 `+`, 서쪽이면 `-`가 붙는다', () => {
+    const offset = vi.spyOn(Date.prototype, 'getTimezoneOffset');
+
+    offset.mockReturnValue(-540);
+    expect(toPostRequest(draft(), NOW)?.occurredAt.endsWith('+09:00')).toBe(true);
+
+    offset.mockReturnValue(300);
+    expect(toPostRequest(draft(), NOW)?.occurredAt.endsWith('-05:00')).toBe(true);
+  });
+
+  /* 30분 단위 시간대(예: UTC+05:30)에서도 분이 살아 있어야 한다 — 시간만 쓰면 30분이 사라진다. */
+  it('30분 단위 시간대의 분을 버리지 않는다', () => {
+    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-330);
+
+    expect(toPostRequest(draft(), NOW)?.occurredAt.endsWith('+05:30')).toBe(true);
+  });
+
+  /* UTC 자체에서도 형식이 무너지지 않는다 — 0은 부호가 없는 값이 아니다. */
+  it('UTC에서는 +00:00이 붙는다', () => {
+    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(0);
+
+    expect(toPostRequest(draft(), NOW)?.occurredAt.endsWith('+00:00')).toBe(true);
   });
 
   it('초까지 친 발생 시각은 그 초를 그대로 둔다', () => {

@@ -759,6 +759,17 @@ export const StockAdjustScreen = () => {
      * 「아래에서 실사를 고르세요」가 남아 **이미 한 조치를 계속 지시하고**, 직접 등록으로
      * 바꾸면 그 안내가 **실사 선택칸이 없는 구획**에 서서 화면에 없는 컨트롤을 쓰라고 말한다.
      */
+    /*
+     * ⚠ **열려 있던 확인 창의 표시(`pending`)는 여기서 비우지 않는다**(리뷰 R-7 — 근거 기록).
+     *
+     * 이 슬라이스의 나머지 규율이 「쓰는 자리를 다 세었다는 전제에 기대지 않는다」인데 이 한
+     * 자리만 갈리는 것처럼 보인다. 세 창의 수명이 **표시 하나로 정해지지 않기 때문**이다 —
+     * 셋 다 매임 파생을 함께 본다(등록·상신 창은 `boundRegister?.created`, 전기 창은 그 위에
+     * `postPanelState.isExpanded`까지). 대상이 바뀌면 그 파생들이 함께 무너져 **남은 표시만으로는
+     * 어떤 창도 서지 못한다.** 게다가 새 전표에 이르는 모든 길이 등록 확인 창을 지나 이 값을
+     * 덮으므로, 지금은 표시가 남는 상태 자체가 관측되지 않는다(도달 불가 — 죽은 줄을 만들지
+     * 않으려고 비우지 않는다). **창 수명이 매임을 지나지 않는 형태가 생기면 이 판정을 다시 본다.**
+     */
     setCleanedMissingCount(false);
   };
 
@@ -1538,21 +1549,38 @@ export const StockAdjustScreen = () => {
    *
    * **409에는 「최신 불러오기」를 함께 낸다** — 상신과 같이 이 쓰기에도 잠글 대상이 있다.
    *
+   * ⭐ **응답이 오지 않은 갈래에는 안내를 하나 더 세운다**(리뷰 R-1 · 등록 축과 같은 형태).
+   * 그 요청은 서버에 닿아 **이미 재고를 움직였을 수 있다** — 「실패했다」로 접으면 화면이
+   * 확인하지 않은 사실을 말하게 되고, 다시 누르면 **호출마다 새 멱등 키**가 만들어져 서버에는
+   * 다른 요청으로 보인다(재조회가 새 잠금 토큰을 앉히므로 409도 막아 주지 않는다).
+   *
    * **매임을 지난다** — 남의 전표의 실패가 지금 보고 있는 전표 위에 서지 않는다.
    */
   const postFailureSlot = (): ReactNode =>
     boundPost === null ? null : (
-      <SaveErrorBanner error={post.error} onReload={reloadAdjustmentDetail} />
+      <>
+        <SaveErrorBanner error={post.error} onReload={reloadAdjustmentDetail} />
+        {post.error?.kind === 'network' && (
+          <p className="field-note">{t.post.networkUnconfirmed}</p>
+        )}
+      </>
     );
 
   /**
-   * 전기가 **한 번 튕긴 적이 있는가.**
+   * 전기가 **한 번 튕긴 적이 있는가** — 「전표는 남고 전기만 실패했습니다」가 서는 조건이다.
    *
    * **인라인으로 소화된 실패도 실패다** — 두 칸의 400은 배너가 아니라 칸에 붙으므로
    * (`fieldErrors`) 배너만 보면 「아직 아무 일도 없었다」로 읽힌다(상신 갈래와 같은 규율).
+   *
+   * ⛔ **응답이 오지 않은 갈래는 여기 들지 않는다**(리뷰 R-1). 그 갈래에서 「전표는 남고
+   * 전기만 실패했습니다 · **재고는 움직이지 않았습니다**」를 세우면 화면이 확인하지 않은
+   * 사실을 단언하고 재시도를 권하게 된다 — 그 자리는 `postFailureSlot`의 안내가 맡는다.
+   * **서버가 되돌려 준 갈래에서만** 재고가 그대로임을 말할 수 있다.
    */
   const hasPostFailed =
-    boundPost !== null && (post.error !== null || Object.keys(post.fieldErrors).length > 0);
+    boundPost !== null &&
+    post.error?.kind !== 'network' &&
+    (post.error !== null || Object.keys(post.fieldErrors).length > 0);
 
   /**
    * 지금 상신이 어디까지 갔는가. **결과 구획이 그리는 갈래를 한 자리에서 정한다** —

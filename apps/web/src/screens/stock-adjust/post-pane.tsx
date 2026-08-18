@@ -120,7 +120,13 @@ export const PostPane = ({
           <Button
             variant="text"
             aria-expanded={isExpanded}
-            aria-controls={bodyId}
+            /*
+             * **접혀 있는 동안에는 가리키지 않는다**(리뷰 R-6). 본문이 조건부 렌더라 접히면 그
+             * id를 가진 요소가 **DOM에 없는데**, `aria-controls`는 존재하는 요소를 가리켜야
+             * 한다 — 없는 id를 가리키면 보조기술이 그 관계를 버린다. 상태는 `aria-expanded`가
+             * 이미 말한다.
+             */
+            aria-controls={isExpanded ? bodyId : undefined}
             onClick={onToggle}
           >
             {t.actions.togglePost}
