@@ -167,12 +167,16 @@ export const StockAdjustScreen = () => {
   const [registerBinding, setRegisterBinding] = useState<RegisterBinding | null>(null);
 
   /**
-   * **매임이 끊긴 채 만들어진 전표들**(리뷰 R-4).
+   * **도착한 시점에 이미 매임이 끊겨 있던 전표들**(리뷰 R-4).
    *
    * 초안을 버린 뒤 그 등록이 성공하면 서버에는 전표가 실제로 남는다 — 그 사실은 감추지 않되
    * 지금 초안의 결과로 세우지도 않는다(D-15). **매임과 다른 자리에 쌓는 것**이 요점이다:
    * 매임은 한 자리라 다음 등록이 성공하면 덮이고, 그 순간 앞 전표의 번호가 화면에서 사라진다.
    * 이 슬라이스에는 아직 그 번호를 되찾을 조회 자리가 없다(처리 이력은 뒤따르는 회차).
+   *
+   * ⚠ **선 뒤에 끊기는 갈래는 여기 쌓이지 않는다** — 그쪽은 읽는 자리의 파생(`strandedNos`)이
+   * 잡는다. 두 시점을 한 자리로 합치려면 세션을 올리는 자리마다 옮겨 담아야 하는데, 그 열거가
+   * 빠지는 것이 바로 이 화면이 한 번 겪은 사고다(리뷰 R-7).
    */
   const [strandedAdjustmentNos, setStrandedAdjustmentNos] = useState<string[]>([]);
 
@@ -345,13 +349,16 @@ export const StockAdjustScreen = () => {
        */
       if (session !== draftSessionRef.current) {
         /*
-         * **매임이 끊긴 성공은 쌓는다**(리뷰 R-4). 매임은 한 자리라 다음 등록이 성공하면
-         * 앞 전표의 사실이 덮여 사라지는데, 이 갈래를 만든 이유가 「사용자가 모르는 전표가
-         * 서버에 남는다」였다 — 덮이면 그 사고가 그대로 되돌아온다.
+         * **도착한 시점에 이미 매임이 끊겨 있으면 쌓는다**(리뷰 R-4).
          *
-         * **도착 시점의 판정이 곧 전부다.** 매임이 선 뒤에는 초안 세션이 오르는 길이 없다
-         * (성공 뒤 폼·대상 전환·버리기가 전부 잠긴다) — 그래서 나중에 매임이 끊기는 경로를
-         * 따로 지키지 않는다. 없는 경로를 지키면 죽은 가지가 된다.
+         * 매임은 한 자리라 다음 등록이 성공하면 앞 전표의 사실이 덮여 사라지는데, 이 갈래를
+         * 만든 이유가 「사용자가 모르는 전표가 서버에 남는다」였다 — 덮이면 그 사고가 그대로
+         * 되돌아온다. 그래서 **매임과 다른 자리**에 쌓는다.
+         *
+         * ⚠ **이 적재가 전부는 아니다**(리뷰 R-7). 매임은 **선 뒤에도 끊길 수 있다** —
+         * 초안 세션을 올리는 자리가 둘이고 그중 하나(`seedFromVarianceRef`)는 **조작이 아니라
+         * effect**라 폼 잠금 밖에서 돈다(배경 재조회가 달라진 실사 차이를 물고 오는 길).
+         * 그 갈래는 **읽는 자리의 파생**(`strandedNos`)이 잡는다 — 두 겹이다.
          */
         setStrandedAdjustmentNos((prev) => [...prev, created.inventoryAdjustmentNo]);
 
@@ -542,18 +549,38 @@ export const StockAdjustScreen = () => {
       : null;
 
   /**
-   * **버린 초안으로 보낸 등록이 뒤늦게 성공한 갈래.**
+   * **매임이 끊긴 채 만들어진 전표들** — 그 사실은 감추지 않는다.
    *
    * 그 등록은 실제로 일어났으므로 **감추지 않는다** — 감추면 사용자가 만들어진 줄 모르는
    * 전표가 남는다. 다만 지금 초안의 결과가 아니므로 결과 구획을 세우지도, 지금 폼을 잠그지도
    * 않는다(그것은 시도한 적 없는 초안 위의 진술이 된다) — **사실만 한 줄로 적는다.**
    *
-   * **매임과 다른 자리에 쌓는다**(리뷰 R-4) — 매임은 한 자리라 다음 등록이 성공하면 덮인다.
+   * **매임이 끊기는 시점이 둘이라 겹도 둘이다**(리뷰 R-4·R-7).
+   *
+   * | 시점 | 어떻게 생기나 | 무엇이 잡나 |
+   * | --- | --- | --- |
+   * | **도착할 때 이미 끊김** | 보내는 중에 초안을 버렸다 | `strandedAdjustmentNos` **적재** — 다음 등록이 매임을 덮어도 남는다 |
+   * | **선 뒤에 끊김** | 초안 세션을 올리는 자리가 둘이고 그중 `seedFromVarianceRef`는 **조작이 아니라 effect**라 폼 잠금 밖에서 돈다(배경 재조회가 달라진 실사 차이를 물고 오는 길) | **이 파생** — 읽는 자리에서 매임을 다시 본다 |
+   *
+   * **판정은 읽는 자리에서 한다**(D-15의 규율 그대로). 쓰는 자리를 빠짐없이 세었다는 전제에
+   * 기대면, 그 열거에서 빠진 자리가 곧 사실이 사라지는 경로가 된다 — 실제로 그렇게 빠졌다.
+   *
+   * **같은 번호를 두 번 적지 않는다** — 두 겹이 같은 전표를 가리키는 시점이 있다.
    *
    * ⚠ 실패는 이 갈래에서 말하지 않는다. 성공은 서버에 남는 것이 있어 알려야 하지만, 거절된
    * 요청은 남는 것이 없어 **버린 초안의 실패를 새 초안 위에서 말할 이유가 없다**(C28).
    */
-  const strandedNote = strandedAdjustmentNos.length === 0 ? null : strandedAdjustmentNos.join(', ');
+  const unboundCreatedNo =
+    registerBinding !== null && registerBinding.draftSession !== draftSession
+      ? (registerBinding.created?.inventoryAdjustmentNo ?? null)
+      : null;
+
+  const strandedNos =
+    unboundCreatedNo === null || strandedAdjustmentNos.includes(unboundCreatedNo)
+      ? strandedAdjustmentNos
+      : [...strandedAdjustmentNos, unboundCreatedNo];
+
+  const strandedNote = strandedNos.length === 0 ? null : strandedNos.join(', ');
 
   /**
    * **폼이 잠기는 두 사정**(C26).

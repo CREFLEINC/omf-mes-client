@@ -23,6 +23,7 @@ import {
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
+import { stockAdjustKeys } from './queries';
 import { StockAdjustScreen } from './screen';
 
 const t = messages.stockAdjust;
@@ -204,7 +205,14 @@ const BackProbe = () => {
 const renderScreen = (routes: StubRoute[], search = '?count=9101', hold: string[] = []) => {
   const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
-  renderWithProviders(
+  /**
+   * **조회 캐시를 내준다** — 사용자 조작이 아닌 **배경 재조회**를 재려면 이 손잡이가 필요하다.
+   *
+   * 앱 기본값이 `refetchOnReconnect`를 덮지 않아(참) 활성 조회는 재접속 때 스스로 다시 나가고,
+   * 조회가 실패한 뒤의 「다시 시도」도 폼 잠금 밖에 있다 — **잠금이 막지 못하는 갱신**이 실재한다.
+   * 그 도착을 무효화 한 번으로 재현한다(같은 결과: 활성 조회가 다시 나간다).
+   */
+  const { queryClient } = renderWithProviders(
     <>
       <StockAdjustScreen />
       <LocationProbe />
@@ -213,7 +221,7 @@ const renderScreen = (routes: StubRoute[], search = '?count=9101', hold: string[
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, release, user: userEvent.setup() };
+  return { requests, release, queryClient, user: userEvent.setup() };
 };
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
@@ -2068,6 +2076,70 @@ describe('StockAdjustScreen — 버린 초안의 되먹임', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * ⭐ **매임은 선 뒤에도 끊긴다**(리뷰 R-7 — 앞 회차가 만든 회귀를 닫는 자리).
+   *
+   * 초안 세션을 올리는 자리가 둘인데 하나는 **조작이 아니라 effect**다(`varianceData`가 바뀌면
+   * 돈다) — 폼 잠금은 조작 자리를 막을 뿐 effect를 막지 못한다. 그 갱신이 도착하는 실경로가
+   * 둘 있다: **재접속 재조회**(앱 기본값이 `refetchOnReconnect`를 덮지 않는다)와 **조회 실패 뒤
+   * 「다시 시도」**(그 배너는 잠금 밖에 선다). 여기서는 무효화로 그 도착을 재현한다.
+   *
+   * 그때 **되돌릴 수 없는 쓰기의 영수증이 사라지면** 사용자는 앞 전표를 모른 채 같은 실사에
+   * 두 번째 조정을 만들 수 있다 — 이 슬라이스에는 그 번호를 되찾을 조회 자리가 없다.
+   */
+  it('등록 성공 뒤 실사 차이가 달라져도 그 전표번호는 화면에 남는다', async () => {
+    withReasonCodes();
+
+    let call = 0;
+    const changingVarianceRoute: StubRoute = {
+      match: (request) => isGet(request, VARIANCE_PATH),
+      respond: () => {
+        call += 1;
+
+        return jsonResponse(
+          listBody(
+            call === 1
+              ? countVarianceLineFixtures
+              : [countVarianceLineResponse({ systemQty: 100, countedQty: 93, varianceQty: -7 })],
+          ),
+        );
+      },
+    };
+
+    const { queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute,
+        createRoute(adjustmentDetailBody({ inventoryAdjustmentNo: 'SAMPLE-IA-9303' })),
+      ]),
+    );
+
+    await setupAndRegister(user);
+
+    /* 양성 앵커 — 이 초안의 결과가 실제로 섰다. */
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(within(pane).getByText('SAMPLE-IA-9303')).toBeVisible();
+
+    /* **잠금 밖에서 도는 갱신**이 도착한다 — 사용자가 누른 것이 아니다. */
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    /* 달라진 응답이 실제로 대상을 다시 세운 시점을 앵커로 잡는다(줄이 셋 → 하나). */
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    /*
+     * ⭐ **영수증이 남는다** — 결과 구획은 걷혀도(그 초안의 것이 아니다) 번호는 화면에 선다.
+     *
+     * ⚠ **폼이 다시 열리는 것 자체는 이 회차가 바꾸지 않았다**(앞 회차부터 같은 형태 ·
+     * 리뷰 §3-6 참고 — 처리 이력이 서는 회차에서 재판단). 이 시험이 고정하는 것은
+     * **열린다면 반드시 앞 전표의 사실이 함께 선다**는 짝이다 — 그것이 이 갈래에서 두 번째
+     * 전표를 막는 유일한 방어다.
+     */
+    expect(screen.getByText(t.result.unboundCreatedNote('SAMPLE-IA-9303'))).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
   /** 짝 방향 — 버리지 않았으면 결과가 **이 초안 위에 선다.** 「늘 감춘다」로 통과하지 않게 한다. */
   it('초안을 그대로 두면 결과 구획이 선다', async () => {
     withReasonCodes();
@@ -2422,6 +2494,15 @@ describe('StockAdjustScreen — 등록 실패', () => {
   it('그 안내가 확인이 아니라 금지를 말한다', () => {
     expect(t.notes.networkUnconfirmed).toContain('다시 등록하지 마세요');
     expect(t.notes.networkUnconfirmed).toContain('이 화면에서 확인할 수 없습니다');
+
+    /*
+     * ⭐ **음성 축 — 없는 자리를 가리키지 않는다**(리뷰 R-8).
+     *
+     * 양성 둘만 재면 **두 문장을 그대로 둔 채** 가운데에 없는 탭을 다시 끼운 문면이 통과한다 —
+     * 앞 회차의 지적이 형태만 바꿔 되살아나는 길이다. 이 슬라이스에 조정을 조회할 자리가
+     * 생기는 회차가 이 한 줄을 **의도적으로 지우는 것**이 곧 위 ⚠ 갱신 표지의 이행 기록이 된다.
+     */
+    expect(t.notes.networkUnconfirmed).not.toContain('처리 이력');
   });
 
   /** 짝 방향 — 서버가 거절한 요청에는 그 안내가 없다. 전달된 것이 확실하기 때문이다. */
