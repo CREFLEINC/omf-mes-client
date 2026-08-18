@@ -3,7 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
-import { boundField } from './change-outcome';
+import { ChangeErrorBanner } from './change-error-banner';
+import { boundField, splitInvalidErrors } from './change-outcome';
 import {
   MIN_NEW_PASSWORD_LENGTH,
   canSubmit,
@@ -80,17 +81,45 @@ export const PasswordChangeScreen = () => {
   });
 
   /**
+   * 서버가 세운 인라인 오류. **갈래마다 자리가 다르다.**
+   *
+   * ⭐ **401은 「어느 칸인가」를 `boundField`에게 묻는다** — 걷는 쪽(`changeDraft`)과 그리는 쪽이
+   * 같은 근원을 지나야 한다. 둘이 각자 칸 이름을 들고 있으면 한쪽만 바뀌었을 때 **조용히
+   * 어긋난다**(오류는 그 칸에 서는데 걷히지는 않는 상태).
+   */
+  const serverFieldErrors = ((): PasswordFieldErrors => {
+    if (change.outcome === null) return {};
+
+    if (change.outcome.kind === 'currentMismatch') {
+      const field = boundField(change.outcome);
+
+      return field === null ? {} : { [field]: t.validation.currentMismatch };
+    }
+
+    /* 400은 서버가 이름으로 지목한다 — 입력칸이 있는 이름만 내려온다(나머지는 배너로 올라간다). */
+    return change.outcome.kind === 'invalid'
+      ? splitInvalidErrors(change.outcome.errors).fieldErrors
+      : {};
+  })();
+
+  /**
    * 이 칸에 설 한 문장.
    *
    * ⭐ **화면이 잡는 규칙과 서버가 준 진술이 한 자료구조에 모인다.** 둘을 따로 들면 「한 칸에 한
    * 문장」과 우선순위가 두 자리에서 각각 정해져, 새 갈래가 늘 때마다 어긋날 자리가 생긴다.
    * 현재 비밀번호 칸은 화면이 잡을 규칙이 없어(맞는지 아는 것은 서버뿐이다) 서버 쪽만 채운다.
+   *
+   * ⚠ **두 계열이 같은 칸에서 겹치는 상태는 지금 도달할 수 없다**(뮤테이션으로 확인). 화면
+   * 규칙은 새 비밀번호·확인 칸에만 서고, 서버 진술 중 401은 현재 비밀번호 칸에만 선다. 400은 두
+   * 칸을 지목할 수 있지만 **어느 칸이든 고치는 순간 그 갈래가 걷히므로**(`boundField`가 `null`)
+   * 겹칠 틈이 없다 — 서버가 판정한 값이 그대로 남아 있는 동안에는 화면 규칙이 이미 만족돼 있다.
+   *
+   * 그래도 **서버 진술을 뒤에 둔다**: 400을 「지목한 칸에 매인 진술」로 바꾸는 회차가 오면 겹침이
+   * 곧바로 도달 가능해지고, 그때 서버의 지적이 화면 규칙에 가려지면 사용자는 같은 값을 다시 보낸다.
    */
   const errors: PasswordFieldErrors = {
     ...validatePasswordDraft(draft),
-    ...(change.outcome?.kind === 'currentMismatch'
-      ? { currentPassword: t.validation.currentMismatch }
-      : {}),
+    ...serverFieldErrors,
   };
 
   /**
@@ -176,6 +205,14 @@ export const PasswordChangeScreen = () => {
        * 칸은 왼쪽에 서고 액션 줄은 화면 오른쪽 끝으로 갈라진다 — 액션이 자기가 딸린 칸에서
        * 멀어지면 무엇을 저장하는 버튼인지 읽히지 않는다.
        */}
+      {/*
+       * 화면 수준 실패만 여기 선다 — 칸에 붙일 수 있는 것은 그 칸 옆에 있다. 배너 부품이
+       * 「세우지 않아야 하는 갈래」에 `null`을 주므로 화면은 갈래를 다시 가르지 않는다.
+       */}
+      {change.outcome !== null && (
+        <ChangeErrorBanner outcome={change.outcome} onRetry={change.retry} />
+      )}
+
       <form className="password-form" onSubmit={handleSubmit}>
         <div className="password-fields">
           {/*

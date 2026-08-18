@@ -183,6 +183,17 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/system/approval-route" icon="approval">
               결재선 정의
             </NavItem>
+            {/*
+             * W-CO-10 — **섹션 맨 끝이다.** 앞의 둘은 관리자가 남을 설정하는 자리이고 이것은
+             * 누구나 자기 것을 바꾸는 자리라, 앞의 순서(권한 → 결재선)를 흔들지 않고 뒤에 붙인다.
+             *
+             * ⛔ **메뉴 권한이 붙어도 이 항목은 감추지 않는다.** 지금은 권한에 따른 감춤이 없어
+             * 문제가 드러나지 않지만, 감추는 날 비밀번호를 바꿀 길이 사라지는 것은 **관리자가 아닌
+             * 모든 사용자**다. 같은 사실을 `routes/index.tsx`와 `docs/decisions.md`에 함께 적었다.
+             */}
+            <NavItem to="/system/password-change" icon="password">
+              비밀번호 변경
+            </NavItem>
           </SidebarSection>
         </Sidebar>
       }

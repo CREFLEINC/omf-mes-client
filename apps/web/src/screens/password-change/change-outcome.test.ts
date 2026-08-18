@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { boundField, toChangeOutcome } from './change-outcome';
-import { currentMismatchBody, mismatchBodyWithAttemptsHint } from './fixtures';
+import {
+  PASSWORD_FORM_FIELDS,
+  boundField,
+  splitInvalidErrors,
+  toChangeOutcome,
+} from './change-outcome';
+import {
+  currentMismatchBody,
+  errorItemsBody,
+  fieldErrorBody,
+  mismatchBodyWithAttemptsHint,
+} from './fixtures';
 
 /** 응답이 없어 상태 코드를 붙일 수 없는 자리 — 시험도 제품과 같은 값을 쓴다. */
 const NO_STATUS = 0;
@@ -42,11 +52,12 @@ describe('toChangeOutcome — 응답을 화면 갈래로 옮긴다', () => {
   });
 
   /**
-   * 400(서버 검증 실패)은 **다음 회차의 갈래**다. 그때까지는 뭉뚱그리되 **자격 문구로 꾸미지
-   * 않는다** — 지금 400을 401과 같은 갈래로 두면 사용자가 고쳐야 할 값을 비밀번호로 오해한다.
+   * ⛔ **400을 401과 같은 갈래로 두지 않는다.** 고쳐야 할 값을 비밀번호로 오해하게 만든다 —
+   * 400은 이 회차부터 자기 갈래(`invalid`)를 갖는다. 화면 수준 오류만 실린 400도 마찬가지다.
    */
-  it('400은 아직 자기 갈래가 없어 unknown으로 둔다', () => {
-    expect(toChangeOutcome(400, currentMismatchBody())).toEqual({ kind: 'unknown', status: 400 });
+  it('400은 자격 갈래로 꾸미지 않는다', () => {
+    expect(toChangeOutcome(400, currentMismatchBody()).kind).not.toBe('currentMismatch');
+    expect(toChangeOutcome(400, currentMismatchBody()).kind).toBe('invalid');
   });
 });
 
@@ -70,5 +81,111 @@ describe('boundField — 그 진술이 어느 칸에 매였는가', () => {
 
     expect(boundField({ kind: 'network' })).toBeNull();
     expect(boundField({ kind: 'unknown', status: 500 })).toBeNull();
+  });
+});
+
+describe('toChangeOutcome — 서버가 준 검증 오류(400)', () => {
+  it('400에 쓸 만한 오류 목록이 있으면 그 목록을 안고 온다', () => {
+    const body = fieldErrorBody('currentPassword');
+
+    expect(toChangeOutcome(400, body)).toEqual({ kind: 'invalid', errors: body.errors });
+  });
+
+  /**
+   * **본문 형태를 신뢰하지 않고 좁힌다.** 서버·목·프록시가 계약과 다른 본문을 주는 일이 실제로
+   * 있고, 그때 형태를 믿으면 화면이 빈 배너를 세우거나 `undefined`를 그린다.
+   */
+  it('오류 목록이 없거나 형태가 다르면 가를 근거 없음으로 둔다', () => {
+    /* 양성 먼저 — 쓸 만한 목록이 실제로 갈래를 만드는 것을 잡은 뒤 아닌 것들을 잰다. */
+    expect(toChangeOutcome(400, fieldErrorBody()).kind).toBe('invalid');
+
+    expect(toChangeOutcome(400, { errors: [] })).toEqual({ kind: 'unknown', status: 400 });
+    expect(toChangeOutcome(400, { errors: [{ scope: 'nope' }] })).toEqual({
+      kind: 'unknown',
+      status: 400,
+    });
+    expect(toChangeOutcome(400, null)).toEqual({ kind: 'unknown', status: 400 });
+  });
+});
+
+describe('splitInvalidErrors — 인라인과 배너를 가른다', () => {
+  /**
+   * ⭐ **입력칸이 있는 이름만 인라인으로 내린다**(전례 `approval-route`의 `ROUTE_FORM_FIELDS`
+   * 규율). 입력칸 없는 이름을 인라인으로 흘리면 그 오류가 **어디에도 보이지 않는다.**
+   */
+  it('입력칸이 있는 이름은 그 칸에 붙는다', () => {
+    const split = splitInvalidErrors(
+      fieldErrorBody('newPassword', '합성 칸 오류 문구입니다.').errors,
+    );
+
+    expect(split.fieldErrors).toEqual({ newPassword: '합성 칸 오류 문구입니다.' });
+    expect(split.bannerLines).toEqual([]);
+  });
+
+  it('모르는 이름은 배너로 올라간다 — 어디에도 안 보이는 경로가 없다', () => {
+    const split = splitInvalidErrors(
+      fieldErrorBody('confirmPassword', '합성 모르는 칸 문구입니다.').errors,
+    );
+
+    expect(split.fieldErrors).toEqual({});
+    expect(split.bannerLines).toEqual(['합성 모르는 칸 문구입니다.']);
+  });
+
+  it('화면 수준 오류는 배너로 올라간다', () => {
+    const split = splitInvalidErrors(currentMismatchBody().errors);
+
+    expect(split.fieldErrors).toEqual({});
+    expect(split.bannerLines).toEqual(['합성 실패 문구입니다.']);
+  });
+
+  /**
+   * ⛔ **빈·공백 문구는 잇기 전에 항목별로 버린다**(v1.2 체크리스트). 잇고 나서 검사하면 항목이
+   * 둘 다 비었을 때 이음쇠 공백 하나가 남아 빠져나가고, 인라인 쪽에서는 **빈 오류가 칸을 붉히기만**
+   * 하고 아무 말도 하지 않는다.
+   */
+  it('빈 문구와 공백 문구는 인라인에도 배너에도 서지 않는다', () => {
+    const split = splitInvalidErrors(
+      errorItemsBody([
+        { scope: 'field', field: 'newPassword', code: 'SYN_CODE_C', message: '   ' },
+        { scope: 'screen', code: 'SYN_CODE_D', message: '' },
+        { scope: 'screen', code: 'SYN_CODE_E', message: '합성 남은 문구입니다.' },
+      ]).errors,
+    );
+
+    expect(split.fieldErrors).toEqual({});
+    expect(split.bannerLines).toEqual(['합성 남은 문구입니다.']);
+  });
+
+  /** 한 칸에는 한 문장이다 — 같은 칸을 두 번 지목하면 먼저 온 것이 선다. */
+  it('같은 칸을 두 번 지목하면 첫 문장만 선다', () => {
+    const split = splitInvalidErrors(
+      errorItemsBody([
+        {
+          scope: 'field',
+          field: 'currentPassword',
+          code: 'SYN_CODE_F',
+          message: '합성 첫 문구입니다.',
+        },
+        {
+          scope: 'field',
+          field: 'currentPassword',
+          code: 'SYN_CODE_G',
+          message: '합성 둘째 문구입니다.',
+        },
+      ]).errors,
+    );
+
+    expect(split.fieldErrors).toEqual({ currentPassword: '합성 첫 문구입니다.' });
+    expect(split.bannerLines).toEqual([]);
+  });
+
+  /**
+   * ⛔ **확인 칸은 서버가 모르는 칸이다** — 요청 본문에 실리지 않으므로(T2) 서버가 그 이름으로
+   * 오류를 줄 이유가 없고, 준다면 그것은 화면이 아는 이름이 아니다. 인라인으로 내리면 사용자가
+   * 서버에 보내지도 않은 값을 고치게 된다.
+   */
+  it('확인 칸은 인라인 대상이 아니다', () => {
+    expect(PASSWORD_FORM_FIELDS).toEqual(['currentPassword', 'newPassword']);
+    expect(PASSWORD_FORM_FIELDS).not.toContain('confirmPassword');
   });
 });

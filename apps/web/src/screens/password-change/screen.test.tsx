@@ -14,6 +14,8 @@ import {
 } from '../../test/api-harness';
 import {
   currentMismatchBody,
+  errorItemsBody,
+  fieldErrorBody,
   mismatchBodyWithAttemptsHint,
   passwordDraftFixture,
 } from './fixtures';
@@ -936,5 +938,268 @@ describe('PasswordChangeScreen — 현재 비밀번호 불일치(401)', () => {
 
     expect(currentBox()).toBeInvalid();
     expect(errorTextFor(currentBox())).toContain(t.validation.currentMismatch);
+  });
+});
+
+describe('PasswordChangeScreen — 서버가 준 검증 실패(400)', () => {
+  const invalidFetch = (body: unknown): StubFetch =>
+    createStubFetch([changeRoute(() => jsonResponse(body, { status: 400 }))]);
+
+  /** 서버가 지목한 칸이 화면에 있으면 **그 칸에** 선다 — 배너로 올리면 어느 칸인지 잃는다. */
+  it('입력칸이 있는 이름을 지목하면 그 칸에 인라인으로 서고 배너는 서지 않는다', async () => {
+    const { user } = renderScreen({
+      fetch: invalidFetch(fieldErrorBody('newPassword', '합성 칸 오류 문구입니다.')),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(newBox()).toBeInvalid();
+    });
+
+    expect(errorTextFor(newBox())).toContain('합성 칸 오류 문구입니다.');
+    expect(screen.queryByText(t.banner.failureTitle)).toBeNull();
+  });
+
+  it('화면 수준 오류는 배너에 서고 인라인은 서지 않는다', async () => {
+    const { user } = renderScreen({ fetch: invalidFetch(currentMismatchBody()) });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(t.banner.failureTitle)).toBeInTheDocument();
+    expect(currentBox()).toBeValid();
+    expect(newBox()).toBeValid();
+  });
+
+  /**
+   * ⭐ **화면이 모르는 이름은 배너로 올라간다 — 어디에도 보이지 않는 경로가 없다.** 인라인으로
+   * 흘리면 대응하는 칸이 없어 그 문장이 사라지고, 사용자는 거절만 당한 채 이유를 못 본다.
+   */
+  it('모르는 이름을 지목하면 배너로 올라간다', async () => {
+    const { user } = renderScreen({
+      fetch: invalidFetch(fieldErrorBody('unknownField', '합성 모르는 칸 문구입니다.')),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(/합성 모르는 칸 문구입니다\./)).toBeInTheDocument();
+    expect(currentBox()).toBeValid();
+    expect(newBox()).toBeValid();
+  });
+
+  /** 확인 칸은 서버로 나가지 않는 값이라 서버가 지목할 이름이 아니다 — 배너로 올라간다. */
+  it('확인 칸을 지목해도 그 칸에 인라인으로 서지 않는다', async () => {
+    const { user } = renderScreen({
+      fetch: invalidFetch(fieldErrorBody('confirmPassword', '합성 확인 칸 문구입니다.')),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(/합성 확인 칸 문구입니다\./)).toBeInTheDocument();
+    expect(confirmBox()).toBeValid();
+  });
+
+  it('빈 문구만 오면 공용 안내와 다시 시도가 선다', async () => {
+    const { user } = renderScreen({
+      fetch: invalidFetch(errorItemsBody([{ scope: 'screen', code: 'SYN_CODE_L', message: '  ' }])),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+  });
+});
+
+describe('PasswordChangeScreen — 통신 실패와 가를 근거 없음', () => {
+  const failingFetch = (): { fetch: StubFetch; count: () => number; keys: () => string[] } => {
+    const keys: string[] = [];
+    const fetch: StubFetch = async (request) => {
+      keys.push(request.headers.get('Idempotency-Key') ?? '');
+
+      return Promise.reject(new Error('연결 실패(합성)'));
+    };
+
+    return { fetch, count: () => keys.length, keys: () => keys };
+  };
+
+  it('응답이 오지 않으면 이미 바뀌었을 수 있음을 배너가 알리고 다시 시도가 선다', async () => {
+    const failing = failingFetch();
+    const { user } = renderScreen({ fetch: failing.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(t.banner.networkUnconfirmed)).toBeInTheDocument();
+    expect(screen.getByText(t.banner.networkUnconfirmed).textContent).toContain(
+      '이미 바뀌었을 수 있습니다',
+    );
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **재시도는 같은 시도를 다시 보낸다**(결정 ②). 새 키로 보내면, 서버가 이미 바꿔 놓은
+   * 경우에 **본인이 방금 바꾼 값 때문에** 「현재 비밀번호가 틀렸다」를 듣는다.
+   */
+  it('다시 시도로 나간 요청의 멱등 키가 첫 요청과 같다', async () => {
+    const failing = failingFetch();
+    const { user } = renderScreen({ fetch: failing.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await screen.findByText(t.banner.networkUnconfirmed);
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(failing.count()).toBe(2);
+    });
+
+    expect(failing.keys()[0]).toBeTruthy();
+    expect(failing.keys()[1]).toBe(failing.keys()[0]);
+  });
+
+  /** 값을 고치고 다시 보내면 **다른 시도**다 — 같은 키로 보내면 서버가 앞 결과를 되돌려 준다. */
+  it('값을 고쳐 다시 보내면 멱등 키가 첫 요청과 다르다', async () => {
+    const failing = failingFetch();
+    const { user } = renderScreen({ fetch: failing.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await screen.findByText(t.banner.networkUnconfirmed);
+
+    await user.clear(newBox());
+    await user.clear(confirmBox());
+    await user.type(newBox(), 'SYN-NEXT-0009');
+    await user.type(confirmBox(), 'SYN-NEXT-0009');
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(failing.count()).toBe(2);
+    });
+
+    expect(failing.keys()[1]).not.toBe(failing.keys()[0]);
+  });
+
+  /**
+   * ⭐ **가를 근거가 없는 응답도 키를 유지한다**(이월 8). 500은 「적용됐는데 응답만 실패한」
+   * 경우를 포함하므로, 여기서 키를 버리면 되돌릴 수 없는 쓰기가 **두 번 실행될 길**이 다시 열린다.
+   */
+  it('가를 근거 없는 응답 뒤 다시 시도도 같은 키로 나간다', async () => {
+    const keys: string[] = [];
+    const { user } = renderScreen({
+      fetch: async (request) => {
+        keys.push(request.headers.get('Idempotency-Key') ?? '');
+
+        return jsonResponse({}, { status: 500 });
+      },
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(keys).toHaveLength(2);
+    });
+
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  /** 상태 코드는 그리지 않는다 — 사용자가 쓰지 않는 말이다. */
+  it('가를 근거 없는 응답에 상태 코드가 화면에 없다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([changeRoute(() => jsonResponse({}, { status: 500 }))]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('500');
+  });
+
+  /**
+   * ⭐ **칸에 매이지 않은 진술은 어느 칸을 고쳐도 걷힌다**(이월 5의 짝). 통신이 실패했다는 사실은
+   * 새 비밀번호를 고쳐도 낡는다 — 남겨 두면 지나간 배너가 새 값 위에 선다.
+   */
+  it('통신 실패 배너는 다른 칸을 고쳐도 걷힌다', async () => {
+    const failing = failingFetch();
+    const { user } = renderScreen({ fetch: failing.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    /* 양성 먼저 — 배너가 실제로 선 것을 잡은 뒤 걷힘을 잰다. */
+    expect(await screen.findByText(t.banner.networkUnconfirmed)).toBeInTheDocument();
+
+    await user.type(newBox(), 'X');
+
+    expect(screen.queryByText(t.banner.networkUnconfirmed)).toBeNull();
+  });
+
+  /**
+   * ⚠ **401은 반대다 — 그 칸이 바뀔 때만 걷힌다.** 두 규칙이 한 화면에 함께 있으므로 여기서
+   * 나란히 잰다(이월 5 — 걷는 쪽과 그리는 쪽의 어긋남이 조용한 자리).
+   */
+  it('401 인라인은 다른 칸을 고쳐도 남고 그 칸을 고치면 걷힌다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        changeRoute(() => jsonResponse(currentMismatchBody(), { status: 401 })),
+      ]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentBox()).toBeInvalid();
+    });
+
+    await user.type(newBox(), 'X');
+
+    expect(currentBox()).toBeInvalid();
+
+    await user.type(currentBox(), 'X');
+
+    expect(currentBox()).toBeValid();
+  });
+
+  /**
+   * ⚠ **「오류가 있으면 버튼이 잠긴다」는 이 화면의 불변식이 아니다**(이월 7). 서버가 준 진술은
+   * 값이 바뀌지 않아도 **다시 보내면 달라질 수 있고**(다른 기기에서 비밀번호가 또 바뀐 경우),
+   * 잠그면 사용자가 할 수 있는 일이 없어진다. 잠그는 것은 **화면이 잡는 규칙**뿐이다.
+   */
+  it('서버가 준 오류가 서 있어도 「변경」은 열려 있다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        changeRoute(() => jsonResponse(currentMismatchBody(), { status: 401 })),
+      ]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentBox()).toBeInvalid();
+    });
+
+    expect(submitButton()).toBeEnabled();
+
+    /* 대조 — 화면이 잡는 규칙은 여전히 잠근다. */
+    await user.clear(newBox());
+    await user.type(newBox(), TOO_SHORT);
+
+    expect(submitButton()).toBeDisabled();
   });
 });

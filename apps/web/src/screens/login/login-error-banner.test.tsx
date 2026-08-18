@@ -291,6 +291,26 @@ describe('LoginErrorBanner — 가를 근거가 없는 응답', () => {
     expect(screen.queryByText(t.banner.mismatch)).toBeNull();
   });
 
+  /**
+   * ⛔ **잡은 원인을 그리지 않는다**(W-CO-10 T1 리뷰의 이월 항목 15 — 이 회차에 닫는다).
+   *
+   * 이 갈래에는 응답이 아니라 **이 앱의 코드가 던진 것**이 떨어지는 길이 있다(성공 되먹임의
+   * 예외 — `queries.ts`). 그 값은 개발 도구·시험에서 읽으라고 갈래에 매달아 둔 것이지 사용자에게
+   * 보일 것이 아니다 — 배너는 `kind`만 본다. 내부 오류 문구가 화면에 새면 그 자체가 정보 노출이고,
+   * 사용자는 자기가 할 수 없는 조치를 찾는다.
+   */
+  it('갈래에 실린 원인이 화면 텍스트에 나오지 않는다', () => {
+    const marker = 'SYN-CAUSE-MARKER-01';
+
+    renderBanner({ outcome: { kind: 'unknown', status: 500, cause: new Error(marker) } });
+
+    /* 양성 먼저 — 배너가 실제로 선 것을 잡은 뒤 없음을 잰다(음성 단언은 짝 양성과 같은 시점). */
+    expect(banner()).toHaveTextContent(messages.httpError.description);
+
+    expect(banner().textContent).not.toContain(marker);
+    expect(document.body.textContent).not.toContain(marker);
+  });
+
   /** ⛔ 상태 코드를 사용자에게 보이지 않는다 — 사용자가 쓰지 않는 말이다. */
   it('상태 코드가 화면에 나오지 않는다', () => {
     renderBanner({ outcome: { kind: 'unknown', status: 500 } });
