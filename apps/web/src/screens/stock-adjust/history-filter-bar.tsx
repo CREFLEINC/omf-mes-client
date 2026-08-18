@@ -23,10 +23,20 @@ export interface HistoryFilterBarProps {
   /** 대상 실사 선택지. 등록 탭과 **같은 조회**에서 온다 — 두 번 부르지 않는다 */
   countOptions: SelectOption[];
   /**
-   * 값 목록이 확정되지 않은 코드 셋. **화면이 넘긴다** — 자리표시 상수를 부품이 직접 읽으면
-   * 「값이 확정되면 배열만 채운다」는 전환을 화면 수준에서 잴 수 없다.
+   * 조정 사유 선택지 — **고객의 공통코드 마스터에서 온다**(#36 회신 · `reason-options.ts`).
+   * 등록 탭과 **같은 조회**에서 온다 — 두 번 부르지 않는다.
    */
   reasonOptions: SelectOption[];
+  /**
+   * 사유 선택지의 **한계**를 밝히는 보조 문구(불러오기 실패 · 잘림).
+   *
+   * ⛔ **「목록 준비 중」을 여기 넣지 않는다**(#36 회신 ④) — 아래 상태 칸과 갈리는 자리다.
+   */
+  reasonNote?: string;
+  /**
+   * 전표 상태 선택지. **값 목록이 아직 확정되지 않았다**(자리표시 · `code-options.ts`) —
+   * 화면이 넘긴다. 부품이 상수를 직접 읽으면 그 전환을 화면 수준에서 잴 수 없다.
+   */
   statusOptions: SelectOption[];
   /** 선택지가 잘렸는가 같은 사정. 밝히지 않으면 불완전한 목록을 완전한 것으로 읽는다 */
   countNote?: string;
@@ -50,8 +60,10 @@ export interface HistoryFilterBarProps {
  * **검색어 칸이 없다.** 계약의 조정 목록 조회에 검색어 조건이 **없다**(실측) — 만들면 쳐도
  * 아무것도 좁혀지지 않는 칸이 된다.
  *
- * **사유·상태 선택지는 비어 있다**(값 목록 미확정 · D-9). 값을 지어내지 않고, 왜 비어 있는지를
- * 안내가 말한다. **비어 있어도 아무것도 잠기지 않는다** — 조회는 조건 없이도 열려 있다.
+ * **사유와 상태는 이제 갈린다**(#36 회신 · D-9 개정). 사유는 고객의 공통코드 마스터에서 오는
+ * 실제 목록이고, 상태는 아직 설계가 정할 자리표시다 — ⛔ 사유 칸에 「목록 준비 중」을 붙이면
+ * 고객이 스스로 넣을 값을 우리가 미루고 있는 것처럼 읽힌다.
+ * **어느 쪽이 비어도 아무것도 잠기지 않는다** — 조회는 조건 없이도 열려 있다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -60,6 +72,7 @@ export const HistoryFilterBar = ({
   chipNames,
   countOptions,
   reasonOptions,
+  reasonNote,
   statusOptions,
   countNote,
   isLocked = false,
@@ -113,12 +126,22 @@ export const HistoryFilterBar = ({
   const chips = toAdjustmentFilterChips(appliedFilters, chipNames);
   const hasPeriodChip = chips.some((chip) => chip.key === 'period');
 
+  const allOption: SelectOption = { value: '', label: t.historyFilters.all };
+
   /**
-   * 값 목록이 비어 있는 칸은 **「전체」도 붙이지 않는다.** 고를 것이 하나도 없는데 「전체」만
-   * 있으면 목록이 준비된 것처럼 보인다 — 왜 비었는지는 안내가 말한다.
+   * **고를 값이 하나도 없는 칸**은 「전체」도 붙이지 않는다. 「전체」만 있으면 목록이 준비된
+   * 것처럼 보인다 — 왜 비었는지는 안내가 말한다.
    */
   const withAll = (options: SelectOption[]): SelectOption[] =>
-    options.length === 0 ? options : [{ value: '', label: t.historyFilters.all }, ...options];
+    options.length === 0 ? options : [allOption, ...options];
+
+  /**
+   * ⚠ **사유 칸만 「전체」를 언제나 붙인다**(#36 회신 ④).
+   *
+   * 사유의 「없음」은 미확정이 아니라 **고객의 마스터가 아직 그렇다**는 사실이라, 그때도
+   * 「전체」는 고를 수 있는 정상 조건이다 — 빼면 그 칸이 준비되지 않은 것처럼 읽힌다.
+   */
+  const reasonSelectOptions: SelectOption[] = [allOption, ...reasonOptions];
 
   const codeNote = (options: SelectOption[]): string | undefined =>
     options.length === 0 ? t.historyFilters.codePending : undefined;
@@ -162,12 +185,16 @@ export const HistoryFilterBar = ({
           }}
         />
 
+        {/*
+         * 사유는 **실제 목록**이라 「전체」가 언제나 서고, 보조 문구는 선택지의 한계
+         * (불러오기 실패·잘림)만 말한다 — ⛔ 「목록 준비 중」은 여기 오지 않는다(#36 회신 ④).
+         */}
         <SelectField
           label={t.historyFields.reason}
-          options={withAll(reasonOptions)}
+          options={reasonSelectOptions}
           value={filters.reason}
-          note={codeNote(reasonOptions)}
-          placeholder={codePlaceholder(reasonOptions)}
+          note={reasonNote}
+          placeholder={t.historyFilters.all}
           disabled={isLocked}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, reason: value }));

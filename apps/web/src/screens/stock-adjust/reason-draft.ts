@@ -14,7 +14,7 @@ import type { components } from '@omf-mes/api-client';
  * | | 헤더 사유 | **상신 사유(이 파일)** |
  * | --- | --- | --- |
  * | 계약 필드 | `InventoryAdjustmentCreate.reasonCode` | `ApprovalRequestCreate.reason` |
- * | 타입 | **코드**(`maxLength: 50` · 값 목록 미확정 — D-9) | **자유 텍스트**(`minLength: 1`) |
+ * | 타입 | **코드**(`maxLength: 50` · 값 목록은 **고객의 공통코드 마스터**에서 온다 — #36 회신) | **자유 텍스트**(`minLength: 1`) |
  * | 언제 받나 | 등록 | **상신** |
  * | 결재함 요약을 겸하나 | ⛔ 아니다 | ✅ **그렇다**(A-12) |
  * | 사는 자리 | `types.ts`의 `AdjustHeaderDraft` · `adjust-request.ts` | **이 파일** |

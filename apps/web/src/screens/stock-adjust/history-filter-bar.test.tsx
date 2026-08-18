@@ -38,6 +38,17 @@ const renderBar = (overrides: Partial<HistoryFilterBarProps> = {}) => {
 const searchButton = (): HTMLElement =>
   screen.getByRole('button', { name: messages.common.search });
 
+/**
+ * 그 칸이 **자기 보조 문구로 걸어 둔 글**. 문서 전체에서 찾으면 옆 칸의 문구가 걸려
+ * 「이 칸에는 없다」가 헛통과한다 — `aria-describedby`가 가리키는 자리만 읽는다.
+ */
+const describedTextOf = (label: string): string => {
+  const field = screen.getByLabelText(label);
+  const ids = (field.getAttribute('aria-describedby') ?? '').split(' ').filter((id) => id !== '');
+
+  return ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' ');
+};
+
 describe('HistoryFilterBar — 조건 칸', () => {
   it('조건 칸이 넷이다 — 전기일·대상 실사·조정 사유·상태', () => {
     renderBar();
@@ -69,24 +80,69 @@ describe('HistoryFilterBar — 조건 칸', () => {
   });
 
   /**
-   * 값 목록이 비어 있는 칸은 「전체」도 붙이지 않는다 — 목록이 준비된 것처럼 보이지 않게.
-   * **비어 있어도 아무것도 잠기지 않는다**(등록 잠금과 갈리는 자리).
+   * ⭐ **사유와 상태가 갈린다**(#36 회신 ④ · D-9 개정).
+   *
+   * 상태는 아직 설계가 정할 자리표시라 「목록 준비 중」이 서고, 사유는 **고객의 마스터에서
+   * 오는 실제 목록**이라 그 문구가 서지 않는다 — 하나만 남았다는 사실을 개수로 고정한다.
    */
-  it('값 목록이 빈 코드 칸은 사유를 밝히되 잠기지 않는다', () => {
+  it('「목록 준비 중」은 상태 칸에만 선다 — 사유 칸에는 없다', () => {
     renderBar();
 
-    expect(screen.getAllByText(t.historyFilters.codePending)).toHaveLength(2);
+    /* 양성 앵커 — 상태 칸은 자리표시 그대로다. 이것이 서야 「하나뿐」이 뜻을 갖는다. */
+    expect(screen.getAllByText(t.historyFilters.codePending)).toHaveLength(1);
+    expect(describedTextOf(t.historyFields.status)).toContain(t.historyFilters.codePending);
+    expect(describedTextOf(t.historyFields.reason)).not.toContain(t.historyFilters.codePending);
+    expect(screen.getByLabelText(t.historyFields.status)).toBeEnabled();
+  });
+
+  /**
+   * ⛔ **사유 칸이 잠기지 않는다**(#36 회신 ④). 목록이 0건이어도 칸은 열려 있고 조회도 열려
+   * 있다 — 고객이 값을 넣는 순간 곧바로 고를 수 있어야 한다.
+   */
+  it('사유 선택지가 0건이어도 칸도 조회도 잠기지 않는다', () => {
+    renderBar();
+
     expect(screen.getByLabelText(t.historyFields.reason)).toBeEnabled();
     expect(searchButton()).toBeEnabled();
   });
 
-  it('값 목록이 차면 「전체」가 함께 선다', async () => {
-    const { user } = renderBar({ reasonOptions: [{ value: 'SAMPLE_AR_A', label: 'SAMPLE_AR_A' }] });
+  /** 사유의 「없음」은 미확정이 아니라 사실이다 — 그때도 「전체」는 고를 수 있는 조건이다. */
+  it('사유 선택지가 0건이어도 「전체」는 선다', async () => {
+    const { user } = renderBar();
 
     await user.click(screen.getByLabelText(t.historyFields.reason));
 
     expect(screen.getByRole('option', { name: t.historyFilters.all })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'SAMPLE_AR_A' })).toBeInTheDocument();
+  });
+
+  it('사유 값이 오면 「전체」와 함께 선다', async () => {
+    const { user } = renderBar({
+      reasonOptions: [{ value: 'SYN-RSN-ALPHA', label: 'SYN-RSN-ALPHA · 합성 사유 가' }],
+    });
+
+    await user.click(screen.getByLabelText(t.historyFields.reason));
+
+    expect(screen.getByRole('option', { name: t.historyFilters.all })).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'SYN-RSN-ALPHA · 합성 사유 가' }),
+    ).toBeInTheDocument();
+  });
+
+  /** 사유 칸이 말하는 것은 선택지의 한계 둘뿐이다 — 불러오기 실패와 잘림. */
+  it('사유 선택지의 한계는 그 칸에 붙는다', () => {
+    renderBar({ reasonNote: t.lookups.failed });
+
+    expect(screen.getByText(t.lookups.failed)).toBeInTheDocument();
+  });
+
+  /** 상태 칸은 자리표시 그대로다 — 값이 차면 「전체」가 함께 선다. */
+  it('상태 값 목록이 차면 「전체」가 함께 선다', async () => {
+    const { user } = renderBar({ statusOptions: [{ value: 'SAMPLE_ST_A', label: 'SAMPLE_ST_A' }] });
+
+    await user.click(screen.getByLabelText(t.historyFields.status));
+
+    expect(screen.getByRole('option', { name: t.historyFilters.all })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'SAMPLE_ST_A' })).toBeInTheDocument();
   });
 
   it('선택지의 한계를 밝히는 안내를 그 칸에 붙인다', () => {

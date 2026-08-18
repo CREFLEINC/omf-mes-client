@@ -25,6 +25,8 @@ import {
   locationFixtures,
   lotFixtures,
   postedAdjustmentBody,
+  reasonCodeValueFixtures,
+  reasonGroupFixtures,
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
@@ -34,15 +36,15 @@ import { StockAdjustScreen } from './screen';
 const t = messages.stockAdjust;
 
 /**
- * 조정 사유 값 목록 — **미확정 자리표시를 갈아 끼운다**(전례 `disposal-issue`와 같은 형태).
+ * 전표 상태 값 목록 — **미확정 자리표시를 갈아 끼운다**(전례 `disposal-issue`와 같은 형태).
  *
- * **판정·조립·잠금은 실물 그대로**이고 바뀌는 것은 「값 목록이 왔다」는 사실 하나다. 채웠을 때
- * 등록이 실제로 살아나지 않으면 그 자리표시는 **죽은 가지**이므로, 이 목이 곧 D-9의 시험이다.
+ * **판정·조립·잠금은 실물 그대로**이고 바뀌는 것은 「값 목록이 왔다」는 사실 하나다.
  *
- * ⚠ 지어낸 합성 코드다 — **계약의 `@example` 값(`COUNT_VARIANCE`)을 쓰지 않는다.**
+ * ⭐ **조정 사유는 여기 없다** — 고객이 공통코드 마스터에 등록하는 값으로 결정돼(#36 회신)
+ * 자리표시가 아니라 **실제 조회**로 온다. 그래서 그 목록은 목이 아니라 아래 스텁이 채운다.
  */
 const { codeValues } = vi.hoisted(() => ({
-  codeValues: { reason: [] as string[], status: [] as string[] },
+  codeValues: { status: [] as string[] },
 }));
 
 vi.mock('./code-options', async (importOriginal) => {
@@ -51,12 +53,26 @@ vi.mock('./code-options', async (importOriginal) => {
   return { ...actual, PLACEHOLDER_STOCK_ADJUST_CODES: codeValues };
 });
 
-const SAMPLE_REASON = 'SAMPLE_AR_A';
+/**
+ * 고객이 공통코드 마스터에 등록해 둔 조정 사유 — **화면이 조회로 받는다.**
+ *
+ * ⚠ **값 문면에 뜻을 담지 않는다**(#36 회신 ③). 화면은 어느 값이 와도 같게 돌아야 하므로,
+ * 뜻이 읽히는 값을 쓰면 그 뜻에 기댄 시험이 슬며시 생긴다.
+ */
+const SAMPLE_REASON = 'SYN-RSN-ALPHA';
+const SAMPLE_REASON_LABEL = 'SYN-RSN-ALPHA · 합성 사유 가';
+const SECOND_REASON = 'SYN-RSN-OMEGA';
+const SECOND_REASON_LABEL = 'SYN-RSN-OMEGA · 합성 사유 나';
 
-/** 값 목록이 아직 비어 있는 것이 **지금의 사실**이다 — 채우는 시험이 스스로 채운다. */
+/**
+ * 스텁이 내려 줄 사유 코드값. **라우트를 세우기 전에** 시험이 갈아 끼운다 —
+ * 마스터에 값이 있고 없고가 화면에서 어떻게 갈리는지가 이 회차의 요점이다.
+ */
+let reasonCodeValues: unknown[] = [];
+
 beforeEach(() => {
-  codeValues.reason = [];
   codeValues.status = [];
+  reasonCodeValues = [];
 });
 
 const ROUTE = '/logistics/stock-adjust';
@@ -70,6 +86,8 @@ const LOCATIONS_PATH = '/mdm/locations';
 const ITEMS_PATH = '/mdm/items';
 const UOMS_PATH = '/mdm/uoms';
 const LOTS_PATH = '/trace/lots';
+const CODE_GROUPS_PATH = '/mdm/code-groups';
+const CODE_VALUES_PATH = '/mdm/code-values';
 
 const COUNT_LABEL = 'SAMPLE-IC-9101 · 2026-08-17';
 const WAREHOUSE_LABEL = 'SAMPLE-WH-01 · 합성 창고 가';
@@ -173,6 +191,12 @@ const lookupRoutes = (): StubRoute[] => [
   getRoute(ITEMS_PATH, itemFixtures),
   getRoute(UOMS_PATH, uomFixtures),
   getRoute(LOTS_PATH, lotFixtures),
+  /*
+   * 조정 사유 — **두 걸음이다**(그룹코드로 그룹을 찾고, 그 번호로 코드값을 받는다).
+   * 값 목록은 시험이 미리 갈아 끼운 것을 그대로 내려준다.
+   */
+  getRoute(CODE_GROUPS_PATH, reasonGroupFixtures),
+  getRoute(CODE_VALUES_PATH, reasonCodeValues),
 ];
 
 const allRoutes = (overrides: StubRoute[] = []): StubRoute[] => [
@@ -953,23 +977,91 @@ describe('StockAdjustScreen — 결재는 결재함이 소유한다', () => {
 });
 
 /**
- * **자리표시 코드**(D-9 · C10). 값 목록이 비어 있는 동안 무엇이 막히는지 밝힌다 —
- * 대상을 세우는 일은 그 값과 무관하게 열려 있다.
+ * ⭐ **조정 사유는 고객의 마스터에서 온다**(#36 회신 · 공유계약 `G-31` · 스펙 §8-3).
+ *
+ * 앞 회차까지 이 자리는 자리표시(빈 배열)였고 「값이 확정될 때까지 등록할 수 없다」고 말했다.
+ * 결정은 그 반대였다 — 우리가 정할 값이 아니다. 이 묶음이 재는 것은 셋이다.
+ *
+ * | # | 잣대 |
+ * | :-: | --- |
+ * | ⓐ | **값 문면에 갈래가 없다** — 임의의 어느 값이 와도 화면이 같게 돈다 |
+ * | ⓑ | ⛔ **「목록 준비 중」도 비활성도 없다** |
+ * | ⓒ | 조회가 **실제로** 나간다 — 그룹코드로 찾고 그 번호로 코드값을 받는다 |
  */
 describe('StockAdjustScreen — 조정 사유 값 목록', () => {
-  it('값 목록이 비어 있다는 사실과 무엇이 막히는지 적는다', () => {
-    renderScreen(allRoutes(), '');
+  it('실행 시점에 공통코드를 부른다 — 그룹코드로 찾고 그 번호로 코드값을 받는다', async () => {
+    withReasonCodes();
 
-    expect(screen.getByText(t.notes.reasonCodePending)).toBeInTheDocument();
+    const { requests, user } = renderScreen(allRoutes());
+
+    await chooseReason(user);
+
+    const groupRequest = requests.find((request) => request.url.pathname === CODE_GROUPS_PATH);
+    const valueRequest = requests.find((request) => request.url.pathname === CODE_VALUES_PATH);
+
+    expect(groupRequest?.url.searchParams.get('q')).toBe('ADJUST_REASON');
+    expect(valueRequest?.url.searchParams.get('codeGroupId')).toBe('9901');
   });
 
-  it('그동안에도 대상은 세울 수 있다', async () => {
+  /**
+   * ⛔ **「목록 준비 중」도 비활성도 없다**(#36 회신 ④).
+   *
+   * 그 표시는 「우리가 정해야 하는데 못 한 값」에만 쓴다. 마스터가 아직 비어 있는 것은
+   * 그 경우가 아니다 — 칸은 서고 잠기지 않는다.
+   */
+  it('마스터가 비어 있어도 준비 중 표시도 비활성도 없다', () => {
+    renderScreen(allRoutes(), '');
+
+    expect(reasonField()).toBeEnabled();
+    expect(screen.queryByText(t.historyFilters.codePending)).toBeNull();
+    /* 문면이 바뀐 같은 뜻의 안내가 되살아나는 자리까지 막는다. */
+    expect(registerPane().textContent ?? '').not.toContain('확정');
+  });
+
+  it('마스터가 비어 있어도 대상은 세울 수 있다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await loadVariance(user);
 
     expect(bodyRows()).toHaveLength(3);
     expect(diffBox(1)).toBeEnabled();
+  });
+
+  /**
+   * ⭐ **값 문면에 갈래가 없다**(#36 회신 ③). 임의의 두 값 어느 쪽으로도 **같은 자리가 열리고
+   * 같은 값이 나간다** — 화면이 특정 값을 알아보면 고객이 값을 바꾸는 날 조용히 다르게 돈다.
+   */
+  it.each([
+    ['SYN-RSN-ALPHA', '합성 사유 가'],
+    ['COUNT_VARIANCE', '합성 사유 나'],
+  ])('임의 코드 %s를 골라도 같은 경로로 등록된다', async (code, codeName) => {
+    withReasonCodes([
+      { codeValueId: 9911, codeGroupId: 9901, code, codeName, displayOrder: 1, isActive: true },
+    ]);
+
+    const { requests, user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+    await chooseReason(user, `${code} · ${codeName}`);
+
+    expect(registerButton()).toBeEnabled();
+
+    await submitRegister(user);
+
+    await waitFor(() => {
+      expect(lastCreateBody(requests).reasonCode).toBe(code);
+    });
+  });
+
+  /** 실패를 삼키면 선택칸이 이유 없이 비어 보인다 — 다섯 참조와 같은 문구로 말한다. */
+  it('사유 조회가 실패하면 그 사실을 그 칸에 적는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes([failingRoute(CODE_VALUES_PATH, 500)]));
+
+    await loadVariance(user);
+
+    expect(await within(registerPane()).findByText(t.lookups.failed)).toBeVisible();
   });
 });
 
@@ -1496,14 +1588,20 @@ const confirmRegisterButton = (): HTMLElement =>
 
 const reasonField = (): HTMLElement => within(registerPane()).getByLabelText(t.fields.reasonCode);
 
-/** 값 목록이 확정된 뒤의 화면을 만든다 — **자리표시를 채우면 등록이 살아나는지**가 요점이다. */
-const withReasonCodes = (): void => {
-  codeValues.reason = [SAMPLE_REASON];
+/**
+ * 고객이 사유를 등록해 둔 마스터를 세운다 — **라우트를 만들기 전에** 불러야 한다
+ * (`allRoutes()`가 이 값을 그 자리에서 읽어 스텁에 싣는다).
+ */
+const withReasonCodes = (values = reasonCodeValueFixtures): void => {
+  reasonCodeValues = values;
 };
 
-const chooseReason = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+const chooseReason = async (
+  user: ReturnType<typeof userEvent.setup>,
+  label = SAMPLE_REASON_LABEL,
+): Promise<void> => {
   await user.click(reasonField());
-  await user.click(screen.getByRole('option', { name: SAMPLE_REASON }));
+  await user.click(await screen.findByRole('option', { name: label }));
 };
 
 /** 실사 차이를 불러오고 사유까지 골라 **보낼 수 있는 상태**로 만든다. */
@@ -1548,26 +1646,34 @@ const setupAndRegister = async (user: ReturnType<typeof userEvent.setup>): Promi
  * 것들이다. 뒤집으면 사용자가 고칠 수 있는 것을 다 고친 뒤에야 막다른 벽을 만난다.
  */
 describe('StockAdjustScreen — 등록이 막힌 사유', () => {
-  it('값 목록이 비어 있으면 등록이 잠기고 그 사정을 말한다', async () => {
-    const { user } = renderScreen(allRoutes());
-
-    await loadVariance(user);
-
-    expect(registerButton()).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.registerReasonPending)).toBeInTheDocument();
-  });
-
-  /** ⭐ **자리표시가 죽은 가지가 아니라는 증거** — 배열을 채우면 사유 갈래가 바뀐다(D-9). */
-  it('값 목록이 채워지면 사정이 「아직 안 골랐다」로 바뀐다', async () => {
-    withReasonCodes();
-
+  /**
+   * ⭐ **마스터가 비어 있어도 사정은 「아직 안 골랐다」 하나다**(#36 회신 ④ · D-9 개정).
+   *
+   * 앞 회차에는 여기에 「값 목록이 확정된 뒤에 할 수 있습니다」가 섰다 — 값 목록을 우리가
+   * 정할 것으로 보았기 때문이다. 그 문구가 되살아나면 고객이 스스로 넣을 값을 우리가 미루고
+   * 있는 것처럼 읽힌다.
+   */
+  it('마스터가 비어 있어도 사정은 「아직 안 골랐다」다', async () => {
     const { user } = renderScreen(allRoutes());
 
     await loadVariance(user);
 
     expect(registerButton()).toBeDisabled();
     expect(screen.getByText(t.actionReasons.registerNeedsReason)).toBeInTheDocument();
-    expect(screen.queryByText(t.actionReasons.registerReasonPending)).not.toBeInTheDocument();
+    expect(registerPane().textContent ?? '').not.toContain('확정');
+  });
+
+  /** ⭐ **사유가 오면 그것을 고를 수 있다** — 조회가 죽은 통로가 아니라는 증거다. */
+  it('마스터에 값이 있으면 그 값이 그대로 선다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(allRoutes());
+
+    await loadVariance(user);
+    await user.click(reasonField());
+
+    expect(await screen.findByRole('option', { name: SAMPLE_REASON_LABEL })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: SECOND_REASON_LABEL })).toBeInTheDocument();
   });
 
   /** 짝 양성 — 사유를 고르면 **등록이 실제로 열린다.** */
@@ -2739,7 +2845,7 @@ describe('StockAdjustScreen — 등록 실패', () => {
 
   /** 고친 칸의 **서버 오류를 함께 지운다** — 안 지우면 방금 고친 칸에 옛 문구가 되살아난다. */
   it('사유를 다시 고르면 그 칸의 서버 오류가 걷힌다', async () => {
-    codeValues.reason = [SAMPLE_REASON, 'SAMPLE_AR_B'];
+    withReasonCodes();
 
     const { requests, user } = renderScreen(
       allRoutes([fieldErrorRoute('reasonCode', '합성 사유 오류')]),
@@ -2753,7 +2859,7 @@ describe('StockAdjustScreen — 등록 실패', () => {
 
     await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
     await user.click(reasonField());
-    await user.click(screen.getByRole('option', { name: 'SAMPLE_AR_B' }));
+    await user.click(screen.getByRole('option', { name: SECOND_REASON_LABEL }));
 
     expect(screen.queryByText('합성 사유 오류')).not.toBeInTheDocument();
   });
@@ -5785,6 +5891,63 @@ describe('StockAdjustScreen — 이력 조회', () => {
 
     expect(adjustmentRequests(requests)[1]?.url.searchParams.get('inventoryCountId')).toBe('9101');
     await waitForLocation(`${ROUTE}?count=9101&tab=history&hc=9101`);
+  });
+
+  /**
+   * ⭐ **사유 조건이 실제로 실린다**(#36 회신 · D-9 개정).
+   *
+   * 앞 회차에는 이 경로를 화면 수준에서 잴 수 없었다 — 고를 값이 하나도 없어 **조건을 고르는
+   * 걸음 자체가 없었다.** 목록이 살아난 지금 그 걸음이 생겼고, 여기서 끊기면 사용자가 고른
+   * 조건이 조용히 버려진다.
+   */
+  it('고른 사유가 계약 이름으로 요청에 실리고 주소에도 남는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    await user.click(within(historyPane()).getByLabelText(t.historyFields.reason));
+    await user.click(await screen.findByRole('option', { name: SAMPLE_REASON_LABEL }));
+    await user.click(within(historyPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(adjustmentRequests(requests)).toHaveLength(2);
+    });
+
+    expect(adjustmentRequests(requests)[1]?.url.searchParams.get('reasonCode')).toBe(SAMPLE_REASON);
+    await waitForLocation(`${ROUTE}?count=9101&tab=history&hrs=${SAMPLE_REASON}`);
+  });
+
+  /**
+   * ⚠ **상태는 그대로 기다린다**(#36 회신 ⚠). 조정 상태·문서 유형은 전이·분기가 걸려 설계가
+   * 정해서 내려 준다 — 사유가 살아났다고 그 둘까지 함께 걷으면 값을 지어내게 된다.
+   *
+   * 사유 칸과 **나란히** 잰다. 한쪽만 재면 둘이 같은 처리로 되돌아가도 잡히지 않는다.
+   */
+  it('상태 칸은 자리표시 그대로다 — 사유 칸과 갈린다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    const bar = historyPane();
+
+    await waitFor(() => {
+      expect(within(bar).getByText(t.historyFilters.codePending)).toBeVisible();
+    });
+
+    /* 「준비 중」은 하나뿐이다 — 사유 칸에 되살아나면 둘이 된다. */
+    expect(within(bar).getAllByText(t.historyFilters.codePending)).toHaveLength(1);
+    expect(within(bar).getByLabelText(t.historyFields.status)).toHaveTextContent(
+      t.historyFilters.codePlaceholder,
+    );
+    expect(within(bar).getByLabelText(t.historyFields.reason)).toHaveTextContent(
+      t.historyFilters.all,
+    );
   });
 
   /** C45 — 조건을 바꿔도 뒤로가기가 한 칸이다(조건과 쪽을 한 번에 갱신한다). */
