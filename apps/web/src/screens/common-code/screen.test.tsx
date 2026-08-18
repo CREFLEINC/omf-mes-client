@@ -1546,6 +1546,12 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
     ]);
 
     await startCreate(user, '버린 초안');
+
+    /* 양성 앵커 — **자기 초안**에는 진행 표시가 돈다. 아래 음성 단언의 짝이다. */
+    await waitFor(() => {
+      expect(addCodeGroupButton()).toHaveAttribute('aria-busy', 'true');
+    });
+
     await reopenCreateFormWith(user, '새 초안');
 
     /*
@@ -1573,6 +1579,45 @@ describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과
       within(codeGroupFormPane()).queryByText('이미 있는 그룹명입니다.'),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('그룹명')).toHaveValue('새 초안');
+  });
+
+  /*
+   * **초안을 다시 여는 길은 넷이다**(액션 · 취소 · 목록 선택 · 뒤로가기) — 그래서 세션 번호를
+   * 올리는 자리는 **초안이 새로 서는 그 한 자리**여야 한다.
+   *
+   * 위 감지기는 「취소 → 그룹 추가」 한 길만 밟아, 번호를 **여는 자리마다** 올리는 순진한
+   * 구현과도 갈리지 않는다. 이 감지기는 그 순진한 구현이 빠뜨리는 길(목록 선택 후 **뒤로가기**)로
+   * 초안을 다시 세운다 — 이 자리가 D-13의 핵심 판단이고, 부서 구획이 그대로 복제한다.
+   */
+  it('목록을 거쳐 뒤로가기로 다시 연 초안에도 버린 등록의 실패가 서지 않는다', async () => {
+    const deferred = deferredJsonResponse(400);
+
+    const { history, user } = renderScreen([
+      codeGroupListRoute(),
+      codeGroupDetailRoute(1002),
+      codeGroupCreateRoute(() => deferred.response),
+    ]);
+
+    await startCreate(user, '버린 초안');
+    /* 등록을 두고 다른 그룹을 본 뒤, 뒤로가기로 등록 폼에 되돌아온다 — 그때 서는 것은 새 초안이다. */
+    await selectSecondGroup(user);
+    history.back();
+
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await user.type(screen.getByLabelText('그룹명'), '되돌아온 초안');
+
+    await act(async () => {
+      deferred.release(createFailure);
+    });
+
+    await waitFor(() => {
+      expect(addCodeGroupButton()).toBeEnabled();
+    });
+    expect(within(codeGroupFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
+    expect(
+      within(codeGroupFormPane()).queryByText('이미 있는 그룹명입니다.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('그룹명')).toHaveValue('되돌아온 초안');
   });
 
   /* 짝 양성 — **같은 초안이면 선다.** 세션 대조가 자기 실패까지 가리면 어디에도 사유가 없다. */
