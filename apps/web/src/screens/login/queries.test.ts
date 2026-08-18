@@ -233,6 +233,35 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
   });
 
   /**
+   * ⭐ **200인데 넘길 세션이 없으면 성공이 아니다.**
+   *
+   * 전례(`patterns/request.ts`)는 본문 없는 200을 **정상**으로 두는데 이 화면은 반대로 가른다 —
+   * 여기서 통과시키면 세션을 보관하는 회차가 **빈 세션을 담고**, 앱은 「로그인했는데 누구인지
+   * 모르는」 상태가 된다.
+   *
+   * **없는 본문의 모양이 둘**이라 둘 다 잰다 — 본문이 비었으면 `undefined`, JSON `null`이면
+   * `null`이 온다(실측). 한쪽만 막으면 나머지가 그대로 성공으로 통과한다.
+   */
+  it.each([
+    ['본문이 비었을 때', new Response('', { status: 200 })],
+    ['본문이 JSON 널일 때', jsonResponse(null)],
+  ])('200이어도 %s는 성공으로 다루지 않는다', async (_label, response) => {
+    const stub = createStubFetch([sessionsRoute(() => response.clone())]);
+    const { result, onSuccess } = renderLogin(stub);
+
+    act(() => {
+      result.current.submit(loginDraftFixture());
+    });
+
+    await waitFor(() => {
+      expect(result.current.outcome).toEqual({ kind: 'unknown', status: 200 });
+    });
+
+    /* ⭐ 본론은 이쪽이다 — 세션을 보관하는 회차가 이 자리를 밟는다. */
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  /**
    * 응답이 아예 없는 실패다. **상태 코드로 뭉뚱그리지 않는다** — 「서버가 거절했다」와
    * 「닿지 못했다」는 사용자가 할 수 있는 조치가 다르다.
    */

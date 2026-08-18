@@ -306,6 +306,46 @@ describe('LoginScreen — 폼의 기본 제출', () => {
 
     expect(submitButton()).toHaveAttribute('type', 'submit');
   });
+
+  /**
+   * ⛔ **버튼을 지나지 않는 제출 경로가 실재한다** — Enter와 프로그램적 제출이 그것이다.
+   * 버튼 잠금은 그 길을 막지 못하므로 제출 자리에 겹이 하나 더 있다.
+   *
+   * 그 겹이 없으면 빈 자격이 그대로 나가고, 서버는 그것을 **실패한 시도**로 세어 계정을 잠그는
+   * 임계값을 향해 쌓는다 — 사용자가 아무것도 하지 않았는데도.
+   *
+   * **양성 대조를 같은 시험에 둔다.** 채운 뒤 같은 경로로 제출하면 요청이 나가야, 앞의
+   * 「나가지 않았다」가 **감지기가 죽어서 생긴 결과가 아님**이 증명된다.
+   */
+  it('빈 초안으로 폼을 제출하면 요청이 나가지 않고, 채운 뒤에는 나간다', async () => {
+    const requests: string[] = [];
+    const { user } = renderScreen({
+      fetch: (request) => {
+        requests.push(new URL(request.url).pathname);
+
+        return Promise.resolve(jsonResponse(sessionBody()));
+      },
+    });
+
+    const form = submitButton().closest('form');
+
+    if (!(form instanceof HTMLFormElement)) {
+      throw new Error('로그인 폼을 찾지 못했습니다');
+    }
+
+    /* 빈 초안으로 한 번 — 나가면 안 된다. */
+    fireEvent.submit(form);
+
+    /* 채우는 동안 마이크로태스크가 여러 번 비므로, 나갔다면 아래에서 두 건으로 잡힌다. */
+    await fillCredentials(user);
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(requests).toHaveLength(1);
+    });
+
+    expect(requests).toEqual([SESSIONS_PATH]);
+  });
 });
 
 describe('LoginScreen — 성공하면 관리웹으로 넘어간다', () => {
@@ -353,7 +393,27 @@ describe('LoginScreen — 실패를 어떻게 알리는가', () => {
 
     const banner = await screen.findByRole('alert');
 
+    /* 제목과 본문이 **둘 다** 화면의 문구다 — 어느 한쪽이 빠져도 여기서 걸린다. */
+    expect(banner).toHaveTextContent(t.banner.failureTitle);
     expect(banner).toHaveTextContent(t.banner.mismatch);
+  });
+
+  /**
+   * ⛔ **서버가 준 실패 본문을 그대로 내지 않는다.** 401 본문의 `message`는 서버의 말이고,
+   * 화면이 낼 문장은 이 저장소가 정한 문구다. 서버 문구를 흘려보내면 ⓐ 서버가 문구만 바꿔도
+   * 화면의 규율(어느 칸도 지목하지 않는다)이 깨지고 ⓑ 한국어가 아닌 문구가 그대로 뜬다.
+   */
+  it('401 본문의 서버 문구가 화면에 흘러나오지 않는다', async () => {
+    const body = loginFailureBody();
+    const { user } = renderScreen({ fetch: failing(401, body) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    const banner = await screen.findByRole('alert');
+
+    expect(banner).toHaveTextContent(t.banner.mismatch);
+    expect(screen.queryByText(body.message)).toBeNull();
   });
 
   /**
@@ -397,15 +457,23 @@ describe('LoginScreen — 실패를 어떻게 알리는가', () => {
     expect(screen.queryByText(t.banner.mismatch)).toBeNull();
   });
 
-  /** 값을 고치면 앞 시도의 실패는 그 값에 대한 진술이 아니게 된다. */
-  it('아이디나 비밀번호를 고치면 실패 배너가 걷힌다', async () => {
+  /**
+   * 값을 고치면 앞 시도의 실패는 그 값에 대한 진술이 아니게 된다.
+   *
+   * **두 칸을 다 잰다** — 규칙이 두 칸인데 한 칸만 재면, 한쪽 `onChange`가 되돌리는 통로를
+   * 지나지 않게 바뀌어도 아무 감지기가 울리지 않는다.
+   */
+  it.each([
+    ['아이디', (): HTMLElement => loginIdBox()],
+    ['비밀번호', (): HTMLElement => passwordBox()],
+  ])('%s를 고치면 실패 배너가 걷힌다', async (_label, box) => {
     const { user } = renderScreen({ fetch: failing(401, loginFailureBody()) });
 
     await fillCredentials(user);
     await user.click(submitButton());
     await screen.findByRole('alert');
 
-    await user.type(passwordBox(), 'X');
+    await user.type(box(), 'X');
 
     expect(screen.queryByText(t.banner.mismatch)).toBeNull();
   });
@@ -529,5 +597,54 @@ describe('LoginScreen — 보내는 동안과 그 뒤', () => {
     await waitFor(() => {
       expect(currentPath()).toBe(HOME_ROUTE);
     });
+  });
+
+  /**
+   * ⭐ **「값이 바뀌면 배너를 걷는다」의 유일한 반례를 못 박는다.**
+   *
+   * 나가는 중에 값을 고치면 되돌릴 것이 없으므로(`resetIfIdle`가 그대로 되돌아온다) 뒤늦게
+   * 도착한 401의 배너가 **이미 고친 값 위에** 선다. **일부러 이렇게 둔다** — 그 시도는 실제로
+   * 실패했고, 화면이 아는 사실은 그것뿐이다.
+   *
+   * 감춘 쪽의 대가가 더 크다: 보낸 초안과 견줘 배너를 세우지 않으면 **보낸 적이 있는데 아무
+   * 말도 없는 화면**이 되고, 사용자는 자기 시도가 어떻게 됐는지 영영 알 수 없다.
+   *
+   * 실패 갈래가 늘어나는 뒤 회차가 이 자리 위에 배너를 더 얹으므로 **지금 고정해 둔다.**
+   */
+  it('나가는 중에 값을 고쳐도 도착한 401의 배너는 선다', async () => {
+    let release = (): void => {
+      /* 아래 Promise 생성자가 곧바로 채운다. */
+    };
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const stub = createStubFetch([
+      sessionsRoute(() => jsonResponse(loginFailureBody(), { status: 401 })),
+    ]);
+    const { user } = renderScreen({
+      fetch: async (request) => {
+        await gate;
+
+        return stub(request);
+      },
+    });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    await user.type(passwordBox(), 'X');
+
+    /* 나가는 중이라 되돌릴 것이 없다 — 진행 잠금이 그대로 서 있는 것이 그 증거다. */
+    expect(submitButton()).toBeDisabled();
+
+    release();
+
+    const banner = await screen.findByRole('alert');
+
+    expect(banner).toHaveTextContent(t.banner.mismatch);
   });
 });

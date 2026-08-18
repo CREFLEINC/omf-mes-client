@@ -2,12 +2,28 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import type { ApiCallResult } from '../../patterns/request';
 import type { LoginDraft } from './login-draft';
 import { toLoginOutcome, type LoginOutcome } from './login-outcome';
 import type { Session } from './types';
 
 /** 응답이 없어 상태 코드를 붙일 수 없는 자리. 상태로 분기하는 갈래에 걸리지 않게 한다. */
 const NO_HTTP_STATUS = 0;
+
+/**
+ * 넘길 세션이 실제로 왔는가.
+ *
+ * ⭐ **없는 본문의 모양이 둘이다** — 본문이 비었거나 204면 `undefined`, 본문이 JSON `null`이면
+ * `null`이 온다(실측). 한쪽만 막으면 나머지 하나가 그대로 성공으로 통과한다.
+ *
+ * ⚠ **전례(`patterns/request.ts`)와 반대로 판단하는 자리다.** 그쪽은 「본문 없는 200(사용 중지
+ * 등)에서는 data가 undefined이며 **그 자체가 정상 결과다**」라고 적어 두었고 그 판단은 그 자리에서
+ * 옳다 — 보낼 것이 없는 쓰기가 실제로 있다. 로그인은 다르다: 이 요청의 200은 **`Session` 본문이
+ * 있어야 뜻이 성립하고**, 없는 것을 성공으로 넘기면 세션을 보관하는 회차가 **빈 세션을 담는다.**
+ * 그때 앱은 「로그인했는데 누구인지 모르는」 상태가 되고, 그 상태를 화면이 알아차릴 수단이 없다.
+ */
+const hasSession = (data: Session | null | undefined): data is Session =>
+  data !== undefined && data !== null;
 
 /**
  * 로그인 실패를 실은 예외.
@@ -51,6 +67,16 @@ interface LoginAttempt {
   idempotencyKey: string;
 }
 
+/**
+ * 잡은 값에서 갈래를 꺼낸다.
+ *
+ * **요청 경로 밖에서 생긴 오류(성공 되먹임 중의 예외 등)는 `network`로 다루지 않는다** —
+ * 원인을 연결 문제로 오인시키면 사용자가 할 수 없는 조치를 하게 된다(전례 `patterns/request.ts`의
+ * `toApiError`와 같은 규율).
+ *
+ * ⚠ **이 자리는 뒤따르는 회차에 자란다.** 세션을 보관하는 회차가 `onSuccess`에 적재를 붙이는데,
+ * 그것이 던지면 여기로 떨어져 `{kind:'unknown', status:0}`이 되고 화면은 아무 말도 하지 않는다.
+ */
 const readOutcome = (cause: unknown): LoginOutcome =>
   cause instanceof LoginFailedError ? cause.outcome : { kind: 'unknown', status: NO_HTTP_STATUS };
 
@@ -72,7 +98,12 @@ export const useLogin = (options: LoginOptions): LoginMutation => {
   const mutation = useMutation({
     /* 요청 함수를 변수로 받아 이 훅이 옛 렌더의 값을 붙잡지 않게 한다. */
     mutationFn: async (attempt: LoginAttempt): Promise<Session> => {
-      let result;
+      /*
+       * 전례와 같은 자리에 같은 표기를 둔다(`patterns/request.ts`의 `ApiCallResult<TData>`).
+       * 본문 타입을 `Session | null`로 넓히는 것은 **계약을 의심해서가 아니라 형태를 신뢰하지
+       * 않기 위해서다** — 아래 `hasSession`이 그 넓힘을 다시 좁힌다.
+       */
+      let result: ApiCallResult<Session | null>;
 
       try {
         result = await client.POST('/app/sessions', {
@@ -88,7 +119,8 @@ export const useLogin = (options: LoginOptions): LoginMutation => {
         throw new LoginFailedError({ kind: 'network' }, { cause });
       }
 
-      if (!result.response.ok || result.data === undefined) {
+      /* 200이어도 넘길 세션이 없으면 성공이 아니다 — 사정은 `hasSession`에 적었다. */
+      if (!result.response.ok || !hasSession(result.data)) {
         throw new LoginFailedError(toLoginOutcome(result.response.status, result.error));
       }
 

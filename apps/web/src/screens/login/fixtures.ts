@@ -62,7 +62,15 @@ export const sessionBody = (overrides: Partial<Session> = {}): Session => ({
  * 지우는 것을 잊으면 그 갈래가 조용히 사라진다.
  */
 const BASE_FAILURE: LoginFailure = {
-  message: '아이디 또는 비밀번호가 맞지 않습니다',
+  /*
+   * ⚠ **계약의 `@example` 문구를 쓰지 않는다** — 이 파일 머리의 금지가 그대로 걸린다.
+   *
+   * 하필 이 자리에서 그 금지가 겨눈 혼동이 실제로 성립한다: 서버가 준 `message`와 화면이 내는
+   * 문구가 거의 같아지면, 배너 시험이 「화면이 자기 문구를 냈다」와 「서버 본문이 그대로
+   * 흘러나왔다」를 가리지 못한다. 이 회차는 401 본문을 버리지만 뒤따르는 회차가 그 본문을
+   * 읽기 시작한다 — 그때 이 값이 정본이었던 것처럼 읽힌다.
+   */
+  message: '합성 실패 문구입니다.',
 };
 
 export const loginFailureBody = (overrides: Partial<LoginFailure> = {}): LoginFailure => ({
