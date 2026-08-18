@@ -13,11 +13,12 @@ import type { RuleView } from './types';
  * | --- | --- | --- |
  * | **소유 구분이 둘 이상** | 자사 재고와 고객 지급품을 더한 비율은 오독이다 | 공유계약 L-7 |
  * | **단위가 다르다** | 환산 정의가 없는 조합이 있고, 화면에 옮길 수단이 없다 | 이슈 §6 |
- * | **용량이 0 이하** | 나누면 화면에 무한대가 서고 그 수가 사용률로 읽힌다 | 계약(「0 은 넣을 수 없다」)과 어긋난 자료 |
+ * | **용량이 0 이하이거나 유한하지 않다** | 나누면 화면에 무한대나 NaN이 서고 그 수가 사용률로 읽힌다 | 계약(「0 은 넣을 수 없다」)과 어긋난 자료 |
+ * | **적재량이 음수** | 장부와 실물이 어긋난 상태다 — 비율은 음수가 되고, 막대는 0으로 잘려 **가장 빈 위치와 같은 모양**이 된다 | 계약이 명시로 허용(「음수 허용 품목에서는 음수가 올 수 있다」) |
  *
  * ## 판정 순서가 뜻을 정한다
  *
- * **줄 없음 → 소유 → 단위 → 용량 → 비율**이다.
+ * **줄 없음 → 소유 → 단위 → 용량 → 음수 → 비율**이다.
  *
  * - **줄 없음이 가장 앞이다.** 견줄 대상이 없으면 말할 것은 「없음」뿐이다 — 뒤에 두면
  *   확인할 잔액도 없는 자리에서 용량·단위 탓을 하는 문구가 선다.
@@ -26,6 +27,13 @@ import type { RuleView } from './types';
  *   선다고 읽는다.
  * - **단위가 용량보다 앞선다.** 단위가 다르면 두 수가 애초에 같은 종류가 아니다 —
  *   용량 값이 무엇이든 견줄 수 없다.
+ * - **용량이 음수 적재보다 앞선다.** 분모가 성립하지 않으면 분자를 볼 것도 없다.
+ *
+ * ## 접는 갈래가 나눗셈의 **양쪽 경계**를 같은 모양으로 덮는다
+ *
+ * 위쪽(100% 초과)은 접지 않고 **경고 톤으로 말한다** — 사용률이 실제로 넘은 것이고 그것이
+ * 운영자가 봐야 할 사실이다. 아래쪽(음수)은 **접는다** — 막대는 `0`으로 잘려 「가장 비어 있다」와
+ * 같은 모양이 되는데 실제로는 장부가 어긋난 상태이고, 둘은 정반대의 조치를 부른다.
  *
  * **축이 섞인 응답은 여기 오지 않는다** — 그 판정은 `balance-lookup.ts`가 한다.
  * 같은 사실을 두 자리에서 판정하면 한쪽만 고쳐져 서로 다른 답을 낸다.
@@ -50,7 +58,7 @@ export type UsageJudgment =
   | { kind: 'ratio'; percent: number; qty: number; uomId: number }
   | {
       kind: 'incomparable';
-      reason: 'ownership' | 'unit' | 'capacity';
+      reason: 'ownership' | 'unit' | 'capacity' | 'negative';
       groups: readonly UsageGroup[];
     }
   | { kind: 'none' };
@@ -98,8 +106,23 @@ export const judgeUsage = (rule: RuleView, rows: readonly BalanceView[]): UsageJ
     return { kind: 'incomparable', reason: 'unit', groups };
   }
 
-  if (rule.capacityQty <= 0) {
+  /*
+   * 분모가 나눗셈의 전제를 만족하는가. **`<= 0`만으로는 반쪽이다** — `NaN <= 0`은 거짓이라
+   * 통과하고 비율이 그대로 `NaN`이 된다. 계약이 이 값을 필수 `number`로 두어 실경로는 없지만,
+   * 「전제가 없으면 계산하지 않는다」를 이 함수 자신의 경계에서 완결시킨다.
+   */
+  if (!Number.isFinite(rule.capacityQty) || rule.capacityQty <= 0) {
     return { kind: 'incomparable', reason: 'capacity', groups };
+  }
+
+  /*
+   * 분자가 음수다 — 계약이 명시로 허용한 값이다(「음수 허용 품목에서는 음수가 올 수 있다」).
+   * 비율을 내면 음수 %가 서는데 **막대는 0으로 잘려 「가장 비어 있는 위치」와 같은 모양**이 된다.
+   * 장부와 실물이 어긋난 상태를 「비어 있다」로 보이면 조치가 정반대로 간다 —
+   * 수량은 사실대로 보이고 비율만 만들지 않는다.
+   */
+  if (groups.some((group) => group.qty < 0)) {
+    return { kind: 'incomparable', reason: 'negative', groups };
   }
 
   const qty = groups.reduce((sum, group) => sum + group.qty, 0);

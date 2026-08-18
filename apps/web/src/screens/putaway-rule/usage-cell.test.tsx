@@ -92,6 +92,18 @@ describe('UsageCell — 막대는 잘리고 수치는 잘리지 않는다', () =
     expect(screen.getByText(t.values.usageSummary('640', UOM_LABEL, '128'))).toBeInTheDocument();
   });
 
+  /**
+   * **100과 128을 수치로 정면으로 가른다.** 막대는 둘 다 `aria-valuenow=100`이라 구분이 지워지고,
+   * 그 구분이 남는 유일한 자리가 이 문자열이다 — 초과 쪽만 재면 「막대에서 지워진 구분이
+   * 수치에 남는다」의 절반만 잰 것이 된다.
+   */
+  it('정확히 100%는 수치도 100으로 적힌다', () => {
+    renderCell(known({ onHandQty: 500 }));
+
+    expect(screen.getByText(t.values.usageSummary('500', UOM_LABEL, '100'))).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
+  });
+
   /** 낭독까지 잘린 값을 읽으면 화면을 보지 않는 사용자에게는 초과 사실이 사라진다. */
   it('낭독 문자열도 자르지 않은 비율을 말한다', () => {
     renderCell(known({ onHandQty: 640 }));
@@ -187,6 +199,37 @@ describe('UsageCell — 판정 불가', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     expect(screen.getByText(t.values.onHandQty('320', UOM_LABEL))).toBeInTheDocument();
     expect(screen.getByText(t.notes.usageCapacityNotPositive)).toBeInTheDocument();
+  });
+
+  /**
+   * **아래쪽 경계.** 음수 적재에 비율을 내면 막대가 `0`으로 잘려 **가장 비어 있는 위치와 같은
+   * 모양**이 되고, 톤은 정상(`success`)이 된다 — 장부가 어긋난 상태를 「비어 있고 여유롭다」로
+   * 보이는 셈이다. 막대를 아예 그리지 않고 수량만 사실대로 낸다.
+   */
+  it('적재가 음수면 막대 없이 음수 수량과 사유가 선다', () => {
+    renderCell(known({ onHandQty: -40 }));
+
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.getByText(t.values.onHandQty('-40', UOM_LABEL))).toBeInTheDocument();
+    expect(screen.getByText(t.notes.usageNegativeOnHand)).toBeInTheDocument();
+  });
+
+  /** 음수는 「없음」이 아니다 — 확인한 결과가 음수인 것이고, 대시로 뭉개면 사실이 사라진다. */
+  it('음수 적재를 없음으로 뭉개지 않는다', () => {
+    renderCell(known({ onHandQty: -40 }));
+
+    expect(screen.getByText(t.notes.usageNegativeOnHand)).toBeInTheDocument();
+    expect(screen.queryByText(t.values.onHandNone)).not.toBeInTheDocument();
+  });
+
+  /**
+   * 내림이 음수에서 0에서 멀어지는 쪽으로 구르는 문제도 이 갈래가 닫는다 —
+   * −0.2%가 「−1%」로 적히던 자리다. 비율 문자열 자체가 서지 않는다.
+   */
+  it('음수 적재에 비율 문자열이 서지 않는다', () => {
+    renderCell(known({ onHandQty: -1 }));
+
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
   });
 });
 

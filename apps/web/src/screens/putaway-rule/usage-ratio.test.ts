@@ -177,6 +177,69 @@ describe('judgeUsage — 용량이 나눌 수 없는 값일 때', () => {
   it('용량이 0이고 잔액 줄도 없으면 없음이다', () => {
     expect(judgeUsage({ ...RULE_WITH_LOCATION, capacityQty: 0 }, [])).toEqual({ kind: 'none' });
   });
+
+  /**
+   * `NaN <= 0`은 **거짓**이라 크기 비교만으로는 통과한다 — 그러면 비율이 그대로 `NaN`이 되고
+   * 화면에 「NaN%」가 선다. 계약이 이 값을 필수 `number`로 두어 실경로는 없지만, 이 함수의
+   * 원칙(전제가 없으면 계산하지 않는다)을 자기 경계에서 완결시킨다.
+   */
+  it('용량이 수가 아니면 비율을 만들지 않는다', () => {
+    expect(
+      judgeUsage({ ...RULE_WITH_LOCATION, capacityQty: Number.NaN }, rowsOf({ onHandQty: 320 })),
+    ).toMatchObject({ kind: 'incomparable', reason: 'capacity' });
+  });
+
+  it('용량이 무한대여도 비율을 만들지 않는다', () => {
+    expect(
+      judgeUsage(
+        { ...RULE_WITH_LOCATION, capacityQty: Number.POSITIVE_INFINITY },
+        rowsOf({ onHandQty: 320 }),
+      ),
+    ).toMatchObject({ kind: 'incomparable', reason: 'capacity' });
+  });
+});
+
+/**
+ * **계약이 명시로 허용한 값이다** — `InventoryBalance.onHandQty`에 「음수 허용 품목에서는 음수가
+ * 올 수 있다」가 적혀 있다. 장부와 실물이 어긋난 상태이며, 비율을 내면 막대가 0으로 잘려
+ * **가장 비어 있는 위치와 같은 모양**이 된다. 둘은 정반대의 조치를 부른다.
+ */
+describe('judgeUsage — 적재량이 음수일 때', () => {
+  it('음수 적재는 비율을 만들지 않고 수량을 사실대로 낸다', () => {
+    expect(judgeUsage(RULE_WITH_LOCATION, rowsOf({ onHandQty: -40 }))).toEqual({
+      kind: 'incomparable',
+      reason: 'negative',
+      groups: [{ ownershipTypeCode: OWNERSHIP_A, qty: -40, uomId: 9401 }],
+    });
+  });
+
+  /** 더한 결과가 음수면 접는다 — 묶음 안에서 상쇄되는 줄은 정상 자료다. */
+  it('줄끼리 상쇄돼 합이 양수면 비율이 선다', () => {
+    expect(
+      judgeUsage(RULE_WITH_LOCATION, rowsOf({ onHandQty: -40 }, { onHandQty: 360 })),
+    ).toMatchObject({ kind: 'ratio', qty: 320, percent: 64 });
+  });
+
+  it('합이 정확히 0이면 비율 0%다 — 음수가 아니다', () => {
+    expect(
+      judgeUsage(RULE_WITH_LOCATION, rowsOf({ onHandQty: -40 }, { onHandQty: 40 })),
+    ).toMatchObject({ kind: 'ratio', qty: 0, percent: 0 });
+  });
+
+  /** **분모가 성립하지 않으면 분자를 볼 것도 없다** — 용량 판정이 음수 판정보다 앞선다. */
+  it('용량이 0이고 적재도 음수면 용량으로 판정한다', () => {
+    expect(
+      judgeUsage({ ...RULE_WITH_LOCATION, capacityQty: 0 }, rowsOf({ onHandQty: -40 })),
+    ).toMatchObject({ kind: 'incomparable', reason: 'capacity' });
+  });
+
+  /** 단위가 갈리는 것이 음수보다 앞선다 — 같은 종류의 수가 아니면 부호를 따질 것도 없다. */
+  it('단위가 다르고 적재도 음수면 단위로 판정한다', () => {
+    expect(judgeUsage(RULE_WITH_LOCATION, rowsOf({ uomId: 9402, onHandQty: -40 }))).toMatchObject({
+      kind: 'incomparable',
+      reason: 'unit',
+    });
+  });
 });
 
 describe('judgeUsage — 축이 다른 줄', () => {

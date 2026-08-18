@@ -23,7 +23,11 @@ export const USAGE_FALLBACK_TONE: ProgressTone = 'warning';
  * 눈에 보이는 비율은 **내림**이다.
  *
  * 반올림하면 99.6%가 「100%」로 적히는데 막대는 아직 정상 톤이라 문자열과 색이 어긋난다.
- * 내림은 `floor(x) >= 100`과 `x >= 100`이 같은 뜻이라 두 자리의 경계가 어긋날 수 없다.
+ * 내림은 `floor(x) >= 100`과 `x >= 100`이 같은 뜻이라 **경고 경계에서** 두 자리가 어긋날 수 없다.
+ *
+ * ⚠ **이 성질은 0 이상에서만 성립한다.** 음수에서 `Math.floor`는 0에서 멀어지는 쪽으로 굴러
+ * −0.2%가 「−1%」로 적힌다. 그래서 음수는 여기 오기 전에 접힌다(`judgeUsage`의 `negative` 갈래) —
+ * **이 함수는 0 이상만 받는다는 전제 위에 서 있다.**
  */
 const toPercentText = (percent: number): string => String(Math.floor(percent));
 
@@ -59,6 +63,8 @@ const incomparableNote = (reason: IncomparableReason): string => {
       return t.notes.usageUnitMismatch;
     case 'capacity':
       return t.notes.usageCapacityNotPositive;
+    case 'negative':
+      return t.notes.usageNegativeOnHand;
   }
 };
 

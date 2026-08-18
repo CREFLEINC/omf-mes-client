@@ -900,6 +900,26 @@ describe('PutawayRuleScreen — 현재 적재와 사용률', () => {
     );
   });
 
+  /**
+   * 계약이 명시로 허용한 음수 적재(음수 허용 품목). 비율을 내면 막대가 0으로 잘려 **가장 비어
+   * 있는 위치와 같은 모양**이 되는데, 장부가 어긋난 상태와 여유로운 위치는 정반대의 조치를
+   * 부른다 — 화면 배선까지 그 갈래가 살아 있는지 잰다.
+   */
+  it('적재가 음수인 규칙은 비율 없이 음수 수량과 사유가 선다', async () => {
+    const negative: StubRoute = {
+      match: (request) => isGet(request, BALANCES_PATH),
+      respond: () => jsonResponse(listBody([balanceRow({ onHandQty: -40 })])),
+    };
+
+    renderScreen(WITH_WAREHOUSE, allRoutes([negative]));
+
+    expect(await screen.findAllByText(t.notes.usageNegativeOnHand)).not.toHaveLength(0);
+    expect(screen.getAllByText(t.values.onHandQty('-40', UOM_LABEL)).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('progressbar', { name: t.values.usageBarLabel }),
+    ).not.toBeInTheDocument();
+  });
+
   /** 실패를 「없음」으로 뭉개면 화면이 확인한 적 없는 것을 사실로 말하게 된다. */
   it('잔액 조회가 실패해도 목록은 서고 그 칸이 실패로 말한다', async () => {
     renderScreen(WITH_WAREHOUSE, allRoutes([failing(BALANCES_PATH)]));

@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { findRuleBalance, toBalanceTargets } from './balance-lookup';
+import { findRuleBalance, toBalanceTargets, type RuleBalance } from './balance-lookup';
 import { duplicateRuleIds } from './duplicate-badge';
 import {
   DEFAULT_FILTERS,
@@ -139,7 +139,8 @@ export const PutawayRuleScreen = () => {
   const uomLabelOf = (uomId: number): string => describeReference(toReference(uoms, uomId));
   const locationLabelOf = (locationId: number | null): string =>
     describeLocation(toLocation(locations, locationId));
-  const balanceOf = (rule: RuleView) => findRuleBalance(balances, rule);
+  /** 반환 타입을 적어 둔다 — 표에 넘기는 것이 **세 갈래 합타입**이라는 사실이 선언에서 읽힌다. */
+  const balanceOf = (rule: RuleView): RuleBalance => findRuleBalance(balances, rule);
 
   /**
    * 조건이 바뀌면 **첫 쪽으로 가고 선택이 사라진다.** 보이는 행이 달라지므로 지금 쪽도 고른
