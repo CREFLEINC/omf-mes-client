@@ -9,9 +9,10 @@ import type { PageMeta, PutawayRule, RuleFilters, UncoveredItem } from './types'
  * 적치 규칙의 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 키 모듈을 참조하지 않는다.
  *
- * **이 회차에는 쓰기가 없다.** 잠금 토큰 경로 함수·조준 조회는 그것을 쓰는 회차가 함께
- * 가져온다 — 지금 두면 쓰이지 않는 통로가 되고, 죽은 통로는 다음 사본으로 전파된다
- * (사본 체크리스트 7번).
+ * **이 회차에는 쓰기가 없다.** 그래서 쓰기만 쓰는 것을 하나도 두지 않는다 —
+ * 잠금 토큰 경로 함수·조준 조회·**무효화 뿌리 키**가 전부 그것을 쓰는 회차 몫이다.
+ * 지금 두면 쓰이지 않는 통로가 되고, 죽은 통로는 다음 사본으로 전파된다(사본 체크리스트 7번).
+ * 기준을 한 파일 안에서 갈라 두지 않으려고 셋을 같은 사유로 함께 미룬다.
  */
 
 export interface RuleListResponse {
@@ -24,15 +25,18 @@ export interface UncoveredListResponse {
   page: PageMeta;
 }
 
+/**
+ * 캐시 키. **첫 조각(`'putaway-rules'`)을 둘이 나눠 갖는 것이 규약이다** — 쓰기가 붙는 회차가
+ * 그 접두 하나(`putawayRuleKeys.all`)로 목록과 규칙 없는 품목을 함께 무효화한다. 규칙을 고치면
+ * 규칙 없는 품목 수도 함께 달라지므로 무효화 범위가 갈리면 안 된다.
+ */
 export const putawayRuleKeys = {
-  /**
-   * 이 슬라이스의 조회 전부를 덮는 뿌리 키. **모든 쓰기가 성공 뒤 이 하나를 무효화한다** —
-   * 규칙을 고치면 규칙 없는 품목 수도 함께 달라지므로 무효화 범위가 갈리면 안 된다.
-   */
-  all: ['putaway-rules'] as const,
   list: (filters: RuleFilters, page: number) => ['putaway-rules', 'list', filters, page] as const,
-  uncovered: (warehouseId: number, page: number) =>
-    ['putaway-rules', 'uncovered', warehouseId, page] as const,
+  /**
+   * 규칙 없는 품목은 **창고마다** 캐시가 갈린다. 쪽은 키에 두지 않는다 — 이 화면은 첫 쪽만
+   * 부르고 나머지는 잘림 문구가 말한다(`uncovered-items-pane.tsx`).
+   */
+  uncovered: (warehouseId: number) => ['putaway-rules', 'uncovered', warehouseId] as const,
 };
 
 /**
@@ -80,15 +84,18 @@ export const useRuleList = (
  *
  * 계약이 `warehouseId`를 **필수 쿼리**로 요구한다 — 세는 범위가 정해지지 않으면 요청 자체가
  * 성립하지 않는다.
+ *
+ * **쪽 인자를 두지 않는다.** 이 화면은 첫 쪽만 부르고 나머지는 잘림 문구가 말하는 설계다 —
+ * 옮길 손잡이가 없는데 인자만 두면 「쪽을 옮길 수 있다」는 통로가 열린 채로 굳는다
+ * (사본 체크리스트 7번). 쪽 이동이 필요해지는 회차가 그때 인자와 손잡이를 함께 가져온다.
  */
 export const useUncoveredItems = (
   warehouseId: number | null,
-  page: number,
 ): UseQueryResult<UncoveredListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: putawayRuleKeys.uncovered(warehouseId ?? 0, page),
+    queryKey: putawayRuleKeys.uncovered(warehouseId ?? 0),
     enabled: warehouseId !== null,
     queryFn: () => {
       if (warehouseId === null) {
@@ -97,7 +104,7 @@ export const useUncoveredItems = (
 
       return runRequest(() =>
         client.GET('/logistics/putaway-rules/uncovered-items', {
-          params: { query: toUncoveredQuery(warehouseId, page) },
+          params: { query: toUncoveredQuery(warehouseId) },
         }),
       );
     },

@@ -337,6 +337,129 @@ describe('PutawayRuleScreen — 창고를 고른 뒤', () => {
   });
 });
 
+/**
+ * **일부만 실패한 갈래의 배선** — 목록은 200인데 이름 풀이 하나가 500이다.
+ *
+ * 갈래는 `lookups.ts`가 갖고 표는 pane이 그리지만, **둘을 잇는 것은 화면이다.** 화면이
+ * 실패를 삼키면(`isError`를 넘기지 않으면) 실패한 칸이 「알 수 없음」으로 보이는데, 그 문구는
+ * *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다 — 정상 값에 잘못된 값이라는 표를 붙이는 셈이다.
+ *
+ * 이 자리는 단위 시험(갈래)·부품 시험(표) 어느 쪽도 지나지 않는다. 화면에서 실제 실패 응답으로 잰다.
+ */
+describe('PutawayRuleScreen — 이름 풀이만 실패한 갈래', () => {
+  /**
+   * 규칙 표가 실제로 섰음을 잡는 시점. **행이 서기 전에 「없다」를 재면 아직 아무것도 없는
+   * 화면에서 항상 통과하는 무의미한 단언이 된다**(사본 체크리스트 9번).
+   */
+  const waitForRuleTable = async (): Promise<HTMLElement> => {
+    const rows = await screen.findAllByRole('button', { name: /선택$/ });
+
+    expect(rows.length).toBeGreaterThan(0);
+
+    return screen.getAllByRole('table')[0] as HTMLElement;
+  };
+
+  /** 품목 칸은 고르기 버튼이 곧 칸이다 — 그 칸만 따로 읽어야 다른 열의 문면과 섞이지 않는다. */
+  const itemCellTexts = (table: HTMLElement): string[] =>
+    within(table)
+      .getAllByRole('button')
+      .map((cell) => cell.textContent ?? '');
+
+  it('품목 이름 풀이가 실패하면 품목 칸이 실패 문면이 되고 「알 수 없음」으로 보이지 않는다', async () => {
+    renderScreen(WITH_WAREHOUSE, allRoutes([failing(ITEMS_PATH)]));
+
+    const table = await waitForRuleTable();
+
+    /* 목록은 200으로 섰다 — 위치·용량은 정상으로 풀린다. 실패한 것은 품목 하나뿐이다. */
+    expect(within(table).getByText(LOCATION_LABEL)).toBeInTheDocument();
+    expect(within(table).getByText(t.values.capacity('500', UOM_LABEL))).toBeInTheDocument();
+
+    /* 품목 칸 전부가 실패 문면이고, 어느 칸도 「알 수 없음」으로 뭉개지지 않았다. */
+    expect(new Set(itemCellTexts(table))).toEqual(new Set([t.values.referenceFailed]));
+    expect(itemCellTexts(table)).not.toContain(t.values.unknown);
+
+    /* 실패에도 내부 번호를 대신 내지 않는다(`omf-mes#44`). */
+    expect(table.textContent).not.toContain('9101');
+  });
+
+  it('위치 이름 풀이가 실패하면 위치 칸이 실패 문면이 되고 창고 전체는 흔들리지 않는다', async () => {
+    renderScreen(WITH_WAREHOUSE, allRoutes([failing(LOCATIONS_PATH)]));
+
+    const table = await waitForRuleTable();
+
+    /* 품목은 정상으로 풀린다 — 실패는 위치 축에만 있다. */
+    expect(itemCellTexts(table)).toContain(ITEM_LABEL);
+    expect(within(table).getAllByText(t.values.referenceFailed).length).toBeGreaterThan(0);
+
+    /*
+     * 「창고 전체」는 이름 목록을 필요로 하지 않는 **확정된 뜻**이다 —
+     * 참조 조회가 실패해도 흔들리면 안 된다(다섯째 갈래가 네 갈래보다 앞선다).
+     */
+    expect(within(table).getByText(t.values.warehouseWide)).toBeInTheDocument();
+    expect(table.textContent).not.toContain('9301');
+  });
+
+  it('단위 이름 풀이가 실패하면 용량이 실패 문면과 함께 서고 수량은 남는다', async () => {
+    renderScreen(WITH_WAREHOUSE, allRoutes([failing(UOMS_PATH)]));
+
+    const table = await waitForRuleTable();
+
+    /* 수량은 서버가 준 사실이라 지우지 않는다 — 못 푼 것은 단위 이름뿐이다. */
+    expect(
+      within(table).getByText(t.values.capacity('500', t.values.referenceFailed)),
+    ).toBeInTheDocument();
+    expect(table.textContent).not.toContain('9401');
+  });
+});
+
+/**
+ * **이름 목록이 잘린 갈래.** 위치·단위는 고르는 칸이 없어 그 잘림을 말할 자리가 표뿐이다 —
+ * 밝히지 않으면 잘린 목록으로 이름을 푼 **정상 규칙**이 「알 수 없음」으로 보이고, 그 문구는
+ * *값이 잘못됐다*는 뜻이라 사용자가 정확히 반대로 읽는다.
+ */
+describe('PutawayRuleScreen — 이름 목록이 잘린 갈래', () => {
+  it('전부 다 왔으면 잘림 안내가 서지 않는다', async () => {
+    renderScreen(WITH_WAREHOUSE);
+
+    await waitForRows();
+
+    expect(screen.queryByText(t.notes.nameLookupTruncated)).not.toBeInTheDocument();
+  });
+
+  it('위치 목록이 잘리면 표 아래에 그 사실이 선다', async () => {
+    renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([route(LOCATIONS_PATH, locationFixtures, { total: 9999 })]),
+    );
+
+    await waitForRows();
+
+    expect(await screen.findByText(t.notes.nameLookupTruncated)).toBeInTheDocument();
+  });
+
+  /** 단위 축도 따로 잰다 — 한 축만 이어 두면 다른 축의 잘림이 조용히 사라진다. */
+  it('단위 목록이 잘리면 표 아래에 그 사실이 선다', async () => {
+    renderScreen(WITH_WAREHOUSE, allRoutes([route(UOMS_PATH, uomFixtures, { total: 9999 })]));
+
+    await waitForRows();
+
+    expect(await screen.findByText(t.notes.nameLookupTruncated)).toBeInTheDocument();
+  });
+
+  /**
+   * 창고·품목은 **자기 선택칸**이 잘림을 말한다 — 표 아래 안내가 그 몫까지 가져가면 같은
+   * 사실이 두 자리에 서고, 어느 축이 잘렸는지가 흐려진다.
+   */
+  it('품목 목록이 잘리면 선택칸이 말하고 표 아래 안내는 서지 않는다', async () => {
+    renderScreen(WITH_WAREHOUSE, allRoutes([route(ITEMS_PATH, itemFixtures, { total: 9999 })]));
+
+    await waitForRows();
+
+    expect(await screen.findByText(t.filters.lookupTruncated)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.nameLookupTruncated)).not.toBeInTheDocument();
+  });
+});
+
 describe('PutawayRuleScreen — 조건과 쪽', () => {
   it('품목 조건이 조회와 주소에 함께 실린다', async () => {
     const { urls, user } = renderScreen(WITH_WAREHOUSE);

@@ -126,7 +126,7 @@ describe('useUncoveredItems', () => {
   it('창고를 고르기 전에는 부르지 않는다', () => {
     const { fetch, urls } = recordingFetch([uncoveredRoute()]);
 
-    renderHookWithProviders(() => useUncoveredItems(null, 1), { fetch });
+    renderHookWithProviders(() => useUncoveredItems(null), { fetch });
 
     expect(countOf(urls, UNCOVERED_PATH)).toBe(0);
   });
@@ -137,7 +137,7 @@ describe('useUncoveredItems', () => {
    */
   it('창고만 싣고 목록 조건을 싣지 않는다', async () => {
     const { fetch, urls } = recordingFetch([uncoveredRoute()]);
-    const { result } = renderHookWithProviders(() => useUncoveredItems(9201, 1), { fetch });
+    const { result } = renderHookWithProviders(() => useUncoveredItems(9201), { fetch });
 
     await waitFor(() => {
       expect(result.current.data?.items).toHaveLength(uncoveredItemFixtures.length);
@@ -153,7 +153,7 @@ describe('useUncoveredItems', () => {
   /** 0건이 정상이며 좋은 상태다 — 빈 목록을 실패로 다루지 않는다. */
   it('0건도 성공이다', async () => {
     const { fetch } = recordingFetch([uncoveredRoute([], 0)]);
-    const { result } = renderHookWithProviders(() => useUncoveredItems(9201, 1), { fetch });
+    const { result } = renderHookWithProviders(() => useUncoveredItems(9201), { fetch });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

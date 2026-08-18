@@ -20,11 +20,16 @@ export interface LookupEntry {
   isActive: boolean;
 }
 
+/**
+ * **`disabled`를 두지 않는다.** 디자인 시스템 `Select`는 옵션별 잠금을 지원하지만 이 회차에
+ * 그 값을 설정하는 자리가 없다 — 이 화면은 고를 수 없는 값을 잠그는 대신 ` (미사용)` 표식만
+ * 붙인다(미사용 값도 조건으로는 고를 수 있어야 한다). 정의만 남기면 「이 슬라이스에 그 기능이
+ * 없다」가 타입 수준의 사실이 되지 못하고, 죽은 통로가 다음 사본으로 전파된다
+ * (사본 체크리스트 7번).
+ */
 export interface SelectOption {
   value: string;
   label: string;
-  /** 디자인 시스템 `Select`가 옵션별 잠금을 지원한다. 고를 수 없는 선택지를 감추지 않고 잠근다. */
-  disabled?: boolean;
 }
 
 /**

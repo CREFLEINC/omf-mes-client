@@ -1,10 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { uncoveredItemFixtures } from './fixtures';
-import { UncoveredItemsPane, type UncoveredItemsPaneProps } from './uncovered-items-pane';
+import {
+  UncoveredItemsPane,
+  formatDateTime,
+  type UncoveredItemsPaneProps,
+} from './uncovered-items-pane';
 
 const t = messages.putawayRule;
 
@@ -25,6 +29,67 @@ const renderPane = (overrides: Partial<UncoveredItemsPaneProps> = {}) => {
 
 const expandToggle = (): HTMLElement =>
   screen.getByRole('button', { name: t.actions.expandUncovered });
+
+/**
+ * `formatDateTime`이 존재하는 이유는 **두 조항**이다. 렌더 감지기는 정상 형식 한 갈래만
+ * 지나므로 두 조항 어느 쪽도 재지 못한다 — 함수를 직접 부르는 단위 감지기를 따로 둔다
+ * (전례 6화면이 예외 없이 갖는 형태).
+ */
+describe('formatDateTime — 조항 ⓐ 실행 환경 시간대로 옮기지 않는다', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * **고정 시각만으로는 잴 수 없다.** 기계 시간대가 `Asia/Seoul`이면 픽스처의 `+09:00`과
+   * 변환 결과가 같아 원리상 구분되지 않는다 — 시간대 자체를 갈아 끼워 **세 시간대에서
+   * 결과가 흔들리지 않음**을 잰다.
+   */
+  it.each([
+    ['UTC+09:00 (동쪽)', -540],
+    ['UTC-05:00 (서쪽)', 300],
+    ['UTC±00:00 (본초)', 0],
+  ])('%s 에서도 실려 온 시각을 그대로 낸다', (_label, offsetMinutes) => {
+    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(offsetMinutes);
+
+    expect(formatDateTime('2026-08-06T09:14:00+09:00')).toBe('2026-08-06 09:14');
+  });
+
+  /**
+   * **`+00:00` 경계** — 벽시계 숫자가 같고 offset만 다른 두 값은 서로 다른 순간이지만,
+   * 서버가 적어 보낸 벽시계 표기는 같다. 옮기는 구현은 여기서 두 값을 갈라 놓는다.
+   */
+  it('벽시계가 같고 offset만 다르면 표기도 같다', () => {
+    const seoul = formatDateTime('2026-08-06T09:14:00+09:00');
+    const utc = formatDateTime('2026-08-06T09:14:00+00:00');
+
+    expect(seoul).toBe('2026-08-06 09:14');
+    expect(utc).toBe('2026-08-06 09:14');
+    expect(seoul).toBe(utc);
+  });
+
+  it('벽시계 숫자가 다르면 표기도 다르다', () => {
+    expect(formatDateTime('2026-08-06T18:14:00+00:00')).toBe('2026-08-06 18:14');
+  });
+});
+
+describe('formatDateTime — 조항 ⓑ 형식이 아니면 원문을 그대로 낸다', () => {
+  /**
+   * 「—」로 바꾸면 **값이 없는 것과 못 알아본 것이 구분되지 않는다.** 서버가 보낸 값을 화면이
+   * 삼키지 않는다 — 없는 값은 호출부가 `t.values.neverReceived`로 따로 말한다.
+   */
+  it.each(['2026-08-06', '알 수 없는 값', '', '2026/08/06 09:14'])(
+    '형식이 아닌 값(%s)은 원문 그대로 낸다',
+    (raw) => {
+      expect(formatDateTime(raw)).toBe(raw);
+    },
+  );
+
+  it('원문을 대시로 바꾸지 않는다', () => {
+    expect(formatDateTime('2026-08-06')).not.toBe('—');
+    expect(formatDateTime('')).not.toBe('—');
+  });
+});
 
 describe('UncoveredItemsPane — 건수', () => {
   /**

@@ -10,9 +10,11 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  LOCATION_PAGE_SIZE,
   describeLocation,
   describeReference,
   lookupNote,
+  nameLookupTruncatedNote,
   toLocation,
   toReference,
   toSelectOptions,
@@ -177,6 +179,42 @@ describe('lookupNote', () => {
   });
 });
 
+/**
+ * **선택칸이 없는 참조의 잘림을 읽는 자리.** 위치·단위는 표 칸에만 쓰여 `lookupNote`가 닿지
+ * 않는다 — 이 함수가 없으면 `truncated`를 계산만 하고 아무도 보지 않게 된다.
+ */
+describe('nameLookupTruncatedNote', () => {
+  it('아무것도 잘리지 않았으면 안내가 없다', () => {
+    expect(nameLookupTruncatedNote(sourceOf(), sourceOf())).toBeUndefined();
+  });
+
+  /** 축마다 따로 잰다 — 한 축만 잘려도 그 사실이 화면에 서야 한다. */
+  it('첫째 축이 잘리면 안내를 낸다', () => {
+    expect(nameLookupTruncatedNote(sourceOf({ truncated: true }), sourceOf())).toBe(
+      t.notes.nameLookupTruncated,
+    );
+  });
+
+  it('둘째 축이 잘리면 안내를 낸다', () => {
+    expect(nameLookupTruncatedNote(sourceOf(), sourceOf({ truncated: true }))).toBe(
+      t.notes.nameLookupTruncated,
+    );
+  });
+
+  /**
+   * 실패는 여기서 말하지 않는다 — 실패한 축은 그 칸이 이미 「이름을 불러오지 못했습니다」로
+   * 스스로 말한다. 표 아래에서 한 번 더 말하면 같은 사실이 두 자리에 선다.
+   */
+  it('실패만으로는 잘림 안내를 내지 않는다', () => {
+    expect(nameLookupTruncatedNote(sourceOf({ isError: true }), sourceOf())).toBeUndefined();
+  });
+
+  /** 안내 문면이 선택칸 쪽 문면과 달라야 한다 — 고를 칸이 없는데 「선택지」라 말하면 어긋난다. */
+  it('선택칸 안내와 다른 문면이다', () => {
+    expect(t.notes.nameLookupTruncated).not.toBe(t.filters.lookupTruncated);
+  });
+});
+
 /* ── 조회 훅 ─────────────────────────────────────────────────────────── */
 
 const WAREHOUSES_PATH = '/mdm/warehouses';
@@ -262,6 +300,31 @@ describe('useLocationLookup', () => {
     expect(query?.has('itemId')).toBe(false);
     expect(query?.has('q')).toBe(false);
   });
+
+  /**
+   * **넷 중 여기에만 쪽 크기를 싣는다.** Location은 한 창고 안에서 가장 커지기 쉬운 축이라
+   * 서버 기본 쪽 크기로는 잘릴 수 있고, 잘린 목록으로 이름을 풀면 정상 규칙이 「알 수 없음」이 된다.
+   */
+  it('쪽 크기를 명시해 잘림을 완화한다', async () => {
+    const { fetch, urls } = recordingFetch([route(LOCATIONS_PATH, locationFixtures)]);
+    const { result } = renderHookWithProviders(() => useLocationLookup(9201), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries.length).toBeGreaterThan(0);
+    });
+
+    expect(urls[0]?.searchParams.get('size')).toBe(String(LOCATION_PAGE_SIZE));
+  });
+
+  /** 완화는 보장이 아니다 — 그래도 잘리면 `truncated`가 그 사실을 밝힌다. */
+  it('완화해도 잘리면 잘림을 밝힌다', async () => {
+    const { fetch } = recordingFetch([route(LOCATIONS_PATH, locationFixtures, 9999)]);
+    const { result } = renderHookWithProviders(() => useLocationLookup(9201), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.truncated).toBe(true);
+    });
+  });
 });
 
 describe('useItemLookup', () => {
@@ -307,6 +370,16 @@ describe('useUomLookup', () => {
       expect(result.current.entries).toHaveLength(uomFixtures.length);
     });
     expect(urls[0]?.searchParams.has('q')).toBe(false);
+  });
+
+  /** 단위도 잘리면 그 사실이 읽는 쪽에 닿아야 한다 — 표가 그것을 말하는 유일한 자리다. */
+  it('잘리면 잘림을 밝힌다', async () => {
+    const { fetch } = recordingFetch([route(UOMS_PATH, uomFixtures, 9999)]);
+    const { result } = renderHookWithProviders(() => useUomLookup(true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.truncated).toBe(true);
+    });
   });
 
   it('조회가 실패하면 실패를 밝힌다 — 빈 목록으로 뭉개지 않는다', async () => {

@@ -38,6 +38,12 @@ export interface RuleListPaneProps {
   locationLabel: (locationId: number | null) => string;
   uomLabel: (uomId: number) => string;
   /**
+   * 이름 목록이 잘렸다는 안내. **위치·단위는 고르는 칸이 없어 표가 그 사실을 말하는 유일한
+   * 자리다** — 밝히지 않으면 잘린 목록으로 이름을 푼 정상 규칙이 「알 수 없음」으로 보이고
+   * 사용자는 그것을 *값이 잘못됐다*로 읽는다.
+   */
+  nameLookupNote?: string;
+  /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 규칙이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
@@ -67,6 +73,7 @@ export const RuleListPane = ({
   itemLabel,
   locationLabel,
   uomLabel,
+  nameLookupNote,
   loadError,
 }: RuleListPaneProps) => {
   const columns: Column<RuleView>[] = [
@@ -190,6 +197,11 @@ export const RuleListPane = ({
         /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
         empty={emptySlot}
       />
+      {/*
+       * 잘림 안내가 건수보다 앞선다 — 건수를 먼저 읽으면 그 아래 표를 이미 사실로 받아들인
+       * 뒤다. 표를 어떻게 읽어야 하는지를 말하는 문장이 표 바로 아래에 서야 한다.
+       */}
+      {nameLookupNote !== undefined && <p className="field-note">{nameLookupNote}</p>}
       <p className="field-note">{t.notes.activeCountInPage(activeCountInPage)}</p>
       <PageNav view={pageView} onChange={onChangePage} />
     </>

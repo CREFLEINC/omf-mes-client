@@ -170,12 +170,16 @@ describe('toUncoveredQuery', () => {
    * **목록 조건을 싣지 않는다.** 규칙 없는 품목은 창고 전체의 사실이며, 품목 조건으로 좁히면
    * 「이 창고에 규칙 없는 품목이 몇 건인가」가 조건에 따라 달라져 그 수를 근거로 쓸 수 없다.
    */
-  it('창고와 쪽만 싣는다', () => {
-    expect(toUncoveredQuery(9201, 2)).toEqual({ warehouseId: 9201, page: 2 });
+  it('창고만 싣는다', () => {
+    expect(toUncoveredQuery(9201)).toEqual({ warehouseId: 9201 });
   });
 
-  it('첫 쪽은 싣지 않는다', () => {
-    expect(toUncoveredQuery(9201, 1)).toEqual({ warehouseId: 9201 });
+  /**
+   * 이 화면은 첫 쪽만 부르고 나머지는 잘림 문구가 말한다 — **쪽 인자를 두지 않는 것이
+   * 그 사실을 타입으로 만든다**(사본 체크리스트 7번).
+   */
+  it('쪽을 실을 자리가 없다', () => {
+    expect(Object.keys(toUncoveredQuery(9201))).toEqual(['warehouseId']);
   });
 });
 
@@ -225,8 +229,9 @@ describe('clearFilter', () => {
   });
 
   /**
-   * 창고를 풀면 품목도 함께 풀린다 — 품목 선택지가 창고로 좁혀지므로, 창고 없이 남은 품목
-   * 조건은 사용자가 화면에서 고칠 수 없는 조건이 된다.
+   * 창고를 풀면 품목도 함께 풀린다 — **뜻을 잃기 때문이다.** 품목 조건은 「이 창고 안에서
+   * 이 품목의 규칙」이라는 뜻이라, 창고가 없어지면 남은 품목 조건이 무엇을 가리키는지
+   * 정해지지 않는다. 품목 **선택지**가 창고로 좁혀져서가 아니다 — 좁히지 않는다(체크리스트 10번).
    */
   it('창고를 풀면 품목 조건도 함께 풀린다', () => {
     const next = clearFilter(filtersOf({ warehouseId: '9201', itemId: '9101' }), 'warehouseId');

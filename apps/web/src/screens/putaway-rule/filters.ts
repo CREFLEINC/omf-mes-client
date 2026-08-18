@@ -146,10 +146,14 @@ export const toRuleListQuery = (filters: RuleFilters, page: number): RuleListQue
   ...(page > 1 ? { page } : {}),
 });
 
-/** 계약이 쓰는 규칙 없는 품목 쿼리 이름. 창고는 **필수**다. */
+/**
+ * 계약이 쓰는 규칙 없는 품목 쿼리 이름. 창고는 **필수**다.
+ *
+ * **`page`·`size`를 두지 않는다.** 이 화면은 첫 쪽만 부르고 나머지는 잘림 문구가 말한다 —
+ * 옮길 손잡이가 없는데 인자만 두면 죽은 통로가 된다(사본 체크리스트 7번).
+ */
 export interface UncoveredQuery {
   warehouseId: number;
-  page?: number;
 }
 
 /**
@@ -159,10 +163,7 @@ export interface UncoveredQuery {
  * 라는 창고 전체의 사실이며, 조건으로 좁히면 조건에 따라 수가 달라져 근거로 쓸 수 없다.
  * 「사용 중만」도 싣지 않는다 — 계약이 활성 규칙이 없는 품목을 세므로 그 판정은 서버 몫이다.
  */
-export const toUncoveredQuery = (warehouseId: number, page: number): UncoveredQuery => ({
-  warehouseId,
-  ...(page > 1 ? { page } : {}),
-});
+export const toUncoveredQuery = (warehouseId: number): UncoveredQuery => ({ warehouseId });
 
 export type FilterKey = keyof RuleFilters;
 
@@ -216,8 +217,14 @@ export const toFilterChips = (
 /**
  * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.
  *
- * **창고를 풀면 품목도 함께 푼다.** 품목 선택지는 고른 창고로 좁혀지므로, 창고 없이 남은
- * 품목 조건은 사용자가 화면에서 고칠 수도 풀 수도 없는 조건이 된다.
+ * **창고를 풀면 품목도 함께 푼다 — 뜻을 잃기 때문이지 목록이 좁아지기 때문이 아니다.**
+ * 이 화면에서 품목 조건은 「이 창고 안에서 이 품목의 규칙」이라는 뜻이라, 창고가 없어지면
+ * 남은 품목 조건이 무엇을 가리키는지 정해지지 않는다.
+ *
+ * ⚠ **품목 선택지 자체는 창고로 좁히지 않는다**(사본 체크리스트 10번 · `#47`). 창고는
+ * 품목 조회를 **여느냐 마느냐**만 정하고 **무엇을 받느냐**는 정하지 않는다 — 좁힌 목록으로
+ * 이름을 풀면 좁힘 밖의 정상 자료가 「알 수 없음」으로 보인다. 이 파일의 어느 규칙도
+ * 그 좁힘을 근거로 삼지 않는다.
  */
 export const clearFilter = (filters: RuleFilters, key: FilterKey): RuleFilters => {
   switch (key) {

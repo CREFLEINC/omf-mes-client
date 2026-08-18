@@ -9,9 +9,12 @@ import type { RuleFilters, SelectOption } from './types';
 
 const t = messages.putawayRule;
 
+/** 미사용 표식이 붙은 선택지의 이름. **한 파일 안에서 이 문자열을 짓는 자리는 여기 하나다.** */
+const INACTIVE_WAREHOUSE_OPTION_LABEL = `SYN-WH-02 · 합성창고 나${t.values.inactiveSuffix}`;
+
 const warehouseOptions: SelectOption[] = [
   { value: '9201', label: 'SYN-WH-01 · 합성창고 가' },
-  { value: '9202', label: `SYN-WH-02 · 합성창고 나${t.values.inactiveSuffix}` },
+  { value: '9202', label: INACTIVE_WAREHOUSE_OPTION_LABEL },
 ];
 
 const itemOptions: SelectOption[] = [
@@ -82,7 +85,7 @@ describe('RuleFilterBar', () => {
       activeOnly: false,
     });
 
-    await selectOption(user, t.fields.warehouse, 'SYN-WH-02 · 합성창고 나 (미사용)');
+    await selectOption(user, t.fields.warehouse, INACTIVE_WAREHOUSE_OPTION_LABEL);
 
     expect(onApply).toHaveBeenCalledWith({
       warehouseId: '9202',
@@ -106,6 +109,45 @@ describe('RuleFilterBar', () => {
     renderBar({ warehouseId: '9201', itemId: '', activeOnly: false });
 
     expect(screen.getByRole('combobox', { name: t.fields.item })).toBeEnabled();
+  });
+
+  /**
+   * **선택지가 0건이면 「전체」도 붙이지 않는다.** 고를 것이 하나도 없는데 「전체」만 있으면
+   * 「전체를 고를 수 있다 = 목록이 준비됐다」로 읽힌다 — 실제로는 값이 하나도 오지 않은
+   * 상태다. 왜 비었는지는 자리표시가 말한다(전례 규율 · 사본 체크리스트 7번의 짝 갈래).
+   */
+  it('창고 선택지가 0건이면 「전체」도 없고 자리표시가 선다', async () => {
+    const { user } = renderBar(DEFAULT_FILTERS, { warehouseOptions: [] });
+    const trigger = screen.getByRole('combobox', { name: t.fields.warehouse });
+
+    expect(trigger).toHaveTextContent(t.filters.noWarehouseOptions);
+
+    await user.click(trigger);
+
+    expect(screen.queryByRole('option', { name: t.filters.all })).not.toBeInTheDocument();
+  });
+
+  it('품목 선택지가 0건이면 「전체」도 없고 자리표시가 선다', async () => {
+    const { user } = renderBar(
+      { warehouseId: '9201', itemId: '', activeOnly: false },
+      { itemOptions: [] },
+    );
+    const trigger = screen.getByRole('combobox', { name: t.fields.item });
+
+    expect(trigger).toHaveTextContent(t.filters.noItemOptions);
+
+    await user.click(trigger);
+
+    expect(screen.queryByRole('option', { name: t.filters.all })).not.toBeInTheDocument();
+  });
+
+  /** 선택지가 있으면 「전체」가 서야 한다 — 한 번 고른 뒤 해제할 방법이 칸 안에 있어야 한다. */
+  it('선택지가 있으면 「전체」가 함께 선다', async () => {
+    const { user } = renderBar();
+
+    await user.click(screen.getByRole('combobox', { name: t.fields.warehouse }));
+
+    expect(await screen.findByRole('option', { name: t.filters.all })).toBeInTheDocument();
   });
 
   it('품목을 고르면 곧바로 적용한다', async () => {

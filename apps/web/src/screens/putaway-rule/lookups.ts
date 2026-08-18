@@ -147,11 +147,42 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
   return undefined;
 };
 
+/**
+ * 표 아래에 붙일 안내 — **선택칸이 없는 참조의 잘림을 읽는 자리다.**
+ *
+ * 위치·단위는 이 회차에 선택칸이 없고 **표 칸에만** 쓰인다. `lookupNote`는 선택칸에 붙는
+ * 안내라 이 둘에는 닿을 자리가 없다 — 그러면 `truncated`를 계산만 하고 아무도 보지 않게 되고,
+ * **잘린 목록으로 이름을 푼 정상 규칙이 「알 수 없음」으로 보이는데 화면 어디에도 그 사실이
+ * 없다.** 「알 수 없음」은 *값이 잘못됐다*는 뜻이라 사용자가 정확히 반대로 읽는다.
+ *
+ * 실패는 여기서 말하지 않는다 — 실패한 축은 그 칸이 이미 「이름을 불러오지 못했습니다」로
+ * 스스로 말하고 있어, 표 아래에서 한 번 더 말하면 같은 사실이 두 자리에 선다.
+ */
+export const nameLookupTruncatedNote = (
+  ...sources: readonly ReferenceSource[]
+): string | undefined =>
+  sources.some((source) => source.truncated) ? t.notes.nameLookupTruncated : undefined;
+
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ENTRIES: LookupEntry[] = [];
 
 /** 서버가 보낸 전체 건수가 받은 건수보다 많으면 잘린 것이다. */
 const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
+
+/**
+ * 위치 조회의 쪽 크기.
+ *
+ * **넷 중 여기에만 쪽 크기를 싣는다.** 창고·품목·단위는 전사 기준정보라 서버 기본값으로
+ * 충분하지만, **Location은 한 창고 안에서 가장 커지기 쉬운 축**이다(선반·구역이 쌓인다).
+ *
+ * **이 값에는 계약 근거가 없다** — `size`에 `maximum`이 적혀 있지 않아 화면이 정한 완화값이며
+ * 보장이 아니다. 그래서 완화만으로 끝내지 않는다: 그래도 잘리면 `truncated`가 그 사실을
+ * 밝히고 표 아래 안내가 그것을 읽는다(전례 `stock-adjust`의 `LOT_PAGE_SIZE`와 같은 형태).
+ *
+ * 잘린 목록으로 이름을 풀면 **뒤쪽 위치를 가리키는 정상 규칙이 「알 수 없음」으로 찍히는데,
+ * 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.**
+ */
+export const LOCATION_PAGE_SIZE = 200;
 
 export const lookupKeys = {
   warehouses: ['putaway-rule-lookups', 'warehouses'] as const,
@@ -219,7 +250,7 @@ export const useLocationLookup = (warehouseId: number | null): LookupResult => {
 
       return runRequest(() =>
         client.GET('/mdm/locations', {
-          params: { query: { warehouseId, includeInactive: true } },
+          params: { query: { warehouseId, includeInactive: true, size: LOCATION_PAGE_SIZE } },
         }),
       );
     },

@@ -244,3 +244,40 @@ describe('RuleListPane — 빈 상태와 실패', () => {
     expect(screen.getByRole('navigation', { name: t.pageNav.label })).toBeInTheDocument();
   });
 });
+
+/**
+ * **위치·단위는 고르는 칸이 없어 표가 잘림을 말하는 유일한 자리다.**
+ * 밝히지 않으면 잘린 목록으로 이름을 푼 정상 규칙이 「알 수 없음」으로 보이고, 그 문구는
+ * *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.
+ */
+describe('RuleListPane — 이름 목록 잘림 안내', () => {
+  it('안내가 없으면 아무것도 서지 않는다', () => {
+    renderPane();
+
+    expect(screen.queryByText(t.notes.nameLookupTruncated)).not.toBeInTheDocument();
+  });
+
+  it('안내를 받으면 표 아래에 선다', () => {
+    renderPane({ nameLookupNote: t.notes.nameLookupTruncated });
+
+    expect(screen.getByText(t.notes.nameLookupTruncated)).toBeInTheDocument();
+  });
+
+  /** 표를 어떻게 읽어야 하는지 말하는 문장이 건수보다 앞서야 한다. */
+  it('잘림 안내가 사용 중 건수보다 앞에 선다', () => {
+    renderPane({ nameLookupNote: t.notes.nameLookupTruncated });
+
+    const note = screen.getByText(t.notes.nameLookupTruncated);
+    const count = screen.getByText(t.notes.activeCountInPage(3));
+
+    expect(note.compareDocumentPosition(count) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  /** 실패했으면 표를 내지 않으므로 그 안내도 서지 않는다 — 두 사실이 겹쳐 서면 안 된다. */
+  it('조회가 실패한 동안에는 서지 않는다', () => {
+    renderPane({ nameLookupNote: t.notes.nameLookupTruncated, loadError: <p>조회 실패</p> });
+
+    expect(screen.getByText('조회 실패')).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.nameLookupTruncated)).not.toBeInTheDocument();
+  });
+});

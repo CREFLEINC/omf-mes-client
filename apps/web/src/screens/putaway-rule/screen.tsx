@@ -18,6 +18,7 @@ import {
   describeLocation,
   describeReference,
   lookupNote,
+  nameLookupTruncatedNote,
   toLocation,
   toReference,
   toSelectOptions,
@@ -90,7 +91,7 @@ export const PutawayRuleScreen = () => {
   const warehouseId = filters.warehouseId === '' ? null : Number(filters.warehouseId);
 
   const list = useRuleList(filters, page);
-  const uncovered = useUncoveredItems(warehouseId, 1);
+  const uncovered = useUncoveredItems(warehouseId);
 
   /* 창고 선택지는 첫 진입에 받는다 — 이 화면은 창고를 고르는 것으로 시작한다. */
   const warehouses = useWarehouseLookup();
@@ -167,6 +168,11 @@ export const PutawayRuleScreen = () => {
         itemLabel={itemLabelOf}
         locationLabel={locationLabelOf}
         uomLabel={uomLabelOf}
+        /*
+         * **위치·단위의 잘림은 표만이 말할 수 있다** — 이 둘은 고르는 칸이 없어
+         * `lookupNote`(선택칸 아래 안내)가 닿을 자리가 없다. 창고·품목은 자기 선택칸이 말한다.
+         */
+        nameLookupNote={nameLookupTruncatedNote(locations, uoms)}
         loadError={
           list.isError ? <LoadErrorBanner error={list.error} onRetry={reloadList} /> : null
         }

@@ -36,8 +36,15 @@ export interface RuleFilterBarProps {
  * 눌러야 할 것이 없는 버튼을 두면 사용자가 그것을 누르지 않아 화면이 비어 있는 이유가
  * 「창고를 안 골랐다」인지 「안 눌렀다」인지 갈린다.
  *
- * **창고를 바꾸면 품목 조건이 함께 풀린다** — 품목 선택지가 창고로 좁혀지므로 앞 창고에서 고른
- * 품목은 이 창고의 조건이 아니다. 그 규칙은 `filters.ts`의 `clearFilter`와 같은 뜻이다.
+ * **창고를 바꾸면 품목 조건이 함께 풀린다 — 뜻을 잃기 때문이다.** 품목 조건은 「이 창고 안에서
+ * 이 품목의 규칙」이라는 뜻이라, 창고가 달라지면 앞 창고 기준으로 고른 품목이 무엇을 가리키는지
+ * 정해지지 않는다. 그 규칙은 `filters.ts`의 `clearFilter`와 같은 뜻이다.
+ *
+ * ⚠ **품목 선택지 자체는 창고로 좁히지 않는다**(사본 체크리스트 10번 · `#47`). 창고는 품목
+ * 조회를 여는 조건일 뿐이고 무엇을 받느냐는 정하지 않는다 — 이 부품은 받은 목록을 그대로 낸다.
+ *
+ * **선택지가 0건이면 「전체」도 붙이지 않는다.** 고를 것이 하나도 없는데 「전체」만 있으면
+ * 목록이 준비된 것처럼 보인다 — 왜 비었는지는 자리표시와 안내가 말한다(전례 규율).
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -59,6 +66,13 @@ export const RuleFilterBar = ({
     ...options,
   ];
 
+  /**
+   * 선택지가 0건인 칸은 **「전체」도 붙이지 않는다.** 붙이면 「전체를 고를 수 있다 = 목록이
+   * 준비됐다」로 읽히는데, 실제로는 고를 값이 하나도 오지 않은 상태다(전례 규율).
+   */
+  const withAllOrEmpty = (options: SelectOption[]): SelectOption[] =>
+    options.length === 0 ? [] : withAll(options);
+
   const hasWarehouse = appliedFilters.warehouseId !== '';
   const chips = toFilterChips(appliedFilters, warehouseLabel, itemLabel);
 
@@ -72,11 +86,12 @@ export const RuleFilterBar = ({
         <SelectField
           wide
           label={t.fields.warehouse}
-          options={withAll(warehouseOptions)}
+          options={withAllOrEmpty(warehouseOptions)}
           value={appliedFilters.warehouseId}
           note={warehouseNote}
+          placeholder={warehouseOptions.length === 0 ? t.filters.noWarehouseOptions : t.filters.all}
           onChange={(value) => {
-            /* 창고가 바뀌면 앞 창고에서 고른 품목은 이 창고의 조건이 아니다. */
+            /* 창고가 바뀌면 앞 창고 기준으로 고른 품목 조건이 뜻을 잃는다 — 함께 비운다. */
             onApply({ ...appliedFilters, warehouseId: value, itemId: '' });
           }}
         />
@@ -84,11 +99,12 @@ export const RuleFilterBar = ({
         <SelectField
           wide
           label={t.fields.item}
-          options={withAll(itemOptions)}
+          options={withAllOrEmpty(itemOptions)}
           value={appliedFilters.itemId}
           disabled={!hasWarehouse}
           disabledReason={t.filters.itemNeedsWarehouse}
           note={itemNote}
+          placeholder={itemOptions.length === 0 ? t.filters.noItemOptions : t.filters.all}
           onChange={(value) => {
             onApply({ ...appliedFilters, itemId: value });
           }}
