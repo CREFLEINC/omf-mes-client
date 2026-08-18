@@ -11,8 +11,11 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { APPROVED_APPROVAL_STATUS_CODES, REJECTION_DECISION_CODES } from './approval-progress';
 import {
   adjustmentDetailBody,
+  approvalRequestDetailBody,
+  approvalRequestRefBody,
   balanceFixtures,
   countFixtures,
   countVarianceLineFixtures,
@@ -2311,6 +2314,10 @@ describe('StockAdjustScreen — 등록 성공', () => {
    *
    * 목은 등록 응답에 승인 요청 번호와 전기 시각을 계약 예시값으로 채워 준다 — 화면이 그것을
    * 읽어 「상신됨」·「전기됨」을 그리면 **확인하지 않은 사실**을 말하게 된다.
+   *
+   * ⚠ **상신 자리가 생긴 회차에 이 판정을 새 사실로 다시 썼다.** 앞 회차는 「결과 구획에 버튼이
+   * 0건」으로 쟀는데, 이 회차부터 상신 버튼이 그 구획에 산다 — 판정 **강도를 유지한 채**
+   * 「상신·전기 **표기**가 없다」와 「등록만으로 올라간 것으로 그리지 않는다」로 갈아 쟀다.
    */
   it('결과 구획에 상신·전기 표기가 없다', async () => {
     withReasonCodes();
@@ -2322,10 +2329,52 @@ describe('StockAdjustScreen — 등록 성공', () => {
     const pane = await screen.findByRole('region', { name: t.result.label });
 
     expect(within(pane).getByText('SAMPLE-IA-9301')).toBeVisible();
-    expect(within(pane).queryAllByRole('button')).toHaveLength(0);
+    /* 등록만으로는 「올렸습니다」가 서지 않는다 — 그 근거는 202뿐이다. */
+    expect(
+      within(pane).queryByText(t.result.submittedTitle('SAMPLE-IA-9301')),
+    ).not.toBeInTheDocument();
+    expect(within(pane).queryByText(t.result.submitting)).not.toBeInTheDocument();
+    /* 이 구획의 조작은 상신 하나다 — 전기는 뒤따르는 회차가 제 확인 창과 함께 세운다. */
+    expect(
+      within(pane)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual([t.actions.requestApproval]);
     for (const id of INTERNAL_IDS) {
       expect(pane.textContent ?? '').not.toContain(`${id} `);
     }
+  });
+
+  /**
+   * ⭐ **목이 채워 준 승인 요청 번호로 결재 진행을 부르지 않는다**(C36).
+   *
+   * 목은 등록 201에 그 값을 실어 준다(§5.2.5) — 그 값으로 부르면 **상신하지 않은 전표의 결재
+   * 진행**이 열리고, 사용자는 올린 적 없는 요청의 단계를 본다. 상신 여부의 근거는 오직
+   * **이 화면이 받은 202**다.
+   */
+  it('등록 응답에 승인 요청 번호가 실려 와도 결재 진행을 부르지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        createRoute(
+          adjustmentDetailBody({
+            approvalRequestId: 9801,
+            adjustedAt: '2026-08-18T09:12:00+09:00',
+          }),
+        ),
+      ]),
+    );
+
+    await setupAndRegister(user);
+
+    /* 양성 앵커 — 그 응답이 실제로 도착해 결과 구획이 섰다. */
+    await screen.findByRole('region', { name: t.result.label });
+
+    expect(
+      requests.filter((request) => request.url.pathname.startsWith('/app/approval-requests')),
+    ).toEqual([]);
+    expect(screen.queryByRole('group', { name: t.progress.label })).not.toBeInTheDocument();
   });
 });
 
@@ -2531,5 +2580,1276 @@ describe('StockAdjustScreen — 등록 실패', () => {
     await waitFor(() => {
       expect(createRequests(requests)).toHaveLength(2);
     });
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 상신 — **이 화면에서 되돌릴 수 없는 둘째 쓰기**
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const DETAIL_PATH = '/inventory/adjustments/9301';
+const SUBMIT_PATH = '/inventory/adjustments/9301:request-approval';
+const APPROVAL_PATH = '/app/approval-requests/9801';
+
+/**
+ * ⭐ **등록 201과 상세 200의 토큰을 다른 값으로 둔다**(뮤테이션 M-3이 겨누는 자리 · C31).
+ *
+ * 같은 값을 주면 `etagPath`가 **컬렉션 경로**로 바뀌어도 우연히 통과한다 — 그때 감지기는 아무
+ * 말도 하지 않고, 실서버에서만 「눌러도 아무 일이 없다」로 나타난다.
+ */
+const COLLECTION_ETAG = 'W/"ia-collection-1"';
+const DETAIL_ETAG = 'W/"ia-detail-7"';
+
+/** 등록이 성공하되 그 `ETag`가 **컬렉션 경로**에 앉는 경로. */
+const etaggedCreateRoute = (body: unknown = adjustmentDetailBody()): StubRoute => ({
+  match: (request) => isPost(request, ADJUSTMENTS_PATH),
+  respond: () => jsonResponse(body, { status: 201, headers: { ETag: COLLECTION_ETAG } }),
+});
+
+const detailRoute = (): StubRoute => ({
+  match: (request) => isGet(request, DETAIL_PATH),
+  respond: () => jsonResponse(adjustmentDetailBody(), { headers: { ETag: DETAIL_ETAG } }),
+});
+
+const submitRoute = (approvalRequestId = 9801): StubRoute => ({
+  match: (request) => isPost(request, SUBMIT_PATH),
+  respond: () => jsonResponse(approvalRequestRefBody(approvalRequestId), { status: 202 }),
+});
+
+const failingSubmitRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: (request) => isPost(request, SUBMIT_PATH),
+  respond: () => jsonResponse(body, { status }),
+});
+
+const approvalRoute = (status = 200): StubRoute => ({
+  match: (request) => isGet(request, APPROVAL_PATH),
+  respond: () =>
+    status === 200
+      ? jsonResponse(approvalRequestDetailBody())
+      : jsonResponse({ message: '' }, { status }),
+});
+
+/** 상신까지 갈 수 있는 경로 한 벌. 갈래마다 바꿀 것만 앞에 얹는다. */
+const submitRoutes = (overrides: StubRoute[] = []): StubRoute[] =>
+  allRoutes([...overrides, etaggedCreateRoute(), detailRoute(), submitRoute(), approvalRoute()]);
+
+/**
+ * 응답이 갈리는 실사 차이 경로. 재조회 때마다 줄 수가 달라져 **참조가 실제로 갈린다** —
+ * 같은 구조를 되돌리면 구조 공유로 초안 세션이 오르지 않아 시험이 헛통과한다.
+ *
+ * **잠금 밖에서 도는 갱신을 재현하는 자리다**(재접속 재조회 · 조회 실패 뒤 「다시 시도」).
+ */
+const changingVarianceRoute = (): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isGet(request, VARIANCE_PATH),
+    respond: () => {
+      call += 1;
+
+      return jsonResponse(
+        listBody(
+          call === 1
+            ? countVarianceLineFixtures
+            : [
+                countVarianceLineResponse({
+                  systemQty: 100,
+                  countedQty: 100 - call,
+                  varianceQty: -call,
+                }),
+              ],
+        ),
+      );
+    },
+  };
+};
+
+/**
+ * 부를 때마다 **다른 전표**를 되돌려 주는 등록 경로.
+ *
+ * 상신 매임의 축이 조정 번호라, **두 번호가 실제로 갈려야** 「앞 전표의 사실이 새 전표 위에
+ * 서는가」를 잴 수 있다.
+ */
+const twoAdjustmentsRoute = (): StubRoute => {
+  let created = 0;
+
+  return {
+    match: (request) => isPost(request, ADJUSTMENTS_PATH),
+    respond: () => {
+      created += 1;
+
+      return jsonResponse(
+        created === 1
+          ? adjustmentDetailBody()
+          : adjustmentDetailBody({
+              inventoryAdjustmentId: 9302,
+              inventoryAdjustmentNo: 'SAMPLE-IA-9302',
+            }),
+        { status: 201, headers: { ETag: COLLECTION_ETAG } },
+      );
+    },
+  };
+};
+
+/** 둘째 전표(9302)의 상세·상신 경로. 두 전표를 이어 다루는 시험이 쓴다. */
+const SECOND_DETAIL_PATH = '/inventory/adjustments/9302';
+const SECOND_SUBMIT_PATH = '/inventory/adjustments/9302:request-approval';
+const SECOND_DETAIL_ETAG = 'W/"ia-detail-8"';
+
+const secondDetailRoute = (): StubRoute => ({
+  match: (request) => isGet(request, SECOND_DETAIL_PATH),
+  respond: () =>
+    jsonResponse(adjustmentDetailBody({ inventoryAdjustmentId: 9302 }), {
+      headers: { ETag: SECOND_DETAIL_ETAG },
+    }),
+});
+
+const secondSubmitRoute = (approvalRequestId = 9802): StubRoute => ({
+  match: (request) => isPost(request, SECOND_SUBMIT_PATH),
+  respond: () => jsonResponse(approvalRequestRefBody(approvalRequestId), { status: 202 }),
+});
+
+const resultPane = (): HTMLElement => screen.getByRole('region', { name: t.result.label });
+
+const submitReasonField = (): HTMLElement => within(resultPane()).getByLabelText(t.submit.reason);
+
+const submitButton = (): HTMLElement =>
+  within(resultPane()).getByRole('button', { name: t.actions.requestApproval });
+
+const confirmSubmitButton = (): HTMLElement =>
+  screen.getByRole('button', { name: new RegExp(t.actions.confirmSubmit) });
+
+const progressPane = (): HTMLElement => screen.getByRole('group', { name: t.progress.label });
+
+const submitRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname === SUBMIT_PATH);
+
+/** 등록까지 끝내 **상신 자리가 선 상태**로 만든다. */
+const registerThenReady = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await setupAndRegister(user);
+  await screen.findByRole('region', { name: t.result.label });
+};
+
+/** 사유를 통째로 넣는다 — 붙여넣기로 여러 줄이 들어오는 길이 실재한다. */
+const fillReason = (value: string): void => {
+  fireEvent.change(submitReasonField(), { target: { value } });
+};
+
+/** 확인 창을 열고 실행까지 누른다. **두 걸음이 갈려 있어야** 창만 열린 상태도 잴 수 있다. */
+const submitApproval = async (
+  user: ReturnType<typeof userEvent.setup>,
+  reason = '실사 차이분 조정',
+): Promise<void> => {
+  fillReason(reason);
+  await user.click(submitButton());
+  await user.click(confirmSubmitButton());
+};
+
+/**
+ * **상신이 막힌 사유**(C29).
+ *
+ * 공백만인 사유를 **목이 202로 통과시킨다**(실측) — 막는 곳이 화면뿐이라 이 잠금이 곧 「요약이
+ * 빈 결재 요청」을 막는 유일한 겹이다.
+ */
+describe('StockAdjustScreen — 상신이 막힌 사유', () => {
+  it('사유가 비면 상신이 잠기고 그 사정을 말한다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+
+    expect(submitButton()).toBeDisabled();
+    expect(within(resultPane()).getByText(t.actionReasons.submitReasonRequired)).toBeVisible();
+  });
+
+  /** ⭐ **공백만은 빈 값과 같다** — 통과하면 결재함 목록의 요약 자리가 빈 채로 올라간다. */
+  it.each(['   ', '\n', '\t \n '])('공백만(%j)이면 잠긴 채다', async (raw) => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    fillReason(raw);
+
+    expect(submitButton()).toBeDisabled();
+
+    await user.click(submitButton());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(submitRequests(requests)).toHaveLength(0);
+    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
+  });
+
+  /** 짝 방향 — 한 글자만 있어도 열린다. **길이를 화면이 정하지 않는다.** */
+  it('한 글자만 쳐도 열리고 잠긴 사유가 사라진다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    fillReason('가');
+
+    expect(submitButton()).toBeEnabled();
+    expect(
+      within(resultPane()).queryByText(t.actionReasons.submitReasonRequired),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **승인 축으로 잠그지 않는다**(D-13 · C37).
+   *
+   * 자리표시 두 배열이 비어 있는 것이 지금의 사실인데, 그것을 잠금에 쓰면 이 버튼이 **영영
+   * 잠긴다** — 승인 축의 잠금은 서버가 400으로 한다(D-12).
+   */
+  it('승인 판정 자리표시가 비어 있어도 상신이 잠기지 않는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    fillReason('실사 차이분 조정');
+
+    expect(APPROVED_APPROVAL_STATUS_CODES).toEqual([]);
+    expect(REJECTION_DECISION_CODES).toEqual([]);
+    expect(submitButton()).toBeEnabled();
+  });
+});
+
+/**
+ * **상신 확인 창**(C30 · D-17) — 되돌릴 수 없는 둘째 조작 앞의 마지막 층이다.
+ */
+describe('StockAdjustScreen — 상신 확인 창', () => {
+  it('상신을 누르면 창이 서고 요청은 아직 나가지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    fillReason('실사 차이분 조정');
+    await user.click(submitButton());
+
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(submitRequests(requests)).toHaveLength(0);
+    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(0);
+  });
+
+  /**
+   * ⭐ **전문과 첫 줄을 나눠 보인다**(C30 · A-12). 창이 다시 뽑지 않고 **화면이 만든 값**을 받는다 —
+   * 다시 뽑으면 「사용자가 확인한 글자」와 「요청에 실리는 글자」가 갈린다.
+   *
+   * 두 자리가 **같은 글자를 보이는 것이 지금의 사실이다** — 이 칸이 한 줄 입력이라 첫 줄이 곧
+   * 전문이다(아래 시험). 거짓이 아니고, 여러 줄 입력이 붙는 날 두 자리가 갈린다.
+   */
+  it('창이 사유 전문과 첫 줄을 나눠 보인다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    fillReason('  요약 줄  ');
+    await user.click(submitButton());
+
+    const dialog = screen.getByRole('dialog');
+    const first = within(dialog).getByRole('region', { name: t.dialog.reasonFirstLine });
+    const full = within(dialog).getByRole('region', { name: t.dialog.reasonFull });
+
+    expect(within(dialog).getByText('SAMPLE-IA-9301')).toBeVisible();
+    expect(within(first).getByText('요약 줄')).toBeVisible();
+    expect(within(full).getByText('요약 줄')).toBeVisible();
+    expect(within(first).getByText(t.dialog.reasonSummaryNote)).toBeVisible();
+  });
+
+  /**
+   * ⚠ **이룰 수 없는 조치를 유도하지 않는다**(전례가 남긴 자리 · T2 리뷰 R-3과 같은 축).
+   *
+   * 이 칸은 **한 줄 입력**이다 — 디자인 시스템의 `TextField`가 `<input>`이라 붙여넣어도 줄바꿈이
+   * 지워진다. 그런데 전례의 자리표시 문구는 「다음 줄부터 근거를 적으세요」로 **여러 줄을
+   * 지시한다** — 그대로 베끼면 사용자가 할 수 없는 조치를 찾아 헤맨다.
+   *
+   * **여러 줄 입력이 붙는 날 이 시험이 함께 바뀐다** — 그때 문구도 갈아야 한다는 것을 이 감지기가
+   * 잡는다(지금 문구만 고치면 이 시험이 울지 않으므로, 값 축과 문구 축을 함께 문다).
+   */
+  it('사유 칸이 한 줄 입력이고 유도 문구가 여러 줄을 지시하지 않는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    fillReason('첫 줄\n둘째 줄');
+
+    expect(submitReasonField()).toHaveValue('첫 줄둘째 줄');
+    expect(t.submit.reasonPlaceholder).not.toContain('다음 줄');
+  });
+
+  it('계속 입력을 누르면 창이 닫히고 요청이 나가지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    fillReason('실사 차이분 조정');
+    await user.click(submitButton());
+    await user.click(screen.getByRole('button', { name: t.actions.keepEditing }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(submitRequests(requests)).toHaveLength(0);
+    /* 친 사유는 남는다 — 닫는 것이 버리는 것이 아니다. */
+    expect(submitReasonField()).toHaveValue('실사 차이분 조정');
+  });
+
+  /**
+   * ⭐ **연쇄가 두 벌 돌지 않는다.** 상세 GET이 먼저 나가는 동안 쓰기 훅은 아직 나가는 중이
+   * 아니라(`isSaving === false`) 그 틈에 한 번 더 누르면 결재 요청이 두 건 만들어진다 —
+   * 공통 훅이 호출마다 새 멱등 키를 만들기 때문이다.
+   */
+  it('실행 버튼을 두 번 눌러도 요청은 한 번이다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(submitRoutes(), '?count=9101', [SUBMIT_PATH]);
+
+    await registerThenReady(user);
+    fillReason('실사 차이분 조정');
+    await user.click(submitButton());
+    await user.click(confirmSubmitButton());
+    await user.click(confirmSubmitButton());
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    release();
+  });
+
+  /**
+   * **Escape 축**(사본 체크리스트 5번). 디자인 시스템이 그 길을 막을 수단을 주지 않으므로,
+   * 규율은 「닫히지 않게」가 아니라 **「닫혀도 나가는 요청이 무너지지 않게」**다 — 여기서
+   * 쓰기를 되돌리지 않으므로(`reset` 없음) 응답은 그대로 도착해 결과 구획에 선다.
+   */
+  it('전송 중 Escape로 창이 닫혀도 상신 결과가 살아 있다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(submitRoutes(), '?count=9101', [SUBMIT_PATH]);
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    release();
+
+    expect(await screen.findByText(t.result.submittedTitle('SAMPLE-IA-9301'))).toBeInTheDocument();
+  });
+});
+
+/**
+ * ⭐ **상신 요청**(C31 · D-14) — 요청이 **둘**이고 순서가 뜻을 정한다.
+ *
+ * ① 조정 상세를 부른다(잠금 토큰이 그 경로에서만 나온다) ② 사유 한 칸을 실어 상신한다.
+ */
+describe('StockAdjustScreen — 상신 요청', () => {
+  it('상세를 먼저 부르고 그다음 상신한다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    const order = requests
+      .filter(
+        (request) => request.url.pathname === DETAIL_PATH || request.url.pathname === SUBMIT_PATH,
+      )
+      .map((request) => request.url.pathname);
+
+    expect(order).toEqual([DETAIL_PATH, SUBMIT_PATH]);
+    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(1);
+  });
+
+  /**
+   * ⭐⭐ **상세가 준 토큰이 실린다 — 등록 201의 토큰이 아니다**(C31 · D-14 · 뮤테이션 M-3).
+   *
+   * 등록 201도 `ETag`를 주지만 그 토큰은 **컬렉션 경로**에 앉는다. 두 값을 다르게 두었으므로
+   * 컬렉션 쪽을 집는 구현이면 이 단언이 문다.
+   */
+  it('상세가 준 ETag가 If-Match로 실린다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    const sent = submitRequests(requests)[0];
+
+    expect(sent?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+    expect(sent?.headers.get('If-Match')).not.toBe(COLLECTION_ETAG);
+    expect(sent?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  /** 본문은 **사유 하나뿐이다**(C31) — 승인 유형·결재선·헤더 사유가 실릴 자리가 없다(D-8). */
+  it('본문 키 집합이 사유 하나이고 그 값이 다듬어져 있다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    await submitApproval(user, '  실사 차이분 조정  ');
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    const body = (submitRequests(requests)[0]?.body ?? {}) as Record<string, unknown>;
+
+    expect(Object.keys(body)).toEqual(['reason']);
+    expect(body.reason).toBe('실사 차이분 조정');
+  });
+
+  /** ⛔ 상신 요청 주소에도 승인 대기 조건이 실리지 않는다(D-3). */
+  it('상신 주소에 승인 대기 조건이 없다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(submitRequests(requests)[0]?.url.search).not.toContain('pendingApprovalOnly');
+  });
+});
+
+/**
+ * **상신 성공**(C36) — 화면이 확인한 것만 말한다.
+ */
+describe('StockAdjustScreen — 상신 성공', () => {
+  it('올렸다고 말하고 사유 칸과 버튼이 걷힌다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    expect(await screen.findByText(t.result.submittedTitle('SAMPLE-IA-9301'))).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.submit.reason)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.actions.requestApproval }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **202가 준 번호로 결재 진행을 한 번 부른다**(C36).
+   *
+   * 등록 응답에도 같은 이름의 값이 실려 오지만(목이 채워 준다) 그것으로는 부르지 않는다 —
+   * 그 짝 시험이 「등록 응답에 승인 요청 번호가 실려 와도 …」다.
+   */
+  it('상신 뒤 그 번호로 결재 진행을 부른다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    expect(await screen.findByText('SAMPLE-AP-0001')).toBeInTheDocument();
+    expect(requestsTo(requests, APPROVAL_PATH)).toHaveLength(1);
+  });
+
+  /**
+   * ⛔ **결재함의 표기를 나르지 않는다**(C36). 픽스처의 `isMyTurn`·`isMine`이 참이라, 나르는
+   * 구현이면 이 시험이 문다.
+   */
+  it('진행 구획에 승인·반려 조작과 내 차례 표기가 없다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    await screen.findByText('SAMPLE-AP-0001');
+
+    expect(within(progressPane()).queryAllByRole('button')).toHaveLength(0);
+    expect(within(progressPane()).queryByText(/승인하기|반려하기|내 차례/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **자리표시가 잠금이 아니라 안내를 정한다**(D-13 · C37).
+   *
+   * 비어 있는 동안에는 「판정하지 못합니다」가 서고, 그 사실이 **어떤 버튼도 잠그지 않는다** —
+   * 이 구획에는 버튼이 0건이고 화면의 다른 조작도 승인 축으로 잠기지 않는다.
+   */
+  it('승인 판정을 못 한다는 사실이 안내로만 선다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    await screen.findByText('SAMPLE-AP-0001');
+
+    expect(within(progressPane()).getByText(t.progress.unjudgeableNote)).toBeVisible();
+    expect(within(progressPane()).queryByText(t.progress.approvedNote)).not.toBeInTheDocument();
+    expect(within(progressPane()).getByText(t.progress.postSeparateNote)).toBeVisible();
+  });
+
+  /** 결재 진행을 못 읽어도 **상신은 이미 접수됐다** — 화면 배너로 번지지 않는다. */
+  it('결재 진행이 실패해도 올렸다는 사실은 남는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(
+      allRoutes([etaggedCreateRoute(), detailRoute(), submitRoute(), approvalRoute(500)]),
+    );
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    expect(await screen.findByText(t.progress.loadFailedTitle)).toBeInTheDocument();
+    expect(screen.getByText(t.result.submittedTitle('SAMPLE-IA-9301'))).toBeInTheDocument();
+    expect(screen.getByText(t.progress.loadFailedNote)).toBeInTheDocument();
+  });
+});
+
+/**
+ * **상신 실패**(D-12) — 전표는 남고 상신만 실패한 갈래를 **정확히** 말한다.
+ */
+describe('StockAdjustScreen — 상신 실패', () => {
+  const submitAndFail = async (
+    user: ReturnType<typeof userEvent.setup>,
+    requests: RecordedRequest[],
+  ): Promise<void> => {
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+  };
+
+  /**
+   * ⭐ **승인 없이 전기하면 400** 계열과 같은 규율 — 서버가 준 문구를 **그대로** 낸다.
+   * 코드 문자열로 분기하지 않는다(공유계약 G-2 · D-12).
+   */
+  it('400이면 서버 문구가 창 안에 그대로 서고 사유가 남는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingSubmitRoute(400, {
+          errors: [{ scope: 'screen', code: 'SAMPLE_ERR', message: '합성 상신 거절' }],
+        }),
+      ]),
+    );
+
+    await submitAndFail(user, requests);
+
+    expect(await screen.findByText('합성 상신 거절')).toBeVisible();
+    expect(screen.getByRole('dialog')).toBeVisible();
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    /* 전표는 남았고 상신만 실패했다 — 그 사실을 정확히 말한다. */
+    expect(
+      await screen.findByText(t.result.submitFailedTitle('SAMPLE-IA-9301')),
+    ).toBeInTheDocument();
+    expect(submitReasonField()).toHaveValue('실사 차이분 조정');
+  });
+
+  /** 서버가 사유 칸을 지목하면 **그 칸에** 붙는다 — 배너로 옮기면 무엇을 고칠지 가리키지 못한다. */
+  it('사유 칸의 400은 그 칸에 붙는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingSubmitRoute(400, {
+          errors: [
+            { scope: 'field', field: 'reason', code: 'SAMPLE_ERR', message: '합성 사유 오류' },
+          ],
+        }),
+      ]),
+    );
+
+    await submitAndFail(user, requests);
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    expect(await screen.findByText('합성 사유 오류')).toBeVisible();
+    expect(submitReasonField()).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /** 고치는 순간 그 칸의 서버 오류가 걷힌다 — 남겨 두면 고치는 중에도 빨갛게 서 있다. */
+  it('사유를 고치면 그 칸의 서버 오류가 걷힌다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingSubmitRoute(400, {
+          errors: [
+            { scope: 'field', field: 'reason', code: 'SAMPLE_ERR', message: '합성 사유 오류' },
+          ],
+        }),
+      ]),
+    );
+
+    await submitAndFail(user, requests);
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    await screen.findByText('합성 사유 오류');
+    fillReason('고친 사유');
+
+    expect(screen.queryByText('합성 사유 오류')).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **409에는 「최신 불러오기」가 붙는다** — 이 쓰기에는 잠글 대상이 있고(계약이 `If-Match`를
+   * 필수로 두고 409를 낸다) 다시 읽으면 실제로 풀린다.
+   */
+  it('409면 최신 불러오기가 상세를 다시 부른다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingSubmitRoute(409, { conflictCause: 'user', message: '' }),
+      ]),
+    );
+
+    await submitAndFail(user, requests);
+
+    await screen.findByText(messages.conflict.user);
+    await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(2);
+    });
+
+    /*
+     * ⭐ **친 사유가 사라지지 않는다**(리뷰 R-2 · 전례가 같은 자리에 세운 잣대).
+     *
+     * 공용 배너의 안내는 「최신 내용을 불러오면 **입력한 내용은 사라집니다**」인데, 이 화면에서
+     * 그 버튼이 부르는 것은 **조정 상세 하나**이고 친 사유를 건드리는 자리가 없다 — 그 참인
+     * 사실에 잣대를 두어야 「다시 올릴 길」이 실제 길임이 계측된다. 공용 문구를 갈래별로 나누는
+     * 것은 이 회차의 범위 밖이다(`patterns/`·`packages/i18n` 소관 · 별건).
+     */
+    expect(submitReasonField()).toHaveValue('실사 차이분 조정');
+  });
+
+  /**
+   * ⛔ **코드 문자열로 분기하지 않는다**(공유계약 G-2 · D-12).
+   *
+   * 결재선 없음(`ROUTE_NOT_FOUND`)을 화면이 코드로 읽으면, 그 코드가 logistics 계약에 없어
+   * 조용히 깨진다 — 슬라이스 어디에도 그 비교가 없다.
+   */
+  it.each(['ROUTE_NOT_FOUND', 'ROUTE_AMBIGUOUS', 'STATE_LOCKED'])(
+    '%s를 코드로 읽지 않고 서버 문구를 그대로 낸다',
+    async (code) => {
+      withReasonCodes();
+
+      const { requests, user } = renderScreen(
+        allRoutes([
+          etaggedCreateRoute(),
+          detailRoute(),
+          failingSubmitRoute(400, {
+            errors: [{ scope: 'screen', code, message: `합성 거절 — ${code}` }],
+          }),
+        ]),
+      );
+
+      await submitAndFail(user, requests);
+
+      expect(await screen.findByText(`합성 거절 — ${code}`)).toBeVisible();
+    },
+  );
+
+  /** 실패한 뒤에는 **다시 올릴 수 있다** — 실패가 화면을 잠그지 않는다. */
+  it('실패한 뒤 다시 올리면 상세와 상신이 다시 나간다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([etaggedCreateRoute(), detailRoute(), failingSubmitRoute(403)]),
+    );
+
+    await submitAndFail(user, requests);
+
+    await screen.findByText(messages.httpError.forbidden);
+    await user.click(confirmSubmitButton());
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(2);
+    });
+
+    /* **매번 다시 부른다** — 낡은 토큰으로 되풀이해 부딪히지 않는다(`staleTime: 0`). */
+    expect(requestsTo(requests, DETAIL_PATH)).toHaveLength(2);
+  });
+});
+
+/**
+ * ⭐⭐ **상신 사유의 수명**(리뷰 R-1) — 친 글은 **그 전표의 것이다.**
+ *
+ * 초안 세션을 올리는 문이 **둘**인데(조작 `resetDraftForNewTarget` · **effect**
+ * `seedFromVarianceRef`) 사유를 거두는 문은 하나였다 — 뒤쪽으로 대상이 다시 서면 앞 전표를
+ * 위해 쓴 문장이 새 전표의 칸에 남고, 그것이 그 전표의 **결재함 요약**(A-12)으로 올라간다.
+ *
+ * 고친 형태는 **읽는 자리의 판정**이다(D-15의 「판정은 읽는 자리에서 한다」) — 아래 두 시험이
+ * 두 축을 갈라 문다: ① 남의 전표에 매인 글은 **보이지 않는다**(파생) ② 사용자가 조작으로
+ * 대상을 버리면 그 글도 **버려진다**(거두기).
+ */
+describe('StockAdjustScreen — 상신 사유의 수명', () => {
+  /**
+   * ⭐ **앞 전표를 위해 쓴 사유가 새 전표의 칸에 서지 않는다**(리뷰 탐침 P-1의 승격).
+   *
+   * 사유를 치고 **올리지 않은 채** 배경 갱신이 대상을 다시 세우면, 앞선 형태에서는 새로 등록한
+   * 전표의 사유 칸에 그 문장이 그대로 남고 **버튼까지 열려 있었다**(빈 사유가 아니므로).
+   * 그 상태로 확인 창을 열면 전표번호는 새 것인데 「결재함 목록에 요약으로 보일 첫 줄」은 앞
+   * 전표의 문장이다 — 되돌릴 수 없는 쓰기에 **다른 전표를 위해 쓴 요약**이 실린다.
+   *
+   * ⚠ 성공한 상신 뒤에는 이 길이 없다(`onSuccess`가 초안을 비운다) — 그래서 기존 감지기
+   * 「앞 전표의 상신이 새로 등록한 전표 위에 서지 않는다」의 `toHaveValue('')`는 **성공 후처리의
+   * 부산물**이지 수명 규율의 증거가 아니다. 이 시험은 **올리지 않은 사유**로 그 축을 따로 문다.
+   */
+  it('올리지 않은 사유가 새로 등록한 전표의 칸에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute(),
+        twoAdjustmentsRoute(),
+        detailRoute(),
+        submitRoute(),
+        approvalRoute(),
+      ]),
+    );
+
+    await registerThenReady(user);
+
+    /* 앞 전표를 위해 쓰기만 하고 **올리지 않는다.** */
+    fillReason('앞 전표를 위해 쓴 사유');
+
+    /* 양성 앵커 — 친 글자가 실제로 그 전표의 칸에 섰다. */
+    expect(submitReasonField()).toHaveValue('앞 전표를 위해 쓴 사유');
+
+    /* 잠금 밖에서 도는 갱신이 대상을 다시 세운다 — 이 길은 사유를 거두는 문을 지나지 않는다. */
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    await submitRegister(user);
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    /* 양성 앵커 — 새 전표의 결과 구획이 실제로 섰다. */
+    expect(within(pane).getByText('SAMPLE-IA-9302')).toBeVisible();
+
+    expect(within(pane).getByLabelText(t.submit.reason)).toHaveValue('');
+    expect(within(pane).getByRole('button', { name: t.actions.requestApproval })).toBeDisabled();
+    expect(within(pane).getByText(t.actionReasons.submitReasonRequired)).toBeVisible();
+  });
+
+  /**
+   * ⭐ **확인 창이 앞 전표의 문장을 새 전표의 요약으로 되보이지 않는다**(탐침 P-1 관측 ④).
+   *
+   * 위 시험이 칸과 버튼을 잰다면 이것은 **되돌릴 수 없는 조작의 마지막 층**을 잰다 — 버튼이
+   * 잠겨 창이 열리지 않는 것까지가 한 사실이다.
+   */
+  it('그 사유로 새 전표의 확인 창을 열 수 없다', async () => {
+    withReasonCodes();
+
+    const { requests, queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute(),
+        twoAdjustmentsRoute(),
+        detailRoute(),
+        submitRoute(),
+        approvalRoute(),
+      ]),
+    );
+
+    await registerThenReady(user);
+    fillReason('앞 전표를 위해 쓴 사유');
+
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    await submitRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-IA-9302'));
+
+    await user.click(submitButton());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('앞 전표를 위해 쓴 사유')).not.toBeInTheDocument();
+    expect(submitRequests(requests)).toHaveLength(0);
+  });
+
+  /**
+   * ⭐ **사용자가 명시적으로 버린 글은 되살아나지 않는다** — 읽는 자리의 파생과 **다른 축**이다.
+   *
+   * 파생이 지키는 것은 「매인 번호가 **다르면** 안 보인다」이고, 이 시험이 지키는 것은
+   * 「사용자가 대상을 버렸으면 그 글도 함께 버린다」다 — 그것이 거두는 문
+   * (`resetDraftForNewTarget`)이 남아 있는 이유다.
+   *
+   * **목이 같은 번호를 되돌려 주므로 그 축이 여기서 실제로 재어진다.**
+   *
+   * ⚠ 이 시험이 「번호 재사용에도 안전하다」를 뜻하지는 않는다 — 매임 자체가 번호의 유일성에
+   * 기댄다(계약상 등록은 늘 새 `inventoryAdjustmentId`를 준다). 같은 번호가 다시 오는 조건은
+   * **목의 고정 응답이 만드는 것**이고, 그 덕에 이 축을 잴 수 있을 뿐이다(리뷰 R-5).
+   */
+  it('원천을 바꿔 다시 세우면 앞서 친 사유가 되살아나지 않는다', async () => {
+    withReasonCodes();
+
+    const { queryClient, user } = renderScreen(submitRoutes([changingVarianceRoute()]));
+
+    await registerThenReady(user);
+    fillReason('버릴 사유');
+
+    /* 등록 성공 뒤에는 폼이 잠긴다 — 배경 갱신이 그 잠금을 푸는 유일한 길이다. */
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    /* **원천 전환**이 대상을 버리는 한 문을 지난다. */
+    await fillDirectLine(user);
+    await chooseReason(user);
+    await submitRegister(user);
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    /* 양성 앵커 — 결과 구획이 실제로 다시 섰다(목이 같은 번호를 되돌려 준다). */
+    expect(within(pane).getByText('SAMPLE-IA-9301')).toBeVisible();
+    expect(within(pane).getByLabelText(t.submit.reason)).toHaveValue('');
+  });
+});
+
+/**
+ * ⭐ **상신의 매임**(D-15) — 늦게 도착한 되먹임이 **남의 전표 위에** 서지 않는다.
+ *
+ * 이 화면에서 대상이 바뀌는 길은 **잠금 밖에서 도는 effect**다: 배경 재조회가 달라진 실사
+ * 차이를 물고 오면 초안 세션이 올라 결과 구획이 걷히고, 그때 나가는 중이던 상신의 응답이
+ * 도착한다(등록 갈래가 한 번 겪은 사고와 같은 지형).
+ */
+describe('StockAdjustScreen — 상신의 매임', () => {
+  /** 상신을 보내는 중에 **배경 갱신**이 대상을 다시 세우게 한다. */
+  const submitThenRetarget = async (
+    user: ReturnType<typeof userEvent.setup>,
+    requests: RecordedRequest[],
+    queryClient: ReturnType<typeof renderScreen>['queryClient'],
+    sent = 1,
+  ): Promise<void> => {
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(sent);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    /* 달라진 응답이 실제로 대상을 다시 세운 시점을 앵커로 잡는다(줄이 셋 → 하나). */
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+  };
+
+  /**
+   * ⭐ **늦은 성공이 남의 전표 위에 서지 않는다.**
+   *
+   * 서버에는 결재 요청이 실제로 만들어졌으므로 **사실은 밝히되**, 지금 보고 있는 대상의 결과로
+   * 세우지 않는다 — 결과 구획도 진행 구획도 서지 않는다.
+   *
+   * **이 시험이 `resetIfIdle` 규율의 감지기이기도 하다** — 대상을 다시 세울 때 `reset()`을 직접
+   * 불렀다면 옵저버가 떨어져 이 성공이 **아예 도착하지 않고**, 아래 안내가 서지 않는다.
+   */
+  it('늦게 도착한 202가 사실만 알리고 결과 구획을 세우지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, queryClient, user } = renderScreen(
+      submitRoutes([changingVarianceRoute()]),
+      '?count=9101',
+      [SUBMIT_PATH],
+    );
+
+    await submitThenRetarget(user, requests, queryClient);
+
+    release();
+
+    expect(
+      await screen.findByText(t.result.unboundSubmittedNote('SAMPLE-IA-9301')),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: t.progress.label })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **늦은 성공이 결재 진행을 열지 않는다**(C36의 매임 몫).
+   *
+   * 남의 전표의 승인 요청 번호로 진행을 부르면 지금 보고 있는 대상 위에 **다른 문서의 결재
+   * 단계**가 선다.
+   */
+  it('늦게 도착한 202로 결재 진행을 부르지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, queryClient, user } = renderScreen(
+      submitRoutes([changingVarianceRoute()]),
+      '?count=9101',
+      [SUBMIT_PATH],
+    );
+
+    await submitThenRetarget(user, requests, queryClient);
+
+    release();
+
+    await screen.findByText(t.result.unboundSubmittedNote('SAMPLE-IA-9301'));
+
+    expect(requestsTo(requests, APPROVAL_PATH)).toEqual([]);
+  });
+
+  /**
+   * ⭐ **늦은 실패도 남의 전표 위에 서지 않는다.** 성공만 매고 실패를 두면 절반만 막힌다 —
+   * 사용자는 한 번도 올린 적 없는 대상이 이미 거부된 줄 알게 된다.
+   */
+  it('늦게 도착한 400이 남의 전표 위에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute(),
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingSubmitRoute(400, {
+          errors: [{ scope: 'screen', code: 'SAMPLE_ERR', message: '합성 상신 거절' }],
+        }),
+      ]),
+      '?count=9101',
+      [SUBMIT_PATH],
+    );
+
+    await submitThenRetarget(user, requests, queryClient);
+
+    release();
+
+    /* 응답이 실제로 도착한 시점의 양성 앵커 — 그 뒤에 음성 단언을 잰다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.register })).toBeEnabled();
+    });
+
+    expect(screen.queryByText('합성 상신 거절')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **선 뒤에 끊겨도 사실이 남는다**(읽는 자리의 파생).
+   *
+   * 「올렸습니다」가 선 **뒤에** 같은 effect가 초안 세션을 올리면 결과 구획이 통째로 걷힌다 —
+   * 그때 영수증까지 사라지면 사용자는 **결재에 올린 줄 모르는 요청**을 남긴다.
+   */
+  it('올린 뒤 실사 차이가 달라져도 그 사실이 화면에 남는다', async () => {
+    withReasonCodes();
+
+    const { queryClient, user } = renderScreen(submitRoutes([changingVarianceRoute()]));
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    /* 양성 앵커 — 이 전표의 상신이 실제로 섰다. */
+    await screen.findByText(t.result.submittedTitle('SAMPLE-IA-9301'));
+
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    expect(screen.getByText(t.result.unboundSubmittedNote('SAMPLE-IA-9301'))).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐⭐ **앞 전표의 상신이 새 전표 위에 서지 않는다** — 이 회차 매임의 **핵심 소비처**다.
+   *
+   * 배경 재조회가 초안 세션을 올리는 자리(`seedFromVarianceRef`)는 **대상을 버리는 한 문을
+   * 지나지 않는다** — 상신 매임이 거둬지지 않은 채 남는다. 그 상태에서 사용자가 다시 등록하면
+   * 새 전표의 결과 구획이 서는데, 매임을 지나지 않으면 **한 번도 올린 적 없는 전표가 「결재에
+   * 올렸습니다」로 그려진다.**
+   *
+   * ⚠ 이 감지기는 **뮤테이션이 찾아낸 자리다**(M-3b 초회 사살 1건 — 나머지 갈래는 결과 구획
+   * 자체가 걷혀 가려져 있었다). 두 전표의 **내부 번호가 실제로 갈려야** 이 시험이 성립한다.
+   */
+  it('앞 전표의 상신이 새로 등록한 전표 위에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute(),
+        twoAdjustmentsRoute(),
+        detailRoute(),
+        submitRoute(),
+        approvalRoute(),
+      ]),
+    );
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    /* 양성 앵커 — 첫 전표의 상신이 실제로 섰다. */
+    await screen.findByText(t.result.submittedTitle('SAMPLE-IA-9301'));
+
+    /* 잠금 밖에서 도는 갱신이 대상을 다시 세운다 — 상신 매임은 거둬지지 않는다. */
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    /* 새 전표를 만든다 — 결과 구획이 그 전표로 다시 선다. */
+    await submitRegister(user);
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(within(pane).getByText('SAMPLE-IA-9302')).toBeVisible();
+    /* ⭐ 앞 전표의 상신이 이 전표 위에 서지 않는다. */
+    expect(
+      within(pane).queryByText(t.result.submittedTitle('SAMPLE-IA-9302')),
+    ).not.toBeInTheDocument();
+    expect(within(pane).getByLabelText(t.submit.reason)).toHaveValue('');
+    expect(
+      within(pane).getByRole('button', { name: t.actions.requestApproval }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐⭐ **매임의 실패 축 소비처 둘**(검증 문제 ①) — 배너와 사유 칸 인라인.
+   *
+   * 앞 회차는 성공 축 둘(갈래 판정·진행 조회)에만 잣대가 섰고, **실패 축 둘은 각각 끊어도
+   * 584건이 전부 통과했다**(MB-2·MB-3 생존). 그때 사용자는 **한 번도 올린 적 없는 전표**에
+   * 앞 전표의 거절 사유가 서 있는 화면을 본다.
+   *
+   * 재현은 검증이 밟은 길 그대로다 — 전표 A 상신 400 → 창을 Escape로 닫는다 → 배경 갱신이
+   * 초안 세션을 올린다(사유·매임을 거두는 문을 지나지 않는다) → 전표 B를 새로 등록한다.
+   */
+  const submitFailThenRetarget = async (
+    user: ReturnType<typeof userEvent.setup>,
+    requests: RecordedRequest[],
+    queryClient: ReturnType<typeof renderScreen>['queryClient'],
+  ): Promise<void> => {
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    /*
+     * **짝 양성**(사본 체크리스트 9번 · 리뷰 R-4). 뒤따르는 음성 단언이 재는 것은 「그 오류가
+     * 새 전표로 옮겨 붙지 않는다」인데, **앞 전표 위에 실제로 섰다는 사실**을 같은 시점에 잡지
+     * 않으면 오류가 아예 서지 않는 구현에서도 통과한다. 짝인 배너 감지기가 같은 형태를 쓴다.
+     */
+    expect(await screen.findByText('앞 전표의 사유 오류')).toBeVisible();
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    await submitRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-IA-9302'));
+  };
+
+  /** 400을 **두 갈래로 함께** 준다 — 배너 축과 칸 축을 같은 응답으로 만든다. */
+  const bothScopeFailingSubmitRoute = (): StubRoute =>
+    failingSubmitRoute(400, {
+      errors: [
+        { scope: 'screen', code: 'SAMPLE_ERR', message: '앞 전표의 거절 사유' },
+        { scope: 'field', field: 'reason', code: 'SAMPLE_ERR', message: '앞 전표의 사유 오류' },
+      ],
+    });
+
+  const retargetRoutes = (): StubRoute[] =>
+    allRoutes([
+      changingVarianceRoute(),
+      twoAdjustmentsRoute(),
+      detailRoute(),
+      secondDetailRoute(),
+      bothScopeFailingSubmitRoute(),
+      approvalRoute(),
+    ]);
+
+  it('앞 전표의 상신 실패 배너가 새로 등록한 전표 위에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, queryClient, user } = renderScreen(retargetRoutes());
+
+    /* 양성 앵커 — 그 배너가 앞 전표 위에는 실제로 섰다. */
+    await registerThenReady(user);
+    await submitApproval(user);
+    expect(await screen.findByText('앞 전표의 거절 사유')).toBeVisible();
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+    await submitRegister(user);
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(within(pane).getByText('SAMPLE-IA-9302')).toBeVisible();
+    expect(screen.queryByText('앞 전표의 거절 사유')).not.toBeInTheDocument();
+    /* 실패 갈래 자체가 옮겨 붙지 않는다 — 새 전표는 「만들었습니다」로 선다. */
+    expect(
+      within(pane).queryByText(t.result.submitFailedTitle('SAMPLE-IA-9302')),
+    ).not.toBeInTheDocument();
+    expect(submitRequests(requests)).toHaveLength(1);
+  });
+
+  it('앞 전표의 사유 칸 오류가 새로 등록한 전표의 칸에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, queryClient, user } = renderScreen(retargetRoutes());
+
+    await submitFailThenRetarget(user, requests, queryClient);
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(within(pane).getByText('SAMPLE-IA-9302')).toBeVisible();
+    expect(screen.queryByText('앞 전표의 사유 오류')).not.toBeInTheDocument();
+    expect(within(pane).getByLabelText(t.submit.reason)).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+
+  /**
+   * ⭐ **끊긴 상신 영수증이 쌓인다 — 둘이면 둘 다 남는다**(검증 문제 ③ · 등록 축과 대칭).
+   *
+   * 매임은 한 자리라 **뒤이은 상신이 성공하면 앞 요청의 사실이 덮인다** — 그 사고를 막으려고
+   * 매임과 다른 자리에 쌓는데, 쌓는 축(`[...prev, x]` 대 `[x]`)은 **끊긴 상신이 둘일 때만**
+   * 갈린다. 등록 축의 「버린 초안이 둘이면 두 전표번호가 모두 남는다」의 상신판이다.
+   */
+  it('끊긴 상신이 둘이면 두 전표번호가 모두 남는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute(),
+        twoAdjustmentsRoute(),
+        detailRoute(),
+        secondDetailRoute(),
+        submitRoute(),
+        secondSubmitRoute(),
+        approvalRoute(),
+      ]),
+      '?count=9101',
+      [SUBMIT_PATH, SECOND_SUBMIT_PATH],
+    );
+
+    /* ① 전표 A를 상신하는 중에 배경 갱신이 대상을 다시 세운다. */
+    await submitThenRetarget(user, requests, queryClient);
+    release();
+
+    await screen.findByText(t.result.unboundSubmittedNote('SAMPLE-IA-9301'));
+
+    /* ② 전표 B를 새로 등록해 같은 일을 되풀이한다. */
+    await submitRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-IA-9302'));
+    await submitApproval(user, '둘째 사유');
+
+    await waitFor(() => {
+      expect(
+        requests.filter((request) => request.url.pathname === SECOND_SUBMIT_PATH),
+      ).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: t.result.label })).toBeNull();
+    });
+
+    release();
+
+    expect(
+      await screen.findByText(t.result.unboundSubmittedNote('SAMPLE-IA-9301, SAMPLE-IA-9302')),
+    ).toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 대상이 그대로면 결과가 **이 전표 위에 선다.** 「늘 감춘다」로 통과하지 않게 한다. */
+  it('대상이 그대로면 올렸다는 사실이 결과 구획에 선다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(submitRoutes());
+
+    await registerThenReady(user);
+    await submitApproval(user);
+
+    expect(await screen.findByText(t.result.submittedTitle('SAMPLE-IA-9301'))).toBeInTheDocument();
+    expect(
+      screen.queryByText(t.result.unboundSubmittedNote('SAMPLE-IA-9301')),
+    ).not.toBeInTheDocument();
   });
 });
