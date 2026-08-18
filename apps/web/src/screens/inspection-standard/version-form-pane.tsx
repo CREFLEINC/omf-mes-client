@@ -45,9 +45,8 @@ export interface VersionFormPaneProps {
  * **상태 잠금**: 확정·폐기 버전은 전 입력이 잠긴다. 푸는 방법은 신규 버전 발행이며
  * 구획 배너로 안내한다. 잠금의 최종 판정은 서버(400 `STATE_LOCKED`)가 한다.
  *
- * **샘플 수량은 개수다.** 라벨에 단위를 박고 그 아래에 「비율이 아니다」를 한 줄 더 적는다 —
- * 착수 이슈 #12 §4·§6이 밝혔듯 확정 스펙은 비율 입력인데 저장 자리는 수량이라,
- * 라벨만으로는 오해가 남는다.
+ * **샘플 크기는 비율(%)이다.** 단위를 라벨에 박고 입력칸이 소수와 상한을 그대로 받게 둔다 —
+ * 실제 검사 수량은 검사 시점에 로트 크기로 환산되는 파생값이라 이 화면이 정하지 않는다(#201).
  */
 export const VersionFormPane = ({
   mode,
@@ -65,7 +64,7 @@ export const VersionFormPane = ({
 }: VersionFormPaneProps) => {
   const versionLabelId = useId();
   const statusLabelId = useId();
-  const samplingQtyId = useId();
+  const samplingRatioId = useId();
 
   const isLocked = status !== null && !status.isEditable;
   const stateLockMessage = status?.status === 'obsolete' ? t.stateLock.obsolete : t.stateLock.confirmed;
@@ -142,22 +141,23 @@ export const VersionFormPane = ({
         />
 
         {/*
-         * **개수다.** 라벨에 단위를 박고 아래에 한 줄 더 적는다 —
-         * 착수 이슈 #12 §4·§6이 밝혔듯 확정 스펙은 비율 입력인데 저장 자리는 수량이라,
-         * 라벨만으로는 30을 30%로 읽는 오해가 남는다.
+         * 계약 exclusiveMinimum: 0 · maximum: 100 — `min={0}`을 걸지 않는다. 0 은 이제 허용되지
+         * 않는 값이라 하한 안내로 두면 거짓말이 된다. 상한만 브라우저에 알리고 하한은 검증이 낸다.
+         *
+         * `step="any"` — 기본값 1 은 소수 입력을 브라우저 단에서 막는다. 계약이 double 이다(#201 ③).
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={samplingQtyId} label={t.fields.samplingQty} />
+          <FieldLabel htmlFor={samplingRatioId} label={t.fields.samplingRatio} />
           <TextField
-            id={samplingQtyId}
+            id={samplingRatioId}
             type="number"
-            min={0}
-            value={values.samplingQty}
-            onChange={(event) => onChange({ samplingQty: event.target.value })}
+            max={100}
+            step="any"
+            value={values.samplingRatio}
+            onChange={(event) => onChange({ samplingRatio: event.target.value })}
             disabled={isLocked}
-            error={fieldErrors.samplingQty}
+            error={fieldErrors.samplingRatio}
           />
-          <span className="field-note">{t.fieldNotes.samplingQty}</span>
         </div>
 
         <TextField

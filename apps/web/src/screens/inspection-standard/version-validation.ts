@@ -12,7 +12,7 @@ export const VERSION_FORM_FIELDS: readonly string[] = [
   'effectiveFrom',
   'effectiveTo',
   'samplingMethodCode',
-  'samplingQty',
+  'samplingRatio',
   'aqlValue',
   'acceptanceNumber',
   'rejectionNumber',
@@ -79,12 +79,15 @@ export const validateVersionForm = (values: VersionFormValues): Record<string, s
     }
   }
 
-  // 계약 minimum: 0. 개수이며 계약이 number라 소수를 막지 않는다.
-  if (!isBlank(values.samplingQty)) {
-    const qty = Number(values.samplingQty);
+  /*
+   * 계약 exclusiveMinimum: 0 · maximum: 100 — **0은 위반이다.** 판정 개수 두 칸과 하한 규칙이 다르다.
+   * format 이 double 이라 정수로 좁히지 않는다 — 소수가 정상 입력이다(#201).
+   */
+  if (!isBlank(values.samplingRatio)) {
+    const ratio = Number(values.samplingRatio);
 
-    if (!Number.isFinite(qty) || qty < 0) {
-      errors.samplingQty = t.samplingQtyInvalid;
+    if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 100) {
+      errors.samplingRatio = t.samplingRatioInvalid;
     }
   }
 

@@ -33,28 +33,62 @@ const renderPane = (overrides: Partial<Parameters<typeof VersionFormPane>[0]> = 
   return { onChange, onSave, onCancel, user: userEvent.setup() };
 };
 
-describe('VersionFormPane — 샘플 수량 표기', () => {
-  /*
-   * 라벨을 「비율」로 쓰면 30을 넣은 사람이 30%로 오해한다 — 착수 이슈 #12 §4·§6이 밝혔듯
-   * 확정 스펙은 비율 입력인데 저장 자리는 수량이라, 단위를 라벨에 박는 것이 이 화면의 첫 방어선이다.
-   */
+describe('VersionFormPane — 샘플 비율 표기', () => {
+  /* 단위를 라벨에 박지 않으면 30을 30개로 읽는다 — 받는 값은 백분율이다(#201). */
   it('라벨이 단위를 담는다', () => {
     renderPane();
 
-    expect(screen.getByLabelText('샘플 수량(개)')).toBeInTheDocument();
-    expect(screen.queryByLabelText('샘플 비율(%)')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('샘플 비율(%)')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/샘플 수량/)).not.toBeInTheDocument();
   });
 
-  it('보조 안내가 비율이 아님을 밝힌다', () => {
+  /*
+   * 「비율이 아니라 개수」를 밝히던 보조 안내를 정의째 없앴다 — 그 한 줄의 존재 이유가
+   * 「확정은 비율인데 받는 값은 수량」이라는 어긋남이었고 #201 이 그것을 해소했다.
+   */
+  it('옛 보조 안내가 화면에 없다', () => {
     renderPane();
 
-    expect(screen.getByText('비율(%)이 아니라 검사할 개수입니다.')).toBeInTheDocument();
+    // 음성 단언은 짝 양성과 같은 시점에 잰다 — 칸이 실제로 그려졌음을 먼저 확인한다.
+    expect(screen.getByLabelText('샘플 비율(%)')).toBeInTheDocument();
+    expect(screen.queryByText(/비율\(%\)이 아니라/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/검사할 개수입니다/)).not.toBeInTheDocument();
   });
 
-  it('저장된 값을 개수 그대로 낸다 — 비율로 환산하지 않는다', () => {
+  it('저장된 값을 그대로 낸다 — 100으로 곱하거나 나누지 않는다', () => {
     renderPane();
 
-    expect(screen.getByLabelText('샘플 수량(개)')).toHaveValue(30);
+    const input = screen.getByLabelText('샘플 비율(%)');
+
+    expect(input).toHaveValue(30);
+    expect(input).not.toHaveValue(0.3);
+    expect(input).not.toHaveValue(3000);
+  });
+
+  /*
+   * `step` 기본값 1 은 소수를 브라우저 단에서 막는다 — 계약이 double 이다(#201 ③).
+   *
+   * **jsdom 은 step 제약을 실제로 강제하지 않는다**(실측 — `step` 을 지워도
+   * `validity.stepMismatch` 가 거짓이다). 그래서 여기서는 속성이 실제 잣대이고,
+   * 브라우저가 소수를 받는지는 사람 확인 몫이다. 대신 소수 값이 자릿수 그대로 그려지는지는 잰다.
+   */
+  it('입력칸이 소수를 막지 않는다', () => {
+    renderPane({ values: versionToFormValues(inspectionPlanVersionFixtures[1]!) });
+
+    const input = screen.getByLabelText<HTMLInputElement>('샘플 비율(%)');
+
+    expect(input).toHaveValue(2.5);
+    expect(input).toHaveAttribute('step', 'any');
+  });
+
+  /* 0 은 이제 허용되지 않는 값이라 `min={0}`은 거짓 안내다. 상한만 브라우저에 알린다. */
+  it('상한 100이 걸려 있고 하한 0은 걸려 있지 않다', () => {
+    renderPane();
+
+    const input = screen.getByLabelText('샘플 비율(%)');
+
+    expect(input).toHaveAttribute('max', '100');
+    expect(input).not.toHaveAttribute('min');
   });
 });
 
@@ -90,7 +124,7 @@ describe('VersionFormPane — 상태 잠금', () => {
   it('확정 버전은 전 입력이 잠기고 푸는 방법을 안내한다', () => {
     renderPane({ status: resolveVersionStatus('CONFIRMED') });
 
-    expect(screen.getByLabelText('샘플 수량(개)')).toBeDisabled();
+    expect(screen.getByLabelText('샘플 비율(%)')).toBeDisabled();
     expect(screen.getByLabelText('유효시작')).toBeDisabled();
     expect(screen.getByLabelText('AQL')).toBeDisabled();
     expect(screen.getByRole('combobox', { name: '검사 주기' })).toBeDisabled();
@@ -117,7 +151,7 @@ describe('VersionFormPane — 상태 잠금', () => {
   it('작성중 버전에서는 입력이 열린다', () => {
     renderPane();
 
-    expect(screen.getByLabelText('샘플 수량(개)')).toBeEnabled();
+    expect(screen.getByLabelText('샘플 비율(%)')).toBeEnabled();
     expect(screen.getByRole('combobox', { name: '샘플링 방법' })).toBeEnabled();
   });
 });
@@ -126,9 +160,9 @@ describe('VersionFormPane — 편집', () => {
   it('값을 고치면 그 값만 알린다', () => {
     const { onChange } = renderPane();
 
-    fireEvent.change(screen.getByLabelText('샘플 수량(개)'), { target: { value: '40' } });
+    fireEvent.change(screen.getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
 
-    expect(onChange).toHaveBeenCalledWith({ samplingQty: '40' });
+    expect(onChange).toHaveBeenCalledWith({ samplingRatio: '40' });
   });
 
   it('필드 오류를 그 칸 옆에 낸다', () => {

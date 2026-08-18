@@ -5607,7 +5607,7 @@ export interface paths {
         };
         /**
          * 법인 목록
-         * @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 근거: 없음 — 이 10화면 중 어느 화면도 직접 쓰지 않는다(06-API-요구서 §4-3). business_unit·plant 응답의 legalEntityId 를 이름으로 풀 때만 필요하며, 「법인」 축을 부여·표시하는 화면은 아직 없다. W-CO-02 §9-3 의 법인 축 부재(#69)가 해소되면 데이터 접근범위가 첫 사용처가 된다
+         * @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 근거: 없음 — 이 10화면 중 어느 화면도 직접 쓰지 않는다. business_unit·plant 응답의 legalEntityId 를 이름으로 풀 때만 필요하며, 「법인」 축을 부여·표시하는 화면은 아직 없다. 「법인」 축은 권한 범위에 두지 않기로 확정됐다(DR-002 2-C · 2026-08-10) — 접근범위는 창고·공정 축으로만 가른다. 따라서 이 자원은 이름 풀이 전용으로 남는다
          */
         get: {
             parameters: {
@@ -5754,7 +5754,7 @@ export interface paths {
         };
         /**
          * 생산라인 목록
-         * @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 근거: 없음 — 이 10화면 중 어느 화면도 선택 목록으로 쓰지 않는다(06-API-요구서 §4-3). 라인·작업구역 마스터의 귀속 화면이 미정이다(W-06-07 §7-2 · W-06-06 §7-2 · W-CO-02 §7-2 의 계층 표시 갭 표). equipment 응답의 productionLineId 를 이름으로 풀 때만 쓴다
+         * @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 근거: 없음 — 이 10화면 중 어느 화면도 선택 목록으로 쓰지 않는다. 라인·작업구역 마스터의 귀속 화면이 미정이다(W-06-07 §7-2 · W-06-06 §7-2 · W-CO-02 §7-2 의 계층 표시 갭 표). equipment 응답의 productionLineId 를 이름으로 풀 때만 쓴다
          */
         get: {
             parameters: {
@@ -7096,8 +7096,6 @@ export interface paths {
                     adjustedAtFrom?: string;
                     /** @description 전기일 종료 */
                     adjustedAtTo?: string;
-                    /** @description 승인 대기 탭. 근거: W-01-12 §5-6 */
-                    pendingApprovalOnly?: boolean;
                     page?: number;
                     size?: number;
                 };
@@ -15117,7 +15115,7 @@ export interface components {
         UserDataScopeListResponse: {
             items: components["schemas"]["UserDataScope"][];
         };
-        /** @description planning.bom 에는 is_default 와 부분 유일 인덱스가 있는데 여기엔 둘 다 없어 :set-default 오퍼레이션이 성립하지 않는다. 유효기간이 겹치는 Rev 가 둘일 때 어느 것을 쓸지 정할 수 없다. effective_from 은 결정 07 이 「선택」이라 했으나 하류가 NOT NULL 이라 하류를 따른다 — W-06-01 §8-3 */
+        /** @description 공정 순서(Routing) 헤더. 품목과 개정 번호로 한 건이 정해지며 상태는 작성중·확정·폐기다. 유효 시작일은 «선택»이다 — 비워 두면 시작 제한이 없다. */
         Routing: {
             /**
              * Format: int64
@@ -15148,7 +15146,7 @@ export interface components {
              * Format: date
              * @example 2026-08-04
              */
-            effectiveFrom: string;
+            effectiveFrom?: string;
             /**
              * Format: date
              * @description ck_routing_dates — 있으면 effectiveFrom 이상
@@ -15173,7 +15171,7 @@ export interface components {
              * Format: date
              * @example 2026-08-04
              */
-            effectiveFrom: string;
+            effectiveFrom?: string;
             /**
              * Format: date
              * @description ck_routing_dates — 있으면 effectiveFrom 이상
@@ -15189,7 +15187,7 @@ export interface components {
              * Format: date
              * @example 2026-08-04
              */
-            effectiveFrom: string;
+            effectiveFrom?: string;
             /**
              * Format: date
              * @description ck_routing_dates — 있으면 effectiveFrom 이상
@@ -16210,11 +16208,6 @@ export interface components {
              */
             samplingMethodCode: string;
             /**
-             * @description ⚠ 확정은 「샘플 비율(%)」인데 하류는 「수량」이다 — 단위 규약 §8-2
-             * @example 500
-             */
-            samplingQty?: number | null;
-            /**
              * @description AQL·허용불량수
              * @example 1
              */
@@ -16246,6 +16239,12 @@ export interface components {
              * @example CONFIRMED
              */
             statusCode: string;
+            /**
+             * Format: double
+             * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 실제 검사 «수량»은 검사 시점에 로트 크기로 환산되는 파생값이라 여기서 받지 않는다.
+             * @example 30
+             */
+            samplingRatio?: number | null;
         };
         /** @description 검사기준 버전 최초 등록(버전 1) 요청 — 기준에 버전이 하나도 없을 때만 쓴다. planVersion 은 서버가 항상 1로, statusCode 는 항상 작성중으로 채운다. 근거: W-06-02 §4-B·§5-1 */
         InspectionPlanVersionCreate: {
@@ -16266,8 +16265,6 @@ export interface components {
             effectiveTo?: string | null;
             /** @example STANDARD */
             samplingMethodCode: string;
-            /** @example 500 */
-            samplingQty?: number | null;
             /** @example 1 */
             aqlValue?: number | null;
             /** @example 1 */
@@ -16280,6 +16277,12 @@ export interface components {
             frequencyIntervalValue?: number | null;
             /** @example STANDARD */
             frequencyIntervalUomCode?: string | null;
+            /**
+             * Format: double
+             * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 실제 검사 «수량»은 검사 시점에 로트 크기로 환산되는 파생값이라 여기서 받지 않는다.
+             * @example 30
+             */
+            samplingRatio?: number | null;
         };
         /** @description 검사기준 버전 수정 요청. 상태=작성중일 때만 허용한다. inspectionPlanId·planVersion·statusCode 는 이 요청에 포함하지 않는다. 근거: W-06-02 §4-B·§5-4 */
         InspectionPlanVersionUpdate: {
@@ -16295,8 +16298,6 @@ export interface components {
             effectiveTo?: string | null;
             /** @example STANDARD */
             samplingMethodCode: string;
-            /** @example 500 */
-            samplingQty?: number | null;
             /** @example 1 */
             aqlValue?: number | null;
             /** @example 1 */
@@ -16309,6 +16310,12 @@ export interface components {
             frequencyIntervalValue?: number | null;
             /** @example STANDARD */
             frequencyIntervalUomCode?: string | null;
+            /**
+             * Format: double
+             * @description 샘플 비율(%). 검사할 몫을 백분율로 지정한다 — 0 초과 100 이하. 실제 검사 «수량»은 검사 시점에 로트 크기로 환산되는 파생값이라 여기서 받지 않는다.
+             * @example 30
+             */
+            samplingRatio?: number | null;
         };
         InspectionPlanVersionDetailResponse: {
             inspectionPlanVersion: components["schemas"]["InspectionPlanVersion"];
@@ -16798,7 +16805,7 @@ export interface components {
              */
             isActive: boolean;
         };
-        /** @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 근거: 없음 — 이 10화면 중 어느 화면도 직접 쓰지 않는다(06-API-요구서 §4-3). business_unit·plant 응답의 legalEntityId 를 이름으로 풀 때만 필요하며, 「법인」 축을 부여·표시하는 화면은 아직 없다. W-CO-02 §9-3 의 법인 축 부재(#69)가 해소되면 데이터 접근범위가 첫 사용처가 된다 */
+        /** @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 근거: 없음 — 이 10화면 중 어느 화면도 직접 쓰지 않는다. business_unit·plant 응답의 legalEntityId 를 이름으로 풀 때만 필요하며, 「법인」 축을 부여·표시하는 화면은 아직 없다. 「법인」 축은 권한 범위에 두지 않기로 확정됐다(DR-002 2-C · 2026-08-10) — 접근범위는 창고·공정 축으로만 가른다. 따라서 이 자원은 이름 풀이 전용으로 남는다 */
         LegalEntity: {
             /**
              * Format: int64
@@ -16876,7 +16883,7 @@ export interface components {
              */
             isActive: boolean;
         };
-        /** @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 근거: 없음 — 이 10화면 중 어느 화면도 선택 목록으로 쓰지 않는다(06-API-요구서 §4-3). 라인·작업구역 마스터의 귀속 화면이 미정이다(W-06-07 §7-2 · W-06-06 §7-2 · W-CO-02 §7-2 의 계층 표시 갭 표). equipment 응답의 productionLineId 를 이름으로 풀 때만 쓴다 계층(parent_line_id) — 귀속 관리 화면 미정(W-06-06 §7-2 「세 곳 규칙」 표 참고). */
+        /** @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 근거: 없음 — 이 10화면 중 어느 화면도 선택 목록으로 쓰지 않는다. 라인·작업구역 마스터의 귀속 화면이 미정이다(W-06-07 §7-2 · W-06-06 §7-2 · W-CO-02 §7-2 의 계층 표시 갭 표). equipment 응답의 productionLineId 를 이름으로 풀 때만 쓴다 계층(parent_line_id) — 귀속 관리 화면 미정(W-06-06 §7-2 「세 곳 규칙」 표 참고). */
         ProductionLine: {
             /**
              * Format: int64
@@ -17675,7 +17682,7 @@ export interface components {
             replacementExpected?: boolean | null;
             /**
              * Format: int64
-             * @description 기타 출고 품의의 승인 요청 식별자
+             * @description 이 출고가 어느 승인 요청에서 나왔는지 되짚는 식별자. 비어 있으면 승인을 타지 않은 출고다. 폐기 출고 화면이 이 값으로 승인 이력을 보이고, 승인 없이 나간 건을 가려낸다.
              * @example 1001
              */
             approvalRequestId?: number | null;

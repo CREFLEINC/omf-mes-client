@@ -46,8 +46,8 @@ export interface VersionFormValues {
   effectiveFrom: string;
   effectiveTo: string;
   samplingMethodCode: string;
-  /** **개수**다. 비율(%)이 아니다 — 라벨과 보조 안내가 그 사실을 밝힌다. */
-  samplingQty: string;
+  /** **비율(%)**이다. 수량이 아니다 — 0 초과 100 이하이며 소수를 받는다(#201). */
+  samplingRatio: string;
   aqlValue: string;
   acceptanceNumber: string;
   rejectionNumber: string;
