@@ -575,6 +575,30 @@ describe('useAdjustmentDetailFetcher · useRequestAdjustmentApproval', () => {
   });
 
   /**
+   * ⭐ **앱의 기본 신선도(30초)에서도 다시 부른다**(`staleTime: 0` · 검증 문제 ②).
+   *
+   * 이 조회의 목적은 값이 아니라 **토큰**이다. 캐시가 신선하다는 이유로 요청이 나가지 않으면
+   * `ETag`가 갱신되지 않아 다음 상신이 낡은 토큰으로 나가고, 409를 받은 뒤 다시 눌러도 30초
+   * 동안 아무것도 달라지지 않는다.
+   *
+   * **시험 하네스의 기본 신선도는 0이라 그대로 두면 이 갈래가 재지지 않는다** — 앱과 같은 값을
+   * 이 키에 심어 실제 조건을 만든다(전례 `po-register/queries.test.ts`와 같은 형태).
+   */
+  it('캐시가 신선해도 토큰을 얻으려 다시 부른다', async () => {
+    const { fetch, requests } = recordingWriteFetch([detailRoute()]);
+    const { result, queryClient } = renderHookWithProviders(() => useAdjustmentDetailFetcher(), {
+      fetch,
+    });
+
+    queryClient.setQueryDefaults(stockAdjustKeys.detail(9301), { staleTime: 30_000 });
+
+    await result.current(9301);
+    await result.current(9301);
+
+    expect(requests.filter((request) => request.url.pathname === DETAIL_PATH)).toHaveLength(2);
+  });
+
+  /**
    * ⭐ **상세가 준 토큰이 상신의 `If-Match`로 실린다**(C31 · D-14).
    *
    * 등록 201도 `ETag`를 주지만 그 토큰은 **컬렉션 경로**에 앉는다 — 두 값을 다르게 두었으므로,

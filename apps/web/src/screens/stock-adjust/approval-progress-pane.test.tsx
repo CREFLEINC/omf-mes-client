@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ApiRequestError } from '../../patterns/request';
 import {
   APPROVED_APPROVAL_STATUS_CODES,
   REJECTION_DECISION_CODES,
@@ -13,7 +14,6 @@ import { ApprovalProgressPane } from './approval-progress-pane';
 import type { ApprovalProgressState } from './approval-progress-pane';
 import { SAMPLE_APPROVED_STATUS, approvalRequestDetailBody } from './fixtures';
 import { NO_BREAK_SPACE } from './reason-draft';
-import { ApiRequestError } from '../../patterns/request';
 
 const t = messages.stockAdjust;
 

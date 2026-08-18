@@ -2,11 +2,11 @@ import { Button, EmptyState, SkeletonText, Stepper, type StepperItem } from '@cr
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { toApiError } from '../../patterns/request';
 import type { RequestProgressView, StepProgressView } from './approval-progress';
 import { describeLoadError } from './load-error-banner';
 import { isApprovalForbidden, isApprovalNotFound } from './queries';
 import { toVisibleLine } from './reason-draft';
-import { toApiError } from '../../patterns/request';
 
 const t = messages.stockAdjust;
 

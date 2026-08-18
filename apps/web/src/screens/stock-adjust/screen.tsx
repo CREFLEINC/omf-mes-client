@@ -217,14 +217,26 @@ export const StockAdjustScreen = () => {
    */
   const [strandedAdjustmentNos, setStrandedAdjustmentNos] = useState<string[]>([]);
 
-  /**
-   * **상신의 매임**과 그 사유 초안.
-   *
-   * `null`이면 이 화면에서 상신을 시도한 적이 없다. 사유는 **전표의 값이 아니라 이 시도의
-   * 값**이라 대상을 버리는 한 문(`resetDraftForNewTarget`)이 함께 거둔다.
-   */
+  /** **상신의 매임.** `null`이면 이 화면에서 상신을 시도한 적이 없다. */
   const [submitBinding, setSubmitBinding] = useState<SubmitBinding | null>(null);
-  const [submitReason, setSubmitReason] = useState('');
+
+  /**
+   * 친 상신 사유 — **어느 전표를 위해 쓴 글인가와 함께 든다**(리뷰 R-1 · D-15).
+   *
+   * ⭐ **판정을 읽는 자리에서 한다.** 앞선 형태는 사유를 홑값으로 들고 「대상을 버리는 한 문」이
+   * 거두게 했는데, **초안 세션을 올리는 문이 둘**이다 — `resetDraftForNewTarget`(조작)과
+   * `seedFromVarianceRef`(**effect** · 폼 잠금 밖에서 돈다). 뒤쪽으로 대상이 다시 서면 사유가
+   * 거둬지지 않은 채 남고, 새로 등록한 전표의 사유 칸에 **앞 전표를 위해 쓴 문장**이 그대로
+   * 서서 그것이 그 전표의 결재함 요약(A-12)으로 올라간다.
+   *
+   * 쓰는 자리를 빠짐없이 세는 대신 **읽을 때 대조한다** — 이 슬라이스가 매임과 끊긴 영수증에서
+   * 이미 두 번 같은 결론에 이른 형태다(T2 R-7 · 이 회차 R-1).
+   */
+  const [submitReasonDraft, setSubmitReasonDraft] = useState<{
+    /** 그 글을 쓴 대상. `null`이면 아직 아무 전표에도 매이지 않았다 */
+    inventoryAdjustmentId: number | null;
+    text: string;
+  }>({ inventoryAdjustmentId: null, text: '' });
 
   /**
    * **매임이 끊긴 채 결재에 올라간 전표들.**
@@ -448,6 +460,16 @@ export const StockAdjustScreen = () => {
   const adjustmentId = boundRegister?.created?.inventoryAdjustmentId ?? null;
 
   /**
+   * **이 전표를 위해 쓴 사유만 이 전표의 사유다**(리뷰 R-1).
+   *
+   * 다른 전표에 매인 글은 **빈 값으로 읽는다** — 그러면 잠금(`submitBlockReason`)·확인 창
+   * (`submitSummary`)·본문(`toApprovalRequest`)이 **한 파생을 함께 지나** 셋이 동시에 옳아진다.
+   * 자리마다 따로 판정하면 버튼은 열렸는데 본문은 비는 식으로 갈린다.
+   */
+  const submitReason =
+    submitReasonDraft.inventoryAdjustmentId === adjustmentId ? submitReasonDraft.text : '';
+
+  /**
    * 지금 나가고 있는 상신이 **겨눈 전표**와 **화면이 지금 보고 있는 전표**.
    *
    * 늦게 도착한 성공을 어느 전표의 것으로 적을지, 그리고 그것이 **지금 보고 있는 전표의
@@ -504,7 +526,7 @@ export const StockAdjustScreen = () => {
         return;
       }
 
-      setSubmitReason('');
+      setSubmitReasonDraft({ inventoryAdjustmentId: null, text: '' });
       setPending(null);
     },
   });
@@ -556,14 +578,18 @@ export const StockAdjustScreen = () => {
     resetIfIdle(register);
 
     /*
-     * **상신 자리도 같은 한 문에서 거둔다**(T2 인계 ③). 남겨 두면 앞 전표에 붙일 사유가 다른
-     * 조정의 결재에 올라가고, 「올렸습니다」가 아직 만들지도 않은 전표 위에 선다.
+     * **상신 자리도 같은 한 문에서 거둔다**(T2 인계 ③). 남겨 두면 「올렸습니다」가 아직
+     * 만들지도 않은 전표 위에 선다.
      *
      * 매임을 비우는 것이 **나가는 중인 요청을 끊지는 않는다** — 그 응답은 도착해서 겨눈 번호로
      * 다시 매이고, 그때 대상이 달라져 있으면 「앞서 보낸 상신이 끝났습니다」로만 남는다.
+     *
+     * ⚠ **사유의 방어는 이 문에 기대지 않는다**(리뷰 R-1). 여기서 함께 비우는 것은 조작으로
+     * 대상을 바꾼 사용자에게 빈 칸을 주기 위해서일 뿐이고, **이 문을 지나지 않는 길**(잠금 밖
+     * effect)이 실재하므로 진짜 방어는 읽는 자리의 파생(`submitReason`)이 진다.
      */
     setSubmitBinding(null);
-    setSubmitReason('');
+    setSubmitReasonDraft({ inventoryAdjustmentId: null, text: '' });
     resetIfIdle(submit);
 
     /*
@@ -1556,7 +1582,8 @@ export const StockAdjustScreen = () => {
           banner={pending === 'submit' ? null : submitFailureSlot()}
           progress={progressSlot()}
           onChangeReason={(value) => {
-            setSubmitReason(value);
+            /* **친 글자를 그 전표에 맨다** — 읽는 자리가 이 짝으로 남의 사유를 걸러 낸다(R-1). */
+            setSubmitReasonDraft({ inventoryAdjustmentId: adjustmentId, text: value });
             /* 고친 칸의 서버 오류를 함께 지운다 — 남겨 두면 고치는 순간에도 빨갛게 서 있다. */
             submit.clearFieldError('reason');
           }}
