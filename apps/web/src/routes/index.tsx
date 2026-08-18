@@ -16,6 +16,7 @@ import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
+import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
@@ -55,6 +56,17 @@ export const appRouter = createBrowserRouter([
        * (정책 §5.2 — 접근 불가능한 경계).
        */
       { path: 'system/approval-route', element: <ApprovalRouteScreen /> },
+      /*
+       * W-CO-10 — 앞머리는 같은 규칙(사이드바 섹션)을 따른다. 다만 **이 섹션에서 성격이 다른
+       * 첫 화면**이다: 앞의 둘은 관리자가 남을 설정하는 자리이고, 이것은 **누구나 자기 것을
+       * 바꾸는 자리**다. 그래서 메뉴 권한이 붙는 날 이 항목은 **감추면 안 된다**(`app/layout.tsx`의
+       * 같은 자리와 `docs/decisions.md`에 함께 적었다).
+       *
+       * **세 PR이 함께 여는 자리다.** 세 칸과 규칙(①)·요청과 성공(②)이 다 선 뒤에 이 줄을 둔다 —
+       * 보낼 수 없는 비밀번호 변경 화면을 노출하면 사용자는 바꿨다고 믿고 떠난다
+       * (정책 §5.2 — 접근 불가능한 경계).
+       */
+      { path: 'system/password-change', element: <PasswordChangeScreen /> },
       /*
        * W-01-09 — 자재창고(도메인 01)의 첫 화면. 앞머리를 계약 경로(`/logistics/**`)와 같은
        * 낱말로 두어 화면과 계약의 대응이 주소에서 읽히게 한다. 뒤따르는 W-01 화면들이 그대로 쓴다.

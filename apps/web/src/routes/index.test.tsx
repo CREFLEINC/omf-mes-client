@@ -196,6 +196,18 @@ describe('appRouter', () => {
   });
 
   /*
+   * W-CO-10의 계약 경로는 `/app/users/me:change-password`이고 주소 앞머리는 `/system/`이다 —
+   * 근거는 여기서도 **섹션**이다. 자기 비밀번호를 바꾸는 일은 업무 기준정보가 아니라 계정 설정이라
+   * 사용자·역할·권한과 같은 섹션에 선다. ⛔ 「내 계정」류의 새 앞머리를 만들지 않는다 — 그 섹션에
+   * 들어갈 화면이 지금 이것 하나뿐이라 섹션 하나에 항목 하나가 된다.
+   */
+  it('비밀번호 변경이 시스템 관리 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/system/password-change');
+    expect(routedPaths()).not.toContain('/account/password');
+    expect(routedPaths()).not.toContain('/app/users/me:change-password');
+  });
+
+  /*
    * W-CO-09의 계약 경로는 `/app/approval-requests`인데 주소는 `/approval/inbox`다 —
    * 근거는 여기서도 **섹션**이다. 결재함은 결재선 정의(운영 설정)와 달리 **일하는 자리**라
    * 「시스템 관리」에 들어가지 않고 자기 섹션을 갖는다.

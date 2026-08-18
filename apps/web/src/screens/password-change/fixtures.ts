@@ -54,3 +54,22 @@ export const mismatchBodyWithAttemptsHint = (): ErrorResponse & { remainingAttem
   ...currentMismatchBody(),
   remainingAttempts: 3,
 });
+
+/**
+ * ⭐ **칸을 지목하는 400 본문** — 서버가 실제로 주는 모양이다(계약 `ErrorItem.scope='field'`).
+ *
+ * 400 시험을 `scope: 'screen'`만으로 재면 **가장 그럴듯한 실수**(서버가 준 `field` 이름을 보고
+ * 아무 칸에나 붙이는 것)를 전혀 건드리지 못한 채 통과한다. 지목하는 이름은 계약 본문의 칸
+ * 그대로다 — 화면이 그 이름을 아는 것이 문제의 출발점이다.
+ */
+export const fieldErrorBody = (
+  field = 'currentPassword',
+  message = '합성 칸 오류 문구입니다.',
+): ErrorResponse => ({
+  errors: [{ scope: 'field', field, code: 'SYN_CODE_B', message }],
+});
+
+/** 여러 항목을 한 응답에 싣는다 — 계약의 `errors`는 배열이다. */
+export const errorItemsBody = (items: ErrorResponse['errors']): ErrorResponse => ({
+  errors: items,
+});

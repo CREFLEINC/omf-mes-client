@@ -367,6 +367,30 @@ describe('AppLayout', () => {
   });
 
   /**
+   * ⛔ **이 항목은 「관리자 화면」이 아니다.** 앞의 둘은 관리자가 남을 설정하는 자리이고 이것은
+   * 누구나 자기 것을 바꾸는 자리라 **섹션 맨 끝**에 붙인다 — 앞의 순서(권한 → 결재선)를 흔들지
+   * 않기 위해서이기도 하다. 메뉴 권한이 붙는 날 **감추면 안 되는 항목**임을 코드 주석과
+   * `docs/decisions.md`가 함께 적는다.
+   */
+  it('사이드바에 시스템 관리 섹션의 비밀번호 변경 메뉴가 맨 끝에 보인다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByRole('link', { name: '비밀번호 변경' })).toHaveAttribute(
+      'href',
+      '/system/password-change',
+    );
+    expect(links.indexOf('/system/password-change')).toBe(
+      links.indexOf('/system/approval-route') + 1,
+    );
+    expect(links.indexOf('/system/password-change')).toBe(links.length - 1);
+  });
+
+  /**
    * **결재함은 자기 섹션을 갖는다** — 기준정보도 시스템 운영도 아니라 일하는 자리다.
    * 결재선 정의(운영 설정)와 같은 섹션에 넣으면 「설정하는 화면」과 「일하는 화면」이 섞인다.
    */
@@ -417,6 +441,7 @@ describe('AppLayout', () => {
       '/approval/inbox',
       '/system/users-roles',
       '/system/approval-route',
+      '/system/password-change',
     ]);
   });
 

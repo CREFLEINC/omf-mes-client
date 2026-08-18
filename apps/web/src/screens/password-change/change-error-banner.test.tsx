@@ -1,0 +1,214 @@
+import { messages } from '@omf-mes/i18n';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+
+import { ChangeErrorBanner, toBannerContent } from './change-error-banner';
+import type { ChangeOutcome } from './change-outcome';
+import { currentMismatchBody, errorItemsBody, fieldErrorBody } from './fixtures';
+
+const t = messages.passwordChange;
+
+const renderBanner = (outcome: ChangeOutcome, onRetry = vi.fn()) => {
+  const result = render(<ChangeErrorBanner outcome={outcome} onRetry={onRetry} />);
+
+  return { ...result, onRetry };
+};
+
+const retryButton = () => screen.queryByRole('button', { name: messages.common.retry });
+
+describe('ChangeErrorBanner — 배너가 서는 갈래와 서지 않는 갈래', () => {
+  /**
+   * ⛔ **현재 비밀번호 불일치는 배너를 세우지 않는다** — 그 갈래의 자리는 그 칸 옆이다.
+   * 배너로도 함께 세우면 같은 말이 두 자리에 서서 어디를 고칠지 흐려진다.
+   */
+  it('현재 비밀번호 불일치에는 배너가 서지 않는다', () => {
+    /* 양성 먼저 — 배너가 실제로 서는 갈래가 있음을 잡은 뒤 서지 않음을 잰다. */
+    expect(toBannerContent({ kind: 'network' })).not.toBeNull();
+
+    expect(toBannerContent({ kind: 'currentMismatch' })).toBeNull();
+
+    const { container } = renderBanner({ kind: 'currentMismatch' });
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  /**
+   * ⭐ **통신 실패는 「바꾸지 못했다」고 단언하지 않는다.** 요청이 서버에 닿았을 수 있고 그렇다면
+   * 비밀번호는 이미 바뀌었다 — 실패라고만 말하면 사용자가 옛 값으로 다음 로그인을 시도한다.
+   */
+  it('통신 실패는 이미 바뀌었을 수 있음을 알리고 다시 시도를 준다', () => {
+    renderBanner({ kind: 'network' });
+
+    expect(screen.getByText(t.banner.networkUnconfirmed)).toBeInTheDocument();
+    expect(screen.getByText(t.banner.networkUnconfirmed).textContent).toContain(
+      '이미 바뀌었을 수 있습니다',
+    );
+    expect(retryButton()).toBeInTheDocument();
+  });
+
+  it('다시 시도를 누르면 그 자리를 지나 되보낸다', async () => {
+    const onRetry = vi.fn();
+
+    renderBanner({ kind: 'network' }, onRetry);
+
+    retryButton()?.click();
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  /** ⛔ 상태 코드는 그리지 않는다 — 사용자가 쓰지 않는 말이다. */
+  it('가를 근거가 없으면 공용 안내와 다시 시도가 서고 상태 코드는 나오지 않는다', () => {
+    const { container } = renderBanner({ kind: 'unknown', status: 500 });
+
+    expect(screen.getByText(messages.httpError.description)).toBeInTheDocument();
+    expect(retryButton()).toBeInTheDocument();
+    expect(container.textContent).not.toContain('500');
+  });
+});
+
+describe('ChangeErrorBanner — 서버가 준 검증 오류(400)', () => {
+  /**
+   * 인라인으로 다 내려간 오류는 배너를 세우지 않는다 — 같은 말을 두 자리에서 하지 않는다.
+   */
+  it('입력칸이 있는 이름뿐이면 배너가 서지 않는다', () => {
+    expect(
+      toBannerContent({ kind: 'invalid', errors: fieldErrorBody('newPassword').errors }),
+    ).toBeNull();
+  });
+
+  /**
+   * ⭐ **모르는 이름과 화면 수준 오류는 배너로 올라간다 — 어디에도 보이지 않는 경로를 남기지
+   * 않는다.** 인라인으로 흘리면 대응하는 칸이 없어 그 문장이 사라진다.
+   */
+  it('모르는 이름과 화면 수준 오류는 배너에 선다', () => {
+    renderBanner({
+      kind: 'invalid',
+      errors: errorItemsBody([
+        {
+          scope: 'field',
+          field: 'unknownField',
+          code: 'SYN_CODE_H',
+          message: '합성 모르는 칸 문구입니다.',
+        },
+        ...currentMismatchBody().errors,
+      ]).errors,
+    });
+
+    expect(screen.getByText(/합성 모르는 칸 문구입니다\./)).toBeInTheDocument();
+    expect(screen.getByText(/합성 실패 문구입니다\./)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **서버가 준 문구가 있을 때는 「다시 시도」를 두지 않는다** — 값을 고쳐야 풀리는 갈래라
+   * 재시도가 헛돌고 정작 해야 할 일을 가린다(공유계약 G-23).
+   */
+  it('서버가 준 문구가 있으면 다시 시도를 두지 않는다', () => {
+    renderBanner({ kind: 'invalid', errors: currentMismatchBody().errors });
+
+    expect(screen.getByText(/합성 실패 문구입니다\./)).toBeInTheDocument();
+    expect(retryButton()).toBeNull();
+  });
+
+  /**
+   * ⭐ **문구가 하나도 남지 않으면 공용 안내로 떨어지고 그때 「다시 시도」가 함께 선다.**
+   * 화면이 무엇을 고쳐야 하는지 말하지 못하는 상태에서 남는 조치는 다시 보내는 것뿐이다 —
+   * 말과 컨트롤이 같은 곳을 가리켜야 한다.
+   */
+  it('빈 문구만 오면 공용 안내와 다시 시도가 선다', () => {
+    renderBanner({
+      kind: 'invalid',
+      errors: errorItemsBody([
+        { scope: 'field', field: 'newPassword', code: 'SYN_CODE_I', message: '   ' },
+        { scope: 'screen', code: 'SYN_CODE_J', message: '' },
+      ]).errors,
+    });
+
+    expect(screen.getByText(messages.httpError.description)).toBeInTheDocument();
+    expect(retryButton()).toBeInTheDocument();
+  });
+});
+
+describe('ChangeErrorBanner — 안내와 컨트롤이 같은 곳을 가리킨다', () => {
+  const outcomes: [string, ChangeOutcome][] = [
+    ['통신 실패', { kind: 'network' }],
+    ['가를 근거 없음', { kind: 'unknown', status: 500 }],
+    ['검증 실패(서버 문구)', { kind: 'invalid', errors: currentMismatchBody().errors }],
+    [
+      '검증 실패(빈 문구 폴백)',
+      {
+        kind: 'invalid',
+        errors: errorItemsBody([{ scope: 'screen', code: 'SYN_CODE_K', message: ' ' }]).errors,
+      },
+    ],
+  ];
+
+  it.each(outcomes)('%s — 다시 시도를 권하는 문구와 버튼의 유무가 일치한다', (_label, outcome) => {
+    renderBanner(outcome);
+
+    const text = document.body.textContent ?? '';
+    const advisesRetry = text.includes('다시 시도');
+    const hasRetryButton = retryButton() !== null;
+
+    expect(hasRetryButton).toBe(advisesRetry);
+  });
+
+  /** 짝 양성 — 위 시험이 「양쪽 다 없음」으로만 통과하지 않게, 두 갈래가 실제로 있음을 잰다. */
+  it('권하는 갈래와 권하지 않는 갈래가 둘 다 있다', () => {
+    expect(toBannerContent({ kind: 'network' })?.canRetry).toBe(true);
+    expect(
+      toBannerContent({ kind: 'invalid', errors: currentMismatchBody().errors })?.canRetry,
+    ).toBe(false);
+  });
+});
+
+describe('ChangeErrorBanner — 제목과 본문이 서로를 부정하지 않는다', () => {
+  /**
+   * ⭐ **제목은 먼저·굵게 읽힌다.** 본문이 「이미 바뀌었을 수 있습니다」라고 말해도 제목이
+   * 「바꾸지 못했습니다」면 사용자는 제목을 믿고 **옛 비밀번호로 다음 로그인을 시도한다.**
+   *
+   * ⚠ 전례(로그인)의 「제목은 갈래 무관 상수」가 그쪽에서 참인 이유는 **세션이 생겼거나 안
+   * 생겼거나 둘뿐**이기 때문이다. 되돌릴 수 없는 쓰기에서는 「응답을 못 받았다」와 「적용되지
+   * 않았다」가 같지 않아 그 형태가 거짓이 된다.
+   */
+  it('통신 실패 배너의 제목이 실패를 단언하지 않는다', () => {
+    /*
+     * 양성 먼저 — 단언하는 제목이 실제로 쓰이는 갈래를 잡은 뒤, 이 갈래에는 없음을 잰다.
+     *
+     * ⚠ **대조는 400이어야 한다.** 앞 회차는 이 자리에 `unknown`(500)을 두었고, 그래서 이 시험이
+     * 「5xx에서는 실패를 단언해야 한다」를 **규격으로 굳혔다** — 잘못된 규격을 지키는 감지기는
+     * 뮤테이션 덮임 100%에서도 살아남는다. 단언이 참인 갈래는 **서버가 값을 보고 거절한 400**뿐이다.
+     */
+    expect(toBannerContent({ kind: 'invalid', errors: currentMismatchBody().errors })?.title).toBe(
+      t.banner.failureTitle,
+    );
+
+    const network = toBannerContent({ kind: 'network' });
+
+    expect(network?.title).not.toBe(t.banner.failureTitle);
+    expect(network?.title).not.toContain('바꾸지 못');
+
+    renderBanner({ kind: 'network' });
+
+    expect(screen.getByText(t.banner.unconfirmedTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.banner.failureTitle)).toBeNull();
+  });
+
+  /**
+   * 실패가 **확정된** 갈래에서만 단언한다 — 400은 서버가 **값을 보고** 거절했음이 확실하다.
+   *
+   * ⭐ **가를 근거가 없는 갈래는 적용 여부도 가를 수 없다.** 5xx는 원본이 쓰기를 마친 뒤 앞단이
+   * 실패한 경우를 포함하고, 그래서 같은 슬라이스가 그 갈래의 **멱등 키를 유지한다**(`queries.ts`의
+   * 수명 표). 시스템이 「같은 키로 다시 보내도 안전」으로 다루는 갈래에서 제목만 실패를 단언하면
+   * 말과 동작이 어긋난다.
+   */
+  it('단언하는 제목은 서버가 값을 거절한 갈래에만 쓴다', () => {
+    expect(toBannerContent({ kind: 'invalid', errors: currentMismatchBody().errors })?.title).toBe(
+      t.banner.failureTitle,
+    );
+
+    expect(toBannerContent({ kind: 'unknown', status: 500 })?.title).toBe(
+      t.banner.unconfirmedTitle,
+    );
+    expect(toBannerContent({ kind: 'network' })?.title).toBe(t.banner.unconfirmedTitle);
+  });
+});

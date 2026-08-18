@@ -14,6 +14,8 @@ import {
 } from '../../test/api-harness';
 import {
   currentMismatchBody,
+  errorItemsBody,
+  fieldErrorBody,
   mismatchBodyWithAttemptsHint,
   passwordDraftFixture,
 } from './fixtures';
@@ -936,5 +938,396 @@ describe('PasswordChangeScreen — 현재 비밀번호 불일치(401)', () => {
 
     expect(currentBox()).toBeInvalid();
     expect(errorTextFor(currentBox())).toContain(t.validation.currentMismatch);
+  });
+});
+
+describe('PasswordChangeScreen — 서버가 준 검증 실패(400)', () => {
+  const invalidFetch = (body: unknown): StubFetch =>
+    createStubFetch([changeRoute(() => jsonResponse(body, { status: 400 }))]);
+
+  /** 서버가 지목한 칸이 화면에 있으면 **그 칸에** 선다 — 배너로 올리면 어느 칸인지 잃는다. */
+  it('입력칸이 있는 이름을 지목하면 그 칸에 인라인으로 서고 배너는 서지 않는다', async () => {
+    const { user } = renderScreen({
+      fetch: invalidFetch(fieldErrorBody('newPassword', '합성 칸 오류 문구입니다.')),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(newBox()).toBeInvalid();
+    });
+
+    expect(errorTextFor(newBox())).toContain('합성 칸 오류 문구입니다.');
+    expect(screen.queryByText(t.banner.failureTitle)).toBeNull();
+  });
+
+  it('화면 수준 오류는 배너에 서고 인라인은 서지 않는다', async () => {
+    const { user } = renderScreen({ fetch: invalidFetch(currentMismatchBody()) });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(t.banner.failureTitle)).toBeInTheDocument();
+    expect(currentBox()).toBeValid();
+    expect(newBox()).toBeValid();
+  });
+
+  /**
+   * ⭐ **화면이 모르는 이름은 배너로 올라간다 — 어디에도 보이지 않는 경로가 없다.** 인라인으로
+   * 흘리면 대응하는 칸이 없어 그 문장이 사라지고, 사용자는 거절만 당한 채 이유를 못 본다.
+   */
+  it('모르는 이름을 지목하면 배너로 올라간다', async () => {
+    const { user } = renderScreen({
+      fetch: invalidFetch(fieldErrorBody('unknownField', '합성 모르는 칸 문구입니다.')),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(/합성 모르는 칸 문구입니다\./)).toBeInTheDocument();
+    expect(currentBox()).toBeValid();
+    expect(newBox()).toBeValid();
+  });
+
+  /** 확인 칸은 서버로 나가지 않는 값이라 서버가 지목할 이름이 아니다 — 배너로 올라간다. */
+  it('확인 칸을 지목해도 그 칸에 인라인으로 서지 않는다', async () => {
+    const { user } = renderScreen({
+      fetch: invalidFetch(fieldErrorBody('confirmPassword', '합성 확인 칸 문구입니다.')),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(/합성 확인 칸 문구입니다\./)).toBeInTheDocument();
+    expect(confirmBox()).toBeValid();
+  });
+
+  it('빈 문구만 오면 공용 안내와 다시 시도가 선다', async () => {
+    const { user } = renderScreen({
+      fetch: invalidFetch(errorItemsBody([{ scope: 'screen', code: 'SYN_CODE_L', message: '  ' }])),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+  });
+});
+
+describe('PasswordChangeScreen — 통신 실패와 가를 근거 없음', () => {
+  const failingFetch = (): { fetch: StubFetch; count: () => number; keys: () => string[] } => {
+    const keys: string[] = [];
+    const fetch: StubFetch = async (request) => {
+      keys.push(request.headers.get('Idempotency-Key') ?? '');
+
+      return Promise.reject(new Error('연결 실패(합성)'));
+    };
+
+    return { fetch, count: () => keys.length, keys: () => keys };
+  };
+
+  it('응답이 오지 않으면 이미 바뀌었을 수 있음을 배너가 알리고 다시 시도가 선다', async () => {
+    const failing = failingFetch();
+    const { user } = renderScreen({ fetch: failing.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(t.banner.networkUnconfirmed)).toBeInTheDocument();
+    expect(screen.getByText(t.banner.networkUnconfirmed).textContent).toContain(
+      '이미 바뀌었을 수 있습니다',
+    );
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **재시도는 같은 시도를 다시 보낸다**(결정 ②). 새 키로 보내면, 서버가 이미 바꿔 놓은
+   * 경우에 **본인이 방금 바꾼 값 때문에** 「현재 비밀번호가 틀렸다」를 듣는다.
+   */
+  it('다시 시도로 나간 요청의 멱등 키가 첫 요청과 같다', async () => {
+    const failing = failingFetch();
+    const { user } = renderScreen({ fetch: failing.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await screen.findByText(t.banner.networkUnconfirmed);
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(failing.count()).toBe(2);
+    });
+
+    expect(failing.keys()[0]).toBeTruthy();
+    expect(failing.keys()[1]).toBe(failing.keys()[0]);
+  });
+
+  /** 값을 고치고 다시 보내면 **다른 시도**다 — 같은 키로 보내면 서버가 앞 결과를 되돌려 준다. */
+  it('값을 고쳐 다시 보내면 멱등 키가 첫 요청과 다르다', async () => {
+    const failing = failingFetch();
+    const { user } = renderScreen({ fetch: failing.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await screen.findByText(t.banner.networkUnconfirmed);
+
+    await user.clear(newBox());
+    await user.clear(confirmBox());
+    await user.type(newBox(), 'SYN-NEXT-0009');
+    await user.type(confirmBox(), 'SYN-NEXT-0009');
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(failing.count()).toBe(2);
+    });
+
+    expect(failing.keys()[1]).not.toBe(failing.keys()[0]);
+  });
+
+  /**
+   * ⭐ **가를 근거가 없는 응답도 키를 유지한다**(이월 8). 500은 「적용됐는데 응답만 실패한」
+   * 경우를 포함하므로, 여기서 키를 버리면 되돌릴 수 없는 쓰기가 **두 번 실행될 길**이 다시 열린다.
+   */
+  it('가를 근거 없는 응답 뒤 다시 시도도 같은 키로 나간다', async () => {
+    const keys: string[] = [];
+    const { user } = renderScreen({
+      fetch: async (request) => {
+        keys.push(request.headers.get('Idempotency-Key') ?? '');
+
+        return jsonResponse({}, { status: 500 });
+      },
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(keys).toHaveLength(2);
+    });
+
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  /** 상태 코드는 그리지 않는다 — 사용자가 쓰지 않는 말이다. */
+  it('가를 근거 없는 응답에 상태 코드가 화면에 없다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([changeRoute(() => jsonResponse({}, { status: 500 }))]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('500');
+  });
+
+  /**
+   * ⭐ **칸에 매이지 않은 진술은 어느 칸을 고쳐도 걷힌다**(이월 5의 짝). 통신이 실패했다는 사실은
+   * 새 비밀번호를 고쳐도 낡는다 — 남겨 두면 지나간 배너가 새 값 위에 선다.
+   */
+  it('통신 실패 배너는 다른 칸을 고쳐도 걷힌다', async () => {
+    const failing = failingFetch();
+    const { user } = renderScreen({ fetch: failing.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    /* 양성 먼저 — 배너가 실제로 선 것을 잡은 뒤 걷힘을 잰다. */
+    expect(await screen.findByText(t.banner.networkUnconfirmed)).toBeInTheDocument();
+
+    await user.type(newBox(), 'X');
+
+    expect(screen.queryByText(t.banner.networkUnconfirmed)).toBeNull();
+  });
+
+  /**
+   * ⚠ **401은 반대다 — 그 칸이 바뀔 때만 걷힌다.** 두 규칙이 한 화면에 함께 있으므로 여기서
+   * 나란히 잰다(이월 5 — 걷는 쪽과 그리는 쪽의 어긋남이 조용한 자리).
+   */
+  it('401 인라인은 다른 칸을 고쳐도 남고 그 칸을 고치면 걷힌다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        changeRoute(() => jsonResponse(currentMismatchBody(), { status: 401 })),
+      ]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentBox()).toBeInvalid();
+    });
+
+    await user.type(newBox(), 'X');
+
+    expect(currentBox()).toBeInvalid();
+
+    await user.type(currentBox(), 'X');
+
+    expect(currentBox()).toBeValid();
+  });
+
+  /**
+   * ⚠ **「오류가 있으면 버튼이 잠긴다」는 이 화면의 불변식이 아니다**(이월 7). 서버가 준 진술은
+   * 값이 바뀌지 않아도 **다시 보내면 달라질 수 있고**(다른 기기에서 비밀번호가 또 바뀐 경우),
+   * 잠그면 사용자가 할 수 있는 일이 없어진다. 잠그는 것은 **화면이 잡는 규칙**뿐이다.
+   */
+  it('서버가 준 오류가 서 있어도 「변경」은 열려 있다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        changeRoute(() => jsonResponse(currentMismatchBody(), { status: 401 })),
+      ]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentBox()).toBeInvalid();
+    });
+
+    expect(submitButton()).toBeEnabled();
+
+    /* 대조 — 화면이 잡는 규칙은 여전히 잠근다. */
+    await user.clear(newBox());
+    await user.type(newBox(), TOO_SHORT);
+
+    expect(submitButton()).toBeDisabled();
+  });
+});
+
+describe('PasswordChangeScreen — 나가는 중에 값을 고친 뒤 응답이 온다', () => {
+  /**
+   * ⭐ **서버 진술과 화면 규칙이 같은 칸에서 겹치는 상태는 도달 가능하다.**
+   *
+   * 경로는 T2-10이 **명시적으로 허용한 자리**다 — 나가는 중에 값을 고쳐도 요청은 끊기지 않고,
+   * 그동안 갈래는 `null`이라 걷을 것도 없다. 그 사이 고친 값이 화면 규칙을 어기면, 뒤늦게 도착한
+   * 서버 진술과 화면 규칙이 **같은 칸에서 만난다.**
+   *
+   * 그때 **서버 진술이 이겨야 한다.** 서버는 방금 보낸 값을 보고 지적했는데 화면 규칙(길이)이
+   * 그것을 가리면, 사용자는 길이만 고쳐 **서버가 거절한 그 값을 다시 보낸다.**
+   *
+   * ⚠ 이 자리는 앞 회차가 「도달 불가」로 잘못 분류하고 지나간 자리다(검증이 반증했다).
+   */
+  it('나가는 중 규칙을 깨뜨린 칸에 서버 문구가 도착하면 서버 문구가 선다', async () => {
+    const counting = createCountingFetch(
+      [
+        changeRoute(() =>
+          jsonResponse(fieldErrorBody('newPassword', '합성 서버 지적입니다.'), { status: 400 }),
+        ),
+      ],
+      true,
+    );
+    const { user } = renderScreen({ fetch: counting.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    /* 나가는 중에 새 비밀번호를 규칙 위반(짧게)으로 고친다 — 화면 규칙이 이 칸에 선다. */
+    await user.clear(newBox());
+    await user.type(newBox(), TOO_SHORT);
+
+    expect(errorTextFor(newBox())).toContain(t.validation.tooShort(MIN_NEW_PASSWORD_LENGTH));
+
+    counting.release();
+
+    /* 서버 진술이 도착하면 그것이 이긴다 — 겹침이 실재하고, 순서가 뜻을 갖는다. */
+    await waitFor(() => {
+      expect(errorTextFor(newBox())).toContain('합성 서버 지적입니다.');
+    });
+  });
+
+  /**
+   * ⭐ **「다시 시도」는 화면의 보내는 문을 지나지 않는다.** 나가는 중에 값을 깨뜨리면
+   * `canSubmit`이 거짓이 되는데, 재시도를 그 문에 붙이면 **누를 수 있는데 아무 일도 없는 버튼**이
+   * 된다(공유계약 G-23의 정면 위반). 재시도가 보내는 것은 지금 화면의 값이 아니라 **이미 나간
+   * 그 시도**이므로 훅의 전용 문을 지나야 하고, 그래서 키도 그대로다.
+   */
+  it('나가는 중 값을 깨뜨린 뒤 통신 실패해도 다시 시도가 같은 키로 되보낸다', async () => {
+    const keys: string[] = [];
+    let release = (): void => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { user } = renderScreen({
+      fetch: async (request) => {
+        keys.push(request.headers.get('Idempotency-Key') ?? '');
+
+        if (keys.length === 1) await gate;
+
+        return Promise.reject(new Error('연결 실패(합성)'));
+      },
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    /* 나가는 중에 확인 칸을 흐트러뜨린다 — 보내는 문이 잠기는 상태를 만든다. */
+    await user.type(confirmBox(), 'X');
+
+    release();
+
+    expect(await screen.findByText(t.banner.networkUnconfirmed)).toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(keys).toHaveLength(2);
+    });
+
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  /**
+   * 400이 **칸 오류와 화면 수준 오류를 함께** 실어 오면 두 채널이 **동시에** 선다. 각각을 재는 두
+   * 시험이 상대의 부재를 단언하다 보니 나란히 읽으면 배타로 보이는데, 실제로는 서로를 막지 않는다.
+   */
+  it('400에 칸 오류와 화면 오류가 함께 오면 인라인과 배너가 함께 선다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        changeRoute(() =>
+          jsonResponse(
+            errorItemsBody([
+              {
+                scope: 'field',
+                field: 'currentPassword',
+                code: 'SYN_CODE_M',
+                message: '합성 칸 지적입니다.',
+              },
+              { scope: 'screen', code: 'SYN_CODE_N', message: '합성 화면 지적입니다.' },
+            ]),
+            { status: 400 },
+          ),
+        ),
+      ]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentBox()).toBeInvalid();
+    });
+
+    expect(errorTextFor(currentBox())).toContain('합성 칸 지적입니다.');
+    expect(screen.getByText(/합성 화면 지적입니다\./)).toBeInTheDocument();
+    expect(screen.getByText(t.banner.failureTitle)).toBeInTheDocument();
   });
 });

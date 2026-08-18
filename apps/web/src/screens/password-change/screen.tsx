@@ -3,7 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
-import { boundField } from './change-outcome';
+import { ChangeErrorBanner } from './change-error-banner';
+import { boundField, splitInvalidErrors } from './change-outcome';
 import {
   MIN_NEW_PASSWORD_LENGTH,
   canSubmit,
@@ -46,9 +47,16 @@ const FIRST_HISTORY_ENTRY_KEY = 'default';
  * 오류가 뜨는 형태로 두면 값이 다를 때 **버튼이 잠겨 오류를 볼 방법이 없는 화면**이 된다.
  * 다만 **빈 칸에는 그리지 않는다** — 첫 글자부터 붉은 글씨가 서면 치는 내내 오류를 본다.
  *
- * **보내고 나서**는 세 갈래다 — 204면 알림과 함께 세 칸을 비우고(이동도 재로그인도 없다),
- * 401이면 현재 비밀번호 칸에 인라인으로 서며, 그 밖의 실패는 아직 그릴 자리가 없다(배너는
- * 다음 회차). ⛔ **몇 번을 틀려도 계정은 잠기지 않는다.**
+ * **보내고 나서**는 네 갈래다.
+ *
+ * | 응답 | 어디에 선다 |
+ * | --- | --- |
+ * | 204 | 알림 + 세 칸 비우기. ⛔ 이동도 재로그인도 없다 |
+ * | 401 | **현재 비밀번호 칸**에 인라인 |
+ * | 400 | 지목한 칸이 이 화면에 있으면 그 칸에 인라인, **없거나 화면 수준이면 배너** |
+ * | 응답 없음 · 가를 근거 없음 | 배너(통신 실패는 **실패를 단언하지 않는다**) |
+ *
+ * ⛔ **몇 번을 틀려도 계정은 잠기지 않는다.**
  */
 export const PasswordChangeScreen = () => {
   const [draft, setDraft] = useState<PasswordDraft>(emptyPasswordDraft);
@@ -80,17 +88,49 @@ export const PasswordChangeScreen = () => {
   });
 
   /**
+   * 서버가 세운 인라인 오류. **갈래마다 자리가 다르다.**
+   *
+   * ⭐ **401은 「어느 칸인가」를 `boundField`에게 묻는다** — 걷는 쪽(`changeDraft`)과 그리는 쪽이
+   * 같은 근원을 지나야 한다. 둘이 각자 칸 이름을 들고 있으면 한쪽만 바뀌었을 때 **조용히
+   * 어긋난다**(오류는 그 칸에 서는데 걷히지는 않는 상태).
+   */
+  const serverFieldErrors = ((): PasswordFieldErrors => {
+    if (change.outcome === null) return {};
+
+    if (change.outcome.kind === 'currentMismatch') {
+      const field = boundField(change.outcome);
+
+      return field === null ? {} : { [field]: t.validation.currentMismatch };
+    }
+
+    /* 400은 서버가 이름으로 지목한다 — 입력칸이 있는 이름만 내려온다(나머지는 배너로 올라간다). */
+    return change.outcome.kind === 'invalid'
+      ? splitInvalidErrors(change.outcome.errors).fieldErrors
+      : {};
+  })();
+
+  /**
    * 이 칸에 설 한 문장.
    *
    * ⭐ **화면이 잡는 규칙과 서버가 준 진술이 한 자료구조에 모인다.** 둘을 따로 들면 「한 칸에 한
    * 문장」과 우선순위가 두 자리에서 각각 정해져, 새 갈래가 늘 때마다 어긋날 자리가 생긴다.
    * 현재 비밀번호 칸은 화면이 잡을 규칙이 없어(맞는지 아는 것은 서버뿐이다) 서버 쪽만 채운다.
+   *
+   * ⚠ **서버 진술이 화면 규칙을 이긴다 — 그 순서가 관찰되는 상태가 실재한다.**
+   *
+   * 도달 경로는 **나가는 중에 값을 고치는 자리**다(T2-10이 허용한다 — 그때 요청은 끊기지 않고
+   * 갈래는 아직 `null`이라 걷을 것도 없다). 고친 값이 화면 규칙을 어기면 뒤늦게 도착한 서버 진술과
+   * 화면 규칙이 **같은 칸에서 만난다.** 그때 서버의 지적이 가려지면 사용자는 길이만 고쳐
+   * **서버가 거절한 그 값을 다시 보낸다.**
+   *
+   * ⚠ **이 자리는 한때 「도달 불가」로 잘못 적혀 있었다** — 상태 공간을 정적으로 세면서 「응답이
+   * 오는 동안 값이 그대로」라는 가정을 눈치채지 못한 결과다(독립 검증이 위 경로를 만들어 반증했다).
+   * 감지기 둘이 그 경로를 지킨다 — 「나가는 중 규칙을 깨뜨린 칸에 서버 문구가 도착하면 서버 문구가
+   * 선다」와 그 짝.
    */
   const errors: PasswordFieldErrors = {
     ...validatePasswordDraft(draft),
-    ...(change.outcome?.kind === 'currentMismatch'
-      ? { currentPassword: t.validation.currentMismatch }
-      : {}),
+    ...serverFieldErrors,
   };
 
   /**
@@ -110,8 +150,9 @@ export const PasswordChangeScreen = () => {
    *
    * - **그 칸에 매인 진술**(현재 비밀번호 불일치): 그 칸이 바뀔 때만 걷는다. 새 비밀번호를
    *   고쳤다고 「현재 비밀번호가 맞지 않는다」가 거짓이 되지 않는다.
-   * - **칸에 매이지 않은 진술**(통신 실패·가를 근거 없음): 어느 칸을 고쳐도 걷는다. 그리는 자리는
-   *   다음 회차(배너)지만 **걷는 규칙은 지금 정해 둔다** — 규칙이 없으면 그때 지나간 배너가 남는다.
+   * - **칸에 매이지 않은 진술**(통신 실패 · 가를 근거 없음 · 서버가 보낸 본문 전체를 두고 한 400):
+   *   어느 칸을 고쳐도 걷는다. 배너가 그 자리를 그리므로 규칙이 없으면 **지나간 배너가 새 값 위에
+   *   그대로 선다.**
    *
    * **나가는 중인 요청은 끊지 않는다**(`resetIfIdle`) — 끊으면 비밀번호는 바뀌었는데 바뀐 줄
    * 모르는 화면이 남는다.
@@ -133,7 +174,12 @@ export const PasswordChangeScreen = () => {
    * 경로를 갖는다(Enter · 프로그램적 제출). 그 길로 규칙을 어긴 값이 나가면 서버가 실패한
    * 시도로 세고, 되돌릴 수 없는 쓰기에서는 그 한 번이 값을 바꿔 놓을 수도 있다.
    *
-   * 그래서 **보내는 문을 하나로 둔다**(`sendChange`) — 뒤 회차의 「다시 시도」도 이 문을 지난다.
+   * 그래서 **보내는 문을 하나로 둔다**(`sendChange`) — **폼 제출과 Enter가 이 문을 지난다.**
+   *
+   * ⚠ **배너의 「다시 시도」는 이 문을 지나지 않는다**(`change.retry`). 그것이 보내는 것은 지금
+   * 화면의 값이 아니라 **이미 나간 그 시도**이고, 나가는 중에 값이 깨졌더라도 눌러야 하기
+   * 때문이다 — 이 문에 붙이면 `canSubmit`이 거짓인 동안 **누를 수 있는데 아무 일도 없는 버튼**이
+   * 된다(감지기 「나가는 중 값을 깨뜨린 뒤 통신 실패해도 다시 시도가 같은 키로 되보낸다」가 잰다).
    */
   const sendChange = (): void => {
     if (change.isSubmitting || !canSubmit(draft)) return;
@@ -176,6 +222,14 @@ export const PasswordChangeScreen = () => {
        * 칸은 왼쪽에 서고 액션 줄은 화면 오른쪽 끝으로 갈라진다 — 액션이 자기가 딸린 칸에서
        * 멀어지면 무엇을 저장하는 버튼인지 읽히지 않는다.
        */}
+      {/*
+       * 화면 수준 실패만 여기 선다 — 칸에 붙일 수 있는 것은 그 칸 옆에 있다. 배너 부품이
+       * 「세우지 않아야 하는 갈래」에 `null`을 주므로 화면은 갈래를 다시 가르지 않는다.
+       */}
+      {change.outcome !== null && (
+        <ChangeErrorBanner outcome={change.outcome} onRetry={change.retry} />
+      )}
+
       <form className="password-form" onSubmit={handleSubmit}>
         <div className="password-fields">
           {/*
