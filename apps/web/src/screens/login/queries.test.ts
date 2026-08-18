@@ -200,6 +200,34 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
     expect(result.current.outcome).toBeNull();
   });
 
+  /**
+   * ⭐ **성공 되먹임이 던져도 화면이 침묵하지 않는다.**
+   *
+   * 이 자리에는 **세션 적재**가 붙는다. 그것이 던지면 요청은 성공했는데 화면에는 아무 일도
+   * 일어나지 않을 수 있다 — 이동도 안 되고 배너도 없는 상태다. 사용자는 자기가 로그인됐는지
+   * 아닌지를 알 수 없고, 다시 눌러도 같은 자리에 머문다.
+   *
+   * 잡은 값이 이 슬라이스의 실패가 아니므로 **자격이 틀렸다고 말하지 않고** 「가를 근거가
+   * 없다」로 떨어진다 — 그 갈래에는 공용 안내와 「다시 시도」가 선다.
+   */
+  it('성공 되먹임이 던지면 침묵하지 않고 모름 갈래가 된다', async () => {
+    const stub = createStubFetch([sessionsRoute(() => jsonResponse(sessionBody()))]);
+    const onSuccess = vi.fn(() => {
+      throw new Error('세션을 담지 못했습니다');
+    });
+    const { result } = renderLogin(stub, onSuccess);
+
+    act(() => {
+      result.current.submit(loginDraftFixture());
+    });
+
+    await waitFor(() => {
+      expect(result.current.outcome).toEqual({ kind: 'unknown', status: 0 });
+    });
+
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+  });
+
   it('401이면 불일치 갈래를 세우고 성공 되먹임을 부르지 않는다', async () => {
     const stub = createStubFetch([
       sessionsRoute(() => jsonResponse(loginFailureBody(), { status: 401 })),

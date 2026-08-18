@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, type DefaultOptions } from '@tanstack
 import type { ReactNode } from 'react';
 
 import { ApiClientProvider } from '../patterns/api-context';
+import { SessionProvider } from '../patterns/session';
 import { apiClient } from './api';
 
 /**
@@ -46,14 +47,21 @@ interface AppProvidersProps {
   children: ReactNode;
 }
 
-/** 앱 전역 프로바이더. 데이터 계층이 가장 바깥, 표현 계층이 안쪽이다. */
+/**
+ * 앱 전역 프로바이더. 데이터 계층이 가장 바깥, 표현 계층이 안쪽이다.
+ *
+ * **세션은 데이터와 표현 사이에 둔다.** 요청 계층보다 안쪽인 것은 세션이 요청의 결과이기
+ * 때문이고, 표현 계층보다 바깥인 것은 셸(상단 바)과 화면이 **함께** 읽기 때문이다.
+ */
 export const AppProviders = ({ children }: AppProvidersProps) => {
   return (
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={apiClient}>
-        <ThemeProvider defaultTheme="system">
-          <ToastProvider position="bottom-right">{children}</ToastProvider>
-        </ThemeProvider>
+        <SessionProvider>
+          <ThemeProvider defaultTheme="system">
+            <ToastProvider position="bottom-right">{children}</ToastProvider>
+          </ThemeProvider>
+        </SessionProvider>
       </ApiClientProvider>
     </QueryClientProvider>
   );

@@ -17,6 +17,7 @@ import {
   loginFailureBody,
   sessionBody,
 } from './fixtures';
+import { SessionProvider, useSession, type Session } from '../../patterns/session';
 import { LOGIN_ID_MAX_LENGTH } from './login-draft';
 import { LOCK_THRESHOLD_ATTEMPTS } from './login-error-banner';
 import { LoginScreen } from './screen';
@@ -60,6 +61,23 @@ const BackProbe = () => {
   );
 };
 
+/** 화면이 담은 세션을 그대로 보인다 — 무엇이 담겼는지 판정할 유일한 근거다. */
+const SessionProbe = () => {
+  const { session } = useSession();
+
+  return (
+    <output data-testid="stored-session">
+      {session === null ? '없음' : JSON.stringify(session)}
+    </output>
+  );
+};
+
+const storedSession = (): Session | null => {
+  const text = screen.getByTestId('stored-session').textContent ?? '';
+
+  return text === '없음' ? null : (JSON.parse(text) as Session);
+};
+
 interface RenderOptions {
   /** 주지 않으면 하네스가 **모든 요청에 던진다** — 「이 갈래는 서버를 부르지 않는다」가 그대로 잰다. */
   fetch?: StubFetch;
@@ -78,7 +96,7 @@ interface RenderOptions {
 const renderScreen = (options: RenderOptions = {}) => {
   const user = userEvent.setup();
   const result = renderWithProviders(
-    <>
+    <SessionProvider>
       <LoginScreen />
       {options.probes === true && (
         <>
@@ -86,7 +104,8 @@ const renderScreen = (options: RenderOptions = {}) => {
           <BackProbe />
         </>
       )}
-    </>,
+      <SessionProbe />
+    </SessionProvider>,
     { fetch: options.fetch, route: LOGIN_ROUTE },
   );
 
@@ -894,5 +913,74 @@ describe('LoginScreen — 실패의 갈래를 나눠 알린다', () => {
     await screen.findByRole('alert');
 
     await attemptSettled();
+  });
+});
+
+describe('LoginScreen — 성공하면 세션을 담는다', () => {
+  const succeeding = (session = sessionBody()): StubFetch =>
+    createStubFetch([sessionsRoute(() => jsonResponse(session))]);
+
+  /**
+   * ⭐ **응답을 깎지 않고 그대로 담는다**(완료 조건 T4-2). 지금 그리는 것은 이름 하나뿐이지만,
+   * 뒤따르는 화면들이 권한 범위를 읽는다 — 여기서 필요한 것만 골라 담으면 그 화면들이
+   * 다시 로그인을 시켜야 한다.
+   */
+  it('200이면 응답의 세션이 그대로 담긴다', async () => {
+    const session = sessionBody();
+    const { user } = renderScreen({ fetch: succeeding(session), probes: true });
+
+    /* 짝 양성 — 담기 전에는 비어 있다. */
+    expect(storedSession()).toBeNull();
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(HOME_ROUTE);
+    });
+
+    expect(storedSession()).toEqual(session);
+  });
+
+  /**
+   * ⭐ **권한 범위의 축은 사업부·공장 둘뿐이다** — 법인 축을 두지 않는다.
+   * 축이 늘면 이 시험이 먼저 깨져, 계약이 바뀐 사실을 화면보다 앞서 알린다.
+   */
+  it('담긴 권한 범위에 사업부·공장 말고 다른 축이 없다', async () => {
+    const { user } = renderScreen({ fetch: succeeding(), probes: true });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(storedSession()).not.toBeNull();
+    });
+
+    const scopes = storedSession()?.scopes ?? [];
+
+    expect(scopes.length).toBeGreaterThan(0);
+
+    for (const scope of scopes) {
+      expect(Object.keys(scope).sort()).toEqual(['businessUnitId', 'plantId']);
+      expect(scope).not.toHaveProperty('corporationId');
+      expect(scope).not.toHaveProperty('legalEntityId');
+    }
+  });
+
+  /** 실패하면 담지 않는다 — 담을 것이 없다. */
+  it('401이면 세션을 담지 않는다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        sessionsRoute(() => jsonResponse(loginFailureBody(), { status: 401 })),
+      ]),
+      probes: true,
+    });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+    await screen.findByRole('alert');
+
+    expect(storedSession()).toBeNull();
+    expect(currentPath()).toBe(LOGIN_ROUTE);
   });
 });

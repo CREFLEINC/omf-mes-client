@@ -136,7 +136,22 @@ export const useLogin = (options: LoginOptions): LoginMutation => {
       { draft, idempotencyKey: crypto.randomUUID() },
       {
         onSuccess: (session) => {
-          options.onSuccess(session);
+          /*
+           * ⭐ **성공 되먹임의 예외를 갈래로 옮긴다.**
+           *
+           * 이 자리에는 **세션 적재**가 붙는다. 그것이 던지면 요청 라이브러리는 그 예외를
+           * 잡지 않고 **처리되지 않은 오류**로 흘려보내며, 훅의 갈래는 `null`인 채로 남는다 —
+           * 화면에는 이동도 배너도 없고 버튼만 다시 열린다. 사용자는 자기가 로그인됐는지조차
+           * 알 수 없고, 다시 눌러도 같은 자리에 머문다.
+           *
+           * 잡은 값은 이 슬라이스가 만든 실패가 아니므로 **자격이 틀렸다고 말하지 않는다** —
+           * 「가를 근거가 없다」로 떨어져 공용 안내와 「다시 시도」가 선다.
+           */
+          try {
+            options.onSuccess(session);
+          } catch (cause) {
+            setOutcome(readOutcome(cause));
+          }
         },
         onError: (cause) => {
           setOutcome(readOutcome(cause));

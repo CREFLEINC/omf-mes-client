@@ -238,20 +238,23 @@ describe('LoginErrorBanner — 검증 실패', () => {
    * 세 모양을 함께 잰다 — 빈 글자 · 공백만 · 항목 자체가 없음.
    */
   it.each([
-    ['빈 글자', [{ scope: 'screen' as const, code: 'SYN_CODE_D', message: '' }]],
-    ['공백만', [{ scope: 'screen' as const, code: 'SYN_CODE_D', message: '   ' }]],
+    ['빈 글자를', [{ scope: 'screen' as const, code: 'SYN_CODE_D', message: '' }]],
+    ['공백만 있는 문구를', [{ scope: 'screen' as const, code: 'SYN_CODE_D', message: '   ' }]],
     [
-      '빈 글자 여럿',
+      '빈 글자 여럿을',
       [
         { scope: 'screen' as const, code: 'SYN_CODE_D', message: '' },
         { scope: 'field' as const, field: 'password', code: 'SYN_CODE_E', message: '' },
       ],
     ],
-    ['항목 없음', []],
-  ])('서버가 %s를 주면 공용 안내로 떨어진다', (_label, errors) => {
+    ['항목 없는 목록을', []],
+  ])('서버가 %s 주면 공용 안내로 떨어진다', (_label, errors) => {
     renderBanner({ outcome: { kind: 'invalid', errors } });
 
     expect(banner()).toHaveTextContent(messages.httpError.description);
+
+    /* 무엇을 고쳐야 하는지 말하지 못하는 상태다 — 남는 조치는 다시 보내는 것뿐이다. */
+    expect(retryButton()).toBeInTheDocument();
   });
 
   /** 빈 항목이 섞여도 **말할 것이 있으면** 그것을 낸다 — 통째로 버리지 않는다. */
@@ -317,5 +320,48 @@ describe('LoginErrorBanner — 가를 근거가 없는 응답', () => {
     await user.click(retryButton());
 
     expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * ⭐ **하라고 말했으면 할 수 있어야 한다** — 갈래를 가로지르는 한 규칙.
+ *
+ * 공유계약 G-23은 「누를 수 있는데 아무 일도 없는 컨트롤을 두지 않는다」인데, 그 취지는
+ * **역방향으로도** 성립한다: 문구가 「다시 시도하세요」로 끝나는데 누를 자리가 없으면 안내와
+ * 컨트롤이 반대를 가리킨다.
+ *
+ * 갈래마다 따로 재면 새 갈래가 늘 때 이 규칙이 조용히 비켜 간다 — **다섯 갈래를 한 자리에서**
+ * 훑는다. 폴백으로 떨어지는 `invalid`도 함께 넣는다(그 갈래는 같은 공용 문구를 쓴다).
+ */
+describe('LoginErrorBanner — 안내와 컨트롤이 같은 곳을 가리킨다', () => {
+  /** 「다시 시도」를 권하는 공용 문구. 이 글자가 본문에 있으면 버튼이 있어야 한다. */
+  const RETRY_ADVISING = [messages.httpError.description, messages.httpError.offline];
+
+  const outcomes: [string, LoginErrorBannerProps['outcome']][] = [
+    ['불일치', { kind: 'mismatch', remainingAttempts: 3 }],
+    ['잠긴 계정', { kind: 'locked' }],
+    ['검증 실패', { kind: 'invalid', errors: fieldErrorResponseBody().errors }],
+    ['검증 실패(빈 문구 폴백)', { kind: 'invalid', errors: [] }],
+    ['통신 실패', { kind: 'network' }],
+    ['가를 근거 없음', { kind: 'unknown', status: 500 }],
+  ];
+
+  it.each(outcomes)('%s — 다시 시도를 권하는 문구와 버튼의 유무가 일치한다', (_label, outcome) => {
+    renderBanner({ outcome });
+
+    const text = banner().textContent ?? '';
+    const advisesRetry = RETRY_ADVISING.some((advice) => text.includes(advice));
+    const hasRetryButton = screen.queryByRole('button', { name: messages.common.retry }) !== null;
+
+    expect(hasRetryButton).toBe(advisesRetry);
+  });
+
+  /** 짝 양성 — 위 시험이 「양쪽 다 없음」으로만 통과하지 않게, 두 갈래가 실제로 있음을 잰다. */
+  it('권하는 갈래와 권하지 않는 갈래가 둘 다 있다', () => {
+    expect(outcomes.length).toBeGreaterThan(1);
+
+    renderBanner({ outcome: { kind: 'network' } });
+
+    expect(retryButton()).toBeInTheDocument();
   });
 });

@@ -3,6 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 
+import { useSession } from '../../patterns/session';
+
 import {
   canSubmit,
   emptyLoginDraft,
@@ -40,9 +42,12 @@ const AFTER_LOGIN_ROUTE = '/';
  * - **가를 근거가 없는 응답에 자격 문구를 붙이지 않는다.** 「응답이 실패면 무조건 그 문구」는
  *   잠긴 계정·서버 장애에도 자격을 의심하게 만들어, 사용자가 시도를 되풀이하다 계정을 잠근다.
  *
- * **이 회차가 두지 않은 것**: 남은 시도 횟수 · 잠긴 계정 안내 · 통신 실패의 「다시 시도」 ·
- * 세션 보관 · 라우트 개방. 뒤따르는 회차가 붙인다. 그때까지 401 밖의 실패는 **아무 말도
- * 하지 않는다** — 틀린 말을 하는 것보다 낫다는 판단이고, 그 사실을 시험이 잰다.
+ * **성공하면 세션을 담고 셸 안으로 넘긴다.** 담는 자리는 `patterns/session`이고 이 화면은
+ * 그것을 채우기만 한다 — 셸이 같은 값을 읽어 상단 바에 이름을 세운다.
+ *
+ * ⛔ **이 화면은 접근을 제한하지 않는다.** 미인증 상태로 다른 주소에 들어가는 길은 그대로
+ * 열려 있다(라우트 가드는 이 작업의 범위 밖). 로그인 화면이 생겼다는 것이 보호가 생겼다는
+ * 뜻이 아니다.
  */
 export const LoginScreen = () => {
   const [draft, setDraft] = useState<LoginDraft>(emptyLoginDraft);
@@ -52,14 +57,24 @@ export const LoginScreen = () => {
 
   const navigate = useNavigate();
 
+  const { signIn } = useSession();
+
   const login = useLogin({
-    onSuccess: () => {
+    onSuccess: (session) => {
+      /*
+       * ⭐ **담고 나서 넘어간다 — 순서가 뜻을 정한다.**
+       *
+       * 먼저 넘어가면 세션 없이 앱 안에 서는 찰나가 생기고, 담는 일이 실패하면 **로그인은
+       * 됐는데 누구인지 모르는 화면**이 남는다. 담기가 던지면 이동이 일어나지 않고 실패가
+       * 배너로 서므로(요청 훅이 되먹임의 예외를 갈래로 옮긴다) 사용자는 같은 자리에서 다시
+       * 시도할 수 있다.
+       */
+      signIn(session);
+
       /*
        * **`replace`로 넘긴다.** 밀어 넣으면 로그인 화면이 히스토리에 남아 뒤로가기 한 번에
        * 이미 로그인한 사람이 로그인 화면으로 되돌아간다 — 그 화면은 자기가 로그인된 줄
        * 모르므로 사용자는 자격을 한 번 더 친다.
-       *
-       * **세션을 보관하지 않는다** — 담을 자리를 뒤따르는 회차가 만든다.
        */
       void navigate(AFTER_LOGIN_ROUTE, { replace: true });
     },
