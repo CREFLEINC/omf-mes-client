@@ -171,8 +171,16 @@ describe('ChangeErrorBanner — 제목과 본문이 서로를 부정하지 않�
    * 않았다」가 같지 않아 그 형태가 거짓이 된다.
    */
   it('통신 실패 배너의 제목이 실패를 단언하지 않는다', () => {
-    /* 양성 먼저 — 단언하는 제목이 실제로 쓰이는 갈래를 잡은 뒤, 이 갈래에는 없음을 잰다. */
-    expect(toBannerContent({ kind: 'unknown', status: 500 })?.title).toBe(t.banner.failureTitle);
+    /*
+     * 양성 먼저 — 단언하는 제목이 실제로 쓰이는 갈래를 잡은 뒤, 이 갈래에는 없음을 잰다.
+     *
+     * ⚠ **대조는 400이어야 한다.** 앞 회차는 이 자리에 `unknown`(500)을 두었고, 그래서 이 시험이
+     * 「5xx에서는 실패를 단언해야 한다」를 **규격으로 굳혔다** — 잘못된 규격을 지키는 감지기는
+     * 뮤테이션 덮임 100%에서도 살아남는다. 단언이 참인 갈래는 **서버가 값을 보고 거절한 400**뿐이다.
+     */
+    expect(toBannerContent({ kind: 'invalid', errors: currentMismatchBody().errors })?.title).toBe(
+      t.banner.failureTitle,
+    );
 
     const network = toBannerContent({ kind: 'network' });
 
@@ -185,11 +193,22 @@ describe('ChangeErrorBanner — 제목과 본문이 서로를 부정하지 않�
     expect(screen.queryByText(t.banner.failureTitle)).toBeNull();
   });
 
-  /** 실패가 **확정된** 갈래에서는 그 단언이 참이다 — 서버가 거절했음이 확실하다. */
-  it('서버가 거절한 갈래에서는 실패를 단언한다', () => {
+  /**
+   * 실패가 **확정된** 갈래에서만 단언한다 — 400은 서버가 **값을 보고** 거절했음이 확실하다.
+   *
+   * ⭐ **가를 근거가 없는 갈래는 적용 여부도 가를 수 없다.** 5xx는 원본이 쓰기를 마친 뒤 앞단이
+   * 실패한 경우를 포함하고, 그래서 같은 슬라이스가 그 갈래의 **멱등 키를 유지한다**(`queries.ts`의
+   * 수명 표). 시스템이 「같은 키로 다시 보내도 안전」으로 다루는 갈래에서 제목만 실패를 단언하면
+   * 말과 동작이 어긋난다.
+   */
+  it('단언하는 제목은 서버가 값을 거절한 갈래에만 쓴다', () => {
     expect(toBannerContent({ kind: 'invalid', errors: currentMismatchBody().errors })?.title).toBe(
       t.banner.failureTitle,
     );
-    expect(toBannerContent({ kind: 'unknown', status: 500 })?.title).toBe(t.banner.failureTitle);
+
+    expect(toBannerContent({ kind: 'unknown', status: 500 })?.title).toBe(
+      t.banner.unconfirmedTitle,
+    );
+    expect(toBannerContent({ kind: 'network' })?.title).toBe(t.banner.unconfirmedTitle);
   });
 });

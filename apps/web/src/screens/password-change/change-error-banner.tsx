@@ -71,9 +71,16 @@ export const toBannerContent = (outcome: ChangeOutcome): BannerContent | null =>
       /*
        * ⛔ 자격이 틀렸다고 말하지 않는다. **그렇다고 침묵하지도 않는다.** 상태 코드는 그리지
        * 않는다 — 사용자가 쓰지 않는 말이다. 고칠 값이 없고 서버 사정은 다시 보내면 달라질 수 있다.
+       *
+       * ⭐ **여기서도 실패를 단언하지 않는다 — 갈래 이름이 곧 「가를 근거가 없다」이기 때문이다.**
+       * 가를 수 없는 것에는 **적용 여부도 포함된다.** 특히 5xx는 원본이 쓰기를 마친 뒤 앞단이
+       * 실패한 경우를 포함하고, 그것이 이 갈래의 **멱등 키를 버리지 않는 근거**이기도 하다
+       * (`queries.ts`의 수명 표). 시스템이 「같은 키로 다시 보내도 안전하다」로 다루는 갈래에서
+       * 제목만 「바꾸지 못했다」고 말하면, 말과 동작이 어긋나고 사용자는 **옛 비밀번호로 다음
+       * 로그인을 시도한다.**
        */
       return {
-        title: t.banner.failureTitle,
+        title: t.banner.unconfirmedTitle,
         lines: [messages.httpError.description],
         canRetry: true,
       };
