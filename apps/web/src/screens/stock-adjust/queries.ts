@@ -7,15 +7,20 @@ import { runRequest, toApiError } from '../../patterns/request';
 import { ADJUST_FORM_FIELDS } from './adjust-request';
 import type { Submission } from './approval-progress';
 import { toBalanceRow, type BalanceRow, type BalanceSource } from './balances';
+import type { AdjustmentFilterQuery } from './history-filters';
 import { POST_FORM_FIELDS } from './post-request';
 import { SUBMIT_FORM_FIELDS } from './reason-draft';
 import {
+  toAdjustmentDetailView,
+  toAdjustmentSummaryView,
   toCountOptionView,
   toCountVarianceLineView,
   toCreatedAdjustmentResult,
   toPostedAdjustmentView,
 } from './types';
 import type {
+  AdjustmentDetailView,
+  AdjustmentSummaryView,
   ApprovalRequestDetailResponse,
   CountOptionView,
   CountVarianceLineView,
@@ -25,11 +30,13 @@ import type {
 } from './types';
 
 /**
- * 이 화면의 요청 — **읽기 다섯과 쓰기 셋**이다. 실사 목록 · 실사 차이 라인 · 재고 잔액 ·
- * **조정 상세** · **결재 진행** · 조정 등록 · 조정 상신 · **재고 전기**.
+ * 이 화면의 요청 — **읽기 일곱과 쓰기 셋**이다. 실사 목록 · 실사 차이 라인 · 재고 잔액 ·
+ * 조정 상세(토큰) · 결재 진행 · **처리 이력 목록** · **처리 이력 상세** · 조정 등록 ·
+ * 조정 상신 · 재고 전기.
  *
- * 처리 이력은 뒤따르는 회차가 붙인다. **`pendingApprovalOnly`를 쓰지 않는다**(⛔ D-3) —
- * 계약에 그 조건이 남아 있으나 승인 대기는 결재함(W-CO-09)이 소유하고, 이 화면에는 그 탭이 없다.
+ * ⛔ **`pendingApprovalOnly`를 쓰지 않는다**(D-3 · C41) — 계약에 그 조건이 남아 있으나 승인
+ * 대기는 결재함(W-CO-09)이 소유하고, 이 화면에는 그 탭이 없다. **조건을 만드는 자리가
+ * `history-filters.ts` 하나**이고 그 목록에 이름이 없다 — 이 파일은 그 결과를 그대로 싣는다.
  *
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
  * 문자열 변수로 넘기면 타입 검사가 풀린다.
@@ -66,6 +73,22 @@ export const stockAdjustKeys = {
     ['stock-adjust', 'adjustment', inventoryAdjustmentId] as const,
   approvalRequest: (approvalRequestId: number | null): readonly unknown[] =>
     ['stock-adjust', 'approval-request', approvalRequestId] as const,
+  /**
+   * 처리 이력의 **뿌리**. 목록과 상세가 이 앞머리를 함께 쓴다 — 되돌릴 수 없는 쓰기 셋이
+   * 끝나면 **이력 전체가 낡으므로**(새 전표가 생기거나 상태·전기일이 바뀐다) 뿌리 하나를
+   * 무효화한다. 조건·쪽마다 키를 세어 무효화하면 그 열거에서 빠진 조건이 곧 낡은 채로 남는다.
+   */
+  history: ['stock-adjust', 'history'] as const,
+  /** 조건·쪽마다 캐시가 갈린다 — 조건이 바뀌면 다른 결과이므로 같은 자리를 덮지 않는다. */
+  historyList: (query: AdjustmentListQuery): readonly unknown[] =>
+    ['stock-adjust', 'history', 'list', query] as const,
+  /**
+   * 고른 전표의 상세. **토큰을 얻는 상세(`detail`)와 키를 갈라 둔다** — 두 조회는 같은 경로를
+   * 부르지만 담는 모양이 다르고(이쪽만 라인을 든다) 신선도 규칙도 다르다(저쪽은 늘 새로 부른다).
+   * 한 키에 두 모양을 담으면 한쪽이 다른 쪽의 자료를 덮는다.
+   */
+  historyDetail: (inventoryAdjustmentId: number | null): readonly unknown[] =>
+    ['stock-adjust', 'history', 'detail', inventoryAdjustmentId] as const,
 };
 
 export interface CountListResult {
@@ -293,6 +316,110 @@ export const UNASKED_BALANCE: BalanceSource = {
   isError: false,
 };
 
+/**
+ * 이력 목록의 조회 조건 — **조건 넷과 쪽**이다.
+ *
+ * ⛔ **`pendingApprovalOnly`가 이 타입에 없다**(D-3 · C41). 조건을 만드는 자리가
+ * `history-filters.ts` 하나이고 그 목록에 이름이 없다 — 여기서 더하면 그 규율이 무너진다.
+ *
+ * `size`를 싣지 않는다 — 서버 기본값을 쓴다. 잘려도 쪽 이동이 나머지를 가져온다.
+ */
+export interface AdjustmentListQuery extends AdjustmentFilterQuery {
+  page?: number;
+}
+
+export interface AdjustmentListResult {
+  items: AdjustmentSummaryView[];
+  page: PageMeta;
+}
+
+const fetchAdjustments = async (
+  client: Client,
+  query: AdjustmentListQuery,
+): Promise<AdjustmentListResult> => {
+  const data = await runRequest(() => client.GET('/inventory/adjustments', { params: { query } }));
+
+  return { items: data.items.map(toAdjustmentSummaryView), page: data.page };
+};
+
+/**
+ * 처리 이력 목록 — **이미 만들어진 조정 전표를 되찾는 자리**다.
+ *
+ * **그 탭이 서 있을 때만 부른다.** 숨은 탭의 조회는 사용자가 볼 수 없는 자료를 받아 오고,
+ * 조건이 바뀔 때마다 요청이 는다.
+ *
+ * **조건이 하나도 없어도 조회한다.** 들어오자마자 무엇이 있는지 보여야 조건을 어떻게 좁힐지
+ * 안다 — 빈 화면으로 시작하면 조건을 먼저 정해야 하는 줄 안다.
+ *
+ * ⛔ **승인 대기 조건을 싣지 않는다**(D-3 · C41). 이 훅은 받은 조건을 그대로 실을 뿐이고,
+ * 조건을 만드는 자리는 `history-filters.ts` 하나다.
+ */
+export const useStockAdjustments = (
+  query: AdjustmentListQuery,
+  enabled: boolean,
+): UseQueryResult<AdjustmentListResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: stockAdjustKeys.historyList(query),
+    enabled,
+    queryFn: () => fetchAdjustments(client, query),
+  });
+};
+
+const fetchAdjustmentHistoryDetail = async (
+  client: Client,
+  inventoryAdjustmentId: number,
+): Promise<AdjustmentDetailView> => {
+  const data = await runRequest(() =>
+    client.GET('/inventory/adjustments/{inventoryAdjustmentId}', {
+      params: { path: { inventoryAdjustmentId } },
+    }),
+  );
+
+  return toAdjustmentDetailView(data);
+};
+
+/**
+ * 고른 전표의 상세 — **요청 한 번이 머리와 라인을 함께 준다**(C44).
+ *
+ * **라인 목록 조회(`…/{id}/lines`)를 부르지 않는다.** 계약이 상세 응답에 라인을 함께 실어
+ * 주므로(실측) 따로 부르면 같은 사실을 두 요청으로 받게 되고, 둘이 갈렸을 때 어느 쪽이 참인지
+ * 화면이 모른다.
+ *
+ * **토큰을 얻는 상세 조회(`useAdjustmentDetailFetcher`)와 갈라 둔다.** 저쪽은 쓰기 직전에
+ * **늘 새로** 부르는 조회이고(그 목적이 값이 아니라 `ETag`다) 이쪽은 사용자가 고른 전표를
+ * 보이는 조회다 — 한 키에 담으면 이쪽 화면이 저쪽의 신선도 규칙에 끌려다닌다.
+ */
+export const useAdjustmentHistoryDetail = (
+  inventoryAdjustmentId: number | null,
+  enabled: boolean,
+): UseQueryResult<AdjustmentDetailView> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: stockAdjustKeys.historyDetail(inventoryAdjustmentId),
+    enabled: enabled && inventoryAdjustmentId !== null,
+    queryFn: () => {
+      if (inventoryAdjustmentId === null) {
+        throw new Error('고른 조정 전표가 없으면 상세를 조회하지 않습니다.');
+      }
+
+      return fetchAdjustmentHistoryDetail(client, inventoryAdjustmentId);
+    },
+  });
+};
+
+/**
+ * 그 전표가 **없는가**(404). 주소가 지워진 전표를 가리키는 자리다 — 조건을 되돌리지 않고
+ * 고른 것만 푼다.
+ */
+export const isAdjustmentNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
 export interface CreateStockAdjustmentOptions {
   onSuccess: (result: CreatedAdjustmentResult) => void;
 }
@@ -313,9 +440,15 @@ export interface CreateStockAdjustmentOptions {
  * **상세 GET을 먼저 부른다**(D-14). 여기서 그 사실을 적어 두는 이유는, 등록 응답에 토큰이 있다는
  * 것만 보고 이어 쓰려는 길이 실제로 있기 때문이다.
  *
- * **무효화할 키가 없다**(`invalidateKeys: []`). 이 회차는 조정 목록을 그리지 않으므로 다시 부를
- * 조회가 없다. **실사 차이도 무효화하지 않는다**: 그 응답을 다시 받으면 조정 대상이 다시 서고
- * (수명 표 5·6행) 사용자가 방금 보낸 값과 화면의 값이 갈린다.
+ * **처리 이력을 무효화한다**(`stockAdjustKeys.history`). 등록이 성공하면 **그 전표가 이력에
+ * 실제로 생기므로**, 무효화하지 않으면 사용자가 이력 탭으로 옮겨 갔을 때 방금 만든 전표가 없는
+ * 목록을 본다 — 이 화면의 네트워크 완화 안내가 「이력에서 확인하세요」로 보내는 자리라(등록 축
+ * `notes.networkUnconfirmed`) 그 낡음은 곧 **없는 것을 없다고 확인하는 사고**가 된다.
+ * 이력 탭이 서 있지 않으면 그 조회는 비활성이라 **요청이 지금 나가지는 않는다** — 다음에 그
+ * 탭이 설 때 새로 받는다.
+ *
+ * **실사 차이는 무효화하지 않는다**: 그 응답을 다시 받으면 조정 대상이 다시 서고(수명 표
+ * 5·6행) 사용자가 방금 보낸 값과 화면의 값이 갈린다.
  *
  * **멱등 키는 호출마다 새로 만들어진다**(공통 훅 실측). 그래서 두 번 누르는 것이 그대로 전표
  * 두 벌이 된다 — 화면은 확인 창·전송 중 잠금·성공 후 잠금 세 겹으로 그 길을 닫는다.
@@ -336,7 +469,7 @@ export const useCreateStockAdjustment = (
         body,
       }),
     etagPath: null,
-    invalidateKeys: [],
+    invalidateKeys: [stockAdjustKeys.history],
     knownFields: ADJUST_FORM_FIELDS,
     onSuccess: (data) => {
       options.onSuccess(toCreatedAdjustmentResult(data));
@@ -423,6 +556,9 @@ export interface RequestApprovalOptions {
  * 이 키를 그리는 구획이 생기는 날 낡은 값을 그대로 그리지 않게 하려는 것이다 — 두 줄은 서로를
  * 대신하지 못한다.
  *
+ * **처리 이력도 함께 무효화한다** — 상신은 그 전표의 상태를 바꾸므로, 이력 목록·상세가 낡은
+ * 상태 코드를 그대로 그리면 사용자는 올린 적 없는 것처럼 읽는다.
+ *
  * **실사 차이는 무효화하지 않는다**: 그 응답을 다시 받으면 조정 대상이 다시 서고(수명 표 6행)
  * 사용자가 보고 있던 값이 갈린다.
  *
@@ -465,8 +601,8 @@ export const useRequestAdjustmentApproval = (
       options.inventoryAdjustmentId === null ? null : detailPathOf(options.inventoryAdjustmentId),
     invalidateKeys:
       options.inventoryAdjustmentId === null
-        ? []
-        : [stockAdjustKeys.detail(options.inventoryAdjustmentId)],
+        ? [stockAdjustKeys.history]
+        : [stockAdjustKeys.detail(options.inventoryAdjustmentId), stockAdjustKeys.history],
     knownFields: SUBMIT_FORM_FIELDS,
     onSuccess: options.onSuccess,
   });
@@ -495,14 +631,21 @@ export interface PostAdjustmentOptions {
  * **응답이 상세와 모양이 다르다**(`InventoryAdjustment` — 머리뿐이고 라인이 없다). 그래서 이
  * 응답으로 표를 다시 세우지 않고, **화면이 쓰는 두 값만** 옮겨 넘긴다(`toPostedAdjustmentView`).
  *
- * **성공 뒤 상세 키를 무효화한다** — 캐시에 남은 값이 전기 전의 것이라, 이 키를 그리는 구획이
- * 생기는 날 낡은 값을 그대로 그리지 않게 한다. **실사 차이는 무효화하지 않는다**: 그 응답을
- * 다시 받으면 조정 대상이 다시 서고 사용자가 보고 있던 값이 갈린다.
+ * **성공 뒤 상세 키와 처리 이력을 무효화한다** — 전기는 그 전표의 **전기일과 상태를 바꾸므로**,
+ * 이력 목록이 낡으면 방금 전기한 전표가 「전기 전」으로 보인다. 이 화면의 네트워크 완화 안내가
+ * 「이력에서 전기일을 확인하세요」로 보내는 자리라(`post.networkUnconfirmed`) 그 낡음은 곧
+ * **틀린 확인**이 된다. **실사 차이는 무효화하지 않는다**: 그 응답을 다시 받으면 조정 대상이
+ * 다시 서고 사용자가 보고 있던 값이 갈린다.
  *
  * ⚠ **잔액도 무효화하지 않는다.** 전기로 재고가 실제로 움직였으므로 이 화면의 장부·실물은
  * 낡았지만, 다시 부르면 **사용자가 확인하고 등록한 근거가 화면에서 달라진다** — 폼은 이미
  * 잠겨 있어 그 값으로 새 요청이 나갈 길도 없다. 대신 전기 결과가 **낡았다는 사실을 적는다**
- * (`post.bookQtyStale`). 이 화면에 잔액을 다시 그리는 자리가 생기면 이 판정을 다시 본다.
+ * (`post.bookQtyStale`).
+ *
+ * ⛔ **처리 이력이 이 낡음을 풀어 주지 못한다**(이력 탭이 선 회차의 재판단). 계약의 조정
+ * 라인에 **장부가 없고**(실측) 지금 잔액을 불러 채우면 그것은 조정 시점의 장부가 아니다 —
+ * 그래서 그 안내만 이력 탭을 가리키지 않는다. 이 화면에 **조정 시점의 장부**를 주는 자리가
+ * 생기면 이 판정을 다시 본다.
  */
 export const usePostStockAdjustment = (
   options: PostAdjustmentOptions,
@@ -537,8 +680,8 @@ export const usePostStockAdjustment = (
       options.inventoryAdjustmentId === null ? null : detailPathOf(options.inventoryAdjustmentId),
     invalidateKeys:
       options.inventoryAdjustmentId === null
-        ? []
-        : [stockAdjustKeys.detail(options.inventoryAdjustmentId)],
+        ? [stockAdjustKeys.history]
+        : [stockAdjustKeys.detail(options.inventoryAdjustmentId), stockAdjustKeys.history],
     knownFields: POST_FORM_FIELDS,
     onSuccess: (data) => {
       options.onSuccess(toPostedAdjustmentView(data));

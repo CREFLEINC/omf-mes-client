@@ -14,6 +14,7 @@ import {
 import { APPROVED_APPROVAL_STATUS_CODES, REJECTION_DECISION_CODES } from './approval-progress';
 import {
   adjustmentDetailBody,
+  adjustmentListFixtures,
   approvalRequestDetailBody,
   approvalRequestRefBody,
   balanceFixtures,
@@ -40,7 +41,9 @@ const t = messages.stockAdjust;
  *
  * ⚠ 지어낸 합성 코드다 — **계약의 `@example` 값(`COUNT_VARIANCE`)을 쓰지 않는다.**
  */
-const { codeValues } = vi.hoisted(() => ({ codeValues: { reason: [] as string[] } }));
+const { codeValues } = vi.hoisted(() => ({
+  codeValues: { reason: [] as string[], status: [] as string[] },
+}));
 
 vi.mock('./code-options', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./code-options')>();
@@ -53,6 +56,7 @@ const SAMPLE_REASON = 'SAMPLE_AR_A';
 /** 값 목록이 아직 비어 있는 것이 **지금의 사실**이다 — 채우는 시험이 스스로 채운다. */
 beforeEach(() => {
   codeValues.reason = [];
+  codeValues.status = [];
 });
 
 const ROUTE = '/logistics/stock-adjust';
@@ -1986,6 +1990,77 @@ describe('StockAdjustScreen — 버린 초안의 되먹임', () => {
   });
 
   /**
+   * ⭐ **비대칭을 닫는다** — 앞 회차들이 「이력 탭이 서면 다시 본다」로 넘긴 자리.
+   *
+   * 성공은 전표번호로 알리는데 **응답 없음은 침묵**했다. 근거가 「확인할 자리가 화면에
+   * 없다」였고, 이력 탭이 서면서 그 근거가 사라졌다 — 이제 그 사실과 확인할 자리를 말한다.
+   *
+   * **전표번호를 적지 않는다** — 응답을 받지 못해 화면이 그 번호를 모른다.
+   */
+  it('버린 초안의 응답 없음도 사실과 확인할 자리를 알린다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(
+      allRoutes([offlineCreateRoute()]),
+      '?count=9101',
+      [ADJUSTMENTS_PATH],
+    );
+
+    await registerThenDiscard(user, requests);
+
+    release();
+
+    expect(await screen.findByText(t.notes.unconfirmedRegisterNote)).toBeInTheDocument();
+    expect(t.notes.unconfirmedRegisterNote).toContain(t.tabs.history);
+
+    /* 새 초안의 결과로 세우지 않는다 — 결과 구획도 폼 잠금도 서지 않는다. */
+    expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.alreadyRegistered)).not.toBeInTheDocument();
+  });
+
+  /**
+   * 짝 방향 — **서버가 거절한 요청에는 그 안내가 없다.** 거절된 요청은 남는 것이 없어
+   * 되찾을 것도 없다. 이 짝이 없으면 「늘 붙인다」로 통과한다.
+   */
+  it('버린 초안의 400에는 그 안내가 없다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(
+      allRoutes([
+        failingCreateRoute(400, {
+          errors: [{ scope: 'screen', code: 'SAMPLE_ERR', message: '합성 등록 거절' }],
+        }),
+      ]),
+      '?count=9101',
+      [ADJUSTMENTS_PATH],
+    );
+
+    await registerThenDiscard(user, requests);
+
+    release();
+
+    await screen.findByText(t.actionReasons.registerNeedsLines);
+
+    expect(screen.queryByText(t.notes.unconfirmedRegisterNote)).not.toBeInTheDocument();
+  });
+
+  /** 짝 방향 — **초안을 버리지 않았으면** 그 자리가 아니라 실패 배너 옆의 안내가 맡는다. */
+  it('초안을 그대로 둔 응답 없음은 그 자리가 아니라 실패 안내가 맡는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(allRoutes([offlineCreateRoute()]));
+
+    await setupAndRegister(user);
+
+    await waitFor(() => {
+      expect(createRequests(requests)).toHaveLength(1);
+    });
+
+    expect(await screen.findByText(t.notes.networkUnconfirmed)).toBeVisible();
+    expect(screen.queryByText(t.notes.unconfirmedRegisterNote)).not.toBeInTheDocument();
+  });
+
+  /**
    * ⭐ **매임 소비처 넷째 — 사유 칸의 서버 오류**(D-15의 「한 자리라도 빠지면 샌다」).
    *
    * 앞 세 갈래(결과 구획·실패 배너·「이미 등록했다」 잠금)는 화면 수준 오류로 재어지는데,
@@ -2574,25 +2649,56 @@ describe('StockAdjustScreen — 등록 실패', () => {
   });
 
   /**
-   * ⭐ **이 안내의 본체는 금지다**(전례 `poRegister.notes.networkUnconfirmed`가 세운 잣대).
+   * ⭐ **이 안내의 본체는 여전히 금지다**(전례 `poRegister.notes.networkUnconfirmed`의 잣대).
    *
    * 전표 두 벌을 막는 것은 확인이 아니라 **하지 않는 것**이다 — 훅이 호출마다 새 멱등 키를
-   * 만들어 「다시 보내기」가 그대로 두 번째 요청이 되기 때문이다. 금지를 선행 확인에 매달면
-   * 「확인하면 다시 보내도 된다」로 읽히고, **확인할 자리가 없는 이 화면에서는 그 조치 자체가
-   * 실행 불가능**하다. 문구를 고칠 때 이 두 성질이 함께 유지되는지를 이 잣대가 잡는다.
+   * 만들어 「다시 보내기」가 그대로 두 번째 요청이 되기 때문이다.
+   *
+   * ✅ **앞 회차의 음성 축(「처리 이력」 0건)을 이 회차가 의도적으로 지웠다** — 그 잣대는
+   * 「없는 자리를 가리키지 않는다」였고, 이력 탭이 서면서 **그 자리가 실재하게 됐다.**
+   *
+   * ⭐ **절이 셋이고 차례가 곧 뜻이다**(T2 R-2의 두 절 잣대를 세 절로 넓힌 형태):
+   *
+   * | 절 | 무엇을 말하나 | 빠지면 |
+   * | :-: | --- | --- |
+   * | ① **사실** | 그 요청의 운명을 **모른다** | 「모르니까 하지 말라」의 근거가 사라져 맨 지시가 된다 |
+   * | ② **금지** | 바로 다시 보내지 마라 | 완화의 본체가 사라진다 |
+   * | ③ **확인 자리** | 어디서 되찾는가 | 사용자가 갇힌다 |
+   *
+   * **①이 잣대에서 함께 빠졌던 자리다**(검증 문제 ① · 리뷰 R-2). 문면이 「이 화면에서 확인할
+   * 수 없습니다」 → 「알 수 없습니다」로 바뀌면서 옛 단언이 살 수 없게 됐는데, **바뀐 문면에
+   * 맞춰 다시 세우지 않고 걷혔다.** 절의 **성질**을 재는 형태로 되세운다.
    */
-  it('그 안내가 확인이 아니라 금지를 말한다', () => {
+  it('그 안내가 사실·금지·확인 자리를 그 차례로 말한다', () => {
+    /* ① 사실 — 요청의 운명을 모른다는 것이 이 완화의 근거다. */
+    expect(t.notes.networkUnconfirmed).toContain('알 수 없습니다');
+    /* ② 금지 — 완화의 본체. */
     expect(t.notes.networkUnconfirmed).toContain('다시 등록하지 마세요');
-    expect(t.notes.networkUnconfirmed).toContain('이 화면에서 확인할 수 없습니다');
+    /* ③ 확인 자리 — 이력 탭이 서면서 비로소 말할 수 있게 된 절. */
+    expect(t.notes.networkUnconfirmed).toContain(t.tabs.history);
 
     /*
-     * ⭐ **음성 축 — 없는 자리를 가리키지 않는다**(리뷰 R-8).
-     *
-     * 양성 둘만 재면 **두 문장을 그대로 둔 채** 가운데에 없는 탭을 다시 끼운 문면이 통과한다 —
-     * 앞 회차의 지적이 형태만 바꿔 되살아나는 길이다. 이 슬라이스에 조정을 조회할 자리가
-     * 생기는 회차가 이 한 줄을 **의도적으로 지우는 것**이 곧 위 ⚠ 갱신 표지의 이행 기록이 된다.
+     * **차례가 뒤집히면 뜻이 뒤집힌다.** 금지가 확인 뒤로 가면 조건부 재전송 허가가 되고,
+     * 사실이 금지 뒤로 가면 근거 없는 지시가 된다.
      */
-    expect(t.notes.networkUnconfirmed).not.toContain('처리 이력');
+    const factAt = t.notes.networkUnconfirmed.indexOf('알 수 없습니다');
+    const banAt = t.notes.networkUnconfirmed.indexOf('다시 등록하지 마세요');
+    const placeAt = t.notes.networkUnconfirmed.indexOf(t.tabs.history);
+
+    expect(factAt).toBeLessThan(banAt);
+    expect(banAt).toBeLessThan(placeAt);
+  });
+
+  /**
+   * ⭐ **가리키는 자리가 실제로 선다** — 문구만 고치고 탭이 없으면 그것이 곧 죽은 지시다.
+   * 안내가 부르는 이름으로 탭을 찾고, 눌러 보아 그 자리에 조회 조건이 서는지까지 잰다.
+   */
+  it('안내가 가리키는 탭이 실제로 있고 그 자리에 조회 조건이 선다', async () => {
+    const { user } = renderScreen(allRoutes([getRoute(ADJUSTMENTS_PATH, [])]));
+
+    await user.click(screen.getByRole('tab', { name: t.tabs.history }));
+
+    expect(await screen.findByLabelText(t.historyFields.reason)).toBeInTheDocument();
   });
 
   /** 짝 방향 — 서버가 거절한 요청에는 그 안내가 없다. 전달된 것이 확실하기 때문이다. */
@@ -4780,22 +4886,33 @@ describe('StockAdjustScreen — 전기 실패', () => {
   });
 
   /**
-   * ⭐ **이 안내의 본체는 금지다**(등록 축 `notes.networkUnconfirmed`가 세운 두 절 잣대의 사본).
+   * ⭐ **이 안내의 본체는 여전히 금지다**(등록 축 `notes.networkUnconfirmed`와 같은 잣대).
    *
-   * 재고 이중 이동을 막는 것은 확인이 아니라 **하지 않는 것**이다 — 금지를 선행 확인에 매달면
-   * 「확인하면 다시 보내도 된다」로 읽히고, **확인할 자리가 없는 이 화면에서는 그 조치 자체가
-   * 실행 불가능**하다. 문구를 고칠 때 두 성질이 함께 유지되는지를 이 잣대가 잡는다.
+   * 재고 이중 이동을 막는 것은 확인이 아니라 **하지 않는 것**이다 — 다시 누르는 길이 상세
+   * GET을 먼저 지나 **새 잠금 토큰을 앉히므로** 낙관적 잠금도 두 번째 전기를 막지 못한다.
+   *
+   * ✅ **앞 회차의 음성 축(「처리 이력」 0건)을 이 회차가 의도적으로 지웠다** — 이력 탭이
+   * 서면서 그 자리가 실재하게 됐다.
+   *
+   * ⭐ **절 셋과 차례를 등록 축과 같은 형태로 잰다**(검증 문제 ① · 리뷰 R-2). 여기서는
+   * ③이 한 겹 더 무겁다 — 가리키는 것이 탭 이름만이 아니라 **이력 상세가 실제로 그리는 값**
+   * (전기일)이라, 그 라벨 상수를 함께 담는지까지 본다.
    */
-  it('그 안내가 확인이 아니라 금지를 말한다', () => {
+  it('그 안내가 사실·금지·확인 자리를 그 차례로 말한다', () => {
+    /* ① 사실 — 재고가 움직였는지 모른다는 것이 이 완화의 근거다. */
+    expect(t.post.networkUnconfirmed).toContain('알 수 없습니다');
+    /* ② 금지 — 다시 누르면 낙관적 잠금도 막지 못한다. */
     expect(t.post.networkUnconfirmed).toContain('바로 다시 전기하지 마세요');
-    expect(t.post.networkUnconfirmed).toContain('이 화면에서 확인할 수 없습니다');
+    /* ③ 확인 자리 — 탭과 **그 탭이 실제로 그리는 값**을 함께 가리킨다. */
+    expect(t.post.networkUnconfirmed).toContain(t.tabs.history);
+    expect(t.post.networkUnconfirmed).toContain(t.historySummary.adjustedAt);
 
-    /*
-     * ⭐ **음성 축 — 없는 자리를 가리키지 않는다**(등록 축과 같은 형태). 양성 둘만 재면 두
-     * 문장을 그대로 둔 채 가운데에 없는 탭을 끼운 문면이 통과한다. 처리 이력 탭이 서는 회차가
-     * 이 한 줄을 **의도적으로 지우는 것**이 곧 문구 갱신의 이행 기록이 된다.
-     */
-    expect(t.post.networkUnconfirmed).not.toContain('처리 이력');
+    const factAt = t.post.networkUnconfirmed.indexOf('알 수 없습니다');
+    const banAt = t.post.networkUnconfirmed.indexOf('바로 다시 전기하지 마세요');
+    const placeAt = t.post.networkUnconfirmed.indexOf(t.tabs.history);
+
+    expect(factAt).toBeLessThan(banAt);
+    expect(banAt).toBeLessThan(placeAt);
   });
 
   /** 짝 방향 — 서버가 거절한 요청에는 그 안내가 없다. 전달된 것이 확실하기 때문이다. */
@@ -5211,5 +5328,710 @@ describe('StockAdjustScreen — 전기의 매임', () => {
 
     expect(await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeInTheDocument();
     expect(screen.queryByText(t.post.unboundPostedNote('SAMPLE-IA-9301'))).not.toBeInTheDocument();
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 처리 이력 — **보낸 것을 되찾는 자리**
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const ADJUSTMENT_DETAIL_PATH = '/inventory/adjustments/9302';
+
+const historyPane = (): HTMLElement => screen.getByRole('region', { name: t.panes.history });
+
+const historyDetailPane = (): HTMLElement =>
+  screen.getByRole('region', { name: t.panes.historyDetail });
+
+const adjustmentsRoute = (items: unknown[] = adjustmentListFixtures, total?: number): StubRoute =>
+  getRoute(ADJUSTMENTS_PATH, items, total);
+
+const adjustmentDetailRoute = (
+  body: unknown = adjustmentDetailBody({ lineCount: 2 }),
+): StubRoute => ({
+  match: (request) => isGet(request, ADJUSTMENT_DETAIL_PATH),
+  respond: () => jsonResponse(body),
+});
+
+const missingDetailRoute = (): StubRoute => ({
+  match: (request) => isGet(request, ADJUSTMENT_DETAIL_PATH),
+  respond: () => jsonResponse({ message: '' }, { status: 404 }),
+});
+
+const historyRoutes = (overrides: StubRoute[] = []): StubRoute[] =>
+  allRoutes([...overrides, adjustmentsRoute(), adjustmentDetailRoute()]);
+
+const historyTab = (): HTMLElement => screen.getByRole('tab', { name: t.tabs.history });
+
+const openHistoryTab = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(historyTab());
+  await screen.findByRole('region', { name: t.panes.history });
+};
+
+const historyRows = (): HTMLElement[] =>
+  within(within(historyPane()).getByRole('table')).getAllByRole('row').slice(1);
+
+const historyCells = (rowIndex: number): string[] =>
+  within(historyRows()[rowIndex] ?? document.createElement('tr'))
+    .getAllByRole('cell')
+    .map((cell) => cell.textContent ?? '');
+
+const adjustmentRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter(
+    (request) => request.method === 'GET' && request.url.pathname === ADJUSTMENTS_PATH,
+  );
+
+/**
+ * ⛔ **탭이 둘이다**(조심 ① · D-3 · C40).
+ *
+ * 승인 대기 탭을 두지 않는다 — 승인·반려는 결재함(W-CO-09)이 소유한다.
+ */
+describe('StockAdjustScreen — 탭', () => {
+  it('탭이 둘이고 셋째 자리가 없다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+
+    const tabs = screen.getAllByRole('tab');
+
+    expect(tabs.map((tab) => tab.textContent ?? '')).toEqual([t.tabs.register, t.tabs.history]);
+
+    await openHistoryTab(user);
+
+    expect(screen.getAllByRole('tab')).toHaveLength(2);
+  });
+
+  /** 승인 대기 탭이 이름으로도 되살아나지 않는다 — 양성 앵커 뒤에 잰다. */
+  it('승인 대기 탭이 없다', async () => {
+    renderScreen(historyRoutes());
+
+    await waitForCounts();
+
+    for (const tab of screen.getAllByRole('tab')) {
+      expect(tab.textContent ?? '').not.toContain('승인');
+      expect(tab.textContent ?? '').not.toContain('대기');
+    }
+  });
+
+  it('처음 열면 조정 등록 탭이 서고 이력 구획은 렌더되지 않는다', async () => {
+    renderScreen(historyRoutes());
+
+    await waitForCounts();
+
+    expect(screen.getByRole('region', { name: t.panes.source })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.history })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **숨은 탭의 내용은 DOM에도 없다.**
+   *
+   * 디자인 시스템 `Tabs`는 패널을 전부 렌더하고 비활성만 감춘다 — **역할 질의는 감춰진 것을
+   * 건너뛰므로**(접근성 트리에서 빠진다) 「구획이 없다」만 재면 두 패널에 내용을 담은 형태가
+   * 그대로 통과한다. 글자 질의는 감춰진 노드도 잡으므로 **그쪽으로 잰다**: 같은 뜻의 안내가
+   * 두 벌 서면 이름으로 집는 조작이 어느 것을 집을지 갈린다.
+   */
+  it('숨은 탭의 내용은 DOM에도 서지 않는다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+
+    expect(screen.queryByText(t.historyFilters.periodNote)).not.toBeInTheDocument();
+
+    await openHistoryTab(user);
+
+    expect(screen.getByText(t.historyFilters.periodNote)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.actualDerived)).not.toBeInTheDocument();
+  });
+
+  /** 주소가 정본이다 — 공유한 주소가 같은 탭을 연다. */
+  it('주소가 이력 탭을 가리키면 그 탭이 선다', async () => {
+    renderScreen(historyRoutes(), '?tab=history');
+
+    expect(await screen.findByRole('region', { name: t.panes.history })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.source })).not.toBeInTheDocument();
+  });
+
+  /**
+   * 주소는 손으로 고쳐지는 자리다 — 모르는 값에 아무 탭도 서지 않으면 고장으로 읽힌다.
+   *
+   * **없는 탭 이름(`approval`)으로 재는 것이 요점이다** — 그 값이 살아남으면 승인 대기 자리를
+   * 주소로 켜는 길이 생긴다.
+   */
+  it('모르는 탭 값이면 조정 등록 탭이 선다', async () => {
+    renderScreen(historyRoutes(), '?count=9101&tab=approval');
+
+    await waitForCounts();
+
+    expect(screen.getByRole('region', { name: t.panes.source })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.panes.history })).not.toBeInTheDocument();
+  });
+
+  /** C45 — 탭이 주소에 실리고 뒤로가기가 한 칸이다. */
+  it('탭 전환이 주소에 실리고 뒤로가기가 한 칸이다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await waitForLocation(`${ROUTE}?count=9101&tab=history`);
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+    await waitForLocation(`${ROUTE}?count=9101`);
+
+    expect(screen.getByRole('region', { name: t.panes.source })).toBeInTheDocument();
+  });
+
+  /** 기본 탭은 주소에 적지 않는다 — 같은 화면의 주소가 두 가지가 되지 않게. */
+  it('등록 탭으로 돌아오면 주소에서 탭 값이 사라진다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await user.click(screen.getByRole('tab', { name: t.tabs.register }));
+
+    await waitForLocation(`${ROUTE}?count=9101`);
+  });
+
+  /**
+   * ⭐ **탭은 보는 자리를 바꿀 뿐 대상을 바꾸지 않는다.** 이력을 잠깐 확인하고 돌아왔을 때
+   * 세우던 초안이 사라지면 「보내 놓고 이력에서 확인한다」가 성립하지 않는다.
+   */
+  it('탭을 오갔다 와도 세우던 조정 대상이 그대로다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await loadVariance(user);
+    await user.clear(diffBox(1));
+    await user.type(diffBox(1), '-7');
+
+    await openHistoryTab(user);
+    await user.click(screen.getByRole('tab', { name: t.tabs.register }));
+
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(diffBox(1)).toHaveValue('-7');
+  });
+
+  /** 두 탭에 함께 걸리는 사실은 탭 위에 선다(C42 · C13). */
+  it('결재함 안내와 범위 안내가 두 탭에서 모두 선다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+
+    expect(screen.getByText(t.approvalNotice.description)).toBeVisible();
+    expect(screen.getByText(t.scope.description)).toBeVisible();
+
+    await openHistoryTab(user);
+
+    expect(screen.getByText(t.approvalNotice.description)).toBeVisible();
+    expect(screen.getByText(t.scope.description)).toBeVisible();
+  });
+
+  /**
+   * ⭐ **확인 창은 자기 탭에서만 선다**(구현 판단 5 · 리뷰 R-3).
+   *
+   * 확인 창은 탭 패널 **밖**(페이지 수준)에 있어, 탭 조건이 없으면 이력 탭 위에 등록 확인 창이
+   * 그대로 선다 — **보이지 않는 자리의 값을 확인하는 창**이 된다. 닿는 경로는 창이 열린 채
+   * **뒤로/앞으로**로 탭 질의가 바뀌는 자리다(핸들러를 지나지 않는다).
+   *
+   * **두 방향을 한 시험이 잰다** — 사라지는 쪽과 되돌아오는 쪽. 뒤엣것까지 재야 「표시를 지우지
+   * 않는다」(그 조작이 취소된 것은 아니다)가 함께 고정된다.
+   */
+  it('확인 창을 연 채 탭이 바뀌면 그 창이 서지 않고 돌아오면 다시 선다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(historyRoutes());
+
+    await readyToRegister(user);
+    await user.click(registerButton());
+
+    /* 양성 앵커 — 등록 탭에서 그 창이 실제로 섰다. */
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    await openHistoryTab(user);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    /* 표시를 지우지 않았으므로 되돌아오면 같은 창이 다시 선다. */
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: new RegExp(t.actions.confirmRegister) }),
+    ).toBeEnabled();
+  });
+});
+
+/**
+ * ⛔ **C41 — 이력 탭의 모든 조회 요청 URL에 `pendingApprovalOnly`가 0건이다.**
+ *
+ * 계약에 그 조건이 **남아 있어서** 어딘가에서 실릴 수 있다 — 뮤테이션 M-4가 겨누는 자리다.
+ */
+describe('StockAdjustScreen — 이력 조회', () => {
+  it('이력 탭이 서면 목록을 부르고 등록 탭에서는 부르지 않는다', async () => {
+    const { requests, user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+
+    expect(adjustmentRequests(requests)).toHaveLength(0);
+
+    await openHistoryTab(user);
+
+    await waitFor(() => {
+      expect(adjustmentRequests(requests)).toHaveLength(1);
+    });
+  });
+
+  it('조건 없이 첫 조회가 나간다 — 무엇이 있는지 먼저 보인다', async () => {
+    const { requests, user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    await waitFor(() => {
+      expect(adjustmentRequests(requests)).toHaveLength(1);
+    });
+
+    expect([...(adjustmentRequests(requests)[0]?.url.searchParams.keys() ?? [])]).toEqual([]);
+  });
+
+  /** ⛔ C41 — 조건을 걸어도 그 문자열이 URL에 서지 않는다. */
+  it('이력 탭의 모든 요청 URL에 승인 대기 조건이 0건이다', async () => {
+    const { requests, user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    await user.click(within(historyPane()).getByLabelText(t.historyFields.count));
+    await user.click(screen.getByRole('option', { name: COUNT_LABEL }));
+    await user.click(within(historyPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(adjustmentRequests(requests)).toHaveLength(2);
+    });
+
+    for (const request of requests) {
+      expect(request.url.search).not.toContain('pendingApprovalOnly');
+    }
+  });
+
+  it('고른 조건이 계약 이름으로 실리고 주소에도 남는다', async () => {
+    const { requests, user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    await user.click(within(historyPane()).getByLabelText(t.historyFields.count));
+    await user.click(screen.getByRole('option', { name: COUNT_LABEL }));
+    await user.click(within(historyPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(adjustmentRequests(requests)).toHaveLength(2);
+    });
+
+    expect(adjustmentRequests(requests)[1]?.url.searchParams.get('inventoryCountId')).toBe('9101');
+    await waitForLocation(`${ROUTE}?count=9101&tab=history&hc=9101`);
+  });
+
+  /** C45 — 조건을 바꿔도 뒤로가기가 한 칸이다(조건과 쪽을 한 번에 갱신한다). */
+  it('조건 적용 뒤 뒤로가기가 한 칸이다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    await user.click(within(historyPane()).getByLabelText(t.historyFields.count));
+    await user.click(screen.getByRole('option', { name: COUNT_LABEL }));
+    await user.click(within(historyPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitForLocation(`${ROUTE}?count=9101&tab=history&hc=9101`);
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitForLocation(`${ROUTE}?count=9101&tab=history`);
+  });
+
+  it('쪽을 옮기면 요청과 주소에 그 쪽이 실린다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([adjustmentsRoute(adjustmentListFixtures, 120), adjustmentDetailRoute()]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    await user.click(await screen.findByRole('button', { name: t.actions.nextPage }));
+
+    await waitFor(() => {
+      expect(adjustmentRequests(requests)).toHaveLength(2);
+    });
+
+    expect(adjustmentRequests(requests)[1]?.url.searchParams.get('page')).toBe('2');
+    await waitForLocation(`${ROUTE}?count=9101&tab=history&hpage=2`);
+  });
+
+  it('조회가 실패하면 사유와 복구 경로가 선다 — 빈 상태로 보이지 않는다', async () => {
+    const { user } = renderScreen(allRoutes([failingRoute(ADJUSTMENTS_PATH, 500)]));
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    expect(await screen.findByText(messages.httpError.loadTitle)).toBeVisible();
+    expect(screen.queryByText(t.empty.historyNoResultTitle)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * ⭐ **C43 — 실사 참조가 없는 줄은 「—」이고 경고 표식이 붙지 않는다.**
+ * 원천이 셋이고 그중 둘(현장 실측 · 직접 등록)은 실사를 거치지 않는 정상 경로다.
+ */
+describe('StockAdjustScreen — 이력 목록의 줄', () => {
+  it('실사 참조가 있는 줄은 이름으로, 없는 줄은 「—」로 선다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    await waitFor(() => {
+      expect(historyRows()).toHaveLength(3);
+    });
+
+    expect(historyCells(1)[1]).toBe(COUNT_LABEL);
+    expect(historyCells(0)[1]).toBe(t.values.empty);
+  });
+
+  it('실사 참조가 없는 줄에 경고 표식이 붙지 않는다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    await waitFor(() => {
+      expect(historyRows()).toHaveLength(3);
+    });
+
+    const row = historyRows()[0] ?? document.createElement('tr');
+
+    expect(within(row).queryAllByRole('alert')).toHaveLength(0);
+    expect(within(row).getAllByRole('cell')[1]?.textContent).not.toBe(t.values.unknown);
+  });
+
+  /** 전기 여부의 판정 근거가 **전기 시각의 유무 하나다**(C35 · D-13). */
+  it('전기되지 않은 줄은 「전기 전」으로 선다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    await waitFor(() => {
+      expect(historyRows()).toHaveLength(3);
+    });
+
+    expect(historyCells(0)[4]).toBe(t.historyTable.notPosted);
+    expect(historyCells(1)[4]).toBe('2026-08-18 14:05');
+  });
+
+  /** ⛔ C42 — 이력 탭 어디에도 승인·반려 조작이 없다(양성 앵커 뒤에 잰다). */
+  it('이력 탭에 승인·반려 조작이 0건이다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    await waitFor(() => {
+      expect(historyRows()).toHaveLength(3);
+    });
+
+    for (const button of screen.getAllByRole('button')) {
+      const name = button.getAttribute('aria-label') ?? button.textContent ?? '';
+
+      expect(name).not.toContain('승인');
+      expect(name).not.toContain('반려');
+    }
+  });
+});
+
+/**
+ * ⭐ **C44 — 상세를 열면 요청 한 번으로 머리와 라인이 함께 서고, 라인이 세 열로 보인다.**
+ */
+describe('StockAdjustScreen — 이력 상세', () => {
+  const selectSecondRow = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await user.click(
+      await screen.findByRole('button', {
+        name: t.actions.selectAdjustmentRow('SAMPLE-IA-9302'),
+      }),
+    );
+  };
+
+  it('고르기 전에는 무엇을 하면 되는지 말한다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+
+    expect(within(historyDetailPane()).getByText(t.empty.historyNoSelectionTitle)).toBeVisible();
+  });
+
+  it('고르면 상세 한 번으로 머리와 라인이 함께 선다', async () => {
+    const { requests, user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    expect(
+      await within(historyDetailPane()).findByRole('group', { name: t.historySummary.label }),
+    ).toBeInTheDocument();
+
+    expect(
+      requests.filter((request) => request.url.pathname === ADJUSTMENT_DETAIL_PATH),
+    ).toHaveLength(1);
+    expect(requests.filter((request) => request.url.pathname.endsWith('/lines'))).toHaveLength(0);
+  });
+
+  /**
+   * ⭐ **404가 아닌 실패는 사유와 복구 경로를 낸다**(리뷰 R-1 · 사본원 `stocktaking`의 갈래).
+   *
+   * 이 판정이 로딩보다 **뒤**에 서면 `data === undefined` 하나가 실패를 삼켜 **영원한
+   * 「불러오는 중」**이 된다 — 앱의 조회 기본값이 `retry: 0`이라 그것은 재시도 중인 상태가
+   * 아니라 정착한 실패다. 양성 앵커(사유 배너가 실제로 섰다) 뒤에 「로딩 뼈대가 없다」를 잰다.
+   *
+   * **목록 축의 같은 감지기와 짝이다** — 두 구획의 규칙이 갈리지 않는지 함께 본다.
+   */
+  it('상세가 500으로 실패하면 사유와 다시 시도가 서고 로딩 뼈대가 남지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([adjustmentsRoute(), failingRoute(ADJUSTMENT_DETAIL_PATH, 500)]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    expect(
+      await within(historyDetailPane()).findByText(messages.httpError.loadTitle),
+    ).toBeVisible();
+    expect(
+      within(historyDetailPane()).getByRole('button', { name: messages.common.retry }),
+    ).toBeEnabled();
+
+    expect(
+      screen.queryByRole('status', { name: t.loading.adjustmentDetail }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(historyDetailPane()).queryByRole('group', { name: t.historySummary.label }),
+    ).not.toBeInTheDocument();
+  });
+
+  /** 응답이 오지 않은 갈래도 같은 자리로 간다 — 「끊겼다」가 「불러오는 중」으로 읽히면 안 된다. */
+  it('상세가 네트워크로 끊겨도 사유와 다시 시도가 선다', async () => {
+    const { user } = renderScreen(
+      allRoutes([
+        adjustmentsRoute(),
+        {
+          match: (request: Request) => isGet(request, ADJUSTMENT_DETAIL_PATH),
+          respond: () => {
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    expect(await within(historyDetailPane()).findByText(messages.httpError.offline)).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: t.loading.adjustmentDetail }),
+    ).not.toBeInTheDocument();
+  });
+
+  /** 「다시 시도」가 실제로 그 전표를 다시 부른다 — 눌러도 아무 일이 없으면 복구가 아니다. */
+  it('다시 시도가 그 전표의 상세를 다시 부른다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([adjustmentsRoute(), failingRoute(ADJUSTMENT_DETAIL_PATH, 500)]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    await within(historyDetailPane()).findByText(messages.httpError.loadTitle);
+
+    await user.click(
+      within(historyDetailPane()).getByRole('button', { name: messages.common.retry }),
+    );
+
+    await waitFor(() => {
+      expect(
+        requests.filter((request) => request.url.pathname === ADJUSTMENT_DETAIL_PATH),
+      ).toHaveLength(2);
+    });
+  });
+
+  /**
+   * 짝 방향 — **404는 배너로 가지 않는다.** 그것은 다시 시도로 풀리지 않고 주소 정리가 맡는다.
+   * 이 짝이 없으면 「모든 실패를 배너로」가 통과하고, 없는 전표에 「다시 시도」가 붙는다.
+   */
+  it('404는 배너가 아니라 찾을 수 없다는 안내로 간다', async () => {
+    renderScreen(allRoutes([adjustmentsRoute(), missingDetailRoute()]), '?tab=history&ia=9302');
+
+    expect(await screen.findByText(t.empty.historyNotFoundTitle)).toBeVisible();
+    expect(
+      within(historyDetailPane()).queryByRole('button', { name: messages.common.retry }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **이 구획의 참조는 셋뿐이다**(구현 판단 7 · 리뷰 R-4).
+   *
+   * 위치 조회는 **등록 탭의 것**이고 이 구획에는 위치 열이 없다 — 넷으로 판정하면 **있지도
+   * 않은 참조의 실패**로 안내가 서고, 복구를 눌러도 이 표에는 아무 변화가 없다.
+   *
+   * 양성 앵커(상세 표가 실제로 섰다) 뒤에 「그 안내가 없다」를 잰다.
+   */
+  it('등록 탭의 위치 조회만 실패한 상태에서는 이력 상세에 참조 안내가 서지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([failingRoute(LOCATIONS_PATH, 500), adjustmentsRoute(), adjustmentDetailRoute()]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    expect(await within(historyDetailPane()).findByRole('table')).toBeInTheDocument();
+    expect(
+      within(historyDetailPane()).queryByText(t.reasons.historyReferencesFailed),
+    ).not.toBeInTheDocument();
+    expect(
+      within(historyDetailPane()).queryByText(t.reasons.lineReferencesFailed),
+    ).not.toBeInTheDocument();
+  });
+
+  /** 짝 양성 — **셋 중 하나가 실패하면** 그 안내와 복구가 함께 선다. 「늘 침묵」으로 통과하지 않게. */
+  it('품목 조회가 실패하면 이력 상세에 사유와 복구가 함께 선다', async () => {
+    const { user } = renderScreen(
+      allRoutes([failingRoute(ITEMS_PATH, 500), adjustmentsRoute(), adjustmentDetailRoute()]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    expect(
+      await within(historyDetailPane()).findByText(t.reasons.historyReferencesFailed),
+    ).toBeVisible();
+    expect(
+      within(historyDetailPane()).getByRole('button', { name: messages.common.retry }),
+    ).toBeEnabled();
+  });
+
+  /** ⭐ 세 열이 그대로 선다 — 차이가 결과 수량으로 읽히지 않게 하는 자리다. */
+  it('라인이 장부·실물·차이 세 열로 서고 장부·실물은 「—」다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    const table = await within(historyDetailPane()).findByRole('table');
+    const headers = within(table)
+      .getAllByRole('columnheader')
+      .map((header) => header.textContent ?? '');
+
+    expect(headers).toEqual([
+      t.historyLineTable.lineNo,
+      t.historyLineTable.item,
+      t.historyLineTable.lot,
+      t.historyLineTable.bookQty,
+      t.historyLineTable.actualQty,
+      t.historyLineTable.adjustmentQty,
+    ]);
+
+    const cells = within(within(table).getAllByRole('row')[1] ?? document.createElement('tr'))
+      .getAllByRole('cell')
+      .map((cell) => cell.textContent ?? '');
+
+    expect(cells[5]).toContain('-20');
+    expect(cells[3]).toBe(t.values.empty);
+    expect(cells[4]).toBe(t.values.empty);
+    expect(within(historyDetailPane()).getByText(t.historyLineTable.qtyNote)).toBeVisible();
+  });
+
+  it('고른 전표가 주소에 실린다 — 새로고침해도 같은 전표가 열린다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    await waitForLocation(`${ROUTE}?count=9101&tab=history&ia=9302`);
+  });
+
+  /** 조건이 바뀌면 그 전표가 새 결과에 없을 수 있다 — 함께 풀린다. */
+  it('조건을 바꾸면 고른 전표가 함께 풀린다', async () => {
+    const { user } = renderScreen(historyRoutes());
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+    await waitForLocation(`${ROUTE}?count=9101&tab=history&ia=9302`);
+
+    await user.click(within(historyPane()).getByLabelText(t.historyFields.count));
+    await user.click(screen.getByRole('option', { name: COUNT_LABEL }));
+    await user.click(within(historyPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitForLocation(`${ROUTE}?count=9101&tab=history&hc=9101`);
+    expect(within(historyDetailPane()).getByText(t.empty.historyNoSelectionTitle)).toBeVisible();
+  });
+
+  /**
+   * 없는 전표를 가리키면 주소에서 지우고 **그 사실을 남긴다** — 지우고 나면 「아직 고르지
+   * 않았다」와 글자가 같아져 사용자가 자기가 무엇을 눌렀는지 되짚을 수 없다.
+   */
+  it('없는 전표를 가리키면 주소에서 지우고 그 사실을 밝힌다', async () => {
+    renderScreen(allRoutes([adjustmentsRoute(), missingDetailRoute()]), '?tab=history&ia=9302');
+
+    expect(await screen.findByText(t.empty.historyNotFoundTitle)).toBeVisible();
+    await waitForLocation(`${ROUTE}?tab=history`);
+  });
+
+  /** 사본 체크리스트 1번 — 정리가 뒤로가기 기록을 늘리지 않는다. */
+  it('그 정리가 뒤로가기 기록을 늘리지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([adjustmentsRoute(), missingDetailRoute()]),
+      '?tab=history&ia=9302',
+    );
+
+    await screen.findByText(t.empty.historyNotFoundTitle);
+    await waitForLocation(`${ROUTE}?tab=history`);
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    expect(currentLocation()).not.toContain('ia=9302');
+  });
+});
+
+/**
+ * ⭐ **묶음 재판단** — 이력 탭이 서면서 앞 회차들이 「그때 다시 본다」로 넘긴 자리들.
+ *
+ * | 넘긴 것 | 이 회차의 판정 |
+ * | --- | --- |
+ * | 네트워크 미확인 안내 둘 | **가리킬 자리가 생겼다** — 문구를 갱신하고 그 탭이 실재함을 잰다 |
+ * | 매임 끊긴 성공의 지속성 | **이력이 대신한다** — 문구가 그 자리를 가리킨다 |
+ * | 성공/실패 비대칭 | **닫는다** — 응답 없음 갈래도 사실을 말한다 |
+ */
+describe('StockAdjustScreen — 이력이 대신하는 자리', () => {
+  it('매임이 끊긴 성공의 안내가 이력 탭을 가리킨다', () => {
+    expect(t.result.unboundCreatedNote('SAMPLE-IA-9301')).toContain(t.tabs.history);
+    expect(t.result.unboundSubmittedNote('SAMPLE-IA-9301')).toContain(t.tabs.history);
+    expect(t.post.unboundPostedNote('SAMPLE-IA-9301')).toContain(t.tabs.history);
+  });
+
+  /**
+   * ⛔ **잔액 낡음만 이력을 가리키지 않는다.** 계약의 조정 라인에 장부가 없어 이력 상세가 그
+   * 낡음을 풀어 주지 못한다 — 가리키면 그 지시가 곧 죽은 문구가 된다.
+   *
+   * **양성 앵커를 같은 시점에 둔다**(리뷰 R-6). 음성 하나만 두면 그 문구가 **빈 문자열이 돼도**
+   * 통과한다 — 짝 양성이 다른 `it`에 있으면 도구가 그 짝을 보장하지 않는다.
+   */
+  it('전기 뒤 장부 낡음 안내는 사실을 말하되 이력을 가리키지 않는다', () => {
+    expect(t.post.bookQtyStale).toContain('등록할 때 받은 값');
+    expect(t.post.bookQtyStale).not.toContain(t.tabs.history);
   });
 });

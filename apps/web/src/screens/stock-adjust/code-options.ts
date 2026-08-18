@@ -14,10 +14,14 @@ import type { SelectOption, StockAdjustCodeKey } from './types';
  *
  * | 코드 | 자리 | 필수도 | 비어 있으면 무엇이 막히나 | 채우면 무엇이 살아나는가 |
  * | --- | --- | :-: | --- | --- |
- * | `reason` | 헤더 사유 | **요청 필수** | **등록이 통째로 막힌다** | 헤더 사유를 고를 수 있고 등록이 열린다 |
+ * | `reason` | 헤더 사유 · **이력 조건** | **요청 필수**(등록) | **등록이 통째로 막힌다.** 이력은 그 조건으로 좁힐 수 없을 뿐 열려 있다 | 헤더 사유를 고를 수 있고 등록이 열린다 · 이력을 사유로 좁힐 수 있다 |
+ * | `status` | **이력 조건** | 조건(선택) | **아무것도 막지 않는다** — 상태로 좁히지 못할 뿐이다 | 이력을 상태로 좁힐 수 있다 |
  *
  * **막히지 않는 것**: 조정 대상 세우기 · 실사 차이 불러오기 · 장부 확인 · 처리 이력 조회.
  * 값 목록이 비어 있는 동안에도 이 넷은 온전히 쓰인다.
+ *
+ * ⚠ **`status`를 잠금에 쓰지 않는다**(D-13과 같은 규율). 이력 조회는 조건 없이도 열려 있어야
+ * 하므로, 이 배열이 비었다는 사실로 조회나 버튼을 막으면 그 자리가 **영영 잠긴다.**
  *
  * 추적: 조정 사유·상태 값 목록 미확정 — 설계 저장소 이슈로 관리한다(비공개 저장소는 번호로만
  * 참조).
@@ -39,6 +43,7 @@ export type CodeOptionSets = Record<StockAdjustCodeKey, SelectOption[]>;
  */
 export const PLACEHOLDER_STOCK_ADJUST_CODES: CodeValueLists = {
   reason: [],
+  status: [],
 };
 
 const toOptions = (values: readonly string[]): SelectOption[] =>
@@ -54,6 +59,7 @@ const toOptions = (values: readonly string[]): SelectOption[] =>
  */
 export const toCodeOptionSets = (values: CodeValueLists): CodeOptionSets => ({
   reason: toOptions(values.reason),
+  status: toOptions(values.status),
 });
 
 /**

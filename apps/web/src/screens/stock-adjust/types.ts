@@ -6,9 +6,9 @@ import type { components } from '@omf-mes/api-client';
  * `api-client`는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이
  * 유지된다.
  *
- * 이 회차가 다루는 것은 **읽기와 등록과 상신과 전기**다 — 실사 목록 · 실사 차이 라인 ·
- * 재고 잔액 · 참조 다섯 · 조정 전표 등록 · 결재 상신과 그 진행 조회 · **재고 전기**.
- * 처리 이력은 뒤따르는 회차가 붙인다.
+ * 이 화면이 다루는 것은 **읽기와 등록과 상신과 전기와 되찾기**다 — 실사 목록 · 실사 차이 라인 ·
+ * 재고 잔액 · 참조 다섯 · 조정 전표 등록 · 결재 상신과 그 진행 조회 · 재고 전기 ·
+ * **처리 이력의 목록과 상세**.
  *
  * 이 파일은 이 화면이 소유한다. **다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다** —
  * 형태가 같아도 리소스 이름이 박힌 타입을 공유하면 한 화면의 계약 변화가 다른 화면을 끌고 간다.
@@ -17,6 +17,8 @@ import type { components } from '@omf-mes/api-client';
 type InventoryCountResponse = components['schemas']['InventoryCount'];
 type InventoryCountLineResponse = components['schemas']['InventoryCountLine'];
 type InventoryAdjustmentDetailResponse = components['schemas']['InventoryAdjustmentDetailResponse'];
+type InventoryAdjustmentResponse = components['schemas']['InventoryAdjustment'];
+type InventoryAdjustmentLineResponse = components['schemas']['InventoryAdjustmentLine'];
 
 /** 승인 요청 상세 — 계약이 **단계 배열을 함께 내려** 화면이 두 번 부르지 않는다. */
 export type ApprovalRequestDetailResponse = components['schemas']['ApprovalRequestDetail'];
@@ -24,8 +26,13 @@ export type ApprovalStepResponse = components['schemas']['ApprovalStep'];
 
 export type PageMeta = components['schemas']['PageMeta'];
 
-/** 값 목록이 확정되지 않은 코드. 이 회차가 쓰는 것은 헤더 사유 하나다(D-9). */
-export type StockAdjustCodeKey = 'reason';
+/**
+ * 값 목록이 확정되지 않은 코드(D-9 · 미결 #64).
+ *
+ * **둘이다** — 헤더 사유(등록 필수 · 이력 조건)와 전표 상태(이력 조건). 상태는 등록에서
+ * 받지 않고(서버가 정한다) **이력을 좁히는 조건으로만** 쓰인다.
+ */
+export type StockAdjustCodeKey = 'reason' | 'status';
 
 /**
  * 원천으로 고를 수 있는 실사 하나.
@@ -255,6 +262,110 @@ export interface PostedAdjustmentView {
    */
   statusCode: string;
 }
+
+/**
+ * 처리 이력의 한 줄 — **이미 만들어진 조정 전표 하나**다.
+ *
+ * 등록 결과 타입(`CreatedAdjustmentView`)과 **갈라 둔다.** 둘은 같은 계약 스키마에서 오지만
+ * 말하는 사실이 다르다: 저쪽은 「이 화면이 방금 만들었다」이고 이쪽은 「서버에 이렇게 남아
+ * 있다」이다. 그래서 이쪽만 **전기 시각과 실사 참조를 든다** — 저쪽에서 그 둘을 들면 목이
+ * 채워 준 값이 「방금 만든 전표가 이미 전기됐다」로 읽힌다(계획 §5.2.5 · C35·C36).
+ *
+ * **내부 번호를 하나 든다**(`inventoryAdjustmentId`) — 고르기와 상세 경로에만 쓰고 **그리지
+ * 않는다**(`omf-mes#44`). 실사 참조도 번호로 들되 화면이 이름으로 풀어 그린다.
+ */
+export interface AdjustmentSummaryView {
+  /** 고르기와 상세 경로 조각. **글자로 그리지 않는다** */
+  inventoryAdjustmentId: number;
+  /** 업무 번호 — 사람에게 보인다 */
+  inventoryAdjustmentNo: string;
+  /**
+   * 실사 참조. **비어 있는 것이 정상이다**(조심 ⑤ · C43) — 원천이 셋이고 현장 실측·직접 등록은
+   * 실사를 거치지 않는다. 그래서 값의 유무를 여기서 한 번에 갈라 두고, 없는 줄에 경고 표식을
+   * 붙이지 않는다.
+   */
+  inventoryCountId: number | null;
+  reasonCode: string;
+  /** 서버가 준 상태 코드 **그대로**(공유계약 G-2) */
+  statusCode: string;
+  /**
+   * 전기 시각. **전기 여부의 판정 근거가 이 값의 유무 하나다**(C35) — 상태 코드를 읽지 않는다.
+   */
+  adjustedAt: string | null;
+  /** ERP 송신 **대기열 적재** 여부. 계약이 선택으로 두어 오지 않는 갈래가 실재한다 */
+  erpMessageQueued: boolean | null;
+}
+
+/** 조정 전표 하나를 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toAdjustmentSummaryView = (
+  data: InventoryAdjustmentResponse,
+): AdjustmentSummaryView => ({
+  inventoryAdjustmentId: data.inventoryAdjustmentId,
+  inventoryAdjustmentNo: data.inventoryAdjustmentNo,
+  /* 없이 오는 길이 실재한다(원천이 셋) — 값의 유무를 여기서 한 번에 갈라 둔다. */
+  inventoryCountId: data.inventoryCountId ?? null,
+  reasonCode: data.reasonCode,
+  statusCode: data.statusCode,
+  adjustedAt: data.adjustedAt ?? null,
+  erpMessageQueued: data.erpMessageQueued ?? null,
+});
+
+/**
+ * 이력 상세의 라인 한 줄.
+ *
+ * **위치를 담지 않는다.** 위치 이름은 창고를 알아야 풀 수 있는데(계약이 위치 조회에 창고를
+ * 필수로 요구한다) 조정 전표에는 창고가 없다 — 담아 두면 이름을 못 푼 자리에 **번호를 그리는
+ * 길**이 열린다(`omf-mes#44`). 담을 자리가 없으면 그 경로도 없다.
+ *
+ * **라인 사유도 담지 않는다**(D-7 · 미결 #87). 이 화면은 라인 사유를 보내지 않으므로
+ * (C20) 이 화면이 만든 전표에서는 늘 비어 있고, 늘 비는 열은 자리만 차지한다.
+ *
+ * **장부·실물이 없다.** 계약의 조정 라인이 차이 수량만 주고(실측), 지금 잔액을 불러 채우면
+ * **조정 시점의 장부가 아닌 값**이 그 자리에 선다 — 세 열은 그리되 두 열의 값은 「—」이고
+ * 그 사정을 표 아래 안내가 밝힌다.
+ */
+export interface AdjustmentLineView {
+  /** 표의 안정 키. **글자로 그리지 않는다** */
+  inventoryAdjustmentLineId: number;
+  /** 서버가 부여한 줄번호(헤더 안에서 유일하다 — 계약) */
+  lineNo: number;
+  itemId: number;
+  lotId: number | null;
+  uomId: number;
+  /** 증감 수량. **음수가 정상이다**(조심 ② · D-4) */
+  adjustmentQty: number;
+}
+
+/** 조정 라인 하나를 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toAdjustmentLineView = (
+  data: InventoryAdjustmentLineResponse,
+): AdjustmentLineView => ({
+  inventoryAdjustmentLineId: data.inventoryAdjustmentLineId,
+  lineNo: data.lineNo,
+  itemId: data.itemId,
+  lotId: data.lotId ?? null,
+  uomId: data.uomId,
+  adjustmentQty: data.adjustmentQty,
+});
+
+/**
+ * 고른 조정 전표의 상세 — **요청 한 번이 머리와 라인을 함께 준다**(계약 실측 · C44).
+ *
+ * 라인 목록 조회(`…/{id}/lines`)를 따로 부르지 않는다 — 같은 사실을 두 요청으로 받으면 둘이
+ * 갈렸을 때 어느 쪽이 참인지 화면이 모른다.
+ */
+export interface AdjustmentDetailView {
+  summary: AdjustmentSummaryView;
+  lines: AdjustmentLineView[];
+}
+
+/** 상세 200을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toAdjustmentDetailView = (
+  data: InventoryAdjustmentDetailResponse,
+): AdjustmentDetailView => ({
+  summary: toAdjustmentSummaryView(data.inventoryAdjustment),
+  lines: data.lines.map(toAdjustmentLineView),
+});
 
 /** 전기 200을 화면 타입으로 옮기는 **유일한 지점**이다. */
 export const toPostedAdjustmentView = (

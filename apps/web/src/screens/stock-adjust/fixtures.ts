@@ -175,6 +175,15 @@ const BASE_ADJUSTMENT_LINE: InventoryAdjustmentLineResponse = {
   uomId: 9601,
 };
 
+/**
+ * LOT **키가 아예 없는** 줄. 계약이 그 값을 선택으로 두어 실재하는 갈래다.
+ *
+ * `lotId: null`이 아니라 **키를 뺀 형태**로 만든다 — 옮기는 자리(`toAdjustmentLineView`)가
+ * `?? null`로 둘을 같게 다루므로 화면에는 차이가 없지만, **응답이 실제로 오는 모양**을
+ * 재현해야 그 자리가 무엇을 접는지 시험이 사실대로 말한다.
+ */
+const { lotId: _unusedLotId, ...BASE_ADJUSTMENT_LINE_WITHOUT_LOT } = BASE_ADJUSTMENT_LINE;
+
 export interface AdjustmentDetailOverrides {
   /**
    * 내부 번호. **두 전표를 가르려면 이 값이 실제로 갈려야 한다** — 상신의 매임 축이 이 번호라,
@@ -223,13 +232,63 @@ export const adjustmentDetailBody = (
       ...(approvalRequestId === undefined ? {} : { approvalRequestId }),
       ...(adjustedAt === undefined ? {} : { adjustedAt }),
     },
+    /*
+     * ⭐ **둘째 줄에는 LOT이 없다.** LOT 관리를 하지 않는 품목이 실재하고 계약도 그 값을
+     * 선택으로 두었다 — 픽스처가 늘 채워 주면 「LOT이 없는 줄」을 그리는 갈래가 **한 번도
+     * 렌더되지 않아**, 「없는 것(「—」)」과 「못 푼 것(「알 수 없음」)」을 가르는 잣대가 헛돈다.
+     * `null`을 싣지 않고 **키 자체를 뺀다** — 계약이 오지 않는 갈래를 그렇게 준다.
+     */
     lines: Array.from({ length: lineCount }, (_unused, index) => ({
-      ...BASE_ADJUSTMENT_LINE,
+      ...(index === 1 ? BASE_ADJUSTMENT_LINE_WITHOUT_LOT : BASE_ADJUSTMENT_LINE),
       inventoryAdjustmentLineId: BASE_ADJUSTMENT_LINE.inventoryAdjustmentLineId + index,
       lineNo: index + 1,
     })),
   };
 };
+
+/**
+ * 처리 이력 목록의 한 줄 — **머리뿐이다**(계약 실측: 목록은 `InventoryAdjustment` 배열).
+ *
+ * **실사 참조가 없는 줄을 기본으로 둔다**(조심 ⑤ · C43). 원천이 셋이고 그중 둘은 실사를
+ * 거치지 않으므로, 있는 쪽을 기본으로 두면 「비어 있는 것이 정상」을 재는 시험이 늘 예외처럼
+ * 보인다.
+ */
+export const adjustmentSummaryBody = (
+  overrides: Partial<components['schemas']['InventoryAdjustment']> = {},
+): components['schemas']['InventoryAdjustment'] => ({
+  inventoryAdjustmentId: 9301,
+  inventoryAdjustmentNo: 'SAMPLE-IA-9301',
+  reasonCode: 'SAMPLE_AR_A',
+  statusCode: 'SAMPLE_IA_STATUS_A',
+  ...overrides,
+});
+
+/**
+ * 이력 목록 세 줄 — **세 갈래가 한 번에 서게** 골랐다.
+ *
+ * | 줄 | 무엇을 재는가 |
+ * | --- | --- |
+ * | 9301 | 실사 참조 없음(「—」 · 경고 없음) · **전기 전**(전기 시각 없음) |
+ * | 9302 | 실사 참조 있음(이름으로 풀린다) · 전기됨 |
+ * | 9303 | 실사 참조 없음 · 전기됨 — 두 축이 서로 매이지 않았음을 잰다 |
+ */
+export const adjustmentListFixtures: components['schemas']['InventoryAdjustment'][] = [
+  adjustmentSummaryBody(),
+  adjustmentSummaryBody({
+    inventoryAdjustmentId: 9302,
+    inventoryAdjustmentNo: 'SAMPLE-IA-9302',
+    inventoryCountId: 9101,
+    statusCode: 'SAMPLE_IA_STATUS_B',
+    adjustedAt: '2026-08-18T14:05:00+09:00',
+    erpMessageQueued: true,
+  }),
+  adjustmentSummaryBody({
+    inventoryAdjustmentId: 9303,
+    inventoryAdjustmentNo: 'SAMPLE-IA-9303',
+    statusCode: 'SAMPLE_IA_STATUS_B',
+    adjustedAt: '2026-08-17T09:30:00+09:00',
+  }),
+];
 
 export interface PostedAdjustmentOverrides {
   /**

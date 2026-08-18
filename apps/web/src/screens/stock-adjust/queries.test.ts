@@ -11,6 +11,7 @@ import {
 import { ApiRequestError } from '../../patterns/request';
 import {
   adjustmentDetailBody,
+  adjustmentListFixtures,
   approvalRequestDetailBody,
   approvalRequestRefBody,
   balanceFixtures,
@@ -20,10 +21,12 @@ import {
 } from './fixtures';
 import {
   detailPathOf,
+  isAdjustmentNotFound,
   isApprovalForbidden,
   isApprovalNotFound,
   stockAdjustKeys,
   useAdjustmentDetailFetcher,
+  useAdjustmentHistoryDetail,
   useApprovalRequest,
   useCountVarianceLines,
   useCreateStockAdjustment,
@@ -31,6 +34,7 @@ import {
   useLocationBalances,
   usePostStockAdjustment,
   useRequestAdjustmentApproval,
+  useStockAdjustments,
   VARIANCE_LINE_PAGE_SIZE,
 } from './queries';
 import type { CreatedAdjustmentResult, PostedAdjustmentView } from './types';
@@ -995,5 +999,265 @@ describe('isApprovalForbidden · isApprovalNotFound', () => {
 
     expect(isApprovalForbidden(serverError)).toBe(false);
     expect(isApprovalNotFound(serverError)).toBe(false);
+  });
+});
+
+const HISTORY_LIST_PATH = '/inventory/adjustments';
+const HISTORY_DETAIL_PATH = '/inventory/adjustments/9301';
+
+/** 이력 구간은 **읽기와 쓰기를 함께** 본다 — 쓰기가 이력을 낡게 하는지 재야 하기 때문이다. */
+const recordingHistoryFetch = (
+  routes: StubRoute[],
+): { fetch: (request: Request) => Promise<Response>; requests: WriteRequest[] } => {
+  const requests: WriteRequest[] = [];
+  const stub = createStubFetch(routes);
+
+  return {
+    fetch: async (request) => {
+      requests.push({
+        method: request.method,
+        url: new URL(request.url),
+        headers: request.headers,
+      });
+
+      return stub(request);
+    },
+    requests,
+  };
+};
+
+/**
+ * 처리 이력 — **이미 만들어진 조정 전표를 되찾는 자리**다.
+ *
+ * 훅 층에서 재는 것은 **계약에 맞는 요청을 만드는가**이고, 그중에서도 이 화면의 잣대는
+ * ⛔ **승인 대기 조건이 요청 URL에 0건**이라는 것이다(D-3 · C41 · 뮤테이션 M-4).
+ */
+describe('useStockAdjustments', () => {
+  const listRoute = (): StubRoute => getRoute(HISTORY_LIST_PATH, listBody(adjustmentListFixtures));
+
+  it('조건 없이도 목록을 부른다 — 들어오자마자 무엇이 있는지 보여야 한다', async () => {
+    const { fetch, requests } = recordingFetch([listRoute()]);
+    const { result } = renderHookWithProviders(() => useStockAdjustments({}, true), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.items).toHaveLength(3);
+    });
+
+    expect([...(requests[0]?.url.searchParams.keys() ?? [])]).toEqual([]);
+  });
+
+  it('받은 조건을 계약 이름 그대로 싣는다', async () => {
+    const { fetch, requests } = recordingFetch([listRoute()]);
+    const { result } = renderHookWithProviders(
+      () =>
+        useStockAdjustments(
+          {
+            inventoryCountId: 9101,
+            reasonCode: 'SAMPLE_AR_A',
+            statusCode: 'SAMPLE_ST_A',
+            adjustedAtFrom: '2026-08-01',
+            adjustedAtTo: '2026-08-18',
+            page: 2,
+          },
+          true,
+        ),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data?.items).toHaveLength(3);
+    });
+
+    expect(Object.fromEntries(requests[0]?.url.searchParams ?? [])).toEqual({
+      inventoryCountId: '9101',
+      reasonCode: 'SAMPLE_AR_A',
+      statusCode: 'SAMPLE_ST_A',
+      adjustedAtFrom: '2026-08-01',
+      adjustedAtTo: '2026-08-18',
+      page: '2',
+    });
+  });
+
+  /**
+   * ⛔ **C41의 자리.** 계약에 남아 있는 조건이라 어딘가에서 실릴 수 있다 — 요청 URL의
+   * **문자열 전체**로 잰다(키 목록만 보면 값으로 실린 형태를 놓친다).
+   */
+  it('요청 URL에 승인 대기 조건이 0건이다', async () => {
+    const { fetch, requests } = recordingFetch([listRoute()]);
+    const { result } = renderHookWithProviders(
+      () => useStockAdjustments({ reasonCode: 'SAMPLE_AR_A' }, true),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data?.items).toHaveLength(3);
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.url.search).not.toContain('pendingApprovalOnly');
+  });
+
+  /** 숨은 탭의 조회는 사용자가 볼 수 없는 자료를 받아 온다. */
+  it('그 탭이 서 있지 않으면 부르지 않는다', async () => {
+    const { fetch, requests } = recordingFetch([listRoute()]);
+
+    renderHookWithProviders(() => useStockAdjustments({}, false), { fetch });
+
+    await waitFor(() => {
+      expect(requests).toHaveLength(0);
+    });
+  });
+
+  /** 조건이 바뀌면 다른 결과다 — 같은 자리를 덮으면 앞 조건의 줄이 남아 보인다. */
+  it('조건마다 캐시가 갈린다', () => {
+    expect(stockAdjustKeys.historyList({ page: 2 })).not.toEqual(stockAdjustKeys.historyList({}));
+    expect(stockAdjustKeys.historyList({})).toEqual(['stock-adjust', 'history', 'list', {}]);
+  });
+});
+
+describe('useAdjustmentHistoryDetail', () => {
+  const detailRouteFor = (): StubRoute =>
+    getRoute(HISTORY_DETAIL_PATH, adjustmentDetailBody({ lineCount: 2 }));
+
+  /**
+   * ⭐ **C44의 자리** — 요청 **한 번**이 머리와 라인을 함께 준다. 라인 목록 조회를 따로 부르면
+   * 같은 사실을 두 요청으로 받게 되고, 둘이 갈렸을 때 어느 쪽이 참인지 화면이 모른다.
+   */
+  it('상세 한 번으로 머리와 라인이 함께 온다', async () => {
+    const { fetch, requests } = recordingFetch([detailRouteFor()]);
+    const { result } = renderHookWithProviders(() => useAdjustmentHistoryDetail(9301, true), {
+      fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.data?.lines).toHaveLength(2);
+    });
+
+    expect(result.current.data?.summary.inventoryAdjustmentNo).toBe('SAMPLE-IA-9301');
+    expect(requests).toHaveLength(1);
+    expect(requests.filter((request) => request.url.pathname.endsWith('/lines'))).toHaveLength(0);
+  });
+
+  it('고른 전표가 없으면 부르지 않는다', async () => {
+    const { fetch, requests } = recordingFetch([detailRouteFor()]);
+
+    renderHookWithProviders(() => useAdjustmentHistoryDetail(null, true), { fetch });
+
+    await waitFor(() => {
+      expect(requests).toHaveLength(0);
+    });
+  });
+
+  it('그 탭이 서 있지 않으면 부르지 않는다', async () => {
+    const { fetch, requests } = recordingFetch([detailRouteFor()]);
+
+    renderHookWithProviders(() => useAdjustmentHistoryDetail(9301, false), { fetch });
+
+    await waitFor(() => {
+      expect(requests).toHaveLength(0);
+    });
+  });
+
+  /**
+   * **토큰을 얻는 상세와 키가 갈린다.** 한 키에 두 모양을 담으면 한쪽이 다른 쪽의 자료를
+   * 덮는다 — 이쪽만 라인을 들고, 저쪽은 늘 새로 부른다.
+   */
+  it('토큰을 얻는 상세와 캐시 키가 겹치지 않는다', () => {
+    expect(stockAdjustKeys.historyDetail(9301)).not.toEqual(stockAdjustKeys.detail(9301));
+    expect(stockAdjustKeys.historyDetail(9301)).toEqual([
+      'stock-adjust',
+      'history',
+      'detail',
+      9301,
+    ]);
+  });
+});
+
+/**
+ * 되돌릴 수 없는 쓰기 셋이 끝나면 **이력이 낡는다** — 등록은 전표를 만들고, 상신은 상태를
+ * 바꾸고, 전기는 전기일을 채운다. 이 화면의 네트워크 완화 안내가 「이력에서 확인하세요」로
+ * 보내는 자리라 그 낡음은 곧 **틀린 확인**이 된다.
+ */
+describe('쓰기 셋이 처리 이력을 무효화한다', () => {
+  const createRouteFor = (): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === HISTORY_LIST_PATH,
+    respond: () => jsonResponse(adjustmentDetailBody(), { status: 201 }),
+  });
+
+  /**
+   * **보고 있는 목록은 곧바로 다시 나간다.** 무효화 표식으로 재지 않는다 — 활성 조회는
+   * 무효화되는 즉시 다시 부르고 그때 그 표식이 풀리므로, 표식을 재는 단언은 재조회가
+   * 일어났는데도 거짓을 낸다. **요청이 실제로 한 번 더 나가는지**로 잰다.
+   */
+  it('등록이 성공하면 보고 있던 이력 목록을 다시 부른다', async () => {
+    const { fetch, requests } = recordingHistoryFetch([
+      createRouteFor(),
+      getRoute(HISTORY_LIST_PATH, listBody([])),
+    ]);
+    const { result } = renderHookWithProviders(
+      () => ({
+        list: useStockAdjustments({}, true),
+        register: useCreateStockAdjustment({ onSuccess: () => undefined }),
+      }),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.list.data).toBeDefined();
+    });
+
+    result.current.register.write({
+      reasonCode: 'SAMPLE_AR_A',
+      sendToErp: true,
+      lines: [{ locationId: 9401, itemId: 9501, uomId: 9601, adjustmentQty: -20 }],
+    });
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'GET')).toHaveLength(2);
+    });
+  });
+
+  /** 숨은 탭의 조회는 무효화돼도 **요청이 지금 나가지 않는다** — 다음에 그 탭이 설 때 받는다. */
+  it('이력 탭이 서 있지 않으면 무효화가 요청을 만들지 않는다', async () => {
+    const { fetch, requests } = recordingHistoryFetch([
+      createRouteFor(),
+      getRoute(HISTORY_LIST_PATH, listBody([])),
+    ]);
+    const { result } = renderHookWithProviders(
+      () => ({
+        list: useStockAdjustments({}, false),
+        register: useCreateStockAdjustment({ onSuccess: () => undefined }),
+      }),
+      { fetch },
+    );
+
+    result.current.register.write({
+      reasonCode: 'SAMPLE_AR_A',
+      sendToErp: true,
+      lines: [{ locationId: 9401, itemId: 9501, uomId: 9601, adjustmentQty: -20 }],
+    });
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
+    });
+
+    expect(requests.filter((request) => request.method === 'GET')).toHaveLength(0);
+  });
+});
+
+/**
+ * 그 전표가 **없는가**(404) — 주소가 지워진 전표를 가리키는 자리다.
+ * 조건을 되돌리지 않고 고른 것만 푼다.
+ */
+describe('isAdjustmentNotFound', () => {
+  it('404만 참이다', () => {
+    expect(
+      isAdjustmentNotFound(new ApiRequestError({ kind: 'http', status: 404, message: '' })),
+    ).toBe(true);
+    expect(
+      isAdjustmentNotFound(new ApiRequestError({ kind: 'http', status: 403, message: '' })),
+    ).toBe(false);
+    expect(isAdjustmentNotFound(new ApiRequestError({ kind: 'network' }))).toBe(false);
   });
 });
