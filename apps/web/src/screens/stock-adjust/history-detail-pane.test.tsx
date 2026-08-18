@@ -238,10 +238,27 @@ describe('HistoryDetailPane — 라인 표', () => {
     expect(screen.getByText(t.historyLineTable.locationNote)).toBeInTheDocument();
   });
 
-  it('LOT이 없는 줄은 「—」이고 못 푼 줄과 갈린다', () => {
+  /**
+   * ⭐ **없는 것과 못 푼 것을 가른다**(검증 문제 ③ · 목록 표의 실사 참조와 같은 강도).
+   *
+   * LOT 관리를 하지 않는 품목이 실재하므로 **빈 LOT은 정상**이고 「—」다. 「알 수 없음」으로
+   * 서면 *값이 잘못됐다*는 뜻이 되어 사용자가 반대로 읽는다 — 이 슬라이스가 같은 파일 주석에서
+   * 못 박은 오독이다. 양성 앵커(있는 줄이 이름으로 선다) 뒤에 잰다.
+   */
+  it('LOT이 없는 줄은 「—」다 — 「알 수 없음」이 아니다', () => {
+    renderPane();
+
+    expect(cellsOf(0)[2]).toBe(LOT_LABEL);
+    expect(cellsOf(1)[2]).toBe(t.values.empty);
+    expect(cellsOf(1)[2]).not.toBe(t.values.unknown);
+  });
+
+  /** 짝 방향 — **있는데 목록에서 못 푼 줄**만 「알 수 없음」이다. 두 갈래가 한 시험에 든다. */
+  it('LOT이 있는데 못 풀면 「알 수 없음」이고 없는 줄은 그대로 「—」다', () => {
     renderPane({ lotLookup: lotSource({ entries: [] }) });
 
     expect(cellsOf(0)[2]).toBe(t.values.unknown);
+    expect(cellsOf(1)[2]).toBe(t.values.empty);
   });
 
   /**

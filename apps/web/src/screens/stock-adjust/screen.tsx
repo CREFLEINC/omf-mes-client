@@ -1050,11 +1050,15 @@ export const StockAdjustScreen = () => {
   };
 
   /**
-   * 탭을 바꾼다. **아무것도 비우지 않는다.**
+   * 탭을 바꾼다. **화면이 비우는 것은 없다.**
    *
-   * 탭은 **보는 자리**를 바꿀 뿐 대상을 바꾸지 않는다 — 세우던 초안과 이력 조건이 각자 살아
-   * 있어야 「보내 놓고 이력에서 확인한다」가 성립한다. 비우면 이력을 잠깐 확인하고 돌아왔을 때
-   * 세우던 것이 통째로 사라진다.
+   * 탭은 **보는 자리**를 바꿀 뿐 대상을 바꾸지 않는다 — 세우던 초안과 **적용된** 이력 조건이
+   * 각자 살아 있어야 「보내 놓고 이력에서 확인한다」가 성립한다. 초안은 화면 수준 상태에
+   * 있고 적용된 조건은 주소에 있어, 탭 패널이 언마운트돼도 둘 다 그대로다.
+   *
+   * ⚠ **아직 적용하지 않은 조건 편집은 사라진다** — 조건 줄의 편집 상태는 그 부품 안에 있고
+   * (「모아서 적용」 모델) 탭이 바뀌면 부품이 언마운트되기 때문이다. **이 화면이 비우는 것이
+   * 아니라 주소가 정본이라는 모델의 귀결**이다: 조회를 누르지 않은 값은 아직 조건이 아니다.
    */
   const changeTab = (nextTab: string): void => {
     /*
@@ -2365,6 +2369,93 @@ export const StockAdjustScreen = () => {
       : describeReference(toReference(countLookup, historyDetailData.summary.inventoryCountId));
 
   /**
+   * 고른 전표의 아래 구획 — **갈래가 다섯이고 차례가 뜻을 정한다**(사본원 `stocktaking`).
+   *
+   * | # | 갈래 | 무엇을 말하나 |
+   * | :-: | --- | --- |
+   * | 1 | 고른 것이 없다 | 찾을 수 없었다 / 아직 고르지 않았다 — **앞의 사실을 지운 뒤에는 둘의 글자가 같아진다** |
+   * | 2 | 404 | 찾을 수 없었다(주소를 정리하기 전 한 렌더) |
+   * | 3 | **그 밖의 실패** | **사유 배너 + 다시 시도** |
+   * | 4 | 아직 안 왔다 | 불러오는 중 |
+   * | 5 | 왔다 | 상세 |
+   *
+   * ⭐ **오류 갈래가 로딩 갈래보다 앞이라야 한다.** 뒤에 두면 `data === undefined` 하나가
+   * 실패를 삼켜 **500·네트워크 끊김이 영원한 「불러오는 중」**으로 끝난다 — 앱의 조회 기본값이
+   * `retry: 0`이라 그것은 재시도 중인 상태가 아니라 **정착한 실패**다. 사용자에게는 빈 상자와
+   * 도는 뼈대만 남고, 주소에 고른 값이 그대로라 새로고침해도 같은 자리로 돌아온다.
+   *
+   * **404만 다른 갈래로 뺀다** — 그것은 다시 시도로 풀리지 않고, 위 effect가 주소를 정리해
+   * 「찾을 수 없습니다」로 말한다. 나머지는 다시 시도로 풀릴 수 있으므로 **복구 경로를 함께**
+   * 낸다(이력 목록이 이미 같은 형태를 갖고 있다 — 두 구획의 규칙이 갈리지 않는다).
+   */
+  const historyDetailContent = (): ReactNode => {
+    if (selectedAdjustmentId === null) {
+      return hasHistoryNotFoundNotice ? (
+        <EmptyState
+          size="sm"
+          live
+          title={t.empty.historyNotFoundTitle}
+          description={t.empty.historyNotFoundDescription}
+        />
+      ) : (
+        <EmptyState
+          size="sm"
+          title={t.empty.historyNoSelectionTitle}
+          description={t.empty.historyNoSelectionDescription}
+        />
+      );
+    }
+
+    if (isHistoryDetailNotFound) {
+      return (
+        <EmptyState
+          size="sm"
+          live
+          title={t.empty.historyNotFoundTitle}
+          description={t.empty.historyNotFoundDescription}
+        />
+      );
+    }
+
+    /* 404가 아닌 실패는 다시 시도로 풀릴 수 있다 — 배너와 복구 경로를 함께 낸다. */
+    if (historyDetail.isError) {
+      return (
+        <LoadErrorBanner
+          error={historyDetail.error}
+          onRetry={() => {
+            void historyDetail.refetch();
+          }}
+        />
+      );
+    }
+
+    if (historyDetailData === undefined) {
+      return (
+        <div role="status" aria-label={t.loading.adjustmentDetail}>
+          <SkeletonText lines={3} />
+        </div>
+      );
+    }
+
+    return (
+      <HistoryDetailPane
+        detail={historyDetailData}
+        countName={historyCountName}
+        itemLookup={items}
+        uomLookup={uoms}
+        lotLookup={lots}
+        /*
+         * **위치는 이 셋에 들지 않는다** — 이력 상세에는 위치 열이 없다(창고를 알 통로가
+         * 없어 이름을 풀 수 없다). 등록 탭의 넷을 그대로 쓰면 **이 구획에 있지도 않은
+         * 참조의 실패**로 안내가 서고, 복구를 눌러도 이 표에는 아무 변화가 없다.
+         */
+        hasReferenceError={hasHistoryReferenceError}
+        onRetryReferences={retryHistoryReferences}
+      />
+    );
+  };
+
+  /**
    * 처리 이력 탭의 내용 — **이미 만들어진 조정을 되찾는 자리**다.
    *
    * ⛔ **승인·반려 조작이 없다**(조심 ① · D-3 · C42). 되찾아 읽는 자리이고, 결재는 결재함이
@@ -2439,45 +2530,7 @@ export const StockAdjustScreen = () => {
       </section>
 
       <section className="pane" aria-label={t.panes.historyDetail}>
-        {hasHistoryNotFoundNotice && selectedAdjustmentId === null && (
-          <EmptyState
-            size="sm"
-            live
-            title={t.empty.historyNotFoundTitle}
-            description={t.empty.historyNotFoundDescription}
-          />
-        )}
-
-        {!hasHistoryNotFoundNotice && selectedAdjustmentId === null && (
-          <EmptyState
-            size="sm"
-            title={t.empty.historyNoSelectionTitle}
-            description={t.empty.historyNoSelectionDescription}
-          />
-        )}
-
-        {selectedAdjustmentId !== null && historyDetailData === undefined && (
-          <div role="status" aria-label={t.loading.adjustmentDetail}>
-            <SkeletonText lines={3} />
-          </div>
-        )}
-
-        {historyDetailData !== undefined && (
-          <HistoryDetailPane
-            detail={historyDetailData}
-            countName={historyCountName}
-            itemLookup={items}
-            uomLookup={uoms}
-            lotLookup={lots}
-            /*
-             * **위치는 이 셋에 들지 않는다** — 이력 상세에는 위치 열이 없다(창고를 알 통로가
-             * 없어 이름을 풀 수 없다). 등록 탭의 넷을 그대로 쓰면 **이 구획에 있지도 않은
-             * 참조의 실패**로 안내가 서고, 복구를 눌러도 이 표에는 아무 변화가 없다.
-             */
-            hasReferenceError={hasHistoryReferenceError}
-            onRetryReferences={retryHistoryReferences}
-          />
-        )}
+        {historyDetailContent()}
       </section>
     </>
   );

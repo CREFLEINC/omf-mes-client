@@ -60,6 +60,19 @@ describe('toPageView — 서버가 준 쪽이 정본이다', () => {
     expect(toPageView({ page: 1, size: 50, total: 0 }, 0).isBeyondLast).toBe(false);
   });
 
+  /**
+   * ⭐ **경계를 잰다**(검증 문제 ②). 전체 220건·쪽 크기 50이면 마지막 쪽이 5다.
+   *
+   * 경계에서 멀리 떨어진 값(9)만 재면 **한 칸 어긋난 판정**(`> totalPages + 1`)이 그대로
+   * 통과한다 — 그러면 **가장 흔한 갈래**(마지막 쪽 바로 다음)에서 「첫 쪽으로」 버튼이 사라지고
+   * 사용자는 조건을 의심하게 된다. 마지막 쪽·그 다음 칸·그 다음을 **세 점으로** 못 박는다.
+   */
+  it('마지막 쪽은 넘어선 것이 아니고 그 다음 칸부터 넘어선 것이다', () => {
+    expect(toPageView({ page: 5, size: 50, total: 220 }, 20).isBeyondLast).toBe(false);
+    expect(toPageView({ page: 6, size: 50, total: 220 }, 0).isBeyondLast).toBe(true);
+    expect(toPageView({ page: 7, size: 50, total: 220 }, 0).isBeyondLast).toBe(true);
+  });
+
   /** 서버가 0을 주면 나눗셈이 무한대가 된다 — 계산이 깨지지 않아야 화면이 선다. */
   it('쪽 크기가 0으로 와도 계산이 깨지지 않는다', () => {
     expect(toPageView({ page: 0, size: 0, total: 0 }, 0)).toMatchObject({

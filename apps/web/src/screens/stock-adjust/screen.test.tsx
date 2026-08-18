@@ -2656,18 +2656,37 @@ describe('StockAdjustScreen — 등록 실패', () => {
    *
    * ✅ **앞 회차의 음성 축(「처리 이력」 0건)을 이 회차가 의도적으로 지웠다** — 그 잣대는
    * 「없는 자리를 가리키지 않는다」였고, 이력 탭이 서면서 **그 자리가 실재하게 됐다.**
-   * 지우기만 하면 문면이 도로 확인 지시로 미끄러질 수 있으므로 **판정 강도를 옮겨 세운다**:
-   * ① 금지 문장이 그대로 있고 ② 그 금지가 **확인보다 앞선다**(「확인하면 다시 보내도 된다」로
-   * 읽히지 않는다) ③ 가리키는 자리가 **이 화면에 실제로 있는 탭 이름**이다.
+   *
+   * ⭐ **절이 셋이고 차례가 곧 뜻이다**(T2 R-2의 두 절 잣대를 세 절로 넓힌 형태):
+   *
+   * | 절 | 무엇을 말하나 | 빠지면 |
+   * | :-: | --- | --- |
+   * | ① **사실** | 그 요청의 운명을 **모른다** | 「모르니까 하지 말라」의 근거가 사라져 맨 지시가 된다 |
+   * | ② **금지** | 바로 다시 보내지 마라 | 완화의 본체가 사라진다 |
+   * | ③ **확인 자리** | 어디서 되찾는가 | 사용자가 갇힌다 |
+   *
+   * **①이 잣대에서 함께 빠졌던 자리다**(검증 문제 ① · 리뷰 R-2). 문면이 「이 화면에서 확인할
+   * 수 없습니다」 → 「알 수 없습니다」로 바뀌면서 옛 단언이 살 수 없게 됐는데, **바뀐 문면에
+   * 맞춰 다시 세우지 않고 걷혔다.** 절의 **성질**을 재는 형태로 되세운다.
    */
-  it('그 안내가 금지를 먼저 말하고 확인할 자리를 가리킨다', () => {
+  it('그 안내가 사실·금지·확인 자리를 그 차례로 말한다', () => {
+    /* ① 사실 — 요청의 운명을 모른다는 것이 이 완화의 근거다. */
+    expect(t.notes.networkUnconfirmed).toContain('알 수 없습니다');
+    /* ② 금지 — 완화의 본체. */
     expect(t.notes.networkUnconfirmed).toContain('다시 등록하지 마세요');
+    /* ③ 확인 자리 — 이력 탭이 서면서 비로소 말할 수 있게 된 절. */
     expect(t.notes.networkUnconfirmed).toContain(t.tabs.history);
 
-    /* **금지가 확인보다 앞선다** — 차례가 뒤집히면 그 문구는 조건부 재전송 허가가 된다. */
-    expect(t.notes.networkUnconfirmed.indexOf('다시 등록하지 마세요')).toBeLessThan(
-      t.notes.networkUnconfirmed.indexOf(t.tabs.history),
-    );
+    /*
+     * **차례가 뒤집히면 뜻이 뒤집힌다.** 금지가 확인 뒤로 가면 조건부 재전송 허가가 되고,
+     * 사실이 금지 뒤로 가면 근거 없는 지시가 된다.
+     */
+    const factAt = t.notes.networkUnconfirmed.indexOf('알 수 없습니다');
+    const banAt = t.notes.networkUnconfirmed.indexOf('다시 등록하지 마세요');
+    const placeAt = t.notes.networkUnconfirmed.indexOf(t.tabs.history);
+
+    expect(factAt).toBeLessThan(banAt);
+    expect(banAt).toBeLessThan(placeAt);
   });
 
   /**
@@ -4873,18 +4892,27 @@ describe('StockAdjustScreen — 전기 실패', () => {
    * GET을 먼저 지나 **새 잠금 토큰을 앉히므로** 낙관적 잠금도 두 번째 전기를 막지 못한다.
    *
    * ✅ **앞 회차의 음성 축(「처리 이력」 0건)을 이 회차가 의도적으로 지웠다** — 이력 탭이
-   * 서면서 그 자리가 실재하게 됐다. **판정 강도는 옮겨 세운다**: 금지가 그대로 있고, 그 금지가
-   * 확인보다 **앞서며**, 가리키는 값이 이 화면이 실제로 보이는 값(전기일)이다.
+   * 서면서 그 자리가 실재하게 됐다.
+   *
+   * ⭐ **절 셋과 차례를 등록 축과 같은 형태로 잰다**(검증 문제 ① · 리뷰 R-2). 여기서는
+   * ③이 한 겹 더 무겁다 — 가리키는 것이 탭 이름만이 아니라 **이력 상세가 실제로 그리는 값**
+   * (전기일)이라, 그 라벨 상수를 함께 담는지까지 본다.
    */
-  it('그 안내가 금지를 먼저 말하고 확인할 값을 가리킨다', () => {
+  it('그 안내가 사실·금지·확인 자리를 그 차례로 말한다', () => {
+    /* ① 사실 — 재고가 움직였는지 모른다는 것이 이 완화의 근거다. */
+    expect(t.post.networkUnconfirmed).toContain('알 수 없습니다');
+    /* ② 금지 — 다시 누르면 낙관적 잠금도 막지 못한다. */
     expect(t.post.networkUnconfirmed).toContain('바로 다시 전기하지 마세요');
+    /* ③ 확인 자리 — 탭과 **그 탭이 실제로 그리는 값**을 함께 가리킨다. */
     expect(t.post.networkUnconfirmed).toContain(t.tabs.history);
-    /* 이력 상세가 실제로 보이는 값을 가리킨다 — 없는 값을 확인하라고 하면 죽은 지시다. */
     expect(t.post.networkUnconfirmed).toContain(t.historySummary.adjustedAt);
 
-    expect(t.post.networkUnconfirmed.indexOf('바로 다시 전기하지 마세요')).toBeLessThan(
-      t.post.networkUnconfirmed.indexOf(t.tabs.history),
-    );
+    const factAt = t.post.networkUnconfirmed.indexOf('알 수 없습니다');
+    const banAt = t.post.networkUnconfirmed.indexOf('바로 다시 전기하지 마세요');
+    const placeAt = t.post.networkUnconfirmed.indexOf(t.tabs.history);
+
+    expect(factAt).toBeLessThan(banAt);
+    expect(banAt).toBeLessThan(placeAt);
   });
 
   /** 짝 방향 — 서버가 거절한 요청에는 그 안내가 없다. 전달된 것이 확실하기 때문이다. */
@@ -5494,6 +5522,40 @@ describe('StockAdjustScreen — 탭', () => {
     expect(screen.getByText(t.approvalNotice.description)).toBeVisible();
     expect(screen.getByText(t.scope.description)).toBeVisible();
   });
+
+  /**
+   * ⭐ **확인 창은 자기 탭에서만 선다**(구현 판단 5 · 리뷰 R-3).
+   *
+   * 확인 창은 탭 패널 **밖**(페이지 수준)에 있어, 탭 조건이 없으면 이력 탭 위에 등록 확인 창이
+   * 그대로 선다 — **보이지 않는 자리의 값을 확인하는 창**이 된다. 닿는 경로는 창이 열린 채
+   * **뒤로/앞으로**로 탭 질의가 바뀌는 자리다(핸들러를 지나지 않는다).
+   *
+   * **두 방향을 한 시험이 잰다** — 사라지는 쪽과 되돌아오는 쪽. 뒤엣것까지 재야 「표시를 지우지
+   * 않는다」(그 조작이 취소된 것은 아니다)가 함께 고정된다.
+   */
+  it('확인 창을 연 채 탭이 바뀌면 그 창이 서지 않고 돌아오면 다시 선다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(historyRoutes());
+
+    await readyToRegister(user);
+    await user.click(registerButton());
+
+    /* 양성 앵커 — 등록 탭에서 그 창이 실제로 섰다. */
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    await openHistoryTab(user);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    /* 표시를 지우지 않았으므로 되돌아오면 같은 창이 다시 선다. */
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: new RegExp(t.actions.confirmRegister) }),
+    ).toBeEnabled();
+  });
 });
 
 /**
@@ -5722,6 +5784,143 @@ describe('StockAdjustScreen — 이력 상세', () => {
     expect(requests.filter((request) => request.url.pathname.endsWith('/lines'))).toHaveLength(0);
   });
 
+  /**
+   * ⭐ **404가 아닌 실패는 사유와 복구 경로를 낸다**(리뷰 R-1 · 사본원 `stocktaking`의 갈래).
+   *
+   * 이 판정이 로딩보다 **뒤**에 서면 `data === undefined` 하나가 실패를 삼켜 **영원한
+   * 「불러오는 중」**이 된다 — 앱의 조회 기본값이 `retry: 0`이라 그것은 재시도 중인 상태가
+   * 아니라 정착한 실패다. 양성 앵커(사유 배너가 실제로 섰다) 뒤에 「로딩 뼈대가 없다」를 잰다.
+   *
+   * **목록 축의 같은 감지기와 짝이다** — 두 구획의 규칙이 갈리지 않는지 함께 본다.
+   */
+  it('상세가 500으로 실패하면 사유와 다시 시도가 서고 로딩 뼈대가 남지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([adjustmentsRoute(), failingRoute(ADJUSTMENT_DETAIL_PATH, 500)]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    expect(
+      await within(historyDetailPane()).findByText(messages.httpError.loadTitle),
+    ).toBeVisible();
+    expect(
+      within(historyDetailPane()).getByRole('button', { name: messages.common.retry }),
+    ).toBeEnabled();
+
+    expect(
+      screen.queryByRole('status', { name: t.loading.adjustmentDetail }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(historyDetailPane()).queryByRole('group', { name: t.historySummary.label }),
+    ).not.toBeInTheDocument();
+  });
+
+  /** 응답이 오지 않은 갈래도 같은 자리로 간다 — 「끊겼다」가 「불러오는 중」으로 읽히면 안 된다. */
+  it('상세가 네트워크로 끊겨도 사유와 다시 시도가 선다', async () => {
+    const { user } = renderScreen(
+      allRoutes([
+        adjustmentsRoute(),
+        {
+          match: (request: Request) => isGet(request, ADJUSTMENT_DETAIL_PATH),
+          respond: () => {
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    expect(await within(historyDetailPane()).findByText(messages.httpError.offline)).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: t.loading.adjustmentDetail }),
+    ).not.toBeInTheDocument();
+  });
+
+  /** 「다시 시도」가 실제로 그 전표를 다시 부른다 — 눌러도 아무 일이 없으면 복구가 아니다. */
+  it('다시 시도가 그 전표의 상세를 다시 부른다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([adjustmentsRoute(), failingRoute(ADJUSTMENT_DETAIL_PATH, 500)]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    await within(historyDetailPane()).findByText(messages.httpError.loadTitle);
+
+    await user.click(
+      within(historyDetailPane()).getByRole('button', { name: messages.common.retry }),
+    );
+
+    await waitFor(() => {
+      expect(
+        requests.filter((request) => request.url.pathname === ADJUSTMENT_DETAIL_PATH),
+      ).toHaveLength(2);
+    });
+  });
+
+  /**
+   * 짝 방향 — **404는 배너로 가지 않는다.** 그것은 다시 시도로 풀리지 않고 주소 정리가 맡는다.
+   * 이 짝이 없으면 「모든 실패를 배너로」가 통과하고, 없는 전표에 「다시 시도」가 붙는다.
+   */
+  it('404는 배너가 아니라 찾을 수 없다는 안내로 간다', async () => {
+    renderScreen(allRoutes([adjustmentsRoute(), missingDetailRoute()]), '?tab=history&ia=9302');
+
+    expect(await screen.findByText(t.empty.historyNotFoundTitle)).toBeVisible();
+    expect(
+      within(historyDetailPane()).queryByRole('button', { name: messages.common.retry }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **이 구획의 참조는 셋뿐이다**(구현 판단 7 · 리뷰 R-4).
+   *
+   * 위치 조회는 **등록 탭의 것**이고 이 구획에는 위치 열이 없다 — 넷으로 판정하면 **있지도
+   * 않은 참조의 실패**로 안내가 서고, 복구를 눌러도 이 표에는 아무 변화가 없다.
+   *
+   * 양성 앵커(상세 표가 실제로 섰다) 뒤에 「그 안내가 없다」를 잰다.
+   */
+  it('등록 탭의 위치 조회만 실패한 상태에서는 이력 상세에 참조 안내가 서지 않는다', async () => {
+    const { user } = renderScreen(
+      allRoutes([failingRoute(LOCATIONS_PATH, 500), adjustmentsRoute(), adjustmentDetailRoute()]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    expect(await within(historyDetailPane()).findByRole('table')).toBeInTheDocument();
+    expect(
+      within(historyDetailPane()).queryByText(t.reasons.historyReferencesFailed),
+    ).not.toBeInTheDocument();
+    expect(
+      within(historyDetailPane()).queryByText(t.reasons.lineReferencesFailed),
+    ).not.toBeInTheDocument();
+  });
+
+  /** 짝 양성 — **셋 중 하나가 실패하면** 그 안내와 복구가 함께 선다. 「늘 침묵」으로 통과하지 않게. */
+  it('품목 조회가 실패하면 이력 상세에 사유와 복구가 함께 선다', async () => {
+    const { user } = renderScreen(
+      allRoutes([failingRoute(ITEMS_PATH, 500), adjustmentsRoute(), adjustmentDetailRoute()]),
+    );
+
+    await waitForCounts();
+    await openHistoryTab(user);
+    await selectSecondRow(user);
+
+    expect(
+      await within(historyDetailPane()).findByText(t.reasons.historyReferencesFailed),
+    ).toBeVisible();
+    expect(
+      within(historyDetailPane()).getByRole('button', { name: messages.common.retry }),
+    ).toBeEnabled();
+  });
+
   /** ⭐ 세 열이 그대로 선다 — 차이가 결과 수량으로 읽히지 않게 하는 자리다. */
   it('라인이 장부·실물·차이 세 열로 서고 장부·실물은 「—」다', async () => {
     const { user } = renderScreen(historyRoutes());
@@ -5827,8 +6026,12 @@ describe('StockAdjustScreen — 이력이 대신하는 자리', () => {
   /**
    * ⛔ **잔액 낡음만 이력을 가리키지 않는다.** 계약의 조정 라인에 장부가 없어 이력 상세가 그
    * 낡음을 풀어 주지 못한다 — 가리키면 그 지시가 곧 죽은 문구가 된다.
+   *
+   * **양성 앵커를 같은 시점에 둔다**(리뷰 R-6). 음성 하나만 두면 그 문구가 **빈 문자열이 돼도**
+   * 통과한다 — 짝 양성이 다른 `it`에 있으면 도구가 그 짝을 보장하지 않는다.
    */
-  it('전기 뒤 장부 낡음 안내는 이력을 가리키지 않는다', () => {
+  it('전기 뒤 장부 낡음 안내는 사실을 말하되 이력을 가리키지 않는다', () => {
+    expect(t.post.bookQtyStale).toContain('등록할 때 받은 값');
     expect(t.post.bookQtyStale).not.toContain(t.tabs.history);
   });
 });
