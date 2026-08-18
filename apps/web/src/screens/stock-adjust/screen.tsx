@@ -526,7 +526,17 @@ export const StockAdjustScreen = () => {
         return;
       }
 
-      setSubmitReasonDraft({ inventoryAdjustmentId: null, text: '' });
+      /*
+       * **사유를 여기서 비우지 않는다**(리뷰 R-5 — 죽은 줄이었다).
+       *
+       * 성공 뒤에는 매임이 서서 `phase === 'submitted'`가 되고 **사유 칸 자체가 렌더되지
+       * 않는다**. 그 매임을 비우는 유일한 자리(`resetDraftForNewTarget`)가 사유도 함께 비우므로,
+       * 여기서 한 번 더 비우는 것은 **어떤 렌더에서도 관측되지 않는다**(자유 뮤테이션 생존으로
+       * 실증됐다). 죽은 통로를 남기면 다음 사람이 그것을 방어로 읽는다.
+       *
+       * ⚠ **올린 뒤에 사유 칸이 다시 서는 자리**(재상신 등)가 생기면 이 판정을 다시 본다 —
+       * 그때는 앞 시도의 글자가 새 시도의 칸에 남는 경로가 열린다.
+       */
       setPending(null);
     },
   });
