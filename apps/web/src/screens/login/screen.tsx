@@ -42,7 +42,12 @@ export const LoginScreen = () => {
   };
 
   return (
-    <main className="login-shell">
+    /*
+     * **표제가 본문의 이름이 된다.** 셸이 있는 화면은 `AppShell`이 본문 이름을 주지만
+     * (`mainLabel="본문"`) 이 화면에는 줄 사람이 없다 — 이름 없는 랜드마크로 남으면
+     * 랜드마크 목록에서 무엇인지 알 수 없다.
+     */
+    <main className="login-shell" aria-labelledby={titleId}>
       <Card className="login-card" surface="default" elevation={2}>
         <Card.Header>
           {/* 카드 제목이 이 화면의 유일한 표제다 — 셸이 없어 제목 줄도 없다. */}

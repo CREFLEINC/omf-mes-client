@@ -42,6 +42,18 @@ describe('LoginScreen — 셸 밖에 선다', () => {
 
     expect(screen.queryByRole('navigation')).toBeNull();
   });
+
+  /**
+   * 셸이 없어 이 표제가 **화면의 유일한 이름**이다. 셸이 있는 화면은 `AppShell`이 본문 이름을
+   * 주지만(`mainLabel`) 여기에는 줄 사람이 없어 표제가 그 자리를 맡는다 — 표제를 지우면
+   * 본문이 이름 없는 랜드마크로 남는다. 그 둘을 **한 시점에** 잰다.
+   */
+  it('표제가 서고 그것이 본문의 이름이 된다', () => {
+    renderScreen();
+
+    expect(screen.getByRole('heading', { level: 1, name: t.title })).toBeInTheDocument();
+    expect(screen.getByRole('main', { name: t.title })).toBeInTheDocument();
+  });
 });
 
 describe('LoginScreen — 입력 칸', () => {
@@ -66,15 +78,34 @@ describe('LoginScreen — 입력 칸', () => {
   });
 
   /**
-   * **친 값을 다듬지 않는다.** 앞뒤 공백은 비밀번호에서 값의 일부일 수 있어, 화면이 걷어내면
-   * 사용자가 친 것과 다른 값이 서버로 간다. 공백만 있는지는 **판정할 때만** 걷어내고 본다.
+   * **친 값을 다듬지 않는다 — 두 칸 다.** 앞뒤 공백은 비밀번호에서 값의 일부일 수 있어,
+   * 화면이 걷어내면 사용자가 친 것과 다른 값이 서버로 간다. 공백만 있는지는 **판정할 때만**
+   * 걷어내고 본다.
+   *
+   * ⚠ **비밀번호 칸을 반드시 함께 잰다.** 이 규칙의 근거가 비밀번호인데 아이디만 재면,
+   * 비밀번호 쪽에 `.trim()`이 들어가도 아무 감지기가 울리지 않는다. 그러고도 이 화면은
+   * 실패를 「아이디 또는 비밀번호가 맞지 않습니다」로만 뭉뚱그리므로(계정 열거 방지) 값이
+   * 왜곡된 사실이 사용자에게도 화면에도 드러나지 않는다.
    */
   it('앞뒤 공백을 친 그대로 둔다', async () => {
     const { user } = renderScreen();
 
     await user.type(loginIdBox(), `  ${SYNTHETIC_LOGIN_ID}  `);
+    await user.type(passwordBox(), `  ${SYNTHETIC_PASSWORD}  `);
 
     expect(loginIdBox()).toHaveValue(`  ${SYNTHETIC_LOGIN_ID}  `);
+    expect(passwordBox()).toHaveValue(`  ${SYNTHETIC_PASSWORD}  `);
+  });
+
+  /**
+   * `<form>` + `autocomplete`는 브라우저·비밀번호 관리자가 **자격 입력임을 알아보는 표준 짝**이다.
+   * 값이 빠져도 화면에는 아무 표시가 나지 않는다 — 저장된 자격을 못 쓰게 되는 것만 조용히 남는다.
+   */
+  it('자격 입력임을 브라우저에 알린다', () => {
+    renderScreen();
+
+    expect(loginIdBox()).toHaveAttribute('autocomplete', 'username');
+    expect(passwordBox()).toHaveAttribute('autocomplete', 'current-password');
   });
 });
 
