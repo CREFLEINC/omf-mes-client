@@ -166,6 +166,16 @@ export const StockAdjustScreen = () => {
    */
   const [registerBinding, setRegisterBinding] = useState<RegisterBinding | null>(null);
 
+  /**
+   * **매임이 끊긴 채 만들어진 전표들**(리뷰 R-4).
+   *
+   * 초안을 버린 뒤 그 등록이 성공하면 서버에는 전표가 실제로 남는다 — 그 사실은 감추지 않되
+   * 지금 초안의 결과로 세우지도 않는다(D-15). **매임과 다른 자리에 쌓는 것**이 요점이다:
+   * 매임은 한 자리라 다음 등록이 성공하면 덮이고, 그 순간 앞 전표의 번호가 화면에서 사라진다.
+   * 이 슬라이스에는 아직 그 번호를 되찾을 조회 자리가 없다(처리 이력은 뒤따르는 회차).
+   */
+  const [strandedAdjustmentNos, setStrandedAdjustmentNos] = useState<string[]>([]);
+
   /** 확인을 기다리는 조작. `null`이면 열린 창이 없다 */
   const [pending, setPending] = useState<PendingAction | null>(null);
 
@@ -333,7 +343,20 @@ export const StockAdjustScreen = () => {
        * **늦게 온 성공은 적기만 한다.** 창을 닫는 것은 지금 보고 있는 초안의 조작이라,
        * 남의 초안의 응답이 그것을 건드리면 새로 연 확인 창이 말없이 닫힌다.
        */
-      if (session !== draftSessionRef.current) return;
+      if (session !== draftSessionRef.current) {
+        /*
+         * **매임이 끊긴 성공은 쌓는다**(리뷰 R-4). 매임은 한 자리라 다음 등록이 성공하면
+         * 앞 전표의 사실이 덮여 사라지는데, 이 갈래를 만든 이유가 「사용자가 모르는 전표가
+         * 서버에 남는다」였다 — 덮이면 그 사고가 그대로 되돌아온다.
+         *
+         * **도착 시점의 판정이 곧 전부다.** 매임이 선 뒤에는 초안 세션이 오르는 길이 없다
+         * (성공 뒤 폼·대상 전환·버리기가 전부 잠긴다) — 그래서 나중에 매임이 끊기는 경로를
+         * 따로 지키지 않는다. 없는 경로를 지키면 죽은 가지가 된다.
+         */
+        setStrandedAdjustmentNos((prev) => [...prev, created.inventoryAdjustmentNo]);
+
+        return;
+      }
 
       setPending(null);
     },
@@ -525,13 +548,12 @@ export const StockAdjustScreen = () => {
    * 전표가 남는다. 다만 지금 초안의 결과가 아니므로 결과 구획을 세우지도, 지금 폼을 잠그지도
    * 않는다(그것은 시도한 적 없는 초안 위의 진술이 된다) — **사실만 한 줄로 적는다.**
    *
+   * **매임과 다른 자리에 쌓는다**(리뷰 R-4) — 매임은 한 자리라 다음 등록이 성공하면 덮인다.
+   *
    * ⚠ 실패는 이 갈래에서 말하지 않는다. 성공은 서버에 남는 것이 있어 알려야 하지만, 거절된
    * 요청은 남는 것이 없어 **버린 초안의 실패를 새 초안 위에서 말할 이유가 없다**(C28).
    */
-  const unboundCreated =
-    registerBinding !== null && registerBinding.draftSession !== draftSession
-      ? registerBinding.created
-      : null;
+  const strandedNote = strandedAdjustmentNos.length === 0 ? null : strandedAdjustmentNos.join(', ');
 
   /**
    * **폼이 잠기는 두 사정**(C26).
@@ -670,6 +692,14 @@ export const StockAdjustScreen = () => {
    * ⭐ **나가는 중에는 잠그지 않는다** — 다른 조작과 갈리는 자리다. 이 조작은 서버를 부르지 않고
    * 화면의 초안만 비우므로, 응답을 기다리는 동안 사용자를 묶어 둘 이유가 없다. 대신 확인 창이
    * **보낸 등록은 되돌아가지 않는다**는 사실을 밝히고, 나가는 중이던 응답은 매임이 걸러 낸다.
+   *
+   * ⚠ **전례 `po-register`와 갈리는 자리다** — 그 화면은 나가는 중 취소를 **잠근다**(같은 파일이
+   * 잠금 쪽에서는 그 전례를 이름으로 따르므로, 여기도 따른다고 읽기 쉽다). 여기서 잠그면
+   * `resetIfIdle`의 진행 중 가드가 **닿을 수 없는 죽은 분기**가 된다: 그 함수를 부르는 곳이
+   * `resetDraftForNewTarget` 하나이고, 나가는 중 그곳에 이르는 길이 버리기뿐이기 때문이다.
+   * 그러면 「나가는 중인 쓰기를 끊지 않는다」는 규율이 코드에 적혀 있으되 아무것도 지키지
+   * 않는 상태가 된다. 대신 되먹임은 **매임이 가린다**(잠그지 말고 가린다는 것이 이 저장소의
+   * 뒤 판정이다). **뒤따르는 회차가 상신·전기의 취소·버리기를 이 자리에서 사본한다.**
    */
   const discardBlockReason = (): string | null => {
     if (boundRegister?.created != null) return t.actionReasons.alreadyRegistered;
@@ -1079,10 +1109,11 @@ export const StockAdjustScreen = () => {
         {/*
          * 버린 초안으로 보낸 등록이 **뒤늦게 성공한** 갈래(C28의 나머지 반쪽).
          * 지금 초안의 결과가 아니므로 결과 구획을 세우지 않되, 서버에 남은 사실은 감추지 않는다.
+         * **쌓인 번호를 한 줄에 함께 낸다** — 다음 등록이 성공해도 앞 번호가 사라지지 않는다.
          */}
-        {unboundCreated !== null && (
+        {strandedNote !== null && (
           <p className="field-note" role="status">
-            {t.result.unboundCreatedNote(unboundCreated.inventoryAdjustmentNo)}
+            {t.result.unboundCreatedNote(strandedNote)}
           </p>
         )}
       </section>

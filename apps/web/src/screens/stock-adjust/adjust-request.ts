@@ -29,14 +29,23 @@ type InventoryAdjustmentCreate = components['schemas']['InventoryAdjustmentCreat
 type InventoryAdjustmentLineUpsert = components['schemas']['InventoryAdjustmentLineUpsert'];
 
 /**
- * 서버가 필드 오류를 붙일 수 있는 **화면이 소유한 칸**.
+ * 서버가 준 필드 오류를 **인라인으로 그릴 자리가 있는 칸**.
  *
- * **본문을 만드는 파일이 함께 든다** — 이 목록이 본문의 키와 갈리면, 서버가 준 오류가 있는데도
- * 어느 칸에도 붙지 않고 배너로 밀려난다. 라인 오류는 여기 없다: 서버가 줄을 가리키는 이름
- * (`lines[0].adjustmentQty` 등)을 화면의 칸 이름으로 되읽을 규약이 계약에 없어, 인라인으로
- * 붙일 자리를 지어내는 대신 **배너로 그대로 낸다**.
+ * ⚠ **본문의 키 집합이 아니다.** 공통 훅(`patterns/master`)의 `splitError`는 이 목록에 든 이름을
+ * **배너에서 빼고** `fieldErrors`로 돌린다 — 그러므로 목록에 넣어 놓고 그리는 자리가 없으면
+ * 그 오류는 **인라인에도 배너에도 서지 않고 통째로 사라진다.** 되돌릴 수 없는 쓰기의 거절
+ * 사유가 사라지면 사용자에게는 「눌렀는데 아무 일도 없다」로 보이고, 사유 없는 잠금과
+ * 구분되지 않는다. 기준은 훅의 계약 그대로 **「그릴 자리가 있는가」**다.
+ *
+ * | 본문의 키 | 그리는 자리 | 이 목록 |
+ * | --- | --- | :-: |
+ * | `reasonCode` | `HeaderForm`의 사유 선택칸(`SelectField.error`) | ✅ |
+ * | `sendToErp` | **없다** — `Switch`에 오류 슬롯을 두지 않는다(계약이 그 칸에 오류를 줄 근거가 없다: 부울 · 기본값 있음). 죽은 렌더 자리를 미리 짓지 않는다 | ⛔ **배너로 낸다** |
+ * | `lines[…]` | **없다** — 서버가 줄을 가리키는 이름을 화면의 칸 이름으로 되읽을 규약이 계약에 없다 | ⛔ **배너로 낸다** |
+ *
+ * ⚠ **그릴 자리를 새로 만들면 이 목록에 그 칸을 더한다** — 두 자리가 갈리는 순간 오류가 사라진다.
  */
-export const ADJUST_FORM_FIELDS: readonly string[] = ['reasonCode', 'sendToErp'];
+export const ADJUST_FORM_FIELDS: readonly string[] = ['reasonCode'];
 
 /** 선택칸의 값 글자를 내부 번호로 읽는다. **양의 정수만 번호다.** */
 const POSITIVE_INTEGER = /^\d+$/;

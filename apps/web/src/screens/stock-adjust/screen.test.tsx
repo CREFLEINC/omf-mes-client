@@ -89,6 +89,10 @@ interface RecordedRequest {
  *
  * `hold`에 든 경로는 **기록한 뒤에** 붙잡아 둔다 — 「보내는 중에 무엇이 잠기는가」를 재려면
  * 응답이 오기 전 상태가 화면에 남아 있어야 한다.
+ *
+ * **문을 열면 곧바로 다음 문을 건다.** 한 번 열고 마는 형태면 두 번째 요청이 붙잡히지 않아
+ * 「보내는 중에 버린다」를 **두 번 되풀이하는 경로**를 잴 수 없다 — 그 되풀이가 곧 「앞 전표의
+ * 사실이 쌓이는가」를 가르는 자리다.
  */
 const createRecordingFetch = (
   routes: StubRoute[],
@@ -96,12 +100,18 @@ const createRecordingFetch = (
 ): { fetch: StubFetch; requests: RecordedRequest[]; release: () => void } => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch(routes);
-  let release = (): void => {
-    /* 아래 Promise 생성자가 곧바로 채운다. */
+  let openGate = (): void => {
+    /* 아래 `armGate`가 곧바로 채운다. */
   };
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
+  let gate = Promise.resolve();
+
+  const armGate = (): void => {
+    gate = new Promise<void>((resolve) => {
+      openGate = resolve;
+    });
+  };
+
+  armGate();
 
   return {
     fetch: async (request) => {
@@ -121,7 +131,11 @@ const createRecordingFetch = (
     },
     requests,
     release: () => {
-      release();
+      const open = openGate;
+
+      /* 다음 문을 먼저 걸고 연다 — 순서를 뒤집으면 그 사이에 온 요청이 붙잡히지 않는다. */
+      armGate();
+      open();
     },
   };
 };
@@ -1241,11 +1255,38 @@ const createRoute = (body: unknown = adjustmentDetailBody()): StubRoute => ({
   respond: () => jsonResponse(body, { status: 201, headers: { ETag: 'W/"ia-9301"' } }),
 });
 
+/**
+ * 부를 때마다 **다른 전표**를 되돌려 주는 경로.
+ *
+ * 「앞 전표의 사실이 새 등록에 덮이지 않는다」를 재려면 두 번호가 실제로 갈려야 한다 —
+ * 같은 번호를 두 번 주면 덮였는지 남았는지 화면에서 가릴 수 없다.
+ */
+const sequencedCreateRoute = (adjustmentNos: string[]): StubRoute => {
+  let call = 0;
+
+  return {
+    match: (request) => isPost(request, ADJUSTMENTS_PATH),
+    respond: () => {
+      const inventoryAdjustmentNo = adjustmentNos[call] ?? adjustmentNos.at(-1) ?? '';
+
+      call += 1;
+
+      return jsonResponse(adjustmentDetailBody({ inventoryAdjustmentNo }), { status: 201 });
+    },
+  };
+};
+
 /** 등록이 서버에 거절되는 경로. 갈래마다 화면이 하는 말이 달라야 한다(C27). */
 const failingCreateRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
   match: (request) => isPost(request, ADJUSTMENTS_PATH),
   respond: () => jsonResponse(body, { status }),
 });
+
+/** 서버가 **한 칸을 지목해** 거절하는 갈래. 그 칸에 그릴 자리가 있는지에 따라 서는 곳이 갈린다. */
+const fieldErrorRoute = (field: string, message: string): StubRoute =>
+  failingCreateRoute(400, {
+    errors: [{ scope: 'field', field, code: 'SAMPLE_ERR', message }],
+  });
 
 /** 응답이 아예 오지 않는 갈래 — **보내지지 않았다고 단정할 수 없다.** */
 const offlineCreateRoute = (): StubRoute => ({
@@ -1836,15 +1877,21 @@ describe('StockAdjustScreen — 보내는 중', () => {
  * 되먹임 셋(성공·나가는 중·실패)이 **같은 문**을 지나는지 두 방향으로 잰다.
  */
 describe('StockAdjustScreen — 버린 초안의 되먹임', () => {
-  /** 나가는 중에 초안을 버리고 응답을 받는 자리까지 간다. */
+  /**
+   * 나가는 중에 초안을 버리고 응답을 받는 자리까지 간다.
+   *
+   * `sent`는 **이 시점까지 나갔어야 할 등록 요청 수**다 — 되풀이해 부를 때 앞 요청까지 함께
+   * 세지 않으면 「아직 안 나갔는데 나간 줄 알고」 다음 걸음으로 넘어간다.
+   */
   const registerThenDiscard = async (
     user: ReturnType<typeof userEvent.setup>,
     requests: RecordedRequest[],
+    sent = 1,
   ): Promise<void> => {
     await setupAndRegister(user);
 
     await waitFor(() => {
-      expect(createRequests(requests)).toHaveLength(1);
+      expect(createRequests(requests)).toHaveLength(sent);
     });
 
     fireEvent(
@@ -1924,6 +1971,101 @@ describe('StockAdjustScreen — 버린 초안의 되먹임', () => {
 
     expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
     expect(screen.queryByText(t.actionReasons.alreadyRegistered)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **매임 소비처 넷째 — 사유 칸의 서버 오류**(D-15의 「한 자리라도 빠지면 샌다」).
+   *
+   * 앞 세 갈래(결과 구획·실패 배너·「이미 등록했다」 잠금)는 화면 수준 오류로 재어지는데,
+   * **칸 오류는 다른 통로를 지난다**(공통 훅이 `fieldErrors`로 돌린다) — 그 통로만 매임을
+   * 빠뜨려도 앞 시험들은 전부 통과한다. 그때 사용자는 **한 글자도 치지 않은 새 초안의 사유
+   * 칸이 빨갛게 서 있는** 화면을 본다.
+   */
+  it('버린 초안의 칸 400이 새 초안의 사유 칸에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(
+      allRoutes([fieldErrorRoute('reasonCode', '합성 사유 오류')]),
+      '?count=9101',
+      [ADJUSTMENTS_PATH],
+    );
+
+    await registerThenDiscard(user, requests);
+
+    release();
+
+    /* 응답이 실제로 도착한 시점의 양성 앵커 — 위 400 시험과 같은 형태다. */
+    await screen.findByText(t.actionReasons.registerNeedsLines);
+
+    expect(screen.queryByText('합성 사유 오류')).not.toBeInTheDocument();
+    expect(reasonField()).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /**
+   * ⭐ **앞 전표의 사실은 새 등록이 성공해도 남는다**(리뷰 R-4).
+   *
+   * 매임은 한 자리라, 매임 자체에 이 사실을 실으면 다음 등록이 성공하는 순간 앞 전표의 번호가
+   * 화면에서 사라진다 — 이 갈래를 만든 이유(사용자가 **모르는 전표**가 서버에 남는다)가 그대로
+   * 되돌아온다. 이 슬라이스에는 그 번호를 되찾을 조회 자리가 아직 없다.
+   */
+  it('버린 초안의 전표번호가 다음 등록 성공에 덮이지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(
+      allRoutes([sequencedCreateRoute(['SAMPLE-IA-9301', 'SAMPLE-IA-9302'])]),
+      '?count=9101',
+      [ADJUSTMENTS_PATH],
+    );
+
+    await registerThenDiscard(user, requests);
+
+    release();
+
+    await screen.findByText(t.result.unboundCreatedNote('SAMPLE-IA-9301'));
+
+    /* 새 초안을 다시 세워 등록한다 — 이번에는 버리지 않으므로 결과 구획이 선다. */
+    await user.click(loadButton());
+    await screen.findByRole('table');
+    await chooseReason(user);
+    await submitRegister(user);
+    release();
+
+    const pane = await screen.findByRole('region', { name: t.result.label });
+
+    expect(within(pane).getByText('SAMPLE-IA-9302')).toBeVisible();
+    /* 앞 전표의 사실이 그대로 남아 있다 — 덮이지 않는다. */
+    expect(screen.getByText(t.result.unboundCreatedNote('SAMPLE-IA-9301'))).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **버린 초안이 둘이면 두 번호가 **모두** 남는다**(리뷰 R-4의 축 — 쌓기).
+   *
+   * 앞 시험은 「매임과 다른 자리에 있는가」를 재고, 이 시험은 「그 자리가 **덮이지 않고
+   * 쌓이는가**」를 잰다 — 하나만 들면 둘째 사고가 첫째 번호를 지운다. 이 경로는 실재한다:
+   * 보내는 중 버리기가 열려 있어(그 자체가 이 화면의 판단이다) 되풀이할 수 있다.
+   */
+  it('버린 초안이 둘이면 두 전표번호가 모두 남는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(
+      allRoutes([sequencedCreateRoute(['SAMPLE-IA-9301', 'SAMPLE-IA-9302'])]),
+      '?count=9101',
+      [ADJUSTMENTS_PATH],
+    );
+
+    await registerThenDiscard(user, requests);
+    release();
+    await screen.findByText(t.result.unboundCreatedNote('SAMPLE-IA-9301'));
+
+    /* 같은 일을 한 번 더 — 대상을 다시 세우고 보내는 중에 또 버린다. */
+    await user.click(loadButton());
+    await screen.findByRole('table');
+    await registerThenDiscard(user, requests, 2);
+    release();
+
+    expect(
+      await screen.findByText(t.result.unboundCreatedNote('SAMPLE-IA-9301, SAMPLE-IA-9302')),
+    ).toBeInTheDocument();
   });
 
   /** 짝 방향 — 버리지 않았으면 결과가 **이 초안 위에 선다.** 「늘 감춘다」로 통과하지 않게 한다. */
@@ -2153,18 +2295,17 @@ describe('StockAdjustScreen — 등록 실패', () => {
     expect(diffBox(1)).toHaveValue('-2');
   });
 
-  /** **화면이 아는 칸의 오류는 그 칸에 붙는다** — 배너로 밀면 어느 칸인지 알 수 없다. */
+  /**
+   * **화면이 아는 칸의 오류는 그 칸에 붙는다** — 배너로 밀면 어느 칸인지 알 수 없다.
+   *
+   * 아래 「그릴 자리가 없는 칸」 시험의 **대조군**이다. 둘이 함께 있어야 「서는 자리가 갈린다」가
+   * 재어지고, 한쪽만 있으면 하네스 탓인지 배선 탓인지 가릴 수 없다.
+   */
   it('사유 칸의 400은 그 칸에 붙는다', async () => {
     withReasonCodes();
 
     const { requests, user } = renderScreen(
-      allRoutes([
-        failingCreateRoute(400, {
-          errors: [
-            { scope: 'field', field: 'reasonCode', code: 'SAMPLE_ERR', message: '합성 사유 오류' },
-          ],
-        }),
-      ]),
+      allRoutes([fieldErrorRoute('reasonCode', '합성 사유 오류')]),
     );
 
     await registerAndFail(user, requests);
@@ -2178,18 +2319,35 @@ describe('StockAdjustScreen — 등록 실패', () => {
     expect(reasonField()).toHaveAttribute('aria-invalid', 'true');
   });
 
+  /**
+   * ⭐ **그릴 자리가 없는 칸의 400은 배너로 떨어진다** — 어디에도 서지 않고 사라지면 안 된다.
+   *
+   * 공통 훅은 「화면이 아는 칸」으로 선언된 이름을 **배너에서 빼고** 인라인용으로 돌린다.
+   * 그래서 그리는 자리가 없는 이름을 그 목록에 넣으면 서버가 준 거절 사유가 **통째로 사라지고**,
+   * 사용자에게는 「눌렀는데 아무 일도 없다」로 보인다 — 되돌릴 수 없는 쓰기에서 가장 나쁜
+   * 표시 상태다. ERP 송신은 토글이라 오류 슬롯이 없으므로 **배너가 그 자리를 진다.**
+   */
+  it('그릴 자리가 없는 칸의 400은 배너로 선다 — 사라지지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([fieldErrorRoute('sendToErp', '합성 ERP 송신 거절')]),
+    );
+
+    await registerAndFail(user, requests);
+
+    /* 창 안 배너가 그 자리다 — 확인 창은 실패해도 닫히지 않는다. */
+    const dialog = await screen.findByRole('dialog');
+
+    expect(await within(dialog).findByText('합성 ERP 송신 거절')).toBeVisible();
+  });
+
   /** 고친 칸의 **서버 오류를 함께 지운다** — 안 지우면 방금 고친 칸에 옛 문구가 되살아난다. */
   it('사유를 다시 고르면 그 칸의 서버 오류가 걷힌다', async () => {
     codeValues.reason = [SAMPLE_REASON, 'SAMPLE_AR_B'];
 
     const { requests, user } = renderScreen(
-      allRoutes([
-        failingCreateRoute(400, {
-          errors: [
-            { scope: 'field', field: 'reasonCode', code: 'SAMPLE_ERR', message: '합성 사유 오류' },
-          ],
-        }),
-      ]),
+      allRoutes([fieldErrorRoute('reasonCode', '합성 사유 오류')]),
     );
 
     await registerAndFail(user, requests);
@@ -2251,6 +2409,19 @@ describe('StockAdjustScreen — 등록 실패', () => {
 
     expect(await screen.findByText(messages.httpError.offline)).toBeVisible();
     expect(screen.getByText(t.notes.networkUnconfirmed)).toBeVisible();
+  });
+
+  /**
+   * ⭐ **이 안내의 본체는 금지다**(전례 `poRegister.notes.networkUnconfirmed`가 세운 잣대).
+   *
+   * 전표 두 벌을 막는 것은 확인이 아니라 **하지 않는 것**이다 — 훅이 호출마다 새 멱등 키를
+   * 만들어 「다시 보내기」가 그대로 두 번째 요청이 되기 때문이다. 금지를 선행 확인에 매달면
+   * 「확인하면 다시 보내도 된다」로 읽히고, **확인할 자리가 없는 이 화면에서는 그 조치 자체가
+   * 실행 불가능**하다. 문구를 고칠 때 이 두 성질이 함께 유지되는지를 이 잣대가 잡는다.
+   */
+  it('그 안내가 확인이 아니라 금지를 말한다', () => {
+    expect(t.notes.networkUnconfirmed).toContain('다시 등록하지 마세요');
+    expect(t.notes.networkUnconfirmed).toContain('이 화면에서 확인할 수 없습니다');
   });
 
   /** 짝 방향 — 서버가 거절한 요청에는 그 안내가 없다. 전달된 것이 확실하기 때문이다. */
