@@ -30,9 +30,9 @@ const t = messages.stockAdjust;
 export interface AdjustmentFilters {
   /** 대상 실사 번호. **선택칸의 값이고 화면이 이름으로 풀어 그린다**(`omf-mes#44`) */
   count: string;
-  /** 조정 사유 코드. 선택지가 자리표시라 지금은 주소를 손으로 고칠 때만 들어온다(D-9) */
+  /** 조정 사유 코드. **선택칸에서 고른 값이 들어온다**(고객의 공통코드 마스터 · #36 회신) */
   reason: string;
-  /** 전표 상태 코드. 같은 위 */
+  /** 전표 상태 코드. 선택지가 자리표시라 지금은 주소를 손으로 고칠 때만 들어온다(D-9) */
   status: string;
   /** 전기일 범위. `DatePicker mode="range"` 한 컨트롤이 `YYYY-MM-DD` 두 값을 준다 */
   from: string;
@@ -114,7 +114,9 @@ const readDateFilter = (raw: string): string => {
 /**
  * 공백만 친 값은 조건이 아니다 — 주소에 남기면 조건이 걸린 것처럼 보인다.
  *
- * 선택지가 비어 있어 사용자가 만들 수 없는 값이지만(D-9) **주소는 손으로 고쳐지는 자리다.**
+ * **선택칸이 만들 수 없는 값이어도 주소는 손으로 고쳐지는 자리다** — 사유는 이제 목록에서
+ * 고르지만(#36 회신) 그 목록 밖의 값이 주소로 들어오는 길은 그대로 열려 있고, 상태는 아직
+ * 자리표시라 그 길이 유일하다.
  */
 const normalizeText = (raw: string): string => raw.trim();
 

@@ -14,8 +14,11 @@ const t = messages.stockAdjust;
  * ⚠ **값 문면에 뜻을 담지 않는다.** 이 폼은 어느 값이 와도 같게 돌아야 하므로, 뜻이 읽히는
  * 값을 쓰면 그 뜻에 기댄 시험이 슬며시 생긴다.
  */
+const FIRST_REASON_CODE = 'SYN-RSN-ALPHA';
+const FIRST_REASON_LABEL = `${FIRST_REASON_CODE} · 합성 사유 가`;
+
 const REASON_OPTIONS: SelectOption[] = [
-  { value: 'SYN-RSN-ALPHA', label: 'SYN-RSN-ALPHA · 합성 사유 가' },
+  { value: FIRST_REASON_CODE, label: FIRST_REASON_LABEL },
   { value: 'SYN-RSN-OMEGA', label: 'SYN-RSN-OMEGA · 합성 사유 나' },
 ];
 
@@ -65,9 +68,9 @@ describe('HeaderForm — 계약이 받는 두 값', () => {
     const { onChange, user } = renderForm();
 
     await user.click(screen.getByLabelText(t.fields.reasonCode));
-    await user.click(screen.getByRole('option', { name: REASON_OPTIONS[0]?.label }));
+    await user.click(screen.getByRole('option', { name: FIRST_REASON_LABEL }));
 
-    expect(onChange).toHaveBeenCalledWith({ reasonCode: 'SYN-RSN-ALPHA' });
+    expect(onChange).toHaveBeenCalledWith({ reasonCode: FIRST_REASON_CODE });
   });
 
   /**

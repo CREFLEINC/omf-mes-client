@@ -1,6 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { waitFor } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -71,6 +71,70 @@ const defaultRoutes = (values = reasonCodeValueFixtures): StubRoute[] => [
   route(CODE_GROUPS_PATH, reasonGroupFixtures),
   route(CODE_VALUES_PATH, values),
 ];
+
+/**
+ * **두 번째 조회에서 실패하는 그룹 조회**(전례 `judgment-code-screen.test.tsx`의 같은 형태).
+ *
+ * 첫 조회가 성공해 캐시에 자료가 남은 뒤에 실패해야 「지난 자료로 계속 판정하는가」를 잴 수
+ * 있다 — 처음부터 실패하면 캐시가 비어 있어 어느 판정이든 같은 답을 낸다.
+ */
+const flakyGroupRoute = (): StubRoute => {
+  let served = 0;
+
+  return {
+    match: (request) =>
+      request.method === 'GET' && new URL(request.url).pathname === CODE_GROUPS_PATH,
+    respond: () => {
+      served += 1;
+
+      return served === 1
+        ? jsonResponse(listBody(reasonGroupFixtures))
+        : jsonResponse({ message: '' }, { status: 500 });
+    },
+  };
+};
+
+/**
+ * **다시 부르면 다른 그룹 번호를 주는 조회.** 고객이 그룹을 갈아 끼운 경우다.
+ *
+ * ⚠ **내용까지 달라지는 재조회 스텁이라야 한다**(사본 체크리스트 11번) — 같은 구조를 되돌리면
+ * 「값 목록이 그룹을 따라 갈렸다」를 재는 단언이 부분 견줌으로 헛통과한다.
+ */
+const swappingGroupRoute = (): StubRoute => {
+  let served = 0;
+
+  return {
+    match: (request) =>
+      request.method === 'GET' && new URL(request.url).pathname === CODE_GROUPS_PATH,
+    respond: () => {
+      served += 1;
+
+      return jsonResponse(
+        listBody([
+          {
+            codeGroupId: served === 1 ? 9901 : 9902,
+            groupCode: ADJUST_REASON_GROUP_CODE,
+            groupName: '합성 조정 사유',
+            isActive: true,
+          },
+        ]),
+      );
+    },
+  };
+};
+
+/** 그룹 번호마다 다른 값을 주는 코드값 조회. 어느 그룹으로 물었는지가 결과로 드러난다. */
+const perGroupValueRoute = (): StubRoute => ({
+  match: (request) =>
+    request.method === 'GET' && new URL(request.url).pathname === CODE_VALUES_PATH,
+  respond: (request) => {
+    const codeGroupId = new URL(request.url).searchParams.get('codeGroupId');
+
+    return jsonResponse(
+      listBody([codeValue(codeGroupId === '9901' ? 'SYN-RSN-ALPHA' : 'SYN-RSN-OMEGA')]),
+    );
+  },
+});
 
 /**
  * 합성 코드값 하나. **값 문면에 뜻을 담지 않는다** — 이 파일의 감지기가 겨누는 것이
@@ -183,7 +247,13 @@ describe('useAdjustReasonLookup — 조회', () => {
     ).toBeNull();
   });
 
-  /** 계약이 `codeGroupId`를 필수로 요구한다 — 그룹을 못 찾았으면 요청 자체가 성립하지 않는다. */
+  /**
+   * 계약이 `codeGroupId`를 필수로 요구한다 — 그룹을 못 찾았으면 요청 자체가 성립하지 않는다.
+   *
+   * ⚠ **「요청이 안 나갔다」만으로는 `enabled`를 재지 못한다.** `enabled`를 걷어도 `queryFn`의
+   * 방어 throw가 fetch보다 앞서 요청은 여전히 0건이고, 대신 **조회가 실패로 바뀐다** —
+   * 그래서 실패하지 않았다는 단언을 같은 자리에 함께 둔다.
+   */
   it('그룹을 못 찾으면 코드값을 부르지 않는다', async () => {
     const { fetch, urls } = recordingFetch([
       route(CODE_GROUPS_PATH, []),
@@ -197,6 +267,7 @@ describe('useAdjustReasonLookup — 조회', () => {
 
     expect(urls.filter((url) => url.pathname === CODE_VALUES_PATH)).toEqual([]);
     expect(result.current.entries).toEqual([]);
+    expect(result.current.isError).toBe(false);
   });
 
   /**
@@ -315,6 +386,66 @@ describe('useAdjustReasonLookup — 실패와 잘림', () => {
     });
 
     expect(lookupNote(result.current)).toBe(t.lookups.truncated);
+  });
+
+  /**
+   * ⭐ **조회에 성공한 상태에서만 값을 갖는다**(전례 W-06-04의 규율 · 그 감지기 사본).
+   *
+   * 재조회가 실패해도 지난 목록은 캐시에 남는다. 그룹 판정을 「받은 자료가 있는가」로 하면
+   * **실패를 말하면서 지난 선택지를 그대로 내미는** 상태가 생기고, 사용자는 못 믿을 목록에서
+   * 고른 값을 **되돌릴 수 없는 전표**에 싣는다. 갈래는 하나여야 한다 — 실패했으면 목록도 없다.
+   */
+  it('그룹 재조회가 실패하면 지난 선택지도 함께 사라진다', async () => {
+    const { fetch } = recordingFetch([
+      flakyGroupRoute(),
+      route(CODE_VALUES_PATH, reasonCodeValueFixtures),
+    ]);
+    const { result, queryClient } = renderHookWithProviders(() => useAdjustReasonLookup(), {
+      fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(2);
+    });
+
+    /* 스텁이 갈리기 전 상태 — 목록이 실제로 서 있어야 뒤의 부재 단언이 뜻을 갖는다. */
+    expect(result.current.isError).toBe(false);
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: reasonLookupKeys.group });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    /* ⭐ 실패가 선 **그 시점에** 목록이 비어 있어야 한다 — 지난 자료로 판정하면 여기 남는다. */
+    expect(result.current.entries).toEqual([]);
+    expect(lookupNote(result.current)).toBe(t.lookups.failed);
+  });
+
+  /**
+   * ⭐ **그룹이 달라지면 값 목록도 갈린다** — 캐시 키에 그룹 번호를 담는 이유를 **호출부**에서
+   * 잰다. 키 생성기만 재면 「호출부가 늘 같은 번호를 넘긴다」는 실수를 잡지 못하고, 그때
+   * 화면에는 **앞 그룹의 값이 그대로 남는다.**
+   */
+  it('그룹 번호가 바뀌면 값 목록도 갈린다', async () => {
+    const { fetch } = recordingFetch([swappingGroupRoute(), perGroupValueRoute()]);
+    const { result, queryClient } = renderHookWithProviders(() => useAdjustReasonLookup(), {
+      fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.entries.map((entry) => entry.value)).toEqual(['SYN-RSN-ALPHA']);
+    });
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: reasonLookupKeys.group });
+    });
+
+    await waitFor(() => {
+      expect(result.current.entries.map((entry) => entry.value)).toEqual(['SYN-RSN-OMEGA']);
+    });
   });
 
   /** 실패에는 복구 경로를 함께 낸다 — 사용자가 할 수 있는 조치가 재시도뿐이다. */
