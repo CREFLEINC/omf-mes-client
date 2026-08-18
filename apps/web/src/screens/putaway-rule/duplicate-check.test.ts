@@ -29,8 +29,33 @@ const target = (patch: Partial<DuplicateTarget> = {}): DuplicateTarget => ({
 });
 
 describe('judgeDuplicate — 판정하지 못하는 갈래가 먼저다', () => {
+  /**
+   * ⭐ **미완성이 조회 상태보다 앞선다.** 겨눌 조합이 없으면 조회가 열리지도 않는다 —
+   * 뒤에 두면 **열리지 않은 조회의 「불러오는 중」**이 미완성을 가려, 갓 연 빈 폼이
+   * 「확인하지 못했습니다」라고 말하게 된다.
+   *
+   * 짝을 이루는 두 사실을 **한 탐침에 함께 심는다** — 미도착이면서 미완성인 상태다.
+   */
+  it('미도착이면서 미완성이면 미완성이다', () => {
+    expect(judgeDuplicate(probe([], { isLoading: true }), target({ itemId: null }))).toEqual({
+      kind: 'unknown',
+      reason: 'incomplete',
+    });
+  });
+
+  /** 실패·잘림보다도 앞선다 — 셋 다 「조회의 사정」이고 미완성은 그 앞의 사정이다. */
+  it.each([
+    ['실패', { isError: true }],
+    ['잘림', { total: 3 }],
+  ])('%s이면서 미완성이어도 미완성이다', (_name, patch) => {
+    expect(judgeDuplicate(probe([], patch), target({ priorityNo: null }))).toEqual({
+      kind: 'unknown',
+      reason: 'incomplete',
+    });
+  });
+
   /** 셋 중 하나라도 참인데 「중복 없음」이라 답하면 확인하지 않은 것을 확인했다고 말하는 것이다. */
-  it('실패가 가장 앞선다', () => {
+  it('겨눈 것이 있으면 실패가 가장 앞선다', () => {
     expect(judgeDuplicate(probe([EXISTING], { isError: true, isLoading: true }), target())).toEqual(
       {
         kind: 'unknown',
@@ -77,7 +102,6 @@ describe('judgeDuplicate — 네 축을 함께 본다', () => {
     expect(judgeDuplicate(probe([EXISTING]), target())).toEqual({
       kind: 'blocked',
       existingCount: 1,
-      existingRuleId: 9001,
     });
   });
 
@@ -129,13 +153,17 @@ describe('judgeDuplicate — 세지 않는 것', () => {
 });
 
 describe('judgeDuplicate — 막을 때 무엇을 함께 내는가', () => {
-  it('겹친 건수와 첫 규칙 번호를 낸다', () => {
+  /**
+   * **건수를 낸다** — 막힘 사유 문장이 그 수를 실어 「지금 보는 쪽에 없을 수 있다」까지 말한다.
+   * 겹친 상대의 **번호는 내지 않는다**: 이 화면에는 그 번호로 옮겨 가는 길이 없고, 쓰지 않는
+   * 값을 타입에 남기면 죽은 통로가 된다(사본 체크리스트 7번).
+   */
+  it('겹친 건수를 낸다', () => {
     const second: PutawayRule = { ...EXISTING, putawayRuleId: 9006 };
 
     expect(judgeDuplicate(probe([EXISTING, second]), target())).toEqual({
       kind: 'blocked',
       existingCount: 2,
-      existingRuleId: 9001,
     });
   });
 });

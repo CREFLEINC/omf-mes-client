@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -197,6 +197,38 @@ describe('ItemPickerDialog — 나가기', () => {
     await user.click(screen.getByRole('button', { name: messages.common.cancel }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  /**
+   * **Escape는 막을 수 없다** — native `<dialog>`가 `cancel`을 내고 디자인 시스템이 그것을
+   * 닫기 요청으로 무조건 잇는다. 여기서는 그것이 옳다: 고르기 전에 닫히면 아무 일도 일어나지
+   * 않는다. **고르기로 이어지지 않는다**는 사실을 값으로 고정한다(초안 파기 창과 같은 방향).
+   */
+  it('Escape는 닫기 요청으로 이어지고 고르기로 이어지지 않는다', async () => {
+    const { onPick, onClose, user } = renderDialog();
+
+    await search(user);
+    await screen.findByText('합성품목 가');
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  /** 스크림 클릭도 같다 — 실수로 닫혀도 잃는 것이 없고, **고르지도 않는다.** */
+  it('스크림을 눌러도 고르기로 이어지지 않는다', async () => {
+    const { onPick, user } = renderDialog();
+
+    await search(user);
+    await screen.findByText('합성품목 가');
+
+    fireEvent.click(screen.getByRole('dialog'));
+
     expect(onPick).not.toHaveBeenCalled();
   });
 });

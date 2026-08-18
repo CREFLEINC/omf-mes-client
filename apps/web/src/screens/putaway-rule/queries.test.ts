@@ -436,25 +436,63 @@ describe('useRuleDetail', () => {
 });
 
 describe('useDuplicateProbe', () => {
-  /** 읽기만 하는 사용자에게까지 나가면 규칙을 고를 때마다 목록 경로로 두 번 나가는 화면이 된다. */
-  it('폼이 닫혀 있으면 부르지 않는다', async () => {
+  /** 겨눌 조합이 아직 없으면 부를 조건도 없다 — 폼이 닫혀 있으면 두 번호가 `null`이다. */
+  it.each([
+    ['품목', 9201, null],
+    ['창고', null, 9101],
+    ['둘 다', null, null],
+  ])('%s이 정해지기 전에는 부르지 않는다', async (_name, warehouseId, itemId) => {
     const { fetch, urls } = recordingFetch([rulesRoute()]);
 
-    renderHookWithProviders(() => useDuplicateProbe(9201, 9101, false), { fetch });
+    renderHookWithProviders(() => useDuplicateProbe(warehouseId, itemId), { fetch });
 
     await waitFor(() => {
       expect(urls).toHaveLength(0);
     });
   });
 
-  /** 겨눌 조합이 아직 없으면 부를 조건도 없다. */
-  it('품목이 정해지기 전에는 부르지 않는다', async () => {
-    const { fetch, urls } = recordingFetch([rulesRoute()]);
-
-    renderHookWithProviders(() => useDuplicateProbe(9201, null, true), { fetch });
+  /**
+   * ⛔ **열리지도 않은 조회를 「불러오는 중」으로 말하지 않는다.**
+   *
+   * TanStack v5에서 `enabled`가 거짓인 질의는 `isPending`이 **참**이다. 그 값을 그대로 옮기면
+   * 한 번도 나가지 않은 요청이 「불러오는 중」으로 보이고, 그 상태가 **미완성 판정을 가려**
+   * 갓 연 빈 폼이 「확인하지 못했습니다」라고 말하게 된다.
+   *
+   * 같은 함정을 `useItemSearch`가 이미 같은 형태로 피했다 — 두 조회가 같은 규율을 지나야 한다.
+   */
+  it('겨눈 것이 없으면 불러오는 중이 아니다', async () => {
+    const { fetch } = recordingFetch([rulesRoute()]);
+    const { result } = renderHookWithProviders(() => useDuplicateProbe(9201, null), { fetch });
 
     await waitFor(() => {
-      expect(urls).toHaveLength(0);
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.items).toEqual([]);
+    expect(result.current.total).toBe(0);
+    expect(result.current.isError).toBe(false);
+  });
+
+  /** 겨눈 것이 있고 아직 오지 않았으면 그때는 **참말로** 불러오는 중이다(양성 짝). */
+  it('겨눈 것이 있고 응답이 오기 전에는 불러오는 중이다', async () => {
+    const holding: StubRoute = {
+      match: (request) => isExactly(request, RULES_PATH),
+      respond: () => jsonResponse(listBody([])),
+    };
+    const urls: URL[] = [];
+    const stub = createStubFetch([holding]);
+    const { result } = renderHookWithProviders(() => useDuplicateProbe(9201, 9101), {
+      fetch: async (request) => {
+        urls.push(new URL(request.url));
+
+        return stub(request);
+      },
+    });
+
+    expect(result.current.isLoading).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
     });
   });
 
@@ -465,7 +503,7 @@ describe('useDuplicateProbe', () => {
   it('창고·품목으로 좁히고 사용 중인 것만 부른다', async () => {
     const { fetch, urls } = recordingFetch([rulesRoute()]);
 
-    renderHookWithProviders(() => useDuplicateProbe(9201, 9101, true), { fetch });
+    renderHookWithProviders(() => useDuplicateProbe(9201, 9101), { fetch });
 
     await waitFor(() => {
       expect(countOf(urls, RULES_PATH)).toBe(1);
@@ -486,7 +524,7 @@ describe('useDuplicateProbe', () => {
   it('쪽 크기를 명시해 싣는다', async () => {
     const { fetch, urls } = recordingFetch([rulesRoute()]);
 
-    renderHookWithProviders(() => useDuplicateProbe(9201, 9101, true), { fetch });
+    renderHookWithProviders(() => useDuplicateProbe(9201, 9101), { fetch });
 
     await waitFor(() => {
       expect(countOf(urls, RULES_PATH)).toBe(1);

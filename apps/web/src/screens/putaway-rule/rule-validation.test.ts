@@ -199,11 +199,26 @@ describe('saveBlockedReason', () => {
   });
 
   it('활성 중복이면 막는다', () => {
-    const duplicate: DuplicateCheck = { kind: 'blocked', existingCount: 1, existingRuleId: 9001 };
+    const duplicate: DuplicateCheck = { kind: 'blocked', existingCount: 1 };
 
     expect(saveBlockedReason({ mode: 'create', isDirty: true, duplicate })).toBe(
-      t.actionReasons.duplicateActive,
+      t.actionReasons.duplicateActive(1),
     );
+  });
+
+  /**
+   * **건수를 사유 문장에 그대로 싣는다.** 조준 조회는 쪽을 넘어 보므로 막은 상대가 지금 보는
+   * 쪽에 없을 수 있다 — 건수를 흘리면 사용자가 화면에서 찾을 수 없는 규칙 때문에 막힌 채로 남는다.
+   */
+  it('겹친 건수가 사유 문장에 실린다', () => {
+    const duplicate: DuplicateCheck = { kind: 'blocked', existingCount: 3 };
+
+    expect(saveBlockedReason({ mode: 'create', isDirty: true, duplicate })).toContain('3건');
+  });
+
+  /** 막힌 사유가 **지금 쪽에 없을 수 있다**는 한계까지 말한다. */
+  it('사유 문장이 지금 쪽 밖의 한계를 말한다', () => {
+    expect(t.actionReasons.duplicateActive(1)).toContain('지금 보는 쪽에 없을 수 있습니다');
   });
 
   /** C3-9 — 판정하지 못한 갈래는 **막지 않는다.** 계약이 같은 조건을 다시 검사한다. */

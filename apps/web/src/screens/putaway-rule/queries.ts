@@ -8,6 +8,7 @@ import {
   type BalanceTarget,
   type TargetBalance,
 } from './balance-lookup';
+import type { DuplicateProbe } from './duplicate-check';
 import { toRuleListQuery, toUncoveredQuery } from './filters';
 import type { PageMeta, PutawayRule, PutawayRuleDetail, RuleFilters, UncoveredItem } from './types';
 
@@ -180,6 +181,8 @@ export const useRuleDetail = (putawayRuleId: number | null): UseQueryResult<Puta
   });
 };
 
+const EMPTY_PROBE_ITEMS: PutawayRule[] = [];
+
 /**
  * 활성 중복 **조준 조회**.
  *
@@ -189,19 +192,26 @@ export const useRuleDetail = (putawayRuleId: number | null): UseQueryResult<Puta
  * **`includeInactive`를 늘 명시해 싣는다.** 판정 대상은 사용 중인 규칙뿐이다 — 계약에 기본값이
  * 있어도 「보내지 않음」이라는 상태를 만들지 않는다(`filters.ts`와 같은 규율).
  *
- * **필요할 때만 부른다.** 읽기만 하는 사용자에게까지 나가면 규칙을 하나 고를 때마다 목록
- * 경로로 두 번 나가는 화면이 된다 — 판정이 필요한 자리는 폼이 열려 있을 때뿐이다.
+ * **겨눌 조합이 정해지기 전에는 부르지 않는다.** 창고·품목 둘이 있어야 요청이 성립한다 —
+ * 폼이 닫혀 있으면 둘 다 `null`이므로 「폼이 열렸는가」를 따로 받지 않는다(그 인자는 결정력이
+ * 없어 죽은 통로가 된다 — 사본 체크리스트 7번).
+ *
+ * ⛔ **조회 결과를 그대로 내지 않고 판정이 읽을 모양으로 낸다.** TanStack v5에서 `enabled`가
+ * 거짓인 질의는 `isPending`이 **참**이다 — 그 값을 그대로 「불러오는 중」으로 옮기면 **한 번도
+ * 나가지 않은 요청이 「불러오는 중」으로 보이고**, 그 상태가 미완성 판정을 가려 갓 연 빈 폼이
+ * 「확인하지 못했습니다」라고 말하게 된다. 같은 함정을 `useItemSearch`가 이미 같은 형태로
+ * 피했다 — 조회가 열렸는지를 아는 자리가 그 사실을 접어 내야 한다.
  */
 export const useDuplicateProbe = (
   warehouseId: number | null,
   itemId: number | null,
-  enabled: boolean,
-): UseQueryResult<RuleListResponse> => {
+): DuplicateProbe => {
   const { client } = useApiClient();
+  const isTargeted = warehouseId !== null && itemId !== null;
 
-  return useQuery({
+  const query = useQuery({
     queryKey: putawayRuleKeys.duplicateProbe(warehouseId ?? 0, itemId ?? 0),
-    enabled: enabled && warehouseId !== null && itemId !== null,
+    enabled: isTargeted,
     queryFn: () => {
       if (warehouseId === null || itemId === null) {
         throw new Error('창고와 품목이 정해지기 전에는 중복을 조회하지 않습니다.');
@@ -221,6 +231,16 @@ export const useDuplicateProbe = (
       );
     },
   });
+
+  const data = query.data;
+
+  return {
+    items: data?.items ?? EMPTY_PROBE_ITEMS,
+    total: data?.page.total ?? 0,
+    /* 열리지도 않은 조회를 「불러오는 중」으로 말하지 않는다 — 아직 겨눈 것이 없는 상태다. */
+    isLoading: isTargeted && query.isPending,
+    isError: query.isError,
+  };
 };
 
 /**

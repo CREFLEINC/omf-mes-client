@@ -27,8 +27,14 @@ export type RuleFormMode = 'create' | 'edit';
  * 흘러가 어디에도 보이지 않는다 — `isActive`가 여기 없는 이유다(사용 여부는 전용 액션으로만
  * 바뀐다).
  *
- * 수정에서 품목·창고 칸은 잠기지만 **이름은 그대로 둔다** — 서버가 그 칸에 붙여 보낸 오류를
- * 배너로 올리면 어느 칸의 문제인지 사라진다.
+ * ⚠ **수정에서 품목·창고는 인라인으로 낼 자리가 없다.** 그 모드에서 두 칸은 입력칸이 아니라
+ * 값 표기(`output`)라 오류를 붙일 곳이 없다 — 이름을 남겨 두면 서버가 그 칸에 붙여 보낸 오류가
+ * 인라인으로 흘러가 **어디에도 보이지 않는다.**
+ *
+ * 그래도 남긴 이유는 **등록에서는 두 칸이 진짜 입력칸이고 거기서 오류가 인라인으로 서기**
+ * 때문이다. 계약의 수정 본문에 두 키가 아예 없어 수정에서 그 오류가 올 실경로도 없다 —
+ * 오면 그것은 계약과 어긋난 응답이며, 그때 배너로 올리는 쪽이 나은지는 그 응답을 실제로
+ * 본 회차가 정한다. 지금 이름을 빼면 **등록의 인라인이 함께 사라진다.**
  */
 export const RULE_FORM_FIELDS: readonly string[] = [
   'itemId',
@@ -137,5 +143,7 @@ export interface SaveGate {
 export const saveBlockedReason = (gate: SaveGate): string | null => {
   if (gate.mode === 'edit' && !gate.isDirty) return t.actionReasons.saveNoChanges;
 
-  return gate.duplicate.kind === 'blocked' ? t.actionReasons.duplicateActive : null;
+  return gate.duplicate.kind === 'blocked'
+    ? t.actionReasons.duplicateActive(gate.duplicate.existingCount)
+    : null;
 };

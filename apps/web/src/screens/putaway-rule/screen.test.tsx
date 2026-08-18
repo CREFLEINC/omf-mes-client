@@ -1511,7 +1511,10 @@ describe('PutawayRuleScreen — 품목 찾기 (갈래 23)', () => {
     );
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(within(formPane()).getByLabelText(t.fields.item)).toHaveTextContent(t.values.unknown);
+    /* 닫기만 했으니 **아직 고르지 않은 상태**다 — 「알 수 없음」(값이 잘못됐다)이 아니다. */
+    expect(within(formPane()).getByLabelText(t.fields.item)).toHaveTextContent(
+      t.form.itemNotChosen,
+    );
   });
 });
 
@@ -1784,7 +1787,7 @@ describe('PutawayRuleScreen — 활성 중복 선검사 (C3-8 · C3-9)', () => {
     await user.type(capacityField(), '600');
 
     expect(
-      await within(formPane()).findByText(t.actionReasons.duplicateActive),
+      await within(formPane()).findByText(t.actionReasons.duplicateActive(1)),
     ).toBeInTheDocument();
     expect(saveButton()).toBeDisabled();
     expect(writesOf(requests, 'PUT')).toHaveLength(0);
@@ -2155,6 +2158,36 @@ describe('PutawayRuleScreen — 나가는 중인 저장의 표시 (C3-14)', () =
   });
 
   /**
+   * ⚠⚠ **성공 응답도 같은 가드를 지난다.** 실패 표시만 가리고 성공을 놓치면, 보내는 사이에
+   * 다른 규칙으로 옮겨 갔을 때 **9001의 서버 응답이 9003의 폼에 앉는다.** 그 상태에서 한 칸만
+   * 고쳐 저장하면 **사용자가 본 적 없는 값이 다른 규칙에 쓰인다** — 이 회차에서 가장 무거운
+   * 갈래이며, 단위 ④의 쓰기들이 같은 규약을 물려받는다.
+   */
+  it('대상이 바뀐 뒤 도착한 성공이 새 대상의 값을 덮지 않는다', async () => {
+    const { release, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([updateRoute()]),
+      holdUpdate,
+      '?wh=9201&rule=9003',
+    );
+
+    await startSaveThenLeave(user);
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rule=9003');
+    });
+    /* 9003의 **자기 값**이 선 것을 먼저 잡는다 — 음성 단언은 이 시점 뒤에 잰다. */
+    await waitFor(() => {
+      expect(capacityField()).toHaveValue('80');
+    });
+
+    release();
+
+    /* 저장은 일어났다(알림은 대상과 무관하다) — 그런데 값은 남의 폼에 앉지 않는다. */
+    expect(await screen.findByText(messages.common.saved)).toBeInTheDocument();
+    expect(capacityField()).toHaveValue('80');
+  });
+
+  /**
    * **끊는 것과 감추는 것은 다르다**(`omf-mes#96` · 사본 체크리스트 4번). 대상이 바뀔 때
    * 나가는 중인 쓰기를 `reset()`으로 거두면 무효화·성공·공동 잠금이 통째로 사라진다 —
    * 서버에는 이미 갔는데 화면만 없던 일로 친다.
@@ -2271,6 +2304,187 @@ describe('PutawayRuleScreen — 초안 파기 (C3-15)', () => {
 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('new=1');
+    });
+  });
+});
+
+/**
+ * **갓 연 폼이 사실이 아닌 문장을 말하지 않는다.**
+ *
+ * 이 슬라이스는 여섯 자리에서 「확인하지 못한 것을 사실로 말하지 않는다」를 세웠다.
+ * 그 규율이 **가장 먼저 깨지기 쉬운 자리가 조회가 열리기 전**이다 — 열리지 않은 조회의
+ * 상태를 그대로 옮기면 화면이 「시도했으나 실패했다」고 말하게 된다.
+ */
+describe('PutawayRuleScreen — 갓 연 등록 폼의 문면', () => {
+  const openCreateForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await waitForRows();
+    await user.click(createButton());
+    await within(formPane()).findByLabelText(t.fields.priorityNo);
+  };
+
+  /**
+   * 조준 조회가 **한 번도 나가지 않은** 상태에서 「확인하지 못했습니다」가 서면 안 된다.
+   * 요청 수를 함께 세어 **말과 사실을 같은 시점에** 잰다.
+   */
+  it('규칙 추가 직후에는 중복 판정 안내가 서지 않는다', async () => {
+    const { urls, user } = renderScreen(WITH_WAREHOUSE);
+
+    await openCreateForm(user);
+
+    expect(within(formPane()).queryByText(t.notes.duplicateUnknown)).not.toBeInTheDocument();
+    expect(probeUrls(urls)).toHaveLength(0);
+  });
+
+  /**
+   * **양성 짝** — 겨눌 조합이 갖춰지고 조회가 아직 오지 않은 동안에는 **선다.**
+   * 이것이 없으면 위 감지기는 「안내를 아예 만들지 않아도」 통과한다.
+   */
+  it('품목을 고른 뒤 조준 조회가 오기 전에는 안내가 선다', async () => {
+    const holdProbe = (request: Request): boolean =>
+      request.method === 'GET' &&
+      new URL(request.url).pathname === RULES_PATH &&
+      new URL(request.url).searchParams.has('size');
+    const { urls, user } = renderScreen(WITH_WAREHOUSE, allRoutes(), holdProbe);
+
+    await openCreateForm(user);
+    await user.click(within(formPane()).getByRole('button', { name: t.actions.openItemPicker }));
+
+    const dialog = within(screen.getByRole('dialog'));
+
+    await user.type(dialog.getByLabelText(t.itemPicker.keywordLabel), '합성');
+    await user.click(dialog.getByRole('button', { name: t.actions.searchItems }));
+    await user.click(await dialog.findByRole('button', { name: t.actions.chooseItem(ITEM_LABEL) }));
+
+    await waitFor(() => {
+      expect(probeUrls(urls).length).toBeGreaterThan(0);
+    });
+    expect(await within(formPane()).findByText(t.notes.duplicateUnknown)).toBeInTheDocument();
+  });
+
+  /**
+   * **전례에서 가져온 인자**(「저장할 뜻이 있을 때만 밝힌다」). 조준 조회는 규칙을 고르기만
+   * 해도 나가므로, 이것이 없으면 구경만 하는 사용자에게 저장 안내가 뜬다.
+   */
+  it('고르기만 하고 고치지 않은 규칙에는 판정 안내가 서지 않는다', async () => {
+    const failingProbe: StubRoute = {
+      match: (request) =>
+        isGet(request, RULES_PATH) && new URL(request.url).searchParams.has('size'),
+      respond: () => jsonResponse({ message: '' }, { status: 500 }),
+    };
+    const { urls, user } = renderScreen(WITH_WAREHOUSE, allRoutes([failingProbe]));
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+
+    /* 조회는 실제로 나갔고 실패했다 — 그런데도 구경만 하는 사용자에게는 말하지 않는다. */
+    await waitFor(() => {
+      expect(probeUrls(urls).length).toBeGreaterThan(0);
+    });
+    expect(within(formPane()).queryByText(t.notes.duplicateUnknown)).not.toBeInTheDocument();
+
+    /* 한 글자만 고치면 저장할 뜻이 생긴다 — 그때부터는 밝힌다(양성 짝). */
+    await user.clear(capacityField());
+    await user.type(capacityField(), '600');
+
+    expect(await within(formPane()).findByText(t.notes.duplicateUnknown)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **아직 고르지 않은 칸에 「알 수 없음」을 세우지 않는다.** 이 슬라이스에서 그 낱말은
+   * *값이 잘못됐다*는 뜻이고 목록 표의 깨진 행이 같은 낱말을 쓴다 — 빈 폼에 그것을 세우면
+   * 「아직 안 골랐다」와 「값이 깨졌다」를 사용자가 가를 수 없다.
+   */
+  it('빈 초안의 품목 자리에 「알 수 없음」이 서지 않는다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE);
+
+    await openCreateForm(user);
+
+    const itemCell = within(formPane()).getByLabelText(t.fields.item);
+
+    expect(itemCell).toHaveTextContent(t.form.itemNotChosen);
+    expect(itemCell).not.toHaveTextContent(t.values.unknown);
+  });
+
+  /** **양성 짝** — 고른 뒤에는 이름이 선다. */
+  it('품목을 고르면 그 자리에 이름이 선다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE);
+
+    await openCreateForm(user);
+    await user.click(within(formPane()).getByRole('button', { name: t.actions.openItemPicker }));
+
+    const dialog = within(screen.getByRole('dialog'));
+
+    await user.type(dialog.getByLabelText(t.itemPicker.keywordLabel), '합성');
+    await user.click(dialog.getByRole('button', { name: t.actions.searchItems }));
+    await user.click(await dialog.findByRole('button', { name: t.actions.chooseItem(ITEM_LABEL) }));
+
+    expect(within(formPane()).getByLabelText(t.fields.item)).toHaveTextContent(ITEM_LABEL);
+  });
+
+  /**
+   * 창이 준 이름을 **그대로 들고 있는다.** 품목 찾기는 검색 조건으로 좁혀 받으므로 좁히지 않은
+   * 이름 풀이 목록(잘릴 수 있다)에 그 품목이 **없을 수 있다** — 버리면 방금 고른 품목이
+   * 「알 수 없음」으로 보인다.
+   */
+  it('이름 풀이 목록에 없는 품목을 골라도 창이 준 이름이 선다', async () => {
+    /* 이름 풀이에는 없고 **찾기 결과에만** 있는 품목 — 두 조회를 갈라 답한다. */
+    const HIDDEN_ITEM = {
+      ...itemFixtures[0],
+      itemId: 9105,
+      itemCode: 'SYN-ITEM-05',
+      itemName: '합성품목 마',
+    };
+    const splitItemsRoute: StubRoute = {
+      match: (request) => isGet(request, ITEMS_PATH),
+      respond: (request) =>
+        jsonResponse(
+          listBody(new URL(request.url).searchParams.has('q') ? [HIDDEN_ITEM] : itemFixtures, {
+            total: 99,
+          }),
+        ),
+    };
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([splitItemsRoute]));
+
+    await openCreateForm(user);
+    await user.click(within(formPane()).getByRole('button', { name: t.actions.openItemPicker }));
+
+    const dialog = within(screen.getByRole('dialog'));
+
+    await user.type(dialog.getByLabelText(t.itemPicker.keywordLabel), '합성');
+    await user.click(dialog.getByRole('button', { name: t.actions.searchItems }));
+    await user.click(
+      await dialog.findByRole('button', {
+        name: t.actions.chooseItem('SYN-ITEM-05 · 합성품목 마'),
+      }),
+    );
+
+    const itemCell = within(formPane()).getByLabelText(t.fields.item);
+
+    expect(itemCell).toHaveTextContent('SYN-ITEM-05 · 합성품목 마');
+    expect(itemCell).not.toHaveTextContent(t.values.unknown);
+  });
+});
+
+describe('PutawayRuleScreen — 같은 주소로는 갱신하지 않는다', () => {
+  /**
+   * 화면을 바꾸지 않으면서 히스토리 칸만 늘어나면 **뒤로가기가 아무 일도 하지 않는 것처럼**
+   * 보인다. 늘지 않았음은 뒤로 한 번 갔을 때 **그 앞으로** 가는 것으로만 증명된다.
+   */
+  it('같은 규칙을 두 번 골라도 히스토리가 늘지 않는다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]));
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await selectRow(user);
+    await selectRow(user);
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    /* 한 칸 뒤로 가면 고르기 전(창고만 걸린 주소)이다 — 같은 선택이 쌓였다면 아직 rule이 남는다. */
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('rule=9001');
     });
   });
 });

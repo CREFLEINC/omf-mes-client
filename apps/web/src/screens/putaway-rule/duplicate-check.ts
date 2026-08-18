@@ -64,7 +64,13 @@ export interface DuplicateTarget {
  */
 export type DuplicateCheck =
   | { kind: 'clear' }
-  | { kind: 'blocked'; existingCount: number; existingRuleId: number }
+  /**
+   * **건수만 낸다.** 겹친 상대의 번호는 두지 않는다 — 전례는 그 번호로 「기존 결재선 열기」
+   * 손잡이를 냈지만 이 화면은 그 길을 만들지 않았고(단위 ③ 판정), 쓰지 않는 값을 타입에
+   * 남기면 「이 화면에 그 기능이 없다」가 타입 수준의 사실이 되지 못한다
+   * (사본 체크리스트 7번). 그 길이 필요해지는 회차가 그때 번호를 함께 가져온다.
+   */
+  | { kind: 'blocked'; existingCount: number }
   | { kind: 'unknown'; reason: 'loading' | 'failed' | 'truncated' | 'incomplete' };
 
 /** 판정 축 넷을 한 열쇠로 접는다(Q2 기본값 — 위 주석). */
@@ -78,26 +84,32 @@ const keyOf = (
 /**
  * 조준 조회 결과를 판정으로 옮긴다.
  *
- * 순서가 뜻을 정한다 — **실패 · 미도착 · 잘림 · 미완성이 중복 판정보다 앞선다.** 넷 중 하나라도
+ * 순서가 뜻을 정한다 — **미완성 · 실패 · 미도착 · 잘림이 중복 판정보다 앞선다.** 넷 중 하나라도
  * 참인데 「중복 없음」이라 답하면 화면이 확인하지 않은 것을 확인했다고 말하게 된다.
  *
- * **미완성(`incomplete`)이 넷째 갈래다.** 품목·창고·우선순위 중 하나라도 정해지지 않았으면
- * 견줄 조합 자체가 없다 — 그 상태를 「중복 없음」으로 답하면 아직 만들지도 않은 조합을
- * 확인했다고 말하는 것이다. 네 갈래 전부 **막지는 않는다.**
+ * ⭐ **미완성(`incomplete`)이 그중에서도 맨 앞이다.** 품목·창고·우선순위 중 하나라도 정해지지
+ * 않았으면 견줄 조합 자체가 없고, 그때는 조회가 열리지도 않는다 — 조회 상태(미도착·실패)를
+ * 물으면 **열리지 않은 조회의 상태**를 답으로 내게 된다. 네 갈래 전부 **막지는 않는다.**
  *
  * **꺼진 규칙은 중복이 아니다.** 계약이 막는 것은 활성 중복이고, 끄고 새로 등록해 두는 것이
  * 이 마스터의 정상 운용이다.
  */
 export const judgeDuplicate = (probe: DuplicateProbe, target: DuplicateTarget): DuplicateCheck => {
-  if (probe.isError) return { kind: 'unknown', reason: 'failed' };
-  if (probe.isLoading) return { kind: 'unknown', reason: 'loading' };
-  if (probe.total > probe.items.length) return { kind: 'unknown', reason: 'truncated' };
-
   const { itemId, warehouseId, priorityNo } = target;
 
+  /*
+   * **미완성이 가장 앞이다.** 겨눌 조합이 없으면 조회 상태를 물을 것도 없다 —
+   * 뒤에 두면 아직 열리지도 않은 조회의 「불러오는 중」이 미완성을 가려, 갓 연 빈 폼이
+   * 「확인하지 못했습니다」라고 말하게 된다. 확인을 **시도한 적이 없는데** 실패했다고
+   * 말하는 것이라 이 슬라이스가 곳곳에서 세운 규율과 정면으로 어긋난다.
+   */
   if (itemId === null || warehouseId === null || priorityNo === null) {
     return { kind: 'unknown', reason: 'incomplete' };
   }
+
+  if (probe.isError) return { kind: 'unknown', reason: 'failed' };
+  if (probe.isLoading) return { kind: 'unknown', reason: 'loading' };
+  if (probe.total > probe.items.length) return { kind: 'unknown', reason: 'truncated' };
 
   const targetKey = keyOf(itemId, warehouseId, target.locationId, priorityNo);
 
@@ -109,9 +121,7 @@ export const judgeDuplicate = (probe: DuplicateProbe, target: DuplicateTarget): 
       keyOf(item.itemId, item.warehouseId, item.locationId ?? null, item.priorityNo) === targetKey,
   );
 
-  const first = clashes[0];
-
-  if (first === undefined) return { kind: 'clear' };
-
-  return { kind: 'blocked', existingCount: clashes.length, existingRuleId: first.putawayRuleId };
+  return clashes.length === 0
+    ? { kind: 'clear' }
+    : { kind: 'blocked', existingCount: clashes.length };
 };

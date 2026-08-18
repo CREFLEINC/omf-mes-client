@@ -149,12 +149,24 @@ describe('RuleFormPane — 필수 표시와 위치의 뜻', () => {
     expect(screen.getByRole('combobox', { name: t.fields.location })).toBeEnabled();
   });
 
-  /** 값이 채워진 뒤에는 잠기되 **사유가 함께** 선다. */
-  it('위치 입력이 잠기면 사유가 함께 보인다', () => {
-    renderPane({ locationDisabledReason: t.notes.managementLevelPending });
+  /**
+   * 값이 채워진 뒤에는 잠기되 **사유가 함께** 선다.
+   *
+   * ⛔ 그 사유는 「아직 정해지지 않아 **모든 창고에서 고를 수 있습니다**」일 수 없다 —
+   * 잠긴 칸에 그 문장을 세우면 화면이 자기모순을 말한다. 두 문장이 **다르다는 사실**을
+   * 여기서 고정한다(자리표시가 채워지는 날 이 감지기가 짝을 지켜 준다).
+   */
+  it('위치 입력이 잠기면 잠긴 사유가 서고 「아직 정해지지 않았다」는 서지 않는다', () => {
+    renderPane({ locationDisabledReason: t.notes.locationNotManaged });
 
     expect(screen.getByRole('combobox', { name: t.fields.location })).toBeDisabled();
-    expect(screen.getByText(t.notes.managementLevelPending)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.locationNotManaged)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.managementLevelPending)).not.toBeInTheDocument();
+  });
+
+  /** 두 문장이 같아지면 위 감지기가 뜻을 잃는다 — 문면 자체를 갈라 둔다. */
+  it('잠긴 사유와 「아직 정해지지 않았다」가 다른 문장이다', () => {
+    expect(t.notes.locationNotManaged).not.toBe(t.notes.managementLevelPending);
   });
 });
 
@@ -216,10 +228,10 @@ describe('RuleFormPane — 저장 자리의 네 상태', () => {
   });
 
   it('막혔으면 사유와 함께 잠긴다', () => {
-    renderPane({ saveDisabledReason: t.actionReasons.duplicateActive });
+    renderPane({ saveDisabledReason: t.actionReasons.duplicateActive(1) });
 
     expect(screen.getByRole('button', { name: t.actions.submitCreate })).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.duplicateActive)).toBeInTheDocument();
+    expect(screen.getByText(t.actionReasons.duplicateActive(1))).toBeInTheDocument();
   });
 
   /**
@@ -257,12 +269,39 @@ describe('RuleFormPane — 저장 자리의 네 상태', () => {
     expect(screen.getByText(t.actionReasons.cancelLockedByOtherSave)).toBeInTheDocument();
   });
 
-  /** 나가는 중에는 **입력칸도 창 열기도** 잠긴다 — 확인한 것과 다른 것이 저장되면 안 된다. */
-  it('나가는 중에는 입력칸과 품목 찾기가 잠긴다', () => {
+  /**
+   * 나가는 중에는 **입력칸도 창 열기도** 잠긴다 — 확인한 것과 다른 것이 저장되면 안 된다.
+   *
+   * ⭐ **일곱 자리를 전부 잰다.** 둘만 재면 나머지 다섯의 잠금을 지워도 아무 감지기가 울지
+   * 않는다(검증 V1·V1b가 실측한 자리다). 이 잠금은 전례와 갈린 판단이라 더욱 그렇다 —
+   * 갈린 자리는 값으로 고정돼 있어야 다음 사본이 근거 없이 되돌리지 못한다.
+   */
+  it('나가는 중에는 일곱 자리가 전부 잠긴다', () => {
     renderPane({ isLocked: true });
 
+    /* 입력칸 다섯 */
     expect(screen.getByLabelText(t.fields.capacity)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.priorityNo)).toBeDisabled();
+    expect(screen.getByLabelText(t.fields.remarks)).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.fields.uom })).toBeDisabled();
+    /* 위치 칸은 관리수준으로도 잠기는 자리라 **문자열 검색에 걸리지 않는다** — 따로 잰다. */
+    expect(screen.getByRole('combobox', { name: t.fields.location })).toBeDisabled();
+    /* 창 열기 */
     expect(screen.getByRole('button', { name: t.actions.openItemPicker })).toBeDisabled();
+  });
+
+  /** 잠기지 않은 상태에서는 일곱 자리가 전부 열려 있다(음성 짝 — 늘 잠긴 칸이 있으면 헛통과한다). */
+  it('잠기지 않았으면 일곱 자리가 전부 열려 있다', () => {
+    renderPane({ isLocked: false });
+
+    expect(screen.getByLabelText(t.fields.capacity)).toBeEnabled();
+    expect(screen.getByLabelText(t.fields.priorityNo)).toBeEnabled();
+    expect(screen.getByLabelText(t.fields.remarks)).toBeEnabled();
+    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeEnabled();
+    expect(screen.getByRole('combobox', { name: t.fields.uom })).toBeEnabled();
+    expect(screen.getByRole('combobox', { name: t.fields.location })).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.actions.openItemPicker })).toBeEnabled();
   });
 });
 

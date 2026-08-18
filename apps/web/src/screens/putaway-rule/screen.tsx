@@ -10,7 +10,7 @@ import { findRuleBalance, toBalanceTargets, type RuleBalance } from './balance-l
 import { judgeCapacity } from './capacity-note';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { duplicateRuleIds } from './duplicate-badge';
-import { judgeDuplicate, type DuplicateProbe } from './duplicate-check';
+import { judgeDuplicate } from './duplicate-check';
 import {
   DEFAULT_FILTERS,
   clearFilter,
@@ -343,23 +343,22 @@ export const PutawayRuleScreen = () => {
   );
 
   /**
-   * 활성 중복 **조준 조회**는 폼이 열려 있을 때만 부른다. 읽기만 하는 사용자에게까지 나가면
-   * 규칙을 하나 고를 때마다 목록 경로로 두 번 나가는 화면이 된다.
+   * 활성 중복 **조준 조회**.
+   *
+   * **폼이 닫혀 있으면 두 번호가 `null`이라 조회가 열리지 않는다** — 「폼이 열렸는가」를 따로
+   * 넘기지 않는 이유다(같은 값을 두 번 말하면 언젠가 둘이 갈린다).
+   *
+   * **폼이 열리는 순간 부른다.** 「고친 것이 있을 때만」으로 미루면 첫 글자를 치는 순간 요청이
+   * 나가고, 그 사이 판정이 「불러오는 중」이라 **막 치기 시작한 자리에서 안내가 깜빡인다.**
+   * 미리 불러 두면 사용자가 저장을 누를 때쯤 답이 이미 와 있다.
    */
-  const duplicateProbe = useDuplicateProbe(formWarehouseId, formItemId, draft !== null);
-
-  const probeState: DuplicateProbe = {
-    items: duplicateProbe.data?.items ?? EMPTY_RULES,
-    total: duplicateProbe.data?.page.total ?? 0,
-    isLoading: duplicateProbe.isPending,
-    isError: duplicateProbe.isError,
-  };
+  const duplicateProbe = useDuplicateProbe(formWarehouseId, formItemId);
 
   /**
    * 저장이 만들려는 조합의 중복. **네 축이 전부 폼 값**이다 — 저장하면 그 값이 된다.
    * 자기 자신을 빼지 않으면 수정이 자기 때문에 늘 막힌다.
    */
-  const saveDuplicate = judgeDuplicate(probeState, {
+  const saveDuplicate = judgeDuplicate(duplicateProbe, {
     itemId: formItemId,
     warehouseId: formWarehouseId,
     locationId: formLocationId,
@@ -521,16 +520,22 @@ export const PutawayRuleScreen = () => {
   }, [editTargetKey]);
 
   /**
-   * **사용자가** 대상·조건을 바꾸는 길. 전송 중에는 지나가지 못한다(G-30 — 막는 것은 전역).
+   * **사용자가** 대상·조건을 바꿀 수 있는가. 전송 중에는 지나가지 못한다(G-30 — 막는 것은 전역).
    *
-   * 목록 행·조건 칩·쪽 이동은 컨트롤 자체가 잠기지 않으므로 **이 문이 마지막 방어다** —
+   * 목록 행·조건 칩·쪽 이동은 컨트롤 자체가 잠기지 않으므로 **이 판정이 마지막 방어다** —
    * 그 길로 대상이 바뀌면 앞 요청의 결과가 지금 보는 맥락에 나타난다. 잠긴 사유는 폼 구획이
    * 상시 문구로 밝힌다(`t.notes.savingLock`).
    *
-   * 쓰기 자신의 이동(등록 성공 뒤 새 규칙 열기)은 이 문을 지나지 않는다.
+   * ⭐ **문이 둘인데 판정은 하나다.** 조건·쪽은 `applyUserNavigation`이, 편집 대상은
+   * `navigateWithDraftGuard`가 지키는데 **둘 다 이 함수를 부른다** — 판정을 각자 두면
+   * 언젠가 하나가 갈려 한쪽 길만 열린 채로 남는다.
+   *
+   * 쓰기 자신의 이동(등록 성공 뒤 새 규칙 열기)은 이 판정을 지나지 않는다.
    */
+  const canUserNavigate = (): boolean => !isLocked;
+
   const applyUserNavigation = (next: URLSearchParams): void => {
-    if (isLocked) return;
+    if (!canUserNavigate()) return;
 
     applySearchParams(next);
   };
@@ -556,7 +561,12 @@ export const PutawayRuleScreen = () => {
    * 그것은 되돌릴 수 없는 조작이라 확인 없이 일어나면 안 된다.
    */
   const navigateWithDraftGuard = (next: URLSearchParams): void => {
-    if (isLocked) return;
+    /*
+     * ⛔ **잠금을 초안 확인보다 먼저 본다.** 뒤에 두면 잠긴 동안 파기 확인 창이 대신 열려,
+     * 사용자가 「버리기」를 골라 대상을 바꿀 수 있다 — 잠금이 사라져도 창이 대신 막아 주는
+     * 것처럼 보여 감지기까지 헛통과한다(뮤테이션 M8이 드러낸 형태).
+     */
+    if (!canUserNavigate()) return;
 
     if (isDirty) {
       setDialog({ kind: 'discard', next });
@@ -780,8 +790,19 @@ export const PutawayRuleScreen = () => {
         mode={isCreating ? 'create' : 'edit'}
         values={draft.values}
         onChange={changeValues}
-        /* 방금 고른 품목은 이름 풀이 목록에 없을 수 있어 창이 준 이름이 앞선다. */
-        itemLabel={draft.pickedItemLabel ?? itemLabelOf(Number(draft.values.itemId))}
+        /*
+         * 세 갈래다 — **창이 준 이름 → 이름 풀이 → 「아직 고르지 않았습니다」**.
+         *
+         * ⛔ **고르지 않은 칸에서 번호를 지어내지 않는다.** `Number('')`는 `0`이고 그 번호로
+         * 참조를 풀면 목록에 없어 「알 수 없음」이 서는데, 이 슬라이스에서 그 낱말은
+         * *값이 잘못됐다*는 뜻이다 — 아직 고르지 않은 것과 깨진 값을 사용자가 가를 수 없게 된다.
+         * 널 안전한 `formItemId`를 쓰는 이유이며, 「번호 0으로 나가는」 형태를 만들지 않는
+         * `rule-request.ts`의 규율과 같은 자리다.
+         */
+        itemLabel={
+          draft.pickedItemLabel ??
+          (formItemId === null ? t.form.itemNotChosen : itemLabelOf(formItemId))
+        }
         warehouseLabel={warehouseLabelOf(draft.values.warehouseId)}
         onOpenItemPicker={() => {
           setDialog({ kind: 'itemPicker' });
@@ -811,8 +832,20 @@ export const PutawayRuleScreen = () => {
         uomPlaceholder={optionsPlaceholder(uoms, t.form.noUomOptions)}
         capacityNote={capacityNote}
         uomLabel={uomLabelOf}
+        /**
+         * **두 겹으로 억제한다.**
+         *
+         * ① `'incomplete'` — 겨눌 조합이 없으면 확인을 **시도한 적이 없다.** 그때 「확인하지
+         *    못했습니다」는 거짓이다.
+         * ② `(isCreating || isDirty)` — **전례에서 그대로 가져온 인자**다(「저장할 뜻이 있을
+         *    때만 밝힌다」). 조준 조회는 규칙을 고르기만 해도 나가므로, 이것이 없으면 **구경만
+         *    하는 사용자에게 저장 안내**가 뜬다. 안내가 걸리는 자리를 저장 판정이 걸리는
+         *    자리와 맞춘다.
+         */
         duplicateUnknownNote={
-          saveDuplicate.kind === 'unknown' && saveDuplicate.reason !== 'incomplete'
+          (isCreating || isDirty) &&
+          saveDuplicate.kind === 'unknown' &&
+          saveDuplicate.reason !== 'incomplete'
             ? t.notes.duplicateUnknown
             : null
         }
