@@ -31,6 +31,25 @@ describe('routingToFormValues', () => {
 
     expect(routingToFormValues(withoutEffectiveTo).effectiveTo).toBe('');
   });
+
+  /*
+   * 계약이 유효시작을 선택으로 풀었다(#201 과 같은 리비전) — 화면은 아직 필수로 막지만
+   * 응답에는 키가 없을 수 있다. 널·없음을 빈 문자열로 모으지 않으면 undefined 가 입력칸으로 새어
+   * 제어 컴포넌트가 비제어로 바뀐다.
+   */
+  it('유효시작 키 자체가 없어도 빈 문자열이 된다', () => {
+    const { effectiveFrom: _ignored, ...withoutEffectiveFrom } = draftRevision;
+
+    expect(routingToFormValues(withoutEffectiveFrom).effectiveFrom).toBe('');
+  });
+
+  it('유효시작이 없는 응답에서도 폼 값에 undefined 가 하나도 없다', () => {
+    const { effectiveFrom: _ignored, ...withoutEffectiveFrom } = draftRevision;
+    const values = routingToFormValues(withoutEffectiveFrom);
+
+    expect(values.routingCode).toBe(draftRevision.routingCode);
+    expect(Object.values(values).some((value) => value === undefined)).toBe(false);
+  });
 });
 
 describe('toRoutingUpdate', () => {

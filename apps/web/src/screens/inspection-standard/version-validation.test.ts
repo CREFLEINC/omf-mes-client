@@ -7,7 +7,7 @@ const values = (overrides: Partial<VersionFormValues> = {}): VersionFormValues =
   effectiveFrom: '2026-08-01',
   effectiveTo: '',
   samplingMethodCode: 'PENDING',
-  samplingQty: '',
+  samplingRatio: '',
   aqlValue: '',
   acceptanceNumber: '',
   rejectionNumber: '',
@@ -122,24 +122,53 @@ describe('validateVersionForm — 판정 개수', () => {
   });
 });
 
-describe('validateVersionForm — 샘플 수량', () => {
-  /* 계약 minimum: 0 — 0 은 허용된다. */
-  it('샘플 수량 0을 통과시키고 음수를 거부한다', () => {
-    expect(validateVersionForm(values({ samplingQty: '0' })).samplingQty).toBeUndefined();
-    expect(validateVersionForm(values({ samplingQty: '-1' })).samplingQty).toBe(
-      '샘플 수량은 0 이상의 개수여야 합니다.',
+describe('validateVersionForm — 샘플 비율', () => {
+  const RATIO_INVALID = '샘플 비율(%)은 0보다 크고 100 이하인 값이어야 합니다.';
+
+  /*
+   * 계약 exclusiveMinimum: 0 — **0 은 통과가 아니라 위반이다**(#201).
+   * 종전 규칙(minimum: 0)에서는 0 이 통과였다. 뒤집힌 자리라 경계를 양쪽에서 못박는다.
+   */
+  it('비율 0을 거부한다', () => {
+    expect(validateVersionForm(values({ samplingRatio: '0' })).samplingRatio).toBe(RATIO_INVALID);
+  });
+
+  /* 계약 maximum: 100 — 상한은 경계를 포함한다. 전수 검사(100%)가 정상 값이다. */
+  it('비율 100을 통과시킨다', () => {
+    expect(validateVersionForm(values({ samplingRatio: '100' })).samplingRatio).toBeUndefined();
+  });
+
+  it('비율 100.1을 거부한다', () => {
+    expect(validateVersionForm(values({ samplingRatio: '100.1' })).samplingRatio).toBe(
+      RATIO_INVALID,
     );
   });
 
-  /* 계약이 number 다 — 정수로 좁히면 계약이 허용한 값을 넣을 수 없다. */
-  it('소수를 막지 않는다', () => {
-    expect(validateVersionForm(values({ samplingQty: '2.5' })).samplingQty).toBeUndefined();
+  /* 계약 format: double — 정수로 좁히면 계약이 허용한 값을 넣을 수 없다(#201 ③). */
+  it('소수를 통과시킨다 — 정수로 좁히지 않는다', () => {
+    expect(validateVersionForm(values({ samplingRatio: '0.5' })).samplingRatio).toBeUndefined();
+    expect(validateVersionForm(values({ samplingRatio: '30.5' })).samplingRatio).toBeUndefined();
   });
 
-  /* 샘플 수량 오류에 「비율」·「%」를 쓰지 않는다 — 라벨과 같은 말이어야 뜻이 선다. */
-  it('오류 문구에 비율이나 백분율을 쓰지 않는다', () => {
-    const message = validateVersionForm(values({ samplingQty: '-1' })).samplingQty ?? '';
+  it('음수와 숫자가 아닌 값을 거부한다', () => {
+    expect(validateVersionForm(values({ samplingRatio: '-1' })).samplingRatio).toBe(RATIO_INVALID);
+    expect(validateVersionForm(values({ samplingRatio: '한' })).samplingRatio).toBe(RATIO_INVALID);
+  });
 
-    expect(message).not.toMatch(/비율|%/);
+  /* 선택 필드다 — 빈 칸은 「지정하지 않음」이라 검사 대상이 아니다. 0 과 섞지 않는다. */
+  it('빈 칸은 검사하지 않는다', () => {
+    expect(validateVersionForm(values({ samplingRatio: '' })).samplingRatio).toBeUndefined();
+  });
+
+  /*
+   * 종전에는 「오류 문구에 비율·% 를 쓰지 않는다」가 규칙이었다(저장 값이 개수였다).
+   * #201 로 그 규칙이 정반대가 됐다 — 라벨과 같은 말이어야 무엇을 고칠지 알 수 있다.
+   */
+  it('오류 문면이 「비율」과 「%」를 함께 담고 「수량」·「개수」를 담지 않는다', () => {
+    const message = validateVersionForm(values({ samplingRatio: '0' })).samplingRatio ?? '';
+
+    expect(message).toMatch(/비율/);
+    expect(message).toMatch(/%/);
+    expect(message).not.toMatch(/수량|개수/);
   });
 });

@@ -18,7 +18,7 @@ export const versionToFormValues = (version: InspectionPlanVersion): VersionForm
   effectiveFrom: version.effectiveFrom,
   effectiveTo: version.effectiveTo ?? '',
   samplingMethodCode: version.samplingMethodCode,
-  samplingQty: optionalNumberToText(version.samplingQty),
+  samplingRatio: optionalNumberToText(version.samplingRatio),
   aqlValue: optionalNumberToText(version.aqlValue),
   acceptanceNumber: optionalNumberToText(version.acceptanceNumber),
   rejectionNumber: optionalNumberToText(version.rejectionNumber),
@@ -31,7 +31,7 @@ export const emptyVersionFormValues = (): VersionFormValues => ({
   effectiveFrom: '',
   effectiveTo: '',
   samplingMethodCode: '',
-  samplingQty: '',
+  samplingRatio: '',
   aqlValue: '',
   acceptanceNumber: '',
   rejectionNumber: '',
@@ -50,8 +50,11 @@ export const toVersionUpdate = (values: VersionFormValues): InspectionPlanVersio
   effectiveFrom: values.effectiveFrom,
   effectiveTo: optionalText(values.effectiveTo),
   samplingMethodCode: values.samplingMethodCode,
-  // 개수다. 비율로 환산하지 않는다 — 환산하면 30이 0.3으로 저장된다.
-  samplingQty: optionalTextToNumber(values.samplingQty),
+  /*
+   * 비율(%)이다. **수량으로 환산하지 않는다** — 환산하려면 로트 크기가 필요하고
+   * 그것은 기준을 등록하는 지금이 아니라 검사하는 시점에 정해진다(#201).
+   */
+  samplingRatio: optionalTextToNumber(values.samplingRatio),
   aqlValue: optionalTextToNumber(values.aqlValue),
   acceptanceNumber: optionalTextToNumber(values.acceptanceNumber),
   rejectionNumber: optionalTextToNumber(values.rejectionNumber),

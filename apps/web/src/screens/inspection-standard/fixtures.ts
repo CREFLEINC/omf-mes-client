@@ -59,6 +59,8 @@ export const inspectionPlanFixtures: InspectionPlan[] = [
  * 4002는 **작성중**, 4001은 **확정**이다 — 편집 잠금 대비를 한 픽스처에서 볼 수 있다.
  * `acceptanceNumber`를 일부러 **0**으로 둔다: 계약이 합격판정개수에만 0을 허용하므로
  * 0이 「지정하지 않음」으로 뭉개지지 않는지 확인하는 것이 이 값의 목적이다.
+ * `samplingRatio`는 정수(30)와 **소수(2.5)**를 함께 둔다: 계약이 double 이라
+ * 자릿수를 잃는 변환이 섞이면 소수 쪽에서만 드러난다(#201 ③).
  */
 export const inspectionPlanVersionFixtures: InspectionPlanVersion[] = [
   {
@@ -68,7 +70,7 @@ export const inspectionPlanVersionFixtures: InspectionPlanVersion[] = [
     effectiveFrom: '2026-08-01',
     effectiveTo: null,
     samplingMethodCode: 'PENDING',
-    samplingQty: 30,
+    samplingRatio: 30,
     aqlValue: null,
     acceptanceNumber: 0,
     rejectionNumber: 2,
@@ -84,7 +86,7 @@ export const inspectionPlanVersionFixtures: InspectionPlanVersion[] = [
     effectiveFrom: '2026-07-01',
     effectiveTo: '2026-07-31',
     samplingMethodCode: 'PENDING',
-    samplingQty: 20,
+    samplingRatio: 2.5,
     aqlValue: 1,
     acceptanceNumber: 1,
     rejectionNumber: 3,

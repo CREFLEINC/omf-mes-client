@@ -14,7 +14,12 @@ type RoutingCreate = components['schemas']['RoutingCreate'];
 
 export const routingToFormValues = (routing: Routing): RoutingHeaderFormValues => ({
   routingCode: routing.routingCode,
-  effectiveFrom: routing.effectiveFrom,
+  /*
+   * 계약이 유효시작을 **선택**으로 풀었다(#201 과 같은 리비전). 화면은 아직 필수로 막는다 —
+   * 완화는 사용자 흐름 변경이라 대응 통지를 확인한 뒤에 한다(#201 착수 코멘트로 질의).
+   * 여기서는 없는 값이 입력칸으로 새지 않게 막는 것까지만 한다.
+   */
+  effectiveFrom: routing.effectiveFrom ?? '',
   // 널·없음을 모두 빈 문자열로 모은다 — 입력칸의 「지정하지 않음」이 하나의 값이어야 한다.
   effectiveTo: routing.effectiveTo ?? '',
 });

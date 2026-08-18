@@ -1469,7 +1469,7 @@ const versionForm = (): HTMLElement => screen.getByRole('region', { name: '버�
 
 /** 버전 상세가 도착해 폼이 그려질 때까지 기다린다 — 불러오는 중 구획과 폼 구획은 다른 컴포넌트다. */
 const awaitVersionForm = async (): Promise<HTMLElement> => {
-  await screen.findByLabelText('샘플 수량(개)');
+  await screen.findByLabelText('샘플 비율(%)');
 
   return versionForm();
 };
@@ -1488,7 +1488,7 @@ const renderSelectedVersion = (extraRoutes: StubRoute[] = [], search = '?plan=30
     search,
   );
 
-describe('InspectionStandardScreen — 버전 상세와 샘플 수량 표기', () => {
+describe('InspectionStandardScreen — 버전 상세와 샘플 비율 표기', () => {
   it('버전을 고르면 상세 요청이 한 번 나가고 폼이 응답 값으로 채워진다', async () => {
     const { requests, user } = renderScreen([
       planListRoute(),
@@ -1501,7 +1501,7 @@ describe('InspectionStandardScreen — 버전 상세와 샘플 수량 표기', (
 
     await user.click(await screen.findByRole('button', { name: '버전 2' }));
 
-    expect(await screen.findByLabelText('샘플 수량(개)')).toHaveValue(30);
+    expect(await screen.findByLabelText('샘플 비율(%)')).toHaveValue(30);
     expect(requestsTo(requests, VERSION_DETAIL_PATH)).toHaveLength(1);
   });
 
@@ -1523,15 +1523,16 @@ describe('InspectionStandardScreen — 버전 상세와 샘플 수량 표기', (
   });
 
   /*
-   * 라벨을 「비율」로 쓰면 30을 넣은 사람이 30%로 오해한다 — 단위를 라벨에 박고
-   * 그 아래 한 줄로 무엇이 아닌지까지 밝힌다.
+   * 단위를 라벨에 박지 않으면 30을 30개로 읽는다. 「비율이 아니라 개수」를 밝히던
+   * 보조 안내는 그 어긋남이 사라져 함께 없앴다(#201).
    */
-  it('샘플 수량 라벨이 단위를 담고 보조 안내가 비율이 아님을 밝힌다', async () => {
+  it('샘플 비율 라벨이 단위를 담고 옛 보조 안내가 남지 않는다', async () => {
     renderSelectedVersion();
 
-    expect(await screen.findByLabelText('샘플 수량(개)')).toBeInTheDocument();
-    expect(screen.getByText('비율(%)이 아니라 검사할 개수입니다.')).toBeInTheDocument();
-    expect(screen.queryByLabelText(/샘플 비율/)).not.toBeInTheDocument();
+    // 음성 단언은 짝 양성과 같은 시점에 잰다 — 폼이 도착한 뒤에 잰다.
+    expect(await screen.findByLabelText('샘플 비율(%)')).toBeInTheDocument();
+    expect(screen.queryByText(/비율\(%\)이 아니라/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/샘플 수량/)).not.toBeInTheDocument();
   });
 
   it('0인 합격판정개수가 빈 칸으로 뭉개지지 않는다', async () => {
@@ -1562,7 +1563,7 @@ describe('InspectionStandardScreen — 버전 상세와 샘플 수량 표기', (
     ]);
 
     expect(await screen.findByText('버전 정보를 불러오지 못했습니다.')).toBeInTheDocument();
-    expect(screen.queryByLabelText('샘플 수량(개)')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('샘플 비율(%)')).not.toBeInTheDocument();
   });
 });
 
@@ -1571,7 +1572,7 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
 
     const form = await awaitVersionForm();
-    fireEvent.change(within(form).getByLabelText('샘플 수량(개)'), { target: { value: '40' } });
+    fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
     await user.click(within(form).getByRole('button', { name: '저장' }));
 
     await screen.findByText('저장했습니다');
@@ -1583,10 +1584,34 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     expect(put?.headers.get('If-Match')).toBe('"11"');
 
     const body = JSON.parse(put?.body ?? '{}') as Record<string, unknown>;
-    expect(body.samplingQty).toBe(40);
+    expect(body.samplingRatio).toBe(40);
     expect('inspectionPlanId' in body).toBe(false);
     expect('planVersion' in body).toBe(false);
     expect('statusCode' in body).toBe(false);
+  });
+
+  /*
+   * 비율은 그대로 실린다 — 수량으로 환산하려면 로트 크기가 필요하고 그것은 검사 시점에
+   * 정해진다(#201 ④). 옛 이름을 함께 실으면 어느 쪽이 이기는지를 또 정해야 한다.
+   */
+  it('저장 본문에 비율이 입력값 그대로 실리고 옛 수량 키는 실리지 않는다', async () => {
+    const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
+
+    const form = await awaitVersionForm();
+    fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '30.5' } });
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+
+    const put = requests.find(
+      (request) => request.method === 'PUT' && request.url.pathname === VERSION_DETAIL_PATH,
+    );
+    const body = JSON.parse(put?.body ?? '{}') as Record<string, unknown>;
+
+    // 음성 단언은 짝 양성과 같은 시점에 잰다 — 값이 실려 있음을 먼저 확인한다.
+    expect(body.samplingRatio).toBe(30.5);
+    expect(Object.keys(body)).toContain('samplingRatio');
+    expect(Object.keys(body)).not.toContain('samplingQty');
   });
 
   it('유효기간이 역전되면 두 칸 모두에 오류를 내고 보내지 않는다', async () => {
@@ -1624,17 +1649,29 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     ).toHaveLength(0);
   });
 
-  /* 계약의 CHECK 가 서로 다르다 — 하나로 뭉뚱그리면 0이 잘못 막히거나 잘못 통과한다. */
-  it('불합격판정개수 0은 막히고 샘플 수량 음수도 막힌다', async () => {
-    const { user } = renderSelectedVersion([versionSaveRoute()]);
+  /*
+   * 세 칸의 하한 규칙이 서로 다르다 — 하나로 뭉뚱그리면 0이 잘못 막히거나 잘못 통과한다.
+   * 샘플 비율의 0은 **종전에는 통과였다**(수량 minimum: 0). #201 로 뒤집힌 자리다.
+   */
+  it('불합격판정개수 0과 샘플 비율 0은 막히고 합격판정개수 0은 막히지 않는다', async () => {
+    const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
 
     const form = await awaitVersionForm();
     fireEvent.change(within(form).getByLabelText('불합격판정개수'), { target: { value: '0' } });
-    fireEvent.change(within(form).getByLabelText('샘플 수량(개)'), { target: { value: '-1' } });
+    fireEvent.change(within(form).getByLabelText('합격판정개수'), { target: { value: '0' } });
+    fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '0' } });
     await user.click(within(form).getByRole('button', { name: '저장' }));
 
     expect(await screen.findByText('불합격판정개수는 0보다 큰 숫자여야 합니다.')).toBeInTheDocument();
-    expect(screen.getByText('샘플 수량은 0 이상의 개수여야 합니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('샘플 비율(%)은 0보다 크고 100 이하인 값이어야 합니다.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('합격판정개수는 0 이상의 숫자여야 합니다.')).not.toBeInTheDocument();
+    expect(
+      requests.filter(
+        (request) => request.method === 'PUT' && request.url.pathname === VERSION_DETAIL_PATH,
+      ),
+    ).toHaveLength(0);
   });
 
   it('충돌이면 「최신 불러오기」가 나온다', async () => {
@@ -1643,7 +1680,7 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     ]);
 
     const form = await awaitVersionForm();
-    fireEvent.change(within(form).getByLabelText('샘플 수량(개)'), { target: { value: '40' } });
+    fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
     await user.click(within(form).getByRole('button', { name: '저장' }));
 
     expect(
@@ -1660,7 +1697,7 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
       '?plan=3001&ver=4001',
     );
 
-    expect(await screen.findByLabelText('샘플 수량(개)')).toBeDisabled();
+    expect(await screen.findByLabelText('샘플 비율(%)')).toBeDisabled();
     expect(screen.getByLabelText('유효시작')).toBeDisabled();
     expect(screen.getByLabelText('합격판정개수')).toBeDisabled();
     expect(screen.getByRole('combobox', { name: '샘플링 방법' })).toBeDisabled();
@@ -1678,7 +1715,7 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
       '?plan=3001&ver=4001',
     );
 
-    expect(await screen.findByLabelText('샘플 수량(개)')).toBeDisabled();
+    expect(await screen.findByLabelText('샘플 비율(%)')).toBeDisabled();
     expect(
       screen.getByText('폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
     ).toBeInTheDocument();
@@ -1690,7 +1727,7 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
       versionDetailRoute({ ...inspectionPlanVersionFixtures[0]!, statusCode: 'IN_REVIEW' }),
     ]);
 
-    expect(await screen.findByLabelText('샘플 수량(개)')).toBeEnabled();
+    expect(await screen.findByLabelText('샘플 비율(%)')).toBeEnabled();
   });
 });
 
@@ -1773,7 +1810,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     renderSelectedVersion();
 
     const form = await awaitVersionForm();
-    fireEvent.change(within(form).getByLabelText('샘플 수량(개)'), { target: { value: '40' } });
+    fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
 
     expect(within(form).getByRole('button', { name: '확정' })).toBeDisabled();
     expect(within(versionPane()).getByRole('button', { name: '신규 버전 발행' })).toBeDisabled();
@@ -1801,7 +1838,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
       '?plan=3001&ver=4001',
     );
 
-    await screen.findByLabelText('샘플 수량(개)');
+    await screen.findByLabelText('샘플 비율(%)');
     const form = versionForm();
 
     await user.click(within(form).getByRole('button', { name: '폐기' }));
@@ -2218,7 +2255,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
     await user.click(within(itemPane()).getByRole('button', { name: '2번 항목 삭제' }));
 
-    fireEvent.change(within(versionForm()).getByLabelText('샘플 수량(개)'), {
+    fireEvent.change(within(versionForm()).getByLabelText('샘플 비율(%)'), {
       target: { value: '40' },
     });
 
@@ -2386,7 +2423,7 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     );
 
     const form = await awaitVersionForm();
-    fireEvent.change(within(form).getByLabelText('샘플 수량(개)'), { target: { value: '40' } });
+    fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
 
     // 고친 상태에서는 발행이 막힌다 — 여기까지는 의도한 동작이다.
     expect(within(versionPane()).getByRole('button', { name: '신규 버전 발행' })).toBeDisabled();

@@ -14,7 +14,7 @@ const filled: VersionFormValues = {
   effectiveFrom: '2026-08-01',
   effectiveTo: '2026-08-31',
   samplingMethodCode: 'PENDING',
-  samplingQty: '30',
+  samplingRatio: '30',
   aqlValue: '1',
   acceptanceNumber: '0',
   rejectionNumber: '2',
@@ -29,7 +29,7 @@ describe('versionToFormValues', () => {
       effectiveFrom: '2026-08-01',
       effectiveTo: '',
       samplingMethodCode: 'PENDING',
-      samplingQty: '30',
+      samplingRatio: '30',
       aqlValue: '',
       acceptanceNumber: '0',
       rejectionNumber: '2',
@@ -42,6 +42,18 @@ describe('versionToFormValues', () => {
   /* 0과 「지정하지 않음」은 다르다 — 널만 빈 문자열이 된다. */
   it('0은 빈 문자열이 되지 않는다', () => {
     expect(versionToFormValues(inspectionPlanVersionFixtures[0]!).acceptanceNumber).toBe('0');
+  });
+
+  /* 계약이 소수를 허용한다 — 자릿수를 잃으면 2.5%가 2% 또는 3%가 된다. */
+  it('소수 비율의 자릿수를 잃지 않는다', () => {
+    expect(versionToFormValues(inspectionPlanVersionFixtures[1]!).samplingRatio).toBe('2.5');
+  });
+
+  /* 선택 필드라 키 자체가 없는 응답이 정상이다 — undefined 가 입력칸으로 새면 비제어 경고가 난다. */
+  it('비율 키가 없는 응답은 빈 문자열이 된다', () => {
+    const { samplingRatio: _omitted, ...withoutRatio } = inspectionPlanVersionFixtures[0]!;
+
+    expect(versionToFormValues(withoutRatio).samplingRatio).toBe('');
   });
 });
 
@@ -59,7 +71,7 @@ describe('toVersionUpdate', () => {
       effectiveFrom: '2026-08-01',
       effectiveTo: '2026-08-31',
       samplingMethodCode: 'PENDING',
-      samplingQty: 30,
+      samplingRatio: 30,
       aqlValue: 1,
       acceptanceNumber: 0,
       rejectionNumber: 2,
@@ -73,7 +85,7 @@ describe('toVersionUpdate', () => {
     const body = toVersionUpdate({
       ...filled,
       effectiveTo: '',
-      samplingQty: '',
+      samplingRatio: '',
       aqlValue: '',
       acceptanceNumber: '',
       rejectionNumber: '',
@@ -82,9 +94,36 @@ describe('toVersionUpdate', () => {
     });
 
     expect(body.effectiveTo).toBeNull();
-    expect(body.samplingQty).toBeNull();
+    expect(body.samplingRatio).toBeNull();
     expect(body.acceptanceNumber).toBeNull();
     expect(body.frequencyIntervalUomCode).toBeNull();
+  });
+
+  /*
+   * **환산하지 않는다**(#201 ④). 실제 검사 수량은 검사 시점에 로트 크기로 정해지는 파생값이라
+   * 이 화면이 정하지 않는다. 100 으로 곱하거나 나누면 30%가 0.3% 또는 3000%로 저장된다.
+   */
+  it('입력한 비율을 그대로 싣는다 — 100으로 곱하거나 나누지 않는다', () => {
+    const body = toVersionUpdate({ ...filled, samplingRatio: '30' });
+
+    expect(body.samplingRatio).toBe(30);
+    expect(body.samplingRatio).not.toBe(0.3);
+    expect(body.samplingRatio).not.toBe(3000);
+  });
+
+  it('소수 비율도 자릿수 그대로 싣는다', () => {
+    expect(toVersionUpdate({ ...filled, samplingRatio: '30.5' }).samplingRatio).toBe(30.5);
+    expect(toVersionUpdate({ ...filled, samplingRatio: '2.5' }).samplingRatio).toBe(2.5);
+  });
+
+  /* 두 필드를 함께 두지 않는다(#201 ⛔) — 어긋난 자료가 쌓이지 않게 옛 이름은 본문에서 사라진다. */
+  it('본문 키 목록에 옛 수량 필드가 없다', () => {
+    const body = toVersionUpdate(filled) as Record<string, unknown>;
+
+    // 음성 단언은 짝 양성과 같은 시점에 잰다 — 값이 실려 있음을 먼저 확인한다.
+    expect(body.samplingRatio).toBe(30);
+    expect(Object.keys(body)).toContain('samplingRatio');
+    expect(Object.keys(body)).not.toContain('samplingQty');
   });
 
   /*
@@ -120,7 +159,7 @@ describe('isSameVersionValues', () => {
   });
 
   it('한 칸이라도 다르면 다르다고 본다', () => {
-    expect(isSameVersionValues(filled, { ...filled, samplingQty: '31' })).toBe(false);
+    expect(isSameVersionValues(filled, { ...filled, samplingRatio: '31' })).toBe(false);
     expect(isSameVersionValues(filled, { ...filled, effectiveTo: '' })).toBe(false);
   });
 });
