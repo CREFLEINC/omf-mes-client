@@ -121,8 +121,8 @@ describe('submitDisabledReason', () => {
   it('사유가 두 칸을 함께 말하고 풀리는 조건을 담는다', () => {
     const reason = t.actionReasons.incomplete;
 
-    expect(reason).toContain('아이디');
-    expect(reason).toContain('비밀번호');
+    expect(reason).toContain(t.fields.loginId);
+    expect(reason).toContain(t.fields.password);
     expect(reason).toContain('입력하면');
   });
 
@@ -142,6 +142,49 @@ describe('submitDisabledReason', () => {
 
     for (const candidate of cases) {
       expect(submitDisabledReason(candidate) === undefined).toBe(canSubmit(candidate));
+    }
+  });
+});
+
+/**
+ * 문구 자체의 사실을 재는 자리다 — 렌더와 무관하므로 순수 시험이 든다.
+ *
+ * **리터럴을 쓰지 않고 i18n 키로 잰다.** 문구를 다듬을 때 리터럴로 적힌 감지기는 함께 고쳐야
+ * 하고, 고치는 김에 규칙까지 느슨해진다. 키로 재면 문구가 바뀌어도 **규칙만 남는다.**
+ */
+describe('login 블록의 문구 규율', () => {
+  /**
+   * **비활성 사유는 그 컨트롤의 이름으로 시작한다**(배치 규범 4-5 · `ko.ts` 작성 규칙).
+   * 잠긴 컨트롤은 포커스를 받지 못해, 사유가 시각적으로 끊겼을 때 주어가 없으면 복원할 단서가
+   * 없다. **사유가 늘어도 이 규칙이 따라붙게** 블록 전체를 훑는다.
+   */
+  it('모든 비활성 사유가 로그인 버튼 이름으로 시작한다', () => {
+    const reasons = Object.values(t.actionReasons);
+
+    expect(reasons.length).toBeGreaterThan(0);
+
+    for (const reason of reasons) {
+      expect(reason.startsWith(t.actions.submit)).toBe(true);
+    }
+  });
+
+  /**
+   * ⛔ **한쪽 칸만 지목하는 문장을 두지 않는다**(공유계약 F-7 · 완료 조건 T2-8).
+   *
+   * 「아이디가 없습니다」도 「비밀번호가 틀렸습니다」도 **계정이 있는지를 흘린다.** 두 칸을
+   * 함께 말하거나 둘 다 말하지 않거나 둘 중 하나여야 한다. 칸 이름 자체(라벨)는 이 규칙의
+   * 대상이 아니다 — 규칙은 **사유와 실패 문구**에 걸린다.
+   */
+  it('사유와 실패 문구가 한쪽 칸만 지목하지 않는다', () => {
+    const sentences = [...Object.values(t.actionReasons), ...Object.values(t.banner)];
+
+    expect(sentences.length).toBeGreaterThan(0);
+
+    for (const sentence of sentences) {
+      const namesLoginId = sentence.includes(t.fields.loginId);
+      const namesPassword = sentence.includes(t.fields.password);
+
+      expect(namesLoginId).toBe(namesPassword);
     }
   });
 });

@@ -1,8 +1,17 @@
 import { messages } from '@omf-mes/i18n';
-import { createEvent, fireEvent, render, screen } from '@testing-library/react';
+import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation, useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
+import {
+  createStubFetch,
+  jsonResponse,
+  renderWithProviders,
+  type StubFetch,
+  type StubRoute,
+} from '../../test/api-harness';
+import { errorResponseBody, loginFailureBody, sessionBody } from './fixtures';
 import { LOGIN_ID_MAX_LENGTH } from './login-draft';
 import { LoginScreen } from './screen';
 
@@ -12,14 +21,68 @@ const t = messages.login;
 const SYNTHETIC_LOGIN_ID = 'SYN-LOGIN-01';
 const SYNTHETIC_PASSWORD = 'SYN-PW-VALUE-01';
 
+const SESSIONS_PATH = '/app/sessions';
+/** 로그인 화면이 서 있는 주소와, 성공했을 때 가야 할 곳. */
+const LOGIN_ROUTE = '/login';
+const HOME_ROUTE = '/';
+
+const sessionsRoute = (respond: (request: Request) => Response): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === SESSIONS_PATH,
+  respond,
+});
+
+/** 주소가 실제로 어떻게 바뀌는지 본다 — 이동 규칙을 판정할 유일한 근거다. */
+const LocationProbe = () => {
+  const location = useLocation();
+
+  return <output data-testid="location">{location.pathname}</output>;
+};
+
+/** 한 칸 뒤로 간다. **히스토리가 몇 칸 늘었는지를 판정하는 유일한 수단**이다. */
+const BackProbe = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigate(-1);
+      }}
+    >
+      뒤로
+    </button>
+  );
+};
+
+interface RenderOptions {
+  /** 주지 않으면 하네스가 **모든 요청에 던진다** — 「이 갈래는 서버를 부르지 않는다」가 그대로 잰다. */
+  fetch?: StubFetch;
+  /** 주소 이동을 재는 시험에서만 켠다 — 다른 시험의 DOM을 넓히지 않는다. */
+  probes?: boolean;
+}
+
 /**
- * **프로바이더 없이 렌더한다.** 이 회차의 화면은 서버도 주소도 부르지 않으므로, 하네스를
- * 끼우면 「무엇이 없어도 서는가」가 흐려진다. 나중에 조회가 붙어도 이 자리는 그대로 둔다 —
- * 여기서 하네스가 필요해지는 순간이 곧 「폼이 자기 힘으로 서지 못하게 됐다」는 신호다.
+ * **이 회차부터 하네스를 끼운다.** 앞 회차의 이 자리에는 「프로바이더 없이 렌더한다 —
+ * 여기서 하네스가 필요해지는 순간이 곧 폼이 자기 힘으로 서지 못하게 됐다는 신호다」가
+ * 적혀 있었다. 그 순간이 이 회차다: 화면이 서버를 부르고 주소를 옮긴다.
+ *
+ * **기본값은 스텁 없는 하네스다.** 요청이 나가면 하네스가 던지므로, 서버를 부르지 않아야 할
+ * 갈래(폼 렌더·활성 조건)에서는 「부르지 않았다」가 저절로 측정된다.
  */
-const renderScreen = () => {
+const renderScreen = (options: RenderOptions = {}) => {
   const user = userEvent.setup();
-  const result = render(<LoginScreen />);
+  const result = renderWithProviders(
+    <>
+      <LoginScreen />
+      {options.probes === true && (
+        <>
+          <LocationProbe />
+          <BackProbe />
+        </>
+      )}
+    </>,
+    { fetch: options.fetch, route: LOGIN_ROUTE },
+  );
 
   return { user, ...result };
 };
@@ -27,6 +90,13 @@ const renderScreen = () => {
 const loginIdBox = (): HTMLElement => screen.getByLabelText(t.fields.loginId);
 const passwordBox = (): HTMLElement => screen.getByLabelText(t.fields.password);
 const submitButton = (): HTMLElement => screen.getByRole('button', { name: t.actions.submit });
+const currentPath = (): string => screen.getByTestId('location').textContent ?? '';
+
+/** 두 칸을 채워 로그인 버튼을 연다. 보내는 갈래의 시험은 전부 여기서 시작한다. */
+const fillCredentials = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.type(loginIdBox(), SYNTHETIC_LOGIN_ID);
+  await user.type(passwordBox(), SYNTHETIC_PASSWORD);
+};
 
 describe('LoginScreen — 셸 밖에 선다', () => {
   /**
@@ -235,5 +305,229 @@ describe('LoginScreen — 폼의 기본 제출', () => {
     renderScreen();
 
     expect(submitButton()).toHaveAttribute('type', 'submit');
+  });
+});
+
+describe('LoginScreen — 성공하면 관리웹으로 넘어간다', () => {
+  /**
+   * **`replace`로 넘긴다**(완료 조건 T2-4). 밀어 넣으면 로그인 화면이 히스토리에 남아
+   * 뒤로가기 한 번에 **이미 로그인한 사람이 로그인 화면**으로 되돌아간다. 그 화면은 자기가
+   * 로그인된 줄 모르므로 사용자는 자격을 한 번 더 친다.
+   *
+   * 뒤로가기를 **실제로 눌러** 잰다 — 히스토리가 늘었는지는 그 방법으로만 알 수 있다.
+   */
+  it('200이면 관리웹 첫 화면으로 넘어가고 뒤로가기가 로그인으로 돌아오지 않는다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([sessionsRoute(() => jsonResponse(sessionBody()))]),
+      probes: true,
+    });
+
+    expect(currentPath()).toBe(LOGIN_ROUTE);
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(HOME_ROUTE);
+    });
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    expect(currentPath()).not.toBe(LOGIN_ROUTE);
+  });
+});
+
+describe('LoginScreen — 실패를 어떻게 알리는가', () => {
+  const failing = (status: number, body: unknown): StubFetch =>
+    createStubFetch([sessionsRoute(() => jsonResponse(body, { status }))]);
+
+  /**
+   * ⛔ **어느 칸이 틀렸는지 말하지 않는다**(공유계약 F-7). 「없는 아이디입니다」류의 문구는
+   * 계정이 있는지를 흘려, 아이디 목록을 만드는 사람에게 그대로 답이 된다.
+   */
+  it('401이면 뭉뚱그린 문구가 화면 수준 배너로 뜬다', async () => {
+    const { user } = renderScreen({ fetch: failing(401, loginFailureBody()) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    const banner = await screen.findByRole('alert');
+
+    expect(banner).toHaveTextContent(t.banner.mismatch);
+  });
+
+  /**
+   * **인라인으로 내리지 않는다**(공유계약 G-1 · F-7). 칸 옆에 붙은 오류는 그 자체로 어느 칸이
+   * 문제인지 가리키므로, 문구를 아무리 뭉뚱그려도 **붙은 자리가 답을 말한다.**
+   *
+   * 음성 단언이라 **배너를 잡은 뒤**에 잰다.
+   */
+  it('401에 아이디·비밀번호 칸의 인라인 오류가 붙지 않는다', async () => {
+    const { user } = renderScreen({ fetch: failing(401, loginFailureBody()) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await screen.findByRole('alert');
+
+    expect(loginIdBox()).not.toHaveAttribute('aria-invalid');
+    expect(passwordBox()).not.toHaveAttribute('aria-invalid');
+    expect(loginIdBox()).not.toHaveAccessibleDescription(t.banner.mismatch);
+    expect(passwordBox()).not.toHaveAccessibleDescription(t.banner.mismatch);
+  });
+
+  /**
+   * ⭐ **자격이 틀렸다는 말은 401에만 붙는다.** 실패를 뭉뚱그리는 화면이 저지르기 쉬운 실수가
+   * 「응답이 실패면 무조건 그 문구」인데, 잠긴 계정에 그 말을 하면 사용자는 맞는 자격을
+   * 의심하며 되풀이 시도한다 — 이미 잠긴 계정에 대고.
+   *
+   * 이 회차는 잠긴 계정 전용 안내를 아직 두지 않는다. **말하지 않는 것**까지가 이 회차의 몫이다.
+   */
+  it('423에는 아이디·비밀번호 문구를 내지 않는다', async () => {
+    const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    /* 양성 먼저 — 시도가 끝나 버튼이 다시 열린 것을 잡은 뒤에 없음을 잰다. */
+    await waitFor(() => {
+      expect(submitButton()).toBeEnabled();
+    });
+
+    expect(screen.queryByText(t.banner.mismatch)).toBeNull();
+  });
+
+  /** 값을 고치면 앞 시도의 실패는 그 값에 대한 진술이 아니게 된다. */
+  it('아이디나 비밀번호를 고치면 실패 배너가 걷힌다', async () => {
+    const { user } = renderScreen({ fetch: failing(401, loginFailureBody()) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+    await screen.findByRole('alert');
+
+    await user.type(passwordBox(), 'X');
+
+    expect(screen.queryByText(t.banner.mismatch)).toBeNull();
+  });
+});
+
+describe('LoginScreen — 보내는 동안과 그 뒤', () => {
+  /**
+   * ⭐ **두 스텁 형태 — 호출 횟수에 따라 내용이 달라진다**(사본 체크리스트).
+   *
+   * 같은 응답을 되돌리는 스텁으로는 「다시 시도가 실제로 나갔다」를 잴 수 없다.
+   * 1회차 401 → 2회차 200이라야 두 번째 요청이 정말 새로 나갔고 그 답이 화면을 옮겼음이 잡힌다.
+   */
+  it('실패한 뒤 다시 눌러 성공할 수 있다', async () => {
+    let calls = 0;
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        sessionsRoute(() => {
+          calls += 1;
+
+          return calls === 1
+            ? jsonResponse(loginFailureBody(), { status: 401 })
+            : jsonResponse(sessionBody());
+        }),
+      ]),
+      probes: true,
+    });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+    await screen.findByRole('alert');
+
+    await waitFor(() => {
+      expect(submitButton()).toBeEnabled();
+    });
+
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(HOME_ROUTE);
+    });
+
+    expect(calls).toBe(2);
+    expect(screen.queryByText(t.banner.mismatch)).toBeNull();
+  });
+
+  /**
+   * 나가는 동안 버튼을 잠근다 — 연타가 그대로 요청 두 벌이 되고, 시도마다 새 멱등 키를 만들므로
+   * 서버에는 서로 다른 시도로 보인다. **잠갔으면 사유가 함께 선다**(배치 규범 4).
+   */
+  it('나가는 동안 버튼이 잠기고 그 사유가 보인다', async () => {
+    let release = (): void => {
+      /* 아래 Promise 생성자가 곧바로 채운다. */
+    };
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const stub = createStubFetch([sessionsRoute(() => jsonResponse(sessionBody()))]);
+    const { user } = renderScreen({
+      fetch: async (request) => {
+        await gate;
+
+        return stub(request);
+      },
+      probes: true,
+    });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    const reason = screen.getByText(t.actionReasons.submitting);
+
+    expect(submitButton()).toHaveAttribute('aria-describedby', reason.id);
+
+    release();
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(HOME_ROUTE);
+    });
+  });
+
+  /**
+   * ⭐ **나가는 중에 값을 고쳐도 되먹임이 끊기지 않는다**(사본 체크리스트 `resetIfIdle` ·
+   * `omf-mes#96`).
+   *
+   * 값을 고칠 때 실패 배너를 걷는데, 그 자리가 진행 중 요청까지 되돌리면 **세션은 만들어졌는데
+   * 로그인되지 않은 화면**이 남는다. 요청은 이미 서버에 갔고 화면만 없던 일로 친 상태다.
+   */
+  it('나가는 중에 값을 고쳐도 성공 이동이 그대로 일어난다', async () => {
+    let release = (): void => {
+      /* 아래 Promise 생성자가 곧바로 채운다. */
+    };
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const stub = createStubFetch([sessionsRoute(() => jsonResponse(sessionBody()))]);
+    const { user } = renderScreen({
+      fetch: async (request) => {
+        await gate;
+
+        return stub(request);
+      },
+      probes: true,
+    });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    /* 나가는 중에 값을 고친다 — 되돌리는 자리를 지나지만 요청을 끊어서는 안 된다. */
+    await user.type(loginIdBox(), 'X');
+
+    release();
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(HOME_ROUTE);
+    });
   });
 });
