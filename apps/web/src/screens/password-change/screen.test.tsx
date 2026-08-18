@@ -1,11 +1,22 @@
 import { messages } from '@omf-mes/i18n';
-import { createEvent, fireEvent, screen } from '@testing-library/react';
+import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes, useLocation, useNavigate } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
-import { renderWithProviders } from '../../test/api-harness';
-import { passwordDraftFixture } from './fixtures';
+import { SessionProvider, useSession, type Session } from '../../patterns/session';
+import {
+  createStubFetch,
+  jsonResponse,
+  renderWithProviders,
+  type StubFetch,
+  type StubRoute,
+} from '../../test/api-harness';
+import {
+  currentMismatchBody,
+  mismatchBodyWithAttemptsHint,
+  passwordDraftFixture,
+} from './fixtures';
 import { MIN_NEW_PASSWORD_LENGTH, type PasswordDraft } from './password-draft';
 import { PasswordChangeScreen } from './screen';
 
@@ -89,15 +100,103 @@ const PreviousScreenStub = () => {
   );
 };
 
+const CHANGE_PASSWORD_PATH = '/app/users/me:change-password';
+
+/** 계약이 정한 성공 응답 — **본문이 없다.** */
+const noContentResponse = (): Response => new Response(null, { status: 204 });
+
+const changeRoute = (respond: (request: Request) => Response): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === CHANGE_PASSWORD_PATH,
+  respond,
+});
+
+/**
+ * 나간 요청을 **본문째** 모으면서 응답한다 — 「끊기지 않았다」·「나가지 않았다」를 재는 근거다.
+ *
+ * ⚠ 개수만으로는 모자란 자리가 있다. 나가면 안 되는 요청이 **성공해 버리면** 화면이 칸을 비우고,
+ * 뒤따르는 양성 대조가 조용히 무력해져 개수가 도로 맞는다(뮤테이션으로 실측했다). 무엇이 나갔는지
+ * 남겨야 그 경우가 걸린다.
+ */
+const createCountingFetch = (
+  routes: StubRoute[],
+  hold = false,
+): { fetch: StubFetch; count: () => number; bodies: () => unknown[]; release: () => void } => {
+  const stub = createStubFetch(routes);
+  const sent: unknown[] = [];
+  let release = (): void => {
+    /* 아래 Promise 생성자가 곧바로 채운다. */
+  };
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  const fetch: StubFetch = async (request) => {
+    /* 본문은 한 번만 읽을 수 있다 — 복제해 읽어야 스텁이 같은 요청을 다시 다룰 수 있다. */
+    sent.push(await request.clone().json());
+
+    if (hold) await gate;
+
+    return stub(request);
+  };
+
+  return { fetch, count: () => sent.length, bodies: () => sent, release };
+};
+
+/** 합성 세션. 실제 사번·이름을 쓰지 않는다(공개 저장소 경계). */
+const SYNTHETIC_SESSION: Session = {
+  userId: 8101,
+  loginId: 'SYN-LOGIN-01',
+  userName: '합성 사용자 가',
+  departmentId: 8201,
+  lastLoginAt: '2026-08-17T09:12:00+09:00',
+  scopes: [{ businessUnitId: 8301, plantId: 8401 }],
+  roles: ['SYN_ROLE_A'],
+};
+
+/**
+ * 화면이 담고 있는 세션을 그대로 보인다 — **바뀌지 않았음**을 판정할 유일한 근거다.
+ * 이 화면은 세션을 읽지도 쓰지도 않으므로(누구의 비밀번호인지는 주소가 정한다) 이 프로브는
+ * 「건드리지 않았다」만 잰다.
+ */
+const SessionProbe = () => {
+  const { session, signIn } = useSession();
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          signIn(SYNTHETIC_SESSION);
+        }}
+      >
+        세션 담기
+      </button>
+      <output data-testid="stored-session">
+        {session === null ? '없음' : JSON.stringify(session)}
+      </output>
+    </>
+  );
+};
+
+const storedSession = (): string => screen.getByTestId('stored-session').textContent ?? '';
+
+interface RenderOptions {
+  /** 주지 않으면 하네스가 **모든 요청에 던진다** — 「이 갈래는 서버를 부르지 않는다」가 그대로 잰다. */
+  fetch?: StubFetch;
+  /** 세션 프로브를 세울 때만 켠다 — 다른 시험의 DOM을 넓히지 않는다. */
+  session?: boolean;
+}
+
 /** 주소로 직접 들어온 자리 — 히스토리 항목이 하나뿐이다. */
-const renderScreen = () => {
+const renderScreen = (options: RenderOptions = {}) => {
   const user = userEvent.setup();
   const result = renderWithProviders(
-    <>
+    <SessionProvider>
       <PasswordChangeScreen />
       <LocationProbe />
-    </>,
-    { route: PASSWORD_CHANGE_ROUTE },
+      {options.session === true && <SessionProbe />}
+    </SessionProvider>,
+    { route: PASSWORD_CHANGE_ROUTE, fetch: options.fetch },
   );
 
   return { user, ...result };
@@ -492,6 +591,35 @@ describe('PasswordChangeScreen — 두지 않은 것', () => {
   });
 
   /**
+   * ⛔ **401을 받고도 잠금·시도 횟수를 말하지 않는다.** 서버가 계약에 없는 필드(남은 횟수)를
+   * 실어 보내는 경우까지 재려고 **일부러 그 필드를 실은 본문**으로 응답한다 — 화면이 그것을 읽어
+   * 그리기 시작하면 여기서 걸린다. 전례(로그인)의 401 처리가 통째로 따라온 경우의 감지기다.
+   */
+  it('401 본문에 남은 횟수가 실려 와도 화면에 나오지 않는다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        changeRoute(() => jsonResponse(mismatchBodyWithAttemptsHint(), { status: 401 })),
+      ]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    /* 양성 먼저 — 401이 실제로 그려진 것을 잡은 **뒤에** 없음을 잰다. */
+    expect(await screen.findByText(t.validation.currentMismatch)).toBeInTheDocument();
+
+    const text = document.body.textContent ?? '';
+
+    for (const phrase of FORBIDDEN_PHRASES) {
+      expect(text).not.toContain(phrase);
+    }
+
+    /* 본문에 실려 온 숫자 자체도 화면에 없다. */
+    expect(text).not.toContain('3회');
+    expect(screen.queryByText('3')).toBeNull();
+  });
+
+  /**
    * 문구는 화면보다 오래 산다 — 지금 그리지 않아도 블록에 남아 있으면 다음 회차가 집어 쓴다.
    * 그래서 **문구 블록 자체**를 훑는다.
    */
@@ -507,5 +635,225 @@ describe('PasswordChangeScreen — 두지 않은 것', () => {
         expect(text).not.toContain(phrase);
       }
     }
+  });
+});
+
+describe('PasswordChangeScreen — 보내기와 성공', () => {
+  /**
+   * ⭐ **성공 뒤 이동하지 않고 다시 로그인시키지도 않는다**(스펙 §5-3). 화면이 그대로 있으므로
+   * **알림 한 줄이 유일한 성공 신호**이고, 세 칸을 비우는 것으로 「끝났다」를 함께 말한다.
+   * 비우는 이유는 둘이다 — 자리를 뜬 사이 어깨너머로 읽히지 않게, 그리고 한 번 더 누르면
+   * 이번엔 현재 비밀번호가 맞지 않아 실패하는 길을 막기 위해.
+   */
+  it('204를 받으면 알림이 뜨고 세 칸이 전부 빈다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([changeRoute(() => noContentResponse())]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(t.toast.changed)).toBeInTheDocument();
+
+    expect(currentBox()).toHaveValue('');
+    expect(newBox()).toHaveValue('');
+    expect(confirmBox()).toHaveValue('');
+  });
+
+  it('204를 받아도 주소가 그대로다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([changeRoute(() => noContentResponse())]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    /* 양성 먼저 — 성공이 실제로 도착한 것을 잡은 **뒤에** 이동 없음을 잰다. */
+    expect(await screen.findByText(t.toast.changed)).toBeInTheDocument();
+
+    expect(currentPath()).toBe(PASSWORD_CHANGE_ROUTE);
+  });
+
+  /**
+   * ⛔ **세션을 건드리지 않는다.** 바꾼 뒤 다시 로그인시키지 않으므로 세션은 그대로 살아 있어야
+   * 하고, 이 화면은 세션을 읽지도 않는다(누구의 비밀번호인지는 주소가 정한다).
+   */
+  it('204를 받아도 세션이 그대로다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([changeRoute(() => noContentResponse())]),
+      session: true,
+    });
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    const before = storedSession();
+
+    expect(before).toContain(SYNTHETIC_SESSION.loginId);
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    expect(await screen.findByText(t.toast.changed)).toBeInTheDocument();
+
+    expect(storedSession()).toBe(before);
+  });
+
+  /**
+   * ⭐ **나가는 중에는 잠기고 그 사정을 말한다.** 연타가 그대로 요청 두 벌이 되면 두 번째는
+   * 이미 바뀐 비밀번호 때문에 실패한다 — 되돌릴 수 없는 쓰기라 잠금이 표현이 아니라 규칙이다.
+   */
+  it('나가는 중에는 「변경」이 잠기고 사유가 그 사정을 말한다', async () => {
+    const counting = createCountingFetch([changeRoute(() => noContentResponse())], true);
+    const { user } = renderScreen({ fetch: counting.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    expect(screen.getByText(t.actionReasons.submitting)).toBeInTheDocument();
+
+    counting.release();
+
+    expect(await screen.findByText(t.toast.changed)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **나가는 중에 값을 고쳐도 요청이 끊기지 않는다**(`resetIfIdle` 규율). 끊으면 비밀번호는
+   * 바뀌었는데 바뀐 줄 모르는 화면이 남고, 사용자는 옛 값으로 다음 로그인을 시도한다.
+   */
+  it('나가는 중에 값을 고쳐도 요청이 끊기지 않는다', async () => {
+    const counting = createCountingFetch([changeRoute(() => noContentResponse())], true);
+    const { user } = renderScreen({ fetch: counting.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    /*
+     * **되돌리기를 부르는 칸**을 골라 친다. 다른 칸을 고치면 되돌리기 자체가 불리지 않아
+     * 「나가는 중에는 되돌리지 않는다」가 시험되지 않는다 — 이 화면에서 그 길은 현재 비밀번호
+     * 칸 하나뿐이다(서버가 지목한 칸만 걷는다).
+     */
+    await user.type(currentBox(), 'X');
+
+    counting.release();
+
+    expect(await screen.findByText(t.toast.changed)).toBeInTheDocument();
+    expect(counting.count()).toBe(1);
+  });
+
+  /**
+   * ⛔ **보낼 수 없는 상태에서는 Enter로도 나가지 않는다.** 폼은 버튼을 지나지 않는 제출 경로를
+   * 갖는다 — 그 길로 빈 자격이 나가면 서버가 실패한 시도로 센다.
+   */
+  it('보낼 수 없는 상태에서는 Enter로도 폼 제출로도 요청이 나가지 않는다', async () => {
+    const counting = createCountingFetch([changeRoute(() => noContentResponse())]);
+    const { user } = renderScreen({ fetch: counting.fetch });
+
+    await user.type(currentBox(), 'SYN-CURRENT-01');
+    await user.type(newBox(), '{Enter}');
+
+    expect(counting.count()).toBe(0);
+
+    /*
+     * ⭐ **버튼을 지나지 않는 제출 경로를 직접 연다.** 위의 Enter만으로는 **보내는 문의 가드가
+     * 시험되지 않는다** — 제출 버튼이 잠겨 있으면 HTML의 암묵적 제출이 애초에 일어나지 않아,
+     * 가드를 지워도 아무 일이 없기 때문이다(뮤테이션으로 실측한 사각이다). 프로그램적 제출은
+     * 그 잠금을 지나가므로 여기서 가드가 유일한 겹이 된다.
+     */
+    const form = submitButton().closest('form');
+
+    if (!(form instanceof HTMLFormElement)) {
+      throw new Error('비밀번호 변경 폼을 찾지 못했습니다');
+    }
+
+    fireEvent.submit(form);
+
+    expect(counting.count()).toBe(0);
+
+    /*
+     * ⭐ **양성 대조 뒤 「무엇이 나갔는가」로 잰다.** 요청은 비동기라 제출 직후의 0은 「아직 안
+     * 나갔다」와 「나가지 않는다」를 가리지 못하고, 개수만 세면 **헛요청이 성공해 칸을 비우는**
+     * 바람에 양성 대조가 무력해져 개수가 도로 맞는다(둘 다 뮤테이션으로 실측한 사각이다).
+     * 끝난 뒤 나간 본문이 **규칙을 만족한 한 건뿐**이면 앞의 두 경로에서 나간 것이 없다.
+     */
+    const draft = passwordDraftFixture();
+
+    await fillDraft(user, { currentPassword: '' });
+    await user.click(submitButton());
+
+    expect(await screen.findByText(t.toast.changed)).toBeInTheDocument();
+    expect(counting.bodies()).toEqual([
+      { currentPassword: 'SYN-CURRENT-01', newPassword: draft.newPassword },
+    ]);
+  });
+});
+
+describe('PasswordChangeScreen — 현재 비밀번호 불일치(401)', () => {
+  const mismatchFetch = (): StubFetch =>
+    createStubFetch([changeRoute(() => jsonResponse(currentMismatchBody(), { status: 401 }))]);
+
+  /**
+   * ⭐ **401은 그 칸에 인라인으로 선다 — 배너로 올리지 않는다.** 전례(로그인)는 실패를 화면 수준
+   * 배너 한 자리에만 세우는데, 그것은 붙은 자리가 「그 아이디는 있다」를 흘리기 때문이다.
+   * 여기서는 이미 인증된 본인만 보므로 흘릴 것이 없고, 지목하지 않으면 세 칸 중 어디가 틀렸는지
+   * 알 수 없다.
+   */
+  it('401이면 현재 비밀번호 칸에 인라인 오류가 서고 배너는 서지 않는다', async () => {
+    const { user } = renderScreen({ fetch: mismatchFetch() });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentBox()).toBeInvalid();
+    });
+
+    expect(errorTextFor(currentBox())).toContain(t.validation.currentMismatch);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  /** 값이 바뀌면 그 진술은 지금 화면에 있는 값에 대한 것이 아니게 된다. */
+  it('401 뒤 현재 비밀번호 칸을 고치면 그 오류가 걷힌다', async () => {
+    const { user } = renderScreen({ fetch: mismatchFetch() });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentBox()).toBeInvalid();
+    });
+
+    await user.type(currentBox(), 'X');
+
+    expect(currentBox()).toBeValid();
+    expect(screen.queryByText(t.validation.currentMismatch)).toBeNull();
+  });
+
+  /**
+   * ⚠ **다른 칸을 고쳤다고 걷지 않는다 — 전례와 다른 자리다.** 로그인의 실패는 어느 칸이 틀렸는지
+   * 말하지 않는 화면 수준 진술이라 아무 칸이나 고치면 걷는 것이 맞다. 여기서는 서버가 **현재
+   * 비밀번호 칸**을 지목했고, 새 비밀번호를 고쳤다고 그 진술이 거짓이 되지는 않는다.
+   */
+  it('401 뒤 다른 칸을 고치면 그 오류가 남아 있다', async () => {
+    const { user } = renderScreen({ fetch: mismatchFetch() });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentBox()).toBeInvalid();
+    });
+
+    await user.type(newBox(), 'X');
+
+    expect(currentBox()).toBeInvalid();
+    expect(errorTextFor(currentBox())).toContain(t.validation.currentMismatch);
   });
 });

@@ -1,15 +1,17 @@
-import { Breadcrumb, Button, PageHeader, TextField } from '@crefle/web-ui';
+import { Breadcrumb, Button, PageHeader, TextField, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 import {
   MIN_NEW_PASSWORD_LENGTH,
+  canSubmit,
   emptyPasswordDraft,
   submitDisabledReason,
   validatePasswordDraft,
   type PasswordDraft,
 } from './password-draft';
+import { useChangePassword } from './queries';
 
 const t = messages.passwordChange;
 
@@ -52,13 +54,56 @@ export const PasswordChangeScreen = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
+
+  const change = useChangePassword({
+    onSuccess: () => {
+      /*
+       * ⭐ **알림 한 줄이 유일한 성공 신호다.** 이동하지도 다시 로그인시키지도 않으므로
+       * (스펙 §5-3) 화면은 그대로 있고, 무엇이 달라졌는지는 이 문구만이 말한다.
+       *
+       * **세 칸을 비운다.** 스펙에 없는 추론이라 근거를 적는다 — 바뀐 값이 화면에 남아 있으면
+       * ⓐ 자리를 뜬 사이 어깨너머로 읽히고 ⓑ 「변경」을 한 번 더 누르면 이번엔 현재 비밀번호가
+       * 맞지 않아 실패한다. 비우면 둘이 함께 사라진다.
+       */
+      toast.show({ variant: 'success', description: t.toast.changed });
+      setDraft(emptyPasswordDraft);
+    },
+  });
 
   /* 렌더마다 다시 판정한다 — 값이 곧 오류이고, 사이에 낄 상태를 두면 둘이 어긋난다. */
   const errors = validatePasswordDraft(draft);
-  const blockReason = submitDisabledReason(draft);
 
+  /**
+   * 「변경」이 막힌 사유. **순서가 뜻을 정한다** — 나가는 중이 맨 앞이다. 그 사정을 뒤에 두면
+   * 값을 다 채운 사용자가 「채우면 쓸 수 있습니다」를 읽고도 잠긴 버튼을 본다.
+   */
+  const blockReason = change.isSubmitting
+    ? t.actionReasons.submitting
+    : submitDisabledReason(draft);
+
+  /**
+   * 서버가 현재 비밀번호 칸에 세운 오류. 화면이 스스로 잡을 수 있는 규칙이 아니라 **그 칸의
+   * 값이 맞는지는 서버만 안다.**
+   */
+  const currentPasswordError =
+    change.outcome?.kind === 'currentMismatch' ? t.validation.currentMismatch : undefined;
+
+  /**
+   * 친 값을 고친다.
+   *
+   * ⚠ **서버가 준 진술은 그 칸의 값이 바뀔 때만 걷는다 — 전례(로그인)와 다른 자리다.** 그쪽의
+   * 실패는 어느 칸이 틀렸는지 말하지 않는 화면 수준 진술이라 아무 칸이나 고치면 걷는 것이 맞다.
+   * 여기서는 서버가 **현재 비밀번호 칸**을 지목했고, 새 비밀번호를 고쳤다고 그 진술이 거짓이
+   * 되지는 않는다.
+   *
+   * **나가는 중인 요청은 끊지 않는다**(`resetIfIdle`) — 끊으면 비밀번호는 바뀌었는데 바뀐 줄
+   * 모르는 화면이 남는다.
+   */
   const changeDraft = (patch: Partial<PasswordDraft>): void => {
     setDraft((prev) => ({ ...prev, ...patch }));
+
+    if (patch.currentPassword !== undefined) change.resetIfIdle();
   };
 
   /**
@@ -66,11 +111,22 @@ export const PasswordChangeScreen = () => {
    * 문자열로 올라가고, 그 주소는 방문 기록·전달 경로에 그대로 남는다 — 비밀번호가 새는 길이다
    * (전례 `login/screen.tsx`가 같은 자리에 같은 겹을 세웠다).
    *
-   * **보내는 문은 아직 없다.** 그래도 막는 겹을 먼저 세우는 이유는, 요청이 붙기 전에도 폼과
-   * Enter가 실재하기 때문이다 — 한 번 주소에 실린 값은 되돌릴 수 없다.
+   * **보낼 수 있을 때만 보낸다 — 버튼 잠금과 별개의 겹이다.** 폼은 버튼을 지나지 않는 제출
+   * 경로를 갖는다(Enter · 프로그램적 제출). 그 길로 규칙을 어긴 값이 나가면 서버가 실패한
+   * 시도로 세고, 되돌릴 수 없는 쓰기에서는 그 한 번이 값을 바꿔 놓을 수도 있다.
+   *
+   * 그래서 **보내는 문을 하나로 둔다**(`sendChange`) — 뒤 회차의 「다시 시도」도 이 문을 지난다.
    */
+  const sendChange = (): void => {
+    if (change.isSubmitting || !canSubmit(draft)) return;
+
+    change.submit(draft);
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+
+    sendChange();
   };
 
   /**
@@ -105,15 +161,15 @@ export const PasswordChangeScreen = () => {
       <form className="password-form" onSubmit={handleSubmit}>
         <div className="password-fields">
           {/*
-           * 현재 비밀번호 칸에는 이 회차가 세울 오류가 없다 — 맞는지 아는 것은 서버뿐이고,
-           * 그 답을 이 칸에 붙이는 일은 요청이 붙는 회차의 몫이다. 있지도 않은 값을 미리
-           * 이어 두지 않는다.
+           * 이 칸의 오류는 **서버만 안다** — 화면이 스스로 잡을 규칙이 없다. 그래서 401이 이 칸에
+           * 인라인으로 선다(배너로 올리지 않는다 — 이미 인증된 본인이라 붙은 자리가 흘릴 것이 없다).
            */}
           <TextField
             label={t.fields.currentPassword}
             type="password"
             value={draft.currentPassword}
             autoComplete="current-password"
+            error={currentPasswordError}
             fullWidth
             onChange={(event) => {
               changeDraft({ currentPassword: event.target.value });

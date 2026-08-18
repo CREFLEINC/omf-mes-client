@@ -1,3 +1,5 @@
+import type { components } from '@omf-mes/api-client';
+
 import type { PasswordDraft } from './password-draft';
 
 /**
@@ -27,4 +29,28 @@ const BASE_DRAFT: PasswordDraft = {
 export const passwordDraftFixture = (overrides: Partial<PasswordDraft> = {}): PasswordDraft => ({
   ...BASE_DRAFT,
   ...overrides,
+});
+
+type ErrorResponse = components['schemas']['ErrorResponse'];
+
+/**
+ * 401이 주는 본문. 계약은 이 자리에 **일반 오류 형태**만 두었다 — 화면은 상태 코드로 갈래를
+ * 정하고 이 본문을 읽지 않으므로, 값은 「읽지 않는다」를 재기 위한 자리 채움이다.
+ */
+export const currentMismatchBody = (overrides: Partial<ErrorResponse> = {}): ErrorResponse => ({
+  errors: [{ scope: 'screen', code: 'SYN_CODE_A', message: '합성 실패 문구입니다.' }],
+  ...overrides,
+});
+
+/**
+ * ⭐ **계약에 없는 필드를 일부러 실은 401 본문.**
+ *
+ * 이 화면은 계정을 잠그지 않으므로 남은 시도 횟수라는 개념이 없고, 계약도 이 경로에 그 필드를
+ * 두지 않았다. 그런데 전례(로그인)의 401 본문에는 그 필드가 있어 **사본이 읽는 코드를 함께 데려올
+ * 위험**이 실재한다. 서버가 실어 보내더라도 화면이 읽지 않음을 재려면 **실려 온 본문**이 있어야
+ * 한다 — 그것이 이 픽스처다. 제품 코드는 이 이름을 어디서도 참조하지 않아야 한다.
+ */
+export const mismatchBodyWithAttemptsHint = (): ErrorResponse & { remainingAttempts: number } => ({
+  ...currentMismatchBody(),
+  remainingAttempts: 3,
 });
