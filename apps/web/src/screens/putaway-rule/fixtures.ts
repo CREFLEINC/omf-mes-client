@@ -48,6 +48,15 @@ export const warehouseFixtures: Warehouse[] = [
 
 export const WAREHOUSE_LABEL = 'SYN-WH-01 · 합성창고 가';
 
+/**
+ * 위치 둘.
+ *
+ * - **9301** 자기 용량이 있다(400 · 단위 9401) — 규칙 용량과 견주는 갈래가 여기서 선다
+ * - **9302** 자기 용량이 **없다** — 계약이 그 둘을 선택으로 두었고, 없으면 경고를 만들지 않는다
+ *
+ * 계약이 수량과 단위를 **함께 있거나 함께 비게** 두었다(`ck_location_capacity`) — 픽스처도
+ * 그 규칙을 지킨다. 한쪽만 있는 자료를 심으면 화면이 계약에 없는 상태를 상대하게 된다.
+ */
 export const locationFixtures: Location[] = [
   {
     locationId: 9301,
@@ -57,6 +66,8 @@ export const locationFixtures: Location[] = [
     locationTypeCode: 'SYN-LOC-TYPE',
     allowMixedItem: false,
     allowMixedLot: false,
+    capacityQty: 400,
+    capacityUomId: 9401,
     isActive: true,
   },
   {
@@ -71,6 +82,9 @@ export const locationFixtures: Location[] = [
     isActive: false,
   },
 ];
+
+/** 위치 9301의 자기 용량. **규칙 용량과 견주는 자리의 기준값이다.** */
+export const LOCATION_CAPACITY_QTY = 400;
 
 export const LOCATION_LABEL = 'SYN-LOC-01 · 합성위치 가';
 /** 미사용 위치의 이름. **표기에는 미사용 표식이 붙지 않는다** — 표식은 고르는 자리에만 붙는다. */

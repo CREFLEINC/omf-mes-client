@@ -10,13 +10,40 @@ import {
 } from '../../test/api-harness';
 import type { BalanceTarget } from './balance-lookup';
 import { DEFAULT_FILTERS } from './filters';
-import { balanceRow, ruleFixtures, uncoveredItemFixtures } from './fixtures';
-import { BALANCE_PAGE_SIZE, useRuleBalances, useRuleList, useUncoveredItems } from './queries';
+import { balanceRow, ruleFixtureAt, ruleFixtures, uncoveredItemFixtures } from './fixtures';
+import {
+  BALANCE_PAGE_SIZE,
+  DUPLICATE_PROBE_SIZE,
+  balanceKeys,
+  putawayRuleKeys,
+  ruleDetailPath,
+  useDuplicateProbe,
+  useRuleBalances,
+  useRuleDetail,
+  useRuleList,
+  useUncoveredItems,
+} from './queries';
 import type { RuleFilters } from './types';
 
 const RULES_PATH = '/logistics/putaway-rules';
 const UNCOVERED_PATH = '/logistics/putaway-rules/uncovered-items';
 const BALANCES_PATH = '/inventory/balances';
+
+/**
+ * 상세 응답. **잠금 토큰은 헤더로 온다**(공유계약 A-4 — 본문 필드로 노출하지 않는다).
+ * 편집 가능 여부도 여기에만 있다.
+ */
+const detailRoute = (putawayRuleId = 9001): StubRoute => ({
+  match: (request) => isExactly(request, ruleDetailPath(putawayRuleId)),
+  respond: () =>
+    jsonResponse(
+      {
+        putawayRule: ruleFixtureAt(putawayRuleId),
+        editability: { codeEditable: false, reason: 'REFERENCED', referenceCount: 2 },
+      },
+      { headers: { ETag: '7' } },
+    ),
+});
 
 const listBody = (items: unknown[], total = items.length) => ({
   items,
@@ -330,5 +357,141 @@ describe('useRuleBalances', () => {
       [9101, 9301],
       [9102, null],
     ]);
+  });
+});
+
+describe('putawayRuleKeys.all', () => {
+  /**
+   * **뿌리 하나로 규칙 조회 셋을 덮는다** — 규칙을 고치면 목록도, 규칙 없는 품목 수도,
+   * 조준 조회의 판정도 함께 낡는다. 무효화 범위가 갈리면 갱신된 값과 낡은 값이 한 화면에 선다.
+   */
+  it('목록·규칙없는품목·상세·조준 조회를 모두 덮는다', () => {
+    const root = [...putawayRuleKeys.all];
+
+    for (const key of [
+      putawayRuleKeys.list(filtersOf(), 1),
+      putawayRuleKeys.uncovered(9201),
+      putawayRuleKeys.detail(9001),
+      putawayRuleKeys.duplicateProbe(9201, 9101),
+    ]) {
+      expect([...key].slice(0, root.length)).toEqual(root);
+    }
+  });
+
+  /**
+   * ⛔ **잔액 키를 덮지 않는다.** 규칙을 고쳐도 창고의 실물 재고는 달라지지 않는다 —
+   * 뿌리를 합치면 바뀌지 않은 값을 저장할 때마다 다시 부른다.
+   */
+  it('잔액 키를 덮지 않는다', () => {
+    const root = [...putawayRuleKeys.all];
+    const balanceKey = [...balanceKeys.onHand(9201, { itemId: 9101, locationId: 9301 })];
+
+    expect(balanceKey.slice(0, root.length)).not.toEqual(root);
+  });
+});
+
+describe('ruleDetailPath', () => {
+  /**
+   * 토큰 보관소는 **응답이 온 URL 경로**를 열쇠로 쓴다 — 이 문자열이 상세 조회가 실제로
+   * 부르는 경로와 갈리면 잠금 토큰을 영원히 찾지 못하고 쓰기가 조용히 멈춘다.
+   */
+  it('상세 조회가 부르는 경로와 같다', async () => {
+    const { fetch, urls } = recordingFetch([detailRoute()]);
+
+    renderHookWithProviders(() => useRuleDetail(9001), { fetch });
+
+    await waitFor(() => {
+      expect(countOf(urls, ruleDetailPath(9001))).toBe(1);
+    });
+  });
+
+  it('번호를 경로에 담는다', () => {
+    expect(ruleDetailPath(9002)).toBe('/logistics/putaway-rules/9002');
+  });
+});
+
+describe('useRuleDetail', () => {
+  /** 번호가 없으면 요청 자체가 만들어질 수 없다 — 열어 두면 `…/0`이 나가 헛돈다. */
+  it('고르기 전에는 부르지 않는다', async () => {
+    const { fetch, urls } = recordingFetch([detailRoute()]);
+
+    renderHookWithProviders(() => useRuleDetail(null), { fetch });
+
+    await waitFor(() => {
+      expect(urls).toHaveLength(0);
+    });
+  });
+
+  /** 편집 가능 여부는 **상세에만** 있다 — 목록 행에는 그 사실이 없다. */
+  it('규칙과 편집 가능 여부를 함께 낸다', async () => {
+    const { fetch } = recordingFetch([detailRoute()]);
+    const { result } = renderHookWithProviders(() => useRuleDetail(9001), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.putawayRule.putawayRuleId).toBe(9001);
+    });
+
+    expect(result.current.data?.editability.codeEditable).toBe(false);
+  });
+});
+
+describe('useDuplicateProbe', () => {
+  /** 읽기만 하는 사용자에게까지 나가면 규칙을 고를 때마다 목록 경로로 두 번 나가는 화면이 된다. */
+  it('폼이 닫혀 있으면 부르지 않는다', async () => {
+    const { fetch, urls } = recordingFetch([rulesRoute()]);
+
+    renderHookWithProviders(() => useDuplicateProbe(9201, 9101, false), { fetch });
+
+    await waitFor(() => {
+      expect(urls).toHaveLength(0);
+    });
+  });
+
+  /** 겨눌 조합이 아직 없으면 부를 조건도 없다. */
+  it('품목이 정해지기 전에는 부르지 않는다', async () => {
+    const { fetch, urls } = recordingFetch([rulesRoute()]);
+
+    renderHookWithProviders(() => useDuplicateProbe(9201, null, true), { fetch });
+
+    await waitFor(() => {
+      expect(urls).toHaveLength(0);
+    });
+  });
+
+  /**
+   * **창고·품목만 싣는다** — 쿼리로는 「창고 전체」(`locationId === null`)를 표현할 수 없고
+   * 우선순위 조건 자체가 없다. 맞추는 일은 `judgeDuplicate`가 한다.
+   */
+  it('창고·품목으로 좁히고 사용 중인 것만 부른다', async () => {
+    const { fetch, urls } = recordingFetch([rulesRoute()]);
+
+    renderHookWithProviders(() => useDuplicateProbe(9201, 9101, true), { fetch });
+
+    await waitFor(() => {
+      expect(countOf(urls, RULES_PATH)).toBe(1);
+    });
+
+    const query = urls[0]?.searchParams;
+
+    expect(query?.get('warehouseId')).toBe('9201');
+    expect(query?.get('itemId')).toBe('9101');
+    expect(query?.get('includeInactive')).toBe('false');
+    expect(query?.get('locationId')).toBeNull();
+  });
+
+  /**
+   * 판정하는 자리에서 **잘림은 「없다」로 읽힌다.** 크기를 명시해야 `page.total`과 견줘
+   * 잘렸는지 알 수 있다.
+   */
+  it('쪽 크기를 명시해 싣는다', async () => {
+    const { fetch, urls } = recordingFetch([rulesRoute()]);
+
+    renderHookWithProviders(() => useDuplicateProbe(9201, 9101, true), { fetch });
+
+    await waitFor(() => {
+      expect(countOf(urls, RULES_PATH)).toBe(1);
+    });
+
+    expect(urls[0]?.searchParams.get('size')).toBe(String(DUPLICATE_PROBE_SIZE));
   });
 });

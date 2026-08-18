@@ -10,9 +10,12 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  ITEM_SEARCH_SIZE,
   LOCATION_PAGE_SIZE,
   describeLocation,
   describeReference,
+  findLocationCapacity,
+  findWarehouseLevel,
   lookupNote,
   nameLookupTruncatedNote,
   optionsPlaceholder,
@@ -20,6 +23,7 @@ import {
   toReference,
   toSelectOptions,
   useItemLookup,
+  useItemSearch,
   useLocationLookup,
   useUomLookup,
   useWarehouseLookup,
@@ -441,5 +445,158 @@ describe('useUomLookup', () => {
       expect(result.current.isError).toBe(true);
     });
     expect(result.current.entries).toEqual([]);
+  });
+});
+
+describe('useWarehouseLookup — 관리수준', () => {
+  /**
+   * 관리수준은 **창고 조회에만 있는 사실**이다. 이름 풀이 항목에 얹으면 나머지 셋에 쓰이지
+   * 않는 통로가 생긴다(사본 체크리스트 7번).
+   */
+  it('창고마다 관리수준 코드를 함께 낸다', async () => {
+    const { fetch } = recordingFetch([route(WAREHOUSES_PATH, warehouseFixtures)]);
+    const { result } = renderHookWithProviders(() => useWarehouseLookup(), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.levels).toHaveLength(2);
+    });
+
+    expect(result.current.levels[0]).toEqual({
+      warehouseId: 9201,
+      managementLevelCode: 'SYN-LEVEL',
+    });
+  });
+});
+
+describe('findWarehouseLevel', () => {
+  const levels = [
+    { warehouseId: 9201, managementLevelCode: 'SYN-LEVEL' },
+    { warehouseId: 9202, managementLevelCode: 'SYN-OTHER' },
+  ];
+
+  it('그 창고의 관리수준을 찾는다', () => {
+    expect(findWarehouseLevel(levels, 9202)).toBe('SYN-OTHER');
+  });
+
+  /** 없는 것을 값으로 지어내지 않는다 — 개폐 판정이 「모르는 상태」를 그대로 받아야 한다. */
+  it('목록에 없으면 null이다', () => {
+    expect(findWarehouseLevel(levels, 9999)).toBeNull();
+  });
+
+  it('창고를 고르기 전에는 null이다', () => {
+    expect(findWarehouseLevel(levels, null)).toBeNull();
+  });
+});
+
+describe('useLocationLookup — 위치 자체 용량', () => {
+  it('수량과 단위가 둘 다 있는 위치만 담는다', async () => {
+    const { fetch } = recordingFetch([route(LOCATIONS_PATH, locationFixtures)]);
+    const { result } = renderHookWithProviders(() => useLocationLookup(9201), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(2);
+    });
+
+    expect(result.current.capacities).toEqual([
+      { locationId: 9301, capacityQty: 400, capacityUomId: 9401 },
+    ]);
+  });
+
+  /**
+   * 계약이 둘을 함께 두게 했지만, 한쪽만 온 자료를 그대로 받으면 **단위를 모르는 수량**으로
+   * 견주게 된다 — 그 자리는 담지 않는 것이 정확하다.
+   */
+  it('단위 없는 용량은 담지 않는다', async () => {
+    const halfCapacity = [{ ...locationFixtures[0], capacityUomId: null }];
+    const { fetch } = recordingFetch([route(LOCATIONS_PATH, halfCapacity)]);
+    const { result } = renderHookWithProviders(() => useLocationLookup(9201), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(1);
+    });
+
+    expect(result.current.capacities).toEqual([]);
+  });
+});
+
+describe('findLocationCapacity', () => {
+  const capacities = [{ locationId: 9301, capacityQty: 400, capacityUomId: 9401 }];
+
+  it('그 위치의 용량을 찾는다', () => {
+    expect(findLocationCapacity(capacities, 9301)?.capacityQty).toBe(400);
+  });
+
+  /** 용량이 없는 위치와 「용량이 0인 위치」는 다른 사실이다 — 앞엣것만 `null`이다. */
+  it('용량이 없는 위치는 null이다', () => {
+    expect(findLocationCapacity(capacities, 9302)).toBeNull();
+  });
+
+  /** 위치를 비운 창고 전체 규칙은 견줄 위치 자체가 없다. */
+  it('위치를 고르지 않았으면 null이다', () => {
+    expect(findLocationCapacity(capacities, null)).toBeNull();
+  });
+});
+
+describe('useItemSearch', () => {
+  /** 빈 검색어로 받은 앞 N건은 고를 만한 후보가 아니다. */
+  it('검색어가 비면 부르지 않는다', async () => {
+    const { fetch, urls } = recordingFetch([route(ITEMS_PATH, itemFixtures)]);
+    const { result } = renderHookWithProviders(() => useItemSearch(''), { fetch });
+
+    await waitFor(() => {
+      expect(urls).toHaveLength(0);
+    });
+
+    /* 조회가 열리지도 않은 상태를 「불러오는 중」으로 말하지 않는다 — 아직 찾지 않은 것이다. */
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it('검색어와 쪽 크기를 실어 부른다', async () => {
+    const { fetch, urls } = recordingFetch([route(ITEMS_PATH, itemFixtures)]);
+    const { result } = renderHookWithProviders(() => useItemSearch('합성'), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(2);
+    });
+
+    expect(urls[0]?.searchParams.get('q')).toBe('합성');
+    expect(urls[0]?.searchParams.get('size')).toBe(String(ITEM_SEARCH_SIZE));
+  });
+
+  /** 새로 만드는 규칙이 미사용 품목을 가리킬 이유가 없다(공유계약 G-8). */
+  it('미사용 품목을 함께 달라고 하지 않는다', async () => {
+    const { fetch, urls } = recordingFetch([route(ITEMS_PATH, itemFixtures)]);
+    const { result } = renderHookWithProviders(() => useItemSearch('합성'), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(2);
+    });
+
+    expect(urls[0]?.searchParams.get('includeInactive')).toBeNull();
+  });
+
+  /** 잘렸다는 사실을 감추면 사용자가 「그런 품목은 없다」로 읽고 검색을 그만둔다. */
+  it('잘림을 밝힌다', async () => {
+    const { fetch } = recordingFetch([route(ITEMS_PATH, itemFixtures, 120)]);
+    const { result } = renderHookWithProviders(() => useItemSearch('합성'), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.truncated).toBe(true);
+    });
+  });
+
+  it('조회가 실패하면 실패를 밝힌다 — 빈 목록으로 뭉개지 않는다', async () => {
+    const failing: StubRoute = {
+      match: (request) => new URL(request.url).pathname === ITEMS_PATH,
+      respond: () => jsonResponse({ message: '' }, { status: 500 }),
+    };
+    const { fetch } = recordingFetch([failing]);
+    const { result } = renderHookWithProviders(() => useItemSearch('합성'), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.rows).toEqual([]);
   });
 });

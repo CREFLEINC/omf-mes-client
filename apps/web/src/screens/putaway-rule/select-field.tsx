@@ -5,25 +5,28 @@ import { FieldLabel } from './field-label';
 import type { SelectOption } from './types';
 
 /**
- * **필수 표시와 인라인 오류는 이 회차에 넘어오지 않는다**(`required`·`error`).
+ * **필수 표시와 인라인 오류는 등록·수정 폼이 서면서 더해졌다**(`required`·`error`).
  *
- * 읽기 회차에는 폼이 없어 둘 다 설 자리가 없고, 값만 안 넘기고 prop 정의를 남기면
- * 「이 슬라이스에 그 기능이 없다」가 타입 수준의 사실이 되지 못한다(사본 체크리스트 7번).
- * 등록·수정 폼이 붙는 회차가 그때 필요한 형태로 더한다.
+ * 폼의 품목·창고·단위가 필수 칸이고(`required`), 필수 누락과 서버가 그 칸에 붙여 보낸 오류가
+ * 인라인으로 선다(`error`). 조건 줄은 여전히 `note` 하나만 쓴다 — 한 부품이 두 자리를 맡되
+ * 자리마다 쓰는 인자가 다르다.
  *
- * **`disabled`+`disabledReason`은 이 회차에 실제로 쓴다** — 창고를 고르기 전에는 품목 칸이
- * 잠기고, 왜 잠겼는지가 화면에 서야 한다.
+ * **`disabled`+`disabledReason`은 두 자리에서 쓴다** — 창고를 고르기 전 품목 칸(조건 줄)과
+ * 수정에서 잠기는 품목·창고 칸(폼).
  */
 export interface SelectFieldProps {
   label: string;
   options: SelectOption[];
   value: string;
   onChange: (value: string) => void;
+  required?: boolean;
   disabled?: boolean;
   /** 비활성 사유. 디자인 시스템 `Select`에는 `disabledReason`이 없어 화면이 직접 붙인다(배치 규범 4). */
   disabledReason?: string;
-  /** 선택지 목록의 한계(잘림·실패) 안내. 잠겨 있으면 잠긴 사유가 앞선다. */
+  /** 선택지 목록의 한계(잘림·실패) 안내. 잠겨 있으면 잠긴 사유가, 오류가 있으면 오류가 앞선다. */
   note?: string;
+  /** 인라인 오류. **지금 고칠 수 있는 것**이라 안내·잠긴 사유보다 앞선다. */
+  error?: string;
   placeholder?: string;
   /**
    * 규범 3-2 — 선택지 문구가 길어 트리거 폭에 갇혀 잘리는 자리에만 붙인다(옵트인).
@@ -48,16 +51,21 @@ export const SelectField = ({
   options,
   value,
   onChange,
+  required = false,
   disabled = false,
   disabledReason,
   note,
+  error,
   placeholder,
   wide = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
-  /* 잠긴 칸에서는 잠긴 사유가 먼저다 — 지금 사용자가 할 수 있는 일을 가리키는 문장이 앞선다. */
-  const message = (disabled ? disabledReason : note) ?? undefined;
+  /*
+   * 지금 고칠 수 있는 것이 먼저다 — 오류가 안내를 밀어낸다. 잠긴 칸에서는 잠긴 사유가
+   * 목록의 한계보다 앞선다(사용자가 할 수 있는 일을 가리키는 문장이 앞선다).
+   */
+  const message = error ?? (disabled ? disabledReason : note) ?? undefined;
 
   /*
    * 선택지에 빈 값(「전체」)이 있으면 **빈 값도 고른 값이다** —
@@ -67,7 +75,7 @@ export const SelectField = ({
 
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
-      <FieldLabel htmlFor={id} label={label} />
+      <FieldLabel htmlFor={id} label={label} required={required} />
       <Select
         id={id}
         options={options}
@@ -75,10 +83,12 @@ export const SelectField = ({
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
+        invalid={error !== undefined}
+        aria-required={required || undefined}
         aria-describedby={message === undefined ? undefined : noteId}
       />
       {message !== undefined && (
-        <span id={noteId} className="field-note">
+        <span id={noteId} className={error === undefined ? 'field-note' : 'field-error'}>
           {message}
         </span>
       )}

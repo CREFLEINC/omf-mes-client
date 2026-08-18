@@ -4,14 +4,17 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_FILTERS,
   clearFilter,
+  isCreating,
   readFilters,
   readPage,
   readSelectedRuleId,
+  toCreateSearchParams,
   toFilterChips,
   toRuleListQuery,
   toSearchParams,
   toSelectionSearchParams,
   toUncoveredQuery,
+  withoutSelection,
 } from './filters';
 import type { RuleFilters } from './types';
 
@@ -238,5 +241,62 @@ describe('clearFilter', () => {
 
     expect(next.warehouseId).toBe('');
     expect(next.itemId).toBe('');
+  });
+});
+
+describe('isCreating', () => {
+  it('키가 있으면 등록 폼이 열린 것이다', () => {
+    expect(isCreating(new URLSearchParams('new=1'))).toBe(true);
+  });
+
+  /** 주소는 손으로 고쳐지는 자리라 값을 따지지 않는다 — 키가 있으면 열린 것으로 본다. */
+  it('값이 무엇이든 키가 있으면 열린 것으로 본다', () => {
+    expect(isCreating(new URLSearchParams('new=abc'))).toBe(true);
+  });
+
+  it('키가 없으면 닫힌 것이다', () => {
+    expect(isCreating(new URLSearchParams('wh=9201'))).toBe(false);
+  });
+});
+
+describe('toCreateSearchParams', () => {
+  /** 고른 규칙과 등록 폼은 **하나의 자리**다 — 남겨 두면 어느 쪽을 저장하는지 설명할 수 없다. */
+  it('조건과 쪽은 두고 고른 규칙을 비운다', () => {
+    const params = toCreateSearchParams({ ...DEFAULT_FILTERS, warehouseId: '9201' }, 3);
+
+    expect(params.get('wh')).toBe('9201');
+    expect(params.get('page')).toBe('3');
+    expect(params.get('new')).toBe('1');
+    expect(params.get('rule')).toBeNull();
+  });
+});
+
+describe('withoutSelection', () => {
+  /** 지우지 않으면 조건을 바꿔도 없는 규칙을 계속 부른다. */
+  it('고른 규칙과 등록 표시를 함께 걷어 낸다', () => {
+    const params = withoutSelection(new URLSearchParams('wh=9201&page=2&rule=9001&new=1'));
+
+    expect(params.get('rule')).toBeNull();
+    expect(params.get('new')).toBeNull();
+  });
+
+  it('조건과 쪽은 그대로 둔다', () => {
+    const params = withoutSelection(
+      new URLSearchParams('wh=9201&item=9101&active=1&page=2&rule=9001'),
+    );
+
+    expect(params.get('wh')).toBe('9201');
+    expect(params.get('item')).toBe('9101');
+    expect(params.get('active')).toBe('1');
+    expect(params.get('page')).toBe('2');
+  });
+
+  /** 받은 것을 고치지 않는다 — 주소 객체를 제자리에서 바꾸면 부르는 쪽이 지난 값을 잃는다. */
+  it('넘겨받은 주소를 건드리지 않는다', () => {
+    const original = new URLSearchParams('wh=9201&rule=9001');
+
+    withoutSelection(original);
+
+    expect(original.get('rule')).toBe('9001');
   });
 });
