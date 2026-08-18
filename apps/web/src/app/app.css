@@ -26,6 +26,11 @@
  * .tree-toggle  Location 계층의 들여쓰기 + 접기 버튼을 담는 셀 래퍼
  * .banner-slot  페인·다이얼로그 안의 배너와 아래 블록 사이 이음매(규범 6)
  *               + DS 배너의 box-sizing 정규화(임시 우회 — design-system-v2-webui#60)
+ * .login-shell   셸 밖에 서는 화면의 본문 — 내용을 뷰포트 한가운데 세운다(규범 8)
+ * .login-card    그 화면이 세우는 카드의 폭 상한(규범 8)
+ * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
+ * .login-fields  카드 안 입력 칸 사이 간격(규범 8)
+ * .login-actions 카드 안 액션 줄 — 하나뿐인 액션이 줄 전체를 채운다(규범 8)
  */
 
 :root {
@@ -329,4 +334,58 @@ main > * + * {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/*
+ * 규범 8 — 셸 밖에 서는 화면의 중앙 정렬. 값의 도출과 이탈 조건은 docs/layout-conventions.md에 있다.
+ *
+ * box-sizing을 여기서 주는 이유: 이 저장소에는 전역 리셋이 없다(.banner-slot > *가 같은 이유로 있다).
+ * 그대로 두면 main의 안쪽 여백 24px×2가 min-height: 100%에 **더해져** 늘 48px만큼 넘치고,
+ * 그 넘침이 그대로 세로 스크롤이 된다 — 아무것도 넘치지 않은 화면에서 스크롤 막대만 생긴다.
+ *
+ * 높이 기준을 100%로 두는 것은 html·body·#root가 이미 height: 100%인 사슬을 쓰기 위해서다.
+ * 같은 파일에 선 사슬을 두고 다른 기준(100dvh)을 들이면 둘이 어긋날 때 정본을 가릴 수 없다.
+ */
+.login-shell {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+}
+
+/*
+ * 24rem(384px) = 내용 폭 하한 344px + DS CardBody의 좌우 안쪽 여백(--space-5 × 2 = 40px).
+ * 창이 좁으면 width: 100%가 남는 폭을 그대로 쓴다 — 상한은 넓을 때만 발동한다.
+ */
+.login-card {
+  width: 100%;
+  max-width: 24rem;
+}
+
+/* 카드 머리의 서식은 디자인 시스템이 소유한다 — 표제는 그것을 물려받고 브라우저 기본 여백만 턴다. */
+.login-title {
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+/* 한 블록 안의 칸 사이 간격이라 .form-grid의 gap과 같은 값이다(규범 1의 --space-5는 블록 사이다). */
+.login-fields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/*
+ * 액션 줄 — .form-actions(우측 정렬)를 쓰지 않는 자리다. 카드가 좁고 액션이 하나뿐이라
+ * 오른쪽 끝에 붙이면 왼쪽에 아무것도 없는 빈 줄이 남는다. 이음매 값은 .form-actions와 같다.
+ *
+ * 폭은 button **요소**에 준다 — 디자인 시스템의 해시 클래스 이름을 겨냥하지 않는다(.wide-table과 같은 판단).
+ */
+.login-actions {
+  margin-top: var(--space-5);
+}
+
+.login-actions > button {
+  width: 100%;
 }
