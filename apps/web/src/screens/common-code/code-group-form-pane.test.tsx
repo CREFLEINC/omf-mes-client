@@ -27,6 +27,7 @@ const renderPane = (overrides: Partial<Parameters<typeof CodeGroupFormPane>[0]> 
       codeLockReason={null}
       deactivateDisabledReason={null}
       isDirty={false}
+      isLocked={false}
       isSaving={false}
       onSave={onSave}
       onCancel={onCancel}
@@ -160,5 +161,61 @@ describe('CodeGroupFormPane — 액션', () => {
     renderPane({ banner: <p>저장하지 못했습니다</p> });
 
     expect(screen.getByText('저장하지 못했습니다')).toBeInTheDocument();
+  });
+});
+
+describe('CodeGroupFormPane — 다른 코드그룹의 저장이 나가는 중', () => {
+  /**
+   * **막는 것과 가리는 것이 갈린다.** 저장은 한 번에 하나뿐이라 다른 코드그룹의 저장이 나가는
+   * 중이면 여기도 잠긴다(전역). 그러나 그것은 **다른 사실**이므로 사유가 붙어야 하고
+   * 진행 표시는 돌지 않는다 — 사유 없는 비활성은 「고장」으로 읽힌다(배치 규범 4).
+   *
+   * **입력칸은 잠그지 않는다**(D-7). 늦게 온 성공이 남의 폼을 덮지 않도록 상위가 대상을
+   * 견주므로, 여기서 편집까지 막으면 기다리는 동안 아무것도 못 하게 된다.
+   */
+  it('남의 저장이 나가는 중이면 저장이 사유와 함께 잠기고 입력칸은 열려 있다', () => {
+    renderPane({ isDirty: true, isLocked: true, isSaving: false });
+
+    const save = screen.getByRole('button', { name: '저장' });
+
+    expect(save).toBeDisabled();
+    expect(
+      screen.getByText('저장은 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.'),
+    ).toBeInTheDocument();
+    expect(save).not.toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByLabelText('그룹명')).toBeEnabled();
+    expect(screen.getByLabelText('설명')).toBeEnabled();
+  });
+
+  /* 내 저장이 나가는 중이면 진행 표시가 사유 자리를 대신한다 — 두 사실을 한 문구로 뭉개지 않는다. */
+  it('내 저장이 나가는 중이면 진행 표시가 돌고 남의 저장 사유를 내지 않는다', () => {
+    renderPane({ isDirty: true, isLocked: true, isSaving: true });
+
+    const save = screen.getByRole('button', { name: '저장' });
+
+    expect(save).toHaveAttribute('aria-busy', 'true');
+    expect(save).toBeDisabled();
+    expect(screen.queryByText(/저장은 다른 코드그룹의 저장이 끝난 뒤에/)).not.toBeInTheDocument();
+  });
+
+  /*
+   * 등록 폼도 같은 저장 자리를 쓴다 — 수정 저장이 나가는 중에 「그룹 추가」를 누르면 이 폼이
+   * 그 잠금 안에서 열린다(D-3의 두 훅 잠금). 사유 없이 비활성으로 두면 사용자는 무엇을
+   * 기다리는지 알 수 없다.
+   *
+   * **사유는 그 컨트롤의 이름으로 시작한다**(배치 규범 4-5) — 이 폼의 주 액션은 「저장」이
+   * 아니라 「그룹 추가」라 문면도 그 이름의 것이어야 한다.
+   */
+  it('등록 폼의 주 액션도 남의 저장이 나가는 중이면 그 이름의 사유와 함께 잠긴다', () => {
+    renderPane({ mode: 'create', isDirty: true, isLocked: true, isSaving: false });
+
+    const add = screen.getByRole('button', { name: '그룹 추가' });
+
+    expect(add).toBeDisabled();
+    expect(
+      screen.getByText('그룹 추가는 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.'),
+    ).toBeInTheDocument();
+    /* 수정 자리의 문면이 여기 서면 사용자는 「저장」이라는 없는 버튼을 찾는다. */
+    expect(screen.queryByText(/^저장은 다른 코드그룹의/)).not.toBeInTheDocument();
   });
 });

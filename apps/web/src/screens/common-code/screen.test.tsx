@@ -298,7 +298,8 @@ const neverFinishingResponse = (): Response =>
 
 /**
  * 시험이 도착 시점을 정하는 응답. 본문 스트림을 열어 둔 채 돌려주고 `release`로 닫는다 —
- * **응답이 도착하기 전에 다른 거래처로 옮기는** 경로를 재려면 그 사이가 필요하다.
+ * **응답이 도착하기 전에 다른 대상으로 옮기는** 경로를 재려면 그 사이가 필요하다.
+ * 이 화면의 세 구획(거래처 역할 · 자격 · 코드그룹)이 같은 도구를 함께 쓴다.
  */
 const deferredJsonResponse = (
   status: number,
@@ -1107,6 +1108,564 @@ describe('CommonCodeScreen — 코드그룹 사용 중지 (C22)', () => {
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * **나가는 중인 코드그룹 저장은 자기 그룹 밖으로 새지 않는다.**
+ *
+ * `resetIfIdle`가 나가는 중인 쓰기를 거두지 않는 것은 옳다(되먹임을 끊지 않는다 · `omf-mes#96`).
+ * 그래서 거두지 못한 상태가 남는데, **좌 목록은 저장 중에도 잠기지 않으므로** 사용자는 그사이
+ * 다른 코드그룹을 고를 수 있다. 끊는 것과 가리는 것을 갈라 두 면을 각각 잰다 —
+ * 형제 구획(자격)이 세운 형태를 그대로 따르되, 이 구획은 **소비처가 셋**이라(배너 · 필드 오류 ·
+ * 진행 표시) 각각에 잣대를 두고, **늦게 온 성공이 남의 폼을 덮는** 갈래를 하나 더 잰다.
+ */
+describe('CommonCodeScreen — 나가는 중인 코드그룹 저장의 매임과 잠금 (G-30)', () => {
+  const codeGroupSaveButton = (): HTMLElement =>
+    within(codeGroupFormPane()).getByRole('button', { name: '저장' });
+
+  /**
+   * 두 그룹의 수정 경로를 **둘 다** 스텁할 수 있게 대상을 인자로 받는다. 1002 쪽을 비워 두면
+   * 두 번째 저장이 나갔을 때 하네스가 「스텁 누락」으로 던져, 감지기가 재려는 **요청 수**가
+   * 아니라 다른 이유로 실패한다.
+   */
+  const codeGroupUpdateRoute = (codeGroupId: number, respond: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'PUT' &&
+      new URL(request.url).pathname === `${CODE_GROUPS_PATH}/${String(codeGroupId)}`,
+    respond,
+  });
+
+  const twoGroupRoutes = (): StubRoute[] => [
+    codeGroupListRoute(),
+    codeGroupDetailRoute(1001),
+    codeGroupDetailRoute(1002),
+  ];
+
+  /** 서버가 **그 칸에 붙여** 보낸 실패. 소비처 ②의 양성·음성 두 감지기가 같은 값을 쓴다. */
+  const groupNameFieldFailure = {
+    message: '',
+    errors: [
+      { scope: 'field', field: 'groupName', code: 'DUPLICATE', message: '이미 있는 그룹명입니다.' },
+    ],
+  };
+
+  /** 등록 실패 하나에 **배너 몫과 입력칸 몫이 함께** 실려 온다 — 등록 폼의 소비처 둘을 한 번에 잰다. */
+  const createFailure = {
+    message: '',
+    errors: [
+      { scope: 'screen', code: 'STANDARD', message: '저장할 수 없습니다.' },
+      { scope: 'field', field: 'groupName', code: 'DUPLICATE', message: '이미 있는 그룹명입니다.' },
+    ],
+  };
+
+  const codeGroupCreateRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === CODE_GROUPS_PATH,
+    respond,
+  });
+
+  const addCodeGroupButton = (): HTMLElement =>
+    within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' });
+
+  /** 등록 폼을 열고 필수 두 칸을 채운 뒤 등록을 낸다. */
+  const startCreate = async (user: ReturnType<typeof userEvent.setup>, groupName: string) => {
+    await user.click(within(codeGroupPane()).getByRole('button', { name: '그룹 추가' }));
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
+    await user.type(screen.getByLabelText('그룹명'), groupName);
+    await user.click(addCodeGroupButton());
+  };
+
+  /** 등록 폼을 닫았다 **다시 연다** — 그때 서는 것은 앞과 다른 **새 초안**이다. */
+  const reopenCreateFormWith = async (
+    user: ReturnType<typeof userEvent.setup>,
+    groupName: string,
+  ) => {
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '취소' }));
+    await user.click(within(codeGroupPane()).getByRole('button', { name: '그룹 추가' }));
+    await user.type(screen.getByLabelText('그룹명'), groupName);
+  };
+
+  /** 1001의 그룹명을 고쳐 저장을 낸다 — 초안을 고치는 가장 짧은 길이다. */
+  const startSaveOnFirstGroup = async (user: ReturnType<typeof userEvent.setup>) => {
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await user.type(screen.getByLabelText('그룹명'), 'X');
+    await user.click(codeGroupSaveButton());
+  };
+
+  const selectSecondGroup = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(within(codeGroupPane()).getByRole('button', { name: 'SYN-GRP-02' }));
+    await screen.findByDisplayValue('합성 코드그룹 B');
+  };
+
+  /**
+   * **막는 것과 가리는 것을 가른다.**
+   *
+   * 저장은 한 번에 하나뿐이라 옮겨 간 코드그룹도 **잠긴다**(막는 것 — 전역). 그러나 그 잠금은
+   * 남의 저장이라는 **다른 사실**이므로 사유가 붙어야 하고, 진행 표시는 돌지 않아야 한다
+   * (가리는 것 — 대상 축). 사유 없는 비활성은 사용자에게 「고장」으로 읽힌다.
+   */
+  it('저장이 나가는 중에 옮겨 간 코드그룹은 진행 표시 없이 사유와 함께 잠긴다', async () => {
+    const { user } = renderScreen(
+      [...twoGroupRoutes(), codeGroupUpdateRoute(1001, neverFinishingResponse)],
+      '?grp=1001',
+    );
+
+    await startSaveOnFirstGroup(user);
+    /* 소비처 ③의 **양성 방향** — 자기 저장에는 진행 표시가 돈다. 아래 음성 단언의 짝이다. */
+    await waitFor(() => {
+      expect(codeGroupSaveButton()).toHaveAttribute('aria-busy', 'true');
+    });
+
+    await selectSecondGroup(user);
+
+    const save = codeGroupSaveButton();
+
+    expect(save).toBeDisabled();
+    expect(
+      within(codeGroupFormPane()).getByText(
+        '저장은 다른 코드그룹의 저장이 끝난 뒤에 할 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+    /* 남의 저장으로 스피너를 돌리면 화면이 손댄 적 없는 코드그룹을 「저장 중」이라고 말한다. */
+    expect(save).not.toHaveAttribute('aria-busy', 'true');
+  });
+
+  /*
+   * 소비처 ① — 뒤늦게 온 앞 그룹의 실패 **배너**가 지금 구획에 서면 사용자는 **손댄 적 없는
+   * 코드그룹이 막힌 줄** 안다.
+   */
+  it('저장이 뒤늦게 실패해도 그사이 옮겨 간 코드그룹에 배너가 서지 않는다', async () => {
+    const deferred = deferredJsonResponse(400);
+
+    const { user } = renderScreen(
+      [...twoGroupRoutes(), codeGroupUpdateRoute(1001, () => deferred.response)],
+      '?grp=1001',
+    );
+
+    await startSaveOnFirstGroup(user);
+    await selectSecondGroup(user);
+
+    /*
+     * 옮겨 간 그룹에서 값을 하나 고쳐 둔다 — **입력칸은 잠기지 않으므로**(D-7) 고칠 수 있고,
+     * 그래야 잠금이 풀리는 순간을 「저장이 다시 열린다」는 **양성**으로 잡을 수 있다.
+     */
+    await user.type(screen.getByLabelText('그룹명'), 'Y');
+    expect(
+      within(codeGroupFormPane()).getByText(/저장은 다른 코드그룹의 저장이 끝난 뒤에/),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      deferred.release({
+        message: '',
+        errors: [{ scope: 'screen', code: 'STANDARD', message: '저장할 수 없습니다.' }],
+      });
+    });
+
+    /*
+     * **잠금이 풀리는 것으로 실패가 도착한 것을 안다** — 고친 것이 있는 폼의 저장이 다시
+     * 열리는 순간은 나가는 중이던 저장이 끝났을 때뿐이다. 도착 전에 음성 단언을 하면 늘 통과한다.
+     */
+    await waitFor(() => {
+      expect(codeGroupSaveButton()).toBeEnabled();
+    });
+    expect(within(codeGroupFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
+  });
+
+  /*
+   * 소비처 ②의 **양성 방향** — 매임이 자기 것까지 가리면 필드 오류는 **어디에도 서지 않는다.**
+   * 이 구획의 세 소비처 중 배너만 기존 감지기(409 둘)가 양성을 잡고 있어 여기를 메운다.
+   */
+  it('내 저장이 필드 오류로 실패하면 그 칸 옆에 사유가 선다', async () => {
+    const { user } = renderScreen(
+      [
+        ...twoGroupRoutes(),
+        codeGroupUpdateRoute(1001, () => jsonResponse(groupNameFieldFailure, { status: 400 })),
+      ],
+      '?grp=1001',
+    );
+
+    await startSaveOnFirstGroup(user);
+
+    expect(
+      await within(codeGroupFormPane()).findByText('이미 있는 그룹명입니다.'),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * 소비처 ② — 필드 오류는 배너와 **다른 자리**에 선다(입력칸 옆). 배너만 가리면 남의 실패가
+   * 옮겨 간 그룹의 칸에 붉은 글씨로 남아, 사용자는 자기가 방금 고친 값이 거부된 줄 안다.
+   */
+  it('저장이 뒤늦게 실패해도 그사이 옮겨 간 코드그룹의 입력칸에 필드 오류가 서지 않는다', async () => {
+    const deferred = deferredJsonResponse(400);
+
+    const { user } = renderScreen(
+      [...twoGroupRoutes(), codeGroupUpdateRoute(1001, () => deferred.response)],
+      '?grp=1001',
+    );
+
+    await startSaveOnFirstGroup(user);
+    await selectSecondGroup(user);
+    await user.type(screen.getByLabelText('그룹명'), 'Y');
+
+    await act(async () => {
+      deferred.release(groupNameFieldFailure);
+    });
+
+    await waitFor(() => {
+      expect(codeGroupSaveButton()).toBeEnabled();
+    });
+    expect(
+      within(codeGroupFormPane()).queryByText('이미 있는 그룹명입니다.'),
+    ).not.toBeInTheDocument();
+  });
+
+  /*
+   * **끊지는 않는다.** 가리는 축을 세운 뒤에도 `resetIfIdle`의 「나가는 중이면 손대지 않는다」
+   * 가드는 살아 있어야 한다. 가드가 없으면 옵저버가 떨어져 **무효화도 성공도 실패도 오지
+   * 않는다** — 서버에는 저장됐는데 화면에는 아무 흔적도 남지 않는다(`omf-mes#96`).
+   */
+  it('저장이 나가는 중에 코드그룹을 옮겨도 그 저장의 되먹임이 끊기지 않는다', async () => {
+    const deferred = deferredJsonResponse(200);
+
+    const { requests, user } = renderScreen(
+      [...twoGroupRoutes(), codeGroupUpdateRoute(1001, () => deferred.response)],
+      '?grp=1001',
+    );
+
+    await startSaveOnFirstGroup(user);
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    await selectSecondGroup(user);
+
+    await act(async () => {
+      deferred.release({ ...codeGroupFixtures[0], groupName: '고친 이름' });
+    });
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+  });
+
+  /*
+   * **늦게 온 성공은 알리기만 한다**(D-7).
+   *
+   * `onSuccess`가 폼을 서버 응답으로 다시 세우는데, 그사이 대상이 옮겨 갔다면 그 값은
+   * **남의 그룹의 값**이다. 배너·진행 표시와 달리 이 갈래는 **틀린 자료를 사실처럼 보여 주므로**
+   * 가장 조용하다 — 사용자는 자기가 보던 그룹의 이름이 저절로 바뀐 것을 저장으로 읽는다.
+   */
+  it('저장이 나가는 중에 코드그룹을 옮겨도 그 성공이 옮겨 간 코드그룹의 폼을 덮지 않는다', async () => {
+    const deferred = deferredJsonResponse(200);
+    let otherDetailCalls = 0;
+
+    const { user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        codeGroupDetailRoute(1001),
+        {
+          match: (request) => isGet(request, `${CODE_GROUPS_PATH}/1002`),
+          /*
+           * 1002의 **첫 조회만** 응답하고 무효화가 낸 재조회는 열어 둔다. 재조회가 1002의 상세를
+           * 곧바로 다시 세우면 남의 폼에 앉은 값이 **스쳐 지나가** 이 감지기가 그 순간을 붙잡지
+           * 못한다 — 실제로도 재조회가 늦거나 실패하면 덮인 값이 그대로 남는다.
+           */
+          respond: () => {
+            otherDetailCalls += 1;
+
+            return otherDetailCalls === 1
+              ? jsonResponse(
+                  {
+                    codeGroup: codeGroupFixtures[1],
+                    editability: { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
+                  },
+                  { headers: { ETag: 'W/"7"' } },
+                )
+              : neverFinishingResponse();
+          },
+        },
+        codeGroupUpdateRoute(1001, () => deferred.response),
+      ],
+      '?grp=1001',
+    );
+
+    await startSaveOnFirstGroup(user);
+    await selectSecondGroup(user);
+
+    /* 1001의 응답은 **다른 이름**이다 — 그 값이 1002의 폼에 앉으면 곧바로 보인다. */
+    await act(async () => {
+      deferred.release({ ...codeGroupFixtures[0], groupName: '고친 이름' });
+    });
+
+    /* 양성 앵커 — 응답이 실제로 도착했다. 그 뒤에 1002의 폼을 잰다. */
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(screen.getByLabelText('그룹코드')).toHaveValue('SYN-GRP-02');
+    expect(screen.getByLabelText('그룹명')).toHaveValue('합성 코드그룹 B');
+  });
+
+  /*
+   * **늦게 온 등록 성공은 주소를 끌고 가지 않는다**(D-4).
+   *
+   * 등록 성공은 새 자원으로 주소를 옮긴다 — 방금 만든 것을 사용자가 직접 찾지 않게 하려는
+   * 것이다. 그러나 그사이 다른 그룹을 고른 사용자에게 그 이동은 **보던 화면을 빼앗는** 일이다.
+   * 등록이 성공한 사실은 그대로 알린다.
+   */
+  it('등록이 나가는 중에 다른 코드그룹을 골라도 그 성공이 주소를 끌고 가지 않는다', async () => {
+    const deferred = deferredJsonResponse(201);
+
+    const { requests, history, user } = renderScreen([
+      codeGroupListRoute(),
+      codeGroupDetailRoute(1002),
+      {
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname === CODE_GROUPS_PATH,
+        respond: () => deferred.response,
+      },
+    ]);
+
+    await user.click(await within(codeGroupPane()).findByRole('button', { name: '그룹 추가' }));
+    await user.type(screen.getByLabelText('그룹코드'), 'SYN-GRP-09');
+    await user.type(screen.getByLabelText('그룹명'), '합성 코드그룹 I');
+    await user.click(within(codeGroupFormPane()).getByRole('button', { name: '그룹 추가' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
+    });
+
+    await selectSecondGroup(user);
+
+    await act(async () => {
+      deferred.release({
+        codeGroupId: 1009,
+        groupCode: 'SYN-GRP-09',
+        groupName: '합성 코드그룹 I',
+        description: null,
+        isActive: true,
+      });
+    });
+
+    /* 되먹임은 끊기지 않는다 — 등록은 성공했고 그 사실을 알린다. */
+    expect(await screen.findByText('등록했습니다')).toBeInTheDocument();
+    expect(history.search()).toContain('grp=1002');
+    expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1009`)).toHaveLength(0);
+    expect(screen.getByLabelText('그룹명')).toHaveValue('합성 코드그룹 B');
+  });
+
+  /*
+   * **두 저장이 겹치지 않는다.** 훅 하나에 요청 하나라, 두 번째 `mutate`는 앞 요청에서 옵저버를
+   * 떼어 낸다 — 앞 저장이 400이면 **어디에도 표시되지 않는 실패**가 되고, 성공이면 폼이 저장 전
+   * 값으로 남는다. 잠긴 컨트롤을 실제로 눌러 그 겹침을 시도한다.
+   */
+  it('남의 저장이 나가는 중에는 옮겨 간 코드그룹의 저장이 시작되지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        ...twoGroupRoutes(),
+        codeGroupUpdateRoute(1001, neverFinishingResponse),
+        codeGroupUpdateRoute(1002, neverFinishingResponse),
+      ],
+      '?grp=1001',
+    );
+
+    await startSaveOnFirstGroup(user);
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    });
+
+    await selectSecondGroup(user);
+    await user.type(screen.getByLabelText('그룹명'), 'Y');
+    await user.click(codeGroupSaveButton());
+
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+    expect(
+      within(codeGroupFormPane()).getByText(/저장은 다른 코드그룹의 저장이 끝난 뒤에/),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * **자기 저장의 성공은 자기 폼을 다시 세운다**(D-7 가드의 양성 방향).
+   *
+   * 위 감지기 ⑥이 「남의 폼을 덮지 않는다」를 재므로, 그 가드가 **늘 닫히는** 쪽으로 망가지면
+   * 서버가 정규화한 값(이름을 다듬었다거나)이 화면에 오지 않고 고친 초안이 그대로 남는다 —
+   * 사용자는 자기가 친 값이 저장된 줄 안다. 재조회는 그 뒤에 오는 **비동기 수리**라
+   * 열어 두고 재어야 그 순간을 붙잡는다(감지기 ⑥과 같은 스텁).
+   */
+  it('내 저장이 성공하면 그 폼이 서버 응답으로 다시 서고 저장이 다시 잠긴다', async () => {
+    const deferred = deferredJsonResponse(200);
+    let detailCalls = 0;
+
+    const { user } = renderScreen(
+      [
+        codeGroupListRoute(),
+        {
+          match: (request) => isGet(request, `${CODE_GROUPS_PATH}/1001`),
+          respond: () => {
+            detailCalls += 1;
+
+            return detailCalls === 1
+              ? jsonResponse(
+                  {
+                    codeGroup: codeGroupFixtures[0],
+                    editability: { codeEditable: true, reason: 'EDITABLE', referenceCount: 0 },
+                  },
+                  { headers: { ETag: 'W/"7"' } },
+                )
+              : neverFinishingResponse();
+          },
+        },
+        codeGroupUpdateRoute(1001, () => deferred.response),
+      ],
+      '?grp=1001',
+    );
+
+    await startSaveOnFirstGroup(user);
+
+    /* 서버가 보낸 것과 다른 이름을 돌려준다 — 응답이 정본임을 그 값으로 가른다. */
+    await act(async () => {
+      deferred.release({ ...codeGroupFixtures[0], groupName: '서버가 다듬은 이름' });
+    });
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(screen.getByLabelText('그룹명')).toHaveValue('서버가 다듬은 이름');
+    /* 기준값도 함께 서므로 「고친 것이 없음」으로 돌아간다 — 서지 않으면 저장이 열린 채 남는다. */
+    expect(codeGroupSaveButton()).toBeDisabled();
+  });
+
+  /*
+   * **등록 경로에서 「남의 것」을 가르는 축은 자원 번호가 아니라 초안 세션이다**(D-13).
+   *
+   * 등록 폼은 취소로 닫고 다시 열 수 있고, 그때 서는 것은 **다른 초안**이다. 되먹임을 살린
+   * 뒤에는 앞 초안의 실패가 새 초안 위에 서서, 사용자는 방금 열어 한 글자 친 초안이 이미
+   * 거부된 줄 안다. 아직 번호가 없는 자원이라 자원 축으로는 이 둘을 가를 수 없다.
+   */
+  it('버린 등록의 뒤늦은 실패가 다시 연 초안에 서지 않는다', async () => {
+    const deferred = deferredJsonResponse(400);
+
+    const { user } = renderScreen([
+      codeGroupListRoute(),
+      codeGroupCreateRoute(() => deferred.response),
+    ]);
+
+    await startCreate(user, '버린 초안');
+
+    /* 양성 앵커 — **자기 초안**에는 진행 표시가 돈다. 아래 음성 단언의 짝이다. */
+    await waitFor(() => {
+      expect(addCodeGroupButton()).toHaveAttribute('aria-busy', 'true');
+    });
+
+    await reopenCreateFormWith(user, '새 초안');
+
+    /*
+     * 도착 전 — 버린 초안의 **진행 표시**도 새 초안 위에서 돌지 않는다. 새 초안은 아직
+     * 아무것도 보내지 않았으므로 「저장 중」이 아니라 **잠금 사유**가 서야 한다.
+     */
+    expect(addCodeGroupButton()).not.toHaveAttribute('aria-busy', 'true');
+    expect(
+      within(codeGroupFormPane()).getByText(/그룹 추가는 다른 코드그룹의 저장이 끝난 뒤에/),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      deferred.release(createFailure);
+    });
+
+    /*
+     * **잠금이 풀리는 것으로 실패가 도착한 것을 안다** — 고친 것이 있는 초안의 등록이 다시
+     * 열리는 순간은 나가는 중이던 등록이 끝났을 때뿐이다. 도착 전에 음성 단언을 하면 늘 통과한다.
+     */
+    await waitFor(() => {
+      expect(addCodeGroupButton()).toBeEnabled();
+    });
+    expect(within(codeGroupFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
+    expect(
+      within(codeGroupFormPane()).queryByText('이미 있는 그룹명입니다.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('그룹명')).toHaveValue('새 초안');
+  });
+
+  /*
+   * **초안을 다시 여는 길은 넷이다**(액션 · 취소 · 목록 선택 · 뒤로가기) — 그래서 세션 번호를
+   * 올리는 자리는 **초안이 새로 서는 그 한 자리**여야 한다.
+   *
+   * 위 감지기는 「취소 → 그룹 추가」 한 길만 밟아, 번호를 **여는 자리마다** 올리는 순진한
+   * 구현과도 갈리지 않는다. 이 감지기는 그 순진한 구현이 빠뜨리는 길(목록 선택 후 **뒤로가기**)로
+   * 초안을 다시 세운다 — 이 자리가 D-13의 핵심 판단이고, 부서 구획이 그대로 복제한다.
+   */
+  it('목록을 거쳐 뒤로가기로 다시 연 초안에도 버린 등록의 실패가 서지 않는다', async () => {
+    const deferred = deferredJsonResponse(400);
+
+    const { history, user } = renderScreen([
+      codeGroupListRoute(),
+      codeGroupDetailRoute(1002),
+      codeGroupCreateRoute(() => deferred.response),
+    ]);
+
+    await startCreate(user, '버린 초안');
+    /* 등록을 두고 다른 그룹을 본 뒤, 뒤로가기로 등록 폼에 되돌아온다 — 그때 서는 것은 새 초안이다. */
+    await selectSecondGroup(user);
+    history.back();
+
+    await screen.findByRole('region', { name: '코드그룹 정보' });
+    await user.type(screen.getByLabelText('그룹명'), '되돌아온 초안');
+
+    await act(async () => {
+      deferred.release(createFailure);
+    });
+
+    await waitFor(() => {
+      expect(addCodeGroupButton()).toBeEnabled();
+    });
+    expect(within(codeGroupFormPane()).queryByText('저장할 수 없습니다.')).not.toBeInTheDocument();
+    expect(
+      within(codeGroupFormPane()).queryByText('이미 있는 그룹명입니다.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('그룹명')).toHaveValue('되돌아온 초안');
+  });
+
+  /* 짝 양성 — **같은 초안이면 선다.** 세션 대조가 자기 실패까지 가리면 어디에도 사유가 없다. */
+  it('등록이 실패하면 그 초안에 배너와 입력칸 사유가 함께 선다', async () => {
+    const { user } = renderScreen([
+      codeGroupListRoute(),
+      codeGroupCreateRoute(() => jsonResponse(createFailure, { status: 400 })),
+    ]);
+
+    await startCreate(user, '합성 코드그룹 I');
+
+    expect(await within(codeGroupFormPane()).findByText('저장할 수 없습니다.')).toBeInTheDocument();
+    expect(within(codeGroupFormPane()).getByText('이미 있는 그룹명입니다.')).toBeInTheDocument();
+  });
+
+  /*
+   * **재진입도 「그대로 있는 것」이 아니다**(D-13 · D-4의 재진입 갈래).
+   *
+   * 「지금 등록 모드인가」만 물으면 닫았다 다시 연 사용자를 통과시켜, 앞 초안의 성공이 주소를
+   * 새 자원으로 끌고 가면서 **지금 치던 초안이 사라진다.**
+   */
+  it('버린 등록이 뒤늦게 성공해도 다시 연 초안을 두고 주소가 옮겨 가지 않는다', async () => {
+    const deferred = deferredJsonResponse(201);
+
+    const { requests, history, user } = renderScreen([
+      codeGroupListRoute(),
+      codeGroupCreateRoute(() => deferred.response),
+    ]);
+
+    await startCreate(user, '버린 초안');
+    await reopenCreateFormWith(user, '새 초안');
+
+    await act(async () => {
+      deferred.release({
+        codeGroupId: 1009,
+        groupCode: 'SYN-GRP-09',
+        groupName: '버린 초안',
+        description: null,
+        isActive: true,
+      });
+    });
+
+    /* 되먹임은 끊기지 않는다 — 등록은 성공했고 그 사실을 알린다. */
+    expect(await screen.findByText('등록했습니다')).toBeInTheDocument();
+    expect(history.search()).toContain('new=group');
+    expect(history.search()).not.toContain('grp=1009');
+    expect(requestsTo(requests, `${CODE_GROUPS_PATH}/1009`)).toHaveLength(0);
+    expect(screen.getByLabelText('그룹명')).toHaveValue('새 초안');
   });
 });
 
