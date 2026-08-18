@@ -14,10 +14,14 @@ import {
 import {
   ITEM_LABEL,
   LOCATION_LABEL,
+  OWNERSHIP_A,
+  OWNERSHIP_B,
   UOM_LABEL,
   WAREHOUSE_LABEL,
+  balanceRow,
   itemFixtures,
   locationFixtures,
+  ruleFixtureAt,
   ruleFixtures,
   uncoveredItemFixtures,
   uomFixtures,
@@ -29,10 +33,14 @@ const t = messages.putawayRule;
 
 const RULES_PATH = '/logistics/putaway-rules';
 const UNCOVERED_PATH = '/logistics/putaway-rules/uncovered-items';
+const BALANCES_PATH = '/inventory/balances';
 const WAREHOUSES_PATH = '/mdm/warehouses';
 const LOCATIONS_PATH = '/mdm/locations';
 const ITEMS_PATH = '/mdm/items';
 const UOMS_PATH = '/mdm/uoms';
+
+/** 단위 9402의 풀린 이름. 창고 전체 규칙(9002)의 용량·적재가 이 단위로 선다. */
+const OTHER_UOM_LABEL = 'SYN-UOM-02 · 합성단위 나';
 
 /** 창고를 고른 주소. 이 화면의 거의 모든 조회가 이 조건에서 열린다. */
 const WITH_WAREHOUSE = '/?wh=9201';
@@ -64,6 +72,48 @@ const failing = (pathname: string, status = 500): StubRoute => ({
 });
 
 /**
+ * 규칙별로 다른 잔액을 돌려주는 스텁.
+ *
+ * **한 벌로 같은 답을 내면 배선을 잴 수 없다** — 어느 규칙이 어느 잔액을 받았는지 화면에서
+ * 구분되지 않아 「대상마다 갈라 부른다」가 헛통과한다. 요청의 조건을 읽어 그 조건의 답을 준다.
+ */
+const balanceRowsFor = (itemId: number, locationId: number | null): unknown[] => {
+  /* 규칙 9001 — 용량 500, 적재 320 → 64%. 100% 아래 갈래다. */
+  if (itemId === 9101 && locationId === 9301) return [balanceRow({ onHandQty: 320 })];
+  /* 규칙 9003 — 용량 80, 적재 100 → 125%. 100%를 넘는 갈래다(꺼진 규칙도 적재는 있다). */
+  if (itemId === 9101 && locationId === 9302) {
+    return [balanceRow({ locationId: 9302, onHandQty: 100 })];
+  }
+  /* 규칙 9002 — 위치를 비운 창고 전체 규칙. 두 위치의 줄을 함께 받아 더한다(600 / 1200 = 50%). */
+  if (itemId === 9102 && locationId === null) {
+    return [
+      balanceRow({ itemId: 9102, locationId: 9301, uomId: 9402, onHandQty: 300 }),
+      balanceRow({ itemId: 9102, locationId: 9302, uomId: 9402, onHandQty: 300 }),
+    ];
+  }
+
+  /* 규칙 9004 — 그 조건의 잔액 줄이 없다. 「0이다」가 아니라 「없다」 갈래다. */
+  return [];
+};
+
+const balancesRoute: StubRoute = {
+  match: (request) => isGet(request, BALANCES_PATH),
+  respond: (request) => {
+    const query = new URL(request.url).searchParams;
+    const locationId = query.get('locationId');
+
+    return jsonResponse(
+      listBody(
+        balanceRowsFor(
+          Number(query.get('itemId')),
+          locationId === null ? null : Number(locationId),
+        ),
+      ),
+    );
+  },
+};
+
+/**
  * 모든 조회를 세울 수 있는 스텁 한 벌.
  *
  * **「부르지 않는다」를 증명하려면 부를 수 있어야 한다.** 스텁을 빼면 하네스가 던져 실패하는데,
@@ -73,6 +123,7 @@ const allRoutes = (overrides: StubRoute[] = []): StubRoute[] => [
   ...overrides,
   route(UNCOVERED_PATH, uncoveredItemFixtures),
   route(RULES_PATH, ruleFixtures),
+  balancesRoute,
   route(WAREHOUSES_PATH, warehouseFixtures),
   route(LOCATIONS_PATH, locationFixtures),
   route(ITEMS_PATH, itemFixtures),
@@ -158,9 +209,12 @@ describe('PutawayRuleScreen — 창고를 고르기 전', () => {
   /**
    * **C1-1.** 창고 없이 목록을 부르면 전 창고의 규칙이 섞여 오고, 그 목록은 어느 창고의
    * 사실도 아니다. 「부르지 않는다」를 **경로 전체에서** 센다 — 조건을 만지고 쪽을 옮기고
-   * 다시 조회를 눌러도 그 둘은 한 번도 나가지 않아야 한다.
+   * 다시 조회를 눌러도 그 셋은 한 번도 나가지 않아야 한다.
+   *
+   * **잔액도 같은 잠금을 받는다.** 계약이 「창고·품목·LOT 중 적어도 하나」를 요구하므로
+   * 창고 없는 요청은 성립하지도 않는다 — 세는 자리를 함께 두어 다음 회차가 빠뜨리지 못하게 한다.
    */
-  it('목록도 규칙 없는 품목도 한 번도 부르지 않는다', async () => {
+  it('목록도 규칙 없는 품목도 잔액도 한 번도 부르지 않는다', async () => {
     const { urls, user } = renderScreen();
 
     await screen.findByText(t.empty.noWarehouseTitle);
@@ -175,6 +229,7 @@ describe('PutawayRuleScreen — 창고를 고르기 전', () => {
 
     expect(countOf(urls, RULES_PATH)).toBe(0);
     expect(countOf(urls, UNCOVERED_PATH)).toBe(0);
+    expect(countOf(urls, BALANCES_PATH)).toBe(0);
   });
 
   /** 위치·품목·단위도 창고를 전제로 선다 — 창고 없이 부르면 헛도는 요청이다. */
@@ -378,11 +433,20 @@ describe('PutawayRuleScreen — 이름 풀이만 실패한 갈래', () => {
     return screen.getAllByRole('table')[0] as HTMLElement;
   };
 
-  /** 품목 칸은 고르기 버튼이 곧 칸이다 — 그 칸만 따로 읽어야 다른 열의 문면과 섞이지 않는다. */
+  /**
+   * 품목 칸만 따로 읽는다 — 다른 열의 문면과 섞이면 「품목 칸이 실패 문면이다」가 헛통과한다.
+   *
+   * **열을 지목해 읽는다.** 표 안의 버튼을 전부 모으는 형태로 두면 다음 회차가 행에 버튼을
+   * 하나라도 더하는 순간 말없이 섞인다 — 지금은 그런 버튼이 없지만, 없다는 사실에 기대는
+   * 시험은 그것이 생기는 회차에 조용히 뜻을 잃는다(단위 ① 인계).
+   */
+  const ITEM_COLUMN_INDEX = 1;
+
   const itemCellTexts = (table: HTMLElement): string[] =>
     within(table)
-      .getAllByRole('button')
-      .map((cell) => cell.textContent ?? '');
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell')[ITEM_COLUMN_INDEX]?.textContent ?? '');
 
   it('품목 이름 풀이가 실패하면 품목 칸이 실패 문면이 되고 「알 수 없음」으로 보이지 않는다', async () => {
     renderScreen(WITH_WAREHOUSE, allRoutes([failing(ITEMS_PATH)]));
@@ -618,6 +682,7 @@ describe('PutawayRuleScreen — 조건과 쪽', () => {
     const { urls, user } = renderScreen(WITH_WAREHOUSE, [
       route(UNCOVERED_PATH, uncoveredItemFixtures),
       route(RULES_PATH, ruleFixtures, { total: 45 }),
+      balancesRoute,
       route(WAREHOUSES_PATH, warehouseFixtures),
       route(LOCATIONS_PATH, locationFixtures),
       route(ITEMS_PATH, itemFixtures),
@@ -638,6 +703,7 @@ describe('PutawayRuleScreen — 조건과 쪽', () => {
     const { user } = renderScreen('/?wh=9201&rule=9001', [
       route(UNCOVERED_PATH, uncoveredItemFixtures),
       route(RULES_PATH, ruleFixtures, { total: 45 }),
+      balancesRoute,
       route(WAREHOUSES_PATH, warehouseFixtures),
       route(LOCATIONS_PATH, locationFixtures),
       route(ITEMS_PATH, itemFixtures),
@@ -707,6 +773,209 @@ describe('PutawayRuleScreen — 규칙 고르기', () => {
     });
 
     expect(countOf(urls, RULES_PATH)).toBe(before);
+  });
+});
+
+/**
+ * **현재 적재 배선** — 규칙 표와 재고 잔액은 계약이 다르다(기준정보 대 자재창고).
+ * 둘을 잇는 것은 화면이며, 그 이음매가 어긋나면 **규칙이 남의 자리 잔액을 자기 사용률로 읽는다.**
+ */
+describe('PutawayRuleScreen — 현재 적재와 사용률', () => {
+  const balanceQueries = (urls: URL[]): URLSearchParams[] =>
+    urls.filter((url) => url.pathname === BALANCES_PATH).map((url) => url.searchParams);
+
+  /** 같은 (품목·위치)의 규칙이 둘이어도 한 번만 묻는다 — 합성 자료 넷은 축이 모두 다르다. */
+  it('보이는 규칙의 (품목·위치)마다 한 번씩 부른다', async () => {
+    const { urls } = renderScreen(WITH_WAREHOUSE);
+
+    await waitForRows();
+    await waitFor(() => {
+      expect(countOf(urls, BALANCES_PATH)).toBe(4);
+    });
+  });
+
+  /**
+   * **C2-1.** 위치가 있는 규칙은 그 위치로 좁혀 묻고, **위치를 비운 창고 전체 규칙은 위치를
+   * 싣지 않는다** — 실으면 한 자리의 잔액만 보고 사용률이 실제보다 작아진다.
+   */
+  it('창고 수준 규칙만 위치 없이 부른다', async () => {
+    const { urls } = renderScreen(WITH_WAREHOUSE);
+
+    await waitForRows();
+    await waitFor(() => {
+      expect(countOf(urls, BALANCES_PATH)).toBe(4);
+    });
+
+    const withoutLocation = balanceQueries(urls).filter((query) => !query.has('locationId'));
+
+    expect(withoutLocation).toHaveLength(1);
+    expect(withoutLocation[0]?.get('itemId')).toBe('9102');
+    expect(balanceQueries(urls).every((query) => query.get('warehouseId') === '9201')).toBe(true);
+  });
+
+  /** **C2-2.** 단위가 같고 소유가 하나인 규칙에만 비율이 선다. */
+  it('사용률이 막대와 수치로 함께 선다', async () => {
+    renderScreen(WITH_WAREHOUSE);
+
+    expect(
+      await screen.findByText(t.values.usageSummary('320', UOM_LABEL, '64')),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('progressbar', { name: t.values.usageBarLabel }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  /** 창고 전체 규칙은 그 창고의 그 품목 **전 위치**를 더한다 — 300 + 300 = 600 / 1200. */
+  it('창고 수준 규칙은 여러 위치의 잔액을 더해 낸다', async () => {
+    renderScreen(WITH_WAREHOUSE);
+
+    expect(
+      await screen.findByText(t.values.usageSummary('600', OTHER_UOM_LABEL, '50')),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * **C2-5.** 막대는 잘리고 수치는 잘리지 않는다 — 두 자리를 따로 잰다.
+   * 규칙 9003은 용량 80에 적재 100이라 125%다.
+   */
+  it('100%를 넘는 행에서 막대는 잘리고 수치는 실제 비율을 낸다', async () => {
+    renderScreen(WITH_WAREHOUSE);
+
+    const over = await screen.findByText(t.values.usageSummary('100', UOM_LABEL, '125'));
+    const bars = screen.getAllByRole('progressbar', { name: t.values.usageBarLabel });
+
+    expect(over).toBeInTheDocument();
+    expect(bars.some((bar) => bar.getAttribute('aria-valuetext') === '125%')).toBe(true);
+    expect(bars.every((bar) => Number(bar.getAttribute('aria-valuenow')) <= 100)).toBe(true);
+  });
+
+  /** **C2-6.** 그 조건의 잔액 줄이 없는 행은 대시로 선다 — 「0이다」와 다른 사실이다. */
+  it('잔액 줄이 없는 행은 대시로 선다', async () => {
+    renderScreen(WITH_WAREHOUSE);
+
+    await waitForRows();
+
+    expect(await screen.findByText(t.values.onHandNone)).toBeInTheDocument();
+  });
+
+  /**
+   * **C2-4.** 소유 구분은 어떤 축에서도 합치지 않는다(공유계약 L-7) —
+   * 자사 재고와 고객 지급품을 더한 비율은 오독이다.
+   */
+  it('소유가 섞인 규칙은 비율 없이 소유별로 선다', async () => {
+    const splitOwnership: StubRoute = {
+      match: (request) => isGet(request, BALANCES_PATH),
+      respond: () =>
+        jsonResponse(
+          listBody([
+            balanceRow({ ownershipTypeCode: OWNERSHIP_A, onHandQty: 300 }),
+            balanceRow({ ownershipTypeCode: OWNERSHIP_B, onHandQty: 120 }),
+          ]),
+        ),
+    };
+
+    renderScreen(WITH_WAREHOUSE, allRoutes([splitOwnership]));
+
+    expect(await screen.findAllByText(t.notes.usageOwnershipSplit)).not.toHaveLength(0);
+    expect(
+      screen.getAllByText(t.values.ownershipQty(OWNERSHIP_B, '120', UOM_LABEL)).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('progressbar', { name: t.values.usageBarLabel }),
+    ).not.toBeInTheDocument();
+  });
+
+  /** **C2-3.** 단위가 다르면 환산하지 않는다 — 두 값을 단위와 함께 그대로 둔다. */
+  it('단위가 다른 규칙은 비율 없이 수량과 사유가 선다', async () => {
+    const otherUom: StubRoute = {
+      match: (request) => isGet(request, BALANCES_PATH),
+      respond: () => jsonResponse(listBody([balanceRow({ uomId: 9402, onHandQty: 300 })])),
+    };
+
+    renderScreen(WITH_WAREHOUSE, allRoutes([otherUom]));
+
+    expect(await screen.findAllByText(t.notes.usageUnitMismatch)).not.toHaveLength(0);
+    expect(screen.getAllByText(t.values.onHandQty('300', OTHER_UOM_LABEL)).length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  /**
+   * 계약이 명시로 허용한 음수 적재(음수 허용 품목). 비율을 내면 막대가 0으로 잘려 **가장 비어
+   * 있는 위치와 같은 모양**이 되는데, 장부가 어긋난 상태와 여유로운 위치는 정반대의 조치를
+   * 부른다 — 화면 배선까지 그 갈래가 살아 있는지 잰다.
+   */
+  it('적재가 음수인 규칙은 비율 없이 음수 수량과 사유가 선다', async () => {
+    const negative: StubRoute = {
+      match: (request) => isGet(request, BALANCES_PATH),
+      respond: () => jsonResponse(listBody([balanceRow({ onHandQty: -40 })])),
+    };
+
+    renderScreen(WITH_WAREHOUSE, allRoutes([negative]));
+
+    expect(await screen.findAllByText(t.notes.usageNegativeOnHand)).not.toHaveLength(0);
+    expect(screen.getAllByText(t.values.onHandQty('-40', UOM_LABEL)).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('progressbar', { name: t.values.usageBarLabel }),
+    ).not.toBeInTheDocument();
+  });
+
+  /** 실패를 「없음」으로 뭉개면 화면이 확인한 적 없는 것을 사실로 말하게 된다. */
+  it('잔액 조회가 실패해도 목록은 서고 그 칸이 실패로 말한다', async () => {
+    renderScreen(WITH_WAREHOUSE, allRoutes([failing(BALANCES_PATH)]));
+
+    await waitForRows();
+
+    expect(await screen.findAllByText(t.values.onHandFailed)).not.toHaveLength(0);
+    expect(screen.queryByText(t.values.onHandNone)).not.toBeInTheDocument();
+    expect(screen.getByText(LOCATION_LABEL)).toBeInTheDocument();
+  });
+
+  /** 한쪽만 부르면 갱신된 값과 낡은 값이 한 화면에 섞인다 — 적재도 함께 다시 부른다. */
+  it('다시 조회가 잔액도 함께 부른다', async () => {
+    const { urls, user } = renderScreen(WITH_WAREHOUSE);
+
+    await waitForRows();
+    await waitFor(() => {
+      expect(countOf(urls, BALANCES_PATH)).toBe(4);
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    await waitFor(() => {
+      expect(countOf(urls, BALANCES_PATH)).toBe(8);
+    });
+  });
+});
+
+/**
+ * **C2-7 배선** — 같은 (품목·창고·위치·우선순위) 활성 규칙이 이 쪽에 둘 이상이면 어느 쪽이
+ * 이기는지 데이터가 정하지 않는다. 표식이 없으면 그 사실이 화면 어디에도 드러나지 않는다.
+ */
+describe('PutawayRuleScreen — 중복 표식', () => {
+  const twinRules = [
+    ruleFixtureAt(9001),
+    { ...ruleFixtureAt(9001), putawayRuleId: 9005 },
+    ruleFixtureAt(9002),
+  ];
+
+  /**
+   * 두 규칙의 품목·위치가 같아 **행 손잡이의 접근 이름까지 같다** — 그것이 바로 중복이 눈에
+   * 띄어야 하는 이유다. 그래서 이 시험은 한 행을 집는 `waitForRows`를 쓰지 않는다.
+   */
+  it('같은 조합의 활성 규칙 둘에 표식이 붙는다', async () => {
+    renderScreen(WITH_WAREHOUSE, allRoutes([route(RULES_PATH, twinRules)]));
+
+    expect(await screen.findAllByText(t.values.duplicate)).toHaveLength(2);
+  });
+
+  /** 합성 자료 넷은 조합이 모두 달라 표식이 서지 않는다 — 짝이 되는 음성 갈래다. */
+  it('중복이 없으면 표식이 서지 않는다', async () => {
+    renderScreen(WITH_WAREHOUSE);
+
+    await waitForRows();
+
+    expect(screen.queryByText(t.values.duplicate)).not.toBeInTheDocument();
   });
 });
 
