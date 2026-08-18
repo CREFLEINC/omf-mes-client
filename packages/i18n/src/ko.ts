@@ -3695,12 +3695,6 @@ const stocktaking = {
      */
     closeVariance: (remaining: number): string =>
       `마감: 차이 ${String(remaining)}건이 남아 있어 마감할 수 없습니다. 차이를 조정한 뒤에 마감할 수 있습니다.`,
-    /*
-     * ⛔ **`adjustmentPending`을 지웠다**(W-01-12 개방 · D-18). 재고 조정 화면이 나가 「아직
-     * 이어서 할 수 없다」가 더는 참이 아니다 — 사유를 남겨 두면 화면에 없는 잠김을 설명하는
-     * 죽은 문구가 되고, 다음 사본이 그 문구를 보고 잠긴 버튼을 다시 만든다.
-     * 이어서 할 수 있게 된 자리의 안내는 `result.adjustmentNote`가 든다.
-     */
     /** 이력은 표시 규약이 정해지지 않아 자리만 둔다(착수 이슈 §4 · `omf-mes#68`). */
     historyPending:
       '실물 수량 수정 이력: 이력의 표시 규약이 아직 정해지지 않아 지금은 볼 수 없습니다. 규약이 정해지면 이 자리에서 볼 수 있습니다.',
@@ -3817,6 +3811,9 @@ const stocktaking = {
      *
      * **건수를 서버가 준 요약에서 그대로 인용한다**(착수 이슈 §6 ⭐ — 화면이 세지 않는다).
      * 건수를 밝히지 않으면 「왜 이 마감에만 링크가 있는가」가 화면에서 읽히지 않는다.
+     *
+     * 자리표시 시절의 `actionReasons.adjustmentPending`(「아직 이어서 할 수 없다」)을 대신한다 —
+     * 그 문구는 도착 화면이 생겨 참이 아니게 됐고, 남기면 다음 사본이 잠긴 버튼을 되살린다.
      */
     adjustmentNote: (varianceCount: number): string =>
       `차이 ${String(varianceCount)}건이 남아 있습니다. 재고조정에서 이어서 처리하세요.`,

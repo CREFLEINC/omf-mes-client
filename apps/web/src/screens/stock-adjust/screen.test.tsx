@@ -405,6 +405,26 @@ describe('StockAdjustScreen — 없는 실사 주소 정리', () => {
     await waitForLocation(ROUTE);
   });
 
+  /*
+   * ⚠ **이 갈래만 「주소=갈래」의 예외다**(리뷰 R-2). 주소에서 대상이 사라져도 **실사 갈래에
+   * 남는다** — 대상을 지운 주체가 사용자가 아니라 화면이고, 직접 등록으로 옮기면 「없는
+   * 실사였다」 안내가 **실사 선택칸이 없는 구획**에 서서 화면에 없는 컨트롤을 쓰라고 말한다.
+   *
+   * 문면(같은 이름의 `screen.tsx` 주석)에만 있고 감지기가 없던 자리라, 그 예외를 여기 고정한다 —
+   * 없으면 다음 사람이 「주소가 비면 직접 등록」이라는 일반 규칙을 이 갈래에도 밀어 넣는다.
+   */
+  it('정리해도 실사 갈래에 남는다 — 고를 자리와 안내를 지킨다', async () => {
+    renderScreen(allRoutes(), '?count=9109');
+
+    await screen.findByText(t.source.countNotFoundNote);
+    await waitForLocation(ROUTE);
+
+    expect(screen.getByRole('radio', { name: t.source.count })).toBeChecked();
+    expect(screen.getByRole('radio', { name: t.source.direct })).not.toBeChecked();
+    /* 안내가 가리키는 컨트롤이 실제로 그 자리에 있다 — 갈래가 바뀌면 이 칸이 사라진다. */
+    expect(within(sourcePane()).getByLabelText(t.source.countField)).toBeInTheDocument();
+  });
+
   /**
    * **잘린 목록에서는 판정하지 않는다** — 못 본 것과 없는 것은 다르다. 정상 실사를 가리킨
    * 주소가 지워지면 재고실사에서 넘어온 사용자가 무엇을 조정하려 했는지 잃는다.

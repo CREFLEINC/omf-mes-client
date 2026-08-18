@@ -265,6 +265,30 @@ describe('ResultPane — 마감 갈래', () => {
   });
 
   /*
+   * **링크는 이름-값 목록 밖에 선다**(부품 주석이 길게 논증한 배치 — 그 판단에 붙이는 잣대).
+   *
+   * `<dl>` 안으로 옮기면 보조기술이 링크를 **「차이」의 값**으로 읽거나 이름 없는 조각으로
+   * 목록에 섞어 읽는다. 건수·`href`·접근 이름은 셋 다 **위치와 무관**해서, 이 단언이 없으면
+   * 다음 사람이 간격·줄바꿈을 이유로 링크를 목록 안으로 옮겨도 아무도 울지 않는다.
+   * 이 부품에서는 특히 자연스러운 이동이다 — 링크를 감싼 `.field-cell`이 `<dl>` 안 칸과
+   * **같은 클래스 이름**이라 옮겨도 겉모습이 달라지지 않는다.
+   *
+   * 전례가 같은 자리에 같은 잣대를 세웠다(`over-receipt-split/created-receipts-pane.test.tsx`).
+   * 이번 회차가 그 주석 문면을 사본하면서 이 감지기를 빠뜨렸던 자리다(리뷰 R-1).
+   */
+  it('링크가 이름-값 목록 안에 있지 않다', () => {
+    renderPane(CLOSED_WITH_VARIANCE);
+
+    const region = closedRegion();
+    const definitionList = region.querySelector('dl');
+
+    /* 짝 양성 — 목록도 링크도 실제로 있다. 둘 다 없으면 아래 0건은 뜻이 없다. */
+    expect(definitionList).not.toBeNull();
+    expect(within(region).getAllByRole('link')).toHaveLength(1);
+    expect(definitionList?.querySelectorAll('a').length).toBe(0);
+  });
+
+  /*
    * **완료 조건 C48 · 갱신된 감지기의 짝** — 차이가 0인 마감에는 **링크도 버튼도 없다**.
    * 조정할 것이 없는 자리에 길을 두면 사용자는 무엇을 조정하러 가는지 모른 채 화면을 연다.
    *

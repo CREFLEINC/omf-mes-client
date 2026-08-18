@@ -4150,11 +4150,16 @@ describe('StocktakingScreen — 조정 등록', () => {
    * 요구하지만(`close-guard.ts`), 결과 구획에 담기는 것은 **마감 응답이 준 요약**이다 —
    * 같은 응답의 상태 코드가 상세와 갈리는 것을 이미 실측했으므로(M59) 요약도 갈릴 수 있다.
    */
-  const closingWithVarianceRoute = (): StubRoute => ({
+  const closingWithVarianceRoute = (
+    countOverrides: Parameters<typeof countDetailBody>[0] = {},
+  ): StubRoute => ({
     match: isCloseRequest,
     respond: () =>
       jsonResponse(
-        countDetailBody({ statusCode: CLOSED_STATUS }, { ...CLOSABLE_SUMMARY, varianceCount: 3 }),
+        countDetailBody(
+          { statusCode: CLOSED_STATUS, ...countOverrides },
+          { ...CLOSABLE_SUMMARY, varianceCount: 3 },
+        ),
       ),
   });
 
@@ -4204,6 +4209,68 @@ describe('StocktakingScreen — 조정 등록', () => {
     await waitFor(() => {
       expect(currentLocation()).toBe(before);
     });
+  });
+
+  /*
+   * ⭐ **push와 replace를 실제로 가르는 자리**(검증 V-5 생존 대응).
+   *
+   * 바로 위 시험은 진입 주소(`?ct=9001`)와 마감 뒤 주소가 **글자까지 같아** 링크에 `replace`를
+   * 붙여도 뒤로가기가 같은 주소에 도착해 헛통과한다. 그래서 **앞뒤 주소가 갈리는 상태**에서
+   * 다시 잰다 — 위치까지 고른 채로 들어와(`AT_LOCATION`) 마감하면 마감 성공이 `loc`를 비우므로
+   * 히스토리 앞 항목은 `?ct=9001&loc=…`, 뒤 항목은 `?ct=9001`이 된다.
+   *
+   * 이 상태에서 링크가 `replace`면 뒤로가기가 **`loc`가 붙은 주소**로 떨어져 마감 결과가 사라진다
+   * (그 화면은 위치 편집 구획이 열린 자리다). 링크가 push여야 한 칸 앞이 마감 결과 주소다.
+   */
+  it('마감 앞뒤 주소가 갈려도 뒤로가기 한 번이면 마감 결과 주소로 돌아온다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingWithVarianceRoute()]),
+      AT_LOCATION,
+    );
+
+    await closeCount(user);
+
+    const result = await screen.findByRole('status', { name: t.result.closedLabel });
+    const afterClose = currentLocation();
+
+    /* 짝 양성 — 마감이 실제로 주소를 바꿨다(`loc`가 빠졌다). 갈리지 않으면 이 시험은 무의미하다. */
+    expect(afterClose).toBe(`${ROUTE}${AT_COUNT}`);
+    expect(afterClose).not.toBe(`${ROUTE}${AT_LOCATION}`);
+
+    await user.click(within(result).getByRole('link', { name: t.actions.adjustment }));
+    await waitFor(() => {
+      expect(currentLocation()).toBe(stockAdjustEntryPath(9001));
+    });
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(afterClose);
+    });
+  });
+
+  /*
+   * ⭐ **넘기는 번호는 「응답이 준 것」이지 「화면이 겨눈 것」이 아니다**(검증 V-4 생존 대응).
+   *
+   * 마감 성공 핸들러가 바로 옆 줄에서 `selectedCountId`로 다른 필드를 채우고 있어 **실수로 갈아
+   * 끼우기 쉬운 자리**다. 응답이 **고른 실사와 다른 번호**를 주는 상태에서 링크가 어느 쪽을
+   * 가리키는지 재면 그 실수가 드러난다 — 조정으로 넘기는 것은 **서버가 마감했다고 말한 실사**여야
+   * 한다(같은 응답의 상태 코드에 이미 같은 잣대를 세웠다 — 감지기 M59).
+   */
+  it('마감 응답이 다른 실사를 가리키면 링크도 그 실사를 가리킨다', async () => {
+    const { user } = await setupClosable(
+      allRoutes([closableDetailRoute(), closingWithVarianceRoute({ inventoryCountId: 9102 })]),
+    );
+
+    await closeCount(user);
+
+    const result = await screen.findByRole('status', { name: t.result.closedLabel });
+    const href =
+      within(result).getByRole('link', { name: t.actions.adjustment }).getAttribute('href') ?? '';
+
+    expect(href).toBe(stockAdjustEntryPath(9102));
+    /* 화면이 겨눈 번호(주소의 `ct=9001`)로 떨어지지 않는다 — 그 값이 이 자리의 오답이다. */
+    expect(href).not.toContain('9001');
   });
 
   /*

@@ -341,6 +341,12 @@ describe('appRouter — 재고조정의 진입 경로', () => {
     expect(
       await screen.findByRole('radio', { name: messages.stockAdjust.source.direct }),
     ).toBeChecked();
+    /*
+     * **앞 맥락이 새지 않았다**(전례가 가진 반대 축 — 리뷰 R-6②). 갈래만 재면 「고른 실사는
+     * 그대로인데 라디오만 직접 등록」인 상태를 통과시킨다 — 그 상태가 곧 화면과 주소가 다른
+     * 말을 하는 자리다.
+     */
+    expect(screen.queryByText('SAMPLE-IC-9101 · 2026-08-17')).not.toBeInTheDocument();
   });
 });
 
