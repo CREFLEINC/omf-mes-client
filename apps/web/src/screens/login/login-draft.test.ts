@@ -153,17 +153,33 @@ describe('submitDisabledReason', () => {
  * 하고, 고치는 김에 규칙까지 느슨해진다. 키로 재면 문구가 바뀌어도 **규칙만 남는다.**
  */
 /**
- * ⚠ **한쪽 칸만 지목하지 않는다」 규칙에서 빼는 문구.**
+ * ⚠ **「한쪽 칸만 지목하지 않는다」 규칙에서 빼는 문구.** 근거가 **두 겹**이다.
  *
- * 그 규칙이 막는 것은 **무엇이 틀렸는지를 진단하는 문장**이 한 칸을 지목하는 것이다 —
- * 그 지목이 곧 「그 아이디는 있다」를 흘린다. 잠금 안내는 진단이 아니라 **해결 경로**이고,
- * 거기 나오는 「비밀번호 초기화」는 **관리자가 하는 조치의 이름**이지 「비밀번호가 틀렸다」는
- * 진술이 아니다. 문구 자체는 스펙이 확정한 것이라 규칙에 맞추려고 다듬지 않는다.
+ * **① 진단이 아니라 해결 경로다.** 그 규칙이 막는 것은 **무엇이 틀렸는지를 진단하는 문장**이
+ * 한 칸을 지목하는 것이다 — 그 지목이 곧 「그 아이디는 있다」를 흘린다. 잠금 안내에 나오는
+ * 「비밀번호 초기화」는 **관리자가 하는 조치의 이름**이지 「비밀번호가 틀렸다」는 진술이 아니다.
+ *
+ * **② 그 갈래는 상태 코드 자체가 이미 계정 존재를 드러낸다.** 잠김(423)은 **잠긴 계정에만**
+ * 오고 없는 계정은 401을 받는다. 그것은 스펙이 감수하기로 한 트레이드오프이며(남은 시도
+ * 횟수와 같은 성격), 그 갈래 안에서 문구가 칸을 지목하는지를 따지는 것은 실익이 없다.
+ *
+ * 문구 자체는 스펙이 확정한 것이라 규칙에 맞추려고 다듬지 않는다.
  *
  * ⛔ **이 목록이 늘면 규칙이 껍데기가 된다.** 아래 두 시험이 함께 지킨다 — 하나는 목록 밖
  * 전부에 규칙을 걸고, 다른 하나는 목록 안에 **실제로 해결 경로가 담겼는지**를 잰다.
  */
 const RECOVERY_SENTENCES: readonly string[] = [t.banner.locked];
+
+/**
+ * 이 화면이 **빌려 쓰는** 공용 실패 문구. 다섯 갈래 중 둘(통신 실패·모름)이 `login` 블록 밖의
+ * 문구를 낸다 — 규칙의 사정거리가 「이 화면이 내는 실패 문구 전부」가 되도록 함께 훑는다.
+ *
+ * 공용 문구라 다른 화면이 함께 쓰지만, **이 화면이 그것을 낸다는 사실**이 여기서 규칙을 만든다.
+ */
+const BORROWED_SENTENCES: readonly string[] = [
+  messages.httpError.offline,
+  messages.httpError.description,
+];
 
 describe('login 블록의 문구 규율', () => {
   /**
@@ -199,9 +215,12 @@ describe('login 블록의 문구 규율', () => {
 
     expect(bannerValues.length - plain.length).toBe(built.length);
 
-    const sentences = [...Object.values(t.actionReasons), ...plain, ...built].filter(
-      (sentence) => !RECOVERY_SENTENCES.includes(sentence),
-    );
+    const sentences = [
+      ...Object.values(t.actionReasons),
+      ...plain,
+      ...built,
+      ...BORROWED_SENTENCES,
+    ].filter((sentence) => !RECOVERY_SENTENCES.includes(sentence));
 
     expect(sentences.length).toBeGreaterThan(0);
 

@@ -33,6 +33,9 @@ export const LOCK_THRESHOLD_ATTEMPTS = 5;
  *
  * ⭐ **되물림이 자리표시 상수가 만드는 위험의 실감지기다.** 서버 임계값이 5가 아니면 누적
  * 계산이 곧바로 어긋나는데, 그때 화면이 이상한 숫자를 그리는 대신 **아는 것만** 말한다.
+ *
+ * ⚠ 내보내는 이유는 **단위 시험이 이 갈래표를 직접 재기 위해서다.** 전례의 `describe*`와 달리
+ * 다른 부품이 소비하지 않는다 — 다음 사본이 「전례가 내보냈으니까」로 넘기지 않도록 적어 둔다.
  */
 export const describeLockWarning = (remainingAttempts: number | undefined): string | undefined => {
   if (remainingAttempts === undefined || remainingAttempts <= 0) return undefined;
@@ -72,9 +75,28 @@ const toContent = (outcome: LoginOutcome): BannerContent => {
     }
     case 'locked':
       return { lines: [t.banner.locked], canRetry: false };
-    case 'invalid':
-      /* 서버가 준 문구를 그대로 낸다 — 계약이 이 자리의 실패를 문장으로만 설명한다. */
-      return { lines: outcome.errors.map((item) => item.message), canRetry: false };
+    case 'invalid': {
+      /*
+       * 서버가 준 문구를 그대로 낸다 — 계약이 이 자리의 실패를 문장으로만 설명한다.
+       *
+       * ⛔ **서버가 빈 문구를 주는 일이 실제로 있다**(전례 `approval-inbox/load-error-banner.tsx`가
+       * 관측된 사실로 적어 둔 자리다). 걸러 내지 않으면 제목만 남고 본문이 빈 배너가 서서,
+       * 사용자가 **무엇을 해야 하는지 아무것도 얻지 못한다.** 갈래를 나눠 각각 알리는 이 화면에
+       * 「아무 말도 하지 않는」 경로를 남기지 않는다.
+       *
+       * 공백만 있는 문구도 같이 거른다 — 이 슬라이스는 이미 「앞뒤 공백만 있는 값은 빈 값으로
+       * 본다」를 규칙으로 쓰고 있다(`login-draft.ts`의 `isFilled`). 잇고 나서 검사하는 전례의
+       * 형태로는 항목이 둘 다 비었을 때 이음쇠 공백 하나가 남아 빠져나간다.
+       */
+      const lines = outcome.errors
+        .map((item) => item.message)
+        .filter((message) => message.trim() !== '');
+
+      return {
+        lines: lines.length === 0 ? [messages.httpError.description] : lines,
+        canRetry: false,
+      };
+    }
     case 'network':
       return { lines: [messages.httpError.offline], canRetry: true };
     case 'unknown':
@@ -83,8 +105,12 @@ const toContent = (outcome: LoginOutcome): BannerContent => {
        * 말도 없는 화면은 사용자가 무엇을 해야 할지 알 수 없게 만든다.
        *
        * 상태 코드는 그리지 않는다. 사용자가 쓰지 않는 말이다.
+       *
+       * **「다시 시도」를 둔다.** 위 기준(다시 시도해서 달라지는 갈래)에 그대로 들어맞는다 —
+       * 고칠 값이 없고 서버 사정은 다시 보내면 달라질 수 있다. 문구가 「잠시 뒤 다시
+       * 시도하세요」라고 말하는데 누를 자리가 없으면 **하라고 한 일을 할 수 없다.**
        */
-      return { lines: [messages.httpError.description], canRetry: false };
+      return { lines: [messages.httpError.description], canRetry: true };
   }
 };
 

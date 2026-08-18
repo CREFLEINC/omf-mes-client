@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -117,6 +117,15 @@ describe('LoginErrorBanner — 자격 불일치', () => {
     expect(banner()).toHaveTextContent(t.banner.mismatch);
 
     expect(banner().textContent).not.toMatch(/\d/);
+
+    /*
+     * ⭐ **빈 줄도 「말한 것」이 된다** — 없는 둘째 줄을 빈 글자로 밀어 넣으면 이음쇠 공백이
+     * 하나 남고, 줄을 요소로 쪼개는 날에는 그것이 **빈 문단 한 줄**로 실체화된다.
+     * 공백을 정규화하지 않고 재야 「줄을 만들지 않았다」가 잡힌다.
+     */
+    expect(
+      within(banner()).getByText(t.banner.mismatch, { normalizer: (text) => text }),
+    ).toBeInTheDocument();
   });
 
   it('불일치에는 「다시 시도」를 두지 않는다', () => {
@@ -218,6 +227,49 @@ describe('LoginErrorBanner — 검증 실패', () => {
 
     expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
   });
+
+  /**
+   * ⭐ **서버가 빈 문구를 주는 일이 실제로 있다** — 전례(`approval-inbox/load-error-banner.tsx`)가
+   * 관측된 사실로 적어 둔 자리이고, 형제 슬라이스들이 전부 이 경우를 잰다.
+   *
+   * 걸러 내지 않으면 **제목만 남고 본문이 빈 배너**가 선다. 「실패했다」는 알겠는데 무엇을
+   * 해야 하는지가 0이고, 갈래를 나눠 각각 알린다는 이 화면의 목적이 그 갈래에서만 무너진다.
+   *
+   * 세 모양을 함께 잰다 — 빈 글자 · 공백만 · 항목 자체가 없음.
+   */
+  it.each([
+    ['빈 글자', [{ scope: 'screen' as const, code: 'SYN_CODE_D', message: '' }]],
+    ['공백만', [{ scope: 'screen' as const, code: 'SYN_CODE_D', message: '   ' }]],
+    [
+      '빈 글자 여럿',
+      [
+        { scope: 'screen' as const, code: 'SYN_CODE_D', message: '' },
+        { scope: 'field' as const, field: 'password', code: 'SYN_CODE_E', message: '' },
+      ],
+    ],
+    ['항목 없음', []],
+  ])('서버가 %s를 주면 공용 안내로 떨어진다', (_label, errors) => {
+    renderBanner({ outcome: { kind: 'invalid', errors } });
+
+    expect(banner()).toHaveTextContent(messages.httpError.description);
+  });
+
+  /** 빈 항목이 섞여도 **말할 것이 있으면** 그것을 낸다 — 통째로 버리지 않는다. */
+  it('빈 문구가 섞여 있으면 남은 문구만 낸다', () => {
+    renderBanner({
+      outcome: {
+        kind: 'invalid',
+        errors: [
+          { scope: 'screen', code: 'SYN_CODE_D', message: '' },
+          { scope: 'screen', code: 'SYN_CODE_E', message: '합성 문구 다.' },
+        ],
+      },
+    });
+
+    expect(banner()).toHaveTextContent('합성 문구 다.');
+
+    expect(screen.queryByText(messages.httpError.description)).toBeNull();
+  });
 });
 
 describe('LoginErrorBanner — 가를 근거가 없는 응답', () => {
@@ -243,5 +295,27 @@ describe('LoginErrorBanner — 가를 근거가 없는 응답', () => {
     expect(banner()).toHaveTextContent(messages.httpError.description);
 
     expect(banner().textContent).not.toContain('500');
+  });
+
+  /**
+   * ⭐ **하라고 말했으면 할 수 있어야 한다.** 이 갈래의 문구가 「잠시 뒤 다시 시도하세요」로
+   * 끝나는데 누를 자리가 없으면 안내와 컨트롤이 반대를 가리킨다 — 공유계약 G-23의 취지가
+   * 역방향으로도 성립하는 자리다.
+   *
+   * 기준에도 그대로 들어맞는다 — 고칠 값이 없고 서버 사정은 다시 보내면 달라질 수 있다.
+   */
+  it('「다시 시도」를 낸다', () => {
+    renderBanner({ outcome: { kind: 'unknown', status: 500 } });
+
+    expect(retryButton()).toBeInTheDocument();
+  });
+
+  it('「다시 시도」를 누르면 되먹임이 온다', async () => {
+    const onRetry = vi.fn();
+    const { user } = renderBanner({ outcome: { kind: 'unknown', status: 503 }, onRetry });
+
+    await user.click(retryButton());
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });
