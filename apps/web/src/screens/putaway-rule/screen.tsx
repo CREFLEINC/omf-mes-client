@@ -818,13 +818,19 @@ export const PutawayRuleScreen = () => {
         warehousePlaceholder={optionsPlaceholder(warehouses, t.filters.noWarehouseOptions)}
         locationChoices={toLocationChoices(formLocations)}
         locationNote={lookupNote(formLocations)}
+        /*
+         * 잠긴 사유는 **「아직 정해지지 않았다」가 아니다.** 자리표시가 채워져 칸이 잠기는 날
+         * 그 문장을 세우면 화면이 「잠겼는데 **모든 창고에서 고를 수 있습니다**」라는
+         * 자기모순을 말한다 — 두 문장을 처음부터 갈라 두었고, **이 자리가 그 갈래를 고르는
+         * 유일한 배선**이다(`screen-managed-level.test.tsx`가 소생 상태를 모의해 잰다).
+         */
         locationDisabledReason={
           isLocationInputOpen(
             LOCATION_MANAGED_LEVEL_CODES,
             findWarehouseLevel(warehouses.levels, formWarehouseId),
           )
             ? null
-            : t.notes.managementLevelPending
+            : t.notes.locationNotManaged
         }
         locationPendingNote={locationInputPendingNote(LOCATION_MANAGED_LEVEL_CODES)}
         uomOptions={toSelectOptions(uoms)}
