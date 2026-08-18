@@ -16,6 +16,7 @@ import {
   balanceFixtures,
   countFixtures,
   countVarianceLineFixtures,
+  postedAdjustmentBody,
 } from './fixtures';
 import {
   detailPathOf,
@@ -28,13 +29,15 @@ import {
   useCreateStockAdjustment,
   useInventoryCounts,
   useLocationBalances,
+  usePostStockAdjustment,
   useRequestAdjustmentApproval,
   VARIANCE_LINE_PAGE_SIZE,
 } from './queries';
-import type { CreatedAdjustmentResult } from './types';
+import type { CreatedAdjustmentResult, PostedAdjustmentView } from './types';
 
 /**
- * 이 회차의 읽기 셋과 쓰기 하나 — 실사 목록 · 실사 차이 라인 · 재고 잔액 · 조정 등록.
+ * 이 화면의 읽기와 쓰기 — 실사 목록 · 실사 차이 라인 · 재고 잔액 · 조정 상세 · 결재 진행 ·
+ * 조정 등록 · 조정 상신 · **재고 전기**.
  *
  * 훅 층에서 재는 것은 **계약에 맞는 요청을 만드는가**이고, 화면 층에서 재는 것은
  * **그 훅을 언제 몇 번 부르는가**다.
@@ -681,6 +684,250 @@ describe('useAdjustmentDetailFetcher · useRequestAdjustmentApproval', () => {
     });
 
     expect(Object.keys(bodies[0] as Record<string, unknown>)).toEqual(['reason']);
+  });
+});
+
+/**
+ * ⭐ **전기 — 이 화면의 셋째 쓰기이고 재고가 실제로 움직이는 유일한 자리다.**
+ *
+ * 훅 층에서 재는 것은 **계약에 맞는 요청을 만드는가**다. 상신과 **같은 토큰 원천**(상세 GET)을
+ * 쓰므로 그 자리가 갈리지 않는지도 함께 잰다(D-14).
+ */
+describe('usePostStockAdjustment', () => {
+  const ADJUSTMENTS_PATH = '/inventory/adjustments';
+  const DETAIL_PATH = '/inventory/adjustments/9301';
+  const POST_PATH = '/inventory/adjustments/9301:post';
+
+  /** 두 응답의 토큰을 **다른 값**으로 둔다 — 같으면 컬렉션 경로를 집어도 우연히 통과한다(M-3b). */
+  const COLLECTION_ETAG = 'W/"ia-collection-1"';
+  const DETAIL_ETAG = 'W/"ia-detail-7"';
+
+  const body = { businessDate: '2026-08-18', occurredAt: '2026-08-18T14:05:00+09:00' };
+
+  const createRoute = (): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === ADJUSTMENTS_PATH,
+    respond: () =>
+      jsonResponse(adjustmentDetailBody(), { status: 201, headers: { ETag: COLLECTION_ETAG } }),
+  });
+
+  const detailRoute = (): StubRoute => ({
+    match: (request) => request.method === 'GET' && new URL(request.url).pathname === DETAIL_PATH,
+    respond: () =>
+      jsonResponse(adjustmentDetailBody(), { status: 200, headers: { ETag: DETAIL_ETAG } }),
+  });
+
+  const postRoute = (): StubRoute => ({
+    match: (request) => request.method === 'POST' && new URL(request.url).pathname === POST_PATH,
+    respond: () => jsonResponse(postedAdjustmentBody()),
+  });
+
+  const recordingWriteFetch = (
+    routes: StubRoute[],
+  ): { fetch: (request: Request) => Promise<Response>; requests: WriteRequest[] } => {
+    const requests: WriteRequest[] = [];
+    const stub = createStubFetch(routes);
+
+    return {
+      fetch: async (request) => {
+        requests.push({
+          method: request.method,
+          url: new URL(request.url),
+          headers: request.headers,
+        });
+
+        return stub(request);
+      },
+      requests,
+    };
+  };
+
+  const renderPostHooks = (
+    fetch: (request: Request) => Promise<Response>,
+    inventoryAdjustmentId: number | null = 9301,
+    onSuccess: (posted: PostedAdjustmentView) => void = () => undefined,
+  ) =>
+    renderHookWithProviders(
+      () => ({
+        fetchDetail: useAdjustmentDetailFetcher(),
+        post: usePostStockAdjustment({ inventoryAdjustmentId, onSuccess }),
+      }),
+      { fetch },
+    );
+
+  /**
+   * ⭐ **상세가 준 토큰이 전기의 `If-Match`로 실린다**(C32 · D-14 · 뮤테이션 M-3b의 대조군).
+   *
+   * 등록 201도 `ETag`를 주지만 그 토큰은 **컬렉션 경로**에 앉는다 — 두 값을 다르게 두었으므로
+   * 컬렉션 쪽을 집는 구현이면 이 시험이 문다.
+   */
+  it('상세가 준 토큰을 If-Match로 싣는다 — 등록 201의 토큰이 아니다', async () => {
+    const { fetch, requests } = recordingWriteFetch([createRoute(), detailRoute(), postRoute()]);
+    const { result } = renderHookWithProviders(
+      () => ({
+        register: useCreateStockAdjustment({ onSuccess: () => undefined }),
+        fetchDetail: useAdjustmentDetailFetcher(),
+        post: usePostStockAdjustment({ inventoryAdjustmentId: 9301, onSuccess: () => undefined }),
+      }),
+      { fetch },
+    );
+
+    result.current.register.write({
+      reasonCode: 'SAMPLE_AR_A',
+      sendToErp: true,
+      lines: [{ locationId: 9401, itemId: 9501, uomId: 9601, adjustmentQty: -20 }],
+    });
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.url.pathname === ADJUSTMENTS_PATH)).toHaveLength(
+        1,
+      );
+    });
+
+    await result.current.fetchDetail(9301);
+    result.current.post.write(body);
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.url.pathname === POST_PATH)).toHaveLength(1);
+    });
+
+    const postRequest = requests.find((request) => request.url.pathname === POST_PATH);
+
+    expect(postRequest?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+    expect(postRequest?.headers.get('If-Match')).not.toBe(COLLECTION_ETAG);
+    expect(postRequest?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  /**
+   * **토큰이 없으면 요청을 만들지 않는다**(공통 훅 계약). 빈 `If-Match`는 계약 위반이라 서버가
+   * 400으로 되돌린다 — 재고를 움직이는 요청이라 더욱 보내지 않는다.
+   */
+  it('상세를 부르지 않았으면 전기가 나가지 않는다', async () => {
+    const { fetch, requests } = recordingWriteFetch([postRoute()]);
+    const { result } = renderPostHooks(fetch);
+
+    result.current.post.write(body);
+
+    await waitFor(() => {
+      expect(result.current.post.error).not.toBeNull();
+    });
+
+    expect(requests.filter((request) => request.url.pathname === POST_PATH)).toHaveLength(0);
+  });
+
+  /**
+   * ⭐ **없는 값을 0으로 메우지 않는다.**
+   *
+   * `etagPath`가 `null`이면 공통 훅은 그것을 「잠금이 필요 없다」로 읽어 요청을 **그대로
+   * 내보낸다** — 대체값을 두면 `…/0:post`가 실제로 나갈 수 있는 모양이 되고, 그것은
+   * **남의 전표를 전기하는** 요청이다.
+   */
+  it('전표가 없으면 전기 요청이 나가지 않는다', async () => {
+    const { fetch, requests } = recordingWriteFetch([postRoute()]);
+    const { result } = renderPostHooks(fetch, null);
+
+    result.current.post.write(body);
+
+    await waitFor(() => {
+      expect(result.current.post.isSaving).toBe(false);
+    });
+
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  /** 본문은 **두 값뿐이다**(C32 · M-3b) — 훅이 키를 더하거나 빼지 않는다. */
+  it('본문 키 집합이 영업일과 발생 시각 둘이다', async () => {
+    const bodies: unknown[] = [];
+    const stub = createStubFetch([detailRoute(), postRoute()]);
+    const fetch = async (request: Request): Promise<Response> => {
+      if (request.method === 'POST') bodies.push(await request.clone().json());
+
+      return stub(request);
+    };
+    const { result } = renderPostHooks(fetch);
+
+    await result.current.fetchDetail(9301);
+    result.current.post.write(body);
+
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+
+    expect(Object.keys(bodies[0] as Record<string, unknown>).sort()).toEqual([
+      'businessDate',
+      'occurredAt',
+    ]);
+  });
+
+  /** 응답을 **화면 타입으로 옮겨 넘긴다** — 전표번호·승인 요청 번호는 여기서 따라오지 않는다. */
+  it('전기 시각과 상태 코드만 넘긴다', async () => {
+    const received: PostedAdjustmentView[] = [];
+    const { fetch } = recordingWriteFetch([detailRoute(), postRoute()]);
+    const { result } = renderPostHooks(fetch, 9301, (posted) => received.push(posted));
+
+    await result.current.fetchDetail(9301);
+    result.current.post.write(body);
+
+    await waitFor(() => {
+      expect(received).toHaveLength(1);
+    });
+
+    expect(received[0]).toEqual({
+      adjustedAt: '2026-08-18T14:05:00+09:00',
+      statusCode: 'SAMPLE_IA_STATUS_B',
+    });
+  });
+
+  /**
+   * ⭐ **성공 뒤 상세를 무효화한다** — 전기가 끝나면 캐시에 남은 상세는 **전기 전의 것**이다.
+   *
+   * 낡은 토큰을 실제로 막는 것은 fetcher의 `staleTime: 0`이지만, 이 키를 그리는 구획이 생기는
+   * 날 낡은 값을 그대로 그리지 않게 하려면 무효화도 함께 있어야 한다 — 두 줄은 서로를 대신하지
+   * 못한다(상신 훅과 같은 규율).
+   */
+  it('성공하면 상세 캐시를 무효화한다', async () => {
+    const { fetch } = recordingWriteFetch([detailRoute(), postRoute()]);
+    const { result, queryClient } = renderPostHooks(fetch);
+
+    await result.current.fetchDetail(9301);
+    result.current.post.write(body);
+
+    await waitFor(() => {
+      expect(queryClient.getQueryState(stockAdjustKeys.detail(9301))?.isInvalidated).toBe(true);
+    });
+  });
+
+  /**
+   * **실사 차이는 무효화하지 않는다** — 그 응답을 다시 받으면 조정 대상이 다시 서고 사용자가
+   * 보고 있던 값이 갈린다(등록·상신 훅과 같은 규율).
+   */
+  it('성공해도 실사 차이를 다시 부르지 않는다', async () => {
+    const { fetch, requests } = recordingWriteFetch([
+      detailRoute(),
+      postRoute(),
+      getRoute(VARIANCE_PATH, listBody(countVarianceLineFixtures)),
+    ]);
+    const { result } = renderHookWithProviders(
+      () => ({
+        variance: useCountVarianceLines(9101),
+        fetchDetail: useAdjustmentDetailFetcher(),
+        post: usePostStockAdjustment({ inventoryAdjustmentId: 9301, onSuccess: () => undefined }),
+      }),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.variance.data?.lines).toHaveLength(3);
+    });
+
+    await result.current.fetchDetail(9301);
+    result.current.post.write(body);
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.url.pathname === POST_PATH)).toHaveLength(1);
+    });
+
+    expect(requests.filter((request) => request.url.pathname === VARIANCE_PATH)).toHaveLength(1);
   });
 });
 

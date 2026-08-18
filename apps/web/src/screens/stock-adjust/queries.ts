@@ -7,21 +7,28 @@ import { runRequest, toApiError } from '../../patterns/request';
 import { ADJUST_FORM_FIELDS } from './adjust-request';
 import type { Submission } from './approval-progress';
 import { toBalanceRow, type BalanceRow, type BalanceSource } from './balances';
+import { POST_FORM_FIELDS } from './post-request';
 import { SUBMIT_FORM_FIELDS } from './reason-draft';
-import { toCountOptionView, toCountVarianceLineView, toCreatedAdjustmentResult } from './types';
+import {
+  toCountOptionView,
+  toCountVarianceLineView,
+  toCreatedAdjustmentResult,
+  toPostedAdjustmentView,
+} from './types';
 import type {
   ApprovalRequestDetailResponse,
   CountOptionView,
   CountVarianceLineView,
   CreatedAdjustmentResult,
   PageMeta,
+  PostedAdjustmentView,
 } from './types';
 
 /**
- * 이 회차의 요청 — **읽기 다섯과 쓰기 둘**이다. 실사 목록 · 실사 차이 라인 · 재고 잔액 ·
- * **조정 상세** · **결재 진행** · 조정 등록 · **조정 상신**.
+ * 이 화면의 요청 — **읽기 다섯과 쓰기 셋**이다. 실사 목록 · 실사 차이 라인 · 재고 잔액 ·
+ * **조정 상세** · **결재 진행** · 조정 등록 · 조정 상신 · **재고 전기**.
  *
- * 전기와 처리 이력은 뒤따르는 회차가 붙인다. **`pendingApprovalOnly`를 쓰지 않는다**(⛔ D-3) —
+ * 처리 이력은 뒤따르는 회차가 붙인다. **`pendingApprovalOnly`를 쓰지 않는다**(⛔ D-3) —
  * 계약에 그 조건이 남아 있으나 승인 대기는 결재함(W-CO-09)이 소유하고, 이 화면에는 그 탭이 없다.
  *
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
@@ -35,6 +42,8 @@ type InventoryAdjustmentCreate = components['schemas']['InventoryAdjustmentCreat
 type InventoryAdjustmentDetailResponse = components['schemas']['InventoryAdjustmentDetailResponse'];
 type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];
 type ApprovalRequestRef = components['schemas']['ApprovalRequestRef'];
+type PostRequest = components['schemas']['PostRequest'];
+type InventoryAdjustmentResponse = components['schemas']['InventoryAdjustment'];
 
 /**
  * 캐시 키.
@@ -42,9 +51,9 @@ type ApprovalRequestRef = components['schemas']['ApprovalRequestRef'];
  * **읽는 대상마다 앞머리를 갈라 둔다** — 하나로 묶으면 한쪽만 다시 부르려 해도 다른 쪽까지
  * 함께 무효화되고, 그때 응답이 새 참조로 오면서 세운 대상이 다시 서거나 사라진다.
  *
- * `detail`은 **만들어진 조정의 상세**다. 상신이 여기서 잠금 토큰을 얻고(D-14) 상신에 성공하면
- * 이 키가 무효화된다 — 그 토큰이 앉는 경로가 컬렉션이 아니라 상세라는 사실이 이 키의 모양에
- * 그대로 남아 있어야 한다.
+ * `detail`은 **만들어진 조정의 상세**다. **상신과 전기가 여기서 잠금 토큰을 얻고**(D-14)
+ * 둘 중 하나가 성공하면 이 키가 무효화된다 — 그 토큰이 앉는 경로가 컬렉션이 아니라 상세라는
+ * 사실이 이 키의 모양에 그대로 남아 있어야 한다.
  */
 export const stockAdjustKeys = {
   counts: ['stock-adjust', 'counts'] as const,
@@ -338,8 +347,9 @@ export const useCreateStockAdjustment = (
 /**
  * 조정 상세의 요청 경로 — **잠금 토큰이 앉는 유일한 자리다**(D-14).
  *
- * 토큰 보관소가 **요청 URL의 경로별로** `ETag`를 담으므로(실측) 상신의 `If-Match`는 이 경로에서
- * 꺼내야 한다. 계약도 「값은 **같은 리소스의 상세 GET 200**이 내려주는 ETag 응답 헤더에서
+ * 토큰 보관소가 **요청 URL의 경로별로** `ETag`를 담으므로(실측) 상신·전기의 `If-Match`는 이
+ * 경로에서 꺼내야 한다. **두 쓰기가 같은 함수를 지난다** — 각자 경로를 지으면 한쪽만 고쳐질 때
+ * 조용히 갈린다. 계약도 「값은 **같은 리소스의 상세 GET 200**이 내려주는 ETag 응답 헤더에서
  * 받는다」로 못 박았다.
  *
  * - **컬렉션 경로**(`/inventory/adjustments`)를 주면 **등록 201이 남긴 토큰**을 집는다. 지금은
@@ -367,10 +377,10 @@ const fetchAdjustmentDetail = async (
 };
 
 /**
- * 상신 직전에 **조정 상세를 한 번 부른다** — 잠금 토큰을 그 경로에 앉히는 자리다(D-14).
+ * 상신·전기 직전에 **조정 상세를 한 번 부른다** — 잠금 토큰을 그 경로에 앉히는 자리다(D-14).
  *
- * 등록 201도 `ETag`를 주지만 그 토큰은 **컬렉션 경로**에 앉는다(실측) — 상신이 필요로 하는
- * 열쇠가 아니다. 이 조회가 없으면 방금 만든 전표의 토큰이 어디에도 없어 상신이 시작조차 되지
+ * 등록 201도 `ETag`를 주지만 그 토큰은 **컬렉션 경로**에 앉는다(실측) — 두 쓰기가 필요로 하는
+ * 열쇠가 아니다. 이 조회가 없으면 방금 만든 전표의 토큰이 어디에도 없어 쓰기가 시작조차 되지
  * 않는다.
  *
  * **캐시가 신선해도 다시 부른다**(`staleTime: 0`). 앱의 기본 신선도는 30초인데(`providers.tsx`)
@@ -459,6 +469,80 @@ export const useRequestAdjustmentApproval = (
         : [stockAdjustKeys.detail(options.inventoryAdjustmentId)],
     knownFields: SUBMIT_FORM_FIELDS,
     onSuccess: options.onSuccess,
+  });
+};
+
+export interface PostAdjustmentOptions {
+  /** 전기할 전표. **등록에 성공한 뒤에만 값이 있다** — 그전에는 움직일 대상 자체가 없다 */
+  inventoryAdjustmentId: number | null;
+  onSuccess: (posted: PostedAdjustmentView) => void;
+}
+
+/**
+ * 만들어진 조정을 **수불 원장에 반영한다** — 이 화면에서 **재고가 실제로 움직이는 유일한 쓰기**다.
+ *
+ * 등록은 업무 헤더를 만들 뿐이고(스펙 §5-1) 상신은 결재를 시작할 뿐이다. 원장이 바뀌는 순간은
+ * 여기이고, **이 화면에 되돌리는 경로가 없다** — 되돌리려면 반대 방향의 조정을 새로 세워야 한다.
+ *
+ * **`If-Match`가 필수다**(계약 · 목이 없는 요청을 400으로 되돌린다 — 실측). 토큰은 **늘 조정
+ * 상세 경로**에서 꺼낸다(`detailPathOf` — 상신과 같은 자리다. 두 쓰기가 각자 경로를 지으면
+ * 한쪽만 고쳐질 때 조용히 갈린다).
+ *
+ * **승인 여부를 화면이 앞서 판정하지 않는다**(D-12 · 미결 `omf-mes#72`). 계약이 「승인이
+ * 필요한데 끝나지 않았으면 400」이라 적었고, 결재선이 있는지 알 통로는 어디에도 없다 —
+ * **틀린 길은 서버가 400으로 안전하게 막는다.**
+ *
+ * **응답이 상세와 모양이 다르다**(`InventoryAdjustment` — 머리뿐이고 라인이 없다). 그래서 이
+ * 응답으로 표를 다시 세우지 않고, **화면이 쓰는 두 값만** 옮겨 넘긴다(`toPostedAdjustmentView`).
+ *
+ * **성공 뒤 상세 키를 무효화한다** — 캐시에 남은 값이 전기 전의 것이라, 이 키를 그리는 구획이
+ * 생기는 날 낡은 값을 그대로 그리지 않게 한다. **실사 차이는 무효화하지 않는다**: 그 응답을
+ * 다시 받으면 조정 대상이 다시 서고 사용자가 보고 있던 값이 갈린다.
+ *
+ * ⚠ **잔액도 무효화하지 않는다.** 전기로 재고가 실제로 움직였으므로 이 화면의 장부·실물은
+ * 낡았지만, 다시 부르면 **사용자가 확인하고 등록한 근거가 화면에서 달라진다** — 폼은 이미
+ * 잠겨 있어 그 값으로 새 요청이 나갈 길도 없다. 대신 전기 결과가 **낡았다는 사실을 적는다**
+ * (`post.bookQtyStale`). 이 화면에 잔액을 다시 그리는 자리가 생기면 이 판정을 다시 본다.
+ */
+export const usePostStockAdjustment = (
+  options: PostAdjustmentOptions,
+): MasterWriteResult<PostRequest> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<PostRequest, InventoryAdjustmentResponse>({
+    request: (body, headers) => {
+      /*
+       * **없는 값을 0으로 메우지 않는다.**
+       *
+       * `etagPath`가 `null`이면 공통 훅은 그것을 「잠금이 필요 없다」로 읽어 요청을 **그대로
+       * 내보낸다** — 대체값을 두면 `…/0:post`가 실제로 나갈 수 있는 모양이 되고, 그것은
+       * **남의 전표의 재고를 움직이는** 요청이다.
+       */
+      if (options.inventoryAdjustmentId === null) {
+        throw new Error('만들어진 조정 전표가 없으면 전기하지 않습니다.');
+      }
+
+      return client.POST('/inventory/adjustments/{inventoryAdjustmentId}:post', {
+        params: {
+          path: { inventoryAdjustmentId: options.inventoryAdjustmentId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body,
+      });
+    },
+    etagPath:
+      options.inventoryAdjustmentId === null ? null : detailPathOf(options.inventoryAdjustmentId),
+    invalidateKeys:
+      options.inventoryAdjustmentId === null
+        ? []
+        : [stockAdjustKeys.detail(options.inventoryAdjustmentId)],
+    knownFields: POST_FORM_FIELDS,
+    onSuccess: (data) => {
+      options.onSuccess(toPostedAdjustmentView(data));
+    },
   });
 };
 

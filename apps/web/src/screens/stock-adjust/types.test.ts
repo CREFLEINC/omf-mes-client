@@ -1,7 +1,12 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { adjustmentDetailBody, countResponse, countVarianceLineResponse } from './fixtures';
+import {
+  adjustmentDetailBody,
+  countResponse,
+  countVarianceLineResponse,
+  postedAdjustmentBody,
+} from './fixtures';
 import {
   emptyHeaderDraft,
   formatDateTime,
@@ -11,6 +16,7 @@ import {
   toCountVarianceLineView,
   toCreatedAdjustmentResult,
   toCreatedAdjustmentView,
+  toPostedAdjustmentView,
 } from './types';
 
 /**
@@ -213,6 +219,49 @@ describe('toCreatedAdjustmentResult', () => {
     expect(result.inventoryAdjustmentId).toBe(9301);
     expect(result.created).not.toHaveProperty('approvalRequestId');
     expect(result.created).not.toHaveProperty('adjustedAt');
+  });
+});
+
+/**
+ * 전기 200을 화면 타입으로 옮기는 **유일한 지점**.
+ *
+ * **모양이 등록·상세와 다르다** — 전기 응답은 머리뿐이고 라인이 없다(계약 실측).
+ */
+describe('toPostedAdjustmentView', () => {
+  it('전기 시각과 상태 코드를 그대로 옮긴다', () => {
+    expect(toPostedAdjustmentView(postedAdjustmentBody())).toEqual({
+      adjustedAt: '2026-08-18T14:05:00+09:00',
+      statusCode: 'SAMPLE_IA_STATUS_B',
+    });
+  });
+
+  /**
+   * ⭐ **없이 오는 길이 실재한다**(계약이 `adjustedAt`을 nullable로 두었다).
+   *
+   * 값의 유무를 여기서 한 번에 갈라 둔다 — 자리마다 따로 접으면 어디서는 빈 글자가,
+   * 어디서는 `undefined`가 그려진다.
+   */
+  it('전기 시각이 실려 오지 않으면 값의 없음으로 옮긴다', () => {
+    expect(
+      toPostedAdjustmentView(postedAdjustmentBody({ adjustedAt: null })).adjustedAt,
+    ).toBeNull();
+  });
+
+  /**
+   * ⛔ **전표번호를 옮기지 않는다.** 화면이 보이는 번호는 **매임이 든 것**이라야 한다 —
+   * 응답이 준 번호를 그리면 매임이 끊긴 전기의 번호가 지금 보고 있는 전표 자리에 선다.
+   *
+   * ⛔ **승인 요청 번호도 옮기지 않는다** — 목이 채워 준다(계획 §5.2.5).
+   */
+  it('전표번호와 승인 요청 번호를 옮기지 않는다', () => {
+    const posted = toPostedAdjustmentView(
+      postedAdjustmentBody({ inventoryAdjustmentNo: 'SAMPLE-IA-9999', approvalRequestId: 9801 }),
+    );
+
+    /* 짝 양성 — 옮길 것은 실제로 옮긴다. */
+    expect(posted.statusCode).toBe('SAMPLE_IA_STATUS_B');
+    expect(posted).not.toHaveProperty('inventoryAdjustmentNo');
+    expect(posted).not.toHaveProperty('approvalRequestId');
   });
 });
 
