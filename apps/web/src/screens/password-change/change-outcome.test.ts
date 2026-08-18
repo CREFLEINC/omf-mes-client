@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { toChangeOutcome } from './change-outcome';
+import { boundField, toChangeOutcome } from './change-outcome';
 import { currentMismatchBody, mismatchBodyWithAttemptsHint } from './fixtures';
 
 /** 응답이 없어 상태 코드를 붙일 수 없는 자리 — 시험도 제품과 같은 값을 쓴다. */
@@ -47,5 +47,28 @@ describe('toChangeOutcome — 응답을 화면 갈래로 옮긴다', () => {
    */
   it('400은 아직 자기 갈래가 없어 unknown으로 둔다', () => {
     expect(toChangeOutcome(400, currentMismatchBody())).toEqual({ kind: 'unknown', status: 400 });
+  });
+});
+
+describe('boundField — 그 진술이 어느 칸에 매였는가', () => {
+  /**
+   * 서버가 **현재 비밀번호**를 두고 한 말이다. 그 칸의 값이 바뀔 때만 낡는다 — 새 비밀번호를
+   * 고쳤다고 「현재 비밀번호가 맞지 않는다」가 거짓이 되지는 않는다.
+   */
+  it('현재 비밀번호 불일치는 그 칸에 매인다', () => {
+    expect(boundField({ kind: 'currentMismatch' })).toBe('currentPassword');
+  });
+
+  /**
+   * ⭐ **통신 실패는 어느 칸에도 매이지 않는다.** 새 비밀번호를 고쳐도 「응답이 오지 않았다」는
+   * 사실은 그대로 낡는다 — 칸에 매인 것처럼 다루면, 배너가 서는 회차에 새 비밀번호만 고친
+   * 사용자에게 **지나간 통신 실패 배너가 남는다.**
+   */
+  it('통신 실패와 가를 근거 없음은 어느 칸에도 매이지 않는다', () => {
+    /* 양성 먼저 — 매이는 갈래가 실제로 있음을 잡은 뒤 매이지 않음을 잰다. */
+    expect(boundField({ kind: 'currentMismatch' })).not.toBeNull();
+
+    expect(boundField({ kind: 'network' })).toBeNull();
+    expect(boundField({ kind: 'unknown', status: 500 })).toBeNull();
   });
 });

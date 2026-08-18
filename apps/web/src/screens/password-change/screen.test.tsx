@@ -660,6 +660,26 @@ describe('PasswordChangeScreen — 보내기와 성공', () => {
     expect(confirmBox()).toHaveValue('');
   });
 
+  /**
+   * 성공은 **성공의 어조로** 뜬다. 디자인 시스템은 어조에 따라 아이콘과 함께 **`aria-live`**를
+   * 가르므로(실패는 `assertive`로 끼어든다) 어조가 틀리면 화면을 보지 않는 사용자에게 성공이
+   * 경고처럼 도착한다 — 색만의 문제가 아니다.
+   */
+  it('성공 알림이 성공의 어조로 뜬다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([changeRoute(() => noContentResponse())]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    const notice = await screen.findByText(t.toast.changed);
+    const live = notice.closest('[aria-live]');
+
+    expect(live).not.toBeNull();
+    expect(live?.getAttribute('aria-live')).toBe('polite');
+  });
+
   it('204를 받아도 주소가 그대로다', async () => {
     const { user } = renderScreen({
       fetch: createStubFetch([changeRoute(() => noContentResponse())]),
@@ -714,6 +734,33 @@ describe('PasswordChangeScreen — 보내기와 성공', () => {
     });
 
     expect(screen.getByText(t.actionReasons.submitting)).toBeInTheDocument();
+
+    counting.release();
+
+    expect(await screen.findByText(t.toast.changed)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **사유는 순서가 뜻을 정한다 — 나가는 중이 맨 앞이다.** 나가는 중에 값을 고쳐 규칙을
+   * 깨뜨리면 잠금은 그대로지만 **읽히는 문장**이 갈린다. 뒤로 밀면 답을 기다리는 사용자가
+   * 「각 칸의 오류를 고치면」을 읽고 고칠 수 없는 칸을 들여다본다.
+   */
+  it('나가는 중에 규칙을 깨뜨려도 사유는 기다리는 중임을 말한다', async () => {
+    const counting = createCountingFetch([changeRoute(() => noContentResponse())], true);
+    const { user } = renderScreen({ fetch: counting.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    /* 확인 칸을 흐트러뜨려 짝 규칙을 깬다 — 멈춰 있었다면 「각 칸의 오류를」이 설 상태다. */
+    await user.type(confirmBox(), 'X');
+
+    expect(screen.getByText(t.actionReasons.submitting)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.invalid)).toBeNull();
 
     counting.release();
 
@@ -817,6 +864,40 @@ describe('PasswordChangeScreen — 현재 비밀번호 불일치(401)', () => {
 
     expect(errorTextFor(currentBox())).toContain(t.validation.currentMismatch);
     expect(screen.queryByRole('alert')).toBeNull();
+
+    /*
+     * ⭐ **친 값이 그대로 남아 있다.** 성공 되먹임만 칸을 비우는데, 그 비우기가 실패 경로로
+     * 새어 나오면 **401을 받은 사용자가 친 값을 전부 잃는다** — 빈 세 칸 위에 「현재 비밀번호가
+     * 맞지 않습니다」가 서고 버튼은 「모두 입력하면」 사유로 잠긴다. 고칠 것을 보여 주지 않는
+     * 화면이 된다.
+     */
+    const draft = passwordDraftFixture();
+
+    expect(currentBox()).toHaveValue(draft.currentPassword);
+    expect(newBox()).toHaveValue(draft.newPassword);
+    expect(confirmBox()).toHaveValue(draft.confirmPassword);
+  });
+
+  /**
+   * ⭐ **서버가 준 진술과 화면이 잡은 규칙이 동시에 선다.** 둘은 서로 다른 칸의 말이고 한
+   * 자료구조에 모여 있으므로, 한쪽이 다른 쪽을 밀어내면 안 된다 — 401을 받은 사용자가 새
+   * 비밀번호를 고치다 규칙을 어기면 **두 칸이 각자의 문장을 들고 함께 서야** 무엇을 고칠지 안다.
+   */
+  it('401 인라인과 화면이 잡은 인라인이 함께 선다', async () => {
+    const { user } = renderScreen({ fetch: mismatchFetch() });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentBox()).toBeInvalid();
+    });
+
+    await user.clear(newBox());
+    await user.type(newBox(), TOO_SHORT);
+
+    expect(errorTextFor(currentBox())).toContain(t.validation.currentMismatch);
+    expect(errorTextFor(newBox())).toContain(t.validation.tooShort(MIN_NEW_PASSWORD_LENGTH));
   });
 
   /** 값이 바뀌면 그 진술은 지금 화면에 있는 값에 대한 것이 아니게 된다. */

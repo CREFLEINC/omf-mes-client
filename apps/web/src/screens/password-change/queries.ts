@@ -83,9 +83,16 @@ export const useChangePassword = (options: PasswordChangeOptions): PasswordChang
   const [outcome, setOutcome] = useState<ChangeOutcome | null>(null);
 
   /**
-   * 마지막 시도. **렌더 사이에 살아 있어야 재시도가 같은 키를 쓸 수 있다.**
-   * 상태가 아니라 참조로 두는 이유는 이 값이 화면에 그려지지 않기 때문이다 — 바뀔 때마다
-   * 다시 그릴 이유가 없다.
+   * **적용 여부가 아직 불확실한 시도.** 렌더 사이에 살아 있어야 재시도가 같은 키를 쓸 수 있다.
+   * 상태가 아니라 참조로 두는 이유는 이 값이 화면에 그려지지 않기 때문이다.
+   *
+   * ⭐ **수명이 곧 불확실의 수명이다**(결정 ② 개정 — `01_plan_r2.md`).
+   *
+   * | 갈래 | 이 참조 | 왜 |
+   * | --- | --- | --- |
+   * | 통신 실패 · 가를 근거 없음 | **유지** | 적용됐는지 모른다 — 같은 키라야 서버가 두 번 실행하지 않는다 |
+   * | 401 | **유지** | 같은 값이면 같은 401이 옳고, 값을 고치면 새 키가 나간다(무해) |
+   * | **204** | **비운다** | 적용됐음이 확정됐다. 남겨 두면 같은 값 재제출이 **끝난 키**로 나가고, 서버는 실행 없이 앞 응답을 되돌려 준다 — 화면은 그것을 성공으로 읽어 **아무 일도 없었는데 바뀌었다고 단언한다** |
    */
   const attemptRef = useRef<PasswordChangeAttempt | null>(null);
 
@@ -144,6 +151,13 @@ export const useChangePassword = (options: PasswordChangeOptions): PasswordChang
     mutation.mutate(attempt, {
       onSuccess: () => {
         /*
+         * ⭐ **키의 수명을 여기서 끝낸다.** 204가 도착한 순간 「적용됐는지 모른다」가 사라지므로
+         * 이 시도는 더 이상 되보낼 대상도, 재사용할 키도 아니다. 비우지 않으면 같은 값 재제출이
+         * 끝난 키로 나가 **캐시된 성공**을 되받는다(위 표).
+         */
+        attemptRef.current = null;
+
+        /*
          * ⚠ **전례처럼 되먹임을 try/catch로 감싸지 않는다 — 던질 자리가 없다(실측).**
          *
          * 로그인은 이 자리에 **세션 적재**가 붙어 그것이 던지면 「로그인은 됐는데 누구인지 모르는
@@ -169,6 +183,13 @@ export const useChangePassword = (options: PasswordChangeOptions): PasswordChang
    * **같은 시도**다 — 여기서 새 키를 만들면 막으려던 이중 실행이 그대로 열린다.
    */
   const submit = (draft: PasswordDraft): void => {
+    /*
+     * 나가는 중에는 보내지 않는다. 화면의 보내는 문이 이미 막지만 **훅도 같은 겹을 갖는다** —
+     * 이 훅은 한 화면만의 것이 아니고, 되돌릴 수 없는 쓰기에서 연타는 요청 두 벌이 된다
+     * (두 번째는 이미 바뀐 비밀번호 때문에 실패한다). `retry()`와 같은 형태다.
+     */
+    if (mutation.isPending) return;
+
     const previous = attemptRef.current;
     const idempotencyKey =
       previous !== null && isSameWrite(previous.draft, draft)

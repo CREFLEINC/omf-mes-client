@@ -1,3 +1,5 @@
+import type { PasswordFieldName } from './password-draft';
+
 /**
  * 비밀번호 변경 응답의 화면 갈래.
  *
@@ -29,6 +31,19 @@ export type ChangeOutcome =
 
 /** 응답이 없어 상태 코드를 붙일 수 없는 자리. 상태로 분기하는 갈래에 걸리지 않게 한다. */
 export const NO_HTTP_STATUS = 0;
+
+/**
+ * 이 갈래가 **어느 칸에 매인 진술**인가. 매이지 않았으면 `null`.
+ *
+ * ⭐ **걷는 범위를 갈래의 성격이 정한다.** 서버가 특정 칸을 두고 한 말은 **그 칸의 값이 바뀔 때만**
+ * 낡는다 — 새 비밀번호를 고쳤다고 「현재 비밀번호가 맞지 않는다」가 거짓이 되지는 않는다. 반대로
+ * 통신 실패·가를 근거 없음은 **어느 칸에도 매이지 않은 화면 수준 진술**이라 무엇을 고쳐도 낡는다.
+ *
+ * 이 구분을 화면 밖으로 꺼내 둔 이유는 **잴 수 있게 하기 위해서다** — 칸에 매이지 않은 갈래는
+ * 이 회차에 그릴 자리가 없어(배너는 다음 회차) 화면으로는 그 규칙을 관찰할 수 없다.
+ */
+export const boundField = (outcome: ChangeOutcome): PasswordFieldName | null =>
+  outcome.kind === 'currentMismatch' ? 'currentPassword' : null;
 
 /**
  * 상태 코드에서 화면 갈래를 고른다.

@@ -224,10 +224,45 @@ describe('useChangePassword — 멱등 키의 수명 (결정 ②)', () => {
   });
 
   /**
-   * 같은 값을 다시 보내는 것은 **같은 시도**다(사용자가 통신 실패를 보고 버튼을 다시 누른 경우).
-   * 여기서 새 키를 만들면 결정 ②가 막으려던 이중 실행이 그대로 열린다.
+   * 같은 값을 다시 보내는 것은 **같은 시도**다 — 사용자가 **통신 실패를 보고** 버튼을 다시 누른
+   * 경우다. 여기서 새 키를 만들면 결정 ②가 막으려던 이중 실행이 그대로 열린다.
+   *
+   * ⚠ **응답이 오지 않는 경로로 세운다.** 앞선 형태는 같은 상황을 서술해 놓고 204로 끝나는 경로를
+   * 썼고, 그래서 이 시험이 재던 것은 **성공 뒤 키 재사용**이었다 — 지금은 고쳐진 결함을 규격으로
+   * 굳히고 있었다(뮤테이션은 잘못 세운 규격도 충실히 지킨다).
    */
-  it('같은 값을 다시 보내면 키가 유지된다', async () => {
+  it('통신 실패 뒤 같은 값을 다시 보내면 키가 유지된다', async () => {
+    const recording = createRecordingFetch([
+      changeRoute(() => {
+        throw new Error('연결 실패(합성)');
+      }),
+    ]);
+    const { result } = renderChange(recording.fetch);
+
+    act(() => {
+      result.current.submit(passwordDraftFixture());
+    });
+    await waitFor(() => {
+      expect(result.current.outcome).toEqual({ kind: 'network' });
+    });
+
+    act(() => {
+      result.current.submit(passwordDraftFixture());
+    });
+    await waitFor(() => {
+      expect(recording.requests).toHaveLength(2);
+    });
+
+    expect(keyOf(recording.requests[1])).toBe(keyOf(recording.requests[0]));
+  });
+
+  /**
+   * ⭐ **성공은 키의 수명을 끝낸다.** 키가 해소하려던 불확실은 「적용됐는지 모른다」인데 204가
+   * 그것을 끝낸다. 끝난 키로 다시 보내면 서버는 계약대로 **실행하지 않고 앞 응답을 되돌려 주고**,
+   * 화면은 그것을 성공으로 읽어 **서버가 아무것도 하지 않았는데 바뀌었다고 단언한다** — 그 사이
+   * 다른 경로로 비밀번호가 또 바뀌었다면 사용자는 자기 비밀번호를 영영 모른다.
+   */
+  it('성공 뒤 같은 값을 다시 보내면 새 키로 나간다', async () => {
     const recording = createRecordingFetch([okRoute()]);
     const { result } = renderChange(recording.fetch);
 
@@ -245,26 +280,84 @@ describe('useChangePassword — 멱등 키의 수명 (결정 ②)', () => {
       expect(recording.requests).toHaveLength(2);
     });
 
-    expect(keyOf(recording.requests[1])).toBe(keyOf(recording.requests[0]));
+    expect(keyOf(recording.requests[1])).not.toBe(keyOf(recording.requests[0]));
+  });
+
+  /** 성공한 시도는 되보낼 것도 없다 — 불확실이 끝났으므로 재시도의 대상이 아니다(음성 단언). */
+  it('성공 뒤 재시도하면 아무것도 나가지 않는다', async () => {
+    const recording = createRecordingFetch([okRoute()]);
+    const { result, onSuccess } = renderChange(recording.fetch);
+
+    act(() => {
+      result.current.submit(passwordDraftFixture());
+    });
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      result.current.retry();
+    });
+
+    /* 양성 대조 — 같은 훅으로 새로 보내면 실제로 나간다. 그 뒤에 앞의 「그대로」가 뜻을 갖는다. */
+    expect(recording.requests).toHaveLength(1);
+
+    act(() => {
+      result.current.submit(passwordDraftFixture({ newPassword: 'SYN-NEXT-0004' }));
+    });
+    await waitFor(() => {
+      expect(recording.requests).toHaveLength(2);
+    });
   });
 
   /**
    * 확인 칸은 **나가지 않는 값**이라 시도를 가르지 않는다 — 같은 쓰기를 두 번 만들지 않는 것이
-   * 키의 목적이고, 본문이 같으면 같은 쓰기다.
+   * 키의 목적이고, 본문이 같으면 같은 쓰기다. **불확실이 남아 있는 경로에서 잰다**(위와 같은 이유).
    */
-  it('확인 칸만 달라진 것은 같은 시도로 본다', async () => {
-    const recording = createRecordingFetch([okRoute()]);
+  it('통신 실패 뒤 확인 칸만 달라진 것은 같은 시도로 본다', async () => {
+    const recording = createRecordingFetch([
+      changeRoute(() => {
+        throw new Error('연결 실패(합성)');
+      }),
+    ]);
     const { result } = renderChange(recording.fetch);
 
     act(() => {
       result.current.submit(passwordDraftFixture());
     });
     await waitFor(() => {
-      expect(recording.requests).toHaveLength(1);
+      expect(result.current.outcome).toEqual({ kind: 'network' });
     });
 
     act(() => {
       result.current.submit(passwordDraftFixture({ confirmPassword: 'SYN-NEXT-0003' }));
+    });
+    await waitFor(() => {
+      expect(recording.requests).toHaveLength(2);
+    });
+
+    expect(keyOf(recording.requests[1])).toBe(keyOf(recording.requests[0]));
+  });
+
+  /**
+   * 401 뒤에는 키를 **유지한다.** 같은 값을 다시 보내면 같은 401이 옳고(현재 비밀번호는 여전히
+   * 틀렸다), 값을 고치면 `isSameWrite`가 거짓이 되어 새 키가 나간다 — 유지가 무해한 갈래다.
+   */
+  it('401 뒤 같은 값을 다시 보내면 키가 유지된다', async () => {
+    const recording = createRecordingFetch([
+      changeRoute(() => jsonResponse(currentMismatchBody(), { status: 401 })),
+    ]);
+    const { result } = renderChange(recording.fetch);
+
+    act(() => {
+      result.current.submit(passwordDraftFixture());
+    });
+    await waitFor(() => {
+      expect(result.current.outcome).toEqual({ kind: 'currentMismatch' });
+    });
+
+    act(() => {
+      result.current.submit(passwordDraftFixture());
     });
     await waitFor(() => {
       expect(recording.requests).toHaveLength(2);
@@ -412,6 +505,37 @@ describe('useChangePassword — 나가는 중과 되돌리기', () => {
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledTimes(1);
     });
+  });
+
+  /**
+   * ⛔ **나가는 중에는 두 문이 모두 잠긴다.** 화면의 보내는 문이 이미 막지만, 훅은 이 화면만의
+   * 것이 아니고 되돌릴 수 없는 쓰기라 **훅 자신도 같은 겹을 갖는다** — 연타가 요청 두 벌이 되면
+   * 두 번째는 이미 바뀐 비밀번호 때문에 실패한다.
+   */
+  it('나가는 중에 다시 보내면 두 번째 요청이 나가지 않는다', async () => {
+    const recording = createRecordingFetch([okRoute()], true);
+    const { result } = renderChange(recording.fetch);
+
+    act(() => {
+      result.current.submit(passwordDraftFixture());
+    });
+    await waitFor(() => {
+      expect(result.current.isSubmitting).toBe(true);
+    });
+
+    act(() => {
+      result.current.submit(passwordDraftFixture({ newPassword: 'SYN-NEXT-0005' }));
+    });
+
+    act(() => {
+      recording.release();
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSubmitting).toBe(false);
+    });
+
+    expect(recording.requests).toHaveLength(1);
   });
 
   it('멈춰 있을 때 되돌리면 앞 시도의 갈래가 걷힌다', async () => {

@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
+import { boundField } from './change-outcome';
 import {
   MIN_NEW_PASSWORD_LENGTH,
   canSubmit,
@@ -10,6 +11,7 @@ import {
   submitDisabledReason,
   validatePasswordDraft,
   type PasswordDraft,
+  type PasswordFieldErrors,
 } from './password-draft';
 import { useChangePassword } from './queries';
 
@@ -44,8 +46,9 @@ const FIRST_HISTORY_ENTRY_KEY = 'default';
  * 오류가 뜨는 형태로 두면 값이 다를 때 **버튼이 잠겨 오류를 볼 방법이 없는 화면**이 된다.
  * 다만 **빈 칸에는 그리지 않는다** — 첫 글자부터 붉은 글씨가 서면 치는 내내 오류를 본다.
  *
- * ⛔ **이 회차는 요청을 만들지 않는다.** 「변경」은 규칙을 만족할 때 열리기만 하고, 보내는 문은
- * 다음 회차가 붙인다. 그때까지도 폼은 실재하므로 기본 제출 차단은 지금부터 선다.
+ * **보내고 나서**는 세 갈래다 — 204면 알림과 함께 세 칸을 비우고(이동도 재로그인도 없다),
+ * 401이면 현재 비밀번호 칸에 인라인으로 서며, 그 밖의 실패는 아직 그릴 자리가 없다(배너는
+ * 다음 회차). ⛔ **몇 번을 틀려도 계정은 잠기지 않는다.**
  */
 export const PasswordChangeScreen = () => {
   const [draft, setDraft] = useState<PasswordDraft>(emptyPasswordDraft);
@@ -65,14 +68,30 @@ export const PasswordChangeScreen = () => {
        * **세 칸을 비운다.** 스펙에 없는 추론이라 근거를 적는다 — 바뀐 값이 화면에 남아 있으면
        * ⓐ 자리를 뜬 사이 어깨너머로 읽히고 ⓑ 「변경」을 한 번 더 누르면 이번엔 현재 비밀번호가
        * 맞지 않아 실패한다. 비우면 둘이 함께 사라진다.
+       *
+       * ⚠ **여기에 던질 수 있는 일을 더하려면 `queries.ts`의 되먹임 주석을 먼저 본다.** 지금
+       * 이 자리가 감싸이지 않은 것은 **던지는 경로가 없다는 실측**에 근거하며(알림은 상태 갱신 뒤
+       * id를 돌려줄 뿐이다), 저장소·세션을 건드리는 일이 들어오는 순간 그 근거가 뒤집힌다 —
+       * 그때는 전례처럼 예외를 갈래로 옮기고 감지기를 함께 둔다.
        */
       toast.show({ variant: 'success', description: t.toast.changed });
       setDraft(emptyPasswordDraft);
     },
   });
 
-  /* 렌더마다 다시 판정한다 — 값이 곧 오류이고, 사이에 낄 상태를 두면 둘이 어긋난다. */
-  const errors = validatePasswordDraft(draft);
+  /**
+   * 이 칸에 설 한 문장.
+   *
+   * ⭐ **화면이 잡는 규칙과 서버가 준 진술이 한 자료구조에 모인다.** 둘을 따로 들면 「한 칸에 한
+   * 문장」과 우선순위가 두 자리에서 각각 정해져, 새 갈래가 늘 때마다 어긋날 자리가 생긴다.
+   * 현재 비밀번호 칸은 화면이 잡을 규칙이 없어(맞는지 아는 것은 서버뿐이다) 서버 쪽만 채운다.
+   */
+  const errors: PasswordFieldErrors = {
+    ...validatePasswordDraft(draft),
+    ...(change.outcome?.kind === 'currentMismatch'
+      ? { currentPassword: t.validation.currentMismatch }
+      : {}),
+  };
 
   /**
    * 「변경」이 막힌 사유. **순서가 뜻을 정한다** — 나가는 중이 맨 앞이다. 그 사정을 뒤에 두면
@@ -83,19 +102,16 @@ export const PasswordChangeScreen = () => {
     : submitDisabledReason(draft);
 
   /**
-   * 서버가 현재 비밀번호 칸에 세운 오류. 화면이 스스로 잡을 수 있는 규칙이 아니라 **그 칸의
-   * 값이 맞는지는 서버만 안다.**
-   */
-  const currentPasswordError =
-    change.outcome?.kind === 'currentMismatch' ? t.validation.currentMismatch : undefined;
-
-  /**
    * 친 값을 고친다.
    *
-   * ⚠ **서버가 준 진술은 그 칸의 값이 바뀔 때만 걷는다 — 전례(로그인)와 다른 자리다.** 그쪽의
-   * 실패는 어느 칸이 틀렸는지 말하지 않는 화면 수준 진술이라 아무 칸이나 고치면 걷는 것이 맞다.
-   * 여기서는 서버가 **현재 비밀번호 칸**을 지목했고, 새 비밀번호를 고쳤다고 그 진술이 거짓이
-   * 되지는 않는다.
+   * ⚠ **걷는 범위를 갈래의 성격이 정한다 — 전례(로그인)와 다른 자리다.** 그쪽의 실패는 어느
+   * 칸이 틀렸는지 말하지 않는 화면 수준 진술이라 아무 칸이나 고치면 걷는 것이 맞다. 여기서는
+   * 갈래가 둘로 갈린다.
+   *
+   * - **그 칸에 매인 진술**(현재 비밀번호 불일치): 그 칸이 바뀔 때만 걷는다. 새 비밀번호를
+   *   고쳤다고 「현재 비밀번호가 맞지 않는다」가 거짓이 되지 않는다.
+   * - **칸에 매이지 않은 진술**(통신 실패·가를 근거 없음): 어느 칸을 고쳐도 걷는다. 그리는 자리는
+   *   다음 회차(배너)지만 **걷는 규칙은 지금 정해 둔다** — 규칙이 없으면 그때 지나간 배너가 남는다.
    *
    * **나가는 중인 요청은 끊지 않는다**(`resetIfIdle`) — 끊으면 비밀번호는 바뀌었는데 바뀐 줄
    * 모르는 화면이 남는다.
@@ -103,7 +119,9 @@ export const PasswordChangeScreen = () => {
   const changeDraft = (patch: Partial<PasswordDraft>): void => {
     setDraft((prev) => ({ ...prev, ...patch }));
 
-    if (patch.currentPassword !== undefined) change.resetIfIdle();
+    const bound = change.outcome === null ? null : boundField(change.outcome);
+
+    if (bound === null || patch[bound] !== undefined) change.resetIfIdle();
   };
 
   /**
@@ -169,7 +187,7 @@ export const PasswordChangeScreen = () => {
             type="password"
             value={draft.currentPassword}
             autoComplete="current-password"
-            error={currentPasswordError}
+            error={errors.currentPassword}
             fullWidth
             onChange={(event) => {
               changeDraft({ currentPassword: event.target.value });
