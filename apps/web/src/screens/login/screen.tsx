@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Card, TextField } from '@crefle/web-ui';
+import { Button, Card, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
@@ -10,6 +10,7 @@ import {
   LOGIN_ID_MAX_LENGTH,
   type LoginDraft,
 } from './login-draft';
+import { LoginErrorBanner } from './login-error-banner';
 import { useLogin } from './queries';
 
 const t = messages.login;
@@ -101,13 +102,20 @@ export const LoginScreen = () => {
    * **보낼 수 있을 때만 보낸다 — 버튼 잠금과 별개의 겹이다.** 폼은 버튼을 지나지 않는 제출
    * 경로를 갖는다(Enter · 프로그램적 제출). 그 길로 빈 자격이 나가면 서버는 **실패한 시도**로
    * 세고, 그 횟수는 계정을 잠그는 임계값을 향해 쌓인다 — 사용자가 아무것도 하지 않았는데도.
+   *
+   * 그래서 **보내는 문을 하나로 둔다**(`sendLogin`) — 폼 제출과 배너의 「다시 시도」가 같은
+   * 문을 지나므로, 겹이 한쪽에만 걸리는 일이 생기지 않는다.
    */
-  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-
+  const sendLogin = (): void => {
     if (login.isSubmitting || !canSubmit(draft)) return;
 
     login.submit(draft);
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+
+    sendLogin();
   };
 
   return (
@@ -130,15 +138,11 @@ export const LoginScreen = () => {
            * 실패는 **한 자리에만** 선다 — 화면 수준 배너다. 규범 6에 따라 화면이 직접 배치하는
            * 배너는 화면이 이음매(`.banner-slot`)를 붙인다.
            *
-           * ⛔ **`mismatch`에만 선다.** 갈래를 보지 않고 「실패면 이 배너」로 두면 잠긴 계정과
-           * 서버 장애에도 자격이 틀렸다고 말하게 된다.
+           * ⛔ **갈래마다 다른 말을 한다.** 갈래를 보지 않고 「실패면 이 배너」로 두면 잠긴
+           * 계정과 서버 장애에도 자격이 틀렸다고 말하게 된다. 그 판정은 배너가 소유한다.
            */}
-          {login.outcome?.kind === 'mismatch' && (
-            <div className="banner-slot">
-              <AlertBanner variant="error" title={t.banner.failureTitle}>
-                {t.banner.mismatch}
-              </AlertBanner>
-            </div>
+          {login.outcome !== null && (
+            <LoginErrorBanner outcome={login.outcome} onRetry={sendLogin} />
           )}
 
           <form onSubmit={handleSubmit}>

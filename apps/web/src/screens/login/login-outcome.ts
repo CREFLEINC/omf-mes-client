@@ -10,7 +10,12 @@ import type { ErrorItem } from '@omf-mes/api-client';
  * (`patterns/`에 특정 화면 분기를 두지 않는다 — `work-splitting.md`).
  */
 export type LoginOutcome =
-  /** 401 — 자격이 맞지 않는다. `remainingAttempts`는 뒤따르는 회차가 채운다 */
+  /**
+   * 401 — 자격이 맞지 않는다.
+   *
+   * ⭐ `remainingAttempts`는 **있는 계정에만 온다**(계약이 선택 필드로 두고 그렇게 적었다).
+   * 그것이 계정 존재를 드러내지 않으려는 설계이므로 **없을 때 기본값을 메우지 않는다.**
+   */
   | { kind: 'mismatch'; remainingAttempts?: number }
   /** 423 — 실패가 쌓여 잠겼다. 스스로 풀 수 없다 */
   | { kind: 'locked' }
@@ -34,6 +39,21 @@ const isErrorItem = (value: unknown): value is ErrorItem =>
   typeof value.code === 'string' &&
   typeof value.message === 'string';
 
+/**
+ * 남은 시도 횟수를 꺼낸다. 꺼낼 수 없으면 `undefined` — **지어내지 않는다.**
+ *
+ * 0 이상의 **정수만** 받는다. 문자열·소수·음수·`NaN`이 그대로 실리면 화면이 「(2/5)」 자리에
+ * 뜻 없는 글자를 그린다. 값의 **뜻**(0이면 무엇인가·임계값을 넘으면 무엇인가)을 판정하는 것은
+ * 그리는 쪽이고, 여기서는 **숫자인가**까지만 본다.
+ */
+const readRemainingAttempts = (body: unknown): number | undefined => {
+  if (!isRecord(body)) return undefined;
+
+  const value = body.remainingAttempts;
+
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : undefined;
+};
+
 const readErrorItems = (body: unknown): ErrorItem[] | null => {
   if (!isRecord(body) || !Array.isArray(body.errors)) return null;
   if (body.errors.length === 0 || !body.errors.every(isErrorItem)) return null;
@@ -53,7 +73,15 @@ const readErrorItems = (body: unknown): ErrorItem[] | null => {
  * 계정을 잠근다. 가를 근거가 없으면 `unknown`으로 두고 상태 코드를 안고 간다.
  */
 export const toLoginOutcome = (status: number, body: unknown): LoginOutcome => {
-  if (status === 401) return { kind: 'mismatch' };
+  if (status === 401) {
+    const remainingAttempts = readRemainingAttempts(body);
+
+    /* 값이 없으면 **키 자체를 두지 않는다** — 「모른다」와 「0이다」가 같은 모양이 되지 않게. */
+    return remainingAttempts === undefined
+      ? { kind: 'mismatch' }
+      : { kind: 'mismatch', remainingAttempts };
+  }
+
   if (status === 423) return { kind: 'locked' };
 
   if (status === 400) {

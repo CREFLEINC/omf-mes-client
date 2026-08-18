@@ -83,3 +83,16 @@ export const errorResponseBody = (overrides: Partial<ErrorResponse> = {}): Error
   errors: [{ scope: 'screen', code: 'SYN_CODE_A', message: '합성 오류 문구입니다.' }],
   ...overrides,
 });
+
+/**
+ * ⭐ **칸을 지목하는 400 본문** — 목 서버와 실서버가 실제로 주는 모양이다(실측).
+ *
+ * 이 화면의 400 시험은 **반드시 이 모양으로도** 돌아야 한다. `scope: 'screen'`만으로 재면
+ * 「필드 오류를 인라인으로 내리지 않는다」가 **가장 그럴듯한 실수**(서버가 준 `field` 키를 보고
+ * 그 칸에 붙이는 것)를 전혀 건드리지 못한 채 통과한다.
+ *
+ * 지목하는 칸 이름은 계약 본문의 칸 그대로다 — 화면이 그 이름을 아는 것이 문제의 출발점이다.
+ */
+export const fieldErrorResponseBody = (field = 'password'): ErrorResponse => ({
+  errors: [{ scope: 'field', field, code: 'SYN_CODE_B', message: '합성 칸 오류 문구입니다.' }],
+});

@@ -13,20 +13,59 @@ describe('toLoginOutcome — 401', () => {
     expect(toLoginOutcome(401, loginFailureBody())).toEqual({ kind: 'mismatch' });
   });
 
-  /**
-   * **이 회차는 남은 시도 횟수를 읽지 않는다.** 본문에 실려 와도 갈래에 담지 않는다 —
-   * 그 값을 어떻게 말할지(임계값·없는 계정)가 뒤따르는 회차의 규칙이고, 여기서 미리 담으면
-   * 아무도 그리지 않는 값이 갈래에 실린다.
-   */
-  it('남은 시도 횟수가 실려 와도 이 회차는 담지 않는다', () => {
+  it('남은 시도 횟수가 실려 오면 갈래에 담는다', () => {
     const outcome = toLoginOutcome(401, loginFailureBody({ remainingAttempts: 3 }));
 
-    expect(outcome).toEqual({ kind: 'mismatch' });
+    expect(outcome).toEqual({ kind: 'mismatch', remainingAttempts: 3 });
+  });
+
+  /**
+   * ⭐ **없는 계정에는 오지 않는 값이다**(계약이 선택 필드로 두고 그렇게 적었다).
+   * 그것이 계정 존재를 드러내지 않으려는 설계이므로 **화면이 기본값을 메우면 안 된다.**
+   */
+  it('남은 시도 횟수가 없으면 키 자체를 두지 않는다', () => {
+    /*
+     * `toStrictEqual`이라야 「키가 없다」와 「키가 `undefined`다」를 가른다 — `toEqual`은 둘을
+     * 같게 본다. 그리는 쪽이 `in` 검사나 전개로 값을 다룰 때 그 차이가 드러난다.
+     */
+    expect(toLoginOutcome(401, loginFailureBody())).toStrictEqual({ kind: 'mismatch' });
   });
 
   it('본문이 계약 형태가 아니어도 갈래는 그대로다', () => {
     expect(toLoginOutcome(401, null)).toEqual({ kind: 'mismatch' });
     expect(toLoginOutcome(401, '문자열 본문')).toEqual({ kind: 'mismatch' });
+  });
+
+  /**
+   * ⛔ **숫자가 아닌 값을 숫자로 받아들이지 않는다.** 본문 형태를 신뢰하지 않는 규율이 이
+   * 필드에도 걸린다 — 문자열이 그대로 실리면 화면이 「(2/5)」 자리에 이상한 글자를 그린다.
+   *
+   * 정수가 아닌 수와 음수도 버린다. 「1.5번 남았습니다」·「-2번 남았습니다」는 사용자에게
+   * 아무 뜻도 없고, 지어낸 값보다 **말하지 않는 편**이 낫다.
+   */
+  it.each([
+    ['문자열', '3'],
+    ['참거짓', true],
+    ['널', null],
+    ['소수', 2.5],
+    ['음수', -1],
+    ['숫자가 아님', Number.NaN],
+  ])('남은 시도 횟수가 %s이면 담지 않는다', (_label, value) => {
+    const outcome = toLoginOutcome(401, {
+      message: '합성 실패 문구입니다.',
+      remainingAttempts: value,
+    });
+
+    expect(outcome).toStrictEqual({ kind: 'mismatch' });
+  });
+
+  it('0은 담는다 — 값의 뜻을 판정하는 것은 그리는 쪽이다', () => {
+    expect(toLoginOutcome(401, { message: '합성 실패 문구입니다.', remainingAttempts: 0 })).toEqual(
+      {
+        kind: 'mismatch',
+        remainingAttempts: 0,
+      },
+    );
   });
 });
 
