@@ -205,6 +205,24 @@ describe('PasswordChangeScreen — 셸 안에 선다', () => {
     expect(t.notice(MIN_NEW_PASSWORD_LENGTH + 1)).not.toBe(t.notice(MIN_NEW_PASSWORD_LENGTH));
     expect(t.notice(MIN_NEW_PASSWORD_LENGTH)).toContain(String(MIN_NEW_PASSWORD_LENGTH));
   });
+
+  /**
+   * ⭐ **안내는 화면이 실제로 막는 규칙을 하나도 빼지 않는다.**
+   *
+   * 금칙어 훑기는 「**없는** 규칙을 짓지 않는다」만 재고 그 반대 방향 — **있는 규칙이 문구에서
+   * 빠지는 것** — 은 아무도 재지 않는다. 길이만 말하면 안내가 충분조건으로 읽히는데 이 화면은
+   * 「현재 값과 같으면 거부」를 함께 막으므로, 그 절이 빠지면 사용자는 통과할 줄 알았던 값에서
+   * 예고 없는 오류를 만난다. 규칙이 늘면 이 단언도 함께 늘려야 한다.
+   */
+  it('안내 문구가 화면이 막는 규칙을 둘 다 말한다', () => {
+    renderScreen();
+
+    const notice = t.notice(MIN_NEW_PASSWORD_LENGTH);
+
+    expect(screen.getByText(notice)).toBeInTheDocument();
+    expect(notice).toContain(String(MIN_NEW_PASSWORD_LENGTH));
+    expect(notice).toContain(t.fields.currentPassword);
+  });
 });
 
 describe('PasswordChangeScreen — 인라인 오류', () => {
