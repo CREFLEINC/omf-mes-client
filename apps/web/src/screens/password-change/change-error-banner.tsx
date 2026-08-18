@@ -6,8 +6,13 @@ import { splitInvalidErrors, type ChangeOutcome } from './change-outcome';
 
 const t = messages.passwordChange;
 
-/** 배너 한 장이 담을 것 — 본문 줄과, 있으면 액션. */
+/** 배너 한 장이 담을 것 — 제목과 본문 줄, 있으면 액션. */
 export interface BannerContent {
+  /**
+   * ⭐ **제목도 갈래가 정한다.** 상수로 두면 제목이 본문을 부정하는 갈래가 생긴다 — 통신 실패에서
+   * 「바꾸지 못했습니다」는 거짓일 수 있고, 제목이 먼저·굵게 읽히므로 그 거짓이 이긴다.
+   */
+  title: string;
   lines: string[];
   /** 눌러서 달라지는 갈래에만 둔다. `false`면 액션 자리를 만들지 않는다 */
   canRetry: boolean;
@@ -34,7 +39,9 @@ export const toBannerContent = (outcome: ChangeOutcome): BannerContent | null =>
     case 'invalid': {
       const { fieldErrors, bannerLines } = splitInvalidErrors(outcome.errors);
 
-      if (bannerLines.length > 0) return { lines: bannerLines, canRetry: false };
+      if (bannerLines.length > 0) {
+        return { title: t.banner.failureTitle, lines: bannerLines, canRetry: false };
+      }
 
       /* 인라인으로 다 내려갔으면 배너를 세울 이유가 없다 — 같은 말을 두 자리에서 하지 않는다. */
       if (Object.keys(fieldErrors).length > 0) return null;
@@ -44,17 +51,32 @@ export const toBannerContent = (outcome: ChangeOutcome): BannerContent | null =>
        * 하나도 남지 않으면(전부 빈 문구였다면) 화면은 **무엇을 고쳐야 하는지 말하지 못하는
        * 상태**가 된다. 그때 남는 조치는 다시 보내는 것뿐이라 「다시 시도」가 함께 선다.
        */
-      return { lines: [messages.httpError.description], canRetry: true };
+      return {
+        title: t.banner.failureTitle,
+        lines: [messages.httpError.description],
+        canRetry: true,
+      };
     }
     case 'network':
-      /* 「바꾸지 못했다」고 단언하지 않는다 — 이미 바뀌었을 수 있고, 재시도는 같은 시도를 보낸다. */
-      return { lines: [t.banner.networkUnconfirmed], canRetry: true };
+      /*
+       * ⭐ **제목과 본문이 같은 말을 한다.** 「바꾸지 못했다」고 단언하지 않는다 — 요청이 서버에
+       * 닿았다면 이미 바뀌었고, 그때 실패라고 말하면 사용자를 옛 비밀번호로 돌려보낸다.
+       */
+      return {
+        title: t.banner.unconfirmedTitle,
+        lines: [t.banner.networkUnconfirmed],
+        canRetry: true,
+      };
     case 'unknown':
       /*
        * ⛔ 자격이 틀렸다고 말하지 않는다. **그렇다고 침묵하지도 않는다.** 상태 코드는 그리지
        * 않는다 — 사용자가 쓰지 않는 말이다. 고칠 값이 없고 서버 사정은 다시 보내면 달라질 수 있다.
        */
-      return { lines: [messages.httpError.description], canRetry: true };
+      return {
+        title: t.banner.failureTitle,
+        lines: [messages.httpError.description],
+        canRetry: true,
+      };
   }
 };
 
@@ -89,7 +111,7 @@ export const ChangeErrorBanner = ({ outcome, onRetry }: ChangeErrorBannerProps) 
    */
   return (
     <div className="banner-slot">
-      <AlertBanner variant="error" title={t.banner.failureTitle} action={action}>
+      <AlertBanner variant="error" title={content.title} action={action}>
         {content.lines.join(' ')}
       </AlertBanner>
     </div>

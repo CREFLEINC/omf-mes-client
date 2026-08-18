@@ -1203,3 +1203,131 @@ describe('PasswordChangeScreen — 통신 실패와 가를 근거 없음', () =>
     expect(submitButton()).toBeDisabled();
   });
 });
+
+describe('PasswordChangeScreen — 나가는 중에 값을 고친 뒤 응답이 온다', () => {
+  /**
+   * ⭐ **서버 진술과 화면 규칙이 같은 칸에서 겹치는 상태는 도달 가능하다.**
+   *
+   * 경로는 T2-10이 **명시적으로 허용한 자리**다 — 나가는 중에 값을 고쳐도 요청은 끊기지 않고,
+   * 그동안 갈래는 `null`이라 걷을 것도 없다. 그 사이 고친 값이 화면 규칙을 어기면, 뒤늦게 도착한
+   * 서버 진술과 화면 규칙이 **같은 칸에서 만난다.**
+   *
+   * 그때 **서버 진술이 이겨야 한다.** 서버는 방금 보낸 값을 보고 지적했는데 화면 규칙(길이)이
+   * 그것을 가리면, 사용자는 길이만 고쳐 **서버가 거절한 그 값을 다시 보낸다.**
+   *
+   * ⚠ 이 자리는 앞 회차가 「도달 불가」로 잘못 분류하고 지나간 자리다(검증이 반증했다).
+   */
+  it('나가는 중 규칙을 깨뜨린 칸에 서버 문구가 도착하면 서버 문구가 선다', async () => {
+    const counting = createCountingFetch(
+      [
+        changeRoute(() =>
+          jsonResponse(fieldErrorBody('newPassword', '합성 서버 지적입니다.'), { status: 400 }),
+        ),
+      ],
+      true,
+    );
+    const { user } = renderScreen({ fetch: counting.fetch });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    /* 나가는 중에 새 비밀번호를 규칙 위반(짧게)으로 고친다 — 화면 규칙이 이 칸에 선다. */
+    await user.clear(newBox());
+    await user.type(newBox(), TOO_SHORT);
+
+    expect(errorTextFor(newBox())).toContain(t.validation.tooShort(MIN_NEW_PASSWORD_LENGTH));
+
+    counting.release();
+
+    /* 서버 진술이 도착하면 그것이 이긴다 — 겹침이 실재하고, 순서가 뜻을 갖는다. */
+    await waitFor(() => {
+      expect(errorTextFor(newBox())).toContain('합성 서버 지적입니다.');
+    });
+  });
+
+  /**
+   * ⭐ **「다시 시도」는 화면의 보내는 문을 지나지 않는다.** 나가는 중에 값을 깨뜨리면
+   * `canSubmit`이 거짓이 되는데, 재시도를 그 문에 붙이면 **누를 수 있는데 아무 일도 없는 버튼**이
+   * 된다(공유계약 G-23의 정면 위반). 재시도가 보내는 것은 지금 화면의 값이 아니라 **이미 나간
+   * 그 시도**이므로 훅의 전용 문을 지나야 하고, 그래서 키도 그대로다.
+   */
+  it('나가는 중 값을 깨뜨린 뒤 통신 실패해도 다시 시도가 같은 키로 되보낸다', async () => {
+    const keys: string[] = [];
+    let release = (): void => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { user } = renderScreen({
+      fetch: async (request) => {
+        keys.push(request.headers.get('Idempotency-Key') ?? '');
+
+        if (keys.length === 1) await gate;
+
+        return Promise.reject(new Error('연결 실패(합성)'));
+      },
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+
+    /* 나가는 중에 확인 칸을 흐트러뜨린다 — 보내는 문이 잠기는 상태를 만든다. */
+    await user.type(confirmBox(), 'X');
+
+    release();
+
+    expect(await screen.findByText(t.banner.networkUnconfirmed)).toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(keys).toHaveLength(2);
+    });
+
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  /**
+   * 400이 **칸 오류와 화면 수준 오류를 함께** 실어 오면 두 채널이 **동시에** 선다. 각각을 재는 두
+   * 시험이 상대의 부재를 단언하다 보니 나란히 읽으면 배타로 보이는데, 실제로는 서로를 막지 않는다.
+   */
+  it('400에 칸 오류와 화면 오류가 함께 오면 인라인과 배너가 함께 선다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        changeRoute(() =>
+          jsonResponse(
+            errorItemsBody([
+              {
+                scope: 'field',
+                field: 'currentPassword',
+                code: 'SYN_CODE_M',
+                message: '합성 칸 지적입니다.',
+              },
+              { scope: 'screen', code: 'SYN_CODE_N', message: '합성 화면 지적입니다.' },
+            ]),
+            { status: 400 },
+          ),
+        ),
+      ]),
+    });
+
+    await fillDraft(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentBox()).toBeInvalid();
+    });
+
+    expect(errorTextFor(currentBox())).toContain('합성 칸 지적입니다.');
+    expect(screen.getByText(/합성 화면 지적입니다\./)).toBeInTheDocument();
+    expect(screen.getByText(t.banner.failureTitle)).toBeInTheDocument();
+  });
+});

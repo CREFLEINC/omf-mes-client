@@ -160,3 +160,36 @@ describe('ChangeErrorBanner — 안내와 컨트롤이 같은 곳을 가리킨�
     ).toBe(false);
   });
 });
+
+describe('ChangeErrorBanner — 제목과 본문이 서로를 부정하지 않는다', () => {
+  /**
+   * ⭐ **제목은 먼저·굵게 읽힌다.** 본문이 「이미 바뀌었을 수 있습니다」라고 말해도 제목이
+   * 「바꾸지 못했습니다」면 사용자는 제목을 믿고 **옛 비밀번호로 다음 로그인을 시도한다.**
+   *
+   * ⚠ 전례(로그인)의 「제목은 갈래 무관 상수」가 그쪽에서 참인 이유는 **세션이 생겼거나 안
+   * 생겼거나 둘뿐**이기 때문이다. 되돌릴 수 없는 쓰기에서는 「응답을 못 받았다」와 「적용되지
+   * 않았다」가 같지 않아 그 형태가 거짓이 된다.
+   */
+  it('통신 실패 배너의 제목이 실패를 단언하지 않는다', () => {
+    /* 양성 먼저 — 단언하는 제목이 실제로 쓰이는 갈래를 잡은 뒤, 이 갈래에는 없음을 잰다. */
+    expect(toBannerContent({ kind: 'unknown', status: 500 })?.title).toBe(t.banner.failureTitle);
+
+    const network = toBannerContent({ kind: 'network' });
+
+    expect(network?.title).not.toBe(t.banner.failureTitle);
+    expect(network?.title).not.toContain('바꾸지 못');
+
+    renderBanner({ kind: 'network' });
+
+    expect(screen.getByText(t.banner.unconfirmedTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.banner.failureTitle)).toBeNull();
+  });
+
+  /** 실패가 **확정된** 갈래에서는 그 단언이 참이다 — 서버가 거절했음이 확실하다. */
+  it('서버가 거절한 갈래에서는 실패를 단언한다', () => {
+    expect(toBannerContent({ kind: 'invalid', errors: currentMismatchBody().errors })?.title).toBe(
+      t.banner.failureTitle,
+    );
+    expect(toBannerContent({ kind: 'unknown', status: 500 })?.title).toBe(t.banner.failureTitle);
+  });
+});
