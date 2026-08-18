@@ -33,6 +33,22 @@ export interface DepartmentFormPaneProps {
   parentDisabledReason: string | null;
   businessUnitOptions: SelectOption[];
   isDirty: boolean;
+  /**
+   * **막을 것 — 전역이다.** 이 화면의 부서 저장은 한 번에 하나뿐이라(훅 하나에 요청 하나),
+   * 다른 부서의 저장이 나가는 중이면 여기서도 새 저장을 시작할 수 없다. 두 번째를 내면
+   * 앞 저장의 무효화·성공·**실패**가 통째로 오지 않는다. 등록과 수정이 **한 저장 자리**를 쓰므로
+   * 두 훅 중 하나라도 나가는 중이면 잠긴다.
+   *
+   * **입력칸은 잠그지 않는다.** 늦게 온 성공이 **남의** 폼을 덮지 않도록 상위가 대상을 견주므로,
+   * 남의 저장을 기다리는 동안 편집을 막을 이유가 없다. 다만 **자기 저장 중의 편집은 그 성공이
+   * 서버 값으로 덮는다** — 구획 전체를 잠가 그 갈래를 아예 닫는 자격 구획과 갈리는 자리다
+   * (D-6·D-7 · 입력칸마다 사유를 붙이는 비용을 치르지 않기로 한 판단이다).
+   */
+  isLocked: boolean;
+  /**
+   * **가릴 것 — 지금 이 구획의 저장인가.** 진행 표시는 자기 저장에만 돈다 —
+   * 남의 저장으로 스피너를 돌리면 화면이 손댄 적 없는 부서를 「저장 중」이라고 말한다.
+   */
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
@@ -66,6 +82,7 @@ export const DepartmentFormPane = ({
   parentDisabledReason,
   businessUnitOptions,
   isDirty,
+  isLocked,
   isSaving,
   onSave,
   onCancel,
@@ -73,6 +90,53 @@ export const DepartmentFormPane = ({
 }: DepartmentFormPaneProps) => {
   const codeId = useId();
   const nameId = useId();
+
+  /*
+   * 이름과 사유를 **한 쌍으로 고른다.** 사유 문면이 두 벌인 것은 저장 자리의 **컨트롤 이름이
+   * 모드마다 다르기 때문**이고, 문구는 그 이름으로 시작한다(배치 규범 4-5) — 두 값을 따로
+   * 고르면 한쪽만 바꿔 이름과 사유가 어긋나는 짝이 생긴다.
+   */
+  const { saveLabel, saveLockedReason } =
+    mode === 'create'
+      ? {
+          saveLabel: t.actions.addDepartment,
+          saveLockedReason: t.department.actionReasons.addLockedByOtherDepartment,
+        }
+      : {
+          saveLabel: messages.common.save,
+          saveLockedReason: t.department.actionReasons.saveLockedByOtherDepartment,
+        };
+
+  /**
+   * 저장 자리의 세 상태. **잠금에서 오는 비활성에는 반드시 사유가 붙는다**(배치 규범 4) —
+   * 남의 저장이 왜 내 저장을 막는지는 이 구획 어디에도 드러나지 않아, 사유가 없으면
+   * 사용자에게 「고장」으로 읽힌다.
+   *
+   * **셋째 갈래에는 사유를 두지 않는다.** 그 비활성은 잠김(남의 사정)이 아니라
+   * **고친 것이 없음**(자기 사정)이라 원인이 사용자가 방금 한 일에 그대로 있다.
+   * 형제 구획(코드그룹)과 같은 갈래 순서다.
+   */
+  const saveAction = (): ReactNode => {
+    /* 내 저장이 나가는 중이면 진행 표시가 사유 자리를 대신한다. */
+    if (isSaving) {
+      return (
+        <Button disabled loading>
+          {saveLabel}
+        </Button>
+      );
+    }
+
+    /* 남의 저장이 나가는 중이다 — 잠그되 **무엇을 기다리는지** 밝힌다. */
+    if (isLocked) {
+      return <DisabledAction label={saveLabel} reason={saveLockedReason} />;
+    }
+
+    return (
+      <Button disabled={!isDirty} onClick={onSave}>
+        {saveLabel}
+      </Button>
+    );
+  };
 
   return (
     <section className="pane" aria-label={t.panes.departmentForm}>
@@ -158,9 +222,7 @@ export const DepartmentFormPane = ({
           {messages.common.cancel}
         </Button>
 
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-          {mode === 'create' ? t.actions.addDepartment : messages.common.save}
-        </Button>
+        {saveAction()}
       </div>
     </section>
   );

@@ -681,6 +681,20 @@ export const CommonCodeScreen = () => {
   const selectedDepartmentParam = isOrgTab ? readSelectedId(searchParams, 'dep') : null;
   const selectedDepartmentId = isCreatingDepartment ? null : selectedDepartmentParam;
 
+  /**
+   * **화면이 지금 보고 있는 부서**와 **지금도 등록 모드인가.** 렌더마다 갱신한다.
+   *
+   * 쓰기의 `onSuccess`는 `mutate`를 부른 **렌더에 닫혀 있어**(공통 훅이 그것을 `mutate`의 두 번째
+   * 인자로 넘긴다) 그 자리에서 「지금」을 알 수 없다 — 응답이 늦게 도착하면 클로저의 값은 이미
+   * 낡았다. 그래서 지금 값을 ref로 따로 들고, 늦게 온 되먹임이 **남의 폼·주소를 건드리는지**를
+   * 그 시점에 판정한다. 코드그룹 구획이 같은 자리에 같은 짝을 두었다.
+   */
+  const currentDepartmentIdRef = useRef<number | null>(selectedDepartmentId);
+  const isCreatingDepartmentRef = useRef<boolean>(isCreatingDepartment);
+
+  currentDepartmentIdRef.current = selectedDepartmentId;
+  isCreatingDepartmentRef.current = isCreatingDepartment;
+
   const departmentList = useDepartmentList(departmentFilters, page, isOrgTab);
 
   /*
@@ -753,6 +767,21 @@ export const CommonCodeScreen = () => {
   const [departmentFormState, setDepartmentFormState] = useState<DepartmentFormState | null>(null);
 
   /**
+   * **지금 열려 있는 등록 초안의 번호**(D-13).
+   *
+   * 등록 폼은 취소로 닫고 다시 열 수 있고, 그때 서는 것은 **다른 초안**이다. 그런데 등록에는
+   * 아직 자원 번호가 없어(폼 출처도 늘 같은 문자열이다) 수정 경로의 대상 축으로는 두 초안을
+   * 가를 수 없다 — 그래서 **초안을 세울 때마다 새 번호**를 준다. 나가는 중인 등록이 어느
+   * 초안의 것인지는 이 번호로 판정한다.
+   */
+  const [departmentCreateDraftSession, setDepartmentCreateDraftSession] = useState(0);
+
+  /** **지금** 열려 있는 초안의 번호. 위 두 ref와 같은 이유로 든다 — 늦게 온 되먹임이 읽는다. */
+  const currentDepartmentCreateDraftSessionRef = useRef<number>(departmentCreateDraftSession);
+
+  currentDepartmentCreateDraftSessionRef.current = departmentCreateDraftSession;
+
+  /**
    * 부서 폼의 기준값 출처. 수정은 상세 응답 객체가, 등록은 **주소**가 정한다 —
    * 코드그룹과 같은 규칙이다. 등록 출처를 주소에서 파생시켜야 `?tab=org&new=dept`로
    * 바로 들어온 사용자에게도 폼이 선다.
@@ -764,11 +793,17 @@ export const CommonCodeScreen = () => {
   if (departmentFormSource === null) {
     if (departmentFormState !== null) setDepartmentFormState(null);
   } else if (departmentFormState?.source !== departmentFormSource) {
-    const seeded =
-      typeof departmentFormSource === 'string'
-        ? emptyDepartmentFormValues()
-        : departmentToFormValues(departmentFormSource.department);
+    const isCreateDraft = typeof departmentFormSource === 'string';
+    const seeded = isCreateDraft
+      ? emptyDepartmentFormValues()
+      : departmentToFormValues(departmentFormSource.department);
     setDepartmentFormState({ source: departmentFormSource, baseline: seeded, values: seeded });
+    /*
+     * **초안이 새로 서는 이 자리가 세션의 경계다.** 폼을 열고 닫는 자리가 여럿이라(액션 ·
+     * 취소 · 목록 선택 · 뒤로가기) 그 자리마다 번호를 올리면 한 곳을 빠뜨린다 — 초안을
+     * 세우는 자리는 여기 하나뿐이다. 값을 고치는 것은 초안을 다시 세우지 않으므로 세지 않는다.
+     */
+    if (isCreateDraft) setDepartmentCreateDraftSession((session) => session + 1);
   }
 
   const isDepartmentDirty =
@@ -796,12 +831,22 @@ export const CommonCodeScreen = () => {
     invalidateKeys: [departmentKeys.all],
     knownFields: DEPARTMENT_FORM_FIELDS,
     onSuccess: (saved) => {
+      /* 저장이 성공한 것은 사실이다 — 그사이 대상이 옮겨 갔더라도 그 사실을 감추지 않는다. */
+      toast.show({ variant: 'success', description: messages.common.saved });
+
+      /*
+       * **늦게 온 성공은 알리기만 한다.** 폼을 서버 응답으로 다시 세우는 것도, 필드 오류를
+       * 비우는 것도 **지금 보고 있는 부서**에 대한 조작이라, 그사이 대상이 옮겨 갔다면
+       * 남의 폼 값을 앞 부서의 값으로 갈아 버린다. 배너·진행 표시와 달리 이 갈래는
+       * **틀린 자료를 사실처럼 보여 주므로** 가장 조용하다.
+       */
+      if (selectedDepartmentId !== currentDepartmentIdRef.current) return;
+
       setDepartmentFieldErrors({});
       const next = departmentToFormValues(saved);
       setDepartmentFormState((prev) =>
         prev === null ? prev : { ...prev, baseline: next, values: next },
       );
-      toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
 
@@ -816,13 +861,30 @@ export const CommonCodeScreen = () => {
     invalidateKeys: [departmentKeys.all],
     knownFields: DEPARTMENT_FORM_FIELDS,
     onSuccess: (saved) => {
+      /* 등록이 성공한 것은 사실이다 — 그사이 화면이 어디로 갔든 그 사실을 감추지 않는다. */
+      toast.show({ variant: 'success', description: messages.common.created });
+
+      /*
+       * **늦게 온 등록 성공은 주소를 끌고 가지 않는다.** 등록 모드를 이미 떠난 사용자에게
+       * 새 자원으로의 이동은 **보던 화면을 빼앗는** 일이다 — 방금 고른 부서가 사라지고
+       * 그 자리에 처음 보는 부서가 선다.
+       *
+       * **모드만 묻지 않는다**(D-13). 닫았다 다시 연 사용자도 「등록 모드」라, 모드만 물으면
+       * 지금 치고 있는 **새 초안**을 두고 앞 초안이 만든 자원으로 끌려간다. 초안 세션까지
+       * 같아야 「그 등록을 낸 그 초안에 그대로 있다」가 된다.
+       */
+      const isSameCreateDraft =
+        isCreatingDepartmentRef.current &&
+        departmentCreateDraftSession === currentDepartmentCreateDraftSessionRef.current;
+
+      if (!isSameCreateDraft) return;
+
       setDepartmentFieldErrors({});
       /*
        * 201에는 ETag가 없다 — 새 부서를 고르면 상세를 다시 조회하게 되고 그 조회가 토큰을 확보한다.
        * **주소 갱신은 이 한 번뿐이다**(`new` 해제 + `dep` 설정을 한 patch로).
        */
       handleSelectDepartment(saved.departmentId);
-      toast.show({ variant: 'success', description: messages.common.created });
     },
   });
 
@@ -853,13 +915,77 @@ export const CommonCodeScreen = () => {
     },
   });
 
+  /**
+   * 지금 모드의 쓰기. 등록과 수정이 **한 폼 상태**를 쓰므로 저장·오류·진행 표시도
+   * 한 곳에서 골라 쓴다 — 두 훅의 상태를 화면에서 합치면 어느 저장의 실패인지 흐려진다.
+   */
   const activeDepartmentWrite = isCreatingDepartment ? departmentCreateWrite : departmentWrite;
+
+  /**
+   * **나가는 중인 저장이 지금 보고 있는 부서의 것인가.**
+   *
+   * `resetIfIdle`는 나가는 중인 쓰기를 **거두지 않는다**(옳다 — 되먹임을 끊지 않는다).
+   * 그래서 거두지 못한 상태(`isSaving`·`error`·`fieldErrors`)가 그대로 남는데, 그사이 사용자가
+   * 다른 부서를 고르면 **손댄 적 없는 부서에 「저장 중」과 남의 실패가 선다.** 좌 목록은
+   * 저장 중에도 잠기지 않으므로 특수한 경로가 아니다.
+   *
+   * 끊는 것과 **가리는 것**은 다르다 — 되먹임은 그대로 두고, *보이는 것*만 대상이 같을 때 낸다.
+   * 같은 화면의 코드그룹·자격·거래처 역할 구획이 같은 자리에 같은 축을 두었다.
+   */
+  const [departmentWriteTargetId, setDepartmentWriteTargetId] = useState<number | null>(null);
+
+  const isDepartmentWriteMine = departmentWriteTargetId === selectedDepartmentId;
+
+  /**
+   * **나가는 중인 등록이 지금 열려 있는 초안의 것인가**(D-13 — 등록 경로의 같은 축).
+   *
+   * 수정은 자원 번호로 가르지만 등록에는 번호가 없다. 가르는 것은 **초안 세션**이고, 그것이
+   * 이 축의 유일한 차이다. 이 값이 없으면 버린 초안의 실패가 방금 연 초안 위에 선다 —
+   * 사용자는 한 글자 친 초안이 이미 거부된 줄 안다.
+   */
+  const [departmentCreateWriteSession, setDepartmentCreateWriteSession] = useState<number | null>(
+    null,
+  );
+
+  const isDepartmentCreateWriteMine = departmentCreateWriteSession === departmentCreateDraftSession;
+
+  /**
+   * **막을 것은 전역이다.** 저장이 하나라도 나가는 중이면 어느 부서에서도 새 저장을 시작할
+   * 수 없다 — 대상 축(`isDepartmentWriteMine`)은 *보이는 것*을 가릴 뿐 **막는 데 쓰지 않는다.**
+   *
+   * **두 훅을 함께 본다.** 등록과 수정이 한 폼 상태·한 저장 자리를 쓰므로 한쪽이 나가는 중에
+   * 다른 쪽이 열려 있으면 사용자는 같은 자리에서 두 저장을 겹쳐 낼 수 있다.
+   * 사용 중지는 넣지 않는다 — 확인 창 안에 갇힌 별개 훅이라 이 자리와 옵저버가 겹치지 않는다.
+   */
+  const isDepartmentLocked = departmentWrite.isSaving || departmentCreateWrite.isSaving;
+
+  /**
+   * 저장을 내는 자리는 하나뿐이고(등록·수정이 같은 자리다) **그 자리가 여기를 지난다.**
+   *
+   * ⛔ **두 번째 저장을 내지 않는다.** 훅 하나에 요청 하나라, 두 번째 `mutate`가 옵저버를
+   * 새 요청으로 옮기면서 **앞 요청에서 옵저버를 떼어 낸다** — 그 순간 앞 저장의 무효화·성공·
+   * 실패가 전부 오지 않는다(`omf-mes#96`이 `reset()`에 대해 말한 것과 같은 상태다).
+   * 잠금(위 `isDepartmentLocked`)이 첫째 겹이고 이 가드가 둘째 겹이다 — 같은 식을 두 번 적지
+   * 않으려고 가드가 그 값을 그대로 읽는다.
+   */
+  const writeDepartment = (values: DepartmentFormValues): void => {
+    if (isDepartmentLocked) return;
+
+    /*
+     * **두 축을 함께 적는다.** 등록과 수정이 한 자리에서 나가므로 어느 쪽이 나갔는지에 따라
+     * 소비처가 갈리는데, 각 폼은 **자기 축만** 읽는다(수정은 자원 번호 · 등록은 초안 세션).
+     * 한쪽만 적으면 그 폼의 되먹임이 영영 「남의 것」이 된다.
+     */
+    setDepartmentWriteTargetId(selectedDepartmentId);
+    setDepartmentCreateWriteSession(departmentCreateDraftSession);
+    activeDepartmentWrite.write(values);
+  };
 
   /** 편집 중이던 상태를 통째로 비운다. 보이는 행이 달라질 때 함께 부른다. */
   const resetDepartmentEditing = () => {
-    departmentWrite.reset();
-    departmentCreateWrite.reset();
-    departmentDeactivateWrite.reset();
+    resetIfIdle(departmentWrite);
+    resetIfIdle(departmentCreateWrite);
+    resetIfIdle(departmentDeactivateWrite);
     setIsDepartmentDeactivateOpen(false);
     setDepartmentFormState(null);
     setDepartmentFieldErrors({});
@@ -893,7 +1019,7 @@ export const CommonCodeScreen = () => {
   };
 
   const closeDepartmentCreateForm = () => {
-    departmentCreateWrite.reset();
+    resetIfIdle(departmentCreateWrite);
     setDepartmentFieldErrors({});
 
     patchSearchParams((next) => {
@@ -928,12 +1054,12 @@ export const CommonCodeScreen = () => {
     // 화면에서 잡히는 오류는 서버로 보내지 않는다.
     if (Object.keys(errors).length > 0) return;
 
-    activeDepartmentWrite.write(departmentFormState.values);
+    writeDepartment(departmentFormState.values);
   };
 
   const reloadDepartmentDetail = () => {
-    departmentWrite.reset();
-    departmentDeactivateWrite.reset();
+    resetIfIdle(departmentWrite);
+    resetIfIdle(departmentDeactivateWrite);
     setDepartmentFieldErrors({});
     setDepartmentFormState(null);
     void departmentDetail.refetch();
@@ -1635,14 +1761,27 @@ export const CommonCodeScreen = () => {
     if (isCreatingDepartment) {
       if (departmentFormState === null) return null;
 
+      /*
+       * **등록 폼의 소비처 셋도 매임을 지난다**(D-13) — 다만 가르는 축이 자원 번호가 아니라
+       * **초안 세션**이다. 이 폼은 등록 모드일 때만 마운트되지만 그 사실이 초안을 가르지는
+       * 못한다 — 닫았다 다시 열면 같은 모드에서 **다른 초안**이 선다. 세 소비처가 같은 축을
+       * 지나야 남는 자리가 없다(배너 · 필드 오류 · 진행 표시).
+       */
       return (
         <DepartmentFormPane
           mode="create"
           values={departmentFormState.values}
           onChange={changeDepartmentValues}
-          fieldErrors={{ ...departmentCreateWrite.fieldErrors, ...departmentFieldErrors }}
+          fieldErrors={{
+            ...(isDepartmentCreateWriteMine ? departmentCreateWrite.fieldErrors : {}),
+            ...departmentFieldErrors,
+          }}
           /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={<SaveErrorBanner error={departmentCreateWrite.error} />}
+          banner={
+            isDepartmentCreateWriteMine ? (
+              <SaveErrorBanner error={departmentCreateWrite.error} />
+            ) : null
+          }
           /* 등록에서는 부서코드 칸이 열려 있다 — 아직 참조할 자료가 없다. */
           codeLockReason={null}
           deactivateDisabledReason={null}
@@ -1657,7 +1796,10 @@ export const CommonCodeScreen = () => {
             departmentFormState.values.businessUnitId,
           )}
           isDirty={isDepartmentDirty}
-          isSaving={departmentCreateWrite.isSaving}
+          /* **막는 것은 전역** — 수정 저장이 나가는 중에 열린 등록 폼도 잠긴다(사유는 페인이 낸다). */
+          isLocked={isDepartmentLocked}
+          /* **가리는 것은 초안 축** — 버린 초안의 진행 표시가 새 초안 위에서 돌지 않는다. */
+          isSaving={isDepartmentCreateWriteMine && departmentCreateWrite.isSaving}
           onSave={handleSaveDepartment}
           onCancel={closeDepartmentCreateForm}
           onDeactivate={() => undefined}
@@ -1699,10 +1841,25 @@ export const CommonCodeScreen = () => {
         mode="edit"
         values={departmentFormState.values}
         onChange={changeDepartmentValues}
-        // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
-        fieldErrors={{ ...departmentWrite.fieldErrors, ...departmentFieldErrors }}
-        /* 순환 참조 400도 이 배너로 온다 — 화면이 순환을 막지 않기 때문이다. */
-        banner={<SaveErrorBanner error={departmentWrite.error} onReload={reloadDepartmentDetail} />}
+        /*
+         * 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
+         * **남의 필드 오류는 아예 넘기지 않는다**(`isDepartmentWriteMine`) — 뒤늦게 온 앞 부서의
+         * 필드 오류가 이 칸에 서면 사용자는 자기가 방금 고친 값이 거부된 줄 안다.
+         */
+        fieldErrors={{
+          ...(isDepartmentWriteMine ? departmentWrite.fieldErrors : {}),
+          ...departmentFieldErrors,
+        }}
+        /*
+         * 순환 참조 400도 이 배너로 온다 — 화면이 순환을 막지 않기 때문이다.
+         * **남의 실패는 아예 그리지 않는다** — 뒤늦게 온 앞 부서의 실패가 지금 구획에 서면
+         * 사용자는 손댄 적 없는 부서가 막힌 줄 안다.
+         */
+        banner={
+          isDepartmentWriteMine ? (
+            <SaveErrorBanner error={departmentWrite.error} onReload={reloadDepartmentDetail} />
+          ) : null
+        }
         /*
          * 판정의 주인은 서버가 준 `codeEditable`이다. 화면이 스스로 잠그지 않는다 —
          * `reason`이 `EDITABLE`인데 잠긴 어긋난 조합이 실제로 내려온다.
@@ -1722,17 +1879,20 @@ export const CommonCodeScreen = () => {
           departmentFormState.values.businessUnitId,
         )}
         isDirty={isDepartmentDirty}
-        isSaving={departmentWrite.isSaving}
+        /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
+        isLocked={isDepartmentLocked}
+        /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
+        isSaving={isDepartmentWriteMine && departmentWrite.isSaving}
         onSave={handleSaveDepartment}
         onCancel={() => {
           setDepartmentFieldErrors({});
-          departmentWrite.reset();
+          resetIfIdle(departmentWrite);
           setDepartmentFormState((prev) =>
             prev === null ? prev : { ...prev, values: prev.baseline },
           );
         }}
         onDeactivate={() => {
-          departmentDeactivateWrite.reset();
+          resetIfIdle(departmentDeactivateWrite);
           setIsDepartmentDeactivateOpen(true);
         }}
       />
@@ -2078,7 +2238,7 @@ export const CommonCodeScreen = () => {
           title={t.dialog.deactivateDepartmentTitle}
           onClose={() => {
             setIsDepartmentDeactivateOpen(false);
-            departmentDeactivateWrite.reset();
+            resetIfIdle(departmentDeactivateWrite);
           }}
           onConfirm={() => {
             departmentDeactivateWrite.write(undefined);
