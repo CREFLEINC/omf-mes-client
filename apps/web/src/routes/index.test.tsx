@@ -1,9 +1,12 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter, useRoutes } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { AppLayout } from '../app/layout';
+import { SessionProvider } from '../patterns/session';
+import { sessionBody } from '../screens/login/fixtures';
 import { poRegisterEntryPath } from '../screens/over-receipt-split/created-receipts-pane';
 import {
   businessUnitFixtures,
@@ -38,10 +41,30 @@ const routedPaths = (): string[] =>
     .filter((path): path is string => path !== undefined)
     .map((path) => `/${path}`);
 
+/**
+ * ⭐ **셸 자식이 아닌 라우트의 경로.**
+ *
+ * `routedPaths()`는 `routes[0].children`만 훑으므로 **셸 밖에 선 라우트를 보지 못한다** —
+ * 그 자리에 무엇을 넣거나 빼도 위 함수를 쓰는 시험은 전부 조용하다. 셸 밖 화면이 생긴
+ * 이 회차부터 그 자리를 직접 훑는 잣대를 따로 둔다.
+ */
+const topLevelPaths = (): string[] =>
+  appRouter.routes.map((route) => route.path).filter((path): path is string => path !== undefined);
+
 const sidebarHrefs = (): string[] => {
-  const router = createMemoryRouter([{ path: '/', element: <AppLayout>본문</AppLayout> }], {
-    initialEntries: ['/'],
-  });
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/',
+        element: (
+          <SessionProvider>
+            <AppLayout>본문</AppLayout>
+          </SessionProvider>
+        ),
+      },
+    ],
+    { initialEntries: ['/'] },
+  );
 
   render(<RouterProvider router={router} />);
 
@@ -55,6 +78,17 @@ const sidebarHrefs = (): string[] => {
  * 표와 어긋나도 통과한다 — 이 파일이 존재하는 이유가 바로 그 어긋남이다.
  */
 const AppRoutes = () => useRoutes(appRouter.routes);
+
+/**
+ * 라우트 표를 **앱과 같은 프로바이더 구성**으로 태운다. 셸이 세션을 읽으므로 프로바이더 없이는
+ * 서지 않고(`useSession`이 던진다), **로그인 화면과 셸이 한 세션을 나눠 봐야** 셸 안팎 전환을
+ * 잴 수 있다 — `app/providers.tsx`가 앱에서 같은 자리에 이 프로바이더를 둔다.
+ */
+const RoutedApp = () => (
+  <SessionProvider>
+    <AppRoutes />
+  </SessionProvider>
+);
 
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
@@ -236,7 +270,7 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
    * 받는 쪽이 읽는 이름과 어긋나면 여기서 맥락 없는 화면이 서고 이 시험이 운다.
    */
   it('그 주소로 들어가면 대상 초과분이 실린 화면이 선다', async () => {
-    renderWithProviders(<AppRoutes />, {
+    renderWithProviders(<RoutedApp />, {
       fetch: createStubFetch(poRegisterRoutes()),
       route: poRegisterEntryPath(9101),
     });
@@ -253,12 +287,119 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
   it('맥락 없이 그 주소로 들어가면 넘어온 초과분이 없다고 말한다', async () => {
     const [pathname] = poRegisterEntryPath(9101).split('?');
 
-    renderWithProviders(<AppRoutes />, {
+    renderWithProviders(<RoutedApp />, {
       fetch: createStubFetch(poRegisterRoutes()),
       route: pathname ?? '',
     });
 
     expect(await screen.findByText(t.empty.noContextTitle)).toBeInTheDocument();
     expect(screen.queryByText('SAMPLE-IR-9101')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * **W-CO-01은 이 저장소에서 셸 밖에 서는 첫 화면이다**(스펙 근거: omf-mes#155).
+ *
+ * 아직 로그인하지 않은 사람에게 사이드바를 보이면 누를 수 없는 항목만 늘어선 화면이 된다.
+ * 이 describe가 그 사실을 **세 자리에서** 잰다 — 라우트 표의 어느 층에 있는가, 메뉴에 없는가,
+ * 그리고 로그인하면 셸 안으로 실제로 들어가는가.
+ */
+describe('appRouter — 계정 로그인의 자리', () => {
+  /**
+   * ⭐ **셸 자식이 아니라 형제다.** `routedPaths()`(셸 자식)와 `topLevelPaths()`(최상위)를
+   * **둘 다** 재야 「어느 층에 있는가」가 고정된다 — 한쪽만 보면 층이 바뀌어도 조용하다.
+   */
+  it('최상위 라우트에 있고 셸 자식 목록에는 없다', () => {
+    expect(topLevelPaths()).toContain('/login');
+    expect(routedPaths()).not.toContain('/login');
+  });
+
+  /** 앞머리를 두지 않는다 — 셸 밖 화면이라 사이드바 섹션이라는 근거 자체가 없다. */
+  it('앞머리 없는 주소를 쓴다', () => {
+    expect(topLevelPaths()).not.toContain('/system/login');
+    expect(topLevelPaths()).not.toContain('/app/sessions');
+  });
+
+  /**
+   * ⛔ **메뉴에 두지 않는다.** 로그인은 메뉴 항목이 아니다 — 이미 로그인한 사람에게는 죽은
+   * 항목이고, 로그인하지 않은 사람은 그 메뉴를 볼 수 없다(이 화면에 사이드바가 없다).
+   *
+   * 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가 같은 화면을 열어도 통과하고,
+   * 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
+   */
+  it('사이드바에 로그인 항목이 없다', () => {
+    const hrefs = sidebarHrefs();
+
+    /* 짝 양성 — 사이드바는 실제로 그려졌다. */
+    expect(hrefs).toContain('/master-data/warehouse-location');
+    expect(hrefs).not.toContain('/login');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).queryByText('로그인')).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **셸이 없다.** 라우트 표를 그대로 태워 재므로, 이 화면을 셸 자식으로 옮기면 여기서 운다.
+   */
+  it('그 주소로 들어가면 사이드바 없이 로그인 화면이 선다', () => {
+    renderWithProviders(<RoutedApp />, { route: '/login' });
+
+    expect(screen.getByRole('heading', { level: 1, name: messages.login.title })).toBeVisible();
+    expect(screen.getByLabelText(messages.login.fields.loginId)).toBeInTheDocument();
+
+    expect(screen.queryByRole('navigation')).toBeNull();
+    expect(screen.queryByRole('banner')).toBeNull();
+  });
+
+  /**
+   * ⭐ **셸 안팎 전환이 실제로 일어난다**(완료 조건 T4-7). 로그인하면 셸 밖 화면에서 셸 안으로
+   * 들어가고, **그 셸의 상단 바에 방금 담긴 이름이 선다** — 세션이 화면에서 셸로 건너갔다는
+   * 것을 이 한 시험이 끝에서 끝까지 잰다.
+   */
+  it('로그인에 성공하면 셸 안으로 들어가고 상단 바에 이름이 선다', async () => {
+    const user = userEvent.setup();
+    const session = sessionBody();
+
+    renderWithProviders(<RoutedApp />, {
+      route: '/login',
+      /*
+       * 로그인 응답만 정하고 **나머지는 빈 목록으로 받아 준다.** 넘어간 뒤 서는 화면이 무엇을
+       * 부르는지는 이 시험의 관심이 아니다 — 그 화면의 조회를 하나씩 흉내 내면 이 시험이
+       * 그 화면의 사정에 묶인다.
+       */
+      fetch: (request) =>
+        Promise.resolve(
+          request.method === 'POST' && new URL(request.url).pathname === '/app/sessions'
+            ? jsonResponse(session)
+            : jsonResponse(listBody([])),
+        ),
+    });
+
+    await user.type(screen.getByLabelText(messages.login.fields.loginId), 'SYN-LOGIN-01');
+    await user.type(screen.getByLabelText(messages.login.fields.password), 'SYN-PW-VALUE-01');
+    await user.click(screen.getByRole('button', { name: messages.login.actions.submit }));
+
+    /* 셸이 섰다 — 로그인 화면에는 없던 랜드마크다. */
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' });
+
+    expect(nav).toBeInTheDocument();
+
+    /*
+     * 셸 상단 바를 **브랜드로 찾는다.** 넘어간 뒤 서는 화면의 `PageHeader`도 `banner` 역할을
+     * 가져 이 문서에 그 역할이 둘이다 — 순서로 고르면 화면 구성이 바뀔 때 조용히 어긋난다.
+     */
+    const shellTopbar = screen
+      .getAllByRole('banner')
+      .find((element) => within(element).queryByText('OMF-MES 관리웹') !== null);
+
+    if (shellTopbar === undefined) {
+      throw new Error('셸 상단 바를 찾지 못했습니다');
+    }
+
+    expect(within(shellTopbar).getByText(session.userName)).toBeInTheDocument();
+
+    /* 로그인 화면은 사라졌다 — 셸 안에 그 폼이 남아 있으면 전환이 아니라 겹침이다. */
+    expect(screen.queryByLabelText(messages.login.fields.password)).toBeNull();
   });
 });

@@ -1,16 +1,67 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider, useSession, type Session } from '../patterns/session';
 import { AppLayout } from './layout';
 
-const renderLayout = (children: string) => {
-  const router = createMemoryRouter([{ path: '/', element: <AppLayout>{children}</AppLayout> }], {
-    initialEntries: ['/'],
-  });
+/** 합성값이다 — 계약의 예시값(`1001`·`hong.gd`·`홍길동`)을 쓰지 않는다(공개 저장소 경계). */
+const SYNTHETIC_USER_NAME = '합성 사용자 가';
 
-  return render(<RouterProvider router={router} />);
+const sessionFixture = (): Session => ({
+  userId: 8101,
+  loginId: 'SYN-LOGIN-01',
+  userName: SYNTHETIC_USER_NAME,
+  scopes: [{ businessUnitId: 8301, plantId: 8401 }],
+});
+
+/**
+ * 화면이 로그인에 성공했을 때 하는 일을 흉내 낸다. **자동으로 돌지 않고 눌러서 돈다** —
+ * 「세션이 없을 때」와 「있을 때」를 같은 렌더에서 앞뒤로 잴 수 있게 시점을 시험이 정한다.
+ */
+const SignInProbe = () => {
+  const { signIn } = useSession();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        signIn(sessionFixture());
+      }}
+    >
+      세션 담기
+    </button>
+  );
 };
+
+/**
+ * 셸은 이제 세션을 읽으므로 **프로바이더 없이는 서지 않는다**(`useSession`이 던진다).
+ * 앱에서도 `app/providers.tsx`가 같은 자리에 이 프로바이더를 둔다.
+ */
+const renderLayout = (children: string) => {
+  const user = userEvent.setup();
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/',
+        element: (
+          <SessionProvider>
+            <SignInProbe />
+            <AppLayout>{children}</AppLayout>
+          </SessionProvider>
+        ),
+      },
+    ],
+    { initialEntries: ['/'] },
+  );
+
+  render(<RouterProvider router={router} />);
+
+  return { user };
+};
+
+const topbar = (): HTMLElement => screen.getByRole('banner');
 
 describe('AppLayout', () => {
   it('사이드바에 기준정보 섹션의 창고·Location 메뉴가 보인다', () => {
@@ -379,5 +430,72 @@ describe('AppLayout', () => {
     renderLayout('본문 내용');
 
     expect(within(screen.getByRole('banner')).getByText('OMF-MES 관리웹')).toBeInTheDocument();
+  });
+});
+
+describe('AppLayout — 로그인 사용자 표시', () => {
+  /**
+   * ⛔ **모르는 값과 없는 값을 같은 모양으로 그리지 않는다**(공유계약 G-9). 세션이 없을 때
+   * 「알 수 없음」·「게스트」류의 글자를 두면 **로그인한 것처럼** 읽힌다 — 지금은 미인증 접근을
+   * 막는 장치가 없어 **비어 있는 것이 정상 상태**다.
+   *
+   * 음성 단언이라 **상단 바를 잡은 뒤**에 잰다.
+   */
+  it('세션이 없으면 이름 자리가 비어 있다', () => {
+    renderLayout('본문 내용');
+
+    /* 짝 양성 — 상단 바는 실제로 그려졌다. */
+    expect(within(topbar()).getByText('OMF-MES 관리웹')).toBeInTheDocument();
+
+    expect(within(topbar()).queryByText(SYNTHETIC_USER_NAME)).not.toBeInTheDocument();
+    expect(within(topbar()).queryByText(/알 수 없음|게스트|미로그인/)).not.toBeInTheDocument();
+  });
+
+  it('세션이 있으면 상단 바에 사용자 이름이 보인다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    expect(within(topbar()).getByText(SYNTHETIC_USER_NAME)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **「비운다」는 「빈 요소를 둔다」가 아니라 「요소를 두지 않는다」이다.**
+   *
+   * 글자만 재면 빈 요소가 그대로 통과한다. 눈에는 안 보이지만 디자인 시스템이 액션 슬롯에
+   * 간격·정렬을 주면 **보이지 않는 여백**이 생기고, 그것은 육안 확인으로도 잡기 어렵다.
+   * T3의 「빈 줄도 「말한 것」이 된다」와 같은 계열이다.
+   *
+   * 요소가 **로그인 뒤에야 생긴다**는 것을 세어서 잰다 — 디자인 시스템의 내부 클래스 이름을
+   * 겨냥하지 않으려고 자식 수를 쓴다. 그 이름은 버전이 바뀌면 조용히 어긋난다.
+   */
+  it('세션이 없으면 이름 자리의 요소 자체가 없다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    const before = topbar().childElementCount;
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    /* 짝 양성 — 이름이 실제로 섰다. */
+    expect(within(topbar()).getByText(SYNTHETIC_USER_NAME)).toBeInTheDocument();
+
+    expect(topbar().childElementCount).toBe(before + 1);
+  });
+
+  /**
+   * ⛔ **귀속(사업부·공장)은 그리지 않는다.** 계약이 정수 ID만 주고 이름을 주지 않아, 사람이
+   * 읽을 값을 만들려면 셸이 기준정보 조회를 지게 된다 — 미인증 상태에서도 도는 조회가 셸에
+   * 생기고 셸이 기준정보 계약에 묶인다. 값 자체는 세션에 그대로 실려 있다.
+   */
+  it('상단 바에 내부 번호가 나오지 않는다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    expect(within(topbar()).getByText(SYNTHETIC_USER_NAME)).toBeInTheDocument();
+
+    for (const internalId of ['8101', '8201', '8301', '8401']) {
+      expect(topbar().textContent).not.toContain(internalId);
+    }
   });
 });

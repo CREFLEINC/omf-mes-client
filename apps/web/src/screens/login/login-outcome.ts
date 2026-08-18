@@ -23,8 +23,16 @@ export type LoginOutcome =
   | { kind: 'invalid'; errors: ErrorItem[] }
   /** 응답 자체가 없었다. 상태 코드를 갖지 않는다 */
   | { kind: 'network' }
-  /** 가를 근거가 없는 응답. 상태 코드만 안고 간다 */
-  | { kind: 'unknown'; status: number };
+  /**
+   * 가를 근거가 없는 응답. 상태 코드를 안고 간다.
+   *
+   * ⭐ **잡은 값이 있으면 함께 안고 간다**(`cause`). 이 갈래에는 응답이 아니라 **이 앱의 코드가
+   * 던진 것**이 떨어지는 길이 있다(성공 되먹임의 예외 — `queries.ts`). 원인을 여기서 버리면
+   * 그 결함이 「서버가 이상하다」로 보이고 어디에도 흔적이 남지 않는다.
+   *
+   * ⛔ **그리지 않는다.** 배너는 `kind`만 본다 — 사용자에게 내부 오류를 보이지 않는다.
+   */
+  | { kind: 'unknown'; status: number; cause?: unknown };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;

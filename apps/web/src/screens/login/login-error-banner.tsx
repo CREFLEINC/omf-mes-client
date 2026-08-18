@@ -92,10 +92,21 @@ const toContent = (outcome: LoginOutcome): BannerContent => {
         .map((item) => item.message)
         .filter((message) => message.trim() !== '');
 
-      return {
-        lines: lines.length === 0 ? [messages.httpError.description] : lines,
-        canRetry: false,
-      };
+      /*
+       * ⭐ **폴백으로 떨어지면 「다시 시도」도 함께 선다.**
+       *
+       * 서버가 준 문구가 있을 때는 **값을 고쳐야** 풀리므로 재시도 버튼을 두지 않는다.
+       * 그런데 문구가 없어 공용 안내(「잠시 뒤 다시 시도하세요…」)로 떨어지면 **화면이 무엇을
+       * 고쳐야 하는지 말하지 못하는 상태**가 되고, 그때 남는 조치는 다시 보내는 것뿐이다.
+       *
+       * 규칙은 하나다 — **「다시 시도하세요」라고 말하는 갈래에는 반드시 누를 자리가 있다.**
+       * 안내와 컨트롤이 반대를 가리키면 하라고 한 일을 할 수 없다(공유계약 G-23의 역방향).
+       */
+      if (lines.length === 0) {
+        return { lines: [messages.httpError.description], canRetry: true };
+      }
+
+      return { lines, canRetry: false };
     }
     case 'network':
       return { lines: [messages.httpError.offline], canRetry: true };

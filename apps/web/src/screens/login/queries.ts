@@ -74,11 +74,19 @@ interface LoginAttempt {
  * 원인을 연결 문제로 오인시키면 사용자가 할 수 없는 조치를 하게 된다(전례 `patterns/request.ts`의
  * `toApiError`와 같은 규율).
  *
- * ⚠ **이 자리는 뒤따르는 회차에 자란다.** 세션을 보관하는 회차가 `onSuccess`에 적재를 붙이는데,
- * 그것이 던지면 여기로 떨어져 `{kind:'unknown', status:0}`이 되고 화면은 아무 말도 하지 않는다.
+ * ⭐ **잡은 값을 갈래에 실어 보낸다.** 이 자리에 떨어지는 것은 대부분 **이 앱의 코드가 던진
+ * 것**이다(세션 적재 등). 버리면 그 결함이 「서버가 이상하다」로 보이고 어디에도 흔적이
+ * 남지 않는다 — 같은 파일의 통신 실패 갈래가 `{ cause }`로 원인 사슬을 남기는 것과 같은 규율이다.
+ *
+ * ⛔ **로그로 내보내지 않는다.** 이 저장소에는 `console.*` 사용처가 하나도 없고(실측), 그
+ * 관례를 **자격을 다루는 화면에서 처음 깨는 것**은 위험이 이득보다 크다 — 이 경로가 잡는 값에는
+ * 세션이 실려 올 수 있다. 오류 보고 수단을 들이는 것은 저장소 전체의 결정이지 이 슬라이스의
+ * 결정이 아니다. 그때까지는 **갈래에 매달아** 개발 도구·시험에서 읽을 수 있게 둔다.
  */
 const readOutcome = (cause: unknown): LoginOutcome =>
-  cause instanceof LoginFailedError ? cause.outcome : { kind: 'unknown', status: NO_HTTP_STATUS };
+  cause instanceof LoginFailedError
+    ? cause.outcome
+    : { kind: 'unknown', status: NO_HTTP_STATUS, cause };
 
 /**
  * 세션을 만든다 — 이 화면의 유일한 요청이다.
@@ -136,7 +144,22 @@ export const useLogin = (options: LoginOptions): LoginMutation => {
       { draft, idempotencyKey: crypto.randomUUID() },
       {
         onSuccess: (session) => {
-          options.onSuccess(session);
+          /*
+           * ⭐ **성공 되먹임의 예외를 갈래로 옮긴다.**
+           *
+           * 이 자리에는 **세션 적재**가 붙는다. 그것이 던지면 요청 라이브러리는 그 예외를
+           * 잡지 않고 **처리되지 않은 오류**로 흘려보내며, 훅의 갈래는 `null`인 채로 남는다 —
+           * 화면에는 이동도 배너도 없고 버튼만 다시 열린다. 사용자는 자기가 로그인됐는지조차
+           * 알 수 없고, 다시 눌러도 같은 자리에 머문다.
+           *
+           * 잡은 값은 이 슬라이스가 만든 실패가 아니므로 **자격이 틀렸다고 말하지 않는다** —
+           * 「가를 근거가 없다」로 떨어져 공용 안내와 「다시 시도」가 선다.
+           */
+          try {
+            options.onSuccess(session);
+          } catch (cause) {
+            setOutcome(readOutcome(cause));
+          }
         },
         onError: (cause) => {
           setOutcome(readOutcome(cause));

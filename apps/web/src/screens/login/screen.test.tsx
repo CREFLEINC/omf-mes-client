@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -17,11 +17,50 @@ import {
   loginFailureBody,
   sessionBody,
 } from './fixtures';
+import { SessionProvider, useSession, type Session } from '../../patterns/session';
 import { LOGIN_ID_MAX_LENGTH } from './login-draft';
 import { LOCK_THRESHOLD_ATTEMPTS } from './login-error-banner';
 import { LoginScreen } from './screen';
 
 const t = messages.login;
+
+/**
+ * 세션 담기를 **실패시키는 스위치**. `null`이면 진짜 컨텍스트가 그대로 돈다.
+ *
+ * ⭐ 이 자리가 필요한 이유: 담기와 넘어가기의 **순서**는 정상 경로에서는 잴 수 없다(둘이 같은
+ * 틱에 묶여 결과가 같다). 그런데 **담기가 던지는 경로**에서는 갈린다 — 먼저 넘어가면 이미 셸
+ * 안으로 들어간 뒤에 실패가 오고, 그것이 주석이 근거로 든 「로그인은 됐는데 누구인지 모르는
+ * 화면」이다. 그 경로가 실재함은 앞 회차가 확인했다.
+ */
+let signInFailure: Error | null = null;
+
+/**
+ * 진짜 컨텍스트를 그대로 쓰되 `signIn`만 감싼다 — 다른 시험은 실제 동작을 그대로 본다.
+ * 모듈을 통째로 흉내 내면 「세션이 실제로 담겼는가」를 재는 시험들이 함께 거짓이 된다.
+ */
+vi.mock('../../patterns/session', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../patterns/session')>();
+
+  return {
+    ...actual,
+    useSession: () => {
+      const value = actual.useSession();
+
+      return {
+        ...value,
+        signIn: (session: Parameters<typeof value.signIn>[0]) => {
+          if (signInFailure !== null) throw signInFailure;
+
+          value.signIn(session);
+        },
+      };
+    },
+  };
+});
+
+afterEach(() => {
+  signInFailure = null;
+});
 
 /** 합성값이다. 그럴듯한 자격이 되지 않게 대역을 드러내는 글자만 쓴다(공개 저장소 경계). */
 const SYNTHETIC_LOGIN_ID = 'SYN-LOGIN-01';
@@ -60,6 +99,23 @@ const BackProbe = () => {
   );
 };
 
+/** 화면이 담은 세션을 그대로 보인다 — 무엇이 담겼는지 판정할 유일한 근거다. */
+const SessionProbe = () => {
+  const { session } = useSession();
+
+  return (
+    <output data-testid="stored-session">
+      {session === null ? '없음' : JSON.stringify(session)}
+    </output>
+  );
+};
+
+const storedSession = (): Session | null => {
+  const text = screen.getByTestId('stored-session').textContent ?? '';
+
+  return text === '없음' ? null : (JSON.parse(text) as Session);
+};
+
 interface RenderOptions {
   /** 주지 않으면 하네스가 **모든 요청에 던진다** — 「이 갈래는 서버를 부르지 않는다」가 그대로 잰다. */
   fetch?: StubFetch;
@@ -78,7 +134,7 @@ interface RenderOptions {
 const renderScreen = (options: RenderOptions = {}) => {
   const user = userEvent.setup();
   const result = renderWithProviders(
-    <>
+    <SessionProvider>
       <LoginScreen />
       {options.probes === true && (
         <>
@@ -86,7 +142,8 @@ const renderScreen = (options: RenderOptions = {}) => {
           <BackProbe />
         </>
       )}
-    </>,
+      <SessionProbe />
+    </SessionProvider>,
     { fetch: options.fetch, route: LOGIN_ROUTE },
   );
 
@@ -894,5 +951,105 @@ describe('LoginScreen — 실패의 갈래를 나눠 알린다', () => {
     await screen.findByRole('alert');
 
     await attemptSettled();
+  });
+});
+
+describe('LoginScreen — 성공하면 세션을 담는다', () => {
+  const succeeding = (session = sessionBody()): StubFetch =>
+    createStubFetch([sessionsRoute(() => jsonResponse(session))]);
+
+  /**
+   * ⭐ **응답을 깎지 않고 그대로 담는다**(완료 조건 T4-2). 지금 그리는 것은 이름 하나뿐이지만,
+   * 뒤따르는 화면들이 권한 범위를 읽는다 — 여기서 필요한 것만 골라 담으면 그 화면들이
+   * 다시 로그인을 시켜야 한다.
+   */
+  it('200이면 응답의 세션이 그대로 담긴다', async () => {
+    const session = sessionBody();
+    const { user } = renderScreen({ fetch: succeeding(session), probes: true });
+
+    /* 짝 양성 — 담기 전에는 비어 있다. */
+    expect(storedSession()).toBeNull();
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(HOME_ROUTE);
+    });
+
+    expect(storedSession()).toEqual(session);
+  });
+
+  /**
+   * ⭐ **권한 범위의 축은 사업부·공장 둘뿐이다** — 법인 축을 두지 않는다.
+   * 축이 늘면 이 시험이 먼저 깨져, 계약이 바뀐 사실을 화면보다 앞서 알린다.
+   */
+  it('담긴 권한 범위에 사업부·공장 말고 다른 축이 없다', async () => {
+    const { user } = renderScreen({ fetch: succeeding(), probes: true });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(storedSession()).not.toBeNull();
+    });
+
+    const scopes = storedSession()?.scopes ?? [];
+
+    expect(scopes.length).toBeGreaterThan(0);
+
+    for (const scope of scopes) {
+      expect(Object.keys(scope).sort()).toEqual(['businessUnitId', 'plantId']);
+      expect(scope).not.toHaveProperty('corporationId');
+      expect(scope).not.toHaveProperty('legalEntityId');
+    }
+  });
+
+  /** 실패하면 담지 않는다 — 담을 것이 없다. */
+  it('401이면 세션을 담지 않는다', async () => {
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        sessionsRoute(() => jsonResponse(loginFailureBody(), { status: 401 })),
+      ]),
+      probes: true,
+    });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+    await screen.findByRole('alert');
+
+    expect(storedSession()).toBeNull();
+    expect(currentPath()).toBe(LOGIN_ROUTE);
+  });
+});
+
+describe('LoginScreen — 담고 나서 넘어간다', () => {
+  /**
+   * ⭐ **순서가 뜻을 정한다 — 담기가 실패하는 경로에서 드러난다.**
+   *
+   * 먼저 넘어가면 **이미 셸 안으로 들어간 뒤에** 실패가 온다: 로그인은 됐는데 누구인지 모르는
+   * 화면이 남고, 사용자는 자기가 어디에 있는지도 무엇이 잘못됐는지도 알 수 없다.
+   * 담고 나서 넘어가면 실패가 **로그인 화면 위에** 서고 그 자리에서 다시 시도할 수 있다.
+   *
+   * ⚠ 이 규율은 **정상 경로에서는 잴 수 없다**(둘이 같은 틱에 묶인다). 그래서 실패 경로가
+   * 이 규율의 유일한 잣대다 — 주석에만 두지 않고 여기서 못 박는다.
+   */
+  it('세션 담기가 실패하면 넘어가지 않고 실패가 그 자리에 선다', async () => {
+    signInFailure = new Error('세션을 담지 못했습니다');
+
+    const { user } = renderScreen({
+      fetch: createStubFetch([sessionsRoute(() => jsonResponse(sessionBody()))]),
+      probes: true,
+    });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    /* 실패가 화면에 섰다 — 침묵하지 않는다. */
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    /* ⭐ 본론 — 셸 안으로 들어가지 않았다. */
+    expect(currentPath()).toBe(LOGIN_ROUTE);
+    expect(storedSession()).toBeNull();
   });
 });

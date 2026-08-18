@@ -13,6 +13,7 @@ import { InspectionStandardScreen } from '../screens/inspection-standard/screen'
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
+import { LoginScreen } from '../screens/login/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
@@ -154,5 +155,27 @@ export const appRouter = createBrowserRouter([
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
     ],
   },
+  /*
+   * W-CO-01 — **셸 자식이 아닌 첫 라우트다.** 위 배열의 형제로 서서 `AppLayout`을 지나지 않는다.
+   *
+   * 근거: 아직 로그인하지 않은 사람에게 사이드바를 보이면 **누를 수 없는 항목만 늘어선 화면**이
+   * 된다. 링크가 서 있으니 눌러 보고, 눌러도 아무 일이 없거나 같은 로그인 화면으로 되돌아온다 —
+   * 그 자리에서 사용자가 배우는 것은 「이 앱은 고장 났다」다. 상단 바의 사용자 이름 자리도
+   * 비어 있어야 할 이유가 없는 자리에 비어 선다.
+   *
+   * 대안 둘을 버린 이유. **셸 안에 두고 사이드바만 감추는 것**은 셸이 「인증 상태」를 알아야
+   * 하므로 지금 두지 않기로 한 라우트 가드를 셸에 흘려 넣는다. **별도 라우터**는 라우트 표가
+   * 둘이 되어 「이 주소가 어디 있는가」를 두 곳에서 찾게 만든다.
+   *
+   * ⛔ **사이드바에 올리지 않는다.** 로그인은 메뉴 항목이 아니다 — 이미 로그인한 사람에게는
+   * 죽은 항목이고, 로그인하지 않은 사람은 그 메뉴를 볼 수 없다(이 화면에 사이드바가 없다).
+   * W-01-11이 세운 규율(라우트만 열고 메뉴에 두지 않는다)과 같은 형태이며, 근거는 다르다 —
+   * 그쪽은 맥락 없는 진입을 막는 것이고 이쪽은 **메뉴가 성립하지 않는 것**이다.
+   *
+   * ⚠ **이 라우트는 접근을 제한하지 않는다.** 미인증 상태로 다른 주소에 들어가는 길은 그대로
+   * 열려 있다(라우트 가드는 이 작업의 범위 밖 — 후속 작업). 로그인 화면이 생겼다는 것이
+   * 보호가 생겼다는 뜻이 아니다.
+   */
+  { path: '/login', element: <LoginScreen /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

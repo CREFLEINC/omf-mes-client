@@ -8,14 +8,14 @@ import type { components } from '@omf-mes/api-client';
  * `components['schemas'][…]` 표기가 화면 코드 곳곳에 퍼지면 계약이 바뀔 때 고칠 자리가 흩어진다.
  */
 
-/** 로그인 결과이자 「지금 나는 누구이고 어디까지 보는가」. */
-export type Session = components['schemas']['Session'];
-
 /**
- * 권한 범위. **축이 사업부·공장 둘뿐이다** — 법인 축을 두지 않는다.
- * 값은 정수 ID만 오고 이름은 오지 않으므로, 사람이 읽을 귀속을 그리려면 이름 풀이 조회가 따로 든다.
+ * 로그인 결과이자 「지금 나는 누구이고 어디까지 보는가」.
+ *
+ * ⚠ **권한 범위(`SessionScope`) 별칭을 따로 두지 않는다.** 네 회차를 지나며 그 이름을 쓰는
+ * 자리가 끝내 생기지 않았다 — 화면은 응답을 **깎지 않고 통째로** 세션에 담고, 축이 둘뿐이라는
+ * 사실은 그 담긴 값을 훑는 감지기가 잰다. 쓰지 않는 별칭은 정의째 두지 않는다.
  */
-export type SessionScope = components['schemas']['SessionScope'];
+export type Session = components['schemas']['Session'];
 
 /**
  * 로그인 실패 본문.
