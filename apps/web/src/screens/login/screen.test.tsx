@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -23,6 +23,44 @@ import { LOCK_THRESHOLD_ATTEMPTS } from './login-error-banner';
 import { LoginScreen } from './screen';
 
 const t = messages.login;
+
+/**
+ * 세션 담기를 **실패시키는 스위치**. `null`이면 진짜 컨텍스트가 그대로 돈다.
+ *
+ * ⭐ 이 자리가 필요한 이유: 담기와 넘어가기의 **순서**는 정상 경로에서는 잴 수 없다(둘이 같은
+ * 틱에 묶여 결과가 같다). 그런데 **담기가 던지는 경로**에서는 갈린다 — 먼저 넘어가면 이미 셸
+ * 안으로 들어간 뒤에 실패가 오고, 그것이 주석이 근거로 든 「로그인은 됐는데 누구인지 모르는
+ * 화면」이다. 그 경로가 실재함은 앞 회차가 확인했다.
+ */
+let signInFailure: Error | null = null;
+
+/**
+ * 진짜 컨텍스트를 그대로 쓰되 `signIn`만 감싼다 — 다른 시험은 실제 동작을 그대로 본다.
+ * 모듈을 통째로 흉내 내면 「세션이 실제로 담겼는가」를 재는 시험들이 함께 거짓이 된다.
+ */
+vi.mock('../../patterns/session', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../patterns/session')>();
+
+  return {
+    ...actual,
+    useSession: () => {
+      const value = actual.useSession();
+
+      return {
+        ...value,
+        signIn: (session: Parameters<typeof value.signIn>[0]) => {
+          if (signInFailure !== null) throw signInFailure;
+
+          value.signIn(session);
+        },
+      };
+    },
+  };
+});
+
+afterEach(() => {
+  signInFailure = null;
+});
 
 /** 합성값이다. 그럴듯한 자격이 되지 않게 대역을 드러내는 글자만 쓴다(공개 저장소 경계). */
 const SYNTHETIC_LOGIN_ID = 'SYN-LOGIN-01';
@@ -982,5 +1020,36 @@ describe('LoginScreen — 성공하면 세션을 담는다', () => {
 
     expect(storedSession()).toBeNull();
     expect(currentPath()).toBe(LOGIN_ROUTE);
+  });
+});
+
+describe('LoginScreen — 담고 나서 넘어간다', () => {
+  /**
+   * ⭐ **순서가 뜻을 정한다 — 담기가 실패하는 경로에서 드러난다.**
+   *
+   * 먼저 넘어가면 **이미 셸 안으로 들어간 뒤에** 실패가 온다: 로그인은 됐는데 누구인지 모르는
+   * 화면이 남고, 사용자는 자기가 어디에 있는지도 무엇이 잘못됐는지도 알 수 없다.
+   * 담고 나서 넘어가면 실패가 **로그인 화면 위에** 서고 그 자리에서 다시 시도할 수 있다.
+   *
+   * ⚠ 이 규율은 **정상 경로에서는 잴 수 없다**(둘이 같은 틱에 묶인다). 그래서 실패 경로가
+   * 이 규율의 유일한 잣대다 — 주석에만 두지 않고 여기서 못 박는다.
+   */
+  it('세션 담기가 실패하면 넘어가지 않고 실패가 그 자리에 선다', async () => {
+    signInFailure = new Error('세션을 담지 못했습니다');
+
+    const { user } = renderScreen({
+      fetch: createStubFetch([sessionsRoute(() => jsonResponse(sessionBody()))]),
+      probes: true,
+    });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    /* 실패가 화면에 섰다 — 침묵하지 않는다. */
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    /* ⭐ 본론 — 셸 안으로 들어가지 않았다. */
+    expect(currentPath()).toBe(LOGIN_ROUTE);
+    expect(storedSession()).toBeNull();
   });
 });

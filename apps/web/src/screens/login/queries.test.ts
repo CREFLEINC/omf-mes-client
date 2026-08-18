@@ -222,10 +222,40 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.outcome).toEqual({ kind: 'unknown', status: 0 });
+      expect(result.current.outcome?.kind).toBe('unknown');
     });
 
     expect(onSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * ⭐ **잡은 값을 버리지 않는다.**
+   *
+   * 이 갈래에 떨어지는 것은 대부분 **이 앱의 코드가 던진 것**이다(세션 적재 등). 원인을 버리면
+   * 그 결함이 화면에서 「서버가 이상하다」로 보이고 어디에도 흔적이 남지 않는다 — 고치기 전에는
+   * 처리되지 않은 오류로 드러나던 것이 조용해진다.
+   *
+   * ⛔ 사용자에게 보이지는 않는다 — 배너는 `kind`만 본다.
+   */
+  it('성공 되먹임이 던진 원인을 갈래가 안고 간다', async () => {
+    const stub = createStubFetch([sessionsRoute(() => jsonResponse(sessionBody()))]);
+    const failure = new Error('세션을 담지 못했습니다');
+    const { result } = renderLogin(
+      stub,
+      vi.fn(() => {
+        throw failure;
+      }),
+    );
+
+    act(() => {
+      result.current.submit(loginDraftFixture());
+    });
+
+    await waitFor(() => {
+      expect(result.current.outcome?.kind).toBe('unknown');
+    });
+
+    expect(result.current.outcome).toEqual({ kind: 'unknown', status: 0, cause: failure });
   });
 
   it('401이면 불일치 갈래를 세우고 성공 되먹임을 부르지 않는다', async () => {

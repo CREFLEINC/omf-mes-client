@@ -460,6 +460,29 @@ describe('AppLayout — 로그인 사용자 표시', () => {
   });
 
   /**
+   * ⭐ **「비운다」는 「빈 요소를 둔다」가 아니라 「요소를 두지 않는다」이다.**
+   *
+   * 글자만 재면 빈 요소가 그대로 통과한다. 눈에는 안 보이지만 디자인 시스템이 액션 슬롯에
+   * 간격·정렬을 주면 **보이지 않는 여백**이 생기고, 그것은 육안 확인으로도 잡기 어렵다.
+   * T3의 「빈 줄도 「말한 것」이 된다」와 같은 계열이다.
+   *
+   * 요소가 **로그인 뒤에야 생긴다**는 것을 세어서 잰다 — 디자인 시스템의 내부 클래스 이름을
+   * 겨냥하지 않으려고 자식 수를 쓴다. 그 이름은 버전이 바뀌면 조용히 어긋난다.
+   */
+  it('세션이 없으면 이름 자리의 요소 자체가 없다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    const before = topbar().childElementCount;
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    /* 짝 양성 — 이름이 실제로 섰다. */
+    expect(within(topbar()).getByText(SYNTHETIC_USER_NAME)).toBeInTheDocument();
+
+    expect(topbar().childElementCount).toBe(before + 1);
+  });
+
+  /**
    * ⛔ **귀속(사업부·공장)은 그리지 않는다.** 계약이 정수 ID만 주고 이름을 주지 않아, 사람이
    * 읽을 값을 만들려면 셸이 기준정보 조회를 지게 된다 — 미인증 상태에서도 도는 조회가 셸에
    * 생기고 셸이 기준정보 계약에 묶인다. 값 자체는 세션에 그대로 실려 있다.
