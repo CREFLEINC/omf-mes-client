@@ -202,3 +202,46 @@ describe('SourcePane — 창고 참조 실패', () => {
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
   });
 });
+
+/**
+ * **대상을 바꾸는 길도 잠금 안에 있다**(C26 · 전례 `po-register`가 같은 자리에 둔 규율).
+ *
+ * 나가는 중에 바뀌면 도착한 되먹임이 다른 맥락에 놓이고, **이미 등록한 뒤에 바뀌면 만들어진
+ * 전표를 보이는 구획이 사라진다** — 사용자가 적어 둘 겨를도 없이 전표번호를 잃는다.
+ */
+describe('SourcePane — 잠금', () => {
+  it('잠기면 원천 라디오와 실사 선택칸이 함께 잠긴다', () => {
+    renderPane({ isLocked: true });
+
+    for (const radio of screen.getAllByRole('radio')) expect(radio).toBeDisabled();
+
+    expect(screen.getByLabelText(t.source.countField)).toBeDisabled();
+  });
+
+  it('잠기면 직접 등록 갈래의 창고 선택칸도 잠긴다', () => {
+    renderPane({ kind: 'direct', isLocked: true });
+
+    expect(screen.getByLabelText(t.source.warehouseField)).toBeDisabled();
+  });
+
+  /** 짝 방향 — 잠기지 않았으면 전부 열려 있다. 「늘 잠근다」로 통과하지 않게 한다. */
+  it('잠기지 않았으면 원천과 실사 선택칸이 열려 있다', () => {
+    renderPane();
+
+    for (const radio of screen.getAllByRole('radio')) expect(radio).toBeEnabled();
+
+    expect(screen.getByLabelText(t.source.countField)).toBeEnabled();
+  });
+
+  /**
+   * **잠긴 사유를 이 구획이 적지 않는다** — 세 컨트롤이 같은 잠금을 쓰고 그 사정은 등록 조작
+   * 자리에 한 번 선다. 「불러오기」만은 자기 사유를 따로 받는다.
+   */
+  it('잠긴 사유를 구획 안에 적지 않는다', () => {
+    renderPane({ isLocked: true });
+
+    expect(screen.getByLabelText(t.source.countField)).toBeDisabled();
+    expect(screen.queryByText(t.actionReasons.saving)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.alreadyRegistered)).not.toBeInTheDocument();
+  });
+});

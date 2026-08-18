@@ -1,3 +1,4 @@
+import type { components } from '@omf-mes/api-client';
 import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
@@ -7,21 +8,30 @@ import {
   renderHookWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import { balanceFixtures, countFixtures, countVarianceLineFixtures } from './fixtures';
+import {
+  adjustmentDetailBody,
+  balanceFixtures,
+  countFixtures,
+  countVarianceLineFixtures,
+} from './fixtures';
 import {
   stockAdjustKeys,
   useCountVarianceLines,
+  useCreateStockAdjustment,
   useInventoryCounts,
   useLocationBalances,
   VARIANCE_LINE_PAGE_SIZE,
 } from './queries';
+import type { CreatedAdjustmentView } from './types';
 
 /**
- * 이 회차의 읽기 셋 — 실사 목록 · 실사 차이 라인 · 재고 잔액.
+ * 이 회차의 읽기 셋과 쓰기 하나 — 실사 목록 · 실사 차이 라인 · 재고 잔액 · 조정 등록.
  *
  * 훅 층에서 재는 것은 **계약에 맞는 요청을 만드는가**이고, 화면 층에서 재는 것은
  * **그 훅을 언제 몇 번 부르는가**다.
  */
+
+type InventoryAdjustmentCreate = components['schemas']['InventoryAdjustmentCreate'];
 
 const COUNTS_PATH = '/inventory/counts';
 const VARIANCE_PATH = '/inventory/counts/9101/lines';
@@ -29,6 +39,13 @@ const BALANCES_PATH = '/inventory/balances';
 
 interface RecordedRequest {
   url: URL;
+}
+
+/** 쓰기는 **헤더까지** 본다 — 계약이 요구하는 것과 금지하는 것이 둘 다 헤더에 있다. */
+interface WriteRequest {
+  method: string;
+  url: URL;
+  headers: Headers;
 }
 
 const listBody = (items: unknown[], total = items.length) => ({
@@ -288,5 +305,154 @@ describe('useLocationBalances', () => {
     await waitFor(() => {
       expect(requests.filter((request) => request.url.pathname === BALANCES_PATH)).toHaveLength(2);
     });
+  });
+});
+
+/**
+ * 등록 — **이 화면에서 되돌릴 수 없는 첫 쓰기**다.
+ *
+ * 훅 층에서 재는 것은 **계약에 맞는 요청을 만드는가**이고(경로·메서드·헤더), 화면 층에서 재는
+ * 것은 **언제 몇 번 부르는가**다.
+ */
+describe('useCreateStockAdjustment', () => {
+  const ADJUSTMENTS_PATH = '/inventory/adjustments';
+
+  const createRoute = (): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === ADJUSTMENTS_PATH,
+    respond: () =>
+      jsonResponse(adjustmentDetailBody(), { status: 201, headers: { ETag: 'W/"ia-9301"' } }),
+  });
+
+  const body: InventoryAdjustmentCreate = {
+    reasonCode: 'SAMPLE_AR_A',
+    sendToErp: true,
+    lines: [{ locationId: 9401, itemId: 9501, uomId: 9601, adjustmentQty: -20 }],
+  };
+
+  const recordingWriteFetch = (
+    routes: StubRoute[],
+  ): { fetch: (request: Request) => Promise<Response>; requests: WriteRequest[] } => {
+    const requests: WriteRequest[] = [];
+    const stub = createStubFetch(routes);
+
+    return {
+      fetch: async (request) => {
+        requests.push({
+          method: request.method,
+          url: new URL(request.url),
+          headers: request.headers,
+        });
+
+        return stub(request);
+      },
+      requests,
+    };
+  };
+
+  it('컬렉션 경로로 POST 한 번을 보낸다', async () => {
+    const { fetch, requests } = recordingWriteFetch([createRoute()]);
+    const created: CreatedAdjustmentView[] = [];
+    const { result } = renderHookWithProviders(
+      () =>
+        useCreateStockAdjustment({
+          onSuccess: (view) => {
+            created.push(view);
+          },
+        }),
+      { fetch },
+    );
+
+    result.current.write(body);
+
+    await waitFor(() => {
+      expect(created).toHaveLength(1);
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.method).toBe('POST');
+    expect(requests[0]?.url.pathname).toBe(ADJUSTMENTS_PATH);
+  });
+
+  /**
+   * **멱등 키는 싣고 잠금 토큰은 싣지 않는다**(C18 · D-14).
+   *
+   * 계약 parameters에 `If-Match`가 없고 응답에 409가 없다 — 새 전표라 견줄 판이 없다.
+   */
+  it('멱등 키를 싣고 If-Match는 싣지 않는다', async () => {
+    const { fetch, requests } = recordingWriteFetch([createRoute()]);
+    const { result } = renderHookWithProviders(
+      () => useCreateStockAdjustment({ onSuccess: () => undefined }),
+      { fetch },
+    );
+
+    result.current.write(body);
+
+    await waitFor(() => {
+      expect(requests).toHaveLength(1);
+    });
+
+    expect(requests[0]?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(requests[0]?.headers.has('If-Match')).toBe(false);
+  });
+
+  /** 응답을 **화면 타입으로 옮겨** 넘긴다 — 내부 번호는 옮기지 않는다(`omf-mes#44`). */
+  it('되돌려 준 전표를 화면 타입으로 넘긴다', async () => {
+    const { fetch } = recordingWriteFetch([createRoute()]);
+    const created: CreatedAdjustmentView[] = [];
+    const { result } = renderHookWithProviders(
+      () =>
+        useCreateStockAdjustment({
+          onSuccess: (view) => {
+            created.push(view);
+          },
+        }),
+      { fetch },
+    );
+
+    result.current.write(body);
+
+    await waitFor(() => {
+      expect(created).toHaveLength(1);
+    });
+
+    expect(created[0]).toEqual({
+      inventoryAdjustmentNo: 'SAMPLE-IA-9301',
+      statusCode: 'SAMPLE_IA_STATUS_A',
+      erpMessageQueued: true,
+      lineCount: 1,
+    });
+  });
+
+  /**
+   * **다시 부를 조회가 없다**(`invalidateKeys: []`).
+   *
+   * 실사 차이를 무효화하면 그 응답이 다시 와서 조정 대상이 **다시 서고**, 사용자가 방금 보낸
+   * 값과 화면의 값이 갈린다 — 등록 뒤 화면이 잠기는 이 화면에서는 특히 조용한 사고다.
+   */
+  it('성공해도 실사 차이를 다시 부르지 않는다', async () => {
+    const { fetch, requests } = recordingWriteFetch([
+      createRoute(),
+      getRoute(VARIANCE_PATH, listBody(countVarianceLineFixtures)),
+    ]);
+    const { result } = renderHookWithProviders(
+      () => ({
+        variance: useCountVarianceLines(9101),
+        register: useCreateStockAdjustment({ onSuccess: () => undefined }),
+      }),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.variance.data?.lines).toHaveLength(3);
+    });
+
+    result.current.register.write(body);
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1);
+    });
+
+    expect(requests.filter((request) => request.url.pathname === VARIANCE_PATH)).toHaveLength(1);
   });
 });

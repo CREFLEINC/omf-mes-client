@@ -13,14 +13,23 @@ export interface SelectFieldProps {
   /** 선택지의 한계(잘림·불러오기 실패)를 밝히는 보조 문구. */
   note?: string;
   placeholder?: string;
+  /**
+   * 서버가 이 칸에 붙인 오류. **화면이 잡은 오류는 여기 오지 않는다** — 필수를 안 고른 것은
+   * 조작 자리의 잠금 사유가 말한다(누르기 전에 붉은 글씨를 띄우지 않는다).
+   */
+  error?: string;
+  /**
+   * 잠겼는가. **사유는 이 칸이 내지 않는다** — 나가는 중과 이미 등록한 뒤가 같은 잠금을 쓰고,
+   * 그 사정은 조작 자리에 한 번 선다. 칸마다 되풀이하면 같은 사실이 여러 번 읽힌다.
+   */
+  disabled?: boolean;
 }
 
 /*
- * **오류·잠금 prop을 두지 않는다**(사본 체크리스트 7번). 이 회차의 두 선택칸(대상 실사·대상
- * 창고)에는 인라인 오류가 없고 — 고르지 않은 것은 조작 자리의 잠금 사유가 말한다 — 잠글
- * 사정도 없다(나가는 쓰기가 0이다). 값을 안 넘기고 정의만 남기면 「이 슬라이스에 그 기능이
- * 없다」가 타입 수준의 사실이 되지 못하고, 죽은 통로가 다음 사본으로 전파된다.
- * 필요해지는 회차가 그때 되살린다.
+ * **오류·잠금 prop은 소비처가 생긴 회차에 되살렸다**(사본 체크리스트 7번). 앞 회차의 두
+ * 선택칸(대상 실사·대상 창고)에는 인라인 오류도 잠글 사정도 없어 정의째 빼 두었고, 등록이
+ * 붙으면서 **헤더 사유 칸의 서버 오류**와 **등록 뒤 잠금**이라는 실제 소비처가 생겼다.
+ * 지금도 규율은 같다 — 넘기는 자리가 없는 prop은 두지 않는다.
  */
 
 /**
@@ -42,9 +51,17 @@ export const SelectField = ({
   required = false,
   note,
   placeholder,
+  error,
+  disabled = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
+  const errorId = `${id}-error`;
+
+  /* 둘 다 있으면 오류를 먼저 읽힌다 — 지금 막고 있는 것이 그쪽이다. */
+  const describedBy = [error === undefined ? null : errorId, note === undefined ? null : noteId]
+    .filter((candidate): candidate is string => candidate !== null)
+    .join(' ');
 
   return (
     <div className="field-cell">
@@ -55,9 +72,16 @@ export const SelectField = ({
         value={value === '' ? null : value}
         onChange={onChange}
         placeholder={placeholder}
+        disabled={disabled}
+        invalid={error !== undefined}
         aria-required={required || undefined}
-        aria-describedby={note === undefined ? undefined : noteId}
+        aria-describedby={describedBy === '' ? undefined : describedBy}
       />
+      {error !== undefined && (
+        <span id={errorId} className="field-error">
+          {error}
+        </span>
+      )}
       {note !== undefined && (
         <span id={noteId} className="field-note">
           {note}

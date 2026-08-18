@@ -7,17 +7,21 @@ import {
   SkeletonText,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { SaveErrorBanner } from '../../patterns/master';
 import { AdjustLineTable, type AdjustLineRow } from './adjust-line-table';
+import { summarizeAdjustLines, toInventoryAdjustmentCreate } from './adjust-request';
 import { toBookQty, type BookQtyState } from './balances';
 import {
   isReasonCodeListPending,
   PLACEHOLDER_STOCK_ADJUST_CODES,
   toCodeOptionSets,
 } from './code-options';
+import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { readInventoryCountId, withInventoryCountId, withoutInventoryCountId } from './entry';
+import { HeaderForm } from './header-form';
 import {
   addLineDraft,
   createInheritedLineDrafts,
@@ -39,12 +43,21 @@ import {
 import {
   UNASKED_BALANCE,
   useCountVarianceLines,
+  useCreateStockAdjustment,
   useInventoryCounts,
   useLocationBalances,
 } from './queries';
+import { RegisterConfirmDialog, type RegisterSummary } from './register-confirm-dialog';
+import { ResultPane } from './result-pane';
 import { applySourceChange, initialSourceKind, type AdjustSourceKind } from './source';
 import { SourcePane } from './source-pane';
-import type { AdjustLineDraft, SelectOption } from './types';
+import { emptyHeaderDraft, isHeaderEdited } from './types';
+import type {
+  AdjustHeaderDraft,
+  AdjustLineDraft,
+  CreatedAdjustmentView,
+  SelectOption,
+} from './types';
 import { excludedLineCount, validateLines } from './validation';
 
 const t = messages.stockAdjust;
@@ -52,8 +65,25 @@ const t = messages.stockAdjust;
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_IDS: number[] = [];
 
-/** 값 목록이 확정되지 않은 코드. **한 번만 옮긴다** — 배열이 상수라 렌더마다 다시 만들 이유가 없다. */
-const CODE_OPTIONS = toCodeOptionSets(PLACEHOLDER_STOCK_ADJUST_CODES);
+/** 확인을 기다리는 조작. `null`이면 열린 창이 없다. */
+type PendingAction = 'register' | 'discard';
+
+/**
+ * 등록의 매임 — **어느 초안을 겨눈 시도인가**와 **그것이 만들어졌는가**(D-15).
+ *
+ * 둘을 한 자루에 두는 이유는 되먹임 셋(성공·나가는 중·실패)이 **같은 문**을 지나게 하기
+ * 위해서다. 갈래마다 따로 매면 하나를 빠뜨리기 쉽고, 빠뜨린 갈래가 곧 「시도한 적 없는 초안
+ * 위의 진술」이 된다.
+ *
+ * **축이 초안 세션이다.** 등록에는 아직 자원 번호가 없고(전표번호는 서버가 응답으로 준다),
+ * 폼을 버리고 다시 열 수 있어 **두 초안을 가를 것이 이 번호뿐**이다.
+ */
+interface RegisterBinding {
+  /** 그 시도가 겨눈 초안 세션. **지금 세우고 있는 초안과 견줄 값**이다 */
+  draftSession: number;
+  /** 서버가 만들어 준 전표. `null`이면 아직 응답이 오지 않았거나 실패했다 */
+  created: CreatedAdjustmentView | null;
+}
 
 /**
  * W-01-12 컨테이너 — **장부와 실물이 어긋난 것을 조정 전표로 만드는 화면**이다.
@@ -67,6 +97,10 @@ const CODE_OPTIONS = toCodeOptionSets(PLACEHOLDER_STOCK_ADJUST_CODES);
  *
  * ⛔ **승인 대기 탭이 없다**(조심 ① · D-3). 승인·반려는 결재함(W-CO-09)이 소유하고, 이 화면은
  * 조정을 세워 올리는 쪽이다 — 상단 안내가 그 자리를 가리킨다.
+ *
+ * **되돌릴 수 없는 쓰기를 세 겹으로 막는다**(공통 훅이 호출마다 새 멱등 키를 만든다 — 실측).
+ * ① 확인 창 ② 전송 중 잠금 ③ 성공 뒤 폼·대상 전환 잠금. 두 번 누르는 것이 그대로 전표 두 벌이
+ * 되고, 이 화면에는 만들어진 조정을 되돌릴 경로가 없다.
  *
  * **무엇이 바뀔 때 무엇을 비우는가 — 수명 표.**
  *
@@ -82,15 +116,27 @@ const CODE_OPTIONS = toCodeOptionSets(PLACEHOLDER_STOCK_ADJUST_CODES);
  * | 8 | 줄 더하기·고치기·지우기 | 유지 | 유지 | 유지 | 바뀐다 | 유지 |
  * | 9 | 참조·잔액 응답 도착 | 유지 | 유지 | 유지 | **건드리지 않는다** | 유지 |
  * | 10 | 주소가 없는 실사를 가리킴 | **지운다**(`replace`) | 유지 | — | 유지 | 유지 |
+ * | 11 | **초안 버리기**(확인 뒤) | 유지 | 유지 | 유지 | **버린다** · 머리도 비운다 | **올린다** |
+ * | 12 | **등록 성공** | 유지 | 유지 | 유지 | 값은 남고 **잠긴다** | 유지 |
  *
  * 6행이 이 화면의 되돌림 축 자리다. **조정 대상의 축은 「불러온 응답」이다** — 조회 캐시가
  * 구조를 공유해 같은 값이 다시 오면 참조도 같으므로, 재조회 한 번에 친 차이 수량이 말없이
  * 되돌아가지 않는다. 반대로 응답이 실제로 달라지면 대상도 다시 서야 한다 — 낡은 장부로
  * 실물을 파생하면 사용자가 확인하지 않은 수가 화면에 선다.
  *
- * **초안 세션**(D-15)은 대상을 버리고 다시 세울 때마다 올라간다. 지금은 초안 줄의 키가 그 값을
- * 쓰고, 뒤따르는 회차의 등록이 **나가는 중인 쓰기를 가르는 축**으로 같은 값을 쓴다 — 등록에는
- * 아직 자원 번호가 없어 초안 세션 말고는 두 초안을 가를 것이 없다.
+ * **초안 세션**(D-15)은 대상을 버리고 다시 세울 때마다 올라간다. 초안 줄의 키가 그 값을 쓰고,
+ * **등록의 매임**(`RegisterBinding`)이 같은 값을 축으로 쓴다 — 등록에는 아직 자원 번호가 없어
+ * 초안 세션 말고는 두 초안을 가를 것이 없다.
+ *
+ * **되먹임 셋이 한 문을 지난다**(`boundRegister`) — 성공·나가는 중·실패가 전부 이 매임을
+ * 지나므로, 갈래마다 따로 매다가 하나를 빠뜨리는 형태가 생기지 않는다. **판정은 읽는 자리에서
+ * 한다**: 정리 effect가 지워 주기를 기대할 수 없다(늦게 온 응답은 그 뒤에 도착한다).
+ *
+ * **잠금은 매임을 지나지 않는다 — 일부러 그렇게 두었다.** 화면이 가르는 것은 둘이다.
+ * **진술**(어느 초안에 대해 무엇을 말하는가)은 초안별로 참이어야 하므로 매임을 지나지만,
+ * **조작 허용**은 어느 초안이든 나가는 중이면 막는 편이 안전하다 — 공통 훅은 mutation 하나를
+ * 들므로 둘째 쓰기가 시작되면 **첫 쓰기의 옵저버가 떨어져** 성공도 실패도 오지 않는다.
+ * 「보내는 중입니다」는 그때도 거짓말이 되지 않는다(어느 초안인지 주장하지 않는다).
  *
  * **대상을 버리는 길이 하나다**(`resetDraftForNewTarget`). 자리마다 따로 비우면 한 자리가
  * 빠지고, 그 자리가 곧 「앞 대상의 줄이 새 대상 위에 서는」 경로가 된다.
@@ -107,6 +153,7 @@ export const StockAdjustScreen = () => {
     initialSourceKind(urlCountId),
   );
   const [lines, setLines] = useState<AdjustLineDraft[]>([]);
+  const [header, setHeader] = useState<AdjustHeaderDraft>(emptyHeaderDraft);
   const [warehouseDraft, setWarehouseDraft] = useState('');
   /** 실사 차이를 실제로 불러온 실사. `null`이면 아직 부르지 않았다 */
   const [loadedCountId, setLoadedCountId] = useState<number | null>(null);
@@ -114,18 +161,37 @@ export const StockAdjustScreen = () => {
   const [hasCleanedMissingCount, setCleanedMissingCount] = useState(false);
 
   /**
+   * **등록의 매임** — 어느 초안을 겨눈 시도이고 그것이 만들어졌는가.
+   * `null`이면 이 화면에서 등록을 시도한 적이 없다.
+   */
+  const [registerBinding, setRegisterBinding] = useState<RegisterBinding | null>(null);
+
+  /** 확인을 기다리는 조작. `null`이면 열린 창이 없다 */
+  const [pending, setPending] = useState<PendingAction | null>(null);
+
+  /**
    * **초안 세션**(D-15) — 대상을 버리고 다시 세울 때마다 올라간다.
    *
-   * 상태가 아니라 ref로 든다: 지금 이 값을 읽는 곳은 초안 줄의 키 하나뿐이고, 그 키는 세울
-   * 때 한 번만 읽힌다 — 상태로 들면 아무도 다시 그리지 않는 값 때문에 렌더가 는다.
-   * 뒤따르는 회차가 이 값을 매임의 축으로 읽을 때 상태가 함께 선다.
+   * **ref가 정본이고 상태는 그 사본이다.** 두 소비처의 시점이 다르기 때문이다:
+   *
+   * | 읽는 곳 | 언제 | 무엇이 필요한가 |
+   * | --- | --- | --- |
+   * | 초안 줄의 키 · 등록을 보내는 자리 | **그 순간** | 갱신이 커밋되기 전의 최신 값 — ref |
+   * | 매임 대조(`boundRegister`) · 늦게 온 되먹임 | **렌더할 때 · 응답이 올 때** | 다시 그리게 하는 값 — 상태 |
+   *
+   * 상태만 두면 한 조작 안에서 연달아 세울 때 앞 갱신이 아직 커밋되지 않아 같은 번호를 두 번
+   * 쓰고, ref만 두면 세션이 올라가도 화면이 다시 그려지지 않아 **앞 초안의 결과가 그대로 서 있다.**
    */
   const draftSessionRef = useRef(0);
+  const [draftSession, setDraftSession] = useState(0);
 
   const startDraftSession = (): number => {
-    draftSessionRef.current += 1;
+    const next = draftSessionRef.current + 1;
 
-    return draftSessionRef.current;
+    draftSessionRef.current = next;
+    setDraftSession(next);
+
+    return next;
   };
 
   const warehouses = useWarehouseLookup();
@@ -239,16 +305,74 @@ export const StockAdjustScreen = () => {
   }, [varianceData]);
 
   /**
-   * 대상이 바뀌면 **세운 것을 거둔다** — 원천·대상 실사·대상 창고가 바뀌는 세 자리가
+   * 지금 나가고 있는 등록이 **겨눈 초안**.
+   *
+   * 늦게 도착한 되먹임을 어느 초안의 것으로 적을지는 **응답이 온 시점**에 알아야 하는데,
+   * 그때 렌더 클로저의 값은 낡아 있다.
+   */
+  const registeringSessionRef = useRef<number | null>(null);
+
+  /**
+   * 등록 — **이 화면에서 되돌릴 수 없는 첫 쓰기**다.
+   *
+   * 성공하면 **그 호출이 겨눈 초안 세션**으로 매임을 다시 세운다 — 지금 세우고 있는 초안이
+   * 아니라. 그사이 초안을 버렸다면 이 결과는 남의 것이고, 지금 번호로 적으면 **시도한 적 없는
+   * 초안 위에** 「만들었습니다」와 잠금이 선다.
+   *
+   * **초안은 비우지 않는다** — 폼이 그 자리에서 잠기므로(아래 `isFormLocked`) 남은 값이 다시
+   * 보내질 길이 없고, 사용자가 방금 무엇을 보냈는지 읽을 수 있어야 한다.
+   */
+  const register = useCreateStockAdjustment({
+    onSuccess: (created) => {
+      /* **그 호출이 겨눈 초안**으로 적는다 — 지금 세우고 있는 초안이 아니라. */
+      const session = registeringSessionRef.current;
+
+      setRegisterBinding(session === null ? null : { draftSession: session, created });
+
+      /*
+       * **늦게 온 성공은 적기만 한다.** 창을 닫는 것은 지금 보고 있는 초안의 조작이라,
+       * 남의 초안의 응답이 그것을 건드리면 새로 연 확인 창이 말없이 닫힌다.
+       */
+      if (session !== draftSessionRef.current) return;
+
+      setPending(null);
+    },
+  });
+
+  /**
+   * **나가는 중인 쓰기는 건드리지 않는다**(사본 체크리스트 4번 · `omf-mes#96`).
+   *
+   * 공통 훅의 `reset()`은 진행 중 mutation에서 옵저버를 떼어 낸다 — 떼어 내면 그 호출에 매달린
+   * 되먹임이 통째로 오지 않는다(성공도 실패도 잠금 해제도). 요청은 이미 서버에 갔는데 화면만
+   * 없던 일로 친다. **`reset()`을 부르는 자리는 전부 이 함수를 지난다.**
+   */
+  const resetIfIdle = (write: { isSaving: boolean; reset: () => void }): void => {
+    if (write.isSaving) return;
+
+    write.reset();
+  };
+
+  /**
+   * 대상이 바뀌면 **세운 것을 거둔다** — 원천·대상 실사·대상 창고·초안 버리기 네 자리가
    * 이 한 문을 지난다.
    *
    * 자리마다 따로 비우면 한 자리가 빠지고, 그 자리가 곧 「앞 대상의 줄이 새 대상 위에 서는」
-   * 경로가 된다. 뒤따르는 회차의 쓰기 거둠(`resetIfIdle`)도 여기에 붙는다.
+   * 경로가 된다.
+   *
+   * **머리는 여기서 비우지 않는다.** 조정 사유와 ERP 송신은 전표의 값이지 대상의 값이 아니다 —
+   * 원천을 바꿨다고 고른 사유가 사라지면 사용자가 같은 값을 다시 고른다. 초안을 통째로 버리는
+   * 자리(`confirmDiscard`)만 머리를 함께 비운다.
    */
   const resetDraftForNewTarget = (): void => {
     setLines(applySourceChange(lines).keptLines);
     setLoadedCountId(null);
     startDraftSession();
+
+    /*
+     * **앞 초안의 실패를 새 초안이 물려받지 않는다.** 나가는 중이면 되먹임을 끊지 않고 그대로
+     * 두되(`resetIfIdle`), 그 응답은 매임(`boundRegister`)이 걸러 낸다 — 두 겹이다.
+     */
+    resetIfIdle(register);
 
     /*
      * **「없는 실사였다」 안내에 수명을 준다**(리뷰 R-4). 남겨 두면 유효한 실사를 고른 뒤에도
@@ -364,6 +488,7 @@ export const StockAdjustScreen = () => {
 
   const { errors } = validateLines(lines);
   const excludedCount = excludedLineCount(lines);
+  const lineSummary = summarizeAdjustLines(lines);
 
   const countOptions: SelectOption[] =
     countList?.counts.map((count) => ({
@@ -371,8 +496,70 @@ export const StockAdjustScreen = () => {
       label: `${count.inventoryCountNo} · ${count.plannedDate}`,
     })) ?? [];
 
+  /**
+   * 값 목록이 확정되지 않은 코드(D-9).
+   *
+   * **컴포넌트 안에서 옮긴다** — 모듈 수준에 두면 값 목록이 채워지는 날 그 시점의 배열이
+   * 얼어붙고, 이 화면이 「채우면 저절로 살아나는 자리」라는 사실이 깨진다.
+   */
+  const codeOptions = toCodeOptionSets(PLACEHOLDER_STOCK_ADJUST_CODES);
+  const isReasonPending = isReasonCodeListPending(codeOptions);
+
+  /**
+   * **지금 세우는 초안이 그 등록의 대상인가** — 등록의 되먹임은 전부 이 문을 지난다(D-15).
+   *
+   * `null`이면 이 화면이 지금 초안에 대해 말할 등록이 없다: 시도한 적이 없거나, **나가는 중에
+   * 초안을 버려 그 응답이 남의 것이 됐다.** 결과 구획·실패 배너·사유 칸의 서버 오류·폼 잠금의
+   * 「이미 등록했다」 갈래가 모두 이 값을 본다 — 한 자리라도 빠지면 그 자리에서 남의 초안의
+   * 사실이 샌다.
+   */
+  const boundRegister =
+    registerBinding !== null && registerBinding.draftSession === draftSession
+      ? registerBinding
+      : null;
+
+  /**
+   * **버린 초안으로 보낸 등록이 뒤늦게 성공한 갈래.**
+   *
+   * 그 등록은 실제로 일어났으므로 **감추지 않는다** — 감추면 사용자가 만들어진 줄 모르는
+   * 전표가 남는다. 다만 지금 초안의 결과가 아니므로 결과 구획을 세우지도, 지금 폼을 잠그지도
+   * 않는다(그것은 시도한 적 없는 초안 위의 진술이 된다) — **사실만 한 줄로 적는다.**
+   *
+   * ⚠ 실패는 이 갈래에서 말하지 않는다. 성공은 서버에 남는 것이 있어 알려야 하지만, 거절된
+   * 요청은 남는 것이 없어 **버린 초안의 실패를 새 초안 위에서 말할 이유가 없다**(C28).
+   */
+  const unboundCreated =
+    registerBinding !== null && registerBinding.draftSession !== draftSession
+      ? registerBinding.created
+      : null;
+
+  /**
+   * **폼이 잠기는 두 사정**(C26).
+   *
+   * ① 나가는 중 — 연타가 그대로 전표 두 벌이 된다(호출마다 새 멱등 키).
+   * ② 이미 등록했다 — 되돌릴 경로가 없어 두 번째 전표를 지울 수 없다.
+   *
+   * 두 사정이 **같은 잠금을 쓴다.** 조작 자리마다 다른 조건을 쓰면 한 자리가 열린 채로 남고,
+   * 이 화면에서 열린 자리 하나는 전표 한 벌이다. **대상을 바꾸는 길도 이 잠금 안에 있다** —
+   * 이미 등록한 뒤에 원천을 바꾸면 만들어진 전표를 보이는 구획이 사라진다.
+   */
+  const isFormLocked = register.isSaving || boundRegister?.created != null;
+
+  /** 잠긴 사유. **잠갔으면 반드시 함께 선다** — 사유 없는 잠금은 죽은 버튼과 구분되지 않는다 */
+  const formLockReason = (): string | null => {
+    if (boundRegister?.created != null) return t.actionReasons.alreadyRegistered;
+    if (register.isSaving) return t.actionReasons.saving;
+
+    return null;
+  };
+
   /** 「불러오기」가 막힌 사유. `null`이면 열려 있다. */
   const loadBlockReason = (): string | null => {
+    /* 잠금이 맨 앞이다 — 그동안은 실사를 다시 불러 대상을 갈아엎을 수 없다. */
+    const locked = formLockReason();
+
+    if (locked !== null) return locked;
+
     if (urlCountId === null) return t.actionReasons.loadVarianceNeedsCount;
     if (variance.isFetching) return t.actionReasons.loadVarianceLoading;
 
@@ -386,6 +573,10 @@ export const StockAdjustScreen = () => {
    * 장부를 확인할 길이 없는 채로 표에 선다 — 세 열 중 둘이 영영 빈 줄이 된다.
    */
   const addLineBlockReason = (): string | null => {
+    const locked = formLockReason();
+
+    if (locked !== null) return locked;
+
     if (sourceKind === 'count') return t.actionReasons.addLineCountSource;
     if (!hasTarget) return t.actionReasons.addLineNeedsWarehouse;
 
@@ -394,6 +585,8 @@ export const StockAdjustScreen = () => {
 
   const addLineReason = addLineBlockReason();
   const addLineReasonId = useId();
+  const registerReasonId = useId();
+  const discardReasonId = useId();
 
   /**
    * **안내가 말하는 넷과 복구가 되살리는 넷이 같다**(리뷰 R-1 · 전례가 같은 자리에 남긴 규율).
@@ -426,6 +619,164 @@ export const StockAdjustScreen = () => {
     lines.some((line) => line.countLineId !== null && line.countSystemQty === null);
 
   const hasInheritedReason = lines.some((line) => line.countReasonCode !== null);
+
+  /**
+   * **잘린 목록으로 등록하지 않는다**(T1이 세운 판정의 소비처).
+   *
+   * 못 받은 줄은 조정 대상에 실리지 않고, 그 차이는 **조정되지 않은 채 남는다** — 되돌릴 수
+   * 없는 쓰기 앞의 조용한 누락이다. 실사 갈래에서 실제로 불러왔을 때만 판정한다:
+   * 직접 등록 갈래에는 실사 목록 자체가 대상이 아니다.
+   */
+  const isVarianceTruncated =
+    sourceKind === 'count' && loadedCountId !== null && varianceData?.truncated === true;
+
+  /**
+   * 등록이 막힌 사유. `null`이면 **열려 있다.**
+   *
+   * **순서가 뜻을 정한다.** 먼저 **고쳐도 풀리지 않는 사정**을 말한다 — 뒤에 두면 사용자가
+   * 고칠 수 있는 것을 다 고친 뒤에야 막다른 벽을 만난다. 그다음이 지금 고칠 수 있는 것들이고,
+   * 그중에서도 **잘못 친 값이 아직 안 친 칸보다 먼저**다.
+   */
+  const registerBlockReason = (): string | null => {
+    /* ① 잠금 둘 — 폼의 어느 값을 고쳐도 이 버튼은 열리지 않는다. */
+    const locked = formLockReason();
+
+    if (locked !== null) return locked;
+
+    /* ② 고쳐도 풀리지 않는 사정 둘. */
+    if (isReasonPending) return t.actionReasons.registerReasonPending;
+    if (isVarianceTruncated) return t.actionReasons.registerVarianceTruncated;
+
+    /* ③ 지금 고칠 수 있는 것들. */
+    if (lines.length === 0) return t.actionReasons.registerNeedsLines;
+    if (Object.keys(errors).length > 0) return t.actionReasons.registerLineInvalid;
+    if (lineSummary.includedCount === 0) return t.actionReasons.registerAllExcluded;
+    if (header.reasonCode === '') return t.actionReasons.registerNeedsReason;
+
+    return null;
+  };
+
+  /**
+   * 버릴 것이 있는가 — **머리와 줄을 함께 본다.** 한쪽만 보면 나머지가 확인 없이 사라진다.
+   *
+   * **값으로 견준다**(깃발이 아니다). 쳤다가 되돌린 사용자에게 「버릴 것이 있다」로 말하면
+   * 아무것도 잃지 않는 조작에 확인을 받는 창이 된다.
+   */
+  const hasDraftInput = lines.length > 0 || isHeaderEdited(header);
+
+  /**
+   * 초안 버리기가 막힌 사유. `null`이면 버릴 값이 있다.
+   *
+   * ⭐ **나가는 중에는 잠그지 않는다** — 다른 조작과 갈리는 자리다. 이 조작은 서버를 부르지 않고
+   * 화면의 초안만 비우므로, 응답을 기다리는 동안 사용자를 묶어 둘 이유가 없다. 대신 확인 창이
+   * **보낸 등록은 되돌아가지 않는다**는 사실을 밝히고, 나가는 중이던 응답은 매임이 걸러 낸다.
+   */
+  const discardBlockReason = (): string | null => {
+    if (boundRegister?.created != null) return t.actionReasons.alreadyRegistered;
+
+    return hasDraftInput ? null : t.actionReasons.discardNothing;
+  };
+
+  /** 두 사유를 렌더 한 번에 한 번만 판정한다 — 같은 판정을 자리마다 되부르면 갈릴 여지가 생긴다. */
+  const registerReason = registerBlockReason();
+  const discardReason = discardBlockReason();
+
+  /**
+   * 머리 입력을 고친다.
+   *
+   * **고친 칸의 서버 오류를 함께 지운다**(공통 훅이 이 목적으로 `clearFieldError`를 내놓는다).
+   * 화면이 잡은 사정은 잠금 사유로 파생되지만 **서버가 준 오류는 다음 저장까지 남는다** —
+   * 지우지 않으면 400을 받은 칸을 고치는 순간에도 서버 문구와 `aria-invalid`가 되살아난다.
+   */
+  const changeHeader = (patch: Partial<AdjustHeaderDraft>): void => {
+    setHeader((prev) => ({ ...prev, ...patch }));
+
+    for (const field of Object.keys(patch)) register.clearFieldError(field);
+  };
+
+  /**
+   * 확인 창이 되보일 요약. **화면이 이미 만든 값을 넘긴다** — 창이 다시 세면 「사용자가 확인한
+   * 것」과 「요청에 실리는 것」이 갈린다.
+   */
+  const registerSummary = (): RegisterSummary => ({
+    reasonCode: header.reasonCode,
+    sendToErp: header.sendToErp,
+    includedCount: lineSummary.includedCount,
+    excludedCount: lineSummary.excludedCount,
+    hasCountRef: sourceKind === 'count' && loadedCountId !== null,
+  });
+
+  /** 등록을 **요청한다** — 보내는 것은 확인 창을 지난 뒤다. */
+  const requestRegister = (): void => {
+    setPending('register');
+  };
+
+  /**
+   * 확인을 받고 **실제로 보낸다.**
+   *
+   * **창을 닫지 않고 보낸다**(C25·C27). 실패했을 때 창이 닫히면 무엇이 막았는지 모른 채 같은
+   * 버튼을 다시 누른다 — 배너는 창 안에 서고, 창은 성공했을 때만 닫힌다.
+   *
+   * 본문을 만들 수 없으면 **보내지 않고 창을 닫는다.** 버튼 잠금이 이미 막은 길이라 도달하지
+   * 않지만, 도달했다면 폼으로 되돌려 보내는 것이 맞다 — 그 자리에 잠긴 사유가 서 있다.
+   */
+  const confirmRegister = (): void => {
+    const body = toInventoryAdjustmentCreate({
+      /* **불러온 실사만 원천이다** — 고르기만 한 실사를 실으면 그 실사에서 온 줄이 없는 전표에 원천이 적힌다. */
+      inventoryCountId: sourceKind === 'count' ? loadedCountId : null,
+      header,
+      lines,
+    });
+
+    if (body === null) {
+      setPending(null);
+
+      return;
+    }
+
+    /* 이 호출이 겨눈 초안을 적어 둔다 — 응답이 늦게 오면 그때의 화면은 다른 초안을 세울 수 있다. */
+    registeringSessionRef.current = draftSessionRef.current;
+    /* **시도부터 매인다** — 나가는 중과 실패도 이 초안의 것으로만 읽혀야 한다. */
+    setRegisterBinding({ draftSession: draftSessionRef.current, created: null });
+    register.write(body);
+  };
+
+  /**
+   * 세운 것을 버리고 **빈 초안으로 되돌린다**(수명 표 11행).
+   *
+   * 대상을 버리는 한 문(`resetDraftForNewTarget`)을 지나므로 초안 세션이 올라가고, 그때부터
+   * 앞 초안의 되먹임은 매임에 걸려 이 화면에 서지 않는다 — **나가는 중인 요청 자체는 끊지
+   * 않는다**(`resetIfIdle`). 머리는 이 자리에서만 함께 비운다.
+   */
+  const confirmDiscard = (): void => {
+    resetDraftForNewTarget();
+    setHeader(emptyHeaderDraft());
+    setPending(null);
+  };
+
+  /**
+   * 저장 실패 표시 — 배너와 **응답 없음 안내**를 함께 낸다(C27).
+   *
+   * 멱등 세 겹의 셋째다. 첫째가 확인 창, 둘째가 전송 중·성공 후 잠금, 셋째가 이것 —
+   * **응답이 오지 않은 요청은 「실패」가 아니라는 사실**을 말한다. 훅이 호출마다 새 멱등 키를
+   * 만들어, 그대로 다시 보내면 서버에는 다른 요청으로 보인다.
+   *
+   * **네트워크 갈래에만 붙는다.** 서버가 거절한 요청은 전달된 것이 확실하다.
+   *
+   * **「최신 불러오기」를 낼 자리가 아니다.** 등록에는 저장 충돌이 없다(계약에 `If-Match`도 409도
+   * 없다) — 잠글 대상이 없는 쓰기에 재조회 수단을 내면 입력만 버리게 된다.
+   *
+   * **매임을 지난다** — 버린 초안의 실패가 새 초안 위에 서지 않는다(C28).
+   */
+  const failureSlot = (): ReactNode =>
+    boundRegister === null ? null : (
+      <>
+        <SaveErrorBanner error={register.error} />
+        {register.error?.kind === 'network' && (
+          <p className="field-note">{t.notes.networkUnconfirmed}</p>
+        )}
+      </>
+    );
 
   /**
    * 표와 그 줄에 딸린 안내 — **줄이 있어야 뜻이 서는 것만** 여기 둔다.
@@ -468,15 +819,17 @@ export const StockAdjustScreen = () => {
           locationOptions={toSelectOptions(locations)}
           itemOptions={toSelectOptions(items)}
           uomOptions={toSelectOptions(uoms)}
+          /*
+           * **표도 같은 잠금을 쓴다**(C26). 보내는 중에 값이 바뀌면 화면이 보여 주는 것과 나간
+           * 본문이 갈리고, 이미 등록한 뒤에 바뀌면 만들어진 전표와 다른 줄을 보이게 된다.
+           */
+          isLocked={isFormLocked}
           onPatch={patchLine}
           onRemove={removeLine}
         />
 
         {/* 차이 0인 줄은 **막지 않고** 무엇이 일어나는지만 밝힌다(D-4). */}
         {excludedCount > 0 && <p className="field-note">{t.notes.excludedZero(excludedCount)}</p>}
-
-        {/* 장부를 못 찾아도 조정할 수 있다(C8) — 그 사실을 그 줄이 보이는 자리에서 말한다. */}
-        {hasUnknownBookQty && <p className="field-note">{t.notes.bookQtyOptional}</p>}
 
         {/* 실사에서 온 사유는 보이기만 한다(D-7) — 고칠 수 있는 값으로 읽히지 않게 밝힌다. */}
         {hasInheritedReason && <p className="field-note">{t.notes.lineReasonReadOnly}</p>}
@@ -574,6 +927,11 @@ export const StockAdjustScreen = () => {
           onChangeWarehouse={chooseWarehouse}
           hasWarehouseError={warehouses.isError}
           onRetryWarehouses={retryWarehouses}
+          /*
+           * **대상을 바꾸는 길도 잠금 안에 있다**(C26). 나가는 중에 바뀌면 도착한 되먹임이
+           * 다른 맥락에 놓이고, 이미 등록한 뒤에 바뀌면 만들어진 전표를 보이는 구획이 사라진다.
+           */
+          isLocked={isFormLocked}
           loadBlockReason={loadBlockReason()}
           onLoadVariance={loadVariance}
         />
@@ -637,15 +995,127 @@ export const StockAdjustScreen = () => {
             )}
           </div>
         </div>
+      </section>
+
+      {/*
+       * 등록 구획 — **되돌릴 수 없는 쓰기가 사는 자리**다.
+       *
+       * 머리 두 칸과 조작 둘이 여기 함께 선다. **막는 사정과 막지 않는 사정이 나란히 읽혀야**
+       * 사용자가 무엇을 고쳐야 하는지 안다 — 장부를 확인하지 못한 줄이 있다는 사실은 여기서
+       * 「그래도 등록할 수 있다」로 읽힌다.
+       */}
+      <section className="pane" aria-label={t.panes.register}>
+        <HeaderForm
+          values={header}
+          reasonOptions={codeOptions.reason}
+          /*
+           * **값 목록이 비어 있는 동안 무엇이 막히는지 그 칸에서 밝힌다**(D-9 · C10).
+           * 왜 잠겼는지는 아래 조작 자리가 따로 말한다 — 칸은 「고를 것이 없다」를, 버튼은
+           * 「그래서 등록이 막혔다」를 말한다.
+           */
+          reasonNote={isReasonPending ? t.notes.reasonCodePending : undefined}
+          /* 남의 초안의 서버 오류가 이 칸에 서지 않는다(C28 · 매임). */
+          fieldErrors={boundRegister === null ? {} : register.fieldErrors}
+          isLocked={isFormLocked}
+          onChange={changeHeader}
+        />
 
         {/*
-         * **값 목록이 비어 있는 동안 무엇이 막히는지 밝힌다**(D-9 · C10). 대상을 세우는 일은
-         * 이 값과 무관하게 열려 있고, 막히는 것은 등록 하나다 — 그 사실을 여기서 미리 말한다.
+         * 장부를 못 찾아도 **등록은 막지 않는다**(C8) — 잠금 사유 옆에 서야 그 사실이 읽힌다.
+         * 표 아래에 두면 「막는 사정」 목록에서 떨어져, 사용자가 장부부터 채우려 든다.
          */}
-        {isReasonCodeListPending(CODE_OPTIONS) && (
-          <p className="field-note">{t.notes.reasonCodePending}</p>
+        {hasUnknownBookQty && <p className="field-note">{t.notes.bookQtyOptional}</p>}
+
+        <div className="form-actions">
+          {/*
+           * 잠긴 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다 —
+           * 잠긴 컨트롤은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 닿을 수 없다.
+           * **열려 있으면 사유를 그리지 않는다** — 늘 서 있으면 읽히지 않는다.
+           */}
+          <div className="field-cell">
+            <Button
+              disabled={registerReason !== null}
+              aria-describedby={registerReason === null ? undefined : registerReasonId}
+              onClick={requestRegister}
+            >
+              {t.actions.register}
+            </Button>
+            {registerReason !== null && (
+              <span id={registerReasonId} className="field-note">
+                {registerReason}
+              </span>
+            )}
+          </div>
+
+          <div className="field-cell">
+            {/*
+             * 버리기는 **보내기 전 복귀**다 — 서버를 부르지 않는다. 만들어진 전표를 되돌리는
+             * 수단이 아니고, 되돌릴 입력이 없으면 잠긴 채 그 사실을 말한다.
+             */}
+            <Button
+              variant="text"
+              disabled={discardReason !== null}
+              aria-describedby={discardReason === null ? undefined : discardReasonId}
+              onClick={() => {
+                setPending('discard');
+              }}
+            >
+              {t.actions.discard}
+            </Button>
+            {discardReason !== null && (
+              <span id={discardReasonId} className="field-note">
+                {discardReason}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/*
+         * 저장 실패는 **한 자리에만** 선다 — 확인 창이 열려 있으면 창 안이고, 닫혀 있으면 여기다.
+         * 두 자리에 두면 사용자가 스크림 뒤의 사본을 읽으려 든다.
+         */}
+        {pending !== 'register' && failureSlot()}
+
+        {/*
+         * 버린 초안으로 보낸 등록이 **뒤늦게 성공한** 갈래(C28의 나머지 반쪽).
+         * 지금 초안의 결과가 아니므로 결과 구획을 세우지 않되, 서버에 남은 사실은 감추지 않는다.
+         */}
+        {unboundCreated !== null && (
+          <p className="field-note" role="status">
+            {t.result.unboundCreatedNote(unboundCreated.inventoryAdjustmentNo)}
+          </p>
         )}
       </section>
+
+      {/* **결과 구획은 이 초안의 등록이 성공했을 때만 선다**(매임). */}
+      {boundRegister?.created != null && <ResultPane created={boundRegister.created} />}
+
+      {pending === 'register' && (
+        <RegisterConfirmDialog
+          summary={registerSummary()}
+          isSaving={register.isSaving}
+          banner={failureSlot()}
+          onConfirm={confirmRegister}
+          /*
+           * Escape로 닫히는 길은 디자인 시스템이 막을 수단을 주지 않는다. 그래서 이 창의 규율은
+           * 「닫히지 않게」가 아니라 **「닫혀도 나가는 요청이 무너지지 않게」**다 — 여기서 쓰기를
+           * 되돌리지 않으므로(`reset` 없음) 응답은 그대로 도착해 결과 구획이 선다.
+           */
+          onClose={() => {
+            setPending(null);
+          }}
+        />
+      )}
+
+      {pending === 'discard' && (
+        <DiscardConfirmDialog
+          isSaving={register.isSaving}
+          onConfirm={confirmDiscard}
+          onClose={() => {
+            setPending(null);
+          }}
+        />
+      )}
     </>
   );
 };

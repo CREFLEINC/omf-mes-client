@@ -1,16 +1,23 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
+import { ADJUST_FORM_FIELDS } from './adjust-request';
 import { toBalanceRow, type BalanceRow, type BalanceSource } from './balances';
-import { toCountOptionView, toCountVarianceLineView } from './types';
-import type { CountOptionView, CountVarianceLineView, PageMeta } from './types';
+import { toCountOptionView, toCountVarianceLineView, toCreatedAdjustmentView } from './types';
+import type {
+  CountOptionView,
+  CountVarianceLineView,
+  CreatedAdjustmentView,
+  PageMeta,
+} from './types';
 
 /**
- * 이 회차의 요청 — **읽기 셋**이다. 실사 목록 · 실사 차이 라인 · 재고 잔액.
+ * 이 회차의 요청 — **읽기 셋과 쓰기 하나**다. 실사 목록 · 실사 차이 라인 · 재고 잔액 · 조정 등록.
  *
- * 등록·상신·전기는 뒤따르는 회차가 붙인다. **`pendingApprovalOnly`를 쓰지 않는다**(⛔ D-3) —
+ * 상신·전기와 처리 이력은 뒤따르는 회차가 붙인다. **`pendingApprovalOnly`를 쓰지 않는다**(⛔ D-3) —
  * 계약에 그 조건이 남아 있으나 승인 대기는 결재함(W-CO-09)이 소유하고, 이 화면에는 그 탭이 없다.
  *
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
@@ -20,6 +27,8 @@ import type { CountOptionView, CountVarianceLineView, PageMeta } from './types';
  */
 
 type Client = ApiClient['client'];
+type InventoryAdjustmentCreate = components['schemas']['InventoryAdjustmentCreate'];
+type InventoryAdjustmentDetailResponse = components['schemas']['InventoryAdjustmentDetailResponse'];
 
 /**
  * 캐시 키.
@@ -259,4 +268,53 @@ export const UNASKED_BALANCE: BalanceSource = {
   isAsked: false,
   isLoading: false,
   isError: false,
+};
+
+export interface CreateStockAdjustmentOptions {
+  onSuccess: (created: CreatedAdjustmentView) => void;
+}
+
+/**
+ * 조정 전표를 만든다 — **이 화면에서 되돌릴 수 없는 첫 쓰기**다.
+ *
+ * **헤더와 라인이 한 요청으로 간다**(D-10 · 미결 #88). 라인 치환 경로(`…/{id}/lines`)를 잇지
+ * 않는다 — 그 경로는 이미 만들어진 조정을 고치는 자리이고, 여기서 쓰면 「헤더만 있고 라인이
+ * 없는 조정」이 중간 상태로 실재하게 된다. 계약이 `lines`를 등록 **필수**로 두었다.
+ *
+ * **잠금 토큰을 보내지 않는다**(`etagPath: null` · D-14). 계약 parameters에 `If-Match`가 없고
+ * 응답 갈래에 409가 없다(실측) — 새 전표라 견줄 판이 없다. `etagPath`에 경로를 주면 공통 훅이
+ * **토큰을 못 찾아 요청을 만들지 않고 멈춘다**(「눌러도 아무 일이 없다」가 그 증상이다).
+ *
+ * ⚠ **201이 주는 `ETag`는 컬렉션 경로에 앉는다**(토큰 보관소가 요청 URL의 경로를 열쇠로 쓴다 —
+ * 실측). 상신·전기가 필요로 하는 열쇠(`/inventory/adjustments/{id}`)가 아니므로, 그 회차는
+ * **상세 GET을 먼저 부른다**(D-14). 여기서 그 사실을 적어 두는 이유는, 등록 응답에 토큰이 있다는
+ * 것만 보고 이어 쓰려는 길이 실제로 있기 때문이다.
+ *
+ * **무효화할 키가 없다**(`invalidateKeys: []`). 이 회차는 조정 목록을 그리지 않으므로 다시 부를
+ * 조회가 없다. **실사 차이도 무효화하지 않는다**: 그 응답을 다시 받으면 조정 대상이 다시 서고
+ * (수명 표 5·6행) 사용자가 방금 보낸 값과 화면의 값이 갈린다.
+ *
+ * **멱등 키는 호출마다 새로 만들어진다**(공통 훅 실측). 그래서 두 번 누르는 것이 그대로 전표
+ * 두 벌이 된다 — 화면은 확인 창·전송 중 잠금·성공 후 잠금 세 겹으로 그 길을 닫는다.
+ *
+ * **응답을 화면 타입으로 옮겨 넘긴다** — 내부 번호는 옮기지 않는다(`omf-mes#44`).
+ */
+export const useCreateStockAdjustment = (
+  options: CreateStockAdjustmentOptions,
+): MasterWriteResult<InventoryAdjustmentCreate> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<InventoryAdjustmentCreate, InventoryAdjustmentDetailResponse>({
+    request: (body, headers) =>
+      client.POST('/inventory/adjustments', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body,
+      }),
+    etagPath: null,
+    invalidateKeys: [],
+    knownFields: ADJUST_FORM_FIELDS,
+    onSuccess: (data) => {
+      options.onSuccess(toCreatedAdjustmentView(data));
+    },
+  });
 };
