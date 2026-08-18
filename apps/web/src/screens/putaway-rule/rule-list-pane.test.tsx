@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ITEM_LABEL, LOCATION_LABEL, UOM_LABEL, ruleViewFixtures } from './fixtures';
+import { toBalanceView, type RuleBalance } from './balance-lookup';
+import { ITEM_LABEL, LOCATION_LABEL, UOM_LABEL, balanceRow, ruleViewFixtures } from './fixtures';
 import { toPageView } from './pagination';
 import { RULE_COLUMN_WIDTH, RuleListPane, type RuleListPaneProps } from './rule-list-pane';
 
@@ -11,6 +12,12 @@ const t = messages.putawayRule;
 
 const labelOf = (id: number | null, named: string, matched: number): string =>
   id === matched ? named : t.values.unknown;
+
+/** 규칙 9001만 잔액이 있다 — 나머지는 「없음」 갈래로 서서 두 문면이 한 표에서 갈린다. */
+const defaultBalanceOf = (putawayRuleId: number): RuleBalance =>
+  putawayRuleId === 9001
+    ? { kind: 'known', rows: [toBalanceView(balanceRow({ onHandQty: 320 }))] }
+    : { kind: 'known', rows: [] };
 
 const baseProps = (overrides: Partial<RuleListPaneProps> = {}): RuleListPaneProps => ({
   rules: ruleViewFixtures,
@@ -26,6 +33,8 @@ const baseProps = (overrides: Partial<RuleListPaneProps> = {}): RuleListPaneProp
   locationLabel: (locationId) =>
     locationId === null ? t.values.warehouseWide : labelOf(locationId, LOCATION_LABEL, 9301),
   uomLabel: (uomId) => labelOf(uomId, UOM_LABEL, 9401),
+  balanceOf: (rule) => defaultBalanceOf(rule.putawayRuleId),
+  duplicatedRuleIds: new Set<number>(),
   loadError: null,
   ...overrides,
 });
@@ -51,7 +60,7 @@ const renderedColWidths = (): (string | undefined)[] =>
   });
 
 describe('RuleListPane — 행', () => {
-  it('열은 다섯이다 — 우선순위·품목·위치·용량·사용', () => {
+  it('열은 여섯이다 — 우선순위·품목·위치·용량·현재 적재·사용', () => {
     renderPane();
 
     expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
@@ -59,8 +68,18 @@ describe('RuleListPane — 행', () => {
       t.fields.item,
       t.fields.location,
       t.fields.capacity,
+      t.fields.onHand,
       t.fields.status,
     ]);
+  });
+
+  /** 용량과 현재 적재가 **이웃해야** 눈이 두 수를 오가지 않고 견준다. */
+  it('현재 적재가 용량 바로 뒤에 선다', () => {
+    renderPane();
+
+    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+
+    expect(headers.indexOf(t.fields.onHand)).toBe(headers.indexOf(t.fields.capacity) + 1);
   });
 
   it('용량은 수량과 단위를 함께 낸다 — 수량만으로는 크고 작음을 판단할 수 없다', () => {
@@ -165,8 +184,16 @@ describe('RuleListPane — 표 규율', () => {
       undefined,
       undefined,
       RULE_COLUMN_WIDTH.capacity,
+      RULE_COLUMN_WIDTH.onHand,
       RULE_COLUMN_WIDTH.status,
     ]);
+  });
+
+  /** 폭 감지기가 열 수를 못 박는다 — 열이 늘거나 줄면 이 단언이 먼저 운다. */
+  it('폭을 재는 자리가 열 수와 같다', () => {
+    renderPane();
+
+    expect(renderedColWidths()).toHaveLength(screen.getAllByRole('columnheader').length);
   });
 
   /** 흡수 열이 셋이면 좁은 칸에서 셋 다 짓눌린다. 이름 열 둘만 흡수 열로 둔다. */
@@ -174,6 +201,82 @@ describe('RuleListPane — 표 규율', () => {
     renderPane();
 
     expect(renderedColWidths().filter((width) => width === undefined)).toHaveLength(2);
+  });
+});
+
+describe('RuleListPane — 현재 적재 열', () => {
+  /** 용량이 숫자 하나로 떠 있으면 크고 작음을 판단할 수 없다 — 적재가 옆에 서야 뜻이 생긴다. */
+  it('잔액이 있는 행에 사용률 막대와 수치가 함께 선다', () => {
+    renderPane();
+
+    expect(screen.getByRole('progressbar', { name: t.values.usageBarLabel })).toBeInTheDocument();
+    expect(screen.getByText(t.values.usageSummary('320', UOM_LABEL, '64'))).toBeInTheDocument();
+  });
+
+  /** 「없다」와 「0이다」가 한 표에서 갈려야 한다 — 잔액이 없는 행은 대시로 선다. */
+  it('잔액 줄이 없는 행은 대시로 선다', () => {
+    renderPane();
+
+    expect(screen.getAllByText(t.values.onHandNone).length).toBe(ruleViewFixtures.length - 1);
+  });
+
+  /** 표가 잔액 상태를 직접 알지 않는다 — 화면이 풀어 넘긴 것을 그대로 그린다. */
+  it('확인하지 못한 잔액을 없음으로 뭉개지 않는다', () => {
+    renderPane({ balanceOf: () => ({ kind: 'unknown', reason: 'failed' }) });
+
+    expect(screen.getAllByText(t.values.onHandFailed).length).toBe(ruleViewFixtures.length);
+    expect(screen.queryByText(t.values.onHandNone)).not.toBeInTheDocument();
+  });
+
+  /** 단위 이름은 표가 받은 풀이를 그대로 쓴다 — 못 푼 단위에 내부 번호를 대신 내지 않는다. */
+  it('단위를 못 풀어도 적재 칸에 내부 번호가 서지 않는다', () => {
+    renderPane({
+      balanceOf: (rule) =>
+        rule.putawayRuleId === 9001
+          ? { kind: 'known', rows: [toBalanceView(balanceRow({ uomId: 9499, onHandQty: 7 }))] }
+          : { kind: 'known', rows: [] },
+    });
+
+    expect(screen.getByText(t.notes.usageUnitMismatch)).toBeInTheDocument();
+    expect(screen.getByRole('table').textContent).not.toContain('9499');
+  });
+});
+
+describe('RuleListPane — 중복 표식', () => {
+  /**
+   * 같은 (품목·창고·위치·우선순위) 활성 규칙이 둘이면 어느 쪽이 이기는지 데이터가 정하지
+   * 않는다 — 표식이 없으면 화면 어디에도 그 사실이 드러나지 않는다.
+   */
+  it('중복으로 지목된 행에 표식이 붙는다', () => {
+    renderPane({ duplicatedRuleIds: new Set([9001]) });
+
+    expect(screen.getByText(t.values.duplicate)).toBeInTheDocument();
+  });
+
+  it('지목이 없으면 아무 행에도 붙지 않는다', () => {
+    renderPane();
+
+    expect(screen.queryByText(t.values.duplicate)).not.toBeInTheDocument();
+  });
+
+  /**
+   * 표식은 **사용 칸**에 선다 — 꺼짐 표식과 같은 물음의 답이기 때문이다(이 규칙이 지금
+   * 어떻게 효력을 갖는가). 같은 물음의 답이 두 칸에 흩어지면 눈이 둘을 오가야 한다.
+   */
+  it('표식이 사용 칸에 사용 표기와 함께 선다', () => {
+    renderPane({ duplicatedRuleIds: new Set([9001]) });
+
+    const cells = screen.getAllByRole('cell');
+    const marked = cells.find((cell) => cell.textContent?.includes(t.values.duplicate));
+
+    expect(marked?.textContent).toContain(t.values.active);
+  });
+
+  /** 표식은 행을 고르는 손잡이가 아니다 — 눌러도 아무 일이 없는 자리를 만들지 않는다. */
+  it('표식이 누를 수 있는 자리가 되지 않는다', () => {
+    renderPane({ duplicatedRuleIds: new Set([9001]) });
+
+    expect(screen.queryByRole('button', { name: t.values.duplicate })).not.toBeInTheDocument();
   });
 });
 

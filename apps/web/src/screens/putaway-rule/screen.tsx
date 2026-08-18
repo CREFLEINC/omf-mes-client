@@ -3,6 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { findRuleBalance, toBalanceTargets } from './balance-lookup';
+import { duplicateRuleIds } from './duplicate-badge';
 import {
   DEFAULT_FILTERS,
   clearFilter,
@@ -29,11 +31,17 @@ import {
   useWarehouseLookup,
 } from './lookups';
 import { toPageView } from './pagination';
-import { useRuleList, useUncoveredItems } from './queries';
+import { useRuleBalances, useRuleList, useUncoveredItems } from './queries';
 import { RuleFilterBar } from './rule-filter-bar';
 import { RuleListPane } from './rule-list-pane';
 import { UncoveredItemsPane } from './uncovered-items-pane';
-import { toRuleView, type PutawayRule, type RuleFilters, type UncoveredItem } from './types';
+import {
+  toRuleView,
+  type PutawayRule,
+  type RuleFilters,
+  type RuleView,
+  type UncoveredItem,
+} from './types';
 
 const t = messages.putawayRule;
 
@@ -42,13 +50,16 @@ const EMPTY_RULES: PutawayRule[] = [];
 const EMPTY_UNCOVERED: UncoveredItem[] = [];
 
 /**
- * W-06-14 적치 규칙 마스터 — **목록 회차**.
+ * W-06-14 적치 규칙 마스터 — **목록·사용률 회차**.
  *
  * ## 이 회차가 하는 것과 하지 않는 것
  *
- * 등록·수정·끄기·켜기와 현재 적재량은 **이 회차에 없다.** 라우트도 열지 않는다 — 끄지 못하는
- * 마스터를 먼저 노출하면 사용자가 잘못 만든 규칙을 지울 수도 끌 수도 없다. 그래서 이 화면은
- * 아직 사용자에게 보이지 않고, 관찰은 시험으로 한다.
+ * 등록·수정·끄기·켜기는 **이 회차에 없다.** 라우트도 열지 않는다 — 끄지 못하는 마스터를 먼저
+ * 노출하면 사용자가 잘못 만든 규칙을 지울 수도 끌 수도 없다. 그래서 이 화면은 아직 사용자에게
+ * 보이지 않고, 관찰은 시험으로 한다.
+ *
+ * **현재 적재는 이 회차가 값과 함께 가져왔다.** 이 화면은 계약 둘을 부른다 — 규칙은 기준정보
+ * 계약, 적재량은 **자재창고 계약의 재고 잔액**이다. 둘을 잇는 곳이 여기다.
  *
  * ## 단계 전이 표
  *
@@ -56,7 +67,11 @@ const EMPTY_UNCOVERED: UncoveredItem[] = [];
  * | :-: | --- | --- | --- |
  * | **S0** 창고를 고르기 전 | `wh`가 없다 | 조건 줄 · 「창고를 고르세요」 안내 | **창고 목록뿐** |
  * | **S1** 창고를 골랐다 | `wh`가 있다 | 위 + 목록 표 + 규칙 없는 품목 | 목록 · 규칙 없는 품목 · 위치·품목·단위 이름 |
- * | **S2** 규칙을 골랐다 | `rule`이 있다 | 위 + 그 행에 고름 표시 | S1과 같다(상세는 다음 회차) |
+ * | **S1′** 목록이 도착했다 | 보이는 규칙을 안다 | 위 + 사용률·중복 표식 | **보이는 (품목·위치)마다 잔액 하나** |
+ * | **S2** 규칙을 골랐다 | `rule`이 있다 | 위 + 그 행에 고름 표시 | S1′과 같다(상세는 다음 회차) |
+ *
+ * **S1′이 따로 있는 이유**: 잔액의 조건은 **보이는 규칙에서 나온다.** 목록이 오기 전에는 부를
+ * 대상 자체가 없고, 조건 없이 창고 전체 잔액을 미리 받아 두면 화면이 쓰지 않을 자료를 받는다.
  *
  * **S0에서 아무 조회도 나가지 않는 것이 이 화면의 규율이다.** 계약은 `warehouseId`를 목록
  * 쿼리의 선택 조건으로 두었지만, 창고 없이 부르면 전 창고의 규칙이 섞여 오고 그 목록은 어느
@@ -78,8 +93,9 @@ const EMPTY_UNCOVERED: UncoveredItem[] = [];
  * 목록에 없는 규칙이 골라진 채로 남으면 그것이 어디서 왔는지 화면이 설명할 수 없다.
  * 그 규칙은 `toSearchParams`가 선택 자리를 **만들지 않는 것**으로 한 곳에 모여 있다.
  *
- * **6행이 목록과 규칙 없는 품목을 함께 부르는 이유**: 한쪽만 부르면 갱신된 값과 낡은 값이
- * 한 화면에 섞이고, 규칙을 등록·중지하면 규칙 없는 품목 수도 함께 달라진다.
+ * **6행이 셋을 함께 부르는 이유**: 한쪽만 부르면 갱신된 값과 낡은 값이 한 화면에 섞인다.
+ * 규칙을 등록·중지하면 규칙 없는 품목 수가 달라지고, 현재 적재는 이 화면과 무관하게 현장에서
+ * 계속 움직인다 — 적재만 빼면 사용률이 **새 용량과 낡은 적재**로 계산된 수가 된다.
  */
 export const PutawayRuleScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -103,12 +119,27 @@ export const PutawayRuleScreen = () => {
   const rules = useMemo(() => (list.data?.items ?? EMPTY_RULES).map(toRuleView), [list.data]);
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rules.length);
 
+  /**
+   * 현재 적재는 **보이는 규칙이 정해진 뒤에** 부른다. 대상은 (품목·위치)로 접혀 있어 같은
+   * 자리를 두 번 묻지 않고, 배열이 그대로 조회 목록이 되므로 `useMemo`로 참조를 고정한다 —
+   * 매 렌더 새 배열이면 훅이 같은 조회를 계속 새로 세운다.
+   */
+  const balanceTargets = useMemo(() => toBalanceTargets(rules), [rules]);
+  const balances = useRuleBalances(warehouseId, balanceTargets);
+
+  /**
+   * ⚠ **지금 보이는 쪽 안에서만 센다.** 쪽이 다른 중복은 이 판정이 보지 못한다 —
+   * 그 한계를 화면 문구가 말하지 않고(과잉 표시 금지), 저장 차단은 조준 조회가 맡는다(단위 ③).
+   */
+  const duplicatedRuleIds = useMemo(() => duplicateRuleIds(rules), [rules]);
+
   const warehouseLabelOf = (id: string): string =>
     describeReference(toReference(warehouses, id === '' ? null : Number(id)));
   const itemLabelOf = (itemId: number): string => describeReference(toReference(items, itemId));
   const uomLabelOf = (uomId: number): string => describeReference(toReference(uoms, uomId));
   const locationLabelOf = (locationId: number | null): string =>
     describeLocation(toLocation(locations, locationId));
+  const balanceOf = (rule: RuleView) => findRuleBalance(balances, rule);
 
   /**
    * 조건이 바뀌면 **첫 쪽으로 가고 선택이 사라진다.** 보이는 행이 달라지므로 지금 쪽도 고른
@@ -138,12 +169,14 @@ export const PutawayRuleScreen = () => {
   };
 
   /**
-   * **둘을 함께 부른다.** 규칙을 고치면 규칙 없는 품목 수도 달라지므로 한쪽만 부르면
-   * 갱신된 값과 낡은 값이 한 화면에 섞인다.
+   * **셋을 함께 부른다.** 규칙을 고치면 규칙 없는 품목 수도 달라지고, 현재 적재는 이 화면과
+   * 무관하게 현장에서 계속 움직인다 — 한쪽만 부르면 갱신된 값과 낡은 값이 한 화면에 섞이고,
+   * 사용률은 **새 용량과 낡은 적재**로 계산된 수가 된다.
    */
   const handleReload = (): void => {
     reloadList();
     void uncovered.refetch();
+    balances.refetch();
   };
 
   const listSlot = () => {
@@ -169,6 +202,8 @@ export const PutawayRuleScreen = () => {
         itemLabel={itemLabelOf}
         locationLabel={locationLabelOf}
         uomLabel={uomLabelOf}
+        balanceOf={balanceOf}
+        duplicatedRuleIds={duplicatedRuleIds}
         /*
          * **위치·단위의 잘림은 표만이 말할 수 있다** — 이 둘은 고르는 칸이 없어
          * `lookupNote`(선택칸 아래 안내)가 닿을 자리가 없다. 창고·품목은 자기 선택칸이 말한다.

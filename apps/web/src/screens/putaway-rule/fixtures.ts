@@ -18,6 +18,7 @@ type Warehouse = components['schemas']['Warehouse'];
 type Location = components['schemas']['Location'];
 type Item = components['schemas']['Item'];
 type Uom = components['schemas']['Uom'];
+type InventoryBalance = components['schemas']['InventoryBalance'];
 
 export const warehouseFixtures: Warehouse[] = [
   {
@@ -183,6 +184,56 @@ export const ruleFixtures: PutawayRule[] = [
 ];
 
 export const ruleViewFixtures: RuleView[] = ruleFixtures.map(toRuleView);
+
+/**
+ * 합성 규칙 하나를 번호로 집는다.
+ *
+ * **차례로 집지 않는다** — 자리로 집으면 위에 규칙을 하나 끼우는 순간 시험이 말없이 다른
+ * 규칙을 재고, 그 시험은 계속 통과한다. 없으면 던져서 그 자리에서 멈춘다.
+ */
+export const ruleFixtureAt = (putawayRuleId: number): PutawayRule => {
+  const found = ruleFixtures.find((rule) => rule.putawayRuleId === putawayRuleId);
+
+  if (found === undefined) {
+    throw new Error(`합성 적치 규칙 ${String(putawayRuleId)}이 없습니다.`);
+  }
+
+  return found;
+};
+
+/** 규칙 9001 — 위치가 있고 사용 중인 정상 규칙. 사용률 갈래의 기준 대상이다. */
+export const RULE_WITH_LOCATION: RuleView = toRuleView(ruleFixtureAt(9001));
+/** 규칙 9002 — 위치를 비운 **창고 전체 규칙**. 잔액 조회에 `locationId`를 싣지 않는 대상이다. */
+export const RULE_WAREHOUSE_WIDE: RuleView = toRuleView(ruleFixtureAt(9002));
+
+/** 합성 소유 구분 둘. **값 목록이 확정되지 않아 서버가 준 코드를 그대로 낸다**(공유계약 G-2). */
+export const OWNERSHIP_A = 'SYN-OWN-A';
+export const OWNERSHIP_B = 'SYN-OWN-B';
+
+/**
+ * 잔액 줄 하나.
+ *
+ * 기본값은 **규칙 9001과 견줄 수 있는 줄**이다 — 축이 위치이고 단위가 규칙과 같으며 소유가
+ * 하나다. 갈래마다 어긋나게 할 값 하나만 덮어써서 **무엇이 갈래를 갈랐는지가 시험에서 읽히게**
+ * 한다.
+ */
+export const balanceRow = (overrides: Partial<InventoryBalance> = {}): InventoryBalance => ({
+  groupBy: 'LOCATION',
+  warehouseId: 9201,
+  locationId: 9301,
+  itemId: 9101,
+  ownershipTypeCode: OWNERSHIP_A,
+  onHandQty: 320,
+  reservedQty: 0,
+  pickedQty: 0,
+  blockedQty: 0,
+  availableQty: 320,
+  uomId: 9401,
+  ...overrides,
+});
+
+/** 규칙 9001(용량 500)의 잔액 320 — 64%다. 100% 아래라 경고 톤이 아니다. */
+export const balanceFixtures: InventoryBalance[] = [balanceRow()];
 
 /**
  * 규칙 없는 품목 둘. **하나는 입고 시각이 없다** — 계약이 그 값을 선택으로 두었고,
