@@ -15,6 +15,7 @@ import {
   describeReference,
   lookupNote,
   nameLookupTruncatedNote,
+  optionsPlaceholder,
   toLocation,
   toReference,
   toSelectOptions,
@@ -152,16 +153,18 @@ describe('toSelectOptions', () => {
   });
 });
 
-describe('lookupNote', () => {
-  const resultOf = (overrides: Partial<LookupResult> = {}): LookupResult => ({
-    entries,
-    isError: false,
-    isLoading: false,
-    truncated: false,
-    refetch: () => undefined,
-    ...overrides,
-  });
+/** 조회 하나의 상태 전부. 기본은 **성공해서 목록을 받은** 상태다. */
+const resultOf = (overrides: Partial<LookupResult> = {}): LookupResult => ({
+  entries,
+  hasLoaded: true,
+  isError: false,
+  isLoading: false,
+  truncated: false,
+  refetch: () => undefined,
+  ...overrides,
+});
 
+describe('lookupNote', () => {
   it('정상이면 안내가 없다', () => {
     expect(lookupNote(resultOf())).toBeUndefined();
   });
@@ -212,6 +215,50 @@ describe('nameLookupTruncatedNote', () => {
   /** 안내 문면이 선택칸 쪽 문면과 달라야 한다 — 고를 칸이 없는데 「선택지」라 말하면 어긋난다. */
   it('선택칸 안내와 다른 문면이다', () => {
     expect(t.notes.nameLookupTruncated).not.toBe(t.filters.lookupTruncated);
+  });
+});
+
+/**
+ * ⛔ **「고를 것이 없습니다」는 조회가 실제로 0건을 돌려줬을 때에만 참이다.**
+ * 빈 배열 하나로는 **없다 · 아직 안 왔다 · 못 받았다 · 아예 묻지 않았다** 넷이 갈리지 않는다.
+ */
+describe('optionsPlaceholder', () => {
+  const EMPTY_TEXT = t.filters.noWarehouseOptions;
+
+  it('조회가 성공하고 목록이 0건이면 「없습니다」를 말한다', () => {
+    expect(optionsPlaceholder(resultOf({ entries: [] }), EMPTY_TEXT)).toBe(EMPTY_TEXT);
+  });
+
+  /** 화면의 첫 그림마다 지나는 자리다 — 응답 전에 「없다」고 하면 그 순간이 곧 거짓이다. */
+  it('아직 오지 않았으면 아무 말도 하지 않는다', () => {
+    expect(
+      optionsPlaceholder(resultOf({ entries: [], hasLoaded: false, isLoading: true }), EMPTY_TEXT),
+    ).toBeUndefined();
+  });
+
+  /**
+   * 실패에서 「없다」고 말하면 바로 아래 안내(「선택지를 불러오지 못했습니다」)와
+   * **한 칸 안에서 정면으로 어긋난다.**
+   */
+  it('조회가 실패했으면 아무 말도 하지 않는다', () => {
+    expect(
+      optionsPlaceholder(resultOf({ entries: [], hasLoaded: false, isError: true }), EMPTY_TEXT),
+    ).toBeUndefined();
+  });
+
+  /** 열리지 않은 조회는 0건을 확인한 적이 없다 — 품목 칸이 창고 전에 놓이는 상태다. */
+  it('조회가 열리지도 않았으면 아무 말도 하지 않는다', () => {
+    expect(optionsPlaceholder(resultOf({ entries: [], hasLoaded: false }), EMPTY_TEXT)).toBe(
+      undefined,
+    );
+  });
+
+  /**
+   * 목록이 있으면 빈 값 선택지(「전체」)가 서서 트리거가 언제나 고른 값을 그린다 —
+   * 뜰 수 없는 문자열을 넘기면 「이 자리에서 자리표시가 쓰인다」는 잘못된 인상만 남는다.
+   */
+  it('목록이 있으면 자리표시를 두지 않는다', () => {
+    expect(optionsPlaceholder(resultOf(), EMPTY_TEXT)).toBeUndefined();
   });
 });
 

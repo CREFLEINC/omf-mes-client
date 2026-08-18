@@ -79,8 +79,17 @@ const allRoutes = (overrides: StubRoute[] = []): StubRoute[] => [
   route(UOMS_PATH, uomFixtures),
 ];
 
-/** 나간 요청을 전부 기록한다. 횟수와 질의값을 셀 자리가 있어야 「부르지 않았다」가 증명된다. */
-const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } => {
+/**
+ * 나간 요청을 전부 기록한다. 횟수와 질의값을 셀 자리가 있어야 「부르지 않았다」가 증명된다.
+ *
+ * `hold`가 참을 내는 요청은 **기록한 뒤에 영원히 붙잡아 둔다** — 「응답이 오기 전에 화면이
+ * 무엇을 말하는가」를 재려면 그 상태에 머무를 수 있어야 하고, 요청이 실제로 나갔다는 사실은
+ * 기록으로 증명돼야 한다(「아직 안 보냈다」와 「보냈는데 안 왔다」는 다른 상태다).
+ */
+const recordingFetch = (
+  routes: StubRoute[],
+  hold: (request: Request) => boolean = () => false,
+): { fetch: StubFetch; urls: URL[] } => {
   const urls: URL[] = [];
   const stub = createStubFetch(routes);
 
@@ -88,6 +97,12 @@ const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } 
     urls,
     fetch: async (request) => {
       urls.push(new URL(request.url));
+
+      if (hold(request)) {
+        await new Promise<never>(() => {
+          /* 이 시험이 끝날 때까지 풀지 않는다 — 미도착 상태를 관측하는 것이 목적이다. */
+        });
+      }
 
       return stub(request);
     },
@@ -109,8 +124,12 @@ const LocationProbe = () => {
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
-const renderScreen = (route = '/', routes: StubRoute[] = allRoutes()) => {
-  const { fetch, urls } = recordingFetch(routes);
+const renderScreen = (
+  route = '/',
+  routes: StubRoute[] = allRoutes(),
+  hold?: (request: Request) => boolean,
+) => {
+  const { fetch, urls } = recordingFetch(routes, hold);
   const result = renderWithProviders(
     <>
       <PutawayRuleScreen />
@@ -457,6 +476,90 @@ describe('PutawayRuleScreen — 이름 목록이 잘린 갈래', () => {
 
     expect(await screen.findByText(t.filters.lookupTruncated)).toBeInTheDocument();
     expect(screen.queryByText(t.notes.nameLookupTruncated)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * **선택칸 자리표시 — 0건의 이유를 가른다.**
+ *
+ * ⛔ 「고를 것이 없습니다」는 조회가 실제로 0건을 돌려줬을 때에만 참이다. **미도착·실패·조회가
+ * 열리지도 않은 상태**가 전부 빈 배열이라, 배열 길이만 보면 화면이 확인하지 못한 것을 사실로
+ * 말하게 된다. 실패 갈래에서는 바로 아래 안내와 **한 칸 안에서 정면으로 어긋난다.**
+ *
+ * 세 상태는 **응답 상태로만** 갈린다 — 부품에 `options: []`를 직접 넘기는 시험은 이유를 담을
+ * 자리가 원리적으로 없어 이 셋을 가르지 못한다. 그래서 화면 층에서 잰다.
+ */
+describe('PutawayRuleScreen — 선택칸 자리표시', () => {
+  const warehouseTrigger = (): HTMLElement =>
+    screen.getByRole('combobox', { name: t.fields.warehouse });
+  const itemTrigger = (): HTMLElement => screen.getByRole('combobox', { name: t.fields.item });
+
+  it('창고 조회가 0건을 돌려주면 「고를 창고가 없습니다」라고 말한다', async () => {
+    renderScreen('/', allRoutes([route(WAREHOUSES_PATH, [])]));
+
+    await waitFor(() => {
+      expect(warehouseTrigger()).toHaveTextContent(t.filters.noWarehouseOptions);
+    });
+  });
+
+  /**
+   * **화면의 첫 그림마다 지나는 자리다.** 응답이 오기 전에 「없다」고 하면 그 순간이 곧 거짓이다.
+   * 양성 기준은 「요청이 실제로 나갔다」 — 「아직 안 보냈다」와 「보냈는데 안 왔다」는 다른 상태다.
+   */
+  it('창고 조회가 아직 오지 않았으면 「없다」고 말하지 않는다', async () => {
+    const { urls } = renderScreen('/', allRoutes(), (request) =>
+      request.url.includes(WAREHOUSES_PATH),
+    );
+
+    await waitFor(() => {
+      expect(countOf(urls, WAREHOUSES_PATH)).toBe(1);
+    });
+
+    expect(warehouseTrigger()).not.toHaveTextContent(t.filters.noWarehouseOptions);
+  });
+
+  /**
+   * 실패에서 「없다」고 말하면 **한 칸 안에서 두 문장이 어긋난다** — 트리거는 「없다」,
+   * 아래 안내는 「못 불러왔다」. 사용자는 컨트롤 안의 글자를 먼저 읽고 마스터가 비었다고 읽는다.
+   */
+  it('창고 조회가 실패하면 「없다」고 말하지 않고 안내만 선다', async () => {
+    renderScreen('/', allRoutes([failing(WAREHOUSES_PATH)]));
+
+    /* 양성 기준 — 실패 안내가 실제로 섰다. 음성 단언은 그 뒤에 잰다. */
+    expect(await screen.findByText(t.filters.lookupFailed)).toBeInTheDocument();
+    expect(warehouseTrigger()).not.toHaveTextContent(t.filters.noWarehouseOptions);
+  });
+
+  /**
+   * 품목은 **창고 전에 조회가 열리지도 않는다.** 열리지 않은 조회는 0건을 확인한 적이 없으므로
+   * 「없다」고 단정할 근거가 없다 — 잠긴 사유는 안내가 따로 말한다.
+   */
+  it('품목 조회가 열리지도 않았으면 「없다」고 말하지 않는다', async () => {
+    const { urls } = renderScreen();
+
+    await screen.findByText(t.empty.noWarehouseTitle);
+
+    expect(countOf(urls, ITEMS_PATH)).toBe(0);
+    expect(itemTrigger()).not.toHaveTextContent(t.filters.noItemOptions);
+    expect(screen.getByText(t.filters.itemNeedsWarehouse)).toBeInTheDocument();
+  });
+
+  it('품목 조회가 0건을 돌려주면 「고를 품목이 없습니다」라고 말한다', async () => {
+    renderScreen(WITH_WAREHOUSE, allRoutes([route(ITEMS_PATH, [])]));
+
+    await waitFor(() => {
+      expect(itemTrigger()).toHaveTextContent(t.filters.noItemOptions);
+    });
+  });
+
+  /** 목록이 왔으면 「전체」가 서고 자리표시는 뜨지 않는다 — 짝이 되는 양성 갈래다. */
+  it('목록이 오면 「전체」가 서고 자리표시가 뜨지 않는다', async () => {
+    renderScreen();
+
+    await waitFor(() => {
+      expect(warehouseTrigger()).toHaveTextContent(t.filters.all);
+    });
+    expect(warehouseTrigger()).not.toHaveTextContent(t.filters.noWarehouseOptions);
   });
 });
 

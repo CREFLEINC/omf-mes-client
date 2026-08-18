@@ -19,6 +19,7 @@ import {
   describeReference,
   lookupNote,
   nameLookupTruncatedNote,
+  optionsPlaceholder,
   toLocation,
   toReference,
   toSelectOptions,
@@ -198,8 +199,16 @@ export const PutawayRuleScreen = () => {
             appliedFilters={filters}
             warehouseOptions={toSelectOptions(warehouses)}
             warehouseNote={lookupNote(warehouses)}
+            /*
+             * ⛔ **「고를 창고가 없습니다」는 조회가 실제로 0건을 돌려줬을 때에만 말한다.**
+             * 조건 줄은 배열 길이밖에 볼 수 없어 미도착·실패를 「없다」와 가를 수 없다 —
+             * 조회 상태를 든 이 자리가 판정한다. 확정 전에는 아무 말도 하지 않는다.
+             */
+            warehousePlaceholder={optionsPlaceholder(warehouses, t.filters.noWarehouseOptions)}
             itemOptions={toSelectOptions(items)}
             itemNote={lookupNote(items)}
+            /* 품목은 창고 전에 조회가 열리지도 않는다 — 그때도 「없다」로 단정하지 않는다. */
+            itemPlaceholder={optionsPlaceholder(items, t.filters.noItemOptions)}
             warehouseLabel={warehouseLabelOf}
             itemLabel={(itemId) => itemLabelOf(Number(itemId))}
             onApply={applyFilters}

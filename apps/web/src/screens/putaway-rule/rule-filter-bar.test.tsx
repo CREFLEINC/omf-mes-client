@@ -113,32 +113,48 @@ describe('RuleFilterBar', () => {
 
   /**
    * **선택지가 0건이면 「전체」도 붙이지 않는다.** 고를 것이 하나도 없는데 「전체」만 있으면
-   * 「전체를 고를 수 있다 = 목록이 준비됐다」로 읽힌다 — 실제로는 값이 하나도 오지 않은
-   * 상태다. 왜 비었는지는 자리표시가 말한다(전례 규율 · 사본 체크리스트 7번의 짝 갈래).
+   * 「전체를 고를 수 있다 = 목록이 준비됐다」로 읽힌다 — 실제로는 값이 하나도 오지 않은 상태다.
    */
-  it('창고 선택지가 0건이면 「전체」도 없고 자리표시가 선다', async () => {
-    const { user } = renderBar(DEFAULT_FILTERS, { warehouseOptions: [] });
-    const trigger = screen.getByRole('combobox', { name: t.fields.warehouse });
+  it.each([
+    ['창고', t.fields.warehouse, { warehouseOptions: [] }],
+    ['품목', t.fields.item, { itemOptions: [] }],
+  ])('%s 선택지가 0건이면 「전체」도 붙이지 않는다', async (_axis, label, overrides) => {
+    const { user } = renderBar({ warehouseId: '9201', itemId: '', activeOnly: false }, overrides);
 
-    expect(trigger).toHaveTextContent(t.filters.noWarehouseOptions);
-
-    await user.click(trigger);
+    await user.click(screen.getByRole('combobox', { name: label }));
 
     expect(screen.queryByRole('option', { name: t.filters.all })).not.toBeInTheDocument();
   });
 
-  it('품목 선택지가 0건이면 「전체」도 없고 자리표시가 선다', async () => {
-    const { user } = renderBar(
-      { warehouseId: '9201', itemId: '', activeOnly: false },
-      { itemOptions: [] },
+  /**
+   * ⛔ **0건이라는 이유만으로 「없습니다」를 짓지 않는다.**
+   *
+   * 이 부품이 볼 수 있는 것은 배열 길이뿐이고, 그 길이는 **미도착·실패·조회가 열리지도 않은
+   * 상태**에서도 0이다 — 이유를 아는 것은 조회 상태를 든 화면뿐이다. 자리표시를 받지 않았으면
+   * 아무 말도 하지 않아야 하며, 그래야 판정이 화면 한 곳에만 산다.
+   */
+  it('자리표시를 받지 않으면 0건이어도 아무 말도 하지 않는다', () => {
+    renderBar(DEFAULT_FILTERS, { warehouseOptions: [], itemOptions: [] });
+
+    /* 두 칸 모두 — 어느 축에서도 부품이 문장을 지어내지 않는다. */
+    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).not.toHaveTextContent(
+      t.filters.noWarehouseOptions,
     );
-    const trigger = screen.getByRole('combobox', { name: t.fields.item });
+    expect(screen.getByRole('combobox', { name: t.fields.item })).not.toHaveTextContent(
+      t.filters.noItemOptions,
+    );
+  });
 
-    expect(trigger).toHaveTextContent(t.filters.noItemOptions);
+  /** 받은 자리표시는 그대로 그린다 — 짓지는 않되 전달은 끊기지 않아야 한다. */
+  it('받은 자리표시를 그대로 그린다', () => {
+    renderBar(DEFAULT_FILTERS, {
+      warehouseOptions: [],
+      warehousePlaceholder: t.filters.noWarehouseOptions,
+    });
 
-    await user.click(trigger);
-
-    expect(screen.queryByRole('option', { name: t.filters.all })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toHaveTextContent(
+      t.filters.noWarehouseOptions,
+    );
   });
 
   /** 선택지가 있으면 「전체」가 서야 한다 — 한 번 고른 뒤 해제할 방법이 칸 안에 있어야 한다. */

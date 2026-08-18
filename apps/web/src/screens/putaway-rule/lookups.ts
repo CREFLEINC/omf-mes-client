@@ -50,6 +50,16 @@ export interface ReferenceSource {
 
 export interface LookupResult extends ReferenceSource {
   entries: LookupEntry[];
+  /**
+   * **조회가 실제로 성공해 목록을 받았으면 참.**
+   *
+   * `entries.length === 0` 하나만으로는 **「없다」와 「아직 모른다」가 갈리지 않는다** — 미도착·
+   * 실패·조회가 열리지도 않은 상태가 전부 빈 배열이다. 그 셋을 「없다」로 단정하면 화면이
+   * 확인하지 못한 것을 사실로 말하게 된다(`toReference`가 네 갈래를 가르는 것과 같은 이유).
+   *
+   * **조회가 잠긴 동안에도 거짓이다** — 열리지 않은 조회는 0건을 확인한 적이 없다.
+   */
+  hasLoaded: boolean;
   /** 조회 실패에는 복구 경로를 함께 낸다 — 사용자가 할 수 있는 조치가 재시도뿐이다. */
   refetch: () => void;
 }
@@ -163,6 +173,26 @@ export const nameLookupTruncatedNote = (
 ): string | undefined =>
   sources.some((source) => source.truncated) ? t.notes.nameLookupTruncated : undefined;
 
+/**
+ * 선택칸 트리거에 설 자리표시.
+ *
+ * ⛔ **「고를 것이 없습니다」는 조회가 실제로 0건을 돌려줬을 때에만 말한다.**
+ * `entries.length === 0`만 보면 **미도착·실패·조회가 열리지도 않은 상태**가 전부 그 문장을
+ * 받는다 — 화면이 확인하지 못한 것을 사실로 말하게 되고, 실패 갈래에서는 바로 아래 안내
+ * (「선택지를 불러오지 못했습니다」)와 **한 칸 안에서 정면으로 어긋난다.**
+ *
+ * **확정하지 못한 상태에서는 아무 말도 하지 않는다**(`undefined`). 이 슬라이스가 이미 두 자리에서
+ * 쓰는 규율이다 — `toReference`는 실패·미도착을 「목록에 없음」보다 앞에 두고,
+ * `UncoveredItemsPane`은 실패·미도착에 **건수를 아예 내지 않는다**(0을 내면 좋은 소식으로
+ * 읽히는데 실제로는 확인하지 못한 것이다). 지어낸 문장 대신 침묵이 정확하다.
+ *
+ * 목록이 있을 때도 자리표시를 두지 않는다 — 그때는 빈 값 선택지(「전체」)가 서므로
+ * 트리거가 언제나 고른 값을 그린다. 뜰 수 없는 문자열을 넘기면 「이 자리에서 자리표시가
+ * 쓰인다」는 잘못된 인상만 남는다.
+ */
+export const optionsPlaceholder = (lookup: LookupResult, emptyText: string): string | undefined =>
+  lookup.hasLoaded && lookup.entries.length === 0 ? emptyText : undefined;
+
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ENTRIES: LookupEntry[] = [];
 
@@ -219,6 +249,7 @@ export const useWarehouseLookup = (): LookupResult => {
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    hasLoaded: query.isSuccess,
     isError: query.isError,
     isLoading: query.isPending,
     refetch: () => {
@@ -266,6 +297,7 @@ export const useLocationLookup = (warehouseId: number | null): LookupResult => {
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    hasLoaded: query.isSuccess,
     isError: query.isError,
     isLoading: warehouseId !== null && query.isPending,
     refetch: () => {
@@ -299,6 +331,7 @@ export const useItemLookup = (enabled: boolean): LookupResult => {
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    hasLoaded: query.isSuccess,
     isError: query.isError,
     isLoading: enabled && query.isPending,
     refetch: () => {
@@ -328,6 +361,7 @@ export const useUomLookup = (enabled: boolean): LookupResult => {
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    hasLoaded: query.isSuccess,
     isError: query.isError,
     isLoading: enabled && query.isPending,
     refetch: () => {

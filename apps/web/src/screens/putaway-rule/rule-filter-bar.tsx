@@ -13,9 +13,19 @@ export interface RuleFilterBarProps {
   warehouseOptions: SelectOption[];
   /** 선택지의 한계(잘림·실패) 안내. 밝히지 않으면 값이 사라진 것으로 읽힌다. */
   warehouseNote?: string;
+  /**
+   * 트리거 자리표시. **이 부품이 짓지 않고 받는다.**
+   *
+   * ⛔ 「고를 것이 없습니다」는 **조회가 실제로 0건을 돌려줬을 때에만** 참이다. 이 부품은
+   * `options.length === 0`밖에 볼 수 없어 **미도착·실패·조회가 열리지도 않은 상태**를
+   * 「없다」와 가를 근거가 없다 — 그 판정은 조회 상태를 아는 화면이 하고(`optionsPlaceholder`)
+   * 여기는 결과만 그린다. 확정하지 못한 상태에서는 `undefined`가 온다.
+   */
+  warehousePlaceholder?: string;
   /** 품목 선택지. **창고를 고르기 전에는 비어 있다** — 그때는 칸 자체가 잠긴다. */
   itemOptions: SelectOption[];
   itemNote?: string;
+  itemPlaceholder?: string;
   /** 조건 칩에 실을 창고 이름. 번호를 문구로 만드는 자리를 두지 않기 위한 것이다. */
   warehouseLabel: (warehouseId: string) => string;
   itemLabel: (itemId: string) => string;
@@ -46,14 +56,20 @@ export interface RuleFilterBarProps {
  * **선택지가 0건이면 「전체」도 붙이지 않는다.** 고를 것이 하나도 없는데 「전체」만 있으면
  * 목록이 준비된 것처럼 보인다 — 왜 비었는지는 자리표시와 안내가 말한다(전례 규율).
  *
+ * ⛔ **다만 「고를 것이 없다」고 말할지는 이 부품이 정하지 않는다.** 여기서 볼 수 있는 것은
+ * 배열 길이뿐이고, 그 길이는 **미도착·실패·조회가 열리지도 않은 상태**에서도 0이다 —
+ * 이유를 아는 것은 조회 상태를 든 화면뿐이라 자리표시를 **받아서** 그린다.
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const RuleFilterBar = ({
   appliedFilters,
   warehouseOptions,
   warehouseNote,
+  warehousePlaceholder,
   itemOptions,
   itemNote,
+  itemPlaceholder,
   warehouseLabel,
   itemLabel,
   onApply,
@@ -89,7 +105,7 @@ export const RuleFilterBar = ({
           options={withAllOrEmpty(warehouseOptions)}
           value={appliedFilters.warehouseId}
           note={warehouseNote}
-          placeholder={warehouseOptions.length === 0 ? t.filters.noWarehouseOptions : t.filters.all}
+          placeholder={warehousePlaceholder}
           onChange={(value) => {
             /* 창고가 바뀌면 앞 창고 기준으로 고른 품목 조건이 뜻을 잃는다 — 함께 비운다. */
             onApply({ ...appliedFilters, warehouseId: value, itemId: '' });
@@ -104,7 +120,7 @@ export const RuleFilterBar = ({
           disabled={!hasWarehouse}
           disabledReason={t.filters.itemNeedsWarehouse}
           note={itemNote}
-          placeholder={itemOptions.length === 0 ? t.filters.noItemOptions : t.filters.all}
+          placeholder={itemPlaceholder}
           onChange={(value) => {
             onApply({ ...appliedFilters, itemId: value });
           }}
