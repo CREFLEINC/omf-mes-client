@@ -98,6 +98,20 @@ export const toBookQty = (
 };
 
 /**
+ * 수량 하나의 표기. **단위를 수량에 붙인다** — 단위 열을 따로 두면 폭이 100px 넘게 들고,
+ * 정작 필요한 순간(수량을 읽을 때)에는 눈이 표를 가로질러야 한다.
+ *
+ * 단위를 아직 고르지 않은 줄에서는 수만 낸다 — 「알 수 없음」을 단위 자리에 붙이면
+ * 수량이 잘못된 것처럼 읽힌다.
+ *
+ * **이 슬라이스의 수량 표기가 전부 이 한 자리를 지난다** — 조정 대상 표의 장부·실물과
+ * 처리 이력 상세의 차이가 같은 규칙으로 보여야 두 탭을 오가는 사용자가 같은 값을 두 모양으로
+ * 만나지 않는다.
+ */
+export const describeQty = (qty: number, uomName: string): string =>
+  t.lineTable.qtyWithUom(String(qty), uomName).trim();
+
+/**
  * 장부 상태를 표의 글자로 옮긴다. **수를 지어내지 않는다.**
  *
  * 「묻지 않음」과 「목록에 없음」은 둘 다 빈 값 표식(`—`)으로 낸다 — 표 안에서는 자리를 아끼고,
@@ -107,7 +121,7 @@ export const toBookQty = (
 export const describeBookQty = (state: BookQtyState, uomName: string): string => {
   switch (state.kind) {
     case 'known':
-      return withUom(state.qty, uomName);
+      return describeQty(state.qty, uomName);
     case 'loading':
       return t.bookQty.loading;
     case 'failed':
@@ -117,16 +131,6 @@ export const describeBookQty = (state: BookQtyState, uomName: string): string =>
       return t.values.empty;
   }
 };
-
-/**
- * 수량 하나의 표기. **단위를 수량에 붙인다** — 단위 열을 따로 두면 폭이 100px 넘게 들고,
- * 정작 필요한 순간(수량을 읽을 때)에는 눈이 표를 가로질러야 한다.
- *
- * 단위를 아직 고르지 않은 줄에서는 수만 낸다 — 「알 수 없음」을 단위 자리에 붙이면
- * 수량이 잘못된 것처럼 읽힌다.
- */
-const withUom = (qty: number, uomName: string): string =>
-  t.lineTable.qtyWithUom(String(qty), uomName).trim();
 
 /**
  * 실물 수량 — **파생이다**(D-5 · 조심 ③).
@@ -154,4 +158,4 @@ export const deriveActualQty = (book: BookQtyState, diff: QtyRead): ActualQtySta
  * 읽고, 그대로 조정을 올린다.
  */
 export const describeActualQty = (state: ActualQtyState, uomName: string): string =>
-  state.kind === 'known' ? withUom(state.qty, uomName) : t.values.empty;
+  state.kind === 'known' ? describeQty(state.qty, uomName) : t.values.empty;

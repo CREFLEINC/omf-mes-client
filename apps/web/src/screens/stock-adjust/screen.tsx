@@ -5,9 +5,11 @@ import {
   EmptyState,
   PageHeader,
   SkeletonText,
+  Tabs,
+  type TabItem,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
@@ -31,6 +33,21 @@ import {
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { readInventoryCountId, withInventoryCountId, withoutInventoryCountId } from './entry';
 import { HeaderForm } from './header-form';
+import { HistoryDetailPane } from './history-detail-pane';
+import { HistoryFilterBar } from './history-filter-bar';
+import {
+  clearAdjustmentFilter,
+  DEFAULT_ADJUSTMENT_FILTERS,
+  HISTORY_SELECTION_KEYS,
+  readAdjustmentFilters,
+  readAdjustmentPage,
+  readSelectedAdjustmentId,
+  toAdjustmentFilterQuery,
+  toHistorySearchParams,
+  type AdjustmentFilters,
+  type RemovableAdjustmentChipKey,
+} from './history-filters';
+import { HistoryTable } from './history-table';
 import {
   addLineDraft,
   createInheritedLineDrafts,
@@ -41,6 +58,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import {
   describeReference,
   lookupNote,
+  type ReferenceSource,
   toReference,
   toSelectOptions,
   useItemLookup,
@@ -49,6 +67,7 @@ import {
   useUomLookup,
   useWarehouseLookup,
 } from './lookups';
+import { PageNav, toPageView } from './page-nav';
 import { PostConfirmDialog, type PostSummary } from './post-confirm-dialog';
 import { PostPane } from './post-pane';
 import {
@@ -60,8 +79,10 @@ import {
   type PostDraft,
 } from './post-request';
 import {
+  isAdjustmentNotFound,
   UNASKED_BALANCE,
   useAdjustmentDetailFetcher,
+  useAdjustmentHistoryDetail,
   useApprovalRequest,
   useCountVarianceLines,
   useCreateStockAdjustment,
@@ -69,6 +90,7 @@ import {
   useLocationBalances,
   usePostStockAdjustment,
   useRequestAdjustmentApproval,
+  useStockAdjustments,
 } from './queries';
 import { readReason, toApprovalRequest } from './reason-draft';
 import { RegisterConfirmDialog, type RegisterSummary } from './register-confirm-dialog';
@@ -76,10 +98,21 @@ import { ResultPane, type SubmitPhase } from './result-pane';
 import { applySourceChange, initialSourceKind, type AdjustSourceKind } from './source';
 import { SourcePane } from './source-pane';
 import { SubmitConfirmDialog, type SubmitSummary } from './submit-confirm-dialog';
+import {
+  DEFAULT_TAB,
+  readTab,
+  STOCK_ADJUST_TABS,
+  TAB_KEY,
+  tabLabel,
+  toTabParam,
+  type StockAdjustTab,
+} from './tabs';
 import { emptyHeaderDraft, isHeaderEdited } from './types';
 import type {
   AdjustHeaderDraft,
   AdjustLineDraft,
+  AdjustmentLineView,
+  AdjustmentSummaryView,
   CreatedAdjustmentResult,
   PostedAdjustmentView,
   SelectOption,
@@ -90,6 +123,8 @@ const t = messages.stockAdjust;
 
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_IDS: number[] = [];
+const EMPTY_HISTORY_ROWS: AdjustmentSummaryView[] = [];
+const EMPTY_HISTORY_LINES: AdjustmentLineView[] = [];
 
 /** 확인을 기다리는 조작. `null`이면 열린 창이 없다. */
 type PendingAction = 'register' | 'discard' | 'submit' | 'post';
@@ -241,8 +276,55 @@ export const StockAdjustScreen = () => {
 
   const urlCountId = readInventoryCountId(searchParams);
 
+  /**
+   * 보고 있는 탭 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 자리를 열어야 한다.
+   *
+   * ⛔ **탭이 둘이고 셋째 자리가 없다**(조심 ① · D-3). 목록은 `tabs.ts` 하나가 든다.
+   */
+  const tab = readTab(searchParams);
+  const isRegisterTab = tab === 'register';
+  const isHistoryTab = tab === 'history';
+
+  /*
+   * **주소가 바뀔 때만 새 참조를 만든다.** 렌더마다 새 객체를 만들면 내용이 같아도 참조가
+   * 달라, 이 값을 되돌림 기준으로 삼는 조건 줄이 **부모가 다시 그려질 때마다** 사용자가 고르던
+   * 값을 덮어쓴다(`omf-mes#43`). `searchParams`는 주소가 바뀔 때만 새 참조다.
+   */
+  const historyFilters = useMemo<AdjustmentFilters>(
+    () => readAdjustmentFilters(searchParams),
+    [searchParams],
+  );
+  const historyPage = readAdjustmentPage(searchParams);
+  const selectedAdjustmentId = readSelectedAdjustmentId(searchParams);
+
   const counts = useInventoryCounts();
   const countList = counts.data;
+
+  /**
+   * 처리 이력 — **그 탭이 서 있을 때만 부른다.**
+   *
+   * 숨은 탭의 조회는 사용자가 볼 수 없는 자료를 받아 오고, 조건이 바뀔 때마다 요청이 는다.
+   *
+   * ⛔ **조건에 승인 대기가 없다**(D-3 · C41). 조건을 만드는 자리가 `history-filters.ts`
+   * 하나이고 그 목록에 그 이름이 없다 — 여기서는 만든 것을 그대로 실을 뿐이다.
+   */
+  const historyQuery = {
+    ...toAdjustmentFilterQuery(historyFilters),
+    ...(historyPage > 1 ? { page: historyPage } : {}),
+  };
+
+  const historyList = useStockAdjustments(historyQuery, isHistoryTab);
+  const historyRows = historyList.data?.items ?? EMPTY_HISTORY_ROWS;
+  const historyPageView = toPageView(
+    historyList.data?.page ?? { page: historyPage, size: 0, total: 0 },
+    historyRows.length,
+  );
+
+  const historyDetail = useAdjustmentHistoryDetail(selectedAdjustmentId, isHistoryTab);
+  const historyDetailData = historyDetail.data;
+  const historyLines = historyDetailData?.lines ?? EMPTY_HISTORY_LINES;
+  const isHistoryDetailNotFound =
+    historyDetail.isError && isAdjustmentNotFound(historyDetail.error);
 
   const [sourceKind, setSourceKind] = useState<AdjustSourceKind>(() =>
     initialSourceKind(urlCountId),
@@ -254,6 +336,14 @@ export const StockAdjustScreen = () => {
   const [loadedCountId, setLoadedCountId] = useState<number | null>(null);
   /** 주소가 가리킨 실사를 찾지 못해 지웠는가. **지운 뒤에는 판정이 사라지므로 사실을 든다** */
   const [hasCleanedMissingCount, setCleanedMissingCount] = useState(false);
+
+  /**
+   * 방금 고른 전표가 **없었다**는 사실.
+   *
+   * 주소에서 고른 전표를 지우고 나면 화면은 그 사정을 말할 근거를 잃는다 — 「아직 고르지
+   * 않았다」와 글자가 같아지므로 사용자는 자기가 무엇을 눌렀는지 되짚을 수 없다.
+   */
+  const [hasHistoryNotFoundNotice, setHistoryNotFoundNotice] = useState(false);
 
   /**
    * **등록의 매임** — 어느 초안을 겨눈 시도이고 그것이 만들어졌는가.
@@ -380,15 +470,28 @@ export const StockAdjustScreen = () => {
   const hasTarget = warehouseId !== null;
 
   const locations = useLocationLookup(warehouseId);
-  const items = useItemLookup(hasTarget);
-  const uoms = useUomLookup(hasTarget);
 
   const lineItemIds =
     lines.length === 0
       ? EMPTY_IDS
       : lines.flatMap((line) => (line.itemId === '' ? [] : [Number(line.itemId)]));
 
-  const lots = useLotLookup(lineItemIds, hasTarget);
+  /**
+   * 품목·단위·자재 LOT은 **두 탭이 함께 쓴다** — 조정 대상 표와 이력 상세의 라인 표가 같은
+   * 이름을 푼다.
+   *
+   * **보고 있는 탭의 줄만 푼다**(전례 `disposal-issue`와 같은 규율). 둘을 합쳐 부르면 보이지
+   * 않는 표를 위한 요청이 나가고, 자재 LOT처럼 품목으로 좁히는 조회는 그 좁힘까지 섞인다.
+   *
+   * **위치는 여기 들지 않는다** — 이력 상세에는 창고 축이 없어 이름을 풀 수 없다(그래서 그
+   * 표에 위치 열이 없다). 등록 탭의 위치 조회는 위 `locations`가 그대로 맡는다.
+   */
+  const hasReferenceTarget = isHistoryTab ? historyLines.length > 0 : hasTarget;
+  const referenceItemIds = isHistoryTab ? historyLines.map((line) => line.itemId) : lineItemIds;
+
+  const items = useItemLookup(hasReferenceTarget);
+  const uoms = useUomLookup(hasReferenceTarget);
+  const lots = useLotLookup(referenceItemIds, hasReferenceTarget);
 
   /**
    * 장부 조회는 **직접 등록 갈래에만 있다**(D-6).
@@ -447,6 +550,46 @@ export const StockAdjustScreen = () => {
 
     setSourceKind('count');
   }, [urlCountId]);
+
+  /**
+   * 고른 전표가 **없으면** 주소에서 지운다(사본 체크리스트 1번).
+   *
+   * **클릭 핸들러가 아니라 상세 응답에 묶는다** — 뒤로가기·앞으로가기·주소 직접 편집은 핸들러를
+   * 거치지 않고 고른 값만 바꾸므로, 핸들러에 두면 그 경로가 통째로 샌다.
+   *
+   * **`replace`로 지운다** — 정리가 뒤로가기 기록을 늘리면 뒤로 눌렀을 때 없는 전표를 가리키는
+   * 주소로 되돌아가 같은 정리가 되풀이되고 사용자가 갇힌다(C45).
+   *
+   * **조건·쪽은 하나도 바꾸지 않는다** — 없어진 전표 하나 때문에 좁혀 둔 조건까지 되돌리면
+   * 처음부터 다시 찾아야 한다.
+   */
+  useEffect(() => {
+    if (selectedAdjustmentId === null) return;
+    if (!isHistoryDetailNotFound) return;
+
+    setHistoryNotFoundNotice(true);
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+
+        next.delete(HISTORY_SELECTION_KEYS.adjustment);
+
+        return next;
+      },
+      { replace: true },
+    );
+  }, [selectedAdjustmentId, isHistoryDetailNotFound, setSearchParams]);
+
+  /*
+   * 다시 고르면 앞의 안내를 거둔다 — 남으면 새로 고른 전표의 제목줄 옆에 「찾을 수 없습니다」가
+   * 함께 서 있게 된다. **고른 식별자가 생기는 순간에만** 반응한다.
+   *
+   * 클릭 핸들러에도 같은 줄이 있으나 **이 effect가 정본이다** — 뒤로가기·앞으로가기·주소 직접
+   * 편집으로 고른 값이 다시 생기는 경로는 핸들러를 거치지 않는다.
+   */
+  useEffect(() => {
+    if (selectedAdjustmentId !== null) setHistoryNotFoundNotice(false);
+  }, [selectedAdjustmentId]);
 
   /**
    * 불러온 실사 차이를 조정 대상으로 세운다(C2·C3).
@@ -806,6 +949,126 @@ export const StockAdjustScreen = () => {
   };
 
   /**
+   * **사용자가 보는 자리를 바꾸는 길이 지나는 한 문.**
+   *
+   * 한 주소가 탭 · 등록 탭의 진입 맥락(`count`) · 이력 조건 · 이력 쪽 · 고른 전표를 함께
+   * 싣는다. 조립을 자리마다 손으로 하면 「조건을 바꿨더니 세우던 대상까지 사라졌다」가 조용히
+   * 생긴다 — **무엇을 남기고 무엇을 비우는가가 이 함수의 인자로만 정해진다.**
+   *
+   * **진입 맥락을 늘 나른다**(`withInventoryCountId`) — 탭을 오갔다고 세우던 대상이 사라지면
+   * 「이력을 잠깐 확인하고 돌아온다」가 성립하지 않는다. 키 문자열을 여기 다시 적지 않는 것이
+   * 그 자리를 한 곳에 두는 형태다.
+   *
+   * **고른 전표는 인자로만 실린다** — `toHistorySearchParams`가 그 키를 만들지 않으므로
+   * 조건·쪽이 바뀌는 자리에서 다시 실어 주지 않으면 저절로 풀린다.
+   */
+  const toScreenParams = (next: {
+    tab: StockAdjustTab;
+    filters: AdjustmentFilters;
+    page: number;
+    adjustmentId: number | null;
+  }): URLSearchParams => {
+    const params =
+      urlCountId === null
+        ? new URLSearchParams()
+        : withInventoryCountId(new URLSearchParams(), urlCountId);
+
+    const tabParam = toTabParam(next.tab);
+
+    if (tabParam !== null) params.set(TAB_KEY, tabParam);
+
+    for (const [key, value] of toHistorySearchParams(next.filters, next.page)) {
+      params.set(key, value);
+    }
+
+    if (next.adjustmentId !== null) {
+      params.set(HISTORY_SELECTION_KEYS.adjustment, String(next.adjustmentId));
+    }
+
+    return params;
+  };
+
+  /** 지금 주소가 담고 있는 것 전부. 한 자리만 바꾸는 조작이 나머지를 그대로 나른다. */
+  const currentAddress = {
+    tab,
+    filters: historyFilters,
+    page: historyPage,
+    adjustmentId: selectedAdjustmentId,
+  };
+
+  /**
+   * **나가는 중에는 보는 자리를 바꾸지 않는다.**
+   *
+   * 되돌릴 수 없는 쓰기 셋이 나가는 동안 탭이 바뀌면 보내는 자리가 화면에서 사라져, 도착한
+   * 되먹임이 설 곳을 잃는다(상태에는 남지만 사용자는 그 사이에 아무 말도 듣지 못한다).
+   *
+   * ⚠ **「이미 등록했다」로는 잠그지 않는다** — 등록에 성공한 뒤야말로 이력에서 그 전표를
+   * 확인하러 갈 때다. 폼 잠금(`isFormLocked`)을 그대로 쓰면 그 길이 막힌다.
+   */
+  const isNavigationLocked = register.isSaving || isSubmitting || isPosting;
+
+  /** 지나갔는지를 되돌려 준다 — 막힌 조작이 딸린 뒷일까지 하지 않게 한다. */
+  const applyUserNavigation = (next: Parameters<typeof toScreenParams>[0]): boolean => {
+    if (isNavigationLocked) return false;
+
+    setSearchParams(toScreenParams(next));
+
+    return true;
+  };
+
+  /**
+   * 이력 조건·쪽을 적용한다. **주소를 한 번만 갱신한다** — 조건과 쪽을 따로 갱신하면 뒤로가기
+   * 기록이 두 칸 늘어 사용자가 뒤로 눌렀는데 같은 자리로 돌아온 것처럼 보인다(C45).
+   *
+   * **고른 전표를 싣지 않아** 조건·쪽이 바뀌면 함께 풀린다 — 새 결과에 없을 수 있는 전표를
+   * 고른 채로 두면 아래 구획이 목록에 없는 전표를 그린다.
+   */
+  const applyHistoryQuery = (nextFilters: AdjustmentFilters, nextPage = 1): void => {
+    const moved = applyUserNavigation({
+      ...currentAddress,
+      filters: nextFilters,
+      page: nextPage,
+      adjustmentId: null,
+    });
+
+    /*
+     * **새 조회는 앞의 「없음」 안내를 거둔다.** 없어진 전표는 방금 한 조작과 무관한 사정인데,
+     * 남겨 두면 새 결과 옆에서 화면이 그 사정을 계속 말한다. **문을 지나지 못했으면 거두지도
+     * 않는다** — 조회가 일어나지 않았는데 안내만 사라지면 화면이 앞뒤가 맞지 않는다.
+     */
+    if (moved) setHistoryNotFoundNotice(false);
+  };
+
+  /** 고르고 푸는 것은 **보이는 줄을 바꾸지 않는다** — 조건도 쪽도 그대로 나른다. */
+  const toggleSelectAdjustment = (inventoryAdjustmentId: number): void => {
+    const moved = applyUserNavigation({
+      ...currentAddress,
+      adjustmentId: inventoryAdjustmentId === selectedAdjustmentId ? null : inventoryAdjustmentId,
+    });
+
+    if (moved) setHistoryNotFoundNotice(false);
+  };
+
+  /**
+   * 탭을 바꾼다. **아무것도 비우지 않는다.**
+   *
+   * 탭은 **보는 자리**를 바꿀 뿐 대상을 바꾸지 않는다 — 세우던 초안과 이력 조건이 각자 살아
+   * 있어야 「보내 놓고 이력에서 확인한다」가 성립한다. 비우면 이력을 잠깐 확인하고 돌아왔을 때
+   * 세우던 것이 통째로 사라진다.
+   */
+  const changeTab = (nextTab: string): void => {
+    /*
+     * **탭 목록을 손으로 한 번 더 적지 않는다.** 정본은 `STOCK_ADJUST_TABS` 하나이고, 여기
+     * 목록을 따로 두면 탭이 늘 때 이 줄을 잊어 **그 탭 버튼이 말없이 아무 일도 하지 않는다.**
+     */
+    const target = STOCK_ADJUST_TABS.find((value) => value === nextTab);
+
+    if (target === undefined || target === tab) return;
+
+    applyUserNavigation({ ...currentAddress, tab: target });
+  };
+
+  /**
    * 실사 차이를 불러온다 — **대상을 다시 세우는 조작**이다.
    *
    * 이미 부른 실사를 다시 누르면 조회만 다시 한다. 응답이 같으면 대상은 그대로다
@@ -845,6 +1108,18 @@ export const StockAdjustScreen = () => {
   /** 창고만 되살린다 — 그 실패의 안내와 복구가 원천 구획에 함께 선다(리뷰 R-1). */
   const retryWarehouses = (): void => {
     warehouses.refetch();
+  };
+
+  /**
+   * 이력 상세의 이름 풀이만 되살린다 — **말하는 셋과 되살리는 셋이 같다.**
+   *
+   * 위치를 넣지 않는 것이 요점이다: 그 구획에는 위치 열이 없어(창고를 알 통로가 없다) 되살려도
+   * 보이는 것이 달라지지 않고, 안내는 있지도 않은 참조의 실패를 말하게 된다.
+   */
+  const retryHistoryReferences = (): void => {
+    items.refetch();
+    uoms.refetch();
+    lots.refetch();
   };
 
   /**
@@ -935,6 +1210,29 @@ export const StockAdjustScreen = () => {
       : [...strandedAdjustmentNos, unboundCreatedNo];
 
   const strandedNote = strandedNos.length === 0 ? null : strandedNos.join(', ');
+
+  /**
+   * **버린 초안으로 보낸 등록이 응답을 받지 못한 갈래** — 성공 쪽과 짝을 이루는 자리다.
+   *
+   * 이 슬라이스는 오래 **성공만 알리고 이 갈래는 침묵**했다. 근거가 둘이었다:
+   * ① 서버가 거절한 요청은 남는 것이 없다(**지금도 참이라** 그 갈래는 여전히 말하지 않는다)
+   * ② 응답이 오지 않은 요청만이 「남았을 수 있다」인데 **확인할 자리가 화면에 없었다.**
+   * 처리 이력 탭이 서면서 ②가 풀렸으므로 이제 그 사실을 말한다 — 안내가 가리키는 자리가
+   * 실재하고, 거기서 조정 사유로 좁히면 그 전표가 목록에 선다.
+   *
+   * **읽는 자리에서 판정한다**(D-15). 매임이 끊겼고(`draftSession`이 갈렸다) 만들어진 것이
+   * 없으며(`created === null`) 마지막 실패가 **응답 없음**일 때만 참이다 — 400·403은 서버가
+   * 되돌려 준 것이라 남는 것이 없다.
+   *
+   * ⚠ **지속성은 성공 갈래와 같은 한계를 갖는다** — 다음 등록이 시작되면 매임이 새 초안으로
+   * 덮여 이 줄이 걷힌다. 사용자가 **둘째 등록을 확정하기 전 구간 전체**에서는 서 있고,
+   * 그 뒤에 되찾는 자리가 곧 처리 이력이다.
+   */
+  const hasUnconfirmedStrandedRegister =
+    registerBinding !== null &&
+    registerBinding.draftSession !== draftSession &&
+    registerBinding.created === null &&
+    register.error?.kind === 'network';
 
   /**
    * **지금 보고 있는 전표가 그 상신의 대상인가** — 상신의 되먹임은 전부 이 문을 지난다(D-15).
@@ -1103,6 +1401,15 @@ export const StockAdjustScreen = () => {
    * 불러오지 못했습니다」가 서는데, 그 넷은 정상이라 **사실이 아닌 문구**가 된다.
    */
   const hasLineReferenceError = locations.isError || items.isError || uoms.isError || lots.isError;
+
+  /**
+   * 이력 상세의 같은 판정 — **셋뿐이다.**
+   *
+   * 위치가 빠진 것이 빠뜨린 것이 아니다: 그 구획에 위치 열이 없다(창고를 알 통로가 계약에
+   * 없어 이름을 풀 수 없다) — 넷으로 재면 등록 탭의 위치 실패가 이력 상세에 사실이 아닌
+   * 안내를 세운다.
+   */
+  const hasHistoryReferenceError = items.isError || uoms.isError || lots.isError;
 
   const hasBalanceError = Object.values(balances.sources).some((source) => source.isError);
 
@@ -1745,33 +2052,14 @@ export const StockAdjustScreen = () => {
     </>
   );
 
-  return (
+  /**
+   * 조정 등록 탭의 내용 — **조정을 세워 보내는 자리 전부**다.
+   *
+   * 확인 창 넷은 이 덩어리 **밖**에 있다(아래 반환문) — 창은 화면 전체를 덮는 자리라 탭 패널
+   * 안에 넣으면 스크림이 탭 줄 아래에서 잘린다. 대신 **서는 조건에 탭을 함께 본다.**
+   */
+  const registerTabContent = (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
-      />
-
-      {/*
-       * ⭐ **범위 안내는 늘 선다**(조심 ③ · C13). 이 화면을 「잔량을 고치는 화면」으로 읽는 것이
-       * 여기서 가장 비싼 오해라, 맥락 유무로 접으면 정작 그렇게 읽는 사람이 읽지 못한다.
-       */}
-      <div className="banner-slot">
-        <AlertBanner variant="info" title={t.scope.title}>
-          {t.scope.description}
-        </AlertBanner>
-      </div>
-
-      {/*
-       * ⛔ **승인 대기 탭을 두지 않는다**(조심 ① · D-3). 결재는 결재함이 소유한다 —
-       * 이 안내가 그 자리를 가리키므로 사용자가 여기서 승인 버튼을 찾지 않는다.
-       */}
-      <div className="banner-slot">
-        <AlertBanner variant="info" title={t.approvalNotice.title}>
-          {t.approvalNotice.description}
-        </AlertBanner>
-      </div>
-
       {counts.isError && (
         <LoadErrorBanner
           error={counts.error}
@@ -1963,6 +2251,16 @@ export const StockAdjustScreen = () => {
         )}
 
         {/*
+         * 같은 갈래의 **응답 없음** 몫. 성공은 전표번호로 말할 수 있지만 이쪽은 번호조차
+         * 받지 못했으므로 **하나 있었다는 사실과 확인할 자리**만 말한다.
+         */}
+        {hasUnconfirmedStrandedRegister && (
+          <p className="field-note" role="status">
+            {t.notes.unconfirmedRegisterNote}
+          </p>
+        )}
+
+        {/*
          * 매임이 끊긴 채 **결재에 올라간** 전표(같은 갈래의 상신 몫). 서버에 결재 요청이 남았으므로
          * 감추지 않되, 지금 보고 있는 대상의 결과로 세우지 않는다.
          */}
@@ -2040,8 +2338,216 @@ export const StockAdjustScreen = () => {
           onRequestPost={requestPost}
         />
       )}
+    </>
+  );
 
-      {pending === 'register' && (
+  /** 이력 조건 칩이 쓸 실사 이름. **번호가 아니라 이름을 그린다**(`omf-mes#44`). */
+  const countLookup: ReferenceSource = {
+    entries:
+      countList?.counts.map((count) => ({
+        value: String(count.inventoryCountId),
+        label: `${count.inventoryCountNo} · ${count.plannedDate}`,
+        isActive: true,
+      })) ?? [],
+    isError: counts.isError,
+    isLoading: counts.isPending,
+    truncated: countList?.truncated ?? false,
+  };
+
+  /**
+   * 고른 전표의 실사 참조 이름 — **없는 것과 못 푼 것을 가른다.**
+   *
+   * 참조가 아예 없는 전표는 「—」다(조심 ⑤ · C43) — 원천이 셋이고 둘은 실사를 거치지 않는다.
+   */
+  const historyCountName =
+    historyDetailData === undefined || historyDetailData.summary.inventoryCountId === null
+      ? t.values.empty
+      : describeReference(toReference(countLookup, historyDetailData.summary.inventoryCountId));
+
+  /**
+   * 처리 이력 탭의 내용 — **이미 만들어진 조정을 되찾는 자리**다.
+   *
+   * ⛔ **승인·반려 조작이 없다**(조심 ① · D-3 · C42). 되찾아 읽는 자리이고, 결재는 결재함이
+   * 소유한다 — 화면 위의 안내가 그 자리를 가리킨다(두 탭에 함께 걸린다).
+   *
+   * **아래 구획의 갈래가 넷이다** — 찾을 수 없었다 · 아직 고르지 않았다 · 불러오는 중 · 상세.
+   * 첫 갈래를 따로 두는 이유는 주소에서 고른 값을 지우고 나면 화면이 그 사정을 말할 근거를
+   * 잃기 때문이다(둘째 갈래와 글자가 같아진다).
+   */
+  const historyTabContent = (
+    <>
+      <section className="pane" aria-label={t.panes.history}>
+        <HistoryFilterBar
+          appliedFilters={historyFilters}
+          chipNames={{
+            count: describeReference(
+              toReference(
+                countLookup,
+                historyFilters.count === '' ? null : Number(historyFilters.count),
+              ),
+            ),
+          }}
+          countOptions={countOptions}
+          reasonOptions={codeOptions.reason}
+          statusOptions={codeOptions.status}
+          countNote={countList?.truncated === true ? t.lookups.truncated : undefined}
+          isLocked={isNavigationLocked}
+          onSearch={(nextFilters) => {
+            applyHistoryQuery(nextFilters);
+          }}
+          onRemoveFilter={(key: RemovableAdjustmentChipKey) => {
+            applyHistoryQuery(clearAdjustmentFilter(historyFilters, key));
+          }}
+          onReset={() => {
+            applyHistoryQuery(DEFAULT_ADJUSTMENT_FILTERS);
+          }}
+        />
+
+        {historyList.isError ? (
+          <LoadErrorBanner
+            error={historyList.error}
+            onRetry={() => {
+              void historyList.refetch();
+            }}
+          />
+        ) : (
+          <>
+            <HistoryTable
+              rows={historyRows}
+              isLoading={historyList.isPending}
+              isBeyondLast={historyPageView.isBeyondLast}
+              selectedAdjustmentId={selectedAdjustmentId}
+              countLookup={countLookup}
+              isLocked={isNavigationLocked}
+              onFirstPage={() => {
+                applyHistoryQuery(historyFilters);
+              }}
+              onToggleSelect={toggleSelectAdjustment}
+            />
+
+            {!historyList.isPending && (
+              <PageNav
+                view={historyPageView}
+                isLocked={isNavigationLocked}
+                onChange={(nextPage) => {
+                  applyHistoryQuery(historyFilters, nextPage);
+                }}
+              />
+            )}
+          </>
+        )}
+      </section>
+
+      <section className="pane" aria-label={t.panes.historyDetail}>
+        {hasHistoryNotFoundNotice && selectedAdjustmentId === null && (
+          <EmptyState
+            size="sm"
+            live
+            title={t.empty.historyNotFoundTitle}
+            description={t.empty.historyNotFoundDescription}
+          />
+        )}
+
+        {!hasHistoryNotFoundNotice && selectedAdjustmentId === null && (
+          <EmptyState
+            size="sm"
+            title={t.empty.historyNoSelectionTitle}
+            description={t.empty.historyNoSelectionDescription}
+          />
+        )}
+
+        {selectedAdjustmentId !== null && historyDetailData === undefined && (
+          <div role="status" aria-label={t.loading.adjustmentDetail}>
+            <SkeletonText lines={3} />
+          </div>
+        )}
+
+        {historyDetailData !== undefined && (
+          <HistoryDetailPane
+            detail={historyDetailData}
+            countName={historyCountName}
+            itemLookup={items}
+            uomLookup={uoms}
+            lotLookup={lots}
+            /*
+             * **위치는 이 셋에 들지 않는다** — 이력 상세에는 위치 열이 없다(창고를 알 통로가
+             * 없어 이름을 풀 수 없다). 등록 탭의 넷을 그대로 쓰면 **이 구획에 있지도 않은
+             * 참조의 실패**로 안내가 서고, 복구를 눌러도 이 표에는 아무 변화가 없다.
+             */
+            hasReferenceError={hasHistoryReferenceError}
+            onRetryReferences={retryHistoryReferences}
+          />
+        )}
+      </section>
+    </>
+  );
+
+  /**
+   * 탭 둘. **활성 탭의 `content`에만 내용을 담는다.**
+   *
+   * 디자인 시스템 `Tabs`는 패널을 전부 렌더하고 비활성만 감춘다(전례 실측) — 두 패널에 내용을
+   * 두면 숨은 탭의 표가 접근성 트리에 남고, 이름으로 집는 조작·시험이 숨은 글자를 잡는다.
+   *
+   * **보고 있는 탭은 잠그지 않는다** — 자기 자신을 누르는 것은 아무 일도 하지 않고, 잠그면
+   * 탭 줄 전체가 죽은 것처럼 보인다.
+   */
+  const tabItems: TabItem[] = [
+    {
+      value: 'register',
+      label: tabLabel('register'),
+      content: isRegisterTab ? registerTabContent : null,
+      disabled: isNavigationLocked && !isRegisterTab,
+    },
+    {
+      value: 'history',
+      label: tabLabel('history'),
+      content: isHistoryTab ? historyTabContent : null,
+      disabled: isNavigationLocked && !isHistoryTab,
+    },
+  ];
+
+  return (
+    <>
+      <PageHeader
+        title={t.title}
+        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+      />
+
+      {/*
+       * ⭐ **범위 안내는 늘 선다**(조심 ③ · C13). 이 화면을 「잔량을 고치는 화면」으로 읽는 것이
+       * 여기서 가장 비싼 오해라, 맥락 유무로 접으면 정작 그렇게 읽는 사람이 읽지 못한다.
+       *
+       * **탭 위에 둔다** — 두 탭에 함께 걸리는 사실이다.
+       */}
+      <div className="banner-slot">
+        <AlertBanner variant="info" title={t.scope.title}>
+          {t.scope.description}
+        </AlertBanner>
+      </div>
+
+      {/*
+       * ⛔ **승인 대기 탭을 두지 않는다**(조심 ① · D-3 · C42). 결재는 결재함이 소유한다 —
+       * 이 안내가 그 자리를 가리키므로 사용자가 여기서 승인 버튼을 찾지 않는다.
+       *
+       * **탭 위에 둔다.** 한 탭 안에 두면 다른 탭에서는 그 사실이 사라지는데, 승인·반려를
+       * 찾게 되는 자리는 오히려 **이력 탭**이다(지난 조정의 상태가 거기 보인다).
+       */}
+      <div className="banner-slot">
+        <AlertBanner variant="info" title={t.approvalNotice.title}>
+          {t.approvalNotice.description}
+        </AlertBanner>
+      </div>
+
+      <Tabs aria-label={t.tabs.label} items={tabItems} value={tab} onChange={changeTab} />
+
+      {/*
+       * ⭐ **확인 창은 자기 탭에서만 선다.** 세 창 모두 등록 탭의 조작이라, 뒤로가기로 탭이
+       * 바뀌었는데 창이 그대로 서 있으면 **보이지 않는 자리의 값을 확인하는 창**이 된다.
+       *
+       * **표시(`pending`)를 지우지는 않는다** — 탭이 바뀐 것이 그 조작을 취소한 것은 아니다.
+       * 되돌아오면 같은 창이 다시 선다(읽는 자리에서 판정한다 — D-15의 규율 그대로).
+       */}
+      {isRegisterTab && pending === 'register' && (
         <RegisterConfirmDialog
           summary={registerSummary()}
           isSaving={register.isSaving}
@@ -2058,7 +2564,7 @@ export const StockAdjustScreen = () => {
         />
       )}
 
-      {pending === 'submit' && boundRegister?.created != null && (
+      {isRegisterTab && pending === 'submit' && boundRegister?.created != null && (
         <SubmitConfirmDialog
           summary={submitSummary(boundRegister.created)}
           isSaving={isSubmitting}
@@ -2082,24 +2588,27 @@ export const StockAdjustScreen = () => {
        * 등록이 살아 있고, **이 전표를 위해 연 자리가 펼쳐져 있다.** 대상이 바뀌면 뒤의 둘이
        * 함께 무너지므로, 열려 있던 창이 **남의 전표의 값을 되보인 채** 서 있는 길이 없다.
        */}
-      {pending === 'post' && boundRegister?.created != null && postPanelState.isExpanded && (
-        <PostConfirmDialog
-          summary={postSummary(boundRegister.created)}
-          isSaving={isPosting}
-          banner={postFailureSlot()}
-          onConfirm={confirmPost}
-          /*
-           * 등록·상신 확인 창과 같은 규율이다 — Escape로 닫히는 길은 디자인 시스템이 막을
-           * 수단을 주지 않으므로, **닫혀도 나가는 요청이 무너지지 않게** 한다(여기서 `reset`을
-           * 부르지 않는다). 응답은 그대로 도착해 매임을 지나 전기 구획에 선다.
-           */
-          onClose={() => {
-            setPending(null);
-          }}
-        />
-      )}
+      {isRegisterTab &&
+        pending === 'post' &&
+        boundRegister?.created != null &&
+        postPanelState.isExpanded && (
+          <PostConfirmDialog
+            summary={postSummary(boundRegister.created)}
+            isSaving={isPosting}
+            banner={postFailureSlot()}
+            onConfirm={confirmPost}
+            /*
+             * 등록·상신 확인 창과 같은 규율이다 — Escape로 닫히는 길은 디자인 시스템이 막을
+             * 수단을 주지 않으므로, **닫혀도 나가는 요청이 무너지지 않게** 한다(여기서 `reset`을
+             * 부르지 않는다). 응답은 그대로 도착해 매임을 지나 전기 구획에 선다.
+             */
+            onClose={() => {
+              setPending(null);
+            }}
+          />
+        )}
 
-      {pending === 'discard' && (
+      {isRegisterTab && pending === 'discard' && (
         <DiscardConfirmDialog
           isSaving={register.isSaving}
           onConfirm={confirmDiscard}

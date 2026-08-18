@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   adjustmentDetailBody,
+  adjustmentSummaryBody,
   countResponse,
   countVarianceLineResponse,
   postedAdjustmentBody,
@@ -10,6 +11,9 @@ import {
 import {
   emptyHeaderDraft,
   formatDateTime,
+  toAdjustmentDetailView,
+  toAdjustmentLineView,
+  toAdjustmentSummaryView,
   isHeaderEdited,
   readableName,
   toCountOptionView,
@@ -309,5 +313,103 @@ describe('formatDateTime', () => {
   /** **형식이 아니면 원문을 그대로 낸다** — 「—」로 바꾸면 없는 것과 못 알아본 것이 같아진다. */
   it('알아보지 못하는 값은 원문 그대로 낸다', () => {
     expect(formatDateTime('알 수 없는 값')).toBe('알 수 없는 값');
+  });
+});
+
+/**
+ * 처리 이력의 한 줄 — **이미 만들어진 조정 전표 하나**다.
+ *
+ * 등록 결과 타입과 **갈라 둔다**: 저쪽은 「이 화면이 방금 만들었다」이고 이쪽은 「서버에 이렇게
+ * 남아 있다」이다. 그래서 **이쪽만** 전기 시각과 실사 참조를 든다.
+ */
+describe('toAdjustmentSummaryView', () => {
+  it('서버가 준 값을 그대로 옮긴다', () => {
+    expect(
+      toAdjustmentSummaryView(
+        adjustmentSummaryBody({
+          inventoryCountId: 9101,
+          adjustedAt: '2026-08-18T14:05:00+09:00',
+          erpMessageQueued: true,
+        }),
+      ),
+    ).toEqual({
+      inventoryAdjustmentId: 9301,
+      inventoryAdjustmentNo: 'SAMPLE-IA-9301',
+      inventoryCountId: 9101,
+      reasonCode: 'SAMPLE_AR_A',
+      statusCode: 'SAMPLE_IA_STATUS_A',
+      adjustedAt: '2026-08-18T14:05:00+09:00',
+      erpMessageQueued: true,
+    });
+  });
+
+  /**
+   * ⭐ 조심 ⑤의 자리 — **실사 참조가 없는 것이 정상이다**(원천이 셋). 값의 유무를 여기서 한
+   * 번에 갈라 두면 그리는 자리가 「없는 것」과 「못 푼 것」을 구분할 수 있다.
+   */
+  it('없이 오는 세 값을 한 자리에서 갈라 둔다', () => {
+    expect(toAdjustmentSummaryView(adjustmentSummaryBody())).toMatchObject({
+      inventoryCountId: null,
+      adjustedAt: null,
+      erpMessageQueued: null,
+    });
+  });
+
+  /** **거짓과 없음을 접지 않는다** — 계약이 ERP 적재를 선택으로 두었다. */
+  it('ERP 적재의 거짓과 없음을 가른다', () => {
+    expect(
+      toAdjustmentSummaryView(adjustmentSummaryBody({ erpMessageQueued: false })),
+    ).toMatchObject({ erpMessageQueued: false });
+  });
+});
+
+describe('toAdjustmentLineView', () => {
+  it('줄번호와 수량을 서버가 준 값 그대로 옮긴다', () => {
+    const [line] = adjustmentDetailBody().lines;
+
+    expect(line === undefined ? null : toAdjustmentLineView(line)).toEqual({
+      inventoryAdjustmentLineId: 9311,
+      lineNo: 1,
+      itemId: 9501,
+      lotId: 9701,
+      uomId: 9601,
+      adjustmentQty: -20,
+    });
+  });
+
+  /**
+   * **위치와 라인 사유를 담지 않는다.** 위치는 창고를 알아야 이름을 풀 수 있는데 조정 전표에
+   * 창고가 없고, 라인 사유는 이 화면이 보내지 않는다(D-7) — 담을 자리가 없으면 그리는 길도 없다.
+   */
+  it('위치와 라인 사유를 담지 않는다', () => {
+    const [line] = adjustmentDetailBody().lines;
+    const view = line === undefined ? {} : toAdjustmentLineView(line);
+
+    expect(Object.keys(view)).toEqual([
+      'inventoryAdjustmentLineId',
+      'lineNo',
+      'itemId',
+      'lotId',
+      'uomId',
+      'adjustmentQty',
+    ]);
+  });
+
+  /** LOT 관리를 하지 않는 품목이 실재한다 — 없는 것을 0으로 메우지 않는다. */
+  it('LOT이 없이 오면 없는 것으로 든다', () => {
+    const [line] = adjustmentDetailBody().lines;
+    const withoutLot = line === undefined ? undefined : { ...line, lotId: null };
+
+    expect(withoutLot === undefined ? null : toAdjustmentLineView(withoutLot).lotId).toBeNull();
+  });
+});
+
+describe('toAdjustmentDetailView', () => {
+  /** **요청 한 번이 머리와 라인을 함께 준다**(C44) — 옮기는 자리도 하나다. */
+  it('머리와 라인을 한 번에 옮긴다', () => {
+    const view = toAdjustmentDetailView(adjustmentDetailBody({ lineCount: 3 }));
+
+    expect(view.summary.inventoryAdjustmentNo).toBe('SAMPLE-IA-9301');
+    expect(view.lines.map((line) => line.lineNo)).toEqual([1, 2, 3]);
   });
 });

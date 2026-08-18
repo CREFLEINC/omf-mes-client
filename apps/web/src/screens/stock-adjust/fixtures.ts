@@ -231,6 +231,50 @@ export const adjustmentDetailBody = (
   };
 };
 
+/**
+ * 처리 이력 목록의 한 줄 — **머리뿐이다**(계약 실측: 목록은 `InventoryAdjustment` 배열).
+ *
+ * **실사 참조가 없는 줄을 기본으로 둔다**(조심 ⑤ · C43). 원천이 셋이고 그중 둘은 실사를
+ * 거치지 않으므로, 있는 쪽을 기본으로 두면 「비어 있는 것이 정상」을 재는 시험이 늘 예외처럼
+ * 보인다.
+ */
+export const adjustmentSummaryBody = (
+  overrides: Partial<components['schemas']['InventoryAdjustment']> = {},
+): components['schemas']['InventoryAdjustment'] => ({
+  inventoryAdjustmentId: 9301,
+  inventoryAdjustmentNo: 'SAMPLE-IA-9301',
+  reasonCode: 'SAMPLE_AR_A',
+  statusCode: 'SAMPLE_IA_STATUS_A',
+  ...overrides,
+});
+
+/**
+ * 이력 목록 세 줄 — **세 갈래가 한 번에 서게** 골랐다.
+ *
+ * | 줄 | 무엇을 재는가 |
+ * | --- | --- |
+ * | 9301 | 실사 참조 없음(「—」 · 경고 없음) · **전기 전**(전기 시각 없음) |
+ * | 9302 | 실사 참조 있음(이름으로 풀린다) · 전기됨 |
+ * | 9303 | 실사 참조 없음 · 전기됨 — 두 축이 서로 매이지 않았음을 잰다 |
+ */
+export const adjustmentListFixtures: components['schemas']['InventoryAdjustment'][] = [
+  adjustmentSummaryBody(),
+  adjustmentSummaryBody({
+    inventoryAdjustmentId: 9302,
+    inventoryAdjustmentNo: 'SAMPLE-IA-9302',
+    inventoryCountId: 9101,
+    statusCode: 'SAMPLE_IA_STATUS_B',
+    adjustedAt: '2026-08-18T14:05:00+09:00',
+    erpMessageQueued: true,
+  }),
+  adjustmentSummaryBody({
+    inventoryAdjustmentId: 9303,
+    inventoryAdjustmentNo: 'SAMPLE-IA-9303',
+    statusCode: 'SAMPLE_IA_STATUS_B',
+    adjustedAt: '2026-08-17T09:30:00+09:00',
+  }),
+];
+
 export interface PostedAdjustmentOverrides {
   /**
    * 전기 시각. **`null`이면 응답에 그 키가 없다** — 계약이 이 값을 nullable로 두었으므로
