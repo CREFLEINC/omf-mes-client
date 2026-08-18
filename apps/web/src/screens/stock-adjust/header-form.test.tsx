@@ -8,9 +8,15 @@ import type { AdjustHeaderDraft, SelectOption } from './types';
 
 const t = messages.stockAdjust;
 
+/**
+ * 사유 선택지 — **고객이 공통코드 마스터에 등록한 값이 온 모양**(#36 회신).
+ *
+ * ⚠ **값 문면에 뜻을 담지 않는다.** 이 폼은 어느 값이 와도 같게 돌아야 하므로, 뜻이 읽히는
+ * 값을 쓰면 그 뜻에 기댄 시험이 슬며시 생긴다.
+ */
 const REASON_OPTIONS: SelectOption[] = [
-  { value: 'SAMPLE_AR_A', label: 'SAMPLE_AR_A' },
-  { value: 'SAMPLE_AR_B', label: 'SAMPLE_AR_B' },
+  { value: 'SYN-RSN-ALPHA', label: 'SYN-RSN-ALPHA · 합성 사유 가' },
+  { value: 'SYN-RSN-OMEGA', label: 'SYN-RSN-OMEGA · 합성 사유 나' },
 ];
 
 const VALUES: AdjustHeaderDraft = { reasonCode: '', sendToErp: true };
@@ -59,10 +65,33 @@ describe('HeaderForm — 계약이 받는 두 값', () => {
     const { onChange, user } = renderForm();
 
     await user.click(screen.getByLabelText(t.fields.reasonCode));
-    await user.click(screen.getByRole('option', { name: 'SAMPLE_AR_A' }));
+    await user.click(screen.getByRole('option', { name: REASON_OPTIONS[0]?.label }));
 
-    expect(onChange).toHaveBeenCalledWith({ reasonCode: 'SAMPLE_AR_A' });
+    expect(onChange).toHaveBeenCalledWith({ reasonCode: 'SYN-RSN-ALPHA' });
   });
+
+  /**
+   * ⭐ **값 문면에 갈래가 없다**(#36 회신 ③). 어느 코드가 와도 같은 자리에 서고 같은 값이
+   * 올라간다 — 화면이 특정 값을 알아보면 고객이 값을 바꾸는 날 조용히 다르게 돈다.
+   */
+  it.each(['SYN-RSN-ALPHA', 'COUNT_VARIANCE', '0', 'false', '합성'])(
+    '임의 코드 %s도 같게 다뤄진다',
+    async (code) => {
+      const { onChange, user } = renderForm(
+        {},
+        { reasonOptions: [{ value: code, label: `${code} · 합성 사유` }] },
+      );
+
+      const field = screen.getByLabelText(t.fields.reasonCode);
+
+      expect(field).toBeEnabled();
+
+      await user.click(field);
+      await user.click(screen.getByRole('option', { name: `${code} · 합성 사유` }));
+
+      expect(onChange).toHaveBeenCalledWith({ reasonCode: code });
+    },
+  );
 
   /** ⭐ **기본값이 켬이다**(D-11) — 계약 기본값과 같다. */
   it('ERP 송신이 켠 채로 보인다', () => {
@@ -96,33 +125,44 @@ describe('HeaderForm — 계약이 받는 두 값', () => {
   });
 });
 
-describe('HeaderForm — 값 목록이 아직 비어 있다', () => {
+describe('HeaderForm — 선택지가 0건일 때', () => {
   /**
-   * **자리표시 상태**(D-9 · 미결 #64 · C10·C17의 절반).
+   * ⛔ **「목록 준비 중」도 비활성도 없다**(#36 회신 ④).
    *
-   * 선택칸은 서고 고를 것이 없다. 무엇이 막혔는지는 보조 문구가 말하고, 등록 잠금 사유가
-   * 조작 자리에서 그 사실을 다시 밝힌다.
+   * 선택지가 0건인 것은 **고객의 마스터가 아직 그렇다**는 사실이고, 화면이 그것을 미완성으로
+   * 말할 근거가 없다. 칸은 그대로 서고 잠기지 않는다 — 그 사이에 고객이 값을 넣으면 곧바로
+   * 고를 수 있어야 한다.
    */
-  it('선택지가 0건이어도 칸은 서고 사유가 보조 문구로 붙는다', async () => {
-    const { user } = renderForm({}, { reasonOptions: [], reasonNote: t.notes.reasonCodePending });
+  it('선택지가 0건이어도 칸은 서고 잠기지 않는다', async () => {
+    const { user } = renderForm({}, { reasonOptions: [] });
 
     const field = screen.getByLabelText(t.fields.reasonCode);
 
     expect(field).toBeInTheDocument();
-    expect(screen.getByText(t.notes.reasonCodePending)).toBeVisible();
+    expect(field).toBeEnabled();
 
     await user.click(field);
 
     expect(screen.queryAllByRole('option')).toHaveLength(0);
   });
 
-  /** 짝 방향 — 값이 오면 그대로 고를 수 있다. 자리표시가 죽은 가지가 아니라는 증거다. */
-  it('값 목록이 채워지면 그 선택지가 그대로 선다', async () => {
+  /** 짝 방향 — 값이 오면 그대로 고를 수 있다. */
+  it('값이 오면 그 선택지가 그대로 선다', async () => {
     const { user } = renderForm();
 
     await user.click(screen.getByLabelText(t.fields.reasonCode));
 
     expect(screen.getAllByRole('option')).toHaveLength(2);
+  });
+
+  /**
+   * ⭐ **말하는 것은 선택지의 한계 둘뿐이다** — 불러오지 못했다 · 앞쪽 일부만 받았다.
+   * 그 둘은 다섯 참조와 같은 문구를 쓴다(`lookupNote`).
+   */
+  it('선택지의 한계는 보조 문구로 밝힌다', () => {
+    renderForm({}, { reasonOptions: [], reasonNote: t.lookups.failed });
+
+    expect(screen.getByText(t.lookups.failed)).toBeVisible();
   });
 });
 

@@ -20,7 +20,8 @@ import type {
  *
  * **내부 번호(FK)는 서로 겹치지 않는 대역으로 나눈다** — 9100대(실사·실사 라인) ·
  * 9200대(창고) · **9300대(조정 전표)** · 9400대(위치) · 9500대(품목) · 9600대(단위) ·
- * 9700대(자재 LOT) · **9800대(승인 요청·결재자)**. 「화면 어디에도 내부 번호가 렌더되지
+ * 9700대(자재 LOT) · **9800대(승인 요청·결재자)** · **9900대(공통코드 그룹·코드값)**.
+ * 「화면 어디에도 내부 번호가 렌더되지
  * 않는다」를 검사할 때 줄번호·수량 같은 정상 숫자와 헷갈리지 않게 하기 위해서다.
  */
 
@@ -485,3 +486,45 @@ export const uomFixtures = [
 
 /** 자재 LOT은 **품목마다 따로 받는다** — 계약에 번호 목록으로 받는 조건이 없다. */
 export const lotFixtures = [{ lotId: 9701, lotNo: 'SAMPLE-LOT-0001', itemId: 9501 }];
+
+/**
+ * 조정 사유 코드 그룹 — **화면이 그룹코드로 찾아 여는 그룹 하나**(#36 회신).
+ *
+ * 그룹코드가 겹치는 이웃 그룹을 앞에 둔다. 그룹 조회의 검색이 부분 일치라 이런 그룹이 실제로
+ * 함께 오고, 「정확히 일치하는 것만 고른다」·「첫 항목으로 대신하지 않는다」는 그때만 재진다.
+ */
+export const reasonGroupFixtures = [
+  {
+    codeGroupId: 9902,
+    groupCode: 'ADJUST_REASON_SYN_OTHER',
+    groupName: '합성 이웃 그룹',
+    isActive: true,
+  },
+  { codeGroupId: 9901, groupCode: 'ADJUST_REASON', groupName: '합성 조정 사유', isActive: true },
+];
+
+/**
+ * 조정 사유 코드값 — **고객이 마스터에 등록하는 값**이라 여기 있는 것은 순전히 합성값이다.
+ *
+ * ⚠ **값 문면에 뜻을 담지 않는다.** 화면은 어느 값이 와도 같게 돌아야 하므로(#36 회신 ③),
+ * 뜻이 읽히는 값을 쓰면 그 뜻에 기댄 시험이 슬며시 생긴다. 계약의 `@example`(`COUNT_VARIANCE`)도
+ * 심지 않는다 — 목이 채워 준 값과 화면이 만든 값이 구분되지 않는다.
+ */
+export const reasonCodeValueFixtures = [
+  {
+    codeValueId: 9911,
+    codeGroupId: 9901,
+    code: 'SYN-RSN-ALPHA',
+    codeName: '합성 사유 가',
+    displayOrder: 1,
+    isActive: true,
+  },
+  {
+    codeValueId: 9912,
+    codeGroupId: 9901,
+    code: 'SYN-RSN-OMEGA',
+    codeName: '합성 사유 나',
+    displayOrder: 2,
+    isActive: true,
+  },
+];

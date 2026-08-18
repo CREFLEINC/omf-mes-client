@@ -27,12 +27,15 @@ export type ApprovalStepResponse = components['schemas']['ApprovalStep'];
 export type PageMeta = components['schemas']['PageMeta'];
 
 /**
- * 값 목록이 확정되지 않은 코드(D-9 · 미결 #64).
+ * 값 목록이 확정되지 않은 코드(D-9 개정 · 미결 #64).
  *
- * **둘이다** — 헤더 사유(등록 필수 · 이력 조건)와 전표 상태(이력 조건). 상태는 등록에서
- * 받지 않고(서버가 정한다) **이력을 좁히는 조건으로만** 쓰인다.
+ * **하나다** — 전표 상태(이력 조건). 상태는 등록에서 받지 않고(서버가 정한다) **이력을
+ * 좁히는 조건으로만** 쓰인다. 값에 전이·분기가 걸려 설계가 정해서 내려 준다.
+ *
+ * ⭐ **조정 사유가 여기서 빠졌다** — 고객이 공통코드 마스터에 등록하는 값으로 결정돼
+ * (#36 회신) 실행 시점 조회로 바뀌었다(`reason-options.ts`).
  */
-export type StockAdjustCodeKey = 'reason' | 'status';
+export type StockAdjustCodeKey = 'status';
 
 /**
  * 원천으로 고를 수 있는 실사 하나.

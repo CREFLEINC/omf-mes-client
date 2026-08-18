@@ -25,11 +25,7 @@ import {
 } from './approval-progress';
 import { ApprovalProgressPane, type ApprovalProgressState } from './approval-progress-pane';
 import { toBookQty, type BookQtyState } from './balances';
-import {
-  isReasonCodeListPending,
-  PLACEHOLDER_STOCK_ADJUST_CODES,
-  toCodeOptionSets,
-} from './code-options';
+import { PLACEHOLDER_STOCK_ADJUST_CODES, toCodeOptionSets } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { readInventoryCountId, withInventoryCountId, withoutInventoryCountId } from './entry';
 import { HeaderForm } from './header-form';
@@ -93,6 +89,7 @@ import {
   useStockAdjustments,
 } from './queries';
 import { readReason, toApprovalRequest } from './reason-draft';
+import { useAdjustReasonLookup } from './reason-options';
 import { RegisterConfirmDialog, type RegisterSummary } from './register-confirm-dialog';
 import { ResultPane, type SubmitPhase } from './result-pane';
 import { applySourceChange, initialSourceKind, type AdjustSourceKind } from './source';
@@ -449,6 +446,14 @@ export const StockAdjustScreen = () => {
   };
 
   const warehouses = useWarehouseLookup();
+
+  /**
+   * 조정 사유 선택지 — **첫 진입에 부른다**(#36 회신 · `reason-options.ts`).
+   *
+   * **두 탭이 같은 목록을 쓴다** — 등록 헤더의 사유 칸과 이력 조건의 사유 칸이다. 탭마다
+   * 부르면 같은 목록을 두 번 받고, 두 칸의 선택지가 서로 다른 시점의 것이 될 수 있다.
+   */
+  const reasonLookup = useAdjustReasonLookup();
 
   const chosenCount =
     countList?.counts.find((count) => count.inventoryCountId === urlCountId) ?? null;
@@ -1227,13 +1232,22 @@ export const StockAdjustScreen = () => {
     })) ?? [];
 
   /**
-   * 값 목록이 확정되지 않은 코드(D-9).
+   * 값 목록이 확정되지 않은 코드 — **이제 상태 하나뿐이다**(D-9 개정).
    *
    * **컴포넌트 안에서 옮긴다** — 모듈 수준에 두면 값 목록이 채워지는 날 그 시점의 배열이
    * 얼어붙고, 이 화면이 「채우면 저절로 살아나는 자리」라는 사실이 깨진다.
    */
   const codeOptions = toCodeOptionSets(PLACEHOLDER_STOCK_ADJUST_CODES);
-  const isReasonPending = isReasonCodeListPending(codeOptions);
+
+  /**
+   * 조정 사유 선택지 — **두 탭이 같은 목록을 쓴다**(등록 헤더 · 이력 조건).
+   *
+   * 다섯 참조와 같은 자리에서 옮기고 같은 자리에서 사정을 말한다(`toSelectOptions`·`lookupNote`) —
+   * 화면이 말하는 것은 **불러오지 못했다**와 **일부만 받았다** 둘뿐이고, ⛔ 「목록 준비 중」은
+   * 여기 없다(#36 회신 ④).
+   */
+  const reasonOptions = toSelectOptions(reasonLookup);
+  const reasonNote = lookupNote(reasonLookup);
 
   /**
    * **매임이 끊긴 채 만들어진 전표들** — 그 사실은 감추지 않는다.
@@ -1515,8 +1529,12 @@ export const StockAdjustScreen = () => {
 
     if (locked !== null) return locked;
 
-    /* ② 고쳐도 풀리지 않는 사정 둘. */
-    if (isReasonPending) return t.actionReasons.registerReasonPending;
+    /*
+     * ② 고쳐도 풀리지 않는 사정.
+     *
+     * ⭐ **사유 값 목록이 여기서 빠졌다**(#36 회신). 목록은 고객이 공통코드 마스터에서 정하는
+     * 것이라 화면이 앞서 막을 근거가 없다 — 남은 것은 「아직 안 골랐다」뿐이고 그것은 ③이다.
+     */
     if (isVarianceTruncated) return t.actionReasons.registerVarianceTruncated;
 
     /* ③ 지금 고칠 수 있는 것들. */
@@ -2229,13 +2247,12 @@ export const StockAdjustScreen = () => {
       <section className="pane" aria-label={t.panes.register}>
         <HeaderForm
           values={header}
-          reasonOptions={codeOptions.reason}
+          reasonOptions={reasonOptions}
           /*
-           * **값 목록이 비어 있는 동안 무엇이 막히는지 그 칸에서 밝힌다**(D-9 · C10).
-           * 왜 잠겼는지는 아래 조작 자리가 따로 말한다 — 칸은 「고를 것이 없다」를, 버튼은
-           * 「그래서 등록이 막혔다」를 말한다.
+           * **선택지의 한계만 그 칸에서 밝힌다**(불러오기 실패 · 잘림). ⛔ 0건인 것은
+           * 고객의 마스터가 아직 그렇다는 사실이라 「준비 중」으로 말하지 않는다(#36 회신 ④).
            */
-          reasonNote={isReasonPending ? t.notes.reasonCodePending : undefined}
+          reasonNote={reasonNote}
           /* 남의 초안의 서버 오류가 이 칸에 서지 않는다(C28 · 매임). */
           fieldErrors={boundRegister === null ? {} : register.fieldErrors}
           isLocked={isFormLocked}
@@ -2534,7 +2551,8 @@ export const StockAdjustScreen = () => {
             ),
           }}
           countOptions={countOptions}
-          reasonOptions={codeOptions.reason}
+          reasonOptions={reasonOptions}
+          reasonNote={reasonNote}
           statusOptions={codeOptions.status}
           countNote={countList?.truncated === true ? t.lookups.truncated : undefined}
           isLocked={isNavigationLocked}
