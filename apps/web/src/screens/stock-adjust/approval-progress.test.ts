@@ -6,6 +6,7 @@ import {
   REJECTION_DECISION_CODES,
   isApprovalJudgePending,
   isApproved,
+  readPosting,
   readSubmission,
   toRequestProgressView,
   toStepProgressViews,
@@ -73,6 +74,66 @@ describe('readSubmission', () => {
    */
   it.each([0, -3, 1.5, Number.NaN])('조회 조각으로 쓸 수 없는 값 %o은 부르지 않는다', (raw) => {
     expect(readSubmission(raw)).toEqual({ kind: 'unusable' });
+  });
+});
+
+/**
+ * ⭐ 전기 여부는 **`adjustedAt`이 있는가**로 읽는다 — 상태 코드 문자열을 비교하지 않는다
+ * (공유계약 G-2 · D-13 · C35). 상신 판정과 **같은 형태**라 두 축의 규율이 한 파일에서 읽힌다.
+ */
+describe('readPosting', () => {
+  it('전기 응답을 받은 적이 없으면 전기되지 않은 것이다', () => {
+    expect(readPosting(null)).toEqual({ kind: 'notPosted' });
+  });
+
+  it('전기 시각이 오면 그 시각을 읽어 보인다', () => {
+    expect(
+      readPosting({ adjustedAt: '2026-08-18T14:05:00+09:00', statusCode: 'SAMPLE_IA_STATUS_B' }),
+    ).toEqual({
+      kind: 'posted',
+      at: { kind: 'known', text: '2026-08-18 14:05' },
+      statusCode: 'SAMPLE_IA_STATUS_B',
+    });
+  });
+
+  /**
+   * ⭐ **셋째 갈래를 없애면 둘 중 하나가 거짓이 된다.**
+   *
+   * 200을 받았는데 「전기되지 않았다」로 접으면 **재고가 움직였는데 안 움직였다고** 말하게
+   * 되고, 시각이 온 것처럼 그리면 없는 값을 지어낸다. 계약이 `adjustedAt`을 nullable로 두어
+   * 이 갈래가 실재한다.
+   */
+  it.each([null, '', '   '])('전기 시각이 %o으로 오면 전기됐되 시각을 모른다', (raw) => {
+    expect(readPosting({ adjustedAt: raw, statusCode: 'SAMPLE_IA_STATUS_B' })).toEqual({
+      kind: 'posted',
+      at: { kind: 'unknown' },
+      statusCode: 'SAMPLE_IA_STATUS_B',
+    });
+  });
+
+  /**
+   * ⭐ **상태 코드가 판정을 바꾸지 않는다**(C35 · 뮤테이션이 겨누는 자리).
+   *
+   * 값 목록이 확정되지 않아 어떤 글자가 「전기됨」인지 화면이 알 수 없다 — 그 글자로 갈리는
+   * 순간 조용히 틀린다.
+   */
+  it.each(['SAMPLE_IA_STATUS_A', 'SAMPLE_IA_STATUS_B', '', 'POSTED'])(
+    '상태 코드가 %o이어도 전기 판정이 달라지지 않는다',
+    (statusCode) => {
+      expect(readPosting({ adjustedAt: '2026-08-18T14:05:00+09:00', statusCode }).kind).toBe(
+        'posted',
+      );
+      expect(readPosting(null).kind).toBe('notPosted');
+    },
+  );
+
+  /** 형식이 아닌 값은 **원문을 그대로 낸다** — 화면이 서버가 보낸 값을 삼키지 않는다. */
+  it('알아보지 못하는 시각은 원문 그대로 낸다', () => {
+    expect(readPosting({ adjustedAt: '어제 오후', statusCode: 'SAMPLE_IA_STATUS_B' })).toEqual({
+      kind: 'posted',
+      at: { kind: 'known', text: '어제 오후' },
+      statusCode: 'SAMPLE_IA_STATUS_B',
+    });
   });
 });
 

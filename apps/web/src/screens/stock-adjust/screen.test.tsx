@@ -23,6 +23,7 @@ import {
   itemFixtures,
   locationFixtures,
   lotFixtures,
+  postedAdjustmentBody,
   uomFixtures,
   warehouseFixtures,
 } from './fixtures';
@@ -2334,12 +2335,18 @@ describe('StockAdjustScreen — 등록 성공', () => {
       within(pane).queryByText(t.result.submittedTitle('SAMPLE-IA-9301')),
     ).not.toBeInTheDocument();
     expect(within(pane).queryByText(t.result.submitting)).not.toBeInTheDocument();
-    /* 이 구획의 조작은 상신 하나다 — 전기는 뒤따르는 회차가 제 확인 창과 함께 세운다. */
+    /*
+     * 이 구획의 조작은 **상신 하나**다 — 전기는 **형제 구획**이 제 확인 창과 함께 세운다.
+     * (전기 회차에 **사실만 갱신**했다: 앞 회차의 「전기는 아직 없다」가 「전기는 여기 없다」가
+     * 됐고, 판정 강도는 그대로다.)
+     */
     expect(
       within(pane)
         .getAllByRole('button')
         .map((button) => button.textContent),
     ).toEqual([t.actions.requestApproval]);
+    /* 등록만으로는 「전기했습니다」도 서지 않는다 — 그 근거는 200뿐이다. */
+    expect(within(pane).queryByText(t.post.postedTitle('SAMPLE-IA-9301'))).not.toBeInTheDocument();
     for (const id of INTERNAL_IDS) {
       expect(pane.textContent ?? '').not.toContain(`${id} `);
     }
@@ -2375,6 +2382,40 @@ describe('StockAdjustScreen — 등록 성공', () => {
       requests.filter((request) => request.url.pathname.startsWith('/app/approval-requests')),
     ).toEqual([]);
     expect(screen.queryByRole('group', { name: t.progress.label })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **목이 채워 준 전기 시각으로 「전기했습니다」를 그리지 않는다**(C35 · §5.2.5).
+   *
+   * 목은 등록 201에 `adjustedAt`을 실어 준다 — 그것을 읽어 그리면 **한 번도 전기한 적 없는
+   * 전표가 원장에 잡힌 것처럼** 보이고, 사용자는 이미 움직인 재고로 알고 지나간다.
+   * 전기 여부의 근거는 오직 **이 화면이 받은 200**이다.
+   */
+  it('등록 응답에 전기 시각이 실려 와도 전기됐다고 말하지 않는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(
+      allRoutes([
+        createRoute(
+          adjustmentDetailBody({
+            approvalRequestId: 9801,
+            adjustedAt: '2026-08-18T09:12:00+09:00',
+          }),
+        ),
+      ]),
+    );
+
+    await setupAndRegister(user);
+
+    /* 양성 앵커 — 그 응답이 실제로 도착해 전기 자리가 섰다. */
+    const pane = await screen.findByRole('region', { name: t.post.label });
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.togglePost }));
+
+    expect(within(pane).queryByText(t.post.postedTitle('SAMPLE-IA-9301'))).not.toBeInTheDocument();
+    expect(within(pane).queryByText('2026-08-18 09:12')).not.toBeInTheDocument();
+    /* 전기할 수 있는 상태 그대로다 — 두 칸과 버튼이 선다. */
+    expect(within(pane).getByRole('button', { name: t.actions.post })).toBeEnabled();
   });
 });
 
@@ -3851,5 +3892,1324 @@ describe('StockAdjustScreen — 상신의 매임', () => {
     expect(
       screen.queryByText(t.result.unboundSubmittedNote('SAMPLE-IA-9301')),
     ).not.toBeInTheDocument();
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 전기 — **이 화면에서 재고가 실제로 움직이는 유일한 자리**다.
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+const POST_PATH = '/inventory/adjustments/9301:post';
+const SECOND_POST_PATH = '/inventory/adjustments/9302:post';
+
+const postRoute = (body: unknown = postedAdjustmentBody()): StubRoute => ({
+  match: (request) => isPost(request, POST_PATH),
+  respond: () => jsonResponse(body),
+});
+
+const failingPostRoute = (status: number, body: unknown = { message: '' }): StubRoute => ({
+  match: (request) => isPost(request, POST_PATH),
+  respond: () => jsonResponse(body, { status }),
+});
+
+/** 응답이 아예 오지 않는 갈래 — **재고가 움직였는지 화면이 알 수 없다.** */
+const offlinePostRoute = (): StubRoute => ({
+  match: (request) => isPost(request, POST_PATH),
+  respond: () => {
+    throw new TypeError('Failed to fetch');
+  },
+});
+
+const secondPostRoute = (): StubRoute => ({
+  match: (request) => isPost(request, SECOND_POST_PATH),
+  respond: () => jsonResponse(postedAdjustmentBody({ statusCode: 'SAMPLE_IA_STATUS_C' })),
+});
+
+/** 전기까지 갈 수 있는 경로 한 벌. 갈래마다 바꿀 것만 앞에 얹는다. */
+const postRoutes = (overrides: StubRoute[] = []): StubRoute[] =>
+  allRoutes([
+    ...overrides,
+    etaggedCreateRoute(),
+    detailRoute(),
+    submitRoute(),
+    approvalRoute(),
+    postRoute(),
+  ]);
+
+const postPane = (): HTMLElement => screen.getByRole('region', { name: t.post.label });
+
+const togglePostButton = (): HTMLElement =>
+  within(postPane()).getByRole('button', { name: t.actions.togglePost });
+
+const postButton = (): HTMLElement =>
+  within(postPane()).getByRole('button', { name: t.actions.post });
+
+const confirmPostButton = (): HTMLElement =>
+  screen.getByRole('button', { name: new RegExp(t.actions.confirmPost) });
+
+const businessDateField = (): HTMLElement => within(postPane()).getByLabelText(t.post.businessDate);
+
+const occurredAtField = (): HTMLElement => within(postPane()).getByLabelText(t.post.occurredAt);
+
+const postRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname === POST_PATH);
+
+const lastPostBody = (requests: RecordedRequest[]): Record<string, unknown> =>
+  (postRequests(requests).at(-1)?.body ?? {}) as Record<string, unknown>;
+
+/** 등록까지 끝내 **전기 자리가 선 상태**로 만든다. */
+const registerThenPostReady = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await setupAndRegister(user);
+  await screen.findByRole('region', { name: t.post.label });
+};
+
+/** 접힌 두 번째 선택지를 편다 — **펼쳐야 두 칸과 버튼이 나온다**(D-12). */
+const expandPost = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(togglePostButton());
+  await within(postPane()).findByLabelText(t.post.businessDate);
+};
+
+/** 확인 창을 열고 실행까지 누른다. **두 걸음이 갈려 있어야** 창만 열린 상태도 잴 수 있다. */
+const postAdjustment = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(postButton());
+  await user.click(confirmPostButton());
+};
+
+/**
+ * 오늘 날짜를 **다른 식으로** 만든다 — 제품과 같은 식을 쓰면 자기참조라 아무것도 재지 않는다.
+ * `sv-SE`는 지역 시각을 `YYYY-MM-DD`로 낸다.
+ */
+const localToday = (): string => new Date().toLocaleDateString('sv-SE');
+
+/**
+ * ⭐ **접힌 두 번째 선택지**(D-12 · C33) — 앞자리 주 버튼은 「조정 상신」이고 이 길은 펼쳐야 나온다.
+ *
+ * 결재선이 있는지 화면이 알 통로가 계약에 없어(§5.2.4) **화면이 앞서 판정하지 않는다** —
+ * 틀린 길은 서버가 400으로 막는다.
+ */
+describe('StockAdjustScreen — 전기 자리', () => {
+  it('등록하기 전에는 전기 자리가 없다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await readyToRegister(user);
+
+    /* 짝 양성 — 등록 자리는 실제로 섰다(그 뒤에 없음을 잰다). */
+    expect(registerButton()).toBeEnabled();
+    expect(screen.queryByRole('region', { name: t.post.label })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **접혀 있어도 상시 사유가 선다**(D-12). 이 길이 누구의 것인지 밝히지 않으면 결재선이
+   * 있는 조정도 여기로 오고, 그때 사용자가 만나는 것은 이유를 알 수 없는 400이다.
+   */
+  it('등록하면 접힌 채로 서고 이 길이 누구의 것인지 밝힌다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+
+    expect(within(postPane()).getByText(t.post.onlyWithoutRoute)).toBeVisible();
+    expect(togglePostButton()).toHaveAttribute('aria-expanded', 'false');
+    expect(within(postPane()).queryByLabelText(t.post.businessDate)).not.toBeInTheDocument();
+    expect(
+      within(postPane()).queryByRole('button', { name: t.actions.post }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **두 값이 제출 순간으로 채워진다**(공유계약 C-8·C-1의 기본값).
+   *
+   * 기본값이라 대부분 그대로 지나가고, 자정을 넘겨 일한 사람만 고친다 — 비워 두면 되돌릴 수
+   * 없는 조작 앞에서 사용자가 매번 날짜를 지어내야 한다.
+   */
+  it('펼치면 두 칸이 제출 순간으로 채워진다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+
+    expect(togglePostButton()).toHaveAttribute('aria-expanded', 'true');
+    expect(businessDateField()).toHaveValue(localToday());
+    /* 발생 일시는 분까지라 값을 통째로 견줄 수 없다 — **날짜 조각과 형식**을 잰다. */
+    expect((occurredAtField() as HTMLInputElement).value).toMatch(
+      new RegExp(`^${localToday()}T\\d{2}:\\d{2}$`),
+    );
+  });
+
+  /** 접었다 다시 펴면 **치던 값이 그대로다** — 같은 전표라면 사용자가 버린 적이 없다. */
+  it('접었다 다시 펴도 고친 값이 남는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    fireEvent.change(businessDateField(), { target: { value: '2026-08-17' } });
+
+    await user.click(togglePostButton());
+    await user.click(togglePostButton());
+
+    expect(businessDateField()).toHaveValue('2026-08-17');
+  });
+
+  /**
+   * ⭐⭐ **승인 축으로 잠그지 않는다**(D-13 · C33·C37).
+   *
+   * 자리표시(`APPROVED_APPROVAL_STATUS_CODES`)가 비어 있는 채로 그것을 잠금에 쓰면 이 버튼이
+   * **영영 잠긴다** — 승인 축의 잠금은 서버가 400으로 한다(D-12).
+   */
+  it('승인 판정 자리표시가 비어 있어도 전기가 잠기지 않는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    /* 자리표시가 실제로 비어 있는 것이 이 시험의 전제다. */
+    expect(APPROVED_APPROVAL_STATUS_CODES).toEqual([]);
+    expect(REJECTION_DECISION_CODES).toEqual([]);
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+
+    expect(postButton()).toBeEnabled();
+  });
+
+  /** 상신하지 않은 전표에서도 열려 있다 — 「결재선이 없는 조정」이 이 길의 정상 경로다. */
+  it('상신하지 않은 전표에서도 전기가 열려 있다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+
+    expect(screen.queryByRole('group', { name: t.progress.label })).not.toBeInTheDocument();
+    expect(postButton()).toBeEnabled();
+  });
+
+  /**
+   * ⭐⭐ **상신에 성공한 뒤에도 전기 자리가 남는다** — 이 구획을 결과 구획의 **형제로 둔 근거다.**
+   *
+   * 결과 구획의 사유 칸·버튼·배너는 상신 성공과 함께 걷히는 한 덩어리(`canSubmit`)라, 전기를
+   * 그 안에 얹으면 **상신에 성공한 순간 전기 길이 화면에서 사라진다.** 스펙 §5-6이 전기의 활성
+   * 조건을 「승인 후」로 두었으므로 그것은 정상 경로를 지우는 것이 된다.
+   */
+  it('상신에 성공한 뒤에도 전기 자리가 남는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await submitApproval(user);
+
+    /* 양성 앵커 — 상신이 실제로 성공해 결과 구획의 사유 칸과 버튼이 걷혔다. */
+    await screen.findByText(t.result.submittedTitle('SAMPLE-IA-9301'));
+    expect(
+      within(resultPane()).queryByRole('button', { name: t.actions.requestApproval }),
+    ).not.toBeInTheDocument();
+
+    await expandPost(user);
+
+    expect(postButton()).toBeEnabled();
+  });
+});
+
+/**
+ * ⭐ **전기 요청**(C32) — 상신과 **같은 토큰 원천**을 쓴다(D-14).
+ */
+describe('StockAdjustScreen — 전기 요청', () => {
+  it('상세를 먼저 부르고 그다음 전기한다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    const paths = requests
+      .filter((request) => request.url.pathname.startsWith('/inventory/adjustments'))
+      .map((request) => `${request.method} ${request.url.pathname}`);
+
+    expect(paths.slice(-2)).toEqual([`GET ${DETAIL_PATH}`, `POST ${POST_PATH}`]);
+  });
+
+  /**
+   * ⭐ **상세가 준 토큰이 실린다**(C32 · 뮤테이션 M-3b의 대조군).
+   *
+   * 등록 201이 남긴 토큰은 **컬렉션 경로**에 앉는다 — 두 값을 다르게 두었으므로 컬렉션 쪽을
+   * 집는 구현이면 이 시험이 문다.
+   */
+  it('상세가 준 ETag가 If-Match로 실리고 멱등 키가 함께 간다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    const sent = postRequests(requests)[0];
+
+    expect(sent?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+    expect(sent?.headers.get('If-Match')).not.toBe(COLLECTION_ETAG);
+    expect(sent?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  /**
+   * ⭐⭐ **본문 키 집합이 영업일과 발생 시각 둘이다**(C32 · 뮤테이션 M-3b가 겨누는 자리).
+   *
+   * 영업일이 빠지면 서버가 수신 시각으로 다시 잡아 **날짜 경계에서 멱등이 뚫린다**
+   * (공유계약 C-8) — 그 순간 같은 조정이 두 번 원장에 잡힐 수 있다.
+   */
+  it('본문 키 집합이 영업일과 발생 시각 둘이다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    expect(Object.keys(lastPostBody(requests)).sort()).toEqual(['businessDate', 'occurredAt']);
+  });
+
+  /**
+   * ⭐ **고친 영업일이 그대로 실린다** — 화면이 다시 계산하지 않는다.
+   *
+   * 자정을 넘겨 일한 사람이 어제 자로 고친 값이 실행 시각의 날짜로 덮이면, 그 조정은 **틀린
+   * 영업일로 원장에 남는다**(공유계약 C-8).
+   */
+  it('고친 영업일이 그대로 실리고 발생 시각과 갈린다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    fireEvent.change(businessDateField(), { target: { value: '2026-08-17' } });
+    fireEvent.change(occurredAtField(), { target: { value: '2026-08-18T00:30' } });
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    const body = lastPostBody(requests);
+
+    expect(body.businessDate).toBe('2026-08-17');
+    expect(String(body.occurredAt)).toMatch(/^2026-08-18T00:30:00[+-]\d{2}:\d{2}$/);
+  });
+
+  /** ⛔ 승인 대기 조건을 싣지 않는다(D-3) — 전기 주소에도 그 조건이 없다. */
+  it('전기 주소에 승인 대기 조건이 없다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    for (const request of requests) {
+      expect(request.url.search).not.toContain('pendingApprovalOnly');
+    }
+  });
+});
+
+/**
+ * ⭐ **전기 확인 창**(D-17 · C38) — 재고를 움직이는 조작 앞의 마지막 층이다.
+ */
+describe('StockAdjustScreen — 전기 확인 창', () => {
+  it('전기를 누르면 창이 서고 요청은 아직 나가지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await user.click(postButton());
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(postRequests(requests)).toHaveLength(0);
+  });
+
+  /** 창이 **무엇이 언제 자로 잡히는지**와 「일어나는 일」 세 문장을 함께 되보인다. */
+  it('창이 두 값과 일어나는 일 세 문장을 되보인다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    fireEvent.change(businessDateField(), { target: { value: '2026-08-17' } });
+    fireEvent.change(occurredAtField(), { target: { value: '2026-08-18T00:30' } });
+    await user.click(postButton());
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(within(dialog).getByText('SAMPLE-IA-9301')).toBeVisible();
+    expect(within(dialog).getByText('2026-08-17')).toBeVisible();
+    expect(within(dialog).getByText('2026-08-18T00:30')).toBeVisible();
+    /* 두 날짜가 갈렸다는 사실을 밝히되 막지 않는다(공유계약 C-8). */
+    expect(within(dialog).getByText(t.dialog.postDatesApart)).toBeVisible();
+
+    const effects = within(dialog).getByRole('region', { name: t.post.effectsLabel });
+
+    expect(within(effects).getByText(t.post.effectMovesStock)).toBeVisible();
+    expect(within(effects).getByText(t.post.effectApprovalIsNotPosting)).toBeVisible();
+    expect(within(effects).getByText(t.post.effectNoUndoHere)).toBeVisible();
+  });
+
+  /**
+   * ⭐ **실행을 두 번 눌러도 요청은 한 번이다.**
+   *
+   * 상세 조회와 전기 사이의 틈에서 한 번 더 누르면 연쇄가 두 벌 돌고, 공통 훅이 호출마다 새
+   * 멱등 키를 만들어 그것이 그대로 **재고를 두 번 움직인다.**
+   */
+  it('실행 버튼을 두 번 눌러도 요청은 한 번이다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(postRoutes(), '?count=9101', [POST_PATH]);
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await user.click(postButton());
+    await user.click(confirmPostButton());
+    await user.click(confirmPostButton());
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    release();
+
+    await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'));
+
+    expect(postRequests(requests)).toHaveLength(1);
+  });
+
+  /**
+   * ⭐ **Escape로 닫혀도 나가는 요청이 무너지지 않는다**(3방어의 셋째 축 · `resetIfIdle`).
+   *
+   * 창은 닫힘을 알리기만 하고 되돌리는 일을 하지 않는다 — 응답은 그대로 도착해 매임을 지나
+   * 전기 구획에 선다.
+   */
+  it('전송 중 Escape로 창이 닫혀도 전기 결과가 살아 있다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(postRoutes(), '?count=9101', [POST_PATH]);
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    release();
+
+    expect(await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
+  });
+});
+
+/**
+ * ⭐ **전기 성공**(C35) — 화면이 받은 200이 근거다.
+ */
+describe('StockAdjustScreen — 전기 성공', () => {
+  it('전기했다고 말하고 전기 시각과 상태를 서버가 준 그대로 낸다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    expect(await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(postPane()).getByText('2026-08-18 14:05')).toBeVisible();
+    expect(within(postPane()).getByText('SAMPLE_IA_STATUS_B')).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  /** 전기한 뒤에는 **칠 수 있는데 보낼 수 없는 칸**을 남기지 않는다. */
+  it('전기한 뒤에는 두 칸과 버튼이 걷힌다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'));
+
+    expect(within(postPane()).queryByLabelText(t.post.businessDate)).not.toBeInTheDocument();
+    expect(
+      within(postPane()).queryByRole('button', { name: t.actions.post }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **200은 왔는데 전기 시각이 비어 온 갈래**(계약이 nullable로 두었다).
+   *
+   * 빈 자리로 두면 「불러오지 못한 것」처럼 보이고, 「전기되지 않았다」로 접으면 **움직인
+   * 재고를 안 움직였다고** 말하게 된다.
+   */
+  it('전기 시각이 오지 않아도 전기됐다고 말한다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(
+      allRoutes([
+        etaggedCreateRoute(),
+        detailRoute(),
+        postRoute(postedAdjustmentBody({ adjustedAt: null })),
+      ]),
+    );
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    expect(await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(postPane()).getByText(t.post.adjustedAtUnknown)).toBeVisible();
+  });
+
+  /**
+   * ⭐ **이미 전기한 전표는 결재에 올리지 않는다**(구현 판단 · 근거는 이 화면이 받은 200이다).
+   *
+   * 재고가 이미 움직인 조정에 결재를 올리면 결재함에 **무엇을 승인하는지 없는** 요청이 남는다.
+   * 상태 코드를 읽어 판정하지 않는다(C35).
+   */
+  it('전기한 뒤에는 상신이 잠기고 그 사정을 말한다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'));
+
+    expect(
+      within(resultPane()).getByRole('button', { name: t.actions.requestApproval }),
+    ).toBeDisabled();
+    expect(within(resultPane()).getByText(t.actionReasons.submitAfterPosted)).toBeVisible();
+  });
+
+  /** 등록 사실은 그대로 남는다 — 전기가 그 위를 덮지 않는다(두 사실이 각자 자리에 선다). */
+  it('전기해도 등록 결과 구획은 그대로 남는다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'));
+
+    expect(within(resultPane()).getByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(postPane()).getByText(t.post.bookQtyStale)).toBeVisible();
+  });
+});
+
+/**
+ * **전기가 막힌 사유** — 잠갔으면 사유가 반드시 함께 선다.
+ */
+describe('StockAdjustScreen — 전기가 막힌 사유', () => {
+  it('영업일을 비우면 잠기고 그 칸과 버튼이 사정을 말한다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    fireEvent.change(businessDateField(), { target: { value: '' } });
+
+    expect(postButton()).toBeDisabled();
+    expect(within(postPane()).getByText(t.actionReasons.postDraftInvalid)).toBeVisible();
+    expect(within(postPane()).getByText(t.errors.businessDateRequired)).toBeVisible();
+  });
+
+  it('발생 일시를 비우면 잠기고 그 칸이 사정을 말한다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    fireEvent.change(occurredAtField(), { target: { value: '' } });
+
+    expect(postButton()).toBeDisabled();
+    expect(within(postPane()).getByText(t.errors.occurredAtRequired)).toBeVisible();
+  });
+
+  /**
+   * ⭐ **되돌릴 수 없는 쓰기 둘이 서로를 막는다.** 두 요청이 함께 나가면 재고가 움직이는
+   * 순간과 결재가 시작되는 순간이 겹치고, 어느 쪽이 먼저 닿는지 화면이 알 수 없다.
+   */
+  it('상신을 보내는 중에는 전기가 잠기고 그 사정을 말한다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(postRoutes(), '?count=9101', [SUBMIT_PATH]);
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await submitApproval(user);
+
+    await waitFor(() => {
+      expect(submitRequests(requests)).toHaveLength(1);
+    });
+
+    expect(postButton()).toBeDisabled();
+    expect(within(postPane()).getByText(t.actionReasons.postWhileSubmitting)).toBeVisible();
+
+    release();
+  });
+
+  it('전기를 보내는 중에는 상신이 잠기고 그 사정을 말한다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(postRoutes(), '?count=9101', [POST_PATH]);
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    expect(
+      within(resultPane()).getByRole('button', { name: t.actions.requestApproval }),
+    ).toBeDisabled();
+    expect(within(resultPane()).getByText(t.actionReasons.submitWhilePosting)).toBeVisible();
+
+    release();
+  });
+
+  /** 나가는 중에는 두 칸도 함께 잠근다 — 보낸 값과 화면의 값이 갈리지 않게 한다. */
+  it('전기를 보내는 중에는 두 칸이 잠기고 사유가 보인다', async () => {
+    withReasonCodes();
+
+    const { requests, release, user } = renderScreen(postRoutes(), '?count=9101', [POST_PATH]);
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    expect(businessDateField()).toBeDisabled();
+    expect(occurredAtField()).toBeDisabled();
+    expect(within(postPane()).getByText(t.actionReasons.posting)).toBeVisible();
+
+    release();
+  });
+});
+
+/**
+ * ⭐⭐ **전기 실패**(C34) — 서버 문구를 **그대로** 낸다.
+ *
+ * ⛔ 코드 문자열로 분기하지 않는다(공유계약 G-2 · §5.2.3): 계약이 400에 붙는 `code` 값을 못
+ * 박지 않았고 「승인이 끝나지 않았다」를 뜻하는 코드도 보장되지 않는다.
+ */
+describe('StockAdjustScreen — 전기 실패', () => {
+  const postAndFail = async (
+    user: ReturnType<typeof userEvent.setup>,
+    requests: RecordedRequest[],
+  ): Promise<void> => {
+    await registerThenPostReady(user);
+    await expandPost(user);
+    fireEvent.change(businessDateField(), { target: { value: '2026-08-17' } });
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+  };
+
+  /** 승인 완료 전 전기가 400으로 되돌아오는 갈래(§6 · 계약이 그렇게 적었다). */
+  const approvalPendingRoute = (): StubRoute =>
+    failingPostRoute(400, {
+      errors: [
+        { scope: 'screen', code: 'SAMPLE_ERR_A', message: '승인이 끝나지 않아 전기할 수 없습니다' },
+      ],
+    });
+
+  it('400이면 서버 문구가 창 안에 그대로 서고 두 값이 남는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([etaggedCreateRoute(), detailRoute(), approvalPendingRoute()]),
+    );
+
+    await postAndFail(user, requests);
+
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByText('승인이 끝나지 않아 전기할 수 없습니다')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    /* 입력이 유지된다 — 고쳐 다시 보낼 수 있어야 한다. */
+    expect(businessDateField()).toHaveValue('2026-08-17');
+  });
+
+  /** 전표는 남는다 — 통째로 실패라고 말하면 사용자가 다시 만들어 전표가 두 벌 남는다. */
+  it('전기가 실패해도 전표가 남았다는 사실을 말한다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([etaggedCreateRoute(), detailRoute(), approvalPendingRoute()]),
+    );
+
+    await postAndFail(user, requests);
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    expect(within(postPane()).getByText(t.post.failedTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(within(resultPane()).getByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(postButton()).toBeEnabled();
+  });
+
+  /**
+   * ⭐⭐ **코드가 달라도 같은 자리에 서버 문구가 그대로 선다**(C34 · G-2).
+   *
+   * 코드 문자열로 갈래를 만들면 서버가 코드를 바꾸는 날 **조용히 깨진다** — 화면은 받은 것을
+   * 그대로 보인다.
+   */
+  it.each([
+    ['SAMPLE_ERR_A', '합성 거절 사유 가'],
+    ['ROUTE_NOT_FOUND', '합성 거절 사유 나'],
+  ])('코드가 %s이어도 서버 문구를 그대로 낸다', async (code, message) => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingPostRoute(400, { errors: [{ scope: 'screen', code, message }] }),
+      ]),
+    );
+
+    await postAndFail(user, requests);
+
+    expect(await within(screen.getByRole('dialog')).findByText(message)).toBeVisible();
+  });
+
+  /**
+   * ⭐⭐ **두 칸이 대칭이다**(검증 문제 ② — 「인자 반쪽 베끼기」 지형).
+   *
+   * 앞 회차는 영업일 축만 태웠고, 발생 일시 쪽 걷힘을 지워도 전건 통과했다(뮤테이션 V-8 생존).
+   * 그 축이 깨지면 사용자가 발생 일시를 고쳐도 **낡은 서버 문구와 `aria-invalid`가 칸에 남아**
+   * 무엇을 더 고쳐야 하는지 화면이 거짓으로 말한다. 두 칸을 **같은 잣대로** 함께 문다.
+   */
+  it.each([
+    {
+      field: 'businessDate',
+      message: '영업일이 마감된 기간입니다',
+      fix: (): void => {
+        fireEvent.change(businessDateField(), { target: { value: '2026-08-16' } });
+      },
+      changed: businessDateField,
+    },
+    {
+      field: 'occurredAt',
+      message: '발생 일시가 마감된 기간입니다',
+      fix: (): void => {
+        fireEvent.change(occurredAtField(), { target: { value: '2026-08-16T09:00' } });
+      },
+      changed: occurredAtField,
+    },
+  ])('$field 칸의 400은 그 칸에 붙고 고치면 걷힌다', async ({ field, message, fix, changed }) => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingPostRoute(400, {
+          errors: [{ scope: 'field', field, code: 'SAMPLE_ERR', message }],
+        }),
+      ]),
+    );
+
+    await postAndFail(user, requests);
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    expect(within(postPane()).getByText(message)).toBeVisible();
+    expect(changed()).toHaveAttribute('aria-invalid', 'true');
+
+    fix();
+
+    expect(within(postPane()).queryByText(message)).not.toBeInTheDocument();
+    expect(changed()).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /**
+   * ⭐⭐ **인라인으로 소화된 실패도 실패다**(검증 문제 ①).
+   *
+   * 두 칸의 400은 배너가 아니라 **칸에 붙으므로**(`fieldErrors`) 배너만 보면 「아직 아무 일도
+   * 없었다」로 읽힌다 — 그러면 되돌릴 수 없는 쓰기가 한 번 튕긴 사실이 화면 어디에도 남지
+   * 않고, 사용자는 **전표가 남은 줄 모르고 다시 등록해 전표를 두 벌** 만든다.
+   *
+   * 앞 회차의 실패 시험은 전부 `scope: 'screen'`을 함께 주어 `post.error`가 참이었다 — 그래서
+   * 이 축을 지워도 전건 통과했다(뮤테이션 V-7 생존). **칸 범위 하나뿐인 400**으로 문다.
+   */
+  it('칸 범위 하나뿐인 400에도 전표가 남았다는 사실이 선다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingPostRoute(400, {
+          errors: [
+            {
+              scope: 'field',
+              field: 'businessDate',
+              code: 'SAMPLE_ERR',
+              message: '영업일이 마감된 기간입니다',
+            },
+          ],
+        }),
+      ]),
+    );
+
+    await postAndFail(user, requests);
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    /* 짝 양성 — 그 400이 실제로 칸에만 붙었다(공통 배너 자리에는 아무것도 없다). */
+    expect(within(postPane()).getByText('영업일이 마감된 기간입니다')).toBeVisible();
+    expect(screen.queryByText(messages.httpError.title)).not.toBeInTheDocument();
+
+    expect(within(postPane()).getByText(t.post.failedTitle('SAMPLE-IA-9301'))).toBeVisible();
+  });
+
+  /**
+   * ⭐⭐ **응답을 받지 못한 요청은 실패가 아니다**(리뷰 R-1 Blocker · 멱등 완화의 마지막 층).
+   *
+   * 이 화면의 세 쓰기 가운데 **하중이 가장 크다**: 그 전기는 서버에 닿아 **이미 재고를 움직였을
+   * 수 있고**, 되돌리는 경로가 이 화면에 없다. 쓰기 훅이 호출마다 새 멱등 키를 만들고 다시
+   * 누르는 길이 상세 GET을 먼저 지나 **새 잠금 토큰을 앉히므로**, 두 번째 전기를 막는 것은
+   * 이 안내뿐이다.
+   */
+  it('네트워크가 끊기면 재고가 움직였는지 알 수 없다는 사실을 말한다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([etaggedCreateRoute(), detailRoute(), offlinePostRoute()]),
+    );
+
+    await postAndFail(user, requests);
+
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByText(messages.httpError.offline)).toBeVisible();
+    expect(within(dialog).getByText(t.post.networkUnconfirmed)).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    /* 창을 닫아도 그 사실은 구획에 남는다 — 사라지는 글자는 아무것도 막지 못한다. */
+    expect(within(postPane()).getByText(t.post.networkUnconfirmed)).toBeVisible();
+  });
+
+  /**
+   * ⭐⭐ **그때 「재고는 움직이지 않았습니다」를 말하지 않는다**(리뷰 R-1의 본체).
+   *
+   * 그 문장은 **서버가 요청을 되돌려 준 것**을 근거로 하는 말이라, 응답이 오지 않은 갈래에서는
+   * 화면이 확인하지 않은 사실을 **단언**하는 것이 된다. 함께 붙은 「사정을 고쳐 다시 전기할 수
+   * 있습니다」는 그 위에 **재시도를 권하기**까지 한다.
+   */
+  it('네트워크 갈래에서는 재고가 그대로라고 단언하지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([etaggedCreateRoute(), detailRoute(), offlinePostRoute()]),
+    );
+
+    await postAndFail(user, requests);
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    /* 양성 앵커 — 그 갈래가 실제로 화면에 섰다(그 뒤에 음성 단언을 잰다). */
+    expect(within(postPane()).getByText(t.post.networkUnconfirmed)).toBeVisible();
+
+    expect(screen.queryByText(t.post.failedTitle('SAMPLE-IA-9301'))).not.toBeInTheDocument();
+    expect(screen.queryByText(t.post.failedDescription)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **이 안내의 본체는 금지다**(등록 축 `notes.networkUnconfirmed`가 세운 두 절 잣대의 사본).
+   *
+   * 재고 이중 이동을 막는 것은 확인이 아니라 **하지 않는 것**이다 — 금지를 선행 확인에 매달면
+   * 「확인하면 다시 보내도 된다」로 읽히고, **확인할 자리가 없는 이 화면에서는 그 조치 자체가
+   * 실행 불가능**하다. 문구를 고칠 때 두 성질이 함께 유지되는지를 이 잣대가 잡는다.
+   */
+  it('그 안내가 확인이 아니라 금지를 말한다', () => {
+    expect(t.post.networkUnconfirmed).toContain('바로 다시 전기하지 마세요');
+    expect(t.post.networkUnconfirmed).toContain('이 화면에서 확인할 수 없습니다');
+
+    /*
+     * ⭐ **음성 축 — 없는 자리를 가리키지 않는다**(등록 축과 같은 형태). 양성 둘만 재면 두
+     * 문장을 그대로 둔 채 가운데에 없는 탭을 끼운 문면이 통과한다. 처리 이력 탭이 서는 회차가
+     * 이 한 줄을 **의도적으로 지우는 것**이 곧 문구 갱신의 이행 기록이 된다.
+     */
+    expect(t.post.networkUnconfirmed).not.toContain('처리 이력');
+  });
+
+  /** 짝 방향 — 서버가 거절한 요청에는 그 안내가 없다. 전달된 것이 확실하기 때문이다. */
+  it('서버가 거절한 전기에는 그 안내가 없다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([etaggedCreateRoute(), detailRoute(), failingPostRoute(403)]),
+    );
+
+    await postAndFail(user, requests);
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: t.actions.keepReviewing }));
+
+    /* 양성 앵커 — 거절 갈래가 실제로 섰고 「전표는 남았다」가 여기서는 참이다. */
+    expect(within(postPane()).getByText(t.post.failedTitle('SAMPLE-IA-9301'))).toBeVisible();
+    expect(screen.queryByText(t.post.networkUnconfirmed)).not.toBeInTheDocument();
+  });
+
+  /** 409는 **다시 읽으면 풀린다** — 최신 불러오기가 상세를 다시 부른다(D-14). */
+  it('409면 최신 불러오기가 상세를 다시 부른다', async () => {
+    withReasonCodes();
+
+    const { requests, user } = renderScreen(
+      allRoutes([
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingPostRoute(409, { conflictCause: 'user', message: '합성 충돌' }),
+      ]),
+    );
+
+    await postAndFail(user, requests);
+    await screen.findByText(messages.conflict.user);
+
+    const before = requestsTo(requests, DETAIL_PATH).length;
+
+    /* 배너는 **창 안에만** 선다 — 두 자리에 두면 스크림 뒤의 사본을 누르게 된다. */
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: messages.conflict.reloadAction,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(requestsTo(requests, DETAIL_PATH).length).toBe(before + 1);
+    });
+
+    /* 친 값이 사라지지 않는다 — 다시 전기할 길이 실제 길이어야 한다. */
+    expect(businessDateField()).toHaveValue('2026-08-17');
+  });
+});
+
+/**
+ * ⭐⭐ **전기의 매임**(D-15 · C39) — 늦게 도착한 되먹임이 **남의 전표 위에** 서지 않는다.
+ *
+ * 상신과 같은 지형이되 무게가 다르다: 여기서 어긋나면 화면은 **움직이지 않은 재고를 움직였다고**
+ * 말하고, 사용자는 그것을 믿고 지나간다.
+ */
+describe('StockAdjustScreen — 전기의 매임', () => {
+  /** 전기를 보내는 중에 **배경 갱신**이 대상을 다시 세우게 한다. */
+  const postThenRetarget = async (
+    user: ReturnType<typeof userEvent.setup>,
+    requests: RecordedRequest[],
+    queryClient: ReturnType<typeof renderScreen>['queryClient'],
+  ): Promise<void> => {
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(postRequests(requests)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    /* 달라진 응답이 실제로 대상을 다시 세운 시점을 앵커로 잡는다(줄이 셋 → 하나). */
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+  };
+
+  /**
+   * ⭐ **늦은 200이 남의 전표 위에 서지 않는다 — 그러나 사실은 남는다.**
+   *
+   * 서버에서는 **재고가 실제로 움직였다.** 감추면 사용자가 모르는 재고 이동이 남고, 지금 보고
+   * 있는 대상의 결과로 세우면 시도한 적 없는 전표가 원장에 잡힌 것처럼 보인다.
+   */
+  it('늦게 도착한 200이 사실만 알리고 전기 결과를 세우지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, queryClient, user } = renderScreen(
+      postRoutes([changingVarianceRoute()]),
+      '?count=9101',
+      [POST_PATH],
+    );
+
+    await postThenRetarget(user, requests, queryClient);
+
+    release();
+
+    expect(await screen.findByText(t.post.unboundPostedNote('SAMPLE-IA-9301'))).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.post.label })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.post.postedTitle('SAMPLE-IA-9301'))).not.toBeInTheDocument();
+  });
+
+  /** ⭐ **늦은 실패도 남의 전표 위에 서지 않는다.** 성공만 매고 실패를 두면 절반만 막힌다. */
+  it('늦게 도착한 400이 남의 전표 위에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute(),
+        etaggedCreateRoute(),
+        detailRoute(),
+        failingPostRoute(400, {
+          errors: [{ scope: 'screen', code: 'SAMPLE_ERR', message: '앞 전표의 전기 거절' }],
+        }),
+      ]),
+      '?count=9101',
+      [POST_PATH],
+    );
+
+    await postThenRetarget(user, requests, queryClient);
+
+    release();
+
+    /* 응답이 실제로 도착한 시점의 양성 앵커 — 그 뒤에 음성 단언을 잰다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.register })).toBeEnabled();
+    });
+
+    expect(screen.queryByText('앞 전표의 전기 거절')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.post.label })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **선 뒤에 끊겨도 사실이 남는다**(읽는 자리의 파생).
+   *
+   * 「전기했습니다」가 선 **뒤에** 같은 effect가 초안 세션을 올리면 전기 구획이 통째로 걷힌다 —
+   * 그때 영수증까지 사라지면 사용자는 **자기가 움직인 줄 모르는 재고**를 남긴다.
+   */
+  it('전기한 뒤 실사 차이가 달라져도 그 사실이 화면에 남는다', async () => {
+    withReasonCodes();
+
+    const { queryClient, user } = renderScreen(postRoutes([changingVarianceRoute()]));
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    /* 양성 앵커 — 이 전표의 전기가 실제로 섰다. */
+    await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'));
+
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    expect(screen.getByText(t.post.unboundPostedNote('SAMPLE-IA-9301'))).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.post.label })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐⭐ **앞 전표의 전기가 새 전표 위에 서지 않는다** — 이 회차 매임의 **핵심 소비처**다.
+   *
+   * 배경 재조회가 초안 세션을 올리는 자리(`seedFromVarianceRef`)는 **대상을 버리는 한 문을
+   * 지나지 않는다.** 그 상태에서 다시 등록하면 새 전표의 전기 자리가 서는데, 매임을 지나지
+   * 않으면 **한 번도 전기한 적 없는 전표가 「전기했습니다」로 그려진다.**
+   */
+  it('앞 전표의 전기가 새로 등록한 전표 위에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute(),
+        twoAdjustmentsRoute(),
+        detailRoute(),
+        secondDetailRoute(),
+        postRoute(),
+        secondPostRoute(),
+      ]),
+    );
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    /* 양성 앵커 — 첫 전표의 전기가 실제로 섰다. */
+    await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'));
+
+    /* 잠금 밖에서 도는 갱신이 대상을 다시 세운다 — 전기 매임은 거둬지지 않는다. */
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    /* 새 전표를 만든다 — 전기 자리가 그 전표로 다시 선다. */
+    await submitRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-IA-9302'));
+
+    const pane = await screen.findByRole('region', { name: t.post.label });
+
+    /* 새 전표의 자리는 **접힌 채로** 선다 — 앞 전표를 위해 연 자리가 따라오지 않는다. */
+    expect(within(pane).getByRole('button', { name: t.actions.togglePost })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+
+    /*
+     * ⭐ **펼쳐서 잰다.** 접힘이 성공 갈래를 가리므로, 펼치지 않고 재면 매임 가드를 통째로
+     * 지운 구현에서도 통과한다(대조 뮤턴트 실측) — 재려는 것은 **매임**이지 접힘이 아니다.
+     */
+    await user.click(within(pane).getByRole('button', { name: t.actions.togglePost }));
+
+    /* ⭐ 앞 전표의 전기가 이 전표 위에 서지 않는다. */
+    expect(within(pane).queryByText(t.post.postedTitle('SAMPLE-IA-9302'))).not.toBeInTheDocument();
+    expect(within(pane).queryByText(t.post.postedTitle('SAMPLE-IA-9301'))).not.toBeInTheDocument();
+    expect(within(pane).queryByText('2026-08-18 14:05')).not.toBeInTheDocument();
+    /* 새 전표는 **전기할 수 있는 상태**로 선다 — 칠 칸과 누를 버튼이 있다. */
+    expect(within(pane).getByLabelText(t.post.businessDate)).toHaveValue(localToday());
+    expect(within(pane).getByRole('button', { name: t.actions.post })).toBeEnabled();
+  });
+
+  /**
+   * ⭐⭐ **앞 전표의 전기 실패가 새 전표 위에 서지 않는다** — 매임의 **실패 축** 소비처 셋.
+   *
+   * 성공만 매고 실패를 두면 절반만 막힌다: 사용자는 **한 번도 전기한 적 없는 전표**에 앞
+   * 전표의 거절 사유가 붙은 화면을 보고, 그 조정이 원장에 못 갔다고 읽는다. 배너 · 실패
+   * 갈래(「전표는 남았습니다」) · 칸의 서버 오류 셋이 같은 매임을 지나야 한다.
+   */
+  it('앞 전표의 전기 실패가 새로 등록한 전표 위에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute(),
+        twoAdjustmentsRoute(),
+        detailRoute(),
+        secondDetailRoute(),
+        failingPostRoute(400, {
+          errors: [
+            { scope: 'screen', code: 'SAMPLE_ERR', message: '앞 전표의 전기 거절' },
+            {
+              scope: 'field',
+              field: 'businessDate',
+              code: 'SAMPLE_ERR',
+              message: '앞 전표의 영업일 오류',
+            },
+          ],
+        }),
+      ]),
+    );
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    /* 짝 양성 — 두 오류가 앞 전표 위에는 실제로 섰다. */
+    expect(await screen.findByText('앞 전표의 전기 거절')).toBeVisible();
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+
+    expect(within(postPane()).getByText('앞 전표의 영업일 오류')).toBeVisible();
+    expect(within(postPane()).getByText(t.post.failedTitle('SAMPLE-IA-9301'))).toBeVisible();
+
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    await submitRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-IA-9302'));
+
+    const pane = await screen.findByRole('region', { name: t.post.label });
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.togglePost }));
+
+    expect(screen.queryByText('앞 전표의 전기 거절')).not.toBeInTheDocument();
+    expect(screen.queryByText('앞 전표의 영업일 오류')).not.toBeInTheDocument();
+    expect(within(pane).queryByText(t.post.failedTitle('SAMPLE-IA-9302'))).not.toBeInTheDocument();
+    expect(within(pane).getByLabelText(t.post.businessDate)).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+
+  /**
+   * ⭐⭐ **앞 전표를 위해 확인한 두 값이 새 전표의 칸에 서지 않는다**(리뷰 R-1의 형태 · 전기 축).
+   *
+   * 앞 전표의 영업일이 새 전표의 칸에 남아 있으면 그대로 확인 창을 지나 **틀린 날짜로 원장에**
+   * 잡힌다 — 되돌릴 수 없다. **펼침 상태도 함께 거둔다**: 남의 전표를 위해 연 자리가 새 전표
+   * 위에서 이미 열린 채로 서면, 사용자가 「내가 연 자리」로 읽고 그 값을 확인한 것으로 여긴다.
+   */
+  it('앞 전표를 위해 확인한 영업일이 새로 등록한 전표의 칸에 서지 않는다', async () => {
+    withReasonCodes();
+
+    const { queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute(),
+        twoAdjustmentsRoute(),
+        detailRoute(),
+        secondDetailRoute(),
+        postRoute(),
+        secondPostRoute(),
+      ]),
+    );
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+
+    /* 앞 전표를 위해 고치기만 하고 **보내지 않는다.** */
+    fireEvent.change(businessDateField(), { target: { value: '2026-08-17' } });
+
+    /* 양성 앵커 — 고친 값이 실제로 그 전표의 칸에 섰다. */
+    expect(businessDateField()).toHaveValue('2026-08-17');
+
+    /* 잠금 밖에서 도는 갱신이 대상을 다시 세운다 — 이 길은 거두는 문을 지나지 않는다. */
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(1);
+    });
+
+    await submitRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-IA-9302'));
+
+    const pane = await screen.findByRole('region', { name: t.post.label });
+
+    /* 펼침이 함께 거둬졌다 — 두 칸이 아예 서지 않는다. */
+    expect(within(pane).queryByLabelText(t.post.businessDate)).not.toBeInTheDocument();
+
+    await user.click(within(pane).getByRole('button', { name: t.actions.togglePost }));
+
+    /* 다시 펴면 **제출 순간**으로 채워진다 — 앞 전표의 값이 아니다. */
+    expect(within(pane).getByLabelText(t.post.businessDate)).toHaveValue(localToday());
+  });
+
+  /**
+   * ⭐ **끊긴 전기 영수증이 쌓인다 — 둘이면 둘 다 남는다**(등록·상신 축과 대칭).
+   *
+   * 매임은 한 자리라 **뒤이은 전기가 성공하면 앞 전표의 사실이 덮인다** — 그때 사라지는 것은
+   * 「사용자가 모르는 재고 이동」의 마지막 흔적이다.
+   */
+  it('끊긴 전기가 둘이면 두 전표번호가 모두 남는다', async () => {
+    withReasonCodes();
+
+    const { requests, release, queryClient, user } = renderScreen(
+      allRoutes([
+        changingVarianceRoute(),
+        twoAdjustmentsRoute(),
+        detailRoute(),
+        secondDetailRoute(),
+        postRoute(),
+        secondPostRoute(),
+      ]),
+      '?count=9101',
+      [POST_PATH, SECOND_POST_PATH],
+    );
+
+    /* ① 전표 A를 전기하는 중에 배경 갱신이 대상을 다시 세운다. */
+    await postThenRetarget(user, requests, queryClient);
+    release();
+
+    await screen.findByText(t.post.unboundPostedNote('SAMPLE-IA-9301'));
+
+    /* ② 전표 B를 새로 등록해 같은 일을 되풀이한다. */
+    await submitRegister(user);
+    await screen.findByText(t.result.createdTitle('SAMPLE-IA-9302'));
+    await expandPost(user);
+    await postAdjustment(user);
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.url.pathname === SECOND_POST_PATH)).toHaveLength(
+        1,
+      );
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await queryClient.invalidateQueries({ queryKey: stockAdjustKeys.varianceLines(9101) });
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: t.post.label })).toBeNull();
+    });
+
+    release();
+
+    expect(
+      await screen.findByText(t.post.unboundPostedNote('SAMPLE-IA-9301, SAMPLE-IA-9302')),
+    ).toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 대상이 그대로면 결과가 **이 전표 위에 선다.** 「늘 감춘다」로 통과하지 않게 한다. */
+  it('대상이 그대로면 전기했다는 사실이 전기 구획에 선다', async () => {
+    withReasonCodes();
+
+    const { user } = renderScreen(postRoutes());
+
+    await registerThenPostReady(user);
+    await expandPost(user);
+    await postAdjustment(user);
+
+    expect(await screen.findByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeInTheDocument();
+    expect(screen.queryByText(t.post.unboundPostedNote('SAMPLE-IA-9301'))).not.toBeInTheDocument();
   });
 });

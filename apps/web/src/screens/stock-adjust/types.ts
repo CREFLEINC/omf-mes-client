@@ -6,9 +6,9 @@ import type { components } from '@omf-mes/api-client';
  * `api-client`는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이
  * 유지된다.
  *
- * 이 회차가 다루는 것은 **읽기와 등록과 상신**이다 — 실사 목록 · 실사 차이 라인 · 재고 잔액 ·
- * 참조 다섯 · 조정 전표 등록 · 결재 상신과 그 진행 조회. 전기와 처리 이력은 뒤따르는 회차가
- * 붙인다.
+ * 이 회차가 다루는 것은 **읽기와 등록과 상신과 전기**다 — 실사 목록 · 실사 차이 라인 ·
+ * 재고 잔액 · 참조 다섯 · 조정 전표 등록 · 결재 상신과 그 진행 조회 · **재고 전기**.
+ * 처리 이력은 뒤따르는 회차가 붙인다.
  *
  * 이 파일은 이 화면이 소유한다. **다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다** —
  * 형태가 같아도 리소스 이름이 박힌 타입을 공유하면 한 화면의 계약 변화가 다른 화면을 끌고 간다.
@@ -228,6 +228,41 @@ export const toCreatedAdjustmentResult = (
 ): CreatedAdjustmentResult => ({
   inventoryAdjustmentId: data.inventoryAdjustment.inventoryAdjustmentId,
   created: toCreatedAdjustmentView(data),
+});
+
+/**
+ * 전기 200이 준 것 가운데 **화면이 쓰는 값**.
+ *
+ * ⛔ **전표번호를 담지 않는다.** 화면이 보이는 번호는 **매임이 든 것**이라야 한다 — 응답이 준
+ * 번호를 그리면 매임이 끊긴 전기의 번호가 지금 보고 있는 전표 자리에 선다(D-15).
+ *
+ * ⛔ **승인 요청 번호를 담지 않는다** — 목이 그 값을 채워 준다(계획 §5.2.5). 상신 여부의 근거는
+ * 이 화면이 받은 **202** 하나다.
+ */
+export interface PostedAdjustmentView {
+  /**
+   * 서버가 준 전기 시각 **그대로**.
+   *
+   * ⚠ **없이 올 수 있다** — 계약이 이 값을 nullable로 두었다. 값의 유무를 여기서 한 번에 갈라
+   * 두면 「전기됐는가」의 판정(`readPosting`)이 그 한 자리에서 끝난다(C35).
+   */
+  adjustedAt: string | null;
+  /**
+   * 전기 뒤 상태 코드 **그대로**(공유계약 G-2).
+   *
+   * ⛔ **이 값으로 전기 여부를 판정하지 않는다**(C35) — 값 목록이 확정되지 않았고(`omf-mes#64`)
+   * 계약이 문자열 비교를 금지했다. 보이기만 한다.
+   */
+  statusCode: string;
+}
+
+/** 전기 200을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toPostedAdjustmentView = (
+  data: components['schemas']['InventoryAdjustment'],
+): PostedAdjustmentView => ({
+  /* 없이 오는 길이 실재한다(계약이 nullable로 두었다) — 값의 유무를 여기서 한 번에 갈라 둔다. */
+  adjustedAt: data.adjustedAt ?? null,
+  statusCode: data.statusCode,
 });
 
 /**

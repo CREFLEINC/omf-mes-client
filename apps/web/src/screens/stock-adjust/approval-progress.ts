@@ -3,7 +3,11 @@ import { messages } from '@omf-mes/i18n';
 
 import { toReasonLines } from './reason-draft';
 import { formatDateTime, readableName } from './types';
-import type { ApprovalRequestDetailResponse, ApprovalStepResponse } from './types';
+import type {
+  ApprovalRequestDetailResponse,
+  ApprovalStepResponse,
+  PostedAdjustmentView,
+} from './types';
 
 /**
  * 승인 축 판정의 **한 곳**.
@@ -15,6 +19,7 @@ import type { ApprovalRequestDetailResponse, ApprovalStepResponse } from './type
  * | 화면이 말하는 것 | 근거로 쓰는 값 | **쓰지 않는 것** |
  * | --- | --- | --- |
  * | 이 조정이 상신됐는가 | **`approvalRequestId`가 있는가** | `statusCode` 문자열 비교 |
+ * | 이 조정이 **전기됐는가** | **전기 200이 왔는가와 `adjustedAt`이 있는가** | `statusCode` 문자열 비교 |
  * | 지금 몇 단계인가 | `request.currentStepNo`(비었으면 종료) | `steps`에서 인덱스+1 |
  * | 전체가 몇 단계인가 | `request.totalStepNo` | `steps.length` |
  * | 이 단계가 지금 차례인가 | `step.isCurrent` | 앞 단계들의 결과로 판정 |
@@ -87,6 +92,44 @@ export type Submission =
   | { kind: 'notSubmitted' }
   | { kind: 'submitted'; approvalRequestId: number }
   | { kind: 'unusable' };
+
+/**
+ * 이 조정이 **전기됐는가** — 상신 판정과 같은 형태다(C35).
+ *
+ * | 갈래 | 언제 | 화면이 하는 일 |
+ * | --- | --- | --- |
+ * | `notPosted` | 이 화면이 전기 응답을 받은 적이 없다 | 두 칸과 전기 버튼을 세운다 |
+ * | `posted` · `at.known` | 200이 오고 전기 시각도 왔다 | 「전기했습니다」 + 그 시각 |
+ * | `posted` · `at.unknown` | **200은 왔는데 시각이 비어 왔다** | 「전기했습니다」 + 시각을 못 받은 사실 |
+ *
+ * **셋째 갈래를 없애면 둘 중 하나가 거짓이 된다.** 200을 받았는데 「전기되지 않았다」로 접으면
+ * **재고가 움직였는데 안 움직였다고** 말하게 되고, 시각이 온 것처럼 그리면 없는 값을 지어낸다 —
+ * 계약이 `adjustedAt`을 nullable로 두어 이 갈래가 실재한다.
+ *
+ * ⛔ **상태 코드로 판정하지 않는다**(공유계약 G-2 · C35). 상태 코드는 **보이기만 한다** —
+ * 어떤 글자가 「전기됨」인지 화면이 알 근거가 없다(`omf-mes#64`).
+ *
+ * ⛔ **등록·상세 응답의 `adjustedAt`을 넣지 않는다.** 목이 그 값을 채워 주므로(계획 §5.2.5)
+ * 방금 만든 전표가 「이미 전기된 것」이 된다 — 이 판정에 들어오는 값은 **이 화면이 받은 200**뿐이다.
+ */
+export type PostedTime = { kind: 'known'; text: string } | { kind: 'unknown' };
+
+export type Posting =
+  { kind: 'notPosted' } | { kind: 'posted'; at: PostedTime; statusCode: string };
+
+export const readPosting = (posted: PostedAdjustmentView | null): Posting => {
+  if (posted === null) return { kind: 'notPosted' };
+
+  /* 공백만인 시각은 없는 것과 같다 — 계약이 필수로 두지 않았고 빈 글자가 스키마를 통과한다. */
+  const adjustedAt = (posted.adjustedAt ?? '').trim();
+
+  return {
+    kind: 'posted',
+    at:
+      adjustedAt === '' ? { kind: 'unknown' } : { kind: 'known', text: formatDateTime(adjustedAt) },
+    statusCode: posted.statusCode,
+  };
+};
 
 export const readSubmission = (approvalRequestId: number | null | undefined): Submission => {
   if (approvalRequestId === null || approvalRequestId === undefined) {

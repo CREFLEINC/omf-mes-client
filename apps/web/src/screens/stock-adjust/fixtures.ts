@@ -231,6 +231,48 @@ export const adjustmentDetailBody = (
   };
 };
 
+export interface PostedAdjustmentOverrides {
+  /**
+   * 전기 시각. **`null`이면 응답에 그 키가 없다** — 계약이 이 값을 nullable로 두었으므로
+   * 「200은 왔는데 시각이 없다」가 실재하는 갈래다.
+   */
+  adjustedAt?: string | null;
+  /** 전기 뒤 상태 코드. **화면은 이 값으로 전기 여부를 판정하지 않는다**(C35) */
+  statusCode?: string;
+  inventoryAdjustmentNo?: string;
+  /**
+   * ⚠ **목이 채워 주는 값**(계획 §5.2.5). 전기 응답에도 승인 요청 번호가 실려 온다 —
+   * 화면이 그것을 읽어 「상신됨」을 그리면 확인하지 않은 사실을 말하게 된다.
+   */
+  approvalRequestId?: number;
+}
+
+/**
+ * 전기 200이 되돌려 주는 조정 전표 하나 — **머리뿐이다**(계약 실측: `InventoryAdjustment`).
+ *
+ * 등록 201·상세 200과 **모양이 다르다**(그 둘은 `{ inventoryAdjustment, lines }`) — 라인이
+ * 함께 오지 않으므로 이 응답으로 표를 다시 세울 수 없다.
+ */
+export const postedAdjustmentBody = (
+  overrides: PostedAdjustmentOverrides = {},
+): components['schemas']['InventoryAdjustment'] => {
+  const {
+    adjustedAt = '2026-08-18T14:05:00+09:00',
+    statusCode = 'SAMPLE_IA_STATUS_B',
+    inventoryAdjustmentNo = 'SAMPLE-IA-9301',
+    approvalRequestId,
+  } = overrides;
+
+  return {
+    inventoryAdjustmentId: 9301,
+    inventoryAdjustmentNo,
+    reasonCode: 'SAMPLE_AR_A',
+    statusCode,
+    ...(adjustedAt === null ? {} : { adjustedAt }),
+    ...(approvalRequestId === undefined ? {} : { approvalRequestId }),
+  };
+};
+
 /**
  * 상신 202가 되돌려 주는 것 — **내부 식별자 하나뿐이다**(`ApprovalRequestRef`).
  *

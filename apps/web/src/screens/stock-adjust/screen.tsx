@@ -17,6 +17,7 @@ import {
   APPROVED_APPROVAL_STATUS_CODES,
   REJECTION_DECISION_CODES,
   isApprovalJudgePending,
+  readPosting,
   readSubmission,
   toRequestProgressView,
 } from './approval-progress';
@@ -48,6 +49,16 @@ import {
   useUomLookup,
   useWarehouseLookup,
 } from './lookups';
+import { PostConfirmDialog, type PostSummary } from './post-confirm-dialog';
+import { PostPane } from './post-pane';
+import {
+  EMPTY_POST_DRAFT,
+  isBusinessDateApart,
+  seedPostDraft,
+  toPostRequest,
+  validatePostDraft,
+  type PostDraft,
+} from './post-request';
 import {
   UNASKED_BALANCE,
   useAdjustmentDetailFetcher,
@@ -56,6 +67,7 @@ import {
   useCreateStockAdjustment,
   useInventoryCounts,
   useLocationBalances,
+  usePostStockAdjustment,
   useRequestAdjustmentApproval,
 } from './queries';
 import { readReason, toApprovalRequest } from './reason-draft';
@@ -69,6 +81,7 @@ import type {
   AdjustHeaderDraft,
   AdjustLineDraft,
   CreatedAdjustmentResult,
+  PostedAdjustmentView,
   SelectOption,
 } from './types';
 import { excludedLineCount, validateLines } from './validation';
@@ -79,7 +92,7 @@ const t = messages.stockAdjust;
 const EMPTY_IDS: number[] = [];
 
 /** 확인을 기다리는 조작. `null`이면 열린 창이 없다. */
-type PendingAction = 'register' | 'discard' | 'submit';
+type PendingAction = 'register' | 'discard' | 'submit' | 'post';
 
 /**
  * 등록의 매임 — **어느 초안을 겨눈 시도인가**와 **그것이 만들어졌는가**(D-15).
@@ -121,6 +134,51 @@ interface SubmitBinding {
    */
   approvalRequestId: number | null;
 }
+
+/**
+ * 전기의 매임 — **어느 전표를 겨눈 시도인가**와 **그것이 원장에 잡혔는가**(D-15).
+ *
+ * **축이 조정 번호 + 「200을 받았는가」**다. 상신과 같은 지형이되 무게가 다르다 — 늦게 도착한
+ * 전기의 성공이 남의 전표 위에 서면 화면은 **움직이지 않은 재고를 움직였다고** 말하게 된다.
+ *
+ * **되먹임 셋(성공·나가는 중·실패)이 전부 이 매임을 지난다** — 갈래마다 따로 매면 하나를
+ * 빠뜨리고, 빠뜨린 갈래가 곧 「시도한 적 없는 전표 위의 진술」이 된다.
+ */
+interface PostBinding {
+  /** 그 시도가 겨눈 전표. **지금 보고 있는 전표와 견줄 값**이다 */
+  inventoryAdjustmentId: number;
+  /** 그 전표의 업무 번호. **매임이 끊긴 채 재고가 움직였을 때 사람에게 말할 값**이다 */
+  inventoryAdjustmentNo: string;
+  /**
+   * 200이 준 것. `null`이면 아직 응답이 오지 않았거나 실패했다.
+   *
+   * **화면이 확인한 사실만 담는다** — 등록·상세 응답에도 전기 시각이 실려 오지만(목이 채워
+   * 준다) 그것은 전기의 증거가 아니다(§5.2.5 · C35).
+   */
+  posted: PostedAdjustmentView | null;
+}
+
+/**
+ * 전기 자리의 **펼침과 두 값** — 전표에 매어 든다(리뷰 R-1의 형태를 전기 축에 사본).
+ *
+ * ⭐ **판정을 읽는 자리에서 한다.** 초안 세션을 올리는 문이 둘이고 그중 하나
+ * (`seedFromVarianceRef`)는 **effect**라 폼 잠금 밖에서 돈다 — 그 길로 대상이 다시 서면
+ * 펼침과 두 값이 거둬지지 않은 채 남고, **앞 전표를 위해 확인한 영업일이 새 전표의 전기 본문에
+ * 실린다.** 쓰는 자리를 빠짐없이 세는 대신 **읽을 때 대조한다.**
+ */
+interface PostPanelState {
+  /** 그 자리를 연 대상. `null`이면 아직 아무 전표에도 매이지 않았다 */
+  inventoryAdjustmentId: number | null;
+  isExpanded: boolean;
+  draft: PostDraft;
+}
+
+/** 아직 아무 전표에도 매이지 않은 전기 자리. **접혀 있고 두 칸이 비어 있다.** */
+const CLOSED_POST_PANEL: PostPanelState = {
+  inventoryAdjustmentId: null,
+  isExpanded: false,
+  draft: EMPTY_POST_DRAFT,
+};
 
 /**
  * W-01-12 컨테이너 — **장부와 실물이 어긋난 것을 조정 전표로 만드는 화면**이다.
@@ -249,6 +307,28 @@ export const StockAdjustScreen = () => {
    * 없다(처리 이력은 뒤따르는 회차).
    */
   const [strandedSubmittedNos, setStrandedSubmittedNos] = useState<string[]>([]);
+
+  /** **전기의 매임.** `null`이면 이 화면에서 전기를 시도한 적이 없다. */
+  const [postBinding, setPostBinding] = useState<PostBinding | null>(null);
+
+  /**
+   * 전기 자리의 펼침과 두 값 — **어느 전표를 위해 연 자리인가와 함께 든다**(리뷰 R-1의 사본).
+   *
+   * 두 값은 사용자가 **확인한 사실**이다(공유계약 C-8·C-1). 앞 전표를 위해 확인한 영업일이
+   * 새 전표의 전기 본문에 실리면, 그 조정은 **틀린 날짜로 원장에 남는다** — 되돌릴 수 없다.
+   */
+  const [postPanel, setPostPanel] = useState<PostPanelState>(CLOSED_POST_PANEL);
+
+  /**
+   * **매임이 끊긴 채 원장에 잡힌 전표들.**
+   *
+   * 상신의 `strandedSubmittedNos`와 같은 사정이되 **무게가 다르다** — 그 전기는 실제로
+   * 일어나 **재고가 움직였다.** 감추면 사용자가 모르는 재고 이동이 남는다.
+   *
+   * **매임과 다른 자리에 쌓는 것**이 요점이다: 매임은 한 자리라 뒤이은 전기가 성공하면 덮이고,
+   * 그 순간 앞 전표의 사실이 화면에서 사라진다.
+   */
+  const [strandedPostedNos, setStrandedPostedNos] = useState<string[]>([]);
 
   /** 확인을 기다리는 조작. `null`이면 열린 창이 없다 */
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -552,6 +632,65 @@ export const StockAdjustScreen = () => {
 
   const isSubmitting = isSubmitStarting || submit.isSaving;
 
+  /** 지금 나가고 있는 전기가 **겨눈 전표**. 응답이 올 때 렌더 클로저의 값은 낡아 있다. */
+  const postingTargetRef = useRef<{
+    inventoryAdjustmentId: number;
+    inventoryAdjustmentNo: string;
+  } | null>(null);
+
+  /**
+   * 전기 — **이 화면의 셋째 쓰기이고 재고가 실제로 움직이는 유일한 자리**다.
+   *
+   * 성공하면 **그 호출이 겨눈 전표**로 매임을 다시 세운다 — 지금 보고 있는 전표가 아니라.
+   * 그사이 배경 재조회가 초안 세션을 올렸다면 이 결과는 남의 것이고, 지금 번호로 적으면
+   * **시도한 적 없는 전표 위에** 「전기했습니다」가 선다.
+   */
+  const post = usePostStockAdjustment({
+    inventoryAdjustmentId: adjustmentId,
+    onSuccess: (posted) => {
+      /* **그 호출이 겨눈 전표**로 적는다 — 지금 보고 있는 전표가 아니라. */
+      const target = postingTargetRef.current;
+
+      setPostBinding(target === null ? null : { ...target, posted });
+
+      /*
+       * **늦게 온 성공은 적기만 한다.** 창을 닫는 것은 지금 보고 있는 전표의 조작이라,
+       * 남의 전표의 응답이 그것을 건드리면 새로 연 확인 창이 말없이 닫힌다.
+       */
+      if (target === null || target.inventoryAdjustmentId !== currentAdjustmentIdRef.current) {
+        /*
+         * **도착한 시점에 이미 매임이 끊겨 있으면 쌓는다**(등록·상신 갈래와 같은 규율).
+         *
+         * 이 갈래에서 서버에 남는 것은 **움직인 재고**다 — 매임이 덮여 사실이 사라지면
+         * 사용자가 모르는 재고 이동이 남는다. **선 뒤에 끊기는 갈래**는 읽는 자리의 파생이
+         * 잡는다(두 겹).
+         */
+        if (target !== null) {
+          setStrandedPostedNos((prev) =>
+            prev.includes(target.inventoryAdjustmentNo)
+              ? prev
+              : [...prev, target.inventoryAdjustmentNo],
+          );
+        }
+
+        return;
+      }
+
+      setPending(null);
+    },
+  });
+
+  /**
+   * 상세 조회와 전기 사이의 **틈을 막는 깃발**(상신과 같은 자리).
+   *
+   * 확인 창의 실행을 누르면 상세 GET이 먼저 나가는데, 그 응답이 오기 전까지 쓰기 훅은 아직
+   * 나가는 중이 아니다 — 그 틈에 한 번 더 누르면 **연쇄가 두 벌** 돌고, 공통 훅이 호출마다 새
+   * 멱등 키를 만들므로 그것이 그대로 **재고를 두 번 움직인다.**
+   */
+  const [isPostStarting, setPostStarting] = useState(false);
+
+  const isPosting = isPostStarting || post.isSaving;
+
   /**
    * **나가는 중인 쓰기는 건드리지 않는다**(사본 체크리스트 4번 · `omf-mes#96`).
    *
@@ -603,9 +742,39 @@ export const StockAdjustScreen = () => {
     resetIfIdle(submit);
 
     /*
+     * **전기 자리도 같은 한 문에서 거둔다.** 남겨 두면 「전기했습니다」가 아직 만들지도 않은
+     * 전표 위에 서고, 앞 전표를 위해 확인한 영업일이 새 전표의 칸에 남는다.
+     *
+     * ⚠ **전기의 방어도 이 문에 기대지 않는다**(리뷰 R-1의 형태). 여기서 함께 비우는 것은
+     * 조작으로 대상을 바꾼 사용자에게 빈 자리를 주기 위해서일 뿐이고, **이 문을 지나지 않는
+     * 길**(잠금 밖 effect)이 실재하므로 진짜 방어는 읽는 자리의 파생(`boundPost`·`postPanelState`)이
+     * 진다.
+     */
+    setPostBinding(null);
+    setPostPanel(CLOSED_POST_PANEL);
+    resetIfIdle(post);
+
+    /*
      * **「없는 실사였다」 안내에 수명을 준다**(리뷰 R-4). 남겨 두면 유효한 실사를 고른 뒤에도
      * 「아래에서 실사를 고르세요」가 남아 **이미 한 조치를 계속 지시하고**, 직접 등록으로
      * 바꾸면 그 안내가 **실사 선택칸이 없는 구획**에 서서 화면에 없는 컨트롤을 쓰라고 말한다.
+     */
+    /*
+     * ⚠ **열려 있던 확인 창의 표시(`pending`)는 여기서 비우지 않는다**(리뷰 R-7 — 근거 기록).
+     *
+     * 이 슬라이스의 나머지 규율이 「쓰는 자리를 다 세었다는 전제에 기대지 않는다」인데 이 한
+     * 자리만 갈리는 것처럼 보인다. **네 창의 수명이 한결같지 않다**(리뷰 N-1의 실측 정정 —
+     * 앞선 문면은 「셋 다 매임을 본다」였는데 사실이 아니다):
+     *
+     * | 창 | 서는 조건 |
+     * | --- | --- |
+     * | 상신·전기 | 표시 **+ 매임 파생**(전기는 그 위에 `postPanelState.isExpanded`까지) |
+     * | **등록·버리기** | **표시 하나뿐** |
+     *
+     * 그래서 남은 표시를 막는 것은 매임이 아니라 **덮어쓰기**다: 새 전표에 이르는 모든 길이
+     * 등록 확인 창(`setPending('register')`)을 지나 이 값을 덮으므로, 지금은 표시가 남는 상태
+     * 자체가 관측되지 않는다(도달 불가 — 죽은 줄을 만들지 않으려고 비우지 않는다).
+     * **그 길을 지나지 않고 대상이 바뀌는 형태가 생기면 이 판정을 다시 본다.**
      */
     setCleanedMissingCount(false);
   };
@@ -812,6 +981,56 @@ export const StockAdjustScreen = () => {
     strandedSubmitted.length === 0 ? null : strandedSubmitted.join(', ');
 
   /**
+   * **지금 보고 있는 전표가 그 전기의 대상인가** — 전기의 되먹임은 전부 이 문을 지난다(D-15).
+   *
+   * `null`이면 이 화면이 지금 전표에 대해 말할 전기가 없다: 시도한 적이 없거나, **나가는 중에
+   * 대상이 바뀌어 그 응답이 남의 것이 됐다.** 전기 구획의 갈래 판정·실패 배너·두 칸의 서버
+   * 오류가 모두 이 값을 본다 — 한 자리라도 빠지면 그 자리에서 **움직이지 않은 재고를 움직였다고**
+   * 말하게 된다.
+   */
+  const boundPost =
+    postBinding !== null && postBinding.inventoryAdjustmentId === adjustmentId ? postBinding : null;
+
+  /** 전기됐는가 — **판정이 한 곳이다**(C35). 상태 코드를 읽지 않는다. */
+  const posting = readPosting(boundPost?.posted ?? null);
+
+  /**
+   * **이 전표를 위해 연 자리만 이 전표의 자리다**(리뷰 R-1의 형태를 전기 축에 사본).
+   *
+   * 다른 전표에 매인 펼침과 두 값은 **닫힌 빈 자리로 읽는다** — 그러면 잠금(`postBlockReason`)·
+   * 확인 창(`postSummary`·창의 수명)·본문(`toPostRequest`)이 **한 파생을 함께 지나** 넷이
+   * 동시에 옳아진다. 자리마다 따로 판정하면 「창은 열렸는데 본문은 비는」 식으로 갈린다.
+   */
+  const postPanelState =
+    postPanel.inventoryAdjustmentId === adjustmentId ? postPanel : CLOSED_POST_PANEL;
+
+  const postDraftErrors = validatePostDraft(postPanelState.draft);
+
+  /**
+   * **매임이 끊긴 채 원장에 잡힌 전표들** — 등록·상신 갈래와 같은 두 겹이다.
+   *
+   * | 시점 | 어떻게 생기나 | 무엇이 잡나 |
+   * | --- | --- | --- |
+   * | **도착할 때 이미 끊김** | 나가는 중에 배경 재조회가 대상을 다시 세웠다 | `strandedPostedNos` **적재** |
+   * | **선 뒤에 끊김** | 「전기했습니다」가 선 뒤에 같은 effect가 초안 세션을 올린다 | **이 파생** |
+   *
+   * **감출 수 없는 사실이다** — 그 전기는 실제로 일어나 재고가 움직였다.
+   */
+  const unboundPostedNo =
+    postBinding !== null &&
+    postBinding.posted !== null &&
+    postBinding.inventoryAdjustmentId !== adjustmentId
+      ? postBinding.inventoryAdjustmentNo
+      : null;
+
+  const strandedPosted =
+    unboundPostedNo === null || strandedPostedNos.includes(unboundPostedNo)
+      ? strandedPostedNos
+      : [...strandedPostedNos, unboundPostedNo];
+
+  const strandedPostedNote = strandedPosted.length === 0 ? null : strandedPosted.join(', ');
+
+  /**
    * 결재 진행을 부를 수 있는가 — **판정이 한 곳이다**(C36).
    *
    * ⛔ **등록 응답의 값으로 부르지 않는다.** 목이 등록 201에 승인 요청 번호를 채워 주므로
@@ -997,15 +1216,48 @@ export const StockAdjustScreen = () => {
    */
   const submitBlockReason = (): string | null => {
     if (isSubmitting) return t.actionReasons.submitting;
+    /*
+     * **되돌릴 수 없는 쓰기 둘이 서로를 막는다.** 두 요청이 함께 나가면 재고가 움직이는 순간과
+     * 결재가 시작되는 순간이 겹치고, 어느 쪽이 먼저 닿는지 화면이 알 수 없다.
+     */
+    if (isPosting) return t.actionReasons.submitWhilePosting;
+    /*
+     * **이미 전기한 전표는 결재에 올리지 않는다.** 근거가 **이 화면이 받은 200**이라
+     * 상태 코드를 읽지 않는다(C35) — 재고가 이미 움직인 조정에 결재를 올리면 결재함에
+     * 「무엇을 승인하는지 없는」 요청이 남는다.
+     */
+    if (posting.kind === 'posted') return t.actionReasons.submitAfterPosted;
     if (readReason(submitReason).kind === 'empty') return t.actionReasons.submitReasonRequired;
 
     return null;
   };
 
-  /** 세 사유를 렌더 한 번에 한 번만 판정한다 — 같은 판정을 자리마다 되부르면 갈릴 여지가 생긴다. */
+  /**
+   * 전기가 막힌 사유. `null`이면 **열려 있다.**
+   *
+   * **나가는 중이 맨 앞이다** — 두 값을 아무리 고쳐도 그동안은 열리지 않는다.
+   *
+   * ⛔ **승인 축으로 잠그지 않는다**(D-12·D-13 · C33·C37). 자리표시
+   * (`APPROVED_APPROVAL_STATUS_CODES`)가 비어 있는 채로 그것을 잠금에 쓰면 이 버튼이 **영영
+   * 잠긴다**. 결재선이 있는지도 화면이 알 통로가 없다 — **틀린 길은 서버가 400으로 막는다.**
+   * 이 함수가 그 배열도 상태 코드도 읽지 않는 것이 그 규율의 자리다.
+   *
+   * **잠금은 매임을 지나지 않는다** — 상신 잠금과 같은 판단이다(어느 전표든 나가는 중이면
+   * 막는 편이 안전하다).
+   */
+  const postBlockReason = (): string | null => {
+    if (isPosting) return t.actionReasons.posting;
+    if (isSubmitting) return t.actionReasons.postWhileSubmitting;
+    if (Object.keys(postDraftErrors).length > 0) return t.actionReasons.postDraftInvalid;
+
+    return null;
+  };
+
+  /** 네 사유를 렌더 한 번에 한 번만 판정한다 — 같은 판정을 자리마다 되부르면 갈릴 여지가 생긴다. */
   const registerReason = registerBlockReason();
   const discardReason = discardBlockReason();
   const submitReasonBlocked = submitBlockReason();
+  const postReasonBlocked = postBlockReason();
 
   /**
    * 머리 입력을 고친다.
@@ -1143,6 +1395,108 @@ export const StockAdjustScreen = () => {
   };
 
   /**
+   * 접힌 두 번째 선택지를 여닫는다(D-12).
+   *
+   * **처음 여는 순간에 두 값을 제출 순간으로 채운다.** 기본값이라 대부분 그대로 지나가고,
+   * 자정을 넘겨 일한 사람만 고친다 — `new Date()`를 조작 안에서 부르는 것이 요점이다(렌더에서
+   * 부르면 매 렌더 값이 달라져 사용자가 치던 값이 흔들린다).
+   *
+   * **대상이 다른 자리는 새로 세운다** — 앞 전표를 위해 확인한 영업일이 새 전표에 남지 않는다.
+   * 접었다 다시 열면 치던 값은 그대로다(같은 전표라면 사용자가 버린 적이 없다).
+   */
+  const togglePostPanel = (): void => {
+    if (adjustmentId === null) return;
+
+    setPostPanel((prev) =>
+      prev.inventoryAdjustmentId === adjustmentId
+        ? { ...prev, isExpanded: !prev.isExpanded }
+        : {
+            inventoryAdjustmentId: adjustmentId,
+            isExpanded: true,
+            draft: seedPostDraft(new Date()),
+          },
+    );
+  };
+
+  /**
+   * 전기 초안을 고친다 — **고친 값을 그 전표에 맨다.**
+   *
+   * **고친 칸의 서버 오류를 함께 지운다** — 남겨 두면 400을 받은 칸을 고치는 순간에도 서버
+   * 문구와 `aria-invalid`가 되살아난다(머리 입력과 같은 규율).
+   */
+  const changePostDraft = (patch: Partial<PostDraft>): void => {
+    if (adjustmentId === null) return;
+
+    setPostPanel((prev) => ({
+      inventoryAdjustmentId: adjustmentId,
+      isExpanded: true,
+      draft: {
+        ...(prev.inventoryAdjustmentId === adjustmentId ? prev.draft : EMPTY_POST_DRAFT),
+        ...patch,
+      },
+    }));
+
+    if ('businessDate' in patch) post.clearFieldError('businessDate');
+    if ('occurredAtLocal' in patch) post.clearFieldError('occurredAt');
+  };
+
+  /** 확인 창이 되보일 요약. **화면이 이미 만든 값을 넘긴다** — 창이 다시 세면 갈린다. */
+  const postSummary = (created: CreatedAdjustmentResult): PostSummary => ({
+    inventoryAdjustmentNo: created.created.inventoryAdjustmentNo,
+    businessDate: postPanelState.draft.businessDate,
+    occurredAtLocal: postPanelState.draft.occurredAtLocal,
+    isBusinessDateApart: isBusinessDateApart(postPanelState.draft),
+  });
+
+  /** 전기를 **요청한다** — 보내는 것은 확인 창을 지난 뒤다. 등록·상신과 같은 층 구조다. */
+  const requestPost = (): void => {
+    setPending('post');
+  };
+
+  /**
+   * 확인을 받고 **실제로 전기한다** — 요청이 **둘**이다.
+   *
+   * ① 조정 상세를 부른다(잠금 토큰이 그 경로에서만 나온다 · D-14)
+   * ② 영업일과 발생 시각을 실어 전기한다
+   *
+   * **창을 닫지 않고 보낸다** — 실패했을 때 창이 닫히면 무엇이 막았는지 모른 채 같은 버튼을
+   * 다시 누른다. 창은 성공했을 때만 닫힌다.
+   *
+   * **승인 완료 전이면 서버가 400으로 되돌린다**(계약 · D-12) — 화면은 그 사정을 앞서 판정하지
+   * 않고 서버 문구를 그대로 낸다.
+   */
+  const confirmPost = (): void => {
+    const body = toPostRequest(postPanelState.draft, new Date());
+    const target = boundRegister?.created ?? null;
+
+    if (body === null || target === null) {
+      setPending(null);
+
+      return;
+    }
+
+    setPostStarting(true);
+    /* 이 호출이 겨눈 전표를 적어 둔다 — 응답이 늦게 오면 그때의 화면은 다른 대상을 볼 수 있다. */
+    postingTargetRef.current = {
+      inventoryAdjustmentId: target.inventoryAdjustmentId,
+      inventoryAdjustmentNo: target.created.inventoryAdjustmentNo,
+    };
+    /* **시도부터 매인다** — 나가는 중과 실패도 이 전표의 것으로만 읽혀야 한다. */
+    setPostBinding({
+      inventoryAdjustmentId: target.inventoryAdjustmentId,
+      inventoryAdjustmentNo: target.created.inventoryAdjustmentNo,
+      posted: null,
+    });
+
+    void fetchAdjustmentDetail(target.inventoryAdjustmentId)
+      .catch(() => undefined)
+      .finally(() => {
+        setPostStarting(false);
+        post.write(body);
+      });
+  };
+
+  /**
    * 409의 「최신 불러오기」 — **낡은 것은 이 전표의 잠금 토큰이다.**
    *
    * 거부는 삼키지 않고 받아 둔다. 실패해도 막다른 길이 아니다 — 「조정 상신」을 다시 누르는
@@ -1190,6 +1544,49 @@ export const StockAdjustScreen = () => {
     boundSubmit === null ? null : (
       <SaveErrorBanner error={submit.error} onReload={reloadAdjustmentDetail} />
     );
+
+  /**
+   * 전기 실패 표시 — **서버 문구를 그대로 낸다**(C34 · 공유계약 G-2).
+   *
+   * ⛔ **코드 문자열로 분기하지 않는다.** 계약이 400에 붙는 `code` 값을 못 박지 않았고
+   * (`ErrorItem.code`의 설명이 열린 목록이다) 「승인이 끝나지 않았다」를 뜻하는 코드도 보장되지
+   * 않는다 — 문자열로 갈래를 만들면 서버 문구가 바뀌는 날 조용히 깨진다. 화면은 **받은 것을
+   * 그대로 보인다.**
+   *
+   * **409에는 「최신 불러오기」를 함께 낸다** — 상신과 같이 이 쓰기에도 잠글 대상이 있다.
+   *
+   * ⭐ **응답이 오지 않은 갈래에는 안내를 하나 더 세운다**(리뷰 R-1 · 등록 축과 같은 형태).
+   * 그 요청은 서버에 닿아 **이미 재고를 움직였을 수 있다** — 「실패했다」로 접으면 화면이
+   * 확인하지 않은 사실을 말하게 되고, 다시 누르면 **호출마다 새 멱등 키**가 만들어져 서버에는
+   * 다른 요청으로 보인다(재조회가 새 잠금 토큰을 앉히므로 409도 막아 주지 않는다).
+   *
+   * **매임을 지난다** — 남의 전표의 실패가 지금 보고 있는 전표 위에 서지 않는다.
+   */
+  const postFailureSlot = (): ReactNode =>
+    boundPost === null ? null : (
+      <>
+        <SaveErrorBanner error={post.error} onReload={reloadAdjustmentDetail} />
+        {post.error?.kind === 'network' && (
+          <p className="field-note">{t.post.networkUnconfirmed}</p>
+        )}
+      </>
+    );
+
+  /**
+   * 전기가 **한 번 튕긴 적이 있는가** — 「전표는 남고 전기만 실패했습니다」가 서는 조건이다.
+   *
+   * **인라인으로 소화된 실패도 실패다** — 두 칸의 400은 배너가 아니라 칸에 붙으므로
+   * (`fieldErrors`) 배너만 보면 「아직 아무 일도 없었다」로 읽힌다(상신 갈래와 같은 규율).
+   *
+   * ⛔ **응답이 오지 않은 갈래는 여기 들지 않는다**(리뷰 R-1). 그 갈래에서 「전표는 남고
+   * 전기만 실패했습니다 · **재고는 움직이지 않았습니다**」를 세우면 화면이 확인하지 않은
+   * 사실을 단언하고 재시도를 권하게 된다 — 그 자리는 `postFailureSlot`의 안내가 맡는다.
+   * **서버가 되돌려 준 갈래에서만** 재고가 그대로임을 말할 수 있다.
+   */
+  const hasPostFailed =
+    boundPost !== null &&
+    post.error?.kind !== 'network' &&
+    (post.error !== null || Object.keys(post.fieldErrors).length > 0);
 
   /**
    * 지금 상신이 어디까지 갔는가. **결과 구획이 그리는 갈래를 한 자리에서 정한다** —
@@ -1574,6 +1971,16 @@ export const StockAdjustScreen = () => {
             {t.result.unboundSubmittedNote(strandedSubmittedNote)}
           </p>
         )}
+
+        {/*
+         * 매임이 끊긴 채 **원장에 잡힌** 전표(같은 갈래의 전기 몫). **재고가 실제로 움직였으므로**
+         * 셋 가운데 가장 감출 수 없는 사실이다 — 지금 보고 있는 대상의 결과로 세우지는 않는다.
+         */}
+        {strandedPostedNote !== null && (
+          <p className="field-note" role="status">
+            {t.post.unboundPostedNote(strandedPostedNote)}
+          </p>
+        )}
       </section>
 
       {/* **결과 구획은 이 초안의 등록이 성공했을 때만 선다**(매임). */}
@@ -1598,6 +2005,39 @@ export const StockAdjustScreen = () => {
             submit.clearFieldError('reason');
           }}
           onRequestSubmit={requestSubmit}
+        />
+      )}
+
+      {/*
+       * ⭐ **전기 구획은 결과 구획의 형제다** — 그 안에 얹지 않는다(T3 판단의 재판단).
+       *
+       * 결과 구획의 사유 칸·버튼·실패 배너는 **상신 성공과 함께 걷히는 한 덩어리**(`canSubmit`)라,
+       * 그 안에 전기 자리를 두면 **상신에 성공한 순간 전기 길이 화면에서 사라진다.** 스펙 §5-6이
+       * 전기의 활성 조건을 「승인 후(또는 승인 불요 시 상신 즉시)」로 두었으므로 그것은 정상 경로를
+       * 지우는 것이 된다. 형제로 두면 두 축의 수명이 서로를 끌고 다니지 않는다.
+       *
+       * **등록에 성공한 뒤에만 선다** — 전기할 대상이 그때 생긴다.
+       */}
+      {boundRegister?.created != null && (
+        <PostPane
+          inventoryAdjustmentNo={boundRegister.created.created.inventoryAdjustmentNo}
+          isExpanded={postPanelState.isExpanded}
+          draft={postPanelState.draft}
+          errors={postDraftErrors}
+          /* 남의 전표의 서버 오류가 이 칸에 서지 않는다(매임). */
+          fieldErrors={boundPost === null ? {} : post.fieldErrors}
+          isPosting={isPosting}
+          hasFailed={hasPostFailed}
+          posting={posting}
+          blockReason={postReasonBlocked}
+          /*
+           * 저장 실패는 **한 자리에만** 선다 — 확인 창이 열려 있으면 창 안이고, 닫혀 있으면 여기다.
+           * 두 자리에 두면 사용자가 스크림 뒤의 사본을 읽으려 든다.
+           */
+          banner={pending === 'post' ? null : postFailureSlot()}
+          onToggle={togglePostPanel}
+          onChangeDraft={changePostDraft}
+          onRequestPost={requestPost}
         />
       )}
 
@@ -1628,6 +2068,30 @@ export const StockAdjustScreen = () => {
            * 등록 확인 창과 같은 규율이다 — Escape로 닫히는 길은 디자인 시스템이 막을 수단을
            * 주지 않으므로, **닫혀도 나가는 요청이 무너지지 않게** 한다(여기서 `reset`을 부르지
            * 않는다). 응답은 그대로 도착해 매임을 지나 결과 구획에 선다.
+           */
+          onClose={() => {
+            setPending(null);
+          }}
+        />
+      )}
+
+      {/*
+       * ⭐ **창의 수명도 매임을 지난다**(리뷰 R-1의 형태).
+       *
+       * 세 조건이 함께 서야 이 창이 열린다 — 확인을 기다리는 조작이 전기이고, 지금 초안의
+       * 등록이 살아 있고, **이 전표를 위해 연 자리가 펼쳐져 있다.** 대상이 바뀌면 뒤의 둘이
+       * 함께 무너지므로, 열려 있던 창이 **남의 전표의 값을 되보인 채** 서 있는 길이 없다.
+       */}
+      {pending === 'post' && boundRegister?.created != null && postPanelState.isExpanded && (
+        <PostConfirmDialog
+          summary={postSummary(boundRegister.created)}
+          isSaving={isPosting}
+          banner={postFailureSlot()}
+          onConfirm={confirmPost}
+          /*
+           * 등록·상신 확인 창과 같은 규율이다 — Escape로 닫히는 길은 디자인 시스템이 막을
+           * 수단을 주지 않으므로, **닫혀도 나가는 요청이 무너지지 않게** 한다(여기서 `reset`을
+           * 부르지 않는다). 응답은 그대로 도착해 매임을 지나 전기 구획에 선다.
            */
           onClose={() => {
             setPending(null);
