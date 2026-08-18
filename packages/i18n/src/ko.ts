@@ -7674,6 +7674,154 @@ const passwordChange = {
   },
 } as const;
 
+/**
+ * W-06-14 적치 규칙 마스터.
+ *
+ * **이 화면의 고유 어휘는 둘이다.**
+ *
+ * 1. **「창고 전체」** — 규칙의 위치가 비어 있는 상태다. 값이 빠진 것이 아니라 **확정된 뜻**이며
+ *    (그 창고 어디에 두어도 된다) 「알 수 없음」이나 대시로 두면 정반대로 읽힌다.
+ * 2. **「규칙 없는 품목」** — 그 창고에 입고 이력이 있는데 활성 규칙이 하나도 없는 품목이다.
+ *    이 수가 0인 것이 **좋은 상태**이므로 0건의 문면에 경고 어휘를 쓰지 않는다.
+ */
+const putawayRule = {
+  title: '적치 규칙',
+  breadcrumbRoot: '기준정보',
+  panes: {
+    list: '적치 규칙 목록',
+    uncovered: '규칙 없는 품목',
+  },
+  fields: {
+    warehouse: '창고',
+    item: '품목',
+    location: '위치',
+    capacity: '용량',
+    /** 목록 열 이름. 폼의 「사용 여부」와 달리 한 낱말이라야 좁은 칸에서 접히지 않는다. */
+    status: '사용',
+    priorityNo: '우선순위',
+    itemCode: '품목코드',
+    itemName: '품목명',
+    lastReceivedAt: '마지막 입고',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+    /** 목록과 규칙 없는 품목을 **함께** 다시 부른다. 한쪽만 부르면 갱신된 값과 낡은 값이 섞인다. */
+    reload: '다시 조회',
+    /**
+     * 행 안의 버튼. 보이는 글자(품목 이름)가 행마다 같을 수 있다 — 같은 품목의 위치별 규칙이
+     * 여럿 설 수 있어 **위치를 함께 담는다.** 내부 번호는 접근 이름에도 넣지 않는다(`omf-mes#44`).
+     */
+    selectRow: (itemLabel: string, locationLabel: string): string =>
+      `${itemLabel} · ${locationLabel} 선택`,
+    /** 펼침 손잡이 하나가 두 방향을 맡는다 — 접근 이름은 **지금 무엇을 하는가**로 적는다. */
+    expandUncovered: '규칙 없는 품목 펼치기',
+    collapseUncovered: '규칙 없는 품목 접기',
+  },
+  loading: {
+    list: '적치 규칙 목록 불러오는 중',
+    uncovered: '규칙 없는 품목 불러오는 중',
+  },
+  filters: {
+    all: '전체',
+    /**
+     * 「사용 중만」이 화면 어휘다. 계약 파라미터(`includeInactive`)는 방향이 반대이며
+     * 뒤집는 자리는 `filters.ts` 한 곳이다.
+     *
+     * **기본은 꺼짐이다** — 끈 규칙을 다시 켜는 것이 이 마스터의 정상 운용이라(이슈 §6)
+     * 사용 안 함 행이 처음부터 보여야 한다.
+     */
+    activeOnly: '사용 중만',
+    /** 창고를 고르기 전에는 품목을 좁힐 대상이 없다. 감추지 않고 사유를 밝힌다. */
+    itemNeedsWarehouse: '품목 조건은 창고를 고른 뒤에 쓸 수 있습니다.',
+    /**
+     * 선택지가 **0건**일 때 트리거에 서는 자리표시.
+     *
+     * 그때는 「전체」도 붙이지 않는다 — 「전체를 고를 수 있다」가 곧 「목록이 준비됐다」로
+     * 읽히는데, 실제로는 고를 값이 하나도 오지 않은 상태다.
+     */
+    noWarehouseOptions: '고를 창고가 없습니다',
+    noItemOptions: '고를 품목이 없습니다',
+    lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+    lookupFailed: '선택지를 불러오지 못했습니다.',
+    chipWarehouse: (value: string): string => `창고: ${value}`,
+    chipItem: (value: string): string => `품목: ${value}`,
+    chipRemoveWarehouse: '창고 조건 제거',
+    chipRemoveItem: '품목 조건 제거',
+    chipRemoveActiveOnly: '사용 중만 조건 제거',
+  },
+  /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/putaway-rule/page-nav.tsx에 있다. */
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+  empty: {
+    /** 창고를 고르기 전. **빈 표가 아니라 안내다** — 빈 표는 「규칙이 없다」로 읽힌다. */
+    noWarehouseTitle: '창고를 고르면 적치 규칙이 보입니다',
+    noWarehouseDescription: '위쪽 창고 칸에서 창고를 고르세요.',
+    noResultTitle: '등록된 규칙이 없습니다',
+    noResultDescription: '조건을 줄이거나 「사용 중만」을 끈 뒤 다시 조회하세요.',
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
+  },
+  values: {
+    /** 이름 목록은 왔는데 그 안에 없다 — **값이 잘못됐다**는 신호다. */
+    unknown: '알 수 없음',
+    /** 이름 목록이 아직 오지 않았다. 「알 수 없음」으로 쓰면 정상 값이 잘못된 값으로 읽힌다. */
+    referenceLoading: '이름 불러오는 중',
+    /** 이름 목록 조회가 실패했다. 값이 없는 것과 다르다. */
+    referenceFailed: '이름을 불러오지 못했습니다',
+    inactiveSuffix: ' (미사용)',
+    /**
+     * 위치를 비운 규칙. **빈 값이 아니라 확정된 뜻이다** — 그 창고 안 어디에 두어도 되고
+     * 세부 위치는 창고 안 정책이 정한다. 참조 조회가 실패해도 이 뜻은 흔들리지 않는다.
+     */
+    warehouseWide: '창고 전체',
+    active: '사용 중',
+    inactive: '사용 안 함',
+    /** 용량은 수량과 단위가 한 몸이다 — 수량만 보이면 크고 작음을 판단할 수 없다. */
+    capacity: (qty: string, uomLabel: string): string => `${qty} ${uomLabel}`,
+    /** 입고 이력이 없다. 계약이 이 값을 선택으로 두었다. */
+    neverReceived: '입고 이력 없음',
+  },
+  notes: {
+    /**
+     * **이 쪽 안에서 센 수다.** 전체 건수는 서버가 주지만 사용 중 건수는 주지 않으므로
+     * 지금 보이는 쪽에서만 셀 수 있다 — 범위를 밝히지 않으면 전체 수로 읽힌다.
+     */
+    activeCountInPage: (count: number): string => `이 쪽에서 사용 중 ${String(count)}건`,
+    /**
+     * 이름 목록이 잘렸다 — **위치·단위처럼 고르는 칸이 없는 참조**의 잘림을 말하는 자리다.
+     *
+     * 잘린 목록으로 이름을 풀면 뒤쪽 값을 가리키는 **정상 규칙**이 「알 수 없음」으로 찍히는데,
+     * 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 정확히 반대로 읽는다. 그래서 「알 수 없음」이
+     * 값의 잘못이 아닐 수 있다는 것까지 말한다.
+     */
+    nameLookupTruncated:
+      '이름 목록이 앞쪽 일부만 왔습니다. 「알 수 없음」으로 보이는 값이 실제로는 정상일 수 있습니다 — 담당자에게 알려 주세요.',
+  },
+  /**
+   * 규칙 없는 품목 — **이 화면이 목록만큼 중요하게 다뤄야 하는 자리다.**
+   * 규칙이 없으면 현장이 위치 검증 없이 통과하는데, 등록된 것만 보이면 그 사실이 어디에도
+   * 드러나지 않는다(공유계약 G-12).
+   */
+  uncovered: {
+    /** 0건은 **좋은 상태**다. 경고 어휘를 쓰지 않는다. */
+    noneTitle: '이 창고에는 규칙 없는 품목이 없습니다',
+    noneDescription: '입고 이력이 있는 품목마다 적치 규칙이 있습니다.',
+    countTitle: (count: number): string => `이 창고에 규칙 없는 품목 ${String(count)}건`,
+    countDescription: '규칙이 없는 품목은 현장에서 위치 검증 없이 통과합니다.',
+    truncated: '앞쪽 일부만 보입니다. 나머지는 다음 쪽에 있습니다.',
+    /** 펼쳤는데 목록이 비었다. 건수와 어긋나는 상태이므로 감추지 않고 그대로 말한다. */
+    emptyListTitle: '펼칠 목록이 없습니다',
+    emptyListDescription: '건수와 목록이 어긋나면 담당자에게 알려 주세요.',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -7706,6 +7854,7 @@ export const ko = {
   login,
   stockAdjust,
   passwordChange,
+  putawayRule,
 } as const;
 
 export type Messages = typeof ko;
