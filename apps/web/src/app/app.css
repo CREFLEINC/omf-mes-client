@@ -440,3 +440,39 @@ main > * + * {
 .login-actions > button {
   width: 100%;
 }
+
+/*
+ * 알림 카드 목록 — **이 저장소에서 카드를 목록으로 반복하는 첫 자리다.**
+ *
+ * 목록이라는 사실을 마크업이 들고(ul/li) 브라우저 기본 글머리표·안쪽 여백만 지운다.
+ * 간격은 규범 1의 블록 이음매(--space-5)보다 좁은 --space-3이다 — 카드끼리는 서로 다른
+ * 블록이 아니라 한 묶음의 항목이라, 블록 간격을 주면 목록이 아니라 구획 여럿으로 읽힌다.
+ */
+.notification-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * 카드 머리줄 — 이벤트 코드·읽음 표시·발생 시각이 한 줄에 선다.
+ * 좁은 폭에서 접히므로 줄바꿈을 막지 않는다. 정렬은 컨트롤 상자가 아니라 글자 줄이라 가운데다.
+ */
+.notification-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.notification-card-code {
+  font-weight: 600;
+}
+
+/* 시각은 카드에서 가장 약하게 읽혀야 한다 — 무슨 알림인가가 먼저다. */
+.notification-card-time {
+  margin-left: auto;
+  color: var(--on-surface-muted);
+}
