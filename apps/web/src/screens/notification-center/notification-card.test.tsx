@@ -9,8 +9,17 @@ import { toNotificationView } from './types';
 
 const t = messages.notificationCenter;
 
-const renderCard = (overrides: Parameters<typeof notificationFixture>[0] = {}) =>
-  render(<NotificationCard view={toNotificationView(notificationFixture(overrides))} />);
+/**
+ * 제목은 **부모가 푼 결과**를 받는다(`lookups.ts`의 `describeEvent`). 기본값을 코드로 두는
+ * 이유는 그것이 「풀 수 없을 때」의 실제 값이기 때문이다 — 이 부품에는 그 두 경우가 같다.
+ */
+const renderCard = (
+  overrides: Parameters<typeof notificationFixture>[0] = {},
+  title = 'SYN-EVENT-01',
+) =>
+  render(
+    <NotificationCard view={toNotificationView(notificationFixture(overrides))} title={title} />,
+  );
 
 /**
  * 읽음 표시의 **강조 등급**을 재는 잣대.
@@ -56,12 +65,25 @@ describe('describeMessage', () => {
 });
 
 describe('NotificationCard', () => {
-  it('이벤트 코드 원문 · 발생 시각 · 본문을 그린다', () => {
+  it('제목 · 발생 시각 · 본문을 그린다', () => {
     renderCard();
 
     expect(screen.getByText('SYN-EVENT-01')).toBeInTheDocument();
     expect(screen.getByText('08-17 14:05')).toBeInTheDocument();
     expect(screen.getByText('합성 알림 문구 가입니다.')).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **제목은 받은 글자를 그린다 — 카드가 코드를 직접 그리지 않는다.**
+   *
+   * 코드를 그대로 그리는 형태로 되돌아가면 이름 풀이가 통째로 무의미해지는데, 카드가 든
+   * `view.eventCode`가 그때도 같은 자리에 있어 **다른 시험은 하나도 울지 않는다.**
+   */
+  it('제목이 푼 이름이면 코드 대신 그 이름이 선다', () => {
+    renderCard({}, '합성 이벤트 가');
+
+    expect(screen.getByText('합성 이벤트 가')).toBeInTheDocument();
+    expect(screen.queryByText('SYN-EVENT-01')).not.toBeInTheDocument();
   });
 
   it('시각에 원문을 함께 둔다 — 표기 조각만으로는 언제인지 되짚을 수 없다', () => {
@@ -116,10 +138,9 @@ describe('NotificationCard', () => {
   /**
    * ⭐ **이름이 같다는 것만으로는 부족하다 — 기제를 잰다.**
    *
-   * `aria-label`에 같은 글자를 직접 박아도 지금은 접근성 이름이 같아 위 시험이 통과한다.
-   * 두 형태가 갈라지는 시점은 **T2**다 — 이벤트 이름 풀이가 붙어 카드 제목이 코드에서 이름으로
-   * 바뀌면, `aria-label`은 코드에 묶인 채 남아 **보이는 글자와 들리는 이름이 갈린다.**
-   * 그때는 「T1이 원래 그랬는지 T2가 깬 것인지」를 가릴 수 없으므로 여기서 규격을 고정한다.
+   * `aria-label`에 같은 글자를 직접 박아도 접근성 이름이 같아 위 시험이 통과한다.
+   * ⭐ **그 두 형태가 실제로 갈라졌다** — 이름 풀이가 붙어 제목이 코드에서 이름으로 바뀌었다.
+   * `aria-label`로 두면 코드에 묶인 채 남아 **보이는 글자와 들리는 이름이 갈린다.**
    */
   it('카드가 제목을 aria-labelledby로 가리킨다 — 이름을 직접 박지 않는다', () => {
     renderCard();
@@ -130,14 +151,22 @@ describe('NotificationCard', () => {
     expect(card).not.toHaveAttribute('aria-label');
   });
 
+  it('제목이 이름으로 풀리면 카드의 접근성 이름도 그 이름이다', () => {
+    renderCard({}, '합성 이벤트 가');
+
+    /* 보이는 글자와 들리는 이름이 같은 자리에서 나온다. */
+    expect(screen.getByRole('group', { name: '합성 이벤트 가' })).toBeInTheDocument();
+  });
+
   it('카드가 둘이면 각자 자기 제목을 가리킨다 — 상수 id면 둘 다 앞 카드를 가리킨다', () => {
     render(
       <>
-        <NotificationCard view={toNotificationView(notificationFixture())} />
+        <NotificationCard view={toNotificationView(notificationFixture())} title="SYN-EVENT-01" />
         <NotificationCard
           view={toNotificationView(
             notificationFixture({ notificationId: 7102, eventCode: 'SYN-EVENT-02' }),
           )}
+          title="SYN-EVENT-02"
         />
       </>,
     );

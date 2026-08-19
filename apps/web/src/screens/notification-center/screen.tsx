@@ -1,11 +1,23 @@
-import { Breadcrumb, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { withPeriod } from './filters';
+import { formatAsOf } from './as-of';
+import { NotificationFilterBar } from './filter-bar';
+import {
+  readFilters,
+  readPage,
+  toFilterQuery,
+  toSearchParams,
+  withPeriod,
+  type NotificationFilters,
+} from './filters';
 import { LoadErrorBanner } from './load-error-banner';
+import { describeEvent, useNotificationEventOptions, withCurrentEvent } from './lookups';
 import { NotificationCard } from './notification-card';
+import { PageNav } from './page-nav';
+import { toPageView } from './pagination';
 import {
   defaultPeriod,
   hasPeriodKeys,
@@ -14,42 +26,51 @@ import {
   type NotificationPeriod,
 } from './period';
 import { useNotificationList } from './queries';
-import type { NotificationView } from './types';
+import type { NotificationView, SelectOption } from './types';
 
 const t = messages.notificationCenter;
 
 /**
- * 결과가 없을 때 쓰는 고정 참조.
+ * 응답이 아직 없을 때 쓰는 자리표시 둘.
  *
- * ⚠ **이 회차에는 막는 것이 없다** — `rows`의 소비처가 `listPane()` 안의 `length`·`map` 둘뿐이라
- * 매 렌더 새 배열을 만들어도 관측되는 차이가 없다. 자리를 미리 고정해 두는 것은 **T2** 때문이다.
- * 그 회차가 `rows`를 쪽 표기(`toPageView`)와 조건 줄에 넘기면 그때부터 참조가 실제로 의미를 갖는다.
+ * **자리표시 값을 한 곳에 모으는 것이 근거다.** 렌더 안에 인라인으로 두면 「받은 것이 없을 때
+ * 무엇으로 보는가」가 두 자리로 흩어지고, 한쪽만 고쳐지면 목록은 비었다고 보는데 쪽 계산은
+ * 다른 기본을 쓰는 어긋남이 생긴다.
+ *
+ * ⚠ **참조 안정성이 근거가 아니다.** 이 회차의 소비처는 `rows.length`·`rows.map(...)`과
+ * `toPageView(meta, shown)`인데 **셋 다 값만 읽고 참조 동일성을 보지 않는다** — 메모된 계산도
+ * `memo` 부품도 이 값들을 받지 않는다. 그 근거가 참이 되는 시점이 오면 그때 적는다.
  */
 const EMPTY_ROWS: NotificationView[] = [];
 
+const EMPTY_PAGE = { page: 1, size: 0, total: 0 };
+
 /**
- * W-CO-03 알림센터 — 사용자가 **자기가 받은 알림을 기간으로 찾아 보는** 자리.
+ * W-CO-03 알림센터 — 사용자가 **자기가 받은 알림을 기간·상태·유형으로 찾아 보는** 자리.
  *
  * ⭐ **이 화면이 다른 조회 화면과 가장 크게 갈리는 자리는 기간이다.** 계약이 기간을 필수로
  * 두어(공유계약 L-3) 「조건 없이 일단 조회한다」가 성립하지 않는다. 그래서 저장소의 조회형
  * 골격이 규율로 세운 **「기본 기간을 심지 않는다」가 여기서는 거짓**이고, 심지 않으면 첫
  * 진입이 곧 400이다. 무엇을 왜 뒤집었는지는 `period.ts` 머리의 표에 있다.
  *
- * **주소 키의 수명 — 무엇이 바뀔 때 무엇을 비우는가.**
+ * **주소 키의 수명 — 무엇이 바뀔 때 무엇이 달라지는가.**
  *
- * | # | 주소의 기간 | `from`·`to` | 왜 |
- * | :-: | --- | --- | --- |
- * | 1 | **키가 없다**(첫 진입) | **기본 7일을 심는다** | 사용자가 기간에 대해 아직 아무 말도 하지 않았다. 기간이 없으면 조회 자체가 되지 않는다 |
- * | 2 | **키는 있고 값이 비었다**(`?from=&to=`) | **그대로 둔다** | 비운 것이 사용자의 뜻이다. 덮으면 기간을 비울 수단이 아예 사라진다 |
- * | 3 | 손으로 고친 깨진 기간 | **그대로 둔다** | 조용히 덮으면 무엇이 왜 달라졌는지 화면 어디에도 없다. 사유를 보이고 조회하지 않는다 |
+ * | # | 조작·상태 | `from`·`to` | `unread`·`ev` | `page` | 왜 |
+ * | :-: | --- | --- | --- | --- | --- |
+ * | 1 | 첫 진입 — **기간 키가 없다** | **기본 7일을 심는다** | 건드리지 않는다 | 건드리지 않는다 | 사용자가 기간에 대해 아직 아무 말도 하지 않았다 |
+ * | 2 | **기간 키는 있고 값이 비었다**(`?from=&to=`) | **그대로 둔다** | 그대로 | 그대로 | 비운 것이 사용자의 뜻이다. 덮으면 기간을 비울 수단이 사라진다 |
+ * | 3 | 손으로 고친 **깨진 기간** | **그대로 둔다** | 그대로 | 그대로 | 조용히 덮으면 무엇이 왜 달라졌는지 화면 어디에도 없다 |
+ * | 4 | 조건 변경(기간 · 안 읽음만 · 유형) | 고른 값 | 고른 값 | **첫 쪽으로** | 결과가 통째로 달라진다. 3쪽을 보다가 조건을 좁히면 결과가 3쪽에 못 미쳐 「좁혔더니 아무것도 없다」로 보인다 |
+ * | 5 | 쪽 이동 | 그대로 | 그대로 | 옮긴 쪽 | 조건은 그대로다 |
+ * | 6 | 이 쪽에 결과가 없어 **「첫 쪽으로」** | 그대로 | 그대로 | **첫 쪽으로** | 조건은 그대로다 — 사용자가 할 일은 조건을 넓히는 것이 아니라 앞쪽으로 가는 것이다 |
  *
  * ⭐ **1행과 2행을 가르는 것이 `hasPeriodKeys`다.** 값만 보면 둘이 같은 빈 문자열이라 구분되지
  * 않는다 — 전례 둘(`master-change/screen.tsx`·`integration-sync/screen.tsx`)이 같은 자리를
  * `searchParams.has()`로 갈라 두었다. 2·3행은 조회하지 않고 사유를 보이며, 사유는 **갈래마다
  * 다르다**(비었다 ↔ 날짜가 아니다 ↔ 뒤집혔다 — 공유계약 G-9).
  *
- * **비우는 자리가 하나도 없다** — 기간은 이 화면에서 풀 수 없는 조건이다. 조건이 늘어나는
- * 회차(안 읽음·유형·쪽)가 이 표에 행을 먼저 더한다.
+ * **쪽을 첫 쪽으로 되돌리는 자리는 둘이다**(4행·6행) — 둘 다 `applyQuery`의 **기본 인자**를
+ * 쓰는 호출이고, 갈리는 것은 조건을 함께 바꾸느냐뿐이다. 일곱째가 생기면 이 표에 행을 먼저 더한다.
  *
  * ⛔ **자동 갱신을 두지 않는다**(공유계약 L-6). ⚠ L-6의 각주는 **이 화면을 실시간 예외로
  * 지목**하지만, 나중 판(화면 스펙 §8-4와 계약)이 「화면은 자동 갱신 없음 · 셸 배지만 화면 전환
@@ -60,14 +81,13 @@ export const NotificationCenterScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   /*
-   * **주소가 바뀔 때만 새 참조를 만든다.**
-   *
-   * ⚠ **이 회차에는 막는 것이 없다** — 유일한 소비처인 `resolvePeriod`가 메모되지 않아 어차피
-   * 매 렌더 돈다. 여기 두는 것은 **T2** 때문이다. 그 회차의 조건 줄이 이 값을 되돌림 기준으로
-   * 받는데, 렌더마다 새 객체면 내용이 같아도 참조가 달라 **부모가 다시 그려질 때마다 치던 날짜를
-   * 덮어쓴다**(조회 응답이 도착하는 순간이 실제로 그 자리다 — 전례 `inbound-schedule` #43).
+   * **주소가 바뀔 때만 새 참조를 만든다.** 렌더마다 새 객체를 만들면 내용이 같아도 참조가
+   * 달라, 이 값을 prop으로 받는 조건 줄이 부모가 다시 그려질 때마다 새 값을 받은 것으로 본다
+   * (조회 응답이 도착하는 순간이 실제로 그 자리다 — 전례 `inbound-schedule` #43).
    */
   const period = useMemo<NotificationPeriod>(() => readPeriod(searchParams), [searchParams]);
+  const filters = useMemo<NotificationFilters>(() => readFilters(searchParams), [searchParams]);
+  const page = readPage(searchParams);
 
   /*
    * ⭐ **「키가 없다」와 「키는 있고 값이 비었다」를 가른다**(주소 키 수명 표 1·2행).
@@ -90,6 +110,10 @@ export const NotificationCenterScreen = () => {
    *
    * ⭐ **기존 주소를 통째로 갈아 끼우지 않는다**(`withPeriod`) — 기간을 채우는 김에 사용자가
    * 걸어 둔 다른 조건이 함께 사라지면 안 된다.
+   *
+   * ⚠ **여기서 시계를 다시 읽는다**(위 `resolvePeriod`의 것과 다른 `new Date()`다). effect는
+   * 렌더보다 늦게 도므로 그 사이에 날이 바뀌었다면 **심는 시점의 오늘**이 맞다 — 렌더 때 읽은
+   * 값을 나르면 자정 직후에 하루 지난 기간을 심는다.
    */
   useEffect(() => {
     if (!isSeeding) return;
@@ -99,14 +123,73 @@ export const NotificationCenterScreen = () => {
     setSearchParams((prev) => withPeriod(prev, seeded), { replace: true });
   }, [isSeeding, setSearchParams]);
 
-  const listQuery = periodState.kind === 'ready' ? periodState.query : null;
+  const listQuery =
+    periodState.kind === 'ready'
+      ? { ...periodState.query, ...toFilterQuery(filters), ...(page > 1 ? { page } : {}) }
+      : null;
+
   const list = useNotificationList(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
+  const pageView = toPageView(list.data?.page ?? EMPTY_PAGE, rows.length);
 
-  /** 목록 구획. 넷 중 하나만 낸다 — 사용자가 할 조치가 서로 다르다. */
+  /*
+   * 유형 목록 — **조건 줄의 선택지와 카드 제목의 이름 풀이가 같은 조회를 쓴다.**
+   * 좁힘 인자가 없는 경로라(실측) 한 조회로 둘 다 쓰는 것이 위험을 만들지 않는다.
+   */
+  const events = useNotificationEventOptions();
+
+  /*
+   * 기준 시각은 **응답이 도착한 시각**이다(`dataUpdatedAt`) — 렌더 시각이 아니다.
+   * 아직 받은 자료가 없으면 그 값이 `0`이고, 그때는 표기 자체를 내지 않는다(공유계약 L-5).
+   */
+  const asOf = formatAsOf(list.data === undefined ? null : list.dataUpdatedAt);
+
+  /**
+   * 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다.
+   *
+   * **조건이 바뀌면 쪽을 첫 쪽으로 되돌린다**(수명 규칙 4행) — 기본 인자가 그 규칙이다.
+   * 쪽 이동만 그 값을 명시해 넘긴다(5행).
+   */
+  const applyQuery = (
+    nextPeriod: NotificationPeriod,
+    nextFilters: NotificationFilters,
+    nextPage = 1,
+  ): void => {
+    setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
+  };
+
+  /**
+   * 유형 선택지 — 「전체」가 맨 앞이고, 그 뒤가 조회로 받은 목록이다.
+   *
+   * **「전체」를 값이 빈 선택지로 둔다.** 두지 않으면 한 번 고른 뒤에 조건을 해제할 방법이
+   * 선택칸 안에 없어진다.
+   *
+   * **주소로 들어온 값이 목록에 없으면 맨 앞에 남긴다**(`withCurrentEvent`) — 남기지 않으면
+   * 그 조건을 푸는 수단이 사라진다. 목록 조회가 실패한 동안에도 같은 일이 일어난다.
+   */
+  const eventOptions: SelectOption[] = [
+    { value: '', label: t.filters.all },
+    ...withCurrentEvent(events.entries, filters.eventCode).map((entry) => ({
+      value: entry.value,
+      label: entry.label,
+    })),
+  ];
+
+  /** 목록 구획. 다섯 중 하나만 낸다 — 사용자가 할 조치가 서로 다르다. */
   const listPane = (): ReactNode => {
     if (periodState.kind === 'blocked') {
-      return <EmptyState size="sm" title={t.empty.blockedTitle} description={periodState.reason} />;
+      return (
+        <EmptyState
+          size="sm"
+          /*
+           * ⭐ **`live`를 둔다.** 조건 줄이 생겨 화면 안에서 기간이 바뀌므로 이 안내는 이제
+           * **동적으로 나타난다** — 보조 기술에 알려지지 않으면 조회가 멈춘 것을 알 수 없다.
+           */
+          live
+          title={t.empty.blockedTitle}
+          description={periodState.reason}
+        />
+      );
     }
 
     /* 기간을 심는 동안에도 조회를 기다리는 것과 같은 모양이다 — 한 순간 뒤 요청이 나간다. */
@@ -115,6 +198,32 @@ export const NotificationCenterScreen = () => {
         <div role="status" aria-label={t.loading.list}>
           <SkeletonText lines={3} />
         </div>
+      );
+    }
+
+    /*
+     * ⭐ **결과가 있는데 이 쪽에 없는 것은 0건과 다르다.** 같은 문구로 두면 사용자가 조건을
+     * 헛되이 넓힌다 — 넓혀도 그 쪽에는 여전히 아무것도 없다. 할 일은 첫 쪽으로 가는 것이다.
+     */
+    if (pageView.isBeyondLast) {
+      return (
+        <EmptyState
+          size="sm"
+          live
+          title={t.empty.beyondLastTitle}
+          description={t.empty.beyondLastDescription}
+          action={
+            <Button
+              variant="outlined"
+              size="sm"
+              onClick={() => {
+                applyQuery(period, filters);
+              }}
+            >
+              {t.actions.goFirstPage}
+            </Button>
+          }
+        />
       );
     }
 
@@ -138,7 +247,7 @@ export const NotificationCenterScreen = () => {
       <ul className="notification-list">
         {rows.map((view) => (
           <li key={view.notificationId}>
-            <NotificationCard view={view} />
+            <NotificationCard view={view} title={describeEvent(view.eventCode, events.entries)} />
           </li>
         ))}
       </ul>
@@ -150,21 +259,58 @@ export const NotificationCenterScreen = () => {
       <PageHeader
         title={t.title}
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        /*
+         * 기준 시각을 제목 줄에 둔다. **live 영역으로 두지 않는다** — 조건을 바꿀 때마다
+         * 낭독되는데, 조회가 끝났다는 사실은 목록·빈 상태가 이미 알린다.
+         */
+        actions={asOf === null ? undefined : <span className="field-note">{t.asOf(asOf)}</span>}
       />
 
       {/* 조회 실패는 빈 상태로 오인시키지 않는다 — 「없습니다」로 내면 알림이 없는 줄 안다. */}
-      {list.isError ? (
+      {list.isError && (
         <LoadErrorBanner
           error={list.error}
           onRetry={() => {
             void list.refetch();
           }}
         />
-      ) : (
-        <section className="pane" aria-label={t.panes.list}>
-          {listPane()}
-        </section>
       )}
+
+      <section className="pane" aria-label={t.panes.list}>
+        {/*
+         * ⭐ **결과가 없어도, 조회에 실패해도 조건 줄은 감추지 않는다** — 조건을 고칠 수단이
+         * 사라지면 사용자가 실패에서 빠져나올 길이 없다. T1은 조건 줄이 없어 실패 시 구획
+         * 자체를 그리지 않았는데, 이 회차부터는 전례(`master-change`·`inbound-schedule`)의
+         * 형태로 돌아간다.
+         */}
+        <NotificationFilterBar
+          period={period}
+          filters={filters}
+          eventOptions={eventOptions}
+          eventNote={events.isError ? t.filters.eventsFailed : undefined}
+          onChangePeriod={(nextPeriod) => {
+            applyQuery(nextPeriod, filters);
+          }}
+          onChangeFilters={(nextFilters) => {
+            applyQuery(period, nextFilters);
+          }}
+        />
+
+        {/* 실패했으면 목록도 빈 상태도 내지 않는다 — 위 배너가 그 자리를 맡는다. */}
+        {!list.isError && (
+          <>
+            {listPane()}
+            {listQuery !== null && !list.isPending && !pageView.isBeyondLast && (
+              <PageNav
+                view={pageView}
+                onChange={(nextPage) => {
+                  applyQuery(period, filters, nextPage);
+                }}
+              />
+            )}
+          </>
+        )}
+      </section>
     </>
   );
 };
