@@ -38,6 +38,25 @@ export interface NotificationCardProps {
    * 「풀 수 없을 때 무엇을 보이는가」가 화면과 부품 두 곳에 흩어진다.
    */
   title: string;
+  /**
+   * 읽음 여부 — **서버 값이 아니라 화면의 판정이다**(`read-state.ts`의 `isRead`).
+   *
+   * 부품이 `view.read`를 직접 보지 않는 이유는 「이 회차에 읽음 처리한 번호」가 화면에만
+   * 있기 때문이다. 부품이 두 출처를 합치면 그 규칙이 화면과 부품 두 곳에 흩어진다.
+   */
+  isRead: boolean;
+  /**
+   * 잠긴 상태인가 — **이 카드의 쓰기가 나가는 중이거나, 「모두 읽음」이 나가는 중**이면 참이다.
+   *
+   * ⚠ **두 갈래의 뜻이 다르다.** 앞은 「이 카드만」이고(다른 카드는 계속 누를 수 있다),
+   * 뒤는 **모든 카드**가 함께 참이 된다 — 그 조작이 곧 모든 카드를 읽음으로 바꾸므로 개별
+   * 클릭이 무의미하고, 두 조작이 겹치면 어느 것의 결과인지 사용자가 가릴 수 없기 때문이다.
+   *
+   * ⭐ **잠근 자리는 `aria-disabled`로 보이게 잠근다.** 잠그지 않은 채 클릭만 버리는 형태가
+   * 이 화면이 한 번 겪고 고친 결함이다(되먹임이 없어 사용자가 원인을 알 수단이 없다).
+   */
+  isPending: boolean;
+  onRead: (notificationId: number) => void;
 }
 
 /**
@@ -50,23 +69,57 @@ export interface NotificationCardProps {
  * 아직 정해지지 않았다(스펙 §8-2). 그 사실을 **화면에 상시 안내로 두지 않는다** — 늘 참인데
  * 사용자가 할 수 있는 조치가 없다. 안내가 필요해지는 시점은 수신자 언어를 볼 수 있게 된 뒤다.
  *
- * **이 회차의 카드는 누를 수 없다.** 읽음 처리(항목 클릭)는 뒤따르는 회차가 붙이며, 그때
- * `interactive`로 바꾼다 — 디자인 시스템이 그 형태 안에 다른 포커스 컨트롤을 두는 것을 금한다.
+ * ⭐ **카드 전체가 누를 수 있는 하나다**(결정 ⑦ · 스펙 §5-5의 「항목 클릭 시 자동」). 제목만
+ * 누르게 두면 본문을 눌러도 아무 일이 없어 그 규정이 깨진다.
+ *
+ * ⚠ **디자인 시스템이 이 형태 안에 다른 포커스 컨트롤을 두는 것을 금한다** — 뒤따르는 회차의
+ * 「대상으로 이동」은 카드 **안이 아니라 형제**로 선다.
+ *
+ * ⭐ **접근성 이름의 출처가 바뀌지 않는다.** 이 디자인 시스템 판은 `interactive`일 때
+ * `{...props}` **뒤에** `role="button"`을 놓으므로 호출부의 `role`만 대체되고
+ * `aria-labelledby`는 그대로 산다(런타임 실측 · T1 인계 1). 그래서 카드의 이름은 여전히
+ * 제목에서 나온다.
+ *
+ * ⭐ **이미 읽은 카드도 버튼으로 남긴다.** 눌리지 않는 `div`로 바꾸면 키보드로 Enter를 눌러
+ * 읽음 처리한 **그 순간 포커스가 사라진다.** 대신 **요청을 보내지 않는다** — 상태가 이미
+ * 목표 상태다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const NotificationCard = ({ view, title }: NotificationCardProps) => {
+export const NotificationCard = ({
+  view,
+  title,
+  isRead,
+  isPending,
+  onRead,
+}: NotificationCardProps) => {
   const titleId = titleIdOf(view.notificationId);
 
   return (
-    <Card surface="default" bordered role="group" aria-labelledby={titleId}>
+    <Card
+      surface="default"
+      bordered
+      interactive
+      /* 나가는 중인 카드만 잠근다. 다른 카드는 그동안에도 누를 수 있다. */
+      disabled={isPending}
+      aria-labelledby={titleId}
+      onClick={() => {
+        /*
+         * ⭐ **이미 읽은 카드는 요청을 보내지 않는다.** 서버 상태가 이미 목표 상태라 보낼 것이
+         * 없고, 보내면 사용자가 목록을 훑는 동안 요청이 계속 나간다.
+         */
+        if (isRead) return;
+
+        onRead(view.notificationId);
+      }}
+    >
       <Card.Header>
         <div className="notification-card-meta">
           <span id={titleId} className="notification-card-code">
             {title}
           </span>
-          <Chip size="sm" status={view.read ? 'idle' : 'info'}>
-            {view.read ? t.card.read : t.card.unread}
+          <Chip size="sm" status={isRead ? 'idle' : 'info'}>
+            {isRead ? t.card.read : t.card.unread}
           </Chip>
           {/* 원문을 `dateTime`에 그대로 둔다 — 표기는 조각이라 그것만으로는 언제인지 되짚을 수 없다. */}
           <time className="notification-card-time" dateTime={view.occurredAt}>
