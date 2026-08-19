@@ -55,14 +55,37 @@ const shrinkingRoute = (): StubRoute => {
   };
 };
 
-const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } => {
+/**
+ * 요청을 기록하면서 스텁 규칙으로 응답한다.
+ *
+ * `hold`가 참을 돌려주면 **기록한 뒤 응답을 붙잡아 둔다.** 「조회가 끝나기 전에 화면이
+ * 무엇을 그리고 있나」를 재려면 그 구간이 실제로 멈춰 있어야 한다 — `findBy…`로 최종 상태만
+ * 기다리는 시험은 그 사이에 무엇이 번쩍였는지 영영 보지 못한다.
+ */
+const recordingFetch = (
+  routes: StubRoute[],
+  hold?: (request: Request) => boolean,
+): { fetch: StubFetch; urls: URL[]; release: () => void } => {
   const urls: URL[] = [];
   const stub = createStubFetch(routes);
+  const holders: Array<() => void> = [];
 
   return {
     urls,
+    release: () => {
+      holders.forEach((resolve) => {
+        resolve();
+      });
+      holders.length = 0;
+    },
     fetch: async (request) => {
       urls.push(new URL(request.url));
+
+      if (hold?.(request) === true) {
+        await new Promise<void>((resolve) => {
+          holders.push(resolve);
+        });
+      }
 
       return stub(request);
     },
@@ -118,8 +141,13 @@ const BackProbe = () => {
   );
 };
 
-const renderScreen = (route = '/', routes: StubRoute[] = [listRoute()], navigateTo = '') => {
-  const { fetch, urls } = recordingFetch(routes);
+const renderScreen = (
+  route = '/',
+  routes: StubRoute[] = [listRoute()],
+  navigateTo = '',
+  hold?: (request: Request) => boolean,
+) => {
+  const { fetch, urls, release } = recordingFetch(routes, hold);
   const result = renderWithProviders(
     <>
       <NotificationCenterScreen />
@@ -130,7 +158,7 @@ const renderScreen = (route = '/', routes: StubRoute[] = [listRoute()], navigate
     { fetch, route },
   );
 
-  return { ...result, urls, user: userEvent.setup() };
+  return { ...result, urls, release, user: userEvent.setup() };
 };
 
 /** 카드가 실제로 섰음을 잡는 시점. 음성 단언은 이 시점 뒤에 잰다. */
@@ -178,6 +206,26 @@ describe('NotificationCenterScreen — 기간을 주소에 심는다', () => {
 
     expect(currentLocation()).toBe('/?from=2026-08-01&to=2026-08-07');
     expect(listUrls(urls)).toHaveLength(1);
+  });
+
+  /**
+   * ⭐ **키는 있고 값이 빈 주소는 사용자의 뜻이다.** 값만 보면 「키가 없다」와 같은 빈
+   * 문자열이라, 두 사태를 접으면 화면이 곧바로 기본값으로 덮는다 — 그러면 기간을 비울 수단이
+   * 아예 없어진다. 전례 둘(`master-change` · `integration-sync`)이 `has()`로 갈라 둔 자리다.
+   */
+  it('키는 있고 값이 빈 주소를 덮지 않고 사유를 보인다', async () => {
+    const { urls } = renderScreen('/?from=&to=');
+
+    expect(await screen.findByText(t.reasons.periodIncomplete)).toBeInTheDocument();
+    expect(currentLocation()).toBe('/?from=&to=');
+    expect(listUrls(urls)).toHaveLength(0);
+  });
+
+  it('한쪽 키만 있어도 덮지 않는다 — 넣은 쪽이 사라지면 안 된다', async () => {
+    renderScreen('/?from=2026-08-01');
+
+    expect(await screen.findByText(t.reasons.periodIncomplete)).toBeInTheDocument();
+    expect(currentLocation()).toBe('/?from=2026-08-01');
   });
 
   it('기간을 채우면서 다른 조건 키를 지우지 않는다', async () => {
@@ -278,10 +326,15 @@ describe('NotificationCenterScreen — 보낼 수 없는 기간', () => {
     expect(listUrls(urls)).toHaveLength(0);
   });
 
-  it('한쪽만 채운 기간도 막는다', async () => {
+  it('한쪽만 채운 기간도 막는다 — 다만 날짜 탓으로 말하지 않는다', async () => {
     const { urls } = renderScreen('/?from=2026-08-01');
 
-    expect(await screen.findByText(t.reasons.periodInvalid)).toBeInTheDocument();
+    /*
+     * ⭐ 넣은 날짜는 멀쩡하다. 「올바른 날짜가 아닙니다」로 말하면 사실도 아니고,
+     * 성한 쪽까지 다시 고르라는 말이 된다(공유계약 G-9).
+     */
+    expect(await screen.findByText(t.reasons.periodIncomplete)).toBeInTheDocument();
+    expect(screen.queryByText(t.reasons.periodInvalid)).not.toBeInTheDocument();
     expect(listUrls(urls)).toHaveLength(0);
   });
 
@@ -358,6 +411,41 @@ describe('NotificationCenterScreen — 목록', () => {
     renderScreen('/?from=2026-08-01&to=2026-08-07', [listRoute([])]);
 
     expect(await screen.findByText(t.empty.noneTitle)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **「빈 상태로 오인시키지 않는다」의 세 번째 갈래 — 대기.**
+   *
+   * 실패 갈래와 막힌 기간 갈래는 이미 감지기가 있다. 대기 갈래만 비어 있으면, 빈 상태 판정을
+   * 대기 판정보다 앞으로 옮겨도 아무도 울지 않는다 — 시험이 `findBy…`로 **최종 상태만**
+   * 기다리기 때문이다. 그 사이에 「받은 알림이 없습니다」가 번쩍이면 사용자는 조건이 잘못된
+   * 줄 알고 되돌린다. 첫 진입과 조건 변경마다 반드시 지나는 구간이다.
+   *
+   * 응답을 붙잡아 그 구간을 실제로 멈춰 세운 뒤 잰다 — 음성 단언(「없다」)을 짝 양성(대기
+   * 표시가 서 있다)과 **같은 시점**에 둔다.
+   */
+  it('조회가 끝나기 전에는 알림이 없다고 말하지 않는다', async () => {
+    const { release } = renderScreen('/?from=2026-08-01&to=2026-08-07', [listRoute()], '', isList);
+
+    expect(await screen.findByRole('status', { name: t.loading.list })).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noneTitle)).not.toBeInTheDocument();
+
+    release();
+
+    /* 붙잡은 것을 놓으면 정상 경로로 이어진다 — 대기 표시가 카드로 바뀐다. */
+    await waitForCards();
+    expect(screen.queryByRole('status', { name: t.loading.list })).not.toBeInTheDocument();
+  });
+
+  it('기간을 채우는 동안에도 알림이 없다고 말하지 않는다', async () => {
+    /* 첫 진입은 「기간 심기 → 요청 → 응답」이라 대기 구간이 두 번 있다. 앞쪽도 잰다. */
+    const { release } = renderScreen('/', [listRoute()], '', isList);
+
+    expect(await screen.findByRole('status', { name: t.loading.list })).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noneTitle)).not.toBeInTheDocument();
+
+    release();
+    await waitForCards();
   });
 
   it('한 건만 와도 목록으로 그린다', async () => {

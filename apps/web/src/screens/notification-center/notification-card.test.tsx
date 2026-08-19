@@ -1,3 +1,4 @@
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -10,6 +11,29 @@ const t = messages.notificationCenter;
 
 const renderCard = (overrides: Parameters<typeof notificationFixture>[0] = {}) =>
   render(<NotificationCard view={toNotificationView(notificationFixture(overrides))} />);
+
+/**
+ * 읽음 표시의 **강조 등급**을 재는 잣대.
+ *
+ * 디자인 시스템이 상태를 해시 클래스(`_status-info_…`)로 그리므로 그 이름을 직접 겨누지
+ * 않는다(저장소 규율 — DS 해시 클래스는 판마다 바뀐다). 대신 **기대하는 등급으로 칩 하나를
+ * 따로 그려** 그 클래스와 같은지 본다. 해시가 바뀌면 잣대도 함께 움직이고, 등급을 맞바꾸면
+ * 어긋난다.
+ */
+const chipClassFor = (status: 'idle' | 'info'): string => {
+  const { container, unmount } = render(
+    <Chip size="sm" status={status}>
+      기준
+    </Chip>,
+  );
+  const className = container.querySelector('span')?.className ?? '';
+  unmount();
+
+  return className;
+};
+
+/** 칩의 뿌리. DS가 글자를 안쪽 `span`에 담으므로 한 칸 올라간다. */
+const chipRootOf = (label: string): HTMLElement | null => screen.getByText(label).parentElement;
 
 describe('describeMessage', () => {
   it('내용이 있으면 원문을 그대로 낸다', () => {
@@ -59,6 +83,24 @@ describe('NotificationCard', () => {
     expect(screen.getByText(t.card.read)).toBeInTheDocument();
   });
 
+  /**
+   * ⭐ **글자만 재면 강조가 조용히 뒤집힌다.**
+   *
+   * 읽음 여부는 이 화면에서 목록을 훑는 **유일한 시각 단서**다. 두 등급을 맞바꿔도 글자는
+   * 그대로라 「읽음/안 읽음이 보인다」는 시험이 전부 통과한다 — 강조를 잃은 채로.
+   */
+  it('안 읽은 알림이 강조 등급으로 선다', () => {
+    renderCard();
+
+    expect(chipRootOf(t.card.unread)?.className).toBe(chipClassFor('info'));
+  });
+
+  it('읽은 알림은 약한 등급으로 선다 — 강조는 안 읽은 쪽의 몫이다', () => {
+    renderCard({ read: true });
+
+    expect(chipRootOf(t.card.read)?.className).toBe(chipClassFor('idle'));
+  });
+
   it('본문이 공백뿐이면 빈 자리 대신 안내가 선다', () => {
     renderCard({ message: '   ' });
 
@@ -69,6 +111,23 @@ describe('NotificationCard', () => {
     renderCard();
 
     expect(screen.getByRole('group', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **이름이 같다는 것만으로는 부족하다 — 기제를 잰다.**
+   *
+   * `aria-label`에 같은 글자를 직접 박아도 지금은 접근성 이름이 같아 위 시험이 통과한다.
+   * 두 형태가 갈라지는 시점은 **T2**다 — 이벤트 이름 풀이가 붙어 카드 제목이 코드에서 이름으로
+   * 바뀌면, `aria-label`은 코드에 묶인 채 남아 **보이는 글자와 들리는 이름이 갈린다.**
+   * 그때는 「T1이 원래 그랬는지 T2가 깬 것인지」를 가릴 수 없으므로 여기서 규격을 고정한다.
+   */
+  it('카드가 제목을 aria-labelledby로 가리킨다 — 이름을 직접 박지 않는다', () => {
+    renderCard();
+
+    const card = screen.getByRole('group', { name: 'SYN-EVENT-01' });
+
+    expect(card).toHaveAttribute('aria-labelledby', titleIdOf(7101));
+    expect(card).not.toHaveAttribute('aria-label');
   });
 
   it('카드가 둘이면 각자 자기 제목을 가리킨다 — 상수 id면 둘 다 앞 카드를 가리킨다', () => {

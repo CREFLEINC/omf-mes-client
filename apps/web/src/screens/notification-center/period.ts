@@ -13,10 +13,11 @@ import { messages } from '@omf-mes/i18n';
  * | 「시간대 변환이 없다」(`inbound-schedule/period.ts` · `stock-status/business-period.ts`) | 그 계약들이 **`date`**를 받는다 — 시각을 붙이면 서버가 경계를 다르게 자른다 | ⛔ **거짓.** `date-time`이라 날짜만 보내면 형식이 맞지 않는다 |
  * | 「깨진 기간은 조회하지 않고 사유를 보인다」(`stock-status/business-period.ts`) | 보내면 반드시 400이 되고, 조용히 고치면 무엇이 왜 달라졌는지 화면 어디에도 없다 | ✅ **참.** `blocked` 갈래를 그대로 쓴다 |
  *
- * 형태는 `integration-sync/period.ts`가 가장 가깝다 — 그쪽도 기간이 필수이고 `date-time`이며
- * 기본값을 주소에 심는다. **다만 그 파일의 날짜 검사는 자릿수만 본다**(`/^\d{4}-\d{2}-\d{2}$/`).
- * 그대로 가져오면 `2026-02-31`이 통과해 요청에 실리므로, 실존 판정은 `inbound-schedule/period.ts`
- * 쪽(되짚기)을 쓴다. **두 전례에서 한 조각씩 가져온 자리다.**
+ * ⭐ **가장 가까운 전례는 `master-change/period.ts`다** — 기간이 필수이고 · `date-time`이며 ·
+ * 기본 7일을 주소에 심고 · **쿼리 이름까지 `occurredFrom`·`occurredTo`로 같으며** · 되짚기
+ * 실존 판정을 이미 갖고 있다. 이 파일의 `isCalendarDate`는 그쪽 `isDate`와 같은 형태다.
+ * `integration-sync/period.ts`도 앞의 셋은 같으나 쿼리 이름이 다르고 **날짜 검사가 자릿수만
+ * 본다**(`/^\d{4}-\d{2}-\d{2}$/`) — 그쪽을 베꼈다면 `2026-02-31`이 요청에 실린다.
  *
  * **판정과 요청 만들기를 한 함수에 둔다**(`resolvePeriod`). 「막을지」와 「무엇을 보낼지」를
  * 따로 두면 한쪽만 고쳐져, 막지 않은 값이 요청에 실리거나 막았는데 사유가 없는 상태가 생긴다.
@@ -58,10 +59,14 @@ export interface PeriodQuery {
 /**
  * 기간 판정의 결과. **세 갈래이고 셋 다 화면이 무엇을 해야 할지 말한다.**
  *
- * `empty`가 `blocked`와 갈리는 것이 이 화면의 요점이다 — 주소에 기간이 아예 없는 것은
+ * `empty`가 `blocked`와 갈리는 것이 이 화면의 요점이다 — 주소에 기간 **키가 아예 없는 것**은
  * 사용자가 잘못한 것이 아니라 **아직 아무 말도 하지 않은 상태**이므로 기본값을 채운다.
- * 반대로 손으로 고쳐 깨진 값은 조용히 덮지 않는다. 덮으면 무엇이 왜 달라졌는지 화면
- * 어디에도 남지 않는다(공유계약 G-9 — 「없는 값」과 「틀린 값」을 같은 모양으로 두지 않는다).
+ * 반대로 사용자가 손을 댄 값은 조용히 덮지 않는다 — 비운 것도 손을 댄 것이다.
+ *
+ * ⭐ **`blocked` 안에서도 사유를 가른다**(공유계약 G-9 — 「없는 값」과 「틀린 값」을 같은
+ * 모양으로 두지 않는다). 갈래를 나누고 문구를 하나로 두면 G-9를 절반만 지킨 것이 된다:
+ * 한쪽만 비운 사람에게 「올바른 날짜가 아닙니다」라고 말하면 **그 사람이 넣은 날짜는 멀쩡한데**
+ * 그것까지 다시 고르라는 말이 된다.
  */
 export type PeriodState =
   { kind: 'ready'; query: PeriodQuery } | { kind: 'empty' } | { kind: 'blocked'; reason: string };
@@ -105,6 +110,23 @@ export const readPeriod = (params: URLSearchParams): NotificationPeriod => ({
 });
 
 /**
+ * 주소에 기간 키가 **하나라도 있는가.**
+ *
+ * ⭐ `readPeriod`는 「키가 없다」와 「키는 있고 값이 비었다」를 **같은 빈 문자열로 접는다** —
+ * 값을 읽어야 하는 쪽(조건 줄)에는 그것이 맞지만, 「기본값을 채울 것인가」를 정하는 데는
+ * 두 사태가 정반대다. 전자는 아직 아무 말도 하지 않은 상태이고 후자는 **비우겠다는 뜻**이다.
+ * 채워 버리면 사용자가 기간을 비울 수단이 아예 없어진다.
+ *
+ * 전례 둘이 같은 자리를 같은 방법으로 갈라 두었다 — `master-change/screen.tsx:118` ·
+ * `integration-sync/screen.tsx:169`.
+ *
+ * **한쪽만 있어도 참이다.** `?from=2026-08-01`은 사용자가 기간에 손을 댄 상태이므로 덮지 않고
+ * 「반대쪽을 채우라」고 말한다.
+ */
+export const hasPeriodKeys = (params: URLSearchParams): boolean =>
+  params.has(PERIOD_URL_KEYS.from) || params.has(PERIOD_URL_KEYS.to);
+
+/**
  * 오늘을 마지막 날로 두고 `DEFAULT_PERIOD_DAYS`일치를 고른다 — **오늘을 포함해** 센다.
  * 달·해의 경계는 `Date`가 넘겨 준다(0일·음수 일자를 정상 날짜로 되돌린다).
  */
@@ -134,21 +156,36 @@ const offsetText = (offsetMinutes: number): string => {
 /**
  * 조회할 수 있는 기간인지 판정하고, 할 수 있으면 보낼 쿼리를 함께 돌려준다.
  *
- * 순서가 뜻을 정한다 — **빈 값이 가장 앞이고, 깨진 날짜가 뒤집힘보다 앞선다.**
- * 없는 날짜를 「순서를 바꾸세요」로 말하면 사용자가 순서를 바꿔도 여전히 조회되지 않는다.
+ * **순서가 뜻을 정한다.** 네 갈래를 이 차례로 본다.
  *
- * **한쪽만 채운 값은 깨진 것으로 다룬다.** 계약이 두 값을 함께 요구하므로 한쪽만으로는
- * 요청이 서지 않고, 빈 쪽을 화면이 지어 채우면 사용자가 넣은 쪽의 뜻까지 바뀐다.
+ * | # | 사태 | 결과 | 왜 이 자리인가 |
+ * | :-: | --- | --- | --- |
+ * | 1 | 키가 없다 | `empty` | 사용자가 아직 아무 말도 하지 않았다 — 유일하게 **덮어도 되는** 상태다 |
+ * | 2 | 한쪽이든 양쪽이든 **비었다** | `blocked` · 채우라고 말한다 | 「없는 값」이다. 넣은 쪽은 멀쩡하므로 그것까지 다시 고르라고 하지 않는다 |
+ * | 3 | 넣었는데 **날짜가 아니다** | `blocked` · 다시 고르라고 말한다 | 「틀린 값」이다. 2와 갈라야 G-9가 지켜진다 |
+ * | 4 | 날짜인데 **뒤집혔다** | `blocked` · 순서를 말한다 | 3보다 뒤다 — 없는 날짜를 「순서를 바꾸세요」로 말하면 순서를 바꿔도 여전히 조회되지 않는다 |
  *
  * ⚠ **끝 경계는 계약이 말하지 않는다** — `occurredTo`가 이상인지 미만인지 적혀 있지 않다.
  * `23:59:59`로 두므로 서버가 「미만」으로 자르면 그날 마지막 1초의 알림이 빠질 수 있다.
- * 설계 저장소에 질문으로 올려 두었고, 답이 오면 이 함수 한 곳만 고친다.
+ * 질문 `omf-mes#163`으로 추적 중이며, 답이 오면 이 함수 한 곳만 고친다.
+ *
+ * `hasKeys`는 **주소에 기간 키가 있었는가**다(`hasPeriodKeys`). 값만으로는 1과 2를 가를 수
+ * 없어 따로 받는다. 조건 줄이 든 초안을 판정할 때처럼 **주소가 출처가 아닌 호출**에서는
+ * 「사용자가 이미 손을 댄 상태」이므로 `true`를 준다.
  *
  * `now`는 **시간대를 읽기 위해서만** 쓴다 — 값 자체는 쿼리에 실리지 않는다. 인자로 받는
  * 이유는 이 함수가 실행 환경의 시각을 스스로 읽지 않기 위해서다(파일 머리의 순수성 규율).
  */
-export const resolvePeriod = (period: NotificationPeriod, now: Date): PeriodState => {
-  if (period.from === '' && period.to === '') return { kind: 'empty' };
+export const resolvePeriod = (
+  period: NotificationPeriod,
+  hasKeys: boolean,
+  now: Date,
+): PeriodState => {
+  if (!hasKeys && period.from === '' && period.to === '') return { kind: 'empty' };
+
+  if (period.from === '' || period.to === '') {
+    return { kind: 'blocked', reason: t.reasons.periodIncomplete };
+  }
 
   if (!isCalendarDate(period.from) || !isCalendarDate(period.to)) {
     return { kind: 'blocked', reason: t.reasons.periodInvalid };

@@ -41,6 +41,22 @@ describe('describeLoadError', () => {
     );
   });
 
+  /**
+   * ⭐ **같은 방어를 네 갈래 전부에 건다.** 갈래 하나만 비면 그 갈래로 오는 실패에서만 본문
+   * 없는 배너가 서고, 그것은 다른 갈래의 시험이 전부 통과하는 채로 일어난다.
+   */
+  it('충돌 사유가 비거나 공백뿐이어도 본문을 지우지 않는다', () => {
+    expect(describeLoadError({ kind: 'conflict', cause: 'user', message: '' })).toBe(
+      messages.httpError.description,
+    );
+    expect(describeLoadError({ kind: 'conflict', cause: 'user', message: '  ' })).toBe(
+      messages.httpError.description,
+    );
+    expect(describeLoadError({ kind: 'conflict', cause: 'user', message: '합성 충돌 사유' })).toBe(
+      '합성 충돌 사유',
+    );
+  });
+
   it('여러 오류를 이을 때 공백뿐인 항목을 잇기 전에 걸러 낸다', () => {
     /*
      * ⭐ 이은 뒤 한 번만 검사하는 형태(형제 화면들의 사본)로는 이음쇠 공백이 남아 빠져나간다.
