@@ -1828,3 +1828,19 @@ describe('NotificationCenterScreen — 실패 진술은 그 알림의 것이다'
     release();
   });
 });
+
+describe('NotificationCenterScreen — 쓰기 실패의 제목', () => {
+  /** 짝 양성 — 진짜 요청 실패는 여전히 그 제목으로 선다. 둘이 갈려야 뜻이 있다. */
+  it('요청이 실패하면 그 제목으로 선다', async () => {
+    const { user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute(), markReadRoute(403)),
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+
+    expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.writeError.feedbackTitle)).not.toBeInTheDocument();
+  });
+});

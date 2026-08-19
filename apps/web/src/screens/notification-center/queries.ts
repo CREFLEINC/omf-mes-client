@@ -1,4 +1,5 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
@@ -113,6 +114,24 @@ export const useUnreadCount = (): UseQueryResult<number> => {
   });
 };
 
+/**
+ * 마지막 실패 하나 — **무엇이 실패했는지까지 든다.**
+ *
+ * ⭐ **`request`와 `feedback`을 가른다.** 쓰기가 실패한 것과, 쓰기는 됐는데 화면이 그 결과를
+ * 반영하지 못한 것은 **사용자에게 다른 사실**이다(배너 제목이 갈린다). 앞 회차는 둘을 한
+ * `.catch`가 함께 잡아 뒤엣것을 앞엣것으로 말했다.
+ *
+ * `cause`는 되먹임 갈래에만 있다 — `ApiError`에 원인을 실을 자리가 없어 여기 매단다.
+ * 화면은 그리지 않지만 개발 도구·시험이 읽을 수 있어, 이 앱의 결함이 「서버가 이상하다」로
+ * 보이는 것을 막는다.
+ */
+export interface MarkReadFailure {
+  notificationId: number;
+  kind: 'request' | 'feedback';
+  error: ApiError;
+  cause?: unknown;
+}
+
 export interface MarkReadMutation {
   /** 읽음으로 바꾼다. **그 번호가 이미 나가는 중이면 받지 않는다** — 다른 번호는 받는다 */
   markRead: (notificationId: number) => void;
@@ -125,12 +144,22 @@ export interface MarkReadMutation {
    * 결함이다. 집합이면 **누른 만큼 나가고 각각이 자기 카드만 잠근다.**
    */
   pendingIds: ReadonlySet<number>;
-  error: ApiError | null;
+  /** 마지막 실패. 배너 제목이 갈래에 따라 갈린다 */
+  failure: MarkReadFailure | null;
   /** 나가는 중인 것이 하나도 없을 때만 되돌린다 — 사본 체크리스트의 `resetIfIdle` 규율 */
   resetIfIdle: () => void;
 }
 
-/** 나가는 것이 하나도 없을 때의 자리. 매 렌더 새 집합을 만들면 이 값을 받는 쪽이 매번 달라진다. */
+/**
+ * 나가는 것이 하나도 없을 때의 자리.
+ *
+ * ⚠ **참조 안정성이 근거가 아니다** — 소비처가 `useState`의 초깃값 하나뿐이고 그 자리는
+ * **마운트 때 한 번만** 읽힌다. 인라인 `new Set()`으로 두어도 상태는 달라지지 않는다.
+ * 근거는 **자리표시에 이름을 주는 것**이다 — 「나가는 것이 없다」가 값이 아니라 이름으로 읽힌다.
+ *
+ * ⚠ 같은 파일의 `EMPTY_READ_STATE`(`read-state.ts`)와 **반대다.** 그쪽은 조건이 바뀔 때마다
+ * 상태에 다시 넣으므로 고정 참조가 실제로 하중을 진다.
+ */
 const EMPTY_PENDING_IDS: ReadonlySet<number> = new Set<number>();
 
 const withPending = (current: ReadonlySet<number>, notificationId: number): ReadonlySet<number> => {
@@ -149,6 +178,27 @@ const withoutPending = (
 
   return next;
 };
+
+/**
+ * 되먹임이 던진 것을 배너가 읽을 수 있는 모양으로 옮긴다.
+ *
+ * **통신 실패로 오인시키지 않는다** — 연결은 멀쩡했고 서버는 답했다. 원인을 연결 문제로
+ * 적으면 사용자가 할 수 없는 조치(연결 확인)를 하게 된다(전례 `patterns/request.ts`의
+ * `toApiError`와 같은 규율).
+ *
+ * ⛔ **원인을 버리지 않는다.** 이 자리에 떨어지는 것은 대부분 **이 앱의 코드가 던진 것**이고,
+ * 버리면 그 결함이 「서버가 이상하다」로 보인다. 갈래에 매달아 개발 도구·시험에서 읽게 둔다.
+ */
+const feedbackError = (): ApiError => ({
+  kind: 'validation',
+  errors: [
+    {
+      scope: 'screen',
+      code: 'READ_FEEDBACK_FAILED',
+      message: messages.notificationCenter.writeError.feedbackDescription,
+    },
+  ],
+});
 
 export interface MarkReadOptions {
   /** 성공. **번호를 넘긴다** — 화면이 그 번호를 읽음 집합에 더한다 */
@@ -194,7 +244,7 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
    * 것이 **카드 A의 실패를 지우면** 사용자는 자기가 본 실패가 왜 사라졌는지 알 수 없다.
    * 지우는 것은 **같은 알림을 다시 누를 때**뿐이다.
    */
-  const [failure, setFailure] = useState<{ notificationId: number; error: ApiError } | null>(null);
+  const [failure, setFailure] = useState<MarkReadFailure | null>(null);
   const [pendingIds, setPendingIds] = useState<ReadonlySet<number>>(EMPTY_PENDING_IDS);
 
   const mutation = useMutation({
@@ -210,7 +260,16 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
     },
   });
 
-  const { mutateAsync } = mutation;
+  const { mutateAsync, reset } = mutation;
+
+  /**
+   * 나가는 중인 번호를 **렌더 밖에서도 최신값으로** 읽는 자리.
+   *
+   * 두 곳이 쓴다 — 재진입 가드와 `resetIfIdle`. 클로저에 잡힌 `pendingIds`를 읽으면 그 렌더
+   * 시점의 값이라, 같은 렌더 안에서 두 번 눌렀을 때 앞 클릭이 더한 번호가 보이지 않는다.
+   */
+  const pendingIdsRef = useRef(pendingIds);
+  pendingIdsRef.current = pendingIds;
 
   const markRead = (notificationId: number): void => {
     /*
@@ -218,7 +277,7 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
      * 갖는다 — 겹치면 같은 알림에 두 요청이 나가고, 둘 중 하나의 실패가 다른 하나의 성공을
      * 덮는다. ⚠ **다른 번호는 막지 않는다**(위 설명).
      */
-    if (pendingIds.has(notificationId)) return;
+    if (pendingIdsRef.current.has(notificationId)) return;
 
     /* 같은 알림을 다시 누를 때만 앞 진술을 지운다(위 `failure` 주석). */
     setFailure((current) => (current?.notificationId === notificationId ? null : current));
@@ -231,11 +290,24 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
      */
     mutateAsync({ notificationId, idempotencyKey: crypto.randomUUID() })
       .then(() => {
-        /* 되먹임이 **그 번호에만** 닿는다 — 동시에 나간 다른 시도의 결과와 섞이지 않는다. */
-        options.onSuccess(notificationId);
+        /*
+         * ⭐ **성공 되먹임의 예외를 요청 실패와 가른다**(전례 `login/queries.ts` · `omf-mes#96` 계열).
+         *
+         * 이 자리를 감싸지 않으면 뒤에 걸린 `.catch`가 **되먹임이 던진 것까지** 잡는다. 그러면
+         * 서버는 읽음으로 바꿨는데 화면은 「읽음으로 바꾸지 못했습니다」라는 **거짓 진술**을 세우고,
+         * 사용자가 다시 눌러도 아무 일이 없다(이미 읽음이다). 잡은 값은 이 요청이 만든 실패가
+         * 아니므로 **쓰기가 실패했다고 말하지 않는다.**
+         *
+         * 되먹임이 **그 번호에만** 닿는다 — 동시에 나간 다른 시도의 결과와 섞이지 않는다.
+         */
+        try {
+          options.onSuccess(notificationId);
+        } catch (cause) {
+          setFailure({ notificationId, error: feedbackError(), kind: 'feedback', cause });
+        }
       })
       .catch((cause: unknown) => {
-        setFailure({ notificationId, error: toApiError(cause) });
+        setFailure({ notificationId, error: toApiError(cause), kind: 'request' });
       })
       .finally(() => {
         /*
@@ -269,10 +341,6 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
    * 쓰기 훅으로 되돌리기) 그때 이 가드가 없으면 규율이 조용히 깨지기 때문이다. 대신 그 사실을
    * 여기 적어 두어, **이 가드의 뮤턴트가 살아남는 것이 사각이 아니라 전제 변화**임을 남긴다.
    */
-  const { reset } = mutation;
-  const pendingIdsRef = useRef(pendingIds);
-  pendingIdsRef.current = pendingIds;
-
   const resetIfIdle = useCallback((): void => {
     if (pendingIdsRef.current.size > 0) return;
 
@@ -283,7 +351,7 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
   return {
     markRead,
     pendingIds,
-    error: failure?.error ?? null,
+    failure,
     resetIfIdle,
   };
 };

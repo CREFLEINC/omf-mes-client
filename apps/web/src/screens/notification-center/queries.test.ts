@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -9,7 +9,12 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { notificationListBody } from './fixtures';
-import { notificationKeys, useNotificationList, type NotificationListQuery } from './queries';
+import {
+  notificationKeys,
+  useMarkRead,
+  useNotificationList,
+  type NotificationListQuery,
+} from './queries';
 
 const LIST_PATH = '/app/notifications';
 
@@ -101,5 +106,102 @@ describe('useNotificationList', () => {
     });
 
     expect(urls).toHaveLength(0);
+  });
+});
+
+describe('useMarkRead — 되먹임 예외는 요청 실패가 아니다', () => {
+  const READ_PATH = '/app/notifications/7101:read';
+
+  const markReadRoute = (respond: () => Response): StubRoute => ({
+    match: (request) => request.method === 'POST' && new URL(request.url).pathname === READ_PATH,
+    respond,
+  });
+
+  /**
+   * ⭐ **성공 되먹임이 던진 것을 요청 실패로 말하지 않는다**(전례 `login/queries.ts` ·
+   * `omf-mes#96` 계열 — W-CO-01에 리뷰 지적으로 들어온 규율).
+   *
+   * `.catch`를 `.then` 뒤에만 걸어 두면 **되먹임이 던진 것까지** 잡는다. 그러면 서버는 읽음으로
+   * 바꿨는데 화면은 「읽음으로 바꾸지 못했습니다」라는 **거짓 진술**을 세우고, 사용자가 다시
+   * 눌러도 아무 일이 없다(이미 읽음이다).
+   *
+   * ⚠ **화면을 거쳐서는 이 경로에 닿을 수 없다** — 화면의 되먹임은 `setReadState` 하나이고,
+   * React의 상태 갱신 함수는 **나중에** 불려 이 자리에서 동기적으로 던지지 않는다(실측).
+   * 그래서 훅을 직접 세워 잰다. 되먹임은 소비자가 넘기는 함수라 **훅이 그것을 신뢰하지 않는
+   * 것**이 이 갈래의 뜻이다.
+   */
+  it('되먹임이 던지면 되먹임 갈래로 기록한다', async () => {
+    const { result } = renderHookWithProviders(
+      () =>
+        useMarkRead({
+          onSuccess: () => {
+            throw new Error('합성 되먹임 예외');
+          },
+        }),
+      { fetch: createStubFetch([markReadRoute(() => new Response(null, { status: 204 }))]) },
+    );
+
+    act(() => {
+      result.current.markRead(7101);
+    });
+
+    await waitFor(() => {
+      expect(result.current.failure).not.toBeNull();
+    });
+
+    expect(result.current.failure?.kind).toBe('feedback');
+    /* ⛔ 통신 실패로 오인시키지 않는다 — 연결은 멀쩡했고 서버는 답했다. */
+    expect(result.current.failure?.error.kind).not.toBe('network');
+    /* 원인을 버리지 않는다 — 이 앱의 결함이 「서버가 이상하다」로 보이면 안 된다. */
+    expect(result.current.failure?.cause).toBeInstanceOf(Error);
+  });
+
+  /** 짝 양성 — 진짜 요청 실패는 요청 갈래로 간다. 둘이 갈려야 뜻이 있다. */
+  it('요청이 실패하면 요청 갈래로 기록한다', async () => {
+    const { result } = renderHookWithProviders(
+      () =>
+        useMarkRead({
+          onSuccess: () => undefined,
+        }),
+      {
+        fetch: createStubFetch([
+          markReadRoute(() => jsonResponse({ message: '' }, { status: 403 })),
+        ]),
+      },
+    );
+
+    act(() => {
+      result.current.markRead(7101);
+    });
+
+    await waitFor(() => {
+      expect(result.current.failure).not.toBeNull();
+    });
+
+    expect(result.current.failure?.kind).toBe('request');
+    expect(result.current.failure?.cause).toBeUndefined();
+  });
+
+  it('되먹임이 던져도 그 번호가 잠긴 채로 남지 않는다', async () => {
+    const { result } = renderHookWithProviders(
+      () =>
+        useMarkRead({
+          onSuccess: () => {
+            throw new Error('합성 되먹임 예외');
+          },
+        }),
+      { fetch: createStubFetch([markReadRoute(() => new Response(null, { status: 204 }))]) },
+    );
+
+    act(() => {
+      result.current.markRead(7101);
+    });
+
+    await waitFor(() => {
+      expect(result.current.failure).not.toBeNull();
+    });
+
+    /* `.finally`가 갈래와 무관하게 돈다 — 그 카드를 다시 누를 수 있어야 한다. */
+    expect(result.current.pendingIds.has(7101)).toBe(false);
   });
 });

@@ -216,6 +216,17 @@ export const NotificationCenterScreen = () => {
    * 직접 편집이 그 자리를 지나지 않아 통째로 샌다(전례 `inbound-schedule`의 정리 effect와 같은
    * 판단). ⚠ **거둠은 `resetIfIdle`을 지난다** — 나가는 중인 쓰기의 되먹임을 끊으면 서버는
    * 바꿨는데 화면은 없던 일로 친다(사본 체크리스트 · `omf-mes#96`).
+   *
+   * ⚠ **예외 1 — 조건 변경 뒤에 도착한 실패는 남는다.** 조건을 바꾸는 순간 나가는 중이던
+   * 쓰기가 그 뒤에 실패하면, 거둠은 이미 지나갔고 실패는 `.catch`가 **새로** 기록한다. 그래서
+   * 앞 목록의 알림에 대한 배너가 새 목록 위에 설 수 있다.
+   *
+   * **지금은 그대로 둔다**(결정). 고칠 자리는 거둠도 `resetIfIdle`도 아니다 — 검증이 가드를
+   * 지운 판에서 같은 시나리오를 재서 **결과가 같음을 확정했다.** 바꾸려면 **실패가 도착한 시점에
+   * 그것이 아직 유효한 조회의 것인지 판정하는 자리**(도착 시점의 조회 키 대조)가 새로 필요하고,
+   * 그것은 이 회차의 범위를 넘는 설계다. 도달이 좁고(쓰기가 나가는 중에 조건 변경) 배너 문구가
+   * 특정 알림을 지명하지 않아 거짓말이 되지도 않는다. **감지기로 굳히지 않는다** — 열린 물음으로
+   * 두어야 다음 회차가 이 결정을 다시 볼 수 있다.
    */
   const { resetIfIdle: resetMarkRead } = markRead;
   const { resetIfIdle: resetMarkAllRead } = markAllRead;
@@ -396,8 +407,20 @@ export const NotificationCenterScreen = () => {
        * 쓰기 실패는 **화면 수준 배너**로 낸다(공유계약 G-1). 카드마다 붙이면 목록이 오류로
        * 뒤덮이고, 어느 조작이 막혔는지는 제목이 가른다.
        */}
-      {markRead.error !== null && (
-        <WriteErrorBanner error={markRead.error} title={t.writeError.readTitle} />
+      {markRead.failure !== null && (
+        <WriteErrorBanner
+          error={markRead.failure.error}
+          /*
+           * ⭐ **제목이 갈래를 가른다.** 쓰기가 실패한 것과, 쓰기는 됐는데 화면이 그 결과를
+           * 반영하지 못한 것은 사용자에게 **다른 사실**이다 — 뒤엣것에 「바꾸지 못했습니다」로
+           * 말하면 거짓이고, 다시 눌러도 아무 일이 없다(이미 읽음이다).
+           */
+          title={
+            markRead.failure.kind === 'feedback'
+              ? t.writeError.feedbackTitle
+              : t.writeError.readTitle
+          }
+        />
       )}
       {markAllRead.error !== null && (
         <WriteErrorBanner error={markAllRead.error} title={t.writeError.allReadTitle} />
