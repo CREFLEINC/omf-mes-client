@@ -76,6 +76,33 @@ describe('AppLayout', () => {
     );
   });
 
+  /*
+   * **W-06-14 · C5-2** — 같은 「기준정보」 섹션의 **창고·Location 바로 뒤**다. 적치 규칙은
+   * 창고와 위치를 참조해야 성립하고 그 마스터에서 이어지는 화면이라, **인접이 관계를 드러낸다.**
+   *
+   * **앞뒤를 둘 다 잰다** — 창고·Location 다음 칸이면서 Routing(공정)보다 앞이다. 한쪽만
+   * 재면 반대편으로 밀려나도 통과한다(맨 뒤로 밀리면 창고와의 관계가 자리에서 읽히지 않는다).
+   */
+  it('사이드바 기준정보 섹션에 적치 규칙 메뉴가 창고·Location 바로 뒤에 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByRole('link', { name: '적치 규칙' })).toHaveAttribute(
+      'href',
+      '/master-data/putaway-rule',
+    );
+    expect(links.indexOf('/master-data/putaway-rule')).toBe(
+      links.indexOf('/master-data/warehouse-location') + 1,
+    );
+    expect(links.indexOf('/master-data/putaway-rule')).toBeLessThan(
+      links.indexOf('/master-data/routing'),
+    );
+  });
+
   it('사이드바에 Routing(공정) 메뉴가 보인다', () => {
     renderLayout('본문 내용');
 
@@ -452,6 +479,7 @@ describe('AppLayout', () => {
         .map((link) => link.getAttribute('href')),
     ).toEqual([
       '/master-data/warehouse-location',
+      '/master-data/putaway-rule',
       '/master-data/routing',
       '/master-data/inspection-standard',
       '/master-data/defect-cause-code',

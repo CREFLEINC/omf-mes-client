@@ -18,6 +18,7 @@ import { MasterChangeScreen } from '../screens/master-change/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
+import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { StockAdjustScreen } from '../screens/stock-adjust/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
@@ -37,6 +38,18 @@ export const appRouter = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/master-data/warehouse-location" replace /> },
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
+      /*
+       * W-06-14 — 계약 경로는 `/logistics/putaway-rules`인데 앞머리는 같은 규칙(사이드바
+       * 섹션)을 따른다. 적치 규칙은 물건이 오가는 일이 아니라 **어디에 둘지 미리 정해 두는
+       * 것**이라 창고·품목과 같은 기준정보 마스터다. 자리도 **창고·Location 바로 뒤**다 —
+       * 창고와 위치를 참조해야 성립하는 화면이라 인접이 관계를 드러낸다.
+       *
+       * **다섯 PR이 함께 여는 자리다.** 목록·사용률·등록/수정이 다 서도 **끄고 켤 수 없는
+       * 동안에는** 이 줄을 두지 않았다 — 끄지 못하는 마스터를 노출하면 사용자가 잘못 만든
+       * 규칙을 지울 수도 끌 수도 없고, 그 규칙은 현장의 적치를 계속 막는다
+       * (정책 §5.2 — 접근 불가능한 경계).
+       */
+      { path: 'master-data/putaway-rule', element: <PutawayRuleScreen /> },
       { path: 'master-data/routing', element: <RoutingScreen /> },
       { path: 'master-data/inspection-standard', element: <InspectionStandardScreen /> },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },

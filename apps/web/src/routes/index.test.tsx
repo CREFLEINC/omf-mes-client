@@ -1,7 +1,13 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RouterProvider, createMemoryRouter, useRoutes } from 'react-router';
+import {
+  RouterProvider,
+  createMemoryRouter,
+  useLocation,
+  useNavigate,
+  useRoutes,
+} from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { AppLayout } from '../app/layout';
@@ -16,6 +22,17 @@ import {
   plantFixtures,
   uomFixtures,
 } from '../screens/po-register/fixtures';
+import {
+  ITEM_LABEL as putawayItemLabel,
+  LOCATION_LABEL as putawayLocationLabel,
+  balanceFixtures as putawayBalanceFixtures,
+  itemFixtures as putawayItemFixtures,
+  locationFixtures as putawayLocationFixtures,
+  ruleFixtures as putawayRuleFixtures,
+  uncoveredItemFixtures as putawayUncoveredFixtures,
+  uomFixtures as putawayUomFixtures,
+  warehouseFixtures as putawayWarehouseFixtures,
+} from '../screens/putaway-rule/fixtures';
 import {
   countFixtures as adjustCountFixtures,
   itemFixtures as adjustItemFixtures,
@@ -42,6 +59,7 @@ import { appRouter } from './index';
  */
 
 const t = messages.poRegister;
+const putaway = messages.putawayRule;
 
 /** 라우터가 실제로 받는 경로. 자식 라우트의 `path`는 앞머리 `/`가 없다. */
 const routedPaths = (): string[] =>
@@ -99,6 +117,52 @@ const RoutedApp = () => (
   </SessionProvider>
 );
 
+/**
+ * 주소를 읽어 내는 탐침. **이동이 일어났는지는 주소로만 판정할 수 있다** — 화면이 같아 보여도
+ * 질의가 달라지는 이동이 있고(메뉴로 다시 들어오기), 그 갈래는 그린 것만 봐서는 가릴 수 없다.
+ */
+const LocationProbe = () => {
+  const location = useLocation();
+
+  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+};
+
+const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
+
+/**
+ * 한 칸 뒤로 간다. **히스토리가 몇 칸 늘었는지를 판정하는 유일한 수단**이다 —
+ * 기억 라우터는 브라우저 히스토리를 쓰지 않아 `window.history.back()`이 닿지 않는다.
+ */
+const BackProbe = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigate(-1);
+      }}
+    >
+      뒤로
+    </button>
+  );
+};
+
+/**
+ * 라우트 표·셸·탐침을 한 벌로 태운다. **사이드바를 실제로 눌러** 이동을 재는 시험이 쓴다 —
+ * 링크의 `href` 글자만 보면 그 주소가 라우트 표에 없어도 통과한다.
+ */
+const renderRoutedApp = (route: string, routes: StubRoute[]): void => {
+  renderWithProviders(
+    <>
+      <RoutedApp />
+      <LocationProbe />
+      <BackProbe />
+    </>,
+    { fetch: createStubFetch(routes), route },
+  );
+};
+
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
 
@@ -120,6 +184,17 @@ const stockAdjustRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/items', adjustItemFixtures),
   lookupRoute('/mdm/uoms', adjustUomFixtures),
   lookupRoute('/trace/lots', adjustLotFixtures),
+];
+
+/** W-06-14가 창고를 고른 주소에서 부르는 것들 — 목록·규칙 없는 품목·잔액과 이름 풀이 넷. */
+const putawayRuleRoutes = (): StubRoute[] => [
+  lookupRoute('/logistics/putaway-rules/uncovered-items', putawayUncoveredFixtures),
+  lookupRoute('/logistics/putaway-rules', putawayRuleFixtures),
+  lookupRoute('/inventory/balances', putawayBalanceFixtures),
+  lookupRoute('/mdm/warehouses', putawayWarehouseFixtures),
+  lookupRoute('/mdm/locations', putawayLocationFixtures),
+  lookupRoute('/mdm/items', putawayItemFixtures),
+  lookupRoute('/mdm/uoms', putawayUomFixtures),
 ];
 
 /** W-01-11이 첫 진입에 부르는 것들 — 대상 초과분 상세와 이름 풀이 다섯. */
@@ -270,6 +345,139 @@ describe('appRouter', () => {
     expect(routedPaths()).toContain('/logistics/stock-adjust');
     expect(routedPaths()).not.toContain('/inventory/adjustments');
     expect(routedPaths()).not.toContain('/logistics/stock-status/adjust');
+  });
+
+  /*
+   * **W-06-14 · C5-1** — 계약 경로는 `/logistics/putaway-rules`인데 주소 앞머리는
+   * `/master-data/`다. 근거는 여기서도 **섹션**이다: 적치 규칙은 물건이 오가는 일이 아니라
+   * 「어디에 둘지 미리 정해 두는 것」이라 창고·품목과 같은 기준정보 마스터다. 그 섹션 안에서
+   * 저 혼자 계약 앞머리를 쓰면 사용자도 개발자도 섹션과 주소를 대응시킬 수 없다.
+   *
+   * **주소는 단수, 계약 리소스는 복수다** — 주소가 가리키는 것은 리소스가 아니라 **화면**이다.
+   */
+  it('적치 규칙이 기준정보 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/master-data/putaway-rule');
+    expect(routedPaths()).not.toContain('/logistics/putaway-rules');
+    expect(routedPaths()).not.toContain('/logistics/putaway-rule');
+  });
+});
+
+/**
+ * **W-06-14는 진입 경로가 사이드바 하나뿐이다** — 다른 화면에서 넘어오는 링크가 없다.
+ *
+ * **다섯 PR이 함께 여는 자리다.** 목록·사용률·등록/수정·끄기/켜기가 다 서기 전에는 라우트를
+ * 두지 않았다(정책 §5.2) — 끄지 못하는 마스터를 노출하면 잘못 만든 규칙을 지울 수도 끌 수도
+ * 없다. 그래서 이 describe가 **여는 쪽을 양쪽에서** 잰다: 메뉴에 있고, 그 메뉴가 가리키는
+ * 주소가 실제로 이 화면을 연다.
+ */
+describe('appRouter — 적치 규칙의 진입 경로', () => {
+  /** 목록이 실제로 섰음을 잡는 시점. 조건이 실린 주소에서만 선다. */
+  const waitForRules = async (): Promise<HTMLElement> =>
+    screen.findByRole('button', {
+      name: putaway.actions.selectRow(putawayItemLabel, putawayLocationLabel),
+    });
+
+  /*
+   * **C5-2** — 메뉴에 항목이 있다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른
+   * 메뉴가 같은 화면을 열어도 통과하고, 글자만 보면 이름만 같고 다른 곳으로 가는 메뉴가 통과한다.
+   */
+  it('사이드바에 이 화면 항목이 있다', () => {
+    expect(sidebarHrefs()).toContain('/master-data/putaway-rule');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).getByText('적치 규칙')).toBeInTheDocument();
+  });
+
+  /*
+   * **C5-1** — 그 주소로 들어가면 화면이 선다. **실제 라우트 표를 태우므로** 라우트 줄이
+   * 없거나 다른 화면을 가리키면 여기서 운다.
+   */
+  it('그 주소로 들어가면 적치 규칙 화면이 첫 상태로 선다', async () => {
+    renderRoutedApp('/master-data/putaway-rule', putawayRuleRoutes());
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: putaway.title }),
+    ).toBeInTheDocument();
+    /* 빈 표가 아니라 안내가 선다 — 화면이 자기 첫 상태로 섰다는 사실이다. */
+    expect(screen.getByText(putaway.empty.noWarehouseTitle)).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **사이드바와 라우트 표를 잇는 이음매.** 둘은 서로 다른 파일에 있고 서로를 참조하지
+   * 않는다 — 한쪽만 고치면 죽은 링크가 남는데, 사이드바 시험은 `href` 글자만 보고 화면 시험은
+   * 라우터를 거치지 않아 **어느 쪽도 그 어긋남을 보지 못한다.** 그래서 **누른다.**
+   *
+   * 조건이 실린 주소에서 누르는 것은 우연이 아니다 — 이 회차가 처음 열어 준 길이
+   * **「같은 라우트에 질의만 다른 이동」**이고, 사이드바가 바로 그 길이다.
+   */
+  it('사이드바 항목을 누르면 그 주소로 가고 화면이 첫 상태로 돌아온다', async () => {
+    const user = userEvent.setup();
+
+    renderRoutedApp('/master-data/putaway-rule?wh=9201', putawayRuleRoutes());
+
+    /* 짝 양성 — 조건이 실린 자리에서 목록이 실제로 섰다. */
+    await waitForRules();
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    await user.click(within(nav).getByRole('link', { name: '적치 규칙' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe('/master-data/putaway-rule');
+    });
+    expect(await screen.findByText(putaway.empty.noWarehouseTitle)).toBeInTheDocument();
+  });
+
+  /*
+   * **히스토리가 한 칸이다.** 메뉴 이동이 칸을 둘 이상 늘리면 사용자는 뒤로 눌러도 보던
+   * 자리로 돌아오지 못한다 — 이 화면은 조건도 고른 규칙도 전부 주소에 싣는다.
+   */
+  it('메뉴로 들어간 뒤 뒤로가기 한 번이면 앞 자리로 돌아온다', async () => {
+    const user = userEvent.setup();
+
+    renderRoutedApp('/master-data/putaway-rule?wh=9201', putawayRuleRoutes());
+
+    await waitForRules();
+
+    const before = currentLocation();
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    await user.click(within(nav).getByRole('link', { name: '적치 규칙' }));
+    await waitFor(() => {
+      expect(currentLocation()).toBe('/master-data/putaway-rule');
+    });
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(before);
+    });
+    /* 돌아온 자리가 **그 조건의 화면**이다 — 주소만 되돌고 화면이 비면 돌아온 것이 아니다. */
+    await waitForRules();
+  });
+
+  /*
+   * ⛔ **내부 번호는 주소에만 산다**(`omf-mes#44`). 이 화면은 조건·고른 규칙을 전부 번호로
+   * 주소에 싣는데, 그 번호가 글자로 새면 사용자가 읽을 수 없는 값이 화면의 사실이 된다.
+   *
+   * **주소에 실려 있음을 먼저 확인한 뒤** 글자에서 센다 — 값이 없어서 통과하는 일이 없게.
+   */
+  it('메뉴와 화면 어디에도 내부 번호가 글자로 나오지 않는다', async () => {
+    renderRoutedApp('/master-data/putaway-rule?wh=9201', putawayRuleRoutes());
+
+    await waitForRules();
+
+    /* 짝 양성 — 그 번호는 주소에 실제로 실려 있다. */
+    expect(currentLocation()).toContain('wh=9201');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+    const main = screen.getByRole('main');
+
+    for (const internalId of ['9201', '9101', '9301', '9401', '9001']) {
+      expect(nav.textContent).not.toContain(internalId);
+      expect(main.textContent).not.toContain(internalId);
+    }
   });
 });
 

@@ -2578,6 +2578,72 @@ describe('PutawayRuleScreen — 같은 주소로는 갱신하지 않는다', () 
   });
 });
 
+/**
+ * **라우트가 열리면서 「같은 화면으로 질의 없이 다시 들어오는 길」이 도달 가능해졌다** —
+ * 사이드바 항목이 그 길이다(단위 ⑤).
+ *
+ * 화면 안의 조작은 전부 초안 파기 확인을 지나지만 **메뉴는 화면 바깥이라 그 문을 지나지
+ * 않는다.** 그러므로 거두는 자리가 클릭 핸들러가 아니라 **주소에 매여** 있어야 한다 —
+ * 매여 있지 않으면 버려진 초안이 살아남아, 다시 그 규칙으로 돌아왔을 때 **서버 값이 아닌
+ * 값**이 폼에 서고 사용자는 그것이 저장된 값이라고 읽는다.
+ */
+describe('PutawayRuleScreen — 메뉴로 다시 들어오기', () => {
+  const dirtyForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.clear(capacityField());
+    await user.type(capacityField(), '600');
+  };
+
+  it('편집 중에 메뉴 주소로 들어오면 조건도 고른 규칙도 풀린다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]), undefined, '');
+
+    await dirtyForm(user);
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    expect(await screen.findByText(t.empty.noWarehouseTitle)).toBeInTheDocument();
+    expect(currentLocation()).toBe('/');
+    /*
+     * ⚠ **파기 확인을 지나지 않는다** — 메뉴는 이 화면의 문 밖에 있다. 확인 없이 초안이
+     * 사라지는 것이 지금의 사실이며, 그 사실을 여기 고정해 둔다(막으려면 라우터 수준의
+     * 이탈 차단이 필요하고 그것은 이 화면 혼자 정할 일이 아니다).
+     */
+    expect(screen.queryByText(t.dialog.discardBody)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **거둠은 뒤로 돌아왔을 때 드러난다.** 나간 자리에서는 폼이 닫혀 있어 초안이 남았는지
+   * 보이지 않는다 — 같은 규칙으로 돌아와 **기준값이 서는 것**으로만 거둔 사실이 증명된다.
+   *
+   * 뒤로가기가 **한 번**인 것도 함께 잰다. 메뉴 이동이 히스토리 칸을 둘 이상 늘리면
+   * 사용자는 뒤로 눌러도 보던 자리로 돌아오지 못한다.
+   */
+  it('뒤로가기 한 번이면 앞 자리로 돌아오고 친 값은 되살아나지 않는다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]), undefined, '');
+
+    await dirtyForm(user);
+
+    /* 짝 양성 — 친 값이 실제로 폼에 있다. 없으면 아래 단언이 「빈 폼」과 구별되지 않는다. */
+    expect(capacityField()).toHaveValue('600');
+
+    const before = currentLocation();
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.empty.noWarehouseTitle);
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(before);
+    });
+    await waitForEditForm();
+    await waitFor(() => {
+      expect(capacityField()).toHaveValue('500');
+    });
+  });
+});
+
 /* ── 끄기·켜기 (단위 ④) ─────────────────────────────────────────────── */
 
 const ACTIVATION_PANE = (): HTMLElement => screen.getByRole('region', { name: t.panes.activation });
@@ -3608,6 +3674,138 @@ describe('PutawayRuleScreen — 창이 닫힌 뒤 도착한 전환 실패 (C4-5 
     await user.click(
       within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
     );
+
+    expect(within(activationDialog()).getByText(t.notes.activationUnconfirmed)).toBeInTheDocument();
+    /* 배타 — 창으로 옮겨 왔으므로 구획에는 더 이상 서지 않는다. */
+    expect(
+      within(ACTIVATION_PANE()).queryByText(t.notes.activationUnconfirmed),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * ⭐ **C5-A — 앞선 안내는 「그 갈래」의 것이다.**
+ *
+ * 창을 열 때 앞선 실패를 걷지 않는 규율(위 describe)은 **같은 손잡이를 다시 누르는** 갈래를
+ * 지키려고 세웠다. 그런데 안내를 읽은 사용자가 시키는 대로 「다시 조회」를 눌러 **상태가
+ * 뒤집혔음이 확인되면** 그 문장은 두 군데서 거짓이 된다 — 「바뀌었는지 **알 수 없습니다**」
+ * (방금 알았다) · 「**같은 버튼**을 바로 다시 누르지 마세요」(지금 누른 것은 반대 버튼이다).
+ *
+ * 그래서 **갈래가 뒤집힌 때만** 걷는다. 가르는 값은 이미 있는 `sentIntentRef`이며, 이 짝이
+ * 그 값의 두 번째 쓸모를 재는 자리다.
+ */
+describe('PutawayRuleScreen — 응답 없음 안내와 갈래 뒤집힘 (C5-A)', () => {
+  const holdDeactivate = (request: Request): boolean =>
+    request.method === 'POST' && isActionPath(new URL(request.url).pathname, 'deactivate');
+
+  /**
+   * 응답이 오지 않는 끄기. **서버에 닿았는지가 갈래를 가른다** — 닿았으면 다음 「다시 조회」가
+   * 뒤집힌 상태를 보고, 닿지 않았으면 같은 상태를 본다. 화면은 어느 쪽인지 모르며, 그 모름이
+   * 바로 안내가 말하는 사실이다.
+   */
+  const unansweredDeactivate = (server: { isActive: boolean }, arrived: boolean): StubRoute =>
+    activationRoute('deactivate', () => {
+      if (arrived) server.isActive = false;
+
+      throw new Error('합성 네트워크 단절');
+    });
+
+  /** 서버의 지금 사실을 그대로 내려 주는 상세. 「다시 조회」가 무엇을 보는지가 여기서 정해진다. */
+  const serverDetailRoute = (server: { isActive: boolean }): StubRoute => ({
+    match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
+    respond: (request) =>
+      jsonResponse(
+        {
+          putawayRule: {
+            ...ruleFixtureAt(ruleIdOf(new URL(request.url))),
+            isActive: server.isActive,
+          },
+          editability: { codeEditable: false, reason: 'REFERENCED', referenceCount: 2 },
+        },
+        { headers: { ETag: DETAIL_ETAG } },
+      ),
+  });
+
+  /** 끄기를 보내고 창을 닫은 뒤 **응답 없음 안내가 전환 구획에 선 상태**까지 간다. */
+  const arriveUnconfirmed = async (
+    user: ReturnType<typeof userEvent.setup>,
+    requests: Request[],
+    release: () => void,
+  ): Promise<void> => {
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    fireEvent(activationDialog(), new Event('cancel', { bubbles: false, cancelable: true }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    release();
+    await within(ACTIVATION_PANE()).findByText(t.notes.activationUnconfirmed);
+  };
+
+  it('다시 조회로 갈래가 뒤집히면 반대 손잡이의 창에 앞선 안내가 실리지 않는다', async () => {
+    const server = { isActive: true };
+    const { requests, release, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([unansweredDeactivate(server, true), serverDetailRoute(server)]),
+      holdDeactivate,
+    );
+
+    await arriveUnconfirmed(user, requests, release);
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    /* 짝 양성 — 「다시 조회」가 뒤집힌 사실을 실제로 물어 왔다(손잡이 이름이 반대가 됐다). */
+    const activateButton = await within(ACTIVATION_PANE()).findByRole('button', {
+      name: t.actions.activate,
+    });
+
+    await user.click(activateButton);
+
+    /* 짝 양성 — 창은 실제로 열렸고 켜기 갈래다. 없으면 아래 음성이 「창이 없다」와 같아진다. */
+    expect(within(activationDialog()).getByText(t.dialog.activateApplies)).toBeInTheDocument();
+
+    expect(
+      within(activationDialog()).queryByText(t.notes.activationUnconfirmed),
+    ).not.toBeInTheDocument();
+    /* 걷혔다면 구획에도 남지 않는다 — 창으로 옮겨 간 것과 구별한다. */
+    expect(
+      within(ACTIVATION_PANE()).queryByText(t.notes.activationUnconfirmed),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * **짝 방향 — 갈래가 그대로면 남는다.** 이쪽이 무너지면 걷는 조건이 넓어진 것이고, 그때는
+   * 안내가 막으려던 이중 전송이 **안내 없이** 열린다(쓰기 훅은 호출마다 새 멱등 키를 만든다).
+   * 두 시험의 다른 점은 **서버에 닿았는가** 하나뿐이다.
+   */
+  it('다시 조회로도 갈래가 그대로면 같은 손잡이의 창에 안내가 실려 온다', async () => {
+    const server = { isActive: true };
+    const { requests, release, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([unansweredDeactivate(server, false), serverDetailRoute(server)]),
+      holdDeactivate,
+    );
+
+    await arriveUnconfirmed(user, requests, release);
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    /* 짝 양성 — 다시 조회가 돌았고 갈래는 그대로다(손잡이 이름이 바뀌지 않았다). */
+    const deactivateButton = await within(ACTIVATION_PANE()).findByRole('button', {
+      name: messages.common.deactivate,
+    });
+
+    await user.click(deactivateButton);
 
     expect(within(activationDialog()).getByText(t.notes.activationUnconfirmed)).toBeInTheDocument();
     /* 배타 — 창으로 옮겨 왔으므로 구획에는 더 이상 서지 않는다. */
