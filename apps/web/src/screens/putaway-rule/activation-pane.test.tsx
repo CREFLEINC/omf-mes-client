@@ -10,6 +10,7 @@ const t = messages.putawayRule;
 const renderPane = (overrides: Partial<ActivationPaneProps> = {}) => {
   const props: ActivationPaneProps = {
     action: { kind: 'open', intent: 'deactivate' },
+    banner: null,
     duplicateUnknownNote: null,
     isLocked: false,
     isSaving: false,

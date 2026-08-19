@@ -122,17 +122,33 @@ export type RemainingCoverage =
   | { kind: 'none' }
   /** 남는 규칙이 있다 — 이 갈래에서 「위치 검증 없이 통과」는 참이 아니다. */
   | { kind: 'some'; count: number }
-  | { kind: 'unknown'; reason: 'loading' | 'failed' | 'truncated' | 'incomplete' };
+  | {
+      kind: 'unknown';
+      reason: 'loading' | 'failed' | 'truncated' | 'incomplete' | 'outOfScope';
+    };
 
 /**
  * 조준 조회 결과를 덮개 판정으로 옮긴다.
  *
- * 순서가 뜻을 정한다 — **미완성 · 실패 · 미도착 · 잘림이 셈보다 앞선다**(`judgeDuplicate`와
- * 같은 순서·같은 이유). 그중에서도 미완성이 맨 앞이다: 겨눌 조합이 없으면 조회가 열리지도
- * 않으므로, 뒤에 두면 **열리지 않은 조회의 상태**를 답으로 내게 된다.
+ * 순서가 뜻을 정한다 — **미완성 · 실패 · 미도착 · 잘림 · 범위 어긋남이 셈보다 앞선다**
+ * (`judgeDuplicate`와 같은 순서·같은 이유). 그중에서도 미완성이 맨 앞이다: 겨눌 조합이 없으면
+ * 조회가 열리지도 않으므로, 뒤에 두면 **열리지 않은 조회의 상태**를 답으로 내게 된다.
  *
- * **창고·품목을 여기서 다시 견준다.** 조회가 이미 그 둘로 좁혀 부르지만, 세는 자리가 무엇을
- * 셌는지 스스로 밝히지 않으면 조회 조건이 넓어지는 날 이 셈이 조용히 틀린다.
+ * ## ⚠ 이 함수는 조준 조회가 **어느 축으로 열렸는지 모른다**
+ *
+ * 조회는 **폼 값**(`formWarehouseId`·`formItemId`)으로 열리고 판정은 **서버 값**
+ * (`rule.warehouseId`·`rule.itemId`)으로 겨눈다. 지금은 둘이 갈릴 수 없다 — 수정에서
+ * 품목·창고 입력이 잠겨 있고(계약이 수정 본문에서 두 키를 뺐다) 초안은 렌더 중에 상세로부터
+ * 심어진다. **그 잠금이 풀리는 회차는 이 자리를 함께 본다.**
+ *
+ * 그날을 대비해 재검을 **가장 약한 쪽으로** 접는다: 창고·품목이 어긋난 행이 하나라도 오면
+ * 세지 않고 `outOfScope`를 낸다. 어긋난 행을 조용히 떨어뜨리면 셈이 0이 되어
+ * **세 갈래 중 가장 센 단언**(`none` — 「이것뿐입니다 · 검증 없이 통과합니다」)이 나가는데,
+ * 안전장치가 틀리는 방향을 가장 나쁜 쪽으로 고정해서는 안 된다.
+ *
+ * ⛔ **남는 구멍 하나**: 어긋난 축의 조회가 **0건**을 돌려주면 어긋남을 여기서 알 수 없다
+ * (`items`가 비어 어긋남의 증거가 없다). 그 갈래까지 닫으려면 조회가 **자기가 쓴 축**을
+ * 값으로 함께 실어야 한다(`DuplicateProbe`에 조회 축을 더한다) — 잠금이 풀리는 회차의 몫이다.
  */
 export const judgeRemainingCoverage = (
   probe: DuplicateProbe,
@@ -146,12 +162,19 @@ export const judgeRemainingCoverage = (
   if (probe.isLoading) return { kind: 'unknown', reason: 'loading' };
   if (probe.total > probe.items.length) return { kind: 'unknown', reason: 'truncated' };
 
+  /*
+   * **꺼진 규칙은 어긋남이 아니다.** 조회가 `includeInactive:false`로 열려도 서버가 꺼진 행을
+   * 함께 줄 수 있고, 그것은 「축이 다르다」가 아니라 「덮개가 아니다」다 — 둘을 한 갈래로
+   * 뭉치면 정상 자료 하나가 판정을 통째로 멈춘다.
+   */
+  const isOutOfScope = probe.items.some(
+    (item) => item.itemId !== itemId || item.warehouseId !== warehouseId,
+  );
+
+  if (isOutOfScope) return { kind: 'unknown', reason: 'outOfScope' };
+
   const remaining = probe.items.filter(
-    (item) =>
-      item.isActive &&
-      item.putawayRuleId !== target.selfRuleId &&
-      item.itemId === itemId &&
-      item.warehouseId === warehouseId,
+    (item) => item.isActive && item.putawayRuleId !== target.selfRuleId,
   );
 
   return remaining.length === 0 ? { kind: 'none' } : { kind: 'some', count: remaining.length };

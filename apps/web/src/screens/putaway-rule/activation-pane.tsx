@@ -16,6 +16,14 @@ export interface ActivationPaneProps {
    * **상세 미도착**이며 그때 중립 이름이 선다.
    */
   action: ActivationAction;
+  /**
+   * 전환 실패 표시 슬롯. **창이 닫혀 있을 때만 값이 온다**(자리 배타 — `screen.tsx`).
+   *
+   * ⭐ 이 자리가 없으면 **전송 중 창이 닫힌 뒤 도착한 실패가 화면 어디에도 서지 않는다.**
+   * Escape는 막을 수 없으므로 그 갈래는 실재하고, 그때 사용자가 다음에 하는 조작이 정확히
+   * 금지된 조작(같은 버튼 다시 누르기 → 새 멱등 키로 이중 전송)이다.
+   */
+  banner: ReactNode;
   /** 활성 중복을 판정하지 못했다는 안내(켜기 갈래). **막지 않는다** — 계약이 다시 검사한다. */
   duplicateUnknownNote: string | null;
   /**
@@ -63,6 +71,7 @@ const labelOf = (intent: ActivationIntent | null): string => {
  */
 export const ActivationPane = ({
   action,
+  banner,
   duplicateUnknownNote,
   isLocked,
   isSaving,
@@ -108,6 +117,7 @@ export const ActivationPane = ({
 
   return (
     <section className="pane" aria-label={t.panes.activation}>
+      {banner}
       <div className="form-actions">{actionSlot()}</div>
       {duplicateUnknownNote !== null && <p className="field-note">{duplicateUnknownNote}</p>}
     </section>

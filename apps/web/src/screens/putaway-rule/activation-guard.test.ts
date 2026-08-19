@@ -140,20 +140,41 @@ describe('judgeRemainingCoverage — 끄고 난 뒤 남는 덮개', () => {
     });
   });
 
-  /** 다른 품목의 규칙은 이 품목의 덮개가 아니다. */
-  it('다른 품목의 규칙은 세지 않는다', () => {
+  /**
+   * ⭐ **범위가 어긋나면 가장 약한 쪽으로 접는다.**
+   *
+   * 이 함수는 **조준 조회가 어느 축으로 열렸는지 모른다** — 조회는 폼 값으로 열리고 판정은
+   * 서버 값으로 겨눈다. 둘이 갈리는 날 재검 필터가 전건을 떨어뜨리는데, 그때 `none`을 내면
+   * **세 갈래 중 가장 센 단언**(「이것뿐입니다 · 검증 없이 통과합니다」)이 조용히 거짓이 된다.
+   *
+   * 그래서 재검에 걸린 행이 **하나라도 있으면** 셈을 하지 않고 「확인하지 못했다」로 낸다 —
+   * 안전장치가 **틀리는 방향을 가장 나쁜 쪽으로 고정**하지 않게 한다.
+   */
+  it('다른 품목의 규칙이 섞여 오면 세지 않고 판정하지 못했다고 한다', () => {
     expect(
       judgeRemainingCoverage(probeOf([ACTIVE_RULE, OTHER_ITEM_RULE]), COVERAGE_TARGET),
-    ).toEqual({ kind: 'none' });
+    ).toEqual({ kind: 'unknown', reason: 'outOfScope' });
   });
 
-  /** 다른 창고의 규칙도 이 창고의 덮개가 아니다. */
-  it('다른 창고의 규칙은 세지 않는다', () => {
+  it('다른 창고의 규칙이 섞여 오면 세지 않고 판정하지 못했다고 한다', () => {
     const elsewhere: PutawayRule = { ...ACTIVE_RULE, putawayRuleId: 9006, warehouseId: 9202 };
 
     expect(judgeRemainingCoverage(probeOf([ACTIVE_RULE, elsewhere]), COVERAGE_TARGET)).toEqual({
-      kind: 'none',
+      kind: 'unknown',
+      reason: 'outOfScope',
     });
+  });
+
+  /**
+   * 범위 어긋남이 **셈보다 앞이다** — 뒤에 두면 어긋난 자료로 센 수가 그대로 답이 된다
+   * (「N건 더 남습니다」는 세 갈래 중 둘째로 센 단언이다).
+   */
+  it('남는 규칙이 있어도 범위가 어긋나면 건수를 내지 않는다', () => {
+    const sibling: PutawayRule = { ...ACTIVE_RULE, putawayRuleId: 9005, priorityNo: 50 };
+
+    expect(
+      judgeRemainingCoverage(probeOf([ACTIVE_RULE, sibling, OTHER_ITEM_RULE]), COVERAGE_TARGET),
+    ).toEqual({ kind: 'unknown', reason: 'outOfScope' });
   });
 
   /**

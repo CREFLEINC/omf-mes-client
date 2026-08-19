@@ -282,6 +282,15 @@ export const PutawayRuleScreen = () => {
   const [writeTargetKey, setWriteTargetKey] = useState<string | null>(null);
 
   /**
+   * 마지막으로 보낸 **전환의 갈래**. 성공 문면이 끄기와 켜기로 갈리는데, 쓰기의 되먹임은
+   * 보낸 값을 들고 오지 않는다. 창의 `intent`를 읽을 수는 없다 — 창은 그 사이에 닫힐 수 있고
+   * (Escape·대상 변경) 목록 값도 성공 뒤에는 이미 뒤집혀 있다.
+   *
+   * 상태가 아니라 **참조**인 이유: 이 값은 그리는 데 쓰이지 않고 도착 시점에 한 번 읽힌다.
+   */
+  const sentIntentRef = useRef<ActivationIntent | null>(null);
+
+  /**
    * **지금 대상**과 **보낸 대상**을 참조로 들고 있는다.
    *
    * 쓰기의 되먹임은 그 요청을 **보낸 렌더의 값**을 들고 도착한다. 그것이 「지금」의 것인지
@@ -407,6 +416,12 @@ export const PutawayRuleScreen = () => {
   /**
    * 끄고 나면 이 창고·품목에 남는 덮개. **끄기 확인 창의 문면을 가르는 값이다** —
    * 「끄면 위치 검증 없이 통과합니다」는 이것이 마지막 활성 규칙일 때만 참이다.
+   *
+   * ⚠ **바로 위 조준 조회와 축이 같아야 성립한다.** 조회는 폼 값으로 열리고 이 판정은 서버
+   * 값으로 겨눈다 — 수정에서 품목·창고가 잠겨 있어 지금은 갈릴 수 없지만, **그 잠금이 풀리는
+   * 회차는 이 자리를 함께 본다.** 어긋난 행이 섞여 오면 판정 함수가 세지 않고 「확인하지
+   * 못했다」로 접는다(`activation-guard.ts`의 `outOfScope` — 세 갈래 중 가장 센 단언으로
+   * 새지 않게 한다).
    */
   const remainingCoverage = judgeRemainingCoverage(duplicateProbe, {
     itemId: rule?.itemId ?? null,
@@ -530,6 +545,8 @@ export const PutawayRuleScreen = () => {
    */
   const activationWrite = useMasterWrite<ActivationIntent, PutawayRule>({
     request: (intent, headers) => {
+      /* 어느 갈래가 나갔는지 성공 문면이 알아야 한다 — 되먹임은 보낸 값을 들고 오지 않는다. */
+      sentIntentRef.current = intent;
       const params = {
         path: { putawayRuleId: selectedRuleId ?? 0 },
         header: {
@@ -547,8 +564,18 @@ export const PutawayRuleScreen = () => {
     /* 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다. */
     knownFields: [],
     onSuccess: () => {
-      /* 전환은 일어났다 — 대상이 바뀌었다고 그 사실까지 감추지 않는다. */
-      toast.show({ variant: 'success', description: messages.common.saved });
+      /*
+       * 전환은 일어났다 — 대상이 바뀌었다고 그 사실까지 감추지 않는다.
+       *
+       * ⛔ **저장 축의 「저장했습니다」를 쓰지 않는다.** 전환은 폼을 저장하지 않으며 이 화면은
+       * **초안이 더러운 채로도 전환할 수 있다** — 그때 저장 문면을 내면 사용자가 고치던 값이
+       * 저장된 것으로 읽는다.
+       */
+      toast.show({
+        variant: 'success',
+        description:
+          sentIntentRef.current === 'deactivate' ? t.toast.deactivated : t.toast.activated,
+      });
 
       /* 창은 그 대상의 것이다. 대상이 바뀌었으면 정리 effect가 이미 닫았다. */
       if (writeTargetKeyRef.current !== editTargetKeyRef.current) return;
@@ -848,11 +875,21 @@ export const PutawayRuleScreen = () => {
     setDraft((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
   };
 
-  /** 창을 열 때 앞선 전환 실패 배너를 걷는다 — 지금 하려는 일과 무관한 안내다. */
+  /**
+   * 전환 확인 창을 연다.
+   *
+   * ⛔ **앞선 실패를 여기서 걷지 않는다.** 전례는 창을 열 때 배너를 걷었으나(「지금 하려는
+   * 일과 무관한 안내다」) 이 화면에서 그 자리에 남아 있을 수 있는 실패는 **바로 그 일에 대한
+   * 안내**다 — 전송 중 창이 닫힌 뒤 도착한 실패이며, 그 실패의 문면이 **「같은 버튼을 바로
+   * 다시 누르지 마세요」**다. 창을 열면서 걷으면 **안내가 막으려던 이중 전송이 안내 없이
+   * 열린다**(쓰기 훅은 호출마다 새 멱등 키를 만든다).
+   *
+   * 그래서 실패는 **창으로 옮겨 온다**(자리 배타 — `activationFailureSlot`). 걷는 자리는 둘로
+   * 충분하다: 다시 보내는 순간(`write()`가 스스로 걷는다)과 대상이 바뀌는 순간(`resetEditing`).
+   */
   const openActivationDialog = (intent: ActivationIntent): void => {
     if (isLocked) return;
 
-    resetIfIdle(activationWrite);
     setDialog({ kind: 'activation', intent });
   };
 
@@ -928,6 +965,35 @@ export const PutawayRuleScreen = () => {
 
   /** 인라인 오류도 같은 문을 지난다 — 배너만 감추면 새 대상의 칸 옆에 남의 오류가 붙는다. */
   const serverFieldErrors = isWriteResultMine ? activeWrite.fieldErrors : {};
+
+  /**
+   * 열려 있는 전환 창의 갈래. **`null`이면 창이 닫혀 있다.**
+   *
+   * 이 값 하나가 **실패가 서는 자리를 가른다**(아래 배타 규약). 「창이 열렸는가」를 자리마다
+   * 따로 물으면 두 물음이 언젠가 갈려 사유가 둘 다 서거나 둘 다 사라진다.
+   */
+  const openActivationIntent: ActivationIntent | null =
+    dialog?.kind === 'activation' ? dialog.intent : null;
+
+  /**
+   * 전환 실패가 서는 **하나의 자리** — 창이 열려 있으면 창, 닫혀 있으면 전환 구획.
+   *
+   * ⛔ **창 안에만 두면 잃는 갈래가 있다.** Escape는 막을 수 없고(native `<dialog>`의 `cancel`)
+   * 전송 중에도 창이 닫힌다 — 그러면 **그 뒤 도착한 실패가 화면 어디에도 서지 않는다.** 성공
+   * 토스트도 없고 목록 표식도 그대로라 사용자에게는 「아무 일도 없었다」로 읽히는데, 그때
+   * 다음 조작이 정확히 금지된 조작(같은 버튼 다시 누르기 → **새 멱등 키로 이중 전송**)이다.
+   * 이 회차가 가장 무겁게 쓴 문장(`activationUnconfirmed`)이 바로 그 조작을 막으려는 것이다.
+   *
+   * **두 자리에 함께 그리지 않는다.** 같은 사유가 창과 구획에 겹쳐 서면 사용자가 두 사건으로
+   * 읽는다 — 창의 유무가 자리를 배타로 가른다.
+   */
+  const activationFailureSlot = (): ReactNode =>
+    writeFailureSlot(
+      activationWrite,
+      t.notes.activationUnconfirmed,
+      /* 409는 재조회로 풀린다 — 이 쓰기에는 잠글 대상이 있다(계약이 `If-Match`를 요구한다). */
+      reloadDetail,
+    );
 
   const listSlot = () => {
     /* 창고를 고르기 전에는 **빈 표가 아니라 안내다** — 빈 표는 「규칙이 없다」로 읽힌다. */
@@ -1106,6 +1172,8 @@ export const PutawayRuleScreen = () => {
 
         <ActivationPane
           action={activationAction}
+          /* 창이 열려 있으면 창이 낸다 — 같은 사유를 두 자리에 겹쳐 세우지 않는다. */
+          banner={openActivationIntent === null ? activationFailureSlot() : null}
           /*
            * **막지 않되 말한다**(C3-9와 같은 잣대). `'incomplete'`는 겨눌 조합이 없는 상태라
            * 확인을 **시도한 적이 없다** — 그때 「확인하지 못했습니다」는 거짓이다.
@@ -1244,19 +1312,14 @@ export const PutawayRuleScreen = () => {
        * 전환 확인 창. **대상 없이는 열지 않는다** — 무엇을 끄는지 말할 수 없는 창은
        * 확인을 받은 것이 아니다.
        */}
-      {dialog?.kind === 'activation' && rule !== null && (
+      {openActivationIntent !== null && rule !== null && (
         <ActivationDialog
-          intent={dialog.intent}
+          intent={openActivationIntent}
           itemLabel={itemLabelOf(rule.itemId)}
           locationLabel={locationLabelOf(rule.locationId)}
           remaining={remainingCoverage}
           isSaving={isActivationSavingMine}
-          banner={writeFailureSlot(
-            activationWrite,
-            t.notes.activationUnconfirmed,
-            /* 409는 재조회로 풀린다 — 이 쓰기에는 잠글 대상이 있다(계약이 `If-Match`를 요구한다). */
-            reloadDetail,
-          )}
+          banner={activationFailureSlot()}
           onClose={() => {
             setDialog(null);
             /*

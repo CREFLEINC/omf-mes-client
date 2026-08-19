@@ -143,6 +143,60 @@ describe('ActivationDialog — 다시 사용', () => {
   });
 });
 
+/**
+ * ⭐ **문면의 「내용」을 잰다** — 위 시험들은 *어느 키가 그려졌는가*(구조)만 본다.
+ *
+ * 구조만 재면 `deactivateCoverageUnknown`을 「이 품목에 사용 중인 규칙이 더 없습니다. 끄면
+ * …통과합니다.」로 바꿔도 전건이 통과한다 — **확인하지 못한 갈래가 거짓을 단언하는데 아무도
+ * 무는 사람이 없다.** 같은 회차가 응답 없음 안내에는 이미 이 잣대를 세웠다(사실 → 금지 →
+ * 확인 자리 차례). 덮개 삼형제에도 같은 잣대를 둔다.
+ *
+ * **가르는 축은 「파급을 조건 없이 단언하는가」** 하나다.
+ */
+describe('ActivationDialog — 덮개 세 갈래의 문면 잣대', () => {
+  /** 세 문장이 공유하는 파급 표현. 이 낱말이 어느 갈래에 서는지가 사실성을 가른다. */
+  const UNCOVERED = '위치 검증 없이 통과';
+  /** 조건 표지 — 이것이 파급 **앞**에 서야 단언이 아니라 가정이 된다. */
+  const CONDITION = '마지막이면';
+
+  it('마지막 갈래만 파급을 조건 없이 단언한다', () => {
+    expect(t.dialog.deactivateLastRule).toContain(UNCOVERED);
+    expect(t.dialog.deactivateLastRule).not.toContain(CONDITION);
+  });
+
+  it('확인하지 못한 갈래는 확인 실패를 먼저 말하고 파급은 조건절로만 단다', () => {
+    const note = t.dialog.deactivateCoverageUnknown;
+
+    expect(note).toContain('확인하지 못했습니다');
+    expect(note).toContain(UNCOVERED);
+
+    /* 차례가 뜻을 정한다 — 조건 표지가 파급 뒤에 서면 단언이 먼저 읽힌다. */
+    const factAt = note.indexOf('확인하지 못했습니다');
+    const conditionAt = note.indexOf(CONDITION);
+    const clauseAt = note.indexOf(UNCOVERED);
+
+    expect(factAt).toBeLessThan(conditionAt);
+    expect(conditionAt).toBeLessThan(clauseAt);
+  });
+
+  /** 남는 규칙이 있으면 파급 자체가 거짓이다 — 조건절로도 달지 않는다. */
+  it('남는 갈래는 파급을 말하지 않고 건수를 담는다', () => {
+    expect(t.dialog.deactivateRemaining(3)).toContain('3');
+    expect(t.dialog.deactivateRemaining(3)).not.toContain(UNCOVERED);
+  });
+
+  /**
+   * ⭐ **되돌리기를 무조건으로 약속하지 않는다.** 켜기는 같은 조합의 활성 규칙이 서면
+   * 화면이 막고 계약도 400이다 — 이 화면이 스스로 구현한 갈래다. 무조건 부사는 그 갈래와
+   * 어긋날 뿐 아니라 **끄기 결정의 무게를 낮추는 쪽**으로 작용한다.
+   */
+  it('되돌리기 문장이 무조건을 약속하지 않고 단서를 함께 단다', () => {
+    expect(t.dialog.deactivateReversible).toContain('다시 사용할 수 있습니다');
+    expect(t.dialog.deactivateReversible).not.toContain('언제든');
+    expect(t.dialog.deactivateReversible).toContain('되면');
+  });
+});
+
 describe('ActivationDialog — 창의 경계', () => {
   /**
    * **창 안에 펼침 목록을 두지 않는다**(`design-system-v2-webui#68`). 짝 방향으로 잰다 —
