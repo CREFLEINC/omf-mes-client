@@ -1,5 +1,10 @@
 import type { DocumentTypeEntry } from './document-types';
-import type { DocumentProgressView } from './types';
+import type {
+  DocumentProgressDetailView,
+  DocumentProgressStepView,
+  DocumentProgressView,
+  DocumentSuccessorView,
+} from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -92,6 +97,100 @@ export const toProgressResponse = (view: DocumentProgressView): ProgressResponse
   ...view,
   cancelApprovalRequestId: 9501,
   screenId: 'SYN-SCREEN-01',
+});
+
+/**
+ * 처리 경과 한 줄. **까다로운 갈래를 기본값으로 두지 않는다** — 무엇이 다른지 인자만 보고
+ * 읽히게 하려면 기본은 「전부 채워진 평범한 줄」이어야 한다.
+ */
+const BASE_STEP: DocumentProgressStepView = {
+  stepCode: 'SYN_STEP_REGISTERED',
+  occurredAt: '2026-08-06T09:14:00+09:00',
+  actorName: '홍길동',
+  inventoryTransactionNo: 'SYN-TX-9001',
+  businessDate: '2026-08-06',
+};
+
+export const progressStep = (
+  overrides: Partial<DocumentProgressStepView> = {},
+): DocumentProgressStepView => ({ ...BASE_STEP, ...overrides });
+
+/**
+ * 처리 경과 네 줄 — 화면이 다뤄야 하는 갈래를 일부러 담는다.
+ *
+ * 1. 사람이 한 단계 + 원장 **짝**(번호 · 영업일)
+ * 2. **행위자 이름이 비어 있다**(계약: 사람이 한 것이 아니면 비어 있다)
+ * 3. **원장 번호만 왔다** — 영업일이 없어 원장을 찾을 수 없다
+ * 4. 원장을 만들지 않은 단계(둘 다 없음)
+ */
+export const progressStepFixtures: DocumentProgressStepView[] = [
+  progressStep(),
+  progressStep({
+    stepCode: 'SYN_STEP_POSTED',
+    occurredAt: '2026-08-06T10:20:00+09:00',
+    actorName: null,
+    inventoryTransactionNo: 'SYN-TX-9002',
+  }),
+  progressStep({
+    stepCode: 'SYN_STEP_CHECKED',
+    occurredAt: '2026-08-06T11:05:00+09:00',
+    actorName: '김영희',
+    inventoryTransactionNo: 'SYN-TX-9003',
+    businessDate: null,
+  }),
+  progressStep({
+    stepCode: 'SYN_STEP_CLOSED',
+    occurredAt: '2026-08-06T12:00:00+09:00',
+    actorName: '이관리',
+    inventoryTransactionNo: null,
+    businessDate: null,
+  }),
+];
+
+const BASE_SUCCESSOR: DocumentSuccessorView = {
+  successorTypeCode: 'SYN_DOC_TYPE_B',
+  successorId: 9101,
+  successorNo: 'SYN-GI-2026-0101',
+  qty: 400,
+  screenId: 'SYN-SCREEN-02',
+};
+
+export const documentSuccessor = (
+  overrides: Partial<DocumentSuccessorView> = {},
+): DocumentSuccessorView => ({ ...BASE_SUCCESSOR, ...overrides });
+
+/** 후속 두 건. 둘째는 **화면 ID가 오지 않은** 갈래다(계약이 선택으로 두었다). */
+export const documentSuccessorFixtures: DocumentSuccessorView[] = [
+  documentSuccessor(),
+  documentSuccessor({
+    successorId: 9102,
+    successorNo: 'SYN-GI-2026-0102',
+    qty: 100,
+    screenId: null,
+  }),
+];
+
+/**
+ * 상세 응답 한 벌.
+ *
+ * ⭐ **요약이 목록 행과 다른 값을 갖게 둔다**(`statusCode`) — 요약을 목록 행에서 그리는 결함이
+ * 있으면 그 자리에서 갈린다.
+ */
+export const documentProgressDetail = (
+  overrides: Partial<DocumentProgressDetailView> = {},
+): DocumentProgressDetailView => ({
+  progress: documentProgress({ statusCode: 'SYN_STATUS_DETAIL' }),
+  screenId: 'SYN-SCREEN-01',
+  steps: progressStepFixtures,
+  successors: documentSuccessorFixtures,
+  ...overrides,
+});
+
+/** 상세 조회 응답에 실리는 모양. 화면 ID는 응답에서 **`progress` 안**에 실려 온다. */
+export const toDetailResponse = (view: DocumentProgressDetailView) => ({
+  progress: { ...toProgressResponse(view.progress), screenId: view.screenId },
+  steps: view.steps,
+  successors: view.successors,
 });
 
 /**

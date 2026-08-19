@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { documentProgress, toProgressResponse } from './fixtures';
-import { toDocumentProgressView, type DocumentProgressResponse } from './types';
+import {
+  toDocumentProgressDetailView,
+  toDocumentProgressView,
+  type DocumentProgressDetailResponse,
+  type DocumentProgressResponse,
+} from './types';
 
 describe('toDocumentProgressView', () => {
   it('쓰는 값만 옮긴다 — 승인 요청 번호·화면 ID는 자리가 없다', () => {
@@ -64,5 +69,84 @@ describe('toDocumentProgressView', () => {
     );
 
     expect(view.documentSubTypeCode).toBe('');
+  });
+});
+
+describe('toDocumentProgressDetailView', () => {
+  const response = (): DocumentProgressDetailResponse =>
+    ({
+      progress: toProgressResponse(documentProgress({ statusCode: 'SYN_STATUS_DETAIL' })),
+      steps: [
+        {
+          stepCode: 'SYN_STEP_A',
+          occurredAt: '2026-08-06T09:14:00+09:00',
+          actorName: '홍길동',
+          inventoryTransactionNo: 'SYN-TX-0001',
+          businessDate: '2026-08-06',
+        },
+        { stepCode: 'SYN_STEP_B', occurredAt: '2026-08-06T10:00:00+09:00' },
+      ],
+      successors: [
+        {
+          successorTypeCode: 'SYN_DOC_TYPE_B',
+          successorId: 9101,
+          successorNo: 'SYN-GI-2026-0101',
+          qty: 400,
+          screenId: 'SYN-SCREEN-02',
+        },
+        {
+          successorTypeCode: 'SYN_DOC_TYPE_B',
+          successorId: 9102,
+          successorNo: 'SYN-GI-2026-0102',
+          qty: 100,
+        },
+      ],
+    }) as DocumentProgressDetailResponse;
+
+  /**
+   * ⭐ **요약의 근거는 상세 응답의 `progress`다.** 목록 행을 그대로 다시 그리면 두 조회의 시점이
+   * 갈려 같은 화면의 위아래가 서로 다른 수량을 말할 수 있다.
+   */
+  it('요약을 상세 응답의 progress에서 옮긴다', () => {
+    const view = toDocumentProgressDetailView(response());
+
+    expect(view.progress.statusCode).toBe('SYN_STATUS_DETAIL');
+    expect(view.progress.documentNo).toBe('SYN-GR-2026-0001');
+  });
+
+  /**
+   * 요약은 목록 행과 **같은 옮기기**를 지난다 — 내부 번호가 요약 쪽으로만 새는 길을 두지 않는다.
+   * 문서를 여는 화면 ID는 **상세 뷰가 따로** 들고 있다(목록 행에는 자리가 없다).
+   */
+  it('요약에는 화면 ID 자리가 없고 상세가 그 값을 든다', () => {
+    const view = toDocumentProgressDetailView(response());
+
+    expect(Object.keys(view.progress)).not.toContain('screenId');
+    expect(view.screenId).toBe('SYN-SCREEN-01');
+  });
+
+  /* 계약이 선택으로 둔 자리들 — 없이 오는 단계·후속이 실재한다. 없음을 없음으로 옮긴다. */
+  it('오지 않은 선택 필드를 null로 옮긴다', () => {
+    const view = toDocumentProgressDetailView(response());
+
+    expect(view.steps[1]).toEqual({
+      stepCode: 'SYN_STEP_B',
+      occurredAt: '2026-08-06T10:00:00+09:00',
+      actorName: null,
+      inventoryTransactionNo: null,
+      businessDate: null,
+    });
+    expect(view.successors[1]?.screenId).toBeNull();
+  });
+
+  /* 차례를 바꾸지 않는다 — 처리 경과는 시간순이 곧 뜻이다(계약이 그렇게 내린다). */
+  it('단계와 후속의 차례를 응답 그대로 둔다', () => {
+    const view = toDocumentProgressDetailView(response());
+
+    expect(view.steps.map((step) => step.stepCode)).toEqual(['SYN_STEP_A', 'SYN_STEP_B']);
+    expect(view.successors.map((successor) => successor.successorNo)).toEqual([
+      'SYN-GI-2026-0101',
+      'SYN-GI-2026-0102',
+    ]);
   });
 });

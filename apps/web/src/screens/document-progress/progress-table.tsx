@@ -16,8 +16,14 @@ const t = messages.documentProgress;
  */
 export const PROGRESS_TABLE_MIN_WIDTH_PX = 928;
 
+export interface ProgressColumnsInput {
+  /** 지금 고른 문서. 같은 줄의 손잡이가 「선택 해제」로 바뀐다. */
+  selectedDocumentId: number | null;
+  onToggleSelect: (documentId: number) => void;
+}
+
 /**
- * 목록의 열 구성 — **아홉 열**이다.
+ * 목록의 열 구성 — **열 개**다.
  *
  * ⛔ **문서 유형 열이 없다.** 계약이 `documentTypeCode`를 목록 조회의 **필수** 질의값으로 두어
  * 한 응답의 모든 행이 같은 유형이다 — 값이 하나뿐인 열은 폭만 먹고 아무것도 말하지 않으며,
@@ -31,7 +37,11 @@ export const PROGRESS_TABLE_MIN_WIDTH_PX = 928;
  * **정렬을 열지 않는다.** 계약의 이 조회에 정렬 파라미터가 없고(실측) 화면 안에서만 정렬하면
  * 「지금 쪽 안에서만 정렬됐다」는 사정을 매번 설명해야 한다.
  *
- * 열 폭의 도출(자폭 약 **7.5px** · 셀 좌우 여백 **32px** — 흡수 열에도 예산을 잡는다):
+ * ⭐ **열째 열이 「선택」이다.** 고른 문서의 상세가 목록 **아래**에 선다 — 드로어도 창도 아니다
+ * (디자인 시스템에 드로어가 없고, 창이면 목록이 가려져 「고르고 다시 목록으로 돌아가는」 이
+ * 화면의 반복 조회가 매번 열고 닫는 일이 된다).
+ *
+ * 열 폭의 도출(자폭 약 **7.5px** · 셀 좌우 여백 **32px** · `sm` 버튼 88px):
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
@@ -43,25 +53,36 @@ export const PROGRESS_TABLE_MIN_WIDTH_PX = 928;
  * | 처리 수량 | 80px | 같은 위 |
  * | 잔여 수량 | 80px | 같은 위 |
  * | 후속 | 56px | 머리글 2자 15px + 여백 32px = 47px → 56. 우측 정렬 |
- * | **취소 가능** | **미지정** | 남는 폭을 흡수한다 |
- * | **지정 폭 합** | **736px** | |
- * | 흡수 열이 받는 폭 | **192px** | 928 − 736 |
+ * | **취소 가능** | **192px** | ⭐ 아래 주 |
+ * | 선택 | 88px | `sm` 버튼 하나(전례 `gr-table`·`balance-table`의 선택 열과 같은 값) |
+ * | **합** | **1,016px** | 표 하한(928px)을 **넘는다** — 아래 주 |
  *
  * ⚠ **세부구분·상태는 폭을 보장할 수 없다.** 그 칸에 서는 것은 **서버가 정하는 코드 문자열**이라
  * 길이에 상한이 없다 — 어떤 폭을 잡아도 더 긴 코드가 올 수 있으므로, 이 두 예산은 **머리글이
  * 접히지 않는 하한**(62px)에 짧은 코드 몫을 더한 값이고 그보다 긴 코드는 접힌다. 지어낸 상한으로
  * 「보장한다」고 적지 않는다.
  *
- * ⭐ **흡수 열의 예산 기준은 「이 화면이 소유한 문구 중 가장 긴 것」이다.** 이 칸은 두 조각
+ * ⭐ **취소 가능 열의 예산 기준은 「이 화면이 소유한 문구 중 가장 긴 것」이다.** 이 칸은 두 조각
  * (「취소 불가」와 사유)이 **일부러 위아래로 쌓이므로** 기준이 두 조각의 합이 아니라 긴 쪽 하나이고,
  * 그 긴 쪽은 취소 불가 사유 넷 중 최장인 `STATE_LOCKED`의 문면이다 — **19자 142.5px + 여백 32px
  * = 174.5px**. 192px가 그보다 17.5px 넓다.
  *
  * ⛔ **코드 문자열과 달리 이 값은 상한이 있다** — 문면을 우리가 소유하기 때문이다. 그래서 감지기가
  * 리터럴이 아니라 **i18n의 실제 문면에서 최장값을 계산해** 예산과 견준다. 문면이 길어지거나 열이
- * 넓어지면 그 자리에서 깨진다.
+ * 좁아지면 그 자리에서 깨진다.
+ *
+ * ⚠ **선택 열이 생기면서 흡수 열을 없앴다.** 선택 열(88px)을 더하면 흡수 열에 남는 폭이 104px로
+ * 줄어 위 예산(174.5px)을 담지 못한다. 그래서 **취소 가능 열의 폭을 그 예산 그대로 못 박고**
+ * 미지정 열을 두지 않는다 — 합이 표 하한을 넘는 것은 문제가 아니다. `.wide-table`의 `58rem`은
+ * **바닥이지 천장이 아니어서**, 합이 하한 이상이면 각 열이 선언한 폭 그대로 렌더되고 모자란 폭은
+ * 디자인 시스템의 가로 스크롤 상자가 처리한다. ⛔ 반대로 **합을 하한 아래로 누르면** 고정 배치가
+ * 남는 폭을 미지정 열에 몰아넣어 선언과 실렌더가 어긋난다(전례 `stock-status/balance-table.tsx`가
+ * 브라우저 확인으로 실측한 자리이며, 그 표도 같은 이유로 모든 열이 폭을 지정한다).
  */
-export const buildProgressColumns = (): Column<DocumentProgressView>[] => [
+export const buildProgressColumns = ({
+  selectedDocumentId,
+  onToggleSelect,
+}: ProgressColumnsInput): Column<DocumentProgressView>[] => [
   { key: 'documentNo', header: t.table.documentNo, width: '152px' },
   { key: 'documentDate', header: t.table.documentDate, width: '112px' },
   {
@@ -107,6 +128,7 @@ export const buildProgressColumns = (): Column<DocumentProgressView>[] => [
   {
     key: 'cancelAvailability',
     header: t.table.cancelAvailability,
+    width: '192px',
     /*
      * **색만으로 말하지 않는다** — 글자로 낸다. 그리고 막힌 이유를 같은 칸에 함께 낸다:
      * 「취소 불가」만 있으면 사용자가 왜 안 되는지 알려고 결국 상세를 열어야 한다.
@@ -123,6 +145,34 @@ export const buildProgressColumns = (): Column<DocumentProgressView>[] => [
           {t.cancel.blocked}
           <span className="field-note">{describeCancelBlockReason(availability)}</span>
         </>
+      );
+    },
+  },
+  {
+    key: 'select',
+    header: t.table.select,
+    width: '88px',
+    /*
+     * 접근 이름에 **문서번호**를 넣는다 — 「선택」이 줄마다 되풀이되면 어느 문서를 여는지
+     * 보조기술로 알 수 없다. ⛔ **내부 번호는 넣지 않는다**(omf-mes#44): 눈으로 읽는 값과
+     * 보조기술이 읽는 값이 어긋나면 안 된다.
+     */
+    render: (row) => {
+      const isSelected = row.documentId === selectedDocumentId;
+
+      return (
+        <Button
+          variant="outlined"
+          size="sm"
+          aria-label={
+            isSelected ? t.actions.deselectRow(row.documentNo) : t.actions.selectRow(row.documentNo)
+          }
+          onClick={() => {
+            onToggleSelect(row.documentId);
+          }}
+        >
+          {isSelected ? t.actions.deselect : t.actions.select}
+        </Button>
       );
     },
   },
@@ -157,7 +207,7 @@ export const readEmptyReason = ({
   return isBeyondLast ? 'beyondLast' : 'noResult';
 };
 
-export interface ProgressTableProps extends EmptyReasonInput {
+export interface ProgressTableProps extends EmptyReasonInput, ProgressColumnsInput {
   rows: DocumentProgressView[];
   isLoading: boolean;
   onFirstPage: () => void;
@@ -178,6 +228,8 @@ export const ProgressTable = ({
   hasDocumentType,
   isBeyondLast,
   onFirstPage,
+  selectedDocumentId,
+  onToggleSelect,
 }: ProgressTableProps) => {
   if (isLoading) {
     return (
@@ -239,7 +291,7 @@ export const ProgressTable = ({
     <div className="wide-table">
       <Table
         density="compact"
-        columns={buildProgressColumns()}
+        columns={buildProgressColumns({ selectedDocumentId, onToggleSelect })}
         rows={rows}
         /*
          * **문서 번호 하나로는 행을 가릴 수 없다.** 같은 번호가 유형이 다르면 다른 문서이고,
