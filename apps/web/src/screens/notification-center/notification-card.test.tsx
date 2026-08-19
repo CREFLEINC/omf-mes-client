@@ -1,7 +1,8 @@
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import { notificationFixture } from './fixtures';
 import { NotificationCard, describeMessage, titleIdOf } from './notification-card';
@@ -16,10 +17,24 @@ const t = messages.notificationCenter;
 const renderCard = (
   overrides: Parameters<typeof notificationFixture>[0] = {},
   title = 'SYN-EVENT-01',
-) =>
+  extra: Partial<{ isRead: boolean; isPending: boolean }> = {},
+) => {
+  const onRead = vi.fn();
+  const view = toNotificationView(notificationFixture(overrides));
+
   render(
-    <NotificationCard view={toNotificationView(notificationFixture(overrides))} title={title} />,
+    <NotificationCard
+      view={view}
+      title={title}
+      /* 기본은 **서버 값 그대로** — 화면이 얹는 집합은 이 부품 밖의 일이다. */
+      isRead={extra.isRead ?? view.read}
+      isPending={extra.isPending ?? false}
+      onRead={onRead}
+    />,
   );
+
+  return { onRead, user: userEvent.setup() };
+};
 
 /**
  * 읽음 표시의 **강조 등급**을 재는 잣대.
@@ -96,13 +111,23 @@ describe('NotificationCard', () => {
   });
 
   it('안 읽은 알림과 읽은 알림의 표시가 갈린다', () => {
-    const { unmount } = renderCard();
+    renderCard();
+
     expect(screen.getByText(t.card.unread)).toBeInTheDocument();
     expect(screen.queryByText(t.card.read)).not.toBeInTheDocument();
-    unmount();
+  });
 
-    renderCard({ read: true });
+  /**
+   * ⭐ **읽음 표시의 출처가 `view.read`가 아니라 화면의 판정이다**(`isRead`).
+   *
+   * 서버 값만 보면 「이 회차에 읽음 처리한 번호」가 표시에 닿지 못해, 카드를 눌러도 표시가
+   * 그대로 남는다 — 사용자는 자기가 누른 것이 먹혔는지 알 수 없다.
+   */
+  it('서버가 아직 안 읽음이라 해도 화면 판정이 읽음이면 읽음으로 보인다', () => {
+    renderCard({ read: false }, 'SYN-EVENT-01', { isRead: true });
+
     expect(screen.getByText(t.card.read)).toBeInTheDocument();
+    expect(screen.queryByText(t.card.unread)).not.toBeInTheDocument();
   });
 
   /**
@@ -132,7 +157,7 @@ describe('NotificationCard', () => {
   it('카드가 자기 제목을 이름으로 든다', () => {
     renderCard();
 
-    expect(screen.getByRole('group', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
   });
 
   /**
@@ -145,7 +170,7 @@ describe('NotificationCard', () => {
   it('카드가 제목을 aria-labelledby로 가리킨다 — 이름을 직접 박지 않는다', () => {
     renderCard();
 
-    const card = screen.getByRole('group', { name: 'SYN-EVENT-01' });
+    const card = screen.getByRole('button', { name: 'SYN-EVENT-01' });
 
     expect(card).toHaveAttribute('aria-labelledby', titleIdOf(7101));
     expect(card).not.toHaveAttribute('aria-label');
@@ -155,29 +180,111 @@ describe('NotificationCard', () => {
     renderCard({}, '합성 이벤트 가');
 
     /* 보이는 글자와 들리는 이름이 같은 자리에서 나온다. */
-    expect(screen.getByRole('group', { name: '합성 이벤트 가' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '합성 이벤트 가' })).toBeInTheDocument();
   });
 
   it('카드가 둘이면 각자 자기 제목을 가리킨다 — 상수 id면 둘 다 앞 카드를 가리킨다', () => {
     render(
       <>
-        <NotificationCard view={toNotificationView(notificationFixture())} title="SYN-EVENT-01" />
+        <NotificationCard
+          view={toNotificationView(notificationFixture())}
+          title="SYN-EVENT-01"
+          isRead={false}
+          isPending={false}
+          onRead={() => undefined}
+        />
         <NotificationCard
           view={toNotificationView(
             notificationFixture({ notificationId: 7102, eventCode: 'SYN-EVENT-02' }),
           )}
           title="SYN-EVENT-02"
+          isRead={false}
+          isPending={false}
+          onRead={() => undefined}
         />
       </>,
     );
 
     /* 짝 양성 — 카드가 실제로 둘이다. 그래야 아래 이름 단언이 뜻을 갖는다. */
-    expect(screen.getAllByRole('group')).toHaveLength(2);
-    expect(screen.getByRole('group', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'SYN-EVENT-02' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SYN-EVENT-02' })).toBeInTheDocument();
   });
 
   it('제목 id가 알림 번호로 격리된다', () => {
     expect(titleIdOf(7101)).not.toBe(titleIdOf(7102));
+  });
+});
+
+describe('NotificationCard — 누름', () => {
+  it('안 읽은 카드를 누르면 그 번호를 알린다', async () => {
+    const { onRead, user } = renderCard();
+
+    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-01' }));
+
+    expect(onRead).toHaveBeenCalledWith(7101);
+  });
+
+  /**
+   * ⭐ **이미 읽은 카드는 요청을 부르지 않는다.** 서버 상태가 이미 목표 상태라 보낼 것이 없고,
+   * 보내면 사용자가 목록을 훑는 동안 요청이 계속 나간다.
+   *
+   * 음성 단언을 **짝 양성 뒤 시점**에 잰다 — 안 읽은 카드가 실제로 부른다는 것을 먼저 보였다.
+   */
+  it('이미 읽은 카드를 눌러도 부르지 않는다', async () => {
+    const { onRead, user } = renderCard({ read: true });
+
+    /* 짝 양성 — 그 카드는 실제로 눌린다(버튼으로 남아 있다). */
+    const card = screen.getByRole('button', { name: 'SYN-EVENT-01' });
+    expect(card).toBeInTheDocument();
+
+    await user.click(card);
+
+    expect(onRead).not.toHaveBeenCalled();
+  });
+
+  /**
+   * ⭐ **읽은 카드도 버튼으로 남긴다**(결정 ⑦). 눌리지 않는 요소로 바꾸면 키보드로 Enter를
+   * 눌러 읽음 처리한 **그 순간 포커스가 사라진다.**
+   */
+  it('읽은 카드도 버튼으로 남는다', () => {
+    renderCard({ read: true });
+
+    expect(screen.getByRole('button', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
+  });
+
+  it('나가는 중인 카드는 잠긴다', () => {
+    renderCard({}, 'SYN-EVENT-01', { isPending: true });
+
+    expect(screen.getByRole('button', { name: 'SYN-EVENT-01' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  });
+
+  it('나가는 중인 카드를 눌러도 부르지 않는다', async () => {
+    const { onRead, user } = renderCard({}, 'SYN-EVENT-01', { isPending: true });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-01' }));
+
+    expect(onRead).not.toHaveBeenCalled();
+  });
+
+  /** 카드 안에 또 다른 대화형 요소를 두지 않는다 — 디자인 시스템 제약이자 키보드 순회 규율. */
+  it('카드 안에 다른 대화형 요소가 없다', () => {
+    const { container } = render(
+      <NotificationCard
+        view={toNotificationView(notificationFixture())}
+        title="SYN-EVENT-01"
+        isRead={false}
+        isPending={false}
+        onRead={() => undefined}
+      />,
+    );
+
+    const card = screen.getByRole('button', { name: 'SYN-EVENT-01' });
+
+    expect(card.querySelector('button, a, [role="button"]')).toBeNull();
+    expect(container.querySelector('button button')).toBeNull();
   });
 });

@@ -41,7 +41,14 @@ export interface LookupResult {
   isError: boolean;
 }
 
-/** 결과가 없을 때 쓰는 고정 참조. 매 렌더 새 배열을 만들면 이 값을 받는 쪽이 매번 달라진다. */
+/**
+ * 결과가 없을 때 쓰는 자리표시.
+ *
+ * **자리표시 값을 한 곳에 모으는 것이 근거다** — 「받은 것이 없을 때 무엇으로 보는가」가
+ * 흩어지면 한쪽만 고쳐진다. ⚠ **참조 안정성이 근거가 아니다**: 이 값의 소비처는
+ * `describeEvent(code, entries)`와 `withCurrentEvent(entries, current)`이고 **둘 다 값만
+ * 읽는다.** 그 근거가 참이 되는 시점이 오면 그때 적는다(`screen.tsx`의 두 상수와 같은 판단).
+ */
 const EMPTY_ENTRIES: EventEntry[] = [];
 
 export const lookupKeys = {

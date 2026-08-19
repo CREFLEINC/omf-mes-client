@@ -1,6 +1,6 @@
-import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { formatAsOf } from './as-of';
@@ -25,8 +25,10 @@ import {
   resolvePeriod,
   type NotificationPeriod,
 } from './period';
-import { useNotificationList } from './queries';
+import { EMPTY_READ_STATE, isRead, withRead, type ReadState } from './read-state';
+import { useMarkAllRead, useMarkRead, useNotificationList, useUnreadCount } from './queries';
 import type { NotificationView, SelectOption } from './types';
+import { WriteErrorBanner } from './write-error-banner';
 
 const t = messages.notificationCenter;
 
@@ -43,6 +45,7 @@ const t = messages.notificationCenter;
  */
 const EMPTY_ROWS: NotificationView[] = [];
 
+/** 쪽 메타가 아직 없을 때의 자리. 서버가 준 값이 오면 그것이 정본이다. */
 const EMPTY_PAGE = { page: 1, size: 0, total: 0 };
 
 /**
@@ -138,6 +141,67 @@ export const NotificationCenterScreen = () => {
    */
   const events = useNotificationEventOptions();
 
+  /**
+   * 「이 회차에 읽음 처리한 번호」 — **목록을 다시 부르지 않고 표시만 바꾸는 수단**이다
+   * (결정 ⑤ · `read-state.ts`).
+   *
+   * ⭐ **조건·쪽·기간이 바뀌면 비운다.** 새 결과에는 서버 값이 실려 오므로 그것이 정본이고,
+   * 남겨 두면 **다른 조회의 결과에 앞 조회의 판정이 얹힌다** — 같은 번호가 재사용되는 자리는
+   * 아니지만, 규칙을 「집합은 이 조회의 것」으로 못 박아 두어야 다음 회차가 흔들지 않는다.
+   */
+  const [readState, setReadState] = useState<ReadState>(EMPTY_READ_STATE);
+
+  const listKey = JSON.stringify(listQuery);
+
+  const unreadCount = useUnreadCount();
+
+  const markRead = useMarkRead({
+    /*
+     * ⭐ **성공 되먹임이 캐시를 건드리지 않는다.** 집합에 번호를 더할 뿐이라 목록 조회는
+     * 그대로 살아 있고, 그래서 **방금 누른 카드가 사라지지 않는다.**
+     */
+    onSuccess: (notificationId) => {
+      setReadState((current) => withRead(current, notificationId));
+    },
+  });
+
+  const toast = useToast();
+  const markAllReasonId = useId();
+
+  const markAllRead = useMarkAllRead({
+    /*
+     * ⚠ **여기서는 반대다 — 훅이 목록과 안 읽은 수를 무효화한다.** 사용자가 「전부 읽음으로
+     * 바꾼다」를 명시적으로 눌렀으므로 안 읽음 목록이 비는 것이 그 조작의 결과 그대로다.
+     */
+    onSuccess: (readCount) => {
+      toast.show({ variant: 'success', description: t.toast.allRead(readCount) });
+    },
+  });
+
+  /**
+   * 조회 조건이 바뀌면 **앞 조회에 매인 것을 거둔다** — 읽음 집합과 쓰기 실패 진술 둘 다.
+   *
+   * ⭐ **집합**: 새 결과에는 서버 값이 실려 오므로 그것이 정본이다. 남겨 두면 다른 조회의
+   * 결과에 앞 조회의 판정이 얹힌다(T3-4).
+   *
+   * ⭐ **실패 진술**: 「읽음으로 바꾸지 못했습니다」는 **그 목록의 그 알림**에 대한 말이다.
+   * 조건이 바뀌어 그 알림이 화면에 없는데 배너만 남으면, 사용자는 지금 보이는 것들이 실패한
+   * 줄로 읽는다.
+   *
+   * ⭐ **거두는 자리를 조회 키 하나에 매단다.** 클릭 핸들러에 두면 뒤로가기·앞으로가기·주소
+   * 직접 편집이 그 자리를 지나지 않아 통째로 샌다(전례 `inbound-schedule`의 정리 effect와 같은
+   * 판단). ⚠ **거둠은 `resetIfIdle`을 지난다** — 나가는 중인 쓰기의 되먹임을 끊으면 서버는
+   * 바꿨는데 화면은 없던 일로 친다(사본 체크리스트 · `omf-mes#96`).
+   */
+  const { resetIfIdle: resetMarkRead } = markRead;
+  const { resetIfIdle: resetMarkAllRead } = markAllRead;
+
+  useEffect(() => {
+    setReadState(EMPTY_READ_STATE);
+    resetMarkRead();
+    resetMarkAllRead();
+  }, [listKey, resetMarkRead, resetMarkAllRead]);
+
   /*
    * 기준 시각은 **응답이 도착한 시각**이다(`dataUpdatedAt`) — 렌더 시각이 아니다.
    * 아직 받은 자료가 없으면 그 값이 `0`이고, 그때는 표기 자체를 내지 않는다(공유계약 L-5).
@@ -157,6 +221,21 @@ export const NotificationCenterScreen = () => {
   ): void => {
     setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
   };
+
+  /**
+   * 「모두 읽음」이 잠긴 사유. `undefined`면 열려 있다.
+   *
+   * 순서가 뜻을 정한다 — **나가는 중이 안 읽은 수보다 앞선다.** 보낸 직후에는 아직 그 수가
+   * 갱신되지 않아 둘이 함께 참일 수 있는데, 그때 사용자에게 참인 것은 「기다리는 중」이다.
+   */
+  const markAllReadReason = ((): string | undefined => {
+    if (markAllRead.isSubmitting) return t.actionReasons.markingAllRead;
+    if (unreadCount.data === undefined || unreadCount.data <= 0) {
+      return t.actionReasons.nothingUnread;
+    }
+
+    return undefined;
+  })();
 
   /**
    * 유형 선택지 — 「전체」가 맨 앞이고, 그 뒤가 조회로 받은 목록이다.
@@ -247,7 +326,13 @@ export const NotificationCenterScreen = () => {
       <ul className="notification-list">
         {rows.map((view) => (
           <li key={view.notificationId}>
-            <NotificationCard view={view} title={describeEvent(view.eventCode, events.entries)} />
+            <NotificationCard
+              view={view}
+              title={describeEvent(view.eventCode, events.entries)}
+              isRead={isRead(view, readState)}
+              isPending={markRead.pendingId === view.notificationId}
+              onRead={markRead.markRead}
+            />
           </li>
         ))}
       </ul>
@@ -263,8 +348,49 @@ export const NotificationCenterScreen = () => {
          * 기준 시각을 제목 줄에 둔다. **live 영역으로 두지 않는다** — 조건을 바꿀 때마다
          * 낭독되는데, 조회가 끝났다는 사실은 목록·빈 상태가 이미 알린다.
          */
-        actions={asOf === null ? undefined : <span className="field-note">{t.asOf(asOf)}</span>}
+        actions={
+          <div className="field-cell">
+            <div className="filter-actions">
+              {asOf !== null && <span className="field-note">{t.asOf(asOf)}</span>}
+              {/*
+               * ⭐ **활성 판정이 전용 조회에서 온다**(`useUnreadCount`) — 지금 쪽의 안 읽음으로
+               * 재면 다른 쪽에 안 읽음이 있어도 잠긴다. 「모두」라는 말과 어긋나는 틀린 판정이다.
+               *
+               * 아직 그 수를 받지 못했으면 **잠근 채로 둔다** — 안 읽은 것이 있는지 모르는데
+               * 여는 것은 없는 근거로 조작을 허락하는 일이다.
+               *
+               * 비활성 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로
+               * 잇는다 — 비활성 컨트롤은 포커스를 받지 못해 시각으로만 두면 보조기술이 닿지 않는다.
+               */}
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={markAllReadReason !== undefined}
+                aria-describedby={markAllReadReason === undefined ? undefined : markAllReasonId}
+                onClick={markAllRead.markAllRead}
+              >
+                {t.actions.markAllRead}
+              </Button>
+            </div>
+            {markAllReadReason !== undefined && (
+              <span id={markAllReasonId} className="field-note">
+                {markAllReadReason}
+              </span>
+            )}
+          </div>
+        }
       />
+
+      {/*
+       * 쓰기 실패는 **화면 수준 배너**로 낸다(공유계약 G-1). 카드마다 붙이면 목록이 오류로
+       * 뒤덮이고, 어느 조작이 막혔는지는 제목이 가른다.
+       */}
+      {markRead.error !== null && (
+        <WriteErrorBanner error={markRead.error} title={t.writeError.readTitle} />
+      )}
+      {markAllRead.error !== null && (
+        <WriteErrorBanner error={markAllRead.error} title={t.writeError.allReadTitle} />
+      )}
 
       {/* 조회 실패는 빈 상태로 오인시키지 않는다 — 「없습니다」로 내면 알림이 없는 줄 안다. */}
       {list.isError && (

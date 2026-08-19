@@ -59,8 +59,48 @@ const failingEventsRoute: StubRoute = {
   respond: () => jsonResponse({ message: '' }, { status: 500 }),
 };
 
-/** 목록 규칙에 유형 조회를 **늘 함께 둔다** — 스텁에 없는 요청은 하네스가 던진다. */
-const routesWith = (...routes: StubRoute[]): StubRoute[] => [...routes, eventsRoute];
+const UNREAD_COUNT_PATH = '/app/notifications/unread-count';
+const READ_ALL_PATH = '/app/notifications:read-all';
+
+const isUnreadCount = (request: Request): boolean =>
+  request.method === 'GET' && new URL(request.url).pathname === UNREAD_COUNT_PATH;
+
+/** 읽음 처리 경로. 번호가 경로 조각이라 접두로 가른다 — `:read-all`과 겹치지 않게 형태를 본다. */
+const isMarkRead = (request: Request): boolean =>
+  request.method === 'POST' &&
+  /\/app\/notifications\/\d+:read$/.test(new URL(request.url).pathname);
+
+const isMarkAllRead = (request: Request): boolean =>
+  request.method === 'POST' && new URL(request.url).pathname === READ_ALL_PATH;
+
+const unreadCountRoute = (unreadCount = 2): StubRoute => ({
+  match: isUnreadCount,
+  respond: () => jsonResponse({ unreadCount }),
+});
+
+/** 계약의 성공 응답은 **204이고 본문이 없다.** */
+const markReadRoute = (status = 204): StubRoute => ({
+  match: isMarkRead,
+  respond: () =>
+    status === 204 ? new Response(null, { status }) : jsonResponse({ message: '' }, { status }),
+});
+
+const markAllReadRoute = (readCount = 5): StubRoute => ({
+  match: isMarkAllRead,
+  respond: () => jsonResponse({ readCount }),
+});
+
+/**
+ * 목록 규칙에 **곁 조회·쓰기를 늘 함께 둔다** — 스텁에 없는 요청은 하네스가 던진다.
+ * 각 시험이 겨누는 것만 갈아 끼우고 나머지는 정상 경로로 둔다.
+ */
+const routesWith = (...routes: StubRoute[]): StubRoute[] => [
+  ...routes,
+  eventsRoute,
+  unreadCountRoute(),
+  markReadRoute(),
+  markAllReadRoute(),
+];
 
 const failingRoute = (status = 500, message = '합성 서버 사유'): StubRoute => ({
   match: isList,
@@ -98,13 +138,16 @@ const shrinkingRoute = (): StubRoute => {
 const recordingFetch = (
   routes: StubRoute[],
   hold?: (request: Request) => boolean,
-): { fetch: StubFetch; urls: URL[]; release: () => void } => {
+): { fetch: StubFetch; urls: URL[]; requests: Request[]; release: () => void } => {
   const urls: URL[] = [];
+  /** 쓰기는 **나간 요청 자체**를 봐야 한다 — 메서드·경로 조각·헤더가 주소에 담기지 않는다. */
+  const requests: Request[] = [];
   const stub = createStubFetch(routes);
   const holders: Array<() => void> = [];
 
   return {
     urls,
+    requests,
     release: () => {
       holders.forEach((resolve) => {
         resolve();
@@ -113,6 +156,7 @@ const recordingFetch = (
     },
     fetch: async (request) => {
       urls.push(new URL(request.url));
+      requests.push(request);
 
       if (hold?.(request) === true) {
         await new Promise<void>((resolve) => {
@@ -180,7 +224,7 @@ const renderScreen = (
   navigateTo = '',
   hold?: (request: Request) => boolean,
 ) => {
-  const { fetch, urls, release } = recordingFetch(routes, hold);
+  const { fetch, urls, requests, release } = recordingFetch(routes, hold);
   const result = renderWithProviders(
     <>
       <NotificationCenterScreen />
@@ -191,7 +235,7 @@ const renderScreen = (
     { fetch, route },
   );
 
-  return { ...result, urls, release, user: userEvent.setup() };
+  return { ...result, urls, requests, release, user: userEvent.setup() };
 };
 
 /**
@@ -200,7 +244,7 @@ const renderScreen = (
  * **푼 이름으로 찾는다** — 코드로 찾으면 이름 풀이가 통째로 죽어도 이 대기가 통과한다.
  */
 const waitForCards = async (): Promise<void> => {
-  await screen.findByRole('group', { name: EVENT_NAME_01 });
+  await screen.findByRole('button', { name: EVENT_NAME_01 });
 };
 
 /** 알림 번호가 가리키는 카드의 목록 항목. DOM 노드 동일성을 재기 위한 자리다. */
@@ -432,10 +476,12 @@ describe('NotificationCenterScreen — 목록', () => {
 
     await waitForCards();
 
-    expect(screen.getAllByRole('group')).toHaveLength(3);
-    expect(screen.getByRole('group', { name: EVENT_NAME_02 })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.list })).getAllByRole('listitem'),
+    ).toHaveLength(3);
+    expect(screen.getByRole('button', { name: EVENT_NAME_02 })).toBeInTheDocument();
     /* 유형 목록에 없는 코드는 원문 그대로가 이름이다. */
-    expect(screen.getByRole('group', { name: 'SYN-EVENT-03' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SYN-EVENT-03' })).toBeInTheDocument();
   });
 
   /**
@@ -464,7 +510,7 @@ describe('NotificationCenterScreen — 목록', () => {
 
     /* 짝 양성 — 앞 카드가 실제로 빠졌다. */
     await waitFor(() => {
-      expect(screen.queryByRole('group', { name: EVENT_NAME_01 })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: EVENT_NAME_01 })).not.toBeInTheDocument();
     });
 
     expect(rowOf(7102)).toBe(before);
@@ -526,7 +572,7 @@ describe('NotificationCenterScreen — 목록', () => {
       routesWith(listRoute([notificationFixture({ eventCode: 'SYN-EVENT-09' })])),
     );
 
-    expect(await screen.findByRole('group', { name: 'SYN-EVENT-09' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'SYN-EVENT-09' })).toBeInTheDocument();
   });
 });
 
@@ -639,8 +685,10 @@ describe('NotificationCenterScreen — 조건 두 축', () => {
   it('유형 목록 조회가 실패해도 목록은 그려지고 제목이 코드로 낙하한다', async () => {
     renderScreen('/?from=2026-08-01&to=2026-08-07', [listRoute(), failingEventsRoute]);
 
-    expect(await screen.findByRole('group', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
-    expect(screen.getAllByRole('group')).toHaveLength(3);
+    expect(await screen.findByRole('button', { name: 'SYN-EVENT-01' })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.list })).getAllByRole('listitem'),
+    ).toHaveLength(3);
     /* 실패는 조건 줄이 밝힌다 — 목록 자리에 오류 배너를 세우지 않는다. */
     expect(screen.getByText(t.filters.eventsFailed)).toBeInTheDocument();
     expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
@@ -928,7 +976,11 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
 
     await waitForCards();
 
-    /* 짝 양성 — 처음부터 두 조건이 실려 있었다. */
+    /*
+     * 짝 양성 — 처음부터 두 조건이 **주소가 말한 대로** 요청에 반영돼 있었다.
+     * 「안 읽음만」은 꺼진 상태라 **키가 없는 것**이 그 반영이고(전체에는 키를 싣지 않는다),
+     * 유형은 값이 실린 것이 그 반영이다. 둘의 모양이 다르므로 각각 그 모양으로 잰다.
+     */
     expect(listUrls(urls)[0]?.searchParams.has('unreadOnly')).toBe(false);
     expect(listUrls(urls)[0]?.searchParams.get('eventCode')).toBe('SYN-EVENT-02');
 
@@ -988,5 +1040,498 @@ describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
 
     expect(currentLocation()).toContain('unread=0');
     expect(currentLocation()).toContain('ev=SYN-EVENT-02');
+  });
+});
+
+/** 나간 쓰기 요청만 고른다. 주소만 보면 메서드가 안 담겨 조회와 섞인다. */
+const writesOf = (requests: Request[], match: (request: Request) => boolean): Request[] =>
+  requests.filter(match);
+
+describe('NotificationCenterScreen — 읽음 처리', () => {
+  /** 첫 알림(7101)은 안 읽음, 둘째(7102)는 읽음이다 — 픽스처가 두 갈래를 함께 담는다. */
+  const UNREAD_CARD = EVENT_NAME_01;
+  const READ_CARD = EVENT_NAME_02;
+
+  it('안 읽은 카드를 누르면 그 번호로 읽음 처리를 보낸다', async () => {
+    const { requests, user } = renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: UNREAD_CARD }));
+
+    await waitFor(() => {
+      expect(writesOf(requests, isMarkRead)).toHaveLength(1);
+    });
+
+    const sent = writesOf(requests, isMarkRead)[0];
+    expect(new URL(sent?.url ?? '').pathname).toBe('/app/notifications/7101:read');
+    expect(sent?.method).toBe('POST');
+  });
+
+  /** 계약이 전 쓰기에 멱등 키를 요구한다. 같은 시도의 재시도가 새 키를 얻으면 다른 요청이 된다. */
+  it('멱등 키를 UUID로 실어 보낸다', async () => {
+    const { requests, user } = renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: UNREAD_CARD }));
+
+    await waitFor(() => {
+      expect(writesOf(requests, isMarkRead)).toHaveLength(1);
+    });
+
+    expect(writesOf(requests, isMarkRead)[0]?.headers.get('Idempotency-Key')).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  /**
+   * ⭐ **T3-2 — 성공해도 목록을 다시 부르지 않는다**(결정 ⑤).
+   *
+   * 기본 조건이 「안 읽음만」이라 무효화는 곧 **방금 누른 카드의 사라짐**이다. 게다가 캐시 키가
+   * 바뀌면 목록 구획이 통째로 다시 서서 앞 회차가 세운 DOM 보증(T1-7)까지 무너진다.
+   */
+  it('성공해도 목록을 다시 부르지 않고 그 카드가 남는다', async () => {
+    const { urls, requests, user } = renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+    const listCallsBefore = listUrls(urls).length;
+    const cardBefore = rowOf(7101);
+
+    await user.click(screen.getByRole('button', { name: UNREAD_CARD }));
+
+    await waitFor(() => {
+      expect(writesOf(requests, isMarkRead)).toHaveLength(1);
+    });
+    /* 읽음 표시가 실제로 바뀐 뒤에 잰다 — 음성 단언이 「아직 안 왔다」로 헛통과하지 않게. */
+    await waitFor(() => {
+      expect(screen.getAllByText(t.card.read).length).toBeGreaterThan(1);
+    });
+
+    expect(listUrls(urls).length).toBe(listCallsBefore);
+    expect(screen.getByRole('button', { name: UNREAD_CARD })).toBeInTheDocument();
+    /* 카드가 새로 서지도 않았다 — 같은 DOM 노드 그대로다. */
+    expect(rowOf(7101)).toBe(cardBefore);
+  });
+
+  it('성공하면 그 카드만 읽음으로 바뀐다', async () => {
+    const { requests, user } = renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+    /* 짝 양성 — 처음에는 안 읽음이 둘이다(7101 · 7103). */
+    expect(screen.getAllByText(t.card.unread)).toHaveLength(2);
+
+    await user.click(screen.getByRole('button', { name: UNREAD_CARD }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(t.card.unread)).toHaveLength(1);
+    });
+    expect(writesOf(requests, isMarkRead)).toHaveLength(1);
+  });
+
+  /** ⭐ T3-3 — 음성 단언을 **짝 양성 뒤 시점**에 잰다. */
+  it('이미 읽은 카드를 눌러도 요청이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+
+    /* 짝 양성 — 안 읽은 카드는 실제로 요청을 낸다. */
+    await user.click(screen.getByRole('button', { name: UNREAD_CARD }));
+    await waitFor(() => {
+      expect(writesOf(requests, isMarkRead)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: READ_CARD }));
+    /* 방금 읽음으로 바뀐 카드도 같다 — 서버 값이 아니라 화면 판정으로 막는다. */
+    await user.click(screen.getByRole('button', { name: UNREAD_CARD }));
+
+    expect(writesOf(requests, isMarkRead)).toHaveLength(1);
+  });
+
+  /** ⭐ T3-5 — 진행 중인 카드만 잠기고 다른 카드는 계속 누를 수 있다. */
+  it('나가는 중에는 그 카드만 잠긴다', async () => {
+    const { release, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute()),
+      '',
+      isMarkRead,
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: UNREAD_CARD }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: UNREAD_CARD })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+    });
+
+    /* 다른 카드는 잠기지 않는다 — 불리언 하나로 두면 여기가 함께 잠긴다. */
+    expect(screen.getByRole('button', { name: 'SYN-EVENT-03' })).not.toHaveAttribute(
+      'aria-disabled',
+    );
+
+    release();
+  });
+
+  /** ⭐ T3-6 — 실패하면 배너가 서고 **그 카드의 읽음 표시가 바뀌지 않는다.** */
+  it('실패하면 배너가 서고 읽음 표시가 바뀌지 않는다', async () => {
+    const { user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute(), markReadRoute(403)),
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: UNREAD_CARD }));
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.getByText(t.writeError.readTitle)).toBeInTheDocument();
+    /* 성공한 것만 집합에 든다 — 안 읽음 둘이 그대로다. */
+    expect(screen.getAllByText(t.card.unread)).toHaveLength(2);
+  });
+
+  it('없는 알림에는 다른 사유를 낸다 — 목록이 낡았을 때 나는 갈래다', async () => {
+    const { user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute(), markReadRoute(404)),
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: UNREAD_CARD }));
+
+    expect(await screen.findByText(t.writeError.notFound)).toBeInTheDocument();
+  });
+
+  /** ⭐ T3-4 — 조건이 바뀌면 「이 회차에 읽음 처리한 번호」가 비워진다. */
+  it('조건이 바뀌면 읽음 집합이 비워지고 서버 값이 정본이 된다', async () => {
+    const { user } = renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: UNREAD_CARD }));
+
+    /* 짝 양성 — 집합이 실제로 얹혔다(안 읽음이 둘에서 하나로). */
+    await waitFor(() => {
+      expect(screen.getAllByText(t.card.unread)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('combobox', { name: t.fields.eventCode }));
+    await user.click(await screen.findByRole('option', { name: EVENT_NAME_02 }));
+
+    /* 새 결과가 왔다 — 서버 값 그대로 안 읽음이 둘이다. */
+    await waitFor(() => {
+      expect(screen.getAllByText(t.card.unread)).toHaveLength(2);
+    });
+  });
+});
+
+describe('NotificationCenterScreen — 모두 읽음', () => {
+  const markAllButton = () => screen.getByRole('button', { name: t.actions.markAllRead });
+
+  /** ⭐ T3-7 — 판정이 **전용 조회**에서 온다. 목록을 세면 다른 쪽의 안 읽음이 빠진다. */
+  it('안 읽은 수가 0이면 잠기고 사유가 보인다', async () => {
+    renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(listRoute(), unreadCountRoute(0)));
+
+    await waitForCards();
+
+    expect(markAllButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.nothingUnread)).toBeInTheDocument();
+  });
+
+  it('안 읽은 수가 1 이상이면 열린다', async () => {
+    renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(listRoute(), unreadCountRoute(3)));
+
+    await waitForCards();
+
+    await waitFor(() => {
+      expect(markAllButton()).toBeEnabled();
+    });
+    expect(screen.queryByText(t.actionReasons.nothingUnread)).not.toBeInTheDocument();
+  });
+
+  it('전용 조회를 부른다 — 목록을 세지 않는다', async () => {
+    const { urls } = renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+
+    await waitFor(() => {
+      expect(urls.some((url) => url.pathname === UNREAD_COUNT_PATH)).toBe(true);
+    });
+  });
+
+  it('안 읽은 수를 아직 받지 못했으면 잠긴 채로 둔다', async () => {
+    const { release } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute()),
+      '',
+      isUnreadCount,
+    );
+
+    await waitForCards();
+
+    /* 근거 없이 여는 것은 안 읽은 것이 있는지 모르는데 조작을 허락하는 일이다. */
+    expect(markAllButton()).toBeDisabled();
+
+    release();
+  });
+
+  it('누르면 멱등 키를 실어 보낸다', async () => {
+    const { requests, user } = renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+    await waitFor(() => {
+      expect(markAllButton()).toBeEnabled();
+    });
+    await user.click(markAllButton());
+
+    await waitFor(() => {
+      expect(writesOf(requests, isMarkAllRead)).toHaveLength(1);
+    });
+    expect(writesOf(requests, isMarkAllRead)[0]?.headers.get('Idempotency-Key')).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}/i,
+    );
+  });
+
+  /** ⭐ T3-8 — 성공하면 **서버가 준 건수**를 알린다. 화면이 세면 다른 쪽의 건이 빠진다. */
+  it('성공하면 바뀐 건수를 알린다', async () => {
+    const { user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute(), markAllReadRoute(7)),
+    );
+
+    await waitForCards();
+    await waitFor(() => {
+      expect(markAllButton()).toBeEnabled();
+    });
+    await user.click(markAllButton());
+
+    expect(await screen.findByText(t.toast.allRead(7))).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **T3-8·T3-9 — 여기서는 무효화한다(읽음 처리 하나와 반대다).**
+   *
+   * 재조회 스텁이 **호출 횟수에 따라 내용까지** 달라진다 — 같은 구조를 되돌리는 스텁으로는
+   * 「목록을 다시 불렀다」와 「아무 일도 없었다」가 구분되지 않아 이 감지기가 헛통과한다.
+   */
+  it('성공하면 목록과 안 읽은 수를 다시 부르고 내용이 갱신된다', async () => {
+    let listCalls = 0;
+    const shrinkingList: StubRoute = {
+      match: isList,
+      respond: () => {
+        listCalls += 1;
+
+        return jsonResponse(
+          notificationListBody(
+            listCalls === 1 ? notificationFixtures : [notificationFixture({ read: true })],
+          ),
+        );
+      },
+    };
+    let countCalls = 0;
+    const drainingCount: StubRoute = {
+      match: isUnreadCount,
+      respond: () => {
+        countCalls += 1;
+
+        return jsonResponse({ unreadCount: countCalls === 1 ? 2 : 0 });
+      },
+    };
+
+    const { urls, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(shrinkingList, drainingCount),
+    );
+
+    await waitForCards();
+    const listCallsBefore = listUrls(urls).length;
+    /* 짝 양성 — 처음에는 카드가 셋이고 버튼이 열려 있다. */
+    await waitFor(() => {
+      expect(markAllButton()).toBeEnabled();
+    });
+
+    await user.click(markAllButton());
+
+    await waitFor(() => {
+      expect(listUrls(urls).length).toBeGreaterThan(listCallsBefore);
+    });
+    /* 내용까지 달라졌다 — 카드가 하나로 줄고 안 읽음이 사라졌다. */
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole('region', { name: t.panes.list })).getAllByRole('listitem'),
+      ).toHaveLength(1);
+    });
+    expect(screen.queryByText(t.card.unread)).not.toBeInTheDocument();
+    /* 안 읽은 수도 다시 불러 버튼이 잠긴다 — 두지 않으면 눌러도 열린 채로 남는다. */
+    await waitFor(() => {
+      expect(markAllButton()).toBeDisabled();
+    });
+  });
+
+  it('나가는 중에는 잠기고 그 사유가 보인다', async () => {
+    const { release, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute()),
+      '',
+      isMarkAllRead,
+    );
+
+    await waitForCards();
+    await waitFor(() => {
+      expect(markAllButton()).toBeEnabled();
+    });
+    await user.click(markAllButton());
+
+    await waitFor(() => {
+      expect(screen.getByText(t.actionReasons.markingAllRead)).toBeInTheDocument();
+    });
+    expect(markAllButton()).toBeDisabled();
+
+    release();
+  });
+
+  it('실패하면 다른 제목의 배너가 선다', async () => {
+    const failingAll: StubRoute = {
+      match: isMarkAllRead,
+      respond: () => jsonResponse({ message: '합성 쓰기 사유' }, { status: 500 }),
+    };
+    const { user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute(), failingAll),
+    );
+
+    await waitForCards();
+    await waitFor(() => {
+      expect(markAllButton()).toBeEnabled();
+    });
+    await user.click(markAllButton());
+
+    expect(await screen.findByText(t.writeError.allReadTitle)).toBeInTheDocument();
+    expect(screen.getByText('합성 쓰기 사유')).toBeInTheDocument();
+    /* 읽음 처리 실패와 제목이 갈린다 — 어느 조작이 막혔는지 알 수 있어야 한다. */
+    expect(screen.queryByText(t.writeError.readTitle)).not.toBeInTheDocument();
+  });
+
+  /** ⭐ T3-11 — 모두 읽음 뒤 안 읽음 목록이 비어도 화면이 무너지지 않는다. */
+  it('모두 읽음 뒤 목록이 비면 빈 상태가 선다', async () => {
+    let listCalls = 0;
+    const emptyingList: StubRoute = {
+      match: isList,
+      respond: () => {
+        listCalls += 1;
+
+        return jsonResponse(notificationListBody(listCalls === 1 ? notificationFixtures : []));
+      },
+    };
+    const { user } = renderScreen('/?from=2026-08-01&to=2026-08-07', routesWith(emptyingList));
+
+    await waitForCards();
+    await waitFor(() => {
+      expect(markAllButton()).toBeEnabled();
+    });
+    await user.click(markAllButton());
+
+    expect(await screen.findByText(t.empty.noneTitle)).toBeInTheDocument();
+  });
+});
+
+describe('NotificationCenterScreen — 앞 조회에 매인 진술의 수명', () => {
+  const failingRead = (): StubRoute[] => routesWith(listRoute(), markReadRoute(403));
+
+  /**
+   * ⭐ **실패 진술은 「그 목록의 그 알림」에 대한 말이다.**
+   *
+   * 조건이 바뀌어 그 알림이 화면에 없는데 배너만 남으면, 사용자는 **지금 보이는 것들이
+   * 실패한 줄로** 읽는다. 거두는 자리는 `resetIfIdle`을 지난다 — 나가는 중인 쓰기의
+   * 되먹임을 끊지 않기 위해서다.
+   */
+  it('조건이 바뀌면 읽음 처리 실패 배너가 거둬진다', async () => {
+    const { user } = renderScreen('/?from=2026-08-01&to=2026-08-07', failingRead());
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+
+    /* 짝 양성 — 배너가 실제로 섰다. */
+    expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: t.fields.unreadOnly }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.writeError.readTitle)).not.toBeInTheDocument();
+    });
+  });
+
+  it('쪽을 옮겨도 실패 배너가 거둬진다', async () => {
+    const { user } = renderScreen('/?from=2026-08-01&to=2026-08-07', [
+      listRoute(notificationFixtures, { page: 1, size: 50, total: 137 }),
+      ...failingRead().slice(1),
+    ]);
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+    expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.writeError.readTitle)).not.toBeInTheDocument();
+    });
+  });
+
+  /** 같은 조회 안에서는 남는다 — 거두는 조건이 「조회가 바뀌었을 때」임을 가른다. */
+  it('같은 조회 안에서는 실패 배너가 남는다', async () => {
+    const { user } = renderScreen('/?from=2026-08-01&to=2026-08-07', failingRead());
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+    expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
+
+    /* 다른 카드를 눌러도 조회는 그대로다 — 배너가 사라지면 사용자가 실패를 놓친다. */
+    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+
+    expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
+  });
+});
+
+describe('NotificationCenterScreen — 나가는 중인 쓰기를 끊지 않는다', () => {
+  /**
+   * ⭐ **T3-10 — 거둠이 진행 중인 쓰기를 건드리면 안 된다**(사본 체크리스트 · `omf-mes#96`).
+   *
+   * 조건이 바뀌면 화면은 앞 조회에 매인 진술을 거두는데, 그 거둠이 **나가는 중인 쓰기의
+   * 되먹임까지 끊으면** 서버는 읽음으로 바꿨는데 화면은 없던 일로 친다. 그 알림은 그때부터
+   * **안 읽음으로 보이는데 다시 눌러도 아무 일도 일어나지 않는** 상태가 된다(서버에는 이미
+   * 읽음이라 다시 눌러도 표시가 바뀔 근거가 없다).
+   *
+   * 요청을 붙잡아 **그 사이에 조건을 바꾸고** 놓아 준 뒤, 되먹임이 살아 있었는지를 잰다.
+   */
+  it('나가는 중에 조건이 바뀌어도 성공 되먹임이 살아 있다', async () => {
+    const { release, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute()),
+      '',
+      isMarkRead,
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+
+    /* 짝 양성 — 요청이 실제로 붙잡혀 있다(그 카드가 잠겼다). */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: EVENT_NAME_01 })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+    });
+
+    /* 나가는 중에 조건이 바뀐다 — 거둠이 여기서 돈다. */
+    await user.click(screen.getByRole('checkbox', { name: t.fields.unreadOnly }));
+
+    release();
+
+    /*
+     * 되먹임이 살아 있으면 그 알림이 읽음으로 바뀐다. 끊겼다면 안 읽음인 채로 남는다 —
+     * 서버는 이미 바꿨는데 화면만 모르는 상태다.
+     */
+    await waitFor(() => {
+      expect(screen.getAllByText(t.card.unread)).toHaveLength(1);
+    });
   });
 });
