@@ -25,8 +25,8 @@ import {
   resolvePeriod,
   type NotificationPeriod,
 } from './period';
-import { EMPTY_READ_STATE, isRead, withRead, type ReadState } from './read-state';
 import { useMarkAllRead, useMarkRead, useNotificationList, useUnreadCount } from './queries';
+import { EMPTY_READ_STATE, isRead, withRead, type ReadState } from './read-state';
 import type { NotificationView, SelectOption } from './types';
 import { WriteErrorBanner } from './write-error-banner';
 
@@ -47,6 +47,30 @@ const EMPTY_ROWS: NotificationView[] = [];
 
 /** 쪽 메타가 아직 없을 때의 자리. 서버가 준 값이 오면 그것이 정본이다. */
 const EMPTY_PAGE = { page: 1, size: 0, total: 0 };
+
+/**
+ * 「모두 읽음」이 잠긴 사유. `undefined`면 열려 있다.
+ *
+ * ⭐ **순서가 뜻을 정한다 — 나가는 중이 안 읽은 수보다 앞선다.** 보낸 직후에는 아직 그 수가
+ * 갱신되지 않아 둘이 함께 참일 수 있는데, 그때 사용자에게 참인 것은 「기다리는 중」이다.
+ * 「안 읽은 알림이 없습니다」라고 말하면 방금 누른 조작이 **이미 끝난 것처럼** 읽힌다.
+ *
+ * ⚠ **아직 그 수를 받지 못했으면 잠근 채로 둔다** — 안 읽은 것이 있는지 모르는데 여는 것은
+ * 없는 근거로 조작을 허락하는 일이다.
+ *
+ * ⭐ **내보내는 이유는 단위 시험이 이 순서를 직접 재기 위해서다.** 두 조건이 함께 참이 되는
+ * 자리(쓰기가 나가는 중에 안 읽은 수 재조회가 0을 돌려주는 순간)는 화면 조작으로 도달하기가
+ * 매우 좁아 화면 시험으로는 규격을 고정할 수 없다. 다른 부품이 소비하지 않는다.
+ */
+export const describeMarkAllReadReason = (
+  isSubmitting: boolean,
+  unreadCount: number | undefined,
+): string | undefined => {
+  if (isSubmitting) return t.actionReasons.markingAllRead;
+  if (unreadCount === undefined || unreadCount <= 0) return t.actionReasons.nothingUnread;
+
+  return undefined;
+};
 
 /**
  * W-CO-03 알림센터 — 사용자가 **자기가 받은 알림을 기간·상태·유형으로 찾아 보는** 자리.
@@ -222,20 +246,7 @@ export const NotificationCenterScreen = () => {
     setSearchParams(toSearchParams(nextPeriod, nextFilters, nextPage));
   };
 
-  /**
-   * 「모두 읽음」이 잠긴 사유. `undefined`면 열려 있다.
-   *
-   * 순서가 뜻을 정한다 — **나가는 중이 안 읽은 수보다 앞선다.** 보낸 직후에는 아직 그 수가
-   * 갱신되지 않아 둘이 함께 참일 수 있는데, 그때 사용자에게 참인 것은 「기다리는 중」이다.
-   */
-  const markAllReadReason = ((): string | undefined => {
-    if (markAllRead.isSubmitting) return t.actionReasons.markingAllRead;
-    if (unreadCount.data === undefined || unreadCount.data <= 0) {
-      return t.actionReasons.nothingUnread;
-    }
-
-    return undefined;
-  })();
+  const markAllReadReason = describeMarkAllReadReason(markAllRead.isSubmitting, unreadCount.data);
 
   /**
    * 유형 선택지 — 「전체」가 맨 앞이고, 그 뒤가 조회로 받은 목록이다.
@@ -330,7 +341,7 @@ export const NotificationCenterScreen = () => {
               view={view}
               title={describeEvent(view.eventCode, events.entries)}
               isRead={isRead(view, readState)}
-              isPending={markRead.pendingId === view.notificationId}
+              isPending={markRead.pendingIds.has(view.notificationId) || markAllRead.isSubmitting}
               onRead={markRead.markRead}
             />
           </li>

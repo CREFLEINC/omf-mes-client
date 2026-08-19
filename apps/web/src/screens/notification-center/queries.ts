@@ -40,9 +40,17 @@ export type NotificationListQuery = PeriodQuery &
     page?: number;
   };
 
+/**
+ * 이 화면의 캐시 키 전부.
+ *
+ * ⭐ **`all`이 나머지의 접두다.** 「모두 읽음」이 `all` 하나를 무효화하면 목록과 안 읽은 수가
+ * **함께** 걸린다 — 그 보증이 상자 밖에 흩어져 있으면 키를 늘리는 사람이 접두를 깨뜨려도
+ * 아무 데서도 보이지 않는다. 새 키는 반드시 `['notifications', …]`로 시작한다.
+ */
 export const notificationKeys = {
   all: ['notifications'] as const,
   list: (query: NotificationListQuery | null) => ['notifications', 'list', query] as const,
+  unreadCount: ['notifications', 'unread-count'] as const,
 };
 
 const fetchNotifications = async (
@@ -92,13 +100,11 @@ export const useNotificationList = (
  * ⚠ **셸의 종 배지는 이 회차에 만들지 않는다**(결정 ②). 경로를 쓰는 것과 상단 바에 배지를
  * 그리는 것은 다른 일이다 — 배지는 셸의 책임이고 갱신 주기가 아직 정해지지 않았다.
  */
-export const unreadCountKey = ['notifications', 'unread-count'] as const;
-
 export const useUnreadCount = (): UseQueryResult<number> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: unreadCountKey,
+    queryKey: notificationKeys.unreadCount,
     queryFn: async () => {
       const data = await runRequest(() => client.GET('/app/notifications/unread-count'));
 
@@ -107,18 +113,42 @@ export const useUnreadCount = (): UseQueryResult<number> => {
   });
 };
 
-/** 되돌아온 값에서 갈래를 꺼낸다. 우리가 던진 것이 아니면 통신 실패로 오인시키지 않는다. */
-const toWriteError = (cause: unknown): ApiError => toApiError(cause);
-
 export interface MarkReadMutation {
-  /** 읽음으로 바꾼다. **나가는 중인 번호가 있으면 받지 않는다** */
+  /** 읽음으로 바꾼다. **그 번호가 이미 나가는 중이면 받지 않는다** — 다른 번호는 받는다 */
   markRead: (notificationId: number) => void;
-  /** 지금 나가는 중인 번호. `null`이면 나가는 중이 아니다 — 그 카드 하나만 잠근다 */
-  pendingId: number | null;
+  /**
+   * 지금 나가는 중인 번호들. **집합이다.**
+   *
+   * ⭐ 번호 하나만 들면 「다른 카드는 계속 누를 수 있다」가 **시각적으로만** 참이 된다 —
+   * 잠기지 않은 카드를 눌러도 훅이 그 클릭을 조용히 버린다(T3 검증이 탐침으로 실측했다).
+   * 잠그지 않음으로써 「누를 수 있다」고 말해 놓고 아무 일도 하지 않는 것은 되먹임이 없는
+   * 결함이다. 집합이면 **누른 만큼 나가고 각각이 자기 카드만 잠근다.**
+   */
+  pendingIds: ReadonlySet<number>;
   error: ApiError | null;
-  /** 진행 중이 아닐 때만 되돌린다 — 사본 체크리스트의 `resetIfIdle` 규율 */
+  /** 나가는 중인 것이 하나도 없을 때만 되돌린다 — 사본 체크리스트의 `resetIfIdle` 규율 */
   resetIfIdle: () => void;
 }
+
+/** 나가는 것이 하나도 없을 때의 자리. 매 렌더 새 집합을 만들면 이 값을 받는 쪽이 매번 달라진다. */
+const EMPTY_PENDING_IDS: ReadonlySet<number> = new Set<number>();
+
+const withPending = (current: ReadonlySet<number>, notificationId: number): ReadonlySet<number> => {
+  const next = new Set(current);
+  next.add(notificationId);
+
+  return next;
+};
+
+const withoutPending = (
+  current: ReadonlySet<number>,
+  notificationId: number,
+): ReadonlySet<number> => {
+  const next = new Set(current);
+  next.delete(notificationId);
+
+  return next;
+};
 
 export interface MarkReadOptions {
   /** 성공. **번호를 넘긴다** — 화면이 그 번호를 읽음 집합에 더한다 */
@@ -143,12 +173,29 @@ interface MarkReadAttempt {
  * **공통 쓰기 훅을 쓰지 않는 이유**도 같다 — 그쪽은 무효화·ETag·필드 오류 분해를 전제로 하는데
  * 이 쓰기에는 셋 다 없다(낙관적 잠금 없음 · 인라인 낼 칸 없음).
  *
- * ⭐ **나가는 중인 번호를 하나만 든다.** 사용자가 카드를 연달아 누를 수 있는 화면이라, 진행
- * 상태를 불리언 하나로 두면 **모든 카드가 함께 잠긴다.** 번호를 들면 그 카드만 잠긴다.
+ * ⭐ **여러 장을 동시에 처리할 수 있다.** 사용자가 카드를 연달아 누르는 화면이라, 진행 상태를
+ * 불리언 하나로 두면 모든 카드가 함께 잠기고, **번호 하나**로 두면 잠기지 않은 카드의 클릭이
+ * 조용히 버려진다(둘 다 완료 조건 T3-5와 어긋난다). 번호 **집합**을 들어 누른 만큼 내보내고
+ * 각각이 자기 카드만 잠근다.
+ *
+ * ⚠ **그래서 요청 상태를 `useMutation`에서 읽지 않는다.** 그 훅은 **마지막 시도 하나**의
+ * 변수·진행 여부만 추적하므로, 동시에 둘이 나가면 앞의 것이 뒤의 것에 덮인다. 시도를
+ * `mutateAsync`로 각각 띄우고 **집합은 이 훅이 손으로 관리한다** — 성공·실패 되먹임이
+ * **그 번호에만** 반영되는 것이 이 형태의 요점이다.
  */
 export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
   const { client } = useApiClient();
-  const [error, setError] = useState<ApiError | null>(null);
+  /**
+   * 마지막 실패 — **어느 알림의 것인지와 함께** 든다.
+   *
+   * ⭐ **전례들처럼 「새 시도가 앞 시도의 진술을 지운다」로 두면 안 되는 자리다.** 그 규율이
+   * 참인 이유는 그 화면들의 쓰기가 **한 번에 하나**이기 때문이다 — 앞 진술은 늘 같은 대상에
+   * 대한 말이라 새 시도가 그것을 대체한다. 여기서는 여러 장이 동시에 나가므로, 카드 C를 누른
+   * 것이 **카드 A의 실패를 지우면** 사용자는 자기가 본 실패가 왜 사라졌는지 알 수 없다.
+   * 지우는 것은 **같은 알림을 다시 누를 때**뿐이다.
+   */
+  const [failure, setFailure] = useState<{ notificationId: number; error: ApiError } | null>(null);
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<number>>(EMPTY_PENDING_IDS);
 
   const mutation = useMutation({
     mutationFn: async (attempt: MarkReadAttempt): Promise<void> => {
@@ -163,26 +210,41 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
     },
   });
 
+  const { mutateAsync } = mutation;
+
   const markRead = (notificationId: number): void => {
     /*
-     * 나가는 중에는 새 요청을 받지 않는다. 화면이 그 카드를 잠그지만 **훅도 같은 겹을 갖는다** —
-     * 진행 중 번호가 하나뿐이라, 겹치면 어느 카드의 성공인지 가릴 수 없게 된다.
+     * **같은 번호가 나가는 중이면 받지 않는다.** 화면이 그 카드를 잠그지만 훅도 같은 겹을
+     * 갖는다 — 겹치면 같은 알림에 두 요청이 나가고, 둘 중 하나의 실패가 다른 하나의 성공을
+     * 덮는다. ⚠ **다른 번호는 막지 않는다**(위 설명).
      */
-    if (mutation.isPending) return;
+    if (pendingIds.has(notificationId)) return;
 
-    setError(null);
+    /* 같은 알림을 다시 누를 때만 앞 진술을 지운다(위 `failure` 주석). */
+    setFailure((current) => (current?.notificationId === notificationId ? null : current));
+    setPendingIds((current) => withPending(current, notificationId));
 
-    mutation.mutate(
-      { notificationId, idempotencyKey: crypto.randomUUID() },
-      {
-        onSuccess: () => {
-          options.onSuccess(notificationId);
-        },
-        onError: (cause) => {
-          setError(toWriteError(cause));
-        },
-      },
-    );
+    /*
+     * ⭐ **멱등 키는 시도마다 새로 만든다.** 두 알림의 읽음 처리가 같은 키를 쓰면 서버가
+     * 두 번째를 앞 요청의 재생으로 삼켜 **그 알림은 바뀌지 않는데 화면은 바뀌었다고 말한다.**
+     * 이 쓰기는 두 번 실행돼도 결과가 같으므로(멱등한 상태 전이) 키를 유지할 이유도 없다.
+     */
+    mutateAsync({ notificationId, idempotencyKey: crypto.randomUUID() })
+      .then(() => {
+        /* 되먹임이 **그 번호에만** 닿는다 — 동시에 나간 다른 시도의 결과와 섞이지 않는다. */
+        options.onSuccess(notificationId);
+      })
+      .catch((cause: unknown) => {
+        setFailure({ notificationId, error: toApiError(cause) });
+      })
+      .finally(() => {
+        /*
+         * ⭐ **끝나면 그 번호만 집합에서 뺀다.** 실패했을 때도 뺀다 — 빼지 않으면 그 카드가
+         * 잠긴 채로 남아 **다시 누를 수 없고**, 쓰기 실패 배너가 「다시 시도」를 두지 않은
+         * 전제(카드를 다시 누르면 된다)가 무너진다.
+         */
+        setPendingIds((current) => withoutPending(current, notificationId));
+      });
   };
 
   /**
@@ -195,23 +257,33 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
    * ⭐ **참조가 렌더 사이에 유지돼야 한다.** 이 함수는 **effect에서도 불린다**(조건이 바뀌면
    * 앞 조회에 매인 진술을 거둔다 — `screen.tsx`). 렌더마다 새 함수를 만들면 그 effect의
    * 의존성이 매번 달라져 **거둠 → 재렌더 → 거둠**이 멈추지 않는다(실측으로 한 번 겪었다).
-   * 진행 여부는 참조로 읽어 이 함수가 그 값에 매이지 않게 한다.
+   * 나가는 중인 번호 **집합**을 참조로 읽어 이 함수가 그 값에 매이지 않게 한다 —
+   * **하나라도 나가는 중이면 거두지 않는다.**
+   *
+   * ⚠ **이 회차에 그 전제가 약해졌다 — 그래도 가드를 남긴다.** 되먹임을 `mutateAsync`가
+   * 돌려준 약속에 직접 매달게 바꾸면서, `reset()`이 그 사슬을 **더는 끊지 못한다**(감지기
+   * 「나가는 중에 조건이 바뀌어도 성공 되먹임이 살아 있다」가 가드를 지워도 통과한다 — 실측).
+   * 즉 지금 이 가드가 막는 것은 「나가는 중에 실패 진술이 지워지는 것」 하나뿐이다.
+   *
+   * 남기는 이유는 **되먹임을 다시 mutation 객체에 매다는 변경이 언제든 올 수 있고**(예: 공통
+   * 쓰기 훅으로 되돌리기) 그때 이 가드가 없으면 규율이 조용히 깨지기 때문이다. 대신 그 사실을
+   * 여기 적어 두어, **이 가드의 뮤턴트가 살아남는 것이 사각이 아니라 전제 변화**임을 남긴다.
    */
   const { reset } = mutation;
-  const isPendingRef = useRef(mutation.isPending);
-  isPendingRef.current = mutation.isPending;
+  const pendingIdsRef = useRef(pendingIds);
+  pendingIdsRef.current = pendingIds;
 
   const resetIfIdle = useCallback((): void => {
-    if (isPendingRef.current) return;
+    if (pendingIdsRef.current.size > 0) return;
 
-    setError(null);
+    setFailure(null);
     reset();
   }, [reset]);
 
   return {
     markRead,
-    pendingId: mutation.isPending ? mutation.variables.notificationId : null,
-    error,
+    pendingIds,
+    error: failure?.error ?? null,
     resetIfIdle,
   };
 };
@@ -263,7 +335,7 @@ export const useMarkAllRead = (options: MarkAllReadOptions): MarkAllReadMutation
         options.onSuccess(data.readCount);
       },
       onError: (cause) => {
-        setError(toWriteError(cause));
+        setError(toApiError(cause));
       },
     });
   };

@@ -20,7 +20,7 @@ import {
 import { titleIdOf } from './notification-card';
 import { defaultPeriod } from './period';
 import { notificationKeys } from './queries';
-import { NotificationCenterScreen } from './screen';
+import { NotificationCenterScreen, describeMarkAllReadReason } from './screen';
 
 const t = messages.notificationCenter;
 
@@ -1533,5 +1533,298 @@ describe('NotificationCenterScreen — 나가는 중인 쓰기를 끊지 않는�
     await waitFor(() => {
       expect(screen.getAllByText(t.card.unread)).toHaveLength(1);
     });
+  });
+});
+
+/** 번호별로 다른 답을 주는 스텁. 「어느 카드의 결과인가」를 가르려면 답이 갈려야 한다. */
+const markReadByIdRoute = (failing: readonly number[]): StubRoute => ({
+  match: isMarkRead,
+  respond: (request) => {
+    const id = Number(/\/(\d+):read$/.exec(new URL(request.url).pathname)?.[1] ?? '0');
+
+    return failing.includes(id)
+      ? jsonResponse({ message: '' }, { status: 403 })
+      : new Response(null, { status: 204 });
+  },
+});
+
+/** 두 번째 시도부터 붙잡는다 — 「다시 보내는 중」의 화면을 잡기 위한 자리다. */
+let attempts = 0;
+
+describe('NotificationCenterScreen — 여러 장을 동시에 처리한다', () => {
+  const keysOf = (requests: Request[]): (string | null)[] =>
+    requests.filter(isMarkRead).map((request) => request.headers.get('Idempotency-Key'));
+
+  /**
+   * ⭐ **T3-5의 나머지 절반.** 앞 회차는 「다른 카드가 잠기지 않는다」만 재고 **누르지
+   * 않았다** — 그래서 잠기지 않은 카드의 클릭이 훅에서 조용히 버려지는 것을 아무도 잡지
+   * 못했다(검증이 탐침으로 실측). 잠그지 않음으로써 「누를 수 있다」고 말해 놓고 아무 일도
+   * 하지 않는 것은 되먹임이 없는 결함이다.
+   */
+  it('나가는 중에 다른 카드를 누르면 그 요청도 나간다', async () => {
+    const { requests, release, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute()),
+      '',
+      isMarkRead,
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+
+    /* 짝 양성 — 첫 요청이 실제로 붙잡혀 그 카드가 잠겼다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: EVENT_NAME_01 })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+    });
+    /* 다른 카드는 잠기지 않았다 — 그러니 눌리면 나가야 한다. */
+    expect(screen.getByRole('button', { name: 'SYN-EVENT-03' })).not.toHaveAttribute(
+      'aria-disabled',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+
+    await waitFor(() => {
+      expect(requests.filter(isMarkRead)).toHaveLength(2);
+    });
+
+    release();
+  });
+
+  it('둘째 카드도 자기 것만 잠근다', async () => {
+    const { release, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute()),
+      '',
+      isMarkRead,
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'SYN-EVENT-03' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+    });
+    /* 읽은 카드는 애초에 나갈 일이 없어 잠기지 않는다 — 전역 잠금이면 여기가 함께 잠긴다. */
+    expect(screen.getByRole('button', { name: EVENT_NAME_02 })).not.toHaveAttribute(
+      'aria-disabled',
+    );
+
+    release();
+  });
+
+  /**
+   * ⭐ **Z2 — 멱등 키의 유일성.**
+   *
+   * 앞 회차는 형식(UUID 정규식)만 쟀다. 두 알림이 같은 키를 쓰면 서버가 두 번째를 **앞 요청의
+   * 재생으로 삼켜** 그 알림은 바뀌지 않는데 화면은 바뀌었다고 말한다.
+   */
+  it('카드마다 다른 멱등 키를 쓴다', async () => {
+    const { requests, user } = renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+    await waitFor(() => {
+      expect(requests.filter(isMarkRead)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+    await waitFor(() => {
+      expect(requests.filter(isMarkRead)).toHaveLength(2);
+    });
+
+    const keys = keysOf(requests);
+    expect(keys[0]).not.toBe(keys[1]);
+    expect(new Set(keys).size).toBe(2);
+  });
+
+  /** 성공·실패가 **그 번호의 카드에만** 반영된다 — 집합으로 바꾼 형태의 요점이다. */
+  it('한 장이 실패해도 다른 장의 성공은 그대로 반영된다', async () => {
+    const { user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute(), markReadByIdRoute([7101])),
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+
+    /* 실패한 쪽은 배너가 서고 안 읽음으로 남는다. */
+    expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
+    /* 성공한 쪽만 읽음으로 바뀐다 — 안 읽음이 둘에서 하나로. */
+    await waitFor(() => {
+      expect(screen.getAllByText(t.card.unread)).toHaveLength(1);
+    });
+    expect(screen.getByRole('button', { name: EVENT_NAME_01 })).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **Z5 — 끝나면 그 번호가 집합에서 빠진다.**
+   *
+   * 빠지지 않으면 그 카드가 잠긴 채로 남아 **다시 누를 수 없고**, 쓰기 실패 배너가
+   * 「다시 시도」를 두지 않은 전제(카드를 다시 누르면 된다)가 무너진다.
+   */
+  it('실패한 카드를 다시 누를 수 있다', async () => {
+    const { requests, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute(), markReadRoute(403)),
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+
+    /* 짝 양성 — 실패가 실제로 났다. */
+    expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
+
+    /* 잠기지 않았다 — 그래야 다시 누를 수 있다. */
+    expect(screen.getByRole('button', { name: EVENT_NAME_01 })).not.toHaveAttribute(
+      'aria-disabled',
+    );
+
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+
+    await waitFor(() => {
+      expect(requests.filter(isMarkRead)).toHaveLength(2);
+    });
+  });
+
+  it('성공한 카드는 다시 눌러도 나가지 않는다 — 잠금이 아니라 상태로 막는다', async () => {
+    const { requests, user } = renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(t.card.unread)).toHaveLength(1);
+    });
+    /* 끝났으므로 잠기지 않는다. 그래도 요청이 늘지 않는 것은 이미 읽음이기 때문이다. */
+    expect(screen.getByRole('button', { name: EVENT_NAME_01 })).not.toHaveAttribute(
+      'aria-disabled',
+    );
+
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+
+    expect(requests.filter(isMarkRead)).toHaveLength(1);
+  });
+
+  /**
+   * ⭐ **「모두 읽음」과 개별 읽음 처리의 경계.**
+   *
+   * 그 조작이 곧 **모든 카드를 읽음으로 바꾸므로** 개별 클릭은 무의미하고, 두 조작이 겹치면
+   * 어느 것의 결과인지 사용자가 가릴 수 없다. 그래서 **잠근다 — 다만 잠긴 것이 보이게** 잠근다.
+   * 조용히 버리는 형태(잠기지 않았는데 눌러도 아무 일이 없다)가 이 회차가 고친 결함이다.
+   */
+  it('「모두 읽음」이 나가는 중에는 카드가 잠긴다', async () => {
+    const { requests, release, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute()),
+      '',
+      isMarkAllRead,
+    );
+
+    await waitForCards();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.markAllRead })).toBeEnabled();
+    });
+    await user.click(screen.getByRole('button', { name: t.actions.markAllRead }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: EVENT_NAME_01 })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+    });
+
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+    expect(requests.filter(isMarkRead)).toHaveLength(0);
+
+    release();
+  });
+});
+
+describe('describeMarkAllReadReason', () => {
+  it('안 읽은 것이 있으면 열린다', () => {
+    expect(describeMarkAllReadReason(false, 3)).toBeUndefined();
+  });
+
+  it('안 읽은 수가 0이면 그 사유로 잠근다', () => {
+    expect(describeMarkAllReadReason(false, 0)).toBe(t.actionReasons.nothingUnread);
+  });
+
+  it('아직 그 수를 받지 못했으면 잠근다 — 없는 근거로 조작을 허락하지 않는다', () => {
+    expect(describeMarkAllReadReason(false, undefined)).toBe(t.actionReasons.nothingUnread);
+  });
+
+  it('나가는 중이면 그 사유로 잠근다', () => {
+    expect(describeMarkAllReadReason(true, 3)).toBe(t.actionReasons.markingAllRead);
+  });
+
+  /**
+   * ⭐ **순서가 뜻을 정한다 — 나가는 중이 안 읽은 수보다 앞선다.**
+   *
+   * 보낸 직후에는 아직 그 수가 갱신되지 않아 둘이 함께 참일 수 있다. 그때 「안 읽은 알림이
+   * 없습니다」라고 말하면 방금 누른 조작이 **이미 끝난 것처럼** 읽힌다. 화면 조작으로는 이
+   * 조합에 닿기가 매우 좁아(쓰기 진행 중 재조회가 0을 돌려주는 순간) 여기서 규격을 고정한다.
+   */
+  it('둘이 함께 참이면 나가는 중이 이긴다', () => {
+    expect(describeMarkAllReadReason(true, 0)).toBe(t.actionReasons.markingAllRead);
+    expect(describeMarkAllReadReason(true, undefined)).toBe(t.actionReasons.markingAllRead);
+  });
+});
+
+describe('NotificationCenterScreen — 실패 진술은 그 알림의 것이다', () => {
+  /**
+   * ⭐ **전례의 「새 시도가 앞 시도의 진술을 지운다」가 여기서 거짓인 자리.**
+   *
+   * 그 규율이 참인 이유는 그 화면들의 쓰기가 **한 번에 하나**라 앞 진술이 늘 같은 대상에 대한
+   * 말이기 때문이다. 여러 장이 동시에 나가는 이 화면에서는, 다른 카드를 누른 것이 앞 실패를
+   * 지우면 사용자는 자기가 본 실패가 왜 사라졌는지 알 수 없다.
+   */
+  it('다른 카드를 눌러도 앞 카드의 실패 진술이 남는다', async () => {
+    const { user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute(), markReadByIdRoute([7101])),
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+    expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+
+    /* 성공한 쪽이 반영된 뒤에도 앞 실패는 그 자리에 있다. */
+    await waitFor(() => {
+      expect(screen.getAllByText(t.card.unread)).toHaveLength(1);
+    });
+    expect(screen.getByText(t.writeError.readTitle)).toBeInTheDocument();
+  });
+
+  it('같은 카드를 다시 누르면 앞 진술이 지워진다', async () => {
+    const { release, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute(), markReadRoute(403)),
+      '',
+      (request) => isMarkRead(request) && attempts > 0,
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+    expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
+
+    attempts = 1;
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+
+    /* 다시 보내는 중에는 앞 판정이 남아 있지 않다 — 방금 누른 것에 대한 말이 아니다. */
+    await waitFor(() => {
+      expect(screen.queryByText(t.writeError.readTitle)).not.toBeInTheDocument();
+    });
+
+    release();
   });
 });

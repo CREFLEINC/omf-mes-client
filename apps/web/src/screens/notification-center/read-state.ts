@@ -24,6 +24,14 @@ export interface ReadState {
   ids: ReadonlySet<number>;
 }
 
+/**
+ * 아직 아무것도 읽지 않은 상태.
+ *
+ * ⭐ **여기서는 참조가 실제로 하중을 진다** — 이 화면의 다른 자리표시 상수들과 다르다.
+ * 조건이 바뀔 때마다 `setReadState(EMPTY_READ_STATE)`가 도는데, 매번 새 집합을 만들면
+ * **내용이 같아도 상태가 바뀐 것이 되어** 그 렌더가 또 한 벌 돈다. 고정 참조면 React가
+ * 같은 값으로 보고 멈춘다.
+ */
 export const EMPTY_READ_STATE: ReadState = { ids: new Set<number>() };
 
 /**
