@@ -64,7 +64,7 @@ export type WriteScope = 'read' | 'allRead';
  */
 export const writeFailureTitle = (kind: 'request' | 'feedback', scope: WriteScope): string => {
   if (kind === 'feedback') {
-    return scope === 'read' ? t.writeError.feedbackTitle : t.writeError.allReadFeedbackTitle;
+    return scope === 'read' ? t.writeError.readFeedbackTitle : t.writeError.allReadFeedbackTitle;
   }
 
   return scope === 'read' ? t.writeError.readTitle : t.writeError.allReadTitle;

@@ -1841,7 +1841,7 @@ describe('NotificationCenterScreen — 쓰기 실패의 제목', () => {
     await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
 
     expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
-    expect(screen.queryByText(t.writeError.feedbackTitle)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.writeError.readFeedbackTitle)).not.toBeInTheDocument();
   });
 });
 

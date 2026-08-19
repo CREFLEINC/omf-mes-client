@@ -66,7 +66,7 @@ describe('writeFailureTitle', () => {
    * 이 자리에서 동기적으로 던지지 않는다 — T3 실측) 화면 시험으로 규격을 고정할 수단이 없다.
    */
   it('되먹임이 실패하면 바꿨다는 사실을 지우지 않는다', () => {
-    expect(writeFailureTitle('feedback', 'read')).toBe(t.writeError.feedbackTitle);
+    expect(writeFailureTitle('feedback', 'read')).toBe(t.writeError.readFeedbackTitle);
     expect(writeFailureTitle('feedback', 'allRead')).toBe(t.writeError.allReadFeedbackTitle);
   });
 

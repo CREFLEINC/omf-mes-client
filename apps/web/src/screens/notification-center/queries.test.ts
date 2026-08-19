@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
@@ -9,6 +10,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { notificationListBody } from './fixtures';
+import { describeWriteError } from './write-error-banner';
 import {
   notificationKeys,
   useMarkAllRead,
@@ -155,6 +157,40 @@ describe('useMarkRead — 되먹임 예외는 요청 실패가 아니다', () =>
     expect(result.current.failure?.error.kind).not.toBe('network');
     /* 원인을 버리지 않는다 — 이 앱의 결함이 「서버가 이상하다」로 보이면 안 된다. */
     expect(result.current.failure?.cause).toBeInstanceOf(Error);
+  });
+
+  /**
+   * ⭐ **문면까지 고정한다 — 제목만으로는 절반이다**(이월 #22의 남은 절반).
+   *
+   * 그 알림은 **존재하고 서버는 이미 바꿨다.** 본문이 「그 알림을 찾을 수 없습니다」로 바뀌면
+   * **거짓**이고 조치도 달라진다(최신 상태 보기 ↔ 없는 건 찾기). 배너가 본문을 꺼내는
+   * 함수(`describeWriteError`)에 그대로 태워 **화면에 나가는 글자**를 잰다.
+   */
+  it('되먹임 실패의 본문이 다시 조회하라는 길만 말한다', async () => {
+    const { result } = renderHookWithProviders(
+      () =>
+        useMarkRead({
+          onSuccess: () => {
+            throw new Error('합성 되먹임 예외');
+          },
+        }),
+      { fetch: createStubFetch([markReadRoute(() => new Response(null, { status: 204 }))]) },
+    );
+
+    act(() => {
+      result.current.markRead(7101);
+    });
+
+    await waitFor(() => {
+      expect(result.current.failure).not.toBeNull();
+    });
+
+    const failure = result.current.failure;
+    const body = failure === null ? '' : describeWriteError(failure.error);
+
+    expect(body).toBe(messages.notificationCenter.writeError.feedbackDescription);
+    /* 짝 음성 — 없는 알림의 문면으로 새지 않는다. */
+    expect(body).not.toBe(messages.notificationCenter.writeError.notFound);
   });
 
   /** 짝 양성 — 진짜 요청 실패는 요청 갈래로 간다. 둘이 갈려야 뜻이 있다. */

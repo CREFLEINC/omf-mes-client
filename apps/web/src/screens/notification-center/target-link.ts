@@ -36,8 +36,10 @@ const t = messages.notificationCenter;
 
 export interface TargetLink {
   to: string;
-  /** 버튼의 접근 이름. 목록에서 버튼이 여럿이라 **어느 대상인지**가 이름에 들어간다 */
+  /** 링크의 접근 이름. 목록에 링크가 여럿이라 **어느 대상인지**가 이름에 들어간다 */
   label: string;
+  /** 보이는 글자. 짧게 두되 **접근성 이름이 이 글자를 담는다** — 담지 않으면 음성 조작이 부를 수 없다 */
+  shortLabel: string;
 }
 
 /**
@@ -56,8 +58,12 @@ const DESTINATIONS: Record<string, (targetId: number) => string> = {
  * ⭐ **두 칸이 다 있어야 한다.** 계약이 유형과 번호를 **각각 선택**으로 두어 한쪽만 오는 것을
  * 막지 않는다 — 유형만 있으면 어느 건인지 모르고, 번호만 있으면 어느 표의 것인지 모른다.
  * 한쪽으로 주소를 지어내면 눌러서 엉뚱한 건이 열리거나 첫 화면으로 튕긴다.
+ *
+ * ⭐ **이름은 화면이 만든 제목을 쓴다** — 원본 코드가 아니다. 카드 제목이 풀린 이름인데 그
+ * 옆 링크만 코드를 들면 보조 기술 사용자에게 **둘을 잇는 글자가 없다.** 못 푼 코드는 제목
+ * 자체가 원문이므로(T2의 낙하 규율) 그때는 링크도 원문을 든다 — 이 함수는 판정하지 않는다.
  */
-export const toTargetLink = (view: NotificationView): TargetLink | null => {
+export const toTargetLink = (view: NotificationView, title: string): TargetLink | null => {
   const { targetTypeCode, targetId } = view;
 
   if (targetTypeCode === null || targetId === null) return null;
@@ -66,5 +72,9 @@ export const toTargetLink = (view: NotificationView): TargetLink | null => {
 
   if (destination === undefined) return null;
 
-  return { to: destination(targetId), label: t.actions.openTarget(view.eventCode) };
+  return {
+    to: destination(targetId),
+    label: t.actions.openTarget(title),
+    shortLabel: t.actions.openTargetShort,
+  };
 };
