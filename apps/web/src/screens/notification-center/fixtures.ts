@@ -1,4 +1,8 @@
+import type { components } from '@omf-mes/api-client';
+
 import type { Notification, PageMeta } from './types';
+
+type NotificationEvent = components['schemas']['NotificationEvent'];
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -62,3 +66,23 @@ export const notificationListBody = (
   items,
   page: { page: 1, size: 50, total: items.length, ...page },
 });
+
+/**
+ * 알림 유형 목록.
+ *
+ * ⭐ **셋째 알림(`SYN-EVENT-03`)의 유형을 일부러 빼 두었다** — 「목록에 없는 코드는 원문을
+ * 그대로 보인다」가 이 화면의 규율인데, 픽스처가 전부 풀리면 그 갈래를 잴 수 없다.
+ *
+ * ⚠ **이름이 코드와 뚜렷이 다르다.** 이름이 코드를 닮으면 「풀렸다」와 「원문으로 낙하했다」를
+ * 시험이 가리지 못한다.
+ */
+export const notificationEventFixtures: NotificationEvent[] = [
+  { eventCode: 'SYN-EVENT-01', eventName: '합성 이벤트 가' },
+  { eventCode: 'SYN-EVENT-02', eventName: '합성 이벤트 나' },
+  /* 이름이 빈 항목 — 빈 제목을 그리지 않고 코드로 낙하하는지 재는 자리다. */
+  { eventCode: 'SYN-EVENT-04', eventName: '   ' },
+];
+
+export const notificationEventListBody = (
+  items: NotificationEvent[] = notificationEventFixtures,
+): { items: NotificationEvent[] } => ({ items });

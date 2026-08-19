@@ -30,14 +30,21 @@ export const describeMessage = (message: string): string =>
 
 export interface NotificationCardProps {
   view: NotificationView;
+  /**
+   * 카드 제목으로 그릴 글자 — 푼 이벤트 이름이거나, 풀 수 없으면 **원본 코드**다.
+   *
+   * 푸는 일을 이 부품이 하지 않는 이유는 그것이 **조회 결과에 매인 판정**이기 때문이다
+   * (`lookups.ts`). 부품이 목록을 받아 스스로 풀면 카드마다 같은 탐색을 되풀이하고,
+   * 「풀 수 없을 때 무엇을 보이는가」가 화면과 부품 두 곳에 흩어진다.
+   */
+  title: string;
 }
 
 /**
- * 알림 카드 한 장 — 머리줄(이벤트 코드 · 읽음 표시 · 발생 시각)과 본문 두 줄이 전부다.
+ * 알림 카드 한 장 — 머리줄(이벤트 이름 · 읽음 표시 · 발생 시각)과 본문 두 줄이 전부다.
  *
- * ⭐ **이벤트 코드를 그대로 그린다.** 이름 풀이(`GET /app/notification-events`)는 뒤따르는
- * 회차가 붙인다. 그때도 **목록에 없는 코드는 원문을 그대로** 보인다 — 「알 수 없음」으로
- * 바꾸면 사용자가 담당자에게 전할 단서가 사라진다.
+ * ⭐ **제목은 푼 이름이되, 풀 수 없으면 원본 코드다**(`title` — 판정은 `lookups.ts`).
+ * 「알 수 없음」으로 바꾸지 않는다 — 그러면 사용자가 담당자에게 전할 단서가 사라진다.
  *
  * ⚠ **본문은 서버가 준 그대로다.** 그 문장은 발송 시점의 언어로 저장돼 있고 다국어 처리는
  * 아직 정해지지 않았다(스펙 §8-2). 그 사실을 **화면에 상시 안내로 두지 않는다** — 늘 참인데
@@ -48,7 +55,7 @@ export interface NotificationCardProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const NotificationCard = ({ view }: NotificationCardProps) => {
+export const NotificationCard = ({ view, title }: NotificationCardProps) => {
   const titleId = titleIdOf(view.notificationId);
 
   return (
@@ -56,7 +63,7 @@ export const NotificationCard = ({ view }: NotificationCardProps) => {
       <Card.Header>
         <div className="notification-card-meta">
           <span id={titleId} className="notification-card-code">
-            {view.eventCode}
+            {title}
           </span>
           <Chip size="sm" status={view.read ? 'idle' : 'info'}>
             {view.read ? t.card.read : t.card.unread}

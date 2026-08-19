@@ -3,6 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import type { NotificationFilterQuery } from './filters';
 import type { PeriodQuery } from './period';
 import { toNotificationView, type NotificationListResult } from './types';
 
@@ -26,13 +27,17 @@ type Client = ApiClient['client'];
 /**
  * 목록 조회의 쿼리 전체.
  *
- * 지금은 기간이 전부다 — 계약이 필수로 둔 두 값이라 **늘 실린다.** 뒤따르는 회차가
- * 「안 읽음/전체」·「유형」·쪽을 더한다. 그 셋은 선택이므로 **채운 것만 키가 실린다.**
+ * 기간 두 값은 계약이 필수로 두어 **늘 실리고**, 나머지는 **고른 것만 키가 실린다** —
+ * 요청 URL이 조건을 그대로 드러내야 무엇으로 조회했는지 읽을 수 있다.
  *
  * `size`는 싣지 않는다. 서버 기본값을 그대로 쓰고 쪽 크기를 화면이 정하지 않는다 —
  * 화면이 상수를 심으면 서버 기본이 바뀔 때 두 값이 갈려 범위 표기가 실제 응답과 어긋난다.
  */
-export type NotificationListQuery = PeriodQuery;
+export type NotificationListQuery = PeriodQuery &
+  NotificationFilterQuery & {
+    /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
+    page?: number;
+  };
 
 export const notificationKeys = {
   all: ['notifications'] as const,
