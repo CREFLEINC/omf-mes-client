@@ -1841,6 +1841,56 @@ describe('NotificationCenterScreen — 쓰기 실패의 제목', () => {
     await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
 
     expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
-    expect(screen.queryByText(t.writeError.feedbackTitle)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.writeError.readFeedbackTitle)).not.toBeInTheDocument();
+  });
+});
+
+describe('NotificationCenterScreen — 거둠은 나가는 중에도 진술을 지운다', () => {
+  /**
+   * ⭐ **규율에 매인 것은 `reset()`뿐이다.**
+   *
+   * `omf-mes#96`이 막는 것은 **되돌리기가 나가는 중인 되먹임을 끊는 것**이고, 실패 진술을
+   * 지우는 것은 사슬을 끊지 않는다 — 약속에 매달린 `.catch`는 그 뒤에 실패하면 **다시**
+   * 기록한다. 둘을 한 가드로 묶으면 「낡은 진술의 생존」이 규율의 이름을 빌려 남는다.
+   *
+   * 카드 A를 실패시켜 배너를 세우고, **카드 C의 쓰기를 붙잡은 채** 조건을 바꿔 잰다.
+   */
+  it('다른 카드 쓰기가 나가는 중에도 조건 변경이 앞 실패를 거둔다', async () => {
+    let held = 0;
+    const { release, user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07',
+      routesWith(listRoute(), markReadByIdRoute([7101])),
+      '',
+      (request) => {
+        /* 첫 요청(7101 · 실패)은 그냥 보내고, 둘째(7103)만 붙잡는다. */
+        if (!isMarkRead(request)) return false;
+        held += 1;
+
+        return held > 1;
+      },
+    );
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: EVENT_NAME_01 }));
+
+    /* 짝 양성 — 실패 배너가 실제로 섰다. */
+    expect(await screen.findByText(t.writeError.readTitle)).toBeInTheDocument();
+
+    /* 다른 카드의 쓰기를 띄워 나가는 중으로 만든다. */
+    await user.click(screen.getByRole('button', { name: 'SYN-EVENT-03' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'SYN-EVENT-03' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+    });
+
+    await user.click(screen.getByRole('checkbox', { name: t.fields.unreadOnly }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.writeError.readTitle)).not.toBeInTheDocument();
+    });
+
+    release();
   });
 });

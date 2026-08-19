@@ -15,6 +15,7 @@ import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
+import { NotificationCenterScreen } from '../screens/notification-center/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
@@ -194,6 +195,19 @@ export const appRouter = createBrowserRouter([
        * 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
        */
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
+      /*
+       * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을
+       * 따른다. 알림은 **자기 섹션**을 갖는다 — 설계의 IA가 「시스템/공통 > 알림」으로 두었고,
+       * 뒤따르는 알람 수신자 설정·공지가 같은 섹션에 들어온다.
+       *
+       * ⛔ **「시스템 관리」에 넣지 않는다.** 그 섹션은 **관리자가 남을 설정하는 자리**인데
+       * (사용자·역할·권한 · 결재선 정의) 알림센터는 **누구나 자기가 받은 것을 보는 자리**다.
+       *
+       * **네 PR이 함께 여는 자리다.** 기간·목록·조건·쪽 이동·읽음 처리가 다 선 뒤에 연다 —
+       * 읽음으로 바꿀 수 없는 동안에는 이 줄을 두지 않았다(정책 §5.2 — 접근 불가능한 경계).
+       * 알림은 계속 쌓이는데 지울 수도 읽음으로 바꿀 수도 없으면 화면이 늘 밀린 것으로 보인다.
+       */
+      { path: 'notification/center', element: <NotificationCenterScreen /> },
     ],
   },
   /*
