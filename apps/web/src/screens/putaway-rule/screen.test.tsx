@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -174,6 +174,36 @@ const locationsRoute: StubRoute = {
 };
 
 /**
+ * **조준 조회의 기본 스텁 — 요청이 좁힌 축을 실제로 지킨다.**
+ *
+ * 목록 스텁 한 벌로 같은 답을 내면 조준 조회가 **부르지도 않은 축의 행**을 받는다. 그러면
+ * 「조회가 좁혀 온 자료를 다시 견주는」 자리가 시험에서 늘 어긋난 자료를 보게 되어, 축을
+ * 지키는 판정이 무엇을 하는지 잴 수 없다(사본 체크리스트 11번 — 스텁이 요청을 읽어야 한다).
+ *
+ * 계약대로 `warehouseId`·`itemId`로 좁히고 `includeInactive=false`면 사용 중인 것만 낸다.
+ */
+const probeRoute: StubRoute = {
+  match: (request) => isGet(request, RULES_PATH) && isProbe(new URL(request.url)),
+  respond: (request) => {
+    const query = new URL(request.url).searchParams;
+    const warehouseId = Number(query.get('warehouseId'));
+    const itemId = Number(query.get('itemId'));
+    const includeInactive = query.get('includeInactive') === 'true';
+
+    return jsonResponse(
+      listBody(
+        ruleFixtures.filter(
+          (rule) =>
+            rule.warehouseId === warehouseId &&
+            rule.itemId === itemId &&
+            (includeInactive || rule.isActive),
+        ),
+      ),
+    );
+  },
+};
+
+/**
  * 모든 조회를 세울 수 있는 스텁 한 벌.
  *
  * **「부르지 않는다」를 증명하려면 부를 수 있어야 한다.** 스텁을 빼면 하네스가 던져 실패하는데,
@@ -183,6 +213,7 @@ const allRoutes = (overrides: StubRoute[] = []): StubRoute[] => [
   ...overrides,
   route(UNCOVERED_PATH, uncoveredItemFixtures),
   detailRoute,
+  probeRoute,
   route(RULES_PATH, ruleFixtures),
   balancesRoute,
   route(WAREHOUSES_PATH, warehouseFixtures),
@@ -1260,12 +1291,25 @@ const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
 
 describe('PutawayRuleScreen — 편집 자리가 서는 순서', () => {
   /** 등록 본문이 창고를 요구한다 — 만들 대상이 정해지기 전에는 폼을 열 자리가 없다. */
-  it('창고를 고르기 전에는 규칙 추가가 잠긴다', async () => {
+  it('창고를 고르기 전에는 규칙 추가가 사유와 함께 잠긴다', async () => {
     renderScreen();
 
     await screen.findByText(t.empty.noWarehouseTitle);
 
     expect(createButton()).toBeDisabled();
+    /* **C4-D** — 잠긴 자리에는 반드시 사유가 붙는다(배치 규범 4). */
+    expect(screen.getByText(t.actionReasons.addNeedsWarehouse)).toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 창고를 고르면 사유가 사라지고 버튼이 열린다. 없으면 「늘 잠긴다」로 그려도 통과한다. */
+  it('창고를 고르면 그 사유가 사라지고 규칙 추가가 열린다', async () => {
+    const { user } = renderScreen();
+
+    await selectWarehouse(user);
+    await waitForRows();
+
+    expect(createButton()).toBeEnabled();
+    expect(screen.queryByText(t.actionReasons.addNeedsWarehouse)).not.toBeInTheDocument();
   });
 
   /** 빈 폼을 두면 「값이 없는 규칙」으로 읽힌다 — 고르라는 안내가 정확하다. */
@@ -2038,7 +2082,52 @@ describe('PutawayRuleScreen — 나가는 중인 저장의 잠금 (C3-13)', () =
       expect(writesOf(requests, 'PUT')).toHaveLength(1);
     });
 
-    expect(within(formPane()).getByText(t.notes.savingLock)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.savingLock)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **C4-B.** 사유의 자리가 **폼 밖**이다.
+   *
+   * 폼은 대상이 풀리면 닫히는데(뒤로가기·주소 직접 편집은 클릭 핸들러를 지나지 않아 잠금 문에
+   * 걸리지 않는다) 잠금은 요청이 끝날 때까지 남는다 — 사유가 폼 구획 안에만 있으면 이 갈래에서
+   * **잠긴 채 이유가 화면 어디에도 없다**(G-30의 「상시」 미달).
+   */
+  it('폼이 닫힌 채 잠겨도 사유가 선다', async () => {
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([updateRoute()]),
+      holdUpdate,
+      '?wh=9201',
+    );
+
+    await startSave(user);
+    await waitFor(() => {
+      expect(writesOf(requests, 'PUT')).toHaveLength(1);
+    });
+
+    /* 화면 바깥에서 선택이 풀린 주소로 옮긴다 — 폼이 닫힌다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    // 선행 단언 — 잠금 자체는 살아 있다(요청이 아직 날아가는 중이다).
+    expect(createButton()).toBeDisabled();
+    expect(screen.getByText(t.notes.savingLock)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **C4-D.** 머리글의 「규칙 추가」가 **두 사유로** 잠기는데 둘 다 할 일이 다르다.
+   * 사유 없이 잠그면 고장으로 읽힌다(배치 규범 4).
+   */
+  it('나가는 중에는 규칙 추가에 사유가 붙는다', async () => {
+    const { requests, user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]), holdUpdate);
+
+    await startSave(user);
+    await waitFor(() => {
+      expect(writesOf(requests, 'PUT')).toHaveLength(1);
+    });
+
+    expect(createButton()).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.addLockedByOtherSave)).toBeInTheDocument();
   });
 
   it('취소도 사유와 함께 잠긴다', async () => {
@@ -2486,5 +2575,1080 @@ describe('PutawayRuleScreen — 같은 주소로는 갱신하지 않는다', () 
     await waitFor(() => {
       expect(currentLocation()).not.toContain('rule=9001');
     });
+  });
+});
+
+/* ── 끄기·켜기 (단위 ④) ─────────────────────────────────────────────── */
+
+const ACTIVATION_PANE = (): HTMLElement => screen.getByRole('region', { name: t.panes.activation });
+
+const activationDialog = (): HTMLElement => screen.getByRole('dialog');
+
+const isActionPath = (pathname: string, action: 'deactivate' | 'activate'): boolean =>
+  pathname === `/logistics/putaway-rules/9001:${action}` ||
+  pathname === `/logistics/putaway-rules/9003:${action}`;
+
+const activationRoute = (
+  action: 'deactivate' | 'activate',
+  respond?: StubRoute['respond'],
+): StubRoute => ({
+  match: (request) =>
+    request.method === 'POST' && isActionPath(new URL(request.url).pathname, action),
+  respond:
+    respond ??
+    (() =>
+      jsonResponse({
+        ...ruleFixtureAt(action === 'deactivate' ? 9001 : 9003),
+        isActive: action === 'activate',
+      })),
+});
+
+const activationRequests = (requests: Request[], action: 'deactivate' | 'activate'): Request[] =>
+  requests.filter(
+    (request) => request.method === 'POST' && isActionPath(new URL(request.url).pathname, action),
+  );
+
+/** 꺼진 규칙 9003을 고른다 — 「다시 사용」 갈래가 서는 대상이다. */
+const selectInactiveRule = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await waitForRows();
+  await selectRow(user, ITEM_LABEL, INACTIVE_LOCATION_LABEL);
+  await waitForEditForm();
+};
+
+const holdDeactivate = (request: Request): boolean =>
+  request.method === 'POST' && isActionPath(new URL(request.url).pathname, 'deactivate');
+
+describe('PutawayRuleScreen — 상세 200 뒤에만 전환이 열린다 (C4-1)', () => {
+  const holdDetail = (request: Request): boolean =>
+    request.method === 'GET' && isDetailPath(new URL(request.url).pathname);
+
+  /**
+   * ⭐ **C4-1 · 위험 R2.** 잠금 토큰은 **상세 응답에서만** 온다 — 목록 응답에는 없고
+   * `:activate`에도 `If-Match`가 필수다. 그래서 목록 행에서 곧바로 켜거나 끌 수 없다.
+   *
+   * **짝으로 잰다** — 상세를 붙잡아 둔 동안 끄기 이름이 서지 않는 것과, 풀면 서는 것을
+   * 한 시험 안에서 본다. 앞만 재면 「전환 자리를 아예 만들지 않았다」와 구별되지 않는다.
+   */
+  it('상세가 오기 전에는 중립 이름이 잠기고, 도착하면 끄기가 열린다', async () => {
+    const { release, user } = renderScreen(WITH_WAREHOUSE, allRoutes(), holdDetail);
+
+    await waitForRows();
+    await selectRow(user);
+
+    /* ① 상세 미도착 — 사용 여부를 모르므로 끄기·켜기 이름을 세우지 않는다. */
+    const pending = within(await screen.findByRole('region', { name: t.panes.activation }));
+
+    expect(pending.getByRole('button', { name: t.actions.activation })).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.activationNeedsDetail)).toBeInTheDocument();
+    expect(pending.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
+
+    release();
+
+    /* ② 상세 200 뒤 — 그제야 끄기가 선다. */
+    await waitForEditForm();
+    expect(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    ).toBeEnabled();
+    expect(screen.queryByRole('button', { name: t.actions.activation })).toBeNull();
+  });
+
+  /** 상세를 부르기 전 — 규칙을 고르지 않았으면 전환 구획 자체가 없다(전환할 대상이 없다). */
+  it('규칙을 고르기 전에는 전환 구획을 두지 않는다', async () => {
+    renderScreen(WITH_WAREHOUSE);
+
+    await screen.findByText(t.empty.noSelectionTitle);
+
+    expect(screen.queryByRole('region', { name: t.panes.activation })).not.toBeInTheDocument();
+  });
+
+  /** 꺼진 규칙에는 반대쪽 이름이 선다 — 상태를 보지 않으면 늘 같은 이름이 선다. */
+  it('꺼진 규칙에는 「다시 사용」이 선다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]));
+
+    await selectInactiveRule(user);
+
+    expect(
+      within(ACTIVATION_PANE()).getByRole('button', { name: t.actions.activate }),
+    ).toBeEnabled();
+    expect(
+      within(ACTIVATION_PANE()).queryByRole('button', { name: messages.common.deactivate }),
+    ).toBeNull();
+  });
+});
+
+describe('PutawayRuleScreen — 끄기 확인 창 (C4-2)', () => {
+  /**
+   * ⭐ **C4-2.** 계약에 `:deactivate`의 400이 아예 없다 — 화면의 경고가 유일한 방어다.
+   * 확인 없이 곧바로 나가면 되돌릴 수 있음에도 현장이 그사이 검증 없이 돈다.
+   */
+  it('끄기를 누르면 요청 대신 확인 창이 먼저 열린다', async () => {
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate')]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    expect(within(activationDialog()).getByText(t.dialog.deactivateTitle)).toBeInTheDocument();
+    expect(activationRequests(requests, 'deactivate')).toHaveLength(0);
+  });
+
+  /**
+   * ⭐ **파급을 사실대로 말한다.** 픽스처의 9001은 이 창고·품목에 사용 중인 규칙이 그것뿐이다
+   * (9003은 꺼져 있다) — 그래서 「마지막이다」가 참이고 창이 그 문장을 세운다.
+   */
+  it('마지막 활성 규칙이면 위치 검증 없이 통과한다는 사실과 되돌릴 수 있음을 함께 말한다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([activationRoute('deactivate')]));
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    const dialog = within(await screen.findByRole('dialog'));
+
+    await waitFor(() => {
+      expect(dialog.getByText(t.dialog.deactivateLastRule)).toBeInTheDocument();
+    });
+    expect(dialog.getByText(t.dialog.deactivateReversible)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **남는 규칙이 있으면 그 문장을 세우지 않는다.** 조준 조회가 같은 창고·품목의 사용 중인
+   * 규칙을 실어 오므로 화면이 셀 수 있다 — 갈래 없이 늘 세우면 **확인하지 않은 사실을 단언**한다.
+   */
+  it('같은 품목에 사용 중인 규칙이 더 있으면 「검증 없이 통과」를 말하지 않는다', async () => {
+    /* 조준 조회에만 형제 규칙을 하나 더 실어 준다 — 목록은 그대로다. */
+    const sibling = { ...ruleFixtureAt(9001), putawayRuleId: 9005, priorityNo: 20 };
+    const probeRoute: StubRoute = {
+      match: (request) => isGet(request, RULES_PATH) && isProbe(new URL(request.url)),
+      respond: () => jsonResponse(listBody([ruleFixtureAt(9001), sibling])),
+    };
+    const { user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([probeRoute, activationRoute('deactivate')]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    const dialog = within(await screen.findByRole('dialog'));
+
+    await waitFor(() => {
+      expect(dialog.getByText(t.dialog.deactivateRemaining(1))).toBeInTheDocument();
+    });
+    expect(dialog.queryByText(t.dialog.deactivateLastRule)).not.toBeInTheDocument();
+  });
+
+  /** 조회가 실패하면 어느 쪽도 단언하지 않는다 — 「마지막이다」도 「남는다」도 확인한 사실이 아니다. */
+  it('조준 조회가 실패하면 덮개를 단언하지 않는다', async () => {
+    const failingProbe: StubRoute = {
+      match: (request) => isGet(request, RULES_PATH) && isProbe(new URL(request.url)),
+      respond: () => jsonResponse({ message: '' }, { status: 500 }),
+    };
+    const { user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([failingProbe, activationRoute('deactivate')]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    const dialog = within(await screen.findByRole('dialog'));
+
+    await waitFor(() => {
+      expect(dialog.getByText(t.dialog.deactivateCoverageUnknown)).toBeInTheDocument();
+    });
+    expect(dialog.queryByText(t.dialog.deactivateLastRule)).not.toBeInTheDocument();
+  });
+});
+
+describe('PutawayRuleScreen — 켜기 전 중복 선검사 (C4-3)', () => {
+  /**
+   * ⭐ **C4-3.** 계약이 같은 (품목·창고·위치·우선순위) 활성 중복을 400으로 막는다 —
+   * 확인 창까지 지나간 뒤 거절을 받으면 사용자는 무엇이 잘못됐는지 알 수 없다.
+   *
+   * ⚠ **네 축을 서버 값으로 겨눈다.** 꺼진 9003(위치 9302 · 우선순위 200)과 같은 조합의
+   * **사용 중인** 규칙을 조준 조회에만 심는다.
+   */
+  it('켜려는 조합에 활성 중복이 있으면 막히고 건수가 사유로 선다', async () => {
+    const clash = { ...ruleFixtureAt(9003), putawayRuleId: 9006, isActive: true };
+    const probeRoute: StubRoute = {
+      match: (request) => isGet(request, RULES_PATH) && isProbe(new URL(request.url)),
+      respond: () => jsonResponse(listBody([clash])),
+    };
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([probeRoute, updateRoute()]));
+
+    await selectInactiveRule(user);
+
+    expect(await screen.findByText(t.actionReasons.activateDuplicate(1))).toBeInTheDocument();
+    expect(
+      within(ACTIVATION_PANE()).getByRole('button', { name: t.actions.activate }),
+    ).toBeDisabled();
+  });
+
+  /**
+   * ⭐ **자기 자신은 판정에서 뺀다.** 조준 조회가 자기를 함께 실어 와도 그것 때문에 막히면
+   * 한 번 끈 규칙은 영원히 켤 수 없다.
+   */
+  it('조준 조회가 자기 자신을 실어 와도 켜기가 막히지 않는다', async () => {
+    const probeRoute: StubRoute = {
+      match: (request) => isGet(request, RULES_PATH) && isProbe(new URL(request.url)),
+      respond: () => jsonResponse(listBody([{ ...ruleFixtureAt(9003), isActive: true }])),
+    };
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([probeRoute, updateRoute()]));
+
+    await selectInactiveRule(user);
+
+    await waitFor(() => {
+      expect(
+        within(ACTIVATION_PANE()).getByRole('button', { name: t.actions.activate }),
+      ).toBeEnabled();
+    });
+    expect(screen.queryByText(t.actionReasons.activateDuplicate(1))).not.toBeInTheDocument();
+  });
+
+  /** **막지 않되 말한다** — 계약이 같은 조건을 다시 검사하므로 판정 불가로 막지 않는다(C3-9 잣대). */
+  it('중복을 판정하지 못하면 안내가 서고 켜기는 열려 있다', async () => {
+    const failingProbe: StubRoute = {
+      match: (request) => isGet(request, RULES_PATH) && isProbe(new URL(request.url)),
+      respond: () => jsonResponse({ message: '' }, { status: 500 }),
+    };
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([failingProbe, updateRoute()]));
+
+    await selectInactiveRule(user);
+
+    expect(await screen.findByText(t.notes.activateDuplicateUnknown)).toBeInTheDocument();
+    expect(
+      within(ACTIVATION_PANE()).getByRole('button', { name: t.actions.activate }),
+    ).toBeEnabled();
+  });
+
+  /**
+   * ⭐ **네 축을 서버 값으로 겨눈다** — 전환은 폼을 저장하지 않으므로 켜지는 것은 고치던 값이
+   * 아니라 **지금 서버에 있는 규칙**이다.
+   *
+   * 폼에서 우선순위를 고쳐 두고 판정을 본다: 폼 값으로 겨누면 **저장하지도 않은 조합**의
+   * 중복을 물어 막힘이 풀리고, 사용자는 켤 수 있다고 믿은 채 서버 400을 받는다.
+   */
+  it('폼에서 우선순위를 고쳐도 켜기 판정은 서버 값으로 한다', async () => {
+    const clash = { ...ruleFixtureAt(9003), putawayRuleId: 9006, isActive: true };
+    const probeRoute: StubRoute = {
+      match: (request) => isGet(request, RULES_PATH) && isProbe(new URL(request.url)),
+      respond: () => jsonResponse(listBody([clash])),
+    };
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([probeRoute, updateRoute()]));
+
+    await selectInactiveRule(user);
+    await screen.findByText(t.actionReasons.activateDuplicate(1));
+
+    /* 폼의 우선순위만 바꾼다 — 저장하지 않았으므로 서버의 규칙은 그대로 200이다. */
+    const priorityField = within(formPane()).getByLabelText(t.fields.priorityNo);
+
+    await user.clear(priorityField);
+    await user.type(priorityField, '777');
+
+    expect(screen.getByText(t.actionReasons.activateDuplicate(1))).toBeInTheDocument();
+    expect(
+      within(ACTIVATION_PANE()).getByRole('button', { name: t.actions.activate }),
+    ).toBeDisabled();
+  });
+
+  /** 끄기 갈래에는 그 안내가 서지 않는다 — 켜기의 판정을 끄기 자리에서 말하면 사실이 어긋난다. */
+  it('켜진 규칙에는 켜기 판정 안내가 서지 않는다', async () => {
+    const failingProbe: StubRoute = {
+      match: (request) => isGet(request, RULES_PATH) && isProbe(new URL(request.url)),
+      respond: () => jsonResponse({ message: '' }, { status: 500 }),
+    };
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([failingProbe, updateRoute()]));
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+
+    expect(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    ).toBeEnabled();
+    expect(screen.queryByText(t.notes.activateDuplicateUnknown)).not.toBeInTheDocument();
+  });
+});
+
+describe('PutawayRuleScreen — 전환의 헤더 규약 (C4-6)', () => {
+  /**
+   * ⭐ **C4-6 · 위험 R2.** 잠금 토큰의 출처가 **상세 경로 하나**임을 값으로 견준다 —
+   * 액션 경로에서 꺼내면 언제나 비어 있어 훅이 **요청을 보내지 않고 멈춘다**(눌러도 아무 일이 없다).
+   */
+  it('끄기 요청에 멱등 키와 상세 응답의 잠금 토큰이 실린다', async () => {
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate')]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    const sent = activationRequests(requests, 'deactivate')[0];
+
+    expect(sent?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+    expect(sent?.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  it('켜기 요청에도 같은 두 헤더가 실린다', async () => {
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('activate')]),
+    );
+
+    await selectInactiveRule(user);
+    await user.click(within(ACTIVATION_PANE()).getByRole('button', { name: t.actions.activate }));
+    await user.click(within(activationDialog()).getByRole('button', { name: t.actions.activate }));
+
+    await waitFor(() => {
+      expect(activationRequests(requests, 'activate')).toHaveLength(1);
+    });
+
+    const sent = activationRequests(requests, 'activate')[0];
+
+    expect(sent?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+    expect(sent?.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  /** 본문을 실으면 계약이 받지 않는다 — 두 오퍼레이션에 요청 본문이 아예 없다. */
+  it('전환 요청에 본문을 싣지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate')]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    expect(await activationRequests(requests, 'deactivate')[0]?.text()).toBe('');
+  });
+});
+
+describe('PutawayRuleScreen — 전환의 성공과 실패 (C4-7 · C4-8)', () => {
+  /**
+   * ⭐ **C4-8.** 성공 뒤 목록이 다시 서고 그 행의 사용 표식이 바뀐다. 무효화를 빠뜨리면
+   * 화면은 끈 규칙을 「사용 중」으로 계속 보이고, 다음 저장은 낡은 토큰으로 조용히 409다.
+   */
+  it('끄기가 성공하면 목록의 사용 표식이 바뀐다', async () => {
+    let deactivated = false;
+    const versionedList: StubRoute = {
+      match: (request) => isGet(request, RULES_PATH) && !isProbe(new URL(request.url)),
+      respond: () =>
+        jsonResponse(
+          listBody(
+            deactivated
+              ? ruleFixtures.map((rule) =>
+                  rule.putawayRuleId === 9001 ? { ...rule, isActive: false } : rule,
+                )
+              : ruleFixtures,
+          ),
+        ),
+    };
+    const { user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([
+        versionedList,
+        activationRoute('deactivate', () => {
+          deactivated = true;
+
+          return jsonResponse({ ...ruleFixtureAt(9001), isActive: false });
+        }),
+      ]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+
+    // 선행 단언 — 끄기 전에는 사용 안 함 행이 하나(9003)뿐이다.
+    expect(screen.getAllByText(t.values.inactive)).toHaveLength(1);
+
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    expect(await screen.findByText(t.toast.deactivated)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText(t.values.inactive)).toHaveLength(2);
+    });
+  });
+
+  /** 성공하면 창이 닫힌다 — 열린 채 두면 무엇이 끝났는지 알 수 없다. */
+  it('성공하면 확인 창이 닫힌다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([activationRoute('deactivate')]));
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+  });
+
+  /**
+   * ⭐ **C4-7.** 실패에서 **창을 닫지 않는다** — 닫으면 사용자는 무엇이 막았는지 모른 채
+   * 같은 버튼을 다시 누른다. 켜기의 400은 서버가 밝힌 활성 중복이며 그 문구를 그대로 낸다.
+   */
+  it('켜기가 400으로 거절되면 창이 열린 채 이유가 선다', async () => {
+    const { user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([
+        activationRoute('activate', () =>
+          jsonResponse(
+            { errors: [{ scope: 'screen', code: 'DUPLICATE', message: '합성 중복 거절' }] },
+            { status: 400 },
+          ),
+        ),
+      ]),
+    );
+
+    await selectInactiveRule(user);
+    await user.click(within(ACTIVATION_PANE()).getByRole('button', { name: t.actions.activate }));
+    await user.click(within(activationDialog()).getByRole('button', { name: t.actions.activate }));
+
+    expect(await screen.findByText('합성 중복 거절')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /** 409에는 「최신 불러오기」를 함께 낸다 — 이 쓰기에는 잠글 대상이 있다. */
+  it('409에서 최신 불러오기가 서고 누르면 상세를 다시 부른다', async () => {
+    const { urls, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([
+        activationRoute('deactivate', () =>
+          jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+        ),
+      ]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    await screen.findByText(messages.conflict.user);
+
+    const before = countOf(urls, detailPathOf(9001));
+
+    await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+
+    await waitFor(() => {
+      expect(countOf(urls, detailPathOf(9001))).toBeGreaterThan(before);
+    });
+  });
+});
+
+describe('PutawayRuleScreen — 응답을 받지 못한 요청 (C4-A)', () => {
+  const offline = (): Response => {
+    throw new Error('합성 네트워크 단절');
+  };
+
+  /**
+   * ⭐ **응답이 오지 않은 요청은 「실패」가 아니다**(공유계약 C-1 · 멱등 완화 마지막 층).
+   *
+   * 끄기가 서버에 닿았다면 그 순간부터 현장의 적치 검증이 달라져 있다. 「실패했습니다」로
+   * 접으면 사용자는 **끄지 못했다고 믿은 채** 검증 없이 도는 현장을 그대로 둔다. 그리고
+   * 쓰기 훅은 호출마다 **새 멱등 키**를 만들어 그대로 다시 누르면 서버에는 다른 요청이다.
+   */
+  it('전환이 응답 없이 끝나면 확인 창이 두 절 안내를 낸다', async () => {
+    const { user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate', offline)]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    expect(
+      await within(activationDialog()).findByText(t.notes.activationUnconfirmed),
+    ).toBeInTheDocument();
+  });
+
+  /** **서버가 거절한 요청은 전달된 것이 확실하다** — 그 자리에 「모른다」를 붙이면 사실을 흐린다. */
+  it('서버가 거절한 전환에는 그 안내를 붙이지 않는다', async () => {
+    const { user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([
+        activationRoute('deactivate', () =>
+          jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+        ),
+      ]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    await screen.findByText(messages.conflict.user);
+
+    expect(screen.queryByText(t.notes.activationUnconfirmed)).not.toBeInTheDocument();
+  });
+
+  /** 저장 축에도 같은 갈래가 있다 — 등록·수정 역시 응답 없이 끝날 수 있다. */
+  it('저장이 응답 없이 끝나면 폼이 두 절 안내를 낸다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute(offline)]));
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.clear(capacityField());
+    await user.type(capacityField(), '600');
+    await user.click(saveButton());
+
+    expect(await within(formPane()).findByText(t.notes.networkUnconfirmed)).toBeInTheDocument();
+  });
+
+  it('서버가 거절한 저장에는 그 안내를 붙이지 않는다', async () => {
+    const { user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([
+        updateRoute(() => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })),
+      ]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.clear(capacityField());
+    await user.type(capacityField(), '600');
+    await user.click(saveButton());
+
+    await screen.findByText(messages.conflict.user);
+
+    expect(screen.queryByText(t.notes.networkUnconfirmed)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **문면의 두 절을 잣대로 고정한다**(전례 W-01-12 전기 축과 같은 형태).
+   *
+   * ① **확인하지 않은 사실을 단언하지 않는다** — 「알 수 없습니다」 ·
+   * ② **재시도를 권하지 않는다** — 「…하지 마세요」 · ③ **확인할 자리를 가리킨다** — 「다시 조회」.
+   *
+   * ⚠ **금지가 확인보다 앞선다.** 확인 뒤로 미루면 확인에 실패한 사용자가 그대로 다시 보낸다.
+   */
+  it.each([
+    ['전환 축', t.notes.activationUnconfirmed, '다시 누르지 마세요'],
+    ['저장 축', t.notes.networkUnconfirmed, '다시 저장하지 마세요'],
+  ])('%s 안내가 사실 → 금지 → 확인 자리 차례로 적혀 있다', (_axis, note, ban) => {
+    expect(note).toContain('알 수 없습니다');
+    expect(note).toContain(ban);
+    expect(note).toContain(t.actions.reload);
+
+    const factAt = note.indexOf('알 수 없습니다');
+    const banAt = note.indexOf(ban);
+    const placeAt = note.indexOf(t.actions.reload);
+
+    expect(factAt).toBeLessThan(banAt);
+    expect(banAt).toBeLessThan(placeAt);
+  });
+});
+
+describe('PutawayRuleScreen — 전환이 나가는 중 (G-30)', () => {
+  const startDeactivate = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+  };
+
+  /**
+   * **막을 것은 전역**(G-30). 전환이 나가는 중에 다른 규칙으로 옮기면 앞 요청의 결과가
+   * 지금 보는 맥락에 나타난다.
+   *
+   * ⛔ **음성 단언을 함께 둔다** — 초안 파기 창이 **대신 막아 주는 길**을 닫지 않으면
+   * 잠금을 통째로 빼도 이 시험이 통과한다(뮤테이션 M8이 드러낸 형태).
+   */
+  it('전환이 나가는 중에는 다른 규칙으로 옮겨 가는 길이 잠긴다', async () => {
+    const { requests, urls, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate')]),
+      holdDeactivate,
+    );
+
+    await startDeactivate(user);
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    const before = countOf(urls, detailPathOf(9003));
+
+    await selectRow(user, ITEM_LABEL, INACTIVE_LOCATION_LABEL);
+
+    expect(currentLocation()).toContain('rule=9001');
+    expect(countOf(urls, detailPathOf(9003))).toBe(before);
+    expect(screen.queryByText(t.dialog.discardTitle)).not.toBeInTheDocument();
+  });
+
+  it('전환이 나가는 중에는 규칙 추가와 쪽 이동도 잠긴다', async () => {
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate'), route(RULES_PATH, ruleFixtures, { total: 45 })]),
+      holdDeactivate,
+    );
+
+    await startDeactivate(user);
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    expect(createButton()).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    expect(currentLocation()).not.toContain('page=2');
+  });
+
+  /**
+   * ⭐ **가릴 것은 대상에만.** 전환이 나가는 중이라고 **폼의 저장 자리가 「저장 중」이 되면
+   * 안 된다** — 사용자가 손대지도 않은 저장을 화면이 진행 중이라고 말하는 것이다.
+   * 잠금(`isLocked`) 한 축으로 진행 표시를 재면 정확히 이 결함이 생긴다.
+   */
+  it('전환이 나가는 중에도 폼의 저장은 진행 표시가 아니라 잠금 사유로 선다', async () => {
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate')]),
+      holdDeactivate,
+    );
+
+    await startDeactivate(user);
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    /* 폼은 「남의 요청을 기다린다」고 말한다 — 진행 표시가 돌면 이 사유가 아예 서지 않는다. */
+    expect(within(formPane()).getByText(t.actionReasons.saveLockedByOtherSave)).toBeInTheDocument();
+    expect(
+      within(formPane()).getByRole('button', { name: messages.common.save }),
+    ).not.toHaveAttribute('aria-busy', 'true');
+
+    /* 짝 방향 — 진행 표시는 **전환 자리에** 돈다. 없으면 「아무 데도 안 돈다」와 구별되지 않는다. */
+    expect(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    ).toHaveAttribute('aria-busy', 'true');
+  });
+
+  /**
+   * ⭐ **전환 진행 표시의 대상 매임**(G-30 「가릴 것은 대상에만」 · 위 시험의 **전환 축 거울**).
+   *
+   * 바로 위 시험은 「전환이 도는 동안 폼이 조용한가」를 재는데, 그것은 **폼 축**의 매임이다.
+   * 전환 축은 그 셈에 들지 않는다 — 대상이 바뀌면 확인 창은 정리 effect가 닫으므로 창 쪽
+   * 단언이 아무것도 재지 않고, 실패 매임 시험은 **배너와 잠금 해제**만 본다.
+   *
+   * 매임이 없으면 9001의 전환이 나가는 중에 주소로 9003으로 옮겼을 때 **손댄 적 없는 9003의
+   * 손잡이가 「전환 중」으로 돈다.** 게다가 진행 표시는 잠금보다 **앞**에 보므로 그 갈래에서는
+   * 잠금 사유마저 사라진다.
+   */
+  it('전환이 나가는 중 다른 규칙으로 주소가 바뀌어도 새 대상이 「전환 중」이라 말하지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate')]),
+      holdDeactivate,
+      '?wh=9201&rule=9003',
+    );
+
+    await startDeactivate(user);
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    /* 화면 바깥에서 다른 규칙(9003 — 꺼져 있다)으로 옮긴다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rule=9003');
+    });
+
+    const button = await waitFor(() =>
+      within(ACTIVATION_PANE()).getByRole('button', { name: t.actions.activate }),
+    );
+
+    expect(button).not.toHaveAttribute('aria-busy', 'true');
+    expect(
+      within(ACTIVATION_PANE()).getByText(t.actionReasons.activationLockedByOtherSave),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **C4-5 · Escape는 막을 수 없다.** native `<dialog>`가 `cancel`을 내고 디자인 시스템이
+   * 그것을 닫기 요청으로 무조건 잇는다 — 주소를 건드리지 않고도 창에서 나갈 수 있다.
+   *
+   * 그러므로 규율은 「닫히지 않게」가 아니라 **「닫혀도 무너지지 않게」**다. 창을 닫는 길이
+   * 나가는 중인 요청의 옵저버를 떼면 무효화·성공·잠금이 함께 사라진다.
+   */
+  it('창을 닫아도 전환의 되먹임이 끊기지 않는다', async () => {
+    const { requests, urls, release, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate')]),
+      holdDeactivate,
+    );
+
+    await startDeactivate(user);
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    fireEvent(activationDialog(), new Event('cancel', { bubbles: false, cancelable: true }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    /* ① 공동 잠금이 살아 있다 — 요청은 아직 날아가는 중이다. */
+    expect(createButton()).toBeDisabled();
+
+    const beforeDetail = countOf(urls, detailPathOf(9001));
+
+    release();
+
+    /* ② 성공이 사라지지 않는다. ③ 무효화가 살아 있다. */
+    expect(await screen.findByText(t.toast.deactivated)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(countOf(urls, detailPathOf(9001))).toBeGreaterThan(beforeDetail);
+    });
+  });
+
+  /**
+   * **결과는 자기 대상보다 오래 살지 않는다.** 붙잡은 요청을 **대상이 바뀐 뒤에** 풀어
+   * 그 시점에만 드러나는 가드를 잰다(`release()` 손잡이 · M9가 드러낸 형태).
+   */
+  it('대상이 바뀐 뒤 도착한 전환 실패가 새 대상에 서지 않는다', async () => {
+    const { requests, release, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([
+        activationRoute('deactivate', () =>
+          jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+        ),
+      ]),
+      holdDeactivate,
+      '?wh=9201&rule=9003',
+    );
+
+    await startDeactivate(user);
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    /* 바깥 길로 옮긴다 — 화면 안의 길은 잠겨 있고, 그 잠금 때문에 이 갈래가 주소로만 열린다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(currentLocation()).toContain('rule=9003');
+    });
+
+    release();
+
+    await waitFor(() => {
+      expect(createButton()).toBeEnabled();
+    });
+    expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
+  });
+});
+
+describe('PutawayRuleScreen — 확인 창이 열린 사이 상태가 뒤집히면', () => {
+  /**
+   * **열린 창의 뜻은 열 때 정해지고, 대상의 상태는 그 뒤에도 바뀐다.**
+   *
+   * 「다시 조회」는 잠기지 않고 다른 사람이 먼저 상태를 바꿀 수도 있다. 그때 확인하면
+   * 이미 꺼진 것에 `:deactivate`가 나가고, 사용자는 이유를 알 수 없는 거절을 받는다.
+   */
+  it('끄기 창이 열린 사이 이미 꺼졌으면 보내지 않고 창을 닫는다', async () => {
+    let flipped = false;
+    const flippingDetail: StubRoute = {
+      match: (request) => request.method === 'GET' && isDetailPath(new URL(request.url).pathname),
+      respond: () => {
+        const body = flipped ? { ...ruleFixtureAt(9001), isActive: false } : ruleFixtureAt(9001);
+
+        flipped = true;
+
+        return jsonResponse(
+          { putawayRule: body, editability: { codeEditable: false, referenceCount: 0 } },
+          { headers: { ETag: DETAIL_ETAG } },
+        );
+      },
+    };
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([flippingDetail, activationRoute('deactivate')]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    /* 창이 열린 채 상세가 다시 온다 — 그 사이 다른 사람이 이미 껐다. */
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await within(ACTIVATION_PANE()).findByRole('button', { name: t.actions.activate });
+
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(activationRequests(requests, 'deactivate')).toHaveLength(0);
+  });
+
+  /** 짝 방향 — 상태가 그대로면 확인이 그대로 나간다. 안 그러면 「아무것도 안 보낸다」와 같아진다. */
+  it('상태가 그대로면 확인이 요청을 보낸다', async () => {
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate')]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+  });
+});
+
+/**
+ * ⭐ **실패는 창이 닫혀도 갈 곳이 있어야 한다** — 확인 창 안에만 배너를 두면 잃는 갈래.
+ *
+ * Escape는 막을 수 없고(native `<dialog>`의 `cancel`) **전송 중에도 창이 닫힌다.** 그때 도착한
+ * 실패가 화면 어디에도 서지 않으면 성공 토스트도 없고 목록 표식도 그대로라 사용자에게는
+ * 「아무 일도 없었다」로 읽히는데, 그 다음 조작이 정확히 금지된 조작이다 — 같은 버튼을 다시
+ * 누르면 쓰기 훅이 **새 멱등 키**를 만들어 이중 전송이 열린다.
+ */
+describe('PutawayRuleScreen — 창이 닫힌 뒤 도착한 전환 실패 (C4-5 실패 축)', () => {
+  const offline = (): Response => {
+    throw new Error('합성 네트워크 단절');
+  };
+
+  const holdDeactivate = (request: Request): boolean =>
+    request.method === 'POST' && isActionPath(new URL(request.url).pathname, 'deactivate');
+
+  const startAndEscape = async (
+    user: ReturnType<typeof userEvent.setup>,
+    requests: Request[],
+  ): Promise<void> => {
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await waitFor(() => {
+      expect(activationRequests(requests, 'deactivate')).toHaveLength(1);
+    });
+
+    fireEvent(activationDialog(), new Event('cancel', { bubbles: false, cancelable: true }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+  };
+
+  it('전송 중 창을 닫아도 그 뒤 도착한 응답 없음 안내가 전환 구획에 선다', async () => {
+    const { requests, release, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate', offline)]),
+      holdDeactivate,
+    );
+
+    await startAndEscape(user, requests);
+
+    release();
+
+    expect(
+      await within(ACTIVATION_PANE()).findByText(t.notes.activationUnconfirmed),
+    ).toBeInTheDocument();
+  });
+
+  /** **서버가 거절한 요청은 전달된 것이 확실하다** — 창 밖 자리에서도 그 안내를 붙이지 않는다. */
+  it('창을 닫은 뒤 도착한 서버 거절에는 그 안내가 붙지 않는다', async () => {
+    const { requests, release, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([
+        activationRoute('deactivate', () =>
+          jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+        ),
+      ]),
+      holdDeactivate,
+    );
+
+    await startAndEscape(user, requests);
+
+    release();
+
+    // 선행 단언 — 거절 사유 자체는 창 밖에 선다(안 그러면 아래 음성이 「아무것도 없다」와 같아진다).
+    expect(await within(ACTIVATION_PANE()).findByText(messages.conflict.user)).toBeInTheDocument();
+    expect(screen.queryByText(t.notes.activationUnconfirmed)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **자리는 배타다.** 같은 사유가 창과 구획에 겹쳐 서면 사용자가 두 사건으로 읽는다 —
+   * 창의 유무가 자리를 가른다.
+   */
+  it('창이 열려 있는 동안에는 같은 사유가 구획에 겹쳐 서지 않는다', async () => {
+    const { user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([
+        activationRoute('deactivate', () =>
+          jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+        ),
+      ]),
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    expect(await within(activationDialog()).findByText(messages.conflict.user)).toBeInTheDocument();
+    expect(within(ACTIVATION_PANE()).queryByText(messages.conflict.user)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **다시 열 때 걷지 않는다.** 걷으면 **안내가 막으려던 이중 전송이 안내 없이 열린다** —
+   * 그 문장은 「같은 버튼을 바로 다시 누르지 마세요」이고, 다시 누르는 순간이 그 문장을 읽어야
+   * 할 바로 그 순간이다.
+   */
+  it('손잡이를 다시 눌러 창을 열면 그 안내가 사라지지 않고 창으로 옮겨 온다', async () => {
+    const { requests, release, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([activationRoute('deactivate', offline)]),
+      holdDeactivate,
+    );
+
+    await startAndEscape(user, requests);
+    release();
+    await within(ACTIVATION_PANE()).findByText(t.notes.activationUnconfirmed);
+
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    expect(within(activationDialog()).getByText(t.notes.activationUnconfirmed)).toBeInTheDocument();
+    /* 배타 — 창으로 옮겨 왔으므로 구획에는 더 이상 서지 않는다. */
+    expect(
+      within(ACTIVATION_PANE()).queryByText(t.notes.activationUnconfirmed),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('PutawayRuleScreen — 전환 성공 문면 (m-2)', () => {
+  /**
+   * ⛔ **전환은 폼을 저장하지 않는다.** 이 화면은 **초안이 더러운 채로도 전환할 수 있어**
+   * (전환 손잡이에 「고친 것이 있는가」 문이 없다) 저장 축 문면을 그대로 쓰면 사용자가
+   * **고치던 값이 저장된 것으로 읽는다.**
+   */
+  it('끄기 성공은 「저장했습니다」가 아니라 끈 사실을 말한다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([activationRoute('deactivate')]));
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    expect(await screen.findByText(t.toast.deactivated)).toBeInTheDocument();
+    expect(screen.queryByText(messages.common.saved)).not.toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 켜기는 **다른 문장**이다. 한 문장을 돌려 쓰면 어느 쪽에서든 반쯤 틀린다. */
+  it('켜기 성공은 켠 사실을 말한다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([activationRoute('activate')]));
+
+    await selectInactiveRule(user);
+    await user.click(within(ACTIVATION_PANE()).getByRole('button', { name: t.actions.activate }));
+    await user.click(within(activationDialog()).getByRole('button', { name: t.actions.activate }));
+
+    expect(await screen.findByText(t.toast.activated)).toBeInTheDocument();
+    expect(screen.queryByText(t.toast.deactivated)).not.toBeInTheDocument();
   });
 });

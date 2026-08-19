@@ -319,10 +319,15 @@ export const RuleFormPane = ({
       {duplicateUnknownNote !== null && <p className="field-note">{duplicateUnknownNote}</p>}
 
       {/*
-       * **잠긴 이유를 상시 밝힌다**(G-30). 막는 것은 전역이라 이 구획 밖(목록 행·쪽 이동)까지
-       * 잠기는데, 그 사유가 화면 어디에도 없으면 사용자에게 고장으로 읽힌다.
+       * ⛔ **잠긴 이유(`notes.savingLock`)는 여기 서지 않는다** — 화면 수준이 그 자리다.
+       *
+       * G-30은 사유를 **상시** 보이라고 한다. 이 구획은 대상이 풀리면 통째로 닫히는데
+       * (뒤로가기·주소 직접 편집) 잠금은 요청이 끝날 때까지 남는다 — 사유를 여기 두면
+       * **폼이 닫힌 채 잠긴 갈래**에서 잠긴 이유가 화면 어디에도 없다. 전환(끄기·켜기)은
+       * 초안이 서기 전에도 시작될 수 있어 그 갈래가 흔해진다.
+       *
+       * 이 구획이 갖는 것은 **컨트롤별 사유**뿐이다(저장·취소) — 그것은 그 버튼 옆에 서야 한다.
        */}
-      {isLocked && <p className="field-note">{t.notes.savingLock}</p>}
 
       <div className="form-actions">
         {/*
