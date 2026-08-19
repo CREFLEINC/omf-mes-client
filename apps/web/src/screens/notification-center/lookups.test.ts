@@ -104,7 +104,7 @@ describe('useNotificationEventOptions', () => {
     const { result } = renderHookWithProviders(() => useNotificationEventOptions(), { fetch });
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.entries.length).toBeGreaterThan(0);
     });
 
     /* 좁혀 부르면 좁힘 밖 코드가 이름을 잃는다 — 이 경로에는 좁힘 인자가 아예 없다. */
@@ -142,20 +142,21 @@ describe('useNotificationEventOptions', () => {
     expect(result.current.entries).toHaveLength(0);
   });
 
-  it('다시 시도로 같은 경로를 다시 부른다', async () => {
-    const { fetch, urls } = recordingFetch([
-      eventsRoute(() => jsonResponse({ message: '' }, { status: 500 })),
+  /**
+   * ⭐ **결과가 두 칸뿐이다.** 형제 사본들의 `isLoading`·`refetch`·`truncated`를 가져오지
+   * 않았다 — 이 화면이 소비하지 않는 값이라, 두면 아무도 부르지 않는 복구 경로를 약속하는
+   * 주석만 남는다. 늘어나면 그 시점의 소비처와 함께 늘린다.
+   */
+  it('화면이 쓰지 않는 칸을 들지 않는다', async () => {
+    const { fetch } = recordingFetch([
+      eventsRoute(() => jsonResponse(notificationEventListBody())),
     ]);
     const { result } = renderHookWithProviders(() => useNotificationEventOptions(), { fetch });
 
     await waitFor(() => {
-      expect(result.current.isError).toBe(true);
+      expect(result.current.entries.length).toBeGreaterThan(0);
     });
 
-    result.current.refetch();
-
-    await waitFor(() => {
-      expect(urls.length).toBeGreaterThan(1);
-    });
+    expect(Object.keys(result.current).sort()).toEqual(['entries', 'isError']);
   });
 });

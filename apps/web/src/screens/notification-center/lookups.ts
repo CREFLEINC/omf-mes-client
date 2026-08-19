@@ -23,15 +23,25 @@ export interface EventEntry {
   label: string;
 }
 
+/**
+ * 유형 목록의 조회 결과 — **두 칸뿐이다.**
+ *
+ * ⛔ **형제 사본들의 `isLoading`·`refetch`·`truncated`를 가져오지 않는다.** 그 셋이 저쪽에서
+ * 참인 이유는 **화면이 실제로 소비하기 때문**이다 — 이름이 아직 안 왔음을 따로 말하고(`isLoading`),
+ * 실패한 참조마다 「다시 시도」를 붙이며(`refetch`), 잘린 목록을 밝힌다(`truncated`).
+ *
+ * 이 화면은 셋 다 소비하지 않는다. 미도착도 실패도 **원문 코드로 낙하**해 같은 결과가 되므로
+ * 진행 상태를 물을 자리가 없고(`describeEvent`), 유형 목록이 실패해도 알림 목록은 그대로
+ * 그려져 사용자가 **하던 일을 계속할 수 있다** — 그 자리에 「다시 시도」를 두면 누르지 않아도
+ * 되는 버튼이 상시로 선다. 잘림은 계약에 `page`가 없어 셀 수단 자체가 없다.
+ */
 export interface LookupResult {
   entries: EventEntry[];
+  /** 실패 사실. 조건 줄이 「유형으로 좁힐 수 없다」를 밝히는 데만 쓴다 */
   isError: boolean;
-  isLoading: boolean;
-  /** 조회 실패에는 복구 경로를 함께 낸다 — 사용자가 할 수 있는 조치가 재시도뿐이다. */
-  refetch: () => void;
 }
 
-/** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
+/** 결과가 없을 때 쓰는 고정 참조. 매 렌더 새 배열을 만들면 이 값을 받는 쪽이 매번 달라진다. */
 const EMPTY_ENTRIES: EventEntry[] = [];
 
 export const lookupKeys = {
@@ -57,10 +67,6 @@ export const useNotificationEventOptions = (): LookupResult => {
       query.data?.items.map((item) => ({ value: item.eventCode, label: item.eventName })) ??
       EMPTY_ENTRIES,
     isError: query.isError,
-    isLoading: query.isPending,
-    refetch: () => {
-      void query.refetch();
-    },
   };
 };
 

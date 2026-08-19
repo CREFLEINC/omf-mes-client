@@ -867,3 +867,126 @@ describe('NotificationCenterScreen — 조건 줄의 수명', () => {
     expect(screen.queryByRole('navigation', { name: t.pageNav.label })).not.toBeInTheDocument();
   });
 });
+
+describe('NotificationCenterScreen — 화면과 조건 줄의 이음매', () => {
+  /**
+   * ⭐ **주소 → prop 이음매를 화면 수준에서 잰다.**
+   *
+   * 부품 시험은 **prop → 표시**를 고정하고, 다른 화면 시험들은 **주소 → 요청**을 고정한다.
+   * 그 사이의 「주소 → prop」만 아무도 재지 않으면, 조건 줄에 고정값을 넘겨도 전부 통과한다 —
+   * 사용자에게는 **공유받은 주소를 열었을 때 목록은 그 조건으로 조회되는데 조건 줄은 기본
+   * 상태로 보이는** 것으로 나타난다. 컨트롤이 현재 조건을 거짓으로 말하는 상태다.
+   */
+  it('조건이 걸린 주소로 들어오면 조건 줄이 그 값을 되비춘다', async () => {
+    renderScreen('/?from=2026-08-01&to=2026-08-07&unread=0&ev=SYN-EVENT-02');
+
+    await waitForCards();
+
+    expect(screen.getByRole('checkbox', { name: t.fields.unreadOnly })).not.toBeChecked();
+    expect(screen.getByRole('combobox', { name: t.fields.eventCode })).toHaveTextContent(
+      EVENT_NAME_02,
+    );
+  });
+
+  it('기본 조건으로 들어오면 조건 줄도 기본 상태다 — 짝 양성', async () => {
+    /* 위 단언이 「늘 꺼져 보인다」로도 통과하지 않게, 반대 상태를 같은 방법으로 잰다. */
+    renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+
+    expect(screen.getByRole('checkbox', { name: t.fields.unreadOnly })).toBeChecked();
+    expect(screen.getByRole('combobox', { name: t.fields.eventCode })).toHaveTextContent(
+      t.filters.all,
+    );
+  });
+
+  it('주소의 기간이 조건 줄에 그대로 선다', async () => {
+    renderScreen('/?from=2026-08-01&to=2026-08-07');
+
+    await waitForCards();
+
+    expect(screen.getByLabelText(t.fields.period)).toHaveTextContent('2026-08-01');
+    expect(screen.getByLabelText(t.fields.period)).toHaveTextContent('2026-08-07');
+  });
+});
+
+describe('NotificationCenterScreen — 쪽 이동은 쪽만 바꾼다', () => {
+  const CONDITIONED = '/?from=2026-08-01&to=2026-08-07&unread=0&ev=SYN-EVENT-02&page=2';
+
+  const pagedRoute = (): StubRoute =>
+    listRoute(notificationFixtures, { page: 2, size: 50, total: 137 });
+
+  /**
+   * ⭐ **주소 키 수명 표 5행의 「그대로」 절반.**
+   *
+   * 4행(조건 변경 → 쪽 1로)은 감지기가 있는데 역방향이 비어 있었다 — 쪽을 옮기며 조건을
+   * 함께 풀어도 아무도 울지 않았다. 사용자에게는 「다음을 눌렀더니 걸어 둔 유형이 사라졌다」로
+   * 나타나고, 뒤따르는 회차가 조건·쪽에 매어 둘 상태(읽음 집합)의 수명까지 함께 흔들린다.
+   */
+  it('다음을 눌러도 두 조건이 요청에 그대로 실린다', async () => {
+    const { urls, user } = renderScreen(CONDITIONED, routesWith(pagedRoute()));
+
+    await waitForCards();
+
+    /* 짝 양성 — 처음부터 두 조건이 실려 있었다. */
+    expect(listUrls(urls)[0]?.searchParams.has('unreadOnly')).toBe(false);
+    expect(listUrls(urls)[0]?.searchParams.get('eventCode')).toBe('SYN-EVENT-02');
+
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    await waitFor(() => {
+      expect(listUrls(urls).at(-1)?.searchParams.get('page')).toBe('3');
+    });
+
+    const last = listUrls(urls).at(-1);
+    expect(last?.searchParams.get('eventCode')).toBe('SYN-EVENT-02');
+    expect(last?.searchParams.has('unreadOnly')).toBe(false);
+  });
+
+  it('이전을 눌러도 두 조건이 요청에 그대로 실린다', async () => {
+    const { urls, user } = renderScreen(CONDITIONED, routesWith(pagedRoute()));
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: t.actions.prevPage }));
+
+    await waitFor(() => {
+      expect(listUrls(urls).length).toBeGreaterThan(1);
+    });
+
+    const last = listUrls(urls).at(-1);
+    expect(last?.searchParams.get('eventCode')).toBe('SYN-EVENT-02');
+    expect(last?.searchParams.has('unreadOnly')).toBe(false);
+  });
+
+  it('쪽을 옮겨도 조건 두 키가 주소에 남는다', async () => {
+    const { user } = renderScreen(CONDITIONED, routesWith(pagedRoute()));
+
+    await waitForCards();
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toContain('page=3');
+    });
+
+    expect(currentLocation()).toContain('unread=0');
+    expect(currentLocation()).toContain('ev=SYN-EVENT-02');
+  });
+
+  /** 6행 — 「첫 쪽으로」도 조건을 건드리지 않는다. 쪽만 되돌린다. */
+  it('첫 쪽으로 되돌려도 두 조건이 남는다', async () => {
+    const { user } = renderScreen(
+      '/?from=2026-08-01&to=2026-08-07&unread=0&ev=SYN-EVENT-02&page=9',
+      routesWith(listRoute([], { page: 9, size: 50, total: 137 })),
+    );
+
+    await screen.findByText(t.empty.beyondLastTitle);
+    await user.click(screen.getByRole('button', { name: t.actions.goFirstPage }));
+
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('page=');
+    });
+
+    expect(currentLocation()).toContain('unread=0');
+    expect(currentLocation()).toContain('ev=SYN-EVENT-02');
+  });
+});
