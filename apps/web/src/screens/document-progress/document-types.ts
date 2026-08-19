@@ -1,0 +1,113 @@
+import type { SelectOption } from './types';
+
+/**
+ * ⭐ **이 화면의 단일 채움 지점.**
+ *
+ * 문서 유형 값 목록이 확정되지 않았다(omf-mes#64). 그런데 이 화면에서 그 값은 세 가지 일을
+ * 한꺼번에 한다.
+ *
+ * | 자리 | 이 값이 하는 일 | 비어 있으면 |
+ * | --- | --- | --- |
+ * | 유형 선택지 | 고를 수 있는 유형을 정한다 | 아무것도 고를 수 없다 |
+ * | 목록 질의값·상세 경로 조각 | 계약에 **그대로** 실린다 | **목록 조회가 한 번도 나가지 않는다** |
+ * | 고를 수 없는 유형 | 외주 2문서를 비활성하고 사유를 보인다(omf-mes#82) | 비활성할 대상이 없다 |
+ *
+ * 셋을 따로 두면 서로 어긋날 수 있고, 무엇보다 **채우는 자리가 하나여야** 「값이 오면 화면이
+ * 저절로 살아난다」가 참이 된다. 그래서 한 표에 담는다.
+ *
+ * ⚠ **취소 리소스 열은 아직 없다.** 취소 오퍼레이션은 유형이 아니라 리소스별 경로 셋
+ * (`goods-receipts`·`inbound-receipts`·`goods-issues`)에 걸려 있는데, 둘을 잇는 값을 계약이
+ * 내려주지 않는다 — 그 열은 취소 조작이 실제로 생기는 회차(단위 ③)에서 이 표에 더한다.
+ * 지금 미리 두면 아무도 읽지 않는 열이 되고, 읽는 자리가 없으면 그 열이 맞는지도 잴 수 없다.
+ *
+ * **값을 지어내지 않는 것이 이 파일의 목적이다.** 계약의 `@example`도 심지 않는다 — 그것은
+ * 예시이지 확정이 아니며, 계약 자신이 「값 목록은 공통코드 소관」이라 적었다(공유계약 G-2).
+ *
+ * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
+ */
+
+export interface DocumentTypeEntry {
+  /** 계약에 실을 코드값 — 목록 질의값·상세 경로 조각으로 그대로 나간다 */
+  code: string;
+  /** 화면에 보일 이름. 설계가 코드와 함께 준다 */
+  label: string;
+  /** 고를 수 없는 유형의 사유(외주 2문서 — omf-mes#82). 고를 수 있으면 null */
+  disabledReason: string | null;
+}
+
+/**
+ * 유형 표 — **비어 있는 것이 지금의 사실이다**(omf-mes#64).
+ *
+ * 자리표시 값을 하나 넣어 두지 않는다. 넣으면 사용자가 그것으로 조회하는데 서버는 그 유형을
+ * 모르고, 계약은 그때 400을 돌려준다.
+ */
+export const DOCUMENT_TYPES: readonly DocumentTypeEntry[] = [];
+
+/**
+ * 값 목록이 아직 오지 않았는가.
+ *
+ * **표를 인자로 받는다.** 함수 안에서 상수를 직접 읽으면 「채워졌을 때 무엇이 달라지는가」를
+ * 감지기가 잴 수 없어 그 자리가 죽은 가지가 된다 — 자리표시 규율의 핵심이 이 인자다.
+ */
+export const isDocumentTypeListPending = (entries: readonly DocumentTypeEntry[]): boolean =>
+  entries.length === 0;
+
+/** 표에서 그 코드의 줄을 찾는다. 없으면 null — 표에 없는 코드는 이 화면이 다루는 유형이 아니다. */
+export const findDocumentType = (
+  code: string,
+  entries: readonly DocumentTypeEntry[],
+): DocumentTypeEntry | null => entries.find((entry) => entry.code === code) ?? null;
+
+/**
+ * 조회에 쓸 수 있는 유형인가 — **표에 있고 고를 수 있는** 줄만 돌려준다.
+ *
+ * 「표에 있는가」와 「고를 수 있는가」를 한 자리에서 함께 판정하는 이유는, 갈리면 손으로 고친
+ * 주소(`?ty=…`)가 **비활성 유형으로 조회를 내보내는** 길이 되기 때문이다. 비활성은 화면이
+ * 정한 사실이므로 화면의 어느 경로에서도 같게 지켜져야 한다.
+ */
+export const findSelectableDocumentType = (
+  code: string,
+  entries: readonly DocumentTypeEntry[],
+): DocumentTypeEntry | null => {
+  const entry = findDocumentType(code, entries);
+
+  if (entry === null) return null;
+
+  return entry.disabledReason === null ? entry : null;
+};
+
+/**
+ * 표를 선택지로 옮긴다.
+ *
+ * **차례를 바꾸지 않는다.** 값이 어떤 차례로 오는지가 뜻일 수 있다(업무 흐름 순서 등).
+ *
+ * **고를 수 없는 유형을 목록에서 빼지 않는다.** 빼면 「왜 그 유형이 없는지」를 화면 어디에서도
+ * 읽을 수 없다 — 두되 비활성하고, 사유는 조건 줄이 글자로 낸다.
+ */
+export const toDocumentTypeOptions = (entries: readonly DocumentTypeEntry[]): SelectOption[] =>
+  entries.map((entry) => ({
+    value: entry.code,
+    label: entry.label,
+    ...(entry.disabledReason === null ? {} : { disabled: true }),
+  }));
+
+/**
+ * 고를 수 없는 유형의 사유를 한 줄로 모은다. 없으면 `undefined` —
+ * 빈 안내를 그리면 이유 없이 공간만 차지한다.
+ *
+ * **이름과 사유를 함께 낸다.** 사유만 내면 어느 유형이 막힌 것인지 알 수 없고,
+ * 이름만 내면 왜 막혔는지 알 수 없다.
+ *
+ * **줄 사이를 가운뎃점으로 가른다.** 공백 하나로 이으면 둘 이상 막혔을 때 앞 사유의 끝과 뒤
+ * 이름의 시작이 한 문장처럼 붙어 읽힌다 — 지금은 막히는 유형이 둘뿐이라 잘 드러나지 않지만,
+ * 경계가 보이지 않는 것은 값이 늘 때 조용히 나빠지는 자리다.
+ */
+export const describeDisabledTypes = (
+  entries: readonly DocumentTypeEntry[],
+): string | undefined => {
+  const blocked = entries.filter((entry) => entry.disabledReason !== null);
+
+  if (blocked.length === 0) return undefined;
+
+  return blocked.map((entry) => `${entry.label}: ${entry.disabledReason ?? ''}`).join(' · ');
+};
