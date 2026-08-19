@@ -34,6 +34,12 @@ export interface PageMeta {
   total: number;
 }
 
+/** 선택칸 하나가 받는 항목. 「전체」는 `value`가 빈 항목으로 둔다 */
+export interface SelectOption {
+  value: string;
+  label: string;
+}
+
 export interface NotificationListResult {
   items: NotificationView[];
   page: PageMeta;

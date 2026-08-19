@@ -8199,6 +8199,41 @@ const notificationCenter = {
   loading: {
     list: '알림을 불러오는 중',
   },
+  fields: {
+    /** 기간은 **한 컨트롤**이다(`DatePicker mode="range"`) — 라벨도 하나다. */
+    period: '조회 기간',
+    /**
+     * 「안 읽음만」은 **켜진 채로 시작한다.** 「안 읽음/전체」로 두 값을 나란히 쓰지 않는 이유는
+     * 값이 둘뿐이라 체크상자 하나가 두 상태를 다 말하기 때문이다 — 「끄면 전체」가 자명하다.
+     */
+    unreadOnly: '안 읽음만',
+    eventCode: '알림 유형',
+  },
+  filters: {
+    all: '전체',
+    /**
+     * 유형 목록을 못 받았을 때. **목록 조회는 계속된다** — 유형으로 좁히지 못할 뿐이고,
+     * 카드 제목은 원본 코드로 낙하한다. 그래서 화면 전체를 오류로 두지 않고 이 칸만 밝힌다.
+     */
+    eventsFailed: '알림 유형 목록을 불러오지 못했습니다. 유형으로 좁힐 수 없습니다.',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+  },
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+  /**
+   * 기준 시각(공유계약 L-5). 이 화면은 저 혼자 갱신되지 않으므로(L-6) 지금 보이는 목록이
+   * 언제의 것인지 밝히지 않으면 사용자가 실시간으로 읽는다.
+   */
+  asOf: (at: string): string => `기준 ${at}`,
   /**
    * 조회를 멈춘 사유. 화면이 기본값을 채우는 것은 **주소에 기간 키가 아예 없을 때뿐**이므로,
    * 여기 있는 셋은 전부 **사용자가 기간에 손을 댄 뒤**의 사태다.
@@ -8224,7 +8259,14 @@ const notificationCenter = {
   empty: {
     blockedTitle: '이 기간으로는 조회할 수 없습니다',
     noneTitle: '받은 알림이 없습니다',
-    noneDescription: '이 기간에 도착한 알림이 없습니다. 기간을 넓혀 다시 찾아보세요.',
+    /**
+     * 조건이 셋으로 늘어 「기간을 넓혀라」만으로는 부족하다 — 「안 읽음만」이 켜져 있으면
+     * 이미 읽은 알림이 있어도 0건이 된다. 사용자가 풀 수 있는 조건을 전부 짚는다.
+     */
+    noneDescription: '기간을 넓히거나 「안 읽음만」·유형 조건을 풀고 다시 찾아보세요.',
+    /** 결과는 있는데 이 쪽에는 없다 — **0건과 갈라야** 사용자가 조건을 헛되이 넓히지 않는다. */
+    beyondLastTitle: '이 쪽에는 알림이 없습니다',
+    beyondLastDescription: '앞쪽에 결과가 있습니다. 첫 쪽으로 이동하세요.',
   },
   card: {
     read: '읽음',
