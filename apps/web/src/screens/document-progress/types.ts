@@ -98,6 +98,17 @@ export interface DocumentProgressListResult {
 export type DocumentProgressDetailResponse = components['schemas']['DocumentProgressDetail'];
 
 /**
+ * 승인 요청 상세 — **결재선 진행을 단계 배열로 함께 내린다**(계약). 그래서 이 화면은 단계 전용
+ * 조회를 만들지 않는다: 두 번 부르면 두 응답이 서로 다른 시점을 보게 되고, 그 어긋남이
+ * 「진행은 3단계인데 단계 목록은 2단계까지」로 나타난다.
+ */
+export type ApprovalRequestDetailResponse = components['schemas']['ApprovalRequestDetail'];
+
+export type ApprovalStepResponse = components['schemas']['ApprovalStep'];
+
+export type CancelResultResponse = components['schemas']['CancelResult'];
+
+/**
  * 처리 경과 한 줄.
  *
  * **단계 코드를 해석하지 않는다** — 시간순으로 그리기만 한다(값 목록이 공통코드 소관이다).
@@ -139,12 +150,25 @@ export interface DocumentSuccessorView {
  * ⭐ **요약의 근거가 목록 행이 아니라 이 안의 `progress`다.** 두 조회의 시점이 갈릴 수 있어,
  * 목록 행을 다시 그리면 같은 화면의 위아래가 서로 다른 수량을 말한다.
  *
- * **`screenId`는 여기에만 자리가 있다.** 목록 행 타입(`DocumentProgressView`)은 그 값을 담지
- * 않는다 — 목록은 문서를 열지 않으므로 담으면 화면으로 샐 경로만 생긴다.
+ * **`screenId`와 `cancelApprovalRequestId`는 여기에만 자리가 있다.** 목록 행 타입
+ * (`DocumentProgressView`)은 둘을 담지 않는다 — 목록은 문서를 열지도 취소를 실행하지도 않으므로
+ * 담으면 화면으로 샐 경로만 생긴다(omf-mes#44). 둘 다 상세 응답의 `progress` 안에 실려 온다.
  */
 export interface DocumentProgressDetailView {
   progress: DocumentProgressView;
   screenId: string | null;
+  /**
+   * 진행 중인 취소 요청의 승인 요청 **내부 식별자**. 없으면 요청이 없다는 뜻이다.
+   *
+   * ⭐ **이 값이 취소 실행 버튼의 근거다**(계획 §5-2). `cancellable`이 아니다 — 취소 요청이
+   * 진행 중이면 서버가 `cancellable`을 거짓으로 내리므로(`CANCEL_IN_PROGRESS`) 그것으로 실행
+   * 버튼을 세우면 **실행 버튼이 영영 서지 않는다.**
+   *
+   * ⛔ **화면에 그리지 않는다.** 내부 식별자라 사용자에게 뜻이 없고(omf-mes#44) 쓰임은 둘뿐이다 —
+   * 승인 진행 조회의 경로 조각, 그리고 「요청이 있는가」의 근거. 값을 **가공하지 않고 그대로**
+   * 나른다: 쓸 수 있는 값인지의 판정은 `approval-progress.ts`의 `readSubmission` 한 곳이 한다.
+   */
+  cancelApprovalRequestId: number | null;
   steps: DocumentProgressStepView[];
   successors: DocumentSuccessorView[];
 }
@@ -155,6 +179,8 @@ export const toDocumentProgressDetailView = (
 ): DocumentProgressDetailView => ({
   progress: toDocumentProgressView(data.progress),
   screenId: data.progress.screenId ?? null,
+  /* ⛔ **값을 고르지 않는다** — 0·음수·소수도 그대로 나른다. 판정은 `readSubmission` 한 곳이다. */
+  cancelApprovalRequestId: data.progress.cancelApprovalRequestId ?? null,
   steps: data.steps.map((step) => ({
     stepCode: step.stepCode,
     occurredAt: step.occurredAt,
@@ -169,4 +195,33 @@ export const toDocumentProgressDetailView = (
     qty: successor.qty,
     screenId: successor.screenId ?? null,
   })),
+});
+
+/**
+ * 취소 실행이 실제로 한 일.
+ *
+ * ⭐ **`reversed`가 두 문면을 가른다**(계약이 그렇게 적었다) — 전기된 문서였으면 원장에
+ * 역트랜잭션이 생기고, 전기 전이었으면 상태만 바뀐다. 화면이 그것을 판정하지 않고 서버가 준
+ * 값을 그대로 쓴다: 전기 여부를 화면이 다시 세면 조용히 틀린다.
+ *
+ * ⛔ **문서 번호(`documentId`)와 유형 코드를 담지 않는다.** 앞은 내부 식별자라 사용자에게 뜻이
+ * 없고(omf-mes#44), 뒤는 이미 위 요약이 말한다 — 담지 않으면 화면으로 샐 경로가 없다.
+ *
+ * **역트랜잭션 번호와 영업일을 짝으로 담는다.** 원장 조회는 영업일이 키의 일부라(계약 경로)
+ * 번호만으로는 찾을 수 없다. 계약이 둘 다 선택으로 두어 반쪽으로 오는 갈래가 실재하며,
+ * 그 판정은 `ledger-ref.ts` 한 곳이 한다 — 이 타입은 받은 그대로 나른다.
+ */
+export interface CancelExecutionView {
+  statusCode: string;
+  reversed: boolean;
+  reversalTransactionNo: string | null;
+  reversalBusinessDate: string | null;
+}
+
+/** 실행 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toCancelExecutionView = (data: CancelResultResponse): CancelExecutionView => ({
+  statusCode: data.statusCode,
+  reversed: data.reversed,
+  reversalTransactionNo: data.reversalTransactionNo ?? null,
+  reversalBusinessDate: data.reversalBusinessDate ?? null,
 });
