@@ -1,5 +1,8 @@
 import type { DocumentTypeEntry } from './document-types';
 import type {
+  ApprovalRequestDetailResponse,
+  ApprovalStepResponse,
+  CancelResultResponse,
   DocumentProgressDetailView,
   DocumentProgressStepView,
   DocumentProgressView,
@@ -187,16 +190,141 @@ export const documentProgressDetail = (
 ): DocumentProgressDetailView => ({
   progress: documentProgress({ statusCode: 'SYN_STATUS_DETAIL' }),
   screenId: 'SYN-SCREEN-01',
+  /**
+   * ⭐ **기본값은 「취소 요청이 없다」**이다. 취소 요청이 진행 중인 문서를 기본으로 두면
+   * 앞선 회차의 감지기들이 전부 승인 진행 구획을 함께 그리게 되고, 「요청이 없으면 부르지
+   * 않는다」(C4-1)가 기본 상태에서 재어지지 않는다.
+   */
+  cancelApprovalRequestId: null,
   steps: progressStepFixtures,
   successors: documentSuccessorFixtures,
   ...overrides,
 });
 
-/** 상세 조회 응답에 실리는 모양. 화면 ID는 응답에서 **`progress` 안**에 실려 온다. */
+/**
+ * 상세 조회 응답에 실리는 모양. 화면 ID와 **취소 요청의 승인 요청 번호**는 응답에서
+ * **`progress` 안**에 실려 온다.
+ */
 export const toDetailResponse = (view: DocumentProgressDetailView) => ({
-  progress: { ...toProgressResponse(view.progress), screenId: view.screenId },
+  progress: {
+    ...toProgressResponse(view.progress),
+    screenId: view.screenId,
+    cancelApprovalRequestId: view.cancelApprovalRequestId,
+  },
   steps: view.steps,
   successors: view.successors,
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 승인 진행과 취소 실행(단위 ④)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** 조회할 수 있는 승인 요청 번호. **내부 식별자라 9000번대**다. */
+export const APPROVAL_REQUEST_ID = 9501;
+
+const BASE_APPROVAL_STEP: ApprovalStepResponse = {
+  stepNo: 1,
+  approverId: 9601,
+  approverName: '김승인',
+  decisionCode: 'SYN_DECISION_APPROVED',
+  decisionAt: '2026-08-06T15:02:00+09:00',
+  decisionComment: '수량 확인함',
+  isMine: false,
+  isCurrent: false,
+};
+
+export const approvalStep = (
+  overrides: Partial<ApprovalStepResponse> = {},
+): ApprovalStepResponse => ({ ...BASE_APPROVAL_STEP, ...overrides });
+
+/**
+ * 결재 단계 셋 — 화면이 다뤄야 하는 갈래를 일부러 담는다.
+ *
+ * | 줄 | 무엇을 재나 |
+ * | :-: | --- |
+ * | 1 | 결재가 끝난 단계. 결과 코드·시각·의견이 다 있다 |
+ * | 2 | **지금 차례**인 단계(결재 전) |
+ * | 3 | 아직 차례가 아닌 단계 + **승인자 이름이 비어 왔다**(내부 번호를 대신 내지 않는 갈래) |
+ *
+ * ⭐ **`stepNo`가 배열 차례와 어긋난다**(11·12·13). 서버가 매긴 번호를 쓰는지 배열 인덱스+1을
+ * 쓰는지가 이 값으로 갈린다 — 나란히 두면 두 구현이 같은 답을 내 감지기가 결함을 놓친다(C4-5).
+ */
+export const approvalStepFixtures: ApprovalStepResponse[] = [
+  approvalStep({ stepNo: 11 }),
+  approvalStep({
+    stepNo: 12,
+    approverId: 9602,
+    approverName: '박검토',
+    decisionCode: null,
+    decisionAt: null,
+    decisionComment: null,
+    isCurrent: true,
+  }),
+  approvalStep({
+    stepNo: 13,
+    approverId: 9603,
+    /* 계약이 필수로 두었으나 빈 글자가 스키마를 통과한다 — 없음을 없음으로 옮기는 갈래다. */
+    approverName: '',
+    decisionCode: null,
+    decisionAt: null,
+    decisionComment: null,
+  }),
+];
+
+/**
+ * 승인 요청 상세 한 벌.
+ *
+ * ⭐ **사유가 여러 줄이다** — 취소 사유가 곧 취소 이력이라(문서에 담을 컬럼이 없다) 상신자가
+ * 여러 줄로 근거를 적는다. 전문이 줄바꿈째 보이는지를 이 값이 잰다.
+ */
+export const approvalRequestDetail = (
+  overrides: Partial<ApprovalRequestDetailResponse['request']> = {},
+  steps: ApprovalStepResponse[] = approvalStepFixtures,
+): ApprovalRequestDetailResponse => ({
+  request: {
+    approvalRequestId: APPROVAL_REQUEST_ID,
+    approvalRequestNo: 'SYN-AP-2026-0001',
+    approvalTypeCode: 'SYN_APPROVAL_TYPE_CANCEL',
+    requestedBy: 9701,
+    requestedByName: '이상신',
+    requestedAt: '2026-08-06T14:20:00+09:00',
+    statusCode: 'SYN_APPROVAL_IN_PROGRESS',
+    reason: '수량 오기입으로 취소합니다\n실사 차이표 대조 완료',
+    /**
+     * ⚠ 계약이 대상을 함께 내리지만 **이 화면은 그리지 않는다** — 어느 문서인지는 위 요약이 이미
+     * 말하고, 여는 손잡이는 화면 ID 표(`screen-routes.ts`)가 정한다. 응답에 담아 두어
+     * 「화면이 쓰지 않는 값이 응답에 있다」는 사실을 감지기가 볼 수 있게 한다.
+     */
+    target: {
+      targetTypeCode: 'SYN_TARGET_DOC',
+      targetId: 9001,
+      displayName: 'SYN-GR-2026-0001',
+      openable: false,
+    },
+    currentStepNo: 2,
+    totalStepNo: 3,
+    isMyTurn: false,
+    ...overrides,
+  },
+  steps,
+});
+
+/**
+ * 취소 실행 결과 — **기본은 전기된 문서**(역트랜잭션이 생긴 갈래)다.
+ *
+ * 되돌릴 수 없는 조작의 결과 중 더 무거운 쪽을 기본으로 둔다 — 가벼운 쪽을 기본으로 두면
+ * 감지기가 무거운 갈래를 일부러 적어야만 재게 된다.
+ */
+export const cancelResult = (
+  overrides: Partial<CancelResultResponse> = {},
+): CancelResultResponse => ({
+  documentTypeCode: 'SYN_DOC_TYPE_B',
+  documentId: 9001,
+  statusCode: 'SYN_STATUS_CANCELLED',
+  reversed: true,
+  reversalTransactionNo: 'SYN-TX-9501',
+  reversalBusinessDate: '2026-08-07',
+  ...overrides,
 });
 
 /**

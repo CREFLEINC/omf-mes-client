@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { documentProgress, toProgressResponse } from './fixtures';
 import {
+  toCancelExecutionView,
   toDocumentProgressDetailView,
   toDocumentProgressView,
+  type CancelResultResponse,
   type DocumentProgressDetailResponse,
   type DocumentProgressResponse,
 } from './types';
@@ -148,5 +150,82 @@ describe('toDocumentProgressDetailView', () => {
       'SYN-GI-2026-0101',
       'SYN-GI-2026-0102',
     ]);
+  });
+
+  /**
+   * ⭐ **취소 요청의 승인 요청 번호는 상세 뷰가 든다**(단위 ④). 목록 행에는 자리가 없다 —
+   * 목록은 취소를 실행하지 않으므로 담으면 화면으로 샐 경로만 생긴다(omf-mes#44).
+   */
+  it('요약에는 승인 요청 번호 자리가 없고 상세가 그 값을 든다', () => {
+    const view = toDocumentProgressDetailView(response());
+
+    expect(Object.keys(view.progress)).not.toContain('cancelApprovalRequestId');
+    expect(view.cancelApprovalRequestId).toBe(9501);
+  });
+
+  /**
+   * ⛔ **값을 고르지 않고 그대로 나른다.** 0·음수·소수를 여기서 걸러 내면 「요청이 없다」와
+   * 「값이 이상하다」가 섞이고, 그 둘은 화면이 하는 말이 다르다 — 판정은 `readSubmission`
+   * 한 곳이다.
+   */
+  it.each([0, -1, 1.5])('조회할 수 없는 값도 그대로 나른다', (raw) => {
+    const detail = response();
+    const view = toDocumentProgressDetailView({
+      ...detail,
+      progress: { ...detail.progress, cancelApprovalRequestId: raw },
+    });
+
+    expect(view.cancelApprovalRequestId).toBe(raw);
+  });
+
+  /** 계약이 선택으로 둔 자리다 — 오지 않으면 없음이다. */
+  it('승인 요청 번호가 오지 않으면 null이다', () => {
+    const detail = response();
+    const { cancelApprovalRequestId: _omitted, ...progress } = detail.progress;
+    const view = toDocumentProgressDetailView({ ...detail, progress });
+
+    expect(view.cancelApprovalRequestId).toBeNull();
+  });
+});
+
+describe('toCancelExecutionView', () => {
+  const response = (overrides: Partial<CancelResultResponse> = {}): CancelResultResponse => ({
+    documentTypeCode: 'SYN_DOC_TYPE_B',
+    documentId: 9001,
+    statusCode: 'SYN_STATUS_CANCELLED',
+    reversed: true,
+    reversalTransactionNo: 'SYN-TX-9501',
+    reversalBusinessDate: '2026-08-07',
+    ...overrides,
+  });
+
+  /**
+   * ⛔ **문서 번호와 유형 코드를 담지 않는다.** 앞은 내부 식별자라 사용자에게 뜻이 없고
+   * (omf-mes#44), 뒤는 이미 위 요약이 말한다 — 담지 않으면 화면으로 샐 경로가 없다.
+   */
+  it('쓰는 값만 옮긴다', () => {
+    expect(toCancelExecutionView(response())).toEqual({
+      statusCode: 'SYN_STATUS_CANCELLED',
+      reversed: true,
+      reversalTransactionNo: 'SYN-TX-9501',
+      reversalBusinessDate: '2026-08-07',
+    });
+  });
+
+  it('내부 번호와 유형 코드에는 자리가 없다', () => {
+    const keys = Object.keys(toCancelExecutionView(response()));
+
+    expect(keys).not.toContain('documentId');
+    expect(keys).not.toContain('documentTypeCode');
+  });
+
+  /* 계약이 둘 다 선택으로 두어 반쪽·없음으로 오는 갈래가 실재한다. 없음을 없음으로 옮긴다. */
+  it('오지 않은 원장 값을 null로 옮긴다', () => {
+    const view = toCancelExecutionView(
+      response({ reversed: false, reversalTransactionNo: undefined }),
+    );
+
+    expect(view.reversalTransactionNo).toBeNull();
+    expect(view.reversed).toBe(false);
   });
 });
