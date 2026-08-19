@@ -149,6 +149,22 @@ describe('잠금 토큰 실패 — C3-4의 세 갈래', () => {
     expect(requestButton()).toBeDisabled();
   });
 
+  /**
+   * ⭐ **실패해도 사유 칸은 잠기지 않는다.**
+   *
+   * 토큰을 못 읽은 것은 **화면이 아직 준비하지 못한 것**이지 이 문서로 못 보내는 것이 아니다 —
+   * 다시 시도·권한 부여·대상 재선택으로 풀리면 **적어 둔 글을 그대로** 보낸다. 잠갔다면 사용자는
+   * 같은 글을 다시 친다. 보낼 수 없다는 사실은 **버튼 잠금과 실패 구획**이 이미 말한다.
+   *
+   * ⚠ **서버가 막은 갈래(`blocked`)와 갈리는 자리다** — 그쪽은 이 문서로는 영영 못 보내므로
+   * 칸을 잠근다. 세 갈래 표(`cancel-pane.tsx` 머리말)의 이 행만 재는 자리가 없었다(검증 F-T3R2-1).
+   */
+  it('실패해도 사유 칸은 잠기지 않는다', () => {
+    renderPane({ lock: { kind: 'failed', error: httpError(403) } });
+
+    expect(screen.getByLabelText(t.cancelRequest.reason)).toBeEnabled();
+  });
+
   /** 못 읽어도 이 문서로 할 수 있는 다른 일은 달라지지 않는다 — 그 사실을 함께 적는다. */
   it('진행현황은 그대로 볼 수 있다는 사실을 함께 적는다', () => {
     renderPane({ lock: { kind: 'failed', error: httpError(500) } });

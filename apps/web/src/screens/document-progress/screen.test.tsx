@@ -1767,11 +1767,14 @@ describe('400을 받으면 — C3-11 · C3-12', () => {
   });
 
   /**
-   * ⭐ **「돌아가기」로 창을 닫으면 서버 거절이 걷힌다.**
+   * ⭐ **「돌아가기」로 창을 닫으면 서버 거절이 걷힌다 — 나가는 중이 아닐 때다.**
    *
    * 그 거절은 **방금 보낸 요청에 대한 답**이다 — 사용자가 스스로 물러난 뒤에도 남으면, 다음에 무엇을
-   * 눌러도 낡은 문구가 새 조작 위에 서서 무엇 때문에 막혔는지 흐려진다. 걷는 자리는 창을 닫는
-   * 순간(`resetIfIdle`)과 다시 보내는 순간 둘뿐이다.
+   * 눌러도 낡은 문구가 새 조작 위에 서서 무엇 때문에 막혔는지 흐려진다.
+   *
+   * ⚠ **걷히는 것은 이 길(idle)뿐이다.** `resetIfIdle`는 **나가는 중이면 물러나므로**, Escape로
+   * 창이 닫힌 뒤 도착한 거절은 걷히지 않고 그대로 선다 — 그 갈래는 아래 「나가는 중 닫힌 뒤…」가
+   * 잰다. 두 길을 한 감지기로 합치면 어느 쪽이 참인지 가릴 수 없다.
    *
    * ⚠ **닫힌 뒤 「비어 있다」를 함께 재지 않는다** — 화면이 잡은 오류가 서버 거절을 덮으므로
    * (`local ?? server`) 그 자리에서는 **걷었든 안 걷었든 같은 그림**이 되어 감지기가 헛통과한다.
@@ -1796,11 +1799,73 @@ describe('400을 받으면 — C3-11 · C3-12', () => {
   });
 
   /**
+   * ⭐ **나가는 중 창이 닫힌 뒤 도착한 거절 위에 화면이 잡은 오류가 선다** — 두 오류가 **함께 서는
+   * 유일한 경로**이고, 그래서 `local ?? server`의 차례가 실제로 갈리는 자리다.
+   *
+   * 그 경로는 이 슬라이스가 스스로 못박은 길로 열린다:
+   *
+   * | 걸음 | 무엇이 일어나나 |
+   * | :-: | --- |
+   * | ① | 보낸다 — `isSaving`이 참이 된다 |
+   * | ② | **Escape로 창이 닫힌다**(막을 수 없는 길 — C3-8) → `closeCancelDialog`가 `resetIfIdle`를 부르는데 **나가는 중이라 물러난다**(걷지 않는다) |
+   * | ③ | 400 필드 오류가 도착 → **창이 닫힌 채** 서버 거절이 사유 칸에 선다 |
+   * | ④ | 칸을 비운다 → 서버 거절은 그대로다(글자를 칠 때 걷지 않기로 했다) |
+   * | ⑤ | 비운 채 다시 누른다 → 화면이 잡은 오류가 함께 선다 ⇒ **차례가 답을 가른다** |
+   *
+   * ⛔ **차례가 뒤집히면** 칸이 비어 있는데 「사유가 짧습니다」가 남아, 사용자는 더 길게 쓰려 하며
+   * 정작 비어 있는 칸을 보지 못한다.
+   *
+   * ⚠ 이 감지기는 **내가 r2에서 「등가」로 잘못 판정했던 자리**다 — `resetIfIdle`가 나가는 중에는
+   * 걷지 않는다는 사실(내가 C3-8로 세운 규율)을 수명 표에서 빠뜨렸다.
+   */
+  it('나가는 중 창이 닫힌 뒤 도착한 거절 위에 필수 오류가 선다', async () => {
+    fillDocumentTypes();
+    const { requests, release, user } = renderScreen(
+      cancelRoutes([
+        failingRequestCancelRoute(400, {
+          errors: [
+            { scope: 'field', field: 'reason', code: 'TOO_SHORT', message: '사유가 짧습니다.' },
+          ],
+        }),
+      ]),
+      selectCancelTarget,
+      '',
+      [REQUEST_CANCEL_PATH],
+    );
+
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '짧은 사유');
+    await user.click(requestCancelButton());
+    await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    /* ② 나가는 중에 Escape — 여기서 `resetIfIdle`가 물러난다. */
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    release();
+
+    /* ③ 창이 닫힌 채 서버 거절이 칸에 선다 — 걷혔다면 여기서 멈춘다. */
+    expect(await screen.findByText('사유가 짧습니다.')).toBeInTheDocument();
+
+    /* ④⑤ 비우고 다시 누른다 — 두 오류가 함께 서는 순간이다. */
+    await user.clear(screen.getByLabelText(t.cancelRequest.reason));
+    await user.click(requestCancelButton());
+
+    expect(screen.getByText(t.cancelRequest.reasonRequired)).toBeInTheDocument();
+    expect(screen.queryByText('사유가 짧습니다.')).not.toBeInTheDocument();
+  });
+
+  /**
    * 걷힌 뒤에도 **화면이 잡은 오류는 제 자리에 선다** — 걷는 규약이 새 오류까지 삼키면 사용자는
    * 왜 안 나가는지 알 수 없다.
-   *
-   * ⚠ 이 자리에서 `local ?? server`의 **차례 자체는 관찰이 갈리지 않는다**(등가 — 실행 보고서 §6에
-   * 기제와 갈릴 조건을 적었다). 두 오류가 함께 서는 순간이 이 화면에 없기 때문이다.
    */
   it('걷힌 뒤 비운 채 다시 누르면 필수 오류가 선다', async () => {
     const { user } = await submitWith([
