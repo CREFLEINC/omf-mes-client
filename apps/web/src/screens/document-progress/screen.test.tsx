@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -76,26 +76,71 @@ const fillDocumentTypes = (): void => {
 interface RecordedRequest {
   method: string;
   url: URL;
+  /**
+   * 실제로 나간 헤더.
+   *
+   * **쓰기의 규약이 헤더에 있다** — 멱등 키와 잠금 토큰은 본문에 없으므로, 기록하지 않으면
+   * 「어느 경로에서 꺼낸 토큰을 실었는가」를 잴 길이 없다.
+   */
+  headers: Headers;
+  /**
+   * 쓰기 요청의 본문. 읽기에는 `null`이다.
+   *
+   * **실제로 나간 요청을 본다** — 화면이 만들었다고 믿는 것이 아니라 서버가 받을 것을 잰다.
+   */
+  body: unknown;
 }
 
-/** 요청을 기록하면서 스텁 규칙으로 응답한다. 규칙에 없는 요청은 하네스가 던져 스텁 누락을 드러낸다. */
+/**
+ * 요청을 기록하면서 스텁 규칙으로 응답한다. 규칙에 없는 요청은 하네스가 던져 스텁 누락을 드러낸다.
+ *
+ * `hold`에 든 경로는 **기록한 뒤에** 붙잡아 둔다 — 「보내는 동안 무엇이 잠기는가」와 「응답이 오기
+ * 전에 화면이 무엇을 말하는가」를 재려면 그 상태에 머무를 수 있어야 하고, 요청이 실제로 나갔다는
+ * 사실은 기록으로 증명돼야 한다(「아직 안 보냈다」와 「보냈는데 안 왔다」는 다른 상태다).
+ */
 const createRecordingFetch = (
   routes: StubRoute[],
-): { fetch: StubFetch; requests: RecordedRequest[] } => {
+  hold: string[] = [],
+): { fetch: StubFetch; requests: RecordedRequest[]; release: () => void } => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch(routes);
+  let release = (): void => {
+    /* 아래 Promise 생성자가 곧바로 채운다. */
+  };
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
 
   const fetch: StubFetch = async (request) => {
-    requests.push({ method: request.method, url: new URL(request.url) });
+    /* 본문은 한 번만 읽을 수 있다 — 복제해 읽어야 스텁이 같은 요청을 다시 다룰 수 있다. */
+    const body: unknown = request.method === 'GET' ? null : await request.clone().json();
+
+    requests.push({
+      method: request.method,
+      url: new URL(request.url),
+      headers: new Headers(request.headers),
+      body,
+    });
+
+    if (hold.includes(new URL(request.url).pathname)) await gate;
 
     return stub(request);
   };
 
-  return { fetch, requests };
+  return {
+    fetch,
+    requests,
+    release: () => {
+      release();
+    },
+  };
 };
 
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
+
+const isPost = (request: Request, pathname: string): boolean =>
+  request.method === 'POST' && new URL(request.url).pathname === pathname;
 
 const listBody = (
   items: unknown[],
@@ -136,6 +181,99 @@ const failingDetailRoute = (status: number, pathname = DETAIL_PATH): StubRoute =
 
 const detailRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requests.filter((request) => request.url.pathname.startsWith(`${LIST_PATH}/`));
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 취소 축(단위 ③)의 자리 — 유형 표의 **취소 리소스 열**이 정하는 경로들
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * ⭐ **취소 리소스가 있는 유형.** 픽스처의 「합성 유형 나」이며 리소스는 `goods-receipts`다.
+ *
+ * 앞선 회차의 감지기들이 쓰는 「합성 유형 가」에는 **일부러 취소 리소스를 두지 않았다** —
+ * 계약의 취소 경로가 셋뿐이라 덮는 유형 중 일부에 취소가 없는 것이 실제 형태이고, 그 유형에서
+ * 취소 축이 서지 않는 것(C3-1)이 이 회차가 재야 할 갈래이기 때문이다.
+ */
+const CANCEL_TYPE = 'SYN_DOC_TYPE_B';
+
+/** 잠금 토큰이 오는 자리 — **진행현황 상세가 아니라 문서 리소스 상세**다(계획 §5-1). */
+const CANCEL_RESOURCE_PATH = '/logistics/goods-receipts/9001';
+const OTHER_CANCEL_RESOURCE_PATH = '/logistics/goods-receipts/9002';
+const REQUEST_CANCEL_PATH = `${CANCEL_RESOURCE_PATH}:request-cancel`;
+
+const CANCEL_DETAIL_PATH = detailPathOf(CANCEL_TYPE, 9001);
+const OTHER_CANCEL_DETAIL_PATH = detailPathOf(CANCEL_TYPE, 9002);
+
+/** 리소스 상세 200이 내려 주는 잠금 토큰. **다음 쓰기의 `If-Match`에 이 값이 그대로 실려야 한다.** */
+const CANCEL_RESOURCE_ETAG = '"token-9001"';
+
+/** 취소 리소스가 있는 유형의 목록 행. 조건의 유형과 행의 유형이 어긋나지 않게 맞춘다. */
+const cancelableRows = documentProgressFixtures.map((row) => ({
+  ...row,
+  documentTypeCode: CANCEL_TYPE,
+}));
+
+const cancelableDetail = (progress: Partial<(typeof documentProgressFixtures)[number]> = {}) =>
+  documentProgressDetail({
+    progress: documentProgress({
+      documentTypeCode: CANCEL_TYPE,
+      statusCode: 'SYN_STATUS_DETAIL',
+      ...progress,
+    }),
+  });
+
+/**
+ * 리소스 상세 — **본문이 아니라 `ETag` 헤더가 이 조회의 목적이다.**
+ *
+ * 본문을 비워 두는 것이 그 사실을 그대로 보인다: 화면은 이 응답의 어떤 값도 그리지 않는다.
+ */
+const cancelResourceRoute = (
+  etag = CANCEL_RESOURCE_ETAG,
+  pathname = CANCEL_RESOURCE_PATH,
+): StubRoute => ({
+  match: (request) => isGet(request, pathname),
+  respond: () => jsonResponse({}, { headers: { ETag: etag } }),
+});
+
+const failingCancelResourceRoute = (status: number, message = '리소스 상세 실패'): StubRoute => ({
+  match: (request) => isGet(request, CANCEL_RESOURCE_PATH),
+  respond: () => jsonResponse({ message }, { status }),
+});
+
+/** 취소 요청 202. **응답이 내부 식별자 하나뿐이다** — 화면에 낼 번호가 없다(omf-mes#44). */
+const APPROVAL_REQUEST_ID = 9601;
+
+const requestCancelRoute = (): StubRoute => ({
+  match: (request) => isPost(request, REQUEST_CANCEL_PATH),
+  respond: () => jsonResponse({ approvalRequestId: APPROVAL_REQUEST_ID }, { status: 202 }),
+});
+
+const failingRequestCancelRoute = (status: number, body: unknown): StubRoute => ({
+  match: (request) => isPost(request, REQUEST_CANCEL_PATH),
+  respond: () => jsonResponse(body, { status }),
+});
+
+/** 취소 축이 선 화면을 세우는 데 필요한 스텁 한 벌. **부르지 않음을 증명하려면 부를 수 있어야 한다.** */
+const cancelRoutes = (overrides: StubRoute[] = []): StubRoute[] => [
+  ...overrides,
+  listRoute(cancelableRows),
+  detailRoute(cancelableDetail(), CANCEL_DETAIL_PATH),
+  detailRoute(cancelableDetail(), OTHER_CANCEL_DETAIL_PATH),
+  cancelResourceRoute(),
+  cancelResourceRoute('"token-9002"', OTHER_CANCEL_RESOURCE_PATH),
+  requestCancelRoute(),
+];
+
+const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname === pathname);
+
+/** 실제로 나간 쓰기. **경로와 method를 함께** 본다 — 한쪽만 세면 다른 경로의 쓰기를 놓친다. */
+const writesTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
+  requests.filter((request) => request.method === 'POST' && request.url.pathname === pathname);
+
+const cancelPane = (): HTMLElement => screen.getByRole('region', { name: t.cancelRequest.label });
+
+const requestCancelButton = (): HTMLElement =>
+  within(cancelPane()).getByRole('button', { name: t.cancelRequest.label });
 
 /**
  * 화면이 **거쳐 간** 주소를 전부 적어 둔다.
@@ -201,8 +339,13 @@ const renderScreen = (
   routes: StubRoute[],
   search = '',
   navigateTo = '',
-): { requests: RecordedRequest[]; user: ReturnType<typeof userEvent.setup> } => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  hold: string[] = [],
+): {
+  requests: RecordedRequest[];
+  release: () => void;
+  user: ReturnType<typeof userEvent.setup>;
+} => {
+  const { fetch, requests, release } = createRecordingFetch(routes, hold);
 
   renderWithProviders(
     <>
@@ -214,7 +357,7 @@ const renderScreen = (
     { fetch, route: `${ROUTE}${search}` },
   );
 
-  return { requests, user: userEvent.setup() };
+  return { requests, release, user: userEvent.setup() };
 };
 
 const listRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
@@ -370,7 +513,12 @@ describe('유형 표를 채우면 — 조회가 살아난다', () => {
 
   /* 짝 방향 — 막힌 줄이 없으면 그 안내가 서지 않는다(앞 단언이 늘 참이 아니다). */
   it('막힌 줄이 없으면 그 안내가 서지 않는다', () => {
-    documentTypes.push({ code: SELECTABLE_TYPE, label: '합성 유형 가', disabledReason: null });
+    documentTypes.push({
+      code: SELECTABLE_TYPE,
+      label: '합성 유형 가',
+      cancelResource: null,
+      disabledReason: null,
+    });
     renderScreen([listRoute()]);
 
     expect(screen.queryByText(/고를 수 없는 유형이 있습니다/)).not.toBeInTheDocument();
@@ -1097,5 +1245,722 @@ describe('조회에 실패하면', () => {
 
     expect(await screen.findByText(t.errors.unsupportedTitle)).toBeInTheDocument();
     expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 단위 ③ — 취소를 승인에 올린다
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const selectCancelTarget = `?ty=${CANCEL_TYPE}&sel=9001`;
+
+describe('취소 리소스가 없는 유형 — C3-1', () => {
+  /**
+   * ⭐ **취소 조작이 그려지지 않는다.** 유형 표에 취소 리소스가 없으면 나갈 주소 자체가 없다 —
+   * 잠긴 버튼도 두지 않는다. 표의 리소스 열이 비어 있는 지금은 **모든 유형이 이 상태**다.
+   */
+  it('취소 요청 손잡이도 사유 칸도 서지 않는다', async () => {
+    fillDocumentTypes();
+    renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}&sel=9001`);
+
+    await screen.findByRole('region', { name: t.cancelRequest.label });
+
+    expect(
+      within(cancelPane()).queryByRole('button', { name: t.cancelRequest.label }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(t.cancelRequest.reason)).not.toBeInTheDocument();
+    expect(screen.getByText(t.cancelRequest.unsupportedTitle)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **잠금 토큰 조회도 나가지 않는다 — 경로 전체에서 센다.** 부를 주소가 없는데 부르면
+   * 화면이 없는 문서를 두드리는 것이고, 그 실패가 취소 축을 잠근 채로 남는다.
+   */
+  it('리소스 상세를 한 번도 부르지 않는다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(
+      [
+        listRoute(),
+        detailRoute(),
+        detailRoute(documentProgressDetail(), detailPathOf(SELECTABLE_TYPE, 9002)),
+      ],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+      `ty=${SELECTABLE_TYPE}&sel=9002`,
+    );
+
+    await screen.findByText(t.cancelRequest.unsupportedTitle);
+    expect(
+      requests.filter((request) => request.url.pathname.startsWith('/logistics/goods-')),
+    ).toHaveLength(0);
+
+    /* 주소를 손으로 고쳐 다른 문서로 옮겨도 마찬가지다 — 유형이 같으면 리소스도 없다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationOf()).toContain('sel=9002');
+    });
+
+    expect(
+      requests.filter((request) => request.url.pathname.startsWith('/logistics/goods-')),
+    ).toHaveLength(0);
+  });
+
+  /**
+   * ⭐ **표의 리소스 열을 채우면 그것만으로 취소 축이 살아난다.** 다른 자리는 하나도 바뀌지
+   * 않았다 — 이것이 자리표시가 죽은 가지가 아니라는 증거다.
+   */
+  it('리소스가 있는 유형에서는 취소 축이 선다', async () => {
+    fillDocumentTypes();
+    renderScreen(cancelRoutes(), selectCancelTarget);
+
+    expect(await screen.findByLabelText(t.cancelRequest.reason)).toBeInTheDocument();
+    expect(requestCancelButton()).toBeInTheDocument();
+    expect(screen.queryByText(t.cancelRequest.unsupportedTitle)).not.toBeInTheDocument();
+  });
+});
+
+describe('잠금 토큰 — C3-3 · C3-9', () => {
+  /**
+   * ⭐ **토큰은 리소스 상세에서 온다** — 진행현황 상세의 200에는 `ETag`가 없다(실측).
+   * 경로가 어긋나면 보관소가 늘 비어 있어 **눌러도 아무 일이 없는** 화면이 된다.
+   */
+  it('문서를 고르면 리소스 상세를 부른다', async () => {
+    fillDocumentTypes();
+    const { requests } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, CANCEL_RESOURCE_PATH)).toHaveLength(1);
+    });
+  });
+
+  /**
+   * ⭐ **리소스 상세 200이 오기 전에는 요청 버튼이 활성되지 않는다**(C3-3).
+   * 계약이 `If-Match`를 필수로 두어, 먼저 열면 눌러도 요청이 나가지 않는다.
+   */
+  it('리소스 상세가 오기 전에는 요청 버튼이 잠긴다', async () => {
+    fillDocumentTypes();
+    const { requests, release } = renderScreen(cancelRoutes(), selectCancelTarget, '', [
+      CANCEL_RESOURCE_PATH,
+    ]);
+
+    await screen.findByLabelText(t.cancelRequest.reason);
+
+    /* 요청은 이미 나갔다 — 「아직 안 보냈다」와 「보냈는데 안 왔다」는 다른 상태다. */
+    expect(requestsTo(requests, CANCEL_RESOURCE_PATH)).toHaveLength(1);
+    expect(requestCancelButton()).toBeDisabled();
+    expect(screen.getByText(t.cancelRequest.preparing)).toBeInTheDocument();
+
+    release();
+
+    await waitFor(() => {
+      expect(requestCancelButton()).toBeEnabled();
+    });
+  });
+
+  /**
+   * ⭐ **`If-Match` 값이 리소스 상세 응답의 `ETag`와 같다**(C3-9). 값으로 견준다 — 헤더가
+   * 실렸는지만 보면 **다른 경로에서 꺼낸 토큰**을 실어도 통과한다.
+   */
+  it('요청에 멱등 키와 리소스 상세가 준 If-Match가 함께 실린다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '잘못 등록했습니다');
+    await user.click(requestCancelButton());
+    await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    const sent = writesTo(requests, REQUEST_CANCEL_PATH)[0];
+
+    expect(sent?.headers.get('If-Match')).toBe(CANCEL_RESOURCE_ETAG);
+    expect(sent?.headers.get('Idempotency-Key') ?? '').toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+  });
+
+  /** 본문은 **사유 하나뿐**이다 — 다른 값을 함께 실으면 계약 밖의 요청이 된다. */
+  it('본문이 사유 하나뿐이고 다듬은 값이 나간다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '  수량 오류  ');
+    await user.click(requestCancelButton());
+    await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    expect(writesTo(requests, REQUEST_CANCEL_PATH)[0]?.body).toEqual({ reason: '수량 오류' });
+  });
+});
+
+describe('리소스 상세 실패 — C3-4', () => {
+  /**
+   * ⭐ **취소 축만 잠기고 화면 배너가 서지 않는다.** 실패한 것은 취소 준비 하나뿐이고
+   * 진행현황은 계속 읽을 수 있어야 한다 — 화면을 덮으면 사용자가 쓸 수 있는 것까지 잃는다.
+   */
+  it.each([
+    [403, t.cancelRequest.lockForbiddenTitle],
+    [404, t.cancelRequest.lockNotFoundTitle],
+    [500, t.cancelRequest.lockFailedTitle],
+  ])('%s이면 취소 축만 잠기고 진행현황은 그대로 보인다', async (status, title) => {
+    fillDocumentTypes();
+    renderScreen(cancelRoutes([failingCancelResourceRoute(status as number)]), selectCancelTarget);
+
+    expect(await screen.findByText(title as string)).toBeInTheDocument();
+    expect(requestCancelButton()).toBeDisabled();
+
+    /* 진행현황은 살아 있다 — 경과·후속이 그대로 보인다. */
+    expect(screen.getByText(t.steps.caption)).toBeInTheDocument();
+    expect(screen.getByText(t.successors.caption)).toBeInTheDocument();
+    /* ⛔ 화면 배너(조회 실패)가 서지 않는다. */
+    expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
+  });
+
+  /** 「다시 시도」가 같은 조회를 한 번 더 부른다 — 손잡이가 실제로 일하는지 횟수로 잰다. */
+  it('404의 다시 시도가 리소스 상세를 한 번 더 부른다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(
+      cancelRoutes([failingCancelResourceRoute(404)]),
+      selectCancelTarget,
+    );
+
+    await screen.findByText(t.cancelRequest.lockNotFoundTitle);
+    expect(requestsTo(requests, CANCEL_RESOURCE_PATH)).toHaveLength(1);
+
+    await user.click(within(cancelPane()).getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, CANCEL_RESOURCE_PATH)).toHaveLength(2);
+    });
+  });
+});
+
+describe('서버가 막은 문서 — C3-2', () => {
+  /**
+   * ⭐ **판정 근거가 목록 열과 같은 자리에서 나온다.** 갈리면 목록에서는 「취소 요청 가능」인데
+   * 아래에서는 잠긴 화면이 된다.
+   */
+  it('cancellable이 거짓이면 잠기고 사유 문면이 보인다', async () => {
+    fillDocumentTypes();
+    renderScreen(
+      cancelRoutes([
+        detailRoute(
+          cancelableDetail({ cancellable: false, cancelBlockedReasonCode: 'SUCCESSOR_EXISTS' }),
+          CANCEL_DETAIL_PATH,
+        ),
+      ]),
+      selectCancelTarget,
+    );
+
+    await screen.findByLabelText(t.cancelRequest.reason);
+
+    expect(requestCancelButton()).toBeDisabled();
+    expect(
+      screen.getByText(t.cancelRequest.blocked(t.blockReasons.SUCCESSOR_EXISTS)),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **막혔다고 잠금 토큰 조회를 막지 않는다.** 취소 요청이 진행 중이면 서버가 `cancellable`을
+   * 거짓으로 내리는데, 그때가 바로 **취소 실행**이 토큰을 필요로 하는 순간이다(단위 ④) —
+   * 여기서 막으면 그 회차에 실행 버튼이 영영 서지 않는다.
+   */
+  it('막혀 있어도 리소스 상세는 부른다', async () => {
+    fillDocumentTypes();
+    const { requests } = renderScreen(
+      cancelRoutes([
+        detailRoute(
+          cancelableDetail({ cancellable: false, cancelBlockedReasonCode: 'CANCEL_IN_PROGRESS' }),
+          CANCEL_DETAIL_PATH,
+        ),
+      ]),
+      selectCancelTarget,
+    );
+
+    await screen.findByText(t.cancelRequest.blocked(t.blockReasons.CANCEL_IN_PROGRESS));
+
+    expect(requestsTo(requests, CANCEL_RESOURCE_PATH)).toHaveLength(1);
+  });
+});
+
+describe('사유는 필수다 — C3-5', () => {
+  /**
+   * ⭐ **빈 사유로는 요청이 나가지 않고 창도 열리지 않는다.** 계약이 `reason`을 필수로 두었고
+   * 이 화면에서는 **그 사유가 곧 취소 이력**이다 — 빈 이력은 나중에 아무것도 말하지 않는다.
+   */
+  it('사유가 비면 창이 열리지 않고 인라인 오류가 선다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await waitFor(() => {
+      expect(requestCancelButton()).toBeEnabled();
+    });
+    await user.click(requestCancelButton());
+
+    expect(screen.getByText(t.cancelRequest.reasonRequired)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(0);
+  });
+
+  /** 공백만도 빈 값과 같다 — 서버가 통과시키면 **요약이 빈 승인 요청**이 만들어진다. */
+  it('공백만인 사유도 막힌다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '   ');
+    await user.click(requestCancelButton());
+
+    expect(screen.getByText(t.cancelRequest.reasonRequired)).toBeInTheDocument();
+    expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(0);
+  });
+
+  /* 고쳐 치면 오류가 걷힌다 — 남아 있으면 사용자가 아직 막힌 줄 안다. */
+  it('사유를 치면 오류가 걷힌다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await user.click(await screen.findByLabelText(t.cancelRequest.reason));
+    await user.click(requestCancelButton());
+    expect(screen.getByText(t.cancelRequest.reasonRequired)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.cancelRequest.reason), '사유');
+
+    expect(screen.queryByText(t.cancelRequest.reasonRequired)).not.toBeInTheDocument();
+  });
+});
+
+describe('확인 창이 뜬다 — C3-6', () => {
+  /** 창이 대상 문서번호를 말한다 — 고른 뒤 창이 뜨기까지 사이가 있고 여러 문서를 오가며 본다. */
+  it('대상 문서번호와 승인·철회 사실을 함께 말한다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
+    await user.click(requestCancelButton());
+
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByText(t.cancelDialog.target('SYN-GR-2026-0001'))).toBeInTheDocument();
+    expect(within(dialog).getByText(t.cancelDialog.approval)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.cancelDialog.noWithdraw)).toBeInTheDocument();
+  });
+
+  /** 확인하기 전에는 아무것도 나가지 않는다 — 창이 형식이 되면 확인 자체가 뜻을 잃는다. */
+  it('창을 열기만 해서는 요청이 나가지 않는다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
+    await user.click(requestCancelButton());
+
+    expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(0);
+  });
+});
+
+describe('202를 받으면 — C3-10', () => {
+  const submitCancel = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '잘못 등록했습니다');
+    await user.click(requestCancelButton());
+    await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
+  };
+
+  /**
+   * ⭐ **세 조회를 다시 부른다** — 목록·진행현황 상세·리소스 상세.
+   *
+   * | 무엇 | 왜 |
+   * | --- | --- |
+   * | 목록·상세 | 상태와 `cancellable`이 달라진다. 다시 부르지 않으면 「올렸는데 안 올린 것으로 보이는」 화면이 남는다 |
+   * | 리소스 상세 | 상신이 `version_no`를 올린다. 202에 `ETag`가 없어 다시 부르지 않으면 다음 쓰기가 **낡은 토큰**으로 나가 409다 |
+   *
+   * **호출 횟수 증가로** 판정한다 — 화면에 보이는 값만 보면 캐시가 그대로여도 통과한다.
+   */
+  it('목록·진행현황 상세·리소스 상세를 다시 부른다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await waitFor(() => {
+      expect(requestCancelButton()).toBeEnabled();
+    });
+
+    const before = {
+      list: listRequests(requests).length,
+      detail: requestsTo(requests, CANCEL_DETAIL_PATH).length,
+      resource: requestsTo(requests, CANCEL_RESOURCE_PATH).length,
+    };
+
+    await submitCancel(user);
+
+    await waitFor(() => {
+      expect(listRequests(requests).length).toBeGreaterThan(before.list);
+    });
+    await waitFor(() => {
+      expect(requestsTo(requests, CANCEL_DETAIL_PATH).length).toBeGreaterThan(before.detail);
+    });
+    await waitFor(() => {
+      expect(requestsTo(requests, CANCEL_RESOURCE_PATH).length).toBeGreaterThan(before.resource);
+    });
+  });
+
+  /**
+   * ⛔ **성공 안내에 내부 식별자가 보이지 않는다**(omf-mes#44). 응답에 오는 것이 그 번호뿐이라
+   * 화면에 낼 업무 번호가 없다 — 그래서 「올렸습니다」까지만 말한다.
+   */
+  it('성공 안내에 승인 요청 번호가 보이지 않는다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await submitCancel(user);
+
+    expect(await screen.findByText(t.cancelRequest.submitted)).toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(String(APPROVAL_REQUEST_ID)))).not.toBeInTheDocument();
+  });
+
+  /** 창이 닫히고 사유가 비워진다 — 남겨 두면 같은 사유로 한 번 더 올리기 쉽다. */
+  it('창이 닫히고 사유 칸이 비워진다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await submitCancel(user);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(screen.getByLabelText(t.cancelRequest.reason)).toHaveValue('');
+  });
+});
+
+describe('400을 받으면 — C3-11 · C3-12', () => {
+  const submitWith = async (routes: StubRoute[]) => {
+    fillDocumentTypes();
+    const rendered = renderScreen(cancelRoutes(routes), selectCancelTarget);
+
+    await rendered.user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
+    await rendered.user.click(requestCancelButton());
+    await rendered.user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
+
+    return rendered;
+  };
+
+  /**
+   * ⭐ **후속 때문에 막힌 400은 후속 목록을 다시 부른다**(C3-11). 그 400은 **후속이 생겼다는
+   * 사실의 통지**이며, 다시 부르지 않으면 화면이 「후속 때문에 막혔다」라고 말하면서 후속을
+   * 하나도 보이지 않는다. **호출 횟수 증가로** 판정한다.
+   */
+  it('SUCCESSOR_EXISTS면 진행현황 상세를 다시 부른다', async () => {
+    const { requests } = await submitWith([
+      failingRequestCancelRoute(400, {
+        errors: [{ scope: 'screen', code: 'SUCCESSOR_EXISTS', message: '후속 문서가 있습니다' }],
+      }),
+    ]);
+
+    await screen.findByText(t.cancelRequest.successorBlocked);
+
+    await waitFor(() => {
+      expect(requestsTo(requests, CANCEL_DETAIL_PATH).length).toBeGreaterThan(1);
+    });
+  });
+
+  /**
+   * ⛔ **문면에 「승인」이라는 낱말이 들어가지 않는다.** 이 단계는 승인을 **올리는** 단계이고
+   * 아직 승인이 없다 — 「승인은 유효하지만…」은 취소 **실행**(단위 ④)의 문면이며 여기에 쓰면
+   * 있지도 않은 승인을 있다고 말하게 된다.
+   */
+  it('후속 문면이 승인을 말하지 않는다', async () => {
+    await submitWith([
+      failingRequestCancelRoute(400, {
+        errors: [{ scope: 'screen', code: 'SUCCESSOR_EXISTS', message: '후속 문서가 있습니다' }],
+      }),
+    ]);
+
+    expect(await screen.findByText(t.cancelRequest.successorBlocked)).toBeInTheDocument();
+    expect(t.cancelRequest.successorBlocked).not.toContain('승인');
+  });
+
+  /**
+   * ⭐ **그 밖의 400은 서버 문구를 그대로 낸다**(C3-12). 계약이 이 400에 네 사유를 함께 적었고
+   * 코드가 붙은 것은 후속 하나뿐이라, 화면이 가르면 원인을 지어내게 된다.
+   */
+  it('그 밖의 400은 서버 문구가 그대로 보이고 후속 문면이 서지 않는다', async () => {
+    await submitWith([
+      failingRequestCancelRoute(400, {
+        errors: [
+          { scope: 'screen', code: 'ALREADY_CANCELLED', message: '이미 취소된 문서입니다.' },
+        ],
+      }),
+    ]);
+
+    expect(await screen.findByText('이미 취소된 문서입니다.')).toBeInTheDocument();
+    expect(screen.queryByText(t.cancelRequest.successorBlocked)).not.toBeInTheDocument();
+  });
+
+  /** 그 밖의 400은 상세를 다시 부르지도 않는다 — 후속이 생겼다는 통지가 아니기 때문이다. */
+  it('그 밖의 400은 진행현황 상세를 다시 부르지 않는다', async () => {
+    const { requests } = await submitWith([
+      failingRequestCancelRoute(400, {
+        errors: [{ scope: 'screen', code: 'NO_APPROVAL_ROUTE', message: '결재선이 없습니다.' }],
+      }),
+    ]);
+
+    await screen.findByText('결재선이 없습니다.');
+
+    expect(requestsTo(requests, CANCEL_DETAIL_PATH)).toHaveLength(1);
+  });
+
+  /**
+   * ⭐ **사유 칸에 붙는 서버 오류는 배너가 아니라 칸 옆에 선다**(공유계약 G-1).
+   *
+   * 이 화면이 소유한 입력칸이 사유 하나뿐이라, 그 이름을 아는 필드에서 빼면 **고칠 칸이 있는
+   * 오류가 배너로 밀려나** 사용자가 어디를 고쳐야 하는지 알 수 없다.
+   */
+  it('사유 필드 오류는 사유 칸 옆에 붙는다', async () => {
+    await submitWith([
+      failingRequestCancelRoute(400, {
+        errors: [
+          { scope: 'field', field: 'reason', code: 'TOO_SHORT', message: '사유가 짧습니다.' },
+        ],
+      }),
+    ]);
+
+    expect(await screen.findByText('사유가 짧습니다.')).toBeInTheDocument();
+
+    /* 칸과 **이어져 있어야** 한다 — 배너로 밀려나면 이 이음이 없다. */
+    expect(screen.getByLabelText(t.cancelRequest.reason)).toHaveAccessibleDescription(
+      /사유가 짧습니다\./,
+    );
+  });
+
+  /** 실패해도 **창을 닫지 않는다** — 닫으면 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */
+  it.each([403, 404, 409])('%s에서도 창이 열린 채 배너로 이유를 말한다', async (status) => {
+    await submitWith([
+      failingRequestCancelRoute(status, { message: `합성 실패 ${String(status)}` }),
+    ]);
+
+    const dialog = await screen.findByRole('dialog');
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole('alert')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('나가는 중 — C3-13의 두 축', () => {
+  const submitAndHold = async () => {
+    fillDocumentTypes();
+    const rendered = renderScreen(
+      cancelRoutes(),
+      selectCancelTarget,
+      `ty=${CANCEL_TYPE}&sel=9002`,
+      [REQUEST_CANCEL_PATH],
+    );
+
+    await rendered.user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
+    await rendered.user.click(requestCancelButton());
+    await rendered.user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
+
+    return rendered;
+  };
+
+  /**
+   * ⭐ **① 잠금은 전역이다.** 창이 열려 있는 동안은 모달이 화면 안 조작을 막지만, **Escape로
+   * 창이 닫히면**(막을 수 없는 길) 목록이 다시 눌린다 — 그때 대상이 바뀌면 앞 요청의 결과가
+   * 지금 보는 맥락에 나타나고, 둘째 요청을 낼 길도 열린다.
+   */
+  it('창이 닫혀도 나가는 동안 다른 행을 고를 수 없다', async () => {
+    const { requests, user } = await submitAndHold();
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    const before = requestsTo(requests, OTHER_CANCEL_DETAIL_PATH).length;
+    const handle = screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0002') });
+
+    expect(handle).toBeDisabled();
+    await user.click(handle);
+
+    expect(locationOf()).toContain('sel=9001');
+    expect(requestsTo(requests, OTHER_CANCEL_DETAIL_PATH)).toHaveLength(before);
+  });
+
+  /**
+   * ⭐ **① 잠금은 주소를 갈아 끼우는 문 하나가 진다.** 앞 감지기는 표 손잡이의 **보이는 잠금**을
+   * 재지만, 조건 줄·쪽 이동은 그 손잡이를 지나지 않는다 — 잠그는 자리가 손잡이뿐이면 「조회」
+   * 한 번에 대상이 바뀌고 앞 요청의 결과가 새 맥락에 나타난다.
+   *
+   * **주소가 실제로 달라지는 조작으로 잰다** — 같은 조건으로 다시 조회하면 주소가 그대로라
+   * 잠금이 없어도 아무 일이 일어나지 않아 감지기가 헛통과한다.
+   */
+  it('창이 닫혀도 나가는 동안 조건을 다시 조회할 수 없다', async () => {
+    const { requests, user } = await submitAndHold();
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    const before = listRequests(requests).length;
+
+    await user.type(screen.getByLabelText(t.fields.q), 'SYN-GR');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(locationOf()).not.toContain('q=SYN-GR');
+    expect(listRequests(requests)).toHaveLength(before);
+  });
+
+  /**
+   * ⭐ **② 표시는 대상에만 그려진다.** 바깥 주소 이동(뒤로가기·주소 직접 편집)은 잠금 문을
+   * 지나지 않아 **나가는 중에도 대상이 바뀔 수 있는데**, 그때 진행 표시가 따라오면 손대지도 않은
+   * 문서가 「요청 중」이라고 말한다.
+   *
+   * 앞 감지기와 **같은 축으로 합쳐 재지 않는다** — 잠금은 화면 안 조작을, 표시는 바깥 이동을
+   * 지난 뒤의 그림을 잰다.
+   */
+  it('바깥 주소 이동으로 대상이 바뀌면 진행 표시가 따라오지 않는다', async () => {
+    const { requests, user } = await submitAndHold();
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    /* 나가는 중인 대상(9001)에서는 진행 표시가 돈다 — 짝 방향이 있어야 뒤 단언이 뜻을 갖는다. */
+    expect(screen.getByRole('button', { name: t.cancelDialog.confirm })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationOf()).toContain('sel=9002');
+    });
+
+    /* 창은 대상의 것이라 함께 닫힌다. 남은 구획의 손잡이에 진행 표시가 붙지 않는다. */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(requestCancelButton()).not.toHaveAttribute('aria-busy', 'true');
+    });
+  });
+
+  /**
+   * ⭐ **창이 Escape로 닫혀도 후처리가 무너지지 않는다**(C3-8). `reset()`을 곧바로 부르면
+   * 나가는 중인 요청의 되먹임이 통째로 오지 않는다 — 요청은 서버에 갔는데 화면만 없던 일로 친다.
+   */
+  it('창을 Escape로 닫아도 성공 후처리가 그대로 온다', async () => {
+    const { requests, release } = await submitAndHold();
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    release();
+
+    expect(await screen.findByText(t.cancelRequest.submitted)).toBeInTheDocument();
+    /* 무효화도 함께 온다 — 되먹임이 끊겼으면 리소스 상세가 다시 나가지 않는다. */
+    await waitFor(() => {
+      expect(requestsTo(requests, CANCEL_RESOURCE_PATH).length).toBeGreaterThan(1);
+    });
+  });
+
+  /**
+   * ⭐ **인라인 오류도 매임을 지난다.** 나가는 중에 바깥 주소 이동으로 대상이 바뀌면 정리는
+   * 요청을 끊지 않으려고 물러서는데(`resetIfIdle`), 그 뒤 도착한 거절 사유가 매임을 지나지
+   * 않으면 **손대지도 않은 문서의 사유 칸에 남의 거절 사유가 붙는다.**
+   *
+   * 배너만 감추고 인라인을 놓치는 것이 이 자리의 흔한 반쪽이라, 칸 쪽을 따로 잰다.
+   */
+  it('대상이 바뀐 뒤 도착한 사유 오류가 새 대상의 칸에 붙지 않는다', async () => {
+    fillDocumentTypes();
+    const { requests, release, user } = renderScreen(
+      cancelRoutes([
+        failingRequestCancelRoute(400, {
+          errors: [
+            { scope: 'field', field: 'reason', code: 'TOO_SHORT', message: '사유가 짧습니다.' },
+          ],
+        }),
+      ]),
+      selectCancelTarget,
+      `ty=${CANCEL_TYPE}&sel=9002`,
+      [REQUEST_CANCEL_PATH],
+    );
+
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
+    await user.click(requestCancelButton());
+    await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    /* 나가는 중에 바깥 주소 이동으로 대상이 바뀐다 — 잠금 문을 지나지 않는 길이다. */
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationOf()).toContain('sel=9002');
+    });
+
+    release();
+
+    /* 거절이 도착했다 — 도착 자체는 확인하고(요청이 살아 있다), 새 대상에는 그리지 않는다. */
+    await waitFor(() => {
+      expect(requestCancelButton()).toBeEnabled();
+    });
+    expect(screen.queryByText('사유가 짧습니다.')).not.toBeInTheDocument();
+  });
+
+  /** 창이 닫혀 있으면 실패 배너가 **구획으로 옮겨 온다** — 자리 배타. */
+  it('창이 닫힌 뒤 도착한 실패는 구획에 선다', async () => {
+    fillDocumentTypes();
+    const { requests, release, user } = renderScreen(
+      cancelRoutes([failingRequestCancelRoute(500, { message: '합성 서버 오류' })]),
+      selectCancelTarget,
+      '',
+      [REQUEST_CANCEL_PATH],
+    );
+
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
+    await user.click(requestCancelButton());
+    await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    release();
+
+    expect(await screen.findByText('합성 서버 오류')).toBeInTheDocument();
+    expect(within(cancelPane()).getByRole('alert')).toBeInTheDocument();
   });
 });

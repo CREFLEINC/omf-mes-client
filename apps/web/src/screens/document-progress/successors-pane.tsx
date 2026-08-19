@@ -111,8 +111,23 @@ export interface SuccessorsPaneProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-/** 표 아래 사유 줄의 차례. 갈래를 늘리면 이 배열에 먼저 더한다 — 차례가 곧 화면의 차례다. */
-const BLOCK_KINDS: readonly ScreenOpenBlock['kind'][] = ['noScreenId', 'unmapped'];
+/**
+ * 표 아래 사유 줄의 **차례**.
+ *
+ * ⭐ **갈래를 키로 하는 표다.** 리터럴 배열이면 갈래가 늘 때 늘어난 갈래의 사유 줄이 **말없이
+ * 렌더되지 않는데**, 갈래를 키로 두면 그 순간 `tsc`가 이 자리를 잡는다(TS2739 — 빠진 키).
+ * `describeScreenOpenBlock`의 `switch`와 같은 이유이며, 두 자리가 함께 갈래 증가를 막는다.
+ *
+ * 값은 **줄의 차례**다 — 표의 키 순서에 기대지 않고 여기 적힌 수로 정한다.
+ */
+const BLOCK_KIND_ORDER: Record<ScreenOpenBlock['kind'], number> = {
+  noScreenId: 1,
+  unmapped: 2,
+};
+
+const BLOCK_KINDS: readonly ScreenOpenBlock['kind'][] = (
+  Object.keys(BLOCK_KIND_ORDER) as ScreenOpenBlock['kind'][]
+).sort((left, right) => BLOCK_KIND_ORDER[left] - BLOCK_KIND_ORDER[right]);
 
 export const SuccessorsPane = ({ successors, routes, onOpen }: SuccessorsPaneProps) => {
   /*

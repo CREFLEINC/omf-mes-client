@@ -148,6 +148,35 @@ describe('SuccessorsPane', () => {
     expect(screen.getByText(t.successors.openBlocked.noScreenId)).toBeInTheDocument();
   });
 
+  /**
+   * 줄의 **차례가 정해져 있다.** 갈래 표(`BLOCK_KIND_ORDER`)가 차례를 값으로 정하므로, 표의 키
+   * 순서가 바뀌거나 갈래가 늘어도 화면의 차례는 그 값이 정한 대로다 — 차례를 재는 자리가 없으면
+   * 그 값이 아무 일도 하지 않는 상수가 된다.
+   *
+   * 앞이 「화면 ID가 오지 않았다」인 이유: 그쪽이 **서버가 값을 채워야 풀리는** 갈래라 사용자가
+   * 먼저 알아야 할 사정이다.
+   */
+  it('두 갈래가 섞여 오면 줄의 차례가 정해져 있다', () => {
+    render(
+      <SuccessorsPane
+        successors={documentSuccessorFixtures}
+        routes={SCREEN_ROUTES}
+        onOpen={noop}
+      />,
+    );
+
+    const notes = screen
+      .getAllByText(
+        (_, element) =>
+          element?.textContent === t.successors.openBlocked.noScreenId ||
+          element?.textContent === t.successors.openBlocked.unmapped,
+      )
+      .filter((element) => element.tagName === 'P')
+      .map((element) => element.textContent);
+
+    expect(notes).toEqual([t.successors.openBlocked.noScreenId, t.successors.openBlocked.unmapped]);
+  });
+
   /* ⭐ 표에 줄이 생기면 **그것만으로** 열기가 살아난다 — 다른 자리는 바뀌지 않는다. */
   it('표를 채우면 그 후속만 열기가 선다', () => {
     render(

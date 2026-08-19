@@ -203,15 +203,26 @@ export const toDetailResponse = (view: DocumentProgressDetailView) => ({
  * 값이 **채워진** 유형 표. 자리표시가 비어 있는 지금 화면이 어떻게 되는지와,
  * 값이 오면 무엇이 살아나는지를 **같은 감지기 짝**으로 재기 위한 것이다.
  *
- * 셋째 줄은 **고를 수 없는 유형**이다(외주 문서 자리 — omf-mes#82). 사유를 문면으로 담아 두어
- * 「비활성 + 사유 표시」가 실제로 그려지는지 잴 수 있게 한다.
+ * 세 줄이 서로 다른 일을 한다.
+ *
+ * | 줄 | 무엇을 재나 |
+ * | --- | --- |
+ * | 가 | **취소 리소스가 없는 유형** — 계약의 취소 경로가 셋뿐이라 덮는 유형 중 일부에는 취소가 없다. 그 유형에서 취소 조작이 서지 않는 것을 잰다 |
+ * | 나 | **취소 리소스가 있는 유형** — 취소 축의 주 무대다 |
+ * | 다 | **고를 수 없는데 리소스는 있다**(외주 문서 자리 — omf-mes#82). 「비활성 + 사유 표시」와 함께, `cancelResourceOf`가 **고를 수 있는 줄에서만 읽는지**를 잰다 — 두 값이 같은 줄에 있어야 그 가드가 재어진다 |
  */
 export const documentTypeFixtures: readonly DocumentTypeEntry[] = [
-  { code: 'SYN_DOC_TYPE_A', label: '합성 유형 가', disabledReason: null },
-  { code: 'SYN_DOC_TYPE_B', label: '합성 유형 나', disabledReason: null },
+  { code: 'SYN_DOC_TYPE_A', label: '합성 유형 가', cancelResource: null, disabledReason: null },
+  {
+    code: 'SYN_DOC_TYPE_B',
+    label: '합성 유형 나',
+    cancelResource: 'goods-receipts',
+    disabledReason: null,
+  },
   {
     code: 'SYN_DOC_TYPE_C',
     label: '합성 유형 다',
+    cancelResource: 'goods-issues',
     disabledReason: '이 유형에는 상태 컬럼이 없어 진행현황을 볼 수 없습니다',
   },
 ];

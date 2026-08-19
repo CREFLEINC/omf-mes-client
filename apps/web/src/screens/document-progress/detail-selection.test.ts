@@ -14,8 +14,13 @@ const SELECTABLE = 'SYN_DOC_TYPE_A';
 const DISABLED = 'SYN_DOC_TYPE_C';
 
 const entries: readonly DocumentTypeEntry[] = [
-  { code: SELECTABLE, label: '합성 유형 가', disabledReason: null },
-  { code: DISABLED, label: '합성 유형 다', disabledReason: '이 유형은 볼 수 없습니다' },
+  { code: SELECTABLE, label: '합성 유형 가', cancelResource: null, disabledReason: null },
+  {
+    code: DISABLED,
+    label: '합성 유형 다',
+    cancelResource: null,
+    disabledReason: '이 유형은 볼 수 없습니다',
+  },
 ];
 
 const filtersWith = (documentType: string): ProgressFilters => ({
