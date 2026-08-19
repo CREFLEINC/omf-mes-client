@@ -756,6 +756,42 @@ describe('고른 문서의 상세', () => {
   });
 
   /**
+   * ⭐ **고르기가 쪽을 유지한다**(수명 표 3행). 3쪽에서 고른 문서의 상세를 보는 동안 목록이
+   * 1쪽으로 튀면, 사용자는 보고 있던 줄을 잃고 상세만 3쪽 문서를 가리킨다.
+   *
+   * **두 축으로 잰다** — 주소의 `page`와 **다시 나간 요청의 질의값**. 주소만 재면 요청이 첫
+   * 쪽으로 나가도 통과한다. 해제 축도 같은 자리에서 잰다.
+   */
+  it('문서를 골랐다 해제해도 보던 쪽이 그대로다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(
+      [listRoute(documentProgressFixtures, { page: 2, total: 120 }), detailRoute()],
+      `?ty=${SELECTABLE_TYPE}&page=2`,
+    );
+
+    expect(await screen.findByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(lastListQuery(requests).get('page')).toBe('2');
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }));
+
+    await waitFor(() => {
+      expect(locationOf()).toContain('sel=9001');
+    });
+    expect(locationOf()).toContain('page=2');
+    expect(lastListQuery(requests).get('page')).toBe('2');
+
+    await user.click(
+      screen.getByRole('button', { name: t.actions.deselectRow('SYN-GR-2026-0001') }),
+    );
+
+    await waitFor(() => {
+      expect(locationOf()).not.toContain('sel=');
+    });
+    expect(locationOf()).toContain('page=2');
+    expect(lastListQuery(requests).get('page')).toBe('2');
+  });
+
+  /**
    * ⭐ **조건이 바뀌면 선택이 저절로 풀린다**(주소를 다시 쓰는 길이 선택 키를 만들지 않는다).
    * 남겨 두면 아래 구획이 **위에 보이지 않는 문서**를 가리킨 채 열려 있다.
    */
@@ -797,8 +833,9 @@ describe('고른 문서의 상세', () => {
     fillDocumentTypes();
     renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}&sel=9001`);
 
-    expect(await screen.findByText(t.detail.openBlocked)).toBeInTheDocument();
-    expect(screen.getByText(t.successors.openBlocked)).toBeInTheDocument();
+    expect(await screen.findByText(t.detail.openBlocked.unmapped)).toBeInTheDocument();
+    expect(screen.getByText(t.successors.openBlocked.unmapped)).toBeInTheDocument();
+    expect(screen.getByText(t.successors.openBlocked.noScreenId)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.actions.openDocument })).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: t.actions.openSuccessor('SYN-GI-2026-0101') }),
@@ -963,6 +1000,41 @@ describe('상세 조회가 실패하면', () => {
    * 직접 편집이 그 길을 지나지 않아 문장이 남는다 — 방금 한 조작과 무관한 사정을 화면이 계속
    * 말하게 된다. 그래서 안내를 **조회 조건의 서명**에 맨다.
    */
+  /**
+   * ⭐ **새 선택도 없음 안내를 거둔다 — 그리고 스스로 해제해도 되살아나지 않는다.**
+   *
+   * 안내를 세우는 자리만 있고 거두는 자리가 없으면, **같은 조건 안에서** 다른 문서를 골랐다
+   * 해제하는 순간 서명이 그대로라 안내가 되살아난다 — 사용자가 스스로 닫은 것을 화면이
+   * 「찾을 수 없다」고 말한다. 주소를 쓰는 길이 안내를 함께 거두는지 여기서 잰다.
+   */
+  it('404 뒤 다른 문서를 골랐다 해제해도 없음 안내가 되살아나지 않는다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        failingDetailRoute(404),
+        detailRoute(documentProgressDetail(), detailPathOf(SELECTABLE_TYPE, 9002)),
+      ],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+    );
+
+    expect(await screen.findByText(t.empty.detailNotFoundTitle)).toBeInTheDocument();
+
+    /* ① 같은 조건 안에서 다른 문서를 고른다 — 정상 상세가 서고 안내가 사라진다. */
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0002') }));
+
+    expect(await screen.findByRole('table', { name: t.steps.caption })).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.detailNotFoundTitle)).not.toBeInTheDocument();
+
+    /* ② 사용자가 스스로 해제한다 — 「고르면 보입니다」여야 한다. */
+    await user.click(
+      screen.getByRole('button', { name: t.actions.deselectRow('SYN-GR-2026-0002') }),
+    );
+
+    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.detailNotFoundTitle)).not.toBeInTheDocument();
+  });
+
   it('새 조회가 없음 안내를 거둔다', async () => {
     fillDocumentTypes();
     const { user } = renderScreen(

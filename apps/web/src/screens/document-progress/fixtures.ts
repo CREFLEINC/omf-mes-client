@@ -122,6 +122,11 @@ export const progressStep = (
  * 2. **행위자 이름이 비어 있다**(계약: 사람이 한 것이 아니면 비어 있다)
  * 3. **원장 번호만 왔다** — 영업일이 없어 원장을 찾을 수 없다
  * 4. 원장을 만들지 않은 단계(둘 다 없음)
+ *
+ * ⭐ **넷째 줄의 시각이 일부러 앞선다**(08:40 — 배열 차례로는 마지막). 계약이 시간순으로
+ * 내린다고 적었으므로 화면은 **서버가 준 차례를 그대로 믿고 다시 세우지 않는데**, 픽스처가
+ * 시각 오름차순이면 화면 쪽 시간순 정렬을 심어도 결과가 같아 감지기가 그 결함을 놓친다
+ * (검증 F-T2-1). 배열 차례와 시각 차례를 갈라 두어야 「차례 그대로」가 실제로 재어진다.
  */
 export const progressStepFixtures: DocumentProgressStepView[] = [
   progressStep(),
@@ -140,7 +145,8 @@ export const progressStepFixtures: DocumentProgressStepView[] = [
   }),
   progressStep({
     stepCode: 'SYN_STEP_CLOSED',
-    occurredAt: '2026-08-06T12:00:00+09:00',
+    /* ⭐ 앞 줄들보다 **이른 시각**이다 — 위 머리말의 이유로 일부러 그렇게 둔다. */
+    occurredAt: '2026-08-06T08:40:00+09:00',
     actorName: '이관리',
     inventoryTransactionNo: null,
     businessDate: null,

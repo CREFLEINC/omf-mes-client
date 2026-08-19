@@ -2,7 +2,7 @@ import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { judgeScreenOpen, type ScreenRouteTable } from './screen-routes';
+import { describeScreenOpenBlock, judgeScreenOpen, type ScreenRouteTable } from './screen-routes';
 import { StepsPane } from './steps-pane';
 import { SuccessorsPane } from './successors-pane';
 import type { DocumentProgressDetailView } from './types';
@@ -79,7 +79,7 @@ export const DetailPane = ({ detail, routes, onOpen }: DetailPaneProps) => {
       {/*
        * ⛔ **열 수 없으면 손잡이를 아예 만들지 않는다**(계획 갈래 23). 잠긴 버튼을 두면
        * 사용자가 눌러 보다 마는데, 지금은 어떤 문서로도 풀리지 않는 잠금이다 — 대신 사유를
-       * 글자로 밝힌다.
+       * 글자로 밝힌다. **두 갈래를 뭉개지 않는다**: 풀 수 있는 사람이 다르다.
        */}
       {openState.kind === 'open' ? (
         <div className="field-cell">
@@ -94,7 +94,7 @@ export const DetailPane = ({ detail, routes, onOpen }: DetailPaneProps) => {
           </Button>
         </div>
       ) : (
-        <p className="field-note">{t.detail.openBlocked}</p>
+        <p className="field-note">{describeScreenOpenBlock(openState, t.detail.openBlocked)}</p>
       )}
 
       <p className="field-note">{t.detail.summaryNote}</p>

@@ -1,7 +1,12 @@
 import { Button, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { judgeScreenOpen, type ScreenRouteTable } from './screen-routes';
+import {
+  describeScreenOpenBlock,
+  judgeScreenOpen,
+  type ScreenOpenBlock,
+  type ScreenRouteTable,
+} from './screen-routes';
 import type { DocumentSuccessorView } from './types';
 
 const t = messages.documentProgress;
@@ -25,7 +30,7 @@ export const SUCCESSORS_TABLE_MIN_WIDTH_PX = 928;
  * | 유형 | 344px | **서버가 정하는 코드 문자열**이라 상한이 없다 — 아래 주 |
  * | 문서번호 | 344px | 16자 120px + 여백 32px = 152px가 하한. 같은 이유로 남는 폭을 얹는다 |
  * | 수량 | 152px | 여섯 자리 45px + 여백 32px = 77px. 자릿수 여유 포함. 우측 정렬 |
- * | 열기 | 88px | `sm` 버튼 하나(전례 `gr-table`·`balance-table`의 선택 열과 같은 값) |
+ * | 열기 | 88px | `sm` 버튼 하나(전례 `gr-table`·`balance-table`의 선택 열과 같은 값). 「열기」 2자 15px + 버튼 안쪽 여백 24px + 셀 여백 32px = 71px — ⭐ **이 표에서 화면이 소유한 유일한 문면**이라 감지기가 그 하한을 i18n에서 계산한다 |
  * | **합** | **928px** | 표 하한과 같다 |
  *
  * ⭐ **남는 폭을 두 문자열 열에 얹는다.** 열이 넷뿐이라 하한을 맞추면 폭이 남는데, 그 남는 폭을
@@ -106,13 +111,19 @@ export interface SuccessorsPaneProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
+/** 표 아래 사유 줄의 차례. 갈래를 늘리면 이 배열에 먼저 더한다 — 차례가 곧 화면의 차례다. */
+const BLOCK_KINDS: readonly ScreenOpenBlock['kind'][] = ['noScreenId', 'unmapped'];
+
 export const SuccessorsPane = ({ successors, routes, onOpen }: SuccessorsPaneProps) => {
   /*
-   * 열 수 없는 후속이 **하나라도** 있으면 사유를 한 줄로 밝힌다. 전건이 열리면 내지 않는다 —
+   * 열 수 없는 후속의 **갈래마다 한 줄**을 밝힌다. 전건이 열리면 한 줄도 내지 않는다 —
    * 늘 떠 있는 안내는 읽히지 않는다.
+   *
+   * ⭐ **둘을 한 문면으로 뭉개지 않는다** — 풀 수 있는 사람이 다르다(서버가 값을 채우는 쪽 /
+   * 이 프로그램에 화면이 생기는 쪽). 한 표 안에 두 갈래가 섞여 오는 것이 실제 형태다.
    */
-  const hasBlockedOpen = successors.some(
-    (successor) => judgeScreenOpen(successor.screenId ?? '', routes).kind !== 'open',
+  const blockedKinds = BLOCK_KINDS.filter((kind) =>
+    successors.some((successor) => judgeScreenOpen(successor.screenId ?? '', routes).kind === kind),
   );
 
   return (
@@ -140,7 +151,11 @@ export const SuccessorsPane = ({ successors, routes, onOpen }: SuccessorsPanePro
         />
       </div>
 
-      {hasBlockedOpen && <p className="field-note">{t.successors.openBlocked}</p>}
+      {blockedKinds.map((kind) => (
+        <p className="field-note" key={kind}>
+          {describeScreenOpenBlock({ kind }, t.successors.openBlocked)}
+        </p>
+      ))}
     </>
   );
 };

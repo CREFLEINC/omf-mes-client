@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   SCREEN_ROUTES,
+  describeScreenOpenBlock,
   judgeScreenOpen,
   screenPathOf,
   type ScreenRouteTable,
@@ -57,5 +58,25 @@ describe('judgeScreenOpen', () => {
    */
   it('화면 ID가 없으면 그 사실을 낸다', () => {
     expect(judgeScreenOpen('', filled)).toEqual({ kind: 'noScreenId' });
+  });
+});
+
+describe('describeScreenOpenBlock', () => {
+  const texts = { noScreenId: '화면 ID가 오지 않았습니다', unmapped: '이 앱에 그 화면이 없습니다' };
+
+  /**
+   * ⭐ **갈래마다 다른 글자를 낸다.** 타입으로만 가르고 문면을 하나로 뭉개면 사용자는 어느
+   * 쪽인지 끝내 알 수 없어, 담당자에게 물어야 할지 기다려야 할지 가리지 못한다.
+   */
+  it('두 갈래가 서로 다른 글자를 낸다', () => {
+    expect(describeScreenOpenBlock({ kind: 'noScreenId' }, texts)).toBe(texts.noScreenId);
+    expect(describeScreenOpenBlock({ kind: 'unmapped' }, texts)).toBe(texts.unmapped);
+  });
+
+  /* 주어가 다른 두 구획이 같은 판정을 쓰되 **자기 문면**을 낸다. */
+  it('부르는 쪽이 준 문면을 그대로 쓴다', () => {
+    const other = { noScreenId: '다른 주어의 문면', unmapped: '다른 주어의 문면 2' };
+
+    expect(describeScreenOpenBlock({ kind: 'unmapped' }, other)).toBe(other.unmapped);
   });
 });

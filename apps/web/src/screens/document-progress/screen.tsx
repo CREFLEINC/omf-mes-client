@@ -141,9 +141,35 @@ export const DocumentProgressScreen = () => {
     setSearchParams((prev) => withoutSelection(prev), { replace: true });
   }, [isDetailNotFound, listContextKey, setSearchParams]);
 
-  /** 방금 정리한 그 목록을 아직 보고 있는가. 조건이 바뀌면 안내가 가리킬 것이 없다. */
+  /**
+   * 방금 정리한 그 목록을 아직 보고 있는가. 조건이 바뀌면 안내가 가리킬 것이 없다.
+   *
+   * `missingContextKey !== null`을 먼저 본다 — 지금은 `listContextKey`가 늘 문자열이라 뒤 견줌만으로
+   * 같은 답이 나오지만(등가), 서명을 만드는 자리가 바뀌어 빈 값이 될 수 있는 날 **안내가 세워진
+   * 적도 없는데 서는** 상태를 이 한 줄이 막는다(전례 `putaway-rule/screen.tsx`의 같은 가드).
+   */
   const isDetailMissing =
-    readSelectedDocumentId(searchParams) === null && missingContextKey === listContextKey;
+    readSelectedDocumentId(searchParams) === null &&
+    missingContextKey !== null &&
+    missingContextKey === listContextKey;
+
+  /**
+   * ⭐ **주소를 갈아 끼우는 유일한 자리. 없음 안내를 여기서 함께 거둔다.**
+   *
+   * 조회·초기화·쪽 이동·**고르기·해제**가 모두 이 길을 지나므로 조작마다 따로 지울 자리가 없다
+   * (전례 `putaway-rule/screen.tsx`의 `applySearchParams`가 지고 있던 둘째 책임이다).
+   *
+   * 거두지 않으면 이런 일이 난다 — 404로 안내가 선 뒤 **같은 조건 안에서** 다른 문서를 골랐다
+   * 해제하면 서명이 그대로라 안내가 **되살아난다.** 사용자가 스스로 닫은 것을 화면이 「찾을 수
+   * 없다」고 말하는 상태이며, 방금 한 조작과 무관한 사정을 화면이 계속 말하는 것이다.
+   *
+   * ⚠ **404 정리(effect)는 이 길을 지나지 않는다** — 그쪽은 안내를 **세우는** 자리이고
+   * 히스토리도 늘리지 않아야 해서 `setSearchParams`를 직접 부른다.
+   */
+  const applySearchParams = (next: URLSearchParams): void => {
+    setMissingContextKey(null);
+    setSearchParams(next);
+  };
 
   /**
    * 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다.
@@ -152,7 +178,7 @@ export const DocumentProgressScreen = () => {
    * 결과가 3쪽에 못 미쳐 사용자에게는 「조건을 좁혔더니 아무것도 없다」로 보인다.
    */
   const applyQuery = (nextFilters: ProgressFilters, nextPage = 1): void => {
-    setSearchParams(toSearchParams(nextFilters, nextPage));
+    applySearchParams(toSearchParams(nextFilters, nextPage));
   };
 
   /**
@@ -164,7 +190,9 @@ export const DocumentProgressScreen = () => {
   const toggleSelect = (documentId: number): void => {
     const base = toSearchParams(filters, page);
 
-    setSearchParams(documentId === selection?.documentId ? base : withSelection(base, documentId));
+    applySearchParams(
+      documentId === selection?.documentId ? base : withSelection(base, documentId),
+    );
   };
 
   /**

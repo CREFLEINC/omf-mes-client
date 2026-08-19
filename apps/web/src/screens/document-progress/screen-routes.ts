@@ -66,3 +66,21 @@ export const judgeScreenOpen = (screenId: string, routes: ScreenRouteTable): Scr
 
   return path === null ? { kind: 'unmapped' } : { kind: 'open', path };
 };
+
+/**
+ * 잠긴 사유를 사람이 읽는 글자로 옮긴다.
+ *
+ * ⭐ **갈래를 타입으로만 가르고 문면을 하나로 뭉개면 위 표가 약속한 이득이 화면에 없다** —
+ * 사용자는 어느 쪽인지 끝내 알 수 없어 담당자에게 물어야 할지 기다려야 할지 가릴 수 없다.
+ * 전례 `approval-inbox/target.ts`의 `describeOpenBlock`이 같은 자리다.
+ *
+ * **문면을 인자로 받는다.** 이 판정을 쓰는 두 구획의 **주어가 다르기 때문**이다(문서 / 후속 문서).
+ * 갈래를 고르는 자리는 여기 하나로 두고, 무엇을 말할지는 부르는 쪽이 정한다.
+ *
+ * **열린 갈래를 인자로 받지 않는다.** 받으면 「사유 없음」을 뜻하는 빈 글자가 반환 타입에 생기고,
+ * 그리는 자리가 그것을 걸러 내는 죽은 가지를 갖게 된다 — 타입이 그 자리를 막는다.
+ */
+export const describeScreenOpenBlock = (
+  block: ScreenOpenBlock,
+  texts: { noScreenId: string; unmapped: string },
+): string => (block.kind === 'noScreenId' ? texts.noScreenId : texts.unmapped);

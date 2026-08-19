@@ -42,6 +42,23 @@ describe('buildSuccessorColumns — 열 구성과 폭', () => {
     expect(fixed).toBeGreaterThanOrEqual(SUCCESSORS_TABLE_MIN_WIDTH_PX);
   });
 
+  /**
+   * ⭐ **이 표에서 화면이 소유한 문면은 「열기」 버튼 하나다** — 나머지 칸은 전부 서버가 정하는
+   * 문자열·숫자라 i18n으로 하한을 세울 수 없다. 그 하나만은 우리가 소유하므로 **문면에서
+   * 계산해** 견준다: 문면이 길어지거나 열이 좁아지면 이 자리가 깨진다.
+   */
+  it('열기 열이 자기 손잡이 문면을 담는다', () => {
+    const CHAR_WIDTH_PX = 7.5;
+    const CELL_PADDING_PX = 32;
+    /* `sm` 버튼의 좌우 안쪽 여백. 글자만으로는 버튼이 담기지 않는다. */
+    const BUTTON_PADDING_PX = 24;
+    const openColumn = columns.find((column) => column.key === 'open');
+
+    expect(Number.parseInt(openColumn?.width ?? '0px', 10)).toBeGreaterThanOrEqual(
+      t.successors.open.length * CHAR_WIDTH_PX + BUTTON_PADDING_PX + CELL_PADDING_PX,
+    );
+  });
+
   /* 수량은 오른쪽으로 정렬돼야 자릿수가 맞아 눈으로 견줄 수 있다. */
   it('수량이 우측 정렬이다', () => {
     expect(columns.filter((column) => column.align === 'end').map((column) => column.key)).toEqual([
@@ -123,7 +140,12 @@ describe('SuccessorsPane', () => {
 
     /* ⛔ 잠긴 버튼도 두지 않는다 — 「손잡이가 서지 않는다」는 **아예 없다**는 뜻이다. */
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.getByText(t.successors.openBlocked)).toBeInTheDocument();
+    /*
+     * ⭐ **두 갈래가 한 표 안에 섞여 오는 것이 실제 형태다** — 첫 후속은 화면 ID가 왔는데 표에
+     * 없고(`unmapped`), 둘째는 화면 ID 자체가 오지 않았다(`noScreenId`). 갈래마다 한 줄씩 선다.
+     */
+    expect(screen.getByText(t.successors.openBlocked.unmapped)).toBeInTheDocument();
+    expect(screen.getByText(t.successors.openBlocked.noScreenId)).toBeInTheDocument();
   });
 
   /* ⭐ 표에 줄이 생기면 **그것만으로** 열기가 살아난다 — 다른 자리는 바뀌지 않는다. */
@@ -139,7 +161,9 @@ describe('SuccessorsPane', () => {
     expect(
       screen.queryByRole('button', { name: t.actions.openSuccessor('SYN-GI-2026-0102') }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(t.successors.openBlocked)).toBeInTheDocument();
+    /* 남은 잠금은 **화면 ID가 오지 않은 쪽 하나뿐**이다 — 표를 채워 풀린 갈래는 사라진다. */
+    expect(screen.getByText(t.successors.openBlocked.noScreenId)).toBeInTheDocument();
+    expect(screen.queryByText(t.successors.openBlocked.unmapped)).not.toBeInTheDocument();
   });
 
   /** 부품은 주소를 모른다 — **표가 정한 주소**를 그대로 화면에 넘긴다. */
@@ -168,7 +192,8 @@ describe('SuccessorsPane', () => {
       <SuccessorsPane successors={[documentSuccessor()]} routes={filledRoutes} onOpen={noop} />,
     );
 
-    expect(screen.queryByText(t.successors.openBlocked)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.successors.openBlocked.noScreenId)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.successors.openBlocked.unmapped)).not.toBeInTheDocument();
   });
 
   /**

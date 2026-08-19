@@ -92,7 +92,9 @@ describe('DetailPane — 문서 열기', () => {
     render(<DetailPane detail={documentProgressDetail()} routes={SCREEN_ROUTES} onOpen={noop} />);
 
     expect(screen.queryByRole('button', { name: t.actions.openDocument })).not.toBeInTheDocument();
-    expect(screen.getByText(t.detail.openBlocked)).toBeInTheDocument();
+    /* ⭐ **화면은 아는데 이 프로그램에 그 화면이 없다** — 이 저장소가 풀 수 있는 쪽이다. */
+    expect(screen.getByText(t.detail.openBlocked.unmapped)).toBeInTheDocument();
+    expect(screen.queryByText(t.detail.openBlocked.noScreenId)).not.toBeInTheDocument();
   });
 
   /* ⭐ 표에 줄이 생기면 그것만으로 열기가 살아난다. */
@@ -105,10 +107,17 @@ describe('DetailPane — 문서 열기', () => {
     await user.click(screen.getByRole('button', { name: t.actions.openDocument }));
 
     expect(onOpen).toHaveBeenCalledWith('/logistics/synthetic-document');
-    expect(screen.queryByText(t.detail.openBlocked)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.detail.openBlocked.unmapped)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.detail.openBlocked.noScreenId)).not.toBeInTheDocument();
   });
 
-  /* 화면 ID가 오지 않은 문서도 실재한다 — 표를 채워도 열 수 없고, 그 사유가 보인다. */
+  /**
+   * 화면 ID가 오지 않은 문서도 실재한다 — 표를 채워도 열 수 없다.
+   *
+   * ⭐ **사유가 앞 갈래와 다른 글자다.** 풀 수 있는 사람이 다르기 때문이다 — 이쪽은 서버가
+   * 값을 채워야 하고, 앞쪽은 이 프로그램에 화면이 생기면 풀린다. 한 문면으로 뭉개면 사용자가
+   * 담당자에게 물어야 할지 기다려야 할지 가릴 수 없다.
+   */
   it('화면 ID가 오지 않으면 표를 채워도 열리지 않는다', () => {
     render(
       <DetailPane
@@ -119,7 +128,8 @@ describe('DetailPane — 문서 열기', () => {
     );
 
     expect(screen.queryByRole('button', { name: t.actions.openDocument })).not.toBeInTheDocument();
-    expect(screen.getByText(t.detail.openBlocked)).toBeInTheDocument();
+    expect(screen.getByText(t.detail.openBlocked.noScreenId)).toBeInTheDocument();
+    expect(screen.queryByText(t.detail.openBlocked.unmapped)).not.toBeInTheDocument();
   });
 });
 

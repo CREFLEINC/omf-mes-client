@@ -47,10 +47,20 @@ describe('buildStepColumns — 열 구성과 폭', () => {
   it('원장 열이 반쪽 사실 문면을 담는다', () => {
     const CHAR_WIDTH_PX = 7.5;
     const CELL_PADDING_PX = 32;
+    /*
+     * ⚠ **i18n에서 계산하는 것은 문면의 틀이고, 인자 길이는 시험 자료가 정한다.**
+     * 그래서 인자도 리터럴로 적지 않고 **픽스처에서 가장 긴 값**을 뽑는다 — 더 긴 원장 번호를
+     * 픽스처에 넣는 순간 이 하한이 함께 올라간다. 서버가 그보다 더 긴 번호를 낼 수 있다는
+     * 사실까지 이 단언이 덮지는 못한다(코드 문자열과 같은 사정 — 도출표가 그렇게 적었다).
+     */
+    const longestTransactionNo = progressStepFixtures
+      .map((step) => step.inventoryTransactionNo ?? '')
+      .reduce((longest, value) => (value.length > longest.length ? value : longest), '');
+    const businessDate = '2026-08-06';
     const longest = Math.max(
-      t.ledger.pair('SYN-TX-9001', '2026-08-06').length,
-      t.ledger.noBusinessDate('SYN-TX-9001').length,
-      t.ledger.noTransactionNo('2026-08-06').length,
+      t.ledger.pair(longestTransactionNo, businessDate).length,
+      t.ledger.noBusinessDate(longestTransactionNo).length,
+      t.ledger.noTransactionNo(businessDate).length,
     );
     const ledgerColumn = columns.find((column) => column.key === 'ledger');
 
@@ -180,19 +190,24 @@ describe('StepsPane', () => {
     expect(screen.getByRole('row', { name: /SYN_STEP_CLOSED/ })).toBe(kept);
   });
 
-  /* 같은 단계 코드가 두 번 일어나도 서로 다른 행이다 — 시각이 그 둘을 가른다. */
-  it('같은 단계 코드가 두 번 와도 두 행이다', () => {
-    render(
-      <StepsPane
-        steps={[
-          progressStep({ occurredAt: '2026-08-06T09:00:00+09:00' }),
-          progressStep({ occurredAt: '2026-08-06T18:00:00+09:00' }),
-        ]}
-      />,
-    );
+  /**
+   * ⭐ **행 열쇠의 시각 축** — 같은 단계 코드가 두 번 일어나도 서로 다른 행이다.
+   *
+   * ⛔ **행 수를 세는 것으로는 이 축을 잴 수 없다.** React는 열쇠가 겹쳐도 두 항목을 그리므로
+   * 행 수는 열쇠와 무관하게 늘 둘이다(리뷰 m-2 · T1 검증 V4와 같은 계열). 그래서 **앞 줄을
+   * 지우고 남은 줄의 DOM 노드가 그대로인지**를 본다 — 코드만 열쇠로 쓰면 두 줄이 같은 열쇠를
+   * 나눠 가져, 앞 줄을 지울 때 **뒷줄의 노드가 대신 지워지고** 앞 줄의 노드가 재활용된다.
+   */
+  it('단계 코드가 같아도 시각이 다르면 다른 행으로 본다', () => {
+    const early = progressStep({ occurredAt: '2026-08-06T09:00:00+09:00' });
+    const late = progressStep({ occurredAt: '2026-08-06T18:00:00+09:00' });
 
-    const table = screen.getByRole('table');
+    const { rerender } = render(<StepsPane steps={[early, late]} />);
+    const before = screen.getByRole('row', { name: /18:00/ });
 
-    expect(within(table).getAllByRole('row')).toHaveLength(3);
+    rerender(<StepsPane steps={[late]} />);
+
+    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2);
+    expect(screen.getByRole('row', { name: /18:00/ })).toBe(before);
   });
 });
