@@ -115,21 +115,24 @@ export const useUnreadCount = (): UseQueryResult<number> => {
 };
 
 /**
- * 마지막 실패 하나 — **무엇이 실패했는지까지 든다.**
+ * 쓰기 실패 하나 — **무엇이 실패했는지까지 든다.**
  *
  * ⭐ **`request`와 `feedback`을 가른다.** 쓰기가 실패한 것과, 쓰기는 됐는데 화면이 그 결과를
- * 반영하지 못한 것은 **사용자에게 다른 사실**이다(배너 제목이 갈린다). 앞 회차는 둘을 한
- * `.catch`가 함께 잡아 뒤엣것을 앞엣것으로 말했다.
+ * 반영하지 못한 것은 **사용자에게 다른 사실**이다(배너 제목이 갈린다).
  *
  * `cause`는 되먹임 갈래에만 있다 — `ApiError`에 원인을 실을 자리가 없어 여기 매단다.
  * 화면은 그리지 않지만 개발 도구·시험이 읽을 수 있어, 이 앱의 결함이 「서버가 이상하다」로
  * 보이는 것을 막는다.
  */
-export interface MarkReadFailure {
-  notificationId: number;
+export interface WriteFailure {
   kind: 'request' | 'feedback';
   error: ApiError;
   cause?: unknown;
+}
+
+/** 읽음 처리의 실패. **어느 알림의 것인지**를 함께 든다 — 여러 장이 동시에 나가기 때문이다. */
+export interface MarkReadFailure extends WriteFailure {
+  notificationId: number;
 }
 
 export interface MarkReadMutation {
@@ -187,7 +190,22 @@ const withoutPending = (
  * `toApiError`와 같은 규율).
  *
  * ⛔ **원인을 버리지 않는다.** 이 자리에 떨어지는 것은 대부분 **이 앱의 코드가 던진 것**이고,
- * 버리면 그 결함이 「서버가 이상하다」로 보인다. 갈래에 매달아 개발 도구·시험에서 읽게 둔다.
+ * 버리면 그 결함이 「서버가 이상하다」로 보인다. 갈래에 매달아 개발 도구·시험에서 읽게 둔다
+ * (원인은 이 함수가 아니라 `WriteFailure.cause`가 든다).
+ *
+ * ⭐ **문면은 `feedbackDescription` 하나다** — 「기간을 다시 조회하면 최신 상태가 보입니다」.
+ * 그 알림은 **존재하고 서버는 이미 바꿨으므로**, 「찾을 수 없습니다」류로 바꾸면 거짓이 되고
+ * 조치도 달라진다(최신 상태 보기 ↔ 없는 건 찾기).
+ *
+ * ⚠ **`validation` 갈래를 빌려 쓴다 — 이 실패는 검증 실패가 아니다.**
+ *
+ * `ApiError`는 **서버 응답을 정규화한 다섯 갈래**라(`patterns/request.ts`) 「응답은 정상인데
+ * 화면 쪽이 어긋났다」를 담을 자리가 없다. 배너가 문구를 꺼내는 갈래 중 **화면이 문면을 직접
+ * 정할 수 있는 것**이 `validation`뿐이라 그것을 골랐다 — 나머지는 서버가 준 `message`를 쓰거나
+ * 고정 문구로 떨어진다.
+ *
+ * 그래서 `code`에 이 자리의 이름을 남긴다(`READ_FEEDBACK_FAILED`) — 갈래만 보고 「서버가 400을
+ * 줬다」로 읽지 않게 한다. `ApiError`에 화면 쪽 갈래가 생기면 그때 이 차용을 걷는다.
  */
 const feedbackError = (): ApiError => ({
   kind: 'validation',
@@ -342,9 +360,17 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
    * 여기 적어 두어, **이 가드의 뮤턴트가 살아남는 것이 사각이 아니라 전제 변화**임을 남긴다.
    */
   const resetIfIdle = useCallback((): void => {
+    /*
+     * ⭐ **진술은 늘 거둔다 — 규율에 매인 것은 `reset()`뿐이다.**
+     *
+     * `omf-mes#96`이 막는 것은 **`reset()`이 나가는 중인 되먹임을 끊는 것**이다. `setFailure(null)`은
+     * 사슬을 끊지 않는다 — 약속에 매달린 `.catch`는 그 뒤에 실패하면 **다시** 기록한다.
+     * 둘을 한 가드로 묶으면 「낡은 진술의 생존」이 규율의 이름을 빌려 남는다.
+     */
+    setFailure(null);
+
     if (pendingIdsRef.current.size > 0) return;
 
-    setFailure(null);
     reset();
   }, [reset]);
 
@@ -359,7 +385,8 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
 export interface MarkAllReadMutation {
   markAllRead: () => void;
   isSubmitting: boolean;
-  error: ApiError | null;
+  /** 마지막 실패. 배너 제목이 갈래에 따라 갈린다 — `useMarkRead`와 같은 규율이다 */
+  failure: WriteFailure | null;
   resetIfIdle: () => void;
 }
 
@@ -381,7 +408,7 @@ export interface MarkAllReadOptions {
 export const useMarkAllRead = (options: MarkAllReadOptions): MarkAllReadMutation => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
-  const [error, setError] = useState<ApiError | null>(null);
+  const [failure, setFailure] = useState<WriteFailure | null>(null);
 
   const mutation = useMutation({
     mutationFn: (idempotencyKey: string): Promise<{ readCount: number }> =>
@@ -395,15 +422,30 @@ export const useMarkAllRead = (options: MarkAllReadOptions): MarkAllReadMutation
   const markAllRead = (): void => {
     if (mutation.isPending) return;
 
-    setError(null);
+    setFailure(null);
 
     mutation.mutate(crypto.randomUUID(), {
       onSuccess: (data) => {
         void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
-        options.onSuccess(data.readCount);
+
+        /*
+         * ⭐ **성공 되먹임의 예외를 요청 실패와 가른다** — `useMarkRead`와 같은 규율이다
+         * (전례 `login/queries.ts` · `omf-mes#96` 계열).
+         *
+         * ⚠ **이 회차에 그 예외가 실제로 나는 경로는 없다**(되먹임이 알림 한 줄뿐이다).
+         * 그래도 두는 이유는 **되먹임이 소비자가 넘기는 함수**이기 때문이다 — 뒤에 무엇이 붙든
+         * 그것이 던진 것을 「모두 읽음으로 바꾸지 못했습니다」로 말하면 거짓이 되고, 서버는
+         * 이미 전부 바꿔 두었다. 두 쓰기의 규율이 갈리면 **뒤에 붙이는 사람이 어느 쪽을 따를지
+         * 알 수 없다.**
+         */
+        try {
+          options.onSuccess(data.readCount);
+        } catch (cause) {
+          setFailure({ kind: 'feedback', error: feedbackError(), cause });
+        }
       },
       onError: (cause) => {
-        setError(toApiError(cause));
+        setFailure({ kind: 'request', error: toApiError(cause) });
       },
     });
   };
@@ -417,16 +459,18 @@ export const useMarkAllRead = (options: MarkAllReadOptions): MarkAllReadMutation
   isPendingRef.current = mutation.isPending;
 
   const resetIfIdle = useCallback((): void => {
+    /* 진술은 늘 거둔다 — 규율에 매인 것은 `reset()`뿐이다(위 `useMarkRead`와 같은 판단). */
+    setFailure(null);
+
     if (isPendingRef.current) return;
 
-    setError(null);
     reset();
   }, [reset]);
 
   return {
     markAllRead,
     isSubmitting: mutation.isPending,
-    error,
+    failure,
     resetIfIdle,
   };
 };

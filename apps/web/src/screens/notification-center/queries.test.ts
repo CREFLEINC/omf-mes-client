@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
@@ -9,8 +10,10 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { notificationListBody } from './fixtures';
+import { describeWriteError } from './write-error-banner';
 import {
   notificationKeys,
+  useMarkAllRead,
   useMarkRead,
   useNotificationList,
   type NotificationListQuery,
@@ -156,6 +159,40 @@ describe('useMarkRead — 되먹임 예외는 요청 실패가 아니다', () =>
     expect(result.current.failure?.cause).toBeInstanceOf(Error);
   });
 
+  /**
+   * ⭐ **문면까지 고정한다 — 제목만으로는 절반이다**(이월 #22의 남은 절반).
+   *
+   * 그 알림은 **존재하고 서버는 이미 바꿨다.** 본문이 「그 알림을 찾을 수 없습니다」로 바뀌면
+   * **거짓**이고 조치도 달라진다(최신 상태 보기 ↔ 없는 건 찾기). 배너가 본문을 꺼내는
+   * 함수(`describeWriteError`)에 그대로 태워 **화면에 나가는 글자**를 잰다.
+   */
+  it('되먹임 실패의 본문이 다시 조회하라는 길만 말한다', async () => {
+    const { result } = renderHookWithProviders(
+      () =>
+        useMarkRead({
+          onSuccess: () => {
+            throw new Error('합성 되먹임 예외');
+          },
+        }),
+      { fetch: createStubFetch([markReadRoute(() => new Response(null, { status: 204 }))]) },
+    );
+
+    act(() => {
+      result.current.markRead(7101);
+    });
+
+    await waitFor(() => {
+      expect(result.current.failure).not.toBeNull();
+    });
+
+    const failure = result.current.failure;
+    const body = failure === null ? '' : describeWriteError(failure.error);
+
+    expect(body).toBe(messages.notificationCenter.writeError.feedbackDescription);
+    /* 짝 음성 — 없는 알림의 문면으로 새지 않는다. */
+    expect(body).not.toBe(messages.notificationCenter.writeError.notFound);
+  });
+
   /** 짝 양성 — 진짜 요청 실패는 요청 갈래로 간다. 둘이 갈려야 뜻이 있다. */
   it('요청이 실패하면 요청 갈래로 기록한다', async () => {
     const { result } = renderHookWithProviders(
@@ -203,5 +240,89 @@ describe('useMarkRead — 되먹임 예외는 요청 실패가 아니다', () =>
 
     /* `.finally`가 갈래와 무관하게 돈다 — 그 카드를 다시 누를 수 있어야 한다. */
     expect(result.current.pendingIds.has(7101)).toBe(false);
+  });
+});
+
+describe('useMarkAllRead — 되먹임 예외는 요청 실패가 아니다', () => {
+  const READ_ALL_PATH = '/app/notifications:read-all';
+
+  const readAllRoute = (respond: () => Response): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === READ_ALL_PATH,
+    respond,
+  });
+
+  /**
+   * ⭐ **두 쓰기의 규율이 갈리면 안 된다.** 이 회차에 그 예외가 실제로 나는 경로는 없지만
+   * (되먹임이 알림 한 줄뿐이다) 되먹임은 **소비자가 넘기는 함수**라, 뒤에 무엇이 붙든 그것이
+   * 던진 것을 「모두 읽음으로 바꾸지 못했습니다」로 말하면 **거짓**이 된다 — 서버는 이미 전부
+   * 바꿔 두었다. 규율이 한쪽에만 있으면 **뒤에 붙이는 사람이 어느 쪽을 따를지 알 수 없다.**
+   */
+  it('되먹임이 던지면 되먹임 갈래로 기록한다', async () => {
+    const { result } = renderHookWithProviders(
+      () =>
+        useMarkAllRead({
+          onSuccess: () => {
+            throw new Error('합성 되먹임 예외');
+          },
+        }),
+      { fetch: createStubFetch([readAllRoute(() => jsonResponse({ readCount: 5 }))]) },
+    );
+
+    act(() => {
+      result.current.markAllRead();
+    });
+
+    await waitFor(() => {
+      expect(result.current.failure).not.toBeNull();
+    });
+
+    expect(result.current.failure?.kind).toBe('feedback');
+    expect(result.current.failure?.cause).toBeInstanceOf(Error);
+  });
+
+  /** 짝 양성 — 진짜 요청 실패는 요청 갈래로 간다. 둘이 갈려야 뜻이 있다. */
+  it('요청이 실패하면 요청 갈래로 기록한다', async () => {
+    const { result } = renderHookWithProviders(
+      () => useMarkAllRead({ onSuccess: () => undefined }),
+      {
+        fetch: createStubFetch([
+          readAllRoute(() => jsonResponse({ message: '' }, { status: 500 })),
+        ]),
+      },
+    );
+
+    act(() => {
+      result.current.markAllRead();
+    });
+
+    await waitFor(() => {
+      expect(result.current.failure).not.toBeNull();
+    });
+
+    expect(result.current.failure?.kind).toBe('request');
+    expect(result.current.failure?.cause).toBeUndefined();
+  });
+
+  it('되먹임이 던져도 나가는 중 표시가 풀린다', async () => {
+    const { result } = renderHookWithProviders(
+      () =>
+        useMarkAllRead({
+          onSuccess: () => {
+            throw new Error('합성 되먹임 예외');
+          },
+        }),
+      { fetch: createStubFetch([readAllRoute(() => jsonResponse({ readCount: 5 }))]) },
+    );
+
+    act(() => {
+      result.current.markAllRead();
+    });
+
+    await waitFor(() => {
+      expect(result.current.failure).not.toBeNull();
+    });
+
+    expect(result.current.isSubmitting).toBe(false);
   });
 });
