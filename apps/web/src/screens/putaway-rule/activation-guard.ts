@@ -53,6 +53,28 @@ export const activationIntentOf = (isActive: boolean | null): ActivationIntent |
   return isActive ? 'deactivate' : 'activate';
 };
 
+/**
+ * 보낸 전환이 **뒤집혔음이 확인됐는가.**
+ *
+ * 응답을 받지 못한 전환은 화면에 「바뀌었는지 알 수 없습니다 — 같은 버튼을 바로 다시 누르지
+ * 마세요」를 남긴다. 그 뒤 「다시 조회」로 **반대 갈래가 서면** 두 절이 모두 거짓이 된다 —
+ * 바뀐 것이 확인됐고, 지금 누를 것은 같은 버튼이 아니다. 그때 그 진술만 걷는 것이 이 판정이며,
+ * **화면의 두 표면**(창을 열 때 · 구획에 그릴 때)이 같은 값을 쓴다.
+ *
+ * ⛔ **`sent`가 `null`이면 「아직 아무것도 보내지 않았다」이고 그때는 확인된 것도 없다.**
+ * 잠금 토큰이 없어 **요청이 나가기도 전에** 멈춘 갈래가 여기 든다(공통 쓰기 훅은 그 경우
+ * 요청 함수를 부르지 않는다 — 보낸 갈래를 적는 자리가 그 안에 있다). 그 상태를 「뒤집혔다」로
+ * 읽으면 **저장을 시작조차 못 했다는 사실이 걷혀** 사용자는 아무 일도 없었다고 읽는다.
+ *
+ * 오늘 화면에서 그 조합에 닿기는 어렵다 — 창을 닫는 길이 나가는 중이 아닌 실패를 이미 걷기
+ * 때문이다. **그러나 그 불가능은 이 판정의 성질이 아니라 창 닫기 규칙에 얹혀 있다**(그 규칙은
+ * 이 슬라이스에서 한 번 뒤집힌 적이 있다). 그래서 조건을 지우지 않고 **이 층에서 잰다.**
+ */
+export const isIntentReversed = (
+  sent: ActivationIntent | null,
+  against: ActivationIntent,
+): boolean => sent !== null && sent !== against;
+
 export interface ActivationGate {
   /** 지금 낼 수 있는 전환. `null`이면 상세가 아직 오지 않았다. */
   intent: ActivationIntent | null;

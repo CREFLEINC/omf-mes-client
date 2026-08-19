@@ -1426,6 +1426,34 @@ describe('PutawayRuleScreen — 없는 규칙을 가리키는 주소', () => {
     });
   });
 
+  /**
+   * ⭐ **「늘지 않았다」를 자기 치유가 만들 수 없는 값으로 잰다.**
+   *
+   * 바로 위 시험은 뒤로 간 뒤 「9999가 없다」를 기다리는데, 정리가 푸시였다면 뒤로 간 그 자리에서
+   * **정리가 다시 돌아** 같은 문자열을 만든다 — 기다리면 통과하고 **사용자만 그 자리에 갇힌다**
+   * (뒤로 눌러도 없는 규칙 주소로 되돌아가 같은 정리가 되풀이된다 · 사본 체크리스트 1번).
+   *
+   * 그래서 **정리 이전의 자리**(질의 없는 주소)를 기다린다. 푸시로 칸이 쌓였다면 한 칸 뒤는
+   * 없는 규칙 주소이고, 그 자리가 다시 정리돼도 **이 값은 되지 못한다.**
+   */
+  it('정리 뒤 한 칸 뒤로 가면 이 화면에 들어오기 전 자리다', async () => {
+    const { user } = renderScreen('/', allRoutes([missingDetail]), undefined, '?wh=9201&rule=9999');
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    /* 짝 양성 — 없는 규칙을 실제로 가리켰고 정리가 돌았다. */
+    await screen.findByText(t.empty.notFoundTitle);
+    await waitFor(() => {
+      expect(currentLocation()).toBe('/?wh=9201');
+    });
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe('/');
+    });
+  });
+
   /** 조건이 바뀌면 그 안내가 가리킬 것이 없다 — 자기 대상보다 오래 살지 않는다. */
   it('조건이 바뀌면 안내가 사라진다', async () => {
     const { user } = renderScreen('/?wh=9201&rule=9999', allRoutes([missingDetail]));
@@ -3559,6 +3587,38 @@ describe('PutawayRuleScreen — 확인 창이 열린 사이 상태가 뒤집히�
  * 「아무 일도 없었다」로 읽히는데, 그 다음 조작이 정확히 금지된 조작이다 — 같은 버튼을 다시
  * 누르면 쓰기 훅이 **새 멱등 키**를 만들어 이중 전송이 열린다.
  */
+/**
+ * ⭐ **거두는 것은 초안만이 아니다.**
+ *
+ * 창·인라인 오류·쓰기 실패는 `resetEditing`이 **편집 대상에 매여** 거둔다(클릭 핸들러가 아니다
+ * — 뒤로가기·주소 직접 편집·사이드바는 핸들러를 지나지 않는다). 그 매임이 끊기면 규칙 A에서
+ * 연 「사용 중지」 창이 **규칙 B 위에 그대로 남는다** — 그 규칙은 이미 꺼져 있어 낼 수도 없는
+ * 조작이고, 그대로 확인을 누르면 확인 창이 말한 것과 다른 일이 일어난다.
+ */
+describe('PutawayRuleScreen — 주소로 대상이 바뀌면', () => {
+  it('열려 있던 확인 창이 함께 걷힌다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE, allRoutes(), undefined, '?wh=9201&rule=9003');
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    /* 짝 양성 — 창이 실제로 열렸다. */
+    expect(within(activationDialog()).getByText(t.dialog.deactivateReversible)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    /* 짝 양성 — 새 대상이 실제로 섰다(9003은 꺼져 있어 손잡이가 반대 이름이다). */
+    expect(
+      await within(ACTIVATION_PANE()).findByRole('button', { name: t.actions.activate }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
 describe('PutawayRuleScreen — 창이 닫힌 뒤 도착한 전환 실패 (C4-5 실패 축)', () => {
   const offline = (): Response => {
     throw new Error('합성 네트워크 단절');
@@ -3782,6 +3842,43 @@ describe('PutawayRuleScreen — 응답 없음 안내와 갈래 뒤집힘 (C5-A)'
     expect(
       within(ACTIVATION_PANE()).queryByText(t.notes.activationUnconfirmed),
     ).not.toBeInTheDocument();
+    /*
+     * ⭐ **배너는 창으로 옮겨 온다** — 구획과 같은 규칙이다(참인 사실은 걷지 않는다).
+     * 창을 열며 통째로 걷으면 여기서 운다.
+     */
+    expect(within(activationDialog()).getByText(messages.httpError.offline)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **창을 열기 전 — 구획 표면에서도 걷힌다.**
+   *
+   * 창을 열 때만 걷는 것은 **절반이다.** 안내를 읽고 시키는 대로 「다시 조회」를 누른 사용자는
+   * 창을 열기 **전에** 그 구획을 본다. 그 순간 손잡이는 이미 「다시 사용」인데 바로 옆에
+   * 「바뀌었는지 **알 수 없습니다** — 같은 버튼을 다시 누르지 마세요」가 서 있으면, 한 화면이
+   * **서로 어긋나는 두 사실**을 함께 말한다.
+   *
+   * ⛔ **걷는 것은 「모른다」는 진술뿐이다.** 배너의 「응답을 받지 못했다」는 여전히 참이므로
+   * 남는다 — 그것까지 걷으면 실패가 통째로 사라져 사용자는 아무 일도 없었다고 읽는다.
+   */
+  it('다시 조회로 갈래가 뒤집히면 구획의 안내도 걷히고 배너는 남는다', async () => {
+    const server = { isActive: true };
+    const { requests, release, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([unansweredDeactivate(server, true), serverDetailRoute(server)]),
+      holdDeactivate,
+    );
+
+    await arriveUnconfirmed(user, requests, release);
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+
+    /* 짝 양성 — 뒤집힘이 확인됐다(손잡이 이름이 반대가 됐다). 창은 아직 열지 않았다. */
+    await within(ACTIVATION_PANE()).findByRole('button', { name: t.actions.activate });
+
+    expect(
+      within(ACTIVATION_PANE()).queryByText(t.notes.activationUnconfirmed),
+    ).not.toBeInTheDocument();
+    /* 배너는 남는다 — 확인된 사실까지 지우지 않는다. */
+    expect(within(ACTIVATION_PANE()).getByText(messages.httpError.offline)).toBeInTheDocument();
   });
 
   /**
@@ -3804,6 +3901,9 @@ describe('PutawayRuleScreen — 응답 없음 안내와 갈래 뒤집힘 (C5-A)'
     const deactivateButton = await within(ACTIVATION_PANE()).findByRole('button', {
       name: messages.common.deactivate,
     });
+
+    /* 위 시험의 거울 — 확인된 것이 없으므로 **구획에서도** 걷히지 않는다. */
+    expect(within(ACTIVATION_PANE()).getByText(t.notes.activationUnconfirmed)).toBeInTheDocument();
 
     await user.click(deactivateButton);
 

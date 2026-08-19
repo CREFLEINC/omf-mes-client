@@ -11,6 +11,7 @@ import { ActivationDialog } from './activation-dialog';
 import {
   activationActionOf,
   activationIntentOf,
+  isIntentReversed,
   judgeRemainingCoverage,
   type ActivationIntent,
 } from './activation-guard';
@@ -891,6 +892,21 @@ export const PutawayRuleScreen = () => {
   };
 
   /**
+   * 보낸 전환이 **뒤집혔음이 확인됐는가.** 「응답을 받지 못해 바뀌었는지 알 수 없습니다 —
+   * 같은 버튼을 바로 다시 누르지 마세요」가 **더는 참이 아닌 순간**을 가른다.
+   *
+   * 판정 자체는 `activation-guard.ts`가 갖는다 — 이 화면의 다른 판정들과 같은 자리이고,
+   * `null`(아직 보낸 것이 없다)의 뜻도 거기서 잰다. 여기서는 **보낸 갈래를 건네는 일**만 한다.
+   *
+   * ⚠ **렌더 중에 참조를 읽는다.** 이 값은 보내는 길(`request()`)에서만 바뀌고 그 길은 반드시
+   * 상태 변화(진행 중 → 실패)를 함께 일으키므로, 값이 바뀐 뒤에는 반드시 다시 그려진다 —
+   * 한 렌더 안에서 답이 흔들리지 않는다. 같은 이유로 이 슬라이스는 대상 참조 둘도 렌더에서
+   * 다룬다(`editTargetKeyRef`).
+   */
+  const isSentIntentReversed = (against: ActivationIntent): boolean =>
+    isIntentReversed(sentIntentRef.current, against);
+
+  /**
    * 전환 확인 창을 연다.
    *
    * ⛔ **앞선 실패를 여기서 걷지 않는다.** 전례는 창을 열 때 배너를 걷었으나(「지금 하려는
@@ -899,25 +915,15 @@ export const PutawayRuleScreen = () => {
    * 다시 누르지 마세요」**다. 창을 열면서 걷으면 **안내가 막으려던 이중 전송이 안내 없이
    * 열린다**(쓰기 훅은 호출마다 새 멱등 키를 만든다).
    *
-   * 그래서 실패는 **창으로 옮겨 온다**(자리 배타 — `activationFailureSlot`). 걷는 자리는 셋뿐이다:
-   * 다시 보내는 순간(`write()`가 스스로 걷는다) · 대상이 바뀌는 순간(`resetEditing`) ·
-   * 그리고 **갈래가 뒤집힌 순간**(아래).
+   * 그래서 실패는 **창으로 옮겨 온다**(자리 배타 — `activationFailureSlot`). 걷는 자리는 둘뿐이다:
+   * 다시 보내는 순간(`write()`가 스스로 걷는다)과 대상이 바뀌는 순간(`resetEditing`).
    *
-   * ⭐ **다만 갈래가 뒤집혔으면 걷는다.** 안내를 읽고 「다시 조회」를 눌러 상태가 뒤집힌 것이
-   * 확인되면 그 문장은 두 군데서 거짓이 된다 — 「바뀌었는지 **알 수 없습니다**」(방금 알았다) ·
-   * 「**같은 버튼**을 바로 다시 누르지 마세요」(지금 누르는 것은 반대 버튼이다). 확인하지 못한
-   * 것을 사실로 말하지 않는 규율의 **거울**이라, 확인된 것을 모른다고 말하는 것도 막는다.
+   * ⭐ **갈래가 뒤집혀 거짓이 된 문장은 「걷지」 않고 「그리지 않는다」**(`activationFailureSlot`).
+   * 창을 열 때 통째로 걷으면 **참인 사실(요청이 실패했다)까지 함께 사라지고**, 창과 구획이 같은
+   * 사실을 다르게 다루게 된다 — 거짓이 된 진술 하나만 그리지 않으면 두 표면이 저절로 맞는다.
    */
   const openActivationDialog = (intent: ActivationIntent): void => {
     if (isLocked) return;
-
-    /*
-     * 가르는 값은 **보낸 갈래**다(`sentIntentRef`) — 창은 닫혀 있고 목록·상세 값은 이미
-     * 뒤집혀 있어, 「무엇을 보냈는가」에 답할 수 있는 자리가 여기밖에 없다.
-     */
-    if (sentIntentRef.current !== null && sentIntentRef.current !== intent) {
-      resetIfIdle(activationWrite);
-    }
 
     setDialog({ kind: 'activation', intent });
   };
@@ -975,11 +981,16 @@ export const PutawayRuleScreen = () => {
    * **안내 문면은 축마다 다르다** — 확인할 자리와 하지 말아야 할 조작이 다르기 때문이다
    * (저장은 값을 다시 보내는 것, 전환은 같은 버튼을 다시 누르는 것).
    *
+   * ⭐ **안내만 따로 걷을 수 있다**(`unconfirmedNote`가 `null`). 배너와 안내는 **말하는 사실이
+   * 다르다** — 배너는 「응답을 받지 못했다」(한 번 참이면 계속 참)이고 안내는 「그래서 바뀌었는지
+   * 모른다」(뒤에 확인되면 거짓이 된다). 뒤엣것이 거짓이 된 자리에서 배너까지 걷으면 실패가
+   * 통째로 사라져 사용자는 아무 일도 없었다고 읽는다.
+   *
    * **매임을 지난다** — 남의 대상에 보낸 요청의 거절 사유를 이 화면에 세우지 않는다.
    */
   const writeFailureSlot = (
     write: { error: ApiError | null },
-    unconfirmedNote: string,
+    unconfirmedNote: string | null,
     onReload?: () => void,
   ): ReactNode => {
     const error = isWriteResultMine ? write.error : null;
@@ -987,7 +998,9 @@ export const PutawayRuleScreen = () => {
     return (
       <>
         <SaveErrorBanner error={error} onReload={onReload} />
-        {error?.kind === 'network' && <p className="field-note">{unconfirmedNote}</p>}
+        {error?.kind === 'network' && unconfirmedNote !== null && (
+          <p className="field-note">{unconfirmedNote}</p>
+        )}
       </>
     );
   };
@@ -1011,15 +1024,29 @@ export const PutawayRuleScreen = () => {
    * 전송 중에도 창이 닫힌다 — 그러면 **그 뒤 도착한 실패가 화면 어디에도 서지 않는다.** 성공
    * 토스트도 없고 목록 표식도 그대로라 사용자에게는 「아무 일도 없었다」로 읽히는데, 그때
    * 다음 조작이 정확히 금지된 조작(같은 버튼 다시 누르기 → **새 멱등 키로 이중 전송**)이다.
-   * 이 회차가 가장 무겁게 쓴 문장(`activationUnconfirmed`)이 바로 그 조작을 막으려는 것이다.
+   * 이 화면이 가장 무겁게 쓴 문장(`activationUnconfirmed`)이 바로 그 조작을 막으려는 것이다.
    *
    * **두 자리에 함께 그리지 않는다.** 같은 사유가 창과 구획에 겹쳐 서면 사용자가 두 사건으로
    * 읽는다 — 창의 유무가 자리를 배타로 가른다.
+   *
+   * ⭐ **「모른다」는 진술은 뒤집힘이 확인되면 그리지 않는다.** 안내를 읽고 「다시 조회」를 누른
+   * 사용자는 **창을 열기 전에** 이 구획을 본다 — 그때 손잡이는 이미 반대 이름인데 안내는
+   * 「바뀌었는지 알 수 없습니다 · 같은 버튼을 다시 누르지 마세요」라, 한 화면이 서로 어긋나는
+   * 두 사실을 말하게 된다.
+   *
+   * ⛔ **거둠(`reset`)이 아니라 그리지 않는 것이다.** 이 함수를 **창과 구획이 함께 쓰므로**
+   * 판정이 여기 한 곳에 있으면 두 표면이 저절로 같은 답을 낸다. 창을 열 때 오류를 통째로 거두는
+   * 길로 풀면 **참인 사실(요청이 실패했다)까지 사라지고**, 두 표면이 같은 사실을 다르게 다룬다.
+   *
+   * **상세가 아직 없으면 그대로 그린다** — 견줄 갈래가 없다는 것은 확인된 것이 없다는 뜻이고,
+   * 그때 「모른다」는 여전히 참이다. 그 조건을 타입이 요구한다(`ActivationIntent`는 `null`을 받지 않는다).
    */
   const activationFailureSlot = (): ReactNode =>
     writeFailureSlot(
       activationWrite,
-      t.notes.activationUnconfirmed,
+      activationIntent !== null && isSentIntentReversed(activationIntent)
+        ? null
+        : t.notes.activationUnconfirmed,
       /* 409는 재조회로 풀린다 — 이 쓰기에는 잠글 대상이 있다(계약이 `If-Match`를 요구한다). */
       reloadDetail,
     );
