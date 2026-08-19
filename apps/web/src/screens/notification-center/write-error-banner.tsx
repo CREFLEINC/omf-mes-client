@@ -42,6 +42,34 @@ export const describeWriteError = (error: ApiError): string => {
   }
 };
 
+/** 어느 쓰기가 실패했나. 두 쓰기의 제목이 갈려야 사용자가 무엇이 막혔는지 안다 */
+export type WriteScope = 'read' | 'allRead';
+
+/**
+ * 쓰기 실패의 제목 — **무엇이 실패했는지와 어느 쓰기인지 두 축으로 정한다.**
+ *
+ * ⭐ **되먹임 갈래에 「바꾸지 못했습니다」로 말하면 거짓이다.** 서버는 이미 바꿨고, 사용자가
+ * 다시 눌러도 아무 일이 없다(이미 읽음이다). 못 바꾼 것이 아니라 **바꾼 결과를 화면이
+ * 반영하지 못한 것**이므로 제목이 그 사실을 그대로 말해야 한다.
+ *
+ * ⭐ **내보내는 이유는 단위 시험이 이 표를 직접 재기 위해서다.** 되먹임 갈래는 **화면을
+ * 거쳐 도달할 수 없고**(화면의 되먹임이 나중에 도는 상태 갱신이라 동기적으로 던지지 않는다 —
+ * T3 실측), 그래서 「그 갈래에서 무엇이 보이는가」를 화면 시험으로 고정할 수단이 없다.
+ * 전례는 같은 파일 계열의 `describeMarkAllReadReason`이다.
+ *
+ * | | `request` | `feedback` |
+ * | --- | --- | --- |
+ * | 읽음 처리 | 읽음으로 바꾸지 못했습니다 | 읽음으로 바꿨지만 화면에 반영하지 못했습니다 |
+ * | 모두 읽음 | 모두 읽음으로 바꾸지 못했습니다 | 모두 읽음으로 바꿨지만 화면에 반영하지 못했습니다 |
+ */
+export const writeFailureTitle = (kind: 'request' | 'feedback', scope: WriteScope): string => {
+  if (kind === 'feedback') {
+    return scope === 'read' ? t.writeError.feedbackTitle : t.writeError.allReadFeedbackTitle;
+  }
+
+  return scope === 'read' ? t.writeError.readTitle : t.writeError.allReadTitle;
+};
+
 export interface WriteErrorBannerProps {
   error: ApiError;
   /** 무엇이 실패했나. 두 쓰기의 제목이 달라야 사용자가 어느 조작이 막혔는지 안다 */

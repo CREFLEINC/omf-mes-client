@@ -467,6 +467,22 @@ main > * + * {
   gap: var(--space-2);
 }
 
+/*
+ * 목록 한 줄 — 카드와 「대상으로 이동」이 **형제로** 나란히 선다(결정 ⑦).
+ * 카드가 남는 폭을 차지하고 버튼은 제 폭만 쓴다. 정렬은 위쪽에 맞춘다 — 카드가 두 줄이어도
+ * 버튼이 카드 한가운데로 내려가면 어느 카드의 것인지 읽기 어려워진다.
+ */
+.notification-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.notification-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
 .notification-card-code {
   font-weight: 600;
 }

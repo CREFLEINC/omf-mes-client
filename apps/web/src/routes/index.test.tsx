@@ -13,6 +13,11 @@ import { describe, expect, it } from 'vitest';
 import { AppLayout } from '../app/layout';
 import { SessionProvider } from '../patterns/session';
 import { sessionBody } from '../screens/login/fixtures';
+import {
+  notificationEventListBody,
+  notificationFixtures,
+  notificationListBody,
+} from '../screens/notification-center/fixtures';
 import { poRegisterEntryPath } from '../screens/over-receipt-split/created-receipts-pane';
 import {
   businessUnitFixtures,
@@ -197,6 +202,22 @@ const putawayRuleRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/uoms', putawayUomFixtures),
 ];
 
+/** W-CO-03이 첫 진입에 부르는 것들 — 목록·유형 목록·안 읽은 수. */
+const notificationCenterRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/app/notifications'),
+    respond: () => jsonResponse(notificationListBody(notificationFixtures)),
+  },
+  {
+    match: (request) => isGet(request, '/app/notification-events'),
+    respond: () => jsonResponse(notificationEventListBody()),
+  },
+  {
+    match: (request) => isGet(request, '/app/notifications/unread-count'),
+    respond: () => jsonResponse({ unreadCount: 2 }),
+  },
+];
+
 /** W-01-11이 첫 진입에 부르는 것들 — 대상 초과분 상세와 이름 풀이 다섯. */
 const poRegisterRoutes = (): StubRoute[] => [
   {
@@ -355,6 +376,16 @@ describe('appRouter', () => {
    *
    * **주소는 단수, 계약 리소스는 복수다** — 주소가 가리키는 것은 리소스가 아니라 **화면**이다.
    */
+  /**
+   * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 **사이드바 섹션**을 따른다.
+   * 알림은 자기 섹션을 가지므로 앞머리도 그 이름이다.
+   */
+  it('알림센터가 알림 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/notification/center');
+    expect(routedPaths()).not.toContain('/app/notifications');
+    expect(routedPaths()).not.toContain('/system/notification-center');
+  });
+
   it('적치 규칙이 기준정보 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/master-data/putaway-rule');
     expect(routedPaths()).not.toContain('/logistics/putaway-rules');
@@ -731,5 +762,48 @@ describe('appRouter — 계정 로그인의 자리', () => {
 
     /* 로그인 화면은 사라졌다 — 셸 안에 그 폼이 남아 있으면 전환이 아니라 겹침이다. */
     expect(screen.queryByLabelText(messages.login.fields.password)).toBeNull();
+  });
+});
+
+/**
+ * **W-CO-03은 진입 경로가 사이드바 하나뿐이다** — 다른 화면에서 넘어오는 링크가 없다
+ * (종 배지를 만들지 않았으므로 상단 바에도 길이 없다 · 결정 ②).
+ *
+ * **네 PR이 함께 여는 자리다.** 기간·목록·조건·쪽 이동·읽음 처리가 다 서기 전에는 라우트를
+ * 두지 않았다(정책 §5.2) — 읽음으로 바꿀 수 없는 동안에는 알림이 계속 쌓이기만 한다.
+ * 그래서 이 describe가 **여는 쪽을 양쪽에서** 잰다: 메뉴에 있고, 그 메뉴가 가리키는 주소가
+ * 실제로 이 화면을 연다.
+ */
+describe('appRouter — 알림센터의 진입 경로', () => {
+  it('사이드바에 이 화면 항목이 있다', () => {
+    expect(sidebarHrefs()).toContain('/notification/center');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).getByText('알림센터')).toBeInTheDocument();
+  });
+
+  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  it('그 주소로 들어가면 알림센터 화면이 첫 상태로 선다', async () => {
+    renderRoutedApp('/notification/center', notificationCenterRoutes());
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.notificationCenter.title }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **주소에 기간이 없으면 화면이 기본 7일을 심는다** — 라우트를 거친 첫 진입이 그 경로다.
+   * 라우트만 열고 화면이 서지 않는 상태를 잡으려면 **조회가 실제로 도는 것**까지 봐야 한다.
+   */
+  it('첫 진입에 기간이 주소에 심긴다', async () => {
+    renderRoutedApp('/notification/center', notificationCenterRoutes());
+
+    await screen.findByRole('heading', { level: 1, name: messages.notificationCenter.title });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location').textContent).toContain('from=');
+    });
+    expect(screen.getByTestId('location').textContent).toContain('to=');
   });
 });

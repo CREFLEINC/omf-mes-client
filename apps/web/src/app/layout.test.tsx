@@ -373,11 +373,11 @@ describe('AppLayout', () => {
    * **넷이 된 것은 W-CO-09에서다.** 결재함은 기준정보(무엇을 정해 두는가)도 자재창고
    * (물건이 오가는 일)도 시스템 관리(운영 설정)도 아닌, **올라온 결재를 처리하는 일**이다.
    */
-  it('사이드바 섹션이 넷이고 모든 항목이 그 안에 있다', () => {
+  it('사이드바 섹션이 다섯이고 모든 항목이 그 안에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const sections = ['기준정보', '자재창고', '승인', '시스템 관리'].map(
+    const sections = ['기준정보', '자재창고', '승인', '알림', '시스템 관리'].map(
       (label) => within(sidebar).getByText(label).parentElement,
     );
 
@@ -498,10 +498,50 @@ describe('AppLayout', () => {
       '/logistics/disposal-issue',
       '/logistics/iqc-skip-approval',
       '/approval/inbox',
+      '/notification/center',
       '/system/users-roles',
       '/system/approval-route',
       '/system/password-change',
     ]);
+  });
+
+  /**
+   * W-CO-03 — **알림은 자기 섹션을 갖는다**(설계 IA). 「시스템 관리」에 넣으면 **관리자가
+   * 남을 설정하는 자리**에 **누구나 자기 것을 보는 화면**이 섞인다.
+   */
+  it('사이드바에 알림 섹션의 알림센터 메뉴가 승인 뒤·시스템 관리 앞에 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(sidebar).getByText('알림')).toBeInTheDocument();
+
+    const item = within(sidebar).getByRole('link', { name: /알림센터/ });
+    expect(item).toHaveAttribute('href', '/notification/center');
+
+    /* 섹션 차례가 승인 → 알림 → 시스템 관리다. */
+    const labels = ['기준정보', '자재창고', '승인', '알림', '시스템 관리'].map((label) =>
+      within(sidebar).getByText(label),
+    );
+    const ordered = [...labels].sort((left, right) =>
+      left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+    );
+
+    expect(ordered).toEqual(labels);
+  });
+
+  /**
+   * ⛔ **상단 바에 종 배지를 만들지 않는다**(결정 ②). 이 파일은 지금 **요청이 하나도 없고**,
+   * 조회를 처음 들이면 모든 화면이 라우트 전환마다 그것을 지며 미인증 실패가 전 화면의
+   * 상단 바에 나타난다.
+   */
+  it('상단 바에 안 읽은 알림 수 표시를 두지 않는다', () => {
+    renderLayout('본문 내용');
+
+    /* 짝 양성 — 상단 바는 실제로 서 있고 브랜드를 담는다. */
+    expect(within(topbar()).getByText('OMF-MES 관리웹')).toBeInTheDocument();
+    expect(within(topbar()).queryByRole('link', { name: /알림/ })).not.toBeInTheDocument();
+    expect(within(topbar()).queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('본문 랜드마크가 자식 내용을 담는다', () => {
