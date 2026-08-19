@@ -11,6 +11,7 @@ import { ActivationDialog } from './activation-dialog';
 import {
   activationActionOf,
   activationIntentOf,
+  isIntentReversed,
   judgeRemainingCoverage,
   type ActivationIntent,
 } from './activation-guard';
@@ -143,13 +144,19 @@ interface FormDraft {
 }
 
 /**
- * W-06-14 적치 규칙 마스터 — **등록·수정 회차**.
+ * W-06-14 적치 규칙 마스터.
  *
- * ## 이 회차가 하는 것과 하지 않는 것
+ * ## 이 화면이 하는 것과 들어오는 길
  *
- * 규칙을 새로 만들고 고치고 **끄고 다시 켤 수 있다**. **라우트는 아직 열지 않는다**(다음
- * 회차) — 마스터의 네 조작이 다 서기 전에 화면을 노출하면 사용자가 잘못 만든 규칙을 어쩌지
- * 못한다. 그래서 이 화면은 아직 사용자에게 보이지 않고, 관찰은 시험으로 한다.
+ * 규칙을 보고 만들고 고치고 **끄고 다시 켠다**. **라우트와 사이드바는 그 네 조작이 다 선
+ * 뒤에 열었다** — 끄지 못하는 마스터를 먼저 노출하면 사용자가 잘못 만든 규칙을 지울 수도 끌
+ * 수도 없고, 그 규칙은 현장의 적치를 계속 막는다(정책 §5.2 — 접근 불가능한 경계).
+ *
+ * **들어오는 길은 사이드바 항목 하나뿐이다**(다른 화면에서 넘어오는 링크가 없다). 그래서
+ * 「메뉴로 다시 들어오기」가 **같은 라우트에 질의만 다른 이동**이며, 그 길은 이 화면의 초안
+ * 파기 확인을 지나지 않는다 — 거두는 자리가 클릭 핸들러가 아니라 **주소에 매여** 있어야 하는
+ * 이유다(`editTargetKey` 하나가 그 축이다). 항목과 라우트 표를 잇는 감지기는
+ * `routes/index.test.tsx`에 있다.
  *
  * ## 단계 전이 표
  *
@@ -282,11 +289,20 @@ export const PutawayRuleScreen = () => {
   const [writeTargetKey, setWriteTargetKey] = useState<string | null>(null);
 
   /**
-   * 마지막으로 보낸 **전환의 갈래**. 성공 문면이 끄기와 켜기로 갈리는데, 쓰기의 되먹임은
-   * 보낸 값을 들고 오지 않는다. 창의 `intent`를 읽을 수는 없다 — 창은 그 사이에 닫힐 수 있고
-   * (Escape·대상 변경) 목록 값도 성공 뒤에는 이미 뒤집혀 있다.
+   * 마지막으로 보낸 **전환의 갈래**. 두 자리가 읽는다 — 성공 문면(끄기/켜기)과
+   * **갈래 뒤집힘 판정**(`openActivationDialog`).
    *
-   * 상태가 아니라 **참조**인 이유: 이 값은 그리는 데 쓰이지 않고 도착 시점에 한 번 읽힌다.
+   * ⚠ **성공 문면 자리에서는 창의 `intent`를 읽어도 오늘은 같은 답이 나온다.** 공통 쓰기 훅이
+   * 성공 콜백을 **보낸 렌더의 클로저로** 부르기 때문이다(`write()` 안의 `mutation.mutate`가 그
+   * 호출 시점의 `options`를 붙잡는다) — 그 렌더에서는 창이 반드시 열려 있고 `intent`도 보낸 값과
+   * 같다. 그래서 그 자리에 심는 뮤턴트는 **죽지 않는다(등가)**. 참조를 쓰는 이유는 그 우연에
+   * 기대지 않기 위해서다: 훅이 최신 렌더의 콜백을 부르도록 바뀌는 날 창의 값은 곧바로 틀린다
+   * (창은 Escape·대상 변경으로 그 사이에 닫힌다).
+   *
+   * ⭐ **두 번째 자리는 우연으로 대신할 수 없다.** 「무엇을 보냈는가」를 **창이 닫힌 뒤에** 묻는
+   * 물음이라 상태 어디에도 답이 없다 — 이 참조의 필요성은 그 자리에서 측정된다.
+   *
+   * 상태가 아니라 **참조**인 이유: 이 값은 그리는 데 쓰이지 않고 읽는 시점에 한 번 읽힌다.
    */
   const sentIntentRef = useRef<ActivationIntent | null>(null);
 
@@ -876,6 +892,21 @@ export const PutawayRuleScreen = () => {
   };
 
   /**
+   * 보낸 전환이 **뒤집혔음이 확인됐는가.** 「응답을 받지 못해 바뀌었는지 알 수 없습니다 —
+   * 같은 버튼을 바로 다시 누르지 마세요」가 **더는 참이 아닌 순간**을 가른다.
+   *
+   * 판정 자체는 `activation-guard.ts`가 갖는다 — 이 화면의 다른 판정들과 같은 자리이고,
+   * `null`(아직 보낸 것이 없다)의 뜻도 거기서 잰다. 여기서는 **보낸 갈래를 건네는 일**만 한다.
+   *
+   * ⚠ **렌더 중에 참조를 읽는다.** 이 값은 보내는 길(`request()`)에서만 바뀌고 그 길은 반드시
+   * 상태 변화(진행 중 → 실패)를 함께 일으키므로, 값이 바뀐 뒤에는 반드시 다시 그려진다 —
+   * 한 렌더 안에서 답이 흔들리지 않는다. 같은 이유로 이 슬라이스는 대상 참조 둘도 렌더에서
+   * 다룬다(`editTargetKeyRef`).
+   */
+  const isSentIntentReversed = (against: ActivationIntent): boolean =>
+    isIntentReversed(sentIntentRef.current, against);
+
+  /**
    * 전환 확인 창을 연다.
    *
    * ⛔ **앞선 실패를 여기서 걷지 않는다.** 전례는 창을 열 때 배너를 걷었으나(「지금 하려는
@@ -884,8 +915,12 @@ export const PutawayRuleScreen = () => {
    * 다시 누르지 마세요」**다. 창을 열면서 걷으면 **안내가 막으려던 이중 전송이 안내 없이
    * 열린다**(쓰기 훅은 호출마다 새 멱등 키를 만든다).
    *
-   * 그래서 실패는 **창으로 옮겨 온다**(자리 배타 — `activationFailureSlot`). 걷는 자리는 둘로
-   * 충분하다: 다시 보내는 순간(`write()`가 스스로 걷는다)과 대상이 바뀌는 순간(`resetEditing`).
+   * 그래서 실패는 **창으로 옮겨 온다**(자리 배타 — `activationFailureSlot`). 걷는 자리는 둘뿐이다:
+   * 다시 보내는 순간(`write()`가 스스로 걷는다)과 대상이 바뀌는 순간(`resetEditing`).
+   *
+   * ⭐ **갈래가 뒤집혀 거짓이 된 문장은 「걷지」 않고 「그리지 않는다」**(`activationFailureSlot`).
+   * 창을 열 때 통째로 걷으면 **참인 사실(요청이 실패했다)까지 함께 사라지고**, 창과 구획이 같은
+   * 사실을 다르게 다루게 된다 — 거짓이 된 진술 하나만 그리지 않으면 두 표면이 저절로 맞는다.
    */
   const openActivationDialog = (intent: ActivationIntent): void => {
     if (isLocked) return;
@@ -946,11 +981,16 @@ export const PutawayRuleScreen = () => {
    * **안내 문면은 축마다 다르다** — 확인할 자리와 하지 말아야 할 조작이 다르기 때문이다
    * (저장은 값을 다시 보내는 것, 전환은 같은 버튼을 다시 누르는 것).
    *
+   * ⭐ **안내만 따로 걷을 수 있다**(`unconfirmedNote`가 `null`). 배너와 안내는 **말하는 사실이
+   * 다르다** — 배너는 「응답을 받지 못했다」(한 번 참이면 계속 참)이고 안내는 「그래서 바뀌었는지
+   * 모른다」(뒤에 확인되면 거짓이 된다). 뒤엣것이 거짓이 된 자리에서 배너까지 걷으면 실패가
+   * 통째로 사라져 사용자는 아무 일도 없었다고 읽는다.
+   *
    * **매임을 지난다** — 남의 대상에 보낸 요청의 거절 사유를 이 화면에 세우지 않는다.
    */
   const writeFailureSlot = (
     write: { error: ApiError | null },
-    unconfirmedNote: string,
+    unconfirmedNote: string | null,
     onReload?: () => void,
   ): ReactNode => {
     const error = isWriteResultMine ? write.error : null;
@@ -958,7 +998,9 @@ export const PutawayRuleScreen = () => {
     return (
       <>
         <SaveErrorBanner error={error} onReload={onReload} />
-        {error?.kind === 'network' && <p className="field-note">{unconfirmedNote}</p>}
+        {error?.kind === 'network' && unconfirmedNote !== null && (
+          <p className="field-note">{unconfirmedNote}</p>
+        )}
       </>
     );
   };
@@ -982,15 +1024,29 @@ export const PutawayRuleScreen = () => {
    * 전송 중에도 창이 닫힌다 — 그러면 **그 뒤 도착한 실패가 화면 어디에도 서지 않는다.** 성공
    * 토스트도 없고 목록 표식도 그대로라 사용자에게는 「아무 일도 없었다」로 읽히는데, 그때
    * 다음 조작이 정확히 금지된 조작(같은 버튼 다시 누르기 → **새 멱등 키로 이중 전송**)이다.
-   * 이 회차가 가장 무겁게 쓴 문장(`activationUnconfirmed`)이 바로 그 조작을 막으려는 것이다.
+   * 이 화면이 가장 무겁게 쓴 문장(`activationUnconfirmed`)이 바로 그 조작을 막으려는 것이다.
    *
    * **두 자리에 함께 그리지 않는다.** 같은 사유가 창과 구획에 겹쳐 서면 사용자가 두 사건으로
    * 읽는다 — 창의 유무가 자리를 배타로 가른다.
+   *
+   * ⭐ **「모른다」는 진술은 뒤집힘이 확인되면 그리지 않는다.** 안내를 읽고 「다시 조회」를 누른
+   * 사용자는 **창을 열기 전에** 이 구획을 본다 — 그때 손잡이는 이미 반대 이름인데 안내는
+   * 「바뀌었는지 알 수 없습니다 · 같은 버튼을 다시 누르지 마세요」라, 한 화면이 서로 어긋나는
+   * 두 사실을 말하게 된다.
+   *
+   * ⛔ **거둠(`reset`)이 아니라 그리지 않는 것이다.** 이 함수를 **창과 구획이 함께 쓰므로**
+   * 판정이 여기 한 곳에 있으면 두 표면이 저절로 같은 답을 낸다. 창을 열 때 오류를 통째로 거두는
+   * 길로 풀면 **참인 사실(요청이 실패했다)까지 사라지고**, 두 표면이 같은 사실을 다르게 다룬다.
+   *
+   * **상세가 아직 없으면 그대로 그린다** — 견줄 갈래가 없다는 것은 확인된 것이 없다는 뜻이고,
+   * 그때 「모른다」는 여전히 참이다. 그 조건을 타입이 요구한다(`ActivationIntent`는 `null`을 받지 않는다).
    */
   const activationFailureSlot = (): ReactNode =>
     writeFailureSlot(
       activationWrite,
-      t.notes.activationUnconfirmed,
+      activationIntent !== null && isSentIntentReversed(activationIntent)
+        ? null
+        : t.notes.activationUnconfirmed,
       /* 409는 재조회로 풀린다 — 이 쓰기에는 잠글 대상이 있다(계약이 `If-Match`를 요구한다). */
       reloadDetail,
     );

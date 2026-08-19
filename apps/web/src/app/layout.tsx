@@ -59,6 +59,15 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/master-data/warehouse-location" icon="warehouse">
               창고·Location
             </NavItem>
+            {/*
+             * W-06-14 — **창고·Location 바로 뒤다.** 적치 규칙은 창고와 위치를 참조해야
+             * 성립하고 그 마스터에서 이어지는 화면이라, 인접이 관계를 드러낸다. 계약 경로는
+             * `/logistics/**`이지만 주소 앞머리는 **이 섹션을 따른다** — 어디에 둘지 미리
+             * 정해 두는 일이라 물건이 오가는 「자재창고」가 아니라 기준정보다.
+             */}
+            <NavItem to="/master-data/putaway-rule" icon="shelves">
+              적치 규칙
+            </NavItem>
             <NavItem to="/master-data/routing" icon="account_tree">
               Routing(공정)
             </NavItem>

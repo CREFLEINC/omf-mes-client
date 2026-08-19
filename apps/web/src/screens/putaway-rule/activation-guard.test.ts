@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   activationActionOf,
   activationIntentOf,
+  isIntentReversed,
   judgeRemainingCoverage,
   type ActivationIntent,
 } from './activation-guard';
@@ -54,6 +55,32 @@ describe('activationIntentOf — 지금 낼 수 있는 전환', () => {
    */
   it('상세가 오기 전에는 어느 전환도 낼 수 없다', () => {
     expect(activationIntentOf(null)).toBeNull();
+  });
+});
+
+/**
+ * 「응답을 받지 못해 바뀌었는지 알 수 없다」가 **언제 거짓이 되는가**를 정하는 축이다.
+ * 화면의 두 표면(창을 열 때 걷기 · 구획에 그리기)이 이 하나를 읽으므로 여기서 잰다.
+ */
+describe('isIntentReversed — 보낸 갈래가 뒤집혔는가', () => {
+  it('보낸 갈래와 다른 갈래를 겨누면 뒤집힌 것이다', () => {
+    expect(isIntentReversed('deactivate', 'activate')).toBe(true);
+    expect(isIntentReversed('activate', 'deactivate')).toBe(true);
+  });
+
+  /** 같은 갈래는 **아직 아무것도 확인되지 않은 것**이다 — 그때 안내는 그대로 참이다. */
+  it('보낸 갈래와 같으면 뒤집힌 것이 아니다', () => {
+    expect(isIntentReversed('deactivate', 'deactivate')).toBe(false);
+  });
+
+  /**
+   * ⛔ **보낸 것이 없으면 확인된 것도 없다.** 잠금 토큰이 없어 요청이 나가기도 전에 멈춘
+   * 갈래가 여기 든다 — 이것을 「뒤집혔다」로 읽으면 **저장을 시작조차 못 했다는 사실이 걷혀**
+   * 사용자는 아무 일도 없었다고 읽는다.
+   */
+  it('아직 아무것도 보내지 않았으면 뒤집힌 것이 아니다', () => {
+    expect(isIntentReversed(null, 'deactivate')).toBe(false);
+    expect(isIntentReversed(null, 'activate')).toBe(false);
   });
 });
 
