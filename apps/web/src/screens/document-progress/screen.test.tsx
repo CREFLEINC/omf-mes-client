@@ -2366,6 +2366,16 @@ describe('승인 진행 조회를 부르는 조건 — C4-1 · C4-2', () => {
     expect(await screen.findByText(t.approval.unusableTitle)).toBeInTheDocument();
     expect(screen.queryByText(t.approval.notSubmittedTitle)).not.toBeInTheDocument();
     expect(approvalRequests(requests)).toHaveLength(0);
+
+    /*
+     * ⭐ **그런데 실행 버튼은 선다** — 조회의 조건과 버튼의 조건은 **다른 물음**이다(계획 §5-2).
+     * 실행은 이 값을 쓰지 않고 `/logistics/{리소스}/{번호}:cancel`로 나가므로, 조회 하나가
+     * 막혔다는 이유로 실행 자체가 사라지면 **값이 이상하게 온 문서는 영영 되돌릴 수 없다.**
+     *
+     * ⚠ 이 한 줄이 없으면 그 결정을 **순수 층 한 벌**만 지킨다 — 화면이 `hasCancelRequest`의
+     * 답을 실제로 그 자리에 나르는지는 아무도 세지 않는다(검증 F-T4-1).
+     */
+    expect(executeButton()).toBeInTheDocument();
   });
 
   /** 짝 방향 — 쓸 수 있는 값이면 **그 번호의 주소로** 나간다. 아니면 위 단언이 「늘 안 부른다」다. */
@@ -3050,6 +3060,136 @@ describe('실행의 대상 매임과 잠금 — C4-16', () => {
 
     expect(screen.getByText(t.notes.lock.request)).toBeInTheDocument();
     expect(screen.queryByText(t.notes.lock.execute)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **진행 표시(스피너)의 축이 잠금의 축과 다르다 — 배선을 화면에서 잰다.**
+   *
+   * ```
+   * isCancelLocked      = cancelWrite.isSaving || executeWrite.isSaving   // 전역·두 쓰기
+   * isExecuteSavingMine = executeWrite.isSaving && isExecuteResultMine    // 실행·대상 매임
+   * ```
+   *
+   * ⚠ **부품 감지기는 이 배선을 지나지 않는다** — 부품은 두 축을 prop으로 **직접** 받으므로,
+   * 화면이 그 자리에 전역 잠금을 꽂아도 부품 시험은 전부 통과한다(리뷰 M-1의 뮤턴트가 577건을
+   * 통과한 이유다). 그래서 **화면 층에서** 두 갈래를 각각 잰다.
+   *
+   * ⛔ **되돌릴 수 없는 조작이라 특히 무겁다**: 버튼이 「지금 나가는 중」이라고 잘못 말하면
+   * 사용자는 눌렀는지 아닌지를 그 표시로 판단한다.
+   *
+   * 갈래 ① — **다른 조작**(취소 요청)이 나가는 중일 때.
+   */
+  it('취소 요청이 나가는 중이어도 실행 버튼은 돌지 않는다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(executeRoutes(), selectCancelTarget, '', [
+      REQUEST_CANCEL_PATH,
+    ]);
+
+    await waitFor(() => {
+      expect(requestCancelButton()).toBeEnabled();
+    });
+
+    await user.type(screen.getByLabelText(t.cancelRequest.reason), '사유');
+    await user.click(requestCancelButton());
+    await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    /* Escape로 창을 닫는다 — 창이 덮고 있으면 아래 구획의 손잡이를 볼 수 없다. */
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    /* 짝 양성 — 나가는 중인 **그 조작**의 손잡이는 돈다. 없으면 뒤 단언이 뜻을 잃는다. */
+    expect(requestCancelButton()).toHaveAttribute('aria-busy', 'true');
+
+    /* ⭐ 실행은 **잠기되 돌지 않는다** — 두 축이 갈리는 자리가 정확히 여기다. */
+    expect(executeButton()).toBeDisabled();
+    expect(executeButton()).not.toHaveAttribute('aria-busy');
+  });
+
+  /** 갈래 ①의 짝 방향 — 실행이 나가는 중이면 **실행 손잡이만** 돈다. */
+  it('실행이 나가는 중이면 실행 버튼만 돈다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(executeRoutes(), selectCancelTarget, '', [
+      EXECUTE_CANCEL_PATH,
+    ]);
+
+    await waitFor(() => {
+      expect(executeButton()).toBeEnabled();
+    });
+    await confirmExecute(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, EXECUTE_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    expect(executeButton()).toHaveAttribute('aria-busy', 'true');
+    expect(requestCancelButton()).not.toHaveAttribute('aria-busy');
+  });
+
+  /**
+   * 갈래 ② — **바깥 주소 이동으로 대상이 바뀐 뒤.**
+   *
+   * 그 길은 잠금 문을 지나지 않아 **나가는 중에도 대상이 바뀔 수 있는데**, 진행 표시가 따라오면
+   * **손대지도 않은 문서**의 실행 손잡이가 「지금 되돌리는 중」이라고 말한다.
+   *
+   * ⚠ 앞 회차가 세운 같은 이름의 감지기는 마지막 단언이 **요청 축 손잡이**라 이 자리를 덮지
+   * 않는다 — 축이 다르면 감지기도 따로 세운다.
+   */
+  it('나가는 중 대상이 바뀌면 새 대상의 실행 버튼이 돌지 않는다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(
+      executeRoutes(),
+      selectCancelTarget,
+      `ty=${CANCEL_TYPE}&sel=9002`,
+      [EXECUTE_CANCEL_PATH],
+    );
+
+    await waitFor(() => {
+      expect(executeButton()).toBeEnabled();
+    });
+    await confirmExecute(user);
+
+    await waitFor(() => {
+      expect(writesTo(requests, EXECUTE_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    /* 짝 양성 — 아직 그 대상이라 돈다. */
+    expect(executeButton()).toHaveAttribute('aria-busy', 'true');
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationOf()).toContain('sel=9002');
+    });
+
+    /* ⭐ 대상이 바뀌었다 — 요청은 아직 나가는 중이지만(잠김) 이 문서의 손잡이는 돌지 않는다. */
+    await waitFor(() => {
+      expect(executeButton()).not.toHaveAttribute('aria-busy');
+    });
+    expect(executeButton()).toBeDisabled();
   });
 
   /**
