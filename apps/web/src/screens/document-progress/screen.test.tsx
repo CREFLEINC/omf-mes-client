@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation, useSearchParams } from 'react-router';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -13,7 +13,14 @@ import {
 } from '../../test/api-harness';
 import { pickRange } from '../../test/date-picker';
 import type { DocumentTypeEntry } from './document-types';
-import { documentProgressFixtures, documentTypeFixtures, toProgressResponse } from './fixtures';
+import {
+  documentProgress,
+  documentProgressDetail,
+  documentProgressFixtures,
+  documentTypeFixtures,
+  toDetailResponse,
+  toProgressResponse,
+} from './fixtures';
 
 const t = messages.documentProgress;
 
@@ -31,6 +38,21 @@ vi.mock('./document-types', async (importOriginal) => {
   return { ...actual, DOCUMENT_TYPES: documentTypes };
 });
 
+/**
+ * 갈아 끼울 수 있는 화면 ID → 주소 표.
+ *
+ * ⭐ **화면이 그 표를 실제로 아래 구획에 넘기는가**를 재기 위해 화면 수준에서 갈아 끼운다.
+ * 부품 수준 감지기는 표를 직접 받으므로 이 배선을 지나지 않는다 — 배선이 조용히 끊겨도
+ * 부품 감지기는 전부 통과한다.
+ */
+const screenRoutes: Record<string, string> = {};
+
+vi.mock('./screen-routes', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./screen-routes')>();
+
+  return { ...actual, SCREEN_ROUTES: screenRoutes };
+});
+
 /* 목을 걸고 난 뒤에 화면을 들여온다 — 위에서 들여오면 실물 상수가 먼저 박힌다. */
 const { DocumentProgressScreen } = await import('./screen');
 
@@ -42,6 +64,9 @@ const DISABLED_TYPE = 'SYN_DOC_TYPE_C';
 
 beforeEach(() => {
   documentTypes.length = 0;
+  locationLog.length = 0;
+
+  for (const key of Object.keys(screenRoutes)) delete screenRoutes[key];
 });
 
 const fillDocumentTypes = (): void => {
@@ -93,11 +118,43 @@ const failingListRoute = (status: number, body: unknown = { message: '' }): Stub
   respond: () => jsonResponse(body, { status }),
 });
 
+/** 고른 문서의 상세 경로. **유형과 번호가 둘 다** 경로에 실린다(계약). */
+const detailPathOf = (documentTypeCode: string, documentId: number): string =>
+  `${LIST_PATH}/${documentTypeCode}/${String(documentId)}`;
+
+const DETAIL_PATH = detailPathOf(SELECTABLE_TYPE, 9001);
+
+const detailRoute = (detail = documentProgressDetail(), pathname = DETAIL_PATH): StubRoute => ({
+  match: (request) => isGet(request, pathname),
+  respond: () => jsonResponse(toDetailResponse(detail)),
+});
+
+const failingDetailRoute = (status: number, pathname = DETAIL_PATH): StubRoute => ({
+  match: (request) => isGet(request, pathname),
+  respond: () => jsonResponse({ message: '상세를 불러오지 못했습니다' }, { status }),
+});
+
+const detailRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname.startsWith(`${LIST_PATH}/`));
+
+/**
+ * 화면이 **거쳐 간** 주소를 전부 적어 둔다.
+ *
+ * 마지막 주소만 보면 「정리가 히스토리를 늘렸는가」를 가릴 수 없다 — 정리가 히스토리를 늘린
+ * 경우에도 뒤로 간 뒤 정리가 **한 번 더 일어나** 결국 같은 주소로 수렴하기 때문이다. 갈리는 것은
+ * **그 사이에 없는 문서 주소를 거쳤는가**이며, 그것은 거쳐 간 자취로만 보인다.
+ */
+const locationLog: string[] = [];
+
 /** 주소가 실제로 어떻게 바뀌는지 본다. */
 const LocationProbe = () => {
   const location = useLocation();
+  const current = `${location.pathname}${location.search}`;
 
-  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+  /* 렌더마다 적는다 — 이 화면 시험은 엄격 모드로 그리지 않아 두 번 적히지 않는다. */
+  locationLog.push(current);
+
+  return <output data-testid="location">{current}</output>;
 };
 
 /**
@@ -121,6 +178,25 @@ const SearchProbe = ({ to }: { to: string }) => {
   );
 };
 
+/**
+ * 한 칸 뒤로 간다. **히스토리가 몇 칸 늘었는지를 판정하는 유일한 수단**이다 —
+ * 기억 라우터는 브라우저 히스토리를 쓰지 않아 `window.history.back()`이 닿지 않는다.
+ */
+const BackProbe = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigate(-1);
+      }}
+    >
+      뒤로
+    </button>
+  );
+};
+
 const renderScreen = (
   routes: StubRoute[],
   search = '',
@@ -133,6 +209,7 @@ const renderScreen = (
       <DocumentProgressScreen />
       <LocationProbe />
       <SearchProbe to={navigateTo} />
+      <BackProbe />
     </>,
     { fetch, route: `${ROUTE}${search}` },
   );
@@ -199,6 +276,39 @@ describe('유형 자리표시가 비어 있는 동안', () => {
     renderScreen([]);
 
     expect(screen.queryByRole('navigation', { name: t.pageNav.label })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **상세도 같은 잣대를 탄다.** 주소에 고른 문서가 실려 있어도 유형 표가 비어 있으면
+   * 상세 조회가 나가지 않는다 — 잣대가 갈리면 「목록은 못 부르는데 상세만 나가는」 화면이 된다.
+   * **경로 전체에서 센다**(첫 렌더 · 주소 직접 편집).
+   */
+  it('주소에 고른 문서가 실려 있어도 상세를 한 번도 부르지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+      `ty=${SELECTABLE_TYPE}&sel=9002`,
+    );
+
+    expect(requests).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(locationOf()).toContain('sel=9002');
+    });
+
+    expect(requests).toHaveLength(0);
+  });
+
+  /*
+   * 아래 구획 자체를 내지 않는다 — 조회가 성립하지 않아 **고를 대상이 없으므로**,
+   * 「고르세요」를 내면 할 수 없는 일을 시키는 안내가 된다.
+   */
+  it('상세 구획이 서지 않는다', () => {
+    renderScreen([]);
+
+    expect(screen.queryByRole('region', { name: t.panes.detail })).not.toBeInTheDocument();
+    expect(screen.queryByText(t.empty.noSelectionTitle)).not.toBeInTheDocument();
   });
 });
 
@@ -522,6 +632,425 @@ describe('쪽 이동', () => {
     await waitFor(() => {
       expect(lastListQuery(requests).has('page')).toBe(false);
     });
+  });
+});
+
+describe('고른 문서의 상세', () => {
+  /**
+   * ⭐ **상세 경로에 유형과 번호가 둘 다 실린다**(C2-1). 계약이 둘을 열쇠로 쓴다 —
+   * 번호만 실으면 유형이 다른 같은 번호의 문서를 부른다.
+   */
+  it('행을 고르면 유형과 번호가 둘 다 실린 경로로 상세를 부른다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}`);
+
+    expect(await screen.findByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(detailRequests(requests)).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }));
+
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
+    expect(detailRequests(requests)[0]?.url.pathname).toBe(DETAIL_PATH);
+    /* 고른 문서는 주소가 들고 있다 — 새로고침·공유가 같은 결과를 낸다. */
+    await waitFor(() => {
+      expect(locationOf()).toContain('sel=9001');
+    });
+  });
+
+  /**
+   * ⭐ **새로고침이 상세도 다시 부른다**(C2-9 · 직전 회차 W-01-07의 지적 사본).
+   * 주소만 들고 처음 그리는 경우이며, 대상이 주소에서 나오므로 **목록 응답을 기다리지 않는다.**
+   */
+  it('주소에 고른 문서가 실려 들어오면 곧바로 상세를 부른다', async () => {
+    fillDocumentTypes();
+    const { requests } = renderScreen(
+      [listRoute(), detailRoute()],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+    );
+
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
+    expect(detailRequests(requests)[0]?.url.pathname).toBe(DETAIL_PATH);
+  });
+
+  /**
+   * ⭐ **목록이 실패해도 상세는 선다.** 대상이 주소에서 나오므로 목록 응답에 매이지 않는다 —
+   * 매이면 목록이 실패한 동안 고른 문서를 볼 길이 사라진다.
+   */
+  it('목록이 실패해도 상세는 부르고 아래 구획이 선다', async () => {
+    fillDocumentTypes();
+    const { requests } = renderScreen(
+      [failingListRoute(500), detailRoute()],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+    );
+
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(1);
+    });
+    /* 부르기만 하고 감추면 사용자에게는 아무 소용이 없다 — 구획이 실제로 서는 것까지 잰다. */
+    expect(await screen.findByRole('table', { name: t.steps.caption })).toBeInTheDocument();
+    expect(screen.getByText(messages.httpError.loadTitle)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **요약의 근거가 목록 행이 아니라 상세 응답이다**(C2-4). 두 응답의 상태 코드를 일부러
+   * 다르게 두어, 목록 행으로 요약을 그리는 결함이 있으면 이 자리에서 갈린다.
+   */
+  it('요약이 목록 행이 아니라 상세 응답의 값을 보인다', async () => {
+    fillDocumentTypes();
+    renderScreen(
+      [
+        listRoute([documentProgress({ statusCode: 'SYN_STATUS_LIST' })]),
+        detailRoute(
+          documentProgressDetail({
+            progress: documentProgress({ statusCode: 'SYN_STATUS_DETAIL' }),
+          }),
+        ),
+      ],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+    );
+
+    const summary = await screen.findByRole('group', {
+      name: t.detail.summary('SYN-GR-2026-0001'),
+    });
+
+    expect(within(summary).getByText('SYN_STATUS_DETAIL')).toBeInTheDocument();
+    expect(within(summary).queryByText('SYN_STATUS_LIST')).not.toBeInTheDocument();
+  });
+
+  it('처리 경과와 후속 목록이 함께 선다', async () => {
+    fillDocumentTypes();
+    renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}&sel=9001`);
+
+    expect(await screen.findByRole('table', { name: t.steps.caption })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: t.successors.caption })).toBeInTheDocument();
+    /* 원장 번호는 영업일과 **함께** 보인다(C2-6). */
+    expect(screen.getByText(t.ledger.pair('SYN-TX-9001', '2026-08-06'))).toBeInTheDocument();
+  });
+
+  /* 고르기 전에는 「고르면 보인다」를 낸다 — 빈 구획을 두면 고장으로 읽힌다. */
+  it('고르기 전에는 고르라고 안내한다', async () => {
+    fillDocumentTypes();
+    renderScreen([listRoute()], `?ty=${SELECTABLE_TYPE}`);
+
+    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
+  it('다시 누르면 선택이 풀리고 상세 구획이 닫힌다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}&sel=9001`);
+
+    expect(await screen.findByRole('table', { name: t.steps.caption })).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: t.actions.deselectRow('SYN-GR-2026-0001') }),
+    );
+
+    await waitFor(() => {
+      expect(locationOf()).not.toContain('sel=');
+    });
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **고르기가 쪽을 유지한다**(수명 표 3행). 3쪽에서 고른 문서의 상세를 보는 동안 목록이
+   * 1쪽으로 튀면, 사용자는 보고 있던 줄을 잃고 상세만 3쪽 문서를 가리킨다.
+   *
+   * **두 축으로 잰다** — 주소의 `page`와 **다시 나간 요청의 질의값**. 주소만 재면 요청이 첫
+   * 쪽으로 나가도 통과한다. 해제 축도 같은 자리에서 잰다.
+   */
+  it('문서를 골랐다 해제해도 보던 쪽이 그대로다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(
+      [listRoute(documentProgressFixtures, { page: 2, total: 120 }), detailRoute()],
+      `?ty=${SELECTABLE_TYPE}&page=2`,
+    );
+
+    expect(await screen.findByText('SYN-GR-2026-0001')).toBeInTheDocument();
+    expect(lastListQuery(requests).get('page')).toBe('2');
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }));
+
+    await waitFor(() => {
+      expect(locationOf()).toContain('sel=9001');
+    });
+    expect(locationOf()).toContain('page=2');
+    expect(lastListQuery(requests).get('page')).toBe('2');
+
+    await user.click(
+      screen.getByRole('button', { name: t.actions.deselectRow('SYN-GR-2026-0001') }),
+    );
+
+    await waitFor(() => {
+      expect(locationOf()).not.toContain('sel=');
+    });
+    expect(locationOf()).toContain('page=2');
+    expect(lastListQuery(requests).get('page')).toBe('2');
+  });
+
+  /**
+   * ⭐ **조건이 바뀌면 선택이 저절로 풀린다**(주소를 다시 쓰는 길이 선택 키를 만들지 않는다).
+   * 남겨 두면 아래 구획이 **위에 보이지 않는 문서**를 가리킨 채 열려 있다.
+   */
+  it('조건을 바꿔 조회하면 고른 문서가 풀린다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}&sel=9001`);
+
+    expect(await screen.findByRole('table', { name: t.steps.caption })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.fields.q), 'SYN-GR');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(locationOf()).not.toContain('sel=');
+    });
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+  });
+
+  /* 쪽을 옮겨도 같은 규칙이다 — 고른 문서가 그 쪽에 없을 수 있다. */
+  it('쪽을 옮기면 고른 문서가 풀린다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen(
+      [listRoute(documentProgressFixtures, { total: 120 }), detailRoute()],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+    );
+
+    expect(await screen.findByRole('table', { name: t.steps.caption })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    await waitFor(() => {
+      expect(locationOf()).toContain('page=2');
+    });
+    expect(locationOf()).not.toContain('sel=');
+  });
+
+  /* 문서·후속을 여는 주소 규약이 아직 없다 — 손잡이를 만들지 않고 사유만 밝힌다(C2-8). */
+  it('열기 손잡이가 서지 않고 사유가 보인다', async () => {
+    fillDocumentTypes();
+    renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}&sel=9001`);
+
+    expect(await screen.findByText(t.detail.openBlocked.unmapped)).toBeInTheDocument();
+    expect(screen.getByText(t.successors.openBlocked.unmapped)).toBeInTheDocument();
+    expect(screen.getByText(t.successors.openBlocked.noScreenId)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.actions.openDocument })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.actions.openSuccessor('SYN-GI-2026-0101') }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **표를 채우면 화면이 그 표를 실제로 넘겼는지 드러난다.** 부품 감지기는 표를 직접 받아
+   * 이 배선을 지나지 않으므로, 화면이 빈 표를 대신 넘겨도 부품 쪽은 전부 통과한다.
+   * 눌렀을 때 **주소가 실제로 옮겨 가는 것**까지 함께 잰다.
+   */
+  it('표를 채우면 열기가 서고 눌렀을 때 그 주소로 옮겨 간다', async () => {
+    fillDocumentTypes();
+    screenRoutes['SYN-SCREEN-01'] = '/logistics/synthetic-document';
+    const { user } = renderScreen([listRoute(), detailRoute()], `?ty=${SELECTABLE_TYPE}&sel=9001`);
+
+    await user.click(await screen.findByRole('button', { name: t.actions.openDocument }));
+
+    await waitFor(() => {
+      expect(locationOf()).toBe('/logistics/synthetic-document');
+    });
+  });
+
+  /**
+   * ⭐ **캐시 키에 유형이 들어간다.** 번호만 열쇠로 쓰면 유형이 다른 같은 번호의 문서가 한 캐시
+   * 항목을 나눠 써, 유형을 바꿔 같은 번호를 고르면 **앞 유형의 상세가 그대로 보인다.**
+   */
+  it('유형을 바꿔 같은 번호를 고르면 그 유형의 상세가 보인다', async () => {
+    fillDocumentTypes();
+    const otherType = 'SYN_DOC_TYPE_B';
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        detailRoute(),
+        detailRoute(
+          documentProgressDetail({
+            progress: documentProgress({
+              documentTypeCode: otherType,
+              statusCode: 'SYN_STATUS_OTHER_TYPE',
+            }),
+          }),
+          detailPathOf(otherType, 9001),
+        ),
+      ],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+      `ty=${otherType}&sel=9001`,
+    );
+
+    const summary = await screen.findByRole('group', {
+      name: t.detail.summary('SYN-GR-2026-0001'),
+    });
+
+    expect(within(summary).getByText('SYN_STATUS_DETAIL')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('SYN_STATUS_OTHER_TYPE')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('상세 조회가 실패하면', () => {
+  /**
+   * ⭐ **실패를 로딩보다 앞에서 판정한다**(C2-2 · 사본 대조 추가 ①). 먼저 로딩을 보면 실패한
+   * 조회가 영원히 「불러오는 중」으로 보이고, 사용자는 기다리면 될 일이라고 읽는다.
+   */
+  it('「불러오는 중」이 아니라 실패 표시가 보인다', async () => {
+    fillDocumentTypes();
+    renderScreen([listRoute(), failingDetailRoute(500)], `?ty=${SELECTABLE_TYPE}&sel=9001`);
+
+    expect(await screen.findByText('상세를 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: t.loading.detail })).not.toBeInTheDocument();
+  });
+
+  /* ⭐ 상세가 실패해도 **위 목록은 그대로 둔다** — 실패한 것은 고른 문서 한 벌뿐이다. */
+  it('목록은 그대로 남는다', async () => {
+    fillDocumentTypes();
+    renderScreen([listRoute(), failingDetailRoute(500)], `?ty=${SELECTABLE_TYPE}&sel=9001`);
+
+    expect(await screen.findByText('상세를 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.getByText('SYN-GR-2026-0001')).toBeInTheDocument();
+  });
+
+  it('다시 시도가 같은 상세를 한 번 더 부른다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(
+      [listRoute(), failingDetailRoute(500)],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+    );
+
+    expect(await screen.findByText('상세를 불러오지 못했습니다')).toBeInTheDocument();
+    expect(detailRequests(requests)).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(detailRequests(requests)).toHaveLength(2);
+    });
+    expect(detailRequests(requests)[1]?.url.pathname).toBe(DETAIL_PATH);
+  });
+
+  /**
+   * ⭐ **404는 주소의 선택을 지우고 그 사실을 말한다**(C2-3). 조용히 지우면 사용자는 자기가
+   * 누른 것이 왜 열리지 않는지 알 수 없다. **조건은 하나도 바꾸지 않는다** — 없어진 문서 하나
+   * 때문에 좁혀 둔 조건까지 되돌리지 않는다.
+   */
+  it('404면 주소의 선택만 지우고 사실을 말한다', async () => {
+    fillDocumentTypes();
+    renderScreen(
+      [listRoute(), failingDetailRoute(404)],
+      `?ty=${SELECTABLE_TYPE}&q=SYN-GR&sel=9001`,
+    );
+
+    expect(await screen.findByText(t.empty.detailNotFoundTitle)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(locationOf()).toBe(`${ROUTE}?ty=${SELECTABLE_TYPE}&q=SYN-GR`);
+    });
+  });
+
+  /**
+   * ⭐ **정리가 뒤로가기 기록을 늘리지 않는다**(사본 체크리스트 1번 · `{ replace: true }`).
+   *
+   * 늘리면 뒤로 눌렀을 때 **없는 문서를 가리키는 주소로 되돌아가** 같은 정리가 되풀이되고,
+   * 사용자는 앞 화면으로 빠져나갈 수 없다. 주소를 바깥에서 갈아 끼워(뒤로가기·주소 직접 편집과
+   * 같은 경로) 히스토리가 실제로 몇 칸 쌓였는지를 잰다.
+   */
+  it('404 정리가 뒤로가기 기록을 늘리지 않는다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen(
+      [listRoute(), failingDetailRoute(404)],
+      `?ty=${SELECTABLE_TYPE}&q=SYN-GR`,
+      `ty=${SELECTABLE_TYPE}&q=SYN-GR&sel=9001`,
+    );
+
+    await screen.findByText('SYN-GR-2026-0001');
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+
+    expect(await screen.findByText(t.empty.detailNotFoundTitle)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(locationOf()).toBe(`${ROUTE}?ty=${SELECTABLE_TYPE}&q=SYN-GR`);
+    });
+
+    /**
+     * 여기서부터의 자취만 본다. 정리가 히스토리를 늘렸다면 뒤로 갔을 때 **없는 문서 주소를
+     * 한 번 거치고** 거기서 같은 정리가 되풀이된다 — 마지막 주소만 재면 그 되풀이가 같은
+     * 자리로 수렴해 감지기가 헛통과한다.
+     */
+    const mark = locationLog.length;
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    /* 한 칸 뒤로 가면 **없는 문서 주소가 아니라** 그 앞의 조회 상태로 돌아간다. */
+    await waitFor(() => {
+      expect(locationOf()).toBe(`${ROUTE}?ty=${SELECTABLE_TYPE}&q=SYN-GR`);
+    });
+    expect(locationLog.slice(mark).filter((entry) => entry.includes('sel='))).toEqual([]);
+  });
+
+  /**
+   * **새 조회가 없음 안내를 거둔다.** 안내를 끄는 자리가 클릭 핸들러 하나뿐이면 뒤로가기·주소
+   * 직접 편집이 그 길을 지나지 않아 문장이 남는다 — 방금 한 조작과 무관한 사정을 화면이 계속
+   * 말하게 된다. 그래서 안내를 **조회 조건의 서명**에 맨다.
+   */
+  /**
+   * ⭐ **새 선택도 없음 안내를 거둔다 — 그리고 스스로 해제해도 되살아나지 않는다.**
+   *
+   * 안내를 세우는 자리만 있고 거두는 자리가 없으면, **같은 조건 안에서** 다른 문서를 골랐다
+   * 해제하는 순간 서명이 그대로라 안내가 되살아난다 — 사용자가 스스로 닫은 것을 화면이
+   * 「찾을 수 없다」고 말한다. 주소를 쓰는 길이 안내를 함께 거두는지 여기서 잰다.
+   */
+  it('404 뒤 다른 문서를 골랐다 해제해도 없음 안내가 되살아나지 않는다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen(
+      [
+        listRoute(),
+        failingDetailRoute(404),
+        detailRoute(documentProgressDetail(), detailPathOf(SELECTABLE_TYPE, 9002)),
+      ],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+    );
+
+    expect(await screen.findByText(t.empty.detailNotFoundTitle)).toBeInTheDocument();
+
+    /* ① 같은 조건 안에서 다른 문서를 고른다 — 정상 상세가 서고 안내가 사라진다. */
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0002') }));
+
+    expect(await screen.findByRole('table', { name: t.steps.caption })).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.detailNotFoundTitle)).not.toBeInTheDocument();
+
+    /* ② 사용자가 스스로 해제한다 — 「고르면 보입니다」여야 한다. */
+    await user.click(
+      screen.getByRole('button', { name: t.actions.deselectRow('SYN-GR-2026-0002') }),
+    );
+
+    expect(await screen.findByText(t.empty.noSelectionTitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.detailNotFoundTitle)).not.toBeInTheDocument();
+  });
+
+  it('새 조회가 없음 안내를 거둔다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen(
+      [listRoute(), failingDetailRoute(404)],
+      `?ty=${SELECTABLE_TYPE}&sel=9001`,
+    );
+
+    expect(await screen.findByText(t.empty.detailNotFoundTitle)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.fields.q), 'SYN-GR');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.empty.detailNotFoundTitle)).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(t.empty.noSelectionTitle)).toBeInTheDocument();
   });
 });
 

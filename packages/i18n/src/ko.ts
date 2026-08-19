@@ -8181,9 +8181,9 @@ const putawayRule = {
 /**
  * W-01-13 물류 문서 진행현황·취소.
  *
- * 이 회차(작업 단위 ①)의 문구는 **목록까지**다 — 상세 구획·취소 요청·승인 진행·취소 실행의
- * 문구는 그 조작이 실제로 생기는 회차에서 이 묶음에 더한다. 미리 적어 두면 아무 화면도
- * 내지 않는 문장이 남고, 그 문장은 고쳐도 아무도 모른다.
+ * 이 묶음의 문구는 **목록과 고른 문서의 상세까지**다(작업 단위 ①·②) — 취소 요청·승인 진행·
+ * 취소 실행의 문구는 그 조작이 실제로 생기는 회차에서 이 묶음에 더한다. 미리 적어 두면 아무
+ * 화면도 내지 않는 문장이 남고, 그 문장은 고쳐도 아무도 모른다.
  *
  * **취소 불가 사유는 계약이 열거한 네 값만 문면을 갖는다.** 그 밖의 코드는 문구를 지어내지 않고
  * 코드 문자열을 그대로 낸다 — 화면이 뜻을 붙이면 값이 늘 때 조용히 틀린다(공유계약 G-2).
@@ -8191,6 +8191,10 @@ const putawayRule = {
 const documentProgress = {
   title: '물류 문서 진행현황·취소',
   breadcrumbRoot: '자재창고',
+  /** 구획 이름. 목록 구획은 화면 이름을 그대로 쓴다 — 이 화면의 본체가 목록이다. */
+  panes: {
+    detail: '고른 문서',
+  },
   /** 조건 줄의 칸 이름. 순서가 곧 화면의 배치 순서다. */
   fields: {
     documentType: '문서 유형',
@@ -8206,6 +8210,17 @@ const documentProgress = {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
+    select: '선택',
+    deselect: '선택 해제',
+    /**
+     * 행 손잡이의 접근 이름. **문서번호를 넣는다** — 「선택」이 행마다 되풀이되면 어느 문서를
+     * 여는지 보조기술로 알 수 없다. ⛔ **내부 번호는 넣지 않는다**(omf-mes#44): 눈으로 읽는
+     * 값과 보조기술이 읽는 값이 어긋나면 안 되고, 내부 번호는 사용자에게 아무 뜻이 없다.
+     */
+    selectRow: (documentNo: string): string => `${documentNo} 고르기`,
+    deselectRow: (documentNo: string): string => `${documentNo} 선택 해제`,
+    openDocument: '문서 열기',
+    openSuccessor: (successorNo: string): string => `${successorNo} 열기`,
   },
   filters: {
     all: '전체',
@@ -8225,6 +8240,7 @@ const documentProgress = {
   },
   loading: {
     list: '문서 진행현황을 불러오는 중',
+    detail: '고른 문서의 상세를 불러오는 중',
   },
   /**
    * 목록 표의 머리글. 열 구성의 근거는 screens/document-progress/progress-table.tsx에 있다.
@@ -8246,6 +8262,8 @@ const documentProgress = {
     remainingQty: '잔여 수량',
     successorCount: '후속',
     cancelAvailability: '취소 가능',
+    /** 행을 고르는 열. 고른 문서의 상세가 목록 **아래**에 선다(드로어·창이 아니다). */
+    select: '선택',
   },
   /** 취소 가능 열의 두 모양. **색만으로 말하지 않는다** — 글자로 낸다. */
   cancel: {
@@ -8264,6 +8282,95 @@ const documentProgress = {
     CANCEL_IN_PROGRESS: '취소 요청이 진행 중입니다',
     STATE_LOCKED: '지금 상태에서는 취소할 수 없습니다',
   },
+  /**
+   * 고른 문서의 상세 — **목록 아래 구획**의 문구다.
+   *
+   * ⭐ **요약은 상세 응답의 값이다**(계약 `DocumentProgressDetail.progress`). 목록 행을 그대로
+   * 다시 그리면 목록을 조회한 시점과 상세를 조회한 시점이 갈려, 같은 화면의 위아래가 서로
+   * 다른 수량을 말할 수 있다.
+   */
+  detail: {
+    /** 요약 묶음의 접근 이름. 어느 문서의 요약인지 **문서번호**로 말한다(내부 번호가 아니다). */
+    summary: (documentNo: string): string => `${documentNo} 요약`,
+    documentType: '문서 유형',
+    documentNo: '문서번호',
+    documentDate: '문서일자',
+    subType: '세부구분',
+    status: '상태',
+    plannedQty: '계획 수량',
+    processedQty: '처리 수량',
+    remainingQty: '잔여 수량',
+    /** 위아래가 다른 값을 말할 수 있다는 사실을 밝힌다 — 감추면 사용자가 화면을 의심한다. */
+    summaryNote: '요약은 이 문서의 상세 조회 결과입니다. 위 목록과 조회 시점이 다를 수 있습니다.',
+    /**
+     * 문서를 열 수 없는 **두 갈래**. **열기 손잡이를 만들지 않고** 왜 없는지만 밝힌다 —
+     * 그럴듯한 주소를 지어 넣으면 사용자가 「열었더니 그 문서가 아닌」 자리에 도착한다.
+     *
+     * ⭐ **둘을 한 문면으로 뭉개지 않는다 — 풀 수 있는 사람이 다르기 때문이다.**
+     * 앞은 서버가 값을 채워야 하고, 뒤는 이 프로그램에 그 화면이 생기면 풀린다. 「열 수 없습니다」
+     * 하나만 내면 담당자에게 물어야 할 사람과 기다려야 할 사람이 구분되지 않는다.
+     */
+    openBlocked: {
+      noScreenId: '이 문서를 어느 화면에서 여는지 아직 오지 않아 여기서 열 수 없습니다.',
+      unmapped: '이 문서를 여는 화면이 아직 이 프로그램에 없어 여기서 열 수 없습니다.',
+    },
+  },
+  /**
+   * 처리 경과 — **서버가 준 차례 그대로** 그린다. 화면이 다시 정렬하지 않는다(계약이 시간순으로
+   * 내린다고 적었고, 화면이 다시 세우면 같은 시각의 두 단계 차례가 서버와 갈린다).
+   */
+  steps: {
+    caption: '처리 경과',
+    stepCode: '단계',
+    occurredAt: '시각',
+    actor: '처리자',
+    ledger: '원장',
+    /**
+     * 행위자 이름이 비어 온 단계. 계약이 「사람이 한 것이 아니면 비어 있다」라고 적었으므로
+     * **그 사실을 그대로** 옮긴다. ⛔ 내부 번호를 대신 내지 않는다(omf-mes#44).
+     */
+    systemActor: '사람이 하지 않은 단계',
+    emptyTitle: '처리 경과가 없습니다',
+    emptyDescription: '이 문서에 기록된 처리 경과가 아직 없습니다.',
+    /** 원장 진입을 만들지 않는 사실을 밝힌다 — 번호와 영업일을 **함께** 보이는 이유이기도 하다. */
+    ledgerNote:
+      '원장 번호는 조회에 필요한 영업일과 함께 보입니다. 원장 조회 화면이 아직 없어 여기서 열 수는 없습니다.',
+  },
+  /**
+   * 원장 참조 — **번호와 영업일이 둘 다 있을 때만 짝으로** 낸다.
+   *
+   * 계약이 둘 다 선택으로 두었고 원장 조회는 **영업일이 키의 일부**다. 번호만 보이면 사용자가
+   * 그 번호로 원장을 찾을 수 없는데 찾을 수 있는 것처럼 보인다 — 한쪽만 왔으면 그 사실을 적는다.
+   */
+  ledger: {
+    pair: (transactionNo: string, businessDate: string): string =>
+      `${transactionNo} · 영업일 ${businessDate}`,
+    noBusinessDate: (transactionNo: string): string =>
+      `${transactionNo} · 영업일을 받지 못해 원장을 찾을 수 없습니다`,
+    noTransactionNo: (businessDate: string): string =>
+      `영업일 ${businessDate} · 원장 번호를 받지 못했습니다`,
+  },
+  /**
+   * 후속 문서 — **0건이 정상이다.** 후속이 없어야 이 문서를 취소할 수 있으므로 0건은 오히려
+   * 좋은 소식이다. ⛔ 그래서 경고 톤을 쓰지 않는다.
+   */
+  successors: {
+    caption: '후속 문서',
+    typeCode: '유형',
+    documentNo: '문서번호',
+    qty: '수량',
+    open: '열기',
+    emptyTitle: '후속 문서가 없습니다',
+    emptyDescription: '이 문서를 원천으로 삼는 하류 문서가 아직 없습니다.',
+    /**
+     * 후속을 열 수 없는 **두 갈래**. 위 `detail.openBlocked`와 같은 이유로 가르고, 주어만 다르다 —
+     * 표 아래에 **갈래마다 한 줄씩** 서므로 어느 후속이 왜 막혔는지 사용자가 읽을 수 있다.
+     */
+    openBlocked: {
+      noScreenId: '어느 화면에서 여는지 오지 않은 후속 문서가 있어 그 줄은 열 수 없습니다.',
+      unmapped: '여는 화면이 아직 이 프로그램에 없는 후속 문서가 있어 그 줄은 열 수 없습니다.',
+    },
+  },
   empty: {
     /**
      * 문서 유형 값 목록이 확정되지 않아 조회를 시작할 수 없는 상태.
@@ -8278,6 +8385,15 @@ const documentProgress = {
     noResultDescription: '기간을 넓히거나 조건을 줄인 뒤 다시 조회하세요.',
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
+    noSelectionTitle: '문서를 고르면 아래에 상세가 보입니다',
+    noSelectionDescription: '목록에서 문서를 고르면 처리 경과와 후속 목록이 이 자리에 섭니다.',
+    /**
+     * 고른 문서가 404였다. 주소에서 선택을 지운 뒤 **그 사실을 말한다** — 조용히 지우면
+     * 사용자는 자기가 누른 것이 왜 열리지 않는지 알 수 없다.
+     */
+    detailNotFoundTitle: '고른 문서를 찾을 수 없습니다',
+    detailNotFoundDescription:
+      '이미 지워졌거나 다른 조건으로 옮겨 갔을 수 있습니다. 다시 조회한 뒤 골라 주세요.',
   },
   /**
    * 조회 실패 문면.

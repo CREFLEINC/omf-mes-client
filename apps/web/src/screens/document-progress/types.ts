@@ -94,3 +94,79 @@ export interface DocumentProgressListResult {
   items: DocumentProgressView[];
   page: PageMeta;
 }
+
+export type DocumentProgressDetailResponse = components['schemas']['DocumentProgressDetail'];
+
+/**
+ * 처리 경과 한 줄.
+ *
+ * **단계 코드를 해석하지 않는다** — 시간순으로 그리기만 한다(값 목록이 공통코드 소관이다).
+ *
+ * **행위자 이름이 비어 오는 갈래가 실재한다.** 계약이 「사람이 한 것이 아니면 비어 있다」라고
+ * 적었다 — 없음을 없음으로 옮기고, ⛔ **내부 번호를 대신 담지 않는다**(omf-mes#44). 애초에
+ * 계약이 행위자 번호를 내려 주지 않으므로 이 타입에 그 자리를 만들 이유도 없다.
+ *
+ * **원장 번호와 영업일이 둘 다 선택이다.** 반쪽으로 오는 갈래를 판정하는 것은 `ledger-ref.ts`
+ * 한 곳이며, 이 타입은 받은 그대로 나른다.
+ */
+export interface DocumentProgressStepView {
+  stepCode: string;
+  /** `date-time`. 서버가 시간대까지 실어 준다 — 화면이 시간대를 옮기지 않는다. */
+  occurredAt: string;
+  actorName: string | null;
+  inventoryTransactionNo: string | null;
+  businessDate: string | null;
+}
+
+/**
+ * 후속 문서 한 건.
+ *
+ * ⭐ **유형↔후속 관계표를 화면이 만들지 않는다**(공유계약 A-10 보강). 이 배열이 곧 서버의
+ * 판정이며, 화면은 유형 코드를 **글자로 그릴 뿐** 그 값으로 분기하지 않는다.
+ */
+export interface DocumentSuccessorView {
+  successorTypeCode: string;
+  successorId: number;
+  successorNo: string;
+  qty: number;
+  /** 후속 문서를 여는 화면 ID. 표(`screen-routes.ts`)를 뒤지는 **열쇠**일 뿐이다. */
+  screenId: string | null;
+}
+
+/**
+ * 고른 문서의 상세.
+ *
+ * ⭐ **요약의 근거가 목록 행이 아니라 이 안의 `progress`다.** 두 조회의 시점이 갈릴 수 있어,
+ * 목록 행을 다시 그리면 같은 화면의 위아래가 서로 다른 수량을 말한다.
+ *
+ * **`screenId`는 여기에만 자리가 있다.** 목록 행 타입(`DocumentProgressView`)은 그 값을 담지
+ * 않는다 — 목록은 문서를 열지 않으므로 담으면 화면으로 샐 경로만 생긴다.
+ */
+export interface DocumentProgressDetailView {
+  progress: DocumentProgressView;
+  screenId: string | null;
+  steps: DocumentProgressStepView[];
+  successors: DocumentSuccessorView[];
+}
+
+/** 상세 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toDocumentProgressDetailView = (
+  data: DocumentProgressDetailResponse,
+): DocumentProgressDetailView => ({
+  progress: toDocumentProgressView(data.progress),
+  screenId: data.progress.screenId ?? null,
+  steps: data.steps.map((step) => ({
+    stepCode: step.stepCode,
+    occurredAt: step.occurredAt,
+    actorName: step.actorName ?? null,
+    inventoryTransactionNo: step.inventoryTransactionNo ?? null,
+    businessDate: step.businessDate ?? null,
+  })),
+  successors: data.successors.map((successor) => ({
+    successorTypeCode: successor.successorTypeCode,
+    successorId: successor.successorId,
+    successorNo: successor.successorNo,
+    qty: successor.qty,
+    screenId: successor.screenId ?? null,
+  })),
+});

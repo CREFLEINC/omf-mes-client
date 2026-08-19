@@ -21,6 +21,8 @@ const baseProps = (overrides: Partial<ProgressTableProps> = {}): ProgressTablePr
   hasDocumentType: true,
   isBeyondLast: false,
   onFirstPage: vi.fn(),
+  selectedDocumentId: null,
+  onToggleSelect: vi.fn(),
   ...overrides,
 });
 
@@ -66,13 +68,13 @@ const longestBlockReasonPx =
   CELL_PADDING_PX;
 
 describe('buildProgressColumns — 열 구성과 폭 예산', () => {
-  const columns = buildProgressColumns();
+  const columns = buildProgressColumns({ selectedDocumentId: null, onToggleSelect: vi.fn() });
 
   /*
    * ⛔ **문서 유형 열이 없다.** 계약이 `documentTypeCode`를 필수 질의값으로 두어 한 응답의
    * 모든 행이 같은 유형이다 — 값이 하나뿐인 열은 폭만 먹고 아무것도 말하지 않는다.
    */
-  it('아홉 열이고 유형 열이 없다', () => {
+  it('열 개이고 유형 열이 없다', () => {
     expect(columns.map((column) => column.key)).toEqual([
       'documentNo',
       'documentDate',
@@ -83,6 +85,7 @@ describe('buildProgressColumns — 열 구성과 폭 예산', () => {
       'remainingQty',
       'successorCount',
       'cancelAvailability',
+      'select',
     ]);
     expect(columns.map((column) => column.key)).not.toContain('documentTypeCode');
   });
@@ -95,18 +98,30 @@ describe('buildProgressColumns — 열 구성과 폭 예산', () => {
     expect(keys).toContain('cancelAvailability');
   });
 
-  it('흡수 열이 정확히 하나다', () => {
-    expect(columns.filter((column) => column.width === undefined)).toHaveLength(1);
+  /**
+   * ⭐ **미지정(흡수) 열을 두지 않는다.** 고정 배치에서 폭을 지정하지 않은 열은 남는 폭의
+   * 잔여분을 받아 선언과 실렌더가 어긋난다 — 선택 열이 생기면서 흡수 열에 남는 폭이 취소 불가
+   * 사유 문면보다 좁아졌으므로, 취소 가능 열의 폭을 그 예산 그대로 못 박았다.
+   */
+  it('모든 열이 폭을 지정한다', () => {
+    expect(columns.filter((column) => column.width === undefined)).toHaveLength(0);
   });
 
-  it('지정 폭 합이 도출표와 같다', () => {
+  /**
+   * 지정 폭 합이 도출표와 같고 **표 하한을 넘는다.**
+   *
+   * `.wide-table`의 `58rem`은 **바닥이지 천장이 아니다** — 합이 하한 이상이면 각 열이 선언한 폭
+   * 그대로 렌더되고 모자란 폭은 가로 스크롤이 처리한다. ⛔ 합을 하한 **아래로 누르면** 고정
+   * 배치가 남는 폭을 나눠 넣어 선언과 실렌더가 어긋난다.
+   */
+  it('지정 폭 합이 도출표와 같고 표 하한 이상이다', () => {
     const fixed = columns.reduce(
       (sum, column) => sum + Number.parseInt(column.width ?? '0px', 10),
       0,
     );
 
-    expect(fixed).toBe(736);
-    expect(PROGRESS_TABLE_MIN_WIDTH_PX - fixed).toBe(192);
+    expect(fixed).toBe(1016);
+    expect(fixed).toBeGreaterThanOrEqual(PROGRESS_TABLE_MIN_WIDTH_PX);
   });
 
   /**
@@ -116,18 +131,16 @@ describe('buildProgressColumns — 열 구성과 폭 예산', () => {
    * 담는가」를 잰다. 예산 하한을 리터럴로 적으면 앞 단언이 통과하는 순간 이 단언도 정의상
    * 통과해 아무것도 지키지 못한다(동어반복).
    *
-   * 그래서 이 자리는 **두 방향으로 깨진다** — 열을 넓히면(왼쪽이 줄어) 깨지고, 사유 문면을
-   * 늘리면(오른쪽이 늘어) 깨진다.
+   * 그래서 이 자리는 **두 방향으로 깨진다** — 열을 좁히면 깨지고, 사유 문면을 늘리면 깨진다.
    */
-  it('흡수 열이 가장 긴 취소 불가 사유 문면을 담는다', () => {
-    const fixed = columns.reduce(
-      (sum, column) => sum + Number.parseInt(column.width ?? '0px', 10),
-      0,
-    );
+  it('취소 가능 열이 가장 긴 취소 불가 사유 문면을 담는다', () => {
+    const cancelColumn = columns.find((column) => column.key === 'cancelAvailability');
 
     /* 최장 문면은 `STATE_LOCKED`다 — 계획 시점의 「후속 문서가 있습니다」가 아니다. */
     expect(longestBlockReasonPx).toBe(t.blockReasons.STATE_LOCKED.length * 7.5 + 32);
-    expect(PROGRESS_TABLE_MIN_WIDTH_PX - fixed).toBeGreaterThanOrEqual(longestBlockReasonPx);
+    expect(Number.parseInt(cancelColumn?.width ?? '0px', 10)).toBeGreaterThanOrEqual(
+      longestBlockReasonPx,
+    );
   });
 
   /* 선언(상수)과 산출물(`<col>`) 두 자리를 각각 잰다 — 한 자리만 재면 둘이 어긋나도 안 잡힌다. */
@@ -240,6 +253,67 @@ describe('ProgressTable — 취소 가능 열', () => {
     });
 
     expect(screen.getByText(t.values.noBlockReason)).toBeInTheDocument();
+  });
+});
+
+describe('ProgressTable — 선택 열', () => {
+  /**
+   * ⭐ **행마다 고르는 손잡이가 있다.** 접근 이름에 **문서번호**를 넣어 어느 문서를 여는지
+   * 보조기술로도 읽히게 한다 — ⛔ 내부 번호는 넣지 않는다(omf-mes#44).
+   */
+  it('행마다 문서번호가 담긴 선택 손잡이가 있다', () => {
+    renderTable({ rows: [documentProgress()] });
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeInTheDocument();
+    /* 접근 이름에 내부 번호가 새지 않았다. */
+    expect(screen.queryByRole('button', { name: /9001/ })).not.toBeInTheDocument();
+  });
+
+  it('누르면 그 문서의 번호를 화면에 넘긴다', async () => {
+    const { onToggleSelect, user } = renderTable({
+      rows: [
+        documentProgress(),
+        documentProgress({ documentId: 9002, documentNo: 'SYN-GR-2026-0002' }),
+      ],
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0002') }));
+
+    expect(onToggleSelect).toHaveBeenCalledWith(9002);
+  });
+
+  /* 고른 줄만 「선택 해제」가 된다 — 어느 줄을 보고 있는지 표에서도 읽혀야 한다. */
+  it('고른 줄만 선택 해제로 바뀐다', () => {
+    renderTable({
+      rows: [
+        documentProgress(),
+        documentProgress({ documentId: 9002, documentNo: 'SYN-GR-2026-0002' }),
+      ],
+      selectedDocumentId: 9002,
+    });
+
+    expect(
+      screen.getByRole('button', { name: t.actions.deselectRow('SYN-GR-2026-0002') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeInTheDocument();
+  });
+
+  /* 고른 줄에서 다시 누르면 같은 번호를 넘긴다 — 넣고 빼는 판정은 화면이 한다. */
+  it('고른 줄에서 다시 눌러도 그 문서의 번호를 넘긴다', async () => {
+    const { onToggleSelect, user } = renderTable({
+      rows: [documentProgress()],
+      selectedDocumentId: 9001,
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: t.actions.deselectRow('SYN-GR-2026-0001') }),
+    );
+
+    expect(onToggleSelect).toHaveBeenCalledWith(9001);
   });
 });
 

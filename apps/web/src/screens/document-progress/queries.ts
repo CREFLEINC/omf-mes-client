@@ -3,15 +3,22 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, toApiError } from '../../patterns/request';
+import type { DetailSelection } from './detail-selection';
 import type { DocumentProgressListQuery } from './filters';
-import { toDocumentProgressView, type DocumentProgressListResult } from './types';
+import {
+  toDocumentProgressDetailView,
+  toDocumentProgressView,
+  type DocumentProgressDetailView,
+  type DocumentProgressListResult,
+} from './types';
 
 /**
- * 이 화면의 요청 — **이 회차에는 읽기 하나다.**
+ * 이 화면의 요청 — **이 회차에는 읽기 둘이다.**
  *
  * | 언제 | 무엇 |
  * | --- | --- |
  * | 문서 유형을 고르면 | 그 유형의 진행현황 목록 |
+ * | 문서를 고르면 | 그 문서의 처리 경과와 후속 목록 |
  *
  * ⭐ **유형을 고르기 전에는 아무것도 부르지 않는다.** `documentTypeCode`가 계약의 **필수**
  * 질의값이라 유형 없이 부를 방법 자체가 없고, 유형 값 목록이 확정되지 않은 지금은 어떤 주소로
@@ -33,7 +40,7 @@ type Client = ApiClient['client'];
  * 이 자원의 조회를 덮는 뿌리 키.
  *
  * **목록과 상세의 앞머리를 갈라 둔다** — 하나로 묶으면 목록만 다시 부르려 해도 상세까지 함께
- * 무효화된다. 상세 키는 상세 조회가 생기는 회차(단위 ②)에서 이 자리에 더한다.
+ * 무효화된다.
  *
  * ⚠ **이 회차에는 이 글자를 바꿔도 화면이 달라지지 않는다**(뮤테이션 실측 — 살아남는 뮤턴트).
  * 지금 이 키를 만드는 자리도 읽는 자리도 하나뿐이라, 이름이 통째로 바뀌면 캐시 항목의 이름만
@@ -59,6 +66,14 @@ export const documentProgressKeys = {
    */
   all: ALL_KEY,
   list: (query: DocumentProgressListQuery) => [...ALL_KEY, 'list', query] as const,
+  /**
+   * 상세 키 — **유형과 번호 둘 다** 들어간다(계약 경로가 둘을 열쇠로 쓴다).
+   *
+   * 번호만 쓰면 유형이 다른 같은 번호의 문서가 **한 캐시 항목을 나눠 쓴다** — 유형을 바꾼 뒤
+   * 같은 번호를 고르면 앞 유형의 상세가 그대로 보이고, 그 화면은 실제로 다른 문서다.
+   */
+  detail: (documentTypeCode: string, documentId: number) =>
+    [...ALL_KEY, 'detail', documentTypeCode, documentId] as const,
 };
 
 const fetchDocumentProgressList = async (
@@ -108,6 +123,72 @@ export const useDocumentProgressList = (
       return fetchDocumentProgressList(client, query);
     },
   });
+};
+
+const fetchDocumentProgressDetail = async (
+  client: Client,
+  selection: DetailSelection,
+): Promise<DocumentProgressDetailView> => {
+  const data = await runRequest(() =>
+    client.GET('/logistics/document-progress/{documentTypeCode}/{documentId}', {
+      params: {
+        path: {
+          documentTypeCode: selection.documentTypeCode,
+          documentId: selection.documentId,
+        },
+      },
+    }),
+  );
+
+  return toDocumentProgressDetailView(data);
+};
+
+/**
+ * 고른 문서의 처리 경과와 후속 목록.
+ *
+ * ⭐ **목록 응답을 기다리지 않는다.** 대상은 주소에서 나오므로(`toDetailSelection`) 주소만 들고
+ * 처음 그리는 경우 — 새로고침·주소 공유·뒤로가기 — 에도 이 조회가 곧바로 나간다. 고른 행에서
+ * 대상을 읽으면 목록이 도착할 때까지 상세가 서지 않고, **목록이 실패하면 영영 서지 않는다.**
+ *
+ * **잠금 토큰을 여기서 얻지 못한다.** 이 조회의 200에는 `ETag`가 없다(실측) — 취소가 쓸 토큰은
+ * 문서 리소스 상세에서만 오며, 그 조회는 취소 조작이 생기는 회차(단위 ③)의 몫이다.
+ */
+export const useDocumentProgressDetail = (
+  selection: DetailSelection | null,
+): UseQueryResult<DocumentProgressDetailView> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: documentProgressKeys.detail(
+      selection?.documentTypeCode ?? '',
+      selection?.documentId ?? 0,
+    ),
+    enabled: selection !== null,
+    queryFn: () => {
+      if (selection === null) {
+        throw new Error('고른 문서가 없으면 진행현황 상세를 조회하지 않습니다.');
+      }
+
+      return fetchDocumentProgressDetail(client, selection);
+    },
+  });
+};
+
+/**
+ * 고른 문서가 **사라졌는가** — 상태 코드 404 하나로만 판정한다.
+ *
+ * 계약이 이 조회의 실패 응답을 404 하나만 두었다. 다른 실패(권한·서버 오류)와 갈라야 하는
+ * 이유는 **할 일이 다르기 때문**이다 — 404는 다시 눌러도 같은 답이 오므로 주소에 남은 선택을
+ * 정리하고 그 사실을 말해야 하고, 나머지는 「다시 시도」가 유효하다.
+ *
+ * ⛔ **정규화 갈래(`kind`)로 판정하지 않는다.** `normalizeApiError`는 본문에 유효한 `errors`
+ * 배열이 있으면 상태와 무관하게 `validation`을 내고 **상태 코드를 버린다** — 그 갈래로 받으면
+ * 404가 아닌 실패까지 「사라진 문서」로 접힌다(목록 쪽 400 판정과 같은 규율).
+ */
+export const isDocumentProgressNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
 };
 
 /**
