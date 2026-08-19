@@ -8178,6 +8178,125 @@ const putawayRule = {
   },
 } as const;
 
+/**
+ * W-01-13 물류 문서 진행현황·취소.
+ *
+ * 이 회차(작업 단위 ①)의 문구는 **목록까지**다 — 상세 구획·취소 요청·승인 진행·취소 실행의
+ * 문구는 그 조작이 실제로 생기는 회차에서 이 묶음에 더한다. 미리 적어 두면 아무 화면도
+ * 내지 않는 문장이 남고, 그 문장은 고쳐도 아무도 모른다.
+ *
+ * **취소 불가 사유는 계약이 열거한 네 값만 문면을 갖는다.** 그 밖의 코드는 문구를 지어내지 않고
+ * 코드 문자열을 그대로 낸다 — 화면이 뜻을 붙이면 값이 늘 때 조용히 틀린다(공유계약 G-2).
+ */
+const documentProgress = {
+  title: '물류 문서 진행현황·취소',
+  breadcrumbRoot: '자재창고',
+  /** 조건 줄의 칸 이름. 순서가 곧 화면의 배치 순서다. */
+  fields: {
+    documentType: '문서 유형',
+    status: '상태',
+    period: '문서 일자',
+    item: '품목 번호',
+    lot: '자재 LOT 번호',
+    warehouse: '창고 번호',
+    cancellableOnly: '지금 취소 가능한 것만',
+    q: '문서번호',
+  },
+  actions: {
+    prevPage: '이전',
+    nextPage: '다음',
+    goFirstPage: '첫 쪽으로',
+  },
+  filters: {
+    all: '전체',
+    /**
+     * 번호로 좁히는 칸이 셋인 이유를 밝힌다. 이 화면에는 품목·LOT·창고를 이름으로 고르는
+     * 참조 조회가 없다 — 이름 목록을 얹으면 그 조회의 좁힘·잘림 규칙이 함께 따라온다.
+     */
+    idNote: '품목·자재 LOT·창고는 번호로 좁힙니다. 번호가 아닌 값은 조건에서 빠집니다.',
+    /** 외주 문서처럼 고를 수 없는 유형이 있을 때. 사유를 감추지 않는다. */
+    disabledTypes: (reasons: string): string => `고를 수 없는 유형이 있습니다. ${reasons}`,
+  },
+  loading: {
+    list: '문서 진행현황을 불러오는 중',
+  },
+  /**
+   * 목록 표의 머리글. 열 구성의 근거는 screens/document-progress/progress-table.tsx에 있다.
+   *
+   * **후속 건수가 열로 있는 것이 이 표의 요점이다** — 상세를 열어야 취소 가능 여부를 알면
+   * 실무자가 목록에서 대상을 고르지 못한다.
+   */
+  table: {
+    documentNo: '문서번호',
+    documentDate: '문서일자',
+    documentType: '유형',
+    subType: '세부구분',
+    status: '상태',
+    plannedQty: '계획 수량',
+    processedQty: '처리 수량',
+    remainingQty: '잔여 수량',
+    successorCount: '후속',
+    cancelAvailability: '취소 가능',
+  },
+  /** 취소 가능 열의 두 모양. **색만으로 말하지 않는다** — 글자로 낸다. */
+  cancel: {
+    available: '취소 요청 가능',
+    blocked: '취소 불가',
+  },
+  /**
+   * 계약이 설명문에 열거한 취소 불가 사유 네 값.
+   *
+   * **여기 없는 코드는 문구를 만들지 않는다.** 읽는 자리가 코드 문자열을 그대로 내고,
+   * 그것이 「모르는 값을 아는 척하지 않는다」의 화면 쪽 표현이다.
+   */
+  blockReasons: {
+    SUCCESSOR_EXISTS: '후속 문서가 있습니다',
+    ALREADY_CANCELLED: '이미 취소된 문서입니다',
+    CANCEL_IN_PROGRESS: '취소 요청이 진행 중입니다',
+    STATE_LOCKED: '지금 상태에서는 취소할 수 없습니다',
+  },
+  empty: {
+    /**
+     * 문서 유형 값 목록이 확정되지 않아 조회를 시작할 수 없는 상태.
+     * **고장으로 읽히지 않게** 왜 비어 있는지와 무엇이 정해지면 살아나는지를 함께 말한다.
+     */
+    typesPendingTitle: '문서 유형 선택지가 준비 중입니다',
+    typesPendingDescription:
+      '문서 유형 목록이 확정되면 이 화면에서 진행현황을 조회할 수 있습니다. 지금은 조회할 수 없습니다.',
+    noDocumentTypeTitle: '문서 유형을 고르고 조회하세요',
+    noDocumentTypeDescription: '진행현황은 문서 유형을 정해야 조회할 수 있습니다.',
+    noResultTitle: '조건에 맞는 문서가 없습니다',
+    noResultDescription: '기간을 넓히거나 조건을 줄인 뒤 다시 조회하세요.',
+    beyondLastTitle: '이 쪽에는 결과가 없습니다',
+    beyondLastDescription: '첫 쪽으로 이동하세요.',
+  },
+  /**
+   * 조회 실패 문면.
+   *
+   * **덮지 않는 문서 유형(400)을 따로 가른다.** 계약이 그 갈래를 응답으로 따로 적었고,
+   * 「불러오지 못했습니다」로 뭉개면 사용자가 다시 시도를 되풀이한다 — 몇 번을 눌러도 같은 답이
+   * 온다. 이 화면이 덮는 것은 여섯 유형이며 그 밖은 다른 도메인이 다룬다.
+   */
+  errors: {
+    unsupportedTitle: '이 화면이 덮지 않는 문서 유형입니다',
+    unsupportedDescription:
+      '고른 문서 유형은 이 화면에서 볼 수 없습니다. 다른 유형을 고르거나 담당자에게 문의하세요.',
+  },
+  pageNav: {
+    label: '쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    /** 이 쪽에 보일 것이 없을 때. 범위를 지어내지 않고 전체 건수만 밝힌다. */
+    totalOnly: (total: number): string => `전체 ${String(total)}건`,
+  },
+  values: {
+    /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
+    empty: '—',
+    /** 취소가 막혔는데 사유 코드가 오지 않았다. 사유를 지어내지 않고 그 사실을 적는다. */
+    noBlockReason: '사유를 받지 못했습니다',
+  },
+} as const;
+
 export const ko = {
   common,
   conflict,
@@ -8211,6 +8330,7 @@ export const ko = {
   stockAdjust,
   passwordChange,
   putawayRule,
+  documentProgress,
 } as const;
 
 export type Messages = typeof ko;
