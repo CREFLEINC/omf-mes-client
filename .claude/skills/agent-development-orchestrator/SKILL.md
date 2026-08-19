@@ -63,6 +63,16 @@ SendMessage(to: "<verifier 이름/ID>", ...)      # 재검증 요청 (리뷰 재
 
 작업 슬러그는 kebab-case로 짧게 짓는다(예: `w06-07-layout`, `mock-server-state`).
 
+### 팀 식별과 이슈 라벨 — GitHub 이슈에 착수할 때 (다중 팀 운영)
+
+이 저장소를 여러 Agent Coding 팀이 워크트리·별도 clone·별도 PC를 가리지 않고 동시에 쓸 수 있다. GitHub 이슈에 착수하기 전에 `docs/multi-team-workflow.md`를 따른다 — 요지만 적는다:
+
+- **팀 식별**: `.claude/team.local`(git 미추적 — `.gitignore`의 `*.local`이 이미 잡는다)을 확인한다. 없으면 추측하지 않고 사용자에게 팀 번호를 물어 만든다.
+- **이슈 라벨**: 착수하려는 이슈에 팀 라벨(`Agent : T{n}`)을 붙인다. 저장소에 그 라벨이 없으면 `gh label create`로 직접 만든 뒤 붙인다 — 승인 대기 없이 실행한다.
+- **담당자**: 고정 계정을 쓰지 않는다. 착수 시점에 인증된 계정을 동적으로 조회해(`gh issue edit <N> --add-assignee @me`) assignee로 지정한다.
+
+세부 절차·라벨 색상 선택·`in progress`/`ready` 라벨과의 관계는 `docs/multi-team-workflow.md`에 있다.
+
 ## 실행 흐름 (정책 §9)
 
 ### 1. 저장소 규칙과 현재 상태 확인
@@ -70,6 +80,7 @@ SendMessage(to: "<verifier 이름/ID>", ...)      # 재검증 요청 (리뷰 재
 - 루트 `CLAUDE.md`(공개 저장소 경계·디자인 시스템·설계 정본 위치)와 `docs/decisions.md`를 확인한다
 - `git status`로 **커밋되지 않은 변경**을 확인한다. 있으면 이번 작업과 분리 가능한지 판단하고, 분리할 수 없으면 중단해 사용자에게 보고한다
 - 현재 브랜치를 확인한다. `main` 직접 push는 차단돼 있으므로 작업 브랜치에서 진행한다
+- **GitHub 이슈에 착수하는 작업이면** 위 「팀 식별과 이슈 라벨」을 먼저 적용한다
 
 ### 2. 요구사항·목적·완료 조건 확인
 
