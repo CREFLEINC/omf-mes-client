@@ -22,6 +22,7 @@ const baseProps = (overrides: Partial<ProgressTableProps> = {}): ProgressTablePr
   isBeyondLast: false,
   onFirstPage: vi.fn(),
   selectedDocumentId: null,
+  isLocked: false,
   onToggleSelect: vi.fn(),
   ...overrides,
 });
@@ -68,7 +69,11 @@ const longestBlockReasonPx =
   CELL_PADDING_PX;
 
 describe('buildProgressColumns — 열 구성과 폭 예산', () => {
-  const columns = buildProgressColumns({ selectedDocumentId: null, onToggleSelect: vi.fn() });
+  const columns = buildProgressColumns({
+    selectedDocumentId: null,
+    isLocked: false,
+    onToggleSelect: vi.fn(),
+  });
 
   /*
    * ⛔ **문서 유형 열이 없다.** 계약이 `documentTypeCode`를 필수 질의값으로 두어 한 응답의
@@ -314,6 +319,31 @@ describe('ProgressTable — 선택 열', () => {
     );
 
     expect(onToggleSelect).toHaveBeenCalledWith(9001);
+  });
+
+  /**
+   * ⭐ **취소 요청이 나가는 중에는 다른 줄로 옮길 수 없다**(완료 조건 C3-13의 잠금 축).
+   * 옮기면 앞 요청의 결과가 지금 보는 맥락에 나타나고, 그 사이에 둘째 요청을 낼 길도 열린다.
+   *
+   * **손잡이를 없애지 않고 잠근다** — 사라지면 표의 줄 높이가 흔들리고 왜 못 고르는지도 모른다.
+   */
+  it('나가는 중에는 선택 손잡이가 잠긴다', () => {
+    renderTable({ isLocked: true });
+
+    const handles = screen.getAllByRole('button', { name: /고르기$/ });
+
+    // 선행 단언 — 손잡이가 실제로 있어야 「전부 잠겼다」가 뜻을 갖는다.
+    expect(handles.length).toBeGreaterThan(1);
+    for (const handle of handles) expect(handle).toBeDisabled();
+  });
+
+  /* 짝 방향 — 나가는 중이 아니면 눌린다. 아니면 위 단언이 「늘 잠겨 있다」와 같아진다. */
+  it('나가는 중이 아니면 선택 손잡이가 열려 있다', () => {
+    renderTable();
+
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0001') }),
+    ).toBeEnabled();
   });
 });
 

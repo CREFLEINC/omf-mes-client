@@ -79,8 +79,20 @@ export const judgeScreenOpen = (screenId: string, routes: ScreenRouteTable): Scr
  *
  * **열린 갈래를 인자로 받지 않는다.** 받으면 「사유 없음」을 뜻하는 빈 글자가 반환 타입에 생기고,
  * 그리는 자리가 그것을 걸러 내는 죽은 가지를 갖게 된다 — 타입이 그 자리를 막는다.
+ *
+ * ⭐ **삼항이 아니라 `switch`다**(전례 `approval-inbox/target.ts`의 `describeOpenBlock`과 같은 형태).
+ * 삼항이면 갈래가 늘 때 새 갈래가 **말없이 뒤쪽 문면으로 접히는데**, `switch`는 반환 타입 표기
+ * (`: string`)와 함께 그 순간 `tsc`가 잡는다(TS2366 — 실측). 이 판정은 갈래가 늘 것을 스스로
+ * 전제하므로(계약이 「열 수 있는가」를 내려 주면 셋째 갈래가 생긴다) 그 잡는 자리가 필요하다.
  */
 export const describeScreenOpenBlock = (
   block: ScreenOpenBlock,
   texts: { noScreenId: string; unmapped: string },
-): string => (block.kind === 'noScreenId' ? texts.noScreenId : texts.unmapped);
+): string => {
+  switch (block.kind) {
+    case 'noScreenId':
+      return texts.noScreenId;
+    case 'unmapped':
+      return texts.unmapped;
+  }
+};

@@ -1,9 +1,12 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest, toApiError } from '../../patterns/request';
+import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
+import { runRequest, toApiError, type ApiCallResult } from '../../patterns/request';
+import { CANCEL_FORM_FIELDS } from './cancel-reason-draft';
 import type { DetailSelection } from './detail-selection';
+import type { CancelResource } from './document-types';
 import type { DocumentProgressListQuery } from './filters';
 import {
   toDocumentProgressDetailView,
@@ -13,17 +16,25 @@ import {
 } from './types';
 
 /**
- * 이 화면의 요청 — **이 회차에는 읽기 둘이다.**
+ * 이 화면의 요청 — **이 회차에는 읽기 셋과 쓰기 하나다.**
  *
  * | 언제 | 무엇 |
  * | --- | --- |
  * | 문서 유형을 고르면 | 그 유형의 진행현황 목록 |
  * | 문서를 고르면 | 그 문서의 처리 경과와 후속 목록 |
+ * | 문서를 골랐고 **그 유형에 취소 경로가 있으면** | 그 문서의 **리소스 상세** — 잠금 토큰을 얻는다 |
+ * | 「취소 요청 올리기」 | 취소 요청 상신(202) |
  *
  * ⭐ **유형을 고르기 전에는 아무것도 부르지 않는다.** `documentTypeCode`가 계약의 **필수**
  * 질의값이라 유형 없이 부를 방법 자체가 없고, 유형 값 목록이 확정되지 않은 지금은 어떤 주소로
  * 들어와도 그 상태다 — 조회가 성립하는가는 `filters.ts`의 `toListQuery`가 한 곳에서 판정하고
  * (`null`이면 성립하지 않는다) 이 훅은 그 결과를 나른다. 여기서 다시 판정하면 두 자리가 갈린다.
+ *
+ * ⭐ **상세를 둘 부른다 — 역할이 다르다.** 진행현황 상세는 경과·후속을 주고 **잠금 토큰을 주지
+ * 않는다**(그 200에 `ETag`가 없다 — 실측). 토큰은 **문서 리소스 상세**(`/logistics/goods-receipts/{id}`
+ * 등) 200에서만 오며, 토큰 보관소가 **응답이 온 URL 경로**를 열쇠로 쓰므로(`packages/api-client/src/client.ts`)
+ * 잘못된 경로로 꺼내면 언제나 비어 있고 훅이 요청을 **보내지 않은 채** 멈춘다. 두 조회의 캐시
+ * 키를 가르는 이유도 같다 — 하나로 묶으면 한쪽 무효화가 다른 쪽을 끌고 간다.
  *
  * **참조 조회를 두지 않는다.** 품목·자재 LOT·창고는 번호로만 좁힌다 — 이름 목록을 얹으면 그
  * 조회의 좁힘·잘림 규칙이 함께 따라오는데, 이 회차의 목록은 그 이름을 그리지 않는다.
@@ -36,33 +47,27 @@ import {
 
 type Client = ApiClient['client'];
 
+type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];
+export type ApprovalRequestRef = components['schemas']['ApprovalRequestRef'];
+
 /**
  * 이 자원의 조회를 덮는 뿌리 키.
  *
  * **목록과 상세의 앞머리를 갈라 둔다** — 하나로 묶으면 목록만 다시 부르려 해도 상세까지 함께
  * 무효화된다.
  *
- * ⚠ **이 회차에는 이 글자를 바꿔도 화면이 달라지지 않는다**(뮤테이션 실측 — 살아남는 뮤턴트).
- * 지금 이 키를 만드는 자리도 읽는 자리도 하나뿐이라, 이름이 통째로 바뀌면 캐시 항목의 이름만
- * 바뀔 뿐 조회·표시·요청 어느 것도 갈리지 않는다. **감지기를 억지로 만들지 않는다** — 감지기가
- * 잴 수 있는 사실이 아직 없기 때문이다.
- *
- * **갈리는 조건**: 쓰기가 붙는 회차(단위 ③④)에 성공 뒤 `documentProgressKeys.all`로 무효화를
- * 걸면, 그때부터 `all`과 `list`의 앞머리가 어긋나는 순간 「취소를 올렸는데 목록이 그대로인」
- * 화면이 생긴다 — 그 회차에서 이 자리가 감지기의 대상이 된다.
+ * ⭐ **이 회차부터 `all`과 `list`의 앞머리가 어긋나면 화면이 갈린다.** 취소 요청 성공 뒤
+ * `documentProgressKeys.all`을 무효화해 목록과 상세를 함께 다시 부르므로, 앞머리가 갈리는 순간
+ * 「취소를 올렸는데 목록·후속이 그대로인」 화면이 된다 — 단위 ①의 뮤테이션에서 등가였던 자리가
+ * 여기서 감지기의 대상이 됐다(`screen.test.tsx`의 「202 뒤 목록·상세·리소스 상세를 다시 부른다」).
  */
 const ALL_KEY = ['document-progress'] as const;
 
 export const documentProgressKeys = {
   /**
-   * 뿌리 키 — **쓰기가 붙는 회차(단위 ③④)의 `invalidateKeys`가 쓸 자리다**(계획 부록 C가 그렇게
-   * 적었다). 취소 요청·취소 실행 성공 뒤 이 하나를 무효화해야 목록과 상세가 함께 갱신되고,
-   * 그래야 「취소를 올렸는데 아직 안 올린 것으로 보이는」 화면이 생기지 않는다.
-   *
-   * ⚠ **지금은 생산 소비처가 없다.** 그 사실을 적어 두는 것이 「쓰이지 않는 자리」와 「아직
-   * 쓰이지 않는 자리」를 가른다. ⛔ 전례 `disposal-issue/queries.ts`의 `approvalKeys.all`을
-   * 근거로 들지 않는다 — 그쪽은 같은 파일의 `invalidateKeys`에서 **실제로 쓰인다**(실측).
-   * 근거는 전례가 아니라 **계획 부록 C가 이 키의 소비처를 단위 ③④로 못박았다**는 것이다.
+   * 뿌리 키 — **취소 요청 성공 뒤 이 하나를 무효화한다.** 목록과 상세가 함께 갱신돼야
+   * 「취소를 올렸는데 아직 안 올린 것으로 보이는」 화면이 생기지 않는다. 후속 때문에 막힌
+   * 400에서 후속 목록을 다시 부르는 자리도 이 키를 쓴다(`screen.tsx`).
    */
   all: ALL_KEY,
   list: (query: DocumentProgressListQuery) => [...ALL_KEY, 'list', query] as const,
@@ -151,7 +156,7 @@ const fetchDocumentProgressDetail = async (
  * 대상을 읽으면 목록이 도착할 때까지 상세가 서지 않고, **목록이 실패하면 영영 서지 않는다.**
  *
  * **잠금 토큰을 여기서 얻지 못한다.** 이 조회의 200에는 `ETag`가 없다(실측) — 취소가 쓸 토큰은
- * 문서 리소스 상세에서만 오며, 그 조회는 취소 조작이 생기는 회차(단위 ③)의 몫이다.
+ * 문서 리소스 상세에서만 오며, 그것이 아래 `useCancelResourceLock`이 따로 있는 이유다.
  */
 export const useDocumentProgressDetail = (
   selection: DetailSelection | null,
@@ -215,4 +220,293 @@ export const isUnsupportedDocumentType = (error: unknown): boolean => {
   const apiError = toApiError(error);
 
   return apiError.kind === 'http' && apiError.status === 400;
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 취소 축 — 잠금 토큰과 취소 요청 상신
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * 취소 조작의 대상. **리소스와 번호가 함께여야 성립한다.**
+ *
+ * 리소스는 유형 표가 정하고(`cancelResourceOf`) 번호는 주소가 정한다 — 둘 중 하나라도 없으면
+ * 이 화면에는 취소할 대상이 없다.
+ */
+export interface CancelTarget {
+  resource: CancelResource;
+  documentId: number;
+}
+
+const CANCEL_RESOURCE_KEY = ['document-cancel-resource'] as const;
+
+/**
+ * 리소스 상세(잠금 토큰) 쪽의 캐시 키.
+ *
+ * **진행현황 키와 앞머리를 갈라 둔다** — 다른 자원이고 역할도 다르다. 겹치면 진행현황만 다시
+ * 부르려 해도 토큰 조회까지 끌려가고, 그 반대도 마찬가지다.
+ *
+ * **리소스와 번호가 함께 열쇠다** — 번호만 쓰면 리소스가 다른 같은 번호의 문서가 한 캐시 항목을
+ * 나눠 쓴다. 그것은 실제로 **다른 문서의 잠금 토큰**이며, 그 토큰으로 쓰기를 보내면 남의 문서를
+ * 상대로 낙관적 잠금을 건다.
+ */
+export const cancelResourceKeys = {
+  /**
+   * 뿌리 키 — **취소 요청 성공 뒤 이 하나를 무효화한다.** 상신은 문서의 `version_no`를 올리므로
+   * 다시 부르지 않으면 다음 쓰기가 **낡은 토큰**으로 나가 409가 된다(전례 `disposal-issue`가
+   * 상신 200에 `ETag`가 없어 같은 처리를 한다).
+   */
+  all: CANCEL_RESOURCE_KEY,
+  detail: (resource: CancelResource, documentId: number) =>
+    [...CANCEL_RESOURCE_KEY, resource, documentId] as const,
+};
+
+/**
+ * 대상이 없을 때 캐시 키가 앉는 자리.
+ *
+ * **키의 모양을 성립할 때와 같게 둔다**(목록 쪽 `EMPTY_QUERY`와 같은 규율) — 모양이 달라지면
+ * 「부르지 않는 동안」과 「부르는 동안」이 서로 다른 캐시 항목을 가리키는지 읽기 어려워진다.
+ * 번호 `0`은 이 화면의 어떤 대상도 될 수 없고(주소 판정이 1 이상만 받는다) `enabled`가 거짓이라
+ * 이 키로는 아무 요청도 나가지 않는다.
+ *
+ * ⛔ **이 메움은 캐시 키에만 쓴다.** 쓰기의 `etagPath`와 경로 조각에는 없는 값을 메우지 않는다 —
+ * 거기서 메우면 `…/0:request-cancel`이 **실제로 나갈 수 있는 모양**이 된다.
+ */
+const NO_CANCEL_TARGET: CancelTarget = { resource: 'goods-receipts', documentId: 0 };
+
+/**
+ * ⭐ **잠금 토큰을 꺼낼 경로 — 이 화면에서 가장 조용히 틀릴 수 있는 자리다.**
+ *
+ * 토큰 보관소는 **응답이 온 URL 경로**를 열쇠로 쓴다(`packages/api-client/src/client.ts`).
+ * 그래서 이 문자열이 아래 상세 조회가 실제로 두드리는 주소와 **글자 하나까지 같아야** 한다 —
+ * 어긋나면 보관소가 늘 비어 있고, 공통 쓰기 훅은 「최신 정보를 불러오는 중입니다」를 세운 채
+ * **요청을 아예 보내지 않는다.** 증상이 「눌러도 아무 일이 없다」라 알아채기 어렵다.
+ */
+export const cancelResourceDetailPath = (resource: CancelResource, documentId: number): string =>
+  `/logistics/${resource}/${String(documentId)}`;
+
+/**
+ * 리소스별 오퍼레이션 묶음.
+ *
+ * ⭐ **리소스 세 값을 고르는 `switch`가 이 화면에 하나뿐이다.** `openapi-fetch`가 경로를 리터럴
+ * 타입으로 요구해 오퍼레이션마다 주소를 적어야 하는데, 그 갈림을 여기 한 곳에 모아 두면
+ * ① 값이 늘 때 고칠 자리가 하나이고 ② 「어느 리소스로 나가는가」를 재는 감지기의 대상이 하나다.
+ * 취소 실행이 붙는 회차(단위 ④)도 이 묶음에 오퍼레이션을 **더할 뿐** 새 `switch`를 만들지 않는다.
+ *
+ * ⛔ **유형 코드로 분기하지 않는다.** 유형↔리소스는 `document-types.ts`의 표가 정하고, 여기서는
+ * 이미 정해진 리소스를 받아 주소로 옮기기만 한다 — 유형에서 리소스를 지어내는 분기가 곧
+ * 금지된 관계표다(공유계약 A-10 보강).
+ */
+interface CancelResourceApi {
+  /**
+   * 잠금 토큰을 얻는 상세 조회.
+   *
+   * **본문을 쓰지 않는다** — 토큰은 `ETag` 응답 헤더로 오고 보관소가 경로를 열쇠로 갖는다.
+   * 본문까지 화면에 들이면 입고·출고 상세의 표시 규약을 이 화면이 함께 떠안게 된다.
+   */
+  fetchDetail: () => Promise<ApiCallResult<unknown>>;
+  /** 취소 요청 상신 — 본문은 사유 하나이고 헤더 둘이 필수다. */
+  requestCancel: (
+    body: ApprovalRequestCreate,
+    headers: WriteHeaders,
+  ) => Promise<ApiCallResult<ApprovalRequestRef>>;
+}
+
+const cancelResourceApiOf = (
+  client: Client,
+  resource: CancelResource,
+  documentId: number,
+): CancelResourceApi => {
+  /*
+   * 헤더는 공통 훅이 만들어 준다. `If-Match`가 비어 있는 모양은 여기까지 오지 않는다 —
+   * 훅이 토큰을 못 찾으면 요청을 만들지 않고 멈추기 때문이다(전례와 같은 형태).
+   */
+  const headerOf = (headers: WriteHeaders) => ({
+    'Idempotency-Key': headers['Idempotency-Key'],
+    'If-Match': headers['If-Match'] ?? '',
+  });
+
+  switch (resource) {
+    case 'goods-receipts':
+      return {
+        fetchDetail: () =>
+          client.GET('/logistics/goods-receipts/{goodsReceiptId}', {
+            params: { path: { goodsReceiptId: documentId } },
+          }),
+        requestCancel: (body, headers) =>
+          client.POST('/logistics/goods-receipts/{goodsReceiptId}:request-cancel', {
+            params: { path: { goodsReceiptId: documentId }, header: headerOf(headers) },
+            body,
+          }),
+      };
+    case 'inbound-receipts':
+      return {
+        fetchDetail: () =>
+          client.GET('/logistics/inbound-receipts/{inboundReceiptId}', {
+            params: { path: { inboundReceiptId: documentId } },
+          }),
+        requestCancel: (body, headers) =>
+          client.POST('/logistics/inbound-receipts/{inboundReceiptId}:request-cancel', {
+            params: { path: { inboundReceiptId: documentId }, header: headerOf(headers) },
+            body,
+          }),
+      };
+    case 'goods-issues':
+      return {
+        fetchDetail: () =>
+          client.GET('/logistics/goods-issues/{goodsIssueId}', {
+            params: { path: { goodsIssueId: documentId } },
+          }),
+        requestCancel: (body, headers) =>
+          client.POST('/logistics/goods-issues/{goodsIssueId}:request-cancel', {
+            params: { path: { goodsIssueId: documentId }, header: headerOf(headers) },
+            body,
+          }),
+      };
+  }
+};
+
+/**
+ * 잠금 토큰을 확보했다는 사실.
+ *
+ * **본문이 아니라 대상을 담는다** — 이 조회의 목적은 표시가 아니라 토큰이고, 토큰은 화면이
+ * 만질 수 없는 곳(보관소)에 앉는다. 그래도 값을 내는 이유는 ① `undefined`를 내는 조회를 TanStack
+ * Query가 받지 않고 ② **어느 대상의 토큰이 준비됐는지**를 화면이 견줄 수 있어야 하기 때문이다.
+ */
+export type CancelResourceLock = CancelTarget;
+
+const fetchCancelResourceLock = async (
+  client: Client,
+  target: CancelTarget,
+): Promise<CancelResourceLock> => {
+  await runRequest(() =>
+    cancelResourceApiOf(client, target.resource, target.documentId).fetchDetail(),
+  );
+
+  return target;
+};
+
+/**
+ * 고른 문서의 **잠금 토큰**을 확보한다.
+ *
+ * ⭐ **이 200이 오기 전에는 취소 요청을 올릴 수 없다.** 계약이 `If-Match`를 필수로 두었고 토큰의
+ * 원천이 이 조회뿐이라, 화면이 버튼을 먼저 열면 눌러도 아무 일이 없는 자리가 생긴다.
+ *
+ * ⛔ **`cancellable`로 이 조회를 막지 않는다.** 취소 요청이 진행 중이면 서버가 `cancellable`을
+ * 거짓으로 내리는데(`CANCEL_IN_PROGRESS`), 그때가 바로 **취소 실행**이 토큰을 필요로 하는
+ * 순간이다(단위 ④ · 계획 §5-2). 여기서 막으면 그 회차에 실행 버튼이 영영 서지 않는다.
+ *
+ * **취소 경로가 없는 유형에서는 나가지 않는다** — 대상이 `null`이면 부를 주소 자체가 없다.
+ */
+export const useCancelResourceLock = (
+  target: CancelTarget | null,
+): UseQueryResult<CancelResourceLock> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: cancelResourceKeys.detail(
+      (target ?? NO_CANCEL_TARGET).resource,
+      (target ?? NO_CANCEL_TARGET).documentId,
+    ),
+    enabled: target !== null,
+    queryFn: () => {
+      if (target === null) {
+        throw new Error('취소 대상이 없으면 잠금 토큰을 조회하지 않습니다.');
+      }
+
+      return fetchCancelResourceLock(client, target);
+    },
+  });
+};
+
+/**
+ * 리소스 상세를 **볼 권한이 없는가**(403).
+ *
+ * ⚠ 계약은 이 조회의 실패로 404만 적었다. 403은 계약 밖(권한 계층)에서 오는 갈래이며, 갈라야
+ * 하는 이유는 **할 일이 다르기 때문**이다 — 같은 권한으로 다시 불러도 같은 답이 오므로
+ * 「다시 시도」를 내면 사용자를 헛돌게 하고 해야 할 일(담당자 문의)을 가린다.
+ *
+ * ⛔ **정규화 갈래(`kind`)가 아니라 상태 코드로 판정한다** — 목록·상세 쪽과 같은 규율이다.
+ */
+export const isCancelResourceForbidden = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 403;
+};
+
+/**
+ * 리소스 상세가 **없는가**(404).
+ *
+ * 계약이 이 조회의 실패 응답으로 적은 하나다. 「다시 시도」를 남기는 이유는 권한과 달리
+ * **다시 부르면 달라질 수 있기 때문**이다 — 방금 만들어진 문서가 아직 보이지 않는 순간이 있고,
+ * 유형↔리소스 표가 어긋난 경우라면 표를 고친 뒤 같은 자리에서 다시 시도하게 된다.
+ *
+ * ⛔ 진행현황 상세의 404와 **다르게 다룬다**. 그쪽은 고른 문서가 사라진 것이라 주소를 정리하지만,
+ * 여기서 주소를 정리하면 **읽을 수 있는 진행현황까지 함께 닫힌다** — 실패한 것은 취소 축뿐이다.
+ */
+export const isCancelResourceNotFound = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  return apiError.kind === 'http' && apiError.status === 404;
+};
+
+export interface RequestDocumentCancelOptions {
+  /** 어느 계약 경로로 나가는가. 유형 표가 정한다 — `null`이면 이 유형에 취소 경로가 없다. */
+  resource: CancelResource | null;
+  /** 어느 문서인가. 주소가 정한다. */
+  documentId: number | null;
+  onSuccess: (data: ApprovalRequestRef) => void;
+}
+
+/**
+ * **취소를 승인에 올린다**(M-1) — 이 회차의 유일한 쓰기다.
+ *
+ * **`If-Match`가 필수다**(계약). 토큰은 **늘 리소스 상세 경로**에서 꺼낸다
+ * (`cancelResourceDetailPath`) — 액션 경로(`…:request-cancel`)로 꺼내면 보관소가 언제나 비어
+ * 있어 취소가 통째로 멈춘다.
+ *
+ * **성공 뒤 두 뿌리를 무효화한다.**
+ *
+ * | 뿌리 | 왜 |
+ * | --- | --- |
+ * | 진행현황(목록·상세) | 문서 상태가 취소요청으로 옮겨 가고 `cancellable`·`cancelBlockedReasonCode`가 달라진다. 다시 부르지 않으면 「올렸는데 아직 안 올린 것으로 보이는」 화면이 남는다 |
+ * | 리소스 상세(토큰) | 상신이 `version_no`를 올린다. **202 응답에 `ETag`가 없어**(계약) 다시 부르지 않으면 다음 쓰기가 낡은 토큰으로 나가 409다 |
+ *
+ * ⚠ **승인 진행 쪽 뿌리는 이 회차에 없다.** 상신으로 생기는 것이 그 승인 요청이지만, 그것을
+ * **읽는 조회가 아직 없어** 무효화할 대상이 없다 — 없는 키를 미리 만들면 아무 일도 하지 않는
+ * 자리가 생기고 그 자리가 맞는지도 잴 수 없다. 승인 진행 조회가 붙는 회차(단위 ④)에서 그 조회와
+ * **함께** 이 목록에 더한다.
+ *
+ * **응답이 내부 식별자 하나뿐이다**(`ApprovalRequestRef`) — 화면에 낼 번호가 없다(omf-mes#44).
+ * 성공 안내는 「올렸습니다」까지만 말한다.
+ */
+export const useRequestDocumentCancel = (
+  options: RequestDocumentCancelOptions,
+): MasterWriteResult<ApprovalRequestCreate> => {
+  const { client } = useApiClient();
+  const { resource, documentId } = options;
+
+  return useMasterWrite<ApprovalRequestCreate, ApprovalRequestRef>({
+    request: (body, headers) => {
+      /*
+       * ⛔ **없는 값을 0으로 메우지 않는다.**
+       *
+       * `etagPath`가 `null`이 되면 공통 훅은 그것을 「잠금이 필요 없다」로 읽어 요청을 **그대로
+       * 내보낸다** — 대체값을 두면 `…/0:request-cancel`이 실제로 나갈 수 있는 모양이 되고,
+       * 리소스까지 메우면 **남의 문서에 취소를 상신하는** 요청이 된다. 지금은 호출부가 그렇게
+       * 부르지 않지만, 그 사실에 기대는 대신 **여기서 멈춘다**(조회 훅의 가드와 같은 형태).
+       */
+      if (resource === null || documentId === null) {
+        throw new Error('취소할 문서를 고르기 전에는 취소 요청을 올리지 않습니다.');
+      }
+
+      return cancelResourceApiOf(client, resource, documentId).requestCancel(body, headers);
+    },
+    etagPath:
+      resource === null || documentId === null
+        ? null
+        : cancelResourceDetailPath(resource, documentId),
+    invalidateKeys: [documentProgressKeys.all, cancelResourceKeys.all],
+    knownFields: CANCEL_FORM_FIELDS,
+    onSuccess: options.onSuccess,
+  });
 };

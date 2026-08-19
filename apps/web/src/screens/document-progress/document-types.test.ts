@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  cancelResourceOf,
   describeDisabledTypes,
   DOCUMENT_TYPES,
   findDocumentType,
@@ -92,7 +93,9 @@ describe('toDocumentTypeOptions', () => {
 describe('describeDisabledTypes', () => {
   it('막힌 유형이 없으면 안내를 만들지 않는다', () => {
     expect(
-      describeDisabledTypes([{ code: 'SYN_DOC_TYPE_A', label: '가', disabledReason: null }]),
+      describeDisabledTypes([
+        { code: 'SYN_DOC_TYPE_A', label: '가', cancelResource: null, disabledReason: null },
+      ]),
     ).toBeUndefined();
   });
 
@@ -115,10 +118,52 @@ describe('describeDisabledTypes', () => {
    */
   it('막힌 유형이 둘이면 경계가 보이게 가른다', () => {
     const note = describeDisabledTypes([
-      { code: 'A', label: '가', disabledReason: '사유 하나' },
-      { code: 'B', label: '나', disabledReason: '사유 둘' },
+      { code: 'A', label: '가', cancelResource: null, disabledReason: '사유 하나' },
+      { code: 'B', label: '나', cancelResource: null, disabledReason: '사유 둘' },
     ]);
 
     expect(note).toBe('가: 사유 하나 · 나: 사유 둘');
+  });
+});
+
+describe('cancelResourceOf', () => {
+  /**
+   * ⭐ **표가 비어 있는 동안 어떤 유형에서도 취소가 서지 않는다.** 유형↔취소 리소스 규약을
+   * 계약이 내려 주지 않아 표가 비어 있는 것이 지금의 사실이고, 그 상태에서 리소스를 지어내면
+   * 화면이 **없는 주소로 취소 요청을 보낸다.**
+   */
+  it('빈 표에서는 어떤 유형도 취소 리소스를 얻지 못한다', () => {
+    expect(cancelResourceOf('SYN_DOC_TYPE_B', DOCUMENT_TYPES)).toBeNull();
+  });
+
+  /* ⭐ 표에 값이 생기면 **그것만으로** 취소 경로가 정해진다 — 다른 자리는 바뀌지 않는다. */
+  it('표를 채우면 그 유형의 리소스를 낸다', () => {
+    expect(cancelResourceOf('SYN_DOC_TYPE_B', documentTypeFixtures)).toBe('goods-receipts');
+  });
+
+  /**
+   * 계약의 취소 경로는 셋뿐이라 **덮는 유형 중 일부에는 취소가 없다.** 없음을 없음으로 낸다 —
+   * 아무 리소스나 채워 넣으면 취소가 없는 문서에 취소 요청이 나간다.
+   */
+  it('취소 리소스가 없는 유형은 null이다', () => {
+    expect(cancelResourceOf('SYN_DOC_TYPE_A', documentTypeFixtures)).toBeNull();
+  });
+
+  /* 표에 아예 없는 코드도 마찬가지다 — 이 화면이 다루는 유형이 아니다. */
+  it('표에 없는 코드는 null이다', () => {
+    expect(cancelResourceOf('SYN_DOC_TYPE_ZZ', documentTypeFixtures)).toBeNull();
+  });
+
+  /**
+   * ⭐ **고를 수 없는 유형은 리소스가 적혀 있어도 내지 않는다** — 목록·상세와 **같은 잣대**다.
+   * 갈리면 손으로 고친 주소(`?ty=…`)가 비활성 유형으로 취소 요청을 내보내는 길이 된다.
+   *
+   * 픽스처의 「합성 유형 다」가 **비활성인데 리소스를 갖고 있어** 이 가드가 실제로 재어진다.
+   */
+  it('고를 수 없는 유형은 리소스가 있어도 null이다', () => {
+    expect(findDocumentType('SYN_DOC_TYPE_C', documentTypeFixtures)?.cancelResource).toBe(
+      'goods-issues',
+    );
+    expect(cancelResourceOf('SYN_DOC_TYPE_C', documentTypeFixtures)).toBeNull();
   });
 });

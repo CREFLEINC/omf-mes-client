@@ -1,8 +1,21 @@
-import { Breadcrumb, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Breadcrumb,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+  useToast,
+} from '@crefle/web-ui';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
+import { readCancelAvailability } from './cancel-availability';
+import { isSuccessorBlocked } from './cancel-error';
+import { CancelPane, type CancelLock } from './cancel-pane';
+import { CANCEL_REASON_FIELD, toCancelRequest } from './cancel-reason-draft';
 import { PLACEHOLDER_DOCUMENT_STATUS_CODES, toStatusOptions } from './code-options';
 import { DetailPane } from './detail-pane';
 import {
@@ -12,6 +25,7 @@ import {
   withSelection,
 } from './detail-selection';
 import {
+  cancelResourceOf,
   describeDisabledTypes,
   DOCUMENT_TYPES,
   isDocumentTypeListPending,
@@ -31,16 +45,38 @@ import { toPageView } from './pagination';
 import { ProgressFilterBar } from './progress-filter-bar';
 import { ProgressTable } from './progress-table';
 import {
+  documentProgressKeys,
   isDocumentProgressNotFound,
+  useCancelResourceLock,
   useDocumentProgressDetail,
   useDocumentProgressList,
+  useRequestDocumentCancel,
+  type CancelTarget,
 } from './queries';
+import { RequestCancelDialog } from './request-cancel-dialog';
 import { SCREEN_ROUTES } from './screen-routes';
+import { SaveErrorBanner } from '../../patterns/master';
 
 const t = messages.documentProgress;
 
+type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];
+
 /**
- * W-01-13 물류 문서 진행현황·취소 — **이 회차(작업 단위 ①·②)는 목록과 고른 문서의 상세까지다.**
+ * 열려 있는 취소 요청 확인 창 — **`null`이면 창이 닫혀 있다.**
+ *
+ * ⭐ **창의 상태가 곧 「확인된 요청」이다.** 사유 검증을 창을 여는 자리에서 끝내고 그 결과를
+ * 여기 담으므로, 확인 버튼이 눌렸을 때 다시 판정할 것이 없다 — **확인한 값과 보내는 값이 같은
+ * 자리에서 나오고**, 「보낼 수 없는데 창이 열려 있는」 갈래가 타입 수준에서 사라진다.
+ */
+interface CancelDialogState {
+  /** 확인 당시의 대상. **업무 번호다** — 창이 뜬 뒤 목록이 갱신돼도 확인한 대상이 바뀌지 않는다. */
+  documentNo: string;
+  /** 그대로 나갈 본문. 사유 하나뿐이다. */
+  body: ApprovalRequestCreate;
+}
+
+/**
+ * W-01-13 물류 문서 진행현황·취소 — **이 회차(작업 단위 ①~③)는 목록·상세와 취소 요청까지다.**
  *
  * 읽는 것이 주 동작이고 편집 폼이 없어 2단 배치를 쓰지 않는다. 표가 창 폭을 다 쓰고
  * 고른 문서의 상세는 **목록 아래 구획**에 선다(드로어도 창도 아니다 — 디자인 시스템에 드로어가
@@ -53,14 +89,19 @@ const t = messages.documentProgress;
  * 빈 표를 내면 사용자는 조건에 맞는 문서가 없는 줄 안다.
  *
  * **표를 채우면 저절로 살아난다.** 채울 자리는 `document-types.ts` 한 곳이고, 이 파일은
- * 그 표를 **인자로 넘길 뿐** 값을 읽어 분기하지 않는다.
+ * 그 표를 **인자로 넘길 뿐** 값을 읽어 분기하지 않는다. 취소도 같다 — 표의 취소 리소스 열이
+ * 채워지는 순간 취소 축이 살아난다.
  *
- * **취소 조작은 이 회차에 없다.** 라우트와 사이드바도 아직 열지 않는다 — 취소 실행이
- * 서기 전에 화면을 열면 승인을 받아 놓고 실행할 자리가 없는 상태가 사용자에게 보인다.
+ * ⭐ **취소는 승인을 탄다.** 이 회차가 만드는 것은 **취소 요청**이며 문서는 아직 취소되지 않는다.
+ * 승인 진행 표시와 취소 실행은 다음 회차(단위 ④)의 몫이고, 라우트와 사이드바는 그 뒤(단위 ⑤)에
+ * 연다 — 실행할 자리가 서기 전에 화면을 열면 **승인을 받아 놓고 실행할 곳이 없는** 상태가
+ * 사용자에게 보인다.
  */
 export const DocumentProgressScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const toast = useToast();
+  const queryClient = useQueryClient();
 
   /**
    * **주소 키의 수명 — 무엇이 바뀔 때 무엇을 비우는가.**
@@ -114,6 +155,126 @@ export const DocumentProgressScreen = () => {
   const detail = useDocumentProgressDetail(selection);
 
   /**
+   * 취소 조작의 대상 — **유형 표가 리소스를 정하고 주소가 번호를 정한다.**
+   *
+   * ⭐ **고른 문서에서 유형을 읽는다.** 목록·상세와 같은 잣대를 지난 값이라(`toDetailSelection`)
+   * 비활성 유형이나 표에 없는 유형이 여기까지 오지 않는다 — 잣대가 갈리면 손으로 고친 주소가
+   * 취소를 내보내는 길이 된다.
+   *
+   * 표에 취소 리소스가 없으면 `null`이고, 그러면 조회도 조작도 서지 않는다(완료 조건 C3-1).
+   */
+  const cancelResource =
+    selection === null ? null : cancelResourceOf(selection.documentTypeCode, documentTypes);
+
+  const cancelTarget: CancelTarget | null =
+    cancelResource === null || selection === null
+      ? null
+      : { resource: cancelResource, documentId: selection.documentId };
+
+  /**
+   * ⭐ **잠금 토큰은 진행현황 상세가 아니라 리소스 상세에서 온다**(계획 §5-1). 두 조회는 역할이
+   * 달라 나란히 나가며, 이쪽이 실패해도 진행현황은 계속 읽을 수 있다.
+   */
+  const cancelLockQuery = useCancelResourceLock(cancelTarget);
+
+  /**
+   * 취소 대상의 서명 — **대상 매임의 축**이다.
+   *
+   * 쓰기의 되먹임은 그 요청을 **보낸 렌더의 값**을 들고 도착한다. 「지금 보고 있는 대상의
+   * 것인가」를 견주려면 두 값을 같은 모양의 글자로 만들어 두어야 하고, 리소스와 번호가 **함께**
+   * 들어가야 한다 — 번호만 견주면 리소스가 다른 같은 번호의 문서가 남의 결과를 받는다.
+   */
+  const cancelTargetKey =
+    cancelTarget === null ? '' : `${cancelTarget.resource}:${String(cancelTarget.documentId)}`;
+
+  /**
+   * 마지막으로 **보낸** 대상.
+   *
+   * ⚠ **렌더 중에 읽는다.** 이 값은 보내는 길(`submitCancelRequest`)에서만 바뀌고 그 길은 반드시
+   * 상태 변화(진행 중)를 함께 일으키므로, 값이 바뀐 뒤에는 반드시 다시 그려진다 — 한 렌더 안에서
+   * 답이 흔들리지 않는다(전례 `putaway-rule/screen.tsx`의 같은 규율).
+   */
+  const sentCancelTargetKeyRef = useRef<string | null>(null);
+
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelReasonError, setCancelReasonError] = useState<string | null>(null);
+  const [cancelDialog, setCancelDialog] = useState<CancelDialogState | null>(null);
+
+  const cancelWrite = useRequestDocumentCancel({
+    resource: cancelResource,
+    documentId: selection?.documentId ?? null,
+    onSuccess: () => {
+      /*
+       * 요청은 올라갔다 — 대상이 그 사이에 바뀌었어도 그 사실까지 감추지 않는다.
+       *
+       * ⛔ **승인 요청 번호를 내지 않는다.** 응답에 오는 것이 내부 식별자뿐이라(`ApprovalRequestRef`)
+       * 화면에 낼 업무 번호가 없다(omf-mes#44).
+       */
+      toast.show({ variant: 'success', description: t.cancelRequest.submitted });
+
+      /*
+       * ⚠ **여기서 대상을 다시 견주지 않는다.** 대상이 바뀌면 정리 effect가 이미 창을 닫고
+       * 초안을 비웠으므로, 견줌을 더해도 관찰이 갈리지 않는 가지가 하나 늘 뿐이다.
+       */
+      setCancelDialog(null);
+      setCancelReason('');
+      setCancelReasonError(null);
+    },
+  });
+
+  /**
+   * ⭐ **잠금의 축 — 전역이다.** 어느 대상이든 취소 요청이 나가는 중이면 조작을 잠근다.
+   * 아래 진행 표시의 축(`isCancelSavingMine`)과 **일부러 갈라 둔 값**이다(완료 조건 C3-13).
+   */
+  const isCancelLocked = cancelWrite.isSaving;
+
+  /** 훅에 남아 있는 쓰기 결과가 **지금 보는 대상의 것인가.** */
+  const isCancelResultMine = sentCancelTargetKeyRef.current === cancelTargetKey;
+
+  /**
+   * ⭐ **진행 표시의 축 — 이 대상의 요청인가.**
+   *
+   * ⛔ 전역 잠금으로 재지 않는다 — 나가는 중에 바깥 주소 이동으로 대상이 바뀌면 **손대지도 않은
+   * 문서가 「요청 중」이라고 말한다.**
+   */
+  const isCancelSavingMine = cancelWrite.isSaving && isCancelResultMine;
+
+  /**
+   * 사유 칸 옆에 설 오류 — **화면이 잡은 것과 서버가 준 것이 같은 칸에 붙는다**(공유계약 G-1).
+   *
+   * **인라인 오류도 매임을 지난다** — 배너만 감추면 대상이 바뀐 뒤 새 문서의 칸 옆에 **남의 문서가
+   * 받은 거절 사유**가 붙는다.
+   *
+   * ⭐ **화면이 잡은 것을 앞에 둔다**(전례 `putaway-rule/screen.tsx`의 `{...서버, ...로컬}`과 같은
+   * 방향). 서버 거절이 선 뒤 사용자가 칸을 **비우고 다시 누르면** 그 순간의 사실은 「비었다」이고,
+   * 낡은 서버 문구가 그 위에 남으면 무엇을 고쳐야 하는지 흐려진다.
+   *
+   * ⛔ **글자를 칠 때 서버 거절을 걷지 않는다**(전례의 `clearFieldError`를 쓰지 않는다). 전례는
+   * **여러 칸 폼**이라 A 칸을 고치는 동안 A의 거절이 남으면 방해가 되지만, 이 화면의 칸은 하나이고
+   * 그 거절이 **지금 고치는 이유 그 자체**다 — 고치는 동안 사라지면 무엇 때문에 거절됐는지 볼
+   * 수 없다.
+   *
+   * ⭐ **두 값이 함께 서는 경로가 실재한다 — 그래서 차례가 답을 가른다.**
+   *
+   * | 걸음 | 무엇이 일어나나 |
+   * | :-: | --- |
+   * | ① | 요청이 나가는 중에 **Escape로 창이 닫힌다**(막을 수 없는 길 — C3-8) |
+   * | ② | `closeCancelDialog`가 `resetIfIdle`를 부르지만 **나가는 중이라 물러난다**(걷지 않는다) |
+   * | ③ | 거절이 도착 → **창이 닫힌 채** 서버 거절이 이 칸에 선다 |
+   * | ④ | 칸을 비우고 다시 누르면 화면이 잡은 오류가 **그 위에** 선다 |
+   *
+   * 그래서 걷히는 자리는 **창을 idle 상태에서 닫는 순간**과 **다시 보내는 순간**이고, 나가는 중에
+   * 닫힌 길에서는 **걷히지 않는 것이 옳다**(그 거절은 아직 사용자가 못 본 답이다).
+   *
+   * ⚠ **이 문단은 정정본이다.** 앞 회차(r2)에 「두 값이 함께 서는 순간이 없다 = 등가」라고 적었으나
+   * **틀렸다** — `resetIfIdle`의 첫 줄(`if (write.isSaving) return`)을 수명 표에서 빠뜨렸다.
+   * 감지기 「나가는 중 창이 닫힌 뒤 도착한 거절 위에 필수 오류가 선다」가 이 차례를 실제로 문다.
+   */
+  const cancelReasonFieldError =
+    cancelReasonError ??
+    (isCancelResultMine ? cancelWrite.fieldErrors[CANCEL_REASON_FIELD] : undefined);
+
+  /**
    * 없음 안내가 매인 대상 — **조건·쪽의 서명**이다.
    *
    * 안내를 끄는 자리를 클릭 핸들러에 두면 뒤로가기·주소 직접 편집이 그 길을 지나지 않아 문장이
@@ -165,8 +326,20 @@ export const DocumentProgressScreen = () => {
    *
    * ⚠ **404 정리(effect)는 이 길을 지나지 않는다** — 그쪽은 안내를 **세우는** 자리이고
    * 히스토리도 늘리지 않아야 해서 `setSearchParams`를 직접 부른다.
+   *
+   * ⭐ **취소 요청이 나가는 중에는 주소를 갈아 끼우지 않는다**(완료 조건 C3-13의 잠금 축).
+   * 조회·초기화·쪽 이동·고르기·해제가 전부 이 문을 지나므로 잠글 자리가 하나로 남는다.
+   *
+   * ⚠ **이 잠금이 실제로 일하는 순간은 창이 닫힌 뒤다.** 창이 열려 있는 동안에는 모달이 화면 안
+   * 조작을 이미 막지만, **Escape로 창이 닫히면**(막을 수 없는 길) 요청은 나가는 중인 채 목록이
+   * 다시 눌리게 된다 — 그때 대상이 바뀌면 앞 요청의 결과가 지금 보는 맥락에 나타난다.
+   *
+   * ⛔ **바깥 주소 이동(뒤로가기·주소 직접 편집)은 이 문을 지나지 않는다.** 막을 수 없는 길이라
+   * 막는 대신 다룬다 — 나가는 요청을 끊지 않고, 도착한 결과 중 **대상에 매인 것만** 그린다.
    */
   const applySearchParams = (next: URLSearchParams): void => {
+    if (isCancelLocked) return;
+
     setMissingContextKey(null);
     setSearchParams(next);
   };
@@ -204,6 +377,155 @@ export const DocumentProgressScreen = () => {
   const openScreen = (path: string): void => {
     void navigate(path);
   };
+
+  /**
+   * **나가는 중인 쓰기는 건드리지 않는다.**
+   *
+   * 공통 훅의 `reset()`은 진행 중 mutation에서 **옵저버를 떼어 낸다**. 옵저버가 떨어지면 그
+   * 호출에 매달린 되먹임이 통째로 오지 않는다 — 무효화도, 성공도, 실패도. 요청은 이미 서버에
+   * 갔는데 화면만 없던 일로 친다(omf-mes#96).
+   *
+   * **끊는 것과 감추는 것은 다르다.** 도착한 결과를 화면에 낼지는 `isCancelResultMine`이 정하고,
+   * 여기서는 **끝난 것만** 거둔다. `reset()`을 부르는 **모든 자리**가 이 함수를 지난다.
+   */
+  const resetIfIdle = (write: { isSaving: boolean; reset: () => void }): void => {
+    if (write.isSaving) return;
+
+    write.reset();
+  };
+
+  /**
+   * 취소 축에서 편집 중이던 것을 거둔다 — 창 · 사유 초안 · 인라인 오류 · 실패 배너.
+   *
+   * **초안은 자기 대상보다 오래 살지 않는다.** 남겨 두면 A 문서에 적은 사유가 B 문서의 칸에
+   * 그대로 서고, 그 상태로 확인 창을 열면 **다른 문서의 사유로 취소가 올라간다.**
+   */
+  const resetCancelEditing = (): void => {
+    resetIfIdle(cancelWrite);
+    setCancelDialog(null);
+    setCancelReason('');
+    setCancelReasonError(null);
+  };
+
+  /*
+   * 위 함수는 매 렌더 새로 만들어지므로 그대로 의존성에 넣으면 **렌더마다 초기화가 돈다** —
+   * 실패 배너가 서자마자 지워져 사용자가 이유를 볼 수 없고, 치던 사유도 사라진다.
+   */
+  const resetCancelEditingRef = useRef(resetCancelEditing);
+  resetCancelEditingRef.current = resetCancelEditing;
+
+  /*
+   * ⭐ **대상이 바뀌면 취소 축을 거둔다.** 고르기·해제뿐 아니라 **뒤로가기·주소 직접 편집**까지
+   * 같은 자리에서 다룬다 — 그 길은 클릭 핸들러를 지나지 않으므로 핸들러에 두면 통째로 샌다.
+   */
+  useEffect(() => {
+    resetCancelEditingRef.current();
+  }, [cancelTargetKey]);
+
+  /**
+   * ⭐ **후속 때문에 막힌 400에서 진행현황을 다시 부른다**(완료 조건 C3-11).
+   *
+   * 그 400은 **후속이 생겼다는 사실의 통지**다. 다시 부르지 않으면 사용자가 보고 있는 후속 목록은
+   * 「0건」인 채로 남아, 화면이 「후속 때문에 막혔다」라고 말하면서 후속을 하나도 보이지 않는다.
+   *
+   * **되먹임 훅이 실패 콜백을 내주지 않아** effect로 잡는다. 오류 상태의 참조는 새 실패가 설
+   * 때만 바뀌므로 이 자리가 되풀이되지 않는다.
+   */
+  useEffect(() => {
+    const error = cancelWrite.error;
+
+    if (error === null || !isSuccessorBlocked(error)) return;
+
+    void queryClient.invalidateQueries({ queryKey: documentProgressKeys.all });
+  }, [cancelWrite.error, queryClient]);
+
+  /**
+   * 확인 창을 연다 — **사유 검증이 여기서 끝난다**(완료 조건 C3-5).
+   *
+   * 빈 사유로는 **창조차 열지 않는다.** 창을 열어 두고 확인 버튼에서 막으면 사용자가 두 번
+   * 물러나야 하고, 무엇보다 「확인했는데 안 나가는」 자리가 생긴다. 검증 결과(본문)를 창의
+   * 상태에 담아 두므로 **확인한 값과 보내는 값이 같은 자리에서 나온다.**
+   */
+  const openCancelDialog = (documentNo: string): void => {
+    if (isCancelLocked) return;
+
+    const body = toCancelRequest(cancelReason);
+
+    if (body === null) {
+      setCancelReasonError(t.cancelRequest.reasonRequired);
+
+      return;
+    }
+
+    setCancelReasonError(null);
+    setCancelDialog({ documentNo, body });
+  };
+
+  /**
+   * 창을 닫는다 — **Escape도 이 길을 지난다.**
+   *
+   * 나가는 중인 요청을 끊지 않는다(`resetIfIdle`). 창이 닫혀도 성공하면 안내가 뜨고 캐시가
+   * 갱신되며, 실패하면 배너가 **구획으로 옮겨 온다**(자리 배타 — `cancelFailureSlot`).
+   */
+  const closeCancelDialog = (): void => {
+    resetIfIdle(cancelWrite);
+    setCancelDialog(null);
+  };
+
+  /**
+   * 확인한 본문을 보낸다.
+   *
+   * **보낸 대상을 붙잡는다** — 되먹임은 보낸 값을 들고 오지 않으므로, 결과가 도착했을 때
+   * 「그것이 지금 보는 대상의 것인가」를 물을 근거가 이 한 줄이다.
+   */
+  const submitCancelRequest = (body: ApprovalRequestCreate): void => {
+    sentCancelTargetKeyRef.current = cancelTargetKey;
+    cancelWrite.write(body);
+  };
+
+  /**
+   * 취소 요청 실패가 서는 **하나의 자리** — 창이 열려 있으면 창, 닫혀 있으면 구획.
+   *
+   * **매임을 지난다** — 남의 대상에 보낸 요청의 거절 사유를 지금 대상에 세우지 않는다.
+   *
+   * ⭐ **후속 갈래만 문면을 갈아 낀다.** 계약이 그 400에 코드를 붙였고 사용자가 할 일이
+   * 분명하기 때문이다(후속을 먼저 취소한다). ⛔ 나머지 400은 **서버 문구를 그대로** 낸다 —
+   * 계약이 네 사유를 함께 적었는데 코드가 붙은 것은 하나뿐이라, 화면이 가르면 원인을 지어내게
+   * 된다(완료 조건 C3-12).
+   */
+  const cancelFailureSlot = (): ReactNode => {
+    const error = isCancelResultMine ? cancelWrite.error : null;
+
+    if (error === null) return null;
+
+    if (isSuccessorBlocked(error)) {
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="error">{t.cancelRequest.successorBlocked}</AlertBanner>
+        </div>
+      );
+    }
+
+    /*
+     * 409는 재조회로 풀린다 — 이 쓰기에서 낡을 수 있는 것은 **잠금 토큰**이므로 리소스 상세를
+     * 다시 부른다(진행현황이 아니다).
+     */
+    return (
+      <SaveErrorBanner
+        error={error}
+        onReload={() => {
+          void cancelLockQuery.refetch();
+        }}
+      />
+    );
+  };
+
+  /** 잠금 토큰이 어디까지 왔는가 — **실패를 로딩보다 앞에서 판정한다**(사본 대조 추가 ①). */
+  const cancelLock = ((): CancelLock => {
+    if (cancelLockQuery.isError) return { kind: 'failed', error: cancelLockQuery.error };
+
+    return cancelLockQuery.data === undefined ? { kind: 'preparing' } : { kind: 'ready' };
+  })();
 
   /**
    * 아래 구획. 넷 중 하나만 낸다 — 사용자가 할 조치가 서로 다르다.
@@ -250,7 +572,42 @@ export const DocumentProgressScreen = () => {
       );
     }
 
-    return <DetailPane detail={detail.data} routes={SCREEN_ROUTES} onOpen={openScreen} />;
+    const { progress } = detail.data;
+
+    return (
+      <>
+        <DetailPane detail={detail.data} routes={SCREEN_ROUTES} onOpen={openScreen} />
+
+        {/*
+         * ⭐ **취소 축이 상세 구획 안에 선다.** 후속 목록 바로 아래에 두는 이유는, 취소할 수
+         * 있는가를 가르는 것이 그 목록이기 때문이다 — 읽고 나서 결정하는 차례가 화면의 차례다.
+         *
+         * ⭐ **판정 근거가 목록 열과 같은 자리에서 나온다**(`readCancelAvailability`) — 갈리면
+         * 목록에서는 「취소 요청 가능」인데 아래에서는 잠긴 화면이 된다.
+         */}
+        <CancelPane
+          hasCancelResource={cancelResource !== null}
+          availability={readCancelAvailability(progress)}
+          lock={cancelLock}
+          reason={cancelReason}
+          reasonError={cancelReasonFieldError}
+          isSaving={isCancelSavingMine}
+          isLocked={isCancelLocked}
+          /* 창이 열려 있으면 실패는 창이 갖는다 — 두 자리에 같은 배너를 세우지 않는다. */
+          banner={cancelDialog === null ? cancelFailureSlot() : null}
+          onChangeReason={(value) => {
+            setCancelReason(value);
+            setCancelReasonError(null);
+          }}
+          onOpenConfirm={() => {
+            openCancelDialog(progress.documentNo);
+          }}
+          onRetryLock={() => {
+            void cancelLockQuery.refetch();
+          }}
+        />
+      </>
+    );
   };
 
   return (
@@ -261,6 +618,24 @@ export const DocumentProgressScreen = () => {
       />
 
       {list.isError && <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />}
+
+      {/*
+       * ⭐ **잠긴 이유를 상시 밝힌다 — 자리가 상세 구획 밖이다**(전례 `putaway-rule/screen.tsx`의
+       * `savingLock`과 같은 자리).
+       *
+       * 잠금 문(`applySearchParams`)이 조회·초기화·쪽 이동·고르기·해제를 막는데, 그중 **조건 줄과
+       * 쪽 이동은 컨트롤 자체가 잠기지 않는다** — 눌러도 아무 일이 없는 버튼이 생기고, 이 줄이
+       * 없으면 그 이유가 화면 어디에도 없다. 이 슬라이스가 다른 자리에서 스스로 경고한
+       * 「증상이 **눌러도 아무 일이 없다**라 알아채기 어렵다」와 같은 형태다.
+       *
+       * ⛔ **취소 구획 안에 두지 않는다.** 구획은 대상이 풀리면 사라지는데(나가는 중 바깥 주소
+       * 이동으로 `sel`이 빠지는 갈래) 잠금은 요청이 끝날 때까지 남는다 — 그 갈래에서 잠긴 이유가
+       * 통째로 사라진다. 진행 표시조차 대상 매임으로 걸러지므로 남는 단서가 하나도 없다.
+       *
+       * ⛔ **배너가 아니다.** 실패가 아니라 잠깐 지나가는 사실이라 `AlertBanner`를 쓰면 취소 축의
+       * 실패 배너와 같은 무게로 읽힌다.
+       */}
+      {isCancelLocked && <p className="field-note">{t.notes.cancelLock}</p>}
 
       <section className="pane" aria-label={t.title}>
         {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
@@ -295,6 +670,7 @@ export const DocumentProgressScreen = () => {
                 applyQuery(filters);
               }}
               selectedDocumentId={selection?.documentId ?? null}
+              isLocked={isCancelLocked}
               onToggleSelect={toggleSelect}
             />
             {listQuery !== null && !list.isPending && (
@@ -320,6 +696,23 @@ export const DocumentProgressScreen = () => {
         <section className="pane" aria-label={t.panes.detail}>
           {detailSlot()}
         </section>
+      )}
+
+      {/*
+       * ⭐ **창의 상태가 곧 확인된 요청이다.** 열려 있다는 것은 사유 검증을 통과했다는 뜻이고,
+       * 그때 확인 버튼이 보내는 것은 **창을 열 때 만든 바로 그 본문**이다 — 타입이 「보낼 수
+       * 없는데 창이 열려 있는」 갈래를 막는다.
+       */}
+      {cancelDialog !== null && (
+        <RequestCancelDialog
+          documentNo={cancelDialog.documentNo}
+          isSaving={isCancelSavingMine}
+          banner={cancelFailureSlot()}
+          onClose={closeCancelDialog}
+          onConfirm={() => {
+            submitCancelRequest(cancelDialog.body);
+          }}
+        />
       )}
     </>
   );

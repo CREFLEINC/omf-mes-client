@@ -19,6 +19,14 @@ export const PROGRESS_TABLE_MIN_WIDTH_PX = 928;
 export interface ProgressColumnsInput {
   /** 지금 고른 문서. 같은 줄의 손잡이가 「선택 해제」로 바뀐다. */
   selectedDocumentId: number | null;
+  /**
+   * ⭐ **취소 요청이 나가는 중인가** — 전역이다. 나가는 중에 다른 문서로 옮기면 앞 요청의
+   * 결과가 지금 보는 맥락에 나타나고, 그 사이에 둘째 요청을 낼 길도 열린다.
+   *
+   * **손잡이를 없애지 않고 잠근다** — 사라지면 표의 줄 높이가 흔들리고, 왜 못 고르는지도
+   * 알 수 없다. 잠금은 잠깐이고 그 사이 사용자가 하는 일은 기다리는 것뿐이다.
+   */
+  isLocked: boolean;
   onToggleSelect: (documentId: number) => void;
 }
 
@@ -81,6 +89,7 @@ export interface ProgressColumnsInput {
  */
 export const buildProgressColumns = ({
   selectedDocumentId,
+  isLocked,
   onToggleSelect,
 }: ProgressColumnsInput): Column<DocumentProgressView>[] => [
   { key: 'documentNo', header: t.table.documentNo, width: '152px' },
@@ -164,6 +173,7 @@ export const buildProgressColumns = ({
         <Button
           variant="outlined"
           size="sm"
+          disabled={isLocked}
           aria-label={
             isSelected ? t.actions.deselectRow(row.documentNo) : t.actions.selectRow(row.documentNo)
           }
@@ -229,6 +239,7 @@ export const ProgressTable = ({
   isBeyondLast,
   onFirstPage,
   selectedDocumentId,
+  isLocked,
   onToggleSelect,
 }: ProgressTableProps) => {
   if (isLoading) {
@@ -291,7 +302,7 @@ export const ProgressTable = ({
     <div className="wide-table">
       <Table
         density="compact"
-        columns={buildProgressColumns({ selectedDocumentId, onToggleSelect })}
+        columns={buildProgressColumns({ selectedDocumentId, isLocked, onToggleSelect })}
         rows={rows}
         /*
          * **문서 번호 하나로는 행을 가릴 수 없다.** 같은 번호가 유형이 다르면 다른 문서이고,
