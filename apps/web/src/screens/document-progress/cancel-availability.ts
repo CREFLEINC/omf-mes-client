@@ -76,6 +76,12 @@ const BLOCK_REASON_TEXTS: Readonly<Record<string, string>> = {
 export const describeCancelBlockReason = (availability: CancelAvailability): string => {
   if (availability.kind === 'available') return '';
 
+  /*
+   * `?? ''`는 **닿을 수 없는 가지**다 — `known`이 참이면 그 코드가 `KNOWN_BLOCK_REASON_CODES`에
+   * 있고 표에도 반드시 있다. 그래도 적는 이유는 `noUncheckedIndexedAccess`가 켜져 있어 색인
+   * 접근의 타입이 `string | undefined`이기 때문이며, 대체 문자열을 무엇으로 바꿔도 화면은
+   * 달라지지 않는다(뮤테이션 실측). **타입 방어일 뿐 갈래가 아니다.**
+   */
   if (availability.known) return BLOCK_REASON_TEXTS[availability.reasonCode] ?? '';
 
   return availability.reasonCode === '' ? t.values.noBlockReason : availability.reasonCode;

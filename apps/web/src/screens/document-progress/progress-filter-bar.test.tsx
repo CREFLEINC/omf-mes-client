@@ -60,6 +60,16 @@ describe('ProgressFilterBar — 여덟 축이 선다', () => {
 
     expect(screen.getByText(t.filters.idNote)).toBeInTheDocument();
   });
+
+  /*
+   * 기본 기간을 심지 않는다는 사실도 화면이 밝힌다 — **비어 있는 칸이 고장으로 읽히지 않게**
+   * 한다(전례 `disposal-issue/gi-filter-bar.tsx`의 `periodNote`와 같은 자리).
+   */
+  it('기본 기간이 없다는 사실을 적는다', () => {
+    renderBar();
+
+    expect(screen.getByText(t.filters.periodNote)).toBeInTheDocument();
+  });
 });
 
 describe('ProgressFilterBar — 모아서 적용', () => {
@@ -180,11 +190,58 @@ describe('ProgressFilterBar — 자리표시 코드 셋', () => {
    * **값을 지어내지 않는다.** 고를 것이 없는데 「전체」만 있으면 목록이 준비된 것처럼 보인다 —
    * 왜 비었는지는 안내가 말한다. 유형과 상태 두 칸이 같은 안내를 쓴다.
    */
-  it('값 목록이 비면 선택지가 없고 사유가 보인다', () => {
+  it('값 목록이 비면 사유가 보인다', () => {
     renderBar();
 
     expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(2);
-    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **「전체」도 붙이지 않는다 — 선택칸을 열어서 센다.**
+   *
+   * ⛔ 닫힌 채로 `queryByRole('option')`을 재면 안 된다. 디자인 시스템 `Select`는 닫힌 상태에서
+   * 옵션을 렌더하지 않으므로 그 단언은 **구현과 무관하게 늘 통과**한다 — 빈 목록에 「전체」를
+   * 붙이도록 고쳐도 아무 감지기가 울리지 않는다.
+   */
+  it('값 목록이 비면 열어도 고를 것이 없다 — 「전체」도 없다', async () => {
+    const { user } = renderBar();
+
+    await user.click(screen.getByLabelText(t.fields.documentType));
+
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+    expect(screen.queryByText(t.filters.all)).not.toBeInTheDocument();
+  });
+
+  /* 짝 방향 — 값이 있으면 「전체」가 붙는다(앞 단언이 늘 참이 아니다). */
+  it('값 목록이 있으면 「전체」가 앞에 붙는다', async () => {
+    const { user } = renderBar({
+      documentTypeOptions: toDocumentTypeOptions(documentTypeFixtures),
+    });
+
+    await user.click(screen.getByLabelText(t.fields.documentType));
+
+    const options = screen.getAllByRole('option');
+
+    /*
+     * 글자를 통째로 견주지 않는다 — 고른 항목에는 디자인 시스템이 확인 표식을 함께 넣어
+     * 텍스트가 라벨보다 길다. 차례와 라벨 포함 여부만 잰다.
+     */
+    expect(options).toHaveLength(4);
+    [t.filters.all, '합성 유형 가', '합성 유형 나', '합성 유형 다'].forEach((label, index) => {
+      expect(options[index]).toHaveTextContent(label);
+    });
+  });
+
+  /**
+   * 보조 문구는 **보이기만 해서는 안 되고** 선택칸의 접근 이름에 이어져 있어야 한다 —
+   * 잠기지 않은 칸이라도 스크린리더 사용자는 그 문구를 칸과 잇지 못하면 왜 비었는지 모른다.
+   */
+  it('준비 중 안내가 선택칸의 설명으로 이어져 있다', () => {
+    renderBar();
+
+    expect(screen.getByLabelText(t.fields.documentType)).toHaveAccessibleDescription(
+      messages.pendingCode.note,
+    );
   });
 
   /* ⚠ 비어 있어도 아무것도 잠그지 않는다 — 잠그면 무엇을 채워야 열리는지 읽을 수 없다. */

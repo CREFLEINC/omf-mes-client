@@ -31,41 +31,50 @@ export const PROGRESS_TABLE_MIN_WIDTH_PX = 928;
  * **정렬을 열지 않는다.** 계약의 이 조회에 정렬 파라미터가 없고(실측) 화면 안에서만 정렬하면
  * 「지금 쪽 안에서만 정렬됐다」는 사정을 매번 설명해야 한다.
  *
- * 열 폭의 도출(흡수 열에도 예산을 잡는다):
+ * 열 폭의 도출(자폭 약 **7.5px** · 셀 좌우 여백 **32px** — 흡수 열에도 예산을 잡는다):
  *
  * | 열 | 폭 | 근거 |
  * | --- | ---: | --- |
- * | 문서번호 | 168px | 16자(자폭 약 7.5px) 120px + 셀 여백 32px |
- * | 문서일자 | 112px | `YYYY-MM-DD` 10자 75px + 여백 32px |
- * | 세부구분 | 96px | 코드 문자열 |
- * | 상태 | 96px | 코드 문자열 |
- * | 계획 수량 | 80px | 머리글 5자 40px + 여백 32px. 우측 정렬 |
+ * | 문서번호 | 152px | 문서번호 16자 120px + 여백 32px |
+ * | 문서일자 | 112px | `YYYY-MM-DD` 10자 75px + 여백 32px = 107px → 112 |
+ * | 세부구분 | 88px | 머리글 4자 30px + 여백 32px = 62px. ⚠ 아래 주 |
+ * | 상태 | 88px | 같은 위 |
+ * | 계획 수량 | 80px | 머리글 4자 30px + 여백 32px = 62px. 수량 자릿수 여유 포함. 우측 정렬 |
  * | 처리 수량 | 80px | 같은 위 |
  * | 잔여 수량 | 80px | 같은 위 |
- * | 후속 | 64px | 머리글 2자 20px + 여백 32px. 우측 정렬 |
+ * | 후속 | 56px | 머리글 2자 15px + 여백 32px = 47px → 56. 우측 정렬 |
  * | **취소 가능** | **미지정** | 남는 폭을 흡수한다 |
- * | **지정 폭 합** | **776px** | |
- * | 흡수 열이 받는 폭 | **152px** | 928 − 776 |
+ * | **지정 폭 합** | **736px** | |
+ * | 흡수 열이 받는 폭 | **192px** | 928 − 736 |
  *
- * **흡수 열의 예산이 다른 표보다 작은 이유**: 이 칸은 두 조각(「취소 불가」와 사유)이
- * **일부러 위아래로 쌓인다** — 한 줄에 이어 붙이면 사유가 상태처럼 읽힌다. 그래서 예산의
- * 기준이 두 조각의 합이 아니라 **긴 쪽 하나**이며, 가장 긴 사유 문면(「후속 문서가 있습니다」
- * 10자 75px + 여백 32px = 107px)이 들어가면 된다. 152px는 그보다 45px 넓다.
+ * ⚠ **세부구분·상태는 폭을 보장할 수 없다.** 그 칸에 서는 것은 **서버가 정하는 코드 문자열**이라
+ * 길이에 상한이 없다 — 어떤 폭을 잡아도 더 긴 코드가 올 수 있으므로, 이 두 예산은 **머리글이
+ * 접히지 않는 하한**(62px)에 짧은 코드 몫을 더한 값이고 그보다 긴 코드는 접힌다. 지어낸 상한으로
+ * 「보장한다」고 적지 않는다.
+ *
+ * ⭐ **흡수 열의 예산 기준은 「이 화면이 소유한 문구 중 가장 긴 것」이다.** 이 칸은 두 조각
+ * (「취소 불가」와 사유)이 **일부러 위아래로 쌓이므로** 기준이 두 조각의 합이 아니라 긴 쪽 하나이고,
+ * 그 긴 쪽은 취소 불가 사유 넷 중 최장인 `STATE_LOCKED`의 문면이다 — **19자 142.5px + 여백 32px
+ * = 174.5px**. 192px가 그보다 17.5px 넓다.
+ *
+ * ⛔ **코드 문자열과 달리 이 값은 상한이 있다** — 문면을 우리가 소유하기 때문이다. 그래서 감지기가
+ * 리터럴이 아니라 **i18n의 실제 문면에서 최장값을 계산해** 예산과 견준다. 문면이 길어지거나 열이
+ * 넓어지면 그 자리에서 깨진다.
  */
 export const buildProgressColumns = (): Column<DocumentProgressView>[] => [
-  { key: 'documentNo', header: t.table.documentNo, width: '168px' },
+  { key: 'documentNo', header: t.table.documentNo, width: '152px' },
   { key: 'documentDate', header: t.table.documentDate, width: '112px' },
   {
     key: 'documentSubTypeCode',
     header: t.table.subType,
-    width: '96px',
+    width: '88px',
     /*
      * 계약이 선택으로 두어 **없이 오는 문서가 실재한다.** 빈 칸으로 두면 값이 없는 것인지
      * 화면이 못 그린 것인지 구분되지 않는다 — 코드를 지어내지 않고 없음을 표식으로 낸다.
      */
     render: (row) => row.documentSubTypeCode ?? t.values.empty,
   },
-  { key: 'statusCode', header: t.table.status, width: '96px' },
+  { key: 'statusCode', header: t.table.status, width: '88px' },
   {
     key: 'plannedQty',
     header: t.table.plannedQty,
@@ -90,7 +99,7 @@ export const buildProgressColumns = (): Column<DocumentProgressView>[] => [
   {
     key: 'successorCount',
     header: t.table.successorCount,
-    width: '64px',
+    width: '56px',
     align: 'end',
     /* **서버가 센 값을 그대로 낸다.** 0도 그대로 낸다 — 0건은 정상이고 이 표의 좋은 소식이다. */
     render: (row) => String(row.successorCount),

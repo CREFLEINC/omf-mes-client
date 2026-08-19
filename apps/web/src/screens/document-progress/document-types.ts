@@ -97,6 +97,10 @@ export const toDocumentTypeOptions = (entries: readonly DocumentTypeEntry[]): Se
  *
  * **이름과 사유를 함께 낸다.** 사유만 내면 어느 유형이 막힌 것인지 알 수 없고,
  * 이름만 내면 왜 막혔는지 알 수 없다.
+ *
+ * **줄 사이를 가운뎃점으로 가른다.** 공백 하나로 이으면 둘 이상 막혔을 때 앞 사유의 끝과 뒤
+ * 이름의 시작이 한 문장처럼 붙어 읽힌다 — 지금은 막히는 유형이 둘뿐이라 잘 드러나지 않지만,
+ * 경계가 보이지 않는 것은 값이 늘 때 조용히 나빠지는 자리다.
  */
 export const describeDisabledTypes = (
   entries: readonly DocumentTypeEntry[],
@@ -105,5 +109,5 @@ export const describeDisabledTypes = (
 
   if (blocked.length === 0) return undefined;
 
-  return blocked.map((entry) => `${entry.label}: ${entry.disabledReason ?? ''}`).join(' ');
+  return blocked.map((entry) => `${entry.label}: ${entry.disabledReason ?? ''}`).join(' · ');
 };

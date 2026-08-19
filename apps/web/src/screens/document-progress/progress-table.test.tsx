@@ -45,6 +45,26 @@ const cellTextsOf = (documentNo: string): string[] =>
     (cell) => cell.textContent ?? '',
   );
 
+/**
+ * 열 폭 산법 — `progress-table.tsx`의 도출표가 쓰는 것과 같은 두 수다.
+ * 여기에 다시 적는 이유는 **감지기가 그 산법대로 스스로 세어 보기** 위해서다.
+ */
+const CHAR_WIDTH_PX = 7.5;
+const CELL_PADDING_PX = 32;
+
+/**
+ * 흡수 열이 담아야 하는 최소 폭 — **i18n의 실제 문면에서 계산한다.**
+ *
+ * ⛔ 리터럴로 적지 않는다. 리터럴이면 지정 폭 합 단언이 통과하는 순간 이 단언도 정의상 통과해
+ * (동어반복) 아무것도 지키지 못한다. i18n에서 세면 **문면이 길어질 때도** 이 자리가 깨진다.
+ *
+ * 이 칸의 두 조각(「취소 불가」와 사유)은 일부러 위아래로 쌓이므로 기준은 합이 아니라 **긴 쪽 하나**,
+ * 곧 취소 불가 사유 넷 중 최장 문면이다.
+ */
+const longestBlockReasonPx =
+  Math.max(...Object.values(t.blockReasons).map((text) => text.length * CHAR_WIDTH_PX)) +
+  CELL_PADDING_PX;
+
 describe('buildProgressColumns — 열 구성과 폭 예산', () => {
   const columns = buildProgressColumns();
 
@@ -79,19 +99,35 @@ describe('buildProgressColumns — 열 구성과 폭 예산', () => {
     expect(columns.filter((column) => column.width === undefined)).toHaveLength(1);
   });
 
-  it('지정 폭 합과 흡수 예산이 표 하한 안에 든다', () => {
+  it('지정 폭 합이 도출표와 같다', () => {
     const fixed = columns.reduce(
       (sum, column) => sum + Number.parseInt(column.width ?? '0px', 10),
       0,
     );
 
-    expect(fixed).toBe(776);
-    /*
-     * 흡수 열의 두 조각은 일부러 위아래로 쌓이므로 예산의 기준은 **긴 조각 하나**다 —
-     * 가장 긴 사유 문면(10자 75px + 셀 여백 32px = 107px)이 들어가면 된다.
-     */
-    expect(PROGRESS_TABLE_MIN_WIDTH_PX - fixed).toBe(152);
-    expect(PROGRESS_TABLE_MIN_WIDTH_PX - fixed).toBeGreaterThanOrEqual(107);
+    expect(fixed).toBe(736);
+    expect(PROGRESS_TABLE_MIN_WIDTH_PX - fixed).toBe(192);
+  });
+
+  /**
+   * ⭐ **흡수 예산을 i18n의 실제 문면과 견준다 — 두 축이 서로 독립이다.**
+   *
+   * 앞 감지기는 「선언한 폭이 도출표와 같은가」를 재고, 이 감지기는 「그 폭이 **실제 문면**을
+   * 담는가」를 잰다. 예산 하한을 리터럴로 적으면 앞 단언이 통과하는 순간 이 단언도 정의상
+   * 통과해 아무것도 지키지 못한다(동어반복).
+   *
+   * 그래서 이 자리는 **두 방향으로 깨진다** — 열을 넓히면(왼쪽이 줄어) 깨지고, 사유 문면을
+   * 늘리면(오른쪽이 늘어) 깨진다.
+   */
+  it('흡수 열이 가장 긴 취소 불가 사유 문면을 담는다', () => {
+    const fixed = columns.reduce(
+      (sum, column) => sum + Number.parseInt(column.width ?? '0px', 10),
+      0,
+    );
+
+    /* 최장 문면은 `STATE_LOCKED`다 — 계획 시점의 「후속 문서가 있습니다」가 아니다. */
+    expect(longestBlockReasonPx).toBe(t.blockReasons.STATE_LOCKED.length * 7.5 + 32);
+    expect(PROGRESS_TABLE_MIN_WIDTH_PX - fixed).toBeGreaterThanOrEqual(longestBlockReasonPx);
   });
 
   /* 선언(상수)과 산출물(`<col>`) 두 자리를 각각 잰다 — 한 자리만 재면 둘이 어긋나도 안 잡힌다. */
@@ -299,33 +335,37 @@ describe('ProgressTable — 행 식별자', () => {
   });
 
   /**
-   * **번호만으로 키를 만들면 유형을 바꿀 때 남의 행을 재활용한다.**
+   * ⭐ **유형을 빼면 남의 행을 재활용한다 — 번호 두 축을 **함께** 막는다.**
    *
-   * 목록은 유형 하나로 좁혀 오므로 한 응답 안에서는 번호가 겹치지 않는다 — 그래서 번호만
-   * 써도 당장은 표가 멀쩡해 보인다. 그러나 **유형을 바꾸면** 다른 유형의 문서가 같은 번호를
-   * 들고 올 수 있고, 그때 React는 두 문서를 같은 행으로 보아 앞 문서의 DOM 노드를 그대로
-   * 쓴다(포커스·스크롤·읽어 주던 자리가 남의 행에 붙는다).
+   * 목록은 유형 하나로 좁혀 오므로 한 응답 안에서는 번호가 겹치지 않는다. 그래서 내부 번호만
+   * 써도, 문서번호만 써도 당장은 표가 멀쩡해 보인다. 그러나 **유형을 바꾸면** 다른 유형의
+   * 문서가 같은 번호를 들고 올 수 있고, 그때 React는 두 문서를 같은 행으로 보아 앞 문서의
+   * DOM 노드를 그대로 쓴다(포커스·스크롤·읽어 주던 자리가 남의 행에 붙는다).
+   *
+   * **두 픽스처의 내부 번호와 문서번호를 둘 다 같게 둔다** — 하나라도 다르면 그 축을 열쇠로 쓴
+   * 구현이 우연히 통과한다. 그래서 행을 문서번호가 아니라 **상태 칸**으로 집는다.
    *
    * 계약의 상세 경로도 유형과 번호 **둘**을 열쇠로 쓴다 — 키의 열쇠도 같아야 한다.
    */
-  it('번호가 같아도 유형이 다르면 다른 행으로 본다', () => {
+  it('내부 번호와 문서번호가 같아도 유형이 다르면 다른 행으로 본다', () => {
+    const shared = { documentId: 9001, documentNo: 'SYN-DOC-2026-0001' };
     const typeA = documentProgress({
+      ...shared,
       documentTypeCode: 'SYN_DOC_TYPE_A',
-      documentId: 9001,
-      documentNo: 'SYN-GR-2026-0001',
+      statusCode: 'SYN_STATUS_A',
     });
     const typeB = documentProgress({
+      ...shared,
       documentTypeCode: 'SYN_DOC_TYPE_B',
-      documentId: 9001,
-      documentNo: 'SYN-IR-2026-0001',
+      statusCode: 'SYN_STATUS_B',
     });
 
     const { rerender } = render(<ProgressTable {...baseProps({ rows: [typeA] })} />);
 
-    const before = screen.getByRole('row', { name: /SYN-GR-2026-0001/ });
+    const before = screen.getByRole('row', { name: /SYN_STATUS_A/ });
 
     rerender(<ProgressTable {...baseProps({ rows: [typeB] })} />);
 
-    expect(screen.getByRole('row', { name: /SYN-IR-2026-0001/ })).not.toBe(before);
+    expect(screen.getByRole('row', { name: /SYN_STATUS_B/ })).not.toBe(before);
   });
 });

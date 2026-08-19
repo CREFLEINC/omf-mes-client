@@ -108,4 +108,17 @@ describe('describeDisabledTypes', () => {
     expect(note).toContain('이 유형에는 상태 컬럼이 없어 진행현황을 볼 수 없습니다');
     expect(note).not.toContain('합성 유형 가');
   });
+
+  /*
+   * 둘 이상 막히면 앞 사유의 끝과 뒤 이름의 시작이 한 문장처럼 붙어 읽힌다 —
+   * 경계를 눈에 보이는 표식으로 가른다.
+   */
+  it('막힌 유형이 둘이면 경계가 보이게 가른다', () => {
+    const note = describeDisabledTypes([
+      { code: 'A', label: '가', disabledReason: '사유 하나' },
+      { code: 'B', label: '나', disabledReason: '사유 둘' },
+    ]);
+
+    expect(note).toBe('가: 사유 하나 · 나: 사유 둘');
+  });
 });

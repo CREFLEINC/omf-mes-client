@@ -114,9 +114,16 @@ describe('readFilters', () => {
     });
   });
 
-  /* 손으로 고친 주소가 이 자리다 — 이상한 값은 조건으로 받지 않는다. */
+  /*
+   * 손으로 고친 주소가 이 자리다 — 이상한 값은 조건으로 받지 않는다.
+   *
+   * **코드 조건 두 축을 함께 잰다**(`ty`·`st`). 한 축만 재면 나머지의 다듬기가 빠져도
+   * 하류(`toListQuery`·`toSearchParams`)의 재다듬기가 가려 주어 감지기가 침묵한다.
+   */
   it('이상한 값은 조건에서 떨어뜨린다', () => {
-    const params = new URLSearchParams('ty=%20%20&from=2026-02-31&item=0&lot=abc&wh=-1&conly=yes');
+    const params = new URLSearchParams(
+      'ty=%20%20&st=%20&from=2026-02-31&item=0&lot=abc&wh=-1&conly=yes',
+    );
 
     expect(readFilters(params)).toEqual({
       ...DEFAULT_PROGRESS_FILTERS,

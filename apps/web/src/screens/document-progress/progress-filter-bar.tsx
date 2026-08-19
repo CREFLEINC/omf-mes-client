@@ -122,14 +122,15 @@ export const ProgressFilterBar = ({
   const withAllOption = (options: SelectOption[]): SelectOption[] =>
     options.length === 0 ? options : [{ value: '', label: t.filters.all }, ...options];
 
-  /*
-   * 유형 칸의 보조 문구는 **두 사실을 함께** 나른다 — 목록이 준비 중이라는 것과, 목록에 있으나
-   * 고를 수 없는 유형이 있다는 것. 하나만 이으면 나머지가 화면에서 사라진다.
+  /**
+   * 유형 칸의 보조 문구 — **둘 중 하나만 선다.**
+   *
+   * 「목록이 준비 중」은 선택지가 **비었을 때만**, 「고를 수 없는 유형이 있다」는 표에 값이
+   * **있을 때만** 선다. 둘 다 같은 표에서 나오므로 **동시에 설 수 없다** — 그래서 이어 붙이지
+   * 않고 앞의 것을 먼저 본다. 이어 붙이는 형태로 두면 일어날 수 없는 조합을 설명하는 코드가 되고,
+   * 읽는 사람이 「둘이 함께 뜨는 화면」을 찾다 헤맨다.
    */
-  const documentTypeNote =
-    [codeNote(documentTypeOptions), disabledTypeNote]
-      .filter((note) => note !== undefined)
-      .join(' ') || undefined;
+  const documentTypeNote = codeNote(documentTypeOptions) ?? disabledTypeNote;
 
   return (
     <>
@@ -246,7 +247,14 @@ export const ProgressFilterBar = ({
         </div>
       </div>
 
-      {/* 번호로만 좁힌다는 사실은 화면에서 읽혀야 한다 — 이름을 치다 빈 결과를 보면 안 된다. */}
+      {/*
+       * 화면이 스스로 밝히는 두 사실.
+       *
+       * ① 기본 기간을 심지 않는다 — **비어 있는 칸이 고장으로 읽히지 않게** 한다(전례
+       *    `disposal-issue/gi-filter-bar.tsx`의 `periodNote`와 같은 자리).
+       * ② 품목·자재 LOT·창고는 **번호로만** 좁힌다 — 이름을 치다 빈 결과를 보면 안 된다.
+       */}
+      <p className="field-note">{t.filters.periodNote}</p>
       <p className="field-note">{t.filters.idNote}</p>
     </>
   );

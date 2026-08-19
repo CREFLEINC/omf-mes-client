@@ -242,6 +242,91 @@ describe('유형 표를 채우면 — 조회가 살아난다', () => {
     expect(listRequests(requests)).toHaveLength(0);
     expect(screen.getByText(t.empty.noDocumentTypeTitle)).toBeInTheDocument();
   });
+
+  /**
+   * ⭐ **고를 수 없는 유형의 사유가 화면에 닿는 유일한 경로**다(착수 이슈 §4의 미결 처리 —
+   * 외주 2문서를 「비활성 + 사유 표시」로 다루기로 했다).
+   *
+   * 이 배선이 조용히 끊겨도 조건 줄은 멀쩡해 보이고 목록도 그대로다 — 사라진 것은 **왜 그 유형을
+   * 고를 수 없는지**뿐이라 아무도 모른다. 그래서 화면 수준에서 잰다: 순수 함수 감지기도, 사유를
+   * prop으로 직접 받는 조건 줄 감지기도 이 배선을 지나지 않는다.
+   */
+  it('유형 표에 막힌 줄이 있으면 그 사유가 조건 줄에 글자로 선다', () => {
+    fillDocumentTypes();
+    renderScreen([listRoute()]);
+
+    expect(screen.getByText(/합성 유형 다: 이 유형에는 상태 컬럼이 없어/)).toBeInTheDocument();
+  });
+
+  /* 짝 방향 — 막힌 줄이 없으면 그 안내가 서지 않는다(앞 단언이 늘 참이 아니다). */
+  it('막힌 줄이 없으면 그 안내가 서지 않는다', () => {
+    documentTypes.push({ code: SELECTABLE_TYPE, label: '합성 유형 가', disabledReason: null });
+    renderScreen([listRoute()]);
+
+    expect(screen.queryByText(/고를 수 없는 유형이 있습니다/)).not.toBeInTheDocument();
+  });
+});
+
+describe('초기화', () => {
+  /**
+   * ⭐ **초기화가 주소를 비우지 않으면 화면이 두 가지를 말한다.**
+   *
+   * 조건 줄은 자기 상태를 비워 **빈 것으로 보이는데** 주소가 옛 조건 그대로면 목록도 옛 조건
+   * 그대로 남는다(되돌림 effect는 값 기준이라 깨어나지 않는다). 「초기화를 눌렀는데 조건 줄과
+   * 목록이 서로 다른 것을 말하는」 상태다.
+   *
+   * **두 축으로 잰다** — 주소 문자열이 비었는가, 그리고 **다시 나간 요청의 질의값**이 실제로
+   * 조건을 잃었는가. 주소만 재면 요청이 옛 조건으로 나가도 통과한다.
+   */
+  it('초기화가 주소의 조건을 비우고 조회도 조건 없이 다시 나간다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(
+      [listRoute()],
+      `?ty=${SELECTABLE_TYPE}&q=SYN-GR&item=9301&conly=1&page=2`,
+    );
+
+    await waitFor(() => {
+      expect(listRequests(requests)).toHaveLength(1);
+    });
+    expect(lastListQuery(requests).get('q')).toBe('SYN-GR');
+
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => {
+      expect(locationOf()).toBe('/logistics/document-progress');
+    });
+
+    /* 유형까지 비워지므로 조회가 성립하지 않아 새 요청이 나가지 않는다 — 옛 조건도 남지 않는다. */
+    await waitFor(() => {
+      expect(screen.getByText(t.empty.noDocumentTypeTitle)).toBeInTheDocument();
+    });
+    expect(lastListQuery(requests).get('q')).toBe('SYN-GR');
+    expect(listRequests(requests)).toHaveLength(1);
+  });
+
+  /* 유형을 남긴 채 나머지만 비우는 경로도 같은 규칙을 탄다 — 이쪽은 **요청이 다시 나간다.** */
+  it('초기화 뒤 유형을 다시 고르면 옛 조건 없이 조회한다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen([listRoute()], `?ty=${SELECTABLE_TYPE}&q=SYN-GR`);
+
+    await waitFor(() => {
+      expect(listRequests(requests)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: messages.common.reset }));
+    await user.click(screen.getByLabelText(t.fields.documentType));
+    await user.click(screen.getByRole('option', { name: '합성 유형 가' }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(listRequests(requests)).toHaveLength(2);
+    });
+
+    const query = lastListQuery(requests);
+
+    expect(query.get('documentTypeCode')).toBe(SELECTABLE_TYPE);
+    expect(query.has('q')).toBe(false);
+  });
 });
 
 describe('조회 조건이 질의로 나간다', () => {
@@ -410,6 +495,32 @@ describe('쪽 이동', () => {
 
     await waitFor(() => {
       expect(locationOf()).not.toContain('page=');
+    });
+  });
+
+  /**
+   * ⭐ **「첫 쪽으로」가 실제로 첫 쪽으로 데려가는지는 화면 수준에서만 잴 수 있다.**
+   *
+   * 표 감지기는 콜백이 불렸는지만 세므로, 화면이 그 콜백을 **지금 쪽으로** 배선해도 통과한다 —
+   * 그러면 사용자는 「첫 쪽으로」를 눌렀는데 같은 빈 쪽에 그대로 머문다.
+   */
+  it('쪽 밖에서 「첫 쪽으로」를 누르면 주소와 질의가 첫 쪽으로 돌아온다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(
+      [listRoute([], { page: 5, total: 120 })],
+      `?ty=${SELECTABLE_TYPE}&page=5`,
+    );
+
+    expect(await screen.findByText(t.empty.beyondLastTitle)).toBeInTheDocument();
+    expect(lastListQuery(requests).get('page')).toBe('5');
+
+    await user.click(screen.getByRole('button', { name: t.actions.goFirstPage }));
+
+    await waitFor(() => {
+      expect(locationOf()).not.toContain('page=');
+    });
+    await waitFor(() => {
+      expect(lastListQuery(requests).has('page')).toBe(false);
     });
   });
 });
