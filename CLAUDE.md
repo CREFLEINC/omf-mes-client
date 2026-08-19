@@ -75,6 +75,7 @@ OMF-MES 사용자 프로그램의 클라이언트 모노레포. **React + TypeSc
 | 2026-08-14 | 저장소 적용 v1.1 — 리뷰 성문화·검증·리뷰 병렬화·게이트 등급·간헐 실패 이관·사본 체크리스트·이슈 정리보고 양식 | `.claude/skills/agent-development-orchestrator/` · `.claude/agents/` | W-01-06 프로파일링 4개 병목 + 정리보고 표준화 |
 | 2026-08-14 | 운영 정책을 저장소 자체 관리로 전환 — 정본·배포본 동기화 체계와 매니페스트 폐지(정책 본문 무변경) | `.claude/skills/agent-development-orchestrator/` | 외부 정본 관리 부담 제거 — 사용자 결정 |
 | 2026-08-19 | 저장소 적용 v1.2 — 승격 조건 세분화·기준 상태 도출·면제선 검사×파일·뮤테이션 6규칙·사본 선행 절차·병렬 트리 격리·인계 청결·냉각 사다리·Minor 이월·보고서 양식 보강 | `.claude/skills/agent-development-orchestrator/` | 2번 팀 실측 3표본(#155·#156·#159) 실효 확인 — 후보 수집·보고 #169 |
+| 2026-08-20 | 다중 팀 이슈 배정 규칙 성문화 — 로컬 팀 식별 마커(`.claude/team.local`)·GitHub 라벨 자동 생성·담당자 동적 조회 | `docs/multi-team-workflow.md`(신설) · `.claude/skills/agent-development-orchestrator/SKILL.md` | 팀 3(별도 PC clone) 추가 준비 중, 기존 규칙이 워크트리 로컬 메모(`TEAM-A2.md`, git 미추적)에만 있어 다른 팀에 전파되지 않던 문제 해결 |
 
 ---
 
