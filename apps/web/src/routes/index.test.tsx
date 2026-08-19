@@ -391,6 +391,25 @@ describe('appRouter', () => {
     expect(routedPaths()).not.toContain('/logistics/putaway-rules');
     expect(routedPaths()).not.toContain('/logistics/putaway-rule');
   });
+
+  /*
+   * **W-01-13 · C5-1** — 계약 경로도 `/logistics/document-progress`라 주소와 **우연히 같다.**
+   * 그래도 근거는 여기서도 **섹션**이다 — 계약을 근거로 삼았다면 W-01-07·W-01-12에서 앞머리가
+   * 갈렸을 것이다(그쪽 계약은 `/inventory/**`인데 주소는 `/logistics/`다).
+   *
+   * ⛔ **취소 리소스의 이름을 주소로 삼지 않는다.** 이 화면이 취소를 보내는 계약 경로는 셋이고
+   * (`goods-receipts`·`inbound-receipts`·`goods-issues`) 그 경로들은 이미 다른 화면들이 쓴다 —
+   * 리소스를 주소로 삼으면 한 주소를 여러 화면이 다툰다. 주소는 **화면**을 가리킨다.
+   *
+   * ⛔ **「승인」 앞머리가 아니다.** 취소가 승인을 타지만 이 화면이 하는 일은 결재가 아니라
+   * 상신과 실행이다(W-01-02가 같은 자리에서 같은 판정을 했다).
+   */
+  it('물류 문서 진행현황·취소가 자재창고 앞머리로 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/logistics/document-progress');
+    expect(routedPaths()).not.toContain('/approval/document-progress');
+    expect(routedPaths()).not.toContain('/logistics/goods-receipts');
+    expect(routedPaths()).not.toContain('/logistics/document-progresses');
+  });
 });
 
 /**
@@ -805,5 +824,167 @@ describe('appRouter — 알림센터의 진입 경로', () => {
       expect(screen.getByTestId('location').textContent).toContain('from=');
     });
     expect(screen.getByTestId('location').textContent).toContain('to=');
+  });
+});
+
+/**
+ * **W-01-13은 진입 경로가 사이드바 하나뿐이다** — 다른 화면에서 넘어오는 링크가 없다.
+ *
+ * **다섯 PR이 함께 여는 자리다.** 목록·상세·취소 요청·승인 진행·취소 실행이 다 서기 전에는
+ * 라우트를 두지 않았다(정책 §5.2) — 취소는 반드시 승인을 타는데 실행할 자리가 없는 채로 열면
+ * 사용자가 **승인을 받아 놓고 아무것도 할 수 없다.**
+ *
+ * ⚠ **지금 이 화면은 목록을 한 번도 부르지 못한다.** 문서 유형 값 목록이 아직 확정되지 않아
+ * (자리표시 빈 표) 계약이 필수로 두는 질의값을 만들 수 없다. 아래 감지기들은 그 **정직한 첫
+ * 상태**를 그대로 재며, 표가 채워지는 순간 같은 자리에서 조회가 살아난다.
+ */
+describe('appRouter — 물류 문서 진행현황·취소의 진입 경로', () => {
+  const docProgress = messages.documentProgress;
+
+  /** 합성 문서번호다 — 실 운영 값을 쓰지 않는다(루트 `CLAUDE.md`). */
+  const SYNTHETIC_DOCUMENT_NO = 'SYN-GR-2026-0001';
+
+  /*
+   * **C5-2** — 메뉴에 항목이 있다. 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가
+   * 같은 화면을 열어도 통과하고, 글자만 보면 이름만 같고 다른 곳으로 가는 메뉴가 통과한다.
+   */
+  it('사이드바에 이 화면 항목이 있다', () => {
+    expect(sidebarHrefs()).toContain('/logistics/document-progress');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).getByText('물류 문서 진행현황·취소')).toBeInTheDocument();
+  });
+
+  /*
+   * **C5-1** — 그 주소로 들어가면 화면이 선다. **실제 라우트 표를 태우므로** 라우트 줄이 없거나
+   * 다른 화면을 가리키면 여기서 운다.
+   *
+   * 스텁을 **빈 목록으로 준다** — 이 진입에서 나가는 요청이 하나라도 있으면 스텁이 던져 시험이
+   * 운다. 「부르지 않는다」를 라우트 경로에서도 지키는 자리다.
+   */
+  it('그 주소로 들어가면 물류 문서 진행현황·취소 화면이 첫 상태로 선다', async () => {
+    renderRoutedApp('/logistics/document-progress', []);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: docProgress.title }),
+    ).toBeInTheDocument();
+    /* 빈 표가 아니라 **왜 비었는지 말하는 안내**가 선다 — 화면이 자기 첫 상태로 섰다는 사실이다. */
+    expect(screen.getByText(docProgress.empty.typesPendingTitle)).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **라우트를 여는 것이 요청을 시작하는 것이 아니다**(완료 조건 C1-1의 라우트 쪽 짝).
+   *
+   * 유형 표가 비어 있는 동안 이 화면은 어떤 주소로 들어와도 조회를 내지 않는다. 위 시험은 스텁이
+   * **던져서** 잡지만 그것은 「오류가 났다」로 보고돼 **몇 번 나갔는지**를 말하지 못한다 — 여기서는
+   * 받아 주고 **횟수를 센다.** 둘의 차이가 곧 「막혔다」와 「막힌 줄 알았다」의 차이다.
+   */
+  it('그 주소로 들어가도 요청이 하나도 나가지 않는다', async () => {
+    const requests: Request[] = [];
+
+    renderWithProviders(<RoutedApp />, {
+      route: '/logistics/document-progress',
+      fetch: (request) => {
+        requests.push(request);
+
+        return Promise.resolve(jsonResponse(listBody([])));
+      },
+    });
+
+    /* 짝 양성 — 화면이 실제로 섰다. 서지도 않은 화면에서 「0회」는 아무것도 뜻하지 않는다. */
+    expect(
+      await screen.findByRole('heading', { level: 1, name: docProgress.title }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(docProgress.empty.typesPendingTitle)).toBeInTheDocument();
+
+    expect(requests).toHaveLength(0);
+  });
+
+  /*
+   * ⭐ **사이드바와 라우트 표를 잇는 이음매.** 둘은 서로 다른 파일에 있고 서로를 참조하지 않는다 —
+   * 한쪽만 고치면 죽은 링크가 남는데, 사이드바 시험은 `href` 글자만 보고 화면 시험은 라우터를
+   * 거치지 않아 **어느 쪽도 그 어긋남을 보지 못한다.** 그래서 **누른다.**
+   *
+   * 조건이 실린 주소에서 누르는 것은 우연이 아니다 — 메뉴는 **조건 없는 같은 라우트**를 가리키므로
+   * 이 화면에서 사이드바가 여는 길이 곧 「같은 라우트에 질의만 다른 이동」이다. 조건 줄이 그 이동을
+   * 따라오지 못하면 **주소는 비었는데 조건 줄은 옛 값을 말하는** 화면이 된다.
+   */
+  it('사이드바 항목을 누르면 그 주소로 가고 조건 줄이 첫 상태로 돌아온다', async () => {
+    const user = userEvent.setup();
+
+    renderRoutedApp(`/logistics/document-progress?q=${SYNTHETIC_DOCUMENT_NO}&item=9301`, []);
+
+    /* 짝 양성 — 주소의 조건이 라우트를 지나 조건 줄까지 실려 왔다. */
+    expect(await screen.findByLabelText(docProgress.fields.q)).toHaveValue(SYNTHETIC_DOCUMENT_NO);
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    await user.click(within(nav).getByRole('link', { name: '물류 문서 진행현황·취소' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe('/logistics/document-progress');
+    });
+    expect(screen.getByLabelText(docProgress.fields.q)).toHaveValue('');
+    expect(screen.getByLabelText(docProgress.fields.item)).toHaveValue('');
+  });
+
+  /*
+   * **히스토리가 한 칸이다.** 메뉴 이동이 칸을 둘 이상 늘리면 사용자는 뒤로 눌러도 보던 자리로
+   * 돌아오지 못한다 — 이 화면은 조건도 고른 문서도 전부 주소에 싣는다.
+   *
+   * **돌아온 자리가 그 조건의 화면임을 함께 본다** — 주소만 되돌고 조건 줄이 빈 채로 남으면
+   * 돌아온 것이 아니다.
+   */
+  it('메뉴로 들어간 뒤 뒤로가기 한 번이면 앞 자리로 돌아온다', async () => {
+    const user = userEvent.setup();
+
+    renderRoutedApp(`/logistics/document-progress?q=${SYNTHETIC_DOCUMENT_NO}&item=9301`, []);
+
+    await screen.findByRole('heading', { level: 1, name: docProgress.title });
+
+    const before = currentLocation();
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    await user.click(within(nav).getByRole('link', { name: '물류 문서 진행현황·취소' }));
+    await waitFor(() => {
+      expect(currentLocation()).toBe('/logistics/document-progress');
+    });
+
+    await user.click(screen.getByRole('button', { name: '뒤로' }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(before);
+    });
+    expect(screen.getByLabelText(docProgress.fields.q)).toHaveValue(SYNTHETIC_DOCUMENT_NO);
+  });
+
+  /*
+   * ⛔ **내부 번호는 주소에만 산다**(`omf-mes#44`). 이 화면은 조건(품목·자재 LOT·창고)과 고른
+   * 문서를 전부 번호로 주소에 싣는데, 그 번호가 글자로 새면 사용자가 읽을 수 없는 값이 화면의
+   * 사실이 된다.
+   *
+   * **주소에 실려 있음을 먼저 확인한 뒤** 글자에서 센다 — 값이 없어서 통과하는 일이 없게.
+   *
+   * ⚠ **지금 이 감지기가 닿는 자리는 얇다.** 유형 표가 비어 있어 목록도 아래 상세 구획도 서지
+   * 않고, 조건 번호는 입력 칸의 **값**으로만 있어 글자 수집에 잡히지 않는다. 그래도 이 자리에
+   * 두는 이유는 **표가 채워지는 순간 같은 시험이 그 넓어진 화면을 그대로 훑기** 때문이다.
+   */
+  it('메뉴와 화면 어디에도 내부 번호가 글자로 나오지 않는다', async () => {
+    renderRoutedApp('/logistics/document-progress?item=9301&lot=9401&wh=9501&sel=9101', []);
+
+    await screen.findByRole('heading', { level: 1, name: docProgress.title });
+
+    /* 짝 양성 — 그 번호들은 주소에 실제로 실려 있다. */
+    expect(currentLocation()).toContain('item=9301');
+    expect(currentLocation()).toContain('sel=9101');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+    const main = screen.getByRole('main');
+
+    for (const internalId of ['9301', '9401', '9501', '9101']) {
+      expect(nav.textContent).not.toContain(internalId);
+      expect(main.textContent).not.toContain(internalId);
+    }
   });
 });

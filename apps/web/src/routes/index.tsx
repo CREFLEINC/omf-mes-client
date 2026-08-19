@@ -7,6 +7,7 @@ import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen'
 import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
 import { DisposalIssueScreen } from '../screens/disposal-issue/screen';
+import { DocumentProgressScreen } from '../screens/document-progress/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
@@ -186,6 +187,31 @@ export const appRouter = createBrowserRouter([
        * 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
        */
       { path: 'logistics/iqc-skip-approval', element: <IqcSkipApprovalScreen /> },
+      /*
+       * W-01-13 — 앞머리는 같은 규칙(사이드바 섹션)을 따른다. 계약 경로도 `/logistics/**`라 둘이
+       * **우연히 같지만** 근거는 여기서도 섹션이다 — 계약을 근거로 삼았다면 W-01-07·W-01-12에서
+       * 앞머리가 갈렸을 것이다(그쪽 계약은 `/inventory/**`인데 주소는 `/logistics/`다).
+       *
+       * ⛔ **취소 리소스의 이름을 주소로 삼지 않는다.** 이 화면이 취소를 보내는 계약 경로는 셋이고
+       * (`goods-receipts`·`inbound-receipts`·`goods-issues`) 그 셋은 이미 다른 화면들이 쓴다 —
+       * 리소스를 주소로 삼으면 한 주소를 여러 화면이 다툰다. 주소는 **화면**을 가리킨다.
+       *
+       * **차례는 「자재창고」 섹션의 맨 뒤다.** 앞의 여덟이 물건이 오가는 순서이고(예정 → 초과
+       * 분리 → 입고 → 재고 확인 → 실사 → 조정 → 반품 → 폐기) 「긴급 IQC 생략」이 그 흐름 위에서
+       * 예외를 허가하는 자리인데, 이 화면은 그 흐름이 **남긴 문서들을 가로질러 보고 되돌리는**
+       * 일이라 순서에 끼워 넣을 자리가 없다(`master-data/master-change`가 같은 이유로 마스터
+       * 항목들 뒤에 섰다).
+       *
+       * **다섯 PR이 함께 여는 자리다.** 목록·상세·취소 요청·승인 진행·취소 실행이 다 서기 전에는
+       * 이 줄을 두지 않았다 — 취소는 반드시 승인을 타는데 실행할 자리가 없는 채로 열면 사용자가
+       * **승인을 받아 놓고 아무것도 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
+       *
+       * ⚠ **지금 이 화면은 목록을 한 번도 부르지 못한다.** 문서 유형 값 목록이 아직 확정되지 않아
+       * (자리표시 빈 표) 계약이 필수로 두는 질의값을 만들 수 없고, 화면은 그 사실을 말하는 안내만
+       * 낸다. 그럼에도 여는 이유는 **남은 것이 값 하나뿐**이라는 것이다 — 취소 실행까지 다 서
+       * 있어 표가 채워지는 순간 화면 전체가 저절로 살아난다.
+       */
+      { path: 'logistics/document-progress', element: <DocumentProgressScreen /> },
       /*
        * W-CO-09 — 앞머리는 같은 규칙(사이드바 섹션)이고 계약 경로(`/app/**`)를 따르지 않는다.
        * 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**여서 섹션을 새로 연다.

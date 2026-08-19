@@ -343,8 +343,11 @@ describe('AppLayout', () => {
    *
    * **물건이 오가는 항목들 뒤다.** 앞의 것들이 오가는 순서이고 이것은 그 흐름 위에서
    * 예외를 허가하는 일이라, 순서 사이에 끼워 넣을 자리가 없다.
+   *
+   * ⚠ **더는 섹션의 끝이 아니다**(W-01-13이 뒤에 섰다). 이 시험이 재는 것은 처음부터 「끝」이
+   * 아니라 **폐기 바로 뒤 · 「승인」 섹션보다 앞**이었으므로 단언은 그대로 두고 이름만 사실로 고친다.
    */
-  it('사이드바 자재창고 섹션의 끝에 긴급 IQC 생략 한도승인 메뉴가 있다', () => {
+  it('사이드바 자재창고 섹션에 긴급 IQC 생략 한도승인 메뉴가 폐기 품의·기타출고 뒤에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -361,6 +364,40 @@ describe('AppLayout', () => {
     );
     /* 「승인」 섹션이 아니다 — 결재함과 같은 자리에 서면 두 화면의 축이 흐려진다. */
     expect(links.indexOf('/logistics/iqc-skip-approval')).toBeLessThan(
+      links.indexOf('/approval/inbox'),
+    );
+  });
+
+  /*
+   * **W-01-13 · C5-2** — 같은 「자재창고」 섹션의 **맨 뒤**다. 앞의 여덟이 물건이 오가는 순서이고
+   * (예정 → 초과 분리 → 입고 → 재고 확인 → 실사 → 조정 → 반품 → 폐기) 「긴급 IQC 생략」이 그
+   * 흐름 위에서 예외를 허가하는 자리인데, 이 화면은 그 흐름이 **남긴 문서들을 가로질러 보고
+   * 되돌리는** 일이라 순서에 끼워 넣을 자리가 없다. 기준정보의 「마스터 변경관리」가 같은
+   * 이유(횡단 조회)로 마스터 항목들 뒤에 섰다.
+   *
+   * **앞뒤를 둘 다 잰다** — 긴급 IQC 생략 다음 칸이면서 「승인」 섹션의 결재함보다 앞이다.
+   * 한쪽만 재면 반대편으로 밀려나도 통과한다: 앞으로 밀리면 업무 순서 사슬을 끊고, 뒤로 밀리면
+   * 섹션을 넘어가 **자재창고 항목이 아니게 된다.**
+   *
+   * ⛔ **「승인」 섹션에 두지 않는다.** 취소가 승인을 타지만 이 화면이 하는 일은 결재가 아니라
+   * **상신과 실행**이다 — W-01-02가 같은 자리에서 같은 판정을 했다.
+   */
+  it('사이드바 자재창고 섹션의 맨 뒤에 물류 문서 진행현황·취소 메뉴가 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByRole('link', { name: '물류 문서 진행현황·취소' })).toHaveAttribute(
+      'href',
+      '/logistics/document-progress',
+    );
+    expect(links.indexOf('/logistics/document-progress')).toBe(
+      links.indexOf('/logistics/iqc-skip-approval') + 1,
+    );
+    expect(links.indexOf('/logistics/document-progress')).toBeLessThan(
       links.indexOf('/approval/inbox'),
     );
   });
@@ -497,6 +534,7 @@ describe('AppLayout', () => {
       '/logistics/supplier-return',
       '/logistics/disposal-issue',
       '/logistics/iqc-skip-approval',
+      '/logistics/document-progress',
       '/approval/inbox',
       '/notification/center',
       '/system/users-roles',
