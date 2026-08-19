@@ -198,6 +198,29 @@ describe('서버가 막은 상태 — C3-2', () => {
   });
 
   /**
+   * ⭐ **서버 판정과 「준비 중」이 **동시에 참인 갈래가 실재한다**.** 잠금 토큰 조회를
+   * `cancellable`로 막지 않기로 했으므로(계획 §5-2 · 단위 ④의 실행이 그 토큰을 쓴다) **막힌
+   * 문서도 `preparing`을 지난다.**
+   *
+   * 그때 「준비하는 중」을 내면 **기다리면 풀린다**고 말하는 것이 되는데, 서버가 막은 것은
+   * 기다려서 풀리지 않는다 — 그래서 서버 판정이 먼저다.
+   *
+   * ⚠ **갈래를 하나씩 세우는 감지기로는 이 차례를 잴 수 없다**(둘 중 하나만 참이면 어느 차례든
+   * 같은 답이 나온다). **겹친 갈래**를 세워야 차례가 재어진다.
+   */
+  it('막혔고 아직 준비 중이면 서버 사유가 먼저다', () => {
+    renderPane({
+      availability: blockedBy('CANCEL_IN_PROGRESS'),
+      lock: { kind: 'preparing' },
+    });
+
+    expect(
+      screen.getByText(t.cancelRequest.blocked(t.blockReasons.CANCEL_IN_PROGRESS)),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(t.cancelRequest.preparing)).not.toBeInTheDocument();
+  });
+
+  /**
    * ⭐ **두 축이 서로 다른 자리에서 말한다.** 서버 판정은 버튼 옆 한 줄이, 토큰 실패는 자기
    * 구획이 말한다 — 뭉개면 「다시 시도」가 풀 수 있는 것과 풀 수 없는 것이 한 문장이 된다.
    */

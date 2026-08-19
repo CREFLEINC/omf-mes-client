@@ -1518,6 +1518,39 @@ describe('사유는 필수다 — C3-5', () => {
     expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(0);
   });
 
+  /**
+   * ⭐ **초안은 자기 대상보다 오래 살지 않는다.** 남기면 A 문서에 적은 사유가 B 문서의 칸에 서고,
+   * 그대로 올리면 **다른 문서의 사유로 취소가 올라간다** — 이 화면에서는 그 사유가 곧 취소 이력이라
+   * 되돌릴 수 없는 잘못이 된다.
+   *
+   * ⚠ **파기 확인 창을 두지 않았다**(전례 `putaway-rule`의 `navigateWithDraftGuard`). 그 전례의
+   * 초안은 서버 값을 되돌릴 기준까지 갖는 **폼 전체**이고 여기는 **칸 하나짜리 글 한 줄**이다 —
+   * 대신 사유 칸의 보조 문구가 **일어날 일을 미리 말한다.** 그 짝이 이 감지기다.
+   */
+  it('다른 문서를 고르면 적던 사유가 따라오지 않는다', async () => {
+    fillDocumentTypes();
+    const { user } = renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '9001에 적던 사유');
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYN-GR-2026-0002') }));
+
+    await waitFor(() => {
+      expect(locationOf()).toContain('sel=9002');
+    });
+
+    expect(await screen.findByLabelText(t.cancelRequest.reason)).toHaveValue('');
+  });
+
+  /** 미리 말한다 — 「말없이 버린다」와 「규칙대로 버리고 밝힌다」를 가르는 자리다. */
+  it('사유가 대상과 함께 사라진다는 사실을 칸이 미리 말한다', async () => {
+    fillDocumentTypes();
+    renderScreen(cancelRoutes(), selectCancelTarget);
+
+    expect(await screen.findByLabelText(t.cancelRequest.reason)).toHaveAccessibleDescription(
+      /다른 문서를 고르면 적던 사유는 남지 않습니다/,
+    );
+  });
+
   /* 고쳐 치면 오류가 걷힌다 — 남아 있으면 사용자가 아직 막힌 줄 안다. */
   it('사유를 치면 오류가 걷힌다', async () => {
     fillDocumentTypes();
@@ -1733,6 +1766,60 @@ describe('400을 받으면 — C3-11 · C3-12', () => {
     );
   });
 
+  /**
+   * ⭐ **「돌아가기」로 창을 닫으면 서버 거절이 걷힌다.**
+   *
+   * 그 거절은 **방금 보낸 요청에 대한 답**이다 — 사용자가 스스로 물러난 뒤에도 남으면, 다음에 무엇을
+   * 눌러도 낡은 문구가 새 조작 위에 서서 무엇 때문에 막혔는지 흐려진다. 걷는 자리는 창을 닫는
+   * 순간(`resetIfIdle`)과 다시 보내는 순간 둘뿐이다.
+   *
+   * ⚠ **닫힌 뒤 「비어 있다」를 함께 재지 않는다** — 화면이 잡은 오류가 서버 거절을 덮으므로
+   * (`local ?? server`) 그 자리에서는 **걷었든 안 걷었든 같은 그림**이 되어 감지기가 헛통과한다.
+   * 그래서 **화면이 잡은 오류가 없는 순간**에 잰다.
+   */
+  it('창을 닫으면 서버 거절이 걷힌다', async () => {
+    const { user } = await submitWith([
+      failingRequestCancelRoute(400, {
+        errors: [
+          { scope: 'field', field: 'reason', code: 'TOO_SHORT', message: '사유가 짧습니다.' },
+        ],
+      }),
+    ]);
+
+    await screen.findByText('사유가 짧습니다.');
+
+    await user.click(screen.getByRole('button', { name: t.cancelDialog.keepEditing }));
+
+    expect(screen.queryByText('사유가 짧습니다.')).not.toBeInTheDocument();
+    /* 짝 방향 — 칸은 그대로 있다(구획째 사라져서 문구가 없어진 것이 아니다). */
+    expect(screen.getByLabelText(t.cancelRequest.reason)).toBeInTheDocument();
+  });
+
+  /**
+   * 걷힌 뒤에도 **화면이 잡은 오류는 제 자리에 선다** — 걷는 규약이 새 오류까지 삼키면 사용자는
+   * 왜 안 나가는지 알 수 없다.
+   *
+   * ⚠ 이 자리에서 `local ?? server`의 **차례 자체는 관찰이 갈리지 않는다**(등가 — 실행 보고서 §6에
+   * 기제와 갈릴 조건을 적었다). 두 오류가 함께 서는 순간이 이 화면에 없기 때문이다.
+   */
+  it('걷힌 뒤 비운 채 다시 누르면 필수 오류가 선다', async () => {
+    const { user } = await submitWith([
+      failingRequestCancelRoute(400, {
+        errors: [
+          { scope: 'field', field: 'reason', code: 'TOO_SHORT', message: '사유가 짧습니다.' },
+        ],
+      }),
+    ]);
+
+    await screen.findByText('사유가 짧습니다.');
+
+    await user.click(screen.getByRole('button', { name: t.cancelDialog.keepEditing }));
+    await user.clear(screen.getByLabelText(t.cancelRequest.reason));
+    await user.click(requestCancelButton());
+
+    expect(screen.getByText(t.cancelRequest.reasonRequired)).toBeInTheDocument();
+  });
+
   /** 실패해도 **창을 닫지 않는다** — 닫으면 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */
   it.each([403, 404, 409])('%s에서도 창이 열린 채 배너로 이유를 말한다', async (status) => {
     await submitWith([
@@ -1824,6 +1911,79 @@ describe('나가는 중 — C3-13의 두 축', () => {
 
     expect(locationOf()).not.toContain('q=SYN-GR');
     expect(listRequests(requests)).toHaveLength(before);
+  });
+
+  /**
+   * ⭐ **잠긴 이유가 화면에 있다** — 잠금의 짝이다(전례 `putaway-rule`의 `savingLock`).
+   *
+   * 조건 줄의 「조회」는 **컨트롤 자체가 잠기지 않으므로** 눌러도 아무 일이 없는 버튼이 된다.
+   * 그 상태에서 이유가 화면 어디에도 없으면 사용자는 화면이 고장 난 것으로 읽는다 — 이 슬라이스가
+   * 다른 자리에서 스스로 경고한 「증상이 **눌러도 아무 일이 없다**라 알아채기 어렵다」와 같은 형태다.
+   *
+   * **앞 감지기와 이어 붙이지 않고 따로 잰다** — 앞은 「막혔는가」, 여기는 「왜 막혔는지 말하는가」다.
+   */
+  it('창이 닫혀도 잠긴 이유가 화면에 선다', async () => {
+    const { requests } = await submitAndHold();
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    fireEvent(
+      screen.getByRole('dialog'),
+      new Event('cancel', { bubbles: false, cancelable: true }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    /* 「조회」는 여전히 눌린다 — 그래서 이유가 더 필요하다. */
+    expect(screen.getByRole('button', { name: messages.common.search })).toBeEnabled();
+    expect(screen.getByText(t.notes.cancelLock)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **⛔ 그 이유가 취소 구획 **밖**에 있다** — 전례가 「없으면 이렇게 된다」까지 적어 둔 자리다.
+   *
+   * 구획은 대상이 풀리면 사라지는데(나가는 중 바깥 주소 이동으로 `sel`이 빠진다) 잠금은 요청이
+   * 끝날 때까지 남는다. 구획 안에 두면 **구획이 사라진 채 잠긴 갈래**에서 잠긴 이유가 통째로
+   * 없어지고, 진행 표시조차 대상 매임으로 걸러져 남는 단서가 하나도 없다.
+   */
+  it('취소 구획이 사라져도 잠긴 이유는 남는다', async () => {
+    fillDocumentTypes();
+    const { requests, user } = renderScreen(
+      cancelRoutes(),
+      selectCancelTarget,
+      /* 고른 문서를 아예 뗀다 — 상세 구획이 「고르면 보입니다」가 되어 취소 구획이 사라진다. */
+      `ty=${CANCEL_TYPE}`,
+      [REQUEST_CANCEL_PATH],
+    );
+
+    await user.type(await screen.findByLabelText(t.cancelRequest.reason), '사유');
+    await user.click(requestCancelButton());
+    await user.click(screen.getByRole('button', { name: t.cancelDialog.confirm }));
+
+    await waitFor(() => {
+      expect(writesTo(requests, REQUEST_CANCEL_PATH)).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '주소 이동' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: t.cancelRequest.label })).not.toBeInTheDocument();
+    });
+
+    /* 구획이 없어도 이유가 남는다 — 이것이 자리를 구획 밖에 둔 이유다. */
+    expect(screen.getByText(t.notes.cancelLock)).toBeInTheDocument();
+  });
+
+  /** 짝 방향 — 나가는 중이 아니면 그 줄이 서지 않는다. 늘 떠 있는 안내는 읽히지 않는다. */
+  it('나가는 중이 아니면 잠김 안내가 서지 않는다', async () => {
+    fillDocumentTypes();
+    renderScreen(cancelRoutes(), selectCancelTarget);
+
+    await screen.findByLabelText(t.cancelRequest.reason);
+
+    expect(screen.queryByText(t.notes.cancelLock)).not.toBeInTheDocument();
   });
 
   /**
