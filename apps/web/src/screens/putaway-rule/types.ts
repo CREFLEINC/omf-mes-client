@@ -12,6 +12,13 @@ import type { components } from '@omf-mes/api-client';
 export type PutawayRule = components['schemas']['PutawayRule'];
 export type UncoveredItem = components['schemas']['UncoveredItem'];
 export type PageMeta = components['schemas']['PageMeta'];
+/**
+ * 상세 응답 — **규칙 본체와 편집 가능 여부가 함께 온다.**
+ *
+ * 잠금 토큰(`ETag`)은 이 응답의 **헤더**로 오며 본문에 없다(공유계약 A-4). 토큰을 다루는
+ * 자리는 `patterns/master`의 쓰기 훅이고 화면은 경로만 알려 준다(`queries.ts`의 `ruleDetailPath`).
+ */
+export type PutawayRuleDetail = components['schemas']['PutawayRuleDetailResponse'];
 
 /** 선택 목록의 원본 항목. 사용 여부를 함께 들고 있어야 미사용 값에 표식을 붙일 수 있다. */
 export interface LookupEntry {

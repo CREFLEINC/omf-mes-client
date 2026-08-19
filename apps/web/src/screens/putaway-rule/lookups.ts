@@ -48,6 +48,31 @@ export interface ReferenceSource {
   truncated: boolean;
 }
 
+/**
+ * 창고 하나의 관리수준 코드. **창고 조회에만 있는 사실이다.**
+ *
+ * 이름 풀이용 `LookupEntry`에 얹지 않는다 — 넷 중 하나만 갖는 값을 공통 항목에 두면
+ * 나머지 셋에 쓰이지 않는 통로가 생기고, 죽은 통로는 다음 사본으로 전파된다
+ * (사본 체크리스트 7번).
+ */
+export interface WarehouseLevel {
+  warehouseId: number;
+  managementLevelCode: string;
+}
+
+/**
+ * 위치 하나가 스스로 가진 용량.
+ *
+ * **수량과 단위를 함께 들고 있을 때만 만든다.** 계약이 둘을 「함께 있거나 함께 비어야
+ * 한다」로 못 박았고(`ck_location_capacity`), 한쪽만 있는 값으로는 무엇과도 견줄 수 없다 —
+ * 수량만 들고 오면 규칙 용량과 단위를 확인하지 않은 채 크고 작음을 말하게 된다.
+ */
+export interface LocationCapacity {
+  locationId: number;
+  capacityQty: number;
+  capacityUomId: number;
+}
+
 export interface LookupResult extends ReferenceSource {
   entries: LookupEntry[];
   /**
@@ -62,6 +87,16 @@ export interface LookupResult extends ReferenceSource {
   hasLoaded: boolean;
   /** 조회 실패에는 복구 경로를 함께 낸다 — 사용자가 할 수 있는 조치가 재시도뿐이다. */
   refetch: () => void;
+}
+
+/** 창고 조회만이 갖는 것. 나머지 셋에는 관리수준이라는 사실 자체가 없다. */
+export interface WarehouseLookupResult extends LookupResult {
+  levels: readonly WarehouseLevel[];
+}
+
+/** 위치 조회만이 갖는 것. 위치 자체 용량은 다른 세 참조에 없는 사실이다. */
+export interface LocationLookupResult extends LookupResult {
+  capacities: readonly LocationCapacity[];
 }
 
 /**
@@ -193,8 +228,38 @@ export const nameLookupTruncatedNote = (
 export const optionsPlaceholder = (lookup: LookupResult, emptyText: string): string | undefined =>
   lookup.hasLoaded && lookup.entries.length === 0 ? emptyText : undefined;
 
+/**
+ * 고른 창고의 관리수준 코드. 목록에 없거나 아직 오지 않았으면 `null`이다.
+ *
+ * **없는 것을 값으로 지어내지 않는다** — 개폐를 판정하는 자리(`management-level.ts`)가
+ * 「모르는 상태」를 그대로 받아 스스로 판정해야 한다.
+ */
+export const findWarehouseLevel = (
+  levels: readonly WarehouseLevel[],
+  warehouseId: number | null,
+): string | null =>
+  warehouseId === null
+    ? null
+    : (levels.find((level) => level.warehouseId === warehouseId)?.managementLevelCode ?? null);
+
+/**
+ * 그 위치가 스스로 가진 용량. 용량이 없거나 위치를 고르지 않았으면 `null`이다.
+ *
+ * `null`이 「용량이 0이다」가 아니라 **「견줄 값이 없다」**임에 주의한다 —
+ * 읽는 자리가 두 사실을 가르지 못하면 용량 없는 위치에 초과 경고가 선다.
+ */
+export const findLocationCapacity = (
+  capacities: readonly LocationCapacity[],
+  locationId: number | null,
+): LocationCapacity | null =>
+  locationId === null
+    ? null
+    : (capacities.find((capacity) => capacity.locationId === locationId) ?? null);
+
 /** 참조가 매 렌더 새로 만들어지면 이 값을 의존성에 둔 계산이 멈추지 않는다. */
 const EMPTY_ENTRIES: LookupEntry[] = [];
+const EMPTY_LEVELS: WarehouseLevel[] = [];
+const EMPTY_CAPACITIES: LocationCapacity[] = [];
 
 /** 서버가 보낸 전체 건수가 받은 건수보다 많으면 잘린 것이다. */
 const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
@@ -214,8 +279,33 @@ const isTruncated = (page: PageMeta, shown: number): boolean => page.total > sho
  */
 export const LOCATION_PAGE_SIZE = 200;
 
+/**
+ * 품목 찾기의 쪽 크기.
+ *
+ * 검색 결과는 **고를 수 있을 만큼만** 받는다 — 창 안 표가 다 담지 못할 만큼 받으면 사용자가
+ * 훑는 대신 조건을 좁혀야 한다. 그래도 잘리면 `truncated`가 그 사실을 밝히고, 밝히지 않으면
+ * 사용자는 「그런 품목이 없다」로 읽고 검색을 그만둔다.
+ */
+export const ITEM_SEARCH_SIZE = 50;
+
+/** 창 안 표가 그리는 품목 한 줄. 내부 번호는 **고를 때만** 쓰고 화면 글자로 내지 않는다. */
+export interface ItemSearchRow {
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+}
+
+export interface ItemSearchResult {
+  rows: readonly ItemSearchRow[];
+  isLoading: boolean;
+  isError: boolean;
+  truncated: boolean;
+}
+
 export const lookupKeys = {
   warehouses: ['putaway-rule-lookups', 'warehouses'] as const,
+  /** 품목 찾기는 **검색어마다** 캐시가 갈린다 — 같은 말을 다시 찾으면 다시 부르지 않는다. */
+  itemSearch: (keyword: string) => ['putaway-rule-lookups', 'item-search', keyword] as const,
   /** 위치는 **창고마다** 캐시가 갈린다 — 계약이 창고를 필수 조건으로 요구한다. */
   locations: (warehouseId: number) => ['putaway-rule-lookups', 'locations', warehouseId] as const,
   items: ['putaway-rule-lookups', 'items'] as const,
@@ -227,8 +317,11 @@ export const lookupKeys = {
  *
  * **`includeInactive=true`로 한 번 받아 둔다.** 기본 조회는 사용 중인 것만 내려주므로,
  * 지금은 쓰지 않는 창고에 남은 규칙을 찾을 길이 사라진다.
+ *
+ * **관리수준 코드를 함께 낸다**(`levels`). 그 값이 위치 입력의 개폐를 가르는데
+ * (`management-level.ts` · `omf-mes#64`), 이름 풀이 항목에는 담을 자리가 없다.
  */
-export const useWarehouseLookup = (): LookupResult => {
+export const useWarehouseLookup = (): WarehouseLookupResult => {
   const { client } = useApiClient();
 
   const query = useQuery({
@@ -248,6 +341,11 @@ export const useWarehouseLookup = (): LookupResult => {
         label: `${item.warehouseCode} · ${item.warehouseName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
+    levels:
+      data?.items.map((item) => ({
+        warehouseId: item.warehouseId,
+        managementLevelCode: item.managementLevelCode,
+      })) ?? EMPTY_LEVELS,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     hasLoaded: query.isSuccess,
     isError: query.isError,
@@ -267,8 +365,14 @@ export const useWarehouseLookup = (): LookupResult => {
  *
  * **이 좁힘은 사본 체크리스트 10번의 좁힘이 아니다.** 목록도 같은 창고로 서므로 보이는 모든
  * 행의 위치가 이 목록 안에 있다. 목록의 품목 조건은 여기 싣지 않는다.
+ *
+ * **위치 자체 용량을 함께 낸다**(`capacities`). 규칙 용량 옆에 그 값을 나란히 보이고 초과를
+ * 경고하는 자리가 이 응답 말고는 근거를 얻을 데가 없다(`capacity-note.ts` · `omf-mes#84`).
+ *
+ * ⭐ **폼이 고른 창고로도 이 훅을 부른다.** 캐시 열쇠가 창고 번호라 조건 줄과 폼이 같은 창고를
+ * 보는 동안에는 요청이 **한 번**만 나가고, 폼이 다른 창고를 고르면 그 창고의 위치가 따로 선다.
  */
-export const useLocationLookup = (warehouseId: number | null): LookupResult => {
+export const useLocationLookup = (warehouseId: number | null): LocationLookupResult => {
   const { client } = useApiClient();
 
   const query = useQuery({
@@ -296,6 +400,25 @@ export const useLocationLookup = (warehouseId: number | null): LookupResult => {
         label: `${item.locationCode} · ${item.locationName}`,
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
+    /*
+     * **둘 다 있는 위치만 담는다.** 계약이 수량과 단위를 함께 두게 했지만, 한쪽만 온 자료를
+     * 그대로 받으면 단위를 모르는 수량으로 견주게 된다 — 그 자리는 담지 않는 것이 정확하다.
+     */
+    capacities:
+      data?.items.flatMap((item) =>
+        item.capacityQty === undefined ||
+        item.capacityQty === null ||
+        item.capacityUomId === undefined ||
+        item.capacityUomId === null
+          ? []
+          : [
+              {
+                locationId: item.locationId,
+                capacityQty: item.capacityQty,
+                capacityUomId: item.capacityUomId,
+              },
+            ],
+      ) ?? EMPTY_CAPACITIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     hasLoaded: query.isSuccess,
     isError: query.isError,
@@ -337,6 +460,50 @@ export const useItemLookup = (enabled: boolean): LookupResult => {
     refetch: () => {
       void query.refetch();
     },
+  };
+};
+
+const EMPTY_SEARCH_ROWS: ItemSearchRow[] = [];
+
+/**
+ * 품목 **찾기** — 이름 풀이가 아니라 **고를 대상을 좁히는** 조회다.
+ *
+ * ⚠ **사본 체크리스트 10번과 갈리는 자리다.** 그 항목이 막는 것은 *좁힌 조회로 이름을 푸는
+ * 것*이고, 여기서 좁히는 것은 *고를 선택지*다 — 이름 풀이는 좁히지 않은 `useItemLookup`이
+ * 그대로 맡는다. 두 조회가 따로 있는 이유가 그것이다.
+ *
+ * **검색어가 비면 조회하지 않는다.** 빈 검색어로 받은 앞 N건은 고를 만한 후보가 아니고,
+ * 전 품목을 받는 것은 화면에도 서버에도 뜻이 없다.
+ *
+ * **`includeInactive`를 싣지 않는다** — 새로 만드는 규칙이 미사용 품목을 가리킬 이유가 없다.
+ * 선택 목록의 유효성은 서버가 판정한다(공유계약 G-8).
+ */
+export const useItemSearch = (keyword: string): ItemSearchResult => {
+  const { client } = useApiClient();
+  const isSearching = keyword !== '';
+
+  const query = useQuery({
+    queryKey: lookupKeys.itemSearch(keyword),
+    enabled: isSearching,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/items', { params: { query: { q: keyword, size: ITEM_SEARCH_SIZE } } }),
+      ),
+  });
+
+  const data = query.data;
+
+  return {
+    rows:
+      data?.items.map((item) => ({
+        itemId: item.itemId,
+        itemCode: item.itemCode,
+        itemName: item.itemName,
+      })) ?? EMPTY_SEARCH_ROWS,
+    /* 조회가 열리지도 않은 상태를 「불러오는 중」으로 말하지 않는다 — 아직 찾지 않은 것이다. */
+    isLoading: isSearching && query.isPending,
+    isError: query.isError,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
   };
 };
 

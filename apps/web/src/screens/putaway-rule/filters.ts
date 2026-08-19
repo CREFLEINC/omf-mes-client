@@ -27,6 +27,8 @@ const URL_KEYS = {
   activeOnly: 'active',
   page: 'page',
   selected: 'rule',
+  /** 등록 폼이 열려 있는가. **고른 규칙과 함께 성립하지 않는 하나의 자리다.** */
+  creating: 'new',
 } as const;
 
 /** 켜짐을 나타내는 유일한 값. 다른 값은 꺼진 것으로 본다 — 주소를 손으로 고쳐도 뜻이 흔들리지 않는다. */
@@ -105,6 +107,9 @@ export const toSearchParams = (filters: RuleFilters, page: number): URLSearchPar
  *
  * **조건과 쪽은 그대로 두고 선택 자리만 다시 세운다** — 규칙을 고르는 것은 보이는 행을
  * 바꾸지 않으므로 조건을 비울 이유가 없다(조건을 비우는 규칙은 `toSearchParams`가 갖는다).
+ *
+ * **등록 표시를 담지 않는다.** 규칙을 고르는 것과 새로 만드는 것은 함께 성립하지 않으므로,
+ * 이 함수의 결과로 주소를 갈아 끼우면 등록 폼이 자연히 닫힌다.
  */
 export const toSelectionSearchParams = (
   filters: RuleFilters,
@@ -114,6 +119,39 @@ export const toSelectionSearchParams = (
   const next = toSearchParams(filters, page);
 
   if (putawayRuleId !== null) next.set(URL_KEYS.selected, String(putawayRuleId));
+
+  return next;
+};
+
+/** 등록 폼이 열려 있는가. 어떤 값이든 키가 있으면 열린 것으로 본다 — 주소는 손으로 고쳐진다. */
+export const isCreating = (params: URLSearchParams): boolean => params.has(URL_KEYS.creating);
+
+/**
+ * 등록 폼을 연 주소.
+ *
+ * **고른 규칙을 함께 비운다** — 두 자리는 하나의 자리이며, 남겨 두면 「고른 규칙을 보면서
+ * 새 규칙을 만드는」 상태가 되어 어느 쪽을 저장하는지 화면이 설명할 수 없다.
+ */
+export const toCreateSearchParams = (filters: RuleFilters, page: number): URLSearchParams => {
+  const next = toSearchParams(filters, page);
+
+  next.set(URL_KEYS.creating, ON);
+
+  return next;
+};
+
+/**
+ * 지금 주소에서 **편집 대상만** 걷어 낸다. 조건·쪽은 그대로 둔다.
+ *
+ * 상세가 404일 때 주소에 남은 번호를 지우는 자리다 — 지우지 않으면 조건을 바꿔도 없는 규칙을
+ * 계속 부른다. `URLSearchParams`를 새로 만들지 않고 **받은 것을 복사해 고치는** 이유는,
+ * 이 함수가 지금 주소의 모든 키를 알 필요가 없기 때문이다.
+ */
+export const withoutSelection = (params: URLSearchParams): URLSearchParams => {
+  const next = new URLSearchParams(params);
+
+  next.delete(URL_KEYS.selected);
+  next.delete(URL_KEYS.creating);
 
   return next;
 };

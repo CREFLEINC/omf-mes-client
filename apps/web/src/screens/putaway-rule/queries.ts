@@ -8,17 +8,17 @@ import {
   type BalanceTarget,
   type TargetBalance,
 } from './balance-lookup';
+import type { DuplicateProbe } from './duplicate-check';
 import { toRuleListQuery, toUncoveredQuery } from './filters';
-import type { PageMeta, PutawayRule, RuleFilters, UncoveredItem } from './types';
+import type { PageMeta, PutawayRule, PutawayRuleDetail, RuleFilters, UncoveredItem } from './types';
 
 /**
  * 적치 규칙의 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 키 모듈을 참조하지 않는다.
  *
- * **이 회차에는 쓰기가 없다.** 그래서 쓰기만 쓰는 것을 하나도 두지 않는다 —
- * 잠금 토큰 경로 함수·조준 조회·**무효화 뿌리 키**가 전부 그것을 쓰는 회차 몫이다.
- * 지금 두면 쓰이지 않는 통로가 되고, 죽은 통로는 다음 사본으로 전파된다(사본 체크리스트 7번).
- * 기준을 한 파일 안에서 갈라 두지 않으려고 셋을 같은 사유로 함께 미룬다.
+ * **쓰기 자신은 `screen.tsx`가 갖는다.** 등록과 수정이 한 벌의 잠금 토큰 규약을 나눠 쓰므로
+ * 그 규약 표는 쓰기들이 나란히 선 자리에 있어야 읽힌다 — 표와 코드가 떨어지면 표가 코드보다
+ * 오래 살아 없어진 설계를 서술하게 된다. 여기에는 **그 쓰기들이 쓰는 경로와 키**만 둔다.
  */
 
 export interface RuleListResponse {
@@ -37,13 +37,47 @@ export interface UncoveredListResponse {
  * 규칙 없는 품목 수도 함께 달라지므로 무효화 범위가 갈리면 안 된다.
  */
 export const putawayRuleKeys = {
+  /**
+   * 이 슬라이스의 규칙 조회 전부를 덮는 뿌리 키. **모든 쓰기가 성공 뒤 이 하나를 무효화한다** —
+   * 규칙을 고치면 목록도, 규칙 없는 품목 수도, 조준 조회의 판정도 함께 낡는다.
+   *
+   * ⛔ **잔액 키(`balanceKeys`)와 참조 키(`lookupKeys`)는 덮지 않는다.** 규칙을 고쳐도 실물
+   * 재고와 기준정보 이름은 달라지지 않는다 — 뿌리를 합치면 바뀌지 않은 값을 매번 다시 부른다.
+   */
+  all: ['putaway-rules'] as const,
   list: (filters: RuleFilters, page: number) => ['putaway-rules', 'list', filters, page] as const,
   /**
    * 규칙 없는 품목은 **창고마다** 캐시가 갈린다. 쪽은 키에 두지 않는다 — 이 화면은 첫 쪽만
    * 부르고 나머지는 잘림 문구가 말한다(`uncovered-items-pane.tsx`).
    */
   uncovered: (warehouseId: number) => ['putaway-rules', 'uncovered', warehouseId] as const,
+  detail: (putawayRuleId: number) => ['putaway-rules', 'detail', putawayRuleId] as const,
+  /** 조준 조회는 **창고·품목 짝마다** 갈린다 — 그 둘이 요청 쿼리에 실리는 전부다. */
+  duplicateProbe: (warehouseId: number, itemId: number) =>
+    ['putaway-rules', 'duplicate-probe', warehouseId, itemId] as const,
 };
+
+/**
+ * 잠금 토큰을 꺼내는 자리 — **늘 규칙 상세 경로다.**
+ *
+ * 토큰 보관소는 **응답이 온 URL 경로**를 열쇠로 쓴다(`packages/api-client/src/client.ts`).
+ * 등록 201도 `ETag`를 주지만 그것은 **컬렉션 경로**에 캡처되어 상세 토큰이 되지 않는다 —
+ * 방금 만든 규칙을 고르면 상세 조회가 나가고 **그 조회가 토큰을 확보한다.**
+ *
+ * 이 함수를 쓰지 않고 액션 경로로 토큰을 꺼내면 언제나 비어 있고, 그때 쓰기 훅은 요청을
+ * 보내지 않고 멈춘다 — 「저장을 눌러도 아무 일이 없다」가 그 증상이다(전례 W-CO-02).
+ */
+export const ruleDetailPath = (putawayRuleId: number): string =>
+  `/logistics/putaway-rules/${String(putawayRuleId)}`;
+
+/**
+ * 조준 조회가 한 번에 받아 오는 최대 건수.
+ *
+ * **목록 조회와 달리 크기를 명시한다.** 서버 기본값에 기대면 같은 창고·품목의 규칙이 그보다
+ * 많을 때 조용히 잘리는데, 판정하는 자리에서 잘림은 「없다」로 읽힌다. 여기서 명시하면
+ * 잘렸는지를 `page.total`과 견줘 알 수 있다(`judgeDuplicate`의 `truncated`).
+ */
+export const DUPLICATE_PROBE_SIZE = 100;
 
 /**
  * 적치 규칙 목록.
@@ -115,6 +149,98 @@ export const useUncoveredItems = (
       );
     },
   });
+};
+
+/**
+ * 적치 규칙 상세 — **잠금 토큰의 원천이다.**
+ *
+ * **고르기 전에는 성립하지 않는다.** 번호가 없으면 요청 자체가 만들어질 수 없으므로 조회가
+ * 열려 있지 않다 — 열어 두면 `/logistics/putaway-rules/0` 같은 요청이 나가 헛돈다.
+ *
+ * 목록 행에도 같은 필드가 실려 오지만 상세를 따로 부른다 — 고른 규칙이 지금 보는 쪽에 없을 수
+ * 있고(주소로 들어온 경우), **수정의 `If-Match`가 이 응답의 `ETag`로만 온다.** 편집 가능
+ * 여부(`editability`)도 상세에만 있다.
+ */
+export const useRuleDetail = (putawayRuleId: number | null): UseQueryResult<PutawayRuleDetail> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: putawayRuleKeys.detail(putawayRuleId ?? 0),
+    enabled: putawayRuleId !== null,
+    queryFn: () => {
+      if (putawayRuleId === null) {
+        throw new Error('규칙을 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/logistics/putaway-rules/{putawayRuleId}', {
+          params: { path: { putawayRuleId } },
+        }),
+      );
+    },
+  });
+};
+
+const EMPTY_PROBE_ITEMS: PutawayRule[] = [];
+
+/**
+ * 활성 중복 **조준 조회**.
+ *
+ * 창고·품목으로만 좁혀 부르고 **위치·우선순위는 클라이언트가 맞춘다**(`duplicate-check.ts`) —
+ * 쿼리로는 「창고 전체」(`locationId === null`)를 표현할 수 없고 우선순위 조건 자체가 없다.
+ *
+ * **`includeInactive`를 늘 명시해 싣는다.** 판정 대상은 사용 중인 규칙뿐이다 — 계약에 기본값이
+ * 있어도 「보내지 않음」이라는 상태를 만들지 않는다(`filters.ts`와 같은 규율).
+ *
+ * **겨눌 조합이 정해지기 전에는 부르지 않는다.** 창고·품목 둘이 있어야 요청이 성립한다 —
+ * 폼이 닫혀 있으면 둘 다 `null`이므로 「폼이 열렸는가」를 따로 받지 않는다(그 인자는 결정력이
+ * 없어 죽은 통로가 된다 — 사본 체크리스트 7번).
+ *
+ * ⛔ **조회 결과를 그대로 내지 않고 판정이 읽을 모양으로 낸다.** TanStack v5에서 `enabled`가
+ * 거짓인 질의는 `isPending`이 **참**이다 — 그 값을 그대로 「불러오는 중」으로 옮기면 **한 번도
+ * 나가지 않은 요청이 「불러오는 중」으로 보이고**, 그 상태가 미완성 판정을 가려 갓 연 빈 폼이
+ * 「확인하지 못했습니다」라고 말하게 된다. 같은 함정을 `useItemSearch`가 이미 같은 형태로
+ * 피했다 — 조회가 열렸는지를 아는 자리가 그 사실을 접어 내야 한다.
+ */
+export const useDuplicateProbe = (
+  warehouseId: number | null,
+  itemId: number | null,
+): DuplicateProbe => {
+  const { client } = useApiClient();
+  const isTargeted = warehouseId !== null && itemId !== null;
+
+  const query = useQuery({
+    queryKey: putawayRuleKeys.duplicateProbe(warehouseId ?? 0, itemId ?? 0),
+    enabled: isTargeted,
+    queryFn: () => {
+      if (warehouseId === null || itemId === null) {
+        throw new Error('창고와 품목이 정해지기 전에는 중복을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/logistics/putaway-rules', {
+          params: {
+            query: {
+              warehouseId,
+              itemId,
+              includeInactive: false,
+              size: DUPLICATE_PROBE_SIZE,
+            },
+          },
+        }),
+      );
+    },
+  });
+
+  const data = query.data;
+
+  return {
+    items: data?.items ?? EMPTY_PROBE_ITEMS,
+    total: data?.page.total ?? 0,
+    /* 열리지도 않은 조회를 「불러오는 중」으로 말하지 않는다 — 아직 겨눈 것이 없는 상태다. */
+    isLoading: isTargeted && query.isPending,
+    isError: query.isError,
+  };
 };
 
 /**
