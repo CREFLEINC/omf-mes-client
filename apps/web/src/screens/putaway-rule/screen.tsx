@@ -1,13 +1,23 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText, useToast } from '@crefle/web-ui';
+import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { ActivationDialog } from './activation-dialog';
+import {
+  activationActionOf,
+  activationIntentOf,
+  judgeRemainingCoverage,
+  type ActivationIntent,
+} from './activation-guard';
+import { ActivationPane } from './activation-pane';
 import { findRuleBalance, toBalanceTargets, type RuleBalance } from './balance-lookup';
 import { judgeCapacity } from './capacity-note';
+import { DisabledAction } from './disabled-action';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { duplicateRuleIds } from './duplicate-badge';
 import { judgeDuplicate } from './duplicate-check';
@@ -103,8 +113,14 @@ const EMPTY_UNCOVERED: UncoveredItem[] = [];
  * 초안 파기 창은 **두 자리에서 열린다**: 「취소」(되돌리기)와 「편집 중 다른 규칙 고르기」
  * (옮겨 가기). `next`가 그 둘을 가른다 — `null`이면 제자리에서 되돌리고, 값이 있으면 그
  * 주소로 옮겨 간다. 창을 두 벌 만들면 같은 문장을 두 자리에서 관리하게 된다.
+ *
+ * 사용 전환 창도 **한 벌을 갈래로 쓴다**(`intent`) — 끄기와 켜기가 말해야 하는 사실은 다르지만
+ * 창의 수명·잠금·배너 규약이 같다.
  */
-type DialogKind = { kind: 'itemPicker' } | { kind: 'discard'; next: URLSearchParams | null };
+type DialogKind =
+  | { kind: 'itemPicker' }
+  | { kind: 'discard'; next: URLSearchParams | null }
+  | { kind: 'activation'; intent: ActivationIntent };
 
 /**
  * 폼 초안과 그것이 매인 대상.
@@ -131,9 +147,9 @@ interface FormDraft {
  *
  * ## 이 회차가 하는 것과 하지 않는 것
  *
- * 규칙을 새로 만들고 고칠 수 있다. **끄기·켜기는 아직 없다**(다음 회차) — 라우트도 열지
- * 않는다. 끄지 못하는 마스터를 먼저 노출하면 사용자가 잘못 만든 규칙을 지울 수도 끌 수도
- * 없다. 그래서 이 화면은 아직 사용자에게 보이지 않고, 관찰은 시험으로 한다.
+ * 규칙을 새로 만들고 고치고 **끄고 다시 켤 수 있다**. **라우트는 아직 열지 않는다**(다음
+ * 회차) — 마스터의 네 조작이 다 서기 전에 화면을 노출하면 사용자가 잘못 만든 규칙을 어쩌지
+ * 못한다. 그래서 이 화면은 아직 사용자에게 보이지 않고, 관찰은 시험으로 한다.
  *
  * ## 단계 전이 표
  *
@@ -191,9 +207,14 @@ interface FormDraft {
  * | --- | --- | :-: | --- | --- |
  * | 등록 `POST /logistics/putaway-rules` | **없음**(`null`) | 준다(201) | **컬렉션 경로** — 상세 토큰이 되지 않는다 | 새 번호를 고른다 → **상세 조회가 토큰을 확보** |
  * | 수정 `PUT /{id}` | **상세 경로** | 계약상 **선택** | 주면 상세 경로 | 무효화 → **재조회가 새 토큰을 확보** |
+ * | 끄기·켜기 `POST /{id}:deactivate`·`:activate` | **상세 경로** | 계약상 **선택** | 주면 **액션 경로** — 상세 토큰이 낡는다 | 무효화 → **재조회가 새 토큰을 확보** |
  *
  * **규칙 하나로 요약한다 — 모든 쓰기 성공 뒤 `putawayRuleKeys.all`을 무효화한다.** 빠뜨리면
  * 두 번째 저장이 조용히 409로 죽거나, 훅이 토큰을 못 찾아 **요청을 보내지 않고 멈춘다.**
+ *
+ * ⚠ **전환 둘은 목록 행에서 곧바로 낼 수 없다**(위험 R2). 목록 응답에 잠금 토큰이 없고
+ * `:activate`에도 `If-Match`가 **필수**다 — 상세 200이 온 뒤에만 손잡이가 열린다
+ * (`activation-guard.ts`의 `activationIntentOf(null)`).
  */
 export const PutawayRuleScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -367,6 +388,41 @@ export const PutawayRuleScreen = () => {
   });
 
   /**
+   * 켜기가 만들 조합의 중복. ⚠ **네 축이 전부 서버 값이다** — 전환은 폼을 저장하지 않으므로
+   * 켜지는 것은 고치던 값이 아니라 **지금 서버에 있는 규칙**이다. 폼 초안에서 읽으면
+   * 저장하지도 않은 조합으로 판정하게 된다(위치·우선순위는 폼에서 고칠 수 있다).
+   *
+   * 조준 조회 자체는 폼의 창고·품목으로 열리는데, **수정에서 그 둘은 잠겨 있어** 서버 값과
+   * 갈릴 수 없다(계약이 수정 본문에서 두 키를 뺐다). 그 잠금이 풀리는 날 이 자리도 함께 본다.
+   */
+  const activateDuplicate = judgeDuplicate(duplicateProbe, {
+    itemId: rule?.itemId ?? null,
+    warehouseId: rule?.warehouseId ?? null,
+    /* `null`은 「창고 전체」라는 확정된 값이다 — 그 뜻이 여기서도 그대로 흐른다. */
+    locationId: rule?.locationId ?? null,
+    priorityNo: rule?.priorityNo ?? null,
+    selfRuleId: rule?.putawayRuleId ?? null,
+  });
+
+  /**
+   * 끄고 나면 이 창고·품목에 남는 덮개. **끄기 확인 창의 문면을 가르는 값이다** —
+   * 「끄면 위치 검증 없이 통과합니다」는 이것이 마지막 활성 규칙일 때만 참이다.
+   */
+  const remainingCoverage = judgeRemainingCoverage(duplicateProbe, {
+    itemId: rule?.itemId ?? null,
+    warehouseId: rule?.warehouseId ?? null,
+    selfRuleId: rule?.putawayRuleId ?? null,
+  });
+
+  /** 지금 낼 수 있는 전환. **상세가 오기 전에는 `null`** — 잠금 토큰이 없다(위험 R2). */
+  const activationIntent = activationIntentOf(rule === null ? null : rule.isActive);
+  /** 전환 손잡이의 지금 상태. **막힘과 사유가 한 값이다** — 사유를 두 자리에서 만들지 않는다. */
+  const activationAction = activationActionOf({
+    intent: activationIntent,
+    duplicate: activateDuplicate,
+  });
+
+  /**
    * 주소를 갈아 끼우는 **유일한 자리**. 404 안내를 여기서 함께 거둔다 —
    * 조회·초기화·쪽 이동·고르기·등록 성공이 모두 이 길을 지나므로 조작마다 따로 지울 자리가 없다.
    */
@@ -462,18 +518,64 @@ export const PutawayRuleScreen = () => {
   });
 
   /**
-   * **두 쓰기가 한 벌의 잠금을 나눠 쓴다**(공유계약 G-30). 하나가 나가는 중에는 나머지도
+   * 사용 전환 — **본문이 없다.** 본문을 실으면 계약이 받지 않는다(요청 본문이 아예 없다).
+   *
+   * 두 오퍼레이션을 한 훅으로 다룬다 — 잠금 토큰도 무효화 범위도 실패 배너도 같고,
+   * **한 번에 하나만 나갈 수 있다**(한 규칙이 켜져 있으면서 꺼져 있을 수 없다).
+   *
+   * 잠금 토큰은 **상세 경로**에서 꺼낸다. 요청 경로(`…:deactivate`)로 꺼내면 언제나 비어 있어
+   * 전환이 통째로 멈춘다 — 증상은 「눌러도 아무 일이 없다」다. 그리고 200의 `ETag`는
+   * **액션 경로**에 캡처되므로 상세 토큰이 낡는다 — 성공 뒤 무효화가 없으면 그다음 저장이
+   * 조용히 409다.
+   */
+  const activationWrite = useMasterWrite<ActivationIntent, PutawayRule>({
+    request: (intent, headers) => {
+      const params = {
+        path: { putawayRuleId: selectedRuleId ?? 0 },
+        header: {
+          'Idempotency-Key': headers['Idempotency-Key'],
+          'If-Match': headers['If-Match'] ?? '',
+        },
+      };
+
+      return intent === 'deactivate'
+        ? client.POST('/logistics/putaway-rules/{putawayRuleId}:deactivate', { params })
+        : client.POST('/logistics/putaway-rules/{putawayRuleId}:activate', { params });
+    },
+    etagPath: selectedRuleId === null ? null : ruleDetailPath(selectedRuleId),
+    invalidateKeys: [putawayRuleKeys.all],
+    /* 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다. */
+    knownFields: [],
+    onSuccess: () => {
+      /* 전환은 일어났다 — 대상이 바뀌었다고 그 사실까지 감추지 않는다. */
+      toast.show({ variant: 'success', description: messages.common.saved });
+
+      /* 창은 그 대상의 것이다. 대상이 바뀌었으면 정리 effect가 이미 닫았다. */
+      if (writeTargetKeyRef.current !== editTargetKeyRef.current) return;
+
+      setDialog(null);
+    },
+  });
+
+  /**
+   * **세 쓰기가 한 벌의 잠금을 나눠 쓴다**(공유계약 G-30). 하나가 나가는 중에는 나머지도
    * 잠근다 — 동시에 나가면 뒤엣것이 409이고, 그 실패는 사용자가 한 일과 이어지지 않는다.
    */
-  const isLocked = createWrite.isSaving || updateWrite.isSaving;
+  const isLocked = createWrite.isSaving || updateWrite.isSaving || activationWrite.isSaving;
 
-  /** 지금 모드의 쓰기. 등록과 수정이 한 폼을 쓰므로 배너·오류도 한 곳에서 골라 쓴다. */
+  /** 지금 모드의 폼 쓰기. 등록과 수정이 한 폼을 쓰므로 배너·오류도 한 곳에서 골라 쓴다. */
   const activeWrite = isCreating ? createWrite : updateWrite;
 
   /** 훅에 남아 있는 쓰기 결과가 지금 보는 대상의 것인가. */
   const isWriteResultMine = writeTargetKey === editTargetKey;
-  /** **가릴 것 — 지금 이 대상의 저장인가.** 진행 표시는 자기 저장에만 돈다(G-30). */
-  const isSavingMine = isLocked && isWriteResultMine;
+  /**
+   * **가릴 것 — 지금 이 대상의 *이* 쓰기인가.** 진행 표시는 자기 쓰기에만 돈다(G-30).
+   *
+   * ⛔ **전역 잠금(`isLocked`)으로 재지 않는다.** 쓰기가 셋이 되면서 그 둘이 갈렸다 —
+   * 전환이 나가는 중에 잠금으로 재면 **손대지도 않은 폼이 「저장 중」이라고 말한다.**
+   */
+  const isSavingMine = activeWrite.isSaving && isWriteResultMine;
+  const isActivationSavingMine = activationWrite.isSaving && isWriteResultMine;
 
   /**
    * **나가는 중인 쓰기는 건드리지 않는다.**
@@ -500,6 +602,7 @@ export const PutawayRuleScreen = () => {
   const resetEditing = (): void => {
     resetIfIdle(createWrite);
     resetIfIdle(updateWrite);
+    resetIfIdle(activationWrite);
     setFieldErrors({});
     setDialog(null);
   };
@@ -745,8 +848,85 @@ export const PutawayRuleScreen = () => {
     setDraft((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
   };
 
-  /** 남의 대상에 보낸 요청의 결과를 이 화면에 세우지 않는다 — **감추는 것이 규칙이다.** */
-  const writeError = isWriteResultMine ? activeWrite.error : null;
+  /** 창을 열 때 앞선 전환 실패 배너를 걷는다 — 지금 하려는 일과 무관한 안내다. */
+  const openActivationDialog = (intent: ActivationIntent): void => {
+    if (isLocked) return;
+
+    resetIfIdle(activationWrite);
+    setDialog({ kind: 'activation', intent });
+  };
+
+  /**
+   * 전환 확인. **보내는 자리가 스스로 한 번 더 본다.**
+   *
+   * 창이 열려 있는 동안 셋이 달라질 수 있다 — 대상이 **사라지고**(주소가 바뀐다), 대상의
+   * **사용 여부가 뒤집히고**(「다시 조회」는 잠기지 않고 다른 사람이 먼저 바꿀 수도 있다),
+   * 켜기의 **막힌 사유가 생긴다**(조준 조회가 늦게 도착한다). 셋 다 보내지 않고 창을 닫는다.
+   *
+   * 사용 여부가 뒤집힌 자리를 보지 않으면 **이미 꺼진 것에 `:deactivate`가, 이미 켜진 것에
+   * `:activate`가** 나간다 — 뒤엣것은 계약이 400으로 막아 사용자가 이유를 알 수 없는 거절을 받는다.
+   */
+  const handleConfirmActivation = (): void => {
+    if (dialog?.kind !== 'activation') return;
+
+    if (selectedRuleId === null || rule === null || isLocked) {
+      setDialog(null);
+
+      return;
+    }
+
+    if (activationIntentOf(rule.isActive) !== dialog.intent) {
+      setDialog(null);
+
+      return;
+    }
+
+    if (
+      activationActionOf({ intent: dialog.intent, duplicate: activateDuplicate }).kind !== 'open'
+    ) {
+      setDialog(null);
+
+      return;
+    }
+
+    /* 지금 보내는 것은 **이 대상의 것**이다 — 도착한 결과를 견줄 축을 여기서 세운다. */
+    setWriteTargetKey(editTargetKey);
+    writeTargetKeyRef.current = editTargetKey;
+    activationWrite.write(dialog.intent);
+  };
+
+  /**
+   * 쓰기 실패 표시 — 배너와 **응답 없음 안내**를 함께 낸다.
+   *
+   * 멱등 완화의 마지막 층이다(공유계약 C-1). 첫째가 전송 중 전역 잠금, 둘째가 되돌릴 수 없는
+   * 조작의 확인 창, 셋째가 이것 — **응답이 오지 않은 요청은 「실패」가 아니라는 사실**을
+   * 말한다. 쓰기 훅은 호출마다 새 멱등 키를 만들어, 그대로 다시 보내면 서버에는 다른 요청으로
+   * 보인다.
+   *
+   * **네트워크 갈래에만 붙는다.** 서버가 거절한 요청은 전달된 것이 확실하다 —
+   * 400·403·409에 이 안내를 붙이면 확인된 사실을 「모른다」로 흐린다.
+   *
+   * **안내 문면은 축마다 다르다** — 확인할 자리와 하지 말아야 할 조작이 다르기 때문이다
+   * (저장은 값을 다시 보내는 것, 전환은 같은 버튼을 다시 누르는 것).
+   *
+   * **매임을 지난다** — 남의 대상에 보낸 요청의 거절 사유를 이 화면에 세우지 않는다.
+   */
+  const writeFailureSlot = (
+    write: { error: ApiError | null },
+    unconfirmedNote: string,
+    onReload?: () => void,
+  ): ReactNode => {
+    const error = isWriteResultMine ? write.error : null;
+
+    return (
+      <>
+        <SaveErrorBanner error={error} onReload={onReload} />
+        {error?.kind === 'network' && <p className="field-note">{unconfirmedNote}</p>}
+      </>
+    );
+  };
+
+  /** 인라인 오류도 같은 문을 지난다 — 배너만 감추면 새 대상의 칸 옆에 남의 오류가 붙는다. */
   const serverFieldErrors = isWriteResultMine ? activeWrite.fieldErrors : {};
 
   const listSlot = () => {
@@ -810,9 +990,11 @@ export const PutawayRuleScreen = () => {
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
         fieldErrors={{ ...serverFieldErrors, ...fieldErrors }}
         /* 등록에는 저장 충돌이 없다(잠글 대상이 없다) — 「최신 불러오기」를 낼 자리가 아니다. */
-        banner={
-          <SaveErrorBanner error={writeError} onReload={isCreating ? undefined : reloadDetail} />
-        }
+        banner={writeFailureSlot(
+          activeWrite,
+          t.notes.networkUnconfirmed,
+          isCreating ? undefined : reloadDetail,
+        )}
         warehouseOptions={toSelectOptions(warehouses)}
         warehouseNote={lookupNote(warehouses)}
         warehousePlaceholder={optionsPlaceholder(warehouses, t.filters.noWarehouseOptions)}
@@ -905,17 +1087,42 @@ export const PutawayRuleScreen = () => {
       );
     }
 
-    if (draft === null) {
-      return (
-        <section className="pane" aria-label={t.panes.form}>
-          <div role="status" aria-label={t.loading.detail}>
-            <SkeletonText lines={5} />
-          </div>
-        </section>
-      );
-    }
+    /*
+     * ⭐ **전환 구획은 초안보다 앞서 선다.** 상세가 아직 오지 않아 폼이 서지 못하는 동안에도
+     * 「사용 전환은 규칙을 불러온 뒤에 쓸 수 있습니다」를 말할 자리가 있어야 한다 — 자리를
+     * 비우면 그 사실이 화면 어디에도 없고 사용자는 손잡이를 찾다 만다(위험 R2).
+     */
+    return (
+      <>
+        {draft === null ? (
+          <section className="pane" aria-label={t.panes.form}>
+            <div role="status" aria-label={t.loading.detail}>
+              <SkeletonText lines={5} />
+            </div>
+          </section>
+        ) : (
+          formPane()
+        )}
 
-    return formPane();
+        <ActivationPane
+          action={activationAction}
+          /*
+           * **막지 않되 말한다**(C3-9와 같은 잣대). `'incomplete'`는 겨눌 조합이 없는 상태라
+           * 확인을 **시도한 적이 없다** — 그때 「확인하지 못했습니다」는 거짓이다.
+           */
+          duplicateUnknownNote={
+            activationIntent === 'activate' &&
+            activateDuplicate.kind === 'unknown' &&
+            activateDuplicate.reason !== 'incomplete'
+              ? t.notes.activateDuplicateUnknown
+              : null
+          }
+          isLocked={isLocked}
+          isSaving={isActivationSavingMine}
+          onStart={openActivationDialog}
+        />
+      </>
+    );
   };
 
   return (
@@ -925,20 +1132,42 @@ export const PutawayRuleScreen = () => {
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
         actions={
           <>
-            {/* 창고를 고르기 전에는 만들 대상이 정해지지 않는다 — 등록 본문이 창고를 요구한다. */}
-            <Button
-              variant="outlined"
-              disabled={warehouseId === null || isLocked}
-              onClick={handleCreate}
-            >
-              {t.actions.create}
-            </Button>
+            {/*
+             * **잠긴 자리에는 반드시 사유가 붙는다**(배치 규범 4). 이 버튼은 두 사유로 잠기는데
+             * 둘 다 사용자가 할 일이 다르다 — 창고를 고르거나(등록 본문이 창고를 요구한다),
+             * 나가는 중인 요청을 기다리거나. 사유 없이 잠그면 고장으로 읽힌다.
+             *
+             * 폼 안 「등록」의 사유를 돌려 쓰지 않는다 — 사유는 **그 컨트롤의 이름으로 시작해야**
+             * 사용자가 어느 버튼 이야기인지 되짚지 않는다.
+             */}
+            {warehouseId === null ? (
+              <DisabledAction label={t.actions.create} reason={t.actionReasons.addNeedsWarehouse} />
+            ) : isLocked ? (
+              <DisabledAction
+                label={t.actions.create}
+                reason={t.actionReasons.addLockedByOtherSave}
+              />
+            ) : (
+              <Button variant="outlined" onClick={handleCreate}>
+                {t.actions.create}
+              </Button>
+            )}
+            {/* 「다시 조회」는 잠그지 않는다 — 응답 없음 안내가 가리키는 **확인 자리**다. */}
             <Button variant="outlined" onClick={handleReload}>
               {t.actions.reload}
             </Button>
           </>
         }
       />
+
+      {/*
+       * **잠긴 이유를 상시 밝힌다**(G-30) — 자리가 **폼 밖**이다.
+       *
+       * 폼은 대상이 풀리면 닫히는데(뒤로가기·주소 직접 편집) 잠금은 요청이 끝날 때까지 남는다.
+       * 사유를 폼 구획 안에 두면 **폼이 닫힌 채 잠긴 갈래**에서 잠긴 이유가 화면 어디에도 없다.
+       * 전환(끄기·켜기)은 초안이 서기 전에도 시작될 수 있어 그 갈래가 흔해진다.
+       */}
+      {isLocked && <p className="field-note">{t.notes.savingLock}</p>}
 
       <div className="pane-stack">
         <section className="pane" aria-label={t.panes.list}>
@@ -1008,6 +1237,36 @@ export const PutawayRuleScreen = () => {
           onClose={() => {
             setDialog(null);
           }}
+        />
+      )}
+
+      {/*
+       * 전환 확인 창. **대상 없이는 열지 않는다** — 무엇을 끄는지 말할 수 없는 창은
+       * 확인을 받은 것이 아니다.
+       */}
+      {dialog?.kind === 'activation' && rule !== null && (
+        <ActivationDialog
+          intent={dialog.intent}
+          itemLabel={itemLabelOf(rule.itemId)}
+          locationLabel={locationLabelOf(rule.locationId)}
+          remaining={remainingCoverage}
+          isSaving={isActivationSavingMine}
+          banner={writeFailureSlot(
+            activationWrite,
+            t.notes.activationUnconfirmed,
+            /* 409는 재조회로 풀린다 — 이 쓰기에는 잠글 대상이 있다(계약이 `If-Match`를 요구한다). */
+            reloadDetail,
+          )}
+          onClose={() => {
+            setDialog(null);
+            /*
+             * ⛔ **나가는 중인 요청은 끊지 않는다.** Escape·취소로 창에서 나가는 길이 옵저버를
+             * 떼면 무효화·성공·잠금 해제가 통째로 오지 않는다 — 토큰 수명 표가 「반드시 부른다」고
+             * 적은 재조회가 그때 빠진다.
+             */
+            resetIfIdle(activationWrite);
+          }}
+          onConfirm={handleConfirmActivation}
         />
       )}
     </>

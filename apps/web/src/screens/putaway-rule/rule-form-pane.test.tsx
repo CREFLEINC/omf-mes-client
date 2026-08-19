@@ -250,7 +250,21 @@ describe('RuleFormPane — 저장 자리의 네 상태', () => {
     renderPane({ isLocked: true, isSaving: false });
 
     expect(screen.getByText(t.actionReasons.createLockedByOtherSave)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.savingLock)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **전역 잠금 사유는 이 구획이 갖지 않는다** — 화면 수준이 그 자리다.
+   *
+   * 이 구획은 대상이 풀리면 통째로 닫히는데 잠금은 요청이 끝날 때까지 남는다. 여기 두면
+   * **폼이 닫힌 채 잠긴 갈래**에서 사유가 사라져 G-30의 「상시」가 깨진다
+   * (`screen.test.tsx`의 「폼이 닫혀도 잠긴 사유가 선다」가 그 자리를 잰다).
+   *
+   * 짝 방향은 바로 위 시험이다 — **컨트롤별 사유는 여기 선다.**
+   */
+  it('전역 잠금 사유는 이 구획에 두지 않는다', () => {
+    renderPane({ isLocked: true, isSaving: false });
+
+    expect(screen.queryByText(t.notes.savingLock)).not.toBeInTheDocument();
   });
 
   /** 저장 자리의 이름과 사유는 **한 쌍**이다 — 한쪽만 바꾸면 이름과 사유가 어긋난 짝이 생긴다. */
