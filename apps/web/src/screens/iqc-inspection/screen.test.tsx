@@ -4,7 +4,14 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
-import { pageOf, queueItems, queueResponse } from './fixtures';
+import {
+  draftRound,
+  pageOf,
+  queueItems,
+  queueResponse,
+  roundsResponse,
+  waitingRequest,
+} from './fixtures';
 import { IqcInspectionScreen } from './screen';
 
 const t = messages.iqcInspection;
@@ -25,6 +32,27 @@ const renderScreen = (
           sent.push(new URL(request.url));
           return respond(request);
         },
+      },
+      /*
+       * 의뢰를 고르면 상세와 회차를 부른다 — 스텁을 빠뜨리면 그 요청이 조용히 실패한다.
+       * **경로의 번호를 지킨다** — 늘 같은 건을 돌려주면 목록과 상세가 다른 의뢰를 가리키는
+       * 상태를 시험이 정상으로 통과시킨다.
+       */
+      {
+        match: (request) =>
+          new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
+        respond: (request) => {
+          const id = Number(new URL(request.url).pathname.split('/').at(-1));
+          const found = queueItems.find((item) => item.inspectionRequestId === id);
+
+          return found === undefined
+            ? jsonResponse({ message: '없는 의뢰' }, { status: 404 })
+            : jsonResponse(found);
+        },
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
+        respond: () => jsonResponse(roundsResponse([draftRound])),
       },
     ]),
   });
@@ -146,6 +174,42 @@ describe('IqcInspectionScreen', () => {
     renderScreen();
 
     expect(await screen.findByRole('navigation', { name: t.pageNav.label })).toBeInTheDocument();
+  });
+
+  it('아무것도 고르지 않았으면 무엇을 해야 하는지 말한다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(t.detail.nothingSelected)).toBeInTheDocument();
+  });
+
+  it('의뢰를 고르면 그 의뢰의 상세가 선다 — 목록과 상세가 같은 건을 가리킨다', async () => {
+    renderScreen('/?ir=1002');
+
+    expect(await screen.findByText(t.detail.fields.inspectionPlanVersionId)).toBeInTheDocument();
+    expect(await screen.findByText(t.detail.planVersionNote)).toBeInTheDocument();
+  });
+
+  it('회차에 저장된 수량이 편집 칸에 되돌아온다', async () => {
+    renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+
+    expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('480');
+    expect(screen.getByLabelText(t.result.fields.rejected)).toHaveValue('15');
+    expect(screen.getByLabelText(t.result.fields.held)).toHaveValue('5');
+  });
+
+  it('되돌아온 수량이 합계 제약을 만족하면 일치한다고 말한다', async () => {
+    renderScreen('/?ir=1001');
+
+    expect(await screen.findByText(t.result.matched)).toBeInTheDocument();
+  });
+
+  it('상세 조회가 실패해도 「고르지 않음」으로 접지 않는다 — 다시 골라도 같은 실패가 온다', async () => {
+    renderScreen('/?ir=9999');
+
+    expect(await screen.findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+    expect(screen.queryByText(t.detail.nothingSelected)).not.toBeInTheDocument();
   });
 
   it('조건에 맞는 것이 없으면 조건을 넓히라고 말한다', async () => {

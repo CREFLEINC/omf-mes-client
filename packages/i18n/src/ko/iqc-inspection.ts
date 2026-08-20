@@ -74,6 +74,58 @@ export const iqcInspection = {
     inProgress: '진행',
   },
 
+  /** 우측 창 — 고른 의뢰의 상세(스펙 §4-A 여섯 항목). */
+  detail: {
+    heading: '대상',
+    /** 아무것도 고르지 않았다. 무엇을 해야 하는지 말한다. */
+    nothingSelected: '왼쪽 목록에서 검사할 의뢰를 고르세요.',
+    loading: '의뢰를 불러오는 중입니다.',
+    fields: {
+      inspectionRequestNo: '의뢰번호',
+      inspectionTypeCode: '검사 유형',
+      /**
+       * ⚠ 감추지 않는다. 검사 시점의 기준 버전이 그 검사에 **고정되고** 이후 기준이 바뀌어도
+       * 이 검사는 당시 버전으로 남는다. 버전을 감추면 검사자도, 나중에 결과를 읽는 사람도
+       * 어느 기준으로 잰 값인지 알 수 없다.
+       */
+      inspectionPlanVersionId: '검사기준 버전',
+      lotId: '대상 LOT',
+      itemId: '품목',
+      targetQty: '검사수량',
+    },
+    /** 기준 버전이 고정된다는 사실을 화면이 말한다 — 숫자만 보이면 왜 중요한지 알 수 없다. */
+    planVersionNote: '검사 시점의 기준 버전으로 고정됩니다.',
+  },
+
+  /** 우측 창 — 수량 판정. 합계 제약이 이 구획을 지배한다. */
+  result: {
+    heading: '수량 판정',
+    round: (round: number): string => `${round}회차`,
+    /** 회차가 하나도 없다 — 아직 아무도 손대지 않은 의뢰다. */
+    notStarted: '아직 입력된 검사 결과가 없습니다.',
+    loading: '검사 결과를 불러오는 중입니다.',
+    /**
+     * 이 회차는 이미 확정됐다. ⛔ **고칠 수 있는 것처럼 보이지 않게 한다** — 이전 회차는
+     * 정정하지 않고 재검사로 새 회차를 쌓는다.
+     */
+    confirmed: '이 회차는 확정되어 고칠 수 없습니다. 다시 검사하려면 재검사 회차를 추가합니다.',
+    fields: {
+      inspectedQty: '검사수량',
+      accepted: '합격수량',
+      rejected: '불합격수량',
+      held: '보류수량',
+    },
+    /** 실시간 합계. 어긋난 값을 감추지 않는다. */
+    sum: '합계',
+    remaining: '잔여',
+    matched: '검사수량과 일치합니다.',
+    /** 모자란다. 얼마나 모자란지 함께 말한다 — 사용자가 다시 세지 않게. */
+    short: (remaining: string): string => `검사수량보다 ${remaining} 모자랍니다.`,
+    /** 넘겼다. 0으로 깎아 감추지 않는다. */
+    over: (over: string): string => `검사수량보다 ${over} 많습니다.`,
+    quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
+  },
+
   pageNav: {
     label: '검사 대기 목록 쪽 이동',
     /** 「51–100 / 전체 120건」 — 총계를 밝혀야 조건을 더 좁힐지 판단할 수 있다. */
