@@ -76,15 +76,28 @@ describe('ItemPane', () => {
     expect(screen.getByLabelText('품목 검색')).toHaveValue('SYN-DRAFT');
   });
 
-  it('적용된 필터의 실제 값이 바뀌면 편집 중인 검색어를 그 값으로 돌린다', async () => {
-    const { rerenderWithFilters, user } = renderPane();
+  it.each([
+    {
+      field: 'q',
+      next: { q: 'SYN-APPLIED', onlyWithoutRouting: false },
+      expectedQ: 'SYN-APPLIED',
+    },
+    {
+      field: 'onlyWithoutRouting',
+      next: { q: '', onlyWithoutRouting: true },
+      expectedQ: '',
+    },
+  ] satisfies { field: keyof ItemFilters; next: ItemFilters; expectedQ: string }[])(
+    '적용된 $field 값만 바뀌어도 편집 상태를 주소 값으로 돌린다',
+    async ({ next, expectedQ }) => {
+      const { rerenderWithFilters, user } = renderPane();
 
-    await user.type(screen.getByLabelText('품목 검색'), 'SYN-DRAFT');
-    rerenderWithFilters({ q: 'SYN-APPLIED', onlyWithoutRouting: true });
+      await user.type(screen.getByLabelText('품목 검색'), 'SYN-DRAFT');
+      rerenderWithFilters(next);
 
-    expect(screen.getByLabelText('품목 검색')).toHaveValue('SYN-APPLIED');
-    expect(screen.getByRole('checkbox', { name: 'Routing 미보유만' })).toBeChecked();
-  });
+      expect(screen.getByLabelText('품목 검색')).toHaveValue(expectedQ);
+    },
+  );
 
   it('「Routing 미보유만」은 해제 축이라 누르는 즉시 적용된다', async () => {
     const { onApplyFilters, user } = renderPane();

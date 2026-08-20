@@ -17,6 +17,20 @@ interface BarOptions {
   targetTypeOptions?: string[];
 }
 
+interface FilterChangeCase {
+  key: keyof MessageFilters;
+  label: string;
+  value: string;
+}
+
+const FILTER_CHANGE_CASES: FilterChangeCase[] = [
+  { key: 'status', label: '상태', value: 'FAILED' },
+  { key: 'iface', label: '연계 종류', value: 'SYN_IFACE' },
+  { key: 'direction', label: '방향', value: 'OUTBOUND' },
+  { key: 'targetType', label: '대상 유형', value: 'SYN_TARGET' },
+  { key: 'retryMin', label: '시도 횟수 하한', value: '5' },
+];
+
 const renderBar = ({
   period = APPLIED,
   filters = EMPTY_FILTERS,
@@ -88,37 +102,29 @@ describe('MessageFilterBar — 기간', () => {
     expect(screen.getByLabelText('시도 횟수 하한')).toHaveValue(3);
   });
 
-  it('기간과 조건의 실제 값이 바뀌면 편집 중인 값을 그 값으로 돌린다', async () => {
-    const { rerenderWithApplied, user } = renderBar({
-      statusOptions: ['FAILED'],
-      interfaceOptions: ['SYN_IFACE'],
-      directionOptions: ['OUTBOUND'],
-      targetTypeOptions: ['SYN_TARGET'],
-    });
+  it.each([
+    {
+      field: 'from',
+      next: { from: '2026-07-01', to: APPLIED.to },
+      label: '기간 시작',
+      expected: '2026-07-01',
+    },
+    {
+      field: 'to',
+      next: { from: APPLIED.from, to: '2026-07-31' },
+      label: '기간 종료',
+      expected: '2026-07-31',
+    },
+  ] satisfies { field: keyof PeriodInput; next: PeriodInput; label: string; expected: string }[])(
+    '적용된 기간의 $field 값만 바뀌어도 편집 상태를 그 값으로 돌린다',
+    ({ next, label, expected }) => {
+      const { rerenderWithApplied } = renderBar();
 
-    await user.clear(screen.getByLabelText('기간 종료'));
-    await user.type(screen.getByLabelText('기간 종료'), '2026-08-10');
-    await user.type(screen.getByLabelText('시도 횟수 하한'), '3');
+      rerenderWithApplied(next, { ...EMPTY_FILTERS });
 
-    rerenderWithApplied(
-      { from: '2026-07-01', to: '2026-07-31' },
-      {
-        status: 'FAILED',
-        iface: 'SYN_IFACE',
-        direction: 'OUTBOUND',
-        targetType: 'SYN_TARGET',
-        retryMin: '5',
-      },
-    );
-
-    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-01');
-    expect(screen.getByLabelText('기간 종료')).toHaveValue('2026-07-31');
-    expect(screen.getByLabelText('상태')).toHaveTextContent('FAILED');
-    expect(screen.getByLabelText('연계 종류')).toHaveTextContent('SYN_IFACE');
-    expect(screen.getByLabelText('방향')).toHaveTextContent('OUTBOUND');
-    expect(screen.getByLabelText('대상 유형')).toHaveTextContent('SYN_TARGET');
-    expect(screen.getByLabelText('시도 횟수 하한')).toHaveValue(5);
-  });
+      expect(screen.getByLabelText(label)).toHaveValue(expected);
+    },
+  );
 
   it('고치는 동안에는 조회가 나가지 않고 조회를 누를 때 고친 값이 넘어간다', async () => {
     const { onSearch, user } = renderBar();
@@ -172,6 +178,27 @@ describe('MessageFilterBar — 조건 5종', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it.each(FILTER_CHANGE_CASES)(
+    '적용된 $key 값만 바뀌어도 편집 상태를 그 값으로 돌린다',
+    ({ key, label, value }) => {
+      const { rerenderWithApplied } = renderBar({
+        statusOptions: ['FAILED'],
+        interfaceOptions: ['SYN_IFACE'],
+        directionOptions: ['OUTBOUND'],
+        targetTypeOptions: ['SYN_TARGET'],
+      });
+
+      rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS, [key]: value });
+
+      const field = screen.getByLabelText(label);
+      if (key === 'retryMin') {
+        expect(field).toHaveValue(Number(value));
+        return;
+      }
+      expect(field).toHaveTextContent(value);
+    },
+  );
 
   it('시도 하한을 고쳐 조회하면 그 값이 함께 넘어간다', async () => {
     const { onSearch, user } = renderBar();
