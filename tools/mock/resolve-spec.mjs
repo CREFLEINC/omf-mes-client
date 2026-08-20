@@ -20,6 +20,10 @@ const DEFAULT_SPEC_PATHS = [
   specPathOf('mdm-기준정보.json'),
   specPathOf('logistics-01자재창고.json'),
   specPathOf('app-공통.json'),
+  specPathOf('production-02생산실행.json'),
+  specPathOf('quality-03품질.json'),
+  specPathOf('shipment-04제품출하.json'),
+  specPathOf('equipment-05설비툴.json'),
 ];
 
 /**

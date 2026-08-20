@@ -23,6 +23,9 @@ export const codeLockMessage = (editability: Editability): string | null => {
       return t.notCountable(null);
     case 'RECEIVED_FROM_ERP':
       return t.receivedFromErp(null);
+    case 'LABEL_ISSUED':
+      // 참조 건수를 넘기지 않는다 — 이 사유는 건수가 0이어도 잠근다.
+      return t.labelIssued(null);
     case 'EDITABLE':
       // 잠긴 것은 확실하나 사유가 특정되지 않았다. 사유를 지어내지 않는다.
       return t.locked;
