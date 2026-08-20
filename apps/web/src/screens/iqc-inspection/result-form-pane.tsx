@@ -27,6 +27,7 @@ import type { InspectionResultRound } from './types';
  */
 
 const t = messages.iqcInspection.result;
+const unknownValue = messages.iqcInspection.queue.emptyValue;
 
 export interface ResultFormPaneProps {
   /** 편집할 회차. 아직 아무도 손대지 않은 의뢰면 `null` */
@@ -45,12 +46,19 @@ export const ResultFormPane = ({ round, inspectedQty, draft, onChange }: ResultF
   /**
    * 합계 상태를 한 문장으로. **모자란 양·넘긴 양을 숫자로 말한다** — 「맞지 않습니다」만
    * 내면 사용자가 세 칸을 다시 더해 봐야 한다.
+   *
+   * ⛔ **셀 수 없으면 아무 말도 하지 않는다.** 한 칸이라도 수량이 아니면 합계는 알 수 없는
+   * 것이고, 그때 「일치합니다」든 「모자랍니다」든 내면 **거짓을 말하는 것**이다. 무엇을
+   * 고쳐야 하는지는 그 칸의 오류가 이미 말한다.
    */
-  const totalsNote = totals.matches
-    ? t.matched
-    : totals.remaining > 0n
-      ? t.short(formatMicro(totals.remaining))
-      : t.over(formatMicro(-totals.remaining));
+  const totalsNote =
+    totals.kind === 'uncountable'
+      ? null
+      : totals.matches
+        ? t.matched
+        : totals.remaining > 0n
+          ? t.short(formatMicro(totals.remaining))
+          : t.over(formatMicro(-totals.remaining));
 
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
     <TextField
@@ -82,17 +90,18 @@ export const ResultFormPane = ({ round, inspectedQty, draft, onChange }: ResultF
       </div>
 
       <dl className="filter-bar">
+        {/* 셀 수 없을 때 0으로 읽은 합을 보이면 그 숫자 자체가 거짓이다. 없음 표시를 낸다. */}
         <div className="field-cell">
           <dt className="field-label">{t.sum}</dt>
-          <dd>{formatMicro(totals.sum)}</dd>
+          <dd>{totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue}</dd>
         </div>
         <div className="field-cell">
           <dt className="field-label">{t.remaining}</dt>
-          <dd>{formatMicro(totals.remaining)}</dd>
+          <dd>{totals.kind === 'counted' ? formatMicro(totals.remaining) : unknownValue}</dd>
         </div>
       </dl>
 
-      <p className="field-note">{totalsNote}</p>
+      {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
     </section>
   );
 };

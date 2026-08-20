@@ -76,6 +76,23 @@ describe('ResultFormPane', () => {
     expect(screen.getByText(t.quantityInvalid)).toBeInTheDocument();
   });
 
+  /*
+   * ⭐ 리뷰가 잡은 자리다. 잘못된 칸을 0으로 읽고 세면 화면이 오류와 「일치합니다」를
+   * 동시에 내고, 그중 하나가 거짓이다.
+   */
+  it('한 칸이 수량이 아니면 일치한다고 말하지 않는다 — 셀 수 없는 것을 셌다고 하지 않는다', () => {
+    renderPane({ accepted: 'abc', rejected: '500', held: '' });
+
+    expect(screen.getByText(t.quantityInvalid)).toBeInTheDocument();
+    expect(screen.queryByText(t.matched)).not.toBeInTheDocument();
+  });
+
+  it('셀 수 없으면 합계·잔여도 숫자로 내지 않는다 — 0으로 읽은 합은 그 숫자가 거짓이다', () => {
+    renderPane({ accepted: 'abc', rejected: '500', held: '' });
+
+    expect(screen.getAllByText(messages.iqcInspection.queue.emptyValue)).toHaveLength(2);
+  });
+
   it('확정된 회차는 고칠 수 있는 것처럼 보이지 않는다 — 이전 회차는 정정하지 않는다', () => {
     renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
 

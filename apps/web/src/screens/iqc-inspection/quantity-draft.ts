@@ -50,9 +50,13 @@ export const toMicro = (raw: string): bigint | null => {
  * **`toFixed` 를 거친다.** 계약이 `double` 로 내려 주므로 값 자체에 이미 부동소수 오차가
  * 실려 있을 수 있고, `qty * 1_000_000` 을 그대로 곱하면 그 오차가 커진 채 정수가 된다.
  * 정본의 자릿수로 한 번 반올림한 뒤 옮기면 서버가 저장한 값과 같은 자리에 선다.
+ *
+ * ⛔ **부호를 뒤집지 않는다.** 도메인이 `>= 0` 이라 음수가 올 일이 없고, 온다면 그것은
+ * 자료가 이상한 것이다 — `abs` 로 정상값처럼 만들면 그 이상함이 화면에서 사라진다.
+ * 옮길 수 없는 값은 0으로 두어 합계가 부풀지 않게 한다.
  */
 export const fromServerQty = (quantity: number): bigint =>
-  toMicro(Math.abs(quantity).toFixed(QTY_SCALE)) ?? 0n;
+  toMicro(quantity.toFixed(QTY_SCALE)) ?? 0n;
 
 /** 마이크로 단위를 사람이 읽는 문자열로. 뒤따르는 0은 걷는다 — 「10.000000」은 읽기 나쁘다. */
 export const formatMicro = (micro: bigint): string => {
@@ -94,23 +98,34 @@ export const hasQuantityError = (errors: QuantityErrors): boolean =>
 const readMicro = (raw: string): bigint => (raw.trim() === '' ? 0n : (toMicro(raw) ?? 0n));
 
 /**
- * 합계 판정의 결과. **세 값이 함께 움직인다** — 화면이 이 하나만 보고 그린다.
+ * 합계 판정의 결과 — **두 갈래다.**
  *
- * `remaining` 이 음수면 **넘긴 것**이다. 0으로 깎지 않는다 — 얼마나 넘겼는지가 사용자가
- * 고쳐야 할 양이고, 감추면 「왜 안 맞는지」를 다시 세어야 한다.
+ * ⭐ **셀 수 없으면 세지 않는다.** 한 칸이라도 수량이 아니면 합계는 **알 수 없는 것**이지
+ * 「그 칸을 0으로 본 합」이 아니다. 0으로 읽고 세면 `abc + 500 + 빈칸 = 500` 이 되어 화면이
+ * **「검사수량과 일치합니다」라고 거짓을 말하고**, `matches` 가 확정 가능 여부의 유일한
+ * 근거이므로 **쓰레기 입력에 확정이 열린다.**
  */
-export interface QuantityTotals {
-  /** 세 칸의 합 */
-  sum: bigint;
-  /** 검사수량 − 합. 음수면 넘겼다 */
-  remaining: bigint;
-  /** 정확히 일치하는가. **확정 가능 여부의 유일한 근거다** */
-  matches: boolean;
-}
+export type QuantityTotals =
+  | {
+      kind: 'counted';
+      /** 세 칸의 합 */
+      sum: bigint;
+      /** 검사수량 − 합. 음수면 넘겼다 */
+      remaining: bigint;
+      /** 정확히 일치하는가. **확정 가능 여부의 유일한 근거다** */
+      matches: boolean;
+    }
+  | { kind: 'uncountable' };
 
 export const toTotals = (draft: QuantityDraft, inspectedQty: number): QuantityTotals => {
+  if (hasQuantityError(validateQuantities(draft))) return { kind: 'uncountable' };
+
   const sum = readMicro(draft.accepted) + readMicro(draft.rejected) + readMicro(draft.held);
   const inspected = fromServerQty(inspectedQty);
 
-  return { sum, remaining: inspected - sum, matches: sum === inspected };
+  return { kind: 'counted', sum, remaining: inspected - sum, matches: sum === inspected };
 };
+
+/** 확정을 열어도 되는가. **셀 수 없으면 열지 않는다** — 이 함수 하나만 보고 판정한다. */
+export const canConfirm = (totals: QuantityTotals): boolean =>
+  totals.kind === 'counted' && totals.matches;

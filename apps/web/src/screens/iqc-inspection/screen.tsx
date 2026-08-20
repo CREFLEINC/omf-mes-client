@@ -66,6 +66,11 @@ export const IqcInspectionScreen = () => {
    *
    * 회차가 없으면 빈 초안이다. ⛔ 0을 미리 채우지 않는다 — 채우면 「검사자가 0으로 판정했다」와
    * 「아직 아무것도 넣지 않았다」가 화면에서 같아 보인다.
+   *
+   * ⭐ **고른 의뢰(`selectedId`)가 의존성에 든다.** 회차 값만 보면 **회차가 없는 의뢰끼리
+   * 옮길 때** 네 값이 모두 그대로여서(`null`·0·0·0) effect 가 깨어나지 않고, 앞 의뢰에 친
+   * 수량이 다음 의뢰 화면에 남는다. 저장이 붙는 순간 **다른 LOT 에 앞 의뢰의 수량을 저장**하는
+   * 길이 된다 — 값이 그럴듯해서 아무도 눈치채지 못한다.
    */
   const [draft, setDraft] = useState<QuantityDraft>(EMPTY_QUANTITY_DRAFT);
 
@@ -86,7 +91,7 @@ export const IqcInspectionScreen = () => {
             held: String(heldQty),
           },
     );
-  }, [roundId, acceptedQty, rejectedQty, heldQty]);
+  }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty]);
 
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);

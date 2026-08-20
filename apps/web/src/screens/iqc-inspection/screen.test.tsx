@@ -20,6 +20,8 @@ const t = messages.iqcInspection;
 const renderScreen = (
   route = '/',
   respond: (request: Request) => Response = () => jsonResponse(queueResponse()),
+  /** 회차 응답. 기본은 작성중 1회차이고, 빈 배열이면 아직 손대지 않은 의뢰다 */
+  rounds = [draftRound],
 ) => {
   const sent: URL[] = [];
 
@@ -52,7 +54,7 @@ const renderScreen = (
       },
       {
         match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
-        respond: () => jsonResponse(roundsResponse([draftRound])),
+        respond: () => jsonResponse(roundsResponse(rounds)),
       },
     ]),
   });
@@ -203,6 +205,23 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=1001');
 
     expect(await screen.findByText(t.result.matched)).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 리뷰가 잡은 자리다. 회차 값만 의존성에 두면 «회차가 없는 의뢰끼리» 옮길 때
+   * 네 값이 모두 그대로여서 되돌림이 깨어나지 않고, 앞 의뢰에 친 수량이 다음 화면에 남는다.
+   * 저장이 붙는 순간 다른 LOT 에 앞 의뢰의 수량을 저장하는 길이 된다.
+   */
+  it('회차가 없는 의뢰끼리 옮겨도 앞 의뢰에 친 수량이 남지 않는다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.notStarted);
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '123');
+    expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue('123');
+
+    await userEvent.click(screen.getByRole('button', { name: t.queue.openRow('IR-2026-0002') }));
+
+    await waitFor(() => expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue(''));
   });
 
   it('상세 조회가 실패해도 「고르지 않음」으로 접지 않는다 — 다시 골라도 같은 실패가 온다', async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  canConfirm,
   EMPTY_QUANTITY_DRAFT,
   formatMicro,
   fromServerQty,
@@ -50,9 +51,15 @@ describe('formatMicro', () => {
   });
 });
 
+/** 셀 수 있다고 단언하고 값을 꺼낸다 — 갈래를 매번 좁히지 않으려고 둔다. */
+const counted = (totals: ReturnType<typeof toTotals>) => {
+  if (totals.kind !== 'counted') throw new Error('셀 수 있어야 하는 초안인데 uncountable 이다');
+  return totals;
+};
+
 describe('toTotals — 합계 제약', () => {
   it('빈 칸은 0으로 읽는다 — 계약의 기본값이 0이다', () => {
-    const totals = toTotals(EMPTY_QUANTITY_DRAFT, 500);
+    const totals = counted(toTotals(EMPTY_QUANTITY_DRAFT, 500));
 
     expect(formatMicro(totals.sum)).toBe('0');
     expect(formatMicro(totals.remaining)).toBe('500');
@@ -60,7 +67,7 @@ describe('toTotals — 합계 제약', () => {
   });
 
   it('세 칸의 합이 검사수량과 정확히 같으면 일치다', () => {
-    const totals = toTotals({ accepted: '480', rejected: '15', held: '5' }, 500);
+    const totals = counted(toTotals({ accepted: '480', rejected: '15', held: '5' }, 500));
 
     expect(totals.matches).toBe(true);
     expect(formatMicro(totals.remaining)).toBe('0');
@@ -68,12 +75,12 @@ describe('toTotals — 합계 제약', () => {
 
   it('모자라면 잔여를 양수로 보인다', () => {
     expect(
-      formatMicro(toTotals({ accepted: '400', rejected: '0', held: '0' }, 500).remaining),
+      formatMicro(counted(toTotals({ accepted: '400', rejected: '0', held: '0' }, 500)).remaining),
     ).toBe('100');
   });
 
   it('넘기면 잔여를 음수로 보인다 — 0으로 깎으면 얼마나 넘겼는지 다시 세어야 한다', () => {
-    const totals = toTotals({ accepted: '600', rejected: '0', held: '0' }, 500);
+    const totals = counted(toTotals({ accepted: '600', rejected: '0', held: '0' }, 500));
 
     expect(formatMicro(totals.remaining)).toBe('-100');
     expect(totals.matches).toBe(false);
@@ -84,21 +91,43 @@ describe('toTotals — 합계 제약', () => {
    * 눈에는 딱 맞는데 확정이 비활성인 화면이 만들어지고, 사용자는 무엇이 틀렸는지 알 수 없다.
    */
   it('소수 합이 부동소수 오차로 어긋나지 않는다 — 0.1 + 0.2 = 0.3', () => {
-    expect(toTotals({ accepted: '0.1', rejected: '0.2', held: '0' }, 0.3).matches).toBe(true);
+    expect(counted(toTotals({ accepted: '0.1', rejected: '0.2', held: '0' }, 0.3)).matches).toBe(
+      true,
+    );
   });
 
   it('여섯 자리 소수가 정확히 맞아떨어진다', () => {
-    const totals = toTotals({ accepted: '0.333333', rejected: '0.333333', held: '0.333334' }, 1);
+    const totals = counted(
+      toTotals({ accepted: '0.333333', rejected: '0.333333', held: '0.333334' }, 1),
+    );
 
     expect(totals.matches).toBe(true);
   });
 
   it('아주 조금 모자라도 일치가 아니다 — 서버가 400 으로 막는 자리를 화면이 먼저 막는다', () => {
-    expect(toTotals({ accepted: '499.999999', rejected: '0', held: '0' }, 500).matches).toBe(false);
+    expect(
+      counted(toTotals({ accepted: '499.999999', rejected: '0', held: '0' }, 500)).matches,
+    ).toBe(false);
   });
 
-  it('수량이 아닌 값이 섞이면 그 칸을 0으로 읽는다 — 판정은 검증이 먼저 막는다', () => {
-    expect(toTotals({ accepted: 'abc', rejected: '500', held: '' }, 500).matches).toBe(true);
+  /*
+   * ⭐ 리뷰가 잡은 자리다. 0으로 읽고 세면 `abc + 500 + 빈칸 = 500` 이 되어 화면이
+   * 「일치합니다」라고 거짓을 말하고, matches 가 확정 가능 여부의 유일한 근거이므로
+   * 쓰레기 입력에 확정이 열린다.
+   */
+  it('한 칸이라도 수량이 아니면 세지 않는다 — 0으로 읽고 세면 「일치합니다」가 거짓이 된다', () => {
+    expect(toTotals({ accepted: 'abc', rejected: '500', held: '' }, 500)).toEqual({
+      kind: 'uncountable',
+    });
+  });
+
+  it('셀 수 없으면 확정을 열지 않는다', () => {
+    expect(canConfirm(toTotals({ accepted: 'abc', rejected: '500', held: '' }, 500))).toBe(false);
+  });
+
+  it('셀 수 있고 일치할 때만 확정을 연다', () => {
+    expect(canConfirm(toTotals({ accepted: '480', rejected: '15', held: '5' }, 500))).toBe(true);
+    expect(canConfirm(toTotals({ accepted: '480', rejected: '15', held: '4' }, 500))).toBe(false);
   });
 });
 
@@ -123,5 +152,9 @@ describe('fromServerQty', () => {
 
   it('부동소수 오차가 실린 값도 정본 자리에 세운다', () => {
     expect(fromServerQty(0.1 + 0.2)).toBe(300_000n);
+  });
+
+  it('음수는 부호를 뒤집지 않는다 — abs 로 정상값처럼 만들면 자료의 이상함이 사라진다', () => {
+    expect(fromServerQty(-5)).toBe(0n);
   });
 });
