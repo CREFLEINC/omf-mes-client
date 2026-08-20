@@ -16,6 +16,7 @@ import type { components } from '@omf-mes/api-client';
  */
 
 export type InspectionRequestResponse = components['schemas']['InspectionRequest'];
+export type InspectionResultResponse = components['schemas']['InspectionResult'];
 export type PageMetaResponse = components['schemas']['PageMeta'];
 
 /** 표의 한 줄. 좌측 큐가 약 1/3 폭이라 **고르는 데 필요한 것만** 싣는다(화면 스펙 §3). */
@@ -89,3 +90,89 @@ export const formatDateTime = (value: string): string => {
 
   return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
 };
+
+/**
+ * 고른 의뢰의 상세 — **스펙 §4-A 의 여섯 항목이다.**
+ *
+ * ⚠ **검사기준 버전을 반드시 보인다.** 검사 시점의 기준 버전이 그 검사에 **고정되고**,
+ * 이후 기준이 바뀌어도 이 검사는 당시 버전으로 남는다(§4-A). 화면이 버전을 감추면 검사자는
+ * 자기가 어느 기준으로 재고 있는지 알 수 없고, 나중에 결과를 다시 읽는 사람도 알 수 없다.
+ */
+export interface InspectionRequestDetail {
+  inspectionRequestId: number;
+  inspectionRequestNo: string;
+  inspectionTypeCode: string;
+  /** ⚠ 검사 시점에 고정되는 기준 버전. 화면 표시 필수(§4-A) */
+  inspectionPlanVersionId: number;
+  lotId: number | null;
+  itemId: number;
+  /** 입하 등록 수량. 합계 제약의 오른쪽 변이다 */
+  targetQty: number;
+  uomId: number;
+  statusCode: string;
+  requestedAt: string;
+}
+
+export const toInspectionRequestDetail = (
+  item: InspectionRequestResponse,
+): InspectionRequestDetail => ({
+  inspectionRequestId: item.inspectionRequestId,
+  inspectionRequestNo: item.inspectionRequestNo,
+  inspectionTypeCode: item.inspectionTypeCode,
+  inspectionPlanVersionId: item.inspectionPlanVersionId,
+  lotId: item.lotId ?? null,
+  itemId: item.itemId,
+  targetQty: item.targetQty,
+  uomId: item.uomId,
+  statusCode: item.statusCode,
+  requestedAt: item.requestedAt,
+});
+
+/**
+ * 검사 결과 한 회차.
+ *
+ * **회차는 정정하지 않는다** — 재검사는 이전 회차를 고치는 것이 아니라 새 회차를 쌓고
+ * `previousResultId` 로 사슬을 잇는다(§5-3). 그래서 이 뷰는 회차를 **읽기 값**으로 나른다.
+ */
+export interface InspectionResultRound {
+  inspectionResultId: number;
+  inspectionRound: number;
+  inspectedQty: number;
+  acceptedQty: number;
+  rejectedQty: number;
+  heldQty: number;
+  overallJudgmentCode: string;
+  /** `작성중` · `확정` — 확정된 회차는 더 고치지 않는다 */
+  statusCode: string;
+  confirmedAt: string | null;
+  previousResultId: number | null;
+}
+
+export const toInspectionResultRound = (item: InspectionResultResponse): InspectionResultRound => ({
+  inspectionResultId: item.inspectionResultId,
+  inspectionRound: item.inspectionRound,
+  inspectedQty: item.inspectedQty,
+  acceptedQty: item.acceptedQty,
+  rejectedQty: item.rejectedQty,
+  heldQty: item.heldQty,
+  overallJudgmentCode: item.overallJudgmentCode,
+  statusCode: item.statusCode,
+  confirmedAt: item.confirmedAt ?? null,
+  previousResultId: item.previousResultId ?? null,
+});
+
+/**
+ * 회차 목록에서 **지금 편집할 회차**를 고른다.
+ *
+ * ⭐ **가장 큰 회차 하나다.** 그것이 `작성중` 이면 이어서 쓰고, `확정` 이면 이 의뢰는 이미
+ * 판정이 끝난 것이라 **새 회차(재검사)** 로 가야 한다 — 이전 회차를 고치지 않는다(§5-3).
+ * 회차가 하나도 없으면 아직 아무도 손대지 않은 의뢰다.
+ *
+ * 서버가 주는 차례를 믿지 않고 **회차 번호로 고른다** — 목록의 정렬이 계약에 적혀 있지 않다.
+ */
+export const latestRound = (rounds: InspectionResultRound[]): InspectionResultRound | null =>
+  rounds.reduce<InspectionResultRound | null>(
+    (latest, round) =>
+      latest === null || round.inspectionRound > latest.inspectionRound ? round : latest,
+    null,
+  );

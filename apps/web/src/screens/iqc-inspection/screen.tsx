@@ -1,5 +1,6 @@
 import { Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
@@ -15,11 +16,15 @@ import {
   type QueueFilters,
 } from './filters';
 import { QueueLoadErrorBanner } from './load-error-banner';
+import { EMPTY_QUANTITY_DRAFT, type QuantityDraft } from './quantity-draft';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
-import { useInspectionQueue } from './queries';
+import { useInspectionQueue, useInspectionRequestDetail, useInspectionRounds } from './queries';
 import { QueueFilterBar } from './queue-filter-bar';
 import { QueueTable } from './queue-table';
+import { RequestDetailPane } from './request-detail-pane';
+import { ResultFormPane } from './result-form-pane';
+import { latestRound } from './types';
 
 /**
  * W-01-01 IQC 수입검사·판정 — **이 회차는 좌측 검사 대기 큐 하나다.**
@@ -48,6 +53,45 @@ export const IqcInspectionScreen = () => {
   const selectedId = readSelectedId(searchParams);
 
   const queue = useInspectionQueue(toListQuery(filters, page));
+  const detail = useInspectionRequestDetail(selectedId);
+  const rounds = useInspectionRounds(selectedId);
+
+  const round = latestRound(rounds.data ?? []);
+
+  /**
+   * 수량 초안. **고른 의뢰가 바뀌면 그 회차의 값으로 되돌아간다.**
+   *
+   * 되돌림을 참조가 아니라 **값**으로 판정한다 — 조회 응답이 다시 그려질 때마다 참조가
+   * 달라지므로, 참조로 판정하면 그때마다 사용자가 치던 값이 사라진다.
+   *
+   * 회차가 없으면 빈 초안이다. ⛔ 0을 미리 채우지 않는다 — 채우면 「검사자가 0으로 판정했다」와
+   * 「아직 아무것도 넣지 않았다」가 화면에서 같아 보인다.
+   *
+   * ⭐ **고른 의뢰(`selectedId`)가 의존성에 든다.** 회차 값만 보면 **회차가 없는 의뢰끼리
+   * 옮길 때** 네 값이 모두 그대로여서(`null`·0·0·0) effect 가 깨어나지 않고, 앞 의뢰에 친
+   * 수량이 다음 의뢰 화면에 남는다. 저장이 붙는 순간 **다른 LOT 에 앞 의뢰의 수량을 저장**하는
+   * 길이 된다 — 값이 그럴듯해서 아무도 눈치채지 못한다.
+   */
+  const [draft, setDraft] = useState<QuantityDraft>(EMPTY_QUANTITY_DRAFT);
+
+  const roundId = round?.inspectionResultId ?? null;
+  const { acceptedQty, rejectedQty, heldQty } = round ?? {
+    acceptedQty: 0,
+    rejectedQty: 0,
+    heldQty: 0,
+  };
+
+  useEffect(() => {
+    setDraft(
+      roundId === null
+        ? EMPTY_QUANTITY_DRAFT
+        : {
+            accepted: String(acceptedQty),
+            rejected: String(rejectedQty),
+            held: String(heldQty),
+          },
+    );
+  }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty]);
 
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -97,6 +141,38 @@ export const IqcInspectionScreen = () => {
     <p className="field-note">{t.queue.empty}</p>
   );
 
+  /**
+   * 우측 창. **네 갈래다** — 고르지 않음 · 부르는 중 · 실패 · 상세.
+   *
+   * ⛔ 실패를 「고르지 않음」으로 접지 않는다. 접으면 고른 것이 사라진 것처럼 보여
+   * 사용자가 다시 고르는데, 다시 골라도 같은 실패가 온다.
+   */
+  const detailContent =
+    selectedId === null ? (
+      <p className="field-note">{t.detail.nothingSelected}</p>
+    ) : detail.isError ? (
+      <QueueLoadErrorBanner
+        error={toApiError(detail.error)}
+        onRetry={() => void detail.refetch()}
+      />
+    ) : detail.data === undefined ? (
+      <p className="field-note">{t.detail.loading}</p>
+    ) : (
+      <>
+        <RequestDetailPane detail={detail.data} />
+        {rounds.isPending ? (
+          <p className="field-note">{t.result.loading}</p>
+        ) : (
+          <ResultFormPane
+            round={round}
+            inspectedQty={round?.inspectedQty ?? detail.data.targetQty}
+            draft={draft}
+            onChange={setDraft}
+          />
+        )}
+      </>
+    );
+
   return (
     <>
       <PageHeader
@@ -104,31 +180,34 @@ export const IqcInspectionScreen = () => {
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
 
-      <section className="pane" aria-label={t.queue.heading}>
-        <QueueFilterBar
-          appliedFilters={filters}
-          onSearch={applyFilters}
-          onReset={() => applyFilters(EMPTY_FILTERS)}
-        />
-
-        {queue.isError && (
-          <QueueLoadErrorBanner
-            error={toApiError(queue.error)}
-            onRetry={() => void queue.refetch()}
+      <div className="two-pane">
+        <section className="pane" aria-label={t.queue.heading}>
+          <QueueFilterBar
+            appliedFilters={filters}
+            onSearch={applyFilters}
+            onReset={() => applyFilters(EMPTY_FILTERS)}
           />
-        )}
 
-        <QueueTable rows={rows} selectedId={selectedId} onSelect={select} empty={emptyContent} />
+          {queue.isError && (
+            <QueueLoadErrorBanner
+              error={toApiError(queue.error)}
+              onRetry={() => void queue.refetch()}
+            />
+          )}
 
-        {/*
-         * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
-         * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
-         * `pagination.ts` 가 「범위를 지어내지 않는다」를 규율로 두었는데 총계를 지어내면
-         * 그 규율을 한 층 위에서 깨는 것이다. 전례도 같은 자리를 막는다
-         * (`document-progress/screen.tsx` 의 `!list.isPending`).
-         */}
-        {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
-      </section>
+          <QueueTable rows={rows} selectedId={selectedId} onSelect={select} empty={emptyContent} />
+
+          {/*
+           * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
+           * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
+           */}
+          {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
+        </section>
+
+        <section className="pane" aria-label={t.detail.heading}>
+          {detailContent}
+        </section>
+      </div>
     </>
   );
 };

@@ -1,4 +1,8 @@
-import type { InspectionRequestResponse, PageMetaResponse } from './types';
+import type {
+  InspectionRequestResponse,
+  InspectionResultResponse,
+  PageMetaResponse,
+} from './types';
 
 /**
  * 검사 대기 큐의 시험용 자료.
@@ -72,3 +76,45 @@ export const queueResponse = (
   items: InspectionRequestResponse[] = queueItems,
   page: PageMetaResponse = pageOf(items.length),
 ): { items: InspectionRequestResponse[]; page: PageMetaResponse } => ({ items, page });
+
+/** 아직 확정하지 않은 1회차. 수량이 합계 제약을 만족한다(480 + 15 + 5 = 500). */
+export const draftRound: InspectionResultResponse = {
+  inspectionResultId: 9001,
+  inspectionResultNo: 'IRS-2026-0001',
+  inspectionRequestId: waitingRequest.inspectionRequestId,
+  inspectionRound: 1,
+  inspectedQty: 500,
+  acceptedQty: 480,
+  rejectedQty: 15,
+  heldQty: 5,
+  uomId: 10,
+  overallJudgmentCode: '합격',
+  inspectorId: 4001,
+  inspectedAt: '2026-08-18T10:00:00+09:00',
+  statusCode: '작성중',
+  versionNo: 1,
+};
+
+/** 확정된 1회차 — 이 의뢰는 판정이 끝났고 고치려면 새 회차를 쌓아야 한다. */
+export const confirmedRound: InspectionResultResponse = {
+  ...draftRound,
+  statusCode: '확정',
+  confirmedAt: '2026-08-18T10:30:00+09:00',
+};
+
+/** 확정된 1회차 뒤에 쌓인 재검사 2회차. 사슬을 previousResultId 로 잇는다. */
+export const reinspectionRound: InspectionResultResponse = {
+  ...draftRound,
+  inspectionResultId: 9002,
+  inspectionResultNo: 'IRS-2026-0002',
+  inspectionRound: 2,
+  previousResultId: confirmedRound.inspectionResultId,
+  reinspectionReasonCode: 'RECHECK',
+};
+
+export const roundsResponse = (
+  items: InspectionResultResponse[],
+): { items: InspectionResultResponse[]; page: PageMetaResponse } => ({
+  items,
+  page: pageOf(items.length),
+});

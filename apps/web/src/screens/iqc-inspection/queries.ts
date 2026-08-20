@@ -4,7 +4,14 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { QueueListQuery } from './filters';
-import { toInspectionQueueResult, type InspectionQueueResult } from './types';
+import {
+  toInspectionQueueResult,
+  toInspectionRequestDetail,
+  toInspectionResultRound,
+  type InspectionQueueResult,
+  type InspectionRequestDetail,
+  type InspectionResultRound,
+} from './types';
 
 /**
  * 이 회차의 요청 — **읽기 하나다.**
@@ -27,6 +34,9 @@ import { toInspectionQueueResult, type InspectionQueueResult } from './types';
 
 type Client = ApiClient['client'];
 
+/** 한 의뢰의 회차 수는 작다 — 재검사가 이만큼 쌓이면 자료가 이상한 것이다. */
+const ROUNDS_PAGE_SIZE = 100;
+
 /**
  * 이 자원의 조회를 덮는 뿌리 키.
  *
@@ -40,6 +50,13 @@ export const iqcInspectionKeys = {
   all: ALL_KEY,
   /** 질의가 곧 열쇠다 — 조건이나 쪽이 다르면 다른 결과이므로 캐시도 갈려야 한다. */
   queue: (query: QueueListQuery) => [...ALL_KEY, 'queue', query] as const,
+  /**
+   * 고른 의뢰의 상세. **목록과 앞머리를 갈라 둔다** — 하나로 묶으면 목록만 다시 부르려 해도
+   * 상세까지 함께 무효화되고, 반대로 저장 뒤 상세만 갱신하려 할 때 목록이 통째로 다시 온다.
+   */
+  detail: (inspectionRequestId: number) => [...ALL_KEY, 'detail', inspectionRequestId] as const,
+  /** 그 의뢰의 회차 목록. 상세와도 갈라 둔다 — 저장이 바꾸는 것은 회차이지 의뢰가 아니다. */
+  rounds: (inspectionRequestId: number) => [...ALL_KEY, 'rounds', inspectionRequestId] as const,
 };
 
 const fetchQueue = (client: Client, query: QueueListQuery): Promise<InspectionQueueResult> =>
@@ -63,5 +80,64 @@ export const useInspectionQueue = (
   return useQuery({
     queryKey: iqcInspectionKeys.queue(query),
     queryFn: () => fetchQueue(client, query),
+  });
+};
+
+const fetchDetail = (
+  client: Client,
+  inspectionRequestId: number,
+): Promise<InspectionRequestDetail> =>
+  runRequest(() =>
+    client.GET('/quality/inspection-requests/{inspectionRequestId}', {
+      params: { path: { inspectionRequestId } },
+    }),
+  ).then(toInspectionRequestDetail);
+
+const fetchRounds = (
+  client: Client,
+  inspectionRequestId: number,
+): Promise<InspectionResultRound[]> =>
+  runRequest(() =>
+    client.GET('/quality/inspection-results', {
+      params: { query: { inspectionRequestId, page: 1, size: ROUNDS_PAGE_SIZE } },
+    }),
+  ).then((response) => response.items.map(toInspectionResultRound));
+
+/**
+ * 고른 의뢰의 상세를 부른다. **고르기 전에는 부르지 않는다** — 부를 대상이 없다.
+ */
+export const useInspectionRequestDetail = (
+  inspectionRequestId: number | null,
+): UseQueryResult<InspectionRequestDetail> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: iqcInspectionKeys.detail(inspectionRequestId ?? 0),
+    queryFn: () => fetchDetail(client, inspectionRequestId as number),
+    enabled: inspectionRequestId !== null,
+  });
+};
+
+/**
+ * 그 의뢰의 회차를 부른다.
+ *
+ * ⛔ **기간을 보내지 않는다.** 계약이 `inspectedFrom` 을 **조건부 필수**로 두었는데, 그
+ * 조건이 「`inspectionRequestId` 없이 전 이력을 훑을 때」다. 한 의뢰의 회차를 읽는 이
+ * 경로에 기간을 실으면 **화면이 없는 기간을 지어내게 된다** — 설계가 그 자리를 그렇게
+ * 정한 이유이기도 하다(omf-mes#170 회신).
+ *
+ * ⭐ **쪽을 넘기지 않는다.** 한 의뢰의 재검사 회차가 한 쪽을 넘길 일이 없다. 넘긴다면
+ * 그것은 이 화면이 다룰 상황이 아니라 자료가 이상한 것이므로, 쪽 이동을 만들어 감추는
+ * 대신 그대로 드러나게 둔다.
+ */
+export const useInspectionRounds = (
+  inspectionRequestId: number | null,
+): UseQueryResult<InspectionResultRound[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: iqcInspectionKeys.rounds(inspectionRequestId ?? 0),
+    queryFn: () => fetchRounds(client, inspectionRequestId as number),
+    enabled: inspectionRequestId !== null,
   });
 };
