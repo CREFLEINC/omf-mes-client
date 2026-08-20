@@ -12,32 +12,52 @@ interface BarOptions {
   period?: PeriodInput;
   filters?: MessageFilters;
   statusOptions?: string[];
+  interfaceOptions?: string[];
+  directionOptions?: string[];
+  targetTypeOptions?: string[];
 }
+
+interface FilterChangeCase {
+  key: keyof MessageFilters;
+  label: string;
+  value: string;
+}
+
+const FILTER_CHANGE_CASES: FilterChangeCase[] = [
+  { key: 'status', label: '상태', value: 'FAILED' },
+  { key: 'iface', label: '연계 종류', value: 'SYN_IFACE' },
+  { key: 'direction', label: '방향', value: 'OUTBOUND' },
+  { key: 'targetType', label: '대상 유형', value: 'SYN_TARGET' },
+  { key: 'retryMin', label: '시도 횟수 하한', value: '5' },
+];
 
 const renderBar = ({
   period = APPLIED,
   filters = EMPTY_FILTERS,
   statusOptions = [],
+  interfaceOptions = [],
+  directionOptions = [],
+  targetTypeOptions = [],
 }: BarOptions = {}) => {
   const onSearch = vi.fn();
   const onRemoveFilter = vi.fn();
   const onReset = vi.fn();
 
-  const element = (nextPeriod: PeriodInput) => (
+  const element = (nextPeriod: PeriodInput, nextFilters: MessageFilters) => (
     <MessageFilterBar
       appliedPeriod={nextPeriod}
-      appliedFilters={filters}
+      appliedFilters={nextFilters}
       statusOptions={statusOptions}
-      interfaceOptions={[]}
-      directionOptions={[]}
-      targetTypeOptions={[]}
+      interfaceOptions={interfaceOptions}
+      directionOptions={directionOptions}
+      targetTypeOptions={targetTypeOptions}
       onSearch={onSearch}
       onRemoveFilter={onRemoveFilter}
       onReset={onReset}
     />
   );
 
-  const view = render(element(period));
+  const view = render(element(period, filters));
 
   return {
     onSearch,
@@ -45,7 +65,10 @@ const renderBar = ({
     onReset,
     user: userEvent.setup(),
     rerenderWithPeriod: (next: PeriodInput) => {
-      view.rerender(element(next));
+      view.rerender(element(next, filters));
+    },
+    rerenderWithApplied: (nextPeriod: PeriodInput, nextFilters: MessageFilters) => {
+      view.rerender(element(nextPeriod, nextFilters));
     },
   };
 };
@@ -65,6 +88,43 @@ describe('MessageFilterBar — 기간', () => {
 
     expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-01');
   });
+
+  it('같은 기간·조건 값의 새 객체가 와도 편집 중인 값을 보존한다', async () => {
+    const { rerenderWithApplied, user } = renderBar();
+
+    await user.clear(screen.getByLabelText('기간 종료'));
+    await user.type(screen.getByLabelText('기간 종료'), '2026-08-10');
+    await user.type(screen.getByLabelText('시도 횟수 하한'), '3');
+
+    rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS });
+
+    expect(screen.getByLabelText('기간 종료')).toHaveValue('2026-08-10');
+    expect(screen.getByLabelText('시도 횟수 하한')).toHaveValue(3);
+  });
+
+  it.each([
+    {
+      field: 'from',
+      next: { from: '2026-07-01', to: APPLIED.to },
+      label: '기간 시작',
+      expected: '2026-07-01',
+    },
+    {
+      field: 'to',
+      next: { from: APPLIED.from, to: '2026-07-31' },
+      label: '기간 종료',
+      expected: '2026-07-31',
+    },
+  ] satisfies { field: keyof PeriodInput; next: PeriodInput; label: string; expected: string }[])(
+    '적용된 기간의 $field 값만 바뀌어도 편집 상태를 그 값으로 돌린다',
+    ({ next, label, expected }) => {
+      const { rerenderWithApplied } = renderBar();
+
+      rerenderWithApplied(next, { ...EMPTY_FILTERS });
+
+      expect(screen.getByLabelText(label)).toHaveValue(expected);
+    },
+  );
 
   it('고치는 동안에는 조회가 나가지 않고 조회를 누를 때 고친 값이 넘어간다', async () => {
     const { onSearch, user } = renderBar();
@@ -118,6 +178,27 @@ describe('MessageFilterBar — 조건 5종', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it.each(FILTER_CHANGE_CASES)(
+    '적용된 $key 값만 바뀌어도 편집 상태를 그 값으로 돌린다',
+    ({ key, label, value }) => {
+      const { rerenderWithApplied } = renderBar({
+        statusOptions: ['FAILED'],
+        interfaceOptions: ['SYN_IFACE'],
+        directionOptions: ['OUTBOUND'],
+        targetTypeOptions: ['SYN_TARGET'],
+      });
+
+      rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS, [key]: value });
+
+      const field = screen.getByLabelText(label);
+      if (key === 'retryMin') {
+        expect(field).toHaveValue(Number(value));
+        return;
+      }
+      expect(field).toHaveTextContent(value);
+    },
+  );
 
   it('시도 하한을 고쳐 조회하면 그 값이 함께 넘어간다', async () => {
     const { onSearch, user } = renderBar();

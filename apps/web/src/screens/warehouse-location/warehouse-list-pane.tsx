@@ -57,9 +57,19 @@ export const WarehouseListPane = ({
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
   const [draft, setDraft] = useState<WarehouseFilters>(appliedFilters);
+  const {
+    q: appliedQ,
+    warehouseTypeCode: appliedWarehouseTypeCode,
+    includeInactive: appliedIncludeInactive,
+  } = appliedFilters;
+
   useEffect(() => {
-    setDraft(appliedFilters);
-  }, [appliedFilters]);
+    setDraft({
+      q: appliedQ,
+      warehouseTypeCode: appliedWarehouseTypeCode,
+      includeInactive: appliedIncludeInactive,
+    });
+  }, [appliedQ, appliedWarehouseTypeCode, appliedIncludeInactive]);
 
   const applyDraft = () => onApplyFilters(draft);
 

@@ -11,21 +11,27 @@ const NO_FILTERS: ItemFilters = { q: '', onlyWithoutRouting: false };
 const renderPane = (overrides: Partial<ItemPaneProps> = {}) => {
   const onApplyFilters = vi.fn();
   const onSelect = vi.fn();
+  const props: ItemPaneProps = {
+    items: itemFixtures,
+    isLoading: false,
+    appliedFilters: NO_FILTERS,
+    onApplyFilters,
+    selectedItemId: null,
+    onSelect,
+    loadError: null,
+    ...overrides,
+  };
 
-  render(
-    <ItemPane
-      items={itemFixtures}
-      isLoading={false}
-      appliedFilters={NO_FILTERS}
-      onApplyFilters={onApplyFilters}
-      selectedItemId={null}
-      onSelect={onSelect}
-      loadError={null}
-      {...overrides}
-    />,
-  );
+  const view = render(<ItemPane {...props} />);
 
-  return { onApplyFilters, onSelect, user: userEvent.setup() };
+  return {
+    onApplyFilters,
+    onSelect,
+    user: userEvent.setup(),
+    rerenderWithFilters: (next: ItemFilters) => {
+      view.rerender(<ItemPane {...props} appliedFilters={next} />);
+    },
+  };
 };
 
 describe('ItemPane', () => {
@@ -60,6 +66,38 @@ describe('ItemPane', () => {
 
     expect(onApplyFilters).toHaveBeenCalledWith({ q: 'ITM', onlyWithoutRouting: false });
   });
+
+  it('같은 필터 값의 새 객체로 다시 그려도 편집 중인 검색어를 보존한다', async () => {
+    const { rerenderWithFilters, user } = renderPane();
+
+    await user.type(screen.getByLabelText('품목 검색'), 'SYN-DRAFT');
+    rerenderWithFilters({ ...NO_FILTERS });
+
+    expect(screen.getByLabelText('품목 검색')).toHaveValue('SYN-DRAFT');
+  });
+
+  it.each([
+    {
+      field: 'q',
+      next: { q: 'SYN-APPLIED', onlyWithoutRouting: false },
+      expectedQ: 'SYN-APPLIED',
+    },
+    {
+      field: 'onlyWithoutRouting',
+      next: { q: '', onlyWithoutRouting: true },
+      expectedQ: '',
+    },
+  ] satisfies { field: keyof ItemFilters; next: ItemFilters; expectedQ: string }[])(
+    '적용된 $field 값만 바뀌어도 편집 상태를 주소 값으로 돌린다',
+    async ({ next, expectedQ }) => {
+      const { rerenderWithFilters, user } = renderPane();
+
+      await user.type(screen.getByLabelText('품목 검색'), 'SYN-DRAFT');
+      rerenderWithFilters(next);
+
+      expect(screen.getByLabelText('품목 검색')).toHaveValue(expectedQ);
+    },
+  );
 
   it('「Routing 미보유만」은 해제 축이라 누르는 즉시 적용된다', async () => {
     const { onApplyFilters, user } = renderPane();

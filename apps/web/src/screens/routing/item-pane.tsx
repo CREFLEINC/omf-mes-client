@@ -49,9 +49,11 @@ export const ItemPane = ({
 }: ItemPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시. 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다.
   const [draft, setDraft] = useState<ItemFilters>(appliedFilters);
+  const { q: appliedQ, onlyWithoutRouting: appliedOnlyWithoutRouting } = appliedFilters;
+
   useEffect(() => {
-    setDraft(appliedFilters);
-  }, [appliedFilters]);
+    setDraft({ q: appliedQ, onlyWithoutRouting: appliedOnlyWithoutRouting });
+  }, [appliedQ, appliedOnlyWithoutRouting]);
 
   const columns: Column<Item>[] = [
     {

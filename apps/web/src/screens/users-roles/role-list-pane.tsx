@@ -77,9 +77,11 @@ export const RoleListPane = ({
    * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
    */
   const [draft, setDraft] = useState<RoleFilters>(appliedFilters);
+  const { q: appliedQ, includeInactive: appliedIncludeInactive } = appliedFilters;
+
   useEffect(() => {
-    setDraft(appliedFilters);
-  }, [appliedFilters]);
+    setDraft({ q: appliedQ, includeInactive: appliedIncludeInactive });
+  }, [appliedQ, appliedIncludeInactive]);
 
   const columns: Column<Role>[] = [
     {

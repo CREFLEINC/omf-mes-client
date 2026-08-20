@@ -52,13 +52,28 @@ export const MessageFilterBar = ({
 
   const [period, setPeriod] = useState<PeriodInput>(appliedPeriod);
   const [filters, setFilters] = useState<MessageFilters>(appliedFilters);
+  const { from: appliedFrom, to: appliedTo } = appliedPeriod;
+  const {
+    status: appliedStatus,
+    iface: appliedInterface,
+    direction: appliedDirection,
+    targetType: appliedTargetType,
+    retryMin: appliedRetryMin,
+  } = appliedFilters;
 
   useEffect(() => {
-    setPeriod(appliedPeriod);
-  }, [appliedPeriod]);
+    setPeriod({ from: appliedFrom, to: appliedTo });
+  }, [appliedFrom, appliedTo]);
+
   useEffect(() => {
-    setFilters(appliedFilters);
-  }, [appliedFilters]);
+    setFilters({
+      status: appliedStatus,
+      iface: appliedInterface,
+      direction: appliedDirection,
+      targetType: appliedTargetType,
+      retryMin: appliedRetryMin,
+    });
+  }, [appliedStatus, appliedInterface, appliedDirection, appliedTargetType, appliedRetryMin]);
 
   /** 기간이 갖춰지지 않으면 조회를 막고 사유를 밝힌다 — 계약이 기간을 필수로 두었다. */
   const searchReason = validatePeriod(period);
