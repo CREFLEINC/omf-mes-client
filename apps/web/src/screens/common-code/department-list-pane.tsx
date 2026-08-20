@@ -97,9 +97,15 @@ export const DepartmentListPane = ({
    * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
    */
   const [draft, setDraft] = useState<ScopedFilters>(appliedFilters);
+  const {
+    q: appliedQ,
+    scopeId: appliedScopeId,
+    includeInactive: appliedIncludeInactive,
+  } = appliedFilters;
+
   useEffect(() => {
-    setDraft(appliedFilters);
-  }, [appliedFilters]);
+    setDraft({ q: appliedQ, scopeId: appliedScopeId, includeInactive: appliedIncludeInactive });
+  }, [appliedQ, appliedScopeId, appliedIncludeInactive]);
 
   const groupLabel = (groupKey: string): string => {
     if (groupKey === ORPHAN_GROUP_KEY) return t.department.groupHeaderOrphan;

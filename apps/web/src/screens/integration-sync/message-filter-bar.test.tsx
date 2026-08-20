@@ -12,32 +12,38 @@ interface BarOptions {
   period?: PeriodInput;
   filters?: MessageFilters;
   statusOptions?: string[];
+  interfaceOptions?: string[];
+  directionOptions?: string[];
+  targetTypeOptions?: string[];
 }
 
 const renderBar = ({
   period = APPLIED,
   filters = EMPTY_FILTERS,
   statusOptions = [],
+  interfaceOptions = [],
+  directionOptions = [],
+  targetTypeOptions = [],
 }: BarOptions = {}) => {
   const onSearch = vi.fn();
   const onRemoveFilter = vi.fn();
   const onReset = vi.fn();
 
-  const element = (nextPeriod: PeriodInput) => (
+  const element = (nextPeriod: PeriodInput, nextFilters: MessageFilters) => (
     <MessageFilterBar
       appliedPeriod={nextPeriod}
-      appliedFilters={filters}
+      appliedFilters={nextFilters}
       statusOptions={statusOptions}
-      interfaceOptions={[]}
-      directionOptions={[]}
-      targetTypeOptions={[]}
+      interfaceOptions={interfaceOptions}
+      directionOptions={directionOptions}
+      targetTypeOptions={targetTypeOptions}
       onSearch={onSearch}
       onRemoveFilter={onRemoveFilter}
       onReset={onReset}
     />
   );
 
-  const view = render(element(period));
+  const view = render(element(period, filters));
 
   return {
     onSearch,
@@ -45,7 +51,10 @@ const renderBar = ({
     onReset,
     user: userEvent.setup(),
     rerenderWithPeriod: (next: PeriodInput) => {
-      view.rerender(element(next));
+      view.rerender(element(next, filters));
+    },
+    rerenderWithApplied: (nextPeriod: PeriodInput, nextFilters: MessageFilters) => {
+      view.rerender(element(nextPeriod, nextFilters));
     },
   };
 };
@@ -64,6 +73,51 @@ describe('MessageFilterBar — 기간', () => {
     rerenderWithPeriod({ from: '2026-07-01', to: '2026-07-31' });
 
     expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-01');
+  });
+
+  it('같은 기간·조건 값의 새 객체가 와도 편집 중인 값을 보존한다', async () => {
+    const { rerenderWithApplied, user } = renderBar();
+
+    await user.clear(screen.getByLabelText('기간 종료'));
+    await user.type(screen.getByLabelText('기간 종료'), '2026-08-10');
+    await user.type(screen.getByLabelText('시도 횟수 하한'), '3');
+
+    rerenderWithApplied({ ...APPLIED }, { ...EMPTY_FILTERS });
+
+    expect(screen.getByLabelText('기간 종료')).toHaveValue('2026-08-10');
+    expect(screen.getByLabelText('시도 횟수 하한')).toHaveValue(3);
+  });
+
+  it('기간과 조건의 실제 값이 바뀌면 편집 중인 값을 그 값으로 돌린다', async () => {
+    const { rerenderWithApplied, user } = renderBar({
+      statusOptions: ['FAILED'],
+      interfaceOptions: ['SYN_IFACE'],
+      directionOptions: ['OUTBOUND'],
+      targetTypeOptions: ['SYN_TARGET'],
+    });
+
+    await user.clear(screen.getByLabelText('기간 종료'));
+    await user.type(screen.getByLabelText('기간 종료'), '2026-08-10');
+    await user.type(screen.getByLabelText('시도 횟수 하한'), '3');
+
+    rerenderWithApplied(
+      { from: '2026-07-01', to: '2026-07-31' },
+      {
+        status: 'FAILED',
+        iface: 'SYN_IFACE',
+        direction: 'OUTBOUND',
+        targetType: 'SYN_TARGET',
+        retryMin: '5',
+      },
+    );
+
+    expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-07-01');
+    expect(screen.getByLabelText('기간 종료')).toHaveValue('2026-07-31');
+    expect(screen.getByLabelText('상태')).toHaveTextContent('FAILED');
+    expect(screen.getByLabelText('연계 종류')).toHaveTextContent('SYN_IFACE');
+    expect(screen.getByLabelText('방향')).toHaveTextContent('OUTBOUND');
+    expect(screen.getByLabelText('대상 유형')).toHaveTextContent('SYN_TARGET');
+    expect(screen.getByLabelText('시도 횟수 하한')).toHaveValue(5);
   });
 
   it('고치는 동안에는 조회가 나가지 않고 조회를 누를 때 고친 값이 넘어간다', async () => {

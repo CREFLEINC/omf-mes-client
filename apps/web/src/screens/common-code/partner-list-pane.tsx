@@ -69,9 +69,11 @@ export const PartnerListPane = ({
    * 편집 중인 값은 draft에만 있다 — 적용된 조건은 주소가 들고 있다.
    */
   const [draft, setDraft] = useState<PartnerFilters>(appliedFilters);
+  const { q: appliedQ, includeInactive: appliedIncludeInactive } = appliedFilters;
+
   useEffect(() => {
-    setDraft(appliedFilters);
-  }, [appliedFilters]);
+    setDraft({ q: appliedQ, includeInactive: appliedIncludeInactive });
+  }, [appliedQ, appliedIncludeInactive]);
 
   const columns: Column<Partner>[] = [
     {

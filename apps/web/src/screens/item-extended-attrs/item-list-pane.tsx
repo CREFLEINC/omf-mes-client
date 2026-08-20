@@ -58,9 +58,11 @@ export const ItemListPane = ({
 }: ItemListPaneProps) => {
   /* 트리거 모델: 편집은 모아서 적용, 해제는 즉시. */
   const [draft, setDraft] = useState<ItemFilters>(appliedFilters);
+  const { q: appliedQ, includeInactive: appliedIncludeInactive } = appliedFilters;
+
   useEffect(() => {
-    setDraft(appliedFilters);
-  }, [appliedFilters]);
+    setDraft({ q: appliedQ, includeInactive: appliedIncludeInactive });
+  }, [appliedQ, appliedIncludeInactive]);
 
   const columns: Column<Item>[] = [
     {
