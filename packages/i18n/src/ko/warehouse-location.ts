@@ -1,0 +1,112 @@
+export const warehouseLocation = {
+  title: '창고·Location',
+  breadcrumbRoot: '기준정보',
+  tabs: {
+    warehouse: '창고 정보',
+    location: 'Location',
+  },
+  actions: {
+    addWarehouse: '창고 추가',
+    addRootLocation: '최상위 추가',
+    addChildLocation: '하위 추가',
+    generateLabel: '라벨 이미지 생성',
+    changeHistory: '변경 이력',
+  },
+  actionReasons: {
+    addChildNeedsSingleSelection: '하위 추가는 Location을 하나만 선택했을 때 쓸 수 있습니다.',
+    generateLabelUnavailable:
+      '라벨 이미지는 아직 만들 수 없습니다. 생성 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    changeHistoryUnavailable:
+      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    plantFixedAfterCreate:
+      '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
+    warehouseFixedInLocation: '좌측에서 선택한 창고로 고정됩니다.',
+  },
+  loading: {
+    warehouses: '창고 목록을 불러오는 중',
+    warehouseDetail: '창고 정보를 불러오는 중',
+    locations: 'Location을 불러오는 중',
+  },
+  /** 서버가 목록을 잘라 내려보냈을 때. 잘림을 감추지 않고 조건을 좁힐 방법을 함께 알린다. */
+  listTruncated: (shown: number, total: number): string =>
+    `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
+  optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+  optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+  empty: {
+    warehouseNoneTitle: '아직 등록된 창고가 없습니다',
+    warehouseNoneDescription: '「창고 추가」로 첫 창고를 등록하세요.',
+    warehouseNoMatchTitle: '조건에 맞는 결과가 없습니다',
+    warehouseNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+    locationNoneTitle: '등록된 Location이 없습니다',
+    locationNoneDescription: '「최상위 추가」로 첫 Location을 등록하세요.',
+    locationNoMatchTitle: '조건에 맞는 Location이 없습니다',
+    locationNoMatchDescription: '검색어를 지우면 전체 계층이 보입니다.',
+    warehouseNotSelected: '좌측에서 창고를 먼저 고르세요',
+  },
+  filters: {
+    searchLabel: '창고 검색',
+    searchPlaceholder: '창고코드 또는 창고명',
+    locationSearchLabel: 'Location 검색',
+    locationSearchPlaceholder: '위치코드 또는 위치명',
+    typeAll: '전체 유형',
+    chipRemoveKeyword: '검색어 조건 제거',
+    chipRemoveType: '창고유형 조건 제거',
+    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    chipKeyword: (value: string): string => `검색어: ${value}`,
+    chipType: (label: string): string => `창고유형: ${label}`,
+  },
+  fields: {
+    plant: '공장',
+    businessUnit: '사업부',
+    warehouseCode: '창고코드',
+    warehouseName: '창고명',
+    warehouseType: '창고유형',
+    managementLevel: '관리수준',
+    isExternal: '외부창고',
+    partner: '거래처',
+    isActive: '사용',
+    warehouse: '창고',
+    parentLocation: '상위 위치',
+    locationCode: '위치코드',
+    locationName: '위치명',
+    locationType: '위치유형',
+    qualityZone: '품질구역',
+    storageCondition: '보관조건',
+    allowMixedItem: '품목 혼적 허용',
+    allowMixedLot: 'LOT 혼적 허용',
+    capacityQty: '수용량',
+    capacityUom: '수용량 단위',
+    code: '코드',
+    name: '명칭',
+  },
+  values: {
+    active: '사용 중',
+    inactive: '미사용',
+    noParent: '없음 (최상위)',
+    /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
+    inactiveSuffix: ' (미사용)',
+  },
+  validation: {
+    required: '필수 입력 항목입니다.',
+    codeBlank: '코드는 공백만으로 지정할 수 없습니다.',
+    codeDuplicated: '이미 사용 중인 코드입니다. 다른 코드를 입력하세요.',
+    partnerRequiredForExternal: '외부창고이면 거래처를 지정해야 합니다.',
+    capacityNeedsUom: '수용량과 단위는 함께 입력하거나 함께 비워야 합니다.',
+    capacityInvalid: '수용량은 0 이상의 숫자로 입력하세요.',
+  },
+  locationTable: {
+    expand: '하위 펼치기',
+    collapse: '하위 접기',
+    selectionLabel: 'Location 선택',
+  },
+  dialog: {
+    createTitle: 'Location 추가',
+    editTitle: 'Location 수정',
+  },
+  /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
+  deactivate: {
+    title: '사용 중지할까요?',
+    description: '삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.',
+    confirm: '사용 중지',
+  },
+} as const;
