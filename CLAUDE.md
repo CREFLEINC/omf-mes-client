@@ -76,12 +76,13 @@ OMF-MES 사용자 프로그램의 클라이언트 모노레포. **React + TypeSc
 | 2026-08-14 | 운영 정책을 저장소 자체 관리로 전환 — 정본·배포본 동기화 체계와 매니페스트 폐지(정책 본문 무변경) | `.claude/skills/agent-development-orchestrator/` | 외부 정본 관리 부담 제거 — 사용자 결정 |
 | 2026-08-19 | 저장소 적용 v1.2 — 승격 조건 세분화·기준 상태 도출·면제선 검사×파일·뮤테이션 6규칙·사본 선행 절차·병렬 트리 격리·인계 청결·냉각 사다리·Minor 이월·보고서 양식 보강 | `.claude/skills/agent-development-orchestrator/` | 2번 팀 실측 3표본(#155·#156·#159) 실효 확인 — 후보 수집·보고 #169 |
 | 2026-08-20 | 다중 팀 이슈 배정 규칙 성문화 — 로컬 팀 식별 마커(`.claude/team.local`)·GitHub 라벨 자동 생성·담당자 동적 조회 | `docs/multi-team-workflow.md`(신설) · `.claude/skills/agent-development-orchestrator/SKILL.md` | 팀 3(별도 PC clone) 추가 준비 중, 기존 규칙이 워크트리 로컬 메모(`TEAM-A2.md`, git 미추적)에만 있어 다른 팀에 전파되지 않던 문제 해결 |
+| 2026-08-20 | PR 리뷰·병합 규칙 성문화 — 슬라이스 단위 PR·등록 직전 rebase·생성물 재생성 해소·선착순과 워크트리 대기 | `docs/multi-team-workflow.md` §5 | 팀 4 합류로 병렬 팀이 넷이 됨 — 합류 지점(`main`)에서 서로를 막지 않을 규칙이 문서에 없었다 |
 
 ---
 
 ## 브랜치
 
-`main` 직접 push는 룰셋으로 차단돼 있다(PR 필수 · 브랜치 삭제 금지 · force push 금지). 작업은 브랜치에서 하고 PR로 병합한다.
+`main` 직접 push는 룰셋으로 차단돼 있다(PR 필수 · 브랜치 삭제 금지 · force push 금지). 작업은 브랜치에서 하고 PR로 병합한다. **룰셋의 보호 대상은 `main` 하나이며 작업 브랜치에는 적용되지 않는다** — 등록 직전 rebase 절차는 `docs/multi-team-workflow.md` §5-2.
 
 ## 디자인 시스템
 
