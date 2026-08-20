@@ -73,13 +73,18 @@ export const IqcInspectionScreen = () => {
   };
 
   /**
-   * 표 자리에 그릴 것. **세 갈래를 가른다** — 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것이 없음.
+   * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
    *
-   * ⭐ 「이 쪽에 없음」과 「조건에 맞는 것이 없음」을 합치지 않는다. 앞은 **쪽이 문제**라
-   * 앞쪽으로 가면 풀리고, 뒤는 **조건이 문제**라 조건을 넓혀야 풀린다 — 합치면 사용자가
-   * 조건을 넓히다가 결국 못 찾는다.
+   * ⭐ **실패를 「결과 없음」으로 접지 않는다.** 접으면 요청이 실패했을 뿐인데 표가 「조건을
+   * 넓혀 보세요」라고 말하고, 사용자는 조건을 넓히다가 결국 못 찾는다 — 실제로 할 일은 다시
+   * 시도하거나 담당자에게 알리는 것이고 그것은 배너가 말한다.
+   *
+   * ⭐ 「이 쪽에 없음」과 「조건에 맞는 것이 없음」도 합치지 않는다. 앞은 **쪽이 문제**라
+   * 앞쪽으로 가면 풀리고, 뒤는 **조건이 문제**라 조건을 넓혀야 풀린다.
    */
-  const emptyContent = queue.isPending ? (
+  const emptyContent = queue.isError ? (
+    <p className="field-note">{t.queue.unavailable}</p>
+  ) : queue.isPending ? (
     <p className="field-note">{t.queue.loading}</p>
   ) : pageView.isBeyondLast ? (
     <p className="field-note">
@@ -115,7 +120,14 @@ export const IqcInspectionScreen = () => {
 
         <QueueTable rows={rows} selectedId={selectedId} onSelect={select} empty={emptyContent} />
 
-        <PageNav view={pageView} onChange={goToPage} />
+        {/*
+         * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
+         * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
+         * `pagination.ts` 가 「범위를 지어내지 않는다」를 규율로 두었는데 총계를 지어내면
+         * 그 규율을 한 층 위에서 깨는 것이다. 전례도 같은 자리를 막는다
+         * (`document-progress/screen.tsx` 의 `!list.isPending`).
+         */}
+        {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
       </section>
     </>
   );

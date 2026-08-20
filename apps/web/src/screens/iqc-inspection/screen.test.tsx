@@ -114,6 +114,40 @@ describe('IqcInspectionScreen', () => {
     expect(await screen.findByText('IR-2026-0001')).toBeInTheDocument();
   });
 
+  /**
+   * 아래 셋은 리뷰가 잡은 자리다 — 감지기가 없어서 통과했던 갈래들이다.
+   * 조회가 실패했을 때 화면이 「조건을 넓혀라」·「전체 0건」이라고 **거짓을 말하던** 자리.
+   */
+  it('조회가 실패하면 조건을 넓히라고 말하지 않는다 — 조건은 멀쩡하고 요청이 실패한 것이다', async () => {
+    renderScreen('/', () => jsonResponse({ message: 'x' }, { status: 500 }));
+
+    await screen.findByRole('button', { name: messages.common.retry });
+
+    expect(screen.getByText(t.queue.unavailable)).toBeInTheDocument();
+    expect(screen.queryByText(t.queue.empty)).not.toBeInTheDocument();
+  });
+
+  it('조회가 실패하면 총계를 단언하지 않는다 — 모르는 건수를 지어내지 않는다', async () => {
+    renderScreen('/', () => jsonResponse({ message: 'x' }, { status: 500 }));
+
+    await screen.findByRole('button', { name: messages.common.retry });
+
+    expect(screen.queryByRole('navigation', { name: t.pageNav.label })).not.toBeInTheDocument();
+  });
+
+  it('부르는 중에도 총계를 단언하지 않는다', () => {
+    renderScreen('/', () => jsonResponse(queueResponse()));
+
+    expect(screen.getByText(t.queue.loading)).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: t.pageNav.label })).not.toBeInTheDocument();
+  });
+
+  it('셀 것이 있으면 쪽 이동이 선다', async () => {
+    renderScreen();
+
+    expect(await screen.findByRole('navigation', { name: t.pageNav.label })).toBeInTheDocument();
+  });
+
   it('조건에 맞는 것이 없으면 조건을 넓히라고 말한다', async () => {
     renderScreen('/', () => jsonResponse(queueResponse([], pageOf(0))));
 
