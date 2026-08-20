@@ -48,6 +48,7 @@ import { passwordChange } from './password-change';
 import { putawayRule } from './putaway-rule';
 import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
+import { iqcInspection } from './iqc-inspection';
 
 export const ko = {
   common,
@@ -84,6 +85,7 @@ export const ko = {
   putawayRule,
   documentProgress,
   notificationCenter,
+  iqcInspection,
 } as const;
 
 export type Messages = typeof ko;
