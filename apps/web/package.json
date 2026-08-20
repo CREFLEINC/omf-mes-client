@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@crefle/web-ui": "github:CREFLEINC/design-system-v2-webui#2891ae8",
+    "@crefle/web-ui": "github:CREFLEINC/design-system-v2-webui#4a9cb837b257a15d23ec1d1aef267508ace06ef1",
     "@omf-mes/api-client": "workspace:*",
     "@omf-mes/domain": "workspace:*",
     "@omf-mes/i18n": "workspace:*",
