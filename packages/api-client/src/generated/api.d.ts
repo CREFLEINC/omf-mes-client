@@ -20760,21 +20760,23 @@ export interface paths {
         };
         /**
          * 검사 의뢰 목록
-         * @description W-01-01 검사 대기 큐 · W-03-05 검사 목록의 1층. 근거: W-01-01 §3 · W-03-05 §5-1
+         * @description W-01-01 검사 대기 큐가 부른다 — inspectionTypeCode+pendingOnly 로 큐를 그리고, LOT 스캔 뒤에는 lotId 로 한 건을 집는다. ⚠ W-03-05 검사 목록은 이 경로가 아니라 GET /quality/inspection-results 를 부른다 — 여기서 말한 「1층」은 의뢰가 결과의 상위 계층이라는 데이터 구조이지 호출이 아니다(그 문장이 기간 파라미터와 나란히 놓여 omf-mes#170 을 낳았다). 근거: W-01-01 §3 · 요구서 §3-1 · W-03-05 §5-1
          */
         get: {
             parameters: {
                 query?: {
                     /** @description IQC · PQC · OQC */
                     inspectionTypeCode?: string;
+                    /** @description 검사 의뢰 상태로 좁힌다 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⛔ 값 목록을 화면에 고정하지 않는다 — 표시명은 06 계약 GET /mdm/code-values 로 채운다(공유계약 G-6). ⚠ 「아직 안 끝난 것」을 보려면 이것이 아니라 pendingOnly 를 쓴다 — 큐는 상태 하나가 아니다. 근거: W-01-01 §3 · 확정 2026-08-21 */
                     statusCode?: string;
+                    /** @description 참이면 아직 끝나지 않은 의뢰만. ⭐ 정의를 값으로 못박는다 — pendingOnly=true ⇔ statusCode ∈ { REQUESTED, IN_PROGRESS }. ⭐ 검사 대기 큐가 이것이다(W-01-01 §3 좌단은 「대기」와 「진행」을 함께 보인다 — 상태 하나로는 못 고른다). ⛔ 화면이 상태 코드값을 고정하지 않게 하려는 것이 목적이다(공유계약 G-6). 선례: /app/approval-requests pendingOnly · /logistics/stock-transfers inTransitOnly. 근거: W-01-01 §3 · omf-mes#170 · 확정 2026-08-21 */
+                    pendingOnly?: boolean;
                     itemId?: number;
+                    /** @description 공급사. ⚠ 서버가 푼다 — trace.lot 에 공급사 컬럼이 없어 lot.source_type_code/source_id(다형 참조 = 한 칸이 상황에 따라 여러 표를 가리킨다) → logistics.inbound_receipt.supplier_id 로 2단 조인이다. 화면은 걸 수 없다. 근거: W-01-01 §3 좌단 필터 「품목·공급사」 · omf-mes#170 */
+                    supplierId?: number;
                     lotId?: number;
                     workOrderId?: number;
-                    /** @description 기간 필수 — 공유계약 L-3 */
-                    requestedFrom?: string;
-                    requestedTo?: string;
-                    /** @description 의뢰번호 검색 */
+                    /** @description 의뢰번호 검색. ⛔ 범위는 inspection_request_no «하나»다 — 공급사·품목은 훑지 않는다(넓히면 인덱스 없는 다형 조인이 검색어마다 돈다). 공급사로 좁히려면 supplierId 를, 품목은 itemId 를 쓴다. 근거: omf-mes#170 질문 2 */
                     q?: string;
                     /** @description 1 부터 */
                     page?: number;
@@ -20868,7 +20870,7 @@ export interface paths {
         };
         /**
          * 검사 결과 목록
-         * @description 재검 사슬을 previousResultId 로 잇는다 — 숨기지 않고 들여쓰기로 보인다. 근거: W-03-05 §5-3
+         * @description 재검 사슬을 previousResultId 로 잇는다 — 숨기지 않고 들여쓰기로 보인다. 근거: W-03-05 §5-3 ⛔ inspectionRequestId 도 기간(inspectedFrom·inspectedTo)도 없으면 400 이다 — 둘 중 하나로 반드시 유계여야 한다(공유계약 L-3 · omf-mes#170).
          */
         get: {
             parameters: {
@@ -20878,8 +20880,9 @@ export interface paths {
                     overallJudgmentCode?: string;
                     statusCode?: string;
                     itemId?: number;
-                    /** @description 기간 필수 — 공유계약 L-3 */
+                    /** @description 기간 시작. ⭐ 조건부 필수 — inspectionRequestId 없이 전 이력을 훑을 때는 «반드시» 보낸다(W-03-05 §3 이 화면에서 「기간 ⚠필수」로 강제한다 · 공유계약 L-3 일반 층 — 무제한이면 원장이 누적된 뒤 화면이 멎는다). ⛔ inspectionRequestId 로 «한 의뢰의 회차»를 읽을 때는 보내지 않는다 — W-01-01 §5-3(재검사 이전 회차 표시)이 그 경로이고, 거기에 기간을 요구하면 화면이 없는 기간을 지어내게 된다. 형이 조건부 필수를 표현하지 못해 설명이 말한다 */
                     inspectedFrom?: string;
+                    /** @description 기간 끝. inspectedFrom 과 한 쌍이다 — 함께 보내거나 함께 생략한다 */
                     inspectedTo?: string;
                     /** @description 최종 회차만. 집계와 같은 기준으로 보려면 켠다 */
                     finalRoundOnly?: boolean;
@@ -35318,7 +35321,10 @@ export interface components {
              * @example 2026-08-12T10:22:00+09:00
              */
             coverageToAt?: string;
-            /** @example 값 */
+            /**
+             * @description 검사 의뢰의 진행 상태 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⛔ enum 으로 못박지 않는다 — 값 목록은 공통코드가 갖고 늘 수 있다(공유계약 G-2·G-6). 표시명은 06 계약 GET /mdm/code-values 로 채운다. ⭐ 전이는 전부 «이미 있는 액션의 부수 효과»다 — 새 경로가 없다: 서버가 입하·실적·출하 시점에 REQUESTED 로 만들고 · 첫 임시 저장이 IN_PROGRESS (⛔ 「검사 시작」 액션을 두지 않는다 — 화면에 시작 버튼이 없다) · :confirm 이 COMPLETED · 재검사 회차 추가가 다시 IN_PROGRESS · W-01-02 긴급 IQC 생략 한도승인이 SKIPPED · 입고 취소(FR-IM-076)가 CANCELLED. ⚠ SKIPPED 와 CANCELLED 를 합치지 않는다 — 앞은 검사를 안 하기로 «승인»된 정상 종결이고(LOT 은 Release 로 입고된다) 뒤는 의뢰가 «무효»가 된 것이다. 합치면 「검사를 몇 건 생략했나」를 셀 수 없다. ⚠ LOT 품질 상태(정상·불량·검사 대기·폐기)와 «다른 축»이다 — 같이 움직이지 않는다. 근거: 확정 2026-08-21 · FR-QM-050 · omf-mes#170
+             * @example REQUESTED
+             */
             statusCode: string;
             /**
              * Format: date-time
