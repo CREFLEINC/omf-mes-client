@@ -40,8 +40,30 @@ describe('codeLockMessage', () => {
     expect(result).toBe(messages.editability.receivedFromErp(null));
   });
 
-  it('네 사유가 서로 다른 문구를 낸다 — 어느 사유인지 화면에서 구분된다', () => {
-    const reasons = ['EDITABLE', 'REFERENCED', 'NOT_COUNTABLE', 'RECEIVED_FROM_ERP'] as const;
+  it('라벨이 발행됐으면 라벨 사유를 낸다', () => {
+    const result = codeLockMessage({ codeEditable: false, reason: 'LABEL_ISSUED' });
+
+    expect(result).toBe(messages.editability.labelIssued(null));
+  });
+
+  it('라벨이 발행됐으면 참조 건수가 0이어도 잠근다 — 이 사유는 건수로 갈리지 않는다', () => {
+    const result = codeLockMessage({
+      codeEditable: false,
+      reason: 'LABEL_ISSUED',
+      referenceCount: 0,
+    });
+
+    expect(result).toBe(messages.editability.labelIssued(null));
+  });
+
+  it('다섯 사유가 서로 다른 문구를 낸다 — 어느 사유인지 화면에서 구분된다', () => {
+    const reasons = [
+      'EDITABLE',
+      'REFERENCED',
+      'NOT_COUNTABLE',
+      'RECEIVED_FROM_ERP',
+      'LABEL_ISSUED',
+    ] as const;
 
     const rendered = reasons.map((reason) => codeLockMessage({ codeEditable: false, reason }));
 
