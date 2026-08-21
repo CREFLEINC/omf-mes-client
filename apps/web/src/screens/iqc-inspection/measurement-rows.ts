@@ -20,12 +20,18 @@ import type { components } from '@omf-mes/api-client';
 export type InspectionItemSpecResponse = components['schemas']['InspectionItemSpec'];
 export type InspectionMeasurementResponse = components['schemas']['InspectionMeasurement'];
 
-/** 규격 한 줄이 보이는 값. 세 가지 형태가 있고 **없는 것을 지어내지 않는다.** */
+/**
+ * 규격 한 줄이 보이는 값. **없는 것을 지어내지 않는다.**
+ *
+ * ⛔ **단위(`uomId`)를 싣지 않는다.** 계약이 식별자만 주고 이름을 주지 않아, 그대로 그리면
+ * 「목표 10 · 20」 같은 숫자가 붙어 노이즈가 된다. 이름을 채우는 참조 조회를 얹지 않는 것이
+ * 이 슬라이스의 규율이다(`queries.ts` 머리). 쓰지 않을 값을 모아 두면 다음 사람이
+ * 「왜 안 그리지」를 되짚으므로 **아예 담지 않는다.**
+ */
 export interface SpecRange {
   target: number | null;
   lower: number | null;
   upper: number | null;
-  uomId: number | null;
 }
 
 export interface MeasurementRow {
@@ -114,7 +120,6 @@ export const toMeasurementRows = (
           target: spec.targetValue ?? null,
           lower: spec.lowerLimit ?? null,
           upper: spec.upperLimit ?? null,
-          uomId: spec.uomId ?? null,
         },
         measured: index.get(`${spec.inspectionItemSpecId}-${sampleNo}`) ?? null,
       };

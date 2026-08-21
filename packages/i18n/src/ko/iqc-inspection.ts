@@ -156,8 +156,14 @@ export const iqcInspection = {
     requiredMark: '필수',
     /** 「3 중 1」 — 이 항목이 요구하는 샘플 수 안에서 몇 번째인가. */
     sampleOf: (sampleNo: number, count: number): string => `${count} 중 ${sampleNo}`,
-    /** 상하한이 있는 규격. 목표가 함께 있으면 목표를 앞에 둔다. */
+    /**
+     * 규격 — **한쪽만 있는 것도 규격이다.** 계약이 상하한을 「둘 다 있을 때만」 견주므로
+     * 한쪽만 있는 항목이 정상이고, 「9.9 이상」 같은 공차는 실제 검사기준에 흔하다.
+     * ⛔ 둘 다 있을 때만 내면 화면이 「규격 없음」이라고 말해 검사자가 공차를 모르고 잰다.
+     */
     range: (lower: number, upper: number): string => `${lower} ~ ${upper}`,
+    atLeast: (lower: number): string => `${lower} 이상`,
+    atMost: (upper: number): string => `${upper} 이하`,
     target: (value: number): string => `목표 ${value}`,
     /** 아직 재지 않았다. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
     notMeasured: '—',

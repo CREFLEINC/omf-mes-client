@@ -22,12 +22,27 @@ import { hasCalibrationWarning, type MeasurementRow, type SpecRange } from './me
 
 const t = messages.iqcInspection.measurements;
 
-/** 규격을 한 줄로. **없는 것을 지어내지 않는다** — 셋 다 없으면 없음 표시다. */
+/**
+ * 규격을 한 줄로. **없는 것을 지어내지 않되, 있는 것을 빠뜨리지도 않는다.**
+ *
+ * ⛔ **한쪽만 있는 규격도 규격이다.** 계약이 상하한을 「둘 다 있을 때만」 견주므로 한쪽만
+ * 있는 항목이 정상이고, 「9.9 이상」 같은 공차는 실제 검사기준에 흔하다. 둘 다 있을 때만
+ * 내면 화면이 **「규격 없음」이라고 말해 검사자가 공차를 모르고 잰다.**
+ */
+const describeLimits = (spec: SpecRange): string | null => {
+  if (spec.lower !== null && spec.upper !== null) return t.range(spec.lower, spec.upper);
+  if (spec.lower !== null) return t.atLeast(spec.lower);
+  if (spec.upper !== null) return t.atMost(spec.upper);
+
+  return null;
+};
+
 const describeSpec = (spec: SpecRange): string => {
+  const limits = describeLimits(spec);
   const parts: string[] = [];
 
   if (spec.target !== null) parts.push(t.target(spec.target));
-  if (spec.lower !== null && spec.upper !== null) parts.push(t.range(spec.lower, spec.upper));
+  if (limits !== null) parts.push(limits);
 
   return parts.length === 0 ? t.notMeasured : parts.join(' · ');
 };

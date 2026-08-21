@@ -257,7 +257,16 @@ export const IqcInspectionScreen = () => {
           />
         )}
 
-        <MeasurementGrid rows={measurementRows} isLoading={itemSpecs.isPending} />
+        {/*
+         * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
+         * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
+         * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
+         * 실제로 부르는 중을 잡는다.
+         */}
+        <MeasurementGrid
+          rows={measurementRows}
+          isLoading={itemSpecs.isLoading || measurements.isLoading}
+        />
       </>
     );
 

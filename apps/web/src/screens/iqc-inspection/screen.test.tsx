@@ -28,6 +28,8 @@ const renderScreen = (
   rounds = [draftRound],
   /** 그 회차에 저장된 측정치 */
   measurements: InspectionMeasurementResponse[] = [],
+  /** 검사기준 버전의 항목 규격. 빈 목록이면 그리드가 빈 자리 문구를 그린다 */
+  specs = itemSpecsResponse(),
 ) => {
   const sent: URL[] = [];
   /** 저장 요청 원본 — 본문과 헤더를 그대로 본다 */
@@ -71,7 +73,7 @@ const renderScreen = (
         match: (request) => new URL(request.url).pathname.endsWith('/items'),
         respond: (request) => {
           sent.push(new URL(request.url));
-          return jsonResponse(itemSpecsResponse());
+          return jsonResponse(specs);
         },
       },
       /* 회차 한 건 — 잠금 토큰이 여기서 온다(목록 200 에는 ETag 가 없다). */
@@ -344,6 +346,24 @@ describe('IqcInspectionScreen', () => {
 
     const itemsCall = sent.find((url) => url.pathname.endsWith('/items'));
     expect(itemsCall?.pathname).toContain(String(waitingRequest.inspectionPlanVersionId));
+  });
+
+  /*
+   * ⭐ 리뷰가 잡은 자리다. 「아직 재지 않았다」는 검사자가 무엇을 더 재야 하는지 말하는
+   * 신호라, 부르는 중에 단언하면 이미 잰 값을 다시 재게 만들 수 있다.
+   */
+  /*
+   * ⭐ 리뷰가 잡은 자리다. 측정치 조회는 회차가 없을 때 «비활성»이고, 비활성이면 isPending
+   * 이 계속 참이다. 그것을 그대로 쓰면 그리드가 영영 「불러오는 중」에 머문다.
+   * ⚠ 줄이 있으면 빈 자리 문구가 아예 안 그려지므로, 항목이 0건인 기준으로 재야 갈린다.
+   */
+  it('아직 시작하지 않은 의뢰의 그리드가 「불러오는 중」에 머물지 않는다', async () => {
+    renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), [], [], itemSpecsResponse([]));
+
+    expect(
+      await screen.findByText(messages.iqcInspection.measurements.noItems),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(messages.iqcInspection.measurements.loading)).not.toBeInTheDocument();
   });
 
   it('교정 만료로 잰 측정치가 있으면 경고를 세우되 막지는 않는다', async () => {

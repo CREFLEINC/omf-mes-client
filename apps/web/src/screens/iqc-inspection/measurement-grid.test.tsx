@@ -62,6 +62,23 @@ describe('MeasurementGrid', () => {
     );
   });
 
+  /*
+   * ⭐ 리뷰가 잡은 자리다. 둘 다 있을 때만 규격을 내면 「9.9 이상」 같은 한쪽 공차가
+   * 「규격 없음」으로 떨어져 검사자가 공차를 모르고 잰다. 계약이 상하한을 「둘 다 있을
+   * 때만」 견주므로 한쪽만 있는 항목이 정상이다.
+   */
+  it('하한만 있는 규격을 「없음」으로 그리지 않는다', () => {
+    renderGrid([{ ...dimensionSpec, targetValue: null, upperLimit: null, lowerLimit: 9.9 }]);
+
+    expect(screen.getAllByText(t.atLeast(9.9)).length).toBeGreaterThan(0);
+  });
+
+  it('상한만 있는 규격도 그린다', () => {
+    renderGrid([{ ...dimensionSpec, targetValue: null, lowerLimit: null, upperLimit: 10.1 }]);
+
+    expect(screen.getAllByText(t.atMost(10.1)).length).toBeGreaterThan(0);
+  });
+
   it('규격이 없으면 지어내지 않는다', () => {
     renderGrid([appearanceSpec]);
 
