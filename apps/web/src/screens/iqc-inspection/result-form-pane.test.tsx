@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { renderWithProviders } from '../../test/api-harness';
-import { confirmedRound, draftRound } from './fixtures';
+import { toCodeOptions } from './code-options';
+import { confirmedRound, draftRound, overallJudgmentCodeValues } from './fixtures';
 import { EMPTY_QUANTITY_DRAFT, type QuantityDraft } from './quantity-draft';
 import { ResultFormPane } from './result-form-pane';
 import { toInspectionResultRound, type InspectionResultRound } from './types';
@@ -19,6 +20,7 @@ const renderPane = (
 ) => {
   const onChange = vi.fn();
   const onSave = vi.fn();
+  const onConfirm = vi.fn();
 
   renderWithProviders(
     <ResultFormPane
@@ -32,11 +34,17 @@ const renderPane = (
       fieldErrors={{}}
       saveError={null}
       onReload={vi.fn()}
+      judgmentOptions={toCodeOptions(overallJudgmentCodeValues)}
+      judgment=""
+      onJudgmentChange={vi.fn()}
+      onConfirm={onConfirm}
+      isConfirming={false}
+      confirmError={null}
       {...overrides}
     />,
   );
 
-  return { onChange, onSave };
+  return { onChange, onSave, onConfirm };
 };
 
 const saveButton = () => screen.getByRole('button', { name: t.save });
@@ -172,6 +180,63 @@ describe('ResultFormPane', () => {
     });
 
     expect(screen.getByText('합격수량이 검사수량을 넘습니다.')).toBeInTheDocument();
+  });
+
+  const confirmButton = () => screen.queryByRole('button', { name: t.confirm });
+
+  it('⛔ 확정이 되돌릴 수 없다는 사실을 누르기 전에 알린다', () => {
+    renderPane();
+
+    expect(screen.getByText(t.confirmNote)).toBeInTheDocument();
+  });
+
+  it('합계가 맞지 않으면 확정을 막고 사유를 밝힌다', () => {
+    renderPane({ accepted: '100', rejected: '0', held: '0' }, null, 500, { judgment: 'ACCEPTED' });
+
+    expect(confirmButton()).toBeDisabled();
+    expect(screen.getByText(t.confirmBlockedByTotals)).toBeInTheDocument();
+  });
+
+  it('판정을 고르지 않으면 확정을 막고 사유를 밝힌다 — 합계와 다른 사유다', () => {
+    renderPane({ accepted: '480', rejected: '15', held: '5' }, null, 500, { judgment: '' });
+
+    expect(confirmButton()).toBeDisabled();
+    expect(screen.getByText(t.confirmBlockedByJudgment)).toBeInTheDocument();
+  });
+
+  it('합계가 맞고 판정을 고르면 확정할 수 있다', async () => {
+    const { onConfirm } = renderPane({ accepted: '480', rejected: '15', held: '5' }, null, 500, {
+      judgment: 'ACCEPTED',
+    });
+
+    expect(confirmButton()).toBeEnabled();
+    await userEvent.click(confirmButton() as HTMLElement);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('셀 수 없는 수량이 있으면 확정을 막는다 — 「일치」를 지어내지 않는다', () => {
+    renderPane({ accepted: 'abc', rejected: '500', held: '' }, null, 500, { judgment: 'ACCEPTED' });
+
+    expect(confirmButton()).toBeDisabled();
+  });
+
+  it('판정 목록이 비면 감추지 않고 사유를 밝힌다 — 시드가 아직 없을 수 있다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { judgmentOptions: [] });
+
+    expect(screen.getByLabelText(t.judgment)).toBeDisabled();
+    expect(screen.getByText(t.judgmentUnavailable)).toBeInTheDocument();
+  });
+
+  it('저장된 판정이 목록에 없으면 알린다 — 조용히 비우면 고른 것이 지워진다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { judgment: 'RETIRED' });
+
+    expect(screen.getByText(t.judgmentUnknown('RETIRED'))).toBeInTheDocument();
+  });
+
+  it('확정된 회차에는 확정 자리를 만들지 않는다 — 재검사로 새 회차를 쌓는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
+
+    expect(confirmButton()).not.toBeInTheDocument();
   });
 
   it('확정된 회차에는 저장 자리를 만들지 않는다 — 눌러도 아무 일이 없는 컨트롤을 두지 않는다', () => {

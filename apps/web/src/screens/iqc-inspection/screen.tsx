@@ -19,6 +19,7 @@ import { QueueLoadErrorBanner } from './load-error-banner';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
+import { CODE_GROUPS, toCodeOptions } from './code-options';
 import { MeasurementGrid } from './measurement-grid';
 import { toMeasurementRows } from './measurement-rows';
 import {
@@ -27,6 +28,8 @@ import {
   useInspectionQueue,
   useInspectionRoundLock,
   useInspectionRounds,
+  useCodeValues,
+  useConfirmResult,
   useMeasurements,
   useSaveDraft,
 } from './queries';
@@ -89,6 +92,19 @@ export const IqcInspectionScreen = () => {
   });
 
   /**
+   * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 그룹을 «이름»으로 부른다:
+   * `codeGroupId` 정수는 환경마다 다르므로 코드에 박지 않는다(omf-mes#179 회신).
+   */
+  const judgmentValues = useCodeValues(CODE_GROUPS.overallJudgment);
+  const judgmentOptions = toCodeOptions(judgmentValues.data ?? []);
+
+  const [judgment, setJudgment] = useState('');
+
+  const confirm = useConfirmResult(selectedId, editingResultId, () => {
+    setIsSaved(false);
+  });
+
+  /**
    * 초안이 바뀌면 「저장했습니다」를 지운다.
    *
    * ⭐ **표시가 언제 거짓이 되는지**를 값이 바뀌는 자리에서 함께 정한다. 지우지 않으면
@@ -123,8 +139,11 @@ export const IqcInspectionScreen = () => {
     heldQty: 0,
   };
 
+  const storedJudgment = round?.overallJudgmentCode ?? '';
+
   useEffect(() => {
     setIsSaved(false);
+    setJudgment(storedJudgment);
     setDraft(
       roundId === null
         ? EMPTY_QUANTITY_DRAFT
@@ -134,7 +153,7 @@ export const IqcInspectionScreen = () => {
             held: String(heldQty),
           },
     );
-  }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty]);
+  }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
 
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -254,6 +273,14 @@ export const IqcInspectionScreen = () => {
             fieldErrors={save.fieldErrors}
             saveError={save.error}
             onReload={() => void rounds.refetch()}
+            judgmentOptions={judgmentOptions}
+            judgment={judgment}
+            onJudgmentChange={setJudgment}
+            onConfirm={() => {
+              confirm.write({ overallJudgmentCode: judgment });
+            }}
+            isConfirming={confirm.isSaving}
+            confirmError={confirm.error}
           />
         )}
 

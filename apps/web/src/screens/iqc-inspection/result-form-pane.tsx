@@ -1,11 +1,15 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, Select, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useState, type FormEvent, type ReactElement } from 'react';
+import { useId, useState, type FormEvent, type ReactElement } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 
+import { isKnownCode, type CodeOption } from './code-options';
+import { FieldLabel } from './field-label';
+
 import {
+  canConfirm,
   formatMicro,
   hasQuantityError,
   toTotals,
@@ -62,6 +66,14 @@ export interface ResultFormPaneProps {
   saveError: ApiError | null;
   /** 충돌일 때 「최신 불러오기」를 낸다. 재조회로 풀리지 않는 오류에는 배너가 내지 않는다 */
   onReload: () => void;
+
+  /** 종합 판정 선택지. **비어 있을 수 있다** — 시드가 아직 안 들어간 상태다 */
+  judgmentOptions: CodeOption[];
+  judgment: string;
+  onJudgmentChange: (code: string) => void;
+  onConfirm: () => void;
+  isConfirming: boolean;
+  confirmError: ApiError | null;
 }
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
@@ -82,7 +94,14 @@ export const ResultFormPane = ({
   fieldErrors,
   saveError,
   onReload,
+  judgmentOptions,
+  judgment,
+  onJudgmentChange,
+  onConfirm,
+  isConfirming,
+  confirmError,
 }: ResultFormPaneProps) => {
+  const judgmentId = useId();
   const isConfirmed = round?.statusCode === '확정';
   const errors = validateQuantities(draft);
   const totals = toTotals(draft, inspectedQty);
@@ -99,6 +118,20 @@ export const ResultFormPane = ({
 
     onSave();
   };
+
+  /**
+   * 확정이 막혔다면 **무엇이** 막혔는지. 풀렸으면 `null`.
+   *
+   * ⛔ 세 갈래를 뭉개지 않는다 — 푸는 방법이 다르다. 합계는 수량을 고쳐야 하고, 판정은
+   * 골라야 하며, 확정된 회차는 재검사로 새 회차를 쌓아야 한다(스펙 §6 · §5-3).
+   */
+  const confirmBlockedReason: string | null = isConfirmed
+    ? t.confirmBlockedByConfirmed
+    : !canConfirm(totals)
+      ? t.confirmBlockedByTotals
+      : judgment === ''
+        ? t.confirmBlockedByJudgment
+        : null;
 
   /** 서버가 짚어 준 칸 오류를 화면의 칸 이름으로 옮긴다. */
   const serverErrorOf = (key: keyof QuantityDraft): string | undefined => {
@@ -168,23 +201,68 @@ export const ResultFormPane = ({
 
       {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
 
-      <SaveErrorBanner error={saveError} onReload={onReload} />
+      {/*
+       * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고,
+       * 목록이 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2). 시드가 아직 안 들어가
+       * 빌 수 있는데, 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
+       */}
+      <div className="field-cell">
+        <FieldLabel htmlFor={judgmentId} label={t.judgment} required />
+        <Select
+          id={judgmentId}
+          options={judgmentOptions}
+          value={judgment}
+          placeholder={t.judgmentPlaceholder}
+          disabled={isConfirmed || judgmentOptions.length === 0}
+          onChange={onJudgmentChange}
+        />
+        {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
+        {/*
+         * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
+         * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
+         */}
+        {!isKnownCode(judgmentOptions, judgment) && (
+          <p className="field-note">{t.judgmentUnknown(judgment)}</p>
+        )}
+      </div>
+
+      <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
 
       {/*
        * ⛔ **확정된 회차에는 저장 자리를 만들지 않는다**(공유계약 G-23 — 누를 수 있는데 아무
        * 일도 없는 컨트롤을 두지 않는다). 이전 회차는 정정하지 않고 재검사로 새 회차를 쌓는다.
        */}
       {!isConfirmed && (
-        <div className="form-actions">
-          {/* 눌렀는데 아무 일도 없어 보이지 않게 결과를 한 줄로 알린다. */}
-          {isSaved && <p className="field-note form-actions-secondary">{t.saved}</p>}
-          {showErrors && hasQuantityError(errors) && (
-            <p className="field-note form-actions-secondary">{t.saveBlockedByInvalid}</p>
-          )}
-          <Button type="submit" variant="filled" size="sm" disabled={isSaving}>
-            {isSaving ? t.saving : t.save}
-          </Button>
-        </div>
+        <>
+          {/*
+           * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 알린다. 이 순간 LOT 상태가
+           * 전이하고 보류 해제가 기록된다.
+           */}
+          <p className="field-note">{t.confirmNote}</p>
+
+          {/* 막혔으면 «무엇이» 막혔는지 밝힌다(공유계약 G-23) — 잠긴 단추만 두지 않는다. */}
+          {confirmBlockedReason !== null && <p className="field-note">{confirmBlockedReason}</p>}
+
+          <div className="form-actions">
+            {/* 눌렀는데 아무 일도 없어 보이지 않게 결과를 한 줄로 알린다. */}
+            {isSaved && <p className="field-note form-actions-secondary">{t.saved}</p>}
+            {showErrors && hasQuantityError(errors) && (
+              <p className="field-note form-actions-secondary">{t.saveBlockedByInvalid}</p>
+            )}
+            <Button type="submit" variant="outlined" size="sm" disabled={isSaving || isConfirming}>
+              {isSaving ? t.saving : t.save}
+            </Button>
+            <Button
+              type="button"
+              variant="filled"
+              size="sm"
+              disabled={confirmBlockedReason !== null || isSaving || isConfirming}
+              onClick={onConfirm}
+            >
+              {isConfirming ? t.confirming : t.confirm}
+            </Button>
+          </div>
+        </>
       )}
     </form>
   );
