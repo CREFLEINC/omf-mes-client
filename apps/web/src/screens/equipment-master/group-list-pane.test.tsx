@@ -23,6 +23,7 @@ const renderPane = (overrides: Partial<Parameters<typeof GroupListPane>[0]> = {}
   const onApplyFilters = vi.fn();
   const onToggleExpand = vi.fn();
   const onSelect = vi.fn();
+  const onAddGroup = vi.fn();
 
   render(
     <GroupListPane
@@ -38,12 +39,13 @@ const renderPane = (overrides: Partial<Parameters<typeof GroupListPane>[0]> = {}
       onToggleExpand={onToggleExpand}
       selectedGroupId={null}
       onSelect={onSelect}
+      onAddGroup={onAddGroup}
       loadError={null}
       {...overrides}
     />,
   );
 
-  return { onApplyFilters, onToggleExpand, onSelect };
+  return { onApplyFilters, onToggleExpand, onSelect, onAddGroup };
 };
 
 describe('GroupListPane', () => {
@@ -162,11 +164,16 @@ describe('GroupListPane', () => {
     expect(screen.getByRole('button', { name: messages.common.search })).toBeInTheDocument();
   });
 
-  it('기본 조건에서 결과 0건이면 「아직 등록된 것이 없다」를 낸다', () => {
-    renderPane({ rows: [] });
+  it('기본 조건에서 결과 0건이면 「아직 등록된 것이 없다」와 등록 액션을 낸다', async () => {
+    const user = userEvent.setup();
+    const { onAddGroup } = renderPane({ rows: [] });
 
     expect(screen.getByText(t.empty.groupNoneTitle)).toBeInTheDocument();
     expect(screen.queryByText(t.empty.groupNoMatchTitle)).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: t.actions.addGroup }));
+
+    expect(onAddGroup).toHaveBeenCalledTimes(1);
   });
 
   /*

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildGroupRows } from './group-tree';
+import { buildGroupRows, selfAndDescendantIds } from './group-tree';
 import { makeGroup } from './fixtures';
 import type { EquipmentGroup } from './types';
 
@@ -95,5 +95,58 @@ describe('buildGroupRows', () => {
     const rows = buildGroupRows(items, new Set());
 
     expect(codesOf(rows)).toEqual(['A']);
+  });
+});
+
+describe('selfAndDescendantIds', () => {
+  /*
+   * 상위 그룹 선택지에서 이 집합을 빼면 순환이 만들어지지 않는다.
+   * 데이터베이스는 직계 자기참조만 막으므로 나머지는 화면이 진다(스펙 §8-4).
+   */
+  it('자기 자신과 모든 후손을 담는다', () => {
+    const items = [
+      makeGroup(1, 'A'),
+      makeGroup(11, 'A-01', { parentGroupId: 1 }),
+      makeGroup(111, 'A-01-01', { parentGroupId: 11 }),
+      makeGroup(2, 'B'),
+    ];
+
+    expect([...selfAndDescendantIds(items, 1)].sort()).toEqual([1, 11, 111]);
+  });
+
+  it('후손이 없으면 자기 자신만 담는다', () => {
+    const items = [makeGroup(1, 'A'), makeGroup(2, 'B')];
+
+    expect([...selfAndDescendantIds(items, 2)]).toEqual([2]);
+  });
+
+  /* 형제와 상위는 상위로 골라도 순환이 생기지 않는다 — 과하게 막으면 고를 것이 사라진다. */
+  it('형제와 상위는 담지 않는다', () => {
+    const items = [
+      makeGroup(1, 'A'),
+      makeGroup(11, 'A-01', { parentGroupId: 1 }),
+      makeGroup(12, 'A-02', { parentGroupId: 1 }),
+    ];
+
+    const blocked = selfAndDescendantIds(items, 11);
+
+    expect(blocked.has(12)).toBe(false);
+    expect(blocked.has(1)).toBe(false);
+  });
+
+  /* 이미 순환이 든 자료에서 멈추면 폼이 영영 뜨지 않는다. */
+  it('이미 순환이 들어 있어도 멈추지 않는다', () => {
+    const items = [
+      makeGroup(5, 'C-1', { parentGroupId: 6 }),
+      makeGroup(6, 'C-2', { parentGroupId: 5 }),
+    ];
+
+    expect([...selfAndDescendantIds(items, 5)].sort()).toEqual([5, 6]);
+  });
+
+  it('자기참조 행을 자기 후손으로 세지 않는다', () => {
+    const items = [makeGroup(1, 'A', { parentGroupId: 1 }), makeGroup(2, 'B')];
+
+    expect([...selfAndDescendantIds(items, 1)]).toEqual([1]);
   });
 });

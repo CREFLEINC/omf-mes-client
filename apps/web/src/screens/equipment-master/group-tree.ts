@@ -105,3 +105,42 @@ export const buildGroupRows = (
 
   return rows;
 };
+
+/**
+ * 어떤 그룹의 **자기 자신과 모든 후손** 식별자.
+ *
+ * 상위 그룹 선택지에서 이 집합을 빼면 순환(A→B→A)이 만들어지지 않는다.
+ * 데이터베이스는 **직계 자기참조만** 막으므로 나머지는 화면과 서버가 함께 진다(스펙 §8-4).
+ *
+ * ⚠ **이미 순환이 들어 있는 자료에서도 멈추지 않는다** — 방문한 노드를 다시 밟지 않는다.
+ * 순환은 「있을 수 없는 것」이 아니라 실제로 내려올 수 있는 값이다.
+ */
+export const selfAndDescendantIds = (
+  items: EquipmentGroup[],
+  groupId: number,
+): ReadonlySet<number> => {
+  const childrenOf = new Map<number, number[]>();
+
+  for (const item of items) {
+    const parentId = item.parentGroupId;
+    if (parentId === null || parentId === undefined || parentId === item.equipmentGroupId) continue;
+    const siblings = childrenOf.get(parentId);
+    if (siblings) {
+      siblings.push(item.equipmentGroupId);
+    } else {
+      childrenOf.set(parentId, [item.equipmentGroupId]);
+    }
+  }
+
+  const blocked = new Set<number>();
+  const walk = (id: number): void => {
+    if (blocked.has(id)) return;
+    blocked.add(id);
+    for (const childId of childrenOf.get(id) ?? []) {
+      walk(childId);
+    }
+  };
+  walk(groupId);
+
+  return blocked;
+};
