@@ -2276,9 +2276,11 @@ export interface paths {
          */
         get: {
             parameters: {
-                query: {
-                    /** @description 필수. 코드값은 그룹을 고른 뒤에 본다 */
-                    codeGroupId: number;
+                query?: {
+                    /** @description 코드값 그룹의 채번 식별자. ⚠ codeGroupCode 와 «둘 중 정확히 하나»를 준다 — 둘 다 없거나 둘 다 있으면 400 이다. 화면은 대개 codeGroupCode 를 쓴다(정수는 환경마다 달라 하드코딩할 수 없다). 근거: omf-mes#179 */
+                    codeGroupId?: number;
+                    /** @description 코드값 그룹을 «이름»으로 가리킨다(mdm.code_group.group_code 와 정확히 일치). ⚠ codeGroupId 와 둘 중 정확히 하나를 준다. 화면이 그룹을 안정적으로 가리킬 수 있는 유일한 수단이다 — 채번 식별자는 환경마다 다르다. 근거: omf-mes#179 */
+                    codeGroupCode?: string;
                     /** @description 코드·코드명 검색 */
                     q?: string;
                     includeInactive?: boolean;
@@ -2301,6 +2303,15 @@ export interface paths {
                             items: components["schemas"]["CodeValue"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description codeGroupId·codeGroupCode 를 둘 다 주었거나 둘 다 주지 않았다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -26903,8 +26914,8 @@ export interface components {
              */
             inspectionItemName: string;
             /**
-             * @description 공통코드 — 수치/텍스트/불리언 [추정](근거: inspection_measurement 가 numeric_value·text_value·boolean_value 3종을 갖고 num_nonnulls ≤ 1 CHECK)
-             * @example STANDARD
+             * @description 측정치를 «어느 칸에» 담는지 정한다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_ITEM_SPEC_DATA_TYPE 로 받는다. 값은 NUMERIC(수치)·TEXT(텍스트)·BOOLEAN(불리언) 셋이고 각각 InspectionMeasurement 의 numericValue·textValue·booleanValue 에 대응한다 — 값 이름이 곧 칸 이름이다. ⛔ 셋 중 «하나만» 채운다(ck_inspection_measurement num_nonnulls ≤ 1). ⚠ 모르는 값이 오면 화면은 그 항목의 입력을 «비활성 + 사유»로 둔다(공유계약 G-2) — 담을 칸을 고를 수 없으므로 추측해서 그리지 않는다. 근거: 공유계약 G-31·G-32 · omf-mes#179
+             * @example NUMERIC
              */
             dataTypeCode: string;
             /**
@@ -26978,8 +26989,8 @@ export interface components {
              */
             inspectionItemName: string;
             /**
-             * @description 공통코드 — 수치/텍스트/불리언 [추정](근거: inspection_measurement 가 numeric_value·text_value·boolean_value 3종을 갖고 num_nonnulls ≤ 1 CHECK)
-             * @example STANDARD
+             * @description 측정치를 «어느 칸에» 담는지 정한다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_ITEM_SPEC_DATA_TYPE 로 받는다. 값은 NUMERIC(수치)·TEXT(텍스트)·BOOLEAN(불리언) 셋이고 각각 InspectionMeasurement 의 numericValue·textValue·booleanValue 에 대응한다 — 값 이름이 곧 칸 이름이다. ⛔ 셋 중 «하나만» 채운다(ck_inspection_measurement num_nonnulls ≤ 1). ⚠ 모르는 값이 오면 화면은 그 항목의 입력을 «비활성 + 사유»로 둔다(공유계약 G-2) — 담을 칸을 고를 수 없으므로 추측해서 그리지 않는다. 근거: 공유계약 G-31·G-32 · omf-mes#179
+             * @example NUMERIC
              */
             dataTypeCode: string;
             /**
@@ -35264,14 +35275,24 @@ export interface components {
             sampleNo: number;
             /**
              * Format: double
+             * @description dataTypeCode=NUMERIC 인 항목만 채운다. 상하한(lowerLimit·upperLimit)과 단위(uomId)가 의미를 갖는 유일한 유형이다. 근거: omf-mes#179
              * @example 30
              */
             numericValue?: number;
-            /** @example 값 */
+            /**
+             * @description dataTypeCode=TEXT 인 항목만 채운다. 근거: omf-mes#179
+             * @example 값
+             */
             textValue?: string;
-            /** @example true */
+            /**
+             * @description dataTypeCode=BOOLEAN 인 항목만 채운다. ⚠ 판정(judgmentCode)과 다른 축이다 — 이 칸은 «측정 결과»이고 판정은 그것을 보고 사람이 정한다(규격 밖이어도 자동 불합격이 아니다 · P-02-13 §6). 근거: omf-mes#179
+             * @example true
+             */
             booleanValue?: boolean;
-            /** @example 값 */
+            /**
+             * @description 항목별 측정치의 판정. ⛔ enum 으로 못박지 않는다(공유계약 G-2·G-6). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_MEASUREMENT_JUDGMENT 로 받는다. 값은 ACCEPTED(합격)·REJECTED(불합격) «두 개»다. ⚠ 종합 판정과 그룹이 «다르다» — 항목 판정에는 「보류」가 없다. 보류는 검사 결과 수준의 개념이고(held_qty) 항목은 규격에 드는지 아닌지 둘뿐이다(P-02-13 §5 「항목 판정(합격/불합격)」). ⛔ 측정값이 규격 밖이어도 «자동 불합격이 아니다» — 표시하고 사람이 판정한다(P-02-13 §6). 근거: omf-mes#179
+             * @example ACCEPTED
+             */
             judgmentCode: string;
             /**
              * Format: date-time
@@ -35300,14 +35321,24 @@ export interface components {
             sampleNo: number;
             /**
              * Format: double
+             * @description dataTypeCode=NUMERIC 인 항목만 채운다. 상하한(lowerLimit·upperLimit)과 단위(uomId)가 의미를 갖는 유일한 유형이다. 근거: omf-mes#179
              * @example 30
              */
             numericValue?: number;
-            /** @example 값 */
+            /**
+             * @description dataTypeCode=TEXT 인 항목만 채운다. 근거: omf-mes#179
+             * @example 값
+             */
             textValue?: string;
-            /** @example true */
+            /**
+             * @description dataTypeCode=BOOLEAN 인 항목만 채운다. ⚠ 판정(judgmentCode)과 다른 축이다 — 이 칸은 «측정 결과»이고 판정은 그것을 보고 사람이 정한다(규격 밖이어도 자동 불합격이 아니다 · P-02-13 §6). 근거: omf-mes#179
+             * @example true
+             */
             booleanValue?: boolean;
-            /** @example 값 */
+            /**
+             * @description 항목별 측정치의 판정. ⛔ enum 으로 못박지 않는다(공유계약 G-2·G-6). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_MEASUREMENT_JUDGMENT 로 받는다. 값은 ACCEPTED(합격)·REJECTED(불합격) «두 개»다. ⚠ 종합 판정과 그룹이 «다르다» — 항목 판정에는 「보류」가 없다. 보류는 검사 결과 수준의 개념이고(held_qty) 항목은 규격에 드는지 아닌지 둘뿐이다(P-02-13 §5 「항목 판정(합격/불합격)」). ⛔ 측정값이 규격 밖이어도 «자동 불합격이 아니다» — 표시하고 사람이 판정한다(P-02-13 §6). 근거: omf-mes#179
+             * @example ACCEPTED
+             */
             judgmentCode: string;
             /**
              * Format: date-time
@@ -35470,8 +35501,8 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 합격·불합격·보류 3값. ⛔ enum 으로 못박지 않는다 — 값 목록은 공통코드가 갖고 늘 수 있다(공유계약 G-2·G-6). 근거: 회신 E-3 종결 2026-08-07
-             * @example IQC
+             * @description 합격·불합격·보류 3값. ⛔ enum 으로 못박지 않는다 — 값 목록은 공통코드가 갖고 늘 수 있다(공유계약 G-2·G-6). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_OVERALL_JUDGMENT 로 받는다. 값은 ACCEPTED(합격)·REJECTED(불합격)·HELD(보류) — 검사 결과 수량 세 칸(accepted/rejected/held)과 같은 이름이다. 근거: 회신 E-3 종결 2026-08-07 · omf-mes#179
+             * @example ACCEPTED
              */
             overallJudgmentCode: string;
             /**
@@ -35515,8 +35546,8 @@ export interface components {
         /** @description 작성중 → 확정. ⭐ 이 순간 Lot Status 가 전이한다 — 독립 경로를 두지 않는다(결정 10 · B-8) */
         InspectionResultConfirm: {
             /**
-             * @description 비우면 저장된 값을 쓴다
-             * @example IQC
+             * @description 비우면 저장된 값을 쓴다. 합격·불합격·보류 3값. ⛔ enum 으로 못박지 않는다 — 값 목록은 공통코드가 갖고 늘 수 있다(공유계약 G-2·G-6). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_OVERALL_JUDGMENT 로 받는다. 값은 ACCEPTED(합격)·REJECTED(불합격)·HELD(보류) — 검사 결과 수량 세 칸(accepted/rejected/held)과 같은 이름이다. 근거: 회신 E-3 종결 2026-08-07 · omf-mes#179
+             * @example ACCEPTED
              */
             overallJudgmentCode?: string;
             /** @example 값 */
@@ -35555,8 +35586,8 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description statusCode=확정 이면 필수다
-             * @example IQC
+             * @description statusCode=확정 이면 필수다. 합격·불합격·보류 3값. ⛔ enum 으로 못박지 않는다 — 값 목록은 공통코드가 갖고 늘 수 있다(공유계약 G-2·G-6). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_OVERALL_JUDGMENT 로 받는다. 값은 ACCEPTED(합격)·REJECTED(불합격)·HELD(보류) — 검사 결과 수량 세 칸(accepted/rejected/held)과 같은 이름이다. 근거: 회신 E-3 종결 2026-08-07 · omf-mes#179
+             * @example ACCEPTED
              */
             overallJudgmentCode?: string;
             /**
@@ -35604,7 +35635,10 @@ export interface components {
              * @example 30
              */
             heldQty?: number;
-            /** @example 값 */
+            /**
+             * @description 합격·불합격·보류 3값. ⛔ enum 으로 못박지 않는다 — 값 목록은 공통코드가 갖고 늘 수 있다(공유계약 G-2·G-6). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_OVERALL_JUDGMENT 로 받는다. 값은 ACCEPTED(합격)·REJECTED(불합격)·HELD(보류) — 검사 결과 수량 세 칸(accepted/rejected/held)과 같은 이름이다. 근거: 회신 E-3 종결 2026-08-07 · omf-mes#179
+             * @example ACCEPTED
+             */
             overallJudgmentCode?: string;
             /**
              * Format: date-time
