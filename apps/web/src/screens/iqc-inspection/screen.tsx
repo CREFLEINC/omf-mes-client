@@ -233,6 +233,12 @@ export const IqcInspectionScreen = () => {
       rejectedQty: toSendableNumber(draft.rejected),
       heldQty: toSendableNumber(draft.held),
       uomId,
+      /*
+       * ⛔ **고른 판정을 함께 싣는다.** 싣지 않으면 저장 뒤 재조회가 저장 전 판정을 돌려주고
+       * 되돌림이 사용자가 고른 값을 덮는다 — 그러고 확정하면 «고른 것과 다른 판정»이 나가는데
+       * 그 쓰기는 되돌릴 수 없다.
+       */
+      overallJudgmentCode: judgment,
       /* 검사한 시각은 지금이다. 순수 함수가 아니라 이 자리에서 읽는다. */
       inspectedAt: new Date().toISOString(),
     });

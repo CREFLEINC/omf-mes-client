@@ -492,6 +492,35 @@ describe('IqcInspectionScreen', () => {
     );
   });
 
+  /*
+   * ⭐ 리뷰가 잡은 Blocker 다. 판정을 싣지 않으면 저장 뒤 재조회가 «저장 전» 판정을 돌려주고
+   * 초안 되돌림이 사용자가 고른 값을 덮는다. 그러고 확정하면 고른 것과 다른 판정이 나가는데
+   * 그 쓰기는 되돌릴 수 없다 — 불량 가능성이 있는 LOT 이 정상으로 풀린다.
+   */
+  it('임시 저장이 고른 판정을 함께 싣는다 — 싣지 않으면 저장 뒤 되돌아간다', async () => {
+    const { writes } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '보류' }));
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({ overallJudgmentCode: 'HELD' });
+  });
+
+  it('아직 고르지 않은 판정은 키 자체를 싣지 않는다 — 빈 문자열은 코드가 아니다', async () => {
+    const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.notStarted);
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).not.toHaveProperty('overallJudgmentCode');
+  });
+
   it('저장된 판정이 선택칸에 되돌아온다 — 표시명으로 보인다', async () => {
     renderScreen('/?ir=1001');
 

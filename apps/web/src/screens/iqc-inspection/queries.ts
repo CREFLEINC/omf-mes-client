@@ -224,6 +224,14 @@ export interface SaveDraftVariables {
   rejectedQty: number;
   heldQty: number;
   uomId: number;
+  /**
+   * 고른 종합 판정. **임시 저장도 함께 싣는다** — 계약이 「작성중」에는 선택으로 받는다.
+   *
+   * ⛔ 싣지 않으면 저장 뒤 회차를 다시 부를 때 서버가 «저장 전» 판정을 돌려주고, 초안
+   * 되돌림이 사용자가 고른 값을 그것으로 덮는다. 그러고 확정을 누르면 **고른 것과 다른
+   * 판정이 나가는데 그 쓰기는 되돌릴 수 없다** — 불량 가능성이 있는 LOT 이 정상으로 풀린다.
+   */
+  overallJudgmentCode: string;
   /** 검사한 시각. **호출부가 준다** — 이 파일이 실행 환경의 시각을 스스로 읽지 않는다 */
   inspectedAt: string;
 }
@@ -290,6 +298,13 @@ export const useSaveDraft = (
 /** 이 화면이 소유한 입력칸 — 서버 필드 오류를 인라인으로 낼지 배너로 올릴지 가르는 기준이다. */
 export const SAVE_FIELDS = ['acceptedQty', 'rejectedQty', 'heldQty'] as const;
 
+/**
+ * 아직 고르지 않은 판정은 **키 자체를 싣지 않는다** — 빈 문자열은 코드가 아니고, 보내면
+ * 서버가 모르는 값을 받는다.
+ */
+const judgmentOf = (code: string): { overallJudgmentCode?: string } =>
+  code === '' ? {} : { overallJudgmentCode: code };
+
 const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   inspectionRequestId: v.inspectionRequestId,
   inspectedQty: v.inspectedQty,
@@ -299,6 +314,7 @@ const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   uomId: v.uomId,
   inspectedAt: v.inspectedAt,
   statusCode: DRAFT_STATUS,
+  ...judgmentOf(v.overallJudgmentCode),
 });
 
 const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
@@ -306,6 +322,7 @@ const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
   rejectedQty: v.rejectedQty,
   heldQty: v.heldQty,
   inspectedAt: v.inspectedAt,
+  ...judgmentOf(v.overallJudgmentCode),
 });
 
 const fetchItemSpecs = (
