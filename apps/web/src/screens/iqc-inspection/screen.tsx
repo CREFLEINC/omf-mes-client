@@ -19,11 +19,15 @@ import { QueueLoadErrorBanner } from './load-error-banner';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
+import { MeasurementGrid } from './measurement-grid';
+import { toMeasurementRows } from './measurement-rows';
 import {
-  useInspectionQueue,
+  useInspectionItemSpecs,
   useInspectionRequestDetail,
+  useInspectionQueue,
   useInspectionRoundLock,
   useInspectionRounds,
+  useMeasurements,
   useSaveDraft,
 } from './queries';
 import { QueueFilterBar } from './queue-filter-bar';
@@ -182,6 +186,15 @@ export const IqcInspectionScreen = () => {
 
   const inspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
 
+  /*
+   * ⚠ **검사 시점에 고정된 기준 버전으로 부른다** — 의뢰가 준 버전을 그대로 쓰고 「최신
+   * 기준」을 찾지 않는다. 최신을 부르면 검사자가 재지 않은 항목이 그리드에 나타난다.
+   */
+  const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
+  const measurements = useMeasurements(round?.inspectionResultId ?? null);
+
+  const measurementRows = toMeasurementRows(itemSpecs.data ?? [], measurements.data ?? []);
+
   /**
    * 저장이 보낼 값을 만든다.
    *
@@ -243,6 +256,17 @@ export const IqcInspectionScreen = () => {
             onReload={() => void rounds.refetch()}
           />
         )}
+
+        {/*
+         * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
+         * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
+         * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
+         * 실제로 부르는 중을 잡는다.
+         */}
+        <MeasurementGrid
+          rows={measurementRows}
+          isLoading={itemSpecs.isLoading || measurements.isLoading}
+        />
       </>
     );
 

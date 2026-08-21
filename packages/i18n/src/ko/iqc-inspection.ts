@@ -138,6 +138,46 @@ export const iqcInspection = {
     saveBlockedByInvalid: '수량 칸을 고친 뒤 저장할 수 있습니다.',
   },
 
+  /** 항목별 측정치 그리드(스펙 §4-C). 줄은 「항목 × 샘플」이다. */
+  measurements: {
+    heading: '점검 항목',
+    caption: '항목별 측정치',
+    loading: '점검 항목을 불러오는 중입니다.',
+    /** 기준 버전에 항목이 하나도 없다. 화면이 고칠 수 있는 것이 아니다. */
+    noItems: '이 검사기준 버전에는 점검 항목이 없습니다. 기준정보 담당자에게 문의하세요.',
+    columns: {
+      item: '항목',
+      spec: '규격',
+      sample: '샘플',
+      value: '측정치',
+      judgment: '판정',
+    },
+    /** 필수 항목 표시. 라벨 문자열에 붙이지 않고 따로 낸다 — 접근 이름이 흐려지지 않게. */
+    requiredMark: '필수',
+    /** 「3 중 1」 — 이 항목이 요구하는 샘플 수 안에서 몇 번째인가. */
+    sampleOf: (sampleNo: number, count: number): string => `${count} 중 ${sampleNo}`,
+    /**
+     * 규격 — **한쪽만 있는 것도 규격이다.** 계약이 상하한을 「둘 다 있을 때만」 견주므로
+     * 한쪽만 있는 항목이 정상이고, 「9.9 이상」 같은 공차는 실제 검사기준에 흔하다.
+     * ⛔ 둘 다 있을 때만 내면 화면이 「규격 없음」이라고 말해 검사자가 공차를 모르고 잰다.
+     */
+    range: (lower: number, upper: number): string => `${lower} ~ ${upper}`,
+    atLeast: (lower: number): string => `${lower} 이상`,
+    atMost: (upper: number): string => `${upper} 이하`,
+    target: (value: number): string => `목표 ${value}`,
+    /** 아직 재지 않았다. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
+    notMeasured: '—',
+    /**
+     * ⚠ 계측기 교정이 만료된 상태로 잰 값이 있다. ⛔ **차단하지 않는다** — 무효화 정책이
+     * 아직 정해지지 않았고(스펙 §8-6), 계약도 서버 판정 플래그를 내려 줄 뿐 자동 제외하지
+     * 않는다. 화면은 **알리기만** 한다.
+     */
+    calibrationWarningTitle: '교정이 만료된 계측기로 잰 값이 있습니다',
+    calibrationWarning:
+      '해당 측정치를 다시 확인하세요. 검사를 막지는 않습니다 — 계측기 교정은 설비 담당자에게 문의하세요.',
+    calibrationExpired: '교정 만료',
+  },
+
   pageNav: {
     label: '검사 대기 목록 쪽 이동',
     /** 「51–100 / 전체 120건」 — 총계를 밝혀야 조건을 더 좁힐지 판단할 수 있다. */

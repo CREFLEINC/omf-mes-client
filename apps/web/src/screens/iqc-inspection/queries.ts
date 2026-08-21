@@ -5,6 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
 import type { QueueListQuery } from './filters';
+import type { InspectionItemSpecResponse, InspectionMeasurementResponse } from './measurement-rows';
 import {
   toInspectionQueueResult,
   toInspectionRequestDetail,
@@ -38,6 +39,9 @@ type Client = ApiClient['client'];
 /** 한 의뢰의 회차 수는 작다 — 재검사가 이만큼 쌓이면 자료가 이상한 것이다. */
 const ROUNDS_PAGE_SIZE = 100;
 
+/** 한 회차의 측정치 수 상한. 항목 × 샘플이라 커질 수 있으나 한 화면이 담을 범위다. */
+const MEASUREMENTS_PAGE_SIZE = 500;
+
 /**
  * 이 자원의 조회를 덮는 뿌리 키.
  *
@@ -56,6 +60,15 @@ export const iqcInspectionKeys = {
    * 상세까지 함께 무효화되고, 반대로 저장 뒤 상세만 갱신하려 할 때 목록이 통째로 다시 온다.
    */
   detail: (inspectionRequestId: number) => [...ALL_KEY, 'detail', inspectionRequestId] as const,
+  /**
+   * 검사기준 버전의 항목 규격. **의뢰·회차와 앞머리를 갈라 둔다** — 기준은 마스터라 저장이
+   * 바꾸지 않는다. 함께 묶으면 저장할 때마다 기준까지 다시 부른다.
+   */
+  itemSpecs: (inspectionPlanVersionId: number) =>
+    [...ALL_KEY, 'item-specs', inspectionPlanVersionId] as const,
+  /** 그 회차의 측정치. 회차 저장이 바꾸므로 저장 뒤 무효화 대상이다. */
+  measurements: (inspectionResultId: number) =>
+    [...ALL_KEY, 'measurements', inspectionResultId] as const,
   /** 그 의뢰의 회차 목록. 상세와도 갈라 둔다 — 저장이 바꾸는 것은 회차이지 의뢰가 아니다. */
   rounds: (inspectionRequestId: number) => [...ALL_KEY, 'rounds', inspectionRequestId] as const,
   /**
@@ -284,3 +297,60 @@ const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
   heldQty: v.heldQty,
   inspectedAt: v.inspectedAt,
 });
+
+const fetchItemSpecs = (
+  client: Client,
+  inspectionPlanVersionId: number,
+): Promise<InspectionItemSpecResponse[]> =>
+  runRequest(() =>
+    client.GET('/quality/inspection-plan-versions/{inspectionPlanVersionId}/items', {
+      params: { path: { inspectionPlanVersionId } },
+    }),
+  ).then((response) => response.items);
+
+/**
+ * 검사기준 버전의 항목 규격을 부른다 — **그리드의 줄 수를 정하는 것이 이 목록이다.**
+ *
+ * ⚠ **검사 시점에 고정된 버전으로 부른다.** 의뢰가 준 `inspectionPlanVersionId` 를 그대로
+ * 쓰고 「최신 기준」을 따로 찾지 않는다 — 이후 기준이 바뀌어도 이 검사는 당시 버전으로
+ * 남는다(스펙 §4-A). 최신을 부르면 검사자가 재지 않은 항목이 그리드에 나타난다.
+ */
+export const useInspectionItemSpecs = (
+  inspectionPlanVersionId: number | null,
+): UseQueryResult<InspectionItemSpecResponse[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: iqcInspectionKeys.itemSpecs(inspectionPlanVersionId ?? 0),
+    queryFn: () => fetchItemSpecs(client, inspectionPlanVersionId as number),
+    enabled: inspectionPlanVersionId !== null,
+  });
+};
+
+const fetchMeasurements = (
+  client: Client,
+  inspectionResultId: number,
+): Promise<InspectionMeasurementResponse[]> =>
+  runRequest(() =>
+    client.GET('/quality/inspection-results/{inspectionResultId}/measurements', {
+      params: { path: { inspectionResultId }, query: { page: 1, size: MEASUREMENTS_PAGE_SIZE } },
+    }),
+  ).then((response) => response.items);
+
+/**
+ * 그 회차에 저장된 측정치를 부른다.
+ *
+ * ⚠ **검사 목록에 붙여 오지 않는다.** 계약이 그 이유를 적었다 — 의뢰·결과에 견줘 측정치는
+ * 자릿수가 커서 한 표에 담으면 표가 터진다. 「한 화면」이지 「한 표」가 아니다(공유계약 L-1).
+ */
+export const useMeasurements = (
+  inspectionResultId: number | null,
+): UseQueryResult<InspectionMeasurementResponse[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: iqcInspectionKeys.measurements(inspectionResultId ?? 0),
+    queryFn: () => fetchMeasurements(client, inspectionResultId as number),
+    enabled: inspectionResultId !== null,
+  });
+};
