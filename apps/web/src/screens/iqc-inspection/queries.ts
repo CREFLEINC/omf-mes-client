@@ -1,8 +1,9 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest } from '../../patterns/request';
+import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
+import { runRequest, type ApiCallResult } from '../../patterns/request';
 import type { QueueListQuery } from './filters';
 import {
   toInspectionQueueResult,
@@ -57,7 +58,15 @@ export const iqcInspectionKeys = {
   detail: (inspectionRequestId: number) => [...ALL_KEY, 'detail', inspectionRequestId] as const,
   /** 그 의뢰의 회차 목록. 상세와도 갈라 둔다 — 저장이 바꾸는 것은 회차이지 의뢰가 아니다. */
   rounds: (inspectionRequestId: number) => [...ALL_KEY, 'rounds', inspectionRequestId] as const,
+  /**
+   * 회차 한 건. **목록과 갈라 두는 이유가 내용이 아니라 잠금 토큰이다** — 아래 훅 주석 참조.
+   */
+  round: (inspectionResultId: number) => [...ALL_KEY, 'round', inspectionResultId] as const,
 };
+
+/** 회차 한 건의 경로. 잠금 토큰이 이 경로를 열쇠로 보관되므로 **한 자리에서만 만든다.** */
+export const roundPath = (inspectionResultId: number): string =>
+  `/quality/inspection-results/${inspectionResultId}`;
 
 const fetchQueue = (client: Client, query: QueueListQuery): Promise<InspectionQueueResult> =>
   runRequest(() => client.GET('/quality/inspection-requests', { params: { query } })).then(
@@ -141,3 +150,137 @@ export const useInspectionRounds = (
     enabled: inspectionRequestId !== null,
   });
 };
+
+const fetchRound = (client: Client, inspectionResultId: number): Promise<InspectionResultRound> =>
+  runRequest(() =>
+    client.GET('/quality/inspection-results/{inspectionResultId}', {
+      params: { path: { inspectionResultId } },
+    }),
+  ).then(toInspectionResultRound);
+
+/**
+ * 회차 한 건을 부른다 — ⭐ **잠금 토큰을 얻기 위해서다.**
+ *
+ * 목록(`useInspectionRounds`)이 같은 내용을 이미 주는데도 이 조회를 따로 두는 이유는
+ * **목록 200 에 `ETag` 가 없기 때문**이다(계약 실측 — 단건 200 에만 있다). 그리고 토큰
+ * 보관소가 **응답이 온 URL 경로**를 열쇠로 쓰므로, 목록 경로로 꺼내면 언제나 비어 있다.
+ *
+ * ⛔ 토큰이 없으면 `PUT` 의 `If-Match` 를 채울 수 없고, 빈 `If-Match` 는 계약 위반이라
+ * 서버가 400 으로 되돌린다. 그래서 **고칠 회차가 있을 때만** 부른다.
+ *
+ * 전례가 같은 형태를 적어 두었다 — `document-progress/queries.ts` 「상세를 둘 부른다 —
+ * 역할이 다르다」.
+ */
+export const useInspectionRoundLock = (
+  inspectionResultId: number | null,
+): UseQueryResult<InspectionResultRound> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: iqcInspectionKeys.round(inspectionResultId ?? 0),
+    queryFn: () => fetchRound(client, inspectionResultId as number),
+    enabled: inspectionResultId !== null,
+  });
+};
+
+type InspectionResultCreate = components['schemas']['InspectionResultCreate'];
+type InspectionResultUpdate = components['schemas']['InspectionResultUpdate'];
+type InspectionResultResponse = components['schemas']['InspectionResult'];
+
+/**
+ * 임시 저장이 보내는 값.
+ *
+ * ⛔ **검사자와 단말을 보내지 않는다.** 계약에서 사라졌다 — 검사자는 로그인한 주체에서
+ * 서버가 정하는 값이라 화면이 만들 수 없고, 화면이 세션 값을 실으면 품질 감사 기록에
+ * 엉뚱한 사람이 남는다(omf-mes#173). 단말도 같다 — 요청을 인증한 것이 단말이므로 서버가 안다.
+ */
+export interface SaveDraftVariables {
+  inspectionRequestId: number;
+  inspectedQty: number;
+  acceptedQty: number;
+  rejectedQty: number;
+  heldQty: number;
+  uomId: number;
+  /** 검사한 시각. **호출부가 준다** — 이 파일이 실행 환경의 시각을 스스로 읽지 않는다 */
+  inspectedAt: string;
+}
+
+/** 계약이 못박은 두 값 중 임시 저장이 쓰는 쪽. 확정은 다음 회차가 다룬다. */
+const DRAFT_STATUS = '작성중';
+
+/**
+ * 검사 결과를 임시 저장한다 — **고칠 회차가 있으면 고치고, 없으면 만든다.**
+ *
+ * ⭐ **임시 저장은 상태를 바꾸지 않는다**(스펙 §5-2). LOT 상태를 옮기는 것은 확정뿐이다.
+ * 다만 서버는 **첫 임시 저장을 「검사 시작」으로 읽어** 의뢰 상태를 진행으로 옮긴다 —
+ * 그래서 ⛔ **「검사 시작」 단추를 만들지 않는다**(omf-mes#170 회신 · 스펙 §3 에도 없다).
+ *
+ * 잠금 토큰은 **고칠 때만** 필요하다. 새로 만들 때는 되돌릴 대상이 없어 계약도 `If-Match` 를
+ * 선택으로 둔다.
+ */
+export const useSaveDraft = (
+  inspectionRequestId: number | null,
+  editingResultId: number | null,
+  onSaved: () => void,
+): MasterWriteResult<SaveDraftVariables> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<SaveDraftVariables, InspectionResultResponse>({
+    request: (
+      variables,
+      headers: WriteHeaders,
+    ): Promise<ApiCallResult<InspectionResultResponse>> =>
+      editingResultId === null
+        ? client.POST('/quality/inspection-results', {
+            params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+            body: toCreateBody(variables),
+          })
+        : client.PUT('/quality/inspection-results/{inspectionResultId}', {
+            params: {
+              path: { inspectionResultId: editingResultId },
+              header: {
+                'Idempotency-Key': headers['Idempotency-Key'],
+                /* etagPath 를 준 회차라 여기 도달했으면 훅이 토큰을 이미 확보했다. */
+                'If-Match': headers['If-Match'] ?? '',
+              },
+            },
+            body: toUpdateBody(variables),
+          }),
+    etagPath: editingResultId === null ? null : roundPath(editingResultId),
+    /*
+     * 고칠 회차가 있을 때만 그 키를 넣는다 — 새로 만드는 경로에서 `round(0)` 을 넣으면
+     * 존재하지 않는 열쇠를 무효화하는 셈이라, 읽는 사람이 「0번 회차가 있나」를 되짚는다.
+     */
+    invalidateKeys:
+      editingResultId === null
+        ? [iqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY]
+        : [
+            iqcInspectionKeys.rounds(inspectionRequestId ?? 0),
+            iqcInspectionKeys.round(editingResultId),
+            ALL_KEY,
+          ],
+    knownFields: SAVE_FIELDS,
+    onSuccess: onSaved,
+  });
+};
+
+/** 이 화면이 소유한 입력칸 — 서버 필드 오류를 인라인으로 낼지 배너로 올릴지 가르는 기준이다. */
+export const SAVE_FIELDS = ['acceptedQty', 'rejectedQty', 'heldQty'] as const;
+
+const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
+  inspectionRequestId: v.inspectionRequestId,
+  inspectedQty: v.inspectedQty,
+  acceptedQty: v.acceptedQty,
+  rejectedQty: v.rejectedQty,
+  heldQty: v.heldQty,
+  uomId: v.uomId,
+  inspectedAt: v.inspectedAt,
+  statusCode: DRAFT_STATUS,
+});
+
+const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
+  acceptedQty: v.acceptedQty,
+  rejectedQty: v.rejectedQty,
+  heldQty: v.heldQty,
+  inspectedAt: v.inspectedAt,
+});

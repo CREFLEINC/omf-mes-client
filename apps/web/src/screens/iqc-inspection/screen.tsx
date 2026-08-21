@@ -16,10 +16,16 @@ import {
   type QueueFilters,
 } from './filters';
 import { QueueLoadErrorBanner } from './load-error-banner';
-import { EMPTY_QUANTITY_DRAFT, type QuantityDraft } from './quantity-draft';
+import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
-import { useInspectionQueue, useInspectionRequestDetail, useInspectionRounds } from './queries';
+import {
+  useInspectionQueue,
+  useInspectionRequestDetail,
+  useInspectionRoundLock,
+  useInspectionRounds,
+  useSaveDraft,
+} from './queries';
 import { QueueFilterBar } from './queue-filter-bar';
 import { QueueTable } from './queue-table';
 import { RequestDetailPane } from './request-detail-pane';
@@ -59,6 +65,38 @@ export const IqcInspectionScreen = () => {
   const round = latestRound(rounds.data ?? []);
 
   /**
+   * 고칠 회차. **확정된 회차는 고치지 않는다** — 정정이 아니라 재검사로 새 회차를 쌓는다(§5-3).
+   * 그래서 확정본이면 `null` 이 되고 저장은 「새로 만들기」로 간다.
+   */
+  const editingResultId =
+    round !== null && round.statusCode !== '확정' ? round.inspectionResultId : null;
+
+  /*
+   * ⭐ 잠금 토큰을 얻으려고 회차 한 건을 따로 부른다 — 목록 200 에는 `ETag` 가 없고, 토큰
+   * 보관소가 응답이 온 URL 경로를 열쇠로 쓴다. 고칠 회차가 있을 때만 부른다.
+   */
+  useInspectionRoundLock(editingResultId);
+
+  /** 마지막 저장이 성공했는가. 눌렀는데 아무 일도 없어 보이지 않게 한 줄로 알린다. */
+  const [isSaved, setIsSaved] = useState(false);
+
+  const save = useSaveDraft(selectedId, editingResultId, () => {
+    setIsSaved(true);
+  });
+
+  /**
+   * 초안이 바뀌면 「저장했습니다」를 지운다.
+   *
+   * ⭐ **표시가 언제 거짓이 되는지**를 값이 바뀌는 자리에서 함께 정한다. 지우지 않으면
+   * 저장한 뒤 수량을 더 고쳐도 화면이 저장됐다고 말하고, 검사자가 그 문구를 보고 자리를
+   * 뜨면 **고친 값이 사라진다.** 이 화면이 남기는 것은 품질 판정 자료다.
+   */
+  const changeDraft = (next: QuantityDraft): void => {
+    setIsSaved(false);
+    setDraft(next);
+  };
+
+  /**
    * 수량 초안. **고른 의뢰가 바뀌면 그 회차의 값으로 되돌아간다.**
    *
    * 되돌림을 참조가 아니라 **값**으로 판정한다 — 조회 응답이 다시 그려질 때마다 참조가
@@ -82,6 +120,7 @@ export const IqcInspectionScreen = () => {
   };
 
   useEffect(() => {
+    setIsSaved(false);
     setDraft(
       roundId === null
         ? EMPTY_QUANTITY_DRAFT
@@ -141,6 +180,32 @@ export const IqcInspectionScreen = () => {
     <p className="field-note">{t.queue.empty}</p>
   );
 
+  const inspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
+
+  /**
+   * 저장이 보낼 값을 만든다.
+   *
+   * 수량은 `toSendableNumber` 를 거친다 — 화면이 재는 자와 보내는 자가 같아야 한다.
+   *
+   * ⛔ **검사자·단말을 보내지 않는다** — 계약에서 사라졌다(omf-mes#173).
+   *
+   * 고른 의뢰를 **인자로 받는다** — 이 자리에 도달했으면 null 이 아니라는 사실이 타입이
+   * 아니라 렌더 조건에 있어서, 단언으로 메우면 그 조건이 바뀔 때 조용히 어긋난다.
+   */
+  const saveDraft = (inspectionRequestId: number, inspected: number, uomId: number): void => {
+    setIsSaved(false);
+    save.write({
+      inspectionRequestId,
+      inspectedQty: inspected,
+      acceptedQty: toSendableNumber(draft.accepted),
+      rejectedQty: toSendableNumber(draft.rejected),
+      heldQty: toSendableNumber(draft.held),
+      uomId,
+      /* 검사한 시각은 지금이다. 순수 함수가 아니라 이 자리에서 읽는다. */
+      inspectedAt: new Date().toISOString(),
+    });
+  };
+
   /**
    * 우측 창. **네 갈래다** — 고르지 않음 · 부르는 중 · 실패 · 상세.
    *
@@ -165,9 +230,17 @@ export const IqcInspectionScreen = () => {
         ) : (
           <ResultFormPane
             round={round}
-            inspectedQty={round?.inspectedQty ?? detail.data.targetQty}
+            inspectedQty={inspectedQty}
             draft={draft}
-            onChange={setDraft}
+            onChange={changeDraft}
+            onSave={() => {
+              saveDraft(selectedId, inspectedQty, detail.data.uomId);
+            }}
+            isSaving={save.isSaving || rounds.isFetching}
+            isSaved={isSaved}
+            fieldErrors={save.fieldErrors}
+            saveError={save.error}
+            onReload={() => void rounds.refetch()}
           />
         )}
       </>

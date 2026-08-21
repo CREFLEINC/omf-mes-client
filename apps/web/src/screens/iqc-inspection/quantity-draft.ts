@@ -58,6 +58,16 @@ export const toMicro = (raw: string): bigint | null => {
 export const fromServerQty = (quantity: number): bigint =>
   toMicro(quantity.toFixed(QTY_SCALE)) ?? 0n;
 
+/**
+ * 초안 한 칸을 **보내는 값**으로 옮긴다.
+ *
+ * **마이크로 단위를 거친다.** 친 문자열을 그대로 `Number()` 로 바꾸면 정본 자릿수(소수 여섯)를
+ * 넘는 값이 조용히 실릴 수 있다. 검증이 이미 막지만 보내는 자리에서도 같은 자를 쓴다 —
+ * 두 자리가 다른 자를 쓰면 언젠가 갈린다. 빈 칸은 0이다(계약의 기본값).
+ */
+export const toSendableNumber = (raw: string): number =>
+  raw.trim() === '' ? 0 : Number(formatMicro(toMicro(raw) ?? 0n));
+
 /** 마이크로 단위를 사람이 읽는 문자열로. 뒤따르는 0은 걷는다 — 「10.000000」은 읽기 나쁘다. */
 export const formatMicro = (micro: bigint): string => {
   const sign = micro < 0n ? '-' : '';

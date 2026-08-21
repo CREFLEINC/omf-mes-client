@@ -24,6 +24,8 @@ const renderScreen = (
   rounds = [draftRound],
 ) => {
   const sent: URL[] = [];
+  /** 저장 요청 원본 — 본문과 헤더를 그대로 본다 */
+  const writes: Request[] = [];
 
   const view = renderWithProviders(<IqcInspectionScreen />, {
     route,
@@ -52,6 +54,23 @@ const renderScreen = (
             : jsonResponse(found);
         },
       },
+      /* 회차 한 건 — 잠금 토큰이 여기서 온다(목록 200 에는 ETag 가 없다). */
+      {
+        match: (request) =>
+          new URL(request.url).pathname.startsWith('/quality/inspection-results/') &&
+          request.method === 'GET',
+        respond: () => jsonResponse(rounds[0] ?? draftRound, { headers: { ETag: 'W/"7"' } }),
+      },
+      /* 저장 — POST(신규)와 PUT(수정) 둘 다 받는다. */
+      {
+        match: (request) =>
+          new URL(request.url).pathname.startsWith('/quality/inspection-results') &&
+          request.method !== 'GET',
+        respond: (request) => {
+          writes.push(request);
+          return jsonResponse(draftRound, { status: request.method === 'POST' ? 201 : 200 });
+        },
+      },
       {
         match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
         respond: () => jsonResponse(roundsResponse(rounds)),
@@ -59,8 +78,12 @@ const renderScreen = (
     ]),
   });
 
-  return { sent, view };
+  return { sent, writes, view };
 };
+
+/** 저장 요청의 본문을 읽는다. 한 번만 읽을 수 있으므로 복제해서 쓴다. */
+const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
+  (await request.clone().json()) as Record<string, unknown>;
 
 const lastQuery = (sent: URL[]) => sent[sent.length - 1]?.searchParams;
 const openButton = (no: string) => screen.getByRole('button', { name: t.queue.openRow(no) });
@@ -222,6 +245,76 @@ describe('IqcInspectionScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: t.queue.openRow('IR-2026-0002') }));
 
     await waitFor(() => expect(screen.getByLabelText(t.result.fields.accepted)).toHaveValue(''));
+  });
+
+  it('회차가 없으면 저장이 새로 만든다', async () => {
+    const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.notStarted);
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '500');
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]?.method).toBe('POST');
+  });
+
+  /*
+   * ⭐ 계약에서 사라진 두 칸이다. 화면이 세션 값을 실으면 품질 감사 기록에 엉뚱한 사람이
+   * 검사자로 남고, 값이 그럴듯한 정수라 아무도 눈치채지 못한다(omf-mes#173).
+   */
+  it('검사자와 단말을 보내지 않는다 — 서버가 인증 주체에서 채운다', async () => {
+    const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.notStarted);
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    const body = await bodyOf(writes[0] as Request);
+    expect(body).not.toHaveProperty('inspectorId');
+    expect(body).not.toHaveProperty('terminalId');
+    expect(body.statusCode).toBe('작성중');
+  });
+
+  it('작성중 회차가 있으면 그것을 고치고 잠금 토큰을 싣는다', async () => {
+    const { writes } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    const request = writes[0] as Request;
+    expect(request.method).toBe('PUT');
+    expect(request.headers.get('If-Match')).toBe('W/"7"');
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  it('저장이 끝나면 회차를 다시 부른다 — 화면과 서버가 갈리지 않게', async () => {
+    const { writes, sent } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    const before = sent.length;
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    await waitFor(() => expect(sent.length).toBeGreaterThan(before));
+  });
+
+  /*
+   * ⭐ 리뷰가 잡은 자리다. 저장 표시를 값이 바뀌는 자리에서 지우지 않으면, 검사자가 수량을
+   * 고치고 「저장했습니다」를 보고 자리를 떠 고친 값이 사라진다.
+   */
+  it('저장한 뒤 값을 더 고치면 「저장했습니다」를 지운다 — 저장되지 않은 변경이 있다', async () => {
+    renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await screen.findByText(t.result.saved);
+
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '9');
+
+    await waitFor(() => expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument());
   });
 
   it('상세 조회가 실패해도 「고르지 않음」으로 접지 않는다 — 다시 골라도 같은 실패가 온다', async () => {
