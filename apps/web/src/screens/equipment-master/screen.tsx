@@ -19,30 +19,50 @@ import { toApiError } from '../../patterns/request';
 import { type CodeOption, ensureOption, selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
+import { EquipmentFormDialog } from './equipment-form-dialog';
 import { EquipmentListPane } from './equipment-list-pane';
+import { EQUIPMENT_FORM_FIELDS, validateEquipment } from './equipment-validation';
 import { GroupFormPane } from './group-form-pane';
 import { GroupListPane } from './group-list-pane';
 import { buildGroupRows, selfAndDescendantIds } from './group-tree';
 import { GROUP_FORM_FIELDS, validateGroup } from './group-validation';
 import { LoadErrorBanner } from './load-error-banner';
 import {
+  carriedFrom,
+  emptyCarriedValues,
+  emptyEquipmentFormValues,
   emptyGroupFormValues,
+  equipmentToFormValues,
   groupToFormValues,
+  isSameEquipmentValues,
   isSameGroupValues,
+  toEquipmentCreate,
+  toEquipmentUpdate,
   toGroupCreate,
   toGroupUpdate,
 } from './mappers';
 import {
+  equipmentDetailPath,
+  equipmentKeys,
   groupDetailPath,
   groupKeys,
   isTruncated,
+  useEquipmentDetail,
   useEquipmentList,
   useGroupDetail,
   useGroupList,
   useGroupOptions,
   useLookupOptions,
 } from './queries';
-import type { EquipmentFilters, EquipmentGroup, GroupFilters, GroupFormValues } from './types';
+import type {
+  CarriedEquipmentValues,
+  Equipment,
+  EquipmentFilters,
+  EquipmentFormValues,
+  EquipmentGroup,
+  GroupFilters,
+  GroupFormValues,
+} from './types';
 
 const t = messages.equipmentMaster;
 
@@ -312,10 +332,86 @@ export const EquipmentMasterScreen = () => {
     write.reset();
   };
 
+  /** 설비 창이 무엇을 다루는지. 닫혀 있으면 `null`. */
+  const [equipmentDialog, setEquipmentDialog] = useState<{
+    mode: 'create' | 'edit';
+    equipmentId: number | null;
+  } | null>(null);
+
+  /*
+   * 창을 열 때만 상세를 조회한다. 목록 응답에는 잠금 토큰도 코드 편집 가부도 계층도 없다 —
+   * 창의 초기값은 목록 행에서 오고 이 조회가 나머지 셋을 확보한다.
+   */
+  const equipmentDetail = useEquipmentDetail(equipmentDialog?.equipmentId ?? null);
+
+  const [equipmentValues, setEquipmentValues] = useState<EquipmentFormValues>(() =>
+    emptyEquipmentFormValues(''),
+  );
+  /** 이 화면이 소유하지 않는 값. 보이지 않되 그대로 되돌려 보낸다(공유계약 B-13). */
+  const [carried, setCarried] = useState<CarriedEquipmentValues>(emptyCarriedValues);
+  const [equipmentFieldErrors, setEquipmentFieldErrors] = useState<Record<string, string>>({});
+
+  /**
+   * 설비의 소속 그룹 선택지. **순환 제외를 걸지 않는다** — 설비는 그룹의 상위가 될 수 없어
+   * 순환이 생길 수 없다. 「소속 없음」을 첫 줄에 두는 이유는 소속이 비는 것이 정상 상태라서다.
+   */
+  const equipmentGroupOptions: CodeOption[] = useMemo(
+    () => [
+      { value: '', label: t.equipmentForm.groupNone },
+      ...ensureOption(
+        groupOptions.groups.map((group) => ({
+          value: String(group.equipmentGroupId),
+          label: parentOptionLabel(group),
+        })),
+        equipmentValues.productionLineId,
+      ),
+    ],
+    [groupOptions.groups, equipmentValues.productionLineId],
+  );
+
+  const equipmentWrite = useMasterWrite<EquipmentFormValues, Equipment>({
+    request: (values, headers) =>
+      equipmentDialog?.mode === 'create'
+        ? client.POST('/mdm/equipments', {
+            params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+            body: toEquipmentCreate(values, carried, detail.data?.equipmentGroup.plantId ?? 0),
+          })
+        : client.PUT('/mdm/equipments/{equipmentId}', {
+            params: {
+              path: { equipmentId: equipmentDialog?.equipmentId ?? 0 },
+              header: {
+                'Idempotency-Key': headers['Idempotency-Key'],
+                'If-Match': headers['If-Match'] ?? '',
+              },
+            },
+            body: toEquipmentUpdate(
+              values,
+              carried,
+              equipmentDetail.data?.editability.codeEditable ?? true,
+            ),
+          }),
+    etagPath:
+      equipmentDialog?.mode === 'edit' && equipmentDialog.equipmentId !== null
+        ? equipmentDetailPath(equipmentDialog.equipmentId)
+        : null,
+    invalidateKeys: [equipmentKeys.all],
+    knownFields: EQUIPMENT_FORM_FIELDS,
+    onSuccess: () => {
+      setEquipmentDialog(null);
+      setEquipmentFieldErrors({});
+      toast.show({
+        variant: 'success',
+        description:
+          equipmentDialog?.mode === 'create' ? messages.common.created : messages.common.saved,
+      });
+    },
+  });
+
   /** 편집 중이던 것을 통째로 거둔다 — 인라인 오류와 저장 실패 배너. */
   const resetEditing = () => {
     resetIfIdle(groupWrite);
     resetIfIdle(deactivateWrite);
+    resetIfIdle(equipmentWrite);
     setLocalFieldErrors({});
   };
 
@@ -401,6 +497,48 @@ export const EquipmentMasterScreen = () => {
       plant: next.plantId === '' ? null : next.plantId,
       inactive: next.includeInactive ? '1' : null,
     });
+  };
+
+  /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
+  const changeEquipmentValues = (patch: Partial<EquipmentFormValues>) => {
+    setEquipmentValues((prev) => ({ ...prev, ...patch }));
+
+    for (const field of Object.keys(patch)) {
+      equipmentWrite.clearFieldError(field);
+      setEquipmentFieldErrors((prev) => {
+        if (!(field in prev)) return prev;
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const openEquipmentCreate = () => {
+    resetIfIdle(equipmentWrite);
+    setEquipmentFieldErrors({});
+    setEquipmentValues(emptyEquipmentFormValues(String(selectedGroupId ?? '')));
+    setCarried(emptyCarriedValues());
+    setEquipmentDialog({ mode: 'create', equipmentId: null });
+  };
+
+  /** 창의 초기값은 목록 행에서 온다 — 상세는 잠금 토큰·코드 가부·계층을 확보하러 간다. */
+  const openEquipmentEdit = (equipment: Equipment) => {
+    resetIfIdle(equipmentWrite);
+    setEquipmentFieldErrors({});
+    setEquipmentValues(equipmentToFormValues(equipment));
+    setCarried(carriedFrom(equipment));
+    setEquipmentDialog({ mode: 'edit', equipmentId: equipment.equipmentId });
+  };
+
+  const handleSaveEquipment = () => {
+    const errors = validateEquipment(equipmentValues);
+    setEquipmentFieldErrors(errors);
+
+    // 화면에서 잡히는 오류는 서버로 보내지 않는다.
+    if (Object.keys(errors).length > 0) return;
+
+    equipmentWrite.write(equipmentValues);
   };
 
   const handleApplyEquipmentFilters = (next: EquipmentFilters) => {
@@ -551,6 +689,8 @@ export const EquipmentMasterScreen = () => {
                     isLoading={equipmentList.isPending}
                     appliedFilters={equipmentFilters}
                     onApplyFilters={handleApplyEquipmentFilters}
+                    onAdd={openEquipmentCreate}
+                    onEdit={openEquipmentEdit}
                     loadError={
                       equipmentList.isError ? (
                         <LoadErrorBanner
@@ -621,6 +761,58 @@ export const EquipmentMasterScreen = () => {
 
       {pendingParams !== null && (
         <DiscardConfirmDialog onConfirm={handleDiscard} onClose={() => setPendingParams(null)} />
+      )}
+
+      {equipmentDialog !== null && (
+        <EquipmentFormDialog
+          mode={equipmentDialog.mode}
+          values={equipmentValues}
+          onChange={changeEquipmentValues}
+          // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
+          fieldErrors={{ ...equipmentWrite.fieldErrors, ...equipmentFieldErrors }}
+          banner={
+            <>
+              {/* 상세를 받지 못했다는 사실을 감추지 않는다 — 잠금 토큰도 코드 가부도 없는 상태다. */}
+              {equipmentDetail.isError && (
+                <LoadErrorBanner
+                  error={toApiError(equipmentDetail.error)}
+                  onRetry={() => void equipmentDetail.refetch()}
+                />
+              )}
+              <SaveErrorBanner error={equipmentWrite.error} />
+            </>
+          }
+          /*
+           * ⭐ **모르면 잠근다.** 상세가 아직 오지 않았거나 오지 못했으면 코드 편집 가부를
+           * 알 수 없다 — 열어 두면 사용자가 고친 값이 저장 시점에야 거부되고, 그 사유를
+           * 화면이 말할 수 없다. 등록에는 참조가 있을 수 없어 언제나 열려 있다.
+           */
+          codeLockReason={
+            equipmentDialog.mode === 'create'
+              ? null
+              : equipmentDetail.data === undefined
+                ? t.actionReasons.codeLockUnknown
+                : codeLockMessage(equipmentDetail.data.editability)
+          }
+          groupOptions={equipmentGroupOptions}
+          processOptions={[
+            { value: '', label: t.equipmentForm.processNone },
+            ...selectableOptions(lookups.entries.processes, equipmentValues.processId),
+          ]}
+          /*
+           * 계층은 상세 응답이 준다. **등록 중에 비는 것은 방어가 아니라 사실이다** —
+           * 아직 없는 설비에는 상세를 조회할 대상이 없어 그 조회가 꺼져 있다.
+           * 여기서 `mode` 를 한 번 더 보면 두 자리가 같은 것을 지키게 되고, 한쪽을 지워도
+           * 아무 감지기가 울지 않는다.
+           */
+          hierarchy={equipmentDetail.data?.hierarchy ?? null}
+          statusCode={equipmentDetail.data?.equipment.statusCode ?? null}
+          lastCalibrationDate={equipmentDetail.data?.equipment.lastCalibrationDate ?? null}
+          calibrationDueDate={equipmentDetail.data?.equipment.calibrationDueDate ?? null}
+          isSaving={equipmentWrite.isSaving}
+          onClose={() => setEquipmentDialog(null)}
+          onSave={handleSaveEquipment}
+        />
       )}
 
       {isDeactivateOpen && detail.data !== undefined && (

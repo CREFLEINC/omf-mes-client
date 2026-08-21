@@ -36,6 +36,33 @@ export interface EquipmentFilters {
   includeInactive: boolean;
 }
 
+/**
+ * 설비 폼의 값.
+ *
+ * ⛔ **검교정 주기·정밀도 두 쌍은 여기 없다.** 계약이 그것들의 근거를 계측기 마스터(W-05-11)로
+ * 적었고 화면 상세 스펙 §4-B 의 필드 목록에도 없다 — 이 화면은 **보이지 않되 상세에서 받은
+ * 값을 그대로 되돌려 보낸다**(PUT 이 전체 교체라 빼면 지워진다). 그 원본은 `carried` 가 든다.
+ */
+export interface EquipmentFormValues {
+  equipmentCode: string;
+  equipmentName: string;
+  equipmentTypeCode: string;
+  productionLineId: string;
+  processId: string;
+  calibrationRequired: boolean;
+}
+
+/**
+ * 이 화면이 소유하지 않는 값. **보이지 않되 그대로 되돌려 보낸다** — 빼면 지워진다.
+ * 정하는 쪽은 계측기 마스터이고 이 화면은 반영만 한다(공유계약 B-13).
+ */
+export interface CarriedEquipmentValues {
+  calibrationCycleTypeCode: string | null;
+  calibrationCycleInterval: number | null;
+  precisionValue: number | null;
+  precisionUomId: number | null;
+}
+
 export interface GroupFilters {
   q: string;
   plantId: string;
@@ -54,4 +81,5 @@ export interface LookupEntry {
 
 export interface LookupEntries {
   plants: LookupEntry[];
+  processes: LookupEntry[];
 }

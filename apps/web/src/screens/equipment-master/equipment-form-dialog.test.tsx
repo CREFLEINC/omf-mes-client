@@ -1,0 +1,158 @@
+import { ToastProvider } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+
+import { PENDING_CODE_VALUE } from './code-options';
+import { EquipmentFormDialog, type EquipmentFormDialogProps } from './equipment-form-dialog';
+import type { EquipmentHierarchy } from './hierarchy-text';
+import type { EquipmentFormValues } from './types';
+
+const t = messages.equipmentMaster;
+
+const values: EquipmentFormValues = {
+  equipmentCode: 'EQ-01',
+  equipmentName: '프레스 1호기',
+  equipmentTypeCode: PENDING_CODE_VALUE,
+  productionLineId: '101',
+  processId: '',
+  calibrationRequired: false,
+};
+
+const hierarchy: EquipmentHierarchy = {
+  plantName: '제1공장',
+  groupNames: ['프레스라인 A'],
+  equipmentName: '프레스 1호기',
+  groupAssigned: true,
+};
+
+const renderDialog = (overrides: Partial<EquipmentFormDialogProps> = {}) => {
+  const onChange = vi.fn();
+  const onClose = vi.fn();
+  const onSave = vi.fn();
+
+  render(
+    <ToastProvider>
+      <EquipmentFormDialog
+        mode="edit"
+        values={values}
+        onChange={onChange}
+        fieldErrors={{}}
+        banner={null}
+        codeLockReason={null}
+        groupOptions={[{ value: '101', label: 'GRP-A · 프레스 구역' }]}
+        processOptions={[{ value: '', label: t.equipmentForm.processNone }]}
+        hierarchy={hierarchy}
+        statusCode="ACTIVE"
+        lastCalibrationDate={null}
+        calibrationDueDate={null}
+        isSaving={false}
+        onClose={onClose}
+        onSave={onSave}
+        {...overrides}
+      />
+    </ToastProvider>,
+  );
+
+  return { onChange, onClose, onSave };
+};
+
+describe('EquipmentFormDialog', () => {
+  it('필수 칸에 필수 표시를 붙인다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('textbox', { name: /설비코드/ })).toHaveAttribute('aria-required');
+    expect(screen.getByRole('textbox', { name: /설비명/ })).toHaveAttribute('aria-required');
+    expect(screen.getByRole('combobox', { name: t.fields.equipmentType })).toHaveAttribute(
+      'aria-required',
+    );
+  });
+
+  /* 소속 그룹·공정이 비는 것은 정상 상태다 — 없는 제약을 말하면 안 된다. */
+  it('소속 그룹과 소속 공정은 필수가 아니다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('combobox', { name: t.fields.parentGroup })).not.toHaveAttribute(
+      'aria-required',
+    );
+    expect(screen.getByRole('combobox', { name: t.fields.process })).not.toHaveAttribute(
+      'aria-required',
+    );
+  });
+
+  /*
+   * ⭐ 스크림 클릭으로 닫히지 않게 한다. 확인 창과 이유가 다르다 — 저쪽은 되돌릴 수 없는
+   * 조작을 지키고 이쪽은 사용자가 친 값을 지킨다.
+   */
+  it('스크림을 눌러도 닫히지 않는다', () => {
+    const { onClose } = renderDialog();
+
+    fireEvent.click(screen.getByRole('dialog'));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('취소는 닫기를 부르고 저장을 부르지 않는다', async () => {
+    const user = userEvent.setup();
+    const { onClose, onSave } = renderDialog();
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  /* 전송 중에 다시 누르면 같은 쓰기가 두 번 나가고, 닫으면 결과를 받을 자리가 사라진다. */
+  it('전송 중에는 두 버튼을 모두 누를 수 없다', () => {
+    renderDialog({ isSaving: true });
+
+    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.cancel })).toBeDisabled();
+  });
+
+  it('계층 텍스트를 한 줄로 그린다', () => {
+    renderDialog();
+
+    expect(screen.getByText('제1공장 > 프레스라인 A > 프레스 1호기')).toBeInTheDocument();
+  });
+
+  it('소속 그룹이 없으면 그 사실을 밝힌다', () => {
+    renderDialog({
+      hierarchy: { ...hierarchy, groupNames: [], groupAssigned: false },
+    });
+
+    expect(screen.getByText(t.values.noGroupAssigned)).toBeInTheDocument();
+  });
+
+  /* 등록 중에는 아직 위치가 없다 — 지어내지 않는다. */
+  it('계층이 없으면 그 자리를 아예 그리지 않는다', () => {
+    renderDialog({ mode: 'create', hierarchy: null });
+
+    expect(screen.queryByText(t.fields.hierarchy)).toBeNull();
+  });
+
+  /* 등록에는 아직 정해진 상태도 검교정 이력도 없다. */
+  it('등록 폼에는 읽기 전용 칸을 두지 않는다', () => {
+    renderDialog({ mode: 'create', hierarchy: null });
+
+    expect(screen.queryByText(t.fields.status)).toBeNull();
+    expect(screen.queryByText(t.fields.lastCalibrationDate)).toBeNull();
+  });
+
+  it('코드 잠금 사유가 있으면 코드 칸을 잠그고 그 사유를 보인다', () => {
+    renderDialog({ codeLockReason: '이미 3건에서 사용 중입니다.' });
+
+    expect(screen.getByRole('textbox', { name: /설비코드/ })).toBeDisabled();
+    expect(screen.getByText('이미 3건에서 사용 중입니다.')).toBeInTheDocument();
+  });
+
+  it('입력을 고치면 그 칸만 담아 알린다', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderDialog();
+
+    await user.type(screen.getByRole('textbox', { name: /설비명/ }), '!');
+
+    expect(onChange).toHaveBeenCalledWith({ equipmentName: '프레스 1호기!' });
+  });
+});

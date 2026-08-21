@@ -9,6 +9,7 @@ type PageMeta = components['schemas']['PageMeta'];
 type EquipmentGroup = components['schemas']['EquipmentGroup'];
 type EquipmentGroupDetailResponse = components['schemas']['EquipmentGroupDetailResponse'];
 type Equipment = components['schemas']['Equipment'];
+type EquipmentDetailResponse = components['schemas']['EquipmentDetailResponse'];
 
 export interface GroupListResponse {
   items: EquipmentGroup[];
@@ -155,6 +156,35 @@ export const equipmentKeys = {
   all: ['equipments'] as const,
   list: (equipmentGroupId: number, filters: EquipmentFilters) =>
     ['equipments', 'list', equipmentGroupId, filters] as const,
+  detail: (equipmentId: number) => ['equipments', 'detail', equipmentId] as const,
+};
+
+/** ETag가 보관된 경로. 설비 쓰기의 If-Match는 언제나 이 경로에서 꺼낸다. */
+export const equipmentDetailPath = (equipmentId: number): string =>
+  `/mdm/equipments/${String(equipmentId)}`;
+
+/**
+ * 설비 상세. **잠금 토큰·코드 편집 가부·계층 텍스트가 이 응답으로 온다** —
+ * 목록 행만으로는 저장을 시작할 수도, 위치를 그릴 수도 없다.
+ */
+export const useEquipmentDetail = (
+  equipmentId: number | null,
+): UseQueryResult<EquipmentDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: equipmentKeys.detail(equipmentId ?? 0),
+    enabled: equipmentId !== null,
+    queryFn: () => {
+      if (equipmentId === null) {
+        throw new Error('설비를 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/equipments/{equipmentId}', { params: { path: { equipmentId } } }),
+      );
+    },
+  });
 };
 
 /**
@@ -216,7 +246,7 @@ export interface LookupResult {
 const EMPTY_ENTRIES: LookupEntry[] = [];
 
 /**
- * 선택 목록. includeInactive=true로 한 번 받아 두고 화면이 표시 규칙을 정한다 —
+ * 선택 목록 둘. includeInactive=true로 한 번 받아 두고 화면이 표시 규칙을 정한다 —
  * 기본 조회는 사용 중인 것만 내려주므로, 미사용 값을 참조하는 그룹을 열면 선택칸이 비어 보인다.
  *
  * ⚠ **좁혀 받지 않는다.** 조회를 좁히면 좁힘 밖의 정상 자료가 이름 풀이에서 「알 수 없음」이 된다
@@ -224,6 +254,14 @@ const EMPTY_ENTRIES: LookupEntry[] = [];
  */
 export const useLookupOptions = (): LookupResult => {
   const { client } = useApiClient();
+
+  const processes = useQuery({
+    queryKey: lookupKeys.list('processes'),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/processes', { params: { query: { includeInactive: true } } }),
+      ),
+  });
 
   const plants = useQuery({
     queryKey: lookupKeys.list('plants'),
@@ -239,9 +277,15 @@ export const useLookupOptions = (): LookupResult => {
           label: item.plantName,
           isActive: item.isActive,
         })) ?? EMPTY_ENTRIES,
+      processes:
+        processes.data?.items.map((item) => ({
+          value: String(item.processId),
+          label: item.processName,
+          isActive: item.isActive,
+        })) ?? EMPTY_ENTRIES,
     },
-    truncated: isListTruncated(plants.data),
-    isError: plants.isError,
-    isLoading: plants.isPending,
+    truncated: isListTruncated(plants.data) || isListTruncated(processes.data),
+    isError: plants.isError || processes.isError,
+    isLoading: plants.isPending || processes.isPending,
   };
 };

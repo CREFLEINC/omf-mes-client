@@ -12,6 +12,8 @@ const t = messages.equipmentMaster;
 
 const renderPane = (overrides: Partial<Parameters<typeof EquipmentListPane>[0]> = {}) => {
   const onApplyFilters = vi.fn();
+  const onAdd = vi.fn();
+  const onEdit = vi.fn();
 
   render(
     <EquipmentListPane
@@ -19,12 +21,14 @@ const renderPane = (overrides: Partial<Parameters<typeof EquipmentListPane>[0]> 
       isLoading={false}
       appliedFilters={defaultEquipmentFilters}
       onApplyFilters={onApplyFilters}
+      onAdd={onAdd}
+      onEdit={onEdit}
       loadError={null}
       {...overrides}
     />,
   );
 
-  return { onApplyFilters };
+  return { onApplyFilters, onAdd, onEdit };
 };
 
 describe('EquipmentListPane', () => {
@@ -32,8 +36,28 @@ describe('EquipmentListPane', () => {
     renderPane();
 
     expect(screen.getByRole('table')).toBeInTheDocument();
-    expect(screen.getByText('EQ-01')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'EQ-01' })).toBeInTheDocument();
     expect(screen.getByText('EQ-02 설비')).toBeInTheDocument();
+  });
+
+  it('코드 셀을 누르면 그 설비로 onEdit을 부른다', async () => {
+    const user = userEvent.setup();
+    const { onEdit } = renderPane();
+
+    await user.click(screen.getByRole('button', { name: 'EQ-02' }));
+
+    expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ equipmentId: 2002 }));
+  });
+
+  it('빈 상태와 필터 바 양쪽에서 등록으로 갈 수 있다', async () => {
+    const user = userEvent.setup();
+    const { onAdd } = renderPane({ items: [] });
+
+    const buttons = screen.getAllByRole('button', { name: t.actions.addEquipment });
+    expect(buttons).toHaveLength(2);
+    await user.click(buttons[0] as HTMLElement);
+
+    expect(onAdd).toHaveBeenCalledTimes(1);
   });
 
   /*
