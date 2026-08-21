@@ -3,6 +3,7 @@ import type { components } from '@omf-mes/api-client';
 type LotQualityStatusResponse = components['schemas']['LotQualityStatus'];
 type LotStatusSummaryResponse = components['schemas']['LotStatusSummary'];
 type LotHoldResponse = components['schemas']['LotHold'];
+type LotHoldEventResponse = components['schemas']['LotHoldEvent'];
 
 export interface LotStatusRow {
   lotId: number;
@@ -101,4 +102,36 @@ export const toLotHoldView = (value: LotHoldResponse): LotHoldView => ({
   releasedAt: value.releasedAt ?? null,
   remarks: value.remarks ?? null,
   lotStatusCode: value.lotStatusCode ?? null,
+});
+
+export interface LotHoldEventView {
+  lotHoldId: number;
+  eventTypeCode: 'HELD' | 'RELEASED';
+  occurredAt: string;
+  lotId: number;
+  lotNo: string;
+  itemId: number | null;
+  actorId: number;
+  actorName: string | null;
+  reasonCode: string | null;
+  holdQty: number | null;
+  uomId: number | null;
+  releaseCondition: string | null;
+  targetLotStatusCode: string | null;
+}
+
+export const toLotHoldEventView = (value: LotHoldEventResponse): LotHoldEventView => ({
+  lotHoldId: value.lotHoldId,
+  eventTypeCode: value.eventTypeCode,
+  occurredAt: value.occurredAt,
+  lotId: value.lotId,
+  lotNo: value.lotNo,
+  itemId: value.itemId ?? null,
+  actorId: value.actorId,
+  actorName: value.actorName ?? null,
+  reasonCode: value.reasonCode ?? null,
+  holdQty: value.holdQty ?? null,
+  uomId: value.uomId ?? null,
+  releaseCondition: value.releaseCondition ?? null,
+  targetLotStatusCode: value.targetLotStatusCode ?? null,
 });
