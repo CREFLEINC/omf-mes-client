@@ -703,29 +703,31 @@ describe('Lot Status 화면 shell', () => {
   it('쪽 응답 중 기존 표·초점을 유지하고 서버 PageMeta로 로컬 쪽을 맞춘다', async () => {
     const urls: URL[] = [];
     const baseFetch = fetchFor('ready', [...detailRoutes(), ...holdRoutes()]);
+    const serverPage = () =>
+      jsonResponse({
+        items: [
+          {
+            lotHoldId: 704,
+            lotId: 401,
+            reasonCode: 'SAMPLE_SERVER_META',
+            statusCode: 'SAMPLE_OPEN',
+            heldAt: '2026-08-17T09:00:00+09:00',
+          },
+        ],
+        page: { page: 3, size: 20, total: 41 },
+      });
     let releasePageTwo: (() => void) | undefined;
     renderWithProviders(<LotStatusHistoryScreen />, {
       route: '/quality/lot-status?lot=401',
       fetch: async (request) => {
         const url = new URL(request.url);
         urls.push(url);
+        if (url.pathname === '/quality/lot-holds' && url.searchParams.get('page') === '3') {
+          return serverPage();
+        }
         if (url.pathname === '/quality/lot-holds' && url.searchParams.get('page') === '2') {
           return new Promise<Response>((resolve) => {
-            releasePageTwo = () =>
-              resolve(
-                jsonResponse({
-                  items: [
-                    {
-                      lotHoldId: 704,
-                      lotId: 401,
-                      reasonCode: 'SAMPLE_SERVER_META',
-                      statusCode: 'SAMPLE_OPEN',
-                      heldAt: '2026-08-17T09:00:00+09:00',
-                    },
-                  ],
-                  page: { page: 3, size: 20, total: 41 },
-                }),
-              );
+            releasePageTwo = () => resolve(serverPage());
           });
         }
         return baseFetch(request);
@@ -748,6 +750,8 @@ describe('Lot Status 화면 shell', () => {
     await waitFor(() =>
       expect(lastRequest(urls, '/quality/lot-holds')?.searchParams.get('page')).toBe('3'),
     );
+    expect(within(dialog).getByText('41–41 / 전체 41건')).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: '다음 쪽' })).toBeDisabled();
   });
 
   it('보류 문서 실패와 재시도를 LOT 상세와 독립 처리한다', async () => {
