@@ -19,6 +19,12 @@ export const equipmentMaster = {
     /** 상위 그룹 선택지에서 자기 자신과 하위를 뺀 이유. 고를 수 없는 값이 있다는 사실을 밝힌다. */
     parentExcludesSelfAndDescendants:
       '자기 자신과 하위 그룹은 상위로 고를 수 없습니다. 순환이 생깁니다.',
+    /**
+     * 사용 중지는 상세를 다시 불러오므로, 저장하지 않은 입력이 있으면 그것이 말없이 사라진다.
+     * 막지 않고 사유를 밝힌다 — 무엇이 막혔는지와 어떻게 풀 수 있는지를 함께 담는다.
+     */
+    deactivateNeedsCleanForm:
+      '사용 중지는 저장하지 않은 변경이 있으면 쓸 수 없습니다. 먼저 저장하거나 취소하세요.',
   },
   loading: {
     groups: '설비 그룹을 불러오는 중',
@@ -38,6 +44,22 @@ export const equipmentMaster = {
   },
   dialog: {
     discardTitle: '입력한 내용을 버릴까요?',
+  },
+  /**
+   * 사용 중지 확인. **무엇이 일어나는지 먼저 밝힌다.**
+   *
+   * ⚠ 계약에 다시 켜는 경로가 없다 — 이 화면에서 되돌릴 수 없다는 사실을 감추지 않는다.
+   */
+  deactivate: {
+    title: '사용 중지할까요?',
+    target: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
+    membersNone: '이 그룹에 소속된 설비가 없습니다.',
+    /** 소속 설비는 그대로 남는다 — 그룹이 목록에서 빠질 뿐이다. */
+    members: (count: number): string =>
+      `이 그룹에 설비 ${count}대가 소속돼 있습니다. 소속은 그대로 남고, 새로 고를 때만 이 그룹이 목록에서 빠집니다.`,
+    notReversibleHere:
+      '삭제하지 않습니다. 다만 이 화면에는 다시 켜는 수단이 없어, 되돌리려면 담당자에게 요청해야 합니다.',
+    confirm: '사용 중지',
   },
   form: {
     createTitle: '설비 그룹 등록',

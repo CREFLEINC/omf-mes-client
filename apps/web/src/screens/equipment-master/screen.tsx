@@ -16,6 +16,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { type CodeOption, ensureOption, selectableOptions } from './code-options';
+import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { GroupFormPane } from './group-form-pane';
 import { GroupListPane } from './group-list-pane';
@@ -257,6 +258,50 @@ export const EquipmentMasterScreen = () => {
     },
   });
 
+  const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
+
+  const deactivateWrite = useMasterWrite<void, EquipmentGroup>({
+    request: (_variables, headers) =>
+      client.POST('/mdm/equipment-groups/{equipmentGroupId}:deactivate', {
+        params: {
+          path: { equipmentGroupId: selectedGroupId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    /* 잠금 토큰은 상세 경로에 보관돼 있다. 요청 경로(`...:deactivate`)로 꺼내면 언제나 비어 있다. */
+    etagPath: selectedGroupId === null ? null : groupDetailPath(selectedGroupId),
+    invalidateKeys: [groupKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: () => {
+      setIsDeactivateOpen(false);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /**
+   * **끝난 쓰기만 거둔다.** 나가는 중인 요청을 `reset()` 으로 끊으면 그 요청의 되먹임
+   * (성공 뒤 주소 이동·기준값 갱신, 실패 뒤 오류 표시)이 통째로 사라져, 화면은 아무 일도
+   * 없었다고 믿고 서버는 이미 처리한 상태가 된다.
+   *
+   * ⛔ **`reset()` 을 부르는 모든 자리가 이 함수를 지난다**(client#96).
+   */
+  const resetIfIdle = (write: { isSaving: boolean; reset: () => void }): void => {
+    if (write.isSaving) return;
+
+    write.reset();
+  };
+
+  /** 편집 중이던 것을 통째로 거둔다 — 인라인 오류와 저장 실패 배너. */
+  const resetEditing = () => {
+    resetIfIdle(groupWrite);
+    resetIfIdle(deactivateWrite);
+    setLocalFieldErrors({});
+  };
+
   /** 값을 고치는 중에 옛 오류가 남아 있으면 무엇을 고쳐야 하는지 알 수 없다. */
   const changeFormValues = (patch: Partial<GroupFormValues>) => {
     setFormState((prev) =>
@@ -292,8 +337,7 @@ export const EquipmentMasterScreen = () => {
    * 최신 값을 받아 다시 입력하는 수밖에 없고, 입력한 내용은 사라진다.
    */
   const handleReloadDetail = () => {
-    groupWrite.reset();
-    setLocalFieldErrors({});
+    resetEditing();
     setFormState(null);
     void detail.refetch();
   };
@@ -314,8 +358,7 @@ export const EquipmentMasterScreen = () => {
       return;
     }
 
-    groupWrite.reset();
-    setLocalFieldErrors({});
+    resetEditing();
     updateParams(patch);
   };
 
@@ -325,8 +368,7 @@ export const EquipmentMasterScreen = () => {
 
     const patch = pendingParams;
     setPendingParams(null);
-    groupWrite.reset();
-    setLocalFieldErrors({});
+    resetEditing();
     updateParams(patch);
   };
 
@@ -403,9 +445,12 @@ export const EquipmentMasterScreen = () => {
       isSaving={groupWrite.isSaving}
       onSave={handleSaveGroup}
       onCancel={() => {
-        setLocalFieldErrors({});
-        groupWrite.reset();
+        resetEditing();
         setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+      }}
+      onDeactivate={() => {
+        resetIfIdle(deactivateWrite);
+        setIsDeactivateOpen(true);
       }}
     />
   );
@@ -504,6 +549,18 @@ export const EquipmentMasterScreen = () => {
 
       {pendingParams !== null && (
         <DiscardConfirmDialog onConfirm={handleDiscard} onClose={() => setPendingParams(null)} />
+      )}
+
+      {isDeactivateOpen && detail.data !== undefined && (
+        <DeactivateConfirmDialog
+          targetLabel={`${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`}
+          memberEquipmentCount={detail.data.memberEquipmentCount}
+          isSaving={deactivateWrite.isSaving}
+          /* 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다. */
+          banner={<SaveErrorBanner error={deactivateWrite.error} onReload={handleReloadDetail} />}
+          onClose={() => setIsDeactivateOpen(false)}
+          onConfirm={() => deactivateWrite.write(undefined)}
+        />
       )}
     </>
   );

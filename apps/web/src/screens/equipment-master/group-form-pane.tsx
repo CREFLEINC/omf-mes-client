@@ -25,6 +25,7 @@ export interface GroupFormPaneProps {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  onDeactivate: () => void;
 }
 
 const t = messages.equipmentMaster;
@@ -43,8 +44,10 @@ export const GroupFormPane = ({
   isSaving,
   onSave,
   onCancel,
+  onDeactivate,
 }: GroupFormPaneProps) => {
   const activeLabelId = useId();
+  const deactivateNoteId = useId();
 
   return (
     <section aria-label={mode === 'create' ? t.form.createTitle : t.form.editTitle}>
@@ -109,6 +112,30 @@ export const GroupFormPane = ({
             {t.fields.isActive}
           </span>
           <p aria-labelledby={activeLabelId}>{isActive ? t.values.active : t.values.inactive}</p>
+          {/* 아직 등록되지 않은 그룹에는 사용 중지할 대상이 없다. 이미 중지된 것도 마찬가지다. */}
+          {mode === 'edit' && isActive && (
+            <div className="field-cell">
+              {/*
+               * ⚠ **저장하지 않은 입력이 있으면 잠근다.** 사용 중지는 상세를 다시 불러오므로
+               * 그때 폼이 새로 세워지고, 사용자가 친 값이 말없이 사라진다.
+               * 감추지 않고 사유를 함께 낸다 — 비활성 컨트롤은 포커스를 받지 못하므로
+               * 사유는 보이는 글자로 두고 `aria-describedby` 로 잇는다.
+               */}
+              <Button
+                variant="outlined"
+                disabled={isDirty}
+                aria-describedby={isDirty ? deactivateNoteId : undefined}
+                onClick={onDeactivate}
+              >
+                {messages.common.deactivate}
+              </Button>
+              {isDirty && (
+                <span id={deactivateNoteId} className="field-note">
+                  {t.actionReasons.deactivateNeedsCleanForm}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

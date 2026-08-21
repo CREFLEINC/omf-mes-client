@@ -34,6 +34,7 @@ interface RenderOptions {
   respondPlants?: () => Response;
   respondDetail?: (request: Request) => Response;
   respondWrite?: (request: Request) => Response;
+  respondDeactivate?: (request: Request) => Response;
 }
 
 /** 요청이 실제로 무엇을 실어 갔는지 본다 — 주소가 조건을 몰았음을 그것으로 증명한다. */
@@ -42,11 +43,16 @@ const renderScreen = (options: RenderOptions = {}) => {
   /** 쓰기 요청 원본 — 본문과 헤더를 그대로 본다 */
   const writes: Request[] = [];
 
+  /* 사용 중지가 나간 뒤의 재조회는 «바뀐» 상태를 돌려줘야 한다 — 늘 같은 것을 주면 갱신 경로가 헛통과한다. */
+  let deactivated = false;
+
   const defaultDetail = (request: Request): Response => {
     const found = groupById(idOf(request));
-    return found === undefined
-      ? jsonResponse({ message: '없는 그룹' }, { status: 404 })
-      : jsonResponse(groupDetail(found), { headers: { ETag: '7' } });
+    if (found === undefined) return jsonResponse({ message: '없는 그룹' }, { status: 404 });
+
+    return jsonResponse(groupDetail(deactivated ? { ...found, isActive: false } : found), {
+      headers: { ETag: '7' },
+    });
   };
 
   const defaultWrite = (request: Request): Response =>
@@ -78,6 +84,18 @@ const renderScreen = (options: RenderOptions = {}) => {
         respond: (request) => {
           writes.push(request.clone());
           return (options.respondWrite ?? defaultWrite)(request);
+        },
+      },
+      {
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname.endsWith(':deactivate'),
+        respond: (request) => {
+          writes.push(request.clone());
+          deactivated = true;
+          return (
+            options.respondDeactivate ??
+            (() => jsonResponse(makeGroup(101, 'GRP-A', { isActive: false })))
+          )(request);
         },
       },
       {
@@ -771,5 +789,322 @@ describe('EquipmentMasterScreen — 상위 그룹 선택지와 순환', () => {
       await form().findByText(messages.equipmentMaster.validation.parentCycle),
     ).toBeInTheDocument();
     expect(writes).toHaveLength(0);
+  });
+});
+
+describe('EquipmentMasterScreen — 그룹 사용 중지', () => {
+  const deactivateT = messages.equipmentMaster.deactivate;
+
+  it('사용 중지를 누르면 대상과 소속 설비 건수를 함께 보이고 먼저 확인한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondDetail: (request) => {
+        const found = groupById(idOf(request)) as EquipmentGroup;
+        return jsonResponse(groupDetail(found, { memberEquipmentCount: 12 }), {
+          headers: { ETag: '7' },
+        });
+      },
+    });
+
+    await openGroup(user);
+    await user.click(form().getByRole('button', { name: messages.common.deactivate }));
+
+    const dialog = within(await screen.findByRole('dialog', { name: deactivateT.title }));
+    expect(dialog.getByText(deactivateT.target('GRP-A · GRP-A 그룹'))).toBeInTheDocument();
+    // 건수를 화면이 세지 않는다 — 상세 응답이 내려 준 값을 그대로 보인다.
+    expect(dialog.getByText(deactivateT.members(12))).toBeInTheDocument();
+  });
+
+  it('확인하면 사용 중지 경로로 나가고 상세의 잠금 토큰을 함께 싣는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    await openGroup(user);
+    await user.click(form().getByRole('button', { name: messages.common.deactivate }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deactivateT.title })).getByRole('button', {
+        name: deactivateT.confirm,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    const request = writes[0] as Request;
+    expect(request.method).toBe('POST');
+    expect(new URL(request.url).pathname).toBe('/mdm/equipment-groups/101:deactivate');
+    // 잠금 토큰은 상세 경로에 보관돼 있다 — 요청 경로로 꺼내면 언제나 비어 있다.
+    expect(request.headers.get('If-Match')).toBe('7');
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  it('성공하면 확인 창이 닫힌다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openGroup(user);
+    await user.click(form().getByRole('button', { name: messages.common.deactivate }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deactivateT.title })).getByRole('button', {
+        name: deactivateT.confirm,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: deactivateT.title })).toBeNull();
+    });
+  });
+
+  /*
+   * 업무 규칙 위반(참조 존재·상태 잠김)은 400 이다 — 409 가 아니다.
+   * 창을 닫아 버리면 사용자는 왜 막혔는지 보지 못한 채 같은 일을 되풀이한다.
+   */
+  it('업무 규칙에 막히면 창을 닫지 않고 창 안에 이유를 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondDeactivate: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'HAS_REFERENCE',
+                message: '소속 설비가 있어 중지할 수 없습니다',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+    });
+
+    await openGroup(user);
+    await user.click(form().getByRole('button', { name: messages.common.deactivate }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deactivateT.title })).getByRole('button', {
+        name: deactivateT.confirm,
+      }),
+    );
+
+    const dialog = within(await screen.findByRole('dialog', { name: deactivateT.title }));
+    expect(await dialog.findByText('소속 설비가 있어 중지할 수 없습니다')).toBeInTheDocument();
+  });
+
+  /*
+   * 창을 다시 열었을 때 지난 회차의 실패가 남아 있으면, 사용자는 방금 누른 것이 또 막힌 줄 안다.
+   * ⚠ 다만 **나가는 중인 요청은 거두지 않는다**(`resetIfIdle`) — 끊으면 그 요청의 되먹임이 사라진다.
+   */
+  it('창을 닫았다 다시 열면 지난 회차의 실패 표시가 남지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondDeactivate: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'HAS_REFERENCE',
+                message: '소속 설비가 있어 중지할 수 없습니다',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+    });
+
+    await openGroup(user);
+    await user.click(form().getByRole('button', { name: messages.common.deactivate }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deactivateT.title })).getByRole('button', {
+        name: deactivateT.confirm,
+      }),
+    );
+    await screen.findByText('소속 설비가 있어 중지할 수 없습니다');
+
+    await user.click(
+      within(screen.getByRole('dialog', { name: deactivateT.title })).getByRole('button', {
+        name: messages.common.cancel,
+      }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: deactivateT.title })).toBeNull();
+    });
+
+    await user.click(form().getByRole('button', { name: messages.common.deactivate }));
+
+    const reopened = within(await screen.findByRole('dialog', { name: deactivateT.title }));
+    expect(reopened.queryByText('소속 설비가 있어 중지할 수 없습니다')).toBeNull();
+  });
+
+  /*
+   * ⭐ **이 창에는 대응하는 입력칸이 없다.** 서버가 필드에 붙여 보낸 오류를 인라인으로 돌리면
+   * 그것을 낼 자리가 없어 **어디에도 보이지 않는 오류**가 된다 — 전부 배너로 올려야 한다.
+   */
+  it('서버가 칸에 붙여 보낸 오류도 창 안 배너에 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondDeactivate: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'groupCode',
+                code: 'HAS_REFERENCE',
+                message: '참조가 있어 중지할 수 없습니다',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+    });
+
+    await openGroup(user);
+    await user.click(form().getByRole('button', { name: messages.common.deactivate }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deactivateT.title })).getByRole('button', {
+        name: deactivateT.confirm,
+      }),
+    );
+
+    const dialog = within(await screen.findByRole('dialog', { name: deactivateT.title }));
+    expect(await dialog.findByText('참조가 있어 중지할 수 없습니다')).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **사용 중지는 상세를 다시 불러온다.** 그때 폼이 새로 세워지므로, 저장하지 않은 입력이
+   * 있으면 그것이 말없이 사라진다. 막지 않고 사유를 밝힌다 — 사용자가 무엇을 먼저 해야
+   * 하는지(저장 또는 취소) 알아야 한다.
+   */
+  it('저장하지 않은 변경이 있으면 사용 중지를 누를 수 없고 사유가 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const nameInput = await openGroup(user);
+    await user.clear(nameInput);
+    await user.type(nameInput, '고친 이름');
+
+    expect(form().getByRole('button', { name: messages.common.deactivate })).toBeDisabled();
+    expect(form().getByText(t.actionReasons.deactivateNeedsCleanForm)).toBeInTheDocument();
+  });
+
+  it('취소로 되돌리면 사용 중지가 다시 열린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const nameInput = await openGroup(user);
+    await user.clear(nameInput);
+    await user.type(nameInput, '고친 이름');
+    await user.click(form().getByRole('button', { name: messages.common.cancel }));
+
+    expect(form().getByRole('button', { name: messages.common.deactivate })).toBeEnabled();
+    expect(form().queryByText(t.actionReasons.deactivateNeedsCleanForm)).toBeNull();
+  });
+
+  /*
+   * 사용 중지 뒤의 재조회는 «바뀐» 상태를 돌려준다. 같은 것을 돌려주는 스텁으로 재면
+   * 「갱신됐다」를 재는 감지기가 부분 견줌으로 헛통과한다.
+   */
+  it('사용 중지가 끝나면 다시 조회해 미사용으로 바뀐 것을 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openGroup(user);
+    await user.click(form().getByRole('button', { name: messages.common.deactivate }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deactivateT.title })).getByRole('button', {
+        name: deactivateT.confirm,
+      }),
+    );
+
+    await waitFor(
+      () => {
+        expect(form().getByText(t.values.inactive)).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
+    expect(form().queryByRole('button', { name: messages.common.deactivate })).toBeNull();
+  });
+
+  /* 이미 중지된 것을 다시 중지할 수는 없다 — 누를 것이 없는 컨트롤을 두지 않는다. */
+  it('이미 중지된 그룹에는 사용 중지 버튼을 두지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondDetail: (request) => {
+        const found = groupById(idOf(request)) as EquipmentGroup;
+        return jsonResponse(groupDetail({ ...found, isActive: false }), {
+          headers: { ETag: '7' },
+        });
+      },
+    });
+
+    await openGroup(user);
+
+    expect(form().queryByRole('button', { name: messages.common.deactivate })).toBeNull();
+    expect(form().getByText(t.values.inactive)).toBeInTheDocument();
+  });
+});
+
+describe('EquipmentMasterScreen — 나가는 중인 쓰기', () => {
+  /**
+   * ⭐ **끝난 쓰기만 거둔다**(`resetIfIdle` · client#96).
+   *
+   * 저장이 나가는 중에 다른 그룹으로 옮겨 가면 편집 상태를 거두는데, 그때 나가는 중인 요청까지
+   * 함께 끊으면 **그 요청의 되먹임이 사라진다** — 화면은 아무 일도 없었다고 믿고 서버는 이미
+   * 처리한 상태가 된다. 여기서는 저장을 붙잡아 둔 채 옮겨 간 뒤 응답을 풀어, 성공 알림이
+   * 그대로 도착하는지 본다.
+   */
+  it('저장이 나가는 중에 옮겨 가도 그 저장의 결과가 사라지지 않는다', async () => {
+    const user = userEvent.setup();
+
+    /* 저장을 붙잡아 둘 손잡이. 초기값을 두어 「비어 있을 수 있는 값」이 되지 않게 한다. */
+    let releaseWrite: () => void = () => undefined;
+    const writeHeld = new Promise<void>((resolve) => {
+      releaseWrite = () => {
+        resolve();
+      };
+    });
+
+    const fetchStub = async (request: Request): Promise<Response> => {
+      const url = new URL(request.url);
+
+      if (request.method === 'PUT' && url.pathname.startsWith('/mdm/equipment-groups/')) {
+        await writeHeld;
+        return jsonResponse(makeGroup(101, 'GRP-A'));
+      }
+      if (request.method === 'GET' && url.pathname === '/mdm/plants') {
+        return jsonResponse(plantsResponse());
+      }
+      if (request.method === 'GET' && url.pathname === '/mdm/equipment-groups') {
+        return jsonResponse(groupsResponse());
+      }
+      if (request.method === 'GET' && url.pathname.startsWith('/mdm/equipment-groups/')) {
+        const found = groupById(Number(url.pathname.split('/').at(-1)));
+        return found === undefined
+          ? jsonResponse({ message: '없는 그룹' }, { status: 404 })
+          : jsonResponse(groupDetail(found), { headers: { ETag: '7' } });
+      }
+
+      throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
+    };
+
+    renderWithProviders(<EquipmentMasterScreen />, { route: '/', fetch: fetchStub });
+
+    const nameInput = await openGroup(user);
+    await user.clear(nameInput);
+    await user.type(nameInput, '프레스 구역');
+    await user.click(form().getByRole('button', { name: messages.common.save }));
+
+    // 저장이 아직 나가는 중이다 — 이 상태에서 다른 그룹으로 옮겨 간다.
+    await waitFor(() => {
+      expect(form().getByRole('button', { name: messages.common.save })).toBeDisabled();
+    });
+    await user.click(screen.getByRole('button', { name: 'GRP-B' }));
+    await user.click(await screen.findByRole('button', { name: t.actions.discardChanges }));
+
+    releaseWrite();
+
+    // 되먹임이 끊기지 않았다면 성공 알림이 도착한다.
+    expect(await screen.findByText(messages.common.saved)).toBeInTheDocument();
   });
 });

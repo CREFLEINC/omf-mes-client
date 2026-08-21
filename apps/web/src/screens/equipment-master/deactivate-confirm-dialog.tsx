@@ -1,0 +1,75 @@
+import { Button, Dialog } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
+
+const t = messages.equipmentMaster.deactivate;
+
+export interface DeactivateConfirmDialogProps {
+  /** 무엇을 끄는지. **내부 번호가 아니라 사람이 읽는 이름이다.** */
+  targetLabel: string;
+  /** 이 그룹에 소속된 설비 대수. 상세 응답이 내려 주며 화면이 세지 않는다 */
+  memberEquipmentCount: number;
+  isSaving: boolean;
+  /** 저장 실패 배너 슬롯. 창을 닫지 않고 이유를 보여야 다시 시도할 수 있다. */
+  banner: ReactNode;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+/**
+ * 사용 중지 확인.
+ *
+ * ## 창의 경계
+ *
+ * - **나가는 길을 바닥 버튼 둘로 좁힌다** — 스크림뿐 아니라 **창 머리의 X 손잡이**도 막는다.
+ *   그 손잡이는 진행 상태를 받지 않아 전송 중에도 눌리며, 한쪽 문만 잠그면 잠근 적이 없는
+ *   것과 같다.
+ * - **Escape는 막지 못한다.** native `<dialog>`가 `cancel`을 내고 디자인 시스템이 그것을
+ *   닫기 요청으로 무조건 잇는다. 그래서 이 창의 규율은 「닫히지 않게」가 아니라
+ *   **「닫혀도 나가는 요청이 무너지지 않게」**이고, 그 몫은 창을 여닫는 쪽(`screen.tsx`의
+ *   `resetIfIdle`)에 있다.
+ * - **창 안에 선택칸을 두지 않는다** — 창 본문이 펼침 목록을 자르는 결함이 아직 있다.
+ *
+ * ## 무엇을 말하는가
+ *
+ * ⚠ **계약에 다시 켜는 경로가 없다**(`:activate` 없음 — 실측). 사용 중지가 삭제가 아니라는
+ * 사실과 함께, **이 화면에서 되돌릴 수 없다**는 사실도 밝힌다. 감추면 사용자가 가볍게 누른다.
+ *
+ * 소속 설비 건수는 **상세 응답이 내려 준다** — 화면이 따로 세면 화면마다 달라진다.
+ * 0대와 N대는 사용자가 할 판단이 다르므로 문장을 나눈다.
+ *
+ * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
+ */
+export const DeactivateConfirmDialog = ({
+  targetLabel,
+  memberEquipmentCount,
+  isSaving,
+  banner,
+  onClose,
+  onConfirm,
+}: DeactivateConfirmDialogProps) => (
+  <Dialog
+    open
+    onClose={onClose}
+    size="sm"
+    closeOnBackdropClick={false}
+    showCloseButton={false}
+    title={t.title}
+    footer={
+      <>
+        <Button variant="outlined" disabled={isSaving} onClick={onClose}>
+          {messages.common.cancel}
+        </Button>
+        {/* 문구가 「확인」이 아니다 — 무엇을 누르는지 창을 다시 읽지 않아도 알아야 한다. */}
+        <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
+          {t.confirm}
+        </Button>
+      </>
+    }
+  >
+    {banner}
+    <p>{t.target(targetLabel)}</p>
+    <p>{memberEquipmentCount === 0 ? t.membersNone : t.members(memberEquipmentCount)}</p>
+    <p>{t.notReversibleHere}</p>
+  </Dialog>
+);

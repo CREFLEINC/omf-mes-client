@@ -21,6 +21,7 @@ const renderPane = (overrides: Partial<GroupFormPaneProps> = {}) => {
   const onChange = vi.fn();
   const onSave = vi.fn();
   const onCancel = vi.fn();
+  const onDeactivate = vi.fn();
 
   render(
     <GroupFormPane
@@ -37,11 +38,12 @@ const renderPane = (overrides: Partial<GroupFormPaneProps> = {}) => {
       isSaving={false}
       onSave={onSave}
       onCancel={onCancel}
+      onDeactivate={onDeactivate}
       {...overrides}
     />,
   );
 
-  return { onChange, onSave, onCancel };
+  return { onChange, onSave, onCancel, onDeactivate };
 };
 
 describe('GroupFormPane', () => {
@@ -152,5 +154,58 @@ describe('GroupFormPane', () => {
 
     expect(screen.getByText(t.values.inactive)).toBeInTheDocument();
     expect(screen.queryByRole('switch', { name: t.fields.isActive })).toBeNull();
+  });
+
+  it('사용 중지 버튼은 사용 중인 그룹의 수정에서만 선다', () => {
+    renderPane({ mode: 'edit', isActive: true });
+
+    expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeInTheDocument();
+  });
+
+  /* 이미 중지된 것을 다시 중지할 수는 없다 — 누를 것이 없는 컨트롤을 두지 않는다. */
+  it('이미 중지된 그룹에는 사용 중지 버튼을 두지 않는다', () => {
+    renderPane({ mode: 'edit', isActive: false });
+
+    expect(screen.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
+  });
+
+  /* 아직 등록되지 않은 그룹에는 사용 중지할 대상이 없다. */
+  it('등록 폼에는 사용 중지 버튼을 두지 않는다', () => {
+    renderPane({ mode: 'create', isActive: true });
+
+    expect(screen.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
+  });
+
+  it('사용 중지를 누르면 그 뜻을 화면에 알린다', async () => {
+    const user = userEvent.setup();
+    const { onDeactivate } = renderPane({ mode: 'edit', isActive: true });
+
+    await user.click(screen.getByRole('button', { name: messages.common.deactivate }));
+
+    expect(onDeactivate).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+   * 사용 중지는 상세를 다시 불러오므로 저장하지 않은 입력이 말없이 사라진다.
+   * 감추지 않고 잠그되 사유를 함께 낸다 — 비활성 컨트롤은 포커스를 받지 못한다.
+   */
+  it('고친 것이 있으면 사용 중지를 잠그고 사유를 컨트롤 설명으로 잇는다', () => {
+    renderPane({ mode: 'edit', isActive: true, isDirty: true });
+
+    const button = screen.getByRole('button', { name: messages.common.deactivate });
+    expect(button).toBeDisabled();
+
+    const describedBy = button.getAttribute('aria-describedby');
+    expect(describedBy).not.toBeNull();
+    expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
+      t.actionReasons.deactivateNeedsCleanForm,
+    );
+  });
+
+  it('고친 것이 없으면 사용 중지가 열려 있고 사유를 내지 않는다', () => {
+    renderPane({ mode: 'edit', isActive: true, isDirty: false });
+
+    expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeEnabled();
+    expect(screen.queryByText(t.actionReasons.deactivateNeedsCleanForm)).toBeNull();
   });
 });
