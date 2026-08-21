@@ -402,19 +402,38 @@ describe('AppLayout', () => {
     );
   });
 
+  it('품질관리 섹션에 Lot Status 현황·변경이력 조회가 자재창고 뒤·승인 앞에 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByText('품질관리')).toBeInTheDocument();
+    expect(
+      within(sidebar).getByRole('link', { name: 'Lot Status 현황·변경이력 조회' }),
+    ).toHaveAttribute('href', '/quality/lot-status');
+    expect(links.indexOf('/quality/lot-status')).toBe(
+      links.indexOf('/logistics/document-progress') + 1,
+    );
+    expect(links.indexOf('/quality/lot-status')).toBeLessThan(links.indexOf('/approval/inbox'));
+  });
+
   /*
    * **알려진 섹션이 사이드바의 링크를 빠짐없이 담는다**를 값으로 고정한다. 섹션이 하나 더
    * 생기면 그 안의 링크가 이 합집합 밖으로 나와 곧바로 걸린다 — 분류를 늘리는 일은
    * 화면 하나를 더하는 일과 무게가 다르므로 **말없이 지나가지 않게** 한다.
    *
-   * **넷이 된 것은 W-CO-09에서다.** 결재함은 기준정보(무엇을 정해 두는가)도 자재창고
-   * (물건이 오가는 일)도 시스템 관리(운영 설정)도 아닌, **올라온 결재를 처리하는 일**이다.
+   * W-03-01이 Lot Status 계열의 첫 화면으로 「품질관리」를 열어 이제 여섯이다. 결재함은
+   * 기준정보(무엇을 정해 두는가)도 자재창고(물건이 오가는 일)도 시스템 관리(운영 설정)도
+   * 아닌, **올라온 결재를 처리하는 일**이라 기존 「승인」 섹션에 그대로 남는다.
    */
-  it('사이드바 섹션이 다섯이고 모든 항목이 그 안에 있다', () => {
+  it('사이드바 섹션이 여섯이고 모든 항목이 그 안에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const sections = ['기준정보', '자재창고', '승인', '알림', '시스템 관리'].map(
+    const sections = ['기준정보', '자재창고', '품질관리', '승인', '알림', '시스템 관리'].map(
       (label) => within(sidebar).getByText(label).parentElement,
     );
 
@@ -542,6 +561,7 @@ describe('AppLayout', () => {
       '/logistics/disposal-issue',
       '/logistics/iqc-skip-approval',
       '/logistics/document-progress',
+      '/quality/lot-status',
       '/approval/inbox',
       '/notification/center',
       '/system/users-roles',
@@ -564,9 +584,9 @@ describe('AppLayout', () => {
     const item = within(sidebar).getByRole('link', { name: /알림센터/ });
     expect(item).toHaveAttribute('href', '/notification/center');
 
-    /* 섹션 차례가 승인 → 알림 → 시스템 관리다. */
-    const labels = ['기준정보', '자재창고', '승인', '알림', '시스템 관리'].map((label) =>
-      within(sidebar).getByText(label),
+    /* 전체 차례는 품질관리 → 승인 → 알림 → 시스템 관리까지 이어진다. */
+    const labels = ['기준정보', '자재창고', '품질관리', '승인', '알림', '시스템 관리'].map(
+      (label) => within(sidebar).getByText(label),
     );
     const ordered = [...labels].sort((left, right) =>
       left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
