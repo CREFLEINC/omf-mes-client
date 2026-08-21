@@ -20,7 +20,7 @@ import {
   processesResponse,
 } from './fixtures';
 import { EquipmentMasterScreen } from './screen';
-import type { EquipmentGroup } from './types';
+import type { Equipment as EquipmentType, EquipmentGroup } from './types';
 
 const t = messages.equipmentMaster;
 
@@ -44,6 +44,7 @@ interface RenderOptions {
   respondProcesses?: () => Response;
   respondEquipmentDetail?: (request: Request) => Response;
   respondEquipmentWrite?: (request: Request) => Response;
+  respondEquipmentDeactivate?: (request: Request) => Response;
 }
 
 /** 요청이 실제로 무엇을 실어 갔는지 본다 — 주소가 조건을 몰았음을 그것으로 증명한다. */
@@ -105,8 +106,14 @@ const renderScreen = (options: RenderOptions = {}) => {
         },
       },
       {
+        /*
+         * ⚠ 자원을 함께 못박는다. `endsWith(':deactivate')` 만 보면 «설비» 사용 중지까지
+         * 이 스텁이 삼켜, 설비 쪽 감지기가 그룹 응답을 받고 헛통과한다.
+         */
         match: (request) =>
-          request.method === 'POST' && new URL(request.url).pathname.endsWith(':deactivate'),
+          request.method === 'POST' &&
+          isUnder(request, '/mdm/equipment-groups/') &&
+          new URL(request.url).pathname.endsWith(':deactivate'),
         respond: (request) => {
           writes.push(request.clone());
           deactivated = true;
@@ -136,6 +143,19 @@ const renderScreen = (options: RenderOptions = {}) => {
       {
         match: (request) => request.method === 'GET' && isUnder(request, '/mdm/equipments/'),
         respond: (request) => (options.respondEquipmentDetail ?? defaultEquipmentDetail)(request),
+      },
+      {
+        match: (request) =>
+          request.method === 'POST' &&
+          new URL(request.url).pathname.startsWith('/mdm/equipments/') &&
+          new URL(request.url).pathname.endsWith(':deactivate'),
+        respond: (request) => {
+          writes.push(request.clone());
+          return (
+            options.respondEquipmentDeactivate ??
+            (() => jsonResponse(makeEquipment(2001, 'EQ-01', { isActive: false })))
+          )(request);
+        },
       },
       {
         match: (request) => request.method === 'PUT' && isUnder(request, '/mdm/equipments/'),
@@ -1613,5 +1633,224 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: t.equipmentForm.editTitle })).toBeNull();
     });
+  });
+});
+
+describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
+  const deactivateT = messages.equipmentMaster.deactivate;
+
+  const openEquipmentTab = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole('button', { name: 'GRP-A' }));
+    await user.click(await screen.findByRole('tab', { name: t.tabs.equipment }));
+    return screen.findByRole('region', { name: t.tabs.equipment });
+  };
+
+  /** 수명주기 액션은 수정 창 안에 있다 — 그 창의 버튼은 상세가 도착해야 선다. */
+  const openDeactivate = async (user: ReturnType<typeof userEvent.setup>) => {
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const form = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+    await user.click(await form.findByRole('button', { name: messages.common.deactivate }));
+  };
+
+  const confirmDeactivate = async (user: ReturnType<typeof userEvent.setup>) => {
+    const dialog = await screen.findByRole('dialog', { name: deactivateT.equipmentTitle });
+    await user.click(within(dialog).getByRole('button', { name: deactivateT.confirm }));
+  };
+
+  it('수정 창에서 중지할 수 있고 무엇이 달라지는지 먼저 밝힌다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([equipmentItems[0]!])),
+    });
+
+    await openDeactivate(user);
+
+    const dialog = within(await screen.findByRole('dialog', { name: deactivateT.equipmentTitle }));
+    expect(dialog.getByText(deactivateT.target('EQ-01 · EQ-01 설비'))).toBeInTheDocument();
+    expect(dialog.getByText(deactivateT.equipmentImpact)).toBeInTheDocument();
+    // 되돌릴 수 없다는 사실은 그룹과 같은 문장을 쓴다.
+    expect(dialog.getByText(deactivateT.notReversibleHere)).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 목록 행에는 잠금 토큰이 없다 — 상세 조회가 그것을 가져온다.
+   * 수명주기 액션이 수정 창 안에만 있어, 눌릴 때에는 토큰이 이미 와 있다.
+   */
+  it('확인이 설비 상세의 잠금 토큰을 싣는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([equipmentItems[0]!])),
+    });
+
+    await openDeactivate(user);
+    await confirmDeactivate(user);
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    const request = writes[0] as Request;
+    expect(new URL(request.url).pathname).toBe('/mdm/equipments/2001:deactivate');
+    expect(request.headers.get('If-Match')).toBe('9');
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  it('성공하면 확인 창이 닫힌다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([equipmentItems[0]!])),
+    });
+
+    await openDeactivate(user);
+    await confirmDeactivate(user);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: deactivateT.equipmentTitle })).toBeNull();
+    });
+  });
+
+  /* 업무 규칙 위반은 400 이다 — 창을 닫으면 왜 막혔는지 보지 못한다. */
+  it('업무 규칙에 막히면 창을 닫지 않고 이유를 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([equipmentItems[0]!])),
+      respondEquipmentDeactivate: () =>
+        jsonResponse(
+          { errors: [{ scope: 'screen', code: 'IN_USE', message: '진행 중인 작업이 있습니다' }] },
+          { status: 400 },
+        ),
+    });
+
+    await openDeactivate(user);
+    await confirmDeactivate(user);
+
+    const dialog = within(await screen.findByRole('dialog', { name: deactivateT.equipmentTitle }));
+    expect(await dialog.findByText('진행 중인 작업이 있습니다')).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 목록 행에는 잠금 토큰이 없다. 토큰이 도착하기 전에 확인을 열면 사용자는 눌러 놓고
+   * 「토큰이 없다」는 화면 오류만 받는다 — 무엇을 해야 하는지 알 수 없는 자리다.
+   */
+  /*
+   * ⭐ **토큰이 있다는 것이 자리로 보장된다.** 이 액션은 수정 창 안에만 있고 그 창의 버튼은
+   * 상세가 도착해야 선다 — 목록 줄에 두었을 때 필요했던 「토큰이 오기 전」 방어가
+   * 여기서는 필요 없다. 그 사실을 재 둔다.
+   */
+  it('상세가 도착하기 전에는 수명주기 액션이 서지 않는다', async () => {
+    const user = userEvent.setup();
+
+    let releaseDetail: () => void = () => undefined;
+    const detailHeld = new Promise<void>((resolve) => {
+      releaseDetail = () => {
+        resolve();
+      };
+    });
+
+    const fetchStub = async (request: Request): Promise<Response> => {
+      const url = new URL(request.url);
+      const only = [equipmentItems[0] as EquipmentType];
+
+      if (url.pathname === '/mdm/plants') return jsonResponse(plantsResponse());
+      if (url.pathname === '/mdm/processes') return jsonResponse(processesResponse());
+      if (url.pathname === '/mdm/equipment-groups') return jsonResponse(groupsResponse());
+      if (url.pathname.startsWith('/mdm/equipment-groups/')) {
+        return jsonResponse(groupDetail(groupById(idOf(request)) as EquipmentGroup), {
+          headers: { ETag: '7' },
+        });
+      }
+      if (url.pathname === '/mdm/equipments') return jsonResponse(equipmentsResponse(only));
+      if (url.pathname.startsWith('/mdm/equipments/')) {
+        await detailHeld;
+        return jsonResponse(equipmentDetail(only[0] as EquipmentType), { headers: { ETag: '9' } });
+      }
+
+      throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
+    };
+
+    renderWithProviders(<EquipmentMasterScreen />, { route: '/', fetch: fetchStub });
+
+    await user.click(await screen.findByRole('button', { name: 'GRP-A' }));
+    await user.click(await screen.findByRole('tab', { name: t.tabs.equipment }));
+    const pane = within(await screen.findByRole('region', { name: t.tabs.equipment }));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+
+    const form = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+    expect(form.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
+
+    releaseDetail();
+
+    expect(
+      await form.findByRole('button', { name: messages.common.deactivate }),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 이 창에는 대응하는 입력칸이 없다 — 서버가 칸에 붙여 보낸 오류를 인라인으로 돌리면
+   * 그것을 낼 자리가 없어 어디에도 보이지 않는 오류가 된다.
+   */
+  it('서버가 칸에 붙여 보낸 오류도 창 안 배너에 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([equipmentItems[0]!])),
+      respondEquipmentDeactivate: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'equipmentCode',
+                code: 'IN_USE',
+                message: '진행 중인 작업이 있습니다',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+    });
+
+    await openDeactivate(user);
+    await confirmDeactivate(user);
+
+    const dialog = within(await screen.findByRole('dialog', { name: deactivateT.equipmentTitle }));
+    expect(await dialog.findByText('진행 중인 작업이 있습니다')).toBeInTheDocument();
+  });
+
+  /*
+   * ⚠ 자산 상태의 값 목록도 그 공통코드 그룹 이름도 아직 없다(설계 질의 omf-mes#185) —
+   * 이미 폐기된 자산인지 화면이 판정할 수 없다. 판정 없이 열면 이미 끝난 자산에도 눌린다.
+   * 감추지 않고 사유를 밝힌다(G-2).
+   */
+  it('폐기는 아직 쓸 수 없다는 사실을 사유와 함께 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const dialog = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+
+    const dispose = dialog.getByRole('button', { name: t.actions.disposeEquipment });
+    expect(dispose).toBeDisabled();
+
+    const describedBy = dispose.getAttribute('aria-describedby');
+    expect(describedBy).not.toBeNull();
+    expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
+      t.actionReasons.disposeUnavailable,
+    );
+  });
+
+  /* 아직 등록되지 않은 설비에는 폐기할 대상이 없다. */
+  it('등록 폼에는 폐기 버튼을 두지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(
+      pane.getAllByRole('button', { name: t.actions.addEquipment })[0] as HTMLElement,
+    );
+    const dialog = within(await screen.findByRole('dialog', { name: t.equipmentForm.createTitle }));
+
+    expect(dialog.queryByRole('button', { name: t.actions.disposeEquipment })).toBeNull();
   });
 });

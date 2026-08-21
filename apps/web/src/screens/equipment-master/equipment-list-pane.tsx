@@ -28,7 +28,7 @@ export interface EquipmentListPaneProps {
   onApplyFilters: (next: EquipmentFilters) => void;
   /** 등록 폼을 여는 주 액션 */
   onAdd: () => void;
-  /** 설비 하나를 편집한다 */
+  /** 설비 하나를 편집한다 — 수명주기 액션도 그 창 안에 있다 */
   onEdit: (equipment: Equipment) => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —

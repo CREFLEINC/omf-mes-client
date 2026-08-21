@@ -18,8 +18,9 @@ const renderDialog = (overrides: Partial<DeactivateConfirmDialogProps> = {}) => 
   render(
     <ToastProvider>
       <DeactivateConfirmDialog
+        title={t.title}
         targetLabel="GRP-A · 프레스 구역"
-        memberEquipmentCount={0}
+        impactNote={t.membersNone}
         isSaving={false}
         banner={null}
         onConfirm={onConfirm}
@@ -41,18 +42,19 @@ describe('DeactivateConfirmDialog', () => {
     expect(screen.getByText(t.target('GRP-A · 프레스 구역'))).toBeInTheDocument();
   });
 
-  /* 0대와 N대는 사용자가 할 판단이 다르다 — 같은 문장으로 뭉개면 건수를 보이는 뜻이 없다. */
-  it('소속 설비가 있으면 건수를 함께 보인다', () => {
-    renderDialog({ memberEquipmentCount: 12 });
+  /* 끄면 무엇이 달라지는지는 부르는 쪽이 정한다 — 창은 받은 문장을 그대로 낸다. */
+  it('받은 파급 문장을 그대로 낸다', () => {
+    renderDialog({ impactNote: t.members(12) });
 
     expect(screen.getByText(t.members(12))).toBeInTheDocument();
     expect(screen.queryByText(t.membersNone)).toBeNull();
   });
 
-  it('소속 설비가 없으면 다른 문장을 낸다', () => {
-    renderDialog({ memberEquipmentCount: 0 });
+  /* 종류가 다르면 제목도 달라야 한다 — 무엇을 끄는지 창을 다시 읽지 않아도 알아야 한다. */
+  it('받은 제목을 그대로 쓴다', () => {
+    renderDialog({ title: t.equipmentTitle });
 
-    expect(screen.getByText(t.membersNone)).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.equipmentTitle })).toBeInTheDocument();
   });
 
   /*

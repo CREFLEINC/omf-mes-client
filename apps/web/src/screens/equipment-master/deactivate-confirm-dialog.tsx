@@ -5,10 +5,15 @@ import type { ReactNode } from 'react';
 const t = messages.equipmentMaster.deactivate;
 
 export interface DeactivateConfirmDialogProps {
+  /** 창의 제목. 무엇을 끄는지 종류가 다르면 제목도 달라야 한다 */
+  title: string;
   /** 무엇을 끄는지. **내부 번호가 아니라 사람이 읽는 이름이다.** */
   targetLabel: string;
-  /** 이 그룹에 소속된 설비 대수. 상세 응답이 내려 주며 화면이 세지 않는다 */
-  memberEquipmentCount: number;
+  /**
+   * 끄면 무엇이 달라지는지 한 줄. **부르는 쪽이 정한다** —
+   * 그룹은 소속 설비 대수를, 설비는 남는 기록을 말한다.
+   */
+  impactNote: string;
   isSaving: boolean;
   /** 저장 실패 배너 슬롯. 창을 닫지 않고 이유를 보여야 다시 시도할 수 있다. */
   banner: ReactNode;
@@ -35,14 +40,15 @@ export interface DeactivateConfirmDialogProps {
  * ⚠ **계약에 다시 켜는 경로가 없다**(`:activate` 없음 — 실측). 사용 중지가 삭제가 아니라는
  * 사실과 함께, **이 화면에서 되돌릴 수 없다**는 사실도 밝힌다. 감추면 사용자가 가볍게 누른다.
  *
- * 소속 설비 건수는 **상세 응답이 내려 준다** — 화면이 따로 세면 화면마다 달라진다.
- * 0대와 N대는 사용자가 할 판단이 다르므로 문장을 나눈다.
+ * **끄면 무엇이 달라지는지는 부르는 쪽이 정한다** — 그룹과 설비가 서로 다른 사실을 말한다.
+ * 창이 아는 것은 「무엇을 끄는가」와 「되돌릴 수 없다」 둘뿐이다.
  *
  * 기존 디자인 시스템 컴포넌트의 조합이라 이 화면 슬라이스가 소유한다.
  */
 export const DeactivateConfirmDialog = ({
+  title,
   targetLabel,
-  memberEquipmentCount,
+  impactNote,
   isSaving,
   banner,
   onClose,
@@ -54,7 +60,7 @@ export const DeactivateConfirmDialog = ({
     size="sm"
     closeOnBackdropClick={false}
     showCloseButton={false}
-    title={t.title}
+    title={title}
     footer={
       <>
         <Button variant="outlined" disabled={isSaving} onClick={onClose}>
@@ -69,7 +75,7 @@ export const DeactivateConfirmDialog = ({
   >
     {banner}
     <p>{t.target(targetLabel)}</p>
-    <p>{memberEquipmentCount === 0 ? t.membersNone : t.members(memberEquipmentCount)}</p>
+    <p>{impactNote}</p>
     <p>{t.notReversibleHere}</p>
   </Dialog>
 );

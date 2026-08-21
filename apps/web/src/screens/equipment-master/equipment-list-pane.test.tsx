@@ -190,4 +190,11 @@ describe('EquipmentListPane', () => {
 
     expect(screen.getByText(t.values.inactive)).toBeInTheDocument();
   });
+
+  /* 수명주기 액션은 수정 창에 모여 있다 — 목록 줄에는 두지 않는다. */
+  it('목록 줄에는 수명주기 액션을 두지 않는다', () => {
+    renderPane({ items: [makeEquipment(2001, 'EQ-01')] });
+
+    expect(screen.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
+  });
 });

@@ -5,6 +5,7 @@ import {
   GROUP_TYPE_OPTIONS,
   PENDING_CODE_VALUE,
   ensureOption,
+  groupDeactivateImpact,
   groupTypeLabel,
   lookupLabel,
   selectableOptions,
@@ -103,5 +104,17 @@ describe('lookupLabel', () => {
   /* 좁혀 받은 선택지가 아니라 전체에서 찾아야 미사용 공장의 이름도 나온다. */
   it('미사용 항목의 이름도 푼다', () => {
     expect(lookupLabel(entries, '12')).toBe('제2공장');
+  });
+});
+
+describe('groupDeactivateImpact', () => {
+  /* 0대와 N대는 사용자가 할 판단이 다르다 — 하나로 뭉개면 건수를 내려받는 뜻이 없다. */
+  it('소속 설비가 있으면 건수를 담은 문장을 낸다', () => {
+    expect(groupDeactivateImpact(12)).toBe(messages.equipmentMaster.deactivate.members(12));
+  });
+
+  it('소속 설비가 없으면 다른 문장을 낸다', () => {
+    expect(groupDeactivateImpact(0)).toBe(messages.equipmentMaster.deactivate.membersNone);
+    expect(groupDeactivateImpact(0)).not.toBe(messages.equipmentMaster.deactivate.members(0));
   });
 });
