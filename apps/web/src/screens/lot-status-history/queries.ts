@@ -26,6 +26,7 @@ import {
 
 type Client = ApiClient['client'];
 type PageMeta = components['schemas']['PageMeta'];
+type AppUser = components['schemas']['AppUser'];
 
 export interface LotStatusListResult {
   rows: readonly LotStatusRow[];
@@ -41,6 +42,22 @@ export interface LotHoldEventListResult {
   rows: readonly LotHoldEventView[];
   page: PageMeta;
 }
+
+export interface LotActorListResult {
+  items: readonly AppUser[];
+  page: PageMeta;
+}
+
+export const useLotActorOptions = (enabled: boolean): UseQueryResult<LotActorListResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: lotStatusKeys.actors,
+    enabled,
+    queryFn: () =>
+      runRequest(() => client.GET('/app/users', { params: { query: { includeInactive: true } } })),
+  });
+};
 
 export const useLotDetail = (lotId: number | null): UseQueryResult<LotDetailView> => {
   const { client } = useApiClient();
@@ -119,13 +136,14 @@ const fetchLotHolds = async (
   return { rows: data.items.map(toLotHoldView), page: data.page };
 };
 
-export const useLotHolds = (lotId: number | null): UseQueryResult<LotHoldListResult> => {
+export const useLotHolds = (lotId: number | null, page = 1): UseQueryResult<LotHoldListResult> => {
   const { client } = useApiClient();
-  const query = toLotHoldListQuery(lotId);
+  const query = toLotHoldListQuery(lotId, page);
 
   return useQuery({
-    queryKey: lotStatusKeys.holds(lotId),
+    queryKey: lotStatusKeys.holds(lotId, page),
     enabled: query !== null,
+    placeholderData: keepPreviousData,
     queryFn: () => {
       if (query === null) throw new Error('LOT을 고르기 전에는 보류 문서를 조회하지 않습니다.');
       return fetchLotHolds(client, query);

@@ -1,6 +1,7 @@
 import { AlertBanner, Button, Dialog, SkeletonText } from '@crefle/web-ui';
 
 import type { FilterOption } from './lot-filter-bar';
+import { LotHoldDocuments } from './lot-hold-documents';
 import { useLotDetail } from './queries';
 
 const EMPTY = '—';
@@ -83,6 +84,8 @@ export const LotDetailDialog = ({
           ))}
         </dl>
       )}
+
+      <LotHoldDocuments key={lotId} lotId={lotId} />
 
       <div className="form-actions">
         <Button disabled>판정·전이 처리</Button>

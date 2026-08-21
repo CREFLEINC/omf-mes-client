@@ -155,6 +155,73 @@ const detailRoutes = (
   ),
 ];
 
+const holdRoutes = (holdStatus = 200, userStatus = 200, actorTotal = 2): StubRoute[] => [
+  route('/quality/lot-holds', (request) => {
+    const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+    const items =
+      page === 1
+        ? [
+            {
+              lotHoldId: 701,
+              lotId: 401,
+              reasonCode: 'SAMPLE_REASON_OPEN',
+              statusCode: 'SAMPLE_OPEN',
+              heldBy: 601,
+              heldAt: '2026-08-21T09:00:00+09:00',
+              holdQty: null,
+              releaseCondition: '합성 해제 조건',
+            },
+            {
+              lotHoldId: 702,
+              lotId: 401,
+              reasonCode: 'SAMPLE_REASON_RELEASED',
+              statusCode: 'SAMPLE_RELEASED',
+              heldBy: 601,
+              heldAt: '2026-08-19T09:00:00+09:00',
+              releasedBy: 602,
+              releasedAt: '2026-08-20T10:00:00+09:00',
+              holdQty: 0,
+            },
+          ]
+        : [
+            {
+              lotHoldId: 703,
+              lotId: 401,
+              reasonCode: 'SAMPLE_REASON_PAGE_2',
+              statusCode: 'SAMPLE_OPEN',
+              heldBy: 601,
+              heldAt: '2026-08-18T09:00:00+09:00',
+              holdQty: 5,
+            },
+          ];
+    return jsonResponse({ items, page: { page, size: 50, total: 51 } }, { status: holdStatus });
+  }),
+  route('/app/users', () =>
+    jsonResponse(
+      list(
+        [
+          {
+            appUserId: 601,
+            loginId: 'sample.holder',
+            userName: '합성 등록자',
+            statusCode: 'SAMPLE_ACTIVE',
+            isActive: true,
+          },
+          {
+            appUserId: 602,
+            loginId: 'sample.releaser',
+            userName: '합성 해제자',
+            statusCode: 'SAMPLE_ACTIVE',
+            isActive: false,
+          },
+        ],
+        actorTotal,
+      ),
+      { status: userStatus },
+    ),
+  ),
+];
+
 const fetchFor = (
   typeState: LotTypeState = 'ready',
   currentRoutes = qualityRoutes(),
@@ -591,12 +658,132 @@ describe('Lot Status 화면 shell', () => {
   });
 
   it('주소로 고른 LOT 상세의 실패·재시도를 처리한다', async () => {
-    const { urls } = renderScreen('/quality/lot-status?lot=401', 'ready', detailRoutes(500));
+    const { urls } = renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...detailRoutes(500),
+      ...holdRoutes(),
+    ]);
     const user = userEvent.setup();
 
     const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
     expect(await within(dialog).findByText('LOT 상세를 불러오지 못했습니다.')).toBeVisible();
+    expect(await within(dialog).findByRole('table', { name: '보류 문서' })).toBeVisible();
     await user.click(within(dialog).getByRole('button', { name: 'LOT 상세 다시 시도' }));
     await waitFor(() => expect(requestCount(urls, '/trace/lots/401')).toBe(2));
+    expect(requestCount(urls, '/quality/lot-holds')).toBe(1);
+  });
+
+  it('열린·해제 보류 문서를 5열 서버 페이지로 이동한다', async () => {
+    const { urls } = renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...detailRoutes(),
+      ...holdRoutes(),
+    ]);
+    const user = userEvent.setup();
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+    const holds = await within(dialog).findByRole('table', { name: '보류 문서' });
+
+    expect(within(dialog).getByText(/전체 상태 전이는 기록되지 않습니다/)).toBeVisible();
+    expect(within(holds).getAllByRole('columnheader')).toHaveLength(5);
+    expect(within(holds).getByText('보류 건 상태')).toBeVisible();
+    expect(within(holds).getByText('SAMPLE_OPEN')).toBeVisible();
+    expect(within(holds).getByText('SAMPLE_RELEASED')).toBeVisible();
+    expect(within(holds).getByText('전량')).toBeVisible();
+    expect(within(holds).getByText('0')).toBeVisible();
+    expect(within(holds).getAllByText('합성 등록자')).toHaveLength(2);
+    expect(within(holds).getByText('합성 해제자')).toBeVisible();
+    expect(within(dialog).getByText('1–2 / 전체 51건')).toBeVisible();
+    expect(lastRequest(urls, '/quality/lot-holds')?.searchParams.get('open')).toBe('false');
+    expect(lastRequest(urls, '/app/users')?.searchParams.get('includeInactive')).toBe('true');
+
+    await user.click(within(dialog).getByRole('button', { name: '다음 쪽' }));
+    expect(await within(dialog).findByText('51–51 / 전체 51건')).toBeVisible();
+    expect(lastRequest(urls, '/quality/lot-holds')?.searchParams.get('page')).toBe('2');
+    expect(requestCount(urls, '/trace/lots/401')).toBe(1);
+  });
+
+  it('쪽 응답 중 기존 표·초점을 유지하고 서버 PageMeta로 로컬 쪽을 맞춘다', async () => {
+    const urls: URL[] = [];
+    const baseFetch = fetchFor('ready', [...detailRoutes(), ...holdRoutes()]);
+    let releasePageTwo: (() => void) | undefined;
+    renderWithProviders(<LotStatusHistoryScreen />, {
+      route: '/quality/lot-status?lot=401',
+      fetch: async (request) => {
+        const url = new URL(request.url);
+        urls.push(url);
+        if (url.pathname === '/quality/lot-holds' && url.searchParams.get('page') === '2') {
+          return new Promise<Response>((resolve) => {
+            releasePageTwo = () =>
+              resolve(
+                jsonResponse({
+                  items: [
+                    {
+                      lotHoldId: 704,
+                      lotId: 401,
+                      reasonCode: 'SAMPLE_SERVER_META',
+                      statusCode: 'SAMPLE_OPEN',
+                      heldAt: '2026-08-17T09:00:00+09:00',
+                    },
+                  ],
+                  page: { page: 3, size: 20, total: 41 },
+                }),
+              );
+          });
+        }
+        return baseFetch(request);
+      },
+    });
+    const user = userEvent.setup();
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+    await within(dialog).findByText('1–2 / 전체 51건');
+    const next = within(dialog).getByRole('button', { name: '다음 쪽' });
+
+    await user.click(next);
+    await waitFor(() => expect(releasePageTwo).toBeDefined());
+    expect(next).toHaveFocus();
+    expect(within(dialog).getByText('보류 문서를 갱신하는 중입니다.')).toBeVisible();
+    expect(
+      within(dialog).getByRole('table', { name: '보류 문서' }).closest('[aria-busy]'),
+    ).toHaveAttribute('aria-busy', 'true');
+    expect(within(dialog).getByText('1–2 / 전체 51건')).toBeVisible();
+    releasePageTwo?.();
+    await waitFor(() =>
+      expect(lastRequest(urls, '/quality/lot-holds')?.searchParams.get('page')).toBe('3'),
+    );
+  });
+
+  it('보류 문서 실패와 재시도를 LOT 상세와 독립 처리한다', async () => {
+    const { urls } = renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...detailRoutes(),
+      ...holdRoutes(500),
+    ]);
+    const user = userEvent.setup();
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+
+    expect(await within(dialog).findByText('보류 문서를 불러오지 못했습니다.')).toBeVisible();
+    expect(within(dialog).getByText('SAMPLE-LOT-001')).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: '보류 문서 다시 시도' }));
+    await waitFor(() => expect(requestCount(urls, '/quality/lot-holds')).toBe(2));
+    expect(requestCount(urls, '/trace/lots/401')).toBe(1);
+  });
+
+  it('행위자 조회 실패가 문서를 가리지 않고 사용자 번호 fallback을 밝힌다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...detailRoutes(),
+      ...holdRoutes(200, 500),
+    ]);
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+
+    expect(await within(dialog).findByText(/사용자 번호를 표시합니다/)).toBeVisible();
+    expect(within(dialog).getByRole('table', { name: '보류 문서' })).toHaveTextContent('601');
+  });
+
+  it('행위자 목록이 잘렸음을 이름이 없는 번호 fallback과 함께 밝힌다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...detailRoutes(),
+      ...holdRoutes(200, 200, 3),
+    ]);
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+
+    expect(await within(dialog).findByText(/일부 행위자 이름을 확인하지 못해/)).toBeVisible();
+    expect(within(dialog).getByRole('table', { name: '보류 문서' })).toBeVisible();
   });
 });

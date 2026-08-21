@@ -81,6 +81,10 @@ describe('lotStatusKeys detail boundaries', () => {
   it('같은 LOT 식별자라도 상세와 보류 캐시는 서로 다른 영역이다', () => {
     expect(lotStatusKeys.detail(101)).not.toEqual(lotStatusKeys.holds(101));
   });
+
+  it('같은 LOT의 보류 문서도 페이지가 다르면 캐시를 분리한다', () => {
+    expect(lotStatusKeys.holds(101, 1)).not.toEqual(lotStatusKeys.holds(101, 2));
+  });
 });
 
 describe('lotStatusKeys.history', () => {

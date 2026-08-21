@@ -122,6 +122,7 @@ describe('보류 사건 이력 요청', () => {
 describe('LOT 상세 보류 문서 요청', () => {
   it('선택한 LOT의 열린 건과 해제 건을 모두 조회한다', () => {
     expect(toLotHoldListQuery(404)).toEqual({ lotId: 404, open: false });
+    expect(toLotHoldListQuery(404, 2)).toEqual({ lotId: 404, open: false, page: 2 });
   });
 
   it('LOT을 선택하지 않았으면 요청을 만들지 않는다', () => {

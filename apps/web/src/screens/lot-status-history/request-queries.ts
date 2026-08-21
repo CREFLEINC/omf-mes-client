@@ -89,5 +89,10 @@ export const toLotHoldEventQuery = (
   return query;
 };
 
-export const toLotHoldListQuery = (lotId: number | null): LotHoldListQuery | null =>
-  lotId !== null && Number.isSafeInteger(lotId) && lotId >= 1 ? { lotId, open: false } : null;
+export const toLotHoldListQuery = (lotId: number | null, page = 1): LotHoldListQuery | null => {
+  if (lotId === null || !Number.isSafeInteger(lotId) || lotId < 1) return null;
+  const query: LotHoldListQuery = { lotId, open: false };
+  const validPage = toPage(page);
+  if (validPage !== undefined) query.page = validPage;
+  return query;
+};
