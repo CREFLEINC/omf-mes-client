@@ -7,6 +7,20 @@ import type { components } from '@omf-mes/api-client';
 
 export type EquipmentGroup = components['schemas']['EquipmentGroup'];
 
+/**
+ * 설비 그룹 폼의 값.
+ *
+ * 전부 문자열인 이유는 디자인 시스템 입력·선택이 문자열을 다루기 때문이고, 계약은 id를 숫자로,
+ * 선택 필드를 널로 표현한다. 그 경계를 `mappers.ts` 한 곳에서 넘는다.
+ */
+export interface GroupFormValues {
+  plantId: string;
+  groupCode: string;
+  groupName: string;
+  groupTypeCode: string;
+  parentGroupId: string;
+}
+
 export interface GroupFilters {
   q: string;
   plantId: string;

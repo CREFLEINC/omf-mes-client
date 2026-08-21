@@ -33,6 +33,8 @@ export interface GroupListPaneProps {
   onToggleExpand: (equipmentGroupId: number) => void;
   selectedGroupId: number | null;
   onSelect: (equipmentGroupId: number) => void;
+  /** 빈 상태에서 등록으로 이끄는 주 액션 */
+  onAddGroup: () => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 설비 그룹이 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -59,6 +61,7 @@ export const GroupListPane = ({
   onToggleExpand,
   selectedGroupId,
   onSelect,
+  onAddGroup,
   loadError,
 }: GroupListPaneProps) => {
   const plantSelectId = useId();
@@ -154,6 +157,7 @@ export const GroupListPane = ({
       live
       title={t.empty.groupNoneTitle}
       description={t.empty.groupNoneDescription}
+      action={<Button onClick={onAddGroup}>{t.actions.addGroup}</Button>}
     />
   );
 

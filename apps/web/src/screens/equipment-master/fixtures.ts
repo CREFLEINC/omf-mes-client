@@ -69,3 +69,32 @@ export const groupsResponse = (items: EquipmentGroup[] = groupItems) => ({
   items,
   page: pageOf(items),
 });
+
+type Editability = components['schemas']['Editability'];
+type EquipmentGroupDetailResponse = components['schemas']['EquipmentGroupDetailResponse'];
+
+export const editableCode: Editability = {
+  codeEditable: true,
+  reason: 'EDITABLE',
+  referenceCount: 0,
+};
+
+export const lockedCode: Editability = {
+  codeEditable: false,
+  reason: 'REFERENCED',
+  referenceCount: 3,
+};
+
+export const groupDetail = (
+  group: EquipmentGroup,
+  overrides: Partial<EquipmentGroupDetailResponse> = {},
+): EquipmentGroupDetailResponse => ({
+  equipmentGroup: group,
+  editability: editableCode,
+  memberEquipmentCount: 0,
+  ...overrides,
+});
+
+/** 식별자로 픽스처 그룹을 찾는다. 상세 스텁이 늘 같은 건을 돌려주지 않게 한다. */
+export const groupById = (equipmentGroupId: number): EquipmentGroup | undefined =>
+  groupItems.find((item) => item.equipmentGroupId === equipmentGroupId);
