@@ -43,11 +43,16 @@ const renderScreen = (options: RenderOptions = {}) => {
   /** 쓰기 요청 원본 — 본문과 헤더를 그대로 본다 */
   const writes: Request[] = [];
 
+  /* 사용 중지가 나간 뒤의 재조회는 «바뀐» 상태를 돌려줘야 한다 — 늘 같은 것을 주면 갱신 경로가 헛통과한다. */
+  let deactivated = false;
+
   const defaultDetail = (request: Request): Response => {
     const found = groupById(idOf(request));
-    return found === undefined
-      ? jsonResponse({ message: '없는 그룹' }, { status: 404 })
-      : jsonResponse(groupDetail(found), { headers: { ETag: '7' } });
+    if (found === undefined) return jsonResponse({ message: '없는 그룹' }, { status: 404 });
+
+    return jsonResponse(groupDetail(deactivated ? { ...found, isActive: false } : found), {
+      headers: { ETag: '7' },
+    });
   };
 
   const defaultWrite = (request: Request): Response =>
@@ -86,6 +91,7 @@ const renderScreen = (options: RenderOptions = {}) => {
           request.method === 'POST' && new URL(request.url).pathname.endsWith(':deactivate'),
         respond: (request) => {
           writes.push(request.clone());
+          deactivated = true;
           return (
             options.respondDeactivate ??
             (() => jsonResponse(makeGroup(101, 'GRP-A', { isActive: false })))
@@ -963,6 +969,61 @@ describe('EquipmentMasterScreen — 그룹 사용 중지', () => {
 
     const dialog = within(await screen.findByRole('dialog', { name: deactivateT.title }));
     expect(await dialog.findByText('참조가 있어 중지할 수 없습니다')).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **사용 중지는 상세를 다시 불러온다.** 그때 폼이 새로 세워지므로, 저장하지 않은 입력이
+   * 있으면 그것이 말없이 사라진다. 막지 않고 사유를 밝힌다 — 사용자가 무엇을 먼저 해야
+   * 하는지(저장 또는 취소) 알아야 한다.
+   */
+  it('저장하지 않은 변경이 있으면 사용 중지를 누를 수 없고 사유가 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const nameInput = await openGroup(user);
+    await user.clear(nameInput);
+    await user.type(nameInput, '고친 이름');
+
+    expect(form().getByRole('button', { name: messages.common.deactivate })).toBeDisabled();
+    expect(form().getByText(t.actionReasons.deactivateNeedsCleanForm)).toBeInTheDocument();
+  });
+
+  it('취소로 되돌리면 사용 중지가 다시 열린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const nameInput = await openGroup(user);
+    await user.clear(nameInput);
+    await user.type(nameInput, '고친 이름');
+    await user.click(form().getByRole('button', { name: messages.common.cancel }));
+
+    expect(form().getByRole('button', { name: messages.common.deactivate })).toBeEnabled();
+    expect(form().queryByText(t.actionReasons.deactivateNeedsCleanForm)).toBeNull();
+  });
+
+  /*
+   * 사용 중지 뒤의 재조회는 «바뀐» 상태를 돌려준다. 같은 것을 돌려주는 스텁으로 재면
+   * 「갱신됐다」를 재는 감지기가 부분 견줌으로 헛통과한다.
+   */
+  it('사용 중지가 끝나면 다시 조회해 미사용으로 바뀐 것을 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openGroup(user);
+    await user.click(form().getByRole('button', { name: messages.common.deactivate }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: deactivateT.title })).getByRole('button', {
+        name: deactivateT.confirm,
+      }),
+    );
+
+    await waitFor(
+      () => {
+        expect(form().getByText(t.values.inactive)).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
+    expect(form().queryByRole('button', { name: messages.common.deactivate })).toBeNull();
   });
 
   /* 이미 중지된 것을 다시 중지할 수는 없다 — 누를 것이 없는 컨트롤을 두지 않는다. */
