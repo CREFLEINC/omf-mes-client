@@ -27658,7 +27658,7 @@ export interface components {
              */
             isActive: boolean;
             /**
-             * @description 검교정 주기 단위. calibrationRequired 가 참이면 주기 두 칸이 함께 필요하다 — 주기 없이는 차기 예정일을 산출할 수 없다
+             * @description 검교정 주기 단위. calibrationRequired 가 참이면 주기 두 칸이 함께 필요하다 — 주기 없이는 차기 예정일을 산출할 수 없다. 주기 단위 — 일(DAY)·주(WEEK)·월(MONTH)·년(YEAR). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 검교정 주기와 점검 부여 주기가 «같은 그룹»이다 — 같은 종류의 값(기간 단위)이라 어휘를 두 벌 만들지 않는다. ⛔ 검사 «유형»(품질 IQC·PQC·OQC ↔ 설비 DAILY·MONTHLY·MAINTENANCE)은 종류가 달라 그룹을 가른다 — 공유계약 G-32. 근거: omf-mes#188
              * @example MONTH
              */
             calibrationCycleTypeCode?: string | null;
@@ -28158,7 +28158,7 @@ export interface components {
              */
             calibrationRequired: boolean;
             /**
-             * @description 검교정 주기 단위. calibrationRequired 가 참이면 주기 두 칸이 함께 필요하다
+             * @description 검교정 주기 단위. calibrationRequired 가 참이면 주기 두 칸이 함께 필요하다 — 주기 없이는 차기 예정일을 산출할 수 없다. 주기 단위 — 일(DAY)·주(WEEK)·월(MONTH)·년(YEAR). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 검교정 주기와 점검 부여 주기가 «같은 그룹»이다 — 같은 종류의 값(기간 단위)이라 어휘를 두 벌 만들지 않는다. ⛔ 검사 «유형»(품질 IQC·PQC·OQC ↔ 설비 DAILY·MONTHLY·MAINTENANCE)은 종류가 달라 그룹을 가른다 — 공유계약 G-32. 근거: omf-mes#188
              * @example MONTH
              */
             calibrationCycleTypeCode?: string | null;
@@ -28207,7 +28207,7 @@ export interface components {
              */
             calibrationRequired: boolean;
             /**
-             * @description 검교정 주기 단위. calibrationRequired 가 참이면 주기 두 칸이 함께 필요하다
+             * @description 검교정 주기 단위. calibrationRequired 가 참이면 주기 두 칸이 함께 필요하다 — 주기 없이는 차기 예정일을 산출할 수 없다. 주기 단위 — 일(DAY)·주(WEEK)·월(MONTH)·년(YEAR). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 검교정 주기와 점검 부여 주기가 «같은 그룹»이다 — 같은 종류의 값(기간 단위)이라 어휘를 두 벌 만들지 않는다. ⛔ 검사 «유형»(품질 IQC·PQC·OQC ↔ 설비 DAILY·MONTHLY·MAINTENANCE)은 종류가 달라 그룹을 가른다 — 공유계약 G-32. 근거: omf-mes#188
              * @example MONTH
              */
             calibrationCycleTypeCode?: string | null;
@@ -28469,7 +28469,7 @@ export interface components {
              */
             isActive: boolean;
             /**
-             * @description 주기 단위 — 일 · 주 · 월
+             * @description 주기 단위 — 일(DAY)·주(WEEK)·월(MONTH)·년(YEAR). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 검교정 주기와 점검 부여 주기가 «같은 그룹»이다 — 같은 종류의 값(기간 단위)이라 어휘를 두 벌 만들지 않는다. ⛔ 검사 «유형»(품질 IQC·PQC·OQC ↔ 설비 DAILY·MONTHLY·MAINTENANCE)은 종류가 달라 그룹을 가른다 — 공유계약 G-32. 근거: omf-mes#188
              * @example DAY
              */
             cycleTypeCode: string;
@@ -28497,7 +28497,7 @@ export interface components {
              */
             isActive: boolean;
             /**
-             * @description 주기 단위 — 일 · 주 · 월
+             * @description 주기 단위 — 일(DAY)·주(WEEK)·월(MONTH)·년(YEAR). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 검교정 주기와 점검 부여 주기가 «같은 그룹»이다 — 같은 종류의 값(기간 단위)이라 어휘를 두 벌 만들지 않는다. ⛔ 검사 «유형»(품질 IQC·PQC·OQC ↔ 설비 DAILY·MONTHLY·MAINTENANCE)은 종류가 달라 그룹을 가른다 — 공유계약 G-32. 근거: omf-mes#188
              * @example DAY
              */
             cycleTypeCode: string;
