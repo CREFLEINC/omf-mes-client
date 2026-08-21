@@ -10,6 +10,7 @@ import {
   toAppliedLotSearchParams,
   toModeSearchParams,
   type LotFilters,
+  type LotStatusSort,
   type ScreenMode,
 } from './filters';
 import { CurrentResults } from './current-results';
@@ -54,9 +55,18 @@ interface LotModeProps {
   page: number;
   onSearch: (filters: LotFilters) => void;
   onReset: () => void;
+  onSortChange: (sort: LotStatusSort) => void;
+  onPageChange: (page: number) => void;
 }
 
-const LotMode = ({ filters, page, onSearch, onReset }: LotModeProps) => {
+const LotMode = ({
+  filters,
+  page,
+  onSearch,
+  onReset,
+  onSortChange,
+  onPageChange,
+}: LotModeProps) => {
   const lotTypes = useLotTypeOptions();
   const lotStatuses = useLotStatusOptions();
   const warehouses = useWarehouseReferenceOptions();
@@ -99,6 +109,8 @@ const LotMode = ({ filters, page, onSearch, onReset }: LotModeProps) => {
         itemOptions={toReferenceOptions(items.data?.entries)}
         isItemPending={items.isPending}
         isItemError={items.isError}
+        onSortChange={onSortChange}
+        onPageChange={onPageChange}
       />
     </section>
   );
@@ -113,6 +125,12 @@ export const LotStatusHistoryScreen = () => {
   const apply = (next: LotFilters): void => {
     setSearchParams((current) => toAppliedLotSearchParams(current, next, 1));
   };
+  const changePage = (nextPage: number): void => {
+    setSearchParams((current) => toAppliedLotSearchParams(current, filters, nextPage));
+  };
+  const changeSort = (sort: LotStatusSort): void => {
+    setSearchParams((current) => toAppliedLotSearchParams(current, { ...filters, sort }, 1));
+  };
   const changeMode = (next: string): void => {
     setSearchParams((current) => toModeSearchParams(current, next as ScreenMode));
   };
@@ -124,6 +142,8 @@ export const LotStatusHistoryScreen = () => {
         page={page}
         onSearch={apply}
         onReset={() => apply(EMPTY_LOT_FILTERS)}
+        onSortChange={changeSort}
+        onPageChange={changePage}
       />
     ) : null;
   const historyContent =

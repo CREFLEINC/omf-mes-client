@@ -9,7 +9,8 @@ import {
   Table,
 } from '@crefle/web-ui';
 
-import type { LotFilters } from './filters';
+import { toLotStatusSort, toTableSort } from './current-sort';
+import type { LotFilters, LotStatusSort } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { useLotStatusList, useLotStatusSummary } from './queries';
 import { lotStatusRowKey, type LotStatusRow } from './types';
@@ -38,6 +39,8 @@ interface CurrentResultsProps {
   itemOptions: readonly FilterOption[];
   isItemPending: boolean;
   isItemError: boolean;
+  onSortChange: (sort: LotStatusSort) => void;
+  onPageChange: (page: number) => void;
 }
 
 export const CurrentResults = ({
@@ -47,6 +50,8 @@ export const CurrentResults = ({
   itemOptions,
   isItemPending,
   isItemError,
+  onSortChange,
+  onPageChange,
 }: CurrentResultsProps) => {
   const list = useLotStatusList(filters, page);
   const summary = useLotStatusSummary(filters);
@@ -65,8 +70,8 @@ export const CurrentResults = ({
     knownLabel(itemOptions, String(itemId)) ??
     (isItemPending ? '불러오는 중…' : isItemError ? '품목 목록 조회 실패' : '알 수 없음');
   const columns: Column<LotStatusRow>[] = [
-    { key: 'lotNo', header: 'LOT', width: '176px' },
-    { key: 'item', header: '품목', render: (row) => itemLabel(row.itemId) },
+    { key: 'lotNo', header: 'LOT', width: '176px', sortable: true },
+    { key: 'item', header: '품목', sortable: true, render: (row) => itemLabel(row.itemId) },
     {
       key: 'lotStatusCode',
       header: '현재 상태',
@@ -88,6 +93,7 @@ export const CurrentResults = ({
       key: 'latestTransitionAt',
       header: '최근 전이',
       width: '156px',
+      sortable: true,
       render: (row) => formatDateTime(row.latestTransitionAt),
     },
     {
@@ -125,6 +131,17 @@ export const CurrentResults = ({
       })),
   ];
   const meta = list.data?.page;
+  const currentPage = meta !== undefined && meta.page > 0 ? meta.page : page;
+  const pageSize = meta !== undefined && meta.size > 0 ? meta.size : 1;
+  const totalPages = Math.ceil((meta?.total ?? 0) / pageSize);
+  const isBeyondLast = meta !== undefined && meta.total > 0 && currentPage > totalPages;
+  const start = (currentPage - 1) * pageSize + 1;
+  const rangeLabel =
+    meta === undefined
+      ? ''
+      : rows.length === 0
+        ? `전체 ${quantity(meta.total)}건`
+        : `${quantity(start)}–${quantity(start + rows.length - 1)} / 전체 ${quantity(meta.total)}건`;
 
   return (
     <section aria-labelledby="lot-current-results-title">
@@ -168,6 +185,11 @@ export const CurrentResults = ({
           <SkeletonText lines={3} />
         </div>
       )}
+      {list.isFetching && list.data !== undefined && (
+        <p className="field-note" role="status" aria-label="LOT 목록 갱신 중">
+          LOT 목록을 갱신하는 중입니다.
+        </p>
+      )}
       {list.isError && (
         <AlertBanner
           variant="error"
@@ -176,26 +198,58 @@ export const CurrentResults = ({
         />
       )}
       {list.data !== undefined && (
-        <div className="wide-table">
-          <Table
-            density="compact"
-            caption="현재 LOT 상태"
-            columns={columns}
-            rows={rows}
-            getRowId={lotStatusRowKey}
-            empty={
-              <EmptyState
+        <>
+          <div className="wide-table" aria-busy={list.isFetching}>
+            <Table
+              density="compact"
+              caption="현재 LOT 상태"
+              columns={columns}
+              rows={rows}
+              getRowId={lotStatusRowKey}
+              sort={toTableSort(filters.sort)}
+              onSortChange={(sort) => onSortChange(toLotStatusSort(sort))}
+              empty={
+                <EmptyState
+                  size="sm"
+                  live
+                  title={
+                    meta !== undefined && meta.total > 0
+                      ? '이 쪽에는 결과가 없습니다'
+                      : '조건에 맞는 LOT이 없습니다'
+                  }
+                  action={
+                    isBeyondLast ? (
+                      <Button variant="outlined" onClick={() => onPageChange(1)}>
+                        첫 쪽으로
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              }
+            />
+          </div>
+          {meta !== undefined && (
+            <nav className="form-actions" aria-label="LOT 목록 쪽 이동">
+              <p className="field-note form-actions-secondary">{rangeLabel}</p>
+              <Button
+                variant="outlined"
                 size="sm"
-                live
-                title={
-                  meta !== undefined && meta.total > 0
-                    ? '이 쪽에는 결과가 없습니다'
-                    : '조건에 맞는 LOT이 없습니다'
-                }
-              />
-            }
-          />
-        </div>
+                disabled={currentPage <= 1}
+                onClick={() => onPageChange(currentPage - 1)}
+              >
+                이전 쪽
+              </Button>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={currentPage >= totalPages}
+                onClick={() => onPageChange(currentPage + 1)}
+              >
+                다음 쪽
+              </Button>
+            </nav>
+          )}
+        </>
       )}
     </section>
   );

@@ -100,10 +100,14 @@ const qualityRoutes = (
   rows = [statusRow],
   total = 101,
   outOfScopeCount: number | null = 2,
+  pageOverride: Partial<components['schemas']['PageMeta']> = {},
 ): StubRoute[] => [
   route('/quality/lot-statuses', (request) => {
     const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
-    return jsonResponse({ items: rows, page: { page, size: 50, total } }, { status: listStatus });
+    return jsonResponse(
+      { items: rows, page: { page, size: 50, total, ...pageOverride } },
+      { status: listStatus },
+    );
   }),
   route('/quality/lot-status-summary', () =>
     jsonResponse(
@@ -163,6 +167,9 @@ const locationSearch = (): URLSearchParams => {
 
 const requestCount = (urls: URL[], path: string): number =>
   urls.filter(({ pathname }) => pathname === path).length;
+
+const lastRequest = (urls: URL[], path: string): URL | undefined =>
+  urls.filter(({ pathname }) => pathname === path).at(-1);
 
 const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {
   await user.click(screen.getByLabelText(label));
@@ -374,5 +381,127 @@ describe('Lot Status 화면 shell', () => {
     expect(await screen.findByText(message)).toBeVisible();
     const listUrl = urls.find(({ pathname }) => pathname === '/quality/lot-statuses');
     expect(listUrl?.searchParams.get('page')).toBe(page);
+  });
+
+  it('세 열만 서버 정렬하고 정렬 변경 시 첫 쪽으로 돌아간다', async () => {
+    const rows = [
+      { ...statusRow, lotId: 401, lotNo: 'SAMPLE-LOT-Z' },
+      { ...statusRow, lotId: 402, lotNo: 'SAMPLE-LOT-A' },
+    ];
+    const { urls } = renderScreen(
+      '/quality/lot-status?lotType=SAMPLE_MATERIAL&sort=itemDesc&page=3',
+      'ready',
+      qualityRoutes(200, 200, rows, 120),
+    );
+    const user = userEvent.setup();
+    const table = await screen.findByRole('table', { name: '현재 LOT 상태' });
+    const itemHeader = within(table)
+      .getAllByRole('columnheader')
+      .find((header) => header.textContent === '품목');
+
+    expect(itemHeader).toHaveAttribute('aria-sort', 'descending');
+    expect(
+      within(table)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['LOT', '품목', '최근 전이']);
+    await user.click(within(table).getByRole('button', { name: 'LOT' }));
+    await waitFor(() => expect(locationSearch().get('sort')).toBe('lotNoAsc'));
+    await waitFor(() => expect(requestCount(urls, '/quality/lot-statuses')).toBe(2));
+    expect(locationSearch().get('page')).toBeNull();
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('sort')).toBe('lotNoAsc');
+    expect(requestCount(urls, '/quality/lot-status-summary')).toBe(1);
+    expect(
+      within(screen.getByRole('table', { name: '현재 LOT 상태' })).getAllByRole('row')[1],
+    ).toHaveTextContent('SAMPLE-LOT-Z');
+    await user.click(screen.getByRole('button', { name: 'LOT' }));
+    await waitFor(() => expect(locationSearch().get('sort')).toBe('lotNoDesc'));
+    await user.click(screen.getByRole('button', { name: 'LOT' }));
+    await waitFor(() => expect(locationSearch().get('sort')).toBeNull());
+    const latestHeader = screen
+      .getAllByRole('columnheader')
+      .find((header) => header.textContent === '최근 전이');
+    expect(latestHeader).toHaveAttribute('aria-sort', 'descending');
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('sort')).toBe(
+      'latestTransitionDesc',
+    );
+    expect(requestCount(urls, '/quality/lot-status-summary')).toBe(1);
+  });
+
+  it('이전·다음 쪽 이동을 URL과 목록 요청에만 반영한다', async () => {
+    const { urls } = renderScreen('/quality/lot-status?lotType=SAMPLE_MATERIAL');
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('1–1 / 전체 101건')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
+    await waitFor(() => expect(locationSearch().get('page')).toBe('2'));
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBe('2');
+    expect(requestCount(urls, '/quality/lot-status-summary')).toBe(1);
+    await user.click(screen.getByRole('button', { name: '이전 쪽' }));
+    await waitFor(() => expect(locationSearch().get('page')).toBeNull());
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBeNull();
+  });
+
+  it('URL과 다른 서버 page·size를 쪽 표시와 이동의 정본으로 쓴다', async () => {
+    const { urls } = renderScreen(
+      '/quality/lot-status?lotType=SAMPLE_MATERIAL&page=9',
+      'ready',
+      qualityRoutes(200, 200, [statusRow], 31, 2, { page: 2, size: 20 }),
+    );
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('21–21 / 전체 31건')).toBeVisible();
+    expect(screen.getByRole('button', { name: '다음 쪽' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '이전 쪽' }));
+    await waitFor(() => expect(locationSearch().get('page')).toBeNull());
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBeNull();
+  });
+
+  it('쪽 재조회가 지연돼도 기존 표와 현재 초점을 유지한다', async () => {
+    const resolvedFetch = fetchFor();
+    let releaseNext: (() => void) | undefined;
+    renderWithProviders(<LotStatusHistoryScreen />, {
+      route: '/quality/lot-status?lotType=SAMPLE_MATERIAL',
+      fetch: async (request) => {
+        const url = new URL(request.url);
+        if (url.pathname === '/quality/lot-statuses' && url.searchParams.get('page') === '2') {
+          return new Promise<Response>((resolve) => {
+            releaseNext = () =>
+              resolve(
+                jsonResponse({ items: [statusRow], page: { page: 2, size: 50, total: 101 } }),
+              );
+          });
+        }
+        return resolvedFetch(request);
+      },
+    });
+    const user = userEvent.setup();
+
+    await screen.findByText('1–1 / 전체 101건');
+    const next = screen.getByRole('button', { name: '다음 쪽' });
+    await user.click(next);
+    await waitFor(() => expect(releaseNext).toBeDefined());
+    expect(next).toHaveFocus();
+    expect(screen.getByRole('status', { name: 'LOT 목록 갱신 중' })).toBeVisible();
+    expect(
+      screen.getByRole('table', { name: '현재 LOT 상태' }).closest('[aria-busy]'),
+    ).toHaveAttribute('aria-busy', 'true');
+    releaseNext?.();
+    expect(await screen.findByText('51–51 / 전체 101건')).toBeVisible();
+    expect(screen.queryByRole('status', { name: 'LOT 목록 갱신 중' })).not.toBeInTheDocument();
+  });
+
+  it('전체 범위 밖 쪽은 첫 쪽 복구 동작을 제공한다', async () => {
+    const { urls } = renderScreen(
+      '/quality/lot-status?lotType=SAMPLE_MATERIAL&page=4',
+      'ready',
+      qualityRoutes(200, 200, [], 101),
+    );
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('이 쪽에는 결과가 없습니다')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '첫 쪽으로' }));
+    await waitFor(() => expect(locationSearch().get('page')).toBeNull());
+    expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBeNull();
   });
 });
