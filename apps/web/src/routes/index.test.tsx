@@ -12,6 +12,11 @@ import { describe, expect, it } from 'vitest';
 
 import { AppLayout } from '../app/layout';
 import { SessionProvider } from '../patterns/session';
+import {
+  groupsResponse as equipmentGroupsResponse,
+  plantsResponse as equipmentPlantsResponse,
+  processesResponse as equipmentProcessesResponse,
+} from '../screens/equipment-master/fixtures';
 import { queueResponse as iqcQueueResponse } from '../screens/iqc-inspection/fixtures';
 import { sessionBody } from '../screens/login/fixtures';
 import {
@@ -224,6 +229,21 @@ const iqcInspectionRoutes = (): StubRoute[] => [
   {
     match: (request) => isGet(request, '/quality/inspection-requests'),
     respond: () => jsonResponse(iqcQueueResponse()),
+  },
+];
+
+const equipmentMasterRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/mdm/equipment-groups'),
+    respond: () => jsonResponse(equipmentGroupsResponse()),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/plants'),
+    respond: () => jsonResponse(equipmentPlantsResponse()),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/processes'),
+    respond: () => jsonResponse(equipmentProcessesResponse()),
   },
 ];
 
@@ -1069,5 +1089,65 @@ describe('appRouter — 물류 문서 진행현황·취소의 진입 경로', ()
       expect(nav.textContent).not.toContain(internalId);
       expect(main.textContent).not.toContain(internalId);
     }
+  });
+});
+
+/**
+ * **W-05-12 는 도메인 05(설비/툴)의 첫 화면이자 그 섹션을 여는 자리다.**
+ *
+ * **여섯 PR이 함께 여는 자리다.** 그룹 목록·등록·수정·중지와 설비 목록·등록·수정·중지가
+ * 다 서기 전에는 라우트를 두지 않았다(정책 §5.2) — 그룹만 있고 설비를 붙일 수 없는
+ * 「설비 마스터」를 노출하면 사용자가 화면을 열어 놓고 할 일을 할 수 없다.
+ *
+ * 그래서 이 describe 가 **여는 쪽을 양쪽에서** 잰다: 메뉴에 있고, 그 메뉴가 가리키는 주소가
+ * 실제로 이 화면을 연다.
+ */
+describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => {
+  it('사이드바에 이 화면 항목이 있다', () => {
+    expect(sidebarHrefs()).toContain('/equipment/master');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).getByText(messages.equipmentMaster.title)).toBeInTheDocument();
+  });
+
+  /**
+   * **자재창고·품질관리 뒤, 승인 앞이다** — 업무 도메인 섹션들을 붙여 두고 그 위를 가로지르는
+   * 것(승인·알림)과 운영 설정(시스템 관리)을 끝에 남긴다. 도메인 번호 차례이기도 하다
+   * (자재창고 01 → 품질관리 03 → 설비/툴 05).
+   */
+  it('품질관리 뒤·승인 앞에 선다', () => {
+    const hrefs = sidebarHrefs();
+
+    expect(hrefs.indexOf('/equipment/master')).toBeGreaterThan(
+      hrefs.indexOf('/quality/lot-status'),
+    );
+    expect(hrefs.indexOf('/equipment/master')).toBeLessThan(hrefs.indexOf('/approval/inbox'));
+  });
+
+  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
+    renderRoutedApp('/equipment/master', equipmentMasterRoutes());
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.equipmentMaster.title }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 **조회가 실제로 도는 것**까지 봐야 한다.
+   * 이 화면의 첫 진입은 설비 그룹 목록 하나다.
+   */
+  it('첫 진입에 설비 그룹 목록이 실제로 그려진다', async () => {
+    renderRoutedApp('/equipment/master', equipmentMasterRoutes());
+
+    expect(await screen.findByRole('button', { name: 'GRP-A' })).toBeInTheDocument();
+  });
+
+  /* 주소 앞머리는 계약 경로(`/mdm/**`)가 아니라 사이드바 섹션을 따른다. */
+  it('주소 앞머리가 섹션을 따른다', () => {
+    expect(sidebarHrefs().filter((href) => href.startsWith('/equipment/'))).toEqual([
+      '/equipment/master',
+    ]);
   });
 });
