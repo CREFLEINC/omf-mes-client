@@ -5877,7 +5877,7 @@ export interface paths {
                     equipmentTypeCode?: string;
                     /** @description 검교정 대상만 본다 */
                     calibrationRequired?: boolean;
-                    /** @description 자산 수명주기로 거른다 — 운용 또는 폐기. 사용 여부(includeInactive)와 «다른 축» 이다. 현장 화면은 폐기된 설비를 목록에서 뺀다 */
+                    /** @description 자산 수명주기로 거른다 — 운용(IN_SERVICE) 또는 폐기(DISPOSED). 사용 여부(includeInactive)와 «다른 축» 이다. 현장 화면은 폐기된 설비를 목록에서 뺀다 — statusCode=IN_SERVICE 로 부른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_STATUS. 근거: omf-mes#185 */
                     statusCode?: string;
                     includeInactive?: boolean;
                     page?: number;
@@ -26745,7 +26745,7 @@ export interface components {
              */
             routingId?: number | null;
             /**
-             * @description 공통코드 — IQC/PQC(공정·초중종·자주)/OQC
+             * @description 공통코드 — IQC/PQC(공정·초중종·자주)/OQC ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE 로 받는다(IQC·PQC·OQC). ⚠ 설비 점검의 inspectionTypeCode(DAILY·MONTHLY·MAINTENANCE)와 «같은 이름 다른 값» 이라 그룹을 가른다. 근거: omf-mes#186
              * @example IQC
              */
             inspectionTypeCode: string;
@@ -26791,7 +26791,10 @@ export interface components {
              * @example 1001
              */
             routingId?: number | null;
-            /** @example IQC */
+            /**
+             * @description 공통코드 — IQC/PQC(공정·초중종·자주)/OQC ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE 로 받는다(IQC·PQC·OQC). ⚠ 설비 점검의 inspectionTypeCode(DAILY·MONTHLY·MAINTENANCE)와 «같은 이름 다른 값» 이라 그룹을 가른다. 근거: omf-mes#186
+             * @example IQC
+             */
             inspectionTypeCode: string;
         };
         /** @description 검사기준 헤더 수정 요청. approvedBy·approvedAt 은 :approve 전용, isActive 는 :deactivate 전용. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A */
@@ -26815,7 +26818,10 @@ export interface components {
              * @example 1001
              */
             routingId?: number | null;
-            /** @example IQC */
+            /**
+             * @description 공통코드 — IQC/PQC(공정·초중종·자주)/OQC ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE 로 받는다(IQC·PQC·OQC). ⚠ 설비 점검의 inspectionTypeCode(DAILY·MONTHLY·MAINTENANCE)와 «같은 이름 다른 값» 이라 그룹을 가른다. 근거: omf-mes#186
+             * @example IQC
+             */
             inspectionTypeCode: string;
         };
         InspectionPlanDetailResponse: {
@@ -27626,8 +27632,8 @@ export interface components {
              */
             productionLineId?: number | null;
             /**
-             * @description 자산 수명주기 — 운용 또는 폐기 두 값
-             * @example ACTIVE
+             * @description 자산 수명주기 — 운용 또는 폐기 두 값. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_STATUS 로 받는다(IN_SERVICE·DISPOSED). ⚠ 사용 여부(is_active·includeInactive)와 «다른 축» 이다 — 그래서 ACTIVE 라는 낱말을 쓰지 않는다. 두 축이 같은 낱말을 가지면 혼동한다. ⛔ 값을 늘리지 않는다 — 고장·보전중·비가동은 트랜잭션 조건이지 자산 상태가 아니다(공유계약 A-14 · W-05-12 §5-2). 근거: omf-mes#185
+             * @example IN_SERVICE
              */
             statusCode: string;
             /**
@@ -28258,12 +28264,12 @@ export interface components {
             /** @example 안전커버 파손 여부 */
             itemName: string;
             /**
-             * @description 점검 유형 — 일상 · 정기 · 보전
+             * @description 점검 유형 — 일상(DAILY)·정기(MONTHLY)·보전(MAINTENANCE). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_TYPE 로 받는다. ⚠ 품질 검사의 inspectionTypeCode(IQC·PQC·OQC)와 «같은 이름 다른 값» 이다 — 그룹을 가른다(공유계약 B-28 과 같은 원리). ⭐ 보전 항목은 이 마스터에 함께 있고 보전 지시(W-05-05)가 FK 로 참조한다 — 점검 입력 화면은 앞 둘만 보인다. 근거: 확정 QA #10 · omf-mes#186
              * @example DAILY
              */
             inspectionTypeCode: string;
             /**
-             * @description 판정 방식 — 육안(합/NG) 또는 측정값. 측정값이면 단위·상하한이 함께 필요하다
+             * @description 판정 방식 — 육안(VISUAL) 또는 측정값(MEASUREMENT). ⛔ 측정값이면 단위(uomId)·상하한(lowerLimit·upperLimit)이 «함께 필요하다». ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_JUDGMENT_METHOD 로 받는다 — 이 값을 모르면 화면이 짝 제약을 걸 수 없어 등록·수정이 반드시 실패하는 경로가 된다(구현팀 실측 · omf-mes#186). 근거: WF05 S2
              * @example VISUAL
              */
             judgmentMethodCode: string;
@@ -28316,12 +28322,12 @@ export interface components {
             /** @example 안전커버 파손 여부 */
             itemName: string;
             /**
-             * @description 점검 유형 — 일상 · 정기 · 보전
+             * @description 점검 유형 — 일상(DAILY)·정기(MONTHLY)·보전(MAINTENANCE). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_TYPE 로 받는다. ⚠ 품질 검사의 inspectionTypeCode(IQC·PQC·OQC)와 «같은 이름 다른 값» 이다 — 그룹을 가른다(공유계약 B-28 과 같은 원리). ⭐ 보전 항목은 이 마스터에 함께 있고 보전 지시(W-05-05)가 FK 로 참조한다 — 점검 입력 화면은 앞 둘만 보인다. 근거: 확정 QA #10 · omf-mes#186
              * @example DAILY
              */
             inspectionTypeCode: string;
             /**
-             * @description 판정 방식 — 육안(합/NG) 또는 측정값. 측정값이면 단위·상하한이 함께 필요하다
+             * @description 판정 방식 — 육안(VISUAL) 또는 측정값(MEASUREMENT). ⛔ 측정값이면 단위(uomId)·상하한(lowerLimit·upperLimit)이 «함께 필요하다». ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_JUDGMENT_METHOD 로 받는다 — 이 값을 모르면 화면이 짝 제약을 걸 수 없어 등록·수정이 반드시 실패하는 경로가 된다(구현팀 실측 · omf-mes#186). 근거: WF05 S2
              * @example VISUAL
              */
             judgmentMethodCode: string;
@@ -28365,12 +28371,12 @@ export interface components {
             /** @example 안전커버 파손 여부 */
             itemName: string;
             /**
-             * @description 점검 유형 — 일상 · 정기 · 보전
+             * @description 점검 유형 — 일상(DAILY)·정기(MONTHLY)·보전(MAINTENANCE). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_TYPE 로 받는다. ⚠ 품질 검사의 inspectionTypeCode(IQC·PQC·OQC)와 «같은 이름 다른 값» 이다 — 그룹을 가른다(공유계약 B-28 과 같은 원리). ⭐ 보전 항목은 이 마스터에 함께 있고 보전 지시(W-05-05)가 FK 로 참조한다 — 점검 입력 화면은 앞 둘만 보인다. 근거: 확정 QA #10 · omf-mes#186
              * @example DAILY
              */
             inspectionTypeCode: string;
             /**
-             * @description 판정 방식 — 육안(합/NG) 또는 측정값. 측정값이면 단위·상하한이 함께 필요하다
+             * @description 판정 방식 — 육안(VISUAL) 또는 측정값(MEASUREMENT). ⛔ 측정값이면 단위(uomId)·상하한(lowerLimit·upperLimit)이 «함께 필요하다». ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_JUDGMENT_METHOD 로 받는다 — 이 값을 모르면 화면이 짝 제약을 걸 수 없어 등록·수정이 반드시 실패하는 경로가 된다(구현팀 실측 · omf-mes#186). 근거: WF05 S2
              * @example VISUAL
              */
             judgmentMethodCode: string;
@@ -28432,9 +28438,15 @@ export interface components {
             itemCode: string;
             /** @example 안전커버 파손 여부 */
             itemName: string;
-            /** @example DAILY */
+            /**
+             * @description 점검 유형 — 일상(DAILY)·정기(MONTHLY)·보전(MAINTENANCE). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_TYPE 로 받는다. ⚠ 품질 검사의 inspectionTypeCode(IQC·PQC·OQC)와 «같은 이름 다른 값» 이다 — 그룹을 가른다(공유계약 B-28 과 같은 원리). ⭐ 보전 항목은 이 마스터에 함께 있고 보전 지시(W-05-05)가 FK 로 참조한다 — 점검 입력 화면은 앞 둘만 보인다. 근거: 확정 QA #10 · omf-mes#186
+             * @example DAILY
+             */
             inspectionTypeCode: string;
-            /** @example VISUAL */
+            /**
+             * @description 판정 방식 — 육안(VISUAL) 또는 측정값(MEASUREMENT). ⛔ 측정값이면 단위(uomId)·상하한(lowerLimit·upperLimit)이 «함께 필요하다». ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_JUDGMENT_METHOD 로 받는다 — 이 값을 모르면 화면이 짝 제약을 걸 수 없어 등록·수정이 반드시 실패하는 경로가 된다(구현팀 실측 · omf-mes#186). 근거: WF05 S2
+             * @example VISUAL
+             */
             judgmentMethodCode: string;
             /**
              * Format: int64
@@ -35448,7 +35460,7 @@ export interface components {
             /** @example IR-2026-0812-0412 */
             inspectionRequestNo: string;
             /**
-             * @description IQC · PQC · OQC. ⭐ 결정 09 의 「원천 축」을 유도하는 유일한 근거다. 근거: W-03-05 §5-2
+             * @description IQC · PQC · OQC. ⭐ 결정 09 의 「원천 축」을 유도하는 유일한 근거다. 근거: W-03-05 §5-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE 로 받는다(IQC·PQC·OQC). ⚠ 설비 점검의 inspectionTypeCode(DAILY·MONTHLY·MAINTENANCE)와 «같은 이름 다른 값» 이라 그룹을 가른다. 근거: omf-mes#186
              * @example IQC
              */
             inspectionTypeCode: string;
@@ -35543,7 +35555,7 @@ export interface components {
              */
             inspectionRequestNo?: string;
             /**
-             * @description 의뢰에서 따온 읽기 전용
+             * @description 의뢰에서 따온 읽기 전용 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE 로 받는다(IQC·PQC·OQC). ⚠ 설비 점검의 inspectionTypeCode(DAILY·MONTHLY·MAINTENANCE)와 «같은 이름 다른 값» 이라 그룹을 가른다. 근거: omf-mes#186
              * @example IQC
              */
             inspectionTypeCode?: string;
@@ -36778,7 +36790,7 @@ export interface components {
             /** @example PRS-01 */
             equipmentCode?: string;
             /**
-             * @description 일상(DAILY) 또는 정기(MONTHLY)
+             * @description 점검 유형 — 일상(DAILY)·정기(MONTHLY)·보전(MAINTENANCE). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_TYPE 로 받는다. ⚠ 품질 검사의 inspectionTypeCode(IQC·PQC·OQC)와 «같은 이름 다른 값» 이다 — 그룹을 가른다(공유계약 B-28 과 같은 원리). ⭐ 보전 항목은 이 마스터에 함께 있고 보전 지시(W-05-05)가 FK 로 참조한다 — 점검 입력 화면은 앞 둘만 보인다. 근거: 확정 QA #10 · omf-mes#186
              * @example DAILY
              */
             inspectionTypeCode: string;
@@ -36806,7 +36818,10 @@ export interface components {
              * @example 1001
              */
             equipmentId: number;
-            /** @example DAILY */
+            /**
+             * @description 점검 유형 — 일상(DAILY)·정기(MONTHLY)·보전(MAINTENANCE). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_TYPE 로 받는다. ⚠ 품질 검사의 inspectionTypeCode(IQC·PQC·OQC)와 «같은 이름 다른 값» 이다 — 그룹을 가른다(공유계약 B-28 과 같은 원리). ⭐ 보전 항목은 이 마스터에 함께 있고 보전 지시(W-05-05)가 FK 로 참조한다 — 점검 입력 화면은 앞 둘만 보인다. 근거: 확정 QA #10 · omf-mes#186
+             * @example DAILY
+             */
             inspectionTypeCode: string;
             /**
              * Format: date-time

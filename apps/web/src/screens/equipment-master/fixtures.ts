@@ -129,12 +129,16 @@ export const makeEquipment = (
   equipmentName: `${equipmentCode} 설비`,
   equipmentTypeCode: 'PENDING',
   productionLineId: 101,
-  statusCode: 'ACTIVE',
+  statusCode: 'IN_SERVICE',
   calibrationRequired: false,
   isActive: true,
   ...overrides,
 });
 
+/**
+ * ⚠ 두 축이 다르다 — `statusCode`(자산 수명주기)와 `isActive`(사용 여부).
+ * 계약이 「ACTIVE 라는 낱말을 쓰지 않는다」고 못박은 이유가 그것이다(omf-mes#185).
+ */
 export const equipmentItems: Equipment[] = [
   makeEquipment(2001, 'EQ-01'),
   makeEquipment(2002, 'EQ-02', { calibrationRequired: true, statusCode: 'DISPOSED' }),

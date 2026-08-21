@@ -68,8 +68,19 @@ describe('EquipmentListPane', () => {
     renderPane();
 
     expect(screen.getByRole('columnheader', { name: t.fields.status })).toBeInTheDocument();
-    expect(screen.getByText('ACTIVE')).toBeInTheDocument();
+    expect(screen.getByText('IN_SERVICE')).toBeInTheDocument();
     expect(screen.getByText('DISPOSED')).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **`ACTIVE` 라는 낱말을 쓰지 않는다.** 자산 수명주기(`statusCode`)와 사용 여부
+   * (`isActive`)는 «다른 축» 인데, 같은 낱말을 쓰면 정확히 그 혼동을 부른다.
+   * 계약의 예시값이 한때 `ACTIVE` 였고 설계가 그것을 틀린 것으로 고쳤다(omf-mes#185).
+   */
+  it('자산 상태에 ACTIVE 라는 낱말이 서지 않는다', () => {
+    renderPane();
+
+    expect(screen.queryByText('ACTIVE')).toBeNull();
   });
 
   it('검교정 대상 여부를 사람이 읽는 말로 보인다', () => {

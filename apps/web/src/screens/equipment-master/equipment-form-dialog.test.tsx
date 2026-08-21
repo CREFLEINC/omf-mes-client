@@ -45,7 +45,7 @@ const renderDialog = (overrides: Partial<EquipmentFormDialogProps> = {}) => {
         groupOptions={[{ value: '101', label: 'GRP-A · 프레스 구역' }]}
         processOptions={[{ value: '', label: t.equipmentForm.processNone }]}
         hierarchy={hierarchy}
-        statusCode="ACTIVE"
+        statusCode="IN_SERVICE"
         lastCalibrationDate={null}
         calibrationDueDate={null}
         isActive
