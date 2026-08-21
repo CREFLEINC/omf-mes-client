@@ -14,10 +14,12 @@ import {
 import {
   toLotHoldEventView,
   toLotHoldView,
+  toLotDetailView,
   toLotStatusRow,
   toLotStatusSummaryView,
   type LotHoldEventView,
   type LotHoldView,
+  type LotDetailView,
   type LotStatusRow,
   type LotStatusSummaryView,
 } from './types';
@@ -39,6 +41,22 @@ export interface LotHoldEventListResult {
   rows: readonly LotHoldEventView[];
   page: PageMeta;
 }
+
+export const useLotDetail = (lotId: number | null): UseQueryResult<LotDetailView> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: lotStatusKeys.detail(lotId),
+    enabled: lotId !== null,
+    queryFn: async () => {
+      if (lotId === null) throw new Error('LOT을 고르기 전에는 상세를 조회하지 않습니다.');
+      const data = await runRequest(() =>
+        client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
+      );
+      return toLotDetailView(data);
+    },
+  });
+};
 
 const fetchLotStatuses = async (
   client: Client,

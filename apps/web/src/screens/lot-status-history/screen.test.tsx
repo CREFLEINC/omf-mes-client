@@ -125,6 +125,36 @@ const qualityRoutes = (
   ),
 ];
 
+const detailRoutes = (
+  detailStatus = 200,
+  lotOverrides: Record<string, unknown> = {},
+): StubRoute[] => [
+  route('/trace/lots/401', () =>
+    jsonResponse(
+      {
+        lot: {
+          lotId: 401,
+          lotNo: 'SAMPLE-LOT-001',
+          itemId: 103,
+          lotTypeCode: 'SAMPLE_MATERIAL',
+          plantId: 201,
+          initialQty: 120,
+          uomId: 301,
+          manufacturedAt: '2026-08-20T08:30:00+09:00',
+          expiryDate: '2027-08-20',
+          sourceTypeCode: 'SAMPLE_SOURCE',
+          sourceId: 501,
+          statusCode: 'SAMPLE_DEFECTIVE',
+          ...lotOverrides,
+        },
+        externalIdentifiers: [],
+        holds: [],
+      },
+      { status: detailStatus },
+    ),
+  ),
+];
+
 const fetchFor = (
   typeState: LotTypeState = 'ready',
   currentRoutes = qualityRoutes(),
@@ -403,6 +433,7 @@ describe('Lot Status 화면 shell', () => {
     expect(
       within(table)
         .getAllByRole('button')
+        .filter((button) => button.closest('th') !== null)
         .map((button) => button.textContent),
     ).toEqual(['LOT', '품목', '최근 전이']);
     await user.click(within(table).getByRole('button', { name: 'LOT' }));
@@ -503,5 +534,69 @@ describe('Lot Status 화면 shell', () => {
     await user.click(screen.getByRole('button', { name: '첫 쪽으로' }));
     await waitFor(() => expect(locationSearch().get('page')).toBeNull());
     expect(lastRequest(urls, '/quality/lot-statuses')?.searchParams.get('page')).toBeNull();
+  });
+
+  it('LOT 선택을 URL에 보존하고 상세 원문을 표시한다', async () => {
+    renderScreen(
+      '/quality/lot-status?lotType=SAMPLE_MATERIAL&page=3&sort=lotNoAsc&from=2026-08-01',
+      'ready',
+      [...qualityRoutes(), ...detailRoutes()],
+    );
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'SAMPLE-LOT-001 상세 보기' }));
+    await waitFor(() => expect(locationSearch().get('lot')).toBe('401'));
+    expect(locationSearch().get('sort')).toBe('lotNoAsc');
+    expect(locationSearch().get('from')).toBe('2026-08-01');
+
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+    expect(within(dialog).getByText('합성 자재')).toBeVisible();
+    expect(within(dialog).getByText('합성 불량')).toBeVisible();
+    expect(within(dialog).getByText('SAMPLE-ITEM-01 · 합성 품목')).toBeVisible();
+    expect(within(dialog).getByText('SAMPLE-LOT-001')).toBeVisible();
+    expect(within(dialog).getByText('120')).toBeVisible();
+    expect(within(dialog).getByText('2027-08-20')).toBeVisible();
+    expect(within(dialog).getByText('2026-08-20 08:30')).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: '판정·전이 처리' })).toBeDisabled();
+    expect(within(dialog).queryByRole('link')).not.toBeInTheDocument();
+    expect(within(dialog).getByText(/W-03-03 화면에서 진행/)).toBeVisible();
+
+    const close = within(dialog).getAllByRole('button', { name: '닫기' }).at(-1);
+    if (close === undefined) throw new Error('닫기 버튼이 없습니다.');
+    await user.click(close);
+    await waitFor(() => expect(locationSearch().get('lot')).toBeNull());
+    expect(locationSearch().get('page')).toBe('3');
+    expect(locationSearch().get('from')).toBe('2026-08-01');
+  });
+
+  it('상세 참조·날짜가 없을 때 내부 ID를 숨기고 원문 경계를 보존한다', async () => {
+    renderScreen(
+      '/quality/lot-status?lot=401',
+      'ready',
+      detailRoutes(200, {
+        itemId: 999,
+        lotTypeCode: 'SAMPLE_UNKNOWN_TYPE',
+        statusCode: 'SAMPLE_UNKNOWN_STATUS',
+        expiryDate: null,
+        manufacturedAt: null,
+      }),
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+    expect(await within(dialog).findByText('알 수 없음')).toBeVisible();
+    expect(within(dialog).queryByText('999')).not.toBeInTheDocument();
+    expect(within(dialog).getByText('SAMPLE_UNKNOWN_TYPE (목록 미확정)')).toBeVisible();
+    expect(within(dialog).getByText('SAMPLE_UNKNOWN_STATUS (목록 미확정)')).toBeVisible();
+    expect(within(dialog).getAllByText('—')).toHaveLength(2);
+  });
+
+  it('주소로 고른 LOT 상세의 실패·재시도를 처리한다', async () => {
+    const { urls } = renderScreen('/quality/lot-status?lot=401', 'ready', detailRoutes(500));
+    const user = userEvent.setup();
+
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+    expect(await within(dialog).findByText('LOT 상세를 불러오지 못했습니다.')).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: 'LOT 상세 다시 시도' }));
+    await waitFor(() => expect(requestCount(urls, '/trace/lots/401')).toBe(2));
   });
 });
