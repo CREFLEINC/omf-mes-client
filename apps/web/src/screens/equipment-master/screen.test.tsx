@@ -572,6 +572,91 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
     });
   });
 
+  /*
+   * ⭐ 옮겨 가면 지금 폼이 통째로 버려진다. 사용자가 폼을 생각하지 않는 채 다른 그룹을
+   * 누르는 자리라, 확인 없이 사라지면 무엇을 잃었는지도 알 수 없다.
+   */
+  it('고친 것이 있는 채로 다른 그룹을 고르면 먼저 확인한다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const nameInput = await openGroup(user);
+    await user.clear(nameInput);
+    await user.type(nameInput, '고친 이름');
+
+    await user.click(screen.getByRole('button', { name: 'GRP-B' }));
+
+    expect(await screen.findByRole('dialog', { name: t.dialog.discardTitle })).toBeInTheDocument();
+    // 아직 옮겨 가지 않았다 — 고친 값이 그대로 남아 있다.
+    expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupName) })).toHaveValue(
+      '고친 이름',
+    );
+  });
+
+  it('「계속 편집」을 고르면 옮겨 가지 않고 고친 값이 남는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const nameInput = await openGroup(user);
+    await user.clear(nameInput);
+    await user.type(nameInput, '고친 이름');
+    await user.click(screen.getByRole('button', { name: 'GRP-B' }));
+    await user.click(await screen.findByRole('button', { name: t.actions.keepEditing }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.dialog.discardTitle })).toBeNull();
+    });
+    expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupName) })).toHaveValue(
+      '고친 이름',
+    );
+  });
+
+  it('「변경 버리기」를 고르면 고른 그룹으로 옮겨 간다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const nameInput = await openGroup(user);
+    await user.clear(nameInput);
+    await user.type(nameInput, '고친 이름');
+    await user.click(screen.getByRole('button', { name: 'GRP-B' }));
+    await user.click(await screen.findByRole('button', { name: t.actions.discardChanges }));
+
+    await waitFor(() => {
+      expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupCode) })).toHaveValue(
+        'GRP-B',
+      );
+    });
+  });
+
+  it('고친 것이 있는 채로 「그룹 추가」를 눌러도 먼저 확인한다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const nameInput = await openGroup(user);
+    await user.clear(nameInput);
+    await user.type(nameInput, '고친 이름');
+    await user.click(screen.getAllByRole('button', { name: t.actions.addGroup })[0] as HTMLElement);
+
+    expect(await screen.findByRole('dialog', { name: t.dialog.discardTitle })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.form.createTitle })).toBeNull();
+  });
+
+  /* 고친 것이 없으면 확인은 방해다 — 누를 때마다 창이 서면 아무도 읽지 않게 된다. */
+  it('고친 것이 없으면 확인 없이 바로 옮겨 간다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openGroup(user);
+    await user.click(screen.getByRole('button', { name: 'GRP-B' }));
+
+    expect(screen.queryByRole('dialog', { name: t.dialog.discardTitle })).toBeNull();
+    await waitFor(() => {
+      expect(form().getByRole('textbox', { name: new RegExp(t.fields.groupCode) })).toHaveValue(
+        'GRP-B',
+      );
+    });
+  });
+
   /* 저장 충돌은 최신 값을 받아 다시 입력하는 수밖에 없다 — 그 길을 배너가 낸다. */
   it('저장 충돌에는 다시 불러오기를 낸다', async () => {
     const user = userEvent.setup();

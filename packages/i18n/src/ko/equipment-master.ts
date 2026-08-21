@@ -10,6 +10,8 @@ export const equipmentMaster = {
   breadcrumbRoot: '설비/툴',
   actions: {
     addGroup: '그룹 추가',
+    keepEditing: '계속 편집',
+    discardChanges: '변경 버리기',
   },
   actionReasons: {
     plantFixedAfterCreate:
@@ -33,6 +35,9 @@ export const equipmentMaster = {
     groupNoMatchTitle: '조건에 맞는 결과가 없습니다',
     groupNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
     groupNotSelected: '좌측에서 설비 그룹을 먼저 고르세요',
+  },
+  dialog: {
+    discardTitle: '입력한 내용을 버릴까요?',
   },
   form: {
     createTitle: '설비 그룹 등록',

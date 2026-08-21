@@ -16,6 +16,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { type CodeOption, ensureOption, selectableOptions } from './code-options';
+import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { GroupFormPane } from './group-form-pane';
 import { GroupListPane } from './group-list-pane';
 import { buildGroupRows, selfAndDescendantIds } from './group-tree';
@@ -297,11 +298,41 @@ export const EquipmentMasterScreen = () => {
     void detail.refetch();
   };
 
-  // 신규 등록은 선택을 지운다 — 어느 그룹의 상세도 아닌 새 폼이다.
-  const handleAddGroup = () => {
+  /**
+   * 편집 중이면 **한 걸음 둔다.** 옮겨 가면 지금 폼이 통째로 버려지는데,
+   * 그것은 되돌릴 수 없는 조작이라 확인 없이 일어나면 안 된다.
+   *
+   * ⛔ **「취소」에는 걸지 않는다.** 그 버튼은 고친 것이 있을 때만 열리고 이름이 곧 뜻이라,
+   * 사용자가 **버리겠다고 말한 자리**다. 여기서 막는 것은 사용자가 폼을 생각하지 않는 채
+   * 일어나는 **말없는 유실**이다.
+   */
+  const [pendingParams, setPendingParams] = useState<Record<string, string | null> | null>(null);
+
+  const navigateWithDraftGuard = (patch: Record<string, string | null>) => {
+    if (isDirty) {
+      setPendingParams(patch);
+      return;
+    }
+
     groupWrite.reset();
     setLocalFieldErrors({});
-    updateParams({ mode: 'create', grp: null });
+    updateParams(patch);
+  };
+
+  /** 파기는 서버를 부르지 않는다 — 옮겨 갈 뿐이며, 대상이 바뀌면 폼은 렌더 중에 다시 세워진다. */
+  const handleDiscard = () => {
+    if (pendingParams === null) return;
+
+    const patch = pendingParams;
+    setPendingParams(null);
+    groupWrite.reset();
+    setLocalFieldErrors({});
+    updateParams(patch);
+  };
+
+  // 신규 등록은 선택을 지운다 — 어느 그룹의 상세도 아닌 새 폼이다.
+  const handleAddGroup = () => {
+    navigateWithDraftGuard({ mode: 'create', grp: null });
   };
 
   // 조회 조건은 화면 상태가 아니라 URL이 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
@@ -455,11 +486,9 @@ export const EquipmentMasterScreen = () => {
           expandedIds={expandedIds}
           onToggleExpand={handleToggleExpand}
           selectedGroupId={selectedGroupId}
-          onSelect={(equipmentGroupId) => {
-            groupWrite.reset();
-            setLocalFieldErrors({});
-            updateParams({ grp: String(equipmentGroupId), mode: null });
-          }}
+          onSelect={(equipmentGroupId) =>
+            navigateWithDraftGuard({ grp: String(equipmentGroupId), mode: null })
+          }
           onAddGroup={handleAddGroup}
           loadError={
             groupList.isError ? (
@@ -472,6 +501,10 @@ export const EquipmentMasterScreen = () => {
         />
         {renderDetailPane()}
       </div>
+
+      {pendingParams !== null && (
+        <DiscardConfirmDialog onConfirm={handleDiscard} onClose={() => setPendingParams(null)} />
+      )}
     </>
   );
 };
