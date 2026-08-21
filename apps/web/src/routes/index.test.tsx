@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 
 import { AppLayout } from '../app/layout';
 import { SessionProvider } from '../patterns/session';
+import { queueResponse as iqcQueueResponse } from '../screens/iqc-inspection/fixtures';
 import { sessionBody } from '../screens/login/fixtures';
 import {
   notificationEventListBody,
@@ -215,6 +216,14 @@ const notificationCenterRoutes = (): StubRoute[] => [
   {
     match: (request) => isGet(request, '/app/notifications/unread-count'),
     respond: () => jsonResponse({ unreadCount: 2 }),
+  },
+];
+
+/** W-01-01이 첫 진입에 부르는 것 — 검사 대기 큐 하나다. 고른 의뢰가 없으면 그것뿐이다. */
+const iqcInspectionRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/quality/inspection-requests'),
+    respond: () => jsonResponse(iqcQueueResponse()),
   },
 ];
 
@@ -793,6 +802,53 @@ describe('appRouter — 계정 로그인의 자리', () => {
  * 그래서 이 describe가 **여는 쪽을 양쪽에서** 잰다: 메뉴에 있고, 그 메뉴가 가리키는 주소가
  * 실제로 이 화면을 연다.
  */
+describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
+  it('사이드바에 이 화면 항목이 있다', () => {
+    expect(sidebarHrefs()).toContain('/logistics/iqc-inspection');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).getByText(messages.iqcInspection.title)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **「품질」 섹션을 새로 만들지 않는다** — 통합 IA 가 이 화면을 「자재/창고 > 입하·검사」에
+   * 두었고 형제 화면(W-01-02)이 이미 그 섹션에 있다. 차례는 업무 순서다: 도착을 처리한 뒤
+   * 받아들여도 되는지 판정하고, 그 다음 창고로 받아들인다.
+   */
+  it('초과 입하 분리와 정상품 입하 처리 사이에 선다 — 차례가 업무 순서다', () => {
+    const hrefs = sidebarHrefs();
+
+    expect(hrefs.indexOf('/logistics/iqc-inspection')).toBeGreaterThan(
+      hrefs.indexOf('/logistics/over-receipt-split'),
+    );
+    expect(hrefs.indexOf('/logistics/iqc-inspection')).toBeLessThan(
+      hrefs.indexOf('/logistics/goods-receipt'),
+    );
+  });
+
+  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
+    renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.iqcInspection.title }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 **조회가 실제로 도는 것**까지 봐야 한다.
+   * 이 화면의 첫 진입은 검사 대기 큐 하나다.
+   */
+  it('첫 진입에 검사 대기 큐가 실제로 그려진다', async () => {
+    renderRoutedApp('/logistics/iqc-inspection', iqcInspectionRoutes());
+
+    await screen.findByRole('heading', { level: 1, name: messages.iqcInspection.title });
+
+    expect(await screen.findByText('IR-2026-0001')).toBeInTheDocument();
+  });
+});
+
 describe('appRouter — 알림센터의 진입 경로', () => {
   it('사이드바에 이 화면 항목이 있다', () => {
     expect(sidebarHrefs()).toContain('/notification/center');

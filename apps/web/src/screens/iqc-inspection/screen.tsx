@@ -125,8 +125,12 @@ export const IqcInspectionScreen = () => {
 
   const [judgment, setJudgment] = useState('');
 
+  /** 방금 확정했는가. **상태가 아니라 결과다** — 고른 의뢰가 바뀌면 지워진다. */
+  const [isJustConfirmed, setIsJustConfirmed] = useState(false);
+
   const confirm = useConfirmResult(selectedId, editingResultId, () => {
     setIsSaved(false);
+    setIsJustConfirmed(true);
   });
 
   /**
@@ -189,6 +193,7 @@ export const IqcInspectionScreen = () => {
 
   useEffect(() => {
     setIsSaved(false);
+    setIsJustConfirmed(false);
     /*
      * ⭐ 재검사 모드도 함께 푼다 — 저장이 새 회차를 만들면 `roundId` 가 바뀌어 여기로 오고,
      * 그 회차는 이제 «실재하는 작성중 회차»라 재검사 모드로 남아 있으면 다음 저장이 또 새
@@ -354,6 +359,7 @@ export const IqcInspectionScreen = () => {
             }}
             isConfirming={confirm.isSaving}
             confirmError={confirm.error}
+            isJustConfirmed={isJustConfirmed}
             isReinspecting={isReinspectingNow}
             onStartReinspection={() => {
               /* 새 회차는 빈 칸에서 시작한다 — 앞 회차의 값이 남으면 그대로 저장된다. */
