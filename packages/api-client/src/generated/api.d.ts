@@ -21404,6 +21404,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/quality/lot-hold-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 보류 등록·해제 사건 조회
+         * @description 보류 등록·해제를 «사건별 행»으로 시간순 낸다 — W-03-01 「이력으로 찾기」 모드. ⛔ 전체 전이 이력이 아니다 — 합격·불합격·재판정 전이는 저장되는 곳이 없어 이 목록에 없다(W-03-01 §5-1 · A-11). ⭐ 보류 «문서» 목록(/quality/lot-holds)으로는 이 표를 만들 수 없다 — 한 행에 등록과 해제가 함께 있어 「기간 전에 등록되고 기간 안에 해제된 보류」를 기간으로 집을 수 없다. 근거: omf-mes#176
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 사건 기간 시작. ⛔ 필수다 — 감사 조회는 기간을 강제한다(공유계약 L-3) */
+                    occurredFrom: string;
+                    /** @description 사건 기간 끝 */
+                    occurredTo: string;
+                    /** @description 등록만 / 해제만. 비우면 둘 다 */
+                    eventTypeCode?: "HELD" | "RELEASED";
+                    /** @description 행위자 — 등록자와 해제자를 «함께» 본다. ⭐ 「그 사람이 해제한 건」이 빠지지 않는다 */
+                    actorId?: number;
+                    /** @description LOT 번호(정확히 일치) — 화면 입력이 번호다 */
+                    lotNo?: string;
+                    lotId?: number;
+                    itemId?: number;
+                    reasonCode?: string;
+                    /** @description 자재·생산·제품 3종(결정 10). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_TYPE 로 받는다(MATERIAL·PRODUCTION·PRODUCT). ⚠ 셋을 합쳐 집계하지 않는다(공유계약 L-7) — 같은 「보류 38건」이라도 자재와 제품은 대응이 다르다. 근거: omf-mes#176 */
+                    lotTypeCode?: string;
+                    /** @description 시간순만 허용한다 — 사건 목록의 축은 시각 하나다 */
+                    sort?: "occurredAsc" | "occurredDesc";
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 사건 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["LotHoldEvent"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+                /** @description 기간 미지정 — 조회 버튼 비활성 + 사유 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/quality/lot-holds": {
         parameters: {
             query?: never;
@@ -21418,7 +21489,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 기본 true — 해제되지 않은 것만 */
+                    /** @description 기본 true — 아직 해제되지 않은 보류만. ⛔ false 는 「해제된 것만」이 아니라 «전체»(해제된 것 + 진행 중)다. ⚠ 등록·해제를 «사건»으로 시간순 보려면 이 목록이 아니라 GET /quality/lot-hold-events 를 쓴다 — 이 목록은 보류 «문서» 한 건이 한 행이라 등록과 해제가 같은 행에 있다. 근거: omf-mes#176 */
                     open?: boolean;
                     lotId?: number;
                     itemId?: number;
@@ -21432,6 +21503,8 @@ export interface paths {
                     page?: number;
                     /** @description 기본 50 */
                     size?: number;
+                    /** @description LOT 번호로 찾는다(정확히 일치). ⭐ 화면 입력이 LOT 번호인데 lotId 만 받아, 화면이 /trace/lots?q= 의 첫 결과를 임의로 골라야 했다 — 부분 일치나 다른 범위의 LOT 을 잘못 가리킬 수 있다. 근거: omf-mes#176 */
+                    lotNo?: string;
                 };
                 header?: never;
                 path?: never;
@@ -21679,11 +21752,20 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description ⚠ 자재·생산·제품을 합치지 않는다(L-7) */
+                    /** @description 자재·생산·제품 3종(결정 10). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_TYPE 로 받는다(MATERIAL·PRODUCTION·PRODUCT). ⚠ 셋을 합쳐 집계하지 않는다(공유계약 L-7) — 같은 「보류 38건」이라도 자재와 제품은 대응이 다르다. 근거: omf-mes#176 */
                     lotTypeCode?: string;
                     itemId?: number;
                     warehouseId?: number;
                     plantId?: number;
+                    /** @description 품질 판정 축 — 정상·불량·검사 대기·폐기. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). ⚠ 보류 건의 진행 상태와 다른 축이다(W-03-01 §5-3). 근거: 회신 E-3 종결 2026-08-07 · omf-mes#176 */
+                    lotStatusCode?: string;
+                    locationId?: number;
+                    /** @description 미해제 보류가 있는 것만 */
+                    heldOnly?: boolean;
+                    /** @description 이미 전량 보류인 것을 뺀다 */
+                    excludeFullyHeld?: boolean;
+                    /** @description LOT 번호 검색 */
+                    q?: string;
                 };
                 header?: never;
                 path?: never;
@@ -21774,8 +21856,9 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 정상 · 불량 · 검사 대기 · 폐기 */
+                    /** @description 품질 판정 축 — 정상·불량·검사 대기·폐기. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). ⚠ 보류 건의 진행 상태와 다른 축이다(W-03-01 §5-3). 근거: 회신 E-3 종결 2026-08-07 · omf-mes#176 */
                     lotStatusCode?: string;
+                    /** @description 자재·생산·제품 3종(결정 10). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_TYPE 로 받는다(MATERIAL·PRODUCTION·PRODUCT). ⚠ 셋을 합쳐 집계하지 않는다(공유계약 L-7) — 같은 「보류 38건」이라도 자재와 제품은 대응이 다르다. 근거: omf-mes#176 */
                     lotTypeCode?: string;
                     itemId?: number;
                     /** @description ⭐ 01 계약의 /trace/lots 에는 없는 축이다 */
@@ -21791,6 +21874,10 @@ export interface paths {
                     page?: number;
                     /** @description 기본 50 */
                     size?: number;
+                    /** @description 공장. ⭐ 요약(/quality/lot-status-summary)에만 있고 목록에 없어 두 결과의 모집단이 갈렸다 — 맞춘다. 근거: omf-mes#175 */
+                    plantId?: number;
+                    /** @description 정렬. ⛔ 허용 키는 셋뿐이다 — LOT 번호·품목·최근 전이(공유계약 L-4). 기본은 최근 전이 내림차순. ⚠ 화면이 현재 페이지만 다시 정렬하면 서버 전체를 정렬한 것처럼 보이면서 결과가 틀린다. 근거: omf-mes#176 */
+                    sort?: "lotNoAsc" | "lotNoDesc" | "itemAsc" | "itemDesc" | "latestTransitionAsc" | "latestTransitionDesc";
                 };
                 header?: never;
                 path?: never;
@@ -35713,16 +35800,83 @@ export interface components {
             releaseCondition?: string;
             /**
              * @description ⭐ 도착 상태. 의심자재 등록(C10)은 보류, 클레임·리콜 재Hold(C9)는 불량이다. 두 화면이 같은 행을 만들고 도착 상태만 다르다.
-             * @example IQC
+             * @example NORMAL
              */
             targetLotStatusCode: string;
             /** @example 값 */
             remarks?: string;
         };
+        LotHoldEvent: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotHoldId: number;
+            /**
+             * @description 등록(HELD) 또는 해제(RELEASED). 한 보류 문서가 최대 두 사건을 낸다
+             * @example HELD
+             * @enum {string}
+             */
+            eventTypeCode: "HELD" | "RELEASED";
+            /**
+             * Format: date-time
+             * @description 등록이면 held_at, 해제면 released_at
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 값 */
+            lotNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId?: number;
+            /**
+             * Format: int64
+             * @description 등록이면 held_by, 해제면 released_by
+             * @example 1001
+             */
+            actorId: number;
+            /**
+             * @description 화면이 사람 이름을 보인다 — 서버가 푼다(requestedByName 과 같은 방식)
+             * @example 값
+             */
+            actorName?: string;
+            /**
+             * @description 보류 사유. ⚠ 해제 사건에는 없을 수 있다
+             * @example QUALITY_HOLD
+             */
+            reasonCode?: string | null;
+            /**
+             * @description NULL = 전량 보류
+             * @example 50
+             */
+            holdQty?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId?: number | null;
+            /**
+             * @description 「수입검사 합격」 같은 문장
+             * @example 비고 문자열
+             */
+            releaseCondition?: string | null;
+            /**
+             * @description 해제 사건이 LOT 을 어느 상태로 보냈나. 값 목록은 LOT_STATUS
+             * @example NORMAL
+             */
+            targetLotStatusCode?: string | null;
+        };
         LotHoldRelease: {
             /**
              * @description 재판정 합격이면 정상, 재판정 불합격이면 불량이다(C7 · C8). 근거: W-03-02 §5-1
-             * @example IQC
+             * @example NORMAL
              */
             targetLotStatusCode: string;
             /**
@@ -35751,11 +35905,14 @@ export interface components {
              * @example 1001
              */
             itemId: number;
-            /** @example 값 */
+            /**
+             * @description 자재·생산·제품 3종(결정 10). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_TYPE 로 받는다(MATERIAL·PRODUCTION·PRODUCT). ⚠ 셋을 합쳐 집계하지 않는다(공유계약 L-7) — 같은 「보류 38건」이라도 자재와 제품은 대응이 다르다. 근거: omf-mes#176
+             * @example 값
+             */
             lotTypeCode?: string;
             /**
-             * @description 품질 판정 축 — 정상·불량·검사 대기·폐기. ⚠ 보류 건의 진행 상태와 다른 축이다(W-03-01 §5-3)
-             * @example IQC
+             * @description 품질 판정 축 — 정상·불량·검사 대기·폐기. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). ⚠ 보류 건의 진행 상태와 다른 축이다(W-03-01 §5-3). 근거: 회신 E-3 종결 2026-08-07 · omf-mes#176
+             * @example NORMAL
              */
             lotStatusCode: string;
             /**
@@ -35807,13 +35964,16 @@ export interface components {
             latestReasonCode?: string;
         };
         LotStatusCount: {
-            /** @example 정상 */
+            /**
+             * @description 품질 판정 축 — 정상·불량·검사 대기·폐기. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). ⚠ 보류 건의 진행 상태와 다른 축이다(W-03-01 §5-3). 근거: 회신 E-3 종결 2026-08-07 · omf-mes#176
+             * @example NORMAL
+             */
             statusCode: string;
             /** @example 1204 */
             lotCount: number;
             /**
-             * @description ⚠ 자재·생산·제품을 합치지 않는다 — 같은 보류라도 대응이 다르다. 근거: 공유계약 L-7
-             * @example IQC
+             * @description 자재·생산·제품 3종(결정 10). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_TYPE 로 받는다(MATERIAL·PRODUCTION·PRODUCT). ⚠ 셋을 합쳐 집계하지 않는다(공유계약 L-7) — 같은 「보류 38건」이라도 자재와 제품은 대응이 다르다. 근거: omf-mes#176
+             * @example MATERIAL
              */
             lotTypeCode?: string;
         };
