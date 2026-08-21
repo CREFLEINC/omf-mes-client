@@ -4,6 +4,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
+import type { CodeValueResponse } from './code-options';
 import type { QueueListQuery } from './filters';
 import type { InspectionItemSpecResponse, InspectionMeasurementResponse } from './measurement-rows';
 import {
@@ -42,6 +43,9 @@ const ROUNDS_PAGE_SIZE = 100;
 /** 한 회차의 측정치 수 상한. 항목 × 샘플이라 커질 수 있으나 한 화면이 담을 범위다. */
 const MEASUREMENTS_PAGE_SIZE = 500;
 
+/** 한 코드 그룹의 값 수. 판정은 셋이고 다른 그룹도 이 자릿수를 넘지 않는다. */
+const CODE_VALUES_PAGE_SIZE = 200;
+
 /**
  * 이 자원의 조회를 덮는 뿌리 키.
  *
@@ -60,6 +64,11 @@ export const iqcInspectionKeys = {
    * 상세까지 함께 무효화되고, 반대로 저장 뒤 상세만 갱신하려 할 때 목록이 통째로 다시 온다.
    */
   detail: (inspectionRequestId: number) => [...ALL_KEY, 'detail', inspectionRequestId] as const,
+  /**
+   * 공통코드 값 목록. **그룹 이름이 곧 열쇠다** — 화면이 정수 id 를 알지 않는다.
+   * 마스터라 저장이 바꾸지 않으므로 다른 앞머리와 갈라 둔다.
+   */
+  codeValues: (codeGroupCode: string) => [...ALL_KEY, 'code-values', codeGroupCode] as const,
   /**
    * 검사기준 버전의 항목 규격. **의뢰·회차와 앞머리를 갈라 둔다** — 기준은 마스터라 저장이
    * 바꾸지 않는다. 함께 묶으면 저장할 때마다 기준까지 다시 부른다.
@@ -196,6 +205,7 @@ export const useInspectionRoundLock = (
   });
 };
 
+type InspectionResultConfirm = components['schemas']['InspectionResultConfirm'];
 type InspectionResultCreate = components['schemas']['InspectionResultCreate'];
 type InspectionResultUpdate = components['schemas']['InspectionResultUpdate'];
 type InspectionResultResponse = components['schemas']['InspectionResult'];
@@ -214,6 +224,14 @@ export interface SaveDraftVariables {
   rejectedQty: number;
   heldQty: number;
   uomId: number;
+  /**
+   * 고른 종합 판정. **임시 저장도 함께 싣는다** — 계약이 「작성중」에는 선택으로 받는다.
+   *
+   * ⛔ 싣지 않으면 저장 뒤 회차를 다시 부를 때 서버가 «저장 전» 판정을 돌려주고, 초안
+   * 되돌림이 사용자가 고른 값을 그것으로 덮는다. 그러고 확정을 누르면 **고른 것과 다른
+   * 판정이 나가는데 그 쓰기는 되돌릴 수 없다** — 불량 가능성이 있는 LOT 이 정상으로 풀린다.
+   */
+  overallJudgmentCode: string;
   /** 검사한 시각. **호출부가 준다** — 이 파일이 실행 환경의 시각을 스스로 읽지 않는다 */
   inspectedAt: string;
 }
@@ -280,6 +298,13 @@ export const useSaveDraft = (
 /** 이 화면이 소유한 입력칸 — 서버 필드 오류를 인라인으로 낼지 배너로 올릴지 가르는 기준이다. */
 export const SAVE_FIELDS = ['acceptedQty', 'rejectedQty', 'heldQty'] as const;
 
+/**
+ * 아직 고르지 않은 판정은 **키 자체를 싣지 않는다** — 빈 문자열은 코드가 아니고, 보내면
+ * 서버가 모르는 값을 받는다.
+ */
+const judgmentOf = (code: string): { overallJudgmentCode?: string } =>
+  code === '' ? {} : { overallJudgmentCode: code };
+
 const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   inspectionRequestId: v.inspectionRequestId,
   inspectedQty: v.inspectedQty,
@@ -289,6 +314,7 @@ const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   uomId: v.uomId,
   inspectedAt: v.inspectedAt,
   statusCode: DRAFT_STATUS,
+  ...judgmentOf(v.overallJudgmentCode),
 });
 
 const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
@@ -296,6 +322,7 @@ const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
   rejectedQty: v.rejectedQty,
   heldQty: v.heldQty,
   inspectedAt: v.inspectedAt,
+  ...judgmentOf(v.overallJudgmentCode),
 });
 
 const fetchItemSpecs = (
@@ -354,3 +381,79 @@ export const useMeasurements = (
     enabled: inspectionResultId !== null,
   });
 };
+
+const fetchCodeValues = (client: Client, codeGroupCode: string): Promise<CodeValueResponse[]> =>
+  runRequest(() =>
+    client.GET('/mdm/code-values', {
+      params: { query: { codeGroupCode, page: 1, size: CODE_VALUES_PAGE_SIZE } },
+    }),
+  ).then((response) => response.items);
+
+/**
+ * 공통코드 값 목록을 부른다 — **그룹을 이름으로 가리킨다.**
+ *
+ * ⛔ `codeGroupId` 정수를 코드에 박지 않는다: **환경마다 다르다**(omf-mes#179 회신).
+ * 계약이 둘 중 «정확히 하나»만 받으므로 이름만 보낸다.
+ *
+ * ⛔ **목록이 비어도 화면을 감추지 않는다**(공유계약 G-2). 시드가 아직 안 들어가 빌 수 있고,
+ * 그때는 비활성 + 사유로 둔다 — 감추면 그 자리가 왜 없는지 사용자가 알 수 없다.
+ */
+export const useCodeValues = (codeGroupCode: string): UseQueryResult<CodeValueResponse[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: iqcInspectionKeys.codeValues(codeGroupCode),
+    queryFn: () => fetchCodeValues(client, codeGroupCode),
+  });
+};
+
+/** 확정이 보내는 값. ⛔ 비고(`remarks`)를 만들지 않는다 — 스펙 §4-B 가 싣지 않은 칸이다. */
+export interface ConfirmVariables {
+  overallJudgmentCode: string;
+}
+
+/**
+ * 판정을 확정한다 — ⛔ **되돌릴 수 없는 쓰기다.**
+ *
+ * ⭐ **이 순간 Lot Status 가 전이한다** — 합격이면 정상, 불합격이면 불량, 보류면 검사 대기다.
+ * 계약이 독립된 상태 전이 경로를 두지 않았고(결정 10 「상태 이중 보유 없음」 · 공유계약 B-8)
+ * `lot_hold.released_at` 도 이때 기록된다. **두 번 실행되면 되돌릴 수 없다.**
+ *
+ * ⭐ 그래서 멱등 키 수명을 **`until-applied`** 로 고른다 — 통신이 끊기거나 5xx 가 온 뒤 다시
+ * 눌러도 서버가 그것을 다른 쓰기로 보지 않는다. 이 훅이 그 수명의 **첫 소비처**다(#263).
+ *
+ * ⛔ 합계가 맞지 않으면 서버가 400 이다(`ck_inspection_result_qty` · 공유계약 A-3). 화면이
+ * 먼저 막되 서버 판정을 신뢰한다 — 화면의 막음은 편의이고 정본은 서버다.
+ */
+export const useConfirmResult = (
+  inspectionRequestId: number | null,
+  inspectionResultId: number | null,
+  onConfirmed: () => void,
+): MasterWriteResult<ConfirmVariables> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<ConfirmVariables, InspectionResultResponse>({
+    request: (variables, headers: WriteHeaders): Promise<ApiCallResult<InspectionResultResponse>> =>
+      client.POST('/quality/inspection-results/{inspectionResultId}:confirm', {
+        params: {
+          path: { inspectionResultId: inspectionResultId as number },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: {
+          overallJudgmentCode: variables.overallJudgmentCode,
+        } satisfies InspectionResultConfirm,
+      }),
+    etagPath: inspectionResultId === null ? null : roundPath(inspectionResultId),
+    invalidateKeys: [iqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY],
+    knownFields: CONFIRM_FIELDS,
+    /* 되돌릴 수 없는 쓰기다 — 실패 뒤 다시 눌러도 서버가 두 번 실행하지 않게 키를 유지한다. */
+    keyLifetime: 'until-applied',
+    onSuccess: onConfirmed,
+  });
+};
+
+/** 확정이 짚어 줄 수 있는 칸. 수량은 임시 저장이 다루므로 여기서는 판정 하나다. */
+export const CONFIRM_FIELDS = ['overallJudgmentCode'] as const;

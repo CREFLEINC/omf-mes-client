@@ -1,3 +1,4 @@
+import type { CodeValueResponse } from './code-options';
 import type { InspectionItemSpecResponse, InspectionMeasurementResponse } from './measurement-rows';
 import type {
   InspectionRequestResponse,
@@ -89,7 +90,13 @@ export const draftRound: InspectionResultResponse = {
   rejectedQty: 15,
   heldQty: 5,
   uomId: 10,
-  overallJudgmentCode: '합격',
+  /*
+   * ⛔ 확정 코드는 «영문»이다(ACCEPTED·REJECTED·HELD). 스펙 §8-1 의 「합격·불합격·보류」는
+   * 표시명이지 코드가 아닌데 그것을 코드로 쓰고 있었다 — 계약의 example 이 "IQC"(검사 유형)
+   * 로 틀려 있어 참고할 자리도 없었다. 설계가 그 예시를 정정하며 「이 값을 보고 만든 자리가
+   * 있으면 함께 보라」고 지목한 자리다(omf-mes#179).
+   */
+  overallJudgmentCode: 'ACCEPTED',
   inspectorId: 4001,
   inspectedAt: '2026-08-18T10:00:00+09:00',
   statusCode: '작성중',
@@ -180,7 +187,7 @@ export const expiredMeasurement: InspectionMeasurementResponse = {
   inspectionItemSpecId: dimensionSpec.inspectionItemSpecId,
   sampleNo: 1,
   numericValue: 10.05,
-  judgmentCode: '합격',
+  judgmentCode: 'ACCEPTED',
   measuredAt: '2026-08-18T10:05:00+09:00',
   inspectionEquipmentId: 6001,
   calibrationExpiredAtMeasurement: true,
@@ -205,3 +212,52 @@ export const measurementsResponse = (
 export const itemSpecsResponse = (
   items: InspectionItemSpecResponse[] = itemSpecs,
 ): { items: InspectionItemSpecResponse[] } => ({ items });
+
+/**
+ * 종합 판정 코드값. ⛔ 셋이다 — 항목 판정과 달리 **보류가 있다**.
+ *
+ * `displayOrder` 가 뜻을 담으므로(합격·불합격·보류 순) 차례를 뒤섞어 두어 정렬을 시험한다.
+ */
+export const overallJudgmentCodeValues: CodeValueResponse[] = [
+  {
+    codeValueId: 3002,
+    codeGroupId: 300,
+    code: 'REJECTED',
+    codeName: '불합격',
+    displayOrder: 20,
+    isActive: true,
+  },
+  {
+    codeValueId: 3001,
+    codeGroupId: 300,
+    code: 'ACCEPTED',
+    codeName: '합격',
+    displayOrder: 10,
+    isActive: true,
+  },
+  {
+    codeValueId: 3003,
+    codeGroupId: 300,
+    code: 'HELD',
+    codeName: '보류',
+    displayOrder: 30,
+    isActive: true,
+  },
+];
+
+/** 사용 중지된 값. 지금 고를 것은 아니지만 과거 자료에는 남아 있다. */
+export const retiredCodeValue: CodeValueResponse = {
+  codeValueId: 3009,
+  codeGroupId: 300,
+  code: 'RETIRED',
+  codeName: '폐지값',
+  displayOrder: 40,
+  isActive: false,
+};
+
+export const codeValuesResponse = (
+  items: CodeValueResponse[],
+): { items: CodeValueResponse[]; page: PageMetaResponse } => ({
+  items,
+  page: pageOf(items.length),
+});

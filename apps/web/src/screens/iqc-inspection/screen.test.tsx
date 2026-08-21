@@ -1,14 +1,17 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { CODE_GROUPS } from './code-options';
 import {
+  codeValuesResponse,
   draftRound,
   expiredMeasurement,
   itemSpecsResponse,
   measurementsResponse,
+  overallJudgmentCodeValues,
   pageOf,
   queueItems,
   queueResponse,
@@ -62,6 +65,14 @@ const renderScreen = (
             : jsonResponse(found);
         },
       },
+      /* 공통코드 — 종합 판정 선택지를 채운다. */
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+        respond: (request) => {
+          sent.push(new URL(request.url));
+          return jsonResponse(codeValuesResponse(overallJudgmentCodeValues));
+        },
+      },
       /* 측정치 — 회차 단건보다 «먼저» 둔다. 경로가 회차 단건의 접두를 포함하기 때문이다. */
       {
         match: (request) =>
@@ -90,6 +101,12 @@ const renderScreen = (
           request.method !== 'GET',
         respond: (request) => {
           writes.push(request);
+
+          const responder = confirmResponder;
+          if (responder !== null && new URL(request.url).pathname.endsWith(':confirm')) {
+            return responder(request);
+          }
+
           return jsonResponse(draftRound, { status: request.method === 'POST' ? 201 : 200 });
         },
       },
@@ -107,7 +124,24 @@ const renderScreen = (
 const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
   (await request.clone().json()) as Record<string, unknown>;
 
-const lastQuery = (sent: URL[]) => sent[sent.length - 1]?.searchParams;
+/**
+ * `sent` 에는 큐·항목 규격·공통코드가 섞여 담긴다. 갈래를 갈라 읽지 않으면 「마지막 요청」이
+ * 엉뚱한 것을 가리킨다 — 큐 단언은 큐만 본다.
+ */
+/**
+ * 확정 요청의 응답을 시험이 갈아 끼우는 자리. 기본은 성공이고, 실패를 섞어야 하는 시험만
+ * 채운다 — 매 시험이 시작할 때 비운다.
+ */
+let confirmResponder: ((request: Request) => Response) | null = null;
+
+beforeEach(() => {
+  confirmResponder = null;
+});
+
+const queueCalls = (sent: URL[]) =>
+  sent.filter((url) => url.pathname === '/quality/inspection-requests');
+
+const lastQuery = (sent: URL[]) => queueCalls(sent).at(-1)?.searchParams;
 const openButton = (no: string) => screen.getByRole('button', { name: t.queue.openRow(no) });
 
 describe('IqcInspectionScreen', () => {
@@ -120,7 +154,7 @@ describe('IqcInspectionScreen', () => {
   it('고정 축을 늘 실어 보낸다 — 사용자가 끌 수 없는 이 화면의 정의다', async () => {
     const { sent } = renderScreen();
 
-    await waitFor(() => expect(sent).toHaveLength(1));
+    await waitFor(() => expect(queueCalls(sent)).toHaveLength(1));
 
     expect(lastQuery(sent)?.get('inspectionTypeCode')).toBe('IQC');
     expect(lastQuery(sent)?.get('pendingOnly')).toBe('true');
@@ -129,7 +163,7 @@ describe('IqcInspectionScreen', () => {
   it('주소가 담은 조건을 그대로 실어 보낸다 — 새로고침·공유가 같은 결과를 낸다', async () => {
     const { sent } = renderScreen('/?it=1001&sp=2002&q=IR&page=2');
 
-    await waitFor(() => expect(sent).toHaveLength(1));
+    await waitFor(() => expect(queueCalls(sent)).toHaveLength(1));
 
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
     expect(lastQuery(sent)?.get('supplierId')).toBe('2002');
@@ -140,12 +174,12 @@ describe('IqcInspectionScreen', () => {
   it('조건을 바꾸면 첫 쪽부터 다시 부른다 — 좁힌 결과가 3쪽에 못 미칠 수 있다', async () => {
     const { sent } = renderScreen('/?page=3');
 
-    await waitFor(() => expect(sent).toHaveLength(1));
+    await waitFor(() => expect(queueCalls(sent)).toHaveLength(1));
 
     await userEvent.type(screen.getByLabelText(t.filters.item), '1001');
     await userEvent.click(screen.getByRole('button', { name: t.filters.apply }));
 
-    await waitFor(() => expect(sent.length).toBeGreaterThan(1));
+    await waitFor(() => expect(queueCalls(sent).length).toBeGreaterThan(1));
     expect(lastQuery(sent)?.get('page')).toBe('1');
     expect(lastQuery(sent)?.get('itemId')).toBe('1001');
   });
@@ -185,7 +219,7 @@ describe('IqcInspectionScreen', () => {
     const retry = await screen.findByRole('button', { name: messages.common.retry });
     await userEvent.click(retry);
 
-    await waitFor(() => expect(sent.length).toBeGreaterThan(1));
+    await waitFor(() => expect(queueCalls(sent).length).toBeGreaterThan(1));
     expect(await screen.findByText('IR-2026-0001')).toBeInTheDocument();
   });
 
@@ -316,11 +350,11 @@ describe('IqcInspectionScreen', () => {
     const { writes, sent } = renderScreen('/?ir=1001');
 
     await screen.findByText(t.result.round(1));
-    const before = sent.length;
+    const before = queueCalls(sent).length;
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
-    await waitFor(() => expect(sent.length).toBeGreaterThan(before));
+    await waitFor(() => expect(queueCalls(sent).length).toBeGreaterThan(before));
   });
 
   /*
@@ -379,6 +413,119 @@ describe('IqcInspectionScreen', () => {
     ).toBeInTheDocument();
     /* 저장 단추가 그대로 선다 — 알리기만 하고 차단하지 않는다. */
     expect(screen.getByRole('button', { name: t.result.save })).toBeEnabled();
+  });
+
+  /*
+   * ⛔ 판정 그룹이 둘이다. 항목 판정에는 보류가 없어 합쳐 쓰면 종합 선택칸의 값 집합이
+   * 달라진다 — 그룹을 «이름»으로 부르되 어느 이름인지가 중요하다(omf-mes#179).
+   */
+  it('종합 판정 그룹을 이름으로 부른다 — 정수 id 를 박지 않는다', async () => {
+    const { sent } = renderScreen('/?ir=1001');
+
+    await screen.findByLabelText(t.result.judgment);
+
+    const call = sent.find((url) => url.pathname === '/mdm/code-values');
+    expect(call?.searchParams.get('codeGroupCode')).toBe(CODE_GROUPS.overallJudgment);
+    expect(call?.searchParams.has('codeGroupId')).toBe(false);
+  });
+
+  it('항목 판정 그룹을 종합 판정에 쓰지 않는다 — 그쪽에는 보류가 없다', async () => {
+    const { sent } = renderScreen('/?ir=1001');
+
+    await screen.findByLabelText(t.result.judgment);
+
+    const groups = sent
+      .filter((url) => url.pathname === '/mdm/code-values')
+      .map((url) => url.searchParams.get('codeGroupCode'));
+
+    expect(groups).not.toContain(CODE_GROUPS.measurementJudgment);
+  });
+
+  it('확정하면 되돌릴 수 없는 쓰기가 잠금 토큰과 함께 나간다', async () => {
+    const { writes } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    const request = writes[0] as Request;
+    expect(new URL(request.url).pathname).toContain(':confirm');
+    expect(request.headers.get('If-Match')).toBe('W/"7"');
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+    expect(await bodyOf(request)).toEqual({ overallJudgmentCode: 'ACCEPTED' });
+  });
+
+  /*
+   * ⭐ 확정은 되돌릴 수 없는 쓰기다 — 이 순간 LOT 상태가 전이하고 보류 해제가 기록된다.
+   * 통신이 끊기거나 5xx 가 온 뒤 다시 누를 때 «새 키»가 나가면 서버가 그것을 다른 쓰기로
+   * 보고 두 번 실행할 수 있다. 그래서 수명을 until-applied 로 고른다(#263).
+   */
+  it('확정이 실패한 뒤 다시 눌러도 같은 멱등 키를 쓴다 — 두 번 실행되면 되돌릴 수 없다', async () => {
+    let shouldFail = true;
+
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [draftRound]);
+
+    /* 첫 시도는 5xx 로 떨어뜨린다 — 적용됐는지 알 수 없는 상태다. */
+    const failOnce = (request: Request): Response => {
+      if (shouldFail) {
+        shouldFail = false;
+        return jsonResponse({ message: '서버 오류' }, { status: 500 });
+      }
+
+      return jsonResponse(draftRound);
+    };
+
+    confirmResponder = failOnce;
+
+    await screen.findByText(t.result.round(1));
+    const button = await screen.findByRole('button', { name: t.result.confirm });
+
+    await userEvent.click(button);
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    await userEvent.click(button);
+    await waitFor(() => expect(writes).toHaveLength(2));
+
+    expect(writes[1]?.headers.get('Idempotency-Key')).toBe(
+      writes[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /*
+   * ⭐ 리뷰가 잡은 Blocker 다. 판정을 싣지 않으면 저장 뒤 재조회가 «저장 전» 판정을 돌려주고
+   * 초안 되돌림이 사용자가 고른 값을 덮는다. 그러고 확정하면 고른 것과 다른 판정이 나가는데
+   * 그 쓰기는 되돌릴 수 없다 — 불량 가능성이 있는 LOT 이 정상으로 풀린다.
+   */
+  it('임시 저장이 고른 판정을 함께 싣는다 — 싣지 않으면 저장 뒤 되돌아간다', async () => {
+    const { writes } = renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '보류' }));
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).toMatchObject({ overallJudgmentCode: 'HELD' });
+  });
+
+  it('아직 고르지 않은 판정은 키 자체를 싣지 않는다 — 빈 문자열은 코드가 아니다', async () => {
+    const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.notStarted);
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).not.toHaveProperty('overallJudgmentCode');
+  });
+
+  it('저장된 판정이 선택칸에 되돌아온다 — 표시명으로 보인다', async () => {
+    renderScreen('/?ir=1001');
+
+    /* DS Select 는 트리거 버튼이라 값이 아니라 보이는 라벨로 잰다. */
+    await waitFor(() => expect(screen.getByLabelText(t.result.judgment)).toHaveTextContent('합격'));
   });
 
   it('상세 조회가 실패해도 「고르지 않음」으로 접지 않는다 — 다시 골라도 같은 실패가 온다', async () => {
