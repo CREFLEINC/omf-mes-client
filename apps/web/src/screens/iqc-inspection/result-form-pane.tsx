@@ -295,7 +295,7 @@ export const ResultFormPane = ({
        * 확정 여부는 회차를 다시 부른 «뒤에» 참이 된다 — 그것을 기다리면 누른 사람은 아무
        * 일도 없는 몇 초를 본다. 이 값은 상태가 아니라 방금 한 일이다.
        */}
-      {isJustConfirmed && <p className="field-note">{t.confirmed_done}</p>}
+      {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
 
       {isConfirmed && (
         <div className="form-actions">
@@ -307,28 +307,6 @@ export const ResultFormPane = ({
 
       {!isConfirmed && (
         <>
-          {/*
-           * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 알린다. 이 순간 LOT 상태가
-           * 전이하고 보류 해제가 기록된다.
-           */}
-          <p className="field-note">{t.confirmNote}</p>
-
-          {/* 막혔으면 «무엇이» 막혔는지 밝힌다(공유계약 G-23) — 잠긴 단추만 두지 않는다. */}
-          {confirmBlockedReason !== null && <p className="field-note">{confirmBlockedReason}</p>}
-
-          {/*
-           * 부분 입고 허용 — ⚠ **자리를 두되 비활성으로 시작한다**(스펙 §8 #2).
-           *
-           * ⛔ 감추지 않는다. 감추면 이 화면에 그 갈래가 «없는 것»이 되고, 협의가 끝나면
-           * 사용자는 「없던 것이 생겼다」로 만난다 — 자리가 보이면 「아직 못 쓴다」로 만난다.
-           */}
-          <div className="form-actions">
-            <p className="field-note form-actions-secondary">{t.partialReceiptPending}</p>
-            <Button type="button" variant="text" size="sm" disabled>
-              {t.partialReceipt}
-            </Button>
-          </div>
-
           <div className="form-actions">
             {/* 눌렀는데 아무 일도 없어 보이지 않게 결과를 한 줄로 알린다. */}
             {isSaved && <p className="field-note form-actions-secondary">{t.saved}</p>}
@@ -358,6 +336,28 @@ export const ResultFormPane = ({
               onClick={onConfirm}
             >
               {isConfirming ? t.confirming : t.confirm}
+            </Button>
+          </div>
+
+          {/*
+           * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 알린다. 이 순간 LOT 상태가
+           * 전이하고 보류 해제가 기록된다.
+           */}
+          <p className="field-note">{t.confirmNote}</p>
+
+          {/* 막혔으면 «무엇이» 막혔는지 밝힌다(공유계약 G-23) — 잠긴 단추만 두지 않는다. */}
+          {confirmBlockedReason !== null && <p className="field-note">{confirmBlockedReason}</p>}
+
+          {/*
+           * 부분 입고 허용 — ⚠ **자리를 두되 비활성으로 시작한다**(스펙 §8 #2).
+           *
+           * ⛔ 감추지 않는다. 감추면 이 화면에 그 갈래가 «없는 것»이 되고, 협의가 끝나면
+           * 사용자는 「없던 것이 생겼다」로 만난다 — 자리가 보이면 「아직 못 쓴다」로 만난다.
+           */}
+          <div className="form-actions">
+            <p className="field-note form-actions-secondary">{t.partialReceiptPending}</p>
+            <Button type="button" variant="text" size="sm" disabled>
+              {t.partialReceipt}
             </Button>
           </div>
         </>

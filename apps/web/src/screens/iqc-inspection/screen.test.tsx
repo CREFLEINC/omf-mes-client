@@ -676,7 +676,7 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
 
-    expect(await screen.findByText(t.result.confirmed_done)).toBeInTheDocument();
+    expect(await screen.findByText(t.result.confirmSucceeded)).toBeInTheDocument();
   });
 
   it('다른 의뢰로 옮기면 그 문면이 지워진다 — 그 의뢰에서 한 일이 아니다', async () => {
@@ -688,14 +688,14 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
     await userEvent.click(screen.getByLabelText(t.result.judgment));
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
     await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
-    await screen.findByText(t.result.confirmed_done);
+    await screen.findByText(t.result.confirmSucceeded);
 
     await userEvent.click(
       screen.getByRole('button', { name: t.queue.openRow(queueItems[1]!.inspectionRequestNo) }),
     );
 
     await waitFor(() =>
-      expect(screen.queryByText(t.result.confirmed_done)).not.toBeInTheDocument(),
+      expect(screen.queryByText(t.result.confirmSucceeded)).not.toBeInTheDocument(),
     );
   });
 });

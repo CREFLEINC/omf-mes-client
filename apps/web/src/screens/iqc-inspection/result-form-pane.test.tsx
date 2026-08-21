@@ -381,7 +381,7 @@ describe('ResultFormPane — 미결과 결과 문면', () => {
       isJustConfirmed: true,
     });
 
-    expect(screen.getByText(t.confirmed_done)).toBeInTheDocument();
+    expect(screen.getByText(t.confirmSucceeded)).toBeInTheDocument();
   });
 
   /**
@@ -391,6 +391,6 @@ describe('ResultFormPane — 미결과 결과 문면', () => {
   it('예전에 확정된 회차에는 방금 한 일처럼 말하지 않는다', () => {
     renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
 
-    expect(screen.queryByText(t.confirmed_done)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.confirmSucceeded)).not.toBeInTheDocument();
   });
 });
