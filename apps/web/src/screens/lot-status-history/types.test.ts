@@ -60,6 +60,21 @@ describe('toLotStatusRow', () => {
     expect(row.openHoldCount).toBe(2);
   });
 
+  it('수량과 열린 보류 건수의 0을 값 없음으로 바꾸지 않는다', () => {
+    const row = toLotStatusRow({
+      ...FULL_LOT_STATUS,
+      onHandQty: 0,
+      heldQty: 0,
+      availableQty: 0,
+      openHoldCount: 0,
+    });
+
+    expect(row.onHandQty).toBe(0);
+    expect(row.heldQty).toBe(0);
+    expect(row.availableQty).toBe(0);
+    expect(row.openHoldCount).toBe(0);
+  });
+
   it('전량 보류 여부와 최근 전이 원문을 보존한다', () => {
     const row = toLotStatusRow(FULL_LOT_STATUS);
 
@@ -89,6 +104,22 @@ describe('lotStatusRowKey', () => {
       lotStatusRowKey(toLotStatusRow({ ...FULL_LOT_STATUS })),
     );
   });
+
+  it('null의 위치가 다른 창고·Location 조합과 둘 다 null인 조합은 충돌하지 않는다', () => {
+    const warehouseOnly = lotStatusRowKey(
+      toLotStatusRow({ ...FULL_LOT_STATUS, warehouseId: 303, locationId: undefined }),
+    );
+    const locationOnly = lotStatusRowKey(
+      toLotStatusRow({ ...FULL_LOT_STATUS, warehouseId: undefined, locationId: 303 }),
+    );
+    const withoutStorage = lotStatusRowKey(
+      toLotStatusRow({ ...FULL_LOT_STATUS, warehouseId: undefined, locationId: undefined }),
+    );
+
+    expect(warehouseOnly).not.toBe(locationOnly);
+    expect(warehouseOnly).not.toBe(withoutStorage);
+    expect(locationOnly).not.toBe(withoutStorage);
+  });
 });
 
 const SUMMARY: LotStatusSummaryResponse = {
@@ -109,6 +140,24 @@ describe('toLotStatusSummaryView', () => {
       { statusCode: 'SAMPLE_STATUS_A', lotCount: 3, lotTypeCode: null },
     ]);
     expect(view.counts).not.toBe(SUMMARY.counts);
+  });
+
+  it('응답의 count 항목을 나중에 바꿔도 이미 만든 view 항목은 변하지 않는다', () => {
+    const count = { statusCode: 'SAMPLE_STATUS_C', lotCount: 11, lotTypeCode: 'SAMPLE_TYPE_B' };
+    const response: LotStatusSummaryResponse = {
+      counts: [count],
+      asOf: '2026-08-08T10:11:12+09:00',
+    };
+    const view = toLotStatusSummaryView(response);
+
+    count.lotCount = 99;
+
+    expect(view.counts[0]).not.toBe(count);
+    expect(view.counts[0]).toEqual({
+      statusCode: 'SAMPLE_STATUS_C',
+      lotCount: 11,
+      lotTypeCode: 'SAMPLE_TYPE_B',
+    });
   });
 
   it('범위 밖 건수는 필드가 없으면 null로 모으되 0은 보존한다', () => {
