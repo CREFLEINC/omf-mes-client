@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { EMPTY_HISTORY_FILTERS, EMPTY_LOT_FILTERS, type LotFilters } from './filters';
+import {
+  EMPTY_HISTORY_FILTERS,
+  EMPTY_LOT_FILTERS,
+  type HistoryFilters,
+  type LotFilters,
+} from './filters';
 import { lotStatusKeys } from './query-keys';
 
 describe('lotStatusKeys.list', () => {
@@ -11,6 +16,9 @@ describe('lotStatusKeys.list', () => {
   });
 
   it.each([
+    ['lotType', 'SAMPLE_TYPE'],
+    ['item', '101'],
+    ['warehouse', '202'],
     ['location', '303'],
     ['q', 'SAMPLE-LOT'],
     ['status', 'SAMPLE_STATUS'],
@@ -61,6 +69,10 @@ describe('lotStatusKeys detail boundaries', () => {
     expect(lotStatusKeys.detail(null)).not.toEqual(lotStatusKeys.detail(101));
     expect(lotStatusKeys.holds(null)).not.toEqual(lotStatusKeys.holds(101));
   });
+
+  it('같은 LOT 식별자라도 상세와 보류 캐시는 서로 다른 영역이다', () => {
+    expect(lotStatusKeys.detail(101)).not.toEqual(lotStatusKeys.holds(101));
+  });
 });
 
 describe('lotStatusKeys.history', () => {
@@ -81,5 +93,19 @@ describe('lotStatusKeys.history', () => {
     expect(lotStatusKeys.history(EMPTY_HISTORY_FILTERS, 1)).not.toEqual(
       lotStatusKeys.history(EMPTY_HISTORY_FILTERS, 2),
     );
+  });
+
+  it('호출자가 이력 필터 객체를 바꿔도 이미 만든 캐시 키는 변하지 않는다', () => {
+    const filters: HistoryFilters = { ...EMPTY_HISTORY_FILTERS, actor: '505' };
+    const key = lotStatusKeys.history(filters, 2);
+
+    filters.actor = '606';
+
+    expect(key).toEqual([
+      'lot-status-history',
+      'history',
+      { from: '', to: '', actor: '505', lot: '' },
+      2,
+    ]);
   });
 });
