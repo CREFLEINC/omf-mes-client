@@ -127,4 +127,11 @@ describe('LOT 상세 보류 문서 요청', () => {
   it('LOT을 선택하지 않았으면 요청을 만들지 않는다', () => {
     expect(toLotHoldListQuery(null)).toBeNull();
   });
+
+  it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    '양의 안전 정수가 아닌 LOT ID %p로는 요청을 만들지 않는다',
+    (lotId) => {
+      expect(toLotHoldListQuery(lotId)).toBeNull();
+    },
+  );
 });

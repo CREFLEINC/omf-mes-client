@@ -3,12 +3,21 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { LotFilters } from './filters';
+import type { HistoryFilters, LotFilters } from './filters';
 import { lotStatusKeys } from './query-keys';
-import { toLotStatusListQuery, toLotStatusSummaryQuery } from './request-queries';
 import {
+  toLotHoldEventQuery,
+  toLotHoldListQuery,
+  toLotStatusListQuery,
+  toLotStatusSummaryQuery,
+} from './request-queries';
+import {
+  toLotHoldEventView,
+  toLotHoldView,
   toLotStatusRow,
   toLotStatusSummaryView,
+  type LotHoldEventView,
+  type LotHoldView,
   type LotStatusRow,
   type LotStatusSummaryView,
 } from './types';
@@ -18,6 +27,16 @@ type PageMeta = components['schemas']['PageMeta'];
 
 export interface LotStatusListResult {
   rows: readonly LotStatusRow[];
+  page: PageMeta;
+}
+
+export interface LotHoldListResult {
+  rows: readonly LotHoldView[];
+  page: PageMeta;
+}
+
+export interface LotHoldEventListResult {
+  rows: readonly LotHoldEventView[];
   page: PageMeta;
 }
 
@@ -68,6 +87,59 @@ export const useLotStatusSummary = (filters: LotFilters): UseQueryResult<LotStat
     queryFn: () => {
       if (query === null) throw new Error('LOT 유형을 고르기 전에는 요약을 조회하지 않습니다.');
       return fetchLotStatusSummary(client, query);
+    },
+  });
+};
+
+const fetchLotHolds = async (
+  client: Client,
+  query: NonNullable<ReturnType<typeof toLotHoldListQuery>>,
+): Promise<LotHoldListResult> => {
+  const data = await runRequest(() => client.GET('/quality/lot-holds', { params: { query } }));
+
+  return { rows: data.items.map(toLotHoldView), page: data.page };
+};
+
+export const useLotHolds = (lotId: number | null): UseQueryResult<LotHoldListResult> => {
+  const { client } = useApiClient();
+  const query = toLotHoldListQuery(lotId);
+
+  return useQuery({
+    queryKey: lotStatusKeys.holds(lotId),
+    enabled: query !== null,
+    queryFn: () => {
+      if (query === null) throw new Error('LOT을 고르기 전에는 보류 문서를 조회하지 않습니다.');
+      return fetchLotHolds(client, query);
+    },
+  });
+};
+
+const fetchLotHoldEvents = async (
+  client: Client,
+  query: NonNullable<ReturnType<typeof toLotHoldEventQuery>>,
+): Promise<LotHoldEventListResult> => {
+  const data = await runRequest(() =>
+    client.GET('/quality/lot-hold-events', { params: { query } }),
+  );
+
+  return { rows: data.items.map(toLotHoldEventView), page: data.page };
+};
+
+export const useLotHoldEvents = (
+  filters: HistoryFilters,
+  page: number,
+  offsetMinutes: number,
+): UseQueryResult<LotHoldEventListResult> => {
+  const { client } = useApiClient();
+  const query = toLotHoldEventQuery(filters, page, offsetMinutes);
+
+  return useQuery({
+    queryKey: lotStatusKeys.history(filters, page, offsetMinutes),
+    enabled: query !== null,
+    queryFn: () => {
+      if (query === null)
+        throw new Error('유효한 기간을 입력하기 전에는 이력을 조회하지 않습니다.');
+      return fetchLotHoldEvents(client, query);
     },
   });
 };
