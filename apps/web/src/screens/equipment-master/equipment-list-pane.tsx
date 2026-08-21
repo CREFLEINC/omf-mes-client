@@ -26,6 +26,10 @@ export interface EquipmentListPaneProps {
   /** 적용된 조건 — 조건 칩의 렌더 기준 */
   appliedFilters: EquipmentFilters;
   onApplyFilters: (next: EquipmentFilters) => void;
+  /** 등록 폼을 여는 주 액션 */
+  onAdd: () => void;
+  /** 설비 하나를 편집한다 */
+  onEdit: (equipment: Equipment) => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 설비가 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -46,6 +50,8 @@ export const EquipmentListPane = ({
   isLoading,
   appliedFilters,
   onApplyFilters,
+  onAdd,
+  onEdit,
   loadError,
 }: EquipmentListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -67,7 +73,15 @@ export const EquipmentListPane = ({
   }, [appliedQ, appliedType, appliedCalibration, appliedIncludeInactive]);
 
   const columns: Column<Equipment>[] = [
-    { key: 'equipmentCode', header: t.fields.equipmentCode },
+    {
+      key: 'equipmentCode',
+      header: t.fields.equipmentCode,
+      render: (row) => (
+        <button type="button" className="link-cell" onClick={() => onEdit(row)}>
+          {row.equipmentCode}
+        </button>
+      ),
+    },
     { key: 'equipmentName', header: t.fields.equipmentName },
     {
       key: 'equipmentTypeCode',
@@ -113,6 +127,7 @@ export const EquipmentListPane = ({
       live
       title={t.empty.equipmentNoneTitle}
       description={t.empty.equipmentNoneDescription}
+      action={<Button onClick={onAdd}>{t.actions.addEquipment}</Button>}
     />
   );
 
@@ -180,6 +195,9 @@ export const EquipmentListPane = ({
         </div>
         <Button className="field-cell-unlabeled" onClick={() => onApplyFilters(draft)}>
           {messages.common.search}
+        </Button>
+        <Button className="field-cell-unlabeled" variant="outlined" onClick={onAdd}>
+          {t.actions.addEquipment}
         </Button>
         <Button
           className="field-cell-unlabeled"

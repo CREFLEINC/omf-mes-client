@@ -42,6 +42,23 @@ export const plantsResponse = (items: Plant[] = plantItems) => ({
   page: pageOf(items),
 });
 
+type Process = components['schemas']['Process'];
+
+export const processItems: Process[] = [
+  {
+    processId: 21,
+    processCode: 'PRC-1',
+    processName: '프레스',
+    processTypeCode: 'PENDING',
+    isActive: true,
+  },
+];
+
+export const processesResponse = (items: Process[] = processItems) => ({
+  items,
+  page: pageOf(items),
+});
+
 export const makeGroup = (
   equipmentGroupId: number,
   groupCode: string,
@@ -126,4 +143,21 @@ export const equipmentItems: Equipment[] = [
 export const equipmentsResponse = (items: Equipment[] = equipmentItems) => ({
   items,
   page: pageOf(items),
+});
+
+type EquipmentDetailResponse = components['schemas']['EquipmentDetailResponse'];
+
+export const equipmentDetail = (
+  equipment: Equipment,
+  overrides: Partial<EquipmentDetailResponse> = {},
+): EquipmentDetailResponse => ({
+  equipment,
+  editability: editableCode,
+  hierarchy: {
+    plantName: '제1공장',
+    groupNames: ['GRP-A 그룹'],
+    equipmentName: equipment.equipmentName,
+    groupAssigned: equipment.productionLineId !== null,
+  },
+  ...overrides,
 });

@@ -1,10 +1,18 @@
 import type { components } from '@omf-mes/api-client';
 
 import { PENDING_CODE_VALUE } from './code-options';
-import type { EquipmentGroup, GroupFormValues } from './types';
+import type {
+  CarriedEquipmentValues,
+  Equipment,
+  EquipmentFormValues,
+  EquipmentGroup,
+  GroupFormValues,
+} from './types';
 
 type EquipmentGroupCreate = components['schemas']['EquipmentGroupCreate'];
 type EquipmentGroupUpdate = components['schemas']['EquipmentGroupUpdate'];
+type EquipmentCreate = components['schemas']['EquipmentCreate'];
+type EquipmentUpdate = components['schemas']['EquipmentUpdate'];
 
 /**
  * 계약 표현과 폼 표현 사이의 변환.
@@ -82,3 +90,92 @@ export const isSameGroupValues = (a: GroupFormValues, b: GroupFormValues): boole
   a.groupName === b.groupName &&
   a.groupTypeCode === b.groupTypeCode &&
   a.parentGroupId === b.parentGroupId;
+
+/* ── 설비 ─────────────────────────────────────────────────────────── */
+
+export const equipmentToFormValues = (equipment: Equipment): EquipmentFormValues => ({
+  equipmentCode: equipment.equipmentCode,
+  equipmentName: equipment.equipmentName,
+  equipmentTypeCode: equipment.equipmentTypeCode,
+  productionLineId: optionalIdToText(equipment.productionLineId),
+  processId: optionalIdToText(equipment.processId),
+  calibrationRequired: equipment.calibrationRequired,
+});
+
+/**
+ * 이 화면이 소유하지 않는 값을 상세에서 그대로 떠 둔다.
+ * 정하는 쪽은 계측기 마스터(W-05-11)이고 이 화면은 반영만 한다(공유계약 B-13).
+ */
+export const carriedFrom = (equipment: Equipment): CarriedEquipmentValues => ({
+  calibrationCycleTypeCode: equipment.calibrationCycleTypeCode ?? null,
+  calibrationCycleInterval: equipment.calibrationCycleInterval ?? null,
+  precisionValue: equipment.precisionValue ?? null,
+  precisionUomId: equipment.precisionUomId ?? null,
+});
+
+/** 신규 설비 폼의 초기값. 소속 그룹은 좌측에서 고른 그룹이라 화면이 넣어 준다. */
+export const emptyEquipmentFormValues = (productionLineId: string): EquipmentFormValues => ({
+  equipmentCode: '',
+  equipmentName: '',
+  equipmentTypeCode: PENDING_CODE_VALUE,
+  productionLineId,
+  processId: '',
+  calibrationRequired: false,
+});
+
+/** 신규 설비에는 계측기 마스터가 정한 값이 아직 없다. */
+export const emptyCarriedValues = (): CarriedEquipmentValues => ({
+  calibrationCycleTypeCode: null,
+  calibrationCycleInterval: null,
+  precisionValue: null,
+  precisionUomId: null,
+});
+
+/**
+ * 설비 수정 요청 본문.
+ *
+ * ⛔ **`statusCode` 는 실리지 않는다** — 계약이 「폐기는 `:dispose` 가, 사용 중지는
+ * `:deactivate` 가 받는다」고 정했다. `lastCalibrationDate`·`calibrationDueDate` 도
+ * 받지 않는다 — 검교정 이력 등록(W-05-10)이 정한다.
+ *
+ * ⭐ **`equipmentCode` 는 잠기지 않았을 때만 싣는다**(그룹과 같은 규율 · 공유계약 B-4).
+ *
+ * ⭐ **`carried` 를 그대로 되돌려 보낸다.** PUT 이 전체 교체라 빼면 계측기 마스터가 정한
+ * 주기·정밀도가 지워진다. 이 화면은 그것을 **보이지도 고치지도 않지만 지우지도 않는다.**
+ */
+export const toEquipmentUpdate = (
+  values: EquipmentFormValues,
+  carried: CarriedEquipmentValues,
+  codeEditable: boolean,
+): EquipmentUpdate => ({
+  ...(codeEditable ? { equipmentCode: values.equipmentCode.trim() } : {}),
+  equipmentName: values.equipmentName.trim(),
+  equipmentTypeCode: values.equipmentTypeCode,
+  productionLineId: textToOptionalId(values.productionLineId),
+  processId: textToOptionalId(values.processId),
+  calibrationRequired: values.calibrationRequired,
+  calibrationCycleTypeCode: carried.calibrationCycleTypeCode,
+  calibrationCycleInterval: carried.calibrationCycleInterval,
+  precisionValue: carried.precisionValue,
+  precisionUomId: carried.precisionUomId,
+});
+
+/** 설비 등록 요청 본문. 계약상 수정 본문에 `plantId` 를 더한 형태다. */
+export const toEquipmentCreate = (
+  values: EquipmentFormValues,
+  carried: CarriedEquipmentValues,
+  plantId: number,
+): EquipmentCreate => ({
+  ...toEquipmentUpdate(values, carried, true),
+  equipmentCode: values.equipmentCode.trim(),
+  plantId,
+});
+
+/** 기준값과 현재 값의 비교. 「고친 것이 있는가」의 판정 근거다. */
+export const isSameEquipmentValues = (a: EquipmentFormValues, b: EquipmentFormValues): boolean =>
+  a.equipmentCode === b.equipmentCode &&
+  a.equipmentName === b.equipmentName &&
+  a.equipmentTypeCode === b.equipmentTypeCode &&
+  a.productionLineId === b.productionLineId &&
+  a.processId === b.processId &&
+  a.calibrationRequired === b.calibrationRequired;

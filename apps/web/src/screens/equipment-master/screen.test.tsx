@@ -5,8 +5,10 @@ import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
+  equipmentDetail,
   equipmentItems,
   equipmentsResponse,
+  makeEquipment,
   groupById,
   groupDetail,
   groupItems,
@@ -15,6 +17,7 @@ import {
   makeGroup,
   pageOf,
   plantsResponse,
+  processesResponse,
 } from './fixtures';
 import { EquipmentMasterScreen } from './screen';
 import type { EquipmentGroup } from './types';
@@ -38,6 +41,9 @@ interface RenderOptions {
   respondWrite?: (request: Request) => Response;
   respondDeactivate?: (request: Request) => Response;
   respondEquipments?: (request: Request) => Response;
+  respondProcesses?: () => Response;
+  respondEquipmentDetail?: (request: Request) => Response;
+  respondEquipmentWrite?: (request: Request) => Response;
 }
 
 /** 요청이 실제로 무엇을 실어 갔는지 본다 — 주소가 조건을 몰았음을 그것으로 증명한다. */
@@ -58,6 +64,13 @@ const renderScreen = (options: RenderOptions = {}) => {
     return jsonResponse(groupDetail(deactivated ? { ...found, isActive: false } : found), {
       headers: { ETag: '7' },
     });
+  };
+
+  const defaultEquipmentDetail = (request: Request): Response => {
+    const found = equipmentItems.find((item) => item.equipmentId === idOf(request));
+    return found === undefined
+      ? jsonResponse({ message: '없는 설비' }, { status: 404 })
+      : jsonResponse(equipmentDetail(found), { headers: { ETag: '9' } });
   };
 
   const defaultWrite = (request: Request): Response =>
@@ -104,15 +117,42 @@ const renderScreen = (options: RenderOptions = {}) => {
         },
       },
       {
-        match: (request) => isPath(request, '/mdm/equipments'),
+        match: (request) => request.method === 'GET' && isPath(request, '/mdm/equipments'),
         respond: (request) => {
           equipmentSent.push(new URL(request.url));
           return (options.respondEquipments ?? (() => jsonResponse(equipmentsResponse())))(request);
         },
       },
       {
+        match: (request) => request.method === 'POST' && isPath(request, '/mdm/equipments'),
+        respond: (request) => {
+          writes.push(request.clone());
+          return (
+            options.respondEquipmentWrite ??
+            (() => jsonResponse(makeEquipment(2009, 'EQ-NEW'), { status: 201 }))
+          )(request);
+        },
+      },
+      {
+        match: (request) => request.method === 'GET' && isUnder(request, '/mdm/equipments/'),
+        respond: (request) => (options.respondEquipmentDetail ?? defaultEquipmentDetail)(request),
+      },
+      {
+        match: (request) => request.method === 'PUT' && isUnder(request, '/mdm/equipments/'),
+        respond: (request) => {
+          writes.push(request.clone());
+          return (
+            options.respondEquipmentWrite ?? (() => jsonResponse(makeEquipment(2001, 'EQ-01')))
+          )(request);
+        },
+      },
+      {
         match: (request) => isPath(request, '/mdm/plants'),
         respond: () => (options.respondPlants ?? (() => jsonResponse(plantsResponse())))(),
+      },
+      {
+        match: (request) => isPath(request, '/mdm/processes'),
+        respond: () => (options.respondProcesses ?? (() => jsonResponse(processesResponse())))(),
       },
     ]),
   });
@@ -1250,5 +1290,328 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
     await user.click(await screen.findByRole('button', { name: 'GRP-A' }));
 
     expect(await screen.findByText('EQ-01')).toBeInTheDocument();
+  });
+});
+
+describe('EquipmentMasterScreen — 설비 등록·수정', () => {
+  const equipmentForm = (mode: 'create' | 'edit' = 'edit') =>
+    within(
+      screen.getByRole('dialog', {
+        name: mode === 'create' ? t.equipmentForm.createTitle : t.equipmentForm.editTitle,
+      }),
+    );
+
+  const openEquipmentTab = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole('button', { name: 'GRP-A' }));
+    await user.click(await screen.findByRole('tab', { name: t.tabs.equipment }));
+    return screen.findByRole('region', { name: t.tabs.equipment });
+  };
+
+  const openEquipment = async (user: ReturnType<typeof userEvent.setup>, code = 'EQ-01') => {
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: code }));
+    await screen.findByRole('dialog', { name: t.equipmentForm.editTitle });
+  };
+
+  it('설비 코드를 누르면 그 설비의 폼이 뜬다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openEquipment(user);
+
+    expect(
+      equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
+    ).toHaveValue('EQ-01');
+    expect(
+      equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentName) }),
+    ).toHaveValue('EQ-01 설비');
+  });
+
+  /*
+   * ⭐ 계층 텍스트를 화면이 잇지 않는다 — 상세 응답이 준 재료를 그대로 그린다(이슈 §6).
+   */
+  it('설비 위치를 상세 응답의 재료로 그린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openEquipment(user);
+
+    expect(equipmentForm().getByText('제1공장 > GRP-A 그룹 > EQ-01 설비')).toBeInTheDocument();
+  });
+
+  /*
+   * ⚠ 빈칸으로 두지 않는다(G-9 · 이슈 §6). 알람 화면에서 위치가 공장으로만 나오면 찾아갈 수
+   * 없으므로 여기서 비어 있음이 보여야 채운다.
+   */
+  it('소속 그룹이 없으면 빈칸이 아니라 그 사실을 밝힌다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondEquipmentDetail: () =>
+        jsonResponse(
+          equipmentDetail(makeEquipment(2001, 'EQ-01', { productionLineId: null }), {
+            hierarchy: {
+              plantName: '제1공장',
+              groupNames: [],
+              equipmentName: 'EQ-01 설비',
+              groupAssigned: false,
+            },
+          }),
+          { headers: { ETag: '9' } },
+        ),
+    });
+
+    await openEquipment(user);
+
+    expect(equipmentForm().getByText(t.values.noGroupAssigned)).toBeInTheDocument();
+    expect(equipmentForm().getByText('제1공장 > EQ-01 설비')).toBeInTheDocument();
+  });
+
+  /*
+   * ⚠ 계약이 「대상이 참이면 주기 두 칸이 함께 필요하다」로 짝을 묶었는데 주기 단위의
+   * 값 목록이 아직 없다(omf-mes#185). 열어 두면 켜는 순간 반드시 저장이 실패한다 —
+   * 감추지 않고 사유를 밝힌다(G-2).
+   */
+  it('검교정 대상을 잠그고 사유를 밝힌다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openEquipment(user);
+
+    expect(
+      equipmentForm().getByRole('switch', { name: t.fields.calibrationRequired }),
+    ).toBeDisabled();
+    expect(
+      equipmentForm().getByText(t.actionReasons.calibrationCycleUnavailable),
+    ).toBeInTheDocument();
+  });
+
+  /* 이 화면이 영영 정하지 않는 값은 잠긴 입력칸이 아니라 값 표기로 낸다. */
+  it('운용 상태와 검교정 일자를 값으로만 보이고 사유를 함께 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openEquipment(user);
+
+    expect(equipmentForm().getByText(t.actionReasons.statusNotEditableHere)).toBeInTheDocument();
+    expect(equipmentForm().getByText(t.actionReasons.calibrationDatesReadOnly)).toBeInTheDocument();
+    // 잠긴 입력칸을 두지 않는다 — 「언젠가 여기서 고칠 수 있다」를 뜻하게 된다.
+    expect(
+      equipmentForm().queryByRole('textbox', { name: new RegExp(t.fields.lastCalibrationDate) }),
+    ).toBeNull();
+  });
+
+  /*
+   * 값이 없는 읽기 전용 칸을 빈칸으로 두면 모르는 값과 없는 값이 같은 모양이 된다(G-9).
+   *
+   * ⚠ 문구를 선택칸의 「지정 없음」과 **다른 말로** 둔 이유가 여기 있다 — 같은 글자였을 때
+   * 이 감지기가 선택칸의 트리거를 잡아 헛통과했다.
+   */
+  it('검교정 일자가 없으면 그 칸에 「기록 없음」을 밝힌다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openEquipment(user);
+
+    const value = equipmentForm().getByLabelText(t.fields.lastCalibrationDate);
+    expect(value).toHaveTextContent(t.fields.notRecorded);
+  });
+
+  it('수정 저장이 PUT 으로 나가고 상세의 잠금 토큰을 함께 싣는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    await openEquipment(user);
+    const nameInput = equipmentForm().getByRole('textbox', {
+      name: new RegExp(t.fields.equipmentName),
+    });
+    await user.clear(nameInput);
+    await user.type(nameInput, '프레스 1호기');
+    await user.click(equipmentForm().getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    const request = writes[0] as Request;
+    expect(request.method).toBe('PUT');
+    expect(new URL(request.url).pathname).toBe('/mdm/equipments/2001');
+    expect(request.headers.get('If-Match')).toBe('9');
+    await expect(lastWriteBody(writes)).resolves.toMatchObject({ equipmentName: '프레스 1호기' });
+  });
+
+  /*
+   * ⭐ 이 화면이 소유하지 않는 값(주기·정밀도)을 그대로 되돌려 보낸다. PUT 이 전체 교체라
+   * 빼면 계측기 마스터가 정한 것이 지워진다 — 보이지도 고치지도 않지만 지우지도 않는다.
+   */
+  it('계측기 마스터가 정한 값을 지우지 않고 그대로 되돌려 보낸다', async () => {
+    const user = userEvent.setup();
+    const carried = makeEquipment(2001, 'EQ-01', {
+      calibrationCycleTypeCode: 'MONTH',
+      calibrationCycleInterval: 12,
+      precisionValue: 0.01,
+      precisionUomId: 31,
+    });
+    const { writes } = renderScreen({
+      respondEquipments: () => jsonResponse({ items: [carried], page: pageOf([carried]) }),
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(carried), { headers: { ETag: '9' } }),
+    });
+
+    await openEquipment(user);
+    const nameInput = equipmentForm().getByRole('textbox', {
+      name: new RegExp(t.fields.equipmentName),
+    });
+    await user.clear(nameInput);
+    await user.type(nameInput, '프레스 1호기');
+    await user.click(equipmentForm().getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    await expect(lastWriteBody(writes)).resolves.toMatchObject({
+      calibrationCycleTypeCode: 'MONTH',
+      calibrationCycleInterval: 12,
+      precisionValue: 0.01,
+      precisionUomId: 31,
+    });
+  });
+
+  it('등록은 POST 로 나가고 고른 그룹의 공장을 싣는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(
+      pane.getAllByRole('button', { name: t.actions.addEquipment })[0] as HTMLElement,
+    );
+    await screen.findByRole('dialog', { name: t.equipmentForm.createTitle });
+
+    await user.type(
+      equipmentForm('create').getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
+      'EQ-NEW',
+    );
+    await user.type(
+      equipmentForm('create').getByRole('textbox', { name: new RegExp(t.fields.equipmentName) }),
+      '새 설비',
+    );
+    await user.click(equipmentForm('create').getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    const request = writes[0] as Request;
+    expect(request.method).toBe('POST');
+    // 등록에는 낙관적 잠금이 없다.
+    expect(request.headers.get('If-Match')).toBeNull();
+    await expect(lastWriteBody(writes)).resolves.toMatchObject({
+      equipmentCode: 'EQ-NEW',
+      plantId: 11,
+      // 좌측에서 고른 그룹 아래에 등록하는 것이 정상 경로다 — 다시 고르게 하지 않는다.
+      productionLineId: 101,
+    });
+  });
+
+  /* 등록 중에는 아직 위치가 없다 — 지어내지 않는다. */
+  it('등록 폼에는 계층 텍스트를 그리지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(
+      pane.getAllByRole('button', { name: t.actions.addEquipment })[0] as HTMLElement,
+    );
+    await screen.findByRole('dialog', { name: t.equipmentForm.createTitle });
+
+    expect(equipmentForm('create').queryByText(t.fields.hierarchy)).toBeNull();
+  });
+
+  it('화면에서 잡히는 오류는 서버로 보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    await openEquipment(user);
+    const nameInput = equipmentForm().getByRole('textbox', {
+      name: new RegExp(t.fields.equipmentName),
+    });
+    await user.clear(nameInput);
+    await user.click(equipmentForm().getByRole('button', { name: messages.common.save }));
+
+    expect(
+      await equipmentForm().findByText(messages.equipmentMaster.validation.required),
+    ).toBeInTheDocument();
+    expect(writes).toHaveLength(0);
+  });
+
+  it('코드가 잠기면 입력을 잠그고 사유를 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(makeEquipment(2001, 'EQ-01'), { editability: lockedCode }), {
+          headers: { ETag: '9' },
+        }),
+    });
+
+    await openEquipment(user);
+
+    expect(
+      equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
+    ).toBeDisabled();
+    expect(equipmentForm().getByText(messages.editability.referenced(3))).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **모르면 잠근다.** 상세를 받지 못했으면 코드 편집 가부를 알 수 없다 —
+   * 열어 두면 사용자가 고친 값이 저장 시점에야 거부되고 그 사유를 화면이 말할 수 없다.
+   */
+  it('상세를 받지 못하면 코드를 잠그고 그 사실을 배너로 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondEquipmentDetail: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
+    });
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    await screen.findByRole('dialog', { name: t.equipmentForm.editTitle });
+
+    expect(
+      equipmentForm().getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
+    ).toBeDisabled();
+    expect(equipmentForm().getByText(t.actionReasons.codeLockUnknown)).toBeInTheDocument();
+    expect(await equipmentForm().findByText(messages.httpError.loadTitle)).toBeInTheDocument();
+  });
+
+  /* 신규에는 참조가 있을 수 없어 코드가 언제나 열려 있다 — 없는 제약을 말하면 안 된다. */
+  it('등록 폼의 코드는 잠기지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(
+      pane.getAllByRole('button', { name: t.actions.addEquipment })[0] as HTMLElement,
+    );
+    await screen.findByRole('dialog', { name: t.equipmentForm.createTitle });
+
+    expect(
+      equipmentForm('create').getByRole('textbox', { name: new RegExp(t.fields.equipmentCode) }),
+    ).toBeEnabled();
+    expect(equipmentForm('create').queryByText(t.actionReasons.codeLockUnknown)).toBeNull();
+  });
+
+  it('저장이 끝나면 창이 닫힌다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openEquipment(user);
+    const nameInput = equipmentForm().getByRole('textbox', {
+      name: new RegExp(t.fields.equipmentName),
+    });
+    await user.clear(nameInput);
+    await user.type(nameInput, '프레스 1호기');
+    await user.click(equipmentForm().getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.equipmentForm.editTitle })).toBeNull();
+    });
   });
 });

@@ -10,6 +10,7 @@ export const equipmentMaster = {
   breadcrumbRoot: '설비/툴',
   actions: {
     addGroup: '그룹 추가',
+    addEquipment: '설비 추가',
     keepEditing: '계속 편집',
     discardChanges: '변경 버리기',
   },
@@ -23,6 +24,20 @@ export const equipmentMaster = {
      * 사용 중지는 상세를 다시 불러오므로, 저장하지 않은 입력이 있으면 그것이 말없이 사라진다.
      * 막지 않고 사유를 밝힌다 — 무엇이 막혔는지와 어떻게 풀 수 있는지를 함께 담는다.
      */
+    /** 검교정 설정을 이 화면이 정하지 않는 이유. 값 목록이 없어 켜면 반드시 저장이 실패한다. */
+    calibrationCycleUnavailable:
+      '검교정 주기 단위의 값 목록이 아직 없어 지금은 바꿀 수 없습니다. 목록이 준비되면 이 항목을 쓸 수 있습니다.',
+    /** 검교정 일자 두 칸은 검교정 이력 등록이 정한다 — 여기서는 결과만 본다. */
+    calibrationDatesReadOnly:
+      '검교정 일자는 검교정 이력 등록에서 정해집니다. 여기서는 볼 수만 있습니다.',
+    /** 운용 상태는 별도 경로가 바꾼다 — 폐기와 사용 중지가 서로 다른 축이다. */
+    statusNotEditableHere: '운용 상태는 폐기 처리로만 바뀝니다. 사용 중지와는 다른 축입니다.',
+    /**
+     * 상세가 아직 오지 않았거나 오지 못했을 때. **모르면 잠근다** —
+     * 열어 두면 사용자가 고친 값이 저장 시점에야 거부되고, 그 사유는 여기서 말할 수 없다.
+     */
+    codeLockUnknown: '설비 정보를 아직 불러오지 못해 코드를 바꿀 수 없습니다.',
+    equipmentPlantFixed: '설비의 공장은 소속 그룹의 공장을 따릅니다.',
     deactivateNeedsCleanForm:
       '사용 중지는 저장하지 않은 변경이 있으면 쓸 수 없습니다. 먼저 저장하거나 취소하세요.',
   },
@@ -77,6 +92,12 @@ export const equipmentMaster = {
     editTitle: '설비 그룹 정보',
     parentNone: '없음 (최상위)',
   },
+  equipmentForm: {
+    createTitle: '설비 등록',
+    editTitle: '설비 수정',
+    groupNone: '소속 없음',
+    processNone: '지정 없음',
+  },
   validation: {
     required: '필수 입력 항목입니다.',
     codeBlank: '코드는 공백만으로 지정할 수 없습니다.',
@@ -85,6 +106,7 @@ export const equipmentMaster = {
      * 화면이 나머지를 진다 — 막지 않으면 계층이 끊긴 채 저장되고 아무도 그것을 되돌리지 못한다.
      */
     parentCycle: '이 그룹을 상위로 지정하면 순환이 생깁니다. 다른 그룹을 고르세요.',
+    equipmentGroupRequired: '설비를 등록할 그룹을 좌측에서 먼저 고르세요.',
   },
   equipmentFilters: {
     searchLabel: '설비 검색',
@@ -110,6 +132,16 @@ export const equipmentMaster = {
   },
   fields: {
     plant: '공장',
+    hierarchy: '설비 위치',
+    process: '소속공정',
+    lastCalibrationDate: '최근 검교정일',
+    calibrationDueDate: '차기 검교정 예정일',
+    calibrationCycle: '검교정 주기',
+    /**
+     * 값이 없는 읽기 전용 칸. 선택칸의 「지정 없음」과 **다른 말이어야 한다** —
+     * 같은 글자면 감지기가 어느 쪽을 잰 것인지 구분하지 못한다(실측으로 드러난 자리).
+     */
+    notRecorded: '기록 없음',
     equipmentCode: '설비코드',
     equipmentName: '설비명',
     equipmentType: '설비유형',
@@ -129,6 +161,8 @@ export const equipmentMaster = {
     inactiveSuffix: ' (미사용)',
     calibrationYes: '대상',
     calibrationNo: '대상 아님',
+    /** 소속 그룹이 없을 때. 빈칸으로 두지 않는다 — 비어 있음이 보여야 채운다(G-9). */
+    noGroupAssigned: '소속 그룹 없음',
   },
   groupTable: {
     expand: '하위 그룹 펼치기',
