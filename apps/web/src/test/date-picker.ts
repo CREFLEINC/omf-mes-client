@@ -17,15 +17,14 @@ type User = ReturnType<typeof userEvent.setup>;
 /** 달 넘김 상한. 달력이 목표 달에 닿지 못하는 상황을 무한 반복 대신 실패로 드러낸다. */
 const MAX_MONTH_STEPS = 36;
 
-/**
- * 트리거에 딸린 달력 팝업. **트리거의 뿌리 안에서만** 찾는다 —
- * 화면에는 폼 대화상자도 `role="dialog"`라 문서 전체에서 찾으면 엉뚱한 것을 집는다.
- */
+/** 트리거가 `aria-controls`로 가리키는 달력 팝업. 포털 위치와 무관하게 고유 대상을 찾는다. */
 const calendarOf = (trigger: HTMLElement): HTMLElement => {
-  const root = trigger.parentElement;
-  const popup = root?.querySelector<HTMLElement>('[role="dialog"]') ?? null;
+  const popupId = trigger.getAttribute('aria-controls');
+  const popup = popupId === null ? null : trigger.ownerDocument.getElementById(popupId);
 
-  if (popup === null) throw new Error('달력이 열려 있지 않다');
+  if (popup === null || popup.getAttribute('role') !== 'dialog') {
+    throw new Error('달력이 열려 있지 않다');
+  }
 
   return popup;
 };
