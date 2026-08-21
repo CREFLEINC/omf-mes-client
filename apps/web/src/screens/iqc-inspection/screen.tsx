@@ -85,6 +85,18 @@ export const IqcInspectionScreen = () => {
   });
 
   /**
+   * 초안이 바뀌면 「저장했습니다」를 지운다.
+   *
+   * ⭐ **표시가 언제 거짓이 되는지**를 값이 바뀌는 자리에서 함께 정한다. 지우지 않으면
+   * 저장한 뒤 수량을 더 고쳐도 화면이 저장됐다고 말하고, 검사자가 그 문구를 보고 자리를
+   * 뜨면 **고친 값이 사라진다.** 이 화면이 남기는 것은 품질 판정 자료다.
+   */
+  const changeDraft = (next: QuantityDraft): void => {
+    setIsSaved(false);
+    setDraft(next);
+  };
+
+  /**
    * 수량 초안. **고른 의뢰가 바뀌면 그 회차의 값으로 되돌아간다.**
    *
    * 되돌림을 참조가 아니라 **값**으로 판정한다 — 조회 응답이 다시 그려질 때마다 참조가
@@ -176,11 +188,14 @@ export const IqcInspectionScreen = () => {
    * 수량은 `toSendableNumber` 를 거친다 — 화면이 재는 자와 보내는 자가 같아야 한다.
    *
    * ⛔ **검사자·단말을 보내지 않는다** — 계약에서 사라졌다(omf-mes#173).
+   *
+   * 고른 의뢰를 **인자로 받는다** — 이 자리에 도달했으면 null 이 아니라는 사실이 타입이
+   * 아니라 렌더 조건에 있어서, 단언으로 메우면 그 조건이 바뀔 때 조용히 어긋난다.
    */
-  const saveDraft = (inspected: number, uomId: number): void => {
+  const saveDraft = (inspectionRequestId: number, inspected: number, uomId: number): void => {
     setIsSaved(false);
     save.write({
-      inspectionRequestId: selectedId as number,
+      inspectionRequestId,
       inspectedQty: inspected,
       acceptedQty: toSendableNumber(draft.accepted),
       rejectedQty: toSendableNumber(draft.rejected),
@@ -217,11 +232,11 @@ export const IqcInspectionScreen = () => {
             round={round}
             inspectedQty={inspectedQty}
             draft={draft}
-            onChange={setDraft}
+            onChange={changeDraft}
             onSave={() => {
-              saveDraft(inspectedQty, detail.data.uomId);
+              saveDraft(selectedId, inspectedQty, detail.data.uomId);
             }}
-            isSaving={save.isSaving}
+            isSaving={save.isSaving || rounds.isFetching}
             isSaved={isSaved}
             fieldErrors={save.fieldErrors}
             saveError={save.error}

@@ -247,11 +247,18 @@ export const useSaveDraft = (
             body: toUpdateBody(variables),
           }),
     etagPath: editingResultId === null ? null : roundPath(editingResultId),
-    invalidateKeys: [
-      iqcInspectionKeys.rounds(inspectionRequestId ?? 0),
-      iqcInspectionKeys.round(editingResultId ?? 0),
-      ALL_KEY,
-    ],
+    /*
+     * 고칠 회차가 있을 때만 그 키를 넣는다 — 새로 만드는 경로에서 `round(0)` 을 넣으면
+     * 존재하지 않는 열쇠를 무효화하는 셈이라, 읽는 사람이 「0번 회차가 있나」를 되짚는다.
+     */
+    invalidateKeys:
+      editingResultId === null
+        ? [iqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY]
+        : [
+            iqcInspectionKeys.rounds(inspectionRequestId ?? 0),
+            iqcInspectionKeys.round(editingResultId),
+            ALL_KEY,
+          ],
     knownFields: SAVE_FIELDS,
     onSuccess: onSaved,
   });

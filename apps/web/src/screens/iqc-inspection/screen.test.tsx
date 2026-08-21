@@ -301,6 +301,22 @@ describe('IqcInspectionScreen', () => {
     await waitFor(() => expect(sent.length).toBeGreaterThan(before));
   });
 
+  /*
+   * ⭐ 리뷰가 잡은 자리다. 저장 표시를 값이 바뀌는 자리에서 지우지 않으면, 검사자가 수량을
+   * 고치고 「저장했습니다」를 보고 자리를 떠 고친 값이 사라진다.
+   */
+  it('저장한 뒤 값을 더 고치면 「저장했습니다」를 지운다 — 저장되지 않은 변경이 있다', async () => {
+    renderScreen('/?ir=1001');
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await screen.findByText(t.result.saved);
+
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '9');
+
+    await waitFor(() => expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument());
+  });
+
   it('상세 조회가 실패해도 「고르지 않음」으로 접지 않는다 — 다시 골라도 같은 실패가 온다', async () => {
     renderScreen('/?ir=9999');
 
