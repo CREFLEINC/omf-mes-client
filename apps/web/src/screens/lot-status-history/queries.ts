@@ -173,6 +173,7 @@ export const useLotHoldEvents = (
   return useQuery({
     queryKey: lotStatusKeys.history(filters, page, offsetMinutes),
     enabled: query !== null,
+    placeholderData: keepPreviousData,
     queryFn: () => {
       if (query === null)
         throw new Error('유효한 기간을 입력하기 전에는 이력을 조회하지 않습니다.');
