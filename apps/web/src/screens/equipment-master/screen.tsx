@@ -95,6 +95,38 @@ const parentOptionLabel = (group: EquipmentGroup): string => {
 };
 
 /**
+ * 지금 상위로 매여 있는 값을 선택지에 반드시 남긴다 — **빼면 칸이 비어 보여 값이 사라진 줄 안다.**
+ *
+ * ⭐ **남기되 번호만 덩그러니 두지 않는다.** 자기 자신이나 하위가 상위로 매여 있으면(스펙 §8-4 —
+ * 데이터베이스가 순환을 막지 않는다) 그 값은 고를 수 있는 목록에서 빠지는데, 그때 코드만
+ * 되살리면 화면에 **내부 번호**가 그대로 나온다. 사용자는 그것이 무엇인지도, 왜 고칠 수 없는지도
+ * 알 수 없다 — 저장을 눌러야 비로소 「순환이 생깁니다」를 본다.
+ *
+ * 그래서 **전체 목록에서 이름을 찾아** 붙이고 순환이라는 사실을 표식으로 낸다. 이름조차 찾지
+ * 못하면 그 값이 번호라는 사실을 밝힌다.
+ */
+const ensureCurrentParent = (
+  selectable: CodeOption[],
+  current: string,
+  all: EquipmentGroup[],
+): CodeOption[] => {
+  if (current === '' || selectable.some((option) => option.value === current)) return selectable;
+
+  const found = all.find((group) => String(group.equipmentGroupId) === current);
+
+  return [
+    ...selectable,
+    {
+      value: current,
+      label:
+        found === undefined
+          ? t.values.parentUnresolved(current)
+          : `${parentOptionLabel(found)}${t.values.parentCycleSuffix}`,
+    },
+  ];
+};
+
+/**
  * W-05-12 컨테이너. 설비 그룹 계층을 서버 응답으로 그리고 조회 조건과 선택을 URL에 둔다.
  *
  * ⭐ **화면은 「설비 그룹」이라고 부른다.** 계약이 설비 응답에서 소속 그룹을 `productionLineId`
@@ -250,7 +282,7 @@ export const EquipmentMasterScreen = () => {
 
     return [
       { value: '', label: t.form.parentNone },
-      ...ensureOption(selectable, formValues.parentGroupId),
+      ...ensureCurrentParent(selectable, formValues.parentGroupId, groupOptions.groups),
     ];
   }, [groupOptions.groups, cycleBlockedIds, formValues.parentGroupId]);
 

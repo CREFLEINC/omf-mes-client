@@ -815,6 +815,51 @@ describe('EquipmentMasterScreen — 상위 그룹 선택지와 순환', () => {
   });
 
   /*
+   * ⭐ **지금 매여 있는 값은 선택지에 남되 번호만 덩그러니 두지 않는다.**
+   *
+   * 데이터베이스가 순환을 막지 않아 자기 자신이 상위인 자료가 실제로 내려온다(스펙 §8-4).
+   * 그 값은 고를 수 있는 목록에서 빠지는데, 코드만 되살리면 화면에 **내부 번호**가 그대로
+   * 나온다 — 사용자는 그것이 무엇인지도, 왜 고칠 수 없는지도 알 수 없다.
+   * (브라우저 확인에서 실제로 `1001` 이 그대로 보여 드러난 자리다.)
+   */
+  it('자기 자신이 상위로 매여 있으면 이름과 순환 표식을 함께 보인다', async () => {
+    const user = userEvent.setup();
+    const selfParent = makeGroup(101, 'GRP-A', { parentGroupId: 101 });
+
+    renderScreen({
+      respondGroups: () => jsonResponse({ items: [selfParent], page: pageOf([selfParent]) }),
+      respondDetail: () => jsonResponse(groupDetail(selfParent), { headers: { ETag: '7' } }),
+    });
+
+    const labels = (await openParentOptions(user)).map((node) => node.textContent);
+
+    // 내부 번호가 그대로 서면 안 된다.
+    expect(labels.some((label) => label?.trim() === '101')).toBe(false);
+    expect(
+      labels.some(
+        (label) => label?.includes('GRP-A') && label.includes(t.values.parentCycleSuffix.trim()),
+      ),
+    ).toBe(true);
+  });
+
+  /* 이름조차 찾지 못하면 그 값이 번호라는 사실을 밝힌다 — 맨 숫자로 두지 않는다. */
+  it('이름을 풀지 못한 상위는 번호임을 밝힌다', async () => {
+    const user = userEvent.setup();
+    // 상위가 다른 공장의 그룹이라 이 공장 목록에 없다.
+    const orphanParent = makeGroup(101, 'GRP-A', { parentGroupId: 777 });
+
+    renderScreen({
+      respondGroups: () => jsonResponse({ items: [orphanParent], page: pageOf([orphanParent]) }),
+      respondDetail: () => jsonResponse(groupDetail(orphanParent), { headers: { ETag: '7' } }),
+    });
+
+    const labels = (await openParentOptions(user)).map((node) => node.textContent);
+
+    expect(labels.some((label) => label?.includes(t.values.parentUnresolved('777')))).toBe(true);
+    expect(labels.some((label) => label?.trim() === '777')).toBe(false);
+  });
+
+  /*
    * ⭐ 좌측 목록은 검색으로 좁혀져 있다. 그것을 상위 선택지로 재사용하면 조건에
    * 안 걸린 정상 그룹이 사라지고, 후손이 빠져 순환을 못 막는다.
    */
