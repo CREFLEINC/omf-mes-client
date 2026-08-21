@@ -114,6 +114,32 @@ describe('EquipmentMasterScreen', () => {
   /*
    * 계층 전체를 받아 화면이 접었다 편다. 좁혀 받으면 상위가 빠져 계층이 성립하지 않는다.
    */
+  /*
+   * 조회 조건을 URL이 소유하므로 사람이 손으로 고친 주소가 그대로 들어온다.
+   * 읽을 수 없는 값을 그대로 실어 보내면 서버가 거절하고, 사용자는 자기가 무엇을
+   * 잘못 적었는지 모르는 채 조회 실패만 본다.
+   */
+  it('읽을 수 없는 공장 조건은 조건이 없는 것으로 다룬다', async () => {
+    const { sent } = renderScreen({ route: '/?plant=abc' });
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+
+    expect(lastQuery(sent).has('plantId')).toBe(false);
+  });
+
+  /*
+   * 식별자는 양의 정수다. 0·음수는 어느 공장도 가리키지 않으므로 「읽을 수 없는 값」과
+   * 같은 갈래로 다룬다 — 실어 보내면 서버가 거절하거나 빈 결과를 돌려주고, 사용자는
+   * 조건이 걸린 줄 모르는 채 「없다」를 본다.
+   */
+  it.each(['0', '-5'])('공장 조건이 %s 이면 조건이 없는 것으로 다룬다', async (value) => {
+    const { sent } = renderScreen({ route: `/?plant=${value}` });
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+
+    expect(lastQuery(sent).has('plantId')).toBe(false);
+  });
+
   it('하위만 보는 조건(parentGroupId)은 보내지 않는다', async () => {
     const { sent } = renderScreen({ route: '/?q=GRP' });
 

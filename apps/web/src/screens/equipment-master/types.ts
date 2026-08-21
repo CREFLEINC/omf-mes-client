@@ -6,7 +6,6 @@ import type { components } from '@omf-mes/api-client';
  */
 
 export type EquipmentGroup = components['schemas']['EquipmentGroup'];
-export type Equipment = components['schemas']['Equipment'];
 
 export interface GroupFilters {
   q: string;

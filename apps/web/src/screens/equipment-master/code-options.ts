@@ -40,8 +40,12 @@ const pendingOptions = (): CodeOption[] => [
  */
 export const GROUP_TYPE_OPTIONS: CodeOption[] = pendingOptions();
 
-/** 설비유형 — 공통코드 미확정(추적 omf-mes#145). 계측기 화면(W-05-11)이 이 값으로 거른다. */
-export const EQUIPMENT_TYPE_OPTIONS: CodeOption[] = pendingOptions();
+/**
+ * 그룹유형 코드의 라벨. **값 목록이 확정되지 않아 지금은 늘 코드가 그대로 나온다.**
+ * 「알 수 없음」으로 그리지 않는다 — 모르는 값과 없는 값이 같은 모양이 되면 안 된다(G-9).
+ */
+export const groupTypeLabel = (code: string): string =>
+  GROUP_TYPE_OPTIONS.find((option) => option.value === code)?.label ?? code;
 
 /**
  * 서버가 준 현재 값이 선택지 목록에 없으면 코드 그대로 덧붙인다.

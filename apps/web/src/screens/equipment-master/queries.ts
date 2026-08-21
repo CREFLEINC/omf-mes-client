@@ -20,12 +20,20 @@ export interface GroupListResponse {
 export const groupKeys = {
   all: ['equipment-groups'] as const,
   list: (filters: GroupFilters) => ['equipment-groups', 'list', filters] as const,
-  detail: (equipmentGroupId: number) => ['equipment-groups', 'detail', equipmentGroupId] as const,
 };
 
-/** ETag가 보관된 경로. 쓰기의 If-Match는 언제나 이 경로에서 꺼낸다(사용 중지도 마찬가지다). */
-export const groupDetailPath = (equipmentGroupId: number): string =>
-  `/mdm/equipment-groups/${String(equipmentGroupId)}`;
+/**
+ * 주소에서 온 공장 조건을 숫자로 읽는다. **읽을 수 없으면 조건이 없는 것으로 다룬다.**
+ *
+ * 조회 조건을 URL이 소유하므로 사람이 손으로 고친 주소(`?plant=abc`)가 그대로 들어온다.
+ * 거르지 않으면 `plantId=NaN` 이 질의에 실려 나가 서버가 거절하고, 사용자는 자기가 무엇을
+ * 잘못 적었는지 모르는 채 조회 실패만 본다.
+ */
+const plantIdQuery = (value: string): { plantId: number } | Record<string, never> => {
+  if (value === '') return {};
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? { plantId: parsed } : {};
+};
 
 /**
  * 설비 그룹 목록. 조건은 서버로 보낸다 — 클라이언트에서 거르면 서버가 자른 뒤의 결과만 걸러진다.
@@ -46,7 +54,7 @@ export const useGroupList = (filters: GroupFilters): UseQueryResult<GroupListRes
           params: {
             query: {
               ...(filters.q === '' ? {} : { q: filters.q }),
-              ...(filters.plantId === '' ? {} : { plantId: Number(filters.plantId) }),
+              ...plantIdQuery(filters.plantId),
               includeInactive: filters.includeInactive,
             },
           },

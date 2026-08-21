@@ -2,10 +2,10 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
-  EQUIPMENT_TYPE_OPTIONS,
   GROUP_TYPE_OPTIONS,
   PENDING_CODE_VALUE,
   ensureOption,
+  groupTypeLabel,
   lookupLabel,
   selectableOptions,
 } from './code-options';
@@ -21,12 +21,25 @@ describe('자리표시 선택지', () => {
    * 값 목록이 확정되지 않은 코드는 값을 지어내지 않는다. 물리 모델에 값이 있어도
    * 고객사가 자기 분류 체계를 정해야 하는 값이라 그것을 선택지로 내면 안 된다.
    */
-  it('그룹유형·설비유형은 자리표시 하나만 낸다', () => {
-    for (const options of [GROUP_TYPE_OPTIONS, EQUIPMENT_TYPE_OPTIONS]) {
-      expect(options).toHaveLength(1);
-      expect(options[0]?.value).toBe(PENDING_CODE_VALUE);
-      expect(options[0]?.label).toBe(messages.pendingCode.placeholder);
-    }
+  it('그룹유형은 자리표시 하나만 낸다', () => {
+    expect(GROUP_TYPE_OPTIONS).toHaveLength(1);
+    expect(GROUP_TYPE_OPTIONS[0]?.value).toBe(PENDING_CODE_VALUE);
+    expect(GROUP_TYPE_OPTIONS[0]?.label).toBe(messages.pendingCode.placeholder);
+  });
+});
+
+describe('groupTypeLabel', () => {
+  /*
+   * 값 목록이 확정되지 않아 서버가 준 코드는 어느 것도 선택지에 없다.
+   * 그때 「알 수 없음」으로 그리면 모르는 값과 없는 값이 같은 모양이 된다(G-9).
+   */
+  it('선택지에 없는 코드는 코드를 그대로 보인다', () => {
+    expect(groupTypeLabel('LINE')).toBe('LINE');
+    expect(groupTypeLabel('WORK_AREA')).toBe('WORK_AREA');
+  });
+
+  it('자리표시 값은 자리표시 문구로 보인다', () => {
+    expect(groupTypeLabel(PENDING_CODE_VALUE)).toBe(messages.pendingCode.placeholder);
   });
 });
 

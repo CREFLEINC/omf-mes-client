@@ -13,7 +13,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
-import { type CodeOption, defaultGroupFilters, lookupLabel } from './code-options';
+import { type CodeOption, defaultGroupFilters, groupTypeLabel, lookupLabel } from './code-options';
 import type { GroupTreeRow } from './group-tree';
 import type { GroupFilters, LookupEntry } from './types';
 
@@ -119,6 +119,11 @@ export const GroupListPane = ({
       },
     },
     { key: 'groupName', header: t.fields.groupName, render: (row) => row.group.groupName },
+    {
+      key: 'groupTypeCode',
+      header: t.fields.groupType,
+      render: (row) => groupTypeLabel(row.group.groupTypeCode),
+    },
     {
       key: 'plantId',
       header: t.fields.plant,

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { defaultGroupFilters } from './code-options';
-import { groupItems, plantItems } from './fixtures';
+import { groupItems, makeGroup, plantItems } from './fixtures';
 import { GroupListPane } from './group-list-pane';
 import { buildGroupRows } from './group-tree';
 import type { GroupFilters, LookupEntry } from './types';
@@ -116,6 +116,19 @@ describe('GroupListPane', () => {
       'true',
     );
     expect(screen.getByRole('button', { name: 'GRP-A' })).not.toHaveAttribute('aria-current');
+  });
+
+  /*
+   * 그룹유형은 스펙 §4-A 의 필드이고 목록이 그것을 훑는 자리다.
+   * 값 목록이 확정되지 않아 지금은 서버가 준 코드가 그대로 나온다 — 「알 수 없음」이 아니다.
+   */
+  it('그룹유형 열에 서버가 준 코드를 그대로 보인다', () => {
+    renderPane({
+      rows: buildGroupRows([makeGroup(301, 'GRP-T', { groupTypeCode: 'WORK_AREA' })], new Set()),
+    });
+
+    expect(screen.getByRole('columnheader', { name: t.fields.groupType })).toBeInTheDocument();
+    expect(screen.getByText('WORK_AREA')).toBeInTheDocument();
   });
 
   /* 공장 이름은 좁힌 선택지가 아니라 전체 목록에서 푼다 — 좁힘 밖의 정상 자료가 「알 수 없음」이 되면 안 된다. */
