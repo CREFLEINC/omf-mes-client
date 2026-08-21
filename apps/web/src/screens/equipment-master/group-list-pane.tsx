@@ -6,15 +6,15 @@ import {
   EmptyState,
   IconButton,
   SearchInput,
-  Select,
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { type CodeOption, defaultGroupFilters, groupTypeLabel, lookupLabel } from './code-options';
 import type { GroupTreeRow } from './group-tree';
+import { SelectField } from './select-field';
 import type { GroupFilters, LookupEntry } from './types';
 
 export interface GroupListPaneProps {
@@ -64,8 +64,6 @@ export const GroupListPane = ({
   onAddGroup,
   loadError,
 }: GroupListPaneProps) => {
-  const plantSelectId = useId();
-
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
   const [draft, setDraft] = useState<GroupFilters>(appliedFilters);
@@ -195,17 +193,13 @@ export const GroupListPane = ({
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
           onSearch={(value) => onApplyFilters({ ...draft, q: value })}
         />
-        <div className="field-cell">
-          <label className="field-label" htmlFor={plantSelectId}>
-            {t.fields.plant}
-          </label>
-          <Select
-            id={plantSelectId}
-            options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
-            value={draft.plantId}
-            onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
-          />
-        </div>
+        {/* 같은 화면 안에서 라벨 붙은 선택칸을 두 가지로 만들지 않는다 — 부품 하나가 그 규약을 갖는다. */}
+        <SelectField
+          label={t.fields.plant}
+          options={[{ value: '', label: t.filters.plantAll }, ...plantOptions]}
+          value={draft.plantId}
+          onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
+        />
         {/* 해제 축이라 변경 즉시 적용한다. */}
         <div className="field-cell field-cell-unlabeled">
           <Checkbox

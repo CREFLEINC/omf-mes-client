@@ -3,11 +3,12 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { GroupFilters, LookupEntries, LookupEntry } from './types';
+import type { EquipmentFilters, GroupFilters, LookupEntries, LookupEntry } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type EquipmentGroup = components['schemas']['EquipmentGroup'];
 type EquipmentGroupDetailResponse = components['schemas']['EquipmentGroupDetailResponse'];
+type Equipment = components['schemas']['Equipment'];
 
 export interface GroupListResponse {
   items: EquipmentGroup[];
@@ -143,6 +144,59 @@ export const useGroupOptions = (plantId: string): GroupOptionsResult => {
     truncated: isListTruncated(result.data),
     isError: result.isError,
   };
+};
+
+export interface EquipmentListResponse {
+  items: Equipment[];
+  page: PageMeta;
+}
+
+export const equipmentKeys = {
+  all: ['equipments'] as const,
+  list: (equipmentGroupId: number, filters: EquipmentFilters) =>
+    ['equipments', 'list', equipmentGroupId, filters] as const,
+};
+
+/**
+ * 고른 설비 그룹의 설비 목록.
+ *
+ * ⭐ **계약의 조건 이름은 `productionLineId` 이고 값은 설비 그룹 식별자와 같다** — 저장처의
+ * 이름이 `production_line` 이라 필드가 그것을 따르고 있을 뿐이다. 화면 용어와 갈리는 자리를
+ * 여기와 `mappers.ts` 둘로 묶어 둔다.
+ *
+ * 그룹을 고르기 전에는 조회하지 않는다 — 대상이 정해지지 않았다.
+ */
+export const useEquipmentList = (
+  equipmentGroupId: number | null,
+  filters: EquipmentFilters,
+): UseQueryResult<EquipmentListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: equipmentKeys.list(equipmentGroupId ?? 0, filters),
+    enabled: equipmentGroupId !== null,
+    queryFn: () => {
+      if (equipmentGroupId === null) {
+        throw new Error('설비 그룹을 고르기 전에는 설비를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/equipments', {
+          params: {
+            query: {
+              productionLineId: equipmentGroupId,
+              ...(filters.q === '' ? {} : { q: filters.q }),
+              ...(filters.equipmentTypeCode === ''
+                ? {}
+                : { equipmentTypeCode: filters.equipmentTypeCode }),
+              ...(filters.calibrationRequired ? { calibrationRequired: true } : {}),
+              includeInactive: filters.includeInactive,
+            },
+          },
+        }),
+      );
+    },
+  });
 };
 
 export const lookupKeys = {

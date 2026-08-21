@@ -6,6 +6,7 @@ import type { components } from '@omf-mes/api-client';
  */
 
 export type EquipmentGroup = components['schemas']['EquipmentGroup'];
+export type Equipment = components['schemas']['Equipment'];
 
 /**
  * 설비 그룹 폼의 값.
@@ -19,6 +20,20 @@ export interface GroupFormValues {
   groupName: string;
   groupTypeCode: string;
   parentGroupId: string;
+}
+
+/**
+ * 설비 목록의 조회 조건.
+ *
+ * ⛔ **운용 상태 조건을 두지 않는다.** 계약의 그 조건은 「현장 화면은 폐기된 설비를 목록에서
+ * 뺀다」를 위한 것이고, 이 화면은 마스터라 폐기된 자산도 보여야 한다. 상태는 조건이 아니라
+ * **열**로 보인다.
+ */
+export interface EquipmentFilters {
+  q: string;
+  equipmentTypeCode: string;
+  calibrationRequired: boolean;
+  includeInactive: boolean;
 }
 
 export interface GroupFilters {

@@ -29,10 +29,13 @@ export const equipmentMaster = {
   loading: {
     groups: '설비 그룹을 불러오는 중',
     groupDetail: '설비 그룹 정보를 불러오는 중',
+    equipments: '설비 목록을 불러오는 중',
   },
   /** 서버가 목록을 잘라 내려보냈을 때. 잘림을 감추지 않고 조건을 좁힐 방법을 함께 알린다. */
   listTruncated: (shown: number, total: number): string =>
     `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
+  equipmentListTruncated: (shown: number, total: number): string =>
+    `설비 전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {
@@ -41,6 +44,14 @@ export const equipmentMaster = {
     groupNoMatchTitle: '조건에 맞는 결과가 없습니다',
     groupNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
     groupNotSelected: '좌측에서 설비 그룹을 먼저 고르세요',
+    equipmentNoneTitle: '이 그룹에 등록된 설비가 없습니다',
+    equipmentNoneDescription: '설비를 등록하면 이 그룹 아래에 나타납니다.',
+    equipmentNoMatchTitle: '조건에 맞는 설비가 없습니다',
+    equipmentNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+  },
+  tabs: {
+    group: '그룹 정보',
+    equipment: '설비',
   },
   dialog: {
     discardTitle: '입력한 내용을 버릴까요?',
@@ -75,6 +86,18 @@ export const equipmentMaster = {
      */
     parentCycle: '이 그룹을 상위로 지정하면 순환이 생깁니다. 다른 그룹을 고르세요.',
   },
+  equipmentFilters: {
+    searchLabel: '설비 검색',
+    searchPlaceholder: '설비코드 또는 설비명',
+    typeAll: '전체 유형',
+    calibrationRequiredOnly: '검교정 대상만',
+    chipRemoveKeyword: '검색어 조건 제거',
+    chipRemoveType: '설비유형 조건 제거',
+    chipRemoveCalibration: '검교정 대상 조건 제거',
+    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    chipKeyword: (value: string): string => `검색어: ${value}`,
+    chipType: (label: string): string => `설비유형: ${label}`,
+  },
   filters: {
     searchLabel: '설비 그룹 검색',
     searchPlaceholder: '그룹코드 또는 그룹명',
@@ -87,6 +110,11 @@ export const equipmentMaster = {
   },
   fields: {
     plant: '공장',
+    equipmentCode: '설비코드',
+    equipmentName: '설비명',
+    equipmentType: '설비유형',
+    status: '운용상태',
+    calibrationRequired: '검교정 대상',
     groupCode: '그룹코드',
     groupName: '그룹명',
     groupType: '그룹유형',
@@ -99,6 +127,8 @@ export const equipmentMaster = {
     noParent: '없음 (최상위)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (미사용)',
+    calibrationYes: '대상',
+    calibrationNo: '대상 아님',
   },
   groupTable: {
     expand: '하위 그룹 펼치기',
