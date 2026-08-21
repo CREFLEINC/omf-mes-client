@@ -53,6 +53,9 @@ const renderPane = (
 
 const saveButton = () => screen.getByRole('button', { name: t.save });
 
+/** 이미 만들어진 작성중 회차. 확정 갈래는 회차가 «있어야» 성립한다. */
+const savedRound = toInspectionResultRound(draftRound);
+
 describe('ResultFormPane', () => {
   it('회차를 밝힌다', () => {
     renderPane();
@@ -194,24 +197,32 @@ describe('ResultFormPane', () => {
     expect(screen.getByText(t.confirmNote)).toBeInTheDocument();
   });
 
+  /* ⭐ 회차를 «있는 것»으로 둔다 — 회차가 없으면 합계와 무관하게 확정 자체가 불가능하다. */
   it('합계가 맞지 않으면 확정을 막고 사유를 밝힌다', () => {
-    renderPane({ accepted: '100', rejected: '0', held: '0' }, null, 500, { judgment: 'ACCEPTED' });
+    renderPane({ accepted: '100', rejected: '0', held: '0' }, savedRound, 500, {
+      judgment: 'ACCEPTED',
+    });
 
     expect(confirmButton()).toBeDisabled();
     expect(screen.getByText(t.confirmBlockedByTotals)).toBeInTheDocument();
   });
 
   it('판정을 고르지 않으면 확정을 막고 사유를 밝힌다 — 합계와 다른 사유다', () => {
-    renderPane({ accepted: '480', rejected: '15', held: '5' }, null, 500, { judgment: '' });
+    renderPane({ accepted: '480', rejected: '15', held: '5' }, savedRound, 500, { judgment: '' });
 
     expect(confirmButton()).toBeDisabled();
     expect(screen.getByText(t.confirmBlockedByJudgment)).toBeInTheDocument();
   });
 
   it('합계가 맞고 판정을 고르면 확정할 수 있다', async () => {
-    const { onConfirm } = renderPane({ accepted: '480', rejected: '15', held: '5' }, null, 500, {
-      judgment: 'ACCEPTED',
-    });
+    const { onConfirm } = renderPane(
+      { accepted: '480', rejected: '15', held: '5' },
+      savedRound,
+      500,
+      {
+        judgment: 'ACCEPTED',
+      },
+    );
 
     expect(confirmButton()).toBeEnabled();
     await userEvent.click(confirmButton() as HTMLElement);
@@ -300,5 +311,43 @@ describe('ResultFormPane — 재검사', () => {
 
     expect(screen.getByLabelText(t.fields.accepted)).toBeEnabled();
     expect(saveButton()).toBeEnabled();
+  });
+});
+
+describe('ResultFormPane — 저장 전 확정', () => {
+  /**
+   * ⛔ **회차가 없으면 확정할 것이 없다.** 확정은 회차 하나를 «경로로» 지목하는 쓰기라,
+   * 없는 회차를 지목하면 치환되지 않은 주소 틀이 그대로 나가 알 수 없는 오류만 돌아온다.
+   * 화면에서 가장 중요한 단추가 그렇게 실패하면 사용자는 무엇을 해야 할지 알 수 없다.
+   */
+  it('회차가 없으면 확정을 막고 먼저 저장하라고 말한다', () => {
+    renderPane({ accepted: '500', rejected: '0', held: '0' }, null, 500, { judgment: 'ACCEPTED' });
+
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
+    expect(screen.getByText(t.confirmBlockedByUnsaved)).toBeInTheDocument();
+  });
+
+  it('재검사 중에도 저장 전에는 확정을 막는다', () => {
+    renderPane({ accepted: '500', rejected: '0', held: '0' }, null, 500, {
+      judgment: 'ACCEPTED',
+      isReinspecting: true,
+    });
+
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
+  });
+
+  /* 회차가 있으면 그 사유는 사라진다 — 늘 막으면 확정 자체가 불가능하다. */
+  it('회차가 있으면 확정이 열린다', () => {
+    renderPane(
+      { accepted: '500', rejected: '0', held: '0' },
+      toInspectionResultRound(draftRound),
+      500,
+      {
+        judgment: 'ACCEPTED',
+      },
+    );
+
+    expect(screen.getByRole('button', { name: t.confirm })).toBeEnabled();
+    expect(screen.queryByText(t.confirmBlockedByUnsaved)).not.toBeInTheDocument();
   });
 });

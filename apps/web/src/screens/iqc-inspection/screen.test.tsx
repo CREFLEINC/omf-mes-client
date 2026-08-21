@@ -699,6 +699,27 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
    * 검사가 아직 안 끝난 줄 알고 값을 넣어 저장한다. 그 순간 멀쩡히 끝난 의뢰에 회차가
    * 하나 더 쌓이고 의뢰 상태가 완료에서 진행으로 되돌아간다.
    */
+  /**
+   * ⛔ **그만두면 확정본의 값이 돌아온다.** 비우면 그만둔 자리에 확정된 회차가 «수량 없이»
+   * 놓인다 — 판정이 끝난 기록인데 화면이 비어 있으니 검사자는 자기가 방금 그것을 지웠다고
+   * 읽고, 확정된 회차는 고칠 수 없으므로 되돌릴 방법도 찾지 못한다.
+   */
+  it('재검사를 그만두면 확정본 수량이 돌아온다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [confirmedRound]);
+
+    await screen.findByText(t.result.round(1));
+    const accepted = () => screen.getByLabelText(t.result.fields.accepted) as HTMLInputElement;
+    const stored = accepted().value;
+    expect(stored).not.toBe('');
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+    expect(accepted().value).toBe('');
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.reinspectCancel }));
+
+    expect(accepted().value).toBe(stored);
+  });
+
   it('다른 의뢰로 옮기면 재검사 모드가 풀린다', async () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [confirmedRound]);
 

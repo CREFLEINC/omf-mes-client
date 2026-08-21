@@ -166,6 +166,27 @@ export const IqcInspectionScreen = () => {
 
   const storedJudgment = round?.overallJudgmentCode ?? '';
 
+  /**
+   * 회차가 화면에 보일 값. 회차가 없으면 빈 초안이다.
+   *
+   * ⛔ 0을 미리 채우지 않는다 — 채우면 「검사자가 0으로 판정했다」와 「아직 아무것도 넣지
+   * 않았다」가 화면에서 같아 보인다.
+   */
+  const draftOf = (
+    source: {
+      acceptedQty: number;
+      rejectedQty: number;
+      heldQty: number;
+    } | null,
+  ): QuantityDraft =>
+    source === null
+      ? EMPTY_QUANTITY_DRAFT
+      : {
+          accepted: String(source.acceptedQty),
+          rejected: String(source.rejectedQty),
+          held: String(source.heldQty),
+        };
+
   useEffect(() => {
     setIsSaved(false);
     /*
@@ -175,15 +196,7 @@ export const IqcInspectionScreen = () => {
      */
     setIsReinspecting(false);
     setJudgment(storedJudgment);
-    setDraft(
-      roundId === null
-        ? EMPTY_QUANTITY_DRAFT
-        : {
-            accepted: String(acceptedQty),
-            rejected: String(rejectedQty),
-            held: String(heldQty),
-          },
-    );
+    setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
 
   const rows = queue.data?.rows ?? [];
@@ -351,7 +364,12 @@ export const IqcInspectionScreen = () => {
             }}
             onCancelReinspection={() => {
               setIsReinspecting(false);
-              setDraft(EMPTY_QUANTITY_DRAFT);
+              /*
+               * ⛔ **확정본의 값을 되돌려 놓는다.** 비우면 그만둔 자리에 확정된 회차가
+               * «수량 없이» 놓인다 — 판정이 끝난 기록인데 화면이 비어 있으니 검사자는
+               * 자기가 방금 그것을 지웠다고 읽는다.
+               */
+              setDraft(draftOf(round));
               setJudgment(storedJudgment);
             }}
           />

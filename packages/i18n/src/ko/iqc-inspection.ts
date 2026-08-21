@@ -162,6 +162,11 @@ export const iqcInspection = {
     confirmBlockedByTotals: '판정 확정 — 수량 합계가 검사수량과 맞아야 확정할 수 있습니다.',
     confirmBlockedByJudgment: '판정 확정 — 종합 판정을 골라야 확정할 수 있습니다.',
     confirmBlockedByConfirmed: '판정 확정 — 이미 확정된 회차입니다.',
+    /*
+     * ⛔ 회차가 아직 없다. 확정은 회차 하나를 지목하는 쓰기라 지목할 것이 없으면 보낼 수
+     * 없다 — 「오류가 났습니다」가 아니라 «먼저 할 일»을 말한다.
+     */
+    confirmBlockedByUnsaved: '판정 확정 — 먼저 임시 저장을 해야 확정할 수 있습니다.',
 
     /*
      * 재검사 — ⭐ 앞 회차를 고치는 것이 «아니라» 새 회차를 쌓는 일이라는 사실을 문면이

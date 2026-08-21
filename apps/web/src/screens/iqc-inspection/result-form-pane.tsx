@@ -141,11 +141,19 @@ export const ResultFormPane = ({
    */
   const confirmBlockedReason: string | null = isConfirmed
     ? t.confirmBlockedByConfirmed
-    : !canConfirm(totals)
-      ? t.confirmBlockedByTotals
-      : judgment === ''
-        ? t.confirmBlockedByJudgment
-        : null;
+    : /*
+       * ⛔ **회차가 없으면 확정할 것이 없다.** 확정은 회차 하나를 경로로 지목하는 쓰기라,
+       * 아직 만들어지지 않은 회차를 지목하면 치환되지 않은 «주소 틀» 이 그대로 나간다.
+       * 그러면 사용자는 화면에서 가장 중요한 단추를 눌렀는데 알 수 없는 오류만 받는다 —
+       * 실제로 할 일은 먼저 임시 저장을 하는 것이고 그것을 사유가 말한다.
+       */
+      round === null
+      ? t.confirmBlockedByUnsaved
+      : !canConfirm(totals)
+        ? t.confirmBlockedByTotals
+        : judgment === ''
+          ? t.confirmBlockedByJudgment
+          : null;
 
   /** 서버가 짚어 준 칸 오류를 화면의 칸 이름으로 옮긴다. */
   const serverErrorOf = (key: keyof QuantityDraft): string | undefined => {
