@@ -1,3 +1,4 @@
+import type { InspectionItemSpecResponse, InspectionMeasurementResponse } from './measurement-rows';
 import type {
   InspectionRequestResponse,
   InspectionResultResponse,
@@ -118,3 +119,89 @@ export const roundsResponse = (
   items,
   page: pageOf(items.length),
 });
+
+/**
+ * 검사기준 버전의 항목 규격. ⛔ 전부 지어낸 값이다.
+ *
+ * 세 항목이 서로 다른 형태를 덮는다 — 상하한이 있는 수치형(샘플 3) · 규격이 없는 항목 ·
+ * 필수가 아닌 항목. 계약이 `dataTypeCode` 의 값 목록을 아직 확정하지 않아(omf-mes#179)
+ * 형태만 갖춰 둔다.
+ */
+export const dimensionSpec: InspectionItemSpecResponse = {
+  inspectionItemSpecId: 7001,
+  inspectionPlanVersionId: waitingRequest.inspectionPlanVersionId,
+  sequenceNo: 10,
+  inspectionItemCode: 'DIM',
+  inspectionItemName: '치수',
+  dataTypeCode: 'NUMERIC',
+  uomId: 20,
+  targetValue: 10,
+  lowerLimit: 9.9,
+  upperLimit: 10.1,
+  measurementCount: 3,
+  requiredFlag: true,
+  automaticJudgment: true,
+};
+
+export const appearanceSpec: InspectionItemSpecResponse = {
+  inspectionItemSpecId: 7002,
+  inspectionPlanVersionId: waitingRequest.inspectionPlanVersionId,
+  sequenceNo: 20,
+  inspectionItemCode: 'APPEAR',
+  inspectionItemName: '외관',
+  dataTypeCode: 'TEXT',
+  measurementCount: 1,
+  requiredFlag: true,
+  automaticJudgment: false,
+};
+
+/** 필수가 아닌 항목. 채번에 구멍이 있어도(시퀀스 5) 화면은 위치로 1부터 센다. */
+export const optionalSpec: InspectionItemSpecResponse = {
+  inspectionItemSpecId: 7003,
+  inspectionPlanVersionId: waitingRequest.inspectionPlanVersionId,
+  sequenceNo: 5,
+  inspectionItemCode: 'NOTE',
+  inspectionItemName: '비고 측정',
+  dataTypeCode: 'TEXT',
+  measurementCount: 1,
+  requiredFlag: false,
+  automaticJudgment: false,
+};
+
+export const itemSpecs: InspectionItemSpecResponse[] = [
+  dimensionSpec,
+  appearanceSpec,
+  optionalSpec,
+];
+
+/** 치수 1번 샘플의 측정치. 교정이 만료된 장비로 쟀다 — 서버가 그렇게 판정했다. */
+export const expiredMeasurement: InspectionMeasurementResponse = {
+  inspectionMeasurementId: 8001,
+  inspectionItemSpecId: dimensionSpec.inspectionItemSpecId,
+  sampleNo: 1,
+  numericValue: 10.05,
+  judgmentCode: '합격',
+  measuredAt: '2026-08-18T10:05:00+09:00',
+  inspectionEquipmentId: 6001,
+  calibrationExpiredAtMeasurement: true,
+};
+
+/** 치수 2번 샘플. 교정이 멀쩡한 장비로 쟀다. */
+export const normalMeasurement: InspectionMeasurementResponse = {
+  ...expiredMeasurement,
+  inspectionMeasurementId: 8002,
+  sampleNo: 2,
+  numericValue: 9.95,
+  calibrationExpiredAtMeasurement: false,
+};
+
+export const measurementsResponse = (
+  items: InspectionMeasurementResponse[],
+): { items: InspectionMeasurementResponse[]; page: PageMetaResponse } => ({
+  items,
+  page: pageOf(items.length),
+});
+
+export const itemSpecsResponse = (
+  items: InspectionItemSpecResponse[] = itemSpecs,
+): { items: InspectionItemSpecResponse[] } => ({ items });

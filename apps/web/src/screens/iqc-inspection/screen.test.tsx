@@ -6,12 +6,16 @@ import { describe, expect, it } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   draftRound,
+  expiredMeasurement,
+  itemSpecsResponse,
+  measurementsResponse,
   pageOf,
   queueItems,
   queueResponse,
   roundsResponse,
   waitingRequest,
 } from './fixtures';
+import type { InspectionMeasurementResponse } from './measurement-rows';
 import { IqcInspectionScreen } from './screen';
 
 const t = messages.iqcInspection;
@@ -22,6 +26,8 @@ const renderScreen = (
   respond: (request: Request) => Response = () => jsonResponse(queueResponse()),
   /** 회차 응답. 기본은 작성중 1회차이고, 빈 배열이면 아직 손대지 않은 의뢰다 */
   rounds = [draftRound],
+  /** 그 회차에 저장된 측정치 */
+  measurements: InspectionMeasurementResponse[] = [],
 ) => {
   const sent: URL[] = [];
   /** 저장 요청 원본 — 본문과 헤더를 그대로 본다 */
@@ -52,6 +58,20 @@ const renderScreen = (
           return found === undefined
             ? jsonResponse({ message: '없는 의뢰' }, { status: 404 })
             : jsonResponse(found);
+        },
+      },
+      /* 측정치 — 회차 단건보다 «먼저» 둔다. 경로가 회차 단건의 접두를 포함하기 때문이다. */
+      {
+        match: (request) =>
+          new URL(request.url).pathname.endsWith('/measurements') && request.method === 'GET',
+        respond: () => jsonResponse(measurementsResponse(measurements)),
+      },
+      /* 검사기준 버전의 항목 규격 — 그리드의 줄 수를 정한다. */
+      {
+        match: (request) => new URL(request.url).pathname.endsWith('/items'),
+        respond: (request) => {
+          sent.push(new URL(request.url));
+          return jsonResponse(itemSpecsResponse());
         },
       },
       /* 회차 한 건 — 잠금 토큰이 여기서 온다(목록 200 에는 ETag 가 없다). */
@@ -315,6 +335,30 @@ describe('IqcInspectionScreen', () => {
     await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '9');
 
     await waitFor(() => expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument());
+  });
+
+  it('검사 시점에 고정된 기준 버전으로 항목을 부른다 — 최신 기준을 따로 찾지 않는다', async () => {
+    const { sent } = renderScreen('/?ir=1001');
+
+    await screen.findByRole('region', { name: messages.iqcInspection.measurements.heading });
+
+    const itemsCall = sent.find((url) => url.pathname.endsWith('/items'));
+    expect(itemsCall?.pathname).toContain(String(waitingRequest.inspectionPlanVersionId));
+  });
+
+  it('교정 만료로 잰 측정치가 있으면 경고를 세우되 막지는 않는다', async () => {
+    renderScreen(
+      '/?ir=1001',
+      () => jsonResponse(queueResponse()),
+      [draftRound],
+      [expiredMeasurement],
+    );
+
+    expect(
+      await screen.findByText(messages.iqcInspection.measurements.calibrationWarningTitle),
+    ).toBeInTheDocument();
+    /* 저장 단추가 그대로 선다 — 알리기만 하고 차단하지 않는다. */
+    expect(screen.getByRole('button', { name: t.result.save })).toBeEnabled();
   });
 
   it('상세 조회가 실패해도 「고르지 않음」으로 접지 않는다 — 다시 골라도 같은 실패가 온다', async () => {
