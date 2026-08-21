@@ -12,6 +12,7 @@ import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
+import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
 import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
@@ -117,6 +118,18 @@ export const appRouter = createBrowserRouter([
        * 이 화면을 여는 화면 옆이 읽히는 자리다.
        */
       { path: 'logistics/po-register', element: <PoRegisterScreen /> },
+      /*
+       * W-01-01 — **차례가 업무 순서다.** 도착을 처리한 뒤(초과 입하 분리) **받아들여도
+       * 되는지를 먼저 판정하고**(IQC 수입검사·판정) 그 다음 창고로 받아들인다.
+       *
+       * 합격이 곧 Release 이고 그 LOT 이 정상품 입하 처리로 넘어간다(스펙 §5-1) — 두 화면이
+       * 이 순서로 이어져 있어 사이에 다른 것을 끼우지 않는다.
+       *
+       * ⛔ **「품질」 섹션을 새로 만들지 않는다.** 통합 IA 가 이 화면을 **「자재/창고 >
+       * 입하·검사」**에 두었고 형제 화면(W-01-02 긴급 IQC 생략 한도승인)이 이미 이 섹션에
+       * 서 있다. 품질 섹션은 Lot Status 계열(W-03-xx)이 들어올 때 그 화면들이 연다.
+       */
+      { path: 'logistics/iqc-inspection', element: <IqcInspectionScreen /> },
       /*
        * W-01-10 — 같은 규칙(사이드바 섹션)을 따르고 차례도 업무 순서다: 도착을 처리한 뒤
        * (초과 입하 분리) 창고로 받아들이고(정상품 입하 처리) 그 결과를 재고에서 확인한다.

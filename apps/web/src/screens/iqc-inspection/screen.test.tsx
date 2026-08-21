@@ -664,6 +664,42 @@ describe('IqcInspectionScreen — 재검사 회차', () => {
   });
 });
 
+describe('IqcInspectionScreen — 확정 결과 문면', () => {
+  /* 확정을 누른 «그 순간»에만 나온다 — 그것이 결과이지 상태가 아니라는 증거다. */
+  it('확정하면 됐다고 말한다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      { ...draftRound, acceptedQty: 500, rejectedQty: 0, heldQty: 0 },
+    ]);
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+
+    expect(await screen.findByText(t.result.confirmed_done)).toBeInTheDocument();
+  });
+
+  it('다른 의뢰로 옮기면 그 문면이 지워진다 — 그 의뢰에서 한 일이 아니다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      { ...draftRound, acceptedQty: 500, rejectedQty: 0, heldQty: 0 },
+    ]);
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByLabelText(t.result.judgment));
+    await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await screen.findByText(t.result.confirmed_done);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: t.queue.openRow(queueItems[1]!.inspectionRequestNo) }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText(t.result.confirmed_done)).not.toBeInTheDocument(),
+    );
+  });
+});
+
 describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
   /**
    * ⛔ **저장 한 번에 회차 하나다.** 저장이 새 회차를 만들면 그 회차는 이제 실재하는 작성중

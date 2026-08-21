@@ -41,6 +41,7 @@ const renderPane = (
       onConfirm={onConfirm}
       isConfirming={false}
       confirmError={null}
+      isJustConfirmed={false}
       isReinspecting={false}
       onStartReinspection={onStartReinspection}
       onCancelReinspection={vi.fn()}
@@ -349,5 +350,47 @@ describe('ResultFormPane — 저장 전 확정', () => {
 
     expect(screen.getByRole('button', { name: t.confirm })).toBeEnabled();
     expect(screen.queryByText(t.confirmBlockedByUnsaved)).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 미결과 결과 문면', () => {
+  /**
+   * ⚠ **자리는 확정이고 규칙만 미정이다**(스펙 §8 #2). ⛔ 감추지 않는다 — 감추면 이 화면에
+   * 그 갈래가 «없는 것»이 되고, 협의가 끝나면 사용자는 「없던 것이 생겼다」로 만난다.
+   */
+  it('부분 입고 허용 자리를 두되 아직 쓸 수 없다고 밝힌다', () => {
+    renderPane();
+
+    expect(screen.getByRole('button', { name: t.partialReceipt })).toBeDisabled();
+    expect(screen.getByText(t.partialReceiptPending)).toBeInTheDocument();
+  });
+
+  /* ⛔ 확정된 회차에는 판정을 바꿀 자리를 두지 않는다 — 부분 입고도 그 자리다. */
+  it('확정된 회차에는 부분 입고 자리를 두지 않는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
+
+    expect(screen.queryByRole('button', { name: t.partialReceipt })).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ 되돌릴 수 없는 쓰기가 끝난 것을 말한다. 저장은 「저장했습니다」를 내는데 확정만
+   * 아무 말이 없으면 사용자는 그것이 됐는지 확인할 문장을 못 찾아 한 번 더 누를 자리를 찾는다.
+   */
+  it('방금 확정했으면 그 사실을 말한다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound), 500, {
+      isJustConfirmed: true,
+    });
+
+    expect(screen.getByText(t.confirmed_done)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **상태가 아니라 결과다.** 어제 확정된 회차에도 「확정했습니다」를 내면 화면에 들어올
+   * 때마다 방금 한 일처럼 말한다 — 사용자는 자기가 누른 적 없는 쓰기를 했다고 읽는다.
+   */
+  it('예전에 확정된 회차에는 방금 한 일처럼 말하지 않는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
+
+    expect(screen.queryByText(t.confirmed_done)).not.toBeInTheDocument();
   });
 });
