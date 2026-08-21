@@ -223,6 +223,49 @@ const holdRoutes = (holdStatus = 200, userStatus = 200, actorTotal = 2): StubRou
   ),
 ];
 
+const eventRoutes = (status = 200, empty = false): StubRoute[] => [
+  route('/quality/lot-hold-events', (request) => {
+    const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+    const items = empty
+      ? []
+      : page === 1
+        ? [
+            {
+              lotHoldId: 801,
+              eventTypeCode: 'HELD',
+              occurredAt: '2026-08-20T09:00:00+09:00',
+              lotId: 401,
+              lotNo: 'SAMPLE-LOT-001',
+              actorId: 601,
+              actorName: '사건 응답 이름',
+              reasonCode: 'SAMPLE_REASON_HELD',
+            },
+            {
+              lotHoldId: 801,
+              eventTypeCode: 'RELEASED',
+              occurredAt: '2026-08-21T10:00:00+09:00',
+              lotId: 401,
+              lotNo: 'SAMPLE-LOT-001',
+              actorId: 602,
+              actorName: '   ',
+            },
+          ]
+        : [
+            {
+              lotHoldId: 802,
+              eventTypeCode: 'HELD',
+              occurredAt: '2026-08-19T08:00:00+09:00',
+              lotId: 402,
+              lotNo: 'SAMPLE-LOT-002',
+              actorId: 601,
+              actorName: '다음 쪽 담당자',
+              reasonCode: 'SAMPLE_REASON_PAGE_2',
+            },
+          ];
+    return jsonResponse({ items, page: { page, size: 2, total: empty ? 0 : 3 } }, { status });
+  }),
+];
+
 const fetchFor = (
   typeState: LotTypeState = 'ready',
   currentRoutes = qualityRoutes(),
@@ -325,13 +368,13 @@ describe('Lot Status 화면 shell', () => {
     expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
     expect(locationSearch().get('from')).toBe('2026-08-01');
     expect(locationSearch().get('lot')).toBeNull();
-    expect(screen.getByText('보류 사건 이력 조회는 후속 단계에서 연결됩니다.')).toBeVisible();
+    expect(screen.getByText('기간을 선택하고 조회하세요')).toBeVisible();
   });
 
   it('이력 모드 최초 진입에서는 현재 조회 선택지를 요청하지 않는다', async () => {
     const { urls } = renderScreen('/quality/lot-status?mode=history', 'ready', holdRoutes());
 
-    expect(screen.getByText('보류 사건 이력 조회는 후속 단계에서 연결됩니다.')).toBeVisible();
+    expect(screen.getByText('기간을 선택하고 조회하세요')).toBeVisible();
     await waitFor(() => expect(requestCount(urls, '/app/users')).toBe(1));
     expect(lastRequest(urls, '/app/users')?.searchParams.get('includeInactive')).toBe('true');
     for (const path of ['/mdm/code-values', '/mdm/items', '/mdm/warehouses']) {
@@ -353,7 +396,7 @@ describe('Lot Status 화면 shell', () => {
     const { urls } = renderScreen(
       '/quality/lot-status?mode=history&lotType=SAMPLE_MATERIAL&page=3&from=2026-08-01&to=2026-08-07&actor=601&historyLot=OLD&historyPage=4',
       'ready',
-      holdRoutes(),
+      [...holdRoutes(), ...eventRoutes()],
     );
     const user = userEvent.setup();
 
@@ -374,7 +417,7 @@ describe('Lot Status 화면 shell', () => {
       historyLot: 'SAMPLE-LOT-001',
     });
     expect(locationSearch().get('historyPage')).toBeNull();
-    expect(requestCount(urls, '/quality/lot-hold-events')).toBe(0);
+    await waitFor(() => expect(requestCount(urls, '/quality/lot-hold-events')).toBe(2));
 
     await user.click(screen.getByRole('button', { name: '초기화' }));
     for (const key of ['from', 'to', 'actor', 'historyLot', 'historyPage']) {
@@ -382,6 +425,134 @@ describe('Lot Status 화면 shell', () => {
     }
     expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
     expect(locationSearch().get('page')).toBe('3');
+  });
+
+  it('보류 등록·해제 사건을 응답 행위자로 5열 표에 표시하고 서버 쪽을 이동한다', async () => {
+    const { urls } = renderScreen(
+      '/quality/lot-status?mode=history&from=2026-08-01&to=2026-08-07&actor=601&historyLot=SAMPLE-LOT-001',
+      'ready',
+      [...holdRoutes(), ...eventRoutes()],
+    );
+    const user = userEvent.setup();
+    const table = await screen.findByRole('table', { name: '보류 사건 이력' });
+
+    expect(screen.getByText(/전체 상태 전이는 기록되지 않습니다/)).toBeVisible();
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual(['일시', 'LOT', '전이/사건', '행위자', '사유']);
+    const rows = within(table).getAllByRole('row');
+    expect(rows[1]).toHaveTextContent('2026-08-20 09:00SAMPLE-LOT-001보류 등록');
+    expect(rows[2]).toHaveTextContent('2026-08-21 10:00SAMPLE-LOT-001보류 해제');
+    expect(within(table).getByText('보류 등록')).toBeVisible();
+    expect(within(table).getByText('보류 해제')).toBeVisible();
+    expect(within(table).getByText('사건 응답 이름')).toBeVisible();
+    expect(within(table).getByText('이름 미확인')).toBeVisible();
+    expect(within(table).queryByText('601')).not.toBeInTheDocument();
+    expect(screen.getByText('1–2 / 전체 3건')).toBeVisible();
+    const first = lastRequest(urls, '/quality/lot-hold-events');
+    expect(first?.searchParams.get('occurredFrom')).toContain('2026-08-01T00:00:00');
+    expect(first?.searchParams.get('occurredTo')).toContain('2026-08-07T23:59:59');
+    expect(first?.searchParams.get('actorId')).toBe('601');
+    expect(first?.searchParams.get('lotNo')).toBe('SAMPLE-LOT-001');
+    expect(first?.searchParams.get('sort')).toBe('occurredDesc');
+
+    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
+    expect(await screen.findByText('3–3 / 전체 3건')).toBeVisible();
+    expect(locationSearch().get('historyPage')).toBe('2');
+    expect(lastRequest(urls, '/quality/lot-hold-events')?.searchParams.get('page')).toBe('2');
+  });
+
+  it('기간 미적용·오류·빈 결과에서도 보류 이력의 한계를 항상 밝힌다', async () => {
+    const { unmount } = renderScreen('/quality/lot-status?mode=history', 'ready', holdRoutes());
+    expect(screen.getByText(/전체 상태 전이는 기록되지 않습니다/)).toBeVisible();
+    expect(screen.getByText('기간을 선택하고 조회하세요')).toBeVisible();
+    unmount();
+
+    const failed = renderScreen(
+      '/quality/lot-status?mode=history&from=2026-08-01&to=2026-08-07',
+      'ready',
+      [...holdRoutes(), ...eventRoutes(500)],
+    );
+    const user = userEvent.setup();
+    expect(await screen.findByText('보류 사건 이력을 불러오지 못했습니다.')).toBeVisible();
+    expect(screen.getByText(/전체 상태 전이는 기록되지 않습니다/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '보류 사건 이력 다시 시도' }));
+    await waitFor(() => expect(requestCount(failed.urls, '/quality/lot-hold-events')).toBe(2));
+    failed.unmount();
+
+    renderScreen('/quality/lot-status?mode=history&from=2026-08-01&to=2026-08-07', 'ready', [
+      ...holdRoutes(),
+      ...eventRoutes(200, true),
+    ]);
+    expect(await screen.findByText('이 기간의 보류 사건이 없습니다')).toBeVisible();
+    expect(screen.getByText('현재 LOT 상태와 일치하지 않아도 오류가 아닙니다.')).toBeVisible();
+    expect(screen.getByText(/전체 상태 전이는 기록되지 않습니다/)).toBeVisible();
+  });
+
+  it('첫 사건 응답을 기다리는 동안에도 한계와 로딩 상태를 함께 표시한다', () => {
+    const baseFetch = fetchFor('ready', holdRoutes());
+    renderWithProviders(<LotStatusHistoryScreen />, {
+      route: '/quality/lot-status?mode=history&from=2026-08-01&to=2026-08-07',
+      fetch: async (request) =>
+        new URL(request.url).pathname === '/quality/lot-hold-events'
+          ? new Promise<Response>(() => undefined)
+          : baseFetch(request),
+    });
+
+    expect(screen.getByText(/전체 상태 전이는 기록되지 않습니다/)).toBeVisible();
+    expect(screen.getByRole('status', { name: '보류 사건 이력을 불러오는 중' })).toBeVisible();
+  });
+
+  it('쪽 응답 중 기존 사건·초점을 유지하고 서버 PageMeta로 범위를 계산한다', async () => {
+    const urls: URL[] = [];
+    const baseFetch = fetchFor('ready', [...holdRoutes(), ...eventRoutes()]);
+    let releasePageTwo: (() => void) | undefined;
+    renderWithProviders(<LotStatusHistoryScreen />, {
+      route: '/quality/lot-status?mode=history&from=2026-08-01&to=2026-08-07',
+      fetch: async (request) => {
+        const url = new URL(request.url);
+        urls.push(url);
+        if (url.pathname === '/quality/lot-hold-events' && url.searchParams.get('page') === '2') {
+          return new Promise<Response>((resolve) => {
+            releasePageTwo = () =>
+              resolve(
+                jsonResponse({
+                  items: [
+                    {
+                      lotHoldId: 803,
+                      eventTypeCode: 'HELD',
+                      occurredAt: '2026-08-18T08:00:00+09:00',
+                      lotId: 403,
+                      lotNo: 'SAMPLE-LOT-003',
+                      actorId: 603,
+                      actorName: '페이지 담당자',
+                    },
+                  ],
+                  page: { page: 2, size: 20, total: 21 },
+                }),
+              );
+          });
+        }
+        return baseFetch(request);
+      },
+    });
+    const user = userEvent.setup();
+    await screen.findByText('1–2 / 전체 3건');
+    const next = screen.getByRole('button', { name: '다음 쪽' });
+
+    await user.click(next);
+    await waitFor(() => expect(releasePageTwo).toBeDefined());
+    expect(next).toHaveFocus();
+    expect(screen.getByText('보류 사건 이력을 갱신하는 중입니다.')).toBeVisible();
+    expect(
+      screen.getByRole('table', { name: '보류 사건 이력' }).closest('[aria-busy]'),
+    ).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getAllByText('SAMPLE-LOT-001')).toHaveLength(2);
+    releasePageTwo?.();
+    expect(await screen.findByText('21–21 / 전체 21건')).toBeVisible();
+    expect(screen.getByRole('button', { name: '다음 쪽' })).toBeDisabled();
   });
 
   it('초기화는 현재 모드 조건·쪽·선택만 지우고 이력 조건은 보존한다', async () => {

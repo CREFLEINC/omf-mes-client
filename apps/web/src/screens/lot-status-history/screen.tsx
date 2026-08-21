@@ -6,6 +6,7 @@ import {
   EMPTY_HISTORY_FILTERS,
   EMPTY_LOT_FILTERS,
   readHistoryFilters,
+  readHistoryPage,
   readLotFilters,
   readLotPage,
   readMode,
@@ -21,6 +22,7 @@ import {
 } from './filters';
 import { CurrentResults } from './current-results';
 import { HistoryFilterBar } from './history-filter-bar';
+import { HistoryResults } from './history-results';
 import { LotDetailDialog } from './lot-detail-dialog';
 import { LotFilterBar, type FilterOption } from './lot-filter-bar';
 import { useLotStatusOptions, useLotTypeOptions, type LotCodeOption } from './options';
@@ -141,11 +143,13 @@ const LotMode = ({
 
 interface HistoryModeProps {
   filters: HistoryFilters;
+  page: number;
   onSearch: (filters: HistoryFilters) => void;
   onReset: () => void;
+  onPageChange: (page: number) => void;
 }
 
-const HistoryMode = ({ filters, onSearch, onReset }: HistoryModeProps) => {
+const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: HistoryModeProps) => {
   const actors = useLotActorOptions(true);
   const actorOptions: FilterOption[] =
     actors.data?.items.map((actor) => ({
@@ -171,7 +175,12 @@ const HistoryMode = ({ filters, onSearch, onReset }: HistoryModeProps) => {
         onSearch={onSearch}
         onReset={onReset}
       />
-      <p>보류 사건 이력 조회는 후속 단계에서 연결됩니다.</p>
+      <HistoryResults
+        filters={filters}
+        page={page}
+        offsetMinutes={-new Date().getTimezoneOffset()}
+        onPageChange={onPageChange}
+      />
     </section>
   );
 };
@@ -182,6 +191,7 @@ export const LotStatusHistoryScreen = () => {
   const filters = useMemo(() => readLotFilters(searchParams), [searchParams]);
   const historyFilters = useMemo(() => readHistoryFilters(searchParams), [searchParams]);
   const page = readLotPage(searchParams);
+  const historyPage = readHistoryPage(searchParams);
   const selectedLotId = readSelectedLotId(searchParams);
 
   const apply = (next: LotFilters): void => {
@@ -198,6 +208,9 @@ export const LotStatusHistoryScreen = () => {
   };
   const applyHistory = (next: HistoryFilters): void => {
     setSearchParams((current) => toAppliedHistorySearchParams(current, next, 1));
+  };
+  const changeHistoryPage = (nextPage: number): void => {
+    setSearchParams((current) => toAppliedHistorySearchParams(current, historyFilters, nextPage));
   };
 
   const lotContent =
@@ -217,8 +230,10 @@ export const LotStatusHistoryScreen = () => {
     mode === 'history' ? (
       <HistoryMode
         filters={historyFilters}
+        page={historyPage}
         onSearch={applyHistory}
         onReset={() => applyHistory(EMPTY_HISTORY_FILTERS)}
+        onPageChange={changeHistoryPage}
       />
     ) : null;
   const tabs: TabItem[] = [
