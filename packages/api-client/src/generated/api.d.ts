@@ -35452,7 +35452,7 @@ export interface components {
             /** @example 값 */
             remarks?: string;
         };
-        /** @description ⛔ statusCode=확정 이면 acceptedQty + rejectedQty + heldQty = inspectedQty 를 강제한다 (ck_inspection_result_qty · 공유계약 A-3). 작성중은 통과시킨다. */
+        /** @description ⛔ statusCode=확정 이면 acceptedQty + rejectedQty + heldQty = inspectedQty 를 강제한다 (ck_inspection_result_qty · 공유계약 A-3). 작성중은 통과시킨다. ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). */
         InspectionResultCreate: {
             /**
              * Format: int64
@@ -35490,20 +35490,10 @@ export interface components {
              */
             overallJudgmentCode?: string;
             /**
-             * Format: int64
-             * @example 1001
-             */
-            inspectorId: number;
-            /**
              * Format: date-time
              * @example 2026-08-12T10:22:00+09:00
              */
             inspectedAt: string;
-            /**
-             * Format: int64
-             * @example 1001
-             */
-            terminalId?: number;
             /**
              * @description ⭐ 오프라인 큐는 언제나 확정으로 보낸다 — 임시 저장은 단말에 남고 서버로 오지 않는다.
              * @example 작성중
@@ -35522,7 +35512,7 @@ export interface components {
             /** @example 값 */
             remarks?: string;
         };
-        /** @description 작성중인 결과만 고칠 수 있다. 확정된 것은 409 INVALID_STATE — 고치는 것이 아니라 재검이다(B-10) */
+        /** @description 작성중인 결과만 고칠 수 있다. 확정된 것은 409 INVALID_STATE — 고치는 것이 아니라 재검이다(B-10) ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). */
         InspectionResultUpdate: {
             /**
              * Format: double
@@ -35546,11 +35536,6 @@ export interface components {
             heldQty?: number;
             /** @example 값 */
             overallJudgmentCode?: string;
-            /**
-             * Format: int64
-             * @example 1001
-             */
-            inspectorId?: number;
             /**
              * Format: date-time
              * @example 2026-08-12T10:22:00+09:00
