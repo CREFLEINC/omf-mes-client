@@ -31,6 +31,7 @@ const renderDialog = (overrides: Partial<EquipmentFormDialogProps> = {}) => {
   const onChange = vi.fn();
   const onClose = vi.fn();
   const onSave = vi.fn();
+  const onDeactivate = vi.fn();
 
   render(
     <ToastProvider>
@@ -47,15 +48,17 @@ const renderDialog = (overrides: Partial<EquipmentFormDialogProps> = {}) => {
         statusCode="ACTIVE"
         lastCalibrationDate={null}
         calibrationDueDate={null}
+        isActive
         isSaving={false}
         onClose={onClose}
         onSave={onSave}
+        onDeactivate={onDeactivate}
         {...overrides}
       />
     </ToastProvider>,
   );
 
-  return { onChange, onClose, onSave };
+  return { onChange, onClose, onSave, onDeactivate };
 };
 
 describe('EquipmentFormDialog', () => {
@@ -145,6 +148,40 @@ describe('EquipmentFormDialog', () => {
 
     expect(screen.getByRole('textbox', { name: /설비코드/ })).toBeDisabled();
     expect(screen.getByText('이미 3건에서 사용 중입니다.')).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 수명주기 액션을 한자리에 모은다 — 사용 중지와 폐기는 같은 축의 두 단계인데
+   * 서로 다른 자리에 두면 한쪽을 찾은 사용자가 다른 쪽이 없다고 읽는다.
+   */
+  it('사용 중인 설비의 수정 창에 사용 중지와 폐기가 함께 선다', async () => {
+    const user = userEvent.setup();
+    const { onDeactivate } = renderDialog({ isActive: true });
+
+    expect(screen.getByRole('button', { name: t.actions.disposeEquipment })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.deactivate }));
+
+    expect(onDeactivate).toHaveBeenCalledTimes(1);
+  });
+
+  /* 이미 중지된 것을 다시 중지할 수는 없다 — 누를 것이 없는 컨트롤을 두지 않는다. */
+  it('이미 중지된 설비에는 사용 중지를 두지 않는다', () => {
+    renderDialog({ isActive: false });
+
+    expect(screen.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
+  });
+
+  /* 아직 등록되지 않은 설비에는 중지할 대상이 없다. */
+  it('등록 폼에는 사용 중지를 두지 않는다', () => {
+    renderDialog({ mode: 'create', hierarchy: null, isActive: true });
+
+    expect(screen.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
+  });
+
+  it('전송 중에는 사용 중지도 누를 수 없다', () => {
+    renderDialog({ isActive: true, isSaving: true });
+
+    expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeDisabled();
   });
 
   it('입력을 고치면 그 칸만 담아 알린다', async () => {

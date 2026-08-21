@@ -426,7 +426,13 @@ export const EquipmentMasterScreen = () => {
           },
         },
       }),
-    /* 잠금 토큰은 상세 경로에 보관돼 있다 — 요청 경로로 꺼내면 언제나 비어 있다. */
+    /*
+     * 잠금 토큰은 상세 경로에 보관돼 있다 — 요청 경로로 꺼내면 언제나 비어 있다.
+     *
+     * ⭐ **토큰이 있다는 것이 보장된다.** 이 액션은 수정 창 안에만 있고, 그 창의 버튼은
+     * 상세가 도착해야 서기 때문이다 — 목록 행에 두었을 때 필요했던 「토큰이 오기 전」
+     * 방어가 여기서는 자리 자체로 성립한다.
+     */
     etagPath: deactivateTarget === null ? null : equipmentDetailPath(deactivateTarget.equipmentId),
     invalidateKeys: [equipmentKeys.all],
     // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
@@ -436,15 +442,6 @@ export const EquipmentMasterScreen = () => {
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
-
-  /**
-   * 사용 중지에도 상세가 필요하다 — **잠금 토큰이 거기 있다.**
-   *
-   * 목록 행에는 토큰이 없다. 줄에서 바로 중지를 누른 경우 이 조회가 처음으로 토큰을 가져오며,
-   * **그것이 도착하기 전에는 확인을 열지 않는다** — 열어 두면 사용자가 눌렀을 때
-   * 「토큰이 없다」는 화면 단위 오류만 받고 무엇을 해야 하는지 알 수 없다.
-   */
-  const deactivateDetail = useEquipmentDetail(deactivateTarget?.equipmentId ?? null);
 
   /** 편집 중이던 것을 통째로 거둔다 — 인라인 오류와 저장 실패 배너. */
   const resetEditing = () => {
@@ -731,10 +728,6 @@ export const EquipmentMasterScreen = () => {
                     onApplyFilters={handleApplyEquipmentFilters}
                     onAdd={openEquipmentCreate}
                     onEdit={openEquipmentEdit}
-                    onDeactivate={(equipment) => {
-                      resetIfIdle(equipmentDeactivateWrite);
-                      setDeactivateTarget(equipment);
-                    }}
                     loadError={
                       equipmentList.isError ? (
                         <LoadErrorBanner
@@ -853,9 +846,16 @@ export const EquipmentMasterScreen = () => {
           statusCode={equipmentDetail.data?.equipment.statusCode ?? null}
           lastCalibrationDate={equipmentDetail.data?.equipment.lastCalibrationDate ?? null}
           calibrationDueDate={equipmentDetail.data?.equipment.calibrationDueDate ?? null}
+          isActive={equipmentDetail.data?.equipment.isActive ?? false}
           isSaving={equipmentWrite.isSaving}
           onClose={() => setEquipmentDialog(null)}
           onSave={handleSaveEquipment}
+          onDeactivate={() => {
+            resetIfIdle(equipmentDeactivateWrite);
+            if (equipmentDetail.data !== undefined) {
+              setDeactivateTarget(equipmentDetail.data.equipment);
+            }
+          }}
         />
       )}
 
@@ -864,19 +864,8 @@ export const EquipmentMasterScreen = () => {
           title={t.deactivate.equipmentTitle}
           targetLabel={`${deactivateTarget.equipmentCode} · ${deactivateTarget.equipmentName}`}
           impactNote={t.deactivate.equipmentImpact}
-          /* 토큰이 오기 전에는 누를 수 없다 — 눌러도 「토큰이 없다」만 받는다. */
-          isSaving={equipmentDeactivateWrite.isSaving || deactivateDetail.isPending}
-          banner={
-            <>
-              {deactivateDetail.isError && (
-                <LoadErrorBanner
-                  error={toApiError(deactivateDetail.error)}
-                  onRetry={() => void deactivateDetail.refetch()}
-                />
-              )}
-              <SaveErrorBanner error={equipmentDeactivateWrite.error} />
-            </>
-          }
+          isSaving={equipmentDeactivateWrite.isSaving}
+          banner={<SaveErrorBanner error={equipmentDeactivateWrite.error} />}
           onClose={() => setDeactivateTarget(null)}
           onConfirm={() => equipmentDeactivateWrite.write(undefined)}
         />

@@ -1645,24 +1645,26 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
     return screen.findByRole('region', { name: t.tabs.equipment });
   };
 
-  const confirmDeactivate = async (user: ReturnType<typeof userEvent.setup>) => {
-    const dialog = await screen.findByRole('dialog', { name: deactivateT.equipmentTitle });
-    const confirm = within(dialog).getByRole('button', { name: deactivateT.confirm });
-    // 잠금 토큰이 도착하기 전에는 누를 수 없다.
-    await waitFor(() => {
-      expect(confirm).toBeEnabled();
-    });
-    await user.click(confirm);
+  /** 수명주기 액션은 수정 창 안에 있다 — 그 창의 버튼은 상세가 도착해야 선다. */
+  const openDeactivate = async (user: ReturnType<typeof userEvent.setup>) => {
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const form = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+    await user.click(await form.findByRole('button', { name: messages.common.deactivate }));
   };
 
-  it('설비 줄에서 바로 중지할 수 있고 무엇이 달라지는지 먼저 밝힌다', async () => {
+  const confirmDeactivate = async (user: ReturnType<typeof userEvent.setup>) => {
+    const dialog = await screen.findByRole('dialog', { name: deactivateT.equipmentTitle });
+    await user.click(within(dialog).getByRole('button', { name: deactivateT.confirm }));
+  };
+
+  it('수정 창에서 중지할 수 있고 무엇이 달라지는지 먼저 밝힌다', async () => {
     const user = userEvent.setup();
     renderScreen({
       respondEquipments: () => jsonResponse(equipmentsResponse([equipmentItems[0]!])),
     });
 
-    const pane = within(await openEquipmentTab(user));
-    await user.click(pane.getByRole('button', { name: messages.common.deactivate }));
+    await openDeactivate(user);
 
     const dialog = within(await screen.findByRole('dialog', { name: deactivateT.equipmentTitle }));
     expect(dialog.getByText(deactivateT.target('EQ-01 · EQ-01 설비'))).toBeInTheDocument();
@@ -1672,8 +1674,8 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
   });
 
   /*
-   * ⭐ 목록 행에는 잠금 토큰이 없다 — 줄에서 바로 누른 경우 상세 조회가 처음으로 그것을
-   * 가져온다. 토큰이 오기 전에 확인을 열면 「토큰이 없다」는 화면 오류만 받게 된다.
+   * ⭐ 목록 행에는 잠금 토큰이 없다 — 상세 조회가 그것을 가져온다.
+   * 수명주기 액션이 수정 창 안에만 있어, 눌릴 때에는 토큰이 이미 와 있다.
    */
   it('확인이 설비 상세의 잠금 토큰을 싣는다', async () => {
     const user = userEvent.setup();
@@ -1681,8 +1683,7 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
       respondEquipments: () => jsonResponse(equipmentsResponse([equipmentItems[0]!])),
     });
 
-    const pane = within(await openEquipmentTab(user));
-    await user.click(pane.getByRole('button', { name: messages.common.deactivate }));
+    await openDeactivate(user);
     await confirmDeactivate(user);
 
     await waitFor(() => {
@@ -1701,8 +1702,7 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
       respondEquipments: () => jsonResponse(equipmentsResponse([equipmentItems[0]!])),
     });
 
-    const pane = within(await openEquipmentTab(user));
-    await user.click(pane.getByRole('button', { name: messages.common.deactivate }));
+    await openDeactivate(user);
     await confirmDeactivate(user);
 
     await waitFor(() => {
@@ -1722,8 +1722,7 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
         ),
     });
 
-    const pane = within(await openEquipmentTab(user));
-    await user.click(pane.getByRole('button', { name: messages.common.deactivate }));
+    await openDeactivate(user);
     await confirmDeactivate(user);
 
     const dialog = within(await screen.findByRole('dialog', { name: deactivateT.equipmentTitle }));
@@ -1734,10 +1733,14 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
    * ⭐ 목록 행에는 잠금 토큰이 없다. 토큰이 도착하기 전에 확인을 열면 사용자는 눌러 놓고
    * 「토큰이 없다」는 화면 오류만 받는다 — 무엇을 해야 하는지 알 수 없는 자리다.
    */
-  it('잠금 토큰이 도착하기 전에는 확인을 누를 수 없다', async () => {
+  /*
+   * ⭐ **토큰이 있다는 것이 자리로 보장된다.** 이 액션은 수정 창 안에만 있고 그 창의 버튼은
+   * 상세가 도착해야 선다 — 목록 줄에 두었을 때 필요했던 「토큰이 오기 전」 방어가
+   * 여기서는 필요 없다. 그 사실을 재 둔다.
+   */
+  it('상세가 도착하기 전에는 수명주기 액션이 서지 않는다', async () => {
     const user = userEvent.setup();
 
-    /* 상세를 붙잡아 둔다 — 즉시 답하는 스텁으로는 그 사이가 아예 없어 잴 수 없다. */
     let releaseDetail: () => void = () => undefined;
     const detailHeld = new Promise<void>((resolve) => {
       releaseDetail = () => {
@@ -1771,17 +1774,16 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
     await user.click(await screen.findByRole('button', { name: 'GRP-A' }));
     await user.click(await screen.findByRole('tab', { name: t.tabs.equipment }));
     const pane = within(await screen.findByRole('region', { name: t.tabs.equipment }));
-    await user.click(pane.getByRole('button', { name: messages.common.deactivate }));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
 
-    const dialog = within(await screen.findByRole('dialog', { name: deactivateT.equipmentTitle }));
-    expect(dialog.getByRole('button', { name: deactivateT.confirm })).toBeDisabled();
+    const form = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+    expect(form.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
 
     releaseDetail();
 
-    // 도착하면 열린다.
-    await waitFor(() => {
-      expect(dialog.getByRole('button', { name: deactivateT.confirm })).toBeEnabled();
-    });
+    expect(
+      await form.findByRole('button', { name: messages.common.deactivate }),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -1808,8 +1810,7 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
         ),
     });
 
-    const pane = within(await openEquipmentTab(user));
-    await user.click(pane.getByRole('button', { name: messages.common.deactivate }));
+    await openDeactivate(user);
     await confirmDeactivate(user);
 
     const dialog = within(await screen.findByRole('dialog', { name: deactivateT.equipmentTitle }));

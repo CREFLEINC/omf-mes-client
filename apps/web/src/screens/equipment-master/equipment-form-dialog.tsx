@@ -27,9 +27,12 @@ export interface EquipmentFormDialogProps {
   statusCode: string | null;
   lastCalibrationDate: string | null;
   calibrationDueDate: string | null;
+  /** 사용 중인 설비인가. 이미 중지된 것에는 중지할 대상이 없다 */
+  isActive: boolean;
   isSaving: boolean;
   onClose: () => void;
   onSave: () => void;
+  onDeactivate: () => void;
 }
 
 const t = messages.equipmentMaster;
@@ -91,9 +94,11 @@ export const EquipmentFormDialog = ({
   statusCode,
   lastCalibrationDate,
   calibrationDueDate,
+  isActive,
   isSaving,
   onClose,
   onSave,
+  onDeactivate,
 }: EquipmentFormDialogProps) => {
   const hierarchyLabelId = useId();
   const calibrationNoteId = useId();
@@ -211,6 +216,19 @@ export const EquipmentFormDialog = ({
               note={t.actionReasons.calibrationDatesReadOnly}
             />
             <ReadOnlyField label={t.fields.calibrationDueDate} value={calibrationDueDate} />
+
+            {/*
+             * ⭐ **수명주기 액션을 한자리에 모은다.** 사용 중지와 폐기는 같은 축의 두 단계인데
+             * 서로 다른 자리에 두면 한쪽을 찾은 사용자가 다른 쪽이 없다고 읽는다.
+             * 줄에 두는 것이 빠르지도 않다 — 어느 쪽이든 잠금 토큰을 받아야 눌린다.
+             */}
+            {isActive && (
+              <div className="field-cell">
+                <Button variant="outlined" disabled={isSaving} onClick={onDeactivate}>
+                  {messages.common.deactivate}
+                </Button>
+              </div>
+            )}
 
             {/*
              * ⚠ **폐기를 지금 열 수 없다.** 자산 상태의 값 목록도 그 공통코드 그룹 이름도
