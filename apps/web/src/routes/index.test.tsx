@@ -227,6 +227,12 @@ const iqcInspectionRoutes = (): StubRoute[] => [
   },
 ];
 
+const lotStatusRoutes = (): StubRoute[] => [
+  lookupRoute('/mdm/code-values', []),
+  lookupRoute('/mdm/warehouses', []),
+  lookupRoute('/mdm/items', []),
+];
+
 /** W-01-11이 첫 진입에 부르는 것들 — 대상 초과분 상세와 이름 풀이 다섯. */
 const poRegisterRoutes = (): StubRoute[] => [
   {
@@ -846,6 +852,27 @@ describe('appRouter — IQC 수입검사·판정의 진입 경로', () => {
     await screen.findByRole('heading', { level: 1, name: messages.iqcInspection.title });
 
     expect(await screen.findByText('IR-2026-0001')).toBeInTheDocument();
+  });
+});
+
+describe('appRouter — Lot Status 현황·변경이력 조회의 진입 경로', () => {
+  it('품질관리 사이드바 항목이 화면 주소를 가리킨다', () => {
+    expect(sidebarHrefs()).toContain('/quality/lot-status');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+    expect(within(nav).getByText('Lot Status 현황·변경이력 조회')).toBeInTheDocument();
+  });
+
+  it('그 주소로 들어가면 LOT 조회의 첫 상태가 선다', async () => {
+    renderRoutedApp('/quality/lot-status', lotStatusRoutes());
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Lot Status 현황·변경이력 조회',
+      }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('LOT 유형 기준값이 준비되지 않았습니다.')).toBeVisible();
   });
 });
 

@@ -205,6 +205,16 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             </NavItem>
           </SidebarSection>
           {/*
+           * W-03-01 — Lot Status 계열의 첫 화면이 독립된 「품질관리」 섹션을 연다.
+           * IQC 수입검사는 입하 흐름의 판정이라 자재창고에 남고, 여기서는
+           * 자재·생산 LOT의 상태와 보류 사건을 품질 관점에서 횡단한다.
+           */}
+          <SidebarSection label="품질관리">
+            <NavItem to="/quality/lot-status" icon="history">
+              Lot Status 현황·변경이력 조회
+            </NavItem>
+          </SidebarSection>
+          {/*
            * W-CO-09 — 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**다.
            * 결재선 정의(W-06-15)가 「시스템 관리」에 든 것은 그것이 **운영 설정**이기
            * 때문이고, 올라온 결재를 처리하는 일은 그것과 축이 다르다.
