@@ -234,6 +234,16 @@ export interface SaveDraftVariables {
   overallJudgmentCode: string;
   /** 검사한 시각. **호출부가 준다** — 이 파일이 실행 환경의 시각을 스스로 읽지 않는다 */
   inspectedAt: string;
+  /**
+   * 재검사면 **앞 회차**. 아니면 `null`.
+   *
+   * ⭐ 회차 번호는 **서버가 +1 한다** — 화면이 세지 않는다. 화면이 세면 두 사람이 동시에
+   * 재검사를 열었을 때 같은 번호를 만들고, 그 표에는 `UNIQUE(의뢰, 회차)` 가 걸려 있다.
+   *
+   * ⛔ **갱신에는 싣지 않는다** — 사슬은 회차가 만들어질 때 정해지는 것이라 나중에 바꾸는
+   * 값이 아니다. 실으면 이미 쌓인 회차의 앞뒤를 뒤바꾸는 길이 열린다.
+   */
+  previousResultId: number | null;
 }
 
 /** 계약이 못박은 두 값 중 임시 저장이 쓰는 쪽. 확정은 다음 회차가 다룬다. */
@@ -305,6 +315,16 @@ export const SAVE_FIELDS = ['acceptedQty', 'rejectedQty', 'heldQty'] as const;
 const judgmentOf = (code: string): { overallJudgmentCode?: string } =>
   code === '' ? {} : { overallJudgmentCode: code };
 
+/**
+ * 재검사면 앞 회차를 가리킨다. 아니면 **키 자체를 싣지 않는다** — `null` 을 실으면 계약이
+ * 정수를 기대하는 자리에 빈 값이 가고, 서버가 그것을 「사슬을 끊어라」로 읽을 수 있다.
+ *
+ * ⛔ **재검사 사유는 아직 싣지 않는다.** 계약이 선택으로 받지만 사유 코드의 값 목록이
+ * 정해지지 않았다 — 규칙으로 지어내면 서버가 모르는 값을 받는다(omf-mes#179).
+ */
+const previousOf = (previousResultId: number | null): { previousResultId?: number } =>
+  previousResultId === null ? {} : { previousResultId };
+
 const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   inspectionRequestId: v.inspectionRequestId,
   inspectedQty: v.inspectedQty,
@@ -315,6 +335,7 @@ const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   inspectedAt: v.inspectedAt,
   statusCode: DRAFT_STATUS,
   ...judgmentOf(v.overallJudgmentCode),
+  ...previousOf(v.previousResultId),
 });
 
 const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({

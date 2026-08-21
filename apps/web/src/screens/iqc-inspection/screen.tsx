@@ -37,7 +37,8 @@ import { QueueFilterBar } from './queue-filter-bar';
 import { QueueTable } from './queue-table';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
-import { latestRound } from './types';
+import { RoundHistory } from './round-history';
+import { latestRound, previousRounds } from './types';
 
 /**
  * W-01-01 IQC 수입검사·판정 — **이 회차는 좌측 검사 대기 큐 하나다.**
@@ -70,6 +71,30 @@ export const IqcInspectionScreen = () => {
   const rounds = useInspectionRounds(selectedId);
 
   const round = latestRound(rounds.data ?? []);
+
+  /**
+   * 확정된 회차에서 **재검사 회차를 쓰는 중**인가.
+   *
+   * ⭐ **회차를 먼저 만들지 않는다.** 누르면 칸이 열릴 뿐이고 회차는 첫 임시 저장이 만든다 —
+   * 「검사 시작」 액션을 두지 않고 첫 저장을 검사 시작으로 삼은 규율과 같다(확정 2026-08-21
+   * §1.2). 먼저 만들면 열어 보고 그만둔 사람마다 빈 회차가 쌓이고, 그 순간 의뢰가
+   * `COMPLETED` 에서 `IN_PROGRESS` 로 돌아가 대기 큐에 다시 뜬다.
+   */
+  const [isReinspecting, setIsReinspecting] = useState(false);
+
+  /**
+   * 재검사가 가리키는 **앞 회차**. 재검사 중이 아니면 `null`.
+   *
+   * ⭐ **지금 화면에 있는 회차로 매번 다시 판정한다** — 눌렀을 때의 식별자를 따로 들고 있지
+   * 않는다. 들고 있으면 그 값이 화면의 회차와 어긋나는 상태가 생기고, 어느 쪽이 옳은지
+   * 정할 근거가 코드 어디에도 없다.
+   *
+   * ⚠ 「최신이 확정본인가」를 여기서 다시 보지 않는다. 재검사는 확정본에서만 열리고, 회차가
+   * 바뀌면 아래 되돌림이 모드를 푼다 — 같은 일을 두 자리에서 하면 뮤테이션이 그 중 한 자리를
+   * 지워도 아무 시험도 죽지 않아, 어느 쪽이 실제로 지키는 것인지 알 수 없게 된다.
+   */
+  const reinspectingFrom = isReinspecting ? (round?.inspectionResultId ?? null) : null;
+  const isReinspectingNow = reinspectingFrom !== null;
 
   /**
    * 고칠 회차. **확정된 회차는 고치지 않는다** — 정정이 아니라 재검사로 새 회차를 쌓는다(§5-3).
@@ -141,18 +166,37 @@ export const IqcInspectionScreen = () => {
 
   const storedJudgment = round?.overallJudgmentCode ?? '';
 
+  /**
+   * 회차가 화면에 보일 값. 회차가 없으면 빈 초안이다.
+   *
+   * ⛔ 0을 미리 채우지 않는다 — 채우면 「검사자가 0으로 판정했다」와 「아직 아무것도 넣지
+   * 않았다」가 화면에서 같아 보인다.
+   */
+  const draftOf = (
+    source: {
+      acceptedQty: number;
+      rejectedQty: number;
+      heldQty: number;
+    } | null,
+  ): QuantityDraft =>
+    source === null
+      ? EMPTY_QUANTITY_DRAFT
+      : {
+          accepted: String(source.acceptedQty),
+          rejected: String(source.rejectedQty),
+          held: String(source.heldQty),
+        };
+
   useEffect(() => {
     setIsSaved(false);
+    /*
+     * ⭐ 재검사 모드도 함께 푼다 — 저장이 새 회차를 만들면 `roundId` 가 바뀌어 여기로 오고,
+     * 그 회차는 이제 «실재하는 작성중 회차»라 재검사 모드로 남아 있으면 다음 저장이 또 새
+     * 회차를 만든다. 고른 의뢰가 바뀔 때 풀리는 것도 같은 자리다.
+     */
+    setIsReinspecting(false);
     setJudgment(storedJudgment);
-    setDraft(
-      roundId === null
-        ? EMPTY_QUANTITY_DRAFT
-        : {
-            accepted: String(acceptedQty),
-            rejected: String(rejectedQty),
-            held: String(heldQty),
-          },
-    );
+    setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
   }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
 
   const rows = queue.data?.rows ?? [];
@@ -206,11 +250,25 @@ export const IqcInspectionScreen = () => {
   const inspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
 
   /*
+   * 이력에 실을 회차. 평소에는 최신을 뺀 나머지이고, **재검사 중에는 최신도 함께 싣는다** —
+   * 그 회차는 지금 쓰는 새 회차의 «앞»이 됐으므로 이력 쪽이 제자리다.
+   */
+  const historyRounds = isReinspectingNow
+    ? [...(rounds.data ?? [])].sort((left, right) => right.inspectionRound - left.inspectionRound)
+    : previousRounds(rounds.data ?? []);
+
+  /*
    * ⚠ **검사 시점에 고정된 기준 버전으로 부른다** — 의뢰가 준 버전을 그대로 쓰고 「최신
    * 기준」을 찾지 않는다. 최신을 부르면 검사자가 재지 않은 항목이 그리드에 나타난다.
    */
   const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
-  const measurements = useMeasurements(round?.inspectionResultId ?? null);
+  /*
+   * ⚠ **재검사 중에는 앞 회차의 측정치를 그리지 않는다.** 그리면 아직 아무것도 재지 않은 새
+   * 회차에 앞 회차의 값이 들어 있는 것처럼 보이고, 검사자가 그것을 자기가 잰 값으로 읽는다.
+   */
+  const measurements = useMeasurements(
+    isReinspectingNow ? null : (round?.inspectionResultId ?? null),
+  );
 
   const measurementRows = toMeasurementRows(itemSpecs.data ?? [], measurements.data ?? []);
 
@@ -241,6 +299,11 @@ export const IqcInspectionScreen = () => {
       overallJudgmentCode: judgment,
       /* 검사한 시각은 지금이다. 순수 함수가 아니라 이 자리에서 읽는다. */
       inspectedAt: new Date().toISOString(),
+      /*
+       * 재검사면 앞 회차를 가리킨다 — 이 값이 있어야 서버가 회차를 +1 하고 사슬을 잇는다.
+       * ⛔ 빠뜨리면 같은 의뢰에 회차 1이 두 번 만들어지려 해 `UNIQUE(의뢰, 회차)` 에 걸린다.
+       */
+      previousResultId: reinspectingFrom,
     });
   };
 
@@ -267,7 +330,11 @@ export const IqcInspectionScreen = () => {
           <p className="field-note">{t.result.loading}</p>
         ) : (
           <ResultFormPane
-            round={round}
+            /*
+             * ⭐ 재검사 중에는 **회차를 넘기지 않는다.** 넘기면 그 회차가 확정본이라 칸이
+             * 잠긴 채로 남는다 — 지금 쓰는 것은 확정본이 아니라 «아직 없는 새 회차»다.
+             */
+            round={isReinspectingNow ? null : round}
             inspectedQty={inspectedQty}
             draft={draft}
             onChange={changeDraft}
@@ -287,8 +354,29 @@ export const IqcInspectionScreen = () => {
             }}
             isConfirming={confirm.isSaving}
             confirmError={confirm.error}
+            isReinspecting={isReinspectingNow}
+            onStartReinspection={() => {
+              /* 새 회차는 빈 칸에서 시작한다 — 앞 회차의 값이 남으면 그대로 저장된다. */
+              setIsSaved(false);
+              setDraft(EMPTY_QUANTITY_DRAFT);
+              setJudgment('');
+              setIsReinspecting(true);
+            }}
+            onCancelReinspection={() => {
+              setIsReinspecting(false);
+              /*
+               * ⛔ **확정본의 값을 되돌려 놓는다.** 비우면 그만둔 자리에 확정된 회차가
+               * «수량 없이» 놓인다 — 판정이 끝난 기록인데 화면이 비어 있으니 검사자는
+               * 자기가 방금 그것을 지웠다고 읽는다.
+               */
+              setDraft(draftOf(round));
+              setJudgment(storedJudgment);
+            }}
           />
         )}
+
+        {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
+        <RoundHistory rounds={historyRounds} />
 
         {/*
          * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
