@@ -276,6 +276,98 @@ describe('useMasterWrite', () => {
     expect(calls[1]?.headers['Idempotency-Key']).toBe(calls[0]?.headers['Idempotency-Key']);
   });
 
+  /*
+   * ⭐ 리뷰가 잡은 자리다. 지문을 수명과 무관하게 계산하면, 이 기능을 «고르지 않은» 소비처
+   * 84곳까지 직렬화할 수 없는 값에서 깨진다 — 옛 경로는 variables 를 읽지도 않았다.
+   */
+  it('수명을 고르지 않았으면 보낼 값을 «읽지» 않는다 — 옛 경로는 variables 를 건드리지 않았다', async () => {
+    const calls: { headers: WriteHeaders }[] = [];
+    let readCount = 0;
+
+    const { result } = renderWrite({
+      request: async (_variables, headers) => {
+        calls.push({ headers });
+        return { data: { id: 1 }, response: okResponse() };
+      },
+    });
+
+    /* 값을 읽으면 세는 초안. 직렬화하면 게터가 불린다. */
+    const watched = {
+      get name(): string {
+        readCount += 1;
+        return '읽힘';
+      },
+    };
+
+    act(() => {
+      result.current.write(watched as Variables);
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+
+    expect(readCount).toBe(0);
+    expect(calls[0]?.headers['Idempotency-Key']).toMatch(UUID_PATTERN);
+  });
+
+  it('수명을 고르지 않았으면 직렬화할 수 없는 값에도 요청이 나간다', async () => {
+    const calls: { headers: WriteHeaders }[] = [];
+
+    const { result } = renderWrite({
+      request: async (_variables, headers) => {
+        calls.push({ headers });
+        return { data: { id: 1 }, response: okResponse() };
+      },
+    });
+
+    const cyclic: Record<string, unknown> = { name: '순환' };
+    cyclic.self = cyclic;
+
+    act(() => {
+      result.current.write(cyclic as unknown as Variables);
+    });
+
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+    expect(calls[0]?.headers['Idempotency-Key']).toMatch(UUID_PATTERN);
+  });
+
+  it('until-applied 인데 지문을 못 만들면 새 키로 간다 — 모를 때 같은 키로 묶는 것보다 안전하다', async () => {
+    const calls: { headers: WriteHeaders }[] = [];
+
+    const { result } = renderWrite({
+      keyLifetime: 'until-applied',
+      request: async (_variables, headers) => {
+        calls.push({ headers });
+        return { error: {}, response: failedResponse(500) };
+      },
+    });
+
+    const cyclic = (): Record<string, unknown> => {
+      const value: Record<string, unknown> = { name: '순환' };
+      value.self = value;
+      return value;
+    };
+
+    act(() => {
+      result.current.write(cyclic() as unknown as Variables);
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.write(cyclic() as unknown as Variables);
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(2);
+    });
+
+    expect(calls[0]?.headers['Idempotency-Key']).toMatch(UUID_PATTERN);
+    expect(calls[1]?.headers['Idempotency-Key']).not.toBe(calls[0]?.headers['Idempotency-Key']);
+  });
+
   it('etagPath에 보관된 토큰을 If-Match로 싣는다', async () => {
     const { result, apiClient, calls } = renderWrite({ etagPath: DETAIL_PATH });
     apiClient.etags.capture(DETAIL_PATH, '"7"');

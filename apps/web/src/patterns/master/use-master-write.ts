@@ -72,25 +72,39 @@ interface SplitError {
 }
 
 /**
- * 보낼 값의 지문 — **같은 값이면 같은 지문**이어야 한다.
+ * 보낼 값의 지문 — **같은 값이면 같은 지문**이어야 한다. **만들 수 없으면 `null`.**
  *
  * 키 순서만 다른 객체가 다른 지문이 되면, 같은 쓰기를 다시 보내는데도 새 키가 나가
  * 이중 실행을 막지 못한다. 그래서 객체의 키를 정렬한 뒤 문자열로 만든다.
+ *
+ * ⛔ **실패를 삼키지 않고 `null` 로 알린다.** 직렬화할 수 없는 값(순환 참조 등)이 오면
+ * 「같은 쓰기인지 모른다」는 뜻이고, 모를 때는 **새 키가 안전한 쪽**이다 — 다른 쓰기를 같은
+ * 키로 잘못 묶는 것보다 낫다. 던지게 두면 요청이 아예 나가지 않고 화면이 이유 없이 멈춘다.
+ *
+ * ⚠ **정렬 치환기가 `JSON.stringify` 의 순환 감지를 무력화한다** — 층마다 새 객체를 돌려주어
+ * 같은 참조를 두 번 보지 못하므로, `TypeError` 대신 스택이 터진다. 그래서 `RangeError` 까지
+ * 함께 받는다.
  */
-const signatureOf = (variables: unknown): string =>
-  JSON.stringify(variables, (_key, value: unknown) =>
-    value !== null && typeof value === 'object' && !Array.isArray(value)
-      ? Object.fromEntries(
-          Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
-            left < right ? -1 : 1,
-          ),
-        )
-      : value,
-  );
+const signatureOf = (variables: unknown): string | null => {
+  try {
+    return JSON.stringify(variables, (_key, value: unknown) =>
+      value !== null && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(
+            Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+              left < right ? -1 : 1,
+            ),
+          )
+        : value,
+    );
+  } catch {
+    return null;
+  }
+};
 
 /** 지금 살아 있는 멱등 키와 그것이 매인 값. */
 interface IdempotencyState {
-  signature: string;
+  /** 이 키가 매인 값의 지문. 만들 수 없었으면 `null` — 다음 시도가 새 키를 받는다 */
+  signature: string | null;
   key: string;
 }
 
@@ -193,10 +207,22 @@ export const useMasterWrite = <TVariables, TData>(
   const write = (variables: TVariables): void => {
     clearErrors();
 
-    const signature = signatureOf(variables);
     const keepsKey = options.keyLifetime === 'until-applied';
 
-    if (!keepsKey || idempotency.current === null || idempotency.current.signature !== signature) {
+    /*
+     * ⛔ **고르지 않은 소비처의 값은 건드리지 않는다.** 지문은 `until-applied` 에서만 쓰이는데
+     * 늘 계산하면, 이 기능을 쓰지 않는 화면까지 직렬화할 수 없는 값에서 깨진다 — 옛 경로는
+     * `variables` 를 읽지도 않았다. 공용 부품이 「쓰지 않는 기능」으로 소비처를 깨뜨리지 않는다.
+     */
+    const signature = keepsKey ? signatureOf(variables) : null;
+
+    /* 지문을 못 만들었으면(`null`) 같은 쓰기인지 모른다 — 그때는 새 키로 간다. */
+    if (
+      !keepsKey ||
+      signature === null ||
+      idempotency.current === null ||
+      idempotency.current.signature !== signature
+    ) {
       idempotency.current = { signature, key: crypto.randomUUID() };
     }
 
