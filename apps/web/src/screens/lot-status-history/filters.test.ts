@@ -39,6 +39,7 @@ describe('readLotFilters', () => {
         status: 'SAMPLE_STATUS',
         warehouse: '202',
         location: '303',
+        sort: 'latestTransitionDesc',
       },
     ],
     ['', EMPTY_LOT_FILTERS],
@@ -57,6 +58,19 @@ describe('readLotFilters', () => {
     expect(
       readLotFilters(paramsOf('lotType=%EA%B0%80%2F%EB%82%98&status=NEW.VALUE&q=%20LOT%20')),
     ).toMatchObject({ lotType: '가/나', status: 'NEW.VALUE', q: ' LOT ' });
+  });
+
+  it.each([
+    ['lotNoAsc', 'lotNoAsc'],
+    ['lotNoDesc', 'lotNoDesc'],
+    ['itemAsc', 'itemAsc'],
+    ['itemDesc', 'itemDesc'],
+    ['latestTransitionAsc', 'latestTransitionAsc'],
+    ['latestTransitionDesc', 'latestTransitionDesc'],
+    ['', 'latestTransitionDesc'],
+    ['lotNoSideways', 'latestTransitionDesc'],
+  ] as const)('정렬값 %s를 계약 enum 안에서 %s로 읽는다', (raw, expected) => {
+    expect(readLotFilters(paramsOf(`sort=${raw}`))).toMatchObject({ sort: expected });
   });
 });
 
@@ -98,13 +112,16 @@ describe('readHistoryFilters', () => {
   ])('기간·행위자·LOT 조건을 주소에서 읽는다', (search, expected) => {
     expect(readHistoryFilters(paramsOf(search))).toEqual(expected);
   });
-  it.each(['0', '-1', '1.5', 'abc'])(
-    '식별자가 아닌 값(%s)은 행위자·LOT 조건으로 받지 않는다',
-    (raw) => {
-      expect(readHistoryFilters(paramsOf(`actor=${raw}&historyLot=${raw}`))).toMatchObject({
-        actor: '',
-        lot: '',
-      });
+  it.each(['0', '-1', '1.5', 'abc'])('식별자가 아닌 값(%s)은 행위자로 받지 않는다', (raw) => {
+    expect(readHistoryFilters(paramsOf(`actor=${raw}`))).toMatchObject({ actor: '' });
+  });
+
+  it.each(['SAMPLE-LOT-001', 'LOT/2026-A', '0'])(
+    'LOT 번호 %s는 숫자 식별자로 해석하지 않고 원문을 보존한다',
+    (lotNo) => {
+      expect(readHistoryFilters(paramsOf(`historyLot=${encodeURIComponent(lotNo)}`)).lot).toBe(
+        lotNo,
+      );
     },
   );
 });
@@ -141,6 +158,7 @@ describe('toAppliedLotSearchParams', () => {
       status: 'STATUS_B',
       warehouse: '202',
       location: '303',
+      sort: 'itemAsc' as const,
     };
     const next = toAppliedLotSearchParams(current, filters, 5);
     expect(Object.fromEntries(next)).toEqual({
@@ -158,6 +176,7 @@ describe('toAppliedLotSearchParams', () => {
       status: 'STATUS_B',
       warehouse: '202',
       location: '303',
+      sort: 'itemAsc',
     });
   });
   it('LOT 적용값을 바꾸면 이전 선택 LOT을 제거한다', () => {
@@ -171,12 +190,12 @@ describe('toAppliedLotSearchParams', () => {
   it('빈 조건과 첫 페이지는 해당 URL 키를 만들지 않는다', () => {
     const next = toAppliedLotSearchParams(
       paramsOf(
-        'lotType=OLD&q=OLD&item=101&status=OLD&warehouse=202&location=303&page=9&historyPage=4',
+        'lotType=OLD&q=OLD&item=101&status=OLD&warehouse=202&location=303&sort=itemAsc&page=9&historyPage=4',
       ),
       EMPTY_LOT_FILTERS,
       1,
     );
-    for (const key of ['lotType', 'q', 'item', 'status', 'warehouse', 'location', 'page']) {
+    for (const key of ['lotType', 'q', 'item', 'status', 'warehouse', 'location', 'sort', 'page']) {
       expect(next.has(key)).toBe(false);
     }
     expect(next.get('historyPage')).toBe('4');

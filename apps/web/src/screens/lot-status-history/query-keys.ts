@@ -4,13 +4,20 @@ type QueryKey = readonly unknown[];
 
 const ROOT_KEY = 'lot-status-history';
 
-const copyLotFilters = (filters: LotFilters): LotFilters => ({
+type LotScopeFilters = Omit<LotFilters, 'sort'>;
+
+const copyLotScope = (filters: LotFilters): LotScopeFilters => ({
   lotType: filters.lotType,
   q: filters.q,
   item: filters.item,
   status: filters.status,
   warehouse: filters.warehouse,
   location: filters.location,
+});
+
+const copyLotListFilters = (filters: LotFilters): LotFilters => ({
+  ...copyLotScope(filters),
+  sort: filters.sort,
 });
 
 const copyHistoryFilters = (filters: HistoryFilters): HistoryFilters => ({
@@ -21,19 +28,20 @@ const copyHistoryFilters = (filters: HistoryFilters): HistoryFilters => ({
 });
 
 export const lotStatusKeys = {
-  summary: (filters: LotFilters): QueryKey => [ROOT_KEY, 'summary', copyLotFilters(filters)],
+  summary: (filters: LotFilters): QueryKey => [ROOT_KEY, 'summary', copyLotScope(filters)],
   list: (filters: LotFilters, page: number): QueryKey => [
     ROOT_KEY,
     'list',
-    copyLotFilters(filters),
+    copyLotListFilters(filters),
     page,
   ],
   detail: (lotId: number | null): QueryKey => [ROOT_KEY, 'detail', lotId],
   holds: (lotId: number | null): QueryKey => [ROOT_KEY, 'holds', lotId],
-  history: (filters: HistoryFilters, page: number): QueryKey => [
+  history: (filters: HistoryFilters, page: number, offsetMinutes: number): QueryKey => [
     ROOT_KEY,
     'history',
     copyHistoryFilters(filters),
     page,
+    offsetMinutes,
   ],
 };

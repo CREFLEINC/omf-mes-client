@@ -1,4 +1,22 @@
+import type { paths } from '@omf-mes/api-client';
+
 export type ScreenMode = 'lot' | 'history';
+
+type LotStatusListQuery = NonNullable<
+  NonNullable<paths['/quality/lot-statuses']['get']>['parameters']['query']
+>;
+
+export type LotStatusSort = NonNullable<LotStatusListQuery['sort']>;
+export const DEFAULT_LOT_SORT: LotStatusSort = 'latestTransitionDesc';
+
+const LOT_STATUS_SORTS: readonly LotStatusSort[] = [
+  'lotNoAsc',
+  'lotNoDesc',
+  'itemAsc',
+  'itemDesc',
+  'latestTransitionAsc',
+  'latestTransitionDesc',
+];
 
 export interface LotFilters {
   lotType: string;
@@ -7,6 +25,7 @@ export interface LotFilters {
   status: string;
   warehouse: string;
   location: string;
+  sort: LotStatusSort;
 }
 
 export interface HistoryFilters {
@@ -23,6 +42,7 @@ export const EMPTY_LOT_FILTERS: LotFilters = {
   status: '',
   warehouse: '',
   location: '',
+  sort: DEFAULT_LOT_SORT,
 };
 
 export const EMPTY_HISTORY_FILTERS: HistoryFilters = { from: '', to: '', actor: '', lot: '' };
@@ -35,6 +55,7 @@ const URL_KEYS = {
   status: 'status',
   warehouse: 'warehouse',
   location: 'location',
+  sort: 'sort',
   lotPage: 'page',
   selectedLot: 'lot',
   historyFrom: 'from',
@@ -58,6 +79,9 @@ const readPositiveInteger = (raw: string | null): number | null => {
   return value === '' ? null : Number(value);
 };
 
+const readLotStatusSort = (raw: string | null): LotStatusSort =>
+  LOT_STATUS_SORTS.find((sort) => sort === raw) ?? DEFAULT_LOT_SORT;
+
 export const readMode = (params: URLSearchParams): ScreenMode =>
   params.get(URL_KEYS.mode) === 'history' ? 'history' : 'lot';
 
@@ -68,13 +92,14 @@ export const readLotFilters = (params: URLSearchParams): LotFilters => ({
   status: params.get(URL_KEYS.status) ?? '',
   warehouse: readPositiveIntegerString(params.get(URL_KEYS.warehouse)),
   location: readPositiveIntegerString(params.get(URL_KEYS.location)),
+  sort: readLotStatusSort(params.get(URL_KEYS.sort)),
 });
 
 export const readHistoryFilters = (params: URLSearchParams): HistoryFilters => ({
   from: params.get(URL_KEYS.historyFrom) ?? '',
   to: params.get(URL_KEYS.historyTo) ?? '',
   actor: readPositiveIntegerString(params.get(URL_KEYS.historyActor)),
-  lot: readPositiveIntegerString(params.get(URL_KEYS.historyLot)),
+  lot: params.get(URL_KEYS.historyLot) ?? '',
 });
 
 export const readLotPage = (params: URLSearchParams): number =>
@@ -116,6 +141,8 @@ export const toAppliedLotSearchParams = (
   setOrDelete(next, URL_KEYS.status, filters.status);
   setOrDelete(next, URL_KEYS.warehouse, filters.warehouse);
   setOrDelete(next, URL_KEYS.location, filters.location);
+  if (filters.sort === DEFAULT_LOT_SORT) next.delete(URL_KEYS.sort);
+  else next.set(URL_KEYS.sort, filters.sort);
   setPage(next, URL_KEYS.lotPage, page);
   next.delete(URL_KEYS.selectedLot);
   return next;
