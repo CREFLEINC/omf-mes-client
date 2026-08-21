@@ -10649,6 +10649,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path: {
                     inventoryCountId: number;
@@ -10839,6 +10841,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -10987,6 +10991,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     handlingUnitId: number;
@@ -11069,6 +11075,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     handlingUnitId: number;
@@ -11646,6 +11654,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path?: never;
                 cookie?: never;
@@ -12262,6 +12272,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path?: never;
                 cookie?: never;
@@ -12634,6 +12646,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     inboundReceiptLineId: number;
@@ -12742,6 +12756,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -13559,6 +13575,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     pickingOrderId: number;
@@ -14158,6 +14176,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     putawayTaskId: number;
@@ -14237,6 +14257,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     putawayTaskId: number;
@@ -14314,6 +14336,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -14421,6 +14445,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -14587,6 +14613,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path?: never;
                 cookie?: never;
@@ -14826,6 +14854,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     stockTransferId: number;
@@ -14944,6 +14974,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -15292,6 +15324,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     lotId: number;
@@ -18372,6 +18406,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -18530,6 +18566,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -18689,6 +18727,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -18849,6 +18889,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -18972,6 +19014,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     productionResultId: number;
@@ -19530,6 +19574,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     workOrderId: number;
@@ -19700,6 +19746,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     workOrderId: number;
@@ -19822,6 +19870,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -20259,6 +20309,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     workSessionId: number;
@@ -20381,6 +20433,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -20926,6 +20980,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path?: never;
                 cookie?: never;
@@ -22051,6 +22107,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     shipmentLotAllocationId: number;
@@ -23036,6 +23094,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -23202,6 +23262,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -23388,6 +23450,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     breakdownId: number;
@@ -24155,6 +24219,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -24343,6 +24409,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     downtimeId: number;
@@ -24521,6 +24589,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -37359,6 +37429,10 @@ export interface components {
         IfMatchVersion: string;
         /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
         IfMatchVersionOptional: string;
+        /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+        WorkerNo: string;
+        /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+        WorkerNoOptional: string;
     };
     requestBodies: never;
     headers: never;
@@ -37413,6 +37487,8 @@ export interface operations {
             header: {
                 /** @description 전 쓰기 API 필수. */
                 "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
             };
             path?: never;
             cookie?: never;
