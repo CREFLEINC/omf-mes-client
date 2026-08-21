@@ -527,6 +527,7 @@ describe('AppLayout', () => {
       '/master-data/master-change',
       '/logistics/inbound-schedule',
       '/logistics/over-receipt-split',
+      '/logistics/iqc-inspection',
       '/logistics/goods-receipt',
       '/logistics/stock-status',
       '/logistics/stocktaking',
