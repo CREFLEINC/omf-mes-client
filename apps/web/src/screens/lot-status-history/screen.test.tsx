@@ -1,5 +1,6 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { components } from '@omf-mes/api-client';
 import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
@@ -34,13 +35,18 @@ const codeRoute = (typeState: LotTypeState = 'ready'): StubRoute =>
         ? typeState === 'empty'
           ? []
           : [{ code: 'SAMPLE_MATERIAL', codeName: '합성 자재', displayOrder: 1, isActive: true }]
-        : [{ code: 'SAMPLE_NORMAL', codeName: '합성 정상', displayOrder: 1, isActive: false }];
+        : [
+            { code: 'SAMPLE_NORMAL', codeName: '합성 정상', displayOrder: 1, isActive: false },
+            { code: 'SAMPLE_DEFECTIVE', codeName: '합성 불량', displayOrder: 2, isActive: true },
+            { code: 'SAMPLE_PENDING', codeName: '합성 대기', displayOrder: 3, isActive: true },
+            { code: 'SAMPLE_SCRAPPED', codeName: '합성 폐기', displayOrder: 4, isActive: true },
+          ];
     return jsonResponse(
       list(items, group === 'LOT_TYPE' && typeState === 'ready' ? 2 : items.length),
     );
   });
 
-const referenceRoutes: StubRoute[] = [
+const referenceRoutes = (itemStatus = 200): StubRoute[] => [
   route('/mdm/warehouses', () =>
     jsonResponse(
       list(
@@ -59,6 +65,7 @@ const referenceRoutes: StubRoute[] = [
   route('/mdm/items', () =>
     jsonResponse(
       list([{ itemId: 103, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목', isActive: true }]),
+      { status: itemStatus },
     ),
   ),
   route('/mdm/locations', () =>
@@ -75,17 +82,64 @@ const referenceRoutes: StubRoute[] = [
   ),
 ];
 
-const fetchFor = (typeState: LotTypeState = 'ready') =>
-  createStubFetch([codeRoute(typeState), ...referenceRoutes]);
+const statusRow: components['schemas']['LotQualityStatus'] = {
+  lotId: 401,
+  lotNo: 'SAMPLE-LOT-001',
+  itemId: 103,
+  lotTypeCode: 'SAMPLE_MATERIAL',
+  lotStatusCode: 'SAMPLE_UNKNOWN',
+  onHandQty: 0,
+  fullyHeld: false,
+  latestTransitionAt: '2026-08-21T12:34:00+09:00',
+  latestReasonCode: 'SAMPLE_REASON',
+};
+
+const qualityRoutes = (
+  listStatus = 200,
+  summaryStatus = 200,
+  rows = [statusRow],
+  total = 101,
+  outOfScopeCount: number | null = 2,
+): StubRoute[] => [
+  route('/quality/lot-statuses', (request) => {
+    const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+    return jsonResponse({ items: rows, page: { page, size: 50, total } }, { status: listStatus });
+  }),
+  route('/quality/lot-status-summary', () =>
+    jsonResponse(
+      {
+        counts: [
+          { statusCode: 'SAMPLE_NORMAL', lotCount: 7, lotTypeCode: 'SAMPLE_MATERIAL' },
+          { statusCode: 'SAMPLE_DEFECTIVE', lotCount: 3, lotTypeCode: 'SAMPLE_MATERIAL' },
+          { statusCode: 'SAMPLE_PENDING', lotCount: 0, lotTypeCode: 'SAMPLE_MATERIAL' },
+        ],
+        asOf: '2026-08-21T13:00:00+09:00',
+        outOfScopeCount,
+      },
+      { status: summaryStatus },
+    ),
+  ),
+];
+
+const fetchFor = (
+  typeState: LotTypeState = 'ready',
+  currentRoutes = qualityRoutes(),
+  itemStatus = 200,
+) => createStubFetch([codeRoute(typeState), ...referenceRoutes(itemStatus), ...currentRoutes]);
 
 const LocationProbe = () => {
   const location = useLocation();
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
-const renderScreen = (route = '/quality/lot-status', typeState: LotTypeState = 'ready') => {
+const renderScreen = (
+  route = '/quality/lot-status',
+  typeState: LotTypeState = 'ready',
+  currentRoutes = qualityRoutes(),
+  itemStatus = 200,
+) => {
   const urls: URL[] = [];
-  const stubFetch = fetchFor(typeState);
+  const stubFetch = fetchFor(typeState, currentRoutes, itemStatus);
   const result = renderWithProviders(
     <>
       <LotStatusHistoryScreen />
@@ -106,6 +160,9 @@ const locationSearch = (): URLSearchParams => {
   const value = screen.getByTestId('location').textContent ?? '';
   return new URL(value, 'http://test').searchParams;
 };
+
+const requestCount = (urls: URL[], path: string): number =>
+  urls.filter(({ pathname }) => pathname === path).length;
 
 const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {
   await user.click(screen.getByLabelText(label));
@@ -138,11 +195,20 @@ describe('Lot Status 화면 shell', () => {
     expect(locationSearch().get('status')).toBe('SAMPLE_NORMAL');
     expect(locationSearch().get('warehouse')).toBe('101');
     expect(locationSearch().get('from')).toBe('2026-08-01');
-    expect(
-      urls.some(({ pathname }) =>
-        ['/quality/lot-statuses', '/quality/lot-status-summary'].includes(pathname),
-      ),
-    ).toBe(false);
+    expect(await screen.findByText('7')).toBeVisible();
+    const summary = within(screen.getByRole('group', { name: '현재 상태 요약' }));
+    expect(summary.getAllByText('건')).toHaveLength(4);
+    const cardLabels = summary.getAllByRole('group').map((card) => card.getAttribute('aria-label'));
+    expect(cardLabels.join()).toBe('합성 정상 (미사용),합성 불량,합성 대기,합성 폐기');
+    expect(summary.getByText('0')).toBeVisible();
+    expect(summary.getByText('집계 미확정')).toBeVisible();
+    expect(screen.getByText('SAMPLE_UNKNOWN (목록 미확정)')).toBeVisible();
+    expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목')).toBeVisible();
+    expect(screen.getByText('권한 범위 밖 2건이 제외되었습니다.')).toBeVisible();
+    expect(screen.getByText('기준 시각 2026-08-21 13:00')).toBeVisible();
+    const table = screen.getByRole('table', { name: '현재 LOT 상태' });
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(6);
+    expect(within(table).getByText('0')).toBeVisible();
   });
 
   it('이력 모드로 바꾸면 다른 조건은 보존하고 선택 LOT만 제거한다', async () => {
@@ -207,5 +273,106 @@ describe('Lot Status 화면 shell', () => {
 
     expect(await screen.findByText('LOT 유형 기준값을 불러오지 못했습니다.')).toBeVisible();
     expect(screen.getByRole('button', { name: '조회' })).toBeDisabled();
+  });
+
+  it('목록 실패가 요약 카드를 가리지 않는다', async () => {
+    const { urls } = renderScreen(
+      '/quality/lot-status?lotType=SAMPLE_MATERIAL',
+      'ready',
+      qualityRoutes(500),
+    );
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('LOT 목록을 불러오지 못했습니다.')).toBeVisible();
+    expect(screen.getByText('7')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'LOT 목록 다시 시도' }));
+    await waitFor(() => expect(requestCount(urls, '/quality/lot-statuses')).toBe(2));
+    expect(requestCount(urls, '/quality/lot-status-summary')).toBe(1);
+  });
+
+  it('요약 실패가 LOT 목록을 가리지 않는다', async () => {
+    const { urls } = renderScreen(
+      '/quality/lot-status?lotType=SAMPLE_MATERIAL',
+      'ready',
+      qualityRoutes(200, 500),
+    );
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('현재 상태 요약을 불러오지 못했습니다.')).toBeVisible();
+    expect(screen.getByText('SAMPLE-LOT-001')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '현재 상태 요약 다시 시도' }));
+    await waitFor(() => expect(requestCount(urls, '/quality/lot-status-summary')).toBe(2));
+    expect(requestCount(urls, '/quality/lot-statuses')).toBe(1);
+  });
+
+  it.each([
+    ['/quality/lot-statuses', 'LOT 목록을 불러오는 중', '기준 시각 2026-08-21 13:00'],
+    ['/quality/lot-status-summary', '현재 상태 요약을 불러오는 중', 'SAMPLE-LOT-001'],
+  ])('한쪽만 로딩 중이어도 %s 상태를 독립 표시한다', async (pendingPath, label, success) => {
+    const resolvedFetch = fetchFor();
+    renderWithProviders(<LotStatusHistoryScreen />, {
+      route: '/quality/lot-status?lotType=SAMPLE_MATERIAL',
+      fetch: async (request) =>
+        new URL(request.url).pathname === pendingPath
+          ? new Promise<Response>(() => undefined)
+          : resolvedFetch(request),
+    });
+
+    expect(screen.getByRole('status', { name: label })).toBeVisible();
+    expect(await screen.findByText(success)).toBeVisible();
+  });
+
+  it.each([
+    [0, 200, '알 수 없음'],
+    [null, 500, '품목 목록 조회 실패'],
+  ] as const)(
+    '수량 null·품목 fallback·범위 밖 %s에서 내부 ID를 숨긴다',
+    async (scope, itemStatus, itemMessage) => {
+      renderScreen(
+        '/quality/lot-status?lotType=SAMPLE_MATERIAL',
+        'ready',
+        qualityRoutes(200, 200, [{ ...statusRow, itemId: 999, onHandQty: undefined }], 1, scope),
+        itemStatus,
+      );
+
+      const table = await screen.findByRole('table', { name: '현재 LOT 상태' });
+      expect(within(table).getByText(itemMessage)).toBeVisible();
+      expect(within(table).getByText('—')).toBeVisible();
+      expect(within(table).queryByText('999')).not.toBeInTheDocument();
+      expect(screen.queryByText(/권한 범위 밖 .*건이 제외/)).not.toBeInTheDocument();
+    },
+  );
+
+  it('품목 목록 로딩 중에도 내부 ID 대신 로딩 상태를 표시한다', async () => {
+    const resolvedFetch = fetchFor(
+      'ready',
+      qualityRoutes(200, 200, [{ ...statusRow, itemId: 999 }]),
+    );
+    renderWithProviders(<LotStatusHistoryScreen />, {
+      route: '/quality/lot-status?lotType=SAMPLE_MATERIAL',
+      fetch: async (request) =>
+        new URL(request.url).pathname === '/mdm/items'
+          ? new Promise<Response>(() => undefined)
+          : resolvedFetch(request),
+    });
+
+    const table = await screen.findByRole('table', { name: '현재 LOT 상태' });
+    expect(within(table).getByText('불러오는 중…')).toBeVisible();
+    expect(within(table).queryByText('999')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [0, null, '조건에 맞는 LOT이 없습니다'],
+    [101, '3', '이 쪽에는 결과가 없습니다'],
+  ] as const)('빈 목록 total=%i의 사유를 구분한다', async (total, page, message) => {
+    const suffix = page === null ? '' : `&page=${page}`;
+    const { urls } = renderScreen(
+      `/quality/lot-status?lotType=SAMPLE_MATERIAL${suffix}`,
+      'ready',
+      qualityRoutes(200, 200, [], total),
+    );
+    expect(await screen.findByText(message)).toBeVisible();
+    const listUrl = urls.find(({ pathname }) => pathname === '/quality/lot-statuses');
+    expect(listUrl?.searchParams.get('page')).toBe(page);
   });
 });

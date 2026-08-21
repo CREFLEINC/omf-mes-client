@@ -5,12 +5,14 @@ import { useSearchParams } from 'react-router';
 import {
   EMPTY_LOT_FILTERS,
   readLotFilters,
+  readLotPage,
   readMode,
   toAppliedLotSearchParams,
   toModeSearchParams,
   type LotFilters,
   type ScreenMode,
 } from './filters';
+import { CurrentResults } from './current-results';
 import { LotFilterBar, type FilterOption } from './lot-filter-bar';
 import { useLotStatusOptions, useLotTypeOptions, type LotCodeOption } from './options';
 import {
@@ -49,11 +51,12 @@ const optionNote = (state: OptionState, name: string): string | undefined => {
 
 interface LotModeProps {
   filters: LotFilters;
+  page: number;
   onSearch: (filters: LotFilters) => void;
   onReset: () => void;
 }
 
-const LotMode = ({ filters, onSearch, onReset }: LotModeProps) => {
+const LotMode = ({ filters, page, onSearch, onReset }: LotModeProps) => {
   const lotTypes = useLotTypeOptions();
   const lotStatuses = useLotStatusOptions();
   const warehouses = useWarehouseReferenceOptions();
@@ -89,6 +92,14 @@ const LotMode = ({ filters, onSearch, onReset }: LotModeProps) => {
         onSearch={onSearch}
         onReset={onReset}
       />
+      <CurrentResults
+        filters={filters}
+        page={page}
+        statusOptions={toCodeOptions(lotStatuses.data?.items)}
+        itemOptions={toReferenceOptions(items.data?.entries)}
+        isItemPending={items.isPending}
+        isItemError={items.isError}
+      />
     </section>
   );
 };
@@ -97,6 +108,7 @@ export const LotStatusHistoryScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = readMode(searchParams);
   const filters = useMemo(() => readLotFilters(searchParams), [searchParams]);
+  const page = readLotPage(searchParams);
 
   const apply = (next: LotFilters): void => {
     setSearchParams((current) => toAppliedLotSearchParams(current, next, 1));
@@ -107,7 +119,12 @@ export const LotStatusHistoryScreen = () => {
 
   const lotContent =
     mode === 'lot' ? (
-      <LotMode filters={filters} onSearch={apply} onReset={() => apply(EMPTY_LOT_FILTERS)} />
+      <LotMode
+        filters={filters}
+        page={page}
+        onSearch={apply}
+        onReset={() => apply(EMPTY_LOT_FILTERS)}
+      />
     ) : null;
   const historyContent =
     mode === 'history' ? (
