@@ -41,6 +41,7 @@ interface CurrentResultsProps {
   isItemError: boolean;
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
+  onSelectLot: (lotId: number) => void;
 }
 
 export const CurrentResults = ({
@@ -52,6 +53,7 @@ export const CurrentResults = ({
   isItemError,
   onSortChange,
   onPageChange,
+  onSelectLot,
 }: CurrentResultsProps) => {
   const list = useLotStatusList(filters, page);
   const summary = useLotStatusSummary(filters);
@@ -70,7 +72,22 @@ export const CurrentResults = ({
     knownLabel(itemOptions, String(itemId)) ??
     (isItemPending ? '불러오는 중…' : isItemError ? '품목 목록 조회 실패' : '알 수 없음');
   const columns: Column<LotStatusRow>[] = [
-    { key: 'lotNo', header: 'LOT', width: '176px', sortable: true },
+    {
+      key: 'lotNo',
+      header: 'LOT',
+      width: '176px',
+      sortable: true,
+      render: (row) => (
+        <Button
+          variant="text"
+          size="sm"
+          aria-label={`${row.lotNo} 상세 보기`}
+          onClick={() => onSelectLot(row.lotId)}
+        >
+          {row.lotNo}
+        </Button>
+      ),
+    },
     { key: 'item', header: '품목', sortable: true, render: (row) => itemLabel(row.itemId) },
     {
       key: 'lotStatusCode',

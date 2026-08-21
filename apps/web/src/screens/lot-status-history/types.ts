@@ -1,6 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
 type LotQualityStatusResponse = components['schemas']['LotQualityStatus'];
+type LotDetailResponse = components['schemas']['LotDetailResponse'];
 type LotStatusSummaryResponse = components['schemas']['LotStatusSummary'];
 type LotHoldResponse = components['schemas']['LotHold'];
 type LotHoldEventResponse = components['schemas']['LotHoldEvent'];
@@ -45,6 +46,26 @@ const toIdentityKey = (value: number | null): string => (value === null ? '-' : 
 
 export const lotStatusRowKey = (row: LotStatusRow): string =>
   [row.lotId, row.warehouseId, row.locationId].map(toIdentityKey).join(':');
+
+export interface LotDetailView {
+  lotNo: string;
+  itemId: number;
+  lotTypeCode: string;
+  statusCode: string;
+  initialQty: number;
+  manufacturedAt: string | null;
+  expiryDate: string | null;
+}
+
+export const toLotDetailView = ({ lot }: LotDetailResponse): LotDetailView => ({
+  lotNo: lot.lotNo,
+  itemId: lot.itemId,
+  lotTypeCode: lot.lotTypeCode,
+  statusCode: lot.statusCode,
+  initialQty: lot.initialQty,
+  manufacturedAt: lot.manufacturedAt ?? null,
+  expiryDate: lot.expiryDate ?? null,
+});
 
 export interface LotStatusCountView {
   statusCode: string;

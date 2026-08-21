@@ -7,13 +7,16 @@ import {
   readLotFilters,
   readLotPage,
   readMode,
+  readSelectedLotId,
   toAppliedLotSearchParams,
   toModeSearchParams,
+  withSelectedLot,
   type LotFilters,
   type LotStatusSort,
   type ScreenMode,
 } from './filters';
 import { CurrentResults } from './current-results';
+import { LotDetailDialog } from './lot-detail-dialog';
 import { LotFilterBar, type FilterOption } from './lot-filter-bar';
 import { useLotStatusOptions, useLotTypeOptions, type LotCodeOption } from './options';
 import {
@@ -53,19 +56,23 @@ const optionNote = (state: OptionState, name: string): string | undefined => {
 interface LotModeProps {
   filters: LotFilters;
   page: number;
+  selectedLotId: number | null;
   onSearch: (filters: LotFilters) => void;
   onReset: () => void;
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
+  onSelectLot: (lotId: number | null) => void;
 }
 
 const LotMode = ({
   filters,
   page,
+  selectedLotId,
   onSearch,
   onReset,
   onSortChange,
   onPageChange,
+  onSelectLot,
 }: LotModeProps) => {
   const lotTypes = useLotTypeOptions();
   const lotStatuses = useLotStatusOptions();
@@ -111,7 +118,17 @@ const LotMode = ({
         isItemError={items.isError}
         onSortChange={onSortChange}
         onPageChange={onPageChange}
+        onSelectLot={onSelectLot}
       />
+      {selectedLotId !== null && (
+        <LotDetailDialog
+          lotId={selectedLotId}
+          itemOptions={toReferenceOptions(items.data?.entries)}
+          lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
+          statusOptions={toCodeOptions(lotStatuses.data?.items)}
+          onClose={() => onSelectLot(null)}
+        />
+      )}
     </section>
   );
 };
@@ -121,6 +138,7 @@ export const LotStatusHistoryScreen = () => {
   const mode = readMode(searchParams);
   const filters = useMemo(() => readLotFilters(searchParams), [searchParams]);
   const page = readLotPage(searchParams);
+  const selectedLotId = readSelectedLotId(searchParams);
 
   const apply = (next: LotFilters): void => {
     setSearchParams((current) => toAppliedLotSearchParams(current, next, 1));
@@ -140,10 +158,12 @@ export const LotStatusHistoryScreen = () => {
       <LotMode
         filters={filters}
         page={page}
+        selectedLotId={selectedLotId}
         onSearch={apply}
         onReset={() => apply(EMPTY_LOT_FILTERS)}
         onSortChange={changeSort}
         onPageChange={changePage}
+        onSelectLot={(lotId) => setSearchParams((current) => withSelectedLot(current, lotId))}
       />
     ) : null;
   const historyContent =
