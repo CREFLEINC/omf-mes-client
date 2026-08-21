@@ -504,8 +504,14 @@ describe('AppLayout', () => {
     expect(links.indexOf('/approval/inbox')).toBeLessThan(links.indexOf('/system/users-roles'));
   });
 
-  /* 새 섹션을 더하면서 기존 섹션의 구성이 흔들리지 않았는지 함께 본다. */
-  it('기준정보 섹션의 항목 순서와 경로가 그대로다', () => {
+  /*
+   * 새 섹션·새 항목을 더하면서 기존 구성이 흔들리지 않았는지 함께 본다.
+   *
+   * ⚠ **이 감지기는 기준정보만 재지 않는다 — 사이드바 전체의 차례를 잰다.** 이름이
+   * 「기준정보 섹션」이던 동안 다른 섹션에 항목을 더한 회차가 이 감지기를 갱신하지 않고
+   * 지나가 `main` 이 붉은 채로 남았다. 어느 섹션에 무엇을 더하든 여기를 함께 고친다.
+   */
+  it('사이드바 전체의 항목 순서와 경로가 그대로다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
