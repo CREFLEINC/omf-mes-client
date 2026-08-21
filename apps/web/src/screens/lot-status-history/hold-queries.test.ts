@@ -53,7 +53,7 @@ describe('선택 LOT 보류 문서 hook', () => {
         page,
       }),
     ]);
-    const { result } = renderHookWithProviders(() => useLotHolds(404), {
+    const { result } = renderHookWithProviders(() => useLotHolds(404, 2), {
       fetch: async (request) => {
         urls.push(new URL(request.url));
         return stub(request);
@@ -63,6 +63,7 @@ describe('선택 LOT 보류 문서 hook', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(urls[0]?.searchParams.get('lotId')).toBe('404');
     expect(urls[0]?.searchParams.get('open')).toBe('false');
+    expect(urls[0]?.searchParams.get('page')).toBe('2');
     expect(result.current.data?.rows.map((row) => row.holdStatusCode)).toEqual([
       'SAMPLE_OPEN',
       'SAMPLE_RELEASED',
