@@ -11,6 +11,7 @@ export const equipmentMaster = {
   actions: {
     addGroup: '그룹 추가',
     addEquipment: '설비 추가',
+    disposeEquipment: '폐기 처리',
     keepEditing: '계속 편집',
     discardChanges: '변경 버리기',
   },
@@ -38,6 +39,13 @@ export const equipmentMaster = {
      */
     codeLockUnknown: '설비 정보를 아직 불러오지 못해 코드를 바꿀 수 없습니다.',
     equipmentPlantFixed: '설비의 공장은 소속 그룹의 공장을 따릅니다.',
+    /**
+     * ⚠ 폐기를 지금 쓸 수 없는 이유. 자산 수명주기 상태의 값 목록도 그 공통코드 그룹 이름도
+     * 아직 없어(설계 질의 omf-mes#185) **이미 폐기된 자산인지 화면이 판정할 수 없다** —
+     * 판정 없이 버튼을 열면 이미 끝난 자산에도 눌리는 컨트롤이 된다.
+     */
+    disposeUnavailable:
+      '폐기는 아직 쓸 수 없습니다. 자산 상태의 값 목록이 준비되면 이 버튼을 쓸 수 있습니다.',
     deactivateNeedsCleanForm:
       '사용 중지는 저장하지 않은 변경이 있으면 쓸 수 없습니다. 먼저 저장하거나 취소하세요.',
   },
@@ -78,6 +86,9 @@ export const equipmentMaster = {
    */
   deactivate: {
     title: '사용 중지할까요?',
+    equipmentTitle: '설비를 사용 중지할까요?',
+    /** 설비를 중지해도 그 설비가 남긴 기록은 그대로다 — 감추는 것과 지우는 것은 다르다. */
+    equipmentImpact: '이 설비가 남긴 기록은 그대로 남고, 새로 고를 때만 목록에서 빠집니다.',
     target: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
     membersNone: '이 그룹에 소속된 설비가 없습니다.',
     /** 소속 설비는 그대로 남는다 — 그룹이 목록에서 빠질 뿐이다. */

@@ -30,6 +30,8 @@ export interface EquipmentListPaneProps {
   onAdd: () => void;
   /** 설비 하나를 편집한다 */
   onEdit: (equipment: Equipment) => void;
+  /** 사용 중인 설비를 중지한다 */
+  onDeactivate: (equipment: Equipment) => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 설비가 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -52,6 +54,7 @@ export const EquipmentListPane = ({
   onApplyFilters,
   onAdd,
   onEdit,
+  onDeactivate,
   loadError,
 }: EquipmentListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -106,6 +109,17 @@ export const EquipmentListPane = ({
       key: 'isActive',
       header: t.fields.isActive,
       render: (row) => (row.isActive ? t.values.active : t.values.inactive),
+    },
+    {
+      key: 'actions',
+      header: messages.common.deactivate,
+      render: (row) =>
+        /* 이미 중지된 것을 다시 중지할 수는 없다 — 누를 것이 없는 컨트롤을 두지 않는다. */
+        row.isActive ? (
+          <Button size="sm" variant="outlined" onClick={() => onDeactivate(row)}>
+            {messages.common.deactivate}
+          </Button>
+        ) : null,
     },
   ];
 

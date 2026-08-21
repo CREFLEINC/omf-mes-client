@@ -104,3 +104,14 @@ export const selectableOptions = (entries: LookupEntry[], selected: string): Cod
 /** 선택 목록에서 값 하나의 라벨을 푼다. 못 찾으면 코드를 그대로 보인다 — 「알 수 없음」을 쓰지 않는다. */
 export const lookupLabel = (entries: LookupEntry[], value: string): string =>
   entries.find((entry) => entry.value === value)?.label ?? value;
+
+/**
+ * 그룹을 끄면 무엇이 달라지는지 한 줄.
+ *
+ * **0대와 N대는 사용자가 할 판단이 다르므로 문장을 나눈다** — 하나로 뭉개면 상세 응답이
+ * 건수를 내려 주는 뜻이 없다. 건수는 화면이 세지 않고 서버가 준 값을 그대로 쓴다.
+ */
+export const groupDeactivateImpact = (memberEquipmentCount: number): string =>
+  memberEquipmentCount === 0
+    ? messages.equipmentMaster.deactivate.membersNone
+    : messages.equipmentMaster.deactivate.members(memberEquipmentCount);

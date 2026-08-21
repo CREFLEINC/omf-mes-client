@@ -16,7 +16,12 @@ import { useSearchParams } from 'react-router';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
-import { type CodeOption, ensureOption, selectableOptions } from './code-options';
+import {
+  type CodeOption,
+  ensureOption,
+  groupDeactivateImpact,
+  selectableOptions,
+} from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { EquipmentFormDialog } from './equipment-form-dialog';
@@ -407,11 +412,46 @@ export const EquipmentMasterScreen = () => {
     },
   });
 
+  /** 사용 중지할 설비. 닫혀 있으면 `null`. */
+  const [deactivateTarget, setDeactivateTarget] = useState<Equipment | null>(null);
+
+  const equipmentDeactivateWrite = useMasterWrite<void, Equipment>({
+    request: (_variables, headers) =>
+      client.POST('/mdm/equipments/{equipmentId}:deactivate', {
+        params: {
+          path: { equipmentId: deactivateTarget?.equipmentId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    /* 잠금 토큰은 상세 경로에 보관돼 있다 — 요청 경로로 꺼내면 언제나 비어 있다. */
+    etagPath: deactivateTarget === null ? null : equipmentDetailPath(deactivateTarget.equipmentId),
+    invalidateKeys: [equipmentKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: () => {
+      setDeactivateTarget(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /**
+   * 사용 중지에도 상세가 필요하다 — **잠금 토큰이 거기 있다.**
+   *
+   * 목록 행에는 토큰이 없다. 줄에서 바로 중지를 누른 경우 이 조회가 처음으로 토큰을 가져오며,
+   * **그것이 도착하기 전에는 확인을 열지 않는다** — 열어 두면 사용자가 눌렀을 때
+   * 「토큰이 없다」는 화면 단위 오류만 받고 무엇을 해야 하는지 알 수 없다.
+   */
+  const deactivateDetail = useEquipmentDetail(deactivateTarget?.equipmentId ?? null);
+
   /** 편집 중이던 것을 통째로 거둔다 — 인라인 오류와 저장 실패 배너. */
   const resetEditing = () => {
     resetIfIdle(groupWrite);
     resetIfIdle(deactivateWrite);
     resetIfIdle(equipmentWrite);
+    resetIfIdle(equipmentDeactivateWrite);
     setLocalFieldErrors({});
   };
 
@@ -691,6 +731,10 @@ export const EquipmentMasterScreen = () => {
                     onApplyFilters={handleApplyEquipmentFilters}
                     onAdd={openEquipmentCreate}
                     onEdit={openEquipmentEdit}
+                    onDeactivate={(equipment) => {
+                      resetIfIdle(equipmentDeactivateWrite);
+                      setDeactivateTarget(equipment);
+                    }}
                     loadError={
                       equipmentList.isError ? (
                         <LoadErrorBanner
@@ -815,10 +859,34 @@ export const EquipmentMasterScreen = () => {
         />
       )}
 
+      {deactivateTarget !== null && (
+        <DeactivateConfirmDialog
+          title={t.deactivate.equipmentTitle}
+          targetLabel={`${deactivateTarget.equipmentCode} · ${deactivateTarget.equipmentName}`}
+          impactNote={t.deactivate.equipmentImpact}
+          /* 토큰이 오기 전에는 누를 수 없다 — 눌러도 「토큰이 없다」만 받는다. */
+          isSaving={equipmentDeactivateWrite.isSaving || deactivateDetail.isPending}
+          banner={
+            <>
+              {deactivateDetail.isError && (
+                <LoadErrorBanner
+                  error={toApiError(deactivateDetail.error)}
+                  onRetry={() => void deactivateDetail.refetch()}
+                />
+              )}
+              <SaveErrorBanner error={equipmentDeactivateWrite.error} />
+            </>
+          }
+          onClose={() => setDeactivateTarget(null)}
+          onConfirm={() => equipmentDeactivateWrite.write(undefined)}
+        />
+      )}
+
       {isDeactivateOpen && detail.data !== undefined && (
         <DeactivateConfirmDialog
+          title={t.deactivate.title}
           targetLabel={`${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`}
-          memberEquipmentCount={detail.data.memberEquipmentCount}
+          impactNote={groupDeactivateImpact(detail.data.memberEquipmentCount)}
           isSaving={deactivateWrite.isSaving}
           /* 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다. */
           banner={<SaveErrorBanner error={deactivateWrite.error} onReload={handleReloadDetail} />}

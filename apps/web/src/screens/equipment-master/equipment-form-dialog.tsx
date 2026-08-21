@@ -97,6 +97,7 @@ export const EquipmentFormDialog = ({
 }: EquipmentFormDialogProps) => {
   const hierarchyLabelId = useId();
   const calibrationNoteId = useId();
+  const disposeNoteId = useId();
 
   return (
     <Dialog
@@ -210,6 +211,21 @@ export const EquipmentFormDialog = ({
               note={t.actionReasons.calibrationDatesReadOnly}
             />
             <ReadOnlyField label={t.fields.calibrationDueDate} value={calibrationDueDate} />
+
+            {/*
+             * ⚠ **폐기를 지금 열 수 없다.** 자산 상태의 값 목록도 그 공통코드 그룹 이름도
+             * 아직 없어(설계 질의 omf-mes#185) **이미 폐기된 자산인지 화면이 판정할 수 없다** —
+             * 판정 없이 열면 이미 끝난 자산에도 눌리는 컨트롤이 된다.
+             * 감추지 않고 사유를 밝힌다(G-2).
+             */}
+            <div className="field-cell">
+              <Button variant="outlined" disabled aria-describedby={disposeNoteId}>
+                {t.actions.disposeEquipment}
+              </Button>
+              <span id={disposeNoteId} className="field-note">
+                {t.actionReasons.disposeUnavailable}
+              </span>
+            </div>
           </>
         )}
       </div>

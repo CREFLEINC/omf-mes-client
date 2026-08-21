@@ -14,6 +14,7 @@ const renderPane = (overrides: Partial<Parameters<typeof EquipmentListPane>[0]> 
   const onApplyFilters = vi.fn();
   const onAdd = vi.fn();
   const onEdit = vi.fn();
+  const onDeactivate = vi.fn();
 
   render(
     <EquipmentListPane
@@ -23,12 +24,13 @@ const renderPane = (overrides: Partial<Parameters<typeof EquipmentListPane>[0]> 
       onApplyFilters={onApplyFilters}
       onAdd={onAdd}
       onEdit={onEdit}
+      onDeactivate={onDeactivate}
       loadError={null}
       {...overrides}
     />,
   );
 
-  return { onApplyFilters, onAdd, onEdit };
+  return { onApplyFilters, onAdd, onEdit, onDeactivate };
 };
 
 describe('EquipmentListPane', () => {
@@ -189,5 +191,21 @@ describe('EquipmentListPane', () => {
     renderPane({ items: [makeEquipment(2003, 'EQ-03', { isActive: false })] });
 
     expect(screen.getByText(t.values.inactive)).toBeInTheDocument();
+  });
+
+  it('사용 중인 설비 줄에서 바로 중지할 수 있다', async () => {
+    const user = userEvent.setup();
+    const { onDeactivate } = renderPane({ items: [makeEquipment(2001, 'EQ-01')] });
+
+    await user.click(screen.getByRole('button', { name: messages.common.deactivate }));
+
+    expect(onDeactivate).toHaveBeenCalledWith(expect.objectContaining({ equipmentId: 2001 }));
+  });
+
+  /* 이미 중지된 것을 다시 중지할 수는 없다 — 누를 것이 없는 컨트롤을 두지 않는다. */
+  it('이미 중지된 설비 줄에는 중지 버튼을 두지 않는다', () => {
+    renderPane({ items: [makeEquipment(2003, 'EQ-03', { isActive: false })] });
+
+    expect(screen.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
   });
 });
