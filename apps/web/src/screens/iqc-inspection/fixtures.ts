@@ -110,14 +110,19 @@ export const confirmedRound: InspectionResultResponse = {
   confirmedAt: '2026-08-18T10:30:00+09:00',
 };
 
-/** 확정된 1회차 뒤에 쌓인 재검사 2회차. 사슬을 previousResultId 로 잇는다. */
+/**
+ * 확정된 1회차 뒤에 쌓인 재검사 2회차. 사슬을 `previousResultId` 로 잇는다.
+ *
+ * ⛔ **재검사 사유를 넣지 않는다.** 계약이 선택으로 받지만 값 목록이 아직 정해지지 않았고
+ * (omf-mes#179), 픽스처에 지어낸 코드를 두면 다음에 읽는 사람이 그것을 실재하는 값으로
+ * 읽는다 — 이 슬라이스에서 판정 코드가 정확히 그렇게 틀렸다.
+ */
 export const reinspectionRound: InspectionResultResponse = {
   ...draftRound,
   inspectionResultId: 9002,
   inspectionResultNo: 'IRS-2026-0002',
   inspectionRound: 2,
   previousResultId: confirmedRound.inspectionResultId,
-  reinspectionReasonCode: 'RECHECK',
 };
 
 export const roundsResponse = (

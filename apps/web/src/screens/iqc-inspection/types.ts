@@ -170,6 +170,25 @@ export const toInspectionResultRound = (item: InspectionResultResponse): Inspect
  *
  * 서버가 주는 차례를 믿지 않고 **회차 번호로 고른다** — 목록의 정렬이 계약에 적혀 있지 않다.
  */
+/**
+ * 최신 회차를 뺀 **이전 회차들**. 큰 회차가 앞에 온다.
+ *
+ * ⛔ **정정할 수 없는 것들이다.** 재검사는 앞 회차를 고치는 것이 아니라 새 회차를 쌓는
+ * 것이므로(§5-3), 이 목록은 화면에서 **읽기 값**으로만 쓰인다.
+ *
+ * ⭐ 최신을 **회차 번호로 고른 뒤 식별자로 뺀다.** 번호로 빼면 같은 번호가 둘 있을 때
+ * (서버가 잘못 준 상황) 둘 다 사라져 화면에서 이력이 조용히 짧아진다 — 식별자로 빼면
+ * 하나만 빠지고 나머지는 눈에 보인다.
+ */
+export const previousRounds = (rounds: InspectionResultRound[]): InspectionResultRound[] => {
+  const latest = latestRound(rounds);
+
+  return rounds
+    .filter((round) => round.inspectionResultId !== latest?.inspectionResultId)
+    .slice()
+    .sort((left, right) => right.inspectionRound - left.inspectionRound);
+};
+
 export const latestRound = (rounds: InspectionResultRound[]): InspectionResultRound | null =>
   rounds.reduce<InspectionResultRound | null>(
     (latest, round) =>

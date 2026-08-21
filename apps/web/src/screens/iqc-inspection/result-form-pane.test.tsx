@@ -21,6 +21,7 @@ const renderPane = (
   const onChange = vi.fn();
   const onSave = vi.fn();
   const onConfirm = vi.fn();
+  const onStartReinspection = vi.fn();
 
   renderWithProviders(
     <ResultFormPane
@@ -40,11 +41,14 @@ const renderPane = (
       onConfirm={onConfirm}
       isConfirming={false}
       confirmError={null}
+      isReinspecting={false}
+      onStartReinspection={onStartReinspection}
+      onCancelReinspection={vi.fn()}
       {...overrides}
     />,
   );
 
-  return { onChange, onSave, onConfirm };
+  return { onChange, onSave, onConfirm, onStartReinspection };
 };
 
 const saveButton = () => screen.getByRole('button', { name: t.save });
@@ -243,5 +247,58 @@ describe('ResultFormPane', () => {
     renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
 
     expect(screen.queryByRole('button', { name: t.save })).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 재검사', () => {
+  it('확정된 회차에는 재검사로 가는 길이 있다 — 사유만 내고 막지 않는다', async () => {
+    const { onStartReinspection } = renderPane(
+      EMPTY_QUANTITY_DRAFT,
+      toInspectionResultRound(confirmedRound),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: t.reinspect }));
+
+    expect(onStartReinspection).toHaveBeenCalledTimes(1);
+  });
+
+  it('확정되지 않은 회차에는 재검사 자리를 두지 않는다', () => {
+    renderPane();
+
+    expect(screen.queryByRole('button', { name: t.reinspect })).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 재검사 중에는 «아직 만들어지지 않은» 회차라 번호가 없다. 번호를 붙이면 화면이 회차를
+   * 세는 셈인데 +1 은 서버가 한다 — 두 사람이 동시에 열면 같은 번호를 만든다.
+   */
+  it('재검사 중에는 번호 없이 새 회차임을 말한다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isReinspecting: true });
+
+    expect(screen.getByText(t.reinspectRound)).toBeInTheDocument();
+    expect(screen.getByText(t.reinspectNote)).toBeInTheDocument();
+  });
+
+  /* ⛔ 사유 칸을 지어내지 않되 감추지도 않는다 — 왜 없는지 밝힌다(omf-mes#179). */
+  it('재검사 사유가 아직 없다는 사실을 감추지 않는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isReinspecting: true });
+
+    expect(screen.getByText(t.reinspectReasonPending)).toBeInTheDocument();
+  });
+
+  it('재검사를 그만두는 길이 함께 있다 — 열고 나서 갇히지 않는다', async () => {
+    const onCancelReinspection = vi.fn();
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isReinspecting: true, onCancelReinspection });
+
+    await userEvent.click(screen.getByRole('button', { name: t.reinspectCancel }));
+
+    expect(onCancelReinspection).toHaveBeenCalledTimes(1);
+  });
+
+  it('재검사 중에는 칸이 열려 있다 — 확정본을 고치는 것이 아니다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isReinspecting: true });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeEnabled();
+    expect(saveButton()).toBeEnabled();
   });
 });

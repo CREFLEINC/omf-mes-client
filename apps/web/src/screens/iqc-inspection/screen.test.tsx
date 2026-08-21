@@ -7,6 +7,7 @@ import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/a
 import { CODE_GROUPS } from './code-options';
 import {
   codeValuesResponse,
+  confirmedRound,
   draftRound,
   expiredMeasurement,
   itemSpecsResponse,
@@ -15,11 +16,13 @@ import {
   pageOf,
   queueItems,
   queueResponse,
+  reinspectionRound,
   roundsResponse,
   waitingRequest,
 } from './fixtures';
 import type { InspectionMeasurementResponse } from './measurement-rows';
 import { IqcInspectionScreen } from './screen';
+import type { InspectionResultResponse } from './types';
 
 const t = messages.iqcInspection;
 
@@ -33,6 +36,14 @@ const renderScreen = (
   measurements: InspectionMeasurementResponse[] = [],
   /** 검사기준 버전의 항목 규격. 빈 목록이면 그리드가 빈 자리 문구를 그린다 */
   specs = itemSpecsResponse(),
+  /**
+   * 저장이 성공한 «뒤» 서버가 갖게 되는 회차. 비우면 저장 전후가 같다.
+   *
+   * ⭐ 저장이 회차를 만드는 갈래를 재려면 이것이 필요하다 — 목록이 저장 전 상태로 굳어
+   * 있으면 화면은 새 회차가 생긴 것을 영영 모르고, 그 상태에서 통과한 시험은 아무것도
+   * 증명하지 않는다.
+   */
+  roundsAfterWrite: InspectionResultResponse[] | null = null,
 ) => {
   const sent: URL[] = [];
   /** 저장 요청 원본 — 본문과 헤더를 그대로 본다 */
@@ -112,7 +123,12 @@ const renderScreen = (
       },
       {
         match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
-        respond: () => jsonResponse(roundsResponse(rounds)),
+        respond: () =>
+          jsonResponse(
+            roundsResponse(
+              writes.length > 0 && roundsAfterWrite !== null ? roundsAfterWrite : rounds,
+            ),
+          ),
       },
     ]),
   });
@@ -551,5 +567,150 @@ describe('IqcInspectionScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: t.pageNav.toFirstPage }));
 
     await waitFor(() => expect(lastQuery(sent)?.get('page')).toBe('1'));
+  });
+});
+
+describe('IqcInspectionScreen — 재검사 회차', () => {
+  /**
+   * ⭐ 이 슬라이스의 핵심이다. 사슬을 가리키지 않으면 서버가 회차를 +1 할 근거가 없어 같은
+   * 의뢰에 1회차를 두 번 만들려 하고, 그 표에는 `UNIQUE(의뢰, 회차)` 가 걸려 있다.
+   */
+  it('재검사 저장이 앞 회차를 가리킨다', async () => {
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      confirmedRound,
+    ]);
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    const request = writes[0] as Request;
+    expect(request.method).toBe('POST');
+    expect(await bodyOf(request)).toMatchObject({
+      previousResultId: confirmedRound.inspectionResultId,
+    });
+  });
+
+  /* 재검사가 아닌 저장에 사슬을 실으면 평범한 회차가 남의 뒤에 붙는다. */
+  it('평소 저장은 앞 회차 키를 싣지 않는다', async () => {
+    const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+
+    await screen.findByText(t.result.notStarted);
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await bodyOf(writes[0] as Request)).not.toHaveProperty('previousResultId');
+  });
+
+  /*
+   * ⛔ **회차를 미리 만들지 않는다.** 만들면 열어 보고 그만둔 사람마다 빈 회차가 쌓이고,
+   * 그 순간 의뢰가 COMPLETED 에서 IN_PROGRESS 로 돌아가 대기 큐에 다시 뜬다.
+   */
+  it('재검사를 열기만 해서는 아무것도 보내지 않는다', async () => {
+    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      confirmedRound,
+    ]);
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+
+    expect(writes).toHaveLength(0);
+  });
+
+  /*
+   * ⚠ 앞 회차의 측정치가 남으면 아직 아무것도 재지 않은 새 회차에 값이 들어 있는 것처럼
+   * 보이고, 검사자가 그것을 «자기가 잰 값»으로 읽는다.
+   */
+  it('재검사 중에는 앞 회차의 측정치를 그리지 않는다', async () => {
+    renderScreen(
+      '/?ir=1001',
+      () => jsonResponse(queueResponse()),
+      [confirmedRound],
+      [expiredMeasurement],
+    );
+
+    await screen.findByText(t.result.round(1));
+    expect(await screen.findByText(t.measurements.calibrationExpired)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+
+    await waitFor(() =>
+      expect(screen.queryByText(t.measurements.calibrationExpired)).not.toBeInTheDocument(),
+    );
+  });
+
+  /* 재검사 중에는 확정본이 「앞 회차」가 되므로 이력 쪽이 제자리다. */
+  it('재검사 중에는 확정본이 이전 회차 이력으로 옮겨 간다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [confirmedRound]);
+
+    await screen.findByText(t.result.round(1));
+    expect(screen.queryByText(t.history.heading)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+
+    expect(screen.getByText(t.history.heading)).toBeInTheDocument();
+  });
+
+  it('회차가 둘이면 앞 회차가 이력에 남는다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+      reinspectionRound,
+      confirmedRound,
+    ]);
+
+    await screen.findByText(t.result.round(2));
+    expect(screen.getByText(t.history.heading)).toBeInTheDocument();
+  });
+});
+
+describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
+  /**
+   * ⛔ **저장 한 번에 회차 하나다.** 저장이 새 회차를 만들면 그 회차는 이제 실재하는 작성중
+   * 회차라 다음 저장은 그것을 «고쳐야» 한다. 재검사 모드가 남아 있으면 저장할 때마다 새
+   * 회차가 쌓이고, 검사자는 자기가 방금 넣은 값이 어디로 갔는지 알 수 없다.
+   */
+  it('재검사 저장이 끝나면 다음 저장은 새 회차를 또 만들지 않는다', async () => {
+    const { writes } = renderScreen(
+      '/?ir=1001',
+      () => jsonResponse(queueResponse()),
+      [confirmedRound],
+      [],
+      itemSpecsResponse(),
+      [confirmedRound, reinspectionRound],
+    );
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    /* 저장이 끝나면 화면은 새로 생긴 2회차를 그린다 — 재검사 모드가 풀린 자리다. */
+    await screen.findByText(t.result.round(2));
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(2));
+
+    expect((writes[1] as Request).method).toBe('PUT');
+  });
+
+  /**
+   * ⭐ **다른 의뢰로 옮기면 재검사 모드가 풀린다.** 풀리지 않으면 옆 의뢰가 «사용자가 열지
+   * 않았는데» 재검사 모드로 열린다 — 확정된 판정 옆에 빈 칸이 놓이고, 검사자는 그 의뢰의
+   * 검사가 아직 안 끝난 줄 알고 값을 넣어 저장한다. 그 순간 멀쩡히 끝난 의뢰에 회차가
+   * 하나 더 쌓이고 의뢰 상태가 완료에서 진행으로 되돌아간다.
+   */
+  it('다른 의뢰로 옮기면 재검사 모드가 풀린다', async () => {
+    renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [confirmedRound]);
+
+    await screen.findByText(t.result.round(1));
+    await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
+    expect(screen.getByText(t.result.reinspectRound)).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: t.queue.openRow(queueItems[1]!.inspectionRequestNo) }),
+    );
+
+    await waitFor(() => expect(screen.getByText(t.result.round(1))).toBeInTheDocument());
+    expect(screen.queryByText(t.result.reinspectRound)).not.toBeInTheDocument();
   });
 });

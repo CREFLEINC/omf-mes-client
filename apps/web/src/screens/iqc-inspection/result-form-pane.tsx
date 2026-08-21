@@ -74,6 +74,17 @@ export interface ResultFormPaneProps {
   onConfirm: () => void;
   isConfirming: boolean;
   confirmError: ApiError | null;
+
+  /**
+   * 지금 **재검사 회차를 쓰는 중**인가. 참이면 `round` 가 `null` 로 들어와 칸이 열려 있다.
+   *
+   * ⭐ 회차 번호를 받지 않는다 — **아직 만들어지지 않은 회차**라 번호가 없다. 서버가 저장할
+   * 때 +1 하며, 화면이 미리 세면 두 사람이 동시에 열었을 때 같은 번호를 만든다.
+   */
+  isReinspecting: boolean;
+  /** 확정된 회차에서 재검사를 시작한다. **여는 것뿐이다** — 회차는 저장이 만든다 */
+  onStartReinspection: () => void;
+  onCancelReinspection: () => void;
 }
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
@@ -100,6 +111,9 @@ export const ResultFormPane = ({
   onConfirm,
   isConfirming,
   confirmError,
+  isReinspecting,
+  onStartReinspection,
+  onCancelReinspection,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const isConfirmed = round?.statusCode === '확정';
@@ -172,7 +186,28 @@ export const ResultFormPane = ({
 
   return (
     <form aria-label={t.heading} onSubmit={submit}>
-      <p className="field-note">{round === null ? t.notStarted : t.round(round.inspectionRound)}</p>
+      <p className="field-note">
+        {isReinspecting
+          ? t.reinspectRound
+          : round === null
+            ? t.notStarted
+            : t.round(round.inspectionRound)}
+      </p>
+
+      {/*
+       * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
+       * 시작으로 삼은 규율과 같다(omf-mes 확정 2026-08-21 §1.2) — 열어 두고 떠난 사람이
+       * 빈 회차를 남기지 않는다.
+       *
+       * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 고를 값
+       * 목록이 정해지지 않았다. 감추지 않고 왜 없는지 밝힌다(omf-mes#179).
+       */}
+      {isReinspecting && (
+        <>
+          <p className="field-note">{t.reinspectNote}</p>
+          <p className="field-note">{t.reinspectReasonPending}</p>
+        </>
+      )}
 
       <dl className="filter-bar">
         <div className="field-cell">
@@ -232,6 +267,19 @@ export const ResultFormPane = ({
        * ⛔ **확정된 회차에는 저장 자리를 만들지 않는다**(공유계약 G-23 — 누를 수 있는데 아무
        * 일도 없는 컨트롤을 두지 않는다). 이전 회차는 정정하지 않고 재검사로 새 회차를 쌓는다.
        */}
+      {/*
+       * ⛔ **확정된 회차에서 유일하게 할 수 있는 일이 재검사다.** 잠긴 사유만 내고 길을
+       * 내지 않으면, 문면이 「재검사 회차를 추가합니다」라고 말하는데 추가할 자리가 화면에
+       * 없다 — 사용자는 그 문장을 읽고 무엇을 눌러야 할지 찾다가 포기한다.
+       */}
+      {isConfirmed && (
+        <div className="form-actions">
+          <Button type="button" variant="outlined" size="sm" onClick={onStartReinspection}>
+            {t.reinspect}
+          </Button>
+        </div>
+      )}
+
       {!isConfirmed && (
         <>
           {/*
@@ -248,6 +296,18 @@ export const ResultFormPane = ({
             {isSaved && <p className="field-note form-actions-secondary">{t.saved}</p>}
             {showErrors && hasQuantityError(errors) && (
               <p className="field-note form-actions-secondary">{t.saveBlockedByInvalid}</p>
+            )}
+            {/* 그만두는 길을 함께 둔다 — 열고 나서 되돌아갈 데가 없으면 갇힌다. */}
+            {isReinspecting && (
+              <Button
+                type="button"
+                variant="text"
+                size="sm"
+                disabled={isSaving || isConfirming}
+                onClick={onCancelReinspection}
+              >
+                {t.reinspectCancel}
+              </Button>
             )}
             <Button type="submit" variant="outlined" size="sm" disabled={isSaving || isConfirming}>
               {isSaving ? t.saving : t.save}
