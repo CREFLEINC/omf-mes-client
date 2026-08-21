@@ -98,3 +98,32 @@ export const groupDetail = (
 /** 식별자로 픽스처 그룹을 찾는다. 상세 스텁이 늘 같은 건을 돌려주지 않게 한다. */
 export const groupById = (equipmentGroupId: number): EquipmentGroup | undefined =>
   groupItems.find((item) => item.equipmentGroupId === equipmentGroupId);
+
+type Equipment = components['schemas']['Equipment'];
+
+export const makeEquipment = (
+  equipmentId: number,
+  equipmentCode: string,
+  overrides: Partial<Equipment> = {},
+): Equipment => ({
+  equipmentId,
+  plantId: 11,
+  equipmentCode,
+  equipmentName: `${equipmentCode} 설비`,
+  equipmentTypeCode: 'PENDING',
+  productionLineId: 101,
+  statusCode: 'ACTIVE',
+  calibrationRequired: false,
+  isActive: true,
+  ...overrides,
+});
+
+export const equipmentItems: Equipment[] = [
+  makeEquipment(2001, 'EQ-01'),
+  makeEquipment(2002, 'EQ-02', { calibrationRequired: true, statusCode: 'DISPOSED' }),
+];
+
+export const equipmentsResponse = (items: Equipment[] = equipmentItems) => ({
+  items,
+  page: pageOf(items),
+});

@@ -5,6 +5,7 @@ import {
   EmptyState,
   PageHeader,
   SkeletonText,
+  Tabs,
   useToast,
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
@@ -18,6 +19,7 @@ import { toApiError } from '../../patterns/request';
 import { type CodeOption, ensureOption, selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
+import { EquipmentListPane } from './equipment-list-pane';
 import { GroupFormPane } from './group-form-pane';
 import { GroupListPane } from './group-list-pane';
 import { buildGroupRows, selfAndDescendantIds } from './group-tree';
@@ -34,12 +36,13 @@ import {
   groupDetailPath,
   groupKeys,
   isTruncated,
+  useEquipmentList,
   useGroupDetail,
   useGroupList,
   useGroupOptions,
   useLookupOptions,
 } from './queries';
-import type { EquipmentGroup, GroupFilters, GroupFormValues } from './types';
+import type { EquipmentFilters, EquipmentGroup, GroupFilters, GroupFormValues } from './types';
 
 const t = messages.equipmentMaster;
 
@@ -86,6 +89,18 @@ export const EquipmentMasterScreen = () => {
     [searchParams],
   );
 
+  const activeTab = searchParams.get('tab') === 'equipment' ? 'equipment' : 'group';
+
+  const equipmentFilters = useMemo<EquipmentFilters>(
+    () => ({
+      q: searchParams.get('eq') ?? '',
+      equipmentTypeCode: searchParams.get('eqtype') ?? '',
+      calibrationRequired: searchParams.get('calib') === '1',
+      includeInactive: searchParams.get('eqinactive') === '1',
+    }),
+    [searchParams],
+  );
+
   const isCreateMode = searchParams.get('mode') === 'create';
   const selectedGroupId = isCreateMode ? null : Number(searchParams.get('grp') ?? '') || null;
 
@@ -93,6 +108,8 @@ export const EquipmentMasterScreen = () => {
   const groupItems = useMemo(() => groupList.data?.items ?? [], [groupList.data]);
   const lookups = useLookupOptions();
   const detail = useGroupDetail(selectedGroupId);
+  const equipmentList = useEquipmentList(selectedGroupId, equipmentFilters);
+  const equipmentItems = equipmentList.data?.items ?? [];
 
   /**
    * 기본 펼침 대상 — 하위를 가진 모든 노드.
@@ -374,7 +391,7 @@ export const EquipmentMasterScreen = () => {
 
   // 신규 등록은 선택을 지운다 — 어느 그룹의 상세도 아닌 새 폼이다.
   const handleAddGroup = () => {
-    navigateWithDraftGuard({ mode: 'create', grp: null });
+    navigateWithDraftGuard({ mode: 'create', grp: null, tab: null });
   };
 
   // 조회 조건은 화면 상태가 아니라 URL이 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
@@ -383,6 +400,15 @@ export const EquipmentMasterScreen = () => {
       q: next.q === '' ? null : next.q,
       plant: next.plantId === '' ? null : next.plantId,
       inactive: next.includeInactive ? '1' : null,
+    });
+  };
+
+  const handleApplyEquipmentFilters = (next: EquipmentFilters) => {
+    updateParams({
+      eq: next.q === '' ? null : next.q,
+      eqtype: next.equipmentTypeCode === '' ? null : next.equipmentTypeCode,
+      calib: next.calibrationRequired ? '1' : null,
+      eqinactive: next.includeInactive ? '1' : null,
     });
   };
 
@@ -490,9 +516,55 @@ export const EquipmentMasterScreen = () => {
       );
     }
 
+    const equipmentPage = equipmentList.data?.page;
+    const equipmentTruncated =
+      equipmentPage !== undefined && isTruncated(equipmentPage, equipmentItems.length);
+
     return (
       <div className="pane">
-        {renderGroupForm({ mode: 'edit', isActive: detail.data.equipmentGroup.isActive })}
+        <Tabs
+          aria-label={t.title}
+          value={activeTab}
+          onChange={(value) => updateParams({ tab: value })}
+          items={[
+            {
+              value: 'group',
+              label: t.tabs.group,
+              content: renderGroupForm({
+                mode: 'edit',
+                isActive: detail.data.equipmentGroup.isActive,
+              }),
+            },
+            {
+              value: 'equipment',
+              label: t.tabs.equipment,
+              content: (
+                <>
+                  {/* 잘렸다는 사실을 감추지 않는다 — 조건을 좁히는 것이 사용자가 할 수 있는 조치다. */}
+                  {equipmentTruncated && equipmentPage !== undefined && (
+                    <AlertBanner variant="warning">
+                      {t.equipmentListTruncated(equipmentItems.length, equipmentPage.total)}
+                    </AlertBanner>
+                  )}
+                  <EquipmentListPane
+                    items={equipmentItems}
+                    isLoading={equipmentList.isPending}
+                    appliedFilters={equipmentFilters}
+                    onApplyFilters={handleApplyEquipmentFilters}
+                    loadError={
+                      equipmentList.isError ? (
+                        <LoadErrorBanner
+                          error={toApiError(equipmentList.error)}
+                          onRetry={() => void equipmentList.refetch()}
+                        />
+                      ) : null
+                    }
+                  />
+                </>
+              ),
+            },
+          ]}
+        />
       </div>
     );
   };

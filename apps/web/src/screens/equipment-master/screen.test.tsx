@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
+  equipmentItems,
+  equipmentsResponse,
   groupById,
   groupDetail,
   groupItems,
@@ -35,11 +37,14 @@ interface RenderOptions {
   respondDetail?: (request: Request) => Response;
   respondWrite?: (request: Request) => Response;
   respondDeactivate?: (request: Request) => Response;
+  respondEquipments?: (request: Request) => Response;
 }
 
 /** 요청이 실제로 무엇을 실어 갔는지 본다 — 주소가 조건을 몰았음을 그것으로 증명한다. */
 const renderScreen = (options: RenderOptions = {}) => {
   const sent: URL[] = [];
+  /** 설비 목록 조회가 실어 간 조건 */
+  const equipmentSent: URL[] = [];
   /** 쓰기 요청 원본 — 본문과 헤더를 그대로 본다 */
   const writes: Request[] = [];
 
@@ -99,13 +104,20 @@ const renderScreen = (options: RenderOptions = {}) => {
         },
       },
       {
+        match: (request) => isPath(request, '/mdm/equipments'),
+        respond: (request) => {
+          equipmentSent.push(new URL(request.url));
+          return (options.respondEquipments ?? (() => jsonResponse(equipmentsResponse())))(request);
+        },
+      },
+      {
         match: (request) => isPath(request, '/mdm/plants'),
         respond: () => (options.respondPlants ?? (() => jsonResponse(plantsResponse())))(),
       },
     ]),
   });
 
-  return { ...view, sent, writes };
+  return { ...view, sent, equipmentSent, writes };
 };
 
 /** 마지막 쓰기 요청의 본문. 무엇을 실어 갔는지는 이것으로만 증명된다. */
@@ -1106,5 +1118,137 @@ describe('EquipmentMasterScreen — 나가는 중인 쓰기', () => {
 
     // 되먹임이 끊기지 않았다면 성공 알림이 도착한다.
     expect(await screen.findByText(messages.common.saved)).toBeInTheDocument();
+  });
+});
+
+describe('EquipmentMasterScreen — 설비 목록 탭', () => {
+  const openEquipmentTab = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole('button', { name: 'GRP-A' }));
+    await user.click(await screen.findByRole('tab', { name: t.tabs.equipment }));
+    return screen.findByRole('region', { name: t.tabs.equipment });
+  };
+
+  it('그룹을 고른 뒤 설비 탭에서 그 그룹의 설비를 본다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+
+    expect(pane.getByText('EQ-01')).toBeInTheDocument();
+    expect(pane.getByText('EQ-02')).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 계약의 조건 이름은 `productionLineId` 이고 값은 설비 그룹 식별자와 «같다» —
+   * 저장처의 이름이 `production_line` 이라 필드가 그것을 따르고 있을 뿐이다.
+   */
+  it('고른 그룹의 식별자를 소속 그룹 조건으로 보낸다', async () => {
+    const user = userEvent.setup();
+    const { equipmentSent } = renderScreen();
+
+    await openEquipmentTab(user);
+
+    const last = equipmentSent.at(-1);
+    expect(last?.searchParams.get('productionLineId')).toBe('101');
+  });
+
+  /* 그룹을 고르기 전에는 대상이 정해지지 않았다 — 부르면 아무 그룹의 설비인지 알 수 없다. */
+  it('그룹을 고르기 전에는 설비를 조회하지 않는다', async () => {
+    const { equipmentSent } = renderScreen();
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+
+    expect(equipmentSent).toHaveLength(0);
+  });
+
+  /* 조회 조건은 URL이 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다. */
+  it('주소의 설비 조건을 그대로 서버로 보낸다', async () => {
+    const user = userEvent.setup();
+    const { equipmentSent } = renderScreen({
+      route: '/?eq=EQ&eqtype=PRESS&calib=1&eqinactive=1',
+    });
+
+    await openEquipmentTab(user);
+
+    const query = (equipmentSent.at(-1) as URL).searchParams;
+    expect(query.get('q')).toBe('EQ');
+    expect(query.get('equipmentTypeCode')).toBe('PRESS');
+    expect(query.get('calibrationRequired')).toBe('true');
+    expect(query.get('includeInactive')).toBe('true');
+  });
+
+  it('조건이 없으면 빈 값을 실어 보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const { equipmentSent } = renderScreen();
+
+    await openEquipmentTab(user);
+
+    const query = (equipmentSent.at(-1) as URL).searchParams;
+    expect(query.has('q')).toBe(false);
+    expect(query.has('equipmentTypeCode')).toBe(false);
+    // 켜지 않은 해제 조건은 아예 싣지 않는다 — 서버 기본을 뒤집지 않는다.
+    expect(query.has('calibrationRequired')).toBe(false);
+    expect(query.get('includeInactive')).toBe('false');
+  });
+
+  it('설비 조건을 적용하면 주소에 실리고 다시 조회한다', async () => {
+    const user = userEvent.setup();
+    const { equipmentSent } = renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.type(pane.getByLabelText(t.equipmentFilters.searchLabel), 'EQ-01');
+    await user.click(pane.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect((equipmentSent.at(-1) as URL).searchParams.get('q')).toBe('EQ-01');
+    });
+  });
+
+  it('설비 목록이 잘리면 전체 건수와 함께 알린다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondEquipments: () =>
+        jsonResponse({ items: equipmentItems, page: pageOf(equipmentItems, 300) }),
+    });
+
+    await openEquipmentTab(user);
+
+    expect(
+      await screen.findByText(t.equipmentListTruncated(equipmentItems.length, 300)),
+    ).toBeInTheDocument();
+  });
+
+  it('설비 조회에 실패하면 배너를 내고 빈 상태를 내지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondEquipments: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
+    });
+
+    const pane = within(await openEquipmentTab(user));
+
+    expect(await pane.findByText(messages.httpError.loadTitle)).toBeInTheDocument();
+    expect(pane.queryByText(t.empty.equipmentNoneTitle)).toBeNull();
+  });
+
+  /* 아직 만들어지지 않은 그룹에는 설비를 붙일 대상이 없다. */
+  it('등록 폼으로 가면 설비 탭이 서지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await openEquipmentTab(user);
+    await user.click(screen.getAllByRole('button', { name: t.actions.addGroup })[0] as HTMLElement);
+
+    await screen.findByRole('region', { name: t.form.createTitle });
+    expect(screen.queryByRole('tab', { name: t.tabs.equipment })).toBeNull();
+  });
+
+  /* 탭 선택도 주소가 소유한다 — 공유한 주소가 같은 화면을 연다. */
+  it('주소가 설비 탭을 가리키면 그 탭이 열린 채로 뜬다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ route: '/?tab=equipment' });
+
+    await user.click(await screen.findByRole('button', { name: 'GRP-A' }));
+
+    expect(await screen.findByText('EQ-01')).toBeInTheDocument();
   });
 });
