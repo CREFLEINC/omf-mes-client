@@ -69,7 +69,7 @@ describe('useMasterWrite', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('요청마다 UUID 형식 Idempotency-Key를 새로 만든다 — 형식이 아니면 계약이 거부한다', async () => {
+  it('보낼 값이 바뀌면 새 키를 만든다 — 다른 쓰기다 (결정 #10 ⓐ · 형식은 UUID)', async () => {
     const { result, calls } = renderWrite();
 
     act(() => {
@@ -89,6 +89,191 @@ describe('useMasterWrite', () => {
     expect(calls[0]?.headers['Idempotency-Key']).toMatch(UUID_PATTERN);
     expect(calls[1]?.headers['Idempotency-Key']).toMatch(UUID_PATTERN);
     expect(calls[0]?.headers['Idempotency-Key']).not.toBe(calls[1]?.headers['Idempotency-Key']);
+  });
+
+  /*
+   * ⭐ **기본은 시도마다 새 키다.** 되돌릴 수 있는 쓰기와 본문이 빈 액션이 그것을 필요로
+   * 한다 — 보낼 값이 없으면 「값이 바뀌면 새 키」가 성립하지 않아, 사용자가 다른 화면에서
+   * 원인을 고치고 돌아와도 같은 키가 나가 앞선 거부를 되돌려 받는다.
+   */
+  it('기본은 실패한 뒤 다시 보내도 새 키다 — 되돌릴 수 있는 쓰기와 본문이 빈 액션의 수명이다', async () => {
+    const calls: Recorded[] = [];
+
+    const { result } = renderWrite({
+      request: async (variables, headers) => {
+        calls.push({ variables, headers });
+        return { error: {}, response: failedResponse(400) };
+      },
+    });
+
+    act(() => {
+      result.current.write({ name: '같은 값' });
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.write({ name: '같은 값' });
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(2);
+    });
+
+    expect(calls[1]?.headers['Idempotency-Key']).not.toBe(calls[0]?.headers['Idempotency-Key']);
+  });
+
+  /*
+   * ⭐ 아래 넷이 `docs/decisions.md` #10 의 수명 규칙이다. 요지는 **「소멸 조건을 좁게 잡는
+   * 쪽이 이중 실행을 막는다」** — 시도마다 새 키를 주면 통신이 끊긴 뒤 다시 눌렀을 때 서버가
+   * 그것을 다른 쓰기로 보고 두 번 실행할 수 있다.
+   */
+  it('until-applied · 통신이 실패한 뒤 같은 값으로 다시 보내면 같은 키를 쓴다 — 적용됐는지 모른다 (ⓑ)', async () => {
+    const calls: Recorded[] = [];
+    let shouldFail = true;
+
+    const { result } = renderWrite({
+      keyLifetime: 'until-applied',
+      request: async (variables, headers) => {
+        calls.push({ variables, headers });
+
+        if (shouldFail) throw new Error('연결 끊김');
+
+        return { data: { id: 1 }, response: okResponse() };
+      },
+    });
+
+    act(() => {
+      result.current.write({ name: '같은 값' });
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+
+    shouldFail = false;
+    act(() => {
+      result.current.write({ name: '같은 값' });
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(2);
+    });
+
+    expect(calls[1]?.headers['Idempotency-Key']).toBe(calls[0]?.headers['Idempotency-Key']);
+  });
+
+  it.each([500, 400, 401])(
+    'until-applied · %i 뒤 같은 값으로 다시 보내면 같은 키를 쓴다 (ⓑ)',
+    async (status) => {
+      const calls: Recorded[] = [];
+      let current = status;
+
+      const { result } = renderWrite({
+        keyLifetime: 'until-applied',
+        request: async (variables, headers) => {
+          calls.push({ variables, headers });
+
+          return current === 200
+            ? { data: { id: 1 }, response: okResponse() }
+            : { error: {}, response: failedResponse(current) };
+        },
+      });
+
+      act(() => {
+        result.current.write({ name: '같은 값' });
+      });
+      await waitFor(() => {
+        expect(calls).toHaveLength(1);
+      });
+
+      current = 200;
+      act(() => {
+        result.current.write({ name: '같은 값' });
+      });
+      await waitFor(() => {
+        expect(calls).toHaveLength(2);
+      });
+
+      expect(calls[1]?.headers['Idempotency-Key']).toBe(calls[0]?.headers['Idempotency-Key']);
+    },
+  );
+
+  it('until-applied · 성공하면 키를 버린다 — 끝난 키로 다시 보내면 서버가 실행 없이 앞 응답을 되돌려 준다 (ⓒ)', async () => {
+    const { result, calls } = renderWrite({ keyLifetime: 'until-applied' });
+
+    act(() => {
+      result.current.write({ name: '같은 값' });
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.write({ name: '같은 값' });
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(2);
+    });
+
+    expect(calls[1]?.headers['Idempotency-Key']).not.toBe(calls[0]?.headers['Idempotency-Key']);
+  });
+
+  it('until-applied · reset 은 키를 버리지 않는다 — 오류 표시를 지우는 것과 적용 여부를 모르는 것은 다른 사실이다', async () => {
+    const calls: Recorded[] = [];
+
+    const { result } = renderWrite({
+      keyLifetime: 'until-applied',
+      request: async (variables, headers) => {
+        calls.push({ variables, headers });
+        return { error: {}, response: failedResponse(500) };
+      },
+    });
+
+    act(() => {
+      result.current.write({ name: '같은 값' });
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.reset();
+    });
+    act(() => {
+      result.current.write({ name: '같은 값' });
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(2);
+    });
+
+    expect(calls[1]?.headers['Idempotency-Key']).toBe(calls[0]?.headers['Idempotency-Key']);
+  });
+
+  it('until-applied · 키 순서만 다른 같은 값은 같은 쓰기로 본다 — 지문이 순서에 흔들리면 이중 실행을 막지 못한다', async () => {
+    const calls: { headers: WriteHeaders }[] = [];
+
+    const { result } = renderWrite({
+      keyLifetime: 'until-applied',
+      request: async (_variables, headers) => {
+        calls.push({ headers });
+        return { error: {}, response: failedResponse(500) };
+      },
+    });
+
+    act(() => {
+      result.current.write({ a: 1, b: 2 } as unknown as Variables);
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.write({ b: 2, a: 1 } as unknown as Variables);
+    });
+    await waitFor(() => {
+      expect(calls).toHaveLength(2);
+    });
+
+    expect(calls[1]?.headers['Idempotency-Key']).toBe(calls[0]?.headers['Idempotency-Key']);
   });
 
   it('etagPath에 보관된 토큰을 If-Match로 싣는다', async () => {
