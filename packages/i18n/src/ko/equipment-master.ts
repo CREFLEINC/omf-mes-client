@@ -39,6 +39,22 @@ export const equipmentMaster = {
   dialog: {
     discardTitle: '입력한 내용을 버릴까요?',
   },
+  /**
+   * 사용 중지 확인. **무엇이 일어나는지 먼저 밝힌다.**
+   *
+   * ⚠ 계약에 다시 켜는 경로가 없다 — 이 화면에서 되돌릴 수 없다는 사실을 감추지 않는다.
+   */
+  deactivate: {
+    title: '사용 중지할까요?',
+    target: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
+    membersNone: '이 그룹에 소속된 설비가 없습니다.',
+    /** 소속 설비는 그대로 남는다 — 그룹이 목록에서 빠질 뿐이다. */
+    members: (count: number): string =>
+      `이 그룹에 설비 ${count}대가 소속돼 있습니다. 소속은 그대로 남고, 새로 고를 때만 이 그룹이 목록에서 빠집니다.`,
+    notReversibleHere:
+      '삭제하지 않습니다. 다만 이 화면에는 다시 켜는 수단이 없어, 되돌리려면 담당자에게 요청해야 합니다.',
+    confirm: '사용 중지',
+  },
   form: {
     createTitle: '설비 그룹 등록',
     editTitle: '설비 그룹 정보',

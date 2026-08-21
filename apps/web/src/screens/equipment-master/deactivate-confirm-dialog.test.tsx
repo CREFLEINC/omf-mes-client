@@ -1,0 +1,123 @@
+import { ToastProvider } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  DeactivateConfirmDialog,
+  type DeactivateConfirmDialogProps,
+} from './deactivate-confirm-dialog';
+
+const t = messages.equipmentMaster.deactivate;
+
+const renderDialog = (overrides: Partial<DeactivateConfirmDialogProps> = {}) => {
+  const onConfirm = vi.fn();
+  const onClose = vi.fn();
+
+  render(
+    <ToastProvider>
+      <DeactivateConfirmDialog
+        targetLabel="GRP-A · 프레스 구역"
+        memberEquipmentCount={0}
+        isSaving={false}
+        banner={null}
+        onConfirm={onConfirm}
+        onClose={onClose}
+        {...overrides}
+      />
+    </ToastProvider>,
+  );
+
+  return { onConfirm, onClose };
+};
+
+describe('DeactivateConfirmDialog', () => {
+  /* 내부 번호가 아니라 사람이 읽는 이름으로 무엇을 끄는지 밝힌다. */
+  it('무엇을 끄는지 이름으로 밝힌다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('dialog', { name: t.title })).toBeInTheDocument();
+    expect(screen.getByText(t.target('GRP-A · 프레스 구역'))).toBeInTheDocument();
+  });
+
+  /* 0대와 N대는 사용자가 할 판단이 다르다 — 같은 문장으로 뭉개면 건수를 보이는 뜻이 없다. */
+  it('소속 설비가 있으면 건수를 함께 보인다', () => {
+    renderDialog({ memberEquipmentCount: 12 });
+
+    expect(screen.getByText(t.members(12))).toBeInTheDocument();
+    expect(screen.queryByText(t.membersNone)).toBeNull();
+  });
+
+  it('소속 설비가 없으면 다른 문장을 낸다', () => {
+    renderDialog({ memberEquipmentCount: 0 });
+
+    expect(screen.getByText(t.membersNone)).toBeInTheDocument();
+  });
+
+  /*
+   * ⚠ 계약에 다시 켜는 경로가 없다(`:activate` 없음 — 실측).
+   * 되돌릴 수 없다는 사실을 감추면 사용자가 가볍게 누른다.
+   */
+  it('이 화면에서 되돌릴 수 없다는 사실을 밝힌다', () => {
+    renderDialog();
+
+    expect(screen.getByText(t.notReversibleHere)).toBeInTheDocument();
+  });
+
+  /*
+   * 나가는 길을 바닥 버튼 둘로 좁힌다 — 창 머리의 X 손잡이는 진행 상태를 받지 않아
+   * 전송 중에도 눌린다. 한쪽 문만 잠그면 잠근 적이 없는 것과 같다.
+   */
+  it('스크림을 눌러도 닫히지 않는다', () => {
+    const { onClose } = renderDialog();
+
+    fireEvent.click(screen.getByRole('dialog'));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('창 머리에 닫기 손잡이를 두지 않는다', () => {
+    renderDialog();
+
+    expect(screen.queryByRole('button', { name: messages.common.close })).toBeNull();
+  });
+
+  /* 창 본문이 펼침 목록을 자르는 결함이 남아 있어, 걸릴 자리를 만들지 않는다. */
+  it('창 안에 선택칸을 두지 않는다', () => {
+    renderDialog();
+
+    expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  it('버튼 문구가 곧 그 버튼이 하는 일이다', () => {
+    renderDialog();
+
+    expect(screen.getByRole('button', { name: t.confirm })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.confirm })).toBeNull();
+  });
+
+  it('사용 중지를 누르면 파기가 아니라 실행을 부른다', async () => {
+    const user = userEvent.setup();
+    const { onConfirm, onClose } = renderDialog();
+
+    await user.click(screen.getByRole('button', { name: t.confirm }));
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  /* 전송 중에 다시 누르면 같은 쓰기가 두 번 나가고, 취소하면 결과를 받을 자리가 사라진다. */
+  it('전송 중에는 두 버튼을 모두 누를 수 없다', () => {
+    renderDialog({ isSaving: true });
+
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.cancel })).toBeDisabled();
+  });
+
+  it('실패 배너를 창 안에 낸다 — 창을 닫지 않고 이유를 보여야 다시 시도할 수 있다', () => {
+    renderDialog({ banner: <p>저장하지 못했습니다</p> });
+
+    expect(screen.getByText('저장하지 못했습니다')).toBeInTheDocument();
+  });
+});

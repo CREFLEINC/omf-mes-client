@@ -25,6 +25,7 @@ export interface GroupFormPaneProps {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  onDeactivate: () => void;
 }
 
 const t = messages.equipmentMaster;
@@ -43,6 +44,7 @@ export const GroupFormPane = ({
   isSaving,
   onSave,
   onCancel,
+  onDeactivate,
 }: GroupFormPaneProps) => {
   const activeLabelId = useId();
 
@@ -109,6 +111,12 @@ export const GroupFormPane = ({
             {t.fields.isActive}
           </span>
           <p aria-labelledby={activeLabelId}>{isActive ? t.values.active : t.values.inactive}</p>
+          {/* 아직 등록되지 않은 그룹에는 사용 중지할 대상이 없다. 이미 중지된 것도 마찬가지다. */}
+          {mode === 'edit' && isActive && (
+            <Button variant="outlined" onClick={onDeactivate}>
+              {messages.common.deactivate}
+            </Button>
+          )}
         </div>
       </div>
 
