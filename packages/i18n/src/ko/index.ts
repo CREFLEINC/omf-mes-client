@@ -49,6 +49,7 @@ import { putawayRule } from './putaway-rule';
 import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { iqcInspection } from './iqc-inspection';
+import { equipmentMaster } from './equipment-master';
 
 export const ko = {
   common,
@@ -86,6 +87,7 @@ export const ko = {
   documentProgress,
   notificationCenter,
   iqcInspection,
+  equipmentMaster,
 } as const;
 
 export type Messages = typeof ko;
