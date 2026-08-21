@@ -68,8 +68,15 @@ const ReadOnlyField = ({ label, value, note }: ReadOnlyFieldProps) => {
  * 설비 등록·수정 창.
  *
  * **창 안에 선택칸이 있다** — 설비유형·소속그룹·소속공정 셋이 필요하고, 창 없이 이 폼을 둘
- * 자리가 우측 페인에 없다(그 자리는 그룹 폼이 쓴다). 확인 창과 달리 이 창은 **입력을 받는
- * 자리**라 나가는 길을 좁히지 않는다 — 실수로 닫혀도 잃는 것은 아직 보내지 않은 입력뿐이다.
+ * 자리가 우측 페인에 없다(그 자리는 그룹 폼이 쓴다).
+ *
+ * ⭐ **스크림 클릭으로 닫히지 않게 한다.** 확인 창과 이유가 다르다 — 저쪽은 되돌릴 수 없는
+ * 조작을 지키고, 이쪽은 **사용자가 친 값**을 지킨다. 폼을 채우는 동안 창 밖을 한 번 누르면
+ * 입력이 통째로 사라지는 것은 「말없는 유실」이고, 그것을 막는 것이 이 화면의 다른 자리
+ * (다른 그룹으로 옮겨 갈 때의 파기 확인)와 같은 규율이다.
+ *
+ * ⚠ **Escape 와 X 손잡이는 남긴다.** 둘은 사용자가 **나가겠다고 말한 것**이라 파기가 곧
+ * 그 뜻이며, 그것까지 막으면 나갈 길이 「취소」 하나로 좁아진다.
  */
 export const EquipmentFormDialog = ({
   mode,
@@ -95,6 +102,7 @@ export const EquipmentFormDialog = ({
     <Dialog
       open
       onClose={onClose}
+      closeOnBackdropClick={false}
       title={mode === 'create' ? t.equipmentForm.createTitle : t.equipmentForm.editTitle}
       footer={
         <>
