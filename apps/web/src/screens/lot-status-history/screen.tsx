@@ -3,19 +3,24 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
+  EMPTY_HISTORY_FILTERS,
   EMPTY_LOT_FILTERS,
+  readHistoryFilters,
   readLotFilters,
   readLotPage,
   readMode,
   readSelectedLotId,
+  toAppliedHistorySearchParams,
   toAppliedLotSearchParams,
   toModeSearchParams,
   withSelectedLot,
+  type HistoryFilters,
   type LotFilters,
   type LotStatusSort,
   type ScreenMode,
 } from './filters';
 import { CurrentResults } from './current-results';
+import { HistoryFilterBar } from './history-filter-bar';
 import { LotDetailDialog } from './lot-detail-dialog';
 import { LotFilterBar, type FilterOption } from './lot-filter-bar';
 import { useLotStatusOptions, useLotTypeOptions, type LotCodeOption } from './options';
@@ -24,6 +29,7 @@ import {
   useWarehouseReferenceOptions,
   type ReferenceOption,
 } from './reference-options';
+import { useLotActorOptions } from './queries';
 
 const inactiveLabel = (label: string, isActive: boolean): string =>
   isActive ? label : `${label} (미사용)`;
@@ -133,10 +139,48 @@ const LotMode = ({
   );
 };
 
+interface HistoryModeProps {
+  filters: HistoryFilters;
+  onSearch: (filters: HistoryFilters) => void;
+  onReset: () => void;
+}
+
+const HistoryMode = ({ filters, onSearch, onReset }: HistoryModeProps) => {
+  const actors = useLotActorOptions(true);
+  const actorOptions: FilterOption[] =
+    actors.data?.items.map((actor) => ({
+      value: String(actor.appUserId),
+      label: inactiveLabel(actor.userName === '' ? actor.loginId : actor.userName, actor.isActive),
+    })) ?? [];
+  const actorNote = actors.isPending
+    ? '행위자 목록을 불러오는 중입니다.'
+    : actors.isError
+      ? '행위자 목록을 불러오지 못했습니다.'
+      : actors.data !== undefined && actors.data.page.total > actors.data.items.length
+        ? '일부 행위자만 표시됩니다.'
+        : filters.actor !== '' && !actorOptions.some((option) => option.value === filters.actor)
+          ? '선택한 행위자 이름을 확인하지 못했습니다.'
+          : undefined;
+
+  return (
+    <section className="pane" aria-label="이력으로 찾기">
+      <HistoryFilterBar
+        appliedFilters={filters}
+        actorOptions={actorOptions}
+        actorNote={actorNote}
+        onSearch={onSearch}
+        onReset={onReset}
+      />
+      <p>보류 사건 이력 조회는 후속 단계에서 연결됩니다.</p>
+    </section>
+  );
+};
+
 export const LotStatusHistoryScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = readMode(searchParams);
   const filters = useMemo(() => readLotFilters(searchParams), [searchParams]);
+  const historyFilters = useMemo(() => readHistoryFilters(searchParams), [searchParams]);
   const page = readLotPage(searchParams);
   const selectedLotId = readSelectedLotId(searchParams);
 
@@ -151,6 +195,9 @@ export const LotStatusHistoryScreen = () => {
   };
   const changeMode = (next: string): void => {
     setSearchParams((current) => toModeSearchParams(current, next as ScreenMode));
+  };
+  const applyHistory = (next: HistoryFilters): void => {
+    setSearchParams((current) => toAppliedHistorySearchParams(current, next, 1));
   };
 
   const lotContent =
@@ -168,9 +215,11 @@ export const LotStatusHistoryScreen = () => {
     ) : null;
   const historyContent =
     mode === 'history' ? (
-      <section className="pane" aria-label="이력으로 찾기">
-        <p>보류 사건 이력 조회는 후속 단계에서 연결됩니다.</p>
-      </section>
+      <HistoryMode
+        filters={historyFilters}
+        onSearch={applyHistory}
+        onReset={() => applyHistory(EMPTY_HISTORY_FILTERS)}
+      />
     ) : null;
   const tabs: TabItem[] = [
     { value: 'lot', label: 'LOT으로 찾기', content: lotContent },

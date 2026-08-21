@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { pickRange } from '../../test/date-picker';
 import { LotStatusHistoryScreen } from './screen';
 
 const route = (path: string, respond: StubRoute['respond']): StubRoute => ({
@@ -328,17 +329,59 @@ describe('Lot Status 화면 shell', () => {
   });
 
   it('이력 모드 최초 진입에서는 현재 조회 선택지를 요청하지 않는다', async () => {
-    const urls: URL[] = [];
-    renderWithProviders(<LotStatusHistoryScreen />, {
-      route: '/quality/lot-status?mode=history',
-      fetch: async (request) => {
-        urls.push(new URL(request.url));
-        return jsonResponse({});
-      },
-    });
+    const { urls } = renderScreen('/quality/lot-status?mode=history', 'ready', holdRoutes());
 
     expect(screen.getByText('보류 사건 이력 조회는 후속 단계에서 연결됩니다.')).toBeVisible();
-    await waitFor(() => expect(urls).toHaveLength(0));
+    await waitFor(() => expect(requestCount(urls, '/app/users')).toBe(1));
+    expect(lastRequest(urls, '/app/users')?.searchParams.get('includeInactive')).toBe('true');
+    for (const path of ['/mdm/code-values', '/mdm/items', '/mdm/warehouses']) {
+      expect(requestCount(urls, path)).toBe(0);
+    }
+  });
+
+  it.each([
+    [200, 3, '일부 행위자만 표시됩니다.'],
+    [500, 2, '행위자 목록을 불러오지 못했습니다.'],
+  ])('행위자 목록 상태 %i를 필터를 감추지 않고 밝힌다', async (status, total, note) => {
+    renderScreen('/quality/lot-status?mode=history', 'ready', holdRoutes(200, status, total));
+
+    expect(await screen.findByText(note)).toBeVisible();
+    expect(screen.getByLabelText('행위자')).toBeVisible();
+  });
+
+  it('이력 초안을 조회할 때만 URL에 적용하고 이력 초기화가 LOT 조건을 보존한다', async () => {
+    const { urls } = renderScreen(
+      '/quality/lot-status?mode=history&lotType=SAMPLE_MATERIAL&page=3&from=2026-08-01&to=2026-08-07&actor=601&historyLot=OLD&historyPage=4',
+      'ready',
+      holdRoutes(),
+    );
+    const user = userEvent.setup();
+
+    await pickRange(user, screen.getByLabelText('기간'), '2026-07-20', '2026-07-25');
+    await choose(user, '행위자', '합성 해제자 (미사용)');
+    await user.clear(screen.getByLabelText('LOT'));
+    await user.type(screen.getByLabelText('LOT'), 'SAMPLE-LOT-001');
+    expect(locationSearch().get('historyLot')).toBe('OLD');
+
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(Object.fromEntries(locationSearch())).toMatchObject({
+      mode: 'history',
+      lotType: 'SAMPLE_MATERIAL',
+      page: '3',
+      from: '2026-07-20',
+      to: '2026-07-25',
+      actor: '602',
+      historyLot: 'SAMPLE-LOT-001',
+    });
+    expect(locationSearch().get('historyPage')).toBeNull();
+    expect(requestCount(urls, '/quality/lot-hold-events')).toBe(0);
+
+    await user.click(screen.getByRole('button', { name: '초기화' }));
+    for (const key of ['from', 'to', 'actor', 'historyLot', 'historyPage']) {
+      expect(locationSearch().get(key)).toBeNull();
+    }
+    expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
+    expect(locationSearch().get('page')).toBe('3');
   });
 
   it('초기화는 현재 모드 조건·쪽·선택만 지우고 이력 조건은 보존한다', async () => {
