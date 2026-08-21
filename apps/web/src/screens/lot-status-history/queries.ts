@@ -1,5 +1,5 @@
 import type { ApiClient, components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -59,6 +59,7 @@ export const useLotStatusList = (
   return useQuery({
     queryKey: lotStatusKeys.list(filters, page),
     enabled: query !== null,
+    placeholderData: keepPreviousData,
     queryFn: () => {
       if (query === null) throw new Error('LOT 유형을 고르기 전에는 목록을 조회하지 않습니다.');
       return fetchLotStatuses(client, query);
