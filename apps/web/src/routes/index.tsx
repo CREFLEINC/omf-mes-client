@@ -12,6 +12,7 @@ import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
+import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
 import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
@@ -240,6 +241,23 @@ export const appRouter = createBrowserRouter([
        * 결재할 수 없는 「결재함」을 노출하면 사용자가 **자기 차례인 요청을 보면서 아무것도
        * 할 수 없다**(정책 §5.2 — 접근 불가능한 경계).
        */
+      /*
+       * W-05-12 — **도메인 05(설비/툴)의 첫 화면이자 주소 앞머리 `/equipment`의 첫 자리다.**
+       *
+       * 앞머리는 **사이드바 섹션(도메인)을 따른다** — 계약 경로는 `/mdm/**`이지만 그것이
+       * 근거가 아니다(기준정보 화면들이 이미 같은 규칙을 쓴다). 한정어 없는 `master`가
+       * 설비 마스터인 이유는 이 섹션의 주어가 「설비」이기 때문이며, 뒤따르는 형제들은
+       * 자기 이름을 붙인다(`tool-master`·`gauge-master`·`work-calendar`…).
+       *
+       * **여섯 PR이 함께 여는 자리다.** 그룹 목록·등록·수정·중지와 설비 목록·등록·수정·중지가
+       * 다 서기 전에는 이 줄을 두지 않았다 — 그룹만 있고 설비를 붙일 수 없는 「설비 마스터」를
+       * 노출하면 사용자가 화면을 열어 놓고 할 일을 할 수 없다(정책 §5.2 — 접근 불가능한 경계).
+       *
+       * ⚠ **점검 항목은 아직 없다.** 이 화면의 범위인지 설계에 물어 두었고(`omf-mes#186`),
+       * 범위라면 별도 슬라이스로 잇는다. 착수 이슈가 적은 범위 — 설비와 설비 그룹 — 는
+       * 이것으로 완결된다.
+       */
+      { path: 'equipment/master', element: <EquipmentMasterScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을

@@ -429,13 +429,19 @@ describe('AppLayout', () => {
    * 기준정보(무엇을 정해 두는가)도 자재창고(물건이 오가는 일)도 시스템 관리(운영 설정)도
    * 아닌, **올라온 결재를 처리하는 일**이라 기존 「승인」 섹션에 그대로 남는다.
    */
-  it('사이드바 섹션이 여섯이고 모든 항목이 그 안에 있다', () => {
+  it('사이드바 섹션이 일곱이고 모든 항목이 그 안에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
-    const sections = ['기준정보', '자재창고', '품질관리', '승인', '알림', '시스템 관리'].map(
-      (label) => within(sidebar).getByText(label).parentElement,
-    );
+    const sections = [
+      '기준정보',
+      '자재창고',
+      '품질관리',
+      '설비/툴',
+      '승인',
+      '알림',
+      '시스템 관리',
+    ].map((label) => within(sidebar).getByText(label).parentElement);
 
     const grouped = sections.flatMap((section) =>
       section === null ? [] : [...section.querySelectorAll('a')],
@@ -562,6 +568,7 @@ describe('AppLayout', () => {
       '/logistics/iqc-skip-approval',
       '/logistics/document-progress',
       '/quality/lot-status',
+      '/equipment/master',
       '/approval/inbox',
       '/notification/center',
       '/system/users-roles',
