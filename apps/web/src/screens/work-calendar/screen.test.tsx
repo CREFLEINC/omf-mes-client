@@ -17,6 +17,9 @@ import { WorkCalendarScreen } from './screen';
 
 const t = messages.workCalendar;
 
+/** 시험이 고정해 쓰는 달. 화면이 오늘을 읽으면 시험이 날짜마다 다른 달을 연다. */
+const TEST_MONTH = { year: 2026, month: 8 } as const;
+
 const isPath = (request: Request, pathname: string): boolean =>
   new URL(request.url).pathname === pathname;
 
@@ -24,6 +27,7 @@ interface RenderOptions {
   respondCalendars?: (request: Request) => Response;
   respondDetail?: (request: Request) => Response;
   respondWrite?: (request: Request) => Response;
+  respondDays?: (request: Request) => Response;
 }
 
 /** 나간 쓰기 하나. 없으면 시험이 거기서 멈추는 편이 낫다 — 다음 단언이 헛통과하지 않는다. */
@@ -41,6 +45,8 @@ const idOf = (request: Request): number => Number(new URL(request.url).pathname.
 const renderScreen = (options: RenderOptions = {}) => {
   const sent: URL[] = [];
   const writes: Request[] = [];
+  /** 일자 조회가 실어 간 조건 — 기간을 반드시 지정하는지 본다 */
+  const dayRequests: URL[] = [];
 
   const defaultDetail = (request: Request): Response => {
     const found = calendarItems.find((item) => item.workCalendarId === idOf(request));
@@ -80,25 +86,45 @@ const renderScreen = (options: RenderOptions = {}) => {
       },
     },
     {
+      match: (request) => new URL(request.url).pathname.endsWith('/days'),
+      respond: (request) => {
+        dayRequests.push(new URL(request.url));
+
+        return (options.respondDays ?? (() => jsonResponse({ items: [] })))(request);
+      },
+    },
+    {
       match: (request) => new URL(request.url).pathname.startsWith('/mdm/work-calendars/'),
       respond: (request) => (options.respondDetail ?? defaultDetail)(request),
     },
   ]);
 
   const user = userEvent.setup();
-  const view = renderWithProviders(<WorkCalendarScreen />, { fetch });
+  /* 달을 인자로 고정한다 — 오늘이 언제든 시험이 같은 달을 연다. */
+  const view = renderWithProviders(<WorkCalendarScreen initialMonth={TEST_MONTH} />, { fetch });
 
-  return { ...view, user, sent, writes };
+  return { ...view, user, sent, writes, dayRequests };
 };
 
 const listPane = () => screen.getByRole('region', { name: t.title });
+const gridPane = () => screen.getByRole('region', { name: t.grid.title });
 const formDialog = () => screen.getByRole('dialog');
 
-const openEditOf = async (
+/** 캘린더를 고른다 — 여는 것이 아니라 고르는 것이다. */
+const selectCalendar = async (
   user: ReturnType<typeof userEvent.setup>,
   code: string,
 ): Promise<void> => {
   await user.click(await screen.findByRole('button', { name: code }));
+};
+
+/** 고른 뒤 그 캘린더의 이름·코드를 고치러 간다. */
+const openEditOf = async (
+  user: ReturnType<typeof userEvent.setup>,
+  code: string,
+): Promise<void> => {
+  await selectCalendar(user, code);
+  await user.click(await screen.findByRole('button', { name: t.actions.editCalendar }));
   await screen.findByRole('dialog', { name: t.form.editTitle });
 };
 
@@ -659,5 +685,242 @@ describe('W-05-09 작업 캘린더 — 사용 중지', () => {
 
     expect(await screen.findByText('지금은 처리할 수 없습니다.')).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: t.retire.title })).toBeInTheDocument();
+  });
+});
+
+/** 일자 설정 응답 하나. **설정이 있는 날만 온다** — 나머지는 「미설정」이다. */
+const dayItem = (calendarDate: string, overrides: Record<string, unknown> = {}) => ({
+  calendarDate,
+  dayTypeCode: 'WORKING',
+  ...overrides,
+});
+
+const cellOf = (date: string) => screen.getByText(String(Number(date.slice(8, 10)))).closest('td');
+
+describe('W-05-09 작업 캘린더 — 달력 그리드', () => {
+  /* ⛔ 캘린더를 고르기 전에는 그릴 것이 없다 — 빈 달력을 세우지 않는다. */
+  it('캘린더를 고르기 전에는 고르라고 말한다', async () => {
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+
+    expect(within(gridPane()).getByText(t.grid.pickCalendar)).toBeInTheDocument();
+    expect(within(gridPane()).queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('고르기 전에는 일자를 조회하지 않는다', async () => {
+    const { dayRequests } = renderScreen();
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+
+    expect(dayRequests).toHaveLength(0);
+  });
+
+  /* ⛔ 계약이 기간을 반드시 요구한다 — 한 해가 365행이라 전량을 내리지 않는다. */
+  it('고르면 보이는 달의 기간을 지정해 조회한다', async () => {
+    const { user, dayRequests } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+
+    await waitFor(() => {
+      expect(dayRequests).toHaveLength(1);
+    });
+
+    const url = dayRequests[0];
+
+    expect(url?.pathname).toBe('/mdm/work-calendars/5001/days');
+    expect(url?.searchParams.get('from')).toBe('2026-08-01');
+    expect(url?.searchParams.get('to')).toBe('2026-08-31');
+  });
+
+  it('고른 캘린더의 이름을 밝힌다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+
+    expect(within(gridPane()).getByText('CAL-A 캘린더')).toBeInTheDocument();
+  });
+
+  /* ⭐ 색만으로 표시하면 색을 보지 못하는 사용자가 어느 캘린더를 보고 있는지 알 수 없다. */
+  it('고른 줄을 `aria-current` 로 밝힌다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+
+    expect(screen.getByRole('button', { name: 'CAL-A' })).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('button', { name: 'CAL-B' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('한 달의 모든 날이 칸으로 선다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    await waitFor(() => {
+      expect(within(gridPane()).getByRole('table')).toBeInTheDocument();
+    });
+
+    expect(within(gridPane()).getByText('1')).toBeInTheDocument();
+    expect(within(gridPane()).getByText('31')).toBeInTheDocument();
+  });
+
+  it('요일 머리글 일곱이 선다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    await waitFor(() => {
+      expect(within(gridPane()).getByRole('table')).toBeInTheDocument();
+    });
+
+    expect(within(gridPane()).getAllByRole('columnheader')).toHaveLength(7);
+  });
+
+  /*
+   * ⭐ **이 슬라이스의 본론** — 설정이 없는 날을 「가동」으로 그리면 실제로 쉬는 날이
+   * 일하는 날로 보인다(G-9).
+   */
+  it('설정이 없는 날은 「미설정」으로 그린다', async () => {
+    const { user } = renderScreen({
+      respondDays: () =>
+        jsonResponse({ items: [dayItem('2026-08-03', { dayTypeCode: 'HOLIDAY' })] }),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+    await waitFor(() => {
+      expect(within(gridPane()).getByRole('table')).toBeInTheDocument();
+    });
+
+    expect(
+      within(cellOf('2026-08-03') as HTMLElement).getByText(t.grid.status.holiday),
+    ).toBeInTheDocument();
+    expect(
+      within(cellOf('2026-08-04') as HTMLElement).getByText(t.grid.status.unset),
+    ).toBeInTheDocument();
+  });
+
+  it('세 상태를 각각 그린다', async () => {
+    const { user } = renderScreen({
+      respondDays: () =>
+        jsonResponse({
+          items: [
+            dayItem('2026-08-03'),
+            dayItem('2026-08-04', { dayTypeCode: 'HOLIDAY' }),
+            dayItem('2026-08-05', {
+              dayTypeCode: 'PARTIAL',
+              startTime: '08:00',
+              endTime: '12:00',
+            }),
+          ],
+        }),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+    await waitFor(() => {
+      expect(within(gridPane()).getByRole('table')).toBeInTheDocument();
+    });
+
+    expect(
+      within(cellOf('2026-08-03') as HTMLElement).getByText(t.grid.status.working),
+    ).toBeInTheDocument();
+    expect(
+      within(cellOf('2026-08-04') as HTMLElement).getByText(t.grid.status.holiday),
+    ).toBeInTheDocument();
+    expect(
+      within(cellOf('2026-08-05') as HTMLElement).getByText(t.grid.status.partial),
+    ).toBeInTheDocument();
+  });
+
+  /* 부분 가동의 시각은 상태만으로 알 수 없는 사실이라 함께 낸다. */
+  it('부분 가동은 시각을 함께 보인다', async () => {
+    const { user } = renderScreen({
+      respondDays: () =>
+        jsonResponse({
+          items: [
+            dayItem('2026-08-05', {
+              dayTypeCode: 'PARTIAL',
+              startTime: '08:00',
+              endTime: '12:00',
+            }),
+          ],
+        }),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+
+    expect(await within(gridPane()).findByText('08:00~12:00')).toBeInTheDocument();
+  });
+
+  it('다음 달로 옮기면 그 달의 기간으로 다시 조회한다', async () => {
+    const { user, dayRequests } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    await waitFor(() => {
+      expect(dayRequests).toHaveLength(1);
+    });
+
+    await user.click(within(gridPane()).getByRole('button', { name: t.grid.nextMonth }));
+
+    await waitFor(() => {
+      expect(dayRequests.at(-1)?.searchParams.get('from')).toBe('2026-09-01');
+    });
+    expect(dayRequests.at(-1)?.searchParams.get('to')).toBe('2026-09-30');
+  });
+
+  it('이전 달로도 옮긴다', async () => {
+    const { user, dayRequests } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    await waitFor(() => {
+      expect(dayRequests).toHaveLength(1);
+    });
+
+    await user.click(within(gridPane()).getByRole('button', { name: t.grid.previousMonth }));
+
+    await waitFor(() => {
+      expect(dayRequests.at(-1)?.searchParams.get('from')).toBe('2026-07-01');
+    });
+  });
+
+  it('지금 보고 있는 달을 밝힌다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+
+    expect(within(gridPane()).getByText(t.grid.monthLabel(2026, 8))).toBeInTheDocument();
+
+    await user.click(within(gridPane()).getByRole('button', { name: t.grid.nextMonth }));
+
+    expect(within(gridPane()).getByText(t.grid.monthLabel(2026, 9))).toBeInTheDocument();
+  });
+
+  it('일자 조회가 실패하면 다시 시도할 자리를 준다', async () => {
+    const { user } = renderScreen({
+      respondDays: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+
+    expect(
+      await within(gridPane()).findByRole('button', { name: messages.common.retry }),
+    ).toBeInTheDocument();
+  });
+
+  /* 고른 캘린더의 이름·코드를 고치러 가는 자리는 목록이 아니라 여기다. */
+  it('고른 캘린더를 그 자리에서 고치러 간다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(gridPane()).getByRole('button', { name: t.actions.editCalendar }));
+
+    expect(await screen.findByRole('dialog', { name: t.form.editTitle })).toBeInTheDocument();
+  });
+
+  it('고르기 전에는 고칠 자리도 없다', async () => {
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+
+    expect(
+      within(gridPane()).queryByRole('button', { name: t.actions.editCalendar }),
+    ).not.toBeInTheDocument();
   });
 });

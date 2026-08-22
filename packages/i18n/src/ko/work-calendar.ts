@@ -8,6 +8,7 @@ export const workCalendar = {
   breadcrumbRoot: '설비/툴',
   actions: {
     addCalendar: '캘린더 등록',
+    editCalendar: '캘린더 수정',
   },
   loading: {
     calendars: '캘린더 목록을 불러오는 중',
@@ -45,6 +46,31 @@ export const workCalendar = {
     applicationNone: '따르는 대상이 없습니다.',
     /** ⛔ 모르는 것을 「0곳」으로 그리지 않는다 — 아직 안 불러온 것과 없는 것은 다르다(G-9). */
     applicationUnknown: '아직 불러오지 못했습니다.',
+  },
+  /**
+   * 달력 그리드. **날짜 선택기가 아니라 한 달을 펼쳐 칸마다 상태를 칠하는 자리**다(스펙 §5).
+   */
+  grid: {
+    title: '일자 설정',
+    loading: '일자 설정을 불러오는 중',
+    /** ⛔ 캘린더를 고르기 전에는 그릴 것이 없다 — 빈 달력을 세우지 않는다. */
+    pickCalendar: '왼쪽에서 캘린더를 고르면 그 달의 일자 설정이 여기 보입니다.',
+    monthLabel: (year: number, month: number): string => `${year}년 ${month}월`,
+    previousMonth: '이전 달',
+    nextMonth: '다음 달',
+    thisMonth: '이번 달',
+    loadFailed: '일자 설정을 불러오지 못했습니다.',
+    weekdays: ['일', '월', '화', '수', '목', '금', '토'],
+    /**
+     * ⭐ **네 갈래를 서로 다른 말로 그린다.** 계약은 설정이 있는 날만 내려 주므로,
+     * 받지 않은 날을 「가동」으로 그리면 **실제로 쉬는 날이 일하는 날로 보인다**(G-9).
+     */
+    status: {
+      unset: '미설정',
+      working: '가동',
+      holiday: '휴무',
+      partial: '부분 가동',
+    },
   },
   retire: {
     title: '캘린더를 사용 중지할까요?',

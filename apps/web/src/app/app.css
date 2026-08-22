@@ -583,3 +583,23 @@ main > * + * {
   white-space: nowrap;
   border: 0;
 }
+
+/*
+ * 달력 그리드의 칸 하나 — 날짜 숫자 · 상태 배지 · 부분 가동 시각이 세로로 쌓인다.
+ *
+ * 한 칸에 셋을 그냥 두면 인라인으로 이어져 날짜와 상태가 한 줄에 붙는다. 칸마다 높이를
+ * 맞춰야 주 행이 들쭉날쭉하지 않으므로 최소 높이를 준다 — 값이 없는 날(미설정)도 같은 높이다.
+ */
+.calendar-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-height: 4.5rem;
+}
+
+.calendar-cell-date {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  color: var(--on-surface-variant);
+}

@@ -20,7 +20,13 @@ export interface CalendarListPaneProps {
   appliedFilters: CalendarFilters;
   onApplyFilters: (next: CalendarFilters) => void;
   onAdd: () => void;
-  onEdit: (calendar: WorkCalendar) => void;
+  /**
+   * 캘린더를 고른다. **여는 것이 아니라 고르는 것이다** — 이 화면의 본론은 고른 캘린더의
+   * 일자 설정이고, 이름·코드 수정은 그 옆에 붙는 일이다.
+   */
+  onSelect: (calendar: WorkCalendar) => void;
+  /** 지금 고른 캘린더. 없으면 `null` */
+  selectedId: number | null;
   loadError: ReactNode;
 }
 
@@ -47,7 +53,8 @@ export const CalendarListPane = ({
   appliedFilters,
   onApplyFilters,
   onAdd,
-  onEdit,
+  onSelect,
+  selectedId,
   loadError,
 }: CalendarListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -84,9 +91,18 @@ export const CalendarListPane = ({
        * 열이 셋뿐이라 이 폭을 줘도 이름 칸이 좁아지지 않는다(브라우저 실측).
        */
       width: '240px',
-      /* 코드가 곧 여는 손잡이다 — 줄마다 「수정」 단추를 세우면 표가 조작으로 덮인다. */
+      /*
+       * 코드가 곧 고르는 손잡이다 — 줄마다 단추를 세우면 표가 조작으로 덮인다.
+       * ⭐ **지금 고른 줄을 `aria-current` 로 밝힌다** — 색만으로 표시하면 색을 보지 못하는
+       * 사용자가 어느 캘린더의 일자를 보고 있는지 알 수 없다.
+       */
       render: (row) => (
-        <button type="button" className="link-cell" onClick={() => onEdit(row)}>
+        <button
+          type="button"
+          className="link-cell"
+          aria-current={row.workCalendarId === selectedId ? 'true' : undefined}
+          onClick={() => onSelect(row)}
+        >
           {row.calendarCode}
         </button>
       ),
