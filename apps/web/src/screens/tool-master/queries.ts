@@ -16,11 +16,7 @@ export interface ToolListResponse {
 export const toolKeys = {
   all: ['tools'] as const,
   list: (filters: ToolFilters) => ['tools', 'list', filters] as const,
-  detail: (moldId: number) => ['tools', 'detail', moldId] as const,
 };
-
-/** 상세 경로. **잠금 토큰이 이 경로에 보관된다** — 쓰기 경로로 꺼내면 늘 비어 있다. */
-export const toolDetailPath = (moldId: number): string => `/mdm/molds/${String(moldId)}`;
 
 /** 조회 조건의 공장을 숫자로 읽는다. 읽을 수 없으면 조건이 없는 것으로 다룬다. */
 const plantIdQuery = (value: string): { plantId: number } | Record<string, never> => {

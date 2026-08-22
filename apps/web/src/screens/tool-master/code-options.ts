@@ -27,21 +27,11 @@ export const CODE_GROUPS = {
 } as const;
 
 /**
- * 자산이 살아 있음을 뜻하는 코드값. **선택지가 아니라 판정에 쓰는 값**이라 이름을 갖는다.
- * ⭐ 설계가 확정해 알려 준 값이다(`omf-mes#185`) — 화면이 지어낸 값이 아니다.
- */
-export const IN_SERVICE_STATUS_CODE = 'IN_SERVICE';
-
-/**
- * 자산이 끝났음을 뜻하는 코드값.
- * ⛔ 값을 늘리지 않는다 — 고장·보전중·비가동은 트랜잭션이 만드는 조건이지 자산 상태가
- * 아니다(공유계약 A-14). 계약도 「운용 또는 폐기 두 값」이라고 못박았다.
- */
-export const DISPOSED_STATUS_CODE = 'DISPOSED';
-
-/**
  * 예방보전을 무엇으로 판정하는가. **계약이 네 값과 뜻을 함께 못박았다** — 화면이 지어낸
  * 값이 아니라 계약을 옮긴 것이다.
+ *
+ * ⭐ **닫힌 집합이라 통째로 든다** — 지금 목록이 쓰는 것은 「하지 않음」 하나뿐이지만,
+ * 넷 중 셋만 적어 두면 나머지 하나가 어디서 왔는지 알 수 없는 문자열이 된다.
  */
 export const PM_TRIGGER = {
   shot: 'SHOT',
@@ -123,20 +113,18 @@ export const lookupLabel = (
 export const selectableOptions = (
   entries: readonly { value: string; label: string; isActive: boolean }[],
   selected: string,
-): CodeOption[] => {
-  const kept = entries
-    .filter((entry) => entry.isActive || entry.value === selected)
-    .map((entry) => ({
-      value: entry.value,
-      label: entry.isActive
-        ? entry.label
-        : `${entry.label}${messages.toolMaster.values.inactiveSuffix}`,
-    }));
-
-  return selected === '' || kept.some((option) => option.value === selected)
-    ? kept
-    : [...kept, { value: selected, label: selected }];
-};
+): CodeOption[] =>
+  ensureOption(
+    entries
+      .filter((entry) => entry.isActive || entry.value === selected)
+      .map((entry) => ({
+        value: entry.value,
+        label: entry.isActive
+          ? entry.label
+          : `${entry.label}${messages.toolMaster.values.inactiveSuffix}`,
+      })),
+    selected,
+  );
 
 /**
  * 정렬 선택지. **계약이 정한 세 값이며 뜻도 계약이 적었다** — 화면이 늘리지 않는다.
