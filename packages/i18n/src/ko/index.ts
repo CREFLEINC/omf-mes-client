@@ -51,6 +51,7 @@ import { notificationCenter } from './notification-center';
 import { iqcInspection } from './iqc-inspection';
 import { equipmentMaster } from './equipment-master';
 import { qualityApproval } from './quality-approval';
+import { productionOrder } from './production-order';
 
 export const ko = {
   common,
@@ -90,6 +91,7 @@ export const ko = {
   iqcInspection,
   equipmentMaster,
   qualityApproval,
+  productionOrder,
 } as const;
 
 export type Messages = typeof ko;
