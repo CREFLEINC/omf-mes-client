@@ -907,6 +907,100 @@ describe('W-05-11 계측기 마스터 — 등록·수정', () => {
     });
   });
 
+  /* 등록에는 낙관적 잠금이 없다 — 아직 아무도 고칠 수 없는 것에 「누가 먼저 고쳤나」는 없다. */
+  it('등록은 POST 로 나가고 잠금 토큰을 싣지 않는다', async () => {
+    const { user, writes } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+    await user.click(within(listPane()).getByRole('button', { name: t.actions.addGauge }));
+
+    await user.type(within(form()).getByLabelText(/계측기번호/), 'GA-77');
+    await user.type(within(form()).getByLabelText(/계측기명/), '새 계측기');
+    await user.click(within(form()).getByRole('combobox', { name: /공장/ }));
+    await user.click(await screen.findByRole('option', { name: '제1공장' }));
+    await user.click(within(form()).getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    const request = onlyWrite(writes);
+    expect(request.method).toBe('POST');
+    expect(request.headers.get('If-Match')).toBeNull();
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+
+    const body = (await request.json()) as Record<string, unknown>;
+    expect(body.plantId).toBe(11);
+    expect(body.equipmentCode).toBe('GA-77');
+  });
+
+  /* 저장하고 나면 목록이 옛 값을 그리고 있으면 안 된다 — 무효화가 그것을 막는다. */
+  it('저장이 끝나면 목록을 다시 읽는다', async () => {
+    let saved = false;
+    const { user } = renderScreen({
+      respondGauges: () =>
+        jsonResponse(
+          gaugesResponse([
+            saved ? makeGauge(3003, 'GA-03', { equipmentName: '고친 이름' }) : gaugeValid,
+          ]),
+        ),
+      respondWrite: () => {
+        saved = true;
+        return jsonResponse(gaugeValid);
+      },
+    });
+
+    await openEdit(user, 'GA-03');
+    await user.clear(within(form()).getByLabelText(/계측기명/));
+    await user.type(within(form()).getByLabelText(/계측기명/), '고친 이름');
+    await user.click(within(form()).getByRole('button', { name: messages.common.save }));
+
+    expect(await screen.findByRole('cell', { name: '고친 이름' })).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ 인라인으로 그릴 자리가 없는 칸의 오류를 「인라인」으로 분류하면 **어디에도 서지 않는다.**
+   * 검교정 대상은 스위치라 오류 자리가 없으므로 배너로 올라와야 한다.
+   */
+  it('오류 자리가 없는 칸의 서버 오류는 배너로 올린다', async () => {
+    const { user } = renderScreen({
+      respondWrite: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'calibrationRequired',
+                code: 'INVALID',
+                message: '검교정 대상은 이 유형에서 바꿀 수 없습니다.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+    });
+
+    await openEdit(user, 'GA-03');
+    await user.click(within(form()).getByRole('button', { name: messages.common.save }));
+
+    expect(
+      await within(form()).findByText('검교정 대상은 이 유형에서 바꿀 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  /* 잠금 토큰을 못 얻으면 **보내지 않는다** — 빈 If-Match 는 계약 위반이라 서버가 400을 준다. */
+  it('상세를 못 읽으면 저장을 시작하지 않고 그 사실을 알린다', async () => {
+    const { user, writes } = renderScreen({
+      respondDetail: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
+    });
+
+    await openEdit(user, 'GA-03');
+    await user.click(within(form()).getByRole('button', { name: messages.common.save }));
+
+    expect(await within(form()).findByText(messages.save.staleToken)).toBeInTheDocument();
+    expect(writes).toHaveLength(0);
+  });
+
   it('저장이 끝나면 창을 닫는다', async () => {
     const { user } = renderScreen();
 

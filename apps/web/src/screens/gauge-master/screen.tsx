@@ -49,11 +49,13 @@ export interface GaugeMasterScreenProps {
   today?: string;
 }
 
-/** 창이 무엇을 다루는지. 닫혀 있으면 `null`. */
-interface DialogState {
-  mode: 'create' | 'edit';
-  equipmentId: number | null;
-}
+/**
+ * 창이 무엇을 다루는지. 닫혀 있으면 `null`.
+ *
+ * ⭐ **「수정인데 대상이 없다」를 타입으로 없앤다.** 한 모양으로 두면 그 있을 수 없는 상태를
+ * 부르는 자리마다 `?? 0` 같은 **닿지 않는 기본값**으로 막게 되고, 그 값은 틀려도 아무도 모른다.
+ */
+type DialogState = { mode: 'create' } | { mode: 'edit'; equipmentId: number };
 
 /**
  * W-05-11 계측기 마스터 관리.
@@ -77,7 +79,8 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
   const cycleValues = useCodeValues(CODE_GROUPS.cycleType);
 
   /* 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰도 코드 편집 가부도 없다. */
-  const detail = useGaugeDetail(dialog?.equipmentId ?? null);
+  const editingId = dialog?.mode === 'edit' ? dialog.equipmentId : null;
+  const detail = useGaugeDetail(editingId);
 
   const items = gauges.data?.items ?? NO_ITEMS;
   const listTruncated = gauges.data !== undefined && isTruncated(gauges.data.page, items.length);
@@ -135,7 +138,7 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
           })
         : client.PUT('/mdm/equipments/{equipmentId}', {
             params: {
-              path: { equipmentId: dialog?.equipmentId ?? 0 },
+              path: { equipmentId: editingId ?? 0 },
               header: {
                 'Idempotency-Key': headers['Idempotency-Key'],
                 'If-Match': headers['If-Match'] ?? '',
@@ -147,7 +150,8 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
               detail.data?.editability.codeEditable ?? false,
             ),
           }),
-    etagPath: isCreate || dialog?.equipmentId == null ? null : gaugeDetailPath(dialog.equipmentId),
+    /* 잠금 토큰은 상세 경로에 보관돼 있다. 등록에는 낙관적 잠금이 없다. */
+    etagPath: editingId === null ? null : gaugeDetailPath(editingId),
     invalidateKeys: [gaugeKeys.all],
     knownFields: GAUGE_FORM_FIELDS,
     onSuccess: () => {
@@ -177,7 +181,7 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
     resetIfIdle();
     setLocalErrors({});
     setValues(emptyFormValues(filters.plantId));
-    setDialog({ mode: 'create', equipmentId: null });
+    setDialog({ mode: 'create' });
   };
 
   const openEdit = (gauge: Equipment): void => {

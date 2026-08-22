@@ -5,15 +5,18 @@ import type { GaugeFormValues } from './types';
 const t = messages.gaugeMaster.validation;
 
 /**
- * 폼이 소유한 입력칸 이름. 서버가 준 필드 오류를 인라인으로 낼지 배너로 올릴지 가르는
- * 기준이며, 목록에 없는 필드명은 삼키지 않고 배너로 간다.
+ * 서버가 준 필드 오류를 **인라인으로 낼 수 있는** 칸 이름. 목록에 없는 필드명은 삼키지 않고
+ * 배너로 간다.
+ *
+ * ⛔ **오류를 그릴 자리가 없는 칸을 여기 넣지 않는다.** 넣으면 그 오류는 인라인으로 분류된
+ * 뒤 아무 데도 그려지지 않아 **어디에도 표시되지 않는 오류**가 된다 — 배너로 갔으면 보였을
+ * 것이다. `calibrationRequired`(스위치)가 그 경우라 일부러 빠져 있다.
  */
 export const GAUGE_FORM_FIELDS: readonly string[] = [
   'equipmentCode',
   'equipmentName',
   'equipmentTypeCode',
   'plantId',
-  'calibrationRequired',
   'calibrationCycleTypeCode',
   'calibrationCycleInterval',
   'precisionValue',
