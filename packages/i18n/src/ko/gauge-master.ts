@@ -66,6 +66,32 @@ export const gaugeMaster = {
     cycleNeedsCalibration: '검교정 대상으로 지정하면 주기를 입력할 수 있습니다.',
     statusOwnedElsewhere: '운용상태는 사용 중지·폐기 처리로 바뀝니다.',
     calibrationDateOwnedElsewhere: '검교정 일자는 검교정 이력 등록에서 정합니다.',
+    alreadyInactive: '이미 사용 중지된 계측기입니다.',
+    alreadyDisposed: '이미 폐기된 계측기입니다.',
+    /**
+     * ⚠ 자산 상태 값 목록에 폐기 코드가 없으면 **이미 폐기된 자산인지 판정할 수 없다.**
+     * 판정 없이 버튼을 열면 이미 끝난 자산에도 눌리는 컨트롤이 된다. 시드가 들어오면
+     * 이 잠금은 저절로 풀린다(설계 `omf-mes#182`).
+     */
+    disposeUnavailable: '자산 상태 값 목록이 아직 준비되지 않아 폐기 처리를 할 수 없습니다.',
+  },
+  retire: {
+    deactivateTitle: '계측기를 사용 중지할까요?',
+    /** 중지해도 그 계측기가 남긴 검교정 기록은 그대로다 — 감추는 것과 지우는 것은 다르다. */
+    deactivateImpact:
+      '이 계측기가 남긴 검교정 기록은 그대로 남고, 새로 고를 때만 목록에서 빠집니다.',
+    deactivateNotReversibleHere:
+      '삭제하지 않습니다. 다만 이 화면에는 다시 켜는 수단이 없어, 되돌리려면 담당자에게 요청해야 합니다.',
+    deactivateConfirm: '사용 중지',
+    disposeTitle: '폐기 처리할까요?',
+    /** 사용 중지와 «다른 축» 이다 — 그것은 감추는 것이고 이것은 자산이 끝난 것이다. */
+    disposeImpact:
+      '사용 중지와 다른 처리입니다. 사용 중지는 목록에서 감추는 것이고, 폐기는 자산이 끝난 것입니다.',
+    disposeNotReversible: '되돌릴 수 없습니다. 폐기한 뒤에는 다시 불러와도 편집이 풀리지 않습니다.',
+    disposeConfirm: '폐기 처리',
+    target: (label: string): string => `${label} 을(를) 처리합니다.`,
+    deactivateTarget: (label: string): string => `${label} 을(를) 사용 중지합니다.`,
+    disposeTarget: (label: string): string => `${label} 을(를) 폐기 처리합니다.`,
   },
   fields: {
     plant: '공장',

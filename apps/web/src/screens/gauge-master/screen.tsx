@@ -12,10 +12,12 @@ import {
   selectableOptions,
   toCodeLabels,
 } from './code-options';
+import { deactivateAvailability, disposeAvailability } from './asset-actions';
 import { GaugeFormDialog } from './gauge-form-dialog';
 import { GaugeListPane } from './gauge-list-pane';
 import { GAUGE_FORM_FIELDS, validateGauge } from './gauge-validation';
 import { LoadErrorBanner } from './load-error-banner';
+import { RetireConfirmDialog } from './retire-confirm-dialog';
 import {
   carriedFrom,
   emptyCarriedValues,
@@ -58,6 +60,44 @@ export interface GaugeMasterScreenProps {
 type DialogState = { mode: 'create' } | { mode: 'edit'; equipmentId: number };
 
 /**
+ * 되돌릴 수 없는 자산 조작 하나(사용 중지·폐기)의 쓰기.
+ *
+ * ⛔ **멱등 키 수명은 기본값(`per-attempt`)이 맞다** — 되돌릴 수 없는 쓰기인데도 그렇다.
+ * 부품이 「**본문이 빈 액션**에 `until-applied` 를 쓰지 말라」고 정했다: 보낼 값이 없으면
+ * 「값이 바뀌면 새 키」가 성립하지 않아, 다른 화면에서 원인을 고치고 돌아와 다시 눌러도
+ * 같은 키가 나가 **영영 성공할 수 없다.**
+ */
+const useRetireWrite = (
+  action: 'deactivate' | 'dispose',
+  equipmentId: number | null,
+  onDone: () => void,
+) => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<void, Equipment>({
+    request: (_variables, headers) => {
+      const params = {
+        path: { equipmentId: equipmentId ?? 0 },
+        header: {
+          'Idempotency-Key': headers['Idempotency-Key'],
+          'If-Match': headers['If-Match'] ?? '',
+        },
+      };
+
+      return action === 'deactivate'
+        ? client.POST('/mdm/equipments/{equipmentId}:deactivate', { params })
+        : client.POST('/mdm/equipments/{equipmentId}:dispose', { params });
+    },
+    /* 잠금 토큰은 상세 경로에 보관돼 있다 — 요청 경로(`...:dispose`)로 꺼내면 늘 비어 있다. */
+    etagPath: equipmentId === null ? null : gaugeDetailPath(equipmentId),
+    invalidateKeys: [gaugeKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: onDone,
+  });
+};
+
+/**
  * W-05-11 계측기 마스터 관리.
  *
  * ⭐ **계측기 전용 경로가 없다** — 설비 목록을 `equipmentTypeCode` 로 거른다(스펙 §3-2).
@@ -71,6 +111,8 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [values, setValues] = useState<GaugeFormValues>(() => emptyFormValues(''));
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+  /** 확인 창이 떠 있는가. 두 조작이 같은 창을 쓰되 말은 각자 갖는다 */
+  const [retiring, setRetiring] = useState<'deactivate' | 'dispose' | null>(null);
 
   const gauges = useGaugeList(filters);
   const plants = usePlantLookup();
@@ -160,39 +202,67 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
     },
   });
 
+  const deactivateWrite = useRetireWrite('deactivate', editingId, () => {
+    /* 창은 열어 둔다 — 중지된 계측기도 이름·주기는 계속 고칠 수 있다. */
+    void detail.refetch();
+    setRetiring(null);
+    toast.show({ variant: 'success', description: messages.common.saved });
+  });
+
+  const disposeWrite = useRetireWrite('dispose', editingId, () => {
+    /*
+     * ⛔ **창도 함께 닫는다.** 폐기된 자산은 편집이 풀리지 않으므로, 열린 폼을 남기면
+     * 사용자가 고칠 수 있다고 믿고 치다가 저장에서 거절당한다.
+     */
+    setRetiring(null);
+    setDialog(null);
+    toast.show({ variant: 'success', description: messages.common.saved });
+  });
+
   /**
    * **끝난 쓰기만 거둔다.** 나가는 중인 요청을 `reset()` 으로 끊으면 그 요청의 되먹임
    * (성공 뒤 창 닫기, 실패 뒤 오류 표시)이 통째로 사라져, 화면은 아무 일도 없었다고 믿고
    * 서버는 이미 처리한 상태가 된다(client#96 · 조회 도구가 관찰자를 떼면 `onSuccess` 가
    * 영영 오지 않는다).
    *
-   * ⚠ **지금 이 화면에서는 이 가드에 닿는 길이 없다** — 저장 중에는 「취소」가 잠기고
-   * 창 밖은 스크림이 막으며 목록은 창 뒤에 있다. 뮤테이션으로도 죽지 않는다(P13).
-   * 그래도 지운다면 슬라이스 ③(사용 중지·폐기)에서 **닿는 길이 생기는 순간** 조용히
-   * 되살아날 결함이라, 형제 화면과 같은 모양으로 남겨 둔다.
+   * ⚠ **jsdom 에서는 이 가드에 닿는 길이 없다** — 쓰기가 나가는 동안 「취소」와 확인 창의
+   * 버튼이 모두 잠기고, 스크림은 막혀 있으며, 목록은 창 뒤에 있다. 그래서 뮤테이션으로 죽지
+   * 않는다(P13 · 사용 중지·폐기를 더한 뒤에도 그대로 · S8).
+   *
+   * **브라우저에서는 Escape 로 닿는다** — native `<dialog>` 의 `cancel` 이 닫기로 이어지고
+   * 그것은 잠글 수 없다(브라우저 확인 ② 7항). 즉 실제로는 닿는 길이 있고 jsdom 이 그 사건을
+   * 만들지 못하는 것이다. 형제 화면과 같은 모양으로 남겨 둔다.
    */
-  const resetIfIdle = (): void => {
-    if (write.isSaving) return;
+  const resetIfIdle = (target: { isSaving: boolean; reset: () => void }): void => {
+    if (target.isSaving) return;
 
-    write.reset();
+    target.reset();
+  };
+
+  /** 편집 중이던 것을 통째로 거둔다 — 인라인 오류와 저장 실패 배너. */
+  const resetEditing = (): void => {
+    resetIfIdle(write);
+    resetIfIdle(deactivateWrite);
+    resetIfIdle(disposeWrite);
   };
 
   const openCreate = (): void => {
-    resetIfIdle();
+    resetEditing();
     setLocalErrors({});
     setValues(emptyFormValues(filters.plantId));
     setDialog({ mode: 'create' });
   };
 
   const openEdit = (gauge: Equipment): void => {
-    resetIfIdle();
+    resetEditing();
     setLocalErrors({});
     setValues(formValuesFrom(gauge));
     setDialog({ mode: 'edit', equipmentId: gauge.equipmentId });
   };
 
   const closeDialog = (): void => {
-    resetIfIdle();
+    resetEditing();
+    setRetiring(null);
     setDialog(null);
   };
 
@@ -219,6 +289,11 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
 
     write.write(values);
   };
+
+  const gauge = detail.data?.equipment ?? null;
+  const deactivate = deactivateAvailability(gauge?.isActive ?? false);
+  const dispose = disposeAvailability(gauge?.statusCode ?? null, statusOptions);
+  const retireWriteInFlight = retiring === 'dispose' ? disposeWrite : deactivateWrite;
 
   const codeLockReason =
     dialog?.mode === 'edit' && detail.data !== undefined
@@ -290,8 +365,47 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
           lastCalibrationDate={detail.data?.equipment.lastCalibrationDate ?? null}
           calibrationDueDate={detail.data?.equipment.calibrationDueDate ?? null}
           isSaving={write.isSaving}
+          deactivate={deactivate}
+          dispose={dispose}
           onClose={closeDialog}
           onSave={save}
+          onDeactivate={() => {
+            resetIfIdle(deactivateWrite);
+            setRetiring('deactivate');
+          }}
+          onDispose={() => {
+            resetIfIdle(disposeWrite);
+            setRetiring('dispose');
+          }}
+        />
+      )}
+
+      {retiring !== null && gauge !== null && (
+        <RetireConfirmDialog
+          title={retiring === 'dispose' ? t.retire.disposeTitle : t.retire.deactivateTitle}
+          targetNote={
+            retiring === 'dispose'
+              ? t.retire.disposeTarget(`${gauge.equipmentCode} · ${gauge.equipmentName}`)
+              : t.retire.deactivateTarget(`${gauge.equipmentCode} · ${gauge.equipmentName}`)
+          }
+          impactNote={retiring === 'dispose' ? t.retire.disposeImpact : t.retire.deactivateImpact}
+          reversibilityNote={
+            retiring === 'dispose'
+              ? t.retire.disposeNotReversible
+              : t.retire.deactivateNotReversibleHere
+          }
+          confirmLabel={
+            retiring === 'dispose' ? t.retire.disposeConfirm : t.retire.deactivateConfirm
+          }
+          isSaving={retireWriteInFlight.isSaving}
+          banner={
+            <SaveErrorBanner
+              error={retireWriteInFlight.error}
+              onReload={() => void detail.refetch()}
+            />
+          }
+          onClose={() => setRetiring(null)}
+          onConfirm={() => retireWriteInFlight.write(undefined)}
         />
       )}
     </div>

@@ -26,6 +26,15 @@ export const CODE_GROUPS = {
  */
 export const IN_SERVICE_STATUS_CODE = 'IN_SERVICE';
 
+/**
+ * 자산이 끝났음을 뜻하는 코드값. **선택지가 아니라 판정에 쓰는 값**이라 이름을 갖는다.
+ *
+ * ⭐ 설계가 값을 확정해 알려 준 것이다(`omf-mes#185`) — 화면이 지어낸 값이 아니다.
+ * ⛔ 값을 늘리지 않는다 — 고장·보전중·비가동은 트랜잭션이 만드는 조건이지 자산 상태가
+ * 아니다(공유계약 A-14). 늘리면 여러 화면이 한 컬럼을 두고 경합한다.
+ */
+export const DISPOSED_STATUS_CODE = 'DISPOSED';
+
 /** 화면을 처음 열었을 때의 조회 조건. */
 export const defaultGaugeFilters: GaugeFilters = {
   q: '',

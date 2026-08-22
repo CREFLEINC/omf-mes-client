@@ -1082,3 +1082,185 @@ describe('W-05-11 계측기 마스터 — 나가는 중인 쓰기', () => {
     expect(await screen.findByText(messages.common.saved)).toBeInTheDocument();
   });
 });
+
+describe('W-05-11 계측기 마스터 — 사용 중지·폐기', () => {
+  const form = () => screen.getByRole('dialog');
+
+  const openEdit = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
+    await user.click(await screen.findByRole('button', { name: code }));
+    return screen.findByRole('dialog');
+  };
+
+  const confirmDialog = async (title: string) =>
+    (await screen.findByRole('dialog', { name: title })) as HTMLElement;
+
+  it('사용 중지는 확인을 거쳐 나간다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+    await user.click(within(form()).getByRole('button', { name: t.retire.deactivateConfirm }));
+
+    const confirm = await confirmDialog(t.retire.deactivateTitle);
+    expect(within(confirm).getByText(t.retire.deactivateNotReversibleHere)).toBeInTheDocument();
+    expect(writes).toHaveLength(0);
+
+    await user.click(within(confirm).getByRole('button', { name: t.retire.deactivateConfirm }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    expect(new URL(onlyWrite(writes).url).pathname).toMatch(/:deactivate$/);
+  });
+
+  it('폐기는 확인을 거쳐 나가고 되돌릴 수 없다고 말한다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+    await user.click(within(form()).getByRole('button', { name: t.retire.disposeConfirm }));
+
+    const confirm = await confirmDialog(t.retire.disposeTitle);
+    expect(within(confirm).getByText(t.retire.disposeNotReversible)).toBeInTheDocument();
+
+    await user.click(within(confirm).getByRole('button', { name: t.retire.disposeConfirm }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    expect(new URL(onlyWrite(writes).url).pathname).toMatch(/:dispose$/);
+  });
+
+  /* 두 처리의 무게가 다르다 — 창이 한 벌을 굳히면 그 차이가 사라진다. */
+  it('두 확인 창이 서로 다른 말을 한다', async () => {
+    const { user } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+    await user.click(within(form()).getByRole('button', { name: t.retire.deactivateConfirm }));
+    const off = await confirmDialog(t.retire.deactivateTitle);
+    expect(within(off).queryByText(t.retire.disposeNotReversible)).not.toBeInTheDocument();
+
+    await user.click(within(off).getByRole('button', { name: messages.common.cancel }));
+    await user.click(within(form()).getByRole('button', { name: t.retire.disposeConfirm }));
+
+    const dispose = await confirmDialog(t.retire.disposeTitle);
+    expect(
+      within(dispose).queryByText(t.retire.deactivateNotReversibleHere),
+    ).not.toBeInTheDocument();
+  });
+
+  it('잠금 토큰과 멱등 키를 실어 보낸다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+    await user.click(within(form()).getByRole('button', { name: t.retire.disposeConfirm }));
+    const confirm = await confirmDialog(t.retire.disposeTitle);
+    await user.click(within(confirm).getByRole('button', { name: t.retire.disposeConfirm }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    expect(onlyWrite(writes).headers.get('If-Match')).toBe('9');
+    expect(onlyWrite(writes).headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  /* ⭐ 감추지 않고 잠그고 사유를 붙인다 — 사라진 버튼은 「원래 없는 기능」과 구분되지 않는다. */
+  it('이미 사용 중지된 계측기는 중지 버튼을 잠그고 사유를 밝힌다', async () => {
+    const off = makeGauge(3040, 'GA-40', { isActive: false });
+    const { user } = renderScreen({
+      respondGauges: () => jsonResponse(gaugesResponse([off])),
+      respondDetail: () => jsonResponse(gaugeDetail(off), { headers: { ETag: '9' } }),
+    });
+
+    await openEdit(user, 'GA-40');
+
+    await waitFor(() => {
+      expect(
+        within(form()).getByRole('button', { name: t.retire.deactivateConfirm }),
+      ).toBeDisabled();
+    });
+    expect(within(form()).getByText(t.actionReasons.alreadyInactive)).toBeInTheDocument();
+  });
+
+  it('이미 폐기된 계측기는 폐기 버튼을 잠그고 사유를 밝힌다', async () => {
+    const gone = makeGauge(3041, 'GA-41', { statusCode: 'DISPOSED' });
+    const { user } = renderScreen({
+      respondGauges: () => jsonResponse(gaugesResponse([gone])),
+      respondDetail: () => jsonResponse(gaugeDetail(gone), { headers: { ETag: '9' } }),
+    });
+
+    await openEdit(user, 'GA-41');
+
+    await waitFor(() => {
+      expect(within(form()).getByRole('button', { name: t.retire.disposeConfirm })).toBeDisabled();
+    });
+    expect(within(form()).getByText(t.actionReasons.alreadyDisposed)).toBeInTheDocument();
+  });
+
+  /* 시드가 아직 없으면 값 목록이 빈다(설계 omf-mes#182) — 판정 없이 버튼을 열지 않는다. */
+  it('자산 상태 값 목록이 없으면 폐기를 잠그고 사유를 밝힌다', async () => {
+    const { user } = renderScreen({
+      respondCodeValues: () => jsonResponse(codeValuesResponse([])),
+    });
+
+    await openEdit(user, 'GA-03');
+
+    await waitFor(() => {
+      expect(within(form()).getByRole('button', { name: t.retire.disposeConfirm })).toBeDisabled();
+    });
+    expect(within(form()).getByText(t.actionReasons.disposeUnavailable)).toBeInTheDocument();
+  });
+
+  it('등록 창에는 사용 중지·폐기가 없다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+    await user.click(within(listPane()).getByRole('button', { name: t.actions.addGauge }));
+
+    expect(
+      within(form()).queryByRole('button', { name: t.retire.deactivateConfirm }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(form()).queryByRole('button', { name: t.retire.disposeConfirm }),
+    ).not.toBeInTheDocument();
+  });
+
+  /* ⭐ 폐기된 자산은 편집이 풀리지 않는다 — 열린 폼을 남기면 고칠 수 있다고 믿는다. */
+  it('폐기가 끝나면 폼 창도 함께 닫는다', async () => {
+    const { user } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+    await user.click(within(form()).getByRole('button', { name: t.retire.disposeConfirm }));
+    const confirm = await confirmDialog(t.retire.disposeTitle);
+    await user.click(within(confirm).getByRole('button', { name: t.retire.disposeConfirm }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  /* 사용 중지는 다르다 — 중지된 계측기도 이름·주기는 계속 고칠 수 있다. */
+  it('사용 중지가 끝나도 폼 창은 남는다', async () => {
+    const { user } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+    await user.click(within(form()).getByRole('button', { name: t.retire.deactivateConfirm }));
+    const confirm = await confirmDialog(t.retire.deactivateTitle);
+    await user.click(within(confirm).getByRole('button', { name: t.retire.deactivateConfirm }));
+
+    expect(await screen.findByText(messages.common.saved)).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('실패하면 확인 창을 닫지 않고 이유를 보인다', async () => {
+    const { user } = renderScreen({
+      respondWrite: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
+    });
+
+    await openEdit(user, 'GA-03');
+    await user.click(within(form()).getByRole('button', { name: t.retire.disposeConfirm }));
+    const confirm = await confirmDialog(t.retire.disposeTitle);
+    await user.click(within(confirm).getByRole('button', { name: t.retire.disposeConfirm }));
+
+    expect(await within(confirm).findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.retire.disposeTitle })).toBeInTheDocument();
+  });
+});

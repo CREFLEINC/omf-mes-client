@@ -19,6 +19,8 @@
  * .form-actions-secondary  사유가 붙은 보조 액션만 줄 왼쪽 끝으로(규범 4)
  * .wide-select  값이 긴 코드를 고르는 선택칸에 최소 폭을 준다(옵트인 · 규범 3-2)
  *               DS 선택지 목록이 트리거 폭에 갇혀 잘리는 것의 임시 우회 — design-system-v2-webui#62
+ * .dialog-scroll 창 본문이 길 때 «본문만» 스크롤시켜 바닥 액션이 화면 밖으로 밀리는 것을 막는다
+ *               임시 우회 — design-system-v2-webui#78
  * .field-label  DS가 라벨을 내장하지 않는 컨트롤(Select 등)에 직접 붙이는 라벨
  * .field-note   필드 아래 보조 안내 텍스트(비활성 사유·선택지 준비 중 등)
  * .field-error  필드 아래 오류 텍스트
@@ -514,4 +516,23 @@ main > * + * {
 .notification-card-time {
   margin-left: auto;
   color: var(--on-surface-muted);
+}
+
+/*
+ * 창 본문이 길 때 **본문만** 스크롤시킨다.
+ *
+ * DS `Dialog`는 자기 높이를 `max-height`로 묶어 두지만 안쪽 패널이 그 높이에 맞춰 줄지도
+ * 스크롤하지도 않는다(`overflow-y: hidden` · 실측). 그래서 본문이 상한을 넘으면 패널이
+ * 창 밖으로 흘러 **바닥의 「저장」·「취소」가 뷰포트 아래로 밀려나 누를 수 없게 된다.**
+ * 창을 열어 둔 채로는 화면이 스크롤되지도 않아 빠져나갈 길이 없다.
+ *
+ * 60vh는 머리(약 4.5rem)와 바닥(약 4.5rem)을 빼고도 창이 상한 안에 들어오는 값이다.
+ * 뷰포트에 비례하므로 작은 화면에서도 같은 규율이 선다.
+ *
+ * **임시 우회다.** 걷어내는 시점: design-system-v2-webui#78(창 본문이 남는 높이에 맞춰
+ * 스크롤한다)가 반영된 뒤.
+ */
+.dialog-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
 }
