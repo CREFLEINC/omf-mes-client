@@ -1720,6 +1720,33 @@ describe('W-05-09 작업 캘린더 — 해석 미리보기', () => {
     expect(rows[2]).toHaveTextContent(t.effective.hasApplication);
   });
 
+  /*
+   * ⛔ **경로 표의 값은 설비가 아니라 «층의 대상»이다** — 설비 그룹이거나 공장이다.
+   * 「설비」라 적으면 사용자가 설비 이름을 찾다가 그룹 이름을 보고 혼란스러워한다.
+   */
+  it('경로 표의 칸 이름이 「대상」이다', async () => {
+    const { user } = renderScreen({
+      respondEffective: () =>
+        jsonResponse({
+          equipmentId: 3001,
+          equipmentName: '프레스 1호기',
+          calendarCode: 'CAL-A',
+          resolvedFromLevelCode: 'PLANT',
+          steps: [
+            { levelCode: 'PLANT', targetId: 11, targetName: '제1공장', hasApplication: true },
+          ],
+        }),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(effectivePane()).getByRole('combobox', { name: /설비/ }));
+    await user.click(await screen.findByRole('option', { name: '프레스 1호기' }));
+
+    const headers = await within(effectivePane()).findAllByRole('columnheader');
+
+    expect(headers.map((header) => header.textContent)).toContain(t.effective.stepTarget);
+  });
+
   /* ⛔ 어느 층에도 지정이 없으면 「없다」 — 「모른다」와 다른 사실이다. */
   it('어느 층에도 지정이 없으면 그 사실을 밝힌다', async () => {
     const { user } = renderScreen({

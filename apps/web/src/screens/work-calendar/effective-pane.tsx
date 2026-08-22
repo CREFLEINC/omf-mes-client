@@ -46,7 +46,8 @@ export const EffectivePane = ({
       width: '160px',
       render: (row) => levelLabel(row.levelCode),
     },
-    { key: 'targetName', header: t.equipment },
+    /* ⛔ 이 칸은 설비가 아니라 «층의 대상»이다 — 설비 그룹이거나 공장이다. */
+    { key: 'targetName', header: t.stepTarget },
     {
       key: 'hasApplication',
       header: '',
