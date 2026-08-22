@@ -1588,6 +1588,47 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
   });
 
   /*
+   * ⭐ **낡은 값을 되돌려 보내지 않는다.** 목록은 캐시라 낡을 수 있고, 낡은 주기를 되돌려
+   * 보내면 그 사이 계측기 마스터가 정한 값을 **덮어쓴다** — 잠금 토큰은 상세에서 온 최신이라
+   * **충돌로도 걸리지 않는다.** 목록과 상세가 다른 값을 줄 때 상세를 실어야 한다.
+   */
+  it('되돌려 보낼 값을 목록이 아니라 상세에서 뜬다', async () => {
+    const user = userEvent.setup();
+    const staleRow = makeEquipment(2001, 'EQ-01', {
+      calibrationCycleTypeCode: 'DAY',
+      calibrationCycleInterval: 1,
+      precisionValue: 0.5,
+    });
+    const freshDetail = makeEquipment(2001, 'EQ-01', {
+      calibrationCycleTypeCode: 'MONTH',
+      calibrationCycleInterval: 12,
+      precisionValue: 0.01,
+    });
+    const { writes } = renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([staleRow])),
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(freshDetail), { headers: { ETag: '9' } }),
+    });
+
+    await openEquipment(user);
+    const nameInput = equipmentForm().getByRole('textbox', {
+      name: new RegExp(t.fields.equipmentName),
+    });
+    await user.clear(nameInput);
+    await user.type(nameInput, '프레스 1호기');
+    await user.click(equipmentForm().getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    await expect(lastWriteBody(writes)).resolves.toMatchObject({
+      calibrationCycleTypeCode: 'MONTH',
+      calibrationCycleInterval: 12,
+      precisionValue: 0.01,
+    });
+  });
+
+  /*
    * ⭐ 이 화면이 소유하지 않는 값(주기·정밀도)을 그대로 되돌려 보낸다. PUT 이 전체 교체라
    * 빼면 계측기 마스터가 정한 것이 지워진다 — 보이지도 고치지도 않지만 지우지도 않는다.
    */
