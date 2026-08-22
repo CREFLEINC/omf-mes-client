@@ -9,7 +9,12 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { DEFAULT_PRODUCTION_ORDER_FILTERS } from './filters';
-import { productionOrderKeys, useProductionOrderDetail, useProductionOrderList } from './queries';
+import {
+  productionOrderKeys,
+  toProductionOrderFact,
+  useProductionOrderDetail,
+  useProductionOrderList,
+} from './queries';
 
 const LIST_PATH = '/planning/production-orders';
 const DETAIL_PATH = '/planning/production-orders/202';
@@ -38,6 +43,18 @@ const recordingFetch = (route: StubRoute): { fetch: StubFetch; urls: URL[] } => 
     },
   };
 };
+
+describe('toProductionOrderFact', () => {
+  it('목록과 상세가 공유하는 선택적 계약 필드의 안전한 fact를 만든다', () => {
+    expect(toProductionOrderFact(productionOrder(101))).toMatchObject({
+      erpOrderNo: null,
+      parentProductionOrderId: null,
+      bomLevel: 0,
+      plantId: null,
+      dueDate: null,
+    });
+  });
+});
 
 describe('useProductionOrderList', () => {
   it('빈 조건도 실제 목록으로 보내고 서버 순서·쪽 정보를 보존한다', async () => {

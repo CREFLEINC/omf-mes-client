@@ -136,6 +136,44 @@ describe('production-order reference lookups', () => {
     expect(result.current.plants.entries).toEqual([]);
     expect(result.current.uoms.isError).toBe(false);
   });
+
+  it('UOM 실패가 성공한 plant lookup을 실패로 바꾸지 않는다', async () => {
+    const { fetch } = recordingFetch([
+      {
+        match: (request) => isExactly(request, PLANTS_PATH),
+        respond: () =>
+          jsonResponse({
+            items: [
+              {
+                plantId: 3101,
+                legalEntityId: 1101,
+                businessUnitId: 2101,
+                plantCode: 'PLANT-SYN-01',
+                plantName: 'Synthetic Plant One',
+                timezoneCode: 'Asia/Seoul',
+                isActive: true,
+              },
+            ],
+            page: { page: 1, size: 25, total: 1 },
+          }),
+      },
+      {
+        match: (request) => isExactly(request, UOMS_PATH),
+        respond: () => jsonResponse({ message: 'synthetic UOM failure' }, { status: 500 }),
+      },
+    ]);
+    const { result } = renderHookWithProviders(
+      () => ({ plants: usePlantReferenceLookup(), uoms: useUomReferenceLookup() }),
+      { fetch },
+    );
+
+    await waitFor(() => expect(result.current.uoms.isError).toBe(true));
+
+    expect(result.current.plants).toMatchObject({
+      entries: [{ value: '3101', label: 'PLANT-SYN-01 · Synthetic Plant One' }],
+      isError: false,
+    });
+  });
 });
 
 describe('resolveReference', () => {

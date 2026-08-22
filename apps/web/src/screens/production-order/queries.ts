@@ -20,7 +20,7 @@ export const productionOrderKeys = {
     ['production-orders', 'detail', productionOrderId] as const,
 };
 
-const toFact = (order: ProductionOrder): ProductionOrderFact => ({
+export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFact => ({
   productionOrderId: order.productionOrderId,
   productionOrderNo: order.productionOrderNo,
   erpOrderNo: order.erpOrderNo ?? null,
@@ -38,7 +38,7 @@ const toListResponse = (response: {
   items: ProductionOrder[];
   page: ProductionOrderListResponse['page'];
 }): ProductionOrderListResponse => ({
-  items: response.items.map(toFact),
+  items: response.items.map(toProductionOrderFact),
   page: response.page,
 });
 
@@ -77,7 +77,7 @@ export const useProductionOrderDetail = (
         client.GET('/planning/production-orders/{productionOrderId}', {
           params: { path: { productionOrderId } },
         }),
-      ).then(toFact);
+      ).then(toProductionOrderFact);
     },
   });
 };
