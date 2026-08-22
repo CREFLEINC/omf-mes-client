@@ -74,23 +74,37 @@ export const makeGauge = (
   ...overrides,
 });
 
+/** 검교정 대상이 아닌 계측기 — 정상이라 결을 두지 않는다. */
+export const gaugeNotRequired = makeGauge(3001, 'GA-01');
+
+/** 대상인데 아직 한 번도 안 한 계측기 — **채워야 할 것**이다. */
+export const gaugeNeverCalibrated = makeGauge(3002, 'GA-02', { calibrationRequired: true });
+
+/** 유효한 계측기. */
+export const gaugeValid = makeGauge(3003, 'GA-03', {
+  calibrationRequired: true,
+  calibrationCycleTypeCode: 'MONTH',
+  calibrationCycleInterval: 3,
+  lastCalibrationDate: '2026-01-05',
+  calibrationDueDate: '2026-04-05',
+});
+
+/** 만료된 계측기. */
+export const gaugeExpired = makeGauge(3004, 'GA-04', {
+  calibrationRequired: true,
+  lastCalibrationDate: '2025-02-01',
+  calibrationDueDate: '2026-02-01',
+});
+
 /**
  * ⭐ **검교정 네 모양을 한 벌에 담는다** — 대상 아님 · 아직 안 함 · 유효 · 만료.
  * 넷이 같은 목록에 서야 「아직 안 함」과 「대상 아님」이 갈리는지 볼 수 있다.
  */
 export const gaugeItems: Equipment[] = [
-  makeGauge(3001, 'GA-01'),
-  makeGauge(3002, 'GA-02', { calibrationRequired: true }),
-  makeGauge(3003, 'GA-03', {
-    calibrationRequired: true,
-    lastCalibrationDate: '2026-01-05',
-    calibrationDueDate: '2026-04-05',
-  }),
-  makeGauge(3004, 'GA-04', {
-    calibrationRequired: true,
-    lastCalibrationDate: '2025-02-01',
-    calibrationDueDate: '2026-02-01',
-  }),
+  gaugeNotRequired,
+  gaugeNeverCalibrated,
+  gaugeValid,
+  gaugeExpired,
 ];
 
 export const gaugesResponse = (items: Equipment[] = gaugeItems) => ({
@@ -117,7 +131,54 @@ export const statusCodeValues: CodeValue[] = [
   makeCodeValue('RETIRED_CODE', '쓰지 않는 상태', false),
 ];
 
+export const cycleCodeValues: CodeValue[] = [
+  makeCodeValue('DAY', '일'),
+  makeCodeValue('MONTH', '개월'),
+  makeCodeValue('YEAR', '년'),
+];
+
 export const codeValuesResponse = (items: CodeValue[] = statusCodeValues) => ({
   items,
   page: pageOf(items),
+});
+
+type Uom = components['schemas']['Uom'];
+
+/** ⭐ `decimalScale` 이 다르다 — 정밀도 입력칸의 자릿수 판정이 단위마다 갈린다. */
+export const uomItems: Uom[] = [
+  { uomId: 1001, uomCode: 'MM', uomName: '밀리미터', decimalScale: 2, isActive: true },
+  { uomId: 1002, uomCode: 'UM', uomName: '마이크로미터', decimalScale: 0, isActive: true },
+  { uomId: 1003, uomCode: 'OLD', uomName: '쓰지 않는 단위', decimalScale: 3, isActive: false },
+];
+
+export const uomsResponse = (items: Uom[] = uomItems) => ({
+  items,
+  page: pageOf(items),
+});
+
+type EquipmentDetailResponse = components['schemas']['EquipmentDetailResponse'];
+type Editability = components['schemas']['Editability'];
+
+export const editableCode: Editability = { codeEditable: true, reason: 'EDITABLE' };
+
+/** 참조가 있어 코드가 잠긴 상태. 건수는 서버가 준 값을 그대로 쓴다. */
+export const lockedCode: Editability = {
+  codeEditable: false,
+  reason: 'REFERENCED',
+  referenceCount: 3,
+};
+
+export const gaugeDetail = (
+  gauge: Equipment,
+  overrides: Partial<EquipmentDetailResponse> = {},
+): EquipmentDetailResponse => ({
+  equipment: gauge,
+  editability: editableCode,
+  hierarchy: {
+    plantName: '제1공장',
+    groupNames: [],
+    equipmentName: gauge.equipmentName,
+    groupAssigned: gauge.productionLineId !== null && gauge.productionLineId !== undefined,
+  },
+  ...overrides,
 });
