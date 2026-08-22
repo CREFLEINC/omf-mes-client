@@ -13,7 +13,7 @@ import {
   usesShotAxis,
 } from './code-options';
 import { SelectField } from './select-field';
-import { availableShots, shotUsage } from './shot-counts';
+import { availableShots, shotUsage, type ShotTarget } from './shot-counts';
 import { countText, figureText, ratioText } from './shot-text';
 import type { ToolFormValues } from './types';
 
@@ -66,12 +66,8 @@ export interface ToolFormDialogProps {
   statusCode: string | null;
   statusOptions: CodeOption[];
   currentShotCount: number | null;
-  /** 사용 가능 타수·초과율의 근거가 되는 서버 값. 셈은 서버가 한다 */
-  figures: {
-    guaranteedShotCount?: number | null;
-    availableShotCount?: number | null;
-    shotUsageRatio?: number | null;
-  } | null;
+  /** 사용 가능 타수·초과율의 근거가 되는 서버 값. **셈은 서버가 한다** */
+  figures: ShotTarget | null;
   lastPmDate: string | null;
   nextPmDate: string | null;
   /** 이 툴로 발행된 라벨 회차 수. 코드가 잠긴 이유를 사용자가 잇게 한다 */
