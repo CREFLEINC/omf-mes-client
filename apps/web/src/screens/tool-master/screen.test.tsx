@@ -32,6 +32,7 @@ interface RenderOptions {
   respondCodeValues?: () => Response;
   respondDetail?: (request: Request) => Response;
   respondWrite?: (request: Request) => Response;
+  respondImport?: (request: Request) => Response;
 }
 
 /** 나간 쓰기 하나. 없으면 시험이 거기서 멈추는 편이 낫다 — 다음 단언이 헛통과하지 않는다. */
@@ -65,6 +66,16 @@ const renderScreen = (options: RenderOptions = {}) => {
   };
 
   const fetch = createStubFetch([
+    {
+      match: (request) => isPath(request, '/mdm/molds:import'),
+      respond: (request) => {
+        writes.push(request.clone());
+
+        return (options.respondImport ?? (() => jsonResponse({ succeeded: 2, failed: [] })))(
+          request,
+        );
+      },
+    },
     {
       match: (request) => isPath(request, '/mdm/molds') && request.method !== 'GET',
       respond: (request) => {
@@ -1393,5 +1404,258 @@ describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
 
     expect(await screen.findByText('지금은 처리할 수 없습니다.')).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: t.retire.disposeTitle })).toBeInTheDocument();
+  });
+});
+
+const excelFile = (name = 'tools.xlsx'): File =>
+  new File(['자료'], name, {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+
+const openImport = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await screen.findByRole('cell', { name: 'TL-01' });
+  await user.click(within(listPane()).getByRole('button', { name: t.actions.importTools }));
+  await screen.findByRole('dialog', { name: t.import.title });
+};
+
+describe('W-05-13 툴 마스터 — 엑셀 올리기', () => {
+  /*
+   * ⭐ **되돌리지 않는다는 사실을 올리기 «전에» 말한다.** 성공한 행은 들어가고 실패한 행만
+   * 돌아온다 — 결과를 본 뒤에 알려 주면 늦다.
+   */
+  it('올리기 전에 통째로 되돌리지 않는다는 것을 말한다', async () => {
+    const { user } = renderScreen();
+
+    await openImport(user);
+
+    expect(screen.getByText(t.import.partialWarningTitle)).toBeInTheDocument();
+    expect(screen.getByText(t.import.partialWarning)).toBeInTheDocument();
+  });
+
+  /* ⭐ 마스터 행이 생겼다고 현장에 라벨이 나가는 것이 아니다(스펙 §6). */
+  it('올리기가 라벨을 발행하지 않는다는 것을 말한다', async () => {
+    const { user } = renderScreen();
+
+    await openImport(user);
+
+    expect(screen.getByText(t.import.noLabelNote)).toBeInTheDocument();
+  });
+
+  /* 감추지 않고 잠그고 사유를 말한다(G-2). */
+  it('파일을 고르기 전에는 올리기를 잠그고 사유를 말한다', async () => {
+    const { user } = renderScreen();
+
+    await openImport(user);
+
+    expect(screen.getByRole('button', { name: t.import.submit })).toBeDisabled();
+    expect(screen.getByText(t.import.fileRequired)).toBeInTheDocument();
+    expect(screen.getByText(t.import.fileNone)).toBeInTheDocument();
+  });
+
+  /* 이름이 없으면 무엇을 올리는지 모른 채 되돌릴 수 없는 쓰기를 누르게 된다. */
+  it('고른 파일의 이름을 보인다', async () => {
+    const { user } = renderScreen();
+
+    await openImport(user);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile('대장.xlsx'));
+
+    expect(screen.getByText('대장.xlsx')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.import.submit })).toBeEnabled();
+  });
+
+  it('파일을 multipart 로 싣고 멱등 키를 붙인다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openImport(user);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile('대장.xlsx'));
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+
+    await waitFor(() => {
+      expect(writes.length).toBe(1);
+    });
+
+    const request = onlyWrite(writes);
+
+    expect(request.method).toBe('POST');
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+    /* 올리기에는 낙관적 잠금이 없다 — 계약이 If-Match 를 요구하지 않는다. */
+    expect(request.headers.get('If-Match')).toBeNull();
+
+    /*
+     * ⚠ **본문은 형태만 본다.** jsdom 의 `File` 이 undici 의 `Request` 를 만나면 파일 이름과
+     * 바이트가 실리지 않는다(두 구현이 서로의 `File` 을 알아보지 못한다) — 실제 파일이 실려
+     * 나가는 것은 **브라우저 확인**에서 본다. 여기서 지키는 것은 계약이 정한 두 가지다:
+     * 본문을 JSON 으로 직렬화하지 않았고, 부분의 이름이 `file` 이다.
+     */
+    expect(request.headers.get('Content-Type')).toMatch(/^multipart\/form-data;/);
+    expect(await request.text()).toContain('name="file"');
+  });
+
+  /*
+   * ⭐ **성공과 실패를 둘 다 보인다.** 성공만 보이면 실패한 행이 없는 것처럼 읽히고,
+   * 실패만 보이면 이미 들어간 행을 모르고 파일을 통째로 다시 올린다.
+   */
+  it('결과에 성공 건수와 실패 건수를 함께 보인다', async () => {
+    const { user } = renderScreen({
+      respondImport: () =>
+        jsonResponse({
+          succeeded: 2,
+          failed: [
+            {
+              index: 0,
+              key: 'TL-90',
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'moldCode',
+                  code: 'DUP',
+                  message: '이미 쓰는 코드입니다.',
+                },
+              ],
+            },
+          ],
+        }),
+    });
+
+    await openImport(user);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByText(t.import.succeeded(2))).toBeInTheDocument();
+    expect(screen.getByText(t.import.failed(1))).toBeInTheDocument();
+  });
+
+  /* ⭐ 계약은 「머리글 제외 0부터」이고 사람이 세는 것은 1부터다. */
+  it('실패한 줄을 1부터 세어 보이고 무엇을 센 것인지 밝힌다', async () => {
+    const { user } = renderScreen({
+      respondImport: () =>
+        jsonResponse({
+          succeeded: 0,
+          failed: [
+            {
+              index: 0,
+              key: 'TL-90',
+              errors: [
+                { scope: 'field', field: 'moldCode', code: 'A', message: '코드가 비었습니다.' },
+              ],
+            },
+            {
+              index: 4,
+              errors: [
+                { scope: 'field', field: 'moldName', code: 'B', message: '이름이 비었습니다.' },
+              ],
+            },
+          ],
+        }),
+    });
+
+    await openImport(user);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByRole('cell', { name: t.import.rowLabel(1) })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: t.import.rowLabel(5) })).toBeInTheDocument();
+    expect(screen.getByText(t.import.rowNote)).toBeInTheDocument();
+  });
+
+  /* ⛔ 없는 식별값을 지어내지 않는다 — 「없다」는 사실을 말한다(G-9). */
+  it('식별값이 없는 실패 행은 그 사실을 말한다', async () => {
+    const { user } = renderScreen({
+      respondImport: () =>
+        jsonResponse({
+          succeeded: 0,
+          failed: [
+            {
+              index: 1,
+              errors: [
+                { scope: 'field', field: 'moldName', code: 'B', message: '이름이 비었습니다.' },
+              ],
+            },
+          ],
+        }),
+    });
+
+    await openImport(user);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByRole('cell', { name: t.import.keyUnknown })).toBeInTheDocument();
+  });
+
+  /* 결과를 봐야 다음 판단을 한다 — 창을 닫으면 무엇이 들어갔는지 알 수 없다. */
+  it('결과가 와도 창을 닫지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await openImport(user);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByText(t.import.succeeded(2))).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.import.title })).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **앞 결과는 방금 고른 파일을 설명하지 않는다.** 남겨 두면 새 파일의 결과로 읽혀,
+   * 실패한 줄을 이미 고친 줄로 착각한다.
+   */
+  it('새 파일을 고르면 앞 결과를 거둔다', async () => {
+    const { user } = renderScreen();
+
+    await openImport(user);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile('첫판.xlsx'));
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+    await screen.findByText(t.import.succeeded(2));
+
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile('둘째판.xlsx'));
+
+    expect(screen.queryByText(t.import.succeeded(2))).not.toBeInTheDocument();
+    expect(screen.getByText('둘째판.xlsx')).toBeInTheDocument();
+  });
+
+  it('성공하면 목록을 다시 읽는다', async () => {
+    const { user, sent } = renderScreen();
+
+    await openImport(user);
+    const before = sent.length;
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+    await screen.findByText(t.import.succeeded(2));
+
+    await waitFor(() => {
+      expect(sent.length).toBeGreaterThan(before);
+    });
+  });
+
+  it('파일을 읽을 수 없으면 이유를 보이고 창을 닫지 않는다', async () => {
+    const { user } = renderScreen({
+      respondImport: () =>
+        jsonResponse(
+          { errors: [{ scope: 'screen', code: 'BAD_FILE', message: '파일을 읽을 수 없습니다.' }] },
+          { status: 400 },
+        ),
+    });
+
+    await openImport(user);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByText('파일을 읽을 수 없습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.import.title })).toBeInTheDocument();
+  });
+
+  /* 권한 부족은 다시 올려도 같은 답이 온다 — 「최신 불러오기」를 두지 않는다(G-23). */
+  it('권한이 없으면 이유만 보이고 다시 불러오기를 권하지 않는다', async () => {
+    const { user } = renderScreen({
+      respondImport: () => jsonResponse({ message: '권한 없음' }, { status: 403 }),
+    });
+
+    await openImport(user);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: messages.conflict.reloadAction }),
+    ).not.toBeInTheDocument();
   });
 });

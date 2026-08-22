@@ -12,10 +12,12 @@ import {
   referenceNote,
 } from './asset-actions';
 import { CODE_GROUPS, defaultToolFilters, selectableOptions, toCodeLabels } from './code-options';
+import type { BatchResult } from './import-result';
 import { LoadErrorBanner } from './load-error-banner';
 import { RetireConfirmDialog } from './retire-confirm-dialog';
 import { emptyFormValues, formValuesFrom, toToolCreate, toToolUpdate } from './mappers';
 import { ToolFormDialog } from './tool-form-dialog';
+import { ToolImportDialog } from './tool-import-dialog';
 import { ToolListPane } from './tool-list-pane';
 import { TOOL_FORM_FIELDS, validateTool } from './tool-validation';
 import {
@@ -40,6 +42,53 @@ const NO_ITEMS: never[] = [];
  * 부르는 자리마다 `?? 0` 같은 **닿지 않는 기본값**으로 막게 되고, 그 값은 틀려도 아무도 모른다.
  */
 type DialogState = { mode: 'create' } | { mode: 'edit'; moldId: number };
+
+/**
+ * 엑셀 올리기 본문.
+ *
+ * ⚠ **생성된 타입이 `file: string` 이다** — openapi-typescript 가 `format: binary` 를 문자열로
+ * 옮기기 때문이고, 실제로 보내야 하는 것은 `File` 이다. 계약이 틀린 것이 아니라 **옮기는
+ * 도구의 한계**라 형 단언이 필요하고, 그 단언을 **여기 한 곳에 가둔다.**
+ *
+ * `FormData` 를 그대로 넘기면 계약 클라이언트가 직렬화하지 않고 `Content-Type` 도 붙이지
+ * 않는다 — 경계 문자열은 브라우저가 정해야 한다.
+ */
+const toImportBody = (file: File): { file: string } => {
+  const form = new FormData();
+
+  form.append('file', file);
+
+  return form as unknown as { file: string };
+};
+
+/**
+ * 엑셀 올리기 쓰기.
+ *
+ * ⛔ **멱등 키 수명을 `until-applied` 로 두면 안 된다.** 그 수명은 「보낼 값이 바뀌면 새 키」로
+ * 성립하는데, 부품이 값의 지문을 `JSON.stringify` 로 만들고 **`File` 은 그것으로 `{}` 가 된다** —
+ * 다른 파일을 골라도 같은 지문이라 같은 키가 나가고, 서버는 앞 파일의 결과를 되돌려 준다.
+ * 기본값(`per-attempt`)이 맞다.
+ *
+ * ⚠ 그 대신 **통째로 되돌리지 않는다는 사실을 창이 올리기 전에 말한다** — 실패한 뒤 다시
+ * 올리는 것이 중복 등록이 될 수 있음을 사용자가 알고 눌러야 한다.
+ */
+const useToolImport = (onDone: (result: BatchResult) => void) => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<File, BatchResult>({
+    request: (file, headers) =>
+      client.POST('/mdm/molds:import', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body: toImportBody(file),
+      }),
+    /* 올리기에는 낙관적 잠금이 없다 — 계약이 If-Match 를 요구하지 않는다. */
+    etagPath: null,
+    invalidateKeys: [toolKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: onDone,
+  });
+};
 
 /**
  * 되돌릴 수 없는 자산 조작 하나(사용 중지·폐기)의 쓰기.
@@ -97,6 +146,11 @@ export const ToolMasterScreen = () => {
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   /** 확인 창이 떠 있는가. 두 조작이 같은 창을 쓰되 말은 각자 갖는다 */
   const [retiring, setRetiring] = useState<'deactivate' | 'dispose' | null>(null);
+  /** 엑셀 올리기 창이 떠 있는가 */
+  const [importing, setImporting] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  /** 서버가 돌려준 올리기 결과. 아직 안 올렸으면 `null` */
+  const [importResult, setImportResult] = useState<BatchResult | null>(null);
 
   const tools = useToolList(filters);
   const plants = usePlantLookup();
@@ -166,6 +220,11 @@ export const ToolMasterScreen = () => {
     setRetiring(null);
     setDialog(null);
     toast.show({ variant: 'success', description: messages.common.saved });
+  });
+
+  const importWrite = useToolImport((result) => {
+    /* ⭐ **창을 닫지 않는다** — 성공한 행과 실패한 행을 사용자가 봐야 다음 판단을 한다. */
+    setImportResult(result);
   });
 
   /**
@@ -282,6 +341,12 @@ export const ToolMasterScreen = () => {
         statusOptions={statusOptions}
         onAdd={openCreate}
         onEdit={openEdit}
+        onImport={() => {
+          resetIfIdle(importWrite);
+          setImportFile(null);
+          setImportResult(null);
+          setImporting(true);
+        }}
         loadError={
           tools.isError ? (
             <LoadErrorBanner error={toApiError(tools.error)} onRetry={() => void tools.refetch()} />
@@ -354,6 +419,33 @@ export const ToolMasterScreen = () => {
           }
           onClose={() => setRetiring(null)}
           onConfirm={() => retireWriteInFlight.write(undefined)}
+        />
+      )}
+      {importing && (
+        <ToolImportDialog
+          file={importFile}
+          onSelectFile={(file) => {
+            setImportFile(file);
+            /*
+             * ⭐ **앞 결과를 거둔다.** 그 결과는 방금 고른 파일을 설명하지 않는다 —
+             * 남겨 두면 새 파일의 결과로 읽혀, 실패한 줄을 이미 고친 줄로 착각한다.
+             */
+            setImportResult(null);
+            resetIfIdle(importWrite);
+          }}
+          result={importResult}
+          /* 「최신 불러오기」를 주지 않는다 — 올리기에는 다시 읽어 풀릴 잠금 토큰이 없다(G-23). */
+          banner={<SaveErrorBanner error={importWrite.error} />}
+          isSaving={importWrite.isSaving}
+          onClose={() => {
+            resetIfIdle(importWrite);
+            setImporting(false);
+          }}
+          onSubmit={() => {
+            if (importFile === null) return;
+
+            importWrite.write(importFile);
+          }}
         />
       )}
     </div>
