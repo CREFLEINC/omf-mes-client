@@ -65,4 +65,19 @@ export const workOrder = {
       notSelectedDescription: '목록에서 작업지시를 선택하면 자원 배정 내용을 확인할 수 있습니다.',
     },
   },
+  planFieldsPane: {
+    pane: '작업지시 계획 필드',
+    heading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
+    card: '계획',
+    fields: {
+      plannedStartAtLocal: '계획 시작',
+      plannedEndAtLocal: '계획 종료',
+      priorityNo: '우선순위',
+    },
+    warning: '계획 시작과 계획 종료가 모두 있어야 자원 겹침을 확인할 수 있습니다.',
+    empty: {
+      notSelectedTitle: '계획을 확인할 작업지시를 선택하세요.',
+      notSelectedDescription: '목록에서 작업지시를 선택하면 계획 정보를 확인할 수 있습니다.',
+    },
+  },
 } as const;
