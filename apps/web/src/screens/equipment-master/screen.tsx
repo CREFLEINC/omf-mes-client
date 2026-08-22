@@ -485,9 +485,26 @@ export const EquipmentMasterScreen = () => {
     },
   });
 
+  /**
+   * 설비 상세를 다시 받아 잠금 토큰을 갱신한다.
+   *
+   * ⭐ **저장 충돌을 푸는 유일한 길이다.** 배너가 「최신 내용을 불러온 뒤 다시 저장하세요」라고
+   * 말하면서 누를 자리를 두지 않으면, 사용자는 무엇을 해야 하는지 듣고도 할 수 없다 —
+   * 「다시 시도하세요」라고 말하는 갈래에는 반드시 누를 자리가 있어야 한다.
+   */
+  const reloadEquipmentDetail = () => {
+    void equipmentDetail.refetch();
+  };
+
   /** 폐기할 설비. 닫혀 있으면 `null`. */
   const [disposeTarget, setDisposeTarget] = useState<Equipment | null>(null);
 
+  /**
+   * ⛔ **되돌릴 수 없는 쓰기다.** 그런데도 멱등 키 수명은 기본값(`per-attempt`)이 맞다 —
+   * `useMasterWrite` 가 「**본문이 빈 액션**에 `until-applied` 를 쓰지 말라」고 정했다.
+   * 보낼 값이 없으면 「값이 바뀌면 새 키」가 성립하지 않아, 다른 화면에서 원인을 고치고
+   * 돌아와 다시 눌러도 같은 키가 나가 **영영 성공할 수 없다.**
+   */
   const disposeWrite = useMasterWrite<void, Equipment>({
     request: (_variables, headers) =>
       client.POST('/mdm/equipments/{equipmentId}:dispose', {
@@ -951,7 +968,7 @@ export const EquipmentMasterScreen = () => {
           impactNote={t.dispose.impact}
           reversibilityNote={t.dispose.notReversible}
           isSaving={disposeWrite.isSaving}
-          banner={<SaveErrorBanner error={disposeWrite.error} />}
+          banner={<SaveErrorBanner error={disposeWrite.error} onReload={reloadEquipmentDetail} />}
           onClose={() => setDisposeTarget(null)}
           onConfirm={() => disposeWrite.write(undefined)}
         />
@@ -967,7 +984,12 @@ export const EquipmentMasterScreen = () => {
           impactNote={t.deactivate.equipmentImpact}
           reversibilityNote={t.deactivate.notReversibleHere}
           isSaving={equipmentDeactivateWrite.isSaving}
-          banner={<SaveErrorBanner error={equipmentDeactivateWrite.error} />}
+          banner={
+            <SaveErrorBanner
+              error={equipmentDeactivateWrite.error}
+              onReload={reloadEquipmentDetail}
+            />
+          }
           onClose={() => setDeactivateTarget(null)}
           onConfirm={() => equipmentDeactivateWrite.write(undefined)}
         />

@@ -2042,6 +2042,38 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
     expect(screen.queryByRole('dialog', { name: t.equipmentForm.editTitle })).toBeNull();
   });
 
+  /*
+   * ⭐ **「최신 내용을 불러오세요」라고 말하면 누를 자리가 있어야 한다.** 저장 충돌은 상세를
+   * 다시 받아 잠금 토큰을 갱신하면 풀리는데, 그 길을 주지 않으면 사용자는 무엇을 해야 하는지
+   * 듣고도 할 수 없다.
+   */
+  it('폐기가 저장 충돌에 막히면 다시 불러올 길을 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      respondDispose: () =>
+        jsonResponse(
+          { conflictCause: 'user', message: '다른 사용자가 먼저 고쳤습니다' },
+          { status: 409 },
+        ),
+    });
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const form = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+    await user.click(await form.findByRole('button', { name: t.actions.disposeEquipment }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: disposeT.title })).getByRole('button', {
+        name: disposeT.confirm,
+      }),
+    );
+
+    const dialog = within(await screen.findByRole('dialog', { name: disposeT.title }));
+    expect(await dialog.findByText(messages.conflict.user)).toBeInTheDocument();
+    expect(
+      dialog.getByRole('button', { name: messages.conflict.reloadAction }),
+    ).toBeInTheDocument();
+  });
+
   /* ⭐ 기본은 운용 중인 것만 부른다(설계 omf-mes#185). */
   it('목록이 기본으로 운용 중인 설비만 부른다', async () => {
     const user = userEvent.setup();
