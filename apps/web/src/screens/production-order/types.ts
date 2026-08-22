@@ -16,3 +16,8 @@ export interface PageMeta {
   size: number;
   total: number;
 }
+
+export interface SelectOption {
+  value: string;
+  label: string;
+}
