@@ -1,0 +1,37 @@
+export const productionOrder = {
+  fields: {
+    productionOrderNo: 'P/O 번호',
+    erpProductionOrderNo: 'ERP 원번호',
+    item: '품목',
+    orderedQty: '주문수량·단위',
+    dueDate: '납기일',
+    statusCode: '상태',
+  },
+  panes: { list: '생산 P/O 목록' },
+  actions: {
+    select: (orderNo: string): string => `${orderNo} 선택`,
+    expand: (orderNo: string): string => `${orderNo} 하위 P/O 펼치기`,
+    collapse: (orderNo: string): string => `${orderNo} 하위 P/O 접기`,
+    firstPage: '첫 쪽으로',
+    prevPage: '이전',
+    nextPage: '다음',
+  },
+  values: {
+    missingErpOrderNo: 'ERP 원번호 없음',
+    missingItemLabel: '품목 표시명 없음',
+    missingDueDate: '납기일 없음',
+  },
+  loading: '생산 P/O 목록 불러오는 중',
+  empty: {
+    title: '표시할 생산 P/O가 없습니다',
+    description: '조회 조건을 바꿔 다시 확인하세요.',
+    beyondTitle: '이 쪽에 표시할 생산 P/O가 없습니다',
+    beyondDescription: '첫 쪽으로 돌아가 생산 P/O를 확인하세요.',
+  },
+  page: {
+    label: '생산 P/O 쪽 이동',
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    total: (total: number): string => `전체 ${String(total)}건`,
+  },
+} as const;
