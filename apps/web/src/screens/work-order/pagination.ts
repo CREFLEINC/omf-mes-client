@@ -34,6 +34,8 @@ export const toWorkOrderPageView = (
     canNext: total > 0 && page < totalPages,
     isBeyondLast,
     rangeLabel:
-      safeShown === 0 || isBeyondLast ? t.page.total(total) : t.page.range(start, end, total),
+      total === 0 || safeShown === 0 || isBeyondLast
+        ? t.page.total(total)
+        : t.page.range(start, end, total),
   };
 };

@@ -39,8 +39,8 @@ describe('toWorkOrderPageView', () => {
     expect(toWorkOrderPageView(meta, shown)).toEqual({ ...flags, rangeLabel });
   });
 
-  it('preserves a valid server page for zero results so a caller can recover', () => {
-    expect(toWorkOrderPageView({ page: 7, size: 20, total: 0 }, 0)).toEqual({
+  it('preserves a valid server page for zero results without an inverted range', () => {
+    expect(toWorkOrderPageView({ page: 7, size: 20, total: 0 }, 5)).toEqual({
       page: 7,
       canFirst: true,
       canPrev: true,
@@ -50,17 +50,47 @@ describe('toWorkOrderPageView', () => {
     });
   });
 
-  it('normalizes invalid page metadata and clamps shown rows without inventing a page request', () => {
-    expect(toWorkOrderPageView({ page: 0, size: 0, total: -1 }, Number.NaN)).toEqual({
-      page: 1,
-      canFirst: false,
-      canPrev: false,
-      canNext: false,
-      isBeyondLast: false,
-      rangeLabel: t.page.total(0),
-    });
-    expect(toWorkOrderPageView({ page: 2, size: 10, total: 50 }, 99).rangeLabel).toBe(
-      t.page.range(11, 20, 50),
+  it.each([0, 1.5, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+    'normalizes page %p to 1',
+    (page) => {
+      expect(toWorkOrderPageView({ page, size: 10, total: 20 }, 1)).toMatchObject({
+        page: 1,
+        canPrev: false,
+        rangeLabel: t.page.range(1, 1, 20),
+      });
+    },
+  );
+
+  it.each([0, -1, 1.5, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+    'normalizes size %p to 1',
+    (size) => {
+      expect(toWorkOrderPageView({ page: 2, size, total: 3 }, 1)).toMatchObject({
+        canPrev: true,
+        canNext: true,
+        rangeLabel: t.page.range(2, 2, 3),
+      });
+    },
+  );
+
+  it.each([0, -1, 1.5, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+    'normalizes total %p to 0',
+    (total) => {
+      expect(toWorkOrderPageView({ page: 2, size: 10, total }, 1)).toMatchObject({
+        canNext: false,
+        isBeyondLast: false,
+        rangeLabel: t.page.total(0),
+      });
+    },
+  );
+
+  it.each([
+    ['negative', -1, t.page.total(50)],
+    ['fractional', 4.8, t.page.range(11, 14, 50)],
+    ['larger than size', 99, t.page.range(11, 20, 50)],
+    ['non-finite', Number.POSITIVE_INFINITY, t.page.total(50)],
+  ])('normalizes %s shown rows', (_name, shown, rangeLabel) => {
+    expect(toWorkOrderPageView({ page: 2, size: 10, total: 50 }, shown).rangeLabel).toBe(
+      rangeLabel,
     );
   });
 });
