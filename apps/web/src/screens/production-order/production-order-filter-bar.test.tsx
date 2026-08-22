@@ -36,15 +36,30 @@ describe('ProductionOrderFilterBar', () => {
     expect(props.onSearch).toHaveBeenCalledWith(applied({ q: 'SYNTH' }));
   });
 
-  it('delegates Reset and offers empty all options to clear every select', async () => {
+  it('clears each selected filter to empty values before Search', async () => {
     const { props, user } = renderBar();
 
-    const selects = ['공장', '품목', '상태'].map((name) => screen.getByRole('combobox', { name }));
-    for (const select of selects) {
+    const selections: readonly [name: string, value: string][] = [
+      ['공장', 'SYNTH-PLANT-A · 합성 공장'],
+      ['품목', 'SYNTH-ITEM-A · 합성 품목'],
+      ['상태', 'SYNTH-RAW'],
+    ];
+    for (const [name, value] of selections) {
+      const select = screen.getByRole('combobox', { name });
+      await user.click(select);
+      await user.click(screen.getByRole('option', { name: value }));
+      expect(select).toHaveTextContent(value);
       await user.click(select);
       await user.click(screen.getByRole('option', { name: '전체' }));
       expect(select).toHaveTextContent('전체');
     }
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(props.onSearch).toHaveBeenCalledWith(DEFAULT_PRODUCTION_ORDER_FILTERS);
+  });
+
+  it('delegates Reset', async () => {
+    const { props, user } = renderBar();
+
     await user.click(screen.getByRole('button', { name: '초기화' }));
     expect(props.onReset).toHaveBeenCalledOnce();
   });
@@ -91,5 +106,20 @@ describe('ProductionOrderFilterBar', () => {
     expect(document.getElementById(reasonId ?? '')).toHaveTextContent(
       '납기 시작일은 종료일보다 늦을 수 없습니다.',
     );
+  });
+
+  it.each([
+    ['blank dates', '', ''],
+    ['a due-from date only', '2026-09-01', ''],
+    ['a due-to date only', '', '2026-09-01'],
+  ])('allows Search with %s', async (_case, dueFrom, dueTo) => {
+    const { props, user } = renderBar();
+    if (dueFrom !== '') await user.type(screen.getByLabelText('납기 시작일'), dueFrom);
+    if (dueTo !== '') await user.type(screen.getByLabelText('납기 종료일'), dueTo);
+
+    const search = screen.getByRole('button', { name: '조회' });
+    expect(search).toBeEnabled();
+    await user.click(search);
+    expect(props.onSearch).toHaveBeenCalledWith(applied({ dueFrom, dueTo }));
   });
 });
