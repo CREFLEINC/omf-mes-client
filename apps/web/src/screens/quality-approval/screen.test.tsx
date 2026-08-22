@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -12,7 +12,8 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { QualityApprovalScreen } from './screen';
-import type { ApprovalRequest } from './types';
+import { requestDetailPath } from './queries';
+import type { ApprovalRequest, ApprovalRequestDetail } from './types';
 
 const t = messages.qualityApproval;
 const PATH = '/app/approval-requests';
@@ -49,9 +50,32 @@ const listRoute = (respond: () => Response = () => jsonResponse(listBody())): St
   respond,
 });
 
-const recordingFetch = (route: StubRoute): { fetch: StubFetch; urls: URL[] } => {
+const detailBody = (
+  request: ApprovalRequest = {
+    ...requests[0]!,
+    requestedBy: 700_007,
+    reason: '\n  첫 근거  \n둘째 근거',
+    target: { ...requests[0]!.target, targetId: 910_009 },
+  },
+): ApprovalRequestDetail => ({
+  request,
+  steps: [],
+});
+
+const detailRoute = (
+  approvalRequestId = 31,
+  respond: () => Response = () => jsonResponse(detailBody()),
+): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === requestDetailPath(approvalRequestId),
+  respond,
+});
+
+const approvalFetch = (routes: StubRoute[]): StubFetch =>
+  createStubFetch([...routes, detailRoute()]);
+
+const recordingFetch = (...routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } => {
   const urls: URL[] = [];
-  const stub = createStubFetch([route]);
+  const stub = approvalFetch(routes);
 
   return {
     urls,
@@ -65,11 +89,13 @@ const recordingFetch = (route: StubRoute): { fetch: StubFetch; urls: URL[] } => 
 const Controls = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
   const [, setSearchParams] = useSearchParams();
 
   return (
     <>
       <output aria-label="현재 주소">{location.search}</output>
+      <output aria-label="주소 변경 방식">{navigationType}</output>
       <button
         type="button"
         onClick={() => {
@@ -118,7 +144,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
     expect(await findRequest()).toBeInTheDocument();
     expect(screen.getByText(t.scopeWarning)).toBeInTheDocument();
-    expect(recorded.urls).toHaveLength(1);
+    expect(recorded.urls.filter((url) => url.pathname === PATH)).toHaveLength(1);
     expect(Object.fromEntries(recorded.urls[0]?.searchParams ?? [])).toEqual({
       assignedToMe: 'true',
       pendingOnly: 'true',
@@ -142,7 +168,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
   });
 
   it('무관 주소 변경과 조회 응답이 편집 중인 초안을 지우지 않는다', async () => {
-    const { user } = renderScreen(createStubFetch([listRoute()]));
+    const { user } = renderScreen(approvalFetch([listRoute()]));
 
     await findRequest();
     await user.type(screen.getByLabelText(t.fields.q), '작성 중');
@@ -170,7 +196,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
   });
 
   it('행 선택은 rq만 바꾸며 뒤로가기는 deep-link 선택을 복원한다', async () => {
-    const { user } = renderScreen(createStubFetch([listRoute()]));
+    const { user } = renderScreen(approvalFetch([listRoute()]));
 
     await user.click(
       await screen.findByRole('button', { name: t.actions.selectRow('SYNTH-REQ-031') }),
@@ -183,7 +209,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
   it('범위 전환과 쪽 이동은 첫 쪽/다음 쪽으로 옮기며 선택을 비운다', async () => {
     const { user } = renderScreen(
-      createStubFetch([listRoute(() => jsonResponse(listBody(requests, 40)))]),
+      approvalFetch([listRoute(() => jsonResponse(listBody(requests, 40)))]),
       '/quality-approval?page=2&rq=31',
     );
 
@@ -217,7 +243,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
   it('초기화는 소유한 조건·범위·쪽·선택만 기본으로 돌린다', async () => {
     const { user } = renderScreen(
-      createStubFetch([listRoute()]),
+      approvalFetch([listRoute()]),
       '/quality-approval?q=SYNTH&page=3&rq=31&pd=0&view=compact',
     );
 
@@ -241,7 +267,7 @@ describe('QualityApprovalScreen result states', () => {
   });
 
   it('0건을 오류와 구분해 안내한다', async () => {
-    renderScreen(createStubFetch([listRoute(() => jsonResponse(listBody([], 0)))]));
+    renderScreen(approvalFetch([listRoute(() => jsonResponse(listBody([], 0)))]));
 
     expect(await screen.findByText(t.empty.title)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
@@ -249,7 +275,7 @@ describe('QualityApprovalScreen result states', () => {
 
   it('범위 밖 주소의 첫 쪽 복구는 page와 선택을 비운다', async () => {
     const { user } = renderScreen(
-      createStubFetch([listRoute(() => jsonResponse(listBody([], 1, 4)))]),
+      approvalFetch([listRoute(() => jsonResponse(listBody([], 1, 4)))]),
       '/quality-approval?page=4&rq=31',
     );
 
@@ -271,9 +297,7 @@ describe('QualityApprovalScreen result states', () => {
   });
 
   it('403은 권한 안내만 내고 재시도를 주지 않는다', async () => {
-    renderScreen(
-      createStubFetch([listRoute(() => jsonResponse({ message: '' }, { status: 403 }))]),
-    );
+    renderScreen(approvalFetch([listRoute(() => jsonResponse({ message: '' }, { status: 403 }))]));
 
     expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
@@ -282,7 +306,7 @@ describe('QualityApprovalScreen result states', () => {
   it('기타 오류는 재시도로 복구한다', async () => {
     let attempts = 0;
     const { user } = renderScreen(
-      createStubFetch([
+      approvalFetch([
         listRoute(() => {
           attempts += 1;
           return attempts === 1
@@ -296,5 +320,141 @@ describe('QualityApprovalScreen result states', () => {
 
     expect(await findRequest()).toBeInTheDocument();
     expect(attempts).toBe(2);
+  });
+});
+
+describe('QualityApprovalScreen detail', () => {
+  it('선택 전에는 3구획을 세우되 상세나 /0 요청을 보내지 않는다', async () => {
+    const recorded = recordingFetch(listRoute());
+    renderScreen(recorded.fetch);
+
+    await findRequest();
+
+    expect(screen.getByRole('region', { name: t.panes.list })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '요청 상세' })).toHaveTextContent(
+      '승인 요청을 선택하세요',
+    );
+    expect(screen.getByRole('region', { name: '결재 진행' })).toHaveTextContent(
+      '요청을 선택하면 결재 진행이 표시됩니다',
+    );
+    expect(recorded.urls.map((url) => url.pathname)).toEqual([PATH]);
+  });
+
+  it('상세 정확 경로의 ETag를 잡고 사유 전문·대상만 표시한다', async () => {
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(), { headers: { ETag: '"9"' } })),
+    );
+    const { apiClient } = renderScreen(recorded.fetch, '/quality-approval?rq=31');
+    const pane = screen.getByRole('region', { name: '요청 상세' });
+
+    const reason = await within(pane).findByRole('group', { name: '사유 전문' });
+    expect(reason).toHaveTextContent('둘째 근거');
+    expect(reason.querySelectorAll('br')).toHaveLength(2);
+    expect(within(pane).getByText('합성 대상')).toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: '대상 열기' })).toBeDisabled();
+    expect(within(pane).getByText('대상 화면 연결 준비 중')).toBeInTheDocument();
+    expect(pane.textContent).not.toContain('700007');
+    expect(pane.textContent).not.toContain('910009');
+    expect(recorded.urls.map((url) => url.pathname)).toContain(requestDetailPath(31));
+    expect(apiClient.etags.ifMatch(requestDetailPath(31))).toBe('"9"');
+  });
+
+  it('선택을 바꾸면 다음 상세 대기 중 이전 상세를 숨긴다', async () => {
+    const next = { ...requests[0]!, approvalRequestId: 32, approvalRequestNo: 'SYNTH-REQ-032' };
+    const pending = new Promise<Response>(() => undefined);
+    const base = approvalFetch([listRoute(() => jsonResponse(listBody([requests[0]!, next])))]);
+    const fetch: StubFetch = async (request) =>
+      new URL(request.url).pathname === requestDetailPath(32) ? pending : base(request);
+    const { user } = renderScreen(fetch, '/quality-approval?rq=31');
+    const pane = screen.getByRole('region', { name: '요청 상세' });
+
+    expect(await within(pane).findByRole('group', { name: '사유 전문' })).toHaveTextContent(
+      '둘째 근거',
+    );
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }));
+
+    expect(
+      within(pane).getByRole('status', { name: '승인 요청 상세 불러오는 중' }),
+    ).toBeInTheDocument();
+    expect(within(pane).queryByText('둘째 근거')).toBeNull();
+    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?rq=32');
+  });
+
+  it('상세 403은 선택을 유지하고 재시도를 주지 않는다', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        detailRoute(31, () => jsonResponse({ message: '' }, { status: 403 })),
+      ]),
+      '/quality-approval?rq=31',
+    );
+    const pane = screen.getByRole('region', { name: '요청 상세' });
+
+    expect(await within(pane).findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(within(pane).queryByRole('button', { name: messages.common.retry })).toBeNull();
+    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?rq=31');
+  });
+
+  it('상세 404는 rq만 replace로 지우고 live 안내를 유지한다', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        detailRoute(31, () => jsonResponse({ message: '' }, { status: 404 })),
+      ]),
+      '/quality-approval?rq=31&view=compact',
+    );
+    const missing = await screen.findByText('요청을 찾을 수 없습니다');
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?view=compact'),
+    );
+    expect(screen.getByLabelText('주소 변경 방식')).toHaveTextContent('REPLACE');
+    expect(missing.closest('[role="status"]')).not.toBeNull();
+  });
+
+  it('상세 네트워크 오류는 오프라인 안내 후 재시도로 복구한다', async () => {
+    let attempts = 0;
+    const { user } = renderScreen(
+      approvalFetch([
+        listRoute(),
+        detailRoute(31, () => {
+          attempts += 1;
+          if (attempts === 1) throw new TypeError('synthetic offline');
+          return jsonResponse(detailBody());
+        }),
+      ]),
+      '/quality-approval?rq=31',
+    );
+    const pane = screen.getByRole('region', { name: '요청 상세' });
+
+    expect(await within(pane).findByText(messages.httpError.offline)).toBeInTheDocument();
+    await user.click(await within(pane).findByRole('button', { name: messages.common.retry }));
+
+    expect(await within(pane).findByRole('group', { name: '사유 전문' })).toHaveTextContent(
+      '둘째 근거',
+    );
+    expect(attempts).toBe(2);
+  });
+
+  it('목록 실패와 독립적으로 deep-link 상세을 표시한다', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(() => jsonResponse({ message: '' }, { status: 500 })),
+        detailRoute(),
+      ]),
+      '/quality-approval?rq=31',
+    );
+
+    expect(
+      await within(screen.getByRole('region', { name: '요청 상세' })).findByRole('group', {
+        name: '사유 전문',
+      }),
+    ).toHaveTextContent('둘째 근거');
+    expect(
+      within(screen.getByRole('region', { name: t.panes.list })).getByText(
+        messages.httpError.loadTitle,
+      ),
+    ).toBeInTheDocument();
   });
 });

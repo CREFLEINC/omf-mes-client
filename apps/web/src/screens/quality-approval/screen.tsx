@@ -1,7 +1,14 @@
-import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Breadcrumb,
+  Button,
+  EmptyState,
+  PageHeader,
+  SkeletonText,
+} from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
@@ -11,6 +18,7 @@ import {
   approvalScopeWarning,
   toCodeOptions,
 } from './code-options';
+import { DetailPane } from './detail-pane';
 import { FilterBar } from './filter-bar';
 import {
   EMPTY_FILTERS,
@@ -25,9 +33,9 @@ import {
   type RequestFilters,
 } from './filters';
 import { toPageView } from './pagination';
-import { useApprovalRequests } from './queries';
+import { useApprovalRequestDetail, useApprovalRequests } from './queries';
 import { RequestList } from './request-list';
-import { toRequestRow, type ApprovalRequest } from './types';
+import { toRequestDetailView, toRequestRow, type ApprovalRequest } from './types';
 
 const EMPTY_ITEMS: ApprovalRequest[] = [];
 
@@ -71,9 +79,23 @@ export const QualityApprovalScreen = ({
   const scopeWarning = approvalScopeWarning(approvalTypeCodes);
   const query = toRequestListQuery(filters, pendingOnly, page);
   const list = useApprovalRequests(query);
+  const detail = useApprovalRequestDetail(selectedId);
+  const detailError = detail.isError ? toApiError(detail.error) : null;
+  const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
+  const listContextKey = withSelectedRequest(searchParams, null).toString();
+  const [missingContextKey, setMissingContextKey] = useState<string | null>(null);
   const items = list.data?.items ?? EMPTY_ITEMS;
   const rows = useMemo(() => items.map(toRequestRow), [items]);
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
+
+  useEffect(() => {
+    if (!isDetailNotFound) return;
+
+    setMissingContextKey(listContextKey);
+    setSearchParams((current) => withSelectedRequest(current, null), { replace: true });
+  }, [isDetailNotFound, listContextKey, setSearchParams]);
+
+  const isDetailMissing = selectedId === null && missingContextKey === listContextKey;
 
   const apply = (nextFilters: RequestFilters, nextPendingOnly: boolean, nextPage = 1): void => {
     setSearchParams((current) =>
@@ -106,41 +128,105 @@ export const QualityApprovalScreen = ({
     );
   }
 
+  const detailSlot = (): ReactNode => {
+    if (selectedId === null) {
+      return (
+        <EmptyState
+          size="sm"
+          live={isDetailMissing}
+          title={isDetailMissing ? t.detail.notFound : t.detail.select}
+          description={isDetailMissing ? t.detail.notFoundDescription : undefined}
+        />
+      );
+    }
+
+    if (detail.isPending) {
+      return (
+        <div role="status" aria-label={t.detail.loading}>
+          <SkeletonText lines={3} />
+        </div>
+      );
+    }
+
+    if (detailError !== null) {
+      if (isDetailNotFound) {
+        return (
+          <EmptyState
+            size="sm"
+            live
+            title={t.detail.notFound}
+            description={t.detail.notFoundDescription}
+          />
+        );
+      }
+
+      const forbidden = detailError.kind === 'http' && detailError.status === 403;
+      return (
+        <AlertBanner
+          variant="error"
+          title={forbidden ? messages.httpError.title : messages.httpError.loadTitle}
+          action={
+            forbidden ? undefined : (
+              <Button variant="outlined" size="sm" onClick={() => void detail.refetch()}>
+                {messages.common.retry}
+              </Button>
+            )
+          }
+        >
+          {describeLoadError(detailError)}
+        </AlertBanner>
+      );
+    }
+
+    return detail.data === undefined ? null : (
+      <DetailPane view={toRequestDetailView(detail.data.request)} />
+    );
+  };
+
   return (
     <>
       <PageHeader
         title={t.title}
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
-      <section className="pane" aria-label={t.panes.list}>
-        <FilterBar
-          applied={filters}
-          typeOptions={toCodeOptions(approvalTypeCodes)}
-          statusOptions={toCodeOptions(statusCodes)}
-          pendingOnly={pendingOnly}
-          onApply={(next) => apply(next, pendingOnly)}
-          onTogglePendingOnly={(next) => apply(filters, next)}
-          onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
-        />
-        {scopeWarning !== undefined && (
-          <div className="banner-slot">
-            <AlertBanner variant="info">{scopeWarning}</AlertBanner>
-          </div>
-        )}
-        <RequestList
-          rows={rows}
-          isLoading={list.isPending}
-          error={error}
-          page={pageView}
-          selectedId={selectedId}
-          onSelect={(id) => {
-            setSearchParams((current) =>
-              withSelectedRequest(current, selectedId === id ? null : id),
-            );
-          }}
-          onChangePage={(nextPage) => apply(filters, pendingOnly, nextPage)}
-        />
-      </section>
+      <div className="three-pane">
+        <section className="pane" aria-label={t.panes.list}>
+          <FilterBar
+            applied={filters}
+            typeOptions={toCodeOptions(approvalTypeCodes)}
+            statusOptions={toCodeOptions(statusCodes)}
+            pendingOnly={pendingOnly}
+            onApply={(next) => apply(next, pendingOnly)}
+            onTogglePendingOnly={(next) => apply(filters, next)}
+            onReset={() => apply(EMPTY_FILTERS, PENDING_ONLY_DEFAULT)}
+          />
+          {scopeWarning !== undefined && (
+            <div className="banner-slot">
+              <AlertBanner variant="info">{scopeWarning}</AlertBanner>
+            </div>
+          )}
+          <RequestList
+            rows={rows}
+            isLoading={list.isPending}
+            error={error}
+            page={pageView}
+            selectedId={selectedId}
+            onSelect={(id) => {
+              setMissingContextKey(null);
+              setSearchParams((current) =>
+                withSelectedRequest(current, selectedId === id ? null : id),
+              );
+            }}
+            onChangePage={(nextPage) => apply(filters, pendingOnly, nextPage)}
+          />
+        </section>
+        <section className="pane" aria-label={t.panes.detail}>
+          {detailSlot()}
+        </section>
+        <section className="pane" aria-label={t.panes.progress}>
+          <EmptyState size="sm" title={t.detail.progressPending} />
+        </section>
+      </div>
     </>
   );
 };
