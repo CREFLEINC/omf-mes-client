@@ -43,12 +43,35 @@ export interface ExactReferenceSource {
   isLoading: boolean;
 }
 
+export interface ListReferenceSource {
+  entries: ReadonlyArray<{ id: number; name: string }>;
+  total: number;
+  isError: boolean;
+  isLoading: boolean;
+}
+
 export const toExactReference = (source: ExactReferenceSource): ConditionReferenceState => {
   if (source.isError) return { kind: 'failed' };
   if (source.isLoading) return { kind: 'loading' };
   if (source.name === undefined || source.name.trim() === '') return { kind: 'unknown' };
 
   return { kind: 'named', name: source.name };
+};
+
+export const toListReference = (
+  source: ListReferenceSource,
+  targetId: number | null | undefined,
+): ConditionReferenceState => {
+  if (source.isError) return { kind: 'failed' };
+  if (source.isLoading) return { kind: 'loading' };
+  if (targetId === null || targetId === undefined) return { kind: 'unknown' };
+
+  const matched = source.entries.find(({ id }) => id === targetId);
+  if (matched !== undefined) {
+    return matched.name.trim() === '' ? { kind: 'unknown' } : { kind: 'named', name: matched.name };
+  }
+
+  return source.total > source.entries.length ? { kind: 'truncated' } : { kind: 'unknown' };
 };
 
 export const UNKNOWN_CONDITION_REFERENCES: ConditionReferenceStates = {

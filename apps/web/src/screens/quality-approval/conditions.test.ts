@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   toConcessionCardinality,
   toConcessionCardView,
+  toListReference,
   type ConditionReferenceStates,
+  type ListReferenceSource,
 } from './conditions';
 import type { Concession, ConcessionListResponse } from './types';
 
@@ -157,6 +159,48 @@ describe('toConcessionCardView', () => {
       statusCode: '상태 미제공',
       usable: '사용 가능',
       remarks: '등록된 비고가 없습니다',
+    });
+  });
+});
+
+const listReference = (overrides: Partial<ListReferenceSource> = {}): ListReferenceSource => ({
+  entries: [{ id: 901, name: 'SYNTH-EA · 합성 낱개' }],
+  total: 1,
+  isError: false,
+  isLoading: false,
+  ...overrides,
+});
+
+describe('toListReference', () => {
+  it('잘린 목록이어도 대상 ID를 찾으면 이름을 사용한다', () => {
+    expect(toListReference(listReference({ total: 2 }), 901)).toEqual({
+      kind: 'named',
+      name: 'SYNTH-EA · 합성 낱개',
+    });
+  });
+
+  it('대상 미발견은 목록 잘림과 완전 목록을 구분하며 새 ID로 다시 찾는다', () => {
+    const source = listReference({
+      entries: [
+        { id: 901, name: 'SYNTH-EA · 합성 낱개' },
+        { id: 902, name: 'SYNTH-BOX · 합성 상자' },
+      ],
+      total: 3,
+    });
+
+    expect(toListReference(source, 903)).toEqual({ kind: 'truncated' });
+    expect(toListReference({ ...source, total: 2 }, 903)).toEqual({ kind: 'unknown' });
+    expect(toListReference(source, 902)).toEqual({
+      kind: 'named',
+      name: 'SYNTH-BOX · 합성 상자',
+    });
+  });
+
+  it('실패·대기·공백 이름을 failed·loading·unknown으로 분리한다', () => {
+    expect(toListReference(listReference({ isError: true }), 901)).toEqual({ kind: 'failed' });
+    expect(toListReference(listReference({ isLoading: true }), 901)).toEqual({ kind: 'loading' });
+    expect(toListReference(listReference({ entries: [{ id: 901, name: '  ' }] }), 901)).toEqual({
+      kind: 'unknown',
     });
   });
 });
