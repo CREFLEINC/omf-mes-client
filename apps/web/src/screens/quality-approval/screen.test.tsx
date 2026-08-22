@@ -12,11 +12,12 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { QualityApprovalScreen } from './screen';
-import { requestDetailPath } from './queries';
-import type { ApprovalRequest, ApprovalRequestDetail } from './types';
+import { concessionDetailPath, requestDetailPath } from './queries';
+import type { ApprovalRequest, ApprovalRequestDetail, Concession } from './types';
 
 const t = messages.qualityApproval;
 const PATH = '/app/approval-requests';
+const CONCESSIONS_PATH = '/quality/concessions';
 
 const requests: ApprovalRequest[] = [
   {
@@ -72,14 +73,47 @@ const detailBody = (
 
 const detailRoute = (
   approvalRequestId = 31,
-  respond: () => Response = () => jsonResponse(detailBody()),
+  respond: StubRoute['respond'] = () => jsonResponse(detailBody()),
 ): StubRoute => ({
   match: (request) => new URL(request.url).pathname === requestDetailPath(approvalRequestId),
   respond,
 });
 
+const concession: Concession = {
+  concessionId: 501,
+  concessionNo: 'SYNTH-CN-501',
+  nonconformanceId: 701,
+  lotId: 801,
+  approvedQty: 10,
+  consumedQty: 2,
+  uomId: 901,
+  validFrom: '2026-08-22',
+  approvalRequestId: 31,
+  statusCode: 'SYNTH-ACTIVE',
+  usable: false,
+};
+
+const candidateBody = (items: Concession[] = [], total = items.length) => ({
+  items,
+  page: { page: 1, size: 2, total },
+});
+
+const candidateRoute = (
+  respond: StubRoute['respond'] = () => jsonResponse(candidateBody()),
+): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === CONCESSIONS_PATH,
+  respond,
+});
+
+const concessionRoute = (
+  respond: StubRoute['respond'] = () => jsonResponse(concession),
+): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === concessionDetailPath(501),
+  respond,
+});
+
 const approvalFetch = (routes: StubRoute[]): StubFetch =>
-  createStubFetch([...routes, detailRoute()]);
+  createStubFetch([...routes, detailRoute(), candidateRoute()]);
 
 const recordingFetch = (...routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } => {
   const urls: URL[] = [];
@@ -397,13 +431,11 @@ describe('QualityApprovalScreen detail', () => {
   });
 
   it('상세 403은 선택을 유지하고 재시도를 주지 않는다', async () => {
-    renderScreen(
-      approvalFetch([
-        listRoute(),
-        detailRoute(31, () => jsonResponse({ message: '' }, { status: 403 })),
-      ]),
-      '/quality-approval?rq=31',
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse({ message: '' }, { status: 403 })),
     );
+    renderScreen(recorded.fetch, '/quality-approval?rq=31');
     const pane = screen.getByRole('region', { name: '요청 상세' });
 
     expect(await within(pane).findByText(messages.httpError.forbidden)).toBeInTheDocument();
@@ -412,6 +444,7 @@ describe('QualityApprovalScreen detail', () => {
       t.progress.unavailable,
     );
     expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?rq=31');
+    expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
   });
 
   it('상세 404는 rq만 replace로 지우고 live 안내를 유지한다', async () => {
@@ -477,5 +510,110 @@ describe('QualityApprovalScreen detail', () => {
         messages.httpError.loadTitle,
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('QualityApprovalScreen conditions', () => {
+  it('후보 응답 대기 중 조건 로딩을 상세·진행과 독립된 status로 표시한다', async () => {
+    const pending = new Promise<Response>(() => undefined);
+    const base = approvalFetch([listRoute()]);
+    const fetch: StubFetch = async (request) =>
+      new URL(request.url).pathname === CONCESSIONS_PATH ? pending : base(request);
+    renderScreen(fetch, '/quality-approval?rq=31');
+
+    expect(await screen.findByRole('status', { name: t.condition.loading })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: t.panes.reason })).toBeInTheDocument();
+    expect(screen.getByText('합성 결재자')).toBeInTheDocument();
+  });
+
+  it('승인 상세 200 뒤 후보를 정확히 조회하고 한 건일 때만 상세을 연다', async () => {
+    const recorded = recordingFetch(
+      listRoute(),
+      candidateRoute(() => jsonResponse(candidateBody([concession]))),
+      concessionRoute(),
+    );
+    renderScreen(recorded.fetch, '/quality-approval?rq=31');
+    const pane = screen.getByRole('region', { name: t.panes.detail });
+
+    expect(await within(pane).findByText('SYNTH-CN-501')).toBeInTheDocument();
+    expect(within(pane).getByText('SYNTH-ACTIVE')).toBeInTheDocument();
+    expect(within(pane).getByText(t.condition.unusable)).toBeInTheDocument();
+    const candidateUrl = recorded.urls.find((url) => url.pathname === CONCESSIONS_PATH);
+    expect(Object.fromEntries(candidateUrl?.searchParams ?? [])).toEqual({
+      approvalRequestId: '31',
+      page: '1',
+      size: '2',
+    });
+    expect(recorded.urls.filter((url) => url.pathname === CONCESSIONS_PATH)).toHaveLength(1);
+    expect(recorded.urls.filter((url) => url.pathname === concessionDetailPath(501))).toHaveLength(
+      1,
+    );
+    expect(recorded.urls.findIndex((url) => url.pathname === requestDetailPath(31))).toBeLessThan(
+      recorded.urls.findIndex((url) => url.pathname === CONCESSIONS_PATH),
+    );
+  });
+
+  it('0건은 live 정상 상태이고 개수 모순은 진행·상세와 독립된 오류다', async () => {
+    const none = renderScreen(approvalFetch([listRoute()]), '/quality-approval?rq=31');
+    const noneText = await screen.findByText(t.condition.none);
+    expect(noneText.closest('[role="status"]')).not.toBeNull();
+    none.unmount();
+
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => jsonResponse(candidateBody([concession], 2))),
+      ]),
+      '/quality-approval?rq=31',
+    );
+    expect(await screen.findByText(t.condition.unsafe)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: t.panes.reason })).toBeInTheDocument();
+    expect(screen.getByText('합성 결재자')).toBeInTheDocument();
+  });
+
+  it('후보 네트워크 오류는 오프라인 안내 뒤 재시도로 정상 빈 상태가 된다', async () => {
+    let attempts = 0;
+    const { user } = renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => {
+          attempts += 1;
+          if (attempts === 1) throw new TypeError('synthetic offline');
+          return jsonResponse(candidateBody());
+        }),
+      ]),
+      '/quality-approval?rq=31',
+    );
+
+    expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+    expect(await screen.findByText(t.condition.none)).toBeInTheDocument();
+    expect(attempts).toBe(2);
+  });
+
+  it('조건 상세 404는 재시도할 수 있고 이전 선택의 조건을 다음 대기 중 숨긴다', async () => {
+    let attempts = 0;
+    const pending = new Promise<Response>(() => undefined);
+    const next = { ...requests[0]!, approvalRequestId: 32, approvalRequestNo: 'SYNTH-REQ-032' };
+    const base = approvalFetch([
+      listRoute(() => jsonResponse(listBody([requests[0]!, next]))),
+      candidateRoute(() => jsonResponse(candidateBody([concession]))),
+      concessionRoute(() => {
+        attempts += 1;
+        return attempts === 1
+          ? jsonResponse({ message: '' }, { status: 404 })
+          : jsonResponse(concession);
+      }),
+    ]);
+    const fetch: StubFetch = async (request) =>
+      new URL(request.url).pathname === requestDetailPath(32) ? pending : base(request);
+    const { user } = renderScreen(fetch, '/quality-approval?rq=31');
+
+    await user.click(await screen.findByRole('button', { name: messages.common.retry }));
+    expect(await screen.findByText('SYNTH-CN-501')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }));
+    expect(screen.getByRole('status', { name: t.detail.loading })).toBeInTheDocument();
+    expect(screen.queryByText('SYNTH-CN-501')).toBeNull();
   });
 });

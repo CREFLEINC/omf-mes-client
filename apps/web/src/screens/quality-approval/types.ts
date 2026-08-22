@@ -4,7 +4,13 @@ import { messages } from '@omf-mes/i18n';
 export type ApprovalRequest = components['schemas']['ApprovalRequest'];
 export type ApprovalRequestDetail = components['schemas']['ApprovalRequestDetail'];
 export type ApprovalStep = components['schemas']['ApprovalStep'];
+export type Concession = components['schemas']['Concession'];
 export type PageMeta = components['schemas']['PageMeta'];
+
+export interface ConcessionListResponse {
+  items: Concession[];
+  page: PageMeta;
+}
 
 export interface RequestRow {
   approvalRequestId: number;

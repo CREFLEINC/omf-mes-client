@@ -41,6 +41,17 @@ export const qualityApproval = {
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',
     targetUnavailable: '대상 화면 연결 준비 중',
   },
+  condition: {
+    title: '연결 조건',
+    loading: '연결 조건 불러오는 중',
+    none: '연결된 조건 없음',
+    unsafe: '연결 조건을 안전하게 특정할 수 없습니다',
+    concessionNo: '특채번호',
+    usableLabel: '사용 가능 여부',
+    usable: '사용 가능',
+    unusable: '사용 불가',
+    usableUnknown: '사용 가능 여부 미제공',
+  },
   progress: {
     steps: '결재 단계',
     position: (current: number, total: number): string =>

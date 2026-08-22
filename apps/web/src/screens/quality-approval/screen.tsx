@@ -18,6 +18,7 @@ import {
   approvalScopeWarning,
   toCodeOptions,
 } from './code-options';
+import { ConditionPane } from './condition-pane';
 import { DetailPane } from './detail-pane';
 import { FilterBar } from './filter-bar';
 import {
@@ -181,7 +182,10 @@ export const QualityApprovalScreen = ({
     }
 
     return detail.data === undefined ? null : (
-      <DetailPane view={toRequestDetailView(detail.data.request)} />
+      <>
+        <DetailPane view={toRequestDetailView(detail.data.request)} />
+        <ConditionPane approvalRequestId={detail.data.request.approvalRequestId} />
+      </>
     );
   };
 
