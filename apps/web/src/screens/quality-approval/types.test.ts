@@ -11,7 +11,7 @@ const request = (): ApprovalRequest => ({
   requestedByName: '합성 사용자',
   requestedAt: '2026-08-22T09:30:00+09:00',
   statusCode: 'SYNTH-PENDING',
-  reason: '\n  첫 근거  \n둘째 근거',
+  reason: '\n반복\r\n\r\n반복\n',
   target: {
     targetTypeCode: 'SYNTH-DOCUMENT',
     targetId: 91,
@@ -49,7 +49,7 @@ it('빈 표시 이름을 내부 번호로 대신하지 않는다', () => {
   expect(JSON.stringify(row)).not.toContain('91');
 });
 
-it('상세 표시값은 원시 코드와 사유의 줄·빈 줄을 보존하고 내부 ID를 나르지 않는다', () => {
+it('상세 표시값은 사유의 원문 offset과 중복·빈 줄·CRLF를 보존한다', () => {
   const source = request();
   const before = structuredClone(source);
 
@@ -59,7 +59,13 @@ it('상세 표시값은 원시 코드와 사유의 줄·빈 줄을 보존하고 
     requesterName: '합성 사용자',
     requestedAtText: '2026-08-22 09:30',
     statusCode: 'SYNTH-PENDING',
-    reasonLines: ['', '  첫 근거  ', '둘째 근거'],
+    reasonLines: [
+      { sourceOffset: 0, text: '' },
+      { sourceOffset: 1, text: '반복' },
+      { sourceOffset: 5, text: '' },
+      { sourceOffset: 7, text: '반복' },
+      { sourceOffset: 10, text: '' },
+    ],
     targetName: '합성 대상',
   });
   expect(source).toEqual(before);
@@ -69,10 +75,12 @@ it('상세의 빈 이름은 내부 번호가 아닌 안내로 바꾼다', () => 
   const source = request();
   source.requestedByName = ' ';
   source.target.displayName = '';
+  source.reason = '   ';
 
   const view = toRequestDetailView(source);
 
   expect(view.requesterName).toBe(messages.qualityApproval.values.unknownRequester);
   expect(view.targetName).toBe(messages.qualityApproval.values.unknownTarget);
+  expect(view.reasonLines).toEqual([{ sourceOffset: 0, text: '등록된 사유가 없습니다' }]);
   expect(JSON.stringify(view)).not.toContain('91');
 });

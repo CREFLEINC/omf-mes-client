@@ -32,10 +32,10 @@ export const DetailPane = ({ view }: DetailPaneProps) => {
       <div className="field-cell" role="group" aria-label={t.panes.reason}>
         <span className="field-label">{t.fields.reason}</span>
         <p>
-          {view.reasonLines.map((line, index) => (
-            <Fragment key={`${String(index)}:${line}`}>
-              {index === 0 ? null : <br />}
-              {line}
+          {view.reasonLines.map((line) => (
+            <Fragment key={`reason:${String(line.sourceOffset)}`}>
+              {line.sourceOffset === 0 ? null : <br />}
+              {line.text}
             </Fragment>
           ))}
         </p>
