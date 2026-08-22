@@ -88,9 +88,14 @@ const concession: Concession = {
   consumedQty: 2,
   uomId: 901,
   validFrom: '2026-08-22',
+  validTo: '2026-09-30',
+  allowedProcessId: 1_301,
+  allowedCustomerId: 1_401,
+  unrestrictedAxes: ['SYNTH-UNDEFINED-AXIS'],
   approvalRequestId: 31,
   statusCode: 'SYNTH-ACTIVE',
   usable: false,
+  remarks: '합성 조건 비고',
 };
 
 const candidateBody = (items: Concession[] = [], total = items.length) => ({
@@ -538,6 +543,15 @@ describe('QualityApprovalScreen conditions', () => {
     expect(await within(pane).findByText('SYNTH-CN-501')).toBeInTheDocument();
     expect(within(pane).getByText('SYNTH-ACTIVE')).toBeInTheDocument();
     expect(within(pane).getByText(t.condition.unusable)).toBeInTheDocument();
+    expect(within(pane).getByText('10')).toBeInTheDocument();
+    expect(within(pane).getByText('2')).toBeInTheDocument();
+    expect(within(pane).getByText('2026-08-22 – 2026-09-30')).toBeInTheDocument();
+    expect(within(pane).getByText('합성 조건 비고')).toBeInTheDocument();
+    expect(within(pane).getByText(t.condition.unrestricted)).toBeInTheDocument();
+    expect(within(pane).getAllByText(t.condition.reference.unknown)).toHaveLength(3);
+    for (const internalId of ['901', '1301', '1401']) {
+      expect(within(pane).queryByText(internalId)).toBeNull();
+    }
     const candidateUrl = recorded.urls.find((url) => url.pathname === CONCESSIONS_PATH);
     expect(Object.fromEntries(candidateUrl?.searchParams ?? [])).toEqual({
       approvalRequestId: '31',
