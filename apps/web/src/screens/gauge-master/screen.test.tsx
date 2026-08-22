@@ -1331,6 +1331,29 @@ describe('W-05-11 계측기 마스터 — 검교정 이력', () => {
     expect(calibrationSent).toHaveLength(0);
   });
 
+  /* 계약에 정렬이 없으므로 **읽기 차례는 화면이 정한다** — 늦게 한 것이 위다. */
+  it('실시일이 늦은 것을 위에 보인다', async () => {
+    const { user } = renderScreen({
+      respondCalibrations: () =>
+        jsonResponse(
+          calibrationsResponse([
+            makeCalibration(9010, '2025-10-05'),
+            makeCalibration(9011, '2026-01-05'),
+          ]),
+        ),
+    });
+
+    await openEdit(user, 'GA-03');
+
+    await waitFor(() => {
+      expect(within(historyPane()).getAllByRole('row')).toHaveLength(3);
+    });
+
+    const rows = within(historyPane()).getAllByRole('row');
+    expect(rows[1]).toHaveTextContent('2026-01-05');
+    expect(rows[2]).toHaveTextContent('2025-10-05');
+  });
+
   it('이력을 표로 보인다', async () => {
     const { user } = renderScreen();
 

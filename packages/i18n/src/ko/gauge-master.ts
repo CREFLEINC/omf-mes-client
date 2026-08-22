@@ -137,10 +137,15 @@ export const gaugeMaster = {
     emptyTitle: '검교정 이력이 없습니다',
     emptyDescription: '검교정을 하고 이력을 남기면 여기에 나타납니다.',
     loadFailed: '검교정 이력을 불러오지 못했습니다.',
+    /**
+     * ⛔ **「최근」이라 말하지 않는다.** 계약에 정렬 조건이 없어 **어느 20건을 받았는지
+     * 화면이 알 수 없다.** 「최근 20건」이라 쓰면 그 20건이 최신이라고 단언하는 것이 되고,
+     * 서버가 오래된 것부터 준다면 그 말은 거짓이다. 화면은 받은 것을 세어 말할 뿐이다.
+     */
     truncated: (shown: number, total: number): string =>
-      `전체 ${total}건 중 최근 ${shown}건을 표시합니다.`,
+      `전체 ${total}건 중 ${shown}건을 표시합니다. 전체는 검교정 이력 화면에서 확인하세요.`,
     /** ⛔ 「다 보여 주고 있다」고 말하지 않는다 — 이 응답만으로는 알 수 없다. */
-    mayHaveMore: (shown: number): string => `최근 ${shown}건을 표시합니다. 더 있을 수 있습니다.`,
+    mayHaveMore: (shown: number): string => `${shown}건을 표시합니다. 더 있을 수 있습니다.`,
     fields: {
       performedOn: '실시일',
       historyType: '구분',

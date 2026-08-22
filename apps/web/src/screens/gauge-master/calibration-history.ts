@@ -1,4 +1,20 @@
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+
+type Calibration = components['schemas']['Calibration'];
+
+/**
+ * 실시일 내림차순으로 세운다 — **화면이 정하는 읽기 차례**다.
+ *
+ * ⚠ **계약에 정렬 조건이 없다.** 그래서 이것은 「최신 20건을 받았다」는 뜻이 **아니다** —
+ * 어느 20건을 받았는지는 화면이 알 수 없고, 문구도 그렇게 말하지 않는다. 여기서 정하는 것은
+ * 받은 것을 «어떤 차례로 읽히게 할 것인가»뿐이다.
+ *
+ * ⛔ **원본 배열을 뒤집지 않는다** — 조회 캐시가 준 배열을 제자리에서 정렬하면 다른 소비처가
+ * 보는 차례까지 바뀐다.
+ */
+export const byRecentFirst = (items: readonly Calibration[]): Calibration[] =>
+  [...items].sort((left, right) => (left.performedOn < right.performedOn ? 1 : -1));
 
 /**
  * 이력 목록이 전부인지 아닌지 한 줄. **모르면 모른다고 말한다**(공유계약 G-9).

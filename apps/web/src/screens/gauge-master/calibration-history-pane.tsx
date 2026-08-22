@@ -2,7 +2,7 @@ import { AlertBanner, type Column, EmptyState, SkeletonText, Table } from '@cref
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import { historyLimitNote } from './calibration-history';
+import { byRecentFirst, historyLimitNote } from './calibration-history';
 
 type Calibration = components['schemas']['Calibration'];
 
@@ -82,7 +82,7 @@ export const CalibrationHistoryPane = ({
       <Table
         density="compact"
         columns={columns}
-        rows={items}
+        rows={byRecentFirst(items)}
         getRowId={(row) => String(row.calibrationId)}
         empty={<EmptyState size="sm" live title={t.emptyTitle} description={t.emptyDescription} />}
       />
