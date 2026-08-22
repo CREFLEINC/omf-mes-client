@@ -6,6 +6,11 @@ export const productionOrder = {
     orderedQty: '주문수량·단위',
     dueDate: '납기일',
     statusCode: '상태',
+    plant: '공장',
+    dueFrom: '납기 시작일',
+    dueTo: '납기 종료일',
+    status: '상태',
+    q: '검색',
   },
   panes: { list: '생산 P/O 목록' },
   actions: {
@@ -20,6 +25,10 @@ export const productionOrder = {
     missingErpOrderNo: 'ERP 원번호 없음',
     missingItemLabel: '품목 표시명 없음',
     missingDueDate: '납기일 없음',
+  },
+  filters: {
+    all: '전체',
+    dueRangeError: '납기 시작일은 종료일보다 늦을 수 없습니다.',
   },
   loading: '생산 P/O 목록 불러오는 중',
   empty: {
