@@ -53,6 +53,9 @@ export const workOrderKeys = {
   validation: (workOrderId: number | null) => ['work-orders', 'validation', workOrderId] as const,
 };
 
+export const workOrderDetailPath = (workOrderId: number): string =>
+  `/production/work-orders/${workOrderId}`;
+
 export const toWorkOrderFact = (workOrder: WorkOrder): WorkOrderFact => ({
   workOrderId: workOrder.workOrderId,
   workOrderNo: workOrder.workOrderNo,
