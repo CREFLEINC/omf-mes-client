@@ -17,7 +17,7 @@ export interface BomRevisionFact {
   statusCode: string;
   isDefault: boolean;
   effectiveFrom: string;
-  effectiveTo: string | null | undefined;
+  effectiveTo: string | null;
   baseQty: number;
   baseUomId: number;
 }
@@ -28,14 +28,14 @@ export interface RoutingRevisionFact {
   routingCode: string;
   routingVersion: number;
   statusCode: string;
-  effectiveFrom: string | null | undefined;
-  effectiveTo: string | null | undefined;
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
 }
 
 export interface ProductionLineFact {
   productionLineId: number;
   plantId: number;
-  parentLineId: number | null | undefined;
+  parentLineId: number | null;
   lineCode: string;
   lineName: string;
   lineTypeCode: string;
@@ -72,7 +72,7 @@ const toBomRevisionFact = (bom: Bom): BomRevisionFact => ({
   statusCode: bom.statusCode,
   isDefault: bom.isDefault,
   effectiveFrom: bom.effectiveFrom,
-  effectiveTo: bom.effectiveTo,
+  effectiveTo: bom.effectiveTo ?? null,
   baseQty: bom.baseQty,
   baseUomId: bom.baseUomId,
 });
@@ -83,14 +83,14 @@ const toRoutingRevisionFact = (routing: Routing): RoutingRevisionFact => ({
   routingCode: routing.routingCode,
   routingVersion: routing.routingVersion,
   statusCode: routing.statusCode,
-  effectiveFrom: routing.effectiveFrom,
-  effectiveTo: routing.effectiveTo,
+  effectiveFrom: routing.effectiveFrom ?? null,
+  effectiveTo: routing.effectiveTo ?? null,
 });
 
 const toProductionLineFact = (productionLine: ProductionLine): ProductionLineFact => ({
   productionLineId: productionLine.productionLineId,
   plantId: productionLine.plantId,
-  parentLineId: productionLine.parentLineId,
+  parentLineId: productionLine.parentLineId ?? null,
   lineCode: productionLine.lineCode,
   lineName: productionLine.lineName,
   lineTypeCode: productionLine.lineTypeCode,

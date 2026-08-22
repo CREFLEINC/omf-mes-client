@@ -46,7 +46,7 @@ const bom = (bomId: number) => ({
   statusCode: bomId === 701 ? 'OBSOLETE' : 'DRAFT',
   isDefault: bomId === 701,
   effectiveFrom: '2026-01-01',
-  effectiveTo: bomId === 701 ? null : '2026-12-31',
+  ...(bomId === 702 ? { effectiveTo: '2026-12-31' } : {}),
   baseQty: bomId === 701 ? 12.5 : 5,
   baseUomId: 8101,
 });
@@ -57,14 +57,13 @@ const routing = (routingId: number) => ({
   routingCode: `ROUTE-SYN-${String(routingId)}`,
   routingVersion: routingId === 801 ? 8 : 2,
   statusCode: routingId === 801 ? 'OBSOLETE' : 'DRAFT',
-  effectiveFrom: routingId === 801 ? undefined : '2026-02-01',
-  effectiveTo: routingId === 801 ? null : '2026-11-30',
+  ...(routingId === 802 ? { effectiveFrom: '2026-02-01', effectiveTo: '2026-11-30' } : {}),
 });
 
 const productionLine = (productionLineId: number) => ({
   productionLineId,
   plantId: 3101,
-  parentLineId: productionLineId === 901 ? null : 901,
+  ...(productionLineId === 902 ? { parentLineId: 901 } : {}),
   lineCode: `LINE-SYN-${String(productionLineId)}`,
   lineName: `Synthetic line ${String(productionLineId)}`,
   lineTypeCode: productionLineId === 901 ? 'LINE' : 'WORK_AREA',
@@ -121,8 +120,15 @@ describe('production plan reference queries', () => {
       ['parentItemId', '4101'],
     ]);
     expect(Array.from(requests[1]?.url.searchParams.entries() ?? [])).toEqual([['itemId', '4101']]);
-    expect(result.current.boms.data).toEqual({ items: [bom(701), bom(702)] });
-    expect(result.current.routings.data).toEqual({ items: [routing(801), routing(802)] });
+    expect(result.current.boms.data).toEqual({
+      items: [{ ...bom(701), effectiveTo: null }, bom(702)],
+    });
+    expect(result.current.routings.data).toEqual({
+      items: [{ ...routing(801), effectiveFrom: null, effectiveTo: null }, routing(802)],
+    });
+    expect(result.current.boms.data?.items[0]?.effectiveTo).toBeNull();
+    expect(result.current.routings.data?.items[0]?.effectiveFrom).toBeNull();
+    expect(result.current.routings.data?.items[0]?.effectiveTo).toBeNull();
     expect(productionPlanReferenceKeys.boms(4101)).not.toEqual(
       productionPlanReferenceKeys.routings(4101),
     );
@@ -153,10 +159,11 @@ describe('production plan reference queries', () => {
       ['includeInactive', 'true'],
     ]);
     expect(result.current.data).toEqual({
-      items: [productionLine(901), productionLine(902)],
+      items: [{ ...productionLine(901), parentLineId: null }, productionLine(902)],
       page: { page: 1, size: 2, total: 3 },
       truncated: true,
     });
+    expect(result.current.data?.items[0]?.parentLineId).toBeNull();
   });
 
   it('keeps a failed BOM query separate from successful Routing and production-line data', async () => {
