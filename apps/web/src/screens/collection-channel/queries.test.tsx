@@ -3,8 +3,20 @@ import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { channelListResponse, makeChannel } from './fixtures';
-import { plantIdQuery, useChannelDetail, useChannelList, useUomLookup } from './queries';
+import {
+  channelListResponse,
+  makeChannel,
+  specListResponse,
+  versionListResponse,
+} from './fixtures';
+import {
+  plantIdQuery,
+  useChannelDetail,
+  useChannelList,
+  useInspectionItemSpecs,
+  useInspectionPlanVersions,
+  useUomLookup,
+} from './queries';
 
 /**
  * ⭐ **설비를 고르기 전에는 조회 자체가 서지 않는다.**
@@ -143,5 +155,83 @@ describe('단위 선택 목록', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+/**
+ * ⭐ **차례로 좁혀 가는 두 조회도 앞 칸을 고르기 전에는 돌지 않는다.**
+ *
+ * 창에서 재면 칸이 잠겨 있어 고를 길이 없고, 잠긴 칸 뒤에서 조회가 실패해도 아무 흔적이
+ * 남지 않는다. 그래서 조회를 직접 세워 본다.
+ */
+describe('좁혀 가는 조회의 착수 조건', () => {
+  /**
+   * ⭐ **나간 요청을 센다.** 「대기 상태로 남는가」를 상태 값으로만 재면, 조회가 실패로
+   * 끝나는 것과 아예 서지 않는 것이 한 틱 안에서 구별되지 않는다. 요청은 나갔거나 안 나갔다.
+   */
+  const spy = (): { fetch: ReturnType<typeof createStubFetch>; sent: Request[] } => {
+    const sent: Request[] = [];
+
+    return {
+      sent,
+      fetch: createStubFetch([
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/quality/inspection-plan-versions/4101/items',
+          respond: (request) => {
+            sent.push(request);
+
+            return jsonResponse(specListResponse());
+          },
+        },
+        {
+          match: (request) => new URL(request.url).pathname === '/quality/inspection-plan-versions',
+          respond: (request) => {
+            sent.push(request);
+
+            return jsonResponse(versionListResponse());
+          },
+        },
+      ]),
+    };
+  };
+
+  const settle = async (): Promise<void> => {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  };
+
+  it('검사기준을 고르기 전에는 버전 조회가 나가지 않는다', async () => {
+    const { fetch, sent } = spy();
+
+    const { result } = renderHookWithProviders(() => useInspectionPlanVersions(null), { fetch });
+
+    await settle();
+
+    expect(sent).toHaveLength(0);
+    /* 나가지 않는 것과 «실패로 끝나는» 것은 다르다 — 뒤엣것은 없는 고장을 알린다. */
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('버전을 고르기 전에는 항목 조회가 나가지 않는다', async () => {
+    const { fetch, sent } = spy();
+
+    const { result } = renderHookWithProviders(() => useInspectionItemSpecs(null), { fetch });
+
+    await settle();
+
+    expect(sent).toHaveLength(0);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('고르면 그때 조회가 나간다', async () => {
+    const { fetch, sent } = spy();
+    const versions = renderHookWithProviders(() => useInspectionPlanVersions(4001), { fetch });
+
+    await waitFor(() => expect(versions.result.current.items.length).toBeGreaterThan(0));
+
+    const specs = renderHookWithProviders(() => useInspectionItemSpecs(4101), { fetch });
+
+    await waitFor(() => expect(specs.result.current.items.length).toBeGreaterThan(0));
+    expect(sent).toHaveLength(2);
   });
 });

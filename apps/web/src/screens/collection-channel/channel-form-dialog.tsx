@@ -2,9 +2,15 @@ import { Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { ItemPicker, type PickerSlot } from './item-picker';
 import type { CodeOption } from './options';
 import { SelectField } from './select-field';
-import type { ChannelFormValues } from './types';
+import type {
+  ChannelFormValues,
+  InspectionItemSpec,
+  InspectionPlan,
+  InspectionPlanVersion,
+} from './types';
 
 const t = messages.collectionChannel;
 
@@ -46,6 +52,16 @@ export interface ChannelFormDialogProps {
   /** 선택 목록의 한계(잘림·실패) 안내. 없으면 붙이지 않는다 */
   optionsNote?: string;
   isSaving: boolean;
+  /** 검사 항목을 찾아가는 세 칸 — 저장되지 않고 좁히는 데만 쓴다 */
+  inspectionPlanId: number | null;
+  onChangePlan: (inspectionPlanId: number | null) => void;
+  inspectionPlanVersionId: number | null;
+  onChangeVersion: (inspectionPlanVersionId: number | null) => void;
+  plans: PickerSlot<InspectionPlan>;
+  versions: PickerSlot<InspectionPlanVersion>;
+  specs: PickerSlot<InspectionItemSpec>;
+  /** 단위 식별자를 코드로 옮기는 표. 옮기지 못하는 값이 있다 */
+  uomCodeById: ReadonlyMap<number, string>;
   onClose: () => void;
   onSave: () => void;
 }
@@ -69,6 +85,14 @@ export const ChannelFormDialog = ({
   unitOptions,
   optionsNote,
   isSaving,
+  inspectionPlanId,
+  onChangePlan,
+  inspectionPlanVersionId,
+  onChangeVersion,
+  plans,
+  versions,
+  specs,
+  uomCodeById,
   onClose,
   onSave,
 }: ChannelFormDialogProps) => {
@@ -79,6 +103,11 @@ export const ChannelFormDialog = ({
       open
       onClose={onClose}
       closeOnBackdropClick={false}
+      /*
+       * ⭐ **넓게 연다.** 검사 항목에 닿으려면 선택칸이 셋 필요하고, 좁은 창에서는 값이
+       * 트리거 안에서 잘려 «무엇을 고른 것인지» 읽히지 않는다(브라우저 확인 실측).
+       */
+      size="lg"
       title={isCreate ? t.form.createTitle : t.form.editTitle}
       footer={
         <>
@@ -132,6 +161,20 @@ export const ChannelFormDialog = ({
           placeholder={t.form.unitPlaceholder}
           note={optionsNote}
           error={fieldErrors.unitCode}
+        />
+
+        <ItemPicker
+          inspectionItemId={values.inspectionItemId}
+          onChangeItem={(inspectionItemId) => onChange({ inspectionItemId })}
+          inspectionPlanId={inspectionPlanId}
+          onChangePlan={onChangePlan}
+          inspectionPlanVersionId={inspectionPlanVersionId}
+          onChangeVersion={onChangeVersion}
+          plans={plans}
+          versions={versions}
+          specs={specs}
+          channelUnitCode={values.unitCode}
+          uomCodeById={uomCodeById}
         />
       </div>
     </Dialog>

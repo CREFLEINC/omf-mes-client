@@ -20,7 +20,11 @@ import {
   useChannelDetail,
   useChannelList,
   useEquipmentList,
+  useInspectionItemSpecs,
+  useInspectionPlans,
+  useInspectionPlanVersions,
   usePlantLookup,
+  useUomCodeById,
   useUomLookup,
 } from './queries';
 import type {
@@ -29,6 +33,7 @@ import type {
   CollectionChannel,
   Equipment,
   EquipmentFilters,
+  ItemPickerPath,
 } from './types';
 
 const t = messages.collectionChannel;
@@ -43,6 +48,19 @@ const NO_CHANNELS: CollectionChannel[] = [];
  * 부르는 자리마다 `?? 0` 같은 **닿지 않는 기본값**으로 막게 되고, 그 값은 틀려도 아무도 모른다.
  */
 type DialogState = { mode: 'create' } | { mode: 'edit'; collectionChannelId: number };
+
+/**
+ * 창을 열 때마다 **처음부터 좁힌다.**
+ *
+ * ⛔ 길을 남기면 앞 채널을 잇던 기준·버전이 다음 창에 그대로 보인다. 고른 항목 자체는
+ * 채널마다 따로라 섞이지 않지만, **화면에 보이는 길이 이 채널의 것이라고 읽힌다** — 이 창은
+ * 바로 위에서 「어느 항목인지 확인할 수 없습니다」라고 말해 놓고 그 아래에 엉뚱한 길을
+ * 펼쳐 두는 셈이 된다. 여러 채널을 같은 기준에 잇는 수고를 덜자고 그 오독을 살 수는 없다.
+ */
+const NO_PICKER_PATH: ItemPickerPath = {
+  inspectionPlanId: null,
+  inspectionPlanVersionId: null,
+};
 
 /**
  * W-05-07 수집 채널 매핑 관리.
@@ -62,6 +80,7 @@ export const CollectionChannelScreen = () => {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [values, setValues] = useState<ChannelFormValues>(emptyFormValues);
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+  const [pickerPath, setPickerPath] = useState<ItemPickerPath>(NO_PICKER_PATH);
 
   const { client } = useApiClient();
   const toast = useToast();
@@ -74,6 +93,15 @@ export const CollectionChannelScreen = () => {
   /* 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰이 없다. */
   const editingId = dialog?.mode === 'edit' ? dialog.collectionChannelId : null;
   const detail = useChannelDetail(editingId);
+
+  /*
+   * ⭐ **검사 항목을 찾아가는 세 조회는 창이 열렸을 때만 돈다.** 목록만 보는 사람에게는
+   * 쓸 일이 없는 자료라, 화면을 열자마자 부르면 아무도 안 볼 것을 세 번 받아 온다.
+   */
+  const plans = useInspectionPlans(dialog !== null);
+  const versions = useInspectionPlanVersions(pickerPath.inspectionPlanId);
+  const specs = useInspectionItemSpecs(pickerPath.inspectionPlanVersionId);
+  const uomCodeById = useUomCodeById();
 
   const equipmentItems = equipments.data?.items ?? NO_EQUIPMENTS;
   const channelItems = channels.data?.items ?? NO_CHANNELS;
@@ -177,6 +205,7 @@ export const CollectionChannelScreen = () => {
 
   const openCreate = (): void => {
     setValues(emptyFormValues());
+    setPickerPath(NO_PICKER_PATH);
     setDialog({ mode: 'create' });
   };
 
@@ -188,7 +217,24 @@ export const CollectionChannelScreen = () => {
    */
   const openEdit = (channel: CollectionChannel): void => {
     setValues(formValuesFrom(channel));
+    /*
+     * ⛔ **이어 둔 항목이 어느 기준·버전의 것인지 되찾을 길이 없다**(계약에 단건 조회가
+     * 없다). 그래서 길은 늘 비어서 시작하고, 창이 그 사실을 문면으로 말한다.
+     */
+    setPickerPath(NO_PICKER_PATH);
     setDialog({ mode: 'edit', collectionChannelId: channel.collectionChannelId });
+  };
+
+  /**
+   * ⭐ **위 칸을 바꾸면 아래 칸이 함께 풀린다.** 기준을 바꿨는데 앞 기준에서 고른 버전이
+   * 남아 있으면, 화면은 새 기준을 보이면서 **옛 기준의 항목을 이어 두게 된다.**
+   */
+  const changePlan = (inspectionPlanId: number | null): void => {
+    setPickerPath({ inspectionPlanId, inspectionPlanVersionId: null });
+  };
+
+  const changeVersion = (inspectionPlanVersionId: number | null): void => {
+    setPickerPath((prev) => ({ ...prev, inspectionPlanVersionId }));
   };
 
   const submit = (): void => {
@@ -293,6 +339,14 @@ export const CollectionChannelScreen = () => {
           unitOptions={uomLookup.uoms}
           optionsNote={unitNote}
           isSaving={write.isSaving}
+          inspectionPlanId={pickerPath.inspectionPlanId}
+          onChangePlan={changePlan}
+          inspectionPlanVersionId={pickerPath.inspectionPlanVersionId}
+          onChangeVersion={changeVersion}
+          plans={plans}
+          versions={versions}
+          specs={specs}
+          uomCodeById={uomCodeById}
           onClose={closeDialog}
           onSave={submit}
         />
