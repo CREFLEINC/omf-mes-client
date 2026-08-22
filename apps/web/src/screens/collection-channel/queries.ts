@@ -2,6 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import type { CodeOption } from './options';
 import type { CollectionChannel, Equipment, EquipmentFilters, PageMeta } from './types';
 
 /**
@@ -159,5 +160,74 @@ export const usePlantLookup = (): PlantLookupResult => {
       NO_PLANTS,
     truncated: data !== undefined && data.page.total > data.items.length,
     isError: plants.isError,
+  };
+};
+
+/**
+ * 채널 상세 경로. **잠금 토큰이 이 경로에 보관된다** — 쓰기 경로로 꺼내면 늘 비어 있다.
+ */
+export const channelDetailPath = (collectionChannelId: number): string =>
+  `/maintenance/collection-channels/${String(collectionChannelId)}`;
+
+/**
+ * 채널 상세. **낙관적 잠금 토큰이 이 응답으로 온다** — 목록 행만으로는 저장을 시작할 수 없다.
+ */
+export const useChannelDetail = (
+  collectionChannelId: number | null,
+): UseQueryResult<CollectionChannel> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: channelKeys.detail(collectionChannelId ?? 0),
+    enabled: collectionChannelId !== null,
+    queryFn: () => {
+      if (collectionChannelId === null) {
+        throw new Error('채널을 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/maintenance/collection-channels/{collectionChannelId}', {
+          params: { path: { collectionChannelId } },
+        }),
+      );
+    },
+  });
+};
+
+export interface UomLookupResult {
+  uoms: CodeOption[];
+  truncated: boolean;
+  isError: boolean;
+}
+
+const NO_UOMS: CodeOption[] = [];
+
+/**
+ * 단위 선택 목록.
+ *
+ * ⭐ **계약이 단위를 «코드»로 받는다**(`unitCode`) — 식별자가 아니다. 그래서 고른 값도
+ * `uomCode` 이고, 값 목록이 잘려도 이미 저장된 코드는 그대로 보인다.
+ *
+ * `includeInactive` 를 켜 둔다 — 미사용 단위를 쓰는 채널을 열면 선택칸이 비어 보인다.
+ */
+export const useUomLookup = (): UomLookupResult => {
+  const { client } = useApiClient();
+
+  const uoms = useQuery({
+    queryKey: ['lookups', 'uoms'] as const,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+  });
+
+  const data = uoms.data;
+
+  return {
+    uoms:
+      data?.items.map((uom) => ({
+        value: uom.uomCode,
+        label: `${uom.uomCode} · ${uom.uomName}`,
+      })) ?? NO_UOMS,
+    truncated: data !== undefined && data.page.total > data.items.length,
+    isError: uoms.isError,
   };
 };

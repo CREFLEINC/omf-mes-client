@@ -25,6 +25,8 @@ const renderPane = (props: Partial<Parameters<typeof ChannelPane>[0]> = {}) =>
       filters={filters()}
       onChangeFilters={() => undefined}
       limitNote={null}
+      onAdd={() => undefined}
+      onEdit={() => undefined}
       loadError={null}
       {...props}
     />,
@@ -69,7 +71,9 @@ describe('채널 페인 — 요약이 서는 조건', () => {
 /** ⚠ **빈 문자열도 빈 칸을 만든다.** 계약이 막지 않으므로 화면이 같은 자리로 보낸다. */
 describe('채널 페인 — 값이 없는 칸', () => {
   it('신호 이름이 빈 문자열로 와도 기록 없음이라 적는다', () => {
-    renderPane({ channels: [makeChannel(7001, 'CYCLE_TIME', { signalName: '', unitCode: 'SEC' })] });
+    renderPane({
+      channels: [makeChannel(7001, 'CYCLE_TIME', { signalName: '', unitCode: 'SEC' })],
+    });
 
     expect(screen.getByText(t.fields.notRecorded)).toBeInTheDocument();
   });

@@ -22,3 +22,19 @@ export interface ChannelFilters {
   includeInactive: boolean;
   unmappedOnly: boolean;
 }
+
+/**
+ * 채널 창이 들고 있는 값.
+ *
+ * ⛔ **설비가 여기 없다.** 등록은 «왼쪽에서 고른 설비»에 매이고 수정은 옮길 수 없다 —
+ * 계약의 수정 본문에 `equipmentId` 가 없다. 폼 값에 두면 언젠가 입력칸이 붙고, 그 순간
+ * 「저장은 되는데 설비는 안 바뀌는 칸」이 생긴다.
+ *
+ * ⛔ **대상 검사 항목도 아직 여기 없다** — 잇는 일은 다음 슬라이스가 맡는다.
+ */
+export interface ChannelFormValues {
+  /** 설비가 정한 이름. **등록에서만 정한다** — 수정 본문에 없다 */
+  channelKey: string;
+  signalName: string;
+  unitCode: string;
+}

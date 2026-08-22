@@ -67,6 +67,7 @@ export const collectionChannel = {
   },
   fields: {
     plant: '공장',
+    equipment: '설비',
     equipmentCode: '설비번호',
     equipmentName: '설비명',
     channelKey: '채널명',
@@ -87,6 +88,25 @@ export const collectionChannel = {
     unmapped: '미매핑',
     mapped: '연결됨',
     nameUnavailable: '연결된 검사 항목의 이름은 이 목록에 오지 않습니다 — 연결 여부만 표시합니다.',
+  },
+  actions: {
+    addChannel: '채널 추가',
+  },
+  form: {
+    createTitle: '수집 채널 등록',
+    editTitle: '수집 채널 수정',
+    unitPlaceholder: '단위를 고르세요',
+    /** 등록 창은 «고른 설비»에 매인다 — 어느 설비에 더하는지 창이 스스로 말한다. */
+    equipmentFixed: (code: string, name: string): string => `${code} · ${name}`,
+  },
+  /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
+  actionReasons: {
+    equipmentFixed: '설비는 왼쪽에서 고른 것으로 정해지며 이 창에서 옮길 수 없습니다.',
+    channelKeyFixed: '채널명은 등록할 때 정해지며 나중에 바꿀 수 없습니다.',
+  },
+  validation: {
+    required: '필수 항목입니다.',
+    channelKeyBlank: '공백만으로는 채널명을 만들 수 없습니다.',
   },
   values: {
     active: '사용 중',
