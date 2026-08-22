@@ -1,6 +1,4 @@
 export const qualityApproval = {
-  scopeWarning:
-    '승인 유형 기준값이 준비되지 않아 나에게 배정된 모든 유형의 요청을 표시합니다. 승인 유형 원문을 확인하세요.',
   fields: {
     approvalTypeCode: '승인 유형',
     statusCode: '상태',

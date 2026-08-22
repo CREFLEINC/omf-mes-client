@@ -51,6 +51,14 @@ describe('quality approval URL filters', () => {
     expect(withSelectedRequest(current, 31).toString()).toBe('q=SYNTH&page=2&view=compact&rq=31');
     expect(withSelectedRequest(current, null).toString()).toBe('q=SYNTH&page=2&view=compact');
   });
+
+  it('safe integer 범위를 넘는 긴 page와 rq는 거부한다', () => {
+    const tooLong = '9'.repeat(400);
+    const params = new URLSearchParams({ page: tooLong, rq: tooLong });
+
+    expect(readPage(params)).toBe(1);
+    expect(readSelectedRequestId(params)).toBeNull();
+  });
 });
 
 describe('quality approval request query', () => {

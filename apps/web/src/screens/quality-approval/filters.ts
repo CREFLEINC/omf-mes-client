@@ -32,7 +32,10 @@ export const PENDING_ONLY_DEFAULT = true;
 const POSITIVE_INTEGER = /^\d+$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-const isIdentifier = (raw: string): boolean => POSITIVE_INTEGER.test(raw) && Number(raw) >= 1;
+const isIdentifier = (raw: string): boolean => {
+  const parsed = Number(raw);
+  return POSITIVE_INTEGER.test(raw) && Number.isSafeInteger(parsed) && parsed >= 1;
+};
 
 const dateOf = (value: string): string => {
   const match = DATE_PATTERN.exec(value);
