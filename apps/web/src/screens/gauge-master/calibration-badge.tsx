@@ -32,9 +32,9 @@ const label = (judgment: CalibrationJudgment): string => {
     case 'never':
       return t.never;
     case 'valid':
-      return t.valid(judgment.days ?? 0);
+      return t.valid(judgment.days);
     case 'expired':
-      return t.expired(judgment.days ?? 0);
+      return t.expired(judgment.days);
   }
 };
 

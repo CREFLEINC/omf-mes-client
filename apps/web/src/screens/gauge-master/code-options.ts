@@ -19,6 +19,13 @@ export const CODE_GROUPS = {
   equipmentStatus: 'EQUIPMENT_STATUS',
 } as const;
 
+/**
+ * 자산이 살아 있음을 뜻하는 코드값. **선택지가 아니라 판정에 쓰는 값**이라 이름을 갖는다.
+ * ⭐ 설계가 값을 확정해 알려 준 것이다(`omf-mes#185`) — 화면이 지어낸 값이 아니다.
+ * 형제 화면(W-05-12)도 같은 자리에 둔다.
+ */
+export const IN_SERVICE_STATUS_CODE = 'IN_SERVICE';
+
 /** 화면을 처음 열었을 때의 조회 조건. */
 export const defaultGaugeFilters: GaugeFilters = {
   q: '',

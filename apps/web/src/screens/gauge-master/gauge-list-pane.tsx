@@ -47,6 +47,25 @@ export interface GaugeListPaneProps {
 
 const t = messages.gaugeMaster;
 
+/**
+ * 「조회」를 눌러야 나가는 조건. **체크칸 셋은 여기 없다** — 그것들은 바꾸는 즉시 나간다.
+ *
+ * ⛔ **한 벌을 나눠 갖지 않는다.** 초안이 즉시 적용되는 조건까지 품으면, 체크칸을 켠 뒤
+ * 「조회」를 누를 때 초안에 남아 있던 옛 값이 방금 켠 것을 조용히 되돌린다.
+ * 여기 없는 것은 되돌릴 수도 없다.
+ */
+interface DraftFilters {
+  q: string;
+  plantId: string;
+  equipmentTypeCode: string;
+}
+
+const draftOf = (filters: GaugeFilters): DraftFilters => ({
+  q: filters.q,
+  plantId: filters.plantId,
+  equipmentTypeCode: filters.equipmentTypeCode,
+});
+
 const hasAnyFilter = (filters: GaugeFilters): boolean =>
   filters.q !== '' ||
   filters.plantId !== '' ||
@@ -75,17 +94,30 @@ export const GaugeListPane = ({
   isTruncated,
   loadError,
 }: GaugeListPaneProps) => {
-  const [draft, setDraft] = useState<GaugeFilters>(appliedFilters);
+  // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
+  const [draft, setDraft] = useState<DraftFilters>(draftOf(appliedFilters));
   const { q: appliedQ, plantId: appliedPlantId, equipmentTypeCode: appliedType } = appliedFilters;
 
+  /* 밖에서 조건이 되돌려지면(초기화·칩 제거) 초안도 그것을 따라간다. */
   useEffect(() => {
-    setDraft((prev) => ({
-      ...prev,
-      q: appliedQ,
-      plantId: appliedPlantId,
-      equipmentTypeCode: appliedType,
-    }));
+    setDraft({ q: appliedQ, plantId: appliedPlantId, equipmentTypeCode: appliedType });
   }, [appliedQ, appliedPlantId, appliedType]);
+
+  /** 초안을 지금 적용된 조건 «위에» 얹는다 — 즉시 적용된 체크칸을 건드리지 않는다. */
+  const applyDraft = (overrides: Partial<DraftFilters> = {}): void => {
+    onApplyFilters({ ...appliedFilters, ...draft, ...overrides });
+  };
+
+  /*
+   * ⛔ **초안을 손으로 거둔다 — 위 효과에 맡기지 않는다.**
+   * 효과는 «적용된 값이 달라졌을 때»만 돈다. 적용된 검색어가 이미 비어 있는데 칸에만
+   * 낱말이 남아 있으면 달라지는 값이 없어 효과가 돌지 않고, 칸이 그대로 남는다.
+   * 그 상태로 「조회」를 누르면 초기화한 줄 알았던 조건이 되살아난다.
+   */
+  const resetAll = (): void => {
+    setDraft(draftOf(defaultGaugeFilters));
+    onApplyFilters(defaultGaugeFilters);
+  };
 
   /*
    * ⚠ **밀림 조건은 화면이 건다** — 「아직 안 함」과 「만료」를 함께 잡는 질의 조건이 계약에
@@ -130,7 +162,7 @@ export const GaugeListPane = ({
       title={t.empty.noMatchTitle}
       description={t.empty.noMatchDescription}
       action={
-        <Button variant="outlined" onClick={() => onApplyFilters(defaultGaugeFilters)}>
+        <Button variant="outlined" onClick={resetAll}>
           {messages.common.reset}
         </Button>
       }
@@ -175,7 +207,7 @@ export const GaugeListPane = ({
           placeholder={t.filters.searchPlaceholder}
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          onSearch={(value) => applyDraft({ q: value })}
         />
         <SelectField
           label={t.fields.plant}
@@ -221,14 +253,10 @@ export const GaugeListPane = ({
             {t.filters.includeDisposed}
           </Checkbox>
         </div>
-        <Button className="field-cell-unlabeled" onClick={() => onApplyFilters(draft)}>
+        <Button className="field-cell-unlabeled" onClick={() => applyDraft()}>
           {messages.common.search}
         </Button>
-        <Button
-          className="field-cell-unlabeled"
-          variant="outlined"
-          onClick={() => onApplyFilters(defaultGaugeFilters)}
-        >
+        <Button className="field-cell-unlabeled" variant="outlined" onClick={resetAll}>
           {messages.common.reset}
         </Button>
       </div>

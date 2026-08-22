@@ -3,6 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { IN_SERVICE_STATUS_CODE } from './code-options';
 import type { Equipment, GaugeFilters } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
@@ -14,7 +15,6 @@ export interface GaugeListResponse {
 }
 
 export const gaugeKeys = {
-  all: ['gauges'] as const,
   list: (filters: GaugeFilters) => ['gauges', 'list', filters] as const,
 };
 
@@ -24,9 +24,6 @@ const plantIdQuery = (value: string): { plantId: number } | Record<string, never
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? { plantId: parsed } : {};
 };
-
-/** 자산이 살아 있음을 뜻하는 코드값(설계 `omf-mes#185`). 목록의 기본 조건이다. */
-export const IN_SERVICE_STATUS_CODE = 'IN_SERVICE';
 
 /**
  * 계측기 목록.

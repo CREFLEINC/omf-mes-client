@@ -237,6 +237,75 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     });
   });
 
+  /*
+   * ⛔ **모아서 내는 조건이 즉시 적용된 조건을 되돌리면 안 된다.**
+   * 검색칸은 「조회」를 눌러야 나가고 체크칸은 바꾸는 즉시 나간다 — 두 축이 한 벌을 공유하면
+   * 나중에 누른 쪽이 앞서 켠 것을 조용히 끈다.
+   */
+  it('폐기 포함을 켠 뒤 검색어로 조회해도 폐기 포함이 유지된다', async () => {
+    const { user, sent } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+    await user.click(within(listPane()).getByRole('checkbox', { name: t.filters.includeDisposed }));
+
+    await waitFor(() => {
+      expect(sent.at(-1)?.searchParams.get('statusCode')).toBeNull();
+    });
+
+    await user.type(within(listPane()).getByLabelText(t.filters.searchLabel), '캘리퍼');
+    await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(sent.at(-1)?.searchParams.get('q')).toBe('캘리퍼');
+    });
+    expect(sent.at(-1)?.searchParams.get('statusCode')).toBeNull();
+    expect(
+      within(listPane()).getByRole('checkbox', { name: t.filters.includeDisposed }),
+    ).toBeChecked();
+  });
+
+  /*
+   * 밖에서 조건이 되돌려지면(초기화·칩 제거) **입력칸도 따라가야 한다.**
+   * 칸에 옛 낱말이 남아 있으면 목록과 칸이 어긋나고, 다음에 「조회」를 누르는 순간
+   * 지운 줄 알았던 조건이 되살아난다.
+   */
+  it('칩으로 검색어를 거두면 검색칸도 함께 비워진다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+
+    const box = within(listPane()).getByLabelText(t.filters.searchLabel);
+    await user.type(box, '캘리퍼{Enter}');
+
+    await user.click(await screen.findByRole('button', { name: t.filters.chipRemoveKeyword }));
+
+    await waitFor(() => {
+      expect(box).toHaveValue('');
+    });
+  });
+
+  /*
+   * ⛔ **아직 적용하지 않은 입력도 초기화가 거둬야 한다.**
+   * 적용된 값을 보고 칸을 맞추는 것만으로는 부족하다 — 적용된 값이 이미 비어 있으면
+   * 「달라진 것이 없다」가 되어 칸에 남은 낱말을 아무도 지우지 않는다. 그 상태로 「조회」를
+   * 누르면 초기화한 줄 알았던 조건이 되살아난다. (브라우저 확인에서 잡힌 자리)
+   */
+  it('적용하지 않은 입력도 초기화가 거둔다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+
+    const box = within(listPane()).getByLabelText(t.filters.searchLabel);
+    await user.type(box, '게이지');
+    expect(box).toHaveValue('게이지');
+
+    await user.click(within(listPane()).getByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => {
+      expect(box).toHaveValue('');
+    });
+  });
+
   it('검색어를 서버 조건으로 싣는다', async () => {
     const { user, sent } = renderScreen();
 

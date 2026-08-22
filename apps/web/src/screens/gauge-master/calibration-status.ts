@@ -8,14 +8,17 @@ import type { Equipment } from './types';
  */
 export type CalibrationStatus = 'notRequired' | 'never' | 'valid' | 'expired';
 
-export interface CalibrationJudgment {
-  status: CalibrationStatus;
-  /**
-   * 유효면 남은 날, 만료면 지난 날. 그 밖에는 `null`.
-   * **음수를 쓰지 않는다** — 「-3일 남음」이 아니라 「3일 경과」로 말한다.
-   */
-  days: number | null;
-}
+/**
+ * 판정 하나. 날수는 유효면 남은 날, 만료면 지난 날이다.
+ * **음수를 쓰지 않는다** — 「-3일 남음」이 아니라 「3일 경과」로 말한다.
+ *
+ * ⭐ **날수가 있는 갈래와 없는 갈래를 타입으로 가른다.** 「대상 아님」·「이력 없음」에는
+ * 견줄 날짜가 아예 없다. 이것을 `number | null` 하나로 두면 부르는 쪽마다 `?? 0` 같은
+ * **닿지 않는 기본값**이 붙고, 그 값은 틀려도 아무도 모른다 — 「오늘까지 유효」가 되어 버린다.
+ */
+export type CalibrationJudgment =
+  | { status: Extract<CalibrationStatus, 'notRequired' | 'never'>; days: null }
+  | { status: Extract<CalibrationStatus, 'valid' | 'expired'>; days: number };
 
 /** 날짜만 견준다 — 시각이 섞이면 같은 날이 만료로 뒤집힌다. */
 const toDayNumber = (isoDate: string): number | null => {
