@@ -80,4 +80,12 @@ export const workOrder = {
       notSelectedDescription: '목록에서 작업지시를 선택하면 계획 정보를 확인할 수 있습니다.',
     },
   },
+  assignmentActions: {
+    actions: { validate: 'Validation 다시 실행', reset: '변경 취소', save: '저장' },
+    reasons: {
+      saving: '저장 중에는 작업을 실행할 수 없습니다.',
+      noChanges: '변경된 내용이 없습니다.',
+      invalidDraft: '배정 정보를 확인하세요.',
+    },
+  },
 } as const;
