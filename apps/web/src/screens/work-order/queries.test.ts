@@ -99,6 +99,7 @@ describe('work-order reads', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
+    expect(requests).toHaveLength(1);
     expect(Array.from(requests[0]?.searchParams.entries() ?? [])).toEqual([
       ['productionPlanId', '501'],
       ['page', '3'],
