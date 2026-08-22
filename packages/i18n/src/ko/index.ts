@@ -53,6 +53,7 @@ import { equipmentMaster } from './equipment-master';
 import { qualityApproval } from './quality-approval';
 import { productionOrder } from './production-order';
 import { gaugeMaster } from './gauge-master';
+import { toolMaster } from './tool-master';
 
 export const ko = {
   common,
@@ -94,6 +95,7 @@ export const ko = {
   qualityApproval,
   productionOrder,
   gaugeMaster,
+  toolMaster,
 } as const;
 
 export type Messages = typeof ko;
