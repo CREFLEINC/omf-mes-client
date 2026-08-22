@@ -1,5 +1,6 @@
 import type {
   CollectionChannel,
+  CollectionChannelObservation,
   Equipment,
   InspectionItemSpec,
   InspectionPlan,
@@ -159,3 +160,26 @@ export const uomListResponse = () => ({
   ],
   page: pageMeta(3),
 });
+
+export const makeObservation = (
+  channelKey: string,
+  overrides: Partial<CollectionChannelObservation> = {},
+): CollectionChannelObservation => ({
+  channelKey,
+  observedAt: '2026-08-20T09:40:00+07:00',
+  ...overrides,
+});
+
+export const observationItems: CollectionChannelObservation[] = [
+  makeObservation('CYCLE_TIME', { lastValue: '12.4', alreadyMapped: true }),
+  /** ⭐ 아직 잇지 않은 신호 — 이 창이 있는 이유다. */
+  makeObservation('SCREW_RPM', { lastValue: '182.4' }),
+  makeObservation('MOLD_TEMP', { lastValue: '58.1', alreadyMapped: false }),
+  /** 최근 값이 오지 않는 신호도 있다 — 빈 칸으로 두지 않는다. */
+  makeObservation('DOOR_STATE'),
+];
+
+export const observationListResponse = (
+  items: CollectionChannelObservation[] = observationItems,
+  totalCount?: number,
+) => (totalCount === undefined ? { items } : { items, totalCount });

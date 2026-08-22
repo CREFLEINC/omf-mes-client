@@ -14,6 +14,7 @@ import {
   equipmentItems,
   equipmentListResponse,
   makeChannel,
+  observationListResponse,
   planListResponse,
   plantListResponse,
   specListResponse,
@@ -53,6 +54,10 @@ const routes = (options: Options): StubRoute[] => {
   const fail = (path: string): boolean => options.failPath === path;
 
   return [
+    {
+      match: (request) => isPath(request, '/maintenance/collection-channels/observations'),
+      respond: () => jsonResponse(observationListResponse()),
+    },
     {
       match: (request) =>
         request.method !== 'GET' && isPath(request, '/maintenance/collection-channels'),

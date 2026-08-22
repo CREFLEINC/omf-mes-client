@@ -15,6 +15,7 @@ import {
   equipmentItems,
   equipmentListResponse,
   makeChannel,
+  observationListResponse,
   plantListResponse,
 } from './fixtures';
 import { CollectionChannelScreen } from './screen';
@@ -47,6 +48,10 @@ interface WriteStubOptions {
 }
 
 const stub = (options: WriteStubOptions): StubRoute[] => [
+  {
+    match: (request) => isPath(request, '/maintenance/collection-channels/observations'),
+    respond: () => jsonResponse(observationListResponse()),
+  },
   {
     /* 쓰기가 GET 보다 앞선다 — 같은 경로를 메서드로 가른다 */
     match: (request) =>

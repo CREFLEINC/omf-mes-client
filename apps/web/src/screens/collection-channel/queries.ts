@@ -5,6 +5,7 @@ import { runRequest } from '../../patterns/request';
 import type { CodeOption } from './options';
 import type {
   CollectionChannel,
+  CollectionChannelObservation,
   Equipment,
   EquipmentFilters,
   InspectionItemSpec,
@@ -366,4 +367,48 @@ export const useUomCodeById = (): Map<number, string> => {
   });
 
   return new Map((uoms.data?.items ?? []).map((uom) => [uom.uomId, uom.uomCode]));
+};
+
+export interface ObservationListResponse {
+  items: CollectionChannelObservation[];
+  totalCount?: number;
+}
+
+export const observationKeys = {
+  all: ['collection-channel-observations'] as const,
+  list: (equipmentId: number, unmappedOnly: boolean) =>
+    ['collection-channel-observations', equipmentId, unmappedOnly] as const,
+};
+
+/**
+ * 이 설비가 최근 보내온 신호.
+ *
+ * ⭐ **거르는 일을 서버가 한다**(`unmappedOnly`) — 화면이 받아 온 것만 거르지 않으므로,
+ * 목록이 잘려도 조건이 반쪽이 되지 않는다. 채널 목록의 「미매핑만 보기」와 다른 점이다.
+ *
+ * 설비를 고르기 전에는 조회하지 않는다 — 대상이 정해지지 않았다.
+ */
+export const useObservations = (
+  equipmentId: number | null,
+  unmappedOnly: boolean,
+): UseQueryResult<ObservationListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: observationKeys.list(equipmentId ?? 0, unmappedOnly),
+    enabled: equipmentId !== null,
+    queryFn: () => {
+      if (equipmentId === null) {
+        throw new Error('설비를 고르기 전에는 수신 신호를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/maintenance/collection-channels/observations', {
+          params: {
+            query: { equipmentId, ...(unmappedOnly ? { unmappedOnly: true } : {}) },
+          },
+        }),
+      );
+    },
+  });
 };

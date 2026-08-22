@@ -91,6 +91,48 @@ export const collectionChannel = {
   },
   actions: {
     addChannel: '채널 추가',
+    importFromLog: '수신 로그에서 가져오기',
+  },
+  /**
+   * ⭐ **외부에서 오는 이름은 손으로 치게 하지 않는다**(스펙 §9-1).
+   *
+   * 채널명은 설비가 정한다. 사람이 문서를 보고 옮겨 적으면 **오타 하나로 수신값이 조용히
+   * 버려진다** — 이름이 어긋난 채널은 매핑에 걸리지 않고, 걸리지 않은 값은 저장되지 않는다.
+   * 그래서 «실제로 들어온 것»에서 골라 담는 길을 둔다.
+   *
+   * ⛔ 그렇다고 손 입력을 막지는 않는다 — 아직 한 번도 안 온 채널을 미리 등록할 수 있어야 한다.
+   */
+  importLog: {
+    title: '수신 로그에서 가져오기',
+    description:
+      '이 설비에서 최근 들어온 신호입니다. 채널로 만들 것을 고르세요. 이름은 받은 그대로 담기므로 옮겨 적다 틀릴 일이 없습니다.',
+    loading: '최근 수신 신호를 불러오는 중',
+    /** ⭐ 비활성 사유는 그 컨트롤의 이름으로 시작한다 — 시각적으로 끊겨도 대상을 되찾는다. */
+    noObservationsReason:
+      '수신 로그에서 가져오기는 이 설비에서 받은 기록이 있어야 쓸 수 있습니다. 아직 들어온 신호가 없습니다.',
+    emptyTitle: '고를 신호가 없습니다',
+    emptyDescription: '아직 잇지 않은 신호가 없습니다. 전체를 보려면 조건을 끄세요.',
+    unmappedOnly: '아직 잇지 않은 것만',
+    /** ⭐ 감추지 않고 왜 못 고르는지 말한다(공유계약 G-2). */
+    alreadyMapped: '이미 등록됨',
+    loadFailed: '최근 수신 신호를 불러오지 못했습니다.',
+    confirm: '고른 신호를 채널로 만들기',
+    selectedCount: (count: number): string => `${String(count)}건 선택`,
+    /** ⛔ 「모두 만들었습니다」라고 말하지 않는다 — 한 건씩 나가므로 일부만 될 수 있다. */
+    resultTitle: '가져오기 결과',
+    createdCount: (count: number): string => `${String(count)}건을 채널로 만들었습니다.`,
+    failedCount: (count: number): string =>
+      `${String(count)}건은 만들지 못했습니다. 아래에 남겨 두었으니 다시 시도하거나 손으로 등록하세요.`,
+    /** 실패한 줄에 서버가 준 사유를 그대로 붙인다 — 뭉개면 무엇을 고칠지 알 수 없다. */
+    failedRow: (channelKey: string, reason: string): string => `${channelKey} — ${reason}`,
+    unknownReason: '알 수 없는 이유로 실패했습니다.',
+    fields: {
+      channelKey: '신호 이름',
+      lastValue: '최근 값',
+      observedAt: '받은 시각',
+    },
+    /** ⚠ 시각을 아는 척 다듬지 않는다 — 서버가 준 표기를 그대로 세운다. */
+    notRecorded: '기록 없음',
   },
   form: {
     createTitle: '수집 채널 등록',
@@ -152,6 +194,9 @@ export const collectionChannel = {
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
   actionReasons: {
+    /** ⚠ 이 설비의 수신이 아직 없다 — 신호가 오면 목록이 채워진다(설계 `omf-mes#67`). */
+    importNeedsObservations:
+      '수집 채널 등록은 손으로도 할 수 있습니다. 아래 「채널 추가」를 쓰세요.',
     equipmentFixed: '설비는 왼쪽에서 고른 것으로 정해지며 이 창에서 옮길 수 없습니다.',
     channelKeyFixed: '채널명은 등록할 때 정해지며 나중에 바꿀 수 없습니다.',
   },
