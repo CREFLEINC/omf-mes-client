@@ -198,6 +198,23 @@ describe('QualityApprovalScreen query and disclosure', () => {
     );
   });
 
+  it('쪽 변경 응답을 기다릴 때 이전 승인 행과 선택 진입점을 숨긴다', async () => {
+    let calls = 0;
+    const pending = new Promise<Response>(() => undefined);
+    const fetch: StubFetch = async () => {
+      calls += 1;
+      return calls === 1 ? jsonResponse(listBody(requests, 40)) : pending;
+    };
+    const { user } = renderScreen(fetch, '/quality-approval?rq=31');
+
+    await findRequest();
+    await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
+
+    expect(screen.getByRole('status', { name: t.loading })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.actions.selectRow('SYNTH-REQ-031') })).toBeNull();
+    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?page=2');
+  });
+
   it('초기화는 소유한 조건·범위·쪽·선택만 기본으로 돌린다', async () => {
     const { user } = renderScreen(
       createStubFetch([listRoute()]),

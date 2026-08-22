@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -22,6 +22,5 @@ export const useApprovalRequests = (
   return useQuery({
     queryKey: qualityApprovalKeys.list(query),
     queryFn: () => runRequest(() => client.GET('/app/approval-requests', { params: { query } })),
-    placeholderData: keepPreviousData,
   });
 };
