@@ -13,7 +13,10 @@ import {
   gaugeItems,
   gaugeNotRequired,
   gaugeValid,
+  calibrationItems,
+  calibrationsResponse,
   gaugesResponse,
+  makeCalibration,
   lockedCode,
   makeCodeValue,
   makeGauge,
@@ -36,6 +39,7 @@ interface RenderOptions {
   respondPlants?: () => Response;
   respondCodeValues?: () => Response;
   respondUoms?: () => Response;
+  respondCalibrations?: () => Response;
   respondDetail?: (request: Request) => Response;
   respondWrite?: (request: Request) => Response;
 }
@@ -58,6 +62,8 @@ const renderScreen = (options: RenderOptions = {}) => {
   const codeValueSent: URL[] = [];
   /** 공장 조회가 실어 간 조건 — 문 닫은 공장까지 받아 오는지 본다 */
   const plantSent: URL[] = [];
+  /** 검교정 이력 조회가 실어 간 조건 — 고른 계측기로 좁혔는지 본다 */
+  const calibrationSent: URL[] = [];
 
   /** 쓰기 요청 원본 — 본문과 헤더를 그대로 본다 */
   const writes: Request[] = [];
@@ -98,6 +104,13 @@ const renderScreen = (options: RenderOptions = {}) => {
       respond: (request) => (options.respondDetail ?? defaultDetail)(request),
     },
     {
+      match: (request) => isPath(request, '/maintenance/calibrations'),
+      respond: (request) => {
+        calibrationSent.push(new URL(request.url));
+        return (options.respondCalibrations ?? (() => jsonResponse(calibrationsResponse())))();
+      },
+    },
+    {
       match: (request) => isPath(request, '/mdm/uoms'),
       respond: () => (options.respondUoms ?? (() => jsonResponse(uomsResponse())))(),
     },
@@ -130,7 +143,7 @@ const renderScreen = (options: RenderOptions = {}) => {
   const user = userEvent.setup();
   const view = renderWithProviders(<GaugeMasterScreen today={TODAY} />, { fetch });
 
-  return { ...view, user, sent, codeValueSent, plantSent, writes };
+  return { ...view, user, sent, codeValueSent, plantSent, calibrationSent, writes };
 };
 
 const listPane = () => screen.getByRole('region', { name: t.title });
@@ -711,8 +724,11 @@ describe('W-05-11 계측기 마스터 — 등록·수정', () => {
 
     await openEdit(user, 'GA-03');
 
+    /* 이력 표에도 같은 날짜가 서므로 **그 칸을 짚어** 잰다 — 글자만 보면 어느 쪽인지 모른다. */
     await waitFor(() => {
-      expect(within(form()).getByText('2026-01-05')).toBeInTheDocument();
+      expect(within(form()).getByLabelText(t.fields.lastCalibrationDate)).toHaveTextContent(
+        '2026-01-05',
+      );
     });
     expect(
       within(form()).getByText(t.actionReasons.calibrationDateOwnedElsewhere),
@@ -1280,5 +1296,139 @@ describe('W-05-11 계측기 마스터 — 사용 중지·폐기', () => {
 
     expect(await within(confirm).findByText(messages.httpError.description)).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: t.retire.disposeTitle })).toBeInTheDocument();
+  });
+});
+
+describe('W-05-11 계측기 마스터 — 검교정 이력', () => {
+  const form = () => screen.getByRole('dialog');
+  const historyPane = () => within(form()).getByRole('region', { name: t.history.title });
+
+  const openEdit = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
+    await user.click(await screen.findByRole('button', { name: code }));
+    return screen.findByRole('dialog');
+  };
+
+  /*
+   * ⭐ 계측기 전용 경로가 아니라 **보전 자원을 `equipmentId` 로 좁힌다** —
+   * 계약이 「계측기는 설비의 한 종류라 `equipmentId` 그대로」라고 못박았다.
+   */
+  it('고른 계측기로 좁혀 이력을 조회한다', async () => {
+    const { user, calibrationSent } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+
+    await waitFor(() => {
+      expect(calibrationSent).toHaveLength(1);
+    });
+    expect(calibrationSent[0]?.searchParams.get('equipmentId')).toBe('3003');
+  });
+
+  it('창을 열기 전에는 이력을 조회하지 않는다', async () => {
+    const { calibrationSent } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+
+    expect(calibrationSent).toHaveLength(0);
+  });
+
+  it('이력을 표로 보인다', async () => {
+    const { user } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+
+    await waitFor(() => {
+      expect(within(historyPane()).getByRole('cell', { name: '한빛교정원' })).toBeInTheDocument();
+    });
+    expect(within(historyPane()).getByRole('cell', { name: 'CERT-1' })).toBeInTheDocument();
+  });
+
+  /* ⚠ 값 목록이 아직 없다(omf-mes#145) — 이름을 지어내지 않고 코드를 그대로 보인다. */
+  it('구분·결과의 값 목록이 없으면 코드를 그대로 보인다', async () => {
+    const { user } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+
+    await waitFor(() => {
+      expect(within(historyPane()).getAllByRole('cell', { name: 'REGULAR' }).length).toBe(2);
+    });
+    expect(within(historyPane()).getAllByRole('cell', { name: 'PASS' }).length).toBe(2);
+  });
+
+  it('없는 값은 빈칸이 아니라 「기록 없음」이라 말한다', async () => {
+    const { user } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+
+    await waitFor(() => {
+      expect(
+        within(historyPane()).getAllByRole('cell', { name: t.fields.notRecorded }).length,
+      ).toBeGreaterThan(0);
+    });
+  });
+
+  /* ⭐ 등록은 검교정 이력 등록 화면의 몫이다 — 조작이 없는 것과 「여기서는 못 한다」는 다르다. */
+  it('읽기 전용임을 밝히고 조작을 두지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await openEdit(user, 'GA-03');
+
+    await waitFor(() => {
+      expect(within(historyPane()).getByText(t.history.readOnlyNote)).toBeInTheDocument();
+    });
+    expect(within(historyPane()).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('이력이 없으면 그렇게 말한다', async () => {
+    const { user } = renderScreen({
+      respondCalibrations: () => jsonResponse(calibrationsResponse([])),
+    });
+
+    await openEdit(user, 'GA-03');
+
+    expect(await within(historyPane()).findByText(t.history.emptyTitle)).toBeInTheDocument();
+  });
+
+  it('이력 조회가 실패해도 폼은 선다', async () => {
+    const { user } = renderScreen({
+      respondCalibrations: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
+    });
+
+    await openEdit(user, 'GA-03');
+
+    expect(await within(historyPane()).findByText(t.history.loadFailed)).toBeInTheDocument();
+    expect(within(form()).getByLabelText(/계측기명/)).toBeInTheDocument();
+  });
+
+  it('전체 건수를 알고 더 있으면 몇 건 중 몇 건인지 알린다', async () => {
+    const { user } = renderScreen({
+      respondCalibrations: () => jsonResponse(calibrationsResponse(calibrationItems, 42)),
+    });
+
+    await openEdit(user, 'GA-03');
+
+    expect(await within(historyPane()).findByText(t.history.truncated(2, 42))).toBeInTheDocument();
+  });
+
+  /* ⛔ 「다 보여 주고 있다」고 말하지 않는다 — 이 응답만으로는 알 수 없다. */
+  it('전체 건수를 모르는데 한 쪽이 꽉 찼으면 더 있을 수 있다고 알린다', async () => {
+    const full = Array.from({ length: 20 }, (_unused, index) =>
+      makeCalibration(9100 + index, '2026-01-05'),
+    );
+    const { user } = renderScreen({
+      respondCalibrations: () => jsonResponse(calibrationsResponse(full)),
+    });
+
+    await openEdit(user, 'GA-03');
+
+    expect(await within(historyPane()).findByText(t.history.mayHaveMore(20))).toBeInTheDocument();
+  });
+
+  it('등록 창에는 이력 자리가 없다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+    await user.click(within(listPane()).getByRole('button', { name: t.actions.addGauge }));
+
+    expect(within(form()).queryByRole('region', { name: t.history.title })).not.toBeInTheDocument();
   });
 });

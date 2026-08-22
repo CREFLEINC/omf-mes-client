@@ -129,6 +129,27 @@ export const gaugeMaster = {
     valid: (days: number): string => (days === 0 ? '오늘까지 유효' : `${days}일 남음`),
     expired: (days: number): string => `만료 — ${days}일 경과`,
   },
+  history: {
+    title: '검교정 이력',
+    loading: '검교정 이력을 불러오는 중',
+    /** ⭐ 이 화면은 이력을 **읽기만 한다** — 등록은 검교정 이력 등록 화면의 몫이다. */
+    readOnlyNote: '검교정 이력은 검교정 이력 등록에서 남깁니다. 여기서는 볼 수만 있습니다.',
+    emptyTitle: '검교정 이력이 없습니다',
+    emptyDescription: '검교정을 하고 이력을 남기면 여기에 나타납니다.',
+    loadFailed: '검교정 이력을 불러오지 못했습니다.',
+    truncated: (shown: number, total: number): string =>
+      `전체 ${total}건 중 최근 ${shown}건을 표시합니다.`,
+    /** ⛔ 「다 보여 주고 있다」고 말하지 않는다 — 이 응답만으로는 알 수 없다. */
+    mayHaveMore: (shown: number): string => `최근 ${shown}건을 표시합니다. 더 있을 수 있습니다.`,
+    fields: {
+      performedOn: '실시일',
+      historyType: '구분',
+      result: '결과',
+      nextDueOn: '차기 예정일',
+      agency: '검교정 기관',
+      certificateNo: '성적서 번호',
+    },
+  },
   validation: {
     required: '필수 항목입니다.',
     codeBlank: '공백만으로는 계측기번호를 만들 수 없습니다.',
