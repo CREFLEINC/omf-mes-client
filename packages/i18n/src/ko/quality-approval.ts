@@ -1,9 +1,18 @@
 export const qualityApproval = {
+  scopeWarning:
+    '승인 유형 기준값이 준비되지 않아 나에게 배정된 모든 유형의 요청을 표시합니다. 승인 유형 원문을 확인하세요.',
   fields: {
+    approvalTypeCode: '승인 유형',
     statusCode: '상태',
+    period: '상신일',
+    q: '요청번호 검색',
+    pendingOnly: '결재 대기만 보기',
     request: '요청',
     target: '대상',
   },
+  codePending: '선택할 기준값이 아직 준비되지 않았습니다',
+  codePlaceholder: '기준값 준비 중',
+  all: '전체',
   actions: {
     selectRow: (requestNo: string): string => `${requestNo} 선택`,
     prevPage: '이전',
