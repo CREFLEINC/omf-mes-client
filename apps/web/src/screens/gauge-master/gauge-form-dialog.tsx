@@ -60,6 +60,8 @@ export interface GaugeFormDialogProps {
   statusOptions: CodeOption[];
   lastCalibrationDate: string | null;
   calibrationDueDate: string | null;
+  /** 검교정 이력 자리. 등록에는 아직 이력이 없어 부르는 쪽이 `null` 을 준다 */
+  history: ReactNode;
   isSaving: boolean;
   /** 사용 중지를 지금 할 수 있는가. 못 하면 사유가 함께 온다 */
   deactivate: ActionAvailability;
@@ -96,6 +98,7 @@ export const GaugeFormDialog = ({
   statusOptions,
   lastCalibrationDate,
   calibrationDueDate,
+  history,
   isSaving,
   deactivate,
   dispose,
@@ -277,6 +280,12 @@ export const GaugeFormDialog = ({
          * 기능」과 구분되지 않아, 왜 못 하는지도 어디서 할 수 있는지도 알 수 없다.
          * 사유는 보이는 DOM 텍스트로 낸다 — 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다.
          */}
+        {/*
+         * 이력은 표라 **두 칸을 다 쓴다** — 폼 칸과 같은 폭에 넣으면 열이 뭉개진다.
+         * 창 본문이 스크롤되므로(`.dialog-scroll`) 아래로 길어져도 바닥 액션은 남는다.
+         */}
+        {history !== null && <div className="form-grid-full">{history}</div>}
+
         {mode === 'edit' && (
           <div className="field-cell">
             <Button

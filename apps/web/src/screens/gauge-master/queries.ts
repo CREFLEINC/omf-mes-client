@@ -9,6 +9,7 @@ import type { Equipment, GaugeFilters } from './types';
 type PageMeta = components['schemas']['PageMeta'];
 type CodeValue = components['schemas']['CodeValue'];
 type EquipmentDetailResponse = components['schemas']['EquipmentDetailResponse'];
+type Calibration = components['schemas']['Calibration'];
 
 export interface GaugeListResponse {
   items: Equipment[];
@@ -119,6 +120,53 @@ export const useGaugeDetail = (
       return runRequest(() =>
         client.GET('/mdm/equipments/{equipmentId}', { params: { path: { equipmentId } } }),
       );
+    },
+  });
+};
+
+/** 한 번에 받아 오는 검교정 이력 건수. 계약 기본값(50)보다 좁게 잡아 창이 길어지지 않게 한다. */
+export const CALIBRATION_PAGE_SIZE = 20;
+
+export const calibrationKeys = {
+  ofGauge: (equipmentId: number) => ['calibrations', equipmentId] as const,
+};
+
+export interface CalibrationHistory {
+  items: Calibration[];
+  /**
+   * 전체 건수. **계약이 이 값을 선택으로 두었다** — 안 주면 «없다»가 아니라 «모른다»다
+   * (공유계약 G-9). 그래서 `null` 로 구분해 든다.
+   */
+  totalCount: number | null;
+}
+
+/**
+ * 한 계측기의 검교정 이력. **읽기만 한다** — 등록은 검교정 이력 등록 화면(W-05-10)의 몫이다.
+ *
+ * ⭐ **계측기 전용 경로가 아니라 보전 자원을 `equipmentId` 로 좁힌다** — 계약 주석이
+ * 「계측기는 설비의 한 종류라 `/mdm/equipments` 의 `equipmentId` 그대로」라고 못박았다.
+ */
+export const useCalibrationHistory = (
+  equipmentId: number | null,
+): UseQueryResult<CalibrationHistory> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: calibrationKeys.ofGauge(equipmentId ?? 0),
+    enabled: equipmentId !== null,
+    queryFn: () => {
+      if (equipmentId === null) {
+        throw new Error('계측기를 고르기 전에는 검교정 이력을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/maintenance/calibrations', {
+          params: { query: { equipmentId, page: 1, size: CALIBRATION_PAGE_SIZE } },
+        }),
+      ).then((response) => ({
+        items: response.items,
+        totalCount: response.totalCount ?? null,
+      }));
     },
   });
 };

@@ -13,6 +13,7 @@ import {
   toCodeLabels,
 } from './code-options';
 import { deactivateAvailability, disposeAvailability } from './asset-actions';
+import { CalibrationHistoryPane } from './calibration-history-pane';
 import { GaugeFormDialog } from './gauge-form-dialog';
 import { GaugeListPane } from './gauge-list-pane';
 import { GAUGE_FORM_FIELDS, validateGauge } from './gauge-validation';
@@ -27,9 +28,11 @@ import {
   toGaugeUpdate,
 } from './mappers';
 import {
+  CALIBRATION_PAGE_SIZE,
   gaugeDetailPath,
   gaugeKeys,
   isTruncated,
+  useCalibrationHistory,
   useCodeValues,
   useGaugeDetail,
   useGaugeList,
@@ -123,6 +126,8 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
   /* 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰도 코드 편집 가부도 없다. */
   const editingId = dialog?.mode === 'edit' ? dialog.equipmentId : null;
   const detail = useGaugeDetail(editingId);
+  /* 이력도 창을 열 때만 읽는다 — 목록에는 이력을 그릴 자리가 없다. */
+  const history = useCalibrationHistory(editingId);
 
   const items = gauges.data?.items ?? NO_ITEMS;
   const listTruncated = gauges.data !== undefined && isTruncated(gauges.data.page, items.length);
@@ -364,6 +369,17 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
           statusOptions={statusOptions}
           lastCalibrationDate={detail.data?.equipment.lastCalibrationDate ?? null}
           calibrationDueDate={detail.data?.equipment.calibrationDueDate ?? null}
+          history={
+            dialog.mode === 'edit' ? (
+              <CalibrationHistoryPane
+                items={history.data?.items ?? NO_ITEMS}
+                totalCount={history.data?.totalCount ?? null}
+                pageSize={CALIBRATION_PAGE_SIZE}
+                isLoading={history.isLoading}
+                isError={history.isError}
+              />
+            ) : null
+          }
           isSaving={write.isSaving}
           deactivate={deactivate}
           dispose={dispose}

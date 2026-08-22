@@ -182,3 +182,33 @@ export const gaugeDetail = (
   },
   ...overrides,
 });
+
+type Calibration = components['schemas']['Calibration'];
+
+export const makeCalibration = (
+  calibrationId: number,
+  performedOn: string,
+  overrides: Partial<Calibration> = {},
+): Calibration => ({
+  calibrationId,
+  equipmentId: 3003,
+  historyTypeCode: 'REGULAR',
+  performedOn,
+  resultCode: 'PASS',
+  ...overrides,
+});
+
+/** 최근 것이 위로 온다고 가정하지 않는다 — 서버가 준 차례를 그대로 그린다. */
+export const calibrationItems: Calibration[] = [
+  makeCalibration(9001, '2026-01-05', {
+    nextDueOn: '2026-04-05',
+    agencyName: '한빛교정원',
+    certificateNo: 'CERT-1',
+  }),
+  makeCalibration(9002, '2025-10-05', { nextDueOn: '2026-01-05' }),
+];
+
+export const calibrationsResponse = (
+  items: Calibration[] = calibrationItems,
+  totalCount?: number,
+) => (totalCount === undefined ? { items } : { items, totalCount });
