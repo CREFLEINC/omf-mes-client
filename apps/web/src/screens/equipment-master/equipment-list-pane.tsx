@@ -13,6 +13,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 import {
   EQUIPMENT_TYPE_OPTIONS,
+  type CodeOption,
   defaultEquipmentFilters,
   equipmentTypeLabel,
   statusLabel,
@@ -26,6 +27,8 @@ export interface EquipmentListPaneProps {
   /** 적용된 조건 — 조건 칩의 렌더 기준 */
   appliedFilters: EquipmentFilters;
   onApplyFilters: (next: EquipmentFilters) => void;
+  /** 자산 상태 선택지. 비어 있으면 코드가 그대로 보인다 — 시드가 아직 없을 수 있다 */
+  statusOptions: CodeOption[];
   /** 등록 폼을 여는 주 액션 */
   onAdd: () => void;
   /** 설비 하나를 편집한다 — 수명주기 액션도 그 창 안에 있다 */
@@ -43,13 +46,15 @@ const hasAnyFilter = (filters: EquipmentFilters): boolean =>
   filters.q !== '' ||
   filters.equipmentTypeCode !== '' ||
   filters.calibrationRequired ||
-  filters.includeInactive;
+  filters.includeInactive ||
+  filters.includeDisposed;
 
 export const EquipmentListPane = ({
   items,
   isLoading,
   appliedFilters,
   onApplyFilters,
+  statusOptions,
   onAdd,
   onEdit,
   loadError,
@@ -61,6 +66,7 @@ export const EquipmentListPane = ({
     equipmentTypeCode: appliedType,
     calibrationRequired: appliedCalibration,
     includeInactive: appliedIncludeInactive,
+    includeDisposed: appliedIncludeDisposed,
   } = appliedFilters;
 
   useEffect(() => {
@@ -69,8 +75,9 @@ export const EquipmentListPane = ({
       equipmentTypeCode: appliedType,
       calibrationRequired: appliedCalibration,
       includeInactive: appliedIncludeInactive,
+      includeDisposed: appliedIncludeDisposed,
     });
-  }, [appliedQ, appliedType, appliedCalibration, appliedIncludeInactive]);
+  }, [appliedQ, appliedType, appliedCalibration, appliedIncludeInactive, appliedIncludeDisposed]);
 
   const columns: Column<Equipment>[] = [
     {
@@ -95,7 +102,7 @@ export const EquipmentListPane = ({
        */
       key: 'statusCode',
       header: t.fields.status,
-      render: (row) => statusLabel(row.statusCode),
+      render: (row) => statusLabel(row.statusCode, statusOptions),
     },
     {
       key: 'calibrationRequired',
@@ -193,6 +200,20 @@ export const EquipmentListPane = ({
             {messages.common.includeInactive}
           </Checkbox>
         </div>
+        {/*
+         * ⭐ 사용 여부와 «다른 축» 이다. 기본은 운용 중인 것만 부르되, 마스터는 폐기된 자산도
+         * 볼 수 있어야 한다 — 감추기만 하면 폐기 처리의 결과를 아무 데서도 확인할 수 없다.
+         */}
+        <div className="field-cell field-cell-unlabeled">
+          <Checkbox
+            checked={appliedFilters.includeDisposed}
+            onChange={(event) =>
+              onApplyFilters({ ...appliedFilters, includeDisposed: event.target.checked })
+            }
+          >
+            {t.equipmentFilters.includeDisposed}
+          </Checkbox>
+        </div>
         <Button className="field-cell-unlabeled" onClick={() => onApplyFilters(draft)}>
           {messages.common.search}
         </Button>
@@ -243,6 +264,15 @@ export const EquipmentListPane = ({
             onRemove={() => onApplyFilters({ ...appliedFilters, includeInactive: false })}
           >
             {messages.common.includeInactive}
+          </Chip>
+        )}
+        {appliedFilters.includeDisposed && (
+          <Chip
+            variant="status"
+            removeLabel={t.equipmentFilters.chipRemoveIncludeDisposed}
+            onRemove={() => onApplyFilters({ ...appliedFilters, includeDisposed: false })}
+          >
+            {t.equipmentFilters.includeDisposed}
           </Chip>
         )}
       </div>

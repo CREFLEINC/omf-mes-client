@@ -44,8 +44,12 @@ export const equipmentMaster = {
      * 아직 없어(설계 질의 omf-mes#185) **이미 폐기된 자산인지 화면이 판정할 수 없다** —
      * 판정 없이 버튼을 열면 이미 끝난 자산에도 눌리는 컨트롤이 된다.
      */
+    /**
+     * ⚠ 시드가 아직 들어가지 않아 값 목록이 빌 수 있다(설계 `omf-mes#182`).
+     * 그때 감추지 않고 비활성 + 사유로 둔다(G-2) — 목록이 들어오면 이 잠금은 저절로 풀린다.
+     */
     disposeUnavailable:
-      '폐기는 아직 쓸 수 없습니다. 자산 상태의 값 목록이 준비되면 이 버튼을 쓸 수 있습니다.',
+      '자산 상태의 값 목록을 아직 불러오지 못해 폐기를 쓸 수 없습니다. 목록이 준비되면 이 버튼을 쓸 수 있습니다.',
     deactivateNeedsCleanForm:
       '사용 중지는 저장하지 않은 변경이 있으면 쓸 수 없습니다. 먼저 저장하거나 취소하세요.',
   },
@@ -84,6 +88,15 @@ export const equipmentMaster = {
    *
    * ⚠ 계약에 다시 켜는 경로가 없다 — 이 화면에서 되돌릴 수 없다는 사실을 감추지 않는다.
    */
+  dispose: {
+    title: '폐기 처리할까요?',
+    target: (label: string): string => `${label} 을(를) 폐기 처리합니다.`,
+    /** 사용 중지와 «다른 축» 이다 — 그것은 감추는 것이고 이것은 자산이 끝난 것이다. */
+    impact:
+      '사용 중지와 다른 처리입니다. 사용 중지는 목록에서 감추는 것이고, 폐기는 자산이 끝난 것입니다.',
+    notReversible: '되돌릴 수 없습니다. 폐기한 뒤에는 다시 불러와도 편집이 풀리지 않습니다.',
+    confirm: '폐기 처리',
+  },
   deactivate: {
     title: '사용 중지할까요?',
     equipmentTitle: '설비를 사용 중지할까요?',
@@ -121,6 +134,9 @@ export const equipmentMaster = {
   },
   equipmentFilters: {
     searchLabel: '설비 검색',
+    /** 자산 수명주기 축. 사용 여부(미사용 포함)와 «다른 축» 이라 조건을 따로 둔다. */
+    includeDisposed: '폐기 포함',
+    chipRemoveIncludeDisposed: '폐기 포함 조건 제거',
     searchPlaceholder: '설비코드 또는 설비명',
     typeAll: '전체 유형',
     calibrationRequiredOnly: '검교정 대상만',

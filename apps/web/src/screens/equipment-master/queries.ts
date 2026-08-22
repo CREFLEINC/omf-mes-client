@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { IN_SERVICE_STATUS_CODE, type CodeValue } from './code-options';
 import { runRequest } from '../../patterns/request';
 import type { EquipmentFilters, GroupFilters, LookupEntries, LookupEntry } from './types';
 
@@ -220,12 +221,49 @@ export const useEquipmentList = (
                 ? {}
                 : { equipmentTypeCode: filters.equipmentTypeCode }),
               ...(filters.calibrationRequired ? { calibrationRequired: true } : {}),
+              /*
+               * ⭐ 기본은 운용 중인 것만 부른다(설계 omf-mes#185). 「폐기 포함」을 켜면
+               * 조건을 아예 빼 전부 받는다 — 폐기만 보는 조건은 계약에 없고, 마스터가
+               * 필요로 하는 것은 「감추지 않기」이지 「폐기만 보기」가 아니다.
+               */
+              ...(filters.includeDisposed ? {} : { statusCode: IN_SERVICE_STATUS_CODE }),
               includeInactive: filters.includeInactive,
             },
           },
         }),
       );
     },
+  });
+};
+
+/** 한 코드 그룹의 값 수 상한. 자산 상태는 둘이고 다른 그룹도 이 자릿수를 넘지 않는다. */
+const CODE_VALUES_PAGE_SIZE = 200;
+
+export const codeValueKeys = {
+  /** **그룹 이름이 곧 열쇠다** — 화면이 정수 id 를 알지 않는다. */
+  group: (codeGroupCode: string) => ['code-values', codeGroupCode] as const,
+};
+
+/**
+ * 공통코드 값 목록을 부른다 — **그룹을 이름으로 가리킨다.**
+ *
+ * ⛔ `codeGroupId` 정수를 코드에 박지 않는다: **환경마다 다르다**(설계 `omf-mes#179`).
+ * 계약이 둘 중 «정확히 하나»만 받으므로 이름만 보낸다.
+ *
+ * ⛔ **목록이 비어도 화면을 감추지 않는다**(공유계약 G-2). 시드가 아직 안 들어가 빌 수 있고
+ * (설계 `omf-mes#182`), 그때는 비활성 + 사유로 둔다 — 감추면 그 자리가 왜 없는지 알 수 없다.
+ */
+export const useCodeValues = (codeGroupCode: string): UseQueryResult<CodeValue[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: codeValueKeys.group(codeGroupCode),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode, page: 1, size: CODE_VALUES_PAGE_SIZE } },
+        }),
+      ).then((response) => response.items),
   });
 };
 

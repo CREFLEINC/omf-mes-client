@@ -165,3 +165,30 @@ export const equipmentDetail = (
   },
   ...overrides,
 });
+
+type CodeValue = components['schemas']['CodeValue'];
+
+/** 설계가 확정한 자산 상태 두 값(omf-mes#185). 차례는 `displayOrder` 가 정한다. */
+export const statusCodeValues: CodeValue[] = [
+  {
+    codeValueId: 9001,
+    codeGroupId: 900,
+    code: 'IN_SERVICE',
+    codeName: '운용',
+    displayOrder: 1,
+    isActive: true,
+  },
+  {
+    codeValueId: 9002,
+    codeGroupId: 900,
+    code: 'DISPOSED',
+    codeName: '폐기',
+    displayOrder: 2,
+    isActive: true,
+  },
+];
+
+export const codeValuesResponse = (items: CodeValue[] = statusCodeValues) => ({
+  items,
+  page: pageOf(items),
+});

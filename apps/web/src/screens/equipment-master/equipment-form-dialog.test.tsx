@@ -32,6 +32,7 @@ const renderDialog = (overrides: Partial<EquipmentFormDialogProps> = {}) => {
   const onClose = vi.fn();
   const onSave = vi.fn();
   const onDeactivate = vi.fn();
+  const onDispose = vi.fn();
 
   render(
     <ToastProvider>
@@ -49,16 +50,18 @@ const renderDialog = (overrides: Partial<EquipmentFormDialogProps> = {}) => {
         lastCalibrationDate={null}
         calibrationDueDate={null}
         isActive
+        statusOptions={[{ value: 'IN_SERVICE', label: '운용' }]}
         isSaving={false}
         onClose={onClose}
         onSave={onSave}
         onDeactivate={onDeactivate}
+        onDispose={onDispose}
         {...overrides}
       />
     </ToastProvider>,
   );
 
-  return { onChange, onClose, onSave, onDeactivate };
+  return { onChange, onClose, onSave, onDeactivate, onDispose };
 };
 
 describe('EquipmentFormDialog', () => {

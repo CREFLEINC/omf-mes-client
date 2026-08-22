@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
+  codeValuesResponse,
   equipmentDetail,
   equipmentItems,
   equipmentsResponse,
@@ -45,6 +46,8 @@ interface RenderOptions {
   respondEquipmentDetail?: (request: Request) => Response;
   respondEquipmentWrite?: (request: Request) => Response;
   respondEquipmentDeactivate?: (request: Request) => Response;
+  respondCodeValues?: () => Response;
+  respondDispose?: (request: Request) => Response;
 }
 
 /** 요청이 실제로 무엇을 실어 갔는지 본다 — 주소가 조건을 몰았음을 그것으로 증명한다. */
@@ -52,6 +55,8 @@ const renderScreen = (options: RenderOptions = {}) => {
   const sent: URL[] = [];
   /** 설비 목록 조회가 실어 간 조건 */
   const equipmentSent: URL[] = [];
+  /** 코드값 조회가 실어 간 조건 — 그룹을 이름으로 부르는지 본다 */
+  const codeValueSent: URL[] = [];
   /** 쓰기 요청 원본 — 본문과 헤더를 그대로 본다 */
   const writes: Request[] = [];
 
@@ -146,6 +151,17 @@ const renderScreen = (options: RenderOptions = {}) => {
       },
       {
         match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname.endsWith(':dispose'),
+        respond: (request) => {
+          writes.push(request.clone());
+          return (
+            options.respondDispose ??
+            (() => jsonResponse(makeEquipment(2001, 'EQ-01', { statusCode: 'DISPOSED' })))
+          )(request);
+        },
+      },
+      {
+        match: (request) =>
           request.method === 'POST' &&
           new URL(request.url).pathname.startsWith('/mdm/equipments/') &&
           new URL(request.url).pathname.endsWith(':deactivate'),
@@ -171,13 +187,20 @@ const renderScreen = (options: RenderOptions = {}) => {
         respond: () => (options.respondPlants ?? (() => jsonResponse(plantsResponse())))(),
       },
       {
+        match: (request) => isPath(request, '/mdm/code-values'),
+        respond: (request) => {
+          codeValueSent.push(new URL(request.url));
+          return (options.respondCodeValues ?? (() => jsonResponse(codeValuesResponse())))();
+        },
+      },
+      {
         match: (request) => isPath(request, '/mdm/processes'),
         respond: () => (options.respondProcesses ?? (() => jsonResponse(processesResponse())))(),
       },
     ]),
   });
 
-  return { ...view, sent, equipmentSent, writes };
+  return { ...view, sent, equipmentSent, codeValueSent, writes };
 };
 
 /** 마지막 쓰기 요청의 본문. 무엇을 실어 갔는지는 이것으로만 증명된다. */
@@ -1863,13 +1886,62 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
   });
 
   /*
-   * ⚠ 자산 상태의 값 목록도 그 공통코드 그룹 이름도 아직 없다(설계 질의 omf-mes#185) —
-   * 이미 폐기된 자산인지 화면이 판정할 수 없다. 판정 없이 열면 이미 끝난 자산에도 눌린다.
-   * 감추지 않고 사유를 밝힌다(G-2).
+   * ⭐ **그룹을 이름으로 부른다.** `codeGroupId` 정수는 환경마다 달라 코드에 박을 수 없다
+   * (설계 omf-mes#179). 계약이 둘 중 «정확히 하나»만 받는다.
    */
-  it('폐기는 아직 쓸 수 없다는 사실을 사유와 함께 낸다', async () => {
+  it('자산 상태 값 목록을 그룹 이름으로 부른다', async () => {
+    const user = userEvent.setup();
+    const { codeValueSent } = renderScreen();
+
+    await openEquipmentTab(user);
+
+    const query = (codeValueSent.at(-1) as URL).searchParams;
+    expect(query.get('codeGroupCode')).toBe('EQUIPMENT_STATUS');
+    expect(query.has('codeGroupId')).toBe(false);
+  });
+
+  it('상태를 코드가 아니라 이름으로 보인다', async () => {
     const user = userEvent.setup();
     renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+
+    expect(await pane.findByText('운용')).toBeInTheDocument();
+    expect(pane.queryByText('IN_SERVICE')).toBeNull();
+  });
+
+  /*
+   * ⚠ 시드가 아직 들어가지 않아 목록이 빌 수 있다(설계 omf-mes#182).
+   * 그때 「알 수 없음」으로 그리면 모르는 값과 없는 값이 같은 모양이 된다(G-9).
+   */
+  it('값 목록을 못 받으면 상태를 코드 그대로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ respondCodeValues: () => jsonResponse(codeValuesResponse([])) });
+
+    const pane = within(await openEquipmentTab(user));
+
+    expect(await pane.findByText('IN_SERVICE')).toBeInTheDocument();
+    expect(pane.queryByText('알 수 없음')).toBeNull();
+  });
+
+  it('값 목록을 받으면 폐기를 쓸 수 있다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const dialog = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+
+    expect(await dialog.findByRole('button', { name: t.actions.disposeEquipment })).toBeEnabled();
+  });
+
+  /*
+   * ⚠ 목록을 못 받으면 **이미 폐기된 자산인지 판정할 수 없다** — 열어 두면 이미 끝난
+   * 자산에도 눌리는 컨트롤이 된다. 감추지 않고 사유를 밝힌다(G-2).
+   */
+  it('값 목록을 못 받으면 폐기를 잠그고 사유를 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ respondCodeValues: () => jsonResponse(codeValuesResponse([])) });
 
     const pane = within(await openEquipmentTab(user));
     await user.click(pane.getByRole('button', { name: 'EQ-01' }));
@@ -1883,6 +1955,114 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
     expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
       t.actionReasons.disposeUnavailable,
     );
+  });
+
+  /* 이미 끝난 자산에는 폐기할 대상이 없다 — 누를 것이 없는 컨트롤을 두지 않는다. */
+  it('이미 폐기된 설비에는 폐기 버튼을 두지 않는다', async () => {
+    const user = userEvent.setup();
+    const disposed = makeEquipment(2001, 'EQ-01', { statusCode: 'DISPOSED' });
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([disposed])),
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(disposed), { headers: { ETag: '9' } }),
+    });
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const dialog = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+
+    await waitFor(() => {
+      expect(dialog.queryByRole('button', { name: t.actions.disposeEquipment })).toBeNull();
+    });
+  });
+
+  const disposeT = messages.equipmentMaster.dispose;
+
+  it('폐기 확인이 사용 중지와 다른 문장을 낸다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const form = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+    await user.click(await form.findByRole('button', { name: t.actions.disposeEquipment }));
+
+    const dialog = within(await screen.findByRole('dialog', { name: disposeT.title }));
+    expect(dialog.getByText(disposeT.impact)).toBeInTheDocument();
+    // 되돌릴 수 없음의 무게가 다르다 — 사용 중지의 문장을 그대로 쓰지 않는다.
+    expect(dialog.getByText(disposeT.notReversible)).toBeInTheDocument();
+    expect(dialog.queryByText(deactivateT.notReversibleHere)).toBeNull();
+  });
+
+  it('확인하면 폐기 경로로 나가고 상세의 잠금 토큰을 함께 싣는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const form = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+    await user.click(await form.findByRole('button', { name: t.actions.disposeEquipment }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: disposeT.title })).getByRole('button', {
+        name: disposeT.confirm,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    const request = writes[0] as Request;
+    expect(new URL(request.url).pathname).toBe('/mdm/equipments/2001:dispose');
+    expect(request.headers.get('If-Match')).toBe('9');
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  /*
+   * ⛔ 폐기된 자산은 편집이 풀리지 않는다 — 열린 폼을 남기면 사용자가 고칠 수 있다고 믿고
+   * 치다가 저장에서 거절당한다. 확인 창과 폼 창을 **둘 다** 닫는다.
+   */
+  it('폐기가 끝나면 확인 창과 폼 창이 함께 닫힌다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('button', { name: 'EQ-01' }));
+    const form = within(await screen.findByRole('dialog', { name: t.equipmentForm.editTitle }));
+    await user.click(await form.findByRole('button', { name: t.actions.disposeEquipment }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: disposeT.title })).getByRole('button', {
+        name: disposeT.confirm,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: disposeT.title })).toBeNull();
+    });
+    expect(screen.queryByRole('dialog', { name: t.equipmentForm.editTitle })).toBeNull();
+  });
+
+  /* ⭐ 기본은 운용 중인 것만 부른다(설계 omf-mes#185). */
+  it('목록이 기본으로 운용 중인 설비만 부른다', async () => {
+    const user = userEvent.setup();
+    const { equipmentSent } = renderScreen();
+
+    await openEquipmentTab(user);
+
+    expect((equipmentSent.at(-1) as URL).searchParams.get('statusCode')).toBe('IN_SERVICE');
+  });
+
+  /*
+   * ⭐ **마스터는 폐기된 자산도 볼 수 있어야 한다** — 감추기만 하면 폐기 처리의 결과를
+   * 아무 데서도 확인할 수 없다. 켜면 조건을 아예 뺀다(「폐기만 보기」 조건은 계약에 없다).
+   */
+  it('「폐기 포함」을 켜면 상태 조건을 아예 보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const { equipmentSent } = renderScreen({ route: '/?disposed=1' });
+
+    await openEquipmentTab(user);
+
+    expect((equipmentSent.at(-1) as URL).searchParams.has('statusCode')).toBe(false);
   });
 
   /* 아직 등록되지 않은 설비에는 폐기할 대상이 없다. */

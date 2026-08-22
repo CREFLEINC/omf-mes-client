@@ -9,6 +9,8 @@ import {
   groupTypeLabel,
   lookupLabel,
   selectableOptions,
+  statusLabel,
+  toCodeLabels,
 } from './code-options';
 import type { LookupEntry } from './types';
 
@@ -116,5 +118,60 @@ describe('groupDeactivateImpact', () => {
   it('소속 설비가 없으면 다른 문장을 낸다', () => {
     expect(groupDeactivateImpact(0)).toBe(messages.equipmentMaster.deactivate.membersNone);
     expect(groupDeactivateImpact(0)).not.toBe(messages.equipmentMaster.deactivate.members(0));
+  });
+});
+
+describe('toCodeLabels', () => {
+  const values = [
+    {
+      codeValueId: 1,
+      codeGroupId: 900,
+      code: 'IN_SERVICE',
+      codeName: '운용',
+      displayOrder: 1,
+      isActive: true,
+    },
+    {
+      codeValueId: 2,
+      codeGroupId: 900,
+      code: 'DISPOSED',
+      codeName: '폐기',
+      displayOrder: 2,
+      isActive: false,
+    },
+  ];
+
+  /*
+   * ⛔ **거르지 않는다.** 코드값이 사용 중지돼도 그 값을 가진 설비는 남아 있고,
+   * 그때 이름을 못 풀면 화면에 코드가 그대로 선다. 선택칸용 변환과 다른 자리다.
+   */
+  it('미사용 코드값의 이름도 푼다', () => {
+    expect(toCodeLabels(values)).toEqual([
+      { value: 'IN_SERVICE', label: '운용' },
+      { value: 'DISPOSED', label: '폐기' },
+    ]);
+  });
+
+  /* ⛔ 라벨을 지어내지 않는다 — 이름이 비면 코드가 곧 이름이다. */
+  it('이름이 비면 코드를 그대로 쓴다', () => {
+    expect(toCodeLabels([{ ...values[0]!, codeName: '   ' }])[0]?.label).toBe('IN_SERVICE');
+  });
+
+  it('빈 목록은 빈 표로 남는다 — 시드가 아직 없을 수 있다', () => {
+    expect(toCodeLabels([])).toEqual([]);
+  });
+});
+
+describe('statusLabel', () => {
+  const options = [{ value: 'IN_SERVICE', label: '운용' }];
+
+  it('이름을 푼다', () => {
+    expect(statusLabel('IN_SERVICE', options)).toBe('운용');
+  });
+
+  /* 「알 수 없음」으로 그리면 모르는 값과 없는 값이 같은 모양이 된다(G-9). */
+  it('못 찾으면 코드를 그대로 보인다', () => {
+    expect(statusLabel('DISPOSED', options)).toBe('DISPOSED');
+    expect(statusLabel('DISPOSED', [])).toBe('DISPOSED');
   });
 });

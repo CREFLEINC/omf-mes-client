@@ -21,6 +21,7 @@ const renderPane = (overrides: Partial<Parameters<typeof EquipmentListPane>[0]> 
       isLoading={false}
       appliedFilters={defaultEquipmentFilters}
       onApplyFilters={onApplyFilters}
+      statusOptions={[]}
       onAdd={onAdd}
       onEdit={onEdit}
       loadError={null}
@@ -175,6 +176,7 @@ describe('EquipmentListPane', () => {
       equipmentTypeCode: 'PRESS',
       calibrationRequired: true,
       includeInactive: true,
+      includeDisposed: false,
     };
     const { onApplyFilters } = renderPane({ appliedFilters: applied });
 
