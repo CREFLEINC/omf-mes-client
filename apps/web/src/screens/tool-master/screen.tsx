@@ -444,6 +444,11 @@ export const ToolMasterScreen = () => {
           onSubmit={() => {
             if (importFile === null) return;
 
+            /*
+             * ⭐ **앞 결과를 먼저 거둔다.** 나가는 중에 옛 결과가 남아 있으면 사용자가 그것을
+             * 방금 올린 결과로 읽는다 — 같은 파일을 다시 올릴 때 특히 그렇다.
+             */
+            setImportResult(null);
             importWrite.write(importFile);
           }}
         />

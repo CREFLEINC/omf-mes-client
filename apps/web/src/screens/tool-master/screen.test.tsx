@@ -1659,3 +1659,36 @@ describe('W-05-13 툴 마스터 — 엑셀 올리기', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('W-05-13 툴 마스터 — 올리기 결과의 수명', () => {
+  /*
+   * ⭐ **다시 올리는 순간 앞 결과를 거둔다.** 같은 파일을 다시 고르면 브라우저가 변경 사건을
+   * 내지 않아 파일 고르기 쪽 정리가 돌지 않는다 — 제출 시점에도 거두지 않으면 옛 결과가
+   * 그대로 남아, 실패한 두 번째 시도를 성공으로 읽는다.
+   */
+  it('다시 올려 실패하면 앞 결과가 남지 않는다', async () => {
+    let call = 0;
+    const { user } = renderScreen({
+      respondImport: () => {
+        call += 1;
+
+        return call === 1
+          ? jsonResponse({ succeeded: 7, failed: [] })
+          : jsonResponse(
+              { errors: [{ scope: 'screen', code: 'BAD', message: '파일을 읽을 수 없습니다.' }] },
+              { status: 400 },
+            );
+      },
+    });
+
+    await openImport(user);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+    expect(await screen.findByText(t.import.succeeded(7))).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByText('파일을 읽을 수 없습니다.')).toBeInTheDocument();
+    expect(screen.queryByText(t.import.succeeded(7))).not.toBeInTheDocument();
+  });
+});

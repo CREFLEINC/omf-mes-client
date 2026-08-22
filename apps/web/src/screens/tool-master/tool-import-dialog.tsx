@@ -1,6 +1,6 @@
 import { AlertBanner, Button, type Column, Dialog, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import { FileField } from './file-field';
 import {
@@ -50,6 +50,7 @@ export const ToolImportDialog = ({
   onClose,
   onSubmit,
 }: ToolImportDialogProps) => {
+  const fileRequiredId = useId();
   const columns: Column<BatchFailure>[] = [
     {
       key: 'index',
@@ -76,7 +77,7 @@ export const ToolImportDialog = ({
             loading={isSaving}
             disabled={isSaving || file === null}
             /* 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다 — 사유를 보이는 글자로 잇는다. */
-            aria-describedby={file === null ? 'tool-import-file-required' : undefined}
+            aria-describedby={file === null ? fileRequiredId : undefined}
             onClick={onSubmit}
           >
             {t.submit}
@@ -112,7 +113,7 @@ export const ToolImportDialog = ({
         />
 
         {file === null && (
-          <span id="tool-import-file-required" className="field-note">
+          <span id={fileRequiredId} className="field-note">
             {t.fileRequired}
           </span>
         )}
