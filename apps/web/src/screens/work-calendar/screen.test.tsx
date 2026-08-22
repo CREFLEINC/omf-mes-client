@@ -9,8 +9,12 @@ import {
   calendarDetail,
   calendarItems,
   calendarsResponse,
+  applicationsResponse,
+  linesResponse,
+  makeApplication,
   makeCalendar,
   pageOf,
+  plantsResponse,
   referencedCode,
 } from './fixtures';
 import { WorkCalendarScreen } from './screen';
@@ -28,6 +32,9 @@ interface RenderOptions {
   respondDetail?: (request: Request) => Response;
   respondWrite?: (request: Request) => Response;
   respondDays?: (request: Request) => Response;
+  respondApplications?: (request: Request) => Response;
+  respondPlants?: () => Response;
+  respondLines?: () => Response;
 }
 
 /** 나간 쓰기 하나. 없으면 시험이 거기서 멈추는 편이 낫다 — 다음 단언이 헛통과하지 않는다. */
@@ -47,6 +54,8 @@ const renderScreen = (options: RenderOptions = {}) => {
   const writes: Request[] = [];
   /** 일자 조회가 실어 간 조건 — 기간을 반드시 지정하는지 본다 */
   const dayRequests: URL[] = [];
+  /** 적용 조회가 실어 간 조건 */
+  const applicationRequests: URL[] = [];
 
   const defaultDetail = (request: Request): Response => {
     const found = calendarItems.find((item) => item.workCalendarId === idOf(request));
@@ -56,7 +65,37 @@ const renderScreen = (options: RenderOptions = {}) => {
       : jsonResponse(calendarDetail(found), { headers: { ETag: '9' } });
   };
 
+  /** 적용 지정·해제가 나간 요청 원본 */
+  const applicationWrites: Request[] = [];
+
   const fetch = createStubFetch([
+    {
+      match: (request) =>
+        isPath(request, '/mdm/work-calendar-applications') && request.method !== 'GET',
+      respond: (request) => {
+        applicationWrites.push(request.clone());
+
+        return (options.respondApplications ?? (() => jsonResponse({}, { status: 204 })))(request);
+      },
+    },
+    {
+      match: (request) => isPath(request, '/mdm/work-calendar-applications'),
+      respond: (request) => {
+        applicationRequests.push(new URL(request.url));
+
+        return (
+          options.respondApplications ?? (() => jsonResponse({ items: [], page: pageOf([]) }))
+        )(request);
+      },
+    },
+    {
+      match: (request) => isPath(request, '/mdm/plants'),
+      respond: () => (options.respondPlants ?? (() => jsonResponse(plantsResponse())))(),
+    },
+    {
+      match: (request) => isPath(request, '/mdm/production-lines'),
+      respond: () => (options.respondLines ?? (() => jsonResponse(linesResponse())))(),
+    },
     {
       match: (request) => isPath(request, '/mdm/work-calendars') && request.method !== 'GET',
       respond: (request) => {
@@ -112,7 +151,7 @@ const renderScreen = (options: RenderOptions = {}) => {
   /* 달을 인자로 고정한다 — 오늘이 언제든 시험이 같은 달을 연다. */
   const view = renderWithProviders(<WorkCalendarScreen initialMonth={TEST_MONTH} />, { fetch });
 
-  return { ...view, user, sent, writes, dayRequests };
+  return { ...view, user, sent, writes, dayRequests, applicationRequests, applicationWrites };
 };
 
 const listPane = () => screen.getByRole('region', { name: t.title });
@@ -1361,5 +1400,192 @@ describe('W-05-09 작업 캘린더 — 일괄 적용', () => {
     await screen.findByRole('button', { name: 'CAL-A' });
 
     expect(within(gridPane()).queryByRole('button', { name: t.bulk.open })).not.toBeInTheDocument();
+  });
+});
+
+const applicationPane = () => screen.getByRole('region', { name: t.applications.title });
+
+describe('W-05-09 작업 캘린더 — 적용 대상', () => {
+  it('고르기 전에는 고르라고 말한다', async () => {
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+
+    expect(within(applicationPane()).getByText(t.applications.pickCalendar)).toBeInTheDocument();
+  });
+
+  it('고르면 이 캘린더를 따르는 대상만 조회한다', async () => {
+    const { user, applicationRequests } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+
+    await waitFor(() => {
+      expect(
+        applicationRequests.some((url) => url.searchParams.get('workCalendarId') === '5001'),
+      ).toBe(true);
+    });
+  });
+
+  it('따르는 대상을 유형과 이름으로 보인다', async () => {
+    const { user } = renderScreen({
+      respondApplications: (request) =>
+        new URL(request.url).searchParams.get('workCalendarId') === null
+          ? jsonResponse(applicationsResponse())
+          : jsonResponse(applicationsResponse([makeApplication({ targetName: '제1공장' })])),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+
+    expect(await within(applicationPane()).findByText('제1공장')).toBeInTheDocument();
+    expect(within(applicationPane()).getByText(t.applications.types.plant)).toBeInTheDocument();
+  });
+
+  /* ⭐ 해제는 지우는 것이 아니라 상위 층을 따르게 하는 것이다 — 그 사실을 말한다. */
+  it('해제가 무엇을 뜻하는지 밝힌다', async () => {
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+
+    expect(within(applicationPane()).getByText(t.applications.releaseNote)).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **「필수」인데 없을 수 있다**(스펙 §6) — 저장을 막지 않고 세어 보인다.
+   * ⛔ 이 캘린더의 적용이 아니라 **전체 공장 적용**으로 센다.
+   */
+  it('기본 캘린더가 없는 공장 수를 보인다', async () => {
+    renderScreen({
+      respondApplications: (request) =>
+        new URL(request.url).searchParams.get('targetTypeCode') === 'PLANT'
+          ? jsonResponse(applicationsResponse([makeApplication({ targetId: 11 })]))
+          : jsonResponse(applicationsResponse()),
+    });
+
+    expect(await screen.findByText(t.applications.unassignedPlants(1))).toBeInTheDocument();
+  });
+
+  it('모두 지정돼 있으면 아무 말도 하지 않는다', async () => {
+    renderScreen({
+      respondApplications: (request) =>
+        new URL(request.url).searchParams.get('targetTypeCode') === 'PLANT'
+          ? jsonResponse(
+              applicationsResponse([
+                makeApplication({ targetId: 11 }),
+                makeApplication({ targetId: 12 }),
+              ]),
+            )
+          : jsonResponse(applicationsResponse()),
+    });
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+
+    expect(screen.queryByText(/기본 캘린더가 지정되지 않은/)).not.toBeInTheDocument();
+  });
+
+  it('대상을 지정하면 고른 캘린더로 보낸다', async () => {
+    const { user, applicationWrites } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(applicationPane()).getByRole('button', { name: t.applications.add }));
+    await screen.findByRole('dialog', { name: t.applications.addTitle });
+
+    const dialog = screen.getByRole('dialog', { name: t.applications.addTitle });
+    await user.click(within(dialog).getByRole('combobox', { name: /대상/ }));
+    await user.click(await screen.findByRole('option', { name: '제1공장' }));
+    await user.click(within(dialog).getByRole('button', { name: t.applications.add }));
+
+    await waitFor(() => {
+      expect(applicationWrites.length).toBe(1);
+    });
+
+    const request = onlyWrite(applicationWrites);
+
+    expect(request.method).toBe('PUT');
+    expect(await request.json()).toEqual({
+      targetTypeCode: 'PLANT',
+      targetId: 11,
+      workCalendarId: 5001,
+    });
+  });
+
+  /* ⭐ 해제는 `workCalendarId` 를 비워 보내는 것이다 — 같은 경로다. */
+  it('해제는 캘린더를 비워 보낸다', async () => {
+    const { user, applicationWrites } = renderScreen({
+      respondApplications: (request) =>
+        request.method !== 'GET'
+          ? jsonResponse({}, { status: 204 })
+          : new URL(request.url).searchParams.get('workCalendarId') === null
+            ? jsonResponse(applicationsResponse())
+            : jsonResponse(applicationsResponse([makeApplication({ targetName: '제1공장' })])),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(
+      await screen.findByRole('button', { name: t.applications.releaseLabel('제1공장') }),
+    );
+
+    await waitFor(() => {
+      expect(applicationWrites.length).toBe(1);
+    });
+
+    expect(await onlyWrite(applicationWrites).json()).toEqual({
+      targetTypeCode: 'PLANT',
+      targetId: 11,
+    });
+  });
+
+  /* ⭐ 공장 기본을 바꾸는 것은 한 번의 부름이다 — 그 사실을 미리 말한다. */
+  it('공장을 고르면 지정이 옮겨진다는 것을 말한다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(applicationPane()).getByRole('button', { name: t.applications.add }));
+
+    expect(await screen.findByText(t.applications.plantMovesNote)).toBeInTheDocument();
+  });
+
+  /* 유형이 바뀌면 앞서 고른 대상은 다른 표의 것이라 뜻을 잃는다. */
+  it('유형을 바꾸면 고른 대상을 거둔다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(applicationPane()).getByRole('button', { name: t.applications.add }));
+    const dialog = await screen.findByRole('dialog', { name: t.applications.addTitle });
+
+    await user.click(within(dialog).getByRole('combobox', { name: /대상/ }));
+    await user.click(await screen.findByRole('option', { name: '제1공장' }));
+    expect(within(dialog).getByRole('button', { name: t.applications.add })).toBeEnabled();
+
+    await user.click(
+      within(dialog).getByRole('radio', { name: t.applications.types.equipmentGroup }),
+    );
+
+    expect(within(dialog).getByRole('button', { name: t.applications.add })).toBeDisabled();
+  });
+
+  /* ⭐ 설비 그룹의 대상 목록은 생산라인 경로에서 온다 — 계약이 대응을 못박았다. */
+  it('설비 그룹을 고르면 생산라인 목록에서 고른다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(applicationPane()).getByRole('button', { name: t.applications.add }));
+    const dialog = await screen.findByRole('dialog', { name: t.applications.addTitle });
+
+    await user.click(
+      within(dialog).getByRole('radio', { name: t.applications.types.equipmentGroup }),
+    );
+    await user.click(within(dialog).getByRole('combobox', { name: /대상/ }));
+
+    expect(await screen.findByRole('option', { name: '프레스라인 A' })).toBeInTheDocument();
+  });
+
+  it('대상을 고르기 전에는 지정을 잠근다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(applicationPane()).getByRole('button', { name: t.applications.add }));
+    const dialog = await screen.findByRole('dialog', { name: t.applications.addTitle });
+
+    expect(within(dialog).getByRole('button', { name: t.applications.add })).toBeDisabled();
   });
 });

@@ -62,3 +62,77 @@ export const calendarDetail = (
   applicationCount: 0,
   ...overrides,
 });
+
+type Plant = components['schemas']['Plant'];
+type ProductionLine = components['schemas']['ProductionLine'];
+type WorkCalendarApplication = components['schemas']['WorkCalendarApplication'];
+
+export const plantItems: Plant[] = [
+  {
+    plantId: 11,
+    legalEntityId: 1,
+    businessUnitId: 1,
+    plantCode: 'PL-1',
+    plantName: '제1공장',
+    timezoneCode: 'UTC',
+    isActive: true,
+  },
+  {
+    plantId: 12,
+    legalEntityId: 1,
+    businessUnitId: 1,
+    plantCode: 'PL-2',
+    plantName: '제2공장',
+    timezoneCode: 'UTC',
+    isActive: true,
+  },
+];
+
+export const plantsResponse = (items: Plant[] = plantItems) => ({
+  items,
+  page: pageOf(items),
+});
+
+/**
+ * ⭐ **계약이 대응을 못박았다** — `EQUIPMENT_GROUP` 의 대상은 생산라인이다.
+ * 화면의 말은 「설비 그룹」이지만 목록은 이 경로에서 온다.
+ */
+export const lineItems: ProductionLine[] = [
+  {
+    productionLineId: 21,
+    plantId: 11,
+    lineCode: 'LN-1',
+    lineName: '프레스라인 A',
+    lineTypeCode: 'LINE',
+    isActive: true,
+  },
+  {
+    productionLineId: 22,
+    plantId: 11,
+    lineCode: 'LN-2',
+    lineName: '조립라인 B',
+    lineTypeCode: 'LINE',
+    isActive: true,
+  },
+];
+
+export const linesResponse = (items: ProductionLine[] = lineItems) => ({
+  items,
+  page: pageOf(items),
+});
+
+export const makeApplication = (
+  overrides: Partial<WorkCalendarApplication> = {},
+): WorkCalendarApplication => ({
+  targetTypeCode: 'PLANT',
+  targetId: 11,
+  targetName: '제1공장',
+  workCalendarId: 5001,
+  calendarCode: 'CAL-A',
+  ...overrides,
+});
+
+export const applicationsResponse = (items: WorkCalendarApplication[] = []) => ({
+  items,
+  page: pageOf(items),
+});
