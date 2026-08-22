@@ -23,6 +23,9 @@ const STATUS: Record<DayStatus, ChipStatus> = {
   partial: 'warning',
 };
 
+/** 상태의 사람 이름. 배지와 접근 이름이 **같은 말을 쓴다** — 둘이 갈리면 읽는 것과 듣는 것이 다르다. */
+export const statusLabel = (status: DayStatus): string => LABEL[status];
+
 const LABEL: Record<DayStatus, string> = {
   unset: t.unset,
   working: t.working,

@@ -1,4 +1,5 @@
 import { AlertBanner, Breadcrumb, PageHeader, useToast } from '@crefle/web-ui';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -9,13 +10,24 @@ import { CalendarFormDialog } from './calendar-form-dialog';
 import { CalendarListPane } from './calendar-list-pane';
 import { CALENDAR_FORM_FIELDS, validateCalendar } from './calendar-validation';
 import { defaultCalendarFilters } from './filters';
+import { DayFormDialog } from './day-form-dialog';
+import { DAY_FORM_FIELDS, validateDay } from './day-validation';
+import { byDate, type WorkCalendarDay } from './day-status';
 import { LoadErrorBanner } from './load-error-banner';
 import { MonthGridPane } from './month-grid-pane';
 import { monthRange, type YearMonth } from './month-grid';
 import { applicationNote, deactivateAvailability } from './retire-actions';
 import { RetireConfirmDialog } from './retire-confirm-dialog';
-import { emptyFormValues, formValuesFrom, toCalendarCreate, toCalendarUpdate } from './mappers';
 import {
+  dayFormValuesFrom,
+  emptyFormValues,
+  formValuesFrom,
+  toCalendarCreate,
+  toCalendarUpdate,
+  toDayUpdate,
+} from './mappers';
+import {
+  calendarDayKeys,
   calendarDetailPath,
   calendarKeys,
   isTruncated,
@@ -23,11 +35,13 @@ import {
   useCalendarDetail,
   useCalendarList,
 } from './queries';
-import type { CalendarFilters, CalendarFormValues, WorkCalendar } from './types';
+import type { CalendarFilters, CalendarFormValues, DayFormValues, WorkCalendar } from './types';
 
 const t = messages.workCalendar;
 
 const NO_ITEMS: never[] = [];
+
+type WorkCalendarDayUpdateResult = components['schemas']['WorkCalendarDayUpdateResult'];
 
 /**
  * 창이 무엇을 다루는지. 닫혀 있으면 `null`.
@@ -36,6 +50,37 @@ const NO_ITEMS: never[] = [];
  * 부르는 자리마다 닿지 않는 기본값으로 막게 되고, 그 값은 틀려도 아무도 모른다.
  */
 type DialogState = { mode: 'create' } | { mode: 'edit'; workCalendarId: number };
+
+/**
+ * 일자 덮어쓰기.
+ *
+ * ⭐ **「이 날 적용」·「요일 일괄」·「기간 일괄」이 모두 이 경로를 쓴다**(계약). 규칙이 아니라
+ * **날짜 목록**을 보내므로, 부르는 쪽이 바뀔 날을 미리 알고 확인까지 받은 뒤 부를 수 있다.
+ *
+ * ⛔ **낙관적 잠금이 없다** — 계약이 `If-Match` 를 요구하지 않는다. 보낸 날짜만 덮어쓰고
+ * 보내지 않은 날은 그대로 두므로, 두 사람이 다른 날을 고치면 서로를 밀어내지 않는다.
+ *
+ * ⛔ **멱등 키 수명은 기본값(`per-attempt`)이 맞다.** 이 쓰기는 **덮어쓰기**라 같은 값을 두 번
+ * 보내도 결과가 같다 — 차감·전이처럼 「두 번 실행되면 안 되는」 쓰기가 아니다.
+ */
+const useDayWrite = (workCalendarId: number | null, onDone: (appliedCount: number) => void) => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<WorkCalendarDay[], WorkCalendarDayUpdateResult>({
+    request: (days, headers) =>
+      client.PUT('/mdm/work-calendars/{workCalendarId}/days', {
+        params: {
+          path: { workCalendarId: workCalendarId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { days },
+      }),
+    etagPath: null,
+    invalidateKeys: [calendarDayKeys.all],
+    knownFields: DAY_FORM_FIELDS,
+    onSuccess: (result) => onDone(result.appliedCount),
+  });
+};
 
 /**
  * 사용 중지 쓰기.
@@ -103,6 +148,10 @@ export const WorkCalendarScreen = ({
   /** 지금 고른 캘린더. 일자 그리드가 이것을 그린다 */
   const [selected, setSelected] = useState<WorkCalendar | null>(null);
   const [yearMonth, setYearMonth] = useState<YearMonth>(initialMonth);
+  /** 지금 고치는 날. 닫혀 있으면 `null` */
+  const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [dayValues, setDayValues] = useState<DayFormValues>(() => dayFormValuesFrom(undefined));
+  const [dayErrors, setDayErrors] = useState<Record<string, string>>({});
 
   const calendars = useCalendarList(filters);
   /* 계약이 기간을 반드시 요구한다 — 보이는 달의 처음과 끝을 그대로 싣는다. */
@@ -145,6 +194,11 @@ export const WorkCalendarScreen = ({
       setDialog(null);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
+  });
+
+  const dayWrite = useDayWrite(selected?.workCalendarId ?? null, (appliedCount) => {
+    setEditingDate(null);
+    toast.show({ variant: 'success', description: t.dayForm.saved(appliedCount) });
   });
 
   const deactivateWrite = useDeactivateWrite(editingId, () => {
@@ -230,6 +284,41 @@ export const WorkCalendarScreen = ({
   const calendar = detail.data?.workCalendar ?? null;
   const deactivate = deactivateAvailability(calendar);
 
+  /** 그 날의 지금 설정. 없으면 「미설정」이라 빈 폼이 선다. */
+  const openDay = (date: string): void => {
+    resetIfIdle(dayWrite);
+    setDayErrors({});
+    setDayValues(dayFormValuesFrom(byDate(days.data?.items ?? NO_ITEMS).get(date)));
+    setEditingDate(date);
+  };
+
+  const changeDayValues = (patch: Partial<DayFormValues>): void => {
+    setDayValues((current) => ({ ...current, ...patch }));
+
+    /* 고치는 순간 그 칸의 오류는 낡은 말이 된다 — 서버가 준 것도 함께 거둔다. */
+    for (const field of Object.keys(patch)) {
+      setDayErrors((current) => {
+        if (!(field in current)) return current;
+        const next = { ...current };
+        delete next[field];
+        return next;
+      });
+      dayWrite.clearFieldError(field);
+    }
+  };
+
+  const saveDay = (): void => {
+    if (editingDate === null) return;
+
+    const errors = validateDay(dayValues);
+    setDayErrors(errors);
+
+    if (Object.keys(errors).length > 0) return;
+
+    /* ⭐ 「보낸 날짜만 덮어쓴다」 — 하루를 고칠 때는 그 하루만 담는다. */
+    dayWrite.write([toDayUpdate(editingDate, dayValues)]);
+  };
+
   const codeLockReason =
     dialog?.mode === 'edit' && detail.data !== undefined
       ? codeLockMessage(detail.data.editability)
@@ -284,6 +373,7 @@ export const WorkCalendarScreen = ({
           }}
           yearMonth={yearMonth}
           onChangeMonth={setYearMonth}
+          onPickDay={openDay}
           days={days.data?.items ?? NO_ITEMS}
           isLoading={days.isLoading}
           loadError={
@@ -314,6 +404,23 @@ export const WorkCalendarScreen = ({
             resetIfIdle(deactivateWrite);
             setRetiring(true);
           }}
+        />
+      )}
+
+      {editingDate !== null && (
+        <DayFormDialog
+          calendarDate={editingDate}
+          values={dayValues}
+          onChange={changeDayValues}
+          fieldErrors={{ ...dayWrite.fieldErrors, ...dayErrors }}
+          /* 「최신 불러오기」를 주지 않는다 — 이 쓰기에는 다시 읽어 풀릴 잠금 토큰이 없다(G-23). */
+          banner={<SaveErrorBanner error={dayWrite.error} />}
+          isSaving={dayWrite.isSaving}
+          onClose={() => {
+            resetIfIdle(dayWrite);
+            setEditingDate(null);
+          }}
+          onSave={saveDay}
         />
       )}
 

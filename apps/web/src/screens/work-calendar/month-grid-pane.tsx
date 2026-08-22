@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { DayBadge } from './day-badge';
+import { statusLabel } from './day-badge';
 import { byDate, dayStatusOf, partialHours, type WorkCalendarDay } from './day-status';
 import {
   buildMonthWeeks,
@@ -24,6 +25,8 @@ export interface MonthGridPaneProps {
   /** 이 달의 일자 설정. **설정이 있는 날만 온다** */
   days: readonly WorkCalendarDay[];
   isLoading: boolean;
+  /** 그 날의 설정을 고치러 간다. **칸이 곧 손잡이다** */
+  onPickDay: (date: string) => void;
   loadError: ReactNode;
 }
 
@@ -43,6 +46,7 @@ export const MonthGridPane = ({
   onChangeMonth,
   days,
   isLoading,
+  onPickDay,
   loadError,
 }: MonthGridPaneProps) => {
   const byDay = byDate(days);
@@ -63,13 +67,23 @@ export const MonthGridPane = ({
       const day = byDay.get(date);
       const hours = partialHours(day);
 
+      /*
+       * ⭐ **칸 전체가 손잡이다** — 날짜 숫자만 누를 수 있게 두면 표적이 작아 잘못 누르기 쉽고,
+       * 「이 칸을 고칠 수 있다」는 사실도 드러나지 않는다.
+       * 접근 이름에 날짜와 지금 상태를 함께 담는다 — 눌러 보지 않고도 무엇을 여는지 알아야 한다.
+       */
       return (
-        <div className="calendar-cell">
+        <button
+          type="button"
+          className="calendar-cell"
+          aria-label={t.pickDay(date, statusLabel(dayStatusOf(day)))}
+          onClick={() => onPickDay(date)}
+        >
           <span className="calendar-cell-date">{dayOfMonth(date)}</span>
           <DayBadge status={dayStatusOf(day)} />
           {/* 부분 가동의 시각은 상태만으로 알 수 없는 사실이라 함께 낸다. */}
           {hours !== null && <span className="field-note">{hours}</span>}
-        </div>
+        </button>
       );
     },
   }));
