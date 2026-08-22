@@ -56,6 +56,7 @@ import { gaugeMaster } from './gauge-master';
 import { toolMaster } from './tool-master';
 import { workCalendar } from './work-calendar';
 import { collectionChannel } from './collection-channel';
+import { workOrder } from './work-order';
 
 export const ko = {
   common,
@@ -100,6 +101,7 @@ export const ko = {
   toolMaster,
   workCalendar,
   collectionChannel,
+  workOrder,
 } as const;
 
 export type Messages = typeof ko;
