@@ -9,9 +9,15 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { DEFAULT_PRODUCTION_ORDER_FILTERS } from './filters';
-import { productionOrderKeys, useProductionOrderList } from './queries';
+import {
+  productionOrderKeys,
+  toProductionOrderFact,
+  useProductionOrderDetail,
+  useProductionOrderList,
+} from './queries';
 
 const LIST_PATH = '/planning/production-orders';
+const DETAIL_PATH = '/planning/production-orders/202';
 
 const isExactly = (request: Request, pathname: string): boolean =>
   new URL(request.url).pathname === pathname;
@@ -37,6 +43,18 @@ const recordingFetch = (route: StubRoute): { fetch: StubFetch; urls: URL[] } => 
     },
   };
 };
+
+describe('toProductionOrderFact', () => {
+  it('목록과 상세가 공유하는 선택적 계약 필드의 안전한 fact를 만든다', () => {
+    expect(toProductionOrderFact(productionOrder(101))).toMatchObject({
+      erpOrderNo: null,
+      parentProductionOrderId: null,
+      bomLevel: 0,
+      plantId: null,
+      dueDate: null,
+    });
+  });
+});
 
 describe('useProductionOrderList', () => {
   it('빈 조건도 실제 목록으로 보내고 서버 순서·쪽 정보를 보존한다', async () => {
@@ -164,6 +182,77 @@ describe('useProductionOrderList', () => {
       () => useProductionOrderList(DEFAULT_PRODUCTION_ORDER_FILTERS, 1),
       { fetch },
     );
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.data).toBeUndefined();
+  });
+});
+
+describe('useProductionOrderDetail', () => {
+  it('선택 전에는 상세 요청을 보내지 않는다', async () => {
+    const fetch: StubFetch = async () => {
+      throw new Error('선택 전 상세 요청을 보내면 안 됩니다.');
+    };
+    const { result } = renderHookWithProviders(() => useProductionOrderDetail(null), { fetch });
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(result.current.data).toBeUndefined();
+  });
+
+  it('ID별 exact path를 조회하고 목록과 같은 fact로 옮긴다', async () => {
+    const { fetch, urls } = recordingFetch({
+      match: (request) => isExactly(request, DETAIL_PATH),
+      respond: () =>
+        jsonResponse({
+          ...productionOrder(202),
+          erpOrderNo: 'ERP-202',
+          parentProductionOrderId: 101,
+          bomLevel: 2,
+          plantId: 3101,
+          dueDate: '2026-08-14',
+          businessUnitId: 2101,
+          remarks: 'Synthetic remarks',
+          versionNo: 7,
+        }),
+    });
+    const { result } = renderHookWithProviders(() => useProductionOrderDetail(202), { fetch });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(urls).toHaveLength(1);
+    expect(urls[0]?.pathname).toBe(DETAIL_PATH);
+    expect(result.current.data).toEqual({
+      productionOrderId: 202,
+      productionOrderNo: 'PO-202',
+      erpOrderNo: 'ERP-202',
+      parentProductionOrderId: 101,
+      bomLevel: 2,
+      plantId: 3101,
+      itemId: 7202,
+      orderQty: 12.5,
+      uomId: 8001,
+      dueDate: '2026-08-14',
+      statusCode: 'RELEASED',
+    });
+    expect(productionOrderKeys.detail(202)).not.toEqual(productionOrderKeys.detail(203));
+  });
+
+  it('상세 HTTP 실패를 성공 데이터로 바꾸지 않는다', async () => {
+    const { fetch } = recordingFetch({
+      match: (request) => isExactly(request, DETAIL_PATH),
+      respond: () => jsonResponse({ message: 'synthetic missing detail' }, { status: 404 }),
+    });
+    const { result } = renderHookWithProviders(() => useProductionOrderDetail(202), { fetch });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.data).toBeUndefined();
+  });
+
+  it('상세 네트워크 실패를 성공 데이터로 바꾸지 않는다', async () => {
+    const fetch: StubFetch = async () => {
+      throw new TypeError('synthetic detail network failure');
+    };
+    const { result } = renderHookWithProviders(() => useProductionOrderDetail(202), { fetch });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.data).toBeUndefined();

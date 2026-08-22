@@ -25,6 +25,10 @@ export const productionOrder = {
     missingErpOrderNo: 'ERP 원번호 없음',
     missingItemLabel: '품목 표시명 없음',
     missingDueDate: '납기일 없음',
+    referenceFailed: '참조 목록을 불러오지 못했습니다.',
+    referenceTruncated: '참조 목록이 일부만 조회되었습니다.',
+    referenceLoading: '참조 목록을 불러오는 중입니다.',
+    referenceUnknown: '참조 이름을 찾을 수 없습니다.',
   },
   filters: {
     all: '전체',
