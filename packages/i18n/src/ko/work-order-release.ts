@@ -1,4 +1,24 @@
 export const workOrderRelease = {
+  summary: {
+    pane: '배포 후보 작업지시 요약',
+    heading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
+    fields: {
+      item: '품목',
+      quantity: '지시 수량',
+      operation: '공정',
+      routingRevision: '라우팅 리비전',
+      productionLine: '생산 라인',
+      equipment: '설비',
+      mold: '금형',
+      shift: '작업조',
+      plannedPeriod: '계획 기간',
+    },
+    values: { unavailable: '표시명 없음' },
+    empty: {
+      title: '요약할 배포 후보 작업지시를 선택하세요.',
+      description: '목록에서 작업지시를 선택하면 준비된 요약을 확인할 수 있습니다.',
+    },
+  },
   actions: {
     label: '작업지시 배포 작업',
     cancel: '취소',
