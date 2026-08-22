@@ -141,18 +141,19 @@ describe('useCreateProductionPlan', () => {
   });
 
   it('uses distinct non-empty keys for two settled explicit attempts', async () => {
+    const onSuccess = vi.fn();
     const { fetch, requests } = recordingFetch([
       createRoute(() => jsonResponse(productionPlan(4804), { status: 201 })),
     ]);
-    const { result } = renderHookWithProviders(
-      () => useCreateProductionPlan({ onSuccess: vi.fn() }),
-      { fetch },
-    );
+    const { result } = renderHookWithProviders(() => useCreateProductionPlan({ onSuccess }), {
+      fetch,
+    });
 
     act(() => {
       result.current.write(REQUIRED_BODY);
     });
     await waitFor(() => expect(requests).toHaveLength(1));
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
 
     act(() => {
       result.current.write(REQUIRED_BODY);
