@@ -1,5 +1,6 @@
 import {
   AlertBanner,
+  Button,
   Checkbox,
   Chip,
   type Column,
@@ -26,6 +27,8 @@ export interface ChannelPaneProps {
   onChangeFilters: (next: ChannelFilters) => void;
   /** 목록이 전부인지 아닌지 한 줄. null이면 다 보이고 있다 */
   limitNote: string | null;
+  onAdd: () => void;
+  onEdit: (channel: CollectionChannel) => void;
   loadError: ReactNode;
 }
 
@@ -56,15 +59,24 @@ export const ChannelPane = ({
   filters,
   onChangeFilters,
   limitNote,
+  onAdd,
+  onEdit,
   loadError,
 }: ChannelPaneProps) => {
   const columns: Column<CollectionChannel>[] = [
     {
       key: 'channelKey',
       header: t.fields.channelKey,
-      width: '180px',
-      /* 설비가 정한 이름이다 — 화면이 다듬지 않고 온 그대로 세운다. */
-      render: (row) => withInactiveSuffix(row.channelKey, row.isActive),
+      width: '200px',
+      /*
+       * 설비가 정한 이름이다 — 화면이 다듬지 않고 온 그대로 세운다.
+       * 이름이 곧 여는 손잡이다 — 줄마다 「수정」 단추를 세우면 표가 조작으로 덮인다.
+       */
+      render: (row) => (
+        <button type="button" className="link-cell" onClick={() => onEdit(row)}>
+          {withInactiveSuffix(row.channelKey, row.isActive)}
+        </button>
+      ),
     },
     {
       key: 'signalName',
@@ -157,6 +169,13 @@ export const ChannelPane = ({
       <h3>{t.channels.paneOf(equipment.equipmentCode, equipment.equipmentName)}</h3>
 
       <div className="filter-bar">
+        <div className="field-cell field-cell-unlabeled">
+          <div className="filter-actions">
+            <Button variant="outlined" onClick={onAdd}>
+              {t.actions.addChannel}
+            </Button>
+          </div>
+        </div>
         <div className="field-cell field-cell-unlabeled">
           <div className="check-group">
             <Checkbox

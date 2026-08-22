@@ -3,8 +3,8 @@ import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { channelListResponse } from './fixtures';
-import { plantIdQuery, useChannelList } from './queries';
+import { channelListResponse, makeChannel } from './fixtures';
+import { plantIdQuery, useChannelDetail, useChannelList, useUomLookup } from './queries';
 
 /**
  * ⭐ **설비를 고르기 전에는 조회 자체가 서지 않는다.**
@@ -67,5 +67,81 @@ describe('공장 조건 읽기', () => {
 
   it('정수가 아니면 조건에서 뺀다', () => {
     expect(plantIdQuery('1.5')).toEqual({});
+  });
+});
+
+/**
+ * ⭐ **창을 열기 전에는 상세를 조회하지 않는다.**
+ *
+ * 채널 목록과 같은 이유로 화면에서는 재기 어렵다 — 창 자체가 없으면 아무것도 그리지 않아
+ * 실패가 흔적을 남기지 않는다.
+ */
+describe('채널 상세의 착수 조건', () => {
+  const fetch = createStubFetch([
+    {
+      match: (request) => new URL(request.url).pathname === '/maintenance/collection-channels/7003',
+      respond: () => jsonResponse(makeChannel(7003, 'BARREL_TEMP'), { headers: { ETag: 'W/"3"' } }),
+    },
+  ]);
+
+  it('창을 열기 전에는 대기 상태로 남고 실패하지 않는다', async () => {
+    const { result } = renderHookWithProviders(() => useChannelDetail(null), { fetch });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(result.current.isError).toBe(false);
+    expect(result.current.fetchStatus).toBe('idle');
+  });
+
+  it('창을 열면 그때 조회가 나간다', async () => {
+    const { result } = renderHookWithProviders(() => useChannelDetail(7003), { fetch });
+
+    await waitFor(() => expect(result.current.data).toBeDefined());
+    expect(result.current.data?.channelKey).toBe('BARREL_TEMP');
+  });
+});
+
+/**
+ * ⭐ **계약이 단위를 «코드»로 받는다**(`unitCode`) — 식별자가 아니다.
+ * 고르는 값이 코드가 아니면 저장은 되는데 목록에 엉뚱한 값이 선다.
+ */
+describe('단위 선택 목록', () => {
+  const uomsFetch = (body: unknown, status = 200) =>
+    createStubFetch([
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/uoms',
+        respond: () => jsonResponse(body, { status }),
+      },
+    ]);
+
+  it('고르는 값이 단위 코드다', async () => {
+    const { result } = renderHookWithProviders(() => useUomLookup(), {
+      fetch: uomsFetch({
+        items: [{ uomId: 7, uomCode: 'SEC', uomName: '초', decimalScale: 2, isActive: true }],
+        page: { page: 1, size: 100, total: 1 },
+      }),
+    });
+
+    await waitFor(() => expect(result.current.uoms).toHaveLength(1));
+    expect(result.current.uoms[0]).toEqual({ value: 'SEC', label: 'SEC · 초' });
+  });
+
+  it('목록이 잘리면 그 사실을 알린다', async () => {
+    const { result } = renderHookWithProviders(() => useUomLookup(), {
+      fetch: uomsFetch({
+        items: [{ uomId: 7, uomCode: 'SEC', uomName: '초', decimalScale: 2, isActive: true }],
+        page: { page: 1, size: 100, total: 40 },
+      }),
+    });
+
+    await waitFor(() => expect(result.current.truncated).toBe(true));
+  });
+
+  it('불러오지 못하면 그 사실을 알린다', async () => {
+    const { result } = renderHookWithProviders(() => useUomLookup(), {
+      fetch: uomsFetch({ errors: [] }, 500),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
