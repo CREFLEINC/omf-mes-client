@@ -9,6 +9,47 @@ export const toolMaster = {
   breadcrumbRoot: '설비/툴',
   actions: {
     addTool: '툴 등록',
+    importTools: '엑셀 올리기',
+  },
+  /**
+   * 현행 엑셀 대장을 옮기는 경로.
+   *
+   * ⭐ **통째로 되돌리지 않는다는 것을 «올리기 전에» 말한다.** 성공한 행은 들어가고 실패한 행만
+   * 돌아오므로, 잘못 올린 뒤 「취소하면 되겠지」라고 생각한 사용자는 되돌릴 방법이 없다.
+   * ⭐ **올리기가 라벨을 발행하지 않는다는 것도 함께 말한다** — 마스터 행이 생겼다고 현장에
+   * 라벨이 나가는 것이 아니다(스펙 §6).
+   */
+  import: {
+    title: '툴 엑셀 올리기',
+    partialWarningTitle: '올리기는 통째로 되돌리지 않습니다',
+    partialWarning:
+      '성공한 행은 그대로 등록되고 실패한 행만 돌아옵니다. 잘못 올려도 되돌리는 수단이 없으니 파일을 먼저 확인하세요.',
+    noLabelNote: '올리기는 마스터 행만 만듭니다. 라벨은 발행되지 않습니다.',
+    fileLabel: '툴 엑셀 파일',
+    filePlaceholder: '파일 고르기',
+    fileNone: '고른 파일이 없습니다.',
+    submit: '올리기',
+    /** ⛔ 고른 파일이 없으면 보낼 것이 없다 — 감추지 않고 잠그고 사유를 말한다(G-2). */
+    fileRequired: '올릴 파일을 먼저 고르세요.',
+    resultTitle: '올리기 결과',
+    succeeded: (count: number): string => `${count}건을 등록했습니다.`,
+    failed: (count: number): string => `${count}건이 실패했습니다.`,
+    allSucceeded: '실패한 행이 없습니다.',
+    noneSucceeded: '등록된 행이 없습니다.',
+    /**
+     * ⭐ **계약의 `index` 를 사람이 세는 방식으로 옮긴다.** 계약은 「머리글 제외 0부터」인데
+     * 사용자가 세는 것은 1부터다.
+     * ⛔ **엑셀 행 번호라고 말하지 않는다** — 머리글이 몇 줄인지 화면이 알 수 없어, 「7행」이라
+     * 적으면 머리글이 두 줄인 파일에서 거짓이 된다. 아는 것은 「몇 번째 자료 줄인가」뿐이다.
+     */
+    rowLabel: (dataRowNumber: number): string => `자료 ${dataRowNumber}번째 줄`,
+    rowNote: '머리글을 뺀 자료 줄 번호입니다.',
+    fields: {
+      row: '줄',
+      key: '식별값',
+      reason: '사유',
+    },
+    keyUnknown: '식별값 없음',
   },
   loading: {
     tools: '툴 목록을 불러오는 중',

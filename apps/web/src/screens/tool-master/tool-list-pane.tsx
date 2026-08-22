@@ -38,6 +38,7 @@ export interface ToolListPaneProps {
   statusOptions: CodeOption[];
   onAdd: () => void;
   onEdit: (tool: Mold) => void;
+  onImport: () => void;
   loadError: ReactNode;
 }
 
@@ -84,6 +85,7 @@ export const ToolListPane = ({
   statusOptions,
   onAdd,
   onEdit,
+  onImport,
   loadError,
 }: ToolListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -303,6 +305,9 @@ export const ToolListPane = ({
             </Button>
             <Button variant="outlined" onClick={onAdd}>
               {t.actions.addTool}
+            </Button>
+            <Button variant="outlined" onClick={onImport}>
+              {t.actions.importTools}
             </Button>
           </div>
         </div>

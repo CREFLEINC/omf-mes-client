@@ -561,3 +561,25 @@ main > * + * {
   color: var(--semantic-error-text);
   font-weight: 600;
 }
+
+/*
+ * 숨긴 파일 입력 — **없애지 않고 가린다.**
+ *
+ * 브라우저 기본 파일 입력은 문구도 너비도 우리가 정할 수 없어 다른 칸들과 층이 어긋난다.
+ * 그래서 트리거는 디자인 시스템 `Button` 이 맡고 입력 요소는 가린다.
+ *
+ * ⛔ `display: none` 이나 `visibility: hidden` 을 쓰지 않는다 — 그 둘은 요소를 접근성 트리에서
+ * 도 지워, 라벨로 이어 둔 이름이 보조기술에 닿지 않고 `click()` 위임도 브라우저에 따라 막힌다.
+ * 자리만 없애고 요소는 남기는 관용구를 쓴다.
+ */
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
