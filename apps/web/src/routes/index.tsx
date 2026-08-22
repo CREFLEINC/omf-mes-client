@@ -15,6 +15,7 @@ import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
+import { CollectionChannelScreen } from '../screens/collection-channel/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
 import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
@@ -321,6 +322,26 @@ export const appRouter = createBrowserRouter([
        * 대로 `work-calendar` 다.
        */
       { path: 'equipment/work-calendar', element: <WorkCalendarScreen /> },
+      /*
+       * W-05-07 — **라우트와 메뉴를 함께 연다.**
+       *
+       * **다섯 PR이 함께 여는 자리다.** 설비별 채널 목록 · 등록/수정 · 검사 항목 연결 ·
+       * 수신 로그에서 가져오기 · 사용 여부가 다 선 뒤에 연다 — **잇지 못하는 「매핑 관리」를
+       * 노출하면 사용자가 미매핑 채널을 보면서 아무것도 할 수 없다**(정책 §5.2 — 접근
+       * 불가능한 경계). 이 화면은 특히 그렇다: 목록만 있으면 「값이 버려진다」는 경고만
+       * 읽히고 그것을 멈출 방법이 화면에 없다.
+       *
+       * ⚠ **계약이 이어 둔 검사 항목의 이름을 내려주지 않지만 메뉴를 미루지 않는다**
+       * (`omf-mes#203`). 그것은 **표시의 한계**이지 「수집 채널 매핑 관리」라는 이름이
+       * 약속하는 것 — 채널을 항목에 잇는 자리 — 을 어기지 않는다. 잇는 일은 온전히 된다.
+       * (형제 W-05-11 이 메뉴를 미룬 것과 갈리는 근거다. 그쪽은 목록에 서는 것이 계측기가
+       * 아니어서 **이름 자체가 거짓**이었다.)
+       *
+       * 앞머리는 형제들과 같은 규칙(사이드바 섹션)을 따른다. 이름은 `collection-channels` 로
+       * **복수**다 — 형제들이 단수인 것은 그것들이 「마스터」라는 한 벌을 가리키기 때문이고,
+       * 이 화면이 다루는 것은 설비마다 여럿인 채널이다.
+       */
+      { path: 'equipment/collection-channels', element: <CollectionChannelScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을
