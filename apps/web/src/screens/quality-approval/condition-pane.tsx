@@ -2,7 +2,11 @@ import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { toApiError } from '../../patterns/request';
-import { toConcessionCardinality } from './conditions';
+import {
+  toConcessionCardinality,
+  toConcessionCardView,
+  UNKNOWN_CONDITION_REFERENCES,
+} from './conditions';
 import { useConcessionCandidates, useConcessionDetail } from './queries';
 
 export interface ConditionPaneProps {
@@ -63,21 +67,24 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
   }
   if (detail.data === undefined) return null;
 
-  const usable =
-    detail.data.usable === true
-      ? t.usable
-      : detail.data.usable === false
-        ? t.unusable
-        : t.usableUnknown;
+  const view = toConcessionCardView(detail.data, UNKNOWN_CONDITION_REFERENCES);
 
   return (
     <div role="group" aria-label={t.title}>
       <span className="field-label">{t.title}</span>
       <dl className="filter-bar">
         {[
-          [t.concessionNo, detail.data.concessionNo],
-          [messages.qualityApproval.fields.statusCode, detail.data.statusCode],
-          [t.usableLabel, usable],
+          [t.concessionNo, view.concessionNo],
+          [t.approvedQty, view.approvedQty],
+          [t.consumedQty, view.consumedQty],
+          [t.uom, view.uom],
+          [t.validity, view.validity],
+          [messages.qualityApproval.fields.statusCode, view.statusCode],
+          [t.usableLabel, view.usable],
+          [t.remarks, view.remarks],
+          [t.workOrder, view.workOrder],
+          [t.process, view.process],
+          [t.customer, view.customer],
         ].map(([label, value]) => (
           <div className="field-cell" key={label}>
             <dt className="field-label">{label}</dt>
