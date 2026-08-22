@@ -569,6 +569,7 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       '/quality/lot-status',
       '/equipment/master',
+      '/equipment/tool-master',
       '/approval/inbox',
       '/notification/center',
       '/system/users-roles',

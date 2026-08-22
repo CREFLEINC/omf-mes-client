@@ -9,6 +9,7 @@ import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
 import { DisposalIssueScreen } from '../screens/disposal-issue/screen';
 import { DocumentProgressScreen } from '../screens/document-progress/screen';
 import { GaugeMasterScreen } from '../screens/gauge-master/screen';
+import { ToolMasterScreen } from '../screens/tool-master/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
@@ -285,6 +286,23 @@ export const appRouter = createBrowserRouter([
        * 미루는 것이다 — 같은 모양이지만 이유와 수명이 다르다.
        */
       { path: 'equipment/gauge-master', element: <GaugeMasterScreen /> },
+      /*
+       * W-05-13 — **라우트와 메뉴를 함께 연다.**
+       *
+       * ⭐ **형제(W-05-11)와 갈리는 자리다.** 그쪽은 계측기 전용 자원이 없어 전체 설비를
+       * 보이는 중이라 「계측기 마스터」라는 메뉴 이름이 약속을 어긴다. 이쪽은 **자원이 따로
+       * 있어**(`/mdm/molds`) 목록에 서는 것이 정확히 툴이다 — 도구 유형 값 목록이 미결이지만
+       * (`omf-mes#145`) 그것은 **좁히는 축 하나**이지 목록의 내용을 정하는 조건이 아니다.
+       * 메뉴 이름이 참이므로 미룰 이유가 없다.
+       *
+       * **네 PR이 함께 여는 자리다.** 목록·등록/수정·사용 중지/폐기·엑셀 올리기가 다 선 뒤에
+       * 연다 — 등록할 수 없는 「마스터」를 노출하면 사용자가 화면을 열어 놓고 할 일을 할 수
+       * 없다(정책 §5.2 — 접근 불가능한 경계).
+       *
+       * 앞머리는 형제들과 같은 규칙(사이드바 섹션)을 따르고, 이름은 W-05-12 주석이 예고한
+       * 대로 `tool-master` 다 — 한정어 없는 `master` 는 이 섹션의 주어인 설비의 것이다.
+       */
+      { path: 'equipment/tool-master', element: <ToolMasterScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을

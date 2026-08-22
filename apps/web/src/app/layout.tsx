@@ -228,6 +228,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/equipment/master" icon="precision_manufacturing">
               설비·설비그룹 마스터
             </NavItem>
+            {/*
+             * W-05-13 — 설비 **다음**이다. 이 섹션의 주어가 설비이고 툴은 그 옆 축이라,
+             * 한정어 없는 이름(설비 마스터)이 먼저 서고 자기 이름을 붙인 것들이 뒤따른다.
+             * 화면 번호 차례(12 → 13)이기도 하다.
+             */}
+            <NavItem to="/equipment/tool-master" icon="handyman">
+              툴/금형/지그 마스터
+            </NavItem>
           </SidebarSection>
           {/*
            * W-CO-09 — 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**다.

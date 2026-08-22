@@ -21,6 +21,10 @@ import {
   gaugesResponse,
   plantsResponse as gaugePlantsResponse,
 } from '../screens/gauge-master/fixtures';
+import {
+  plantsResponse as toolPlantsResponse,
+  toolsResponse,
+} from '../screens/tool-master/fixtures';
 import { queueResponse as iqcQueueResponse } from '../screens/iqc-inspection/fixtures';
 import { sessionBody } from '../screens/login/fixtures';
 import {
@@ -262,6 +266,19 @@ const gaugeMasterRoutes = (): StubRoute[] => [
     respond: () => jsonResponse(gaugePlantsResponse()),
   },
   lookupRoute('/mdm/uoms', []),
+  lookupRoute('/mdm/code-values', []),
+];
+
+/** W-05-13이 첫 진입에 부르는 것들 — 목록·공장·코드값. */
+const toolMasterRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/mdm/molds'),
+    respond: () => jsonResponse(toolsResponse()),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/plants'),
+    respond: () => jsonResponse(toolPlantsResponse()),
+  },
   lookupRoute('/mdm/code-values', []),
 ];
 
@@ -1162,11 +1179,94 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
     expect(await screen.findByRole('button', { name: 'GRP-A' })).toBeInTheDocument();
   });
 
-  /* 주소 앞머리는 계약 경로(`/mdm/**`)가 아니라 사이드바 섹션을 따른다. */
+  /*
+   * 주소 앞머리는 계약 경로(`/mdm/**`)가 아니라 사이드바 섹션을 따른다.
+   * 차례도 함께 잰다 — 한정어 없는 이름(설비 마스터)이 먼저 서고 자기 이름을 붙인 것들이 뒤따른다.
+   */
   it('주소 앞머리가 섹션을 따른다', () => {
     expect(sidebarHrefs().filter((href) => href.startsWith('/equipment/'))).toEqual([
       '/equipment/master',
+      '/equipment/tool-master',
     ]);
+  });
+});
+
+/**
+ * **W-05-13은 형제(W-05-11)와 갈리는 자리다** — 메뉴를 함께 연다.
+ *
+ * 그쪽은 계측기 전용 자원이 없어 전체 설비를 보이는 중이라 「계측기 마스터」라는 메뉴 이름이
+ * 약속을 어긴다. 이쪽은 **자원이 따로 있어**(`/mdm/molds`) 목록에 서는 것이 정확히 툴이다 —
+ * 도구 유형 값 목록이 미결이지만 그것은 **좁히는 축 하나**이지 목록의 내용을 정하는 조건이
+ * 아니다. 두 판단이 갈리는 근거가 이 describe 가 재는 것이다.
+ */
+describe('appRouter — 툴/금형/지그 마스터의 진입 경로', () => {
+  it('사이드바에 이 화면 항목이 있다', () => {
+    expect(sidebarHrefs()).toContain('/equipment/tool-master');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    /*
+     * 주소와 글자를 **둘 다** 센다 — 주소만 보면 이름이 다른 메뉴가 같은 화면을 열어도 통과한다.
+     * 메뉴 이름은 화면 제목에서 「관리」를 뺀 형태다(형제 항목들과 같은 규칙).
+     */
+    expect(within(nav).getByRole('link', { name: '툴/금형/지그 마스터' })).toHaveAttribute(
+      'href',
+      '/equipment/tool-master',
+    );
+  });
+
+  /* 한정어 없는 이름(설비 마스터)이 먼저 서고 자기 이름을 붙인 것들이 뒤따른다. */
+  it('같은 섹션의 설비 마스터 뒤에 선다', () => {
+    const hrefs = sidebarHrefs();
+
+    expect(hrefs.indexOf('/equipment/tool-master')).toBeGreaterThan(
+      hrefs.indexOf('/equipment/master'),
+    );
+  });
+
+  it('라우트 표에 주소가 있다', () => {
+    expect(routedPaths()).toContain('/equipment/tool-master');
+  });
+
+  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
+    renderRoutedApp('/equipment/tool-master', toolMasterRoutes());
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.toolMaster.title }),
+    ).toBeInTheDocument();
+  });
+
+  /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 **조회가 실제로 도는 것**까지 봐야 한다. */
+  it('첫 진입에 툴 목록이 실제로 그려진다', async () => {
+    renderRoutedApp('/equipment/tool-master', toolMasterRoutes());
+
+    expect(await screen.findByRole('button', { name: 'TL-01' })).toBeInTheDocument();
+  });
+
+  /*
+   * ⚠ **메뉴를 여는 근거가 화면에 실제로 서 있는지** 함께 잰다 — 형제와 달리 「지금 보이는
+   * 것이 툴만은 아니다」는 배너가 없어야 한다. 배너가 선다면 메뉴 이름이 약속을 어기는 것이고,
+   * 그때는 형제와 같은 판단(메뉴를 미룬다)을 해야 한다.
+   */
+  it('무엇이 보이는지 변명하는 배너가 없다', async () => {
+    renderRoutedApp('/equipment/tool-master', toolMasterRoutes());
+
+    await screen.findByRole('button', { name: 'TL-01' });
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  /* 되돌릴 수 없는 조작까지 다 선 뒤에 메뉴를 연다(정책 §5.2 — 접근 불가능한 경계). */
+  it('첫 진입에 등록과 엑셀 올리기를 곧바로 시작할 수 있다', async () => {
+    renderRoutedApp('/equipment/tool-master', toolMasterRoutes());
+
+    await screen.findByRole('button', { name: 'TL-01' });
+
+    expect(screen.getByRole('button', { name: messages.toolMaster.actions.addTool })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: messages.toolMaster.actions.importTools }),
+    ).toBeEnabled();
   });
 });
 
