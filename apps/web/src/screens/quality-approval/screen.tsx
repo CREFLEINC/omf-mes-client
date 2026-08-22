@@ -33,6 +33,8 @@ import {
   type RequestFilters,
 } from './filters';
 import { toPageView } from './pagination';
+import { ProgressPane } from './progress-pane';
+import { toApprovalProgressView } from './progress';
 import { useApprovalRequestDetail, useApprovalRequests } from './queries';
 import { RequestList } from './request-list';
 import { toRequestDetailView, toRequestRow, type ApprovalRequest } from './types';
@@ -183,6 +185,26 @@ export const QualityApprovalScreen = ({
     );
   };
 
+  const progressSlot = (): ReactNode => {
+    if (selectedId === null) return <EmptyState size="sm" title={t.detail.progressPending} />;
+
+    if (detail.isPending) {
+      return (
+        <div role="status" aria-label={t.progress.loading}>
+          <SkeletonText lines={3} />
+        </div>
+      );
+    }
+
+    if (detailError !== null) {
+      return <EmptyState size="sm" title={t.progress.unavailable} />;
+    }
+
+    return detail.data === undefined ? null : (
+      <ProgressPane view={toApprovalProgressView(detail.data)} />
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -224,7 +246,7 @@ export const QualityApprovalScreen = ({
           {detailSlot()}
         </section>
         <section className="pane" aria-label={t.panes.progress}>
-          <EmptyState size="sm" title={t.detail.progressPending} />
+          {progressSlot()}
         </section>
       </div>
     </>

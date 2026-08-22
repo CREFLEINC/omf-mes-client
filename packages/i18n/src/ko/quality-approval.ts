@@ -41,6 +41,20 @@ export const qualityApproval = {
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',
     targetUnavailable: '대상 화면 연결 준비 중',
   },
+  progress: {
+    steps: '결재 단계',
+    position: (current: number, total: number): string =>
+      `${String(current)} / ${String(total)} 단계`,
+    finished: (total: number): string => `결재 종료 · 전체 ${String(total)}단계`,
+    myTurn: '지금 이 요청을 결재할 차례입니다',
+    notMyTurn: '지금 이 요청을 결재할 차례가 아닙니다',
+    waitingCurrent: '현재 결재 대기',
+    waitingPending: '차례 대기',
+    mine: '내 결재 단계',
+    noSteps: '표시할 결재 단계가 없습니다',
+    loading: '결재 진행 불러오는 중',
+    unavailable: '결재 진행을 표시할 수 없습니다',
+  },
   loading: '승인 요청 목록 불러오는 중',
   empty: {
     title: '조건에 맞는 승인 요청이 없습니다',
@@ -58,6 +72,7 @@ export const qualityApproval = {
     unknownTarget: '대상 이름 없음',
     unknownRequester: '상신자 이름 없음',
     emptyReason: '등록된 사유가 없습니다',
+    unknownApprover: '결재자 이름 없음',
     myTurn: '내 차례',
   },
 } as const;

@@ -59,7 +59,15 @@ const detailBody = (
   },
 ): ApprovalRequestDetail => ({
   request,
-  steps: [],
+  steps: [
+    {
+      stepNo: 4,
+      approverId: 800_004,
+      approverName: '합성 결재자',
+      isMine: true,
+      isCurrent: true,
+    },
+  ],
 });
 
 const detailRoute = (
@@ -358,6 +366,8 @@ describe('QualityApprovalScreen detail', () => {
     expect(pane.textContent).not.toContain('910009');
     expect(recorded.urls.map((url) => url.pathname)).toContain(requestDetailPath(31));
     expect(apiClient.etags.ifMatch(requestDetailPath(31))).toBe('"9"');
+    expect(await screen.findByText('합성 결재자')).toBeInTheDocument();
+    expect(recorded.urls.filter((url) => url.pathname === requestDetailPath(31))).toHaveLength(1);
   });
 
   it('선택을 바꾸면 다음 상세 대기 중 이전 상세를 숨긴다', async () => {
@@ -378,6 +388,11 @@ describe('QualityApprovalScreen detail', () => {
       within(pane).getByRole('status', { name: '승인 요청 상세 불러오는 중' }),
     ).toBeInTheDocument();
     expect(within(pane).queryByText('둘째 근거')).toBeNull();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.progress })).getByRole('status', {
+        name: t.progress.loading,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?rq=32');
   });
 
@@ -393,6 +408,9 @@ describe('QualityApprovalScreen detail', () => {
 
     expect(await within(pane).findByText(messages.httpError.forbidden)).toBeInTheDocument();
     expect(within(pane).queryByRole('button', { name: messages.common.retry })).toBeNull();
+    expect(screen.getByRole('region', { name: t.panes.progress })).toHaveTextContent(
+      t.progress.unavailable,
+    );
     expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?rq=31');
   });
 
@@ -411,6 +429,9 @@ describe('QualityApprovalScreen detail', () => {
     );
     expect(screen.getByLabelText('주소 변경 방식')).toHaveTextContent('REPLACE');
     expect(missing.closest('[role="status"]')).not.toBeNull();
+    expect(screen.getByRole('region', { name: t.panes.progress })).toHaveTextContent(
+      t.detail.progressPending,
+    );
   });
 
   it('상세 네트워크 오류는 오프라인 안내 후 재시도로 복구한다', async () => {
