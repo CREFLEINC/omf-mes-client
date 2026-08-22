@@ -160,11 +160,13 @@ describe('work-order assignment model', () => {
       ),
     ).toEqual({ fieldErrors: { plannedEndAtLocal: 'END_BEFORE_START' }, formError: null });
     expect(
-      validateWorkOrderAssignmentDraft(validDraft({ plannedEndAtLocal: '2026-08-23T09:45' })),
+      validateWorkOrderAssignmentDraft(
+        validDraft({ plannedStartAtLocal: '', plannedEndAtLocal: '2026-08-23T09:45' }),
+      ),
     ).toEqual({ fieldErrors: {}, formError: null });
     expect(
       validateWorkOrderAssignmentDraft(
-        validDraft({ plannedStartAtLocal: '', plannedEndAtLocal: '' }),
+        validDraft({ plannedStartAtLocal: '2026-08-23T09:45', plannedEndAtLocal: '' }),
       ),
     ).toEqual({ fieldErrors: {}, formError: null });
   });
