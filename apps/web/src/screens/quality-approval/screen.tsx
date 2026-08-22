@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Breadcrumb,
   Button,
-  Dialog,
   EmptyState,
   PageHeader,
   SkeletonText,
@@ -10,14 +9,15 @@ import {
 } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { TextArea } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
-import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { ApprovalActionPane } from './approval-action-pane';
+import { ApproveDialog } from './approve-dialog';
 import {
   QUALITY_APPROVAL_STATUS_CODES,
   QUALITY_APPROVAL_TYPE_CODES,
@@ -309,47 +309,21 @@ export const QualityApprovalScreen = ({
     return (
       <>
         <ProgressPane view={toApprovalProgressView(detail.data)} />
-        <div role="group" aria-label={t.approval.title}>
-          <SaveErrorBanner error={writeError} onReload={() => void detail.refetch()} />
-          {writeError?.kind === 'network' && (
-            <div className="form-actions">
-              <p className="field-note">{t.approval.deliveryUnknown}</p>
-              <Button variant="outlined" size="sm" onClick={() => void reloadUnknownTarget()}>
-                {t.approval.reloadTarget}
-              </Button>
-            </div>
-          )}
-          <TextArea
-            label={t.approval.commentLabel}
-            value={comment}
-            required
-            fullWidth
-            rows={4}
-            disabled={actionLockReason !== undefined}
-            aria-describedby={actionLockReason === undefined ? undefined : actionLockReasonId}
-            error={localCommentError ?? serverCommentError}
-            helperText={t.approval.commentHelp}
-            onChange={(event) => {
-              setComment(event.target.value);
-              setLocalCommentError(null);
-              approveWrite.clearFieldError('comment');
-            }}
-          />
-          {actionLockReason !== undefined && (
-            <p id={actionLockReasonId} className="field-note">
-              {actionLockReason}
-            </p>
-          )}
-          <div className="form-actions">
-            <Button
-              disabled={actionLockReason !== undefined}
-              aria-describedby={actionLockReason === undefined ? undefined : actionLockReasonId}
-              onClick={openApproveDialog}
-            >
-              {t.approval.approve}
-            </Button>
-          </div>
-        </div>
+        <ApprovalActionPane
+          comment={comment}
+          commentError={localCommentError ?? serverCommentError}
+          lockReason={actionLockReason}
+          lockReasonId={actionLockReasonId}
+          writeError={writeError}
+          onApprove={openApproveDialog}
+          onCommentChange={(value) => {
+            setComment(value);
+            setLocalCommentError(null);
+            approveWrite.clearFieldError('comment');
+          }}
+          onReload={() => void detail.refetch()}
+          onReloadUnknown={() => void reloadUnknownTarget()}
+        />
       </>
     );
   };
@@ -416,44 +390,19 @@ export const QualityApprovalScreen = ({
         </section>
       </div>
       {dialogDraft !== null && selectedId === dialogDraft.approvalRequestId && !detail.isError && (
-        <Dialog
-          open
-          title={t.approval.dialogTitle}
-          size="sm"
-          closeOnBackdropClick={false}
-          showCloseButton={false}
-          onClose={() => {
+        <ApproveDialog
+          approvalTypeCode={detail.data?.request.approvalTypeCode ?? ''}
+          comment={dialogDraft.comment}
+          isSaving={approveWrite.isSaving}
+          requestNo={detail.data?.request.approvalRequestNo ?? ''}
+          targetName={
+            detail.data === undefined ? '' : toRequestDetailView(detail.data.request).targetName
+          }
+          onCancel={() => {
             if (!approveWrite.isSaving) setDialogDraft(null);
           }}
-          footer={
-            <>
-              <Button
-                variant="outlined"
-                disabled={approveWrite.isSaving}
-                onClick={() => setDialogDraft(null)}
-              >
-                {messages.common.cancel}
-              </Button>
-              <Button
-                loading={approveWrite.isSaving}
-                disabled={approveWrite.isSaving}
-                onClick={confirmApprove}
-              >
-                {t.approval.approve}
-              </Button>
-            </>
-          }
-        >
-          <p>{`${t.fields.approvalRequestNo}: ${detail.data?.request.approvalRequestNo ?? ''}`}</p>
-          <p>{`${t.fields.approvalTypeCode}: ${detail.data?.request.approvalTypeCode ?? ''}`}</p>
-          <p>{`${t.fields.target}: ${
-            detail.data === undefined ? '' : toRequestDetailView(detail.data.request).targetName
-          }`}</p>
-          <p className="field-label">{t.approval.commentHeading}</p>
-          <p>{dialogDraft.comment}</p>
-          <p>{t.approval.stateOnly}</p>
-          <p>{t.approval.irreversible}</p>
-        </Dialog>
+          onConfirm={confirmApprove}
+        />
       )}
     </>
   );
