@@ -10,11 +10,23 @@ import type {
   ConcessionListResponse,
   PageMeta,
   Partner,
+  Process,
+  Uom,
   WorkOrder,
 } from './types';
 
 export interface RequestListResponse {
   items: ApprovalRequest[];
+  page: PageMeta;
+}
+
+export interface UomListResponse {
+  items: Uom[];
+  page: PageMeta;
+}
+
+export interface ProcessListResponse {
+  items: Process[];
   page: PageMeta;
 }
 
@@ -31,6 +43,8 @@ export const qualityApprovalKeys = {
     ['quality-approval', 'condition-work-order', workOrderId] as const,
   customer: (partnerId: number | null) =>
     ['quality-approval', 'condition-customer', partnerId] as const,
+  uoms: ['quality-approval', 'condition-uoms'] as const,
+  processes: ['quality-approval', 'condition-processes'] as const,
 };
 
 export const requestDetailPath = (approvalRequestId: number): string =>
@@ -44,6 +58,9 @@ export const workOrderReferencePath = (workOrderId: number): string =>
 
 export const customerReferencePath = (partnerId: number): string =>
   `/mdm/partners/${String(partnerId)}`;
+
+export const UOM_REFERENCE_PATH = '/mdm/uoms';
+export const PROCESS_REFERENCE_PATH = '/mdm/processes';
 
 export const useApprovalRequests = (
   query: RequestListQuery,
@@ -145,6 +162,35 @@ export const useConditionCustomer = (partnerId: number | null): UseQueryResult<P
 
       return runRequest(() =>
         client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } }),
+      );
+    },
+  });
+};
+
+export const useConditionUoms = (enabled: boolean): UseQueryResult<UomListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: qualityApprovalKeys.uoms,
+    enabled,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+  });
+};
+
+export const useConditionProcesses = (
+  processId: number | null,
+): UseQueryResult<ProcessListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: qualityApprovalKeys.processes,
+    enabled: processId !== null,
+    queryFn: () => {
+      if (processId === null) throw new Error('허용 공정이 없는 조건입니다.');
+
+      return runRequest(() =>
+        client.GET('/mdm/processes', { params: { query: { includeInactive: true } } }),
       );
     },
   });

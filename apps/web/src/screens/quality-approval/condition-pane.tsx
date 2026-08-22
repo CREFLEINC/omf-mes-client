@@ -6,10 +6,13 @@ import {
   toConcessionCardinality,
   toConcessionCardView,
   toExactReference,
+  toListReference,
   UNKNOWN_CONDITION_REFERENCES,
 } from './conditions';
 import {
   useConditionCustomer,
+  useConditionProcesses,
+  useConditionUoms,
   useConditionWorkOrder,
   useConcessionCandidates,
   useConcessionDetail,
@@ -30,6 +33,10 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
   const detail = useConcessionDetail(concessionId);
   const workOrder = useConditionWorkOrder(detail.data?.allowedWorkOrderId ?? null);
   const customer = useConditionCustomer(detail.data?.allowedCustomerId ?? null);
+  const uoms = useConditionUoms(detail.data !== undefined);
+  const processId = detail.data?.allowedProcessId ?? null;
+  const hasProcessReference = processId !== null;
+  const processes = useConditionProcesses(processId);
 
   if (approvalRequestId === null) return null;
   if (candidates.isPending) {
@@ -77,6 +84,22 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
 
   const view = toConcessionCardView(detail.data, {
     ...UNKNOWN_CONDITION_REFERENCES,
+    uom: toListReference(
+      {
+        entries:
+          uoms.data?.items.map((uom) => ({
+            id: uom.uomId,
+            name:
+              uom.uomCode.trim() === '' || uom.uomName.trim() === ''
+                ? ''
+                : `${uom.uomCode} · ${uom.uomName}`,
+          })) ?? [],
+        total: uoms.data?.page.total ?? 0,
+        isError: uoms.isError,
+        isLoading: uoms.isPending,
+      },
+      detail.data.uomId,
+    ),
     workOrder: toExactReference({
       name: workOrder.data?.workOrderNo,
       isError: workOrder.isError,
@@ -87,8 +110,25 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
       isError: customer.isError,
       isLoading: customer.isPending,
     }),
+    process: toListReference(
+      {
+        entries:
+          processes.data?.items.map((process) => ({
+            id: process.processId,
+            name: process.processName,
+          })) ?? [],
+        total: processes.data?.page.total ?? 0,
+        isError: processes.isError,
+        isLoading: processes.isPending,
+      },
+      detail.data.allowedProcessId,
+    ),
   });
-  const hasReferenceError = workOrder.isError || customer.isError;
+  const hasReferenceError =
+    workOrder.isError ||
+    customer.isError ||
+    uoms.isError ||
+    (hasProcessReference && processes.isError);
 
   return (
     <div role="group" aria-label={t.title}>
@@ -124,6 +164,8 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
               onClick={() => {
                 if (workOrder.isError) void workOrder.refetch();
                 if (customer.isError) void customer.refetch();
+                if (uoms.isError) void uoms.refetch();
+                if (hasProcessReference && processes.isError) void processes.refetch();
               }}
             >
               {messages.common.retry}

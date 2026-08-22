@@ -15,7 +15,9 @@ import { QualityApprovalScreen } from './screen';
 import {
   concessionDetailPath,
   customerReferencePath,
+  PROCESS_REFERENCE_PATH,
   requestDetailPath,
+  UOM_REFERENCE_PATH,
   workOrderReferencePath,
 } from './queries';
 import type { ApprovalRequest, ApprovalRequestDetail, Concession } from './types';
@@ -144,8 +146,57 @@ const customerRoute = (
   respond,
 });
 
+const listReferenceBody = (items: unknown[], total = items.length) => ({
+  items,
+  page: { page: 1, size: 20, total },
+});
+
+const uomRoute = (
+  respond: StubRoute['respond'] = () =>
+    jsonResponse(
+      listReferenceBody([
+        {
+          uomId: 901,
+          uomCode: 'SYNTH-EA',
+          uomName: '합성 낱개',
+          decimalScale: 0,
+          isActive: true,
+        },
+      ]),
+    ),
+): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === UOM_REFERENCE_PATH,
+  respond,
+});
+
+const processRoute = (
+  respond: StubRoute['respond'] = () =>
+    jsonResponse(
+      listReferenceBody([
+        {
+          processId: 1_301,
+          processCode: 'SYNTH-OP',
+          processName: '합성 공정',
+          processTypeCode: 'SYNTH-TYPE',
+          isActive: true,
+        },
+      ]),
+    ),
+): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === PROCESS_REFERENCE_PATH,
+  respond,
+});
+
 const approvalFetch = (routes: StubRoute[]): StubFetch =>
-  createStubFetch([...routes, detailRoute(), candidateRoute(), workOrderRoute(), customerRoute()]);
+  createStubFetch([
+    ...routes,
+    detailRoute(),
+    candidateRoute(),
+    workOrderRoute(),
+    customerRoute(),
+    uomRoute(),
+    processRoute(),
+  ]);
 
 const recordingFetch = (...routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } => {
   const urls: URL[] = [];
@@ -576,7 +627,8 @@ describe('QualityApprovalScreen conditions', () => {
     expect(within(pane).getByText('합성 조건 비고')).toBeInTheDocument();
     expect(await within(pane).findByText('SYNTH-WO-1201')).toBeInTheDocument();
     expect(within(pane).getByText('합성 고객')).toBeInTheDocument();
-    expect(within(pane).getAllByText(t.condition.reference.unknown)).toHaveLength(2);
+    expect(within(pane).getByText('SYNTH-EA · 합성 낱개')).toBeInTheDocument();
+    expect(within(pane).getByText('합성 공정')).toBeInTheDocument();
     for (const internalId of ['901', '1201', '1301', '1401']) {
       expect(within(pane).queryByText(internalId)).toBeNull();
     }
@@ -599,6 +651,8 @@ describe('QualityApprovalScreen conditions', () => {
     expect(
       recorded.urls.filter((url) => url.pathname === customerReferencePath(1_401)),
     ).toHaveLength(1);
+    expect(recorded.urls.filter((url) => url.pathname === UOM_REFERENCE_PATH)).toHaveLength(1);
+    expect(recorded.urls.filter((url) => url.pathname === PROCESS_REFERENCE_PATH)).toHaveLength(1);
     expect(recorded.urls.findIndex((url) => url.pathname === requestDetailPath(31))).toBeLessThan(
       recorded.urls.findIndex((url) => url.pathname === CONCESSIONS_PATH),
     );
@@ -610,9 +664,15 @@ describe('QualityApprovalScreen conditions', () => {
     expect(
       recorded.urls.findIndex((url) => url.pathname === concessionDetailPath(501)),
     ).toBeLessThan(recorded.urls.findIndex((url) => url.pathname === customerReferencePath(1_401)));
+    expect(
+      recorded.urls.findIndex((url) => url.pathname === concessionDetailPath(501)),
+    ).toBeLessThan(recorded.urls.findIndex((url) => url.pathname === UOM_REFERENCE_PATH));
+    expect(
+      recorded.urls.findIndex((url) => url.pathname === concessionDetailPath(501)),
+    ).toBeLessThan(recorded.urls.findIndex((url) => url.pathname === PROCESS_REFERENCE_PATH));
   });
 
-  it('exact 이름 조회 중에는 두 축을 loading으로 표시한다', async () => {
+  it('네 참조 이름 조회 중에는 각 축을 loading으로 표시한다', async () => {
     const pending = new Promise<Response>(() => undefined);
     const base = approvalFetch([
       listRoute(),
@@ -620,15 +680,18 @@ describe('QualityApprovalScreen conditions', () => {
       concessionRoute(),
     ]);
     const fetch: StubFetch = async (request) =>
-      [workOrderReferencePath(1_201), customerReferencePath(1_401)].includes(
-        new URL(request.url).pathname,
-      )
+      [
+        workOrderReferencePath(1_201),
+        customerReferencePath(1_401),
+        UOM_REFERENCE_PATH,
+        PROCESS_REFERENCE_PATH,
+      ].includes(new URL(request.url).pathname)
         ? pending
         : base(request);
     renderScreen(fetch, '/quality-approval?rq=31');
 
     const group = await screen.findByRole('group', { name: t.condition.title });
-    expect(within(group).getAllByText(t.condition.reference.loading)).toHaveLength(2);
+    expect(within(group).getAllByText(t.condition.reference.loading)).toHaveLength(4);
     expect(within(group).queryByText('SYNTH-WO-1201')).toBeNull();
   });
 
@@ -662,6 +725,89 @@ describe('QualityApprovalScreen conditions', () => {
     expect([workOrderAttempts, customerAttempts]).toEqual([2, 2]);
   });
 
+  it('실패한 목록 lookup만 재시도하고 성공한 목록은 다시 부르지 않는다', async () => {
+    let uomAttempts = 0;
+    let processAttempts = 0;
+    const { user } = renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => jsonResponse(candidateBody([concession]))),
+        concessionRoute(),
+        uomRoute(() => {
+          uomAttempts += 1;
+          return jsonResponse(listReferenceBody([]));
+        }),
+        processRoute(() => {
+          processAttempts += 1;
+          return processAttempts === 1
+            ? jsonResponse({}, { status: 500 })
+            : jsonResponse(
+                listReferenceBody([
+                  { processId: 1_301, processCode: 'SYNTH-OP', processName: '합성 공정' },
+                ]),
+              );
+        }),
+      ]),
+      '/quality-approval?rq=31',
+    );
+
+    await waitFor(() => expect(screen.getAllByText(t.condition.reference.failed)).toHaveLength(2));
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+    expect(await screen.findByText('합성 공정')).toBeInTheDocument();
+    expect([uomAttempts, processAttempts]).toEqual([1, 2]);
+  });
+
+  it('공정 조회 실패 뒤 제한 없는 조건으로 바꾸면 이전 오류와 재시도를 숨긴다', async () => {
+    const nextRequest: ApprovalRequest = {
+      ...requests[0]!,
+      approvalRequestId: 32,
+      approvalRequestNo: 'SYNTH-REQ-032',
+    };
+    const nextConcession: Concession = {
+      ...concession,
+      concessionId: 502,
+      approvalRequestId: 32,
+      allowedProcessId: undefined,
+    };
+    let candidateAttempts = 0;
+    let processAttempts = 0;
+    const recorded = recordingFetch(
+      listRoute(() => jsonResponse(listBody([...requests, nextRequest]))),
+      detailRoute(32, () => jsonResponse(detailBody(nextRequest))),
+      candidateRoute(() => {
+        candidateAttempts += 1;
+        return jsonResponse(
+          candidateBody(candidateAttempts === 1 ? [concession] : [nextConcession]),
+        );
+      }),
+      concessionRoute(),
+      {
+        match: (request) => new URL(request.url).pathname === concessionDetailPath(502),
+        respond: () => jsonResponse(nextConcession),
+      },
+      processRoute(() => {
+        processAttempts += 1;
+        return jsonResponse({}, { status: 500 });
+      }),
+    );
+    const { user } = renderScreen(recorded.fetch, '/quality-approval?rq=31');
+
+    await waitFor(() => expect(candidateAttempts).toBe(1));
+    await waitFor(() => expect(processAttempts).toBe(1));
+    const firstGroup = await screen.findByRole('group', { name: t.condition.title });
+    await waitFor(() =>
+      expect(within(firstGroup).getAllByText(t.condition.reference.failed)).toHaveLength(2),
+    );
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }));
+
+    const group = await screen.findByRole('group', { name: t.condition.title });
+    await waitFor(() => expect(within(group).getByText(t.condition.unrestricted)).toBeVisible());
+    expect(within(group).queryByText(t.condition.reference.failed)).toBeNull();
+    expect(within(group).queryByRole('button', { name: messages.common.retry })).toBeNull();
+    expect(processAttempts).toBe(1);
+    expect(recorded.urls.filter((url) => url.pathname === PROCESS_REFERENCE_PATH)).toHaveLength(1);
+  });
+
   it('exact 200의 공백 이름은 코드나 ID 대신 unknown으로 표시한다', async () => {
     renderScreen(
       approvalFetch([
@@ -670,6 +816,12 @@ describe('QualityApprovalScreen conditions', () => {
         concessionRoute(),
         workOrderRoute(() => jsonResponse({ workOrderId: 1_201, workOrderNo: '  ' })),
         customerRoute(() => jsonResponse({ partnerId: 1_401, partnerName: '' })),
+        uomRoute(() =>
+          jsonResponse(listReferenceBody([{ uomId: 901, uomCode: ' ', uomName: '' }])),
+        ),
+        processRoute(() =>
+          jsonResponse(listReferenceBody([{ processId: 1_301, processName: '  ' }])),
+        ),
       ]),
       '/quality-approval?rq=31',
     );
@@ -680,6 +832,28 @@ describe('QualityApprovalScreen conditions', () => {
     );
     expect(within(group).queryByText('1201')).toBeNull();
     expect(within(group).queryByText('1401')).toBeNull();
+  });
+
+  it('잘린 목록은 대상 발견 여부에 따라 named와 truncated로 나눈다', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => jsonResponse(candidateBody([concession]))),
+        concessionRoute(),
+        uomRoute(() => jsonResponse(listReferenceBody([], 2))),
+        processRoute(() =>
+          jsonResponse(
+            listReferenceBody([{ processId: 1_301, processName: '합성 공정 발견값' }], 2),
+          ),
+        ),
+      ]),
+      '/quality-approval?rq=31',
+    );
+
+    const group = await screen.findByRole('group', { name: t.condition.title });
+    expect(await within(group).findByText('합성 공정 발견값')).toBeInTheDocument();
+    expect(within(group).getByText(t.condition.reference.truncated)).toBeInTheDocument();
+    expect(within(group).queryByText('901')).toBeNull();
   });
 
   it('0건은 live 정상 상태이고 개수 모순은 진행·상세와 독립된 오류다', async () => {

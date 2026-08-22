@@ -4,9 +4,13 @@ import { describe, expect, it } from 'vitest';
 import { jsonResponse, renderHookWithProviders, type StubFetch } from '../../test/api-harness';
 import {
   customerReferencePath,
+  PROCESS_REFERENCE_PATH,
   qualityApprovalKeys,
+  UOM_REFERENCE_PATH,
   useApprovalRequestDetail,
   useConditionCustomer,
+  useConditionProcesses,
+  useConditionUoms,
   useConditionWorkOrder,
   useConcessionCandidates,
   useConcessionDetail,
@@ -141,5 +145,55 @@ describe('condition exact reference queries', () => {
     });
     expect(rendered.result.current.workOrder.data).toBeUndefined();
     expect(rendered.result.current.customer.data).toBeUndefined();
+  });
+});
+
+describe('condition list reference queries', () => {
+  it('조건 상세 전 UOM과 nullable 공정은 요청하지 않는다', () => {
+    const urls: string[] = [];
+    const fetch: StubFetch = async (request) => {
+      urls.push(request.url);
+      return jsonResponse({});
+    };
+    const { result } = renderHookWithProviders(
+      () => ({ uoms: useConditionUoms(false), processes: useConditionProcesses(null) }),
+      { fetch },
+    );
+
+    expect(result.current.uoms.fetchStatus).toBe('idle');
+    expect(result.current.processes.fetchStatus).toBe('idle');
+    expect(urls).toEqual([]);
+  });
+
+  it('목록별 고정 키로 includeInactive만 보내 한 번씩 조회한다', async () => {
+    const urls: URL[] = [];
+    const fetch: StubFetch = async (request) => {
+      const url = new URL(request.url);
+      urls.push(url);
+      const items =
+        url.pathname === UOM_REFERENCE_PATH
+          ? [{ uomId: 901, uomCode: 'SYNTH-EA', uomName: '합성 낱개' }]
+          : [{ processId: 1_301, processCode: 'SYNTH-OP', processName: '합성 공정' }];
+      return jsonResponse({ items, page: { page: 1, size: 20, total: 1 } });
+    };
+    const { result } = renderHookWithProviders(
+      () => ({ uoms: useConditionUoms(true), processes: useConditionProcesses(1_301) }),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(result.current.uoms.data?.items).toHaveLength(1);
+      expect(result.current.processes.data?.items).toHaveLength(1);
+    });
+    expect(qualityApprovalKeys.uoms).toEqual(['quality-approval', 'condition-uoms']);
+    expect(qualityApprovalKeys.processes).toEqual(['quality-approval', 'condition-processes']);
+    expect(urls.map(({ pathname }) => pathname)).toEqual([
+      UOM_REFERENCE_PATH,
+      PROCESS_REFERENCE_PATH,
+    ]);
+    expect(urls.map((url) => Object.fromEntries(url.searchParams))).toEqual([
+      { includeInactive: 'true' },
+      { includeInactive: 'true' },
+    ]);
   });
 });
