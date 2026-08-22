@@ -5,6 +5,8 @@ export type ApprovalRequest = components['schemas']['ApprovalRequest'];
 export type ApprovalRequestDetail = components['schemas']['ApprovalRequestDetail'];
 export type ApprovalStep = components['schemas']['ApprovalStep'];
 export type Concession = components['schemas']['Concession'];
+export type WorkOrder = components['schemas']['WorkOrder'];
+export type Partner = components['schemas']['Partner'];
 export type PageMeta = components['schemas']['PageMeta'];
 
 export interface ConcessionListResponse {

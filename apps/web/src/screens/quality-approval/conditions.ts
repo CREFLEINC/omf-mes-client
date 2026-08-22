@@ -37,6 +37,20 @@ export interface ConditionReferenceStates {
   customer: ConditionReferenceState;
 }
 
+export interface ExactReferenceSource {
+  name: string | undefined;
+  isError: boolean;
+  isLoading: boolean;
+}
+
+export const toExactReference = (source: ExactReferenceSource): ConditionReferenceState => {
+  if (source.isError) return { kind: 'failed' };
+  if (source.isLoading) return { kind: 'loading' };
+  if (source.name === undefined || source.name.trim() === '') return { kind: 'unknown' };
+
+  return { kind: 'named', name: source.name };
+};
+
 export const UNKNOWN_CONDITION_REFERENCES: ConditionReferenceStates = {
   uom: { kind: 'unknown' },
   workOrder: { kind: 'unknown' },

@@ -5,9 +5,15 @@ import { toApiError } from '../../patterns/request';
 import {
   toConcessionCardinality,
   toConcessionCardView,
+  toExactReference,
   UNKNOWN_CONDITION_REFERENCES,
 } from './conditions';
-import { useConcessionCandidates, useConcessionDetail } from './queries';
+import {
+  useConditionCustomer,
+  useConditionWorkOrder,
+  useConcessionCandidates,
+  useConcessionDetail,
+} from './queries';
 
 export interface ConditionPaneProps {
   approvalRequestId: number | null;
@@ -22,6 +28,8 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
       : toConcessionCardinality(approvalRequestId, candidates.data);
   const concessionId = cardinality?.kind === 'one' ? cardinality.concessionId : null;
   const detail = useConcessionDetail(concessionId);
+  const workOrder = useConditionWorkOrder(detail.data?.allowedWorkOrderId ?? null);
+  const customer = useConditionCustomer(detail.data?.allowedCustomerId ?? null);
 
   if (approvalRequestId === null) return null;
   if (candidates.isPending) {
@@ -67,7 +75,20 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
   }
   if (detail.data === undefined) return null;
 
-  const view = toConcessionCardView(detail.data, UNKNOWN_CONDITION_REFERENCES);
+  const view = toConcessionCardView(detail.data, {
+    ...UNKNOWN_CONDITION_REFERENCES,
+    workOrder: toExactReference({
+      name: workOrder.data?.workOrderNo,
+      isError: workOrder.isError,
+      isLoading: workOrder.isPending,
+    }),
+    customer: toExactReference({
+      name: customer.data?.partnerName,
+      isError: customer.isError,
+      isLoading: customer.isPending,
+    }),
+  });
+  const hasReferenceError = workOrder.isError || customer.isError;
 
   return (
     <div role="group" aria-label={t.title}>
@@ -92,6 +113,26 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
           </div>
         ))}
       </dl>
+      {hasReferenceError ? (
+        <AlertBanner
+          variant="error"
+          title={t.reference.failed}
+          action={
+            <Button
+              variant="outlined"
+              size="sm"
+              onClick={() => {
+                if (workOrder.isError) void workOrder.refetch();
+                if (customer.isError) void customer.refetch();
+              }}
+            >
+              {messages.common.retry}
+            </Button>
+          }
+        >
+          {messages.httpError.description}
+        </AlertBanner>
+      ) : null}
     </div>
   );
 };
