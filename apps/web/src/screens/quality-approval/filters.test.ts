@@ -26,6 +26,8 @@ describe('quality approval URL filters', () => {
     });
     expect(readPage(params)).toBe(1);
     expect(readSelectedRequestId(params)).toBeNull();
+    expect(readPage(new URLSearchParams('page=0'))).toBe(1);
+    expect(readSelectedRequestId(new URLSearchParams('rq=-1'))).toBeNull();
   });
 
   it('코드 목록이 확정되면 같은 구조로 유형과 상태를 읽는다', () => {
