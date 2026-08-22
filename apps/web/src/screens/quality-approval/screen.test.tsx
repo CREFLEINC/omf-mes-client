@@ -12,7 +12,12 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { QualityApprovalScreen } from './screen';
-import { concessionDetailPath, requestDetailPath } from './queries';
+import {
+  concessionDetailPath,
+  customerReferencePath,
+  requestDetailPath,
+  workOrderReferencePath,
+} from './queries';
 import type { ApprovalRequest, ApprovalRequestDetail, Concession } from './types';
 
 const t = messages.qualityApproval;
@@ -89,6 +94,7 @@ const concession: Concession = {
   uomId: 901,
   validFrom: '2026-08-22',
   validTo: '2026-09-30',
+  allowedWorkOrderId: 1_201,
   allowedProcessId: 1_301,
   allowedCustomerId: 1_401,
   unrestrictedAxes: ['SYNTH-UNDEFINED-AXIS'],
@@ -117,8 +123,29 @@ const concessionRoute = (
   respond,
 });
 
+const workOrderRoute = (
+  respond: StubRoute['respond'] = () =>
+    jsonResponse({ workOrderId: 1_201, workOrderNo: 'SYNTH-WO-1201' }),
+): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === workOrderReferencePath(1_201),
+  respond,
+});
+
+const customerRoute = (
+  respond: StubRoute['respond'] = () =>
+    jsonResponse({
+      partnerId: 1_401,
+      partnerCode: 'SYNTH-CUSTOMER-CODE',
+      partnerName: '합성 고객',
+      erpPartnerCode: 'SYNTH-ERP-CUSTOMER',
+    }),
+): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === customerReferencePath(1_401),
+  respond,
+});
+
 const approvalFetch = (routes: StubRoute[]): StubFetch =>
-  createStubFetch([...routes, detailRoute(), candidateRoute()]);
+  createStubFetch([...routes, detailRoute(), candidateRoute(), workOrderRoute(), customerRoute()]);
 
 const recordingFetch = (...routes: StubRoute[]): { fetch: StubFetch; urls: URL[] } => {
   const urls: URL[] = [];
@@ -547,10 +574,14 @@ describe('QualityApprovalScreen conditions', () => {
     expect(within(pane).getByText('2')).toBeInTheDocument();
     expect(within(pane).getByText('2026-08-22 – 2026-09-30')).toBeInTheDocument();
     expect(within(pane).getByText('합성 조건 비고')).toBeInTheDocument();
-    expect(within(pane).getByText(t.condition.unrestricted)).toBeInTheDocument();
-    expect(within(pane).getAllByText(t.condition.reference.unknown)).toHaveLength(3);
-    for (const internalId of ['901', '1301', '1401']) {
+    expect(await within(pane).findByText('SYNTH-WO-1201')).toBeInTheDocument();
+    expect(within(pane).getByText('합성 고객')).toBeInTheDocument();
+    expect(within(pane).getAllByText(t.condition.reference.unknown)).toHaveLength(2);
+    for (const internalId of ['901', '1201', '1301', '1401']) {
       expect(within(pane).queryByText(internalId)).toBeNull();
+    }
+    for (const hiddenCode of ['SYNTH-CUSTOMER-CODE', 'SYNTH-ERP-CUSTOMER']) {
+      expect(within(pane).queryByText(hiddenCode)).toBeNull();
     }
     const candidateUrl = recorded.urls.find((url) => url.pathname === CONCESSIONS_PATH);
     expect(Object.fromEntries(candidateUrl?.searchParams ?? [])).toEqual({
@@ -562,9 +593,93 @@ describe('QualityApprovalScreen conditions', () => {
     expect(recorded.urls.filter((url) => url.pathname === concessionDetailPath(501))).toHaveLength(
       1,
     );
+    expect(
+      recorded.urls.filter((url) => url.pathname === workOrderReferencePath(1_201)),
+    ).toHaveLength(1);
+    expect(
+      recorded.urls.filter((url) => url.pathname === customerReferencePath(1_401)),
+    ).toHaveLength(1);
     expect(recorded.urls.findIndex((url) => url.pathname === requestDetailPath(31))).toBeLessThan(
       recorded.urls.findIndex((url) => url.pathname === CONCESSIONS_PATH),
     );
+    expect(
+      recorded.urls.findIndex((url) => url.pathname === concessionDetailPath(501)),
+    ).toBeLessThan(
+      recorded.urls.findIndex((url) => url.pathname === workOrderReferencePath(1_201)),
+    );
+    expect(
+      recorded.urls.findIndex((url) => url.pathname === concessionDetailPath(501)),
+    ).toBeLessThan(recorded.urls.findIndex((url) => url.pathname === customerReferencePath(1_401)));
+  });
+
+  it('exact 이름 조회 중에는 두 축을 loading으로 표시한다', async () => {
+    const pending = new Promise<Response>(() => undefined);
+    const base = approvalFetch([
+      listRoute(),
+      candidateRoute(() => jsonResponse(candidateBody([concession]))),
+      concessionRoute(),
+    ]);
+    const fetch: StubFetch = async (request) =>
+      [workOrderReferencePath(1_201), customerReferencePath(1_401)].includes(
+        new URL(request.url).pathname,
+      )
+        ? pending
+        : base(request);
+    renderScreen(fetch, '/quality-approval?rq=31');
+
+    const group = await screen.findByRole('group', { name: t.condition.title });
+    expect(within(group).getAllByText(t.condition.reference.loading)).toHaveLength(2);
+    expect(within(group).queryByText('SYNTH-WO-1201')).toBeNull();
+  });
+
+  it('exact 404·network 실패를 표시하고 한 번의 재시도로 둘 다 복구한다', async () => {
+    let workOrderAttempts = 0;
+    let customerAttempts = 0;
+    const { user } = renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => jsonResponse(candidateBody([concession]))),
+        concessionRoute(),
+        workOrderRoute(() => {
+          workOrderAttempts += 1;
+          return workOrderAttempts === 1
+            ? jsonResponse({}, { status: 404 })
+            : jsonResponse({ workOrderId: 1_201, workOrderNo: 'SYNTH-WO-1201' });
+        }),
+        customerRoute(() => {
+          customerAttempts += 1;
+          if (customerAttempts === 1) throw new TypeError('synthetic offline');
+          return jsonResponse({ partnerId: 1_401, partnerName: '합성 고객' });
+        }),
+      ]),
+      '/quality-approval?rq=31',
+    );
+
+    await waitFor(() => expect(screen.getAllByText(t.condition.reference.failed)).toHaveLength(3));
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+    expect(await screen.findByText('SYNTH-WO-1201')).toBeInTheDocument();
+    expect(screen.getByText('합성 고객')).toBeInTheDocument();
+    expect([workOrderAttempts, customerAttempts]).toEqual([2, 2]);
+  });
+
+  it('exact 200의 공백 이름은 코드나 ID 대신 unknown으로 표시한다', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => jsonResponse(candidateBody([concession]))),
+        concessionRoute(),
+        workOrderRoute(() => jsonResponse({ workOrderId: 1_201, workOrderNo: '  ' })),
+        customerRoute(() => jsonResponse({ partnerId: 1_401, partnerName: '' })),
+      ]),
+      '/quality-approval?rq=31',
+    );
+
+    const group = await screen.findByRole('group', { name: t.condition.title });
+    await waitFor(() =>
+      expect(within(group).getAllByText(t.condition.reference.unknown)).toHaveLength(4),
+    );
+    expect(within(group).queryByText('1201')).toBeNull();
+    expect(within(group).queryByText('1401')).toBeNull();
   });
 
   it('0건은 live 정상 상태이고 개수 모순은 진행·상세와 독립된 오류다', async () => {

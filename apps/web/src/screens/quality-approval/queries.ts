@@ -9,6 +9,8 @@ import type {
   Concession,
   ConcessionListResponse,
   PageMeta,
+  Partner,
+  WorkOrder,
 } from './types';
 
 export interface RequestListResponse {
@@ -25,6 +27,10 @@ export const qualityApprovalKeys = {
     ['quality-approval', 'condition-candidates', approvalRequestId] as const,
   condition: (concessionId: number | null) =>
     ['quality-approval', 'condition', concessionId] as const,
+  workOrder: (workOrderId: number | null) =>
+    ['quality-approval', 'condition-work-order', workOrderId] as const,
+  customer: (partnerId: number | null) =>
+    ['quality-approval', 'condition-customer', partnerId] as const,
 };
 
 export const requestDetailPath = (approvalRequestId: number): string =>
@@ -32,6 +38,12 @@ export const requestDetailPath = (approvalRequestId: number): string =>
 
 export const concessionDetailPath = (concessionId: number): string =>
   `/quality/concessions/${String(concessionId)}`;
+
+export const workOrderReferencePath = (workOrderId: number): string =>
+  `/production/work-orders/${String(workOrderId)}`;
+
+export const customerReferencePath = (partnerId: number): string =>
+  `/mdm/partners/${String(partnerId)}`;
 
 export const useApprovalRequests = (
   query: RequestListQuery,
@@ -99,6 +111,40 @@ export const useConcessionDetail = (concessionId: number | null): UseQueryResult
         client.GET('/quality/concessions/{concessionId}', {
           params: { path: { concessionId } },
         }),
+      );
+    },
+  });
+};
+
+export const useConditionWorkOrder = (workOrderId: number | null): UseQueryResult<WorkOrder> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: qualityApprovalKeys.workOrder(workOrderId),
+    enabled: workOrderId !== null,
+    queryFn: () => {
+      if (workOrderId === null) throw new Error('허용 작업지시가 없는 조건입니다.');
+
+      return runRequest(() =>
+        client.GET('/production/work-orders/{workOrderId}', {
+          params: { path: { workOrderId } },
+        }),
+      );
+    },
+  });
+};
+
+export const useConditionCustomer = (partnerId: number | null): UseQueryResult<Partner> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: qualityApprovalKeys.customer(partnerId),
+    enabled: partnerId !== null,
+    queryFn: () => {
+      if (partnerId === null) throw new Error('허용 고객이 없는 조건입니다.');
+
+      return runRequest(() =>
+        client.GET('/mdm/partners/{partnerId}', { params: { path: { partnerId } } }),
       );
     },
   });
