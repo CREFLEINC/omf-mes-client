@@ -10,6 +10,8 @@ import { CalendarListPane } from './calendar-list-pane';
 import { CALENDAR_FORM_FIELDS, validateCalendar } from './calendar-validation';
 import { defaultCalendarFilters } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
+import { MonthGridPane } from './month-grid-pane';
+import { monthRange, type YearMonth } from './month-grid';
 import { applicationNote, deactivateAvailability } from './retire-actions';
 import { RetireConfirmDialog } from './retire-confirm-dialog';
 import { emptyFormValues, formValuesFrom, toCalendarCreate, toCalendarUpdate } from './mappers';
@@ -17,6 +19,7 @@ import {
   calendarDetailPath,
   calendarKeys,
   isTruncated,
+  useCalendarDays,
   useCalendarDetail,
   useCalendarList,
 } from './queries';
@@ -71,7 +74,24 @@ const useDeactivateWrite = (workCalendarId: number | null, onDone: () => void) =
  * ⭐ **캘린더 자체는 코드와 이름뿐이다** — 내용은 일자가 갖고, 누가 따르는지는 적용이 갖는다.
  * 이 슬라이스는 그 «껍데기»를 세운다.
  */
-export const WorkCalendarScreen = () => {
+export interface WorkCalendarScreenProps {
+  /**
+   * 처음 보일 달. **인자로 받는다** — 화면이 시각을 직접 읽으면 시험이 날짜마다 다른 달을 열어
+   * 답이 달라진다. 화면을 여는 자리에서는 기본값이 곧 이번 달이다.
+   */
+  initialMonth?: YearMonth;
+}
+
+/** 이번 달. ⛔ `toISOString()` 을 쓰지 않는다 — UTC 달력이라 한국 새해 아침에 지난해를 준다. */
+const currentMonth = (): YearMonth => {
+  const now = new Date();
+
+  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+};
+
+export const WorkCalendarScreen = ({
+  initialMonth = currentMonth(),
+}: WorkCalendarScreenProps = {}) => {
   const { client } = useApiClient();
   const toast = useToast();
   const [filters, setFilters] = useState<CalendarFilters>(defaultCalendarFilters);
@@ -80,8 +100,14 @@ export const WorkCalendarScreen = () => {
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   /** 확인 창이 떠 있는가 */
   const [retiring, setRetiring] = useState(false);
+  /** 지금 고른 캘린더. 일자 그리드가 이것을 그린다 */
+  const [selected, setSelected] = useState<WorkCalendar | null>(null);
+  const [yearMonth, setYearMonth] = useState<YearMonth>(initialMonth);
 
   const calendars = useCalendarList(filters);
+  /* 계약이 기간을 반드시 요구한다 — 보이는 달의 처음과 끝을 그대로 싣는다. */
+  const range = monthRange(yearMonth);
+  const days = useCalendarDays(selected?.workCalendarId ?? null, range);
 
   /* 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰도 코드 편집 가부도 없다. */
   const editingId = dialog?.mode === 'edit' ? dialog.workCalendarId : null;
@@ -224,22 +250,49 @@ export const WorkCalendarScreen = () => {
         </div>
       )}
 
-      <CalendarListPane
-        items={items}
-        isLoading={calendars.isLoading}
-        appliedFilters={filters}
-        onApplyFilters={setFilters}
-        onAdd={openCreate}
-        onEdit={openEdit}
-        loadError={
-          calendars.isError ? (
-            <LoadErrorBanner
-              error={toApiError(calendars.error)}
-              onRetry={() => void calendars.refetch()}
-            />
-          ) : null
-        }
-      />
+      {/*
+       * ⭐ **좌우가 아니라 위아래로 쌓는다.** 달력은 일곱 칸이 한 줄에 서야 하는데, 2단 배치의
+       * 우 칸(약 670px)에서는 칸마다 91px밖에 못 가져 「부분 가동」 배지가 접힌다 —
+       * 브라우저 실측으로 확인하고 바꾼 자리다. 목록은 고르는 자리라 폭이 남고, 달력은
+       * 이 화면의 본론이라 폭이 필요하다.
+       */}
+      <div className="pane-stack">
+        <CalendarListPane
+          items={items}
+          isLoading={calendars.isLoading}
+          appliedFilters={filters}
+          onApplyFilters={setFilters}
+          onAdd={openCreate}
+          onSelect={setSelected}
+          selectedId={selected?.workCalendarId ?? null}
+          loadError={
+            calendars.isError ? (
+              <LoadErrorBanner
+                error={toApiError(calendars.error)}
+                onRetry={() => void calendars.refetch()}
+              />
+            ) : null
+          }
+        />
+
+        <MonthGridPane
+          calendarName={selected === null ? null : selected.calendarName}
+          onEditCalendar={() => {
+            if (selected === null) return;
+
+            openEdit(selected);
+          }}
+          yearMonth={yearMonth}
+          onChangeMonth={setYearMonth}
+          days={days.data?.items ?? NO_ITEMS}
+          isLoading={days.isLoading}
+          loadError={
+            days.isError ? (
+              <LoadErrorBanner error={toApiError(days.error)} onRetry={() => void days.refetch()} />
+            ) : null
+          }
+        />
+      </div>
 
       {dialog !== null && (
         <CalendarFormDialog

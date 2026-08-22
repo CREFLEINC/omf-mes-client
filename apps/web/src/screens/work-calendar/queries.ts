@@ -7,6 +7,7 @@ import type { CalendarFilters, WorkCalendar } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type WorkCalendarDetailResponse = components['schemas']['WorkCalendarDetailResponse'];
+type WorkCalendarDayList = components['schemas']['WorkCalendarDayList'];
 
 export interface CalendarListResponse {
   items: WorkCalendar[];
@@ -44,6 +45,41 @@ export const useCalendarList = (filters: CalendarFilters): UseQueryResult<Calend
           },
         }),
       ),
+  });
+};
+
+export const calendarDayKeys = {
+  ofCalendar: (workCalendarId: number, from: string, to: string) =>
+    ['work-calendar-days', workCalendarId, from, to] as const,
+};
+
+/**
+ * 캘린더 일자 — **기간을 반드시 지정해 부른다.**
+ *
+ * ⛔ 계약이 그렇게 못박았다(한 해가 365행이라 전량을 내리지 않는다 · 공유계약 L-3).
+ * ⭐ **화면에 보이는 달만 받는다** — 앞뒤 빈칸에 걸친 이웃 달의 날은 칠하지 않으므로 받을
+ * 이유가 없고, 받아 두면 「보이지 않는 날의 설정」을 들고 있게 된다.
+ */
+export const useCalendarDays = (
+  workCalendarId: number | null,
+  range: { from: string; to: string },
+): UseQueryResult<WorkCalendarDayList> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: calendarDayKeys.ofCalendar(workCalendarId ?? 0, range.from, range.to),
+    enabled: workCalendarId !== null,
+    queryFn: () => {
+      if (workCalendarId === null) {
+        throw new Error('캘린더를 고르기 전에는 일자를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/work-calendars/{workCalendarId}/days', {
+          params: { path: { workCalendarId }, query: { from: range.from, to: range.to } },
+        }),
+      );
+    },
   });
 };
 
