@@ -1,31 +1,14 @@
-import {
-  Chip,
-  type ChipStatus,
-  type Column,
-  EmptyState,
-  SkeletonText,
-  Table,
-  TextField,
-} from '@crefle/web-ui';
+import { Chip, type Column, EmptyState, SkeletonText, Table, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { PageNav } from './page-nav';
+import type { WorkOrderListRow } from './list-row';
 import type { WorkOrderPageView } from './pagination';
 
-const t = messages.workOrder;
+export type { WorkOrderListRow } from './list-row';
 
-export interface WorkOrderListRow {
-  workOrderId: number;
-  workOrderNo: string;
-  operationLabel: string | null | undefined;
-  quantityLabel: string;
-  priorityText: string;
-  priorityError: string | undefined;
-  assignmentLabel: string;
-  validationLabel: string;
-  validationTone: ChipStatus;
-}
+const t = messages.workOrder;
 
 export interface WorkOrderListPaneProps {
   rows: WorkOrderListRow[];
