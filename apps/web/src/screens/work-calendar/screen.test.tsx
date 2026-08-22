@@ -520,3 +520,144 @@ describe('W-05-09 작업 캘린더 — 등록·수정', () => {
     expect(within(formDialog()).getByRole('textbox', { name: /캘린더 코드/ })).toHaveValue('CAL-C');
   });
 });
+
+/** 확인 창. 폼 창이 뒤에 남아 있어 **가장 나중에 열린 창**을 고른다. */
+const confirmDialog = () => screen.getAllByRole('dialog').at(-1) as HTMLElement;
+
+const openRetire = async (
+  user: ReturnType<typeof userEvent.setup>,
+  code: string,
+): Promise<void> => {
+  await openEditOf(user, code);
+  await user.click(within(formDialog()).getByRole('button', { name: t.retire.confirm }));
+  await screen.findByRole('dialog', { name: t.retire.title });
+};
+
+describe('W-05-09 작업 캘린더 — 사용 중지', () => {
+  /* 되돌릴 수 없는 조작은 폼 «본문»에 둔다 — 바닥에 두면 저장·취소가 밀려난다. */
+  it('수정 창에 사용 중지가 선다', async () => {
+    const { user } = renderScreen();
+
+    await openEditOf(user, 'CAL-A');
+
+    expect(within(formDialog()).getByRole('button', { name: t.retire.confirm })).toBeEnabled();
+  });
+
+  it('등록 창에는 사용 중지가 서지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+    await user.click(within(listPane()).getByRole('button', { name: t.actions.addCalendar }));
+    await screen.findByRole('dialog', { name: t.form.createTitle });
+
+    expect(
+      within(formDialog()).queryByRole('button', { name: t.retire.confirm }),
+    ).not.toBeInTheDocument();
+  });
+
+  /* 감추지 않고 잠그고 사유를 붙인다(G-2). */
+  it('이미 중지된 캘린더는 잠그고 사유를 보인다', async () => {
+    const { user } = renderScreen();
+
+    await openEditOf(user, 'CAL-B');
+
+    expect(within(formDialog()).getByRole('button', { name: t.retire.confirm })).toBeDisabled();
+    expect(screen.getByText(t.retire.alreadyInactive)).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **계약이 시킨 것이다** — 「참조가 있으면 확인 문구에 건수를 함께 보인 뒤 부른다」(B-4).
+   * 중지가 곧 그 대상들을 상위 층으로 떨어뜨리는 일이라 건수가 판단의 근거다.
+   */
+  it('확인 창이 따르는 대상 수와 그 파급을 함께 말한다', async () => {
+    const { user } = renderScreen({
+      respondDetail: () =>
+        jsonResponse(calendarDetail(calendarDefault, { applicationCount: 3 }), {
+          headers: { ETag: '9' },
+        }),
+    });
+
+    await openRetire(user, 'CAL-A');
+
+    expect(within(confirmDialog()).getByText(t.retire.applicationCount(3))).toBeInTheDocument();
+  });
+
+  it('따르는 대상이 없으면 없다고 말한다', async () => {
+    const { user } = renderScreen();
+
+    await openRetire(user, 'CAL-A');
+
+    expect(within(confirmDialog()).getByText(t.retire.applicationNone)).toBeInTheDocument();
+  });
+
+  /* ⚠ 계약에 다시 켜는 경로가 없다 — 그 사실을 반드시 말한다. */
+  it('되돌릴 수 있는지를 말한다', async () => {
+    const { user } = renderScreen();
+
+    await openRetire(user, 'CAL-A');
+
+    expect(within(confirmDialog()).getByText(t.retire.notReversibleHere)).toBeInTheDocument();
+    expect(within(confirmDialog()).getByText(t.retire.impact)).toBeInTheDocument();
+  });
+
+  it('잠금 토큰과 멱등 키를 싣고 나간다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openRetire(user, 'CAL-A');
+    await user.click(within(confirmDialog()).getByRole('button', { name: t.retire.confirm }));
+
+    await waitFor(() => {
+      expect(writes.length).toBe(1);
+    });
+
+    const request = onlyWrite(writes);
+
+    expect(new URL(request.url).pathname).toBe('/mdm/work-calendars/5001:deactivate');
+    expect(request.headers.get('If-Match')).toBe('9');
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  /*
+   * ⛔ **중지 뒤에는 수정 창도 닫는다.** 중지된 캘린더는 기본 조회에서 빠지므로, 열린 폼을
+   * 남기면 사용자가 목록에 없는 것을 계속 고치게 된다.
+   */
+  it('중지 뒤에는 수정 창도 닫는다', async () => {
+    const { user } = renderScreen();
+
+    await openRetire(user, 'CAL-A');
+    await user.click(within(confirmDialog()).getByRole('button', { name: t.retire.confirm }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  it('중지 뒤에 목록을 다시 읽는다', async () => {
+    const { user, sent } = renderScreen();
+
+    await openRetire(user, 'CAL-A');
+    const before = sent.length;
+    await user.click(within(confirmDialog()).getByRole('button', { name: t.retire.confirm }));
+
+    await waitFor(() => {
+      expect(sent.length).toBeGreaterThan(before);
+    });
+  });
+
+  /* 창을 닫지 않고 이유를 보여야 다시 시도할 수 있다. */
+  it('실패하면 확인 창을 닫지 않고 이유를 보인다', async () => {
+    const { user } = renderScreen({
+      respondWrite: () =>
+        jsonResponse(
+          { errors: [{ scope: 'screen', code: 'LOCKED', message: '지금은 처리할 수 없습니다.' }] },
+          { status: 400 },
+        ),
+    });
+
+    await openRetire(user, 'CAL-A');
+    await user.click(within(confirmDialog()).getByRole('button', { name: t.retire.confirm }));
+
+    expect(await screen.findByText('지금은 처리할 수 없습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.retire.title })).toBeInTheDocument();
+  });
+});
