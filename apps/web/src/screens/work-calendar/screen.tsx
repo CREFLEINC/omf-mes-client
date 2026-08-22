@@ -8,7 +8,7 @@ import { toApiError } from '../../patterns/request';
 import { CalendarFormDialog } from './calendar-form-dialog';
 import { CalendarListPane } from './calendar-list-pane';
 import { CALENDAR_FORM_FIELDS, validateCalendar } from './calendar-validation';
-import { defaultCalendarFilters } from './code-options';
+import { defaultCalendarFilters } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import { emptyFormValues, formValuesFrom, toCalendarCreate, toCalendarUpdate } from './mappers';
 import {

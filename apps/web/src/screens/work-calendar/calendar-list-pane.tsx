@@ -11,7 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { defaultCalendarFilters } from './code-options';
+import { defaultCalendarFilters } from './filters';
 import type { CalendarFilters, WorkCalendar } from './types';
 
 export interface CalendarListPaneProps {
