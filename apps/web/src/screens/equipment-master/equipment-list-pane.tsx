@@ -49,6 +49,23 @@ const hasAnyFilter = (filters: EquipmentFilters): boolean =>
   filters.includeInactive ||
   filters.includeDisposed;
 
+/**
+ * 「조회」를 눌러야 나가는 조건. **체크칸 셋은 여기 없다** — 그것들은 바꾸는 즉시 나간다.
+ *
+ * ⛔ **한 벌을 나눠 갖지 않는다.** 초안이 즉시 적용되는 조건까지 품으면 두 축이 서로를 되돌린다 —
+ * 검색칸에 낱말을 넣은 뒤 체크칸을 켜면 되맞춤 효과가 돌면서 **아직 적용하지 않은 낱말이
+ * 지워졌다**(client#316). 반대 방향으로 무너진 사례가 W-05-11 이다(client#314).
+ */
+interface DraftFilters {
+  q: string;
+  equipmentTypeCode: string;
+}
+
+const draftOf = (filters: EquipmentFilters): DraftFilters => ({
+  q: filters.q,
+  equipmentTypeCode: filters.equipmentTypeCode,
+});
+
 export const EquipmentListPane = ({
   items,
   isLoading,
@@ -60,24 +77,29 @@ export const EquipmentListPane = ({
   loadError,
 }: EquipmentListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
-  const [draft, setDraft] = useState<EquipmentFilters>(appliedFilters);
-  const {
-    q: appliedQ,
-    equipmentTypeCode: appliedType,
-    calibrationRequired: appliedCalibration,
-    includeInactive: appliedIncludeInactive,
-    includeDisposed: appliedIncludeDisposed,
-  } = appliedFilters;
+  const [draft, setDraft] = useState<DraftFilters>(draftOf(appliedFilters));
+  const { q: appliedQ, equipmentTypeCode: appliedType } = appliedFilters;
 
+  /* 밖에서 조건이 되돌려지면(초기화·칩 제거) 초안도 그것을 따라간다. */
   useEffect(() => {
-    setDraft({
-      q: appliedQ,
-      equipmentTypeCode: appliedType,
-      calibrationRequired: appliedCalibration,
-      includeInactive: appliedIncludeInactive,
-      includeDisposed: appliedIncludeDisposed,
-    });
-  }, [appliedQ, appliedType, appliedCalibration, appliedIncludeInactive, appliedIncludeDisposed]);
+    setDraft({ q: appliedQ, equipmentTypeCode: appliedType });
+  }, [appliedQ, appliedType]);
+
+  /** 초안을 지금 적용된 조건 «위에» 얹는다 — 즉시 적용된 체크칸을 건드리지 않는다. */
+  const applyDraft = (overrides: Partial<DraftFilters> = {}): void => {
+    onApplyFilters({ ...appliedFilters, ...draft, ...overrides });
+  };
+
+  /*
+   * ⛔ **초안을 손으로 거둔다 — 위 효과에 맡기지 않는다.**
+   * 효과는 «적용된 값이 달라졌을 때»만 돈다. 적용된 검색어가 이미 비어 있는데 칸에만 낱말이
+   * 남아 있으면 달라지는 값이 없어 효과가 돌지 않고, 그 상태로 「조회」를 누르면 초기화한
+   * 줄 알았던 조건이 되살아난다(client#316).
+   */
+  const resetAll = (): void => {
+    setDraft(draftOf(defaultEquipmentFilters));
+    onApplyFilters(defaultEquipmentFilters);
+  };
 
   const columns: Column<Equipment>[] = [
     {
@@ -123,7 +145,7 @@ export const EquipmentListPane = ({
       title={t.empty.equipmentNoMatchTitle}
       description={t.empty.equipmentNoMatchDescription}
       action={
-        <Button variant="outlined" onClick={() => onApplyFilters(defaultEquipmentFilters)}>
+        <Button variant="outlined" onClick={resetAll}>
           {messages.common.reset}
         </Button>
       }
@@ -170,7 +192,7 @@ export const EquipmentListPane = ({
           placeholder={t.equipmentFilters.searchPlaceholder}
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          onSearch={(value) => applyDraft({ q: value })}
         />
         <SelectField
           label={t.fields.equipmentType}
@@ -214,17 +236,13 @@ export const EquipmentListPane = ({
             {t.equipmentFilters.includeDisposed}
           </Checkbox>
         </div>
-        <Button className="field-cell-unlabeled" onClick={() => onApplyFilters(draft)}>
+        <Button className="field-cell-unlabeled" onClick={() => applyDraft()}>
           {messages.common.search}
         </Button>
         <Button className="field-cell-unlabeled" variant="outlined" onClick={onAdd}>
           {t.actions.addEquipment}
         </Button>
-        <Button
-          className="field-cell-unlabeled"
-          variant="outlined"
-          onClick={() => onApplyFilters(defaultEquipmentFilters)}
-        >
+        <Button className="field-cell-unlabeled" variant="outlined" onClick={resetAll}>
           {messages.common.reset}
         </Button>
       </div>

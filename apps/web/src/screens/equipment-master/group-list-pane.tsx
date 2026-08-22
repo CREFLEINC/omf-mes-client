@@ -50,6 +50,20 @@ const INDENT_PX = 20;
 const hasAnyFilter = (filters: GroupFilters): boolean =>
   filters.q !== '' || filters.plantId !== '' || filters.includeInactive;
 
+/**
+ * 「조회」를 눌러야 나가는 조건. **체크칸은 여기 없다** — 바꾸는 즉시 나간다.
+ * 한 벌을 나눠 가지면 두 축이 서로를 되돌린다(client#316 · client#314).
+ */
+interface GroupDraftFilters {
+  q: string;
+  plantId: string;
+}
+
+const groupDraftOf = (filters: GroupFilters): GroupDraftFilters => ({
+  q: filters.q,
+  plantId: filters.plantId,
+});
+
 export const GroupListPane = ({
   rows,
   isLoading,
@@ -66,18 +80,24 @@ export const GroupListPane = ({
 }: GroupListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
-  const [draft, setDraft] = useState<GroupFilters>(appliedFilters);
-  const {
-    q: appliedQ,
-    plantId: appliedPlantId,
-    includeInactive: appliedIncludeInactive,
-  } = appliedFilters;
+  const [draft, setDraft] = useState<GroupDraftFilters>(groupDraftOf(appliedFilters));
+  const { q: appliedQ, plantId: appliedPlantId } = appliedFilters;
 
+  /* 밖에서 조건이 되돌려지면(초기화·칩 제거) 초안도 그것을 따라간다. */
   useEffect(() => {
-    setDraft({ q: appliedQ, plantId: appliedPlantId, includeInactive: appliedIncludeInactive });
-  }, [appliedQ, appliedPlantId, appliedIncludeInactive]);
+    setDraft({ q: appliedQ, plantId: appliedPlantId });
+  }, [appliedQ, appliedPlantId]);
 
-  const applyDraft = () => onApplyFilters(draft);
+  /** 초안을 지금 적용된 조건 «위에» 얹는다 — 즉시 적용된 체크칸을 건드리지 않는다. */
+  const applyDraft = (overrides: Partial<GroupDraftFilters> = {}): void => {
+    onApplyFilters({ ...appliedFilters, ...draft, ...overrides });
+  };
+
+  /* ⛔ 초안을 손으로 거둔다 — 효과는 «적용된 값이 달라졌을 때»만 돈다(client#316). */
+  const resetAll = (): void => {
+    setDraft(groupDraftOf(defaultGroupFilters));
+    onApplyFilters(defaultGroupFilters);
+  };
 
   /**
    * DS에 Tree 컴포넌트가 없어 Table + 들여쓰기 + 접기 버튼의 조합으로 계층을 만든다.
@@ -144,7 +164,7 @@ export const GroupListPane = ({
       title={t.empty.groupNoMatchTitle}
       description={t.empty.groupNoMatchDescription}
       action={
-        <Button variant="outlined" onClick={() => onApplyFilters(defaultGroupFilters)}>
+        <Button variant="outlined" onClick={resetAll}>
           {messages.common.reset}
         </Button>
       }
@@ -191,7 +211,7 @@ export const GroupListPane = ({
           placeholder={t.filters.searchPlaceholder}
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
-          onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          onSearch={(value) => applyDraft({ q: value })}
         />
         {/* 같은 화면 안에서 라벨 붙은 선택칸을 두 가지로 만들지 않는다 — 부품 하나가 그 규약을 갖는다. */}
         <SelectField
@@ -211,14 +231,10 @@ export const GroupListPane = ({
             {messages.common.includeInactive}
           </Checkbox>
         </div>
-        <Button className="field-cell-unlabeled" onClick={applyDraft}>
+        <Button className="field-cell-unlabeled" onClick={() => applyDraft()}>
           {messages.common.search}
         </Button>
-        <Button
-          className="field-cell-unlabeled"
-          variant="outlined"
-          onClick={() => onApplyFilters(defaultGroupFilters)}
-        >
+        <Button className="field-cell-unlabeled" variant="outlined" onClick={resetAll}>
           {messages.common.reset}
         </Button>
       </div>
