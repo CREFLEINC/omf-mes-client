@@ -7,6 +7,7 @@ export type PageMeta = components['schemas']['PageMeta'];
 export type InspectionPlan = components['schemas']['InspectionPlan'];
 export type InspectionPlanVersion = components['schemas']['InspectionPlanVersion'];
 export type InspectionItemSpec = components['schemas']['InspectionItemSpec'];
+export type CollectionChannelObservation = components['schemas']['CollectionChannelObservation'];
 
 /** 왼쪽 설비 목록을 좁히는 조건. 「조회」를 눌러야 나간다. */
 export interface EquipmentFilters {

@@ -29,6 +29,12 @@ export interface ChannelPaneProps {
   limitNote: string | null;
   onAdd: () => void;
   onEdit: (channel: CollectionChannel) => void;
+  /**
+   * 수신 로그에서 가져올 수 있는가. **못 하면 감추지 않고 사유와 함께 잠근다**(G-2) —
+   * 이 설비에서 받은 기록이 아직 없다는 사실 자체가 알아야 할 정보다.
+   */
+  canImport: boolean;
+  onImport: () => void;
   loadError: ReactNode;
 }
 
@@ -61,6 +67,8 @@ export const ChannelPane = ({
   limitNote,
   onAdd,
   onEdit,
+  canImport,
+  onImport,
   loadError,
 }: ChannelPaneProps) => {
   const columns: Column<CollectionChannel>[] = [
@@ -174,7 +182,15 @@ export const ChannelPane = ({
             <Button variant="outlined" onClick={onAdd}>
               {t.actions.addChannel}
             </Button>
+            {/*
+             * ⭐ **손 입력을 막지 않는다**(스펙 §9-1) — 아직 한 번도 안 온 채널을 미리
+             * 등록할 수 있어야 하므로 「채널 추가」가 늘 먼저 선다.
+             */}
+            <Button variant="outlined" onClick={onImport} disabled={!canImport}>
+              {t.actions.importFromLog}
+            </Button>
           </div>
+          {!canImport && <span className="field-note">{t.importLog.noObservationsReason}</span>}
         </div>
         <div className="field-cell field-cell-unlabeled">
           <div className="check-group">

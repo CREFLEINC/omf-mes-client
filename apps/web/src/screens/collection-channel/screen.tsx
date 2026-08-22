@@ -2,16 +2,26 @@ import { AlertBanner, Breadcrumb, PageHeader, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
-import { toApiError } from '../../patterns/request';
+import { runRequest, toApiError } from '../../patterns/request';
 import { channelLimitNote } from './channel-notes';
 import { ChannelFormDialog } from './channel-form-dialog';
 import { ChannelPane } from './channel-pane';
 import { CHANNEL_FORM_FIELDS, validateChannel } from './channel-validation';
 import { EquipmentPane } from './equipment-pane';
 import { LoadErrorBanner } from './load-error-banner';
+import { ImportDialog } from './import-dialog';
 import { emptyFormValues, formValuesFrom, toChannelCreate, toChannelUpdate } from './mappers';
+import {
+  retainSelectable,
+  summarize,
+  toggleSelected,
+  type ImportOutcome,
+  type ImportSummary,
+} from './observation';
 import { defaultChannelFilters, defaultEquipmentFilters } from './options';
 import {
   CHANNEL_PAGE_SIZE,
@@ -23,6 +33,8 @@ import {
   useInspectionItemSpecs,
   useInspectionPlans,
   useInspectionPlanVersions,
+  observationKeys,
+  useObservations,
   usePlantLookup,
   useUomCodeById,
   useUomLookup,
@@ -31,6 +43,7 @@ import type {
   ChannelFilters,
   ChannelFormValues,
   CollectionChannel,
+  CollectionChannelObservation,
   Equipment,
   EquipmentFilters,
   ItemPickerPath,
@@ -62,6 +75,75 @@ const NO_PICKER_PATH: ItemPickerPath = {
   inspectionPlanVersionId: null,
 };
 
+const NO_OBSERVATIONS: CollectionChannelObservation[] = [];
+const NO_SELECTION: string[] = [];
+
+/**
+ * 고른 신호를 채널로 만든다 — **한 건씩.**
+ *
+ * ⛔ **계약에 일괄 등록이 없다.** 그래서 「다 됐다 / 다 안 됐다」가 아니라 **일부만 되는 것이
+ * 정상**이고, 화면은 그것을 뭉개지 않는다.
+ *
+ * ⭐ **한 건이 실패해도 멈추지 않는다** — 첫 실패에서 멈추면 뒤에 고른 것들이 왜 안 됐는지
+ * 알 수 없고, 다시 시도할 때 무엇이 이미 만들어졌는지도 알 수 없다.
+ *
+ * ⭐ **건마다 새 멱등 키를 준다** — 서로 다른 쓰기다. 하나로 돌려 쓰면 두 번째부터
+ * 서버가 첫 응답을 되돌려 주어 **만들어지지 않았는데 만들어진 것처럼 보인다.**
+ */
+const useObservationImport = (equipmentId: number | null) => {
+  const { client } = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (channelKeys: readonly string[]): Promise<ImportOutcome[]> => {
+      if (equipmentId === null) {
+        throw new Error('설비를 고르기 전에는 채널을 만들지 않습니다.');
+      }
+
+      const outcomes: ImportOutcome[] = [];
+
+      for (const channelKey of channelKeys) {
+        try {
+          await runRequest(() =>
+            client.POST('/maintenance/collection-channels', {
+              params: { header: { 'Idempotency-Key': crypto.randomUUID() } },
+              body: { equipmentId, channelKey },
+            }),
+          );
+          outcomes.push({ channelKey, reason: null });
+        } catch (caught) {
+          outcomes.push({ channelKey, reason: reasonOf(caught) });
+        }
+      }
+
+      return outcomes;
+    },
+    onSettled: () => {
+      /* 한 건이라도 만들어졌으면 목록이 낡았다 — 되든 안 되든 다시 받는다. */
+      void queryClient.invalidateQueries({ queryKey: channelKeys.all });
+      void queryClient.invalidateQueries({ queryKey: observationKeys.all });
+    },
+  });
+};
+
+/**
+ * 실패 한 건의 사유를 사람이 읽는 한 줄로.
+ *
+ * ⛔ **삼키지 않는다** — 서버가 준 문구가 「무엇을 고쳐야 하는지」의 유일한 단서다.
+ * 얻지 못하면 `null` 을 돌려 「알 수 없는 이유」로 그리게 한다(지어내지 않는다).
+ */
+const reasonOf = (caught: unknown): string | null => {
+  const error = toApiError(caught);
+
+  if (error.kind === 'validation' || error.kind === 'stateLocked') {
+    const line = error.errors.map((item) => item.message).find((message) => message.trim() !== '');
+
+    return line ?? null;
+  }
+
+  return error.kind === 'network' ? messages.httpError.offline : null;
+};
+
 /**
  * W-05-07 수집 채널 매핑 관리.
  *
@@ -81,6 +163,12 @@ export const CollectionChannelScreen = () => {
   const [values, setValues] = useState<ChannelFormValues>(emptyFormValues);
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const [pickerPath, setPickerPath] = useState<ItemPickerPath>(NO_PICKER_PATH);
+  /** 수신 로그 창이 떠 있는가 */
+  const [importing, setImporting] = useState(false);
+  const [importUnmappedOnly, setImportUnmappedOnly] = useState(true);
+  const [selectedKeys, setSelectedKeys] = useState<readonly string[]>(NO_SELECTION);
+  /** 보낸 결과. 아직 안 보냈으면 `null` */
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
 
   const { client } = useApiClient();
   const toast = useToast();
@@ -102,6 +190,23 @@ export const CollectionChannelScreen = () => {
   const versions = useInspectionPlanVersions(pickerPath.inspectionPlanId);
   const specs = useInspectionItemSpecs(pickerPath.inspectionPlanVersionId);
   const uomCodeById = useUomCodeById();
+
+  /*
+   * ⭐ **가져오기 단추의 활성 여부가 이 조회에 달려 있다** — 「받은 기록이 있는가」를
+   * 알아야 잠글지 열지 정한다. 그래서 창을 열기 전에 미리 한 번 받아 둔다.
+   *
+   * 창 안의 조건(`아직 잇지 않은 것만`)은 **서버가 거른다** — 화면이 받아 온 것만 거르면
+   * 목록이 잘렸을 때 조건이 반쪽이 된다.
+   */
+  const anyObservations = useObservations(selectedEquipmentId, false);
+  /*
+   * ⛔ **창이 열렸을 때만 돈다.** 창 밖에서도 돌게 두면 설비를 고를 때마다 수신 조회가
+   * «두 번» 나간다 — 하나는 단추를 열지 말지 정하려는 것이고, 하나는 아무도 안 볼 목록이다.
+   */
+  const shownObservations = useObservations(
+    importing ? selectedEquipmentId : null,
+    importUnmappedOnly,
+  );
 
   const equipmentItems = equipments.data?.items ?? NO_EQUIPMENTS;
   const channelItems = channels.data?.items ?? NO_CHANNELS;
@@ -237,6 +342,39 @@ export const CollectionChannelScreen = () => {
     setPickerPath((prev) => ({ ...prev, inspectionPlanVersionId }));
   };
 
+  const importWrite = useObservationImport(selectedEquipmentId);
+
+  const observationItems = shownObservations.data?.items ?? NO_OBSERVATIONS;
+
+  /**
+   * ⭐ **목록이 바뀌면 고른 것에서 고를 수 없게 된 것을 거둔다.** 조건을 껐다 켜는 사이에
+   * 사라진 신호를 그대로 들고 있으면 **화면에 보이지 않는 것이 저장 대상에 남는다.**
+   */
+  const selected = retainSelectable(selectedKeys, observationItems);
+
+  const openImport = (): void => {
+    setImportUnmappedOnly(true);
+    setSelectedKeys(NO_SELECTION);
+    setImportSummary(null);
+    setImporting(true);
+  };
+
+  const runImport = (): void => {
+    setImportSummary(null);
+    importWrite.mutate(selected, {
+      onSuccess: (outcomes) => {
+        const summary = summarize(outcomes);
+
+        setImportSummary(summary);
+        /*
+         * ⭐ **실패한 것만 골라 둔 채로 남긴다.** 성공한 것을 그대로 두면 다시 눌렀을 때
+         * 같은 채널을 또 만들려 하고, 서버는 유일 위반으로 되받는다.
+         */
+        setSelectedKeys(summary.failed.map((outcome) => outcome.channelKey));
+      },
+    });
+  };
+
   const submit = (): void => {
     const errors = validateChannel(values);
 
@@ -303,6 +441,8 @@ export const CollectionChannelScreen = () => {
           limitNote={limitNote}
           onAdd={openCreate}
           onEdit={openEdit}
+          canImport={(anyObservations.data?.items.length ?? 0) > 0}
+          onImport={openImport}
           loadError={channelError}
         />
       </div>
@@ -349,6 +489,27 @@ export const CollectionChannelScreen = () => {
           uomCodeById={uomCodeById}
           onClose={closeDialog}
           onSave={submit}
+        />
+      )}
+
+      {importing && (
+        <ImportDialog
+          observations={observationItems}
+          isLoading={shownObservations.isPending}
+          isError={shownObservations.isError}
+          unmappedOnly={importUnmappedOnly}
+          onChangeUnmappedOnly={setImportUnmappedOnly}
+          selected={selected}
+          onToggle={(observation) => setSelectedKeys((prev) => toggleSelected(prev, observation))}
+          summary={importSummary}
+          isSaving={importWrite.isPending}
+          onClose={() => {
+            /* 나가는 중인 쓰기는 끊지 않는다 — 되먹임이 통째로 사라진다(client#96). */
+            if (importWrite.isPending) return;
+
+            setImporting(false);
+          }}
+          onImport={runImport}
         />
       )}
     </div>

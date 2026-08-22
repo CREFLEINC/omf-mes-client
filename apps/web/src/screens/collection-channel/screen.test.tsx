@@ -15,7 +15,9 @@ import {
   equipmentItems,
   equipmentListResponse,
   makeChannel,
+  observationListResponse,
   plantListResponse,
+  uomListResponse,
 } from './fixtures';
 import { CHANNEL_PAGE_SIZE } from './queries';
 import { CollectionChannelScreen } from './screen';
@@ -39,6 +41,10 @@ interface StubOptions {
 }
 
 const stub = (options: StubOptions = {}): StubRoute[] => [
+  {
+    match: (request) => isPath(request, '/maintenance/collection-channels/observations'),
+    respond: () => jsonResponse(observationListResponse()),
+  },
   {
     match: (request) => isPath(request, '/maintenance/collection-channels'),
     respond: (request) => {
@@ -65,6 +71,10 @@ const stub = (options: StubOptions = {}): StubRoute[] => [
   {
     match: (request) => isPath(request, '/mdm/plants'),
     respond: () => jsonResponse(plantListResponse()),
+  },
+  {
+    match: (request) => isPath(request, '/mdm/uoms'),
+    respond: () => jsonResponse(uomListResponse()),
   },
 ];
 
