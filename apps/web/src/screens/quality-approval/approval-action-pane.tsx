@@ -13,6 +13,7 @@ export interface ApprovalActionPaneProps {
   writeError: ApiError | null;
   onApprove: () => void;
   onCommentChange: (value: string) => void;
+  onReject: () => void;
   onReload: () => void;
   onReloadUnknown: () => void;
 }
@@ -25,6 +26,7 @@ export const ApprovalActionPane = ({
   writeError,
   onApprove,
   onCommentChange,
+  onReject,
   onReload,
   onReloadUnknown,
 }: ApprovalActionPaneProps) => {
@@ -60,6 +62,14 @@ export const ApprovalActionPane = ({
         </p>
       )}
       <div className="form-actions">
+        <Button
+          variant="outlined"
+          disabled={isLocked}
+          aria-describedby={isLocked ? lockReasonId : undefined}
+          onClick={onReject}
+        >
+          {t.approval.reject}
+        </Button>
         <Button
           disabled={isLocked}
           aria-describedby={isLocked ? lockReasonId : undefined}
