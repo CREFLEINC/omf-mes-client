@@ -1,3 +1,5 @@
+import { messages } from '@omf-mes/i18n';
+
 export interface CodeOption {
   value: string;
   label: string;
@@ -9,3 +11,6 @@ export const QUALITY_APPROVAL_STATUS_CODES: readonly string[] = [];
 
 export const toCodeOptions = (codes: readonly string[]): CodeOption[] =>
   codes.map((code) => ({ value: code, label: code }));
+
+export const approvalScopeWarning = (codes: readonly string[]): string | undefined =>
+  codes.length === 0 ? messages.qualityApproval.scopeWarning : undefined;
