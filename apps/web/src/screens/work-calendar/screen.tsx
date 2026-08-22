@@ -10,6 +10,13 @@ import { CalendarFormDialog } from './calendar-form-dialog';
 import { CalendarListPane } from './calendar-list-pane';
 import { CALENDAR_FORM_FIELDS, validateCalendar } from './calendar-validation';
 import { defaultCalendarFilters } from './filters';
+import { ApplicationFormDialog } from './application-form-dialog';
+import { ApplicationPane } from './application-pane';
+import {
+  TARGET_TYPES,
+  unassignedPlantCount,
+  type WorkCalendarApplication,
+} from './application-targets';
 import { BulkFormDialog } from './bulk-form-dialog';
 import { expandDates } from './bulk-days';
 import { validateBulkRange } from './bulk-validation';
@@ -30,13 +37,18 @@ import {
   toDayUpdate,
 } from './mappers';
 import {
+  applicationKeys,
   calendarDayKeys,
   calendarDetailPath,
   calendarKeys,
   isTruncated,
+  useCalendarApplications,
   useCalendarDays,
   useCalendarDetail,
   useCalendarList,
+  useEquipmentGroupTargets,
+  usePlantApplications,
+  usePlantTargets,
 } from './queries';
 import type {
   BulkFormValues,
@@ -88,6 +100,43 @@ const useDayWrite = (workCalendarId: number | null, onDone: (appliedCount: numbe
     invalidateKeys: [calendarDayKeys.all],
     knownFields: DAY_FORM_FIELDS,
     onSuccess: (result) => onDone(result.appliedCount),
+  });
+};
+
+/**
+ * 적용 지정·해제.
+ *
+ * ⭐ **공장 기본을 바꾸는 것도 한 번의 부름이다** — 옛 지정 해제와 새 지정을 서버가 한
+ * 트랜잭션으로 처리한다(계약). 화면이 두 번 부르지 않는다.
+ *
+ * ⭐ **해제는 `workCalendarId` 를 비워 보내는 것**이다. 지우는 것이 아니라 그 대상이
+ * 상위 층을 따르게 되는 것이라, 계약도 같은 경로에 두었다.
+ *
+ * ⛔ **멱등 키 수명은 기본값(`per-attempt`)이 맞다** — 이 쓰기는 「이 대상은 이 캘린더를
+ * 따른다」를 **정하는** 것이라 두 번 보내도 결과가 같다.
+ */
+const useApplicationWrite = (onDone: () => void) => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<
+    { targetTypeCode: string; targetId: number; workCalendarId?: number },
+    unknown
+  >({
+    request: (variables, headers) =>
+      client.PUT('/mdm/work-calendar-applications', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body: {
+          targetTypeCode: variables.targetTypeCode as 'PLANT' | 'EQUIPMENT_GROUP',
+          targetId: variables.targetId,
+          ...(variables.workCalendarId === undefined
+            ? {}
+            : { workCalendarId: variables.workCalendarId }),
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [applicationKeys.all],
+    knownFields: ['targetId'],
+    onSuccess: onDone,
   });
 };
 
@@ -164,11 +213,22 @@ export const WorkCalendarScreen = ({
   /** 일괄 적용 창이 떠 있는가 */
   const [bulk, setBulk] = useState<BulkFormValues | null>(null);
   const [bulkErrors, setBulkErrors] = useState<Record<string, string>>({});
+  /** 적용 대상 지정 창이 떠 있는가 */
+  const [assigning, setAssigning] = useState(false);
+  const [targetTypeCode, setTargetTypeCode] = useState<string>(TARGET_TYPES.plant);
+  const [targetId, setTargetId] = useState('');
 
   const calendars = useCalendarList(filters);
   /* 계약이 기간을 반드시 요구한다 — 보이는 달의 처음과 끝을 그대로 싣는다. */
   const range = monthRange(yearMonth);
   const days = useCalendarDays(selected?.workCalendarId ?? null, range);
+  const applications = useCalendarApplications(selected?.workCalendarId ?? null);
+  /* ⭐ 「미지정 공장」은 이 캘린더가 아니라 **전체 공장 적용**으로 센다. */
+  const plantApplications = usePlantApplications();
+  const plantTargets = usePlantTargets();
+  const equipmentGroupTargets = useEquipmentGroupTargets(
+    assigning && targetTypeCode === TARGET_TYPES.equipmentGroup,
+  );
 
   /* 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰도 코드 편집 가부도 없다. */
   const editingId = dialog?.mode === 'edit' ? dialog.workCalendarId : null;
@@ -365,6 +425,24 @@ export const WorkCalendarScreen = ({
     bulkWrite.write(bulkDates.map((date) => toDayUpdate(date, bulk.day)));
   };
 
+  const applicationWrite = useApplicationWrite(() => {
+    setAssigning(false);
+    toast.show({ variant: 'success', description: t.applications.assigned });
+  });
+
+  const releaseWrite = useApplicationWrite(() => {
+    toast.show({ variant: 'success', description: t.applications.released });
+  });
+
+  const targetOptions =
+    targetTypeCode === TARGET_TYPES.plant ? plantTargets : equipmentGroupTargets;
+
+  /* ⛔ 공장 목록을 아직 못 받았으면 0 이 아니라 「모른다」다 — 조용해지지 않는다(G-9). */
+  const unassignedPlants = unassignedPlantCount(
+    plantTargets.map((target) => target.value),
+    plantApplications.data?.items ?? NO_ITEMS,
+  );
+
   const codeLockReason =
     dialog?.mode === 'edit' && detail.data !== undefined
       ? codeLockMessage(detail.data.editability)
@@ -429,6 +507,35 @@ export const WorkCalendarScreen = ({
             ) : null
           }
         />
+
+        <ApplicationPane
+          calendarName={selected === null ? null : selected.calendarName}
+          items={applications.data?.items ?? NO_ITEMS}
+          isLoading={applications.isLoading}
+          unassignedPlants={unassignedPlants}
+          onAdd={() => {
+            resetIfIdle(applicationWrite);
+            setTargetTypeCode(TARGET_TYPES.plant);
+            setTargetId('');
+            setAssigning(true);
+          }}
+          onRelease={(application: WorkCalendarApplication) => {
+            resetIfIdle(releaseWrite);
+            /* ⭐ 해제는 `workCalendarId` 를 비워 보내는 것이다 — 같은 경로다. */
+            releaseWrite.write({
+              targetTypeCode: application.targetTypeCode,
+              targetId: application.targetId,
+            });
+          }}
+          loadError={
+            applications.isError ? (
+              <LoadErrorBanner
+                error={toApiError(applications.error)}
+                onRetry={() => void applications.refetch()}
+              />
+            ) : null
+          }
+        />
       </div>
 
       {dialog !== null && (
@@ -468,6 +575,36 @@ export const WorkCalendarScreen = ({
             setEditingDate(null);
           }}
           onSave={saveDay}
+        />
+      )}
+
+      {assigning && selected !== null && (
+        <ApplicationFormDialog
+          targetTypeCode={targetTypeCode}
+          targetId={targetId}
+          onChangeType={(next) => {
+            setTargetTypeCode(next);
+            /* 유형이 바뀌면 앞서 고른 대상은 다른 표의 것이라 뜻을 잃는다 — 거둔다. */
+            setTargetId('');
+          }}
+          onChangeTarget={setTargetId}
+          options={targetOptions}
+          fieldErrors={applicationWrite.fieldErrors}
+          banner={<SaveErrorBanner error={applicationWrite.error} />}
+          isSaving={applicationWrite.isSaving}
+          onClose={() => {
+            resetIfIdle(applicationWrite);
+            setAssigning(false);
+          }}
+          onAssign={() => {
+            if (targetId === '') return;
+
+            applicationWrite.write({
+              targetTypeCode,
+              targetId: Number(targetId),
+              workCalendarId: selected.workCalendarId,
+            });
+          }}
         />
       )}
 

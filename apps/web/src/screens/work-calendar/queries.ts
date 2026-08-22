@@ -113,3 +113,115 @@ export const useCalendarDetail = (
     },
   });
 };
+
+type WorkCalendarApplication = components['schemas']['WorkCalendarApplication'];
+
+export const applicationKeys = {
+  all: ['work-calendar-applications'] as const,
+  ofCalendar: (workCalendarId: number) =>
+    ['work-calendar-applications', 'calendar', workCalendarId] as const,
+  ofType: (targetTypeCode: string) =>
+    ['work-calendar-applications', 'type', targetTypeCode] as const,
+};
+
+export interface ApplicationListResponse {
+  items: WorkCalendarApplication[];
+  page: PageMeta;
+}
+
+/** 이 캘린더를 따르는 대상. 캘린더를 고르기 전에는 부르지 않는다. */
+export const useCalendarApplications = (
+  workCalendarId: number | null,
+): UseQueryResult<ApplicationListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: applicationKeys.ofCalendar(workCalendarId ?? 0),
+    enabled: workCalendarId !== null,
+    queryFn: () => {
+      if (workCalendarId === null) {
+        throw new Error('캘린더를 고르기 전에는 적용 대상을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/work-calendar-applications', { params: { query: { workCalendarId } } }),
+      );
+    },
+  });
+};
+
+/**
+ * 공장 적용 전부 — **어느 캘린더를 따르든** 모아 본다.
+ *
+ * ⭐ 「기본 캘린더가 지정되지 않은 공장」을 세려면 **이 캘린더의 것이 아니라 전체**가 필요하다.
+ * 다른 캘린더를 따르는 공장은 미지정이 아니기 때문이다.
+ */
+export const usePlantApplications = (): UseQueryResult<ApplicationListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: applicationKeys.ofType('PLANT'),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/work-calendar-applications', {
+          params: { query: { targetTypeCode: 'PLANT' } },
+        }),
+      ),
+  });
+};
+
+export interface TargetOption {
+  value: string;
+  label: string;
+}
+
+const NO_TARGETS: TargetOption[] = [];
+
+/** 공장 선택 목록. 이름을 풀 수 있어야 하므로 문 닫은 것까지 받는다. */
+export const usePlantTargets = (): TargetOption[] => {
+  const { client } = useApiClient();
+
+  const plants = useQuery({
+    queryKey: ['lookups', 'plants'] as const,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/plants', { params: { query: { includeInactive: true } } })),
+  });
+
+  return (
+    plants.data?.items.map((item) => ({
+      value: String(item.plantId),
+      label: item.plantName,
+    })) ?? NO_TARGETS
+  );
+};
+
+/**
+ * 설비 그룹 선택 목록.
+ *
+ * ⭐ **계약이 대응을 못박았다** — `EQUIPMENT_GROUP` 의 대상은 생산라인이다. 화면의 말은
+ * 「설비 그룹」이지만 목록은 생산라인 경로에서 온다. 한 칸이 상황에 따라 다른 표를 가리키므로
+ * 화면이 짐작하지 않고 계약이 정한 대응을 따른다.
+ */
+export const useEquipmentGroupTargets = (enabled: boolean): TargetOption[] => {
+  const { client } = useApiClient();
+
+  const lines = useQuery({
+    queryKey: ['lookups', 'production-lines'] as const,
+    /*
+     * ⭐ **고를 자리가 열렸을 때만 받는다.** 공장은 「미지정 공장」을 세느라 늘 필요하지만
+     * 설비 그룹은 지정 창에서만 쓴다 — 화면을 열 때마다 받으면 아무도 안 보는 목록을 나른다.
+     */
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/production-lines', { params: { query: { includeInactive: true } } }),
+      ),
+  });
+
+  return (
+    lines.data?.items.map((item) => ({
+      value: String(item.productionLineId),
+      label: item.lineName,
+    })) ?? NO_TARGETS
+  );
+};
