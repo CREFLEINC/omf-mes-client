@@ -2,6 +2,8 @@ import { Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import type { ActionAvailability } from './asset-actions';
+
 import {
   PM_CYCLE_UNIT_OPTIONS,
   PM_TRIGGER_OPTIONS,
@@ -73,8 +75,14 @@ export interface ToolFormDialogProps {
   /** 이 툴로 발행된 라벨 회차 수. 코드가 잠긴 이유를 사용자가 잇게 한다 */
   labelIssueCount: number | null;
   isSaving: boolean;
+  /** 사용 중지를 지금 할 수 있는가. 못 하면 사유가 함께 온다 */
+  deactivate: ActionAvailability;
+  /** 폐기를 지금 할 수 있는가 */
+  dispose: ActionAvailability;
   onClose: () => void;
   onSave: () => void;
+  onDeactivate: () => void;
+  onDispose: () => void;
 }
 
 /**
@@ -105,9 +113,14 @@ export const ToolFormDialog = ({
   nextPmDate,
   labelIssueCount,
   isSaving,
+  deactivate,
+  dispose,
   onClose,
   onSave,
+  onDeactivate,
+  onDispose,
 }: ToolFormDialogProps) => {
+  const retireNoteId = useId();
   const plantName =
     plantEntries.find((entry) => entry.value === values.plantId)?.label ?? values.plantId;
 
@@ -316,6 +329,51 @@ export const ToolFormDialog = ({
             label={t.fields.labelIssueCount}
             value={labelIssueCount === null ? null : t.form.labelIssued(labelIssueCount)}
           />
+        )}
+
+        {/*
+         * ⭐ **되돌릴 수 없는 두 조작은 폼 «본문»에 둔다** — 바닥 줄이 아니다.
+         * 바닥에 두면 사유 줄까지 함께 붙어 줄이 두 층이 되고, 창이 뷰포트를 넘어
+         * 「저장」과 「취소」까지 화면 밖으로 밀려난다(W-05-11 브라우저 확인에서 실측).
+         *
+         * ⭐ **감추지 않고 잠그고 사유를 붙인다**(공유계약 G-2). 사라진 버튼은 「원래 없는
+         * 기능」과 구분되지 않아, 왜 못 하는지도 어디서 할 수 있는지도 알 수 없다.
+         * 사유는 보이는 DOM 텍스트로 낸다 — 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다.
+         */}
+        {mode === 'edit' && (
+          <div className="field-cell">
+            <Button
+              variant="outlined"
+              disabled={isSaving || !deactivate.enabled}
+              aria-describedby={deactivate.reason === null ? undefined : `${retireNoteId}-off`}
+              onClick={onDeactivate}
+            >
+              {t.retire.deactivateConfirm}
+            </Button>
+            {deactivate.reason !== null && (
+              <span id={`${retireNoteId}-off`} className="field-note">
+                {deactivate.reason}
+              </span>
+            )}
+          </div>
+        )}
+
+        {mode === 'edit' && (
+          <div className="field-cell">
+            <Button
+              variant="outlined"
+              disabled={isSaving || !dispose.enabled}
+              aria-describedby={dispose.reason === null ? undefined : `${retireNoteId}-dispose`}
+              onClick={onDispose}
+            >
+              {t.retire.disposeConfirm}
+            </Button>
+            {dispose.reason !== null && (
+              <span id={`${retireNoteId}-dispose`} className="field-note">
+                {dispose.reason}
+              </span>
+            )}
+          </div>
         )}
       </div>
     </Dialog>

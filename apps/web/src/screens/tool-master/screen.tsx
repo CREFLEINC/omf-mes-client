@@ -5,8 +5,15 @@ import { useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import {
+  deactivateAvailability,
+  disposeAvailability,
+  labelNote,
+  referenceNote,
+} from './asset-actions';
 import { CODE_GROUPS, defaultToolFilters, selectableOptions, toCodeLabels } from './code-options';
 import { LoadErrorBanner } from './load-error-banner';
+import { RetireConfirmDialog } from './retire-confirm-dialog';
 import { emptyFormValues, formValuesFrom, toToolCreate, toToolUpdate } from './mappers';
 import { ToolFormDialog } from './tool-form-dialog';
 import { ToolListPane } from './tool-list-pane';
@@ -35,6 +42,44 @@ const NO_ITEMS: never[] = [];
 type DialogState = { mode: 'create' } | { mode: 'edit'; moldId: number };
 
 /**
+ * 되돌릴 수 없는 자산 조작 하나(사용 중지·폐기)의 쓰기.
+ *
+ * ⛔ **멱등 키 수명은 기본값(`per-attempt`)이 맞다** — 되돌릴 수 없는 쓰기인데도 그렇다.
+ * 부품이 「**본문이 빈 액션**에 `until-applied` 를 쓰지 말라」고 정했다: 보낼 값이 없으면
+ * 「값이 바뀌면 새 키」가 성립하지 않아, 다른 화면에서 원인을 고치고 돌아와 다시 눌러도
+ * 같은 키가 나가 **영영 성공할 수 없다.**
+ */
+const useRetireWrite = (
+  action: 'deactivate' | 'dispose',
+  moldId: number | null,
+  onDone: () => void,
+) => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<void, Mold>({
+    request: (_variables, headers) => {
+      const params = {
+        path: { moldId: moldId ?? 0 },
+        header: {
+          'Idempotency-Key': headers['Idempotency-Key'],
+          'If-Match': headers['If-Match'] ?? '',
+        },
+      };
+
+      return action === 'deactivate'
+        ? client.POST('/mdm/molds/{moldId}:deactivate', { params })
+        : client.POST('/mdm/molds/{moldId}:dispose', { params });
+    },
+    /* 잠금 토큰은 상세 경로에 보관돼 있다 — 요청 경로(`...:dispose`)로 꺼내면 늘 비어 있다. */
+    etagPath: moldId === null ? null : toolDetailPath(moldId),
+    invalidateKeys: [toolKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: onDone,
+  });
+};
+
+/**
  * W-05-13 툴/금형/지그 마스터 관리.
  *
  * ⭐ **테이블 이름은 금형이지만 담는 것은 모든 도구다** — `toolTypeCode` 가 가른다(스펙 §3).
@@ -50,6 +95,8 @@ export const ToolMasterScreen = () => {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [values, setValues] = useState<ToolFormValues>(() => emptyFormValues(''));
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+  /** 확인 창이 떠 있는가. 두 조작이 같은 창을 쓰되 말은 각자 갖는다 */
+  const [retiring, setRetiring] = useState<'deactivate' | 'dispose' | null>(null);
 
   const tools = useToolList(filters);
   const plants = usePlantLookup();
@@ -104,6 +151,23 @@ export const ToolMasterScreen = () => {
     },
   });
 
+  const deactivateWrite = useRetireWrite('deactivate', editingId, () => {
+    /* 창은 열어 둔다 — 중지된 툴도 이름·주기는 계속 고칠 수 있다. */
+    void detail.refetch();
+    setRetiring(null);
+    toast.show({ variant: 'success', description: messages.common.saved });
+  });
+
+  const disposeWrite = useRetireWrite('dispose', editingId, () => {
+    /*
+     * ⛔ **창도 함께 닫는다.** 폐기된 자산은 편집이 풀리지 않으므로, 열린 폼을 남기면
+     * 사용자가 고칠 수 있다고 믿고 치다가 저장에서 거절당한다.
+     */
+    setRetiring(null);
+    setDialog(null);
+    toast.show({ variant: 'success', description: messages.common.saved });
+  });
+
   /**
    * **끝난 쓰기만 거둔다.** 나가는 중인 요청을 `reset()` 으로 끊으면 그 요청의 되먹임
    * (성공 뒤 창 닫기, 실패 뒤 오류 표시)이 통째로 사라져, 화면은 아무 일도 없었다고 믿고
@@ -119,8 +183,15 @@ export const ToolMasterScreen = () => {
     target.reset();
   };
 
-  const openCreate = (): void => {
+  /** 편집 중이던 것을 통째로 거둔다 — 인라인 오류와 저장 실패 배너 셋. */
+  const resetEditing = (): void => {
     resetIfIdle(write);
+    resetIfIdle(deactivateWrite);
+    resetIfIdle(disposeWrite);
+  };
+
+  const openCreate = (): void => {
+    resetEditing();
     setLocalErrors({});
     setValues(emptyFormValues(filters.plantId));
     setDialog({ mode: 'create' });
@@ -135,14 +206,15 @@ export const ToolMasterScreen = () => {
    * 그것이다 — 이 화면에는 그런 값이 없다(계약의 수정 본문이 전부 이 화면 소유다).
    */
   const openEdit = (row: Mold): void => {
-    resetIfIdle(write);
+    resetEditing();
     setLocalErrors({});
     setValues(formValuesFrom(row));
     setDialog({ mode: 'edit', moldId: row.moldId });
   };
 
   const closeDialog = (): void => {
-    resetIfIdle(write);
+    resetEditing();
+    setRetiring(null);
     setDialog(null);
   };
 
@@ -169,6 +241,10 @@ export const ToolMasterScreen = () => {
 
     write.write(values);
   };
+
+  const deactivate = deactivateAvailability(tool);
+  const dispose = disposeAvailability(tool, statusOptions);
+  const retireWriteInFlight = retiring === 'dispose' ? disposeWrite : deactivateWrite;
 
   const codeLockReason =
     dialog?.mode === 'edit' && detail.data !== undefined
@@ -235,8 +311,49 @@ export const ToolMasterScreen = () => {
           nextPmDate={tool?.nextPmDate ?? null}
           labelIssueCount={detail.data?.labelIssueCount ?? null}
           isSaving={write.isSaving}
+          deactivate={deactivate}
+          dispose={dispose}
           onClose={closeDialog}
           onSave={save}
+          onDeactivate={() => {
+            resetIfIdle(deactivateWrite);
+            setRetiring('deactivate');
+          }}
+          onDispose={() => {
+            resetIfIdle(disposeWrite);
+            setRetiring('dispose');
+          }}
+        />
+      )}
+
+      {retiring !== null && tool !== null && (
+        <RetireConfirmDialog
+          title={retiring === 'dispose' ? t.retire.disposeTitle : t.retire.deactivateTitle}
+          targetNote={
+            retiring === 'dispose'
+              ? t.retire.disposeTarget(`${tool.moldCode} · ${tool.moldName}`)
+              : t.retire.deactivateTarget(`${tool.moldCode} · ${tool.moldName}`)
+          }
+          referenceNote={referenceNote(detail.data?.editability.referenceCount)}
+          outsideNote={labelNote(detail.data?.labelIssueCount ?? null)}
+          impactNote={retiring === 'dispose' ? t.retire.disposeImpact : t.retire.deactivateImpact}
+          reversibilityNote={
+            retiring === 'dispose'
+              ? t.retire.disposeNotReversible
+              : t.retire.deactivateNotReversibleHere
+          }
+          confirmLabel={
+            retiring === 'dispose' ? t.retire.disposeConfirm : t.retire.deactivateConfirm
+          }
+          isSaving={retireWriteInFlight.isSaving}
+          banner={
+            <SaveErrorBanner
+              error={retireWriteInFlight.error}
+              onReload={() => void detail.refetch()}
+            />
+          }
+          onClose={() => setRetiring(null)}
+          onConfirm={() => retireWriteInFlight.write(undefined)}
         />
       )}
     </div>

@@ -1148,3 +1148,250 @@ describe('W-05-13 툴 마스터 — 저장', () => {
     });
   });
 });
+
+const openRetire = async (
+  user: ReturnType<typeof userEvent.setup>,
+  code: string,
+  action: 'deactivate' | 'dispose',
+): Promise<void> => {
+  await openEditOf(user, code);
+  await user.click(
+    within(formDialog()).getByRole('button', {
+      name: action === 'dispose' ? t.retire.disposeConfirm : t.retire.deactivateConfirm,
+    }),
+  );
+  await screen.findByRole('dialog', {
+    name: action === 'dispose' ? t.retire.disposeTitle : t.retire.deactivateTitle,
+  });
+};
+
+/** 확인 창. 폼 창이 뒤에 남아 있어 **가장 나중에 열린 창**을 고른다. */
+const confirmDialog = () => screen.getAllByRole('dialog').at(-1) as HTMLElement;
+
+describe('W-05-13 툴 마스터 — 사용 중지·폐기', () => {
+  /* 되돌릴 수 없는 두 조작은 폼 «본문»에 둔다 — 바닥에 두면 저장·취소가 밀려난다. */
+  it('수정 창에 두 조작이 선다', async () => {
+    const { user } = renderScreen();
+
+    await openEditOf(user, 'TL-01');
+
+    expect(
+      within(formDialog()).getByRole('button', { name: t.retire.deactivateConfirm }),
+    ).toBeEnabled();
+    expect(
+      within(formDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
+    ).toBeEnabled();
+  });
+
+  it('등록 창에는 두 조작이 서지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await openCreate(user);
+
+    expect(
+      within(formDialog()).queryByRole('button', { name: t.retire.deactivateConfirm }),
+    ).not.toBeInTheDocument();
+  });
+
+  /* 감추지 않고 잠그고 사유를 붙인다(G-2). */
+  it('이미 중지된 툴은 사용 중지를 잠그고 사유를 보인다', async () => {
+    const { user } = renderScreen();
+
+    await openEditOf(user, 'TL-06');
+
+    expect(
+      within(formDialog()).getByRole('button', { name: t.retire.deactivateConfirm }),
+    ).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.alreadyInactive)).toBeInTheDocument();
+  });
+
+  it('이미 폐기된 툴은 폐기를 잠그고 사유를 보인다', async () => {
+    const { user } = renderScreen();
+
+    await openEditOf(user, 'TL-06');
+
+    expect(
+      within(formDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
+    ).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.alreadyDisposed)).toBeInTheDocument();
+  });
+
+  /* 폐기 코드값이 없으면 이미 폐기된 자산인지 판정할 수 없다 — 판정 없이 열지 않는다. */
+  it('자산 상태 값 목록에 폐기 코드가 없으면 폐기를 잠근다', async () => {
+    const { user } = renderScreen({
+      respondCodeValues: () =>
+        jsonResponse(codeValuesResponse([makeCodeValue('IN_SERVICE', '사용중')])),
+    });
+
+    await openEditOf(user, 'TL-01');
+
+    expect(
+      within(formDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
+    ).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.disposeUnavailable)).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **계약이 시킨 것이다** — 「참조가 있으면 확인 문구에 건수를 함께 보인 뒤 부른다」(B-4).
+   * 물리 삭제가 없는 자원이라 그 건수가 판단의 근거다.
+   */
+  it('확인 창이 참조 건수를 함께 보인다', async () => {
+    const { user } = renderScreen({
+      respondDetail: () =>
+        jsonResponse(toolDetail(toolNotRequired, { editability: referencedCode }), {
+          headers: { ETag: '9' },
+        }),
+    });
+
+    await openRetire(user, 'TL-01', 'deactivate');
+
+    expect(within(confirmDialog()).getByText(t.retire.referenceCount(3))).toBeInTheDocument();
+  });
+
+  /* ⛔ 모르는 것을 「없다」로 그리지 않는다(G-9). */
+  it('참조 건수를 셀 수 없으면 그렇게 말한다', async () => {
+    const { user } = renderScreen({
+      respondDetail: () =>
+        jsonResponse(
+          toolDetail(toolNotRequired, {
+            editability: { codeEditable: false, reason: 'NOT_COUNTABLE' },
+          }),
+          { headers: { ETag: '9' } },
+        ),
+    });
+
+    await openRetire(user, 'TL-01', 'deactivate');
+
+    expect(within(confirmDialog()).getByText(t.retire.referenceUnknown)).toBeInTheDocument();
+  });
+
+  /* 라벨은 시스템 «밖»에 나가 있어 회수할 수 없다 — 참조 건수와 다른 축이다. */
+  it('라벨이 나가 있으면 확인 창이 그 사실을 함께 말한다', async () => {
+    const { user } = renderScreen({
+      respondDetail: () =>
+        jsonResponse(
+          toolDetail(toolNotRequired, { editability: labelIssuedCode, labelIssueCount: 2 }),
+          { headers: { ETag: '9' } },
+        ),
+    });
+
+    await openRetire(user, 'TL-01', 'dispose');
+
+    expect(within(confirmDialog()).getByText(t.retire.labelIssued(2))).toBeInTheDocument();
+    expect(within(confirmDialog()).getByText(t.retire.referenceNone)).toBeInTheDocument();
+  });
+
+  it('라벨이 나간 적이 없으면 그 줄을 세우지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await openRetire(user, 'TL-01', 'dispose');
+
+    expect(within(confirmDialog()).queryByText(/라벨이/)).not.toBeInTheDocument();
+  });
+
+  /* 두 처리의 무게가 다르다 — 창이 한 벌을 굳히면 그 차이가 사라진다. */
+  it('두 처리가 서로 다른 말을 한다', async () => {
+    const { user } = renderScreen();
+
+    await openRetire(user, 'TL-01', 'deactivate');
+    expect(
+      within(confirmDialog()).getByText(t.retire.deactivateNotReversibleHere),
+    ).toBeInTheDocument();
+    expect(
+      within(confirmDialog()).queryByText(t.retire.disposeNotReversible),
+    ).not.toBeInTheDocument();
+
+    await user.click(within(confirmDialog()).getByRole('button', { name: messages.common.cancel }));
+    await user.click(within(formDialog()).getByRole('button', { name: t.retire.disposeConfirm }));
+    await screen.findByRole('dialog', { name: t.retire.disposeTitle });
+
+    expect(within(confirmDialog()).getByText(t.retire.disposeNotReversible)).toBeInTheDocument();
+  });
+
+  it('사용 중지가 잠금 토큰과 멱등 키를 싣고 나간다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openRetire(user, 'TL-01', 'deactivate');
+    await user.click(
+      within(confirmDialog()).getByRole('button', { name: t.retire.deactivateConfirm }),
+    );
+
+    await waitFor(() => {
+      expect(writes.length).toBe(1);
+    });
+
+    const request = onlyWrite(writes);
+
+    expect(new URL(request.url).pathname).toBe('/mdm/molds/7001:deactivate');
+    expect(request.headers.get('If-Match')).toBe('9');
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  it('폐기가 폐기 경로로 나간다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openRetire(user, 'TL-01', 'dispose');
+    await user.click(
+      within(confirmDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
+    );
+
+    await waitFor(() => {
+      expect(writes.length).toBe(1);
+    });
+
+    expect(new URL(onlyWrite(writes).url).pathname).toBe('/mdm/molds/7001:dispose');
+  });
+
+  /* 중지된 툴도 이름·주기는 계속 고칠 수 있다 — 창을 닫을 이유가 없다. */
+  it('사용 중지 뒤에는 수정 창을 열어 둔다', async () => {
+    const { user } = renderScreen();
+
+    await openRetire(user, 'TL-01', 'deactivate');
+    await user.click(
+      within(confirmDialog()).getByRole('button', { name: t.retire.deactivateConfirm }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: t.retire.deactivateTitle }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('dialog', { name: t.form.editTitle })).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **폐기 뒤에는 창도 함께 닫는다.** 폐기된 자산은 편집이 풀리지 않으므로, 열린 폼을
+   * 남기면 사용자가 고칠 수 있다고 믿고 치다가 저장에서 거절당한다.
+   */
+  it('폐기 뒤에는 수정 창도 닫는다', async () => {
+    const { user } = renderScreen();
+
+    await openRetire(user, 'TL-01', 'dispose');
+    await user.click(
+      within(confirmDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  /* 창을 닫지 않고 이유를 보여야 다시 시도할 수 있다. */
+  it('실패하면 확인 창을 닫지 않고 이유를 보인다', async () => {
+    const { user } = renderScreen({
+      respondWrite: () =>
+        jsonResponse(
+          { errors: [{ scope: 'screen', code: 'LOCKED', message: '지금은 처리할 수 없습니다.' }] },
+          { status: 400 },
+        ),
+    });
+
+    await openRetire(user, 'TL-01', 'dispose');
+    await user.click(
+      within(confirmDialog()).getByRole('button', { name: t.retire.disposeConfirm }),
+    );
+
+    expect(await screen.findByText('지금은 처리할 수 없습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.retire.disposeTitle })).toBeInTheDocument();
+  });
+});
