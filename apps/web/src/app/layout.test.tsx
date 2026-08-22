@@ -570,6 +570,7 @@ describe('AppLayout', () => {
       '/quality/lot-status',
       '/equipment/master',
       '/equipment/tool-master',
+      '/equipment/work-calendar',
       '/approval/inbox',
       '/notification/center',
       '/system/users-roles',

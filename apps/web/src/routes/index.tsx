@@ -10,6 +10,7 @@ import { DisposalIssueScreen } from '../screens/disposal-issue/screen';
 import { DocumentProgressScreen } from '../screens/document-progress/screen';
 import { GaugeMasterScreen } from '../screens/gauge-master/screen';
 import { ToolMasterScreen } from '../screens/tool-master/screen';
+import { WorkCalendarScreen } from '../screens/work-calendar/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
@@ -303,6 +304,23 @@ export const appRouter = createBrowserRouter([
        * 대로 `tool-master` 다 — 한정어 없는 `master` 는 이 섹션의 주어인 설비의 것이다.
        */
       { path: 'equipment/tool-master', element: <ToolMasterScreen /> },
+      /*
+       * W-05-09 — **라우트와 메뉴를 함께 연다.**
+       *
+       * **일곱 PR이 함께 여는 자리다.** 캘린더 목록·등록/수정 · 사용 중지 · 달력 그리드 ·
+       * 하루 편집 · 일괄 적용 · 적용 대상 · 해석 미리보기가 다 선 뒤에 연다 — 일자를 고칠 수
+       * 없는 「작업 캘린더 설정」을 노출하면 사용자가 화면을 열어 놓고 할 일을 할 수 없다
+       * (정책 §5.2 — 접근 불가능한 경계).
+       *
+       * ⚠ **사유 코드 값 목록이 미결이지만 메뉴를 미루지 않는다**(`omf-mes#145`).
+       * 사유는 계약이 **선택**으로 둔 값이라 비워 두어도 저장되고, 목록의 내용을 정하는
+       * 조건도 아니다 — 「작업 캘린더 설정」이라는 메뉴 이름이 약속하는 것은 그대로 참이다.
+       * (형제 W-05-11 이 메뉴를 미룬 것과 갈리는 근거다.)
+       *
+       * 앞머리는 형제들과 같은 규칙(사이드바 섹션)을 따르고, 이름은 W-05-12 주석이 예고한
+       * 대로 `work-calendar` 다.
+       */
+      { path: 'equipment/work-calendar', element: <WorkCalendarScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을

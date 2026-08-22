@@ -236,6 +236,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/equipment/tool-master" icon="handyman">
               툴/금형/지그 마스터
             </NavItem>
+            {/*
+             * W-05-09 — 마스터 셋 **뒤**다. 앞의 둘이 「무엇이 있는가」를 정하고 이것은
+             * 「언제 도는가」를 정한다 — 대상이 있어야 달력을 붙일 자리가 생긴다.
+             */}
+            <NavItem to="/equipment/work-calendar" icon="calendar_month">
+              작업 캘린더 설정
+            </NavItem>
           </SidebarSection>
           {/*
            * W-CO-09 — 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**다.

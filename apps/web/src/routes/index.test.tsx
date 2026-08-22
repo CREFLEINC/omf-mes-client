@@ -25,6 +25,11 @@ import {
   plantsResponse as toolPlantsResponse,
   toolsResponse,
 } from '../screens/tool-master/fixtures';
+import {
+  applicationsResponse,
+  calendarsResponse,
+  plantsResponse as calendarPlantsResponse,
+} from '../screens/work-calendar/fixtures';
 import { queueResponse as iqcQueueResponse } from '../screens/iqc-inspection/fixtures';
 import { sessionBody } from '../screens/login/fixtures';
 import {
@@ -280,6 +285,22 @@ const toolMasterRoutes = (): StubRoute[] => [
     respond: () => jsonResponse(toolPlantsResponse()),
   },
   lookupRoute('/mdm/code-values', []),
+];
+
+/** W-05-09가 첫 진입에 부르는 것들 — 캘린더 목록·공장 적용·공장 목록. */
+const workCalendarRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/mdm/work-calendars'),
+    respond: () => jsonResponse(calendarsResponse()),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/work-calendar-applications'),
+    respond: () => jsonResponse(applicationsResponse()),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/plants'),
+    respond: () => jsonResponse(calendarPlantsResponse()),
+  },
 ];
 
 const lotStatusRoutes = (): StubRoute[] => [
@@ -1187,7 +1208,70 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
     expect(sidebarHrefs().filter((href) => href.startsWith('/equipment/'))).toEqual([
       '/equipment/master',
       '/equipment/tool-master',
+      '/equipment/work-calendar',
     ]);
+  });
+});
+
+/**
+ * **W-05-09는 미결이 있는데도 메뉴를 연다** — 형제 W-05-11 과 갈리는 근거를 이 describe 가 잰다.
+ *
+ * 사유 코드 값 목록이 아직 없으나(`omf-mes#145`) 사유는 계약이 **선택**으로 둔 값이라 비워도
+ * 저장되고, 목록의 내용을 정하는 조건도 아니다 — 메뉴 이름이 약속하는 것은 그대로 참이다.
+ */
+describe('appRouter — 작업 캘린더 설정의 진입 경로', () => {
+  it('사이드바에 이 화면 항목이 있다', () => {
+    expect(sidebarHrefs()).toContain('/equipment/work-calendar');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).getByRole('link', { name: '작업 캘린더 설정' })).toHaveAttribute(
+      'href',
+      '/equipment/work-calendar',
+    );
+  });
+
+  /* 마스터 셋 뒤다 — 앞의 둘이 「무엇이 있는가」를 정하고 이것은 「언제 도는가」를 정한다. */
+  it('같은 섹션의 마스터들 뒤에 선다', () => {
+    const hrefs = sidebarHrefs();
+
+    expect(hrefs.indexOf('/equipment/work-calendar')).toBeGreaterThan(
+      hrefs.indexOf('/equipment/tool-master'),
+    );
+  });
+
+  it('라우트 표에 주소가 있다', () => {
+    expect(routedPaths()).toContain('/equipment/work-calendar');
+  });
+
+  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
+    renderRoutedApp('/equipment/work-calendar', workCalendarRoutes());
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.workCalendar.title }),
+    ).toBeInTheDocument();
+  });
+
+  /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 조회가 실제로 도는 것까지 봐야 한다. */
+  it('첫 진입에 캘린더 목록이 실제로 그려진다', async () => {
+    renderRoutedApp('/equipment/work-calendar', workCalendarRoutes());
+
+    expect(await screen.findByRole('button', { name: 'CAL-A' })).toBeInTheDocument();
+  });
+
+  /* 일자를 고칠 수 없는 「설정」 화면을 노출하지 않는다(정책 §5.2). */
+  it('첫 진입에 캘린더를 골라 일자를 고치러 갈 수 있다', async () => {
+    renderRoutedApp('/equipment/work-calendar', workCalendarRoutes());
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+
+    expect(
+      screen.getByRole('button', { name: messages.workCalendar.actions.addCalendar }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('region', { name: messages.workCalendar.grid.title }),
+    ).toBeInTheDocument();
   });
 });
 

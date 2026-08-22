@@ -191,6 +191,8 @@ export const workCalendar = {
     /** ⚠ 층은 알겠는데 이름을 못 받았을 때 — 지어내지 않는다(G-9). */
     unknownLevel: '어느 층에서 정해졌는지 알 수 없습니다.',
     pathTitle: '훑은 경로',
+    /** ⛔ 이 칸의 값은 설비가 아니라 «층의 대상»이다 — 설비 그룹이거나 공장이다. */
+    stepTarget: '대상',
     levels: {
       equipmentGroup: '설비 그룹',
       plant: '공장',
