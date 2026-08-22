@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -7,6 +8,19 @@ import {
   type WorkOrderListPaneProps,
   type WorkOrderListRow,
 } from './work-order-list-pane';
+import type { WorkOrderPageView } from './pagination';
+
+const t = messages.workOrder;
+
+const page = (overrides: Partial<WorkOrderPageView> = {}): WorkOrderPageView => ({
+  page: 2,
+  rangeLabel: '21–40 / 전체 45건',
+  canFirst: true,
+  canPrev: true,
+  canNext: true,
+  isBeyondLast: false,
+  ...overrides,
+});
 
 const row = (overrides: Partial<WorkOrderListRow> = {}): WorkOrderListRow => ({
   workOrderId: 901,
@@ -27,8 +41,10 @@ const propsOf = (overrides: Partial<WorkOrderListPaneProps> = {}): WorkOrderList
   isLoading: false,
   loadError: null,
   priorityDisabledReason: null,
+  page: page(),
   onSelect: vi.fn(),
   onPriorityChange: vi.fn(),
+  onChangePage: vi.fn(),
   ...overrides,
 });
 
@@ -58,6 +74,17 @@ describe('WorkOrderListPane', () => {
 
     expect(bodyRows[0]).toHaveTextContent('SYN-WO-BRAVO');
     expect(bodyRows[1]).toHaveTextContent('SYN-WO-ALPHA');
+  });
+
+  it('renders supplied page navigation and passes its target to the caller', async () => {
+    const { props, user } = renderPane({
+      page: page({ page: 4, rangeLabel: '61–80 / 전체 100건' }),
+    });
+
+    expect(screen.getByRole('navigation', { name: t.pageNav.label })).toBeInTheDocument();
+    expect(screen.getByText('61–80 / 전체 100건')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.pageNav.next }));
+    expect(props.onChangePage).toHaveBeenCalledWith(5);
   });
 
   it('selects by W/O number and does not display stable internal IDs', async () => {
@@ -125,6 +152,7 @@ describe('WorkOrderListPane', () => {
     expect(screen.queryByRole('status', { name: '작업지시 목록을 불러오는 중입니다.' })).toBeNull();
     expect(screen.queryByText('표시할 작업지시가 없습니다')).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByRole('navigation', { name: t.pageNav.label })).toBeNull();
 
     rerender(<WorkOrderListPane {...propsOf({ rows: [], isLoading: true })} />);
     expect(
@@ -133,10 +161,33 @@ describe('WorkOrderListPane', () => {
     expect(screen.queryByText('합성 조회 오류')).toBeNull();
     expect(screen.queryByText('표시할 작업지시가 없습니다')).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByRole('navigation', { name: t.pageNav.label })).toBeNull();
 
     rerender(<WorkOrderListPane {...propsOf({ rows: [] })} />);
     expect(screen.getByText('표시할 작업지시가 없습니다')).toBeInTheDocument();
     expect(screen.queryByText('합성 조회 오류')).toBeNull();
     expect(screen.queryByRole('status', { name: '작업지시 목록을 불러오는 중입니다.' })).toBeNull();
+    expect(screen.getByRole('navigation', { name: t.pageNav.label })).toBeInTheDocument();
+  });
+
+  it('uses supplied beyond-last recovery copy and navigation state', async () => {
+    const { props, user } = renderPane({
+      rows: [],
+      page: page({ page: 4, rangeLabel: '전체 45건', canNext: false, isBeyondLast: true }),
+    });
+    const first = screen.getByRole('button', { name: t.pageNav.first });
+    const previous = screen.getByRole('button', { name: t.pageNav.previous });
+
+    expect(screen.getByText(t.empty.beyondTitle)).toBeInTheDocument();
+    expect(screen.getByText(t.empty.beyondDescription)).toBeInTheDocument();
+    expect(screen.queryByText(t.empty.title)).toBeNull();
+    expect(screen.getByRole('navigation', { name: t.pageNav.label })).toBeInTheDocument();
+    expect(first).toBeEnabled();
+    expect(previous).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.pageNav.next })).toBeDisabled();
+    await user.click(first);
+    await user.click(previous);
+    expect(props.onChangePage).toHaveBeenNthCalledWith(1, 1);
+    expect(props.onChangePage).toHaveBeenNthCalledWith(2, 3);
   });
 });
