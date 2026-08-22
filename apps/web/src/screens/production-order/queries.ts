@@ -51,10 +51,8 @@ export const useProductionOrderList = (
   return useQuery({
     queryKey: productionOrderKeys.list(filters, page),
     queryFn: () =>
-      runRequest(() =>
-        client
-          .GET('/planning/production-orders', { params: { query } })
-          .then((response) => response),
-      ).then(toListResponse),
+      runRequest(() => client.GET('/planning/production-orders', { params: { query } })).then(
+        toListResponse,
+      ),
   });
 };
