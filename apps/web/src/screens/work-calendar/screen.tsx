@@ -10,6 +10,8 @@ import { CalendarListPane } from './calendar-list-pane';
 import { CALENDAR_FORM_FIELDS, validateCalendar } from './calendar-validation';
 import { defaultCalendarFilters } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
+import { applicationNote, deactivateAvailability } from './retire-actions';
+import { RetireConfirmDialog } from './retire-confirm-dialog';
 import { emptyFormValues, formValuesFrom, toCalendarCreate, toCalendarUpdate } from './mappers';
 import {
   calendarDetailPath,
@@ -33,6 +35,37 @@ const NO_ITEMS: never[] = [];
 type DialogState = { mode: 'create' } | { mode: 'edit'; workCalendarId: number };
 
 /**
+ * 사용 중지 쓰기.
+ *
+ * ⛔ **멱등 키 수명은 기본값(`per-attempt`)이 맞다** — 되돌릴 수 없는 쓰기인데도 그렇다.
+ * 부품이 「**본문이 빈 액션**에 `until-applied` 를 쓰지 말라」고 정했다: 보낼 값이 없으면
+ * 「값이 바뀌면 새 키」가 성립하지 않아, 다른 화면에서 원인을 고치고 돌아와 다시 눌러도
+ * 같은 키가 나가 **영영 성공할 수 없다.**
+ */
+const useDeactivateWrite = (workCalendarId: number | null, onDone: () => void) => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<void, WorkCalendar>({
+    request: (_variables, headers) =>
+      client.POST('/mdm/work-calendars/{workCalendarId}:deactivate', {
+        params: {
+          path: { workCalendarId: workCalendarId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    /* 잠금 토큰은 상세 경로에 보관돼 있다 — 요청 경로(`...:deactivate`)로 꺼내면 늘 비어 있다. */
+    etagPath: workCalendarId === null ? null : calendarDetailPath(workCalendarId),
+    invalidateKeys: [calendarKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: onDone,
+  });
+};
+
+/**
  * W-05-09 작업 캘린더 설정.
  *
  * ⭐ **캘린더 자체는 코드와 이름뿐이다** — 내용은 일자가 갖고, 누가 따르는지는 적용이 갖는다.
@@ -45,6 +78,8 @@ export const WorkCalendarScreen = () => {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [values, setValues] = useState<CalendarFormValues>(() => emptyFormValues());
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+  /** 확인 창이 떠 있는가 */
+  const [retiring, setRetiring] = useState(false);
 
   const calendars = useCalendarList(filters);
 
@@ -86,6 +121,16 @@ export const WorkCalendarScreen = () => {
     },
   });
 
+  const deactivateWrite = useDeactivateWrite(editingId, () => {
+    /*
+     * ⛔ **창도 함께 닫는다.** 중지된 캘린더는 목록에서 빠지므로(기본 조회가 유효한 것만
+     * 내린다) 열린 폼을 남기면 사용자가 목록에 없는 것을 계속 고치게 된다.
+     */
+    setRetiring(false);
+    setDialog(null);
+    toast.show({ variant: 'success', description: messages.common.saved });
+  });
+
   /**
    * **끝난 쓰기만 거둔다.** 나가는 중인 요청을 `reset()` 으로 끊으면 그 요청의 되먹임이
    * 통째로 사라져, 화면은 아무 일도 없었다고 믿고 서버는 이미 처리한 상태가 된다(client#96).
@@ -99,8 +144,14 @@ export const WorkCalendarScreen = () => {
     target.reset();
   };
 
-  const openCreate = (): void => {
+  /** 편집 중이던 것을 통째로 거둔다 — 인라인 오류와 저장 실패 배너 둘. */
+  const resetEditing = (): void => {
     resetIfIdle(write);
+    resetIfIdle(deactivateWrite);
+  };
+
+  const openCreate = (): void => {
+    resetEditing();
     setLocalErrors({});
     setValues(emptyFormValues());
     setDialog({ mode: 'create' });
@@ -114,14 +165,15 @@ export const WorkCalendarScreen = () => {
    * 값을 저장**하기 때문이다 — 이 화면의 수정 본문은 전부 폼에 보이는 두 칸이다.
    */
   const openEdit = (calendar: WorkCalendar): void => {
-    resetIfIdle(write);
+    resetEditing();
     setLocalErrors({});
     setValues(formValuesFrom(calendar));
     setDialog({ mode: 'edit', workCalendarId: calendar.workCalendarId });
   };
 
   const closeDialog = (): void => {
-    resetIfIdle(write);
+    resetEditing();
+    setRetiring(false);
     setDialog(null);
   };
 
@@ -148,6 +200,9 @@ export const WorkCalendarScreen = () => {
 
     write.write(values);
   };
+
+  const calendar = detail.data?.workCalendar ?? null;
+  const deactivate = deactivateAvailability(calendar);
 
   const codeLockReason =
     dialog?.mode === 'edit' && detail.data !== undefined
@@ -199,8 +254,26 @@ export const WorkCalendarScreen = () => {
           codeLockReason={codeLockReason}
           applicationCount={detail.data?.applicationCount ?? null}
           isSaving={write.isSaving}
+          deactivate={deactivate}
           onClose={closeDialog}
           onSave={save}
+          onDeactivate={() => {
+            resetIfIdle(deactivateWrite);
+            setRetiring(true);
+          }}
+        />
+      )}
+
+      {retiring && calendar !== null && (
+        <RetireConfirmDialog
+          targetNote={t.retire.target(`${calendar.calendarCode} · ${calendar.calendarName}`)}
+          applicationNote={applicationNote(detail.data?.applicationCount ?? null)}
+          isSaving={deactivateWrite.isSaving}
+          banner={
+            <SaveErrorBanner error={deactivateWrite.error} onReload={() => void detail.refetch()} />
+          }
+          onClose={() => setRetiring(false)}
+          onConfirm={() => deactivateWrite.write(undefined)}
         />
       )}
     </div>

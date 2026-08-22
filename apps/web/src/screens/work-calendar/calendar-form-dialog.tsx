@@ -2,6 +2,7 @@ import { Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import type { ActionAvailability } from './retire-actions';
 import type { CalendarFormValues } from './types';
 
 const t = messages.workCalendar;
@@ -17,8 +18,11 @@ export interface CalendarFormDialogProps {
   /** 이 캘린더를 따르는 공장·설비 그룹 수. 아직 모르면 `null` */
   applicationCount: number | null;
   isSaving: boolean;
+  /** 사용 중지를 지금 할 수 있는가. 못 하면 사유가 함께 온다 */
+  deactivate: ActionAvailability;
   onClose: () => void;
   onSave: () => void;
+  onDeactivate: () => void;
 }
 
 /**
@@ -38,10 +42,13 @@ export const CalendarFormDialog = ({
   codeLockReason,
   applicationCount,
   isSaving,
+  deactivate,
   onClose,
   onSave,
+  onDeactivate,
 }: CalendarFormDialogProps) => {
   const countLabelId = useId();
+  const retireNoteId = useId();
 
   return (
     <Dialog
@@ -94,6 +101,32 @@ export const CalendarFormDialog = ({
                   ? t.form.applicationNone
                   : t.form.applicationCount(applicationCount)}
             </p>
+          </div>
+        )}
+
+        {/*
+         * ⭐ **되돌릴 수 없는 조작은 폼 «본문»에 둔다** — 바닥 줄이 아니다. 바닥에 두면 사유
+         * 줄까지 함께 붙어 줄이 두 층이 되고, 창이 뷰포트를 넘어 「저장」과 「취소」까지 화면
+         * 밖으로 밀려난다(W-05-11 브라우저 확인에서 실측).
+         *
+         * ⭐ **감추지 않고 잠그고 사유를 붙인다**(공유계약 G-2). 사유는 보이는 DOM 텍스트로
+         * 낸다 — 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다.
+         */}
+        {mode === 'edit' && (
+          <div className="field-cell">
+            <Button
+              variant="outlined"
+              disabled={isSaving || !deactivate.enabled}
+              aria-describedby={deactivate.reason === null ? undefined : retireNoteId}
+              onClick={onDeactivate}
+            >
+              {messages.workCalendar.retire.confirm}
+            </Button>
+            {deactivate.reason !== null && (
+              <span id={retireNoteId} className="field-note">
+                {deactivate.reason}
+              </span>
+            )}
           </div>
         )}
       </div>
