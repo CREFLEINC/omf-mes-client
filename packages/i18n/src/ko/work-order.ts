@@ -23,4 +23,15 @@ export const workOrder = {
       `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
     total: (total: number): string => `전체 ${String(total)}건`,
   },
+  pageNav: {
+    label: '작업지시 쪽 이동',
+    first: '첫 쪽',
+    previous: '이전 쪽',
+    next: '다음 쪽',
+    disabled: {
+      first: '첫 쪽: 이미 첫 쪽입니다. 첫 쪽이 아닌 곳에서 이동할 수 있습니다.',
+      previous: '이전 쪽: 이미 첫 쪽입니다. 첫 쪽 뒤에서 이동할 수 있습니다.',
+      next: '다음 쪽: 다음 쪽이 없습니다. 다음 쪽이 있을 때 이동할 수 있습니다.',
+    },
+  },
 } as const;
