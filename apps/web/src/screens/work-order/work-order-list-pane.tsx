@@ -10,6 +10,9 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { PageNav } from './page-nav';
+import type { WorkOrderPageView } from './pagination';
+
 const t = messages.workOrder;
 
 export interface WorkOrderListRow {
@@ -30,8 +33,10 @@ export interface WorkOrderListPaneProps {
   isLoading: boolean;
   loadError: ReactNode;
   priorityDisabledReason: string | null;
+  page: WorkOrderPageView;
   onSelect: (workOrderId: number) => void;
   onPriorityChange: (workOrderId: number, value: string) => void;
+  onChangePage: (page: number) => void;
 }
 
 const operationLabel = (value: WorkOrderListRow['operationLabel']): string =>
@@ -43,8 +48,10 @@ export const WorkOrderListPane = ({
   isLoading,
   loadError,
   priorityDisabledReason,
+  page,
   onSelect,
   onPriorityChange,
+  onChangePage,
 }: WorkOrderListPaneProps) => {
   const columns: Column<WorkOrderListRow>[] = [
     {
@@ -128,10 +135,16 @@ export const WorkOrderListPane = ({
           getRowId={(row) => String(row.workOrderId)}
           sort={null}
           empty={
-            <EmptyState size="sm" live title={t.empty.title} description={t.empty.description} />
+            <EmptyState
+              size="sm"
+              live
+              title={page.isBeyondLast ? t.empty.beyondTitle : t.empty.title}
+              description={page.isBeyondLast ? t.empty.beyondDescription : t.empty.description}
+            />
           }
         />
       </div>
+      <PageNav view={page} onChange={onChangePage} />
     </section>
   );
 };

@@ -17,6 +17,8 @@ export const workOrder = {
   empty: {
     title: '표시할 작업지시가 없습니다',
     description: '생산계획을 선택하거나 조회 조건을 바꿔 다시 확인하세요.',
+    beyondTitle: '현재 쪽에 표시할 작업지시가 없습니다',
+    beyondDescription: '첫 쪽 또는 이전 쪽으로 이동해 다시 확인하세요.',
   },
   page: {
     range: (start: number, end: number, total: number): string =>
