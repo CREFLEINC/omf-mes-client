@@ -49,6 +49,8 @@ export const useCalendarList = (filters: CalendarFilters): UseQueryResult<Calend
 };
 
 export const calendarDayKeys = {
+  /** 일자 캐시 전부. 하루를 고쳐도 그 달의 다른 조회가 낡으므로 통째로 거둔다. */
+  all: ['work-calendar-days'] as const,
   ofCalendar: (workCalendarId: number, from: string, to: string) =>
     ['work-calendar-days', workCalendarId, from, to] as const,
 };

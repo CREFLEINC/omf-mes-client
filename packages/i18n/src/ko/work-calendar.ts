@@ -60,6 +60,8 @@ export const workCalendar = {
     nextMonth: '다음 달',
     thisMonth: '이번 달',
     loadFailed: '일자 설정을 불러오지 못했습니다.',
+    /** 눌러 보지 않고도 무엇을 여는지 알아야 한다 — 날짜와 지금 상태를 함께 담는다. */
+    pickDay: (date: string, status: string): string => `${date} · ${status} — 일자 설정 고치기`,
     weekdays: ['일', '월', '화', '수', '목', '금', '토'],
     /**
      * ⭐ **네 갈래를 서로 다른 말로 그린다.** 계약은 설정이 있는 날만 내려 주므로,
@@ -71,6 +73,32 @@ export const workCalendar = {
       holiday: '휴무',
       partial: '부분 가동',
     },
+  },
+  /**
+   * 하루 편집. **보낸 날짜만 덮어쓴다** — 보내지 않은 날은 그대로 둔다(계약).
+   */
+  dayForm: {
+    title: (date: string): string => `${date} 일자 설정`,
+    dayType: '구분',
+    startTime: '시작 시각',
+    endTime: '종료 시각',
+    reason: '사유',
+    remarks: '비고',
+    saved: (count: number): string => `${count}일을 저장했습니다.`,
+    /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
+    timeNeedsPartial: '구분을 「부분 가동」으로 고르면 시각을 입력할 수 있습니다.',
+    /**
+     * ⚠ 사유 코드 값 목록이 아직 없다(추적 `omf-mes#145`).
+     * **사유는 선택이라 비어 있어도 저장된다** — 그 사실을 함께 밝힌다.
+     */
+    reasonOptional: '사유는 비워 두어도 저장됩니다.',
+  },
+  dayValidation: {
+    dayTypeRequired: '구분을 고르세요.',
+    timesRequired: '부분 가동이면 시작 시각과 종료 시각을 함께 입력하세요.',
+    timeFormat: '시각은 `HH:MM` 으로 입력하세요.',
+    /** ⛔ 같은 시각도 받지 않는다 — 길이가 0인 조업시간은 부분 가동이 아니다. */
+    endAfterStart: '종료 시각은 시작 시각보다 뒤여야 합니다.',
   },
   retire: {
     title: '캘린더를 사용 중지할까요?',

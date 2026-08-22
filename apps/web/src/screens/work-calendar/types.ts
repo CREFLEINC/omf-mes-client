@@ -18,3 +18,19 @@ export interface CalendarFormValues {
   calendarCode: string;
   calendarName: string;
 }
+
+/**
+ * 하루 편집 폼이 들고 있는 값.
+ *
+ * ⛔ **날짜가 여기 없다** — 어느 날을 고치는지는 창을 여는 쪽이 안다. 폼 값에 두면 고치는
+ * 도중 날짜가 바뀔 수 있는 모양이 되고, 그때 사용자가 본 날과 저장되는 날이 갈린다.
+ */
+export interface DayFormValues {
+  /** `WORKING` · `HOLIDAY` · `PARTIAL`. 계약이 정한 세 값이다 */
+  dayTypeCode: string;
+  /** 부분 가동일 때만 쓴다. **수가 아니라 글자로 든다** — `08:0` 같은 중간 입력을 지킨다 */
+  startTime: string;
+  endTime: string;
+  reasonCode: string;
+  remarks: string;
+}

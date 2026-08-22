@@ -86,6 +86,15 @@ const renderScreen = (options: RenderOptions = {}) => {
       },
     },
     {
+      match: (request) =>
+        new URL(request.url).pathname.endsWith('/days') && request.method !== 'GET',
+      respond: (request) => {
+        writes.push(request.clone());
+
+        return (options.respondWrite ?? (() => jsonResponse({ appliedCount: 1 })))(request);
+      },
+    },
+    {
       match: (request) => new URL(request.url).pathname.endsWith('/days'),
       respond: (request) => {
         dayRequests.push(new URL(request.url));
@@ -922,5 +931,259 @@ describe('W-05-09 작업 캘린더 — 달력 그리드', () => {
     expect(
       within(gridPane()).queryByRole('button', { name: t.actions.editCalendar }),
     ).not.toBeInTheDocument();
+  });
+});
+
+const openDay = async (
+  user: ReturnType<typeof userEvent.setup>,
+  date: string,
+  status: string,
+): Promise<void> => {
+  await selectCalendar(user, 'CAL-A');
+  await waitFor(() => {
+    expect(within(gridPane()).getByRole('table')).toBeInTheDocument();
+  });
+  await user.click(screen.getByRole('button', { name: t.grid.pickDay(date, status) }));
+  await screen.findByRole('dialog', { name: t.dayForm.title(date) });
+};
+
+describe('W-05-09 작업 캘린더 — 하루 편집', () => {
+  /* ⭐ 칸 전체가 손잡이다 — 날짜 숫자만 누를 수 있게 두면 표적이 작고 고칠 수 있다는 것도 안 보인다. */
+  it('칸을 누르면 그 날의 창이 열린다', async () => {
+    const { user } = renderScreen();
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+
+    expect(screen.getByRole('dialog', { name: t.dayForm.title('2026-08-04') })).toBeInTheDocument();
+  });
+
+  /* 눌러 보지 않고도 무엇을 여는지 알아야 한다 — 접근 이름에 날짜와 지금 상태를 담는다. */
+  it('칸의 접근 이름에 날짜와 지금 상태가 있다', async () => {
+    const { user } = renderScreen({
+      respondDays: () =>
+        jsonResponse({ items: [dayItem('2026-08-04', { dayTypeCode: 'HOLIDAY' })] }),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+
+    expect(
+      await screen.findByRole('button', {
+        name: t.grid.pickDay('2026-08-04', t.grid.status.holiday),
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('설정이 있는 날은 그 값으로 창이 찬다', async () => {
+    const { user } = renderScreen({
+      respondDays: () =>
+        jsonResponse({
+          items: [
+            dayItem('2026-08-05', {
+              dayTypeCode: 'PARTIAL',
+              startTime: '08:00',
+              endTime: '12:00',
+              remarks: '반일',
+            }),
+          ],
+        }),
+    });
+
+    await openDay(user, '2026-08-05', t.grid.status.partial);
+
+    expect(screen.getByRole('radio', { name: t.grid.status.partial })).toBeChecked();
+    expect(screen.getByRole('textbox', { name: /시작 시각/ })).toHaveValue('08:00');
+    expect(screen.getByRole('textbox', { name: /비고/ })).toHaveValue('반일');
+  });
+
+  /* 설정이 없는 날은 「미설정」이라 구분도 고르지 않은 상태다 — 「가동」으로 채우지 않는다. */
+  it('설정이 없는 날은 구분이 고르지 않은 채로 열린다', async () => {
+    const { user } = renderScreen();
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+
+    for (const label of [t.grid.status.working, t.grid.status.holiday, t.grid.status.partial]) {
+      expect(screen.getByRole('radio', { name: label })).not.toBeChecked();
+    }
+  });
+
+  /* 감추지 않고 잠그고 사유를 붙인다(G-2). */
+  it('부분 가동이 아니면 시각 두 칸을 잠그고 사유를 밝힌다', async () => {
+    const { user } = renderScreen();
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+    await user.click(screen.getByRole('radio', { name: t.grid.status.holiday }));
+
+    expect(screen.getByRole('textbox', { name: /시작 시각/ })).toBeDisabled();
+    expect(screen.getAllByText(t.dayForm.timeNeedsPartial).length).toBeGreaterThan(0);
+  });
+
+  it('부분 가동을 고르면 시각 두 칸이 열린다', async () => {
+    const { user } = renderScreen();
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+    await user.click(screen.getByRole('radio', { name: t.grid.status.partial }));
+
+    expect(screen.getByRole('textbox', { name: /시작 시각/ })).toBeEnabled();
+    expect(screen.getByRole('textbox', { name: /종료 시각/ })).toBeEnabled();
+  });
+
+  /* ⭐ 적힌 값을 지우지 않는다 — 다시 부분 가동으로 바꾸면 방금 적은 것이 그대로 있어야 한다. */
+  it('구분을 바꿔도 적어 둔 시각을 지우지 않는다', async () => {
+    const { user } = renderScreen();
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+    await user.click(screen.getByRole('radio', { name: t.grid.status.partial }));
+    await user.type(screen.getByRole('textbox', { name: /시작 시각/ }), '08:00');
+    await user.click(screen.getByRole('radio', { name: t.grid.status.holiday }));
+    await user.click(screen.getByRole('radio', { name: t.grid.status.partial }));
+
+    expect(screen.getByRole('textbox', { name: /시작 시각/ })).toHaveValue('08:00');
+  });
+
+  /* ⭐ 「보낸 날짜만 덮어쓴다」 — 하루를 고칠 때는 그 하루만 담는다. */
+  it('그 하루만 담아 보낸다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+    await user.click(screen.getByRole('radio', { name: t.grid.status.holiday }));
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(writes.length).toBe(1);
+    });
+
+    const request = onlyWrite(writes);
+
+    expect(request.method).toBe('PUT');
+    expect(new URL(request.url).pathname).toBe('/mdm/work-calendars/5001/days');
+    expect(request.headers.get('Idempotency-Key')).not.toBeNull();
+    /* ⛔ 계약이 낙관적 잠금을 요구하지 않는다 — 보낸 날짜만 덮어쓰기 때문이다. */
+    expect(request.headers.get('If-Match')).toBeNull();
+    expect(await request.json()).toEqual({
+      days: [
+        {
+          calendarDate: '2026-08-04',
+          dayTypeCode: 'HOLIDAY',
+          startTime: null,
+          endTime: null,
+          reasonCode: null,
+          remarks: null,
+        },
+      ],
+    });
+  });
+
+  it('검증에 걸리면 저장이 나가지 않는다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+    await user.click(screen.getByRole('radio', { name: t.grid.status.partial }));
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+
+    expect(await screen.findAllByText(t.dayValidation.timesRequired)).not.toHaveLength(0);
+    expect(writes.length).toBe(0);
+  });
+
+  it('종료가 시작보다 빠르면 막는다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+    await user.click(screen.getByRole('radio', { name: t.grid.status.partial }));
+    await user.type(screen.getByRole('textbox', { name: /시작 시각/ }), '12:00');
+    await user.type(screen.getByRole('textbox', { name: /종료 시각/ }), '08:00');
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+
+    expect(await screen.findByText(t.dayValidation.endAfterStart)).toBeInTheDocument();
+    expect(writes.length).toBe(0);
+  });
+
+  it('저장하면 창이 닫히고 그 달을 다시 읽는다', async () => {
+    const { user, dayRequests } = renderScreen({
+      respondWrite: () => jsonResponse({ appliedCount: 1 }),
+    });
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+    const before = dayRequests.length;
+    await user.click(screen.getByRole('radio', { name: t.grid.status.working }));
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(dayRequests.length).toBeGreaterThan(before);
+    });
+  });
+
+  it('서버가 준 필드 오류를 그 칸 옆에 낸다', async () => {
+    const { user } = renderScreen({
+      respondWrite: () =>
+        jsonResponse(
+          {
+            errors: [
+              { scope: 'field', field: 'startTime', code: 'BAD', message: '시각이 잘못됐습니다.' },
+            ],
+          },
+          { status: 400 },
+        ),
+    });
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+    await user.click(screen.getByRole('radio', { name: t.grid.status.partial }));
+    await user.type(screen.getByRole('textbox', { name: /시작 시각/ }), '08:00');
+    await user.type(screen.getByRole('textbox', { name: /종료 시각/ }), '12:00');
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+
+    expect(await screen.findByText('시각이 잘못됐습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /시작 시각/ })).toBeInvalid();
+  });
+
+  /*
+   * ⭐ **서버가 준 오류도 고치는 순간 낡은 말이 된다.** 로컬 검증만 거두면 서버 오류가 칸에
+   * 눌어붙어, 사용자가 이미 고친 값을 두고 옛 사유가 계속 서 있게 된다.
+   */
+  it('서버가 준 오류도 그 칸을 고치면 사라진다', async () => {
+    const { user } = renderScreen({
+      respondWrite: () =>
+        jsonResponse(
+          {
+            errors: [
+              { scope: 'field', field: 'remarks', code: 'BAD', message: '비고가 너무 깁니다.' },
+            ],
+          },
+          { status: 400 },
+        ),
+    });
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+    await user.click(screen.getByRole('radio', { name: t.grid.status.holiday }));
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+    await screen.findByText('비고가 너무 깁니다.');
+
+    await user.type(screen.getByRole('textbox', { name: /비고/ }), '짧게');
+
+    expect(screen.queryByText('비고가 너무 깁니다.')).not.toBeInTheDocument();
+  });
+
+  it('실패하면 창을 닫지 않는다', async () => {
+    const { user } = renderScreen({
+      respondWrite: () => jsonResponse({ message: '권한 없음' }, { status: 403 }),
+    });
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+    await user.click(screen.getByRole('radio', { name: t.grid.status.holiday }));
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.dayForm.title('2026-08-04') })).toBeInTheDocument();
+  });
+
+  /* ⚠ 사유는 계약이 선택으로 두었다 — 비어도 저장된다는 사실을 화면이 말한다. */
+  it('사유가 비어도 저장된다는 것을 밝힌다', async () => {
+    const { user } = renderScreen();
+
+    await openDay(user, '2026-08-04', t.grid.status.unset);
+
+    expect(screen.getByText(t.dayForm.reasonOptional)).toBeInTheDocument();
   });
 });
