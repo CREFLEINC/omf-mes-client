@@ -1,4 +1,17 @@
 export const workOrderRelease = {
+  candidateList: {
+    pane: '배포 후보 작업지시 목록',
+    fields: { workOrderNo: 'W/O 번호', item: '품목', quantity: '지시 수량' },
+    actions: { select: (workOrderNo: string): string => `${workOrderNo} 선택` },
+    values: { missingItem: '품목 표시명 없음' },
+    loading: '배포 후보 작업지시 목록을 불러오는 중입니다.',
+    empty: {
+      title: '배포 후보 작업지시가 없습니다.',
+      description: '다른 쪽으로 이동해 다시 확인하세요.',
+      beyondTitle: '현재 쪽에 배포 후보 작업지시가 없습니다.',
+      beyondDescription: '첫 쪽 또는 이전 쪽으로 이동해 다시 확인하세요.',
+    },
+  },
   pane: '작업지시 배포 전 확인',
   heading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
   empty: {
