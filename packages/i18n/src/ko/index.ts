@@ -50,6 +50,7 @@ import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { iqcInspection } from './iqc-inspection';
 import { equipmentMaster } from './equipment-master';
+import { qualityApproval } from './quality-approval';
 
 export const ko = {
   common,
@@ -88,6 +89,7 @@ export const ko = {
   notificationCenter,
   iqcInspection,
   equipmentMaster,
+  qualityApproval,
 } as const;
 
 export type Messages = typeof ko;
