@@ -43,6 +43,7 @@ import {
 import { toPageView } from './pagination';
 import { ProgressPane } from './progress-pane';
 import { toApprovalProgressView } from './progress';
+import { RejectDialog } from './reject-dialog';
 import {
   qualityApprovalKeys,
   requestDetailPath,
@@ -59,7 +60,9 @@ import {
 } from './types';
 
 const EMPTY_ITEMS: ApprovalRequest[] = [];
-interface ApprovalVariables {
+type DecisionAction = 'approve' | 'reject';
+interface DecisionVariables {
+  action: DecisionAction;
   approvalRequestId: number;
   comment: string;
 }
@@ -120,9 +123,11 @@ export const QualityApprovalScreen = ({
   const toast = useToast();
   const [comment, setComment] = useState('');
   const [localCommentError, setLocalCommentError] = useState<string | null>(null);
-  const [dialogDraft, setDialogDraft] = useState<ApprovalVariables | null>(null);
+  const [dialogDraft, setDialogDraft] = useState<DecisionVariables | null>(null);
   const [writeTargetId, setWriteTargetId] = useState<number | null>(null);
-  const sentIdRef = useRef<number | null>(null);
+  const sentDecisionRef = useRef<Pick<DecisionVariables, 'action' | 'approvalRequestId'> | null>(
+    null,
+  );
   const actionLockReasonId = useId();
   const hasSafeCondition =
     selectedId !== null &&
@@ -130,38 +135,50 @@ export const QualityApprovalScreen = ({
     !conditionCandidates.isError &&
     toConcessionCardinality(selectedId, conditionCandidates.data).kind === 'one';
 
-  const approveWrite = useMasterWrite<ApprovalVariables, ApprovalRequestDetail>({
-    request: (variables, headers) =>
-      client.POST('/app/approval-requests/{approvalRequestId}:approve', {
-        params: {
-          path: { approvalRequestId: variables.approvalRequestId },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
-          },
+  const decisionWrite = useMasterWrite<DecisionVariables, ApprovalRequestDetail>({
+    request: (variables, headers) => {
+      const params = {
+        path: { approvalRequestId: variables.approvalRequestId },
+        header: {
+          'Idempotency-Key': headers['Idempotency-Key'],
+          'If-Match': headers['If-Match'] ?? '',
         },
-        body: { comment: variables.comment },
-      }),
+      };
+
+      return variables.action === 'approve'
+        ? client.POST('/app/approval-requests/{approvalRequestId}:approve', {
+            params,
+            body: { comment: variables.comment },
+          })
+        : client.POST('/app/approval-requests/{approvalRequestId}:reject', {
+            params,
+            body: { comment: variables.comment },
+          });
+    },
     etagPath: selectedId === null ? null : requestDetailPath(selectedId),
     invalidateKeys: [qualityApprovalKeys.all],
     knownFields: ['comment'],
     keyLifetime: 'until-applied',
     onSuccess: (saved) => {
-      const sentId = sentIdRef.current;
-      if (sentId !== null) queryClient.setQueryData(qualityApprovalKeys.detail(sentId), saved);
-      toast.show({ variant: 'success', description: t.approval.success });
+      const sent = sentDecisionRef.current;
+      if (sent !== null)
+        queryClient.setQueryData(qualityApprovalKeys.detail(sent.approvalRequestId), saved);
+      toast.show({
+        variant: 'success',
+        description: sent?.action === 'reject' ? t.approval.rejectSuccess : t.approval.success,
+      });
       setDialogDraft(null);
       setComment('');
       setLocalCommentError(null);
     },
   });
   const isWriteResultCurrent = writeTargetId === selectedId;
-  const hasUncertainOtherTarget = approveWrite.error?.kind === 'network' && !isWriteResultCurrent;
-  const writeError = isWriteResultCurrent ? approveWrite.error : null;
-  const serverCommentError = isWriteResultCurrent ? approveWrite.fieldErrors.comment : undefined;
+  const hasUncertainWrite = decisionWrite.error?.kind === 'network';
+  const writeError = isWriteResultCurrent ? decisionWrite.error : null;
+  const serverCommentError = isWriteResultCurrent ? decisionWrite.fieldErrors.comment : undefined;
   let actionLockReason: string | undefined;
-  if (approveWrite.isSaving) actionLockReason = t.approval.savingReason;
-  else if (hasUncertainOtherTarget) actionLockReason = t.approval.uncertainOtherTarget;
+  if (decisionWrite.isSaving) actionLockReason = t.approval.savingReason;
+  else if (hasUncertainWrite) actionLockReason = t.approval.uncertainOtherTarget;
   else if (detail.data?.request.isMyTurn === false) actionLockReason = t.approval.notMyTurnReason;
   else if (!hasSafeCondition) actionLockReason = t.approval.conditionRequired;
 
@@ -188,6 +205,17 @@ export const QualityApprovalScreen = ({
     setSearchParams((current) =>
       toAppliedSearchParams(current, nextFilters, nextPendingOnly, nextPage),
     );
+  };
+  const reloadDetail = async (resolveUnknown = false): Promise<void> => {
+    const reloadTargetId = selectedId;
+    await detail.refetch();
+    if (
+      resolveUnknown &&
+      reloadTargetId !== null &&
+      reloadTargetId === writeTargetId &&
+      queryClient.getQueryState(qualityApprovalKeys.detail(reloadTargetId))?.status === 'success'
+    )
+      decisionWrite.reset();
   };
 
   let error = null;
@@ -254,7 +282,11 @@ export const QualityApprovalScreen = ({
           title={forbidden ? messages.httpError.title : messages.httpError.loadTitle}
           action={
             forbidden ? undefined : (
-              <Button variant="outlined" size="sm" onClick={() => void detail.refetch()}>
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => void reloadDetail(hasUncertainWrite)}
+              >
                 {messages.common.retry}
               </Button>
             )
@@ -290,21 +322,18 @@ export const QualityApprovalScreen = ({
 
     if (detail.data === undefined) return null;
 
-    const openApproveDialog = (): void => {
+    const openDecisionDialog = (action: DecisionAction): void => {
       const trimmed = comment.trim();
       if (trimmed === '') {
-        setLocalCommentError(t.approval.commentRequired);
+        setLocalCommentError(
+          action === 'reject' ? t.approval.rejectCommentRequired : t.approval.commentRequired,
+        );
         return;
       }
       if (actionLockReason !== undefined) return;
 
       setLocalCommentError(null);
-      setDialogDraft({ approvalRequestId: selectedId, comment: trimmed });
-    };
-    const reloadUnknownTarget = async (): Promise<void> => {
-      await detail.refetch();
-      if (queryClient.getQueryState(qualityApprovalKeys.detail(selectedId))?.status === 'success')
-        approveWrite.reset();
+      setDialogDraft({ action, approvalRequestId: selectedId, comment: trimmed });
     };
     return (
       <>
@@ -315,20 +344,21 @@ export const QualityApprovalScreen = ({
           lockReason={actionLockReason}
           lockReasonId={actionLockReasonId}
           writeError={writeError}
-          onApprove={openApproveDialog}
+          onApprove={() => openDecisionDialog('approve')}
           onCommentChange={(value) => {
             setComment(value);
             setLocalCommentError(null);
-            approveWrite.clearFieldError('comment');
+            decisionWrite.clearFieldError('comment');
           }}
-          onReload={() => void detail.refetch()}
-          onReloadUnknown={() => void reloadUnknownTarget()}
+          onReject={() => openDecisionDialog('reject')}
+          onReload={() => void reloadDetail()}
+          onReloadUnknown={() => void reloadDetail(true)}
         />
       </>
     );
   };
 
-  const confirmApprove = (): void => {
+  const confirmDecision = (): void => {
     if (
       dialogDraft === null ||
       selectedId !== dialogDraft.approvalRequestId ||
@@ -340,9 +370,9 @@ export const QualityApprovalScreen = ({
       return;
     }
 
-    sentIdRef.current = dialogDraft.approvalRequestId;
+    sentDecisionRef.current = dialogDraft;
     setWriteTargetId(dialogDraft.approvalRequestId);
-    approveWrite.write(dialogDraft);
+    decisionWrite.write(dialogDraft);
   };
 
   return (
@@ -389,21 +419,38 @@ export const QualityApprovalScreen = ({
           {progressSlot()}
         </section>
       </div>
-      {dialogDraft !== null && selectedId === dialogDraft.approvalRequestId && !detail.isError && (
-        <ApproveDialog
-          approvalTypeCode={detail.data?.request.approvalTypeCode ?? ''}
-          comment={dialogDraft.comment}
-          isSaving={approveWrite.isSaving}
-          requestNo={detail.data?.request.approvalRequestNo ?? ''}
-          targetName={
-            detail.data === undefined ? '' : toRequestDetailView(detail.data.request).targetName
-          }
-          onCancel={() => {
-            if (!approveWrite.isSaving) setDialogDraft(null);
-          }}
-          onConfirm={confirmApprove}
-        />
-      )}
+      {dialogDraft !== null &&
+        selectedId === dialogDraft.approvalRequestId &&
+        !detail.isError &&
+        (dialogDraft.action === 'approve' ? (
+          <ApproveDialog
+            approvalTypeCode={detail.data?.request.approvalTypeCode ?? ''}
+            comment={dialogDraft.comment}
+            isSaving={decisionWrite.isSaving}
+            requestNo={detail.data?.request.approvalRequestNo ?? ''}
+            targetName={
+              detail.data === undefined ? '' : toRequestDetailView(detail.data.request).targetName
+            }
+            onCancel={() => {
+              if (!decisionWrite.isSaving) setDialogDraft(null);
+            }}
+            onConfirm={confirmDecision}
+          />
+        ) : (
+          <RejectDialog
+            approvalTypeCode={detail.data?.request.approvalTypeCode ?? ''}
+            comment={dialogDraft.comment}
+            isSaving={decisionWrite.isSaving}
+            requestNo={detail.data?.request.approvalRequestNo ?? ''}
+            targetName={
+              detail.data === undefined ? '' : toRequestDetailView(detail.data.request).targetName
+            }
+            onCancel={() => {
+              if (!decisionWrite.isSaving) setDialogDraft(null);
+            }}
+            onConfirm={confirmDecision}
+          />
+        ))}
     </>
   );
 };

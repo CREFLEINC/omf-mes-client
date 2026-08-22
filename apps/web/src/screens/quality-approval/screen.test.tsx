@@ -27,6 +27,7 @@ const t = messages.qualityApproval;
 const PATH = '/app/approval-requests';
 const CONCESSIONS_PATH = '/quality/concessions';
 const APPROVE_PATH = '/app/approval-requests/31:approve';
+const REJECT_PATH = '/app/approval-requests/31:reject';
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const requests: ApprovalRequest[] = [
@@ -929,7 +930,7 @@ describe('QualityApprovalScreen conditions', () => {
   });
 });
 
-describe('QualityApprovalScreen approve action', () => {
+describe('QualityApprovalScreen decision action', () => {
   const actionDetail = (request: ApprovalRequest = requests[0]!): ApprovalRequestDetail =>
     detailBody(request);
   const safeConditionRoutes = (shouldFail: () => boolean = () => false): StubRoute[] => [
@@ -939,16 +940,26 @@ describe('QualityApprovalScreen approve action', () => {
     concessionRoute(),
   ];
 
-  const openConfirm = async (user: ReturnType<typeof userEvent.setup>, comment: string) => {
-    const input = await screen.findByRole('textbox', { name: '승인 사유' });
+  const openConfirm = async (
+    user: ReturnType<typeof userEvent.setup>,
+    comment: string,
+    action: '승인' | '반려' = '승인',
+  ) => {
+    const input = await screen.findByRole('textbox', { name: '결재 사유' });
     await user.type(input, comment);
-    await user.click(screen.getByRole('button', { name: '승인' }));
-    return screen.findByRole('dialog', { name: '승인 확인' });
+    await user.click(screen.getByRole('button', { name: action }));
+    return screen.findByRole('dialog', { name: `${action} 확인` });
   };
-  const confirmApproval = async (user: ReturnType<typeof userEvent.setup>, comment: string) => {
-    const dialog = await openConfirm(user, comment);
-    await user.click(within(dialog).getByRole('button', { name: '승인' }));
+  const confirmDecision = async (
+    user: ReturnType<typeof userEvent.setup>,
+    comment: string,
+    action: '승인' | '반려' = '승인',
+  ) => {
+    const dialog = await openConfirm(user, comment, action);
+    await user.click(within(dialog).getByRole('button', { name: action }));
   };
+  const confirmApproval = (user: ReturnType<typeof userEvent.setup>, comment: string) =>
+    confirmDecision(user, comment);
   const requestButton = (requestNo: string) =>
     screen.getByRole('button', { name: t.actions.selectRow(requestNo) });
   const reloadTargetButton = () => screen.findByRole('button', { name: t.approval.reloadTarget });
@@ -956,7 +967,7 @@ describe('QualityApprovalScreen approve action', () => {
   it('선택 없음·내 차례 아님·안전한 연결 조건 없음·공백 사유에서는 보내지 않는다', async () => {
     const noSelection = renderScreen(approvalFetch([listRoute()]));
     await findRequest();
-    expect(screen.queryByRole('textbox', { name: '승인 사유' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: '결재 사유' })).toBeNull();
     noSelection.unmount();
 
     const noTurnRequest = { ...requests[0]!, isMyTurn: false };
@@ -967,10 +978,12 @@ describe('QualityApprovalScreen approve action', () => {
       ),
     );
     const locked = renderScreen(recorded.fetch, '/quality-approval?rq=31');
-    const input = await screen.findByRole('textbox', { name: '승인 사유' });
+    const input = await screen.findByRole('textbox', { name: '결재 사유' });
+    expect(input).toHaveAccessibleDescription(/승인 또는 반려 판단 근거를 입력하세요/);
     expect(input).toBeDisabled();
     expect(input).toHaveAccessibleDescription(/지금은 내 결재 차례가 아닙니다/);
     expect(screen.getByRole('button', { name: '승인' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '반려' })).toBeDisabled();
     expect(recorded.urls.some((url) => url.pathname.endsWith(':approve'))).toBe(false);
     locked.unmount();
 
@@ -978,10 +991,11 @@ describe('QualityApprovalScreen approve action', () => {
       approvalFetch([listRoute(), detailRoute()]),
       '/quality-approval?rq=31',
     );
-    expect(await screen.findByRole('textbox', { name: '승인 사유' })).toHaveAccessibleDescription(
+    expect(await screen.findByRole('textbox', { name: '결재 사유' })).toHaveAccessibleDescription(
       /안전하게 확인된 연결 조건 1건이 필요합니다/,
     );
     expect(screen.getByRole('button', { name: '승인' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '반려' })).toBeDisabled();
     unsafe.unmount();
 
     const blank = recordingFetch(
@@ -990,11 +1004,64 @@ describe('QualityApprovalScreen approve action', () => {
       ...safeConditionRoutes(),
     );
     const blankScreen = renderScreen(blank.fetch, '/quality-approval?rq=31');
-    await blankScreen.user.type(await screen.findByRole('textbox', { name: '승인 사유' }), '   ');
+    await blankScreen.user.type(await screen.findByRole('textbox', { name: '결재 사유' }), '   ');
     await blankScreen.user.click(screen.getByRole('button', { name: '승인' }));
     expect(screen.getByText('승인 사유를 입력하세요')).toBeInTheDocument();
+    await blankScreen.user.click(screen.getByRole('button', { name: '반려' }));
+    expect(screen.getByText('반려 사유를 입력하세요')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(blank.urls.some((url) => url.pathname.endsWith(':approve'))).toBe(false);
+  });
+
+  it('반려 확인 뒤 trim 본문·UUID·상세 ETag로 한 번 보내고 응답을 반영한다', async () => {
+    let serverDetail = actionDetail();
+    let releaseReject: ((response: Response) => void) | undefined;
+    const pendingReject = new Promise<Response>((resolve) => {
+      releaseReject = resolve;
+    });
+    const sent: Request[] = [];
+    const base = approvalFetch([
+      listRoute(),
+      detailRoute(31, () => jsonResponse(serverDetail, { headers: { ETag: '"9"' } })),
+      ...safeConditionRoutes(),
+    ]);
+    const fetch: StubFetch = async (request) => {
+      if (new URL(request.url).pathname !== REJECT_PATH) return base(request);
+      sent.push(request.clone());
+      return pendingReject;
+    };
+    const { queryClient, user } = renderScreen(fetch, '/quality-approval?rq=31');
+
+    const dialog = await openConfirm(user, '  합성 반려 사유  ', '반려');
+    expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
+    expect(within(dialog).getByText('승인 유형: SYNTH-CONCESSION')).toBeInTheDocument();
+    expect(within(dialog).getByText('대상: 합성 대상')).toBeInTheDocument();
+    expect(within(dialog).getByText('합성 반려 사유')).toBeInTheDocument();
+    expect(within(dialog).getByText('반려는 상태만 변경합니다')).toBeInTheDocument();
+    expect(within(dialog).getByText('반려는 되돌릴 수 없습니다')).toBeInTheDocument();
+    expect(dialog.textContent).not.toContain('910009');
+    expect(sent).toHaveLength(0);
+    expect(within(dialog).queryByRole('button', { name: '닫기' })).toBeNull();
+    await user.click(dialog);
+    expect(screen.getByRole('dialog', { name: '반려 확인' })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: '반려' }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(within(dialog).getByRole('button', { name: '반려' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: messages.common.cancel })).toBeDisabled();
+    await user.click(within(dialog).getByRole('button', { name: '반려' }));
+    expect(sent).toHaveLength(1);
+    expect(await sent[0]!.clone().json()).toEqual({ comment: '합성 반려 사유' });
+    expect(sent[0]!.headers.get('If-Match')).toBe('"9"');
+    expect(sent[0]!.headers.get('Idempotency-Key')).toMatch(UUID_V4);
+
+    serverDetail = actionDetail({ ...requests[0]!, isMyTurn: false, statusCode: 'REJECTED' });
+    releaseReject?.(jsonResponse(serverDetail));
+    expect(await screen.findByText('반려가 완료되었습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(
+      queryClient.getQueryData<ApprovalRequestDetail>(qualityApprovalKeys.detail(31))?.request
+        .statusCode,
+    ).toBe('REJECTED');
   });
 
   it('확인 전에는 보내지 않고 trim 본문·UUID·상세 ETag로 한 번 승인한 뒤 응답을 반영한다', async () => {
@@ -1046,12 +1113,12 @@ describe('QualityApprovalScreen approve action', () => {
 
     failConditions = true;
     await queryClient.invalidateQueries({ queryKey: qualityApprovalKeys.candidates(31) });
-    await waitFor(() => expect(screen.getByRole('textbox', { name: '승인 사유' })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole('textbox', { name: '결재 사유' })).toBeDisabled());
     await user.click(within(dialog).getByRole('button', { name: '승인' }));
     expect(sent).toHaveLength(0);
     failConditions = false;
     await queryClient.invalidateQueries({ queryKey: qualityApprovalKeys.candidates(31) });
-    await waitFor(() => expect(screen.getByRole('textbox', { name: '승인 사유' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('textbox', { name: '결재 사유' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: '승인' }));
     const retryDialog = await screen.findByRole('dialog', { name: '승인 확인' });
     await user.click(within(retryDialog).getByRole('button', { name: '승인' }));
@@ -1065,8 +1132,8 @@ describe('QualityApprovalScreen approve action', () => {
     expect(sent[0]!.headers.get('Idempotency-Key')).toMatch(UUID_V4);
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('SYNTH-REQ-032') }));
     expect(await screen.findByText('SYNTH-REQ-032')).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '승인 사유' })).toHaveAccessibleDescription(
-      /승인 요청을 보내는 중입니다/,
+    expect(await screen.findByRole('textbox', { name: '결재 사유' })).toHaveAccessibleDescription(
+      /결재 요청을 처리하는 중입니다/,
     );
 
     releaseApprove?.(
@@ -1076,7 +1143,7 @@ describe('QualityApprovalScreen approve action', () => {
     );
     expect(await screen.findByText('승인이 완료되었습니다')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByRole('textbox', { name: '승인 사유' })).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: '결재 사유' })).toHaveValue('');
     expect(screen.queryByText('SYNTH-APPROVED')).toBeNull();
     expect(
       queryClient.getQueryData<ApprovalRequestDetail>(qualityApprovalKeys.detail(31))?.request
@@ -1087,10 +1154,17 @@ describe('QualityApprovalScreen approve action', () => {
 
   it('상세 ETag가 없으면 POST 없이 최신 정보 오류를 표시한다', async () => {
     const recorded = recordingFetch(listRoute(), detailRoute(), ...safeConditionRoutes());
-    const { user } = renderScreen(recorded.fetch, '/quality-approval?rq=31');
-    await confirmApproval(user, '합성 승인 사유');
+    const first = renderScreen(recorded.fetch, '/quality-approval?rq=31');
+    await confirmApproval(first.user, '합성 승인 사유');
     expect(await screen.findByText(messages.save.staleToken)).toBeInTheDocument();
     expect(recorded.urls.some((url) => url.pathname.endsWith(':approve'))).toBe(false);
+    first.unmount();
+
+    const rejected = recordingFetch(listRoute(), detailRoute(), ...safeConditionRoutes());
+    const second = renderScreen(rejected.fetch, '/quality-approval?rq=31');
+    await confirmDecision(second.user, '합성 반려 사유', '반려');
+    expect(await screen.findByText(messages.save.staleToken)).toBeInTheDocument();
+    expect(rejected.urls.some((url) => url.pathname.endsWith(':reject'))).toBe(false);
   });
 
   it('409는 최신 상세 재조회로 복구하고 400·403·network 오류를 각각 표시한다', async () => {
@@ -1103,12 +1177,12 @@ describe('QualityApprovalScreen approve action', () => {
       }),
       ...safeConditionRoutes(),
       {
-        match: (request) => new URL(request.url).pathname === APPROVE_PATH,
+        match: (request) => new URL(request.url).pathname === REJECT_PATH,
         respond: () => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
       },
     );
     const first = renderScreen(conflict.fetch, '/quality-approval?rq=31');
-    await confirmApproval(first.user, '합성 승인 사유');
+    await confirmDecision(first.user, '합성 반려 사유', '반려');
     await first.user.click(
       await screen.findByRole('button', { name: messages.conflict.reloadAction }),
     );
@@ -1126,26 +1200,40 @@ describe('QualityApprovalScreen approve action', () => {
           { status: 400 },
         ),
         message: '합성 사유 오류',
+        action: '반려' as const,
+        path: REJECT_PATH,
       },
-      { response: jsonResponse({}, { status: 403 }), message: messages.httpError.forbidden },
+      {
+        response: jsonResponse({}, { status: 403 }),
+        message: messages.httpError.forbidden,
+        action: '승인' as const,
+        path: APPROVE_PATH,
+      },
+      {
+        response: jsonResponse({}, { status: 404 }),
+        message: messages.httpError.description,
+        action: '반려' as const,
+        path: REJECT_PATH,
+      },
     ]) {
       const recorded = recordingFetch(
         listRoute(),
         detailRoute(31, () => jsonResponse(actionDetail(), { headers: { ETag: '"9"' } })),
         ...safeConditionRoutes(),
         {
-          match: (request) => new URL(request.url).pathname === APPROVE_PATH,
+          match: (request) => new URL(request.url).pathname === failure.path,
           respond: () => failure.response,
         },
       );
       const rendered = renderScreen(recorded.fetch, '/quality-approval?rq=31');
-      await confirmApproval(rendered.user, '합성 승인 사유');
+      await confirmDecision(rendered.user, '합성 결재 사유', failure.action);
       expect(await screen.findByText(failure.message)).toBeInTheDocument();
       rendered.unmount();
     }
 
     let approvalAttempts = 0;
     let failDetailReload = false;
+    let failOtherDetail = true;
     const sent: Request[] = [];
     const base = approvalFetch([
       listRoute(() => jsonResponse(listBody([requests[0]!, nextApprovalRequest]))),
@@ -1156,9 +1244,17 @@ describe('QualityApprovalScreen approve action', () => {
           : jsonResponse(actionDetail(), { headers: { ETag: '"9"' } });
       }),
       detailRoute(32, () =>
-        jsonResponse(actionDetail(nextApprovalRequest), { headers: { ETag: '"10"' } }),
+        failOtherDetail
+          ? jsonResponse({}, { status: 500 })
+          : jsonResponse(actionDetail(nextApprovalRequest), { headers: { ETag: '"10"' } }),
       ),
-      ...safeConditionRoutes(),
+      candidateRoute((request) => {
+        const approvalRequestId = Number(
+          new URL(request.url).searchParams.get('approvalRequestId'),
+        );
+        return jsonResponse(candidateBody([{ ...concession, approvalRequestId }]));
+      }),
+      concessionRoute(),
     ]);
     const offline: StubFetch = async (request) => {
       if (new URL(request.url).pathname === APPROVE_PATH) {
@@ -1173,18 +1269,25 @@ describe('QualityApprovalScreen approve action', () => {
     await confirmApproval(rendered.user, '합성 승인 사유');
     expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
     expect(screen.getByText('서버 적용 여부를 확인할 수 없습니다')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '반려' })).toBeDisabled();
     let beforeReload = detailCalls;
     failDetailReload = true;
     await rendered.user.click(await reloadTargetButton());
     await waitFor(() => expect(detailCalls).toBeGreaterThan(beforeReload));
     failDetailReload = false;
     await rendered.user.click(requestButton('SYNTH-REQ-032'));
-    expect(screen.getByRole('textbox', { name: '승인 사유' })).toHaveAccessibleDescription(
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+    failOtherDetail = false;
+    await rendered.user.click(screen.getByRole('button', { name: messages.common.retry }));
+    expect(await screen.findByRole('textbox', { name: '결재 사유' })).toHaveAccessibleDescription(
       /앞서 보낸 승인 요청의 상태를 먼저 확인해야 합니다/,
     );
     const blockedApprove = screen.getByRole('button', { name: '승인' });
+    const blockedReject = screen.getByRole('button', { name: '반려' });
     expect(blockedApprove).toBeDisabled();
+    expect(blockedReject).toBeDisabled();
     await rendered.user.click(blockedApprove);
+    await rendered.user.click(blockedReject);
     expect(sent).toHaveLength(1);
     await rendered.user.click(await requestButton('SYNTH-REQ-031'));
     beforeReload = detailCalls;
@@ -1193,5 +1296,75 @@ describe('QualityApprovalScreen approve action', () => {
     await confirmApproval(rendered.user, '합성 승인 사유');
     await waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]!.headers.get('Idempotency-Key')).toBe(sent[0]!.headers.get('Idempotency-Key'));
+  });
+
+  it('반려 적용불명은 원 대상도 잠그고 재조회 성공 뒤 같은 반려만 같은 UUID로 재시도한다', async () => {
+    let rejectAttempts = 0;
+    let detailFails = false;
+    const sent: Request[] = [];
+    const base = approvalFetch([
+      listRoute(),
+      detailRoute(31, () =>
+        detailFails
+          ? jsonResponse({}, { status: 500 })
+          : jsonResponse(actionDetail(), { headers: { ETag: '"9"' } }),
+      ),
+      ...safeConditionRoutes(),
+    ]);
+    const fetch: StubFetch = async (request) => {
+      if (new URL(request.url).pathname !== REJECT_PATH) return base(request);
+      rejectAttempts += 1;
+      sent.push(request.clone());
+      if (rejectAttempts === 1) throw new TypeError('synthetic offline');
+      return jsonResponse(actionDetail({ ...requests[0]!, isMyTurn: false }));
+    };
+    const { user } = renderScreen(fetch, '/quality-approval?rq=31');
+
+    await confirmDecision(user, '합성 반려 사유', '반려');
+    expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '승인' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '반려' })).toBeDisabled();
+    detailFails = true;
+    await user.click(await reloadTargetButton());
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '승인' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '반려' })).toBeNull();
+    expect(sent).toHaveLength(1);
+    detailFails = false;
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '반려' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: '반려' }));
+    const dialog = await screen.findByRole('dialog', { name: '반려 확인' });
+    await user.click(within(dialog).getByRole('button', { name: '반려' }));
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]!.headers.get('Idempotency-Key')).toBe(sent[0]!.headers.get('Idempotency-Key'));
+  });
+
+  it('알려진 실패 뒤 같은 대상·사유라도 승인과 반려는 다른 UUID를 사용한다', async () => {
+    const sent: Request[] = [];
+    const base = approvalFetch([
+      listRoute(),
+      detailRoute(31, () => jsonResponse(actionDetail(), { headers: { ETag: '"9"' } })),
+      ...safeConditionRoutes(),
+    ]);
+    const fetch: StubFetch = async (request) => {
+      const path = new URL(request.url).pathname;
+      if (path !== APPROVE_PATH && path !== REJECT_PATH) return base(request);
+      sent.push(request.clone());
+      return path === APPROVE_PATH
+        ? jsonResponse({}, { status: 403 })
+        : jsonResponse(actionDetail({ ...requests[0]!, isMyTurn: false }));
+    };
+    const { user } = renderScreen(fetch, '/quality-approval?rq=31');
+
+    await confirmApproval(user, '합성 공통 사유');
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '반려' }));
+    const dialog = await screen.findByRole('dialog', { name: '반려 확인' });
+    await user.click(within(dialog).getByRole('button', { name: '반려' }));
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]!.headers.get('Idempotency-Key')).not.toBe(
+      sent[0]!.headers.get('Idempotency-Key'),
+    );
   });
 });
