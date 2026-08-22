@@ -10,6 +10,9 @@ import { CalendarFormDialog } from './calendar-form-dialog';
 import { CalendarListPane } from './calendar-list-pane';
 import { CALENDAR_FORM_FIELDS, validateCalendar } from './calendar-validation';
 import { defaultCalendarFilters } from './filters';
+import { BulkFormDialog } from './bulk-form-dialog';
+import { expandDates } from './bulk-days';
+import { validateBulkRange } from './bulk-validation';
 import { DayFormDialog } from './day-form-dialog';
 import { DAY_FORM_FIELDS, validateDay } from './day-validation';
 import { byDate, type WorkCalendarDay } from './day-status';
@@ -35,7 +38,13 @@ import {
   useCalendarDetail,
   useCalendarList,
 } from './queries';
-import type { CalendarFilters, CalendarFormValues, DayFormValues, WorkCalendar } from './types';
+import type {
+  BulkFormValues,
+  CalendarFilters,
+  CalendarFormValues,
+  DayFormValues,
+  WorkCalendar,
+} from './types';
 
 const t = messages.workCalendar;
 
@@ -152,6 +161,9 @@ export const WorkCalendarScreen = ({
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [dayValues, setDayValues] = useState<DayFormValues>(() => dayFormValuesFrom(undefined));
   const [dayErrors, setDayErrors] = useState<Record<string, string>>({});
+  /** 일괄 적용 창이 떠 있는가 */
+  const [bulk, setBulk] = useState<BulkFormValues | null>(null);
+  const [bulkErrors, setBulkErrors] = useState<Record<string, string>>({});
 
   const calendars = useCalendarList(filters);
   /* 계약이 기간을 반드시 요구한다 — 보이는 달의 처음과 끝을 그대로 싣는다. */
@@ -199,6 +211,15 @@ export const WorkCalendarScreen = ({
   const dayWrite = useDayWrite(selected?.workCalendarId ?? null, (appliedCount) => {
     setEditingDate(null);
     toast.show({ variant: 'success', description: t.dayForm.saved(appliedCount) });
+  });
+
+  /*
+   * ⭐ **일괄도 같은 경로를 쓴다**(계약). 쓰기를 따로 두지 않고 같은 훅을 한 벌 더 만든다 —
+   * 두 창이 서로의 오류·진행 상태를 물려받지 않게 하려는 것뿐이다.
+   */
+  const bulkWrite = useDayWrite(selected?.workCalendarId ?? null, (appliedCount) => {
+    setBulk(null);
+    toast.show({ variant: 'success', description: t.bulk.applied(appliedCount) });
   });
 
   const deactivateWrite = useDeactivateWrite(editingId, () => {
@@ -319,6 +340,31 @@ export const WorkCalendarScreen = ({
     dayWrite.write([toDayUpdate(editingDate, dayValues)]);
   };
 
+  /**
+   * 지금 조건으로 바뀔 날짜. **여기서 센 목록을 그대로 보낸다** — 보인 수와 보내는 목록이
+   * 갈리면 확인이 뜻을 잃는다.
+   */
+  const bulkDates = bulk === null ? [] : expandDates(bulk.from, bulk.to, bulk.weekdays);
+
+  const openBulk = (): void => {
+    resetIfIdle(bulkWrite);
+    setBulkErrors({});
+    /* 처음 값은 지금 보고 있는 달이다 — 달력에서 옮겨 온 맥락을 잃지 않는다. */
+    setBulk({ ...range, weekdays: [], day: dayFormValuesFrom(undefined) });
+  };
+
+  const applyBulk = (): void => {
+    if (bulk === null) return;
+
+    const errors = { ...validateBulkRange(bulk), ...validateDay(bulk.day) };
+    setBulkErrors(errors);
+
+    if (Object.keys(errors).length > 0) return;
+    if (bulkDates.length === 0) return;
+
+    bulkWrite.write(bulkDates.map((date) => toDayUpdate(date, bulk.day)));
+  };
+
   const codeLockReason =
     dialog?.mode === 'edit' && detail.data !== undefined
       ? codeLockMessage(detail.data.editability)
@@ -374,6 +420,7 @@ export const WorkCalendarScreen = ({
           yearMonth={yearMonth}
           onChangeMonth={setYearMonth}
           onPickDay={openDay}
+          onBulkApply={openBulk}
           days={days.data?.items ?? NO_ITEMS}
           isLoading={days.isLoading}
           loadError={
@@ -421,6 +468,49 @@ export const WorkCalendarScreen = ({
             setEditingDate(null);
           }}
           onSave={saveDay}
+        />
+      )}
+
+      {bulk !== null && (
+        <BulkFormDialog
+          values={bulk}
+          onChange={(patch) => {
+            setBulk((current) => (current === null ? current : { ...current, ...patch }));
+
+            for (const field of Object.keys(patch)) {
+              setBulkErrors((current) => {
+                if (!(field in current)) return current;
+                const next = { ...current };
+                delete next[field];
+                return next;
+              });
+              bulkWrite.clearFieldError(field);
+            }
+          }}
+          onChangeDay={(patch) => {
+            setBulk((current) =>
+              current === null ? current : { ...current, day: { ...current.day, ...patch } },
+            );
+
+            for (const field of Object.keys(patch)) {
+              setBulkErrors((current) => {
+                if (!(field in current)) return current;
+                const next = { ...current };
+                delete next[field];
+                return next;
+              });
+              bulkWrite.clearFieldError(field);
+            }
+          }}
+          fieldErrors={{ ...bulkWrite.fieldErrors, ...bulkErrors }}
+          banner={<SaveErrorBanner error={bulkWrite.error} />}
+          affectedCount={bulkDates.length}
+          isSaving={bulkWrite.isSaving}
+          onClose={() => {
+            resetIfIdle(bulkWrite);
+            setBulk(null);
+          }}
+          onApply={applyBulk}
         />
       )}
 

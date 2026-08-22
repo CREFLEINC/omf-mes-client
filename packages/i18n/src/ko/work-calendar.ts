@@ -93,6 +93,36 @@ export const workCalendar = {
      */
     reasonOptional: '사유는 비워 두어도 저장됩니다.',
   },
+  /**
+   * 일괄 적용. **규칙이 아니라 날짜 목록을 보낸다** — 화면이 바뀔 날을 미리 세어 보이고
+   * 확인을 받으므로, 그 시점에 목록을 이미 안다(계약 · 스펙 §6).
+   */
+  bulk: {
+    open: '일괄 적용',
+    title: '일자 일괄 적용',
+    from: '시작일',
+    to: '종료일',
+    weekdays: '요일',
+    /** ⭐ 하나도 고르지 않으면 기간 전체다 — 「요일 일괄」과 「기간 일괄」이 한 자리다. */
+    weekdaysNote: '요일을 고르지 않으면 기간의 모든 날에 적용합니다.',
+    /**
+     * ⭐ **바꾸기 «전에» 몇 날이 바뀌는지 말한다.** 통째로 되돌리는 수단이 없으므로,
+     * 누른 뒤에 세어 보이면 늦다.
+     */
+    willChange: (count: number): string => `${count}일이 바뀝니다.`,
+    /** ⛔ 0일이면 누를 것이 없다 — 감추지 않고 잠그고 사유를 말한다(G-2). */
+    nothingToChange: '조건에 맞는 날이 없습니다. 기간이나 요일을 다시 고르세요.',
+    apply: '적용',
+    /** 덮어쓴 날 수는 서버가 세어 준다 — 화면이 센 것과 다를 수 있으니 서버 값을 말한다. */
+    applied: (count: number): string => `${count}일을 덮어썼습니다.`,
+    /** ⚠ 되돌리는 수단이 없다는 사실을 함께 말한다. */
+    notReversible: '이미 설정된 날도 덮어씁니다. 되돌리는 수단은 없습니다.',
+  },
+  bulkValidation: {
+    rangeRequired: '시작일과 종료일을 함께 고르세요.',
+    dateFormat: '날짜는 `YYYY-MM-DD` 로 입력하세요.',
+    endAfterStart: '종료일은 시작일과 같거나 뒤여야 합니다.',
+  },
   dayValidation: {
     dayTypeRequired: '구분을 고르세요.',
     timesRequired: '부분 가동이면 시작 시각과 종료 시각을 함께 입력하세요.',

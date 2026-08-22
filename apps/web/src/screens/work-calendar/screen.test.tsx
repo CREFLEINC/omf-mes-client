@@ -1187,3 +1187,179 @@ describe('W-05-09 작업 캘린더 — 하루 편집', () => {
     expect(screen.getByText(t.dayForm.reasonOptional)).toBeInTheDocument();
   });
 });
+
+const openBulk = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await selectCalendar(user, 'CAL-A');
+  await waitFor(() => {
+    expect(within(gridPane()).getByRole('table')).toBeInTheDocument();
+  });
+  await user.click(within(gridPane()).getByRole('button', { name: t.bulk.open }));
+  await screen.findByRole('dialog', { name: t.bulk.title });
+};
+
+const bulkDialog = () => screen.getByRole('dialog', { name: t.bulk.title });
+
+describe('W-05-09 작업 캘린더 — 일괄 적용', () => {
+  /* 달력에서 옮겨 온 맥락을 잃지 않는다 — 처음 값은 지금 보고 있는 달이다. */
+  it('처음 기간은 지금 보고 있는 달이다', async () => {
+    const { user } = renderScreen();
+
+    await openBulk(user);
+
+    expect(within(bulkDialog()).getByRole('textbox', { name: /시작일/ })).toHaveValue('2026-08-01');
+    expect(within(bulkDialog()).getByRole('textbox', { name: /종료일/ })).toHaveValue('2026-08-31');
+  });
+
+  /*
+   * ⭐ **이 슬라이스의 본론** — 누르기 «전에» 몇 날이 바뀌는지 말한다. 통째로 되돌리는 수단이
+   * 없으므로 누른 뒤에 세어 보이면 늦다.
+   */
+  it('바뀔 날 수를 누르기 전에 보인다', async () => {
+    const { user } = renderScreen();
+
+    await openBulk(user);
+
+    expect(within(bulkDialog()).getByText(t.bulk.willChange(31))).toBeInTheDocument();
+  });
+
+  it('요일을 고르면 그 수가 줄어든다', async () => {
+    const { user } = renderScreen();
+
+    await openBulk(user);
+    await user.click(within(bulkDialog()).getByRole('checkbox', { name: t.grid.weekdays[0] }));
+
+    /* 2026-08 의 일요일은 다섯 날이다. */
+    expect(within(bulkDialog()).getByText(t.bulk.willChange(5))).toBeInTheDocument();
+  });
+
+  /* ⚠ 되돌리는 수단이 없다는 사실을 함께 말한다. */
+  it('되돌릴 수 없다는 것을 말한다', async () => {
+    const { user } = renderScreen();
+
+    await openBulk(user);
+
+    expect(within(bulkDialog()).getByText(t.bulk.notReversible)).toBeInTheDocument();
+  });
+
+  /* ⛔ 0일이면 누를 것이 없다 — 감추지 않고 잠그고 사유를 말한다(G-2). */
+  it('바꿀 날이 없으면 적용을 잠그고 사유를 말한다', async () => {
+    const { user } = renderScreen();
+
+    await openBulk(user);
+    await user.clear(within(bulkDialog()).getByRole('textbox', { name: /종료일/ }));
+    await user.type(within(bulkDialog()).getByRole('textbox', { name: /종료일/ }), '2026-07-01');
+
+    expect(within(bulkDialog()).getByRole('button', { name: t.bulk.apply })).toBeDisabled();
+    expect(within(bulkDialog()).getByText(t.bulk.nothingToChange)).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **규칙이 아니라 날짜 목록을 보낸다.** 화면이 세어 보인 그 목록을 그대로 보내므로,
+   * 보인 수와 실제로 바뀌는 수가 갈리지 않는다.
+   */
+  it('보인 수만큼의 날짜 목록을 보낸다', async () => {
+    const { user, writes } = renderScreen({
+      respondWrite: () => jsonResponse({ appliedCount: 5 }),
+    });
+
+    await openBulk(user);
+    await user.click(within(bulkDialog()).getByRole('checkbox', { name: t.grid.weekdays[0] }));
+    await user.click(within(bulkDialog()).getByRole('radio', { name: t.grid.status.holiday }));
+    await user.click(within(bulkDialog()).getByRole('button', { name: t.bulk.apply }));
+
+    await waitFor(() => {
+      expect(writes.length).toBe(1);
+    });
+
+    const body = (await onlyWrite(writes).json()) as { days: { calendarDate: string }[] };
+
+    expect(body.days).toHaveLength(5);
+    expect(body.days.map((day) => day.calendarDate)).toEqual([
+      '2026-08-02',
+      '2026-08-09',
+      '2026-08-16',
+      '2026-08-23',
+      '2026-08-30',
+    ]);
+  });
+
+  it('고른 설정을 모든 날에 같게 싣는다', async () => {
+    const { user, writes } = renderScreen({
+      respondWrite: () => jsonResponse({ appliedCount: 5 }),
+    });
+
+    await openBulk(user);
+    await user.click(within(bulkDialog()).getByRole('checkbox', { name: t.grid.weekdays[0] }));
+    await user.click(within(bulkDialog()).getByRole('radio', { name: t.grid.status.holiday }));
+    await user.click(within(bulkDialog()).getByRole('button', { name: t.bulk.apply }));
+
+    await waitFor(() => {
+      expect(writes.length).toBe(1);
+    });
+
+    const body = (await onlyWrite(writes).json()) as { days: { dayTypeCode: string }[] };
+
+    expect(body.days.every((day) => day.dayTypeCode === 'HOLIDAY')).toBe(true);
+  });
+
+  /* 하루 편집과 같은 판정을 쓴다 — 두 벌을 두면 한쪽만 고쳐진다. */
+  it('부분 가동인데 시각이 비면 막는다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openBulk(user);
+    await user.click(within(bulkDialog()).getByRole('radio', { name: t.grid.status.partial }));
+    await user.click(within(bulkDialog()).getByRole('button', { name: t.bulk.apply }));
+
+    expect(await screen.findAllByText(t.dayValidation.timesRequired)).not.toHaveLength(0);
+    expect(writes.length).toBe(0);
+  });
+
+  it('구분을 고르지 않으면 막는다', async () => {
+    const { user, writes } = renderScreen();
+
+    await openBulk(user);
+    await user.click(within(bulkDialog()).getByRole('button', { name: t.bulk.apply }));
+
+    expect(await screen.findByText(t.dayValidation.dayTypeRequired)).toBeInTheDocument();
+    expect(writes.length).toBe(0);
+  });
+
+  it('적용하면 창이 닫히고 그 달을 다시 읽는다', async () => {
+    const { user, dayRequests } = renderScreen({
+      respondWrite: () => jsonResponse({ appliedCount: 31 }),
+    });
+
+    await openBulk(user);
+    const before = dayRequests.length;
+    await user.click(within(bulkDialog()).getByRole('radio', { name: t.grid.status.working }));
+    await user.click(within(bulkDialog()).getByRole('button', { name: t.bulk.apply }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: t.bulk.title })).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(dayRequests.length).toBeGreaterThan(before);
+    });
+  });
+
+  it('실패하면 창을 닫지 않고 이유를 보인다', async () => {
+    const { user } = renderScreen({
+      respondWrite: () => jsonResponse({ message: '권한 없음' }, { status: 403 }),
+    });
+
+    await openBulk(user);
+    await user.click(within(bulkDialog()).getByRole('radio', { name: t.grid.status.working }));
+    await user.click(within(bulkDialog()).getByRole('button', { name: t.bulk.apply }));
+
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.bulk.title })).toBeInTheDocument();
+  });
+
+  it('고르기 전에는 일괄 적용 자리가 없다', async () => {
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+
+    expect(within(gridPane()).queryByRole('button', { name: t.bulk.open })).not.toBeInTheDocument();
+  });
+});
