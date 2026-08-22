@@ -47,6 +47,14 @@ const recordingFetch = (route: StubRoute): { fetch: StubFetch; urls: URL[] } => 
 };
 
 describe('toProductionPlanFact', () => {
+  it('생략된 선택 필드는 공개 fact에서 모두 null로 통일한다', () => {
+    expect(toProductionPlanFact(productionPlan(101))).toMatchObject({
+      plannedLineId: null,
+      confirmedAt: null,
+      remarks: null,
+    });
+  });
+
   it('계획 목록과 상세가 함께 쓰는 공개 fact에 허용 필드만 남긴다', () => {
     expect(
       toProductionPlanFact({
@@ -149,6 +157,7 @@ describe('useProductionPlanDetail', () => {
 
     expect(urls).toHaveLength(1);
     expect(urls[0]?.pathname).toBe(DETAIL_PATH);
+    expect(urls[0]?.search).toBe('');
     expect(result.current.data).toEqual(toProductionPlanFact(productionPlan(202)));
     expect(productionPlanKeys.detail(202)).not.toEqual(productionPlanKeys.detail(203));
   });
