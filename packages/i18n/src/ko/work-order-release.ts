@@ -1,4 +1,14 @@
 export const workOrderRelease = {
+  actions: {
+    label: '작업지시 배포 작업',
+    cancel: '취소',
+    release: '배포 확정',
+    reasons: {
+      noSelection: (action: string): string => `${action}: 배포할 작업지시를 선택하세요.`,
+      submitting: (action: string): string => `${action}: 배포 처리를 기다리고 있습니다.`,
+      release: (reason: string): string => `배포 확정: ${reason}`,
+    },
+  },
   candidateList: {
     pane: '배포 후보 작업지시 목록',
     fields: { workOrderNo: 'W/O 번호', item: '품목', quantity: '지시 수량' },
