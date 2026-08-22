@@ -303,6 +303,47 @@ const workCalendarRoutes = (): StubRoute[] => [
   },
 ];
 
+/** W-05-07이 첫 진입에 부르는 것들 — 설비 목록과 공장(채널은 설비를 고른 뒤에 온다). */
+const collectionChannelRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/mdm/equipments'),
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            equipmentId: 3001,
+            plantId: 11,
+            equipmentCode: 'EQ-101',
+            equipmentName: '가상 성형기 1호',
+            equipmentTypeCode: 'PRESS',
+            statusCode: 'IN_SERVICE',
+            calibrationRequired: false,
+            isActive: true,
+          },
+        ],
+        page: { page: 1, size: 100, total: 1 },
+      }),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/plants'),
+    respond: () => jsonResponse(calendarPlantsResponse()),
+  },
+  /*
+   * ⭐ **고른 뒤에 도는 것까지 스텁을 둔다.** `createStubFetch` 는 스텁에 없는 요청을 던지지만
+   * 그 던짐이 `queryFn` 안에서 삼켜져 **조용히 오류로 끝난다** — 화면이 그 오류를 그리지 않으면
+   * 아무 흔적도 남지 않고, 시험은 통과하면서 실제로는 실패 경로를 돌게 된다.
+   */
+  {
+    match: (request) => isGet(request, '/maintenance/collection-channels'),
+    respond: () => jsonResponse({ items: [] }),
+  },
+  {
+    match: (request) => isGet(request, '/maintenance/collection-channels/observations'),
+    respond: () => jsonResponse({ items: [] }),
+  },
+  lookupRoute('/mdm/uoms', []),
+];
+
 const lotStatusRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/code-values', []),
   lookupRoute('/mdm/warehouses', []),
@@ -1209,6 +1250,7 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       '/equipment/master',
       '/equipment/tool-master',
       '/equipment/work-calendar',
+      '/equipment/collection-channels',
     ]);
   });
 });
@@ -1272,6 +1314,77 @@ describe('appRouter — 작업 캘린더 설정의 진입 경로', () => {
     expect(
       screen.getByRole('region', { name: messages.workCalendar.grid.title }),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * **W-05-07은 미결이 있는데도 메뉴를 연다** — 형제 W-05-11 과 갈리는 근거를 이 describe 가 잰다.
+ *
+ * 계약이 이어 둔 검사 항목의 **이름**을 내려주지 않지만(`omf-mes#203`), 그것은 표시의
+ * 한계이지 「수집 채널 매핑 관리」라는 이름이 약속하는 것 — 채널을 항목에 잇는 자리 — 을
+ * 어기지 않는다. 잇는 일은 온전히 된다.
+ */
+describe('appRouter — 수집 채널 매핑 관리의 진입 경로', () => {
+  it('사이드바에 이 화면 항목이 있다', () => {
+    expect(sidebarHrefs()).toContain('/equipment/collection-channels');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).getByRole('link', { name: '수집 채널 매핑 관리' })).toHaveAttribute(
+      'href',
+      '/equipment/collection-channels',
+    );
+  });
+
+  /* 섹션 맨 뒤다 — 설비가 먼저 있어야 채널을 붙일 자리가 생긴다. */
+  it('같은 섹션의 앞선 셋 뒤에 선다', () => {
+    const hrefs = sidebarHrefs();
+
+    expect(hrefs.indexOf('/equipment/collection-channels')).toBeGreaterThan(
+      hrefs.indexOf('/equipment/work-calendar'),
+    );
+  });
+
+  it('라우트 표에 주소가 있다', () => {
+    expect(routedPaths()).toContain('/equipment/collection-channels');
+  });
+
+  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
+    renderRoutedApp('/equipment/collection-channels', collectionChannelRoutes());
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.collectionChannel.title }),
+    ).toBeInTheDocument();
+  });
+
+  /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 조회가 실제로 도는 것까지 봐야 한다. */
+  it('첫 진입에 설비 목록이 실제로 그려진다', async () => {
+    renderRoutedApp('/equipment/collection-channels', collectionChannelRoutes());
+
+    expect(await screen.findByText('EQ-101')).toBeInTheDocument();
+  });
+
+  /*
+   * 잇지 못하는 「매핑 관리」를 노출하지 않는다(정책 §5.2). 첫 진입에서 설비를 골라
+   * 채널을 더하는 데까지 갈 수 있어야 한다.
+   */
+  it('첫 진입에 설비를 골라 채널을 더하러 갈 수 있다', async () => {
+    const user = userEvent.setup();
+
+    renderRoutedApp('/equipment/collection-channels', collectionChannelRoutes());
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: messages.collectionChannel.equipment.selectLabel('EQ-101', '가상 성형기 1호'),
+      }),
+    );
+
+    expect(
+      await screen.findByRole('button', {
+        name: messages.collectionChannel.actions.addChannel,
+      }),
+    ).toBeEnabled();
   });
 });
 

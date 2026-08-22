@@ -243,6 +243,18 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/equipment/work-calendar" icon="calendar_month">
               작업 캘린더 설정
             </NavItem>
+            {/*
+             * W-05-07 — 섹션 **맨 뒤**다. 앞의 셋이 「무엇이 있고 언제 도는가」를 정하고,
+             * 이것은 그 설비가 **보내오는 것을 어디에 담을지**를 정한다 — 설비가 먼저 있어야
+             * 채널을 붙일 자리가 생긴다.
+             *
+             * IA 는 이 화면을 「설비/툴 > 비가동·계측」 아래 두었으나, 그 하위 묶음은 아직
+             * 이 화면 하나뿐이라 **묶음을 만들지 않는다** — 항목 하나짜리 묶음은 층만 늘리고
+             * 찾는 길을 길게 한다. 형제(W-05-06·W-05-08)가 서면 그때 묶는다.
+             */}
+            <NavItem to="/equipment/collection-channels" icon="sensors">
+              수집 채널 매핑 관리
+            </NavItem>
           </SidebarSection>
           {/*
            * W-CO-09 — 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**다.
