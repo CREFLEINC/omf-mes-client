@@ -254,7 +254,7 @@ describe('W-05-07 ② — 채널을 고친다', () => {
     const user = userEvent.setup();
 
     await pickFirstEquipment();
-    await user.click(within(channelPane()).getByRole('button', { name: 'BARREL_TEMP' }));
+    await user.click(within(channelPane()).getByRole('button', { name: /^BARREL_TEMP/ }));
   };
 
   it('채널명을 누르면 수정 창이 그 값으로 열린다', async () => {
@@ -307,15 +307,18 @@ describe('W-05-07 ② — 채널을 고친다', () => {
   it('이름만 고쳐도 이어 둔 검사 항목과 사용 여부가 그대로 실려 나간다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
+    const linked = makeChannel(7003, 'BARREL_TEMP', {
+      signalName: '배럴 온도',
+      unitCode: 'CEL',
+      inspectionItemId: 5009,
+      isActive: false,
+    });
 
     renderScreen({
       writes,
-      detail: makeChannel(7003, 'BARREL_TEMP', {
-        signalName: '배럴 온도',
-        unitCode: 'CEL',
-        inspectionItemId: 5009,
-        isActive: false,
-      }),
+      /* ⭐ 폼은 «목록 행»에서 시작한다 — 상세를 기다리는 동안 빈 창을 보이지 않기 위해서다. */
+      channels: [channelItems[0] as CollectionChannel, linked],
+      detail: linked,
     });
     await openEdit();
 
@@ -436,7 +439,7 @@ describe('W-05-07 ② — 저장이 실패하면', () => {
       writeBody: { conflictCause: 'user', message: '다른 사용자가 먼저 고쳤습니다.' },
     });
     await pickFirstEquipment();
-    await user.click(within(channelPane()).getByRole('button', { name: 'BARREL_TEMP' }));
+    await user.click(within(channelPane()).getByRole('button', { name: /^BARREL_TEMP/ }));
 
     const dialog = within(await screen.findByRole('dialog'));
 

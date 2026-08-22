@@ -4,6 +4,9 @@ import type { components } from '@omf-mes/api-client';
 export type CollectionChannel = components['schemas']['CollectionChannel'];
 export type Equipment = components['schemas']['Equipment'];
 export type PageMeta = components['schemas']['PageMeta'];
+export type InspectionPlan = components['schemas']['InspectionPlan'];
+export type InspectionPlanVersion = components['schemas']['InspectionPlanVersion'];
+export type InspectionItemSpec = components['schemas']['InspectionItemSpec'];
 
 /** 왼쪽 설비 목록을 좁히는 조건. 「조회」를 눌러야 나간다. */
 export interface EquipmentFilters {
@@ -37,4 +40,23 @@ export interface ChannelFormValues {
   channelKey: string;
   signalName: string;
   unitCode: string;
+  /**
+   * 이 채널이 값을 실어 보낼 검사 항목. **`null` 이면 미매핑이고 그때 값은 버려진다.**
+   *
+   * ⭐ **수는 문자열로 들지 않는다** — 이 값은 사람이 치는 것이 아니라 «고르는» 것이라
+   * 중간 상태가 없다. 고르지 않음과 0을 가를 일도 없다.
+   */
+  inspectionItemId: number | null;
+}
+
+/**
+ * 검사 항목을 찾아가는 길. **폼 값이 아니다** — 저장되지 않고, 어느 항목을 고를지
+ * 좁히는 데만 쓴다.
+ *
+ * ⚠ 계약에 검사 항목의 «전체» 목록이 없다. 항목은 검사기준의 버전에 속하고, 버전은
+ * 기준에 속한다 — 그래서 세 칸을 차례로 좁혀야 항목에 닿는다.
+ */
+export interface ItemPickerPath {
+  inspectionPlanId: number | null;
+  inspectionPlanVersionId: number | null;
 }

@@ -3,7 +3,15 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { CodeOption } from './options';
-import type { CollectionChannel, Equipment, EquipmentFilters, PageMeta } from './types';
+import type {
+  CollectionChannel,
+  Equipment,
+  EquipmentFilters,
+  InspectionItemSpec,
+  InspectionPlan,
+  InspectionPlanVersion,
+  PageMeta,
+} from './types';
 
 /**
  * 이 화면이 쓰는 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -230,4 +238,132 @@ export const useUomLookup = (): UomLookupResult => {
     truncated: data !== undefined && data.page.total > data.items.length,
     isError: uoms.isError,
   };
+};
+
+/** 검사기준·버전·항목을 좁혀 가는 세 조회의 캐시 키. */
+export const inspectionKeys = {
+  plans: ['collection-channel-inspection-plans'] as const,
+  versions: (inspectionPlanId: number) =>
+    ['collection-channel-inspection-plan-versions', inspectionPlanId] as const,
+  items: (inspectionPlanVersionId: number) =>
+    ['collection-channel-inspection-items', inspectionPlanVersionId] as const,
+};
+
+/** 고를 검사기준 수의 상한. 넘으면 잘리고, 잘렸다는 사실을 창이 말한다. */
+const PLAN_PAGE_SIZE = 200;
+
+export interface InspectionLookupResult<TItem> {
+  items: TItem[];
+  truncated: boolean;
+  isError: boolean;
+  isLoading: boolean;
+}
+
+const NO_PLANS: InspectionPlan[] = [];
+const NO_VERSIONS: InspectionPlanVersion[] = [];
+const NO_SPECS: InspectionItemSpec[] = [];
+
+/** 검사기준 목록. 항목에 닿는 세 칸 중 첫째다. */
+export const useInspectionPlans = (enabled: boolean): InspectionLookupResult<InspectionPlan> => {
+  const { client } = useApiClient();
+
+  const plans = useQuery({
+    queryKey: inspectionKeys.plans,
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/inspection-plans', { params: { query: { size: PLAN_PAGE_SIZE } } }),
+      ),
+  });
+
+  const data = plans.data;
+
+  return {
+    items: data?.items ?? NO_PLANS,
+    truncated: data !== undefined && data.page.total > data.items.length,
+    isError: plans.isError,
+    isLoading: enabled && plans.isPending,
+  };
+};
+
+/**
+ * 버전 목록. **기준을 고르기 전에는 조회하지 않는다** — 계약이 `inspectionPlanId` 를
+ * 필수로 두었다. 쪽이 없어(계약) 잘림을 판정할 자리가 없으므로 늘 거짓이다.
+ */
+export const useInspectionPlanVersions = (
+  inspectionPlanId: number | null,
+): InspectionLookupResult<InspectionPlanVersion> => {
+  const { client } = useApiClient();
+
+  const versions = useQuery({
+    queryKey: inspectionKeys.versions(inspectionPlanId ?? 0),
+    enabled: inspectionPlanId !== null,
+    queryFn: () => {
+      if (inspectionPlanId === null) {
+        throw new Error('검사기준을 고르기 전에는 버전을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/quality/inspection-plan-versions', {
+          params: { query: { inspectionPlanId } },
+        }),
+      );
+    },
+  });
+
+  return {
+    items: versions.data?.items ?? NO_VERSIONS,
+    truncated: false,
+    isError: versions.isError,
+    isLoading: inspectionPlanId !== null && versions.isPending,
+  };
+};
+
+/** 검사 항목 목록. 버전을 고르기 전에는 조회하지 않는다. */
+export const useInspectionItemSpecs = (
+  inspectionPlanVersionId: number | null,
+): InspectionLookupResult<InspectionItemSpec> => {
+  const { client } = useApiClient();
+
+  const specs = useQuery({
+    queryKey: inspectionKeys.items(inspectionPlanVersionId ?? 0),
+    enabled: inspectionPlanVersionId !== null,
+    queryFn: () => {
+      if (inspectionPlanVersionId === null) {
+        throw new Error('버전을 고르기 전에는 검사 항목을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/quality/inspection-plan-versions/{inspectionPlanVersionId}/items', {
+          params: { path: { inspectionPlanVersionId } },
+        }),
+      );
+    },
+  });
+
+  return {
+    items: specs.data?.items ?? NO_SPECS,
+    truncated: false,
+    isError: specs.isError,
+    isLoading: inspectionPlanVersionId !== null && specs.isPending,
+  };
+};
+
+/**
+ * 단위 식별자 → 단위 코드. **검사 항목은 단위를 식별자로, 채널은 코드로 든다** —
+ * 둘을 견주려면 한쪽을 옮겨야 한다.
+ *
+ * ⚠ **옮기지 못하는 값이 있다.** 단위 목록이 잘리거나 실패하면 그 식별자는 코드를 얻지
+ * 못한다 — 그때 「다르다」고도 「같다」고도 말하지 않는다(`unit-match.ts`).
+ */
+export const useUomCodeById = (): Map<number, string> => {
+  const { client } = useApiClient();
+
+  const uoms = useQuery({
+    queryKey: ['lookups', 'uoms'] as const,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+  });
+
+  return new Map((uoms.data?.items ?? []).map((uom) => [uom.uomId, uom.uomCode]));
 };

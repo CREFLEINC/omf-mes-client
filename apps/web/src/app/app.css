@@ -16,6 +16,7 @@
  * .form-grid    폼 필드 2열 그리드 — 안의 셀은 자식을 칸 폭에 맞춰 늘린다(규범 3-1)
  * .form-grid-full  폼 2열 그리드 안에서 줄 전체를 쓰는 블록(표·배너 등 · 규범 3-1)
  * .check-group  한 칸에 나란히 놓은 확인칸 사이 간격
+ * .picker-group 폼 안에서 «함께 읽어야 하는» 칸들을 이름 붙은 한 묶음으로 두는 자리
  * .form-actions 폼 하단 액션 줄(우측 정렬)
  * .form-actions-secondary  사유가 붙은 보조 액션만 줄 왼쪽 끝으로(규범 4)
  * .wide-select  값이 긴 코드를 고르는 선택칸에 최소 폭을 준다(옵트인 · 규범 3-2)
@@ -257,6 +258,26 @@ main > * + * {
 .field-cell.wide-select {
   align-items: stretch;
   min-width: 13rem;
+}
+
+/*
+ * 폼 안에서 «함께 읽어야 하는» 칸들을 이름 붙은 한 묶음으로 둔다.
+ *
+ * 차례로 좁혀 가는 선택칸들(기준 → 버전 → 항목)은 따로 떨어지면 관계가 읽히지 않는다.
+ * `fieldset`/`legend`를 쓰는 이유는 보조기술이 그 묶음을 하나로 읽어 주기 때문이며,
+ * 브라우저 기본 서식(테두리·안쪽 여백·바깥 여백)은 걷어내고 이름만 남긴다.
+ *
+ * ⚠ `min-width: 0`이 없으면 안 된다 — `fieldset`의 기본값이 `min-content`라
+ * 격자 칸 안에서 «내용이 요구하는 만큼» 넓어지며 칸을 밀어낸다. 다른 블록에는 없는 함정이다.
+ */
+.picker-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 /* 한 칸에 확인칸을 나란히 두면 간격이 없어 문구가 붙어 읽힌다. */

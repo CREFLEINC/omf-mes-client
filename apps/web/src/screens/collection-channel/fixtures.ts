@@ -1,4 +1,11 @@
-import type { CollectionChannel, Equipment, PageMeta } from './types';
+import type {
+  CollectionChannel,
+  Equipment,
+  InspectionItemSpec,
+  InspectionPlan,
+  InspectionPlanVersion,
+  PageMeta,
+} from './types';
 
 /** 값은 전부 합성이다. 실 운영 값을 쓰지 않는다. */
 
@@ -68,4 +75,87 @@ export const plantListResponse = () => ({
     { plantId: 12, plantCode: 'P2', plantName: '가상 2공장', isActive: true },
   ],
   page: pageMeta(2),
+});
+
+export const makePlan = (
+  inspectionPlanId: number,
+  inspectionPlanCode: string,
+  inspectionPlanName: string,
+): InspectionPlan => ({
+  inspectionPlanId,
+  inspectionPlanCode,
+  inspectionPlanName,
+  inspectionTypeCode: 'PQC',
+  isActive: true,
+});
+
+export const planItems: InspectionPlan[] = [
+  makePlan(4001, 'IP-101', '가상 성형 공정 검사기준'),
+  makePlan(4002, 'IP-102', '가상 조립 공정 검사기준'),
+];
+
+export const planListResponse = (
+  items: InspectionPlan[] = planItems,
+  total: number = items.length,
+) => ({ items, page: pageMeta(total, 200) });
+
+export const makeVersion = (
+  inspectionPlanVersionId: number,
+  inspectionPlanId: number,
+  planVersion: number,
+  statusCode = 'CONFIRMED',
+): InspectionPlanVersion => ({
+  inspectionPlanVersionId,
+  inspectionPlanId,
+  planVersion,
+  effectiveFrom: '2026-01-01',
+  samplingMethodCode: 'FULL',
+  inspectionFrequencyCode: 'EVERY_LOT',
+  statusCode,
+});
+
+export const versionItems: InspectionPlanVersion[] = [
+  makeVersion(4101, 4001, 2),
+  makeVersion(4102, 4001, 1, 'OBSOLETE'),
+];
+
+export const versionListResponse = (items: InspectionPlanVersion[] = versionItems) => ({ items });
+
+export const makeSpec = (
+  inspectionItemSpecId: number,
+  inspectionItemCode: string,
+  inspectionItemName: string,
+  overrides: Partial<InspectionItemSpec> = {},
+): InspectionItemSpec => ({
+  inspectionItemSpecId,
+  inspectionPlanVersionId: 4101,
+  sequenceNo: 1,
+  inspectionItemCode,
+  inspectionItemName,
+  dataTypeCode: 'NUMERIC',
+  measurementCount: 1,
+  requiredFlag: true,
+  automaticJudgment: true,
+  ...overrides,
+});
+
+export const specItems: InspectionItemSpec[] = [
+  makeSpec(5001, 'CYCLE', '사이클 타임', { uomId: 1, sequenceNo: 1 }),
+  /** ⭐ 단위가 채널과 «다른» 항목 — 경고가 서는지 보는 자리다. */
+  makeSpec(5002, 'BARREL_T', '배럴 온도', { uomId: 2, sequenceNo: 2 }),
+  /** 단위를 옮길 수 없는 항목 — 「모른다」가 서는지 보는 자리다. */
+  makeSpec(5003, 'NO_UOM', '단위 미지정 항목', { uomId: 999, sequenceNo: 3 }),
+  /** 단위가 아예 없는 항목 — 견줄 것이 없다. */
+  makeSpec(5004, 'TEXT_ONLY', '텍스트 항목', { dataTypeCode: 'TEXT', sequenceNo: 4 }),
+];
+
+export const specListResponse = (items: InspectionItemSpec[] = specItems) => ({ items });
+
+export const uomListResponse = () => ({
+  items: [
+    { uomId: 1, uomCode: 'SEC', uomName: '초', decimalScale: 2, isActive: true },
+    { uomId: 2, uomCode: 'CEL', uomName: '섭씨온도', decimalScale: 1, isActive: true },
+    { uomId: 3, uomCode: 'MM', uomName: '밀리미터', decimalScale: 2, isActive: true },
+  ],
+  page: pageMeta(3),
 });

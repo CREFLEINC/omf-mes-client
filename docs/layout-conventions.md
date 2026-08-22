@@ -543,6 +543,7 @@ body {
 | `.form-grid .field-cell` | 폼 그리드 안의 셀이 자식을 칸 폭에 맞춰 늘린다(`align-items: stretch`) | 3-1 |
 | `.field-cell.wide-select` | 값이 긴 코드를 고르는 선택칸에 **최소 폭 `13rem`**을 준다. **옵트인**이며 붙인 칸만 넓어진다. 디자인 시스템 선택지 목록이 트리거 폭에 갇혀 잘리는 것의 **임시 우회**(design-system-v2-webui#62) | 3-2 |
 | `.check-group` | 한 칸에 나란히 놓은 확인칸 사이 간격 `--space-2` | — |
+| `.picker-group` | 폼 안에서 **함께 읽어야 하는 칸들**을 이름 붙은 한 묶음으로 둔다(`fieldset`/`legend`). 브라우저 기본 서식은 걷어내고 이름만 남긴다. ⚠ `min-width: 0`이 필수다 — `fieldset`의 기본값이 `min-content`라 격자 칸 안에서 칸을 밀어낸다 | — |
 | `body` | 한국어를 어절 경계에서만 끊는다(`word-break: keep-all` · `overflow-wrap: break-word`) | 7 |
 | `.login-shell` | 셸 밖에 서는 화면이 직접 렌더하는 `<main>`. 내용을 뷰포트 한가운데 세운다(`box-sizing: border-box` 포함 — 전역 리셋이 없다) | 8 |
 | `.login-card` | 그 화면이 세우는 카드의 폭 상한 `24rem`. 창이 좁으면 남는 폭을 그대로 쓴다 | 8 |

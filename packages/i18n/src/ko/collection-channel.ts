@@ -99,6 +99,57 @@ export const collectionChannel = {
     /** 등록 창은 «고른 설비»에 매인다 — 어느 설비에 더하는지 창이 스스로 말한다. */
     equipmentFixed: (code: string, name: string): string => `${code} · ${name}`,
   },
+  /**
+   * ⭐ **이 화면의 일이 여기서 끝난다** — 채널을 검사 항목에 잇는 것.
+   *
+   * ⚠ 계약에 검사 항목의 «전체» 목록이 없다. 항목은 검사기준의 버전에 속하므로
+   * 세 칸을 차례로 좁혀야 항목에 닿는다.
+   */
+  itemPicker: {
+    legend: '대상 검사 항목',
+    planLabel: '검사기준',
+    versionLabel: '검사기준 버전',
+    itemLabel: '검사 항목',
+    planPlaceholder: '검사기준을 고르세요',
+    versionPlaceholder: '버전을 고르세요',
+    itemPlaceholder: '검사 항목을 고르세요',
+    versionOption: (planVersion: number, statusLabel: string): string =>
+      `Rev ${String(planVersion)} · ${statusLabel}`,
+    /** 이 화면은 상태 값 목록을 받지 않는다 — 코드를 그대로 둔다(공유계약 G-9). */
+    unmapAction: '연결 해제',
+    unmapped: '이어 둔 검사 항목이 없습니다. 이 채널로 들어오는 값은 저장되지 않고 버려집니다.',
+    /**
+     * ⛔ **아는 척하지 않는다.** 목록도 상세도 항목의 이름을 내려주지 않아, 이어 둔 것이
+     * «무엇인지» 화면이 알 수 없다. 감추면 사용자는 확인했다고 믿는다.
+     *
+     * ⚠ **이 말은 「아직 못 찾았을 때」만 한다.** 아래에서 골라 이름을 알게 된 뒤에도
+     * 「확인할 수 없다」고 하면, 바로 옆에 이름을 적어 두고 모른다고 말하는 셈이 된다.
+     */
+    mappedUnknown:
+      '검사 항목이 이어져 있습니다. 어느 항목인지는 이 화면에서 확인할 수 없으니, 확인하려면 아래에서 다시 고르세요.',
+    mappedKnown: (name: string): string => `이 채널의 값은 ${name} 항목으로 갑니다.`,
+    versionNeedsPlan: '검사기준을 먼저 고르면 버전을 고를 수 있습니다.',
+    itemNeedsVersion: '버전을 먼저 고르면 검사 항목을 고를 수 있습니다.',
+    noVersions: '이 검사기준에는 아직 버전이 없습니다.',
+    noItems: '이 버전에는 아직 검사 항목이 없습니다.',
+    plansLoadFailed: '검사기준 목록을 불러오지 못했습니다.',
+    versionsLoadFailed: '버전 목록을 불러오지 못했습니다.',
+    itemsLoadFailed: '검사 항목 목록을 불러오지 못했습니다.',
+  },
+  /**
+   * ⭐ **단위가 다르면 경고만 한다 — 변환하지 않는다**(스펙 §5-5).
+   *
+   * ⛔ 변환 규칙을 어디에도 저장하지 않았다. 화면이 임의로 옮기면 **측정값이 조용히
+   * 어긋나고**, 어긋난 뒤에는 어느 쪽이 맞는지 아무도 모른다.
+   */
+  unitMatch: {
+    mismatchTitle: '단위가 서로 다릅니다',
+    mismatch: (channelUnitCode: string, itemUnitCode: string): string =>
+      `이 채널은 ${channelUnitCode}로 받고 고른 검사 항목은 ${itemUnitCode}를 씁니다. 값을 자동으로 바꾸지 않으니, 보내는 쪽이나 항목 정의를 맞춰 주세요.`,
+    /** ⛔ 「모른다」를 「같다」로 접지 않는다 — 침묵하면 맞는 것으로 읽힌다(G-9). */
+    unknown:
+      '고른 검사 항목의 단위를 확인하지 못해 이 채널의 단위와 견주지 못했습니다. 저장은 되지만 단위가 맞는지 직접 확인하세요.',
+  },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
   actionReasons: {
     equipmentFixed: '설비는 왼쪽에서 고른 것으로 정해지며 이 창에서 옮길 수 없습니다.',

@@ -10,6 +10,8 @@ export const emptyFormValues = (): ChannelFormValues => ({
   channelKey: '',
   signalName: '',
   unitCode: '',
+  /* 새 채널은 아직 이어 둔 데가 없다 — 그 상태로 등록할 수 있다(스펙 §5-2). */
+  inspectionItemId: null,
 });
 
 /**
@@ -21,6 +23,8 @@ export const formValuesFrom = (channel: CollectionChannel): ChannelFormValues =>
   channelKey: channel.channelKey,
   signalName: channel.signalName ?? '',
   unitCode: channel.unitCode ?? '',
+  /* 값이 오지 않는 것과 `null` 은 같은 뜻이다 — 둘 다 「이어 둔 데가 없다」(`channel-notes.ts`). */
+  inspectionItemId: channel.inspectionItemId ?? null,
 });
 
 /**
@@ -50,6 +54,8 @@ export const toChannelCreate = (
     channelKey: trimmed(values.channelKey),
     ...(signalName === '' ? {} : { signalName }),
     ...(unitCode === '' ? {} : { unitCode }),
+    /* 이어 둔 데가 있으면 처음부터 실어 보낸다 — 등록 뒤 다시 열어 잇게 하지 않는다. */
+    ...(values.inspectionItemId === null ? {} : { inspectionItemId: values.inspectionItemId }),
   };
 };
 
@@ -63,15 +69,18 @@ export const toChannelCreate = (
  * 서버가 「그대로 두라」로 읽을지 「비우라」로 읽을지 **이 계약만으로는 알 수 없다.** 어느
  * 쪽으로 읽혀도 같은 결과가 나오는 유일한 방법이 지금 값을 그대로 되보내는 것이다.
  *
- * ⛔ 그러지 않으면 **이름만 고쳤는데 이어 둔 검사 항목이 조용히 끊기는** 일이 난다 —
- * 그 사실은 목록의 「미매핑」이 하나 늘어야 비로소 드러난다.
+ * ⭐ **검사 항목은 이제 폼에서 온다** — 창에서 잇고 끊을 수 있다. `null` 은 「끊었다」는
+ * 뜻이고 그 순간부터 그 채널의 값은 버려진다.
+ *
+ * ⛔ **사용 여부는 여전히 폼이 아니라 «지금 값»에서 온다.** 이 창에는 켜고 끄는 자리가 없어
+ * 폼에 두면 값이 어디서 정해지는지 흐려진다.
  */
 export const toChannelUpdate = (
   values: ChannelFormValues,
-  current: Pick<CollectionChannel, 'inspectionItemId' | 'isActive'>,
+  current: Pick<CollectionChannel, 'isActive'>,
 ): CollectionChannelUpdate => ({
   signalName: trimmed(values.signalName),
   unitCode: trimmed(values.unitCode),
-  inspectionItemId: current.inspectionItemId ?? null,
+  inspectionItemId: values.inspectionItemId,
   isActive: current.isActive,
 });
