@@ -17,10 +17,12 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import {
+  CODE_GROUPS,
   type CodeOption,
   ensureOption,
   groupDeactivateImpact,
   selectableOptions,
+  toCodeLabels,
 } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
@@ -52,6 +54,7 @@ import {
   groupDetailPath,
   groupKeys,
   isTruncated,
+  useCodeValues,
   useEquipmentDetail,
   useEquipmentList,
   useGroupDetail,
@@ -154,6 +157,7 @@ export const EquipmentMasterScreen = () => {
       equipmentTypeCode: searchParams.get('eqtype') ?? '',
       calibrationRequired: searchParams.get('calib') === '1',
       includeInactive: searchParams.get('eqinactive') === '1',
+      includeDisposed: searchParams.get('disposed') === '1',
     }),
     [searchParams],
   );
@@ -166,6 +170,12 @@ export const EquipmentMasterScreen = () => {
   const lookups = useLookupOptions();
   const detail = useGroupDetail(selectedGroupId);
   const equipmentList = useEquipmentList(selectedGroupId, equipmentFilters);
+  /**
+   * 자산 상태 값 목록. **비어 있어도 화면을 감추지 않는다** — 시드가 아직 없을 수 있고
+   * (설계 `omf-mes#182`) 그때는 상태가 코드로 보이고 폐기가 잠긴다(G-2).
+   */
+  const statusValues = useCodeValues(CODE_GROUPS.equipmentStatus);
+  const statusOptions = useMemo(() => toCodeLabels(statusValues.data ?? []), [statusValues.data]);
   const equipmentItems = equipmentList.data?.items ?? [];
 
   /**
@@ -475,12 +485,60 @@ export const EquipmentMasterScreen = () => {
     },
   });
 
+  /**
+   * 설비 상세를 다시 받아 잠금 토큰을 갱신한다.
+   *
+   * ⭐ **저장 충돌을 푸는 유일한 길이다.** 배너가 「최신 내용을 불러온 뒤 다시 저장하세요」라고
+   * 말하면서 누를 자리를 두지 않으면, 사용자는 무엇을 해야 하는지 듣고도 할 수 없다 —
+   * 「다시 시도하세요」라고 말하는 갈래에는 반드시 누를 자리가 있어야 한다.
+   */
+  const reloadEquipmentDetail = () => {
+    void equipmentDetail.refetch();
+  };
+
+  /** 폐기할 설비. 닫혀 있으면 `null`. */
+  const [disposeTarget, setDisposeTarget] = useState<Equipment | null>(null);
+
+  /**
+   * ⛔ **되돌릴 수 없는 쓰기다.** 그런데도 멱등 키 수명은 기본값(`per-attempt`)이 맞다 —
+   * `useMasterWrite` 가 「**본문이 빈 액션**에 `until-applied` 를 쓰지 말라」고 정했다.
+   * 보낼 값이 없으면 「값이 바뀌면 새 키」가 성립하지 않아, 다른 화면에서 원인을 고치고
+   * 돌아와 다시 눌러도 같은 키가 나가 **영영 성공할 수 없다.**
+   */
+  const disposeWrite = useMasterWrite<void, Equipment>({
+    request: (_variables, headers) =>
+      client.POST('/mdm/equipments/{equipmentId}:dispose', {
+        params: {
+          path: { equipmentId: disposeTarget?.equipmentId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    /* 잠금 토큰은 상세 경로에 보관돼 있다 — 요청 경로로 꺼내면 언제나 비어 있다. */
+    etagPath: disposeTarget === null ? null : equipmentDetailPath(disposeTarget.equipmentId),
+    invalidateKeys: [equipmentKeys.all],
+    // 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다.
+    knownFields: [],
+    onSuccess: () => {
+      setDisposeTarget(null);
+      /*
+       * ⛔ **창도 함께 닫는다.** 폐기된 자산은 편집이 풀리지 않으므로, 열린 폼을 남기면
+       * 사용자가 고칠 수 있다고 믿고 치다가 저장에서 거절당한다.
+       */
+      setEquipmentDialog(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
   /** 편집 중이던 것을 통째로 거둔다 — 인라인 오류와 저장 실패 배너. */
   const resetEditing = () => {
     resetIfIdle(groupWrite);
     resetIfIdle(deactivateWrite);
     resetIfIdle(equipmentWrite);
     resetIfIdle(equipmentDeactivateWrite);
+    resetIfIdle(disposeWrite);
     setLocalFieldErrors({});
   };
 
@@ -616,6 +674,7 @@ export const EquipmentMasterScreen = () => {
       eqtype: next.equipmentTypeCode === '' ? null : next.equipmentTypeCode,
       calib: next.calibrationRequired ? '1' : null,
       eqinactive: next.includeInactive ? '1' : null,
+      disposed: next.includeDisposed ? '1' : null,
     });
   };
 
@@ -758,6 +817,7 @@ export const EquipmentMasterScreen = () => {
                     isLoading={equipmentList.isPending}
                     appliedFilters={equipmentFilters}
                     onApplyFilters={handleApplyEquipmentFilters}
+                    statusOptions={statusOptions}
                     onAdd={openEquipmentCreate}
                     onEdit={openEquipmentEdit}
                     loadError={
@@ -879,6 +939,7 @@ export const EquipmentMasterScreen = () => {
           lastCalibrationDate={equipmentDetail.data?.equipment.lastCalibrationDate ?? null}
           calibrationDueDate={equipmentDetail.data?.equipment.calibrationDueDate ?? null}
           isActive={equipmentDetail.data?.equipment.isActive ?? false}
+          statusOptions={statusOptions}
           isSaving={equipmentWrite.isSaving}
           onClose={() => setEquipmentDialog(null)}
           onSave={handleSaveEquipment}
@@ -888,16 +949,47 @@ export const EquipmentMasterScreen = () => {
               setDeactivateTarget(equipmentDetail.data.equipment);
             }
           }}
+          onDispose={() => {
+            resetIfIdle(disposeWrite);
+            if (equipmentDetail.data !== undefined) {
+              setDisposeTarget(equipmentDetail.data.equipment);
+            }
+          }}
+        />
+      )}
+
+      {disposeTarget !== null && (
+        <DeactivateConfirmDialog
+          title={t.dispose.title}
+          targetNote={t.dispose.target(
+            `${disposeTarget.equipmentCode} · ${disposeTarget.equipmentName}`,
+          )}
+          confirmLabel={t.dispose.confirm}
+          impactNote={t.dispose.impact}
+          reversibilityNote={t.dispose.notReversible}
+          isSaving={disposeWrite.isSaving}
+          banner={<SaveErrorBanner error={disposeWrite.error} onReload={reloadEquipmentDetail} />}
+          onClose={() => setDisposeTarget(null)}
+          onConfirm={() => disposeWrite.write(undefined)}
         />
       )}
 
       {deactivateTarget !== null && (
         <DeactivateConfirmDialog
           title={t.deactivate.equipmentTitle}
-          targetLabel={`${deactivateTarget.equipmentCode} · ${deactivateTarget.equipmentName}`}
+          targetNote={t.deactivate.target(
+            `${deactivateTarget.equipmentCode} · ${deactivateTarget.equipmentName}`,
+          )}
+          confirmLabel={t.deactivate.confirm}
           impactNote={t.deactivate.equipmentImpact}
+          reversibilityNote={t.deactivate.notReversibleHere}
           isSaving={equipmentDeactivateWrite.isSaving}
-          banner={<SaveErrorBanner error={equipmentDeactivateWrite.error} />}
+          banner={
+            <SaveErrorBanner
+              error={equipmentDeactivateWrite.error}
+              onReload={reloadEquipmentDetail}
+            />
+          }
           onClose={() => setDeactivateTarget(null)}
           onConfirm={() => equipmentDeactivateWrite.write(undefined)}
         />
@@ -906,8 +998,12 @@ export const EquipmentMasterScreen = () => {
       {isDeactivateOpen && detail.data !== undefined && (
         <DeactivateConfirmDialog
           title={t.deactivate.title}
-          targetLabel={`${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`}
+          targetNote={t.deactivate.target(
+            `${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`,
+          )}
+          confirmLabel={t.deactivate.confirm}
           impactNote={groupDeactivateImpact(detail.data.memberEquipmentCount)}
+          reversibilityNote={t.deactivate.notReversibleHere}
           isSaving={deactivateWrite.isSaving}
           /* 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다. */
           banner={<SaveErrorBanner error={deactivateWrite.error} onReload={handleReloadDetail} />}

@@ -3,7 +3,12 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId } from 'react';
 
-import { EQUIPMENT_TYPE_OPTIONS, type CodeOption, statusLabel } from './code-options';
+import {
+  DISPOSED_STATUS_CODE,
+  EQUIPMENT_TYPE_OPTIONS,
+  type CodeOption,
+  statusLabel,
+} from './code-options';
 import { FieldLabel } from './field-label';
 import { groupAssignmentNote, hierarchyText, type EquipmentHierarchy } from './hierarchy-text';
 import { SelectField } from './select-field';
@@ -29,10 +34,13 @@ export interface EquipmentFormDialogProps {
   calibrationDueDate: string | null;
   /** 사용 중인 설비인가. 이미 중지된 것에는 중지할 대상이 없다 */
   isActive: boolean;
+  /** 자산 상태 선택지. **비어 있으면 폐기를 열 수 없다** — 이미 폐기됐는지 판정할 수 없다 */
+  statusOptions: CodeOption[];
   isSaving: boolean;
   onClose: () => void;
   onSave: () => void;
   onDeactivate: () => void;
+  onDispose: () => void;
 }
 
 const t = messages.equipmentMaster;
@@ -95,10 +103,12 @@ export const EquipmentFormDialog = ({
   lastCalibrationDate,
   calibrationDueDate,
   isActive,
+  statusOptions,
   isSaving,
   onClose,
   onSave,
   onDeactivate,
+  onDispose,
 }: EquipmentFormDialogProps) => {
   const hierarchyLabelId = useId();
   const calibrationNoteId = useId();
@@ -207,7 +217,7 @@ export const EquipmentFormDialog = ({
           <>
             <ReadOnlyField
               label={t.fields.status}
-              value={statusCode === null ? null : statusLabel(statusCode)}
+              value={statusCode === null ? null : statusLabel(statusCode, statusOptions)}
               note={t.actionReasons.statusNotEditableHere}
             />
             <ReadOnlyField
@@ -231,19 +241,30 @@ export const EquipmentFormDialog = ({
             )}
 
             {/*
-             * ⚠ **폐기를 지금 열 수 없다.** 자산 상태의 값 목록도 그 공통코드 그룹 이름도
-             * 아직 없어(설계 질의 omf-mes#185) **이미 폐기된 자산인지 화면이 판정할 수 없다** —
-             * 판정 없이 열면 이미 끝난 자산에도 눌리는 컨트롤이 된다.
-             * 감추지 않고 사유를 밝힌다(G-2).
+             * ⭐ **이미 폐기된 자산에는 폐기할 대상이 없다.** 판정의 근거는 서버가 준
+             * `statusCode` 이고, 그 값의 뜻은 설계가 확정해 알려 준 것이다(omf-mes#185).
+             *
+             * ⚠ **값 목록을 못 받으면 잠근다.** 시드가 아직 들어가지 않아 빌 수 있고
+             * (설계 omf-mes#182), 그때 열어 두면 이미 끝난 자산에도 눌리는 컨트롤이 된다.
+             * 감추지 않고 사유를 밝힌다(G-2) — 목록이 들어오면 이 잠금은 저절로 풀린다.
              */}
-            <div className="field-cell">
-              <Button variant="outlined" disabled aria-describedby={disposeNoteId}>
-                {t.actions.disposeEquipment}
-              </Button>
-              <span id={disposeNoteId} className="field-note">
-                {t.actionReasons.disposeUnavailable}
-              </span>
-            </div>
+            {statusCode !== DISPOSED_STATUS_CODE && (
+              <div className="field-cell">
+                <Button
+                  variant="outlined"
+                  disabled={isSaving || statusOptions.length === 0}
+                  aria-describedby={statusOptions.length === 0 ? disposeNoteId : undefined}
+                  onClick={onDispose}
+                >
+                  {t.actions.disposeEquipment}
+                </Button>
+                {statusOptions.length === 0 && (
+                  <span id={disposeNoteId} className="field-note">
+                    {t.actionReasons.disposeUnavailable}
+                  </span>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

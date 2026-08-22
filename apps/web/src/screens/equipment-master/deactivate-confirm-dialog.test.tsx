@@ -19,8 +19,10 @@ const renderDialog = (overrides: Partial<DeactivateConfirmDialogProps> = {}) => 
     <ToastProvider>
       <DeactivateConfirmDialog
         title={t.title}
-        targetLabel="GRP-A · 프레스 구역"
+        targetNote={t.target('GRP-A · 프레스 구역')}
+        confirmLabel={t.confirm}
         impactNote={t.membersNone}
+        reversibilityNote={t.notReversibleHere}
         isSaving={false}
         banner={null}
         onConfirm={onConfirm}
@@ -61,10 +63,18 @@ describe('DeactivateConfirmDialog', () => {
    * ⚠ 계약에 다시 켜는 경로가 없다(`:activate` 없음 — 실측).
    * 되돌릴 수 없다는 사실을 감추면 사용자가 가볍게 누른다.
    */
-  it('이 화면에서 되돌릴 수 없다는 사실을 밝힌다', () => {
+  it('받은 되돌릴 수 없음 문장을 그대로 낸다', () => {
     renderDialog();
 
     expect(screen.getByText(t.notReversibleHere)).toBeInTheDocument();
+  });
+
+  /* 사용 중지와 폐기는 무게가 다르다 — 창이 한 문장으로 굳히면 그 차이가 사라진다. */
+  it('폐기의 문장은 사용 중지의 것과 다르다', () => {
+    renderDialog({ reversibilityNote: messages.equipmentMaster.dispose.notReversible });
+
+    expect(screen.getByText(messages.equipmentMaster.dispose.notReversible)).toBeInTheDocument();
+    expect(screen.queryByText(t.notReversibleHere)).toBeNull();
   });
 
   /*
