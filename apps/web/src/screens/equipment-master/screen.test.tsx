@@ -329,6 +329,102 @@ describe('EquipmentMasterScreen', () => {
     });
   });
 
+  /*
+   * ⛔ **아직 적용하지 않은 입력도 초기화가 거둬야 한다**(client#316).
+   * 적용된 값을 보고 칸을 맞추는 것만으로는 부족하다 — 적용된 값이 이미 비어 있으면
+   * 「달라진 것이 없다」가 되어 칸에 남은 낱말을 아무도 지우지 않는다. 그 상태로 「조회」를
+   * 누르면 초기화한 줄 알았던 조건이 되살아난다.
+   */
+  it('적용하지 않은 입력도 초기화가 거둔다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+
+    const box = screen.getByLabelText(t.filters.searchLabel);
+    await user.type(box, 'GRP-A');
+    expect(box).toHaveValue('GRP-A');
+
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.reset })[0] as HTMLElement,
+    );
+
+    await waitFor(() => {
+      expect(box).toHaveValue('');
+    });
+  });
+
+  /*
+   * ⛔ **즉시 적용되는 조건이 아직 적용하지 않은 입력을 지우면 안 된다**(client#316).
+   * 초안 한 벌이 두 축을 함께 품으면 되맞춤 효과가 돌면서 사용자가 치던 낱말이 사라진다 —
+   * W-05-11 이 반대 방향으로 무너졌던 것과 같은 뿌리다(client#314).
+   */
+  it('체크칸을 켜도 치던 검색어가 지워지지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+
+    const box = screen.getByLabelText(t.filters.searchLabel);
+    await user.type(box, 'GRP-A');
+    await user.click(
+      screen.getAllByRole('checkbox', { name: messages.common.includeInactive })[0] as HTMLElement,
+    );
+
+    await waitFor(() => {
+      expect(box).toHaveValue('GRP-A');
+    });
+  });
+
+  /*
+   * ⭐ **되맞춤은 «적용된 값»으로 한다.** 적용된 검색어가 있는데 체크칸을 켰다고 칸을 비우면,
+   * 사용자가 보는 칸과 목록의 조건이 어긋나고 다음 「조회」가 조건을 지운다.
+   */
+  it('적용된 검색어는 체크칸을 켜도 칸에 남는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+
+    const box = screen.getByLabelText(t.filters.searchLabel);
+    await user.type(box, 'GRP-A');
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.search })[0] as HTMLElement,
+    );
+    await user.click(
+      screen.getAllByRole('checkbox', { name: messages.common.includeInactive })[0] as HTMLElement,
+    );
+
+    await waitFor(() => {
+      expect(box).toHaveValue('GRP-A');
+    });
+  });
+
+  /* ⭐ 반대 방향 — 검색어를 친 뒤 「조회」를 눌러도 켜 둔 체크칸이 꺼지지 않는다. */
+  it('그룹 탭에서 조회를 눌러도 켜 둔 체크칸이 유지된다', async () => {
+    const user = userEvent.setup();
+    const { sent } = renderScreen();
+
+    await screen.findByRole('button', { name: 'GRP-A' });
+    await user.click(
+      screen.getAllByRole('checkbox', { name: messages.common.includeInactive })[0] as HTMLElement,
+    );
+
+    await waitFor(() => {
+      expect(lastQuery(sent).get('includeInactive')).toBe('true');
+    });
+
+    await user.type(screen.getByLabelText(t.filters.searchLabel), 'GRP-A');
+    await user.click(
+      screen.getAllByRole('button', { name: messages.common.search })[0] as HTMLElement,
+    );
+
+    await waitFor(() => {
+      expect(lastQuery(sent).get('q')).toBe('GRP-A');
+    });
+    expect(lastQuery(sent).get('includeInactive')).toBe('true');
+  });
+
   it('그룹을 고르면 주소에 그 그룹이 실린다', async () => {
     const user = userEvent.setup();
     renderScreen();
@@ -1330,6 +1426,107 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
     await waitFor(() => {
       expect((equipmentSent.at(-1) as URL).searchParams.get('q')).toBe('EQ-01');
     });
+  });
+
+  /* ⛔ 아직 적용하지 않은 입력도 초기화가 거둔다(client#316). */
+  it('설비 탭에서도 적용하지 않은 입력을 초기화가 거둔다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    const box = pane.getByLabelText(t.equipmentFilters.searchLabel);
+    await user.type(box, 'EQ-01');
+    expect(box).toHaveValue('EQ-01');
+
+    await user.click(pane.getByRole('button', { name: messages.common.reset }));
+
+    await waitFor(() => {
+      expect(box).toHaveValue('');
+    });
+  });
+
+  /* ⛔ 즉시 적용되는 체크칸이 치던 검색어를 지우면 안 된다(client#316). */
+  it('설비 탭에서 체크칸을 켜도 치던 검색어가 지워지지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    const box = pane.getByLabelText(t.equipmentFilters.searchLabel);
+    await user.type(box, 'EQ-01');
+    await user.click(pane.getByRole('checkbox', { name: messages.common.includeInactive }));
+
+    await waitFor(() => {
+      expect(box).toHaveValue('EQ-01');
+    });
+  });
+
+  /*
+   * ⭐ 반대 방향도 함께 잰다 — 검색어를 친 뒤 「조회」를 눌러도 켜 둔 체크칸이 꺼지지 않는다.
+   * 두 축이 서로를 되돌리지 않는다는 것이 이 구조의 요지다.
+   */
+  it('설비 탭에서 조회를 눌러도 켜 둔 체크칸이 유지된다', async () => {
+    const user = userEvent.setup();
+    const { equipmentSent } = renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('checkbox', { name: messages.common.includeInactive }));
+
+    await waitFor(() => {
+      expect((equipmentSent.at(-1) as URL).searchParams.get('includeInactive')).toBe('true');
+    });
+
+    await user.type(pane.getByLabelText(t.equipmentFilters.searchLabel), 'EQ-01');
+    await user.click(pane.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect((equipmentSent.at(-1) as URL).searchParams.get('q')).toBe('EQ-01');
+    });
+    expect((equipmentSent.at(-1) as URL).searchParams.get('includeInactive')).toBe('true');
+    expect(pane.getByRole('checkbox', { name: messages.common.includeInactive })).toBeChecked();
+  });
+
+  /* ⭐ 되맞춤은 «적용된 값»으로 한다 — 적용된 검색어가 체크칸 때문에 지워지면 안 된다. */
+  it('설비 탭에서 적용된 검색어는 체크칸을 켜도 칸에 남는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    const box = pane.getByLabelText(t.equipmentFilters.searchLabel);
+    await user.type(box, 'EQ-01');
+    await user.click(pane.getByRole('button', { name: messages.common.search }));
+    await user.click(pane.getByRole('checkbox', { name: messages.common.includeInactive }));
+
+    await waitFor(() => {
+      expect(box).toHaveValue('EQ-01');
+    });
+  });
+
+  /*
+   * ⭐ **되맞춤이 돌 때 «적용된» 유형을 되살려야 한다.** 칩으로 검색어를 거두면 적용된 값이
+   * 달라져 효과가 도는데, 그때 유형까지 비우면 사용자가 고르고 조회까지 한 조건이 조용히
+   * 사라진다 — 검색어와 같은 규율이 선택칸에도 선다.
+   * ⚠ 유형 값 목록이 미결이라 지금 고를 수 있는 것은 자리표시뿐이다(`omf-mes#145`).
+   */
+  it('칩으로 검색어를 거둬도 적용된 유형은 칸에 남는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+    await user.click(pane.getByRole('combobox', { name: t.fields.equipmentType }));
+    await user.click(await screen.findByRole('option', { name: messages.pendingCode.placeholder }));
+    await user.type(pane.getByLabelText(t.equipmentFilters.searchLabel), 'EQ-01');
+    await user.click(pane.getByRole('button', { name: messages.common.search }));
+
+    await user.click(
+      await screen.findByRole('button', { name: t.equipmentFilters.chipRemoveKeyword }),
+    );
+
+    await waitFor(() => {
+      expect(pane.getByLabelText(t.equipmentFilters.searchLabel)).toHaveValue('');
+    });
+    expect(pane.getByRole('combobox', { name: t.fields.equipmentType })).toHaveTextContent(
+      messages.pendingCode.placeholder,
+    );
   });
 
   it('설비 목록이 잘리면 전체 건수와 함께 알린다', async () => {
