@@ -14,8 +14,9 @@ import {
 
 describe('quality approval URL filters', () => {
   it('미확정 코드와 잘못된 값은 요청 조건으로 읽지 않는다', () => {
+    const tooLong = '9'.repeat(400);
     const params = new URLSearchParams(
-      'ty=UNCONFIRMED&st=UNKNOWN&from=2026-02-29&to=2026-08-22&q=%20SYNTH%20&page=0&rq=-1',
+      `ty=UNCONFIRMED&st=UNKNOWN&from=2026-02-29&to=2026-08-22&q=%20SYNTH%20&page=${tooLong}&rq=${tooLong}`,
     );
 
     expect(readFilters(params)).toEqual({
@@ -50,14 +51,6 @@ describe('quality approval URL filters', () => {
 
     expect(withSelectedRequest(current, 31).toString()).toBe('q=SYNTH&page=2&view=compact&rq=31');
     expect(withSelectedRequest(current, null).toString()).toBe('q=SYNTH&page=2&view=compact');
-  });
-
-  it('safe integer 범위를 넘는 긴 page와 rq는 거부한다', () => {
-    const tooLong = '9'.repeat(400);
-    const params = new URLSearchParams({ page: tooLong, rq: tooLong });
-
-    expect(readPage(params)).toBe(1);
-    expect(readSelectedRequestId(params)).toBeNull();
   });
 });
 

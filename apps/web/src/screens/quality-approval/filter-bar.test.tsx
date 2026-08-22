@@ -51,9 +51,19 @@ describe('FilterBar draft lifetime', () => {
     await user.click(screen.getByRole('option', { name: '합성 상태' }));
     await pickRange(user, screen.getByLabelText(t.fields.period), '2026-08-01', '2026-08-22');
     await user.type(requestSearch(), 'SYNTH-REQ{Enter}');
-
     expect(props.onApply).toHaveBeenCalledWith({
       approvalTypeCode: 'SYNTH-TYPE',
+      statusCode: 'SYNTH-OPEN',
+      from: '2026-08-01',
+      to: '2026-08-22',
+      q: 'SYNTH-REQ',
+    });
+
+    await user.click(screen.getByLabelText(t.fields.approvalTypeCode));
+    await user.click(screen.getByRole('option', { name: t.all }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+    expect(props.onApply).toHaveBeenLastCalledWith({
+      approvalTypeCode: '',
       statusCode: 'SYNTH-OPEN',
       from: '2026-08-01',
       to: '2026-08-22',
