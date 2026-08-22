@@ -2,11 +2,12 @@ import type { components } from '@omf-mes/api-client';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import { productionPlanKeys, toProductionPlanFact } from './queries';
+import { productionPlanDetailPath, productionPlanKeys, toProductionPlanFact } from './queries';
 import type { ProductionPlanFact } from './types';
 
 type ProductionPlan = components['schemas']['ProductionPlan'];
 type ProductionPlanCreate = components['schemas']['ProductionPlanCreate'];
+type ProductionPlanUpdate = components['schemas']['ProductionPlanUpdate'];
 
 const PRODUCTION_PLAN_CREATE_FIELDS = [
   'productionOrderId',
@@ -20,8 +21,29 @@ const PRODUCTION_PLAN_CREATE_FIELDS = [
   'remarks',
 ] as const;
 
+const PRODUCTION_PLAN_UPDATE_FIELDS = [
+  'planDate',
+  'plannedQty',
+  'bomId',
+  'routingId',
+  'plannedLineId',
+  'remarks',
+] as const;
+
+const PRODUCTION_PLAN_DELETE_FIELDS = [] as const;
+
 export interface CreateProductionPlanOptions {
   onSuccess: (data: ProductionPlanFact) => void;
+}
+
+export interface UpdateProductionPlanOptions {
+  productionPlanId: number;
+  onSuccess: (data: ProductionPlanFact) => void;
+}
+
+export interface DeleteProductionPlanOptions {
+  productionPlanId: number;
+  onSuccess: () => void;
 }
 
 export const useCreateProductionPlan = (
@@ -40,6 +62,57 @@ export const useCreateProductionPlan = (
     knownFields: PRODUCTION_PLAN_CREATE_FIELDS,
     onSuccess: (data) => {
       options.onSuccess(toProductionPlanFact(data));
+    },
+  });
+};
+
+export const useUpdateProductionPlan = (
+  options: UpdateProductionPlanOptions,
+): MasterWriteResult<ProductionPlanUpdate> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<ProductionPlanUpdate, ProductionPlan>({
+    request: (body, headers) =>
+      client.PUT('/planning/production-plans/{productionPlanId}', {
+        params: {
+          path: { productionPlanId: options.productionPlanId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body,
+      }),
+    etagPath: productionPlanDetailPath(options.productionPlanId),
+    invalidateKeys: [productionPlanKeys.all],
+    knownFields: PRODUCTION_PLAN_UPDATE_FIELDS,
+    onSuccess: (data) => {
+      options.onSuccess(toProductionPlanFact(data));
+    },
+  });
+};
+
+export const useDeleteProductionPlan = (
+  options: DeleteProductionPlanOptions,
+): MasterWriteResult<void> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<void, void>({
+    request: (_variables, headers) =>
+      client.DELETE('/planning/production-plans/{productionPlanId}', {
+        params: {
+          path: { productionPlanId: options.productionPlanId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    etagPath: productionPlanDetailPath(options.productionPlanId),
+    invalidateKeys: [productionPlanKeys.all],
+    knownFields: PRODUCTION_PLAN_DELETE_FIELDS,
+    onSuccess: () => {
+      options.onSuccess();
     },
   });
 };

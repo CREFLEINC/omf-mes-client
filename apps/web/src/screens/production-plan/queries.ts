@@ -15,6 +15,9 @@ export const productionPlanKeys = {
     ['production-plans', 'detail', productionPlanId] as const,
 };
 
+export const productionPlanDetailPath = (productionPlanId: number): string =>
+  `/planning/production-plans/${String(productionPlanId)}`;
+
 export const toProductionPlanFact = (plan: ProductionPlan): ProductionPlanFact => ({
   productionPlanId: plan.productionPlanId,
   productionOrderId: plan.productionOrderId,
