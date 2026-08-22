@@ -16,6 +16,8 @@ export const productionOrderKeys = {
   all: ['production-orders'] as const,
   list: (filters: ProductionOrderFilters, page: number) =>
     ['production-orders', 'list', toFilterQuery(filters, page)] as const,
+  detail: (productionOrderId: number | null) =>
+    ['production-orders', 'detail', productionOrderId] as const,
 };
 
 const toFact = (order: ProductionOrder): ProductionOrderFact => ({
@@ -54,5 +56,28 @@ export const useProductionOrderList = (
       runRequest(() => client.GET('/planning/production-orders', { params: { query } })).then(
         toListResponse,
       ),
+  });
+};
+
+/** 선택한 P/O만 정확한 계약 경로에서 읽고 목록과 같은 사실 형태로 쓴다. */
+export const useProductionOrderDetail = (
+  productionOrderId: number | null,
+): UseQueryResult<ProductionOrderFact> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: productionOrderKeys.detail(productionOrderId),
+    enabled: productionOrderId !== null,
+    queryFn: () => {
+      if (productionOrderId === null) {
+        throw new Error('생산 P/O를 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/planning/production-orders/{productionOrderId}', {
+          params: { path: { productionOrderId } },
+        }),
+      ).then(toFact);
+    },
   });
 };
