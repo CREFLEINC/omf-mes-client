@@ -14,6 +14,7 @@ import {
 } from './month-grid';
 
 const t = messages.workCalendar.grid;
+const bulkText = messages.workCalendar.bulk;
 
 export interface MonthGridPaneProps {
   /** 고른 캘린더의 이름. 아직 안 골랐으면 `null` */
@@ -27,6 +28,8 @@ export interface MonthGridPaneProps {
   isLoading: boolean;
   /** 그 날의 설정을 고치러 간다. **칸이 곧 손잡이다** */
   onPickDay: (date: string) => void;
+  /** 여러 날을 한 번에 고치러 간다. **규칙이 아니라 날짜 목록을 보내는 자리다** */
+  onBulkApply: () => void;
   loadError: ReactNode;
 }
 
@@ -47,6 +50,7 @@ export const MonthGridPane = ({
   days,
   isLoading,
   onPickDay,
+  onBulkApply,
   loadError,
 }: MonthGridPaneProps) => {
   const byDay = byDate(days);
@@ -143,9 +147,14 @@ export const MonthGridPane = ({
          */}
         {calendarName !== null && (
           <div className="field-cell field-cell-unlabeled">
-            <Button variant="outlined" onClick={onEditCalendar}>
-              {messages.workCalendar.actions.editCalendar}
-            </Button>
+            <div className="filter-actions">
+              <Button variant="outlined" onClick={onBulkApply}>
+                {bulkText.open}
+              </Button>
+              <Button variant="outlined" onClick={onEditCalendar}>
+                {messages.workCalendar.actions.editCalendar}
+              </Button>
+            </div>
           </div>
         )}
       </div>

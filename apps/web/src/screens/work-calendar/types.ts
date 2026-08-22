@@ -34,3 +34,16 @@ export interface DayFormValues {
   reasonCode: string;
   remarks: string;
 }
+
+/**
+ * 일괄 적용 폼이 들고 있는 값.
+ *
+ * ⭐ **적용할 설정은 하루 편집과 같은 모양을 쓴다** — 두 벌을 두면 한쪽만 고쳐진다.
+ */
+export interface BulkFormValues {
+  from: string;
+  to: string;
+  /** 고른 요일(0=일). **비어 있으면 기간 전체**다 */
+  weekdays: number[];
+  day: DayFormValues;
+}
