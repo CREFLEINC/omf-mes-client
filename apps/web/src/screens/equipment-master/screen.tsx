@@ -176,6 +176,9 @@ export const EquipmentMasterScreen = () => {
    */
   const statusValues = useCodeValues(CODE_GROUPS.equipmentStatus);
   const statusOptions = useMemo(() => toCodeLabels(statusValues.data ?? []), [statusValues.data]);
+  /** 기간 단위 값 목록 — 검교정 주기를 사람이 읽는 말로 옮긴다. */
+  const cycleValues = useCodeValues(CODE_GROUPS.cycleType);
+  const cycleOptions = useMemo(() => toCodeLabels(cycleValues.data ?? []), [cycleValues.data]);
   const equipmentItems = equipmentList.data?.items ?? [];
 
   /**
@@ -394,8 +397,21 @@ export const EquipmentMasterScreen = () => {
   const [equipmentValues, setEquipmentValues] = useState<EquipmentFormValues>(() =>
     emptyEquipmentFormValues(''),
   );
-  /** 이 화면이 소유하지 않는 값. 보이지 않되 그대로 되돌려 보낸다(공유계약 B-13). */
-  const [carried, setCarried] = useState<CarriedEquipmentValues>(emptyCarriedValues);
+  /**
+   * 이 화면이 소유하지 않는 값. 보이지 않게 고치지 않되 **그대로 되돌려 보낸다**(공유계약 B-13).
+   *
+   * ⭐ **목록 행이 아니라 상세에서 뜬다.** 목록은 캐시라 낡을 수 있고, 낡은 주기를 되돌려
+   * 보내면 그 사이 계측기 마스터가 정한 값을 **덮어쓴다** — 잠금 토큰은 상세에서 온 최신이라
+   * 충돌로도 걸리지 않는다. 읽기 전용 표시(상태·검교정 일자)가 이미 상세를 읽고 있으니
+   * 자리도 이것이 맞다.
+   *
+   * ⛔ **상태로 두지 않는다.** 창을 열 때 한 번 뜨면 상세가 도착해도 갱신되지 않는다 —
+   * 쓰기는 상세의 잠금 토큰이 있어야 나가므로, 상세가 곧 되돌려 보낼 값의 정본이다.
+   */
+  const carried: CarriedEquipmentValues =
+    equipmentDetail.data === undefined
+      ? emptyCarriedValues()
+      : carriedFrom(equipmentDetail.data.equipment);
   const [equipmentFieldErrors, setEquipmentFieldErrors] = useState<Record<string, string>>({});
 
   /**
@@ -645,7 +661,6 @@ export const EquipmentMasterScreen = () => {
     resetIfIdle(equipmentWrite);
     setEquipmentFieldErrors({});
     setEquipmentValues(emptyEquipmentFormValues(String(selectedGroupId ?? '')));
-    setCarried(emptyCarriedValues());
     setEquipmentDialog({ mode: 'create', equipmentId: null });
   };
 
@@ -654,7 +669,6 @@ export const EquipmentMasterScreen = () => {
     resetIfIdle(equipmentWrite);
     setEquipmentFieldErrors({});
     setEquipmentValues(equipmentToFormValues(equipment));
-    setCarried(carriedFrom(equipment));
     setEquipmentDialog({ mode: 'edit', equipmentId: equipment.equipmentId });
   };
 
@@ -936,6 +950,10 @@ export const EquipmentMasterScreen = () => {
            */
           hierarchy={equipmentDetail.data?.hierarchy ?? null}
           statusCode={equipmentDetail.data?.equipment.statusCode ?? null}
+          /* 주기는 이 화면이 소유하지 않는다 — 상세에서 받은 값을 그대로 보인다. */
+          calibrationCycleTypeCode={carried.calibrationCycleTypeCode}
+          calibrationCycleInterval={carried.calibrationCycleInterval}
+          cycleOptions={cycleOptions}
           lastCalibrationDate={equipmentDetail.data?.equipment.lastCalibrationDate ?? null}
           calibrationDueDate={equipmentDetail.data?.equipment.calibrationDueDate ?? null}
           isActive={equipmentDetail.data?.equipment.isActive ?? false}

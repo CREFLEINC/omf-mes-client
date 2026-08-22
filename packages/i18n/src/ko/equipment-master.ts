@@ -25,9 +25,18 @@ export const equipmentMaster = {
      * 사용 중지는 상세를 다시 불러오므로, 저장하지 않은 입력이 있으면 그것이 말없이 사라진다.
      * 막지 않고 사유를 밝힌다 — 무엇이 막혔는지와 어떻게 풀 수 있는지를 함께 담는다.
      */
-    /** 검교정 설정을 이 화면이 정하지 않는 이유. 값 목록이 없어 켜면 반드시 저장이 실패한다. */
-    calibrationCycleUnavailable:
-      '검교정 주기 단위의 값 목록이 아직 없어 지금은 바꿀 수 없습니다. 목록이 준비되면 이 항목을 쓸 수 있습니다.',
+    /**
+     * 검교정 주기를 이 화면이 정하지 않는 이유. 계측기 마스터(W-05-11)가 소유한다
+     * — `lastCalibrationDate` 와 같은 자리다(공유계약 B-13 · 설계 `omf-mes#188`).
+     */
+    calibrationCycleOwnedElsewhere:
+      '검교정 주기는 계측기 마스터에서 정합니다. 여기서는 볼 수만 있습니다.',
+    /**
+     * 주기 없이 검교정 대상을 켤 수 없는 이유. 계약이 「참이면 주기 두 칸이 함께 필요하다」로
+     * 짝을 묶었는데 주기는 이 화면이 정하지 않는다 — 켜 두면 저장에서 거절당한다.
+     */
+    calibrationNeedsCycle:
+      '검교정 주기가 없어 켤 수 없습니다. 주기를 계측기 마스터에서 먼저 정하세요.',
     /** 검교정 일자 두 칸은 검교정 이력 등록이 정한다 — 여기서는 결과만 본다. */
     calibrationDatesReadOnly:
       '검교정 일자는 검교정 이력 등록에서 정해집니다. 여기서는 볼 수만 있습니다.',
@@ -198,6 +207,8 @@ export const equipmentMaster = {
     parentUnresolved: (value: string): string => `번호 ${value} (이름을 확인하지 못했습니다)`,
     calibrationYes: '대상',
     calibrationNo: '대상 아님',
+    /** 주기 한 줄 — 간격과 단위를 함께 읽는다. 「12 개월」처럼 보인다. */
+    calibrationCycle: (interval: number, unitLabel: string): string => `${interval} ${unitLabel}`,
     /** 소속 그룹이 없을 때. 빈칸으로 두지 않는다 — 비어 있음이 보여야 채운다(G-9). */
     noGroupAssigned: '소속 그룹 없음',
   },

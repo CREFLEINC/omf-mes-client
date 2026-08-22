@@ -47,6 +47,9 @@ const renderDialog = (overrides: Partial<EquipmentFormDialogProps> = {}) => {
         processOptions={[{ value: '', label: t.equipmentForm.processNone }]}
         hierarchy={hierarchy}
         statusCode="IN_SERVICE"
+        calibrationCycleTypeCode="MONTH"
+        calibrationCycleInterval={12}
+        cycleOptions={[{ value: 'MONTH', label: '개월' }]}
         lastCalibrationDate={null}
         calibrationDueDate={null}
         isActive
@@ -185,6 +188,89 @@ describe('EquipmentFormDialog', () => {
     renderDialog({ isActive: true, isSaving: true });
 
     expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeDisabled();
+  });
+
+  /*
+   * ⭐ **계측기 마스터가 정한다 — 여기서는 본다.** `lastCalibrationDate` 와 같은 자리이며
+   * (공유계약 B-13 · 설계 omf-mes#188) 잠긴 입력칸이 아니라 값 표기로 낸다.
+   */
+  it('검교정 주기를 간격과 단위 이름으로 함께 보인다', () => {
+    renderDialog();
+
+    expect(screen.getByLabelText(t.fields.calibrationCycle)).toHaveTextContent('12 개월');
+    expect(screen.getByText(t.actionReasons.calibrationCycleOwnedElsewhere)).toBeInTheDocument();
+    // 잠긴 입력칸을 두지 않는다 — 「언젠가 여기서 고칠 수 있다」를 뜻하게 된다.
+    expect(
+      screen.queryByRole('textbox', { name: new RegExp(t.fields.calibrationCycle) }),
+    ).toBeNull();
+  });
+
+  /* 단위 이름을 못 찾으면 코드를 그대로 보인다 — 시드가 아직 없을 수 있다(G-9). */
+  it('주기 단위 이름을 못 찾으면 코드를 그대로 보인다', () => {
+    renderDialog({ cycleOptions: [] });
+
+    expect(screen.getByLabelText(t.fields.calibrationCycle)).toHaveTextContent('12 MONTH');
+  });
+
+  /* 주기는 «둘 다» 있어야 성립한다 — 계약이 그렇게 짝을 묶었다. */
+  it.each([
+    ['단위가 없으면', { calibrationCycleTypeCode: null }],
+    ['간격이 없으면', { calibrationCycleInterval: null }],
+  ])('%s 주기를 기록 없음으로 보인다', (_label, overrides) => {
+    renderDialog(overrides);
+
+    expect(screen.getByLabelText(t.fields.calibrationCycle)).toHaveTextContent(
+      t.fields.notRecorded,
+    );
+  });
+
+  /*
+   * ⭐ **켜는 것만 주기에 매단다.** 주기 없이 켜면 계약의 짝 제약을 어겨 저장에서 거절당하는데,
+   * 주기는 이 화면이 정하지 않으므로 사용자가 그 자리에서 풀 수 없다.
+   */
+  it('주기가 없으면 검교정 대상을 켤 수 없고 사유가 보인다', () => {
+    renderDialog({
+      values: { ...values, calibrationRequired: false },
+      calibrationCycleTypeCode: null,
+      calibrationCycleInterval: null,
+    });
+
+    const toggle = screen.getByRole('switch', { name: t.fields.calibrationRequired });
+    expect(toggle).toBeDisabled();
+
+    const describedBy = toggle.getAttribute('aria-describedby');
+    expect(describedBy).not.toBeNull();
+    expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
+      t.actionReasons.calibrationNeedsCycle,
+    );
+  });
+
+  it('주기가 있으면 검교정 대상을 켤 수 있다', () => {
+    renderDialog({ values: { ...values, calibrationRequired: false } });
+
+    expect(screen.getByRole('switch', { name: t.fields.calibrationRequired })).toBeEnabled();
+    expect(screen.queryByText(t.actionReasons.calibrationNeedsCycle)).toBeNull();
+  });
+
+  /*
+   * ⛔ **끄는 것은 언제나 열어 둔다.** 이미 켜져 있는데 주기가 없는 자료가 서버에서 올 수 있고,
+   * 그때 토글까지 잠그면 **사용자가 그 어긋난 상태를 풀 수단이 없다.**
+   */
+  it('이미 켜져 있으면 주기가 없어도 끌 수 있다', () => {
+    renderDialog({
+      values: { ...values, calibrationRequired: true },
+      calibrationCycleTypeCode: null,
+      calibrationCycleInterval: null,
+    });
+
+    expect(screen.getByRole('switch', { name: t.fields.calibrationRequired })).toBeEnabled();
+  });
+
+  /* 아직 등록되지 않은 설비에는 계측기 마스터가 정한 값이 없다. */
+  it('등록 폼에는 주기 칸을 두지 않는다', () => {
+    renderDialog({ mode: 'create', hierarchy: null });
+
+    expect(screen.queryByText(t.fields.calibrationCycle)).toBeNull();
   });
 
   it('입력을 고치면 그 칸만 담아 알린다', async () => {

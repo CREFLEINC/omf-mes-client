@@ -1459,7 +1459,48 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
    * 값 목록이 아직 없다(omf-mes#185). 열어 두면 켜는 순간 반드시 저장이 실패한다 —
    * 감추지 않고 사유를 밝힌다(G-2).
    */
-  it('검교정 대상을 잠그고 사유를 밝힌다', async () => {
+  /*
+   * ⭐ **주기 단위도 그룹을 이름으로 부른다.** 검교정 주기와 점검 부여 주기가 한 그룹을 쓴다
+   * (설계 omf-mes#188) — 같은 종류의 값이라 어휘를 두 벌 만들지 않는다.
+   * ⛔ 검사 «유형»은 종류가 달라 가른다 — 「이름이 다르면 가른다」가 아니다.
+   */
+  it('주기 단위 값 목록을 그룹 이름으로 부른다', async () => {
+    const user = userEvent.setup();
+    const { codeValueSent } = renderScreen();
+
+    await openEquipment(user);
+
+    const groups = codeValueSent.map((url) => url.searchParams.get('codeGroupCode'));
+    expect(groups).toContain('CYCLE_TYPE');
+    expect(groups).toContain('EQUIPMENT_STATUS');
+    expect(codeValueSent.some((url) => url.searchParams.has('codeGroupId'))).toBe(false);
+  });
+
+  /*
+   * ⭐ **주기가 있으면 켤 수 있다.** ⑨ 이전에는 주기 단위 값 목록이 없어 이 자리가 통째로
+   * 잠겨 있었다 — 설계가 그룹 이름을 확정해 주면서(omf-mes#188) 풀렸다.
+   */
+  it('주기가 있으면 검교정 대상을 켤 수 있다', async () => {
+    const user = userEvent.setup();
+    const withCycle = makeEquipment(2001, 'EQ-01', {
+      calibrationCycleTypeCode: 'MONTH',
+      calibrationCycleInterval: 12,
+    });
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([withCycle])),
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(withCycle), { headers: { ETag: '9' } }),
+    });
+
+    await openEquipment(user);
+
+    expect(
+      equipmentForm().getByRole('switch', { name: t.fields.calibrationRequired }),
+    ).toBeEnabled();
+  });
+
+  /* 주기가 없으면 켤 수 없다 — 켜면 계약의 짝 제약을 어겨 저장에서 거절당한다. */
+  it('주기가 없으면 검교정 대상을 켤 수 없고 사유가 보인다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -1468,8 +1509,27 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(
       equipmentForm().getByRole('switch', { name: t.fields.calibrationRequired }),
     ).toBeDisabled();
+    expect(equipmentForm().getByText(t.actionReasons.calibrationNeedsCycle)).toBeInTheDocument();
+  });
+
+  /* 계측기 마스터가 정한 값을 여기서는 본다 — 잠긴 입력칸이 아니라 값 표기다. */
+  it('검교정 주기를 간격과 단위 이름으로 보인다', async () => {
+    const user = userEvent.setup();
+    const withCycle = makeEquipment(2001, 'EQ-01', {
+      calibrationCycleTypeCode: 'MONTH',
+      calibrationCycleInterval: 12,
+    });
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([withCycle])),
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(withCycle), { headers: { ETag: '9' } }),
+    });
+
+    await openEquipment(user);
+
+    expect(equipmentForm().getByLabelText(t.fields.calibrationCycle)).toHaveTextContent('12');
     expect(
-      equipmentForm().getByText(t.actionReasons.calibrationCycleUnavailable),
+      equipmentForm().getByText(t.actionReasons.calibrationCycleOwnedElsewhere),
     ).toBeInTheDocument();
   });
 
@@ -1525,6 +1585,47 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(new URL(request.url).pathname).toBe('/mdm/equipments/2001');
     expect(request.headers.get('If-Match')).toBe('9');
     await expect(lastWriteBody(writes)).resolves.toMatchObject({ equipmentName: '프레스 1호기' });
+  });
+
+  /*
+   * ⭐ **낡은 값을 되돌려 보내지 않는다.** 목록은 캐시라 낡을 수 있고, 낡은 주기를 되돌려
+   * 보내면 그 사이 계측기 마스터가 정한 값을 **덮어쓴다** — 잠금 토큰은 상세에서 온 최신이라
+   * **충돌로도 걸리지 않는다.** 목록과 상세가 다른 값을 줄 때 상세를 실어야 한다.
+   */
+  it('되돌려 보낼 값을 목록이 아니라 상세에서 뜬다', async () => {
+    const user = userEvent.setup();
+    const staleRow = makeEquipment(2001, 'EQ-01', {
+      calibrationCycleTypeCode: 'DAY',
+      calibrationCycleInterval: 1,
+      precisionValue: 0.5,
+    });
+    const freshDetail = makeEquipment(2001, 'EQ-01', {
+      calibrationCycleTypeCode: 'MONTH',
+      calibrationCycleInterval: 12,
+      precisionValue: 0.01,
+    });
+    const { writes } = renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([staleRow])),
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(freshDetail), { headers: { ETag: '9' } }),
+    });
+
+    await openEquipment(user);
+    const nameInput = equipmentForm().getByRole('textbox', {
+      name: new RegExp(t.fields.equipmentName),
+    });
+    await user.clear(nameInput);
+    await user.type(nameInput, '프레스 1호기');
+    await user.click(equipmentForm().getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+    await expect(lastWriteBody(writes)).resolves.toMatchObject({
+      calibrationCycleTypeCode: 'MONTH',
+      calibrationCycleInterval: 12,
+      precisionValue: 0.01,
+    });
   });
 
   /*
@@ -1895,9 +1996,11 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
 
     await openEquipmentTab(user);
 
-    const query = (codeValueSent.at(-1) as URL).searchParams;
-    expect(query.get('codeGroupCode')).toBe('EQUIPMENT_STATUS');
-    expect(query.has('codeGroupId')).toBe(false);
+    expect(codeValueSent.map((url) => url.searchParams.get('codeGroupCode'))).toContain(
+      'EQUIPMENT_STATUS',
+    );
+    // ⛔ 정수 id 는 환경마다 달라 코드에 박을 수 없다 — 어느 조회에도 실리면 안 된다.
+    expect(codeValueSent.some((url) => url.searchParams.has('codeGroupId'))).toBe(false);
   });
 
   it('상태를 코드가 아니라 이름으로 보인다', async () => {
