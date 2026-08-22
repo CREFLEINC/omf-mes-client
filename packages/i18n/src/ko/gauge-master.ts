@@ -67,6 +67,8 @@ export const gaugeMaster = {
     statusOwnedElsewhere: '운용상태는 사용 중지·폐기 처리로 바뀝니다.',
     calibrationDateOwnedElsewhere: '검교정 일자는 검교정 이력 등록에서 정합니다.',
     alreadyInactive: '이미 사용 중지된 계측기입니다.',
+    /** ⛔ 모르면 잠근다 — 열어 두면 눌러도 아무 일도 일어나지 않는다. */
+    targetUnknown: '계측기 정보를 아직 불러오지 못했습니다.',
     alreadyDisposed: '이미 폐기된 계측기입니다.',
     /**
      * ⚠ 자산 상태 값 목록에 폐기 코드가 없으면 **이미 폐기된 자산인지 판정할 수 없다.**

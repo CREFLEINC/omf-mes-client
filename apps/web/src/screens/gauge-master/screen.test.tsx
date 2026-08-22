@@ -1209,6 +1209,24 @@ describe('W-05-11 계측기 마스터 — 사용 중지·폐기', () => {
     expect(within(form()).getByText(t.actionReasons.disposeUnavailable)).toBeInTheDocument();
   });
 
+  /*
+   * ⛔ 상세를 못 읽으면 확인 창이 그릴 대상이 없다 — 열어 두면 **눌러도 아무 일도 일어나지
+   * 않고**, 사용자는 잘못 눌렀다고 여기고 다시 누른다. 모르면 잠그고 그 사실을 말한다.
+   */
+  it('상세를 못 읽으면 두 조작을 잠그고 사유를 밝힌다', async () => {
+    const { user } = renderScreen({
+      respondDetail: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
+    });
+
+    await openEdit(user, 'GA-03');
+
+    await waitFor(() => {
+      expect(within(form()).getByRole('button', { name: t.retire.disposeConfirm })).toBeDisabled();
+    });
+    expect(within(form()).getByRole('button', { name: t.retire.deactivateConfirm })).toBeDisabled();
+    expect(within(form()).getAllByText(t.actionReasons.targetUnknown)).toHaveLength(2);
+  });
+
   it('등록 창에는 사용 중지·폐기가 없다', async () => {
     const { user } = renderScreen();
 

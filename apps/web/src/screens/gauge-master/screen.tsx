@@ -291,8 +291,8 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
   };
 
   const gauge = detail.data?.equipment ?? null;
-  const deactivate = deactivateAvailability(gauge?.isActive ?? false);
-  const dispose = disposeAvailability(gauge?.statusCode ?? null, statusOptions);
+  const deactivate = deactivateAvailability(gauge);
+  const dispose = disposeAvailability(gauge, statusOptions);
   const retireWriteInFlight = retiring === 'dispose' ? disposeWrite : deactivateWrite;
 
   const codeLockReason =

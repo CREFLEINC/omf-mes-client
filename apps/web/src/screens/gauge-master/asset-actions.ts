@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
 import { DISPOSED_STATUS_CODE, type CodeOption } from './code-options';
+import type { Equipment } from './types';
 
 const t = messages.gaugeMaster.actionReasons;
 
@@ -13,14 +14,28 @@ export interface ActionAvailability {
 
 const ALLOWED: ActionAvailability = { enabled: true, reason: null };
 
+/** 판정에 필요한 것만 받는다 — 목록 행이 아니라 «상세»가 준다. */
+export type RetireTarget = Pick<Equipment, 'isActive' | 'statusCode'>;
+
+/**
+ * 상세를 아직 못 받았다.
+ *
+ * ⛔ **모르면 잠근다.** 열어 두면 확인 창이 그릴 대상을 못 찾아 **눌러도 아무 일도 일어나지
+ * 않는다** — 사용자는 자기가 잘못 눌렀다고 여기고 다시 누르며, 화면은 계속 침묵한다.
+ */
+const unknown = (): ActionAvailability => ({ enabled: false, reason: t.targetUnknown });
+
 /**
  * 사용 중지를 지금 할 수 있는가.
  *
  * 이미 중지된 것에는 **중지할 대상이 없다.** 감추지 않고 사유와 함께 잠근다 —
  * 사라진 버튼은 「원래 없는 기능」과 구분되지 않는다.
  */
-export const deactivateAvailability = (isActive: boolean): ActionAvailability =>
-  isActive ? ALLOWED : { enabled: false, reason: t.alreadyInactive };
+export const deactivateAvailability = (target: RetireTarget | null): ActionAvailability => {
+  if (target === null) return unknown();
+
+  return target.isActive ? ALLOWED : { enabled: false, reason: t.alreadyInactive };
+};
 
 /**
  * 폐기를 지금 할 수 있는가.
@@ -34,14 +49,16 @@ export const deactivateAvailability = (isActive: boolean): ActionAvailability =>
  * 목록이 들어오면 잠금은 저절로 풀린다.
  */
 export const disposeAvailability = (
-  statusCode: string | null,
+  target: RetireTarget | null,
   statusOptions: readonly CodeOption[],
 ): ActionAvailability => {
+  if (target === null) return unknown();
+
   if (!statusOptions.some((option) => option.value === DISPOSED_STATUS_CODE)) {
     return { enabled: false, reason: t.disposeUnavailable };
   }
 
-  return statusCode === DISPOSED_STATUS_CODE
+  return target.statusCode === DISPOSED_STATUS_CODE
     ? { enabled: false, reason: t.alreadyDisposed }
     : ALLOWED;
 };
