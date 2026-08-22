@@ -18,6 +18,7 @@ import {
   type WorkCalendarApplication,
 } from './application-targets';
 import { BulkFormDialog } from './bulk-form-dialog';
+import { EffectivePane } from './effective-pane';
 import { expandDates } from './bulk-days';
 import { validateBulkRange } from './bulk-validation';
 import { DayFormDialog } from './day-form-dialog';
@@ -46,7 +47,9 @@ import {
   useCalendarDays,
   useCalendarDetail,
   useCalendarList,
+  useEffectiveCalendar,
   useEquipmentGroupTargets,
+  useEquipmentTargets,
   usePlantApplications,
   usePlantTargets,
 } from './queries';
@@ -217,6 +220,8 @@ export const WorkCalendarScreen = ({
   const [assigning, setAssigning] = useState(false);
   const [targetTypeCode, setTargetTypeCode] = useState<string>(TARGET_TYPES.plant);
   const [targetId, setTargetId] = useState('');
+  /** 해석 미리보기에서 고른 설비. 고르기 전에는 빈 글자다 */
+  const [effectiveEquipmentId, setEffectiveEquipmentId] = useState('');
 
   const calendars = useCalendarList(filters);
   /* 계약이 기간을 반드시 요구한다 — 보이는 달의 처음과 끝을 그대로 싣는다. */
@@ -226,6 +231,10 @@ export const WorkCalendarScreen = ({
   /* ⭐ 「미지정 공장」은 이 캘린더가 아니라 **전체 공장 적용**으로 센다. */
   const plantApplications = usePlantApplications();
   const plantTargets = usePlantTargets();
+  const equipmentTargets = useEquipmentTargets(selected !== null);
+  const effective = useEffectiveCalendar(
+    effectiveEquipmentId === '' ? null : Number(effectiveEquipmentId),
+  );
   const equipmentGroupTargets = useEquipmentGroupTargets(
     assigning && targetTypeCode === TARGET_TYPES.equipmentGroup,
   );
@@ -536,6 +545,28 @@ export const WorkCalendarScreen = ({
             ) : null
           }
         />
+
+        {/*
+         * ⭐ **캘린더를 고른 뒤에만 선다.** 이 자리가 답하는 것은 「내가 지금 손대는 캘린더가
+         * 실제로 어느 설비에 닿는가」이고, 고른 캘린더가 없으면 그 물음 자체가 서지 않는다.
+         */}
+        {selected !== null && (
+          <EffectivePane
+            equipmentId={effectiveEquipmentId}
+            onChangeEquipment={setEffectiveEquipmentId}
+            options={equipmentTargets}
+            effective={effective.data ?? null}
+            isLoading={effective.isLoading}
+            loadError={
+              effective.isError ? (
+                <LoadErrorBanner
+                  error={toApiError(effective.error)}
+                  onRetry={() => void effective.refetch()}
+                />
+              ) : null
+            }
+          />
+        )}
       </div>
 
       {dialog !== null && (
