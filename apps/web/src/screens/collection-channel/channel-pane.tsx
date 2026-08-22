@@ -35,6 +35,8 @@ export interface ChannelPaneProps {
    */
   canImport: boolean;
   onImport: () => void;
+  /** 사용 여부를 바꾼다. 방향은 그 줄의 지금 상태가 정한다 */
+  onChangeActivation: (channel: CollectionChannel) => void;
   loadError: ReactNode;
 }
 
@@ -69,6 +71,7 @@ export const ChannelPane = ({
   onEdit,
   canImport,
   onImport,
+  onChangeActivation,
   loadError,
 }: ChannelPaneProps) => {
   const columns: Column<CollectionChannel>[] = [
@@ -102,6 +105,30 @@ export const ChannelPane = ({
       header: t.fields.inspectionItem,
       width: '132px',
       render: mappingCell,
+    },
+    {
+      key: 'isActive',
+      header: t.fields.activation,
+      width: '108px',
+      /*
+       * ⭐ **줄마다 방향이 다르다** — 켜져 있으면 끄는 단추, 꺼져 있으면 켜는 단추다.
+       * 한 단추가 상태에 따라 뜻을 바꾸므로 **접근 이름에 대상을 담는다**: 줄이 여럿일 때
+       * 「사용 중지」만으로는 어느 채널을 끄는 것인지 알 수 없다.
+       */
+      render: (row) => (
+        <Button
+          variant="outlined"
+          size="sm"
+          onClick={() => onChangeActivation(row)}
+          aria-label={
+            row.isActive
+              ? t.activation.deactivateLabel(row.channelKey)
+              : t.activation.resumeLabel(row.channelKey)
+          }
+        >
+          {row.isActive ? t.activation.deactivateAction : t.activation.resumeAction}
+        </Button>
+      ),
     },
   ];
 

@@ -29,6 +29,7 @@ const renderPane = (props: Partial<Parameters<typeof ChannelPane>[0]> = {}) =>
       onEdit={() => undefined}
       canImport
       onImport={() => undefined}
+      onChangeActivation={() => undefined}
       loadError={null}
       {...props}
     />,

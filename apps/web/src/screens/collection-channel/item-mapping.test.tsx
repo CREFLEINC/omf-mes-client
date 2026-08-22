@@ -278,7 +278,7 @@ describe('W-05-07 ③ — 세 칸을 차례로 좁힌다', () => {
     expect(dialog().getByRole('combobox', { name: t.itemPicker.itemLabel })).toBeEnabled();
 
     await user.click(dialog().getByRole('button', { name: messages.common.cancel }));
-    await user.click(within(channelPane()).getByRole('button', { name: /^LINKED/ }));
+    await user.click(within(channelPane()).getByRole('button', { name: /^LINKED( \(미사용\))?$/ }));
     await screen.findByRole('dialog');
 
     expect(dialog().getByRole('combobox', { name: t.itemPicker.versionLabel })).toBeDisabled();
@@ -291,7 +291,7 @@ describe('W-05-07 ③ — 세 칸을 차례로 좁힌다', () => {
 
     renderScreen();
     await pickFirstEquipment();
-    await user.click(within(channelPane()).getByRole('button', { name: /^LINKED/ }));
+    await user.click(within(channelPane()).getByRole('button', { name: /^LINKED( \(미사용\))?$/ }));
     await screen.findByRole('dialog');
 
     await choose(t.itemPicker.planLabel, /IP-101/);
@@ -366,7 +366,7 @@ describe('W-05-07 ③ — 잇고 끊는다', () => {
 
     renderScreen();
     await pickFirstEquipment();
-    await user.click(within(channelPane()).getByRole('button', { name: /^LINKED/ }));
+    await user.click(within(channelPane()).getByRole('button', { name: /^LINKED( \(미사용\))?$/ }));
 
     expect(await dialog().findByText(t.itemPicker.mappedUnknown)).toBeInTheDocument();
   });
@@ -392,7 +392,7 @@ describe('W-05-07 ③ — 잇고 끊는다', () => {
 
     renderScreen({ writes });
     await pickFirstEquipment();
-    await user.click(within(channelPane()).getByRole('button', { name: /^LINKED/ }));
+    await user.click(within(channelPane()).getByRole('button', { name: /^LINKED( \(미사용\))?$/ }));
     await screen.findByRole('dialog');
 
     await user.click(dialog().getByRole('button', { name: t.itemPicker.unmapAction }));

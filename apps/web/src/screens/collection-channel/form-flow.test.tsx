@@ -259,7 +259,9 @@ describe('W-05-07 ② — 채널을 고친다', () => {
     const user = userEvent.setup();
 
     await pickFirstEquipment();
-    await user.click(within(channelPane()).getByRole('button', { name: /^BARREL_TEMP/ }));
+    await user.click(
+      within(channelPane()).getByRole('button', { name: /^BARREL_TEMP( \(미사용\))?$/ }),
+    );
   };
 
   it('채널명을 누르면 수정 창이 그 값으로 열린다', async () => {
@@ -444,7 +446,9 @@ describe('W-05-07 ② — 저장이 실패하면', () => {
       writeBody: { conflictCause: 'user', message: '다른 사용자가 먼저 고쳤습니다.' },
     });
     await pickFirstEquipment();
-    await user.click(within(channelPane()).getByRole('button', { name: /^BARREL_TEMP/ }));
+    await user.click(
+      within(channelPane()).getByRole('button', { name: /^BARREL_TEMP( \(미사용\))?$/ }),
+    );
 
     const dialog = within(await screen.findByRole('dialog'));
 
