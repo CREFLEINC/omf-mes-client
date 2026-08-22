@@ -161,6 +161,14 @@ describe('work-order assignment model', () => {
     ).toEqual({ fieldErrors: { plannedEndAtLocal: 'END_BEFORE_START' }, formError: null });
     expect(
       validateWorkOrderAssignmentDraft(
+        validDraft({
+          plannedStartAtLocal: '2026-08-23T09:45',
+          plannedEndAtLocal: '2026-08-23T09:45',
+        }),
+      ),
+    ).toEqual({ fieldErrors: {}, formError: null });
+    expect(
+      validateWorkOrderAssignmentDraft(
         validDraft({ plannedStartAtLocal: '', plannedEndAtLocal: '2026-08-23T09:45' }),
       ),
     ).toEqual({ fieldErrors: {}, formError: null });
@@ -178,7 +186,16 @@ describe('work-order assignment model', () => {
     'plannedMoldId',
     'plannedShiftId',
   ] as const)('enables save for one valid resource and priority: %s', (field) => {
-    expect(isWorkOrderAssignmentSaveEnabled(validDraft({ [field]: '910' }))).toBe(true);
+    const resourceOnlyDraft = validDraft({
+      productionLineId: '',
+      responsibleWorkerId: '',
+      plannedEquipmentId: '',
+      plannedMoldId: '',
+      plannedShiftId: '',
+      [field]: '910',
+    });
+
+    expect(isWorkOrderAssignmentSaveEnabled(resourceOnlyDraft)).toBe(true);
   });
 
   it('disables save for field or assignment errors', () => {
