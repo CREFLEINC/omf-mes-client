@@ -9,8 +9,8 @@ import type { WorkOrderPageView } from './pagination';
 const t = messages.workOrder.pageNav;
 
 const view = (overrides: Partial<WorkOrderPageView> = {}): WorkOrderPageView => ({
-  page: 2,
-  rangeLabel: '21–40 / 전체 45건',
+  page: 4,
+  rangeLabel: '61–80 / 전체 100건',
   canFirst: true,
   canPrev: true,
   canNext: true,
@@ -30,11 +30,11 @@ describe('work-order PageNav', () => {
     const { onChange, user } = renderNav();
 
     expect(screen.getByRole('navigation', { name: t.label })).toHaveClass('form-actions');
-    expect(screen.getByText('21–40 / 전체 45건')).toBeInTheDocument();
+    expect(screen.getByText('61–80 / 전체 100건')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: t.first }));
     await user.click(screen.getByRole('button', { name: t.previous }));
     await user.click(screen.getByRole('button', { name: t.next }));
-    expect(onChange.mock.calls).toEqual([[1], [1], [3]]);
+    expect(onChange.mock.calls).toEqual([[1], [3], [5]]);
   });
 
   it('keeps first and previous buttons visible with visible accessible reasons on first page', () => {
