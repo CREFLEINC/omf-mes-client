@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 export type ApprovalRequest = components['schemas']['ApprovalRequest'];
 export type ApprovalRequestDetail = components['schemas']['ApprovalRequestDetail'];
+export type ApprovalStep = components['schemas']['ApprovalStep'];
 export type PageMeta = components['schemas']['PageMeta'];
 
 export interface RequestRow {
@@ -39,7 +40,7 @@ export interface RequestDetailView {
   targetName: string;
 }
 
-const formatDateTime = (value: string): string => {
+export const formatDateTime = (value: string): string => {
   const matched = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
   return matched === null ? value : `${matched[1] ?? ''} ${matched[2] ?? ''}`;
 };
