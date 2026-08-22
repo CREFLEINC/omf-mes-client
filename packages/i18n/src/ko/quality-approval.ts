@@ -1,4 +1,8 @@
 export const qualityApproval = {
+  title: '특채·한도승인',
+  breadcrumbRoot: '품질',
+  scopeWarning:
+    '승인 유형 기준값이 준비되지 않아 나에게 배정된 모든 유형의 요청을 표시합니다. 승인 유형 원문을 확인하세요.',
   fields: {
     approvalTypeCode: '승인 유형',
     statusCode: '상태',
@@ -11,6 +15,7 @@ export const qualityApproval = {
   codePending: '선택할 기준값이 아직 준비되지 않았습니다',
   codePlaceholder: '기준값 준비 중',
   all: '전체',
+  panes: { list: '승인 요청 목록' },
   actions: {
     selectRow: (requestNo: string): string => `${requestNo} 선택`,
     prevPage: '이전',
