@@ -52,4 +52,17 @@ export const workOrder = {
       noFindingsDescription: '현재 작업지시에 확인할 검증 결과가 없습니다.',
     },
   },
+  resourcePane: {
+    pane: '작업지시 자원 배정',
+    heading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
+    warning: '자원 종류별로 하나만 배정할 수 있습니다. 더 필요하면 W/O를 분할하세요.',
+    placeholder: '선택하세요',
+    cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Material' },
+    fields: { productionLine: '생산 라인', equipment: '설비', worker: '담당 작업자', mold: '금형' },
+    materialInfo: '자재 배정은 이 화면에서 변경하지 않습니다.',
+    empty: {
+      notSelectedTitle: '자원을 배정할 작업지시를 선택하세요.',
+      notSelectedDescription: '목록에서 작업지시를 선택하면 자원 배정 내용을 확인할 수 있습니다.',
+    },
+  },
 } as const;
