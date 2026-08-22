@@ -176,6 +176,9 @@ export const EquipmentMasterScreen = () => {
    */
   const statusValues = useCodeValues(CODE_GROUPS.equipmentStatus);
   const statusOptions = useMemo(() => toCodeLabels(statusValues.data ?? []), [statusValues.data]);
+  /** 기간 단위 값 목록 — 검교정 주기를 사람이 읽는 말로 옮긴다. */
+  const cycleValues = useCodeValues(CODE_GROUPS.cycleType);
+  const cycleOptions = useMemo(() => toCodeLabels(cycleValues.data ?? []), [cycleValues.data]);
   const equipmentItems = equipmentList.data?.items ?? [];
 
   /**
@@ -936,6 +939,10 @@ export const EquipmentMasterScreen = () => {
            */
           hierarchy={equipmentDetail.data?.hierarchy ?? null}
           statusCode={equipmentDetail.data?.equipment.statusCode ?? null}
+          /* 주기는 이 화면이 소유하지 않는다 — 상세에서 받은 값을 그대로 보인다. */
+          calibrationCycleTypeCode={carried.calibrationCycleTypeCode}
+          calibrationCycleInterval={carried.calibrationCycleInterval}
+          cycleOptions={cycleOptions}
           lastCalibrationDate={equipmentDetail.data?.equipment.lastCalibrationDate ?? null}
           calibrationDueDate={equipmentDetail.data?.equipment.calibrationDueDate ?? null}
           isActive={equipmentDetail.data?.equipment.isActive ?? false}

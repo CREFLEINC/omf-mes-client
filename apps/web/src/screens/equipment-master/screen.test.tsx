@@ -1459,7 +1459,48 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
    * 값 목록이 아직 없다(omf-mes#185). 열어 두면 켜는 순간 반드시 저장이 실패한다 —
    * 감추지 않고 사유를 밝힌다(G-2).
    */
-  it('검교정 대상을 잠그고 사유를 밝힌다', async () => {
+  /*
+   * ⭐ **주기 단위도 그룹을 이름으로 부른다.** 검교정 주기와 점검 부여 주기가 한 그룹을 쓴다
+   * (설계 omf-mes#188) — 같은 종류의 값이라 어휘를 두 벌 만들지 않는다.
+   * ⛔ 검사 «유형»은 종류가 달라 가른다 — 「이름이 다르면 가른다」가 아니다.
+   */
+  it('주기 단위 값 목록을 그룹 이름으로 부른다', async () => {
+    const user = userEvent.setup();
+    const { codeValueSent } = renderScreen();
+
+    await openEquipment(user);
+
+    const groups = codeValueSent.map((url) => url.searchParams.get('codeGroupCode'));
+    expect(groups).toContain('CYCLE_TYPE');
+    expect(groups).toContain('EQUIPMENT_STATUS');
+    expect(codeValueSent.some((url) => url.searchParams.has('codeGroupId'))).toBe(false);
+  });
+
+  /*
+   * ⭐ **주기가 있으면 켤 수 있다.** ⑨ 이전에는 주기 단위 값 목록이 없어 이 자리가 통째로
+   * 잠겨 있었다 — 설계가 그룹 이름을 확정해 주면서(omf-mes#188) 풀렸다.
+   */
+  it('주기가 있으면 검교정 대상을 켤 수 있다', async () => {
+    const user = userEvent.setup();
+    const withCycle = makeEquipment(2001, 'EQ-01', {
+      calibrationCycleTypeCode: 'MONTH',
+      calibrationCycleInterval: 12,
+    });
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([withCycle])),
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(withCycle), { headers: { ETag: '9' } }),
+    });
+
+    await openEquipment(user);
+
+    expect(
+      equipmentForm().getByRole('switch', { name: t.fields.calibrationRequired }),
+    ).toBeEnabled();
+  });
+
+  /* 주기가 없으면 켤 수 없다 — 켜면 계약의 짝 제약을 어겨 저장에서 거절당한다. */
+  it('주기가 없으면 검교정 대상을 켤 수 없고 사유가 보인다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
@@ -1468,8 +1509,27 @@ describe('EquipmentMasterScreen — 설비 등록·수정', () => {
     expect(
       equipmentForm().getByRole('switch', { name: t.fields.calibrationRequired }),
     ).toBeDisabled();
+    expect(equipmentForm().getByText(t.actionReasons.calibrationNeedsCycle)).toBeInTheDocument();
+  });
+
+  /* 계측기 마스터가 정한 값을 여기서는 본다 — 잠긴 입력칸이 아니라 값 표기다. */
+  it('검교정 주기를 간격과 단위 이름으로 보인다', async () => {
+    const user = userEvent.setup();
+    const withCycle = makeEquipment(2001, 'EQ-01', {
+      calibrationCycleTypeCode: 'MONTH',
+      calibrationCycleInterval: 12,
+    });
+    renderScreen({
+      respondEquipments: () => jsonResponse(equipmentsResponse([withCycle])),
+      respondEquipmentDetail: () =>
+        jsonResponse(equipmentDetail(withCycle), { headers: { ETag: '9' } }),
+    });
+
+    await openEquipment(user);
+
+    expect(equipmentForm().getByLabelText(t.fields.calibrationCycle)).toHaveTextContent('12');
     expect(
-      equipmentForm().getByText(t.actionReasons.calibrationCycleUnavailable),
+      equipmentForm().getByText(t.actionReasons.calibrationCycleOwnedElsewhere),
     ).toBeInTheDocument();
   });
 
@@ -1895,9 +1955,11 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
 
     await openEquipmentTab(user);
 
-    const query = (codeValueSent.at(-1) as URL).searchParams;
-    expect(query.get('codeGroupCode')).toBe('EQUIPMENT_STATUS');
-    expect(query.has('codeGroupId')).toBe(false);
+    expect(codeValueSent.map((url) => url.searchParams.get('codeGroupCode'))).toContain(
+      'EQUIPMENT_STATUS',
+    );
+    // ⛔ 정수 id 는 환경마다 달라 코드에 박을 수 없다 — 어느 조회에도 실리면 안 된다.
+    expect(codeValueSent.some((url) => url.searchParams.has('codeGroupId'))).toBe(false);
   });
 
   it('상태를 코드가 아니라 이름으로 보인다', async () => {

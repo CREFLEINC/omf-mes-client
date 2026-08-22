@@ -7,6 +7,7 @@ import {
   DISPOSED_STATUS_CODE,
   EQUIPMENT_TYPE_OPTIONS,
   type CodeOption,
+  cycleTypeLabel,
   statusLabel,
 } from './code-options';
 import { FieldLabel } from './field-label';
@@ -30,6 +31,11 @@ export interface EquipmentFormDialogProps {
   hierarchy: EquipmentHierarchy | null;
   /** 읽기 전용 값들. 이 화면이 정하지 않는다 */
   statusCode: string | null;
+  /** 검교정 주기 — 계측기 마스터가 정한다. 둘 중 하나라도 없으면 주기가 없는 것이다 */
+  calibrationCycleTypeCode: string | null;
+  calibrationCycleInterval: number | null;
+  /** 주기 단위 이름 풀이표. 비어 있으면 코드가 그대로 보인다 */
+  cycleOptions: CodeOption[];
   lastCalibrationDate: string | null;
   calibrationDueDate: string | null;
   /** 사용 중인 설비인가. 이미 중지된 것에는 중지할 대상이 없다 */
@@ -100,6 +106,9 @@ export const EquipmentFormDialog = ({
   processOptions,
   hierarchy,
   statusCode,
+  calibrationCycleTypeCode,
+  calibrationCycleInterval,
+  cycleOptions,
   lastCalibrationDate,
   calibrationDueDate,
   isActive,
@@ -113,6 +122,12 @@ export const EquipmentFormDialog = ({
   const hierarchyLabelId = useId();
   const calibrationNoteId = useId();
   const disposeNoteId = useId();
+
+  /** 주기는 «둘 다» 있어야 성립한다 — 계약이 그렇게 짝을 묶었다. */
+  const hasCalibrationCycle =
+    calibrationCycleTypeCode !== null &&
+    calibrationCycleTypeCode !== '' &&
+    calibrationCycleInterval !== null;
 
   return (
     <Dialog
@@ -195,23 +210,52 @@ export const EquipmentFormDialog = ({
         />
 
         {/*
-         * ⚠ 검교정 대상을 잠근다. 계약이 「참이면 주기 두 칸이 함께 필요하다」로 짝을 묶었는데
-         * 주기 단위의 값 목록이 아직 없다(설계 질의 omf-mes#185) — 열어 두면 켜는 순간
-         * 반드시 저장이 실패하는 경로가 된다. 감추지 않고 사유를 밝힌다(G-2).
+         * ⭐ **켜는 것만 주기에 매단다.** 계약이 「참이면 주기 두 칸이 함께 필요하다」로 짝을
+         * 묶었는데 주기는 이 화면이 정하지 않는다(계측기 마스터 소유 · 설계 omf-mes#188) —
+         * 주기 없이 켜면 저장에서 거절당한다.
+         *
+         * ⛔ **끄는 것은 언제나 열어 둔다.** 이미 켜져 있는데 주기가 없는 자료가 서버에서 올 수
+         * 있고, 그때 토글까지 잠그면 **사용자가 그 어긋난 상태를 풀 수단이 없다.**
          */}
         <div className="field-cell">
           <FieldLabel htmlFor={calibrationNoteId} label={t.fields.calibrationRequired} />
           <Switch
             id={calibrationNoteId}
             checked={values.calibrationRequired}
-            disabled
-            aria-describedby={`${calibrationNoteId}-note`}
+            disabled={!values.calibrationRequired && !hasCalibrationCycle}
+            aria-describedby={
+              !values.calibrationRequired && !hasCalibrationCycle
+                ? `${calibrationNoteId}-note`
+                : undefined
+            }
             onChange={(event) => onChange({ calibrationRequired: event.target.checked })}
           />
-          <span id={`${calibrationNoteId}-note`} className="field-note">
-            {t.actionReasons.calibrationCycleUnavailable}
-          </span>
+          {!values.calibrationRequired && !hasCalibrationCycle && (
+            <span id={`${calibrationNoteId}-note`} className="field-note">
+              {t.actionReasons.calibrationNeedsCycle}
+            </span>
+          )}
         </div>
+
+        {mode === 'edit' && (
+          /*
+           * ⭐ **계측기 마스터가 정한다 — 여기서는 본다.** `lastCalibrationDate` 와 같은 자리다
+           * (공유계약 B-13 · 설계 omf-mes#188). 잠긴 입력칸이 아니라 값 표기로 내는 이유는,
+           * 잠긴 입력칸이 「언젠가 여기서 고칠 수 있다」를 뜻하기 때문이다.
+           */
+          <ReadOnlyField
+            label={t.fields.calibrationCycle}
+            value={
+              hasCalibrationCycle
+                ? t.values.calibrationCycle(
+                    calibrationCycleInterval as number,
+                    cycleTypeLabel(calibrationCycleTypeCode as string, cycleOptions),
+                  )
+                : null
+            }
+            note={t.actionReasons.calibrationCycleOwnedElsewhere}
+          />
+        )}
 
         {mode === 'edit' && (
           <>

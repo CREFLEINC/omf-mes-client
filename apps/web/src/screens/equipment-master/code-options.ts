@@ -14,6 +14,14 @@ export type CodeValue = components['schemas']['CodeValue'];
  */
 export const CODE_GROUPS = {
   equipmentStatus: 'EQUIPMENT_STATUS',
+  /**
+   * 기간 단위. **검교정 주기와 점검 부여 주기가 이 한 그룹을 쓴다**(설계 `omf-mes#188`).
+   *
+   * ⭐ 가르는 기준은 「값이 같은 **종류**인가」다 — 둘 다 기간 단위라 합친다.
+   * ⛔ 검사 «유형»은 종류가 달라 그룹을 가른다(품질 IQC·PQC·OQC ↔ 설비 DAILY·MONTHLY·
+   * MAINTENANCE). 「이름이 다르면 가른다」가 아니다 — 그러면 어휘가 두 벌 생긴다(공유계약 G-32).
+   */
+  cycleType: 'CYCLE_TYPE',
 } as const;
 
 /**
@@ -112,6 +120,12 @@ export const equipmentTypeLabel = (code: string): string =>
  * 시드가 아직 없어 목록이 빌 수 있고(설계 `omf-mes#182`), 그때는 코드가 그대로 보이는 것이 옳다.
  */
 export const statusLabel = (code: string, options: readonly CodeOption[]): string =>
+  options.find((option) => option.value === code)?.label ?? code;
+
+/**
+ * 주기 단위 코드의 라벨. 상태와 같은 규율이다 — 못 찾으면 코드를 그대로 보인다.
+ */
+export const cycleTypeLabel = (code: string, options: readonly CodeOption[]): string =>
   options.find((option) => option.value === code)?.label ?? code;
 
 /**
