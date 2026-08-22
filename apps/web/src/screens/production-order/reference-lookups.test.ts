@@ -196,19 +196,19 @@ describe('resolveReference', () => {
     expect(resolveReference(source({ entries: [] }), 3101)).toEqual({ kind: 'unknown' });
   });
 
-  it('없는 참조 값은 unknown이며 어떤 결과에도 내부 ID를 담지 않는다', () => {
+  it('null/undefined 참조는 source 상태와 무관하게 unknown이며 내부 ID를 담지 않는다', () => {
     const states = [
-      resolveReference(source(), null),
-      resolveReference(source(), undefined),
+      resolveReference(source({ isError: true }), null),
+      resolveReference(source({ isLoading: true }), undefined),
+      resolveReference(source({ truncated: true }), null),
       resolveReference(source({ entries: [] }), 3199),
-      resolveReference(source({ isError: true }), 3101),
     ];
 
     expect(states).toEqual([
       { kind: 'unknown' },
       { kind: 'unknown' },
       { kind: 'unknown' },
-      { kind: 'failed' },
+      { kind: 'unknown' },
     ]);
     for (const state of states) expect(JSON.stringify(state)).not.toContain('3199');
   });

@@ -96,13 +96,11 @@ export const resolveReference = (
   source: ReferenceSource,
   id: number | null | undefined,
 ): ReferenceState => {
+  if (id === null || id === undefined) return { kind: 'unknown' };
   if (source.isError) return { kind: 'failed' };
   if (source.isLoading) return { kind: 'loading' };
 
-  const label =
-    id === null || id === undefined
-      ? undefined
-      : source.entries.find((entry) => entry.value === String(id))?.label;
+  const label = source.entries.find((entry) => entry.value === String(id))?.label;
 
   if (label !== undefined) return { kind: 'named', label };
   if (source.truncated) return { kind: 'truncated' };
