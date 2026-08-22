@@ -8,6 +8,7 @@ import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
 import { DisposalIssueScreen } from '../screens/disposal-issue/screen';
 import { DocumentProgressScreen } from '../screens/document-progress/screen';
+import { GaugeMasterScreen } from '../screens/gauge-master/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
@@ -258,6 +259,32 @@ export const appRouter = createBrowserRouter([
        * 이것으로 완결된다.
        */
       { path: 'equipment/master', element: <EquipmentMasterScreen /> },
+      /*
+       * W-05-11 — **라우트만 연다. 사이드바에는 두지 않는다.**
+       *
+       * 이 화면은 `equipmentTypeCode` 로 계측기를 가려내는데 **그 값 목록이 아직 없다**
+       * (설계 질의 `omf-mes#195` · 추적 `#145`). 그동안은 조건을 걸지 않고 전체 설비를
+       * 보이며 배너로 그 사실을 밝힌다 — 조건을 걸면 목록이 늘 비어 화면이 통째로 죽는다.
+       *
+       * ⚠ **그 상태를 「계측기 마스터」라는 이름의 메뉴로 여는 것이 맞는지 설계에 물어 두었고,
+       * 회신 전까지 메뉴를 세우지 않는다.** 메뉴 이름은 사용자에게 「여기 있는 것은 계측기다」를
+       * 약속하는데 지금은 그렇지 않다 — 배너가 있어도 메뉴 이름이 먼저 읽힌다.
+       * 값 목록이 들어오면 배너가 저절로 사라지고, 그때 메뉴 한 줄만 더하면 된다.
+       *
+       * 라우트를 먼저 여는 이유는 **주소가 회신이 걸릴 자리**이기 때문이다 — 메뉴도 다른
+       * 화면의 링크도 이 주소를 가리키게 되고, 주소가 없으면 어느 쪽도 이을 수 없다.
+       * 형제 화면(W-05-12)의 검교정 주기 칸이 「계측기 마스터에서 정합니다」라고 말하고 있어
+       * **거기서 이리로 잇는 링크**가 다음 자리다(그 링크는 저장하지 않은 입력을 버리게 되므로
+       * 파기 확인과 함께 가야 한다 — 이 슬라이스에 넣지 않는다).
+       *
+       * 앞머리는 형제와 같은 규칙(사이드바 섹션)을 따르고, 이름은 위 주석이 예고한 대로
+       * `gauge-master` 다 — 한정어 없는 `master` 는 이 섹션의 주어인 설비의 것이다.
+       *
+       * 메뉴에 서지 않는 화면은 이 저장소에서 W-01-11 다음 두 번째다. 그쪽은 **맥락 없는
+       * 진입이 요구사항 위반**이라 영영 두지 않는 것이고, 이쪽은 **값 목록이 없는 동안만**
+       * 미루는 것이다 — 같은 모양이지만 이유와 수명이 다르다.
+       */
+      { path: 'equipment/gauge-master', element: <GaugeMasterScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을
