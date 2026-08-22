@@ -185,6 +185,33 @@ describe('useProductionOrderResync — rejected request', () => {
     expect(result.current.isAccepted).toBe(false);
   });
 
+  it('clears a settled HTTP error when reset is idle', async () => {
+    const recording = createRecordingFetch([
+      resyncRoute(() => jsonResponse({ message: 'synthetic forbidden' }, { status: 403 })),
+    ]);
+    const { result } = renderHookWithProviders(() => useProductionOrderResync(7101), {
+      fetch: recording.fetch,
+    });
+
+    act(() => {
+      result.current.requestResync();
+    });
+    await waitFor(() => {
+      expect(result.current.error).toEqual({
+        kind: 'http',
+        status: 403,
+        message: 'synthetic forbidden',
+      });
+    });
+
+    act(() => {
+      result.current.resetIfIdle();
+    });
+
+    expect(result.current.isAccepted).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
   it('clears a settled error when a new explicit attempt starts', async () => {
     const recording = createSecondAttemptPendingFetch(
       jsonResponse({ message: 'synthetic forbidden' }, { status: 403 }),
