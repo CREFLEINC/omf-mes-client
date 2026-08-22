@@ -7,6 +7,7 @@ import type { Mold, ToolFilters } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type CodeValue = components['schemas']['CodeValue'];
+type MoldDetailResponse = components['schemas']['MoldDetailResponse'];
 
 export interface ToolListResponse {
   items: Mold[];
@@ -16,7 +17,11 @@ export interface ToolListResponse {
 export const toolKeys = {
   all: ['tools'] as const,
   list: (filters: ToolFilters) => ['tools', 'list', filters] as const,
+  detail: (moldId: number) => ['tools', 'detail', moldId] as const,
 };
+
+/** 상세 경로. **잠금 토큰이 이 경로에 보관된다** — 쓰기 경로로 꺼내면 늘 비어 있다. */
+export const toolDetailPath = (moldId: number): string => `/mdm/molds/${String(moldId)}`;
 
 /** 조회 조건의 공장을 숫자로 읽는다. 읽을 수 없으면 조건이 없는 것으로 다룬다. */
 const plantIdQuery = (value: string): { plantId: number } | Record<string, never> => {
@@ -87,6 +92,26 @@ export const useCodeValues = (codeGroupCode: string): UseQueryResult<CodeValue[]
           params: { query: { codeGroupCode, page: 1, size: CODE_VALUES_PAGE_SIZE } },
         }),
       ).then((response) => response.items),
+  });
+};
+
+/**
+ * 툴 상세. **잠금 토큰·코드 편집 가부·라벨 발행 회차가 이 응답으로 온다** — 목록 행만으로는
+ * 저장을 시작할 수 없다.
+ */
+export const useToolDetail = (moldId: number | null): UseQueryResult<MoldDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: toolKeys.detail(moldId ?? 0),
+    enabled: moldId !== null,
+    queryFn: () => {
+      if (moldId === null) {
+        throw new Error('툴을 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() => client.GET('/mdm/molds/{moldId}', { params: { path: { moldId } } }));
+    },
   });
 };
 

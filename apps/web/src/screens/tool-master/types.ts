@@ -28,3 +28,24 @@ export interface ToolFilters {
   sort: ToolSort;
   includeInactive: boolean;
 }
+
+/**
+ * 폼이 들고 있는 값. **수는 문자열로 든다** — 빈 칸과 `0` 을 가르고, 지우는 도중의
+ * 「`1.`」 같은 중간 상태를 숫자로 억지로 바꾸지 않기 위해서다.
+ *
+ * ⛔ **누계 타발수·마지막 예방보전일이 여기 없다.** 계약이 수정 본문에 받지 않으며, 더하는 것은
+ * 툴 사용실적 입력이고 되돌리는 것은 툴 예방보전 실적 등록이다(스펙 §6 · 공유계약 B-13).
+ * 폼 값에 두면 언젠가 입력칸이 붙고, 그 순간 실적과 마스터가 조용히 어긋난다.
+ */
+export interface ToolFormValues {
+  moldCode: string;
+  moldName: string;
+  toolTypeCode: string;
+  /** 등록에서만 고른다. 계약이 수정 본문에 받지 않는다 */
+  plantId: string;
+  cavityCount: string;
+  guaranteedShotCount: string;
+  pmTriggerTypeCode: string;
+  pmCycleInterval: string;
+  pmCycleUnitCode: string;
+}

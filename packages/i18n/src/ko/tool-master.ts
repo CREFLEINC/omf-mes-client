@@ -7,6 +7,9 @@
 export const toolMaster = {
   title: '툴/금형/지그 마스터 관리',
   breadcrumbRoot: '설비/툴',
+  actions: {
+    addTool: '툴 등록',
+  },
   loading: {
     tools: '툴 목록을 불러오는 중',
   },
@@ -53,6 +56,71 @@ export const toolMaster = {
     pm: '예방보전',
     availableShotCount: '사용 가능 타수',
     shotUsageRatio: '초과율',
+    cavityCount: '캐비티 수',
+    guaranteedShotCount: '적정타수',
+    currentShotCount: '누계 타발수',
+    pmTriggerType: '예방보전 판정 기준',
+    pmCycleInterval: '예방보전 주기 간격',
+    pmCycleUnit: '예방보전 주기 단위',
+    lastPmDate: '마지막 예방보전일',
+    nextPmDate: '다음 예방보전 예정일',
+    labelIssueCount: '발행한 라벨 회차',
+    notRecorded: '기록 없음',
+  },
+  form: {
+    createTitle: '툴 등록',
+    editTitle: '툴 수정',
+    plantPlaceholder: '공장을 고르세요',
+    typePlaceholder: '도구 유형을 고르세요',
+    cycleUnitPlaceholder: '주기 단위를 고르세요',
+    labelIssued: (count: number): string => `${count}회`,
+  },
+  /**
+   * 예방보전을 무엇으로 판정하는가. **계약이 네 값과 뜻을 함께 못박았다** — 화면이 지어낸
+   * 값이 아니라 계약의 말을 옮긴 것이다.
+   */
+  pmTrigger: {
+    shot: '타발수',
+    date: '날짜',
+    both: '타발수와 날짜',
+    none: '하지 않음',
+  },
+  /** 날짜 주기의 단위. 계약이 두 값만 받는다. */
+  pmCycleUnit: {
+    day: '일',
+    month: '개월',
+  },
+  /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
+  actionReasons: {
+    plantFixed: '공장은 등록할 때 정해지며 이 화면에서 옮길 수 없습니다.',
+    cycleNeedsDateAxis: '판정 기준에 날짜를 넣으면 주기를 입력할 수 있습니다.',
+    statusOwnedElsewhere: '운용상태는 사용 중지·폐기 처리로 바뀝니다.',
+    /** ⭐ 스펙 §6 의 첫 항목 — 여기서 손으로 고칠 수 있으면 실적과 마스터가 조용히 어긋난다. */
+    shotCountOwnedElsewhere:
+      '누계 타발수는 툴 사용실적 입력이 더하고, 툴 예방보전 실적 등록이 되돌립니다.',
+    pmDateOwnedElsewhere: '마지막 예방보전일은 툴 예방보전 실적 등록에서 정합니다.',
+  },
+  notes: {
+    /**
+     * ⚠ 도구 유형 값 목록이 아직 없어(추적 `omf-mes#145`) **어느 코드가 금형인지 화면이
+     * 판정할 수 없다.** 잠그는 대신 뜻을 밝힌다 — 값 목록이 들어오면 잠글 수 있다.
+     */
+    cavityMeaningfulForMold: '캐비티 수는 금형에서만 뜻이 있습니다.',
+    /**
+     * ⭐ **막지 않고 알린다.** 「적정타수 없는 것만」 조회 조건이 있다는 것은 이 상태로 저장하는
+     * 것을 **업무가 허용한다**는 뜻이다 — 막으면 나중에 채우는 길이 사라진다.
+     */
+    guaranteedMissingBlocksShotAxis:
+      '적정타수가 비어 있으면 사용 가능 타수와 초과율을 셀 수 없고, 타발수로는 예방보전이 도래하지 않습니다.',
+  },
+  validation: {
+    required: '필수 항목입니다.',
+    codeBlank: '공백만으로는 툴코드를 만들 수 없습니다.',
+    cavityPositiveInteger: '캐비티 수는 1 이상의 정수로 입력하세요.',
+    /** ⛔ 0 을 받지 않는다 — 적정타수 0 은 「없음」이 아니라 「이미 다 썼다」로 셈된다. */
+    guaranteedPositiveInteger: '적정타수는 1 이상의 정수로 입력하세요. 없으면 비워 두세요.',
+    cycleRequired: '판정 기준에 날짜를 넣었으면 주기 간격과 단위를 함께 입력하세요.',
+    intervalPositiveInteger: '주기 간격은 1 이상의 정수로 입력하세요.',
   },
   values: {
     /**

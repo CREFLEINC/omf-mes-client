@@ -2,6 +2,9 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
+  PM_CYCLE_UNIT_OPTIONS,
+  PM_TRIGGER,
+  PM_TRIGGER_OPTIONS,
   SORT_OPTIONS,
   codeLabel,
   defaultToolFilters,
@@ -10,6 +13,8 @@ import {
   selectableOptions,
   toCodeLabels,
   toToolSort,
+  usesDateAxis,
+  usesShotAxis,
 } from './code-options';
 import { makeCodeValue } from './fixtures';
 
@@ -116,5 +121,57 @@ describe('defaultToolFilters', () => {
       sort: 'CODE',
       includeInactive: false,
     });
+  });
+});
+
+describe('usesDateAxis · usesShotAxis', () => {
+  /*
+   * ⭐ **「둘 다」는 두 축 모두다.** 한쪽에서 빠뜨리면 그 축의 짝 제약이 재지 않는 자리가 생긴다 —
+   * 날짜 축이면 주기 두 칸이 열리고, 타발수 축이면 적정타수가 비었을 때 안내가 서야 한다.
+   */
+  it('BOTH 은 두 축을 모두 쓴다', () => {
+    expect(usesDateAxis(PM_TRIGGER.both)).toBe(true);
+    expect(usesShotAxis(PM_TRIGGER.both)).toBe(true);
+  });
+
+  it('DATE 는 날짜 축만 쓴다', () => {
+    expect(usesDateAxis(PM_TRIGGER.date)).toBe(true);
+    expect(usesShotAxis(PM_TRIGGER.date)).toBe(false);
+  });
+
+  it('SHOT 은 타발수 축만 쓴다', () => {
+    expect(usesDateAxis(PM_TRIGGER.shot)).toBe(false);
+    expect(usesShotAxis(PM_TRIGGER.shot)).toBe(true);
+  });
+
+  it('NONE 은 어느 축도 쓰지 않는다', () => {
+    expect(usesDateAxis(PM_TRIGGER.none)).toBe(false);
+    expect(usesShotAxis(PM_TRIGGER.none)).toBe(false);
+  });
+
+  /* 모르는 값을 어느 축으로도 읽지 않는다 — 지어내면 잠긴 칸이 열리거나 그 반대가 된다. */
+  it('모르는 값은 어느 축도 아니다', () => {
+    expect(usesDateAxis('WHATEVER')).toBe(false);
+    expect(usesShotAxis('WHATEVER')).toBe(false);
+  });
+});
+
+describe('PM_TRIGGER_OPTIONS · PM_CYCLE_UNIT_OPTIONS', () => {
+  /* 계약이 정한 네 값 그대로다 — 화면이 늘리지도 줄이지도 않는다. */
+  it('판정 기준은 계약의 네 값이다', () => {
+    expect(PM_TRIGGER_OPTIONS.map((option) => option.value)).toEqual([
+      'NONE',
+      'SHOT',
+      'DATE',
+      'BOTH',
+    ]);
+  });
+
+  /*
+   * ⛔ **기간 단위 공통코드 그룹을 그대로 내지 않는다** — 계약이 여기서는 두 값으로 좁혔고,
+   * 주·년을 고를 수 있게 두면 고른 뒤 저장에서 거절당한다.
+   */
+  it('주기 단위는 계약이 좁힌 둘뿐이다', () => {
+    expect(PM_CYCLE_UNIT_OPTIONS.map((option) => option.value)).toEqual(['DAY', 'MONTH']);
   });
 });
