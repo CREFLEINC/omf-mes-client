@@ -60,6 +60,18 @@ export const toCodeLabels = (values: readonly CodeValue[]): CodeOption[] =>
     label: value.codeName.trim() === '' ? value.code : value.codeName,
   }));
 
+/**
+ * 서버가 준 현재 값이 선택지에 없으면 **코드 그대로 덧붙인다.**
+ *
+ * ⛔ 덧붙이지 않으면 선택칸이 자리표시만 보여 **값이 없는 것처럼 보인다.** 코드값 시드가
+ * 아직 없거나(설계 `omf-mes#182`) 쓰지 않기로 한 값이 자료에 남아 있을 때 실제로 그렇게 된다 —
+ * 사용자는 지워진 줄 알고 다시 고르고, 원래 값은 그렇게 조용히 바뀐다.
+ */
+export const ensureOption = (options: CodeOption[], value: string): CodeOption[] =>
+  value === '' || options.some((option) => option.value === value)
+    ? options
+    : [...options, { value, label: value }];
+
 /** 코드 하나의 이름. 못 찾으면 코드를 그대로 보인다 — 「알 수 없음」을 쓰지 않는다(G-9). */
 export const codeLabel = (code: string, options: readonly CodeOption[]): string =>
   options.find((option) => option.value === code)?.label ?? code;

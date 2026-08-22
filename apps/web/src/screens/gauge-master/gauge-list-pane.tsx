@@ -42,6 +42,8 @@ export interface GaugeListPaneProps {
   canFilterByType: boolean;
   /** 서버가 목록을 잘랐는가 — 밀림 조건이 무엇을 덮는지가 달라진다 */
   isTruncated: boolean;
+  onAdd: () => void;
+  onEdit: (gauge: Equipment) => void;
   loadError: ReactNode;
 }
 
@@ -92,6 +94,8 @@ export const GaugeListPane = ({
   today,
   canFilterByType,
   isTruncated,
+  onAdd,
+  onEdit,
   loadError,
 }: GaugeListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -131,6 +135,12 @@ export const GaugeListPane = ({
     {
       key: 'equipmentCode',
       header: t.fields.gaugeCode,
+      /* 코드가 곧 여는 손잡이다 — 줄마다 「수정」 단추를 세우면 표가 조작으로 덮인다. */
+      render: (row) => (
+        <button type="button" className="link-cell" onClick={() => onEdit(row)}>
+          {row.equipmentCode}
+        </button>
+      ),
     },
     { key: 'equipmentName', header: t.fields.gaugeName },
     {
@@ -258,6 +268,9 @@ export const GaugeListPane = ({
         </Button>
         <Button className="field-cell-unlabeled" variant="outlined" onClick={resetAll}>
           {messages.common.reset}
+        </Button>
+        <Button className="field-cell-unlabeled" variant="outlined" onClick={onAdd}>
+          {t.actions.addGauge}
         </Button>
       </div>
 

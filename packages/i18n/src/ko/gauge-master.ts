@@ -7,6 +7,9 @@
 export const gaugeMaster = {
   title: '계측기 마스터 관리',
   breadcrumbRoot: '설비/툴',
+  actions: {
+    addGauge: '계측기 등록',
+  },
   loading: {
     gauges: '계측기 목록을 불러오는 중',
   },
@@ -50,8 +53,30 @@ export const gaugeMaster = {
     chipType: (label: string): string => `유형: ${label}`,
     includeDisposed: '폐기 포함',
   },
+  form: {
+    createTitle: '계측기 등록',
+    editTitle: '계측기 수정',
+    plantPlaceholder: '공장을 고르세요',
+    cyclePlaceholder: '주기 단위를 고르세요',
+    uomPlaceholder: '단위를 고르세요',
+  },
+  /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
+  actionReasons: {
+    plantFixed: '공장은 등록할 때 정해지며 이 화면에서 옮길 수 없습니다.',
+    cycleNeedsCalibration: '검교정 대상으로 지정하면 주기를 입력할 수 있습니다.',
+    statusOwnedElsewhere: '운용상태는 사용 중지·폐기 처리로 바뀝니다.',
+    calibrationDateOwnedElsewhere: '검교정 일자는 검교정 이력 등록에서 정합니다.',
+  },
   fields: {
     plant: '공장',
+    calibrationRequired: '검교정 대상',
+    calibrationCycleType: '검교정 주기 단위',
+    calibrationCycleInterval: '검교정 주기 간격',
+    precisionValue: '정밀도',
+    precisionUom: '정밀도 단위',
+    lastCalibrationDate: '최근 검교정일',
+    calibrationDueDate: '차기 검교정 예정일',
+    notRecorded: '기록 없음',
     gaugeCode: '계측기번호',
     gaugeName: '계측기명',
     gaugeType: '계측기 유형',
@@ -75,5 +100,19 @@ export const gaugeMaster = {
     never: '검교정 이력 없음',
     valid: (days: number): string => (days === 0 ? '오늘까지 유효' : `${days}일 남음`),
     expired: (days: number): string => `만료 — ${days}일 경과`,
+  },
+  validation: {
+    required: '필수 항목입니다.',
+    codeBlank: '공백만으로는 계측기번호를 만들 수 없습니다.',
+    /** ⭐ 짝 제약 — 하나만으로는 다음 예정일을 셀 수 없다 */
+    cycleRequired: '검교정 대상이면 주기 단위와 간격을 함께 입력하세요.',
+    intervalPositiveInteger: '주기 간격은 1 이상의 정수로 입력하세요.',
+    precisionUomRequired: '정밀도 값을 입력했으면 단위도 고르세요.',
+    precisionValueRequired: '단위를 골랐으면 정밀도 값도 입력하세요.',
+    precisionPositive: '정밀도는 0보다 큰 수로 입력하세요.',
+    precisionScale: (scale: number): string =>
+      scale === 0
+        ? '고른 단위는 소수점 아래 자리를 쓰지 않습니다.'
+        : `고른 단위는 소수점 아래 ${scale}자리까지 쓸 수 있습니다.`,
   },
 } as const;
