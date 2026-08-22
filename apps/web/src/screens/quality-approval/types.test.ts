@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { toRequestRow, type ApprovalRequest } from './types';
+import { toRequestDetailView, toRequestRow, type ApprovalRequest } from './types';
 
 const request = (): ApprovalRequest => ({
   approvalRequestId: 31,
@@ -47,4 +47,32 @@ it('빈 표시 이름을 내부 번호로 대신하지 않는다', () => {
 
   expect(row.targetName).toBe(messages.qualityApproval.values.unknownTarget);
   expect(JSON.stringify(row)).not.toContain('91');
+});
+
+it('상세 표시값은 원시 코드와 사유의 줄·빈 줄을 보존하고 내부 ID를 나르지 않는다', () => {
+  const source = request();
+  const before = structuredClone(source);
+
+  expect(toRequestDetailView(source)).toEqual({
+    approvalRequestNo: 'SYNTH-REQ-031',
+    approvalTypeCode: 'SYNTH-CONCESSION',
+    requesterName: '합성 사용자',
+    requestedAtText: '2026-08-22 09:30',
+    statusCode: 'SYNTH-PENDING',
+    reasonLines: ['', '  첫 근거  ', '둘째 근거'],
+    targetName: '합성 대상',
+  });
+  expect(source).toEqual(before);
+});
+
+it('상세의 빈 이름은 내부 번호가 아닌 안내로 바꾼다', () => {
+  const source = request();
+  source.requestedByName = ' ';
+  source.target.displayName = '';
+
+  const view = toRequestDetailView(source);
+
+  expect(view.requesterName).toBe(messages.qualityApproval.values.unknownRequester);
+  expect(view.targetName).toBe(messages.qualityApproval.values.unknownTarget);
+  expect(JSON.stringify(view)).not.toContain('91');
 });
