@@ -13,6 +13,7 @@ import { ChannelPane } from './channel-pane';
 import { CHANNEL_FORM_FIELDS, validateChannel } from './channel-validation';
 import { EquipmentPane } from './equipment-pane';
 import { LoadErrorBanner } from './load-error-banner';
+import { ActivationDialog } from './activation-dialog';
 import { ImportDialog } from './import-dialog';
 import { emptyFormValues, formValuesFrom, toChannelCreate, toChannelUpdate } from './mappers';
 import {
@@ -163,6 +164,17 @@ export const CollectionChannelScreen = () => {
   const [values, setValues] = useState<ChannelFormValues>(emptyFormValues);
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const [pickerPath, setPickerPath] = useState<ItemPickerPath>(NO_PICKER_PATH);
+  /**
+   * 사용 여부를 바꾸려는 대상. 닫혀 있으면 `null`.
+   *
+   * ⭐ **방향을 열 때 굳힌다** — 목록이 다시 들어와 그 줄의 상태가 뒤집혀도, 사용자가
+   * 「끈다」고 보고 연 창이 「켠다」로 바뀌지 않는다.
+   */
+  const [activating, setActivating] = useState<{
+    collectionChannelId: number;
+    channelKey: string;
+    mode: 'deactivate' | 'resume';
+  } | null>(null);
   /** 수신 로그 창이 떠 있는가 */
   const [importing, setImporting] = useState(false);
   const [importUnmappedOnly, setImportUnmappedOnly] = useState(true);
@@ -178,8 +190,15 @@ export const CollectionChannelScreen = () => {
   const plantLookup = usePlantLookup();
   const uomLookup = useUomLookup();
 
-  /* 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰이 없다. */
-  const editingId = dialog?.mode === 'edit' ? dialog.collectionChannelId : null;
+  /*
+   * 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰이 없다.
+   *
+   * ⭐ **수정 창과 사용 여부 창이 같은 조회를 나눠 쓴다.** 둘 다 「지금 값 + 잠금 토큰」이
+   * 필요하고 동시에 열리지 않는다 — 조회를 둘로 두면 캐시 키만 늘고 얻는 것이 없다.
+   */
+  const targetId = dialog?.mode === 'edit' ? dialog.collectionChannelId : null;
+  const activatingId = activating?.collectionChannelId ?? null;
+  const editingId = targetId ?? activatingId;
   const detail = useChannelDetail(editingId);
 
   /*
@@ -262,7 +281,7 @@ export const CollectionChannelScreen = () => {
 
       return client.PUT('/maintenance/collection-channels/{collectionChannelId}', {
         params: {
-          path: { collectionChannelId: editingId ?? 0 },
+          path: { collectionChannelId: targetId ?? 0 },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
             'If-Match': headers['If-Match'] ?? '',
@@ -272,7 +291,7 @@ export const CollectionChannelScreen = () => {
       });
     },
     /* 잠금 토큰은 상세 경로에 보관돼 있다. 등록에는 낙관적 잠금이 없다. */
-    etagPath: editingId === null ? null : channelDetailPath(editingId),
+    etagPath: targetId === null ? null : channelDetailPath(targetId),
     invalidateKeys: [channelKeys.all],
     knownFields: CHANNEL_FORM_FIELDS,
     onSuccess: () => {
@@ -342,6 +361,45 @@ export const CollectionChannelScreen = () => {
     setPickerPath((prev) => ({ ...prev, inspectionPlanVersionId }));
   };
 
+  /**
+   * 사용 여부를 바꾸는 쓰기.
+   *
+   * ⛔ **지금 값을 통째로 되보낸다.** 이 화면의 사용 중지는 전용 경로가 아니라 **수정
+   * 요청**이고, 계약이 전 필드를 선택으로 두었다 — `isActive` 만 실어 보내면 서버가 그것을
+   * 「나머지를 비우라」로 읽을 수 있고, 그러면 **이름·단위·이어 둔 항목이 함께 지워진다.**
+   *
+   * ⛔ **멱등 키 수명은 기본값(`per-attempt`)이 맞다** — 되돌릴 수 있는 쓰기다. 끈 것을
+   * 다시 켤 수 있으므로 「통신이 끊긴 뒤 다시 눌러 두 번 실행」의 대가가 크지 않다.
+   */
+  const activationWrite = useMasterWrite<boolean, CollectionChannel>({
+    request: (nextActive, headers) => {
+      const current = detail.data;
+
+      if (activatingId === null || current === undefined) {
+        throw new Error('대상의 지금 값을 받기 전에는 사용 여부를 바꾸지 않습니다.');
+      }
+
+      return client.PUT('/maintenance/collection-channels/{collectionChannelId}', {
+        params: {
+          path: { collectionChannelId: activatingId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: toChannelUpdate(formValuesFrom(current), { isActive: nextActive }),
+      });
+    },
+    etagPath: activatingId === null ? null : channelDetailPath(activatingId),
+    invalidateKeys: [channelKeys.all],
+    /* 대응하는 입력칸이 없다 — 필드 오류도 전부 배너로 올린다. */
+    knownFields: [],
+    onSuccess: () => {
+      setActivating(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
   const importWrite = useObservationImport(selectedEquipmentId);
 
   const observationItems = shownObservations.data?.items ?? NO_OBSERVATIONS;
@@ -373,6 +431,24 @@ export const CollectionChannelScreen = () => {
         setSelectedKeys(summary.failed.map((outcome) => outcome.channelKey));
       },
     });
+  };
+
+  /**
+   * ⭐ **거두는 자리를 하나로 둔다**(`closeDialog` 와 같은 규율) — 여는 쪽과 닫는 쪽 둘 다에서
+   * 거두면 한쪽을 고쳐도 다른 쪽이 덮어 주어 **고장이 드러나지 않는다.**
+   */
+  const openActivation = (channel: CollectionChannel): void => {
+    setActivating({
+      collectionChannelId: channel.collectionChannelId,
+      channelKey: channel.channelKey,
+      /* 방향은 «지금 보이는 상태»가 정하고, 창이 열린 뒤에는 바뀌지 않는다. */
+      mode: channel.isActive ? 'deactivate' : 'resume',
+    });
+  };
+
+  const closeActivation = (): void => {
+    resetIfIdle(activationWrite);
+    setActivating(null);
   };
 
   const submit = (): void => {
@@ -443,6 +519,7 @@ export const CollectionChannelScreen = () => {
           onEdit={openEdit}
           canImport={(anyObservations.data?.items.length ?? 0) > 0}
           onImport={openImport}
+          onChangeActivation={openActivation}
           loadError={channelError}
         />
       </div>
@@ -473,7 +550,7 @@ export const CollectionChannelScreen = () => {
             <SaveErrorBanner
               error={write.error}
               /* 충돌은 다시 불러와야 풀린다 — 등록에는 불러올 잠금 토큰 자체가 없다. */
-              onReload={editingId === null ? undefined : () => void detail.refetch()}
+              onReload={targetId === null ? undefined : () => void detail.refetch()}
             />
           }
           unitOptions={uomLookup.uoms}
@@ -489,6 +566,21 @@ export const CollectionChannelScreen = () => {
           uomCodeById={uomCodeById}
           onClose={closeDialog}
           onSave={submit}
+        />
+      )}
+
+      {activating !== null && (
+        <ActivationDialog
+          mode={activating.mode}
+          channelKey={activating.channelKey}
+          /* 지금 값을 모르면 실행을 잠근다 — 모르는 채 보내면 나머지 칸이 함께 지워진다. */
+          isLoadingTarget={detail.data === undefined}
+          isSaving={activationWrite.isSaving}
+          banner={
+            <SaveErrorBanner error={activationWrite.error} onReload={() => void detail.refetch()} />
+          }
+          onClose={closeActivation}
+          onConfirm={() => activationWrite.write(activating.mode === 'resume')}
         />
       )}
 

@@ -66,6 +66,7 @@ export const collectionChannel = {
     mayHaveMore: (shown: number): string => `${shown}건을 표시합니다. 더 있을 수 있습니다.`,
   },
   fields: {
+    activation: '사용',
     plant: '공장',
     equipment: '설비',
     equipmentCode: '설비번호',
@@ -191,6 +192,36 @@ export const collectionChannel = {
     /** ⛔ 「모른다」를 「같다」로 접지 않는다 — 침묵하면 맞는 것으로 읽힌다(G-9). */
     unknown:
       '고른 검사 항목의 단위를 확인하지 못해 이 채널의 단위와 견주지 못했습니다. 저장은 되지만 단위가 맞는지 직접 확인하세요.',
+  },
+  /**
+   * 사용 여부를 바꾼다.
+   *
+   * ⭐ **이 화면은 끄기와 켜기를 «둘 다» 갖는다** — 형제 화면들과 다르다. 그쪽은 사용 중지에
+   * 전용 경로가 있고 되살리는 경로가 없어 「다시 켤 수단이 없다」고 말해야 하지만, 여기서는
+   * `isActive` 가 수정 본문의 한 필드라 **끄는 것도 켜는 것도 같은 요청**이다. 계약이
+   * 허용하는 것을 화면이 임의로 막지 않는다.
+   */
+  activation: {
+    deactivateAction: '사용 중지',
+    resumeAction: '사용 재개',
+    deactivateLabel: (channelKey: string): string => `${channelKey} 사용 중지`,
+    resumeLabel: (channelKey: string): string => `${channelKey} 사용 재개`,
+    deactivateTitle: '이 채널을 사용 중지할까요?',
+    resumeTitle: '이 채널을 다시 켤까요?',
+    target: (channelKey: string): string => `${channelKey} 채널을 처리합니다.`,
+    /**
+     * ⚠ **「값이 버려진다」고도 「값이 담긴다」고도 말하지 않는다.** 사용 안 함이 수집까지
+     * 멈추는지가 아직 확인되지 않았다(설계 질의). **모르는 것을 단정하면 사용자는 그 말을
+     * 믿고 라인을 세우거나 세우지 않는다** — 둘 다 되돌리기 비싸다.
+     */
+    deactivateImpact:
+      '사용 중지하면 이 채널이 목록에서 빠집니다. 채널과 이어 둔 검사 항목은 지워지지 않습니다.',
+    /** ⭐ 되돌릴 수 있다는 사실을 밝힌다 — 형제 화면과 여기가 갈리는 자리다. */
+    deactivateReversible:
+      '지우는 것이 아니라 끄는 것입니다. 「미사용 포함」을 켜면 다시 찾아 켤 수 있습니다.',
+    resumeImpact: '다시 켜면 이 채널이 목록에 돌아옵니다. 이어 둔 검사 항목도 그대로입니다.',
+    /** 창을 열었지만 아직 대상을 받지 못했다 — 모르면 잠근다(누르면 아무 일도 없는 것보다 낫다). */
+    loadingTarget: '채널 정보를 불러오는 중입니다.',
   },
   /** ⭐ 감추지 않고 「왜 여기서 못 하는지」를 말한다(공유계약 G-2). */
   actionReasons: {
