@@ -17,6 +17,10 @@ import {
   plantsResponse as equipmentPlantsResponse,
   processesResponse as equipmentProcessesResponse,
 } from '../screens/equipment-master/fixtures';
+import {
+  gaugesResponse,
+  plantsResponse as gaugePlantsResponse,
+} from '../screens/gauge-master/fixtures';
 import { queueResponse as iqcQueueResponse } from '../screens/iqc-inspection/fixtures';
 import { sessionBody } from '../screens/login/fixtures';
 import {
@@ -245,6 +249,20 @@ const equipmentMasterRoutes = (): StubRoute[] => [
     match: (request) => isGet(request, '/mdm/processes'),
     respond: () => jsonResponse(equipmentProcessesResponse()),
   },
+];
+
+/** W-05-11이 첫 진입에 부르는 것들 — 목록·공장·단위·코드값. */
+const gaugeMasterRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/mdm/equipments'),
+    respond: () => jsonResponse(gaugesResponse()),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/plants'),
+    respond: () => jsonResponse(gaugePlantsResponse()),
+  },
+  lookupRoute('/mdm/uoms', []),
+  lookupRoute('/mdm/code-values', []),
 ];
 
 const lotStatusRoutes = (): StubRoute[] => [
@@ -1149,5 +1167,71 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
     expect(sidebarHrefs().filter((href) => href.startsWith('/equipment/'))).toEqual([
       '/equipment/master',
     ]);
+  });
+});
+
+/**
+ * **W-05-11은 메뉴에 서지 않는 두 번째 화면이다** — 다만 W-01-11과 이유도 수명도 다르다.
+ *
+ * 그쪽은 맥락 없는 진입이 요구사항 위반이라 **영영** 두지 않는 것이고, 이쪽은 계측기를
+ * 가려낼 값 목록이 없는 동안 **잠시** 미루는 것이다(설계 질의 `omf-mes#195`).
+ * 「계측기 마스터」라는 메뉴 이름은 「여기 있는 것은 계측기다」를 약속하는데 지금은 그렇지 않다.
+ *
+ * 그래서 이 describe 가 양쪽을 잰다 — 메뉴에는 없고, 주소는 실재하며 화면이 실제로 선다.
+ */
+describe('appRouter — 계측기 마스터의 진입 경로', () => {
+  /*
+   * 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가 같은 화면을 열어도 통과하고,
+   * 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
+   */
+  it('사이드바에 이 화면 항목이 없다', () => {
+    const hrefs = sidebarHrefs();
+
+    /* 짝 양성 — 사이드바는 실제로 그려졌고 같은 섹션의 형제는 거기 있다. */
+    expect(hrefs).toContain('/equipment/master');
+    expect(hrefs).not.toContain('/equipment/gauge-master');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).queryByText(messages.gaugeMaster.title)).not.toBeInTheDocument();
+  });
+
+  it('라우트 표에는 주소가 있다', () => {
+    expect(routedPaths()).toContain('/equipment/gauge-master');
+  });
+
+  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
+    renderRoutedApp('/equipment/gauge-master', gaugeMasterRoutes());
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.gaugeMaster.title }),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 **조회가 실제로 도는 것**까지 봐야 한다.
+   */
+  it('첫 진입에 계측기 목록이 실제로 그려진다', async () => {
+    renderRoutedApp('/equipment/gauge-master', gaugeMasterRoutes());
+
+    expect(await screen.findByRole('cell', { name: 'GA-01' })).toBeInTheDocument();
+  });
+
+  /*
+   * ⚠ **메뉴를 미룬 이유가 화면에 실제로 서 있는지** 함께 잰다 — 배너가 없으면 「전체 설비가
+   * 보인다」는 사실이 어디에도 없고, 그때는 메뉴를 미룰 이유도 사라진다(둘은 한 판단이다).
+   */
+  it('전체 설비가 보이고 있다는 사실을 화면이 밝힌다', async () => {
+    renderRoutedApp('/equipment/gauge-master', gaugeMasterRoutes());
+
+    expect(await screen.findByText(messages.gaugeMaster.typeFilterUnavailable)).toBeInTheDocument();
+  });
+
+  /* 형제와 같은 섹션 앞머리를 쓴다 — 메뉴에 서지 않아도 주소가 업무 묶음을 말해야 한다. */
+  it('설비 섹션 앞머리를 쓴다', () => {
+    expect(routedPaths().filter((path) => path.startsWith('/equipment/'))).toEqual(
+      expect.arrayContaining(['/equipment/master', '/equipment/gauge-master']),
+    );
   });
 });
