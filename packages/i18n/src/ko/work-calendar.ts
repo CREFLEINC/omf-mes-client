@@ -170,6 +170,36 @@ export const workCalendar = {
      */
     plantMovesNote: '이미 다른 캘린더를 따르는 공장을 고르면 그 지정이 이 캘린더로 옮겨집니다.',
   },
+  /**
+   * 해석 미리보기.
+   *
+   * ⭐ **화면이 계산하지 않는다**(스펙 §6). 「이 설비가 무엇을 따르는가」와 훑은 경로를
+   * 서버가 함께 내려 준다 — 설계 규칙은 「가장 가까운 것이 이긴다」이고, 규칙만으로는 결과가
+   * 보이지 않아 화면이 그것을 그린다.
+   */
+  effective: {
+    title: '해석 미리보기',
+    equipment: '설비',
+    equipmentPlaceholder: '설비를 고르세요',
+    pickEquipment: '설비를 고르면 그 설비가 따르는 캘린더와 그렇게 정해진 경로가 보입니다.',
+    loading: '해석 결과를 불러오는 중',
+    loadFailed: '해석 결과를 불러오지 못했습니다.',
+    follows: (calendarCode: string, level: string): string =>
+      `${calendarCode} 를 따릅니다 — ${level} 층에서 정해졌습니다.`,
+    /** ⛔ 어느 층에도 지정이 없으면 따르는 캘린더가 «없다» — 그 사실을 밝힌다(계약). */
+    none: '어느 층에도 지정이 없어 따르는 캘린더가 없습니다.',
+    /** ⚠ 층은 알겠는데 이름을 못 받았을 때 — 지어내지 않는다(G-9). */
+    unknownLevel: '어느 층에서 정해졌는지 알 수 없습니다.',
+    pathTitle: '훑은 경로',
+    levels: {
+      equipmentGroup: '설비 그룹',
+      plant: '공장',
+    },
+    hasApplication: '여기서 정해짐',
+    noApplication: '지정 없음',
+    /** ⭐ 가까운 층부터 차례로 담긴다 — 그 차례가 곧 「가장 가까운 것이 이긴다」의 모습이다. */
+    pathNote: '가까운 층부터 차례로 훑습니다. 지정이 있는 첫 층에서 멈춥니다.',
+  },
   retire: {
     title: '캘린더를 사용 중지할까요?',
     target: (label: string): string => `${label} 을(를) 사용 중지합니다.`,

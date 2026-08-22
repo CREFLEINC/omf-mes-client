@@ -10,6 +10,7 @@ import {
   calendarItems,
   calendarsResponse,
   applicationsResponse,
+  equipmentsResponse,
   linesResponse,
   makeApplication,
   makeCalendar,
@@ -35,6 +36,8 @@ interface RenderOptions {
   respondApplications?: (request: Request) => Response;
   respondPlants?: () => Response;
   respondLines?: () => Response;
+  respondEquipments?: () => Response;
+  respondEffective?: (request: Request) => Response;
 }
 
 /** 나간 쓰기 하나. 없으면 시험이 거기서 멈추는 편이 낫다 — 다음 단언이 헛통과하지 않는다. */
@@ -56,6 +59,8 @@ const renderScreen = (options: RenderOptions = {}) => {
   const dayRequests: URL[] = [];
   /** 적용 조회가 실어 간 조건 */
   const applicationRequests: URL[] = [];
+  /** 해석 조회가 실어 간 조건 */
+  const effectiveRequests: URL[] = [];
 
   const defaultDetail = (request: Request): Response => {
     const found = calendarItems.find((item) => item.workCalendarId === idOf(request));
@@ -87,6 +92,26 @@ const renderScreen = (options: RenderOptions = {}) => {
           options.respondApplications ?? (() => jsonResponse({ items: [], page: pageOf([]) }))
         )(request);
       },
+    },
+    {
+      match: (request) => isPath(request, '/mdm/work-calendar-applications/effective'),
+      respond: (request) => {
+        effectiveRequests.push(new URL(request.url));
+
+        return (
+          options.respondEffective ??
+          (() =>
+            jsonResponse({
+              equipmentId: 3001,
+              equipmentName: '프레스 1호기',
+              steps: [],
+            }))
+        )(request);
+      },
+    },
+    {
+      match: (request) => isPath(request, '/mdm/equipments'),
+      respond: () => (options.respondEquipments ?? (() => jsonResponse(equipmentsResponse())))(),
     },
     {
       match: (request) => isPath(request, '/mdm/plants'),
@@ -151,7 +176,16 @@ const renderScreen = (options: RenderOptions = {}) => {
   /* 달을 인자로 고정한다 — 오늘이 언제든 시험이 같은 달을 연다. */
   const view = renderWithProviders(<WorkCalendarScreen initialMonth={TEST_MONTH} />, { fetch });
 
-  return { ...view, user, sent, writes, dayRequests, applicationRequests, applicationWrites };
+  return {
+    ...view,
+    user,
+    sent,
+    writes,
+    dayRequests,
+    applicationRequests,
+    applicationWrites,
+    effectiveRequests,
+  };
 };
 
 const listPane = () => screen.getByRole('region', { name: t.title });
@@ -1587,5 +1621,136 @@ describe('W-05-09 작업 캘린더 — 적용 대상', () => {
     const dialog = await screen.findByRole('dialog', { name: t.applications.addTitle });
 
     expect(within(dialog).getByRole('button', { name: t.applications.add })).toBeDisabled();
+  });
+});
+
+const effectivePane = () => screen.getByRole('region', { name: t.effective.title });
+
+describe('W-05-09 작업 캘린더 — 해석 미리보기', () => {
+  /* 고른 캘린더가 없으면 「내가 손대는 캘린더가 어디 닿는가」라는 물음 자체가 서지 않는다. */
+  it('캘린더를 고르기 전에는 서지 않는다', async () => {
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'CAL-A' });
+
+    expect(screen.queryByRole('region', { name: t.effective.title })).not.toBeInTheDocument();
+  });
+
+  it('고르면 설비를 고르라고 말한다', async () => {
+    const { user } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+
+    expect(within(effectivePane()).getByText(t.effective.pickEquipment)).toBeInTheDocument();
+  });
+
+  it('설비를 고르기 전에는 해석을 조회하지 않는다', async () => {
+    const { user, effectiveRequests } = renderScreen();
+
+    await selectCalendar(user, 'CAL-A');
+
+    expect(effectiveRequests).toHaveLength(0);
+  });
+
+  /*
+   * ⭐ **화면이 계산하지 않는다** — 서버가 준 결과와 경로를 그리기만 한다.
+   */
+  it('설비를 고르면 따르는 캘린더와 정해진 층을 말한다', async () => {
+    const { user } = renderScreen({
+      respondEffective: () =>
+        jsonResponse({
+          equipmentId: 3001,
+          equipmentName: '프레스 1호기',
+          calendarCode: 'CAL-A',
+          workCalendarId: 5001,
+          resolvedFromLevelCode: 'PLANT',
+          steps: [
+            {
+              levelCode: 'EQUIPMENT_GROUP',
+              targetId: 21,
+              targetName: '프레스라인 A',
+              hasApplication: false,
+            },
+            { levelCode: 'PLANT', targetId: 11, targetName: '제1공장', hasApplication: true },
+          ],
+        }),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(effectivePane()).getByRole('combobox', { name: /설비/ }));
+    await user.click(await screen.findByRole('option', { name: '프레스 1호기' }));
+
+    expect(
+      await within(effectivePane()).findByText(
+        t.effective.follows('CAL-A', t.effective.levels.plant),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /* ⭐ 가까운 층부터 차례로 담긴다 — 그 차례가 곧 「가장 가까운 것이 이긴다」의 모습이다. */
+  it('훑은 경로를 차례대로 보인다', async () => {
+    const { user } = renderScreen({
+      respondEffective: () =>
+        jsonResponse({
+          equipmentId: 3001,
+          equipmentName: '프레스 1호기',
+          calendarCode: 'CAL-A',
+          resolvedFromLevelCode: 'PLANT',
+          steps: [
+            {
+              levelCode: 'EQUIPMENT_GROUP',
+              targetId: 21,
+              targetName: '프레스라인 A',
+              hasApplication: false,
+            },
+            { levelCode: 'PLANT', targetId: 11, targetName: '제1공장', hasApplication: true },
+          ],
+        }),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(effectivePane()).getByRole('combobox', { name: /설비/ }));
+    await user.click(await screen.findByRole('option', { name: '프레스 1호기' }));
+
+    const rows = await within(effectivePane()).findAllByRole('row');
+
+    expect(rows[1]).toHaveTextContent('프레스라인 A');
+    expect(rows[1]).toHaveTextContent(t.effective.noApplication);
+    expect(rows[2]).toHaveTextContent('제1공장');
+    expect(rows[2]).toHaveTextContent(t.effective.hasApplication);
+  });
+
+  /* ⛔ 어느 층에도 지정이 없으면 「없다」 — 「모른다」와 다른 사실이다. */
+  it('어느 층에도 지정이 없으면 그 사실을 밝힌다', async () => {
+    const { user } = renderScreen({
+      respondEffective: () =>
+        jsonResponse({
+          equipmentId: 3001,
+          equipmentName: '프레스 1호기',
+          steps: [
+            { levelCode: 'PLANT', targetId: 11, targetName: '제1공장', hasApplication: false },
+          ],
+        }),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(effectivePane()).getByRole('combobox', { name: /설비/ }));
+    await user.click(await screen.findByRole('option', { name: '프레스 1호기' }));
+
+    expect(await within(effectivePane()).findByText(t.effective.none)).toBeInTheDocument();
+  });
+
+  it('해석 조회가 실패하면 다시 시도할 자리를 준다', async () => {
+    const { user } = renderScreen({
+      respondEffective: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
+    });
+
+    await selectCalendar(user, 'CAL-A');
+    await user.click(within(effectivePane()).getByRole('combobox', { name: /설비/ }));
+    await user.click(await screen.findByRole('option', { name: '프레스 1호기' }));
+
+    expect(
+      await within(effectivePane()).findByRole('button', { name: messages.common.retry }),
+    ).toBeInTheDocument();
   });
 });

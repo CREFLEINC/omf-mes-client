@@ -225,3 +225,50 @@ export const useEquipmentGroupTargets = (enabled: boolean): TargetOption[] => {
     })) ?? NO_TARGETS
   );
 };
+
+type WorkCalendarEffectiveResponse = components['schemas']['WorkCalendarEffectiveResponse'];
+
+/**
+ * 이 설비가 따르는 캘린더와 그 경로.
+ *
+ * ⭐ **화면이 계산하지 않는다** — 결과와 훑은 경로를 서버가 함께 내린다(스펙 §6).
+ */
+export const useEffectiveCalendar = (
+  equipmentId: number | null,
+): UseQueryResult<WorkCalendarEffectiveResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['work-calendar-effective', equipmentId ?? 0] as const,
+    enabled: equipmentId !== null,
+    queryFn: () => {
+      if (equipmentId === null) {
+        throw new Error('설비를 고르기 전에는 해석을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/work-calendar-applications/effective', {
+          params: { query: { equipmentId } },
+        }),
+      );
+    },
+  });
+};
+
+/** 설비 선택 목록. 해석 미리보기가 쓴다 — 고를 자리가 열렸을 때만 받는다. */
+export const useEquipmentTargets = (enabled: boolean): TargetOption[] => {
+  const { client } = useApiClient();
+
+  const equipments = useQuery({
+    queryKey: ['lookups', 'equipments'] as const,
+    enabled,
+    queryFn: () => runRequest(() => client.GET('/mdm/equipments', { params: { query: {} } })),
+  });
+
+  return (
+    equipments.data?.items.map((item) => ({
+      value: String(item.equipmentId),
+      label: item.equipmentName,
+    })) ?? NO_TARGETS
+  );
+};

@@ -136,3 +136,24 @@ export const applicationsResponse = (items: WorkCalendarApplication[] = []) => (
   items,
   page: pageOf(items),
 });
+
+type Equipment = components['schemas']['Equipment'];
+
+export const equipmentItems: Equipment[] = [
+  {
+    equipmentId: 3001,
+    plantId: 11,
+    equipmentCode: 'EQ-1',
+    equipmentName: '프레스 1호기',
+    equipmentTypeCode: 'PRESS',
+    productionLineId: 21,
+    statusCode: 'IN_SERVICE',
+    calibrationRequired: false,
+    isActive: true,
+  },
+];
+
+export const equipmentsResponse = (items: Equipment[] = equipmentItems) => ({
+  items,
+  page: pageOf(items),
+});
