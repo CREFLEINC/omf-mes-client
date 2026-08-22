@@ -61,6 +61,27 @@ describe('toWorkOrderPageView', () => {
     },
   );
 
+  it('preserves exact safe-integer pagination boundaries', () => {
+    const max = Number.MAX_SAFE_INTEGER;
+
+    expect(toWorkOrderPageView({ page: max, size: 1, total: max }, 1)).toEqual({
+      page: max,
+      canFirst: true,
+      canPrev: true,
+      canNext: false,
+      isBeyondLast: false,
+      rangeLabel: t.page.range(max, max, max),
+    });
+    expect(toWorkOrderPageView({ page: 1, size: max, total: max }, max)).toEqual({
+      page: 1,
+      canFirst: false,
+      canPrev: false,
+      canNext: false,
+      isBeyondLast: false,
+      rangeLabel: t.page.range(1, max, max),
+    });
+  });
+
   it.each([0, -1, 1.5, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
     'normalizes size %p to 1',
     (size) => {
