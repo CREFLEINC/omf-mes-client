@@ -36,4 +36,20 @@ export const workOrder = {
       next: '다음 쪽: 다음 쪽이 없습니다. 다음 쪽이 있을 때 이동할 수 있습니다.',
     },
   },
+  validationPane: {
+    panes: { validation: '작업지시 검증' },
+    fields: { severity: '등급', message: '내용' },
+    loading: '작업지시 검증 결과를 불러오는 중입니다.',
+    refreshing: '작업지시 검증 결과를 새로고침하는 중입니다.',
+    severity: { block: '차단', warning: '경고' },
+    summary: { blocked: '검증 차단', warning: '검증 경고', passed: '검증 통과' },
+    empty: {
+      notSelectedTitle: '검증할 작업지시를 선택하세요.',
+      notSelectedDescription: '목록에서 작업지시를 선택하면 검증 결과를 확인할 수 있습니다.',
+      missingTitle: '검증 결과를 불러오지 못했습니다.',
+      missingDescription: '다시 선택하거나 새로고침해 확인하세요.',
+      noFindingsTitle: '검증 항목이 없습니다.',
+      noFindingsDescription: '현재 작업지시에 확인할 검증 결과가 없습니다.',
+    },
+  },
 } as const;
