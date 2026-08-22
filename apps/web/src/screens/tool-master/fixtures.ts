@@ -177,3 +177,35 @@ export const codeValuesResponse = (items: CodeValue[] = statusCodeValues) => ({
   items,
   page: pageOf(items),
 });
+
+type MoldDetailResponse = components['schemas']['MoldDetailResponse'];
+type Editability = components['schemas']['Editability'];
+
+export const editableCode: Editability = { codeEditable: true, reason: 'EDITABLE' };
+
+/** 참조가 있어 코드가 잠긴 상태. 건수는 서버가 준 값을 그대로 쓴다. */
+export const referencedCode: Editability = {
+  codeEditable: false,
+  reason: 'REFERENCED',
+  referenceCount: 3,
+};
+
+/**
+ * ⭐ **참조 건수가 0인데도 코드가 잠긴 상태.** 코드가 라벨로 발행돼 현장에 물리적으로 나가 있다 —
+ * 「시스템 안에서 아무도 안 쓴다」와 「현장에 아무것도 없다」는 다른 사실이다(스펙 §6).
+ */
+export const labelIssuedCode: Editability = {
+  codeEditable: false,
+  reason: 'LABEL_ISSUED',
+  referenceCount: 0,
+};
+
+export const toolDetail = (
+  tool: Mold,
+  overrides: Partial<MoldDetailResponse> = {},
+): MoldDetailResponse => ({
+  mold: tool,
+  editability: editableCode,
+  labelIssueCount: 0,
+  ...overrides,
+});

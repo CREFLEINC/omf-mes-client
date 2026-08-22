@@ -36,6 +36,8 @@ export interface ToolListPaneProps {
   /** 공장 이름 풀이용 원본 — 좁힌 선택지가 아니라 전체에서 찾는다 */
   plantEntries: readonly { value: string; label: string }[];
   statusOptions: CodeOption[];
+  onAdd: () => void;
+  onEdit: (tool: Mold) => void;
   loadError: ReactNode;
 }
 
@@ -80,6 +82,8 @@ export const ToolListPane = ({
   plantOptions,
   plantEntries,
   statusOptions,
+  onAdd,
+  onEdit,
   loadError,
 }: ToolListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -132,7 +136,17 @@ export const ToolListPane = ({
    * 지정 폭 합 750px — 최소 폭 58rem(928px) 안에 들어가며 178px 이 툴명의 하한이 된다.
    */
   const columns: Column<Mold>[] = [
-    { key: 'moldCode', header: t.fields.toolCode, width: '148px' },
+    {
+      key: 'moldCode',
+      header: t.fields.toolCode,
+      width: '148px',
+      /* 코드가 곧 여는 손잡이다 — 줄마다 「수정」 단추를 세우면 표가 조작으로 덮인다. */
+      render: (row) => (
+        <button type="button" className="link-cell" onClick={() => onEdit(row)}>
+          {row.moldCode}
+        </button>
+      ),
+    },
     { key: 'moldName', header: t.fields.toolName, render: nameCell },
     {
       key: 'toolTypeCode',
@@ -286,6 +300,9 @@ export const ToolListPane = ({
             <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
             <Button variant="outlined" onClick={resetAll}>
               {messages.common.reset}
+            </Button>
+            <Button variant="outlined" onClick={onAdd}>
+              {t.actions.addTool}
             </Button>
           </div>
         </div>

@@ -146,3 +146,38 @@ export const SORT_OPTIONS: readonly { value: ToolSort; label: string }[] = [
  */
 export const toToolSort = (value: string): ToolSort =>
   SORT_OPTIONS.find((option) => option.value === value)?.value ?? defaultToolFilters.sort;
+
+/**
+ * 예방보전 판정 기준 선택지. **계약이 정한 네 값이며 뜻도 계약이 적었다.**
+ * 차례는 「하지 않음」이 먼저다 — 기본값이고, 나머지 셋은 축이 늘어나는 차례로 선다.
+ */
+export const PM_TRIGGER_OPTIONS: readonly CodeOption[] = [
+  { value: PM_TRIGGER.none, label: messages.toolMaster.pmTrigger.none },
+  { value: PM_TRIGGER.shot, label: messages.toolMaster.pmTrigger.shot },
+  { value: PM_TRIGGER.date, label: messages.toolMaster.pmTrigger.date },
+  { value: PM_TRIGGER.both, label: messages.toolMaster.pmTrigger.both },
+];
+
+/**
+ * 날짜 주기 단위 선택지.
+ *
+ * ⛔ **공통코드 기간 단위 그룹(`CYCLE_TYPE`)을 쓰지 않는다** — 형제 화면(W-05-11)이 검교정
+ * 주기에 그 그룹을 쓰는 것과 갈리는 자리다. 계약이 여기서는 「일(DAY) 또는 월(MONTH)」로
+ * **좁혀 못박았고**, 그룹을 그대로 내면 주·년 같은 값을 고를 수 있게 되어 저장에서 거절당한다.
+ * 고를 수 있는데 저장이 안 되는 선택지는 두지 않는다.
+ */
+export const PM_CYCLE_UNIT_OPTIONS: readonly CodeOption[] = [
+  { value: 'DAY', label: messages.toolMaster.pmCycleUnit.day },
+  { value: 'MONTH', label: messages.toolMaster.pmCycleUnit.month },
+];
+
+/**
+ * 날짜 축을 쓰는가. **주기 두 칸이 열리는 조건이자 짝 제약이 걸리는 조건**이라 한 자리에 둔다 —
+ * 흩어 두면 「열려 있는데 재지 않는」 칸이나 그 반대가 생긴다.
+ */
+export const usesDateAxis = (pmTriggerTypeCode: string): boolean =>
+  pmTriggerTypeCode === PM_TRIGGER.date || pmTriggerTypeCode === PM_TRIGGER.both;
+
+/** 타발수 축을 쓰는가. 적정타수가 비면 이 축이 서지 않는다는 안내의 조건이다. */
+export const usesShotAxis = (pmTriggerTypeCode: string): boolean =>
+  pmTriggerTypeCode === PM_TRIGGER.shot || pmTriggerTypeCode === PM_TRIGGER.both;
