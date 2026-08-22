@@ -18,4 +18,9 @@ export const workOrder = {
     title: '표시할 작업지시가 없습니다',
     description: '생산계획을 선택하거나 조회 조건을 바꿔 다시 확인하세요.',
   },
+  page: {
+    range: (start: number, end: number, total: number): string =>
+      `${String(start)}–${String(end)} / 전체 ${String(total)}건`,
+    total: (total: number): string => `전체 ${String(total)}건`,
+  },
 } as const;
