@@ -43,6 +43,31 @@ const recordingFetch = (routes: StubRoute[]): { fetch: StubFetch; paths: string[
 };
 
 describe('useProductionOrderItemNames', () => {
+  it('상세 응답 전에는 품목별 loading 상태를 유지한다', async () => {
+    const releases = new Map<number, (response: Response) => void>();
+    const fetch: StubFetch = async (request) => {
+      const itemId = Number(new URL(request.url).pathname.split('/').at(-1));
+
+      return new Promise<Response>((resolve) => {
+        releases.set(itemId, resolve);
+      });
+    };
+    const { result } = renderHookWithProviders(() => useProductionOrderItemNames([7606, 7707]), {
+      fetch,
+    });
+
+    await waitFor(() => expect(releases.size).toBe(2));
+
+    expect(result.current.items).toEqual([
+      { itemId: 7606, status: 'loading', label: null },
+      { itemId: 7707, status: 'loading', label: null },
+    ]);
+
+    releases.get(7606)?.(jsonResponse(itemResponse(7606)));
+    releases.get(7707)?.(jsonResponse(itemResponse(7707)));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+  });
+
   it('중복 품목은 exact 상세를 한 번만 받고 named label에는 내부 ID를 내보내지 않는다', async () => {
     const { fetch, paths } = recordingFetch([
       {

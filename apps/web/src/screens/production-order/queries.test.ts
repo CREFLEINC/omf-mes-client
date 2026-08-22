@@ -127,8 +127,10 @@ describe('useProductionOrderList', () => {
     expect(query?.has('size')).toBe(false);
     expect(query?.has('includeChildren')).toBe(false);
     expect(query?.has('businessUnitId')).toBe(false);
-    expect(productionOrderKeys.list(DEFAULT_PRODUCTION_ORDER_FILTERS, 1)).not.toEqual(
-      productionOrderKeys.list(DEFAULT_PRODUCTION_ORDER_FILTERS, 2),
+    expect(
+      productionOrderKeys.list({ ...DEFAULT_PRODUCTION_ORDER_FILTERS, q: 'PO-A' }, 1),
+    ).not.toEqual(
+      productionOrderKeys.list({ ...DEFAULT_PRODUCTION_ORDER_FILTERS, status: 'RELEASED' }, 1),
     );
   });
 
