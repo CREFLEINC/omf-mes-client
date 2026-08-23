@@ -67,3 +67,24 @@ export const businessUnitsResponse = () => ({
   ],
   page: pageMeta(1, 100),
 });
+
+export const makeEnabled = (
+  operationPolicyId: number,
+  valueBoolean: boolean | null,
+  overrides: Partial<OperationPolicy> = {},
+): OperationPolicy => ({
+  operationPolicyId,
+  policyCode: 'SHOT_CONVERSION_ENABLED',
+  valueBoolean,
+  effectiveFrom: '2026-01-01',
+  ...overrides,
+});
+
+export const enabledListResponse = (items: OperationPolicy[] = []) => ({
+  items,
+  page: pageMeta(items.length),
+});
+
+/** 요청의 정책 코드로 갈라 준다 — 두 조회가 같은 경로를 쓴다. */
+export const policyCodeOf = (request: Request): string | null =>
+  new URL(request.url).searchParams.get('policyCode');

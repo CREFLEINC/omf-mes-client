@@ -11,9 +11,11 @@ import {
 } from '../../test/api-harness';
 import {
   businessUnitsResponse,
+  enabledListResponse,
   itemsResponse,
   makeRatio,
   plantsResponse,
+  policyCodeOf,
   processesResponse,
   ratioListResponse,
 } from './fixtures';
@@ -48,6 +50,12 @@ const routes = (options: Options): StubRoute[] => [
         ? jsonResponse(makeRatio(9003, 0.25, { itemId: 21, effectiveTo: '2026-06-30' }))
         : jsonResponse(options.writeBody ?? { errors: [] }, { status: options.writeStatus });
     },
+  },
+  {
+    match: (request) =>
+      isPath(request, '/app/operation-policies') &&
+      policyCodeOf(request) === 'SHOT_CONVERSION_ENABLED',
+    respond: () => jsonResponse(enabledListResponse()),
   },
   {
     match: (request) => isPath(request, '/app/operation-policies'),
