@@ -1,4 +1,16 @@
 export const workOrderClose = {
+  filter: {
+    productionPlan: 'P/O',
+    plannedStartFrom: '계획 시작일(부터)',
+    plannedStartTo: '계획 시작일(까지)',
+    status: '마감 상태',
+    all: '전체',
+    search: '조회',
+    reset: '초기화',
+    statusRequired: '마감 상태를 선택하세요.',
+    dateRange: '계획 시작일은 종료일보다 늦을 수 없습니다.',
+    statusEmpty: '선택할 마감 상태가 없습니다.',
+  },
   confirm: {
     title: (workOrderNo: string): string => `작업지시 마감 — ${workOrderNo}`,
     target: (workOrderNo: string): string => `대상 작업지시: ${workOrderNo}`,
