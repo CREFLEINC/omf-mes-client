@@ -56,6 +56,7 @@ import { gaugeMaster } from './gauge-master';
 import { toolMaster } from './tool-master';
 import { workCalendar } from './work-calendar';
 import { collectionChannel } from './collection-channel';
+import { shotConversion } from './shot-conversion';
 import { workOrder } from './work-order';
 import { workOrderClose } from './work-order-close';
 import { workOrderRelease } from './work-order-release';
@@ -103,6 +104,7 @@ export const ko = {
   toolMaster,
   workCalendar,
   collectionChannel,
+  shotConversion,
   workOrder,
   workOrderClose,
   workOrderRelease,
