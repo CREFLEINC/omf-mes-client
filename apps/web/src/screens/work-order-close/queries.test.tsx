@@ -12,6 +12,8 @@ import {
 import {
   useWorkOrderCloseCandidates,
   useWorkOrderCloseDetail,
+  useWorkOrderCloseOpenSession,
+  useWorkOrderCloseOutboundItemSettings,
   workOrderCloseDetailPath,
   workOrderCloseKeys,
   type WorkOrderCloseFilters,
@@ -98,6 +100,16 @@ describe('workOrderCloseKeys', () => {
       filters({ page: 4 }),
     ].forEach((changed) => expect(workOrderCloseKeys.candidates(changed)).not.toEqual(baseKey));
     expect(workOrderCloseKeys.candidates(base)).not.toEqual(workOrderCloseKeys.detail(702));
+    expect(workOrderCloseKeys.openSession(null)).toEqual([
+      'work-order-close',
+      'open-session',
+      null,
+    ]);
+    expect(workOrderCloseKeys.openSession(702)).toEqual(['work-order-close', 'open-session', 702]);
+    expect(workOrderCloseKeys.outboundItemSettings()).toEqual([
+      'work-order-close',
+      'outbound-item-settings',
+    ]);
   });
 });
 
@@ -234,6 +246,149 @@ describe('work-order close reads', () => {
 
     expect(errorResult.result.current.data).toBeUndefined();
     expect(toApiError(errorResult.result.current.error)).toMatchObject({
+      kind: 'http',
+      status: 503,
+    });
+  });
+});
+
+describe('work-order close readiness reads', () => {
+  it('keeps null W/O ID idle without an open-session request', () => {
+    const { fetch, requests } = recordingFetch([]);
+    const { result } = renderHookWithProviders(() => useWorkOrderCloseOpenSession(null), { fetch });
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(result.current.data).toBeUndefined();
+    expect(requests).toHaveLength(0);
+  });
+
+  it.each([
+    [[], false],
+    [
+      [
+        {
+          workSessionId: 1001,
+          workOrderId: 702,
+          sessionNo: 1,
+          shiftId: 401,
+          terminalId: 501,
+          startedAt: '2026-08-23T09:00:00+09:00',
+          statusCode: 'SYN-NOT-INTERPRETED',
+          versionNo: 9,
+        },
+      ],
+      true,
+    ],
+  ] as const)(
+    'reads open-session presence as %s without exposing session facts',
+    async (items, hasOpenSession) => {
+      const { fetch, requests } = recordingFetch([
+        getRoute('/production/work-sessions', {
+          items,
+          page: { page: 1, size: 1, total: items.length },
+        }),
+      ]);
+      const { result } = renderHookWithProviders(() => useWorkOrderCloseOpenSession(702), {
+        fetch,
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(Array.from(requests[0]?.searchParams.entries() ?? [])).toEqual([
+        ['open', 'true'],
+        ['workOrderId', '702'],
+        ['page', '1'],
+        ['size', '1'],
+      ]);
+      expect(result.current.data).toEqual({ hasOpenSession });
+      expect(result.current.data).not.toHaveProperty('items');
+      expect(result.current.data).not.toHaveProperty('statusCode');
+    },
+  );
+
+  it('gets outbound settings in server order with null normalization and no raw fields', async () => {
+    const { fetch, requests } = recordingFetch([
+      getRoute('/integration/outbound-item-settings', {
+        items: [
+          {
+            outboundItemCode: 'PRODUCTION_RESULT',
+            outboundItemName: 'SYNTHETIC PRODUCTION RESULT',
+            enabled: true,
+            locked: true,
+            lockReason: 'SYNTHETIC LOCK REASON',
+            sendTimingNote: 'SYNTHETIC TIMING NOTE',
+            interfaceDefinitionId: 901,
+            pendingMessageCount: 3,
+          },
+          {
+            outboundItemCode: 'RETURN',
+            outboundItemName: 'SYNTHETIC RETURN',
+            enabled: false,
+            locked: false,
+          },
+        ],
+      }),
+    ]);
+    const { result } = renderHookWithProviders(() => useWorkOrderCloseOutboundItemSettings(), {
+      fetch,
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(requests[0]?.pathname).toBe('/integration/outbound-item-settings');
+    expect(requests[0]?.search).toBe('');
+    expect(result.current.data).toEqual([
+      {
+        outboundItemCode: 'PRODUCTION_RESULT',
+        outboundItemName: 'SYNTHETIC PRODUCTION RESULT',
+        enabled: true,
+        locked: true,
+        lockReason: 'SYNTHETIC LOCK REASON',
+        sendTimingNote: 'SYNTHETIC TIMING NOTE',
+      },
+      {
+        outboundItemCode: 'RETURN',
+        outboundItemName: 'SYNTHETIC RETURN',
+        enabled: false,
+        locked: false,
+        lockReason: null,
+        sendTimingNote: null,
+      },
+    ]);
+    expect(result.current.data?.[0]).not.toHaveProperty('interfaceDefinitionId');
+    expect(result.current.data?.[0]).not.toHaveProperty('pendingMessageCount');
+  });
+
+  it('keeps open-session and outbound-settings HTTP failures as errors without data', async () => {
+    const session = recordingFetch([
+      getRoute('/production/work-sessions', { message: 'Synthetic unavailable' }, 503),
+    ]);
+    const openSession = renderHookWithProviders(() => useWorkOrderCloseOpenSession(702), {
+      fetch: session.fetch,
+    });
+
+    await waitFor(() => expect(openSession.result.current.isError).toBe(true));
+
+    expect(openSession.result.current.data).toBeUndefined();
+    expect(toApiError(openSession.result.current.error)).toMatchObject({
+      kind: 'http',
+      status: 503,
+    });
+
+    const settings = recordingFetch([
+      getRoute('/integration/outbound-item-settings', { message: 'Synthetic unavailable' }, 503),
+    ]);
+    const outboundSettings = renderHookWithProviders(
+      () => useWorkOrderCloseOutboundItemSettings(),
+      {
+        fetch: settings.fetch,
+      },
+    );
+
+    await waitFor(() => expect(outboundSettings.result.current.isError).toBe(true));
+
+    expect(outboundSettings.result.current.data).toBeUndefined();
+    expect(toApiError(outboundSettings.result.current.error)).toMatchObject({
       kind: 'http',
       status: 503,
     });

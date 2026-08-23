@@ -7,6 +7,7 @@ import { toWorkOrderFact, type WorkOrderFact } from '../work-order/queries';
 
 type WorkOrder = components['schemas']['WorkOrder'];
 type PageMeta = components['schemas']['PageMeta'];
+type OutboundItemSetting = components['schemas']['OutboundItemSetting'];
 
 export interface WorkOrderCloseFact extends WorkOrderFact {
   completedAt: string | null;
@@ -27,6 +28,19 @@ export interface WorkOrderCloseCandidatesResponse {
   page: PageMeta;
 }
 
+export interface WorkOrderCloseOpenSessionState {
+  hasOpenSession: boolean;
+}
+
+export interface WorkOrderCloseOutboundItemSetting {
+  outboundItemCode: OutboundItemSetting['outboundItemCode'];
+  outboundItemName: string;
+  enabled: boolean;
+  locked: boolean;
+  lockReason: string | null;
+  sendTimingNote: string | null;
+}
+
 export const workOrderCloseKeys = {
   all: ['work-order-close'] as const,
   candidates: (filters: WorkOrderCloseFilters) =>
@@ -40,6 +54,9 @@ export const workOrderCloseKeys = {
       filters.page,
     ] as const,
   detail: (workOrderId: number | null) => ['work-order-close', 'detail', workOrderId] as const,
+  openSession: (workOrderId: number | null) =>
+    ['work-order-close', 'open-session', workOrderId] as const,
+  outboundItemSettings: () => ['work-order-close', 'outbound-item-settings'] as const,
 };
 
 export const workOrderCloseDetailPath = (workOrderId: number): string =>
@@ -111,6 +128,52 @@ export const useWorkOrderCloseDetail = (
           }),
         ),
       );
+    },
+  });
+};
+
+export const useWorkOrderCloseOpenSession = (
+  workOrderId: number | null,
+): UseQueryResult<WorkOrderCloseOpenSessionState> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderCloseKeys.openSession(workOrderId),
+    enabled: workOrderId !== null,
+    queryFn: async () => {
+      if (workOrderId === null) {
+        throw new Error('A work order is required to load its open session state.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/production/work-sessions', {
+          params: { query: { open: true, workOrderId, page: 1, size: 1 } },
+        }),
+      );
+
+      return { hasOpenSession: data.items.length > 0 };
+    },
+  });
+};
+
+export const useWorkOrderCloseOutboundItemSettings = (): UseQueryResult<
+  WorkOrderCloseOutboundItemSetting[]
+> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderCloseKeys.outboundItemSettings(),
+    queryFn: async () => {
+      const data = await runRequest(() => client.GET('/integration/outbound-item-settings'));
+
+      return data.items.map((item) => ({
+        outboundItemCode: item.outboundItemCode,
+        outboundItemName: item.outboundItemName,
+        enabled: item.enabled,
+        locked: item.locked,
+        lockReason: item.lockReason ?? null,
+        sendTimingNote: item.sendTimingNote ?? null,
+      }));
     },
   });
 };
