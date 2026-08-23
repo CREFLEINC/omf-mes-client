@@ -572,6 +572,7 @@ describe('AppLayout', () => {
       '/equipment/tool-master',
       '/equipment/work-calendar',
       '/equipment/collection-channels',
+      '/equipment/shot-conversion',
       '/approval/inbox',
       '/notification/center',
       '/system/users-roles',

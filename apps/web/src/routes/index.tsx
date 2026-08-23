@@ -17,6 +17,7 @@ import { InspectionStandardScreen } from '../screens/inspection-standard/screen'
 import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { CollectionChannelScreen } from '../screens/collection-channel/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
+import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
 import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
@@ -342,6 +343,24 @@ export const appRouter = createBrowserRouter([
        * 이 화면이 다루는 것은 설비마다 여럿인 채널이다.
        */
       { path: 'equipment/collection-channels', element: <CollectionChannelScreen /> },
+      /*
+       * W-05-01 — **라우트와 메뉴를 함께 연다. 도메인 05 의 마지막 화면이다.**
+       *
+       * **다섯 PR이 함께 여는 자리다.** 비율 목록 · 등록/수정 · 종료 · 환산 스위치 ·
+       * 미리보기가 다 선 뒤에 연다 — **비율을 정할 수 없는 「파라미터 설정」을 노출하면
+       * 사용자가 스위치만 켜 놓고 아무것도 못 한다**(정책 §5.2 — 접근 불가능한 경계).
+       *
+       * ⚠ **낙관적 잠금이 이 자원에 없지만 메뉴를 미루지 않는다**(`omf-mes#210`).
+       * 그것은 **동시 편집에서만 드러나는 한계**이지 「타발수 환산 파라미터 설정」이라는
+       * 이름이 약속하는 것 — 비율과 사용 여부를 정하는 자리 — 을 어기지 않는다.
+       * 정하는 일은 온전히 된다.
+       *
+       * 앞머리는 형제들과 같은 규칙(사이드바 섹션)을 따른다. 이름은 `shot-conversion` 이다 —
+       * 계약 경로는 `/app/operation-policies` 지만 그것은 **여러 화면이 나눠 쓰는 범용 표**라
+       * 주소로 삼으면 이 화면이 그 표 전체를 다루는 것처럼 읽힌다. 화면이 정하는 것의
+       * 이름을 쓴다.
+       */
+      { path: 'equipment/shot-conversion', element: <ShotConversionScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을

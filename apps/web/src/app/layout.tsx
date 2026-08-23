@@ -255,6 +255,17 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/equipment/collection-channels" icon="sensors">
               수집 채널 매핑 관리
             </NavItem>
+            {/*
+             * W-05-01 — 섹션 **맨 뒤**다. 앞의 넷이 「무엇이 있고 언제 도는가」와 「무엇을
+             * 받는가」를 정하고, 이것은 **받은 것을 어떻게 세는가**를 정한다 — 세는 규칙은
+             * 셀 대상이 다 선 뒤에 온다.
+             *
+             * ⭐ **툴 마스터와 짝이다** — 캐비티 수는 그쪽이 갖고 비율은 여기가 갖는다.
+             * 두 화면이 한 계산의 입력을 나눠 갖는다.
+             */}
+            <NavItem to="/equipment/shot-conversion" icon="calculate">
+              타발수 환산 파라미터 설정
+            </NavItem>
           </SidebarSection>
           {/*
            * W-CO-09 — 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**다.
