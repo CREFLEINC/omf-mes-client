@@ -1,4 +1,15 @@
 export const workOrderClose = {
+  status: {
+    pane: '작업지시 마감 입력 상태',
+    heading: '현재 입력 상태',
+    loading: '현재 입력 조건을 확인하는 중입니다.',
+    complete: '현재 입력 조건이 모두 갖춰졌습니다.',
+    blockers: {
+      OPEN_SESSION: '열린 작업 세션을 마감하세요.',
+      REMAINDER_DISPOSITION_REQUIRED: '잔량 처리 방법을 선택하세요.',
+      VARIANCE_REASON_REQUIRED: '변동 사유를 선택하세요.',
+    },
+  },
   input: {
     pane: '작업지시 마감 입력',
     heading: '마감 입력',
