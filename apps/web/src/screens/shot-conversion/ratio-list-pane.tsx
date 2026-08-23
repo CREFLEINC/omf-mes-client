@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import { endAvailability } from './end-policy';
 import { defaultPolicyFilters } from './options';
 import { formulaText, isEnded, periodText, scopeText, type ScopeLookups } from './scope';
 import type { OperationPolicy, PolicyFilters } from './types';
@@ -29,6 +30,8 @@ export interface RatioListPaneProps {
   today: string;
   onAdd: () => void;
   onEdit: (policy: OperationPolicy) => void;
+  /** 정책을 끝낸다 — 지우는 것이 아니라 유효 종료일을 정하는 일이다 */
+  onEnd: (policy: OperationPolicy) => void;
   loadError: ReactNode;
 }
 
@@ -48,6 +51,7 @@ export const RatioListPane = ({
   today,
   onAdd,
   onEdit,
+  onEnd,
   loadError,
 }: RatioListPaneProps) => {
   const [draft, setDraft] = useState<string>(appliedFilters.effectiveOn);
@@ -118,6 +122,33 @@ export const RatioListPane = ({
       width: '128px',
       /* 값이 없으면 식을 지어내지 않는다 — 없다는 사실을 그대로 밝힌다(G-9). */
       render: (row) => formulaText(row) ?? t.fields.notRecorded,
+    },
+    {
+      key: 'end',
+      header: '',
+      width: '116px',
+      /*
+       * ⭐ **못 하면 감추지 않고 사유와 함께 잠근다**(공유계약 G-2) — 감추면 「왜 이 줄에는
+       * 종료가 없지」가 되고 그 답이 화면에 없다.
+       *
+       * 접근 이름에 대상을 담는다 — 줄이 여럿일 때 「정책 종료」만으로는 어느 것인지 모른다.
+       */
+      render: (row) => {
+        const availability = endAvailability(row);
+
+        return (
+          <Button
+            variant="outlined"
+            size="sm"
+            onClick={() => onEnd(row)}
+            disabled={!availability.can}
+            aria-label={t.end.label(scopeText(row, lookups))}
+            title={availability.reason ?? undefined}
+          >
+            {t.end.action}
+          </Button>
+        );
+      },
     },
   ];
 

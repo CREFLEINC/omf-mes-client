@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { EndPolicyDialog } from './end-policy-dialog';
+import { validateEndDate } from './end-policy';
 import { LoadErrorBanner } from './load-error-banner';
 import { formValuesFrom, toRatioCreate, toRatioUpdate } from './mappers';
 import { defaultPolicyFilters, emptyRatioForm } from './options';
@@ -32,6 +34,18 @@ const NO_POLICIES: OperationPolicy[] = [];
  * ⭐ **「수정인데 대상이 없다」를 타입으로 없앤다** — 한 모양으로 두면 그 있을 수 없는 상태를
  * 부르는 자리마다 닿지 않는 기본값으로 막게 되고, 그 값은 틀려도 아무도 모른다.
  */
+/**
+ * 끝내려는 정책. 닫혀 있으면 `null`.
+ *
+ * ⭐ **대상 자체를 든다** — 시작일과 범위 문구가 창에 필요하고, 목록이 다시 들어와 그 줄이
+ * 사라져도 **열어 둔 창이 무엇을 끝내려던 것인지 잃지 않아야** 한다.
+ */
+interface EndingState {
+  policy: OperationPolicy;
+  scopeLabel: string;
+  endOn: string;
+}
+
 type DialogState =
   | { mode: 'create' }
   /** 범위 문구를 **열 때 굳혀 든다** — 바꿀 수 없는 값이라 다시 셀 이유가 없다 */
@@ -66,6 +80,9 @@ export const ShotConversionScreen = () => {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [values, setValues] = useState<RatioFormValues>(emptyRatioForm);
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+  const [ending, setEnding] = useState<EndingState | null>(null);
+  /** 종료일이 쓸 수 없는 값일 때의 사유. 누르기 전에는 `null` — 치는 동안 나무라지 않는다 */
+  const [endError, setEndError] = useState<string | null>(null);
 
   const { client } = useApiClient();
   const toast = useToast();
@@ -191,6 +208,70 @@ export const ShotConversionScreen = () => {
     write.clearFieldError(axis);
   };
 
+  /**
+   * 정책을 끝내는 쓰기.
+   *
+   * ⛔ **삭제가 아니라 수정이다** — 계약에 삭제 경로가 없고 그것은 실수가 아니다.
+   * 과거 실적이 그때의 비율로 계산됐다.
+   *
+   * ⭐ **지금 값을 통째로 되보내며 종료일만 바꾼다** — 계약이 수정 본문의 값 칸을 선택으로
+   * 두어, 종료일만 실으면 서버가 그것을 「나머지를 비우라」로 읽을 수 있다.
+   */
+  const endWrite = useMasterWrite<string, OperationPolicy>({
+    request: (endOn, headers) => {
+      if (ending === null) {
+        throw new Error('대상을 고르기 전에는 정책을 끝내지 않습니다.');
+      }
+
+      return client.PUT('/app/operation-policies/{operationPolicyId}', {
+        params: {
+          path: { operationPolicyId: ending.policy.operationPolicyId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: toRatioUpdate({ ...formValuesFrom(ending.policy), effectiveTo: endOn }),
+      });
+    },
+    etagPath: null,
+    invalidateKeys: [policyKeys.all],
+    /* 대응하는 입력칸이 하나뿐이고 그 오류는 화면이 먼저 잡는다 — 서버 것은 배너로 올린다. */
+    knownFields: [],
+    onSuccess: () => {
+      setEnding(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /**
+   * 끝낼 대상을 고른다.
+   *
+   * ⚠ **고른 날을 빈 채로 시작하는 것은 지금 관찰상 동치다** — 닫는 쪽이 이미 상태를
+   * 비우기 때문이다. 그럼에도 새 객체를 만드는 것은, 창이 «닫히지 않고» 대상만 바뀌는 길이
+   * 생겼을 때(예: 표에서 다음 줄로 옮겨 가기) 앞 날짜가 딸려 오지 않게 하기 위해서다.
+   */
+  const openEnd = (policy: OperationPolicy): void => {
+    setEndError(null);
+    setEnding({ policy, scopeLabel: scopeText(policy, lookups), endOn: '' });
+  };
+
+  /** 창을 떠난다 — **거두는 자리를 하나로 둔다.** */
+  const closeEnd = (): void => {
+    resetIfIdle(endWrite);
+    setEndError(null);
+    setEnding(null);
+  };
+
+  const confirmEnd = (): void => {
+    if (ending === null) return;
+
+    const reason = validateEndDate(ending.policy, ending.endOn);
+
+    setEndError(reason);
+
+    if (reason !== null) return;
+
+    endWrite.write(ending.endOn);
+  };
+
   const submit = (): void => {
     const errors = validateRatio(values);
 
@@ -236,8 +317,26 @@ export const ShotConversionScreen = () => {
         today={todayText()}
         onAdd={openCreate}
         onEdit={openEdit}
+        onEnd={openEnd}
         loadError={loadError}
       />
+
+      {ending !== null && (
+        <EndPolicyDialog
+          scopeLabel={ending.scopeLabel}
+          endOn={ending.endOn}
+          onChangeEndOn={(endOn) => {
+            setEnding((prev) => (prev === null ? prev : { ...prev, endOn }));
+            /* 고치는 즉시 사유를 거둔다 — 고친 자리에 옛 오류가 남으면 헛돈다. */
+            setEndError(null);
+          }}
+          dateError={endError}
+          isSaving={endWrite.isSaving}
+          banner={<SaveErrorBanner error={endWrite.error} />}
+          onClose={closeEnd}
+          onConfirm={confirmEnd}
+        />
+      )}
 
       {dialog !== null && (
         <RatioFormDialog
