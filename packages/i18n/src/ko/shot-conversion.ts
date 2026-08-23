@@ -54,6 +54,37 @@ export const shotConversion = {
     join: ' · ',
     entry: (axisLabel: string, valueLabel: string): string => `${axisLabel} ${valueLabel}`,
   },
+  actions: {
+    addPolicy: '정책 추가',
+  },
+  form: {
+    createTitle: '비율 정책 등록',
+    editTitle: '비율 정책 수정',
+    scopeLegend: '적용 범위',
+    /** ⭐ 비운 축이 「전체」다 — 「고르지 않음」이 아니라 값이다. */
+    scopeNote:
+      '고르지 않은 축은 전체를 뜻합니다. 좁게 지정할수록 겹칠 때 먼저 적용됩니다 — 품목 · 공정 · 공장 · 사업부 차례입니다.',
+    scopeAll: '전체',
+    ratioPlaceholder: '예: 0.25',
+    /** ⭐ 무엇을 뜻하는 수인지 칸 옆에서 말한다 — 「비율」만으로는 무엇의 비율인지 모른다. */
+    ratioNote: '생산 수량에 이 수를 곱해 타발수를 냅니다. 캐비티가 4개면 0.25입니다.',
+    effectiveFrom: '유효 시작일',
+    effectiveTo: '유효 종료일',
+    effectiveToNote: '비우면 끝이 없습니다.',
+    /** ⛔ 코드와 축은 바꾸지 않는다 — 바꾸면 다른 정책이 된다(계약). */
+    scopeFixed:
+      '적용 범위는 등록할 때 정해지며 이 창에서 바꿀 수 없습니다. 범위를 바꾸려면 이 정책을 끝내고 새로 등록하세요.',
+  },
+  validation: {
+    required: '필수 항목입니다.',
+    /** ⛔ 0이면 타발수가 늘 0이라 예방보전이 영영 오지 않는다. DB가 막지 않아 화면이 막는다. */
+    ratioPositive: '비율은 0보다 커야 합니다. 0이면 타발수가 늘 0이 되어 예방보전이 오지 않습니다.',
+    ratioNumber: '비율은 수로 입력하세요.',
+    /** ⚠ 막지 않는다 — 한 번에 여러 번 타발하는 공정이 있을 수 있다(설계 `omf-mes#67`). */
+    ratioOverOne:
+      '비율이 1보다 큽니다. 수량보다 타발수가 많아지는데 맞는지 확인하세요. 이대로 저장할 수 있습니다.',
+    periodOrder: '유효 종료일은 시작일과 같거나 뒤여야 합니다.',
+  },
   fields: {
     scope: '범위',
     ratio: '비율',

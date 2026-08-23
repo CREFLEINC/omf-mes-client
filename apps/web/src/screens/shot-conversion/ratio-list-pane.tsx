@@ -27,6 +27,8 @@ export interface RatioListPaneProps {
   lookups: ScopeLookups;
   /** 종료 여부를 재는 기준. **밖에서 받는다** — 안에서 읽으면 시험이 붙들 수 없다 */
   today: string;
+  onAdd: () => void;
+  onEdit: (policy: OperationPolicy) => void;
   loadError: ReactNode;
 }
 
@@ -44,6 +46,8 @@ export const RatioListPane = ({
   onApplyFilters,
   lookups,
   today,
+  onAdd,
+  onEdit,
   loadError,
 }: RatioListPaneProps) => {
   const [draft, setDraft] = useState<string>(appliedFilters.effectiveOn);
@@ -65,7 +69,16 @@ export const RatioListPane = ({
   };
 
   const columns: Column<OperationPolicy>[] = [
-    { key: 'scope', header: t.fields.scope, render: (row) => scopeText(row, lookups) },
+    {
+      key: 'scope',
+      header: t.fields.scope,
+      /* 범위가 곧 여는 손잡이다 — 줄마다 단추를 세우면 표가 조작으로 덮인다. */
+      render: (row) => (
+        <button type="button" className="link-cell" onClick={() => onEdit(row)}>
+          {scopeText(row, lookups)}
+        </button>
+      ),
+    },
     {
       key: 'valueNumeric',
       header: t.fields.ratio,
@@ -176,6 +189,9 @@ export const RatioListPane = ({
             </Button>
             <Button variant="outlined" onClick={resetAll}>
               {messages.common.reset}
+            </Button>
+            <Button variant="outlined" onClick={onAdd}>
+              {t.actions.addPolicy}
             </Button>
           </div>
         </div>
