@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { EnabledPane } from './enabled-pane';
+import { enabledState, globalPolicy } from './enabled-state';
 import { EndPolicyDialog } from './end-policy-dialog';
 import { validateEndDate } from './end-policy';
 import { LoadErrorBanner } from './load-error-banner';
@@ -13,6 +15,7 @@ import { defaultPolicyFilters, emptyRatioForm } from './options';
 import {
   policyKeys,
   useBusinessUnitLookup,
+  useEnabledPolicies,
   useItemLookup,
   usePlantLookup,
   useProcessLookup,
@@ -22,7 +25,13 @@ import { RatioFormDialog, type ScopeOptions } from './ratio-form-dialog';
 import { RatioListPane } from './ratio-list-pane';
 import { RATIO_FORM_FIELDS, validateRatio } from './ratio-validation';
 import { scopeText, type ScopeLookups } from './scope';
-import type { OperationPolicy, PolicyFilters, RatioFormValues, ScopeAxis } from './types';
+import {
+  POLICY_CODES,
+  type OperationPolicy,
+  type PolicyFilters,
+  type RatioFormValues,
+  type ScopeAxis,
+} from './types';
 
 const t = messages.shotConversion;
 
@@ -88,6 +97,7 @@ export const ShotConversionScreen = () => {
   const toast = useToast();
 
   const ratios = useRatioPolicies(filters);
+  const enabledPolicies = useEnabledPolicies();
   const items = useItemLookup();
   const processes = useProcessLookup();
   const plants = usePlantLookup();
@@ -285,6 +295,58 @@ export const ShotConversionScreen = () => {
   /** 인라인 오류 두 갈래를 겹친다 — **서버 것이 화면 것을 덮는다**(더 최근 판정이다). */
   const fieldErrors = { ...localErrors, ...write.fieldErrors };
 
+  const enabledRows = enabledPolicies.data?.items ?? NO_POLICIES;
+  const enabled = enabledState(enabledRows);
+
+  /**
+   * 환산 사용 여부를 바꾸는 쓰기.
+   *
+   * ⭐ **정한 적이 있으면 고치고, 없으면 만든다.** 계약에 「켜고 끄는」 전용 경로가 없어
+   * 정책 한 건의 값을 바꾸는 일이 된다 — 그 한 건이 없으면 먼저 만들어야 한다.
+   *
+   * ⛔ **값 칸 셋 중 `valueBoolean` 하나만 쓴다.** 등록에서는 나머지를 싣지 않고, 수정에서는
+   * **`null` 로 못박는다** — 수정은 이미 있는 행을 덮으므로 남의 값이 남아 있으면 그대로 둔다.
+   */
+  const enabledWrite = useMasterWrite<boolean, OperationPolicy>({
+    request: (next, headers) => {
+      const current = globalPolicy(enabledRows);
+      const header = { 'Idempotency-Key': headers['Idempotency-Key'] };
+
+      if (current === null) {
+        return client.POST('/app/operation-policies', {
+          params: { header },
+          body: {
+            policyCode: POLICY_CODES.enabled,
+            valueBoolean: next,
+            /* 전체 범위다 — 네 축을 다 비운다. */
+            itemId: null,
+            processId: null,
+            plantId: null,
+            businessUnitId: null,
+            effectiveFrom: todayText(),
+          },
+        });
+      }
+
+      return client.PUT('/app/operation-policies/{operationPolicyId}', {
+        params: { path: { operationPolicyId: current.operationPolicyId }, header },
+        body: {
+          valueBoolean: next,
+          valueText: null,
+          valueNumeric: null,
+          effectiveFrom: current.effectiveFrom,
+          effectiveTo: current.effectiveTo ?? null,
+        },
+      });
+    },
+    etagPath: null,
+    invalidateKeys: [policyKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
   const loadError = ratios.isError ? (
     <LoadErrorBanner error={toApiError(ratios.error)} onRetry={() => void ratios.refetch()} />
   ) : null;
@@ -302,6 +364,28 @@ export const ShotConversionScreen = () => {
           <AlertBanner variant="warning">{optionsNote}</AlertBanner>
         </div>
       )}
+
+      <EnabledPane
+        state={enabled}
+        isLoading={enabledPolicies.isPending}
+        isSaving={enabledWrite.isSaving}
+        /*
+         * ⚠ **기준일로 좁힌 목록으로는 세지 않는다** — 그 날에 유효한 것이 없다고 정책이
+         * 없는 것은 아니다. 셀 수 없을 때는 `null` 을 주고, 받는 쪽이 **모르면 경고하지
+         * 않는다**(없다고 단정하지 않는다 · 공유계약 G-9).
+         */
+        ratioCount={filters.effectiveOn === '' ? rows.length : null}
+        onChange={(next) => enabledWrite.write(next)}
+        banner={<SaveErrorBanner error={enabledWrite.error} />}
+        loadError={
+          enabledPolicies.isError ? (
+            <LoadErrorBanner
+              error={toApiError(enabledPolicies.error)}
+              onRetry={() => void enabledPolicies.refetch()}
+            />
+          ) : null
+        }
+      />
 
       <RatioListPane
         items={rows}

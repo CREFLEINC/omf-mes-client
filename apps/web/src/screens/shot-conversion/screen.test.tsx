@@ -11,9 +11,11 @@ import {
 } from '../../test/api-harness';
 import {
   businessUnitsResponse,
+  enabledListResponse,
   itemsResponse,
   makeRatio,
   plantsResponse,
+  policyCodeOf,
   processesResponse,
   ratioItems,
   ratioListResponse,
@@ -57,6 +59,16 @@ const lookupBody = (path: string, options: Options) => {
 };
 
 const routes = (options: Options): StubRoute[] => [
+  /*
+   * ⭐ **두 조회가 같은 경로를 쓴다** — 정책 코드로 갈라 주지 않으면 사용 여부 조회가
+   * 비율 정책을 받아 「아직 정하지 않음」이 엉뚱한 근거로 서고, 실패도 함께 난다.
+   */
+  {
+    match: (request) =>
+      isPath(request, '/app/operation-policies') &&
+      policyCodeOf(request) === 'SHOT_CONVERSION_ENABLED',
+    respond: () => jsonResponse(enabledListResponse()),
+  },
   {
     match: (request) => isPath(request, '/app/operation-policies'),
     respond: (request) => {
@@ -275,7 +287,7 @@ describe('W-05-01 ① — 빈 상태와 실패', () => {
   it('조회가 실패하면 배너와 다시 시도할 자리를 준다', async () => {
     renderScreen({ listStatus: 500 });
 
-    expect(await screen.findByText(messages.httpError.loadTitle)).toBeInTheDocument();
+    expect(await within(pane()).findByText(messages.httpError.loadTitle)).toBeInTheDocument();
     expect(within(pane()).getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
   });
 });

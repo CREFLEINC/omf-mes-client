@@ -70,6 +70,15 @@ export const usePolicyList = (
 export const useRatioPolicies = (filters: PolicyFilters): UseQueryResult<PolicyListResponse> =>
   usePolicyList(POLICY_CODES.ratio, filters);
 
+/**
+ * 환산 사용 여부 정책.
+ *
+ * ⚠ **기준일을 비워 부른다** — 끝난 것까지 함께 받아야 「정한 적이 있는가」를 알 수 있다.
+ * 지금 유효한 것만 받으면 **끝난 정책과 정한 적 없는 것이 같아 보인다.**
+ */
+export const useEnabledPolicies = (): UseQueryResult<PolicyListResponse> =>
+  usePolicyList(POLICY_CODES.enabled, { effectiveOn: '' });
+
 /** 받은 건수가 전체보다 적으면 목록이 잘린 것이다. */
 export const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
 
