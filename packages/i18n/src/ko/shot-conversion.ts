@@ -135,6 +135,62 @@ export const shotConversion = {
       '비율이 1보다 큽니다. 수량보다 타발수가 많아지는데 맞는지 확인하세요. 이대로 저장할 수 있습니다.',
     periodOrder: '유효 종료일은 시작일과 같거나 뒤여야 합니다.',
   },
+  /**
+   * 미리보기 — **범위 해석을 서버가 한다.**
+   *
+   * ⛔ **화면이 우선순위를 다시 구현하지 않는다**(스펙 §5-2 · 공유계약 B-17). 네 축이 전부
+   * 비어 있을 수 있어 여러 정책이 동시에 맞는데, 그 판정을 화면이 다시 짜면 **같은 표가
+   * 화면마다 다르게 읽힌다.** `effective` 경로가 답과 «그 근거»를 함께 준다.
+   */
+  preview: {
+    paneTitle: '미리보기',
+    description:
+      '툴·품목·공정을 고르면 그 조합에 실제로 적용되는 정책과 그것으로 계산한 타발수를 보입니다.',
+    toolLabel: '툴',
+    itemLabel: '품목',
+    processLabel: '공정',
+    quantityLabel: '생산 수량',
+    quantityPlaceholder: '예: 500',
+    toolPlaceholder: '툴을 고르세요',
+    anyScope: '지정 안 함',
+    loading: '적용 정책을 확인하는 중',
+    loadFailed: '적용 정책을 확인하지 못했습니다.',
+    appliedTitle: '적용 정책',
+    /** ⭐ 서버가 「어느 축으로 이겼는가」를 함께 준다 — 그것이 곧 왜 이 값인지의 설명이다. */
+    matchedBy: (scopeLabel: string): string => `${scopeLabel} 범위로 맞았습니다.`,
+    matchedScope: {
+      ITEM: '품목',
+      PROCESS: '공정',
+      PLANT: '공장',
+      BUSINESS_UNIT: '사업부',
+      ALL: '전체',
+    },
+    /** ⛔ 「1.0」으로 채우지 않는다(G-9) — 없는 정책을 있는 것으로 만들면 계산이 조용히 돈다. */
+    unresolvedTitle: '적용 정책 없음 — 환산 불가',
+    unresolved:
+      '이 조합에 맞는 비율 정책이 없습니다. 더 넓은 범위의 정책을 더하거나, 이 조합에 맞는 정책을 등록하세요.',
+    ratioLabel: '적용 비율',
+    cavityLabel: '캐비티 수',
+    cavitySource: '툴 마스터에서 정합니다.',
+    /**
+     * ⭐ **스펙의 「캐비티 수 미등록」 예외는 계약이 닫았다** — `cavityCount` 가 필수이고
+     * 최솟값이 1이라 툴이 있으면 반드시 있다. 그래서 남는 「없음」은 **툴을 고르지 않은
+     * 것** 하나뿐이고, 그것은 오류가 아니라 아직 안 고른 상태다.
+     */
+    cavityNeedsTool: '툴을 고르면 캐비티 수를 함께 보입니다.',
+    shotLabel: '타발수',
+    shotCount: (shots: number): string => `${String(shots)} 회`,
+    /** ⭐ 셈을 그대로 보인다 — 결과만 보이면 왜 그 수인지 알 수 없다. */
+    formula: (quantity: number, ratio: number, shots: number): string =>
+      `${String(quantity)} × ${String(ratio)} = ${String(shots)}`,
+    cavityNote: (cavityCount: number): string =>
+      `이 툴은 한 번에 ${String(cavityCount)}개가 나옵니다.`,
+    /** ⚠ 캐비티 수와 비율이 어긋나면 알린다 — 둘은 같은 것을 두 곳에서 말한다. */
+    cavityMismatch: (cavityCount: number, expected: string): string =>
+      `캐비티 ${String(cavityCount)}개면 비율이 ${expected} 이어야 합니다. 지금 적용되는 비율과 다릅니다.`,
+    needsQuantity: '생산 수량을 넣으면 타발수를 계산해 보입니다.',
+    quantityNumber: '생산 수량은 0보다 큰 수로 입력하세요.',
+  },
   fields: {
     scope: '범위',
     ratio: '비율',

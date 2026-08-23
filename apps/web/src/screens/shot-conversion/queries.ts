@@ -4,7 +4,9 @@ import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import {
   POLICY_CODES,
+  type Mold,
   type OperationPolicy,
+  type OperationPolicyEffective,
   type PageMeta,
   type PolicyCode,
   type PolicyFilters,
@@ -160,3 +162,45 @@ export const useBusinessUnitLookup = (): LookupResult =>
       label: row.businessUnitName,
     }),
   );
+
+/**
+ * 이 범위에 **결국 무엇이 적용되는가.**
+ *
+ * ⛔ **범위 해석을 화면이 다시 구현하지 않는다**(스펙 §5-2 · 공유계약 B-17) — 네 축이 전부
+ * 비어 있을 수 있어 여러 정책이 동시에 맞는데, 그 판정을 화면이 다시 짜면 **같은 표가
+ * 화면마다 다르게 읽힌다.** 서버가 답과 «그 근거»(`matchedScopeCode`)를 함께 준다.
+ *
+ * ⚠ **비운 축은 「지정 없음」으로 친다**(계약) — 안 보내는 것과 비워 보내는 것이 같다.
+ */
+export const useEffectivePolicy = (
+  scope: { itemId: number | null; processId: number | null },
+  enabled: boolean,
+): UseQueryResult<OperationPolicyEffective> => {
+  const { client } = useApiClient();
+  const query = {
+    ...(scope.itemId === null ? {} : { itemId: scope.itemId }),
+    ...(scope.processId === null ? {} : { processId: scope.processId }),
+  };
+
+  return useQuery({
+    queryKey: policyKeys.effective(POLICY_CODES.ratio, query, ''),
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/operation-policies/effective', {
+          params: { query: { policyCode: POLICY_CODES.ratio, ...query } },
+        }),
+      ),
+  });
+};
+
+/** 미리보기가 캐비티 수를 읽을 툴 목록. */
+export const useToolLookup = (): UseQueryResult<{ items: Mold[]; page: PageMeta }> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['lookups', 'molds'] as const,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/molds', { params: { query: { includeInactive: true } } })),
+  });
+};

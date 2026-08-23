@@ -6,6 +6,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { EnabledPane } from './enabled-pane';
+import { PreviewPane } from './preview-pane';
 import { enabledState, globalPolicy } from './enabled-state';
 import { EndPolicyDialog } from './end-policy-dialog';
 import { validateEndDate } from './end-policy';
@@ -16,10 +17,12 @@ import {
   policyKeys,
   useBusinessUnitLookup,
   useEnabledPolicies,
+  useEffectivePolicy,
   useItemLookup,
   usePlantLookup,
   useProcessLookup,
   useRatioPolicies,
+  useToolLookup,
 } from './queries';
 import { RatioFormDialog, type ScopeOptions } from './ratio-form-dialog';
 import { RatioListPane } from './ratio-list-pane';
@@ -36,6 +39,15 @@ import {
 const t = messages.shotConversion;
 
 const NO_POLICIES: OperationPolicy[] = [];
+
+/** 고른 값을 식별자로. 고르지 않았거나 읽을 수 없으면 `null` — 「지정 없음」이다. */
+const toNumberOrNull = (value: string): number | null => {
+  if (value === '') return null;
+
+  const parsed = Number(value);
+
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+};
 
 /**
  * 창이 무엇을 다루는지. 닫혀 있으면 `null`.
@@ -92,12 +104,15 @@ export const ShotConversionScreen = () => {
   const [ending, setEnding] = useState<EndingState | null>(null);
   /** 종료일이 쓸 수 없는 값일 때의 사유. 누르기 전에는 `null` — 치는 동안 나무라지 않는다 */
   const [endError, setEndError] = useState<string | null>(null);
+  /** 미리보기가 고른 것. **저장되지 않는다** — 무엇이 적용되는지 물어보기만 한다 */
+  const [preview, setPreview] = useState({ toolId: '', itemId: '', processId: '', quantity: '' });
 
   const { client } = useApiClient();
   const toast = useToast();
 
   const ratios = useRatioPolicies(filters);
   const enabledPolicies = useEnabledPolicies();
+  const tools = useToolLookup();
   const items = useItemLookup();
   const processes = useProcessLookup();
   const plants = usePlantLookup();
@@ -295,6 +310,21 @@ export const ShotConversionScreen = () => {
   /** 인라인 오류 두 갈래를 겹친다 — **서버 것이 화면 것을 덮는다**(더 최근 판정이다). */
   const fieldErrors = { ...localErrors, ...write.fieldErrors };
 
+  /**
+   * 미리보기의 판정.
+   *
+   * ⛔ **화면이 우선순위를 다시 짜지 않는다** — 고른 축을 그대로 보내고 서버가 답한다.
+   * 축을 하나도 고르지 않아도 물어본다: 그때는 **전체 범위 정책이 있는가**를 묻는 것이고
+   * 그것도 사용자가 알고 싶어 하는 답이다.
+   */
+  const effective = useEffectivePolicy(
+    { itemId: toNumberOrNull(preview.itemId), processId: toNumberOrNull(preview.processId) },
+    true,
+  );
+
+  const selectedTool =
+    tools.data?.items.find((mold) => String(mold.moldId) === preview.toolId) ?? null;
+
   const enabledRows = enabledPolicies.data?.items ?? NO_POLICIES;
   const enabled = enabledState(enabledRows);
 
@@ -403,6 +433,29 @@ export const ShotConversionScreen = () => {
         onEdit={openEdit}
         onEnd={openEnd}
         loadError={loadError}
+      />
+
+      <PreviewPane
+        toolId={preview.toolId}
+        onChangeTool={(toolId) => setPreview((prev) => ({ ...prev, toolId }))}
+        itemId={preview.itemId}
+        onChangeItem={(itemId) => setPreview((prev) => ({ ...prev, itemId }))}
+        processId={preview.processId}
+        onChangeProcess={(processId) => setPreview((prev) => ({ ...prev, processId }))}
+        quantity={preview.quantity}
+        onChangeQuantity={(quantity) => setPreview((prev) => ({ ...prev, quantity }))}
+        toolOptions={
+          tools.data?.items.map((mold) => ({
+            value: String(mold.moldId),
+            label: `${mold.moldCode} · ${mold.moldName}`,
+          })) ?? []
+        }
+        itemOptions={items.entries}
+        processOptions={processes.entries}
+        tool={selectedTool}
+        effective={effective.data ?? null}
+        isLoading={effective.isPending}
+        isError={effective.isError}
       />
 
       {ending !== null && (

@@ -11,8 +11,10 @@ import {
 } from '../../test/api-harness';
 import {
   businessUnitsResponse,
+  effectiveResponse,
   enabledListResponse,
   itemsResponse,
+  moldListResponse,
   makeRatio,
   plantsResponse,
   policyCodeOf,
@@ -78,6 +80,14 @@ const routes = (options: Options): StubRoute[] => [
         ? jsonResponse(ratioListResponse(options.policies ?? ratioItems, options.total))
         : jsonResponse({ errors: [] }, { status: options.listStatus });
     },
+  },
+  {
+    match: (request) => isPath(request, '/app/operation-policies/effective'),
+    respond: () => jsonResponse(effectiveResponse()),
+  },
+  {
+    match: (request) => isPath(request, '/mdm/molds'),
+    respond: () => jsonResponse(moldListResponse()),
   },
   ...['/mdm/items', '/mdm/processes', '/mdm/plants', '/mdm/business-units'].map((path) => ({
     match: (request: Request) => isPath(request, path),
