@@ -1,4 +1,12 @@
 export const workOrderClose = {
+  confirm: {
+    title: (workOrderNo: string): string => `작업지시 마감 — ${workOrderNo}`,
+    target: (workOrderNo: string): string => `대상 작업지시: ${workOrderNo}`,
+    irreversible: '작업지시 마감은 되돌릴 수 없습니다. 정정이 필요하면 생산실적을 상계 처리하세요.',
+    erp: 'ERP 송신은 별도로 진행되며, 이 확인은 ERP 송신 완료를 의미하지 않습니다.',
+    cancel: '취소',
+    confirm: '작업지시 마감',
+  },
   status: {
     pane: '작업지시 마감 입력 상태',
     heading: '현재 입력 상태',
