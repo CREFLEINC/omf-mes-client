@@ -344,6 +344,46 @@ const collectionChannelRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/uoms', []),
 ];
 
+/**
+ * W-05-01이 첫 진입에 부르는 것들.
+ *
+ * ⚠ **정책 조회가 «둘»이다** — 비율과 사용 여부가 같은 경로를 `policyCode` 로만 가른다.
+ * 하나만 스텁하면 나머지가 조용히 실패한다.
+ */
+const shotConversionRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/app/operation-policies'),
+    respond: (request) =>
+      jsonResponse(
+        new URL(request.url).searchParams.get('policyCode') === 'SHOT_CONVERSION_RATIO'
+          ? {
+              items: [
+                {
+                  operationPolicyId: 9001,
+                  policyCode: 'SHOT_CONVERSION_RATIO',
+                  valueNumeric: 0.25,
+                  itemId: 21,
+                  effectiveFrom: '2026-01-01',
+                },
+              ],
+              page: { page: 1, size: 200, total: 1 },
+            }
+          : { items: [], page: { page: 1, size: 200, total: 0 } },
+      ),
+  },
+  {
+    match: (request) => isGet(request, '/app/operation-policies/effective'),
+    respond: () => jsonResponse({ policyCode: 'SHOT_CONVERSION_RATIO', resolved: false }),
+  },
+  lookupRoute('/mdm/items', [
+    { itemId: 21, itemCode: 'ITM-201', itemName: '가상 하우징', isActive: true },
+  ]),
+  lookupRoute('/mdm/processes', []),
+  lookupRoute('/mdm/plants', []),
+  lookupRoute('/mdm/business-units', []),
+  lookupRoute('/mdm/molds', []),
+];
+
 const lotStatusRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/code-values', []),
   lookupRoute('/mdm/warehouses', []),
@@ -1251,6 +1291,7 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       '/equipment/tool-master',
       '/equipment/work-calendar',
       '/equipment/collection-channels',
+      '/equipment/shot-conversion',
     ]);
   });
 });
@@ -1314,6 +1355,71 @@ describe('appRouter — 작업 캘린더 설정의 진입 경로', () => {
     expect(
       screen.getByRole('region', { name: messages.workCalendar.grid.title }),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * **W-05-01은 도메인 05 의 마지막 화면이다** — 라우트와 메뉴를 함께 연다.
+ *
+ * ⚠ 낙관적 잠금이 이 자원에 없지만(`omf-mes#210`) 메뉴를 미루지 않는다 — 그것은 동시
+ * 편집에서만 드러나는 한계이지 「타발수 환산 파라미터 설정」이라는 이름이 약속하는 것을
+ * 어기지 않는다.
+ */
+describe('appRouter — 타발수 환산 파라미터 설정의 진입 경로', () => {
+  it('사이드바에 이 화면 항목이 있다', () => {
+    expect(sidebarHrefs()).toContain('/equipment/shot-conversion');
+
+    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    expect(within(nav).getByRole('link', { name: '타발수 환산 파라미터 설정' })).toHaveAttribute(
+      'href',
+      '/equipment/shot-conversion',
+    );
+  });
+
+  /* 섹션 맨 뒤다 — 세는 규칙은 셀 대상이 다 선 뒤에 온다. */
+  it('같은 섹션의 앞선 넷 뒤에 선다', () => {
+    const hrefs = sidebarHrefs();
+
+    expect(hrefs.indexOf('/equipment/shot-conversion')).toBeGreaterThan(
+      hrefs.indexOf('/equipment/collection-channels'),
+    );
+  });
+
+  it('라우트 표에 주소가 있다', () => {
+    expect(routedPaths()).toContain('/equipment/shot-conversion');
+  });
+
+  /** **실제 라우트 표를 태우므로** 라우트 줄이 없거나 다른 화면을 가리키면 여기서 운다. */
+  it('그 주소로 들어가면 화면이 첫 상태로 선다', async () => {
+    renderRoutedApp('/equipment/shot-conversion', shotConversionRoutes());
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.shotConversion.title }),
+    ).toBeInTheDocument();
+  });
+
+  /* ⭐ 라우트만 열고 화면이 서지 않는 상태를 잡으려면 조회가 실제로 도는 것까지 봐야 한다. */
+  it('첫 진입에 비율 정책이 실제로 그려진다', async () => {
+    renderRoutedApp('/equipment/shot-conversion', shotConversionRoutes());
+
+    expect(
+      await screen.findByText(
+        messages.shotConversion.scope.entry(
+          messages.shotConversion.scope.itemId,
+          'ITM-201 · 가상 하우징',
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /* 비율을 정할 수 없는 「설정」 화면을 노출하지 않는다(정책 §5.2). */
+  it('첫 진입에 정책을 더하러 갈 수 있다', async () => {
+    renderRoutedApp('/equipment/shot-conversion', shotConversionRoutes());
+
+    expect(
+      await screen.findByRole('button', { name: messages.shotConversion.actions.addPolicy }),
+    ).toBeEnabled();
   });
 });
 

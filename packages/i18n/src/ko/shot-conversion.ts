@@ -76,8 +76,15 @@ export const shotConversion = {
     processId: '공정',
     plantId: '공장',
     businessUnitId: '사업부',
-    /** 한 정책이 축을 둘 이상 지정할 수 있다 — 지정된 것을 우선순위 차례로 잇는다. */
-    join: ' · ',
+    /**
+     * 한 정책이 축을 둘 이상 지정할 수 있다 — 지정된 것을 우선순위 차례로 잇는다.
+     *
+     * ⛔ **값 이름 «안»에서 쓰는 이음쇠(`·`)와 달라야 한다.** 값 이름이 이미
+     * 「ABC-123 · 하우징 커버 A」 꼴이라 축도 같은 쇠로 이으면 **축 경계가 사라진다** —
+     * 「품목 ABC-123 · 하우징 커버 A · 공정 OP-INJ · 사출」이 점 네 개짜리 한 줄로 읽힌다
+     * (브라우저 확인에서 실제 계약 응답으로 그렇게 보였다).
+     */
+    join: ' / ',
     entry: (axisLabel: string, valueLabel: string): string => `${axisLabel} ${valueLabel}`,
   },
   actions: {

@@ -72,6 +72,25 @@ describe('범위를 한 줄로', () => {
     );
   });
 
+  /**
+   * ⛔ **축 이음쇠가 값 이름 «안»의 이음쇠와 달라야 한다.** 값 이름이 이미
+   * 「ABC-123 · 하우징 커버 A」 꼴이라 같은 쇠로 이으면 **축 경계가 사라진다** —
+   * 브라우저 확인에서 실제 계약 응답으로 그렇게 보였다.
+   */
+  it('축 이음쇠가 값 이름 안의 이음쇠와 다르다', () => {
+    const valueSeparator = ' · ';
+
+    expect(t.scope.join).not.toBe(valueSeparator);
+
+    const text = scopeText(
+      makeRatio(1, 1, { itemId: 21, processId: 31, plantId: 11, businessUnitId: 1 }),
+      lookups,
+    );
+
+    /* 축이 넷이면 이음쇠도 셋이다 — 값 이름 안의 점에 섞이지 않는다. */
+    expect(text.split(t.scope.join)).toHaveLength(4);
+  });
+
   /** ⛔ 모르는 값에 이름을 지어내지 않는다 — 없는 것이 있는 것처럼 보인다(G-9). */
   it('이름을 못 찾으면 값을 그대로 둔다', () => {
     expect(scopeText(makeRatio(1, 1, { itemId: 99 }), lookups)).toBe(
