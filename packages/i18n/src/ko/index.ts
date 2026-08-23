@@ -57,6 +57,7 @@ import { toolMaster } from './tool-master';
 import { workCalendar } from './work-calendar';
 import { collectionChannel } from './collection-channel';
 import { workOrder } from './work-order';
+import { workOrderClose } from './work-order-close';
 import { workOrderRelease } from './work-order-release';
 
 export const ko = {
@@ -103,6 +104,7 @@ export const ko = {
   workCalendar,
   collectionChannel,
   workOrder,
+  workOrderClose,
   workOrderRelease,
 } as const;
 
