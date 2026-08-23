@@ -1,4 +1,25 @@
 export const workOrderClose = {
+  input: {
+    pane: '작업지시 마감 입력',
+    heading: '마감 입력',
+    classification: {
+      label: '수량 판정',
+      SHORTFALL: '미달',
+      EXACT: '정상',
+      OVERAGE: '초과',
+    },
+    exactNote: '수량이 일치하여 추가 사유 입력이 필요하지 않습니다.',
+    remainder: {
+      legend: '잔량 처리',
+      CARRY_OVER: '이월',
+      WRITE_OFF: '소멸',
+    },
+    reason: {
+      label: '변동 사유',
+      placeholder: '사유를 선택하세요.',
+      empty: '선택할 사유가 없습니다.',
+    },
+  },
   outboundItems: {
     pane: '작업지시 마감 ERP 송신 항목',
     heading: 'ERP 송신 항목',
