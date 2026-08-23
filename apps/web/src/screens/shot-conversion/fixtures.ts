@@ -1,4 +1,4 @@
-import type { OperationPolicy, PageMeta } from './types';
+import type { Mold, OperationPolicy, OperationPolicyEffective, PageMeta } from './types';
 
 /** 값은 전부 합성이다. 실 운영 값을 쓰지 않는다. */
 
@@ -88,3 +88,33 @@ export const enabledListResponse = (items: OperationPolicy[] = []) => ({
 /** 요청의 정책 코드로 갈라 준다 — 두 조회가 같은 경로를 쓴다. */
 export const policyCodeOf = (request: Request): string | null =>
   new URL(request.url).searchParams.get('policyCode');
+
+/** ⭐ 계약이 `cavityCount` 를 필수(최솟값 1)로 두어 「없는 툴」은 만들 수 없다. */
+export const makeMold = (moldId: number, moldCode: string, cavityCount: number): Mold => ({
+  moldId,
+  plantId: 11,
+  moldCode,
+  moldName: `${moldCode} 금형`,
+  toolTypeCode: 'MOLD',
+  cavityCount,
+  currentShotCount: 0,
+  pmTriggerTypeCode: 'SHOT',
+  statusCode: 'IN_SERVICE',
+  isActive: true,
+});
+
+export const moldListResponse = (items: Mold[] = [makeMold(7001, 'MLD-0207', 4)]) => ({
+  items,
+  page: pageMeta(items.length, 100),
+});
+
+export const effectiveResponse = (
+  overrides: Partial<OperationPolicyEffective> = {},
+): OperationPolicyEffective => ({
+  policyCode: 'SHOT_CONVERSION_RATIO',
+  resolved: true,
+  operationPolicyId: 9003,
+  valueNumeric: 0.25,
+  matchedScopeCode: 'ITEM',
+  ...overrides,
+});
