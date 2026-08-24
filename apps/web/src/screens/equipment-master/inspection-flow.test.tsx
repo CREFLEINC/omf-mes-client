@@ -26,7 +26,7 @@ import {
   equipmentsResponse,
 } from './fixtures';
 import { EquipmentMasterScreen } from './screen';
-import type { InspectionItemAssignment } from './types';
+import type { EquipmentInspectionAssignments, InspectionItemAssignment } from './types';
 
 const t = messages.equipmentMaster;
 const ti = t.inspection;
@@ -47,6 +47,8 @@ const codeValuesFor = (codeGroupCode: string | null) => {
 
 const GROUP_INSPECTION_PATH = '/mdm/equipment-groups/101/inspection-items';
 
+const EQUIPMENT_INSPECTION_PATH = '/mdm/equipments/2001/inspection-items';
+
 interface Options {
   assignments?: InspectionItemAssignment[];
   writes?: Request[];
@@ -57,9 +59,35 @@ interface Options {
   /** 저장 응답 상태. 200 이 아니면 본문을 오류로 낸다 */
   writeStatus?: number;
   writeBody?: unknown;
+  /** 설비 쪽 부여 응답 */
+  equipmentAssignments?: EquipmentInspectionAssignments;
 }
 
 const routes = (options: Options): StubRoute[] => [
+  {
+    match: (request) => request.method === 'GET' && isPath(request, EQUIPMENT_INSPECTION_PATH),
+    respond: () =>
+      jsonResponse(
+        options.equipmentAssignments ?? {
+          assigned: [],
+          effective: [],
+          resolvedFromLevelCode: 'NONE',
+        },
+        { headers: { ETag: 'W/"55"' } },
+      ),
+  },
+  {
+    match: (request) => request.method === 'PUT' && isPath(request, EQUIPMENT_INSPECTION_PATH),
+    respond: (request) => {
+      options.writes?.push(request.clone());
+
+      return jsonResponse({
+        assigned: [],
+        effective: [],
+        resolvedFromLevelCode: 'NONE',
+      });
+    },
+  },
   /*
    * ⚠ **부여가 그룹 상세보다 앞선다.** 그룹 경로 아래 있어, 접두사만 보는 스텁이 먼저 서면
    * 부여 조회가 그룹 상세 모양을 받아 감지기가 헛통과한다.
@@ -376,5 +404,145 @@ describe('W-05-12 점검 항목 — 부여를 고친다', () => {
     expect(
       await within(dialog()).findByRole('button', { name: messages.conflict.reloadAction }),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * ⭐ **설비 쪽은 «해석»이 붙는다** — 설비에 부여가 있으면 그것, 없으면 소속 그룹의 것,
+ * 둘 다 없으면 점검 대상이 아니다(스펙 §4-C · 공유계약 B-17).
+ */
+describe('W-05-12 점검 항목 — 설비의 부여', () => {
+  const renderEquipmentTab = (options: Options = {}) =>
+    renderWithProviders(<EquipmentMasterScreen />, {
+      route: '/?grp=101&tab=equipment',
+      fetch: createStubFetch(routes(options)),
+    });
+
+  const openEquipmentDialog = async (
+    user: ReturnType<typeof userEvent.setup>,
+    options: Options = {},
+  ): Promise<void> => {
+    renderEquipmentTab(options);
+    await user.click(await screen.findByRole('button', { name: ti.equipmentOpenLabel('EQ-01') }));
+  };
+
+  it('줄마다 점검 항목을 여는 자리가 있다', async () => {
+    renderEquipmentTab();
+
+    expect(
+      await screen.findByRole('button', { name: ti.equipmentOpenLabel('EQ-01') }),
+    ).toBeInTheDocument();
+  });
+
+  /** ⛔ 어디서 왔는지 말하지 않으면 사용자가 엉뚱한 자리를 고친다. */
+  it('그룹에서 온 것이면 어느 그룹인지 말한다', async () => {
+    const user = userEvent.setup();
+
+    await openEquipmentDialog(user, {
+      equipmentAssignments: {
+        assigned: [],
+        effective: [makeAssignment(inspectionItems[0] as never)],
+        resolvedFromLevelCode: 'EQUIPMENT_GROUP',
+        resolvedFromGroupId: 101,
+      },
+    });
+
+    expect(
+      await within(dialog()).findByText(ti.resolution.group('GRP-A · GRP-A 그룹')),
+    ).toBeInTheDocument();
+  });
+
+  it('설비에 직접 부여했으면 그렇게 말한다', async () => {
+    const user = userEvent.setup();
+
+    await openEquipmentDialog(user, {
+      equipmentAssignments: {
+        assigned: [makeAssignment(inspectionItems[0] as never)],
+        effective: [makeAssignment(inspectionItems[0] as never)],
+        resolvedFromLevelCode: 'EQUIPMENT',
+      },
+    });
+
+    expect(await within(dialog()).findByText(ti.resolution.equipment)).toBeInTheDocument();
+  });
+
+  it('어느 층에도 없으면 점검 대상이 아니라고 말한다', async () => {
+    const user = userEvent.setup();
+
+    await openEquipmentDialog(user);
+
+    expect(await within(dialog()).findByText(ti.resolution.none)).toBeInTheDocument();
+  });
+
+  /** ⛔ 「지우면 아무것도 안 돈다」가 아니다 — 해석이 한 층 위로 올라간다. */
+  it('비우면 그룹의 것이 적용된다는 사실을 말한다', async () => {
+    const user = userEvent.setup();
+
+    await openEquipmentDialog(user);
+
+    expect(await within(dialog()).findByText(ti.equipmentDialogLead)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **`assigned` 를 담는다 — `effective` 가 아니다.** 그룹에서 온 것을 담아 저장하면
+   * 그룹의 항목이 이 설비로 «복사되어» 이후 그룹을 고쳐도 이 설비만 옛 항목을 돈다.
+   */
+  it('그룹에서 온 항목을 설비의 초안에 담지 않는다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+
+    await openEquipmentDialog(user, {
+      writes,
+      equipmentAssignments: {
+        assigned: [],
+        effective: [makeAssignment(inspectionItems[0] as never)],
+        resolvedFromLevelCode: 'EQUIPMENT_GROUP',
+        resolvedFromGroupId: 101,
+      },
+    });
+
+    await within(dialog()).findByText(ti.resolution.group('GRP-A · GRP-A 그룹'));
+
+    expect(within(dialog()).queryByText(/벨트 장력/)).not.toBeInTheDocument();
+
+    await user.click(within(dialog()).getByRole('button', { name: messages.common.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect((await bodyOf(writes[0] as Request)).items).toEqual([]);
+  });
+
+  /**
+   * ⛔ **두 창이 같은 마스터를 쓴다.** 한쪽만 조회를 열면 다른 창이 「등록된 점검 항목이
+   * 없습니다」를 띄운다 — 실제로는 조회를 «시작조차» 하지 않은 것이라 사용자가 있지도 않은
+   * 문제를 고치러 간다(브라우저 확인에서 실제로 그렇게 보였다).
+   */
+  it('설비 창에서도 마스터 목록을 고를 수 있다', async () => {
+    const user = userEvent.setup();
+
+    await openEquipmentDialog(user);
+    await within(dialog()).findByText(ti.resolution.none);
+    await user.click(within(dialog()).getByRole('combobox', { name: ti.addLabel }));
+
+    expect(await screen.findByRole('option', { name: /INS-01/ })).toBeInTheDocument();
+    expect(within(dialog()).queryByText(ti.masterEmpty)).not.toBeInTheDocument();
+  });
+
+  it('설비 부여 경로의 잠금 토큰을 싣는다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+
+    await openEquipmentDialog(user, {
+      writes,
+      equipmentAssignments: {
+        assigned: [makeAssignment(inspectionItems[0] as never)],
+        effective: [makeAssignment(inspectionItems[0] as never)],
+        resolvedFromLevelCode: 'EQUIPMENT',
+      },
+    });
+
+    await within(dialog()).findByText(ti.resolution.equipment);
+    await user.click(within(dialog()).getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect((writes[0] as Request).headers.get('If-Match')).toBe('W/"55"');
   });
 });

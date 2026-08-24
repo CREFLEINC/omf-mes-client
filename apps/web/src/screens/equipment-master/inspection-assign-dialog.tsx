@@ -10,8 +10,17 @@ import type { AssignmentDraftRow, EquipmentInspectionItem } from './types';
 const t = messages.equipmentMaster.inspection;
 
 export interface InspectionAssignDialogProps {
+  /** 창 제목. 그룹과 설비가 다른 말을 쓴다 */
+  title: string;
   /** 무엇에 부여하는지 — 창 머리에 남긴다 */
   targetLabel: string;
+  /**
+   * 이 부여가 무엇을 뜻하는지. **그룹과 설비가 다르다** — 그룹은 「지우면 풀린다」이고
+   * 설비는 「지우면 소속 그룹의 것이 적용된다」다. 한 문장으로 덮으면 한쪽이 거짓이 된다.
+   */
+  lead: string;
+  /** 지금 무엇이 적용되고 있는지 — 서버가 판정한 근거다. 없으면 붙이지 않는다 */
+  resolutionNote?: string;
   rows: AssignmentDraftRow[];
   onChangeRows: (rows: AssignmentDraftRow[]) => void;
   /** 고를 수 있는 마스터 항목. 이미 부여한 것은 빠져 있지 않다 — 이 창이 뺀다 */
@@ -34,7 +43,10 @@ export interface InspectionAssignDialogProps {
  * 창 머리에 적는다: 적지 않으면 사용자는 더한 것만 반영된다고 읽는다.
  */
 export const InspectionAssignDialog = ({
+  title,
   targetLabel,
+  lead,
+  resolutionNote,
   rows,
   onChangeRows,
   master,
@@ -80,12 +92,14 @@ export const InspectionAssignDialog = ({
   };
 
   return (
-    <Dialog open onClose={onClose} title={t.dialogTitle} size="lg">
+    <Dialog open onClose={onClose} title={title} size="lg">
       <p className="dialog-lead">{targetLabel}</p>
       {/* ⛔ 묶음 통째 교체라는 사실을 감추지 않는다. */}
       <div className="banner-slot">
-        <AlertBanner variant="warning">{t.dialogLead}</AlertBanner>
+        <AlertBanner variant="warning">{lead}</AlertBanner>
       </div>
+      {/* ⛔ 어디서 왔는지 말하지 않으면 사용자가 엉뚱한 자리를 고친다(B-17). */}
+      {resolutionNote !== undefined && <p className="dialog-lead">{resolutionNote}</p>}
       {banner}
 
       <div className="form-grid">

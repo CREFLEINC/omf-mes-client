@@ -6,6 +6,7 @@ import { IN_SERVICE_STATUS_CODE, type CodeValue } from './code-options';
 import { runRequest } from '../../patterns/request';
 import type {
   EquipmentFilters,
+  EquipmentInspectionAssignments,
   EquipmentInspectionItem,
   GroupFilters,
   InspectionItemAssignment,
@@ -340,6 +341,8 @@ export const inspectionKeys = {
   master: (q: string) => ['equipment-inspection-items', 'master', q] as const,
   groupAssignments: (equipmentGroupId: number) =>
     ['equipment-inspection-items', 'group', equipmentGroupId] as const,
+  equipmentAssignments: (equipmentId: number) =>
+    ['equipment-inspection-items', 'equipment', equipmentId] as const,
 };
 
 /**
@@ -390,6 +393,38 @@ export const useGroupInspectionItems = (
           params: { path: { equipmentGroupId } },
         }),
       ).then((response) => response.items);
+    },
+  });
+};
+
+/** 부여의 ETag 가 보관된 경로 — 설비 상세와 **다른 자원**이다. */
+export const equipmentInspectionPath = (equipmentId: number): string =>
+  `/mdm/equipments/${String(equipmentId)}/inspection-items`;
+
+/**
+ * 이 설비의 점검 항목 — **해석 결과가 함께 온다.**
+ *
+ * ⛔ **화면이 다시 해석하지 않는다**(공유계약 B-17). 서버가 답(`effective`)과 그 근거
+ * (`resolvedFromLevelCode`)를 함께 주고, 화면은 그것을 말할 뿐이다.
+ */
+export const useEquipmentInspectionItems = (
+  equipmentId: number | null,
+): UseQueryResult<EquipmentInspectionAssignments> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: inspectionKeys.equipmentAssignments(equipmentId ?? 0),
+    enabled: equipmentId !== null,
+    queryFn: () => {
+      if (equipmentId === null) {
+        throw new Error('설비를 고르기 전에는 점검 항목을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/equipments/{equipmentId}/inspection-items', {
+          params: { path: { equipmentId } },
+        }),
+      );
     },
   });
 };

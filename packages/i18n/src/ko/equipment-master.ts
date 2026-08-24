@@ -267,5 +267,31 @@ export const equipmentMaster = {
     },
     /** 창을 열기 전에는 그룹을 골라야 한다 — 감추지 않고 사유를 말한다(G-2). */
     needsGroupReason: '그룹을 고르면 점검 항목을 부여할 수 있습니다.',
+    /**
+     * 「이 설비가 무엇을 도는가」의 **근거**.
+     *
+     * ⛔ **어디서 왔는지 말하지 않으면 사용자가 엉뚱한 자리를 고친다** — 그룹에서 온 항목을
+     * 설비 화면에서 지우려 하거나, 설비에 부여해 둔 것을 그룹에서 찾는다.
+     */
+    resolution: {
+      label: '적용 근거',
+      equipment: '이 설비에 직접 부여한 항목입니다.',
+      group: (groupLabel: string): string => `소속 그룹 ${groupLabel} 의 항목이 적용됩니다.`,
+      /** ⚠ 층은 아는 사실이고 이름은 모르는 사실이다 — 지어내지 않는다(G-9). */
+      groupUnknown: '소속 그룹의 항목이 적용됩니다.',
+      none: '이 설비는 점검 대상이 아닙니다. 설비나 소속 그룹에 부여된 항목이 없습니다.',
+    },
+    equipmentPaneTitle: '점검 항목',
+    equipmentDescription: '이 설비가 도는 점검 항목입니다.',
+    equipmentEditAction: '이 설비에 부여',
+    /** 줄이 여럿일 때 「부여」만으로는 어느 설비인지 알 수 없다 — 접근 이름에 대상을 담는다. */
+    equipmentOpenLabel: (equipmentCode: string): string => `${equipmentCode} 의 점검 항목 부여`,
+    equipmentDialogTitle: '설비의 점검 항목 부여',
+    /**
+     * ⛔ **「지우면 아무것도 안 돈다」가 아니다.** 설비의 부여를 비우면 해석이 한 층 위로
+     * 올라가 소속 그룹의 것이 적용된다 — 「점검을 끈다」로 오해하면 안 된다.
+     */
+    equipmentDialogLead:
+      '이 설비에 부여한 것이 소속 그룹의 것을 이깁니다. 모두 지우면 다시 소속 그룹의 항목이 적용됩니다.',
   },
 } as const;
