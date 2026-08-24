@@ -143,6 +143,12 @@ describe('work-order close reads', () => {
             versionNo: 9,
             releasedAt: '2026-08-23T08:00:00+09:00',
             operationSettingsSnapshot: {},
+            progress: {
+              goodQty: 12.5,
+              achievementRate: 1,
+              completionJudgmentCode: 'NORMAL',
+            },
+            preIssuedLots: { slotCount: 2, withResultCount: 2, withoutResultCount: 0 },
           },
           workOrder(701),
         ],
@@ -177,6 +183,8 @@ describe('work-order close reads', () => {
     expect(result.current.data?.items[0]).not.toHaveProperty('versionNo');
     expect(result.current.data?.items[0]).not.toHaveProperty('releasedAt');
     expect(result.current.data?.items[0]).not.toHaveProperty('operationSettingsSnapshot');
+    expect(result.current.data?.items[0]).not.toHaveProperty('progress');
+    expect(result.current.data?.items[0]).not.toHaveProperty('preIssuedLots');
   });
 
   it('omits null optional candidate filters without fallback values', async () => {
@@ -204,7 +212,7 @@ describe('work-order close reads', () => {
     ]);
   });
 
-  it('gets the exact detail path without search, exposes only close facts, and keeps failures without data', async () => {
+  it('requests and preserves close-only detail expansions while keeping failures without data', async () => {
     const { fetch, requests } = recordingFetch([
       getRoute(DETAIL_PATH, {
         ...workOrder(702),
@@ -216,6 +224,14 @@ describe('work-order close reads', () => {
         operationSettingsSnapshot: {},
         parentWorkOrderId: 901,
         completedQty: 12.5,
+        progress: {
+          goodQty: 12.5,
+          defectQty: 0.5,
+          achievementRate: 1,
+          varianceQty: 0,
+          completionJudgmentCode: 'NORMAL',
+        },
+        preIssuedLots: { slotCount: 3, withResultCount: 2, withoutResultCount: 1 },
       }),
     ]);
     const { result } = renderHookWithProviders(() => useWorkOrderCloseDetail(702), { fetch });
@@ -224,12 +240,23 @@ describe('work-order close reads', () => {
 
     expect(workOrderCloseDetailPath(702)).toBe(DETAIL_PATH);
     expect(requests[0]?.pathname).toBe(DETAIL_PATH);
-    expect(requests[0]?.search).toBe('');
+    expect(Array.from(requests[0]?.searchParams.entries() ?? [])).toEqual([
+      ['withProgress', 'true'],
+      ['withPreIssuedLots', 'true'],
+    ]);
     expect(result.current.data).toEqual({
       ...closeFact(702),
       completedAt: '2026-08-23T10:00:00+09:00',
       completionVarianceReasonCode: 'SYN-VARIANCE',
       closedAt: '2026-08-23T11:00:00+09:00',
+      progress: {
+        goodQty: 12.5,
+        defectQty: 0.5,
+        achievementRate: 1,
+        varianceQty: 0,
+        completionJudgmentCode: 'NORMAL',
+      },
+      preIssuedLots: { slotCount: 3, withResultCount: 2, withoutResultCount: 1 },
     });
     expect(result.current.data).not.toHaveProperty('versionNo');
     expect(result.current.data).not.toHaveProperty('completedQty');
@@ -248,6 +275,19 @@ describe('work-order close reads', () => {
     expect(toApiError(errorResult.result.current.error)).toMatchObject({
       kind: 'http',
       status: 503,
+    });
+  });
+
+  it('normalizes omitted detail expansions to null', async () => {
+    const { fetch } = recordingFetch([getRoute(DETAIL_PATH, workOrder(702))]);
+    const { result } = renderHookWithProviders(() => useWorkOrderCloseDetail(702), { fetch });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data).toEqual({
+      ...closeFact(702),
+      progress: null,
+      preIssuedLots: null,
     });
   });
 });

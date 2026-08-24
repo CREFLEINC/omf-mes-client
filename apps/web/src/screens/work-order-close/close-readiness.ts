@@ -1,4 +1,7 @@
-export type WorkOrderCloseQuantityClassification = 'SHORTFALL' | 'EXACT' | 'OVERAGE';
+import type { components } from '@omf-mes/api-client';
+
+export type WorkOrderCloseCompletionJudgment =
+  components['schemas']['WorkOrderProgress']['completionJudgmentCode'];
 
 export interface WorkOrderCloseInputRequirements {
   requiresRemainderDisposition: boolean;
@@ -9,27 +12,21 @@ export type WorkOrderCloseBlocker =
   'OPEN_SESSION' | 'REMAINDER_DISPOSITION_REQUIRED' | 'VARIANCE_REASON_REQUIRED';
 
 export interface WorkOrderCloseReadinessInput {
-  classification: WorkOrderCloseQuantityClassification;
+  completionJudgment: WorkOrderCloseCompletionJudgment;
   hasOpenSession: boolean;
   hasRemainderDisposition: boolean;
   hasVarianceReason: boolean;
 }
 
-export const classifyWorkOrderCloseQuantity = (
-  orderQty: number,
-  goodQty: number,
-): WorkOrderCloseQuantityClassification =>
-  goodQty < orderQty ? 'SHORTFALL' : goodQty === orderQty ? 'EXACT' : 'OVERAGE';
-
 export const workOrderCloseInputRequirements = (
-  classification: WorkOrderCloseQuantityClassification,
+  completionJudgment: WorkOrderCloseCompletionJudgment,
 ): WorkOrderCloseInputRequirements => {
-  switch (classification) {
-    case 'SHORTFALL':
+  switch (completionJudgment) {
+    case 'UNDER':
       return { requiresRemainderDisposition: true, requiresVarianceReason: true };
-    case 'OVERAGE':
+    case 'OVER':
       return { requiresRemainderDisposition: false, requiresVarianceReason: true };
-    case 'EXACT':
+    case 'NORMAL':
       return { requiresRemainderDisposition: false, requiresVarianceReason: false };
   }
 };
@@ -37,7 +34,7 @@ export const workOrderCloseInputRequirements = (
 export const workOrderCloseBlockers = (
   input: WorkOrderCloseReadinessInput,
 ): WorkOrderCloseBlocker[] => {
-  const requirements = workOrderCloseInputRequirements(input.classification);
+  const requirements = workOrderCloseInputRequirements(input.completionJudgment);
   const blockers: WorkOrderCloseBlocker[] = [];
 
   if (input.hasOpenSession) blockers.push('OPEN_SESSION');

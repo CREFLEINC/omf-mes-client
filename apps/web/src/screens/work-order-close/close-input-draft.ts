@@ -1,7 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
 import type {
-  WorkOrderCloseQuantityClassification,
+  WorkOrderCloseCompletionJudgment,
   WorkOrderCloseReadinessInput,
 } from './close-readiness';
 
@@ -31,10 +31,10 @@ export const setWorkOrderCloseVarianceReasonCode = (
 
 export const workOrderCloseReadinessInputFrom = (
   draft: WorkOrderCloseInputDraft,
-  classification: WorkOrderCloseQuantityClassification,
+  completionJudgment: WorkOrderCloseCompletionJudgment,
   hasOpenSession: boolean,
 ): WorkOrderCloseReadinessInput => ({
-  classification,
+  completionJudgment,
   hasOpenSession,
   hasRemainderDisposition: draft.remainderDisposition !== null,
   hasVarianceReason: draft.varianceReasonCode.trim() !== '',
