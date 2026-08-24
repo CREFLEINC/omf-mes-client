@@ -1,4 +1,6 @@
 export const workOrderClose = {
+  title: 'W/O 마감·ERP 실적 송신',
+  breadcrumbRoot: '생산실행',
   detailSummary: {
     pane: '작업지시 마감 상세 요약',
     heading: '작업지시 마감 상세',

@@ -204,6 +204,12 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               물류 문서 진행현황·취소
             </NavItem>
           </SidebarSection>
+          {/* W-02-05 — 생산실행의 첫 화면이며 자재창고 뒤·품질관리 앞에 둔다. */}
+          <SidebarSection label="생산실행">
+            <NavItem to="/production/work-order-close" icon="archive">
+              W/O 마감·ERP 실적 송신
+            </NavItem>
+          </SidebarSection>
           {/*
            * W-03-01 — Lot Status 계열의 첫 화면이 독립된 「품질관리」 섹션을 연다.
            * IQC 수입검사는 입하 흐름의 판정이라 자재창고에 남고, 여기서는
