@@ -24,12 +24,21 @@ import {
   plantItems,
   plantsResponse,
   statusCodeValues,
+  typeCodeValues,
   uomsResponse,
 } from './fixtures';
+import type { CodeValue } from './code-options';
 import { GaugeMasterScreen } from './screen';
 import type { Equipment } from './types';
 
 const t = messages.gaugeMaster;
+
+/** 요청한 그룹에 맞는 코드값을 준다 — 세 그룹이 한 경로를 쓴다. */
+const codeValuesFor = (codeGroupCode: string | null): CodeValue[] => {
+  if (codeGroupCode === 'CYCLE_TYPE') return cycleCodeValues;
+
+  return codeGroupCode === 'EQUIPMENT_TYPE' ? typeCodeValues : statusCodeValues;
+};
 
 const isPath = (request: Request, pathname: string): boolean =>
   new URL(request.url).pathname === pathname;
@@ -130,11 +139,7 @@ const renderScreen = (options: RenderOptions = {}) => {
         if (options.respondCodeValues !== undefined) return options.respondCodeValues();
 
         return jsonResponse(
-          codeValuesResponse(
-            url.searchParams.get('codeGroupCode') === 'CYCLE_TYPE'
-              ? cycleCodeValues
-              : statusCodeValues,
-          ),
+          codeValuesResponse(codeValuesFor(url.searchParams.get('codeGroupCode'))),
         );
       },
     },
@@ -270,11 +275,8 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     expect(screen.queryByRole('option', { name: /제3공장/ })).not.toBeInTheDocument();
   });
 
-  /*
-   * ⭐ 계측기 유형 값 목록이 아직 없다(설계 질의 omf-mes#195).
-   * 자리표시 값으로 걸러 목록이 늘 비면 화면이 통째로 죽는다.
-   */
-  it('유형 값 목록이 없으면 유형 조건을 싣지 않는다', async () => {
+  /* 고르지 않았으면 조건 자체를 싣지 않는다 — 빈 값을 조건으로 보내면 아무것도 안 걸린다. */
+  it('유형을 고르지 않으면 유형 조건을 싣지 않는다', async () => {
     const { sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'GA-01' });
@@ -282,10 +284,58 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     expect(sent.every((url) => url.searchParams.get('equipmentTypeCode') === null)).toBe(true);
   });
 
-  it('전체 설비가 보이고 있다는 사실을 밝힌다', async () => {
+  /**
+   * ⭐ **값 목록을 서버에서 받는다**(설계 회신 `omf-mes#195` · 시드 `omf-mes#182`) —
+   * 화면이 값을 지어내지 않으므로 값이 늘어도 화면은 손대지 않는다.
+   */
+  it('유형 목록을 코드값 그룹에서 받아 고를 수 있다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+    await user.click(within(listPane()).getByRole('combobox', { name: /계측기 유형/ }));
+
+    expect(screen.getByRole('option', { name: '캘리퍼스' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '마이크로미터' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '게이지' })).toBeInTheDocument();
+  });
+
+  it('고른 유형이 조회 조건으로 나간다', async () => {
+    const { user, sent } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+    await user.click(within(listPane()).getByRole('combobox', { name: /계측기 유형/ }));
+    await user.click(screen.getByRole('option', { name: '캘리퍼스' }));
+    await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(sent.some((url) => url.searchParams.get('equipmentTypeCode') === 'CALIPER')).toBe(
+        true,
+      );
+    });
+  });
+
+  /**
+   * ⚠ **계약의 `equipmentTypeCode` 가 값 하나만 받는다** — 계측기 세 유형을 한 번에 거를
+   * 수단이 없어, 고르기 전에는 계측기가 아닌 설비도 함께 보인다. **감추지 않고 밝힌다**(G-2).
+   */
+  it('유형을 고르기 전에는 그 사실을 밝힌다', async () => {
     renderScreen();
 
     expect(await screen.findByText(t.typeFilterUnavailable)).toBeInTheDocument();
+  });
+
+  /** ⛔ 조건이 걸린 뒤에도 그 말이 남으면 거짓이 된다 — 그때는 계측기만 보인다. */
+  it('유형을 고르면 그 안내가 사라진다', async () => {
+    const { user } = renderScreen();
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+    await user.click(within(listPane()).getByRole('combobox', { name: /계측기 유형/ }));
+    await user.click(screen.getByRole('option', { name: '캘리퍼스' }));
+    await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.typeFilterUnavailable)).not.toBeInTheDocument();
+    });
   });
 
   /* ⛔ 검교정 여부로 거르면 검교정을 안 하는 계측기가 사라진다 — 다른 축이다. */
@@ -934,6 +984,9 @@ describe('W-05-11 계측기 마스터 — 등록·수정', () => {
     await user.type(within(form()).getByLabelText(/계측기명/), '새 계측기');
     await user.click(within(form()).getByRole('combobox', { name: /공장/ }));
     await user.click(await screen.findByRole('option', { name: '제1공장' }));
+    /* 유형은 필수다 — 값 목록이 확정돼 실제로 고른다(설계 회신 `omf-mes#195`). */
+    await user.click(within(form()).getByRole('combobox', { name: /계측기 유형/ }));
+    await user.click(await screen.findByRole('option', { name: '캘리퍼스' }));
     await user.click(within(form()).getByRole('button', { name: messages.common.save }));
 
     await waitFor(() => {
@@ -948,6 +1001,7 @@ describe('W-05-11 계측기 마스터 — 등록·수정', () => {
     const body = (await request.json()) as Record<string, unknown>;
     expect(body.plantId).toBe(11);
     expect(body.equipmentCode).toBe('GA-77');
+    expect(body.equipmentTypeCode).toBe('CALIPER');
   });
 
   /* 저장하고 나면 목록이 옛 값을 그리고 있으면 안 된다 — 무효화가 그것을 막는다. */
@@ -1059,11 +1113,7 @@ describe('W-05-11 계측기 마스터 — 나가는 중인 쓰기', () => {
       if (url.pathname === '/mdm/uoms') return jsonResponse(uomsResponse());
       if (url.pathname === '/mdm/code-values') {
         return jsonResponse(
-          codeValuesResponse(
-            url.searchParams.get('codeGroupCode') === 'CYCLE_TYPE'
-              ? cycleCodeValues
-              : statusCodeValues,
-          ),
+          codeValuesResponse(codeValuesFor(url.searchParams.get('codeGroupCode'))),
         );
       }
       if (url.pathname === '/mdm/equipments') return jsonResponse(gaugesResponse());

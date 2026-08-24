@@ -17,6 +17,12 @@ export interface CodeOption {
 export const CODE_GROUPS = {
   cycleType: 'CYCLE_TYPE',
   equipmentStatus: 'EQUIPMENT_STATUS',
+  /**
+   * 계측기 세부유형. ⭐ **설계가 값을 확정해 알려 준 그룹이다**(`omf-mes#195` 회신 · 시드
+   * `omf-mes#182`) — 화면이 값을 지어내지 않고 서버가 준 목록을 그대로 쓴다. 값이 늘어도
+   * 화면은 손대지 않는다.
+   */
+  equipmentType: 'EQUIPMENT_TYPE',
 } as const;
 
 /**
@@ -44,17 +50,6 @@ export const defaultGaugeFilters: GaugeFilters = {
   includeInactive: false,
   includeDisposed: false,
 };
-
-/**
- * 값 목록이 확정되지 않은 코드의 자리표시자.
- * ⚠ 계측기 유형이 여기 해당한다(설계 질의 `omf-mes#195` · 추적 `omf-mes#145`).
- */
-export const PENDING_CODE_VALUE = 'PENDING';
-
-/** 계측기 유형 — 값 목록 미정. 고를 것이 자리표시뿐이라 목록은 조건을 걸지 않는다. */
-export const GAUGE_TYPE_OPTIONS: CodeOption[] = [
-  { value: PENDING_CODE_VALUE, label: messages.pendingCode.placeholder },
-];
 
 /**
  * 공통코드 값 목록을 **이름 풀이표**로 옮긴다.

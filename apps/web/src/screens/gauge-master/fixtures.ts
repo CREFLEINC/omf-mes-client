@@ -137,6 +137,16 @@ export const cycleCodeValues: CodeValue[] = [
   makeCodeValue('YEAR', '년'),
 ];
 
+/**
+ * 계측기 세부유형. ⭐ **설계가 확정해 알려 준 값이다**(`omf-mes#195` 회신) — 합성값이
+ * 아니라 실제 코드지만, 업계 표준 어휘라 공개 저장소에 둬도 무방하다.
+ */
+export const typeCodeValues: CodeValue[] = [
+  makeCodeValue('CALIPER', '캘리퍼스'),
+  makeCodeValue('MICROMETER', '마이크로미터'),
+  makeCodeValue('GAUGE', '게이지'),
+];
+
 export const codeValuesResponse = (items: CodeValue[] = statusCodeValues) => ({
   items,
   page: pageOf(items),

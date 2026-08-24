@@ -121,6 +121,8 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
   const plants = usePlantLookup();
   const uoms = useUomLookup();
   const statusValues = useCodeValues(CODE_GROUPS.equipmentStatus);
+  /* ⭐ 값을 지어내지 않는다 — 설계가 확정한 목록을 서버에서 받아 그대로 쓴다. */
+  const typeValues = useCodeValues(CODE_GROUPS.equipmentType);
   const cycleValues = useCodeValues(CODE_GROUPS.cycleType);
 
   /* 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰도 코드 편집 가부도 없다. */
@@ -133,10 +135,11 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
   const listTruncated = gauges.data !== undefined && isTruncated(gauges.data.page, items.length);
 
   /*
-   * ⚠ 계측기 유형 값 목록이 아직 없다(설계 질의 `omf-mes#195`). 자리표시 값으로 거르면
-   * 목록이 늘 비므로 조건을 걸지 않고, **그 사실을 화면이 밝힌다**(G-2).
+   * ⚠ **유형을 고르기 «전»에는 계측기만 가려낼 수 없다.** 계약의 `equipmentTypeCode` 가 값
+   * 하나만 받아 세 유형을 한 번에 거를 수단이 없다 — 화면이 받아 온 것을 다시 걸러 감추면
+   * 잘린 뒤쪽이 없는 것처럼 보이므로, **감추는 대신 밝힌다**(G-2).
    */
-  const canFilterByType = false;
+  const canFilterByType = filters.equipmentTypeCode !== '';
 
   const plantOptions = selectableOptions(plants.plants, values.plantId);
   const uomOptions = selectableOptions(uoms.uoms, values.precisionUomId);
@@ -145,6 +148,13 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
    * ⭐ 지금 걸려 있는 주기 단위가 코드 목록에 없어도 **칸이 비어 보이면 안 된다.**
    * 공장·단위는 `selectableOptions` 가 같은 일을 한다 — 세 선택칸의 규율을 맞춘다.
    */
+  /* 지금 걸려 있는 유형이 목록에 없어도 칸이 비어 보이면 안 된다 — 주기 단위와 같은 규율. */
+  const typeOptions = ensureOption(
+    toCodeLabels(typeValues.data ?? NO_ITEMS),
+    values.equipmentTypeCode,
+  );
+  const typeOptionsNote = typeValues.isError ? t.optionsLoadFailed : undefined;
+
   const cycleOptions = ensureOption(
     toCodeLabels(cycleValues.data ?? NO_ITEMS),
     values.calibrationCycleTypeCode,
@@ -335,6 +345,8 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
         plantEntries={plants.plants}
         statusOptions={statusOptions}
         today={today}
+        typeOptions={typeOptions}
+        typeOptionsNote={typeOptionsNote}
         canFilterByType={canFilterByType}
         isTruncated={listTruncated}
         onAdd={openCreate}
@@ -354,6 +366,8 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
           mode={dialog.mode}
           values={values}
           onChange={changeValues}
+          typeOptions={typeOptions}
+          typeOptionsNote={typeOptionsNote}
           fieldErrors={{ ...write.fieldErrors, ...localErrors }}
           banner={
             /* ⭐ 「최신 불러오기」는 충돌에만 뜻이 있다 — 상세를 다시 읽어야 잠금 토큰이 새로 온다. */

@@ -13,6 +13,8 @@ const filled = (overrides: Partial<GaugeFormValues> = {}): GaugeFormValues => ({
   ...emptyFormValues('11'),
   equipmentCode: 'GA-01',
   equipmentName: '버니어 캘리퍼스',
+  /* 유형은 필수다 — 채워 둔 폼에는 고른 값이 있어야 한다(합성 코드값). */
+  equipmentTypeCode: 'CALIPER',
   ...overrides,
 });
 
