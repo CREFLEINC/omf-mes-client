@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 
 import { countUnmapped, isUnmapped, unmappedScopeNote, visibleChannels } from './channel-notes';
 import { withInactiveSuffix } from './options';
+import { scopeLines } from './scope';
 import type { ChannelFilters, CollectionChannel, Equipment } from './types';
 
 const t = messages.collectionChannel;
@@ -78,7 +79,7 @@ export const ChannelPane = ({
     {
       key: 'channelKey',
       header: t.fields.channelKey,
-      width: '200px',
+      width: '152px',
       /*
        * 설비가 정한 이름이다 — 화면이 다듬지 않고 온 그대로 세운다.
        * 이름이 곧 여는 손잡이다 — 줄마다 「수정」 단추를 세우면 표가 조작으로 덮인다.
@@ -95,21 +96,41 @@ export const ChannelPane = ({
       render: (row) => orNotRecorded(row.signalName),
     },
     {
+      key: 'scope',
+      header: t.scope.columnHeader,
+      /*
+       * ⚠ **폭을 못 박지 않는다** — 이 표는 반쪽 페인에 여덟 열이라 고정폭 하나를 더하면
+       * 남는 폭이 사라져 옆 열의 「사이클 타임」이 두 줄로 접혔다(브라우저 확인 실측).
+       * 신호 이름과 남는 폭을 나눠 쓴다.
+       */
+      /*
+       * ⭐ **비면 「전체」다** — 빈 칸으로 두면 설정을 빠뜨린 것으로 읽힌다.
+       * 같은 채널명이 조건만 달리해 여러 줄 설 수 있어, 이 칸이 그 줄들을 가른다.
+       */
+      render: (row) => (
+        <span className="stacked-cell">
+          {scopeLines(row).map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+        </span>
+      ),
+    },
+    {
       key: 'unitCode',
       header: t.fields.unit,
-      width: '92px',
+      width: '80px',
       render: (row) => orNotRecorded(row.unitCode),
     },
     {
       key: 'inspectionItemId',
       header: t.fields.inspectionItem,
-      width: '132px',
+      width: '116px',
       render: mappingCell,
     },
     {
       key: 'isActive',
       header: t.fields.activation,
-      width: '108px',
+      width: '100px',
       /*
        * ⭐ **줄마다 방향이 다르다** — 켜져 있으면 끄는 단추, 꺼져 있으면 켜는 단추다.
        * 한 단추가 상태에 따라 뜻을 바꾸므로 **접근 이름에 대상을 담는다**: 줄이 여럿일 때

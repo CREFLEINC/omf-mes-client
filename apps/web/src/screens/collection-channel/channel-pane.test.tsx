@@ -81,3 +81,53 @@ describe('채널 페인 — 값이 없는 칸', () => {
     expect(screen.getByText(t.fields.notRecorded)).toBeInTheDocument();
   });
 });
+
+/**
+ * ⭐ **조건 열이 없으면 표가 거짓말을 한다** — 같은 채널명이 두 줄 서는데 무엇이 다른지
+ * 보이지 않으면 중복으로 읽힌다(설계 회신 `omf-mes#203` 질문1 · 통지 #388).
+ */
+describe('조건 열', () => {
+  const scoped = [
+    makeChannel(7101, 'DIM_A', { signalName: '외경 A', itemId: 21, itemCode: 'ITM-201' }),
+    makeChannel(7102, 'DIM_A', { signalName: '두께', processId: 31, processCode: 'PRC-301' }),
+    makeChannel(7103, 'DIM_A', { signalName: '기본' }),
+    makeChannel(7104, 'DIM_A', {
+      signalName: '외경 A · 프레스',
+      itemId: 22,
+      itemCode: 'ITM-202',
+      processId: 32,
+      processCode: 'PRC-302',
+    }),
+  ];
+
+  it('표의 열로 선다', () => {
+    renderPane({ channels: scoped });
+
+    expect(screen.getByRole('columnheader', { name: t.scope.columnHeader })).toBeInTheDocument();
+  });
+
+  it('축마다 무엇으로 맞았는지 적는다', () => {
+    renderPane({ channels: scoped });
+
+    expect(screen.getByText(t.scope.entry(t.scope.item, 'ITM-201'))).toBeInTheDocument();
+    expect(screen.getByText(t.scope.entry(t.scope.process, 'PRC-301'))).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **두 축이 걸린 줄은 둘 다 보여야 한다** — 하나만 세우면 그 줄이 더 넓은 범위로
+   * 읽히고, 같은 채널명의 다른 줄과 구별되지 않는다.
+   */
+  it('두 축이 걸리면 둘 다 세운다', () => {
+    renderPane({ channels: scoped });
+
+    expect(screen.getByText(t.scope.entry(t.scope.item, 'ITM-202'))).toBeInTheDocument();
+    expect(screen.getByText(t.scope.entry(t.scope.process, 'PRC-302'))).toBeInTheDocument();
+  });
+
+  /** ⛔ 빈 칸으로 두지 않는다 — 「안 정했다」가 아니라 「언제나 적용된다」다. */
+  it('조건이 없는 줄은 빈 칸이 아니라 「전체」다', () => {
+    renderPane({ channels: scoped });
+
+    expect(screen.getByText(t.scope.all)).toBeInTheDocument();
+  });
+});

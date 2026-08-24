@@ -38,6 +38,8 @@ import {
   useObservations,
   usePlantLookup,
   useUomCodeById,
+  useScopeItemLookup,
+  useScopeProcessLookup,
   useUomLookup,
 } from './queries';
 import type {
@@ -188,6 +190,8 @@ export const CollectionChannelScreen = () => {
   const equipments = useEquipmentList(equipmentFilters);
   const channels = useChannelList(selectedEquipmentId, channelFilters.includeInactive);
   const plantLookup = usePlantLookup();
+  const scopeItems = useScopeItemLookup();
+  const scopeProcesses = useScopeProcessLookup();
   const uomLookup = useUomLookup();
 
   /*
@@ -250,12 +254,16 @@ export const CollectionChannelScreen = () => {
       ? t.optionsTruncated
       : null;
 
-  /** 창 안의 선택 목록도 같은 규칙으로 한계를 밝힌다. */
-  const unitNote = uomLookup.isError
-    ? t.optionsLoadFailed
-    : uomLookup.truncated
-      ? t.optionsTruncated
-      : undefined;
+  /**
+   * 선택 목록의 한계. **실패가 잘림보다 앞선다** — 아무것도 못 받은 것이 더 큰 사실이다.
+   *
+   * ⛔ **칸마다 따로 낸다.** 하나로 묶으면 같은 문구가 셋 서고, 무엇보다 **틀린 말을 한다** —
+   * 단위 목록이 잘렸다고 품목 칸이 말하게 된다.
+   */
+  const limitNoteOf = (lookup: { isError: boolean; truncated: boolean }): string | undefined =>
+    lookup.isError ? t.optionsLoadFailed : lookup.truncated ? t.optionsTruncated : undefined;
+
+  const unitNote = limitNoteOf({ isError: uomLookup.isError, truncated: uomLookup.truncated });
 
   const isCreate = dialog?.mode === 'create';
 
@@ -294,6 +302,16 @@ export const CollectionChannelScreen = () => {
     etagPath: targetId === null ? null : channelDetailPath(targetId),
     invalidateKeys: [channelKeys.all],
     knownFields: CHANNEL_FORM_FIELDS,
+    /**
+     * ⛔ **중복 문구를 화면이 다시 쓴다.** 서버가 「이 설비에 같은 이름의 채널이 이미
+     * 있습니다」라고 말하지만 그것은 **거짓이다** — 조건이 다르면 같은 이름이 여러 행 선다.
+     * 무엇이 겹쳤는지(설비 + 채널명 + 품목·공정 조건) 말해야 고칠 자리를 찾는다
+     * (공유계약 A-1 · 통지 #388).
+     *
+     * ⛔ `DUPLICATE` 만 되말한다 — 형식 오류까지 삼키면 서버 말을 지운다.
+     */
+    restateFieldError: (item) =>
+      item.code === 'DUPLICATE' ? t.validation.duplicateScope(values.channelKey.trim()) : undefined,
     onSuccess: () => {
       setDialog(null);
       toast.show({ variant: 'success', description: messages.common.saved });
@@ -554,7 +572,11 @@ export const CollectionChannelScreen = () => {
             />
           }
           unitOptions={uomLookup.uoms}
-          optionsNote={unitNote}
+          itemOptions={scopeItems.entries}
+          processOptions={scopeProcesses.entries}
+          unitOptionsNote={unitNote}
+          itemOptionsNote={limitNoteOf(scopeItems)}
+          processOptionsNote={limitNoteOf(scopeProcesses)}
           isSaving={write.isSaving}
           inspectionPlanId={pickerPath.inspectionPlanId}
           onChangePlan={changePlan}

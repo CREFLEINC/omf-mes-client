@@ -4,6 +4,7 @@ import { useId, type ReactNode } from 'react';
 
 import { ItemPicker, type PickerSlot } from './item-picker';
 import type { CodeOption } from './options';
+import { asScopeId } from './scope';
 import { SelectField } from './select-field';
 import type {
   ChannelFormValues,
@@ -49,8 +50,18 @@ export interface ChannelFormDialogProps {
   fieldErrors: Record<string, string>;
   banner: ReactNode;
   unitOptions: CodeOption[];
-  /** 선택 목록의 한계(잘림·실패) 안내. 없으면 붙이지 않는다 */
-  optionsNote?: string;
+  /** 조건 축의 선택지. 비운 값이 「전체」다 */
+  itemOptions: CodeOption[];
+  processOptions: CodeOption[];
+  /**
+   * 선택 목록의 한계(잘림·실패) 안내. 없으면 붙이지 않는다.
+   *
+   * ⛔ **칸마다 제 출처를 받는다.** 하나로 묶어 세 칸에 같이 붙이면 ① 같은 문구가 셋 서고
+   * ② **틀린 말을 한다** — 공장 목록이 잘렸다고 품목 칸이 말하게 된다.
+   */
+  unitOptionsNote?: string;
+  itemOptionsNote?: string;
+  processOptionsNote?: string;
   isSaving: boolean;
   /** 검사 항목을 찾아가는 세 칸 — 저장되지 않고 좁히는 데만 쓴다 */
   inspectionPlanId: number | null;
@@ -83,7 +94,11 @@ export const ChannelFormDialog = ({
   fieldErrors,
   banner,
   unitOptions,
-  optionsNote,
+  itemOptions,
+  processOptions,
+  unitOptionsNote,
+  itemOptionsNote,
+  processOptionsNote,
   isSaving,
   inspectionPlanId,
   onChangePlan,
@@ -159,9 +174,41 @@ export const ChannelFormDialog = ({
           value={values.unitCode}
           onChange={(value) => onChange({ unitCode: value })}
           placeholder={t.form.unitPlaceholder}
-          note={optionsNote}
+          note={unitOptionsNote}
           error={fieldErrors.unitCode}
         />
+
+        {/*
+         * ⭐ **조건은 「언제 적용되는가」다** — 채널명과 달리 **수정에서도 바꿀 수 있다**
+         * (계약의 수정 본문이 받는다). 같은 설비의 같은 채널을 조건만 달리해 여러 줄 둘 수
+         * 있고, 그것이 이 축을 둔 이유다(설계 회신 `omf-mes#203` 질문1).
+         */}
+        <div className="form-grid-full">
+          <fieldset className="picker-group">
+            <legend className="field-label">{t.scope.columnHeader}</legend>
+            {/* ⭐ 비운 것이 「전체」다 — 고르지 않은 것이 아니라 값이다. */}
+            <p className="dialog-lead">{t.scope.note}</p>
+
+            <div className="form-grid">
+              <SelectField
+                label={t.scope.itemLabel}
+                options={[{ value: '', label: t.scope.anyOption }, ...itemOptions]}
+                value={values.itemId === null ? '' : String(values.itemId)}
+                onChange={(value) => onChange({ itemId: asScopeId(value) })}
+                note={itemOptionsNote}
+                error={fieldErrors.itemId}
+              />
+              <SelectField
+                label={t.scope.processLabel}
+                options={[{ value: '', label: t.scope.anyOption }, ...processOptions]}
+                value={values.processId === null ? '' : String(values.processId)}
+                onChange={(value) => onChange({ processId: asScopeId(value) })}
+                note={processOptionsNote}
+                error={fieldErrors.processId}
+              />
+            </div>
+          </fieldset>
+        </div>
 
         <ItemPicker
           inspectionItemId={values.inspectionItemId}

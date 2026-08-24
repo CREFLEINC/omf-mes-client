@@ -362,6 +362,21 @@ main > * + * {
   color: var(--semantic-error-text);
 }
 
+/*
+ * 한 칸 안에 여러 줄을 세운다 — 좁은 표에서 값 하나가 «자기 안에서» 접히는 것을 막는다.
+ *
+ * ⛔ 줄마다 `nowrap` 이다. 이 표들은 코드(「ITM-201」)를 싣는데, 브라우저는 하이픈 뒤에서
+ * 기꺼이 접어 「ITM-」 / 「201」 로 갈라 놓는다 — **다른 코드로 읽힌다.**
+ */
+.stacked-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.stacked-cell > span {
+  white-space: nowrap;
+}
+
 .link-cell {
   background: none;
   border: 0;

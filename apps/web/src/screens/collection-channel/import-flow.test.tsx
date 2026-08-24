@@ -19,6 +19,8 @@ import {
   observationItems,
   observationListResponse,
   plantListResponse,
+  scopeItemsResponse,
+  scopeProcessesResponse,
   uomListResponse,
 } from './fixtures';
 import { CollectionChannelScreen } from './screen';
@@ -39,6 +41,14 @@ interface Options {
 }
 
 const routes = (options: Options): StubRoute[] => [
+  {
+    match: (request) => isPath(request, '/mdm/items'),
+    respond: () => jsonResponse(scopeItemsResponse()),
+  },
+  {
+    match: (request) => isPath(request, '/mdm/processes'),
+    respond: () => jsonResponse(scopeProcessesResponse()),
+  },
   {
     match: (request) => isPath(request, '/maintenance/collection-channels/observations'),
     respond: (request) => {

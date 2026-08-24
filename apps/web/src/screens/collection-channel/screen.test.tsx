@@ -17,6 +17,8 @@ import {
   makeChannel,
   observationListResponse,
   plantListResponse,
+  scopeItemsResponse,
+  scopeProcessesResponse,
   uomListResponse,
 } from './fixtures';
 import { CHANNEL_PAGE_SIZE } from './queries';
@@ -41,6 +43,14 @@ interface StubOptions {
 }
 
 const stub = (options: StubOptions = {}): StubRoute[] => [
+  {
+    match: (request) => isPath(request, '/mdm/items'),
+    respond: () => jsonResponse(scopeItemsResponse()),
+  },
+  {
+    match: (request) => isPath(request, '/mdm/processes'),
+    respond: () => jsonResponse(scopeProcessesResponse()),
+  },
   {
     match: (request) => isPath(request, '/maintenance/collection-channels/observations'),
     respond: () => jsonResponse(observationListResponse()),
