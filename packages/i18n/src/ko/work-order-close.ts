@@ -88,6 +88,12 @@ export const workOrderClose = {
     cancel: '취소',
     confirm: '작업지시 마감',
   },
+  readState: {
+    progressUnavailable: '생산 실적 판정을 확인할 수 없습니다.',
+    openSessionFailed: '열린 작업 세션 여부를 확인할 수 없습니다.',
+    reasonFailed: '변동 사유를 불러오지 못했습니다.',
+    reasonTruncated: '변동 사유 목록 일부만 불러와 입력을 시작할 수 없습니다.',
+  },
   status: {
     pane: '작업지시 마감 입력 상태',
     heading: '현재 입력 상태',
