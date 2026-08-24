@@ -10,6 +10,10 @@ type WorkOrderProgress = components['schemas']['WorkOrderProgress'];
 type PreIssuedLotSummary = components['schemas']['PreIssuedLotSummary'];
 type PageMeta = components['schemas']['PageMeta'];
 type OutboundItemSetting = components['schemas']['OutboundItemSetting'];
+type CodeValue = components['schemas']['CodeValue'];
+type ProductionOrder = components['schemas']['ProductionOrder'];
+
+const LOOKUP_PAGE_SIZE = 200;
 
 export interface WorkOrderCloseFact extends WorkOrderFact {
   completedAt: string | null;
@@ -24,7 +28,7 @@ export interface WorkOrderCloseDetailFact extends WorkOrderCloseFact {
 
 export interface WorkOrderCloseFilters {
   statusCode: string | null;
-  productionPlanId: number | null;
+  productionOrderId: number | null;
   plannedStartFrom: string | null;
   plannedStartTo: string | null;
   page: number;
@@ -48,6 +52,23 @@ export interface WorkOrderCloseOutboundItemSetting {
   sendTimingNote: string | null;
 }
 
+export interface WorkOrderCloseCodeValue {
+  code: string;
+  codeName: string;
+  displayOrder: number;
+  isActive: boolean;
+}
+
+export interface WorkOrderCloseProductionOrder {
+  productionOrderId: number;
+  productionOrderNo: string;
+}
+
+export interface WorkOrderCloseLookupList<T> {
+  items: T[];
+  truncated: boolean;
+}
+
 export const workOrderCloseKeys = {
   all: ['work-order-close'] as const,
   candidates: (filters: WorkOrderCloseFilters) =>
@@ -55,7 +76,7 @@ export const workOrderCloseKeys = {
       'work-order-close',
       'candidates',
       filters.statusCode,
-      filters.productionPlanId,
+      filters.productionOrderId,
       filters.plannedStartFrom,
       filters.plannedStartTo,
       filters.page,
@@ -64,6 +85,9 @@ export const workOrderCloseKeys = {
   openSession: (workOrderId: number | null) =>
     ['work-order-close', 'open-session', workOrderId] as const,
   outboundItemSettings: () => ['work-order-close', 'outbound-item-settings'] as const,
+  productionOrders: () => ['work-order-close', 'lookups', 'production-orders'] as const,
+  codeValues: (codeGroupCode: string) =>
+    ['work-order-close', 'lookups', 'code-values', codeGroupCode] as const,
 };
 
 export const workOrderCloseDetailPath = (workOrderId: number): string =>
@@ -101,9 +125,9 @@ export const useWorkOrderCloseCandidates = (
           params: {
             query: {
               statusCode,
-              ...(filters.productionPlanId === null
+              ...(filters.productionOrderId === null
                 ? {}
-                : { productionPlanId: filters.productionPlanId }),
+                : { productionOrderId: filters.productionOrderId }),
               ...(filters.plannedStartFrom === null
                 ? {}
                 : { plannedStartFrom: filters.plannedStartFrom }),
@@ -190,6 +214,60 @@ export const useWorkOrderCloseOutboundItemSettings = (): UseQueryResult<
         lockReason: item.lockReason ?? null,
         sendTimingNote: item.sendTimingNote ?? null,
       }));
+    },
+  });
+};
+
+const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
+
+export const useWorkOrderCloseProductionOrders = (): UseQueryResult<
+  WorkOrderCloseLookupList<WorkOrderCloseProductionOrder>
+> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderCloseKeys.productionOrders(),
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/planning/production-orders', {
+          params: { query: { page: 1, size: LOOKUP_PAGE_SIZE } },
+        }),
+      );
+
+      return {
+        items: data.items.map((order: ProductionOrder) => ({
+          productionOrderId: order.productionOrderId,
+          productionOrderNo: order.productionOrderNo,
+        })),
+        truncated: isTruncated(data.page, data.items.length),
+      };
+    },
+  });
+};
+
+export const useWorkOrderCloseCodeValues = (
+  codeGroupCode: string,
+): UseQueryResult<WorkOrderCloseLookupList<WorkOrderCloseCodeValue>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderCloseKeys.codeValues(codeGroupCode),
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode, page: 1, size: LOOKUP_PAGE_SIZE } },
+        }),
+      );
+
+      return {
+        items: data.items.map((value: CodeValue) => ({
+          code: value.code,
+          codeName: value.codeName,
+          displayOrder: value.displayOrder,
+          isActive: value.isActive,
+        })),
+        truncated: isTruncated(data.page, data.items.length),
+      };
     },
   });
 };
