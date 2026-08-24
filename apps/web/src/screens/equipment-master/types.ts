@@ -12,6 +12,9 @@ export type EquipmentInspectionItem = components['schemas']['EquipmentInspection
 /** 부여된 점검 항목 — 마스터의 값에 **주기**가 붙은 모양이다. */
 export type InspectionItemAssignment = components['schemas']['InspectionItemAssignment'];
 export type InspectionItemAssignmentInput = components['schemas']['InspectionItemAssignmentInput'];
+/** 설비의 부여 — **해석 결과가 함께 온다**(설비에 있으면 그것, 없으면 소속 그룹의 것). */
+export type EquipmentInspectionAssignments =
+  components['schemas']['EquipmentInspectionItemAssignmentsResponse'];
 
 /**
  * 설비 그룹 폼의 값.

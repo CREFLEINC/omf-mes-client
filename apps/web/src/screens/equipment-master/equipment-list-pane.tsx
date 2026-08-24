@@ -33,6 +33,8 @@ export interface EquipmentListPaneProps {
   onAdd: () => void;
   /** 설비 하나를 편집한다 — 수명주기 액션도 그 창 안에 있다 */
   onEdit: (equipment: Equipment) => void;
+  /** 그 설비의 점검 항목 창을 연다. 설비 상세와 «다른» 자원이라 따로 연다 */
+  onOpenInspection: (equipment: Equipment) => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 설비가 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -74,6 +76,7 @@ export const EquipmentListPane = ({
   statusOptions,
   onAdd,
   onEdit,
+  onOpenInspection,
   loadError,
 }: EquipmentListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -135,6 +138,26 @@ export const EquipmentListPane = ({
       key: 'isActive',
       header: t.fields.isActive,
       render: (row) => (row.isActive ? t.values.active : t.values.inactive),
+    },
+    {
+      key: 'inspection',
+      header: t.inspection.equipmentPaneTitle,
+      width: '132px',
+      /*
+       * ⭐ **설비마다 다른 자원이다** — 설비 상세와 부여가 다른 경로를 쓰고 잠금 토큰도
+       * 따로다. 그래서 설비 창 «안»에 넣지 않고 줄에서 바로 연다: 한 창에서 두 자원을
+       * 저장하면 어느 쪽이 충돌했는지 사용자가 알 수 없다.
+       */
+      render: (row) => (
+        <Button
+          variant="outlined"
+          size="sm"
+          onClick={() => onOpenInspection(row)}
+          aria-label={t.inspection.equipmentOpenLabel(row.equipmentCode)}
+        >
+          {t.inspection.equipmentEditAction}
+        </Button>
+      ),
     },
   ];
 

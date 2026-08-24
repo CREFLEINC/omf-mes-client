@@ -32,6 +32,7 @@ import { EQUIPMENT_FORM_FIELDS, validateEquipment } from './equipment-validation
 import { GroupFormPane } from './group-form-pane';
 import { InspectionAssignDialog } from './inspection-assign-dialog';
 import { InspectionItemsPane } from './inspection-items-pane';
+import { resolutionText } from './inspection-resolution';
 import {
   toAssignmentInput,
   toDraftRow,
@@ -58,6 +59,7 @@ import {
 } from './mappers';
 import {
   equipmentDetailPath,
+  equipmentInspectionPath,
   equipmentKeys,
   groupDetailPath,
   groupInspectionPath,
@@ -66,6 +68,7 @@ import {
   isTruncated,
   useCodeValues,
   useEquipmentDetail,
+  useEquipmentInspectionItems,
   useEquipmentList,
   useGroupDetail,
   useGroupInspectionItems,
@@ -199,6 +202,17 @@ export const EquipmentMasterScreen = () => {
   const labelMapOf = (options: readonly CodeOption[]): ReadonlyMap<string, string> =>
     new Map(options.map((option) => [option.value, option.label]));
   const cycleLabels = labelMapOf(cycleOptions);
+  /* 해석 근거가 가리키는 그룹의 이름 — 못 찾으면 층까지만 말한다(G-9). */
+  const groupLabels = useMemo(
+    () =>
+      new Map(
+        (groupList.data?.items ?? []).map((group) => [
+          group.equipmentGroupId,
+          `${group.groupCode} · ${group.groupName}`,
+        ]),
+      ),
+    [groupList.data],
+  );
   const inspectionTypeLabels = labelMapOf(toCodeLabels(inspectionTypeValues.data ?? []));
   const equipmentItems = equipmentList.data?.items ?? [];
 
@@ -375,8 +389,22 @@ export const EquipmentMasterScreen = () => {
   const [assignRows, setAssignRows] = useState<AssignmentDraftRow[] | null>(null);
 
   const groupInspections = useGroupInspectionItems(selectedGroupId);
-  /* 창을 열 때만 마스터를 읽는다 — 목록만 볼 때는 고를 것이 필요 없다. */
-  const inspectionMaster = useInspectionItemMaster(assignRows !== null);
+  /**
+   * 점검 항목 창의 대상 설비. **설비 상세와 «다른» 자원이라** 설비 창 안이 아니라 목록
+   * 줄에서 바로 연다 — 한 창에서 두 자원을 저장하면 어느 쪽이 충돌했는지 알 수 없다.
+   */
+  const [inspectionTarget, setInspectionTarget] = useState<Equipment | null>(null);
+
+  /**
+   * 창을 열 때만 마스터를 읽는다 — 목록만 볼 때는 고를 것이 필요 없다.
+   *
+   * ⛔ **두 창이 같은 목록을 쓴다.** 한쪽만 보면 다른 창이 「등록된 점검 항목이 없습니다」를
+   * 띄운다 — 실제로는 조회를 «시작조차» 하지 않은 것이라 사용자가 마스터를 등록하러 간다
+   * (브라우저 확인에서 실제로 그렇게 보였다).
+   */
+  const inspectionMaster = useInspectionItemMaster(
+    assignRows !== null || inspectionTarget !== null,
+  );
 
   const inspectionWrite = useMasterWrite<AssignmentDraftRow[], unknown>({
     request: (rows, headers) =>
@@ -405,6 +433,79 @@ export const EquipmentMasterScreen = () => {
   });
 
   const [assignRowErrors, setAssignRowErrors] = useState<Map<number, RowErrors>>(new Map());
+
+  /**
+   * 설비의 점검 항목.
+   *
+   * ⭐ **설비 상세와 «다른» 자원이다** — 경로도 잠금 토큰도 따로다. 그래서 설비 창 안이
+   * 아니라 목록 줄에서 바로 연다: 한 창에서 두 자원을 저장하면 어느 쪽이 충돌했는지
+   * 사용자가 알 수 없다.
+   */
+  const [equipmentAssignRows, setEquipmentAssignRows] = useState<AssignmentDraftRow[] | null>(null);
+
+  const equipmentInspections = useEquipmentInspectionItems(inspectionTarget?.equipmentId ?? null);
+
+  const equipmentInspectionWrite = useMasterWrite<AssignmentDraftRow[], unknown>({
+    request: (rows, headers) =>
+      client.PUT('/mdm/equipments/{equipmentId}/inspection-items', {
+        params: {
+          path: { equipmentId: inspectionTarget?.equipmentId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: { items: rows.map(toAssignmentInput) },
+      }),
+    etagPath:
+      inspectionTarget === null ? null : equipmentInspectionPath(inspectionTarget.equipmentId),
+    invalidateKeys: [inspectionKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setInspectionTarget(null);
+      setEquipmentAssignRows(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const [equipmentAssignErrors, setEquipmentAssignErrors] = useState<Map<number, RowErrors>>(
+    new Map(),
+  );
+
+  /**
+   * 창이 다루는 줄.
+   *
+   * ⭐ **고치기 전에는 받아 온 것이 곧 초안이다** — 되맞추는 효과를 두지 않는다. 효과로
+   * 채우면 조회가 늦게 끝난 사이 사용자가 친 것을 덮어쓴다.
+   *
+   * ⛔ **`assigned` 를 담는다 — `effective` 가 아니다.** 뒤엣것은 그룹에서 온 것일 수 있고,
+   * 그것을 담아 저장하면 **그룹의 것이 이 설비로 복사되어** 이후 그룹을 고쳐도 이 설비만
+   * 옛 항목을 돈다.
+   */
+  const equipmentRows =
+    equipmentAssignRows ?? (equipmentInspections.data?.assigned ?? []).map(toDraftRow);
+
+  const handleSaveEquipmentAssignments = (): void => {
+    const errors = validateRows(equipmentRows);
+
+    setEquipmentAssignErrors(errors);
+
+    if (errors.size > 0) return;
+
+    equipmentInspectionWrite.write(equipmentRows);
+  };
+
+  /**
+   * ⭐ **창은 «설비 자신의» 부여만 담는다**(`assigned`) — `effective` 는 그룹에서 온 것일 수
+   * 있고, 그것을 담아 저장하면 **그룹의 것이 설비에 복사되어** 이후 그룹을 고쳐도 이 설비만
+   * 옛 항목을 돈다.
+   */
+  const openEquipmentInspection = (equipment: Equipment): void => {
+    resetIfIdle(equipmentInspectionWrite);
+    setEquipmentAssignErrors(new Map());
+    setInspectionTarget(equipment);
+    setEquipmentAssignRows(null);
+  };
 
   const handleSaveAssignments = (): void => {
     if (assignRows === null) return;
@@ -935,6 +1036,7 @@ export const EquipmentMasterScreen = () => {
                     statusOptions={statusOptions}
                     onAdd={openEquipmentCreate}
                     onEdit={openEquipmentEdit}
+                    onOpenInspection={openEquipmentInspection}
                     loadError={
                       equipmentList.isError ? (
                         <LoadErrorBanner
@@ -1131,9 +1233,43 @@ export const EquipmentMasterScreen = () => {
         />
       )}
 
+      {inspectionTarget !== null && (
+        <InspectionAssignDialog
+          title={t.inspection.equipmentDialogTitle}
+          targetLabel={`${inspectionTarget.equipmentCode} · ${inspectionTarget.equipmentName}`}
+          lead={t.inspection.equipmentDialogLead}
+          rows={equipmentRows}
+          onChangeRows={(next) => setEquipmentAssignRows(next)}
+          master={inspectionMaster.data ?? []}
+          masterLoadFailed={inspectionMaster.isError}
+          cycleOptions={cycleOptions}
+          rowErrors={equipmentAssignErrors}
+          resolutionNote={
+            equipmentInspections.data === undefined
+              ? undefined
+              : resolutionText(equipmentInspections.data, groupLabels)
+          }
+          banner={
+            <SaveErrorBanner
+              error={equipmentInspectionWrite.error}
+              onReload={() => void equipmentInspections.refetch()}
+            />
+          }
+          /* 조회가 끝나기 전에는 저장을 열지 않는다 — 안 보이는 줄을 지우게 된다. */
+          isSaving={equipmentInspectionWrite.isSaving || equipmentInspections.data === undefined}
+          onSave={handleSaveEquipmentAssignments}
+          onClose={() => {
+            setInspectionTarget(null);
+            setEquipmentAssignRows(null);
+          }}
+        />
+      )}
+
       {assignRows !== null && detail.data !== undefined && (
         <InspectionAssignDialog
+          title={t.inspection.dialogTitle}
           targetLabel={`${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`}
+          lead={t.inspection.dialogLead}
           rows={assignRows}
           onChangeRows={setAssignRows}
           master={inspectionMaster.data ?? []}

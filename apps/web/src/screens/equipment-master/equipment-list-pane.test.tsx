@@ -14,6 +14,7 @@ const renderPane = (overrides: Partial<Parameters<typeof EquipmentListPane>[0]> 
   const onApplyFilters = vi.fn();
   const onAdd = vi.fn();
   const onEdit = vi.fn();
+  const onOpenInspection = vi.fn();
 
   render(
     <EquipmentListPane
@@ -24,12 +25,13 @@ const renderPane = (overrides: Partial<Parameters<typeof EquipmentListPane>[0]> 
       statusOptions={[]}
       onAdd={onAdd}
       onEdit={onEdit}
+      onOpenInspection={onOpenInspection}
       loadError={null}
       {...overrides}
     />,
   );
 
-  return { onApplyFilters, onAdd, onEdit };
+  return { onApplyFilters, onAdd, onEdit, onOpenInspection };
 };
 
 describe('EquipmentListPane', () => {
