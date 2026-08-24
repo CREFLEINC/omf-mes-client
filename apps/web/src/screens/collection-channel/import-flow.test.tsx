@@ -321,10 +321,16 @@ describe('W-05-07 ④ — 채널로 만든다', () => {
     expect(await bodyOf(writes[0] as Request)).toEqual({
       equipmentId: 3001,
       channelKey: 'SCREW_RPM',
+      /* 가져오기는 늘 「전체」다 — 그 사실을 빼지 않고 값으로 적는다. */
+      itemId: null,
+      processId: null,
     });
     expect(await bodyOf(writes[1] as Request)).toEqual({
       equipmentId: 3001,
       channelKey: 'MOLD_TEMP',
+      /* 가져오기는 늘 「전체」다 — 그 사실을 빼지 않고 값으로 적는다. */
+      itemId: null,
+      processId: null,
     });
   });
 
@@ -373,7 +379,14 @@ describe('W-05-07 ④ — 채널로 만든다', () => {
  */
 describe('W-05-07 ④ — 일부만 됐을 때', () => {
   /** 본문을 동기로 읽을 수 없어 «몇 번째»로 가른다 — 한 건씩 차례로 나가므로 결정적이다. */
-  const failingNth = (nth: number, writes: Request[]): StubRoute[] => [
+  const failingNth = (
+    nth: number,
+    writes: Request[],
+    failure: { code: string; message: string } = {
+      code: 'DUPLICATE',
+      message: '같은 이름의 채널이 이미 있습니다.',
+    },
+  ): StubRoute[] => [
     {
       match: (request) =>
         request.method === 'POST' && isPath(request, '/maintenance/collection-channels'),
@@ -383,13 +396,7 @@ describe('W-05-07 ④ — 일부만 됐을 때', () => {
         return writes.length === nth
           ? jsonResponse(
               {
-                errors: [
-                  {
-                    scope: 'screen',
-                    code: 'DUPLICATE',
-                    message: '같은 이름의 채널이 이미 있습니다.',
-                  },
-                ],
+                errors: [{ scope: 'screen', ...failure }],
               },
               { status: 400 },
             )
@@ -416,8 +423,21 @@ describe('W-05-07 ④ — 일부만 됐을 때', () => {
 
     expect(await screen.findByText(ti.createdCount(1))).toBeInTheDocument();
     expect(screen.getByText(ti.failedCount(1))).toBeInTheDocument();
+    /* ⭐ 서버 문구가 아니라 «유일 범위를 담은» 문구가 선다 — 창의 등록과 같은 규칙이다. */
     expect(
-      screen.getByText(ti.failedRow('MOLD_TEMP', '같은 이름의 채널이 이미 있습니다.')),
+      screen.getByText(ti.failedRow('MOLD_TEMP', t.validation.duplicateScope('MOLD_TEMP'))),
+    ).toBeInTheDocument();
+  });
+
+  /** ⛔ 되말하는 것은 중복뿐이다 — 다른 사유까지 삼키면 서버 말을 지운다. */
+  it('중복이 아닌 사유는 서버 말 그대로 낸다', async () => {
+    const writes: Request[] = [];
+
+    renderScreen({}, failingNth(2, writes, { code: 'RANGE', message: '값이 범위를 벗어납니다.' }));
+    await pickTwoAndImport();
+
+    expect(
+      await screen.findByText(ti.failedRow('MOLD_TEMP', '값이 범위를 벗어납니다.')),
     ).toBeInTheDocument();
   });
 
@@ -452,6 +472,9 @@ describe('W-05-07 ④ — 일부만 됐을 때', () => {
     expect(await bodyOf(writes[2] as Request)).toEqual({
       equipmentId: 3001,
       channelKey: 'MOLD_TEMP',
+      /* 가져오기는 늘 「전체」다 — 그 사실을 빼지 않고 값으로 적는다. */
+      itemId: null,
+      processId: null,
     });
   });
 });
