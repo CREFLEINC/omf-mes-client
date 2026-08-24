@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isWorkOrderCloseOutboundItemSelected,
+  reconcileWorkOrderCloseOutboundSelection,
   selectedWorkOrderCloseOutboundItemCodes,
   toggleWorkOrderCloseOutboundItem,
   workOrderCloseOutboundSelectionFrom,
@@ -33,6 +34,38 @@ describe('workOrderCloseOutboundSelectionFrom', () => {
       RETURN: true,
       PRODUCTION_RESULT: false,
     });
+  });
+});
+
+describe('reconcileWorkOrderCloseOutboundSelection', () => {
+  it('preserves unlocked choices, defaults new codes, forces locked values, and removes stale codes', () => {
+    const previous: WorkOrderCloseOutboundSelection = {
+      RETURN: false,
+      GOODS_RECEIPT: true,
+      STOCK_ADJUSTMENT: true,
+    };
+    const settings = [
+      setting('RETURN', { enabled: true }),
+      setting('PRODUCTION_RESULT', { enabled: true }),
+      setting('GOODS_RECEIPT', { enabled: false, locked: true }),
+    ];
+
+    const reconciled = reconcileWorkOrderCloseOutboundSelection(settings, previous);
+
+    expect(reconciled).toEqual({ RETURN: false, PRODUCTION_RESULT: true, GOODS_RECEIPT: false });
+    expect(reconciled).not.toBe(previous);
+    expect(previous).toEqual({ RETURN: false, GOODS_RECEIPT: true, STOCK_ADJUSTMENT: true });
+  });
+
+  it.each([
+    [false, true],
+    [true, false],
+  ])('forces a locked previous=%s choice to the latest server enabled=%s', (previous, enabled) => {
+    expect(
+      reconcileWorkOrderCloseOutboundSelection([setting('RETURN', { enabled, locked: true })], {
+        RETURN: previous,
+      }),
+    ).toEqual({ RETURN: enabled });
   });
 });
 

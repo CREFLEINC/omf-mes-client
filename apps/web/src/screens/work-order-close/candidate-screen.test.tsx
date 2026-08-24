@@ -7,6 +7,8 @@ import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/ap
 import {
   toWorkOrderCloseCandidateSnapshot,
   toWorkOrderCloseDetailScreenState,
+  toWorkOrderCloseOutboundScreenState,
+  toWorkOrderCloseSelectedOutboundSelection,
   toWorkOrderCloseSelectedDraft,
   WorkOrderCloseCandidateScreen,
 } from './candidate-screen';
@@ -19,13 +21,17 @@ const paths = {
   candidates: '/production/work-orders',
   detail: (workOrderId: number) => `/production/work-orders/${String(workOrderId)}`,
   sessions: '/production/work-sessions',
+  outbound: '/integration/outbound-item-settings',
   uoms: '/mdm/uoms',
 };
 type LookupMode = 'ready' | 'pending' | 'pending-error' | 'error' | 'truncated';
 type ReasonMode = LookupMode | 'empty' | 'changed';
 type Judgment = 'UNDER' | 'NORMAL' | 'OVER' | null;
+type OutboundMode =
+  'ready' | 'pending-ready' | 'pending-error' | 'error' | 'empty' | 'changed' | 'reappeared';
 const reasonGroup = 'WORK_ORDER_COMPLETION_VARIANCE_REASON';
 const reasonQueryKey = ['work-order-close', 'lookups', 'code-values', reasonGroup] as const;
+const outboundQueryKey = ['work-order-close', 'outbound-item-settings'] as const;
 const emptyDraft = { remainderDisposition: null, varianceReasonCode: '' };
 const page = (total = 1, current = 1) => ({ page: current, size: 20, total });
 const statusBody = (total = 1) => ({
@@ -88,6 +94,33 @@ const sessionBody = (hasOpenSession: boolean) => ({
   items: hasOpenSession ? [sessionItem] : [],
   page: { page: 1, size: 1, total: hasOpenSession ? 1 : 0 },
 });
+const outboundItem = (
+  outboundItemCode: 'RETURN' | 'PRODUCTION_RESULT' | 'GOODS_RECEIPT',
+  outboundItemName: string,
+  enabled: boolean,
+  locked = false,
+) => ({
+  outboundItemCode,
+  outboundItemName,
+  enabled,
+  locked,
+  lockReason: locked ? 'Synthetic locked' : null,
+  sendTimingNote: null,
+});
+const outboundBody = (mode: OutboundMode) => ({
+  items:
+    mode === 'empty'
+      ? []
+      : mode === 'changed'
+        ? [
+            outboundItem('PRODUCTION_RESULT', 'Synthetic production result', true, true),
+            outboundItem('GOODS_RECEIPT', 'Synthetic goods receipt', true),
+          ]
+        : [
+            outboundItem('RETURN', 'Synthetic return', true),
+            outboundItem('PRODUCTION_RESULT', 'Synthetic production result', false, true),
+          ],
+});
 const itemBody = (itemId: number) => ({
   item: {
     itemId,
@@ -135,6 +168,8 @@ const makeApi = (
   let hasOpenSession = false;
   let reasonMode: ReasonMode = 'ready';
   let releaseReason: (() => void) | undefined;
+  let outboundMode: OutboundMode = 'ready';
+  let releaseOutbound: (() => void) | undefined;
   const gate = (response: Response, assign: (release: () => void) => void) =>
     new Promise<Response>((resolve) => assign(() => resolve(response)));
   const lookup = (mode: LookupMode, body: unknown, setRelease: (release: () => void) => void) => {
@@ -199,6 +234,14 @@ const makeApi = (
     }
     if (url.pathname.startsWith('/mdm/items/'))
       return jsonResponse(itemBody(Number(url.pathname.split('/').at(-1))));
+    if (url.pathname === paths.outbound) {
+      const response = outboundMode.endsWith('error')
+        ? jsonResponse({ message: 'failure' }, { status: 500 })
+        : jsonResponse(outboundBody(outboundMode));
+      return outboundMode.startsWith('pending')
+        ? gate(response, (release) => (releaseOutbound = release))
+        : response;
+    }
     if (url.pathname === paths.uoms) return jsonResponse(uoms);
     throw new Error(`Unexpected request: ${url.pathname}`);
   };
@@ -211,12 +254,14 @@ const makeApi = (
     releaseDetail: () => releaseDetail?.(),
     releaseSession: () => releaseSession?.(),
     releaseReason: () => releaseReason?.(),
+    releaseOutbound: () => releaseOutbound?.(),
     setCandidateMode: (mode: typeof candidateMode) => (candidateMode = mode),
     setDetailMode: (mode: typeof detailMode) => (detailMode = mode),
     setJudgment: (judgment: Judgment) => (detailJudgment = judgment),
     setSessionMode: (mode: typeof sessionMode) => (sessionMode = mode),
     setHasOpenSession: (value: boolean) => (hasOpenSession = value),
     setReasonMode: (mode: ReasonMode) => (reasonMode = mode),
+    setOutboundMode: (mode: OutboundMode) => (outboundMode = mode),
   };
 };
 const candidateUrls = (urls: URL[]) => urls.filter((url) => url.pathname === paths.candidates);
@@ -292,6 +337,117 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(state({ isError: true })).toEqual({ kind: 'UNAVAILABLE' });
     expect(state({ detail: undefined })).toEqual({ kind: 'UNAVAILABLE' });
     expect(state({})).toEqual({ kind: 'RESOLVED', detail, unitLabel: 'SYN-EA · Synthetic Each' });
+  });
+
+  it('maps outbound hidden, fetching, error, absent and ready snapshots in strict priority', () => {
+    const settings = outboundBody('ready').items;
+    const state = (
+      overrides: Partial<Parameters<typeof toWorkOrderCloseOutboundScreenState>[0]> = {},
+    ) =>
+      toWorkOrderCloseOutboundScreenState({
+        selectedWorkOrderId: 701,
+        isFetching: false,
+        isError: false,
+        settings,
+        ...overrides,
+      });
+    expect(state({ selectedWorkOrderId: null, isFetching: true, isError: true })).toEqual({
+      kind: 'HIDDEN',
+    });
+    expect(state({ isFetching: true, isError: true })).toEqual({ kind: 'CHECKING' });
+    expect(state({ isError: true })).toEqual({ kind: 'UNAVAILABLE' });
+    expect(state({ settings: undefined })).toEqual({ kind: 'UNAVAILABLE' });
+    expect(state({ settings: [] })).toEqual({ kind: 'READY', settings: [] });
+  });
+
+  it('projects server defaults before a new outbound owner effect and preserves the current owner', () => {
+    const settings = outboundBody('ready').items;
+    const owned = { workOrderId: 701, selection: { RETURN: false } } as const;
+
+    expect(toWorkOrderCloseSelectedOutboundSelection(settings, owned, 702)).toEqual({
+      RETURN: true,
+      PRODUCTION_RESULT: false,
+    });
+    expect(toWorkOrderCloseSelectedOutboundSelection(settings, owned, 701)).toEqual({
+      RETURN: false,
+      PRODUCTION_RESULT: false,
+    });
+  });
+
+  it('owns outbound choices per W/O and reconciles same-owner settings by server rules', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    const { queryClient } = renderWithProviders(<View />, { fetch: api.fetch });
+    expect(screen.queryByRole('region', { name: t.outboundItems.pane })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+    let returnSwitch = await screen.findByRole('switch', { name: 'Synthetic return' });
+    const production = screen.getByRole('switch', { name: 'Synthetic production result' });
+    expect(returnSwitch).toBeChecked();
+    expect(production).not.toBeChecked();
+    expect(production).toBeDisabled();
+    expect(screen.getAllByRole('switch')[0]).toHaveAccessibleName('Synthetic return');
+    expect(screen.getAllByRole('switch')[1]).toHaveAccessibleName('Synthetic production result');
+    expect(document.body).not.toHaveTextContent('RETURN');
+    expect(document.body).not.toHaveTextContent('PRODUCTION_RESULT');
+    await user.click(returnSwitch);
+    expect(returnSwitch).not.toBeChecked();
+    const candidateCount = candidateUrls(api.urls).length;
+    void queryClient.invalidateQueries({ queryKey: ['work-order-close', 'candidates'] });
+    await waitFor(() => expect(candidateUrls(api.urls)).toHaveLength(candidateCount + 1));
+    expect(returnSwitch).not.toBeChecked();
+    await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.next }));
+    expect(screen.queryByRole('region', { name: t.outboundItems.pane })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-702 선택' }));
+    expect(await screen.findByRole('switch', { name: 'Synthetic return' })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.previous }));
+    expect(screen.queryByRole('region', { name: t.outboundItems.pane })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+    returnSwitch = await screen.findByRole('switch', { name: 'Synthetic return' });
+    expect(returnSwitch).toBeChecked();
+    await user.click(returnSwitch);
+    api.setOutboundMode('changed');
+    void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
+    const added = await screen.findByRole('switch', { name: 'Synthetic goods receipt' });
+    expect(added).toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Synthetic production result' })).toBeChecked();
+    expect(screen.queryByRole('switch', { name: 'Synthetic return' })).not.toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent('GOODS_RECEIPT');
+    api.setOutboundMode('reappeared');
+    void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
+    expect(await screen.findByRole('switch', { name: 'Synthetic return' })).toBeChecked();
+  });
+
+  it('hides stale outbound rows through refetch failure and retries only settings', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    const { queryClient } = renderWithProviders(<View />, { fetch: api.fetch });
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+    const selected = await screen.findByRole('switch', { name: 'Synthetic return' });
+    await user.click(selected);
+    api.setOutboundMode('pending-error');
+    void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
+    expect(await screen.findByRole('status', { name: t.outboundItems.loading })).toBeVisible();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    api.releaseOutbound();
+    const pane = screen.getByRole('region', { name: t.outboundItems.pane });
+    expect(await within(pane).findByRole('alert')).toHaveTextContent(messages.httpError.loadTitle);
+    expect(within(pane).queryByRole('switch')).not.toBeInTheDocument();
+    const before = api.urls.length;
+    api.setOutboundMode('ready');
+    await user.click(within(pane).getByRole('button', { name: messages.common.retry }));
+    expect(await within(pane).findByRole('switch', { name: 'Synthetic return' })).not.toBeChecked();
+    expect(api.urls.slice(before).map((url) => url.pathname)).toEqual([paths.outbound]);
+  });
+
+  it('renders a successful empty outbound setting list only after W/O selection', async () => {
+    const user = userEvent.setup();
+    const api = makeApi();
+    api.setOutboundMode('empty');
+    renderWithProviders(<View />, { fetch: api.fetch });
+    expect(screen.queryByText(t.outboundItems.empty.title)).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+    expect(await screen.findByText(t.outboundItems.empty.title)).toBeVisible();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
   });
 
   it('keeps detail idle until selection then reads exact server facts with a named unit', async () => {
@@ -561,6 +717,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     await user.click(row);
     expect(row).toHaveAttribute('aria-current', 'true');
     await screen.findByText('SYN-WO-DETAIL-701');
+    await screen.findByRole('region', { name: t.outboundItems.pane });
     await user.click(screen.getByRole('combobox', { name: t.filter.productionOrder }));
     await user.click(screen.getByRole('option', { name: 'SYN-PO-501' }));
     await user.click(screen.getByRole('button', { name: t.filter.search }));
@@ -568,19 +725,23 @@ describe('WorkOrderCloseCandidateScreen', () => {
       expect(candidateUrls(api.urls).at(-1)?.searchParams.get('productionOrderId')).toBe('501'),
     );
     expect(screen.getByText('마감할 W/O를 선택하세요.')).toBeVisible();
+    expect(screen.queryByRole('region', { name: t.outboundItems.pane })).not.toBeInTheDocument();
     expect(screen.queryByText('SYN-WO-DETAIL-701')).not.toBeInTheDocument();
     row = screen.getByRole('button', { name: 'SYN-WO-701 선택' });
     expect(row).not.toHaveAttribute('aria-current');
     await user.click(row);
+    await screen.findByRole('region', { name: t.outboundItems.pane });
     await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.next }));
     expect(await screen.findByRole('button', { name: 'SYN-WO-702 선택' })).not.toHaveAttribute(
       'aria-current',
     );
     expect(screen.getByText('마감할 W/O를 선택하세요.')).toBeVisible();
+    expect(screen.queryByRole('region', { name: t.outboundItems.pane })).not.toBeInTheDocument();
     expect(candidateUrls(api.urls).at(-1)?.searchParams.get('page')).toBe('2');
     await user.click(screen.getByRole('button', { name: t.filter.reset }));
     await screen.findByRole('button', { name: 'SYN-WO-701 선택' });
     expect(screen.getByText('마감할 W/O를 선택하세요.')).toBeVisible();
+    expect(screen.queryByRole('region', { name: t.outboundItems.pane })).not.toBeInTheDocument();
     expect(candidateUrls(api.urls).at(-1)?.searchParams.has('productionOrderId')).toBe(false);
     expect(candidateUrls(api.urls).at(-1)?.searchParams.get('page')).toBe('1');
   });
