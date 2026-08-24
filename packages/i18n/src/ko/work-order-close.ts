@@ -46,6 +46,19 @@ export const workOrderClose = {
       beyondDescription: '첫 쪽 또는 이전 쪽으로 이동해 다시 확인하세요.',
     },
   },
+  candidateReferences: {
+    item: {
+      loading: '품목 표시명을 확인하는 중입니다.',
+      unknown: '품목 표시명을 확인할 수 없습니다.',
+      failed: '품목 표시명을 불러오지 못했습니다.',
+    },
+    uom: {
+      loading: '단위를 확인하는 중입니다.',
+      unknown: '단위를 확인할 수 없습니다.',
+      failed: '단위를 불러오지 못했습니다.',
+      truncated: '단위 목록 일부만 불러와 단위를 확인할 수 없습니다.',
+    },
+  },
   filter: {
     productionOrder: 'P/O',
     plannedStartFrom: '계획 시작일(부터)',
