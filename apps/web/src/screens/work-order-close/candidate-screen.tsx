@@ -1,6 +1,6 @@
 import { AlertBanner, Button, EmptyState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 
 import { toWorkOrderPageView } from '../work-order/pagination';
 import { WorkOrderCloseCandidateListPane } from './candidate-list-pane';
@@ -24,6 +24,16 @@ import {
 import { WorkOrderCloseFilterBar } from './filter-bar';
 import { toWorkOrderCloseFilterInitialization } from './filter-initialization';
 import {
+  EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT,
+  setWorkOrderCloseRemainderDisposition,
+  setWorkOrderCloseVarianceReasonCode,
+  workOrderCloseReadinessInputFrom,
+  type WorkOrderCloseInputDraft,
+} from './close-input-draft';
+import { WorkOrderCloseInputPane } from './close-input-pane';
+import { workOrderCloseBlockers, type WorkOrderCloseCompletionJudgment } from './close-readiness';
+import { WorkOrderCloseStatusPane, type WorkOrderCloseStatusPaneState } from './close-status-pane';
+import {
   WorkOrderCloseDetailSummaryPane,
   type WorkOrderCloseDetailSummaryState,
 } from './detail-summary-pane';
@@ -31,6 +41,7 @@ import {
   useWorkOrderCloseCandidates,
   useWorkOrderCloseCodeValues,
   useWorkOrderCloseDetail,
+  useWorkOrderCloseOpenSession,
   useWorkOrderCloseProductionOrders,
   type WorkOrderCloseDetailFact,
 } from './queries';
@@ -92,9 +103,16 @@ export const toWorkOrderCloseDetailScreenState = ({
   return { kind: 'RESOLVED', detail, unitLabel };
 };
 
+export const toWorkOrderCloseSelectedDraft = (
+  owned: { workOrderId: number | null; draft: WorkOrderCloseInputDraft },
+  selectedWorkOrderId: number | null,
+): WorkOrderCloseInputDraft =>
+  owned.workOrderId === selectedWorkOrderId ? owned.draft : EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT;
+
 export const WorkOrderCloseCandidateScreen = () => {
   const status = useWorkOrderCloseCodeValues(WORK_ORDER_CLOSE_CODE_GROUPS.status);
   const productionOrders = useWorkOrderCloseProductionOrders();
+  const reasons = useWorkOrderCloseCodeValues(WORK_ORDER_CLOSE_CODE_GROUPS.varianceReason);
   const initialization = useMemo(
     () =>
       toWorkOrderCloseFilterInitialization({
@@ -109,9 +127,20 @@ export const WorkOrderCloseCandidateScreen = () => {
     initialization,
     createWorkOrderCloseCandidateScreenState,
   );
+  const [ownedDraft, setOwnedDraft] = useState(() => ({
+    workOrderId: state.selectedWorkOrderId,
+    draft: { ...EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT },
+  }));
+  const draft = toWorkOrderCloseSelectedDraft(ownedDraft, state.selectedWorkOrderId);
   useEffect(() => {
     dispatch({ type: 'SYNCHRONIZE_INITIALIZATION', initialization });
   }, [initialization]);
+  useEffect(() => {
+    setOwnedDraft({
+      workOrderId: state.selectedWorkOrderId,
+      draft: { ...EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT },
+    });
+  }, [state.selectedWorkOrderId]);
 
   const filters = toWorkOrderCloseCandidateFilters(state);
   const candidate = useWorkOrderCloseCandidates(filters);
@@ -119,6 +148,7 @@ export const WorkOrderCloseCandidateScreen = () => {
   const itemNames = useWorkOrderCloseItemNames(candidates.map((item) => item.itemId));
   const uoms = useWorkOrderCloseUomLookup();
   const detail = useWorkOrderCloseDetail(state.selectedWorkOrderId);
+  const openSession = useWorkOrderCloseOpenSession(state.selectedWorkOrderId);
   const snapshot = useMemo(
     () =>
       toWorkOrderCloseCandidateSnapshot({
@@ -203,6 +233,79 @@ export const WorkOrderCloseCandidateScreen = () => {
             ),
           }
         : detailState;
+  const reasonOptions = useMemo(
+    () =>
+      (reasons.data?.items ?? [])
+        .filter((reason) => reason.isActive && reason.codeName.trim() !== '')
+        .slice()
+        .sort((left, right) => left.displayOrder - right.displayOrder)
+        .map((reason) => ({ value: reason.code, label: reason.codeName })),
+    [reasons.data],
+  );
+  let judgment: WorkOrderCloseCompletionJudgment | null = null;
+  let hasOpenSession = false;
+  let checking = false;
+  let unavailable: [message: string, retry: () => unknown] | null = null;
+  if (detailState.kind === 'RESOLVED') {
+    const progress = detailState.detail.progress;
+    const completionJudgment = progress?.completionJudgmentCode;
+    if (completionJudgment === undefined) {
+      unavailable = [messages.workOrderClose.readState.progressUnavailable, detail.refetch];
+    } else if (openSession.isFetching) checking = true;
+    else if (openSession.isError || openSession.data === undefined) {
+      unavailable = [messages.workOrderClose.readState.openSessionFailed, openSession.refetch];
+    } else if (completionJudgment === 'NORMAL') {
+      judgment = completionJudgment;
+      hasOpenSession = openSession.data.hasOpenSession;
+    } else if (reasons.isFetching) checking = true;
+    else if (reasons.isError || reasons.data === undefined) {
+      unavailable = [messages.workOrderClose.readState.reasonFailed, reasons.refetch];
+    } else if (reasons.data.truncated) {
+      unavailable = [messages.workOrderClose.readState.reasonTruncated, reasons.refetch];
+    } else if (reasonOptions.length === 0) {
+      unavailable = [messages.workOrderClose.input.reason.empty, reasons.refetch];
+    } else {
+      judgment = completionJudgment;
+      hasOpenSession = openSession.data.hasOpenSession;
+    }
+  }
+  const inputDraft =
+    judgment === 'NORMAL' ||
+    draft.varianceReasonCode === '' ||
+    reasonOptions.some((option) => option.value === draft.varianceReasonCode)
+      ? draft
+      : setWorkOrderCloseVarianceReasonCode(draft, '');
+  const unavailableState = unavailable;
+  let readinessState: WorkOrderCloseStatusPaneState | null = null;
+  if (checking) readinessState = { kind: 'CHECKING' };
+  else if (unavailableState !== null)
+    readinessState = {
+      kind: 'UNAVAILABLE',
+      content: (
+        <AlertBanner
+          variant="error"
+          action={
+            <Button onClick={() => void unavailableState[1]()}>{messages.common.retry}</Button>
+          }
+        >
+          {unavailableState[0]}
+        </AlertBanner>
+      ),
+    };
+  else if (judgment !== null)
+    readinessState = {
+      kind: 'RESOLVED',
+      blockers: workOrderCloseBlockers(
+        workOrderCloseReadinessInputFrom(inputDraft, judgment, hasOpenSession),
+      ),
+    };
+  const updateDraft = (
+    update: (current: WorkOrderCloseInputDraft) => WorkOrderCloseInputDraft,
+  ): void =>
+    setOwnedDraft((current) => ({
+      workOrderId: state.selectedWorkOrderId,
+      draft: update(toWorkOrderCloseSelectedDraft(current, state.selectedWorkOrderId)),
+    }));
 
   return (
     <>
@@ -227,6 +330,21 @@ export const WorkOrderCloseCandidateScreen = () => {
         onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
       />
       <WorkOrderCloseDetailSummaryPane state={detailPaneState} />
+      {judgment === null ? null : (
+        <WorkOrderCloseInputPane
+          completionJudgment={judgment}
+          draft={inputDraft}
+          reasonOptions={reasonOptions}
+          reasonUnavailableReason={null}
+          onRemainderDispositionChange={(value) =>
+            updateDraft((current) => setWorkOrderCloseRemainderDisposition(current, value))
+          }
+          onVarianceReasonCodeChange={(value) =>
+            updateDraft((current) => setWorkOrderCloseVarianceReasonCode(current, value))
+          }
+        />
+      )}
+      {readinessState === null ? null : <WorkOrderCloseStatusPane state={readinessState} />}
     </>
   );
 };
