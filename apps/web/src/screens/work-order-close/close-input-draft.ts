@@ -5,8 +5,9 @@ import type {
   WorkOrderCloseReadinessInput,
 } from './close-readiness';
 
-export type WorkOrderCloseRemainderDisposition =
-  components['schemas']['WorkOrderClose']['remainderDispositionCode'];
+export type WorkOrderCloseRemainderDisposition = NonNullable<
+  components['schemas']['WorkOrderClose']['remainderDispositionCode']
+>;
 
 export interface WorkOrderCloseInputDraft {
   remainderDisposition: WorkOrderCloseRemainderDisposition | null;
