@@ -10,14 +10,17 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  POLICY_ETAG,
   businessUnitsResponse,
   effectiveResponse,
   enabledListResponse,
+  isPolicyDetailPath,
   itemsResponse,
-  moldListResponse,
   makeRatio,
+  moldListResponse,
   plantsResponse,
   policyCodeOf,
+  policyIdOf,
   processesResponse,
   ratioListResponse,
 } from './fixtures';
@@ -43,6 +46,15 @@ interface Options {
 }
 
 const routes = (options: Options): StubRoute[] => [
+  /*
+   * ⭐ **상세 조회가 잠금 토큰을 준다** — 이 응답의 `ETag` 가 다음 쓰기의 `If-Match` 로 나간다.
+   * 단일 행 경로라 두 목록 조회와 갈라야 한다.
+   */
+  {
+    match: (request) => request.method === 'GET' && isPolicyDetailPath(request),
+    respond: (request) =>
+      jsonResponse(makeRatio(policyIdOf(request), 0.25), { headers: { ETag: POLICY_ETAG } }),
+  },
   {
     match: (request) => isPath(request, '/app/operation-policies/9003'),
     respond: (request) => {
@@ -248,7 +260,13 @@ describe('W-05-01 ③ — 끝낸다', () => {
     });
   });
 
-  it('멱등 키가 실리고 잠금 토큰은 실리지 않는다', async () => {
+  /**
+   * ⭐ **잠금 토큰이 실린다.** ②·③에서는 계약에 없어 싣지 않았고, 설계 회신으로 형제
+   * 자원과 같은 형태가 되어 되살아났다(`omf-mes#210` · 통지 client#387).
+   *
+   * ⛔ **토큰은 «상세» 경로에서 온다** — 쓰기 경로로 꺼내면 늘 비어 있다.
+   */
+  it('멱등 키와 잠금 토큰이 함께 실린다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
 
@@ -260,7 +278,7 @@ describe('W-05-01 ③ — 끝낸다', () => {
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(onlyWrite(writes).headers.get('Idempotency-Key')).not.toBeNull();
-    expect(onlyWrite(writes).headers.get('If-Match')).toBeNull();
+    expect(onlyWrite(writes).headers.get('If-Match')).toBe(POLICY_ETAG);
   });
 
   it('성공하면 창이 닫힌다', async () => {
@@ -387,6 +405,26 @@ describe('W-05-01 ③ — 끝낸 뒤 목록', () => {
     );
     expect(
       within(pane()).getByText(t.period.closed('2026-03-01', '2026-06-30')),
+    ).toBeInTheDocument();
+  });
+});
+
+/** ⭐ 충돌은 다시 불러와야 풀린다 — 잠금이 되살아나며 이 자리도 함께 왔다(통지 client#387). */
+describe('W-05-01 ③ — 끝내다 충돌하면', () => {
+  it('다시 불러올 자리를 준다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({
+      writeStatus: 409,
+      writeBody: { conflictCause: 'user', message: '다른 사용자가 먼저 고쳤습니다.' },
+    });
+    await openEnd();
+
+    await user.type(dialog().getByLabelText(te.dateLabel), '2026-06-30');
+    await user.click(dialog().getByRole('button', { name: te.action }));
+
+    expect(
+      await dialog().findByRole('button', { name: messages.conflict.reloadAction }),
     ).toBeInTheDocument();
   });
 });

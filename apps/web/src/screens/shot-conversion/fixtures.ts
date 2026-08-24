@@ -118,3 +118,14 @@ export const effectiveResponse = (
   matchedScopeCode: 'ITEM',
   ...overrides,
 });
+
+/** 상세 응답의 잠금 토큰. 이 값이 다음 쓰기의 `If-Match` 로 나간다. */
+export const POLICY_ETAG = 'W/"7"';
+
+/** 단일 행 경로인가 — 두 정책 조회(목록)와 갈라야 한다. */
+export const isPolicyDetailPath = (request: Request): boolean =>
+  /^\/app\/operation-policies\/\d+$/.test(new URL(request.url).pathname);
+
+/** 경로의 정책 식별자. */
+export const policyIdOf = (request: Request): number =>
+  Number(new URL(request.url).pathname.split('/').at(-1));

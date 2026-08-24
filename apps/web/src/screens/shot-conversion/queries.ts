@@ -204,3 +204,38 @@ export const useToolLookup = (): UseQueryResult<{ items: Mold[]; page: PageMeta 
       runRequest(() => client.GET('/mdm/molds', { params: { query: { includeInactive: true } } })),
   });
 };
+
+/**
+ * 정책 상세 — **잠금 토큰을 얻는 자리다.**
+ *
+ * ⭐ 이 조회의 응답 `ETag` 가 수정 요청의 `If-Match` 가 된다. 계약이 처음에는 그것을 빠뜨려
+ * 「마지막 저장이 이긴다」로 만들었다가, 설계 회신으로 형제 자원과 같은 형태가 됐다
+ * (`omf-mes#210` · 변경 통지 client#387).
+ *
+ * ⛔ **토큰은 «상세» 경로에 보관된다** — 쓰기 경로로 꺼내면 늘 비어 있다.
+ */
+export const useOperationPolicy = (
+  operationPolicyId: number | null,
+): UseQueryResult<OperationPolicy> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: policyKeys.detail(operationPolicyId ?? 0),
+    enabled: operationPolicyId !== null,
+    queryFn: () => {
+      if (operationPolicyId === null) {
+        throw new Error('정책을 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/app/operation-policies/{operationPolicyId}', {
+          params: { path: { operationPolicyId } },
+        }),
+      );
+    },
+  });
+};
+
+/** 잠금 토큰이 보관된 경로. **쓰기 경로로 꺼내면 늘 비어 있다.** */
+export const policyDetailPath = (operationPolicyId: number): string =>
+  `/app/operation-policies/${String(operationPolicyId)}`;

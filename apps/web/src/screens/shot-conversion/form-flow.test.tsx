@@ -10,14 +10,17 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  POLICY_ETAG,
   businessUnitsResponse,
   effectiveResponse,
   enabledListResponse,
+  isPolicyDetailPath,
   itemsResponse,
-  moldListResponse,
   makeRatio,
+  moldListResponse,
   plantsResponse,
   policyCodeOf,
+  policyIdOf,
   processesResponse,
   ratioItems,
   ratioListResponse,
@@ -37,6 +40,15 @@ interface Options {
 }
 
 const routes = (options: Options): StubRoute[] => [
+  /*
+   * ⭐ **상세 조회가 잠금 토큰을 준다** — 이 응답의 `ETag` 가 다음 쓰기의 `If-Match` 로 나간다.
+   * 단일 행 경로라 두 목록 조회와 갈라야 한다.
+   */
+  {
+    match: (request) => request.method === 'GET' && isPolicyDetailPath(request),
+    respond: (request) =>
+      jsonResponse(makeRatio(policyIdOf(request), 0.25), { headers: { ETag: POLICY_ETAG } }),
+  },
   {
     match: (request) => request.method === 'POST' && isPath(request, '/app/operation-policies'),
     respond: (request) => {
@@ -378,10 +390,13 @@ describe('W-05-01 ② — 저장이 실패하면', () => {
   });
 
   /**
-   * ⛔ **「최신 불러오기」를 두지 않는다.** 이 자원에는 잠금이 없어 다시 불러와도 풀리는
-   * 것이 없다 — 두면 눌러도 아무 일도 일어나지 않는 컨트롤이 된다(공유계약 G-23).
+   * ⛔ **등록에는 「최신 불러오기」를 두지 않는다.**
+   *
+   * ⚠ 이유가 바뀌었다 — ②에서는 «이 자원에 잠금이 없어서»였고, 지금은 «등록에는 불러올
+   * 토큰 자체가 없어서»다(`omf-mes#210` 회신 · 통지 client#387). 결론은 같지만 근거가
+   * 다르므로, 수정 쪽은 반대로 **있어야 한다**(아래 짝 감지기).
    */
-  it('다시 불러올 자리를 만들지 않는다', async () => {
+  it('등록 실패에는 다시 불러올 자리를 만들지 않는다', async () => {
     const user = userEvent.setup();
 
     renderScreen({
@@ -542,5 +557,57 @@ describe('W-05-01 ② — 서버가 붙인 오류', () => {
     await user.type(dialog().getByRole('textbox', { name: /비율/ }), '5');
 
     expect(dialog().queryByText('같은 범위의 정책이 이미 있습니다.')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * ⭐ **낙관적 잠금이 되살아났다** — `omf-mes#210` 회신으로 계약에 `ETag`·`If-Match`·`409` 가
+ * 들어왔고, ②에서 「없다」로 가정하고 만든 것을 되돌린다(통지 client#387).
+ */
+describe('W-05-01 ② — 낙관적 잠금', () => {
+  it('수정에 상세가 준 잠금 토큰이 실린다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+
+    renderScreen({ writes });
+    await within(pane()).findByText(t.scope.all);
+    await user.click(
+      within(pane()).getByRole('button', {
+        name: t.scope.entry(t.scope.itemId, 'ITM-201 · 가상 하우징'),
+      }),
+    );
+    await screen.findByRole('dialog');
+
+    await user.clear(dialog().getByRole('textbox', { name: /비율/ }));
+    await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.5');
+    await user.click(dialog().getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(onlyWrite(writes).headers.get('If-Match')).toBe(POLICY_ETAG);
+  });
+
+  /** ⭐ 충돌은 다시 불러와야 풀린다 — 이제 그 자리가 실제로 길을 연다(G-23의 뒤집힌 면). */
+  it('수정에서 충돌하면 다시 불러올 자리를 준다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({
+      writeStatus: 409,
+      writeBody: { conflictCause: 'user', message: '다른 사용자가 먼저 고쳤습니다.' },
+    });
+    await within(pane()).findByText(t.scope.all);
+    await user.click(
+      within(pane()).getByRole('button', {
+        name: t.scope.entry(t.scope.itemId, 'ITM-201 · 가상 하우징'),
+      }),
+    );
+    await screen.findByRole('dialog');
+
+    await user.clear(dialog().getByRole('textbox', { name: /비율/ }));
+    await user.type(dialog().getByRole('textbox', { name: /비율/ }), '0.5');
+    await user.click(dialog().getByRole('button', { name: messages.common.save }));
+
+    expect(
+      await dialog().findByRole('button', { name: messages.conflict.reloadAction }),
+    ).toBeInTheDocument();
   });
 });

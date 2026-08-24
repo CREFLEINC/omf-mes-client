@@ -9956,6 +9956,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mdm/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 교대 목록
+         * @description 교대(mdm.shift) 선택 목록 — 4M 자원배정(W-02-03)의 plannedShiftId 원천. 교대는 공장 단위 정의라(uq_shift = plant_id + shift_code) 공장으로 거른다 — 라인·계획일시 축은 테이블에 없다. 근거: omf-mes#202
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 코드·이름 검색 */
+                    q?: string;
+                    /** @description 공장 필터 */
+                    plantId?: number;
+                    /** @description 비활성 포함 */
+                    includeInactive?: boolean;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["Shift"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/inventory/adjustments": {
         parameters: {
             query?: never;
@@ -14951,6 +15002,8 @@ export interface paths {
                     q?: string;
                     page?: number;
                     size?: number;
+                    /** @description 이 W/O 를 원천으로 발행된 LOT 만. 선발행 슬롯을 빠짐없이 훑는 경로다(W-02-05 §3). ⭐ 저장된 형태는 다형 참조 짝(sourceTypeCode + sourceId)이지만 판별자 값 목록이 아직 미확정이라 짝 필터를 열지 않았다 — 값을 모르는 채 열면 눌러도 아무것도 안 걸린다(공유계약 G-23). 서버가 W/O 원천으로 풀어 준다 */
+                    workOrderId?: number;
                 };
                 header?: never;
                 path?: never;
@@ -16610,9 +16663,9 @@ export interface paths {
                     /** @description 참이면 안 읽은 것만 */
                     unreadOnly?: boolean;
                     eventCode?: string;
-                    /** @description 기간 시작 */
+                    /** @description 기간 시작 — 이 시각 «이상»(occurredAt ≥ occurredFrom). 경계 규약은 공유계약 L-3 */
                     occurredFrom: string;
-                    /** @description 기간 종료 */
+                    /** @description 기간 끝 — 이 시각 «미만»(occurredAt < occurredTo). 반열림 구간이라 「그날까지」는 23:59:59 가 아니라 «익일 00:00:00» 을 보낸다 — 마지막 1초 안의 알림이 빠지지 않는다. 경계 규약은 공유계약 L-3 */
                     occurredTo: string;
                     page?: number;
                     size?: number;
@@ -17682,6 +17735,8 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -17700,6 +17755,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     operationPolicyId: number;
@@ -17715,6 +17772,8 @@ export interface paths {
                 /** @description 수정됨 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -17737,6 +17796,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
                     };
                 };
             };
@@ -17763,6 +17831,8 @@ export interface paths {
             parameters: {
                 query?: {
                     statusCode?: string;
+                    /** @description 사업부 필터 — 화면 정본(W-02-01 §3)의 첫 필터. 근거: omf-mes#196 */
+                    businessUnitId?: number;
                     plantId?: number;
                     itemId?: number;
                     /** @description 납기 시작 */
@@ -17771,7 +17841,7 @@ export interface paths {
                     dueDateTo?: string;
                     /** @description P/O 번호 검색 */
                     q?: string;
-                    /** @description 하위 레벨 함께. 계층 펼침용 */
+                    /** @description 하위 레벨 함께(계층 펼침용). 참이면 필터·page·size·total 은 «루트 P/O» 기준으로 세고, 각 루트의 하위 전체를 같은 페이지에 함께 내린다 — 부모와 자식이 페이지로 갈리지 않는다. 트리는 parentProductionOrderId·bomLevel 로 만든다(별도 hasChildren 불요 — 하위가 같은 응답에 있다). 기본 표시는 전체 펼침(W-02-01 §3 레이아웃). 근거: omf-mes#196 */
                     includeChildren?: boolean;
                     page?: number;
                     size?: number;
@@ -18292,7 +18362,9 @@ export interface paths {
         put?: never;
         /**
          * 전개 확정
-         * @description 계획을 확정해 W/O 전개를 연다. 근거: W-02-02 §5 · :동사 규약
+         * @description 계획을 확정하고 «전개»까지 서버 한 트랜잭션으로 수행한다 — 확정된 계획의 Routing 공정별 W/O 생성과 공정 의존(work_order_dependency) 생성까지가 안이다(공유계약 B-8 규칙 1 — 업무 엔티티는 전부 안. 부분 성공을 만들지 않는다). 클라이언트는 전개를 위해 W/O 를 따로 POST 하지 않는다. 전개 결과는 GET /production/work-orders?productionPlanId= 로 본다. 생성 규칙 — 수량: 각 공정 W/O 의 orderQty = 계획 수량(planned_qty) · 유형: 기본 양산(개발품 판정 축은 품목 — omf-mes#215 진행 중 · 긴급은 이 경로가 아니라 W-02-07 직접 생성) · 기본 위치: 생성 후 W-02-03·W-02-04 의 PUT 으로 채운다. 재시도: 같은 Idempotency-Key 재전송은 새 전개를 만들지 않는다.
+         *
+         *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /planning/production-plans/{productionPlanId} 의 ETag 를 그대로 싣는다. 관리웹 온라인 전제의 되돌릴 수 없는 확정 전이라 W/O 전이(:release·:close)와 같은 정책이다. 근거: W-02-02 §5-1(3단 체인)·§5-7 · 공유계약 B-8 · omf-mes#199
          */
         post: {
             parameters: {
@@ -18300,6 +18372,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     productionPlanId: number;
@@ -19106,6 +19180,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description P/O 로 거른다(서버가 계획을 경유해 잇는다) — W-02-01 상세 「전개」 구획용. 근거: omf-mes#196 */
+                    productionOrderId?: number;
                     productionPlanId?: number;
                     statusCode?: string;
                     productionLineId?: number;
@@ -19120,6 +19196,8 @@ export interface paths {
                     withProgress?: boolean;
                     page?: number;
                     size?: number;
+                    /** @description 선발행 생산LOT 슬롯 집계를 함께 받는다. 마감 화면(W-02-05)이 쓴다 — 목록에서는 W/O 마다 세게 되므로 기본은 끈다 */
+                    withPreIssuedLots?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -19144,7 +19222,7 @@ export interface paths {
         put?: never;
         /**
          * W/O 발행
-         * @description 전개로 만들거나 긴급으로 직접 만든다. 근거: W-02-02 §5 · W-02-07 §5
+         * @description 긴급 W/O(W-02-07)를 직접 만든다 — 전개 생성분은 계획 :confirm 이 서버 트랜잭션으로 만들므로 이 경로를 쓰지 않는다(omf-mes#199). 근거: W-02-07 §5
          */
         post: {
             parameters: {
@@ -19228,7 +19306,12 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description 실적 누계를 함께 받는다 */
+                    withProgress?: boolean;
+                    /** @description 선발행 생산LOT 슬롯 집계를 함께 받는다. 마감 화면(W-02-05)이 쓴다 — 목록에서는 W/O 마다 세게 되므로 기본은 끈다 */
+                    withPreIssuedLots?: boolean;
+                };
                 header?: never;
                 path: {
                     workOrderId: number;
@@ -19408,6 +19491,8 @@ export interface paths {
         /**
          * W/O 취소
          * @description 취소 상태로 옮기고 선발행된 생산LOT 슬롯을 자동 폐번한다. 마감 시 미달 슬롯을 폐번하는 것과 같은 규칙이다. 근거: 예외 E-4 ④(2026-08-12 종결) · R27·R82 · W-02-06 §5-5
+         *
+         *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /production/work-orders/{workOrderId} 의 ETag 를 그대로 싣는다. 취소는 관리웹(W-02-06) 온라인 전제이고 선발행 슬롯 자동 폐번이 붙는 되돌릴 수 없는 전이라 :close·:release 와 같은 정책이다. 근거: 형제 전이 정책 정렬 · omf-mes#205
          */
         post: {
             parameters: {
@@ -19415,6 +19500,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     workOrderId: number;
@@ -19492,6 +19579,15 @@ export interface paths {
         /**
          * 마감 · ERP 실적 송신
          * @description 잔량 처분을 함께 정한다. 미달 슬롯은 이 시점에 자동 폐번된다. ERP 실제 전송만 트랜잭션 밖이다. 근거: W-02-05 §5 · R27·R82
+         *
+         *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /production/work-orders/{workOrderId} 의 ETag 를 그대로 싣는다. 마감은 관리웹 온라인 전제이고 되돌릴 수 없는 전이라(재오픈 금지 · R83) 형제 전이 :hold·:resume 처럼 선택으로 두지 않는다 — 그 둘은 POP 오프라인 대상이라 큐가 토큰을 싣지 못해 선택이다(공유계약 C-9). 근거: W-02-05 §6
+         *
+         *     ⭐ 본문 검증 — 서버가 스스로 낸 마감 3분류 판정과 본문을 대조한다(판정은 WorkOrderProgress.completionJudgmentCode 와 같은 식이다).
+         *       · 미달인데 remainderDispositionCode 가 없다 → 400
+         *       · 정상·초과인데 remainderDispositionCode 가 있다 → 400 (넘길 잔량도 없앨 잔량도 없다)
+         *       · 미달·초과인데 reasonCode 가 없다 → 400 (미달·초과 사유는 R80 이 요구한다)
+         *       · 정상은 두 칸을 다 비운다
+         *     ⚠ 「정상」의 폭(허용 오차)은 서버 정책이 정한다 — 규칙은 그대로고 미달의 경계만 움직인다(W-02-05 §5-1·§8-1)
          */
         post: {
             parameters: {
@@ -19499,6 +19595,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     workOrderId: number;
@@ -19664,6 +19762,8 @@ export interface paths {
         /**
          * 확정·배포 · 생산LOT 선발행
          * @description 확정과 배포와 선발행이 한 트랜잭션이다. 선발행은 번호 슬롯 예약이며 완료 전에는 실물에 귀속되지 않는다. 근거: W-02-04 §5 · R26·R27
+         *
+         *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /production/work-orders/{workOrderId} 의 ETag 를 그대로 싣는다. 확정·배포는 관리웹 온라인 전제이고 배포 후에는 현장으로 내려가 되돌리기 어려운 전이라 :close 와 같은 정책이다 — :hold·:resume 처럼 선택으로 두지 않는다(그 둘은 POP 오프라인 대상 · 공유계약 C-9). 두 관리자가 같은 W/O 를 동시에 확정하면 늦은 쪽이 409 를 받는다. 근거: W-02-04 §6(동시 확정 — version_no 낙관적 잠금 B-1) · omf-mes#205
          */
         post: {
             parameters: {
@@ -19671,6 +19771,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     workOrderId: number;
@@ -20025,7 +20127,7 @@ export interface paths {
         put?: never;
         /**
          * 세션 이벤트 적재
-         * @description 중단·재개·통제 우회를 기록한다. occurredAt 은 단말이 보낸다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). ⚠ 세션이 먼저 서야 한다 — 큐에서는 세션 열기와 묶음으로 간다(C-10). 근거: P-02-10 §5-2 · 공유계약 C-12
+         * @description 중단·재개를 기록한다. occurredAt 은 단말이 보낸다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). ⚠ 세션이 먼저 서야 한다 — 큐에서는 세션 열기와 묶음으로 간다(C-10). 사건 유형은 다섯이다 — START(시작)·STOP(중단)·RESUME(재개)·END(종료)·CONTROL_OVERRIDE(통제 우회). ⭐ 이 오퍼레이션으로 단말이 적재하는 것은 구간 «안의» 사건인 STOP·RESUME 뿐이다. 구간의 «경계»(START·END)와 통제 우회는 세션을 열고 닫는 오퍼레이션이 같은 트랜잭션으로 만든다 — 따로 보내지 않는다. 유형별로 reasonCode 에 어느 코드 그룹을 쓰는지는 공유계약 A-25 가 정한다. 근거: P-02-10 §5-2 · 공유계약 C-12
          */
         post: {
             parameters: {
@@ -20310,7 +20412,7 @@ export interface paths {
         put?: never;
         /**
          * 세션 닫기
-         * @description 끝 시각을 찍어 구간을 닫는다. 상태 컬럼을 바꾸는 것이 아니다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: 공유계약 G-16 · C-16(큐에서 가장 먼저 보낸다)
+         * @description 끝 시각을 찍어 구간을 닫는다. ⚠ 이 표는 status_code 를 함께 갖는다 — 끝 시각을 찍으면서 status_code 도 「종료」로 옮긴다(공유계약 G-16 의 보완). 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: 공유계약 G-16 · C-16(큐에서 가장 먼저 보낸다)
          */
         post: {
             parameters: {
@@ -20944,6 +21046,8 @@ export interface paths {
                     inspectionTypeCode?: string;
                     overallJudgmentCode?: string;
                     statusCode?: string;
+                    /** @description 공정 필터 — 요약과 같은 축. 현장검사만 직접 컬럼이고 PQC·OQC 는 2단 조인이므로 잇는 것은 서버 몫이다(W-03-05 §5-2). 근거: omf-mes#192 문1 */
+                    processId?: number;
                     itemId?: number;
                     /** @description 기간 시작. ⭐ 조건부 필수 — inspectionRequestId 없이 전 이력을 훑을 때는 «반드시» 보낸다(W-03-05 §3 이 화면에서 「기간 ⚠필수」로 강제한다 · 공유계약 L-3 일반 층 — 무제한이면 원장이 누적된 뒤 화면이 멎는다). ⛔ inspectionRequestId 로 «한 의뢰의 회차»를 읽을 때는 보내지 않는다 — W-01-01 §5-3(재검사 이전 회차 표시)이 그 경로이고, 거기에 기간을 요구하면 화면이 없는 기간을 지어내게 된다. 형이 조건부 필수를 표현하지 못해 설명이 말한다 */
                     inspectedFrom?: string;
@@ -20953,6 +21057,8 @@ export interface paths {
                     finalRoundOnly?: boolean;
                     /** @description 교정 만료 장비 측정분만 보거나 뺀다. ⛔ 기본은 섞어서 낸다 — 자동 제외는 정책이 미정이다(E-9 ①) */
                     calibrationExpired?: "only" | "exclude";
+                    /** @description 정렬 키는 제한한다(공유계약 L-4) — 허용: inspectionRequestNo · inspectedAt · rejectedQty (W-03-05 §5-7 지정 3열). 형식 "키,asc|desc". 기본 inspectedAt,desc — 동률은 inspectionResultId 로 안정 정렬. 근거: omf-mes#192 문2 */
+                    sort?: string;
                     /** @description 1 부터 */
                     page?: number;
                     /** @description 기본 50 */
@@ -20974,6 +21080,15 @@ export interface paths {
                             items: components["schemas"]["InspectionResult"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 요청 오류 — 기간 누락 등 검증 실패. 주소 조작·서버 검증 실패를 표준 오류로 보인다(omf-mes#192 문7) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -21063,6 +21178,12 @@ export interface paths {
                 query?: {
                     inspectionTypeCode?: string;
                     itemId?: number;
+                    /** @description 판정 필터 — 목록·요약과 같은 축. 근거: omf-mes#192 문1 */
+                    overallJudgmentCode?: string;
+                    /** @description 공정 필터 — 목록·요약과 같은 축. 근거: omf-mes#192 문1 */
+                    processId?: number;
+                    /** @description 목록·요약과 같은 축. 근거: omf-mes#192 문1 */
+                    finalRoundOnly?: boolean;
                     /** @description 필수 */
                     inspectedFrom?: string;
                     inspectedTo?: string;
@@ -21082,6 +21203,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DefectRateTrend"];
+                    };
+                };
+                /** @description 요청 오류 — 기간 누락 등 검증 실패. 주소 조작·서버 검증 실패를 표준 오류로 보인다(omf-mes#192 문7) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -21116,6 +21246,8 @@ export interface paths {
                     /** @description 필수 — 공유계약 L-3 */
                     inspectedFrom?: string;
                     inspectedTo?: string;
+                    /** @description 목록과 같은 축 — 한 화면의 필터가 모든 뷰에 같은 모집단으로 적용된다. 근거: omf-mes#192 문1 */
+                    finalRoundOnly?: boolean;
                     /** @description 교정 만료 장비 측정분만 보거나 뺀다. ⛔ 기본은 섞어서 낸다 — 자동 제외는 정책이 미정이다(E-9 ①) */
                     calibrationExpired?: "only" | "exclude";
                 };
@@ -21132,6 +21264,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["InspectionSummary"];
+                    };
+                };
+                /** @description 요청 오류 — 기간 누락 등 검증 실패. 주소 조작·서버 검증 실패를 표준 오류로 보인다(omf-mes#192 문7) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -21625,7 +21766,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — ⭐ 이 보류 «행»의 것이 아니라 이 보류가 걸린 «LOT»의 판 번호(trace.lot.version_no)다. 잠그는 대상이 LOT 이기 때문이다 — 보류 해제는 LOT 의 품질 상태를 옮기는 일이고, 보류 행 자체는 기록 전용이라 판 번호를 갖지 않는다. 다음 쓰기(:release)의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다. ⚠ 이 설명은 2026-08-24 에 정정됐다(omf-mes#190 질문4) — 표준 문구를 베끼면서 「이 행의 version_no」로 적혀 있었고, 그것은 없는 컬럼을 가리켰다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -22017,6 +22158,63 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quality/inspection-results/{inspectionResultId}/measurement-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 검사 결과의 항목별 측정 요약
+         * @description 드로어의 「항목별 요약」용 — 결과 하나의 측정치 전건(수만 행일 수 있다)을 서버가 항목 단위로 요약한다. 페이지 단위 원시 행을 브라우저에서 합산하면 틀린 요약이 되고, 항목·장비를 건별 조회하면 N+1 이다(공유계약 L-1·L-2). 원시 행이 필요한 「전체 보기」는 기존 /measurements 페이지 조회를 그대로 쓴다. 근거: W-03-05 §3·§5-1 · omf-mes#192 문6
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    inspectionResultId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 항목별 요약 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * Format: date-time
+                             * @description 서버 집계 기준 시각(공유계약 L-5)
+                             */
+                            asOf: string;
+                            items: components["schemas"]["MeasurementItemSummary"][];
+                        };
+                    };
+                };
+                /** @description 결과 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -24842,6 +25040,8 @@ export interface paths {
         /**
          * 수집 채널 등록
          * @description 채널을 손으로 더하거나, 최근 수신 목록에서 골라 더한다.
+         *
+         *     ⭐유일 범위는 (설비 + 채널명 + 품목 조건 + 공정 조건)이다 — 조건이 비어 있을 수 있어 일반 UNIQUE 가 아니라 부분 유일 인덱스 형태다(공유계약 A-7 · COALESCE). 같은 채널에 조건이 다른 행이 여럿 설 수 있다 — 「품목 A 면 외경, 품목 B 면 두께」. 409 문구에 유일 범위를 담는다(A-1): 「이 설비의 <채널명> 채널에 품목·공정 조건이 같은 매핑이 이미 있습니다」. 근거: W-05-07 §5-3·§6 · omf-mes#203 질문1
          */
         post: {
             parameters: {
@@ -24941,6 +25141,10 @@ export interface paths {
         /**
          * 수집 채널 수정
          * @description 신호 이름·단위·검사 항목 연결을 고치고 사용 여부를 내린다. 지우는 길은 없다.
+         *
+         *     ⭐유일 범위는 (설비 + 채널명 + 품목 조건 + 공정 조건)이다 — 조건이 비어 있을 수 있어 일반 UNIQUE 가 아니라 부분 유일 인덱스 형태다(공유계약 A-7 · COALESCE). 같은 채널에 조건이 다른 행이 여럿 설 수 있다 — 「품목 A 면 외경, 품목 B 면 두께」. 409 문구에 유일 범위를 담는다(A-1): 「이 설비의 <채널명> 채널에 품목·공정 조건이 같은 매핑이 이미 있습니다」. 근거: W-05-07 §5-3·§6 · omf-mes#203 질문1
+         *
+         *     ⭐ isActive = false 의 뜻 — 매핑이 «적용되지 않는다». 이 채널로 들어오는 값은 저장되지 않고 버려진다(미매핑과 같아진다 · W-05-07 §5-2). ⛔ 「목록에서만 빠지고 값은 그대로 담긴다」가 아니다 — 이 행이 곧 「이 신호를 어느 검사항목에 담는가」의 규칙이라, 끄면 담을 곳이 정해지지 않는다. 이어 둔 검사 항목은 지워지지 않으며 같은 요청으로 다시 켤 수 있다 — 끄는 것도 켜는 것도 이 PUT 하나다(:activate 를 따로 두지 않는 이유). B-4 는 물리 삭제를 금지하는 조항이지 되살리기를 금지하지 않는다. 근거: omf-mes#203 질문4
          */
         put: {
             parameters: {
@@ -26409,6 +26613,11 @@ export interface components {
             isActive: boolean;
             /** @description 신재와 재생재를 가르는 MES 안쪽 구분. 기간계로 보내지 않는다 — 기간계에는 신재와 똑같이 처리한다. 근거: DR-006 확정 · M-01-12 §5-B. ⚠ 값 목록이 아직 확정되지 않았다 — 서버가 내려주는 선택지를 그대로 쓴다(공유계약 G-2) */
             mesCategoryCode?: string;
+            /**
+             * @description 개발품인가 — 참이면 생산 실적을 ERP 로 송신하지 않는다. ⭐ 「개발품 제외」의 판정 축은 «품목»이다(사용자 확정 2026-08-24 · omf-mes#70). 확정 문구(✓확정 QA #35 · WF06 S7)가 「생산 실적 송신 = 필수(개발품 제외)」라고만 적고 무엇이 개발품인지를 안 적어 품목 속성(화면 인벤토리)과 작업지시 유형(설계 결정 14)으로 갈려 읽히던 것을 품목으로 닫았다. ⛔ mdm.item 에 담을 컬럼이 아직 없다 — 데이터 모델 담당에게 통지했다(W-06-05 §8-1). 컬럼이 서기 전까지 서버는 이 값을 늘 거짓으로 내리고, W-06-12 는 그동안 전건 송신으로 물러나 있다(A-11). 근거: W-06-12 §4-B · W-06-05 §4-B
+             * @example false
+             */
+            developmentItem?: boolean;
         };
         /** @description 품목 MES 확장 속성 수정 요청. 원본 4열(itemCode·itemName·itemTypeCode·baseUomId)은 이 요청에 포함하지 않는다 — 항상 읽기 전용(ERP 수신본). 근거: W-06-05 §4-B·§5-1 */
         ItemUpdate: {
@@ -26433,6 +26642,11 @@ export interface components {
             openedShelfLifeHours?: number | null;
             /** @example true */
             isActive: boolean;
+            /**
+             * @description 개발품인가 — 참이면 생산 실적을 ERP 로 송신하지 않는다. ⭐ 「개발품 제외」의 판정 축은 «품목»이다(사용자 확정 2026-08-24 · omf-mes#70). 확정 문구(✓확정 QA #35 · WF06 S7)가 「생산 실적 송신 = 필수(개발품 제외)」라고만 적고 무엇이 개발품인지를 안 적어 품목 속성(화면 인벤토리)과 작업지시 유형(설계 결정 14)으로 갈려 읽히던 것을 품목으로 닫았다. ⛔ mdm.item 에 담을 컬럼이 아직 없다 — 데이터 모델 담당에게 통지했다(W-06-05 §8-1). 컬럼이 서기 전까지 서버는 이 값을 늘 거짓으로 내리고, W-06-12 는 그동안 전건 송신으로 물러나 있다(A-11). 근거: W-06-12 §4-B · W-06-05 §4-B
+             * @example false
+             */
+            developmentItem?: boolean;
         };
         ItemDetailResponse: {
             item: components["schemas"]["Item"];
@@ -29228,6 +29442,43 @@ export interface components {
              * @example 1001
              */
             interfaceDefinitionId?: number | null;
+        };
+        /** @description 교대 — mdm.shift. 공장 단위 정의(uq_shift = plant_id + shift_code). 근거: omf-mes#202 */
+        Shift: {
+            /** @example 1 */
+            shiftId: number;
+            /**
+             * @description 공장
+             * @example 1
+             */
+            plantId: number;
+            /**
+             * @description 교대 코드(공장 내 유일)
+             * @example D
+             */
+            shiftCode: string;
+            /**
+             * @description 교대명
+             * @example 주간
+             */
+            shiftName: string;
+            /**
+             * @description 시작 시각(time)
+             * @example 08:00:00
+             */
+            startTime: string;
+            /**
+             * @description 끝 시각(time)
+             * @example 20:00:00
+             */
+            endTime: string;
+            /**
+             * @description 자정을 넘는 교대인가 — 야간 교대의 끝 시각이 다음 날에 있다
+             * @example false
+             */
+            crossesMidnight: boolean;
+            /** @example true */
+            isActive: boolean;
         };
         /** @description 승인 요청. 사유는 비울 수 없다 — 데이터가 NOT NULL 로 강제하고, 결재함 목록에서 이 문장이 요약을 겸한다(approval_request 에 업무 값이 reason 하나뿐이다). 승인 진행 상태를 읽고 결재하는 경로는 app-공통 파일이 갖는다. 근거: W-01-11 §5-6 · W-01-06 §5-7 · W-01-13 §5-5 · 공유계약 J-4 · A-12 보강 */
         ApprovalRequestCreate: {
@@ -32875,7 +33126,7 @@ export interface components {
              */
             displayName: string;
             /**
-             * @description 대상을 여는 화면 ID. 규약이 정해지면 이 값만 바뀐다 — 프런트는 화면 ID → 경로 매핑 하나만 갖는다
+             * @description 대상을 여는 화면 ID. 규약이 정해지면 이 값만 바뀐다 — 프런트는 화면 ID → 경로 매핑 하나만 갖는다. ⭐ 첫 확정 규칙 — 특채·한도승인 유형의 요청은 서버가 screenId = "W-03-09"(특채·한도승인 승인 처리)를 내린다: 이 유형의 「원문」은 승인 조건 5축이고 그것을 보이는 화면이 W-03-09 다. 근거: omf-mes#194
              * @example W-01-06
              */
             screenId?: string;
@@ -34028,6 +34279,16 @@ export interface components {
             remarks?: string;
             /** @example 1 */
             versionNo?: number;
+            /**
+             * @description 파생 — 서버가 계산한다(공유계약 L-2). 이 P/O 아래 생성된 W/O 수. 목록 「W/O n/m」 열의 n. 근거: W-02-01 §3 · omf-mes#196
+             * @example 3
+             */
+            expandedWorkOrderCount?: number;
+            /**
+             * @description 파생 — 서버가 계산한다(공유계약 L-2). 계획 전건이 전개되면 생기는 W/O 총수(계획별 Routing 공정 수의 합). 목록 「W/O n/m」 열의 m — 0 이면 계획이 아직 없다. 근거: W-02-01 §3 · omf-mes#196
+             * @example 3
+             */
+            plannedWorkOrderCount?: number;
         };
         ProductionOrderAcknowledge: {
             /**
@@ -34179,11 +34440,15 @@ export interface components {
             routingId?: number;
             /**
              * Format: int64
+             * @description 명시적 null = 해제(비움으로 되돌림) · 필드 생략 = 기존 값 유지. 근거: omf-mes#200·#201
              * @example 1001
              */
-            plannedLineId?: number;
-            /** @example 값 */
-            remarks?: string;
+            plannedLineId?: number | null;
+            /**
+             * @description 명시적 null = 해제(비움으로 되돌림) · 필드 생략 = 기존 값 유지. 근거: omf-mes#200·#201
+             * @example 값
+             */
+            remarks?: string | null;
         };
         /** @description 수량은 다섯 컬럼 그대로 내려준다. 정본이 3원(양품/불량/손실)이라는 지적이 열려 있으나(omf-mes#60) 계약이 임의로 접지 않는다. */
         ProductionResult: {
@@ -34632,6 +34897,8 @@ export interface components {
             remarks?: string;
             /** @example 1 */
             versionNo?: number;
+            progress?: components["schemas"]["WorkOrderProgress"];
+            preIssuedLots?: components["schemas"]["PreIssuedLotSummary"];
         };
         /** @description 취소하면 선발행된 생산LOT 슬롯이 자동 폐번된다 — 화면이 저장 전에 그 파급을 말한다. 근거: DR-007 · 공유계약 G-19 */
         WorkOrderCancel: {
@@ -34642,12 +34909,15 @@ export interface components {
         };
         WorkOrderClose: {
             /**
-             * @description 잔량 처분 — 이월 / 소멸. 근거: W-02-05 §5
+             * @description 잔량 처분 — 이월 / 소멸. ⭐ 미달 판정일 때만 보낸다(조건부 필수). 정상·초과 마감에서는 이 칸을 «비운다» — 넘길 잔량도 없앨 잔량도 없어 두 값 중 어느 것도 뜻이 맞지 않는다. ⛔ 그래서 정상·초과용 세 번째 값을 두지 않았다 — 없는 업무 개념을 만들게 된다(공유계약 A-21 · R81 은 「미달 잔량 = 이월/소멸」 둘만 정했다 · ✓확정 QA #27). 평면적인 required 로는 「미달일 때만」을 적을 수 없어 목록에서 뺐고 서버가 판정과 대조해 검증한다. 근거: W-02-05 §5-2·§5-7 · omf-mes#209
              * @example CARRY_OVER
              * @enum {string}
              */
-            remainderDispositionCode: "CARRY_OVER" | "WRITE_OFF";
-            /** @example 값 */
+            remainderDispositionCode?: "CARRY_OVER" | "WRITE_OFF";
+            /**
+             * @description 미달·초과 사유 — work_order.completion_variance_reason_code 에 실린다. ⭐ 미달·초과일 때 조건부 필수이고 정상이면 비운다(W-02-05 §5-7 · R80)
+             * @example 값
+             */
             reasonCode?: string;
             /** @description 송신 항목 토글 결과 */
             erpSendItems?: string[];
@@ -34709,10 +34979,10 @@ export interface components {
         };
         WorkOrderRelease: {
             /**
-             * @description 선발행할 생산LOT 슬롯 수. 비우면 계획값 N. 근거: R26·R27
-             * @example 1
+             * @description LOT 크기 — 슬롯 하나의 계획 수량. 사용자가 화면에서 입력한다(품목별 기본값이 없어 매번 입력 — W-02-04 §8-2). 슬롯 수는 서버가 파생한다: N = 올림(지시수량 orderQty ÷ lotSize). 각 슬롯의 trace.lot.initial_qty 는 lotSize 로, 마지막 슬롯은 나머지가 있으면 나머지로 채운다 — 슬롯 계획 수량의 합이 지시수량과 같아야 마감 3분류(미달/정상/초과) 판정이 어긋나지 않는다. lotSize ≥ 지시수량이면 슬롯 1개(initial_qty = 지시수량 · 화면은 경고하되 막지 않는다 — W-02-04 §6). N 은 계획값이지 상한이 아니다 — 초과 생산은 추가 발번, 미달 슬롯은 마감 자동 폐번(R27). 근거: W-02-04 §4-B(initial_qty ← LOT 크기)·§5-3 · WF02 S4(N=양품목표÷LOT크기 ✓확정 2026-07-29) · omf-mes#206
+             * @example 500
              */
-            lotSlotCount?: number;
+            lotSize: number;
             /**
              * @description 전달사항. 공지 확인 이력이 별도로 받는다 — 근거: DR-005
              * @example 비고
@@ -34740,39 +35010,46 @@ export interface components {
             priorityNo?: number;
             /**
              * Format: date-time
+             * @description 명시적 null = 해제(비움으로 되돌림) · 필드 생략 = 기존 값 유지. 근거: omf-mes#200·#201
              * @example 2026-08-11T09:12:00+09:00
              */
-            plannedStartAt?: string;
+            plannedStartAt?: string | null;
             /**
              * Format: date-time
+             * @description 명시적 null = 해제(비움으로 되돌림) · 필드 생략 = 기존 값 유지. 근거: omf-mes#200·#201
              * @example 2026-08-11T09:12:00+09:00
              */
-            plannedEndAt?: string;
+            plannedEndAt?: string | null;
             /**
              * Format: int64
+             * @description 명시적 null = 해제(비움으로 되돌림) · 필드 생략 = 기존 값 유지. 근거: omf-mes#200·#201
              * @example 1001
              */
-            plannedEquipmentId?: number;
+            plannedEquipmentId?: number | null;
             /**
              * Format: int64
+             * @description 명시적 null = 해제(비움으로 되돌림) · 필드 생략 = 기존 값 유지. 근거: omf-mes#200·#201
              * @example 1001
              */
-            plannedMoldId?: number;
+            plannedMoldId?: number | null;
             /**
              * Format: int64
+             * @description 명시적 null = 해제(비움으로 되돌림) · 필드 생략 = 기존 값 유지. 근거: omf-mes#200·#201
              * @example 1001
              */
-            plannedShiftId?: number;
+            plannedShiftId?: number | null;
             /**
              * Format: int64
+             * @description 명시적 null = 해제(비움으로 되돌림) · 필드 생략 = 기존 값 유지. 근거: omf-mes#200·#201
              * @example 1001
              */
-            productionLineId?: number;
+            productionLineId?: number | null;
             /**
              * Format: int64
+             * @description 명시적 null = 해제(비움으로 되돌림) · 필드 생략 = 기존 값 유지. 근거: omf-mes#200·#201
              * @example 1001
              */
-            responsibleWorkerId?: number;
+            responsibleWorkerId?: number | null;
             /**
              * Format: int64
              * @example 1001
@@ -34788,8 +35065,11 @@ export interface components {
              * @example 1001
              */
             defaultScrapLocationId?: number;
-            /** @example 값 */
-            remarks?: string;
+            /**
+             * @description 명시적 null = 해제(비움으로 되돌림) · 필드 생략 = 기존 값 유지. 근거: omf-mes#200·#201
+             * @example 값
+             */
+            remarks?: string | null;
         };
         /** @description 구간 형 리소스다. 「진행 중」은 끝 시각의 부재로 판정한다. */
         WorkSession: {
@@ -34804,7 +35084,7 @@ export interface components {
              */
             workOrderId: number;
             /**
-             * @description 중단·재개마다 는다. uq(workOrderId, sessionNo). 근거: P-02-01 §5-4
+             * @description 그 작업지시에서 세션을 «새로 열 때마다» 는다(작업 완료·교대 마감으로 :end 한 뒤 다시 시작하는 경우). ⛔ 중단·재개로는 늘지 않는다 — 재개는 같은 세션에 RESUME 사건을 적재하고 status_code 를 되돌린다. uq(workOrderId, sessionNo). 근거: 공유계약 G-16 의 보완(구간을 닫는 사건과 구간 안의 사건) · P-02-01 §5-4
              * @example 1
              */
             sessionNo: number;
@@ -34835,13 +35115,19 @@ export interface components {
             startedAt: string;
             /**
              * Format: date-time
-             * @description 비어 있으면 진행 중이다 — 상태 컬럼을 두지 않는다. 근거: 공유계약 G-16
+             * @description 비어 있으면 진행 중이다. ⚠ 다만 이 표는 status_code 를 함께 갖는다 — 「진행 중」을 상태 컬럼으로 두지 않는 것이 원칙이나 이미 있는 구조라 화면은 둘 다 읽는다. 근거: 공유계약 G-16
              * @example 2026-08-11T09:12:00+09:00
              */
             endedAt?: string;
-            /** @example 값 */
+            /**
+             * @description 세션이 지금 어떤 상태인가 — 진행·중단·종료. START·RESUME 이 「진행」, STOP 이 「중단」, END 가 「종료」로 옮긴다. ⚠ 코드 문자열은 아직 확정되지 않았다 — 뜻과 식별자는 다른 산출물이다. 근거: 공유계약 A-25 · G-16
+             * @example 값
+             */
             statusCode: string;
-            /** @example 값 */
+            /**
+             * @description ⛔ 쓰지 않는다 — 비운다. 값 목록을 못 정한 것이 아니라 «비우기로 정했다». 근거: 공유계약 A-21 · A-25
+             * @example 값
+             */
             stopReasonCode?: string;
             /** @example 값 */
             remarks?: string;
@@ -34891,7 +35177,10 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             endedAt: string;
-            /** @example 값 */
+            /**
+             * @description ⛔ 쓰지 않는다 — 비운다. 값 목록을 못 정한 것이 아니라 «비우기로 정했다». 근거: 공유계약 A-21 · A-25
+             * @example 값
+             */
             stopReasonCode?: string;
         };
         WorkSessionEvent: {
@@ -35026,6 +35315,75 @@ export interface components {
              */
             conflictCause?: "user" | "erpSync" | "workerLease";
         };
+        /** @description 실적 누계 — 이 W/O 의 생산 실적 «전체» 합계다. 쪽(page)과 무관하며 정정(상쇄) 실적이 반영된 값이다. withProgress=true 일 때만 채워진다. 근거: W-02-05 §4-B · W-02-08 §4-A */
+        WorkOrderProgress: {
+            /**
+             * Format: double
+             * @description 양품 합계 — production_result.good_qty 의 합
+             * @example 2850
+             */
+            goodQty: number;
+            /**
+             * Format: double
+             * @description 불량 합계
+             * @example 120
+             */
+            defectQty?: number;
+            /**
+             * Format: double
+             * @description 보류 합계
+             * @example 0
+             */
+            holdQty?: number;
+            /**
+             * Format: double
+             * @description 스크랩 합계
+             * @example 20
+             */
+            scrapQty?: number;
+            /**
+             * Format: double
+             * @description 재작업 합계
+             * @example 10
+             */
+            reworkQty?: number;
+            /**
+             * Format: double
+             * @description 달성률 = 양품 합계 / 지시 수량. ⛔ 서버가 계산한다 — 화면이 각자 계산하면 조회 화면과 마감 화면의 값이 갈린다(W-02-08 §5-2). 분모는 지시 수량이다(R14 · R80)
+             * @example 0.95
+             */
+            achievementRate: number;
+            /**
+             * Format: double
+             * @description 지시 수량 − 양품 합계. 양수면 미달분, 음수면 초과분이다
+             * @example 150
+             */
+            varianceQty?: number;
+            /**
+             * @description 마감 3분류 판정 — 미달 · 정상 · 초과. ⛔ 서버가 판정한다(W-02-08 §5-2 — 조회와 마감이 다른 값을 내면 안 된다). ⚠ 「정상」의 폭(허용 오차)은 아직 미정이라 서버 정책이 정해지면 그 기준을 따른다 — 계약과 화면은 그대로다(W-02-05 §5-1·§8-1). 초과도 실적으로 인정한다(R81)
+             * @example UNDER
+             * @enum {string}
+             */
+            completionJudgmentCode: "UNDER" | "NORMAL" | "OVER";
+        };
+        /** @description 선발행 생산LOT 슬롯 집계 — 건수만 내린다. 목록은 넣지 않는다. 「그 슬롯들을 보여 달라」는 GET /trace/lots?workOrderId=… 로 간다. withPreIssuedLots=true 일 때만 채워진다. 근거: W-02-05 §3·§5-3 */
+        PreIssuedLotSummary: {
+            /**
+             * @description 선발행된 슬롯 전체
+             * @example 6
+             */
+            slotCount: number;
+            /**
+             * @description 실적이 붙은 슬롯 — 마감 후 유지된다
+             * @example 5
+             */
+            withResultCount: number;
+            /**
+             * @description 실적이 없는 슬롯 — 마감 시점에 자동 폐번 대상이다(R82 · 마감 시점 «전용»이라 취소 경로는 해당 없다)
+             * @example 1
+             */
+            withoutResultCount: number;
+        };
         /** @description 특채 — 단순 판정이 아니라 사용 범위 통제 데이터다. ⛔ 생성 경로를 두지 않는다(요청을 만드는 화면이 미정 · W-03-09 §8-4). ⛔ 승인·반려는 app-공통 계약이다. ⛔ 조건 수정을 두지 않는다 — 결재는 예/아니오다(공유계약 J-10) */
         Concession: {
             /**
@@ -35119,6 +35477,12 @@ export interface components {
              * @example 값
              */
             groupBy: string;
+            /**
+             * Format: date-time
+             * @description 서버 집계 기준 시각 — 화면이 「기준 HH:MM」 으로 보인다(공유계약 L-5). 브라우저 수신 시각이 아니다. 근거: omf-mes#192 문3
+             * @example 2026-08-24T09:12:00+09:00
+             */
+            asOf: string;
         };
         DefectDistributionNode: {
             /**
@@ -35177,6 +35541,12 @@ export interface components {
         };
         DefectRateTrend: {
             points: components["schemas"]["DefectRatePoint"][];
+            /**
+             * Format: date-time
+             * @description 서버 집계 기준 시각 — 화면이 「기준 HH:MM」 으로 보인다(공유계약 L-5). 브라우저 수신 시각이 아니다. 근거: omf-mes#192 문3
+             * @example 2026-08-24T09:12:00+09:00
+             */
+            asOf: string;
         };
         /** @description 불량 실적. ⛔ 등록 경로를 두지 않는다 — 03 화면 7장에 불량코드 입력이 0건이다. 만드는 화면은 M-02-02(#83 로 막힘) · P-04-03(04 계약 없음)이다. */
         DefectRecord: {
@@ -35641,6 +36011,21 @@ export interface components {
             remarks?: string;
             /** @example 1 */
             versionNo?: number;
+            /**
+             * @description 파생 — 서버가 lotId 를 풀어 내린다(표시용 · 행별 상세 조회 없이 목록을 그린다). 근거: omf-mes#192 문5
+             * @example LOT-SAMPLE-0001
+             */
+            lotNo?: string | null;
+            /**
+             * @description 파생 — 검사가 귀속된 공정. 현장검사만 직접 컬럼이고 PQC·OQC 는 서버가 2단 조인으로 잇는다. 근거: omf-mes#192 문5
+             * @example 3
+             */
+            processId?: number | null;
+            /**
+             * @description 파생 — processId 의 표시명. 근거: omf-mes#192 문5
+             * @example 사출
+             */
+            processName?: string | null;
         };
         /** @description 작성중 → 확정. ⭐ 이 순간 Lot Status 가 전이한다 — 독립 경로를 두지 않는다(결정 10 · B-8) */
         InspectionResultConfirm: {
@@ -35788,6 +36173,12 @@ export interface components {
              * @example true
              */
             finalRoundOnly?: boolean;
+            /**
+             * Format: date-time
+             * @description 서버 집계 기준 시각 — 화면이 「기준 HH:MM」 으로 보인다(공유계약 L-5). 브라우저 수신 시각이 아니다. 근거: omf-mes#192 문3
+             * @example 2026-08-24T09:12:00+09:00
+             */
+            asOf: string;
         };
         /** @description ⛔ 헤더 If-Match 를 쓰지 않는다 — 여러 LOT 을 한 트랜잭션으로 걸어 토큰이 여럿이다. lots[].versionNo 로 싣고 하나라도 어긋나면 전체를 거부한다. 근거: 3단계 §4-2 */
         LotHoldCreate: {
@@ -35928,6 +36319,11 @@ export interface components {
              */
             lotStatusCode: string;
             /**
+             * @description 낙관적 잠금 토큰(저장할 때 판을 대조해 남이 먼저 고쳤는지 잡는다). ⭐ 대량 보류(POST /quality/lot-holds)의 lots[].versionNo 에 그대로 싣는다 — 여러 LOT 을 한 트랜잭션으로 걸어 토큰이 여럿이라 헤더 If-Match 하나로는 표현할 수 없고, 하나라도 어긋나면 전체를 거부한다(W-03-03 §5-1). ⛔ 화면에 «표시»하지 않는다 — 필드표·폼·목록 열에 드러내지 않는다(공유계약 A-4). 전달은 막지 않는다는 것이 그 조항의 2026-08-03 확정이고, 헤더 ETag 가 이미 같은 값을 전달하고 있다. 근거: omf-mes#190 질문3
+             * @example 3
+             */
+            versionNo?: number;
+            /**
              * Format: int64
              * @example 1001
              */
@@ -36009,6 +36405,12 @@ export interface components {
             /** @example true */
             allowed: boolean;
             /**
+             * @description 이 전이를 «어느 쓰기 경로»로 실행하는가. RELEASE_HOLD = POST /quality/lot-holds/{lotHoldId}:release (재판정 — 합격이면 정상 C7, 불합격이면 불량 C8). CREATE_HOLD = POST /quality/lot-holds (새 보류를 건다 — 의심자재 등록 C10, 클레임·리콜 재Hold C9). ⭐ 목표 상태만으로는 가를 수 없다 — 「불량」이 두 경로에서 도달한다(C8 재판정 불합격 · C9 재Hold). 화면이 현재 상태로 추론하면 그 분기가 곧 전이표가 되어 전이가 하나 늘 때마다 세 셸을 다시 배포해야 한다(공유계약 G-8 — 전이 규칙을 화면이 갖지 않는다). ⛔ 어느 보류를 풀지는 여기서 정하지 않는다 — 열린 보류가 여럿일 수 있어 사용자가 GET /quality/lot-holds?lotId=…&open=true 에서 고른다. 근거: W-03-02 §5-1 · omf-mes#190 질문2
+             * @example CREATE_HOLD
+             * @enum {string}
+             */
+            actionCode: "RELEASE_HOLD" | "CREATE_HOLD";
+            /**
              * @description 갈 수 없으면 화면이 그대로 보일 문장을 담는다. 근거: 공유계약 G-3
              * @example 값
              */
@@ -36069,6 +36471,64 @@ export interface components {
              * @enum {string}
              */
             conflictCause?: "user" | "erpSync" | "workerLease";
+        };
+        /** @description 검사 항목 하나의 측정 요약 — 드로어 「① 외관 30/30 합격 · ⛔ 2건 상한 초과 (12.07 · 12.09) · ⚠ 캘리퍼 교정 만료」 행을 그리는 데 필요한 전부. 근거: W-03-05 §3 · omf-mes#192 문6 */
+        MeasurementItemSummary: {
+            /** @example 12 */
+            inspectionItemSpecId: number;
+            /**
+             * @description 항목 표시명
+             * @example 치수 A
+             */
+            itemName: string;
+            /**
+             * @description 규격 표시 문자열 — 하한·상한·단위를 서버가 조립한다
+             * @example 11.95 ~ 12.05 mm
+             */
+            specText?: string | null;
+            /**
+             * @description 측정 수
+             * @example 30
+             */
+            measuredCount: number;
+            /**
+             * @description 합격 수
+             * @example 28
+             */
+            acceptedCount: number;
+            /**
+             * @description 불합격 수
+             * @example 2
+             */
+            rejectedCount: number;
+            /**
+             * @description 미측정 수 — 값 세 칸이 전부 NULL 인 행(W-03-05 §6 「미측정」)
+             * @example 0
+             */
+            unmeasuredCount?: number;
+            /**
+             * @description 규격 밖 측정값 예시 — 최대 10건까지만 내린다(넘치면 화면은 「외 N건」으로 보인다 · 잘림을 명시). 근거: omf-mes#192 문6
+             * @example [
+             *       "12.07",
+             *       "12.09"
+             *     ]
+             */
+            outOfSpecValues?: string[];
+            /**
+             * @description 측정 장비 표시명
+             * @example 캘리퍼 CAL-03
+             */
+            equipmentName?: string | null;
+            /**
+             * @description 측정 장비의 검교정 만료 여부 — 참이면 화면이 ⚠ 로 보인다(W-03-05 §5-6 분리 보기 근거)
+             * @example true
+             */
+            equipmentCalibrationExpired?: boolean | null;
+            /**
+             * @description 차기 검교정 예정일 — 만료 경고 문구용
+             * @example 2026-07-28
+             */
+            equipmentCalibrationDueDate?: string | null;
         };
         /** @description 판정 의뢰. ⭐ 이 화면은 판정하지 않는다 — 재작업/폐기 판정은 전 도메인에서 03 품질 소관으로 통일돼 있다(F04 정합 확정 2026-07-07 · W-04-07 §5-1). 받는 화면은 W-03-10 이고 처분 결정 자원은 품질 계약이 소유한다(DR-008 확정 3-A) */
         DispositionRequest: {
@@ -37469,6 +37929,59 @@ export interface components {
              * @example 1001
              */
             inspectionItemId?: number | null;
+            /**
+             * Format: int64
+             * @description 품목 조건 — 비면 「전체」다(이 설비의 이 채널은 언제나 그 항목으로 간다). 지정하면 그 품목을 생산할 때만 적용된다. 유일 범위를 이룬다. 근거: W-05-07 §5-3 · omf-mes#203
+             * @example 1001
+             */
+            itemId?: number | null;
+            /**
+             * @description 품목 조건의 표시용 코드 — 비면 「전체」
+             * @example ABC-123
+             */
+            itemCode?: string | null;
+            /**
+             * Format: int64
+             * @description 공정 조건 — 비면 「전체」다. 지정하면 그 공정에서만 적용된다. 유일 범위를 이룬다. 근거: W-05-07 §5-3 · omf-mes#203
+             * @example 1001
+             */
+            processId?: number | null;
+            /**
+             * @description 공정 조건의 표시용 코드 — 비면 「전체」
+             * @example PRS
+             */
+            processCode?: string | null;
+            /**
+             * @description 연결된 검사 항목의 이름. inspectionItemId 가 비면 함께 빈다(「미매핑」). ⭐ 이 값이 없으면 화면이 「연결됨」까지만 말할 수 있어 무엇에 이었는지 보일 수 없다. 근거: W-05-07 §4 · omf-mes#203 질문2
+             * @example 사이클타임
+             */
+            inspectionItemName?: string | null;
+            /**
+             * @description 연결된 검사 항목의 코드
+             * @example CYCLE_TIME
+             */
+            inspectionItemCode?: string | null;
+            /**
+             * @description 연결된 검사 항목의 «저장» 단위. 이 행의 unitCode(수신값의 단위)와 다르면 화면이 경고한다 — ⛔ 자동 변환하지 않는다(W-05-07 §5-5 · A-8). 이 값이 없으면 그 경고를 판정할 수 없다
+             * @example SECOND
+             */
+            inspectionItemUnitCode?: string | null;
+            /**
+             * Format: int64
+             * @description 연결된 검사 항목이 속한 검사기준 버전(Rev). 검사기준 Rev 가 오르면 매핑은 옛 항목을 가리킨 채 남는다(W-05-07 §5-2)
+             * @example 1001
+             */
+            inspectionPlanVersionId?: number | null;
+            /**
+             * @description 그 버전의 Rev 번호 — 경고 문구에 함께 보인다
+             * @example 2
+             */
+            inspectionPlanVersion?: number | null;
+            /**
+             * @description 연결된 검사 항목이 «최신» Rev 의 것인가. ⛔ 서버가 판정한다 — 화면이 버전을 따로 불러 statusCode 를 해석하면 판정 규칙을 화면이 소유하게 된다. 거짓이면 화면이 「이 검사항목은 이전 Rev 입니다」를 경고한다. ⛔ 자동으로 옮기지 않는다 — 새 Rev 의 어느 항목에 대응하는지 기계가 모른다(W-05-07 §6·§8-2). inspectionItemId 가 비면 함께 빈다
+             * @example true
+             */
+            inspectionItemIsCurrentRevision?: boolean | null;
             /** @example true */
             isActive: boolean;
         };
@@ -37489,6 +38002,18 @@ export interface components {
              * @example 1001
              */
             inspectionItemId?: number | null;
+            /**
+             * Format: int64
+             * @description 품목 조건 — 비면 「전체」다(이 설비의 이 채널은 언제나 그 항목으로 간다). 지정하면 그 품목을 생산할 때만 적용된다. 유일 범위를 이룬다. 근거: W-05-07 §5-3 · omf-mes#203
+             * @example 1001
+             */
+            itemId?: number | null;
+            /**
+             * Format: int64
+             * @description 공정 조건 — 비면 「전체」다. 지정하면 그 공정에서만 적용된다. 유일 범위를 이룬다. 근거: W-05-07 §5-3 · omf-mes#203
+             * @example 1001
+             */
+            processId?: number | null;
         };
         CollectionChannelUpdate: {
             /** @example 히터 온도 */
@@ -37500,6 +38025,18 @@ export interface components {
              * @example 1001
              */
             inspectionItemId?: number | null;
+            /**
+             * Format: int64
+             * @description 품목 조건 — 비면 「전체」다(이 설비의 이 채널은 언제나 그 항목으로 간다). 지정하면 그 품목을 생산할 때만 적용된다. 유일 범위를 이룬다. 근거: W-05-07 §5-3 · omf-mes#203
+             * @example 1001
+             */
+            itemId?: number | null;
+            /**
+             * Format: int64
+             * @description 공정 조건 — 비면 「전체」다. 지정하면 그 공정에서만 적용된다. 유일 범위를 이룬다. 근거: W-05-07 §5-3 · omf-mes#203
+             * @example 1001
+             */
+            processId?: number | null;
             /** @example true */
             isActive?: boolean;
         };

@@ -17,8 +17,10 @@ import {
   policyKeys,
   useBusinessUnitLookup,
   useEnabledPolicies,
+  policyDetailPath,
   useEffectivePolicy,
   useItemLookup,
+  useOperationPolicy,
   usePlantLookup,
   useProcessLookup,
   useRatioPolicies,
@@ -119,12 +121,14 @@ export const ShotConversionScreen = () => {
   const businessUnits = useBusinessUnitLookup();
 
   /*
-   * ⛔ **창을 열어도 상세를 부르지 않는다.** 형제 화면들이 상세를 부르는 이유는 **잠금
-   * 토큰**을 얻기 위해서인데, 이 자원은 `ETag` 를 내리지 않고 수정도 `If-Match` 를 받지
-   * 않는다(설계 질의 `omf-mes#210`). 수정 본문이 요구하는 값은 목록 행에 다 있다 —
-   * 얻을 것이 없는 조회를 걸어 두면 다음 사람이 「무엇을 기다리는가」를 되짚게 된다.
+   * ⭐ **창을 열면 상세를 부른다 — 잠금 토큰을 얻기 위해서다.**
+   *
+   * ②에서는 이 조회를 두지 않았다. 계약에 `ETag` 도 `If-Match` 도 없어 **얻을 것이 없었기**
+   * 때문이다. 설계 회신으로 형제 자원과 같은 형태가 되어(`omf-mes#210` · 통지 client#387)
+   * 다시 필요해졌다 — **그때 없앤 판단이 틀렸던 것이 아니라 전제가 바뀌었다.**
    */
   const editingId = dialog?.mode === 'edit' ? dialog.operationPolicyId : null;
+  const editingDetail = useOperationPolicy(editingId);
 
   const rows = ratios.data?.items ?? NO_POLICIES;
 
@@ -173,11 +177,15 @@ export const ShotConversionScreen = () => {
         : client.PUT('/app/operation-policies/{operationPolicyId}', {
             params: {
               path: { operationPolicyId: editingId ?? 0 },
-              header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+              header: {
+                'Idempotency-Key': headers['Idempotency-Key'],
+                'If-Match': headers['If-Match'] ?? '',
+              },
             },
             body: toRatioUpdate(formValues),
           }),
-    etagPath: null,
+    /* 잠금 토큰은 «상세» 경로에 보관돼 있다. 등록에는 낙관적 잠금이 없다. */
+    etagPath: editingId === null ? null : policyDetailPath(editingId),
     invalidateKeys: [policyKeys.all],
     knownFields: RATIO_FORM_FIELDS,
     onSuccess: () => {
@@ -251,12 +259,15 @@ export const ShotConversionScreen = () => {
       return client.PUT('/app/operation-policies/{operationPolicyId}', {
         params: {
           path: { operationPolicyId: ending.policy.operationPolicyId },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
         },
         body: toRatioUpdate({ ...formValuesFrom(ending.policy), effectiveTo: endOn }),
       });
     },
-    etagPath: null,
+    etagPath: ending === null ? null : policyDetailPath(ending.policy.operationPolicyId),
     invalidateKeys: [policyKeys.all],
     /* 대응하는 입력칸이 하나뿐이고 그 오류는 화면이 먼저 잡는다 — 서버 것은 배너로 올린다. */
     knownFields: [],
@@ -327,6 +338,16 @@ export const ShotConversionScreen = () => {
 
   const enabledRows = enabledPolicies.data?.items ?? NO_POLICIES;
   const enabled = enabledState(enabledRows);
+  const enabledTarget = globalPolicy(enabledRows);
+
+  /*
+   * ⭐ **스위치의 잠금 토큰은 «미리» 받아 둔다.** 창이 없는 조작이라 누른 뒤에 받을 틈이
+   * 없다 — 정한 적이 있는 정책이 보이면 그때 상세를 불러 토큰을 확보한다.
+   */
+  const enabledDetail = useOperationPolicy(enabledTarget?.operationPolicyId ?? null);
+
+  /* 끝낼 대상의 잠금 토큰. 창이 열려 있는 동안만 받는다. */
+  const endingDetail = useOperationPolicy(ending?.policy.operationPolicyId ?? null);
 
   /**
    * 환산 사용 여부를 바꾸는 쓰기.
@@ -359,7 +380,10 @@ export const ShotConversionScreen = () => {
       }
 
       return client.PUT('/app/operation-policies/{operationPolicyId}', {
-        params: { path: { operationPolicyId: current.operationPolicyId }, header },
+        params: {
+          path: { operationPolicyId: current.operationPolicyId },
+          header: { ...header, 'If-Match': headers['If-Match'] ?? '' },
+        },
         body: {
           valueBoolean: next,
           valueText: null,
@@ -369,7 +393,8 @@ export const ShotConversionScreen = () => {
         },
       });
     },
-    etagPath: null,
+    /* 새로 만들 때는 잠글 것이 없다 — 고칠 때만 토큰을 꺼낸다. */
+    etagPath: enabledTarget === null ? null : policyDetailPath(enabledTarget.operationPolicyId),
     invalidateKeys: [policyKeys.all],
     knownFields: [],
     onSuccess: () => {
@@ -398,7 +423,17 @@ export const ShotConversionScreen = () => {
       <EnabledPane
         state={enabled}
         isLoading={enabledPolicies.isPending}
-        isSaving={enabledWrite.isSaving}
+        /*
+         * ⛔ **토큰을 «받았을 때»만 연다.** 창이 없는 조작이라 「잠시 뒤 다시 저장하세요」로
+         * 되돌아오면 사용자는 무엇을 기다리는지 알 수 없다 — 아예 누르지 못하게 한다.
+         *
+         * ⚠ **「불러오는 중인가」가 아니라 「받았는가」로 잰다.** 상세가 실패로 끝나면
+         * 불러오는 중은 아니지만 **토큰은 여전히 없다** — 그때 열어 두면 눌러도 저장이
+         * 시작조차 되지 않는다. 정한 적이 없으면(새로 만드는 길) 토큰이 필요 없어 잠그지 않는다.
+         */
+        isSaving={
+          enabledWrite.isSaving || (enabledTarget !== null && enabledDetail.data === undefined)
+        }
         /*
          * ⚠ **기준일로 좁힌 목록으로는 세지 않는다** — 그 날에 유효한 것이 없다고 정책이
          * 없는 것은 아니다. 셀 수 없을 때는 `null` 을 주고, 받는 쪽이 **모르면 경고하지
@@ -406,7 +441,12 @@ export const ShotConversionScreen = () => {
          */
         ratioCount={filters.effectiveOn === '' ? rows.length : null}
         onChange={(next) => enabledWrite.write(next)}
-        banner={<SaveErrorBanner error={enabledWrite.error} />}
+        banner={
+          <SaveErrorBanner
+            error={enabledWrite.error}
+            onReload={enabledTarget === null ? undefined : () => void enabledDetail.refetch()}
+          />
+        }
         loadError={
           enabledPolicies.isError ? (
             <LoadErrorBanner
@@ -469,7 +509,9 @@ export const ShotConversionScreen = () => {
           }}
           dateError={endError}
           isSaving={endWrite.isSaving}
-          banner={<SaveErrorBanner error={endWrite.error} />}
+          banner={
+            <SaveErrorBanner error={endWrite.error} onReload={() => void endingDetail.refetch()} />
+          }
           onClose={closeEnd}
           onConfirm={confirmEnd}
         />
@@ -496,7 +538,19 @@ export const ShotConversionScreen = () => {
           }}
           onChangeScope={changeScope}
           fieldErrors={fieldErrors}
-          banner={<SaveErrorBanner error={write.error} />}
+          banner={
+            <SaveErrorBanner
+              error={write.error}
+              /*
+               * ⭐ **충돌은 다시 불러와야 풀린다.** ②에서 이 자리를 비운 것은 계약에 잠금이
+               * 없어 **눌러도 아무 일도 일어나지 않았기** 때문이다(G-23). 잠금이 들어와
+               * 다시 불러오는 것이 실제로 길을 여므로 되살린다(통지 client#387).
+               *
+               * ⛔ 등록에는 불러올 토큰 자체가 없다 — 그때는 두지 않는다.
+               */
+              onReload={editingId === null ? undefined : () => void editingDetail.refetch()}
+            />
+          }
           scopeOptions={scopeOptions}
           scopeText={dialog.mode === 'edit' ? dialog.scopeLabel : ''}
           optionsNote={optionsNote ?? undefined}
