@@ -10,14 +10,18 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  POLICY_ETAG,
   businessUnitsResponse,
   effectiveResponse,
   enabledListResponse,
+  isPolicyDetailPath,
   itemsResponse,
-  moldListResponse,
   makeEnabled,
+  makeRatio,
+  moldListResponse,
   plantsResponse,
   policyCodeOf,
+  policyIdOf,
   processesResponse,
   ratioItems,
   ratioListResponse,
@@ -39,6 +43,15 @@ interface Options {
 }
 
 const routes = (options: Options): StubRoute[] => [
+  /*
+   * ⭐ **상세 조회가 잠금 토큰을 준다** — 이 응답의 `ETag` 가 다음 쓰기의 `If-Match` 로 나간다.
+   * 단일 행 경로라 두 목록 조회와 갈라야 한다.
+   */
+  {
+    match: (request) => request.method === 'GET' && isPolicyDetailPath(request),
+    respond: (request) =>
+      jsonResponse(makeRatio(policyIdOf(request), 0.25), { headers: { ETag: POLICY_ETAG } }),
+  },
   {
     match: (request) =>
       request.method !== 'GET' &&
@@ -193,7 +206,8 @@ describe('W-05-01 ④ — 켜 두었는데 비율이 없으면', () => {
     renderScreen({ enabled: [makeEnabled(8001, true)], ratios: [] });
 
     expect(await within(pane()).findByText(te.noRatioWarning)).toBeInTheDocument();
-    expect(toggle()).toBeEnabled();
+    /* 잠금 토큰을 받고 나면 열린다 — 비율이 없다는 것이 막는 이유가 되지 않는다. */
+    await waitFor(() => expect(toggle()).toBeEnabled());
   });
 
   it('비율이 있으면 알리지 않는다', async () => {
@@ -339,5 +353,89 @@ describe('W-05-01 ④ — 조회가 실패하면', () => {
     await within(pane()).findByText(messages.httpError.loadTitle);
 
     expect(within(pane()).queryByRole('switch')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * ⭐ **스위치도 잠금 토큰을 싣는다** — 단, 새로 만드는 길에는 잠글 것이 없다.
+ *
+ * ⛔ **창이 없는 조작이라 토큰을 «미리» 받아 둔다.** 누른 뒤에 받을 틈이 없고, 못 받은 채
+ * 누르면 「잠시 뒤 다시 저장하세요」로 되돌아와 사용자가 무엇을 기다리는지 알 수 없다.
+ */
+describe('W-05-01 ④ — 낙관적 잠금', () => {
+  it('정한 적이 있으면 잠금 토큰을 싣는다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+
+    renderScreen({ writes, enabled: [makeEnabled(8001, true)] });
+    await waitFor(() => expect(toggle()).toBeEnabled());
+
+    await user.click(toggle());
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(onlyWrite(writes).headers.get('If-Match')).toBe(POLICY_ETAG);
+  });
+
+  /** 새로 만드는 길에는 잠글 것이 없다 — 없는 헤더를 지어내 보내지 않는다. */
+  it('정한 적이 없으면 잠금 토큰을 싣지 않는다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+
+    renderScreen({ writes, enabled: [] });
+    await within(pane()).findByText(te.notSetTitle);
+
+    await user.click(toggle());
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(onlyWrite(writes).headers.get('If-Match')).toBeNull();
+  });
+
+  /** ⭐ 충돌은 다시 불러와야 풀린다 — 스위치도 그 자리를 갖는다. */
+  it('충돌하면 다시 불러올 자리를 준다', async () => {
+    const user = userEvent.setup();
+    const custom: StubRoute[] = [
+      {
+        match: (request) =>
+          request.method === 'PUT' &&
+          new URL(request.url).pathname.startsWith('/app/operation-policies/'),
+        respond: () =>
+          jsonResponse(
+            { conflictCause: 'user', message: '다른 사용자가 먼저 고쳤습니다.' },
+            { status: 409 },
+          ),
+      },
+      ...routes({ enabled: [makeEnabled(8001, true)] }),
+    ];
+
+    renderWithProviders(<ShotConversionScreen />, { fetch: createStubFetch(custom) });
+    await waitFor(() => expect(toggle()).toBeEnabled());
+
+    await user.click(toggle());
+
+    expect(
+      await within(pane()).findByRole('button', { name: messages.conflict.reloadAction }),
+    ).toBeInTheDocument();
+  });
+
+  /** ⛔ 토큰을 못 받았으면 아예 누르지 못하게 한다 — 「모르면 잠근다」. */
+  it('토큰을 받지 못하면 스위치가 잠긴다', async () => {
+    const custom: StubRoute[] = [
+      {
+        match: (request) => request.method === 'GET' && isPolicyDetailPath(request),
+        respond: () => jsonResponse({ errors: [] }, { status: 500 }),
+      },
+      ...routes({ enabled: [makeEnabled(8001, true)] }),
+    ];
+
+    renderWithProviders(<ShotConversionScreen />, { fetch: createStubFetch(custom) });
+
+    await waitFor(() => expect(toggle()).toBeInTheDocument());
+    /*
+     * ⚠ **조회가 끝나기를 기다린 «뒤»에 잰다.** 실패로 끝나면 「불러오는 중」은 거짓이 되지만
+     * **토큰은 여전히 없다** — 가라앉기 전에 재면 두 판정이 같아 보여 감지기가 헛돈다.
+     */
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(toggle()).toBeDisabled();
   });
 });

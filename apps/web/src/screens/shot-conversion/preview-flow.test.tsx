@@ -10,14 +10,18 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  POLICY_ETAG,
   businessUnitsResponse,
   effectiveResponse,
   enabledListResponse,
+  isPolicyDetailPath,
   itemsResponse,
   makeMold,
+  makeRatio,
   moldListResponse,
   plantsResponse,
   policyCodeOf,
+  policyIdOf,
   processesResponse,
   ratioItems,
   ratioListResponse,
@@ -38,6 +42,15 @@ interface Options {
 }
 
 const routes = (options: Options): StubRoute[] => [
+  /*
+   * ⭐ **상세 조회가 잠금 토큰을 준다** — 이 응답의 `ETag` 가 다음 쓰기의 `If-Match` 로 나간다.
+   * 단일 행 경로라 두 목록 조회와 갈라야 한다.
+   */
+  {
+    match: (request) => request.method === 'GET' && isPolicyDetailPath(request),
+    respond: (request) =>
+      jsonResponse(makeRatio(policyIdOf(request), 0.25), { headers: { ETag: POLICY_ETAG } }),
+  },
   {
     match: (request) => isPath(request, '/app/operation-policies/effective'),
     respond: (request) => {

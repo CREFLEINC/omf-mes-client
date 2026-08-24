@@ -10,14 +10,17 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  POLICY_ETAG,
   businessUnitsResponse,
   effectiveResponse,
   enabledListResponse,
+  isPolicyDetailPath,
   itemsResponse,
-  moldListResponse,
   makeRatio,
+  moldListResponse,
   plantsResponse,
   policyCodeOf,
+  policyIdOf,
   processesResponse,
   ratioItems,
   ratioListResponse,
@@ -61,6 +64,15 @@ const lookupBody = (path: string, options: Options) => {
 };
 
 const routes = (options: Options): StubRoute[] => [
+  /*
+   * ⭐ **상세 조회가 잠금 토큰을 준다** — 이 응답의 `ETag` 가 다음 쓰기의 `If-Match` 로 나간다.
+   * 단일 행 경로라 두 목록 조회와 갈라야 한다.
+   */
+  {
+    match: (request) => request.method === 'GET' && isPolicyDetailPath(request),
+    respond: (request) =>
+      jsonResponse(makeRatio(policyIdOf(request), 0.25), { headers: { ETag: POLICY_ETAG } }),
+  },
   /*
    * ⭐ **두 조회가 같은 경로를 쓴다** — 정책 코드로 갈라 주지 않으면 사용 여부 조회가
    * 비율 정책을 받아 「아직 정하지 않음」이 엉뚱한 근거로 서고, 실패도 함께 난다.
