@@ -7,6 +7,11 @@ import type { components } from '@omf-mes/api-client';
 
 export type EquipmentGroup = components['schemas']['EquipmentGroup'];
 export type Equipment = components['schemas']['Equipment'];
+/** 점검 항목 마스터의 한 줄. 부여와 달리 주기를 갖지 않는다 — 주기는 부여의 것이다(B-6). */
+export type EquipmentInspectionItem = components['schemas']['EquipmentInspectionItem'];
+/** 부여된 점검 항목 — 마스터의 값에 **주기**가 붙은 모양이다. */
+export type InspectionItemAssignment = components['schemas']['InspectionItemAssignment'];
+export type InspectionItemAssignmentInput = components['schemas']['InspectionItemAssignmentInput'];
 
 /**
  * 설비 그룹 폼의 값.
@@ -84,4 +89,21 @@ export interface LookupEntry {
 export interface LookupEntries {
   plants: LookupEntry[];
   processes: LookupEntry[];
+}
+
+/**
+ * 부여 창이 들고 있는 한 줄.
+ *
+ * ⭐ **수를 문자열로 든다** — 사용자가 치는 칸이라 「3」으로 가는 도중 「」·「3.」 같은 중간
+ * 상태를 지난다. 숫자로 들면 그 중간이 표현되지 않아 칸이 제멋대로 튄다.
+ */
+export interface AssignmentDraftRow {
+  equipmentInspectionItemId: number;
+  itemCode: string;
+  itemName: string;
+  inspectionTypeCode: string;
+  cycleTypeCode: string;
+  cycleInterval: string;
+  cycleBaseDate: string;
+  isActive: boolean;
 }

@@ -22,6 +22,13 @@ export const CODE_GROUPS = {
    * MAINTENANCE). 「이름이 다르면 가른다」가 아니다 — 그러면 어휘가 두 벌 생긴다(공유계약 G-32).
    */
   cycleType: 'CYCLE_TYPE',
+  /**
+   * 설비 점검 유형 — 일상(`DAILY`)·정기(`MONTHLY`)·보전(`MAINTENANCE`)(설계 `omf-mes#186`).
+   *
+   * ⛔ **품질 검사의 유형과 «같은 이름 다른 값»이다**(공유계약 G-32 · B-28 의 값 집합 판).
+   * 합치면 설비 점검 선택칸에 「수입검사」가 뜬다.
+   */
+  equipmentInspectionType: 'EQUIPMENT_INSPECTION_TYPE',
 } as const;
 
 /**

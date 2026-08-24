@@ -4,7 +4,14 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { IN_SERVICE_STATUS_CODE, type CodeValue } from './code-options';
 import { runRequest } from '../../patterns/request';
-import type { EquipmentFilters, GroupFilters, LookupEntries, LookupEntry } from './types';
+import type {
+  EquipmentFilters,
+  EquipmentInspectionItem,
+  GroupFilters,
+  InspectionItemAssignment,
+  LookupEntries,
+  LookupEntry,
+} from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type EquipmentGroup = components['schemas']['EquipmentGroup'];
@@ -326,4 +333,63 @@ export const useLookupOptions = (): LookupResult => {
     isError: plants.isError || processes.isError,
     isLoading: plants.isPending || processes.isPending,
   };
+};
+
+export const inspectionKeys = {
+  all: ['equipment-inspection-items'] as const,
+  master: (q: string) => ['equipment-inspection-items', 'master', q] as const,
+  groupAssignments: (equipmentGroupId: number) =>
+    ['equipment-inspection-items', 'group', equipmentGroupId] as const,
+};
+
+/**
+ * 부여의 ETag 가 보관된 경로. **부여는 그룹 상세와 «다른» 자원이다** — 그룹의 토큰으로
+ * 부여를 저장하면 서로의 변경을 못 본 채 덮어쓴다.
+ */
+export const groupInspectionPath = (equipmentGroupId: number): string =>
+  `/mdm/equipment-groups/${String(equipmentGroupId)}/inspection-items`;
+
+/**
+ * 점검 항목 **마스터** 목록 — 부여 창에서 고를 것을 채운다.
+ *
+ * ⛔ **사용 중지된 항목을 고르게 두지 않는다** — `includeInactive` 를 보내지 않아 서버가
+ * 살아 있는 것만 준다. 이미 부여된 줄이 나중에 사용 중지되면 그 줄은 부여 응답으로 오므로
+ * 화면에서 사라지지 않는다.
+ */
+export const useInspectionItemMaster = (
+  enabled: boolean,
+): UseQueryResult<EquipmentInspectionItem[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: inspectionKeys.master(''),
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/equipment-inspection-items', { params: { query: {} } }),
+      ).then((response) => response.items),
+  });
+};
+
+/** 이 그룹에 부여된 점검 항목. 그룹을 고르기 전에는 조회하지 않는다. */
+export const useGroupInspectionItems = (
+  equipmentGroupId: number | null,
+): UseQueryResult<InspectionItemAssignment[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: inspectionKeys.groupAssignments(equipmentGroupId ?? 0),
+    enabled: equipmentGroupId !== null,
+    queryFn: () => {
+      if (equipmentGroupId === null) {
+        throw new Error('그룹을 고르기 전에는 점검 항목을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/equipment-groups/{equipmentGroupId}/inspection-items', {
+          params: { path: { equipmentGroupId } },
+        }),
+      ).then((response) => response.items);
+    },
+  });
 };

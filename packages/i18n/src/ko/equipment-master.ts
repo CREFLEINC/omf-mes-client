@@ -88,6 +88,7 @@ export const equipmentMaster = {
   tabs: {
     group: '그룹 정보',
     equipment: '설비',
+    inspection: '점검 항목',
   },
   dialog: {
     discardTitle: '입력한 내용을 버릴까요?',
@@ -215,5 +216,56 @@ export const equipmentMaster = {
   groupTable: {
     expand: '하위 그룹 펼치기',
     collapse: '하위 그룹 접기',
+  },
+  /**
+   * 점검 항목 — **마스터와 부여는 다른 것이다**(공유계약 B-6).
+   *
+   * 항목이 «무엇인가»(판정 방식·상하한·필수 여부)는 마스터가 갖고, 「이 그룹이 그 항목을
+   * **얼마 만에** 도는가」는 부여가 갖는다.
+   */
+  inspection: {
+    paneTitle: '점검 항목',
+    /** ⭐ 무엇을 뜻하는 목록인지 먼저 말한다 — 「항목 3개」만으로는 무엇을 도는지 모른다. */
+    description:
+      '이 그룹에 속한 설비가 도는 점검 항목입니다. 설비에 따로 부여하면 그쪽이 이깁니다.',
+    loading: '점검 항목을 불러오는 중',
+    emptyTitle: '부여된 점검 항목이 없습니다',
+    emptyDescription: '점검 항목을 부여하면 이 그룹의 설비가 그 항목을 돕니다.',
+    editAction: '점검 항목 부여',
+    dialogTitle: '점검 항목 부여',
+    /**
+     * ⛔ **묶음 통째 교체라는 사실을 감추지 않는다**(계약의 `PUT`). 「지운 줄은 지워진다」를
+     * 말하지 않으면 사용자는 더한 것만 반영된다고 읽는다.
+     */
+    dialogLead: '이 창에 남긴 것이 전부가 됩니다 — 지운 줄은 부여가 풀립니다.',
+    addLabel: '항목 추가',
+    addPlaceholder: '부여할 점검 항목을 고르세요',
+    /** 고를 것이 없는 것과 목록을 못 받은 것은 다르다 — 앞엣것만 이 문구다. */
+    allAssigned: '마스터의 점검 항목을 모두 부여했습니다.',
+    masterEmpty: '등록된 점검 항목이 없습니다. 점검 항목을 먼저 등록해야 부여할 수 있습니다.',
+    masterLoadFailed: '점검 항목 목록을 불러오지 못했습니다.',
+    removeAction: '부여 해제',
+    removeLabel: (itemName: string): string => `${itemName} 부여 해제`,
+    fields: {
+      itemCode: '항목코드',
+      itemName: '항목명',
+      inspectionType: '점검 유형',
+      cycle: '주기',
+      cycleType: '주기 단위',
+      cycleInterval: '주기 간격',
+      cycleBaseDate: '기준일',
+      activation: '사용',
+    },
+    /** 「3일마다」 — 수와 단위를 붙여 읽는 순서 그대로 둔다. */
+    cycleText: (interval: number, unitLabel: string): string =>
+      `${String(interval)}${unitLabel}마다`,
+    /** ⭐ 비면 부여일이 기준이다(계약) — 빈 칸이 「안 정했다」가 아니라 값이라는 뜻이다. */
+    baseDateNote: '비우면 부여한 날이 기준이 됩니다.',
+    validation: {
+      required: '필수 항목입니다.',
+      intervalPositive: '주기 간격은 1 이상의 정수여야 합니다.',
+    },
+    /** 창을 열기 전에는 그룹을 골라야 한다 — 감추지 않고 사유를 말한다(G-2). */
+    needsGroupReason: '그룹을 고르면 점검 항목을 부여할 수 있습니다.',
   },
 } as const;
