@@ -415,9 +415,30 @@ describe('AppLayout', () => {
       within(sidebar).getByRole('link', { name: 'Lot Status 현황·변경이력 조회' }),
     ).toHaveAttribute('href', '/quality/lot-status');
     expect(links.indexOf('/quality/lot-status')).toBe(
-      links.indexOf('/logistics/document-progress') + 1,
+      links.indexOf('/production/work-order-close') + 1,
     );
     expect(links.indexOf('/quality/lot-status')).toBeLessThan(links.indexOf('/approval/inbox'));
+  });
+
+  it('생산실행 섹션의 W/O 마감 메뉴가 자재창고 뒤·품질관리 앞에 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByText('생산실행')).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: 'W/O 마감·ERP 실적 송신' })).toHaveAttribute(
+      'href',
+      '/production/work-order-close',
+    );
+    expect(links.indexOf('/production/work-order-close')).toBe(
+      links.indexOf('/logistics/document-progress') + 1,
+    );
+    expect(links.indexOf('/production/work-order-close')).toBeLessThan(
+      links.indexOf('/quality/lot-status'),
+    );
   });
 
   /*
@@ -429,13 +450,14 @@ describe('AppLayout', () => {
    * 기준정보(무엇을 정해 두는가)도 자재창고(물건이 오가는 일)도 시스템 관리(운영 설정)도
    * 아닌, **올라온 결재를 처리하는 일**이라 기존 「승인」 섹션에 그대로 남는다.
    */
-  it('사이드바 섹션이 일곱이고 모든 항목이 그 안에 있다', () => {
+  it('사이드바 섹션이 여덟이고 모든 항목이 그 안에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
     const sections = [
       '기준정보',
       '자재창고',
+      '생산실행',
       '품질관리',
       '설비/툴',
       '승인',
@@ -567,6 +589,7 @@ describe('AppLayout', () => {
       '/logistics/disposal-issue',
       '/logistics/iqc-skip-approval',
       '/logistics/document-progress',
+      '/production/work-order-close',
       '/quality/lot-status',
       '/equipment/master',
       '/equipment/tool-master',
@@ -596,10 +619,17 @@ describe('AppLayout', () => {
     const item = within(sidebar).getByRole('link', { name: /알림센터/ });
     expect(item).toHaveAttribute('href', '/notification/center');
 
-    /* 전체 차례는 품질관리 → 승인 → 알림 → 시스템 관리까지 이어진다. */
-    const labels = ['기준정보', '자재창고', '품질관리', '승인', '알림', '시스템 관리'].map(
-      (label) => within(sidebar).getByText(label),
-    );
+    /* 전체 차례는 업무 도메인 → 승인 → 알림 → 시스템 관리까지 이어진다. */
+    const labels = [
+      '기준정보',
+      '자재창고',
+      '생산실행',
+      '품질관리',
+      '설비/툴',
+      '승인',
+      '알림',
+      '시스템 관리',
+    ].map((label) => within(sidebar).getByText(label));
     const ordered = [...labels].sort((left, right) =>
       left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
     );

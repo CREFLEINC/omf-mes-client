@@ -390,6 +390,69 @@ const lotStatusRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/items', []),
 ];
 
+const workOrderCloseRoutes = (): StubRoute[] => [
+  {
+    match: (request) => isGet(request, '/mdm/code-values'),
+    respond: (request) => {
+      const isStatus =
+        new URL(request.url).searchParams.get('codeGroupCode') === 'WORK_ORDER_STATUS';
+      const items = isStatus
+        ? [{ code: 'COMPLETED', codeName: '마감 완료', displayOrder: 1, isActive: true }]
+        : [];
+      return jsonResponse({ items, page: { page: 1, size: 200, total: items.length } });
+    },
+  },
+  lookupRoute('/planning/production-orders', []),
+  {
+    match: (request) => isGet(request, '/production/work-orders'),
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            workOrderId: 9701,
+            workOrderNo: 'SYN-WO-9701',
+            productionPlanId: 9501,
+            routingOperationId: 9601,
+            itemId: 9801,
+            orderQty: 12,
+            uomId: 9901,
+            workOrderTypeCode: 'NORMAL',
+            priorityNo: 1,
+            statusCode: 'COMPLETED',
+          },
+        ],
+        page: { page: 1, size: 20, total: 1 },
+      }),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/items/9801'),
+    respond: () =>
+      jsonResponse({
+        item: {
+          itemId: 9801,
+          itemCode: 'SYN-ITEM-9801',
+          itemName: '합성 마감 품목',
+          itemTypeCode: 'MATERIAL',
+          baseUomId: 9901,
+          lotControlTypeCode: 'NONE',
+          serialControlTypeCode: 'NONE',
+          inspectionRequired: false,
+          fifoPolicyCode: 'FIFO',
+          negativeStockAllowed: false,
+          isActive: true,
+        },
+        editability: { codeEditable: false, reason: 'RECEIVED_FROM_ERP', referenceCount: null },
+      }),
+  },
+  lookupRoute('/mdm/uoms', [
+    { uomId: 9901, uomCode: 'SYN-EA', uomName: '합성 개', decimalScale: 0, isActive: true },
+  ]),
+  {
+    match: (request) => isGet(request, '/integration/outbound-item-settings'),
+    respond: () => jsonResponse({ items: [] }),
+  },
+];
+
 /** W-01-11이 첫 진입에 부르는 것들 — 대상 초과분 상세와 이름 풀이 다섯. */
 const poRegisterRoutes = (): StubRoute[] => [
   {
@@ -1030,6 +1093,37 @@ describe('appRouter — Lot Status 현황·변경이력 조회의 진입 경로'
       }),
     ).toBeInTheDocument();
     expect(await screen.findByText('LOT 유형 기준값이 준비되지 않았습니다.')).toBeVisible();
+  });
+});
+
+describe('appRouter — W/O 마감·ERP 실적 송신의 진입 경로', () => {
+  it('생산실행 메뉴를 키보드로 열면 실제 마감 화면의 첫 상태가 선다', async () => {
+    const user = userEvent.setup();
+    renderRoutedApp('/quality/lot-status', [...workOrderCloseRoutes(), ...lotStatusRoutes()]);
+
+    const link = screen.getByRole('link', { name: messages.workOrderClose.title });
+    link.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(currentLocation()).toBe('/production/work-order-close'));
+    expect(
+      screen.getAllByRole('heading', { level: 1, name: messages.workOrderClose.title }),
+    ).toHaveLength(1);
+    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
+    const breadcrumbItems = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
+    expect(breadcrumbItems).toHaveLength(2);
+    expect(
+      within(breadcrumbItems[0]!).getByText(messages.workOrderClose.breadcrumbRoot),
+    ).toBeVisible();
+    expect(within(breadcrumbItems[1]!).getByText(messages.workOrderClose.title)).toBeVisible();
+    const pane = screen.getByRole('region', { name: messages.workOrderClose.candidateList.pane });
+    expect(await within(pane).findByRole('button', { name: 'SYN-WO-9701 선택' })).toBeVisible();
+    expect(await within(pane).findByText(/합성 마감 품목/)).toBeVisible();
+  });
+
+  it('화면 주소는 API close 리소스가 아니라 정확한 공개 route다', () => {
+    expect(routedPaths()).toContain('/production/work-order-close');
+    expect(routedPaths()).not.toContain('/production/work-orders/:workOrderId:close');
   });
 });
 

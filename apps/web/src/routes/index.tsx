@@ -11,6 +11,7 @@ import { DocumentProgressScreen } from '../screens/document-progress/screen';
 import { GaugeMasterScreen } from '../screens/gauge-master/screen';
 import { ToolMasterScreen } from '../screens/tool-master/screen';
 import { WorkCalendarScreen } from '../screens/work-calendar/screen';
+import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { InspectionStandardScreen } from '../screens/inspection-standard/screen';
@@ -232,6 +233,8 @@ export const appRouter = createBrowserRouter([
        * 있어 표가 채워지는 순간 화면 전체가 저절로 살아난다.
        */
       { path: 'logistics/document-progress', element: <DocumentProgressScreen /> },
+      /* W-02-05 — 생산실행의 첫 공개 화면이며 주소는 API 리소스가 아니라 화면을 가리킨다. */
+      { path: 'production/work-order-close', element: <WorkOrderCloseScreen /> },
       /*
        * W-03-01 — Lot Status 계열의 첫 화면이므로 품질관리 섹션을 연다.
        * 계약의 /quality/**와 주소 앞머리가 같지만 근거는 사이드바 업무 섹션이다.
