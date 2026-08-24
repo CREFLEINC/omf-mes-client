@@ -1,4 +1,38 @@
 export const workOrderClose = {
+  detailSummary: {
+    pane: '작업지시 마감 상세 요약',
+    heading: '작업지시 마감 상세',
+    loading: '작업지시 마감 상세를 불러오는 중입니다.',
+    groups: {
+      order: '작업지시 기본 정보',
+      progress: '생산 실적 요약',
+      preIssuedLots: '선발행 LOT 요약',
+    },
+    fields: {
+      workOrderNo: 'W/O 번호',
+      orderQty: '지시 수량',
+      goodQty: '양품 수량',
+      defectQty: '불량 수량',
+      holdQty: '보류 수량',
+      scrapQty: '스크랩 수량',
+      reworkQty: '재작업 수량',
+      achievementRate: '달성률',
+      varianceQty: '차이 수량',
+      judgment: '마감 판정',
+      slotCount: '선발행 LOT 전체',
+      withResultCount: '실적 있음',
+      withoutResultCount: '실적 없음',
+    },
+    judgments: { UNDER: '미달', NORMAL: '정상', OVER: '초과' },
+    values: { notConfirmed: '미확정', unitNotConfirmed: '단위 미확정' },
+    units: { percent: '%', count: '건' },
+    empty: {
+      progressTitle: '생산 실적 집계가 미확정입니다.',
+      progressDescription: '집계가 확인되면 수량과 마감 판정을 표시합니다.',
+      preIssuedLotsTitle: '선발행 LOT 집계가 미확정입니다.',
+      preIssuedLotsDescription: '집계가 확인되면 슬롯 건수를 표시합니다.',
+    },
+  },
   candidateList: {
     pane: '마감 후보 작업지시 목록',
     fields: { workOrderNo: 'W/O 번호', item: '품목', quantity: '지시 수량' },
