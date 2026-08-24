@@ -7,12 +7,12 @@ import { WorkOrderCloseFilterBar, type WorkOrderCloseFilterValues } from './filt
 
 const t = messages.workOrderClose.filter;
 const applied: WorkOrderCloseFilterValues = {
-  productionPlanId: '',
+  productionOrderId: '',
   plannedStartFrom: '',
   plannedStartTo: '',
   statusCode: 'READY',
 };
-const productionPlanOptions: SelectItems = [
+const productionOrderOptions: SelectItems = [
   { value: 'plan-b', label: 'Synthetic plan B' },
   { value: 'plan-a', label: 'Synthetic plan A' },
 ];
@@ -24,9 +24,9 @@ const propsOf = (
   overrides: Partial<React.ComponentProps<typeof WorkOrderCloseFilterBar>> = {},
 ) => ({
   appliedFilters: applied,
-  productionPlanOptions,
+  productionOrderOptions,
   statusOptions,
-  productionPlanUnavailableReason: null,
+  productionOrderUnavailableReason: null,
   statusUnavailableReason: null,
   onSearch: vi.fn(),
   onReset: vi.fn(),
@@ -43,7 +43,7 @@ const renderBar = (
 describe('WorkOrderCloseFilterBar', () => {
   it('uses the exact localized labels and validation copy', () => {
     expect(t).toEqual({
-      productionPlan: 'P/O',
+      productionOrder: 'P/O',
       plannedStartFrom: '계획 시작일(부터)',
       plannedStartTo: '계획 시작일(까지)',
       status: '마감 상태',
@@ -53,6 +53,11 @@ describe('WorkOrderCloseFilterBar', () => {
       statusRequired: '마감 상태를 선택하세요.',
       dateRange: '계획 시작일은 종료일보다 늦을 수 없습니다.',
       statusEmpty: '선택할 마감 상태가 없습니다.',
+      statusLookupLoading: '마감 상태 목록을 불러오는 중입니다.',
+      statusLookupFailed: '마감 상태 목록을 불러오지 못했습니다.',
+      statusLookupEmpty: '사용 가능한 마감 상태가 없습니다.',
+      statusLookupTruncated: '마감 상태 목록 일부만 불러와 최초 조회를 시작할 수 없습니다.',
+      completedStatusMissing: '마감 완료 상태를 확인할 수 없어 최초 조회를 시작할 수 없습니다.',
     });
   });
 
@@ -86,14 +91,14 @@ describe('WorkOrderCloseFilterBar', () => {
   it('preserves draft for equal applied primitives and restores all fields when one changes', async () => {
     const user = userEvent.setup();
     const initial = {
-      productionPlanId: 'plan-a',
+      productionOrderId: 'plan-a',
       plannedStartFrom: '2026-08-10',
       plannedStartTo: '2026-08-11',
       statusCode: 'READY',
     };
     const props = propsOf({ appliedFilters: initial });
     const { rerender } = render(<WorkOrderCloseFilterBar {...props} />);
-    await user.click(screen.getByRole('combobox', { name: t.productionPlan }));
+    await user.click(screen.getByRole('combobox', { name: t.productionOrder }));
     await user.click(screen.getByRole('option', { name: 'Synthetic plan B' }));
     await user.clear(screen.getByLabelText(t.plannedStartFrom));
     await user.type(screen.getByLabelText(t.plannedStartFrom), '2026-08-20');
@@ -102,7 +107,7 @@ describe('WorkOrderCloseFilterBar', () => {
     await user.click(screen.getByRole('combobox', { name: t.status }));
     await user.click(screen.getByRole('option', { name: 'Hold' }));
     rerender(<WorkOrderCloseFilterBar {...props} appliedFilters={{ ...initial }} />);
-    expect(screen.getByRole('combobox', { name: t.productionPlan })).toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: t.productionOrder })).toHaveTextContent(
       'Synthetic plan B',
     );
     expect(screen.getByLabelText(t.plannedStartFrom)).toHaveValue('2026-08-20');
@@ -110,7 +115,7 @@ describe('WorkOrderCloseFilterBar', () => {
     expect(screen.getByRole('combobox', { name: t.status })).toHaveTextContent('Hold');
     const next = { ...initial, plannedStartTo: '2026-08-31' };
     rerender(<WorkOrderCloseFilterBar {...props} appliedFilters={next} />);
-    expect(screen.getByRole('combobox', { name: t.productionPlan })).toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: t.productionOrder })).toHaveTextContent(
       'Synthetic plan A',
     );
     expect(screen.getByLabelText(t.plannedStartFrom)).toHaveValue(initial.plannedStartFrom);
@@ -121,12 +126,12 @@ describe('WorkOrderCloseFilterBar', () => {
   it('puts all before caller P/O options but never adds it to status', async () => {
     const user = userEvent.setup();
     renderBar();
-    await user.click(screen.getByRole('combobox', { name: t.productionPlan }));
-    const productionPlans = screen.getAllByRole('option');
-    expect(productionPlans).toHaveLength(3);
-    expect(productionPlans[0]).toHaveAccessibleName(t.all);
-    expect(productionPlans[1]).toHaveAccessibleName('Synthetic plan B');
-    expect(productionPlans[2]).toHaveAccessibleName('Synthetic plan A');
+    await user.click(screen.getByRole('combobox', { name: t.productionOrder }));
+    const productionOrders = screen.getAllByRole('option');
+    expect(productionOrders).toHaveLength(3);
+    expect(productionOrders[0]).toHaveAccessibleName(t.all);
+    expect(productionOrders[1]).toHaveAccessibleName('Synthetic plan B');
+    expect(productionOrders[2]).toHaveAccessibleName('Synthetic plan A');
     await user.click(screen.getByRole('combobox', { name: t.status }));
     const statuses = screen.getAllByRole('option');
     expect(statuses).toHaveLength(2);
@@ -135,14 +140,14 @@ describe('WorkOrderCloseFilterBar', () => {
   });
 
   it.each([
-    ['productionPlan', productionPlanOptions, 'Synthetic P/O unavailable'],
+    ['productionOrder', productionOrderOptions, 'Synthetic P/O unavailable'],
     ['status', [], 'Synthetic status unavailable'],
-  ] as ['productionPlan' | 'status', SelectItems, string][])(
+  ] as ['productionOrder' | 'status', SelectItems, string][])(
     'disables and describes unavailable %s choices',
     (field, options, reason) => {
       renderBar(
-        field === 'productionPlan'
-          ? { productionPlanOptions: options, productionPlanUnavailableReason: reason }
+        field === 'productionOrder'
+          ? { productionOrderOptions: options, productionOrderUnavailableReason: reason }
           : { statusOptions: options, statusUnavailableReason: reason },
       );
       const select = screen.getByRole('combobox', { name: t[field] });
