@@ -618,3 +618,90 @@ describe('useMasterWrite', () => {
     expect(result.current.error).toBeNull();
   });
 });
+
+/**
+ * ⭐ **서버가 주는 `code` 는 계약이고 `message` 는 말씨다.** 화면이 그 상황을 더 정확히 말할
+ * 수 있으면 — 유일 범위가 무엇인지 화면만 아는 경우처럼 — 코드로 알아보고 제 문구를 낸다.
+ */
+describe('useMasterWrite — 화면의 말로 되말하기', () => {
+  const duplicateError = () => ({
+    error: {
+      errors: [{ scope: 'field', field: 'name', code: 'DUPLICATE', message: '서버 문구' }],
+    },
+    response: failedResponse(400),
+  });
+
+  it('되말하면 그 문구가 칸에 붙는다', async () => {
+    const calls: Recorded[] = [];
+    const { result } = renderWrite({
+      knownFields: ['name'],
+      restateFieldError: (item) => (item.code === 'DUPLICATE' ? '화면 문구' : undefined),
+      request: recordingRequest(calls, duplicateError),
+    });
+
+    act(() => {
+      result.current.write({ name: '값' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.fieldErrors).toEqual({ name: '화면 문구' });
+    });
+  });
+
+  /** ⛔ 모르는 코드는 건드리지 않는다 — 되말하지 못하는 것까지 삼키면 서버 말이 지워진다. */
+  it('되말하지 않은 오류는 서버 문구 그대로 남는다', async () => {
+    const calls: Recorded[] = [];
+    const { result } = renderWrite({
+      knownFields: ['name'],
+      restateFieldError: (item) => (item.code === '다른코드' ? '화면 문구' : undefined),
+      request: recordingRequest(calls, duplicateError),
+    });
+
+    act(() => {
+      result.current.write({ name: '값' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.fieldErrors).toEqual({ name: '서버 문구' });
+    });
+  });
+
+  /** 되말할 자리를 주지 않은 화면은 지금까지와 똑같이 동작한다. */
+  it('되말하는 자리를 주지 않으면 서버 문구를 쓴다', async () => {
+    const calls: Recorded[] = [];
+    const { result } = renderWrite({
+      knownFields: ['name'],
+      request: recordingRequest(calls, duplicateError),
+    });
+
+    act(() => {
+      result.current.write({ name: '값' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.fieldErrors).toEqual({ name: '서버 문구' });
+    });
+  });
+
+  /** ⛔ 배너로 갈 오류는 되말하는 자리가 아니다 — 칸에 붙는 것만 화면의 말로 바꾼다. */
+  it('화면이 모르는 칸의 오류는 되말하지 않는다', async () => {
+    const calls: Recorded[] = [];
+    const { result } = renderWrite({
+      knownFields: [],
+      restateFieldError: () => '화면 문구',
+      request: recordingRequest(calls, duplicateError),
+    });
+
+    act(() => {
+      result.current.write({ name: '값' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toEqual({
+        kind: 'validation',
+        errors: [{ scope: 'field', field: 'name', code: 'DUPLICATE', message: '서버 문구' }],
+      });
+    });
+    expect(result.current.fieldErrors).toEqual({});
+  });
+});

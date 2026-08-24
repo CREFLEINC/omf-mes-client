@@ -183,3 +183,20 @@ export const observationListResponse = (
   items: CollectionChannelObservation[] = observationItems,
   totalCount?: number,
 ) => (totalCount === undefined ? { items } : { items, totalCount });
+
+/** 조건 축의 선택지 — 품목·공정. 값은 전부 합성이다. */
+export const scopeItemsResponse = () => ({
+  items: [
+    { itemId: 21, itemCode: 'ITM-201', itemName: '가상 하우징', isActive: true },
+    { itemId: 22, itemCode: 'ITM-202', itemName: '가상 커버', isActive: true },
+  ],
+  page: pageMeta(2),
+});
+
+export const scopeProcessesResponse = () => ({
+  items: [
+    { processId: 31, processCode: 'PRC-301', processName: '가상 프레스', isActive: true },
+    { processId: 32, processCode: 'PRC-302', processName: '가상 조립', isActive: true },
+  ],
+  page: pageMeta(2),
+});

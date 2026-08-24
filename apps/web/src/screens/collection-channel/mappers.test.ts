@@ -17,6 +17,9 @@ describe('폼 채우기', () => {
       signalName: '',
       unitCode: '',
       inspectionItemId: null,
+      /* 조건도 비운 채로 시작한다 — 비면 「전체」이고 그것이 가장 넓은 기본이다. */
+      itemId: null,
+      processId: null,
     });
   });
 
@@ -30,6 +33,8 @@ describe('폼 채우기', () => {
       signalName: '사이클 타임',
       unitCode: 'SEC',
       inspectionItemId: null,
+      itemId: null,
+      processId: null,
     });
   });
 
@@ -40,6 +45,8 @@ describe('폼 채우기', () => {
       signalName: '',
       unitCode: '',
       inspectionItemId: null,
+      itemId: null,
+      processId: null,
     });
   });
 
@@ -68,6 +75,25 @@ describe('등록 본문', () => {
 
     expect('signalName' in body).toBe(false);
     expect('unitCode' in body).toBe(false);
+  });
+
+  /**
+   * ⭐ **조건은 빼지 않고 «값으로» 싣는다** — 비었으면 `null` 이고 그것이 「전체」다.
+   * 이름·단위와 다르다: 그 둘은 「없음」이 곧 「안 적었다」지만, 조건의 「없음」은
+   * **「언제나 적용된다」는 뜻**이고 **유일 범위를 이룬다.**
+   */
+  it('조건은 비어도 값으로 싣는다', () => {
+    const body = toChannelCreate(form(), 3001);
+
+    expect(body.itemId).toBeNull();
+    expect(body.processId).toBeNull();
+  });
+
+  it('고른 조건을 그대로 싣는다', () => {
+    const body = toChannelCreate(form({ itemId: 21, processId: 31 }), 3001);
+
+    expect(body.itemId).toBe(21);
+    expect(body.processId).toBe(31);
   });
 
   /** ⭐ 이어 둔 데 없이 등록할 수 있다(스펙 §5-2) — 항목이 아직 없어도 채널은 먼저 만든다. */
@@ -99,6 +125,14 @@ describe('수정 본문', () => {
   /** ⛔ 계약의 수정 본문에 채널명이 없다 — 실어 봐야 서버가 버리고 화면은 바뀐 줄 안다. */
   it('채널명을 싣지 않는다', () => {
     expect('channelKey' in toChannelUpdate(form(), current)).toBe(false);
+  });
+
+  /** ⭐ 조건은 «바꿀 수 있다» — 채널명과 달리 계약의 수정 본문이 받는다. */
+  it('조건을 폼에서 받아 싣는다', () => {
+    const body = toChannelUpdate(form({ itemId: 22, processId: null }), current);
+
+    expect(body.itemId).toBe(22);
+    expect(body.processId).toBeNull();
   });
 
   /**

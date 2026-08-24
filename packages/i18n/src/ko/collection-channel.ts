@@ -65,6 +65,28 @@ export const collectionChannel = {
       `전체 ${total}건 중 ${shown}건을 표시합니다.`,
     mayHaveMore: (shown: number): string => `${shown}건을 표시합니다. 더 있을 수 있습니다.`,
   },
+  /**
+   * 이 매핑이 **언제** 적용되는지 — 품목·공정 조건.
+   *
+   * ⭐ **비면 「전체」다.** 고르지 않은 것이 아니라 **전체를 뜻하는 값**이다 — 빈 칸으로
+   * 두면 설정을 빠뜨린 것으로 읽힌다.
+   *
+   * ⚠ **유일 범위를 이룬다.** 같은 설비의 같은 채널이 「품목 A 면 외경, 품목 B 면 두께」로
+   * 갈릴 수 있어, 조건 없이 잠그면 둘째 행이 중복으로 거부된다.
+   */
+  scope: {
+    columnHeader: '조건',
+    all: '전체',
+    itemLabel: '품목 조건',
+    processLabel: '공정 조건',
+    anyOption: '전체 (조건 없음)',
+    note: '비우면 전체입니다 — 이 설비의 이 채널은 언제나 그 항목으로 갑니다.',
+    /** 한 행이 두 축을 다 지정할 수 있다. 값 이름 안의 이음쇠와 갈리는 쇠를 쓴다. */
+    join: ' / ',
+    entry: (axisLabel: string, valueLabel: string): string => `${axisLabel} ${valueLabel}`,
+    item: '품목',
+    process: '공정',
+  },
   fields: {
     activation: '사용',
     plant: '공장',
@@ -234,6 +256,15 @@ export const collectionChannel = {
   validation: {
     required: '필수 항목입니다.',
     channelKeyBlank: '공백만으로는 채널명을 만들 수 없습니다.',
+    /**
+     * ⛔ **유일 범위를 문구에 담는다**(공유계약 A-1).
+     *
+     * 「이 설비에 같은 이름의 채널이 이미 있습니다」는 **거짓이다** — 조건이 다르면 같은
+     * 이름이 여러 행 설 수 있다(설계 회신 `omf-mes#203` 질문1 · 통지 client#388).
+     * 무엇이 겹쳤는지 말하지 않으면 사용자는 **고칠 자리를 찾지 못한다.**
+     */
+    duplicateScope: (channelKey: string): string =>
+      `이 설비의 ${channelKey} 채널에 품목·공정 조건이 같은 매핑이 이미 있습니다. 조건을 다르게 하거나 그 매핑을 고치세요.`,
   },
   values: {
     active: '사용 중',

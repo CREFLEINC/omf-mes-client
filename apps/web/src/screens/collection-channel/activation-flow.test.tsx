@@ -16,6 +16,8 @@ import {
   makeChannel,
   observationListResponse,
   plantListResponse,
+  scopeItemsResponse,
+  scopeProcessesResponse,
   uomListResponse,
 } from './fixtures';
 import { CollectionChannelScreen } from './screen';
@@ -47,6 +49,14 @@ interface Options {
 }
 
 const routes = (options: Options): StubRoute[] => [
+  {
+    match: (request) => isPath(request, '/mdm/items'),
+    respond: () => jsonResponse(scopeItemsResponse()),
+  },
+  {
+    match: (request) => isPath(request, '/mdm/processes'),
+    respond: () => jsonResponse(scopeProcessesResponse()),
+  },
   {
     match: (request) =>
       request.method === 'PUT' && isPath(request, '/maintenance/collection-channels/7001'),
@@ -264,6 +274,9 @@ describe('W-05-07 ⑤ — 끄고 켠다', () => {
       signalName: '사이클 타임',
       unitCode: 'SEC',
       inspectionItemId: 5001,
+      /* ⭐ 조건도 «지금 값»으로 되보낸다 — 빠뜨리면 유일 범위가 달라진다. */
+      itemId: null,
+      processId: null,
       isActive: false,
     });
   });

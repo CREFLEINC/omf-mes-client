@@ -412,3 +412,55 @@ export const useObservations = (
     },
   });
 };
+
+/**
+ * 조건 축의 선택지 — **품목과 공정.**
+ *
+ * ⭐ **이 화면이 소유한다.** 형제 화면(W-05-01)에도 같은 이름의 조회가 있지만 참조하지
+ * 않는다 — 화면마다 무엇을 좁혀 부를지가 다르고, 한쪽을 고치면 다른 쪽이 조용히 따라간다.
+ *
+ * `includeInactive` 를 켜 둔다 — 미사용 값을 조건으로 쓰는 매핑을 열면 선택칸이 비어 보인다.
+ */
+const useScopeLookup = (
+  key: string,
+  path: '/mdm/items' | '/mdm/processes',
+  toEntry: (row: never) => CodeOption,
+): { entries: CodeOption[]; truncated: boolean; isError: boolean } => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: ['lookups', key] as const,
+    queryFn: () =>
+      runRequest(() => client.GET(path, { params: { query: { includeInactive: true } } })),
+  });
+
+  const data = query.data;
+
+  return {
+    entries: data?.items.map((row) => toEntry(row as never)) ?? NO_SCOPE_ENTRIES,
+    truncated: data !== undefined && data.page.total > data.items.length,
+    isError: query.isError,
+  };
+};
+
+const NO_SCOPE_ENTRIES: CodeOption[] = [];
+
+export const useScopeItemLookup = () =>
+  useScopeLookup(
+    'items',
+    '/mdm/items',
+    (row: { itemId: number; itemCode: string; itemName: string }) => ({
+      value: String(row.itemId),
+      label: `${row.itemCode} · ${row.itemName}`,
+    }),
+  );
+
+export const useScopeProcessLookup = () =>
+  useScopeLookup(
+    'processes',
+    '/mdm/processes',
+    (row: { processId: number; processCode: string; processName: string }) => ({
+      value: String(row.processId),
+      label: `${row.processCode} · ${row.processName}`,
+    }),
+  );

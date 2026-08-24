@@ -17,6 +17,8 @@ import {
   makeChannel,
   observationListResponse,
   plantListResponse,
+  scopeItemsResponse,
+  scopeProcessesResponse,
 } from './fixtures';
 import { CollectionChannelScreen } from './screen';
 import type { CollectionChannel } from './types';
@@ -48,6 +50,14 @@ interface WriteStubOptions {
 }
 
 const stub = (options: WriteStubOptions): StubRoute[] => [
+  {
+    match: (request) => isPath(request, '/mdm/items'),
+    respond: () => jsonResponse(scopeItemsResponse()),
+  },
+  {
+    match: (request) => isPath(request, '/mdm/processes'),
+    respond: () => jsonResponse(scopeProcessesResponse()),
+  },
   {
     match: (request) => isPath(request, '/maintenance/collection-channels/observations'),
     respond: () => jsonResponse(observationListResponse()),
@@ -198,7 +208,13 @@ describe('W-05-07 ② — 채널을 더한다', () => {
     const request = onlyWrite(writes);
 
     expect(request.method).toBe('POST');
-    expect(await bodyOf(request)).toEqual({ equipmentId: 3001, channelKey: 'NEW_CHANNEL' });
+    expect(await bodyOf(request)).toEqual({
+      equipmentId: 3001,
+      channelKey: 'NEW_CHANNEL',
+      /* 조건은 비어도 값으로 나간다 — 「전체」를 뜻하고 유일 범위를 이룬다. */
+      itemId: null,
+      processId: null,
+    });
   });
 
   /** 계약이 전 쓰기에 멱등 키를 요구한다. */
@@ -339,6 +355,8 @@ describe('W-05-07 ② — 채널을 고친다', () => {
       signalName: '배럴 온도 3구역',
       unitCode: 'CEL',
       inspectionItemId: 5009,
+      itemId: null,
+      processId: null,
       isActive: false,
     });
   });
@@ -388,9 +406,8 @@ describe('W-05-07 ② — 저장이 실패하면', () => {
     await user.type(dialog.getByRole('textbox', { name: /채널명/ }), 'CYCLE_TIME');
     await user.click(dialog.getByRole('button', { name: messages.common.save }));
 
-    expect(
-      await dialog.findByText('이 설비에 같은 이름의 채널이 이미 있습니다.'),
-    ).toBeInTheDocument();
+    /* ⭐ 서버 문구가 아니라 «유일 범위를 담은» 문구가 선다 — 되말하는 자리다. */
+    expect(await dialog.findByText(t.validation.duplicateScope('CYCLE_TIME'))).toBeInTheDocument();
     expect(dialog.getByRole('textbox', { name: /채널명/ })).toBeInvalid();
   });
 
@@ -490,16 +507,12 @@ describe('W-05-07 ② — 저장이 실패하면', () => {
 
     await user.type(box, 'CYCLE_TIME');
     await user.click(dialog.getByRole('button', { name: messages.common.save }));
-    expect(
-      await dialog.findByText('이 설비에 같은 이름의 채널이 이미 있습니다.'),
-    ).toBeInTheDocument();
+    expect(await dialog.findByText(t.validation.duplicateScope('CYCLE_TIME'))).toBeInTheDocument();
 
     await user.type(box, '_2');
 
     expect(box).not.toBeInvalid();
-    expect(
-      dialog.queryByText('이 설비에 같은 이름의 채널이 이미 있습니다.'),
-    ).not.toBeInTheDocument();
+    expect(dialog.queryByText(t.validation.duplicateScope('CYCLE_TIME'))).not.toBeInTheDocument();
   });
 
   /** 고친 자리에 옛 오류가 남으면 사용자가 헛돈다. */
@@ -548,6 +561,208 @@ describe('W-05-07 ② — 창 안의 선택 목록', () => {
     await user.click(within(channelPane()).getByRole('button', { name: t.actions.addChannel }));
 
     expect(await within(formDialog()).findByText(t.optionsLoadFailed)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **한계는 그 목록의 칸에만 붙는다.** 하나로 묶어 세 칸에 같이 달면 같은 문구가 셋 서고,
+   * 무엇보다 **틀린 말을 한다** — 단위를 못 받았는데 품목 칸이 「못 받았습니다」라고 한다.
+   */
+  it('한 목록이 실패해도 다른 칸은 그 말을 하지 않는다', async () => {
+    const user = userEvent.setup();
+    const withFailingItems: StubRoute[] = [
+      {
+        match: (request) => isPath(request, '/mdm/items'),
+        respond: () => jsonResponse({ errors: [] }, { status: 500 }),
+      },
+      ...stub({ writes: [] }),
+    ];
+
+    renderWithProviders(<CollectionChannelScreen />, {
+      fetch: createStubFetch(withFailingItems),
+    });
+    await pickFirstEquipment();
+    await user.click(within(channelPane()).getByRole('button', { name: t.actions.addChannel }));
+
+    const dialog = within(formDialog());
+
+    /* 품목 칸만 말한다 — 단위·공정은 멀쩡히 받았다. */
+    expect(await dialog.findByText(t.optionsLoadFailed)).toBeInTheDocument();
+    expect(dialog.getAllByText(t.optionsLoadFailed)).toHaveLength(1);
+  });
+});
+
+describe('W-05-07 ② — 창 안의 조건 축', () => {
+  const openCreate = async (writes: Request[] = []): Promise<ReturnType<typeof within>> => {
+    const user = userEvent.setup();
+
+    renderScreen({ writes });
+    await pickFirstEquipment();
+    await user.click(within(channelPane()).getByRole('button', { name: t.actions.addChannel }));
+
+    return within(formDialog());
+  };
+
+  it('품목과 공정을 고를 자리가 있다', async () => {
+    const dialog = await openCreate();
+
+    expect(dialog.getByRole('combobox', { name: t.scope.itemLabel })).toBeInTheDocument();
+    expect(dialog.getByRole('combobox', { name: t.scope.processLabel })).toBeInTheDocument();
+  });
+
+  /** ⛔ 「고르지 않음」이 아니라 **「전체」라는 값**이다 — 그 뜻을 목록 안에 적는다. */
+  it('두 칸 모두 「전체」를 고를 수 있고 그것이 처음 값이다', async () => {
+    const user = userEvent.setup();
+    const dialog = await openCreate();
+
+    const item = dialog.getByRole('combobox', { name: t.scope.itemLabel });
+    const process = dialog.getByRole('combobox', { name: t.scope.processLabel });
+
+    /* 아직 아무것도 고르지 않았는데 이미 「전체」라고 서 있다 — 빈 칸이 아니다. */
+    expect(item).toHaveTextContent(t.scope.anyOption);
+    expect(process).toHaveTextContent(t.scope.anyOption);
+
+    await user.click(item);
+
+    expect(screen.getByRole('option', { name: t.scope.anyOption })).toBeInTheDocument();
+  });
+
+  it('고른 조건이 등록 요청에 실린다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    const dialog = await openCreate(writes);
+
+    await user.type(dialog.getByRole('textbox', { name: /채널명/ }), 'NEW_CHANNEL');
+
+    await user.click(dialog.getByRole('combobox', { name: t.scope.itemLabel }));
+    await user.click(screen.getByRole('option', { name: /ITM-201/ }));
+    await user.click(dialog.getByRole('combobox', { name: t.scope.processLabel }));
+    await user.click(screen.getByRole('option', { name: /PRC-301/ }));
+
+    await user.click(dialog.getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(await bodyOf(onlyWrite(writes))).toEqual({
+      equipmentId: 3001,
+      channelKey: 'NEW_CHANNEL',
+      itemId: 21,
+      processId: 31,
+    });
+  });
+
+  /**
+   * ⛔ **「이 설비에 같은 이름의 채널이 이미 있습니다」는 거짓이다** — 조건이 다르면 같은
+   * 이름이 여러 행 선다. 무엇이 겹쳤는지 말해야 고칠 자리를 찾는다(공유계약 A-1 · #388).
+   */
+  it('중복은 유일 범위를 담아 말한다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+
+    renderScreen({
+      writes,
+      writeStatus: 400,
+      writeBody: {
+        errors: [
+          {
+            scope: 'field',
+            field: 'channelKey',
+            code: 'DUPLICATE',
+            message: '이 설비에 같은 이름의 채널이 이미 있습니다.',
+          },
+        ],
+      },
+    });
+    await pickFirstEquipment();
+    await user.click(within(channelPane()).getByRole('button', { name: t.actions.addChannel }));
+
+    const dialog = within(formDialog());
+
+    await user.type(dialog.getByRole('textbox', { name: /채널명/ }), 'CYCLE_TIME');
+    await user.click(dialog.getByRole('button', { name: messages.common.save }));
+
+    expect(await dialog.findByText(t.validation.duplicateScope('CYCLE_TIME'))).toBeInTheDocument();
+    expect(
+      dialog.queryByText('이 설비에 같은 이름의 채널이 이미 있습니다.'),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **「전체」로 되돌리면 「전체」가 나가야 한다** — 빈 값을 그대로 셈에 넣으면 `0` 이
+   * 되어 **있지도 않은 0번 품목으로 좁혀진 매핑**이 나간다.
+   */
+  it('「전체」로 되돌리면 조건 없이 나간다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    const dialog = await openCreate(writes);
+
+    await user.type(dialog.getByRole('textbox', { name: /채널명/ }), 'NEW_CHANNEL');
+
+    await user.click(dialog.getByRole('combobox', { name: t.scope.itemLabel }));
+    await user.click(screen.getByRole('option', { name: /ITM-201/ }));
+    await user.click(dialog.getByRole('combobox', { name: t.scope.itemLabel }));
+    await user.click(screen.getByRole('option', { name: t.scope.anyOption }));
+
+    await user.click(dialog.getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect((await bodyOf(onlyWrite(writes))).itemId).toBeNull();
+  });
+
+  /**
+   * ⭐ **고쳐 둔 조건이 창에 그대로 서야 한다** — 「전체」로 보이면 사용자가 그대로 저장해
+   * **범위를 자기도 모르게 넓힌다.**
+   */
+  it('이미 걸린 조건이 창에 그대로 선다', async () => {
+    const user = userEvent.setup();
+    const scoped = makeChannel(7103, 'SCOPED_TEMP', {
+      signalName: '배럴 온도',
+      unitCode: 'CEL',
+      itemId: 21,
+      itemCode: 'ITM-201',
+    });
+
+    renderScreen({ writes: [], channels: [...channelItems, scoped], detail: scoped });
+    await pickFirstEquipment();
+    await user.click(
+      within(channelPane()).getByRole('button', { name: /^SCOPED_TEMP( \(미사용\))?$/ }),
+    );
+
+    const dialog = within(await screen.findByRole('dialog'));
+
+    expect(dialog.getByRole('combobox', { name: t.scope.itemLabel })).toHaveTextContent(/ITM-201/);
+    /* 걸지 않은 축은 「전체」다 — 빈 칸이 아니다. */
+    expect(dialog.getByRole('combobox', { name: t.scope.processLabel })).toHaveTextContent(
+      t.scope.anyOption,
+    );
+  });
+
+  /** ⛔ 되말하는 것은 `DUPLICATE` 뿐이다 — 다른 코드까지 삼키면 서버 말을 지운다. */
+  it('중복이 아닌 오류는 서버 말 그대로 낸다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+
+    renderScreen({
+      writes,
+      writeStatus: 400,
+      writeBody: {
+        errors: [
+          {
+            scope: 'field',
+            field: 'channelKey',
+            code: 'INVALID_FORMAT',
+            message: '채널명에 쓸 수 없는 문자가 있습니다.',
+          },
+        ],
+      },
+    });
+    await pickFirstEquipment();
+    await user.click(within(channelPane()).getByRole('button', { name: t.actions.addChannel }));
+
+    const dialog = within(formDialog());
+
+    await user.type(dialog.getByRole('textbox', { name: /채널명/ }), 'CYCLE TIME');
+    await user.click(dialog.getByRole('button', { name: messages.common.save }));
+
+    expect(await dialog.findByText('채널명에 쓸 수 없는 문자가 있습니다.')).toBeInTheDocument();
   });
 });
 

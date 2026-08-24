@@ -43,8 +43,14 @@ describe('채널 검증', () => {
 
 describe('인라인으로 낼 수 있는 칸', () => {
   /** ⛔ 오류를 그릴 자리가 없는 칸을 넣으면 «어디에도 표시되지 않는 오류»가 된다. */
-  it('창에 실제로 있는 세 칸뿐이다', () => {
-    expect([...CHANNEL_FORM_FIELDS]).toEqual(['channelKey', 'signalName', 'unitCode']);
+  it('창에 실제로 있는 칸들뿐이다', () => {
+    expect([...CHANNEL_FORM_FIELDS]).toEqual([
+      'channelKey',
+      'signalName',
+      'unitCode',
+      'itemId',
+      'processId',
+    ]);
   });
 
   it('설비는 여기 없다 — 이 창에 고르는 칸이 없다', () => {

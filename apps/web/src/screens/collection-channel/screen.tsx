@@ -38,6 +38,8 @@ import {
   useObservations,
   usePlantLookup,
   useUomCodeById,
+  useScopeItemLookup,
+  useScopeProcessLookup,
   useUomLookup,
 } from './queries';
 import type {
@@ -108,12 +110,17 @@ const useObservationImport = (equipmentId: number | null) => {
           await runRequest(() =>
             client.POST('/maintenance/collection-channels', {
               params: { header: { 'Idempotency-Key': crypto.randomUUID() } },
-              body: { equipmentId, channelKey },
+              /*
+               * ⭐ **조건은 「전체」로 «명시»한다** — 창의 등록과 같은 규칙이다. 로그에서
+               * 가져오는 채널은 고를 조건이 없어 언제나 전체이지만, 그 사실을 빼지 않고
+               * 값으로 적어야 같은 엔드포인트가 같은 모양을 받는다.
+               */
+              body: { equipmentId, channelKey, itemId: null, processId: null },
             }),
           );
           outcomes.push({ channelKey, reason: null });
         } catch (caught) {
-          outcomes.push({ channelKey, reason: reasonOf(caught) });
+          outcomes.push({ channelKey, reason: reasonOf(caught, channelKey) });
         }
       }
 
@@ -132,14 +139,22 @@ const useObservationImport = (equipmentId: number | null) => {
  *
  * ⛔ **삼키지 않는다** — 서버가 준 문구가 「무엇을 고쳐야 하는지」의 유일한 단서다.
  * 얻지 못하면 `null` 을 돌려 「알 수 없는 이유」로 그리게 한다(지어내지 않는다).
+ *
+ * ⛔ **중복만은 화면이 다시 쓴다** — 창의 등록과 같은 이유다. 서버는 「같은 이름의 채널이
+ * 이미 있습니다」라고 말하지만 그것은 거짓이고, 여기서 겹친 상대는 **조건이 「전체」인
+ * 매핑**이다(이 경로는 늘 전체로 만든다). 무엇과 겹쳤는지 말해야 고칠 자리를 찾는다.
  */
-const reasonOf = (caught: unknown): string | null => {
+const reasonOf = (caught: unknown, channelKey: string): string | null => {
   const error = toApiError(caught);
 
   if (error.kind === 'validation' || error.kind === 'stateLocked') {
-    const line = error.errors.map((item) => item.message).find((message) => message.trim() !== '');
+    const item = error.errors.find(
+      (entry) => entry.code === 'DUPLICATE' || entry.message.trim() !== '',
+    );
 
-    return line ?? null;
+    if (item === undefined) return null;
+
+    return item.code === 'DUPLICATE' ? t.validation.duplicateScope(channelKey) : item.message;
   }
 
   return error.kind === 'network' ? messages.httpError.offline : null;
@@ -188,6 +203,8 @@ export const CollectionChannelScreen = () => {
   const equipments = useEquipmentList(equipmentFilters);
   const channels = useChannelList(selectedEquipmentId, channelFilters.includeInactive);
   const plantLookup = usePlantLookup();
+  const scopeItems = useScopeItemLookup();
+  const scopeProcesses = useScopeProcessLookup();
   const uomLookup = useUomLookup();
 
   /*
@@ -250,12 +267,16 @@ export const CollectionChannelScreen = () => {
       ? t.optionsTruncated
       : null;
 
-  /** 창 안의 선택 목록도 같은 규칙으로 한계를 밝힌다. */
-  const unitNote = uomLookup.isError
-    ? t.optionsLoadFailed
-    : uomLookup.truncated
-      ? t.optionsTruncated
-      : undefined;
+  /**
+   * 선택 목록의 한계. **실패가 잘림보다 앞선다** — 아무것도 못 받은 것이 더 큰 사실이다.
+   *
+   * ⛔ **칸마다 따로 낸다.** 하나로 묶으면 같은 문구가 셋 서고, 무엇보다 **틀린 말을 한다** —
+   * 단위 목록이 잘렸다고 품목 칸이 말하게 된다.
+   */
+  const limitNoteOf = (lookup: { isError: boolean; truncated: boolean }): string | undefined =>
+    lookup.isError ? t.optionsLoadFailed : lookup.truncated ? t.optionsTruncated : undefined;
+
+  const unitNote = limitNoteOf({ isError: uomLookup.isError, truncated: uomLookup.truncated });
 
   const isCreate = dialog?.mode === 'create';
 
@@ -294,6 +315,16 @@ export const CollectionChannelScreen = () => {
     etagPath: targetId === null ? null : channelDetailPath(targetId),
     invalidateKeys: [channelKeys.all],
     knownFields: CHANNEL_FORM_FIELDS,
+    /**
+     * ⛔ **중복 문구를 화면이 다시 쓴다.** 서버가 「이 설비에 같은 이름의 채널이 이미
+     * 있습니다」라고 말하지만 그것은 **거짓이다** — 조건이 다르면 같은 이름이 여러 행 선다.
+     * 무엇이 겹쳤는지(설비 + 채널명 + 품목·공정 조건) 말해야 고칠 자리를 찾는다
+     * (공유계약 A-1 · 통지 #388).
+     *
+     * ⛔ `DUPLICATE` 만 되말한다 — 형식 오류까지 삼키면 서버 말을 지운다.
+     */
+    restateFieldError: (item) =>
+      item.code === 'DUPLICATE' ? t.validation.duplicateScope(values.channelKey.trim()) : undefined,
     onSuccess: () => {
       setDialog(null);
       toast.show({ variant: 'success', description: messages.common.saved });
@@ -554,7 +585,11 @@ export const CollectionChannelScreen = () => {
             />
           }
           unitOptions={uomLookup.uoms}
-          optionsNote={unitNote}
+          itemOptions={scopeItems.entries}
+          processOptions={scopeProcesses.entries}
+          unitOptionsNote={unitNote}
+          itemOptionsNote={limitNoteOf(scopeItems)}
+          processOptionsNote={limitNoteOf(scopeProcesses)}
           isSaving={write.isSaving}
           inspectionPlanId={pickerPath.inspectionPlanId}
           onChangePlan={changePlan}

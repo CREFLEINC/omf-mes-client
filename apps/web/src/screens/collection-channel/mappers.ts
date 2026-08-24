@@ -12,6 +12,9 @@ export const emptyFormValues = (): ChannelFormValues => ({
   unitCode: '',
   /* 새 채널은 아직 이어 둔 데가 없다 — 그 상태로 등록할 수 있다(스펙 §5-2). */
   inspectionItemId: null,
+  /* 조건을 비운 채로 시작한다 — 비면 「전체」이고 그것이 가장 넓은 기본이다. */
+  itemId: null,
+  processId: null,
 });
 
 /**
@@ -25,6 +28,8 @@ export const formValuesFrom = (channel: CollectionChannel): ChannelFormValues =>
   unitCode: channel.unitCode ?? '',
   /* 값이 오지 않는 것과 `null` 은 같은 뜻이다 — 둘 다 「이어 둔 데가 없다」(`channel-notes.ts`). */
   inspectionItemId: channel.inspectionItemId ?? null,
+  itemId: channel.itemId ?? null,
+  processId: channel.processId ?? null,
 });
 
 /**
@@ -56,6 +61,13 @@ export const toChannelCreate = (
     ...(unitCode === '' ? {} : { unitCode }),
     /* 이어 둔 데가 있으면 처음부터 실어 보낸다 — 등록 뒤 다시 열어 잇게 하지 않는다. */
     ...(values.inspectionItemId === null ? {} : { inspectionItemId: values.inspectionItemId }),
+    /*
+     * ⭐ **조건은 «값으로» 싣는다** — 비었으면 `null` 이고 그것이 「전체」다.
+     * 빼면 서버가 무엇으로 읽을지 계약이 정하지 않았고, 이 둘은 **유일 범위를 이루므로**
+     * 잘못 읽히면 있어야 할 둘째 행이 중복으로 거부된다.
+     */
+    itemId: values.itemId,
+    processId: values.processId,
   };
 };
 
@@ -82,5 +94,8 @@ export const toChannelUpdate = (
   signalName: trimmed(values.signalName),
   unitCode: trimmed(values.unitCode),
   inspectionItemId: values.inspectionItemId,
+  /* ⭐ 조건도 폼에서 온다 — 계약의 수정 본문이 받는다(설계 회신 `omf-mes#203` 질문1). */
+  itemId: values.itemId,
+  processId: values.processId,
   isActive: current.isActive,
 });

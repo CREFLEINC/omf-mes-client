@@ -13,11 +13,21 @@ const t = messages.collectionChannel.validation;
  *
  * ⚠ `equipmentId` 는 여기 없다. 이 창에 설비를 고르는 칸이 없어 그릴 자리가 없다.
  */
-export const CHANNEL_FORM_FIELDS: readonly string[] = ['channelKey', 'signalName', 'unitCode'];
+export const CHANNEL_FORM_FIELDS: readonly string[] = [
+  'channelKey',
+  'signalName',
+  'unitCode',
+  /* 조건 축도 창에 칸이 있다 — 유일 위반이 이 자리로 올 수 있다. */
+  'itemId',
+  'processId',
+];
 
 /**
- * 보내기 전에 화면에서 잡을 수 있는 것만 잡는다. **채널명 중복은 서버 몫이다** —
+ * 보내기 전에 화면에서 잡을 수 있는 것만 잡는다. **중복은 서버 몫이다** —
  * 화면은 같은 설비의 «불러온» 채널만 알고, 그것으로 판정하면 잘린 목록에서 거짓 통과가 난다.
+ *
+ * ⚠ **유일 범위가 (설비 + 채널명 + 품목 조건 + 공정 조건)이라 더욱 그렇다** — 같은 이름이
+ * 조건만 달리해 여러 줄 설 수 있어, 이름만으로 판정하면 **있어야 할 행을 막는다.**
  *
  * ⭐ **신호 이름과 단위를 필수로 두지 않는다.** 계약이 선택으로 두었고, 실제로도 설비가
  * 보내오는 이름만 알고 나머지는 나중에 채우는 일이 있다 — 막으면 **채널을 등록하지 못해

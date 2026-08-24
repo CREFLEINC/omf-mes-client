@@ -42,6 +42,17 @@ export interface MasterWriteOptions<TVariables, TData> {
   /** 화면이 소유한 입력칸 이름 — 인라인으로 낼 필드 오류를 고르는 기준 */
   knownFields: readonly string[];
   /**
+   * 서버 오류를 화면의 말로 **되말한다.** 돌려주지 않으면(`undefined`) 서버 문구를 그대로 쓴다.
+   *
+   * ⭐ 서버가 주는 `code` 는 **계약**이고 `message` 는 **말씨**다. 화면이 그 상황을 더 정확히
+   * 말할 수 있으면 — 이를테면 유일 범위가 무엇인지 화면만 아는 경우(공유계약 A-1) — 코드로
+   * 알아보고 제 문구를 낸다.
+   *
+   * ⛔ **모르는 코드는 건드리지 않는다.** 되말하지 못하는 것까지 삼키면 서버가 새 오류를
+   * 내려도 화면이 옛말만 하게 된다.
+   */
+  restateFieldError?: (item: ErrorItem) => string | undefined;
+  /**
    * 멱등 키의 수명. **기본은 `per-attempt`** — 지금까지의 동작이고 되돌릴 수 있는 쓰기에 맞다.
    * 되돌릴 수 없는 쓰기만 `until-applied` 를 고른다. 판단 기준은 위 타입 주석에 있다.
    */
@@ -121,7 +132,11 @@ const staleTokenError = (): ApiError => ({
  * 그것을 버리면 어디에도 표시되지 않는 오류가 생긴다.
  * 같은 필드에 오류가 둘 이상이면 첫 번째만 인라인으로 내고 나머지는 배너로 올린다.
  */
-const splitError = (apiError: ApiError, knownFields: readonly string[]): SplitError => {
+const splitError = (
+  apiError: ApiError,
+  knownFields: readonly string[],
+  restate: ((item: ErrorItem) => string | undefined) | undefined,
+): SplitError => {
   if (apiError.kind !== 'validation') {
     return { fieldErrors: {}, error: apiError };
   }
@@ -138,7 +153,7 @@ const splitError = (apiError: ApiError, knownFields: readonly string[]): SplitEr
       !(field in fieldErrors);
 
     if (isInline && field !== undefined) {
-      fieldErrors[field] = item.message;
+      fieldErrors[field] = restate?.(item) ?? item.message;
     } else {
       remaining.push(item);
     }
@@ -258,7 +273,11 @@ export const useMasterWrite = <TVariables, TData>(
         },
         onError: (cause) => {
           /* 키를 유지한다 — 적용 여부를 모르거나(통신 실패·5xx) 실행 전 거부(400·401)다. */
-          const split = splitError(toApiError(cause), options.knownFields);
+          const split = splitError(
+            toApiError(cause),
+            options.knownFields,
+            options.restateFieldError,
+          );
           setFieldErrors(split.fieldErrors);
           setError(split.error);
         },
