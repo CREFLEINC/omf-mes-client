@@ -3,6 +3,10 @@ export const workOrderClose = {
     pane: '작업지시 마감 상세 요약',
     heading: '작업지시 마감 상세',
     loading: '작업지시 마감 상세를 불러오는 중입니다.',
+    selection: {
+      title: '마감할 W/O를 선택하세요.',
+      description: '후보 목록에서 W/O를 선택하면 상세 집계를 확인할 수 있습니다.',
+    },
     groups: {
       order: '작업지시 기본 정보',
       progress: '생산 실적 요약',
