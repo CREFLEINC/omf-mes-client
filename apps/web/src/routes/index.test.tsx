@@ -1292,6 +1292,7 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       '/equipment/work-calendar',
       '/equipment/collection-channels',
       '/equipment/shot-conversion',
+      '/equipment/gauge-master',
     ]);
   });
 });
@@ -1574,29 +1575,37 @@ describe('appRouter — 툴/금형/지그 마스터의 진입 경로', () => {
 });
 
 /**
- * **W-05-11은 메뉴에 서지 않는 두 번째 화면이다** — 다만 W-01-11과 이유도 수명도 다르다.
+ * **W-05-11이 메뉴에 섰다** — 값 목록이 확정될 때까지 «잠시» 미뤄 두었던 자리다.
  *
- * 그쪽은 맥락 없는 진입이 요구사항 위반이라 **영영** 두지 않는 것이고, 이쪽은 계측기를
- * 가려낼 값 목록이 없는 동안 **잠시** 미루는 것이다(설계 질의 `omf-mes#195`).
- * 「계측기 마스터」라는 메뉴 이름은 「여기 있는 것은 계측기다」를 약속하는데 지금은 그렇지 않다.
+ * 「계측기 마스터」라는 메뉴 이름은 「여기 있는 것은 계측기다」를 약속한다. 유형 값 목록이
+ * 없던 동안에는 그 약속을 지킬 수 없어 미뤘고(설계 질의 `omf-mes#195`), 값이 확정돼
+ * (회신 · 시드 `omf-mes#182`) 사용자가 실제로 계측기만 골라 볼 수 있게 되면서 세웠다.
  *
- * 그래서 이 describe 가 양쪽을 잰다 — 메뉴에는 없고, 주소는 실재하며 화면이 실제로 선다.
+ * ⭐ **W-01-11과 갈린다** — 그쪽은 맥락 없는 진입이 요구사항 위반이라 **영영** 두지 않는다.
+ * 이제 메뉴에 서지 않는 화면은 그것 하나뿐이다.
  */
 describe('appRouter — 계측기 마스터의 진입 경로', () => {
   /*
    * 주소와 글자를 **둘 다** 센다: 주소만 보면 이름이 다른 메뉴가 같은 화면을 열어도 통과하고,
    * 글자만 보면 이름을 바꿔 단 메뉴가 통과한다.
    */
-  it('사이드바에 이 화면 항목이 없다', () => {
+  it('사이드바에 이 화면 항목이 있다', () => {
     const hrefs = sidebarHrefs();
 
-    /* 짝 양성 — 사이드바는 실제로 그려졌고 같은 섹션의 형제는 거기 있다. */
-    expect(hrefs).toContain('/equipment/master');
-    expect(hrefs).not.toContain('/equipment/gauge-master');
+    expect(hrefs).toContain('/equipment/gauge-master');
 
     const nav = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(nav).queryByText(messages.gaugeMaster.title)).not.toBeInTheDocument();
+    expect(within(nav).getByText(messages.gaugeMaster.title)).toBeInTheDocument();
+  });
+
+  /** ⭐ 형제들 뒤에 선다 — 라우트는 진작 열려 있었고 메뉴만 뒤늦게 붙은 자리다. */
+  it('설비/툴 섹션의 형제들 뒤에 선다', () => {
+    const hrefs = sidebarHrefs();
+
+    expect(hrefs.indexOf('/equipment/gauge-master')).toBeGreaterThan(
+      hrefs.indexOf('/equipment/shot-conversion'),
+    );
   });
 
   it('라우트 표에는 주소가 있다', () => {

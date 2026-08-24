@@ -160,8 +160,12 @@ describe('등록 본문', () => {
     expect(body.equipmentCode).toBe('');
   });
 
-  it('신규 폼의 유형은 자리표시 값이다', () => {
-    expect(emptyFormValues('11').equipmentTypeCode).toBe('PENDING');
+  /**
+   * ⭐ **고르지 않은 채로 연다.** 값 목록이 확정돼(설계 회신 `omf-mes#195`) 사용자가 실제로
+   * 고를 수 있다 — 자리표시 값을 미리 넣어 두면 «고른 것»으로 읽히고, 필수 검증도 통과한다.
+   */
+  it('신규 폼의 유형은 비어 있다', () => {
+    expect(emptyFormValues('11').equipmentTypeCode).toBe('');
   });
 
   it('고른 공장이 없으면 빈 칸으로 연다', () => {

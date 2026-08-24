@@ -1,6 +1,5 @@
 import type { components } from '@omf-mes/api-client';
 
-import { PENDING_CODE_VALUE } from './code-options';
 import type { CarriedGaugeValues, Equipment, GaugeFormValues } from './types';
 
 type EquipmentCreate = components['schemas']['EquipmentCreate'];
@@ -42,7 +41,8 @@ export const carriedFrom = (gauge: Equipment): CarriedGaugeValues => ({
 export const emptyFormValues = (plantId: string): GaugeFormValues => ({
   equipmentCode: '',
   equipmentName: '',
-  equipmentTypeCode: PENDING_CODE_VALUE,
+  /* ⭐ 고르지 않은 채로 연다 — 값 목록이 실제로 있어 사용자가 고를 수 있다(필수 칸이다). */
+  equipmentTypeCode: '',
   plantId,
   calibrationRequired: false,
   calibrationCycleTypeCode: '',

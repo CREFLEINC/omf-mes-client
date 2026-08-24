@@ -266,6 +266,17 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/equipment/shot-conversion" icon="calculate">
               타발수 환산 파라미터 설정
             </NavItem>
+            {/*
+             * W-05-11 — **섹션 맨 뒤다.** 라우트는 진작 열려 있었고 메뉴만 미뤄 두었던
+             * 화면이라(설계 질의 `omf-mes#195`), 형제들이 자리를 잡은 뒤에 붙는다.
+             *
+             * ⭐ **미루던 이유가 없어졌다** — 유형 값 목록이 확정돼(회신 · 시드 `omf-mes#182`)
+             * 사용자가 실제로 계측기만 골라 볼 수 있으므로 「계측기 마스터」라는 이름이
+             * 더는 거짓이 아니다.
+             */}
+            <NavItem to="/equipment/gauge-master" icon="straighten">
+              계측기 마스터 관리
+            </NavItem>
           </SidebarSection>
           {/*
            * W-CO-09 — 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**다.

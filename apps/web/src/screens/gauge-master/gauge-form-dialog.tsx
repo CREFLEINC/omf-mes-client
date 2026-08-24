@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import type { ActionAvailability } from './asset-actions';
-import { GAUGE_TYPE_OPTIONS, type CodeOption, codeLabel } from './code-options';
+import { type CodeOption, codeLabel } from './code-options';
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
 import type { GaugeFormValues } from './types';
@@ -41,6 +41,10 @@ const ReadOnlyField = ({ label, value, note }: ReadOnlyFieldProps) => {
 };
 
 export interface GaugeFormDialogProps {
+  /** 고를 수 있는 계측기 유형. 서버의 코드값 목록에서 온다 */
+  typeOptions: CodeOption[];
+  /** 유형 목록의 한계(잘림·실패) 안내 */
+  typeOptionsNote?: string;
   mode: 'create' | 'edit';
   values: GaugeFormValues;
   onChange: (patch: Partial<GaugeFormValues>) => void;
@@ -86,6 +90,8 @@ export const GaugeFormDialog = ({
   mode,
   values,
   onChange,
+  typeOptions,
+  typeOptionsNote,
   fieldErrors,
   banner,
   codeLockReason,
@@ -178,11 +184,12 @@ export const GaugeFormDialog = ({
         <SelectField
           label={t.fields.gaugeType}
           required
-          options={GAUGE_TYPE_OPTIONS}
+          options={typeOptions}
           value={values.equipmentTypeCode}
           onChange={(value) => onChange({ equipmentTypeCode: value })}
           error={fieldErrors.equipmentTypeCode}
-          note={messages.pendingCode.note}
+          placeholder={t.form.typePlaceholder}
+          note={typeOptionsNote}
         />
 
         {/*

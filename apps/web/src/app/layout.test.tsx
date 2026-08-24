@@ -573,6 +573,7 @@ describe('AppLayout', () => {
       '/equipment/work-calendar',
       '/equipment/collection-channels',
       '/equipment/shot-conversion',
+      '/equipment/gauge-master',
       '/approval/inbox',
       '/notification/center',
       '/system/users-roles',

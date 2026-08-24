@@ -14,13 +14,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 import { CalibrationBadge } from './calibration-badge';
 import { judgeCalibration } from './calibration-status';
-import {
-  GAUGE_TYPE_OPTIONS,
-  type CodeOption,
-  codeLabel,
-  defaultGaugeFilters,
-  lookupLabel,
-} from './code-options';
+import { type CodeOption, codeLabel, defaultGaugeFilters, lookupLabel } from './code-options';
 import { SelectField } from './select-field';
 import type { Equipment, GaugeFilters } from './types';
 
@@ -35,9 +29,14 @@ export interface GaugeListPaneProps {
   statusOptions: CodeOption[];
   /** 오늘. **인자로 받는다** — 화면이 시각을 읽으면 시험이 날짜에 흔들린다 */
   today: string;
+  /** 고를 수 있는 계측기 유형. 서버의 코드값 목록에서 온다 */
+  typeOptions: CodeOption[];
+  /** 유형 목록의 한계(잘림·실패) 안내. 없으면 붙이지 않는다 */
+  typeOptionsNote?: string;
   /**
-   * 계측기 유형으로 거를 수 있는가. 거짓이면 전체 설비가 보이고 화면이 그 사실을 밝힌다.
-   * ⚠ 값 목록이 아직 없다(설계 질의 `omf-mes#195`).
+   * 지금 유형 조건이 걸려 있는가. **걸려 있지 않으면 계측기가 아닌 설비도 함께 보인다** —
+   * 계약의 `equipmentTypeCode` 가 값 하나만 받아 세 유형을 한 번에 거를 수단이 없다.
+   * 그 사실을 감추지 않고 밝힌다(G-2).
    */
   canFilterByType: boolean;
   /** 서버가 목록을 잘랐는가 — 밀림 조건이 무엇을 덮는지가 달라진다 */
@@ -92,6 +91,8 @@ export const GaugeListPane = ({
   plantEntries,
   statusOptions,
   today,
+  typeOptions,
+  typeOptionsNote,
   canFilterByType,
   isTruncated,
   onAdd,
@@ -227,10 +228,10 @@ export const GaugeListPane = ({
         />
         <SelectField
           label={t.fields.gaugeType}
-          options={[{ value: '', label: t.filters.typeAll }, ...GAUGE_TYPE_OPTIONS]}
+          options={[{ value: '', label: t.filters.typeAll }, ...typeOptions]}
           value={draft.equipmentTypeCode}
           onChange={(value) => setDraft((prev) => ({ ...prev, equipmentTypeCode: value }))}
-          note={messages.pendingCode.note}
+          note={typeOptionsNote}
         />
         {/* 해제 축이라 변경 즉시 적용한다. */}
         <div className="field-cell field-cell-unlabeled">
