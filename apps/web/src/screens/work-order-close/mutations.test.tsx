@@ -79,7 +79,7 @@ describe('useWorkOrderCloseMutation', () => {
     );
     const candidatesKey = workOrderCloseKeys.candidates({
       statusCode: 'SYN_RELEASED',
-      productionPlanId: null,
+      productionOrderId: null,
       plannedStartFrom: null,
       plannedStartTo: null,
       page: 1,

@@ -11,9 +11,11 @@ import {
 } from '../../test/api-harness';
 import {
   useWorkOrderCloseCandidates,
+  useWorkOrderCloseCodeValues,
   useWorkOrderCloseDetail,
   useWorkOrderCloseOpenSession,
   useWorkOrderCloseOutboundItemSettings,
+  useWorkOrderCloseProductionOrders,
   workOrderCloseDetailPath,
   workOrderCloseKeys,
   type WorkOrderCloseFilters,
@@ -24,7 +26,7 @@ const DETAIL_PATH = '/production/work-orders/702';
 
 const filters = (overrides: Partial<WorkOrderCloseFilters> = {}): WorkOrderCloseFilters => ({
   statusCode: 'SYN-CALLER-STATUS',
-  productionPlanId: 501,
+  productionOrderId: 501,
   plannedStartFrom: '2026-08-23T09:00:00+09:00',
   plannedStartTo: '2026-08-23T17:00:00+09:00',
   page: 3,
@@ -94,7 +96,7 @@ describe('workOrderCloseKeys', () => {
     ]);
     [
       filters({ statusCode: 'SYN-OTHER-STATUS' }),
-      filters({ productionPlanId: 502 }),
+      filters({ productionOrderId: 502 }),
       filters({ plannedStartFrom: '2026-08-24T09:00:00+09:00' }),
       filters({ plannedStartTo: '2026-08-24T17:00:00+09:00' }),
       filters({ page: 4 }),
@@ -110,6 +112,14 @@ describe('workOrderCloseKeys', () => {
       'work-order-close',
       'outbound-item-settings',
     ]);
+    expect(workOrderCloseKeys.productionOrders()).toEqual([
+      'work-order-close',
+      'lookups',
+      'production-orders',
+    ]);
+    expect(workOrderCloseKeys.codeValues('SYN-A')).not.toEqual(
+      workOrderCloseKeys.codeValues('SYN-B'),
+    );
   });
 });
 
@@ -163,7 +173,7 @@ describe('work-order close reads', () => {
 
     expect(Array.from(requests[0]?.searchParams.entries() ?? [])).toEqual([
       ['statusCode', 'SYN-CALLER-STATUS'],
-      ['productionPlanId', '501'],
+      ['productionOrderId', '501'],
       ['plannedStartFrom', '2026-08-23T09:00:00+09:00'],
       ['plannedStartTo', '2026-08-23T17:00:00+09:00'],
       ['page', '3'],
@@ -195,7 +205,7 @@ describe('work-order close reads', () => {
       () =>
         useWorkOrderCloseCandidates(
           filters({
-            productionPlanId: null,
+            productionOrderId: null,
             plannedStartFrom: null,
             plannedStartTo: null,
             page: 1,
@@ -432,5 +442,103 @@ describe('work-order close readiness reads', () => {
       kind: 'http',
       status: 503,
     });
+  });
+});
+
+describe('work-order close lookups', () => {
+  it('loads P/O choices in server order and exposes an incomplete page', async () => {
+    const { fetch, requests } = recordingFetch([
+      getRoute('/planning/production-orders', {
+        items: [
+          { productionOrderId: 502, productionOrderNo: 'SYN-PO-502', statusCode: 'OPEN' },
+          { productionOrderId: 501, productionOrderNo: 'SYN-PO-501', statusCode: 'OPEN' },
+        ],
+        page: { page: 1, size: 200, total: 201 },
+      }),
+    ]);
+    const { result } = renderHookWithProviders(() => useWorkOrderCloseProductionOrders(), {
+      fetch,
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(Array.from(requests[0]?.searchParams.entries() ?? [])).toEqual([
+      ['page', '1'],
+      ['size', '200'],
+    ]);
+    expect(result.current.data).toEqual({
+      items: [
+        { productionOrderId: 502, productionOrderNo: 'SYN-PO-502' },
+        { productionOrderId: 501, productionOrderNo: 'SYN-PO-501' },
+      ],
+      truncated: true,
+    });
+  });
+
+  it('loads one code group by stable name and exposes complete active facts', async () => {
+    const { fetch, requests } = recordingFetch([
+      getRoute('/mdm/code-values', {
+        items: [
+          {
+            codeValueId: 91,
+            codeGroupId: 7,
+            code: 'SYN-CLOSED',
+            codeName: 'Synthetic closed',
+            displayOrder: 20,
+            isActive: true,
+          },
+        ],
+        page: { page: 1, size: 200, total: 1 },
+      }),
+    ]);
+    const { result } = renderHookWithProviders(
+      () => useWorkOrderCloseCodeValues('SYN-WORK-ORDER-STATUS'),
+      { fetch },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(Array.from(requests[0]?.searchParams.entries() ?? [])).toEqual([
+      ['codeGroupCode', 'SYN-WORK-ORDER-STATUS'],
+      ['page', '1'],
+      ['size', '200'],
+    ]);
+    expect(result.current.data).toEqual({
+      items: [
+        {
+          code: 'SYN-CLOSED',
+          codeName: 'Synthetic closed',
+          displayOrder: 20,
+          isActive: true,
+        },
+      ],
+      truncated: false,
+    });
+  });
+
+  it('preserves P/O and code-value HTTP failures instead of returning empty success', async () => {
+    const productionOrders = recordingFetch([
+      getRoute('/planning/production-orders', { message: 'Synthetic P/O failure' }, 503),
+    ]);
+    const productionOrderResult = renderHookWithProviders(
+      () => useWorkOrderCloseProductionOrders(),
+      { fetch: productionOrders.fetch },
+    );
+
+    await waitFor(() => expect(productionOrderResult.result.current.isError).toBe(true));
+    expect(productionOrderResult.result.current.data).toBeUndefined();
+    expect(toApiError(productionOrderResult.result.current.error)).toMatchObject({ status: 503 });
+
+    const codeValues = recordingFetch([
+      getRoute('/mdm/code-values', { message: 'Synthetic code failure' }, 403),
+    ]);
+    const codeValueResult = renderHookWithProviders(
+      () => useWorkOrderCloseCodeValues('SYN-WORK-ORDER-STATUS'),
+      { fetch: codeValues.fetch },
+    );
+
+    await waitFor(() => expect(codeValueResult.result.current.isError).toBe(true));
+    expect(codeValueResult.result.current.data).toBeUndefined();
+    expect(toApiError(codeValueResult.result.current.error)).toMatchObject({ status: 403 });
   });
 });
