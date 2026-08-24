@@ -1,4 +1,4 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useReducer } from 'react';
 
@@ -11,7 +11,11 @@ import {
   toWorkOrderCloseCandidateRows,
   type WorkOrderCloseCandidateSnapshot,
 } from './candidate-screen-model';
-import { useWorkOrderCloseItemNames, useWorkOrderCloseUomLookup } from './candidate-references';
+import {
+  resolveWorkOrderCloseUomReference,
+  useWorkOrderCloseItemNames,
+  useWorkOrderCloseUomLookup,
+} from './candidate-references';
 import {
   toWorkOrderCloseCodeOptions,
   toWorkOrderCloseProductionOrderOptions,
@@ -20,9 +24,15 @@ import {
 import { WorkOrderCloseFilterBar } from './filter-bar';
 import { toWorkOrderCloseFilterInitialization } from './filter-initialization';
 import {
+  WorkOrderCloseDetailSummaryPane,
+  type WorkOrderCloseDetailSummaryState,
+} from './detail-summary-pane';
+import {
   useWorkOrderCloseCandidates,
   useWorkOrderCloseCodeValues,
+  useWorkOrderCloseDetail,
   useWorkOrderCloseProductionOrders,
+  type WorkOrderCloseDetailFact,
 } from './queries';
 
 const productionOrderReason = (
@@ -54,6 +64,34 @@ export const toWorkOrderCloseCandidateSnapshot = ({
   return { kind: 'SETTLED', candidateIds };
 };
 
+interface DetailQuerySnapshotSource {
+  selectedWorkOrderId: number | null;
+  isFetching: boolean;
+  isError: boolean;
+  detail: WorkOrderCloseDetailFact | undefined;
+  unitLabel: string | null;
+}
+
+export type WorkOrderCloseDetailScreenState =
+  | { kind: 'NOT_SELECTED' }
+  | { kind: 'CHECKING' }
+  | { kind: 'UNAVAILABLE' }
+  | { kind: 'RESOLVED'; detail: WorkOrderCloseDetailFact; unitLabel: string | null };
+
+export const toWorkOrderCloseDetailScreenState = ({
+  selectedWorkOrderId,
+  isFetching,
+  isError,
+  detail,
+  unitLabel,
+}: DetailQuerySnapshotSource): WorkOrderCloseDetailScreenState => {
+  if (selectedWorkOrderId === null) return { kind: 'NOT_SELECTED' };
+  if (isFetching) return { kind: 'CHECKING' };
+  if (isError) return { kind: 'UNAVAILABLE' };
+  if (detail === undefined) return { kind: 'UNAVAILABLE' };
+  return { kind: 'RESOLVED', detail, unitLabel };
+};
+
 export const WorkOrderCloseCandidateScreen = () => {
   const status = useWorkOrderCloseCodeValues(WORK_ORDER_CLOSE_CODE_GROUPS.status);
   const productionOrders = useWorkOrderCloseProductionOrders();
@@ -80,6 +118,7 @@ export const WorkOrderCloseCandidateScreen = () => {
   const candidates = candidate.data?.items ?? [];
   const itemNames = useWorkOrderCloseItemNames(candidates.map((item) => item.itemId));
   const uoms = useWorkOrderCloseUomLookup();
+  const detail = useWorkOrderCloseDetail(state.selectedWorkOrderId);
   const snapshot = useMemo(
     () =>
       toWorkOrderCloseCandidateSnapshot({
@@ -119,6 +158,51 @@ export const WorkOrderCloseCandidateScreen = () => {
   ) : initialization.kind === 'UNAVAILABLE' ? (
     <AlertBanner variant="warning">{initialization.statusUnavailableReason}</AlertBanner>
   ) : null;
+  const detailUom =
+    detail.data === undefined ? null : resolveWorkOrderCloseUomReference(uoms, detail.data.uomId);
+  const detailState = toWorkOrderCloseDetailScreenState({
+    selectedWorkOrderId: state.selectedWorkOrderId,
+    isFetching: detail.isFetching,
+    isError: detail.isError,
+    detail: detail.data,
+    unitLabel: detailUom?.kind === 'named' ? detailUom.label : null,
+  });
+  const detailPaneState: WorkOrderCloseDetailSummaryState =
+    detailState.kind === 'NOT_SELECTED'
+      ? {
+          kind: 'UNAVAILABLE',
+          content: (
+            <EmptyState
+              size="sm"
+              title={messages.workOrderClose.detailSummary.selection.title}
+              description={messages.workOrderClose.detailSummary.selection.description}
+            />
+          ),
+        }
+      : detailState.kind === 'UNAVAILABLE'
+        ? {
+            kind: 'UNAVAILABLE',
+            content: (
+              <AlertBanner
+                variant="error"
+                title={messages.httpError.loadTitle}
+                action={
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={() => {
+                      void detail.refetch();
+                    }}
+                  >
+                    {messages.common.retry}
+                  </Button>
+                }
+              >
+                {messages.httpError.description}
+              </AlertBanner>
+            ),
+          }
+        : detailState;
 
   return (
     <>
@@ -142,6 +226,7 @@ export const WorkOrderCloseCandidateScreen = () => {
         onSelect={(workOrderId) => dispatch({ type: 'SELECT', workOrderId })}
         onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
       />
+      <WorkOrderCloseDetailSummaryPane state={detailPaneState} />
     </>
   );
 };
