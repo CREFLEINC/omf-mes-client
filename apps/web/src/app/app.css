@@ -371,6 +371,9 @@ main > * + * {
 .stacked-cell {
   display: flex;
   flex-direction: column;
+  /* 줄이 칸 너비로 늘어나지 않는다 — 표식(Chip)이 칸을 가로지르면 값처럼 보인다. */
+  align-items: flex-start;
+  gap: var(--space-1);
 }
 
 .stacked-cell > span {

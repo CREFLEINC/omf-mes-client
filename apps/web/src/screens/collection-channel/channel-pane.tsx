@@ -12,6 +12,14 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { countUnmapped, isUnmapped, unmappedScopeNote, visibleChannels } from './channel-notes';
+import {
+  countWarnings,
+  inspectionItemText,
+  lacksItemName,
+  mappingWarnings,
+  warningRowText,
+  warningSummaryLines,
+} from './mapping-state';
 import { withInactiveSuffix } from './options';
 import { scopeLines } from './scope';
 import type { ChannelFilters, CollectionChannel, Equipment } from './types';
@@ -44,18 +52,33 @@ export interface ChannelPaneProps {
 /**
  * 대상 검사 항목 칸.
  *
- * ⭐ **두 값이 뜻이 다르다** — 「미매핑」은 **값이 버려진다**는 뜻이고 「연결됨」은 정상이다.
- * 그래서 앞엣것만 경고 표식을 단다. ⛔ 「연결됨」에 항목 이름을 지어 붙이지 않는다 —
- * 계약이 이름을 내려주지 않는다(표 위 안내가 그 사실을 말한다).
+ * ⭐ **세 가지 사태가 한 칸에 선다** — ① 잇지 않았다(값이 **버려진다**) ② 이었다(무엇에
+ * 이었는지 이름으로 말한다) ③ 이었는데 **어긋났다**(값이 저장되긴 하되 조용히 틀어진다).
+ *
+ * ⛔ **②와 ③을 같은 표식으로 두지 않는다.** 어긋난 줄에만 표식이 붙어야 눈에 걸린다.
  */
-const mappingCell = (row: CollectionChannel): ReactNode =>
-  isUnmapped(row) ? (
-    <Chip variant="status" status="warning">
-      {t.mapping.unmapped}
-    </Chip>
-  ) : (
-    t.mapping.mapped
+const mappingCell = (row: CollectionChannel): ReactNode => {
+  if (isUnmapped(row)) {
+    return (
+      <Chip variant="status" status="warning">
+        {t.mapping.unmapped}
+      </Chip>
+    );
+  }
+
+  const warnings = mappingWarnings(row);
+
+  return (
+    <span className="stacked-cell">
+      <span>{inspectionItemText(row)}</span>
+      {warnings.map((warning) => (
+        <Chip key={warning} variant="status" status="warning" title={warningRowText(row, warning)}>
+          {warning === 'staleRevision' ? t.warnings.staleRevisionChip : t.warnings.unitMismatchChip}
+        </Chip>
+      ))}
+    </span>
   );
+};
 
 /** 값이 오지 않은 칸을 빈 칸으로 두지 않는다 — 없는 것인지 못 받은 것인지 구별이 안 된다. */
 const orNotRecorded = (value: string | undefined): string =>
@@ -173,7 +196,7 @@ export const ChannelPane = ({
    * 없는데, 그 자리에서 「연결된 항목의 이름은 오지 않습니다」를 읽으면 무엇을 두고 하는
    * 말인지 알 수 없다 — 브라우저 확인에서 실제로 그렇게 보였다.
    */
-  const hasMappedRow = rows.some((row) => !isUnmapped(row));
+  const hasUnnamedRow = rows.some(lacksItemName);
   /*
    * ⭐ **거르기 «전»의 목록으로 센다.** 지금은 미매핑만 보기가 켜져도 걸러 남는 것이 정확히
    * 미매핑이라 결과가 같지만(관찰상 동치), 그것은 우연이다 — 거르는 축이 하나라도 늘면
@@ -181,6 +204,7 @@ export const ChannelPane = ({
    */
   const unmappedCount = countUnmapped(channels);
   const scopeNote = unmappedScopeNote(filters.unmappedOnly, limitNote);
+  const warningLines = warningSummaryLines(countWarnings(channels));
 
   const emptySlot = filters.unmappedOnly ? (
     <EmptyState
@@ -279,6 +303,21 @@ export const ChannelPane = ({
         </div>
       )}
 
+      {/*
+       * ⭐ **미매핑과 따로 세운다.** 앞엣것은 값이 «버려지는» 것이고 이것은 값이 저장되긴
+       * 하되 **조용히 어긋나는** 것이라, 사용자가 할 일이 다르다.
+       */}
+      {loadError === null && warningLines.length > 0 && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning" title={t.warnings.summaryTitle}>
+            {/* ⛔ `.stacked-cell` 을 쓰지 않는다 — 줄마다 `nowrap` 이라 문장이 잘린다. */}
+            {warningLines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </AlertBanner>
+        </div>
+      )}
+
       {limitNote !== null && (
         <p className="field-note" role="status">
           {limitNote}
@@ -289,7 +328,7 @@ export const ChannelPane = ({
           {scopeNote}
         </p>
       )}
-      {hasMappedRow && <p className="field-note">{t.mapping.nameUnavailable}</p>}
+      {hasUnnamedRow && <p className="field-note">{t.mapping.nameUnavailable}</p>}
 
       {listSlot()}
     </section>
