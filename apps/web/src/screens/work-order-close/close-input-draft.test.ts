@@ -8,10 +8,7 @@ import {
   type WorkOrderCloseInputDraft,
   type WorkOrderCloseRemainderDisposition,
 } from './close-input-draft';
-import {
-  workOrderCloseBlockers,
-  type WorkOrderCloseQuantityClassification,
-} from './close-readiness';
+import { workOrderCloseBlockers, type WorkOrderCloseCompletionJudgment } from './close-readiness';
 
 const draft = (overrides: Partial<WorkOrderCloseInputDraft> = {}): WorkOrderCloseInputDraft => ({
   remainderDisposition: null,
@@ -68,11 +65,11 @@ describe('WorkOrderCloseInputDraft', () => {
   );
 });
 
-const readinessCases = (['SHORTFALL', 'EXACT', 'OVERAGE'] as const).flatMap((classification) =>
+const readinessCases = (['UNDER', 'NORMAL', 'OVER'] as const).flatMap((completionJudgment) =>
   [false, true].flatMap((hasOpenSession) =>
     [null, 'CARRY_OVER' as const].flatMap((remainderDisposition) =>
       ['', '   ', 'synthetic reason'].map((varianceReasonCode) => ({
-        classification,
+        completionJudgment,
         hasOpenSession,
         remainderDisposition,
         varianceReasonCode,
@@ -84,15 +81,15 @@ const readinessCases = (['SHORTFALL', 'EXACT', 'OVERAGE'] as const).flatMap((cla
 describe('workOrderCloseReadinessInputFrom', () => {
   it.each(readinessCases)(
     'maps %s without changing its retained draft values',
-    ({ classification, hasOpenSession, remainderDisposition, varianceReasonCode }) => {
+    ({ completionJudgment, hasOpenSession, remainderDisposition, varianceReasonCode }) => {
       expect(
         workOrderCloseReadinessInputFrom(
           draft({ remainderDisposition, varianceReasonCode }),
-          classification,
+          completionJudgment,
           hasOpenSession,
         ),
       ).toEqual({
-        classification,
+        completionJudgment,
         hasOpenSession,
         hasRemainderDisposition: remainderDisposition !== null,
         hasVarianceReason: varianceReasonCode.trim() !== '',
@@ -104,25 +101,25 @@ describe('workOrderCloseReadinessInputFrom', () => {
 describe('workOrderCloseBlockers with input drafts', () => {
   it.each([
     [
-      'shortfall empty',
+      'under empty',
       draft(),
-      'SHORTFALL',
+      'UNDER',
       false,
       ['REMAINDER_DISPOSITION_REQUIRED', 'VARIANCE_REASON_REQUIRED'],
     ],
-    ['exact empty', draft(), 'EXACT', false, []],
-    ['overage empty', draft(), 'OVERAGE', false, ['VARIANCE_REASON_REQUIRED']],
+    ['normal empty', draft(), 'NORMAL', false, []],
+    ['over empty', draft(), 'OVER', false, ['VARIANCE_REASON_REQUIRED']],
     [
       'open session first',
       draft(),
-      'SHORTFALL',
+      'UNDER',
       true,
       ['OPEN_SESSION', 'REMAINDER_DISPOSITION_REQUIRED', 'VARIANCE_REASON_REQUIRED'],
     ],
     [
       'irrelevant retained values',
       draft({ remainderDisposition: 'WRITE_OFF', varianceReasonCode: 'synthetic reason' }),
-      'EXACT',
+      'NORMAL',
       false,
       [],
     ],
@@ -131,13 +128,13 @@ describe('workOrderCloseBlockers with input drafts', () => {
     (
       _,
       inputDraft,
-      classification: WorkOrderCloseQuantityClassification,
+      completionJudgment: WorkOrderCloseCompletionJudgment,
       hasOpenSession,
       expected,
     ) => {
       expect(
         workOrderCloseBlockers(
-          workOrderCloseReadinessInputFrom(inputDraft, classification, hasOpenSession),
+          workOrderCloseReadinessInputFrom(inputDraft, completionJudgment, hasOpenSession),
         ),
       ).toEqual(expected);
     },

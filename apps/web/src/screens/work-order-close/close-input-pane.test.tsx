@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { WorkOrderCloseInputPane } from './close-input-pane';
 import type { WorkOrderCloseInputDraft } from './close-input-draft';
-import type { WorkOrderCloseQuantityClassification } from './close-readiness';
+import type { WorkOrderCloseCompletionJudgment } from './close-readiness';
 
 const t = messages.workOrderClose.input;
 const reasonOptions: SelectItems = [
@@ -15,7 +15,7 @@ const reasonOptions: SelectItems = [
 ];
 
 const renderPane = ({
-  classification = 'SHORTFALL',
+  completionJudgment = 'UNDER',
   draft = { remainderDisposition: null, varianceReasonCode: '' },
   reasonOptions: options = reasonOptions,
   reasonUnavailableReason = null,
@@ -24,7 +24,7 @@ const renderPane = ({
 }: Partial<React.ComponentProps<typeof WorkOrderCloseInputPane>> = {}) => {
   render(
     <WorkOrderCloseInputPane
-      classification={classification}
+      completionJudgment={completionJudgment}
       draft={draft}
       reasonOptions={options}
       reasonUnavailableReason={reasonUnavailableReason}
@@ -45,22 +45,26 @@ describe('WorkOrderCloseInputPane', () => {
     });
   });
 
-  it.each(['SHORTFALL', 'EXACT', 'OVERAGE'] as const)(
-    'shows localized classification %s without its raw code',
-    (classification: WorkOrderCloseQuantityClassification) => {
-      renderPane({ classification });
+  it.each([
+    ['UNDER', 'SHORTFALL'],
+    ['NORMAL', 'EXACT'],
+    ['OVER', 'OVERAGE'],
+  ] as const)(
+    'shows localized server judgment %s without its raw code',
+    (completionJudgment: WorkOrderCloseCompletionJudgment, displayKey) => {
+      renderPane({ completionJudgment });
 
       expect(screen.getByRole('region', { name: t.pane })).toHaveClass('pane');
       expect(screen.getByRole('heading', { name: t.heading })).toBeVisible();
       expect(screen.getByText(t.classification.label)).toBeVisible();
-      expect(screen.getByText(t.classification[classification])).toBeVisible();
-      expect(screen.queryByText(classification)).not.toBeInTheDocument();
+      expect(screen.getByText(t.classification[displayKey])).toBeVisible();
+      expect(screen.queryByText(completionJudgment)).not.toBeInTheDocument();
     },
   );
 
   it('keeps exact drafts hidden and does not expose editable controls', () => {
     const callbacks = renderPane({
-      classification: 'EXACT',
+      completionJudgment: 'NORMAL',
       draft: { remainderDisposition: 'CARRY_OVER', varianceReasonCode: 'reason-first' },
     });
 
@@ -121,7 +125,7 @@ describe('WorkOrderCloseInputPane', () => {
     const first = vi.fn();
     const second = vi.fn();
     const props = {
-      classification: 'SHORTFALL' as const,
+      completionJudgment: 'UNDER' as const,
       draft: { remainderDisposition: null, varianceReasonCode: '' },
       reasonOptions,
       reasonUnavailableReason: null,
@@ -168,7 +172,7 @@ describe('WorkOrderCloseInputPane', () => {
   });
 
   it('omits the shortfall fieldset but keeps the overage reason select', () => {
-    renderPane({ classification: 'OVERAGE' });
+    renderPane({ completionJudgment: 'OVER' });
 
     expect(screen.queryByRole('group', { name: t.remainder.legend })).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.reason.label })).toBeEnabled();

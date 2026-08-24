@@ -6,10 +6,16 @@ import type {
   WorkOrderCloseInputDraft,
   WorkOrderCloseRemainderDisposition,
 } from './close-input-draft';
-import type { WorkOrderCloseQuantityClassification } from './close-readiness';
+import type { WorkOrderCloseCompletionJudgment } from './close-readiness';
+
+const CLASSIFICATION_MESSAGE_KEY = {
+  UNDER: 'SHORTFALL',
+  NORMAL: 'EXACT',
+  OVER: 'OVERAGE',
+} as const satisfies Record<WorkOrderCloseCompletionJudgment, 'SHORTFALL' | 'EXACT' | 'OVERAGE'>;
 
 export interface WorkOrderCloseInputPaneProps {
-  classification: WorkOrderCloseQuantityClassification;
+  completionJudgment: WorkOrderCloseCompletionJudgment;
   draft: WorkOrderCloseInputDraft;
   reasonOptions: SelectItems;
   reasonUnavailableReason: string | null;
@@ -18,7 +24,7 @@ export interface WorkOrderCloseInputPaneProps {
 }
 
 export const WorkOrderCloseInputPane = ({
-  classification,
+  completionJudgment,
   draft,
   reasonOptions,
   reasonUnavailableReason,
@@ -31,16 +37,17 @@ export const WorkOrderCloseInputPane = ({
   const remainderGroupName = useId();
   const reasonNote =
     reasonUnavailableReason ?? (reasonOptions.length === 0 ? t.reason.empty : null);
+  const classificationMessageKey = CLASSIFICATION_MESSAGE_KEY[completionJudgment];
 
   return (
     <section aria-label={t.pane} className="pane">
       <h2>{t.heading}</h2>
       <div className="field-cell">
         <span className="field-label">{t.classification.label}</span>
-        <span>{t.classification[classification]}</span>
+        <span>{t.classification[classificationMessageKey]}</span>
       </div>
-      {classification === 'EXACT' ? <p className="field-note">{t.exactNote}</p> : null}
-      {classification === 'SHORTFALL' ? (
+      {completionJudgment === 'NORMAL' ? <p className="field-note">{t.exactNote}</p> : null}
+      {completionJudgment === 'UNDER' ? (
         <fieldset className="field-cell">
           <legend className="field-label">{t.remainder.legend}</legend>
           <div className="check-group">
@@ -63,7 +70,7 @@ export const WorkOrderCloseInputPane = ({
           </div>
         </fieldset>
       ) : null}
-      {classification !== 'EXACT' ? (
+      {completionJudgment !== 'NORMAL' ? (
         <div className="field-cell">
           <label className="field-label" htmlFor={reasonId}>
             {t.reason.label}

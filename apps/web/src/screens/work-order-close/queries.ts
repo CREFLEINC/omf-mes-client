@@ -6,6 +6,8 @@ import { runRequest } from '../../patterns/request';
 import { toWorkOrderFact, type WorkOrderFact } from '../work-order/queries';
 
 type WorkOrder = components['schemas']['WorkOrder'];
+type WorkOrderProgress = components['schemas']['WorkOrderProgress'];
+type PreIssuedLotSummary = components['schemas']['PreIssuedLotSummary'];
 type PageMeta = components['schemas']['PageMeta'];
 type OutboundItemSetting = components['schemas']['OutboundItemSetting'];
 
@@ -13,6 +15,11 @@ export interface WorkOrderCloseFact extends WorkOrderFact {
   completedAt: string | null;
   completionVarianceReasonCode: string | null;
   closedAt: string | null;
+}
+
+export interface WorkOrderCloseDetailFact extends WorkOrderCloseFact {
+  progress: WorkOrderProgress | null;
+  preIssuedLots: PreIssuedLotSummary | null;
 }
 
 export interface WorkOrderCloseFilters {
@@ -69,6 +76,12 @@ export const toWorkOrderCloseFact = (workOrder: WorkOrder): WorkOrderCloseFact =
   closedAt: workOrder.closedAt ?? null,
 });
 
+export const toWorkOrderCloseDetailFact = (workOrder: WorkOrder): WorkOrderCloseDetailFact => ({
+  ...toWorkOrderCloseFact(workOrder),
+  progress: workOrder.progress === undefined ? null : { ...workOrder.progress },
+  preIssuedLots: workOrder.preIssuedLots === undefined ? null : { ...workOrder.preIssuedLots },
+});
+
 export const useWorkOrderCloseCandidates = (
   filters: WorkOrderCloseFilters,
 ): UseQueryResult<WorkOrderCloseCandidatesResponse> => {
@@ -110,7 +123,7 @@ export const useWorkOrderCloseCandidates = (
 
 export const useWorkOrderCloseDetail = (
   workOrderId: number | null,
-): UseQueryResult<WorkOrderCloseFact> => {
+): UseQueryResult<WorkOrderCloseDetailFact> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -121,10 +134,13 @@ export const useWorkOrderCloseDetail = (
         throw new Error('A work order is required to load close detail.');
       }
 
-      return toWorkOrderCloseFact(
+      return toWorkOrderCloseDetailFact(
         await runRequest(() =>
           client.GET('/production/work-orders/{workOrderId}', {
-            params: { path: { workOrderId } },
+            params: {
+              path: { workOrderId },
+              query: { withProgress: true, withPreIssuedLots: true },
+            },
           }),
         ),
       );
