@@ -47,7 +47,7 @@ export const workOrderClose = {
     },
   },
   filter: {
-    productionPlan: 'P/O',
+    productionOrder: 'P/O',
     plannedStartFrom: '계획 시작일(부터)',
     plannedStartTo: '계획 시작일(까지)',
     status: '마감 상태',
@@ -57,6 +57,11 @@ export const workOrderClose = {
     statusRequired: '마감 상태를 선택하세요.',
     dateRange: '계획 시작일은 종료일보다 늦을 수 없습니다.',
     statusEmpty: '선택할 마감 상태가 없습니다.',
+    statusLookupLoading: '마감 상태 목록을 불러오는 중입니다.',
+    statusLookupFailed: '마감 상태 목록을 불러오지 못했습니다.',
+    statusLookupEmpty: '사용 가능한 마감 상태가 없습니다.',
+    statusLookupTruncated: '마감 상태 목록 일부만 불러와 최초 조회를 시작할 수 없습니다.',
+    completedStatusMissing: '마감 완료 상태를 확인할 수 없어 최초 조회를 시작할 수 없습니다.',
   },
   confirm: {
     title: (workOrderNo: string): string => `작업지시 마감 — ${workOrderNo}`,

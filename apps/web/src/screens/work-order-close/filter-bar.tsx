@@ -2,37 +2,37 @@ import { Button, Select, TextField, type SelectItems } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type JSX, useEffect, useId, useState } from 'react';
 export interface WorkOrderCloseFilterValues {
-  productionPlanId: string;
+  productionOrderId: string;
   plannedStartFrom: string;
   plannedStartTo: string;
   statusCode: string;
 }
 export interface WorkOrderCloseFilterBarProps {
   appliedFilters: WorkOrderCloseFilterValues;
-  productionPlanOptions: SelectItems;
+  productionOrderOptions: SelectItems;
   statusOptions: SelectItems;
-  productionPlanUnavailableReason: string | null;
+  productionOrderUnavailableReason: string | null;
   statusUnavailableReason: string | null;
   onSearch: (filters: WorkOrderCloseFilterValues) => void;
   onReset: () => void;
 }
 export const WorkOrderCloseFilterBar = ({
   appliedFilters,
-  productionPlanOptions,
+  productionOrderOptions,
   statusOptions,
-  productionPlanUnavailableReason,
+  productionOrderUnavailableReason,
   statusUnavailableReason,
   onSearch,
   onReset,
 }: WorkOrderCloseFilterBarProps): JSX.Element => {
   const t = messages.workOrderClose.filter;
   const [draft, setDraft] = useState(appliedFilters);
-  const productionPlanId = useId();
+  const productionOrderId = useId();
   const statusId = useId();
-  const productionPlanNoteId = `${productionPlanId}-note`;
+  const productionOrderNoteId = `${productionOrderId}-note`;
   const statusNoteId = `${statusId}-note`;
   const {
-    productionPlanId: appliedProductionPlanId,
+    productionOrderId: appliedProductionOrderId,
     plannedStartFrom,
     plannedStartTo,
     statusCode,
@@ -40,14 +40,14 @@ export const WorkOrderCloseFilterBar = ({
 
   useEffect(() => {
     setDraft({
-      productionPlanId: appliedProductionPlanId,
+      productionOrderId: appliedProductionOrderId,
       plannedStartFrom,
       plannedStartTo,
       statusCode,
     });
-  }, [appliedProductionPlanId, plannedStartFrom, plannedStartTo, statusCode]);
+  }, [appliedProductionOrderId, plannedStartFrom, plannedStartTo, statusCode]);
 
-  const productionPlanReason = productionPlanUnavailableReason;
+  const productionOrderReason = productionOrderUnavailableReason;
   const statusReason =
     statusUnavailableReason ?? (statusOptions.length === 0 ? t.statusEmpty : null);
   const validationReasons: string[] = [];
@@ -69,20 +69,22 @@ export const WorkOrderCloseFilterBar = ({
   return (
     <form className="filter-bar" onSubmit={submit}>
       <div className="field-cell">
-        <label className="field-label" htmlFor={productionPlanId}>
-          {t.productionPlan}
+        <label className="field-label" htmlFor={productionOrderId}>
+          {t.productionOrder}
         </label>
         <Select
-          aria-describedby={productionPlanReason === null ? undefined : productionPlanNoteId}
-          disabled={productionPlanReason !== null}
-          id={productionPlanId}
-          options={[{ value: '', label: t.all }, ...productionPlanOptions]}
-          value={draft.productionPlanId}
-          onChange={(productionPlanId) => setDraft((current) => ({ ...current, productionPlanId }))}
+          aria-describedby={productionOrderReason === null ? undefined : productionOrderNoteId}
+          disabled={productionOrderReason !== null}
+          id={productionOrderId}
+          options={[{ value: '', label: t.all }, ...productionOrderOptions]}
+          value={draft.productionOrderId}
+          onChange={(productionOrderId) =>
+            setDraft((current) => ({ ...current, productionOrderId }))
+          }
         />
-        {productionPlanReason === null ? null : (
-          <p className="field-note" id={productionPlanNoteId}>
-            {productionPlanReason}
+        {productionOrderReason === null ? null : (
+          <p className="field-note" id={productionOrderNoteId}>
+            {productionOrderReason}
           </p>
         )}
       </div>
