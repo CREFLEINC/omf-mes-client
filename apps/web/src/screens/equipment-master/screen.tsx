@@ -30,6 +30,14 @@ import { EquipmentFormDialog } from './equipment-form-dialog';
 import { EquipmentListPane } from './equipment-list-pane';
 import { EQUIPMENT_FORM_FIELDS, validateEquipment } from './equipment-validation';
 import { GroupFormPane } from './group-form-pane';
+import { InspectionAssignDialog } from './inspection-assign-dialog';
+import { InspectionItemsPane } from './inspection-items-pane';
+import {
+  toAssignmentInput,
+  toDraftRow,
+  validateRows,
+  type RowErrors,
+} from './inspection-assignment';
 import { GroupListPane } from './group-list-pane';
 import { buildGroupRows, selfAndDescendantIds } from './group-tree';
 import { GROUP_FORM_FIELDS, validateGroup } from './group-validation';
@@ -52,17 +60,22 @@ import {
   equipmentDetailPath,
   equipmentKeys,
   groupDetailPath,
+  groupInspectionPath,
   groupKeys,
+  inspectionKeys,
   isTruncated,
   useCodeValues,
   useEquipmentDetail,
   useEquipmentList,
   useGroupDetail,
+  useGroupInspectionItems,
   useGroupList,
   useGroupOptions,
+  useInspectionItemMaster,
   useLookupOptions,
 } from './queries';
 import type {
+  AssignmentDraftRow,
   CarriedEquipmentValues,
   Equipment,
   EquipmentFilters,
@@ -149,7 +162,8 @@ export const EquipmentMasterScreen = () => {
     [searchParams],
   );
 
-  const activeTab = searchParams.get('tab') === 'equipment' ? 'equipment' : 'group';
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam === 'equipment' || tabParam === 'inspection' ? tabParam : 'group';
 
   const equipmentFilters = useMemo<EquipmentFilters>(
     () => ({
@@ -179,6 +193,13 @@ export const EquipmentMasterScreen = () => {
   /** 기간 단위 값 목록 — 검교정 주기를 사람이 읽는 말로 옮긴다. */
   const cycleValues = useCodeValues(CODE_GROUPS.cycleType);
   const cycleOptions = useMemo(() => toCodeLabels(cycleValues.data ?? []), [cycleValues.data]);
+  /** 점검 유형 값 목록 — 부여 표의 유형 칸을 사람이 읽는 말로 옮긴다. */
+  const inspectionTypeValues = useCodeValues(CODE_GROUPS.equipmentInspectionType);
+  /* ⛔ 이름을 모르는 코드는 담기지 않는다 — 담으면 코드가 이름 행세를 한다(G-9). */
+  const labelMapOf = (options: readonly CodeOption[]): ReadonlyMap<string, string> =>
+    new Map(options.map((option) => [option.value, option.label]));
+  const cycleLabels = labelMapOf(cycleOptions);
+  const inspectionTypeLabels = labelMapOf(toCodeLabels(inspectionTypeValues.data ?? []));
   const equipmentItems = equipmentList.data?.items ?? [];
 
   /**
@@ -344,6 +365,58 @@ export const EquipmentMasterScreen = () => {
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
+
+  /**
+   * 점검 항목 부여 창.
+   *
+   * ⛔ **묶음 통째 교체다**(계약의 `PUT … /inspection-items`) — 창이 들고 있는 것이 곧
+   * 저장 뒤의 전부가 된다. 그래서 창을 열 때 **지금 부여된 전부**를 담아 연다.
+   */
+  const [assignRows, setAssignRows] = useState<AssignmentDraftRow[] | null>(null);
+
+  const groupInspections = useGroupInspectionItems(selectedGroupId);
+  /* 창을 열 때만 마스터를 읽는다 — 목록만 볼 때는 고를 것이 필요 없다. */
+  const inspectionMaster = useInspectionItemMaster(assignRows !== null);
+
+  const inspectionWrite = useMasterWrite<AssignmentDraftRow[], unknown>({
+    request: (rows, headers) =>
+      client.PUT('/mdm/equipment-groups/{equipmentGroupId}/inspection-items', {
+        params: {
+          path: { equipmentGroupId: selectedGroupId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: { items: rows.map(toAssignmentInput) },
+      }),
+    /*
+     * ⛔ **그룹 상세의 토큰이 아니다.** 부여는 그룹과 다른 자원이라, 그룹의 토큰으로 저장하면
+     * 서로의 변경을 못 본 채 덮어쓴다.
+     */
+    etagPath: selectedGroupId === null ? null : groupInspectionPath(selectedGroupId),
+    invalidateKeys: [inspectionKeys.all],
+    /* 줄마다의 오류는 화면이 잰다 — 묶음 교체라 서버 오류는 어느 줄인지 말해 주지 못한다. */
+    knownFields: [],
+    onSuccess: () => {
+      setAssignRows(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  const [assignRowErrors, setAssignRowErrors] = useState<Map<number, RowErrors>>(new Map());
+
+  const handleSaveAssignments = (): void => {
+    if (assignRows === null) return;
+
+    const errors = validateRows(assignRows);
+
+    setAssignRowErrors(errors);
+
+    if (errors.size > 0) return;
+
+    inspectionWrite.write(assignRows);
+  };
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
 
@@ -816,6 +889,34 @@ export const EquipmentMasterScreen = () => {
               }),
             },
             {
+              value: 'inspection',
+              label: t.tabs.inspection,
+              content: (
+                <InspectionItemsPane
+                  assignments={groupInspections.data ?? []}
+                  isLoading={groupInspections.isPending}
+                  cycleLabels={cycleLabels}
+                  typeLabels={inspectionTypeLabels}
+                  /* 조회하지 못한 채로 고치면 «보이지 않는 줄»을 지우게 된다. */
+                  canEdit={groupInspections.data !== undefined}
+                  editDisabledReason={t.inspection.needsGroupReason}
+                  onEdit={() => {
+                    resetIfIdle(inspectionWrite);
+                    setAssignRowErrors(new Map());
+                    setAssignRows((groupInspections.data ?? []).map(toDraftRow));
+                  }}
+                  loadError={
+                    groupInspections.isError ? (
+                      <LoadErrorBanner
+                        error={toApiError(groupInspections.error)}
+                        onRetry={() => void groupInspections.refetch()}
+                      />
+                    ) : null
+                  }
+                />
+              ),
+            },
+            {
               value: 'equipment',
               label: t.tabs.equipment,
               content: (
@@ -1027,6 +1128,28 @@ export const EquipmentMasterScreen = () => {
           banner={<SaveErrorBanner error={deactivateWrite.error} onReload={handleReloadDetail} />}
           onClose={() => setIsDeactivateOpen(false)}
           onConfirm={() => deactivateWrite.write(undefined)}
+        />
+      )}
+
+      {assignRows !== null && detail.data !== undefined && (
+        <InspectionAssignDialog
+          targetLabel={`${detail.data.equipmentGroup.groupCode} · ${detail.data.equipmentGroup.groupName}`}
+          rows={assignRows}
+          onChangeRows={setAssignRows}
+          master={inspectionMaster.data ?? []}
+          masterLoadFailed={inspectionMaster.isError}
+          cycleOptions={cycleOptions}
+          rowErrors={assignRowErrors}
+          /* 충돌은 부여를 다시 받아 잠금 토큰을 갱신하면 풀린다. */
+          banner={
+            <SaveErrorBanner
+              error={inspectionWrite.error}
+              onReload={() => void groupInspections.refetch()}
+            />
+          }
+          isSaving={inspectionWrite.isSaving}
+          onSave={handleSaveAssignments}
+          onClose={() => setAssignRows(null)}
         />
       )}
     </>

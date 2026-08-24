@@ -368,6 +368,39 @@ main > * + * {
  * ⛔ 줄마다 `nowrap` 이다. 이 표들은 코드(「ITM-201」)를 싣는데, 브라우저는 하이픈 뒤에서
  * 기꺼이 접어 「ITM-」 / 「201」 로 갈라 놓는다 — **다른 코드로 읽힌다.**
  */
+/*
+ * 부여 창의 줄 — 항목 하나에 주기 칸 넷이 딸린다. 표로 그리면 칸이 좁아 날짜·선택칸이
+ * 눌리므로, 줄마다 제목 + 격자로 편다.
+ */
+.assignment-rows {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.assignment-row {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  /* fieldset·grid 자식과 같은 이유로 필요하다 — 없으면 안쪽 격자가 칸을 밀어낸다. */
+  min-width: 0;
+}
+
+/* 줄의 동작은 «그 줄의 것»이다 — 늘어나면 창 전체의 주요 동작처럼 읽힌다. */
+.assignment-row-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.assignment-row-title {
+  margin: 0;
+  font-weight: 600;
+}
+
 .stacked-cell {
   display: flex;
   flex-direction: column;

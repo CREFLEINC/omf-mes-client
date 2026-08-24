@@ -192,3 +192,112 @@ export const codeValuesResponse = (items: CodeValue[] = statusCodeValues) => ({
   items,
   page: pageOf(items),
 });
+
+type EquipmentInspectionItem = components['schemas']['EquipmentInspectionItem'];
+type InspectionItemAssignment = components['schemas']['InspectionItemAssignment'];
+
+/** 기간 단위 값 목록. ⚠ 검교정 주기와 «한 그룹»을 쓴다(설계 `omf-mes#188`). */
+export const cycleCodeValues: CodeValue[] = [
+  {
+    codeValueId: 9101,
+    codeGroupId: 910,
+    code: 'DAY',
+    codeName: '일',
+    displayOrder: 1,
+    isActive: true,
+  },
+  {
+    codeValueId: 9102,
+    codeGroupId: 910,
+    code: 'WEEK',
+    codeName: '주',
+    displayOrder: 2,
+    isActive: true,
+  },
+  {
+    codeValueId: 9103,
+    codeGroupId: 910,
+    code: 'MONTH',
+    codeName: '월',
+    displayOrder: 3,
+    isActive: true,
+  },
+];
+
+/**
+ * 설비 점검 유형. ⛔ **품질 검사의 유형과 값이 겹치지 않는다** — 그룹을 가른 이유다
+ * (설계 `omf-mes#186` · 공유계약 G-32).
+ */
+export const inspectionTypeCodeValues: CodeValue[] = [
+  {
+    codeValueId: 9201,
+    codeGroupId: 920,
+    code: 'DAILY',
+    codeName: '일상',
+    displayOrder: 1,
+    isActive: true,
+  },
+  {
+    codeValueId: 9202,
+    codeGroupId: 920,
+    code: 'MONTHLY',
+    codeName: '정기',
+    displayOrder: 2,
+    isActive: true,
+  },
+  {
+    codeValueId: 9203,
+    codeGroupId: 920,
+    code: 'MAINTENANCE',
+    codeName: '보전',
+    displayOrder: 3,
+    isActive: true,
+  },
+];
+
+export const makeInspectionItem = (
+  equipmentInspectionItemId: number,
+  itemCode: string,
+  itemName: string,
+  overrides: Partial<EquipmentInspectionItem> = {},
+): EquipmentInspectionItem => ({
+  equipmentInspectionItemId,
+  plantId: 11,
+  itemCode,
+  itemName,
+  inspectionTypeCode: 'DAILY',
+  judgmentMethodCode: 'VISUAL',
+  requiredFlag: true,
+  sequenceNo: 1,
+  isActive: true,
+  ...overrides,
+});
+
+/** 점검 항목 마스터 표본. 값은 전부 합성이다. */
+export const inspectionItems: EquipmentInspectionItem[] = [
+  makeInspectionItem(4001, 'INS-01', '벨트 장력'),
+  makeInspectionItem(4002, 'INS-02', '오일 레벨', { inspectionTypeCode: 'MONTHLY' }),
+  makeInspectionItem(4003, 'INS-03', '체결 토크', {
+    judgmentMethodCode: 'MEASUREMENT',
+    uomId: 3,
+    lowerLimit: 10,
+    upperLimit: 20,
+  }),
+];
+
+export const inspectionItemsResponse = (items: EquipmentInspectionItem[] = inspectionItems) => ({
+  items,
+  page: pageOf(items),
+});
+
+export const makeAssignment = (
+  item: EquipmentInspectionItem,
+  overrides: Partial<InspectionItemAssignment> = {},
+): InspectionItemAssignment => ({
+  ...item,
+  cycleTypeCode: 'DAY',
+  cycleInterval: 3,
+  ...overrides,
+});
+
+export const assignmentsResponse = (items: InspectionItemAssignment[] = []) => ({ items });
