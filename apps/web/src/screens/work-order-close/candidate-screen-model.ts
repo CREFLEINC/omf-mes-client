@@ -32,6 +32,7 @@ export type WorkOrderCloseCandidateScreenAction =
   | { type: 'RESET' }
   | { type: 'CHANGE_PAGE'; page: number }
   | { type: 'SELECT'; workOrderId: number }
+  | { type: 'CLEAR_SELECTION' }
   | { type: 'CLEAR_MISSING_SELECTION'; snapshot: WorkOrderCloseCandidateSnapshot };
 
 const initialFilters = (statusCode = ''): WorkOrderCloseFilterValues => ({
@@ -85,6 +86,8 @@ export const reduceWorkOrderCloseCandidateScreen = (
     case 'SELECT':
       if (state.initializationKind !== 'READY') return state;
       return { ...state, selectedWorkOrderId: action.workOrderId };
+    case 'CLEAR_SELECTION':
+      return state.selectedWorkOrderId === null ? state : { ...state, selectedWorkOrderId: null };
     case 'CLEAR_MISSING_SELECTION':
       if (
         action.snapshot.kind !== 'SETTLED' ||

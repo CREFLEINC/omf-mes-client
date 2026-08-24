@@ -88,6 +88,7 @@ export const workOrderClose = {
     cancel: '취소',
     confirm: '작업지시 마감',
   },
+  closeSuccess: '작업지시가 마감되었습니다. ERP 송신은 별도로 진행됩니다.',
   readState: {
     progressUnavailable: '생산 실적 판정을 확인할 수 없습니다.',
     openSessionFailed: '열린 작업 세션 여부를 확인할 수 없습니다.',

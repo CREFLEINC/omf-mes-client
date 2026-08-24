@@ -139,6 +139,16 @@ describe('work-order close candidate screen state', () => {
     expect(state).toEqual(readyState());
     expect(input).toEqual(searchedFilters);
   });
+  it('clears only the selection while preserving filters and page', () => {
+    const selected = reduceWorkOrderCloseCandidateScreen(
+      { ...readyState(), appliedFilters: searchedFilters, page: 4 },
+      { type: 'SELECT', workOrderId: 701 },
+    );
+    const cleared = reduceWorkOrderCloseCandidateScreen(selected, { type: 'CLEAR_SELECTION' });
+    expect(cleared).toEqual({ ...selected, selectedWorkOrderId: null });
+    expect(cleared.appliedFilters).toBe(selected.appliedFilters);
+    expect(reduceWorkOrderCloseCandidateScreen(cleared, { type: 'CLEAR_SELECTION' })).toBe(cleared);
+  });
   it('preserves pending failed and absent selection and clears only a settled missing page', () => {
     const candidateIds = [701, 702];
     const selected = reduceWorkOrderCloseCandidateScreen(readyState(), {
