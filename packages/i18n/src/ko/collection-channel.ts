@@ -109,8 +109,39 @@ export const collectionChannel = {
    */
   mapping: {
     unmapped: '미매핑',
+    /**
+     * ⚠ **이름이 오지 않았을 때만 쓰는 대체 문구다.** 계약이 이름·코드를 내려주므로 보통은
+     * 그것을 쓴다 — 「연결됨」은 무엇에 이었는지 말하지 못한다(통지 client#388 ⚠).
+     */
     mapped: '연결됨',
-    nameUnavailable: '연결된 검사 항목의 이름은 이 목록에 오지 않습니다 — 연결 여부만 표시합니다.',
+    /** 코드와 이름을 함께. 한쪽만 오면 온 쪽만 쓴다 — 지어내지 않는다(G-9). */
+    itemLabel: (code: string, name: string): string => `${code} · ${name}`,
+    /** ⚠ 이어 둔 줄이 있는데 이름이 오지 않았을 때만 선다 — 늘 서는 말이 아니다. */
+    nameUnavailable: '연결된 검사 항목의 이름이 오지 않은 줄이 있습니다 — 연결 여부만 표시합니다.',
+  },
+  /**
+   * 이어 둔 뒤에 **어긋난** 것들.
+   *
+   * ⭐ **미매핑과 성격이 다르다.** 미매핑은 값이 «버려지는» 것이고 여기 둘은 값이 저장되긴
+   * 하되 **조용히 어긋나는** 것이다 — 그래서 요약을 따로 세운다.
+   *
+   * ⛔ **둘 다 화면이 고쳐 주지 않는다.** 새 Rev 의 어느 항목에 대응하는지 기계가 모르고
+   * (W-05-07 §6·§8-2), 단위 변환 규칙은 어디에도 저장돼 있지 않다(§5-5 · 공유계약 A-8).
+   */
+  warnings: {
+    summaryTitle: '짚어야 할 매핑이 있습니다',
+    staleRevisionChip: '이전 Rev',
+    /** 서버가 판정한다 — 화면이 버전 상태를 해석하지 않는다. */
+    staleRevision: (count: number): string =>
+      `이전 Rev 의 검사 항목에 이어 둔 채널이 ${count}개 있습니다. 새 Rev 의 어느 항목에 해당하는지는 사람만 알 수 있어 화면이 옮기지 않습니다.`,
+    /** Rev 번호가 오면 함께 적는다 — 어느 판을 가리키는지 알아야 고칠 수 있다. */
+    staleRevisionRow: (revision: number | null): string =>
+      revision === null ? '이전 Rev 의 검사 항목입니다.' : `Rev ${revision} 의 검사 항목입니다.`,
+    unitMismatchChip: '단위 불일치',
+    unitMismatch: (count: number): string =>
+      `채널의 단위와 검사 항목의 단위가 다른 채널이 ${count}개 있습니다. 값을 자동으로 바꾸지 않으니 보내는 쪽이나 항목 정의를 맞춰 주세요.`,
+    unitMismatchRow: (channelUnitCode: string, itemUnitCode: string): string =>
+      `이 채널은 ${channelUnitCode}로 받고 검사 항목은 ${itemUnitCode}를 씁니다.`,
   },
   actions: {
     addChannel: '채널 추가',
