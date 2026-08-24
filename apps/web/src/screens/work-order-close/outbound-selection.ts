@@ -11,6 +11,17 @@ export const workOrderCloseOutboundSelectionFrom = (
 ): WorkOrderCloseOutboundSelection =>
   Object.fromEntries(settings.map((setting) => [setting.outboundItemCode, setting.enabled]));
 
+export const reconcileWorkOrderCloseOutboundSelection = (
+  settings: readonly WorkOrderCloseOutboundItemSetting[],
+  previous: WorkOrderCloseOutboundSelection,
+): WorkOrderCloseOutboundSelection =>
+  Object.fromEntries(
+    settings.map((setting) => [
+      setting.outboundItemCode,
+      setting.locked ? setting.enabled : (previous[setting.outboundItemCode] ?? setting.enabled),
+    ]),
+  );
+
 export const isWorkOrderCloseOutboundItemSelected = (
   selection: WorkOrderCloseOutboundSelection,
   code: WorkOrderCloseOutboundItemCode,

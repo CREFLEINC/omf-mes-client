@@ -1,6 +1,6 @@
 import { AlertBanner, Button, EmptyState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import { toWorkOrderPageView } from '../work-order/pagination';
 import { WorkOrderCloseCandidateListPane } from './candidate-list-pane';
@@ -37,13 +37,21 @@ import {
   WorkOrderCloseDetailSummaryPane,
   type WorkOrderCloseDetailSummaryState,
 } from './detail-summary-pane';
+import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
+import {
+  reconcileWorkOrderCloseOutboundSelection,
+  toggleWorkOrderCloseOutboundItem,
+  type WorkOrderCloseOutboundSelection,
+} from './outbound-selection';
 import {
   useWorkOrderCloseCandidates,
   useWorkOrderCloseCodeValues,
   useWorkOrderCloseDetail,
   useWorkOrderCloseOpenSession,
+  useWorkOrderCloseOutboundItemSettings,
   useWorkOrderCloseProductionOrders,
   type WorkOrderCloseDetailFact,
+  type WorkOrderCloseOutboundItemSetting,
 } from './queries';
 
 const productionOrderReason = (
@@ -103,6 +111,41 @@ export const toWorkOrderCloseDetailScreenState = ({
   return { kind: 'RESOLVED', detail, unitLabel };
 };
 
+interface OutboundQuerySnapshotSource {
+  selectedWorkOrderId: number | null;
+  isFetching: boolean;
+  isError: boolean;
+  settings: readonly WorkOrderCloseOutboundItemSetting[] | undefined;
+}
+
+export type WorkOrderCloseOutboundScreenState =
+  | { kind: 'HIDDEN' }
+  | { kind: 'CHECKING' }
+  | { kind: 'UNAVAILABLE' }
+  | { kind: 'READY'; settings: readonly WorkOrderCloseOutboundItemSetting[] };
+
+export const toWorkOrderCloseOutboundScreenState = ({
+  selectedWorkOrderId,
+  isFetching,
+  isError,
+  settings,
+}: OutboundQuerySnapshotSource): WorkOrderCloseOutboundScreenState => {
+  if (selectedWorkOrderId === null) return { kind: 'HIDDEN' };
+  if (isFetching) return { kind: 'CHECKING' };
+  if (isError || settings === undefined) return { kind: 'UNAVAILABLE' };
+  return { kind: 'READY', settings };
+};
+
+export const toWorkOrderCloseSelectedOutboundSelection = (
+  settings: readonly WorkOrderCloseOutboundItemSetting[],
+  owned: { workOrderId: number | null; selection: WorkOrderCloseOutboundSelection },
+  selectedWorkOrderId: number | null,
+): WorkOrderCloseOutboundSelection =>
+  reconcileWorkOrderCloseOutboundSelection(
+    settings,
+    owned.workOrderId === selectedWorkOrderId ? owned.selection : {},
+  );
+
 export const toWorkOrderCloseSelectedDraft = (
   owned: { workOrderId: number | null; draft: WorkOrderCloseInputDraft },
   selectedWorkOrderId: number | null,
@@ -113,6 +156,7 @@ export const WorkOrderCloseCandidateScreen = () => {
   const status = useWorkOrderCloseCodeValues(WORK_ORDER_CLOSE_CODE_GROUPS.status);
   const productionOrders = useWorkOrderCloseProductionOrders();
   const reasons = useWorkOrderCloseCodeValues(WORK_ORDER_CLOSE_CODE_GROUPS.varianceReason);
+  const outboundSettings = useWorkOrderCloseOutboundItemSettings();
   const initialization = useMemo(
     () =>
       toWorkOrderCloseFilterInitialization({
@@ -131,6 +175,10 @@ export const WorkOrderCloseCandidateScreen = () => {
     workOrderId: state.selectedWorkOrderId,
     draft: { ...EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT },
   }));
+  const [ownedOutbound, setOwnedOutbound] = useState<{
+    workOrderId: number | null;
+    selection: WorkOrderCloseOutboundSelection;
+  }>(() => ({ workOrderId: state.selectedWorkOrderId, selection: {} }));
   const draft = toWorkOrderCloseSelectedDraft(ownedDraft, state.selectedWorkOrderId);
   useEffect(() => {
     dispatch({ type: 'SYNCHRONIZE_INITIALIZATION', initialization });
@@ -140,6 +188,7 @@ export const WorkOrderCloseCandidateScreen = () => {
       workOrderId: state.selectedWorkOrderId,
       draft: { ...EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT },
     });
+    setOwnedOutbound({ workOrderId: state.selectedWorkOrderId, selection: {} });
   }, [state.selectedWorkOrderId]);
 
   const filters = toWorkOrderCloseCandidateFilters(state);
@@ -197,6 +246,44 @@ export const WorkOrderCloseCandidateScreen = () => {
     detail: detail.data,
     unitLabel: detailUom?.kind === 'named' ? detailUom.label : null,
   });
+  const outboundState = toWorkOrderCloseOutboundScreenState({
+    selectedWorkOrderId: state.selectedWorkOrderId,
+    isFetching: outboundSettings.isFetching,
+    isError: outboundSettings.isError,
+    settings: outboundSettings.data,
+  });
+  const readyOutboundSettings = outboundState.kind === 'READY' ? outboundState.settings : [];
+  const readyOutboundRevision =
+    outboundState.kind === 'READY'
+      ? JSON.stringify(
+          outboundState.settings.map((setting) => [
+            setting.outboundItemCode,
+            setting.enabled,
+            setting.locked,
+          ]),
+        )
+      : null;
+  const readyOutboundSettingsRef = useRef(readyOutboundSettings);
+  readyOutboundSettingsRef.current = readyOutboundSettings;
+  useEffect(() => {
+    if (readyOutboundRevision === null || state.selectedWorkOrderId === null) return;
+    setOwnedOutbound((current) =>
+      current.workOrderId === state.selectedWorkOrderId
+        ? {
+            ...current,
+            selection: reconcileWorkOrderCloseOutboundSelection(
+              readyOutboundSettingsRef.current,
+              current.selection,
+            ),
+          }
+        : current,
+    );
+  }, [readyOutboundRevision, state.selectedWorkOrderId]);
+  const outboundSelection = toWorkOrderCloseSelectedOutboundSelection(
+    readyOutboundSettings,
+    ownedOutbound,
+    state.selectedWorkOrderId,
+  );
   const detailPaneState: WorkOrderCloseDetailSummaryState =
     detailState.kind === 'NOT_SELECTED'
       ? {
@@ -345,6 +432,41 @@ export const WorkOrderCloseCandidateScreen = () => {
         />
       )}
       {readinessState === null ? null : <WorkOrderCloseStatusPane state={readinessState} />}
+      {outboundState.kind === 'HIDDEN' ? null : (
+        <WorkOrderCloseOutboundItemsPane
+          settings={readyOutboundSettings}
+          selection={outboundSelection}
+          isLoading={outboundState.kind === 'CHECKING'}
+          loadError={
+            outboundState.kind === 'UNAVAILABLE' ? (
+              <AlertBanner
+                variant="error"
+                title={messages.httpError.loadTitle}
+                action={
+                  <Button onClick={() => void outboundSettings.refetch()}>
+                    {messages.common.retry}
+                  </Button>
+                }
+              >
+                {messages.httpError.description}
+              </AlertBanner>
+            ) : null
+          }
+          onToggle={(setting) =>
+            setOwnedOutbound((current) => ({
+              workOrderId: state.selectedWorkOrderId,
+              selection: toggleWorkOrderCloseOutboundItem(
+                toWorkOrderCloseSelectedOutboundSelection(
+                  readyOutboundSettings,
+                  current,
+                  state.selectedWorkOrderId,
+                ),
+                setting,
+              ),
+            }))
+          }
+        />
+      )}
     </>
   );
 };
