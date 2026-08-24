@@ -1,4 +1,5 @@
 import { AlertBanner, Button, EmptyState } from '@crefle/web-ui';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
@@ -23,6 +24,7 @@ import {
 } from './code-options';
 import { WorkOrderCloseFilterBar } from './filter-bar';
 import { toWorkOrderCloseFilterInitialization } from './filter-initialization';
+import { WorkOrderCloseExecution } from './close-execution';
 import {
   EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT,
   setWorkOrderCloseRemainderDisposition,
@@ -31,7 +33,12 @@ import {
   type WorkOrderCloseInputDraft,
 } from './close-input-draft';
 import { WorkOrderCloseInputPane } from './close-input-pane';
-import { workOrderCloseBlockers, type WorkOrderCloseCompletionJudgment } from './close-readiness';
+import {
+  workOrderCloseBlockers,
+  type WorkOrderCloseBlocker,
+  type WorkOrderCloseCompletionJudgment,
+} from './close-readiness';
+import { toWorkOrderCloseRequest } from './close-request';
 import { WorkOrderCloseStatusPane, type WorkOrderCloseStatusPaneState } from './close-status-pane';
 import {
   WorkOrderCloseDetailSummaryPane,
@@ -40,6 +47,7 @@ import {
 import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
 import {
   reconcileWorkOrderCloseOutboundSelection,
+  selectedWorkOrderCloseOutboundItemCodes,
   toggleWorkOrderCloseOutboundItem,
   type WorkOrderCloseOutboundSelection,
 } from './outbound-selection';
@@ -146,6 +154,38 @@ export const toWorkOrderCloseSelectedOutboundSelection = (
     owned.workOrderId === selectedWorkOrderId ? owned.selection : {},
   );
 
+interface WorkOrderCloseExecutionRequestSource {
+  selectedWorkOrderId: number | null;
+  detailState: WorkOrderCloseDetailScreenState;
+  judgment: WorkOrderCloseCompletionJudgment | null;
+  blockers: readonly WorkOrderCloseBlocker[];
+  outboundState: WorkOrderCloseOutboundScreenState;
+  draft: WorkOrderCloseInputDraft;
+  outboundSelection: WorkOrderCloseOutboundSelection;
+}
+export const toWorkOrderCloseExecutionRequest = (
+  source: WorkOrderCloseExecutionRequestSource,
+): components['schemas']['WorkOrderClose'] | null => {
+  if (
+    source.selectedWorkOrderId === null ||
+    source.detailState.kind !== 'RESOLVED' ||
+    source.detailState.detail.workOrderId !== source.selectedWorkOrderId ||
+    source.judgment === null ||
+    source.blockers.length > 0 ||
+    source.outboundState.kind !== 'READY' ||
+    source.outboundState.settings.length === 0
+  )
+    return null;
+  return toWorkOrderCloseRequest({
+    completionJudgmentCode: source.judgment,
+    remainderDispositionCode: source.draft.remainderDisposition,
+    reasonCode: source.draft.varianceReasonCode,
+    erpSendItems: selectedWorkOrderCloseOutboundItemCodes(
+      source.outboundState.settings,
+      source.outboundSelection,
+    ),
+  });
+};
 export const toWorkOrderCloseSelectedDraft = (
   owned: { workOrderId: number | null; draft: WorkOrderCloseInputDraft },
   selectedWorkOrderId: number | null,
@@ -363,6 +403,11 @@ export const WorkOrderCloseCandidateScreen = () => {
       ? draft
       : setWorkOrderCloseVarianceReasonCode(draft, '');
   const unavailableState = unavailable;
+  const readinessInput = workOrderCloseReadinessInputFrom;
+  const blockers =
+    judgment === null
+      ? []
+      : workOrderCloseBlockers(readinessInput(inputDraft, judgment, hasOpenSession));
   let readinessState: WorkOrderCloseStatusPaneState | null = null;
   if (checking) readinessState = { kind: 'CHECKING' };
   else if (unavailableState !== null)
@@ -382,10 +427,17 @@ export const WorkOrderCloseCandidateScreen = () => {
   else if (judgment !== null)
     readinessState = {
       kind: 'RESOLVED',
-      blockers: workOrderCloseBlockers(
-        workOrderCloseReadinessInputFrom(inputDraft, judgment, hasOpenSession),
-      ),
+      blockers,
     };
+  const executionRequest = toWorkOrderCloseExecutionRequest({
+    selectedWorkOrderId: state.selectedWorkOrderId,
+    detailState,
+    judgment,
+    blockers,
+    outboundState,
+    draft: inputDraft,
+    outboundSelection,
+  });
   const updateDraft = (
     update: (current: WorkOrderCloseInputDraft) => WorkOrderCloseInputDraft,
   ): void =>
@@ -465,6 +517,17 @@ export const WorkOrderCloseCandidateScreen = () => {
               ),
             }))
           }
+        />
+      )}
+      {state.selectedWorkOrderId === null ? null : (
+        <WorkOrderCloseExecution
+          key={state.selectedWorkOrderId}
+          workOrderId={state.selectedWorkOrderId}
+          workOrderNo={detailState.kind === 'RESOLVED' ? detailState.detail.workOrderNo : ''}
+          request={executionRequest}
+          onClearSelection={() => dispatch({ type: 'CLEAR_SELECTION' })}
+          onReloadCandidates={candidate.refetch}
+          onReloadDetail={detail.refetch}
         />
       )}
     </>

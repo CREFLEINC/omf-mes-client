@@ -7,6 +7,7 @@ import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/ap
 import {
   toWorkOrderCloseCandidateSnapshot,
   toWorkOrderCloseDetailScreenState,
+  toWorkOrderCloseExecutionRequest,
   toWorkOrderCloseOutboundScreenState,
   toWorkOrderCloseSelectedOutboundSelection,
   toWorkOrderCloseSelectedDraft,
@@ -20,6 +21,7 @@ const paths = {
   orders: '/planning/production-orders',
   candidates: '/production/work-orders',
   detail: (workOrderId: number) => `/production/work-orders/${String(workOrderId)}`,
+  close: (workOrderId: number) => `/production/work-orders/${String(workOrderId)}:close`,
   sessions: '/production/work-sessions',
   outbound: '/integration/outbound-item-settings',
   uoms: '/mdm/uoms',
@@ -29,6 +31,13 @@ type ReasonMode = LookupMode | 'empty' | 'changed';
 type Judgment = 'UNDER' | 'NORMAL' | 'OVER' | null;
 type OutboundMode =
   'ready' | 'pending-ready' | 'pending-error' | 'error' | 'empty' | 'changed' | 'reappeared';
+type CloseMode = 'success' | 'pending' | 'pending-error' | CloseErrorMode;
+type CloseErrorMode = 'network' | '403' | '500' | 'conflict' | 'validation';
+type CloseRecord = { path: string; etag: string | null; key: string | null; body: unknown };
+const closeFields = ['remainderDispositionCode', 'reasonCode', 'erpSendItems'] as const;
+const fieldMessage = (field: string) => `Synthetic ${field} error`;
+const issue = (f: string) => ({ scope: 'field', field: f, code: 'X', message: fieldMessage(f) });
+const detailEtag = '"synthetic-close-version-7"';
 const reasonGroup = 'WORK_ORDER_COMPLETION_VARIANCE_REASON';
 const reasonQueryKey = ['work-order-close', 'lookups', 'code-values', reasonGroup] as const;
 const outboundQueryKey = ['work-order-close', 'outbound-item-settings'] as const;
@@ -67,6 +76,10 @@ const detailBody = (workOrderId: number, judgment: Judgment = 'OVER') => ({
         },
   preIssuedLots: { slotCount: 9, withResultCount: 6, withoutResultCount: 0 },
 });
+const detailResponse = (workOrderId: number, judgment: Judgment, etag = detailEtag) =>
+  jsonResponse(detailBody(workOrderId, judgment), { headers: { ETag: etag } });
+const errorResponse = (status: number, body: unknown = { message: 'Synthetic HTTP failure' }) =>
+  jsonResponse(body, { status });
 const reasonValue = (code: string, codeName: string, displayOrder: number, isActive = true) => ({
   code,
   codeName,
@@ -163,6 +176,7 @@ const makeApi = (
   let detailMode: 'ready' | 'pending-ready' | 'pending-error' | 'error' = 'ready';
   let releaseDetail: (() => void) | undefined;
   let detailJudgment: Judgment = 'OVER';
+  let currentDetailEtag = detailEtag;
   let sessionMode: 'ready' | 'pending-ready' | 'pending-error' | 'error' = 'ready';
   let releaseSession: (() => void) | undefined;
   let hasOpenSession = false;
@@ -170,6 +184,9 @@ const makeApi = (
   let releaseReason: (() => void) | undefined;
   let outboundMode: OutboundMode = 'ready';
   let releaseOutbound: (() => void) | undefined;
+  let closeMode: CloseMode = 'success';
+  let releaseClose: (() => void) | undefined;
+  const closeRequests: CloseRecord[] = [];
   const gate = (response: Response, assign: (release: () => void) => void) =>
     new Promise<Response>((resolve) => assign(() => resolve(response)));
   const lookup = (mode: LookupMode, body: unknown, setRelease: (release: () => void) => void) => {
@@ -212,17 +229,37 @@ const makeApi = (
         page: page(21, current),
       });
     }
+    if (request.method === 'POST' && url.pathname.endsWith(':close')) {
+      const body = await request.clone().json();
+      closeRequests.push({
+        path: url.pathname,
+        etag: request.headers.get('If-Match'),
+        key: request.headers.get('Idempotency-Key'),
+        body,
+      });
+      if (closeMode.startsWith('pending'))
+        return gate(
+          closeMode === 'pending-error' ? errorResponse(500) : detailResponse(701, 'NORMAL'),
+          (release) => (releaseClose = release),
+        );
+      if (closeMode === 'network') throw new TypeError('Synthetic offline');
+      if (closeMode === 'conflict')
+        return errorResponse(409, { conflictCause: 'user', message: 'Synthetic conflict' });
+      if (closeMode === 'validation') return errorResponse(400, { errors: closeFields.map(issue) });
+      if (closeMode === '403' || closeMode === '500') return errorResponse(Number(closeMode));
+      return jsonResponse(detailBody(701, 'NORMAL'));
+    }
     if (url.pathname.startsWith(`${paths.candidates}/`)) {
       const workOrderId = Number(url.pathname.split('/').at(-1));
       if (detailMode.startsWith('pending'))
         return gate(
           detailMode === 'pending-ready'
-            ? jsonResponse(detailBody(workOrderId, detailJudgment))
+            ? detailResponse(workOrderId, detailJudgment, currentDetailEtag)
             : jsonResponse({ message: 'failure' }, { status: 500 }),
           (release) => (releaseDetail = release),
         );
       if (detailMode === 'error') return jsonResponse({ message: 'failure' }, { status: 500 });
-      return jsonResponse(detailBody(workOrderId, detailJudgment));
+      return detailResponse(workOrderId, detailJudgment, currentDetailEtag);
     }
     if (url.pathname === paths.sessions) {
       const response = sessionMode.endsWith('error')
@@ -248,6 +285,7 @@ const makeApi = (
   return {
     fetch,
     urls,
+    closeRequests,
     releaseStatus: () => releaseStatus?.(),
     releaseOrder: () => releaseOrder?.(),
     releaseCandidate: () => releaseCandidate?.(),
@@ -255,18 +293,22 @@ const makeApi = (
     releaseSession: () => releaseSession?.(),
     releaseReason: () => releaseReason?.(),
     releaseOutbound: () => releaseOutbound?.(),
+    releaseClose: () => releaseClose?.(),
     setCandidateMode: (mode: typeof candidateMode) => (candidateMode = mode),
     setDetailMode: (mode: typeof detailMode) => (detailMode = mode),
+    setDetailEtag: (etag: string) => ((detailMode = 'pending-ready'), (currentDetailEtag = etag)),
     setJudgment: (judgment: Judgment) => (detailJudgment = judgment),
     setSessionMode: (mode: typeof sessionMode) => (sessionMode = mode),
     setHasOpenSession: (value: boolean) => (hasOpenSession = value),
     setReasonMode: (mode: ReasonMode) => (reasonMode = mode),
     setOutboundMode: (mode: OutboundMode) => (outboundMode = mode),
+    setCloseMode: (mode: CloseMode) => (closeMode = mode),
   };
 };
 const candidateUrls = (urls: URL[]) => urls.filter((url) => url.pathname === paths.candidates);
 const detailUrls = (urls: URL[]) =>
   urls.filter((url) => /^\/production\/work-orders\/\d+$/.test(url.pathname));
+const readCounts = (urls: URL[]) => [candidateUrls(urls).length, detailUrls(urls).length];
 const sessionUrls = (urls: URL[]) => urls.filter((url) => url.pathname === paths.sessions);
 const reasonUrls = (urls: URL[]) =>
   urls.filter(
@@ -289,6 +331,57 @@ const underBlockers = [
 ];
 const View = WorkOrderCloseCandidateScreen;
 
+const orderedItems = ['PRODUCTION_RESULT', 'GOODS_RECEIPT'] as const;
+const reloadAction = messages.conflict.reloadAction;
+const executionSource = (judgment: Exclude<Judgment, null> = 'NORMAL') => ({
+  selectedWorkOrderId: 701,
+  detailState: {
+    kind: 'RESOLVED' as const,
+    detail: toWorkOrderCloseDetailFact(detailBody(701, judgment)),
+    unitLabel: null,
+  },
+  judgment,
+  blockers: [],
+  outboundState: { kind: 'READY' as const, settings: outboundBody('ready').items },
+  draft: emptyDraft,
+  outboundSelection: { RETURN: true },
+});
+const selectCloseTarget = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
+  return screen.findByRole('button', { name: t.confirm.confirm });
+};
+const confirmClose = async (user: ReturnType<typeof userEvent.setup>) => {
+  const dialog = screen.getByRole('dialog');
+  await user.click(within(dialog).getByRole('button', { name: t.confirm.confirm }));
+  return dialog;
+};
+const prepareClose = async (judgment: Exclude<Judgment, null>, mode: CloseMode = 'success') => {
+  const user = userEvent.setup();
+  const api = makeApi();
+  api.setJudgment(judgment);
+  api.setCloseMode(mode);
+  const rendered = renderWithProviders(<View />, { fetch: api.fetch });
+  return { ...rendered, user, api, action: await selectCloseTarget(user) };
+};
+const stale = { remainderDisposition: 'CARRY_OVER', varianceReasonCode: 'SYN-STALE' } as const;
+const requestCases = [
+  [
+    'UNDER',
+    { remainderDisposition: 'WRITE_OFF', varianceReasonCode: '  SYN-FIRST  ' },
+    { remainderDispositionCode: 'WRITE_OFF', reasonCode: 'SYN-FIRST', erpSendItems: orderedItems },
+  ],
+  [
+    'OVER',
+    { remainderDisposition: 'CARRY_OVER', varianceReasonCode: '  SYN-SECOND  ' },
+    { reasonCode: 'SYN-SECOND', erpSendItems: orderedItems },
+  ],
+  ['NORMAL', stale, { erpSendItems: orderedItems }],
+] as const;
+const postCases = [
+  ['UNDER', { ...requestCases[0][2], erpSendItems: ['RETURN'] }],
+  ['OVER', { reasonCode: 'SYN-FIRST', erpSendItems: ['RETURN'] }],
+  ['NORMAL', { erpSendItems: ['RETURN'] }],
+] as const;
 describe('WorkOrderCloseCandidateScreen', () => {
   it('maps disabled, fetching, error, absent and settled snapshots in strict priority', () => {
     const snapshot = (
@@ -374,6 +467,132 @@ describe('WorkOrderCloseCandidateScreen', () => {
     });
   });
 
+  it('fails the close request gate for every unresolved or stale prerequisite', () => {
+    const source = executionSource();
+    const detail = source.detailState.detail;
+    const blocked: Partial<Parameters<typeof toWorkOrderCloseExecutionRequest>[0]>[] = [
+      { selectedWorkOrderId: null },
+      { detailState: { ...source.detailState, detail: { ...detail, workOrderId: 702 } } },
+      { detailState: { kind: 'CHECKING' } },
+      { detailState: { kind: 'UNAVAILABLE' } },
+      { judgment: null },
+      { blockers: ['OPEN_SESSION'] },
+      { outboundState: { kind: 'CHECKING' } },
+      { outboundState: { kind: 'UNAVAILABLE' } },
+      { outboundState: { kind: 'READY', settings: [] } },
+    ];
+    for (const overrides of blocked)
+      expect(toWorkOrderCloseExecutionRequest({ ...source, ...overrides })).toBeNull();
+  });
+  it.each(requestCases)('builds %s from server facts', (judgment, draft, want) => {
+    expect(
+      toWorkOrderCloseExecutionRequest({
+        ...executionSource(judgment),
+        outboundState: { kind: 'READY', settings: outboundBody('changed').items },
+        draft,
+        outboundSelection: { RETURN: true, PRODUCTION_RESULT: true, GOODS_RECEIPT: true },
+      }),
+    ).toEqual(want);
+  });
+  it.each(postCases)('posts exact %s body and clears on success', async (judgment, body) => {
+    const { user, api, action } = await prepareClose(judgment);
+    if (judgment !== 'NORMAL') {
+      const input = await screen.findByRole('region', { name: t.input.pane });
+      if (judgment === 'UNDER') await user.click(dispositionField(input));
+      await user.click(reasonField(input));
+      await user.click(screen.getByRole('option', { name: 'Synthetic first reason' }));
+    }
+    await waitFor(() => expect(action).toBeEnabled());
+    await user.click(action);
+    await confirmClose(user);
+    await waitFor(() => expect(api.closeRequests).toHaveLength(1));
+    const key = expect.stringMatching(/^[0-9a-f-]{36}$/i);
+    expect(api.closeRequests[0]).toEqual({ path: paths.close(701), body, etag: detailEtag, key });
+    expect(await screen.findByText(t.closeSuccess)).toBeVisible();
+    expect(screen.getByText(t.detailSummary.selection.title)).toBeVisible();
+    expect(document.body).not.toHaveTextContent(/ERP 반영 완료|outbox 적재 완료/);
+  });
+  it('blocks duplicate confirmation and preserves a pending close through settings refetch', async () => {
+    const { user, api, action, queryClient } = await prepareClose('NORMAL', 'pending');
+    await user.click(action);
+    const dialog = await confirmClose(user);
+    const buttons = within(dialog).getAllByRole('button');
+    await waitFor(() => expect(api.closeRequests).toHaveLength(1));
+    for (const button of buttons) expect(button).toBeDisabled();
+    await user.click(buttons[1]!);
+    expect(api.closeRequests).toHaveLength(1);
+    api.setOutboundMode('pending-ready');
+    void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
+    expect(await screen.findByRole('status', { name: t.outboundItems.loading })).toBeVisible();
+    expect(screen.getByRole('dialog')).toBeVisible();
+    api.setOutboundMode('ready');
+    api.releaseOutbound();
+    api.releaseClose();
+    expect(await screen.findByText(t.closeSuccess)).toBeVisible();
+    await user.click(await selectCloseTarget(user));
+    api.setOutboundMode('pending-ready');
+    void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
+    expect(await screen.findByRole('status', { name: t.outboundItems.loading })).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    api.releaseOutbound();
+    await screen.findByRole('switch', { name: 'Synthetic return' });
+    expect([screen.queryByRole('dialog'), api.closeRequests.length]).toEqual([null, 1]);
+  });
+  it.each(['network', '403', '500'] as const)(
+    'retries %s with the same body and key without reload',
+    async (mode) => {
+      const { user, api, action } = await prepareClose('NORMAL', mode);
+      await user.click(action);
+      const dialog = await confirmClose(user);
+      expect(await within(dialog).findByRole('alert')).toBeVisible();
+      expect(within(dialog).queryByRole('button', { name: reloadAction })).not.toBeInTheDocument();
+      api.setCloseMode('success');
+      await confirmClose(user);
+      await waitFor(() => expect(api.closeRequests).toHaveLength(2));
+      expect(api.closeRequests[1]).toEqual(api.closeRequests[0]);
+    },
+  );
+  it('requires reconfirmation after the detail ETag changes during a pending failure', async () => {
+    const { user, api, action, queryClient } = await prepareClose('NORMAL', 'pending-error');
+    await user.click(action);
+    await confirmClose(user);
+    await waitFor(() => expect(api.closeRequests).toHaveLength(1));
+    api.setDetailEtag('"synthetic-close-version-8"');
+    void queryClient.invalidateQueries({ queryKey: ['work-order-close', 'detail', 701] });
+    await screen.findByRole('status', { name: t.detailSummary.loading });
+    api.releaseDetail();
+    await screen.findByText('SYN-WO-DETAIL-701');
+    api.releaseClose();
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByRole('alert')).toBeVisible();
+    api.setCloseMode('success');
+    await confirmClose(user);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(api.closeRequests).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: t.confirm.confirm }));
+    await confirmClose(user);
+    await waitFor(() => expect(api.closeRequests).toHaveLength(2));
+    expect(api.closeRequests[1]).toEqual({
+      ...api.closeRequests[0],
+      etag: '"synthetic-close-version-8"',
+    });
+  });
+  it('shows all fields and reloads candidate plus exact detail only on 409', async () => {
+    const { user, api, action } = await prepareClose('NORMAL', 'validation');
+    await user.click(action);
+    let dialog = await confirmClose(user);
+    const items = await within(dialog).findAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual(closeFields.map(fieldMessage));
+    expect(within(dialog).queryByRole('button', { name: reloadAction })).not.toBeInTheDocument();
+    api.setCloseMode('conflict');
+    await confirmClose(user);
+    dialog = screen.getByRole('dialog');
+    const before = readCounts(api.urls);
+    await user.click(await within(dialog).findByRole('button', { name: reloadAction }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText(t.detailSummary.selection.title)).toBeVisible();
+    await waitFor(() => expect(readCounts(api.urls)).toEqual(before.map((value) => value + 1)));
+  });
   it('owns outbound choices per W/O and reconciles same-owner settings by server rules', async () => {
     const user = userEvent.setup();
     const api = makeApi();
@@ -448,6 +667,7 @@ describe('WorkOrderCloseCandidateScreen', () => {
     await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
     expect(await screen.findByText(t.outboundItems.empty.title)).toBeVisible();
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.confirm.confirm })).toBeDisabled();
   });
 
   it('keeps detail idle until selection then reads exact server facts with a named unit', async () => {
