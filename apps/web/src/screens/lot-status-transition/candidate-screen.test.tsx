@@ -12,6 +12,7 @@ import {
 import {
   defaultLotStatusCandidateFilters,
   EMPTY_LOT_STATUS_CANDIDATE_FILTERS,
+  lotStatusTransitionKeys,
   LotStatusTransitionCandidateScreen,
   toLotStatusCandidateQuery,
 } from './candidate-screen';
@@ -147,7 +148,7 @@ describe('Lot Status 전이 후보', () => {
       transitionTo: '2026-08-25T23:59:59+09:00',
       page: 3,
     });
-    expect(toLotStatusCandidateQuery(EMPTY_LOT_STATUS_CANDIDATE_FILTERS, 1)).toEqual({});
+    expect(toLotStatusCandidateQuery(EMPTY_LOT_STATUS_CANDIDATE_FILTERS, 1, 540)).toEqual({});
   });
 
   it('첫 조회는 오늘 포함 최근 30일을 사용한다', async () => {
@@ -159,6 +160,15 @@ describe('Lot Status 전이 후보', () => {
     );
 
     expect(Object.fromEntries(lotRequests(urls)[0]!.searchParams)).toEqual(expected);
+  });
+
+  it('같은 필터라도 지역 시간대 오프셋이 다르면 후보 캐시 키를 분리한다', () => {
+    const filters = defaultLotStatusCandidateFilters(new Date(2026, 7, 25));
+
+    expect(lotStatusTransitionKeys.candidates(filters, 1, 540)).not.toEqual(
+      lotStatusTransitionKeys.candidates(filters, 1, -300),
+    );
+    expect(lotStatusTransitionKeys.candidates(filters, 1, 540).at(-1)).toBe(540);
   });
 
   it('필터 초안을 조회·초기화하고 요청에 heldOnly를 보내지 않는다', async () => {

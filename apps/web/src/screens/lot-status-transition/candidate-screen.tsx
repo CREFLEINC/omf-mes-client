@@ -61,7 +61,7 @@ const positiveId = (value: string): number | undefined => {
 export const toLotStatusCandidateQuery = (
   filters: LotStatusCandidateFilters,
   page: number,
-  offsetMinutes = -new Date().getTimezoneOffset(),
+  offsetMinutes: number,
 ): LotStatusCandidateQuery => {
   const query: LotStatusCandidateQuery = {};
   const itemId = positiveId(filters.itemId);
@@ -75,17 +75,22 @@ export const toLotStatusCandidateQuery = (
 };
 
 export const lotStatusTransitionKeys = {
-  candidates: (filters: LotStatusCandidateFilters, page: number) =>
-    ['lot-status-transition', 'candidates', { ...filters }, page] as const,
+  candidates: (filters: LotStatusCandidateFilters, page: number, offsetMinutes: number) =>
+    ['lot-status-transition', 'candidates', { ...filters }, page, offsetMinutes] as const,
 };
 
 const ROOT_KEY = ['lot-status-transition'] as const;
 
-const useCandidates = (filters: LotStatusCandidateFilters, page: number, enabled: boolean) => {
+const useCandidates = (
+  filters: LotStatusCandidateFilters,
+  page: number,
+  offsetMinutes: number,
+  enabled: boolean,
+) => {
   const { client } = useApiClient();
-  const query = toLotStatusCandidateQuery(filters, page);
+  const query = toLotStatusCandidateQuery(filters, page, offsetMinutes);
   return useQuery({
-    queryKey: lotStatusTransitionKeys.candidates(filters, page),
+    queryKey: lotStatusTransitionKeys.candidates(filters, page, offsetMinutes),
     enabled,
     placeholderData: keepPreviousData,
     queryFn: () => runRequest(() => client.GET('/quality/lot-statuses', { params: { query } })),
@@ -128,7 +133,8 @@ export const LotStatusTransitionCandidateScreen = () => {
   const [page, setPage] = useState(1);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [confirmationPinned, setConfirmationPinned] = useState(false);
-  const candidates = useCandidates(filters, page, !confirmationPinned);
+  const offsetMinutes = -new Date().getTimezoneOffset();
+  const candidates = useCandidates(filters, page, offsetMinutes, !confirmationPinned);
   const selected =
     candidates.isError && !confirmationPinned
       ? null
