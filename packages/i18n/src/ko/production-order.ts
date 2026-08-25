@@ -1,4 +1,6 @@
 export const productionOrder = {
+  title: 'P/O 수신·조회',
+  breadcrumbRoot: '생산',
   fields: {
     productionOrderNo: 'P/O 번호',
     erpProductionOrderNo: 'ERP 원번호',
@@ -16,6 +18,7 @@ export const productionOrder = {
     remarks: '비고',
   },
   panes: {
+    filters: '생산 P/O 조회 조건',
     list: '생산 P/O 목록',
     basic: '생산 P/O 기본 상세',
     plans: '생산 P/O 계획 상세',
@@ -30,6 +33,7 @@ export const productionOrder = {
     nextPage: '다음',
   },
   values: {
+    statusOptionsPending: '상태 값은 확정 전이므로 직접 선택할 수 없습니다.',
     missingErpOrderNo: 'ERP 원번호 없음',
     missingItemLabel: '품목 표시명 없음',
     missingDueDate: '납기일 없음',
@@ -79,6 +83,8 @@ export const productionOrder = {
     dueRangeError: '납기 시작일은 종료일보다 늦을 수 없습니다.',
   },
   loading: '생산 P/O 목록 불러오는 중',
+  listLoadFailedTitle: '생산 P/O 목록을 불러오지 못했습니다',
+  listLoadFailedDescription: '잠시 후 조회 조건을 다시 적용해 주세요.',
   empty: {
     title: '표시할 생산 P/O가 없습니다',
     description: '조회 조건을 바꿔 다시 확인하세요.',
