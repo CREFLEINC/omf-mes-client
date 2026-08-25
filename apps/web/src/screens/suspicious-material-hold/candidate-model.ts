@@ -30,6 +30,8 @@ export interface SelectedLotSnapshot {
   uomId?: number;
   lotStatusCode: string;
   latestTransitionAt?: string;
+  locationLabel?: string | null;
+  uomLabel?: string | null;
 }
 
 export type SuspiciousMaterialCandidateResponse =

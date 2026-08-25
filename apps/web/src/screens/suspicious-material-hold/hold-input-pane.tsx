@@ -118,10 +118,13 @@ export const SuspiciousMaterialHoldInputPane = ({
     ({ locationLabel, uomLabel }) => locationLabel === null || uomLabel === null,
   );
   const allowedReason = activeReasons.some(({ code }) => code === draft.reasonCode);
-  const body =
-    reasonUnavailable || labelsUnavailable || !allowedReason
-      ? null
-      : buildSuspiciousMaterialHoldBody(draft, selection, targetLotStatusCode);
+  const body = useMemo(
+    () =>
+      reasonUnavailable || labelsUnavailable || !allowedReason
+        ? null
+        : buildSuspiciousMaterialHoldBody(draft, selection, targetLotStatusCode),
+    [allowedReason, draft, labelsUnavailable, reasonUnavailable, selection, targetLotStatusCode],
+  );
 
   useEffect(() => {
     setDraft(EMPTY_DRAFT);

@@ -70,6 +70,7 @@ export const SuspiciousMaterialCandidatePane = ({
   const candidates = useQuery({
     queryKey: ['suspicious-material-hold', 'candidates', filters, page],
     placeholderData: keepPreviousData,
+    enabled: !isLocked,
     queryFn: () =>
       runRequest(() =>
         client.GET('/quality/lot-statuses', {
@@ -93,7 +94,11 @@ export const SuspiciousMaterialCandidatePane = ({
     const next = reconcileSuspiciousMaterialSelection(selection, {
       kind: 'SUCCESS',
       items: candidates.data.items,
-    });
+    }).map((value) => ({
+      ...value,
+      locationLabel: selection.find(({ lotId }) => lotId === value.lotId)?.locationLabel,
+      uomLabel: selection.find(({ lotId }) => lotId === value.lotId)?.uomLabel,
+    }));
     if (!sameSelection(selection, next)) onSelectionChange(next);
   }, [candidates.data, candidates.isError, onSelectionChange, ready, selection]);
 
@@ -115,7 +120,22 @@ export const SuspiciousMaterialCandidatePane = ({
       onSelectionChange(selection.filter((value) => value.lotId !== row.lotId));
     else {
       const snapshot = toSelectedLotSnapshot(row);
-      if (snapshot !== null) onSelectionChange([...selection, snapshot]);
+      const warehouse = referenceLabel(warehouses, row.warehouseId, '');
+      const location = referenceLabel(locations, row.locationId, '');
+      const unit =
+        row.uomId === undefined || uoms.isLoading || uoms.isError || uoms.truncated
+          ? ''
+          : (uoms.entries.find(({ uomId }) => uomId === row.uomId)?.label ?? '');
+      if (snapshot !== null)
+        onSelectionChange([
+          ...selection,
+          {
+            ...snapshot,
+            locationLabel:
+              warehouse === '' || location === '' ? null : `${warehouse} / ${location}`,
+            uomLabel: unit === '' ? null : unit,
+          },
+        ]);
     }
   };
   const statusLabel = (code: string): string =>
