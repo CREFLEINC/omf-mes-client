@@ -3,13 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId } from 'react';
 
-import {
-  DISPOSED_STATUS_CODE,
-  EQUIPMENT_TYPE_OPTIONS,
-  type CodeOption,
-  cycleTypeLabel,
-  statusLabel,
-} from './code-options';
+import { DISPOSED_STATUS_CODE, type CodeOption, cycleTypeLabel, statusLabel } from './code-options';
 import { FieldLabel } from './field-label';
 import { groupAssignmentNote, hierarchyText, type EquipmentHierarchy } from './hierarchy-text';
 import { SelectField } from './select-field';
@@ -24,6 +18,8 @@ export interface EquipmentFormDialogProps {
   /** null이면 설비코드 편집 가능 */
   codeLockReason: string | null;
   groupOptions: CodeOption[];
+  /** 고를 수 있는 설비 유형. 서버의 코드값 그룹에서 온다 */
+  typeOptions: CodeOption[];
   processOptions: CodeOption[];
   /**
    * 설비 위치. 상세 응답이 준 재료를 그대로 그린다 — 등록 중에는 아직 없다.
@@ -103,6 +99,7 @@ export const EquipmentFormDialog = ({
   banner,
   codeLockReason,
   groupOptions,
+  typeOptions,
   processOptions,
   hierarchy,
   statusCode,
@@ -186,7 +183,7 @@ export const EquipmentFormDialog = ({
         <SelectField
           label={t.fields.equipmentType}
           required
-          options={EQUIPMENT_TYPE_OPTIONS}
+          options={typeOptions}
           value={values.equipmentTypeCode}
           onChange={(value) => onChange({ equipmentTypeCode: value })}
           note={messages.pendingCode.note}

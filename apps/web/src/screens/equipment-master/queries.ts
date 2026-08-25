@@ -165,8 +165,12 @@ export interface EquipmentListResponse {
 
 export const equipmentKeys = {
   all: ['equipments'] as const,
-  list: (equipmentGroupId: number, filters: EquipmentFilters) =>
-    ['equipments', 'list', equipmentGroupId, filters] as const,
+  /**
+   * ⛔ **유형 조건도 열쇠에 든다.** 조건이 «조회 뒤에» 도착하는데(코드값 그룹을 따로 받는다)
+   * 열쇠가 그것을 모르면 조건 없이 한 번 나간 결과가 그대로 굳는다 — 계측기가 섞인 채로.
+   */
+  list: (equipmentGroupId: number, filters: EquipmentFilters, typeCodes: readonly string[]) =>
+    ['equipments', 'list', equipmentGroupId, filters, [...typeCodes]] as const,
   detail: (equipmentId: number) => ['equipments', 'detail', equipmentId] as const,
 };
 
@@ -207,15 +211,46 @@ export const useEquipmentDetail = (
  *
  * 그룹을 고르기 전에는 조회하지 않는다 — 대상이 정해지지 않았다.
  */
+/**
+ * 실을 유형 조건.
+ *
+ * | 사태 | 무엇을 싣나 |
+ * | --- | --- |
+ * | 유형을 골랐다 | 고른 값 하나 |
+ * | 안 골랐고 그룹 값을 받았다 | **그룹 값 전부** — 계열 전체가 조건이 된다 |
+ * | 안 골랐고 그룹 값이 아직 없다 | **아무것도 싣지 않는다** |
+ *
+ * ⛔ **빈 배열을 조건으로 보내지 않는다** — 계약이 `minItems: 1` 이라 거절당한다. 그 사태는
+ * 선택칸이 비활성 + 사유로 이미 말한다(G-2).
+ */
+const typeCodeQuery = (
+  picked: string,
+  groupCodes: readonly string[],
+): { equipmentTypeCode: string[] } | Record<string, never> => {
+  if (picked !== '') return { equipmentTypeCode: [picked] };
+
+  return groupCodes.length === 0 ? {} : { equipmentTypeCode: [...groupCodes] };
+};
+
 export const useEquipmentList = (
   equipmentGroupId: number | null,
   filters: EquipmentFilters,
+  /** 설비 계열 그룹의 값 전부 */
+  equipmentTypeCodes: readonly string[],
+  /** 그 목록을 실제로 «받았는가». 받지 못한 것과 비어 있는 것은 다르다 */
+  typeCodesLoaded: boolean,
 ): UseQueryResult<EquipmentListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: equipmentKeys.list(equipmentGroupId ?? 0, filters),
-    enabled: equipmentGroupId !== null,
+    queryKey: equipmentKeys.list(equipmentGroupId ?? 0, filters, equipmentTypeCodes),
+    /*
+     * ⛔ **코드 목록을 받기 «전»에는 조회하지 않는다.** 먼저 조건 없이 나가면 계측기가 섞인
+     * 목록이 잠깐 서고, 그것을 본 사용자는 이 화면을 「전체 설비 목록」으로 읽는다.
+     * ⭐ **못 받은 것과 비어 있는 것은 다르다** — 비어 있으면(`[]`) 조건 없이 조회하고
+     * 그 사실은 선택칸이 말한다(G-2).
+     */
+    enabled: equipmentGroupId !== null && typeCodesLoaded,
     queryFn: () => {
       if (equipmentGroupId === null) {
         throw new Error('설비 그룹을 고르기 전에는 설비를 조회하지 않습니다.');
@@ -228,14 +263,14 @@ export const useEquipmentList = (
               productionLineId: equipmentGroupId,
               ...(filters.q === '' ? {} : { q: filters.q }),
               /*
-               * ⚠ **계열 전체를 걸지 못한다.** 계약이 값 여럿을 받게 됐지만(통지 `client#404`)
-               * 이 화면이 실을 **설비 계열 값 목록이 아직 미정**이라(설계 `omf-mes#145`),
-               * 고른 값 하나만 싣는다 — 고르기 «전»에는 계측기도 함께 보이고, 그 사실을
-               * 화면이 밝힌다(G-2). 값이 확정되면 형제 화면과 같은 방법으로 풀린다.
+               * ⭐ **첫 조회부터 계열 전체를 건다**(통지 `client#415`). 고르지 않았으면 설비
+               * 계열 그룹의 값 전부를 싣고, 고르면 그 하나만 싣는다 — 그래서 이 목록에는
+               * 계측기가 섞이지 않는다.
+               *
+               * ⛔ **값을 코드에 박지 않는다** — 서버가 준 그룹을 그대로 실으므로 고객이
+               * 유형을 늘려도 이 화면은 손대지 않는다.
                */
-              ...(filters.equipmentTypeCode === ''
-                ? {}
-                : { equipmentTypeCode: [filters.equipmentTypeCode] }),
+              ...typeCodeQuery(filters.equipmentTypeCode, equipmentTypeCodes),
               ...(filters.calibrationRequired ? { calibrationRequired: true } : {}),
               /*
                * ⭐ 기본은 운용 중인 것만 부른다(설계 omf-mes#185). 「폐기 포함」을 켜면

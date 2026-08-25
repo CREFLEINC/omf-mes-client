@@ -28,6 +28,14 @@ export const CODE_GROUPS = {
    * ⛔ **품질 검사의 유형과 «같은 이름 다른 값»이다**(공유계약 G-32 · B-28 의 값 집합 판).
    * 합치면 설비 점검 선택칸에 「수입검사」가 뜬다.
    */
+  /**
+   * 설비 세부유형 — 사출기·프레스·온수기(설계 확정 `omf-mes#224` · 통지 `client#415`).
+   *
+   * ⛔ **계측기 계열과 «다른» 그룹이다**(`INSTRUMENT_TYPE`). 한 컬럼(`equipmentTypeCode`)에
+   * 두 계열이 착지하므로 계열마다 그룹을 가른다 — 합치면 **이 화면 목록에 계측기가 섞이고
+   * 설비 등록 폼 선택칸에 캘리퍼스가 뜬다**(공유계약 G-32).
+   */
+  equipmentType: 'EQUIPMENT_TYPE',
   equipmentInspectionType: 'EQUIPMENT_INSPECTION_TYPE',
   /**
    * 점검 항목의 **판정 방식** — 육안(`VISUAL`) 또는 측정값(`MEASUREMENT`)(설계 `omf-mes#186`).
@@ -115,15 +123,6 @@ const pendingOptions = (): CodeOption[] => [
  * 그 둘을 선택지로 내지 않는다. 값을 지어내는 것과 남의 스키마를 화면 문구로 옮기는 것 둘 다 피한다.
  */
 export const GROUP_TYPE_OPTIONS: CodeOption[] = pendingOptions();
-
-/** 설비유형 — 공통코드 미확정(추적 omf-mes#145). 계측기 화면(W-05-11)이 이 값으로 거른다. */
-export const EQUIPMENT_TYPE_OPTIONS: CodeOption[] = pendingOptions();
-
-/**
- * 설비유형 코드의 라벨. 그룹유형과 같은 규율이다 — 못 찾으면 코드를 그대로 보인다.
- */
-export const equipmentTypeLabel = (code: string): string =>
-  EQUIPMENT_TYPE_OPTIONS.find((option) => option.value === code)?.label ?? code;
 
 /**
  * 운용 상태 코드의 라벨.

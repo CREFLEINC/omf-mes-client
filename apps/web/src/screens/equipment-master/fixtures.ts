@@ -330,3 +330,44 @@ export const uomsResponse = () => ({
   ],
   page: pageOf([1, 2], 2),
 });
+
+/**
+ * 설비 세부유형 3값(설계 확정 `omf-mes#224`). ⛔ 계측기 계열(`INSTRUMENT_TYPE`)과 «다른»
+ * 그룹이다 — 한 컬럼에 두 계열이 착지하므로 계열마다 그룹을 가른다.
+ */
+/** 코드값 하나를 만든다 — 목록에 값을 더해 보는 감지기가 쓴다. */
+export const makeCodeValue = (code: string, codeName: string): CodeValue => ({
+  codeValueId: 9900,
+  codeGroupId: 940,
+  code,
+  codeName,
+  displayOrder: 9,
+  isActive: true,
+});
+
+export const equipmentTypeCodeValues: CodeValue[] = [
+  {
+    codeValueId: 9401,
+    codeGroupId: 940,
+    code: 'INJECTION_MOLDING',
+    codeName: '사출기',
+    displayOrder: 1,
+    isActive: true,
+  },
+  {
+    codeValueId: 9402,
+    codeGroupId: 940,
+    code: 'PRESS',
+    codeName: '프레스',
+    displayOrder: 2,
+    isActive: true,
+  },
+  {
+    codeValueId: 9403,
+    codeGroupId: 940,
+    code: 'WATER_HEATER',
+    codeName: '온수기',
+    displayOrder: 3,
+    isActive: true,
+  },
+];

@@ -15,6 +15,11 @@ const renderPane = (overrides: Partial<Parameters<typeof EquipmentListPane>[0]> 
   const onAdd = vi.fn();
   const onEdit = vi.fn();
   const onOpenInspection = vi.fn();
+  const typeOptions = [
+    { value: 'INJECTION_MOLDING', label: '사출기' },
+    { value: 'PRESS', label: '프레스' },
+    { value: 'WATER_HEATER', label: '온수기' },
+  ];
 
   render(
     <EquipmentListPane
@@ -26,6 +31,7 @@ const renderPane = (overrides: Partial<Parameters<typeof EquipmentListPane>[0]> 
       onAdd={onAdd}
       onEdit={onEdit}
       onOpenInspection={onOpenInspection}
+      typeOptions={typeOptions}
       loadError={null}
       {...overrides}
     />,
@@ -183,8 +189,8 @@ describe('EquipmentListPane', () => {
     const { onApplyFilters } = renderPane({ appliedFilters: applied });
 
     expect(screen.getByText(t.equipmentFilters.chipKeyword('EQ'))).toBeInTheDocument();
-    // 값 목록이 없어 코드를 그대로 보인다 — 「알 수 없음」이 아니다.
-    expect(screen.getByText(t.equipmentFilters.chipType('PRESS'))).toBeInTheDocument();
+    /* 값 목록이 서서 이름으로 보인다 — 못 찾을 때만 코드를 그대로 쓴다(G-9). */
+    expect(screen.getByText(t.equipmentFilters.chipType('프레스'))).toBeInTheDocument();
 
     await user.click(
       screen.getByRole('button', { name: t.equipmentFilters.chipRemoveCalibration }),
@@ -215,24 +221,24 @@ describe('EquipmentListPane', () => {
 });
 
 /**
- * ⚠ **이 목록에 계측기가 함께 보인다** — `equipmentTypeCode` 한 컬럼에 두 계열이 착지하는데
- * 이 화면이 실을 설비 계열 값 목록이 아직 미정이다(설계 `omf-mes#145` · 통지 `client#404`).
- *
- * ⛔ **받아 온 목록을 화면에서 거르지 않는다**(L-1) — 감추는 대신 밝힌다(G-2).
+ * ⭐ **설비 계열 값이 확정돼 이 목록에서 계측기가 걸러진다**(설계 `omf-mes#224` ·
+ * 통지 `client#415`). 「계측기도 함께 보입니다」 배너는 더는 사실이 아니라 걷었다.
  */
-describe('설비 목록 — 계열을 아직 가르지 못한다', () => {
-  it('계측기가 함께 보인다는 사실을 밝힌다', () => {
-    renderPane();
-
-    expect(screen.getByText(t.seriesFilterUnavailable)).toBeInTheDocument();
-  });
-
-  /** ⛔ 조건을 걸어도 이 사실은 그대로다 — 조건은 «고른 한 값»만 좁힐 뿐 계열을 가르지 않는다. */
-  it('유형 조건을 걸어도 그 안내가 남는다', () => {
+describe('설비 목록 — 계열을 가른다', () => {
+  it('유형 이름을 코드값 그룹에서 받아 그린다', () => {
     renderPane({
-      appliedFilters: { ...defaultEquipmentFilters, equipmentTypeCode: 'PRESS' },
+      items: [makeEquipment(2101, 'EQ-11', { equipmentTypeCode: 'PRESS' })],
     });
 
-    expect(screen.getByText(t.seriesFilterUnavailable)).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '프레스' })).toBeInTheDocument();
+  });
+
+  /** ⛔ 이름을 모르는 코드는 지어내지 않고 그대로 쓴다(G-9) — 시드가 아직 없을 수 있다. */
+  it('이름을 모르는 코드는 그대로 쓴다', () => {
+    renderPane({
+      items: [makeEquipment(2102, 'EQ-12', { equipmentTypeCode: 'UNKNOWN_TYPE' })],
+    });
+
+    expect(screen.getByRole('cell', { name: 'UNKNOWN_TYPE' })).toBeInTheDocument();
   });
 });

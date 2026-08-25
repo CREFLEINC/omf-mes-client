@@ -12,13 +12,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
-import {
-  EQUIPMENT_TYPE_OPTIONS,
-  type CodeOption,
-  defaultEquipmentFilters,
-  equipmentTypeLabel,
-  statusLabel,
-} from './code-options';
+import { type CodeOption, defaultEquipmentFilters, statusLabel } from './code-options';
 import { SelectField } from './select-field';
 import type { Equipment, EquipmentFilters } from './types';
 
@@ -36,6 +30,8 @@ export interface EquipmentListPaneProps {
   onEdit: (equipment: Equipment) => void;
   /** 그 설비의 점검 항목 창을 연다. 설비 상세와 «다른» 자원이라 따로 연다 */
   onOpenInspection: (equipment: Equipment) => void;
+  /** 고를 수 있는 설비 유형. 서버의 코드값 그룹에서 온다 */
+  typeOptions: CodeOption[];
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 설비가 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -78,6 +74,7 @@ export const EquipmentListPane = ({
   onAdd,
   onEdit,
   onOpenInspection,
+  typeOptions,
   loadError,
 }: EquipmentListPaneProps) => {
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -105,6 +102,10 @@ export const EquipmentListPane = ({
     onApplyFilters(defaultEquipmentFilters);
   };
 
+  /** ⛔ 이름을 모르는 코드는 지어내지 않고 그대로 쓴다(G-9) — 시드가 아직 없을 수 있다. */
+  const typeLabelOf = (code: string): string =>
+    typeOptions.find((option) => option.value === code)?.label ?? code;
+
   const columns: Column<Equipment>[] = [
     {
       key: 'equipmentCode',
@@ -119,7 +120,7 @@ export const EquipmentListPane = ({
     {
       key: 'equipmentTypeCode',
       header: t.fields.equipmentType,
-      render: (row) => equipmentTypeLabel(row.equipmentTypeCode),
+      render: (row) => typeLabelOf(row.equipmentTypeCode),
     },
     {
       /*
@@ -209,12 +210,6 @@ export const EquipmentListPane = ({
 
   return (
     <section aria-label={t.tabs.equipment}>
-      {/*
-       * ⚠ **이 목록에 계측기가 함께 보인다** — 실을 설비 계열 값 목록이 아직 미정이다.
-       * 감추는 대신 밝힌다(G-2). 값이 확정되면 형제 화면과 같은 방법으로 한 번에 풀린다.
-       */}
-      <AlertBanner variant="warning">{t.seriesFilterUnavailable}</AlertBanner>
-
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar">
         <SearchInput
@@ -226,7 +221,7 @@ export const EquipmentListPane = ({
         />
         <SelectField
           label={t.fields.equipmentType}
-          options={[{ value: '', label: t.equipmentFilters.typeAll }, ...EQUIPMENT_TYPE_OPTIONS]}
+          options={[{ value: '', label: t.equipmentFilters.typeAll }, ...typeOptions]}
           value={draft.equipmentTypeCode}
           onChange={(value) => setDraft((prev) => ({ ...prev, equipmentTypeCode: value }))}
           note={messages.pendingCode.note}
@@ -293,7 +288,7 @@ export const EquipmentListPane = ({
             removeLabel={t.equipmentFilters.chipRemoveType}
             onRemove={() => onApplyFilters({ ...appliedFilters, equipmentTypeCode: '' })}
           >
-            {t.equipmentFilters.chipType(equipmentTypeLabel(appliedFilters.equipmentTypeCode))}
+            {t.equipmentFilters.chipType(typeLabelOf(appliedFilters.equipmentTypeCode))}
           </Chip>
         )}
         {appliedFilters.calibrationRequired && (

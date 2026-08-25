@@ -40,6 +40,7 @@ const renderDialog = (overrides: Partial<EquipmentFormDialogProps> = {}) => {
         mode="edit"
         values={values}
         onChange={onChange}
+        typeOptions={[{ value: 'PRESS', label: '프레스' }]}
         fieldErrors={{}}
         banner={null}
         codeLockReason={null}
