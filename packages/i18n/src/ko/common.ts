@@ -12,6 +12,13 @@ export const common = {
   retry: '다시 시도',
   includeInactive: '미사용 포함',
   discardChangesConfirm: '입력한 내용이 저장되지 않았습니다. 변경을 파기할까요?',
+  reference: {
+    empty: '—',
+    unknown: '알 수 없음',
+    loading: '이름 불러오는 중',
+    failed: '이름을 불러오지 못했습니다',
+    inactiveSuffix: ' (미사용)',
+  },
   /*
    * 날짜 칸이 비었을 때 트리거에 보이는 글자. `TextField type="date"`는 브라우저가 `yyyy-mm-dd`
    * 마스크를 그려 줬지만 `DatePicker`의 트리거는 우리가 넣지 않으면 빈 칸으로 남는다.

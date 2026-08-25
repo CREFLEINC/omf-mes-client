@@ -68,7 +68,13 @@ import {
   toRoleCreate,
   toRoleUpdate,
 } from './role-mappers';
-import { roleDetailPath, roleKeys, useRoleDetail, useRoleList, useRolePermissions } from './role-queries';
+import {
+  roleDetailPath,
+  roleKeys,
+  useRoleDetail,
+  useRoleList,
+  useRolePermissions,
+} from './role-queries';
 import { ROLE_FORM_FIELDS, validateRoleForm } from './role-validation';
 import { USERS_ROLES_TABS, resolveTab, tabSearchParams } from './tabs';
 import { UserFormPane } from './user-form-pane';
@@ -89,7 +95,14 @@ import {
   userKeys,
 } from './user-queries';
 import { USER_FORM_FIELDS, validateUserForm } from './user-validation';
-import type { AppUser, Role, RoleFilters, RoleFormValues, UserFilters, UserFormValues } from './types';
+import type {
+  AppUser,
+  Role,
+  RoleFilters,
+  RoleFormValues,
+  UserFilters,
+  UserFormValues,
+} from './types';
 
 type AppUserDetailResponse = components['schemas']['AppUserDetailResponse'];
 type UserRoleListResponse = components['schemas']['UserRoleListResponse'];
@@ -235,7 +248,8 @@ export const UsersRolesScreen = () => {
 
   const roleSelection = roleAssignState?.selected ?? [];
   const isRoleAssignDirty =
-    roleAssignState !== null && !isSameRoleSelection(roleAssignState.selected, roleAssignState.baseline);
+    roleAssignState !== null &&
+    !isSameRoleSelection(roleAssignState.selected, roleAssignState.baseline);
 
   /* ── 데이터 접근범위 ───────────────────────────────────────────────────── */
 
@@ -256,7 +270,8 @@ export const UsersRolesScreen = () => {
 
   const dataScopeDrafts = dataScopeState?.drafts ?? [];
   const isDataScopeDirty =
-    dataScopeState !== null && !isSameDataScopeDrafts(dataScopeState.drafts, dataScopeState.baseline);
+    dataScopeState !== null &&
+    !isSameDataScopeDrafts(dataScopeState.drafts, dataScopeState.baseline);
 
   /** 편집 창의 대상. **열 때만 마운트한다** — 닫힌 창을 남기면 지난 값이 살아 있다. */
   const [editingDataScope, setEditingDataScope] = useState<DataScopeDraft | null>(null);
@@ -556,7 +571,9 @@ export const UsersRolesScreen = () => {
     onSuccess: (saved) => {
       setRoleFieldErrors({});
       const next = roleToFormValues(saved);
-      setRoleFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      setRoleFormState((prev) =>
+        prev === null ? prev : { ...prev, baseline: next, values: next },
+      );
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -711,7 +728,9 @@ export const UsersRolesScreen = () => {
   };
 
   const changeUserValues = (patch: Partial<UserFormValues>) => {
-    setFormState((prev) => (prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } }));
+    setFormState((prev) =>
+      prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+    );
 
     // 고치는 즉시 그 칸의 오류를 지운다 — 고친 값 옆에 낡은 오류가 남으면 안 된다.
     setUserFieldErrors((prev) => {
@@ -850,7 +869,7 @@ export const UsersRolesScreen = () => {
    */
   const userDepartmentOptions = [
     { value: '', label: t.user.departmentNone },
-    ...selectableOptions(departmentOptions.entries, formState?.values.departmentId ?? ''),
+    ...selectableOptions(departmentOptions, formState?.values.departmentId ?? ''),
   ];
 
   /**
@@ -918,9 +937,7 @@ export const UsersRolesScreen = () => {
         banner={<SaveErrorBanner error={userWrite.error} onReload={reloadUserDetail} />}
         departmentOptions={userDepartmentOptions}
         deactivateDisabledReason={
-          userDetail.data.appUser.isActive === false
-            ? t.actionReasons.deactivateAlreadyDone
-            : null
+          userDetail.data.appUser.isActive === false ? t.actionReasons.deactivateAlreadyDone : null
         }
         isDirty={isUserDirty}
         isSaving={userWrite.isSaving}
@@ -1041,16 +1058,14 @@ export const UsersRolesScreen = () => {
         isLoading={userList.isPending}
         appliedFilters={filters}
         onApplyFilters={applyFilters}
-        departmentOptions={selectableOptions(departmentOptions.entries, filters.departmentId)}
+        departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
         /*
          * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
          * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
          * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
          */
-        departmentLabel={(departmentId) =>
-          lookupLabel(departmentOptions.entries, Number(departmentId))
-        }
-        departmentNameOf={(departmentId) => lookupLabel(departmentOptions.entries, departmentId)}
+        departmentLabel={(departmentId) => lookupLabel(departmentOptions, Number(departmentId))}
+        departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
         optionsNotice={renderOptionsNotice([departmentOptions])}
         pageView={userPageView}
         onChangePage={changeUserPage}
@@ -1176,7 +1191,8 @@ export const UsersRolesScreen = () => {
      * 행 라벨은 **고른 역할을 가리키는 값**이라 상세가 오기 전에는 지어내지 않는다.
      * 목록에서 찾을 수 있으면 그것을 쓰고(같은 탭에서 방금 고른 행이다), 없으면 상세를 기다린다.
      */
-    const selectedRole = roleDetail.data?.role ?? roles.find((row) => row.roleId === selectedRoleId);
+    const selectedRole =
+      roleDetail.data?.role ?? roles.find((row) => row.roleId === selectedRoleId);
 
     /*
      * **기다려도 오지 않는 경우가 있다.** 상세가 실패하고 그 역할이 지금 쪽의 목록에도 없으면
@@ -1291,9 +1307,7 @@ export const UsersRolesScreen = () => {
           }}
           isSaving={userDeactivateWrite.isSaving}
           /* 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다. */
-          banner={
-            <SaveErrorBanner error={userDeactivateWrite.error} onReload={reloadUserDetail} />
-          }
+          banner={<SaveErrorBanner error={userDeactivateWrite.error} onReload={reloadUserDetail} />}
         />
       )}
 
@@ -1336,10 +1350,10 @@ export const UsersRolesScreen = () => {
            * 빼면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다.
            */
           businessUnitOptions={selectableOptions(
-            businessUnitOptions.entries,
+            businessUnitOptions,
             editingDataScope.businessUnitId,
           )}
-          plantOptions={selectableOptions(plantOptions.entries, editingDataScope.plantId)}
+          plantOptions={selectableOptions(plantOptions, editingDataScope.plantId)}
           onClose={() => {
             setEditingDataScope(null);
           }}
