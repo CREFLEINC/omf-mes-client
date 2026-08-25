@@ -29,6 +29,13 @@ export const CODE_GROUPS = {
    * 합치면 설비 점검 선택칸에 「수입검사」가 뜬다.
    */
   equipmentInspectionType: 'EQUIPMENT_INSPECTION_TYPE',
+  /**
+   * 점검 항목의 **판정 방식** — 육안(`VISUAL`) 또는 측정값(`MEASUREMENT`)(설계 `omf-mes#186`).
+   *
+   * ⛔ **이 값을 모르면 짝 제약을 걸 수 없다** — 계약이 「측정값이면 단위·상하한이 함께
+   * 필요하다」를 정해 두었으므로, 어느 값이 「측정값」인지 모르면 등록이 반드시 실패한다.
+   */
+  inspectionJudgmentMethod: 'EQUIPMENT_INSPECTION_JUDGMENT_METHOD',
 } as const;
 
 /**

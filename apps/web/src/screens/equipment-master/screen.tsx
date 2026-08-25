@@ -31,6 +31,9 @@ import { EquipmentListPane } from './equipment-list-pane';
 import { EQUIPMENT_FORM_FIELDS, validateEquipment } from './equipment-validation';
 import { GroupFormPane } from './group-form-pane';
 import { InspectionAssignDialog } from './inspection-assign-dialog';
+import { InspectionItemDialog } from './inspection-item-dialog';
+import { InspectionItemPane } from './inspection-item-pane';
+import { INSPECTION_ITEM_FIELDS, validateInspectionItem } from './inspection-item-validation';
 import { InspectionItemsPane } from './inspection-items-pane';
 import { resolutionText } from './inspection-resolution';
 import {
@@ -49,13 +52,17 @@ import {
   emptyEquipmentFormValues,
   emptyGroupFormValues,
   equipmentToFormValues,
+  emptyInspectionItemValues,
   groupToFormValues,
+  inspectionItemToFormValues,
   isSameEquipmentValues,
   isSameGroupValues,
   toEquipmentCreate,
   toEquipmentUpdate,
   toGroupCreate,
   toGroupUpdate,
+  toInspectionItemCreate,
+  toInspectionItemUpdate,
 } from './mappers';
 import {
   equipmentDetailPath,
@@ -64,6 +71,7 @@ import {
   groupDetailPath,
   groupInspectionPath,
   groupKeys,
+  inspectionItemDetailPath,
   inspectionKeys,
   isTruncated,
   useCodeValues,
@@ -74,8 +82,11 @@ import {
   useGroupInspectionItems,
   useGroupList,
   useGroupOptions,
+  useInspectionItemDetail,
+  useInspectionItemList,
   useInspectionItemMaster,
   useLookupOptions,
+  useUomOptions,
 } from './queries';
 import type {
   AssignmentDraftRow,
@@ -84,8 +95,11 @@ import type {
   EquipmentFilters,
   EquipmentFormValues,
   EquipmentGroup,
+  EquipmentInspectionItem,
   GroupFilters,
   GroupFormValues,
+  InspectionItemFilters,
+  InspectionItemFormValues,
 } from './types';
 
 const t = messages.equipmentMaster;
@@ -165,6 +179,9 @@ export const EquipmentMasterScreen = () => {
     [searchParams],
   );
 
+  /* 화면 수준 뷰 — 기본은 자산이라 주소에 남기지 않는다. */
+  const activeView =
+    searchParams.get('view') === 'inspection-items' ? 'inspection-items' : 'assets';
   const tabParam = searchParams.get('tab');
   const activeTab = tabParam === 'equipment' || tabParam === 'inspection' ? tabParam : 'group';
 
@@ -393,6 +410,137 @@ export const EquipmentMasterScreen = () => {
    * 점검 항목 창의 대상 설비. **설비 상세와 «다른» 자원이라** 설비 창 안이 아니라 목록
    * 줄에서 바로 연다 — 한 창에서 두 자원을 저장하면 어느 쪽이 충돌했는지 알 수 없다.
    */
+  /**
+   * 점검 항목 **마스터**.
+   *
+   * ⭐ **만드는 자리가 이 화면이다**(설계 회신 `omf-mes#220` · 스펙 §5-1-1) — 부여 창은 이
+   * 목록에서 고르기만 한다. 만드는 것과 고르는 것을 나눈다(공유계약 B-6 의 화면 판).
+   */
+  const [inspectionItemFilters, setInspectionItemFilters] = useState<InspectionItemFilters>({
+    q: '',
+    inspectionTypeCode: '',
+    includeInactive: false,
+  });
+  const [inspectionItemDialog, setInspectionItemDialog] = useState<
+    { mode: 'create' } | { mode: 'edit'; equipmentInspectionItemId: number } | null
+  >(null);
+  const [inspectionItemValues, setInspectionItemValues] =
+    useState<InspectionItemFormValues>(emptyInspectionItemValues);
+  const [inspectionItemErrors, setInspectionItemErrors] = useState<Record<string, string>>({});
+
+  const inspectionItemList = useInspectionItemList(
+    inspectionItemFilters,
+    activeView === 'inspection-items',
+  );
+  const editingItemId =
+    inspectionItemDialog?.mode === 'edit' ? inspectionItemDialog.equipmentInspectionItemId : null;
+  const inspectionItemDetail = useInspectionItemDetail(editingItemId);
+  const judgmentMethodValues = useCodeValues(CODE_GROUPS.inspectionJudgmentMethod);
+  const inspectionTypeOptions = useMemo(
+    () => toCodeLabels(inspectionTypeValues.data ?? []),
+    [inspectionTypeValues.data],
+  );
+  const judgmentMethodOptions = useMemo(
+    () => toCodeLabels(judgmentMethodValues.data ?? []),
+    [judgmentMethodValues.data],
+  );
+
+  const uomList = useUomOptions();
+  /*
+   * ⭐ **지금 걸려 있는 단위가 목록에 없어도 칸이 비어 보이면 안 된다.** 사용 중지된 단위나
+   * 잘린 목록이면 실제로 그렇게 되고, 사용자는 **지워진 줄 알고 다시 고른다** — 그러면 원래
+   * 값이 조용히 바뀐다(형제 화면 W-05-11 이 브라우저 확인에서 겪은 자리다).
+   */
+  const uomOptions = useMemo(
+    () =>
+      ensureOption(
+        (uomList.data ?? []).map((uom) => ({ value: String(uom.uomId), label: uom.uomName })),
+        inspectionItemValues.uomId,
+      ),
+    [uomList.data, inspectionItemValues.uomId],
+  );
+
+  const inspectionItemWrite = useMasterWrite<InspectionItemFormValues, EquipmentInspectionItem>({
+    request: (values, headers) =>
+      editingItemId === null
+        ? /* 등록에는 낙관적 잠금이 없다 — 계약이 If-Match 를 요구하지 않는다. */
+          client.POST('/mdm/equipment-inspection-items', {
+            params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+            body: toInspectionItemCreate(values),
+          })
+        : client.PUT('/mdm/equipment-inspection-items/{equipmentInspectionItemId}', {
+            params: {
+              path: { equipmentInspectionItemId: editingItemId },
+              header: {
+                'Idempotency-Key': headers['Idempotency-Key'],
+                'If-Match': headers['If-Match'] ?? '',
+              },
+            },
+            body: toInspectionItemUpdate(
+              values,
+              inspectionItemDetail.data?.editability.codeEditable ?? false,
+            ),
+          }),
+    etagPath: editingItemId === null ? null : inspectionItemDetailPath(editingItemId),
+    invalidateKeys: [inspectionKeys.all],
+    knownFields: INSPECTION_ITEM_FIELDS,
+    onSuccess: () => {
+      setInspectionItemDialog(null);
+      setInspectionItemErrors({});
+      toast.show({
+        variant: 'success',
+        description: editingItemId === null ? messages.common.created : messages.common.saved,
+      });
+    },
+  });
+
+  const openInspectionItemCreate = (): void => {
+    resetIfIdle(inspectionItemWrite);
+    setInspectionItemErrors({});
+    setInspectionItemValues(emptyInspectionItemValues(filters.plantId));
+    setInspectionItemDialog({ mode: 'create' });
+  };
+
+  const openInspectionItemEdit = (item: EquipmentInspectionItem): void => {
+    resetIfIdle(inspectionItemWrite);
+    setInspectionItemErrors({});
+    setInspectionItemValues(inspectionItemToFormValues(item));
+    setInspectionItemDialog({
+      mode: 'edit',
+      equipmentInspectionItemId: item.equipmentInspectionItemId,
+    });
+  };
+
+  const changeInspectionItemValues = (patch: Partial<InspectionItemFormValues>): void => {
+    setInspectionItemValues((prev) => ({ ...prev, ...patch }));
+
+    /* 고친 칸의 오류는 즉시 걷는다 — 남으면 사용자가 이미 고친 것을 다시 본다. */
+    for (const field of Object.keys(patch)) {
+      setInspectionItemErrors((prev) => {
+        if (!(field in prev)) return prev;
+
+        const next = { ...prev };
+
+        delete next[field];
+
+        return next;
+      });
+      inspectionItemWrite.clearFieldError(field);
+    }
+  };
+
+  const handleSaveInspectionItem = (): void => {
+    const errors = validateInspectionItem(inspectionItemValues, {
+      isCreate: inspectionItemDialog?.mode === 'create',
+    });
+
+    setInspectionItemErrors(errors);
+
+    if (Object.keys(errors).length > 0) return;
+
+    inspectionItemWrite.write(inspectionItemValues);
+  };
+
   const [inspectionTarget, setInspectionTarget] = useState<Equipment | null>(null);
 
   /**
@@ -1057,17 +1205,15 @@ export const EquipmentMasterScreen = () => {
 
   const listPage = groupList.data?.page;
   const listTruncated = listPage !== undefined && isTruncated(listPage, groupItems.length);
-
-  return (
+  /**
+   * 자산 뷰 — 설비 그룹과 설비.
+   *
+   * ⭐ **점검 항목 마스터와 «나란히» 선다**(스펙 §5-1-1). 마스터는 그룹에 매이지 않으므로
+   * 그룹을 고른 뒤의 안쪽 탭이 아니라 화면 수준에서 갈린다 — 안쪽에 두면 「이 그룹의 점검
+   * 항목」으로 읽히고, 그것은 부여지 마스터가 아니다.
+   */
+  const renderAssetsView = () => (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
-        actions={<Button onClick={handleAddGroup}>{t.actions.addGroup}</Button>}
-      />
-
-      {lookupNotice}
-
       {/*
        * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
        * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
@@ -1104,6 +1250,60 @@ export const EquipmentMasterScreen = () => {
         />
         {renderDetailPane()}
       </div>
+    </>
+  );
+
+  return (
+    <>
+      <PageHeader
+        title={t.title}
+        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        /*
+         * ⛔ **머리의 동작은 «보고 있는 뷰»의 것이다.** 점검 항목을 보는 중에 「그룹 추가」가
+         * 서 있으면 그 탭의 동작으로 읽힌다 — 누르면 뷰가 바뀌어 사용자가 길을 잃는다.
+         * 점검 항목을 더하는 자리는 그 뷰 «안»에 있다.
+         */
+        actions={
+          activeView === 'assets' ? (
+            <Button onClick={handleAddGroup}>{t.actions.addGroup}</Button>
+          ) : undefined
+        }
+      />
+
+      {lookupNotice}
+
+      <Tabs
+        aria-label={t.title}
+        value={activeView}
+        onChange={(value) => updateParams({ view: value === 'assets' ? null : value })}
+        items={[
+          { value: 'assets', label: t.views.assets, content: renderAssetsView() },
+          {
+            value: 'inspection-items',
+            label: t.inspectionItem.tabLabel,
+            content: (
+              <InspectionItemPane
+                items={inspectionItemList.data?.items ?? []}
+                isLoading={inspectionItemList.isPending}
+                appliedFilters={inspectionItemFilters}
+                onApplyFilters={setInspectionItemFilters}
+                typeOptions={inspectionTypeOptions}
+                methodOptions={judgmentMethodOptions}
+                onAdd={openInspectionItemCreate}
+                onEdit={openInspectionItemEdit}
+                loadError={
+                  inspectionItemList.isError ? (
+                    <LoadErrorBanner
+                      error={toApiError(inspectionItemList.error)}
+                      onRetry={() => void inspectionItemList.refetch()}
+                    />
+                  ) : null
+                }
+              />
+            ),
+          },
+        ]}
+      />
 
       {pendingParams !== null && (
         <DiscardConfirmDialog onConfirm={handleDiscard} onClose={() => setPendingParams(null)} />
@@ -1230,6 +1430,54 @@ export const EquipmentMasterScreen = () => {
           banner={<SaveErrorBanner error={deactivateWrite.error} onReload={handleReloadDetail} />}
           onClose={() => setIsDeactivateOpen(false)}
           onConfirm={() => deactivateWrite.write(undefined)}
+        />
+      )}
+
+      {inspectionItemDialog !== null && (
+        <InspectionItemDialog
+          mode={inspectionItemDialog.mode}
+          values={inspectionItemValues}
+          onChange={changeInspectionItemValues}
+          /* 로컬 검증이 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다. */
+          fieldErrors={{ ...inspectionItemWrite.fieldErrors, ...inspectionItemErrors }}
+          banner={
+            <>
+              {/* 상세를 받지 못했다는 사실을 감추지 않는다 — 잠금 토큰도 코드 가부도 없다. */}
+              {inspectionItemDetail.isError && (
+                <LoadErrorBanner
+                  error={toApiError(inspectionItemDetail.error)}
+                  onRetry={() => void inspectionItemDetail.refetch()}
+                />
+              )}
+              <SaveErrorBanner
+                error={inspectionItemWrite.error}
+                onReload={
+                  editingItemId === null ? undefined : () => void inspectionItemDetail.refetch()
+                }
+              />
+            </>
+          }
+          /*
+           * ⭐ **수정 가부를 화면이 세지 않는다** — 상세 응답이 가부와 사유를 함께 준다(B-4).
+           * 등록 중에는 상세가 없어 잠글 것도 없다.
+           */
+          codeLockReason={
+            inspectionItemDetail.data === undefined
+              ? null
+              : codeLockMessage(inspectionItemDetail.data.editability)
+          }
+          assignmentCount={inspectionItemDetail.data?.assignmentCount ?? null}
+          plantOptions={selectableOptions(lookups.entries.plants, inspectionItemValues.plantId)}
+          typeOptions={inspectionTypeOptions}
+          methodOptions={judgmentMethodOptions}
+          uomOptions={uomOptions}
+          /* 상세를 기다리는 동안 저장을 열면 잠금 토큰 없이 나간다. */
+          isSaving={
+            inspectionItemWrite.isSaving ||
+            (editingItemId !== null && inspectionItemDetail.data === undefined)
+          }
+          onSave={handleSaveInspectionItem}
+          onClose={() => setInspectionItemDialog(null)}
         />
       )}
 

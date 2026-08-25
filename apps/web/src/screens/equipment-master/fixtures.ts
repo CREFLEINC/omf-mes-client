@@ -301,3 +301,32 @@ export const makeAssignment = (
 });
 
 export const assignmentsResponse = (items: InspectionItemAssignment[] = []) => ({ items });
+
+/** 판정 방식 두 값(설계 `omf-mes#186`). ⛔ 이 값을 모르면 짝 제약을 걸 수 없다. */
+export const judgmentMethodCodeValues: CodeValue[] = [
+  {
+    codeValueId: 9301,
+    codeGroupId: 930,
+    code: 'VISUAL',
+    codeName: '육안',
+    displayOrder: 1,
+    isActive: true,
+  },
+  {
+    codeValueId: 9302,
+    codeGroupId: 930,
+    code: 'MEASUREMENT',
+    codeName: '측정값',
+    displayOrder: 2,
+    isActive: true,
+  },
+];
+
+/** 측정 단위 표본. 값은 전부 합성이다. */
+export const uomsResponse = () => ({
+  items: [
+    { uomId: 3, uomCode: 'NM', uomName: '뉴턴미터', decimalScale: 2, isActive: true },
+    { uomId: 4, uomCode: 'MM', uomName: '밀리미터', decimalScale: 1, isActive: true },
+  ],
+  page: pageOf([1, 2], 2),
+});

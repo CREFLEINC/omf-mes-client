@@ -110,3 +110,37 @@ export interface AssignmentDraftRow {
   cycleBaseDate: string;
   isActive: boolean;
 }
+
+/** 점검 항목 마스터 목록의 조회 조건. */
+export interface InspectionItemFilters {
+  q: string;
+  inspectionTypeCode: string;
+  /** ⭐ 마스터라 «끈 것»도 볼 수 있어야 한다 — 다시 켜는 길이 여기뿐이다(B-4) */
+  includeInactive: boolean;
+}
+
+/** 점검 항목 마스터 상세 — 잠금 토큰·수정 가부·부여 건수가 이 응답으로 온다. */
+export type InspectionItemDetail = components['schemas']['EquipmentInspectionItemDetailResponse'];
+
+/**
+ * 점검 항목 폼의 값.
+ *
+ * ⭐ **수를 문자열로 든다** — 사람이 치는 칸이라 「10」으로 가는 도중 「」·「1」·「10.」 같은
+ * 중간 상태를 지난다. 경계는 `mappers` 한 곳에서 넘는다.
+ */
+export interface InspectionItemFormValues {
+  /** ⭐ 항목은 공장에 매인다(계약 필수) — 등록할 때 정하고 수정 본문은 받지 않는다 */
+  plantId: string;
+  itemCode: string;
+  itemName: string;
+  inspectionTypeCode: string;
+  /** 육안(`VISUAL`) 또는 측정값(`MEASUREMENT`). 뒤엣것이면 단위·상하한이 짝으로 붙는다 */
+  judgmentMethodCode: string;
+  uomId: string;
+  lowerLimit: string;
+  upperLimit: string;
+  requiredFlag: boolean;
+  inspectionPoint: string;
+  sequenceNo: string;
+  isActive: boolean;
+}
