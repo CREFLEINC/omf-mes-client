@@ -167,7 +167,11 @@ export const ResultOverview = ({
         </>
       )}
       <h3>검사 결과</h3>
-      {list.isPending && <SkeletonText lines={3} />}
+      {(list.isPending || list.isPlaceholderData) && (
+        <div role="status" aria-label="검사 결과 페이지를 불러오는 중">
+          <SkeletonText lines={3} />
+        </div>
+      )}
       {list.isError && (
         <AlertBanner
           variant="error"
@@ -179,7 +183,7 @@ export const ResultOverview = ({
           }
         />
       )}
-      {!list.isError && list.data !== undefined && (
+      {!list.isError && !list.isPlaceholderData && list.data !== undefined && (
         <>
           <Table
             density="compact"

@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { components } from '@omf-mes/api-client';
 import { describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 
 import {
   createStubFetch,
@@ -134,5 +135,53 @@ describe('검사 결과 요약·목록', () => {
 
     expect(screen.getByText('기간과 검사유형을 선택하세요')).toBeInTheDocument();
     expect(calls).toHaveLength(0);
+  });
+
+  it('다음 page placeholder 동안 이전 page 행과 선택을 숨긴다', async () => {
+    const user = userEvent.setup();
+    const PendingPage = () => {
+      const [page, setPage] = useState(1);
+      return (
+        <ResultOverview
+          filters={filters}
+          sort="inspectedAt,desc"
+          page={page}
+          labels={{ item: new Map([[101, '합성 품목']]), judgment: new Map() }}
+          onSortChange={() => undefined}
+          onPageChange={setPage}
+          onSelectResult={() => undefined}
+        />
+      );
+    };
+    renderWithProviders(<PendingPage />, {
+      fetch: async (request) => {
+        const url = new URL(request.url);
+        if (url.pathname.endsWith('/summary'))
+          return jsonResponse({
+            inspectionCount: 1,
+            inspectedQty: 30,
+            acceptedQty: 28,
+            rejectedQty: 2,
+            heldQty: 0,
+            defectRate: 6.67,
+            finalRoundOnly: true,
+            asOf: '2026-08-31T09:30:00+09:00',
+          });
+        if (url.searchParams.get('page') === '2') return new Promise(() => undefined);
+        return jsonResponse({
+          items: [row(1, 'SAMPLE-PAGE-ONE')],
+          page: { page: 1, size: 50, total: 51 },
+        });
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: '다음 쪽' }));
+    expect(
+      await screen.findByRole('status', { name: '검사 결과 페이지를 불러오는 중' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('SAMPLE-PAGE-ONE')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'SAMPLE-PAGE-ONE 상세 보기' }),
+    ).not.toBeInTheDocument();
   });
 });

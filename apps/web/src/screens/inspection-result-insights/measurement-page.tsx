@@ -103,37 +103,47 @@ export const MeasurementPage = ({
         ]}
         onChange={(value) => onCalibrationChange(value as CalibrationFilter)}
       />
-      {measurements.isPending && <SkeletonText lines={3} />}
+      {(measurements.isPending || measurements.isPlaceholderData) && (
+        <div role="status" aria-label="측정치 페이지를 불러오는 중">
+          <SkeletonText lines={3} />
+        </div>
+      )}
       {measurements.isError && (
         <AlertBanner variant="error" title="측정치를 불러오지 못했습니다." action={retry} />
       )}
-      {!measurements.isError && measurements.data !== undefined && (
-        <>
-          <Table
-            density="compact"
-            caption="검사 측정치"
-            columns={columns}
-            rows={[...measurements.data.items]}
-            getRowId={(row) => String(row.inspectionMeasurementId)}
-            empty={<EmptyState size="sm" title="측정치가 없습니다" />}
-          />
-          <nav className="form-actions" aria-label="측정치 쪽 이동">
-            <Button variant="outlined" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-              이전
-            </Button>
-            <span>
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="outlined"
-              disabled={page >= totalPages}
-              onClick={() => onPageChange(page + 1)}
-            >
-              다음
-            </Button>
-          </nav>
-        </>
-      )}
+      {!measurements.isError &&
+        !measurements.isPlaceholderData &&
+        measurements.data !== undefined && (
+          <>
+            <Table
+              density="compact"
+              caption="검사 측정치"
+              columns={columns}
+              rows={[...measurements.data.items]}
+              getRowId={(row) => String(row.inspectionMeasurementId)}
+              empty={<EmptyState size="sm" title="측정치가 없습니다" />}
+            />
+            <nav className="form-actions" aria-label="측정치 쪽 이동">
+              <Button
+                variant="outlined"
+                disabled={page <= 1}
+                onClick={() => onPageChange(page - 1)}
+              >
+                이전
+              </Button>
+              <span>
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant="outlined"
+                disabled={page >= totalPages}
+                onClick={() => onPageChange(page + 1)}
+              >
+                다음
+              </Button>
+            </nav>
+          </>
+        )}
     </section>
   );
 };

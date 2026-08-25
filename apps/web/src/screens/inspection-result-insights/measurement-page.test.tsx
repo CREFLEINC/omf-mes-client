@@ -1,5 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { useState } from 'react';
 
 import {
   createStubFetch,
@@ -161,5 +163,66 @@ describe('검사 측정치 전체 보기', () => {
     const request = calls.find((url) => url.pathname.endsWith('/measurements'));
     expect(request?.searchParams.get('page')).toBe('2');
     expect(request?.searchParams.get('calibrationExpired')).toBe('only');
+  });
+
+  it('다음 page placeholder 동안 이전 측정 행을 숨긴다', async () => {
+    const Page = () => {
+      const [page, setPage] = useState(1);
+      return (
+        <MeasurementPage
+          inspectionResultId={701}
+          page={page}
+          calibrationExpired=""
+          judgmentLabels={new Map()}
+          onPageChange={setPage}
+          onCalibrationChange={() => undefined}
+        />
+      );
+    };
+    renderWithProviders(<Page />, {
+      fetch: async (request) => {
+        const url = new URL(request.url);
+        if (url.pathname.endsWith('/measurement-summary'))
+          return jsonResponse({ asOf: '2026-08-31T11:30:00+09:00', items: [] });
+        if (url.pathname.endsWith('/measurements')) {
+          if (url.searchParams.get('page') === '2') return new Promise(() => undefined);
+          return jsonResponse({
+            items: [
+              {
+                inspectionMeasurementId: 1001,
+                inspectionItemSpecId: 901,
+                sampleNo: 1,
+                textValue: 'SAMPLE-PAGE-ONE',
+                judgmentCode: 'ACCEPTED',
+                measuredAt: '2026-08-12T10:22:00+09:00',
+              },
+            ],
+            page: { page: 1, size: 50, total: 51 },
+          });
+        }
+        return jsonResponse({
+          inspectionResultId: 701,
+          inspectionResultNo: 'SAMPLE-RESULT-701',
+          inspectionRequestId: 801,
+          inspectionRound: 1,
+          inspectedQty: 1,
+          acceptedQty: 1,
+          rejectedQty: 0,
+          heldQty: 0,
+          uomId: 301,
+          overallJudgmentCode: 'ACCEPTED',
+          inspectorId: 401,
+          inspectedAt: '2026-08-12T10:22:00+09:00',
+          statusCode: '확정',
+        });
+      },
+    });
+
+    await screen.findByText('SAMPLE-PAGE-ONE');
+    await userEvent.click(screen.getByRole('button', { name: '다음' }));
+    expect(
+      await screen.findByRole('status', { name: '측정치 페이지를 불러오는 중' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('SAMPLE-PAGE-ONE')).not.toBeInTheDocument();
   });
 });
