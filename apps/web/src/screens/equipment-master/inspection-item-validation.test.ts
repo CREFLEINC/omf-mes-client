@@ -105,15 +105,18 @@ describe('점검 항목 검증 — 공통', () => {
     expect(validateInspectionItem(visual({ sequenceNo: '' }), CREATE).sequenceNo).toBe(t.required);
   });
 
-  /** ⭐ 0은 «고른 값»이다 — 순서에서 0은 뜻이 있다(맨 앞). 음수·소수만 막는다. */
-  it('순서 0은 받고 음수·소수는 막는다', () => {
-    expect(validateInspectionItem(visual({ sequenceNo: '0' }), CREATE).sequenceNo).toBeUndefined();
-    expect(validateInspectionItem(visual({ sequenceNo: '-1' }), CREATE).sequenceNo).toBe(
-      t.sequencePositive,
-    );
-    expect(validateInspectionItem(visual({ sequenceNo: '1.5' }), CREATE).sequenceNo).toBe(
-      t.sequencePositive,
-    );
+  /**
+   * ⛔ **0은 순서가 아니다** — 계약이 `minimum: 1` 로 못박았다. 「맨 앞」을 0으로 두고 싶어도
+   * 서버가 거절하므로, 화면이 막지 않으면 **저장에서야 알게 되는 값**이 된다.
+   */
+  it('순서는 1부터다 — 0·음수·소수를 막는다', () => {
+    expect(validateInspectionItem(visual({ sequenceNo: '1' }), CREATE).sequenceNo).toBeUndefined();
+
+    for (const value of ['0', '-1', '1.5']) {
+      expect(validateInspectionItem(visual({ sequenceNo: value }), CREATE).sequenceNo).toBe(
+        t.sequencePositive,
+      );
+    }
   });
 });
 

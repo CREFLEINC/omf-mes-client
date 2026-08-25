@@ -382,7 +382,8 @@ export const equipmentMaster = {
     validation: {
       required: '필수 항목입니다.',
       mustBeNumber: '숫자로 입력하세요.',
-      sequencePositive: '표시 순서는 0 이상의 정수여야 합니다.',
+      /** ⛔ 계약이 `minimum: 1` 이다 — 0을 받으면 저장에서야 거절당한다. */
+      sequencePositive: '표시 순서는 1 이상의 정수여야 합니다.',
       limitOrder: '측정 상한은 하한보다 크거나 같아야 합니다.',
     },
     values: {
