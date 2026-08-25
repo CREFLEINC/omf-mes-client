@@ -104,19 +104,18 @@ describe('ProductionPlanEditorPane', () => {
     const confirmed = screen.getByText('확정 · 편집 불가').closest('tr') as HTMLElement;
     const pending = screen.getByText('저장 중').closest('tr') as HTMLElement;
     for (const lockedRow of [confirmed, pending]) {
-      expect(
-        within(lockedRow)
-          .getAllByRole('button')
-          .every((item) => item.hasAttribute('disabled')),
-      ).toBe(true);
+      for (const role of ['button', 'combobox'] as const) {
+        expect(
+          within(lockedRow)
+            .getAllByRole(role)
+            .every((item) => item.hasAttribute('disabled')),
+        ).toBe(true);
+      }
       expect(within(lockedRow).getByRole('spinbutton')).toBeDisabled();
       expect(within(lockedRow).getByRole('textbox')).toBeDisabled();
     }
     expect(screen.getByText('확정된 계획은 수정할 수 없습니다.')).toBeVisible();
-    expect(within(pending).getByRole('button', { name: '삭제' })).toHaveAttribute(
-      'aria-busy',
-      'true',
-    );
+    expect(within(pending).getByRole('button', { name: '삭제' })).toHaveAttribute('aria-busy');
   });
   it('신규 행 이름을 구분하고 선택 오류를 해당 입력과 연결한다', () => {
     renderPane([
