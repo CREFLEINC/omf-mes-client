@@ -1,5 +1,6 @@
 import { AlertBanner, Button, Dialog, EmptyState, SkeletonText } from '@crefle/web-ui';
 
+import { lookupDisplayLabelWithInactive } from '../../patterns/lookup-display';
 import {
   useInspectionResultDetail,
   useMeasurementSummary,
@@ -86,19 +87,17 @@ export const ResultDetailDialog = ({
       ? []
       : [
           ['의뢰번호', detail.data.inspectionRequestNo ?? EMPTY],
-          [
-            '품목',
-            detail.data.itemId === undefined
-              ? EMPTY
-              : (labels.item.get(detail.data.itemId) ?? EMPTY),
-          ],
+          ['품목', lookupDisplayLabelWithInactive(labels.item, detail.data.itemId)],
           ['LOT', detail.data.lotNo ?? EMPTY],
           ['공정', detail.data.processName ?? EMPTY],
           [
             '검사/합격/불합격/보류',
             `${detail.data.inspectedQty} / ${detail.data.acceptedQty} / ${detail.data.rejectedQty} / ${detail.data.heldQty}`,
           ],
-          ['종합판정', labels.judgment.get(detail.data.overallJudgmentCode) ?? EMPTY],
+          [
+            '종합판정',
+            lookupDisplayLabelWithInactive(labels.judgment, detail.data.overallJudgmentCode),
+          ],
           [
             '검사시각/회차',
             `${dateTime(detail.data.inspectedAt)} / ${detail.data.inspectionRound}회`,

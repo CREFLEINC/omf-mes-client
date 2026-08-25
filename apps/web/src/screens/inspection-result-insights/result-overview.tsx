@@ -8,6 +8,7 @@ import {
   Table,
 } from '@crefle/web-ui';
 
+import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import type { InspectionInsightFilters, InspectionResultSort } from './filters';
 import { useInspectionResults, type InspectionResult } from './queries';
 import { toInspectionResultTreeRows, type InspectionResultTreeRow } from './reinspection-chain';
@@ -28,8 +29,8 @@ const dateTime = (value: string): string => {
 const number = (value: number): string => new Intl.NumberFormat('ko-KR').format(value);
 
 export interface ResultLabels {
-  item: ReadonlyMap<number, string>;
-  judgment: ReadonlyMap<string, string>;
+  item: LookupSource;
+  judgment: LookupSource;
 }
 
 interface ResultOverviewProps {
@@ -118,8 +119,7 @@ export const ResultOverview = ({
     {
       key: 'item',
       header: '품목',
-      render: (row) =>
-        row.result.itemId === undefined ? EMPTY : (labels.item.get(row.result.itemId) ?? EMPTY),
+      render: (row) => lookupDisplayLabelWithInactive(labels.item, row.result.itemId),
     },
     { key: 'lotNo', header: 'LOT', render: (row) => row.result.lotNo ?? EMPTY },
     {
@@ -133,7 +133,8 @@ export const ResultOverview = ({
     {
       key: 'overallJudgmentCode',
       header: '종합판정',
-      render: (row) => labels.judgment.get(row.result.overallJudgmentCode) ?? EMPTY,
+      render: (row) =>
+        lookupDisplayLabelWithInactive(labels.judgment, row.result.overallJudgmentCode),
     },
     {
       key: 'inspectedAt',
