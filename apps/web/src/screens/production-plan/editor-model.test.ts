@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildProductionPlanCreate,
+  buildProductionPlanUpdate,
   summarizeProductionPlanQuantities,
   validateProductionPlanDraft,
   type ProductionPlanDraft,
@@ -16,6 +17,15 @@ const validDraft = (overrides: Partial<ProductionPlanDraft> = {}): ProductionPla
   remarks: '',
   ...overrides,
 });
+
+const baseline = {
+  planDate: '2026-08-22',
+  plannedQty: 12.5,
+  bomId: 9001,
+  routingId: 9101,
+  plannedLineId: 9201,
+  remarks: '기존 비고',
+};
 
 describe('production-plan editor model', () => {
   it('reports only required errors for an empty draft', () => {
@@ -95,6 +105,47 @@ describe('production-plan editor model', () => {
         uomId: 8002,
       }),
     ).toEqual({ ok: false, errors: { plannedQty: 'INVALID_QUANTITY' } });
+  });
+
+  it('builds only changed update fields and sends explicit null when optional values are cleared', () => {
+    expect(
+      buildProductionPlanUpdate(
+        validDraft({
+          planDate: ' 2026-08-23 ',
+          plannedLineId: '',
+          remarks: '   ',
+        }),
+        baseline,
+      ),
+    ).toEqual({
+      ok: true,
+      body: { planDate: '2026-08-23', plannedLineId: null, remarks: null },
+    });
+  });
+
+  it('distinguishes unchanged optional values from new values in a partial update', () => {
+    expect(
+      buildProductionPlanUpdate(
+        validDraft({ plannedLineId: '9201', remarks: '기존 비고' }),
+        baseline,
+      ),
+    ).toEqual({ ok: true, body: {} });
+    expect(
+      buildProductionPlanUpdate(
+        validDraft({ plannedLineId: '9301', remarks: '새 비고' }),
+        baseline,
+      ),
+    ).toEqual({
+      ok: true,
+      body: { plannedLineId: 9301, remarks: '새 비고' },
+    });
+  });
+
+  it('does not build a partial update when the full editable draft is invalid', () => {
+    expect(buildProductionPlanUpdate(validDraft({ routingId: '' }), baseline)).toEqual({
+      ok: false,
+      errors: { routingId: 'REQUIRED' },
+    });
   });
 
   it('summarizes empty, under, matched, and over plan quantities', () => {
