@@ -88,7 +88,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     await waitFor(() => expect(screen.getByLabelText('현재 주소')).toHaveTextContent('rounds=all'));
   });
 
-  it('기간·검사유형이 없으면 모든 집계 요청을 fail-closed한다', () => {
+  it('기간이 없으면 모든 집계 요청을 fail-closed한다', () => {
     const calls: Request[] = [];
     renderWithProviders(
       <InspectionResultInsightsScreen
@@ -100,7 +100,7 @@ describe('검사실적·검사결과 조회 조립', () => {
       { fetch: async (request) => (calls.push(request), jsonResponse({})) },
     );
 
-    expect(screen.getByText('기간과 검사유형을 선택하세요')).toBeInTheDocument();
+    expect(screen.getByText('기간을 선택하세요')).toBeInTheDocument();
     expect(calls).toHaveLength(0);
   });
 

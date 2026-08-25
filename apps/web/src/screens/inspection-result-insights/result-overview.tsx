@@ -5,14 +5,14 @@ import {
   EmptyState,
   SkeletonText,
   type SortState,
-  StatCard,
   Table,
 } from '@crefle/web-ui';
 
 import type { InspectionInsightFilters, InspectionResultSort } from './filters';
-import { useInspectionResults, useInspectionSummary, type InspectionResult } from './queries';
+import { useInspectionResults, type InspectionResult } from './queries';
 import { toInspectionResultTreeRows, type InspectionResultTreeRow } from './reinspection-chain';
-import { toInspectionSummaryQuery } from './request-queries';
+import { toInspectionListQuery } from './request-queries';
+import { SummaryPanels } from './summary-panels';
 
 const EMPTY = '미확인';
 const TYPE_LABELS = new Map([
@@ -73,21 +73,18 @@ export const ResultOverview = ({
   onViewExpiredCalibration,
 }: ResultOverviewProps) => {
   const list = useInspectionResults(filters, sort, page, queriesEnabled);
-  const summary = useInspectionSummary(filters, queriesEnabled);
-  const isBlocked = !queriesEnabled || toInspectionSummaryQuery(filters) === null;
+  const isBlocked = !queriesEnabled || toInspectionListQuery(filters, sort, page) === null;
 
   if (isBlocked) {
     return (
       <EmptyState
         size="sm"
         title={
-          queriesEnabled
-            ? '기간과 검사유형을 선택하세요'
-            : '주소의 날짜 또는 코드 조건이 유효하지 않습니다'
+          queriesEnabled ? '기간을 선택하세요' : '주소의 날짜 또는 코드 조건이 유효하지 않습니다'
         }
         description={
           queriesEnabled
-            ? '검사유형별 집계 기준이 확정된 조건만 조회합니다.'
+            ? '조회 기간은 필수입니다.'
             : '날짜를 확인하고 준비된 검사유형·판정 코드로 다시 조회하세요.'
         }
       />
@@ -145,17 +142,6 @@ export const ResultOverview = ({
       render: (row) => `${dateTime(row.result.inspectedAt)} / ${row.result.inspectionRound}회`,
     },
   ];
-  const cards =
-    summary.data === undefined
-      ? []
-      : ([
-          ['검사건수', summary.data.inspectionCount, '건'],
-          ['검사수량', summary.data.inspectedQty, ''],
-          ['합격수량', summary.data.acceptedQty, ''],
-          ['불합격수량', summary.data.rejectedQty, ''],
-          ['불량률', summary.data.defectRate, '%'],
-        ] as const);
-
   return (
     <section aria-labelledby="inspection-results-title">
       <h2 id="inspection-results-title">검사실적 요약</h2>
@@ -164,42 +150,11 @@ export const ResultOverview = ({
           ? '최종 회차만 집계합니다.'
           : '뿌리 결과 기준 페이지에서 재검 사슬 전체를 회차 순서로 표시합니다.'}
       </p>
-      {summary.isPending && <SkeletonText lines={1} />}
-      {summary.isError && (
-        <AlertBanner
-          variant="error"
-          title="검사 요약을 불러오지 못했습니다."
-          action={
-            <Button size="sm" variant="outlined" onClick={() => void summary.refetch()}>
-              다시 시도
-            </Button>
-          }
-        />
-      )}
-      {!summary.isError && summary.data !== undefined && (
-        <>
-          <div className="filter-bar" role="group" aria-label="검사실적 요약 카드">
-            {cards.map(([label, value, unit]) => (
-              <StatCard key={label} label={label} value={number(value)} unit={unit} />
-            ))}
-          </div>
-          <p className="field-note">기준 {dateTime(summary.data.asOf)}</p>
-          <p className="field-note">불량률의 분모는 검사수량이며 생산 수율과 다를 수 있습니다.</p>
-          {filters.calibrationExpired === '' && (summary.data.calibrationExpiredCount ?? 0) > 0 && (
-            <AlertBanner
-              variant="warning"
-              title={`검교정 만료 장비 측정 건수 ${summary.data.calibrationExpiredCount}건이 기본 집계에 포함되어 있습니다.`}
-              action={
-                <Button size="sm" variant="outlined" onClick={onViewExpiredCalibration}>
-                  검교정 만료만 분리해 보기
-                </Button>
-              }
-            >
-              기본 조회는 검교정 만료 장비로 측정된 건을 자동 제외하지 않습니다.
-            </AlertBanner>
-          )}
-        </>
-      )}
+      <SummaryPanels
+        filters={filters}
+        queriesEnabled={queriesEnabled}
+        onViewExpiredCalibration={onViewExpiredCalibration}
+      />
       <h3>검사 결과</h3>
       {(list.isPending || list.isPlaceholderData) && (
         <div role="status" aria-label="검사 결과 페이지를 불러오는 중">

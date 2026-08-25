@@ -127,7 +127,59 @@ describe('검사 결과 요약·목록', () => {
     }
   });
 
-  it('검사유형이 미확정이면 API를 호출하지 않는다', () => {
+  it('전체 선택은 목록을 한 번 조회하고 IQC·PQC·OQC 요약을 분리한다', async () => {
+    const requests: URL[] = [];
+    renderWithProviders(
+      <ResultOverview
+        filters={{ ...filters, inspectionTypeCode: '' }}
+        sort="inspectedAt,desc"
+        page={1}
+        labels={{ item: new Map(), judgment: new Map() }}
+        onSortChange={() => undefined}
+        onPageChange={() => undefined}
+        onSelectResult={() => undefined}
+        onViewExpiredCalibration={() => undefined}
+      />,
+      {
+        fetch: async (request) => {
+          const url = new URL(request.url);
+          requests.push(url);
+          return url.pathname.endsWith('/summary')
+            ? jsonResponse({
+                inspectionCount: 1,
+                inspectedQty: 10,
+                acceptedQty: 9,
+                rejectedQty: 1,
+                heldQty: 0,
+                defectRate: 10,
+                finalRoundOnly: true,
+                asOf: '2026-08-31T09:30:00+09:00',
+              })
+            : jsonResponse({ items: [], page: { page: 1, size: 50, total: 0 } });
+        },
+      },
+    );
+
+    for (const label of ['수입검사', '공정검사', '출하검사']) {
+      expect(
+        await screen.findByRole('group', { name: `${label} 검사실적 요약 카드` }),
+      ).toBeInTheDocument();
+    }
+    expect(
+      screen.getByText(/검사유형별 요약을 분리하며 서로 합산하지 않습니다/),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('조건에 맞는 검사 결과가 없습니다')).toBeInTheDocument();
+
+    const summaryTypes = requests
+      .filter((url) => url.pathname.endsWith('/summary'))
+      .map((url) => url.searchParams.get('inspectionTypeCode'))
+      .sort();
+    expect(summaryTypes).toEqual(['IQC', 'OQC', 'PQC']);
+    const listRequest = requests.find((url) => url.pathname === '/quality/inspection-results');
+    expect(listRequest?.searchParams.has('inspectionTypeCode')).toBe(false);
+  });
+
+  it('기간이 미확정이면 API를 호출하지 않는다', () => {
     const calls: Request[] = [];
     renderWithProviders(
       <ResultOverview
@@ -143,7 +195,7 @@ describe('검사 결과 요약·목록', () => {
       { fetch: async (request) => (calls.push(request), jsonResponse({})) },
     );
 
-    expect(screen.getByText('기간과 검사유형을 선택하세요')).toBeInTheDocument();
+    expect(screen.getByText('기간을 선택하세요')).toBeInTheDocument();
     expect(calls).toHaveLength(0);
   });
 

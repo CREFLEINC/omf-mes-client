@@ -26,20 +26,21 @@ const toIdentifier = (raw: string): number | undefined => {
   return Number.isSafeInteger(value) && value >= 1 ? value : undefined;
 };
 
-const hasValidPopulation = (filters: InspectionInsightFilters): boolean =>
-  filters.inspectionTypeCode !== '' &&
-  isCalendarDate(filters.from) &&
-  isCalendarDate(filters.to) &&
-  filters.from <= filters.to;
+const hasValidPeriod = (filters: InspectionInsightFilters): boolean =>
+  isCalendarDate(filters.from) && isCalendarDate(filters.to) && filters.from <= filters.to;
 
-const toCommonQuery = (filters: InspectionInsightFilters): InspectionSummaryQuery | null => {
-  if (!hasValidPopulation(filters)) return null;
+const toCommonQuery = (
+  filters: InspectionInsightFilters,
+  requireInspectionType: boolean,
+): InspectionSummaryQuery | null => {
+  if (!hasValidPeriod(filters) || (requireInspectionType && filters.inspectionTypeCode === ''))
+    return null;
   const query: InspectionSummaryQuery = {
-    inspectionTypeCode: filters.inspectionTypeCode,
     inspectedFrom: filters.from,
     inspectedTo: filters.to,
     finalRoundOnly: filters.finalRoundOnly,
   };
+  if (filters.inspectionTypeCode !== '') query.inspectionTypeCode = filters.inspectionTypeCode;
   const itemId = toIdentifier(filters.itemId);
   const processId = toIdentifier(filters.processId);
   if (itemId !== undefined) query.itemId = itemId;
@@ -51,18 +52,18 @@ const toCommonQuery = (filters: InspectionInsightFilters): InspectionSummaryQuer
 
 export const toInspectionSummaryQuery = (
   filters: InspectionInsightFilters,
-): InspectionSummaryQuery | null => toCommonQuery(filters);
+): InspectionSummaryQuery | null => toCommonQuery(filters, true);
 
 export const toDefectRateTrendQuery = (
   filters: InspectionInsightFilters,
-): DefectRateTrendQuery | null => toCommonQuery(filters);
+): DefectRateTrendQuery | null => toCommonQuery(filters, true);
 
 export const toInspectionListQuery = (
   filters: InspectionInsightFilters,
   sort: InspectionResultSort,
   page: number,
 ): InspectionListQuery | null => {
-  const common = toCommonQuery(filters);
+  const common = toCommonQuery(filters, false);
   if (common === null) return null;
   const query: InspectionListQuery = { ...common, sort };
   if (Number.isSafeInteger(page) && page > 1) query.page = page;
@@ -74,7 +75,7 @@ export const toDefectDistributionQuery = (
   groupBy: DistributionGroup,
   sourceAxisCode: string,
 ): DefectDistributionQuery | null => {
-  if (!hasValidPopulation(filters)) return null;
+  if (!hasValidPeriod(filters)) return null;
   const query: DefectDistributionQuery = {
     detectedFrom: filters.from,
     detectedTo: filters.to,
