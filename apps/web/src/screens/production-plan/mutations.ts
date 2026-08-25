@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { workOrderKeys } from '../work-order/queries';
 import { productionPlanDetailPath, productionPlanKeys, toProductionPlanFact } from './queries';
 import type { ProductionPlanFact } from './types';
 
@@ -44,6 +45,11 @@ export interface UpdateProductionPlanOptions {
 export interface DeleteProductionPlanOptions {
   productionPlanId: number;
   onSuccess: () => void;
+}
+
+export interface ConfirmProductionPlanOptions {
+  productionPlanId: number;
+  onSuccess: (data: ProductionPlanFact) => void;
 }
 
 export const useCreateProductionPlan = (
@@ -113,6 +119,31 @@ export const useDeleteProductionPlan = (
     knownFields: PRODUCTION_PLAN_DELETE_FIELDS,
     onSuccess: () => {
       options.onSuccess();
+    },
+  });
+};
+
+export const useConfirmProductionPlan = (
+  options: ConfirmProductionPlanOptions,
+): MasterWriteResult<void> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<void, ProductionPlan>({
+    request: (_variables, headers) =>
+      client.POST('/planning/production-plans/{productionPlanId}:confirm', {
+        params: {
+          path: { productionPlanId: options.productionPlanId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    etagPath: productionPlanDetailPath(options.productionPlanId),
+    invalidateKeys: [productionPlanKeys.all, workOrderKeys.all],
+    knownFields: [],
+    onSuccess: (data) => {
+      options.onSuccess(toProductionPlanFact(data));
     },
   });
 };
