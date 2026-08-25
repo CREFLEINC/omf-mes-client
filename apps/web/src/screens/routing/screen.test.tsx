@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -629,6 +630,28 @@ describe('RoutingScreen — 공정 라인 조회·표시', () => {
     const operations = await screen.findByRole('region', { name: '공정 라인' });
     expect(await within(operations).findByText('사출')).toBeInTheDocument();
     expect(within(operations).getByText('조립')).toBeInTheDocument();
+  });
+
+  it('공정 선택 목록이 실패하면 원시 id 대신 실패 상태를 보인다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        operationListRoute(),
+        {
+          match: (request) => isGet(request, '/mdm/processes'),
+          respond: () => jsonResponse({ message: '공정 선택 목록 실패' }, { status: 500 }),
+        },
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    const operations = await screen.findByRole('region', { name: '공정 라인' });
+    expect(
+      await within(operations).findAllByText(messages.common.reference.failed),
+    ).not.toHaveLength(0);
+    expect(within(operations).queryByText('9001')).not.toBeInTheDocument();
   });
 
   it('라인이 0건이면 빈 상태를 낸다', async () => {

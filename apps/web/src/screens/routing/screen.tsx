@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { lookupDisplayLabel, selectableLookupOptions } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { HeaderPane } from './header-pane';
@@ -50,10 +51,7 @@ import {
 } from './queries';
 import { RevisionPane } from './revision-pane';
 import { resolveRoutingStatus } from './routing-status';
-import {
-  TransitionConfirmDialog,
-  type RoutingTransitionKind,
-} from './transition-confirm-dialog';
+import { TransitionConfirmDialog, type RoutingTransitionKind } from './transition-confirm-dialog';
 import type {
   ItemFilters,
   OperationDraft,
@@ -351,34 +349,17 @@ export const RoutingScreen = () => {
   const itemLabel =
     selectedItem === null ? t.values.empty : `${selectedItem.itemCode} · ${selectedItem.itemName}`;
 
-  /**
-   * 공정 id를 사람이 읽는 이름으로 옮긴다.
-   * 목록에 없는 값은 코드를 그대로 낸다 — 빼 버리면 값이 사라진 것처럼 보인다.
-   */
-  const processLabelOf = (processId: string): string => {
-    const entry = processOptions.entries.find((item) => item.value === processId);
-
-    if (entry === undefined) return processId;
-
-    return entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`;
-  };
+  /** 공정 id를 사람이 읽는 이름 또는 조회 상태로 옮긴다. */
+  const processLabelOf = (processId: string): string =>
+    selectableLookupOptions(processOptions, processId).find((option) => option.value === processId)
+      ?.label ?? lookupDisplayLabel(processOptions, processId);
 
   /**
    * 선택지는 「사용 중인 것 + 지금 고른 값」이다.
    * 미사용을 전부 늘어놓으면 고를 수 없는 값이 섞이고, 지금 값을 빼면 창을 여는 순간 값이 사라진 것처럼 보인다.
    */
-  const processOptionsFor = (selectedProcessId: string): SelectOption[] => {
-    const options = processOptions.entries
-      .filter((entry) => entry.isActive || entry.value === selectedProcessId)
-      .map((entry) => ({ value: entry.value, label: processLabelOf(entry.value) }));
-
-    // 선택 목록이 잘리거나 실패해도 지금 값을 지우지 않는다 — 지우면 저장 때 조용히 다른 값이 된다.
-    if (selectedProcessId !== '' && !options.some((option) => option.value === selectedProcessId)) {
-      return [{ value: selectedProcessId, label: selectedProcessId }, ...options];
-    }
-
-    return options;
-  };
+  const processOptionsFor = (selectedProcessId: string): SelectOption[] =>
+    selectableLookupOptions(processOptions, selectedProcessId);
 
   const [draftState, setDraftState] = useState<OperationDraftState | null>(null);
   const [operationDialog, setOperationDialog] = useState<OperationDialogState | null>(null);

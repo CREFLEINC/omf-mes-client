@@ -54,6 +54,19 @@ export const lookupDisplayLabel = (
   }
 };
 
+/** 읽기 표시에서 미사용 이름을 구분하되 조회 상태가 이름보다 우선하도록 한다. */
+export const lookupDisplayLabelWithInactive = (
+  source: LookupSource,
+  value: string | number | null | undefined,
+): string => {
+  const state = toLookupDisplayState(source, value);
+
+  return state.kind === 'named' &&
+    source.entries.find((entry) => entry.value === String(value))?.isActive === false
+    ? `${state.label}${t.inactiveSuffix}`
+    : lookupDisplayLabel(source, value);
+};
+
 export const selectableLookupOptions = (
   source: LookupSource,
   selected: string,

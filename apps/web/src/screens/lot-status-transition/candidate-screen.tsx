@@ -16,6 +16,11 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useCallback, useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import {
+  lookupDisplayLabelWithInactive,
+  type LookupSource,
+  selectableLookupOptions,
+} from '../../patterns/lookup-display';
 import { runRequest } from '../../patterns/request';
 import { useLotStatusOptions } from '../lot-status-history/options';
 import { useItemReferenceOptions } from '../lot-status-history/reference-options';
@@ -168,12 +173,15 @@ export const LotStatusTransitionCandidateScreen = () => {
   const statuses = useLotStatusOptions();
   const periodId = useId();
   const periodError = validateTransitionPeriod(draft);
-  const itemOptions =
-    items.data?.entries.map((entry) => ({ value: entry.value, label: entry.label })) ?? [];
+  const itemSource: LookupSource = {
+    entries: items.data?.entries ?? [],
+    isLoading: items.isPending,
+    isError: items.isError,
+  };
+  const itemOptions = selectableLookupOptions(itemSource, draft.itemId);
   const statusOptions =
     statuses.data?.items.map((item) => ({ value: item.code, label: item.label })) ?? [];
-  const itemLabel = (itemId: number): string =>
-    itemOptions.find((option) => option.value === String(itemId))?.label ?? '품목 이름 미확인';
+  const itemLabel = (itemId: number): string => lookupDisplayLabelWithInactive(itemSource, itemId);
   const statusLabel = (code: string): string =>
     statusOptions.find((option) => option.value === code)?.label ?? `${code} (이름 미확인)`;
   const changePage = (next: number): void => {

@@ -2,6 +2,7 @@ import { Breadcrumb, PageHeader, Tabs, type TabItem } from '@crefle/web-ui';
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import {
   EMPTY_HISTORY_FILTERS,
   EMPTY_LOT_FILTERS,
@@ -86,6 +87,11 @@ const LotMode = ({
   const lotStatuses = useLotStatusOptions();
   const warehouses = useWarehouseReferenceOptions();
   const items = useItemReferenceOptions();
+  const itemSource: LookupSource<ReferenceOption> = {
+    entries: items.data?.entries ?? [],
+    isLoading: items.isPending,
+    isError: items.isError,
+  };
 
   const lotTypeBlockReason = lotTypes.isPending
     ? 'LOT 유형 기준값을 불러오는 중입니다.'
@@ -131,7 +137,7 @@ const LotMode = ({
       {selectedLotId !== null && (
         <LotDetailDialog
           lotId={selectedLotId}
-          itemOptions={toReferenceOptions(items.data?.entries)}
+          itemSource={itemSource}
           lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
           statusOptions={toCodeOptions(lotStatuses.data?.items)}
           onClose={() => onSelectLot(null)}

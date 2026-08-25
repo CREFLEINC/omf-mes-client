@@ -344,6 +344,7 @@ export const DefectCauseCodeScreen = () => {
   const parentOptions = selectableCategoryOptions(
     categoryOptionsFor(options.items, selectedId),
     formValues.parentId,
+    options,
   );
 
   /*

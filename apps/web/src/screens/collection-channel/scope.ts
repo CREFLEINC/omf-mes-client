@@ -32,11 +32,11 @@ const scopeParts = (channel: CollectionChannel): string[] => {
   const parts: string[] = [];
 
   if ((channel.itemId ?? null) !== null) {
-    parts.push(t.entry(t.item, channel.itemCode ?? String(channel.itemId)));
+    parts.push(t.entry(t.item, channel.itemCode ?? messages.common.reference.unknown));
   }
 
   if ((channel.processId ?? null) !== null) {
-    parts.push(t.entry(t.process, channel.processCode ?? String(channel.processId)));
+    parts.push(t.entry(t.process, channel.processCode ?? messages.common.reference.unknown));
   }
 
   return parts;

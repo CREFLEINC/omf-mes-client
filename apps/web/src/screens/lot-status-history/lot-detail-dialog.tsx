@@ -1,6 +1,8 @@
 import { AlertBanner, Button, Dialog, SkeletonText } from '@crefle/web-ui';
 
+import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import type { FilterOption } from './lot-filter-bar';
+import type { ReferenceOption } from './reference-options';
 import { LotHoldDocuments } from './lot-hold-documents';
 import { useLotDetail } from './queries';
 
@@ -17,7 +19,7 @@ const labelOf = (options: readonly FilterOption[], value: string): string =>
 
 interface LotDetailDialogProps {
   lotId: number;
-  itemOptions: readonly FilterOption[];
+  itemSource: LookupSource<ReferenceOption>;
   lotTypeOptions: readonly FilterOption[];
   statusOptions: readonly FilterOption[];
   onClose: () => void;
@@ -25,7 +27,7 @@ interface LotDetailDialogProps {
 
 export const LotDetailDialog = ({
   lotId,
-  itemOptions,
+  itemSource,
   lotTypeOptions,
   statusOptions,
   onClose,
@@ -66,11 +68,7 @@ export const LotDetailDialog = ({
         <dl className="filter-bar" aria-label="LOT 속성">
           {[
             ['LOT 번호', detail.data.lotNo],
-            [
-              '품목',
-              itemOptions.find((option) => option.value === String(detail.data.itemId))?.label ??
-                '알 수 없음',
-            ],
+            ['품목', lookupDisplayLabelWithInactive(itemSource, detail.data.itemId)],
             ['LOT 유형', labelOf(lotTypeOptions, detail.data.lotTypeCode)],
             ['현재 상태', labelOf(statusOptions, detail.data.statusCode)],
             ['초기 수량', String(detail.data.initialQty)],

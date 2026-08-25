@@ -63,13 +63,14 @@ describe('조건을 한 줄로', () => {
   });
 
   /**
-   * ⛔ **표시용 코드가 없으면 지어내지 않는다**(공유계약 G-9) — 식별자만 남기고
+   * ⛔ **표시용 코드가 없으면 지어내지 않는다**(공유계약 G-9) — 상태만 남기고
    * 「지정돼 있다」는 사실은 지키되, 「전체」로 뭉개지 않는다.
    */
-  it('코드가 오지 않으면 식별자를 적고 「전체」로 뭉개지 않는다', () => {
+  it('코드가 오지 않으면 알 수 없음으로 적고 「전체」로 뭉개지 않는다', () => {
     const text = scopeText(channel({ itemId: 21 }));
 
-    expect(text).toBe(t.entry(t.item, '21'));
+    expect(text).toBe(t.entry(t.item, messages.common.reference.unknown));
+    expect(text).not.toContain('21');
     expect(text).not.toBe(t.all);
   });
 

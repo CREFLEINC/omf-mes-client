@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 
+import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import type { LookupEntry } from './queries';
-import { lookupLabel } from './options';
 import { SCOPE_AXES, type OperationPolicy, type ScopeAxis } from './types';
 
 const t = messages.shotConversion;
@@ -15,7 +15,7 @@ const t = messages.shotConversion;
  */
 
 /** 축마다 다른 이름 풀이 목록을 받는다. 축이 넷이라 하나로 묶을 수 없다. */
-export type ScopeLookups = Record<ScopeAxis, readonly LookupEntry[]>;
+export type ScopeLookups = Record<ScopeAxis, LookupSource<LookupEntry>>;
 
 /** 한 축의 값. 지정하지 않았으면 `null` 이고 그것이 「지정 없음」이다. */
 export const axisValue = (policy: OperationPolicy, axis: ScopeAxis): number | null =>
@@ -54,7 +54,7 @@ export const scopeText = (policy: OperationPolicy, lookups: ScopeLookups): strin
     .map((axis) => {
       const value = String(axisValue(policy, axis));
 
-      return t.scope.entry(t.scope[axis], lookupLabel(value, lookups[axis]));
+      return t.scope.entry(t.scope[axis], lookupDisplayLabelWithInactive(lookups[axis], value));
     })
     .join(t.scope.join);
 };
