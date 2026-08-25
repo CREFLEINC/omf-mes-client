@@ -90,6 +90,37 @@ describe('production plan editor state', () => {
     expect(removeProductionPlanRow(changed, first.key)).toEqual([second]);
   });
 
+  it('baseline 값으로 되돌린 행은 dirty를 해제하고 다음 서버 사실을 수용한다', () => {
+    const original = existingRow();
+    const changed = changeProductionPlanRow([original], original.key, 'plannedQty', '75');
+    const reverted = changeProductionPlanRow(changed, original.key, 'plannedQty', '100');
+    expect(reverted[0]?.isDirty).toBe(false);
+    expect(reconcileProductionPlanRows(reverted, [plan(101, { plannedQty: 90 })])[0]).toMatchObject(
+      {
+        isDirty: false,
+        draft: { plannedQty: '90' },
+      },
+    );
+  });
+
+  it('pending 초안은 미확정 재조회에서 보존하고 서버 확정 시 폐기한다', () => {
+    const original = existingRow();
+    const pending = markProductionPlanRowPending(
+      [{ ...original, draft: { ...original.draft, plannedQty: '75' }, isDirty: false }],
+      original.key,
+      true,
+    );
+    expect(reconcileProductionPlanRows(pending, [plan(101, { plannedQty: 90 })])[0]).toMatchObject({
+      isPending: true,
+      draft: { plannedQty: '75' },
+    });
+    expect(
+      reconcileProductionPlanRows(pending, [
+        plan(101, { plannedQty: 90, confirmedAt: '2026-08-26T09:00:00+09:00' }),
+      ])[0],
+    ).toMatchObject({ confirmed: true, isPending: false, draft: { plannedQty: '90' } });
+  });
+
   it('prepares create, changed update, unchanged no-op, and invalid commands', () => {
     const created = appendProductionPlanRow([], 'new-a', {
       planDate: '2026-08-27',

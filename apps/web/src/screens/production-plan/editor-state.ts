@@ -143,7 +143,10 @@ export const changeProductionPlanRow = (
     if (row.key !== key) return row;
     const errors = { ...row.errors };
     delete errors[field];
-    return { ...row, draft: { ...row.draft, [field]: value }, errors, isDirty: true };
+    const draft = { ...row.draft, [field]: value };
+    const update = row.baseline === null ? null : buildProductionPlanUpdate(draft, row.baseline);
+    const isDirty = update === null || !update.ok || Object.keys(update.body).length > 0;
+    return { ...row, draft, errors, isDirty };
   });
 
 export const markProductionPlanRowPending = (
