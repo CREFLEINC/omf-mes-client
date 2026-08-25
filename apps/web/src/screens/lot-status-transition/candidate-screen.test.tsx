@@ -10,10 +10,12 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
+  defaultLotStatusCandidateFilters,
   EMPTY_LOT_STATUS_CANDIDATE_FILTERS,
   LotStatusTransitionCandidateScreen,
   toLotStatusCandidateQuery,
 } from './candidate-screen';
+import { defaultTransitionPeriod, toTransitionPeriodBounds } from './period';
 
 const LOT_PATH = '/quality/lot-statuses';
 const lot: components['schemas']['LotQualityStatus'] = {
@@ -124,11 +126,39 @@ const valueOf = (container: HTMLElement, label: string): string => {
 };
 
 describe('Lot Status 전이 후보', () => {
-  it('heldOnly 없이 LOT 번호·품목·품질 상태와 page만 직렬화한다', () => {
+  it('heldOnly 없이 LOT 번호·품목·품질 상태·전이 기간과 page만 직렬화한다', () => {
     expect(
-      toLotStatusCandidateQuery({ q: 'SYN-LOT', itemId: '801', lotStatusCode: 'NORMAL' }, 3),
-    ).toEqual({ q: 'SYN-LOT', itemId: 801, lotStatusCode: 'NORMAL', page: 3 });
+      toLotStatusCandidateQuery(
+        {
+          q: 'SYN-LOT',
+          itemId: '801',
+          lotStatusCode: 'NORMAL',
+          from: '2026-08-01',
+          to: '2026-08-25',
+        },
+        3,
+        540,
+      ),
+    ).toEqual({
+      q: 'SYN-LOT',
+      itemId: 801,
+      lotStatusCode: 'NORMAL',
+      transitionFrom: '2026-08-01T00:00:00+09:00',
+      transitionTo: '2026-08-25T23:59:59+09:00',
+      page: 3,
+    });
     expect(toLotStatusCandidateQuery(EMPTY_LOT_STATUS_CANDIDATE_FILTERS, 1)).toEqual({});
+  });
+
+  it('첫 조회는 오늘 포함 최근 30일을 사용한다', async () => {
+    const { urls } = renderScreen([listRoute()]);
+    await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
+    const expected = toTransitionPeriodBounds(
+      defaultTransitionPeriod(new Date()),
+      -new Date().getTimezoneOffset(),
+    );
+
+    expect(Object.fromEntries(lotRequests(urls)[0]!.searchParams)).toEqual(expected);
   });
 
   it('필터 초안을 조회·초기화하고 요청에 heldOnly를 보내지 않는다', async () => {
@@ -140,7 +170,12 @@ describe('Lot Status 전이 후보', () => {
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     await waitFor(() => expect(lotRequests(urls)).toHaveLength(2));
+    const defaultBounds = toTransitionPeriodBounds(
+      defaultTransitionPeriod(new Date()),
+      -new Date().getTimezoneOffset(),
+    );
     expect(Object.fromEntries(lotRequests(urls)[1]!.searchParams)).toEqual({
+      ...defaultBounds,
       lotStatusCode: 'NORMAL',
       itemId: '801',
       q: 'SYN-LOT',
@@ -148,7 +183,12 @@ describe('Lot Status 전이 후보', () => {
     expect(lotRequests(urls)[1]!.searchParams.has('heldOnly')).toBe(false);
     await user.click(screen.getByRole('button', { name: '초기화' }));
     await waitFor(() => expect(lotRequests(urls)).toHaveLength(3));
-    expect([...lotRequests(urls)[2]!.searchParams]).toEqual([]);
+    expect(Object.fromEntries(lotRequests(urls)[2]!.searchParams)).toEqual(
+      toTransitionPeriodBounds(
+        defaultLotStatusCandidateFilters(new Date()),
+        -new Date().getTimezoneOffset(),
+      ),
+    );
   });
 
   it('한 행만 선택해 업무 식별·현재 상태를 보이고 LOT 변경 시 전이 준비를 지운다', async () => {
