@@ -3,7 +3,7 @@ packages:
   - packages/*
 
 allowBuilds:
-  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/4a9cb837b257a15d23ec1d1aef267508ace06ef1': true
+  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/91c233b257ea844dfe9df8eef440221329b092a6': true
   '@scarf/scarf': false
   esbuild: true
   node: true
