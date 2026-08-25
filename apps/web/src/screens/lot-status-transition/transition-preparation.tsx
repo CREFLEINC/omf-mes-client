@@ -29,14 +29,16 @@ const useTransitions = (lotId: number) => {
   });
 };
 
-const useOpenHolds = (lotId: number, enabled: boolean) => {
+const useOpenHolds = (lotId: number, enabled: boolean, page: number) => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: ['lot-status-transition', 'open-holds', lotId],
+    queryKey: ['lot-status-transition', 'open-holds', lotId, page],
     enabled,
     queryFn: () =>
       runRequest(() =>
-        client.GET('/quality/lot-holds', { params: { query: { lotId, open: true } } }),
+        client.GET('/quality/lot-holds', {
+          params: { query: { lotId, open: true, ...(page > 1 ? { page } : {}) } },
+        }),
       ),
   });
 };
@@ -87,12 +89,13 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
   const transitions = useTransitions(lot.lotId);
   const statuses = useLotStatusOptions();
   const [selectedTransitionKey, setSelectedTransitionKey] = useState<string | null>(null);
+  const [holdPage, setHoldPage] = useState(1);
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null);
   const allowed = transitions.data?.transitions.filter((item) => item.allowed) ?? [];
   const selectedTransition = allowed.find((item) => transitionKey(item) === selectedTransitionKey);
   const isCreate = selectedTransition?.actionCode === 'CREATE_HOLD';
   const isRelease = selectedTransition?.actionCode === 'RELEASE_HOLD';
-  const holds = useOpenHolds(lot.lotId, isRelease);
+  const holds = useOpenHolds(lot.lotId, isRelease, holdPage);
   const automaticHoldId =
     holds.data?.page.total === 1 && holds.data.items.length === 1
       ? (holds.data.items[0]?.lotHoldId ?? null)
@@ -109,10 +112,16 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
       : etags.ifMatch(lotHoldDetailPath(selectedHoldId));
   const chooseTransition = (value: string): void => {
     setSelectedTransitionKey(value);
+    setHoldPage(1);
     setSelectedHoldId(null);
   };
   const clearExecutionOwner = (): void => {
     setSelectedTransitionKey(null);
+    setHoldPage(1);
+    setSelectedHoldId(null);
+  };
+  const changeHoldPage = (page: number): void => {
+    setHoldPage(page);
     setSelectedHoldId(null);
   };
   const targetLabel = (code: string): string =>
@@ -120,8 +129,13 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
   const holdOptions =
     holds.data?.items.map((item: LotHold) => ({
       value: String(item.lotHoldId),
-      label: item.reasonCode,
+      label: `${String(item.lotHoldId)} · ${item.reasonCode} · ${item.heldAt}`,
     })) ?? [];
+  const holdMeta = holds.data?.page;
+  const holdTotalPages =
+    holdMeta === undefined || !Number.isFinite(holdMeta.size) || holdMeta.size < 1
+      ? 1
+      : Math.max(1, Math.ceil(holdMeta.total / holdMeta.size));
 
   if (transitions.isFetching)
     return (
@@ -183,12 +197,32 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
         ))}
       </RadioGroup>
       {isRelease && holds.data !== undefined && holds.data.page.total > 1 && (
-        <SelectField
-          label="해제할 보류"
-          options={holdOptions}
-          value={selectedHoldId === null ? null : String(selectedHoldId)}
-          onChange={(value) => setSelectedHoldId(Number(value))}
-        />
+        <>
+          <SelectField
+            label="해제할 보류"
+            options={holdOptions}
+            value={selectedHoldId === null ? null : String(selectedHoldId)}
+            onChange={(value) => setSelectedHoldId(Number(value))}
+          />
+          {holdTotalPages > 1 && (
+            <nav className="form-actions" aria-label="열린 보류 쪽 이동">
+              <Button
+                variant="outlined"
+                disabled={holdPage <= 1}
+                onClick={() => changeHoldPage(holdPage - 1)}
+              >
+                이전 쪽
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={holdPage >= holdTotalPages}
+                onClick={() => changeHoldPage(holdPage + 1)}
+              >
+                다음 쪽
+              </Button>
+            </nav>
+          )}
+        </>
       )}
       {preparation !== null && <p role="status">{preparation}</p>}
       {isCreate &&

@@ -26,14 +26,18 @@ const lot = (overrides: Partial<LotStatusCandidate> = {}): LotStatusCandidate =>
   fullyHeld: false,
   ...overrides,
 });
-const hold = (id: number, reasonCode: string): components['schemas']['LotHold'] => ({
+const hold = (
+  id: number,
+  reasonCode: string,
+  heldAt = '2026-08-25T08:00:00+09:00',
+): components['schemas']['LotHold'] => ({
   lotHoldId: id,
   lotId: 701,
   lotNo: 'SYN-LOT-ALPHA',
   holdQty: 10,
   reasonCode,
   statusCode: 'HELD',
-  heldAt: '2026-08-25T08:00:00+09:00',
+  heldAt,
 });
 const transition = (
   actionCode: 'RELEASE_HOLD' | 'CREATE_HOLD',
@@ -77,6 +81,26 @@ const holdRoutes = (
     route(lotHoldDetailPath(item.lotHoldId), item, etag === null ? undefined : { ETag: etag }),
   ),
 ];
+const pagedHoldRoutes = (
+  pages: Record<number, { items: components['schemas']['LotHold'][]; size: number; total: number }>,
+  etag = '"12"',
+): StubRoute[] => {
+  const items = Object.values(pages).flatMap((page) => page.items);
+  return [
+    {
+      match: (request) => request.method === 'GET' && new URL(request.url).pathname === HOLDS,
+      respond: (request) => {
+        const page = Number(new URL(request.url).searchParams.get('page') ?? 1);
+        const result = pages[page] ?? { items: [], size: 50, total: 0 };
+        return jsonResponse({
+          items: result.items,
+          page: { page, size: result.size, total: result.total },
+        });
+      },
+    },
+    ...items.map((item) => route(lotHoldDetailPath(item.lotHoldId), item, { ETag: etag })),
+  ];
+};
 const VersionHarness = ({ selected }: { selected: LotStatusCandidate }) => {
   const [current, setCurrent] = useState(selected);
   return (
@@ -452,15 +476,117 @@ describe('Lot Status 전이 준비', () => {
 
     expect(select).toHaveTextContent('하나를 선택하세요');
     expect(urls.filter((url) => url.pathname.includes('/quality/lot-holds/'))).toHaveLength(0);
-    await choose(user, '해제할 보류', 'QUALITY_A');
+    await choose(user, '해제할 보류', '501 · QUALITY_A · 2026-08-25T08:00:00+09:00');
     await screen.findByText('보류 해제 준비가 완료되었습니다.');
     await fillRelease(user);
-    await choose(user, '해제할 보류', 'QUALITY_B');
+    await choose(user, '해제할 보류', '502 · QUALITY_B · 2026-08-25T08:00:00+09:00');
     expect(await screen.findByText('보류 해제 준비가 완료되었습니다.')).toBeVisible();
     expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
     expect(screen.getByLabelText('해제 사유 및 비고')).toHaveValue('');
     expect(urls.filter((url) => url.pathname === lotHoldDetailPath(502))).toHaveLength(1);
+  });
+
+  it('열린 보류를 페이지별 조회하고 현재 페이지 선택만 유지한다', async () => {
+    const first = [
+      hold(501, 'SAME_REASON', '2026-08-25T08:00:00+09:00'),
+      hold(502, 'SAME_REASON', '2026-08-25T09:00:00+09:00'),
+    ];
+    const second = [hold(503, 'SAME_REASON', '2026-08-25T10:00:00+09:00')];
+    const { urls, user } = renderPreparation([
+      transitionRoute([
+        transition('RELEASE_HOLD', 'NORMAL'),
+        transition('RELEASE_HOLD', 'DEFECTIVE'),
+      ]),
+      ...pagedHoldRoutes({
+        1: { items: first, size: 2, total: 3 },
+        2: { items: second, size: 2, total: 3 },
+      }),
+    ]);
+    await chooseTransition(user, '정상');
+    const firstSelect = await screen.findByLabelText('해제할 보류');
+    expect(firstSelect).toHaveTextContent('하나를 선택하세요');
+    expect(urls.find((url) => url.pathname === HOLDS)?.searchParams.has('page')).toBe(false);
+    await choose(user, '해제할 보류', '501 · SAME_REASON · 2026-08-25T08:00:00+09:00');
+    await screen.findByText('보류 해제 준비가 완료되었습니다.');
+    await fillRelease(user);
+
+    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
+    expect(screen.queryByRole('region', { name: '보류 해제 입력' })).toBeNull();
+    const secondSelect = await screen.findByLabelText('해제할 보류');
+    expect(secondSelect).toHaveTextContent('하나를 선택하세요');
+    expect(screen.getByRole('button', { name: '다음 쪽' })).toBeDisabled();
+    expect(
+      urls
+        .filter((url) => url.pathname === HOLDS)
+        .at(-1)
+        ?.searchParams.get('page'),
+    ).toBe('2');
+    expect(screen.queryByText('보류 해제 준비가 완료되었습니다.')).toBeNull();
+    await choose(user, '해제할 보류', '503 · SAME_REASON · 2026-08-25T10:00:00+09:00');
+    await screen.findByText('보류 해제 준비가 완료되었습니다.');
+
+    await chooseTransition(user, '불량');
+    expect(screen.getByRole('button', { name: '이전 쪽' })).toBeDisabled();
+    expect(await screen.findByLabelText('해제할 보류')).toHaveTextContent('하나를 선택하세요');
+    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
+    await screen.findByLabelText('해제할 보류');
+    await user.click(screen.getByRole('button', { name: '이전 쪽' }));
+    expect(screen.queryByRole('region', { name: '보류 해제 입력' })).toBeNull();
+    await waitFor(() =>
+      expect(
+        urls
+          .filter((url) => url.pathname === HOLDS)
+          .at(-1)
+          ?.searchParams.has('page'),
+      ).toBe(false),
+    );
+    expect(await screen.findByLabelText('해제할 보류')).toHaveTextContent('하나를 선택하세요');
+  });
+
+  it('잘못된 page size는 무한 페이지로 계산하지 않는다', async () => {
+    const { user } = renderPreparation([
+      transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
+      ...pagedHoldRoutes({ 1: { items: [hold(501, 'A'), hold(502, 'B')], size: 0, total: 100 } }),
+    ]);
+    await chooseTransition(user, '정상');
+    await screen.findByLabelText('해제할 보류');
+
+    expect(screen.queryByRole('button', { name: '다음 쪽' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '이전 쪽' })).toBeNull();
+  });
+
+  it.each([
+    [
+      '로딩',
+      {
+        match: (request: Request) => new URL(request.url).pathname === HOLDS,
+        respond: () => new Promise<Response>(() => undefined) as unknown as Response,
+      },
+      '열린 보류를 불러오는 중입니다.',
+    ],
+    [
+      '오류',
+      {
+        match: (request: Request) => new URL(request.url).pathname === HOLDS,
+        respond: () => jsonResponse({ message: 'failed' }, { status: 500 }),
+      },
+      '열린 보류를 불러오지 못했습니다.',
+    ],
+    [
+      '0건',
+      route(HOLDS, { items: [], page: { page: 1, size: 50, total: 0 } }),
+      '해제할 열린 보류가 없습니다.',
+    ],
+  ])('열린 보류 %s 상태를 준비 완료와 구분한다', async (_case, holdsRoute, expected) => {
+    const { user } = renderPreparation([
+      transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
+      holdsRoute,
+    ]);
+    await chooseTransition(user, '정상');
+
+    expect(await screen.findByText(expected)).toBeVisible();
+    expect(screen.queryByText('보류 해제 준비가 완료되었습니다.')).toBeNull();
   });
 
   it('보류 상세 ETag가 없으면 해제를 fail-closed한다', async () => {
