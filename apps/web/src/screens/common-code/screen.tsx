@@ -2014,7 +2014,7 @@ export const CommonCodeScreen = () => {
           // 작업자를 고르기 전에는 아무것도 기다리지 않는다 — 조회가 나가지도 않았다.
           isLoading={selectedWorkerId !== null && qualificationList.isPending}
           isWorkerSelected={selectedWorkerId !== null}
-          processEntries={processOptions.entries}
+          processes={processOptions}
           optionsNotice={renderOptionsNotice([processOptions])}
           loadError={
             qualificationList.isError ? (

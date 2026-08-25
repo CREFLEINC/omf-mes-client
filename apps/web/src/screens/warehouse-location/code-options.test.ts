@@ -1,11 +1,28 @@
+import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { defaultWarehouseFilters, ensureOption, type CodeOption } from './code-options';
+import type { LookupSource } from '../../patterns/lookup-display';
+import {
+  defaultWarehouseFilters,
+  ensureOption,
+  selectableOptions,
+  type CodeOption,
+} from './code-options';
+import type { LookupEntry } from './types';
 
 const options: CodeOption[] = [
   { value: 'MATERIAL', label: '자재창고' },
   { value: 'PRODUCT', label: '제품창고' },
 ];
+
+const lookupSource = (
+  entries: LookupEntry[],
+  state: 'ready' | 'loading' | 'failed' = 'ready',
+): LookupSource<LookupEntry> => ({
+  entries,
+  isError: state === 'failed',
+  isLoading: state === 'loading',
+});
 
 describe('defaultWarehouseFilters', () => {
   it('아무 조건도 걸지 않은 상태다', () => {
@@ -37,5 +54,30 @@ describe('ensureOption', () => {
     ensureOption(options, 'SEMI_FINISHED');
 
     expect(options).toHaveLength(2);
+  });
+});
+
+describe('selectableOptions', () => {
+  it('사용 중인 값과 현재 선택된 미사용 값을 이름으로 남긴다', () => {
+    const entries: LookupEntry[] = [
+      { value: '11', label: '제1공장', isActive: true },
+      { value: '12', label: '제2공장', isActive: false },
+    ];
+
+    expect(selectableOptions(lookupSource(entries), '12')).toEqual([
+      { value: '11', label: '제1공장' },
+      { value: '12', label: `제2공장${messages.common.reference.inactiveSuffix}` },
+    ]);
+  });
+
+  it.each([
+    ['ready', messages.common.reference.unknown],
+    ['loading', messages.common.reference.loading],
+    ['failed', messages.common.reference.failed],
+  ] as const)('%s 상태의 미확인 FK는 값만 보존하고 번호를 라벨로 내지 않는다', (state, label) => {
+    const result = selectableOptions(lookupSource([], state), '9999');
+
+    expect(result).toEqual([{ value: '9999', label }]);
+    expect(result[0]?.label).not.toContain('9999');
   });
 });

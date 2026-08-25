@@ -1,5 +1,7 @@
+import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import {
   DATA_TYPE_OPTIONS,
   FREQUENCY_INTERVAL_UOM_OPTIONS,
@@ -20,6 +22,15 @@ const entries: LookupEntry[] = [
   { value: '5002', label: '합성 품목 B', isActive: false },
 ];
 
+const source = (
+  lookupEntries: LookupEntry[] = entries,
+  state: 'ready' | 'loading' | 'failed' = 'ready',
+): LookupSource<LookupEntry> => ({
+  entries: lookupEntries,
+  isError: state === 'failed',
+  isLoading: state === 'loading',
+});
+
 const values = (options: { value: string }[]): string[] => options.map((option) => option.value);
 
 describe('selectableOptions — 미사용 걸러내기', () => {
@@ -28,20 +39,20 @@ describe('selectableOptions — 미사용 걸러내기', () => {
    * 기본은 「사용 중인 것」만 낸다.
    */
   it('고르지 않은 미사용 항목은 선택지에서 뺀다', () => {
-    const options = selectableOptions(entries, '');
+    const options = selectableOptions(source(), '');
 
     expect(values(options)).toEqual(['5001']);
     expect(values(options)).not.toContain('5002');
   });
 
   it('사용 중인 항목은 표식 없이 그대로 낸다', () => {
-    expect(selectableOptions(entries, '')[0]).toEqual({ value: '5001', label: '합성 품목 A' });
+    expect(selectableOptions(source(), '')[0]).toEqual({ value: '5001', label: '합성 품목 A' });
   });
 
   it('모두 미사용이고 고른 값도 없으면 선택지가 비어 있다', () => {
-    expect(selectableOptions([{ value: '5002', label: '합성 품목 B', isActive: false }], '')).toEqual(
-      [],
-    );
+    expect(
+      selectableOptions(source([{ value: '5002', label: '합성 품목 B', isActive: false }]), ''),
+    ).toEqual([]);
   });
 });
 
@@ -51,32 +62,31 @@ describe('selectableOptions — 지금 고른 값 보존', () => {
    * 더 나쁜 것은 저장할 때 조용히 다른 값이 되는 것이다.
    */
   it('고른 값이 미사용이어도 선택지에 남긴다', () => {
-    expect(values(selectableOptions(entries, '5002'))).toEqual(['5001', '5002']);
+    expect(values(selectableOptions(source(), '5002'))).toEqual(['5001', '5002']);
   });
 
   /** 미사용이라는 사실 자체를 감추지 않는다 — 표식이 없으면 사용 중인 값과 구분되지 않는다. */
   it('미사용인 고른 값에는 「(미사용)」 표식을 붙인다', () => {
-    const options = selectableOptions(entries, '5002');
+    const options = selectableOptions(source(), '5002');
 
     expect(options.find((option) => option.value === '5002')?.label).toBe('합성 품목 B (미사용)');
   });
 
   it('사용 중인 값을 골랐으면 표식을 붙이지 않는다', () => {
-    const options = selectableOptions(entries, '5001');
+    const options = selectableOptions(source(), '5001');
 
     expect(options.find((option) => option.value === '5001')?.label).toBe('합성 품목 A');
   });
 
-  /* 조회가 잘리거나 실패해도 지금 값을 지우지 않는다. 목록에 아예 없으면 코드를 그대로 낸다. */
-  it('목록에 아예 없는 고른 값은 코드 그대로 덧붙인다', () => {
-    const options = selectableOptions(entries, '9999');
+  it.each([
+    ['ready', messages.common.reference.unknown],
+    ['loading', messages.common.reference.loading],
+    ['failed', messages.common.reference.failed],
+  ] as const)('%s 상태의 미확인 FK는 값만 보존하고 번호를 라벨로 내지 않는다', (state, label) => {
+    const options = selectableOptions(source([], state), '9999');
 
-    expect(values(options)).toEqual(['5001', '9999']);
-    expect(options.at(-1)?.label).toBe('9999');
-  });
-
-  it('조회가 실패해 목록이 비어도 고른 값은 남는다', () => {
-    expect(selectableOptions([], '9999')).toEqual([{ value: '9999', label: '9999' }]);
+    expect(options).toEqual([{ value: '9999', label }]);
+    expect(options[0]?.label).not.toContain('9999');
   });
 });
 

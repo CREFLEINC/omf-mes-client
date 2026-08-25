@@ -3,7 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { LookupEntries, LookupEntry, WarehouseFilters } from './types';
+import type { LookupEntry, LookupSources, WarehouseFilters } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type Warehouse = components['schemas']['Warehouse'];
@@ -152,7 +152,7 @@ export const lookupKeys = {
 };
 
 export interface LookupResult {
-  entries: LookupEntries;
+  sources: LookupSources;
   /** 어느 선택 목록이라도 잘렸으면 참. 고를 수 없는 값이 생겼다는 뜻이다. */
   truncated: boolean;
   /** 어느 선택 목록이라도 실패했으면 참. 실패를 삼키면 선택칸이 이유 없이 비어 보인다. */
@@ -198,31 +198,47 @@ export const useLookupOptions = (): LookupResult => {
   });
 
   return {
-    entries: {
-      plants:
-        plants.data?.items.map((item) => ({
-          value: String(item.plantId),
-          label: item.plantName,
-          isActive: item.isActive,
-        })) ?? EMPTY_ENTRIES,
-      businessUnits:
-        businessUnits.data?.items.map((item) => ({
-          value: String(item.businessUnitId),
-          label: item.businessUnitName,
-          isActive: item.isActive,
-        })) ?? EMPTY_ENTRIES,
-      partners:
-        partners.data?.items.map((item) => ({
-          value: String(item.partnerId),
-          label: item.partnerName,
-          isActive: item.isActive,
-        })) ?? EMPTY_ENTRIES,
-      uoms:
-        uoms.data?.items.map((item) => ({
-          value: String(item.uomId),
-          label: item.uomCode,
-          isActive: item.isActive,
-        })) ?? EMPTY_ENTRIES,
+    sources: {
+      plants: {
+        entries:
+          plants.data?.items.map((item) => ({
+            value: String(item.plantId),
+            label: item.plantName,
+            isActive: item.isActive,
+          })) ?? EMPTY_ENTRIES,
+        isError: plants.isError,
+        isLoading: plants.isPending,
+      },
+      businessUnits: {
+        entries:
+          businessUnits.data?.items.map((item) => ({
+            value: String(item.businessUnitId),
+            label: item.businessUnitName,
+            isActive: item.isActive,
+          })) ?? EMPTY_ENTRIES,
+        isError: businessUnits.isError,
+        isLoading: businessUnits.isPending,
+      },
+      partners: {
+        entries:
+          partners.data?.items.map((item) => ({
+            value: String(item.partnerId),
+            label: item.partnerName,
+            isActive: item.isActive,
+          })) ?? EMPTY_ENTRIES,
+        isError: partners.isError,
+        isLoading: partners.isPending,
+      },
+      uoms: {
+        entries:
+          uoms.data?.items.map((item) => ({
+            value: String(item.uomId),
+            label: item.uomCode,
+            isActive: item.isActive,
+          })) ?? EMPTY_ENTRIES,
+        isError: uoms.isError,
+        isLoading: uoms.isPending,
+      },
     },
     truncated:
       isListTruncated(plants.data) ||

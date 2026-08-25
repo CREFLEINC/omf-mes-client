@@ -186,7 +186,8 @@ export const WarehouseLocationScreen = () => {
   }
 
   const formValues = formState?.values ?? emptyWarehouseFormValues();
-  const isDirty = formState !== null && !isSameWarehouseValues(formState.values, formState.baseline);
+  const isDirty =
+    formState !== null && !isSameWarehouseValues(formState.values, formState.baseline);
 
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>({});
@@ -282,11 +283,7 @@ export const WarehouseLocationScreen = () => {
       dialogState.mode === 'create'
         ? client.POST('/mdm/locations', {
             params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-            body: toLocationCreate(
-              values,
-              selectedWarehouseId ?? 0,
-              dialogState.parentLocationId,
-            ),
+            body: toLocationCreate(values, selectedWarehouseId ?? 0, dialogState.parentLocationId),
           })
         : client.PUT('/mdm/locations/{locationId}', {
             params: {
@@ -458,10 +455,10 @@ export const WarehouseLocationScreen = () => {
 
   /** 선택 목록은 사용 중인 것과 지금 선택된 값만 낸다 — 값이 사라진 것처럼 보이면 안 된다. */
   const formLookups: LookupOptions = {
-    plants: selectableOptions(lookups.entries.plants, formValues.plantId),
-    businessUnits: selectableOptions(lookups.entries.businessUnits, formValues.businessUnitId),
-    partners: selectableOptions(lookups.entries.partners, formValues.partnerId),
-    uoms: selectableOptions(lookups.entries.uoms, ''),
+    plants: selectableOptions(lookups.sources.plants, formValues.plantId),
+    businessUnits: selectableOptions(lookups.sources.businessUnits, formValues.businessUnitId),
+    partners: selectableOptions(lookups.sources.partners, formValues.partnerId),
+    uoms: selectableOptions(lookups.sources.uoms, ''),
   };
 
   const handleToggleExpand = (locationId: number) => {
@@ -740,7 +737,7 @@ export const WarehouseLocationScreen = () => {
             ? null
             : codeLockMessage(locationDetail.data.editability)
         }
-        uomOptions={selectableOptions(lookups.entries.uoms, locationValues.capacityUomId)}
+        uomOptions={selectableOptions(lookups.sources.uoms, locationValues.capacityUomId)}
         isSaving={locationWrite.isSaving}
         onSave={handleSaveLocation}
       />

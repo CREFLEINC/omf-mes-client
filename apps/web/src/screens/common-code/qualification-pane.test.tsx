@@ -2,11 +2,21 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import { createQualificationDraft, type QualificationDraft } from './qualification-draft';
 import { QualificationPane } from './qualification-pane';
 import type { LookupEntry } from './types';
 
 const processEntries: LookupEntry[] = [{ value: '6001', label: '합성 공정 A', isActive: true }];
+
+const source = (
+  entries: LookupEntry[] = processEntries,
+  state: 'ready' | 'loading' | 'failed' = 'ready',
+): LookupSource<LookupEntry> => ({
+  entries,
+  isError: state === 'failed',
+  isLoading: state === 'loading',
+});
 
 const draft = (overrides: Partial<QualificationDraft> = {}): QualificationDraft => ({
   ...createQualificationDraft(),
@@ -31,7 +41,7 @@ const renderPane = (overrides: Partial<Parameters<typeof QualificationPane>[0]> 
       drafts={[draft()]}
       isLoading={false}
       isWorkerSelected
-      processEntries={processEntries}
+      processes={source()}
       optionsNotice={null}
       loadError={null}
       banner={null}
@@ -75,6 +85,17 @@ describe('QualificationPane — 표', () => {
     renderPane();
 
     expect(screen.getByText('합성 공정 A')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['ready', '알 수 없음'],
+    ['loading', '이름 불러오는 중'],
+    ['failed', '이름을 불러오지 못했습니다'],
+  ] as const)('%s 상태의 미확인 공정은 번호 대신 조회 상태를 낸다', (state, label) => {
+    renderPane({ drafts: [draft({ processId: '9999' })], processes: source([], state) });
+
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.queryByText('9999')).not.toBeInTheDocument();
   });
 
   /* 값만 표시한다 — 무엇을 가리키는 번호인지 근거가 없어 이름을 만들 수 없다(omf-mes#64). */

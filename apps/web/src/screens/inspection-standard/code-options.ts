@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
+import { type LookupSource, selectableLookupOptions } from '../../patterns/lookup-display';
 import type { LookupEntry, PlanFilters, SelectOption } from './types';
 
 /**
@@ -63,8 +64,6 @@ export const DATA_TYPE_OPTIONS: SelectOption[] = pendingOptions();
 /** 검사 방법 — 계약에 설명이 없다. */
 export const INSPECTION_METHOD_OPTIONS: SelectOption[] = pendingOptions();
 
-const t = messages.inspectionStandard;
-
 /** 검사 유형 코드를 사람이 읽는 이름으로. 목록에 없는 값은 코드를 그대로 낸다. */
 export const inspectionTypeLabel = (code: string): string =>
   INSPECTION_TYPE_OPTIONS.find((option) => option.value === code)?.label ?? code;
@@ -82,15 +81,10 @@ export const ensureOption = (options: SelectOption[], value: string): SelectOpti
  * 조회 결과로 채우는 선택 목록에서 실제로 고를 수 있는 선택지를 만든다.
  *
  * 기본은 사용 중인 것만 보인다. 다만 지금 선택된 값이 미사용이면 그것도 남기고 표식을 붙인다 —
- * 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다. 목록에 아예 없는 값도 코드 그대로 남긴다.
+ * 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다. 목록에 없는 숫자 FK는 값만 보존하고
+ * 라벨에는 미확인·로딩·실패 상태를 낸다.
  */
-export const selectableOptions = (entries: LookupEntry[], selected: string): SelectOption[] =>
-  ensureOption(
-    entries
-      .filter((entry) => entry.isActive || entry.value === selected)
-      .map((entry) => ({
-        value: entry.value,
-        label: entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`,
-      })),
-    selected,
-  );
+export const selectableOptions = (
+  source: LookupSource<LookupEntry>,
+  selected: string,
+): SelectOption[] => selectableLookupOptions(source, selected);
