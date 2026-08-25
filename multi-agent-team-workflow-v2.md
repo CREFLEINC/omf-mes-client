@@ -77,8 +77,11 @@ Github Repo : git@github.com:CREFLEINC/omf-mes-client.git
 [ 아래 라벨 형식 예시 ]
 ```
 예시 )
+팀 번호 라벨 양식 : "Agent : T{number}"
+팀 유형 라벨 양식 : "Agent : {type}"
+
 클라이언트 1팀 일 경우,
-  이슈 담당자 라벨 : "Agent : 1T"
+  이슈 담당자 라벨 : "Agent : T1"
   이슈 개발 유형 라벨 : "Agent : Client"
 ```
 
