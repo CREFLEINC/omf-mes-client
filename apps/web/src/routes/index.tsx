@@ -38,6 +38,7 @@ import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
 import { StockAdjustScreen } from '../screens/stock-adjust/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
 import { StocktakingScreen } from '../screens/stocktaking/screen';
+import { SuspiciousMaterialHoldScreen } from '../screens/suspicious-material-hold/screen';
 import { SupplierReturnScreen } from '../screens/supplier-return/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
@@ -249,10 +250,9 @@ export const appRouter = createBrowserRouter([
       { path: 'quality/lot-status', element: <LotStatusHistoryScreen /> },
       /* W-03-02 — W-03-01에서 찾은 LOT을 판정·전이하는 품질관리의 둘째 화면이다. */
       { path: 'quality/lot-status-transition', element: <LotStatusTransitionScreen /> },
-      /*
-       * W-03-09 — W-03-03이 아직 공개되지 않은 동안 W-03-02 다음에 둔다. W-03-03을
-       * 공개하는 #89가 병합되면 두 화면 사이에 삽입해 통합 IA의 네 번째 자리를 완성한다.
-       */
+      /* W-03-03 — W-03-02에서 판정할 의심 LOT을 먼저 보류하므로 바로 뒤에 둔다. */
+      { path: 'quality/suspicious-material-hold', element: <SuspiciousMaterialHoldScreen /> },
+      /* W-03-09 — Lot Status 조회·판정·의심자재 등록 다음에 서는 품질 승인 화면이다. */
       { path: 'quality/approvals', element: <QualityApprovalScreen /> },
       /*
        * W-CO-09 — 앞머리는 같은 규칙(사이드바 섹션)이고 계약 경로(`/app/**`)를 따르지 않는다.

@@ -238,10 +238,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/quality/lot-status-transition" icon="published_with_changes">
               Lot Status 판정·전이 처리
             </NavItem>
-            {/*
-             * W-03-09 — W-03-03이 아직 공개되지 않은 동안 W-03-02 다음에 둔다. #89가
-             * W-03-03을 공개할 때 두 화면 사이에 삽입하면 통합 IA의 네 번째 자리가 된다.
-             */}
+            {/* W-03-03 — 판정할 의심 LOT을 먼저 보류하므로 W-03-02 바로 뒤에 둔다. */}
+            <NavItem to="/quality/suspicious-material-hold" icon="report_problem">
+              의심자재 등록
+            </NavItem>
+            {/* W-03-09 — Lot Status 조회·판정·의심자재 등록 다음에 서는 품질 승인 화면이다. */}
             <NavItem to="/quality/approvals" icon="approval">
               특채·한도승인 승인 처리
             </NavItem>
