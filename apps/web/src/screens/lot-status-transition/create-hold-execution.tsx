@@ -1,4 +1,12 @@
-import { AlertBanner, Button, Dialog, TextField, useToast } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Dialog,
+  Radio,
+  RadioGroup,
+  TextField,
+  useToast,
+} from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { TextArea } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,6 +20,7 @@ type LotHoldCreate = components['schemas']['LotHoldCreate'];
 const ROOT_KEY = ['lot-status-transition'] as const;
 
 interface Draft {
+  mode: 'FULL' | 'PARTIAL';
   holdQty: string;
   reasonCode: string;
   remarks: string;
@@ -27,13 +36,15 @@ const validate = (draft: Draft, props: CreateHoldExecutionProps): Validation => 
   const text = draft.holdQty.trim();
   const quantity = Number(text);
   const quantityError =
-    text === '' || !Number.isFinite(quantity) || quantity <= 0
-      ? '보류 수량은 0보다 커야 합니다.'
-      : props.maxHoldQty === undefined || !Number.isFinite(props.maxHoldQty)
-        ? '보류 가능 수량을 확인하지 못했습니다.'
-        : quantity > props.maxHoldQty
-          ? `보류 수량은 보류 가능 수량 ${String(props.maxHoldQty)} 이하여야 합니다.`
-          : undefined;
+    draft.mode === 'FULL'
+      ? undefined
+      : text === '' || !Number.isFinite(quantity) || quantity <= 0
+        ? '보류 수량은 0보다 커야 합니다.'
+        : props.maxHoldQty === undefined || !Number.isFinite(props.maxHoldQty)
+          ? '보류 가능 수량을 확인하지 못했습니다.'
+          : quantity > props.maxHoldQty
+            ? `보류 수량은 보류 가능 수량 ${String(props.maxHoldQty)} 이하여야 합니다.`
+            : undefined;
   const reasonCode = draft.reasonCode.trim();
   const reasonError = reasonCode === '' ? '보류 사유를 입력하세요.' : undefined;
   const remarks = draft.remarks.trim();
@@ -44,7 +55,7 @@ const validate = (draft: Draft, props: CreateHoldExecutionProps): Validation => 
       quantityError === undefined && reasonError === undefined
         ? {
             lots: [{ lotId: props.lotId, versionNo: props.versionNo }],
-            holdQty: quantity,
+            ...(draft.mode === 'PARTIAL' ? { holdQty: quantity } : {}),
             reasonCode,
             targetLotStatusCode: props.targetLotStatusCode,
             ...(remarks === '' ? {} : { remarks }),
@@ -62,6 +73,8 @@ export interface CreateHoldExecutionProps {
   lotNo: string;
   versionNo: number;
   maxHoldQty: number | undefined;
+  warehouseId: number | undefined;
+  locationId: number | undefined;
   targetLotStatusCode: string;
   onCreated: () => void;
 }
@@ -70,8 +83,12 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const [draft, setDraft] = useState<Draft>({ holdQty: '', reasonCode: '', remarks: '' });
-  const [attempted, setAttempted] = useState(false);
+  const [draft, setDraft] = useState<Draft>({
+    mode: 'FULL',
+    holdQty: '',
+    reasonCode: '',
+    remarks: '',
+  });
   const [confirmation, setConfirmation] = useState<LotHoldCreate | null>(null);
   const validation = validate(draft, props);
   const write = useMasterWrite<LotHoldCreate, LotHold[]>({
@@ -99,23 +116,48 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
     closeDialog();
     void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
   };
+  const location = `창고 ${props.warehouseId === undefined ? '미확인' : String(props.warehouseId)} / Location ${props.locationId === undefined ? '미확인' : String(props.locationId)}`;
 
   return (
     <section aria-label="보류 등록 입력">
+      <RadioGroup
+        name={`create-hold-mode-${String(props.lotId)}`}
+        orientation="horizontal"
+        value={draft.mode}
+        disabled={write.isSaving}
+        aria-label="보류 범위"
+        onChange={(value) => {
+          setDraft({
+            mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL',
+            holdQty: '',
+            reasonCode: '',
+            remarks: '',
+          });
+          setConfirmation(null);
+          write.reset();
+        }}
+      >
+        <Radio value="FULL">전량 보류</Radio>
+        <Radio value="PARTIAL">일부 보류</Radio>
+      </RadioGroup>
       <div className="form-grid">
-        <TextField
-          label="보류 수량"
-          inputMode="decimal"
-          required
-          value={draft.holdQty}
-          error={attempted ? validation.quantityError : undefined}
-          onChange={(event) => setDraft((current) => ({ ...current, holdQty: event.target.value }))}
-        />
+        {draft.mode === 'PARTIAL' && (
+          <TextField
+            label="보류 수량"
+            inputMode="decimal"
+            required
+            value={draft.holdQty}
+            error={validation.quantityError}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, holdQty: event.target.value }))
+            }
+          />
+        )}
         <TextField
           label="보류 사유"
           required
           value={draft.reasonCode}
-          error={attempted ? validation.reasonError : undefined}
+          error={validation.reasonError}
           onChange={(event) =>
             setDraft((current) => ({ ...current, reasonCode: event.target.value }))
           }
@@ -129,9 +171,8 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
         />
       </div>
       <Button
-        disabled={write.isSaving}
+        disabled={write.isSaving || validation.body === null}
         onClick={() => {
-          setAttempted(true);
           if (validation.body !== null) setConfirmation(validation.body);
         }}
       >
@@ -170,8 +211,12 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
           ) : (
             <SaveErrorBanner error={write.error} />
           )}
-          <p>창고 사용과 출고·출하 및 피킹 가능 여부가 바뀝니다.</p>
-          <p>이미 출고된 수량은 회수되지 않습니다.</p>
+          <AlertBanner variant="warning" title="이 전이가 하는 일">
+            <p>Hold는 대상 수량의 출고·출하 및 피킹을 막습니다.</p>
+            <p>대상 수량: {confirmation.holdQty === undefined ? '전량' : confirmation.holdQty}</p>
+            <p>대상 위치: {location}</p>
+            <p>다시 사용하려면 Release 전이가 필요하며, 이미 출고된 수량은 회수되지 않습니다.</p>
+          </AlertBanner>
         </Dialog>
       )}
     </section>

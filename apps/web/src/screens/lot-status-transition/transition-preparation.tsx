@@ -197,6 +197,8 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
             lotNo={lot.lotNo}
             versionNo={lot.versionNo}
             maxHoldQty={lot.availableQty}
+            warehouseId={lot.warehouseId}
+            locationId={lot.locationId}
             targetLotStatusCode={selectedTransition.targetLotStatusCode}
             onCreated={() => setSelectedTransitionKey(null)}
           />

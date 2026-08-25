@@ -176,7 +176,7 @@ const prepareCreate = async (response = createRoute(), selected = lot({ availabl
     selected,
   );
   await chooseTransition(view.user, '불량');
-  await screen.findByLabelText('보류 수량');
+  await screen.findByRole('radio', { name: '전량 보류' });
   return view;
 };
 const fillCreate = async (
@@ -185,7 +185,16 @@ const fillCreate = async (
   reason = 'SYN_REASON',
   remarks = '외관 이상으로 보류',
 ) => {
+  await user.click(screen.getByRole('radio', { name: '일부 보류' }));
   await user.type(screen.getByLabelText('보류 수량'), quantity);
+  if (reason !== '') await user.type(screen.getByLabelText('보류 사유'), reason);
+  if (remarks !== '') await user.type(screen.getByLabelText('보류 비고'), remarks);
+};
+const fillFullCreate = async (
+  user: ReturnType<typeof userEvent.setup>,
+  reason = 'SYN_REASON',
+  remarks = '',
+) => {
   if (reason !== '') await user.type(screen.getByLabelText('보류 사유'), reason);
   if (remarks !== '') await user.type(screen.getByLabelText('보류 비고'), remarks);
 };
@@ -241,11 +250,50 @@ describe('Lot Status 전이 준비', () => {
   ])('CREATE_HOLD 입력 %s/%s를 fail-closed한다', async (quantity, reason, message) => {
     const { requests, user } = await prepareCreate();
     await fillCreate(user, quantity, reason);
-    await user.click(screen.getByRole('button', { name: '등록 확인' }));
+    const confirm = screen.getByRole('button', { name: '등록 확인' });
 
     expect(screen.getByText(message)).toBeVisible();
+    expect(confirm).toBeDisabled();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  it('보류 모드를 바꾸면 이전 입력을 버리고 새 모드의 필수값부터 다시 받는다', async () => {
+    const { user } = await prepareCreate();
+    await fillCreate(user);
+    expect(screen.getByRole('button', { name: '등록 확인' })).toBeEnabled();
+
+    await user.click(screen.getByRole('radio', { name: '전량 보류' }));
+    expect(screen.queryByLabelText('보류 수량')).toBeNull();
+    expect(screen.getByLabelText('보류 사유')).toHaveValue('');
+    expect(screen.getByLabelText('보류 비고')).toHaveValue('');
+    expect(screen.getByRole('button', { name: '등록 확인' })).toBeDisabled();
+  });
+
+  it('전량 보류는 수량·비고를 생략하고 위치 누락까지 영향 확인 후 등록한다', async () => {
+    const { requests, user } = await prepareCreate(
+      createRoute(),
+      lot({ availableQty: undefined, warehouseId: undefined, locationId: undefined }),
+    );
+    expect(screen.getByRole('radio', { name: '전량 보류' })).toBeChecked();
+    expect(screen.queryByLabelText('보류 수량')).toBeNull();
+    expect(screen.getByRole('button', { name: '등록 확인' })).toBeDisabled();
+    await fillFullCreate(user);
+    await user.click(screen.getByRole('button', { name: '등록 확인' }));
+    const dialog = await screen.findByRole('dialog');
+    const impact = within(dialog).getByRole('alert');
+    expect(impact).toHaveTextContent('이 전이가 하는 일');
+    expect(impact).toHaveTextContent('대상 수량: 전량');
+    expect(impact).toHaveTextContent('대상 위치: 창고 미확인 / Location 미확인');
+    await user.click(within(dialog).getByRole('button', { name: '보류 등록' }));
+    await waitFor(() =>
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1),
+    );
+    expect(await requests.find((request) => request.method === 'POST')!.json()).toEqual({
+      lots: [{ lotId: 701, versionNo: 7 }],
+      reasonCode: 'SYN_REASON',
+      targetLotStatusCode: 'DEFECTIVE',
+    });
   });
 
   it('CREATE_HOLD만 영향 확인 뒤 계약 body·새 멱등 키로 등록하고 조회를 갱신한다', async () => {
@@ -262,8 +310,13 @@ describe('Lot Status 전이 준비', () => {
     await fillCreate(user);
     await user.click(screen.getByRole('button', { name: '등록 확인' }));
     let dialog = await screen.findByRole('dialog');
-    expect(dialog).toHaveTextContent('창고 사용과 출고·출하 및 피킹 가능 여부가 바뀝니다.');
-    expect(dialog).toHaveTextContent('이미 출고된 수량은 회수되지 않습니다.');
+    const impact = within(dialog).getByRole('alert');
+    expect(impact).toHaveTextContent('Hold는 대상 수량의 출고·출하 및 피킹을 막습니다.');
+    expect(impact).toHaveTextContent('대상 수량: 5');
+    expect(impact).toHaveTextContent('대상 위치: 창고 31 / Location 41');
+    expect(impact).toHaveTextContent(
+      '다시 사용하려면 Release 전이가 필요하며, 이미 출고된 수량은 회수되지 않습니다.',
+    );
     await user.click(within(dialog).getByRole('button', { name: '취소' }));
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
 
@@ -351,12 +404,16 @@ describe('Lot Status 전이 준비', () => {
     await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
     await screen.findByRole('dialog');
     await chooseTransition(view.user, '검사 대기');
-    expect(screen.getByLabelText('보류 수량')).toHaveValue('');
+    expect(screen.getByRole('radio', { name: '전량 보류' })).toBeChecked();
+    expect(screen.queryByLabelText('보류 수량')).toBeNull();
+    expect(screen.getByLabelText('보류 사유')).toHaveValue('');
     expect(screen.queryByRole('dialog')).toBeNull();
 
     await fillCreate(view.user);
     await view.user.click(screen.getByRole('button', { name: 'LOT 버전 갱신' }));
-    expect(await screen.findByLabelText('보류 수량')).toHaveValue('');
+    expect(await screen.findByRole('radio', { name: '전량 보류' })).toBeChecked();
+    expect(screen.queryByLabelText('보류 수량')).toBeNull();
+    expect(screen.getByLabelText('보류 사유')).toHaveValue('');
   });
 
   it('열린 보류가 하나면 자동 선택하고 상세 ETag가 있을 때만 준비한다', async () => {
