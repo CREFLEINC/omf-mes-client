@@ -22016,6 +22016,10 @@ export interface paths {
                     heldOnly?: boolean;
                     /** @description 이미 전량 보류인 것을 뺀다 — W-03-03 대상 선택용 */
                     excludeFullyHeld?: boolean;
+                    /** @description 기간 시작 — latestTransitionAt 기준. transitionTo 와 한 쌍이다(함께 보내거나 함께 생략한다) — 현재 페이지의 latestTransitionAt 만 클라이언트에서 거르면 서버 페이지네이션의 total·다음 페이지와 어긋난다. 근거: W-03-02 §3 · omf-mes#225 */
+                    transitionFrom?: string;
+                    /** @description 기간 끝. transitionFrom 과 한 쌍이다. 근거: W-03-02 §3 · omf-mes#225 */
+                    transitionTo?: string;
                     /** @description LOT 번호 검색 */
                     q?: string;
                     /** @description 1 부터 */
@@ -36422,6 +36426,26 @@ export interface components {
              * @example 값
              */
             blockedReason?: string;
+            /**
+             * @description 이 전이가 지금 막 걸릴 것에 미치는 영향 미리보기 — «대상 수량·위치»는 GET /quality/lot-statuses 응답(L-2 파생)에 이미 있어 여기 다시 안 낸다. Hold 계열(진행 중 피킹·이미 출고분)만 채운다 — Release 계열 전이는 null. 근거: W-03-02 §5-3·§6 · omf-mes#225
+             * @example {
+             *       "openPickingCount": 2,
+             *       "shippedQty": 300
+             *     }
+             */
+            impact?: {
+                /**
+                 * @description 진행 중인 피킹 요청 건수 — 이 전이로 함께 막힌다. 화면 문구: 「피킹 중인 요청 N건이 막힙니다」(§6)
+                 * @example 2
+                 */
+                openPickingCount?: number;
+                /**
+                 * Format: double
+                 * @description 이미 출고된 수량 — 이 전이로 회수되지 않는다. 화면 문구: 「이미 출고된 N EA는 이 전이로 회수되지 않습니다」(§6) — ⛔ 되돌릴 수 없음을 알리는 것이지 막는 것이 아니다
+                 * @example 300
+                 */
+                shippedQty?: number;
+            } | null;
         };
         /** @description ⭐ 전이 규칙을 화면이 갖지 않는다 — 서버가 판정한다(공유계약 G-8). 저장하지 않으므로 :동사 가 아니라 GET 이다(02 가 :validate 를 GET …/validation 으로 바꾼 것과 같다) */
         LotStatusTransitionSet: {
@@ -36472,6 +36496,11 @@ export interface components {
              * @example 값
              */
             currentVersion?: string;
+            /**
+             * @description VERSION_CONFLICT 일 때 서버의 현재 lot.status_code — 충돌 문구에 최신 상태를 담는다(「다른 사용자가 먼저 전이했습니다. 현재 상태는 Hold입니다」 W-03-02 §6). ⛔ message 자유 텍스트에서 파싱하지 않는다 — 이 구조화 필드가 정본이다. 근거: W-03-02 §6 · omf-mes#225
+             * @example DEFECTIVE
+             */
+            currentLotStatusCode?: string;
             /**
              * @description 충돌 원인. 근거: 공유계약 B-1 확장 — user=다른 사용자, erpSync=ERP 재동기화 배치, workerLease=워커가 처리 중. 구분 없이 내려주면 화면이 「다른 사용자가 먼저 수정했습니다」라는 사실과 다른 안내를 하게 된다 — code=VERSION_CONFLICT 일 때 함께 내린다
              * @example user

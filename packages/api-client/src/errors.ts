@@ -12,10 +12,15 @@ export type ConflictCause = components['schemas']['ConflictResponse']['conflictC
  * 화면이 「연결을 확인하세요」와 「서버가 거부했습니다」를 다르게 안내할 수 있다.
  */
 export type ApiError =
-  | { kind: 'conflict'; cause: ConflictCause; message: string }
+  | {
+      kind: 'conflict';
+      cause: ConflictCause;
+      message: string;
+      currentLotStatusCode?: string;
+    }
   | { kind: 'stateLocked'; errors: ErrorItem[] }
   | { kind: 'validation'; errors: ErrorItem[] }
-  | { kind: 'http'; status: number; message?: string }
+  | { kind: 'http'; status: number; message?: string; currentLotStatusCode?: string }
   | { kind: 'network' };
 
 /**
@@ -39,11 +44,19 @@ const isErrorItem = (value: unknown): value is ErrorItem =>
   typeof value.message === 'string';
 
 export const normalizeApiError = (status: number, body: unknown): ApiError => {
+  const currentLotStatusCode =
+    isRecord(body) &&
+    typeof body.currentLotStatusCode === 'string' &&
+    body.currentLotStatusCode.trim() !== ''
+      ? body.currentLotStatusCode
+      : undefined;
+
   if (status === 409 && isRecord(body) && isConflictCause(body.conflictCause)) {
     return {
       kind: 'conflict',
       cause: body.conflictCause,
       message: typeof body.message === 'string' ? body.message : '',
+      ...(currentLotStatusCode === undefined ? {} : { currentLotStatusCode }),
     };
   }
 
@@ -58,8 +71,17 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
 
   // 계약 형태가 아니어도 서버가 message를 줬다면 그것이 사용자에게 남은 유일한 단서다.
   if (isRecord(body) && typeof body.message === 'string') {
-    return { kind: 'http', status, message: body.message };
+    return {
+      kind: 'http',
+      status,
+      message: body.message,
+      ...(currentLotStatusCode === undefined ? {} : { currentLotStatusCode }),
+    };
   }
 
-  return { kind: 'http', status };
+  return {
+    kind: 'http',
+    status,
+    ...(currentLotStatusCode === undefined ? {} : { currentLotStatusCode }),
+  };
 };
