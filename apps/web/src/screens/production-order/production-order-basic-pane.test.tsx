@@ -111,6 +111,7 @@ describe('ProductionOrderBasicPane', () => {
       [{ itemId: 7101, status: 'loading', label: null }, t.values.itemLoading],
       [{ itemId: 7101, status: 'unknown', label: null }, t.values.itemUnknown],
       [{ itemId: 7101, status: 'failed', label: null }, t.values.itemFailed],
+      [{ itemId: 7202, status: 'named', label: '다른 품목' }, t.values.itemUnknown],
       [null, t.values.itemUnknown],
     ];
     for (const [itemName, expected] of cases) {

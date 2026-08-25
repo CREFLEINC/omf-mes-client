@@ -26,8 +26,10 @@ interface DetailField {
   value: ReactNode;
 }
 
-const describeItem = (item: ProductionOrderItemName | null): string => {
-  if (item === null || item.status === 'unknown') return t.values.itemUnknown;
+const describeItem = (item: ProductionOrderItemName | null, itemId: number): string => {
+  if (item === null || item.itemId !== itemId || item.status === 'unknown') {
+    return t.values.itemUnknown;
+  }
   if (item.status === 'loading') return t.values.itemLoading;
   if (item.status === 'failed') return t.values.itemFailed;
   return item.label === null || item.label.trim() === '' ? t.values.itemUnknown : item.label;
@@ -98,7 +100,7 @@ export const ProductionOrderBasicPane = ({
       label: t.fields.plant,
       value: describeReference(resolveReference(plants, data.plantId)),
     },
-    { key: 'item', label: t.fields.item, value: describeItem(itemName) },
+    { key: 'item', label: t.fields.item, value: describeItem(itemName, data.itemId) },
     { key: 'orderedQty', label: t.fields.orderedQty, value: `${String(data.orderQty)} ${unit}` },
     {
       key: 'dueDate',
