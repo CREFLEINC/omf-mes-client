@@ -6,6 +6,7 @@ import { useEffect, useId, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { LotStatusCandidate } from './candidate-screen';
+import { ReleaseHoldExecution } from './release-hold-execution';
 
 type Transition = components['schemas']['LotStatusTransition'];
 type LotHold = components['schemas']['LotHold'];
@@ -95,7 +96,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
 
   useEffect(() => {
     if (isRelease && automaticHoldId !== null) setSelectedHoldId(automaticHoldId);
-  }, [automaticHoldId, isRelease]);
+  }, [automaticHoldId, isRelease, selectedTransitionKey]);
 
   const detail = useHoldDetail(isRelease ? selectedHoldId : null);
   const token =
@@ -116,7 +117,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
       label: item.reasonCode,
     })) ?? [];
 
-  if (transitions.isPending)
+  if (transitions.isFetching)
     return (
       <div role="status" aria-label="전이 선택지를 불러오는 중">
         <SkeletonText lines={1} />
@@ -143,13 +144,13 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
       ? '보류 등록 준비가 완료되었습니다.'
       : 'LOT 잠금 정보를 확인하지 못해 진행할 수 없습니다.';
   } else if (isRelease) {
-    preparation = holds.isPending
+    preparation = holds.isFetching
       ? '열린 보류를 불러오는 중입니다.'
       : holds.isError
         ? '열린 보류를 불러오지 못했습니다.'
         : holds.data?.items.length === 0
           ? '해제할 열린 보류가 없습니다.'
-          : detail.isPending
+          : detail.isFetching
             ? '보류 상세를 불러오는 중입니다.'
             : detail.isError
               ? '보류 상세를 불러오지 못했습니다.'
@@ -177,6 +178,22 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
         />
       )}
       {preparation !== null && <p role="status">{preparation}</p>}
+      {isRelease &&
+        selectedTransition !== undefined &&
+        selectedHoldId !== null &&
+        detail.data !== undefined &&
+        token !== undefined &&
+        !detail.isFetching && (
+          <ReleaseHoldExecution
+            key={`${String(selectedHoldId)}:${token}:${selectedTransitionKey ?? ''}`}
+            etagPath={lotHoldDetailPath(selectedHoldId)}
+            lotHoldId={selectedHoldId}
+            lotNo={lot.lotNo}
+            maxReleaseQty={detail.data.holdQty ?? lot.heldQty}
+            targetLotStatusCode={selectedTransition.targetLotStatusCode}
+            onReleased={() => setSelectedHoldId(null)}
+          />
+        )}
     </section>
   );
 };
