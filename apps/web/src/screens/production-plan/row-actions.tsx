@@ -1,6 +1,5 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { useEffect, useRef } from 'react';
-
 import { SaveErrorBanner, type MasterWriteResult } from '../../patterns/master';
 import type {
   ProductionPlanCreateContext,
@@ -15,9 +14,7 @@ import {
 } from './mutations';
 import { useProductionPlanDetail } from './queries';
 import type { ProductionPlanFact } from './types';
-
 type WriteFeedback = Pick<MasterWriteResult<unknown>, 'isSaving' | 'fieldErrors' | 'error'>;
-
 interface ProductionPlanRowActionsProps {
   row: ProductionPlanEditorStateRow;
   context: ProductionPlanCreateContext;
@@ -26,7 +23,6 @@ interface ProductionPlanRowActionsProps {
   onSettle: (key: string, plan: ProductionPlanFact) => void;
   onRemove: (key: string) => void;
 }
-
 const draftFields: readonly ProductionPlanDraftField[] = [
   'planDate',
   'plannedQty',
@@ -35,14 +31,12 @@ const draftFields: readonly ProductionPlanDraftField[] = [
   'plannedLineId',
   'remarks',
 ];
-
 const serverDraftErrors = (fieldErrors: Record<string, string>): ProductionPlanDraftErrors =>
   Object.fromEntries(
     draftFields.flatMap((field) =>
       fieldErrors[field] === undefined ? [] : [[field, { message: fieldErrors[field] }]],
     ),
   );
-
 const useWriteFeedback = (
   key: string,
   writes: readonly WriteFeedback[],
@@ -54,13 +48,11 @@ const useWriteFeedback = (
   const signature = JSON.stringify(fieldErrors);
   const previousSaving = useRef(isSaving);
   const previousErrors = useRef('');
-
   useEffect(() => {
     if (previousSaving.current === isSaving) return;
     previousSaving.current = isSaving;
     onPending(key, isSaving);
   }, [isSaving, key, onPending]);
-
   useEffect(() => {
     if (signature === '{}') {
       previousErrors.current = '';
@@ -70,10 +62,8 @@ const useWriteFeedback = (
     previousErrors.current = signature;
     onErrors(key, serverDraftErrors(fieldErrors));
   }, [fieldErrors, key, onErrors, signature]);
-
   return { isSaving, error: writes.find((write) => write.error !== null)?.error ?? null };
 };
-
 const NewPlanActions = (props: ProductionPlanRowActionsProps) => {
   const { row } = props;
   const create = useCreateProductionPlan({
@@ -89,17 +79,16 @@ const NewPlanActions = (props: ProductionPlanRowActionsProps) => {
     props.onErrors(row.key, {});
     if (prepared.command.kind === 'create') create.write(prepared.command.body);
   };
-
   return (
     <>
       <div className="inline-actions">
-        <Button size="sm" disabled={feedback.isSaving} onClick={save}>
+        <Button size="sm" disabled={row.isPending || feedback.isSaving} onClick={save}>
           저장
         </Button>
         <Button
           size="sm"
           variant="text"
-          disabled={feedback.isSaving}
+          disabled={row.isPending || feedback.isSaving}
           onClick={() => props.onRemove(row.key)}
         >
           삭제
@@ -109,7 +98,6 @@ const NewPlanActions = (props: ProductionPlanRowActionsProps) => {
     </>
   );
 };
-
 const ExistingPlanActions = (
   props: ProductionPlanRowActionsProps & { productionPlanId: number },
 ) => {
@@ -124,12 +112,20 @@ const ExistingPlanActions = (
     onSuccess: () => props.onRemove(row.key),
   });
   const feedback = useWriteFeedback(row.key, [update, remove], props.onPending, props.onErrors);
-  const locked = row.confirmed || feedback.isSaving || !detail.isSuccess;
+  const locked = row.confirmed || row.isPending || feedback.isSaving || !detail.isSuccess;
+  const resetWrites = () => {
+    update.reset();
+    remove.reset();
+  };
   const reload = () =>
-    void detail.refetch().then(({ data }) => {
-      if (data !== undefined) props.onSettle(row.key, data);
+    void detail.refetch().then(({ data, isSuccess }) => {
+      if (isSuccess && data !== undefined) {
+        resetWrites();
+        props.onSettle(row.key, data);
+      }
     });
   const save = () => {
+    resetWrites();
     const prepared = prepareProductionPlanRow(row, props.context);
     if (!prepared.ok) {
       props.onErrors(row.key, prepared.errors);
@@ -138,14 +134,17 @@ const ExistingPlanActions = (
     props.onErrors(row.key, {});
     if (prepared.command.kind === 'update') update.write(prepared.command.body);
   };
-
+  const erase = () => {
+    resetWrites();
+    remove.write();
+  };
   return (
     <>
       <div className="inline-actions">
         <Button size="sm" disabled={locked || !row.isDirty} onClick={save}>
           저장
         </Button>
-        <Button size="sm" variant="text" disabled={locked} onClick={() => remove.write()}>
+        <Button size="sm" variant="text" disabled={locked} onClick={erase}>
           삭제
         </Button>
       </div>
@@ -164,7 +163,6 @@ const ExistingPlanActions = (
     </>
   );
 };
-
 export const ProductionPlanRowActions = (props: ProductionPlanRowActionsProps) =>
   props.row.productionPlanId === null ? (
     <NewPlanActions {...props} />

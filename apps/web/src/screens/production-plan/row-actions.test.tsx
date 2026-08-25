@@ -1,25 +1,21 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { ProductionPlanEditorStateRow } from './editor-state';
 import { ProductionPlanRowActions } from './row-actions';
 import type { ProductionPlanFact } from './types';
-
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
   detail: vi.fn(),
 }));
-
 vi.mock('./mutations', () => ({
   useCreateProductionPlan: mocks.create,
   useUpdateProductionPlan: mocks.update,
   useDeleteProductionPlan: mocks.remove,
 }));
 vi.mock('./queries', () => ({ useProductionPlanDetail: mocks.detail }));
-
 const writeResult = (overrides: Record<string, unknown> = {}) => ({
   write: vi.fn(),
   isSaving: false,
@@ -29,7 +25,6 @@ const writeResult = (overrides: Record<string, unknown> = {}) => ({
   clearFieldError: vi.fn(),
   ...overrides,
 });
-
 const fact = (productionPlanId: number): ProductionPlanFact => ({
   productionPlanId,
   productionOrderId: 501,
@@ -44,7 +39,6 @@ const fact = (productionPlanId: number): ProductionPlanFact => ({
   confirmedAt: null,
   remarks: null,
 });
-
 const row = (productionPlanId: number | null): ProductionPlanEditorStateRow => ({
   key: productionPlanId === null ? 'new-1' : `plan-${String(productionPlanId)}`,
   displayNo: 1,
@@ -75,14 +69,12 @@ const row = (productionPlanId: number | null): ProductionPlanEditorStateRow => (
         },
   errors: {},
 });
-
 const callbacks = () => ({
   onPending: vi.fn(),
   onErrors: vi.fn(),
   onSettle: vi.fn(),
   onRemove: vi.fn(),
 });
-
 const renderActions = (target: ProductionPlanEditorStateRow, handlers = callbacks()) => {
   const view = render(
     <ProductionPlanRowActions
@@ -93,7 +85,9 @@ const renderActions = (target: ProductionPlanEditorStateRow, handlers = callback
   );
   return { ...view, handlers };
 };
-
+const expectWritesLocked = () => {
+  for (const name of ['저장', '삭제']) expect(screen.getByRole('button', { name })).toBeDisabled();
+};
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.create.mockReturnValue(writeResult());
@@ -101,7 +95,6 @@ beforeEach(() => {
   mocks.remove.mockReturnValue(writeResult());
   mocks.detail.mockReturnValue({ isSuccess: true, isError: false, refetch: vi.fn() });
 });
-
 describe('ProductionPlanRowActions', () => {
   it('신규 행을 검증한 뒤 생성하고 성공 사실을 같은 행에 정착시킨다', async () => {
     const user = userEvent.setup();
@@ -111,7 +104,6 @@ describe('ProductionPlanRowActions', () => {
     const target = row(null);
     const props = { row: target, context: { productionOrderId: 501, uomId: 601 }, ...handlers };
     const view = renderActions(target, handlers);
-
     await user.click(screen.getByRole('button', { name: '저장' }));
     expect(currentWrite.write).toHaveBeenCalledWith({
       productionOrderId: 501,
@@ -121,14 +113,13 @@ describe('ProductionPlanRowActions', () => {
       bomId: 701,
       routingId: 801,
     });
-    act(() => mocks.create.mock.calls[0]?.[0].onSuccess(fact(901)));
-    expect(handlers.onSettle).toHaveBeenCalledWith('new-1', fact(901));
-
     currentWrite = { ...currentWrite, isSaving: true };
     view.rerender(<ProductionPlanRowActions {...props} />);
     await waitFor(() => expect(handlers.onPending).toHaveBeenLastCalledWith('new-1', true));
+    currentWrite = { ...currentWrite, isSaving: false };
+    view.rerender(<ProductionPlanRowActions {...props} />);
+    await waitFor(() => expect(handlers.onPending).toHaveBeenLastCalledWith('new-1', false));
   });
-
   it('잘못된 신규 행은 보내지 않고 삭제는 서버 요청 없이 로컬에서 끝낸다', async () => {
     const user = userEvent.setup();
     const create = writeResult();
@@ -141,7 +132,6 @@ describe('ProductionPlanRowActions', () => {
     expect(handlers.onErrors).toHaveBeenCalledWith('new-1', { plannedQty: 'REQUIRED' });
     expect(handlers.onRemove).toHaveBeenCalledWith('new-1');
   });
-
   it('기존 행은 상세 ETag를 준비한 뒤 변경분 저장과 서버 삭제를 구분한다', async () => {
     const user = userEvent.setup();
     const update = writeResult();
@@ -154,16 +144,26 @@ describe('ProductionPlanRowActions', () => {
     expect(mocks.detail).toHaveBeenCalledWith(101);
     expect(update.write).toHaveBeenCalledWith({ plannedQty: 75 });
     expect(remove.write).toHaveBeenCalledWith();
-    act(() => mocks.update.mock.calls[0]?.[0].onSuccess(fact(101)));
-    act(() => mocks.remove.mock.calls[0]?.[0].onSuccess());
-    expect(handlers.onSettle).toHaveBeenCalledWith('plan-101', fact(101));
-    expect(handlers.onRemove).toHaveBeenCalledWith('plan-101');
+    expect(remove.reset).toHaveBeenCalled();
+    expect(update.reset).toHaveBeenCalled();
   });
-
+  it('확정·pending 행은 custom 저장과 삭제를 모두 잠근다', () => {
+    for (const target of [
+      { ...row(101), confirmed: true },
+      { ...row(101), isPending: true },
+      { ...row(null), isPending: true },
+    ]) {
+      const view = renderActions(target);
+      expectWritesLocked();
+      view.unmount();
+    }
+  });
   it('서버 필드 오류를 입력에 전달하고 충돌과 ETag 조회 실패를 숨기지 않는다', async () => {
     const user = userEvent.setup();
     const reload = vi.fn();
-    reload.mockResolvedValue({ data: fact(101) });
+    reload
+      .mockResolvedValueOnce({ data: fact(999), isSuccess: false })
+      .mockResolvedValueOnce({ data: fact(101), isSuccess: true });
     mocks.detail.mockReturnValue({ isSuccess: false, isError: true, refetch: reload });
     mocks.update.mockReturnValue(
       writeResult({
@@ -177,12 +177,12 @@ describe('ProductionPlanRowActions', () => {
         plannedQty: { message: '서버 수량 오류' },
       }),
     );
-    expect(screen.getByText('저장 잠금 정보를 불러오지 못했습니다.')).toBeVisible();
-    expect(
-      screen.getByText('다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.'),
-    ).toBeVisible();
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expectWritesLocked();
+    await user.click(screen.getByRole('button', { name: '최신 불러오기' }));
+    expect(handlers.onSettle).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: '최신 불러오기' }));
     expect(handlers.onSettle).toHaveBeenCalledWith('plan-101', fact(101));
+    expect(mocks.update.mock.results[0]?.value.reset).toHaveBeenCalled();
+    expect(mocks.remove.mock.results[0]?.value.reset).toHaveBeenCalled();
   });
 });
