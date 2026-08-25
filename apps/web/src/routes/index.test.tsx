@@ -1132,6 +1132,11 @@ describe('appRouter — Lot Status 판정·전이 처리의 진입 경로', () =
     expect(within(items[0]!).getByText('품질관리')).toBeVisible();
     expect(within(items[1]!).getByText('Lot Status 판정·전이 처리')).toBeVisible();
     expect(await screen.findByRole('button', { name: 'SYN-LOT-ENTRY 선택' })).toBeVisible();
+    expect(screen.getByText('전이 이력은 별도 이력으로 저장되지 않는다')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Lot Status 변경 이력 보기' })).toHaveAttribute(
+      'href',
+      '/quality/lot-status',
+    );
   });
 
   it('화면 주소는 API 리소스가 아니라 정확한 공개 route다', () => {

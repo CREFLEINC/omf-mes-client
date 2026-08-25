@@ -73,6 +73,14 @@ const useCandidates = (filters: LotStatusCandidateFilters, page: number) => {
 
 const rowKey = (row: LotStatusCandidate): string =>
   `${row.lotId}:${row.warehouseId ?? '-'}:${row.locationId ?? '-'}`;
+const emptyValue = '—';
+const quantity = (value: number | undefined): string =>
+  value === undefined ? emptyValue : new Intl.NumberFormat('ko-KR').format(value);
+const formatDateTime = (value: string | undefined): string => {
+  if (value === undefined) return emptyValue;
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
+  return match === null ? value : `${match[1]} ${match[2]}`;
+};
 
 interface FilterSelectProps {
   label: string;
@@ -212,10 +220,37 @@ export const LotStatusTransitionCandidateScreen = () => {
         <>
           <section aria-label="선택한 LOT">
             <Card bordered>
+              <Card.Header>
+                <h2>선택 LOT</h2>
+                <dl className="filter-bar" aria-label="선택 LOT 식별">
+                  {[
+                    ['LOT 번호', selected.lotNo],
+                    ['품목', itemLabel(selected.itemId)],
+                  ].map(([label, value]) => (
+                    <div className="field-cell" key={label}>
+                      <dt className="field-label">{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </Card.Header>
               <Card.Body>
-                <p>{selected.lotNo}</p>
-                <p>{itemLabel(selected.itemId)}</p>
-                <p>{statusLabel(selected.lotStatusCode)}</p>
+                <h3>현재 상태</h3>
+                <dl className="filter-bar" aria-label="선택 LOT 현재 상태">
+                  {[
+                    ['Lot Status', statusLabel(selected.lotStatusCode)],
+                    ['보유 수량', quantity(selected.onHandQty)],
+                    ['보류 수량', quantity(selected.heldQty)],
+                    ['가용 수량', quantity(selected.availableQty)],
+                    ['최근 전이', formatDateTime(selected.latestTransitionAt)],
+                    ['최근 사유', selected.latestReasonCode ?? emptyValue],
+                  ].map(([label, value]) => (
+                    <div className="field-cell" key={label}>
+                      <dt className="field-label">{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
               </Card.Body>
             </Card>
           </section>

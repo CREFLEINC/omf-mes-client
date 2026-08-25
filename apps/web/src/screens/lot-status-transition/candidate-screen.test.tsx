@@ -25,7 +25,10 @@ const lot: components['schemas']['LotQualityStatus'] = {
   versionNo: 987654,
   onHandQty: 25,
   heldQty: 5,
+  availableQty: 20,
   fullyHeld: false,
+  latestTransitionAt: '2026-08-21T12:34:00+09:00',
+  latestReasonCode: 'SYN-REASON-A',
 };
 const page = (items: components['schemas']['LotQualityStatus'][] = [lot], current = 1) => ({
   items,
@@ -108,6 +111,14 @@ const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, o
   await user.click(screen.getByLabelText(label));
   await user.click(await screen.findByRole('option', { name: option }));
 };
+const valueOf = (container: HTMLElement, label: string): string => {
+  const term = within(container)
+    .getAllByRole('term')
+    .find((node) => node.textContent === label);
+  const cell = term?.closest('div');
+  if (cell === undefined || cell === null) throw new Error(`「${label}」의 값 칸이 없습니다.`);
+  return within(cell).getByRole('definition').textContent ?? '';
+};
 
 describe('Lot Status 전이 후보', () => {
   it('heldOnly 없이 LOT 번호·품목·품질 상태와 page만 직렬화한다', () => {
@@ -145,9 +156,24 @@ describe('Lot Status 전이 후보', () => {
     await user.click(select);
 
     const card = screen.getByRole('region', { name: '선택한 LOT' });
-    expect(within(card).getByText('SYN-LOT-ALPHA')).toBeVisible();
-    expect(within(card).getByText('SYN-ITEM-A · 합성 자재')).toBeVisible();
-    expect(within(card).getByText('정상')).toBeVisible();
+    const identity = within(card).getByLabelText('선택 LOT 식별');
+    const current = within(card).getByLabelText('선택 LOT 현재 상태');
+    expect(valueOf(identity, 'LOT 번호')).toBe('SYN-LOT-ALPHA');
+    expect(valueOf(identity, '품목')).toBe('SYN-ITEM-A · 합성 자재');
+    expect(within(card).getByRole('heading', { level: 3, name: '현재 상태' })).toBeVisible();
+    expect(
+      within(current)
+        .getAllByRole('term')
+        .map((node) => node.textContent),
+    ).toEqual(['Lot Status', '보유 수량', '보류 수량', '가용 수량', '최근 전이', '최근 사유']);
+    expect([
+      valueOf(current, 'Lot Status'),
+      valueOf(current, '보유 수량'),
+      valueOf(current, '보류 수량'),
+      valueOf(current, '가용 수량'),
+      valueOf(current, '최근 전이'),
+      valueOf(current, '최근 사유'),
+    ]).toEqual(['정상', '25', '5', '20', '2026-08-21 12:34', 'SYN-REASON-A']);
     expect(select).toHaveAttribute('aria-current', 'true');
     expect(screen.queryByText('987654')).toBeNull();
     await choose(user, '전이', 'DEFECTIVE');
@@ -156,6 +182,18 @@ describe('Lot Status 전이 후보', () => {
     expect(await screen.findByText('선택한 LOT은 전이할 수 없습니다.')).toBeVisible();
     await user.click(select);
     expect(await screen.findByLabelText('전이')).toHaveTextContent('하나를 선택하세요');
+  });
+
+  it('최근 전이·사유가 없는 선택 LOT은 이름 있는 빈값으로 표시한다', async () => {
+    const { user } = renderScreen([
+      listRoute(page([{ ...lot, latestTransitionAt: undefined, latestReasonCode: undefined }])),
+    ]);
+    await user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
+    const current = screen.getByLabelText('선택 LOT 현재 상태');
+
+    expect(valueOf(current, '최근 전이')).toBe('—');
+    expect(valueOf(current, '최근 사유')).toBe('—');
+    expect(screen.queryByText('987654')).toBeNull();
   });
 
   it('다음 쪽으로 이동하면 page를 보내고 앞 선택을 지운다', async () => {
