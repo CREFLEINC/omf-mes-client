@@ -34,6 +34,7 @@ export interface ProductionOrderFact {
   uomId: number;
   dueDate: string | null;
   statusCode: string;
+  remarks: string | null;
   expandedWorkOrderCount: number | null;
   plannedWorkOrderCount: number | null;
 }

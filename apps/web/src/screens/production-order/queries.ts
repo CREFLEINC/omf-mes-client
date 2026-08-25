@@ -33,6 +33,7 @@ export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFa
   uomId: order.uomId,
   dueDate: order.dueDate ?? null,
   statusCode: order.statusCode,
+  remarks: order.remarks ?? null,
   expandedWorkOrderCount: order.expandedWorkOrderCount ?? null,
   plannedWorkOrderCount: order.plannedWorkOrderCount ?? null,
 });
