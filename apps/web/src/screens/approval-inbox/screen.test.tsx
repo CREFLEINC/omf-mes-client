@@ -1112,13 +1112,32 @@ describe('고른 요청 — 정보·대상·진행', () => {
     expect(within(target).getByText(t.target.note)).toBeVisible();
   });
 
-  it('빈 매핑표에서는 열기가 잠기고 그 갈래의 사유가 붙는다', async () => {
+  it('미등록 화면 ID에서는 열기가 잠기고 그 갈래의 사유가 붙는다', async () => {
     await renderSelected();
 
     const open = screen.getByRole('button', { name: t.target.open });
 
     expect(open).toBeDisabled();
     expect(open).toHaveAccessibleDescription(t.target.blockedUnmapped);
+  });
+
+  it('W-03-09 대상을 열면 선택한 승인 요청 ID가 정식 주소에 실린다', async () => {
+    const detail: ApprovalRequestDetail = {
+      ...contradictoryMyTurnDetail,
+      request: {
+        ...contradictoryMyTurnDetail.request,
+        target: { ...contradictoryMyTurnDetail.request.target, screenId: 'W-03-09' },
+      },
+    };
+    renderScreen([listRoute(), countRoute(), detailRoute(detail)], '?rq=9001');
+    await waitForList();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: t.target.open }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe('/quality/approvals?approvalRequestId=9001');
+    });
   });
 
   it('열 수 없다고 온 대상은 그 사실로 잠긴다', async () => {
