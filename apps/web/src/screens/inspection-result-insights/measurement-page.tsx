@@ -8,6 +8,7 @@ import {
   Table,
 } from '@crefle/web-ui';
 
+import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import {
   useInspectionMeasurements,
   useInspectionResultDetail,
@@ -32,7 +33,7 @@ interface MeasurementPageProps {
   inspectionResultId: number;
   page: number;
   calibrationExpired: CalibrationFilter;
-  judgmentLabels: ReadonlyMap<string, string>;
+  judgmentSource: LookupSource;
   onPageChange: (page: number) => void;
   onCalibrationChange: (value: CalibrationFilter) => void;
 }
@@ -41,7 +42,7 @@ export const MeasurementPage = ({
   inspectionResultId,
   page,
   calibrationExpired,
-  judgmentLabels,
+  judgmentSource,
   onPageChange,
   onCalibrationChange,
 }: MeasurementPageProps) => {
@@ -64,7 +65,7 @@ export const MeasurementPage = ({
     {
       key: 'judgmentCode',
       header: '판정',
-      render: (row) => judgmentLabels.get(row.judgmentCode) ?? '판정 미확인',
+      render: (row) => lookupDisplayLabelWithInactive(judgmentSource, row.judgmentCode),
     },
     { key: 'measuredAt', header: '측정시각', render: (row) => dateTime(row.measuredAt) },
     {
