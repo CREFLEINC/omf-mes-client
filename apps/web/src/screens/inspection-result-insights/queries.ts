@@ -4,11 +4,19 @@ import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { InspectionInsightFilters, InspectionResultSort } from './filters';
-import { toInspectionListQuery, toInspectionSummaryQuery } from './request-queries';
+import {
+  toDefectDistributionQuery,
+  toDefectRateTrendQuery,
+  toInspectionListQuery,
+  toInspectionSummaryQuery,
+  type DistributionGroup,
+} from './request-queries';
 
 type Client = ApiClient['client'];
 export type InspectionResult = components['schemas']['InspectionResult'];
 export type InspectionSummary = components['schemas']['InspectionSummary'];
+export type DefectRateTrend = components['schemas']['DefectRateTrend'];
+export type DefectDistribution = components['schemas']['DefectDistribution'];
 type PageMeta = components['schemas']['PageMeta'];
 
 export interface InspectionResultList {
@@ -52,6 +60,44 @@ export const useInspectionSummary = (
       if (query === null) throw new Error('기간과 검사유형 전에는 요약을 조회하지 않습니다.');
       return runRequest(() =>
         client.GET('/quality/inspection-results/summary', { params: { query } }),
+      );
+    },
+  });
+};
+
+export const useDefectRateTrend = (
+  filters: InspectionInsightFilters,
+  enabled: boolean,
+): UseQueryResult<DefectRateTrend> => {
+  const { client } = useApiClient();
+  const query = toDefectRateTrendQuery(filters);
+  return useQuery({
+    queryKey: ['inspection-result-insights', 'trend', filters],
+    enabled: enabled && query !== null,
+    queryFn: () => {
+      if (query === null) throw new Error('기간과 검사유형 전에는 추이를 조회하지 않습니다.');
+      return runRequest(() =>
+        client.GET('/quality/inspection-results/defect-rate-trend', { params: { query } }),
+      );
+    },
+  });
+};
+
+export const useDefectDistribution = (
+  filters: InspectionInsightFilters,
+  groupBy: DistributionGroup,
+  sourceAxisCode: string,
+  enabled: boolean,
+): UseQueryResult<DefectDistribution> => {
+  const { client } = useApiClient();
+  const query = toDefectDistributionQuery(filters, groupBy, sourceAxisCode);
+  return useQuery({
+    queryKey: ['inspection-result-insights', 'distribution', filters, groupBy, sourceAxisCode],
+    enabled: enabled && query !== null,
+    queryFn: () => {
+      if (query === null) throw new Error('유효한 기간 전에는 분포를 조회하지 않습니다.');
+      return runRequest(() =>
+        client.GET('/quality/defect-records/distribution', { params: { query } }),
       );
     },
   });
