@@ -204,6 +204,17 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               물류 문서 진행현황·취소
             </NavItem>
           </SidebarSection>
+          {/*
+           * W-04-02 — **출하(도메인 04)의 첫 화면이고 그래서 새 섹션을 연다.** 착수 이슈 §1의
+           * IA 위치가 「관리웹 > 출하 > 출하 지시·확정」이라 「자재창고」에 넣지 않는다 —
+           * 입고 중심의 그 섹션과 축이 다르다. 자재창고 바로 뒤·생산실행 앞이다: 물류 흐름상
+           * 입고를 처리한 뒤(자재창고) 출하를 다루고, 그 결과가 생산실행과는 독립이다.
+           */}
+          <SidebarSection label="출하">
+            <NavItem to="/shipment/shipment-schedule" icon="local_shipping">
+              출하 예정 목록
+            </NavItem>
+          </SidebarSection>
           {/* W-02-05 — 생산실행의 첫 화면이며 자재창고 뒤·품질관리 앞에 둔다. */}
           <SidebarSection label="생산실행">
             <NavItem to="/production/work-order-close" icon="archive">

@@ -433,7 +433,28 @@ describe('AppLayout', () => {
     expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
   });
 
-  it('생산실행 섹션의 W/O 마감 메뉴가 자재창고 뒤·품질관리 앞에 있다', () => {
+  it('출하 섹션의 출하 예정 목록 메뉴가 자재창고 뒤·생산실행 앞에 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const links = within(sidebar)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    expect(within(sidebar).getByText('출하')).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: '출하 예정 목록' })).toHaveAttribute(
+      'href',
+      '/shipment/shipment-schedule',
+    );
+    expect(links.indexOf('/shipment/shipment-schedule')).toBe(
+      links.indexOf('/logistics/document-progress') + 1,
+    );
+    expect(links.indexOf('/shipment/shipment-schedule')).toBeLessThan(
+      links.indexOf('/production/work-order-close'),
+    );
+  });
+
+  it('생산실행 섹션의 W/O 마감 메뉴가 출하 뒤·품질관리 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -447,7 +468,7 @@ describe('AppLayout', () => {
       '/production/work-order-close',
     );
     expect(links.indexOf('/production/work-order-close')).toBe(
-      links.indexOf('/logistics/document-progress') + 1,
+      links.indexOf('/shipment/shipment-schedule') + 1,
     );
     expect(links.indexOf('/production/work-order-close')).toBeLessThan(
       links.indexOf('/quality/lot-status'),
@@ -462,14 +483,17 @@ describe('AppLayout', () => {
    * W-03-01이 Lot Status 계열의 첫 화면으로 「품질관리」를 열어 이제 여섯이다. 결재함은
    * 기준정보(무엇을 정해 두는가)도 자재창고(물건이 오가는 일)도 시스템 관리(운영 설정)도
    * 아닌, **올라온 결재를 처리하는 일**이라 기존 「승인」 섹션에 그대로 남는다.
+   *
+   * W-04-02가 출하(도메인 04)의 첫 화면으로 「출하」를 열어 이제 아홉이다.
    */
-  it('사이드바 섹션이 여덟이고 모든 항목이 그 안에 있다', () => {
+  it('사이드바 섹션이 아홉이고 모든 항목이 그 안에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
     const sections = [
       '기준정보',
       '자재창고',
+      '출하',
       '생산실행',
       '품질관리',
       '설비/툴',
@@ -602,6 +626,7 @@ describe('AppLayout', () => {
       '/logistics/disposal-issue',
       '/logistics/iqc-skip-approval',
       '/logistics/document-progress',
+      '/shipment/shipment-schedule',
       '/production/work-order-close',
       '/quality/lot-status',
       '/quality/lot-status-transition',
