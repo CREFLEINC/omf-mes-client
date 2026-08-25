@@ -64,9 +64,13 @@ export const validateInspectionItem = (
 
   const sequenceNo = parseNumber(values.sequenceNo);
 
+  /*
+   * ⛔ **0은 순서가 아니다** — 계약이 `minimum: 1` 로 못박았다. 「맨 앞」을 0으로 두고 싶어도
+   * 서버가 거절하므로, 화면이 막지 않으면 **저장에서야 알게 되는 값**이 된다.
+   */
   if (values.sequenceNo.trim() === '') {
     errors.sequenceNo = t.validation.required;
-  } else if (sequenceNo === null || !Number.isSafeInteger(sequenceNo) || sequenceNo < 0) {
+  } else if (sequenceNo === null || !Number.isSafeInteger(sequenceNo) || sequenceNo < 1) {
     errors.sequenceNo = t.validation.sequencePositive;
   }
 
