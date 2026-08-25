@@ -18,6 +18,6 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@crefle/web-ui": "github:CREFLEINC/design-system-v2-webui#4a9cb837b257a15d23ec1d1aef267508ace06ef1"
+    "@crefle/web-ui": "github:CREFLEINC/design-system-v2-webui#91c233b257ea844dfe9df8eef440221329b092a6"
   }
 }
