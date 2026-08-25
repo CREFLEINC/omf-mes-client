@@ -4,6 +4,7 @@ import {
   Card,
   Chip,
   type Column,
+  DatePicker,
   EmptyState,
   SearchInput,
   Select,
@@ -18,6 +19,11 @@ import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { useLotStatusOptions } from '../lot-status-history/options';
 import { useItemReferenceOptions } from '../lot-status-history/reference-options';
+import {
+  defaultTransitionPeriod,
+  toTransitionPeriodBounds,
+  validateTransitionPeriod,
+} from './period';
 import { LotStatusTransitionPreparation } from './transition-preparation';
 
 type LotStatusCandidateQuery = NonNullable<
@@ -29,13 +35,22 @@ export interface LotStatusCandidateFilters {
   q: string;
   itemId: string;
   lotStatusCode: string;
+  from: string;
+  to: string;
 }
 
 export const EMPTY_LOT_STATUS_CANDIDATE_FILTERS: LotStatusCandidateFilters = {
   q: '',
   itemId: '',
   lotStatusCode: '',
+  from: '',
+  to: '',
 };
+
+export const defaultLotStatusCandidateFilters = (today: Date): LotStatusCandidateFilters => ({
+  ...EMPTY_LOT_STATUS_CANDIDATE_FILTERS,
+  ...defaultTransitionPeriod(today),
+});
 
 const positiveId = (value: string): number | undefined => {
   if (!/^\d+$/.test(value)) return undefined;
@@ -46,28 +61,36 @@ const positiveId = (value: string): number | undefined => {
 export const toLotStatusCandidateQuery = (
   filters: LotStatusCandidateFilters,
   page: number,
+  offsetMinutes: number,
 ): LotStatusCandidateQuery => {
   const query: LotStatusCandidateQuery = {};
   const itemId = positiveId(filters.itemId);
   if (filters.q !== '') query.q = filters.q;
   if (itemId !== undefined) query.itemId = itemId;
   if (filters.lotStatusCode !== '') query.lotStatusCode = filters.lotStatusCode;
+  if (validateTransitionPeriod(filters) === null)
+    Object.assign(query, toTransitionPeriodBounds(filters, offsetMinutes));
   if (Number.isSafeInteger(page) && page > 1) query.page = page;
   return query;
 };
 
 export const lotStatusTransitionKeys = {
-  candidates: (filters: LotStatusCandidateFilters, page: number) =>
-    ['lot-status-transition', 'candidates', { ...filters }, page] as const,
+  candidates: (filters: LotStatusCandidateFilters, page: number, offsetMinutes: number) =>
+    ['lot-status-transition', 'candidates', { ...filters }, page, offsetMinutes] as const,
 };
 
 const ROOT_KEY = ['lot-status-transition'] as const;
 
-const useCandidates = (filters: LotStatusCandidateFilters, page: number, enabled: boolean) => {
+const useCandidates = (
+  filters: LotStatusCandidateFilters,
+  page: number,
+  offsetMinutes: number,
+  enabled: boolean,
+) => {
   const { client } = useApiClient();
-  const query = toLotStatusCandidateQuery(filters, page);
+  const query = toLotStatusCandidateQuery(filters, page, offsetMinutes);
   return useQuery({
-    queryKey: lotStatusTransitionKeys.candidates(filters, page),
+    queryKey: lotStatusTransitionKeys.candidates(filters, page, offsetMinutes),
     enabled,
     placeholderData: keepPreviousData,
     queryFn: () => runRequest(() => client.GET('/quality/lot-statuses', { params: { query } })),
@@ -105,12 +128,13 @@ const FilterSelect = ({ disabled, label, options, value, onChange }: FilterSelec
 
 export const LotStatusTransitionCandidateScreen = () => {
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState(EMPTY_LOT_STATUS_CANDIDATE_FILTERS);
-  const [filters, setFilters] = useState(EMPTY_LOT_STATUS_CANDIDATE_FILTERS);
+  const [draft, setDraft] = useState(() => defaultLotStatusCandidateFilters(new Date()));
+  const [filters, setFilters] = useState(() => defaultLotStatusCandidateFilters(new Date()));
   const [page, setPage] = useState(1);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [confirmationPinned, setConfirmationPinned] = useState(false);
-  const candidates = useCandidates(filters, page, !confirmationPinned);
+  const offsetMinutes = -new Date().getTimezoneOffset();
+  const candidates = useCandidates(filters, page, offsetMinutes, !confirmationPinned);
   const selected =
     candidates.isError && !confirmationPinned
       ? null
@@ -142,6 +166,8 @@ export const LotStatusTransitionCandidateScreen = () => {
   );
   const items = useItemReferenceOptions();
   const statuses = useLotStatusOptions();
+  const periodId = useId();
+  const periodError = validateTransitionPeriod(draft);
   const itemOptions =
     items.data?.entries.map((entry) => ({ value: entry.value, label: entry.label })) ?? [];
   const statusOptions =
@@ -156,14 +182,15 @@ export const LotStatusTransitionCandidateScreen = () => {
     setSelectedKey(null);
   };
   const apply = (): void => {
-    if (confirmationPinned) return;
+    if (confirmationPinned || periodError !== null) return;
     setFilters({ ...draft });
     changePage(1);
   };
   const reset = (): void => {
     if (confirmationPinned) return;
-    setDraft(EMPTY_LOT_STATUS_CANDIDATE_FILTERS);
-    setFilters(EMPTY_LOT_STATUS_CANDIDATE_FILTERS);
+    const next = defaultLotStatusCandidateFilters(new Date());
+    setDraft(next);
+    setFilters(next);
     changePage(1);
   };
   const columns: Column<LotStatusCandidate>[] = [
@@ -200,6 +227,18 @@ export const LotStatusTransitionCandidateScreen = () => {
   return (
     <section className="pane" aria-label="Lot Status 판정·전이 대상">
       <div className="filter-bar">
+        <div className="field-cell">
+          <label className="field-label" htmlFor={periodId}>
+            최근 전이 기간
+          </label>
+          <DatePicker
+            id={periodId}
+            mode="range"
+            disabled={confirmationPinned}
+            value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
+            onChange={([from, to]) => setDraft((current) => ({ ...current, from, to }))}
+          />
+        </div>
         <SearchInput
           disabled={confirmationPinned}
           label="LOT 번호"
@@ -221,7 +260,7 @@ export const LotStatusTransitionCandidateScreen = () => {
           value={draft.lotStatusCode}
           onChange={(lotStatusCode) => setDraft((current) => ({ ...current, lotStatusCode }))}
         />
-        <Button disabled={confirmationPinned} onClick={apply}>
+        <Button disabled={confirmationPinned || periodError !== null} onClick={apply}>
           조회
         </Button>
         <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>

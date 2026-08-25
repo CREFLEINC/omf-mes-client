@@ -15,14 +15,39 @@ describe('normalizeApiError', () => {
     });
   });
 
+  it('품질 충돌의 구조화된 현재 LOT 상태를 자유 문구와 분리해 보존한다', () => {
+    expect(
+      normalizeApiError(409, {
+        conflictCause: 'user',
+        currentLotStatusCode: 'DEFECTIVE',
+        message: '합성 충돌 문구',
+      }),
+    ).toEqual({
+      kind: 'conflict',
+      cause: 'user',
+      currentLotStatusCode: 'DEFECTIVE',
+      message: '합성 충돌 문구',
+    });
+  });
+
   it('409인데 충돌 원인이 없으면 원인을 user로 두지 않고 http로 남긴다', () => {
-    const result = normalizeApiError(409, { message: '중복' });
-    expect(result.kind).toBe('http');
+    const result = normalizeApiError(409, {
+      currentLotStatusCode: 'SCRAPPED',
+      message: '중복',
+    });
+    expect(result).toEqual({
+      kind: 'http',
+      status: 409,
+      message: '중복',
+      currentLotStatusCode: 'SCRAPPED',
+    });
   });
 
   it('STATE_LOCKED 오류는 상태 잠김으로 정규화한다 — 재로드해도 안 풀린다', () => {
     const result = normalizeApiError(400, {
-      errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '확정된 Rev는 수정할 수 없습니다' }],
+      errors: [
+        { scope: 'screen', code: 'STATE_LOCKED', message: '확정된 Rev는 수정할 수 없습니다' },
+      ],
     });
     expect(result.kind).toBe('stateLocked');
     if (result.kind === 'stateLocked') {
