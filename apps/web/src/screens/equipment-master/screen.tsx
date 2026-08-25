@@ -203,7 +203,26 @@ export const EquipmentMasterScreen = () => {
   const groupItems = useMemo(() => groupList.data?.items ?? [], [groupList.data]);
   const lookups = useLookupOptions();
   const detail = useGroupDetail(selectedGroupId);
-  const equipmentList = useEquipmentList(selectedGroupId, equipmentFilters);
+  /*
+   * ⭐ **이 그룹의 값 전부가 「설비 계열」의 정의다**(설계 확정 `omf-mes#224`) — 목록 조건이
+   * 이것을 통째로 싣는다. 코드에 값을 박지 않으므로 고객이 유형을 늘려도 손대지 않는다.
+   */
+  const equipmentTypeValues = useCodeValues(CODE_GROUPS.equipmentType);
+  const equipmentTypeOptions = useMemo(
+    () => toCodeLabels(equipmentTypeValues.data ?? []),
+    [equipmentTypeValues.data],
+  );
+  const equipmentTypeCodes = useMemo(
+    () => (equipmentTypeValues.data ?? []).map((value) => value.code),
+    [equipmentTypeValues.data],
+  );
+
+  const equipmentList = useEquipmentList(
+    selectedGroupId,
+    equipmentFilters,
+    equipmentTypeCodes,
+    equipmentTypeValues.data !== undefined,
+  );
   /**
    * 자산 상태 값 목록. **비어 있어도 화면을 감추지 않는다** — 시드가 아직 없을 수 있고
    * (설계 `omf-mes#182`) 그때는 상태가 코드로 보이고 폐기가 잠긴다(G-2).
@@ -214,8 +233,9 @@ export const EquipmentMasterScreen = () => {
   const cycleValues = useCodeValues(CODE_GROUPS.cycleType);
   const cycleOptions = useMemo(() => toCodeLabels(cycleValues.data ?? []), [cycleValues.data]);
   /** 점검 유형 값 목록 — 부여 표의 유형 칸을 사람이 읽는 말로 옮긴다. */
-  const inspectionTypeValues = useCodeValues(CODE_GROUPS.equipmentInspectionType);
-  /* ⛔ 이름을 모르는 코드는 담기지 않는다 — 담으면 코드가 이름 행세를 한다(G-9). */
+  const inspectionTypeValues = useCodeValues(
+    CODE_GROUPS.equipmentInspectionType,
+  ); /* ⛔ 이름을 모르는 코드는 담기지 않는다 — 담으면 코드가 이름 행세를 한다(G-9). */
   const labelMapOf = (options: readonly CodeOption[]): ReadonlyMap<string, string> =>
     new Map(options.map((option) => [option.value, option.label]));
   const cycleLabels = labelMapOf(cycleOptions);
@@ -1178,15 +1198,28 @@ export const EquipmentMasterScreen = () => {
                   )}
                   <EquipmentListPane
                     items={equipmentItems}
-                    isLoading={equipmentList.isPending}
+                    /* 유형 목록을 기다리는 동안도 「불러오는 중」이다 — 조건이 그것을 기다린다. */
+                    isLoading={equipmentList.isPending || equipmentTypeValues.isPending}
                     appliedFilters={equipmentFilters}
                     onApplyFilters={handleApplyEquipmentFilters}
                     statusOptions={statusOptions}
                     onAdd={openEquipmentCreate}
                     onEdit={openEquipmentEdit}
                     onOpenInspection={openEquipmentInspection}
+                    typeOptions={equipmentTypeOptions}
+                    /*
+                     * ⛔ **유형 목록을 못 받으면 «설비 목록도» 못 낸다.** 그것이 조회 조건이라
+                     * 없으면 조건 없이 나가고, 그러면 계측기가 이 목록에 섞인다. 조회를 열지
+                     * 않는 대신 **왜 못 여는지 말하고 다시 시도할 자리를 준다**(G-2 · G-23) —
+                     * 말하지 않으면 스켈레톤이 영영 돌아 사용자가 기다리기만 한다.
+                     */
                     loadError={
-                      equipmentList.isError ? (
+                      equipmentTypeValues.isError ? (
+                        <LoadErrorBanner
+                          error={toApiError(equipmentTypeValues.error)}
+                          onRetry={() => void equipmentTypeValues.refetch()}
+                        />
+                      ) : equipmentList.isError ? (
                         <LoadErrorBanner
                           error={toApiError(equipmentList.error)}
                           onRetry={() => void equipmentList.refetch()}
@@ -1314,6 +1347,7 @@ export const EquipmentMasterScreen = () => {
           mode={equipmentDialog.mode}
           values={equipmentValues}
           onChange={changeEquipmentValues}
+          typeOptions={equipmentTypeOptions}
           // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
           fieldErrors={{ ...equipmentWrite.fieldErrors, ...equipmentFieldErrors }}
           banner={

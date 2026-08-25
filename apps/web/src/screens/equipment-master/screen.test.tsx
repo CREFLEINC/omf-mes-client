@@ -6,6 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   codeValuesResponse,
+  equipmentTypeCodeValues,
+  makeCodeValue,
+  statusCodeValues,
   equipmentDetail,
   equipmentItems,
   equipmentsResponse,
@@ -189,8 +192,20 @@ const renderScreen = (options: RenderOptions = {}) => {
       {
         match: (request) => isPath(request, '/mdm/code-values'),
         respond: (request) => {
-          codeValueSent.push(new URL(request.url));
-          return (options.respondCodeValues ?? (() => jsonResponse(codeValuesResponse())))();
+          const url = new URL(request.url);
+
+          codeValueSent.push(url);
+
+          if (options.respondCodeValues !== undefined) return options.respondCodeValues();
+
+          /* ⛔ 그룹마다 다른 값을 준다 — 한 벌로 답하면 계열 조건이 헛통과한다. */
+          return jsonResponse(
+            codeValuesResponse(
+              url.searchParams.get('codeGroupCode') === 'EQUIPMENT_TYPE'
+                ? equipmentTypeCodeValues
+                : statusCodeValues,
+            ),
+          );
         },
       },
       {
@@ -1409,10 +1424,72 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
 
     const query = (equipmentSent.at(-1) as URL).searchParams;
     expect(query.has('q')).toBe(false);
-    expect(query.has('equipmentTypeCode')).toBe(false);
+    /*
+     * ⭐ **유형은 «빈 조건»이 아니다** — 고르지 않았으면 설비 계열 그룹의 값 전부가 실린다
+     * (통지 `client#415`). 그래서 이 목록에는 계측기가 섞이지 않는다.
+     */
+    expect(query.get('equipmentTypeCode')).toBe('INJECTION_MOLDING,PRESS,WATER_HEATER');
     // 켜지 않은 해제 조건은 아예 싣지 않는다 — 서버 기본을 뒤집지 않는다.
     expect(query.has('calibrationRequired')).toBe(false);
     expect(query.get('includeInactive')).toBe('false');
+  });
+
+  /**
+   * ⭐ **값을 코드에 박지 않는다** — 서버가 준 그룹을 그대로 실으므로 고객이 유형을 늘려도
+   * 이 화면은 손대지 않는다(계측기 화면과 같은 방법 · 통지 `client#415`).
+   */
+  it('그룹에 값이 늘면 늘어난 값도 함께 나간다', async () => {
+    const user = userEvent.setup();
+    const { equipmentSent } = renderScreen({
+      respondCodeValues: () =>
+        jsonResponse(
+          codeValuesResponse([...equipmentTypeCodeValues, makeCodeValue('LATHE', '선반')]),
+        ),
+    });
+
+    await openEquipmentTab(user);
+
+    await waitFor(() => {
+      expect((equipmentSent.at(-1) as URL).searchParams.get('equipmentTypeCode')).toContain(
+        'LATHE',
+      );
+    });
+  });
+
+  /**
+   * ⛔ **코드 목록을 받기 «전»에는 조회하지 않는다.** 먼저 조건 없이 나가면 계측기가 섞인
+   * 목록이 잠깐 서고, 그것을 본 사용자는 이 화면을 「전체 설비 목록」으로 읽는다.
+   */
+  it('유형 목록을 받기 전에는 설비를 조회하지 않는다', async () => {
+    const user = userEvent.setup();
+    const { equipmentSent } = renderScreen({
+      respondCodeValues: () => jsonResponse({ errors: [] }, { status: 500 }),
+    });
+
+    await openEquipmentTab(user);
+    /* 실패가 확정될 만큼 기다린 뒤에 잰다 — 바로 재면 아직 안 나간 것과 구별되지 않는다. */
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: messages.common.retry }).length).toBeGreaterThan(
+        0,
+      );
+    });
+
+    expect(equipmentSent).toHaveLength(0);
+  });
+
+  it('고른 유형만 조건으로 나간다', async () => {
+    const user = userEvent.setup();
+    const { equipmentSent } = renderScreen();
+
+    const pane = within(await openEquipmentTab(user));
+
+    await user.click(pane.getByRole('combobox', { name: t.fields.equipmentType }));
+    await user.click(await screen.findByRole('option', { name: '프레스' }));
+    await user.click(pane.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect((equipmentSent.at(-1) as URL).searchParams.get('equipmentTypeCode')).toBe('PRESS');
+    });
   });
 
   it('설비 조건을 적용하면 주소에 실리고 다시 조회한다', async () => {
@@ -1513,7 +1590,7 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
 
     const pane = within(await openEquipmentTab(user));
     await user.click(pane.getByRole('combobox', { name: t.fields.equipmentType }));
-    await user.click(await screen.findByRole('option', { name: messages.pendingCode.placeholder }));
+    await user.click(await screen.findByRole('option', { name: '프레스' }));
     await user.type(pane.getByLabelText(t.equipmentFilters.searchLabel), 'EQ-01');
     await user.click(pane.getByRole('button', { name: messages.common.search }));
 
@@ -1525,7 +1602,7 @@ describe('EquipmentMasterScreen — 설비 목록 탭', () => {
       expect(pane.getByLabelText(t.equipmentFilters.searchLabel)).toHaveValue('');
     });
     expect(pane.getByRole('combobox', { name: t.fields.equipmentType })).toHaveTextContent(
-      messages.pendingCode.placeholder,
+      '프레스',
     );
   });
 
@@ -2125,6 +2202,16 @@ describe('EquipmentMasterScreen — 설비 사용 중지·폐기', () => {
         return jsonResponse(groupDetail(groupById(idOf(request)) as EquipmentGroup), {
           headers: { ETag: '7' },
         });
+      }
+      /* 설비 목록 조건이 이 그룹의 값을 기다린다 — 없으면 목록 조회가 열리지 않는다. */
+      if (url.pathname === '/mdm/code-values') {
+        return jsonResponse(
+          codeValuesResponse(
+            url.searchParams.get('codeGroupCode') === 'EQUIPMENT_TYPE'
+              ? equipmentTypeCodeValues
+              : statusCodeValues,
+          ),
+        );
       }
       if (url.pathname === '/mdm/equipments') return jsonResponse(equipmentsResponse(only));
       if (url.pathname.startsWith('/mdm/equipments/')) {
