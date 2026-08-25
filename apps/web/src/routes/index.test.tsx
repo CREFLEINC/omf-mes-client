@@ -200,6 +200,13 @@ const lookupRoute = (pathname: string, items: unknown[]): StubRoute => ({
   respond: () => jsonResponse(listBody(items)),
 });
 
+const productionOrderRoutes = (): StubRoute[] => [
+  lookupRoute('/planning/production-orders', []),
+  lookupRoute('/mdm/business-units', []),
+  lookupRoute('/mdm/plants', []),
+  lookupRoute('/mdm/uoms', []),
+];
+
 /** W-01-12가 첫 진입에 부르는 것들 — 실사 목록과 이름 풀이 다섯. */
 const stockAdjustRoutes = (): StubRoute[] => [
   lookupRoute('/inventory/counts', adjustCountFixtures),
@@ -1176,7 +1183,7 @@ describe('appRouter — 특채·한도승인 승인 처리의 진입 경로', ()
 });
 
 describe('appRouter — W/O 마감·ERP 실적 송신의 진입 경로', () => {
-  it('생산실행 메뉴를 키보드로 열면 실제 마감 화면의 첫 상태가 선다', async () => {
+  it('생산 메뉴를 키보드로 열면 실제 마감 화면의 첫 상태가 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/lot-status', [...workOrderCloseRoutes(), ...lotStatusRoutes()]);
 
@@ -1203,6 +1210,33 @@ describe('appRouter — W/O 마감·ERP 실적 송신의 진입 경로', () => {
   it('화면 주소는 API close 리소스가 아니라 정확한 공개 route다', () => {
     expect(routedPaths()).toContain('/production/work-order-close');
     expect(routedPaths()).not.toContain('/production/work-orders/:workOrderId:close');
+  });
+});
+
+describe('appRouter — P/O 수신·조회의 진입 경로', () => {
+  it('생산 메뉴를 키보드로 열면 실제 P/O 조회 화면의 첫 상태가 선다', async () => {
+    const user = userEvent.setup();
+    renderRoutedApp('/quality/lot-status', [...productionOrderRoutes(), ...lotStatusRoutes()]);
+
+    const link = screen.getByRole('link', { name: messages.productionOrder.title });
+    link.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(currentLocation()).toBe('/production/production-orders'));
+    expect(
+      screen.getAllByRole('heading', { level: 1, name: messages.productionOrder.title }),
+    ).toHaveLength(1);
+    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
+    const breadcrumbItems = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
+    expect(breadcrumbItems).toHaveLength(2);
+    expect(within(breadcrumbItems[0]!).getByText('생산')).toBeVisible();
+    expect(within(breadcrumbItems[1]!).getByText(messages.productionOrder.title)).toBeVisible();
+    expect(await screen.findByText(messages.productionOrder.empty.title)).toBeVisible();
+  });
+
+  it('화면 주소는 API 리소스가 아니라 정확한 공개 route다', () => {
+    expect(routedPaths()).toContain('/production/production-orders');
+    expect(routedPaths()).not.toContain('/planning/production-orders');
   });
 });
 

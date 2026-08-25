@@ -191,7 +191,11 @@ describe('ProductionOrderScreen', () => {
           .map((url) => url.search),
       ).toEqual(['?productionOrderId=701', '?productionOrderId=701']),
     );
-    expect(screen.queryByText(/재동기/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /재동기/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: t.actions.integrationSync })).toHaveAttribute(
+      'href',
+      '/master-data/integration-sync',
+    );
   });
 
   it('목록 실패를 빈 성공으로 바꾸지 않고 상세 요청도 시작하지 않는다', async () => {

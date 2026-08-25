@@ -1,7 +1,7 @@
 import { AlertBanner, Breadcrumb, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { useProductionOrderPlans, useProductionOrderWorkOrders } from './detail-queries';
 import {
@@ -143,6 +143,10 @@ export const ProductionOrderScreen = () => {
           uoms={uoms}
         />
       </div>
+      <AlertBanner variant="info">
+        {t.values.erpReadOnlyNotice}{' '}
+        <Link to="/master-data/integration-sync">{t.actions.integrationSync}</Link>
+      </AlertBanner>
     </>
   );
 };
