@@ -63,6 +63,31 @@ const InvalidRouteButton = () => {
 };
 
 describe('검사실적·검사결과 조회 조립', () => {
+  it('재검 전체 보기를 주소 rounds=all로 보존한다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <InspectionResultInsightsScreen
+          options={options}
+          labels={labels}
+          sourceAxisCode="PQC"
+          onViewMeasurements={() => undefined}
+        />
+        <LocationProbe />
+      </>,
+      { fetch: () => new Promise(() => undefined) },
+    );
+
+    await user.type(screen.getByLabelText('시작일'), '2026-08-01');
+    await user.type(screen.getByLabelText('종료일'), '2026-08-31');
+    await user.click(screen.getByLabelText('검사유형'));
+    await user.click(screen.getByRole('option', { name: '공정검사' }));
+    await user.click(screen.getByRole('checkbox', { name: '최종 회차만' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+
+    await waitFor(() => expect(screen.getByLabelText('현재 주소')).toHaveTextContent('rounds=all'));
+  });
+
   it('기간·검사유형이 없으면 모든 집계 요청을 fail-closed한다', () => {
     const calls: Request[] = [];
     renderWithProviders(
