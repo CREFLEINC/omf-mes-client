@@ -6,6 +6,7 @@ import { useEffect, useId, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { LotStatusCandidate } from './candidate-screen';
+import { CreateHoldExecution } from './create-hold-execution';
 import { ReleaseHoldExecution } from './release-hold-execution';
 
 type Transition = components['schemas']['LotStatusTransition'];
@@ -87,6 +88,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null);
   const allowed = transitions.data?.transitions.filter((item) => item.allowed) ?? [];
   const selectedTransition = allowed.find((item) => transitionKey(item) === selectedTransitionKey);
+  const isCreate = selectedTransition?.actionCode === 'CREATE_HOLD';
   const isRelease = selectedTransition?.actionCode === 'RELEASE_HOLD';
   const holds = useOpenHolds(lot.lotId, isRelease);
   const automaticHoldId =
@@ -139,7 +141,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
     );
 
   let preparation: string | null = null;
-  if (selectedTransition?.actionCode === 'CREATE_HOLD') {
+  if (isCreate) {
     preparation = Number.isSafeInteger(lot.versionNo)
       ? '보류 등록 준비가 완료되었습니다.'
       : 'LOT 잠금 정보를 확인하지 못해 진행할 수 없습니다.';
@@ -178,6 +180,20 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
         />
       )}
       {preparation !== null && <p role="status">{preparation}</p>}
+      {isCreate &&
+        selectedTransition !== undefined &&
+        lot.versionNo !== undefined &&
+        Number.isSafeInteger(lot.versionNo) && (
+          <CreateHoldExecution
+            key={`${String(lot.lotId)}:${String(lot.versionNo)}:${selectedTransitionKey ?? ''}`}
+            lotId={lot.lotId}
+            lotNo={lot.lotNo}
+            versionNo={lot.versionNo}
+            maxHoldQty={lot.availableQty}
+            targetLotStatusCode={selectedTransition.targetLotStatusCode}
+            onCreated={() => setSelectedTransitionKey(null)}
+          />
+        )}
       {isRelease &&
         selectedTransition !== undefined &&
         selectedHoldId !== null &&
