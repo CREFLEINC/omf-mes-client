@@ -185,11 +185,15 @@ export const InsightTabs = ({
     </section>
   );
   const tabs: TabItem[] = [
-    { value: 'trend', label: '불량률 추이', content: view === 'trend' ? trendContent : null },
+    {
+      value: 'trend',
+      label: '불량률 추이',
+      content: queriesEnabled && view === 'trend' ? trendContent : null,
+    },
     {
       value: 'distribution',
       label: '불량 분포',
-      content: view === 'distribution' ? distributionContent : null,
+      content: queriesEnabled && view === 'distribution' ? distributionContent : null,
     },
   ];
   return (

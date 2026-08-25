@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 
 import {
   createStubFetch,
@@ -48,6 +48,19 @@ const pathRoute = (path: string, respond: StubRoute['respond']): StubRoute => ({
   respond,
 });
 const LocationProbe = () => <output aria-label="현재 주소">{useLocation().search}</output>;
+const InvalidRouteButton = () => {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        navigate('?from=2026-08-01&to=2026-08-31&type=PQC&judgment=UNKNOWN&selected=701')
+      }
+    >
+      무효 주소로 이동
+    </button>
+  );
+};
 
 describe('검사실적·검사결과 조회 조립', () => {
   it('기간·검사유형이 없으면 모든 집계 요청을 fail-closed한다', () => {
@@ -110,6 +123,85 @@ describe('검사실적·검사결과 조회 조립', () => {
     expect(await screen.findByText('기간과 검사유형을 선택하세요')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: '불량 분포' }));
     expect(calls).toHaveLength(0);
+  });
+
+  it('유효 주소의 모든 캐시와 상세를 무효 주소에서 숨긴다', async () => {
+    const user = userEvent.setup();
+    const calls: URL[] = [];
+    const capture = (request: Request): void => void calls.push(new URL(request.url));
+    renderWithProviders(
+      <>
+        <InspectionResultInsightsScreen
+          options={options}
+          labels={labels}
+          sourceAxisCode="PQC"
+          onViewMeasurements={() => undefined}
+        />
+        <InvalidRouteButton />
+      </>,
+      {
+        route: '/quality/inspection-results?from=2026-08-01&to=2026-08-31&type=PQC&selected=701',
+        fetch: createStubFetch([
+          pathRoute('/quality/inspection-results/summary', (request) => {
+            capture(request);
+            return jsonResponse({
+              inspectionCount: 1,
+              inspectedQty: 30,
+              acceptedQty: 27,
+              rejectedQty: 2,
+              heldQty: 1,
+              defectRate: 6.67,
+              finalRoundOnly: true,
+              asOf: '2026-08-31T09:30:00+09:00',
+            });
+          }),
+          pathRoute('/quality/inspection-results', (request) => {
+            capture(request);
+            return jsonResponse({ items: [row], page: { page: 1, size: 50, total: 1 } });
+          }),
+          pathRoute('/quality/inspection-results/defect-rate-trend', (request) => {
+            capture(request);
+            return jsonResponse({
+              points: [{ bucket: '2026-08-01', inspectedQty: 30, rejectedQty: 3, defectRate: 10 }],
+              asOf: '2026-08-31T09:31:00+09:00',
+            });
+          }),
+          pathRoute('/quality/defect-records/distribution', (request) => {
+            capture(request);
+            return jsonResponse({
+              nodes: [{ defectCodeId: 901, label: '합성 분포', recordCount: 1, defectQty: 2 }],
+              groupBy: 'defectCode',
+              asOf: '2026-08-31T09:32:00+09:00',
+            });
+          }),
+          pathRoute('/quality/inspection-results/701', (request) => {
+            capture(request);
+            return jsonResponse(row);
+          }),
+          pathRoute('/quality/inspection-results/701/measurement-summary', (request) => {
+            capture(request);
+            return jsonResponse({ items: [], asOf: '2026-08-31T09:33:00+09:00' });
+          }),
+        ]),
+      },
+    );
+
+    await screen.findByText('SAMPLE-REQUEST-801');
+    expect(await screen.findByRole('img', { name: /2026-08-01 10%/ })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: '검사 결과 상세' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '불량 분포' }));
+    expect(await screen.findByText('합성 분포')).toBeInTheDocument();
+    const validCallCount = calls.length;
+
+    await user.click(screen.getByRole('button', { name: '무효 주소로 이동' }));
+    expect(await screen.findByText('기간과 검사유형을 선택하세요')).toBeInTheDocument();
+    expect(screen.queryByText('SAMPLE-REQUEST-801')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: '검사실적 요약 카드' })).not.toBeInTheDocument();
+    expect(screen.queryByText('합성 분포')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '불량률 추이' }));
+    expect(screen.queryByRole('img', { name: /2026-08-01 10%/ })).not.toBeInTheDocument();
+    expect(calls).toHaveLength(validCallCount);
   });
 
   it('공통 모집단을 조회하고 선택 상세를 연 뒤 page 이동에서 선택을 정리한다', async () => {
