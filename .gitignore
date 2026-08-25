@@ -4,5 +4,6 @@ coverage/
 *.local
 .DS_Store
 
-# 하네스 작업 산출물 — 계획·실행·검증 보고서(비공개 설계 내용을 담을 수 있어 공개 저장소에 올리지 않는다)
-.claude/_workspace/
+# 개인 Agent 도구·설정 — 정본은 docs/client-dev-workflow/ 이며 이 저장소에 공유되지 않는다.
+# 작업 산출물·설계 저장소 참조 클론처럼 비공개 내용이 섞일 수 있는 것도 이 아래에 둔다.
+.claude/
