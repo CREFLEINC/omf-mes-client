@@ -38,7 +38,7 @@ const toCommonQuery = (filters: InspectionInsightFilters): InspectionSummaryQuer
     inspectionTypeCode: filters.inspectionTypeCode,
     inspectedFrom: filters.from,
     inspectedTo: filters.to,
-    finalRoundOnly: true,
+    finalRoundOnly: filters.finalRoundOnly,
   };
   const itemId = toIdentifier(filters.itemId);
   const processId = toIdentifier(filters.processId);

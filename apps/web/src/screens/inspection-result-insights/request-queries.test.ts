@@ -61,6 +61,14 @@ describe('검사 목록·요약·추이 모집단', () => {
       page: 3,
     });
   });
+
+  it('재검 전체 보기는 세 요청에 finalRoundOnly=false를 그대로 보낸다', () => {
+    const allRounds = { ...FILTERS, finalRoundOnly: false };
+
+    expect(toInspectionSummaryQuery(allRounds)?.finalRoundOnly).toBe(false);
+    expect(toDefectRateTrendQuery(allRounds)?.finalRoundOnly).toBe(false);
+    expect(toInspectionListQuery(allRounds, 'inspectedAt,desc', 1)?.finalRoundOnly).toBe(false);
+  });
 });
 
 describe('불량 분포 모집단', () => {

@@ -1,4 +1,4 @@
-import { Button, Select, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Select, TextField } from '@crefle/web-ui';
 import { useEffect, useId, useState } from 'react';
 
 import type { InspectionInsightFilters } from './filters';
@@ -43,6 +43,7 @@ export const InspectionInsightFilterBar = ({
     processId,
     overallJudgmentCode,
     calibrationExpired,
+    finalRoundOnly,
   } = appliedFilters;
 
   useEffect(() => {
@@ -53,10 +54,19 @@ export const InspectionInsightFilterBar = ({
       itemId,
       processId,
       overallJudgmentCode,
-      finalRoundOnly: true,
+      finalRoundOnly,
       calibrationExpired,
     });
-  }, [from, to, inspectionTypeCode, itemId, processId, overallJudgmentCode, calibrationExpired]);
+  }, [
+    from,
+    to,
+    inspectionTypeCode,
+    itemId,
+    processId,
+    overallJudgmentCode,
+    calibrationExpired,
+    finalRoundOnly,
+  ]);
 
   const reason =
     draft.from === '' || draft.to === '' || draft.inspectionTypeCode === ''
@@ -120,6 +130,16 @@ export const InspectionInsightFilterBar = ({
         />
       </div>
       <div className="field-cell field-cell-unlabeled">
+        <Checkbox
+          checked={draft.finalRoundOnly}
+          onChange={(event) =>
+            setDraft((current) => ({ ...current, finalRoundOnly: event.target.checked }))
+          }
+        >
+          최종 회차만
+        </Checkbox>
+      </div>
+      <div className="field-cell field-cell-unlabeled">
         <div className="filter-actions">
           <Button disabled={reason !== null} onClick={() => onSearch(draft)}>
             조회
@@ -128,7 +148,12 @@ export const InspectionInsightFilterBar = ({
             초기화
           </Button>
         </div>
-        <span className="field-note">{reason ?? '최종 검사 회차만 조회합니다.'}</span>
+        <span className="field-note">
+          {reason ??
+            (draft.finalRoundOnly
+              ? '최종 검사 회차만 조회합니다.'
+              : '재검 사슬 전체를 회차 순서로 조회합니다.')}
+        </span>
       </div>
     </div>
   );

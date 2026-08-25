@@ -15,7 +15,7 @@ export interface InspectionInsightFilters {
   itemId: string;
   processId: string;
   overallJudgmentCode: string;
-  finalRoundOnly: true;
+  finalRoundOnly: boolean;
   calibrationExpired: CalibrationFilter;
 }
 
@@ -72,6 +72,7 @@ export const readInspectionInsightFilters = (
   const to = params.get('to') ?? '';
   const type = params.get('type') ?? '';
   const judgment = params.get('judgment') ?? '';
+  const rounds = params.get('rounds');
   const hasInvalidDate = [from, to].some((value) => value !== '' && !isCalendarDate(value));
   const hasUnknownCode =
     (type !== '' && !allowed.inspectionTypeCodes.has(type)) ||
@@ -86,7 +87,12 @@ export const readInspectionInsightFilters = (
     finalRoundOnly: true,
     calibrationExpired: calibration === 'only' || calibration === 'exclude' ? calibration : '',
   };
-  return { kind: hasInvalidDate || hasUnknownCode ? 'INVALID' : 'VALID', filters };
+  filters.finalRoundOnly = rounds !== 'all';
+  const hasInvalidRounds = rounds !== null && rounds !== 'all';
+  return {
+    kind: hasInvalidDate || hasUnknownCode || hasInvalidRounds ? 'INVALID' : 'VALID',
+    filters,
+  };
 };
 
 export const readInspectionResultSort = (params: URLSearchParams): InspectionResultSort =>

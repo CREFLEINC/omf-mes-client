@@ -13,6 +13,14 @@ const dateTime = (value: string): string => {
   return match === null ? value : `${match[1]} ${match[2]}`;
 };
 const count = (value: number | undefined): string => String(value ?? 0);
+const remainingOutOfSpecCount = (item: MeasurementItemSummary): number => {
+  const shown = item.outOfSpecValues?.length ?? 0;
+  const total =
+    'outOfSpecTotalCount' in item && typeof item.outOfSpecTotalCount === 'number'
+      ? item.outOfSpecTotalCount
+      : shown;
+  return Math.max(0, total - shown);
+};
 
 interface ResultDetailDialogProps {
   inspectionResultId: number;
@@ -30,7 +38,12 @@ const MeasurementSummaryRow = ({ item }: { item: MeasurementItemSummary }) => (
       {count(item.rejectedCount)}건 · 미측정 {count(item.unmeasuredCount)}건
     </p>
     {(item.outOfSpecValues?.length ?? 0) > 0 && (
-      <p>일부 예시: {item.outOfSpecValues?.join(', ')}</p>
+      <p>
+        일부 예시: {item.outOfSpecValues?.join(', ')}
+        {remainingOutOfSpecCount(item) > 0
+          ? ` · 외 ${String(remainingOutOfSpecCount(item))}건`
+          : ''}
+      </p>
     )}
     <p>측정 장비 {item.equipmentName ?? EMPTY}</p>
     {item.equipmentCalibrationExpired === true && (

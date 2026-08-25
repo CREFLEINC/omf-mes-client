@@ -59,6 +59,7 @@ describe('검사 결과 공통 필터', () => {
       await user.click(screen.getByLabelText(field!));
       await user.click(screen.getByRole('option', { name: option! }));
     }
+    await user.click(screen.getByRole('checkbox', { name: '최종 회차만' }));
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(onSearch).toHaveBeenCalledWith({
@@ -68,10 +69,10 @@ describe('검사 결과 공통 필터', () => {
       itemId: '101',
       processId: '501',
       overallJudgmentCode: 'REJECTED',
-      finalRoundOnly: true,
+      finalRoundOnly: false,
       calibrationExpired: 'only',
     });
-    expect(screen.getByText('최종 검사 회차만 조회합니다.')).toBeInTheDocument();
+    expect(screen.getByText('재검 사슬 전체를 회차 순서로 조회합니다.')).toBeInTheDocument();
     expect(screen.queryByText('101')).not.toBeInTheDocument();
   });
 });

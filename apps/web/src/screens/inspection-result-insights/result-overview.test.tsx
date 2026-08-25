@@ -195,4 +195,58 @@ describe('검사 결과 요약·목록', () => {
       screen.queryByRole('button', { name: 'SAMPLE-PAGE-ONE 상세 보기' }),
     ).not.toBeInTheDocument();
   });
+
+  it('재검 전체 보기에서 같은 페이지의 사슬을 회차 깊이로 표시한다', async () => {
+    const root = row(1, 'SAMPLE-ROOT');
+    const reinspection = {
+      ...row(2, 'SAMPLE-REINSPECTION'),
+      inspectionRound: 2,
+      previousResultId: 1,
+    };
+    const allRounds = { ...filters, finalRoundOnly: false };
+    const requests: URL[] = [];
+
+    renderWithProviders(
+      <ResultOverview
+        filters={allRounds}
+        sort="inspectedAt,desc"
+        page={1}
+        labels={{ item: new Map(), judgment: new Map() }}
+        onSortChange={() => undefined}
+        onPageChange={() => undefined}
+        onSelectResult={() => undefined}
+        onViewExpiredCalibration={() => undefined}
+      />,
+      {
+        fetch: async (request) => {
+          const url = new URL(request.url);
+          requests.push(url);
+          return url.pathname.endsWith('/summary')
+            ? jsonResponse({
+                inspectionCount: 1,
+                inspectedQty: 30,
+                acceptedQty: 28,
+                rejectedQty: 2,
+                heldQty: 0,
+                defectRate: 6.67,
+                finalRoundOnly: false,
+                asOf: '2026-08-31T09:30:00+09:00',
+              })
+            : jsonResponse({
+                items: [root, reinspection],
+                page: { page: 1, size: 50, total: 1 },
+              });
+        },
+      },
+    );
+
+    const rootLink = await screen.findByRole('button', { name: 'SAMPLE-ROOT 상세 보기' });
+    const childLink = screen.getByRole('button', { name: 'SAMPLE-REINSPECTION 상세 보기' });
+    expect(rootLink).toHaveAttribute('data-depth', '0');
+    expect(childLink).toHaveAttribute('data-depth', '1');
+    expect(childLink).toHaveStyle({ paddingInlineStart: '1rem' });
+    expect(screen.getByText(/뿌리 결과 기준 페이지에서 재검 사슬 전체/)).toBeInTheDocument();
+    for (const request of requests)
+      expect(request.searchParams.get('finalRoundOnly')).toBe('false');
+  });
 });

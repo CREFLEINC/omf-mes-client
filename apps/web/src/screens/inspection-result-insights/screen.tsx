@@ -41,6 +41,8 @@ const withFilters = (
     if (value === '') next.delete(key);
     else next.set(key, value);
   }
+  if (filters.finalRoundOnly) next.delete('rounds');
+  else next.set('rounds', 'all');
   next.delete('page');
   next.delete('selected');
   return next;

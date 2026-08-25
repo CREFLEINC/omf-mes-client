@@ -13,7 +13,7 @@ const ALLOWED = {
 };
 
 describe('검사 실적 조회 조건', () => {
-  it('주소의 기간·검사유형·공통 축을 읽고 최종 회차만 고정한다', () => {
+  it('주소의 기간·검사유형·공통 축을 읽고 기본은 최종 회차만 본다', () => {
     const params = new URLSearchParams(
       'from=2026-08-01&to=2026-08-31&type=IQC&item=101&process=202&judgment=REJECTED&calibration=only',
     );
@@ -30,6 +30,17 @@ describe('검사 실적 조회 조건', () => {
         finalRoundOnly: true,
         calibrationExpired: 'only',
       },
+    });
+  });
+
+  it('rounds=all은 재검 사슬 전체를 열고 다른 값은 fail-closed한다', () => {
+    expect(readInspectionInsightFilters(new URLSearchParams('rounds=all'), ALLOWED)).toMatchObject({
+      kind: 'VALID',
+      filters: { finalRoundOnly: false },
+    });
+    expect(readInspectionInsightFilters(new URLSearchParams('rounds=latest'), ALLOWED)).toEqual({
+      kind: 'INVALID',
+      filters: EMPTY_INSPECTION_INSIGHT_FILTERS,
     });
   });
 

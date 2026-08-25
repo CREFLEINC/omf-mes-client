@@ -38,7 +38,7 @@ const detail = {
 };
 
 describe('검사 결과 상세 Dialog', () => {
-  it('상세와 항목별 측정 요약을 서버 값으로 표시하고 예시 총수를 추론하지 않는다', async () => {
+  it('상세와 항목별 측정 요약을 서버 값으로 표시하고 남은 예시 수를 전체 건수로 계산한다', async () => {
     const onClose = vi.fn();
     const onViewMeasurements = vi.fn();
     let summaryRequests = 0;
@@ -71,6 +71,7 @@ describe('검사 결과 상세 Dialog', () => {
                   rejectedCount: 2,
                   unmeasuredCount: 1,
                   outOfSpecValues: ['12.07', '12.09'],
+                  outOfSpecTotalCount: 15,
                   equipmentName: '합성 캘리퍼',
                   equipmentCalibrationExpired: true,
                   equipmentCalibrationDueDate: '2026-07-28',
@@ -88,8 +89,8 @@ describe('검사 결과 상세 Dialog', () => {
     expect(within(dialog).getByText('합성 치수')).toBeInTheDocument();
     const summary = within(dialog).getByRole('listitem');
     expect(summary).toHaveTextContent('미측정 1건');
-    expect(summary).toHaveTextContent('일부 예시: 12.07, 12.09');
-    expect(within(dialog).queryByText(/외 \d+건/)).not.toBeInTheDocument();
+    expect(summary).toHaveTextContent('일부 예시: 12.07, 12.09 · 외 13건');
+    expect(summary).not.toHaveTextContent('외 0건');
     expect(summary).toHaveTextContent('검교정 만료 · 예정일 2026-07-28');
     expect(within(dialog).getByText('기준 2026-08-31 11:30')).toBeInTheDocument();
     expect(within(dialog).queryByText('901')).not.toBeInTheDocument();

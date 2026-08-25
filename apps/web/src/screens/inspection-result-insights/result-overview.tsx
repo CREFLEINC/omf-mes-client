@@ -11,6 +11,7 @@ import {
 
 import type { InspectionInsightFilters, InspectionResultSort } from './filters';
 import { useInspectionResults, useInspectionSummary, type InspectionResult } from './queries';
+import { toInspectionResultTreeRows, type InspectionResultTreeRow } from './reinspection-chain';
 import { toInspectionSummaryQuery } from './request-queries';
 
 const EMPTY = '미확인';
@@ -93,7 +94,7 @@ export const ResultOverview = ({
     );
   }
 
-  const columns: Column<InspectionResult>[] = [
+  const columns: Column<InspectionResultTreeRow>[] = [
     {
       key: 'inspectionRequestNo',
       header: '의뢰번호',
@@ -102,42 +103,46 @@ export const ResultOverview = ({
         <Button
           size="sm"
           variant="text"
-          aria-label={`${row.inspectionRequestNo ?? EMPTY} 상세 보기`}
-          onClick={() => onSelectResult(row.inspectionResultId)}
+          className="tree-toggle"
+          data-depth={row.depth}
+          style={{ paddingInlineStart: `${String(row.depth)}rem` }}
+          aria-label={`${row.result.inspectionRequestNo ?? EMPTY} 상세 보기`}
+          onClick={() => onSelectResult(row.result.inspectionResultId)}
         >
-          {row.inspectionRequestNo ?? EMPTY}
+          {row.result.inspectionRequestNo ?? EMPTY}
         </Button>
       ),
     },
     {
       key: 'inspectionTypeCode',
       header: '검사유형',
-      render: (row) => TYPE_LABELS.get(row.inspectionTypeCode ?? '') ?? EMPTY,
+      render: (row) => TYPE_LABELS.get(row.result.inspectionTypeCode ?? '') ?? EMPTY,
     },
     {
       key: 'item',
       header: '품목',
-      render: (row) => (row.itemId === undefined ? EMPTY : (labels.item.get(row.itemId) ?? EMPTY)),
+      render: (row) =>
+        row.result.itemId === undefined ? EMPTY : (labels.item.get(row.result.itemId) ?? EMPTY),
     },
-    { key: 'lotNo', header: 'LOT', render: (row) => row.lotNo ?? EMPTY },
+    { key: 'lotNo', header: 'LOT', render: (row) => row.result.lotNo ?? EMPTY },
     {
       key: 'rejectedQty',
       header: '검사/합격/불합격',
       sortable: true,
       align: 'end',
       render: (row) =>
-        `${number(row.inspectedQty)} / ${number(row.acceptedQty)} / ${number(row.rejectedQty)}`,
+        `${number(row.result.inspectedQty)} / ${number(row.result.acceptedQty)} / ${number(row.result.rejectedQty)}`,
     },
     {
       key: 'overallJudgmentCode',
       header: '종합판정',
-      render: (row) => labels.judgment.get(row.overallJudgmentCode) ?? EMPTY,
+      render: (row) => labels.judgment.get(row.result.overallJudgmentCode) ?? EMPTY,
     },
     {
       key: 'inspectedAt',
       header: '검사시각/회차',
       sortable: true,
-      render: (row) => `${dateTime(row.inspectedAt)} / ${row.inspectionRound}회`,
+      render: (row) => `${dateTime(row.result.inspectedAt)} / ${row.result.inspectionRound}회`,
     },
   ];
   const cards =
@@ -154,7 +159,11 @@ export const ResultOverview = ({
   return (
     <section aria-labelledby="inspection-results-title">
       <h2 id="inspection-results-title">검사실적 요약</h2>
-      <p className="field-note">최종 회차만 집계합니다.</p>
+      <p className="field-note">
+        {filters.finalRoundOnly
+          ? '최종 회차만 집계합니다.'
+          : '뿌리 결과 기준 페이지에서 재검 사슬 전체를 회차 순서로 표시합니다.'}
+      </p>
       {summary.isPending && <SkeletonText lines={1} />}
       {summary.isError && (
         <AlertBanner
@@ -214,8 +223,8 @@ export const ResultOverview = ({
             density="compact"
             caption="검사 결과 목록"
             columns={columns}
-            rows={[...list.data.items]}
-            getRowId={(row) => String(row.inspectionResultId)}
+            rows={toInspectionResultTreeRows(list.data.items)}
+            getRowId={(row) => String(row.result.inspectionResultId)}
             sort={toTableSort(sort)}
             onSortChange={(next) => onSortChange(toServerSort(next))}
             empty={<EmptyState size="sm" title="조건에 맞는 검사 결과가 없습니다" />}
