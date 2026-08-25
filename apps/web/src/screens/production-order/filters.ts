@@ -1,5 +1,6 @@
 export interface ProductionOrderFilters {
   q: string;
+  businessUnit: string;
   plant: string;
   item: string;
   status: string;
@@ -9,6 +10,7 @@ export interface ProductionOrderFilters {
 
 export const DEFAULT_PRODUCTION_ORDER_FILTERS: ProductionOrderFilters = {
   q: '',
+  businessUnit: '',
   plant: '',
   item: '',
   status: '',
@@ -18,6 +20,7 @@ export const DEFAULT_PRODUCTION_ORDER_FILTERS: ProductionOrderFilters = {
 
 const keys = {
   q: 'q',
+  businessUnit: 'businessUnit',
   plant: 'plant',
   item: 'item',
   status: 'status',
@@ -45,6 +48,7 @@ const text = (value: string): string => value.trim();
 
 export const readFilters = (params: URLSearchParams): ProductionOrderFilters => ({
   q: text(params.get(keys.q) ?? ''),
+  businessUnit: id(params.get(keys.businessUnit) ?? ''),
   plant: id(params.get(keys.plant) ?? ''),
   item: id(params.get(keys.item) ?? ''),
   status: text(params.get(keys.status) ?? ''),
@@ -66,6 +70,7 @@ export const toSearchParams = (filters: ProductionOrderFilters, page: number): U
   const next = new URLSearchParams();
   const entries = [
     [keys.q, text(filters.q)],
+    [keys.businessUnit, id(filters.businessUnit)],
     [keys.plant, id(filters.plant)],
     [keys.item, id(filters.item)],
     [keys.status, text(filters.status)],
@@ -79,12 +84,14 @@ export const toSearchParams = (filters: ProductionOrderFilters, page: number): U
 
 export interface ProductionOrderFilterQuery {
   q?: string;
+  businessUnitId?: number;
   plantId?: number;
   itemId?: number;
   statusCode?: string;
   dueDateFrom?: string;
   dueDateTo?: string;
   page?: number;
+  includeChildren: true;
 }
 
 export const toFilterQuery = (
@@ -94,11 +101,13 @@ export const toFilterQuery = (
   const valid = readFilters(toSearchParams(filters, 1));
   return {
     ...(valid.q === '' ? {} : { q: valid.q }),
+    ...(valid.businessUnit === '' ? {} : { businessUnitId: Number(valid.businessUnit) }),
     ...(valid.plant === '' ? {} : { plantId: Number(valid.plant) }),
     ...(valid.item === '' ? {} : { itemId: Number(valid.item) }),
     ...(valid.status === '' ? {} : { statusCode: valid.status }),
     ...(valid.dueFrom === '' ? {} : { dueDateFrom: valid.dueFrom }),
     ...(valid.dueTo === '' ? {} : { dueDateTo: valid.dueTo }),
+    includeChildren: true,
     ...(Number.isSafeInteger(page) && page > 1 ? { page } : {}),
   };
 };

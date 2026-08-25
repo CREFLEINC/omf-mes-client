@@ -9,6 +9,8 @@ export interface ProductionOrderRow {
   depth: number;
   hasChildren: boolean;
   isExpanded: boolean;
+  expandedWorkOrderCount: number | null;
+  plannedWorkOrderCount: number | null;
 }
 
 export interface PageMeta {
@@ -25,12 +27,15 @@ export interface ProductionOrderFact {
   parentProductionOrderId: number | null;
   /** 계층 표시가 시작되기 전에도 안전하게 쓸 수 있는 깊이 값. */
   bomLevel: number;
+  businessUnitId: number | null;
   plantId: number | null;
   itemId: number;
   orderQty: number;
   uomId: number;
   dueDate: string | null;
   statusCode: string;
+  expandedWorkOrderCount: number | null;
+  plannedWorkOrderCount: number | null;
 }
 
 export interface ProductionOrderListResponse {

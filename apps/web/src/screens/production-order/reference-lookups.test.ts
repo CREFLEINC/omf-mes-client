@@ -13,12 +13,14 @@ import {
   lookupNote,
   productionOrderReferenceKeys,
   resolveReference,
+  useBusinessUnitReferenceLookup,
   usePlantReferenceLookup,
   useUomReferenceLookup,
   type ReferenceSource,
 } from './reference-lookups';
 
 const PLANTS_PATH = '/mdm/plants';
+const BUSINESS_UNITS_PATH = '/mdm/business-units';
 const UOMS_PATH = '/mdm/uoms';
 
 const isExactly = (request: Request, pathname: string): boolean =>
@@ -46,8 +48,24 @@ const source = (overrides: Partial<ReferenceSource> = {}): ReferenceSource => ({
 });
 
 describe('production-order reference lookups', () => {
-  it('plant와 UOM 목록을 비활성 포함 계약 요청으로 각각 읽어 code · name entries로 낸다', async () => {
+  it('사업부, plant, UOM을 비활성 포함 계약 요청으로 각각 읽어 code · name entries로 낸다', async () => {
     const { fetch, urls } = recordingFetch([
+      {
+        match: (request) => isExactly(request, BUSINESS_UNITS_PATH),
+        respond: () =>
+          jsonResponse({
+            items: [
+              {
+                businessUnitId: 2101,
+                legalEntityId: 1101,
+                businessUnitCode: 'BU-SYN-01',
+                businessUnitName: 'Synthetic Unit',
+                isActive: true,
+              },
+            ],
+            page: { page: 1, size: 25, total: 1 },
+          }),
+      },
       {
         match: (request) => isExactly(request, PLANTS_PATH),
         respond: () =>
@@ -84,13 +102,21 @@ describe('production-order reference lookups', () => {
       },
     ]);
     const { result } = renderHookWithProviders(
-      () => ({ plants: usePlantReferenceLookup(), uoms: useUomReferenceLookup() }),
+      () => ({
+        businessUnits: useBusinessUnitReferenceLookup(),
+        plants: usePlantReferenceLookup(),
+        uoms: useUomReferenceLookup(),
+      }),
       { fetch },
     );
 
+    await waitFor(() => expect(result.current.businessUnits.entries).toHaveLength(1));
     await waitFor(() => expect(result.current.plants.entries).toHaveLength(1));
     await waitFor(() => expect(result.current.uoms.entries).toHaveLength(1));
 
+    expect(result.current.businessUnits.entries).toEqual([
+      { value: '2101', label: 'BU-SYN-01 · Synthetic Unit' },
+    ]);
     expect(result.current.plants).toMatchObject({
       entries: [{ value: '3101', label: 'PLANT-SYN-01 · Synthetic Plant One' }],
       isLoading: false,
@@ -105,13 +131,16 @@ describe('production-order reference lookups', () => {
     });
     expect(typeof result.current.plants.refetch).toBe('function');
     expect(typeof result.current.uoms.refetch).toBe('function');
-    expect(urls).toHaveLength(2);
+    expect(urls).toHaveLength(3);
     for (const url of urls) {
       expect(url.searchParams.get('includeInactive')).toBe('true');
       expect(url.searchParams.has('page')).toBe(false);
       expect(url.searchParams.has('size')).toBe(false);
     }
     expect(productionOrderReferenceKeys.plants).not.toEqual(productionOrderReferenceKeys.uoms);
+    expect(productionOrderReferenceKeys.businessUnits).not.toEqual(
+      productionOrderReferenceKeys.plants,
+    );
   });
 
   it('각 목록 실패를 독립된 error state로 보존한다', async () => {

@@ -60,8 +60,25 @@ const toLookupResult = <T>(
 };
 
 export const productionOrderReferenceKeys = {
+  businessUnits: ['production-order-reference-lookups', 'business-units'] as const,
   plants: ['production-order-reference-lookups', 'plants'] as const,
   uoms: ['production-order-reference-lookups', 'uoms'] as const,
+};
+
+export const useBusinessUnitReferenceLookup = (): ReferenceLookupResult => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: productionOrderReferenceKeys.businessUnits,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/business-units', { params: { query: { includeInactive: true } } }),
+      ),
+  });
+
+  return toLookupResult(query, (unit) => ({
+    value: String(unit.businessUnitId),
+    label: `${unit.businessUnitCode} · ${unit.businessUnitName}`,
+  }));
 };
 
 export const usePlantReferenceLookup = (): ReferenceLookupResult => {

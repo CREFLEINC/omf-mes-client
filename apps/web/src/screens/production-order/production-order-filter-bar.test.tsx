@@ -15,6 +15,7 @@ const renderBar = (
 ) => {
   const props = {
     appliedFilters: applied(),
+    businessUnitOptions: [{ value: '2101', label: 'BU-SYN-01 · 합성 사업부' }],
     plantOptions: [{ value: '12', label: 'SYNTH-PLANT-A · 합성 공장' }],
     itemOptions: [{ value: '20', label: 'SYNTH-ITEM-A · 합성 품목' }],
     statusOptions: ['SYNTH-RAW'],
@@ -40,6 +41,7 @@ describe('ProductionOrderFilterBar', () => {
     const { props, user } = renderBar();
 
     const selections: readonly [name: string, value: string][] = [
+      ['사업부', 'BU-SYN-01 · 합성 사업부'],
       ['공장', 'SYNTH-PLANT-A · 합성 공장'],
       ['품목', 'SYNTH-ITEM-A · 합성 품목'],
       ['상태', 'SYNTH-RAW'],
@@ -73,6 +75,7 @@ describe('ProductionOrderFilterBar', () => {
     rerender(
       <ProductionOrderFilterBar
         appliedFilters={applied({ q: 'old' })}
+        businessUnitOptions={[]}
         plantOptions={[]}
         itemOptions={[]}
         statusOptions={[]}
@@ -83,7 +86,8 @@ describe('ProductionOrderFilterBar', () => {
     expect(query).toHaveValue('draft');
     rerender(
       <ProductionOrderFilterBar
-        appliedFilters={applied({ q: 'next' })}
+        appliedFilters={applied({ q: 'old', businessUnit: '2101' })}
+        businessUnitOptions={[{ value: '2101', label: 'BU-SYN-01 · 합성 사업부' }]}
         plantOptions={[]}
         itemOptions={[]}
         statusOptions={[]}
@@ -91,7 +95,8 @@ describe('ProductionOrderFilterBar', () => {
         onReset={vi.fn()}
       />,
     );
-    expect(query).toHaveValue('next');
+    expect(query).toHaveValue('old');
+    expect(screen.getByRole('combobox', { name: '사업부' })).toHaveTextContent('합성 사업부');
   });
 
   it('blocks a reversed due range with an always-visible described reason', async () => {

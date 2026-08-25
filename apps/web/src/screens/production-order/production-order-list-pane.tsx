@@ -86,6 +86,13 @@ export const ProductionOrderListPane = ({
       render: (row) => displayOr(row.dueDateLabel, t.values.missingDueDate),
     },
     {
+      key: 'workOrderProgress',
+      header: t.fields.workOrderProgress,
+      align: 'end',
+      render: (row) =>
+        `${String(row.expandedWorkOrderCount ?? '-')} / ${String(row.plannedWorkOrderCount ?? '-')}`,
+    },
+    {
       key: 'statusCode',
       header: t.fields.statusCode,
       render: (row) => (

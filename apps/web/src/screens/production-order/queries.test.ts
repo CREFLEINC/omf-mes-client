@@ -29,6 +29,8 @@ const productionOrder = (productionOrderId: number) => ({
   orderQty: 12.5,
   uomId: 8001,
   statusCode: 'RELEASED',
+  expandedWorkOrderCount: 2,
+  plannedWorkOrderCount: 3,
 });
 
 const recordingFetch = (route: StubRoute): { fetch: StubFetch; urls: URL[] } => {
@@ -50,8 +52,11 @@ describe('toProductionOrderFact', () => {
       erpOrderNo: null,
       parentProductionOrderId: null,
       bomLevel: 0,
+      businessUnitId: null,
       plantId: null,
       dueDate: null,
+      expandedWorkOrderCount: 2,
+      plannedWorkOrderCount: 3,
     });
   });
 });
@@ -73,6 +78,8 @@ describe('useProductionOrderList', () => {
               businessUnitId: 2101,
               remarks: 'Synthetic remarks',
               versionNo: 7,
+              expandedWorkOrderCount: 4,
+              plannedWorkOrderCount: 5,
             },
             productionOrder(101),
           ],
@@ -87,7 +94,7 @@ describe('useProductionOrderList', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(urls).toHaveLength(1);
-    expect(urls[0]?.search).toBe('');
+    expect(urls[0]?.search).toBe('?includeChildren=true');
     expect(result.current.data).toEqual({
       items: [
         {
@@ -96,12 +103,15 @@ describe('useProductionOrderList', () => {
           erpOrderNo: 'ERP-202',
           parentProductionOrderId: 101,
           bomLevel: 2,
+          businessUnitId: 2101,
           plantId: 3101,
           itemId: 7202,
           orderQty: 12.5,
           uomId: 8001,
           dueDate: '2026-08-14',
           statusCode: 'RELEASED',
+          expandedWorkOrderCount: 4,
+          plannedWorkOrderCount: 5,
         },
         {
           productionOrderId: 101,
@@ -109,12 +119,15 @@ describe('useProductionOrderList', () => {
           erpOrderNo: null,
           parentProductionOrderId: null,
           bomLevel: 0,
+          businessUnitId: null,
           plantId: null,
           itemId: 7101,
           orderQty: 12.5,
           uomId: 8001,
           dueDate: null,
           statusCode: 'RELEASED',
+          expandedWorkOrderCount: 2,
+          plannedWorkOrderCount: 3,
         },
       ],
       page: { page: 1, size: 25, total: 47 },
@@ -131,6 +144,7 @@ describe('useProductionOrderList', () => {
         useProductionOrderList(
           {
             q: 'PO-A',
+            businessUnit: '2101',
             plant: '3101',
             item: '4101',
             status: 'RELEASED',
@@ -146,11 +160,13 @@ describe('useProductionOrderList', () => {
 
     expect(Array.from(urls[0]?.searchParams.entries() ?? [])).toEqual([
       ['q', 'PO-A'],
+      ['businessUnitId', '2101'],
       ['plantId', '3101'],
       ['itemId', '4101'],
       ['statusCode', 'RELEASED'],
       ['dueDateFrom', '2026-08-01'],
       ['dueDateTo', '2026-08-31'],
+      ['includeChildren', 'true'],
       ['page', '3'],
     ]);
     expect(
@@ -213,6 +229,8 @@ describe('useProductionOrderDetail', () => {
           businessUnitId: 2101,
           remarks: 'Synthetic remarks',
           versionNo: 7,
+          expandedWorkOrderCount: 4,
+          plannedWorkOrderCount: 5,
         }),
     });
     const { result } = renderHookWithProviders(() => useProductionOrderDetail(202), { fetch });
@@ -227,12 +245,15 @@ describe('useProductionOrderDetail', () => {
       erpOrderNo: 'ERP-202',
       parentProductionOrderId: 101,
       bomLevel: 2,
+      businessUnitId: 2101,
       plantId: 3101,
       itemId: 7202,
       orderQty: 12.5,
       uomId: 8001,
       dueDate: '2026-08-14',
       statusCode: 'RELEASED',
+      expandedWorkOrderCount: 4,
+      plannedWorkOrderCount: 5,
     });
     expect(productionOrderKeys.detail(202)).not.toEqual(productionOrderKeys.detail(203));
   });
