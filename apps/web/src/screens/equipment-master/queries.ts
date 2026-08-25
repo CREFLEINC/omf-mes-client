@@ -225,9 +225,15 @@ export const useEquipmentList = (
             query: {
               productionLineId: equipmentGroupId,
               ...(filters.q === '' ? {} : { q: filters.q }),
+              /*
+               * ⚠ **계열 전체를 걸지 못한다.** 계약이 값 여럿을 받게 됐지만(통지 `client#404`)
+               * 이 화면이 실을 **설비 계열 값 목록이 아직 미정**이라(설계 `omf-mes#145`),
+               * 고른 값 하나만 싣는다 — 고르기 «전»에는 계측기도 함께 보이고, 그 사실을
+               * 화면이 밝힌다(G-2). 값이 확정되면 형제 화면과 같은 방법으로 풀린다.
+               */
               ...(filters.equipmentTypeCode === ''
                 ? {}
-                : { equipmentTypeCode: filters.equipmentTypeCode }),
+                : { equipmentTypeCode: [filters.equipmentTypeCode] }),
               ...(filters.calibrationRequired ? { calibrationRequired: true } : {}),
               /*
                * ⭐ 기본은 운용 중인 것만 부른다(설계 omf-mes#185). 「폐기 포함」을 켜면

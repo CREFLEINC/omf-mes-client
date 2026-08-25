@@ -1,4 +1,5 @@
 import {
+  AlertBanner,
   Button,
   Checkbox,
   Chip,
@@ -208,6 +209,12 @@ export const EquipmentListPane = ({
 
   return (
     <section aria-label={t.tabs.equipment}>
+      {/*
+       * ⚠ **이 목록에 계측기가 함께 보인다** — 실을 설비 계열 값 목록이 아직 미정이다.
+       * 감추는 대신 밝힌다(G-2). 값이 확정되면 형제 화면과 같은 방법으로 한 번에 풀린다.
+       */}
+      <AlertBanner variant="warning">{t.seriesFilterUnavailable}</AlertBanner>
+
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar">
         <SearchInput

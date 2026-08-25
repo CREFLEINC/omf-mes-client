@@ -1,6 +1,6 @@
 import { AlertBanner, Breadcrumb, PageHeader, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
@@ -117,12 +117,21 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
   /** 확인 창이 떠 있는가. 두 조작이 같은 창을 쓰되 말은 각자 갖는다 */
   const [retiring, setRetiring] = useState<'deactivate' | 'dispose' | null>(null);
 
-  const gauges = useGaugeList(filters);
   const plants = usePlantLookup();
   const uoms = useUomLookup();
   const statusValues = useCodeValues(CODE_GROUPS.equipmentStatus);
   /* ⭐ 값을 지어내지 않는다 — 설계가 확정한 목록을 서버에서 받아 그대로 쓴다. */
-  const typeValues = useCodeValues(CODE_GROUPS.equipmentType);
+  const typeValues = useCodeValues(CODE_GROUPS.instrumentType);
+  /*
+   * ⭐ **이 그룹의 값 전부가 「계측기 계열」의 정의다** — 목록 조건이 이것을 통째로 싣는다.
+   * 코드에 값을 박지 않으므로 고객이 유형을 늘려도 이 화면은 손대지 않는다.
+   */
+  const instrumentTypeCodes = useMemo(
+    () => (typeValues.data ?? NO_ITEMS).map((value) => value.code),
+    [typeValues.data],
+  );
+
+  const gauges = useGaugeList(filters, instrumentTypeCodes, typeValues.data !== undefined);
   const cycleValues = useCodeValues(CODE_GROUPS.cycleType);
 
   /* 창을 열 때만 상세를 조회한다 — 목록 응답에는 잠금 토큰도 코드 편집 가부도 없다. */
@@ -133,13 +142,6 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
 
   const items = gauges.data?.items ?? NO_ITEMS;
   const listTruncated = gauges.data !== undefined && isTruncated(gauges.data.page, items.length);
-
-  /*
-   * ⚠ **유형을 고르기 «전»에는 계측기만 가려낼 수 없다.** 계약의 `equipmentTypeCode` 가 값
-   * 하나만 받아 세 유형을 한 번에 거를 수단이 없다 — 화면이 받아 온 것을 다시 걸러 감추면
-   * 잘린 뒤쪽이 없는 것처럼 보이므로, **감추는 대신 밝힌다**(G-2).
-   */
-  const canFilterByType = filters.equipmentTypeCode !== '';
 
   const plantOptions = selectableOptions(plants.plants, values.plantId);
   const uomOptions = selectableOptions(uoms.uoms, values.precisionUomId);
@@ -338,7 +340,8 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
 
       <GaugeListPane
         items={items}
-        isLoading={gauges.isLoading}
+        /* 유형 목록을 기다리는 동안도 「불러오는 중」이다 — 조건이 그것을 기다린다. */
+        isLoading={gauges.isLoading || typeValues.isPending}
         appliedFilters={filters}
         onApplyFilters={setFilters}
         plantOptions={selectableOptions(plants.plants, filters.plantId)}
@@ -347,12 +350,22 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
         today={today}
         typeOptions={typeOptions}
         typeOptionsNote={typeOptionsNote}
-        canFilterByType={canFilterByType}
         isTruncated={listTruncated}
         onAdd={openCreate}
         onEdit={openEdit}
+        /*
+         * ⛔ **유형 목록을 못 받으면 «목록도» 못 낸다.** 그것이 조회 조건이라 없으면 조건
+         * 없이 나가고, 그러면 계측기가 아닌 설비가 이 화면에 선다. 조회를 열지 않는 대신
+         * **왜 못 여는지 말하고 다시 시도할 자리를 준다**(G-2 · G-23) — 말하지 않으면
+         * 스켈레톤이 영영 돌아 사용자가 기다리기만 한다.
+         */
         loadError={
-          gauges.isError ? (
+          typeValues.isError ? (
+            <LoadErrorBanner
+              error={toApiError(typeValues.error)}
+              onRetry={() => void typeValues.refetch()}
+            />
+          ) : gauges.isError ? (
             <LoadErrorBanner
               error={toApiError(gauges.error)}
               onRetry={() => void gauges.refetch()}
