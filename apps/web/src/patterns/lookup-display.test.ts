@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   lookupDisplayLabel,
+  lookupDisplayLabelWithInactive,
   type LookupSource,
   selectableLookupOptions,
   toLookupDisplayState,
@@ -34,6 +35,10 @@ describe('lookup 표시 상태', () => {
     expect(toLookupDisplayState(source([], 'loading'), 7001)).toEqual({ kind: 'loading' });
     expect(lookupDisplayLabel(source([], 'failed'), 7001)).toBe('이름을 불러오지 못했습니다');
     expect(lookupDisplayLabel(source([], 'loading'), 7001)).toBe('이름 불러오는 중');
+  });
+
+  it('읽기 표시에서는 미사용 이름에 표식을 붙인다', () => {
+    expect(lookupDisplayLabelWithInactive(source([inactive]), 7002)).toBe('과거 단위 (미사용)');
   });
 });
 

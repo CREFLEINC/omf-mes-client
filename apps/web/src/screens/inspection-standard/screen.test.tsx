@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import type { QueryClient } from '@tanstack/react-query';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -1986,7 +1987,7 @@ describe('InspectionStandardScreen — 검사 항목 조회', () => {
   });
 
   /* 지금 고른 값이 목록에 없어도 지우지 않는다 — 지우면 저장 때 조용히 다른 값이 된다. */
-  it('선택 목록에 없는 단위 값은 코드를 그대로 낸다', async () => {
+  it('선택 목록에 없는 단위 값은 알 수 없음으로 낸다', async () => {
     renderItems([
       itemListRoute(4002, [{ ...itemSpecFixture, uomId: 99 }]),
       {
@@ -1995,7 +1996,10 @@ describe('InspectionStandardScreen — 검사 항목 조회', () => {
       },
     ]);
 
-    expect(await screen.findByText('10 · 9~11 · 99')).toBeInTheDocument();
+    expect(
+      await screen.findByText(`10 · 9~11 · ${messages.common.reference.unknown}`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('10 · 9~11 · 99')).not.toBeInTheDocument();
   });
 
   it('항목 조회에 실패하면 표 대신 오류 배너가 나온다', async () => {
@@ -2391,6 +2395,10 @@ describe('InspectionStandardScreen — 선택 목록 조회 실패', () => {
         '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
       ),
     ).toBeInTheDocument();
+    expect(
+      within(itemPane()).getByText(`10 · 9~11 · ${messages.common.reference.failed}`),
+    ).toBeInTheDocument();
+    expect(within(itemPane()).queryByText('10 · 9~11 · 41')).not.toBeInTheDocument();
     expect(
       within(itemPane()).queryByText(
         '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',

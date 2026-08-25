@@ -237,6 +237,21 @@ describe('Lot Status 전이 후보', () => {
     expect(await screen.findByRole('radio', { name: 'DEFECTIVE' })).not.toBeChecked();
   });
 
+  it('후보가 품목 목록보다 먼저 오면 내부 id 대신 로딩 상태를 보인다', async () => {
+    renderScreen([listRoute()], (request) =>
+      new URL(request.url).pathname === '/mdm/items'
+        ? new Promise<Response>(() => undefined)
+        : undefined,
+    );
+
+    const row = (await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' })).closest('tr');
+    if (row === null) throw new Error('후보 행이 없습니다.');
+
+    expect(within(row).getByText('이름 불러오는 중')).toBeVisible();
+    expect(within(row).queryByText('801')).not.toBeInTheDocument();
+    expect(within(row).queryByText('품목 이름 미확인')).not.toBeInTheDocument();
+  });
+
   it('최근 전이·사유가 없는 선택 LOT은 이름 있는 빈값으로 표시한다', async () => {
     const { user } = renderScreen([
       listRoute(page([{ ...lot, latestTransitionAt: undefined, latestReasonCode: undefined }])),

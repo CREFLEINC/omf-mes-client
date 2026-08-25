@@ -1,10 +1,12 @@
 import { messages } from '@omf-mes/i18n';
 
-import type { LookupEntry } from './queries';
 import type { PolicyFilters, RatioFormValues, ScopeValues } from './types';
 
 /** 선택칸 한 줄. 디자인 시스템 `Select` 가 받는 형태 그대로다. */
-export type CodeOption = LookupEntry;
+export interface CodeOption {
+  value: string;
+  label: string;
+}
 
 /** 아무 축도 고르지 않은 상태 — 그것이 「전체」다. */
 export const emptyScope: ScopeValues = {
@@ -29,13 +31,6 @@ export const emptyRatioForm = (): RatioFormValues => ({
   effectiveFrom: '',
   effectiveTo: '',
 });
-
-/**
- * 코드에 이름을 붙인다. **모르는 값은 값 그대로 둔다**(공유계약 G-9) —
- * 이름을 지어내면 없는 것이 있는 것처럼 보인다.
- */
-export const lookupLabel = (value: string, entries: readonly LookupEntry[]): string =>
-  entries.find((entry) => entry.value === value)?.label ?? value;
 
 /** 값이 오지 않은 칸을 빈 칸으로 두지 않는다. */
 export const orNotRecorded = (value: string | null | undefined): string =>

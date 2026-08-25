@@ -13,6 +13,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { selectableOptions } from './code-options';
 import { DisabledAction } from './disabled-action';
@@ -1187,17 +1188,10 @@ export const InspectionStandardScreen = () => {
     return null;
   })();
 
-  /**
-   * 단위 id를 사람이 읽는 이름으로 옮긴다.
-   * 목록에 없는 값은 코드를 그대로 낸다 — 빼 버리면 값이 사라진 것처럼 보인다.
-   */
-  const uomLabelOf = (uomId: string): string => {
-    const entry = uomOptions.entries.find((item) => item.value === uomId);
-
-    if (entry === undefined) return uomId;
-
-    return entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`;
-  };
+  /** 단위 id를 사람이 읽는 이름 또는 조회 상태로 옮긴다. */
+  const uomLabelOf = (uomId: string): string =>
+    selectableOptions(uomOptions, uomId).find((option) => option.value === uomId)?.label ??
+    lookupDisplayLabel(uomOptions, uomId);
 
   /**
    * 검사 항목이 쓰는 선택 목록이 잘리거나 실패했다는 사실을 표 위에 낸다.

@@ -16,10 +16,26 @@ import {
 const t = messages.shotConversion;
 
 const lookups: ScopeLookups = {
-  itemId: [{ value: '21', label: 'ITM-201 · 가상 하우징' }],
-  processId: [{ value: '31', label: 'PRC-301 · 가상 프레스' }],
-  plantId: [{ value: '11', label: '가상 1공장' }],
-  businessUnitId: [{ value: '1', label: '가상 사업부' }],
+  itemId: {
+    entries: [{ value: '21', label: 'ITM-201 · 가상 하우징', isActive: true }],
+    isLoading: false,
+    isError: false,
+  },
+  processId: {
+    entries: [{ value: '31', label: 'PRC-301 · 가상 프레스', isActive: true }],
+    isLoading: false,
+    isError: false,
+  },
+  plantId: {
+    entries: [{ value: '11', label: '가상 1공장', isActive: false }],
+    isLoading: false,
+    isError: false,
+  },
+  businessUnitId: {
+    entries: [{ value: '1', label: '가상 사업부', isActive: true }],
+    isLoading: false,
+    isError: false,
+  },
 };
 
 describe('범위 축 읽기', () => {
@@ -67,7 +83,7 @@ describe('범위를 한 줄로', () => {
     expect(scopeText(makeRatio(1, 1, { plantId: 11, itemId: 21 }), lookups)).toBe(
       [
         t.scope.entry(t.scope.itemId, 'ITM-201 · 가상 하우징'),
-        t.scope.entry(t.scope.plantId, '가상 1공장'),
+        t.scope.entry(t.scope.plantId, '가상 1공장 (미사용)'),
       ].join(t.scope.join),
     );
   });
@@ -91,10 +107,24 @@ describe('범위를 한 줄로', () => {
     expect(text.split(t.scope.join)).toHaveLength(4);
   });
 
-  /** ⛔ 모르는 값에 이름을 지어내지 않는다 — 없는 것이 있는 것처럼 보인다(G-9). */
-  it('이름을 못 찾으면 값을 그대로 둔다', () => {
+  /** ⛔ 내부 숫자 식별자를 이름처럼 노출하지 않는다. */
+  it('이름을 못 찾으면 알 수 없음으로 보인다', () => {
     expect(scopeText(makeRatio(1, 1, { itemId: 99 }), lookups)).toBe(
-      t.scope.entry(t.scope.itemId, '99'),
+      t.scope.entry(t.scope.itemId, messages.common.reference.unknown),
+    );
+  });
+
+  it.each([
+    ['loading', messages.common.reference.loading],
+    ['failed', messages.common.reference.failed],
+  ] as const)('이름 조회가 %s이면 그 상태를 보인다', (kind, label) => {
+    const itemLookups: ScopeLookups = {
+      ...lookups,
+      itemId: { entries: [], isLoading: kind === 'loading', isError: kind === 'failed' },
+    };
+
+    expect(scopeText(makeRatio(1, 1, { itemId: 21 }), itemLookups)).toBe(
+      t.scope.entry(t.scope.itemId, label),
     );
   });
 });

@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
+import { type LookupSource, selectableLookupOptions } from '../../patterns/lookup-display';
 import type { CodeFilters, CodeOption, HierarchyCode } from './types';
 
 /**
@@ -21,29 +22,28 @@ export const PROVISIONAL_CATEGORY_CODES: readonly string[] = [];
 
 const t = messages.defectCauseCode;
 
-const optionLabel = (item: HierarchyCode): string =>
-  item.isActive
-    ? t.values.groupHeader(item.code, item.name)
-    : `${t.values.groupHeader(item.code, item.name)}${t.values.inactiveSuffix}`;
+const optionLabel = (item: HierarchyCode): string => t.values.groupHeader(item.code, item.name);
 
 /**
  * 상위 선택칸에 실제로 낼 선택지를 만든다.
  *
  * 기본은 사용 중인 대분류만 보인다. 다만 지금 선택된 값이 미사용이면 그것도 남기고 라벨에 표식을
  * 붙인다 — 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다.
- * 목록에 아예 없는 값(전체 목록이 잘린 경우)도 번호 그대로 남긴다.
+ * 목록에 아예 없는 값은 조회 상태 문구로 남겨 내부 번호를 노출하지 않는다.
  */
 export const selectableCategoryOptions = (
   candidates: readonly HierarchyCode[],
   selected: string,
-): CodeOption[] => {
-  const options = candidates
-    .filter((item) => item.isActive || String(item.id) === selected)
-    .map((item) => ({ value: String(item.id), label: optionLabel(item) }));
-
-  if (selected === '' || options.some((option) => option.value === selected)) {
-    return options;
-  }
-
-  return [...options, { value: selected, label: selected }];
-};
+  state: Pick<LookupSource, 'isError' | 'isLoading'>,
+): CodeOption[] =>
+  selectableLookupOptions(
+    {
+      entries: candidates.map((item) => ({
+        value: String(item.id),
+        label: optionLabel(item),
+        isActive: item.isActive,
+      })),
+      ...state,
+    },
+    selected,
+  );

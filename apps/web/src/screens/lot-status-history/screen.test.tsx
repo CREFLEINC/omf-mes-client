@@ -65,7 +65,7 @@ const referenceRoutes = (itemStatus = 200): StubRoute[] => [
   ),
   route('/mdm/items', () =>
     jsonResponse(
-      list([{ itemId: 103, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목', isActive: true }]),
+      list([{ itemId: 103, itemCode: 'SAMPLE-ITEM-01', itemName: '합성 품목', isActive: false }]),
       { status: itemStatus },
     ),
   ),
@@ -351,7 +351,7 @@ describe('Lot Status 화면 shell', () => {
     expect(summary.getByText('0')).toBeVisible();
     expect(summary.getByText('집계 미확정')).toBeVisible();
     expect(screen.getByText('SAMPLE_UNKNOWN (목록 미확정)')).toBeVisible();
-    expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목')).toBeVisible();
+    expect(screen.getByText('SAMPLE-ITEM-01 · 합성 품목 (미사용)')).toBeVisible();
     expect(screen.getByText('권한 범위 밖 2건이 제외되었습니다.')).toBeVisible();
     expect(screen.getByText('기준 시각 2026-08-21 13:00')).toBeVisible();
     const table = screen.getByRole('table', { name: '현재 LOT 상태' });
@@ -833,7 +833,7 @@ describe('Lot Status 화면 shell', () => {
     const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
     expect(within(dialog).getByText('합성 자재')).toBeVisible();
     expect(within(dialog).getByText('합성 불량')).toBeVisible();
-    expect(within(dialog).getByText('SAMPLE-ITEM-01 · 합성 품목')).toBeVisible();
+    expect(within(dialog).getByText('SAMPLE-ITEM-01 · 합성 품목 (미사용)')).toBeVisible();
     expect(within(dialog).getByText('SAMPLE-LOT-001')).toBeVisible();
     expect(within(dialog).getByText('120')).toBeVisible();
     expect(within(dialog).getByText('2027-08-20')).toBeVisible();
@@ -869,6 +869,22 @@ describe('Lot Status 화면 shell', () => {
     expect(within(dialog).getByText('SAMPLE_UNKNOWN_TYPE (목록 미확정)')).toBeVisible();
     expect(within(dialog).getByText('SAMPLE_UNKNOWN_STATUS (목록 미확정)')).toBeVisible();
     expect(within(dialog).getAllByText('—')).toHaveLength(2);
+  });
+
+  it('상세가 품목 목록보다 먼저 오면 알 수 없음 대신 로딩 상태를 보인다', async () => {
+    const resolvedFetch = fetchFor('ready', detailRoutes());
+    renderWithProviders(<LotStatusHistoryScreen />, {
+      route: '/quality/lot-status?lot=401',
+      fetch: async (request) =>
+        new URL(request.url).pathname === '/mdm/items'
+          ? new Promise<Response>(() => undefined)
+          : resolvedFetch(request),
+    });
+
+    const dialog = await screen.findByRole('dialog', { name: 'LOT 상세' });
+    expect(await within(dialog).findByText('이름 불러오는 중')).toBeVisible();
+    expect(within(dialog).queryByText('103')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('알 수 없음')).not.toBeInTheDocument();
   });
 
   it('주소로 고른 LOT 상세의 실패·재시도를 처리한다', async () => {

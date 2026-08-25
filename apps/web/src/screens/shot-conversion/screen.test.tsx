@@ -329,12 +329,14 @@ describe('W-05-01 ① — 이름 풀이의 한계', () => {
     expect(screen.queryByText(t.optionsLoadFailed)).not.toBeInTheDocument();
   });
 
-  /** ⛔ 이름을 못 받아도 범위 칸이 비지 않는다 — 값을 그대로 둔다(G-9). */
-  it('이름을 못 받아도 값이 그대로 선다', async () => {
+  /** ⛔ 이름을 못 받아도 범위 칸이 비거나 내부 숫자가 노출되지 않는다. */
+  it('이름을 못 받으면 실패 상태가 선다', async () => {
     renderScreen({ failLookup: '/mdm/items', policies: [makeRatio(9003, 0.25, { itemId: 21 })] });
 
     expect(
-      await within(pane()).findByText(t.scope.entry(t.scope.itemId, '21')),
+      await within(pane()).findByText(
+        t.scope.entry(t.scope.itemId, messages.common.reference.failed),
+      ),
     ).toBeInTheDocument();
   });
 });

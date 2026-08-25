@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import type { LookupEntry as SharedLookupEntry, LookupSource } from '../../patterns/lookup-display';
 import { runRequest } from '../../patterns/request';
 import {
   POLICY_CODES,
@@ -84,15 +85,10 @@ export const useEnabledPolicies = (): UseQueryResult<PolicyListResponse> =>
 /** 받은 건수가 전체보다 적으면 목록이 잘린 것이다. */
 export const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
 
-export interface LookupEntry {
-  value: string;
-  label: string;
-}
+export type LookupEntry = SharedLookupEntry;
 
-export interface LookupResult {
-  entries: LookupEntry[];
+export interface LookupResult extends LookupSource<LookupEntry> {
   truncated: boolean;
-  isError: boolean;
 }
 
 const NO_ENTRIES: LookupEntry[] = [];
@@ -124,6 +120,7 @@ const useLookup = (
     entries: data?.items.map((row) => toEntry(row as never)) ?? NO_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
     isError: query.isError,
+    isLoading: query.isPending,
   };
 };
 
@@ -131,9 +128,10 @@ export const useItemLookup = (): LookupResult =>
   useLookup(
     'items',
     '/mdm/items',
-    (row: { itemId: number; itemCode: string; itemName: string }) => ({
+    (row: { itemId: number; itemCode: string; itemName: string; isActive: boolean }) => ({
       value: String(row.itemId),
       label: `${row.itemCode} · ${row.itemName}`,
+      isActive: row.isActive,
     }),
   );
 
@@ -141,25 +139,32 @@ export const useProcessLookup = (): LookupResult =>
   useLookup(
     'processes',
     '/mdm/processes',
-    (row: { processId: number; processCode: string; processName: string }) => ({
+    (row: { processId: number; processCode: string; processName: string; isActive: boolean }) => ({
       value: String(row.processId),
       label: `${row.processCode} · ${row.processName}`,
+      isActive: row.isActive,
     }),
   );
 
 export const usePlantLookup = (): LookupResult =>
-  useLookup('plants', '/mdm/plants', (row: { plantId: number; plantName: string }) => ({
-    value: String(row.plantId),
-    label: row.plantName,
-  }));
+  useLookup(
+    'plants',
+    '/mdm/plants',
+    (row: { plantId: number; plantName: string; isActive: boolean }) => ({
+      value: String(row.plantId),
+      label: row.plantName,
+      isActive: row.isActive,
+    }),
+  );
 
 export const useBusinessUnitLookup = (): LookupResult =>
   useLookup(
     'business-units',
     '/mdm/business-units',
-    (row: { businessUnitId: number; businessUnitName: string }) => ({
+    (row: { businessUnitId: number; businessUnitName: string; isActive: boolean }) => ({
       value: String(row.businessUnitId),
       label: row.businessUnitName,
+      isActive: row.isActive,
     }),
   );
 

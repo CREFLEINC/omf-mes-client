@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { type LookupSource, selectableLookupOptions } from '../../patterns/lookup-display';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { EnabledPane } from './enabled-pane';
@@ -133,10 +134,10 @@ export const ShotConversionScreen = () => {
   const rows = ratios.data?.items ?? NO_POLICIES;
 
   const lookups: ScopeLookups = {
-    itemId: items.entries,
-    processId: processes.entries,
-    plantId: plants.entries,
-    businessUnitId: businessUnits.entries,
+    itemId: items,
+    processId: processes,
+    plantId: plants,
+    businessUnitId: businessUnits,
   };
 
   const lookupResults = [items, processes, plants, businessUnits];
@@ -149,10 +150,21 @@ export const ShotConversionScreen = () => {
       : null;
 
   const scopeOptions: ScopeOptions = {
-    itemId: items.entries,
-    processId: processes.entries,
-    plantId: plants.entries,
-    businessUnitId: businessUnits.entries,
+    itemId: selectableLookupOptions(items, values.scope.itemId),
+    processId: selectableLookupOptions(processes, values.scope.processId),
+    plantId: selectableLookupOptions(plants, values.scope.plantId),
+    businessUnitId: selectableLookupOptions(businessUnits, values.scope.businessUnitId),
+  };
+
+  const toolSource: LookupSource = {
+    entries:
+      tools.data?.items.map((mold) => ({
+        value: String(mold.moldId),
+        label: `${mold.moldCode} · ${mold.moldName}`,
+        isActive: mold.isActive,
+      })) ?? [],
+    isLoading: tools.isPending,
+    isError: tools.isError,
   };
 
   const isCreate = dialog?.mode === 'create';
@@ -484,14 +496,9 @@ export const ShotConversionScreen = () => {
         onChangeProcess={(processId) => setPreview((prev) => ({ ...prev, processId }))}
         quantity={preview.quantity}
         onChangeQuantity={(quantity) => setPreview((prev) => ({ ...prev, quantity }))}
-        toolOptions={
-          tools.data?.items.map((mold) => ({
-            value: String(mold.moldId),
-            label: `${mold.moldCode} · ${mold.moldName}`,
-          })) ?? []
-        }
-        itemOptions={items.entries}
-        processOptions={processes.entries}
+        toolOptions={selectableLookupOptions(toolSource, preview.toolId)}
+        itemOptions={selectableLookupOptions(items, preview.itemId)}
+        processOptions={selectableLookupOptions(processes, preview.processId)}
         tool={selectedTool}
         effective={effective.data ?? null}
         isLoading={effective.isPending}
