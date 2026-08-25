@@ -1,4 +1,5 @@
 import type { ApiClient, components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -42,7 +43,7 @@ const fetchCodes = async (client: Client, codeGroupCode: string) => {
       .sort((left, right) => left.displayOrder - right.displayOrder)
       .map((value) => ({
         value: value.code,
-        label: value.codeName.trim() === '' ? value.code : value.codeName,
+        label: value.codeName.trim() === '' ? messages.common.reference.unknown : value.codeName,
         isActive: value.isActive,
       })),
     page: data.page,
