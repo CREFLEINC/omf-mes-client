@@ -160,6 +160,7 @@ describe('검사실적·검사결과 조회 조립', () => {
               rejectedQty: 2,
               heldQty: 1,
               defectRate: 6.67,
+              calibrationExpiredCount: 1,
               finalRoundOnly: true,
               asOf: '2026-08-31T09:30:00+09:00',
             });
@@ -201,5 +202,10 @@ describe('검사실적·검사결과 조회 조립', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(screen.getByLabelText('현재 주소')).toHaveTextContent('page=2');
     expect(screen.getByLabelText('현재 주소')).not.toHaveTextContent('selected=');
+    await user.click(screen.getByRole('button', { name: '검교정 만료만 분리해 보기' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText('현재 주소')).toHaveTextContent('calibration=only'),
+    );
+    expect(screen.getByLabelText('현재 주소')).not.toHaveTextContent('page=');
   });
 });

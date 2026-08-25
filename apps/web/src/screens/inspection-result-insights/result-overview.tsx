@@ -39,6 +39,7 @@ interface ResultOverviewProps {
   onSortChange: (sort: InspectionResultSort) => void;
   onPageChange: (page: number) => void;
   onSelectResult: (inspectionResultId: number) => void;
+  onViewExpiredCalibration: () => void;
 }
 
 const TABLE_SORTS: Record<InspectionResultSort, SortState> = {
@@ -66,6 +67,7 @@ export const ResultOverview = ({
   onSortChange,
   onPageChange,
   onSelectResult,
+  onViewExpiredCalibration,
 }: ResultOverviewProps) => {
   const list = useInspectionResults(filters, sort, page);
   const summary = useInspectionSummary(filters);
@@ -164,6 +166,19 @@ export const ResultOverview = ({
           </div>
           <p className="field-note">기준 {dateTime(summary.data.asOf)}</p>
           <p className="field-note">불량률의 분모는 검사수량이며 생산 수율과 다를 수 있습니다.</p>
+          {filters.calibrationExpired === '' && (summary.data.calibrationExpiredCount ?? 0) > 0 && (
+            <AlertBanner
+              variant="warning"
+              title={`검교정 만료 결과 ${summary.data.calibrationExpiredCount}건이 기본 집계에 포함되어 있습니다.`}
+              action={
+                <Button size="sm" variant="outlined" onClick={onViewExpiredCalibration}>
+                  검교정 만료만 분리해 보기
+                </Button>
+              }
+            >
+              기본 조회는 만료 결과를 자동 제외하지 않습니다.
+            </AlertBanner>
+          )}
         </>
       )}
       <h3>검사 결과</h3>

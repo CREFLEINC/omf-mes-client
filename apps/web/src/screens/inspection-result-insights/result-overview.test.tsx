@@ -51,6 +51,7 @@ describe('검사 결과 요약·목록', () => {
     const user = userEvent.setup();
     const onSortChange = vi.fn();
     const onPageChange = vi.fn();
+    const onViewExpiredCalibration = vi.fn();
     const requests: URL[] = [];
     const routes = [
       route('/quality/inspection-results/summary', (request) => {
@@ -62,6 +63,7 @@ describe('검사 결과 요약·목록', () => {
           rejectedQty: 4,
           heldQty: 0,
           defectRate: 6.67,
+          calibrationExpiredCount: 2,
           finalRoundOnly: true,
           asOf: '2026-08-31T09:30:00+09:00',
         });
@@ -87,6 +89,7 @@ describe('검사 결과 요약·목록', () => {
         onSortChange={onSortChange}
         onPageChange={onPageChange}
         onSelectResult={() => undefined}
+        onViewExpiredCalibration={onViewExpiredCalibration}
       />,
       { fetch: createStubFetch(routes) },
     );
@@ -110,6 +113,9 @@ describe('검사 결과 요약·목록', () => {
     }
     expect(screen.getByText('기준 2026-08-31 09:30')).toBeInTheDocument();
     expect(screen.getByText('최종 회차만 집계합니다.')).toBeInTheDocument();
+    expect(screen.getByText(/검교정 만료 결과 2건이 기본 집계에 포함/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '검교정 만료만 분리해 보기' }));
+    expect(onViewExpiredCalibration).toHaveBeenCalledOnce();
     expect(screen.queryByText('101')).not.toBeInTheDocument();
     expect(requests).toHaveLength(2);
     for (const request of requests) {
@@ -129,6 +135,7 @@ describe('검사 결과 요약·목록', () => {
         onSortChange={() => undefined}
         onPageChange={() => undefined}
         onSelectResult={() => undefined}
+        onViewExpiredCalibration={() => undefined}
       />,
       { fetch: async (request) => (calls.push(request), jsonResponse({})) },
     );
@@ -150,6 +157,7 @@ describe('검사 결과 요약·목록', () => {
           onSortChange={() => undefined}
           onPageChange={setPage}
           onSelectResult={() => undefined}
+          onViewExpiredCalibration={() => undefined}
         />
       );
     };

@@ -110,6 +110,11 @@ export const InspectionResultInsightsScreen = ({
         }}
         onPageChange={(next) => update('page', String(next))}
         onSelectResult={(id) => update('selected', String(id), false)}
+        onViewExpiredCalibration={() =>
+          setSearchParams((current) =>
+            withFilters(current, { ...filters, calibrationExpired: 'only' }),
+          )
+        }
       />
       <InsightTabs filters={filters} sourceAxisCode={sourceAxisCode} />
       {selected !== null && (
