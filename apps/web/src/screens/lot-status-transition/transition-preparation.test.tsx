@@ -189,7 +189,7 @@ const fillRelease = async (
   quantity = '5',
   remarks = '재검사 합격으로 해제',
 ) => {
-  await user.click(screen.getByRole('radio', { name: '일부 해제' }));
+  await user.click(await screen.findByRole('radio', { name: '일부 해제' }));
   await user.type(screen.getByLabelText('해제 수량'), quantity);
   if (remarks !== '') await user.type(screen.getByLabelText('해제 사유 및 비고'), remarks);
 };
@@ -349,6 +349,8 @@ describe('Lot Status 전이 준비', () => {
     await user.click(within(dialog).getByRole('button', { name: '취소' }));
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
 
+    await fillCreate(user);
+    const transitionsBeforeCreate = urls.filter((url) => url.pathname === TRANSITIONS).length;
     await user.click(screen.getByRole('button', { name: '등록 확인' }));
     dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: '보류 등록' }));
@@ -366,7 +368,11 @@ describe('Lot Status 전이 준비', () => {
     expect(sent.headers.get('If-Match')).toBeNull();
     expect(sent.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/i);
     expect(await screen.findByText('LOT 보류를 등록했습니다.')).toBeVisible();
-    await waitFor(() => expect(urls.filter((url) => url.pathname === TRANSITIONS)).toHaveLength(2));
+    await waitFor(() =>
+      expect(urls.filter((url) => url.pathname === TRANSITIONS).length).toBeGreaterThan(
+        transitionsBeforeCreate,
+      ),
+    );
     expect(related.map((key) => queryClient.getQueryState(key)?.isInvalidated)).toEqual([
       true,
       true,
@@ -376,13 +382,17 @@ describe('Lot Status 전이 준비', () => {
   });
 
   it('CREATE_HOLD 일반 실패는 같은 body·멱등 키로 명시적으로 재시도한다', async () => {
-    const { requests, user } = await prepareCreate(createRoute(500));
+    const { queryClient, requests, urls, user } = await prepareCreate(createRoute(500));
     await fillCreate(user);
     await user.click(screen.getByRole('button', { name: '등록 확인' }));
     const dialog = await screen.findByRole('dialog');
     const submit = within(dialog).getByRole('button', { name: '보류 등록' });
     await user.click(submit);
     expect(await within(dialog).findByText('LOT 상태가 바뀌었습니다.')).toBeVisible();
+    const before = urls.length;
+    await queryClient.invalidateQueries({ queryKey: ['lot-status-transition'] });
+    expect(urls).toHaveLength(before);
+    expect(dialog).toBeInTheDocument();
     await user.click(submit);
     await waitFor(() =>
       expect(requests.filter((request) => request.method === 'POST')).toHaveLength(2),
@@ -401,7 +411,7 @@ describe('Lot Status 전이 준비', () => {
       createRoute(409, ''),
       'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.',
     ],
-    ['412', createRoute(412), 'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.'],
+    ['412', createRoute(412), 'LOT 상태가 바뀌었습니다.'],
   ])(
     '%s CREATE_HOLD 충돌은 서버 최신 상태 또는 fallback 뒤 owner를 비운다',
     async (_case, response, expected) => {
@@ -423,7 +433,7 @@ describe('Lot Status 전이 준비', () => {
     },
   );
 
-  it('CREATE_HOLD 전이와 versionNo가 바뀌면 이전 입력·확인을 격리한다', async () => {
+  it('CREATE_HOLD 확인 중 전이 변경을 막고 취소 뒤 새 owner 입력을 받는다', async () => {
     const view = renderPreparation(
       [
         transitionRoute([
@@ -438,12 +448,11 @@ describe('Lot Status 전이 준비', () => {
     await chooseTransition(view.user, '불량');
     await fillCreate(view.user);
     await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
-    await screen.findByRole('dialog');
+    const dialog = await screen.findByRole('dialog');
+    expect(screen.getByRole('radio', { name: '검사 대기' })).toBeDisabled();
+    await view.user.click(within(dialog).getByRole('button', { name: '취소' }));
     await chooseTransition(view.user, '검사 대기');
-    expect(screen.getByRole('radio', { name: '전량 보류' })).toBeChecked();
-    expect(screen.queryByLabelText('보류 수량')).toBeNull();
     expect(screen.getByLabelText('보류 사유')).toHaveValue('');
-    expect(screen.queryByRole('dialog')).toBeNull();
 
     await fillCreate(view.user);
     await view.user.click(screen.getByRole('button', { name: 'LOT 버전 갱신' }));
@@ -792,6 +801,9 @@ describe('Lot Status 전이 준비', () => {
     await user.click(within(dialog).getByRole('button', { name: '취소' }));
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
 
+    await fillRelease(user);
+    const paths = [TRANSITIONS, HOLDS, lotHoldDetailPath(501)];
+    const beforeRelease = paths.map((path) => urls.filter((url) => url.pathname === path).length);
     await user.click(screen.getByRole('button', { name: '해제 확인' }));
     dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: '보류 해제' }));
@@ -809,15 +821,36 @@ describe('Lot Status 전이 준비', () => {
     expect(await screen.findByText('LOT 보류를 해제했습니다.')).toBeVisible();
     await waitFor(() =>
       expect(
-        [TRANSITIONS, HOLDS, lotHoldDetailPath(501)].map(
-          (path) => urls.filter((url) => url.pathname === path).length,
+        paths.every(
+          (path, index) =>
+            urls.filter((url) => url.pathname === path).length > beforeRelease[index]!,
         ),
-      ).toEqual([2, 2, 2]),
+      ).toBe(true),
     );
     expect(related.map((key) => queryClient.getQueryState(key)?.isInvalidated)).toEqual([
       true,
       true,
     ]);
+  });
+
+  it('RELEASE 확인 pin은 transition·hold·detail 조회를 멈추고 취소 뒤 재개한다', async () => {
+    const view = await prepareRelease(releaseRoute());
+    await fillRelease(view.user);
+    await view.user.click(screen.getByRole('button', { name: '해제 확인' }));
+    const dialog = await screen.findByRole('dialog');
+    const paths = [TRANSITIONS, HOLDS, lotHoldDetailPath(501)];
+    const counts = (): number[] =>
+      paths.map((path) => view.urls.filter((url) => url.pathname === path).length);
+    const before = counts();
+
+    await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition'] });
+    expect(counts()).toEqual(before);
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '정상' })).toBeDisabled();
+    await view.user.click(within(dialog).getByRole('button', { name: '취소' }));
+    await waitFor(() =>
+      expect(counts().every((value, index) => value > before[index]!)).toBe(true),
+    );
   });
 
   it.each([
@@ -827,7 +860,7 @@ describe('Lot Status 전이 준비', () => {
       releaseRoute(409, ''),
       'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.',
     ],
-    ['412', releaseRoute(412), 'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.'],
+    ['412', releaseRoute(412), '잠금 토큰이 만료됐습니다.'],
   ])(
     '%s 충돌은 서버 최신 상태 또는 fallback 뒤 owner를 비운다',
     async (_case, response, expected) => {

@@ -70,7 +70,11 @@ const isStale = (error: ApiError | null): boolean =>
   error?.kind === 'conflict' ||
   (error?.kind === 'http' && (error.status === 409 || error.status === 412));
 const staleMessage = (error: ApiError | null): string =>
-  error?.kind === 'conflict' && error.message.trim() !== '' ? error.message : STALE_FALLBACK;
+  (error?.kind === 'conflict' || error?.kind === 'http') &&
+  error.message !== undefined &&
+  error.message.trim() !== ''
+    ? error.message
+    : STALE_FALLBACK;
 
 export interface CreateHoldExecutionProps {
   lotId: number;
@@ -81,6 +85,7 @@ export interface CreateHoldExecutionProps {
   locationId: number | undefined;
   targetLotStatusCode: string;
   onCreated: () => void;
+  onConfirmationChange: (pinned: boolean) => void;
   onStale: () => void;
 }
 
@@ -108,6 +113,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
     keyLifetime: 'until-applied',
     onSuccess: () => {
       setConfirmation(null);
+      props.onConfirmationChange(false);
       toast.show({ variant: 'success', description: 'LOT 보류를 등록했습니다.' });
       props.onCreated();
     },
@@ -115,6 +121,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
   const stale = isStale(write.error);
   const closeDialog = (): void => {
     setConfirmation(null);
+    props.onConfirmationChange(false);
     write.reset();
   };
   const reload = (): void => {
@@ -179,7 +186,10 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
       <Button
         disabled={write.isSaving || validation.body === null}
         onClick={() => {
-          if (validation.body !== null) setConfirmation(validation.body);
+          if (validation.body !== null) {
+            setConfirmation(validation.body);
+            props.onConfirmationChange(true);
+          }
         }}
       >
         등록 확인

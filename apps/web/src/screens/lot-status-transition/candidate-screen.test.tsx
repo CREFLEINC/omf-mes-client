@@ -226,8 +226,6 @@ describe('Lot Status 전이 후보', () => {
     await view.user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
     await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
     await view.user.type(screen.getByLabelText('보류 사유'), 'SYN_REASON');
-    await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
-    await screen.findByRole('dialog');
 
     void view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
     await waitFor(() => expect(listCalls).toBe(2));
@@ -253,6 +251,62 @@ describe('Lot Status 전이 후보', () => {
     expect(await view.requests.find((request) => request.method === 'POST')!.json()).toMatchObject({
       lots: [{ lotId: 701, versionNo: 987655 }],
     });
+  });
+
+  it('확인 pin 동안 조회와 owner를 보존하고 취소·성공 뒤 refetch한다', async () => {
+    const beta = { ...lot, lotId: 702, lotNo: 'SYN-LOT-BETA' };
+    let finishCreate!: (response: Response) => void;
+    const pendingCreate = new Promise<Response>((resolve) => {
+      finishCreate = resolve;
+    });
+    const view = renderScreen([], (request) => {
+      const path = new URL(request.url).pathname;
+      if (path === LOT_PATH) return jsonResponse(page([lot, beta]));
+      if (request.method === 'POST' && path === '/quality/lot-holds') return pendingCreate;
+      return undefined;
+    });
+    const historyKey = ['lot-status-history', 'synthetic'] as const;
+    view.queryClient.setQueryData(historyKey, {});
+    const counts = (): number[] => [
+      lotRequests(view.urls).length,
+      view.urls.filter((url) => url.pathname === '/quality/lot-status-transitions').length,
+    ];
+    const openConfirmation = async (): Promise<HTMLElement> => {
+      await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
+      await view.user.type(screen.getByLabelText('보류 사유'), 'SYN_REASON');
+      await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
+      return screen.findByRole('dialog');
+    };
+    const alpha = await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
+    await view.user.click(alpha);
+    let dialog = await openConfirmation();
+    const beforeCancel = counts();
+
+    await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition'] });
+    expect(counts()).toEqual(beforeCancel);
+    expect(screen.getByRole('button', { name: 'SYN-LOT-BETA 선택' })).toBeDisabled();
+    await view.user.click(within(dialog).getByRole('button', { name: '취소' }));
+    await waitFor(() =>
+      expect(counts().every((value, index) => value > beforeCancel[index]!)).toBe(true),
+    );
+
+    dialog = await openConfirmation();
+    const beforeSuccess = counts();
+    await view.user.click(within(dialog).getByRole('button', { name: '보류 등록' }));
+    await waitFor(() =>
+      expect(view.requests.filter((request) => request.method === 'POST')).toHaveLength(1),
+    );
+    await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition'] });
+    expect(counts()).toEqual(beforeSuccess);
+    expect(dialog).toBeInTheDocument();
+    expect(alpha).toHaveAttribute('aria-current', 'true');
+    finishCreate(jsonResponse([], { status: 201 }));
+
+    expect(await screen.findByText('LOT 보류를 등록했습니다.')).toBeVisible();
+    await waitFor(() =>
+      expect(counts().every((value, index) => value > beforeSuccess[index]!)).toBe(true),
+    );
+    expect(view.queryClient.getQueryState(historyKey)?.isInvalidated).toBe(true);
   });
 
   it('background 재조회 오류의 cached 후보로 card와 write 준비를 복구하지 않는다', async () => {

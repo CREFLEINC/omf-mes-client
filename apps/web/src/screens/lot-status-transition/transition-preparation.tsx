@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Radio, RadioGroup, Select, SkeletonText } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -18,10 +18,11 @@ export const lotHoldDetailPath = (lotHoldId: number): `/quality/lot-holds/${numb
 const transitionKey = (value: Transition): string =>
   `${value.actionCode}:${value.targetLotStatusCode}`;
 
-const useTransitions = (lotId: number) => {
+const useTransitions = (lotId: number, enabled: boolean) => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: ['lot-status-transition', 'transitions', lotId],
+    enabled,
     queryFn: () =>
       runRequest(() =>
         client.GET('/quality/lot-status-transitions', { params: { query: { lotId } } }),
@@ -43,11 +44,11 @@ const useOpenHolds = (lotId: number, enabled: boolean, page: number) => {
   });
 };
 
-const useHoldDetail = (lotHoldId: number | null) => {
+const useHoldDetail = (lotHoldId: number | null, enabled: boolean) => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: ['lot-status-transition', 'hold-detail', lotHoldId],
-    enabled: lotHoldId !== null,
+    enabled: enabled && lotHoldId !== null,
     queryFn: () => {
       if (lotHoldId === null) throw new Error('보류를 고르기 전에는 상세를 조회하지 않습니다.');
       return runRequest(() =>
@@ -58,19 +59,21 @@ const useHoldDetail = (lotHoldId: number | null) => {
 };
 
 interface SelectFieldProps {
+  disabled: boolean;
   label: string;
   options: { value: string; label: string }[];
   value: string | null;
   onChange: (value: string) => void;
 }
 
-const SelectField = ({ label, options, value, onChange }: SelectFieldProps) => {
+const SelectField = ({ disabled, label, options, value, onChange }: SelectFieldProps) => {
   const id = useId();
   return (
     <div>
       <label htmlFor={id}>{label}</label>
       <Select
         id={id}
+        disabled={disabled}
         placeholder="하나를 선택하세요"
         options={options}
         value={value}
@@ -82,11 +85,23 @@ const SelectField = ({ label, options, value, onChange }: SelectFieldProps) => {
 
 export interface LotStatusTransitionPreparationProps {
   lot: LotStatusCandidate;
+  onConfirmationChange?: (pinned: boolean) => void;
 }
 
-export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPreparationProps) => {
+export const LotStatusTransitionPreparation = ({
+  lot,
+  onConfirmationChange,
+}: LotStatusTransitionPreparationProps) => {
   const { etags } = useApiClient();
-  const transitions = useTransitions(lot.lotId);
+  const [confirmationPinned, setConfirmationPinned] = useState(false);
+  const changeConfirmation = useCallback(
+    (pinned: boolean): void => {
+      setConfirmationPinned(pinned);
+      onConfirmationChange?.(pinned);
+    },
+    [onConfirmationChange],
+  );
+  const transitions = useTransitions(lot.lotId, !confirmationPinned);
   const statuses = useLotStatusOptions();
   const [selectedTransitionKey, setSelectedTransitionKey] = useState<string | null>(null);
   const [autoSelectOwner, setAutoSelectOwner] = useState<string | null>(null);
@@ -96,8 +111,9 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
   const selectedTransition = allowed.find((item) => transitionKey(item) === selectedTransitionKey);
   const isCreate = selectedTransition?.actionCode === 'CREATE_HOLD';
   const isRelease = selectedTransition?.actionCode === 'RELEASE_HOLD';
-  const holds = useOpenHolds(lot.lotId, isRelease, holdPage);
-  const holdsData = holds.isFetching || holds.isError ? undefined : holds.data;
+  const holds = useOpenHolds(lot.lotId, isRelease && !confirmationPinned, holdPage);
+  const holdsData =
+    confirmationPinned || (!holds.isFetching && !holds.isError) ? holds.data : undefined;
   const automaticHoldId =
     holdsData?.page.total === 1 && holdsData.items.length === 1
       ? (holdsData.items[0]?.lotHoldId ?? null)
@@ -105,7 +121,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
   const selectedHold = holdsData?.items.find((item) => item.lotHoldId === selectedHoldId);
 
   useEffect(() => {
-    if (!isRelease || holdsData === undefined) return;
+    if (confirmationPinned || !isRelease || holdsData === undefined) return;
     if (autoSelectOwner === selectedTransitionKey) {
       setAutoSelectOwner(null);
       setSelectedHoldId(automaticHoldId);
@@ -115,6 +131,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
   }, [
     autoSelectOwner,
     automaticHoldId,
+    confirmationPinned,
     holdsData,
     isRelease,
     selectedHold,
@@ -122,13 +139,18 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
     selectedTransitionKey,
   ]);
 
-  const detail = useHoldDetail(isRelease ? (selectedHold?.lotHoldId ?? null) : null);
-  const detailData = detail.isFetching || detail.isError ? undefined : detail.data;
+  const detail = useHoldDetail(
+    isRelease ? (selectedHold?.lotHoldId ?? null) : null,
+    !confirmationPinned,
+  );
+  const detailData =
+    confirmationPinned || (!detail.isFetching && !detail.isError) ? detail.data : undefined;
   const token =
     selectedHold === undefined || detailData === undefined
       ? undefined
       : etags.ifMatch(lotHoldDetailPath(selectedHold.lotHoldId));
   const chooseTransition = (value: string): void => {
+    if (confirmationPinned) return;
     const next = allowed.find((item) => transitionKey(item) === value);
     setSelectedTransitionKey(value);
     setAutoSelectOwner(next?.actionCode === 'RELEASE_HOLD' ? value : null);
@@ -141,7 +163,19 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
     setHoldPage(1);
     setSelectedHoldId(null);
   };
+  const refreshPreparation = (): void => {
+    void transitions.refetch();
+    if (isRelease) {
+      void holds.refetch();
+      void detail.refetch();
+    }
+  };
+  const reloadExecutionOwner = (): void => {
+    refreshPreparation();
+    clearExecutionOwner();
+  };
   const changeHoldPage = (page: number): void => {
+    if (confirmationPinned) return;
     setAutoSelectOwner(null);
     setHoldPage(page);
     setSelectedHoldId(null);
@@ -159,13 +193,13 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
       ? 1
       : Math.max(1, Math.ceil(holdMeta.total / holdMeta.size));
 
-  if (transitions.isFetching)
+  if (transitions.isFetching && !confirmationPinned)
     return (
       <div role="status" aria-label="전이 선택지를 불러오는 중">
         <SkeletonText lines={1} />
       </div>
     );
-  if (transitions.isError)
+  if (transitions.isError && !confirmationPinned)
     return (
       <AlertBanner
         variant="error"
@@ -209,6 +243,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
         name={`lot-status-transition-${String(lot.lotId)}`}
         orientation="horizontal"
         value={selectedTransitionKey ?? ''}
+        disabled={confirmationPinned}
         aria-label="전이"
         onChange={chooseTransition}
       >
@@ -221,6 +256,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
       {isRelease && holdsData !== undefined && holdsData.page.total > 1 && (
         <>
           <SelectField
+            disabled={confirmationPinned}
             label="해제할 보류"
             options={holdOptions}
             value={selectedHold === undefined ? null : String(selectedHold.lotHoldId)}
@@ -230,14 +266,14 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
             <nav className="form-actions" aria-label="열린 보류 쪽 이동">
               <Button
                 variant="outlined"
-                disabled={holdPage <= 1}
+                disabled={confirmationPinned || holdPage <= 1}
                 onClick={() => changeHoldPage(holdPage - 1)}
               >
                 이전 쪽
               </Button>
               <Button
                 variant="outlined"
-                disabled={holdPage >= holdTotalPages}
+                disabled={confirmationPinned || holdPage >= holdTotalPages}
                 onClick={() => changeHoldPage(holdPage + 1)}
               >
                 다음 쪽
@@ -260,8 +296,12 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
             warehouseId={lot.warehouseId}
             locationId={lot.locationId}
             targetLotStatusCode={selectedTransition.targetLotStatusCode}
-            onCreated={() => setSelectedTransitionKey(null)}
-            onStale={clearExecutionOwner}
+            onCreated={() => {
+              refreshPreparation();
+              setSelectedTransitionKey(null);
+            }}
+            onConfirmationChange={changeConfirmation}
+            onStale={reloadExecutionOwner}
           />
         )}
       {isRelease &&
@@ -278,8 +318,12 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
             warehouseId={lot.warehouseId}
             locationId={lot.locationId}
             targetLotStatusCode={selectedTransition.targetLotStatusCode}
-            onReleased={() => setSelectedHoldId(null)}
-            onStale={clearExecutionOwner}
+            onReleased={() => {
+              refreshPreparation();
+              setSelectedHoldId(null);
+            }}
+            onConfirmationChange={changeConfirmation}
+            onStale={reloadExecutionOwner}
           />
         )}
     </section>

@@ -11,8 +11,8 @@ import {
   Table,
 } from '@crefle/web-ui';
 import type { components, paths } from '@omf-mes/api-client';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useEffect, useId, useState } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -61,11 +61,14 @@ export const lotStatusTransitionKeys = {
     ['lot-status-transition', 'candidates', { ...filters }, page] as const,
 };
 
-const useCandidates = (filters: LotStatusCandidateFilters, page: number) => {
+const ROOT_KEY = ['lot-status-transition'] as const;
+
+const useCandidates = (filters: LotStatusCandidateFilters, page: number, enabled: boolean) => {
   const { client } = useApiClient();
   const query = toLotStatusCandidateQuery(filters, page);
   return useQuery({
     queryKey: lotStatusTransitionKeys.candidates(filters, page),
+    enabled,
     placeholderData: keepPreviousData,
     queryFn: () => runRequest(() => client.GET('/quality/lot-statuses', { params: { query } })),
   });
@@ -83,33 +86,38 @@ const formatDateTime = (value: string | undefined): string => {
 };
 
 interface FilterSelectProps {
+  disabled: boolean;
   label: string;
   options: { value: string; label: string }[];
   value: string;
   onChange: (value: string) => void;
 }
 
-const FilterSelect = ({ label, options, value, onChange }: FilterSelectProps) => {
+const FilterSelect = ({ disabled, label, options, value, onChange }: FilterSelectProps) => {
   const id = useId();
   return (
     <div>
       <label htmlFor={id}>{label}</label>
-      <Select id={id} options={options} value={value} onChange={onChange} />
+      <Select id={id} disabled={disabled} options={options} value={value} onChange={onChange} />
     </div>
   );
 };
 
 export const LotStatusTransitionCandidateScreen = () => {
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useState(EMPTY_LOT_STATUS_CANDIDATE_FILTERS);
   const [filters, setFilters] = useState(EMPTY_LOT_STATUS_CANDIDATE_FILTERS);
   const [page, setPage] = useState(1);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const candidates = useCandidates(filters, page);
-  const selected = candidates.isError
-    ? null
-    : (candidates.data?.items.find((candidate) => rowKey(candidate) === selectedKey) ?? null);
+  const [confirmationPinned, setConfirmationPinned] = useState(false);
+  const candidates = useCandidates(filters, page, !confirmationPinned);
+  const selected =
+    candidates.isError && !confirmationPinned
+      ? null
+      : (candidates.data?.items.find((candidate) => rowKey(candidate) === selectedKey) ?? null);
   useEffect(() => {
     if (
+      !confirmationPinned &&
       selectedKey !== null &&
       candidates.data !== undefined &&
       !candidates.isFetching &&
@@ -117,7 +125,21 @@ export const LotStatusTransitionCandidateScreen = () => {
       selected === null
     )
       setSelectedKey(null);
-  }, [candidates.data, candidates.isError, candidates.isFetching, selected, selectedKey]);
+  }, [
+    candidates.data,
+    candidates.isError,
+    candidates.isFetching,
+    confirmationPinned,
+    selected,
+    selectedKey,
+  ]);
+  const onConfirmationChange = useCallback(
+    (pinned: boolean): void => {
+      setConfirmationPinned(pinned);
+      if (pinned) void queryClient.cancelQueries({ queryKey: ROOT_KEY });
+    },
+    [queryClient],
+  );
   const items = useItemReferenceOptions();
   const statuses = useLotStatusOptions();
   const itemOptions =
@@ -129,14 +151,17 @@ export const LotStatusTransitionCandidateScreen = () => {
   const statusLabel = (code: string): string =>
     statusOptions.find((option) => option.value === code)?.label ?? `${code} (이름 미확인)`;
   const changePage = (next: number): void => {
+    if (confirmationPinned) return;
     setPage(next);
     setSelectedKey(null);
   };
   const apply = (): void => {
+    if (confirmationPinned) return;
     setFilters({ ...draft });
     changePage(1);
   };
   const reset = (): void => {
+    if (confirmationPinned) return;
     setDraft(EMPTY_LOT_STATUS_CANDIDATE_FILTERS);
     setFilters(EMPTY_LOT_STATUS_CANDIDATE_FILTERS);
     changePage(1);
@@ -151,7 +176,10 @@ export const LotStatusTransitionCandidateScreen = () => {
           className="link-cell"
           aria-label={`${row.lotNo} 선택`}
           aria-current={selectedKey === rowKey(row) ? true : undefined}
-          onClick={() => setSelectedKey(rowKey(row))}
+          disabled={confirmationPinned}
+          onClick={() => {
+            if (!confirmationPinned) setSelectedKey(rowKey(row));
+          }}
         >
           {row.lotNo}
         </button>
@@ -173,25 +201,30 @@ export const LotStatusTransitionCandidateScreen = () => {
     <section className="pane" aria-label="Lot Status 판정·전이 대상">
       <div className="filter-bar">
         <SearchInput
+          disabled={confirmationPinned}
           label="LOT 번호"
           value={draft.q}
           onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
           onSearch={apply}
         />
         <FilterSelect
+          disabled={confirmationPinned}
           label="자재"
           options={[{ value: '', label: '전체' }, ...itemOptions]}
           value={draft.itemId}
           onChange={(itemId) => setDraft((current) => ({ ...current, itemId }))}
         />
         <FilterSelect
+          disabled={confirmationPinned}
           label="품질 상태"
           options={[{ value: '', label: '전체' }, ...statusOptions]}
           value={draft.lotStatusCode}
           onChange={(lotStatusCode) => setDraft((current) => ({ ...current, lotStatusCode }))}
         />
-        <Button onClick={apply}>조회</Button>
-        <Button variant="outlined" onClick={reset}>
+        <Button disabled={confirmationPinned} onClick={apply}>
+          조회
+        </Button>
+        <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>
           초기화
         </Button>
       </div>
@@ -216,12 +249,16 @@ export const LotStatusTransitionCandidateScreen = () => {
             empty={<EmptyState size="sm" live title="조건에 맞는 LOT이 없습니다." />}
           />
           <nav className="form-actions" aria-label="LOT 후보 쪽 이동">
-            <Button variant="outlined" disabled={page <= 1} onClick={() => changePage(page - 1)}>
+            <Button
+              variant="outlined"
+              disabled={confirmationPinned || page <= 1}
+              onClick={() => changePage(page - 1)}
+            >
               이전 쪽
             </Button>
             <Button
               variant="outlined"
-              disabled={page >= totalPages}
+              disabled={confirmationPinned || page >= totalPages}
               onClick={() => changePage(page + 1)}
             >
               다음 쪽
@@ -267,8 +304,12 @@ export const LotStatusTransitionCandidateScreen = () => {
               </Card.Body>
             </Card>
           </section>
-          {!candidates.isFetching && (
-            <LotStatusTransitionPreparation key={rowKey(selected)} lot={selected} />
+          {(confirmationPinned || !candidates.isFetching) && (
+            <LotStatusTransitionPreparation
+              key={rowKey(selected)}
+              lot={selected}
+              onConfirmationChange={onConfirmationChange}
+            />
           )}
         </>
       )}

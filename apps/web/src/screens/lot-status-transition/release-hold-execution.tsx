@@ -66,7 +66,11 @@ const isStale = (error: ApiError | null): boolean =>
   error?.kind === 'conflict' ||
   (error?.kind === 'http' && (error.status === 409 || error.status === 412));
 const staleMessage = (error: ApiError | null): string =>
-  error?.kind === 'conflict' && error.message.trim() !== '' ? error.message : STALE_FALLBACK;
+  (error?.kind === 'conflict' || error?.kind === 'http') &&
+  error.message !== undefined &&
+  error.message.trim() !== ''
+    ? error.message
+    : STALE_FALLBACK;
 
 export interface ReleaseHoldExecutionProps {
   etagPath: string;
@@ -77,6 +81,7 @@ export interface ReleaseHoldExecutionProps {
   locationId: number | undefined;
   targetLotStatusCode: string;
   onReleased: () => void;
+  onConfirmationChange: (pinned: boolean) => void;
   onStale: () => void;
 }
 
@@ -105,6 +110,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
     keyLifetime: 'until-applied',
     onSuccess: () => {
       setConfirmation(null);
+      props.onConfirmationChange(false);
       toast.show({ variant: 'success', description: 'LOT 보류를 해제했습니다.' });
       props.onReleased();
     },
@@ -112,6 +118,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
   const stale = isStale(write.error);
   const closeDialog = (): void => {
     setConfirmation(null);
+    props.onConfirmationChange(false);
     write.reset();
   };
   const reload = (): void => {
@@ -164,7 +171,10 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
       <Button
         disabled={write.isSaving || validation.body === null}
         onClick={() => {
-          if (validation.body !== null) setConfirmation(validation.body);
+          if (validation.body !== null) {
+            setConfirmation(validation.body);
+            props.onConfirmationChange(true);
+          }
         }}
       >
         해제 확인
