@@ -23,3 +23,8 @@ export interface ProductionPlanListResponse {
   items: ProductionPlanFact[];
   page: PageMeta;
 }
+
+export interface ProductionPlanAllResponse {
+  items: ProductionPlanFact[];
+  total: number;
+}

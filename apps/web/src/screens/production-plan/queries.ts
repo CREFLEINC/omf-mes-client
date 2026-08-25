@@ -1,16 +1,24 @@
-import type { components } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { ProductionPlanFact, ProductionPlanListResponse } from './types';
+import type {
+  ProductionPlanAllResponse,
+  ProductionPlanFact,
+  ProductionPlanListResponse,
+} from './types';
 
 type ProductionPlan = components['schemas']['ProductionPlan'];
+type Client = ApiClient['client'];
+const EDITOR_PAGE_SIZE = 100;
 
 export const productionPlanKeys = {
   all: ['production-plans'] as const,
   list: (productionOrderId: number | null, page: number) =>
     ['production-plans', 'list', productionOrderId, page] as const,
+  allForOrder: (productionOrderId: number | null) =>
+    ['production-plans', 'all-for-order', productionOrderId] as const,
   detail: (productionPlanId: number | null) =>
     ['production-plans', 'detail', productionPlanId] as const,
 };
@@ -41,6 +49,59 @@ const toListResponse = (response: {
   page: response.page,
 });
 
+const fetchAllProductionPlans = async (
+  client: Client,
+  productionOrderId: number,
+): Promise<ProductionPlanAllResponse> => {
+  const requestPage = (page: number): Promise<ProductionPlanListResponse> =>
+    runRequest(() =>
+      client.GET('/planning/production-plans', {
+        params: {
+          query: {
+            productionOrderId,
+            size: EDITOR_PAGE_SIZE,
+            ...(page > 1 ? { page } : {}),
+          },
+        },
+      }),
+    ).then(toListResponse);
+
+  const first = await requestPage(1);
+  const unique = new Map(first.items.map((item) => [item.productionPlanId, item]));
+  if (!Number.isFinite(first.page.size) || first.page.size < 1) {
+    throw new Error('생산계획 전체 목록의 쪽 크기를 확인할 수 없습니다.');
+  }
+  if (
+    first.page.page !== 1 ||
+    !Number.isSafeInteger(first.page.total) ||
+    first.page.total < 0 ||
+    unique.size > first.page.total
+  ) {
+    throw new Error('생산계획 전체 목록의 쪽 정보가 일관되지 않습니다.');
+  }
+  if (unique.size === first.page.total) {
+    return { items: [...unique.values()], total: first.page.total };
+  }
+
+  const totalPages = Math.ceil(first.page.total / first.page.size);
+  for (let page = 2; page <= totalPages; page += 1) {
+    const next = await requestPage(page);
+    if (
+      next.page.page !== page ||
+      next.page.size !== first.page.size ||
+      next.page.total !== first.page.total
+    ) {
+      throw new Error('생산계획 전체 목록의 쪽 정보가 일관되지 않습니다.');
+    }
+    next.items.forEach((item) => unique.set(item.productionPlanId, item));
+  }
+  if (unique.size !== first.page.total) {
+    throw new Error('생산계획 전체 목록을 완성하지 못했습니다.');
+  }
+
+  return { items: [...unique.values()], total: first.page.total };
+};
+
 export const useProductionPlanList = (
   productionOrderId: number | null,
   page: number,
@@ -60,6 +121,24 @@ export const useProductionPlanList = (
           params: { query: { productionOrderId, page } },
         }),
       ).then(toListResponse);
+    },
+  });
+};
+
+export const useAllProductionPlans = (
+  productionOrderId: number | null,
+): UseQueryResult<ProductionPlanAllResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: productionPlanKeys.allForOrder(productionOrderId),
+    enabled: productionOrderId !== null,
+    queryFn: () => {
+      if (productionOrderId === null) {
+        throw new Error('생산 P/O를 고르기 전에는 전체 계획 목록을 조회하지 않습니다.');
+      }
+
+      return fetchAllProductionPlans(client, productionOrderId);
     },
   });
 };
