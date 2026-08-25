@@ -402,7 +402,7 @@ describe('AppLayout', () => {
     );
   });
 
-  it('품질관리 섹션의 공개 화면이 W-03-01 < W-03-02 < W-03-03 < W-03-09 순서다', () => {
+  it('품질관리 섹션의 공개 화면이 W-03-01 < W-03-02 < W-03-03 < W-03-05 < W-03-09 순서다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -421,6 +421,10 @@ describe('AppLayout', () => {
       'href',
       '/quality/suspicious-material-hold',
     );
+    expect(within(sidebar).getByRole('link', { name: '검사실적·검사결과 조회' })).toHaveAttribute(
+      'href',
+      '/quality/inspection-results',
+    );
     expect(within(sidebar).getByRole('link', { name: '특채·한도승인 승인 처리' })).toHaveAttribute(
       'href',
       '/quality/approvals',
@@ -434,8 +438,11 @@ describe('AppLayout', () => {
     expect(links.indexOf('/quality/suspicious-material-hold')).toBeGreaterThan(
       links.indexOf('/quality/lot-status-transition'),
     );
-    expect(links.indexOf('/quality/approvals')).toBeGreaterThan(
+    expect(links.indexOf('/quality/inspection-results')).toBeGreaterThan(
       links.indexOf('/quality/suspicious-material-hold'),
+    );
+    expect(links.indexOf('/quality/approvals')).toBeGreaterThan(
+      links.indexOf('/quality/inspection-results'),
     );
     expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
   });
@@ -646,6 +653,7 @@ describe('AppLayout', () => {
       '/quality/lot-status',
       '/quality/lot-status-transition',
       '/quality/suspicious-material-hold',
+      '/quality/inspection-results',
       '/quality/approvals',
       '/equipment/master',
       '/equipment/tool-master',

@@ -88,6 +88,7 @@ export const MeasurementPage = ({
     1,
     Math.ceil((measurements.data?.page.total ?? 0) / (measurements.data?.page.size ?? 50)),
   );
+  const isBeyondLast = measurements.data !== undefined && page > totalPages;
 
   return (
     <section aria-labelledby="measurement-page-title">
@@ -134,14 +135,22 @@ export const MeasurementPage = ({
         !measurements.isPlaceholderData &&
         measurements.data !== undefined && (
           <>
-            <Table
-              density="compact"
-              caption="검사 측정치"
-              columns={columns}
-              rows={[...measurements.data.items]}
-              getRowId={(row) => String(row.inspectionMeasurementId)}
-              empty={<EmptyState size="sm" title="측정치가 없습니다" />}
-            />
+            {isBeyondLast ? (
+              <EmptyState
+                size="sm"
+                title="요청한 측정치 쪽이 없습니다"
+                description="이전 쪽으로 이동해 주세요."
+              />
+            ) : (
+              <Table
+                density="compact"
+                caption="검사 측정치"
+                columns={columns}
+                rows={[...measurements.data.items]}
+                getRowId={(row) => String(row.inspectionMeasurementId)}
+                empty={<EmptyState size="sm" title="측정치가 없습니다" />}
+              />
+            )}
             <nav className="form-actions" aria-label="측정치 쪽 이동">
               <Button
                 variant="outlined"
@@ -151,7 +160,7 @@ export const MeasurementPage = ({
                 이전
               </Button>
               <span>
-                {page} / {totalPages}
+                {isBeyondLast ? `요청 ${page} / 마지막 ${totalPages}` : `${page} / ${totalPages}`}
               </span>
               <Button
                 variant="outlined"

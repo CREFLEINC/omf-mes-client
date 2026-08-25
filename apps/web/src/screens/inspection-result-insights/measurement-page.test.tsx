@@ -219,10 +219,11 @@ describe('검사 측정치 전체 보기', () => {
         },
       },
     );
-    await screen.findByText('측정치가 없습니다');
+    await screen.findByText('요청한 측정치 쪽이 없습니다');
     const request = calls.find((url) => url.pathname.endsWith('/measurements'));
     expect(request?.searchParams.get('page')).toBe('2');
     expect(request?.searchParams.get('calibrationExpired')).toBe('only');
+    expect(screen.getByText('요청 2 / 마지막 1')).toBeVisible();
   });
 
   it('다음 page placeholder 동안 이전 측정 행을 숨긴다', async () => {

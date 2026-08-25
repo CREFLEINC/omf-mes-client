@@ -242,6 +242,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/quality/suspicious-material-hold" icon="report_problem">
               의심자재 등록
             </NavItem>
+            {/* W-03-05 — 보류 등록 뒤에 검사 결과를 조회하고, 승인 처리 전에 판단 근거를 본다. */}
+            <NavItem to="/quality/inspection-results" icon="analytics">
+              검사실적·검사결과 조회
+            </NavItem>
             {/* W-03-09 — Lot Status 조회·판정·의심자재 등록 다음에 서는 품질 승인 화면이다. */}
             <NavItem to="/quality/approvals" icon="approval">
               특채·한도승인 승인 처리
