@@ -17,11 +17,17 @@ export type InspectionResult = components['schemas']['InspectionResult'];
 export type InspectionSummary = components['schemas']['InspectionSummary'];
 export type DefectRateTrend = components['schemas']['DefectRateTrend'];
 export type DefectDistribution = components['schemas']['DefectDistribution'];
+export type MeasurementItemSummary = components['schemas']['MeasurementItemSummary'];
 type PageMeta = components['schemas']['PageMeta'];
 
 export interface InspectionResultList {
   items: readonly InspectionResult[];
   page: PageMeta;
+}
+
+export interface MeasurementSummary {
+  asOf: string;
+  items: readonly MeasurementItemSummary[];
 }
 
 const fetchInspectionResults = async (
@@ -98,6 +104,42 @@ export const useDefectDistribution = (
       if (query === null) throw new Error('유효한 기간 전에는 분포를 조회하지 않습니다.');
       return runRequest(() =>
         client.GET('/quality/defect-records/distribution', { params: { query } }),
+      );
+    },
+  });
+};
+
+export const useInspectionResultDetail = (
+  inspectionResultId: number | null,
+): UseQueryResult<InspectionResult> => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: ['inspection-result-insights', 'detail', inspectionResultId],
+    enabled: inspectionResultId !== null,
+    queryFn: () => {
+      if (inspectionResultId === null) throw new Error('검사 결과를 고르기 전입니다.');
+      return runRequest(() =>
+        client.GET('/quality/inspection-results/{inspectionResultId}', {
+          params: { path: { inspectionResultId } },
+        }),
+      );
+    },
+  });
+};
+
+export const useMeasurementSummary = (
+  inspectionResultId: number | null,
+): UseQueryResult<MeasurementSummary> => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: ['inspection-result-insights', 'measurement-summary', inspectionResultId],
+    enabled: inspectionResultId !== null,
+    queryFn: () => {
+      if (inspectionResultId === null) throw new Error('검사 결과를 고르기 전입니다.');
+      return runRequest(() =>
+        client.GET('/quality/inspection-results/{inspectionResultId}/measurement-summary', {
+          params: { path: { inspectionResultId } },
+        }),
       );
     },
   });
