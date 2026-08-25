@@ -1,0 +1,135 @@
+import { Button, Select, TextField } from '@crefle/web-ui';
+import { useEffect, useId, useState } from 'react';
+
+import type { InspectionInsightFilters } from './filters';
+
+export interface InspectionFilterOption {
+  value: string;
+  label: string;
+}
+
+export interface InspectionFilterOptions {
+  inspectionType: readonly InspectionFilterOption[];
+  item: readonly InspectionFilterOption[];
+  process: readonly InspectionFilterOption[];
+  judgment: readonly InspectionFilterOption[];
+}
+
+interface InspectionInsightFilterBarProps {
+  appliedFilters: InspectionInsightFilters;
+  options: InspectionFilterOptions;
+  onSearch: (filters: InspectionInsightFilters) => void;
+  onReset: () => void;
+}
+
+const optional = (options: readonly InspectionFilterOption[]): InspectionFilterOption[] => [
+  { value: '', label: '전체' },
+  ...options,
+];
+
+export const InspectionInsightFilterBar = ({
+  appliedFilters,
+  options,
+  onSearch,
+  onReset,
+}: InspectionInsightFilterBarProps) => {
+  const [draft, setDraft] = useState(appliedFilters);
+  const id = useId();
+  const {
+    from,
+    to,
+    inspectionTypeCode,
+    itemId,
+    processId,
+    overallJudgmentCode,
+    calibrationExpired,
+  } = appliedFilters;
+
+  useEffect(() => {
+    setDraft({
+      from,
+      to,
+      inspectionTypeCode,
+      itemId,
+      processId,
+      overallJudgmentCode,
+      finalRoundOnly: true,
+      calibrationExpired,
+    });
+  }, [from, to, inspectionTypeCode, itemId, processId, overallJudgmentCode, calibrationExpired]);
+
+  const reason =
+    draft.from === '' || draft.to === '' || draft.inspectionTypeCode === ''
+      ? '기간과 검사유형을 선택하세요.'
+      : draft.from > draft.to
+        ? '종료일은 시작일보다 빠를 수 없습니다.'
+        : null;
+  const selects = [
+    ['검사유형', 'inspectionTypeCode', options.inspectionType, true],
+    ['품목', 'itemId', optional(options.item), false],
+    ['공정', 'processId', optional(options.process), false],
+    ['종합판정', 'overallJudgmentCode', optional(options.judgment), false],
+  ] as const;
+
+  return (
+    <div className="filter-bar">
+      <TextField
+        type="date"
+        label="시작일"
+        value={draft.from}
+        onChange={(event) => setDraft((current) => ({ ...current, from: event.target.value }))}
+      />
+      <TextField
+        type="date"
+        label="종료일"
+        value={draft.to}
+        onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))}
+      />
+      {selects.map(([label, key, values, required]) => (
+        <div className="field-cell wide-select" key={key}>
+          <label className="field-label" htmlFor={`${id}-${key}`}>
+            {label}
+          </label>
+          <Select
+            id={`${id}-${key}`}
+            value={draft[key] === '' && required ? null : draft[key]}
+            placeholder={required ? '선택' : undefined}
+            options={[...values]}
+            onChange={(value) => setDraft((current) => ({ ...current, [key]: value }))}
+          />
+        </div>
+      ))}
+      <div className="field-cell wide-select">
+        <label className="field-label" htmlFor={`${id}-calibration`}>
+          교정 상태
+        </label>
+        <Select
+          id={`${id}-calibration`}
+          value={draft.calibrationExpired}
+          options={[
+            { value: '', label: '전체' },
+            { value: 'only', label: '검교정 만료만' },
+            { value: 'exclude', label: '검교정 만료 제외' },
+          ]}
+          onChange={(value) =>
+            setDraft((current) => ({
+              ...current,
+              calibrationExpired: value as InspectionInsightFilters['calibrationExpired'],
+            }))
+          }
+        />
+      </div>
+      <div className="field-cell field-cell-unlabeled">
+        <div className="filter-actions">
+          <Button disabled={reason !== null} onClick={() => onSearch(draft)}>
+            조회
+          </Button>
+          <Button variant="outlined" onClick={onReset}>
+            초기화
+          </Button>
+        </div>
+        <span className="field-note">{reason ?? '최종 검사 회차만 조회합니다.'}</span>
+      </div>
+    </div>
+  );
+};
