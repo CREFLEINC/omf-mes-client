@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import {
   SORT_OPTIONS,
   TOOL_TYPE_OPTIONS,
@@ -33,8 +34,8 @@ export interface ToolListPaneProps {
   appliedFilters: ToolFilters;
   onApplyFilters: (next: ToolFilters) => void;
   plantOptions: CodeOption[];
-  /** 공장 이름 풀이용 원본 — 좁힌 선택지가 아니라 전체에서 찾는다 */
-  plantEntries: readonly { value: string; label: string }[];
+  /** 공장 이름과 조회 상태 — 좁힌 선택지가 아니라 전체에서 찾는다 */
+  plantSource: LookupSource;
   statusOptions: CodeOption[];
   onAdd: () => void;
   onEdit: (tool: Mold) => void;
@@ -81,7 +82,7 @@ export const ToolListPane = ({
   appliedFilters,
   onApplyFilters,
   plantOptions,
-  plantEntries,
+  plantSource,
   statusOptions,
   onAdd,
   onEdit,
@@ -329,7 +330,7 @@ export const ToolListPane = ({
             removeLabel={t.filters.chipRemovePlant}
             onRemove={() => onApplyFilters({ ...appliedFilters, plantId: '' })}
           >
-            {t.filters.chipPlant(lookupLabel(plantEntries, appliedFilters.plantId))}
+            {t.filters.chipPlant(lookupLabel(plantSource, appliedFilters.plantId))}
           </Chip>
         )}
         {appliedFilters.toolTypeCode !== '' && (

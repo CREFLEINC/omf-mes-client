@@ -2,6 +2,7 @@ import { Button, Dialog, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import type { ActionAvailability } from './asset-actions';
 import { type CodeOption, codeLabel } from './code-options';
 import { FieldLabel } from './field-label';
@@ -53,8 +54,8 @@ export interface GaugeFormDialogProps {
   /** null이면 계측기번호 편집 가능 */
   codeLockReason: string | null;
   plantOptions: CodeOption[];
-  /** 공장 이름 풀이용 원본 — 수정에서는 고르지 않고 읽는다 */
-  plantEntries: readonly { value: string; label: string }[];
+  /** 공장 이름과 조회 상태 — 수정에서는 고르지 않고 읽는다 */
+  plantSource: LookupSource;
   cycleOptions: CodeOption[];
   uomOptions: CodeOption[];
   /** 선택 목록의 한계(잘림·실패) 안내. 없으면 붙이지 않는다 */
@@ -96,7 +97,7 @@ export const GaugeFormDialog = ({
   banner,
   codeLockReason,
   plantOptions,
-  plantEntries,
+  plantSource,
   cycleOptions,
   uomOptions,
   optionsNote,
@@ -116,8 +117,7 @@ export const GaugeFormDialog = ({
   const calibrationId = useId();
   const retireNoteId = useId();
 
-  const plantName =
-    plantEntries.find((entry) => entry.value === values.plantId)?.label ?? values.plantId;
+  const plantName = lookupDisplayLabel(plantSource, values.plantId);
 
   return (
     <Dialog

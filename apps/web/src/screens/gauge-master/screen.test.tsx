@@ -595,7 +595,10 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
   it('선택 목록 조회가 실패해도 목록은 선다', async () => {
     renderScreen({ respondPlants: () => jsonResponse({ message: '서버 오류' }, { status: 500 }) });
 
-    expect(await screen.findByRole('cell', { name: 'GA-01' })).toBeInTheDocument();
+    const row = await rowOf('GA-01');
+
+    expect(within(row).getByText(messages.common.reference.failed)).toBeInTheDocument();
+    expect(within(row).queryByText('11')).not.toBeInTheDocument();
     expect(screen.getByText(t.optionsLoadFailed)).toBeInTheDocument();
   });
 });
@@ -884,8 +887,8 @@ describe('W-05-11 계측기 마스터 — 등록·수정', () => {
     expect(await screen.findByRole('option', { name: 'MONTH' })).toBeInTheDocument();
   });
 
-  /* 세 선택칸(공장·주기 단위·정밀도 단위)이 같은 규율을 쓴다 — 걸린 값을 감추지 않는다. */
-  it('걸려 있는 정밀도 단위가 목록에 없어도 칸이 그 값을 보인다', async () => {
+  /* 숫자 FK는 값을 보존하되, 내부 번호 자체를 사용자가 읽는 이름으로 노출하지 않는다. */
+  it('걸려 있는 정밀도 단위가 목록에 없으면 알 수 없음으로 보존한다', async () => {
     const gauge = makeGauge(3030, 'GA-30', { precisionValue: 0.5, precisionUomId: 9999 });
     const { user } = renderScreen({
       respondGauges: () => jsonResponse(gaugesResponse([gauge])),
@@ -895,7 +898,10 @@ describe('W-05-11 계측기 마스터 — 등록·수정', () => {
     await openEdit(user, 'GA-30');
     await user.click(within(form()).getByRole('combobox', { name: /정밀도 단위/ }));
 
-    expect(await screen.findByRole('option', { name: '9999' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', { name: messages.common.reference.unknown }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: '9999' })).not.toBeInTheDocument();
   });
 
   it('주기 단위 코드 그룹을 이름으로 부른다', async () => {

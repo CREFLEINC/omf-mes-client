@@ -228,6 +228,7 @@ export interface UomLookupResult {
   uoms: UomLookup[];
   truncated: boolean;
   isError: boolean;
+  isLoading: boolean;
 }
 
 const NO_UOMS: UomLookup[] = [];
@@ -259,6 +260,7 @@ export const useUomLookup = (): UomLookupResult => {
       })) ?? NO_UOMS,
     truncated: isListTruncated(uoms.data),
     isError: uoms.isError,
+    isLoading: uoms.isPending,
   };
 };
 
@@ -272,6 +274,7 @@ export interface PlantLookupResult {
   plants: PlantLookup[];
   truncated: boolean;
   isError: boolean;
+  isLoading: boolean;
 }
 
 const NO_PLANTS: PlantLookup[] = [];
@@ -298,5 +301,6 @@ export const usePlantLookup = (): PlantLookupResult => {
       })) ?? NO_PLANTS,
     truncated: isListTruncated(plants.data),
     isError: plants.isError,
+    isLoading: plants.isPending,
   };
 };
