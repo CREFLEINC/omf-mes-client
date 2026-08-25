@@ -19,21 +19,27 @@ describe('검사 실적 조회 조건', () => {
     );
 
     expect(readInspectionInsightFilters(params, ALLOWED)).toEqual({
-      from: '2026-08-01',
-      to: '2026-08-31',
-      inspectionTypeCode: 'IQC',
-      itemId: '101',
-      processId: '202',
-      overallJudgmentCode: 'REJECTED',
-      finalRoundOnly: true,
-      calibrationExpired: 'only',
+      kind: 'VALID',
+      filters: {
+        from: '2026-08-01',
+        to: '2026-08-31',
+        inspectionTypeCode: 'IQC',
+        itemId: '101',
+        processId: '202',
+        overallJudgmentCode: 'REJECTED',
+        finalRoundOnly: true,
+        calibrationExpired: 'only',
+      },
     });
   });
 
   it('주소의 미확정 ID·교정 값은 API 조건으로 보존하지 않는다', () => {
     const params = new URLSearchParams('item=0&process=abc&calibration=unknown');
 
-    expect(readInspectionInsightFilters(params, ALLOWED)).toEqual(EMPTY_INSPECTION_INSIGHT_FILTERS);
+    expect(readInspectionInsightFilters(params, ALLOWED)).toEqual({
+      kind: 'VALID',
+      filters: EMPTY_INSPECTION_INSIGHT_FILTERS,
+    });
   });
 
   it('실재하지 않는 날짜와 준비된 option에 없는 code를 보존하지 않는다', () => {
@@ -41,7 +47,10 @@ describe('검사 실적 조회 조건', () => {
       'from=2026-02-30&to=2026-13-01&type=UNKNOWN&judgment=UNKNOWN',
     );
 
-    expect(readInspectionInsightFilters(params, ALLOWED)).toEqual(EMPTY_INSPECTION_INSIGHT_FILTERS);
+    expect(readInspectionInsightFilters(params, ALLOWED)).toEqual({
+      kind: 'INVALID',
+      filters: EMPTY_INSPECTION_INSIGHT_FILTERS,
+    });
   });
 
   it.each([

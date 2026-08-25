@@ -38,17 +38,22 @@ const GROUP_OPTIONS = [
 interface InsightTabsProps {
   filters: InspectionInsightFilters;
   sourceAxisCode: string;
+  queriesEnabled?: boolean;
 }
 
-export const InsightTabs = ({ filters, sourceAxisCode }: InsightTabsProps) => {
+export const InsightTabs = ({
+  filters,
+  sourceAxisCode,
+  queriesEnabled = true,
+}: InsightTabsProps) => {
   const [view, setView] = useState<View>('trend');
   const [group, setGroup] = useState<DistributionGroup>('defectCode');
-  const trend = useDefectRateTrend(filters, view === 'trend');
+  const trend = useDefectRateTrend(filters, queriesEnabled && view === 'trend');
   const distribution = useDefectDistribution(
     filters,
     group,
     sourceAxisCode,
-    view === 'distribution',
+    queriesEnabled && view === 'distribution',
   );
   const retry = (refetch: () => Promise<unknown>) => (
     <Button size="sm" variant="outlined" onClick={() => void refetch()}>

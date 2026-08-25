@@ -69,7 +69,8 @@ describe('검사실적·검사결과 조회 조립', () => {
   it.each([
     ['비실재 날짜', '?from=2026-02-30&to=2026-03-31&type=PQC'],
     ['미확정 검사유형', '?from=2026-08-01&to=2026-08-31&type=UNKNOWN'],
-  ])('%s 주소는 모든 집계 요청을 fail-closed한다', (_name, search) => {
+  ])('%s 주소는 모든 집계 요청을 fail-closed한다', async (_name, search) => {
+    const user = userEvent.setup();
     const calls: Request[] = [];
     renderWithProviders(
       <InspectionResultInsightsScreen
@@ -85,11 +86,13 @@ describe('검사실적·검사결과 조회 조립', () => {
     );
 
     expect(screen.getByText('기간과 검사유형을 선택하세요')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '불량 분포' }));
     expect(calls).toHaveLength(0);
   });
 
-  it('option에 없는 판정 주소값은 API 조건에서 제거한다', async () => {
-    const calls: URL[] = [];
+  it('option에 없는 판정 주소값은 모든 집계 요청을 fail-closed한다', async () => {
+    const user = userEvent.setup();
+    const calls: Request[] = [];
     renderWithProviders(
       <InspectionResultInsightsScreen
         options={options}
@@ -100,34 +103,13 @@ describe('검사실적·검사결과 조회 조립', () => {
       {
         route:
           '/quality/inspection-results?from=2026-08-01&to=2026-08-31&type=PQC&judgment=UNKNOWN',
-        fetch: createStubFetch([
-          pathRoute('/quality/inspection-results/summary', (request) => {
-            calls.push(new URL(request.url));
-            return jsonResponse({
-              inspectionCount: 0,
-              inspectedQty: 0,
-              acceptedQty: 0,
-              rejectedQty: 0,
-              heldQty: 0,
-              defectRate: 0,
-              finalRoundOnly: true,
-              asOf: '2026-08-31T09:30:00+09:00',
-            });
-          }),
-          pathRoute('/quality/inspection-results', (request) => {
-            calls.push(new URL(request.url));
-            return jsonResponse({ items: [], page: { page: 1, size: 50, total: 0 } });
-          }),
-          pathRoute('/quality/inspection-results/defect-rate-trend', (request) => {
-            calls.push(new URL(request.url));
-            return jsonResponse({ points: [], asOf: '2026-08-31T09:31:00+09:00' });
-          }),
-        ]),
+        fetch: async (request) => (calls.push(request), jsonResponse({})),
       },
     );
 
-    await waitFor(() => expect(calls).toHaveLength(3));
-    expect(calls.every((call) => !call.searchParams.has('overallJudgmentCode'))).toBe(true);
+    expect(await screen.findByText('기간과 검사유형을 선택하세요')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '불량 분포' }));
+    expect(calls).toHaveLength(0);
   });
 
   it('공통 모집단을 조회하고 선택 상세를 연 뒤 page 이동에서 선택을 정리한다', async () => {

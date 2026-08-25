@@ -24,6 +24,10 @@ export interface AllowedInspectionFilterCodes {
   judgmentCodes: ReadonlySet<string>;
 }
 
+export type InspectionInsightFilterState =
+  | { kind: 'VALID'; filters: InspectionInsightFilters }
+  | { kind: 'INVALID'; filters: InspectionInsightFilters };
+
 export const DEFAULT_INSPECTION_RESULT_SORT: InspectionResultSort = 'inspectedAt,desc';
 
 export const EMPTY_INSPECTION_INSIGHT_FILTERS: InspectionInsightFilters = {
@@ -62,13 +66,17 @@ const readIdentifier = (raw: string | null): string => {
 export const readInspectionInsightFilters = (
   params: URLSearchParams,
   allowed: AllowedInspectionFilterCodes,
-): InspectionInsightFilters => {
+): InspectionInsightFilterState => {
   const calibration = params.get('calibration');
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
   const type = params.get('type') ?? '';
   const judgment = params.get('judgment') ?? '';
-  return {
+  const hasInvalidDate = [from, to].some((value) => value !== '' && !isCalendarDate(value));
+  const hasUnknownCode =
+    (type !== '' && !allowed.inspectionTypeCodes.has(type)) ||
+    (judgment !== '' && !allowed.judgmentCodes.has(judgment));
+  const filters: InspectionInsightFilters = {
     from: isCalendarDate(from) ? from : '',
     to: isCalendarDate(to) ? to : '',
     inspectionTypeCode: allowed.inspectionTypeCodes.has(type) ? type : '',
@@ -78,6 +86,7 @@ export const readInspectionInsightFilters = (
     finalRoundOnly: true,
     calibrationExpired: calibration === 'only' || calibration === 'exclude' ? calibration : '',
   };
+  return { kind: hasInvalidDate || hasUnknownCode ? 'INVALID' : 'VALID', filters };
 };
 
 export const readInspectionResultSort = (params: URLSearchParams): InspectionResultSort =>

@@ -46,12 +46,13 @@ export const useInspectionResults = (
   filters: InspectionInsightFilters,
   sort: InspectionResultSort,
   page: number,
+  isEnabled = true,
 ): UseQueryResult<InspectionResultList> => {
   const { client } = useApiClient();
   const query = toInspectionListQuery(filters, sort, page);
   return useQuery({
     queryKey: ['inspection-result-insights', 'list', filters, sort, page],
-    enabled: query !== null,
+    enabled: isEnabled && query !== null,
     placeholderData: keepPreviousData,
     queryFn: () => {
       if (query === null) throw new Error('기간과 검사유형 전에는 목록을 조회하지 않습니다.');
@@ -62,12 +63,13 @@ export const useInspectionResults = (
 
 export const useInspectionSummary = (
   filters: InspectionInsightFilters,
+  isEnabled = true,
 ): UseQueryResult<InspectionSummary> => {
   const { client } = useApiClient();
   const query = toInspectionSummaryQuery(filters);
   return useQuery({
     queryKey: ['inspection-result-insights', 'summary', filters],
-    enabled: query !== null,
+    enabled: isEnabled && query !== null,
     queryFn: () => {
       if (query === null) throw new Error('기간과 검사유형 전에는 요약을 조회하지 않습니다.');
       return runRequest(() =>

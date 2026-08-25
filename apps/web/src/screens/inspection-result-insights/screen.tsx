@@ -67,10 +67,12 @@ export const InspectionResultInsightsScreen = ({
     }),
     [options.inspectionType, options.judgment],
   );
-  const filters = useMemo(
+  const filterState = useMemo(
     () => readInspectionInsightFilters(searchParams, allowed),
     [allowed, searchParams],
   );
+  const filters = filterState.filters;
+  const queriesEnabled = filterState.kind === 'VALID';
   const sort = readInspectionResultSort(searchParams);
   const page = readInspectionResultPage(searchParams);
   const selected = selectedResult(searchParams);
@@ -96,6 +98,7 @@ export const InspectionResultInsightsScreen = ({
       />
       <ResultOverview
         filters={filters}
+        queriesEnabled={queriesEnabled}
         sort={sort}
         page={page}
         labels={labels}
@@ -116,8 +119,12 @@ export const InspectionResultInsightsScreen = ({
           )
         }
       />
-      <InsightTabs filters={filters} sourceAxisCode={sourceAxisCode} />
-      {selected !== null && (
+      <InsightTabs
+        filters={filters}
+        sourceAxisCode={sourceAxisCode}
+        queriesEnabled={queriesEnabled}
+      />
+      {queriesEnabled && selected !== null && (
         <ResultDetailDialog
           inspectionResultId={selected}
           labels={labels}

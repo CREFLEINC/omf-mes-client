@@ -33,6 +33,7 @@ export interface ResultLabels {
 
 interface ResultOverviewProps {
   filters: InspectionInsightFilters;
+  queriesEnabled?: boolean;
   sort: InspectionResultSort;
   page: number;
   labels: ResultLabels;
@@ -61,6 +62,7 @@ const toServerSort = (sort: SortState | null): InspectionResultSort => {
 
 export const ResultOverview = ({
   filters,
+  queriesEnabled = true,
   sort,
   page,
   labels,
@@ -69,9 +71,9 @@ export const ResultOverview = ({
   onSelectResult,
   onViewExpiredCalibration,
 }: ResultOverviewProps) => {
-  const list = useInspectionResults(filters, sort, page);
-  const summary = useInspectionSummary(filters);
-  const isBlocked = toInspectionSummaryQuery(filters) === null;
+  const list = useInspectionResults(filters, sort, page, queriesEnabled);
+  const summary = useInspectionSummary(filters, queriesEnabled);
+  const isBlocked = !queriesEnabled || toInspectionSummaryQuery(filters) === null;
 
   if (isBlocked) {
     return (
