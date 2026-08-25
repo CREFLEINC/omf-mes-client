@@ -836,7 +836,7 @@ export const ApprovalInboxScreen = () => {
         <RequestDetailPane view={toRequestDetailView(request)} />
         <TargetPane
           name={describeTargetName(request.target)}
-          openState={judgeTargetOpen(request.target, SCREEN_ROUTES)}
+          openState={judgeTargetOpen(request.target, request.approvalRequestId, SCREEN_ROUTES)}
           onOpen={(path) => {
             void navigate(path);
           }}

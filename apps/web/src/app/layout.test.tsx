@@ -402,7 +402,7 @@ describe('AppLayout', () => {
     );
   });
 
-  it('품질관리 섹션의 두 Lot Status 화면이 업무 순서대로 자재창고 뒤·승인 앞에 있다', () => {
+  it('품질관리 섹션의 공개 화면이 W-03-01 < W-03-02 < W-03-09 순서로 승인 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -417,15 +417,20 @@ describe('AppLayout', () => {
     expect(
       within(sidebar).getByRole('link', { name: 'Lot Status 판정·전이 처리' }),
     ).toHaveAttribute('href', '/quality/lot-status-transition');
-    expect(links.indexOf('/quality/lot-status')).toBe(
-      links.indexOf('/production/work-order-close') + 1,
+    expect(within(sidebar).getByRole('link', { name: '특채·한도승인 승인 처리' })).toHaveAttribute(
+      'href',
+      '/quality/approvals',
     );
-    expect(links.indexOf('/quality/lot-status-transition')).toBe(
-      links.indexOf('/quality/lot-status') + 1,
+    expect(links.indexOf('/quality/lot-status')).toBeGreaterThan(
+      links.indexOf('/production/work-order-close'),
     );
-    expect(links.indexOf('/quality/lot-status-transition')).toBeLessThan(
-      links.indexOf('/approval/inbox'),
+    expect(links.indexOf('/quality/lot-status-transition')).toBeGreaterThan(
+      links.indexOf('/quality/lot-status'),
     );
+    expect(links.indexOf('/quality/approvals')).toBeGreaterThan(
+      links.indexOf('/quality/lot-status-transition'),
+    );
+    expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
   });
 
   it('생산실행 섹션의 W/O 마감 메뉴가 자재창고 뒤·품질관리 앞에 있다', () => {
@@ -600,6 +605,7 @@ describe('AppLayout', () => {
       '/production/work-order-close',
       '/quality/lot-status',
       '/quality/lot-status-transition',
+      '/quality/approvals',
       '/equipment/master',
       '/equipment/tool-master',
       '/equipment/work-calendar',

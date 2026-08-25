@@ -251,7 +251,7 @@ const Controls = () => {
 
 const renderScreen = (
   fetch: StubFetch,
-  route = '/quality-approval',
+  route = '/quality/approvals',
   approvalTypeCodes?: readonly string[],
 ) => {
   const result = renderWithProviders(
@@ -273,7 +273,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
     const recorded = recordingFetch(listRoute());
     renderScreen(
       recorded.fetch,
-      '/quality-approval?ty=UNCONFIRMED&st=UNKNOWN&q=SYNTH&page=2&rq=31&view=compact',
+      '/quality/approvals?ty=UNCONFIRMED&st=UNKNOWN&q=SYNTH&page=2&approvalRequestId=31&view=compact',
     );
 
     expect(await findRequest()).toBeInTheDocument();
@@ -289,7 +289,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
   it('승인 유형 기준값이 준비되면 넓은 조회 경고를 거두고 해당 유형을 보낸다', async () => {
     const recorded = recordingFetch(listRoute());
-    renderScreen(recorded.fetch, '/quality-approval?ty=SYNTH-CONCESSION', ['SYNTH-CONCESSION']);
+    renderScreen(recorded.fetch, '/quality/approvals?ty=SYNTH-CONCESSION', ['SYNTH-CONCESSION']);
 
     expect(await findRequest()).toBeInTheDocument();
     expect(screen.queryByText(t.scopeWarning)).not.toBeInTheDocument();
@@ -311,9 +311,12 @@ describe('QualityApprovalScreen query and disclosure', () => {
     expect(screen.getByLabelText(t.fields.q)).toHaveValue('작성 중');
   });
 
-  it('적용은 page와 rq를 비우고 무관 URL을 보존한 뒤 새 조건으로 조회한다', async () => {
+  it('적용은 page와 approvalRequestId를 비우고 무관 URL을 보존한 뒤 새 조건으로 조회한다', async () => {
     const recorded = recordingFetch(listRoute());
-    const { user } = renderScreen(recorded.fetch, '/quality-approval?page=3&rq=31&view=compact');
+    const { user } = renderScreen(
+      recorded.fetch,
+      '/quality/approvals?page=3&approvalRequestId=31&view=compact',
+    );
 
     await findRequest();
     await user.type(screen.getByLabelText(t.fields.q), 'SYNTH-NEW');
@@ -329,13 +332,13 @@ describe('QualityApprovalScreen query and disclosure', () => {
     });
   });
 
-  it('행 선택은 rq만 바꾸며 뒤로가기는 deep-link 선택을 복원한다', async () => {
+  it('행 선택은 approvalRequestId만 바꾸며 뒤로가기는 deep-link 선택을 복원한다', async () => {
     const { user } = renderScreen(approvalFetch([listRoute()]));
 
     await user.click(
       await screen.findByRole('button', { name: t.actions.selectRow('SYNTH-REQ-031') }),
     );
-    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?rq=31');
+    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?approvalRequestId=31');
 
     await user.click(screen.getByRole('button', { name: '뒤로' }));
     await waitFor(() => expect(screen.getByLabelText('현재 주소')).toHaveTextContent(''));
@@ -344,7 +347,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
   it('범위 전환과 쪽 이동은 첫 쪽/다음 쪽으로 옮기며 선택을 비운다', async () => {
     const { user } = renderScreen(
       approvalFetch([listRoute(() => jsonResponse(listBody(requests, 40)))]),
-      '/quality-approval?page=2&rq=31',
+      '/quality/approvals?page=2&approvalRequestId=31',
     );
 
     await findRequest();
@@ -365,7 +368,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
       calls += 1;
       return calls === 1 ? jsonResponse(listBody(requests, 40)) : pending;
     };
-    const { user } = renderScreen(fetch, '/quality-approval?rq=31');
+    const { user } = renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
 
     await findRequest();
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
@@ -378,7 +381,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
   it('초기화는 소유한 조건·범위·쪽·선택만 기본으로 돌린다', async () => {
     const { user } = renderScreen(
       approvalFetch([listRoute()]),
-      '/quality-approval?q=SYNTH&page=3&rq=31&pd=0&view=compact',
+      '/quality/approvals?q=SYNTH&page=3&approvalRequestId=31&pd=0&view=compact',
     );
 
     await findRequest();
@@ -410,7 +413,7 @@ describe('QualityApprovalScreen result states', () => {
   it('범위 밖 주소의 첫 쪽 복구는 page와 선택을 비운다', async () => {
     const { user } = renderScreen(
       approvalFetch([listRoute(() => jsonResponse(listBody([], 1, 4)))]),
-      '/quality-approval?page=4&rq=31',
+      '/quality/approvals?page=4&approvalRequestId=31',
     );
 
     await screen.findByText(t.empty.beyondTitle);
@@ -479,7 +482,7 @@ describe('QualityApprovalScreen detail', () => {
       listRoute(),
       detailRoute(31, () => jsonResponse(detailBody(), { headers: { ETag: '"9"' } })),
     );
-    const { apiClient } = renderScreen(recorded.fetch, '/quality-approval?rq=31');
+    const { apiClient } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
     const pane = screen.getByRole('region', { name: '요청 상세' });
 
     const reason = await within(pane).findByRole('group', { name: '사유 전문' });
@@ -502,7 +505,7 @@ describe('QualityApprovalScreen detail', () => {
     const base = approvalFetch([listRoute(() => jsonResponse(listBody([requests[0]!, next])))]);
     const fetch: StubFetch = async (request) =>
       new URL(request.url).pathname === requestDetailPath(32) ? pending : base(request);
-    const { user } = renderScreen(fetch, '/quality-approval?rq=31');
+    const { user } = renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
     const pane = screen.getByRole('region', { name: '요청 상세' });
 
     expect(await within(pane).findByRole('group', { name: '사유 전문' })).toHaveTextContent(
@@ -519,7 +522,7 @@ describe('QualityApprovalScreen detail', () => {
         name: t.progress.loading,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?rq=32');
+    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?approvalRequestId=32');
   });
 
   it('상세 403은 선택을 유지하고 재시도를 주지 않는다', async () => {
@@ -527,7 +530,7 @@ describe('QualityApprovalScreen detail', () => {
       listRoute(),
       detailRoute(31, () => jsonResponse({ message: '' }, { status: 403 })),
     );
-    renderScreen(recorded.fetch, '/quality-approval?rq=31');
+    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
     const pane = screen.getByRole('region', { name: '요청 상세' });
 
     expect(await within(pane).findByText(messages.httpError.forbidden)).toBeInTheDocument();
@@ -535,17 +538,17 @@ describe('QualityApprovalScreen detail', () => {
     expect(screen.getByRole('region', { name: t.panes.progress })).toHaveTextContent(
       t.progress.unavailable,
     );
-    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?rq=31');
+    expect(screen.getByLabelText('현재 주소')).toHaveTextContent('?approvalRequestId=31');
     expect(recorded.urls.some((url) => url.pathname === CONCESSIONS_PATH)).toBe(false);
   });
 
-  it('상세 404는 rq만 replace로 지우고 live 안내를 유지한다', async () => {
+  it('상세 404는 approvalRequestId만 replace로 지우고 live 안내를 유지한다', async () => {
     renderScreen(
       approvalFetch([
         listRoute(),
         detailRoute(31, () => jsonResponse({ message: '' }, { status: 404 })),
       ]),
-      '/quality-approval?rq=31&view=compact',
+      '/quality/approvals?approvalRequestId=31&view=compact',
     );
     const missing = await screen.findByText('요청을 찾을 수 없습니다');
 
@@ -570,7 +573,7 @@ describe('QualityApprovalScreen detail', () => {
           return jsonResponse(detailBody());
         }),
       ]),
-      '/quality-approval?rq=31',
+      '/quality/approvals?approvalRequestId=31',
     );
     const pane = screen.getByRole('region', { name: '요청 상세' });
 
@@ -589,7 +592,7 @@ describe('QualityApprovalScreen detail', () => {
         listRoute(() => jsonResponse({ message: '' }, { status: 500 })),
         detailRoute(),
       ]),
-      '/quality-approval?rq=31',
+      '/quality/approvals?approvalRequestId=31',
     );
 
     expect(
@@ -611,7 +614,7 @@ describe('QualityApprovalScreen conditions', () => {
     const base = approvalFetch([listRoute()]);
     const fetch: StubFetch = async (request) =>
       new URL(request.url).pathname === CONCESSIONS_PATH ? pending : base(request);
-    renderScreen(fetch, '/quality-approval?rq=31');
+    renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
 
     expect(await screen.findByRole('status', { name: t.condition.loading })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: t.panes.reason })).toBeInTheDocument();
@@ -624,7 +627,7 @@ describe('QualityApprovalScreen conditions', () => {
       candidateRoute(() => jsonResponse(candidateBody([concession]))),
       concessionRoute(),
     );
-    renderScreen(recorded.fetch, '/quality-approval?rq=31');
+    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
     const pane = screen.getByRole('region', { name: t.panes.detail });
 
     expect(await within(pane).findByText('SYNTH-CN-501')).toBeInTheDocument();
@@ -697,7 +700,7 @@ describe('QualityApprovalScreen conditions', () => {
       ].includes(new URL(request.url).pathname)
         ? pending
         : base(request);
-    renderScreen(fetch, '/quality-approval?rq=31');
+    renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
 
     const group = await screen.findByRole('group', { name: t.condition.title });
     expect(within(group).getAllByText(t.condition.reference.loading)).toHaveLength(4);
@@ -724,7 +727,7 @@ describe('QualityApprovalScreen conditions', () => {
           return jsonResponse({ partnerId: 1_401, partnerName: '합성 고객' });
         }),
       ]),
-      '/quality-approval?rq=31',
+      '/quality/approvals?approvalRequestId=31',
     );
 
     await waitFor(() => expect(screen.getAllByText(t.condition.reference.failed)).toHaveLength(3));
@@ -757,7 +760,7 @@ describe('QualityApprovalScreen conditions', () => {
               );
         }),
       ]),
-      '/quality-approval?rq=31',
+      '/quality/approvals?approvalRequestId=31',
     );
 
     await waitFor(() => expect(screen.getAllByText(t.condition.reference.failed)).toHaveLength(2));
@@ -799,7 +802,7 @@ describe('QualityApprovalScreen conditions', () => {
         return jsonResponse({}, { status: 500 });
       }),
     );
-    const { user } = renderScreen(recorded.fetch, '/quality-approval?rq=31');
+    const { user } = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
 
     await waitFor(() => expect(candidateAttempts).toBe(1));
     await waitFor(() => expect(processAttempts).toBe(1));
@@ -832,7 +835,7 @@ describe('QualityApprovalScreen conditions', () => {
           jsonResponse(listReferenceBody([{ processId: 1_301, processName: '  ' }])),
         ),
       ]),
-      '/quality-approval?rq=31',
+      '/quality/approvals?approvalRequestId=31',
     );
 
     const group = await screen.findByRole('group', { name: t.condition.title });
@@ -856,7 +859,7 @@ describe('QualityApprovalScreen conditions', () => {
           ),
         ),
       ]),
-      '/quality-approval?rq=31',
+      '/quality/approvals?approvalRequestId=31',
     );
 
     const group = await screen.findByRole('group', { name: t.condition.title });
@@ -866,7 +869,10 @@ describe('QualityApprovalScreen conditions', () => {
   });
 
   it('0건은 live 정상 상태이고 개수 모순은 진행·상세와 독립된 오류다', async () => {
-    const none = renderScreen(approvalFetch([listRoute()]), '/quality-approval?rq=31');
+    const none = renderScreen(
+      approvalFetch([listRoute()]),
+      '/quality/approvals?approvalRequestId=31',
+    );
     const noneText = await screen.findByText(t.condition.none);
     expect(noneText.closest('[role="status"]')).not.toBeNull();
     none.unmount();
@@ -876,7 +882,7 @@ describe('QualityApprovalScreen conditions', () => {
         listRoute(),
         candidateRoute(() => jsonResponse(candidateBody([concession], 2))),
       ]),
-      '/quality-approval?rq=31',
+      '/quality/approvals?approvalRequestId=31',
     );
     expect(await screen.findByText(t.condition.unsafe)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toBeInTheDocument();
@@ -895,7 +901,7 @@ describe('QualityApprovalScreen conditions', () => {
           return jsonResponse(candidateBody());
         }),
       ]),
-      '/quality-approval?rq=31',
+      '/quality/approvals?approvalRequestId=31',
     );
 
     expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
@@ -920,7 +926,7 @@ describe('QualityApprovalScreen conditions', () => {
     ]);
     const fetch: StubFetch = async (request) =>
       new URL(request.url).pathname === requestDetailPath(32) ? pending : base(request);
-    const { user } = renderScreen(fetch, '/quality-approval?rq=31');
+    const { user } = renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
 
     await user.click(await screen.findByRole('button', { name: messages.common.retry }));
     expect(await screen.findByText('SYNTH-CN-501')).toBeInTheDocument();
@@ -977,7 +983,7 @@ describe('QualityApprovalScreen decision action', () => {
         jsonResponse(actionDetail(noTurnRequest), { headers: { ETag: '"9"' } }),
       ),
     );
-    const locked = renderScreen(recorded.fetch, '/quality-approval?rq=31');
+    const locked = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
     const input = await screen.findByRole('textbox', { name: '결재 사유' });
     expect(input).toHaveAccessibleDescription(/승인 또는 반려 판단 근거를 입력하세요/);
     expect(input).toBeDisabled();
@@ -989,7 +995,7 @@ describe('QualityApprovalScreen decision action', () => {
 
     const unsafe = renderScreen(
       approvalFetch([listRoute(), detailRoute()]),
-      '/quality-approval?rq=31',
+      '/quality/approvals?approvalRequestId=31',
     );
     expect(await screen.findByRole('textbox', { name: '결재 사유' })).toHaveAccessibleDescription(
       /안전하게 확인된 연결 조건 1건이 필요합니다/,
@@ -1003,7 +1009,7 @@ describe('QualityApprovalScreen decision action', () => {
       detailRoute(31, () => jsonResponse(actionDetail(), { headers: { ETag: '"9"' } })),
       ...safeConditionRoutes(),
     );
-    const blankScreen = renderScreen(blank.fetch, '/quality-approval?rq=31');
+    const blankScreen = renderScreen(blank.fetch, '/quality/approvals?approvalRequestId=31');
     await blankScreen.user.type(await screen.findByRole('textbox', { name: '결재 사유' }), '   ');
     await blankScreen.user.click(screen.getByRole('button', { name: '승인' }));
     expect(screen.getByText('승인 사유를 입력하세요')).toBeInTheDocument();
@@ -1030,7 +1036,7 @@ describe('QualityApprovalScreen decision action', () => {
       sent.push(request.clone());
       return pendingReject;
     };
-    const { queryClient, user } = renderScreen(fetch, '/quality-approval?rq=31');
+    const { queryClient, user } = renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
 
     const dialog = await openConfirm(user, '  합성 반려 사유  ', '반려');
     expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
@@ -1097,7 +1103,7 @@ describe('QualityApprovalScreen decision action', () => {
       if (path === requestDetailPath(31) && detailCalls > 0) return pendingDetail;
       return base(request);
     };
-    const { queryClient, user } = renderScreen(fetch, '/quality-approval?rq=31');
+    const { queryClient, user } = renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
 
     const dialog = await openConfirm(user, '  합성 승인 사유  ');
     expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
@@ -1154,14 +1160,14 @@ describe('QualityApprovalScreen decision action', () => {
 
   it('상세 ETag가 없으면 POST 없이 최신 정보 오류를 표시한다', async () => {
     const recorded = recordingFetch(listRoute(), detailRoute(), ...safeConditionRoutes());
-    const first = renderScreen(recorded.fetch, '/quality-approval?rq=31');
+    const first = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
     await confirmApproval(first.user, '합성 승인 사유');
     expect(await screen.findByText(messages.save.staleToken)).toBeInTheDocument();
     expect(recorded.urls.some((url) => url.pathname.endsWith(':approve'))).toBe(false);
     first.unmount();
 
     const rejected = recordingFetch(listRoute(), detailRoute(), ...safeConditionRoutes());
-    const second = renderScreen(rejected.fetch, '/quality-approval?rq=31');
+    const second = renderScreen(rejected.fetch, '/quality/approvals?approvalRequestId=31');
     await confirmDecision(second.user, '합성 반려 사유', '반려');
     expect(await screen.findByText(messages.save.staleToken)).toBeInTheDocument();
     expect(rejected.urls.some((url) => url.pathname.endsWith(':reject'))).toBe(false);
@@ -1181,7 +1187,7 @@ describe('QualityApprovalScreen decision action', () => {
         respond: () => jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
       },
     );
-    const first = renderScreen(conflict.fetch, '/quality-approval?rq=31');
+    const first = renderScreen(conflict.fetch, '/quality/approvals?approvalRequestId=31');
     await confirmDecision(first.user, '합성 반려 사유', '반려');
     await first.user.click(
       await screen.findByRole('button', { name: messages.conflict.reloadAction }),
@@ -1225,7 +1231,7 @@ describe('QualityApprovalScreen decision action', () => {
           respond: () => failure.response,
         },
       );
-      const rendered = renderScreen(recorded.fetch, '/quality-approval?rq=31');
+      const rendered = renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
       await confirmDecision(rendered.user, '합성 결재 사유', failure.action);
       expect(await screen.findByText(failure.message)).toBeInTheDocument();
       rendered.unmount();
@@ -1265,7 +1271,7 @@ describe('QualityApprovalScreen decision action', () => {
       }
       return base(request);
     };
-    const rendered = renderScreen(offline, '/quality-approval?rq=31');
+    const rendered = renderScreen(offline, '/quality/approvals?approvalRequestId=31');
     await confirmApproval(rendered.user, '합성 승인 사유');
     expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
     expect(screen.getByText('서버 적용 여부를 확인할 수 없습니다')).toBeInTheDocument();
@@ -1318,7 +1324,7 @@ describe('QualityApprovalScreen decision action', () => {
       if (rejectAttempts === 1) throw new TypeError('synthetic offline');
       return jsonResponse(actionDetail({ ...requests[0]!, isMyTurn: false }));
     };
-    const { user } = renderScreen(fetch, '/quality-approval?rq=31');
+    const { user } = renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
 
     await confirmDecision(user, '합성 반려 사유', '반려');
     expect(await screen.findByText(messages.httpError.offline)).toBeInTheDocument();
@@ -1355,7 +1361,7 @@ describe('QualityApprovalScreen decision action', () => {
         ? jsonResponse({}, { status: 403 })
         : jsonResponse(actionDetail({ ...requests[0]!, isMyTurn: false }));
     };
-    const { user } = renderScreen(fetch, '/quality-approval?rq=31');
+    const { user } = renderScreen(fetch, '/quality/approvals?approvalRequestId=31');
 
     await confirmApproval(user, '합성 공통 사유');
     expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();

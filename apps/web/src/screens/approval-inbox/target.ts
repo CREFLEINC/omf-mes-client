@@ -48,6 +48,7 @@ export type TargetOpenState = { kind: 'open'; path: string } | TargetOpenBlock;
  */
 export const judgeTargetOpen = (
   target: ApprovalTarget,
+  approvalRequestId: number,
   routes: ScreenRouteTable,
 ): TargetOpenState => {
   if (!target.openable) return { kind: 'notOpenable' };
@@ -56,7 +57,7 @@ export const judgeTargetOpen = (
 
   if (screenId === '') return { kind: 'noScreenId' };
 
-  const path = screenPathOf(screenId, routes);
+  const path = screenPathOf(screenId, approvalRequestId, routes);
 
   return path === null ? { kind: 'unmapped' } : { kind: 'open', path };
 };
