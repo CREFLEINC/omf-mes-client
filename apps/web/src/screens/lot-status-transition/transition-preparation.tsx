@@ -1,7 +1,15 @@
-import { AlertBanner, Button, Radio, RadioGroup, Select, SkeletonText } from '@crefle/web-ui';
-import type { components } from '@omf-mes/api-client';
+import {
+  AlertBanner,
+  Button,
+  type Column,
+  Radio,
+  RadioGroup,
+  SkeletonText,
+  Table,
+} from '@crefle/web-ui';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -12,6 +20,8 @@ import { ReleaseHoldExecution } from './release-hold-execution';
 
 type Transition = components['schemas']['LotStatusTransition'];
 type LotHold = components['schemas']['LotHold'];
+type Client = ApiClient['client'];
+const OPEN_HOLD_PAGE_SIZE = 50;
 
 export const lotHoldDetailPath = (lotHoldId: number): `/quality/lot-holds/${number}` =>
   `/quality/lot-holds/${lotHoldId}`;
@@ -30,17 +40,42 @@ const useTransitions = (lotId: number, enabled: boolean) => {
   });
 };
 
-const useOpenHolds = (lotId: number, enabled: boolean, page: number) => {
+const fetchOpenHolds = async (client: Client, lotId: number): Promise<{ items: LotHold[] }> => {
+  const requestPage = (page: number) =>
+    runRequest(() =>
+      client.GET('/quality/lot-holds', {
+        params: {
+          query: {
+            lotId,
+            open: true,
+            size: OPEN_HOLD_PAGE_SIZE,
+            ...(page > 1 ? { page } : {}),
+          },
+        },
+      }),
+    );
+  const first = await requestPage(1);
+  const unique = new Map(first.items.map((item) => [item.lotHoldId, item]));
+  if (unique.size >= first.page.total) return { items: [...unique.values()] };
+  if (!Number.isFinite(first.page.size) || first.page.size < 1)
+    throw new Error('열린 보류 전체 목록의 쪽 크기를 확인할 수 없습니다.');
+
+  const totalPages = Math.ceil(first.page.total / first.page.size);
+  for (let page = 2; page <= totalPages; page += 1) {
+    const next = await requestPage(page);
+    next.items.forEach((item) => unique.set(item.lotHoldId, item));
+  }
+  if (unique.size < first.page.total) throw new Error('열린 보류 전체 목록을 완성하지 못했습니다.');
+
+  return { items: [...unique.values()] };
+};
+
+const useOpenHolds = (lotId: number, enabled: boolean) => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: ['lot-status-transition', 'open-holds', lotId, page],
+    queryKey: ['lot-status-transition', 'open-holds', lotId],
     enabled,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/quality/lot-holds', {
-          params: { query: { lotId, open: true, ...(page > 1 ? { page } : {}) } },
-        }),
-      ),
+    queryFn: () => fetchOpenHolds(client, lotId),
   });
 };
 
@@ -56,31 +91,6 @@ const useHoldDetail = (lotHoldId: number | null, enabled: boolean) => {
       );
     },
   });
-};
-
-interface SelectFieldProps {
-  disabled: boolean;
-  label: string;
-  options: { value: string; label: string }[];
-  value: string | null;
-  onChange: (value: string) => void;
-}
-
-const SelectField = ({ disabled, label, options, value, onChange }: SelectFieldProps) => {
-  const id = useId();
-  return (
-    <div>
-      <label htmlFor={id}>{label}</label>
-      <Select
-        id={id}
-        disabled={disabled}
-        placeholder="하나를 선택하세요"
-        options={options}
-        value={value}
-        onChange={onChange}
-      />
-    </div>
-  );
 };
 
 export interface LotStatusTransitionPreparationProps {
@@ -105,19 +115,16 @@ export const LotStatusTransitionPreparation = ({
   const statuses = useLotStatusOptions();
   const [selectedTransitionKey, setSelectedTransitionKey] = useState<string | null>(null);
   const [autoSelectOwner, setAutoSelectOwner] = useState<string | null>(null);
-  const [holdPage, setHoldPage] = useState(1);
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null);
   const allowed = transitions.data?.transitions.filter((item) => item.allowed) ?? [];
   const selectedTransition = allowed.find((item) => transitionKey(item) === selectedTransitionKey);
   const isCreate = selectedTransition?.actionCode === 'CREATE_HOLD';
   const isRelease = selectedTransition?.actionCode === 'RELEASE_HOLD';
-  const holds = useOpenHolds(lot.lotId, isRelease && !confirmationPinned, holdPage);
+  const holds = useOpenHolds(lot.lotId, isRelease && !confirmationPinned);
   const holdsData =
     confirmationPinned || (!holds.isFetching && !holds.isError) ? holds.data : undefined;
   const automaticHoldId =
-    holdsData?.page.total === 1 && holdsData.items.length === 1
-      ? (holdsData.items[0]?.lotHoldId ?? null)
-      : null;
+    holdsData?.items.length === 1 ? (holdsData.items[0]?.lotHoldId ?? null) : null;
   const selectedHold = holdsData?.items.find((item) => item.lotHoldId === selectedHoldId);
 
   useEffect(() => {
@@ -154,13 +161,11 @@ export const LotStatusTransitionPreparation = ({
     const next = allowed.find((item) => transitionKey(item) === value);
     setSelectedTransitionKey(value);
     setAutoSelectOwner(next?.actionCode === 'RELEASE_HOLD' ? value : null);
-    setHoldPage(1);
     setSelectedHoldId(null);
   };
   const clearExecutionOwner = (): void => {
     setSelectedTransitionKey(null);
     setAutoSelectOwner(null);
-    setHoldPage(1);
     setSelectedHoldId(null);
   };
   const refreshPreparation = (): void => {
@@ -174,24 +179,35 @@ export const LotStatusTransitionPreparation = ({
     refreshPreparation();
     clearExecutionOwner();
   };
-  const changeHoldPage = (page: number): void => {
-    if (confirmationPinned) return;
-    setAutoSelectOwner(null);
-    setHoldPage(page);
-    setSelectedHoldId(null);
-  };
   const targetLabel = (code: string): string =>
     statuses.data?.items.find((item) => item.code === code)?.label ?? code;
-  const holdOptions =
-    holdsData?.items.map((item: LotHold) => ({
-      value: String(item.lotHoldId),
-      label: `${String(item.lotHoldId)} · ${item.reasonCode} · ${item.heldAt}`,
-    })) ?? [];
-  const holdMeta = holdsData?.page;
-  const holdTotalPages =
-    holdMeta === undefined || !Number.isFinite(holdMeta.size) || holdMeta.size < 1
-      ? 1
-      : Math.max(1, Math.ceil(holdMeta.total / holdMeta.size));
+  const holdColumns: Column<LotHold>[] = [
+    { key: 'reason', header: '보류 사유', render: (item) => item.reasonCode },
+    { key: 'heldAt', header: '보류 시각', render: (item) => item.heldAt },
+    {
+      key: 'quantity',
+      header: '보류 수량',
+      align: 'end',
+      render: (item) => item.holdQty ?? '전량',
+    },
+    {
+      key: 'select',
+      header: '해제 대상',
+      render: (item) => (
+        <Button
+          variant="outlined"
+          disabled={confirmationPinned}
+          aria-pressed={selectedHoldId === item.lotHoldId}
+          onClick={() => {
+            setAutoSelectOwner(null);
+            setSelectedHoldId(item.lotHoldId);
+          }}
+        >
+          {selectedHoldId === item.lotHoldId ? '선택됨' : '선택'}
+        </Button>
+      ),
+    },
+  ];
 
   if (transitions.isFetching && !confirmationPinned)
     return (
@@ -253,34 +269,17 @@ export const LotStatusTransitionPreparation = ({
           </Radio>
         ))}
       </RadioGroup>
-      {isRelease && holdsData !== undefined && holdsData.page.total > 1 && (
-        <>
-          <SelectField
-            disabled={confirmationPinned}
-            label="해제할 보류"
-            options={holdOptions}
-            value={selectedHold === undefined ? null : String(selectedHold.lotHoldId)}
-            onChange={(value) => setSelectedHoldId(Number(value))}
+      {isRelease && holdsData !== undefined && holdsData.items.length > 0 && (
+        <section aria-label="열린 보류 목록">
+          <h3>열린 보류</h3>
+          <Table
+            density="compact"
+            columns={holdColumns}
+            rows={holdsData.items}
+            getRowId={(item) => String(item.lotHoldId)}
+            sort={null}
           />
-          {holdTotalPages > 1 && (
-            <nav className="form-actions" aria-label="열린 보류 쪽 이동">
-              <Button
-                variant="outlined"
-                disabled={confirmationPinned || holdPage <= 1}
-                onClick={() => changeHoldPage(holdPage - 1)}
-              >
-                이전 쪽
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={confirmationPinned || holdPage >= holdTotalPages}
-                onClick={() => changeHoldPage(holdPage + 1)}
-              >
-                다음 쪽
-              </Button>
-            </nav>
-          )}
-        </>
+        </section>
       )}
       {preparation !== null && <p role="status">{preparation}</p>}
       {isCreate &&
