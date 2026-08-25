@@ -7,15 +7,20 @@ import {
   emptyCarriedValues,
   emptyEquipmentFormValues,
   emptyGroupFormValues,
+  emptyInspectionItemValues,
   equipmentToFormValues,
   groupToFormValues,
+  inspectionItemToFormValues,
   isSameEquipmentValues,
   isSameGroupValues,
   toEquipmentCreate,
   toEquipmentUpdate,
   toGroupCreate,
   toGroupUpdate,
+  toInspectionItemCreate,
+  toInspectionItemUpdate,
 } from './mappers';
+import type { InspectionItemFormValues } from './types';
 
 describe('groupToFormValues', () => {
   it('식별자를 문자열로 옮긴다 — 선택칸이 문자열을 다룬다', () => {
@@ -269,5 +274,102 @@ describe('설비 매퍼', () => {
 
     expect(isSameEquipmentValues(base, { ...base, calibrationRequired: true })).toBe(false);
     expect(isSameEquipmentValues(base, { ...base })).toBe(true);
+  });
+});
+
+describe('점검 항목 폼 ↔ 계약', () => {
+  const values = (overrides: Partial<InspectionItemFormValues> = {}): InspectionItemFormValues => ({
+    ...emptyInspectionItemValues('11'),
+    itemCode: 'INS-01',
+    itemName: '벨트 장력',
+    inspectionTypeCode: 'DAILY',
+    judgmentMethodCode: 'VISUAL',
+    sequenceNo: '2',
+    ...overrides,
+  });
+
+  /* 순서는 정해야 하는 값이다 — 0을 미리 넣으면 정한 것으로 읽힌다. */
+  it('신규 폼의 표시 순서는 비어 있다', () => {
+    expect(emptyInspectionItemValues().sequenceNo).toBe('');
+  });
+
+  it('고른 공장을 초기값으로 받는다', () => {
+    expect(emptyInspectionItemValues('12').plantId).toBe('12');
+  });
+
+  it('표시 순서가 수가 되어 나간다', () => {
+    expect(toInspectionItemCreate(values()).sequenceNo).toBe(2);
+  });
+
+  /** ⛔ 빈 점검부위를 빈 문자열로 보내면 「빈 값이 적혔다」가 된다 — 「없음」은 null 이다. */
+  it('빈 점검부위는 null 로 나간다', () => {
+    expect(toInspectionItemCreate(values()).inspectionPoint).toBeNull();
+  });
+
+  /**
+   * ⛔ **육안이면 측정 세 칸을 «비워» 보낸다.** 판정 방식을 바꿔 저장할 때 앞서 적어 둔
+   * 상하한이 남으면 「육안인데 상한이 있는」 자료가 생기고, 다음에 본 사람은 어느 쪽이
+   * 맞는지 알 수 없다.
+   */
+  it('육안 판정은 앞서 적은 측정값을 비워 보낸다', () => {
+    const body = toInspectionItemCreate(values({ uomId: '3', lowerLimit: '10', upperLimit: '20' }));
+
+    expect(body.uomId).toBeNull();
+    expect(body.lowerLimit).toBeNull();
+    expect(body.upperLimit).toBeNull();
+  });
+
+  it('측정값 판정은 세 칸을 그대로 싣는다', () => {
+    const body = toInspectionItemCreate(
+      values({ judgmentMethodCode: 'MEASUREMENT', uomId: '3', lowerLimit: '10', upperLimit: '20' }),
+    );
+
+    expect(body.uomId).toBe(3);
+    expect(body.lowerLimit).toBe(10);
+    expect(body.upperLimit).toBe(20);
+  });
+
+  /** ⛔ 코드가 잠겨 있으면 아예 싣지 않는다 — 실으면 서버가 「못 바꾼다」로 거절한다. */
+  it('코드가 잠겨 있으면 코드를 싣지 않는다', () => {
+    expect('itemCode' in toInspectionItemUpdate(values(), false)).toBe(false);
+    expect(toInspectionItemUpdate(values(), true).itemCode).toBe('INS-01');
+  });
+
+  /** ⭐ 수정 본문에 공장이 없다 — 항목이 속한 공장은 옮길 수 없다(계약). */
+  it('수정 본문에 공장을 싣지 않는다', () => {
+    expect('plantId' in toInspectionItemUpdate(values(), true)).toBe(false);
+  });
+
+  it('수정 본문은 사용 여부를 싣는다', () => {
+    expect(toInspectionItemUpdate(values({ isActive: false }), true).isActive).toBe(false);
+  });
+
+  it('받아 온 항목을 폼 값으로 되읽는다', () => {
+    const form = inspectionItemToFormValues({
+      equipmentInspectionItemId: 4001,
+      plantId: 11,
+      itemCode: 'INS-01',
+      itemName: '벨트 장력',
+      inspectionTypeCode: 'DAILY',
+      judgmentMethodCode: 'MEASUREMENT',
+      uomId: 3,
+      lowerLimit: 10,
+      upperLimit: 20,
+      requiredFlag: false,
+      sequenceNo: 5,
+      isActive: false,
+    });
+
+    expect(form).toMatchObject({
+      plantId: '11',
+      uomId: '3',
+      lowerLimit: '10',
+      upperLimit: '20',
+      requiredFlag: false,
+      sequenceNo: '5',
+      isActive: false,
+      /* 오지 않은 점검부위는 빈 칸이다 — 「없음」과 「안 왔다」의 결과가 같다. */
+      inspectionPoint: '',
+    });
   });
 });

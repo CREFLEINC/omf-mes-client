@@ -1,12 +1,15 @@
 import type { components } from '@omf-mes/api-client';
 
 import { PENDING_CODE_VALUE } from './code-options';
+import { isMeasurement } from './inspection-item-validation';
 import type {
   CarriedEquipmentValues,
   Equipment,
   EquipmentFormValues,
   EquipmentGroup,
+  EquipmentInspectionItem,
   GroupFormValues,
+  InspectionItemFormValues,
 } from './types';
 
 type EquipmentGroupCreate = components['schemas']['EquipmentGroupCreate'];
@@ -179,3 +182,97 @@ export const isSameEquipmentValues = (a: EquipmentFormValues, b: EquipmentFormVa
   a.productionLineId === b.productionLineId &&
   a.processId === b.processId &&
   a.calibrationRequired === b.calibrationRequired;
+
+/** 사람이 친 수를 계약의 수로. **빈 칸은 「없음」**이지 0이 아니다. */
+const textToOptionalNumber = (value: string): number | null =>
+  value.trim() === '' ? null : Number(value);
+
+/** 점검 항목 폼의 초기값. 등록은 빈 칸에서 시작한다. */
+export const emptyInspectionItemValues = (plantId = ''): InspectionItemFormValues => ({
+  plantId,
+  itemCode: '',
+  itemName: '',
+  inspectionTypeCode: '',
+  judgmentMethodCode: '',
+  uomId: '',
+  lowerLimit: '',
+  upperLimit: '',
+  requiredFlag: true,
+  inspectionPoint: '',
+  /* 순서는 정해야 하는 값이라 비워 둔다 — 0을 미리 넣으면 정한 것으로 읽힌다. */
+  sequenceNo: '',
+  isActive: true,
+});
+
+/** 받아 온 항목을 폼 값으로. */
+export const inspectionItemToFormValues = (
+  item: EquipmentInspectionItem,
+): InspectionItemFormValues => ({
+  plantId: String(item.plantId),
+  itemCode: item.itemCode,
+  itemName: item.itemName,
+  inspectionTypeCode: item.inspectionTypeCode,
+  judgmentMethodCode: item.judgmentMethodCode,
+  uomId: optionalIdToText(item.uomId),
+  lowerLimit:
+    item.lowerLimit === null || item.lowerLimit === undefined ? '' : String(item.lowerLimit),
+  upperLimit:
+    item.upperLimit === null || item.upperLimit === undefined ? '' : String(item.upperLimit),
+  requiredFlag: item.requiredFlag,
+  inspectionPoint: item.inspectionPoint ?? '',
+  sequenceNo: String(item.sequenceNo),
+  isActive: item.isActive,
+});
+
+/**
+ * 측정 관련 세 칸.
+ *
+ * ⛔ **육안 판정이면 셋을 «비워» 보낸다** — 판정 방식을 바꿔 저장할 때 앞서 적어 둔 상하한이
+ * 그대로 남으면, 「육안인데 상한이 있는」 자료가 생기고 다음에 그것을 본 사람은 어느 쪽이
+ * 맞는지 알 수 없다.
+ */
+const measurementFields = (values: InspectionItemFormValues) =>
+  isMeasurement(values)
+    ? {
+        uomId: textToOptionalId(values.uomId),
+        lowerLimit: textToOptionalNumber(values.lowerLimit),
+        upperLimit: textToOptionalNumber(values.upperLimit),
+      }
+    : { uomId: null, lowerLimit: null, upperLimit: null };
+
+/** 빈 칸은 「없음」이다 — 빈 문자열을 보내면 「빈 값이 적혔다」가 된다. */
+const optionalText = (value: string): string | null => (value.trim() === '' ? null : value.trim());
+
+export const toInspectionItemCreate = (
+  values: InspectionItemFormValues,
+): components['schemas']['EquipmentInspectionItemCreate'] => ({
+  plantId: Number(values.plantId),
+  itemCode: values.itemCode.trim(),
+  itemName: values.itemName.trim(),
+  inspectionTypeCode: values.inspectionTypeCode,
+  judgmentMethodCode: values.judgmentMethodCode,
+  ...measurementFields(values),
+  requiredFlag: values.requiredFlag,
+  inspectionPoint: optionalText(values.inspectionPoint),
+  sequenceNo: Number(values.sequenceNo),
+});
+
+/**
+ * ⭐ **수정 본문에 `plantId` 가 없다** — 계약이 받지 않는다. 항목이 속한 공장은 등록할 때
+ * 정해지고 옮길 수 없다.
+ */
+export const toInspectionItemUpdate = (
+  values: InspectionItemFormValues,
+  codeEditable: boolean,
+): components['schemas']['EquipmentInspectionItemUpdate'] => ({
+  /* 코드는 잠겨 있으면 아예 싣지 않는다 — 실으면 서버가 「못 바꾼다」로 거절한다. */
+  ...(codeEditable ? { itemCode: values.itemCode.trim() } : {}),
+  itemName: values.itemName.trim(),
+  inspectionTypeCode: values.inspectionTypeCode,
+  judgmentMethodCode: values.judgmentMethodCode,
+  ...measurementFields(values),
+  requiredFlag: values.requiredFlag,
+  inspectionPoint: optionalText(values.inspectionPoint),
+  sequenceNo: Number(values.sequenceNo),
+  isActive: values.isActive,
+});

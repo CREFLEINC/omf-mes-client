@@ -97,10 +97,18 @@ export const equipmentMaster = {
    */
   seriesFilterUnavailable:
     '설비 유형 목록이 아직 준비되지 않아 계측기도 함께 보입니다. 목록이 준비되면 설비만 보입니다.',
+  /**
+   * 화면 수준 뷰. ⭐ **점검 항목 마스터는 그룹에 매이지 않는다**(스펙 §5-1-1) — 그룹을 고른
+   * 뒤의 안쪽 탭이 아니라 여기서 갈린다.
+   */
+  views: {
+    assets: '설비·설비그룹',
+  },
   tabs: {
     group: '그룹 정보',
     equipment: '설비',
-    inspection: '점검 항목',
+    /** ⭐ **부여지 마스터가 아니다** — 마스터는 화면 수준 탭이 따로 갖는다(§5-1-1). */
+    inspection: '점검 항목 부여',
   },
   dialog: {
     discardTitle: '입력한 내용을 버릴까요?',
@@ -254,11 +262,18 @@ export const equipmentMaster = {
     addPlaceholder: '부여할 점검 항목을 고르세요',
     /** 고를 것이 없는 것과 목록을 못 받은 것은 다르다 — 앞엣것만 이 문구다. */
     allAssigned: '마스터의 점검 항목을 모두 부여했습니다.',
-    masterEmpty: '등록된 점검 항목이 없습니다. 점검 항목을 먼저 등록해야 부여할 수 있습니다.',
+    /**
+     * ⚠ **「어떻게 풀 것인가」를 함께 적는다**(공유계약 G-3 · 설계 회신 `omf-mes#220`).
+     * 「없습니다」에서 멈추면 사용자는 어디로 가야 할지 모른다 — 만드는 자리가 «같은 화면»
+     * 안이므로 그 탭 이름을 말한다.
+     */
+    masterEmpty:
+      '등록된 점검 항목이 없습니다. 위의 「점검 항목」 탭에서 항목을 만든 뒤 부여하세요.',
     masterLoadFailed: '점검 항목 목록을 불러오지 못했습니다.',
     removeAction: '부여 해제',
     removeLabel: (itemName: string): string => `${itemName} 부여 해제`,
     fields: {
+      plant: '공장',
       itemCode: '항목코드',
       itemName: '항목명',
       inspectionType: '점검 유형',
@@ -305,5 +320,74 @@ export const equipmentMaster = {
      */
     equipmentDialogLead:
       '이 설비에 부여한 것이 소속 그룹의 것을 이깁니다. 모두 지우면 다시 소속 그룹의 항목이 적용됩니다.',
+  },
+  /**
+   * 점검 항목 **마스터** — 부여와 다른 것이다(공유계약 B-6).
+   *
+   * ⭐ **만드는 자리가 이 화면이다**(설계 회신 `omf-mes#220` · 스펙 §5-1-1). 자리는 부여 창
+   * «안»이 아니라 그룹·설비와 **나란한 목록**이다 — 창 안에 창이 생기고 만들다 만 항목이
+   * 부여와 한 트랜잭션에 얽히는 것을 막는다.
+   */
+  inspectionItem: {
+    tabLabel: '점검 항목',
+    paneTitle: '점검 항목 마스터',
+    description: '설비와 설비 그룹에 부여할 점검 항목을 여기서 만듭니다.',
+    loading: '점검 항목을 불러오는 중',
+    emptyTitle: '등록된 점검 항목이 없습니다',
+    emptyDescription: '점검 항목을 만들면 설비·설비 그룹에 부여할 수 있습니다.',
+    noMatchTitle: '조건에 맞는 점검 항목이 없습니다',
+    noMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 보세요.',
+    addAction: '점검 항목 추가',
+    createTitle: '점검 항목 등록',
+    editTitle: '점검 항목 수정',
+    searchLabel: '점검 항목 검색',
+    searchPlaceholder: '항목코드 또는 항목명',
+    typeAll: '전체 유형',
+    /** 행이 곧 손잡이다 — 접근 이름에 무엇이 열리는지 담는다. */
+    openLabel: (itemCode: string, itemName: string): string => `${itemCode} ${itemName} 수정`,
+    fields: {
+      plant: '공장',
+      itemCode: '항목코드',
+      itemName: '항목명',
+      inspectionType: '점검 유형',
+      judgmentMethod: '판정 방식',
+      uom: '측정 단위',
+      lowerLimit: '측정 하한',
+      upperLimit: '측정 상한',
+      requiredFlag: '필수 여부',
+      inspectionPoint: '점검부위',
+      sequenceNo: '표시 순서',
+      isActive: '사용',
+    },
+    placeholders: {
+      plant: '공장을 고르세요',
+      inspectionType: '점검 유형을 고르세요',
+      judgmentMethod: '판정 방식을 고르세요',
+      uom: '단위를 고르세요',
+    },
+    /**
+     * ⛔ **짝 제약을 창이 말한다.** 판정 방식이 「측정값」이면 단위·상하한이 함께 필요하다 —
+     * 말하지 않으면 사용자는 세 칸이 왜 갑자기 필수가 됐는지 모른다.
+     */
+    measurementNote: '판정 방식이 「측정값」이면 단위와 상·하한이 함께 필요합니다.',
+    /** ⛔ 계약의 수정 본문에 공장이 없다 — 옮길 수 없다는 뜻이다. */
+    plantFixed: '공장은 등록할 때 정해지며 나중에 바꿀 수 없습니다.',
+    /** ⭐ 지운 것이 아니라 잠근 것이다 — 부여된 곳이 있으면 코드를 바꿀 수 없다. */
+    assignmentCount: (count: number): string =>
+      count === 0
+        ? '아직 어디에도 부여되지 않았습니다.'
+        : `설비·설비 그룹 ${count}곳에 부여돼 있습니다.`,
+    /** ⛔ 물리 삭제가 없다(B-4) — 사용 여부로 끈다. */
+    inactiveNote: '사용을 끄면 새로 부여할 수 없습니다. 이미 부여된 곳은 그대로 남습니다.',
+    validation: {
+      required: '필수 항목입니다.',
+      mustBeNumber: '숫자로 입력하세요.',
+      sequencePositive: '표시 순서는 0 이상의 정수여야 합니다.',
+      limitOrder: '측정 상한은 하한보다 크거나 같아야 합니다.',
+    },
+    values: {
+      requiredYes: '필수',
+      requiredNo: '선택',
+    },
   },
 } as const;

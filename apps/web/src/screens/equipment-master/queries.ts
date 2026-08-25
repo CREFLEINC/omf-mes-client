@@ -6,6 +6,8 @@ import { IN_SERVICE_STATUS_CODE, type CodeValue } from './code-options';
 import { runRequest } from '../../patterns/request';
 import type {
   EquipmentFilters,
+  InspectionItemDetail,
+  InspectionItemFilters,
   EquipmentInspectionAssignments,
   EquipmentInspectionItem,
   GroupFilters,
@@ -345,6 +347,10 @@ export const useLookupOptions = (): LookupResult => {
 export const inspectionKeys = {
   all: ['equipment-inspection-items'] as const,
   master: (q: string) => ['equipment-inspection-items', 'master', q] as const,
+  masterList: (filters: InspectionItemFilters) =>
+    ['equipment-inspection-items', 'master-list', filters] as const,
+  masterDetail: (equipmentInspectionItemId: number) =>
+    ['equipment-inspection-items', 'master-detail', equipmentInspectionItemId] as const,
   groupAssignments: (equipmentGroupId: number) =>
     ['equipment-inspection-items', 'group', equipmentGroupId] as const,
   equipmentAssignments: (equipmentId: number) =>
@@ -432,5 +438,88 @@ export const useEquipmentInspectionItems = (
         }),
       );
     },
+  });
+};
+
+/** 잠금 토큰이 보관된 경로. 쓰기의 If-Match 는 언제나 여기서 꺼낸다. */
+export const inspectionItemDetailPath = (equipmentInspectionItemId: number): string =>
+  `/mdm/equipment-inspection-items/${String(equipmentInspectionItemId)}`;
+
+/**
+ * 점검 항목 마스터 목록 — **관리하는 자리**다.
+ *
+ * ⭐ **부여 창이 쓰는 조회와 다르다.** 그쪽은 「고를 것」이라 살아 있는 것만 받지만, 여기는
+ * 마스터라 **사용 중지된 것도 보여야 한다** — 끈 항목을 다시 켜는 길이 여기뿐이다(B-4).
+ */
+export const useInspectionItemList = (
+  filters: InspectionItemFilters,
+  /** 이 뷰가 열려 있는가. ⛔ 보이지 않는 목록을 미리 부르지 않는다 */
+  enabled: boolean,
+): UseQueryResult<{ items: EquipmentInspectionItem[]; page: PageMeta }> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: inspectionKeys.masterList(filters),
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/equipment-inspection-items', {
+          params: {
+            query: {
+              ...(filters.q === '' ? {} : { q: filters.q }),
+              ...(filters.inspectionTypeCode === ''
+                ? {}
+                : { inspectionTypeCode: filters.inspectionTypeCode }),
+              includeInactive: filters.includeInactive,
+            },
+          },
+        }),
+      ),
+  });
+};
+
+/**
+ * 점검 항목 상세. **잠금 토큰·수정 가부·부여 건수가 이 응답으로 온다** — 목록 행만으로는
+ * 저장을 시작할 수 없고, 코드를 고칠 수 있는지도 알 수 없다.
+ */
+export const useInspectionItemDetail = (
+  equipmentInspectionItemId: number | null,
+): UseQueryResult<InspectionItemDetail> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: inspectionKeys.masterDetail(equipmentInspectionItemId ?? 0),
+    enabled: equipmentInspectionItemId !== null,
+    queryFn: () => {
+      if (equipmentInspectionItemId === null) {
+        throw new Error('점검 항목을 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/mdm/equipment-inspection-items/{equipmentInspectionItemId}', {
+          params: { path: { equipmentInspectionItemId } },
+        }),
+      );
+    },
+  });
+};
+
+/**
+ * 측정 단위 선택지 — 점검 항목의 「측정값」 판정에 짝으로 붙는다.
+ *
+ * ⭐ **사용 중지된 단위도 받는다**(`includeInactive`) — 이미 그 단위로 적어 둔 항목이 있으면
+ * 선택칸에서 사라져 **값이 없는 것처럼 보인다**(형제 화면이 실제로 겪은 자리다).
+ */
+export const useUomOptions = (): UseQueryResult<{ uomId: number; uomName: string }[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['lookups', 'uoms'] as const,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } }),
+      ).then((response) =>
+        response.items.map((item) => ({ uomId: item.uomId, uomName: item.uomName })),
+      ),
   });
 };

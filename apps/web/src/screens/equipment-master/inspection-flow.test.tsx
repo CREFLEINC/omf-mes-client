@@ -56,6 +56,8 @@ interface Options {
   assignmentsFail?: boolean;
   /** 마스터 목록 조회를 실패시킨다 */
   masterFail?: boolean;
+  /** 마스터 목록을 갈아 끼운다 — 비우면 「어디서 만드나」 갈래가 선다 */
+  master?: typeof inspectionItems;
   /** 저장 응답 상태. 200 이 아니면 본문을 오류로 낸다 */
   writeStatus?: number;
   writeBody?: unknown;
@@ -116,7 +118,7 @@ const routes = (options: Options): StubRoute[] => [
     respond: () =>
       options.masterFail === true
         ? jsonResponse({ errors: [] }, { status: 500 })
-        : jsonResponse(inspectionItemsResponse()),
+        : jsonResponse(inspectionItemsResponse(options.master ?? inspectionItems)),
   },
   {
     match: (request) => request.method === 'GET' && isPath(request, '/mdm/equipment-groups'),
@@ -375,6 +377,23 @@ describe('W-05-12 점검 항목 — 부여를 고친다', () => {
     await openDialog(user);
 
     expect(await within(dialog()).findByText(ti.masterLoadFailed)).toBeInTheDocument();
+  });
+
+  /**
+   * ⚠ **「어떻게 풀 것인가」를 함께 적는다**(공유계약 G-3 · 설계 회신 `omf-mes#220`).
+   * 「없습니다」에서 멈추면 사용자는 어디로 가야 할지 모른다 — 만드는 자리가 «같은 화면»
+   * 안이므로 그 탭 이름을 말한다.
+   */
+  it('마스터가 비면 어디서 만드는지 함께 말한다', async () => {
+    const user = userEvent.setup();
+
+    renderAt({ assignments: [], master: [] });
+    await openDialog(user);
+
+    const note = await within(dialog()).findByText(ti.masterEmpty);
+
+    expect(note).toBeInTheDocument();
+    expect(note.textContent).toContain(t.inspectionItem.tabLabel);
   });
 
   it('모두 부여했으면 그 사실을 말한다', async () => {
