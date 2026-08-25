@@ -20,16 +20,33 @@ const FILTERS: InspectionInsightFilters = {
 };
 
 describe('검사 목록·요약·추이 모집단', () => {
-  it('검사유형 또는 기간이 미확정이면 집계 요청을 만들지 않는다', () => {
-    const withoutType = { ...FILTERS, inspectionTypeCode: '' };
+  it('기간이 미확정이면 모든 요청을 만들지 않는다', () => {
     const withoutPeriod = { ...FILTERS, to: '' };
 
-    for (const filters of [EMPTY_INSPECTION_INSIGHT_FILTERS, withoutType, withoutPeriod]) {
+    for (const filters of [EMPTY_INSPECTION_INSIGHT_FILTERS, withoutPeriod]) {
       expect(toInspectionListQuery(filters, 'inspectedAt,desc', 1)).toBeNull();
       expect(toInspectionSummaryQuery(filters)).toBeNull();
       expect(toDefectRateTrendQuery(filters)).toBeNull();
       expect(toDefectDistributionQuery(filters, 'defectCode', '')).toBeNull();
     }
+  });
+
+  it('검사유형 전체는 목록·분포만 허용하고 요약·추이 합산 요청은 막는다', () => {
+    const overall = { ...FILTERS, inspectionTypeCode: '' };
+
+    expect(toInspectionListQuery(overall, 'inspectedAt,desc', 1)).toEqual({
+      itemId: 101,
+      processId: 202,
+      overallJudgmentCode: 'REJECTED',
+      inspectedFrom: '2026-08-01',
+      inspectedTo: '2026-08-31',
+      finalRoundOnly: true,
+      calibrationExpired: 'exclude',
+      sort: 'inspectedAt,desc',
+    });
+    expect(toInspectionSummaryQuery(overall)).toBeNull();
+    expect(toDefectRateTrendQuery(overall)).toBeNull();
+    expect(toDefectDistributionQuery(overall, 'defectCode', '')).not.toBeNull();
   });
 
   it('형식만 맞는 비실재 달력 날짜도 모든 요청을 막는다', () => {

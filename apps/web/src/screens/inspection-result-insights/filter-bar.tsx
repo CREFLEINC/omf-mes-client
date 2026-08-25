@@ -69,13 +69,13 @@ export const InspectionInsightFilterBar = ({
   ]);
 
   const reason =
-    draft.from === '' || draft.to === '' || draft.inspectionTypeCode === ''
-      ? '기간과 검사유형을 선택하세요.'
+    draft.from === '' || draft.to === ''
+      ? '기간을 선택하세요.'
       : draft.from > draft.to
         ? '종료일은 시작일보다 빠를 수 없습니다.'
         : null;
   const selects = [
-    ['검사유형', 'inspectionTypeCode', options.inspectionType, true],
+    ['검사유형', 'inspectionTypeCode', optional(options.inspectionType), false],
     ['품목', 'itemId', optional(options.item), false],
     ['공정', 'processId', optional(options.process), false],
     ['종합판정', 'overallJudgmentCode', optional(options.judgment), false],
@@ -150,9 +150,11 @@ export const InspectionInsightFilterBar = ({
         </div>
         <span className="field-note">
           {reason ??
-            (draft.finalRoundOnly
-              ? '최종 검사 회차만 조회합니다.'
-              : '재검 사슬 전체를 회차 순서로 조회합니다.')}
+            (draft.inspectionTypeCode === ''
+              ? '전체 선택 시 요약·추이는 검사유형별로 분리합니다.'
+              : draft.finalRoundOnly
+                ? '최종 검사 회차만 조회합니다.'
+                : '재검 사슬 전체를 회차 순서로 조회합니다.')}
         </span>
       </div>
     </div>

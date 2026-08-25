@@ -13,7 +13,7 @@ const options = {
 };
 
 describe('검사 결과 공통 필터', () => {
-  it('기간·검사유형 전에는 조회를 막고 무관한 rerender에 편집 초안을 보존한다', async () => {
+  it('기간 전에는 조회를 막고 무관한 rerender에 편집 초안을 보존한다', async () => {
     const user = userEvent.setup();
     const props = {
       appliedFilters: EMPTY_INSPECTION_INSIGHT_FILTERS,
@@ -24,7 +24,7 @@ describe('검사 결과 공통 필터', () => {
     const { rerender } = render(<InspectionInsightFilterBar {...props} />);
 
     expect(screen.getByRole('button', { name: '조회' })).toBeDisabled();
-    expect(screen.getByText('기간과 검사유형을 선택하세요.')).toBeInTheDocument();
+    expect(screen.getByText('기간을 선택하세요.')).toBeInTheDocument();
     await user.type(screen.getByLabelText('시작일'), '2026-08-01');
     rerender(
       <InspectionInsightFilterBar
@@ -33,6 +33,16 @@ describe('검사 결과 공통 필터', () => {
       />,
     );
     expect(screen.getByLabelText('시작일')).toHaveValue('2026-08-01');
+    await user.type(screen.getByLabelText('종료일'), '2026-08-31');
+    expect(screen.getByRole('button', { name: '조회' })).toBeEnabled();
+    expect(screen.getByLabelText('검사유형')).toHaveTextContent('전체');
+    expect(screen.getByText(/전체 선택 시 요약·추이는 검사유형별로 분리/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(props.onSearch).toHaveBeenCalledWith({
+      ...EMPTY_INSPECTION_INSIGHT_FILTERS,
+      from: '2026-08-01',
+      to: '2026-08-31',
+    });
   });
 
   it('표시명 선택과 명시 교정 필터를 공통 조회 조건으로 전달한다', async () => {
