@@ -50,6 +50,19 @@ describe('검사 추이·불량 분포', () => {
 
     const chart = await screen.findByRole('img', { name: /2026-08-02 10%.*2026-08-01 10%/ });
     expect(chart).toBeInTheDocument();
+    const table = screen.getByRole('table', { name: '불량률 추이 데이터' });
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(4);
+    const rows = within(table).getAllByRole('row');
+    expect(
+      within(rows[1]!)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual(['2026-08-02', '20', '2', '10%']);
+    expect(
+      within(rows[2]!)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual(['2026-08-01', '10', '1', '10%']);
     expect(screen.getByText('기준 2026-08-31 10:30')).toBeInTheDocument();
     expect(calls).toHaveLength(1);
     expect(calls[0]?.searchParams.get('finalRoundOnly')).toBe('true');
@@ -96,5 +109,42 @@ describe('검사 추이·불량 분포', () => {
       detectedFrom: '2026-08-01',
       detectedTo: '2026-08-31',
     });
+  });
+
+  it('검출·발생 공정과 서버 duplicateRisk 사실을 모두 경고한다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<InsightTabs filters={filters} sourceAxisCode="PQC" />, {
+      fetch: createStubFetch([
+        route('/quality/inspection-results/defect-rate-trend', () =>
+          jsonResponse({ points: [], asOf: '2026-08-31T10:30:00+09:00' }),
+        ),
+        route('/quality/defect-records/distribution', (request) => {
+          const groupBy = new URL(request.url).searchParams.get('groupBy');
+          return jsonResponse({
+            nodes:
+              groupBy === 'defectCode'
+                ? [
+                    {
+                      defectCodeId: 701,
+                      label: '합성 불량',
+                      recordCount: 1,
+                      defectQty: 1,
+                      duplicateRisk: true,
+                    },
+                  ]
+                : [],
+            groupBy,
+            asOf: '2026-08-31T10:31:00+09:00',
+          });
+        }),
+      ]),
+    });
+
+    await user.click(screen.getByRole('tab', { name: '불량 분포' }));
+    expect(await screen.findByText('공정별 분포는 중복 계상될 수 있습니다.')).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: '분포 묶음 기준' }));
+    await user.click(screen.getByRole('option', { name: '검출 공정' }));
+    expect(await screen.findByText('분포 데이터가 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('공정별 분포는 중복 계상될 수 있습니다.')).toBeInTheDocument();
   });
 });

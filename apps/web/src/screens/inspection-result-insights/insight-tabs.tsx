@@ -13,10 +13,16 @@ import {
 import { useState } from 'react';
 
 import type { InspectionInsightFilters } from './filters';
-import { useDefectDistribution, useDefectRateTrend, type DefectDistribution } from './queries';
+import {
+  useDefectDistribution,
+  useDefectRateTrend,
+  type DefectDistribution,
+  type DefectRateTrend,
+} from './queries';
 import type { DistributionGroup } from './request-queries';
 
 type Node = DefectDistribution['nodes'][number];
+type TrendPoint = DefectRateTrend['points'][number];
 type View = 'trend' | 'distribution';
 const EMPTY = '—';
 const dateTime = (value: string): string => {
@@ -49,6 +55,17 @@ export const InsightTabs = ({ filters, sourceAxisCode }: InsightTabsProps) => {
       다시 시도
     </Button>
   );
+  const trendColumns: Column<TrendPoint>[] = [
+    { key: 'bucket', header: '일자' },
+    { key: 'inspectedQty', header: '검사수량', align: 'end' },
+    { key: 'rejectedQty', header: '불합격수량', align: 'end' },
+    {
+      key: 'defectRate',
+      header: '불량률',
+      align: 'end',
+      render: (point) => `${point.defectRate}%`,
+    },
+  ];
   const trendContent = (
     <section aria-label="불량률 추이 결과">
       {trend.isPending && <SkeletonText lines={3} />}
@@ -64,21 +81,30 @@ export const InsightTabs = ({ filters, sourceAxisCode }: InsightTabsProps) => {
         (trend.data.points.length === 0 ? (
           <EmptyState size="sm" title="추이 데이터가 없습니다" />
         ) : (
-          <Chart
-            type="line"
-            title="불량률 추이"
-            series={[
-              {
-                name: '불량률',
-                data: trend.data.points.map((point) => ({
-                  label: point.bucket,
-                  value: point.defectRate,
-                })),
-              },
-            ]}
-            formatValue={(value) => `${value}%`}
-            showPoints
-          />
+          <>
+            <Chart
+              type="line"
+              title="불량률 추이"
+              series={[
+                {
+                  name: '불량률',
+                  data: trend.data.points.map((point) => ({
+                    label: point.bucket,
+                    value: point.defectRate,
+                  })),
+                },
+              ]}
+              formatValue={(value) => `${value}%`}
+              showPoints
+            />
+            <Table
+              density="compact"
+              caption="불량률 추이 데이터"
+              columns={trendColumns}
+              rows={[...trend.data.points]}
+              getRowId={(point) => point.bucket}
+            />
+          </>
         ))}
       {!trend.isError && trend.data !== undefined && (
         <p className="field-note">기준 {dateTime(trend.data.asOf)}</p>
@@ -111,6 +137,10 @@ export const InsightTabs = ({ filters, sourceAxisCode }: InsightTabsProps) => {
       render: (node) => (node.share === undefined ? EMPTY : `${node.share}%`),
     },
   ];
+  const duplicateWarning =
+    group === 'occurrenceProcess' ||
+    group === 'detectionProcess' ||
+    distribution.data?.nodes.some((node) => node.duplicateRisk === true) === true;
   const distributionContent = (
     <section aria-label="불량 분포 결과">
       <Select
@@ -123,7 +153,7 @@ export const InsightTabs = ({ filters, sourceAxisCode }: InsightTabsProps) => {
         목록·요약·추이와 다른 모집단이며 두 수가 다른 것이 정상입니다.
       </AlertBanner>
       <AlertBanner variant="warning">현재 담기지 않는 불량 원천이 있을 수 있습니다.</AlertBanner>
-      {group === 'occurrenceProcess' && (
+      {duplicateWarning && (
         <AlertBanner variant="warning">공정별 분포는 중복 계상될 수 있습니다.</AlertBanner>
       )}
       {distribution.isPending && <SkeletonText lines={3} />}
