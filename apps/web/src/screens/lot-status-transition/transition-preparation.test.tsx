@@ -134,9 +134,18 @@ const renderPreparation = (routes: StubRoute[], selected = lot(), tracksVersion 
   );
   return { ...view, requests, urls, user: userEvent.setup() };
 };
-const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {
-  await user.click(await screen.findByLabelText(label));
-  await user.click(await screen.findByRole('option', { name: option }));
+const chooseHold = async (
+  user: ReturnType<typeof userEvent.setup>,
+  reasonCode: string,
+  heldAt: string,
+): Promise<void> => {
+  await screen.findAllByText(reasonCode);
+  const row = screen.getAllByRole('row').find((candidate) => {
+    const text = candidate.textContent ?? '';
+    return text.includes(reasonCode) && text.includes(heldAt);
+  });
+  if (row === undefined) throw new Error(`보류 ${reasonCode} / ${heldAt}의 행이 없습니다.`);
+  await user.click(within(row).getByRole('button', { name: /^선택(?:됨)?$/ }));
 };
 const chooseTransition = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -513,14 +522,16 @@ describe('Lot Status 전이 준비', () => {
       ...holdRoutes(holds, '"12"'),
     ]);
     await chooseTransition(user, '정상');
-    const select = await screen.findByLabelText('해제할 보류');
+    const list = await screen.findByRole('region', { name: '열린 보류 목록' });
 
-    expect(select).toHaveTextContent('하나를 선택하세요');
+    expect(within(list).getByText('QUALITY_A')).toBeVisible();
+    expect(within(list).getByText('QUALITY_B')).toBeVisible();
+    expect(within(list).getAllByRole('button', { name: '선택' })).toHaveLength(2);
     expect(urls.filter((url) => url.pathname.includes('/quality/lot-holds/'))).toHaveLength(0);
-    await choose(user, '해제할 보류', '501 · QUALITY_A · 2026-08-25T08:00:00+09:00');
+    await chooseHold(user, 'QUALITY_A', '2026-08-25T08:00:00+09:00');
     await screen.findByText('보류 해제 준비가 완료되었습니다.');
     await fillRelease(user);
-    await choose(user, '해제할 보류', '502 · QUALITY_B · 2026-08-25T08:00:00+09:00');
+    await chooseHold(user, 'QUALITY_B', '2026-08-25T08:00:00+09:00');
     expect(await screen.findByText('보류 해제 준비가 완료되었습니다.')).toBeVisible();
     expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
@@ -528,7 +539,7 @@ describe('Lot Status 전이 준비', () => {
     expect(urls.filter((url) => url.pathname === lotHoldDetailPath(502))).toHaveLength(1);
   });
 
-  it('열린 보류를 페이지별 조회하고 현재 페이지 선택만 유지한다', async () => {
+  it('열린 보류의 모든 페이지를 모아 한 목록에 나열하고 그중 한 건만 선택한다', async () => {
     const first = [
       hold(501, 'SAME_REASON', '2026-08-25T08:00:00+09:00'),
       hold(502, 'SAME_REASON', '2026-08-25T09:00:00+09:00'),
@@ -545,56 +556,36 @@ describe('Lot Status 전이 준비', () => {
       }),
     ]);
     await chooseTransition(user, '정상');
-    const firstSelect = await screen.findByLabelText('해제할 보류');
-    expect(firstSelect).toHaveTextContent('하나를 선택하세요');
-    expect(urls.find((url) => url.pathname === HOLDS)?.searchParams.has('page')).toBe(false);
-    await choose(user, '해제할 보류', '501 · SAME_REASON · 2026-08-25T08:00:00+09:00');
-    await screen.findByText('보류 해제 준비가 완료되었습니다.');
-    await fillRelease(user);
-
-    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
-    expect(screen.queryByRole('region', { name: '보류 해제 입력' })).toBeNull();
-    const secondSelect = await screen.findByLabelText('해제할 보류');
-    expect(secondSelect).toHaveTextContent('하나를 선택하세요');
-    expect(screen.getByRole('button', { name: '다음 쪽' })).toBeDisabled();
-    expect(
-      urls
-        .filter((url) => url.pathname === HOLDS)
-        .at(-1)
-        ?.searchParams.get('page'),
-    ).toBe('2');
+    const list = await screen.findByRole('region', { name: '열린 보류 목록' });
+    expect(within(list).getAllByText('SAME_REASON')).toHaveLength(3);
+    expect(within(list).getByText('2026-08-25T08:00:00+09:00')).toBeVisible();
+    expect(within(list).getByText('2026-08-25T09:00:00+09:00')).toBeVisible();
+    expect(within(list).getByText('2026-08-25T10:00:00+09:00')).toBeVisible();
+    const holdRequests = urls.filter((url) => url.pathname === HOLDS);
+    expect(holdRequests).toHaveLength(2);
+    expect(holdRequests[0]?.searchParams.has('page')).toBe(false);
+    expect(holdRequests[0]?.searchParams.get('size')).toBe('50');
+    expect(holdRequests[1]?.searchParams.get('page')).toBe('2');
     expect(screen.queryByText('보류 해제 준비가 완료되었습니다.')).toBeNull();
-    await choose(user, '해제할 보류', '503 · SAME_REASON · 2026-08-25T10:00:00+09:00');
+    await chooseHold(user, 'SAME_REASON', '2026-08-25T10:00:00+09:00');
     await screen.findByText('보류 해제 준비가 완료되었습니다.');
 
     await chooseTransition(user, '불량');
-    expect(screen.getByRole('button', { name: '이전 쪽' })).toBeDisabled();
-    expect(await screen.findByLabelText('해제할 보류')).toHaveTextContent('하나를 선택하세요');
-    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
-    await screen.findByLabelText('해제할 보류');
-    await user.click(screen.getByRole('button', { name: '이전 쪽' }));
     expect(screen.queryByRole('region', { name: '보류 해제 입력' })).toBeNull();
-    await waitFor(() =>
-      expect(
-        urls
-          .filter((url) => url.pathname === HOLDS)
-          .at(-1)
-          ?.searchParams.has('page'),
-      ).toBe(false),
-    );
-    expect(await screen.findByLabelText('해제할 보류')).toHaveTextContent('하나를 선택하세요');
+    expect(await screen.findByRole('region', { name: '열린 보류 목록' })).toBeVisible();
+    expect(screen.getAllByRole('button', { name: '선택' })).toHaveLength(3);
   });
 
-  it('잘못된 page size는 무한 페이지로 계산하지 않는다', async () => {
-    const { user } = renderPreparation([
+  it('잘못된 page size는 추가 조회를 반복하지 않고 전체 목록을 fail-closed한다', async () => {
+    const { urls, user } = renderPreparation([
       transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
       ...pagedHoldRoutes({ 1: { items: [hold(501, 'A'), hold(502, 'B')], size: 0, total: 100 } }),
     ]);
     await chooseTransition(user, '정상');
-    await screen.findByLabelText('해제할 보류');
 
-    expect(screen.queryByRole('button', { name: '다음 쪽' })).toBeNull();
-    expect(screen.queryByRole('button', { name: '이전 쪽' })).toBeNull();
+    expect(await screen.findByText('열린 보류를 불러오지 못했습니다.')).toBeVisible();
+    expect(urls.filter((url) => url.pathname === HOLDS)).toHaveLength(1);
+    expect(screen.queryByRole('region', { name: '열린 보류 목록' })).toBeNull();
   });
 
   it.each([
