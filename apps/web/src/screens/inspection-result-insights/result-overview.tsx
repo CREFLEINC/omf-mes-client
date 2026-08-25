@@ -38,6 +38,7 @@ interface ResultOverviewProps {
   labels: ResultLabels;
   onSortChange: (sort: InspectionResultSort) => void;
   onPageChange: (page: number) => void;
+  onSelectResult: (inspectionResultId: number) => void;
 }
 
 const TABLE_SORTS: Record<InspectionResultSort, SortState> = {
@@ -64,6 +65,7 @@ export const ResultOverview = ({
   labels,
   onSortChange,
   onPageChange,
+  onSelectResult,
 }: ResultOverviewProps) => {
   const list = useInspectionResults(filters, sort, page);
   const summary = useInspectionSummary(filters);
@@ -84,7 +86,16 @@ export const ResultOverview = ({
       key: 'inspectionRequestNo',
       header: '의뢰번호',
       sortable: true,
-      render: (row) => row.inspectionRequestNo ?? EMPTY,
+      render: (row) => (
+        <Button
+          size="sm"
+          variant="text"
+          aria-label={`${row.inspectionRequestNo ?? EMPTY} 상세 보기`}
+          onClick={() => onSelectResult(row.inspectionResultId)}
+        >
+          {row.inspectionRequestNo ?? EMPTY}
+        </Button>
+      ),
     },
     {
       key: 'inspectionTypeCode',

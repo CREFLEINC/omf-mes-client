@@ -85,6 +85,7 @@ describe('검사 결과 요약·목록', () => {
         }}
         onSortChange={onSortChange}
         onPageChange={onPageChange}
+        onSelectResult={() => undefined}
       />,
       { fetch: createStubFetch(routes) },
     );
@@ -126,6 +127,7 @@ describe('검사 결과 요약·목록', () => {
         labels={{ item: new Map(), judgment: new Map() }}
         onSortChange={() => undefined}
         onPageChange={() => undefined}
+        onSelectResult={() => undefined}
       />,
       { fetch: async (request) => (calls.push(request), jsonResponse({})) },
     );
