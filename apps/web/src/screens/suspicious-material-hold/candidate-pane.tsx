@@ -38,6 +38,7 @@ interface Props {
   isLocked: boolean;
   selection: SelectedLotSnapshot[];
   onSelectionChange: (selection: SelectedLotSnapshot[]) => void;
+  onAvailabilityChange?: (ready: boolean) => void;
 }
 
 const positiveId = (value: string): number | null => {
@@ -62,6 +63,7 @@ export const SuspiciousMaterialCandidatePane = ({
   isLocked,
   selection,
   onSelectionChange,
+  onAvailabilityChange,
 }: Props) => {
   const { client } = useApiClient();
   const [draft, setDraft] = useState(EMPTY_SUSPICIOUS_MATERIAL_FILTERS);
@@ -85,6 +87,8 @@ export const SuspiciousMaterialCandidatePane = ({
   const uoms = useWorkOrderCloseUomLookup();
   const ready = candidates.data !== undefined && !candidates.isFetching && !candidates.isError;
 
+  useEffect(() => onAvailabilityChange?.(ready), [onAvailabilityChange, ready]);
+
   useEffect(() => {
     if (candidates.isError) {
       if (selection.length > 0) onSelectionChange([]);
@@ -94,11 +98,20 @@ export const SuspiciousMaterialCandidatePane = ({
     const next = reconcileSuspiciousMaterialSelection(selection, {
       kind: 'SUCCESS',
       items: candidates.data.items,
-    }).map((value) => ({
-      ...value,
-      locationLabel: selection.find(({ lotId }) => lotId === value.lotId)?.locationLabel,
-      uomLabel: selection.find(({ lotId }) => lotId === value.lotId)?.uomLabel,
-    }));
+    }).map((value) => {
+      const previous = selection.find(({ lotId }) => lotId === value.lotId);
+      return {
+        ...value,
+        locationLabel:
+          previous !== undefined &&
+          previous.warehouseId === value.warehouseId &&
+          previous.locationId === value.locationId
+            ? previous.locationLabel
+            : null,
+        uomLabel:
+          previous !== undefined && previous.uomId === value.uomId ? previous.uomLabel : null,
+      };
+    });
     if (!sameSelection(selection, next)) onSelectionChange(next);
   }, [candidates.data, candidates.isError, onSelectionChange, ready, selection]);
 
@@ -154,7 +167,7 @@ export const SuspiciousMaterialCandidatePane = ({
         <Checkbox
           aria-label={`${row.lotNo} 선택`}
           checked={selection.some((value) => value.lotId === row.lotId)}
-          disabled={isLocked || toSelectedLotSnapshot(row) === null}
+          disabled={isLocked || !ready || toSelectedLotSnapshot(row) === null}
           onChange={() => toggle(row)}
         />
       ),

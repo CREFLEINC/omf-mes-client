@@ -141,4 +141,21 @@ describe('의심자재 후보 pane', () => {
     await view.queryClient.invalidateQueries({ queryKey: ['suspicious-material-hold'] });
     expect(await screen.findByRole('checkbox', { name: 'SYN-LOT-701 선택' })).not.toBeChecked();
   });
+
+  it('background pending 즉시 cached 선택과 checkbox를 fail-closed한다', async () => {
+    let release!: (value: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const view = renderPane((_, call) => (call === 1 ? jsonResponse(page([lot(701)])) : pending));
+    await view.user.click(await screen.findByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
+    void view.queryClient.invalidateQueries({ queryKey: ['suspicious-material-hold'] });
+    await waitFor(() => expect(screen.getByText('1건 선택')).toBeVisible());
+    expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeDisabled();
+    release(jsonResponse(page([lot(701, { versionNo: 702 })])));
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeEnabled(),
+    );
+    expect(screen.getByText('1건 선택')).toBeVisible();
+  });
 });

@@ -105,11 +105,19 @@ export const SuspiciousMaterialHoldInputPane = ({
     queryFn: () => fetchReasons(client),
   });
   const activeReasons = useMemo(
-    () => reasons.data?.items.filter((value: CodeValue) => value.isActive) ?? [],
+    () =>
+      reasons.data?.items
+        .filter(
+          (value: CodeValue) =>
+            value.isActive && value.code.trim() !== '' && value.codeName.trim() !== '',
+        )
+        .map((value) => ({ ...value, code: value.code.trim(), codeName: value.codeName.trim() })) ??
+      [],
     [reasons.data],
   );
   const reasonUnavailable =
     reasons.isPending ||
+    reasons.isFetching ||
     reasons.isError ||
     reasons.data === undefined ||
     reasons.data.page.total > reasons.data.items.length ||

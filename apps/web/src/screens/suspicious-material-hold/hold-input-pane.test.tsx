@@ -94,14 +94,18 @@ const reasons = (
   items = [{ code: 'DAMAGE', codeName: '파손', isActive: true }],
   total = items.length,
 ) => jsonResponse({ items, page: { page: 1, size: 100, total } });
-const renderPane = (lots: HoldInputLot[], response = reasons()) => {
+const renderPane = (
+  lots: HoldInputLot[],
+  response: Response | ((call: number) => Response | Promise<Response>) = reasons(),
+) => {
   const onBodyChange = vi.fn();
+  let calls = 0;
   const fetch = createStubFetch([
     {
       match: (request) => new URL(request.url).pathname === '/mdm/code-values',
       respond: (request) => {
         expect(new URL(request.url).searchParams.get('codeGroupCode')).toBe('LOT_HOLD_REASON');
-        return response;
+        return typeof response === 'function' ? (response(++calls) as Response) : response;
       },
     },
   ]);
@@ -172,5 +176,31 @@ describe('의심자재 보류 입력 pane', () => {
     expect(screen.getByText(/단위 이름 미확인/)).toBeVisible();
     expect(onBodyChange).toHaveBeenLastCalledWith(null);
     for (const raw of ['802001', '803001', '804001']) expect(screen.queryByText(raw)).toBeNull();
+  });
+
+  it('blank name과 background reason refetch 중 cached 사유를 fail-closed한다', async () => {
+    let release!: (value: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const view = renderPane([display(701)], (call) =>
+      call === 1 ? reasons([{ code: 'DAMAGE', codeName: '파손', isActive: true }]) : pending,
+    );
+    const reason = await screen.findByLabelText('보류 사유');
+    await waitFor(() => expect(reason).toBeEnabled());
+    await view.user.click(reason);
+    await view.user.click(screen.getByRole('option', { name: '파손' }));
+    await view.user.type(screen.getByLabelText('해제 조건'), '재검 완료');
+    await waitFor(() =>
+      expect(view.onBodyChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ reasonCode: 'DAMAGE' }),
+      ),
+    );
+    void view.queryClient.invalidateQueries({ queryKey: ['suspicious-material-hold', 'reasons'] });
+    await waitFor(() => expect(view.onBodyChange).toHaveBeenLastCalledWith(null));
+    expect(reason).toBeDisabled();
+    release(reasons([{ code: 'DAMAGE', codeName: '   ', isActive: true }]));
+    expect(await screen.findByText(/보류 사유 목록이 완결되지 않았습니다/)).toBeVisible();
+    expect(screen.queryByRole('option', { name: 'DAMAGE' })).toBeNull();
   });
 });

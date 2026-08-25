@@ -19,6 +19,7 @@ export const SuspiciousMaterialHoldScreen = ({
   const [selection, setSelection] = useState<SelectedLotSnapshot[]>([]);
   const [body, setBody] = useState<Body | null>(null);
   const [pinned, setPinned] = useState(false);
+  const [candidateReady, setCandidateReady] = useState(false);
   const inputSelection = useMemo<HoldInputLot[]>(
     () =>
       selection.map((lot) => ({
@@ -46,9 +47,10 @@ export const SuspiciousMaterialHoldScreen = ({
         isLocked={pinned}
         selection={selection}
         onSelectionChange={setSelection}
+        onAvailabilityChange={setCandidateReady}
       />
       <SuspiciousMaterialHoldInputPane
-        selection={inputSelection}
+        selection={candidateReady ? inputSelection : []}
         targetLotStatusCode={targetLotStatusCode}
         isLocked={pinned}
         onBodyChange={setBody}
