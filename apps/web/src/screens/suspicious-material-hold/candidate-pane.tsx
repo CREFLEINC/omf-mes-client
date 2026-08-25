@@ -10,6 +10,7 @@ import {
   Table,
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
@@ -33,6 +34,7 @@ import {
 } from './candidate-model';
 
 type Lot = components['schemas']['LotQualityStatus'];
+const t = messages.suspiciousMaterialHold.candidate;
 
 interface Props {
   isLocked: boolean;
@@ -153,19 +155,19 @@ export const SuspiciousMaterialCandidatePane = ({
   };
   const statusLabel = (code: string): string =>
     statuses.data?.isTruncated === false
-      ? (statuses.data.items.find((item) => item.code === code)?.label ?? 'Lot Status 이름 미확인')
-      : 'Lot Status 이름 미확인';
+      ? (statuses.data.items.find((item) => item.code === code)?.label ?? t.values.statusUnknown)
+      : t.values.statusUnknown;
   const uomLabel = (id: number | undefined): string =>
     id !== undefined && !uoms.isLoading && !uoms.isError && !uoms.truncated
-      ? (uoms.entries.find((value) => value.uomId === id)?.label ?? '단위 이름 미확인')
-      : '단위 이름 미확인';
+      ? (uoms.entries.find((value) => value.uomId === id)?.label ?? t.values.uomUnknown)
+      : t.values.uomUnknown;
   const columns: Column<Lot>[] = [
     {
       key: 'select',
-      header: '선택',
+      header: t.fields.select,
       render: (row) => (
         <Checkbox
-          aria-label={`${row.lotNo} 선택`}
+          aria-label={t.actions.select(row.lotNo)}
           checked={selection.some((value) => value.lotId === row.lotId)}
           disabled={isLocked || !ready || toSelectedLotSnapshot(row) === null}
           onChange={() => toggle(row)}
@@ -174,33 +176,32 @@ export const SuspiciousMaterialCandidatePane = ({
     },
     {
       key: 'lot',
-      header: 'LOT 번호',
-      render: (row) =>
-        row.fullyHeld ? `${row.lotNo} · 이미 전량 보류되어 선택할 수 없습니다.` : row.lotNo,
+      header: t.fields.lotNo,
+      render: (row) => (row.fullyHeld ? t.values.fullyHeld(row.lotNo) : row.lotNo),
     },
     {
       key: 'item',
-      header: '품목',
-      render: (row) => referenceLabel(items, row.itemId, '품목 이름 미확인'),
+      header: t.fields.item,
+      render: (row) => referenceLabel(items, row.itemId, t.values.itemUnknown),
     },
     {
       key: 'location',
-      header: '위치',
+      header: t.fields.location,
       render: (row) =>
-        `${referenceLabel(warehouses, row.warehouseId, '창고 이름 미확인')} / ${referenceLabel(locations, row.locationId, '위치 이름 미확인')}`,
+        `${referenceLabel(warehouses, row.warehouseId, t.values.warehouseUnknown)} / ${referenceLabel(locations, row.locationId, t.values.locationUnknown)}`,
     },
     {
       key: 'quantity',
-      header: '보유 수량·단위',
+      header: t.fields.quantity,
       align: 'end',
       render: (row) =>
-        `${row.onHandQty === undefined ? '수량 미확인' : String(row.onHandQty)} ${uomLabel(row.uomId)}`,
+        `${row.onHandQty === undefined ? t.values.quantityUnknown : String(row.onHandQty)} ${uomLabel(row.uomId)}`,
     },
     {
       key: 'status',
-      header: 'Lot Status·최근 전이',
+      header: t.fields.statusAndTransition,
       render: (row) =>
-        `${statusLabel(row.lotStatusCode)} · ${row.latestTransitionAt ?? '최근 전이 없음'}`,
+        `${statusLabel(row.lotStatusCode)} · ${row.latestTransitionAt ?? t.values.transitionNone}`,
     },
   ];
   const options = (data: ReferenceOptionsResult | undefined) =>
@@ -208,19 +209,19 @@ export const SuspiciousMaterialCandidatePane = ({
   const statusOptions =
     statuses.data?.items.map((item) => ({ value: item.code, label: item.label })) ?? [];
   const filterSelects = [
-    ['품목', 'itemId', options(items.data)],
-    ['창고', 'warehouseId', options(warehouses.data)],
-    ['Lot Status', 'lotStatusCode', statusOptions],
+    [t.fields.item, 'itemId', options(items.data)],
+    [t.fields.warehouse, 'warehouseId', options(warehouses.data)],
+    [t.fields.status, 'lotStatusCode', statusOptions],
   ] as const;
   const meta = candidates.data?.page;
   const pages =
     meta === undefined || meta.size < 1 ? 1 : Math.max(1, Math.ceil(meta.total / meta.size));
 
   return (
-    <section className="pane" aria-label="의심자재 후보">
+    <section className="pane" aria-label={t.pane}>
       <div className="filter-bar">
         <SearchInput
-          label="LOT 번호"
+          label={t.fields.lotNo}
           value={draft.q}
           disabled={isLocked}
           onChange={(event) => setDraft((value) => ({ ...value, q: event.target.value }))}
@@ -232,28 +233,28 @@ export const SuspiciousMaterialCandidatePane = ({
             <Select
               aria-label={label}
               value={draft[key]}
-              options={[{ value: '', label: '전체' }, ...entries]}
+              options={[{ value: '', label: t.values.all }, ...entries]}
               disabled={isLocked}
               onChange={(value) => setDraft((current) => ({ ...current, [key]: value }))}
             />
           </div>
         ))}
         <Button disabled={isLocked} onClick={apply}>
-          조회
+          {t.actions.search}
         </Button>
         <Button variant="outlined" disabled={isLocked} onClick={reset}>
-          초기화
+          {t.actions.reset}
         </Button>
       </div>
-      <p role="status">{selection.length}건 선택</p>
+      <p role="status">{t.values.selected(selection.length)}</p>
       {candidates.isError ? (
         <AlertBanner
           variant="error"
-          title="의심자재 후보를 불러오지 못했습니다."
-          action={<Button onClick={() => void candidates.refetch()}>다시 시도</Button>}
+          title={t.failed}
+          action={<Button onClick={() => void candidates.refetch()}>{t.actions.retry}</Button>}
         />
       ) : candidates.isPending ? (
-        <div role="status" aria-label="의심자재 후보를 불러오는 중">
+        <div role="status" aria-label={t.loading}>
           <SkeletonText lines={3} />
         </div>
       ) : (
@@ -264,22 +265,22 @@ export const SuspiciousMaterialCandidatePane = ({
             rows={candidates.data.items}
             getRowId={(row) => String(row.lotId)}
             sort={null}
-            empty={<EmptyState size="sm" live title="조건에 맞는 LOT이 없습니다." />}
+            empty={<EmptyState size="sm" live title={t.empty} />}
           />
-          <nav className="form-actions" aria-label="의심자재 후보 쪽 이동">
+          <nav className="form-actions" aria-label={t.pagination}>
             <Button
               variant="outlined"
               disabled={isLocked || page <= 1}
               onClick={() => move(filters, page - 1)}
             >
-              이전 쪽
+              {t.actions.previous}
             </Button>
             <Button
               variant="outlined"
               disabled={isLocked || page >= pages}
               onClick={() => move(filters, page + 1)}
             >
-              다음 쪽
+              {t.actions.next}
             </Button>
           </nav>
         </>

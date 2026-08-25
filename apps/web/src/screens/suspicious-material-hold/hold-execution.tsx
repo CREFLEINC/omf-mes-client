@@ -1,5 +1,6 @@
 import { AlertBanner, Button, Dialog, useToast } from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -9,6 +10,7 @@ import type { SelectedLotSnapshot } from './candidate-model';
 
 type Body = components['schemas']['LotHoldCreate'];
 type LotHold = components['schemas']['LotHold'];
+const t = messages.suspiciousMaterialHold.execution;
 interface Confirmation {
   body: Body;
   lotNames: Record<string, string>;
@@ -27,7 +29,7 @@ const conflictMessage = (error: ApiError | null): string => {
     error.message.trim() !== ''
   )
     return error.message;
-  return '선택한 LOT 중 하나의 상태가 변경되었습니다. 최신 정보를 다시 불러오세요.';
+  return t.conflictFallback;
 };
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -63,15 +65,15 @@ export const SuspiciousMaterialHoldExecution = ({
       const rawId = raw.conflictingLotId;
       const lotName = typeof rawId === 'number' ? request.lotNames[String(rawId)] : undefined;
       const serverMessage = typeof raw.message === 'string' ? raw.message.trim() : '';
-      const owner = lotName ?? '선택한 LOT 중 하나';
+      const owner = lotName ?? t.conflictOwner;
       return {
         ...result,
         error: {
           ...raw,
           message:
             serverMessage === ''
-              ? `${owner}의 상태가 변경되었습니다. 최신 정보를 다시 불러오세요.`
-              : `${owner}: ${serverMessage}`,
+              ? t.conflictChanged(owner)
+              : t.conflictServer(owner, serverMessage),
         },
       };
     },
@@ -91,7 +93,7 @@ export const SuspiciousMaterialHoldExecution = ({
       setConfirmation(null);
       setApplied(true);
       onConfirmationChange(false);
-      toast.show({ variant: 'success', description: '의심자재 보류를 등록했습니다.' });
+      toast.show({ variant: 'success', description: t.success });
       onApplied();
     },
   });
@@ -109,7 +111,7 @@ export const SuspiciousMaterialHoldExecution = ({
   const stale = conflict(write.error);
 
   return (
-    <section aria-label="의심자재 보류 실행">
+    <section aria-label={t.pane}>
       <Button
         disabled={body === null || confirmation !== null}
         onClick={() => {
@@ -123,11 +125,11 @@ export const SuspiciousMaterialHoldExecution = ({
           }
         }}
       >
-        등록 확인
+        {t.confirm}
       </Button>
       {applied && (
-        <AlertBanner variant="success" title="의심자재 보류를 등록했습니다.">
-          Lot Status 판정·전이 처리에서 후속 처리하세요.
+        <AlertBanner variant="success" title={t.success}>
+          {t.successNext}
         </AlertBanner>
       )}
       {confirmation !== null && (
@@ -135,12 +137,12 @@ export const SuspiciousMaterialHoldExecution = ({
           open
           closeOnBackdropClick={false}
           showCloseButton={false}
-          title="의심자재 보류 등록 확인"
+          title={t.dialogTitle}
           onClose={close}
           footer={
             <>
               <Button variant="outlined" disabled={write.isSaving} onClick={close}>
-                취소
+                {t.cancel}
               </Button>
               <Button
                 loading={write.isSaving}
@@ -149,20 +151,20 @@ export const SuspiciousMaterialHoldExecution = ({
                   if (!write.isSaving && !stale) write.write(confirmation);
                 }}
               >
-                보류 등록
+                {t.register}
               </Button>
             </>
           }
         >
           {stale ? (
-            <AlertBanner variant="error" action={<Button onClick={reload}>최신 불러오기</Button>}>
+            <AlertBanner variant="error" action={<Button onClick={reload}>{t.reload}</Button>}>
               {conflictMessage(write.error)}
             </AlertBanner>
           ) : (
             <>
               <SaveErrorBanner error={write.error} />
               {Object.keys(write.fieldErrors).length > 0 && (
-                <AlertBanner variant="error" title="입력값을 확인하세요.">
+                <AlertBanner variant="error" title={t.fieldError}>
                   <ul>
                     {Object.values(write.fieldErrors).map((message) => (
                       <li key={message}>{message}</li>
@@ -172,9 +174,8 @@ export const SuspiciousMaterialHoldExecution = ({
               )}
             </>
           )}
-          <AlertBanner variant="warning" title="보류 등록 영향">
-            {Object.keys(confirmation.lotNames).length}개 LOT의 출고·출하·피킹을 막습니다. 해제는
-            W-03-02에서 별도로 처리하며 이미 출고된 수량은 회수되지 않습니다.
+          <AlertBanner variant="warning" title={t.impact}>
+            {t.impactDescription(Object.keys(confirmation.lotNames).length)}
           </AlertBanner>
         </Dialog>
       )}

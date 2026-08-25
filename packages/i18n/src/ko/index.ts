@@ -61,6 +61,7 @@ import { lotStatusTransition } from './lot-status-transition';
 import { workOrder } from './work-order';
 import { workOrderClose } from './work-order-close';
 import { workOrderRelease } from './work-order-release';
+import { suspiciousMaterialHold } from './suspicious-material-hold';
 
 export const ko = {
   common,
@@ -110,6 +111,7 @@ export const ko = {
   workOrder,
   workOrderClose,
   workOrderRelease,
+  suspiciousMaterialHold,
 } as const;
 
 export type Messages = typeof ko;
