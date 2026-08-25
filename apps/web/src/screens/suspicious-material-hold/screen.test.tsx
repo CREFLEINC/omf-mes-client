@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
-import { SuspiciousMaterialHoldScreen } from './screen';
+import { SuspiciousMaterialHoldFlow, SuspiciousMaterialHoldScreen } from './screen';
 
 type Lot = components['schemas']['LotQualityStatus'];
 const lot = (id: number, overrides: Partial<Lot> = {}): Lot => ({
@@ -44,7 +44,7 @@ const reference = (url: URL): unknown => {
   }
   return undefined;
 };
-const renderScreen = (target: string | null) => {
+const renderScreen = (target: string | null, publicScreen = false) => {
   const requests: Request[] = [];
   let candidateGets = 0;
   let candidateRows = [lot(701), lot(702)];
@@ -75,9 +75,14 @@ const renderScreen = (target: string | null) => {
       },
     },
   ]);
-  const view = renderWithProviders(<SuspiciousMaterialHoldScreen targetLotStatusCode={target} />, {
-    fetch,
-  });
+  const view = renderWithProviders(
+    publicScreen ? (
+      <SuspiciousMaterialHoldScreen />
+    ) : (
+      <SuspiciousMaterialHoldFlow targetLotStatusCode={target} />
+    ),
+    { fetch },
+  );
   return {
     ...view,
     candidateGets: () => candidateGets,
@@ -117,7 +122,7 @@ describe('의심자재 등록 screen', () => {
   });
 
   it('두 LOT 선택부터 pinned exact POST·성공 clear와 fresh refetch까지 조립한다', async () => {
-    const { candidateGets, queryClient, requests, user } = renderScreen('HOLD');
+    const { candidateGets, queryClient, requests, user } = renderScreen(null, true);
     await chooseWarehouse(user);
     await user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
     await user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-702 선택' }));
@@ -141,7 +146,7 @@ describe('의심자재 등록 screen', () => {
       ],
       reasonCode: 'DAMAGE',
       releaseCondition: '재검 완료',
-      targetLotStatusCode: 'HOLD',
+      targetLotStatusCode: 'INSPECTION_PENDING',
     });
     expect(await screen.findByText('0건 선택')).toBeVisible();
     await waitFor(() => expect(candidateGets()).toBeGreaterThan(pinnedCount));

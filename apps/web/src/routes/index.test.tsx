@@ -414,6 +414,14 @@ const lotStatusTransitionRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/code-values', []),
 ];
 
+const suspiciousMaterialHoldRoutes = (): StubRoute[] => [
+  lookupRoute('/quality/lot-statuses', []),
+  lookupRoute('/mdm/items', []),
+  lookupRoute('/mdm/warehouses', []),
+  lookupRoute('/mdm/uoms', []),
+  lookupRoute('/mdm/code-values', []),
+];
+
 /** W-03-09가 선택 없는 첫 진입에 부르는 승인 요청 목록 하나다. */
 const qualityApprovalRoutes = (): StubRoute[] => [lookupRoute('/app/approval-requests', [])];
 
@@ -1152,6 +1160,39 @@ describe('appRouter — Lot Status 판정·전이 처리의 진입 경로', () =
   it('화면 주소는 API 리소스가 아니라 정확한 공개 route다', () => {
     expect(routedPaths()).toContain('/quality/lot-status-transition');
     expect(routedPaths()).not.toContain('/quality/lot-status-transitions');
+  });
+});
+
+describe('appRouter — 의심자재 등록의 진입 경로', () => {
+  it('품질관리 메뉴를 키보드로 열면 정식 화면 제목과 탐색 경로가 선다', async () => {
+    const user = userEvent.setup();
+    renderRoutedApp('/quality/lot-status-transition', suspiciousMaterialHoldRoutes());
+
+    const link = screen.getByRole('link', { name: messages.suspiciousMaterialHold.title });
+    link.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(currentLocation()).toBe('/quality/suspicious-material-hold'));
+    expect(
+      screen.getAllByRole('heading', {
+        level: 1,
+        name: messages.suspiciousMaterialHold.title,
+      }),
+    ).toHaveLength(1);
+    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
+    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(
+      within(items[0]!).getByText(messages.suspiciousMaterialHold.breadcrumbRoot),
+    ).toBeVisible();
+    expect(within(items[1]!).getByText(messages.suspiciousMaterialHold.title)).toBeVisible();
+    expect(await screen.findByText('조건에 맞는 LOT이 없습니다.')).toBeVisible();
+  });
+
+  it('화면 주소는 보류 API 컬렉션이 아니라 exact 공개 route다', () => {
+    expect(routedPaths()).toContain('/quality/suspicious-material-hold');
+    expect(routedPaths()).not.toContain('/quality/lot-holds');
+    expect(routedPaths()).not.toContain('/quality/suspicious-material-holds');
   });
 });
 

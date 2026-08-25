@@ -1,4 +1,6 @@
+import { Breadcrumb, PageHeader } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -8,13 +10,16 @@ import { SuspiciousMaterialHoldExecution } from './hold-execution';
 import { type HoldInputLot, SuspiciousMaterialHoldInputPane } from './hold-input-pane';
 
 type Body = components['schemas']['LotHoldCreate'];
-export interface SuspiciousMaterialHoldScreenProps {
+const t = messages.suspiciousMaterialHold;
+const SUSPICIOUS_MATERIAL_TARGET_LOT_STATUS_CODE = 'INSPECTION_PENDING';
+
+interface SuspiciousMaterialHoldFlowProps {
   targetLotStatusCode: string | null;
 }
 
-export const SuspiciousMaterialHoldScreen = ({
+export const SuspiciousMaterialHoldFlow = ({
   targetLotStatusCode,
-}: SuspiciousMaterialHoldScreenProps) => {
+}: SuspiciousMaterialHoldFlowProps) => {
   const queryClient = useQueryClient();
   const [selection, setSelection] = useState<SelectedLotSnapshot[]>([]);
   const [body, setBody] = useState<Body | null>(null);
@@ -65,3 +70,13 @@ export const SuspiciousMaterialHoldScreen = ({
     </div>
   );
 };
+
+export const SuspiciousMaterialHoldScreen = () => (
+  <div className="screen">
+    <PageHeader
+      title={t.title}
+      breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+    />
+    <SuspiciousMaterialHoldFlow targetLotStatusCode={SUSPICIOUS_MATERIAL_TARGET_LOT_STATUS_CODE} />
+  </div>
+);
