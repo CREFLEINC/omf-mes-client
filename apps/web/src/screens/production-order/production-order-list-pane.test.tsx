@@ -23,6 +23,8 @@ const rows: ProductionOrderRow[] = [
     depth: 2,
     hasChildren: true,
     isExpanded: false,
+    expandedWorkOrderCount: 3,
+    plannedWorkOrderCount: 5,
   },
   {
     productionOrderId: 17,
@@ -35,6 +37,8 @@ const rows: ProductionOrderRow[] = [
     depth: 2,
     hasChildren: false,
     isExpanded: false,
+    expandedWorkOrderCount: 0,
+    plannedWorkOrderCount: 0,
   },
 ];
 
@@ -61,7 +65,7 @@ const dataRow = (orderNo: string): HTMLTableRowElement => {
 };
 
 describe('ProductionOrderListPane 목록', () => {
-  it('정해진 여섯 열과 받은 형제 순서를 그대로 표시한다', () => {
+  it('W/O 전개/계획을 포함한 열과 받은 형제 순서를 그대로 표시한다', () => {
     renderPane();
 
     expect(screen.getAllByRole('columnheader').map((node) => node.textContent)).toEqual([
@@ -70,11 +74,13 @@ describe('ProductionOrderListPane 목록', () => {
       t.fields.item,
       t.fields.orderedQty,
       t.fields.dueDate,
+      t.fields.workOrderProgress,
       t.fields.statusCode,
     ]);
     expect(
       screen.getAllByRole('button', { name: /SYNTH-PO-[AB] 선택/ }).map((node) => node.textContent),
     ).toEqual(['SYNTH-PO-B', 'SYNTH-PO-A']);
+    expect(within(dataRow('SYNTH-PO-B')).getByText('3 / 5')).toBeInTheDocument();
   });
 
   it('안정 ID로 선택하지만 내부 ID를 표시하지 않는다', async () => {

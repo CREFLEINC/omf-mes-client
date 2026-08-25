@@ -26,12 +26,15 @@ export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFa
   erpOrderNo: order.erpOrderNo ?? null,
   parentProductionOrderId: order.parentProductionOrderId ?? null,
   bomLevel: Math.max(0, Math.trunc(order.bomLevel ?? 0)),
+  businessUnitId: order.businessUnitId ?? null,
   plantId: order.plantId ?? null,
   itemId: order.itemId,
   orderQty: order.orderQty,
   uomId: order.uomId,
   dueDate: order.dueDate ?? null,
   statusCode: order.statusCode,
+  expandedWorkOrderCount: order.expandedWorkOrderCount ?? null,
+  plannedWorkOrderCount: order.plannedWorkOrderCount ?? null,
 });
 
 const toListResponse = (response: {

@@ -41,9 +41,11 @@ const FilterSelect = ({ label, options, value, note, onChange }: FilterSelectPro
 
 export interface ProductionOrderFilterBarProps {
   appliedFilters: ProductionOrderFilters;
+  businessUnitOptions: SelectOption[];
   plantOptions: SelectOption[];
   itemOptions: SelectOption[];
   statusOptions: string[];
+  businessUnitNote?: string;
   plantNote?: string;
   itemNote?: string;
   statusNote?: string;
@@ -53,9 +55,11 @@ export interface ProductionOrderFilterBarProps {
 
 export const ProductionOrderFilterBar = ({
   appliedFilters,
+  businessUnitOptions,
   plantOptions,
   itemOptions,
   statusOptions,
+  businessUnitNote,
   plantNote,
   itemNote,
   statusNote,
@@ -63,11 +67,11 @@ export const ProductionOrderFilterBar = ({
   onReset,
 }: ProductionOrderFilterBarProps) => {
   const [draft, setDraft] = useState(appliedFilters);
-  const { q, plant, item, status, dueFrom, dueTo } = appliedFilters;
+  const { q, businessUnit, plant, item, status, dueFrom, dueTo } = appliedFilters;
   const reasonId = useId();
   useEffect(
-    () => setDraft({ q, plant, item, status, dueFrom, dueTo }),
-    [q, plant, item, status, dueFrom, dueTo],
+    () => setDraft({ q, businessUnit, plant, item, status, dueFrom, dueTo }),
+    [q, businessUnit, plant, item, status, dueFrom, dueTo],
   );
 
   const reversed = draft.dueFrom !== '' && draft.dueTo !== '' && draft.dueFrom > draft.dueTo;
@@ -90,6 +94,13 @@ export const ProductionOrderFilterBar = ({
         label={t.fields.dueTo}
         value={draft.dueTo}
         onChange={(event) => update('dueTo', event.target.value)}
+      />
+      <FilterSelect
+        label={t.fields.businessUnit}
+        options={businessUnitOptions}
+        value={draft.businessUnit}
+        note={businessUnitNote}
+        onChange={(value) => update('businessUnit', value)}
       />
       <FilterSelect
         label={t.fields.plant}
