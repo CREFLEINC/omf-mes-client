@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import {
   PM_CYCLE_UNIT_OPTIONS,
   PM_TRIGGER,
@@ -17,6 +18,15 @@ import {
   usesShotAxis,
 } from './code-options';
 import { makeCodeValue } from './fixtures';
+
+const lookupSource = (
+  entries: LookupSource['entries'] = [],
+  state: 'ready' | 'loading' | 'failed' = 'ready',
+): LookupSource => ({
+  entries,
+  isLoading: state === 'loading',
+  isError: state === 'failed',
+});
 
 describe('toCodeLabels', () => {
   /*
@@ -67,25 +77,38 @@ describe('selectableOptions', () => {
   ];
 
   it('쓰지 않는 것은 고를 목록에서 뺀다', () => {
-    expect(selectableOptions(entries, '').map((option) => option.value)).toEqual(['11']);
+    expect(selectableOptions(lookupSource(entries), '').map((option) => option.value)).toEqual([
+      '11',
+    ]);
   });
 
   /* 빼 버리면 칸이 비어 보여 사용자가 값이 사라진 줄 알고 다시 고른다. */
   it('지금 고른 값이면 쓰지 않는 것도 표식과 함께 남긴다', () => {
-    expect(selectableOptions(entries, '13')).toContainEqual({
+    expect(selectableOptions(lookupSource(entries), '13')).toContainEqual({
       value: '13',
       label: `제3공장${messages.toolMaster.values.inactiveSuffix}`,
     });
   });
 
-  it('목록에 아예 없는 값도 코드 그대로 남긴다', () => {
-    expect(selectableOptions(entries, '99')).toContainEqual({ value: '99', label: '99' });
+  it.each([
+    ['ready', messages.common.reference.unknown],
+    ['loading', messages.common.reference.loading],
+    ['failed', messages.common.reference.failed],
+  ] as const)('목록에 없는 숫자 FK는 %s 상태를 이름으로 남긴다', (state, label) => {
+    expect(selectableOptions(lookupSource(entries, state), '99')).toContainEqual({
+      value: '99',
+      label,
+    });
   });
 });
 
 describe('lookupLabel', () => {
-  it('못 찾으면 값을 그대로 보인다', () => {
-    expect(lookupLabel([], '11')).toBe('11');
+  it.each([
+    ['ready', messages.common.reference.unknown],
+    ['loading', messages.common.reference.loading],
+    ['failed', messages.common.reference.failed],
+  ] as const)('못 찾은 숫자 FK는 %s 상태를 보인다', (state, label) => {
+    expect(lookupLabel(lookupSource([], state), '11')).toBe(label);
   });
 });
 

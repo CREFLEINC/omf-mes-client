@@ -2,6 +2,7 @@ import { Button, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
+import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import type { ActionAvailability } from './asset-actions';
 
 import {
@@ -60,8 +61,8 @@ export interface ToolFormDialogProps {
   /** null이면 툴코드 편집 가능 */
   codeLockReason: string | null;
   plantOptions: CodeOption[];
-  /** 공장 이름 풀이용 원본 — 수정에서는 고르지 않고 읽는다 */
-  plantEntries: readonly { value: string; label: string }[];
+  /** 공장 이름과 조회 상태 — 수정에서는 고르지 않고 읽는다 */
+  plantSource: LookupSource;
   /** 선택 목록의 한계(잘림·실패) 안내. 없으면 붙이지 않는다 */
   optionsNote?: string;
   /** 읽기 전용 값들 — 이 화면이 정하지 않는다 */
@@ -103,7 +104,7 @@ export const ToolFormDialog = ({
   banner,
   codeLockReason,
   plantOptions,
-  plantEntries,
+  plantSource,
   optionsNote,
   statusCode,
   statusOptions,
@@ -121,8 +122,7 @@ export const ToolFormDialog = ({
   onDispose,
 }: ToolFormDialogProps) => {
   const retireNoteId = useId();
-  const plantName =
-    plantEntries.find((entry) => entry.value === values.plantId)?.label ?? values.plantId;
+  const plantName = lookupDisplayLabel(plantSource, values.plantId);
 
   const onDateAxis = usesDateAxis(values.pmTriggerTypeCode);
 

@@ -125,6 +125,7 @@ export interface PlantLookupResult {
   plants: PlantLookup[];
   truncated: boolean;
   isError: boolean;
+  isLoading: boolean;
 }
 
 const NO_PLANTS: PlantLookup[] = [];
@@ -151,5 +152,6 @@ export const usePlantLookup = (): PlantLookupResult => {
       })) ?? NO_PLANTS,
     truncated: isListTruncated(plants.data),
     isError: plants.isError,
+    isLoading: plants.isPending,
   };
 };

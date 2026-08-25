@@ -1,6 +1,11 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import {
+  lookupDisplayLabel,
+  type LookupSource,
+  selectableLookupOptions,
+} from '../../patterns/lookup-display';
 import type { GaugeFilters } from './types';
 
 export type CodeValue = components['schemas']['CodeValue'];
@@ -86,29 +91,12 @@ export const codeLabel = (code: string, options: readonly CodeOption[]): string 
   options.find((option) => option.value === code)?.label ?? code;
 
 /** 선택 목록에서 값 하나의 이름을 푼다. 좁힌 선택지가 아니라 전체에서 찾는다. */
-export const lookupLabel = (
-  entries: readonly { value: string; label: string }[],
-  value: string,
-): string => entries.find((entry) => entry.value === value)?.label ?? value;
+export const lookupLabel = (source: LookupSource, value: string): string =>
+  lookupDisplayLabel(source, value);
 
 /**
  * 선택칸에 낼 선택지. 사용 중인 것과 지금 고른 값만 남기고, 미사용에는 표식을 붙인다.
- * 목록에 아예 없는 값도 코드 그대로 남긴다 — 빼면 칸이 비어 보여 값이 사라진 줄 안다.
+ * 목록에 아예 없는 값도 상태 문구와 함께 남긴다 — 빼면 칸이 비어 보여 값이 사라진 줄 안다.
  */
-export const selectableOptions = (
-  entries: readonly { value: string; label: string; isActive: boolean }[],
-  selected: string,
-): CodeOption[] => {
-  const kept = entries
-    .filter((entry) => entry.isActive || entry.value === selected)
-    .map((entry) => ({
-      value: entry.value,
-      label: entry.isActive
-        ? entry.label
-        : `${entry.label}${messages.gaugeMaster.values.inactiveSuffix}`,
-    }));
-
-  return selected === '' || kept.some((option) => option.value === selected)
-    ? kept
-    : [...kept, { value: selected, label: selected }];
-};
+export const selectableOptions = (source: LookupSource, selected: string): CodeOption[] =>
+  selectableLookupOptions(source, selected);

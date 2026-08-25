@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import type { LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import {
@@ -163,6 +164,11 @@ export const ToolMasterScreen = () => {
   const items = tools.data?.items ?? NO_ITEMS;
   const listTruncated = tools.data !== undefined && isTruncated(tools.data.page, items.length);
   const statusOptions = toCodeLabels(statusValues.data ?? NO_ITEMS);
+  const plantSource: LookupSource = {
+    entries: plants.plants,
+    isError: plants.isError,
+    isLoading: plants.isLoading,
+  };
 
   /*
    * 조회 실패와 잘림은 함께 서지 않는다 — 실패하면 받아 온 목록 자체가 없다.
@@ -336,8 +342,8 @@ export const ToolMasterScreen = () => {
         isLoading={tools.isLoading}
         appliedFilters={filters}
         onApplyFilters={setFilters}
-        plantOptions={selectableOptions(plants.plants, filters.plantId)}
-        plantEntries={plants.plants}
+        plantOptions={selectableOptions(plantSource, filters.plantId)}
+        plantSource={plantSource}
         statusOptions={statusOptions}
         onAdd={openCreate}
         onEdit={openEdit}
@@ -365,8 +371,8 @@ export const ToolMasterScreen = () => {
             <SaveErrorBanner error={write.error} onReload={() => void detail.refetch()} />
           }
           codeLockReason={codeLockReason}
-          plantOptions={selectableOptions(plants.plants, values.plantId)}
-          plantEntries={plants.plants}
+          plantOptions={selectableOptions(plantSource, values.plantId)}
+          plantSource={plantSource}
           optionsNote={optionsNote}
           statusCode={tool?.statusCode ?? null}
           statusOptions={statusOptions}

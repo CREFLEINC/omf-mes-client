@@ -12,6 +12,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import { CalibrationBadge } from './calibration-badge';
 import { judgeCalibration } from './calibration-status';
 import { type CodeOption, codeLabel, defaultGaugeFilters, lookupLabel } from './code-options';
@@ -24,8 +25,8 @@ export interface GaugeListPaneProps {
   appliedFilters: GaugeFilters;
   onApplyFilters: (next: GaugeFilters) => void;
   plantOptions: CodeOption[];
-  /** 공장 이름 풀이용 원본 — 좁힌 선택지가 아니라 전체에서 찾는다 */
-  plantEntries: readonly { value: string; label: string }[];
+  /** 공장 이름과 조회 상태 — 좁힌 선택지가 아니라 전체에서 찾는다 */
+  plantSource: LookupSource;
   statusOptions: CodeOption[];
   /** 오늘. **인자로 받는다** — 화면이 시각을 읽으면 시험이 날짜에 흔들린다 */
   today: string;
@@ -82,7 +83,7 @@ export const GaugeListPane = ({
   appliedFilters,
   onApplyFilters,
   plantOptions,
-  plantEntries,
+  plantSource,
   statusOptions,
   today,
   typeOptions,
@@ -150,7 +151,7 @@ export const GaugeListPane = ({
     {
       key: 'plantId',
       header: t.fields.plant,
-      render: (row) => lookupLabel(plantEntries, String(row.plantId)),
+      render: (row) => lookupLabel(plantSource, String(row.plantId)),
     },
     {
       key: 'isActive',
@@ -278,7 +279,7 @@ export const GaugeListPane = ({
             removeLabel={t.filters.chipRemovePlant}
             onRemove={() => onApplyFilters({ ...appliedFilters, plantId: '' })}
           >
-            {t.filters.chipPlant(lookupLabel(plantEntries, appliedFilters.plantId))}
+            {t.filters.chipPlant(lookupLabel(plantSource, appliedFilters.plantId))}
           </Chip>
         )}
         {appliedFilters.equipmentTypeCode !== '' && (

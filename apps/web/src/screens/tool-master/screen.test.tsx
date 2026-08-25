@@ -653,9 +653,17 @@ describe('W-05-13 툴 마스터 — 빈 상태와 실패', () => {
   });
 
   it('선택 목록을 못 불러오면 그 사실을 밝힌다', async () => {
-    renderScreen({ respondPlants: () => jsonResponse({ message: '서버 오류' }, { status: 500 }) });
+    const { user } = renderScreen({
+      respondPlants: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
+    });
 
     expect(await screen.findByText(t.optionsLoadFailed)).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'TL-01' }));
+
+    expect(within(formDialog()).getByLabelText(t.fields.plant)).toHaveTextContent(
+      messages.common.reference.failed,
+    );
+    expect(within(formDialog()).getByLabelText(t.fields.plant)).not.toHaveTextContent('11');
   });
 
   it('선택 목록이 잘리면 그 사실을 밝힌다', async () => {

@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import type { LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import {
@@ -143,8 +144,18 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
   const items = gauges.data?.items ?? NO_ITEMS;
   const listTruncated = gauges.data !== undefined && isTruncated(gauges.data.page, items.length);
 
-  const plantOptions = selectableOptions(plants.plants, values.plantId);
-  const uomOptions = selectableOptions(uoms.uoms, values.precisionUomId);
+  const plantSource: LookupSource = {
+    entries: plants.plants,
+    isError: plants.isError,
+    isLoading: plants.isLoading,
+  };
+  const uomSource: LookupSource = {
+    entries: uoms.uoms,
+    isError: uoms.isError,
+    isLoading: uoms.isLoading,
+  };
+  const plantOptions = selectableOptions(plantSource, values.plantId);
+  const uomOptions = selectableOptions(uomSource, values.precisionUomId);
   const statusOptions = toCodeLabels(statusValues.data ?? NO_ITEMS);
   /*
    * ⭐ 지금 걸려 있는 주기 단위가 코드 목록에 없어도 **칸이 비어 보이면 안 된다.**
@@ -344,8 +355,8 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
         isLoading={gauges.isLoading || typeValues.isPending}
         appliedFilters={filters}
         onApplyFilters={setFilters}
-        plantOptions={selectableOptions(plants.plants, filters.plantId)}
-        plantEntries={plants.plants}
+        plantOptions={selectableOptions(plantSource, filters.plantId)}
+        plantSource={plantSource}
         statusOptions={statusOptions}
         today={today}
         typeOptions={typeOptions}
@@ -388,7 +399,7 @@ export const GaugeMasterScreen = ({ today = todayIso() }: GaugeMasterScreenProps
           }
           codeLockReason={codeLockReason}
           plantOptions={plantOptions}
-          plantEntries={plants.plants}
+          plantSource={plantSource}
           cycleOptions={cycleOptions}
           uomOptions={uomOptions}
           optionsNote={optionsNote}
