@@ -78,9 +78,9 @@ export const MeasurementPage = ({
             : EMPTY,
     },
   ];
-  const retry = (
-    <Button variant="outlined" size="sm" onClick={() => void measurements.refetch()}>
-      다시 시도
+  const retry = (label: string, refetch: () => unknown) => (
+    <Button variant="outlined" size="sm" onClick={() => void refetch()}>
+      {label} 다시 시도
     </Button>
   );
   const totalPages = Math.max(
@@ -92,6 +92,13 @@ export const MeasurementPage = ({
     <section aria-labelledby="measurement-page-title">
       <h2 id="measurement-page-title">측정치 전체 보기</h2>
       {detail.isPending && <SkeletonText lines={1} />}
+      {detail.isError && (
+        <AlertBanner
+          variant="error"
+          title="검사 결과 정보를 불러오지 못했습니다."
+          action={retry('검사 결과 정보', detail.refetch)}
+        />
+      )}
       {!detail.isError && detail.data !== undefined && <p>{detail.data.inspectionResultNo}</p>}
       <Select
         aria-label="교정 상태 필터"
@@ -103,13 +110,24 @@ export const MeasurementPage = ({
         ]}
         onChange={(value) => onCalibrationChange(value as CalibrationFilter)}
       />
+      {summary.isError && (
+        <AlertBanner
+          variant="error"
+          title="측정 항목 이름을 불러오지 못했습니다."
+          action={retry('측정 항목 이름', summary.refetch)}
+        />
+      )}
       {(measurements.isPending || measurements.isPlaceholderData) && (
         <div role="status" aria-label="측정치 페이지를 불러오는 중">
           <SkeletonText lines={3} />
         </div>
       )}
       {measurements.isError && (
-        <AlertBanner variant="error" title="측정치를 불러오지 못했습니다." action={retry} />
+        <AlertBanner
+          variant="error"
+          title="측정치를 불러오지 못했습니다."
+          action={retry('측정치', measurements.refetch)}
+        />
       )}
       {!measurements.isError &&
         !measurements.isPlaceholderData &&

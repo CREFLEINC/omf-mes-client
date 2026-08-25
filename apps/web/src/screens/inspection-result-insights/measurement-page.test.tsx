@@ -58,7 +58,7 @@ describe('검사 측정치 전체 보기', () => {
           route('/quality/inspection-results/701/measurement-summary', (request) => {
             calls.push(new URL(request.url));
             summaryRequests += 1;
-            if (summaryRequests > 1)
+            if (summaryRequests === 2)
               return jsonResponse({ message: 'synthetic error' }, { status: 500 });
             return jsonResponse({
               asOf: '2026-08-31T11:30:00+09:00',
@@ -119,7 +119,58 @@ describe('검사 측정치 전체 보기', () => {
       queryKey: ['inspection-result-insights', 'measurement-summary', 701],
     });
     await waitFor(() => expect(within(table).queryByText('합성 치수')).not.toBeInTheDocument());
+    expect(screen.getByText('측정 항목 이름을 불러오지 못했습니다.')).toBeInTheDocument();
     expect(within(table).getAllByText('항목 이름 미확인')).toHaveLength(2);
+    expect(within(table).queryByText(/901|999/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '측정 항목 이름 다시 시도' }));
+    expect(await within(table).findByText('합성 치수')).toBeInTheDocument();
+    expect(summaryRequests).toBe(3);
+  });
+
+  it('상세 오류를 별도로 알리고 사용자가 같은 상세만 다시 요청한다', async () => {
+    let detailRequests = 0;
+    renderWithProviders(
+      <MeasurementPage
+        inspectionResultId={701}
+        page={1}
+        calibrationExpired=""
+        judgmentLabels={new Map()}
+        onPageChange={() => undefined}
+        onCalibrationChange={() => undefined}
+      />,
+      {
+        fetch: async (request) => {
+          const path = new URL(request.url).pathname;
+          if (path.endsWith('/measurement-summary'))
+            return jsonResponse({ asOf: '2026-08-31T11:30:00+09:00', items: [] });
+          if (path.endsWith('/measurements'))
+            return jsonResponse({ items: [], page: { page: 1, size: 50, total: 0 } });
+          detailRequests += 1;
+          if (detailRequests === 1)
+            return jsonResponse({ message: 'synthetic detail error' }, { status: 500 });
+          return jsonResponse({
+            inspectionResultId: 701,
+            inspectionResultNo: 'SAMPLE-RESULT-RETRIED',
+            inspectionRequestId: 801,
+            inspectionRound: 1,
+            inspectedQty: 0,
+            acceptedQty: 0,
+            rejectedQty: 0,
+            heldQty: 0,
+            uomId: 301,
+            overallJudgmentCode: 'ACCEPTED',
+            inspectorId: 401,
+            inspectedAt: '2026-08-12T10:22:00+09:00',
+            statusCode: '확정',
+          });
+        },
+      },
+    );
+
+    expect(await screen.findByText('검사 결과 정보를 불러오지 못했습니다.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '검사 결과 정보 다시 시도' }));
+    expect(await screen.findByText('SAMPLE-RESULT-RETRIED')).toBeInTheDocument();
+    expect(detailRequests).toBe(2);
   });
 
   it('명시한 교정 필터와 다음 page만 원시 측정치 요청에 보낸다', async () => {
