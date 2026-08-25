@@ -18,6 +18,7 @@ export type InspectionSummary = components['schemas']['InspectionSummary'];
 export type DefectRateTrend = components['schemas']['DefectRateTrend'];
 export type DefectDistribution = components['schemas']['DefectDistribution'];
 export type MeasurementItemSummary = components['schemas']['MeasurementItemSummary'];
+export type InspectionMeasurement = components['schemas']['InspectionMeasurement'];
 type PageMeta = components['schemas']['PageMeta'];
 
 export interface InspectionResultList {
@@ -28,6 +29,11 @@ export interface InspectionResultList {
 export interface MeasurementSummary {
   asOf: string;
   items: readonly MeasurementItemSummary[];
+}
+
+export interface InspectionMeasurementList {
+  items: readonly InspectionMeasurement[];
+  page: PageMeta;
 }
 
 const fetchInspectionResults = async (
@@ -142,5 +148,33 @@ export const useMeasurementSummary = (
         }),
       );
     },
+  });
+};
+
+export const useInspectionMeasurements = (
+  inspectionResultId: number,
+  page: number,
+  calibrationExpired: '' | 'only' | 'exclude',
+): UseQueryResult<InspectionMeasurementList> => {
+  const { client } = useApiClient();
+  const query: { page?: number; calibrationExpired?: 'only' | 'exclude' } = {};
+  if (Number.isSafeInteger(page) && page > 1) query.page = page;
+  if (calibrationExpired !== '') query.calibrationExpired = calibrationExpired;
+  return useQuery({
+    queryKey: [
+      'inspection-result-insights',
+      'measurements',
+      inspectionResultId,
+      page,
+      calibrationExpired,
+    ],
+    enabled: Number.isSafeInteger(inspectionResultId) && inspectionResultId >= 1,
+    placeholderData: keepPreviousData,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/inspection-results/{inspectionResultId}/measurements', {
+          params: { path: { inspectionResultId }, query },
+        }),
+      ),
   });
 };
