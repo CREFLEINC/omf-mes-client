@@ -407,6 +407,9 @@ const lotStatusTransitionRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/code-values', []),
 ];
 
+/** W-03-09가 선택 없는 첫 진입에 부르는 승인 요청 목록 하나다. */
+const qualityApprovalRoutes = (): StubRoute[] => [lookupRoute('/app/approval-requests', [])];
+
 const workOrderCloseRoutes = (): StubRoute[] => [
   {
     match: (request) => isGet(request, '/mdm/code-values'),
@@ -1142,6 +1145,33 @@ describe('appRouter — Lot Status 판정·전이 처리의 진입 경로', () =
   it('화면 주소는 API 리소스가 아니라 정확한 공개 route다', () => {
     expect(routedPaths()).toContain('/quality/lot-status-transition');
     expect(routedPaths()).not.toContain('/quality/lot-status-transitions');
+  });
+});
+
+describe('appRouter — 특채·한도승인 승인 처리의 진입 경로', () => {
+  it('품질관리 메뉴를 키보드로 열면 정식 주소와 화면 제목·탐색 경로가 선다', async () => {
+    const user = userEvent.setup();
+    renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...qualityApprovalRoutes()]);
+
+    const link = screen.getByRole('link', { name: '특채·한도승인 승인 처리' });
+    link.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(currentLocation()).toBe('/quality/approvals'));
+    expect(
+      screen.getAllByRole('heading', { level: 1, name: '특채·한도승인 승인 처리' }),
+    ).toHaveLength(1);
+    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
+    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(within(items[0]!).getByText(messages.qualityApproval.breadcrumbRoot)).toBeVisible();
+    expect(within(items[1]!).getByText('특채·한도승인 승인 처리')).toBeVisible();
+  });
+
+  it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {
+    expect(routedPaths()).toContain('/quality/approvals');
+    expect(routedPaths()).not.toContain('/quality-approval');
+    expect(routedPaths()).not.toContain('/quality/approval');
   });
 });
 
