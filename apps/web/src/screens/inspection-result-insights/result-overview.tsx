@@ -79,8 +79,16 @@ export const ResultOverview = ({
     return (
       <EmptyState
         size="sm"
-        title="기간과 검사유형을 선택하세요"
-        description="검사유형별 집계 기준이 확정된 조건만 조회합니다."
+        title={
+          queriesEnabled
+            ? '기간과 검사유형을 선택하세요'
+            : '주소의 날짜 또는 코드 조건이 유효하지 않습니다'
+        }
+        description={
+          queriesEnabled
+            ? '검사유형별 집계 기준이 확정된 조건만 조회합니다.'
+            : '날짜를 확인하고 준비된 검사유형·판정 코드로 다시 조회하세요.'
+        }
       />
     );
   }

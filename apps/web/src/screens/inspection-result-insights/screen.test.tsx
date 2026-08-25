@@ -98,7 +98,7 @@ describe('검사실적·검사결과 조회 조립', () => {
       },
     );
 
-    expect(screen.getByText('기간과 검사유형을 선택하세요')).toBeInTheDocument();
+    expect(screen.getByText('주소의 날짜 또는 코드 조건이 유효하지 않습니다')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: '불량 분포' }));
     expect(calls).toHaveLength(0);
   });
@@ -120,7 +120,9 @@ describe('검사실적·검사결과 조회 조립', () => {
       },
     );
 
-    expect(await screen.findByText('기간과 검사유형을 선택하세요')).toBeInTheDocument();
+    expect(
+      await screen.findByText('주소의 날짜 또는 코드 조건이 유효하지 않습니다'),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: '불량 분포' }));
     expect(calls).toHaveLength(0);
   });
@@ -194,7 +196,9 @@ describe('검사실적·검사결과 조회 조립', () => {
     const validCallCount = calls.length;
 
     await user.click(screen.getByRole('button', { name: '무효 주소로 이동' }));
-    expect(await screen.findByText('기간과 검사유형을 선택하세요')).toBeInTheDocument();
+    expect(
+      await screen.findByText('주소의 날짜 또는 코드 조건이 유효하지 않습니다'),
+    ).toBeInTheDocument();
     expect(screen.queryByText('SAMPLE-REQUEST-801')).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: '검사실적 요약 카드' })).not.toBeInTheDocument();
     expect(screen.queryByText('합성 분포')).not.toBeInTheDocument();
