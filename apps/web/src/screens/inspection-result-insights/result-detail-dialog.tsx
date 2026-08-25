@@ -139,7 +139,7 @@ export const ResultDetailDialog = ({
             ))}
           </ul>
         ))}
-      {summary.data !== undefined && (
+      {!summary.isError && summary.data !== undefined && (
         <p className="field-note">기준 {dateTime(summary.data.asOf)}</p>
       )}
     </Dialog>

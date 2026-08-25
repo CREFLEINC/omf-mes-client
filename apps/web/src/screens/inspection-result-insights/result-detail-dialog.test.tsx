@@ -41,7 +41,8 @@ describe('검사 결과 상세 Dialog', () => {
   it('상세와 항목별 측정 요약을 서버 값으로 표시하고 예시 총수를 추론하지 않는다', async () => {
     const onClose = vi.fn();
     const onViewMeasurements = vi.fn();
-    renderWithProviders(
+    let summaryRequests = 0;
+    const { queryClient } = renderWithProviders(
       <ResultDetailDialog
         inspectionResultId={701}
         labels={{
@@ -54,8 +55,11 @@ describe('검사 결과 상세 Dialog', () => {
       {
         fetch: createStubFetch([
           route('/quality/inspection-results/701', () => jsonResponse(detail)),
-          route('/quality/inspection-results/701/measurement-summary', () =>
-            jsonResponse({
+          route('/quality/inspection-results/701/measurement-summary', () => {
+            summaryRequests += 1;
+            if (summaryRequests > 1)
+              return jsonResponse({ message: 'synthetic error' }, { status: 500 });
+            return jsonResponse({
               asOf: '2026-08-31T11:30:00+09:00',
               items: [
                 {
@@ -72,8 +76,8 @@ describe('검사 결과 상세 Dialog', () => {
                   equipmentCalibrationDueDate: '2026-07-28',
                 },
               ],
-            }),
-          ),
+            });
+          }),
         ]),
       },
     );
@@ -89,6 +93,13 @@ describe('검사 결과 상세 Dialog', () => {
     expect(summary).toHaveTextContent('검교정 만료 · 예정일 2026-07-28');
     expect(within(dialog).getByText('기준 2026-08-31 11:30')).toBeInTheDocument();
     expect(within(dialog).queryByText('901')).not.toBeInTheDocument();
+
+    await queryClient.refetchQueries({
+      queryKey: ['inspection-result-insights', 'measurement-summary', 701],
+    });
+    expect(await within(dialog).findByText('측정 요약을 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(within(dialog).queryByText('합성 치수')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('기준 2026-08-31 11:30')).not.toBeInTheDocument();
 
     await userEvent.click(within(dialog).getByRole('button', { name: '측정치 전체 보기' }));
     expect(onViewMeasurements).toHaveBeenCalledWith(701);

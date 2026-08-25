@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -26,26 +26,40 @@ const route = (path: string, respond: StubRoute['respond']): StubRoute => ({
 describe('검사 추이·불량 분포', () => {
   it('추이 탭은 서버 point 순서와 기준 시각을 Chart에 전달한다', async () => {
     const calls: URL[] = [];
-    renderWithProviders(<InsightTabs filters={filters} sourceAxisCode="PQC" />, {
-      fetch: createStubFetch([
-        route('/quality/inspection-results/defect-rate-trend', (request) => {
-          calls.push(new URL(request.url));
-          return jsonResponse({
-            points: [
-              { bucket: '2026-08-02', inspectedQty: 20, rejectedQty: 2, defectRate: 10 },
-              { bucket: '2026-08-01', inspectedQty: 10, rejectedQty: 1, defectRate: 10 },
-            ],
-            asOf: '2026-08-31T10:30:00+09:00',
-          });
-        }),
-      ]),
-    });
+    let requestCount = 0;
+    const { queryClient } = renderWithProviders(
+      <InsightTabs filters={filters} sourceAxisCode="PQC" />,
+      {
+        fetch: createStubFetch([
+          route('/quality/inspection-results/defect-rate-trend', (request) => {
+            calls.push(new URL(request.url));
+            requestCount += 1;
+            if (requestCount > 1)
+              return jsonResponse({ message: 'synthetic error' }, { status: 500 });
+            return jsonResponse({
+              points: [
+                { bucket: '2026-08-02', inspectedQty: 20, rejectedQty: 2, defectRate: 10 },
+                { bucket: '2026-08-01', inspectedQty: 10, rejectedQty: 1, defectRate: 10 },
+              ],
+              asOf: '2026-08-31T10:30:00+09:00',
+            });
+          }),
+        ]),
+      },
+    );
 
     const chart = await screen.findByRole('img', { name: /2026-08-02 10%.*2026-08-01 10%/ });
     expect(chart).toBeInTheDocument();
     expect(screen.getByText('기준 2026-08-31 10:30')).toBeInTheDocument();
     expect(calls).toHaveLength(1);
     expect(calls[0]?.searchParams.get('finalRoundOnly')).toBe('true');
+
+    await queryClient.refetchQueries({ queryKey: ['inspection-result-insights', 'trend'] });
+    await waitFor(() =>
+      expect(screen.getByText('불량률 추이를 불러오지 못했습니다.')).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole('img', { name: /2026-08-02/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('기준 2026-08-31 10:30')).not.toBeInTheDocument();
   });
 
   it('분포 탭은 다른 모집단을 알리고 빈 응답에도 5열 골격을 유지한다', async () => {

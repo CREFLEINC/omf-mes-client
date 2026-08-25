@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { components } from '@omf-mes/api-client';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -46,6 +47,9 @@ const route = (path: string, respond: StubRoute['respond']): StubRoute => ({
 
 describe('검사 결과 요약·목록', () => {
   it('같은 모집단의 5카드와 서버 순서의 7열 평면 목록을 표시한다', async () => {
+    const user = userEvent.setup();
+    const onSortChange = vi.fn();
+    const onPageChange = vi.fn();
     const requests: URL[] = [];
     const routes = [
       route('/quality/inspection-results/summary', (request) => {
@@ -65,7 +69,7 @@ describe('검사 결과 요약·목록', () => {
         requests.push(new URL(request.url));
         return jsonResponse({
           items: [row(2, 'SAMPLE-REQ-B'), row(1, 'SAMPLE-REQ-A')],
-          page: { page: 1, size: 50, total: 2 },
+          page: { page: 1, size: 50, total: 51 },
         });
       }),
     ];
@@ -79,6 +83,8 @@ describe('검사 결과 요약·목록', () => {
           item: new Map([[101, '합성 품목']]),
           judgment: new Map([['REJECTED', '불합격']]),
         }}
+        onSortChange={onSortChange}
+        onPageChange={onPageChange}
       />,
       { fetch: createStubFetch(routes) },
     );
@@ -88,6 +94,14 @@ describe('검사 결과 요약·목록', () => {
     expect(within(table).getAllByRole('columnheader')).toHaveLength(7);
     expect(within(table).getAllByRole('row')[1]).toHaveTextContent('SAMPLE-REQ-B');
     expect(within(table).getAllByRole('row')[2]).toHaveTextContent('SAMPLE-REQ-A');
+    expect(within(table).getByRole('columnheader', { name: /검사시각\/회차/ })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+    await user.click(within(table).getByRole('button', { name: /의뢰번호/ }));
+    expect(onSortChange).toHaveBeenCalledWith('inspectionRequestNo,asc');
+    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
+    expect(onPageChange).toHaveBeenCalledWith(2);
     const cards = screen.getByRole('group', { name: '검사실적 요약 카드' });
     for (const label of ['검사건수', '검사수량', '합격수량', '불합격수량', '불량률']) {
       expect(within(cards).getByText(label)).toBeInTheDocument();
@@ -110,6 +124,8 @@ describe('검사 결과 요약·목록', () => {
         sort="inspectedAt,desc"
         page={1}
         labels={{ item: new Map(), judgment: new Map() }}
+        onSortChange={() => undefined}
+        onPageChange={() => undefined}
       />,
       { fetch: async (request) => (calls.push(request), jsonResponse({})) },
     );

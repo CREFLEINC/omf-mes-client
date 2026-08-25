@@ -4,6 +4,7 @@ import {
   type Column,
   EmptyState,
   SkeletonText,
+  type SortState,
   StatCard,
   Table,
 } from '@crefle/web-ui';
@@ -35,9 +36,35 @@ interface ResultOverviewProps {
   sort: InspectionResultSort;
   page: number;
   labels: ResultLabels;
+  onSortChange: (sort: InspectionResultSort) => void;
+  onPageChange: (page: number) => void;
 }
 
-export const ResultOverview = ({ filters, sort, page, labels }: ResultOverviewProps) => {
+const TABLE_SORTS: Record<InspectionResultSort, SortState> = {
+  'inspectionRequestNo,asc': { key: 'inspectionRequestNo', direction: 'ascending' },
+  'inspectionRequestNo,desc': { key: 'inspectionRequestNo', direction: 'descending' },
+  'inspectedAt,asc': { key: 'inspectedAt', direction: 'ascending' },
+  'inspectedAt,desc': { key: 'inspectedAt', direction: 'descending' },
+  'rejectedQty,asc': { key: 'rejectedQty', direction: 'ascending' },
+  'rejectedQty,desc': { key: 'rejectedQty', direction: 'descending' },
+};
+
+const toTableSort = (sort: InspectionResultSort): SortState => TABLE_SORTS[sort];
+
+const toServerSort = (sort: SortState | null): InspectionResultSort => {
+  if (sort === null || !['inspectionRequestNo', 'inspectedAt', 'rejectedQty'].includes(sort.key))
+    return 'inspectedAt,desc';
+  return `${sort.key},${sort.direction === 'ascending' ? 'asc' : 'desc'}` as InspectionResultSort;
+};
+
+export const ResultOverview = ({
+  filters,
+  sort,
+  page,
+  labels,
+  onSortChange,
+  onPageChange,
+}: ResultOverviewProps) => {
   const list = useInspectionResults(filters, sort, page);
   const summary = useInspectionSummary(filters);
   const isBlocked = toInspectionSummaryQuery(filters) === null;
@@ -142,14 +169,36 @@ export const ResultOverview = ({ filters, sort, page, labels }: ResultOverviewPr
         />
       )}
       {!list.isError && list.data !== undefined && (
-        <Table
-          density="compact"
-          caption="검사 결과 목록"
-          columns={columns}
-          rows={[...list.data.items]}
-          getRowId={(row) => String(row.inspectionResultId)}
-          empty={<EmptyState size="sm" title="조건에 맞는 검사 결과가 없습니다" />}
-        />
+        <>
+          <Table
+            density="compact"
+            caption="검사 결과 목록"
+            columns={columns}
+            rows={[...list.data.items]}
+            getRowId={(row) => String(row.inspectionResultId)}
+            sort={toTableSort(sort)}
+            onSortChange={(next) => onSortChange(toServerSort(next))}
+            empty={<EmptyState size="sm" title="조건에 맞는 검사 결과가 없습니다" />}
+          />
+          <nav className="form-actions" aria-label="검사 결과 쪽 이동">
+            <Button
+              variant="outlined"
+              size="sm"
+              disabled={list.data.page.page <= 1}
+              onClick={() => onPageChange(list.data.page.page - 1)}
+            >
+              이전 쪽
+            </Button>
+            <Button
+              variant="outlined"
+              size="sm"
+              disabled={list.data.page.page * list.data.page.size >= list.data.page.total}
+              onClick={() => onPageChange(list.data.page.page + 1)}
+            >
+              다음 쪽
+            </Button>
+          </nav>
+        </>
       )}
     </section>
   );

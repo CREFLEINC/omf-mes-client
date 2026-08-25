@@ -80,7 +80,9 @@ export const InsightTabs = ({ filters, sourceAxisCode }: InsightTabsProps) => {
             showPoints
           />
         ))}
-      {trend.data !== undefined && <p className="field-note">기준 {dateTime(trend.data.asOf)}</p>}
+      {!trend.isError && trend.data !== undefined && (
+        <p className="field-note">기준 {dateTime(trend.data.asOf)}</p>
+      )}
     </section>
   );
   const parentLabels = new Map(

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -17,13 +17,14 @@ const route = (path: string, respond: StubRoute['respond']): StubRoute => ({
 describe('검사 측정치 전체 보기', () => {
   it('세 요청만으로 항목 이름과 값·미측정·서버 교정 상태를 표시한다', async () => {
     const calls: URL[] = [];
+    let summaryRequests = 0;
     const track =
       (body: unknown): StubRoute['respond'] =>
       (request) => {
         calls.push(new URL(request.url));
         return jsonResponse(body);
       };
-    renderWithProviders(
+    const { queryClient } = renderWithProviders(
       <MeasurementPage
         inspectionResultId={701}
         page={1}
@@ -52,9 +53,12 @@ describe('검사 측정치 전체 보기', () => {
               statusCode: '확정',
             }),
           ),
-          route(
-            '/quality/inspection-results/701/measurement-summary',
-            track({
+          route('/quality/inspection-results/701/measurement-summary', (request) => {
+            calls.push(new URL(request.url));
+            summaryRequests += 1;
+            if (summaryRequests > 1)
+              return jsonResponse({ message: 'synthetic error' }, { status: 500 });
+            return jsonResponse({
               asOf: '2026-08-31T11:30:00+09:00',
               items: [
                 {
@@ -65,8 +69,8 @@ describe('검사 측정치 전체 보기', () => {
                   rejectedCount: 0,
                 },
               ],
-            }),
-          ),
+            });
+          }),
           route(
             '/quality/inspection-results/701/measurements',
             track({
@@ -108,6 +112,12 @@ describe('검사 측정치 전체 보기', () => {
     const measurementCall = calls.find((url) => url.pathname.endsWith('/measurements'));
     expect(measurementCall?.searchParams.has('calibrationExpired')).toBe(false);
     expect(measurementCall?.searchParams.has('page')).toBe(false);
+
+    await queryClient.refetchQueries({
+      queryKey: ['inspection-result-insights', 'measurement-summary', 701],
+    });
+    await waitFor(() => expect(within(table).queryByText('합성 치수')).not.toBeInTheDocument());
+    expect(within(table).getAllByText('항목 이름 미확인')).toHaveLength(2);
   });
 
   it('명시한 교정 필터와 다음 page만 원시 측정치 요청에 보낸다', async () => {

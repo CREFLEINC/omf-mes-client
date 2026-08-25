@@ -49,7 +49,9 @@ export const MeasurementPage = ({
   const summary = useMeasurementSummary(inspectionResultId);
   const measurements = useInspectionMeasurements(inspectionResultId, page, calibrationExpired);
   const itemNames = new Map(
-    summary.data?.items.map((item) => [item.inspectionItemSpecId, item.itemName]) ?? [],
+    summary.isError
+      ? []
+      : (summary.data?.items.map((item) => [item.inspectionItemSpecId, item.itemName]) ?? []),
   );
   const columns: Column<InspectionMeasurement>[] = [
     {
