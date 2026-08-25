@@ -35,7 +35,7 @@ Github repo : https://github.com/CREFLEINC/omf-mes
 ```
 예시 )
 클라이언트 1팀 일 경우,
-  이슈 담당자 라벨 : "Agent : 1T"
+  이슈 담당자 라벨 : "Agent : T1"
   이슈 개발 유형 라벨 : "Agent : Client"
 ```
 
@@ -77,8 +77,11 @@ Github Repo : git@github.com:CREFLEINC/omf-mes-client.git
 [ 아래 라벨 형식 예시 ]
 ```
 예시 )
+팀 번호 라벨 양식 : "Agent : T{number}"
+팀 유형 라벨 양식 : "Agent : {type}"
+
 클라이언트 1팀 일 경우,
-  이슈 담당자 라벨 : "Agent : 1T"
+  이슈 담당자 라벨 : "Agent : T1"
   이슈 개발 유형 라벨 : "Agent : Client"
 ```
 
@@ -104,7 +107,7 @@ Github Repo : git@github.com:CREFLEINC/omf-mes-client.git
 ```
 클라이언트 개발 2팀에서 검토 요청을 보내는 예시,
 이슈 제목 : [검토 요청] XXXX설계가 API 계약과 맞지 않습니다.
-라벨 : "Agent : 2T" 와 "Agent : Client" 표시
+라벨 : "Agent : T2" 와 "Agent : Client" 표시
 ```
 
 ### 4) 업무 규칙
