@@ -8,23 +8,20 @@ import {
   TextField,
   type Column,
 } from '@crefle/web-ui';
-
 import {
   summarizeProductionPlanQuantities,
   type ProductionPlanDraft,
   type ProductionPlanDraftErrors,
   type ProductionPlanDraftField,
 } from './editor-model';
-
 const NO_LINE = '__none__';
-
 export interface ProductionPlanEditorOption {
   value: string;
   label: string;
 }
-
 export interface ProductionPlanEditorRow {
   key: string;
+  displayNo: number;
   planNo: string | null;
   statusCode: string;
   confirmed: boolean;
@@ -32,7 +29,6 @@ export interface ProductionPlanEditorRow {
   draft: ProductionPlanDraft;
   errors: ProductionPlanDraftErrors;
 }
-
 interface ProductionPlanEditorPaneProps {
   rows: ProductionPlanEditorRow[];
   orderQty: number;
@@ -44,7 +40,6 @@ interface ProductionPlanEditorPaneProps {
   onChange: (key: string, field: ProductionPlanDraftField, value: string) => void;
   onRemove: (key: string) => void;
 }
-
 const errorMessage = (code: ProductionPlanDraftErrors[ProductionPlanDraftField]): string | null => {
   if (code === 'REQUIRED') return '필수 값입니다.';
   if (code === 'INVALID_DATE') return '올바른 날짜를 선택하세요.';
@@ -52,10 +47,8 @@ const errorMessage = (code: ProductionPlanDraftErrors[ProductionPlanDraftField])
   if (code === 'INVALID_SELECTION') return '올바른 항목을 선택하세요.';
   return null;
 };
-
 const quantity = (value: number): string =>
   new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
-
 const quantitySummary = (orderQty: number, rows: ProductionPlanEditorRow[]) => {
   const quantities = rows.map(({ draft }) => {
     const raw = draft.plannedQty.trim();
@@ -64,7 +57,6 @@ const quantitySummary = (orderQty: number, rows: ProductionPlanEditorRow[]) => {
   if (quantities.some((value) => !Number.isFinite(value) || value <= 0)) return null;
   return summarizeProductionPlanQuantities(orderQty, quantities);
 };
-
 export const ProductionPlanEditorPane = ({
   rows,
   orderQty,
@@ -80,7 +72,8 @@ export const ProductionPlanEditorPane = ({
   const fieldError = (row: ProductionPlanEditorRow, field: ProductionPlanDraftField) =>
     errorMessage(row.errors[field]);
   const locked = (row: ProductionPlanEditorRow) => row.confirmed || row.isPending;
-  const rowName = (row: ProductionPlanEditorRow) => row.planNo ?? '신규 계획';
+  const rowName = (row: ProductionPlanEditorRow) =>
+    row.planNo ?? `신규 계획 ${String(row.displayNo)}`;
   const select = (
     row: ProductionPlanEditorRow,
     field: 'bomId' | 'routingId' | 'plannedLineId',
@@ -88,20 +81,26 @@ export const ProductionPlanEditorPane = ({
     options: ProductionPlanEditorOption[],
   ) => {
     const optional = field === 'plannedLineId';
+    const error = fieldError(row, field);
+    const errorId = `${row.key}-${field}-error`;
     return (
       <>
         <Select
           aria-label={`${rowName(row)} ${label}`}
+          aria-describedby={error === null ? undefined : errorId}
+          aria-required={optional ? undefined : true}
           size="sm"
           value={optional && row.draft[field] === '' ? NO_LINE : row.draft[field]}
           options={optional ? [{ value: NO_LINE, label: '미지정' }, ...options] : options}
           placeholder="선택"
           disabled={locked(row)}
-          invalid={fieldError(row, field) !== null}
+          invalid={error !== null}
           onChange={(value) => onChange(row.key, field, value === NO_LINE ? '' : value)}
         />
-        {fieldError(row, field) !== null && (
-          <span className="field-note">{fieldError(row, field)}</span>
+        {error !== null && (
+          <span id={errorId} className="field-error">
+            {error}
+          </span>
         )}
       </>
     );
@@ -115,6 +114,10 @@ export const ProductionPlanEditorPane = ({
         <>
           <DatePicker
             aria-label={`${rowName(row)} 계획일`}
+            aria-describedby={
+              fieldError(row, 'planDate') === null ? undefined : `${row.key}-planDate-error`
+            }
+            aria-required="true"
             size="sm"
             value={row.draft.planDate || null}
             disabled={locked(row)}
@@ -122,7 +125,9 @@ export const ProductionPlanEditorPane = ({
             onChange={(value) => onChange(row.key, 'planDate', value)}
           />
           {fieldError(row, 'planDate') !== null && (
-            <span className="field-note">{fieldError(row, 'planDate')}</span>
+            <span id={`${row.key}-planDate-error`} className="field-error">
+              {fieldError(row, 'planDate')}
+            </span>
           )}
         </>
       ),
@@ -136,6 +141,7 @@ export const ProductionPlanEditorPane = ({
           aria-label={`${rowName(row)} 계획수량`}
           size="sm"
           type="number"
+          required
           min="0"
           step="any"
           value={row.draft.plannedQty}
@@ -203,7 +209,6 @@ export const ProductionPlanEditorPane = ({
     summary === null
       ? '합계 계산 불가'
       : `${quantity(summary.totalPlannedQty)} / ${quantity(orderQty)} ${uomLabel}`;
-
   return (
     <section className="pane" aria-label="생산계획 편집">
       <div className="section-heading-row">
