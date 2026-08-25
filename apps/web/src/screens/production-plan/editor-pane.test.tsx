@@ -90,11 +90,14 @@ describe('ProductionPlanEditorPane', () => {
   });
   it('잘못된 수량은 합계를 숫자로 지어내지 않는다', () => {
     renderPane([
-      row({ draft: { ...row().draft, plannedQty: '' }, errors: { plannedQty: 'REQUIRED' } }),
+      row({
+        draft: { ...row().draft, plannedQty: '' },
+        errors: { plannedQty: { message: '서버 수량 오류' } },
+      }),
     ]);
     expect(screen.getByText('합계 계산 불가')).toBeVisible();
     expect(screen.getByText('계획 수량 오류를 먼저 수정하세요.')).toBeVisible();
-    expect(screen.getByText('필수 값입니다.')).toBeVisible();
+    expect(screen.getByText('서버 수량 오류')).toBeVisible();
   });
   it('확정 또는 저장 중인 계획은 모든 편집·삭제를 잠근다', () => {
     renderPane([
@@ -138,5 +141,21 @@ describe('ProductionPlanEditorPane', () => {
       'id',
       'new-1-planDate-error',
     );
+  });
+  it('컨테이너가 제공한 행별 저장 작업을 기본 삭제 자리에 표시한다', () => {
+    renderWithProviders(
+      <ProductionPlanEditorPane
+        rows={[row()]}
+        orderQty={100}
+        uomLabel="EA"
+        {...options}
+        onAdd={vi.fn()}
+        onChange={vi.fn()}
+        onRemove={vi.fn()}
+        renderActions={(target) => <button>저장 {target.planNo}</button>}
+      />,
+    );
+    expect(screen.getByRole('button', { name: '저장 PLAN-101' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument();
   });
 });

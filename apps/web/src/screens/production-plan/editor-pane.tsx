@@ -8,6 +8,7 @@ import {
   TextField,
   type Column,
 } from '@crefle/web-ui';
+import type { ReactNode } from 'react';
 import {
   summarizeProductionPlanQuantities,
   type ProductionPlanDraft,
@@ -39,8 +40,10 @@ interface ProductionPlanEditorPaneProps {
   onAdd: () => void;
   onChange: (key: string, field: ProductionPlanDraftField, value: string) => void;
   onRemove: (key: string) => void;
+  renderActions?: (row: ProductionPlanEditorRow) => ReactNode;
 }
 const errorMessage = (code: ProductionPlanDraftErrors[ProductionPlanDraftField]): string | null => {
+  if (typeof code === 'object') return code.message;
   if (code === 'REQUIRED') return '필수 값입니다.';
   if (code === 'INVALID_DATE') return '올바른 날짜를 선택하세요.';
   if (code === 'INVALID_QUANTITY') return '0보다 큰 수량을 입력하세요.';
@@ -67,6 +70,7 @@ export const ProductionPlanEditorPane = ({
   onAdd,
   onChange,
   onRemove,
+  renderActions,
 }: ProductionPlanEditorPaneProps) => {
   const summary = quantitySummary(orderQty, rows);
   const fieldError = (row: ProductionPlanEditorRow, field: ProductionPlanDraftField) =>
@@ -192,17 +196,18 @@ export const ProductionPlanEditorPane = ({
     {
       key: 'actions',
       header: '작업',
-      render: (row) => (
-        <Button
-          size="sm"
-          variant="text"
-          disabled={row.confirmed}
-          loading={row.isPending}
-          onClick={() => onRemove(row.key)}
-        >
-          삭제
-        </Button>
-      ),
+      render: (row) =>
+        renderActions?.(row) ?? (
+          <Button
+            size="sm"
+            variant="text"
+            disabled={row.confirmed}
+            loading={row.isPending}
+            onClick={() => onRemove(row.key)}
+          >
+            삭제
+          </Button>
+        ),
     },
   ];
   const total =

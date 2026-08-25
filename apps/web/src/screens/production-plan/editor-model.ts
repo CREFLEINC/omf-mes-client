@@ -18,8 +18,9 @@ export interface ProductionPlanDraft {
 export type ProductionPlanDraftField = keyof ProductionPlanDraft;
 export type ProductionPlanDraftErrorCode =
   'REQUIRED' | 'INVALID_DATE' | 'INVALID_QUANTITY' | 'INVALID_SELECTION';
+export type ProductionPlanDraftError = ProductionPlanDraftErrorCode | { message: string };
 export type ProductionPlanDraftErrors = Partial<
-  Record<ProductionPlanDraftField, ProductionPlanDraftErrorCode>
+  Record<ProductionPlanDraftField, ProductionPlanDraftError>
 >;
 
 export interface ProductionPlanCreateContext {

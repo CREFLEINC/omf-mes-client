@@ -179,7 +179,7 @@ describe('useCreateProductionPlan', () => {
                 code: 'RANGE',
                 message: 'Synthetic quantity error',
               },
-              { scope: 'screen', code: 'PLAN_CONFLICT', message: 'Synthetic plan error' },
+              { scope: 'field', field: 'uomId', code: 'CONTEXT', message: 'Context error' },
             ],
           },
           { status: 400 },
@@ -202,7 +202,7 @@ describe('useCreateProductionPlan', () => {
     );
     expect(result.current.error).toMatchObject({
       kind: 'validation',
-      errors: [{ scope: 'screen', code: 'PLAN_CONFLICT', message: 'Synthetic plan error' }],
+      errors: [{ scope: 'field', field: 'uomId', code: 'CONTEXT', message: 'Context error' }],
     });
     expect(onSuccess).not.toHaveBeenCalled();
     expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(false);

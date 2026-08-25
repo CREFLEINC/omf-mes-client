@@ -11,14 +11,11 @@ type ProductionPlanCreate = components['schemas']['ProductionPlanCreate'];
 type ProductionPlanUpdate = components['schemas']['ProductionPlanUpdate'];
 
 const PRODUCTION_PLAN_CREATE_FIELDS = [
-  'productionOrderId',
   'planDate',
   'plannedQty',
-  'uomId',
   'bomId',
   'routingId',
   'plannedLineId',
-  'splitOfPlanId',
   'remarks',
 ] as const;
 
