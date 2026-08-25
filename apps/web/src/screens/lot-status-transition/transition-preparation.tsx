@@ -89,6 +89,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
   const transitions = useTransitions(lot.lotId);
   const statuses = useLotStatusOptions();
   const [selectedTransitionKey, setSelectedTransitionKey] = useState<string | null>(null);
+  const [autoSelectOwner, setAutoSelectOwner] = useState<string | null>(null);
   const [holdPage, setHoldPage] = useState(1);
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null);
   const allowed = transitions.data?.transitions.filter((item) => item.allowed) ?? [];
@@ -96,42 +97,63 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
   const isCreate = selectedTransition?.actionCode === 'CREATE_HOLD';
   const isRelease = selectedTransition?.actionCode === 'RELEASE_HOLD';
   const holds = useOpenHolds(lot.lotId, isRelease, holdPage);
+  const holdsData = holds.isFetching || holds.isError ? undefined : holds.data;
   const automaticHoldId =
-    holds.data?.page.total === 1 && holds.data.items.length === 1
-      ? (holds.data.items[0]?.lotHoldId ?? null)
+    holdsData?.page.total === 1 && holdsData.items.length === 1
+      ? (holdsData.items[0]?.lotHoldId ?? null)
       : null;
+  const selectedHold = holdsData?.items.find((item) => item.lotHoldId === selectedHoldId);
 
   useEffect(() => {
-    if (isRelease && automaticHoldId !== null) setSelectedHoldId(automaticHoldId);
-  }, [automaticHoldId, isRelease, selectedTransitionKey]);
+    if (!isRelease || holdsData === undefined) return;
+    if (autoSelectOwner === selectedTransitionKey) {
+      setAutoSelectOwner(null);
+      setSelectedHoldId(automaticHoldId);
+    } else if (selectedHoldId !== null && selectedHold === undefined) {
+      setSelectedHoldId(null);
+    }
+  }, [
+    autoSelectOwner,
+    automaticHoldId,
+    holdsData,
+    isRelease,
+    selectedHold,
+    selectedHoldId,
+    selectedTransitionKey,
+  ]);
 
-  const detail = useHoldDetail(isRelease ? selectedHoldId : null);
+  const detail = useHoldDetail(isRelease ? (selectedHold?.lotHoldId ?? null) : null);
+  const detailData = detail.isFetching || detail.isError ? undefined : detail.data;
   const token =
-    selectedHoldId === null || detail.data === undefined
+    selectedHold === undefined || detailData === undefined
       ? undefined
-      : etags.ifMatch(lotHoldDetailPath(selectedHoldId));
+      : etags.ifMatch(lotHoldDetailPath(selectedHold.lotHoldId));
   const chooseTransition = (value: string): void => {
+    const next = allowed.find((item) => transitionKey(item) === value);
     setSelectedTransitionKey(value);
+    setAutoSelectOwner(next?.actionCode === 'RELEASE_HOLD' ? value : null);
     setHoldPage(1);
     setSelectedHoldId(null);
   };
   const clearExecutionOwner = (): void => {
     setSelectedTransitionKey(null);
+    setAutoSelectOwner(null);
     setHoldPage(1);
     setSelectedHoldId(null);
   };
   const changeHoldPage = (page: number): void => {
+    setAutoSelectOwner(null);
     setHoldPage(page);
     setSelectedHoldId(null);
   };
   const targetLabel = (code: string): string =>
     statuses.data?.items.find((item) => item.code === code)?.label ?? code;
   const holdOptions =
-    holds.data?.items.map((item: LotHold) => ({
+    holdsData?.items.map((item: LotHold) => ({
       value: String(item.lotHoldId),
       label: `${String(item.lotHoldId)} · ${item.reasonCode} · ${item.heldAt}`,
     })) ?? [];
-  const holdMeta = holds.data?.page;
+  const holdMeta = holdsData?.page;
   const holdTotalPages =
     holdMeta === undefined || !Number.isFinite(holdMeta.size) || holdMeta.size < 1
       ? 1
@@ -168,15 +190,15 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
       ? '열린 보류를 불러오는 중입니다.'
       : holds.isError
         ? '열린 보류를 불러오지 못했습니다.'
-        : holds.data?.items.length === 0
+        : holdsData?.items.length === 0
           ? '해제할 열린 보류가 없습니다.'
           : detail.isFetching
             ? '보류 상세를 불러오는 중입니다.'
             : detail.isError
               ? '보류 상세를 불러오지 못했습니다.'
-              : selectedHoldId !== null && token !== undefined
+              : selectedHold !== undefined && token !== undefined
                 ? '보류 해제 준비가 완료되었습니다.'
-                : selectedHoldId === null
+                : selectedHold === undefined
                   ? null
                   : 'LOT 잠금 정보를 확인하지 못해 진행할 수 없습니다.';
   }
@@ -196,12 +218,12 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
           </Radio>
         ))}
       </RadioGroup>
-      {isRelease && holds.data !== undefined && holds.data.page.total > 1 && (
+      {isRelease && holdsData !== undefined && holdsData.page.total > 1 && (
         <>
           <SelectField
             label="해제할 보류"
             options={holdOptions}
-            value={selectedHoldId === null ? null : String(selectedHoldId)}
+            value={selectedHold === undefined ? null : String(selectedHold.lotHoldId)}
             onChange={(value) => setSelectedHoldId(Number(value))}
           />
           {holdTotalPages > 1 && (
@@ -244,16 +266,15 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
         )}
       {isRelease &&
         selectedTransition !== undefined &&
-        selectedHoldId !== null &&
-        detail.data !== undefined &&
-        token !== undefined &&
-        !detail.isFetching && (
+        selectedHold !== undefined &&
+        detailData !== undefined &&
+        token !== undefined && (
           <ReleaseHoldExecution
-            key={`${String(selectedHoldId)}:${token}:${selectedTransitionKey ?? ''}`}
-            etagPath={lotHoldDetailPath(selectedHoldId)}
-            lotHoldId={selectedHoldId}
+            key={`${String(selectedHold.lotHoldId)}:${token}:${selectedTransitionKey ?? ''}`}
+            etagPath={lotHoldDetailPath(selectedHold.lotHoldId)}
+            lotHoldId={selectedHold.lotHoldId}
             lotNo={lot.lotNo}
-            maxReleaseQty={detail.data.holdQty ?? lot.heldQty}
+            maxReleaseQty={detailData.holdQty ?? lot.heldQty}
             warehouseId={lot.warehouseId}
             locationId={lot.locationId}
             targetLotStatusCode={selectedTransition.targetLotStatusCode}

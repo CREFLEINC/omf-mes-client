@@ -12,7 +12,7 @@ import {
 } from '@crefle/web-ui';
 import type { components, paths } from '@omf-mes/api-client';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -105,8 +105,19 @@ export const LotStatusTransitionCandidateScreen = () => {
   const [page, setPage] = useState(1);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const candidates = useCandidates(filters, page);
-  const selected =
-    candidates.data?.items.find((candidate) => rowKey(candidate) === selectedKey) ?? null;
+  const selected = candidates.isError
+    ? null
+    : (candidates.data?.items.find((candidate) => rowKey(candidate) === selectedKey) ?? null);
+  useEffect(() => {
+    if (
+      selectedKey !== null &&
+      candidates.data !== undefined &&
+      !candidates.isFetching &&
+      !candidates.isError &&
+      selected === null
+    )
+      setSelectedKey(null);
+  }, [candidates.data, candidates.isError, candidates.isFetching, selected, selectedKey]);
   const items = useItemReferenceOptions();
   const statuses = useLotStatusOptions();
   const itemOptions =

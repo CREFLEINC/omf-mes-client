@@ -255,12 +255,30 @@ describe('Lot Status 전이 후보', () => {
     });
   });
 
-  it('재조회 결과에서 선택 row가 사라지면 카드와 write 준비를 제거한다', async () => {
+  it('background 재조회 오류의 cached 후보로 card와 write 준비를 복구하지 않는다', async () => {
     let listCalls = 0;
     const view = renderScreen([], (request) => {
       if (new URL(request.url).pathname !== LOT_PATH) return undefined;
       listCalls += 1;
-      return jsonResponse(listCalls === 1 ? page() : page([]));
+      return listCalls === 1
+        ? jsonResponse(page())
+        : jsonResponse({ message: 'synthetic failure' }, { status: 500 });
+    });
+    await view.user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
+    await screen.findByRole('region', { name: '상태 전이 준비' });
+
+    await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
+    expect(await screen.findByText('LOT 후보를 불러오지 못했습니다.')).toBeVisible();
+    expect(screen.queryByRole('region', { name: '선택한 LOT' })).toBeNull();
+    expect(screen.queryByRole('region', { name: '상태 전이 준비' })).toBeNull();
+  });
+
+  it('재조회에서 사라진 선택 row는 나중 응답에 재등장해도 자동 부활하지 않는다', async () => {
+    let listCalls = 0;
+    const view = renderScreen([], (request) => {
+      if (new URL(request.url).pathname !== LOT_PATH) return undefined;
+      listCalls += 1;
+      return jsonResponse(listCalls === 2 ? page([]) : page());
     });
     await view.user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
     await screen.findByRole('region', { name: '선택한 LOT' });
@@ -268,6 +286,11 @@ describe('Lot Status 전이 후보', () => {
     await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
     await waitFor(() => expect(screen.queryByRole('region', { name: '선택한 LOT' })).toBeNull());
     expect(screen.queryByRole('region', { name: '상태 전이 준비' })).toBeNull();
+
+    await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
+    const reappeared = await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
+    expect(reappeared).not.toHaveAttribute('aria-current');
+    expect(screen.queryByRole('region', { name: '선택한 LOT' })).toBeNull();
   });
 
   it('다음 쪽으로 이동하면 page를 보내고 앞 선택을 지운다', async () => {

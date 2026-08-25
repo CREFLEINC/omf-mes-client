@@ -589,6 +589,98 @@ describe('Lot Status 전이 준비', () => {
     expect(screen.queryByText('보류 해제 준비가 완료되었습니다.')).toBeNull();
   });
 
+  it('open holds background 재조회 중·오류에는 cached 보류로 해제를 열지 않는다', async () => {
+    let calls = 0;
+    let finishRefetch!: (response: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      finishRefetch = resolve;
+    });
+    const selectedHold = hold(501, 'QUALITY_A');
+    const holdsRoute: StubRoute = {
+      match: (request) => new URL(request.url).pathname === HOLDS,
+      respond: () => {
+        calls += 1;
+        return calls === 1
+          ? jsonResponse({ items: [selectedHold], page: { page: 1, size: 50, total: 1 } })
+          : (pending as unknown as Response);
+      },
+    };
+    const view = renderPreparation([
+      transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
+      holdsRoute,
+      route(lotHoldDetailPath(501), selectedHold, { ETag: '"12"' }),
+    ]);
+    await chooseTransition(view.user, '정상');
+    await screen.findByRole('region', { name: '보류 해제 입력' });
+
+    void view.queryClient.invalidateQueries({
+      queryKey: ['lot-status-transition', 'open-holds'],
+    });
+    await screen.findByText('열린 보류를 불러오는 중입니다.');
+    expect(screen.queryByRole('region', { name: '보류 해제 입력' })).toBeNull();
+    finishRefetch(jsonResponse({ message: 'failed' }, { status: 500 }));
+    await screen.findByText('열린 보류를 불러오지 못했습니다.');
+    expect(screen.queryByRole('region', { name: '보류 해제 입력' })).toBeNull();
+  });
+
+  it('보류 상세 background 오류에는 cached 상세와 ETag로 해제를 다시 열지 않는다', async () => {
+    let detailCalls = 0;
+    const selectedHold = hold(501, 'QUALITY_A');
+    const detailRoute: StubRoute = {
+      match: (request) => new URL(request.url).pathname === lotHoldDetailPath(501),
+      respond: () => {
+        detailCalls += 1;
+        return detailCalls === 1
+          ? jsonResponse(selectedHold, { headers: { ETag: '"12"' } })
+          : jsonResponse({ message: 'failed' }, { status: 500 });
+      },
+    };
+    const view = renderPreparation([
+      transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
+      route(HOLDS, { items: [selectedHold], page: { page: 1, size: 50, total: 1 } }),
+      detailRoute,
+    ]);
+    await chooseTransition(view.user, '정상');
+    await screen.findByRole('region', { name: '보류 해제 입력' });
+
+    await view.queryClient.invalidateQueries({
+      queryKey: ['lot-status-transition', 'hold-detail'],
+    });
+    expect(await screen.findByText('보류 상세를 불러오지 못했습니다.')).toBeVisible();
+    expect(screen.queryByRole('region', { name: '보류 해제 입력' })).toBeNull();
+  });
+
+  it('성공 재조회에서 사라진 보류는 재등장해도 자동 선택하지 않는다', async () => {
+    let calls = 0;
+    const selectedHold = hold(501, 'QUALITY_A');
+    const view = renderPreparation([
+      transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
+      {
+        match: (request) => new URL(request.url).pathname === HOLDS,
+        respond: () => {
+          calls += 1;
+          const items = calls === 2 ? [] : [selectedHold];
+          return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+        },
+      },
+      route(lotHoldDetailPath(501), selectedHold, { ETag: '"12"' }),
+    ]);
+    await chooseTransition(view.user, '정상');
+    await screen.findByRole('region', { name: '보류 해제 입력' });
+
+    await view.queryClient.invalidateQueries({
+      queryKey: ['lot-status-transition', 'open-holds'],
+    });
+    await screen.findByText('해제할 열린 보류가 없습니다.');
+    expect(screen.queryByRole('region', { name: '보류 해제 입력' })).toBeNull();
+    await view.queryClient.invalidateQueries({
+      queryKey: ['lot-status-transition', 'open-holds'],
+    });
+    await waitFor(() => expect(calls).toBe(3));
+    expect(screen.queryByText('보류 해제 준비가 완료되었습니다.')).toBeNull();
+    expect(screen.queryByRole('region', { name: '보류 해제 입력' })).toBeNull();
+  });
+
   it('보류 상세 ETag가 없으면 해제를 fail-closed한다', async () => {
     const { user } = renderPreparation([
       transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
