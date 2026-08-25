@@ -95,16 +95,19 @@ const lookupRoutes: StubRoute[] = [
   },
 ];
 
-const renderScreen = (routes: StubRoute[]) => {
+type FetchInterceptor = (request: Request) => Response | Promise<Response> | undefined;
+const renderScreen = (routes: StubRoute[], intercept?: FetchInterceptor) => {
   const urls: URL[] = [];
+  const requests: Request[] = [];
   const stub = createStubFetch([...lookupRoutes, ...routes]);
-  renderWithProviders(<LotStatusTransitionCandidateScreen />, {
+  const view = renderWithProviders(<LotStatusTransitionCandidateScreen />, {
     fetch: async (request) => {
       urls.push(new URL(request.url));
-      return stub(request);
+      requests.push(request.clone());
+      return intercept?.(request) ?? stub(request);
     },
   });
-  return { urls, user: userEvent.setup() };
+  return { ...view, requests, urls, user: userEvent.setup() };
 };
 const lotRequests = (urls: URL[]): URL[] => urls.filter((url) => url.pathname === LOT_PATH);
 const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {
@@ -194,6 +197,77 @@ describe('Lot Status 전이 후보', () => {
     expect(valueOf(current, '최근 전이')).toBe('—');
     expect(valueOf(current, '최근 사유')).toBe('—');
     expect(screen.queryByText('987654')).toBeNull();
+  });
+
+  it('재조회 중 write 준비를 격리하고 새 후보의 version·상태·수량으로만 재확정한다', async () => {
+    let listCalls = 0;
+    let releaseRefetch!: (response: Response) => void;
+    const pendingRefetch = new Promise<Response>((resolve) => {
+      releaseRefetch = resolve;
+    });
+    const updated = {
+      ...lot,
+      versionNo: 987655,
+      lotStatusCode: 'DEFECTIVE',
+      onHandQty: 30,
+      heldQty: 4,
+      availableQty: 26,
+    };
+    const create: StubRoute = {
+      match: (request) =>
+        request.method === 'POST' && new URL(request.url).pathname === '/quality/lot-holds',
+      respond: () => jsonResponse([], { status: 201 }),
+    };
+    const view = renderScreen([create], (request) => {
+      if (new URL(request.url).pathname !== LOT_PATH) return undefined;
+      listCalls += 1;
+      return listCalls === 1 ? jsonResponse(page()) : pendingRefetch;
+    });
+    await view.user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
+    await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
+    await view.user.type(screen.getByLabelText('보류 사유'), 'SYN_REASON');
+    await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
+    await screen.findByRole('dialog');
+
+    void view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
+    await waitFor(() => expect(listCalls).toBe(2));
+    expect(screen.queryByRole('region', { name: '보류 등록 입력' })).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(view.requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+
+    releaseRefetch(jsonResponse(page([updated])));
+    const current = await screen.findByLabelText('선택 LOT 현재 상태');
+    await waitFor(() => expect(valueOf(current, '보유 수량')).toBe('30'));
+    expect(valueOf(current, 'Lot Status')).toBe('DEFECTIVE (이름 미확인)');
+    expect(valueOf(current, '보류 수량')).toBe('4');
+    expect(valueOf(current, '가용 수량')).toBe('26');
+    await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
+    await view.user.type(screen.getByLabelText('보류 사유'), 'SYN_REASON');
+    await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
+    await view.user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '보류 등록' }),
+    );
+    await waitFor(() =>
+      expect(view.requests.filter((request) => request.method === 'POST')).toHaveLength(1),
+    );
+    expect(await view.requests.find((request) => request.method === 'POST')!.json()).toMatchObject({
+      lots: [{ lotId: 701, versionNo: 987655 }],
+    });
+  });
+
+  it('재조회 결과에서 선택 row가 사라지면 카드와 write 준비를 제거한다', async () => {
+    let listCalls = 0;
+    const view = renderScreen([], (request) => {
+      if (new URL(request.url).pathname !== LOT_PATH) return undefined;
+      listCalls += 1;
+      return jsonResponse(listCalls === 1 ? page() : page([]));
+    });
+    await view.user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
+    await screen.findByRole('region', { name: '선택한 LOT' });
+
+    await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
+    await waitFor(() => expect(screen.queryByRole('region', { name: '선택한 LOT' })).toBeNull());
+    expect(screen.queryByRole('region', { name: '상태 전이 준비' })).toBeNull();
   });
 
   it('다음 쪽으로 이동하면 page를 보내고 앞 선택을 지운다', async () => {

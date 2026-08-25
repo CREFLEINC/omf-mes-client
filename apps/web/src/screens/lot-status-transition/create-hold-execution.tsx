@@ -18,6 +18,8 @@ import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 type LotHold = components['schemas']['LotHold'];
 type LotHoldCreate = components['schemas']['LotHoldCreate'];
 const ROOT_KEY = ['lot-status-transition'] as const;
+const HISTORY_KEY = ['lot-status-history'] as const;
+const STALE_FALLBACK = 'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.';
 
 interface Draft {
   mode: 'FULL' | 'PARTIAL';
@@ -67,6 +69,8 @@ const validate = (draft: Draft, props: CreateHoldExecutionProps): Validation => 
 const isStale = (error: ApiError | null): boolean =>
   error?.kind === 'conflict' ||
   (error?.kind === 'http' && (error.status === 409 || error.status === 412));
+const staleMessage = (error: ApiError | null): string =>
+  error?.kind === 'conflict' && error.message.trim() !== '' ? error.message : STALE_FALLBACK;
 
 export interface CreateHoldExecutionProps {
   lotId: number;
@@ -77,6 +81,7 @@ export interface CreateHoldExecutionProps {
   locationId: number | undefined;
   targetLotStatusCode: string;
   onCreated: () => void;
+  onStale: () => void;
 }
 
 export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
@@ -98,7 +103,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
         body,
       }),
     etagPath: null,
-    invalidateKeys: [ROOT_KEY],
+    invalidateKeys: [ROOT_KEY, HISTORY_KEY],
     knownFields: [],
     keyLifetime: 'until-applied',
     onSuccess: () => {
@@ -114,6 +119,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
   };
   const reload = (): void => {
     closeDialog();
+    props.onStale();
     void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
   };
   const location = `창고 ${props.warehouseId === undefined ? '미확인' : String(props.warehouseId)} / Location ${props.locationId === undefined ? '미확인' : String(props.locationId)}`;
@@ -206,7 +212,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
         >
           {stale ? (
             <AlertBanner variant="error" action={<Button onClick={reload}>최신 불러오기</Button>}>
-              LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.
+              {staleMessage(write.error)}
             </AlertBanner>
           ) : (
             <SaveErrorBanner error={write.error} />

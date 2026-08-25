@@ -103,8 +103,10 @@ export const LotStatusTransitionCandidateScreen = () => {
   const [draft, setDraft] = useState(EMPTY_LOT_STATUS_CANDIDATE_FILTERS);
   const [filters, setFilters] = useState(EMPTY_LOT_STATUS_CANDIDATE_FILTERS);
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<LotStatusCandidate | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const candidates = useCandidates(filters, page);
+  const selected =
+    candidates.data?.items.find((candidate) => rowKey(candidate) === selectedKey) ?? null;
   const items = useItemReferenceOptions();
   const statuses = useLotStatusOptions();
   const itemOptions =
@@ -117,7 +119,7 @@ export const LotStatusTransitionCandidateScreen = () => {
     statusOptions.find((option) => option.value === code)?.label ?? `${code} (이름 미확인)`;
   const changePage = (next: number): void => {
     setPage(next);
-    setSelected(null);
+    setSelectedKey(null);
   };
   const apply = (): void => {
     setFilters({ ...draft });
@@ -137,8 +139,8 @@ export const LotStatusTransitionCandidateScreen = () => {
           type="button"
           className="link-cell"
           aria-label={`${row.lotNo} 선택`}
-          aria-current={selected?.lotId === row.lotId ? true : undefined}
-          onClick={() => setSelected(row)}
+          aria-current={selectedKey === rowKey(row) ? true : undefined}
+          onClick={() => setSelectedKey(rowKey(row))}
         >
           {row.lotNo}
         </button>
@@ -254,7 +256,9 @@ export const LotStatusTransitionCandidateScreen = () => {
               </Card.Body>
             </Card>
           </section>
-          <LotStatusTransitionPreparation key={rowKey(selected)} lot={selected} />
+          {!candidates.isFetching && (
+            <LotStatusTransitionPreparation key={rowKey(selected)} lot={selected} />
+          )}
         </>
       )}
     </section>

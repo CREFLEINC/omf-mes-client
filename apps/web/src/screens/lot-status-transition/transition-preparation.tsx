@@ -111,6 +111,10 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
     setSelectedTransitionKey(value);
     setSelectedHoldId(null);
   };
+  const clearExecutionOwner = (): void => {
+    setSelectedTransitionKey(null);
+    setSelectedHoldId(null);
+  };
   const targetLabel = (code: string): string =>
     statuses.data?.items.find((item) => item.code === code)?.label ?? code;
   const holdOptions =
@@ -201,6 +205,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
             locationId={lot.locationId}
             targetLotStatusCode={selectedTransition.targetLotStatusCode}
             onCreated={() => setSelectedTransitionKey(null)}
+            onStale={clearExecutionOwner}
           />
         )}
       {isRelease &&
@@ -219,6 +224,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
             locationId={lot.locationId}
             targetLotStatusCode={selectedTransition.targetLotStatusCode}
             onReleased={() => setSelectedHoldId(null)}
+            onStale={clearExecutionOwner}
           />
         )}
     </section>
