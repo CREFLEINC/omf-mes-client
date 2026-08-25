@@ -18,11 +18,12 @@ import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { useLotStatusOptions } from '../lot-status-history/options';
 import { useItemReferenceOptions } from '../lot-status-history/reference-options';
+import { LotStatusTransitionPreparation } from './transition-preparation';
 
 type LotStatusCandidateQuery = NonNullable<
   NonNullable<paths['/quality/lot-statuses']['get']>['parameters']['query']
 >;
-type LotStatusCandidate = components['schemas']['LotQualityStatus'];
+export type LotStatusCandidate = components['schemas']['LotQualityStatus'];
 
 export interface LotStatusCandidateFilters {
   q: string;
@@ -208,15 +209,18 @@ export const LotStatusTransitionCandidateScreen = () => {
         </>
       )}
       {selected !== null && (
-        <section aria-label="선택한 LOT">
-          <Card bordered>
-            <Card.Body>
-              <p>{selected.lotNo}</p>
-              <p>{itemLabel(selected.itemId)}</p>
-              <p>{statusLabel(selected.lotStatusCode)}</p>
-            </Card.Body>
-          </Card>
-        </section>
+        <>
+          <section aria-label="선택한 LOT">
+            <Card bordered>
+              <Card.Body>
+                <p>{selected.lotNo}</p>
+                <p>{itemLabel(selected.itemId)}</p>
+                <p>{statusLabel(selected.lotStatusCode)}</p>
+              </Card.Body>
+            </Card>
+          </section>
+          <LotStatusTransitionPreparation key={rowKey(selected)} lot={selected} />
+        </>
       )}
     </section>
   );

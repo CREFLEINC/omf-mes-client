@@ -37,6 +37,21 @@ const listRoute = (body: unknown = page(), status = 200): StubRoute => ({
 });
 const lookupRoutes: StubRoute[] = [
   {
+    match: (request) => new URL(request.url).pathname === '/quality/lot-status-transitions',
+    respond: (request) => {
+      const lotId = Number(new URL(request.url).searchParams.get('lotId'));
+      return jsonResponse({
+        lotId,
+        currentLotStatusCode: 'NORMAL',
+        transitions:
+          lotId === 701
+            ? [{ actionCode: 'CREATE_HOLD', targetLotStatusCode: 'DEFECTIVE', allowed: true }]
+            : [],
+        note: lotId === 701 ? undefined : '선택한 LOT은 전이할 수 없습니다.',
+      });
+    },
+  },
+  {
     match: (request) => new URL(request.url).pathname === '/mdm/items',
     respond: () =>
       jsonResponse({
@@ -122,9 +137,11 @@ describe('Lot Status 전이 후보', () => {
     expect([...lotRequests(urls)[2]!.searchParams]).toEqual([]);
   });
 
-  it('한 행만 선택해 업무 식별·현재 상태 카드를 보이고 versionNo는 숨긴다', async () => {
-    const { user } = renderScreen([listRoute()]);
+  it('한 행만 선택해 업무 식별·현재 상태를 보이고 LOT 변경 시 전이 준비를 지운다', async () => {
+    const beta = { ...lot, lotId: 702, lotNo: 'SYN-LOT-BETA' };
+    const { user } = renderScreen([listRoute(page([lot, beta]))]);
     const select = await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
+    expect(screen.queryByText('선택한 LOT은 전이할 수 없습니다.')).toBeNull();
     await user.click(select);
 
     const card = screen.getByRole('region', { name: '선택한 LOT' });
@@ -133,6 +150,12 @@ describe('Lot Status 전이 후보', () => {
     expect(within(card).getByText('정상')).toBeVisible();
     expect(select).toHaveAttribute('aria-current', 'true');
     expect(screen.queryByText('987654')).toBeNull();
+    await choose(user, '전이', 'DEFECTIVE');
+    await screen.findByText('보류 등록 준비가 완료되었습니다.');
+    await user.click(screen.getByRole('button', { name: 'SYN-LOT-BETA 선택' }));
+    expect(await screen.findByText('선택한 LOT은 전이할 수 없습니다.')).toBeVisible();
+    await user.click(select);
+    expect(await screen.findByLabelText('전이')).toHaveTextContent('하나를 선택하세요');
   });
 
   it('다음 쪽으로 이동하면 page를 보내고 앞 선택을 지운다', async () => {
