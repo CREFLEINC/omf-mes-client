@@ -12,6 +12,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import { type CodeOption, defaultGroupFilters, groupTypeLabel, lookupLabel } from './code-options';
 import type { GroupTreeRow } from './group-tree';
 import { SelectField } from './select-field';
@@ -28,7 +29,7 @@ export interface GroupListPaneProps {
   /** 공장 선택지. 미사용 공장은 지금 고른 값일 때만 남는다 */
   plantOptions: CodeOption[];
   /** 공장 이름 풀이용 원본 — 선택지가 좁혀져 있어도 조건 칩은 전체에서 이름을 찾는다 */
-  plantEntries: LookupEntry[];
+  plants: LookupSource<LookupEntry>;
   expandedIds: ReadonlySet<number>;
   onToggleExpand: (equipmentGroupId: number) => void;
   selectedGroupId: number | null;
@@ -70,7 +71,7 @@ export const GroupListPane = ({
   appliedFilters,
   onApplyFilters,
   plantOptions,
-  plantEntries,
+  plants,
   expandedIds,
   onToggleExpand,
   selectedGroupId,
@@ -148,7 +149,7 @@ export const GroupListPane = ({
     {
       key: 'plantId',
       header: t.fields.plant,
-      render: (row) => lookupLabel(plantEntries, String(row.group.plantId)),
+      render: (row) => lookupLabel(plants, String(row.group.plantId)),
     },
     {
       key: 'isActive',
@@ -255,7 +256,7 @@ export const GroupListPane = ({
             removeLabel={t.filters.chipRemovePlant}
             onRemove={() => onApplyFilters({ ...appliedFilters, plantId: '' })}
           >
-            {t.filters.chipPlant(lookupLabel(plantEntries, appliedFilters.plantId))}
+            {t.filters.chipPlant(lookupLabel(plants, appliedFilters.plantId))}
           </Chip>
         )}
         {appliedFilters.includeInactive && (

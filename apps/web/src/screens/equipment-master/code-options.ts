@@ -2,6 +2,11 @@ import { messages } from '@omf-mes/i18n';
 
 import type { components } from '@omf-mes/api-client';
 
+import {
+  lookupDisplayLabel,
+  type LookupSource,
+  selectableLookupOptions,
+} from '../../patterns/lookup-display';
 import type { EquipmentFilters, GroupFilters, LookupEntry } from './types';
 
 export type CodeValue = components['schemas']['CodeValue'];
@@ -161,24 +166,17 @@ export const ensureOption = (options: CodeOption[], value: string): CodeOption[]
  * 선택 목록에서 실제로 고를 수 있는 선택지를 만든다.
  *
  * 기본은 사용 중인 것만 보인다. 다만 지금 선택된 값이 미사용이면 그것도 남기고 라벨에 표식을 붙인다 —
- * 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다. 목록에 아예 없는 값도 코드 그대로 남긴다.
+ * 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다. 목록에 없는 숫자 FK는 값만 보존하고
+ * 라벨에는 미확인·로딩·실패 상태를 낸다.
  */
-export const selectableOptions = (entries: LookupEntry[], selected: string): CodeOption[] =>
-  ensureOption(
-    entries
-      .filter((entry) => entry.isActive || entry.value === selected)
-      .map((entry) => ({
-        value: entry.value,
-        label: entry.isActive
-          ? entry.label
-          : `${entry.label}${messages.equipmentMaster.values.inactiveSuffix}`,
-      })),
-    selected,
-  );
+export const selectableOptions = (
+  source: LookupSource<LookupEntry>,
+  selected: string,
+): CodeOption[] => selectableLookupOptions(source, selected);
 
-/** 선택 목록에서 값 하나의 라벨을 푼다. 못 찾으면 코드를 그대로 보인다 — 「알 수 없음」을 쓰지 않는다. */
-export const lookupLabel = (entries: LookupEntry[], value: string): string =>
-  entries.find((entry) => entry.value === value)?.label ?? value;
+/** 숫자 FK를 사람이 읽는 이름으로 옮기고, 조회 상태와 미확인을 구분한다. */
+export const lookupLabel = (source: LookupSource<LookupEntry>, value: string): string =>
+  lookupDisplayLabel(source, value);
 
 /**
  * 그룹을 끄면 무엇이 달라지는지 한 줄.

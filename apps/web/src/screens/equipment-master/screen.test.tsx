@@ -509,6 +509,18 @@ describe('EquipmentMasterScreen', () => {
     expect(await screen.findByText(t.optionsLoadFailed)).toBeInTheDocument();
   });
 
+  it('공장 조회 실패 중인 조건은 내부 번호 대신 실패 상태를 표시한다', async () => {
+    renderScreen({
+      route: '/?plant=9999',
+      respondPlants: () => jsonResponse({ message: '서버 오류' }, { status: 500 }),
+    });
+
+    expect(
+      await screen.findByText(t.filters.chipPlant(messages.common.reference.failed)),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('9999')).not.toBeInTheDocument();
+  });
+
   it('선택 목록이 잘리면 그 사실을 알린다', async () => {
     renderScreen({
       respondPlants: () => jsonResponse({ items: [], page: pageOf([], 40) }),
@@ -976,8 +988,7 @@ describe('EquipmentMasterScreen — 상위 그룹 선택지와 순환', () => {
     ).toBe(true);
   });
 
-  /* 이름조차 찾지 못하면 그 값이 번호라는 사실을 밝힌다 — 맨 숫자로 두지 않는다. */
-  it('이름을 풀지 못한 상위는 번호임을 밝힌다', async () => {
+  it('이름을 풀지 못한 상위는 내부 번호 대신 미확인 상태를 밝힌다', async () => {
     const user = userEvent.setup();
     // 상위가 다른 공장의 그룹이라 이 공장 목록에 없다.
     const orphanParent = makeGroup(101, 'GRP-A', { parentGroupId: 777 });
@@ -989,8 +1000,8 @@ describe('EquipmentMasterScreen — 상위 그룹 선택지와 순환', () => {
 
     const labels = (await openParentOptions(user)).map((node) => node.textContent);
 
-    expect(labels.some((label) => label?.includes(t.values.parentUnresolved('777')))).toBe(true);
-    expect(labels.some((label) => label?.trim() === '777')).toBe(false);
+    expect(labels.some((label) => label?.includes(messages.common.reference.unknown))).toBe(true);
+    expect(labels.some((label) => label?.includes('777'))).toBe(false);
   });
 
   /*

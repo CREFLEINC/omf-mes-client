@@ -14,12 +14,12 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import {
   CODE_GROUPS,
   type CodeOption,
-  ensureOption,
   groupDeactivateImpact,
   selectableOptions,
   toCodeLabels,
@@ -100,6 +100,7 @@ import type {
   GroupFormValues,
   InspectionItemFilters,
   InspectionItemFormValues,
+  LookupEntry,
 } from './types';
 
 const t = messages.equipmentMaster;
@@ -136,12 +137,13 @@ const parentOptionLabel = (group: EquipmentGroup): string => {
  * 알 수 없다 — 저장을 눌러야 비로소 「순환이 생깁니다」를 본다.
  *
  * 그래서 **전체 목록에서 이름을 찾아** 붙이고 순환이라는 사실을 표식으로 낸다. 이름조차 찾지
- * 못하면 그 값이 번호라는 사실을 밝힌다.
+ * 못하면 원시 번호 대신 조회 상태를 밝힌다.
  */
 const ensureCurrentParent = (
   selectable: CodeOption[],
   current: string,
   all: EquipmentGroup[],
+  source: LookupSource<LookupEntry>,
 ): CodeOption[] => {
   if (current === '' || selectable.some((option) => option.value === current)) return selectable;
 
@@ -153,11 +155,21 @@ const ensureCurrentParent = (
       value: current,
       label:
         found === undefined
-          ? t.values.parentUnresolved(current)
+          ? lookupDisplayLabel(source, current)
           : `${parentOptionLabel(found)}${t.values.parentCycleSuffix}`,
     },
   ];
 };
+
+/** 숫자 FK의 현재 값이 목록에 없으면 값은 남기되 내부 번호를 라벨로 쓰지 않는다. */
+const ensureNumericOption = (
+  options: CodeOption[],
+  current: string,
+  source: LookupSource<LookupEntry>,
+): CodeOption[] =>
+  current === '' || options.some((option) => option.value === current)
+    ? options
+    : [...options, { value: current, label: lookupDisplayLabel(source, current) }];
 
 /**
  * W-05-12 컨테이너. 설비 그룹 계층을 서버 응답으로 그리고 조회 조건과 선택을 URL에 둔다.
@@ -340,6 +352,18 @@ export const EquipmentMasterScreen = () => {
    * 후손이 빠져 순환을 못 막는다.
    */
   const groupOptions = useGroupOptions(formValues.plantId);
+  const groupLookupSource = useMemo<LookupSource<LookupEntry>>(
+    () => ({
+      entries: groupOptions.groups.map((group) => ({
+        value: String(group.equipmentGroupId),
+        label: `${group.groupCode} · ${group.groupName}`,
+        isActive: group.isActive,
+      })),
+      isError: groupOptions.isError,
+      isLoading: groupOptions.isLoading,
+    }),
+    [groupOptions.groups, groupOptions.isError, groupOptions.isLoading],
+  );
 
   /**
    * 상위로 고르면 순환이 생기는 식별자 — 자기 자신과 모든 후손.
@@ -355,7 +379,7 @@ export const EquipmentMasterScreen = () => {
 
   /**
    * 상위 그룹 선택지. 자기 자신과 후손을 뺀다 — 데이터베이스는 직계 자기참조만 막는다.
-   * 「없음(최상위)」이 첫 줄이고, 지금 매인 값이 목록에 없으면 코드 그대로 남긴다.
+   * 「없음(최상위)」이 첫 줄이고, 지금 매인 값이 목록에 없으면 값은 보존하고 조회 상태를 낸다.
    */
   const parentOptions: CodeOption[] = useMemo(() => {
     const selectable = groupOptions.groups
@@ -367,9 +391,14 @@ export const EquipmentMasterScreen = () => {
 
     return [
       { value: '', label: t.form.parentNone },
-      ...ensureCurrentParent(selectable, formValues.parentGroupId, groupOptions.groups),
+      ...ensureCurrentParent(
+        selectable,
+        formValues.parentGroupId,
+        groupOptions.groups,
+        groupLookupSource,
+      ),
     ];
-  }, [groupOptions.groups, cycleBlockedIds, formValues.parentGroupId]);
+  }, [groupOptions.groups, groupLookupSource, cycleBlockedIds, formValues.parentGroupId]);
 
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>({});
@@ -471,13 +500,21 @@ export const EquipmentMasterScreen = () => {
    * 잘린 목록이면 실제로 그렇게 되고, 사용자는 **지워진 줄 알고 다시 고른다** — 그러면 원래
    * 값이 조용히 바뀐다(형제 화면 W-05-11 이 브라우저 확인에서 겪은 자리다).
    */
+  const uomSource = useMemo<LookupSource<LookupEntry>>(
+    () => ({
+      entries: (uomList.data ?? []).map((uom) => ({
+        value: String(uom.uomId),
+        label: uom.uomName,
+        isActive: true,
+      })),
+      isError: uomList.isError,
+      isLoading: uomList.isPending,
+    }),
+    [uomList.data, uomList.isError, uomList.isPending],
+  );
   const uomOptions = useMemo(
-    () =>
-      ensureOption(
-        (uomList.data ?? []).map((uom) => ({ value: String(uom.uomId), label: uom.uomName })),
-        inspectionItemValues.uomId,
-      ),
-    [uomList.data, inspectionItemValues.uomId],
+    () => selectableOptions(uomSource, inspectionItemValues.uomId),
+    [uomSource, inspectionItemValues.uomId],
   );
 
   const inspectionItemWrite = useMasterWrite<InspectionItemFormValues, EquipmentInspectionItem>({
@@ -763,15 +800,16 @@ export const EquipmentMasterScreen = () => {
   const equipmentGroupOptions: CodeOption[] = useMemo(
     () => [
       { value: '', label: t.equipmentForm.groupNone },
-      ...ensureOption(
+      ...ensureNumericOption(
         groupOptions.groups.map((group) => ({
           value: String(group.equipmentGroupId),
           label: parentOptionLabel(group),
         })),
         equipmentValues.productionLineId,
+        groupLookupSource,
       ),
     ],
-    [groupOptions.groups, equipmentValues.productionLineId],
+    [groupOptions.groups, groupLookupSource, equipmentValues.productionLineId],
   );
 
   const equipmentWrite = useMasterWrite<EquipmentFormValues, Equipment>({
@@ -1086,7 +1124,7 @@ export const EquipmentMasterScreen = () => {
         />
       }
       codeLockReason={detail.data === undefined ? null : codeLockMessage(detail.data.editability)}
-      plantOptions={selectableOptions(lookups.entries.plants, formValues.plantId)}
+      plantOptions={selectableOptions(lookups.sources.plants, formValues.plantId)}
       parentOptions={parentOptions}
       isActive={options.isActive}
       isDirty={isDirty}
@@ -1263,8 +1301,8 @@ export const EquipmentMasterScreen = () => {
           isLoading={groupList.isPending}
           appliedFilters={filters}
           onApplyFilters={handleApplyFilters}
-          plantOptions={selectableOptions(lookups.entries.plants, filters.plantId)}
-          plantEntries={lookups.entries.plants}
+          plantOptions={selectableOptions(lookups.sources.plants, filters.plantId)}
+          plants={lookups.sources.plants}
           expandedIds={expandedIds}
           onToggleExpand={handleToggleExpand}
           selectedGroupId={selectedGroupId}
@@ -1377,7 +1415,7 @@ export const EquipmentMasterScreen = () => {
           groupOptions={equipmentGroupOptions}
           processOptions={[
             { value: '', label: t.equipmentForm.processNone },
-            ...selectableOptions(lookups.entries.processes, equipmentValues.processId),
+            ...selectableOptions(lookups.sources.processes, equipmentValues.processId),
           ]}
           /*
            * 계층은 상세 응답이 준다. **등록 중에 비는 것은 방어가 아니라 사실이다** —
@@ -1501,7 +1539,7 @@ export const EquipmentMasterScreen = () => {
               : codeLockMessage(inspectionItemDetail.data.editability)
           }
           assignmentCount={inspectionItemDetail.data?.assignmentCount ?? null}
-          plantOptions={selectableOptions(lookups.entries.plants, inspectionItemValues.plantId)}
+          plantOptions={selectableOptions(lookups.sources.plants, inspectionItemValues.plantId)}
           typeOptions={inspectionTypeOptions}
           methodOptions={judgmentMethodOptions}
           uomOptions={uomOptions}
