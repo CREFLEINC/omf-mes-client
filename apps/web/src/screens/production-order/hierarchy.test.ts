@@ -16,6 +16,7 @@ const order = (id: number, parent: number | null = null): ProductionOrderFact =>
   uomId: 1,
   dueDate: null,
   statusCode: 'READY',
+  remarks: null,
   expandedWorkOrderCount: null,
   plannedWorkOrderCount: null,
 });
