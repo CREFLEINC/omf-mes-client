@@ -1,5 +1,8 @@
-import { messages } from '@omf-mes/i18n';
-
+import {
+  lookupDisplayLabel,
+  type LookupSource,
+  selectableLookupOptions,
+} from '../../patterns/lookup-display';
 import type { LookupEntry, SelectOption } from './types';
 
 /**
@@ -7,8 +10,6 @@ import type { LookupEntry, SelectOption } from './types';
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
-
-const t = messages.itemExtendedAttrs;
 
 /**
  * 서버가 준 현재 값이 선택지 목록에 없으면 값 그대로 덧붙인다.
@@ -25,16 +26,10 @@ export const ensureOption = (options: SelectOption[], value: string): SelectOpti
  * 기본은 사용 중인 것만 보인다. 다만 **지금 고른 값이 미사용이면 그것도 남기고 표식을 붙인다** —
  * 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 알고, 고치지 않은 줄을 고치려 든다.
  */
-export const selectableOptions = (entries: LookupEntry[], selected: string): SelectOption[] =>
-  ensureOption(
-    entries
-      .filter((entry) => entry.isActive || entry.value === selected)
-      .map((entry) => ({
-        value: entry.value,
-        label: entry.isActive ? entry.label : `${entry.label}${t.values.inactiveSuffix}`,
-      })),
-    selected,
-  );
+export const selectableOptions = (
+  source: LookupSource<LookupEntry>,
+  selected: string,
+): SelectOption[] => selectableLookupOptions(source, selected);
 
 /**
  * 번호를 사람이 읽는 이름으로 옮긴다. 읽기 전용 표기에 쓴다.
@@ -50,9 +45,5 @@ export const lookupLabel = (
   entries: LookupEntry[],
   id: number | null | undefined,
   isLoading = false,
-): string => {
-  if (id === null || id === undefined) return t.values.empty;
-  if (isLoading) return t.values.loading;
-
-  return entries.find((entry) => entry.value === String(id))?.label ?? t.values.unknown;
-};
+  isError = false,
+): string => lookupDisplayLabel({ entries, isLoading, isError }, id);

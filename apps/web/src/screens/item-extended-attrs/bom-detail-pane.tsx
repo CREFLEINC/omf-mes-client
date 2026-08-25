@@ -17,6 +17,7 @@ export interface BomDetailPaneProps {
   /** 단위 번호 → 이름. 번호를 화면에 그대로 내지 않는다 */
   uomEntries: LookupEntry[];
   isUomLoading: boolean;
+  isUomError?: boolean;
 }
 
 /** 값이 없는 칸을 비워 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -37,7 +38,12 @@ const orEmptyMark = (value: string): string => (value === '' ? shared.values.emp
  *
  * 안내는 품목 원본 구획과 **같은 공통 문구**를 쓴다 — 이 화면 전용 문구를 만들지 않는다.
  */
-export const BomDetailPane = ({ bom, uomEntries, isUomLoading }: BomDetailPaneProps) => (
+export const BomDetailPane = ({
+  bom,
+  uomEntries,
+  isUomLoading,
+  isUomError,
+}: BomDetailPaneProps) => (
   <section className="pane" aria-label={t.detailPaneTitle}>
     <div className="banner-slot">
       <AlertBanner variant="info">{messages.editability.receivedFromErp(null)}</AlertBanner>
@@ -58,7 +64,10 @@ export const BomDetailPane = ({ bom, uomEntries, isUomLoading }: BomDetailPanePr
       {/* 수량과 단위는 따로 읽히지 않는다 — 구성품 표의 소요량과 같은 형태로 담는다. */}
       <ValueField
         label={t.fields.baseQty}
-        value={requiredQtyText(bom.baseQty, lookupLabel(uomEntries, bom.baseUomId, isUomLoading))}
+        value={requiredQtyText(
+          bom.baseQty,
+          lookupLabel(uomEntries, bom.baseUomId, isUomLoading, isUomError),
+        )}
       />
     </div>
   </section>

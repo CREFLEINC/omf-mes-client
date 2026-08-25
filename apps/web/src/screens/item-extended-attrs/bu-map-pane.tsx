@@ -15,9 +15,11 @@ export interface BuMapPaneProps {
   /** 사업부 번호 → 이름. 번호를 화면에 그대로 내지 않는다 */
   businessUnitEntries: LookupEntry[];
   isBusinessUnitLoading: boolean;
+  isBusinessUnitError?: boolean;
   /** 대상 품목 번호 → 이름. 행마다 상세를 부른 결과다(결정 12) */
   itemNameEntries: LookupEntry[];
   isItemNameLoading: boolean;
+  isItemNameError?: boolean;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   loadError: ReactNode;
@@ -57,8 +59,10 @@ export const BuMapPane = ({
   isLoading,
   businessUnitEntries,
   isBusinessUnitLoading,
+  isBusinessUnitError,
   itemNameEntries,
   isItemNameLoading,
+  isItemNameError,
   optionsNotice,
   loadError,
   banner,
@@ -71,10 +75,10 @@ export const BuMapPane = ({
   onCancel,
 }: BuMapPaneProps) => {
   const businessUnitLabel = (value: string): string =>
-    lookupLabel(businessUnitEntries, toLookupId(value), isBusinessUnitLoading);
+    lookupLabel(businessUnitEntries, toLookupId(value), isBusinessUnitLoading, isBusinessUnitError);
 
   const itemLabel = (value: string): string =>
-    lookupLabel(itemNameEntries, toLookupId(value), isItemNameLoading);
+    lookupLabel(itemNameEntries, toLookupId(value), isItemNameLoading, isItemNameError);
 
   const periodLabel = (draft: BuMapDraft): string =>
     t.values.period(orEmptyMark(draft.effectiveFrom), orEmptyMark(draft.effectiveTo));

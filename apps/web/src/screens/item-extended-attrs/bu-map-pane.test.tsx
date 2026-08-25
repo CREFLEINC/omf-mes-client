@@ -82,7 +82,7 @@ describe('BuMapPane — 표시', () => {
     renderPane({ itemNameEntries: [], isItemNameLoading: true });
 
     expect(screen.queryByText('알 수 없음')).not.toBeInTheDocument();
-    expect(screen.getAllByText('불러오는 중…').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('이름 불러오는 중').length).toBeGreaterThan(0);
   });
 
   it('유효기간을 한 칸에 낸다', () => {

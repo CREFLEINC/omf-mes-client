@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import { workerFixtures } from './fixtures';
 import type { LookupEntry } from './types';
 import { WorkerDetailPane } from './worker-detail-pane';
@@ -13,13 +14,22 @@ const departments: LookupEntry[] = [
   { value: '3001', label: 'SYN-DEPT-01 · 합성 부서 A', isActive: true },
 ];
 
+const source = (
+  entries: LookupEntry[],
+  state: 'ready' | 'loading' | 'failed' = 'ready',
+): LookupSource<LookupEntry> => ({
+  entries,
+  isError: state === 'failed',
+  isLoading: state === 'loading',
+});
+
 const renderPane = (overrides: Partial<Parameters<typeof WorkerDetailPane>[0]> = {}) =>
   render(
     <WorkerDetailPane
       worker={workerFixtures[0]!}
-      businessUnitEntries={businessUnits}
-      plantEntries={plants}
-      departmentEntries={departments}
+      businessUnits={source(businessUnits)}
+      plants={source(plants)}
+      departments={source(departments)}
       {...overrides}
     />,
   );
@@ -80,6 +90,21 @@ describe('WorkerDetailPane — 값 표기', () => {
     renderPane({ worker: workerFixtures[2]! });
 
     expect(screen.getByText('알 수 없음')).toBeInTheDocument();
+    expect(screen.queryByText('9999')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['loading', '이름 불러오는 중'],
+    ['failed', '이름을 불러오지 못했습니다'],
+  ] as const)('%s 상태에서 번호 대신 조회 상태를 낸다', (state, label) => {
+    renderPane({
+      worker: workerFixtures[2]!,
+      businessUnits: source([], state),
+      plants: source([], state),
+      departments: source([], state),
+    });
+
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     expect(screen.queryByText('9999')).not.toBeInTheDocument();
   });
 

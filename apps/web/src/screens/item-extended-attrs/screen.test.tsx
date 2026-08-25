@@ -2893,7 +2893,7 @@ describe('ItemExtendedAttrsScreen — 선택 목록 안내의 주인 (F1)', () =
 /**
  * F2 — 이름을 받는 중인 상태가 **창에서도** 표와 같아야 한다.
  *
- * 표는 「불러오는 중…」인데 창만 「알 수 없음」이면 사용자는 창을 여는 순간
+ * 표는 「이름 불러오는 중」인데 창만 「알 수 없음」이면 사용자는 창을 여는 순간
  * 값이 사라진 것으로 읽는다.
  */
 describe('ItemExtendedAttrsScreen — 대상 품목 이름의 로딩 갈래 (F2)', () => {
@@ -2929,7 +2929,7 @@ describe('ItemExtendedAttrsScreen — 대상 품목 이름의 로딩 갈래 (F2)
     );
 
     const pane = await findBuMapPane();
-    expect(within(pane).getAllByText('불러오는 중…').length).toBeGreaterThan(0);
+    expect(within(pane).getAllByText('이름 불러오는 중').length).toBeGreaterThan(0);
 
     await user.click(within(pane).getAllByRole('button', { name: /매핑 수정$/ })[0]!);
 
@@ -2937,7 +2937,7 @@ describe('ItemExtendedAttrsScreen — 대상 품목 이름의 로딩 갈래 (F2)
     await user.click(within(dialog).getByLabelText('대상 품목'));
 
     expect(screen.queryByRole('option', { name: '알 수 없음' })).not.toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '불러오는 중…' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '이름 불러오는 중' })).toBeInTheDocument();
   });
 });
 

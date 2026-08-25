@@ -156,7 +156,7 @@ describe('BomComponentPane — 표기', () => {
   it('이름을 받는 중에는 「알 수 없음」을 내지 않는다', () => {
     renderPane({ itemNameEntries: [], isItemNameLoading: true });
 
-    expect(within(dataRows()[0]!).getByText('불러오는 중…')).toBeInTheDocument();
+    expect(within(dataRows()[0]!).getByText('이름 불러오는 중')).toBeInTheDocument();
     expect(within(dataRows()[0]!).queryByText('알 수 없음')).not.toBeInTheDocument();
   });
 

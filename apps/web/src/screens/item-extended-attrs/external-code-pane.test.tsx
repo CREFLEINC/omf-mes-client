@@ -73,7 +73,7 @@ describe('ExternalCodePane — 표시', () => {
     renderPane({ partnerEntries: [], isPartnerLoading: true });
 
     expect(screen.getByText('(전체)')).toBeInTheDocument();
-    expect(screen.getByText('불러오는 중…')).toBeInTheDocument();
+    expect(screen.getByText('이름 불러오는 중')).toBeInTheDocument();
     expect(screen.queryByText('알 수 없음')).not.toBeInTheDocument();
   });
 

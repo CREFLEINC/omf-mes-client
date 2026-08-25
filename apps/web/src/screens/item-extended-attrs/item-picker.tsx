@@ -48,17 +48,15 @@ export const ItemPicker = ({
 
   const search = useItemSearch(submitted);
 
-  /*
-   * 지금 고른 값이 검색 결과에 없으면 `selectableOptions`가 **번호를 라벨로** 남긴다.
-   * 그대로 두면 선택칸에 내부 식별자가 그대로 보이므로, 표가 이미 아는 이름이 있으면 바꾼다.
-   * 남기는 것 자체는 필요하다 — 빼 버리면 선택칸이 비어 보여 값이 사라진 줄 안다.
-   */
+  /* 검색 결과에 현재 값이 없어도 표가 이미 아는 이름은 유지한다. 값 자체를 빼면 선택칸이 비어 보인다. */
   const withKnownLabel = (option: SelectOption): SelectOption =>
-    option.value === value && option.label === value && selectedLabel !== undefined
+    option.value === value &&
+    selectedLabel !== undefined &&
+    !search.entries.some((entry) => entry.value === value)
       ? { value, label: selectedLabel }
       : option;
 
-  const options = selectableOptions(search.entries, value).map(withKnownLabel);
+  const options = selectableOptions(search, value).map(withKnownLabel);
 
   const submit = () => {
     setSubmitted(keyword.trim());

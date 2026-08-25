@@ -107,7 +107,7 @@ describe('BomDetailPane — 표기', () => {
   it('단위 목록을 받는 중에는 「알 수 없음」을 내지 않는다', () => {
     renderPane({ uomEntries: [], isUomLoading: true });
 
-    expect(screen.getByLabelText('기준 수량')).toHaveTextContent('100 불러오는 중…');
+    expect(screen.getByLabelText('기준 수량')).toHaveTextContent('100 이름 불러오는 중');
   });
 
   it('유효 종료가 없으면 값 없음 표기를 낸다', () => {

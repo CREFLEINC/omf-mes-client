@@ -25,6 +25,7 @@ export interface UomConversionPaneProps {
   /** 단위 번호 → 이름. 번호를 화면에 그대로 내지 않는다 */
   uomEntries: LookupEntry[];
   isUomLoading: boolean;
+  isUomError?: boolean;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   loadError: ReactNode;
@@ -62,6 +63,7 @@ export const UomConversionPane = ({
   isLoading,
   uomEntries,
   isUomLoading,
+  isUomError,
   optionsNotice,
   loadError,
   banner,
@@ -76,7 +78,7 @@ export const UomConversionPane = ({
   const duplicates = duplicateDraftIds(drafts);
 
   const uomLabel = (value: string): string =>
-    lookupLabel(uomEntries, toLookupId(value), isUomLoading);
+    lookupLabel(uomEntries, toLookupId(value), isUomLoading, isUomError);
 
   const periodLabel = (draft: UomConversionDraft): string =>
     t.values.period(orEmptyMark(draft.effectiveFrom), orEmptyMark(draft.effectiveTo));
