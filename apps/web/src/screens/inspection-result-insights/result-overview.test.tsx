@@ -113,7 +113,10 @@ describe('검사 결과 요약·목록', () => {
     }
     expect(screen.getByText('기준 2026-08-31 09:30')).toBeInTheDocument();
     expect(screen.getByText('최종 회차만 집계합니다.')).toBeInTheDocument();
-    expect(screen.getByText(/검교정 만료 결과 2건이 기본 집계에 포함/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/검교정 만료 장비 측정 건수 2건이 기본 집계에 포함/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/검교정 만료 결과 2건/)).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '검교정 만료만 분리해 보기' }));
     expect(onViewExpiredCalibration).toHaveBeenCalledOnce();
     expect(screen.queryByText('101')).not.toBeInTheDocument();

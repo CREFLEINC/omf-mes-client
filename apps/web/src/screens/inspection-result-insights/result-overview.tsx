@@ -171,14 +171,14 @@ export const ResultOverview = ({
           {filters.calibrationExpired === '' && (summary.data.calibrationExpiredCount ?? 0) > 0 && (
             <AlertBanner
               variant="warning"
-              title={`검교정 만료 결과 ${summary.data.calibrationExpiredCount}건이 기본 집계에 포함되어 있습니다.`}
+              title={`검교정 만료 장비 측정 건수 ${summary.data.calibrationExpiredCount}건이 기본 집계에 포함되어 있습니다.`}
               action={
                 <Button size="sm" variant="outlined" onClick={onViewExpiredCalibration}>
                   검교정 만료만 분리해 보기
                 </Button>
               }
             >
-              기본 조회는 만료 결과를 자동 제외하지 않습니다.
+              기본 조회는 검교정 만료 장비로 측정된 건을 자동 제외하지 않습니다.
             </AlertBanner>
           )}
         </>
