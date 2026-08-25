@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import type { LookupSource } from '../../patterns/lookup-display';
+
 /**
  * W-05-12 화면 슬라이스의 계약.
  * api-client는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이 유지된다.
@@ -89,9 +91,9 @@ export interface LookupEntry {
   isActive: boolean;
 }
 
-export interface LookupEntries {
-  plants: LookupEntry[];
-  processes: LookupEntry[];
+export interface LookupSources {
+  plants: LookupSource<LookupEntry>;
+  processes: LookupSource<LookupEntry>;
 }
 
 /**

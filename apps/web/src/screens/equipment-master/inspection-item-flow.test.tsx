@@ -389,7 +389,9 @@ describe('W-05-12 점검 항목 마스터 — 고친다', () => {
       }),
     );
 
-    expect(within(dialog()).getByRole('combobox', { name: /측정 단위/ })).toHaveTextContent('99');
+    const uom = within(dialog()).getByRole('combobox', { name: /측정 단위/ });
+    expect(uom).toHaveTextContent(messages.common.reference.unknown);
+    expect(uom).not.toHaveTextContent('99');
   });
 
   /** ⛔ 공장은 옮길 수 없다 — 계약의 수정 본문이 받지 않는다. */

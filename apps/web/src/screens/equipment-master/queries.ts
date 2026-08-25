@@ -12,8 +12,8 @@ import type {
   EquipmentInspectionItem,
   GroupFilters,
   InspectionItemAssignment,
-  LookupEntries,
   LookupEntry,
+  LookupSources,
 } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
@@ -122,6 +122,7 @@ export interface GroupOptionsResult {
   groups: EquipmentGroup[];
   truncated: boolean;
   isError: boolean;
+  isLoading: boolean;
 }
 
 const NO_GROUPS: EquipmentGroup[] = [];
@@ -155,6 +156,7 @@ export const useGroupOptions = (plantId: string): GroupOptionsResult => {
     groups: result.data?.items ?? NO_GROUPS,
     truncated: isListTruncated(result.data),
     isError: result.isError,
+    isLoading: result.isPending,
   };
 };
 
@@ -324,7 +326,7 @@ export const lookupKeys = {
 };
 
 export interface LookupResult {
-  entries: LookupEntries;
+  sources: LookupSources;
   /** 어느 선택 목록이라도 잘렸으면 참. 고를 수 없는 값이 생겼다는 뜻이다. */
   truncated: boolean;
   /** 어느 선택 목록이라도 실패했으면 참. 실패를 삼키면 선택칸이 이유 없이 비어 보인다. */
@@ -359,19 +361,27 @@ export const useLookupOptions = (): LookupResult => {
   });
 
   return {
-    entries: {
-      plants:
-        plants.data?.items.map((item) => ({
-          value: String(item.plantId),
-          label: item.plantName,
-          isActive: item.isActive,
-        })) ?? EMPTY_ENTRIES,
-      processes:
-        processes.data?.items.map((item) => ({
-          value: String(item.processId),
-          label: item.processName,
-          isActive: item.isActive,
-        })) ?? EMPTY_ENTRIES,
+    sources: {
+      plants: {
+        entries:
+          plants.data?.items.map((item) => ({
+            value: String(item.plantId),
+            label: item.plantName,
+            isActive: item.isActive,
+          })) ?? EMPTY_ENTRIES,
+        isError: plants.isError,
+        isLoading: plants.isPending,
+      },
+      processes: {
+        entries:
+          processes.data?.items.map((item) => ({
+            value: String(item.processId),
+            label: item.processName,
+            isActive: item.isActive,
+          })) ?? EMPTY_ENTRIES,
+        isError: processes.isError,
+        isLoading: processes.isPending,
+      },
     },
     truncated: isListTruncated(plants.data) || isListTruncated(processes.data),
     isError: plants.isError || processes.isError,

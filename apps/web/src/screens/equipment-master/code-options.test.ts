@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import {
   GROUP_TYPE_OPTIONS,
   PENDING_CODE_VALUE,
@@ -18,6 +19,15 @@ const entries: LookupEntry[] = [
   { value: '11', label: '제1공장', isActive: true },
   { value: '12', label: '제2공장', isActive: false },
 ];
+
+const source = (
+  lookupEntries: LookupEntry[] = entries,
+  state: 'ready' | 'loading' | 'failed' = 'ready',
+): LookupSource<LookupEntry> => ({
+  entries: lookupEntries,
+  isError: state === 'failed',
+  isLoading: state === 'loading',
+});
 
 describe('자리표시 선택지', () => {
   /*
@@ -71,7 +81,7 @@ describe('ensureOption', () => {
 
 describe('selectableOptions', () => {
   it('기본은 사용 중인 것만 낸다', () => {
-    expect(selectableOptions(entries, '')).toEqual([{ value: '11', label: '제1공장' }]);
+    expect(selectableOptions(source(), '')).toEqual([{ value: '11', label: '제1공장' }]);
   });
 
   /*
@@ -79,33 +89,41 @@ describe('selectableOptions', () => {
    * 남기되 미사용이라는 사실을 라벨에 밝힌다.
    */
   it('지금 고른 값이 미사용이면 남기고 라벨에 표식을 붙인다', () => {
-    expect(selectableOptions(entries, '12')).toEqual([
+    expect(selectableOptions(source(), '12')).toEqual([
       { value: '11', label: '제1공장' },
       { value: '12', label: `제2공장${messages.equipmentMaster.values.inactiveSuffix}` },
     ]);
   });
 
-  it('목록에 아예 없는 값도 코드 그대로 남긴다', () => {
-    expect(selectableOptions(entries, '99')).toEqual([
-      { value: '11', label: '제1공장' },
-      { value: '99', label: '99' },
-    ]);
+  it.each([
+    ['ready', messages.common.reference.unknown],
+    ['loading', messages.common.reference.loading],
+    ['failed', messages.common.reference.failed],
+  ] as const)('%s 상태의 미확인 FK는 값만 보존하고 번호를 라벨로 내지 않는다', (state, label) => {
+    const options = selectableOptions(source([], state), '99');
+
+    expect(options).toEqual([{ value: '99', label }]);
+    expect(options[0]?.label).not.toContain('99');
   });
 });
 
 describe('lookupLabel', () => {
   it('선택 목록에서 이름을 푼다', () => {
-    expect(lookupLabel(entries, '11')).toBe('제1공장');
+    expect(lookupLabel(source(), '11')).toBe('제1공장');
   });
 
-  /* 못 찾은 값을 「알 수 없음」으로 그리면 없는 값과 구분되지 않는다(G-9). */
-  it('못 찾으면 코드를 그대로 보인다', () => {
-    expect(lookupLabel(entries, '77')).toBe('77');
+  it('못 찾으면 내부 번호 대신 미확인 상태를 보인다', () => {
+    expect(lookupLabel(source(), '77')).toBe(messages.common.reference.unknown);
+  });
+
+  it('로딩과 실패를 미확인과 구분한다', () => {
+    expect(lookupLabel(source([], 'loading'), '77')).toBe(messages.common.reference.loading);
+    expect(lookupLabel(source([], 'failed'), '77')).toBe(messages.common.reference.failed);
   });
 
   /* 좁혀 받은 선택지가 아니라 전체에서 찾아야 미사용 공장의 이름도 나온다. */
   it('미사용 항목의 이름도 푼다', () => {
-    expect(lookupLabel(entries, '12')).toBe('제2공장');
+    expect(lookupLabel(source(), '12')).toBe('제2공장');
   });
 });
 

@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import { defaultGroupFilters } from './code-options';
 import { groupItems, makeGroup, plantItems } from './fixtures';
 import { GroupListPane } from './group-list-pane';
@@ -16,6 +17,11 @@ const plantEntries: LookupEntry[] = plantItems.map((plant) => ({
   label: plant.plantName,
   isActive: plant.isActive,
 }));
+const plants: LookupSource<LookupEntry> = {
+  entries: plantEntries,
+  isError: false,
+  isLoading: false,
+};
 
 const ALL_EXPANDED: ReadonlySet<number> = new Set([101]);
 
@@ -34,7 +40,7 @@ const renderPane = (overrides: Partial<Parameters<typeof GroupListPane>[0]> = {}
       plantOptions={plantEntries
         .filter((entry) => entry.isActive)
         .map((entry) => ({ value: entry.value, label: entry.label }))}
-      plantEntries={plantEntries}
+      plants={plants}
       expandedIds={ALL_EXPANDED}
       onToggleExpand={onToggleExpand}
       selectedGroupId={null}
