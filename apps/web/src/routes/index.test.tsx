@@ -422,6 +422,12 @@ const suspiciousMaterialHoldRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/code-values', []),
 ];
 
+const inspectionResultRoutes = (): StubRoute[] => [
+  lookupRoute('/mdm/code-values', []),
+  lookupRoute('/mdm/items', []),
+  lookupRoute('/mdm/processes', []),
+];
+
 /** W-03-09가 선택 없는 첫 진입에 부르는 승인 요청 목록 하나다. */
 const qualityApprovalRoutes = (): StubRoute[] => [lookupRoute('/app/approval-requests', [])];
 
@@ -1193,6 +1199,32 @@ describe('appRouter — 의심자재 등록의 진입 경로', () => {
     expect(routedPaths()).toContain('/quality/suspicious-material-hold');
     expect(routedPaths()).not.toContain('/quality/lot-holds');
     expect(routedPaths()).not.toContain('/quality/suspicious-material-holds');
+  });
+});
+
+describe('appRouter — 검사실적·검사결과 조회의 진입 경로', () => {
+  it('품질관리 메뉴를 키보드로 열면 공개 화면과 탐색 경로가 선다', async () => {
+    const user = userEvent.setup();
+    renderRoutedApp('/quality/suspicious-material-hold', [
+      ...suspiciousMaterialHoldRoutes(),
+      ...inspectionResultRoutes(),
+    ]);
+
+    const link = screen.getByRole('link', { name: '검사실적·검사결과 조회' });
+    link.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(currentLocation()).toBe('/quality/inspection-results'));
+    expect(
+      screen.getAllByRole('heading', { level: 1, name: '검사실적·검사결과 조회' }),
+    ).toHaveLength(1);
+    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
+    expect(within(breadcrumb).getByText('품질관리')).toBeVisible();
+  });
+
+  it('목록과 측정치 상세가 같은 공개 route 계층에 선다', () => {
+    expect(routedPaths()).toContain('/quality/inspection-results');
+    expect(routedPaths()).toContain('/quality/inspection-results/:inspectionResultId/measurements');
   });
 });
 
