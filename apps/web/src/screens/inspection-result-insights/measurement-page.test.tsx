@@ -9,7 +9,15 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import type { LookupSource } from '../../patterns/lookup-display';
 import { MeasurementPage } from './measurement-page';
+
+const judgmentSource = (isActive = true): LookupSource => ({
+  entries: [{ value: 'ACCEPTED', label: '합격', isActive }],
+  isError: false,
+  isLoading: false,
+});
+const emptyJudgmentSource: LookupSource = { entries: [], isError: false, isLoading: false };
 
 const route = (path: string, respond: StubRoute['respond']): StubRoute => ({
   match: (request) => new URL(request.url).pathname === path,
@@ -31,7 +39,7 @@ describe('검사 측정치 전체 보기', () => {
         inspectionResultId={701}
         page={1}
         calibrationExpired=""
-        judgmentLabels={new Map([['ACCEPTED', '합격']])}
+        judgmentSource={judgmentSource(false)}
         onPageChange={() => undefined}
         onCalibrationChange={() => undefined}
       />,
@@ -109,6 +117,7 @@ describe('검사 측정치 전체 보기', () => {
     expect(within(table).getByText('0')).toBeInTheDocument();
     expect(within(table).getByText('미측정')).toBeInTheDocument();
     expect(within(table).getByText('검교정 만료')).toBeInTheDocument();
+    expect(within(table).getAllByText('합격 (미사용)')).toHaveLength(2);
     expect(within(table).queryByText('999')).not.toBeInTheDocument();
     expect(calls).toHaveLength(3);
     const measurementCall = calls.find((url) => url.pathname.endsWith('/measurements'));
@@ -134,7 +143,7 @@ describe('검사 측정치 전체 보기', () => {
         inspectionResultId={701}
         page={1}
         calibrationExpired=""
-        judgmentLabels={new Map()}
+        judgmentSource={emptyJudgmentSource}
         onPageChange={() => undefined}
         onCalibrationChange={() => undefined}
       />,
@@ -180,7 +189,7 @@ describe('검사 측정치 전체 보기', () => {
         inspectionResultId={701}
         page={2}
         calibrationExpired="only"
-        judgmentLabels={new Map()}
+        judgmentSource={emptyJudgmentSource}
         onPageChange={() => undefined}
         onCalibrationChange={() => undefined}
       />,
@@ -224,7 +233,7 @@ describe('검사 측정치 전체 보기', () => {
           inspectionResultId={701}
           page={page}
           calibrationExpired=""
-          judgmentLabels={new Map()}
+          judgmentSource={emptyJudgmentSource}
           onPageChange={setPage}
           onCalibrationChange={() => undefined}
         />
