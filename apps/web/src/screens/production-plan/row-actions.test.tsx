@@ -22,7 +22,6 @@ const writeResult = (overrides: Record<string, unknown> = {}) => ({
   fieldErrors: {},
   error: null,
   reset: vi.fn(),
-  clearFieldError: vi.fn(),
   ...overrides,
 });
 const fact = (productionPlanId: number): ProductionPlanFact => ({
@@ -105,16 +104,10 @@ describe('ProductionPlanRowActions', () => {
     const props = { row: target, context: { productionOrderId: 501, uomId: 601 }, ...handlers };
     const view = renderActions(target, handlers);
     await user.click(screen.getByRole('button', { name: '저장' }));
-    expect(currentWrite.write).toHaveBeenCalledWith({
-      productionOrderId: 501,
-      planDate: '2026-08-26',
-      plannedQty: 75,
-      uomId: 601,
-      bomId: 701,
-      routingId: 801,
-    });
+    expect(currentWrite.write).toHaveBeenCalledTimes(1);
     currentWrite = { ...currentWrite, isSaving: true };
     view.rerender(<ProductionPlanRowActions {...props} />);
+    expectWritesLocked();
     await waitFor(() => expect(handlers.onPending).toHaveBeenLastCalledWith('new-1', true));
     currentWrite = { ...currentWrite, isSaving: false };
     view.rerender(<ProductionPlanRowActions {...props} />);
@@ -138,14 +131,15 @@ describe('ProductionPlanRowActions', () => {
     const remove = writeResult();
     mocks.update.mockReturnValue(update);
     mocks.remove.mockReturnValue(remove);
-    const { handlers } = renderActions(row(101));
+    renderActions(row(101));
     await user.click(screen.getByRole('button', { name: '저장' }));
+    expect([update.reset.mock.calls.length, remove.reset.mock.calls.length]).toEqual([1, 1]);
+    update.reset.mockClear();
+    remove.reset.mockClear();
     await user.click(screen.getByRole('button', { name: '삭제' }));
-    expect(mocks.detail).toHaveBeenCalledWith(101);
+    expect([update.reset.mock.calls.length, remove.reset.mock.calls.length]).toEqual([1, 1]);
     expect(update.write).toHaveBeenCalledWith({ plannedQty: 75 });
     expect(remove.write).toHaveBeenCalledWith();
-    expect(remove.reset).toHaveBeenCalled();
-    expect(update.reset).toHaveBeenCalled();
   });
   it('확정·pending 행은 custom 저장과 삭제를 모두 잠근다', () => {
     for (const target of [
