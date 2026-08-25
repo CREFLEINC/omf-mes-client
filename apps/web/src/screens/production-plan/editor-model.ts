@@ -1,6 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
 type ProductionPlanCreate = components['schemas']['ProductionPlanCreate'];
+type ProductionPlanUpdate = components['schemas']['ProductionPlanUpdate'];
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MACHINE_PRECISION_MULTIPLIER = 8;
@@ -28,6 +29,18 @@ export interface ProductionPlanCreateContext {
 
 export type ProductionPlanCreateResult =
   { ok: true; body: ProductionPlanCreate } | { ok: false; errors: ProductionPlanDraftErrors };
+
+export interface ProductionPlanUpdateBaseline {
+  planDate: string;
+  plannedQty: number;
+  bomId: number;
+  routingId: number;
+  plannedLineId: number | null;
+  remarks: string | null;
+}
+
+export type ProductionPlanUpdateResult =
+  { ok: true; body: ProductionPlanUpdate } | { ok: false; errors: ProductionPlanDraftErrors };
 
 export interface ProductionPlanQuantitySummary {
   planCount: number;
@@ -133,6 +146,33 @@ export const buildProductionPlanCreate = (
       ...(isBlank(remarks) ? {} : { remarks }),
     },
   };
+};
+
+export const buildProductionPlanUpdate = (
+  draft: ProductionPlanDraft,
+  baseline: ProductionPlanUpdateBaseline,
+): ProductionPlanUpdateResult => {
+  const errors = validateProductionPlanDraft(draft);
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+  const next = {
+    planDate: draft.planDate.trim(),
+    plannedQty: Number(draft.plannedQty.trim()),
+    bomId: Number(draft.bomId.trim()),
+    routingId: Number(draft.routingId.trim()),
+    plannedLineId: draft.plannedLineId.trim() === '' ? null : Number(draft.plannedLineId.trim()),
+    remarks: isBlank(draft.remarks) ? null : draft.remarks,
+  };
+  const body: ProductionPlanUpdate = {};
+
+  if (next.planDate !== baseline.planDate) body.planDate = next.planDate;
+  if (next.plannedQty !== baseline.plannedQty) body.plannedQty = next.plannedQty;
+  if (next.bomId !== baseline.bomId) body.bomId = next.bomId;
+  if (next.routingId !== baseline.routingId) body.routingId = next.routingId;
+  if (next.plannedLineId !== baseline.plannedLineId) body.plannedLineId = next.plannedLineId;
+  if (next.remarks !== baseline.remarks) body.remarks = next.remarks;
+
+  return { ok: true, body };
 };
 
 export const summarizeProductionPlanQuantities = (
