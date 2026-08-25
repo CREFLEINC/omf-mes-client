@@ -1,5 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
+import type { LookupSource } from '../../patterns/lookup-display';
+
 /**
  * W-06-07 화면 슬라이스의 계약. Phase 2(데이터 연동)가 이 이름을 그대로 소비한다.
  * api-client는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이 유지된다.
@@ -55,9 +57,9 @@ export interface LookupEntry {
   isActive: boolean;
 }
 
-export interface LookupEntries {
-  plants: LookupEntry[];
-  businessUnits: LookupEntry[];
-  partners: LookupEntry[];
-  uoms: LookupEntry[];
+export interface LookupSources {
+  plants: LookupSource<LookupEntry>;
+  businessUnits: LookupSource<LookupEntry>;
+  partners: LookupSource<LookupEntry>;
+  uoms: LookupSource<LookupEntry>;
 }

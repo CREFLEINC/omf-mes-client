@@ -1,4 +1,5 @@
 import { onlineManager } from '@tanstack/react-query';
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -377,6 +378,26 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
     expect(
       await screen.findByText('선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.'),
     ).toBeInTheDocument();
+  });
+
+  it('공장 조회 실패 중인 현재 FK는 번호 대신 실패 상태를 표시한다', async () => {
+    const warehouse: Warehouse = { ...warehouseFixtures[0]!, plantId: 9999 };
+    renderScreen(
+      [
+        warehouseListRoute([warehouse]),
+        warehouseDetailRoute(warehouse),
+        {
+          match: (request) => isGet(request, '/mdm/plants'),
+          respond: () => jsonResponse({ message: '' }, { status: 500 }),
+        },
+        locationListRoute(),
+        ...lookupRoutes().slice(1),
+      ],
+      `?wh=${String(warehouse.warehouseId)}`,
+    );
+
+    expect(await screen.findByText(messages.common.reference.failed)).toBeInTheDocument();
+    expect(screen.queryByText('9999')).not.toBeInTheDocument();
   });
 
   it('값을 고치면 저장·취소가 열리고 취소하면 서버 값으로 되돌아간다', async () => {

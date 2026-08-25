@@ -10,6 +10,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { DisabledAction } from './disabled-action';
 import type { QualificationDraft } from './qualification-draft';
 import { duplicateDraftIds } from './qualification-validation';
@@ -22,7 +23,7 @@ export interface QualificationPaneProps {
   isLoading: boolean;
   isWorkerSelected: boolean;
   /** 공정 번호를 사람이 읽는 이름으로. 비운 값은 「(전체 공정)」이다 */
-  processEntries: LookupEntry[];
+  processes: LookupSource<LookupEntry>;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   loadError: ReactNode;
@@ -69,7 +70,7 @@ export const QualificationPane = ({
   drafts,
   isLoading,
   isWorkerSelected,
-  processEntries,
+  processes,
   optionsNotice,
   loadError,
   banner,
@@ -87,7 +88,7 @@ export const QualificationPane = ({
   const processLabel = (processId: string): string => {
     if (processId === '') return t.values.allProcesses;
 
-    return processEntries.find((entry) => entry.value === processId)?.label ?? processId;
+    return lookupDisplayLabel(processes, processId);
   };
 
   const periodLabel = (draft: QualificationDraft): string => {

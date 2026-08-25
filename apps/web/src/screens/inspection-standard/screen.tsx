@@ -80,10 +80,7 @@ import {
   versionToFormValues,
 } from './version-mappers';
 import { VersionPane } from './version-pane';
-import {
-  VersionTransitionDialog,
-  type VersionTransitionKind,
-} from './version-transition-dialog';
+import { VersionTransitionDialog, type VersionTransitionKind } from './version-transition-dialog';
 import { VERSION_FORM_FIELDS, validateVersionForm } from './version-validation';
 
 type InspectionPlanDetailResponse = components['schemas']['InspectionPlanDetailResponse'];
@@ -840,7 +837,7 @@ export const InspectionStandardScreen = () => {
   const routingDisabledReason = activeItemId === null ? t.actionReasons.routingNeedsItem : null;
 
   const optionsFor = (lookup: LookupResult, selected: string) =>
-    selectableOptions(lookup.entries, selected);
+    selectableOptions(lookup, selected);
 
   /**
    * 승인·사용 중지를 막는 사유. 서버가 최종 판정을 하지만(400·403·409)
