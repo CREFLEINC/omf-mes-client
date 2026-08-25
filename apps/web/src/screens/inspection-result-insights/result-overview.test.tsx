@@ -200,6 +200,7 @@ describe('검사 결과 요약·목록', () => {
     const root = row(1, 'SAMPLE-ROOT');
     const reinspection = {
       ...row(2, 'SAMPLE-REINSPECTION'),
+      inspectionRequestId: root.inspectionRequestId,
       inspectionRound: 2,
       previousResultId: 1,
     };

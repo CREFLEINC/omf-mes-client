@@ -76,6 +76,20 @@ describe('검사 결과 상세 Dialog', () => {
                   equipmentCalibrationExpired: true,
                   equipmentCalibrationDueDate: '2026-07-28',
                 },
+                {
+                  inspectionItemSpecId: 902,
+                  itemName: '합성 중량',
+                  specText: '98 ~ 102 g',
+                  measuredCount: 30,
+                  acceptedCount: 15,
+                  rejectedCount: 15,
+                  unmeasuredCount: 0,
+                  outOfSpecValues: [],
+                  outOfSpecTotalCount: 15,
+                  equipmentName: null,
+                  equipmentCalibrationExpired: false,
+                  equipmentCalibrationDueDate: null,
+                },
               ],
             });
           }),
@@ -87,11 +101,14 @@ describe('검사 결과 상세 Dialog', () => {
     expect(await within(dialog).findByText('SAMPLE-REQUEST-801')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 품목')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 치수')).toBeInTheDocument();
-    const summary = within(dialog).getByRole('listitem');
+    const [summary, countOnlySummary] = within(dialog).getAllByRole('listitem');
+    expect(summary).toBeDefined();
+    expect(countOnlySummary).toBeDefined();
     expect(summary).toHaveTextContent('미측정 1건');
     expect(summary).toHaveTextContent('일부 예시: 12.07, 12.09 · 외 13건');
     expect(summary).not.toHaveTextContent('외 0건');
     expect(summary).toHaveTextContent('검교정 만료 · 예정일 2026-07-28');
+    expect(countOnlySummary).toHaveTextContent('일부 예시: 외 15건');
     expect(within(dialog).getByText('기준 2026-08-31 11:30')).toBeInTheDocument();
     expect(within(dialog).queryByText('901')).not.toBeInTheDocument();
 

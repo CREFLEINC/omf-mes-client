@@ -12,13 +12,27 @@ export interface InspectionResultTreeRow {
 export const toInspectionResultTreeRows = (
   results: readonly InspectionResult[],
 ): InspectionResultTreeRow[] => {
-  const depths = new Map<number, number>();
+  const nodes = new Map<
+    number,
+    { depth: number; inspectionRequestId: number; inspectionRound: number; valid: boolean }
+  >();
 
   return results.map((result) => {
-    const parentDepth =
-      result.previousResultId === undefined ? undefined : depths.get(result.previousResultId);
-    const depth = parentDepth === undefined ? 0 : parentDepth + 1;
-    depths.set(result.inspectionResultId, depth);
+    const parent =
+      result.previousResultId === undefined ? undefined : nodes.get(result.previousResultId);
+    const validParent =
+      parent !== undefined &&
+      parent.valid &&
+      parent.inspectionRequestId === result.inspectionRequestId &&
+      parent.inspectionRound < result.inspectionRound;
+    const valid = result.previousResultId === undefined || validParent;
+    const depth = validParent ? parent.depth + 1 : 0;
+    nodes.set(result.inspectionResultId, {
+      depth,
+      inspectionRequestId: result.inspectionRequestId,
+      inspectionRound: result.inspectionRound,
+      valid,
+    });
     return { result, depth };
   });
 };

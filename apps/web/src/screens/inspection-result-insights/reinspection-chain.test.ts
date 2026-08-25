@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import type { InspectionResult } from './queries';
 import { toInspectionResultTreeRows } from './reinspection-chain';
 
-const result = (inspectionResultId: number, previousResultId?: number): InspectionResult => ({
+const result = (
+  inspectionResultId: number,
+  previousResultId?: number,
+  overrides: Partial<InspectionResult> = {},
+): InspectionResult => ({
   inspectionResultId,
   inspectionResultNo: `RESULT-${String(inspectionResultId)}`,
   inspectionRequestId: 100,
@@ -18,6 +22,7 @@ const result = (inspectionResultId: number, previousResultId?: number): Inspecti
   inspectedAt: '2026-08-01T09:00:00+09:00',
   statusCode: 'CONFIRMED',
   ...(previousResultId === undefined ? {} : { previousResultId }),
+  ...overrides,
 });
 
 describe('재검 사슬 표시 깊이', () => {
@@ -38,5 +43,22 @@ describe('재검 사슬 표시 깊이', () => {
     expect(toInspectionResultTreeRows([result(2, 1), result(1)]).map(({ depth }) => depth)).toEqual(
       [0, 0],
     );
+  });
+
+  it.each([
+    {
+      name: '순환 참조',
+      rows: [result(1, 2), result(2, 1)],
+    },
+    {
+      name: '회차 역전',
+      rows: [result(1, undefined, { inspectionRound: 2 }), result(2, 1, { inspectionRound: 1 })],
+    },
+    {
+      name: '다른 검사 의뢰 참조',
+      rows: [result(1), result(2, 1, { inspectionRequestId: 200 })],
+    },
+  ])('$name 계약 위반은 임의 계층을 만들지 않는다', ({ rows }) => {
+    expect(toInspectionResultTreeRows(rows).map(({ depth }) => depth)).toEqual([0, 0]);
   });
 });

@@ -29,33 +29,39 @@ interface ResultDetailDialogProps {
   onViewMeasurements: (inspectionResultId: number) => void;
 }
 
-const MeasurementSummaryRow = ({ item }: { item: MeasurementItemSummary }) => (
-  <li>
-    <h4>{item.itemName}</h4>
-    <p>{item.specText ?? '규격 미확인'}</p>
-    <p>
-      측정 {count(item.measuredCount)}건 · 합격 {count(item.acceptedCount)}건 · 불합격{' '}
-      {count(item.rejectedCount)}건 · 미측정 {count(item.unmeasuredCount)}건
-    </p>
-    {(item.outOfSpecValues?.length ?? 0) > 0 && (
+const MeasurementSummaryRow = ({ item }: { item: MeasurementItemSummary }) => {
+  const outOfSpecValues = item.outOfSpecValues ?? [];
+  const remaining = remainingOutOfSpecCount(item);
+
+  return (
+    <li>
+      <h4>{item.itemName}</h4>
+      <p>{item.specText ?? '규격 미확인'}</p>
       <p>
-        일부 예시: {item.outOfSpecValues?.join(', ')}
-        {remainingOutOfSpecCount(item) > 0
-          ? ` · 외 ${String(remainingOutOfSpecCount(item))}건`
-          : ''}
+        측정 {count(item.measuredCount)}건 · 합격 {count(item.acceptedCount)}건 · 불합격{' '}
+        {count(item.rejectedCount)}건 · 미측정 {count(item.unmeasuredCount)}건
       </p>
-    )}
-    <p>측정 장비 {item.equipmentName ?? EMPTY}</p>
-    {item.equipmentCalibrationExpired === true && (
-      <AlertBanner variant="warning">
-        검교정 만료
-        {item.equipmentCalibrationDueDate === null || item.equipmentCalibrationDueDate === undefined
-          ? ''
-          : ` · 예정일 ${item.equipmentCalibrationDueDate}`}
-      </AlertBanner>
-    )}
-  </li>
-);
+      {(outOfSpecValues.length > 0 || remaining > 0) && (
+        <p>
+          일부 예시: {outOfSpecValues.join(', ')}
+          {remaining > 0
+            ? `${outOfSpecValues.length > 0 ? ' · ' : ''}외 ${String(remaining)}건`
+            : ''}
+        </p>
+      )}
+      <p>측정 장비 {item.equipmentName ?? EMPTY}</p>
+      {item.equipmentCalibrationExpired === true && (
+        <AlertBanner variant="warning">
+          검교정 만료
+          {item.equipmentCalibrationDueDate === null ||
+          item.equipmentCalibrationDueDate === undefined
+            ? ''
+            : ` · 예정일 ${item.equipmentCalibrationDueDate}`}
+        </AlertBanner>
+      )}
+    </li>
+  );
+};
 
 export const ResultDetailDialog = ({
   inspectionResultId,
