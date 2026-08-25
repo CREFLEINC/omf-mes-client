@@ -1,10 +1,11 @@
-import { AlertBanner, Button, Select, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, Radio, RadioGroup, Select, SkeletonText } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { useLotStatusOptions } from '../lot-status-history/options';
 import type { LotStatusCandidate } from './candidate-screen';
 import { CreateHoldExecution } from './create-hold-execution';
 import { ReleaseHoldExecution } from './release-hold-execution';
@@ -84,6 +85,7 @@ export interface LotStatusTransitionPreparationProps {
 export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPreparationProps) => {
   const { etags } = useApiClient();
   const transitions = useTransitions(lot.lotId);
+  const statuses = useLotStatusOptions();
   const [selectedTransitionKey, setSelectedTransitionKey] = useState<string | null>(null);
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null);
   const allowed = transitions.data?.transitions.filter((item) => item.allowed) ?? [];
@@ -109,10 +111,8 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
     setSelectedTransitionKey(value);
     setSelectedHoldId(null);
   };
-  const transitionOptions = allowed.map((item) => ({
-    value: transitionKey(item),
-    label: item.targetLotStatusCode,
-  }));
+  const targetLabel = (code: string): string =>
+    statuses.data?.items.find((item) => item.code === code)?.label ?? code;
   const holdOptions =
     holds.data?.items.map((item: LotHold) => ({
       value: String(item.lotHoldId),
@@ -133,7 +133,7 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
         action={<Button onClick={() => void transitions.refetch()}>다시 시도</Button>}
       />
     );
-  if (transitionOptions.length === 0)
+  if (allowed.length === 0)
     return (
       <AlertBanner variant="info">
         {transitions.data?.note ?? '현재 LOT은 전이할 수 없습니다.'}
@@ -165,12 +165,19 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
 
   return (
     <section className="pane" aria-label="상태 전이 준비">
-      <SelectField
-        label="전이"
-        options={transitionOptions}
-        value={selectedTransitionKey}
+      <RadioGroup
+        name={`lot-status-transition-${String(lot.lotId)}`}
+        orientation="horizontal"
+        value={selectedTransitionKey ?? ''}
+        aria-label="전이"
         onChange={chooseTransition}
-      />
+      >
+        {allowed.map((item) => (
+          <Radio key={transitionKey(item)} value={transitionKey(item)}>
+            {targetLabel(item.targetLotStatusCode)}
+          </Radio>
+        ))}
+      </RadioGroup>
       {isRelease && holds.data !== undefined && holds.data.page.total > 1 && (
         <SelectField
           label="해제할 보류"
@@ -206,6 +213,8 @@ export const LotStatusTransitionPreparation = ({ lot }: LotStatusTransitionPrepa
             lotHoldId={selectedHoldId}
             lotNo={lot.lotNo}
             maxReleaseQty={detail.data.holdQty ?? lot.heldQty}
+            warehouseId={lot.warehouseId}
+            locationId={lot.locationId}
             targetLotStatusCode={selectedTransition.targetLotStatusCode}
             onReleased={() => setSelectedHoldId(null)}
           />

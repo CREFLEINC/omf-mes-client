@@ -1,4 +1,12 @@
-import { AlertBanner, Button, Dialog, TextField, useToast } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Dialog,
+  Radio,
+  RadioGroup,
+  TextField,
+  useToast,
+} from '@crefle/web-ui';
 import type { ApiError, components } from '@omf-mes/api-client';
 import { TextArea } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,6 +20,7 @@ type LotHoldRelease = components['schemas']['LotHoldRelease'];
 const ROOT_KEY = ['lot-status-transition'] as const;
 
 interface Draft {
+  mode: 'FULL' | 'PARTIAL';
   releaseQty: string;
   remarks: string;
 }
@@ -26,13 +35,15 @@ const validate = (draft: Draft, maximum: number | undefined, target: string): Va
   const text = draft.releaseQty.trim();
   const quantity = Number(text);
   const quantityError =
-    text === '' || !Number.isFinite(quantity) || quantity <= 0
-      ? '해제 수량은 0보다 커야 합니다.'
-      : maximum === undefined || !Number.isFinite(maximum) || maximum <= 0
-        ? '해제 가능한 보류 수량을 확인하지 못했습니다.'
-        : quantity > maximum
-          ? `해제 수량은 보류 수량 ${String(maximum)} 이하여야 합니다.`
-          : undefined;
+    draft.mode === 'FULL'
+      ? undefined
+      : text === '' || !Number.isFinite(quantity) || quantity <= 0
+        ? '해제 수량은 0보다 커야 합니다.'
+        : maximum === undefined || !Number.isFinite(maximum) || maximum <= 0
+          ? '해제 가능한 보류 수량을 확인하지 못했습니다.'
+          : quantity > maximum
+            ? `해제 수량은 보류 수량 ${String(maximum)} 이하여야 합니다.`
+            : undefined;
   const remarks = draft.remarks.trim();
   const remarksError = remarks === '' ? '해제 사유 및 비고를 입력하세요.' : undefined;
   return {
@@ -40,7 +51,11 @@ const validate = (draft: Draft, maximum: number | undefined, target: string): Va
     remarksError,
     body:
       quantityError === undefined && remarksError === undefined
-        ? { targetLotStatusCode: target, releaseQty: quantity, remarks }
+        ? {
+            targetLotStatusCode: target,
+            ...(draft.mode === 'PARTIAL' ? { releaseQty: quantity } : {}),
+            remarks,
+          }
         : null,
   };
 };
@@ -54,6 +69,8 @@ export interface ReleaseHoldExecutionProps {
   lotHoldId: number;
   lotNo: string;
   maxReleaseQty: number | undefined;
+  warehouseId: number | undefined;
+  locationId: number | undefined;
   targetLotStatusCode: string;
   onReleased: () => void;
 }
@@ -62,8 +79,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const [draft, setDraft] = useState<Draft>({ releaseQty: '', remarks: '' });
-  const [attempted, setAttempted] = useState(false);
+  const [draft, setDraft] = useState<Draft>({ mode: 'FULL', releaseQty: '', remarks: '' });
   const [confirmation, setConfirmation] = useState<LotHoldRelease | null>(null);
   const validation = validate(draft, props.maxReleaseQty, props.targetLotStatusCode);
   const write = useMasterWrite<LotHoldRelease, LotHold>({
@@ -97,34 +113,51 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
     closeDialog();
     void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
   };
+  const location = `창고 ${props.warehouseId === undefined ? '미확인' : String(props.warehouseId)} / Location ${props.locationId === undefined ? '미확인' : String(props.locationId)}`;
 
   return (
     <section aria-label="보류 해제 입력">
+      <RadioGroup
+        name={`release-mode-${String(props.lotHoldId)}`}
+        orientation="horizontal"
+        value={draft.mode}
+        disabled={write.isSaving}
+        aria-label="해제 범위"
+        onChange={(value) => {
+          setDraft({ mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL', releaseQty: '', remarks: '' });
+          setConfirmation(null);
+          write.reset();
+        }}
+      >
+        <Radio value="FULL">전량 해제</Radio>
+        <Radio value="PARTIAL">일부 해제</Radio>
+      </RadioGroup>
       <div className="form-grid">
-        <TextField
-          label="해제 수량"
-          inputMode="decimal"
-          required
-          value={draft.releaseQty}
-          error={attempted ? validation.quantityError : undefined}
-          onChange={(event) =>
-            setDraft((current) => ({ ...current, releaseQty: event.target.value }))
-          }
-        />
+        {draft.mode === 'PARTIAL' && (
+          <TextField
+            label="해제 수량"
+            inputMode="decimal"
+            required
+            value={draft.releaseQty}
+            error={validation.quantityError}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, releaseQty: event.target.value }))
+            }
+          />
+        )}
         <TextArea
           label="해제 사유 및 비고"
           required
           fullWidth
           rows={3}
           value={draft.remarks}
-          error={attempted ? validation.remarksError : undefined}
+          error={validation.remarksError}
           onChange={(event) => setDraft((current) => ({ ...current, remarks: event.target.value }))}
         />
       </div>
       <Button
-        disabled={write.isSaving}
+        disabled={write.isSaving || validation.body === null}
         onClick={() => {
-          setAttempted(true);
           if (validation.body !== null) setConfirmation(validation.body);
         }}
       >
@@ -163,8 +196,16 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
           ) : (
             <SaveErrorBanner error={write.error} />
           )}
-          <p>창고 사용과 출고·출하 및 피킹 가능 여부가 바뀝니다.</p>
-          <p>이미 출고된 수량은 회수되지 않습니다.</p>
+          <AlertBanner variant="warning" title="이 전이가 하는 일">
+            <p>보류 해제는 대상 수량의 출고·출하 및 피킹 제한을 풉니다.</p>
+            <p>
+              대상 수량: {confirmation.releaseQty === undefined ? '전량' : confirmation.releaseQty}
+            </p>
+            <p>대상 위치: {location}</p>
+            <p>
+              다시 보류가 필요하면 새 Hold를 등록해야 하며, 이미 출고된 수량은 회수되지 않습니다.
+            </p>
+          </AlertBanner>
         </Dialog>
       )}
     </section>

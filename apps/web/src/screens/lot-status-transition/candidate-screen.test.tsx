@@ -176,12 +176,12 @@ describe('Lot Status 전이 후보', () => {
     ]).toEqual(['정상', '25', '5', '20', '2026-08-21 12:34', 'SYN-REASON-A']);
     expect(select).toHaveAttribute('aria-current', 'true');
     expect(screen.queryByText('987654')).toBeNull();
-    await choose(user, '전이', 'DEFECTIVE');
+    await user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
     await screen.findByText('보류 등록 준비가 완료되었습니다.');
     await user.click(screen.getByRole('button', { name: 'SYN-LOT-BETA 선택' }));
     expect(await screen.findByText('선택한 LOT은 전이할 수 없습니다.')).toBeVisible();
     await user.click(select);
-    expect(await screen.findByLabelText('전이')).toHaveTextContent('하나를 선택하세요');
+    expect(await screen.findByRole('radio', { name: 'DEFECTIVE' })).not.toBeChecked();
   });
 
   it('최근 전이·사유가 없는 선택 LOT은 이름 있는 빈값으로 표시한다', async () => {

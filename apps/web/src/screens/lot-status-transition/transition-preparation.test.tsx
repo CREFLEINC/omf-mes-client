@@ -21,6 +21,8 @@ const lot = (overrides: Partial<LotStatusCandidate> = {}): LotStatusCandidate =>
   itemId: 801,
   lotStatusCode: 'NORMAL',
   versionNo: 7,
+  warehouseId: 31,
+  locationId: 41,
   fullyHeld: false,
   ...overrides,
 });
@@ -36,10 +38,11 @@ const hold = (id: number, reasonCode: string): components['schemas']['LotHold'] 
 const transition = (
   actionCode: 'RELEASE_HOLD' | 'CREATE_HOLD',
   targetLotStatusCode: string,
+  allowed = true,
 ): components['schemas']['LotStatusTransition'] => ({
   actionCode,
   targetLotStatusCode,
-  allowed: true,
+  allowed,
 });
 const route = (path: string, body: unknown, headers?: HeadersInit, method = 'GET'): StubRoute => ({
   match: (request) => request.method === method && new URL(request.url).pathname === path,
@@ -50,6 +53,21 @@ const transitionRoute = (
   note?: string,
 ): StubRoute =>
   route(TRANSITIONS, { lotId: 701, currentLotStatusCode: 'NORMAL', transitions, note });
+const statusRoute = route('/mdm/code-values', {
+  items: [
+    ['NORMAL', '정상'],
+    ['DEFECTIVE', '불량'],
+    ['INSPECTION_PENDING', '검사 대기'],
+  ].map(([code, codeName], index) => ({
+    codeValueId: index + 1,
+    codeGroupId: 1,
+    code,
+    codeName,
+    displayOrder: index + 1,
+    isActive: true,
+  })),
+  page: { page: 1, size: 50, total: 3 },
+});
 const holdRoutes = (
   items: components['schemas']['LotHold'][],
   etag: string | null,
@@ -73,7 +91,7 @@ const VersionHarness = ({ selected }: { selected: LotStatusCandidate }) => {
 const renderPreparation = (routes: StubRoute[], selected = lot(), tracksVersion = false) => {
   const urls: URL[] = [];
   const requests: Request[] = [];
-  const stub = createStubFetch(routes);
+  const stub = createStubFetch([statusRoute, ...routes]);
   const view = renderWithProviders(
     tracksVersion ? (
       <VersionHarness selected={selected} />
@@ -93,6 +111,12 @@ const renderPreparation = (routes: StubRoute[], selected = lot(), tracksVersion 
 const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {
   await user.click(await screen.findByLabelText(label));
   await user.click(await screen.findByRole('option', { name: option }));
+};
+const chooseTransition = async (
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+): Promise<void> => {
+  await user.click(await screen.findByRole('radio', { name: label }));
 };
 const releaseRoute = (status = 200): StubRoute => ({
   match: (request) =>
@@ -123,13 +147,13 @@ const createRoute = (status = 201): StubRoute => ({
 const prepareRelease = async (
   release: StubRoute,
   detail: StubRoute[] = holdRoutes([hold(501, 'QUALITY_A')], 'W/"11"'),
+  selected = lot(),
 ) => {
-  const view = renderPreparation([
-    transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
-    ...detail,
-    release,
-  ]);
-  await choose(view.user, '전이', 'NORMAL');
+  const view = renderPreparation(
+    [transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]), ...detail, release],
+    selected,
+  );
+  await chooseTransition(view.user, '정상');
   await screen.findByText('보류 해제 준비가 완료되었습니다.');
   return view;
 };
@@ -138,15 +162,20 @@ const fillRelease = async (
   quantity = '5',
   remarks = '재검사 합격으로 해제',
 ) => {
+  await user.click(screen.getByRole('radio', { name: '일부 해제' }));
   await user.type(screen.getByLabelText('해제 수량'), quantity);
   if (remarks !== '') await user.type(screen.getByLabelText('해제 사유 및 비고'), remarks);
 };
+const fillFullRelease = async (
+  user: ReturnType<typeof userEvent.setup>,
+  remarks = '재검사 합격으로 전량 해제',
+) => user.type(screen.getByLabelText('해제 사유 및 비고'), remarks);
 const prepareCreate = async (response = createRoute(), selected = lot({ availableQty: 20 })) => {
   const view = renderPreparation(
     [transitionRoute([transition('CREATE_HOLD', 'DEFECTIVE')]), response],
     selected,
   );
-  await choose(view.user, '전이', 'DEFECTIVE');
+  await chooseTransition(view.user, '불량');
   await screen.findByLabelText('보류 수량');
   return view;
 };
@@ -166,7 +195,25 @@ describe('Lot Status 전이 준비', () => {
     renderPreparation([transitionRoute([], '현재 LOT은 전이할 수 없습니다.')]);
 
     expect(await screen.findByText('현재 LOT은 전이할 수 없습니다.')).toBeVisible();
-    expect(screen.queryByLabelText('전이')).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: '전이' })).toBeNull();
+  });
+
+  it('서버가 허용한 전이만 LOT Status 이름의 radio로 표시한다', async () => {
+    const { user } = renderPreparation([
+      transitionRoute([
+        transition('CREATE_HOLD', 'DEFECTIVE'),
+        transition('RELEASE_HOLD', 'NORMAL', false),
+        transition('CREATE_HOLD', 'SYN-UNKNOWN'),
+      ]),
+    ]);
+    const group = await screen.findByRole('radiogroup', { name: '전이' });
+
+    expect(within(group).getAllByRole('radio')).toHaveLength(2);
+    expect(within(group).getByRole('radio', { name: '불량' })).toBeVisible();
+    expect(within(group).getByRole('radio', { name: 'SYN-UNKNOWN' })).toBeVisible();
+    expect(within(group).queryByRole('radio', { name: '정상' })).toBeNull();
+    await chooseTransition(user, '불량');
+    expect(await screen.findByText('보류 등록 준비가 완료되었습니다.')).toBeVisible();
   });
 
   it.each([
@@ -177,7 +224,7 @@ describe('Lot Status 전이 준비', () => {
       [transitionRoute([transition('CREATE_HOLD', 'DEFECTIVE')]), createRoute()],
       lot({ versionNo }),
     );
-    await choose(user, '전이', 'DEFECTIVE');
+    await chooseTransition(user, '불량');
 
     expect(await screen.findByText(expected)).toBeVisible();
     expect(urls.some((url) => url.pathname === HOLDS)).toBe(false);
@@ -299,11 +346,11 @@ describe('Lot Status 전이 준비', () => {
       lot({ availableQty: 20 }),
       true,
     );
-    await choose(view.user, '전이', 'DEFECTIVE');
+    await chooseTransition(view.user, '불량');
     await fillCreate(view.user);
     await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
     await screen.findByRole('dialog');
-    await choose(view.user, '전이', 'INSPECTION_PENDING');
+    await chooseTransition(view.user, '검사 대기');
     expect(screen.getByLabelText('보류 수량')).toHaveValue('');
     expect(screen.queryByRole('dialog')).toBeNull();
 
@@ -318,7 +365,7 @@ describe('Lot Status 전이 준비', () => {
       transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
       ...holdRoutes([selectedHold], 'W/"11"'),
     ]);
-    await choose(user, '전이', 'NORMAL');
+    await chooseTransition(user, '정상');
 
     expect(await screen.findByText('보류 해제 준비가 완료되었습니다.')).toBeVisible();
     expect(apiClient.etags.ifMatch(lotHoldDetailPath(501))).toBe('W/"11"');
@@ -331,7 +378,7 @@ describe('Lot Status 전이 준비', () => {
       transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
       ...holdRoutes(holds, '"12"'),
     ]);
-    await choose(user, '전이', 'NORMAL');
+    await chooseTransition(user, '정상');
     const select = await screen.findByLabelText('해제할 보류');
 
     expect(select).toHaveTextContent('하나를 선택하세요');
@@ -341,7 +388,8 @@ describe('Lot Status 전이 준비', () => {
     await fillRelease(user);
     await choose(user, '해제할 보류', 'QUALITY_B');
     expect(await screen.findByText('보류 해제 준비가 완료되었습니다.')).toBeVisible();
-    expect(screen.getByLabelText('해제 수량')).toHaveValue('');
+    expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
+    expect(screen.queryByLabelText('해제 수량')).toBeNull();
     expect(screen.getByLabelText('해제 사유 및 비고')).toHaveValue('');
     expect(urls.filter((url) => url.pathname === lotHoldDetailPath(502))).toHaveLength(1);
   });
@@ -351,7 +399,7 @@ describe('Lot Status 전이 준비', () => {
       transitionRoute([transition('RELEASE_HOLD', 'NORMAL')]),
       ...holdRoutes([hold(501, 'QUALITY_A')], null),
     ]);
-    await choose(user, '전이', 'NORMAL');
+    await chooseTransition(user, '정상');
 
     expect(
       await screen.findByText('LOT 잠금 정보를 확인하지 못해 진행할 수 없습니다.'),
@@ -367,14 +415,26 @@ describe('Lot Status 전이 준비', () => {
       ]),
       ...holdRoutes([hold(501, 'QUALITY_A')], '"12"'),
     ]);
-    await choose(user, '전이', 'NORMAL');
+    await chooseTransition(user, '정상');
     await screen.findByText('보류 해제 준비가 완료되었습니다.');
     await fillRelease(user);
-    await choose(user, '전이', 'DEFECTIVE');
+    await chooseTransition(user, '불량');
 
     expect(await screen.findByText('보류 해제 준비가 완료되었습니다.')).toBeVisible();
-    expect(screen.getByLabelText('해제 수량')).toHaveValue('');
+    expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
+    expect(screen.queryByLabelText('해제 수량')).toBeNull();
     expect(screen.getByLabelText('해제 사유 및 비고')).toHaveValue('');
+  });
+
+  it('해제 모드를 바꾸면 앞 입력을 버리고 새 모드의 필수값부터 다시 받는다', async () => {
+    const { user } = await prepareRelease(releaseRoute());
+    await fillRelease(user);
+    expect(screen.getByRole('button', { name: '해제 확인' })).toBeEnabled();
+
+    await user.click(screen.getByRole('radio', { name: '전량 해제' }));
+    expect(screen.queryByLabelText('해제 수량')).toBeNull();
+    expect(screen.getByLabelText('해제 사유 및 비고')).toHaveValue('');
+    expect(screen.getByRole('button', { name: '해제 확인' })).toBeDisabled();
   });
 
   it.each([
@@ -383,19 +443,45 @@ describe('Lot Status 전이 준비', () => {
   ])('해제 수량 %s를 차단한다', async (quantity, message) => {
     const { requests, user } = await prepareRelease(releaseRoute());
     await fillRelease(user, quantity);
-    await user.click(screen.getByRole('button', { name: '해제 확인' }));
+    const confirm = screen.getByRole('button', { name: '해제 확인' });
 
     expect(screen.getByText(message)).toBeVisible();
+    expect(confirm).toBeDisabled();
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 
   it('자유 텍스트 해제 사유 및 비고를 필수로 검사한다', async () => {
     const { user } = await prepareRelease(releaseRoute());
     await fillRelease(user, '5', '');
-    await user.click(screen.getByRole('button', { name: '해제 확인' }));
+    const confirm = screen.getByRole('button', { name: '해제 확인' });
 
     expect(screen.getByText('해제 사유 및 비고를 입력하세요.')).toBeVisible();
+    expect(confirm).toBeDisabled();
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('전량 해제는 수량을 받지 않고 releaseQty를 생략하며 위치 누락도 확인시킨다', async () => {
+    const { requests, user } = await prepareRelease(
+      releaseRoute(),
+      undefined,
+      lot({ warehouseId: undefined, locationId: undefined }),
+    );
+    expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
+    expect(screen.queryByLabelText('해제 수량')).toBeNull();
+    expect(screen.getByRole('button', { name: '해제 확인' })).toBeDisabled();
+    await fillFullRelease(user);
+    await user.click(screen.getByRole('button', { name: '해제 확인' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('대상 수량: 전량');
+    expect(dialog).toHaveTextContent('대상 위치: 창고 미확인 / Location 미확인');
+    await user.click(within(dialog).getByRole('button', { name: '보류 해제' }));
+    await waitFor(() =>
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1),
+    );
+    expect(await requests.find((request) => request.method === 'POST')!.json()).toEqual({
+      targetLotStatusCode: 'NORMAL',
+      remarks: '재검사 합격으로 전량 해제',
+    });
   });
 
   it('영향을 확인한 요청만 정확한 body·ETag·새 멱등 키로 보내고 관련 조회를 갱신한다', async () => {
@@ -404,8 +490,14 @@ describe('Lot Status 전이 준비', () => {
     await fillRelease(user);
     await user.click(screen.getByRole('button', { name: '해제 확인' }));
     let dialog = await screen.findByRole('dialog');
-    expect(dialog).toHaveTextContent('창고 사용과 출고·출하 및 피킹 가능 여부가 바뀝니다.');
-    expect(dialog).toHaveTextContent('이미 출고된 수량은 회수되지 않습니다.');
+    const impact = within(dialog).getByRole('alert');
+    expect(impact).toHaveTextContent('이 전이가 하는 일');
+    expect(impact).toHaveTextContent('보류 해제는 대상 수량의 출고·출하 및 피킹 제한을 풉니다.');
+    expect(impact).toHaveTextContent('대상 수량: 5');
+    expect(impact).toHaveTextContent('대상 위치: 창고 31 / Location 41');
+    expect(impact).toHaveTextContent(
+      '다시 보류가 필요하면 새 Hold를 등록해야 하며, 이미 출고된 수량은 회수되지 않습니다.',
+    );
     await user.click(within(dialog).getByRole('button', { name: '취소' }));
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
 
@@ -482,7 +574,8 @@ describe('Lot Status 전이 준비', () => {
     await user.click(screen.getByRole('button', { name: '최신 불러오기' }));
 
     await waitFor(() => expect(apiClient.etags.ifMatch(lotHoldDetailPath(501))).toBe('"12"'));
-    expect(await screen.findByLabelText('해제 수량')).toHaveValue('');
+    expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
+    expect(screen.queryByLabelText('해제 수량')).toBeNull();
     expect(screen.getByLabelText('해제 사유 및 비고')).toHaveValue('');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
