@@ -24,6 +24,7 @@ import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
+import { LotStatusTransitionScreen } from '../screens/lot-status-transition/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
 import { NotificationCenterScreen } from '../screens/notification-center/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
@@ -241,6 +242,8 @@ export const appRouter = createBrowserRouter([
        * 현재 LOT 상태와 보류 등록·해제 이력을 함께 보는 조회 화면이다.
        */
       { path: 'quality/lot-status', element: <LotStatusHistoryScreen /> },
+      /* W-03-02 — W-03-01에서 찾은 LOT을 판정·전이하는 품질관리의 둘째 화면이다. */
+      { path: 'quality/lot-status-transition', element: <LotStatusTransitionScreen /> },
       /*
        * W-CO-09 — 앞머리는 같은 규칙(사이드바 섹션)이고 계약 경로(`/app/**`)를 따르지 않는다.
        * 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**여서 섹션을 새로 연다.

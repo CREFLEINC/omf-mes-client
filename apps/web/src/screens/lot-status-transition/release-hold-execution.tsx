@@ -1,0 +1,229 @@
+import {
+  AlertBanner,
+  Button,
+  Dialog,
+  Radio,
+  RadioGroup,
+  TextField,
+  useToast,
+} from '@crefle/web-ui';
+import type { ApiError, components } from '@omf-mes/api-client';
+import { TextArea } from '@omf-mes/ui';
+import { useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+
+import { useApiClient } from '../../patterns/api-context';
+import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+
+type LotHold = components['schemas']['LotHold'];
+type LotHoldRelease = components['schemas']['LotHoldRelease'];
+const ROOT_KEY = ['lot-status-transition'] as const;
+const HISTORY_KEY = ['lot-status-history'] as const;
+const STALE_FALLBACK = 'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.';
+
+interface Draft {
+  mode: 'FULL' | 'PARTIAL';
+  releaseQty: string;
+  remarks: string;
+}
+
+interface Validation {
+  body: LotHoldRelease | null;
+  quantityError?: string;
+  remarksError?: string;
+}
+
+const validate = (draft: Draft, maximum: number | undefined, target: string): Validation => {
+  const text = draft.releaseQty.trim();
+  const quantity = Number(text);
+  const quantityError =
+    draft.mode === 'FULL'
+      ? undefined
+      : text === '' || !Number.isFinite(quantity) || quantity <= 0
+        ? '해제 수량은 0보다 커야 합니다.'
+        : maximum === undefined || !Number.isFinite(maximum) || maximum <= 0
+          ? '해제 가능한 보류 수량을 확인하지 못했습니다.'
+          : quantity > maximum
+            ? `해제 수량은 보류 수량 ${String(maximum)} 이하여야 합니다.`
+            : undefined;
+  const remarks = draft.remarks.trim();
+  const remarksError = remarks === '' ? '해제 사유 및 비고를 입력하세요.' : undefined;
+  return {
+    quantityError,
+    remarksError,
+    body:
+      quantityError === undefined && remarksError === undefined
+        ? {
+            targetLotStatusCode: target,
+            ...(draft.mode === 'PARTIAL' ? { releaseQty: quantity } : {}),
+            remarks,
+          }
+        : null,
+  };
+};
+
+const isStale = (error: ApiError | null): boolean =>
+  error?.kind === 'conflict' ||
+  (error?.kind === 'http' && (error.status === 409 || error.status === 412));
+const staleMessage = (error: ApiError | null): string =>
+  (error?.kind === 'conflict' || error?.kind === 'http') &&
+  error.message !== undefined &&
+  error.message.trim() !== ''
+    ? error.message
+    : STALE_FALLBACK;
+
+export interface ReleaseHoldExecutionProps {
+  etagPath: string;
+  lotHoldId: number;
+  lotNo: string;
+  maxReleaseQty: number | undefined;
+  warehouseId: number | undefined;
+  locationId: number | undefined;
+  targetLotStatusCode: string;
+  onReleased: () => void;
+  onConfirmationChange: (pinned: boolean) => void;
+  onStale: () => void;
+}
+
+export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
+  const { client } = useApiClient();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [draft, setDraft] = useState<Draft>({ mode: 'FULL', releaseQty: '', remarks: '' });
+  const [confirmation, setConfirmation] = useState<LotHoldRelease | null>(null);
+  const validation = validate(draft, props.maxReleaseQty, props.targetLotStatusCode);
+  const write = useMasterWrite<LotHoldRelease, LotHold>({
+    request: (body, headers) =>
+      client.POST('/quality/lot-holds/{lotHoldId}:release', {
+        params: {
+          path: { lotHoldId: props.lotHoldId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body,
+      }),
+    etagPath: props.etagPath,
+    invalidateKeys: [ROOT_KEY, HISTORY_KEY],
+    knownFields: [],
+    keyLifetime: 'until-applied',
+    onSuccess: () => {
+      setConfirmation(null);
+      props.onConfirmationChange(false);
+      toast.show({ variant: 'success', description: 'LOT 보류를 해제했습니다.' });
+      props.onReleased();
+    },
+  });
+  const stale = isStale(write.error);
+  const closeDialog = (): void => {
+    setConfirmation(null);
+    props.onConfirmationChange(false);
+    write.reset();
+  };
+  const reload = (): void => {
+    closeDialog();
+    props.onStale();
+    void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
+  };
+  const location = `창고 ${props.warehouseId === undefined ? '미확인' : String(props.warehouseId)} / Location ${props.locationId === undefined ? '미확인' : String(props.locationId)}`;
+
+  return (
+    <section aria-label="보류 해제 입력">
+      <RadioGroup
+        name={`release-mode-${String(props.lotHoldId)}`}
+        orientation="horizontal"
+        value={draft.mode}
+        disabled={write.isSaving}
+        aria-label="해제 범위"
+        onChange={(value) => {
+          setDraft({ mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL', releaseQty: '', remarks: '' });
+          setConfirmation(null);
+          write.reset();
+        }}
+      >
+        <Radio value="FULL">전량 해제</Radio>
+        <Radio value="PARTIAL">일부 해제</Radio>
+      </RadioGroup>
+      <div className="form-grid">
+        {draft.mode === 'PARTIAL' && (
+          <TextField
+            label="해제 수량"
+            inputMode="decimal"
+            required
+            value={draft.releaseQty}
+            error={validation.quantityError}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, releaseQty: event.target.value }))
+            }
+          />
+        )}
+        <TextArea
+          label="해제 사유 및 비고"
+          required
+          fullWidth
+          rows={3}
+          value={draft.remarks}
+          error={validation.remarksError}
+          onChange={(event) => setDraft((current) => ({ ...current, remarks: event.target.value }))}
+        />
+      </div>
+      <Button
+        disabled={write.isSaving || validation.body === null}
+        onClick={() => {
+          if (validation.body !== null) {
+            setConfirmation(validation.body);
+            props.onConfirmationChange(true);
+          }
+        }}
+      >
+        해제 확인
+      </Button>
+      {confirmation !== null && (
+        <Dialog
+          open
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          title={`LOT 보류 해제 — ${props.lotNo}`}
+          onClose={() => {
+            if (!write.isSaving) closeDialog();
+          }}
+          footer={
+            <>
+              <Button variant="outlined" disabled={write.isSaving} onClick={closeDialog}>
+                취소
+              </Button>
+              <Button
+                loading={write.isSaving}
+                disabled={stale}
+                onClick={() => {
+                  if (!write.isSaving && !stale) write.write(confirmation);
+                }}
+              >
+                보류 해제
+              </Button>
+            </>
+          }
+        >
+          {stale ? (
+            <AlertBanner variant="error" action={<Button onClick={reload}>최신 불러오기</Button>}>
+              {staleMessage(write.error)}
+            </AlertBanner>
+          ) : (
+            <SaveErrorBanner error={write.error} />
+          )}
+          <AlertBanner variant="warning" title="이 전이가 하는 일">
+            <p>보류 해제는 대상 수량의 출고·출하 및 피킹 제한을 풉니다.</p>
+            <p>
+              대상 수량: {confirmation.releaseQty === undefined ? '전량' : confirmation.releaseQty}
+            </p>
+            <p>대상 위치: {location}</p>
+            <p>
+              다시 보류가 필요하면 새 Hold를 등록해야 하며, 이미 출고된 수량은 회수되지 않습니다.
+            </p>
+          </AlertBanner>
+        </Dialog>
+      )}
+    </section>
+  );
+};

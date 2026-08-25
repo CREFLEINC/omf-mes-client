@@ -390,6 +390,23 @@ const lotStatusRoutes = (): StubRoute[] => [
   lookupRoute('/mdm/items', []),
 ];
 
+const lotStatusTransitionRoutes = (): StubRoute[] => [
+  lookupRoute('/quality/lot-statuses', [
+    {
+      lotId: 8701,
+      lotNo: 'SYN-LOT-ENTRY',
+      itemId: 8801,
+      lotStatusCode: 'NORMAL',
+      versionNo: 7,
+      onHandQty: 20,
+      availableQty: 20,
+      fullyHeld: false,
+    },
+  ]),
+  lookupRoute('/mdm/items', []),
+  lookupRoute('/mdm/code-values', []),
+];
+
 const workOrderCloseRoutes = (): StubRoute[] => [
   {
     match: (request) => isGet(request, '/mdm/code-values'),
@@ -1093,6 +1110,38 @@ describe('appRouter — Lot Status 현황·변경이력 조회의 진입 경로'
       }),
     ).toBeInTheDocument();
     expect(await screen.findByText('LOT 유형 기준값이 준비되지 않았습니다.')).toBeVisible();
+  });
+});
+
+describe('appRouter — Lot Status 판정·전이 처리의 진입 경로', () => {
+  it('품질관리 메뉴를 키보드로 열면 breadcrumb와 실제 후보 첫 상태가 선다', async () => {
+    const user = userEvent.setup();
+    renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...lotStatusTransitionRoutes()]);
+
+    const link = screen.getByRole('link', { name: 'Lot Status 판정·전이 처리' });
+    link.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(currentLocation()).toBe('/quality/lot-status-transition'));
+    expect(
+      screen.getAllByRole('heading', { level: 1, name: 'Lot Status 판정·전이 처리' }),
+    ).toHaveLength(1);
+    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
+    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(within(items[0]!).getByText('품질관리')).toBeVisible();
+    expect(within(items[1]!).getByText('Lot Status 판정·전이 처리')).toBeVisible();
+    expect(await screen.findByRole('button', { name: 'SYN-LOT-ENTRY 선택' })).toBeVisible();
+    expect(screen.getByText('전이 이력은 별도 이력으로 저장되지 않는다')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Lot Status 변경 이력 보기' })).toHaveAttribute(
+      'href',
+      '/quality/lot-status',
+    );
+  });
+
+  it('화면 주소는 API 리소스가 아니라 정확한 공개 route다', () => {
+    expect(routedPaths()).toContain('/quality/lot-status-transition');
+    expect(routedPaths()).not.toContain('/quality/lot-status-transitions');
   });
 });
 
