@@ -219,6 +219,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/quality/lot-status" icon="history">
               Lot Status 현황·변경이력 조회
             </NavItem>
+            {/* W-03-02 — 현황에서 찾은 LOT을 판정·전이하므로 W-03-01 바로 뒤에 둔다. */}
+            <NavItem to="/quality/lot-status-transition" icon="published_with_changes">
+              Lot Status 판정·전이 처리
+            </NavItem>
           </SidebarSection>
           {/*
            * W-05-12 — **도메인 05(설비/툴)의 첫 섹션이다.** 통합 IA 의 최상위 그룹이며,

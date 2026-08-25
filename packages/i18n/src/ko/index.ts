@@ -57,6 +57,7 @@ import { toolMaster } from './tool-master';
 import { workCalendar } from './work-calendar';
 import { collectionChannel } from './collection-channel';
 import { shotConversion } from './shot-conversion';
+import { lotStatusTransition } from './lot-status-transition';
 import { workOrder } from './work-order';
 import { workOrderClose } from './work-order-close';
 import { workOrderRelease } from './work-order-release';
@@ -105,6 +106,7 @@ export const ko = {
   workCalendar,
   collectionChannel,
   shotConversion,
+  lotStatusTransition,
   workOrder,
   workOrderClose,
   workOrderRelease,
