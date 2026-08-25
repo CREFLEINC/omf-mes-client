@@ -33,6 +33,7 @@ import { PoRegisterScreen } from '../screens/po-register/screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
+import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
 import { StockAdjustScreen } from '../screens/stock-adjust/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
 import { StocktakingScreen } from '../screens/stocktaking/screen';
@@ -388,6 +389,13 @@ export const appRouter = createBrowserRouter([
        * 알림은 계속 쌓이는데 지울 수도 읽음으로 바꿀 수도 없으면 화면이 늘 밀린 것으로 보인다.
        */
       { path: 'notification/center', element: <NotificationCenterScreen /> },
+      /*
+       * W-04-02 — **출하(도메인 04)의 첫 화면.** 계약 경로가 `/logistics/**`이지만 앞머리는
+       * `shipment/`를 쓴다 — IA가 이 화면을 「자재창고」가 아니라 새 「출하」 섹션에 두었고
+       * (착수 이슈 §1), W-01-07(재고 현황)이 이미 계약 경로와 사이드바 섹션이 갈릴 때는
+       * 섹션을 따른다는 선례를 남겼다.
+       */
+      { path: 'shipment/shipment-schedule', element: <ShipmentScheduleScreen /> },
     ],
   },
   /*
