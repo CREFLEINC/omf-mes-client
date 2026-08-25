@@ -32,6 +32,15 @@ describe('검사 목록·요약·추이 모집단', () => {
     }
   });
 
+  it('형식만 맞는 비실재 달력 날짜도 모든 요청을 막는다', () => {
+    const invalid = { ...FILTERS, from: '2026-02-30' };
+
+    expect(toInspectionListQuery(invalid, 'inspectedAt,desc', 1)).toBeNull();
+    expect(toInspectionSummaryQuery(invalid)).toBeNull();
+    expect(toDefectRateTrendQuery(invalid)).toBeNull();
+    expect(toDefectDistributionQuery(invalid, 'defectCode', '')).toBeNull();
+  });
+
   it('목록·요약·추이는 같은 공통 축을 쓰고 목록만 server sort와 page를 더한다', () => {
     const common = {
       inspectionTypeCode: 'PQC',

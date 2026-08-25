@@ -60,7 +60,17 @@ export const InspectionResultInsightsScreen = ({
   onViewMeasurements,
 }: InspectionResultInsightsScreenProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const filters = useMemo(() => readInspectionInsightFilters(searchParams), [searchParams]);
+  const allowed = useMemo(
+    () => ({
+      inspectionTypeCodes: new Set(options.inspectionType.map(({ value }) => value)),
+      judgmentCodes: new Set(options.judgment.map(({ value }) => value)),
+    }),
+    [options.inspectionType, options.judgment],
+  );
+  const filters = useMemo(
+    () => readInspectionInsightFilters(searchParams, allowed),
+    [allowed, searchParams],
+  );
   const sort = readInspectionResultSort(searchParams);
   const page = readInspectionResultPage(searchParams);
   const selected = selectedResult(searchParams);

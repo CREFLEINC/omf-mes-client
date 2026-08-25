@@ -1,6 +1,10 @@
 import type { paths } from '@omf-mes/api-client';
 
-import type { InspectionInsightFilters, InspectionResultSort } from './filters';
+import {
+  isCalendarDate,
+  type InspectionInsightFilters,
+  type InspectionResultSort,
+} from './filters';
 
 export type InspectionListQuery = NonNullable<
   NonNullable<paths['/quality/inspection-results']['get']>['parameters']['query']
@@ -16,8 +20,6 @@ export type DefectDistributionQuery = NonNullable<
 >;
 export type DistributionGroup = NonNullable<DefectDistributionQuery['groupBy']>;
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
-
 const toIdentifier = (raw: string): number | undefined => {
   if (!/^\d+$/.test(raw)) return undefined;
   const value = Number(raw);
@@ -26,8 +28,8 @@ const toIdentifier = (raw: string): number | undefined => {
 
 const hasValidPopulation = (filters: InspectionInsightFilters): boolean =>
   filters.inspectionTypeCode !== '' &&
-  DATE.test(filters.from) &&
-  DATE.test(filters.to) &&
+  isCalendarDate(filters.from) &&
+  isCalendarDate(filters.to) &&
   filters.from <= filters.to;
 
 const toCommonQuery = (filters: InspectionInsightFilters): InspectionSummaryQuery | null => {

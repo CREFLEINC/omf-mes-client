@@ -7,13 +7,18 @@ import {
   readInspectionResultSort,
 } from './filters';
 
+const ALLOWED = {
+  inspectionTypeCodes: new Set(['IQC', 'PQC']),
+  judgmentCodes: new Set(['ACCEPTED', 'REJECTED']),
+};
+
 describe('검사 실적 조회 조건', () => {
   it('주소의 기간·검사유형·공통 축을 읽고 최종 회차만 고정한다', () => {
     const params = new URLSearchParams(
       'from=2026-08-01&to=2026-08-31&type=IQC&item=101&process=202&judgment=REJECTED&calibration=only',
     );
 
-    expect(readInspectionInsightFilters(params)).toEqual({
+    expect(readInspectionInsightFilters(params, ALLOWED)).toEqual({
       from: '2026-08-01',
       to: '2026-08-31',
       inspectionTypeCode: 'IQC',
@@ -28,7 +33,15 @@ describe('검사 실적 조회 조건', () => {
   it('주소의 미확정 ID·교정 값은 API 조건으로 보존하지 않는다', () => {
     const params = new URLSearchParams('item=0&process=abc&calibration=unknown');
 
-    expect(readInspectionInsightFilters(params)).toEqual(EMPTY_INSPECTION_INSIGHT_FILTERS);
+    expect(readInspectionInsightFilters(params, ALLOWED)).toEqual(EMPTY_INSPECTION_INSIGHT_FILTERS);
+  });
+
+  it('실재하지 않는 날짜와 준비된 option에 없는 code를 보존하지 않는다', () => {
+    const params = new URLSearchParams(
+      'from=2026-02-30&to=2026-13-01&type=UNKNOWN&judgment=UNKNOWN',
+    );
+
+    expect(readInspectionInsightFilters(params, ALLOWED)).toEqual(EMPTY_INSPECTION_INSIGHT_FILTERS);
   });
 
   it.each([

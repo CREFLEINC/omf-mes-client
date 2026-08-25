@@ -19,6 +19,11 @@ export interface InspectionInsightFilters {
   calibrationExpired: CalibrationFilter;
 }
 
+export interface AllowedInspectionFilterCodes {
+  inspectionTypeCodes: ReadonlySet<string>;
+  judgmentCodes: ReadonlySet<string>;
+}
+
 export const DEFAULT_INSPECTION_RESULT_SORT: InspectionResultSort = 'inspectedAt,desc';
 
 export const EMPTY_INSPECTION_INSIGHT_FILTERS: InspectionInsightFilters = {
@@ -42,21 +47,34 @@ const SORTS: readonly InspectionResultSort[] = [
 ];
 const POSITIVE_INTEGER = /^\d+$/;
 
+export const isCalendarDate = (value: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+};
+
 const readIdentifier = (raw: string | null): string => {
   if (raw === null || !POSITIVE_INTEGER.test(raw)) return '';
   const value = Number(raw);
   return Number.isSafeInteger(value) && value >= 1 ? raw : '';
 };
 
-export const readInspectionInsightFilters = (params: URLSearchParams): InspectionInsightFilters => {
+export const readInspectionInsightFilters = (
+  params: URLSearchParams,
+  allowed: AllowedInspectionFilterCodes,
+): InspectionInsightFilters => {
   const calibration = params.get('calibration');
+  const from = params.get('from') ?? '';
+  const to = params.get('to') ?? '';
+  const type = params.get('type') ?? '';
+  const judgment = params.get('judgment') ?? '';
   return {
-    from: params.get('from') ?? '',
-    to: params.get('to') ?? '',
-    inspectionTypeCode: params.get('type') ?? '',
+    from: isCalendarDate(from) ? from : '',
+    to: isCalendarDate(to) ? to : '',
+    inspectionTypeCode: allowed.inspectionTypeCodes.has(type) ? type : '',
     itemId: readIdentifier(params.get('item')),
     processId: readIdentifier(params.get('process')),
-    overallJudgmentCode: params.get('judgment') ?? '',
+    overallJudgmentCode: allowed.judgmentCodes.has(judgment) ? judgment : '',
     finalRoundOnly: true,
     calibrationExpired: calibration === 'only' || calibration === 'exclude' ? calibration : '',
   };
