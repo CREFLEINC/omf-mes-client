@@ -25,7 +25,7 @@ const KEYS = {
   q: 'q',
   pendingOnly: 'pd',
   page: 'page',
-  selected: 'rq',
+  selected: 'approvalRequestId',
 } as const;
 
 export const PENDING_ONLY_DEFAULT = true;
