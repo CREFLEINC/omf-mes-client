@@ -433,7 +433,7 @@ describe('AppLayout', () => {
     expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
   });
 
-  it('출하 섹션의 출하 예정 목록 메뉴가 자재창고 뒤·생산실행 앞에 있다', () => {
+  it('출하 섹션의 출하 예정 목록 메뉴가 자재창고 뒤·생산 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -454,7 +454,7 @@ describe('AppLayout', () => {
     );
   });
 
-  it('생산실행 섹션의 W/O 마감 메뉴가 출하 뒤·품질관리 앞에 있다', () => {
+  it('생산 섹션의 P/O 조회와 W/O 마감 메뉴가 출하 뒤·품질관리 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -462,13 +462,20 @@ describe('AppLayout', () => {
       .getAllByRole('link')
       .map((link) => link.getAttribute('href'));
 
-    expect(within(sidebar).getByText('생산실행')).toBeInTheDocument();
+    expect(within(sidebar).getByText('생산')).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: 'P/O 수신·조회' })).toHaveAttribute(
+      'href',
+      '/production/production-orders',
+    );
     expect(within(sidebar).getByRole('link', { name: 'W/O 마감·ERP 실적 송신' })).toHaveAttribute(
       'href',
       '/production/work-order-close',
     );
-    expect(links.indexOf('/production/work-order-close')).toBe(
+    expect(links.indexOf('/production/production-orders')).toBe(
       links.indexOf('/shipment/shipment-schedule') + 1,
+    );
+    expect(links.indexOf('/production/work-order-close')).toBe(
+      links.indexOf('/production/production-orders') + 1,
     );
     expect(links.indexOf('/production/work-order-close')).toBeLessThan(
       links.indexOf('/quality/lot-status'),
@@ -494,7 +501,7 @@ describe('AppLayout', () => {
       '기준정보',
       '자재창고',
       '출하',
-      '생산실행',
+      '생산',
       '품질관리',
       '설비/툴',
       '승인',
@@ -627,6 +634,7 @@ describe('AppLayout', () => {
       '/logistics/iqc-skip-approval',
       '/logistics/document-progress',
       '/shipment/shipment-schedule',
+      '/production/production-orders',
       '/production/work-order-close',
       '/quality/lot-status',
       '/quality/lot-status-transition',
@@ -663,7 +671,7 @@ describe('AppLayout', () => {
     const labels = [
       '기준정보',
       '자재창고',
-      '생산실행',
+      '생산',
       '품질관리',
       '설비/툴',
       '승인',

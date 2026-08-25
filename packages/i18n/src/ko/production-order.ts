@@ -31,8 +31,10 @@ export const productionOrder = {
     firstPage: '첫 쪽으로',
     prevPage: '이전',
     nextPage: '다음',
+    integrationSync: '연계 현황으로 이동',
   },
   values: {
+    erpReadOnlyNotice: 'ERP 수신본입니다. 수정은 ERP에서 하고 재동기화하세요.',
     statusOptionsPending: '상태 값은 확정 전이므로 직접 선택할 수 없습니다.',
     missingErpOrderNo: 'ERP 원번호 없음',
     missingItemLabel: '품목 표시명 없음',

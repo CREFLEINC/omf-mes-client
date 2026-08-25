@@ -30,6 +30,7 @@ import { NotificationCenterScreen } from '../screens/notification-center/screen'
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
+import { ProductionOrderScreen } from '../screens/production-order/screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
@@ -236,7 +237,9 @@ export const appRouter = createBrowserRouter([
        * 있어 표가 채워지는 순간 화면 전체가 저절로 살아난다.
        */
       { path: 'logistics/document-progress', element: <DocumentProgressScreen /> },
-      /* W-02-05 — 생산실행의 첫 공개 화면이며 주소는 API 리소스가 아니라 화면을 가리킨다. */
+      /* W-02-01 — 생산의 첫 화면이며 주소는 API 리소스가 아니라 화면을 가리킨다. */
+      { path: 'production/production-orders', element: <ProductionOrderScreen /> },
+      /* W-02-05 — 같은 생산 섹션의 마감·모니터링 화면이다. */
       { path: 'production/work-order-close', element: <WorkOrderCloseScreen /> },
       /*
        * W-03-01 — Lot Status 계열의 첫 화면이므로 품질관리 섹션을 연다.
