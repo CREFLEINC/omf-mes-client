@@ -18,7 +18,13 @@ export interface GaugeListResponse {
 
 export const gaugeKeys = {
   all: ['gauges'] as const,
-  list: (filters: GaugeFilters) => ['gauges', 'list', filters] as const,
+  /**
+   * ⛔ **유형 조건도 열쇠에 든다.** 조건이 «조회 뒤에» 도착하는데(코드값 그룹을 따로 받는다)
+   * 열쇠가 그것을 모르면 **조건 없이 한 번 나간 결과가 그대로 굳는다** — 계측기가 아닌
+   * 설비가 섞인 채로 남는다.
+   */
+  list: (filters: GaugeFilters, typeCodes: readonly string[]) =>
+    ['gauges', 'list', filters, [...typeCodes]] as const,
   detail: (equipmentId: number) => ['gauges', 'detail', equipmentId] as const,
 };
 
@@ -38,18 +44,59 @@ const plantIdQuery = (value: string): { plantId: number } | Record<string, never
  *
  * ⭐ **계측기 전용 경로가 없다** — 설비 경로를 쓰고 `equipmentTypeCode` 로 거른다(스펙 §3-2).
  *
- * ⚠ **유형을 고르지 않았으면 조건을 걸지 않는다.** 값 목록이 아직 없어(설계 질의 `omf-mes#195`)
- * 자리표시 값으로 거르면 **목록이 늘 빈다** — 계측기를 등록해도 보이지 않아 화면이 통째로
- * 죽는다. 대신 「지금 보이는 것이 계측기만은 아니다」를 화면이 밝힌다(G-2).
+ * ⭐ **첫 조회부터 계열 전체를 건다.** 계약의 `equipmentTypeCode` 가 값 여럿을 받으므로
+ * (통지 `client#404`), 유형을 고르지 않았으면 **계측기 계열 그룹의 값 전부**를 싣는다 —
+ * 고르면 그 하나만 싣는다. 그래서 이 화면은 언제나 계측기만 보인다.
+ *
+ * ⛔ **값을 코드에 박지 않는다.** 서버가 준 그룹의 값을 그대로 실으므로, 고객이 공통코드
+ * 관리에서 유형을 넷째로 늘려도 이 화면은 손대지 않는다.
+ *
+ * ⛔ **받아 온 목록을 화면에서 다시 거르지 않는다**(공유계약 L-1). 서버가 페이지로 잘라
+ * 주는데 그 안에서 또 거르면 **건수와 「더 있음」 안내가 통째로 거짓**이 된다.
  *
  * ⛔ **`calibrationRequired` 로 거르지 않는다.** 그것은 「게이트의 판정 대상인가」이지
  * 「이것이 계측기인가」가 아니다 — 검교정을 안 하는 계측기(단순 게이지)가 사라진다(스펙 §3-2).
  */
-export const useGaugeList = (filters: GaugeFilters): UseQueryResult<GaugeListResponse> => {
+/**
+ * 실을 유형 조건.
+ *
+ * | 사태 | 무엇을 싣나 |
+ * | --- | --- |
+ * | 유형을 골랐다 | 고른 값 하나 |
+ * | 안 골랐고 그룹 값을 받았다 | **그룹 값 전부** — 계열 전체가 조건이 된다 |
+ * | 안 골랐고 그룹 값이 아직 없다 | **아무것도 싣지 않는다** |
+ *
+ * ⛔ **빈 배열을 조건으로 보내지 않는다.** 계약이 `minItems: 1` 이라 빈 배열은 거절당하고,
+ * 사용자는 시드가 안 들어왔다는 사실 대신 조회 실패만 본다 — 그 사태는 선택칸이 비활성 +
+ * 사유로 이미 말한다(G-2).
+ */
+const typeCodeQuery = (
+  picked: string,
+  groupCodes: readonly string[],
+): { equipmentTypeCode: string[] } | Record<string, never> => {
+  if (picked !== '') return { equipmentTypeCode: [picked] };
+
+  return groupCodes.length === 0 ? {} : { equipmentTypeCode: [...groupCodes] };
+};
+
+export const useGaugeList = (
+  filters: GaugeFilters,
+  /** 계측기 계열 그룹의 값 전부 */
+  instrumentTypeCodes: readonly string[],
+  /** 그 목록을 실제로 «받았는가». 받지 못한 것과 비어 있는 것은 다르다 */
+  typeCodesLoaded: boolean,
+): UseQueryResult<GaugeListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: gaugeKeys.list(filters),
+    queryKey: gaugeKeys.list(filters, instrumentTypeCodes),
+    /*
+     * ⛔ **코드 목록을 받기 «전»에는 조회하지 않는다.** 먼저 조건 없이 한 번 나가면 계측기가
+     * 아닌 설비가 잠깐 목록에 서고, 그 화면을 본 사용자는 이 화면을 「전체 설비 목록」으로
+     * 읽는다. ⭐ **못 받은 것과 비어 있는 것은 다르다** — 시드가 없어 «비어 있으면»(`[]`)
+     * 조건 없이 조회하고 그 사실은 선택칸이 말한다(G-2).
+     */
+    enabled: typeCodesLoaded,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/equipments', {
@@ -57,9 +104,7 @@ export const useGaugeList = (filters: GaugeFilters): UseQueryResult<GaugeListRes
             query: {
               ...(filters.q === '' ? {} : { q: filters.q }),
               ...plantIdQuery(filters.plantId),
-              ...(filters.equipmentTypeCode === ''
-                ? {}
-                : { equipmentTypeCode: filters.equipmentTypeCode }),
+              ...typeCodeQuery(filters.equipmentTypeCode, instrumentTypeCodes),
               ...(filters.includeDisposed ? {} : { statusCode: IN_SERVICE_STATUS_CODE }),
               includeInactive: filters.includeInactive,
             },

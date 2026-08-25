@@ -21,8 +21,13 @@ export const CODE_GROUPS = {
    * 계측기 세부유형. ⭐ **설계가 값을 확정해 알려 준 그룹이다**(`omf-mes#195` 회신 · 시드
    * `omf-mes#182`) — 화면이 값을 지어내지 않고 서버가 준 목록을 그대로 쓴다. 값이 늘어도
    * 화면은 손대지 않는다.
+   *
+   * ⛔ **`EQUIPMENT_TYPE` 이 아니다**(통지 `client#404` · 회신 `omf-mes#219`). 한 컬럼
+   * (`equipmentTypeCode`)에 **두 계열이 착지**하므로 계열마다 그룹을 가른다 — 계측기는
+   * `INSTRUMENT_TYPE`, 설비는 `EQUIPMENT_TYPE` 이다. 합치면 설비 계열 값이 들어오는 날
+   * **계측기 등록 폼의 유형 선택칸에 프레스가 뜬다**(공유계약 G-32).
    */
-  equipmentType: 'EQUIPMENT_TYPE',
+  instrumentType: 'INSTRUMENT_TYPE',
 } as const;
 
 /**

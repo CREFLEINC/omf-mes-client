@@ -1724,16 +1724,6 @@ describe('appRouter — 계측기 마스터의 진입 경로', () => {
     expect(await screen.findByRole('cell', { name: 'GA-01' })).toBeInTheDocument();
   });
 
-  /*
-   * ⚠ **메뉴를 미룬 이유가 화면에 실제로 서 있는지** 함께 잰다 — 배너가 없으면 「전체 설비가
-   * 보인다」는 사실이 어디에도 없고, 그때는 메뉴를 미룰 이유도 사라진다(둘은 한 판단이다).
-   */
-  it('전체 설비가 보이고 있다는 사실을 화면이 밝힌다', async () => {
-    renderRoutedApp('/equipment/gauge-master', gaugeMasterRoutes());
-
-    expect(await screen.findByText(messages.gaugeMaster.typeFilterUnavailable)).toBeInTheDocument();
-  });
-
   /* 형제와 같은 섹션 앞머리를 쓴다 — 메뉴에 서지 않아도 주소가 업무 묶음을 말해야 한다. */
   it('설비 섹션 앞머리를 쓴다', () => {
     expect(routedPaths().filter((path) => path.startsWith('/equipment/'))).toEqual(

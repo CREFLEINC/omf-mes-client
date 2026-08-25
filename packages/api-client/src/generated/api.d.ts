@@ -5873,8 +5873,15 @@ export interface paths {
                     processId?: number;
                     /** @description 소속 설비 그룹으로 거른다 */
                     productionLineId?: number;
-                    /** @description 설비 유형으로 거른다 — 계측기 화면이 이것을 쓴다 */
-                    equipmentTypeCode?: string;
+                    /**
+                     * @description 설비 유형으로 거른다 — 값 여럿을 쉼표로 이어 보낸다. 한 화면이 «계열 전체»를 한 번에 걸러야 해서 여럿을 받는다. 계측기 마스터 관리(W-05-11)는 계측기 계열 그룹(INSTRUMENT_TYPE)의 값 전체를, 설비·설비그룹 마스터(W-05-12)는 설비 계열 그룹(EQUIPMENT_TYPE)의 값 전체를 싣는다. 걸지 않으면 두 계열이 함께 나온다.
+                     * @example [
+                     *       "CALIPER",
+                     *       "MICROMETER",
+                     *       "GAUGE"
+                     *     ]
+                     */
+                    equipmentTypeCode?: string[];
                     /** @description 검교정 대상만 본다 */
                     calibrationRequired?: boolean;
                     /** @description 자산 수명주기로 거른다 — 운용(IN_SERVICE) 또는 폐기(DISPOSED). 사용 여부(includeInactive)와 «다른 축» 이다. 현장 화면은 폐기된 설비를 목록에서 뺀다 — statusCode=IN_SERVICE 로 부른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_STATUS. 근거: omf-mes#185 */
@@ -27830,8 +27837,8 @@ export interface components {
             /** @example 사출기 3호 */
             equipmentName: string;
             /**
-             * @description 공통코드 — 값 목록 미정
-             * @example STANDARD
+             * @description 공통코드 — 계열마다 그룹이 다르다. ⭐ 계측기 계열은 GET /mdm/code-values?codeGroupCode=INSTRUMENT_TYPE 로 받는다(CALIPER·MICROMETER·GAUGE). 설비 계열은 codeGroupCode=EQUIPMENT_TYPE 이며 값 목록은 아직 미정이다. ⚠ 한 컬럼에 두 계열이 착지하므로 화면은 «자기 계열의 그룹만» 부른다
+             * @example CALIPER
              */
             equipmentTypeCode: string;
             /**
@@ -28351,8 +28358,8 @@ export interface components {
             /** @example 프레스 1호기 */
             equipmentName: string;
             /**
-             * @description 공통코드 — 계측기 화면은 이 값으로 거른다
-             * @example PRESS
+             * @description 공통코드 — 계열마다 그룹이 다르다. ⭐ 계측기 계열은 GET /mdm/code-values?codeGroupCode=INSTRUMENT_TYPE 로 받는다(CALIPER·MICROMETER·GAUGE). 설비 계열은 codeGroupCode=EQUIPMENT_TYPE 이며 값 목록은 아직 미정이다. ⚠ 한 컬럼에 두 계열이 착지하므로 화면은 «자기 계열의 그룹만» 부른다 — 합치면 계측기 등록 선택칸에 설비 유형이 뜬다
+             * @example CALIPER
              */
             equipmentTypeCode: string;
             /**
@@ -28400,8 +28407,8 @@ export interface components {
             /** @example 프레스 1호기 */
             equipmentName: string;
             /**
-             * @description 공통코드 — 계측기 화면은 이 값으로 거른다
-             * @example PRESS
+             * @description 공통코드 — 계열마다 그룹이 다르다. ⭐ 계측기 계열은 GET /mdm/code-values?codeGroupCode=INSTRUMENT_TYPE 로 받는다(CALIPER·MICROMETER·GAUGE). 설비 계열은 codeGroupCode=EQUIPMENT_TYPE 이며 값 목록은 아직 미정이다. ⚠ 한 컬럼에 두 계열이 착지하므로 화면은 «자기 계열의 그룹만» 부른다 — 합치면 계측기 등록 선택칸에 설비 유형이 뜬다
+             * @example CALIPER
              */
             equipmentTypeCode: string;
             /**

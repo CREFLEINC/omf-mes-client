@@ -33,12 +33,6 @@ export interface GaugeListPaneProps {
   typeOptions: CodeOption[];
   /** 유형 목록의 한계(잘림·실패) 안내. 없으면 붙이지 않는다 */
   typeOptionsNote?: string;
-  /**
-   * 지금 유형 조건이 걸려 있는가. **걸려 있지 않으면 계측기가 아닌 설비도 함께 보인다** —
-   * 계약의 `equipmentTypeCode` 가 값 하나만 받아 세 유형을 한 번에 거를 수단이 없다.
-   * 그 사실을 감추지 않고 밝힌다(G-2).
-   */
-  canFilterByType: boolean;
   /** 서버가 목록을 잘랐는가 — 밀림 조건이 무엇을 덮는지가 달라진다 */
   isTruncated: boolean;
   onAdd: () => void;
@@ -93,7 +87,6 @@ export const GaugeListPane = ({
   today,
   typeOptions,
   typeOptionsNote,
-  canFilterByType,
   isTruncated,
   onAdd,
   onEdit,
@@ -206,12 +199,6 @@ export const GaugeListPane = ({
 
   return (
     <section className="pane" aria-label={t.title}>
-      {/*
-       * ⚠ 지금 보이는 것이 계측기만은 아니라는 사실을 감추지 않는다(G-2).
-       * 값 목록이 들어오면 이 배너는 저절로 사라진다.
-       */}
-      {!canFilterByType && <AlertBanner variant="warning">{t.typeFilterUnavailable}</AlertBanner>}
-
       <div className="filter-bar">
         <SearchInput
           label={t.filters.searchLabel}

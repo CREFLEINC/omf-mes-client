@@ -213,3 +213,26 @@ describe('EquipmentListPane', () => {
     expect(screen.queryByRole('button', { name: messages.common.deactivate })).toBeNull();
   });
 });
+
+/**
+ * ⚠ **이 목록에 계측기가 함께 보인다** — `equipmentTypeCode` 한 컬럼에 두 계열이 착지하는데
+ * 이 화면이 실을 설비 계열 값 목록이 아직 미정이다(설계 `omf-mes#145` · 통지 `client#404`).
+ *
+ * ⛔ **받아 온 목록을 화면에서 거르지 않는다**(L-1) — 감추는 대신 밝힌다(G-2).
+ */
+describe('설비 목록 — 계열을 아직 가르지 못한다', () => {
+  it('계측기가 함께 보인다는 사실을 밝힌다', () => {
+    renderPane();
+
+    expect(screen.getByText(t.seriesFilterUnavailable)).toBeInTheDocument();
+  });
+
+  /** ⛔ 조건을 걸어도 이 사실은 그대로다 — 조건은 «고른 한 값»만 좁힐 뿐 계열을 가르지 않는다. */
+  it('유형 조건을 걸어도 그 안내가 남는다', () => {
+    renderPane({
+      appliedFilters: { ...defaultEquipmentFilters, equipmentTypeCode: 'PRESS' },
+    });
+
+    expect(screen.getByText(t.seriesFilterUnavailable)).toBeInTheDocument();
+  });
+});

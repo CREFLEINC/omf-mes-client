@@ -37,7 +37,8 @@ const t = messages.gaugeMaster;
 const codeValuesFor = (codeGroupCode: string | null): CodeValue[] => {
   if (codeGroupCode === 'CYCLE_TYPE') return cycleCodeValues;
 
-  return codeGroupCode === 'EQUIPMENT_TYPE' ? typeCodeValues : statusCodeValues;
+  /* ⛔ 계측기 계열은 `INSTRUMENT_TYPE` 이다 — `EQUIPMENT_TYPE` 은 설비 계열 몫이다. */
+  return codeGroupCode === 'INSTRUMENT_TYPE' ? typeCodeValues : statusCodeValues;
 };
 
 const isPath = (request: Request, pathname: string): boolean =>
@@ -275,13 +276,79 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
     expect(screen.queryByRole('option', { name: /제3공장/ })).not.toBeInTheDocument();
   });
 
-  /* 고르지 않았으면 조건 자체를 싣지 않는다 — 빈 값을 조건으로 보내면 아무것도 안 걸린다. */
-  it('유형을 고르지 않으면 유형 조건을 싣지 않는다', async () => {
+  /**
+   * ⭐ **첫 조회부터 계열 전체를 건다**(통지 `client#404`). 계약이 값 여럿을 받으므로,
+   * 고르지 않았으면 **계측기 계열 그룹의 값 전부**가 조건이 된다 — 그래서 이 화면은 언제나
+   * 계측기만 보인다.
+   */
+  it('유형을 고르지 않으면 계열 전체를 조건으로 싣는다', async () => {
     const { sent } = renderScreen();
 
     await screen.findByRole('cell', { name: 'GA-01' });
 
+    await waitFor(() => {
+      expect(sent.map((url) => url.searchParams.get('equipmentTypeCode'))).toContain(
+        'CALIPER,MICROMETER,GAUGE',
+      );
+    });
+  });
+
+  /**
+   * ⛔ **유형 목록을 못 받으면 목록 조회를 열지 않는다.** 그것이 조회 조건이라, 열면 조건
+   * 없이 나가고 **계측기가 아닌 설비가 이 화면에 선다** — 사용자는 그것을 계측기로 읽는다.
+   */
+  it('유형 목록을 받기 전에는 목록을 조회하지 않는다', async () => {
+    const { sent } = renderScreen({
+      respondCodeValues: () => jsonResponse({ errors: [] }, { status: 500 }),
+    });
+
+    /* 실패가 확정될 만큼 기다린 뒤에 잰다 — 바로 재면 아직 안 나간 것과 구별되지 않는다. */
+    expect(await screen.findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+    expect(sent).toHaveLength(0);
+  });
+
+  /** ⭐ 「다시 시도」라 말하면 누를 자리가 있어야 한다(G-23) — 스켈레톤이 영영 돌면 안 된다. */
+  it('유형 목록을 못 받으면 왜 못 여는지 말한다', async () => {
+    renderScreen({ respondCodeValues: () => jsonResponse({ errors: [] }, { status: 500 }) });
+
+    expect(await screen.findByRole('button', { name: messages.common.retry })).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **빈 배열을 조건으로 보내지 않는다.** 계약이 `minItems: 1` 이라 거절당하고, 사용자는
+   * 시드가 안 들어왔다는 사실 대신 조회 실패만 본다 — 그 사태는 선택칸이 이미 말한다(G-2).
+   */
+  it('그룹 값을 아직 못 받았으면 조건을 싣지 않는다', async () => {
+    const { sent } = renderScreen({
+      respondCodeValues: () => jsonResponse(codeValuesResponse([])),
+    });
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+
     expect(sent.every((url) => url.searchParams.get('equipmentTypeCode') === null)).toBe(true);
+  });
+
+  /**
+   * ⛔ **값을 코드에 박지 않는다.** 서버가 준 그룹의 값을 그대로 실으므로, 고객이 유형을
+   * 넷째로 늘려도 화면은 손대지 않는다.
+   */
+  it('그룹에 값이 늘면 늘어난 값도 함께 나간다', async () => {
+    const { sent } = renderScreen({
+      respondCodeValues: () =>
+        jsonResponse(
+          codeValuesResponse([...typeCodeValues, makeCodeValue('HEIGHT_GAUGE', '하이트게이지')]),
+        ),
+    });
+
+    await screen.findByRole('cell', { name: 'GA-01' });
+
+    await waitFor(() => {
+      expect(
+        sent.some((url) =>
+          (url.searchParams.get('equipmentTypeCode') ?? '').includes('HEIGHT_GAUGE'),
+        ),
+      ).toBe(true);
+    });
   });
 
   /**
@@ -311,30 +378,6 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
       expect(sent.some((url) => url.searchParams.get('equipmentTypeCode') === 'CALIPER')).toBe(
         true,
       );
-    });
-  });
-
-  /**
-   * ⚠ **계약의 `equipmentTypeCode` 가 값 하나만 받는다** — 계측기 세 유형을 한 번에 거를
-   * 수단이 없어, 고르기 전에는 계측기가 아닌 설비도 함께 보인다. **감추지 않고 밝힌다**(G-2).
-   */
-  it('유형을 고르기 전에는 그 사실을 밝힌다', async () => {
-    renderScreen();
-
-    expect(await screen.findByText(t.typeFilterUnavailable)).toBeInTheDocument();
-  });
-
-  /** ⛔ 조건이 걸린 뒤에도 그 말이 남으면 거짓이 된다 — 그때는 계측기만 보인다. */
-  it('유형을 고르면 그 안내가 사라진다', async () => {
-    const { user } = renderScreen();
-
-    await screen.findByRole('cell', { name: 'GA-01' });
-    await user.click(within(listPane()).getByRole('combobox', { name: /계측기 유형/ }));
-    await user.click(screen.getByRole('option', { name: '캘리퍼스' }));
-    await user.click(within(listPane()).getByRole('button', { name: messages.common.search }));
-
-    await waitFor(() => {
-      expect(screen.queryByText(t.typeFilterUnavailable)).not.toBeInTheDocument();
     });
   });
 
