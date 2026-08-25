@@ -1,7 +1,6 @@
 import {
   AlertBanner,
   Button,
-  Chart,
   type Column,
   EmptyState,
   Select,
@@ -13,16 +12,11 @@ import {
 import { useState } from 'react';
 
 import type { InspectionInsightFilters } from './filters';
-import {
-  useDefectDistribution,
-  useDefectRateTrend,
-  type DefectDistribution,
-  type DefectRateTrend,
-} from './queries';
+import { useDefectDistribution, type DefectDistribution } from './queries';
 import type { DistributionGroup } from './request-queries';
+import { TrendPanels } from './trend-panels';
 
 type Node = DefectDistribution['nodes'][number];
-type TrendPoint = DefectRateTrend['points'][number];
 type View = 'trend' | 'distribution';
 const EMPTY = '—';
 const dateTime = (value: string): string => {
@@ -48,7 +42,6 @@ export const InsightTabs = ({
 }: InsightTabsProps) => {
   const [view, setView] = useState<View>('trend');
   const [group, setGroup] = useState<DistributionGroup>('defectCode');
-  const trend = useDefectRateTrend(filters, queriesEnabled && view === 'trend');
   const distribution = useDefectDistribution(
     filters,
     group,
@@ -59,62 +52,6 @@ export const InsightTabs = ({
     <Button size="sm" variant="outlined" onClick={() => void refetch()}>
       다시 시도
     </Button>
-  );
-  const trendColumns: Column<TrendPoint>[] = [
-    { key: 'bucket', header: '일자' },
-    { key: 'inspectedQty', header: '검사수량', align: 'end' },
-    { key: 'rejectedQty', header: '불합격수량', align: 'end' },
-    {
-      key: 'defectRate',
-      header: '불량률',
-      align: 'end',
-      render: (point) => `${point.defectRate}%`,
-    },
-  ];
-  const trendContent = (
-    <section aria-label="불량률 추이 결과">
-      {trend.isPending && <SkeletonText lines={3} />}
-      {trend.isError && (
-        <AlertBanner
-          variant="error"
-          title="불량률 추이를 불러오지 못했습니다."
-          action={retry(trend.refetch)}
-        />
-      )}
-      {!trend.isError &&
-        trend.data !== undefined &&
-        (trend.data.points.length === 0 ? (
-          <EmptyState size="sm" title="추이 데이터가 없습니다" />
-        ) : (
-          <>
-            <Chart
-              type="line"
-              title="불량률 추이"
-              series={[
-                {
-                  name: '불량률',
-                  data: trend.data.points.map((point) => ({
-                    label: point.bucket,
-                    value: point.defectRate,
-                  })),
-                },
-              ]}
-              formatValue={(value) => `${value}%`}
-              showPoints
-            />
-            <Table
-              density="compact"
-              caption="불량률 추이 데이터"
-              columns={trendColumns}
-              rows={[...trend.data.points]}
-              getRowId={(point) => point.bucket}
-            />
-          </>
-        ))}
-      {!trend.isError && trend.data !== undefined && (
-        <p className="field-note">기준 {dateTime(trend.data.asOf)}</p>
-      )}
-    </section>
   );
   const parentLabels = new Map(
     distribution.data?.nodes.map((node) => [node.defectCodeId, node.label]) ?? [],
@@ -188,7 +125,10 @@ export const InsightTabs = ({
     {
       value: 'trend',
       label: '불량률 추이',
-      content: queriesEnabled && view === 'trend' ? trendContent : null,
+      content:
+        queriesEnabled && view === 'trend' ? (
+          <TrendPanels filters={filters} enabled={queriesEnabled} />
+        ) : null,
     },
     {
       value: 'distribution',

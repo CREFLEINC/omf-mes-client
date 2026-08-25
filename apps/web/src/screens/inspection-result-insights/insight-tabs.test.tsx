@@ -75,6 +75,48 @@ describe('검사 추이·불량 분포', () => {
     expect(screen.queryByText('기준 2026-08-31 10:30')).not.toBeInTheDocument();
   });
 
+  it('전체 선택은 IQC·PQC·OQC 추이를 독립 요청과 패널로 분리한다', async () => {
+    const calls: URL[] = [];
+    renderWithProviders(
+      <InsightTabs filters={{ ...filters, inspectionTypeCode: '' }} sourceAxisCode="PQC" />,
+      {
+        fetch: createStubFetch([
+          route('/quality/inspection-results/defect-rate-trend', (request) => {
+            const url = new URL(request.url);
+            calls.push(url);
+            const code = url.searchParams.get('inspectionTypeCode');
+            return jsonResponse({
+              points: [
+                {
+                  bucket: '2026-08-01',
+                  inspectedQty: 10,
+                  rejectedQty: 1,
+                  defectRate: code === 'PQC' ? 10 : 5,
+                },
+              ],
+              asOf: '2026-08-31T10:30:00+09:00',
+            });
+          }),
+        ]),
+      },
+    );
+
+    for (const label of ['수입검사', '공정검사', '출하검사']) {
+      expect(
+        await screen.findByRole('table', { name: `${label} 불량률 추이 데이터` }),
+      ).toBeInTheDocument();
+    }
+    expect(
+      screen.getByText(/검사유형별 추이를 분리하며 서로 합산하지 않습니다/),
+    ).toBeInTheDocument();
+    expect(calls.map((url) => url.searchParams.get('inspectionTypeCode')).sort()).toEqual([
+      'IQC',
+      'OQC',
+      'PQC',
+    ]);
+    for (const call of calls) expect(call.searchParams.get('finalRoundOnly')).toBe('true');
+  });
+
   it('분포 탭은 다른 모집단을 알리고 빈 응답에도 5열 골격을 유지한다', async () => {
     const user = userEvent.setup();
     const calls: URL[] = [];
