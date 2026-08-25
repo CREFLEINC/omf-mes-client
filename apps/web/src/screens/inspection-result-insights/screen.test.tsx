@@ -9,21 +9,22 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import type { LookupSource } from '../../patterns/lookup-display';
+import type { InspectionLookup } from './lookups';
 import { InspectionResultInsightsScreen } from './screen';
 
-const options = {
-  inspectionType: [{ value: 'PQC', label: '공정검사' }],
-  item: [{ value: '101', label: '합성 품목' }],
-  process: [{ value: '501', label: '합성 공정' }],
-  judgment: [{ value: 'REJECTED', label: '불합격' }],
-};
-const source = (value: string, label: string): LookupSource => ({
+const source = (value: string, label: string): InspectionLookup => ({
   entries: [{ value, label, isActive: true }],
   isError: false,
   isLoading: false,
+  truncated: false,
+  refetch: vi.fn(),
 });
-const labels = { item: source('101', '합성 품목'), judgment: source('REJECTED', '불합격') };
+const lookups = {
+  inspectionType: source('PQC', '공정검사'),
+  item: source('101', '합성 품목'),
+  process: source('501', '합성 공정'),
+  judgment: source('REJECTED', '불합격'),
+};
 const row = {
   inspectionResultId: 701,
   inspectionResultNo: 'SAMPLE-RESULT-701',
@@ -70,12 +71,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <>
-        <InspectionResultInsightsScreen
-          options={options}
-          labels={labels}
-          sourceAxisCode="PQC"
-          onViewMeasurements={() => undefined}
-        />
+        <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={() => undefined} />
         <LocationProbe />
       </>,
       { fetch: () => new Promise(() => undefined) },
@@ -94,12 +90,7 @@ describe('검사실적·검사결과 조회 조립', () => {
   it('기간이 없으면 모든 집계 요청을 fail-closed한다', () => {
     const calls: Request[] = [];
     renderWithProviders(
-      <InspectionResultInsightsScreen
-        options={options}
-        labels={labels}
-        sourceAxisCode="PQC"
-        onViewMeasurements={() => undefined}
-      />,
+      <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={() => undefined} />,
       { fetch: async (request) => (calls.push(request), jsonResponse({})) },
     );
 
@@ -114,12 +105,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     const user = userEvent.setup();
     const calls: Request[] = [];
     renderWithProviders(
-      <InspectionResultInsightsScreen
-        options={options}
-        labels={labels}
-        sourceAxisCode="PQC"
-        onViewMeasurements={() => undefined}
-      />,
+      <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={() => undefined} />,
       {
         route: `/quality/inspection-results${search}`,
         fetch: async (request) => (calls.push(request), jsonResponse({})),
@@ -135,12 +121,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     const user = userEvent.setup();
     const calls: Request[] = [];
     renderWithProviders(
-      <InspectionResultInsightsScreen
-        options={options}
-        labels={labels}
-        sourceAxisCode="PQC"
-        onViewMeasurements={() => undefined}
-      />,
+      <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={() => undefined} />,
       {
         route:
           '/quality/inspection-results?from=2026-08-01&to=2026-08-31&type=PQC&judgment=UNKNOWN',
@@ -155,18 +136,71 @@ describe('검사실적·검사결과 조회 조립', () => {
     expect(calls).toHaveLength(0);
   });
 
+  it('lookup 준비 전 주소 code와 안전한 표시를 보존하고 요청은 fail-closed한다', () => {
+    const calls: Request[] = [];
+    renderWithProviders(
+      <InspectionResultInsightsScreen
+        lookups={{
+          ...lookups,
+          inspectionType: {
+            ...lookups.inspectionType,
+            entries: [],
+            isLoading: true,
+          },
+        }}
+        onViewMeasurements={() => undefined}
+      />,
+      {
+        route: '/quality/inspection-results?from=2026-08-01&to=2026-08-31&type=PQC',
+        fetch: async (request) => (calls.push(request), jsonResponse({})),
+      },
+    );
+
+    expect(screen.getByText('조회 조건 이름을 확인하는 중입니다')).toBeInTheDocument();
+    expect(screen.getByLabelText('검사유형')).toHaveTextContent('이름 불러오는 중');
+    expect(
+      screen.queryByText('주소의 날짜 또는 코드 조건이 유효하지 않습니다'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('PQC')).not.toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('잘린 lookup 밖의 주소 code를 미등록으로 단정하지 않고 fail-closed한다', () => {
+    const calls: Request[] = [];
+    renderWithProviders(
+      <InspectionResultInsightsScreen
+        lookups={{
+          ...lookups,
+          inspectionType: {
+            ...lookups.inspectionType,
+            entries: [],
+            truncated: true,
+          },
+        }}
+        onViewMeasurements={() => undefined}
+      />,
+      {
+        route: '/quality/inspection-results?from=2026-08-01&to=2026-08-31&type=OQC',
+        fetch: async (request) => (calls.push(request), jsonResponse({})),
+      },
+    );
+
+    expect(screen.getByText('조회 조건 이름을 확인하는 중입니다')).toBeInTheDocument();
+    expect(screen.getByLabelText('검사유형')).toHaveTextContent('알 수 없음');
+    expect(
+      screen.queryByText('주소의 날짜 또는 코드 조건이 유효하지 않습니다'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('OQC')).not.toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+  });
+
   it('유효 주소의 모든 캐시와 상세를 무효 주소에서 숨긴다', async () => {
     const user = userEvent.setup();
     const calls: URL[] = [];
     const capture = (request: Request): void => void calls.push(new URL(request.url));
     renderWithProviders(
       <>
-        <InspectionResultInsightsScreen
-          options={options}
-          labels={labels}
-          sourceAxisCode="PQC"
-          onViewMeasurements={() => undefined}
-        />
+        <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={() => undefined} />
         <InvalidRouteButton />
       </>,
       {
@@ -246,12 +280,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     };
     renderWithProviders(
       <>
-        <InspectionResultInsightsScreen
-          options={options}
-          labels={labels}
-          sourceAxisCode="PQC"
-          onViewMeasurements={vi.fn()}
-        />
+        <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={vi.fn()} />
         <LocationProbe />
       </>,
       {

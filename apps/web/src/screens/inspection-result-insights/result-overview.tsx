@@ -36,6 +36,7 @@ export interface ResultLabels {
 interface ResultOverviewProps {
   filters: InspectionInsightFilters;
   queriesEnabled?: boolean;
+  validationPending?: boolean;
   sort: InspectionResultSort;
   page: number;
   labels: ResultLabels;
@@ -65,6 +66,7 @@ const toServerSort = (sort: SortState | null): InspectionResultSort => {
 export const ResultOverview = ({
   filters,
   queriesEnabled = true,
+  validationPending = false,
   sort,
   page,
   labels,
@@ -81,12 +83,18 @@ export const ResultOverview = ({
       <EmptyState
         size="sm"
         title={
-          queriesEnabled ? '기간을 선택하세요' : '주소의 날짜 또는 코드 조건이 유효하지 않습니다'
+          queriesEnabled
+            ? '기간을 선택하세요'
+            : validationPending
+              ? '조회 조건 이름을 확인하는 중입니다'
+              : '주소의 날짜 또는 코드 조건이 유효하지 않습니다'
         }
         description={
           queriesEnabled
             ? '조회 기간은 필수입니다.'
-            : '날짜를 확인하고 준비된 검사유형·판정 코드로 다시 조회하세요.'
+            : validationPending
+              ? '준비가 끝날 때까지 조회 요청을 보내지 않습니다.'
+              : '날짜를 확인하고 준비된 검사유형·판정 코드로 다시 조회하세요.'
         }
       />
     );
