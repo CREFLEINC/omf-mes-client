@@ -61,8 +61,6 @@ Github repo : https://github.com/CREFLEINC/omf-mes
 어떤 업무를 어떤 팀에게 배정할 지 결정하는 명확한 법칙은 없다. 설계팀에서 직접 업무 간 의존성, 병합 시 충돌 가능성 등을 고려하여 최대한 독립적으로 개발할 수 있도록 배정한다.
 
 ## 2. 개발팀 (클라이언트, 백엔드 공통)
-Github Repo : git@github.com:CREFLEINC/omf-mes-client.git
-
 개발팀은 설계가 완료된 프로젝트의 SW 개발 업무를 담당합니다.
 설계의 역할은 "무엇을" "어떻게" 만들 것이지 제품 수준에서 결정을 한다면, 개발팀은 설계 목표를 달성하기 위해 SW 코드 수준에서 필요한 설계부터 개발, 검증까지 담당해야 합니다.
 
@@ -125,6 +123,7 @@ Github Repo : git@github.com:CREFLEINC/omf-mes-client.git
 
 
 ## 3. 클라이언트 개발팀 상세
+Github Repo : git@github.com:CREFLEINC/omf-mes-client.git
 클라이언트 개발팀은 사용자와 직접 소통하고 사용자에게 시스템 인터페이스를 제공하는 프로그램의 개발을 담당한다.
 
 **핵심** : 개발 언어, 운영 환경 등의 SW 스펙은 설계 자료 참고 필요
