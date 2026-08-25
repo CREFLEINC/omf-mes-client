@@ -64,6 +64,35 @@ describe('검사 실적 조회 조건', () => {
     });
   });
 
+  it('lookup 준비 전 주소 code를 보존하되 검증 완료 전 상태로 분리한다', () => {
+    const pending = {
+      inspectionTypeCodes: new Set<string>(),
+      judgmentCodes: new Set<string>(),
+      inspectionTypeReady: false,
+      judgmentReady: false,
+    };
+
+    expect(
+      readInspectionInsightFilters(new URLSearchParams('type=PQC&judgment=REJECTED'), pending),
+    ).toEqual({
+      kind: 'PENDING',
+      filters: {
+        ...EMPTY_INSPECTION_INSIGHT_FILTERS,
+        inspectionTypeCode: 'PQC',
+        overallJudgmentCode: 'REJECTED',
+      },
+    });
+  });
+
+  it('lookup 준비가 끝난 뒤 미등록 code만 INVALID로 판정한다', () => {
+    expect(
+      readInspectionInsightFilters(new URLSearchParams('type=UNKNOWN'), {
+        ...ALLOWED,
+        inspectionTypeReady: true,
+      }),
+    ).toEqual({ kind: 'INVALID', filters: EMPTY_INSPECTION_INSIGHT_FILTERS });
+  });
+
   it.each([
     ['inspectionRequestNo,asc', 'inspectionRequestNo,asc'],
     ['inspectedAt,desc', 'inspectedAt,desc'],

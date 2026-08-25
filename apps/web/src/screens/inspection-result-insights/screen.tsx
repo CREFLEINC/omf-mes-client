@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { InspectionInsightFilterBar, type InspectionFilterOptions } from './filter-bar';
+import { selectableLookupOptions } from '../../patterns/lookup-display';
+import { InspectionInsightFilterBar } from './filter-bar';
 import {
   EMPTY_INSPECTION_INSIGHT_FILTERS,
   readInspectionInsightFilters,
@@ -11,13 +11,19 @@ import {
   type InspectionResultSort,
 } from './filters';
 import { InsightTabs } from './insight-tabs';
+import type { InspectionLookup } from './lookups';
 import { ResultDetailDialog } from './result-detail-dialog';
-import { ResultOverview, type ResultLabels } from './result-overview';
+import { ResultOverview } from './result-overview';
+
+export interface InspectionResultLookupSources {
+  inspectionType: InspectionLookup;
+  item: InspectionLookup;
+  process: InspectionLookup;
+  judgment: InspectionLookup;
+}
 
 interface InspectionResultInsightsScreenProps {
-  options: InspectionFilterOptions;
-  labels: ResultLabels;
-  sourceAxisCode: string;
+  lookups: InspectionResultLookupSources;
   onViewMeasurements: (inspectionResultId: number) => void;
 }
 
@@ -56,25 +62,28 @@ const selectedResult = (params: URLSearchParams): number | null => {
 };
 
 export const InspectionResultInsightsScreen = ({
-  options,
-  labels,
-  sourceAxisCode,
+  lookups,
   onViewMeasurements,
 }: InspectionResultInsightsScreenProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const allowed = useMemo(
-    () => ({
-      inspectionTypeCodes: new Set(options.inspectionType.map(({ value }) => value)),
-      judgmentCodes: new Set(options.judgment.map(({ value }) => value)),
-    }),
-    [options.inspectionType, options.judgment],
-  );
-  const filterState = useMemo(
-    () => readInspectionInsightFilters(searchParams, allowed),
-    [allowed, searchParams],
-  );
+  const filterState = readInspectionInsightFilters(searchParams, {
+    inspectionTypeCodes: new Set(lookups.inspectionType.entries.map(({ value }) => value)),
+    judgmentCodes: new Set(lookups.judgment.entries.map(({ value }) => value)),
+    inspectionTypeReady:
+      !lookups.inspectionType.isLoading &&
+      !lookups.inspectionType.isError &&
+      !lookups.inspectionType.truncated,
+    judgmentReady:
+      !lookups.judgment.isLoading && !lookups.judgment.isError && !lookups.judgment.truncated,
+  });
   const filters = filterState.filters;
   const queriesEnabled = filterState.kind === 'VALID';
+  const options = {
+    inspectionType: selectableLookupOptions(lookups.inspectionType, filters.inspectionTypeCode),
+    item: selectableLookupOptions(lookups.item, filters.itemId),
+    process: selectableLookupOptions(lookups.process, filters.processId),
+    judgment: selectableLookupOptions(lookups.judgment, filters.overallJudgmentCode),
+  };
   const sort = readInspectionResultSort(searchParams);
   const page = readInspectionResultPage(searchParams);
   const selected = selectedResult(searchParams);
@@ -101,9 +110,10 @@ export const InspectionResultInsightsScreen = ({
       <ResultOverview
         filters={filters}
         queriesEnabled={queriesEnabled}
+        validationPending={filterState.kind === 'PENDING'}
         sort={sort}
         page={page}
-        labels={labels}
+        labels={{ item: lookups.item, judgment: lookups.judgment }}
         onSortChange={(next: InspectionResultSort) => {
           setSearchParams((current) => {
             const params = new URLSearchParams(current);
@@ -123,13 +133,13 @@ export const InspectionResultInsightsScreen = ({
       />
       <InsightTabs
         filters={filters}
-        sourceAxisCode={sourceAxisCode}
+        sourceAxisCode={filters.inspectionTypeCode}
         queriesEnabled={queriesEnabled}
       />
       {queriesEnabled && selected !== null && (
         <ResultDetailDialog
           inspectionResultId={selected}
-          labels={labels}
+          labels={{ item: lookups.item, judgment: lookups.judgment }}
           onClose={() => update('selected', null, false)}
           onViewMeasurements={onViewMeasurements}
         />

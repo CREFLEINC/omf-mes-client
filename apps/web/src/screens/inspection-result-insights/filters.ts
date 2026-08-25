@@ -22,10 +22,13 @@ export interface InspectionInsightFilters {
 export interface AllowedInspectionFilterCodes {
   inspectionTypeCodes: ReadonlySet<string>;
   judgmentCodes: ReadonlySet<string>;
+  inspectionTypeReady?: boolean;
+  judgmentReady?: boolean;
 }
 
 export type InspectionInsightFilterState =
   | { kind: 'VALID'; filters: InspectionInsightFilters }
+  | { kind: 'PENDING'; filters: InspectionInsightFilters }
   | { kind: 'INVALID'; filters: InspectionInsightFilters };
 
 export const DEFAULT_INSPECTION_RESULT_SORT: InspectionResultSort = 'inspectedAt,desc';
@@ -72,25 +75,36 @@ export const readInspectionInsightFilters = (
   const to = params.get('to') ?? '';
   const type = params.get('type') ?? '';
   const judgment = params.get('judgment') ?? '';
+  const inspectionTypeReady = allowed.inspectionTypeReady ?? true;
+  const judgmentReady = allowed.judgmentReady ?? true;
   const rounds = params.get('rounds');
   const hasInvalidDate = [from, to].some((value) => value !== '' && !isCalendarDate(value));
   const hasUnknownCode =
-    (type !== '' && !allowed.inspectionTypeCodes.has(type)) ||
-    (judgment !== '' && !allowed.judgmentCodes.has(judgment));
+    (type !== '' && inspectionTypeReady && !allowed.inspectionTypeCodes.has(type)) ||
+    (judgment !== '' && judgmentReady && !allowed.judgmentCodes.has(judgment));
+  const hasPendingCode =
+    (type !== '' && !inspectionTypeReady) || (judgment !== '' && !judgmentReady);
   const filters: InspectionInsightFilters = {
     from: isCalendarDate(from) ? from : '',
     to: isCalendarDate(to) ? to : '',
-    inspectionTypeCode: allowed.inspectionTypeCodes.has(type) ? type : '',
+    inspectionTypeCode:
+      type !== '' && (!inspectionTypeReady || allowed.inspectionTypeCodes.has(type)) ? type : '',
     itemId: readIdentifier(params.get('item')),
     processId: readIdentifier(params.get('process')),
-    overallJudgmentCode: allowed.judgmentCodes.has(judgment) ? judgment : '',
+    overallJudgmentCode:
+      judgment !== '' && (!judgmentReady || allowed.judgmentCodes.has(judgment)) ? judgment : '',
     finalRoundOnly: true,
     calibrationExpired: calibration === 'only' || calibration === 'exclude' ? calibration : '',
   };
   filters.finalRoundOnly = rounds !== 'all';
   const hasInvalidRounds = rounds !== null && rounds !== 'all';
   return {
-    kind: hasInvalidDate || hasUnknownCode || hasInvalidRounds ? 'INVALID' : 'VALID',
+    kind:
+      hasInvalidDate || hasUnknownCode || hasInvalidRounds
+        ? 'INVALID'
+        : hasPendingCode
+          ? 'PENDING'
+          : 'VALID',
     filters,
   };
 };
