@@ -296,6 +296,8 @@ export const LotStatusTransitionPreparation = ({
             warehouseId={lot.warehouseId}
             locationId={lot.locationId}
             targetLotStatusCode={selectedTransition.targetLotStatusCode}
+            impact={selectedTransition.impact}
+            statusLabel={targetLabel}
             onCreated={() => {
               refreshPreparation();
               setSelectedTransitionKey(null);
@@ -318,6 +320,7 @@ export const LotStatusTransitionPreparation = ({
             warehouseId={lot.warehouseId}
             locationId={lot.locationId}
             targetLotStatusCode={selectedTransition.targetLotStatusCode}
+            statusLabel={targetLabel}
             onReleased={() => {
               refreshPreparation();
               setSelectedHoldId(null);

@@ -7,19 +7,20 @@ import {
   TextField,
   useToast,
 } from '@crefle/web-ui';
-import type { ApiError, components } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { TextArea } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { isTransitionStale, transitionStaleMessage } from './transition-error';
 
 type LotHold = components['schemas']['LotHold'];
 type LotHoldCreate = components['schemas']['LotHoldCreate'];
+type TransitionImpact = NonNullable<components['schemas']['LotStatusTransition']['impact']>;
 const ROOT_KEY = ['lot-status-transition'] as const;
 const HISTORY_KEY = ['lot-status-history'] as const;
-const STALE_FALLBACK = 'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.';
 
 interface Draft {
   mode: 'FULL' | 'PARTIAL';
@@ -66,16 +67,6 @@ const validate = (draft: Draft, props: CreateHoldExecutionProps): Validation => 
   };
 };
 
-const isStale = (error: ApiError | null): boolean =>
-  error?.kind === 'conflict' ||
-  (error?.kind === 'http' && (error.status === 409 || error.status === 412));
-const staleMessage = (error: ApiError | null): string =>
-  (error?.kind === 'conflict' || error?.kind === 'http') &&
-  error.message !== undefined &&
-  error.message.trim() !== ''
-    ? error.message
-    : STALE_FALLBACK;
-
 export interface CreateHoldExecutionProps {
   lotId: number;
   lotNo: string;
@@ -84,6 +75,8 @@ export interface CreateHoldExecutionProps {
   warehouseId: number | undefined;
   locationId: number | undefined;
   targetLotStatusCode: string;
+  impact: TransitionImpact | null | undefined;
+  statusLabel: (code: string) => string;
   onCreated: () => void;
   onConfirmationChange: (pinned: boolean) => void;
   onStale: () => void;
@@ -118,7 +111,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
       props.onCreated();
     },
   });
-  const stale = isStale(write.error);
+  const stale = isTransitionStale(write.error);
   const closeDialog = (): void => {
     setConfirmation(null);
     props.onConfirmationChange(false);
@@ -222,7 +215,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
         >
           {stale ? (
             <AlertBanner variant="error" action={<Button onClick={reload}>최신 불러오기</Button>}>
-              {staleMessage(write.error)}
+              {transitionStaleMessage(write.error, props.statusLabel)}
             </AlertBanner>
           ) : (
             <SaveErrorBanner error={write.error} />
@@ -231,6 +224,12 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
             <p>Hold는 대상 수량의 출고·출하 및 피킹을 막습니다.</p>
             <p>대상 수량: {confirmation.holdQty === undefined ? '전량' : confirmation.holdQty}</p>
             <p>대상 위치: {location}</p>
+            {(props.impact?.openPickingCount ?? 0) > 0 && (
+              <p>피킹 중인 요청 {props.impact?.openPickingCount}건이 막힙니다.</p>
+            )}
+            {(props.impact?.shippedQty ?? 0) > 0 && (
+              <p>이미 출고된 수량 {props.impact?.shippedQty}은 이 전이로 회수되지 않습니다.</p>
+            )}
             <p>다시 사용하려면 Release 전이가 필요하며, 이미 출고된 수량은 회수되지 않습니다.</p>
           </AlertBanner>
         </Dialog>

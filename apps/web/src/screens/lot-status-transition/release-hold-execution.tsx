@@ -7,19 +7,19 @@ import {
   TextField,
   useToast,
 } from '@crefle/web-ui';
-import type { ApiError, components } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { TextArea } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { isTransitionStale, transitionStaleMessage } from './transition-error';
 
 type LotHold = components['schemas']['LotHold'];
 type LotHoldRelease = components['schemas']['LotHoldRelease'];
 const ROOT_KEY = ['lot-status-transition'] as const;
 const HISTORY_KEY = ['lot-status-history'] as const;
-const STALE_FALLBACK = 'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.';
 
 interface Draft {
   mode: 'FULL' | 'PARTIAL';
@@ -62,16 +62,6 @@ const validate = (draft: Draft, maximum: number | undefined, target: string): Va
   };
 };
 
-const isStale = (error: ApiError | null): boolean =>
-  error?.kind === 'conflict' ||
-  (error?.kind === 'http' && (error.status === 409 || error.status === 412));
-const staleMessage = (error: ApiError | null): string =>
-  (error?.kind === 'conflict' || error?.kind === 'http') &&
-  error.message !== undefined &&
-  error.message.trim() !== ''
-    ? error.message
-    : STALE_FALLBACK;
-
 export interface ReleaseHoldExecutionProps {
   etagPath: string;
   lotHoldId: number;
@@ -80,6 +70,7 @@ export interface ReleaseHoldExecutionProps {
   warehouseId: number | undefined;
   locationId: number | undefined;
   targetLotStatusCode: string;
+  statusLabel: (code: string) => string;
   onReleased: () => void;
   onConfirmationChange: (pinned: boolean) => void;
   onStale: () => void;
@@ -115,7 +106,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
       props.onReleased();
     },
   });
-  const stale = isStale(write.error);
+  const stale = isTransitionStale(write.error);
   const closeDialog = (): void => {
     setConfirmation(null);
     props.onConfirmationChange(false);
@@ -207,7 +198,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
         >
           {stale ? (
             <AlertBanner variant="error" action={<Button onClick={reload}>최신 불러오기</Button>}>
-              {staleMessage(write.error)}
+              {transitionStaleMessage(write.error, props.statusLabel)}
             </AlertBanner>
           ) : (
             <SaveErrorBanner error={write.error} />

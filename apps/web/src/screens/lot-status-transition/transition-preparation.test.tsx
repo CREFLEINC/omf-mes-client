@@ -43,10 +43,12 @@ const transition = (
   actionCode: 'RELEASE_HOLD' | 'CREATE_HOLD',
   targetLotStatusCode: string,
   allowed = true,
+  impact?: components['schemas']['LotStatusTransition']['impact'],
 ): components['schemas']['LotStatusTransition'] => ({
   actionCode,
   targetLotStatusCode,
   allowed,
+  ...(impact === undefined ? {} : { impact }),
 });
 const route = (path: string, body: unknown, headers?: HeadersInit, method = 'GET'): StubRoute => ({
   match: (request) => request.method === method && new URL(request.url).pathname === path,
@@ -145,6 +147,7 @@ const chooseTransition = async (
 const releaseRoute = (
   status = 200,
   message = 'LOT 보류가 이미 해제된 최신 상태입니다.',
+  currentLotStatusCode?: string,
 ): StubRoute => ({
   match: (request) =>
     request.method === 'POST' &&
@@ -154,19 +157,23 @@ const releaseRoute = (
       status === 200
         ? { ...hold(501, 'QUALITY_A'), statusCode: 'RELEASED' }
         : status === 409
-          ? { conflictCause: 'user', message }
+          ? { conflictCause: 'user', message, currentLotStatusCode }
           : { message: '잠금 토큰이 만료됐습니다.' },
       { status },
     ),
 });
-const createRoute = (status = 201, message = 'LOT versionNo 8이 최신 상태입니다.'): StubRoute => ({
+const createRoute = (
+  status = 201,
+  message = 'LOT versionNo 8이 최신 상태입니다.',
+  currentLotStatusCode?: string,
+): StubRoute => ({
   match: (request) => request.method === 'POST' && new URL(request.url).pathname === HOLDS,
   respond: () =>
     jsonResponse(
       status === 201
         ? [hold(601, 'SYN_REASON')]
         : status === 409
-          ? { conflictCause: 'user', message }
+          ? { conflictCause: 'user', message, currentLotStatusCode }
           : { code: 'INVALID_STATE', message: 'LOT 상태가 바뀌었습니다.' },
       { status },
     ),
@@ -197,11 +204,12 @@ const fillFullRelease = async (
   user: ReturnType<typeof userEvent.setup>,
   remarks = '재검사 합격으로 전량 해제',
 ) => user.type(screen.getByLabelText('해제 사유 및 비고'), remarks);
-const prepareCreate = async (response = createRoute(), selected = lot({ availableQty: 20 })) => {
-  const view = renderPreparation(
-    [transitionRoute([transition('CREATE_HOLD', 'DEFECTIVE')]), response],
-    selected,
-  );
+const prepareCreate = async (
+  response = createRoute(),
+  selected = lot({ availableQty: 20 }),
+  selectedTransition = transition('CREATE_HOLD', 'DEFECTIVE'),
+) => {
+  const view = renderPreparation([transitionRoute([selectedTransition]), response], selected);
   await chooseTransition(view.user, '불량');
   await screen.findByRole('radio', { name: '전량 보류' });
   return view;
@@ -381,6 +389,25 @@ describe('Lot Status 전이 준비', () => {
     expect(requests.some((request) => request.url.includes(':release'))).toBe(false);
   });
 
+  it('서버가 계산한 피킹·출고 영향은 확인 경고로 보이되 실행을 막지 않는다', async () => {
+    const { requests, user } = await prepareCreate(
+      createRoute(),
+      lot({ availableQty: 20 }),
+      transition('CREATE_HOLD', 'DEFECTIVE', true, {
+        openPickingCount: 2,
+        shippedQty: 300,
+      }),
+    );
+    await fillFullCreate(user);
+    await user.click(screen.getByRole('button', { name: '등록 확인' }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(dialog).toHaveTextContent('피킹 중인 요청 2건이 막힙니다.');
+    expect(dialog).toHaveTextContent('이미 출고된 수량 300은 이 전이로 회수되지 않습니다.');
+    expect(within(dialog).getByRole('button', { name: '보류 등록' })).toBeEnabled();
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
   it('CREATE_HOLD 일반 실패는 같은 body·멱등 키로 명시적으로 재시도한다', async () => {
     const { queryClient, requests, urls, user } = await prepareCreate(createRoute(500));
     await fillCreate(user);
@@ -410,6 +437,11 @@ describe('Lot Status 전이 준비', () => {
       '409-empty',
       createRoute(409, ''),
       'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.',
+    ],
+    [
+      '409-current-status',
+      createRoute(409, '합성 자유 문구', 'DEFECTIVE'),
+      'LOT 정보가 변경되었습니다. 현재 상태는 불량입니다. 최신 정보를 불러온 뒤 다시 확인하세요.',
     ],
     ['412', createRoute(412), 'LOT 상태가 바뀌었습니다.'],
   ])(
@@ -859,6 +891,11 @@ describe('Lot Status 전이 준비', () => {
       '409-empty',
       releaseRoute(409, ''),
       'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.',
+    ],
+    [
+      '409-current-status',
+      releaseRoute(409, '합성 자유 문구', 'DEFECTIVE'),
+      'LOT 정보가 변경되었습니다. 현재 상태는 불량입니다. 최신 정보를 불러온 뒤 다시 확인하세요.',
     ],
     ['412', releaseRoute(412), '잠금 토큰이 만료됐습니다.'],
   ])(
