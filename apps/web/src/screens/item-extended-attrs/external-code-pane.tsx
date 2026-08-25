@@ -25,6 +25,7 @@ export interface ExternalCodePaneProps {
   /** 거래처 번호 → 이름. 번호를 화면에 그대로 내지 않는다 */
   partnerEntries: LookupEntry[];
   isPartnerLoading: boolean;
+  isPartnerError?: boolean;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   loadError: ReactNode;
@@ -59,6 +60,7 @@ export const ExternalCodePane = ({
   isLoading,
   partnerEntries,
   isPartnerLoading,
+  isPartnerError,
   optionsNotice,
   loadError,
   banner,
@@ -76,7 +78,7 @@ export const ExternalCodePane = ({
   const partnerLabel = (value: string): string =>
     value === ''
       ? t.values.allPartners
-      : lookupLabel(partnerEntries, Number(value), isPartnerLoading);
+      : lookupLabel(partnerEntries, Number(value), isPartnerLoading, isPartnerError);
 
   /** 줄 액션의 이름. 유일 제약의 두 값을 붙여야 줄끼리 구분된다. */
   const rowName = (draft: ExternalCodeDraft): string =>

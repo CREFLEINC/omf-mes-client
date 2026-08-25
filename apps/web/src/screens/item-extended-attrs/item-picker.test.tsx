@@ -143,6 +143,15 @@ describe('ItemPicker — 결과에서 고른다', () => {
     expect(screen.queryByRole('option', { name: '9001' })).not.toBeInTheDocument();
   });
 
+  it('이름을 모르는 현재 값도 번호 대신 미확인 상태로 남는다', async () => {
+    const { user } = renderPicker([searchRoute()], { value: '9001' });
+
+    await user.click(screen.getByLabelText('대상 품목'));
+
+    expect(screen.getByRole('option', { name: '알 수 없음' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: '9001' })).not.toBeInTheDocument();
+  });
+
   /* 검색 전에 선택칸이 비어 있는 것은 정상이다 — 밝히지 않으면 고장으로 읽힌다. */
   it('검색 전에는 무엇을 하라는 안내가 붙는다', () => {
     renderPicker([searchRoute()]);
@@ -185,5 +194,17 @@ describe('ItemPicker — 결과가 온전하지 않을 때', () => {
     expect(
       await screen.findByText('품목을 검색하지 못했습니다. 잠시 뒤 다시 찾아 보세요.'),
     ).toBeInTheDocument();
+  });
+
+  it('조회 실패 중인 현재 값은 번호 대신 실패 상태로 남는다', async () => {
+    const { user } = renderPicker([failingSearchRoute()], { value: '9001' });
+
+    await user.type(screen.getByLabelText('대상 품목 검색'), 'SYN');
+    await user.click(screen.getByRole('button', { name: '찾기' }));
+    await screen.findByText('품목을 검색하지 못했습니다. 잠시 뒤 다시 찾아 보세요.');
+    await user.click(screen.getByLabelText('대상 품목'));
+
+    expect(screen.getByRole('option', { name: '이름을 불러오지 못했습니다' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: '9001' })).not.toBeInTheDocument();
   });
 });

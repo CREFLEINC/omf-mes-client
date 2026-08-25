@@ -24,14 +24,18 @@ export interface BomComponentPaneProps {
   /** 구성품 번호 → 이름. 행마다 상세를 부른 결과다(결정 12) */
   itemNameEntries: LookupEntry[];
   isItemNameLoading: boolean;
+  isItemNameError?: boolean;
   /** 단위 번호 → 이름 */
   uomEntries: LookupEntry[];
   isUomLoading: boolean;
+  isUomError?: boolean;
   /** 등록 공정(Rev 평탄화) · 실사용 공정 */
   routingOperationEntries: LookupEntry[];
   isRoutingOperationLoading: boolean;
+  isRoutingOperationError?: boolean;
   processEntries: LookupEntry[];
   isProcessLoading: boolean;
+  isProcessError?: boolean;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   loadError: ReactNode;
@@ -60,18 +64,22 @@ export const BomComponentPane = ({
   isLoading,
   itemNameEntries,
   isItemNameLoading,
+  isItemNameError,
   uomEntries,
   isUomLoading,
+  isUomError,
   routingOperationEntries,
   isRoutingOperationLoading,
+  isRoutingOperationError,
   processEntries,
   isProcessLoading,
+  isProcessError,
   optionsNotice,
   loadError,
   onEdit,
 }: BomComponentPaneProps) => {
   const itemLabel = (itemId: number): string =>
-    lookupLabel(itemNameEntries, itemId, isItemNameLoading);
+    lookupLabel(itemNameEntries, itemId, isItemNameLoading, isItemNameError);
 
   /*
    * 지정 폭의 합은 **724px**이고 「구성품」이 남는 폭을 흡수한다 — 그 열의 하한을 200px로
@@ -102,7 +110,10 @@ export const BomComponentPane = ({
       width: '152px',
       align: 'end',
       render: (row) =>
-        requiredQtyText(row.requiredQty, lookupLabel(uomEntries, row.uomId, isUomLoading)),
+        requiredQtyText(
+          row.requiredQty,
+          lookupLabel(uomEntries, row.uomId, isUomLoading, isUomError),
+        ),
     },
     {
       key: 'scrapRate',
@@ -124,8 +135,13 @@ export const BomComponentPane = ({
       width: '140px',
       render: (row) =>
         processText(
-          lookupLabel(routingOperationEntries, row.routingOperationId, isRoutingOperationLoading),
-          lookupLabel(processEntries, row.actualUseProcessId, isProcessLoading),
+          lookupLabel(
+            routingOperationEntries,
+            row.routingOperationId,
+            isRoutingOperationLoading,
+            isRoutingOperationError,
+          ),
+          lookupLabel(processEntries, row.actualUseProcessId, isProcessLoading, isProcessError),
         ),
     },
     {

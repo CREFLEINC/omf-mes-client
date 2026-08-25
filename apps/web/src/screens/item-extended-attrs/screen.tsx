@@ -936,6 +936,7 @@ export const ItemExtendedAttrsScreen = () => {
         item={itemDetail.data.item}
         uomEntries={uomOptions.entries}
         isUomLoading={uomOptions.isLoading}
+        isUomError={uomOptions.isError}
       />
     );
   };
@@ -982,8 +983,10 @@ export const ItemExtendedAttrsScreen = () => {
       isLoading={buMapList.isPending}
       businessUnitEntries={businessUnitOptions.entries}
       isBusinessUnitLoading={businessUnitOptions.isLoading}
+      isBusinessUnitError={businessUnitOptions.isError}
       itemNameEntries={buMapItemNames.entries}
       isItemNameLoading={buMapItemNames.isLoading}
+      isItemNameError={buMapItemNames.isError}
       /*
        * 이름 조회 실패는 **저장을 막지 않는다** — 표시만의 문제라 잘림·실패 안내와
        * 같은 자리에 다른 문구로 낸다.
@@ -1036,6 +1039,7 @@ export const ItemExtendedAttrsScreen = () => {
       isLoading={uomConversionList.isPending}
       uomEntries={uomOptions.entries}
       isUomLoading={uomOptions.isLoading}
+      isUomError={uomOptions.isError}
       /*
        * **단위 목록 안내의 주인은 이 페인이 아니다.**
        *
@@ -1085,6 +1089,7 @@ export const ItemExtendedAttrsScreen = () => {
       isLoading={externalCodeList.isPending}
       partnerEntries={partnerOptions.entries}
       isPartnerLoading={partnerOptions.isLoading}
+      isPartnerError={partnerOptions.isError}
       optionsNotice={renderOptionsNotice([partnerOptions])}
       loadError={
         externalCodeList.isError ? (
@@ -1160,6 +1165,7 @@ export const ItemExtendedAttrsScreen = () => {
             bom={selectedBom}
             uomEntries={uomOptions.entries}
             isUomLoading={uomOptions.isLoading}
+            isUomError={uomOptions.isError}
           />
 
           <BomComponentPane
@@ -1167,12 +1173,16 @@ export const ItemExtendedAttrsScreen = () => {
             isLoading={bomComponentList.isPending}
             itemNameEntries={componentItemNames.entries}
             isItemNameLoading={componentItemNames.isLoading}
+            isItemNameError={componentItemNames.isError}
             uomEntries={uomOptions.entries}
             isUomLoading={uomOptions.isLoading}
+            isUomError={uomOptions.isError}
             routingOperationEntries={routingOperationOptions.entries}
             isRoutingOperationLoading={routingOperationOptions.isLoading}
+            isRoutingOperationError={routingOperationOptions.isError}
             processEntries={processOptions.entries}
             isProcessLoading={processOptions.isLoading}
+            isProcessError={processOptions.isError}
             /*
              * 이름 조회 실패는 **표시만의 문제라** 편집을 막지 않는다 —
              * 선택 목록의 잘림·실패와 같은 자리에 다른 문구로 낸다.
@@ -1307,9 +1317,7 @@ export const ItemExtendedAttrsScreen = () => {
         <BuMapFormDialog
           draft={editingBuMap.draft}
           isNew={editingBuMap.isNew}
-          businessUnitOptions={(selected) =>
-            selectableOptions(businessUnitOptions.entries, selected)
-          }
+          businessUnitOptions={(selected) => selectableOptions(businessUnitOptions, selected)}
           /*
            * 표가 이미 아는 이름을 넘긴다 — 검색 결과에 없어도 선택칸에 번호가 보이지 않는다.
            * **로딩 갈래를 함께 넘긴다**: 빠뜨리면 이름을 받는 중인 창에서만 「알 수 없음」이 되어
@@ -1322,6 +1330,7 @@ export const ItemExtendedAttrsScreen = () => {
                   buMapItemNames.entries,
                   Number(editingBuMap.draft.toItemId),
                   buMapItemNames.isLoading,
+                  buMapItemNames.isError,
                 )
           }
           onClose={() => setEditingBuMap(null)}
@@ -1338,7 +1347,7 @@ export const ItemExtendedAttrsScreen = () => {
           isNew={editingUomConversion.isNew}
           /* 자기 자신은 초안 키로 걸러진다 — 수정할 때 세 값을 그대로 두는 것이 정상이다. */
           otherDrafts={uomConversionDrafts}
-          uomOptions={(selected) => selectableOptions(uomOptions.entries, selected)}
+          uomOptions={(selected) => selectableOptions(uomOptions, selected)}
           onClose={() => setEditingUomConversion(null)}
           onConfirm={(next) => {
             changeUomConversionDrafts((drafts) => upsertUomConversionDraft(drafts, next));
@@ -1352,7 +1361,7 @@ export const ItemExtendedAttrsScreen = () => {
           draft={editingExternalCode.draft}
           isNew={editingExternalCode.isNew}
           otherDrafts={externalCodeDrafts}
-          partnerOptions={(selected) => selectableOptions(partnerOptions.entries, selected)}
+          partnerOptions={(selected) => selectableOptions(partnerOptions, selected)}
           onClose={() => setEditingExternalCode(null)}
           onConfirm={(next) => {
             changeExternalCodeDrafts((drafts) => upsertExternalCodeDraft(drafts, next));
@@ -1374,6 +1383,7 @@ export const ItemExtendedAttrsScreen = () => {
               bomComponents.find((row) => row.bomComponentId === editingComponentId)
                 ?.componentItemId,
               componentItemNames.isLoading,
+              componentItemNames.isError,
             ),
           )}
           loadError={
@@ -1387,7 +1397,7 @@ export const ItemExtendedAttrsScreen = () => {
           values={componentFormState?.values ?? null}
           onChange={changeComponentValues}
           routingOperationOptions={(selected) =>
-            selectableOptions(routingOperationOptions.entries, selected)
+            selectableOptions(routingOperationOptions, selected)
           }
           /*
            * 이 품목에 공정 흐름이 하나도 없으면 고를 값이 없다 — 빈 선택칸을 두면
@@ -1398,7 +1408,7 @@ export const ItemExtendedAttrsScreen = () => {
               ? undefined
               : t.component.actionReasons.routingOperationEmpty
           }
-          processOptions={(selected) => selectableOptions(processOptions.entries, selected)}
+          processOptions={(selected) => selectableOptions(processOptions, selected)}
           fieldErrors={componentWrite.fieldErrors}
           /*
            * 400 `STATE_LOCKED`·403·409가 전부 이 공통 배너로 온다.

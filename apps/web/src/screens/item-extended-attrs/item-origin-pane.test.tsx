@@ -92,8 +92,15 @@ describe('ItemOriginPane — 원본 4열의 값 표기', () => {
   it('단위 목록을 받는 중이면 「알 수 없음」을 내지 않는다', () => {
     renderPane({ uomEntries: [], isUomLoading: true });
 
-    expect(screen.getByLabelText('기준 단위')).toHaveTextContent('불러오는 중…');
+    expect(screen.getByLabelText('기준 단위')).toHaveTextContent('이름 불러오는 중');
     expect(screen.getByLabelText('기준 단위')).not.toHaveTextContent('알 수 없음');
+  });
+
+  it('단위 조회가 실패하면 번호 대신 실패 상태를 낸다', () => {
+    renderPane({ item: itemFixtures[2]!, uomEntries: [], isUomLoading: false, isUomError: true });
+
+    expect(screen.getByLabelText('기준 단위')).toHaveTextContent('이름을 불러오지 못했습니다');
+    expect(screen.queryByText('9999')).not.toBeInTheDocument();
   });
 
   it('품목유형이 비어 있으면 미지정 표기다 — 빈 칸을 남기지 않는다', () => {

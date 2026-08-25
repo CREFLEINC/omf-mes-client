@@ -1745,10 +1745,19 @@ export const CommonCodeScreen = () => {
   const parentDepartmentOptions = useMemo(
     () =>
       selectableOptions(
-        parentOptionsFor(departmentOptions.entries, selectedDepartmentId),
+        {
+          ...departmentOptions,
+          entries: parentOptionsFor(departmentOptions.entries, selectedDepartmentId),
+        },
         selectedParentId,
       ),
-    [departmentOptions.entries, selectedDepartmentId, selectedParentId],
+    [
+      departmentOptions.entries,
+      departmentOptions.isError,
+      departmentOptions.isLoading,
+      selectedDepartmentId,
+      selectedParentId,
+    ],
   );
 
   /**
@@ -1792,7 +1801,7 @@ export const CommonCodeScreen = () => {
               : null
           }
           businessUnitOptions={selectableOptions(
-            businessUnitOptions.entries,
+            businessUnitOptions,
             departmentFormState.values.businessUnitId,
           )}
           isDirty={isDepartmentDirty}
@@ -1875,7 +1884,7 @@ export const CommonCodeScreen = () => {
           parentDepartmentOptions.length === 0 ? t.department.actionReasons.parentNeedsOthers : null
         }
         businessUnitOptions={selectableOptions(
-          businessUnitOptions.entries,
+          businessUnitOptions,
           departmentFormState.values.businessUnitId,
         )}
         isDirty={isDepartmentDirty}
@@ -1907,16 +1916,13 @@ export const CommonCodeScreen = () => {
         isLoading={departmentList.isPending}
         appliedFilters={departmentFilters}
         onApplyFilters={applyDepartmentFilters}
-        businessUnitOptions={selectableOptions(
-          businessUnitOptions.entries,
-          departmentFilters.scopeId,
-        )}
+        businessUnitOptions={selectableOptions(businessUnitOptions, departmentFilters.scopeId)}
         /*
-         * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
-         * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
+         * 조건 칩에는 번호가 아니라 이름을 낸다. 목록을 받는 중·실패·다 받은 뒤 미확인을
+         * 각각 다른 상태로 내고, 이름이 도착하면 그 이름으로 바뀐다 —
          * 번호를 대신 보이면 사용자가 쓸 수 없는 값을 자료로 읽는다.
          */
-        businessUnitLabel={(scopeId) => lookupLabel(businessUnitOptions.entries, Number(scopeId))}
+        businessUnitLabel={(scopeId) => lookupLabel(businessUnitOptions, Number(scopeId))}
         optionsNotice={renderOptionsNotice([businessUnitOptions])}
         pageView={departmentPageView}
         onChangePage={changeDepartmentPage}
@@ -1972,9 +1978,9 @@ export const CommonCodeScreen = () => {
     return (
       <WorkerDetailPane
         worker={workerDetail.data.worker}
-        businessUnitEntries={workerBusinessUnits.entries}
-        plantEntries={plantOptions.entries}
-        departmentEntries={workerDepartmentOptions.entries}
+        businessUnits={workerBusinessUnits}
+        plants={plantOptions}
+        departments={workerDepartmentOptions}
       />
     );
   };
@@ -1986,11 +1992,8 @@ export const CommonCodeScreen = () => {
         isLoading={workerList.isPending}
         appliedFilters={workerFilters}
         onApplyFilters={applyWorkerFilters}
-        departmentOptions={selectableOptions(
-          workerDepartmentOptions.entries,
-          workerFilters.scopeId,
-        )}
-        departmentLabel={(scopeId) => lookupLabel(workerDepartmentOptions.entries, Number(scopeId))}
+        departmentOptions={selectableOptions(workerDepartmentOptions, workerFilters.scopeId)}
+        departmentLabel={(scopeId) => lookupLabel(workerDepartmentOptions, Number(scopeId))}
         optionsNotice={renderOptionsNotice([workerDepartmentOptions])}
         pageView={workerPageView}
         onChangePage={changeWorkerPage}
@@ -2223,7 +2226,7 @@ export const CommonCodeScreen = () => {
           draft={editingQualification}
           isNew={isEditingNewQualification}
           otherDrafts={qualificationDrafts}
-          processOptions={selectableOptions(processOptions.entries, editingQualification.processId)}
+          processOptions={selectableOptions(processOptions, editingQualification.processId)}
           onClose={() => setEditingQualification(null)}
           onConfirm={(next) => {
             changeQualificationDrafts((drafts) => upsertQualificationDraft(drafts, next));

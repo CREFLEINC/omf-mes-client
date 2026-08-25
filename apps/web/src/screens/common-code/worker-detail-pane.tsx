@@ -2,6 +2,7 @@ import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import type { LookupSource } from '../../patterns/lookup-display';
 import { lookupLabel } from './code-options';
 import type { LookupEntry, Worker } from './types';
 
@@ -9,9 +10,9 @@ const t = messages.commonCode;
 
 export interface WorkerDetailPaneProps {
   worker: Worker;
-  businessUnitEntries: LookupEntry[];
-  plantEntries: LookupEntry[];
-  departmentEntries: LookupEntry[];
+  businessUnits: LookupSource<LookupEntry>;
+  plants: LookupSource<LookupEntry>;
+  departments: LookupSource<LookupEntry>;
 }
 
 /** 라벨과 값 한 쌍. **폼 컨트롤이 아니다** — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다. */
@@ -46,9 +47,9 @@ const orEmptyMark = (value: string): string => (value === '' ? t.values.empty : 
  */
 export const WorkerDetailPane = ({
   worker,
-  businessUnitEntries,
-  plantEntries,
-  departmentEntries,
+  businessUnits,
+  plants,
+  departments,
 }: WorkerDetailPaneProps) => (
   <section className="pane" aria-label={t.panes.workerDetail}>
     <div className="banner-slot">
@@ -60,12 +61,12 @@ export const WorkerDetailPane = ({
       <ValueField label={t.worker.fields.workerName} value={orEmptyMark(worker.workerName)} />
       <ValueField
         label={t.worker.fields.businessUnit}
-        value={lookupLabel(businessUnitEntries, worker.businessUnitId)}
+        value={lookupLabel(businessUnits, worker.businessUnitId)}
       />
-      <ValueField label={t.worker.fields.plant} value={lookupLabel(plantEntries, worker.plantId)} />
+      <ValueField label={t.worker.fields.plant} value={lookupLabel(plants, worker.plantId)} />
       <ValueField
         label={t.worker.fields.department}
-        value={lookupLabel(departmentEntries, worker.departmentId)}
+        value={lookupLabel(departments, worker.departmentId)}
       />
       <ValueField label={t.worker.fields.status} value={orEmptyMark(worker.statusCode)} />
       <ValueField
