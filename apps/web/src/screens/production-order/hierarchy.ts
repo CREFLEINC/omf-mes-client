@@ -20,7 +20,7 @@ const toRelations = (orders: readonly ProductionOrderFact[]) => {
       ancestry.add(ancestorId);
       ancestorId = byId.get(ancestorId)?.parentProductionOrderId ?? null;
     }
-    if (ancestorId !== null && ancestry.has(ancestorId)) continue;
+    if (ancestorId === order.productionOrderId) continue;
     const siblings = children.get(parentId) ?? [];
     siblings.push(order);
     children.set(parentId, siblings);

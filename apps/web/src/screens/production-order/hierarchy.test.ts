@@ -60,4 +60,22 @@ describe('production-order hierarchy', () => {
     expect(new Set(ids(rows)).size).toBe(orders.length);
     expect(ids(toVisibleProductionOrderHierarchy(orders, new Set()))).toEqual([7, 8, 9, 10]);
   });
+
+  it('자기참조 부모 아래의 정상 자식 edge는 보존한다', () => {
+    const orders = [order(1, 1), order(2, 1)];
+    const expanded = defaultExpandedProductionOrderIds(orders);
+
+    expect([...expanded]).toEqual([1]);
+    expect(toVisibleProductionOrderHierarchy(orders, expanded)).toMatchObject([
+      { order: { productionOrderId: 1 }, depth: 0, hasChildren: true, isExpanded: true },
+      { order: { productionOrderId: 2 }, depth: 1, hasChildren: false, isExpanded: false },
+    ]);
+
+    const cycleWithChild = [order(3, 4), order(4, 3), order(5, 3)];
+    const cycleExpanded = defaultExpandedProductionOrderIds(cycleWithChild);
+    expect([...cycleExpanded]).toEqual([3]);
+    expect(ids(toVisibleProductionOrderHierarchy(cycleWithChild, cycleExpanded))).toEqual([
+      3, 5, 4,
+    ]);
+  });
 });
