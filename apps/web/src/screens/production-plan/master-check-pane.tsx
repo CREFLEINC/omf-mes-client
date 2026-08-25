@@ -22,8 +22,7 @@ interface MasterCheckPaneProps {
 
 export const automaticBomId = (items: readonly BomRevisionFact[]): number | null => {
   const defaults = items.filter((item) => item.isDefault);
-  if (defaults.length === 1) return defaults[0]?.bomId ?? null;
-  return defaults.length === 0 && items.length === 1 ? (items[0]?.bomId ?? null) : null;
+  return defaults.length === 1 ? (defaults[0]?.bomId ?? null) : null;
 };
 
 export const automaticRoutingId = (items: readonly RoutingRevisionFact[]): number | null =>
@@ -121,7 +120,7 @@ export const MasterCheckPane = ({
           onChange={onChange}
         />
         {kind === 'BOM' && automaticBom !== null && <p>기본 BOM Rev를 자동으로 선택했습니다.</p>}
-        {kind === 'BOM' && automaticBom === null && options.length > 1 && (
+        {kind === 'BOM' && automaticBom === null && options.length > 0 && (
           <AlertBanner variant="warning">기본 BOM Rev를 하나로 판단할 수 없습니다.</AlertBanner>
         )}
         {kind === 'Routing' && options.length > 1 && (

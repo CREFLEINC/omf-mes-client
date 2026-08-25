@@ -114,6 +114,17 @@ describe('생산계획 마스터 점검', () => {
     );
   });
 
+  it('기본 플래그가 없는 단일 BOM도 자동 선택하지 않는다', async () => {
+    const boms = [bom(701)];
+    renderWithProviders(<Harness boms={boms} routings={[routing(801)]} />);
+
+    expect(await screen.findByText('기본 BOM Rev를 하나로 판단할 수 없습니다.')).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'BOM Rev' })).toHaveTextContent(
+      '사용할 개정을 선택하세요',
+    );
+    expect(automaticBomId(boms)).toBeNull();
+  });
+
   it('BOM·Routing 부재를 각각 차단하고 Routing 등록 경로만 제공한다', () => {
     renderWithProviders(
       <MasterCheckPane
