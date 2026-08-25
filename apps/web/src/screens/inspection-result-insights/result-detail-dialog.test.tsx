@@ -8,7 +8,14 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import type { LookupSource } from '../../patterns/lookup-display';
 import { ResultDetailDialog } from './result-detail-dialog';
+
+const source = (value: string, label: string, isActive = true): LookupSource => ({
+  entries: [{ value, label, isActive }],
+  isError: false,
+  isLoading: false,
+});
 
 const route = (path: string, respond: StubRoute['respond']): StubRoute => ({
   match: (request) => new URL(request.url).pathname === path,
@@ -46,8 +53,8 @@ describe('검사 결과 상세 Dialog', () => {
       <ResultDetailDialog
         inspectionResultId={701}
         labels={{
-          item: new Map([[101, '합성 품목']]),
-          judgment: new Map([['REJECTED', '불합격']]),
+          item: source('101', '합성 품목', false),
+          judgment: source('REJECTED', '불합격'),
         }}
         onClose={onClose}
         onViewMeasurements={onViewMeasurements}
@@ -99,7 +106,7 @@ describe('검사 결과 상세 Dialog', () => {
 
     const dialog = await screen.findByRole('dialog', { name: '검사 결과 상세' });
     expect(await within(dialog).findByText('SAMPLE-REQUEST-801')).toBeInTheDocument();
-    expect(within(dialog).getByText('합성 품목')).toBeInTheDocument();
+    expect(within(dialog).getByText('합성 품목 (미사용)')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 치수')).toBeInTheDocument();
     const [summary, countOnlySummary] = within(dialog).getAllByRole('listitem');
     expect(summary).toBeDefined();

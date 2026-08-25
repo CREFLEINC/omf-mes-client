@@ -9,6 +9,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import type { LookupSource } from '../../patterns/lookup-display';
 import { InspectionResultInsightsScreen } from './screen';
 
 const options = {
@@ -17,10 +18,12 @@ const options = {
   process: [{ value: '501', label: '합성 공정' }],
   judgment: [{ value: 'REJECTED', label: '불합격' }],
 };
-const labels = {
-  item: new Map([[101, '합성 품목']]),
-  judgment: new Map([['REJECTED', '불합격']]),
-};
+const source = (value: string, label: string): LookupSource => ({
+  entries: [{ value, label, isActive: true }],
+  isError: false,
+  isLoading: false,
+});
+const labels = { item: source('101', '합성 품목'), judgment: source('REJECTED', '불합격') };
 const row = {
   inspectionResultId: 701,
   inspectionResultNo: 'SAMPLE-RESULT-701',

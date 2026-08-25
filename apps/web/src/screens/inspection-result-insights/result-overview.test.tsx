@@ -10,8 +10,19 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import type { LookupSource } from '../../patterns/lookup-display';
 import { EMPTY_INSPECTION_INSIGHT_FILTERS, type InspectionInsightFilters } from './filters';
 import { ResultOverview } from './result-overview';
+
+const source = (
+  entries: LookupSource['entries'] = [],
+  state: Partial<Pick<LookupSource, 'isError' | 'isLoading'>> = {},
+): LookupSource => ({ entries, isError: false, isLoading: false, ...state });
+const labels = {
+  item: source([{ value: '101', label: '합성 품목', isActive: false }]),
+  judgment: source([{ value: 'REJECTED', label: '불합격', isActive: true }]),
+};
+const emptyLabels = { item: source(), judgment: source() };
 
 const filters: InspectionInsightFilters = {
   ...EMPTY_INSPECTION_INSIGHT_FILTERS,
@@ -82,10 +93,7 @@ describe('검사 결과 요약·목록', () => {
         filters={filters}
         sort="inspectedAt,desc"
         page={1}
-        labels={{
-          item: new Map([[101, '합성 품목']]),
-          judgment: new Map([['REJECTED', '불합격']]),
-        }}
+        labels={labels}
         onSortChange={onSortChange}
         onPageChange={onPageChange}
         onSelectResult={() => undefined}
@@ -120,6 +128,8 @@ describe('검사 결과 요약·목록', () => {
     await user.click(screen.getByRole('button', { name: '검교정 만료만 분리해 보기' }));
     expect(onViewExpiredCalibration).toHaveBeenCalledOnce();
     expect(screen.queryByText('101')).not.toBeInTheDocument();
+    expect(screen.getAllByText('합성 품목 (미사용)')).not.toHaveLength(0);
+    expect(screen.getAllByText('불합격')).not.toHaveLength(0);
     expect(requests).toHaveLength(2);
     for (const request of requests) {
       expect(request.searchParams.get('inspectionTypeCode')).toBe('IQC');
@@ -134,7 +144,7 @@ describe('검사 결과 요약·목록', () => {
         filters={{ ...filters, inspectionTypeCode: '' }}
         sort="inspectedAt,desc"
         page={1}
-        labels={{ item: new Map(), judgment: new Map() }}
+        labels={emptyLabels}
         onSortChange={() => undefined}
         onPageChange={() => undefined}
         onSelectResult={() => undefined}
@@ -186,7 +196,7 @@ describe('검사 결과 요약·목록', () => {
         filters={EMPTY_INSPECTION_INSIGHT_FILTERS}
         sort="inspectedAt,desc"
         page={1}
-        labels={{ item: new Map(), judgment: new Map() }}
+        labels={emptyLabels}
         onSortChange={() => undefined}
         onPageChange={() => undefined}
         onSelectResult={() => undefined}
@@ -208,7 +218,7 @@ describe('검사 결과 요약·목록', () => {
           filters={filters}
           sort="inspectedAt,desc"
           page={page}
-          labels={{ item: new Map([[101, '합성 품목']]), judgment: new Map() }}
+          labels={labels}
           onSortChange={() => undefined}
           onPageChange={setPage}
           onSelectResult={() => undefined}
@@ -264,7 +274,7 @@ describe('검사 결과 요약·목록', () => {
         filters={allRounds}
         sort="inspectedAt,desc"
         page={1}
-        labels={{ item: new Map(), judgment: new Map() }}
+        labels={emptyLabels}
         onSortChange={() => undefined}
         onPageChange={() => undefined}
         onSelectResult={() => undefined}
@@ -301,5 +311,46 @@ describe('검사 결과 요약·목록', () => {
     expect(screen.getByText(/뿌리 결과 기준 페이지에서 재검 사슬 전체/)).toBeInTheDocument();
     for (const request of requests)
       expect(request.searchParams.get('finalRoundOnly')).toBe('false');
+  });
+
+  it('참조 조회의 로딩·실패를 원본 ID나 코드로 바꾸지 않는다', async () => {
+    renderWithProviders(
+      <ResultOverview
+        filters={filters}
+        sort="inspectedAt,desc"
+        page={1}
+        labels={{
+          item: source([], { isLoading: true }),
+          judgment: source([], { isError: true }),
+        }}
+        onSortChange={() => undefined}
+        onPageChange={() => undefined}
+        onSelectResult={() => undefined}
+        onViewExpiredCalibration={() => undefined}
+      />,
+      {
+        fetch: async (request) =>
+          new URL(request.url).pathname.endsWith('/summary')
+            ? jsonResponse({
+                inspectionCount: 1,
+                inspectedQty: 30,
+                acceptedQty: 28,
+                rejectedQty: 2,
+                heldQty: 0,
+                defectRate: 6.67,
+                finalRoundOnly: true,
+                asOf: '2026-08-31T09:30:00+09:00',
+              })
+            : jsonResponse({
+                items: [row(1, 'SAMPLE-LOOKUP')],
+                page: { page: 1, size: 50, total: 1 },
+              }),
+      },
+    );
+
+    expect(await screen.findByText('이름 불러오는 중')).toBeInTheDocument();
+    expect(screen.getByText('이름을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByText('101')).not.toBeInTheDocument();
+    expect(screen.queryByText('REJECTED')).not.toBeInTheDocument();
   });
 });
