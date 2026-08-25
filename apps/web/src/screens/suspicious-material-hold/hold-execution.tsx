@@ -9,6 +9,10 @@ import type { SelectedLotSnapshot } from './candidate-model';
 
 type Body = components['schemas']['LotHoldCreate'];
 type LotHold = components['schemas']['LotHold'];
+interface Confirmation {
+  body: Body;
+  lotNames: Record<string, string>;
+}
 const ROOT_KEYS = [
   ['suspicious-material-hold'],
   ['lot-status-history'],
@@ -25,6 +29,8 @@ const conflictMessage = (error: ApiError | null): string => {
     return error.message;
   return '선택한 LOT 중 하나의 상태가 변경되었습니다. 최신 정보를 다시 불러오세요.';
 };
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
 
 export interface SuspiciousMaterialHoldExecutionProps {
   body: Body | null;
@@ -44,14 +50,31 @@ export const SuspiciousMaterialHoldExecution = ({
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const [confirmation, setConfirmation] = useState<Body | null>(null);
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [applied, setApplied] = useState(false);
-  const write = useMasterWrite<Body, LotHold[]>({
-    request: (requestBody, headers) =>
-      client.POST('/quality/lot-holds', {
+  const write = useMasterWrite<Confirmation, LotHold[]>({
+    request: async (request, headers) => {
+      const result = await client.POST('/quality/lot-holds', {
         params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body: requestBody,
-      }),
+        body: request.body,
+      });
+      if (result.response.status !== 409 || !isRecord(result.error)) return result;
+      const raw = result.error as Record<string, unknown>;
+      const rawId = raw.conflictingLotId;
+      const lotName = typeof rawId === 'number' ? request.lotNames[String(rawId)] : undefined;
+      const serverMessage = typeof raw.message === 'string' ? raw.message.trim() : '';
+      const owner = lotName ?? '선택한 LOT 중 하나';
+      return {
+        ...result,
+        error: {
+          ...raw,
+          message:
+            serverMessage === ''
+              ? `${owner}의 상태가 변경되었습니다. 최신 정보를 다시 불러오세요.`
+              : `${owner}: ${serverMessage}`,
+        },
+      };
+    },
     etagPath: null,
     invalidateKeys: ROOT_KEYS,
     knownFields: [
@@ -92,7 +115,10 @@ export const SuspiciousMaterialHoldExecution = ({
         onClick={() => {
           if (body !== null) {
             setApplied(false);
-            setConfirmation(body);
+            setConfirmation({
+              body,
+              lotNames: Object.fromEntries(selected.map((lot) => [String(lot.lotId), lot.lotNo])),
+            });
             onConfirmationChange(true);
           }
         }}
@@ -133,11 +159,22 @@ export const SuspiciousMaterialHoldExecution = ({
               {conflictMessage(write.error)}
             </AlertBanner>
           ) : (
-            <SaveErrorBanner error={write.error} />
+            <>
+              <SaveErrorBanner error={write.error} />
+              {Object.keys(write.fieldErrors).length > 0 && (
+                <AlertBanner variant="error" title="입력값을 확인하세요.">
+                  <ul>
+                    {Object.values(write.fieldErrors).map((message) => (
+                      <li key={message}>{message}</li>
+                    ))}
+                  </ul>
+                </AlertBanner>
+              )}
+            </>
           )}
           <AlertBanner variant="warning" title="보류 등록 영향">
-            {selected.length}개 LOT의 출고·출하·피킹을 막습니다. 해제는 W-03-02에서 별도로 처리하며
-            이미 출고된 수량은 회수되지 않습니다.
+            {Object.keys(confirmation.lotNames).length}개 LOT의 출고·출하·피킹을 막습니다. 해제는
+            W-03-02에서 별도로 처리하며 이미 출고된 수량은 회수되지 않습니다.
           </AlertBanner>
         </Dialog>
       )}

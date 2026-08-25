@@ -99,11 +99,47 @@ describe('의심자재 보류 실행', () => {
     await user.click(screen.getByRole('button', { name: '등록 확인' }));
     await user.click(screen.getByRole('button', { name: '보류 등록' }));
     expect(await screen.findByText(/최신 LOT 상태가 필요합니다/)).toBeVisible();
+    expect(screen.getByText(/SYN-LOT-701/)).toBeVisible();
     expect(screen.queryByText('701')).toBeNull();
     expect(screen.getByRole('dialog')).toBeVisible();
     await user.click(screen.getByRole('button', { name: '최신 불러오기' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(callbacks.onReload).toHaveBeenCalledOnce();
     expect(requests).toHaveLength(1);
+  });
+
+  it('매핑할 수 없는 conflict ID는 generic으로 표시하고 raw ID를 숨긴다', async () => {
+    const { user } = renderExecution(() =>
+      jsonResponse(
+        { code: 'DUPLICATE_HOLD', conflictingLotId: 999, message: '열린 보류가 있습니다.' },
+        { status: 409 },
+      ),
+    );
+    await user.click(screen.getByRole('button', { name: '등록 확인' }));
+    await user.click(screen.getByRole('button', { name: '보류 등록' }));
+    expect(await screen.findByText(/선택한 LOT 중 하나.*열린 보류가 있습니다/)).toBeVisible();
+    expect(screen.queryByText('999')).toBeNull();
+  });
+
+  it('known field 400 문구를 confirmation dialog에서 잃지 않는다', async () => {
+    const { user } = renderExecution(() =>
+      jsonResponse(
+        {
+          errors: [
+            {
+              scope: 'field',
+              field: 'releaseCondition',
+              code: 'INVALID',
+              message: '서버 해제 조건 오류',
+            },
+          ],
+        },
+        { status: 400 },
+      ),
+    );
+    await user.click(screen.getByRole('button', { name: '등록 확인' }));
+    await user.click(screen.getByRole('button', { name: '보류 등록' }));
+    expect(await screen.findByText('서버 해제 조건 오류')).toBeVisible();
+    expect(screen.getByRole('dialog')).toBeVisible();
   });
 });
