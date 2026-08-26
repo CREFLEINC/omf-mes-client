@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProductionPlanEditorStateRow } from './editor-state';
@@ -8,12 +8,14 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
+  confirm: vi.fn(),
   detail: vi.fn(),
 }));
 vi.mock('./mutations', () => ({
   useCreateProductionPlan: mocks.create,
   useUpdateProductionPlan: mocks.update,
   useDeleteProductionPlan: mocks.remove,
+  useConfirmProductionPlan: mocks.confirm,
 }));
 vi.mock('./queries', () => ({ useProductionPlanDetail: mocks.detail }));
 const writeResult = (overrides: Record<string, unknown> = {}) => ({
@@ -73,6 +75,7 @@ const callbacks = () => ({
   onErrors: vi.fn(),
   onSettle: vi.fn(),
   onRemove: vi.fn(),
+  onShowResults: vi.fn(),
 });
 const renderActions = (target: ProductionPlanEditorStateRow, handlers = callbacks()) => {
   const view = render(
@@ -92,6 +95,7 @@ beforeEach(() => {
   mocks.create.mockReturnValue(writeResult());
   mocks.update.mockReturnValue(writeResult());
   mocks.remove.mockReturnValue(writeResult());
+  mocks.confirm.mockReturnValue(writeResult());
   mocks.detail.mockReturnValue({ isSuccess: true, isError: false, refetch: vi.fn() });
 });
 describe('ProductionPlanRowActions', () => {
@@ -140,6 +144,46 @@ describe('ProductionPlanRowActions', () => {
     expect([update.reset.mock.calls.length, remove.reset.mock.calls.length]).toEqual([1, 1]);
     expect(update.write).toHaveBeenCalledWith({ plannedQty: 75 });
     expect(remove.write).toHaveBeenCalledWith();
+  });
+  it('저장된 계획을 확인한 뒤 서버 단일 전개 확정을 실행하고 결과 대상으로 알린다', async () => {
+    const user = userEvent.setup();
+    const confirm = writeResult();
+    let succeed: ((plan: ProductionPlanFact) => void) | undefined;
+    mocks.confirm.mockImplementation((options: { onSuccess: typeof succeed }) => {
+      succeed = options.onSuccess;
+      return confirm;
+    });
+    const target = { ...row(101), isDirty: false };
+    const { handlers } = renderActions(target);
+
+    await user.click(screen.getByRole('button', { name: '전개 확정' }));
+    const dialog = screen.getByRole('dialog', { name: 'PLAN-101 전개 확정' });
+    expect(dialog).toHaveTextContent('Routing 공정별 W/O와 공정 의존 관계를 함께 생성합니다.');
+    expect(dialog).toHaveTextContent('서버가 한 트랜잭션으로 처리');
+    act(() => {
+      const submit = within(dialog).getByRole('button', { name: '전개 확정' });
+      submit.click();
+      submit.click();
+    });
+    expect(confirm.write).toHaveBeenCalledTimes(1);
+
+    const confirmed = { ...fact(101), confirmedAt: '2026-08-26T11:00:00+09:00' };
+    act(() => succeed?.(confirmed));
+    expect(handlers.onSettle).toHaveBeenCalledWith('plan-101', confirmed);
+    expect(handlers.onShowResults).toHaveBeenCalledWith(101);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+  it('미저장 변경은 확정을 잠그고 확정된 계획은 결과 보기를 제공한다', async () => {
+    const user = userEvent.setup();
+    const dirty = renderActions(row(101));
+    expect(screen.getByRole('button', { name: '전개 확정' })).toBeDisabled();
+    dirty.unmount();
+
+    const handlers = callbacks();
+    renderActions({ ...row(101), confirmed: true }, handlers);
+    await user.click(screen.getByRole('button', { name: '전개 결과' }));
+    expect(handlers.onShowResults).toHaveBeenCalledWith(101);
+    expect(screen.queryByRole('button', { name: '전개 확정' })).not.toBeInTheDocument();
   });
   it('확정·pending 행은 custom 저장과 삭제를 모두 잠근다', () => {
     for (const target of [

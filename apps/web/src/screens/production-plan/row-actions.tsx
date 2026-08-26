@@ -1,6 +1,7 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SaveErrorBanner, type MasterWriteResult } from '../../patterns/master';
+import { ProductionPlanConfirmDialog } from './confirm-dialog';
 import type {
   ProductionPlanCreateContext,
   ProductionPlanDraftErrors,
@@ -10,6 +11,7 @@ import { prepareProductionPlanRow, type ProductionPlanEditorStateRow } from './e
 import {
   useCreateProductionPlan,
   useDeleteProductionPlan,
+  useConfirmProductionPlan,
   useUpdateProductionPlan,
 } from './mutations';
 import { useProductionPlanDetail } from './queries';
@@ -22,6 +24,7 @@ interface ProductionPlanRowActionsProps {
   onErrors: (key: string, errors: ProductionPlanDraftErrors) => void;
   onSettle: (key: string, plan: ProductionPlanFact) => void;
   onRemove: (key: string) => void;
+  onShowResults?: (productionPlanId: number) => void;
 }
 const draftFields: readonly ProductionPlanDraftField[] = [
   'planDate',
@@ -102,6 +105,8 @@ const ExistingPlanActions = (
   props: ProductionPlanRowActionsProps & { productionPlanId: number },
 ) => {
   const { row, productionPlanId } = props;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const confirmLatch = useRef(false);
   const detail = useProductionPlanDetail(productionPlanId);
   const update = useUpdateProductionPlan({
     productionPlanId,
@@ -111,11 +116,25 @@ const ExistingPlanActions = (
     productionPlanId,
     onSuccess: () => props.onRemove(row.key),
   });
+  const confirm = useConfirmProductionPlan({
+    productionPlanId,
+    onSuccess: (plan) => {
+      confirmLatch.current = false;
+      props.onSettle(row.key, plan);
+      setConfirmOpen(false);
+      props.onShowResults?.(productionPlanId);
+    },
+  });
   const feedback = useWriteFeedback(row.key, [update, remove], props.onPending, props.onErrors);
-  const locked = row.confirmed || row.isPending || feedback.isSaving || !detail.isSuccess;
+  const locked =
+    row.confirmed || row.isPending || feedback.isSaving || confirm.isSaving || !detail.isSuccess;
+  useEffect(() => {
+    if (!confirm.isSaving) confirmLatch.current = false;
+  }, [confirm.error, confirm.isSaving]);
   const resetWrites = () => {
     update.reset();
     remove.reset();
+    confirm.reset();
   };
   const reload = () =>
     void detail.refetch().then(({ data, isSuccess }) => {
@@ -147,6 +166,28 @@ const ExistingPlanActions = (
         <Button size="sm" variant="text" disabled={locked} onClick={erase}>
           삭제
         </Button>
+        {!row.confirmed && (
+          <Button
+            size="sm"
+            variant="outlined"
+            disabled={locked || row.isDirty}
+            onClick={() => {
+              resetWrites();
+              setConfirmOpen(true);
+            }}
+          >
+            전개 확정
+          </Button>
+        )}
+        {row.confirmed && props.onShowResults !== undefined && (
+          <Button
+            size="sm"
+            variant="outlined"
+            onClick={() => props.onShowResults?.(productionPlanId)}
+          >
+            전개 결과
+          </Button>
+        )}
       </div>
       {detail.isError && (
         <AlertBanner
@@ -160,6 +201,22 @@ const ExistingPlanActions = (
         />
       )}
       <SaveErrorBanner error={feedback.error} onReload={reload} />
+      {confirmOpen && (
+        <ProductionPlanConfirmDialog
+          planNo={row.planNo ?? `계획 ${String(productionPlanId)}`}
+          banner={<SaveErrorBanner error={confirm.error} onReload={reload} />}
+          isSubmitting={confirm.isSaving}
+          onClose={() => {
+            confirm.reset();
+            setConfirmOpen(false);
+          }}
+          onConfirm={() => {
+            if (confirmLatch.current) return;
+            confirmLatch.current = true;
+            confirm.write();
+          }}
+        />
+      )}
     </>
   );
 };

@@ -179,4 +179,70 @@ describe('ProductionPlanScreen', () => {
     expect(screen.queryByLabelText('생산계획 편집')).not.toBeInTheDocument();
     expect(requests).toBe(1);
   });
+
+  it('확정된 계획의 실제 결과 액션을 W/O 조회 화면에 연결한다', async () => {
+    const user = userEvent.setup();
+    const plan = {
+      productionPlanId: 101,
+      productionOrderId: 701,
+      planNo: 'PLAN-101',
+      planDate: '2026-08-26',
+      plannedQty: 125,
+      uomId: 8101,
+      bomId: 8201,
+      routingId: 8301,
+      statusCode: 'CONFIRMED',
+      confirmedAt: '2026-08-26T11:00:00+09:00',
+    };
+    const fetch: StubFetch = async (request) => {
+      const path = new URL(request.url).pathname;
+      if (path === '/planning/production-orders/701') return jsonResponse(order);
+      if (path === '/mdm/items/4101')
+        return jsonResponse({ item: { itemId: 4101, itemCode: 'ITEM-01', itemName: '합성 품목' } });
+      if (path === '/mdm/uoms')
+        return jsonResponse({
+          items: [{ uomId: 8101, uomCode: 'EA', uomName: '개' }],
+          page: { page: 1, size: 25, total: 1 },
+        });
+      if (path === '/planning/boms') return jsonResponse({ items: [bom] });
+      if (path === '/planning/routings') return jsonResponse({ items: [routing(8301)] });
+      if (path === '/mdm/production-lines')
+        return jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } });
+      if (path === '/planning/production-plans')
+        return jsonResponse({ items: [plan], page: { page: 1, size: 100, total: 1 } });
+      if (path === '/planning/production-plans/101') return jsonResponse(plan);
+      if (path === '/planning/routings/8301/operations')
+        return jsonResponse({
+          items: [{ routingOperationId: 301, routingId: 8301, operationName: '절단' }],
+        });
+      if (path === '/production/work-orders')
+        return jsonResponse({
+          items: [
+            {
+              workOrderId: 201,
+              workOrderNo: 'WO-201',
+              productionPlanId: 101,
+              routingOperationId: 301,
+              itemId: 4101,
+              orderQty: 125,
+              uomId: 8101,
+              workOrderTypeCode: 'NORMAL',
+              priorityNo: 1,
+              statusCode: 'CREATED',
+            },
+          ],
+          page: { page: 1, size: 20, total: 1 },
+        });
+      throw new Error(`unexpected request: ${request.method} ${request.url}`);
+    };
+    renderWithProviders(<ProductionPlanScreen />, {
+      fetch,
+      route: '/production/production-plans?productionOrderId=701',
+    });
+
+    await user.click(await screen.findByRole('button', { name: '전개 결과' }));
+    expect(await screen.findByRole('heading', { name: 'PLAN-101 전개 결과' })).toBeVisible();
+    expect(screen.getByText('WO-201')).toBeVisible();
+    expect(screen.getByText('1. 절단')).toBeVisible();
+  });
 });
