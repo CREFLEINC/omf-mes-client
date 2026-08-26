@@ -11,9 +11,11 @@ export const useWorkOrderScreenContext = (
   productionPlanId: number | null,
 ): WorkOrderScreenContext => {
   const productionPlanQuery = useProductionPlanDetail(productionPlanId);
-  const productionOrderQuery = useProductionOrderDetail(
-    productionPlanQuery.data?.productionOrderId ?? null,
-  );
+  const exactPlan =
+    productionPlanQuery.data?.productionPlanId === productionPlanId
+      ? productionPlanQuery.data
+      : undefined;
+  const productionOrderQuery = useProductionOrderDetail(exactPlan?.productionOrderId ?? null);
 
   return {
     productionPlanQuery,

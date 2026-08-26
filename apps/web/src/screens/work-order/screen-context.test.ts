@@ -94,6 +94,17 @@ describe('useWorkOrderScreenContext', () => {
     expect(requests.map((request) => request.pathname)).toEqual([planPath(301)]);
   });
 
+  it('does not follow a production order from a mismatched plan response', async () => {
+    const { fetch, requests } = recordingFetch([getRoute(planPath(301), plan(999, 777))]);
+    const { result } = renderHookWithProviders(() => useWorkOrderScreenContext(301), { fetch });
+
+    await waitFor(() => expect(result.current.productionPlanQuery.isSuccess).toBe(true));
+
+    expect(result.current.productionOrderQuery.fetchStatus).toBe('idle');
+    expect(result.current.plantId).toBeNull();
+    expect(requests.map((request) => request.pathname)).toEqual([planPath(301)]);
+  });
+
   it('keeps a failed production order visible without a synthetic plant', async () => {
     const { fetch } = recordingFetch([
       getRoute(planPath(301), plan(301, 401)),
