@@ -494,6 +494,14 @@ const workOrderCloseRoutes = (): StubRoute[] => [
   },
 ];
 
+const workOrderReleaseRoutes = (): StubRoute[] => [
+  lookupRoute('/mdm/code-values', [
+    { code: 'READY', codeName: '배포 대기', displayOrder: 1, isActive: true },
+  ]),
+  lookupRoute('/mdm/production-lines', []),
+  lookupRoute('/mdm/uoms', []),
+];
+
 /** W-01-11이 첫 진입에 부르는 것들 — 대상 초과분 상세와 이름 풀이 다섯. */
 const poRegisterRoutes = (): StubRoute[] => [
   {
@@ -1352,6 +1360,57 @@ describe('appRouter — 4M 자원배정·유효성 점검의 진입 경로', () 
   it('화면 주소는 W/O API 컬렉션과 구분한 exact 공개 route다', () => {
     expect(routedPaths()).toContain('/production/work-order-assignments');
     expect(routedPaths()).not.toContain('/production/work-orders');
+  });
+});
+
+describe('appRouter — W/O 확정·배포·생산LOT 선발행의 진입 경로', () => {
+  it('공개 주소에서 생산 breadcrumb와 fail-closed 첫 필터가 선다', async () => {
+    const requests: Request[] = [];
+    const stubFetch = createStubFetch(workOrderReleaseRoutes());
+
+    renderWithProviders(
+      <>
+        <RoutedApp />
+        <LocationProbe />
+        <BackProbe />
+      </>,
+      {
+        route: '/production/work-order-release',
+        fetch: (request) => {
+          requests.push(request);
+
+          return stubFetch(request);
+        },
+      },
+    );
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: messages.workOrderRelease.title }),
+    ).toBeVisible();
+    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
+    expect(within(breadcrumb).getByText(messages.workOrderRelease.breadcrumbRoot)).toBeVisible();
+    expect(within(breadcrumb).getByText(messages.workOrderRelease.title)).toBeVisible();
+    expect(
+      await screen.findByRole('combobox', { name: messages.workOrderRelease.filter.status }),
+    ).toHaveValue('');
+    expect(
+      screen.getByRole('button', { name: messages.workOrderRelease.filter.search }),
+    ).toBeDisabled();
+    await waitFor(() =>
+      expect(requests.map((request) => new URL(request.url).pathname)).toEqual(
+        expect.arrayContaining(['/mdm/code-values', '/mdm/production-lines', '/mdm/uoms']),
+      ),
+    );
+    expect(
+      requests.filter((request) =>
+        new URL(request.url).pathname.startsWith('/production/work-orders'),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('화면 주소는 release API action과 구분한 exact 공개 route다', () => {
+    expect(routedPaths()).toContain('/production/work-order-release');
+    expect(routedPaths()).not.toContain('/production/work-orders/:workOrderId:release');
   });
 });
 

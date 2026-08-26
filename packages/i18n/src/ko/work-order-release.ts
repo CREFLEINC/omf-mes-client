@@ -1,4 +1,6 @@
 export const workOrderRelease = {
+  title: 'W/O 확정·배포·생산LOT 선발행',
+  breadcrumbRoot: '생산',
   filter: {
     productionLine: '생산 라인',
     plannedStartFrom: '계획 시작일(부터)',
