@@ -31,6 +31,8 @@ export interface WorkOrderResourcePaneProps {
   plannedShiftOptions: WorkOrderResourceOption[];
   fieldErrors: Partial<Record<ResourceField, string>>;
   fieldNotes: Partial<Record<ResourceField, string>>;
+  disabled?: boolean;
+  disabledReason?: string;
   onChange: (patch: Partial<Pick<WorkOrderAssignmentDraft, ResourceField>>) => void;
 }
 
@@ -41,6 +43,8 @@ interface ResourceSelectProps {
   options: WorkOrderResourceOption[];
   error: string | undefined;
   note: string | undefined;
+  disabled: boolean;
+  disabledReason: string | undefined;
   onChange: (patch: Partial<Pick<WorkOrderAssignmentDraft, ResourceField>>) => void;
 }
 
@@ -51,10 +55,12 @@ const ResourceSelect = ({
   options,
   error,
   note,
+  disabled,
+  disabledReason,
   onChange,
 }: ResourceSelectProps) => {
   const id = useId();
-  const description = error ?? note;
+  const description = error ?? (disabled ? disabledReason : note);
   const descriptionId = `${id}-description`;
   const availableOptions: SelectItems = [
     { value: '', label: t.clearOption },
@@ -72,6 +78,7 @@ const ResourceSelect = ({
         value={value}
         placeholder={t.placeholder}
         invalid={error !== undefined}
+        disabled={disabled}
         aria-describedby={description === undefined ? undefined : descriptionId}
         onChange={(nextValue) => {
           onChange({ [field]: nextValue });
@@ -96,6 +103,8 @@ export const WorkOrderResourcePane = ({
   plannedShiftOptions,
   fieldErrors,
   fieldNotes,
+  disabled = false,
+  disabledReason,
   onChange,
 }: WorkOrderResourcePaneProps) => {
   if (selectedWorkOrderNo === null) {
@@ -116,6 +125,8 @@ export const WorkOrderResourcePane = ({
       options={options}
       error={fieldErrors[field]}
       note={fieldNotes[field]}
+      disabled={disabled}
+      disabledReason={disabledReason}
       onChange={onChange}
     />
   );

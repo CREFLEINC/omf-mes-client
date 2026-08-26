@@ -142,4 +142,14 @@ describe('WorkOrderResourcePane', () => {
     expect(screen.getByText(t.warning)).toBeVisible();
     expect(screen.getByRole('combobox', { name: t.fields.shift })).toHaveTextContent(t.clearOption);
   });
+
+  it('locks every resource control with the caller reason', () => {
+    renderPane({ disabled: true, disabledReason: 'SYN-SAVE-LOCK' });
+
+    for (const control of screen.getAllByRole('combobox')) {
+      expect(control).toBeDisabled();
+      expect(control).toHaveAccessibleDescription('SYN-SAVE-LOCK');
+    }
+    expect(screen.getAllByText('SYN-SAVE-LOCK')).toHaveLength(5);
+  });
 });
