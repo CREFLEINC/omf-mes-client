@@ -99,19 +99,21 @@ describe('work-order screen model', () => {
   });
 
   it.each([
-    ['passed=false', report(false), '검증 차단', 'error'],
-    ['BLOCK', report(true, 'BLOCK'), '검증 차단', 'error'],
-    ['WARN', report(true, 'WARN'), '검증 경고', 'warning'],
-    ['passed', report(true), '검증 통과', 'success'],
+    ['failed query', report(true), true, '검증 조회 실패', 'error'],
+    ['passed=false', report(false), false, '검증 차단', 'error'],
+    ['BLOCK', report(true, 'BLOCK'), false, '검증 차단', 'error'],
+    ['WARN', report(true, 'WARN'), false, '검증 경고', 'warning'],
+    ['passed', report(true), false, '검증 통과', 'success'],
   ] as const)(
     'uses defensive selected validation presentation for %s',
-    (_name, value, label, tone) => {
+    (_name, value, failed, label, tone) => {
       expect(
         toWorkOrderScreenRow(fact(), {
           operationLabel: null,
           uomLabel: 'EA',
           priorityText: '2',
           priorityError: 'Synthetic priority error',
+          validationFailed: failed,
           validationReport: value,
         }),
       ).toMatchObject({ validationLabel: label, validationTone: tone });
