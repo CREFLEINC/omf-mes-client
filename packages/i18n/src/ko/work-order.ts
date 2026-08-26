@@ -20,6 +20,20 @@ export const workOrder = {
     },
   },
   screen: {
+    view: {
+      contextPane: '선택 생산계획',
+      editorPane: '작업지시 배정 편집',
+      context: (productionOrderNo: string, total: number): string =>
+        `P/O ${productionOrderNo} · W/O ${String(total)}건`,
+      selectWorkOrder: '배정할 작업지시를 선택하세요.',
+      selectDescription: '목록에서 W/O 번호를 선택하면 자원 배정과 검증 결과를 확인할 수 있습니다.',
+      failed: '작업지시 배정 화면을 불러오지 못했습니다.',
+      ownerMismatch: '요청 범위와 다른 작업지시 배정 정보가 반환되었습니다.',
+      stale: '최신 작업지시 배정 정보를 확인하지 못했습니다.',
+      staleDescription: '미저장 입력을 유지했습니다. 다시 조회한 뒤 편집하세요.',
+      staleBlocked: '최신 배정 정보를 확인할 때까지 편집할 수 없습니다.',
+      retry: '배정 화면 다시 시도',
+    },
     assignmentCount: (assigned: number, total: number): string =>
       `${String(assigned)}/${String(total)}`,
     validation: {
