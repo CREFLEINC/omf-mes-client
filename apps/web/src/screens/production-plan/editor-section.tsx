@@ -14,6 +14,7 @@ interface ProductionPlanEditorSectionProps {
   bomOptions: ProductionPlanEditorOption[];
   routingOptions: ProductionPlanEditorOption[];
   lineOptions: ProductionPlanEditorOption[];
+  addDisabled?: boolean;
 }
 
 export const ProductionPlanEditorSection = ({
@@ -25,6 +26,7 @@ export const ProductionPlanEditorSection = ({
   bomOptions,
   routingOptions,
   lineOptions,
+  addDisabled = false,
 }: ProductionPlanEditorSectionProps) => {
   const editor = useProductionPlanEditorSession(productionOrderId);
 
@@ -72,7 +74,7 @@ export const ProductionPlanEditorSection = ({
         bomOptions={bomOptions}
         routingOptions={routingOptions}
         lineOptions={lineOptions}
-        addDisabled={editor.plans.isError}
+        addDisabled={addDisabled || editor.plans.isError}
         onAdd={() => editor.add(defaults)}
         onChange={editor.change}
         onRemove={editor.remove}
