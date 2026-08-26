@@ -24,7 +24,7 @@ const isExactly = (request: Request, pathname: string): boolean =>
 
 const productionPlan = (productionPlanId: number) => ({
   productionPlanId,
-  productionOrderId: 1000 + productionPlanId,
+  productionOrderId: 1202,
   planNo: `PLAN-${String(productionPlanId)}`,
   planDate: '2026-08-22',
   plannedQty: 12.5,

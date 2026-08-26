@@ -67,6 +67,9 @@ const fetchAllProductionPlans = async (
     ).then(toListResponse);
 
   const first = await requestPage(1);
+  if (first.items.some((item) => item.productionOrderId !== productionOrderId)) {
+    throw new Error('다른 생산 P/O의 계획이 전체 목록 응답에 섞였습니다.');
+  }
   const unique = new Map(first.items.map((item) => [item.productionPlanId, item]));
   if (!Number.isFinite(first.page.size) || first.page.size < 1) {
     throw new Error('생산계획 전체 목록의 쪽 크기를 확인할 수 없습니다.');
@@ -86,6 +89,9 @@ const fetchAllProductionPlans = async (
   const totalPages = Math.ceil(first.page.total / first.page.size);
   for (let page = 2; page <= totalPages; page += 1) {
     const next = await requestPage(page);
+    if (next.items.some((item) => item.productionOrderId !== productionOrderId)) {
+      throw new Error('다른 생산 P/O의 계획이 전체 목록 응답에 섞였습니다.');
+    }
     if (
       next.page.page !== page ||
       next.page.size !== first.page.size ||
