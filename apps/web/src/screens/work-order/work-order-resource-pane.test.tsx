@@ -44,6 +44,10 @@ const renderPane = (
         { value: '401', label: 'SYN-MOLD-CURRENT' },
         { value: '402', label: 'SYN-MOLD-NEXT' },
       ]}
+      plannedShiftOptions={[
+        { value: '501', label: 'SYN-SHIFT-CURRENT' },
+        { value: '502', label: 'SYN-SHIFT-NEXT' },
+      ]}
       fieldErrors={{}}
       fieldNotes={{}}
       onChange={onChange}
@@ -62,7 +66,7 @@ describe('WorkOrderResourcePane', () => {
     expect(screen.queryByText(t.warning)).toBeNull();
   });
 
-  it('renders four cards in order with four labelled controls and material guidance', () => {
+  it('renders four cards in order with five labelled controls and material guidance', () => {
     renderPane();
     expect(screen.getByRole('heading', { name: t.heading('SYN-WO-ALPHA') })).toBeInTheDocument();
     const cards = screen.getAllByRole('heading', { level: 3 });
@@ -79,11 +83,12 @@ describe('WorkOrderResourcePane', () => {
     expect(screen.getByRole('combobox', { name: t.fields.equipment })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.fields.worker })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.fields.mold })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.fields.shift })).toBeInTheDocument();
     expect(screen.getByText(t.materialInfo)).toBeInTheDocument();
-    expect(screen.getAllByRole('combobox')).toHaveLength(4);
+    expect(screen.getAllByRole('combobox')).toHaveLength(5);
   });
 
-  it('preserves caller option order and text, filters blank values, and emits four exact patches', async () => {
+  it('preserves caller option order and text, owns one clear option, and emits exact patches', async () => {
     const { onChange, user } = renderPane();
     const line = screen.getByRole('combobox', { name: t.fields.productionLine });
     expect(line).toHaveTextContent('SYN-Z-LINE-CURRENT');
@@ -95,7 +100,7 @@ describe('WorkOrderResourcePane', () => {
       screen
         .getAllByRole('option')
         .map((option) => option.querySelector('[class*="_optionLabel_"]')?.textContent),
-    ).toEqual(['  SYN-Z-LINE-CURRENT  ', ' SYN-A-LINE-NEXT ']);
+    ).toEqual([t.clearOption, '  SYN-Z-LINE-CURRENT  ', ' SYN-A-LINE-NEXT ']);
     await user.click(screen.getByRole('option', { name: 'SYN-A-LINE-NEXT' }));
     await user.click(screen.getByRole('combobox', { name: t.fields.equipment }));
     await user.click(screen.getByRole('option', { name: 'SYN-EQUIPMENT-NEXT' }));
@@ -103,11 +108,17 @@ describe('WorkOrderResourcePane', () => {
     await user.click(screen.getByRole('option', { name: 'SYN-WORKER-NEXT' }));
     await user.click(screen.getByRole('combobox', { name: t.fields.mold }));
     await user.click(screen.getByRole('option', { name: 'SYN-MOLD-NEXT' }));
+    await user.click(screen.getByRole('combobox', { name: t.fields.shift }));
+    await user.click(screen.getByRole('option', { name: 'SYN-SHIFT-NEXT' }));
+    await user.click(screen.getByRole('combobox', { name: t.fields.productionLine }));
+    await user.click(screen.getByRole('option', { name: t.clearOption }));
     expect(onChange.mock.calls).toEqual([
       [{ productionLineId: '102' }],
       [{ plannedEquipmentId: '302' }],
       [{ responsibleWorkerId: '202' }],
       [{ plannedMoldId: '402' }],
+      [{ plannedShiftId: '502' }],
+      [{ productionLineId: '' }],
     ]);
   });
 
@@ -126,9 +137,9 @@ describe('WorkOrderResourcePane', () => {
     expect(mold).toHaveAccessibleDescription('SYN-MOLD-NOTE');
   });
 
-  it('shows the single-assignment warning without a clear option', () => {
+  it('shows the single-assignment warning and renders an empty draft as the explicit clear value', () => {
     renderPane();
     expect(screen.getByText(t.warning)).toBeVisible();
-    expect(screen.queryByText(/없음/)).toBeNull();
+    expect(screen.getByRole('combobox', { name: t.fields.shift })).toHaveTextContent(t.clearOption);
   });
 });

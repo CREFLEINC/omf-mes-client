@@ -6,6 +6,7 @@ import { runRequest } from '../../patterns/request';
 
 type ProductionLine = components['schemas']['ProductionLine'];
 type Equipment = components['schemas']['Equipment'];
+type Shift = components['schemas']['Shift'];
 type PageMeta = components['schemas']['PageMeta'];
 
 export interface WorkOrderProductionLineFact {
@@ -30,6 +31,17 @@ export interface WorkOrderEquipmentFact {
   isActive: boolean;
 }
 
+export interface WorkOrderShiftFact {
+  shiftId: number;
+  plantId: number;
+  shiftCode: string;
+  shiftName: string;
+  startTime: string;
+  endTime: string;
+  crossesMidnight: boolean;
+  isActive: boolean;
+}
+
 export interface WorkOrderResourceList<TItem> {
   items: TItem[];
   page: PageMeta;
@@ -42,6 +54,8 @@ export const workOrderResourceKeys = {
     ['work-order-resources', 'production-lines', plantId, page] as const,
   equipments: (plantId: number | null, productionLineId: number | null, page: number) =>
     ['work-order-resources', 'equipments', plantId, productionLineId, page] as const,
+  shifts: (plantId: number | null, page: number) =>
+    ['work-order-resources', 'shifts', plantId, page] as const,
 };
 
 export const toWorkOrderProductionLineFact = (
@@ -66,6 +80,17 @@ export const toWorkOrderEquipmentFact = (equipment: Equipment): WorkOrderEquipme
   productionLineId: equipment.productionLineId ?? null,
   statusCode: equipment.statusCode,
   isActive: equipment.isActive,
+});
+
+export const toWorkOrderShiftFact = (shift: Shift): WorkOrderShiftFact => ({
+  shiftId: shift.shiftId,
+  plantId: shift.plantId,
+  shiftCode: shift.shiftCode,
+  shiftName: shift.shiftName,
+  startTime: shift.startTime,
+  endTime: shift.endTime,
+  crossesMidnight: shift.crossesMidnight,
+  isActive: shift.isActive,
 });
 
 const toResourceList = <TSource, TFact>(
@@ -133,6 +158,32 @@ export const useWorkOrderEquipments = (
           }),
         ),
         toWorkOrderEquipmentFact,
+      );
+    },
+  });
+};
+
+export const useWorkOrderShifts = (
+  plantId: number | null,
+  page: number,
+): UseQueryResult<WorkOrderResourceList<WorkOrderShiftFact>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderResourceKeys.shifts(plantId, page),
+    enabled: plantId !== null,
+    queryFn: async () => {
+      if (plantId === null) {
+        throw new Error('A plant is required to load shifts.');
+      }
+
+      return toResourceList(
+        await runRequest(() =>
+          client.GET('/mdm/shifts', {
+            params: { query: { plantId, includeInactive: true, page } },
+          }),
+        ),
+        toWorkOrderShiftFact,
       );
     },
   });
