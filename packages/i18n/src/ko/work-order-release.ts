@@ -1,4 +1,16 @@
 export const workOrderRelease = {
+  filter: {
+    productionLine: '생산 라인',
+    plannedStartFrom: '계획 시작일(부터)',
+    plannedStartTo: '계획 시작일(까지)',
+    status: '확정 대기 상태',
+    all: '전체',
+    search: '조회',
+    reset: '초기화',
+    statusRequired: '확정 대기 상태를 선택하세요.',
+    dateRange: '계획 시작일은 종료일보다 늦을 수 없습니다.',
+    statusEmpty: '선택할 작업지시 상태가 없습니다.',
+  },
   input: {
     pane: '생산LOT 선발행 입력',
     heading: '생산LOT 선발행',
