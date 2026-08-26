@@ -49,15 +49,4 @@ describe('toReceiptLineView', () => {
       status: 'short',
     });
   });
-
-  /* 「사유가 없다」와 「받지 못했다」가 같은 모양이 되지 않도록 없는 값은 null로 고정한다. */
-  it('차이 사유가 없으면 null로 옮긴다', () => {
-    expect(toReceiptLineView(receiptLine()).varianceReasonCode).toBeNull();
-  });
-
-  it('차이 사유가 있으면 그대로 옮긴다', () => {
-    expect(
-      toReceiptLineView(receiptLine({ varianceReasonCode: 'SAMPLE_REASON_A' })).varianceReasonCode,
-    ).toBe('SAMPLE_REASON_A');
-  });
 });

@@ -53,7 +53,6 @@ export interface ReceiptLineView {
   receivedQty: number;
   varianceQty: number;
   uomId: number;
-  varianceReasonCode: string | null;
   status: ReceiptLineStatus;
 }
 
@@ -66,7 +65,6 @@ export const toReceiptLineView = (line: ShopfloorReceiptLineResponse): ReceiptLi
   receivedQty: line.receivedQty,
   varianceQty: line.varianceQty,
   uomId: line.uomId,
-  varianceReasonCode: line.varianceReasonCode ?? null,
   status: toReceiptLineStatus(line),
 });
 

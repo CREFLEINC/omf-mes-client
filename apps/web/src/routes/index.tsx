@@ -440,6 +440,7 @@ export const appRouter = createBrowserRouter([
    * 열려 있다(라우트 가드는 이 작업의 범위 밖 — 후속 작업). 로그인 화면이 생겼다는 것이
    * 보호가 생겼다는 뜻이 아니다.
    */
+  { path: '/login', element: <LoginScreen /> },
   /*
    * P-02-03 — **POP(현장 단말) 화면의 첫 라우트다.** 로그인과 같이 위 배열의 형제로 서서
    * `AppLayout`을 지나지 않는다.
@@ -457,6 +458,5 @@ export const appRouter = createBrowserRouter([
    * 안내로 그린다.
    */
   { path: '/pop/material-input', element: <MaterialInputScanScreen /> },
-  { path: '/login', element: <LoginScreen /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

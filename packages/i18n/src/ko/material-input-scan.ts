@@ -10,8 +10,6 @@ export const materialInputScan = {
   title: '자재 투입',
   panes: {
     receipt: '계획 대비 수령',
-    scan: '스캔',
-    inputs: '투입 목록',
   },
   header: {
     /** W/O 를 주소에서 받지 못한 상태 — 무엇을 해야 하는지까지 적는다. */
@@ -32,10 +30,6 @@ export const materialInputScan = {
     short: '수령 부족',
     none: '미수령',
   },
-  values: {
-    /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
-    empty: '—',
-  },
   loading: {
     receipt: '라인 수령 내역을 불러오는 중',
   },
@@ -47,6 +41,6 @@ export const materialInputScan = {
   },
   notes: {
     /* 부족·미수령은 투입을 막지 않는다(스펙 §6) — 밝히지 않으면 작업자가 멈춰 선다. */
-    shortAllowed: '부족·미수령이 있어도 수령한 양으로 투입할 수 있습니다. 차이 사유를 남기세요.',
+    shortAllowed: '부족·미수령이 있어도 수령한 양으로 투입할 수 있습니다.',
   },
 } as const;

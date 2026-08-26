@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -62,6 +62,18 @@ const renderScreen = (routes: StubRoute[], route = ROUTE) => {
   const result = renderWithProviders(<MaterialInputScanScreen />, { fetch, route });
 
   return { ...result, requests };
+};
+
+/**
+ * 대기 중인 되먹임을 화면에 앉힌다.
+ *
+ * **음성 단언에는 시점이 필요하다.** 「없다」를 렌더 직후에 재면 아직 아무것도 도착하지
+ * 않은 화면에서 언제나 통과한다 — 뒤늦게 도착하는 실패를 그대로 통과시킨다.
+ */
+const flush = async (): Promise<void> => {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 };
 
 /** 표의 몸통 — 빈 상태 슬롯과 데이터 줄을 같은 잣대로 재지 않도록 행 조회를 한 곳에 모은다. */
@@ -162,6 +174,13 @@ describe('MaterialInputScanScreen — 작업지시가 없을 때', () => {
 
     expect(await screen.findByText(t.header.workOrderMissing)).toBeTruthy();
     expect(requests).toHaveLength(0);
+    /*
+     * ⚠ **요청이 0회인 것만으로는 부족하다.** 조회를 막는 겹이 둘인데(`enabled`와 queryFn의
+     * 가드) 앞의 겹이 사라져도 뒤의 겹이 던져 요청은 여전히 0회다 — 대신 그 예외가 **빨간
+     * 조회 실패 배너**가 되어, 「무엇을 볼지 정하지 않았다」 자리에 「불러오지 못했다」가 함께 선다.
+     */
+    await flush();
+    expect(screen.queryByText(messages.httpError.loadTitle)).toBeNull();
   });
 
   it('작업지시 표시를 세우지 않는다', async () => {
@@ -176,5 +195,64 @@ describe('MaterialInputScanScreen — 작업지시가 없을 때', () => {
 
     expect(await screen.findByText(t.header.workOrderMissing)).toBeTruthy();
     expect(requests).toHaveLength(0);
+    await flush();
+    expect(screen.queryByText(messages.httpError.loadTitle)).toBeNull();
+  });
+});
+
+describe('MaterialInputScanScreen — 상세를 기다리는 동안', () => {
+  /*
+   * ⭐ **최종 상태만 재는 감지기가 놓치는 자리다.**
+   *
+   * 전표 목록은 도착했는데 그 전표의 상세가 아직 오지 않은 찰나 — 이때 「불러오는 중」이
+   * 아니라 「수령 내역이 없습니다」를 내면, 그 빈 상태는 `live` 영역이라 **스크린리더가
+   * 소리 내어 읽는다.** 작업자는 받은 자재를 못 받은 것으로 듣는다.
+   *
+   * 목록만 즉시 답하고 상세는 붙잡아 두어 그 찰나를 실제로 만든다.
+   */
+  it('목록만 도착한 찰나에 「없습니다」를 내지 않는다', async () => {
+    let releaseDetail = (): void => undefined;
+    const detailHeld = new Promise<void>((resolve) => {
+      releaseDetail = resolve;
+    });
+
+    /*
+     * 규칙 목록(`createStubFetch`)은 즉시 답하므로 이 찰나를 만들 수 없다 — 상세만
+     * 붙잡아 두는 fetch를 직접 짠다.
+     */
+    const requests: RecordedRequest[] = [];
+    const fetch: StubFetch = async (request) => {
+      requests.push({ method: request.method, url: new URL(request.url) });
+
+      if (isGet(request, LIST_PATH)) {
+        return jsonResponse({ items: [receipt()], page: { page: 1, size: 50, total: 1 } });
+      }
+
+      await detailHeld;
+
+      return jsonResponse({ shopfloorReceipt: receipt(), lines: receiptLineFixtures });
+    };
+
+    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+
+    /*
+     * **목록이 도착한 뒤에 재야 한다.** 렌더 직후에 재면 아직 목록조차 오지 않은 상태를
+     * 재는 것이라, 빈 상태가 그 뒤에 스쳐도 통과한다.
+     */
+    await waitFor(() => {
+      expect(requests.some((request) => request.url.pathname === detailPath(7001))).toBe(true);
+    });
+    await flush();
+
+    // 상세가 붙잡혀 있는 동안 화면이 무엇을 말하는지 잰다.
+    expect(screen.getByRole('status', { name: t.loading.receipt })).toBeTruthy();
+    expect(screen.queryByText(t.empty.receiptTitle)).toBeNull();
+
+    releaseDetail();
+
+    // 붙잡은 것을 놓으면 실제로 줄이 선다 — 위 단언이 「영영 로딩」을 통과시키지 않게 한다.
+    await waitFor(() => {
+      expect(bodyRows()).toHaveLength(receiptLineFixtures.length);
+    });
   });
 });
