@@ -10,6 +10,12 @@ export const workOrderRelease = {
     statusRequired: '확정 대기 상태를 선택하세요.',
     dateRange: '계획 시작일은 종료일보다 늦을 수 없습니다.',
     statusEmpty: '선택할 작업지시 상태가 없습니다.',
+    statusLookupLoading: '작업지시 상태 목록을 불러오는 중입니다.',
+    statusLookupFailed: '작업지시 상태 목록을 불러오지 못했습니다.',
+    statusLookupTruncated: '작업지시 상태 목록 일부만 불러와 선택할 수 없습니다.',
+    productionLineLookupLoading: '생산 라인 목록을 불러오는 중입니다.',
+    productionLineLookupFailed: '생산 라인 목록을 불러오지 못했습니다.',
+    productionLineLookupTruncated: '생산 라인 목록 일부만 불러와 선택할 수 없습니다.',
   },
   input: {
     pane: '생산LOT 선발행 입력',
