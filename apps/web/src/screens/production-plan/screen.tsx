@@ -47,8 +47,9 @@ const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   const routingItems = routings.data?.items ?? [];
   const lineItems = lines.data?.items ?? [];
   const masterReady = isMasterCheckReady(bomItems, routingItems, bomId, routingId);
-  const referencesLoaded = boms.isSuccess && routings.isSuccess;
-  const linesLoaded = order.plantId === null || lines.isSuccess;
+  const referencesLoaded = boms.data !== undefined && routings.data !== undefined;
+  const linesLoaded = order.plantId === null || lines.data !== undefined;
+  const referenceFailed = boms.isError || routings.isError || lines.isError;
   const selectedItem = itemNames.items.find((item) => item.itemId === order.itemId);
   const uomLabel = describeReference(resolveReference(uoms, order.uomId));
   const lineNames = useMemo(
@@ -68,13 +69,13 @@ const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       <MasterCheckPane
         boms={{
           items: bomItems,
-          isLoading: boms.isPending,
+          isLoading: boms.isPending && boms.data === undefined,
           isError: boms.isError,
           refetch: () => void boms.refetch(),
         }}
         routings={{
           items: routingItems,
-          isLoading: routings.isPending,
+          isLoading: routings.isPending && routings.data === undefined,
           isError: routings.isError,
           refetch: () => void routings.refetch(),
         }}
@@ -83,7 +84,7 @@ const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
         onBomChange={setBomId}
         onRoutingChange={setRoutingId}
       />
-      {order.plantId !== null && lines.isPending && (
+      {order.plantId !== null && lines.isPending && lines.data === undefined && (
         <div role="status" aria-label="생산라인을 불러오는 중">
           <SkeletonText lines={2} />
         </div>
@@ -128,7 +129,7 @@ const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             value: String(line.productionLineId),
             label: `${line.parentLineId === null ? '' : `${lineNames.get(line.parentLineId) ?? '상위 라인'} > `}${line.lineCode} · ${line.lineName}${line.isActive ? '' : ' · 비활성'}`,
           }))}
-          addDisabled={!masterReady}
+          addDisabled={!masterReady || referenceFailed}
         />
       )}
       <AlertBanner variant="info">
@@ -142,6 +143,10 @@ export const ProductionPlanScreen = () => {
   const [searchParams] = useSearchParams();
   const productionOrderId = readProductionOrderId(searchParams);
   const order = useProductionOrderDetail(productionOrderId);
+  const ownerMismatch =
+    productionOrderId !== null &&
+    order.data !== undefined &&
+    order.data.productionOrderId !== productionOrderId;
 
   return (
     <>
@@ -157,14 +162,18 @@ export const ProductionPlanScreen = () => {
         <AlertBanner variant="warning" title="생산 P/O를 먼저 선택하세요.">
           <Link to="/production/production-orders">P/O 수신·조회로 이동</Link>
         </AlertBanner>
-      ) : order.isPending ? (
+      ) : order.isPending && order.data === undefined ? (
         <div role="status" aria-label="생산 P/O를 불러오는 중">
           <SkeletonText lines={3} />
         </div>
-      ) : order.isError || order.data === undefined ? (
+      ) : order.data === undefined || ownerMismatch ? (
         <AlertBanner
           variant="error"
-          title="생산 P/O를 불러오지 못했습니다."
+          title={
+            ownerMismatch
+              ? '요청한 생산 P/O와 다른 상세가 반환되었습니다.'
+              : '생산 P/O를 불러오지 못했습니다.'
+          }
           action={
             <Button size="sm" variant="outlined" onClick={() => void order.refetch()}>
               다시 시도
@@ -172,7 +181,22 @@ export const ProductionPlanScreen = () => {
           }
         />
       ) : (
-        <ProductionPlanWorkspace key={productionOrderId} order={order.data} />
+        <>
+          {order.isError && (
+            <AlertBanner
+              variant="error"
+              title="최신 생산 P/O를 확인하지 못했습니다."
+              action={
+                <Button size="sm" variant="outlined" onClick={() => void order.refetch()}>
+                  다시 시도
+                </Button>
+              }
+            >
+              현재 편집 내용은 유지됩니다.
+            </AlertBanner>
+          )}
+          <ProductionPlanWorkspace key={productionOrderId} order={order.data} />
+        </>
       )}
     </>
   );
