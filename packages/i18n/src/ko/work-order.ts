@@ -1,5 +1,14 @@
 export const workOrder = {
   editor: {
+    loading: '작업지시 배정 정보를 불러오는 중입니다.',
+    failed: '작업지시 배정 정보를 불러오지 못했습니다.',
+    ownerMismatch: '요청한 작업지시와 다른 상세가 반환되었습니다.',
+    staleTitle: '최신 작업지시를 확인하지 못했습니다.',
+    staleDescription: '미저장 입력을 유지했습니다. 다시 조회한 뒤 저장하세요.',
+    staleBlocked: '최신 작업지시를 확인할 때까지 편집할 수 없습니다.',
+    changedTitle: '작업지시가 외부에서 변경되었습니다.',
+    changedDescription: '미저장 입력을 유지했습니다. 최신 내용을 적용한 뒤 다시 편집하세요.',
+    changedBlocked: '최신 작업지시를 적용할 때까지 편집할 수 없습니다.',
     writeOwnerMismatch: '저장 응답의 작업지시가 일치하지 않아 결과를 반영하지 않았습니다.',
     validationFailed: '작업지시 검증 결과를 불러오지 못했습니다.',
     lookup: {
