@@ -32,6 +32,7 @@ export const productionOrder = {
     prevPage: '이전',
     nextPage: '다음',
     integrationSync: '연계 현황으로 이동',
+    productionPlan: 'W/O 전개·편성',
   },
   values: {
     erpReadOnlyNotice: 'ERP 수신본입니다. 수정은 ERP에서 하고 재동기화하세요.',

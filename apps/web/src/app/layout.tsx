@@ -220,6 +220,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/production/production-orders" icon="account_tree">
               P/O 수신·조회
             </NavItem>
+            {/* W-02-02 — 선택한 P/O를 계획·W/O로 전개하므로 조회 바로 뒤에 둔다. */}
+            <NavItem to="/production/production-plans" icon="schema">
+              W/O 전개·편성
+            </NavItem>
             {/* W-02-05 — 같은 생산 섹션의 마감·모니터링 화면이다. */}
             <NavItem to="/production/work-order-close" icon="archive">
               W/O 마감·ERP 실적 송신

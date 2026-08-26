@@ -129,6 +129,13 @@ export const ProductionOrderScreen = () => {
           businessUnits={businessUnits}
           plants={plants}
           uoms={uoms}
+          action={
+            selectedId === null ? undefined : (
+              <Link to={`/production/production-plans?productionOrderId=${String(selectedId)}`}>
+                {t.actions.productionPlan}
+              </Link>
+            )
+          }
         />
         <ProductionOrderDetailListPane
           kind="plans"

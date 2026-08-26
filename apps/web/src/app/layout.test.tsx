@@ -468,7 +468,7 @@ describe('AppLayout', () => {
     );
   });
 
-  it('생산 섹션의 P/O 조회와 W/O 마감 메뉴가 출하 뒤·품질관리 앞에 있다', () => {
+  it('생산 섹션의 P/O 조회·전개 편성·W/O 마감이 업무 순서대로 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -481,6 +481,10 @@ describe('AppLayout', () => {
       'href',
       '/production/production-orders',
     );
+    expect(within(sidebar).getByRole('link', { name: 'W/O 전개·편성' })).toHaveAttribute(
+      'href',
+      '/production/production-plans',
+    );
     expect(within(sidebar).getByRole('link', { name: 'W/O 마감·ERP 실적 송신' })).toHaveAttribute(
       'href',
       '/production/work-order-close',
@@ -488,8 +492,11 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/production-orders')).toBe(
       links.indexOf('/shipment/shipment-schedule') + 1,
     );
-    expect(links.indexOf('/production/work-order-close')).toBe(
+    expect(links.indexOf('/production/production-plans')).toBe(
       links.indexOf('/production/production-orders') + 1,
+    );
+    expect(links.indexOf('/production/work-order-close')).toBe(
+      links.indexOf('/production/production-plans') + 1,
     );
     expect(links.indexOf('/production/work-order-close')).toBeLessThan(
       links.indexOf('/quality/lot-status'),
@@ -649,6 +656,7 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       '/shipment/shipment-schedule',
       '/production/production-orders',
+      '/production/production-plans',
       '/production/work-order-close',
       '/quality/lot-status',
       '/quality/lot-status-transition',
