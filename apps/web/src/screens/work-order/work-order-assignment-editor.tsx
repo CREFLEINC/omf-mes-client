@@ -1,6 +1,6 @@
-import { AlertBanner, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, SkeletonText, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { selectableLookupOptions, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -11,13 +11,14 @@ import {
   type WorkOrderAssignmentDraft,
 } from './assignment-model';
 import {
+  canApplyWorkOrderReload,
   isExactWorkOrderDetail,
   mergeWorkOrderAssignmentFieldErrors,
   toOwnedResourceLookup,
 } from './editor-support';
 import { useUpdateWorkOrder } from './mutations';
 import { useWorkOrderMolds, useWorkOrderWorkers } from './people-tool-queries';
-import { useWorkOrderValidation, type WorkOrderFact } from './queries';
+import { useWorkOrderDetail, useWorkOrderValidation, type WorkOrderFact } from './queries';
 import {
   useWorkOrderEquipments,
   useWorkOrderProductionLines,
@@ -39,6 +40,8 @@ const entry = (value: number, code: string, name: string, isActive: boolean) => 
   label: `${code} · ${name}`,
   isActive,
 });
+const workOrderFactEquals = (left: WorkOrderFact, right: WorkOrderFact): boolean =>
+  Object.entries(left).every(([field, value]) => right[field as keyof WorkOrderFact] === value);
 export interface WorkOrderAssignmentEditorSessionProps {
   workOrder: WorkOrderFact;
   plantId: number | null;
@@ -46,6 +49,7 @@ export interface WorkOrderAssignmentEditorSessionProps {
   blockedReason?: string | null;
   onPriorityChange: (value: string) => void;
   onReload: () => void;
+  onSaved?: (saved: WorkOrderFact) => boolean;
 }
 export const WorkOrderAssignmentEditorSession = ({
   workOrder,
@@ -54,6 +58,7 @@ export const WorkOrderAssignmentEditorSession = ({
   blockedReason = null,
   onPriorityChange,
   onReload,
+  onSaved,
 }: WorkOrderAssignmentEditorSessionProps) => {
   const toast = useToast();
   const seeded = workOrderAssignmentDraftFrom(workOrder);
@@ -76,6 +81,7 @@ export const WorkOrderAssignmentEditorSession = ({
         setWriteOwnerMismatch(true);
         return;
       }
+      if (onSaved?.(saved) === false) return;
       setWriteOwnerMismatch(false);
       const next = workOrderAssignmentDraftFrom(saved);
       setBaseline(next);
@@ -222,3 +228,142 @@ export const WorkOrderAssignmentEditorSession = ({
     </>
   );
 };
+
+export interface WorkOrderAssignmentEditorProps {
+  workOrderId: number;
+  plantId: number | null;
+  priorityText: string;
+  onPriorityChange: (value: string) => void;
+}
+
+const WorkOrderAssignmentEditorOwner = (props: WorkOrderAssignmentEditorProps) => {
+  const detail = useWorkOrderDetail(props.workOrderId);
+  const [reloadKey, setReloadKey] = useState(0);
+  const acceptedDetailRef = useRef<WorkOrderFact | undefined>(undefined);
+  const supersededDetailRef = useRef<{ detail: WorkOrderFact; dataUpdatedAt: number } | undefined>(
+    undefined,
+  );
+  const activeRef = useRef(true);
+  const exactDetail = isExactWorkOrderDetail(props.workOrderId, detail.data)
+    ? detail.data
+    : undefined;
+  if (acceptedDetailRef.current === undefined && exactDetail !== undefined) {
+    acceptedDetailRef.current = exactDetail;
+  }
+  let acceptedDetail = acceptedDetailRef.current;
+  if (
+    acceptedDetail !== undefined &&
+    exactDetail !== undefined &&
+    exactDetail !== acceptedDetail &&
+    workOrderFactEquals(acceptedDetail, exactDetail)
+  ) {
+    acceptedDetailRef.current = exactDetail;
+    supersededDetailRef.current = undefined;
+    acceptedDetail = exactDetail;
+  }
+  const ownerMismatch = detail.data !== undefined && exactDetail === undefined;
+  const isSupersededSnapshot =
+    exactDetail !== undefined &&
+    exactDetail === supersededDetailRef.current?.detail &&
+    detail.dataUpdatedAt === supersededDetailRef.current.dataUpdatedAt;
+  const hasNewerDetail =
+    exactDetail !== undefined && exactDetail !== acceptedDetail && !isSupersededSnapshot;
+  useEffect(() => {
+    activeRef.current = true;
+    return () => {
+      activeRef.current = false;
+    };
+  }, []);
+  const applyDetail = (next: WorkOrderFact): void => {
+    supersededDetailRef.current = undefined;
+    acceptedDetailRef.current = next;
+    props.onPriorityChange(String(next.priorityNo));
+    setReloadKey((value) => value + 1);
+  };
+  const retry = (
+    <Button size="sm" variant="outlined" onClick={() => void detail.refetch()}>
+      {messages.common.retry}
+    </Button>
+  );
+
+  if (detail.isPending && acceptedDetail === undefined) {
+    return (
+      <div role="status" aria-label={t.loading}>
+        <SkeletonText lines={5} />
+      </div>
+    );
+  }
+  if (acceptedDetail === undefined) {
+    return (
+      <AlertBanner
+        variant="error"
+        title={ownerMismatch ? t.ownerMismatch : t.failed}
+        action={retry}
+      />
+    );
+  }
+  const refreshIssue = ownerMismatch
+    ? { title: t.ownerMismatch, description: t.staleDescription, action: retry }
+    : detail.isError
+      ? { title: t.staleTitle, description: t.staleDescription, action: retry }
+      : hasNewerDetail
+        ? {
+            title: t.changedTitle,
+            description: t.changedDescription,
+            action: (
+              <Button
+                size="sm"
+                variant="outlined"
+                onClick={() => {
+                  if (exactDetail !== undefined) applyDetail(exactDetail);
+                }}
+              >
+                {messages.conflict.reloadAction}
+              </Button>
+            ),
+          }
+        : null;
+
+  return (
+    <>
+      {refreshIssue !== null && (
+        <AlertBanner variant="error" title={refreshIssue.title} action={refreshIssue.action}>
+          {refreshIssue.description}
+        </AlertBanner>
+      )}
+      <WorkOrderAssignmentEditorSession
+        key={`${String(props.workOrderId)}:${String(reloadKey)}`}
+        {...props}
+        workOrder={acceptedDetail}
+        blockedReason={
+          refreshIssue === null ? null : hasNewerDetail ? t.changedBlocked : t.staleBlocked
+        }
+        onSaved={(saved) => {
+          if (!activeRef.current) return false;
+          const supersededDetail = exactDetail ?? acceptedDetailRef.current;
+          supersededDetailRef.current =
+            supersededDetail === undefined
+              ? undefined
+              : { detail: supersededDetail, dataUpdatedAt: detail.dataUpdatedAt };
+          acceptedDetailRef.current = saved;
+          return true;
+        }}
+        onReload={() =>
+          void detail.refetch().then((result) => {
+            if (
+              activeRef.current &&
+              canApplyWorkOrderReload(props.workOrderId, result) &&
+              result.data !== undefined
+            ) {
+              applyDetail(result.data);
+            }
+          })
+        }
+      />
+    </>
+  );
+};
+
+export const WorkOrderAssignmentEditor = (props: WorkOrderAssignmentEditorProps) => (
+  <WorkOrderAssignmentEditorOwner key={String(props.workOrderId)} {...props} />
+);

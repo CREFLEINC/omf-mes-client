@@ -1,14 +1,18 @@
 import { ToastProvider } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
 
-import { WorkOrderAssignmentEditorSession } from './work-order-assignment-editor';
+import {
+  WorkOrderAssignmentEditor,
+  WorkOrderAssignmentEditorSession,
+} from './work-order-assignment-editor';
 import type { WorkOrderFact } from './queries';
 
 const mocks = vi.hoisted(() => ({
+  detail: vi.fn(),
   validation: vi.fn(),
   update: vi.fn(),
   lines: vi.fn(),
@@ -19,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   write: vi.fn(),
 }));
 vi.mock('./queries', () => ({
+  useWorkOrderDetail: mocks.detail,
   useWorkOrderValidation: mocks.validation,
 }));
 vi.mock('./mutations', () => ({ useUpdateWorkOrder: mocks.update }));
@@ -47,6 +52,7 @@ const workOrder = {
 } as WorkOrderFact;
 const query = (data: unknown, overrides: Record<string, unknown> = {}) => ({
   data,
+  dataUpdatedAt: 1,
   isPending: false,
   isError: false,
   isFetching: false,
@@ -66,6 +72,7 @@ const updateState = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.detail.mockReturnValue(query(workOrder));
   mocks.validation.mockReturnValue(query({ passed: true, findings: [] }));
   mocks.lines.mockReturnValue(
     resources([
@@ -106,6 +113,20 @@ const Harness = ({ blockedReason = null }: { blockedReason?: string | null }) =>
         blockedReason={blockedReason}
         onPriorityChange={setPriority}
         onReload={vi.fn()}
+      />
+    </ToastProvider>
+  );
+};
+
+const OuterHarness = () => {
+  const [priority, setPriority] = useState('2');
+  return (
+    <ToastProvider>
+      <WorkOrderAssignmentEditor
+        workOrderId={701}
+        plantId={501}
+        priorityText={priority}
+        onPriorityChange={setPriority}
       />
     </ToastProvider>
   );
@@ -163,4 +184,159 @@ it.each([
   mocks.update.mockReturnValue(updateState({ isSaving }));
   render(<Harness blockedReason={blockedReason} />);
   expect(document.querySelectorAll('button:not(:disabled), input:not(:disabled)')).toHaveLength(0);
+});
+
+it('blocks an initial detail owned by another work order', () => {
+  mocks.detail.mockReturnValue(query({ ...workOrder, workOrderId: 999 }));
+  render(<OuterHarness />);
+  expect(screen.getByText(t.editor.ownerMismatch)).toBeVisible();
+  expect(screen.queryByRole('region', { name: t.resourcePane.pane })).toBeNull();
+});
+
+it('keeps a dirty session mounted and locked when a background detail refresh fails', async () => {
+  const user = userEvent.setup();
+  const view = render(<OuterHarness />);
+  const priority = screen.getByLabelText(t.planFieldsPane.fields.priorityNo);
+  await user.clear(priority);
+  await user.type(priority, '9');
+
+  mocks.detail.mockReturnValue(query(workOrder, { isError: true }));
+  view.rerender(<OuterHarness />);
+
+  expect(screen.getByText(t.editor.staleDescription)).toBeVisible();
+  expect(screen.getByLabelText(t.planFieldsPane.fields.priorityNo)).toHaveValue('9');
+  expect(document.querySelectorAll('button:not(:disabled), input:not(:disabled)')).toHaveLength(1);
+  expect(screen.getByRole('button', { name: messages.common.retry })).toBeEnabled();
+});
+
+it('keeps a dirty session locked until a newer exact detail is explicitly applied', async () => {
+  const user = userEvent.setup();
+  const view = render(<OuterHarness />);
+  const priority = screen.getByLabelText(t.planFieldsPane.fields.priorityNo);
+  await user.clear(priority);
+  await user.type(priority, '9');
+
+  mocks.detail.mockReturnValue(query({ ...workOrder, priorityNo: 4 }));
+  view.rerender(<OuterHarness />);
+
+  expect(screen.getByText(t.editor.changedDescription)).toBeVisible();
+  expect(screen.getByLabelText(t.planFieldsPane.fields.priorityNo)).toHaveValue('9');
+  await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+  expect(screen.getByLabelText(t.planFieldsPane.fields.priorityNo)).toHaveValue('4');
+});
+
+it('accepts an invalidation result that matches the local exact save', async () => {
+  const user = userEvent.setup();
+  const view = render(<OuterHarness />);
+  const priority = screen.getByLabelText(t.planFieldsPane.fields.priorityNo);
+  await user.clear(priority);
+  await user.type(priority, '9');
+  const saved = { ...workOrder, priorityNo: 9 };
+
+  act(() => mocks.update.mock.calls.at(-1)![0].onSuccess(saved));
+  view.rerender(<OuterHarness />);
+
+  expect(screen.queryByText(t.editor.changedDescription)).toBeNull();
+  expect(screen.getByLabelText(t.planFieldsPane.fields.priorityNo)).toHaveValue('9');
+  expect(screen.queryByRole('button', { name: messages.conflict.reloadAction })).toBeNull();
+
+  mocks.detail.mockReturnValue(query({ ...saved }));
+  view.rerender(<OuterHarness />);
+
+  expect(screen.queryByText(t.editor.changedDescription)).toBeNull();
+  expect(screen.getByLabelText(t.planFieldsPane.fields.priorityNo)).toHaveValue('9');
+});
+
+it('locks when a completed refetch revision reuses the superseded value', async () => {
+  const user = userEvent.setup();
+  const view = render(<OuterHarness />);
+  const priority = screen.getByLabelText(t.planFieldsPane.fields.priorityNo);
+  await user.clear(priority);
+  await user.type(priority, '9');
+
+  act(() => mocks.update.mock.calls.at(-1)![0].onSuccess({ ...workOrder, priorityNo: 9 }));
+  view.rerender(<OuterHarness />);
+  expect(screen.queryByText(t.editor.changedDescription)).toBeNull();
+
+  mocks.detail.mockReturnValue(query(workOrder, { isError: true }));
+  view.rerender(<OuterHarness />);
+  expect(screen.getByText(t.editor.staleDescription)).toBeVisible();
+
+  mocks.detail.mockReturnValue(query(workOrder, { dataUpdatedAt: 2 }));
+  view.rerender(<OuterHarness />);
+  expect(screen.getByText(t.editor.changedDescription)).toBeVisible();
+  expect(screen.getByLabelText(t.planFieldsPane.fields.priorityNo)).toHaveValue('9');
+});
+
+it('discards a dirty session only after a successful exact conflict reload', async () => {
+  const user = userEvent.setup();
+  const refetch = vi
+    .fn()
+    .mockResolvedValueOnce({ isSuccess: false, data: workOrder })
+    .mockResolvedValueOnce({ isSuccess: true, data: workOrder });
+  mocks.detail.mockReturnValue(query(workOrder, { refetch }));
+  mocks.update.mockReturnValue(
+    updateState({ error: { kind: 'conflict', cause: 'user', message: 'SYN-CONFLICT' } }),
+  );
+  render(<OuterHarness />);
+  const priority = screen.getByLabelText(t.planFieldsPane.fields.priorityNo);
+  await user.clear(priority);
+  await user.type(priority, '9');
+
+  await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+  expect(screen.getByLabelText(t.planFieldsPane.fields.priorityNo)).toHaveValue('9');
+  await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+
+  await waitFor(() =>
+    expect(screen.getByLabelText(t.planFieldsPane.fields.priorityNo)).toHaveValue('2'),
+  );
+  expect(refetch).toHaveBeenCalledTimes(2);
+});
+
+it('ignores a conflict reload that completes after its owner was replaced', async () => {
+  const user = userEvent.setup();
+  let finishReload!: (value: { isSuccess: boolean; data: WorkOrderFact }) => void;
+  const refetch = vi.fn(
+    () =>
+      new Promise<{ isSuccess: boolean; data: WorkOrderFact }>(
+        (resolve) => (finishReload = resolve),
+      ),
+  );
+  const onPriorityChange = vi.fn();
+  mocks.detail.mockReturnValue(query(workOrder, { refetch }));
+  mocks.update.mockReturnValue(
+    updateState({ error: { kind: 'conflict', cause: 'user', message: 'SYN-CONFLICT' } }),
+  );
+  const view = render(
+    <ToastProvider>
+      <WorkOrderAssignmentEditor
+        workOrderId={701}
+        plantId={501}
+        priorityText="2"
+        onPriorityChange={onPriorityChange}
+      />
+    </ToastProvider>,
+  );
+  const finishSave = mocks.update.mock.calls.at(-1)![0].onSuccess;
+  await user.click(screen.getByRole('button', { name: messages.conflict.reloadAction }));
+
+  mocks.detail.mockReturnValue(query({ ...workOrder, workOrderId: 702 }));
+  view.rerender(
+    <ToastProvider>
+      <WorkOrderAssignmentEditor
+        workOrderId={702}
+        plantId={501}
+        priorityText="2"
+        onPriorityChange={onPriorityChange}
+      />
+    </ToastProvider>,
+  );
+  await act(async () => {
+    finishReload({ isSuccess: true, data: { ...workOrder, priorityNo: 9 } });
+    await Promise.resolve();
+  });
+  act(() => finishSave({ ...workOrder, priorityNo: 8 }));
+
+  expect(refetch).toHaveBeenCalledTimes(1);
+  expect(onPriorityChange).not.toHaveBeenCalled();
 });
