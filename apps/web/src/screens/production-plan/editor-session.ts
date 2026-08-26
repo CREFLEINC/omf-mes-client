@@ -18,6 +18,7 @@ import type { ProductionPlanFact } from './types';
 interface EditorSessionState {
   ownerId: number | null;
   epoch: number;
+  isHydrated: boolean;
   rows: ProductionPlanEditorStateRow[];
 }
 
@@ -25,7 +26,12 @@ const EMPTY_ROWS: ProductionPlanEditorStateRow[] = [];
 
 export const useProductionPlanEditorSession = (productionOrderId: number | null) => {
   const plans = useAllProductionPlans(productionOrderId);
-  const [session, setSession] = useState<EditorSessionState>({ ownerId: null, epoch: 0, rows: [] });
+  const [session, setSession] = useState<EditorSessionState>({
+    ownerId: null,
+    epoch: 0,
+    isHydrated: false,
+    rows: [],
+  });
   const nextNewRow = useRef(0);
 
   useEffect(() => {
@@ -33,18 +39,24 @@ export const useProductionPlanEditorSession = (productionOrderId: number | null)
       if (productionOrderId === null) {
         return current.ownerId === null && current.rows.length === 0
           ? current
-          : { ownerId: null, epoch: current.epoch + 1, rows: [] };
+          : { ownerId: null, epoch: current.epoch + 1, isHydrated: false, rows: [] };
       }
       if (plans.data === undefined || plans.isFetching || plans.isError) {
         return current.ownerId === productionOrderId
           ? current
-          : { ownerId: productionOrderId, epoch: current.epoch + 1, rows: [] };
+          : {
+              ownerId: productionOrderId,
+              epoch: current.epoch + 1,
+              isHydrated: false,
+              rows: [],
+            };
       }
 
       const currentRows = current.ownerId === productionOrderId ? current.rows : [];
       return {
         ownerId: productionOrderId,
         epoch: current.ownerId === productionOrderId ? current.epoch : current.epoch + 1,
+        isHydrated: true,
         rows: reconcileProductionPlanRows(currentRows, plans.data.items),
       };
     });
@@ -102,6 +114,7 @@ export const useProductionPlanEditorSession = (productionOrderId: number | null)
 
   return {
     plans,
+    isHydrated: session.ownerId === productionOrderId && session.isHydrated,
     rows: session.ownerId === productionOrderId ? session.rows : EMPTY_ROWS,
     add,
     change,
