@@ -33,6 +33,7 @@ import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
 import { ProductionOrderScreen } from '../screens/production-order/screen';
+import { ProductionPlanScreen } from '../screens/production-plan/screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
@@ -242,6 +243,8 @@ export const appRouter = createBrowserRouter([
       { path: 'logistics/document-progress', element: <DocumentProgressScreen /> },
       /* W-02-01 — 생산의 첫 화면이며 주소는 API 리소스가 아니라 화면을 가리킨다. */
       { path: 'production/production-orders', element: <ProductionOrderScreen /> },
+      /* W-02-02 — P/O를 고른 뒤 계획을 편성하므로 생산의 둘째 공개 화면이다. */
+      { path: 'production/production-plans', element: <ProductionPlanScreen /> },
       /* W-02-05 — 같은 생산 섹션의 마감·모니터링 화면이다. */
       { path: 'production/work-order-close', element: <WorkOrderCloseScreen /> },
       /*

@@ -177,6 +177,7 @@ describe('ProductionOrderScreen', () => {
     expect(listRequest?.searchParams.get('includeChildren')).toBe('true');
     expect(listRequest?.searchParams.get('page')).toBe('2');
     expect(requests.some((url) => url.pathname === '/planning/production-orders/701')).toBe(false);
+    expect(screen.queryByRole('link', { name: t.actions.productionPlan })).not.toBeInTheDocument();
 
     await user.click(select);
     expect(await screen.findByText('SYN-PLAN-501')).toBeInTheDocument();
@@ -195,6 +196,10 @@ describe('ProductionOrderScreen', () => {
     expect(screen.getByRole('link', { name: t.actions.integrationSync })).toHaveAttribute(
       'href',
       '/master-data/integration-sync',
+    );
+    expect(screen.getByRole('link', { name: t.actions.productionPlan })).toHaveAttribute(
+      'href',
+      '/production/production-plans?productionOrderId=701',
     );
   });
 

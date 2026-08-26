@@ -18,6 +18,7 @@ export interface ProductionOrderBasicPaneProps {
   businessUnits: ReferenceSource;
   plants: ReferenceSource;
   uoms: ReferenceSource;
+  action?: ReactNode;
 }
 
 interface DetailField {
@@ -48,6 +49,7 @@ export const ProductionOrderBasicPane = ({
   businessUnits,
   plants,
   uoms,
+  action,
 }: ProductionOrderBasicPaneProps) => {
   if (!isSelected) {
     return (
@@ -135,6 +137,7 @@ export const ProductionOrderBasicPane = ({
           </dl>
         </Card.Body>
       </Card>
+      {action !== undefined && <div className="form-actions">{action}</div>}
     </section>
   );
 };
