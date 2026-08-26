@@ -7,8 +7,7 @@ import { toWorkOrderFact, workOrderDetailPath, workOrderKeys, type WorkOrderFact
 type WorkOrder = components['schemas']['WorkOrder'];
 type WorkOrderUpdate = components['schemas']['WorkOrderUpdate'];
 
-const WORK_ORDER_UPDATE_FIELDS = [
-  'orderQty',
+const WORK_ORDER_ASSIGNMENT_FIELDS = [
   'priorityNo',
   'plannedStartAt',
   'plannedEndAt',
@@ -17,10 +16,6 @@ const WORK_ORDER_UPDATE_FIELDS = [
   'plannedShiftId',
   'productionLineId',
   'responsibleWorkerId',
-  'defaultWipLocationId',
-  'defaultFgLocationId',
-  'defaultScrapLocationId',
-  'remarks',
 ] as const;
 
 export interface UpdateWorkOrderOptions {
@@ -47,7 +42,7 @@ export const useUpdateWorkOrder = (
       }),
     etagPath: workOrderDetailPath(options.workOrderId),
     invalidateKeys: [workOrderKeys.all],
-    knownFields: WORK_ORDER_UPDATE_FIELDS,
+    knownFields: WORK_ORDER_ASSIGNMENT_FIELDS,
     onSuccess: (data) => {
       options.onSuccess(toWorkOrderFact(data));
     },
