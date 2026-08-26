@@ -4,19 +4,18 @@ body {
   height: 100%;
 }
 
-/* 시스템 바가 떠 있는 동안 100vh 는 뷰포트보다 커져 셸 바닥이 화면 밖으로 밀린다. */
+/*
+ * 사이드바 열을 접는다. DS AppShell 은 sidebar 를 넘기지 않아도 그 칸을 항상 렌더하므로
+ * 열 폭을 0 으로 두지 않으면 360dp 중 72px 을 빈 칸이 가져간다.
+ * 세로 배치는 DS 그리드의 auto 1fr 행이 그대로 하게 둔다 — display 를 덮으면 그 장치가 사라진다.
+ * 시스템 바가 떠 있는 동안 100vh 는 뷰포트보다 커져 셸 바닥이 화면 밖으로 밀린다.
+ */
 .mobile-shell {
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: 0 1fr;
   min-height: 100dvh;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-right: env(safe-area-inset-right, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
-}
-
-.mobile-shell > * {
-  flex: 1 1 auto;
-  min-height: 0;
 }
