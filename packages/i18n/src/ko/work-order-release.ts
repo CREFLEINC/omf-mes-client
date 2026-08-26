@@ -1,5 +1,32 @@
 export const workOrderRelease = {
   input: {
+    pane: '생산LOT 선발행 입력',
+    heading: '생산LOT 선발행',
+    fields: { lotSize: 'LOT 크기', handoverNote: '전달사항' },
+    helper: {
+      lotSize: (unit: string): string =>
+        `품목 기본값이 없습니다. 매번 직접 입력하세요. 단위: ${unit}`,
+      handoverNote: '공지 확인 이력은 별도 화면에서 관리합니다.',
+    },
+    locked: {
+      lotSize: (reason: string): string => `LOT 크기: ${reason}`,
+      handoverNote: (reason: string): string => `전달사항: ${reason}`,
+    },
+    preview: {
+      title: (slotCount: number): string => `${String(slotCount)} 슬롯을 선발행합니다.`,
+      formula: (orderQty: string, lotSize: string, slotCount: number, unit: string): string =>
+        `${orderQty} ${unit} ÷ ${lotSize} ${unit} = ${String(slotCount)} 슬롯`,
+      planNotice: '계획값입니다. 초과 생산은 추가 발번하고 미달 슬롯은 마감할 때 폐번합니다.',
+    },
+    warning: {
+      title: 'LOT 크기가 지시수량 이상입니다.',
+      description: '생산LOT 1슬롯만 선발행합니다. 이 조건은 배포를 막지 않습니다.',
+    },
+    values: { unitUnavailable: '단위 미확인' },
+    empty: {
+      title: '입력할 작업지시를 선택하세요.',
+      description: '배포 후보를 선택하면 LOT 크기와 전달사항을 입력할 수 있습니다.',
+    },
     errors: {
       lotSizeRequired: 'LOT 크기를 입력하세요.',
       lotSizeNotNumber: 'LOT 크기는 숫자로 입력하세요.',
