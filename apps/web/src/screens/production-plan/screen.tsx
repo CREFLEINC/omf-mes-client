@@ -1,0 +1,179 @@
+import { AlertBanner, Breadcrumb, Button, PageHeader, SkeletonText } from '@crefle/web-ui';
+import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
+
+import { useProductionOrderItemNames } from '../production-order/item-lookups';
+import { useProductionOrderDetail } from '../production-order/queries';
+import {
+  describeReference,
+  resolveReference,
+  useUomReferenceLookup,
+} from '../production-order/reference-lookups';
+import type { ProductionOrderFact } from '../production-order/types';
+import { ProductionPlanEditorSection } from './editor-section';
+import {
+  bomRevisionLabel,
+  isMasterCheckReady,
+  MasterCheckPane,
+  routingRevisionLabel,
+} from './master-check-pane';
+import {
+  useBomReferenceQuery,
+  useProductionLineReferenceQuery,
+  useRoutingReferenceQuery,
+} from './reference-queries';
+
+const readProductionOrderId = (params: URLSearchParams): number | null => {
+  const raw = params.get('productionOrderId');
+  if (raw === null || !/^[1-9]\d*$/.test(raw)) return null;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) ? value : null;
+};
+
+const itemLabel = (label: string | null): string => label ?? '품목 정보를 확인할 수 없습니다.';
+
+const quantity = (value: number): string =>
+  new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
+
+const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
+  const [bomId, setBomId] = useState('');
+  const [routingId, setRoutingId] = useState('');
+  const boms = useBomReferenceQuery(order.itemId);
+  const routings = useRoutingReferenceQuery(order.itemId);
+  const lines = useProductionLineReferenceQuery(order.plantId);
+  const itemNames = useProductionOrderItemNames([order.itemId]);
+  const uoms = useUomReferenceLookup();
+  const bomItems = boms.data?.items ?? [];
+  const routingItems = routings.data?.items ?? [];
+  const lineItems = lines.data?.items ?? [];
+  const masterReady = isMasterCheckReady(bomItems, routingItems, bomId, routingId);
+  const referencesLoaded = boms.isSuccess && routings.isSuccess;
+  const linesLoaded = order.plantId === null || lines.isSuccess;
+  const selectedItem = itemNames.items.find((item) => item.itemId === order.itemId);
+  const uomLabel = describeReference(resolveReference(uoms, order.uomId));
+  const lineNames = useMemo(
+    () => new Map(lineItems.map((line) => [line.productionLineId, line.lineName])),
+    [lineItems],
+  );
+
+  return (
+    <>
+      <section className="pane" aria-label="선택 생산 P/O">
+        <h2>{order.productionOrderNo}</h2>
+        <p>
+          {itemLabel(selectedItem?.label ?? null)} · {quantity(order.orderQty)} {uomLabel}
+          {order.dueDate === null ? '' : ` · 납기 ${order.dueDate}`}
+        </p>
+      </section>
+      <MasterCheckPane
+        boms={{
+          items: bomItems,
+          isLoading: boms.isPending,
+          isError: boms.isError,
+          refetch: () => void boms.refetch(),
+        }}
+        routings={{
+          items: routingItems,
+          isLoading: routings.isPending,
+          isError: routings.isError,
+          refetch: () => void routings.refetch(),
+        }}
+        bomId={bomId}
+        routingId={routingId}
+        onBomChange={setBomId}
+        onRoutingChange={setRoutingId}
+      />
+      {order.plantId !== null && lines.isPending && (
+        <div role="status" aria-label="생산라인을 불러오는 중">
+          <SkeletonText lines={2} />
+        </div>
+      )}
+      {lines.isError && (
+        <AlertBanner
+          variant="error"
+          title="생산라인을 불러오지 못했습니다."
+          action={
+            <Button size="sm" variant="outlined" onClick={() => void lines.refetch()}>
+              생산라인 다시 시도
+            </Button>
+          }
+        />
+      )}
+      {order.plantId === null && (
+        <AlertBanner variant="info">
+          P/O에 공장이 없어 생산라인은 미지정으로 저장합니다.
+        </AlertBanner>
+      )}
+      {referencesLoaded && linesLoaded && (
+        <ProductionPlanEditorSection
+          productionOrderId={order.productionOrderId}
+          orderQty={order.orderQty}
+          uomId={order.uomId}
+          uomLabel={uomLabel}
+          defaults={{
+            planDate: order.dueDate ?? '',
+            plannedQty: '',
+            bomId,
+            routingId,
+          }}
+          bomOptions={bomItems.map((item) => ({
+            value: String(item.bomId),
+            label: bomRevisionLabel(item),
+          }))}
+          routingOptions={routingItems.map((item) => ({
+            value: String(item.routingId),
+            label: routingRevisionLabel(item),
+          }))}
+          lineOptions={lineItems.map((line) => ({
+            value: String(line.productionLineId),
+            label: `${line.parentLineId === null ? '' : `${lineNames.get(line.parentLineId) ?? '상위 라인'} > `}${line.lineCode} · ${line.lineName}${line.isActive ? '' : ' · 비활성'}`,
+          }))}
+          addDisabled={!masterReady}
+        />
+      )}
+      <AlertBanner variant="info">
+        생산 LOT 크기와 선발행은 W/O 확정·배포 단계에서 입력합니다.
+      </AlertBanner>
+    </>
+  );
+};
+
+export const ProductionPlanScreen = () => {
+  const [searchParams] = useSearchParams();
+  const productionOrderId = readProductionOrderId(searchParams);
+  const order = useProductionOrderDetail(productionOrderId);
+
+  return (
+    <>
+      <PageHeader
+        title="W/O 전개·편성"
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: '생산' }, { label: '계획·지시' }, { label: 'W/O 전개·편성' }]}
+          />
+        }
+      />
+      {productionOrderId === null ? (
+        <AlertBanner variant="warning" title="생산 P/O를 먼저 선택하세요.">
+          <Link to="/production/production-orders">P/O 수신·조회로 이동</Link>
+        </AlertBanner>
+      ) : order.isPending ? (
+        <div role="status" aria-label="생산 P/O를 불러오는 중">
+          <SkeletonText lines={3} />
+        </div>
+      ) : order.isError || order.data === undefined ? (
+        <AlertBanner
+          variant="error"
+          title="생산 P/O를 불러오지 못했습니다."
+          action={
+            <Button size="sm" variant="outlined" onClick={() => void order.refetch()}>
+              다시 시도
+            </Button>
+          }
+        />
+      ) : (
+        <ProductionPlanWorkspace key={productionOrderId} order={order.data} />
+      )}
+    </>
+  );
+};

@@ -40,10 +40,10 @@ export const isMasterCheckReady = (
 const period = (from: string | null, to: string | null): string =>
   `${from ?? '시작일 미확인'} ~ ${to ?? '종료일 없음'}`;
 
-const bomLabel = (item: BomRevisionFact): string =>
+export const bomRevisionLabel = (item: BomRevisionFact): string =>
   `${item.bomCode} · Rev ${String(item.bomVersion)} · ${item.statusCode}`;
 
-const routingLabel = (item: RoutingRevisionFact): string =>
+export const routingRevisionLabel = (item: RoutingRevisionFact): string =>
   `${item.routingCode} · Rev ${String(item.routingVersion)} · ${item.statusCode}`;
 
 export const MasterCheckPane = ({
@@ -145,7 +145,10 @@ export const MasterCheckPane = ({
             {referenceBody(
               'BOM',
               boms,
-              boms.items.map((item) => ({ value: String(item.bomId), label: bomLabel(item) })),
+              boms.items.map((item) => ({
+                value: String(item.bomId),
+                label: bomRevisionLabel(item),
+              })),
               bomId,
               onBomChange,
             )}
@@ -167,7 +170,7 @@ export const MasterCheckPane = ({
               routings,
               routings.items.map((item) => ({
                 value: String(item.routingId),
-                label: routingLabel(item),
+                label: routingRevisionLabel(item),
               })),
               routingId,
               onRoutingChange,
