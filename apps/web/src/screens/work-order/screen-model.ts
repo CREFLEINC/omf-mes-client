@@ -39,7 +39,9 @@ const assignmentLabel = (fact: WorkOrderFact): string => {
 
 const validationPresentation = (
   report: WorkOrderValidationReport | undefined,
+  failed: boolean,
 ): Pick<WorkOrderListRow, 'validationLabel' | 'validationTone'> => {
+  if (failed) return { validationLabel: t.validation.failed, validationTone: 'error' };
   if (report === undefined)
     return { validationLabel: t.validation.notChecked, validationTone: 'idle' };
   if (!report.passed || report.findings.some((finding) => finding.severity === 'BLOCK')) {
@@ -56,6 +58,7 @@ export interface WorkOrderScreenRowInput {
   uomLabel: string;
   priorityText: string;
   priorityError: string | undefined;
+  validationFailed?: boolean;
   validationReport?: WorkOrderValidationReport;
 }
 
@@ -69,5 +72,5 @@ export const toWorkOrderScreenRow = (
     priorityText: input.priorityText,
     priorityError: input.priorityError,
     assignmentLabel: assignmentLabel(fact),
-    ...validationPresentation(input.validationReport),
+    ...validationPresentation(input.validationReport, input.validationFailed === true),
   });

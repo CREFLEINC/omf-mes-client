@@ -24,6 +24,7 @@ export const workOrder = {
       `${String(assigned)}/${String(total)}`,
     validation: {
       notChecked: '선택 후 확인',
+      failed: '검증 조회 실패',
       blocked: '검증 차단',
       warning: '검증 경고',
       passed: '검증 통과',
