@@ -6,8 +6,9 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-import { BrowserWindow, app, ipcMain, safeStorage } from 'electron';
+import { BrowserWindow, app, ipcMain, net, protocol, safeStorage } from 'electron';
 import initSqlJs from 'sql.js';
 
 import { LocalDb, type SqlDatabase } from './local-db';
@@ -21,8 +22,36 @@ import { createKioskWindowOptions } from './window-options';
 const here = __dirname;
 
 /** 렌더러는 기존 웹 빌드 산출물을 그대로 띄운다 — POP 화면 구현은 이 이슈 범위 밖이다. */
-const RENDERER_INDEX = join(here, '../renderer/index.html');
+const RENDERER_DIR = join(here, '../renderer');
 const DEV_SERVER_URL = process.env.POP_DEV_SERVER_URL;
+
+/**
+ * 렌더러를 `file://`이 아니라 자체 스킴으로 띄운다.
+ *
+ * 웹 빌드의 자산 참조가 `/assets/...` 절대 경로다. `file://`에서 그 경로는 **디스크 루트**를
+ * 가리켜 스크립트가 조용히 로드되지 않는다 — 창은 뜨고 `did-fail-load`도 안 나는데 화면만
+ * 빈 채로 남는다(실측). 오리진이 있는 스킴으로 띄우면 절대 경로가 렌더러 폴더 기준으로 풀린다.
+ *
+ * ⛔ 대안이었던 「apps/web의 vite `base`를 상대 경로로 바꾸기」는 쓰지 않는다 — 그 빌드는
+ *    관리웹도 함께 쓰므로 POP 사정으로 남의 산출물을 바꾸게 된다.
+ */
+const APP_SCHEME = 'pop';
+const RENDERER_ORIGIN = `${APP_SCHEME}://app`;
+
+function registerRendererProtocol(): void {
+  protocol.handle(APP_SCHEME, (request) => {
+    const { pathname } = new URL(request.url);
+    const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+    const target = join(RENDERER_DIR, relative);
+
+    // 렌더러 폴더 밖으로 나가는 경로는 거절한다 — `..`가 섞이면 앱 바깥 파일이 새어 나간다.
+    if (!target.startsWith(RENDERER_DIR)) return new Response('forbidden', { status: 403 });
+
+    // SPA 라우팅: 자산이 아닌 경로는 index.html로 되돌린다.
+    const file = existsSync(target) ? target : join(RENDERER_DIR, 'index.html');
+    return net.fetch(pathToFileURL(file).toString());
+  });
+}
 
 function blobStore(baseDir: string): BlobStore {
   const pathFor = (key: string) => join(baseDir, `${key}.bin`);
@@ -52,8 +81,14 @@ async function openLocalDb(dbPath: string): Promise<LocalDb> {
   return new LocalDb(db as unknown as SqlDatabase);
 }
 
+// 스킴 특권은 앱이 준비되기 **전에** 등록해야 한다. 늦으면 fetch·모듈 로딩이 막힌다.
+protocol.registerSchemesAsPrivileged([
+  { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
+
 async function main(): Promise<void> {
   await app.whenReady();
+  registerRendererProtocol();
 
   const userData = app.getPath('userData');
   const secureStore = new SecureStore(safeStorage, blobStore(join(userData, 'secure')));
@@ -84,8 +119,7 @@ async function main(): Promise<void> {
   // 우클릭 메뉴를 막는다 — 작업자가 셸 밖으로 빠져나갈 통로 하나를 더 닫는다.
   window.webContents.on('context-menu', (event) => event.preventDefault());
 
-  if (DEV_SERVER_URL) await window.loadURL(DEV_SERVER_URL);
-  else await window.loadFile(RENDERER_INDEX);
+  await window.loadURL(DEV_SERVER_URL ?? RENDERER_ORIGIN);
 
   // 종료 시 로컬 저장소를 디스크에 내린다. 대기열이 사라지면 현장 실적이 사라진다.
   app.on('before-quit', () => writeFileSync(dbPath, localDb.export()));
