@@ -36,6 +36,11 @@
  * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
  * .login-fields  카드 안 입력 칸 사이 간격(규범 8)
  * .login-actions 카드 안 액션 줄 — 하나뿐인 액션이 줄 전체를 채운다(규범 8)
+ *
+ * .pop-shell     POP(현장 단말) 화면의 본문 — 셸 밖에 서서 뷰포트를 그대로 쓴다
+ * .pop-header    그 화면의 표제 줄
+ * .pop-title     표제 — 1024×768 단말에서 멀리서 읽는다
+ * .pop-context   표제 옆의 맥락 표시(작업지시 등)
  */
 
 :root {
@@ -690,4 +695,39 @@ main > * + * {
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
   color: var(--on-surface-variant);
+}
+
+/*
+ * POP(현장 단말) 화면 — 셸 밖에 서는 두 번째 형태다(규범 8).
+ *
+ * 로그인(`.login-shell`)은 카드 하나를 뷰포트 한가운데 세우지만 이쪽은 **폭을 좁히지 않는다.**
+ * 1024×768 단말에서 세로 여유가 119px뿐이라 가운데 정렬로 남는 폭을 버릴 수 없다.
+ */
+.pop-shell {
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  min-height: 100%;
+}
+
+.pop-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+/* 표제 서식은 디자인 시스템 위계를 그대로 쓰고 브라우저 기본 여백만 턴다. */
+.pop-title {
+  margin: 0;
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.pop-context {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  color: var(--on-surface-muted);
 }
