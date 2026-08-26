@@ -1,0 +1,22 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+/* 시스템 바가 떠 있는 동안 100vh 는 뷰포트보다 커져 셸 바닥이 화면 밖으로 밀린다. */
+.mobile-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.mobile-shell > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
