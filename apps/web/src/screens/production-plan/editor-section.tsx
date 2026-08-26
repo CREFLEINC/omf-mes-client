@@ -15,6 +15,7 @@ interface ProductionPlanEditorSectionProps {
   routingOptions: ProductionPlanEditorOption[];
   lineOptions: ProductionPlanEditorOption[];
   addDisabled?: boolean;
+  onShowResults?: (productionPlanId: number) => void;
 }
 
 export const ProductionPlanEditorSection = ({
@@ -27,6 +28,7 @@ export const ProductionPlanEditorSection = ({
   routingOptions,
   lineOptions,
   addDisabled = false,
+  onShowResults,
 }: ProductionPlanEditorSectionProps) => {
   const editor = useProductionPlanEditorSession(productionOrderId);
 
@@ -88,6 +90,7 @@ export const ProductionPlanEditorSection = ({
               onErrors={editor.setErrors}
               onSettle={editor.settle}
               onRemove={editor.remove}
+              onShowResults={onShowResults}
             />
           );
         }}

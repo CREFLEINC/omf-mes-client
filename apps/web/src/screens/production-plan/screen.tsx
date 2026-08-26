@@ -23,6 +23,7 @@ import {
   useProductionLineReferenceQuery,
   useRoutingReferenceQuery,
 } from './reference-queries';
+import { WorkOrderResultPane } from './work-order-result-pane';
 
 const readProductionOrderId = (params: URLSearchParams): number | null => {
   const raw = params.get('productionOrderId');
@@ -46,6 +47,7 @@ const ProductionPlanWorkspace = ({
 }) => {
   const [bomId, setBomId] = useState('');
   const [routingId, setRoutingId] = useState('');
+  const [resultPlanId, setResultPlanId] = useState<number | null>(null);
   const boms = useBomReferenceQuery(order.itemId);
   const routings = useRoutingReferenceQuery(order.itemId);
   const lines = useProductionLineReferenceQuery(order.plantId);
@@ -134,6 +136,14 @@ const ProductionPlanWorkspace = ({
             label: `${line.parentLineId === null ? '' : `${lineNames.get(line.parentLineId) ?? '상위 라인'} > `}${line.lineCode} · ${line.lineName}${line.isActive ? '' : ' · 비활성'}`,
           }))}
           addDisabled={!masterReady || referenceFailed || orderUnavailable}
+          onShowResults={setResultPlanId}
+        />
+      )}
+      {resultPlanId !== null && (
+        <WorkOrderResultPane
+          key={resultPlanId}
+          productionPlanId={resultPlanId}
+          uomLabel={uomLabel}
         />
       )}
       <AlertBanner variant="info">
