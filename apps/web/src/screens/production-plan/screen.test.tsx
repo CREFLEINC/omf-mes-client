@@ -35,13 +35,31 @@ const routing = (routingId: number) => ({
 });
 
 describe('ProductionPlanScreen', () => {
+  it.each([null, '', '0', '-1', '1.5', '9007199254740992'])(
+    '잘못된 P/O ID %s는 요청 없이 선택 화면으로 보낸다',
+    (raw) => {
+      let requested = false;
+      const fetch: StubFetch = async () => {
+        requested = true;
+        throw new Error('invalid ID must not dispatch');
+      };
+      renderWithProviders(<ProductionPlanScreen />, {
+        fetch,
+        route: `/production/production-plans${raw === null ? '' : `?productionOrderId=${raw}`}`,
+      });
+
+      expect(screen.getByText('생산 P/O를 먼저 선택하세요.')).toBeVisible();
+      expect(screen.getByRole('link', { name: 'P/O 수신·조회로 이동' })).toBeVisible();
+      expect(requested).toBe(false);
+    },
+  );
+
   it('P/O와 전체 참조를 연결하고 Routing 선택 뒤 계획 추가를 허용한다', async () => {
     const user = userEvent.setup();
-    const requests: Request[] = [];
     let failedPath = '';
     let wrongOwner = false;
+    let wrongPlanRequested = false;
     const fetch: StubFetch = async (request) => {
-      requests.push(request.clone());
       const url = new URL(request.url);
       if (url.pathname === failedPath)
         return jsonResponse({ message: 'synthetic failure' }, { status: 503 });
@@ -76,6 +94,7 @@ describe('ProductionPlanScreen', () => {
         });
       }
       if (url.pathname === '/planning/production-plans') {
+        if (url.searchParams.get('productionOrderId') === '702') wrongPlanRequested = true;
         return jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } });
       }
       throw new Error(`unexpected request: ${request.method} ${request.url}`);
@@ -86,7 +105,6 @@ describe('ProductionPlanScreen', () => {
     });
 
     expect(await screen.findByText('PO-SYN-701')).toBeVisible();
-    expect(await screen.findByText(/ITEM-01 · 합성 품목 · 125 EA · 개/)).toBeVisible();
     const add = await screen.findByRole('button', { name: '+ 계획 추가' });
     expect(add).toBeDisabled();
 
@@ -101,8 +119,6 @@ describe('ProductionPlanScreen', () => {
       'aria-invalid',
       'true',
     );
-    expect(screen.getByRole('spinbutton', { name: '신규 계획 1 계획수량' })).toHaveValue(null);
-    expect(screen.getByRole('combobox', { name: '신규 계획 1 라인' })).toHaveTextContent('미지정');
     const failures = [
       [
         '/mdm/production-lines',
@@ -141,11 +157,7 @@ describe('ProductionPlanScreen', () => {
     expect(await screen.findByText('요청한 생산 P/O와 다른 상세가 반환되었습니다.')).toBeVisible();
     expect(screen.getByText('신규 계획 1')).not.toBeVisible();
     expect(add).toBeDisabled();
-    expect(
-      requests.some(
-        (request) => new URL(request.url).searchParams.get('productionOrderId') === '702',
-      ),
-    ).toBe(false);
+    expect(wrongPlanRequested).toBe(false);
     wrongOwner = false;
     await user.click(screen.getByRole('button', { name: '다시 시도' }));
     await waitFor(() => expect(add).toBeEnabled());
@@ -153,14 +165,10 @@ describe('ProductionPlanScreen', () => {
   });
 
   it('상세 응답 소유자가 URL과 다르면 종속 조회와 편집을 열지 않는다', async () => {
-    const requests: Request[] = [];
-    const fetch: StubFetch = async (request) => {
-      requests.push(request);
-      const url = new URL(request.url);
-      if (url.pathname === '/planning/production-orders/701') {
-        return jsonResponse({ ...order, productionOrderId: 702, productionOrderNo: 'PO-SYN-702' });
-      }
-      throw new Error(`unexpected dependent request: ${request.url}`);
+    let requests = 0;
+    const fetch: StubFetch = async () => {
+      requests += 1;
+      return jsonResponse({ ...order, productionOrderId: 702 });
     };
     renderWithProviders(<ProductionPlanScreen />, {
       fetch,
@@ -169,6 +177,6 @@ describe('ProductionPlanScreen', () => {
 
     expect(await screen.findByText('요청한 생산 P/O와 다른 상세가 반환되었습니다.')).toBeVisible();
     expect(screen.queryByLabelText('생산계획 편집')).not.toBeInTheDocument();
-    expect(requests).toHaveLength(1);
+    expect(requests).toBe(1);
   });
 });

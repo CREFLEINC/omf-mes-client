@@ -33,6 +33,9 @@ const readProductionOrderId = (params: URLSearchParams): number | null => {
 
 const quantity = (value: number): string =>
   new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
+const BREADCRUMB = (
+  <Breadcrumb items={[{ label: '생산' }, { label: '계획·지시' }, { label: 'W/O 전개·편성' }]} />
+);
 
 const ProductionPlanWorkspace = ({
   order,
@@ -60,6 +63,7 @@ const ProductionPlanWorkspace = ({
     () => new Map(lineItems.map((line) => [line.productionLineId, line.lineName])),
     [lineItems],
   );
+  const defaults = { planDate: '', plannedQty: '', bomId, routingId };
 
   return (
     <>
@@ -116,12 +120,7 @@ const ProductionPlanWorkspace = ({
           orderQty={order.orderQty}
           uomId={order.uomId}
           uomLabel={uomLabel}
-          defaults={{
-            planDate: '',
-            plannedQty: '',
-            bomId,
-            routingId,
-          }}
+          defaults={defaults}
           bomOptions={bomItems.map((item) => ({
             value: String(item.bomId),
             label: bomRevisionLabel(item),
@@ -168,14 +167,7 @@ export const ProductionPlanScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title="W/O 전개·편성"
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: '생산' }, { label: '계획·지시' }, { label: 'W/O 전개·편성' }]}
-          />
-        }
-      />
+      <PageHeader title="W/O 전개·편성" breadcrumb={BREADCRUMB} />
       {productionOrderId === null ? (
         <AlertBanner variant="warning" title="생산 P/O를 먼저 선택하세요.">
           <Link to="/production/production-orders">P/O 수신·조회로 이동</Link>
