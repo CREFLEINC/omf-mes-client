@@ -16,10 +16,9 @@ import { createFileBlobStore } from './file-blob-store';
 import { LocalDb, type SqlDatabase } from './local-db';
 import {
   type FileWriter,
-  LabelPrinter,
-  type LabelImage,
-  type PdfRenderer,
-  toPdfFileName,
+  type RenditionFormat,
+  RenditionPrinter,
+  toRenditionFileName,
 } from './print';
 import { resolveRendererPath } from './renderer-path';
 import { SecureStore } from './secure-store';
@@ -74,33 +73,6 @@ const fileWriter: FileWriter = {
   },
 };
 
-/**
- * 서버가 준 라벨 이미지를 실제 PDF로 감싼다.
- *
- * 이미지 바이트를 그대로 `.pdf`로 쓰면 PDF 리더가 열지 못한다(실측). 오프스크린 창에
- * 이미지를 띄우고 Electron 내장 `printToPDF`로 감싼다 — 프린터 제어 언어를 만드는 것이
- * 아니므로 #441의 금지 조항에 걸리지 않는다.
- */
-const pdfRenderer: PdfRenderer = {
-  render: async (image: LabelImage) => {
-    const offscreen = new BrowserWindow({
-      show: false,
-      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
-    });
-    try {
-      const base64 = Buffer.from(image.bytes).toString('base64');
-      const html =
-        `<html><body style="margin:0">` +
-        `<img src="data:image/png;base64,${base64}" style="width:100%">` +
-        `</body></html>`;
-      await offscreen.loadURL(`data:text/html;base64,${Buffer.from(html).toString('base64')}`);
-      return new Uint8Array(await offscreen.webContents.printToPDF({ printBackground: true }));
-    } finally {
-      offscreen.destroy();
-    }
-  },
-};
-
 async function openLocalDb(dbPath: string): Promise<LocalDb> {
   const SQL = await initSqlJs();
   const existing = existsSync(dbPath) ? readFileSync(dbPath) : undefined;
@@ -135,8 +107,8 @@ async function main(): Promise<void> {
   const secureStore = new SecureStore(safeStorage, createFileBlobStore(join(userData, 'secure')));
   const dbPath = join(userData, 'pop.sqlite');
   const localDb = await openLocalDb(dbPath);
-  const labelDir = join(userData, 'labels');
-  const printer = new LabelPrinter(pdfRenderer, fileWriter);
+  const renditionDir = join(userData, 'renditions');
+  const printer = new RenditionPrinter(fileWriter);
 
   // 대기열이 사라지면 현장 실적이 사라진다. 창을 만들기 **전에** 등록한다 —
   // 창 생성이나 로드가 실패해도 이미 걸려 있어야 그 세션의 기록이 남는다.
@@ -157,12 +129,19 @@ async function main(): Promise<void> {
   ipcMain.handle('outbox:dequeue', (_e, id: number) => localDb.dequeue(id));
 
   // ⛔ 출력 경로는 **메인이 소유한다.** 렌더러가 준 경로에 그대로 쓰면 임의 위치에
-  //    파일을 만들 수 있다. 렌더러는 라벨 이름만 넘긴다.
-  ipcMain.handle('label:print-pdf', async (_e, bytes: Uint8Array, label: string, now: string) => {
-    const filePath = join(labelDir, toPdfFileName(label, now));
-    await printer.print({ bytes, label }, { kind: 'pdf', filePath });
-    return filePath;
-  });
+  //    파일을 만들 수 있다. 렌더러는 이름과 형식만 넘긴다.
+  //
+  // ⛔ **형식은 서버가 정한다** — `rendition?format=png|pdf`(라벨은 이미지, 성적서는 문서).
+  //    셸은 받은 것을 그대로 쓰고 확장자만 맞춘다. 내용을 다시 만들지 않는다(설계 결정 18 —
+  //    클라이언트가 레이아웃을 그리면 단말마다 출력물이 달라진다).
+  ipcMain.handle(
+    'rendition:save',
+    async (_e, bytes: Uint8Array, label: string, now: string, format: RenditionFormat) => {
+      const filePath = join(renditionDir, toRenditionFileName(label, now, format));
+      await printer.print({ bytes, label, format }, { kind: 'file', filePath });
+      return filePath;
+    },
+  );
 
   const window = new BrowserWindow(
     createKioskWindowOptions({ preloadPath: PRELOAD_PATH, isDev: IS_DEV }),

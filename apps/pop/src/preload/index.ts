@@ -32,15 +32,18 @@ const api = {
     /** 전송이 확정된 뒤에만 부른다 — 보내기 전에 지우면 현장 실적이 사라진다. */
     dequeue: (id: number): Promise<void> => ipcRenderer.invoke('outbox:dequeue', id),
   },
-  label: {
+  rendition: {
     /**
-     * 라벨을 PDF로 떨어뜨리고 만들어진 경로를 돌려준다.
+     * 서버가 그려 준 출력물을 파일로 저장하고 만들어진 경로를 돌려준다.
      *
-     * ⛔ 저장 경로를 렌더러가 정하지 않는다 — 메인이 소유한다. 렌더러가 준 경로에 그대로
-     *    쓰면 앱이 임의 위치에 파일을 만들 수 있다.
+     * `format`은 서버에 요청한 것과 같은 값을 넘긴다(`rendition?format=png|pdf`) —
+     * 확장자가 그 값을 따라가고, 내용이 그 형식이 아니면 저장하지 않고 던진다.
+     *
+     * ⛔ 저장 경로를 렌더러가 정하지 않는다 — 메인이 소유한다.
+     * ⛔ 셸이 출력물을 다시 그리지 않는다(설계 결정 18).
      */
-    printToPdf: (bytes: Uint8Array, label: string, now: string): Promise<string> =>
-      ipcRenderer.invoke('label:print-pdf', bytes, label, now),
+    save: (bytes: Uint8Array, label: string, now: string, format: 'png' | 'pdf'): Promise<string> =>
+      ipcRenderer.invoke('rendition:save', bytes, label, now, format),
   },
 };
 
