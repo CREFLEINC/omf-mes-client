@@ -56,6 +56,9 @@ module.exports = {
     },
   ],
   options: {
+    // 루트에서 도는 depcruise 는 하위 디렉터리의 .gitignore 를 읽지 않는다.
+    // 빌드 산출물이 순회에 섞이면 「방금 빌드했는지」에 따라 모듈 수가 달라진다.
+    exclude: { path: '(^|/)(dist|build|\\.gradle)/|(^|/)android/app/src/main/assets/' },
     doNotFollow: { path: 'node_modules' },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.base.json' },
