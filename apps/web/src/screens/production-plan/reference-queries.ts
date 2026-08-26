@@ -1,13 +1,13 @@
-import type { components } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { PageMeta } from './types';
-
 type Bom = components['schemas']['Bom'];
 type Routing = components['schemas']['Routing'];
 type ProductionLine = components['schemas']['ProductionLine'];
+type Client = ApiClient['client'];
+const PRODUCTION_LINE_PAGE_SIZE = 100;
 
 export interface BomRevisionFact {
   bomId: number;
@@ -52,8 +52,7 @@ export interface RoutingReferenceResponse {
 
 export interface ProductionLineReferenceResponse {
   items: ProductionLineFact[];
-  page: PageMeta;
-  truncated: boolean;
+  total: number;
 }
 
 export const productionPlanReferenceKeys = {
@@ -96,6 +95,59 @@ const toProductionLineFact = (productionLine: ProductionLine): ProductionLineFac
   lineTypeCode: productionLine.lineTypeCode,
   isActive: productionLine.isActive,
 });
+
+const fetchAllProductionLines = async (
+  client: Client,
+  plantId: number,
+): Promise<ProductionLineReferenceResponse> => {
+  const requestPage = (page: number) =>
+    runRequest(() =>
+      client.GET('/mdm/production-lines', {
+        params: {
+          query: {
+            plantId,
+            includeInactive: true,
+            size: PRODUCTION_LINE_PAGE_SIZE,
+            ...(page > 1 ? { page } : {}),
+          },
+        },
+      }),
+    );
+  const first = await requestPage(1);
+  const unique = new Map(
+    first.items.map(toProductionLineFact).map((item) => [item.productionLineId, item]),
+  );
+  if (
+    first.page.page !== 1 ||
+    !Number.isSafeInteger(first.page.size) ||
+    first.page.size < 1 ||
+    !Number.isSafeInteger(first.page.total) ||
+    first.page.total < 0 ||
+    unique.size > first.page.total ||
+    [...unique.values()].some((item) => item.plantId !== plantId)
+  ) {
+    throw new Error('생산라인 전체 목록의 쪽 정보가 일관되지 않습니다.');
+  }
+
+  const totalPages = Math.ceil(first.page.total / first.page.size);
+  for (let page = 2; page <= totalPages; page += 1) {
+    const next = await requestPage(page);
+    const items = next.items.map(toProductionLineFact);
+    if (
+      next.page.page !== page ||
+      next.page.size !== first.page.size ||
+      next.page.total !== first.page.total ||
+      items.some((item) => item.plantId !== plantId)
+    ) {
+      throw new Error('생산라인 전체 목록의 쪽 정보가 일관되지 않습니다.');
+    }
+    items.forEach((item) => unique.set(item.productionLineId, item));
+  }
+  if (unique.size !== first.page.total) {
+    throw new Error('생산라인 전체 목록을 완성하지 못했습니다.');
+  }
+  return { items: [...unique.values()], total: first.page.total };
+};
 
 export const useBomReferenceQuery = (
   itemId: number | null,
@@ -150,15 +202,7 @@ export const useProductionLineReferenceQuery = (
         throw new Error('공장을 고르기 전에는 생산 라인을 조회하지 않습니다.');
       }
 
-      return runRequest(() =>
-        client.GET('/mdm/production-lines', {
-          params: { query: { plantId, includeInactive: true } },
-        }),
-      ).then((response) => ({
-        items: response.items.map(toProductionLineFact),
-        page: response.page,
-        truncated: response.page.total > response.items.length,
-      }));
+      return fetchAllProductionLines(client, plantId);
     },
   });
 };

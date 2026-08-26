@@ -134,14 +134,18 @@ describe('production plan reference queries', () => {
     );
   });
 
-  it('requests production lines with exactly plantId and includeInactive, preserving hierarchy, metadata, and truncation', async () => {
+  it('생산라인을 서버 쪽 크기로 끝까지 읽고 계층·비활성·서버 순서를 보존한다', async () => {
     const { fetch, requests } = recordingFetch([
       {
         match: (request) => isGet(request, PRODUCTION_LINES_PATH),
-        respond: () =>
+        respond: (request) =>
           jsonResponse({
-            items: [productionLine(901), productionLine(902)],
-            page: { page: 1, size: 2, total: 3 },
+            items: [productionLine(new URL(request.url).searchParams.has('page') ? 902 : 901)],
+            page: {
+              page: Number(new URL(request.url).searchParams.get('page') ?? '1'),
+              size: 1,
+              total: 2,
+            },
           }),
       },
     ]);
@@ -151,17 +155,18 @@ describe('production plan reference queries', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(requests).toHaveLength(1);
+    expect(requests).toHaveLength(2);
     expect(requests[0]?.method).toBe('GET');
     expect(requests[0]?.url.pathname).toBe(PRODUCTION_LINES_PATH);
     expect(Array.from(requests[0]?.url.searchParams.entries() ?? [])).toEqual([
       ['plantId', '3101'],
       ['includeInactive', 'true'],
+      ['size', '100'],
     ]);
+    expect(requests[1]?.url.searchParams.get('page')).toBe('2');
     expect(result.current.data).toEqual({
       items: [{ ...productionLine(901), parentLineId: null }, productionLine(902)],
-      page: { page: 1, size: 2, total: 3 },
-      truncated: true,
+      total: 2,
     });
     expect(result.current.data?.items[0]?.parentLineId).toBeNull();
   });
@@ -203,8 +208,63 @@ describe('production plan reference queries', () => {
     expect(result.current.routings.data).toEqual({ items: [routing(802)] });
     expect(result.current.productionLines.data).toEqual({
       items: [productionLine(902)],
-      page: { page: 1, size: 25, total: 1 },
-      truncated: false,
+      total: 1,
     });
+  });
+
+  it.each([
+    { label: '다른 공장 행', nextPlantId: 9999, nextTotal: 2 },
+    { label: '바뀐 total', nextPlantId: 3101, nextTotal: 3 },
+  ])('$label를 조회 정본으로 받지 않는다', async ({ nextPlantId, nextTotal }) => {
+    const fetch: StubFetch = async (request) => {
+      const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+      return jsonResponse({
+        items: [
+          page === 1 ? productionLine(901) : { ...productionLine(902), plantId: nextPlantId },
+        ],
+        page: { page, size: 1, total: page === 1 ? 2 : nextTotal },
+      });
+    };
+    const { result } = renderHookWithProviders(() => useProductionLineReferenceQuery(3101), {
+      fetch,
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.error).toEqual(
+      new Error('생산라인 전체 목록의 쪽 정보가 일관되지 않습니다.'),
+    );
+  });
+
+  it.each([
+    { label: '시작 쪽', page: { page: 2, size: 1, total: 0 }, items: [] },
+    { label: '쪽 크기', page: { page: 1, size: 0, total: 1 }, items: [productionLine(901)] },
+    { label: '전체 건수', page: { page: 1, size: 1, total: -1 }, items: [] },
+  ])('첫 응답의 $label 메타가 유효하지 않으면 실패한다', async ({ page, items }) => {
+    const fetch: StubFetch = async () => jsonResponse({ items, page });
+    const { result } = renderHookWithProviders(() => useProductionLineReferenceQuery(3101), {
+      fetch,
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toEqual(
+      new Error('생산라인 전체 목록의 쪽 정보가 일관되지 않습니다.'),
+    );
+  });
+
+  it('끝까지 읽어도 고유 생산라인이 total보다 적으면 부분 성공으로 숨기지 않는다', async () => {
+    const fetch: StubFetch = async (request) => {
+      const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+      return jsonResponse({
+        items: page === 1 ? [productionLine(901)] : [],
+        page: { page, size: 1, total: 2 },
+      });
+    };
+    const { result } = renderHookWithProviders(() => useProductionLineReferenceQuery(3101), {
+      fetch,
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toEqual(new Error('생산라인 전체 목록을 완성하지 못했습니다.'));
   });
 });
