@@ -1,9 +1,10 @@
 import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, expect, it, vi } from 'vitest';
 
-import { WorkOrderAssignmentWorkspace } from './screen';
+import { WorkOrderAssignmentScreen, WorkOrderAssignmentWorkspace } from './screen';
 
 const mocks = vi.hoisted(() => ({
   context: vi.fn(),
@@ -99,6 +100,39 @@ beforeEach(() => {
     truncated: false,
     refetch: vi.fn(),
   });
+});
+
+it.each(['', '?productionPlanId=0', '?productionPlanId=invalid'])(
+  'keeps an invalid route parameter outside the workspace for %s',
+  (search) => {
+    render(
+      <MemoryRouter initialEntries={[`/production/work-order-assignments${search}`]}>
+        <WorkOrderAssignmentScreen />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: messages.workOrder.screen.view.title }),
+    ).toBeVisible();
+    expect(screen.getByText(messages.workOrder.screen.view.selectPlan)).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: messages.workOrder.screen.view.selectPlanLink }),
+    ).toHaveAttribute('href', '/production/production-plans');
+    expect(mocks.context).not.toHaveBeenCalled();
+  },
+);
+
+it('opens the exact production plan workspace from the public route parameter', () => {
+  render(
+    <MemoryRouter initialEntries={['/production/work-order-assignments?productionPlanId=501']}>
+      <WorkOrderAssignmentScreen />
+    </MemoryRouter>,
+  );
+
+  expect(mocks.context).toHaveBeenCalledWith(501);
+  expect(
+    screen.getByRole('region', { name: messages.workOrder.screen.view.contextPane }),
+  ).toBeVisible();
 });
 
 it('joins exact context, display references, selection, and shared priority draft', async () => {

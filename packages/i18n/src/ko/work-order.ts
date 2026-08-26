@@ -21,6 +21,11 @@ export const workOrder = {
   },
   screen: {
     view: {
+      title: '4M 자원배정·유효성 점검',
+      breadcrumbRoot: '생산',
+      selectPlan: '생산계획을 먼저 선택하세요.',
+      selectPlanLink: 'W/O 전개·편성으로 이동',
+      openAssignment: '4M 자원배정·유효성 점검으로 이동',
       contextPane: '선택 생산계획',
       editorPane: '작업지시 배정 편집',
       context: (productionOrderNo: string, total: number): string =>

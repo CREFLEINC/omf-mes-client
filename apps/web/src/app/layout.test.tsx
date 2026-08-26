@@ -468,7 +468,7 @@ describe('AppLayout', () => {
     );
   });
 
-  it('생산 섹션의 P/O 조회·전개 편성·W/O 마감이 업무 순서대로 있다', () => {
+  it('생산 섹션의 P/O 조회·전개·4M 배정·W/O 마감이 업무 순서대로 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -485,6 +485,10 @@ describe('AppLayout', () => {
       'href',
       '/production/production-plans',
     );
+    expect(within(sidebar).getByRole('link', { name: '4M 자원배정·유효성 점검' })).toHaveAttribute(
+      'href',
+      '/production/work-order-assignments',
+    );
     expect(within(sidebar).getByRole('link', { name: 'W/O 마감·ERP 실적 송신' })).toHaveAttribute(
       'href',
       '/production/work-order-close',
@@ -495,8 +499,11 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/production-plans')).toBe(
       links.indexOf('/production/production-orders') + 1,
     );
-    expect(links.indexOf('/production/work-order-close')).toBe(
+    expect(links.indexOf('/production/work-order-assignments')).toBe(
       links.indexOf('/production/production-plans') + 1,
+    );
+    expect(links.indexOf('/production/work-order-close')).toBe(
+      links.indexOf('/production/work-order-assignments') + 1,
     );
     expect(links.indexOf('/production/work-order-close')).toBeLessThan(
       links.indexOf('/quality/lot-status'),
@@ -657,6 +664,7 @@ describe('AppLayout', () => {
       '/shipment/shipment-schedule',
       '/production/production-orders',
       '/production/production-plans',
+      '/production/work-order-assignments',
       '/production/work-order-close',
       '/quality/lot-status',
       '/quality/lot-status-transition',

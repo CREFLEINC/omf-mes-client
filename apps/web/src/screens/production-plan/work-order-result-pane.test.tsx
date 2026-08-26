@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, expect, it, vi } from 'vitest';
 
 import { WorkOrderResultPane } from './work-order-result-pane';
@@ -14,6 +15,12 @@ const query = (data: unknown, overrides: Record<string, unknown> = {}) => ({
   refetch: vi.fn(),
   ...overrides,
 });
+const renderPane = () =>
+  render(
+    <MemoryRouter>
+      <WorkOrderResultPane productionPlanId={101} uomLabel="EA" />
+    </MemoryRouter>,
+  );
 beforeEach(() => {
   mocks.plan.mockReturnValue(query({ productionPlanId: 101, planNo: 'PLAN-101', routingId: 701 }));
   mocks.workOrders.mockReturnValue(query({ items: [], page: { page: 1, size: 20, total: 0 } }));
@@ -30,7 +37,7 @@ it('다른 계획이나 Routing 소유 응답은 W/O를 노출하지 않고 실�
   mocks.plan.mockReturnValue(
     query({ productionPlanId: 999, planNo: 'OTHER-PLAN', routingId: 9999 }),
   );
-  render(<WorkOrderResultPane productionPlanId={101} uomLabel="EA" />);
+  renderPane();
   expect(screen.getByText('다른 계획의 전개 결과가 반환되었습니다.')).toBeInTheDocument();
   expect(mocks.operations).toHaveBeenCalledWith(null);
   expect(screen.queryByText(/OTHER-PLAN/)).not.toBeInTheDocument();
@@ -43,12 +50,21 @@ it('다른 계획 소유 W/O를 결과 표에 노출하지 않는다', () => {
       page: { page: 1, size: 20, total: 1 },
     }),
   );
-  render(<WorkOrderResultPane productionPlanId={101} uomLabel="EA" />);
+  renderPane();
   expect(screen.queryByText('OTHER-WO')).not.toBeInTheDocument();
 });
 
 it('다른 Routing 소유 공정을 결과 표에 노출하지 않는다', () => {
   mocks.operations.mockReturnValue(query({ items: [{ routingId: 999 }] }));
-  render(<WorkOrderResultPane productionPlanId={101} uomLabel="EA" />);
+  renderPane();
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
+});
+
+it('links a trusted result to the exact 4M assignment workspace', () => {
+  renderPane();
+
+  expect(screen.getByRole('link', { name: '4M 자원배정·유효성 점검으로 이동' })).toHaveAttribute(
+    'href',
+    '/production/work-order-assignments?productionPlanId=101',
+  );
 });

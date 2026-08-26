@@ -1333,6 +1333,28 @@ describe('appRouter — W/O 전개·편성의 진입 경로', () => {
   });
 });
 
+describe('appRouter — 4M 자원배정·유효성 점검의 진입 경로', () => {
+  it('생산 메뉴를 키보드로 열면 생산계획 선택 안내와 공개 주소가 선다', async () => {
+    const user = userEvent.setup();
+    renderRoutedApp('/quality/lot-status', lotStatusRoutes());
+
+    const link = screen.getByRole('link', { name: messages.workOrder.screen.view.title });
+    link.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(currentLocation()).toBe('/production/work-order-assignments'));
+    expect(
+      screen.getByRole('heading', { level: 1, name: messages.workOrder.screen.view.title }),
+    ).toBeVisible();
+    expect(screen.getByText(messages.workOrder.screen.view.selectPlan)).toBeVisible();
+  });
+
+  it('화면 주소는 W/O API 컬렉션과 구분한 exact 공개 route다', () => {
+    expect(routedPaths()).toContain('/production/work-order-assignments');
+    expect(routedPaths()).not.toContain('/production/work-orders');
+  });
+});
+
 describe('appRouter — 알림센터의 진입 경로', () => {
   it('사이드바에 이 화면 항목이 있다', () => {
     expect(sidebarHrefs()).toContain('/notification/center');

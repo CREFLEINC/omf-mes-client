@@ -7,7 +7,9 @@ import {
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
+import { Link } from 'react-router';
 
 import { PageNav } from '../work-order/page-nav';
 import { toWorkOrderPageView } from '../work-order/pagination';
@@ -98,6 +100,11 @@ export const WorkOrderResultPane = ({
         </div>
       ) : (
         <>
+          <Link
+            to={`/production/work-order-assignments?productionPlanId=${String(productionPlanId)}`}
+          >
+            {messages.workOrder.screen.view.openAssignment}
+          </Link>
           <div className="wide-table">
             <Table
               density="compact"

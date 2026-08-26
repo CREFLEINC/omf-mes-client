@@ -224,6 +224,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/production/production-plans" icon="schema">
               W/O 전개·편성
             </NavItem>
+            {/* W-02-03 — 전개된 W/O의 4M 자원을 배정하므로 편성 바로 뒤에 둔다. */}
+            <NavItem to="/production/work-order-assignments" icon="tune">
+              4M 자원배정·유효성 점검
+            </NavItem>
             {/* W-02-05 — 같은 생산 섹션의 마감·모니터링 화면이다. */}
             <NavItem to="/production/work-order-close" icon="archive">
               W/O 마감·ERP 실적 송신
