@@ -196,7 +196,7 @@ describe('useUpdateWorkOrder', () => {
     expect(body).not.toHaveProperty('productionLineId');
   });
 
-  it('keeps only the first known field error inline and leaves screen, unknown, and duplicate errors in the banner', async () => {
+  it('keeps only the first owned field error inline and leaves non-owned, screen, unknown, and duplicate errors in the banner', async () => {
     const onSuccess = vi.fn();
     const { fetch } = recordingFetch([
       detailRoute(),
@@ -206,15 +206,21 @@ describe('useUpdateWorkOrder', () => {
             errors: [
               {
                 scope: 'field',
-                field: 'orderQty',
+                field: 'plannedStartAt',
                 code: 'RANGE',
-                message: 'Synthetic first quantity error',
+                message: 'Synthetic first start error',
+              },
+              {
+                scope: 'field',
+                field: 'plannedStartAt',
+                code: 'DUPLICATE',
+                message: 'Synthetic duplicate start error',
               },
               {
                 scope: 'field',
                 field: 'orderQty',
-                code: 'DUPLICATE',
-                message: 'Synthetic duplicate quantity error',
+                code: 'NOT_OWNED',
+                message: 'Synthetic non-owned quantity error',
               },
               { scope: 'screen', code: 'ASSIGNMENT_CONFLICT', message: 'Synthetic screen error' },
               {
@@ -243,7 +249,7 @@ describe('useUpdateWorkOrder', () => {
 
     await waitFor(() =>
       expect(result.current.mutation.fieldErrors).toEqual({
-        orderQty: 'Synthetic first quantity error',
+        plannedStartAt: 'Synthetic first start error',
       }),
     );
     expect(result.current.mutation.error).toEqual({
@@ -251,9 +257,15 @@ describe('useUpdateWorkOrder', () => {
       errors: [
         {
           scope: 'field',
-          field: 'orderQty',
+          field: 'plannedStartAt',
           code: 'DUPLICATE',
-          message: 'Synthetic duplicate quantity error',
+          message: 'Synthetic duplicate start error',
+        },
+        {
+          scope: 'field',
+          field: 'orderQty',
+          code: 'NOT_OWNED',
+          message: 'Synthetic non-owned quantity error',
         },
         { scope: 'screen', code: 'ASSIGNMENT_CONFLICT', message: 'Synthetic screen error' },
         {
