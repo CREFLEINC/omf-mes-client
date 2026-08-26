@@ -1,4 +1,14 @@
 export const workOrder = {
+  editor: {
+    writeOwnerMismatch: '저장 응답의 작업지시가 일치하지 않아 결과를 반영하지 않았습니다.',
+    validationFailed: '작업지시 검증 결과를 불러오지 못했습니다.',
+    lookup: {
+      loading: '선택 목록을 불러오는 중입니다.',
+      failed: '선택 목록을 불러오지 못했습니다.',
+      truncated: '선택 목록의 첫 페이지만 표시합니다.',
+      noPlant: 'P/O에 공장이 없어 선택 목록을 불러올 수 없습니다.',
+    },
+  },
   screen: {
     assignmentCount: (assigned: number, total: number): string =>
       `${String(assigned)}/${String(total)}`,
