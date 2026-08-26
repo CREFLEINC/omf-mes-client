@@ -14,7 +14,7 @@ export interface QuerySnapshot<T> {
   isError: boolean;
 }
 
-const describeItem = (
+export const describeItem = (
   itemId: number,
   itemNames: ReadonlyMap<number, ProductionOrderItemName>,
 ): string => {

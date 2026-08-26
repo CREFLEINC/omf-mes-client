@@ -1,11 +1,8 @@
 import { AlertBanner, Breadcrumb, Button, PageHeader, SkeletonText } from '@crefle/web-ui';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
-import {
-  useProductionOrderItemNames,
-  type ProductionOrderItemName,
-} from '../production-order/item-lookups';
+import { useProductionOrderItemNames } from '../production-order/item-lookups';
 import { useProductionOrderDetail } from '../production-order/queries';
 import {
   describeReference,
@@ -13,6 +10,7 @@ import {
   useUomReferenceLookup,
 } from '../production-order/reference-lookups';
 import type { ProductionOrderFact } from '../production-order/types';
+import { describeItem } from '../production-order/screen-model';
 import { ProductionPlanEditorSection } from './editor-section';
 import {
   bomRevisionLabel,
@@ -33,17 +31,16 @@ const readProductionOrderId = (params: URLSearchParams): number | null => {
   return Number.isSafeInteger(value) ? value : null;
 };
 
-const itemLabel = (item: ProductionOrderItemName | undefined): string => {
-  if (item === undefined || item.status === 'loading') return '품목 정보를 불러오는 중입니다.';
-  if (item.status === 'unknown') return '등록된 품목을 찾지 못했습니다.';
-  if (item.status === 'failed') return '품목 정보를 불러오지 못했습니다.';
-  return item.label ?? '등록된 품목을 찾지 못했습니다.';
-};
-
 const quantity = (value: number): string =>
   new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
 
-const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
+const ProductionPlanWorkspace = ({
+  order,
+  orderUnavailable,
+}: {
+  order: ProductionOrderFact;
+  orderUnavailable: boolean;
+}) => {
   const [bomId, setBomId] = useState('');
   const [routingId, setRoutingId] = useState('');
   const boms = useBomReferenceQuery(order.itemId);
@@ -58,7 +55,6 @@ const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   const referencesLoaded = boms.data !== undefined && routings.data !== undefined;
   const linesLoaded = order.plantId === null || lines.data !== undefined;
   const referenceFailed = boms.isError || routings.isError || lines.isError;
-  const selectedItem = itemNames.items.find((item) => item.itemId === order.itemId);
   const uomLabel = describeReference(resolveReference(uoms, order.uomId));
   const lineNames = useMemo(
     () => new Map(lineItems.map((line) => [line.productionLineId, line.lineName])),
@@ -70,7 +66,8 @@ const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       <section className="pane" aria-label="선택 생산 P/O">
         <h2>{order.productionOrderNo}</h2>
         <p>
-          {itemLabel(selectedItem)} · {quantity(order.orderQty)} {uomLabel}
+          {describeItem(order.itemId, new Map(itemNames.items.map((item) => [item.itemId, item])))}{' '}
+          · {quantity(order.orderQty)} {uomLabel}
           {order.dueDate === null ? '' : ` · 납기 ${order.dueDate}`}
         </p>
       </section>
@@ -137,7 +134,7 @@ const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             value: String(line.productionLineId),
             label: `${line.parentLineId === null ? '' : `${lineNames.get(line.parentLineId) ?? '상위 라인'} > `}${line.lineCode} · ${line.lineName}${line.isActive ? '' : ' · 비활성'}`,
           }))}
-          addDisabled={!masterReady || referenceFailed}
+          addDisabled={!masterReady || referenceFailed || orderUnavailable}
         />
       )}
       <AlertBanner variant="info">
@@ -151,10 +148,23 @@ export const ProductionPlanScreen = () => {
   const [searchParams] = useSearchParams();
   const productionOrderId = readProductionOrderId(searchParams);
   const order = useProductionOrderDetail(productionOrderId);
+  const [trustedOrder, setTrustedOrder] = useState<ProductionOrderFact | null>(null);
   const ownerMismatch =
     productionOrderId !== null &&
     order.data !== undefined &&
     order.data.productionOrderId !== productionOrderId;
+  const matchingOrder = ownerMismatch ? undefined : order.data;
+  useEffect(() => {
+    if (matchingOrder !== undefined) setTrustedOrder(matchingOrder);
+  }, [matchingOrder]);
+  const workspaceOrder =
+    matchingOrder ?? (trustedOrder?.productionOrderId === productionOrderId ? trustedOrder : null);
+  const orderUnavailable = order.isError || ownerMismatch;
+  const failureTitle = ownerMismatch
+    ? '요청한 생산 P/O와 다른 상세가 반환되었습니다.'
+    : workspaceOrder === null
+      ? '생산 P/O를 불러오지 못했습니다.'
+      : '최신 생산 P/O를 확인하지 못했습니다.';
 
   return (
     <>
@@ -170,40 +180,34 @@ export const ProductionPlanScreen = () => {
         <AlertBanner variant="warning" title="생산 P/O를 먼저 선택하세요.">
           <Link to="/production/production-orders">P/O 수신·조회로 이동</Link>
         </AlertBanner>
-      ) : order.isPending && order.data === undefined ? (
+      ) : order.isPending && workspaceOrder === null ? (
         <div role="status" aria-label="생산 P/O를 불러오는 중">
           <SkeletonText lines={3} />
         </div>
-      ) : order.data === undefined || ownerMismatch ? (
-        <AlertBanner
-          variant="error"
-          title={
-            ownerMismatch
-              ? '요청한 생산 P/O와 다른 상세가 반환되었습니다.'
-              : '생산 P/O를 불러오지 못했습니다.'
-          }
-          action={
-            <Button size="sm" variant="outlined" onClick={() => void order.refetch()}>
-              다시 시도
-            </Button>
-          }
-        />
       ) : (
         <>
-          {order.isError && (
+          {(workspaceOrder === null || orderUnavailable) && (
             <AlertBanner
               variant="error"
-              title="최신 생산 P/O를 확인하지 못했습니다."
+              title={failureTitle}
               action={
                 <Button size="sm" variant="outlined" onClick={() => void order.refetch()}>
                   다시 시도
                 </Button>
               }
             >
-              현재 편집 내용은 유지됩니다.
+              {workspaceOrder !== null && '현재 편집 내용은 유지됩니다.'}
             </AlertBanner>
           )}
-          <ProductionPlanWorkspace key={productionOrderId} order={order.data} />
+          {workspaceOrder !== null && (
+            <div hidden={ownerMismatch}>
+              <ProductionPlanWorkspace
+                key={productionOrderId}
+                order={workspaceOrder}
+                orderUnavailable={orderUnavailable}
+              />
+            </div>
+          )}
         </>
       )}
     </>

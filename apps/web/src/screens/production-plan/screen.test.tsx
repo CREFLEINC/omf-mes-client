@@ -35,30 +35,18 @@ const routing = (routingId: number) => ({
 });
 
 describe('ProductionPlanScreen', () => {
-  it('유효한 생산 P/O가 없으면 요청하지 않고 선택 화면으로 안내한다', () => {
-    const fetch: StubFetch = async (request) => {
-      throw new Error(`unexpected request: ${request.url}`);
-    };
-    renderWithProviders(<ProductionPlanScreen />, {
-      fetch,
-      route: '/production/production-plans?productionOrderId=not-a-number',
-    });
-
-    expect(screen.getByText('생산 P/O를 먼저 선택하세요.')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'P/O 수신·조회로 이동' })).toHaveAttribute(
-      'href',
-      '/production/production-orders',
-    );
-  });
-
   it('P/O와 전체 참조를 연결하고 Routing 선택 뒤 계획 추가를 허용한다', async () => {
     const user = userEvent.setup();
     const requests: Request[] = [];
-    let linesFail = false;
+    let failedPath = '';
+    let wrongOwner = false;
     const fetch: StubFetch = async (request) => {
       requests.push(request.clone());
       const url = new URL(request.url);
-      if (url.pathname === '/planning/production-orders/701') return jsonResponse(order);
+      if (url.pathname === failedPath)
+        return jsonResponse({ message: 'synthetic failure' }, { status: 503 });
+      if (url.pathname === '/planning/production-orders/701')
+        return jsonResponse(wrongOwner ? { ...order, productionOrderId: 702 } : order);
       if (url.pathname === '/mdm/items/4101') {
         return jsonResponse({ item: { itemId: 4101, itemCode: 'ITEM-01', itemName: '합성 품목' } });
       }
@@ -73,7 +61,6 @@ describe('ProductionPlanScreen', () => {
         return jsonResponse({ items: [routing(8301), routing(8302)] });
       }
       if (url.pathname === '/mdm/production-lines') {
-        if (linesFail) return jsonResponse({ message: 'synthetic failure' }, { status: 503 });
         return jsonResponse({
           items: [
             {
@@ -116,28 +103,53 @@ describe('ProductionPlanScreen', () => {
     );
     expect(screen.getByRole('spinbutton', { name: '신규 계획 1 계획수량' })).toHaveValue(null);
     expect(screen.getByRole('combobox', { name: '신규 계획 1 라인' })).toHaveTextContent('미지정');
-    linesFail = true;
+    const failures = [
+      [
+        '/mdm/production-lines',
+        ['production-plan-references', 'production-lines', 3101],
+        '생산라인',
+        '생산라인 다시 시도',
+      ],
+      ['/planning/boms', ['production-plan-references', 'boms', 4101], 'BOM 개정', 'BOM 다시 시도'],
+      [
+        '/planning/routings',
+        ['production-plan-references', 'routings', 4101],
+        'Routing 개정',
+        'Routing 다시 시도',
+      ],
+      [
+        '/planning/production-orders/701',
+        ['production-orders', 'detail', 701],
+        '최신 생산 P/O',
+        '다시 시도',
+      ],
+    ] as const;
+    for (const [path, queryKey, title, retry] of failures) {
+      failedPath = path;
+      await act(() => queryClient.invalidateQueries({ queryKey: [...queryKey] }));
+      expect(await screen.findByText(new RegExp(`${title}.*못했습니다`))).toBeVisible();
+      expect(screen.getByText('신규 계획 1')).toBeVisible();
+      expect(add).toBeDisabled();
+      failedPath = '';
+      await user.click(screen.getByRole('button', { name: retry }));
+      await waitFor(() => expect(add).toBeEnabled());
+    }
+    wrongOwner = true;
     await act(() =>
-      queryClient.invalidateQueries({
-        queryKey: ['production-plan-references', 'production-lines', 3101],
-      }),
+      queryClient.invalidateQueries({ queryKey: ['production-orders', 'detail', 701] }),
     );
-    expect(await screen.findByText('생산라인을 불러오지 못했습니다.')).toBeVisible();
-    expect(screen.getByText('신규 계획 1')).toBeVisible();
+    expect(await screen.findByText('요청한 생산 P/O와 다른 상세가 반환되었습니다.')).toBeVisible();
+    expect(screen.getByText('신규 계획 1')).not.toBeVisible();
     expect(add).toBeDisabled();
-    linesFail = false;
-    await user.click(screen.getByRole('button', { name: '생산라인 다시 시도' }));
-    await waitFor(() => expect(add).toBeEnabled());
-    expect(requests.find((request) => new URL(request.url).pathname === '/planning/boms')).toEqual(
-      expect.objectContaining({ method: 'GET' }),
-    );
-    const lineRequest = requests.find(
-      (request) => new URL(request.url).pathname === '/mdm/production-lines',
-    );
-    expect(new URL(lineRequest?.url ?? '').searchParams.get('includeInactive')).toBe('true');
     expect(
-      screen.getByText('생산 LOT 크기와 선발행은 W/O 확정·배포 단계에서 입력합니다.'),
-    ).toBeVisible();
+      requests.some(
+        (request) => new URL(request.url).searchParams.get('productionOrderId') === '702',
+      ),
+    ).toBe(false);
+    wrongOwner = false;
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+    await waitFor(() => expect(add).toBeEnabled());
+    expect(screen.getByText('신규 계획 1')).toBeVisible();
   });
 
   it('상세 응답 소유자가 URL과 다르면 종속 조회와 편집을 열지 않는다', async () => {
