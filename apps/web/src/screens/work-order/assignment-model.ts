@@ -1,4 +1,8 @@
+import type { components } from '@omf-mes/api-client';
+
 import type { WorkOrderFact } from './queries';
+
+type WorkOrderUpdate = components['schemas']['WorkOrderUpdate'];
 
 const RESOURCE_FIELDS = [
   'productionLineId',
@@ -34,6 +38,23 @@ export interface WorkOrderAssignmentDraftValidation {
 }
 
 const isPositiveSafeInteger = (value: number): boolean => Number.isSafeInteger(value) && value > 0;
+
+const pad = (value: number): string => String(value).padStart(2, '0');
+
+const offsetText = (at: Date): string => {
+  const minutes = -at.getTimezoneOffset();
+  const sign = minutes < 0 ? '-' : '+';
+  const absolute = Math.abs(minutes);
+
+  return `${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`;
+};
+
+const toOffsetDateTime = (local: string, at: Date): string => `${local}:00${offsetText(at)}`;
+
+const toNullableId = (value: string): number | null => {
+  const trimmed = value.trim();
+  return trimmed === '' ? null : Number(trimmed);
+};
 
 const isLeapYear = (year: number): boolean =>
   year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
@@ -118,4 +139,24 @@ export const validateWorkOrderAssignmentDraft = (
 export const isWorkOrderAssignmentSaveEnabled = (draft: WorkOrderAssignmentDraft): boolean => {
   const { fieldErrors, formError } = validateWorkOrderAssignmentDraft(draft);
   return formError === null && Object.keys(fieldErrors).length === 0;
+};
+
+export const toWorkOrderAssignmentUpdate = (
+  draft: WorkOrderAssignmentDraft,
+  at: Date,
+): WorkOrderUpdate | null => {
+  if (!isWorkOrderAssignmentSaveEnabled(draft)) return null;
+
+  return {
+    productionLineId: toNullableId(draft.productionLineId),
+    responsibleWorkerId: toNullableId(draft.responsibleWorkerId),
+    plannedEquipmentId: toNullableId(draft.plannedEquipmentId),
+    plannedMoldId: toNullableId(draft.plannedMoldId),
+    plannedShiftId: toNullableId(draft.plannedShiftId),
+    plannedStartAt:
+      draft.plannedStartAtLocal === '' ? null : toOffsetDateTime(draft.plannedStartAtLocal, at),
+    plannedEndAt:
+      draft.plannedEndAtLocal === '' ? null : toOffsetDateTime(draft.plannedEndAtLocal, at),
+    priorityNo: Number(draft.priorityNo.trim()),
+  };
 };
