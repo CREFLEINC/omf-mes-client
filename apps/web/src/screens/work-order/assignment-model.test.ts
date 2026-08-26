@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { WorkOrderFact } from './queries';
 import {
   isWorkOrderAssignmentSaveEnabled,
+  toWorkOrderAssignmentUpdate,
   validateWorkOrderAssignmentDraft,
   workOrderAssignmentDraftFrom,
   type WorkOrderAssignmentDraft,
@@ -211,5 +212,82 @@ describe('work-order assignment model', () => {
         }),
       ),
     ).toBe(false);
+  });
+
+  it('makes the exact generated update body with explicit nullable assignments and local offset', () => {
+    const at = new Date('2026-08-26T12:00:00Z');
+    vi.spyOn(at, 'getTimezoneOffset').mockReturnValue(-540);
+
+    expect(
+      toWorkOrderAssignmentUpdate(
+        validDraft({
+          productionLineId: ' 901 ',
+          responsibleWorkerId: '902',
+          plannedEquipmentId: '903',
+          plannedMoldId: '904',
+          plannedShiftId: '905',
+          priorityNo: ' 7 ',
+        }),
+        at,
+      ),
+    ).toEqual({
+      productionLineId: 901,
+      responsibleWorkerId: 902,
+      plannedEquipmentId: 903,
+      plannedMoldId: 904,
+      plannedShiftId: 905,
+      plannedStartAt: '2026-08-23T09:45:00+09:00',
+      plannedEndAt: '2026-08-23T10:45:00+09:00',
+      priorityNo: 7,
+    });
+  });
+
+  it('sends every cleared owned field as null and omits fields this screen does not own', () => {
+    const at = new Date('2026-08-26T12:00:00Z');
+    vi.spyOn(at, 'getTimezoneOffset').mockReturnValue(330);
+
+    const body = toWorkOrderAssignmentUpdate(
+      validDraft({
+        productionLineId: '',
+        responsibleWorkerId: '',
+        plannedEquipmentId: '903',
+        plannedMoldId: '',
+        plannedShiftId: '',
+        plannedStartAtLocal: '',
+        plannedEndAtLocal: '',
+      }),
+      at,
+    );
+
+    expect(body).toEqual({
+      productionLineId: null,
+      responsibleWorkerId: null,
+      plannedEquipmentId: 903,
+      plannedMoldId: null,
+      plannedShiftId: null,
+      plannedStartAt: null,
+      plannedEndAt: null,
+      priorityNo: 2,
+    });
+    expect(body).not.toHaveProperty('remarks');
+    expect(body).not.toHaveProperty('orderQty');
+  });
+
+  it('fails closed instead of making a request body from an invalid draft', () => {
+    const at = new Date('2026-08-26T12:00:00Z');
+
+    expect(toWorkOrderAssignmentUpdate(validDraft({ priorityNo: '1.5' }), at)).toBeNull();
+    expect(
+      toWorkOrderAssignmentUpdate(
+        validDraft({
+          productionLineId: '',
+          responsibleWorkerId: '',
+          plannedEquipmentId: '',
+          plannedMoldId: '',
+          plannedShiftId: '',
+        }),
+        at,
+      ),
+    ).toBeNull();
   });
 });
