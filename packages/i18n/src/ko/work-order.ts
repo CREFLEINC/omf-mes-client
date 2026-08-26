@@ -11,6 +11,7 @@ export const workOrder = {
     changedBlocked: '최신 작업지시를 적용할 때까지 편집할 수 없습니다.',
     writeOwnerMismatch: '저장 응답의 작업지시가 일치하지 않아 결과를 반영하지 않았습니다.',
     validationFailed: '작업지시 검증 결과를 불러오지 못했습니다.',
+    validationBlocked: '작업지시 검증 결과를 다시 확인할 때까지 편집할 수 없습니다.',
     lookup: {
       loading: '선택 목록을 불러오는 중입니다.',
       failed: '선택 목록을 불러오지 못했습니다.',
