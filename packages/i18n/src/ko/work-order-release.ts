@@ -1,4 +1,12 @@
 export const workOrderRelease = {
+  input: {
+    errors: {
+      lotSizeRequired: 'LOT 크기를 입력하세요.',
+      lotSizeNotNumber: 'LOT 크기는 숫자로 입력하세요.',
+      lotSizeNotPositive: 'LOT 크기는 0보다 커야 합니다.',
+      slotCountUnsafe: '발행 슬롯 수를 안전하게 계산할 수 있는 LOT 크기를 입력하세요.',
+    },
+  },
   summary: {
     pane: '배포 후보 작업지시 요약',
     heading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
