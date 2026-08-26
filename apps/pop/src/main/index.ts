@@ -38,6 +38,11 @@ const DEV_SERVER_URL = process.env.POP_DEV_SERVER_URL;
  *
  * 한 값에 묶었더니 `pnpm dev`(개발 서버 없이 번들을 띄우는 정상 사용법)가 배포본으로
  * 판정돼, 개발 PC에 자동 실행 항목을 등록하고 개발자도구는 잠갔다 — 의도와 정반대였다.
+ *
+ * ⚠ `app.isPackaged`는 **실행 파일 이름**이 `electron`/`electron.exe`인지로 판정한다.
+ *   `package.json`의 `productName`·`executableName`을 `electron`으로 두면 **배포본이
+ *   개발본으로 판정돼 현장 단말의 개발자도구가 열린다.** 배포본을 띄워야만 드러나는
+ *   축이라 감지기로 잡히지 않는다 — 그 이름을 바꿀 때 이 주석을 함께 본다.
  */
 const IS_DEV = !app.isPackaged;
 
@@ -130,12 +135,18 @@ async function main(): Promise<void> {
   ipcMain.handle('cache:put', (_e, key: string, value: string, at: string) =>
     localDb.putCache(key, value, at),
   );
-  ipcMain.handle('outbox:enqueue', (_e, endpoint: string, payload: string, at: string) =>
-    localDb.enqueue(endpoint, payload, at),
-  );
+  // 대기열은 쓰는 시점마다 내린다. 현장의 현실적 실패는 정상 종료가 아니라 전원 차단이고,
+  // `before-quit` 하나에만 걸어 두면 그 순간의 실적이 통째로 사라진다.
+  ipcMain.handle('outbox:enqueue', (_e, endpoint: string, payload: string, at: string) => {
+    localDb.enqueue(endpoint, payload, at);
+    persist(localDb, dbPath);
+  });
   ipcMain.handle('outbox:peek', (_e, limit?: number) => localDb.peekQueue(limit));
   ipcMain.handle('outbox:size', () => localDb.queueSize());
-  ipcMain.handle('outbox:dequeue', (_e, id: number) => localDb.dequeue(id));
+  ipcMain.handle('outbox:dequeue', (_e, id: number) => {
+    localDb.dequeue(id);
+    persist(localDb, dbPath);
+  });
 
   // ⛔ 출력 경로는 **메인이 소유한다.** 렌더러가 준 경로에 그대로 쓰면 임의 위치에
   //    파일을 만들 수 있다. 렌더러는 이름과 형식만 넘긴다.

@@ -126,6 +126,13 @@ export function toRenditionFileName(label: string, now: string, format: Renditio
   return `${sanitize(label)}_${sanitize(now)}.${format}`;
 }
 
+/**
+ * 두 단계다. 앞은 **허용 문자만 남기고**, 뒤는 남은 점을 **전부** 지운다.
+ *
+ * 앞 클래스가 `.`를 살려 두는 것은 뒤 단계가 받기 위해서다 — 읽는 사람이 「점은 허용」으로
+ * 오해하기 쉬우나 결과는 반대다. 점을 지우는 이유는 `..`가 상위 이동이 되기 때문이고,
+ * 확장자는 이 함수 **밖에서** 형식 값으로 붙으므로 영향받지 않는다.
+ */
 function sanitize(value: string): string {
   return value.replace(/[^\p{L}\p{N}._-]/gu, '_').replace(/\.+/g, '-');
 }

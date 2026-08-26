@@ -73,6 +73,29 @@ describe('전송 대기열', () => {
   });
 });
 
+describe('전원 차단 대비 — 쓰기 시점의 상태가 export에 담긴다', () => {
+  // 현장의 현실적 실패는 정상 종료가 아니라 전원 차단이다. 종료 시에만 내리면
+  // 그 순간의 실적이 통째로 사라지므로, 메인은 enqueue/dequeue 뒤마다 export 해 내린다.
+  // 여기서는 그 전제 — 「쓰기 직후 export 가 그 쓰기를 담고 있다」 — 를 잰다.
+  it('enqueue 직후 export 한 바이트에 그 항목이 들어 있다', () => {
+    const db = freshDb();
+    db.enqueue('/work-results', '{"qty":3}', '2026-08-26T09:30:00Z');
+    const reopened = new LocalDb(new SQL.Database(db.export()) as unknown as SqlDatabase);
+    expect(reopened.queueSize()).toBe(1);
+    expect(reopened.peekQueue()[0]!.endpoint).toBe('/work-results');
+  });
+
+  it('dequeue 직후 export 한 바이트에 그 삭제가 반영돼 있다', () => {
+    const db = freshDb();
+    db.enqueue('/a', '1', '2026-08-26T00:00:00Z');
+    db.enqueue('/b', '2', '2026-08-26T00:00:01Z');
+    db.dequeue(db.peekQueue()[0]!.id);
+    const reopened = new LocalDb(new SQL.Database(db.export()) as unknown as SqlDatabase);
+    expect(reopened.queueSize()).toBe(1);
+    expect(reopened.peekQueue()[0]!.endpoint).toBe('/b');
+  });
+});
+
 describe('디스크 내리기', () => {
   it('export한 바이트로 다시 열면 내용이 남아 있다', () => {
     const db = freshDb();
