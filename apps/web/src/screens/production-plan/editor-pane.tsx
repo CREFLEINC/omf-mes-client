@@ -37,6 +37,7 @@ interface ProductionPlanEditorPaneProps {
   bomOptions: ProductionPlanEditorOption[];
   routingOptions: ProductionPlanEditorOption[];
   lineOptions: ProductionPlanEditorOption[];
+  addDisabled?: boolean;
   onAdd: () => void;
   onChange: (key: string, field: ProductionPlanDraftField, value: string) => void;
   onRemove: (key: string) => void;
@@ -67,6 +68,7 @@ export const ProductionPlanEditorPane = ({
   bomOptions,
   routingOptions,
   lineOptions,
+  addDisabled = false,
   onAdd,
   onChange,
   onRemove,
@@ -218,7 +220,7 @@ export const ProductionPlanEditorPane = ({
     <section className="pane" aria-label="생산계획 편집">
       <div className="section-heading-row">
         <h2>② 생산계획</h2>
-        <Button size="sm" variant="outlined" onClick={onAdd}>
+        <Button size="sm" variant="outlined" disabled={addDisabled} onClick={onAdd}>
           + 계획 추가
         </Button>
       </div>

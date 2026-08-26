@@ -44,6 +44,7 @@ describe('useProductionPlanEditorSession', () => {
 
     await waitFor(() => expect(result.current.rows).toHaveLength(2));
 
+    expect(result.current.isHydrated).toBe(true);
     expect(result.current.rows.map((row) => row.key)).toEqual(['plan-501', 'plan-502']);
     expect(requests.map((url) => url.searchParams.get('page'))).toEqual([null, '2']);
     expect(requests.every((url) => url.searchParams.get('productionOrderId') === '701')).toBe(true);
@@ -271,5 +272,6 @@ describe('useProductionPlanEditorSession', () => {
     expect(result.current.rows).toEqual([]);
     await waitFor(() => expect(result.current.plans.isError).toBe(true));
     expect(result.current.rows).toEqual([]);
+    expect(result.current.isHydrated).toBe(false);
   });
 });
