@@ -162,11 +162,21 @@ export const WorkOrderAssignmentEditorSession = ({
     ),
     update.fieldErrors,
   );
+  const validationBlockedReason = validationQuery.isError ? t.validationBlocked : null;
   const lockReason = update.isSaving
     ? messages.workOrder.assignmentActions.reasons.saving
-    : blockedReason;
+    : (blockedReason ?? validationBlockedReason);
   const validationError: ReactNode = validationQuery.isError ? (
-    <AlertBanner variant="error">{t.validationFailed}</AlertBanner>
+    <AlertBanner
+      variant="error"
+      action={
+        <Button size="sm" variant="outlined" onClick={() => void validationQuery.refetch()}>
+          {messages.common.retry}
+        </Button>
+      }
+    >
+      {t.validationFailed}
+    </AlertBanner>
   ) : null;
 
   return (
@@ -212,7 +222,7 @@ export const WorkOrderAssignmentEditorSession = ({
         draft={effectiveDraft}
         isDirty={!workOrderDraftEquals(baseline, effectiveDraft)}
         isSaving={update.isSaving}
-        blockedReason={blockedReason}
+        blockedReason={blockedReason ?? validationBlockedReason}
         onValidate={() => void validationQuery.refetch()}
         onReset={() => {
           setDraft(baseline);
@@ -233,6 +243,7 @@ export interface WorkOrderAssignmentEditorProps {
   workOrderId: number;
   plantId: number | null;
   priorityText: string;
+  blockedReason?: string | null;
   onPriorityChange: (value: string) => void;
 }
 
@@ -336,7 +347,11 @@ const WorkOrderAssignmentEditorOwner = (props: WorkOrderAssignmentEditorProps) =
         {...props}
         workOrder={acceptedDetail}
         blockedReason={
-          refreshIssue === null ? null : hasNewerDetail ? t.changedBlocked : t.staleBlocked
+          refreshIssue === null
+            ? (props.blockedReason ?? null)
+            : hasNewerDetail
+              ? t.changedBlocked
+              : t.staleBlocked
         }
         onSaved={(saved) => {
           if (!activeRef.current) return false;

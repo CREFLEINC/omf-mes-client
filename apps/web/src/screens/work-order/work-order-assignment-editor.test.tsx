@@ -186,6 +186,36 @@ it.each([
   expect(document.querySelectorAll('button:not(:disabled), input:not(:disabled)')).toHaveLength(0);
 });
 
+it('locks edits on validation failure while keeping its retry available', async () => {
+  const user = userEvent.setup();
+  const refetch = vi.fn();
+  mocks.validation.mockReturnValue(query(undefined, { isError: true, refetch }));
+  render(<Harness />);
+
+  expect(screen.getByText(t.editor.validationFailed)).toBeVisible();
+  expect(screen.getAllByText(t.editor.validationBlocked).length).toBeGreaterThan(0);
+  expect(document.querySelectorAll('button:not(:disabled), input:not(:disabled)')).toHaveLength(1);
+  await user.click(screen.getByRole('button', { name: messages.common.retry }));
+  expect(refetch).toHaveBeenCalledTimes(1);
+});
+
+it('forwards a screen-level stale lock into an exact loaded editor', () => {
+  render(
+    <ToastProvider>
+      <WorkOrderAssignmentEditor
+        workOrderId={701}
+        plantId={501}
+        priorityText="2"
+        blockedReason="SYN-SCREEN-STALE"
+        onPriorityChange={vi.fn()}
+      />
+    </ToastProvider>,
+  );
+
+  expect(screen.getAllByText('SYN-SCREEN-STALE').length).toBeGreaterThan(0);
+  expect(document.querySelectorAll('button:not(:disabled), input:not(:disabled)')).toHaveLength(0);
+});
+
 it('blocks an initial detail owned by another work order', () => {
   mocks.detail.mockReturnValue(query({ ...workOrder, workOrderId: 999 }));
   render(<OuterHarness />);
