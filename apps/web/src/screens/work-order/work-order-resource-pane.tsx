@@ -11,6 +11,7 @@ const RESOURCE_FIELDS = [
   'plannedEquipmentId',
   'responsibleWorkerId',
   'plannedMoldId',
+  'plannedShiftId',
 ] as const;
 
 type ResourceField = (typeof RESOURCE_FIELDS)[number];
@@ -27,6 +28,7 @@ export interface WorkOrderResourcePaneProps {
   plannedEquipmentOptions: WorkOrderResourceOption[];
   responsibleWorkerOptions: WorkOrderResourceOption[];
   plannedMoldOptions: WorkOrderResourceOption[];
+  plannedShiftOptions: WorkOrderResourceOption[];
   fieldErrors: Partial<Record<ResourceField, string>>;
   fieldNotes: Partial<Record<ResourceField, string>>;
   onChange: (patch: Partial<Pick<WorkOrderAssignmentDraft, ResourceField>>) => void;
@@ -54,7 +56,10 @@ const ResourceSelect = ({
   const id = useId();
   const description = error ?? note;
   const descriptionId = `${id}-description`;
-  const availableOptions: SelectItems = options.filter((option) => option.value.trim() !== '');
+  const availableOptions: SelectItems = [
+    { value: '', label: t.clearOption },
+    ...options.filter((option) => option.value.trim() !== ''),
+  ];
 
   return (
     <div className="field-cell">
@@ -64,7 +69,7 @@ const ResourceSelect = ({
       <Select
         id={id}
         options={availableOptions}
-        value={value === '' ? null : value}
+        value={value}
         placeholder={t.placeholder}
         invalid={error !== undefined}
         aria-describedby={description === undefined ? undefined : descriptionId}
@@ -88,6 +93,7 @@ export const WorkOrderResourcePane = ({
   plannedEquipmentOptions,
   responsibleWorkerOptions,
   plannedMoldOptions,
+  plannedShiftOptions,
   fieldErrors,
   fieldNotes,
   onChange,
@@ -133,6 +139,7 @@ export const WorkOrderResourcePane = ({
         </Card.Header>
         <Card.Body>
           {select('responsibleWorkerId', t.fields.worker, responsibleWorkerOptions)}
+          {select('plannedShiftId', t.fields.shift, plannedShiftOptions)}
         </Card.Body>
       </Card>
       <Card bordered>

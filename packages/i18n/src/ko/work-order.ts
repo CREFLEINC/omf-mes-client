@@ -57,8 +57,15 @@ export const workOrder = {
     heading: (workOrderNo: string): string => `선택한 W/O — ${workOrderNo}`,
     warning: '자원 종류별로 하나만 배정할 수 있습니다. 더 필요하면 W/O를 분할하세요.',
     placeholder: '선택하세요',
+    clearOption: '배정 없음',
     cards: { machine: 'Machine', man: 'Man', tool: 'Tool/Mold', material: 'Material' },
-    fields: { productionLine: '생산 라인', equipment: '설비', worker: '담당 작업자', mold: '금형' },
+    fields: {
+      productionLine: '생산 라인',
+      equipment: '설비',
+      worker: '담당 작업자',
+      mold: '금형',
+      shift: '계획 교대',
+    },
     materialInfo: '자재 배정은 이 화면에서 변경하지 않습니다.',
     empty: {
       notSelectedTitle: '자원을 배정할 작업지시를 선택하세요.',
