@@ -12,6 +12,7 @@ import { GaugeMasterScreen } from '../screens/gauge-master/screen';
 import { ToolMasterScreen } from '../screens/tool-master/screen';
 import { WorkCalendarScreen } from '../screens/work-calendar/screen';
 import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
+import { WorkOrderReleaseScreen } from '../screens/work-order-release/screen';
 import { WorkOrderAssignmentScreen } from '../screens/work-order/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
@@ -248,6 +249,8 @@ export const appRouter = createBrowserRouter([
       { path: 'production/production-plans', element: <ProductionPlanScreen /> },
       /* W-02-03 — 생산계획의 W/O에 4M 자원을 배정하고 유효성을 점검한다. */
       { path: 'production/work-order-assignments', element: <WorkOrderAssignmentScreen /> },
+      /* W-02-04 — 4M 배정을 마친 W/O를 확정·배포하고 생산LOT을 선발행한다. */
+      { path: 'production/work-order-release', element: <WorkOrderReleaseScreen /> },
       /* W-02-05 — 같은 생산 섹션의 마감·모니터링 화면이다. */
       { path: 'production/work-order-close', element: <WorkOrderCloseScreen /> },
       /*
