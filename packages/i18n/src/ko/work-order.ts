@@ -1,4 +1,21 @@
 export const workOrder = {
+  screen: {
+    assignmentCount: (assigned: number, total: number): string =>
+      `${String(assigned)}/${String(total)}`,
+    validation: {
+      notChecked: '선택 후 확인',
+      blocked: '검증 차단',
+      warning: '검증 경고',
+      passed: '검증 통과',
+    },
+    errors: {
+      REQUIRED: '필수 입력입니다.',
+      INVALID_SELECTION: '선택값을 확인하세요.',
+      INVALID_INTEGER: '정수를 입력하세요.',
+      INVALID_DATE_TIME: '날짜와 시각을 확인하세요.',
+      END_BEFORE_START: '계획 종료는 시작보다 빠를 수 없습니다.',
+    },
+  },
   panes: { list: '작업지시 목록' },
   fields: {
     workOrderNo: 'W/O 번호',
