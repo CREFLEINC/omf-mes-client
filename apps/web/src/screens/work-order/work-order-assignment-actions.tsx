@@ -13,6 +13,7 @@ export interface WorkOrderAssignmentActionsProps {
   draft: WorkOrderAssignmentDraft;
   isDirty: boolean;
   isSaving: boolean;
+  blockedReason?: string | null;
   onValidate: () => void;
   onReset: () => void;
   onSave: () => void;
@@ -60,19 +61,23 @@ export const WorkOrderAssignmentActions = ({
   draft,
   isDirty,
   isSaving,
+  blockedReason = null,
   onValidate,
   onReset,
   onSave,
 }: WorkOrderAssignmentActionsProps) => {
-  const validateReason = isSaving ? t.reasons.saving : null;
-  const resetReason = isSaving ? t.reasons.saving : isDirty ? null : t.reasons.noChanges;
+  const validateReason = isSaving ? t.reasons.saving : blockedReason;
+  const resetReason = isSaving
+    ? t.reasons.saving
+    : (blockedReason ?? (isDirty ? null : t.reasons.noChanges));
   const saveReason = isSaving
     ? t.reasons.saving
-    : !isDirty
-      ? t.reasons.noChanges
-      : isWorkOrderAssignmentSaveEnabled(draft)
-        ? null
-        : t.reasons.invalidDraft;
+    : (blockedReason ??
+      (!isDirty
+        ? t.reasons.noChanges
+        : isWorkOrderAssignmentSaveEnabled(draft)
+          ? null
+          : t.reasons.invalidDraft));
 
   return (
     <div className="form-actions">

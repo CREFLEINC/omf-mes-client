@@ -131,4 +131,14 @@ describe('WorkOrderPlanFieldsPane', () => {
     expect(screen.getByLabelText(t.fields.plannedStartAtLocal)).not.toBeRequired();
     expect(screen.getByLabelText(t.fields.plannedEndAtLocal)).not.toBeRequired();
   });
+
+  it('locks every plan field with the caller reason', () => {
+    renderPane({ disabled: true, disabledReason: 'SYN-STALE-LOCK' });
+
+    for (const field of screen.getAllByRole('textbox')) {
+      expect(field).toBeDisabled();
+      expect(field).toHaveAccessibleDescription('SYN-STALE-LOCK');
+    }
+    expect(screen.getAllByText('SYN-STALE-LOCK')).toHaveLength(3);
+  });
 });

@@ -13,6 +13,8 @@ export interface WorkOrderPlanFieldsPaneProps {
   selectedWorkOrderNo: string | null;
   draft: WorkOrderAssignmentDraft;
   fieldErrors: Partial<Record<PlanField, string>>;
+  disabled?: boolean;
+  disabledReason?: string;
   onChange: (patch: Partial<Pick<WorkOrderAssignmentDraft, PlanField>>) => void;
 }
 
@@ -23,6 +25,8 @@ interface PlanFieldInputProps {
   value: string;
   error: string | undefined;
   inputMode?: 'numeric';
+  disabled: boolean;
+  disabledReason: string | undefined;
   onChange: WorkOrderPlanFieldsPaneProps['onChange'];
 }
 
@@ -33,6 +37,8 @@ const PlanFieldInput = ({
   value,
   error,
   inputMode,
+  disabled,
+  disabledReason,
   onChange,
 }: PlanFieldInputProps) => (
   <TextField
@@ -41,6 +47,8 @@ const PlanFieldInput = ({
     value={value}
     inputMode={inputMode}
     error={error}
+    disabled={disabled}
+    disabledReason={disabledReason}
     fullWidth
     onChange={(event) => {
       onChange({ [field]: event.target.value });
@@ -52,6 +60,8 @@ export const WorkOrderPlanFieldsPane = ({
   selectedWorkOrderNo,
   draft,
   fieldErrors,
+  disabled = false,
+  disabledReason,
   onChange,
 }: WorkOrderPlanFieldsPaneProps) => {
   if (selectedWorkOrderNo === null) {
@@ -79,6 +89,8 @@ export const WorkOrderPlanFieldsPane = ({
             type="datetime-local"
             value={draft.plannedStartAtLocal}
             error={fieldErrors.plannedStartAtLocal}
+            disabled={disabled}
+            disabledReason={disabledReason}
             onChange={onChange}
           />
           <PlanFieldInput
@@ -87,6 +99,8 @@ export const WorkOrderPlanFieldsPane = ({
             type="datetime-local"
             value={draft.plannedEndAtLocal}
             error={fieldErrors.plannedEndAtLocal}
+            disabled={disabled}
+            disabledReason={disabledReason}
             onChange={onChange}
           />
           <PlanFieldInput
@@ -96,6 +110,8 @@ export const WorkOrderPlanFieldsPane = ({
             inputMode="numeric"
             value={draft.priorityNo}
             error={fieldErrors.priorityNo}
+            disabled={disabled}
+            disabledReason={disabledReason}
             onChange={onChange}
           />
         </Card.Body>

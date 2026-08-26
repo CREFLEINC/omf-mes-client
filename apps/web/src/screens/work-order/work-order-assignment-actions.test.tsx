@@ -127,6 +127,7 @@ describe('WorkOrderAssignmentActions', () => {
   it('gives saving priority to every action, marks save loading, and calls nothing', async () => {
     const { onValidate, onReset, onSave, user } = renderActions({
       isSaving: true,
+      blockedReason: 'SYN-LOWER-PRIORITY-BLOCK',
       isDirty: false,
       draft: draft({ priorityNo: 'not-an-integer' }),
     });
@@ -150,5 +151,16 @@ describe('WorkOrderAssignmentActions', () => {
     expect(onValidate).not.toHaveBeenCalled();
     expect(onReset).not.toHaveBeenCalled();
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('blocks every action with a caller reason while not showing save as loading', () => {
+    renderActions({ blockedReason: 'SYN-STALE-DETAIL' });
+
+    for (const action of screen.getAllByRole('button')) {
+      expect(action).toBeDisabled();
+      expect(action).toHaveAccessibleDescription('SYN-STALE-DETAIL');
+      expect(action).not.toHaveAttribute('aria-busy');
+    }
+    expect(screen.getAllByText('SYN-STALE-DETAIL')).toHaveLength(3);
   });
 });
