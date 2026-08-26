@@ -82,6 +82,11 @@ export const workOrderRelease = {
       release: (reason: string): string => `배포 확정: ${reason}`,
     },
   },
+  readiness: {
+    detailLoading: '작업지시 상세를 불러오는 중입니다.',
+    detailUnavailable: '작업지시 상세를 불러올 수 없습니다.',
+    inputRequired: '유효한 LOT 크기를 입력하세요.',
+  },
   candidateList: {
     pane: '배포 후보 작업지시 목록',
     fields: { workOrderNo: 'W/O 번호', item: '품목', quantity: '지시 수량' },
