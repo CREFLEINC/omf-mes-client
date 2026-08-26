@@ -5,5 +5,8 @@ packages:
 allowBuilds:
   '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/91c233b257ea844dfe9df8eef440221329b092a6': true
   '@scarf/scarf': false
+  # POP 셸(#441) — Electron 바이너리 내려받기와 Windows 인스톨러 생성에 설치 스크립트가 필요하다.
+  electron: true
+  electron-winstaller: true
   esbuild: true
   node: true
