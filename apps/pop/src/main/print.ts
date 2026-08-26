@@ -52,6 +52,13 @@ export class PrinterUnavailableError extends Error {
   }
 }
 
+export class UnknownFormatError extends Error {
+  constructor(value: unknown) {
+    super(`아는 출력물 형식이 아니다: ${String(value)}`);
+    this.name = 'UnknownFormatError';
+  }
+}
+
 export class FormatMismatchError extends Error {
   constructor(format: RenditionFormat) {
     super(`받은 내용이 ${format}가 아니다 — 이름과 내용이 어긋난 파일을 남기지 않는다`);
@@ -72,6 +79,17 @@ const SIGNATURES: Record<RenditionFormat, number[]> = {
  */
 export function matchesFormat(bytes: Uint8Array, format: RenditionFormat): boolean {
   return SIGNATURES[format].every((byte, index) => bytes[index] === byte);
+}
+
+/**
+ * 렌더러가 넘긴 값이 아는 형식인지 판정한다.
+ *
+ * 형식은 **파일 경로 계산에 들어간다**. 모르는 값이 그대로 흘러가면 확장자 자리에
+ * 경로 구분자가 실려 저장 폴더 밖에 쓸 수 있다. 지금은 시그니처 조회가 먼저 죽어
+ * 막히지만 그것은 가드가 아니라 우연이다 — 조회에 기본값을 넣는 「수선」 하나면 열린다.
+ */
+export function isRenditionFormat(value: unknown): value is RenditionFormat {
+  return value === 'png' || value === 'pdf';
 }
 
 export class RenditionPrinter {
@@ -102,7 +120,12 @@ export class RenditionPrinter {
  * 경로 구분자가 섞이면 엉뚱한 자리에 쓰므로 함께 다듬는다.
  */
 export function toRenditionFileName(label: string, now: string, format: RenditionFormat): string {
-  const safe = label.replace(/[^\p{L}\p{N}._-]/gu, '_');
-  const stamp = now.replace(/[:.]/g, '-');
-  return `${safe}_${stamp}.${format}`;
+  // 두 자리 모두 같은 정제를 태운다. 종전에는 `now`가 무검증이었고, 상위로 못 나간 것은
+  // 타임스탬프에서 점을 빼는 처리의 **부작용**이었지 방어가 아니었다 — 경로 구분자는
+  // 살아남아 저장 폴더 아래 디렉터리를 만들었다.
+  return `${sanitize(label)}_${sanitize(now)}.${format}`;
+}
+
+function sanitize(value: string): string {
+  return value.replace(/[^\p{L}\p{N}._-]/gu, '_').replace(/\.+/g, '-');
 }

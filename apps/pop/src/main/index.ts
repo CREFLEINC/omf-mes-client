@@ -16,8 +16,9 @@ import { createFileBlobStore } from './file-blob-store';
 import { LocalDb, type SqlDatabase } from './local-db';
 import {
   type FileWriter,
-  type RenditionFormat,
   RenditionPrinter,
+  UnknownFormatError,
+  isRenditionFormat,
   toRenditionFileName,
 } from './print';
 import { resolveRendererPath } from './renderer-path';
@@ -29,8 +30,16 @@ import { createKioskWindowOptions } from './window-options';
 // 경로가 조용히 어긋나 창이 빈 화면으로 뜬다.
 const RENDERER_DIR = join(__dirname, '../renderer');
 const PRELOAD_PATH = join(__dirname, '../preload/index.cjs');
+/** 어디를 띄울지. 주면 개발 서버를 물고, 없으면 번들된 렌더러를 띄운다. */
 const DEV_SERVER_URL = process.env.POP_DEV_SERVER_URL;
-const IS_DEV = DEV_SERVER_URL !== undefined;
+
+/**
+ * 어떤 빌드인지. **「개발 서버를 물었는가」와 축이 다르다.**
+ *
+ * 한 값에 묶었더니 `pnpm dev`(개발 서버 없이 번들을 띄우는 정상 사용법)가 배포본으로
+ * 판정돼, 개발 PC에 자동 실행 항목을 등록하고 개발자도구는 잠갔다 — 의도와 정반대였다.
+ */
+const IS_DEV = !app.isPackaged;
 
 /**
  * 렌더러를 `file://`이 아니라 자체 스킴으로 띄운다.
@@ -136,7 +145,9 @@ async function main(): Promise<void> {
   //    클라이언트가 레이아웃을 그리면 단말마다 출력물이 달라진다).
   ipcMain.handle(
     'rendition:save',
-    async (_e, bytes: Uint8Array, label: string, now: string, format: RenditionFormat) => {
+    async (_e, bytes: Uint8Array, label: string, now: string, format: unknown) => {
+      // 형식은 파일 경로 계산에 들어간다 — 아는 값인지 경계에서 막는다.
+      if (!isRenditionFormat(format)) throw new UnknownFormatError(format);
       const filePath = join(renditionDir, toRenditionFileName(label, now, format));
       await printer.print({ bytes, label, format }, { kind: 'file', filePath });
       return filePath;

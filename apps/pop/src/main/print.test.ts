@@ -10,6 +10,7 @@ import {
   RenditionPrinter,
   type SilentPrinter,
   matchesFormat,
+  isRenditionFormat,
   toRenditionFileName,
 } from './print';
 
@@ -140,6 +141,24 @@ describe('형식 시그니처 판별', () => {
   });
 });
 
+describe('형식 값 판정 — 경로 계산에 들어가는 값이라 경계에서 막는다', () => {
+  it('아는 형식만 참이다', () => {
+    expect(isRenditionFormat('png')).toBe(true);
+    expect(isRenditionFormat('pdf')).toBe(true);
+  });
+
+  it('모르는 값·경로 구분자가 섞인 값은 거짓이다', () => {
+    for (const bad of ['jpg', '../../../evil.sh', '', 'PNG', null, undefined, 1, {}]) {
+      expect(isRenditionFormat(bad)).toBe(false);
+    }
+  });
+
+  it('프로토타입 키에 속지 않는다', () => {
+    expect(isRenditionFormat('constructor')).toBe(false);
+    expect(isRenditionFormat('__proto__')).toBe(false);
+  });
+});
+
 describe('파일명 다듬기', () => {
   it('경로 구분자가 파일명으로 새지 않는다', () => {
     const name = toRenditionFileName('a/b\\c', '2026-08-26T09:30:00Z', 'png');
@@ -153,5 +172,19 @@ describe('파일명 다듬기', () => {
 
   it('콜론을 없앤다 — Windows 파일명에 쓸 수 없다', () => {
     expect(toRenditionFileName('x', '2026-08-26T09:30:00Z', 'png')).not.toContain(':');
+  });
+
+  // 종전에는 `now`가 무검증이라 경로 구분자가 살아남아 저장 폴더 아래 디렉터리를 만들었다.
+  it('타임스탬프 자리에도 같은 정제를 태운다', () => {
+    const name = toRenditionFileName('LOT', '../../../../evil', 'png');
+    expect(name).not.toContain('/');
+    expect(name).not.toContain('\\');
+    expect(name).not.toContain('..');
+  });
+
+  it('두 자리 어디에도 상위 이동이 남지 않는다', () => {
+    for (const value of ['..', '../..', 'a/../b']) {
+      expect(toRenditionFileName(value, value, 'pdf')).not.toContain('..');
+    }
   });
 });
