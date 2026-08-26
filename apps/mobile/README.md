@@ -47,7 +47,7 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:
 yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
 sdkmanager --sdk_root="$ANDROID_HOME" \
   "platform-tools" "emulator" \
-  "platforms;android-36" "build-tools;36.0.0" \
+  "platforms;android-37.1" "build-tools;37.0.0" \
   "system-images;android-33;google_apis;arm64-v8a" \
   "system-images;android-37.0;google_apis;arm64-v8a"
 ```
@@ -110,16 +110,16 @@ adb forward tcp:9444 localabstract:$(adb shell cat /proc/net/unix | grep -o "web
 
 ## 버전 조합
 
-조합이 어긋나면 원인을 알기 어려운 빌드 오류가 난다. `minSdk` 를 뺀 나머지는 Capacitor 8.5.0 이 생성하는 기본값이다.
+바꾸기 전에 `docs/decisions.md` 14 번을 읽는다. 조합이 어긋나면 원인을 알기 어려운 빌드 오류가 난다.
 
 | 항목                       | 값              |
 | -------------------------- | --------------- |
 | Capacitor                  | 8.5.0           |
-| Android Gradle Plugin      | 8.13.0          |
-| Gradle                     | 8.14.3          |
+| Android Gradle Plugin      | 9.3.2           |
+| Gradle                     | 9.5.0           |
 | JDK                        | 21              |
 | `minSdk`                   | 33 (Android 13) |
-| `compileSdk` · `targetSdk` | 36              |
+| `compileSdk` · `targetSdk` | 37              |
 
 `minSdk` 를 33 보다 내리지 않는다. 그 아래를 지원하지 않기로 정해져 있다.
 
