@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -108,6 +108,12 @@ describe('ProductionPlanScreen', () => {
     await waitFor(() => expect(add).toBeEnabled());
     await user.click(add);
 
+    const newRow = screen.getByText('신규 계획 1').closest('tr') as HTMLElement;
+    await user.click(within(newRow).getByRole('button', { name: '저장' }));
+    expect(within(newRow).getByRole('button', { name: '신규 계획 1 계획일' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
     expect(screen.getByRole('spinbutton', { name: '신규 계획 1 계획수량' })).toHaveValue(null);
     expect(screen.getByRole('combobox', { name: '신규 계획 1 라인' })).toHaveTextContent('미지정');
     linesFail = true;

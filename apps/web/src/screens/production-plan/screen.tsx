@@ -2,7 +2,10 @@ import { AlertBanner, Breadcrumb, Button, PageHeader, SkeletonText } from '@cref
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
-import { useProductionOrderItemNames } from '../production-order/item-lookups';
+import {
+  useProductionOrderItemNames,
+  type ProductionOrderItemName,
+} from '../production-order/item-lookups';
 import { useProductionOrderDetail } from '../production-order/queries';
 import {
   describeReference,
@@ -30,7 +33,12 @@ const readProductionOrderId = (params: URLSearchParams): number | null => {
   return Number.isSafeInteger(value) ? value : null;
 };
 
-const itemLabel = (label: string | null): string => label ?? '품목 정보를 확인할 수 없습니다.';
+const itemLabel = (item: ProductionOrderItemName | undefined): string => {
+  if (item === undefined || item.status === 'loading') return '품목 정보를 불러오는 중입니다.';
+  if (item.status === 'unknown') return '등록된 품목을 찾지 못했습니다.';
+  if (item.status === 'failed') return '품목 정보를 불러오지 못했습니다.';
+  return item.label ?? '등록된 품목을 찾지 못했습니다.';
+};
 
 const quantity = (value: number): string =>
   new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
@@ -62,7 +70,7 @@ const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       <section className="pane" aria-label="선택 생산 P/O">
         <h2>{order.productionOrderNo}</h2>
         <p>
-          {itemLabel(selectedItem?.label ?? null)} · {quantity(order.orderQty)} {uomLabel}
+          {itemLabel(selectedItem)} · {quantity(order.orderQty)} {uomLabel}
           {order.dueDate === null ? '' : ` · 납기 ${order.dueDate}`}
         </p>
       </section>
@@ -112,7 +120,7 @@ const ProductionPlanWorkspace = ({ order }: { order: ProductionOrderFact }) => {
           uomId={order.uomId}
           uomLabel={uomLabel}
           defaults={{
-            planDate: order.dueDate ?? '',
+            planDate: '',
             plannedQty: '',
             bomId,
             routingId,
