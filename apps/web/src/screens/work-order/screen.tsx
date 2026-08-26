@@ -1,6 +1,7 @@
-import { AlertBanner, Button, EmptyState } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, Button, EmptyState, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
 
 import {
   describeReference,
@@ -12,12 +13,17 @@ import { validateWorkOrderAssignmentDraft, workOrderAssignmentDraftFrom } from '
 import { toWorkOrderPageView } from './pagination';
 import { useWorkOrderList, useWorkOrderValidation, type WorkOrderFact } from './queries';
 import { useWorkOrderScreenContext } from './screen-context';
-import { toWorkOrderScreenRow, workOrderFieldErrorMessage } from './screen-model';
+import {
+  readWorkOrderProductionPlanId,
+  toWorkOrderScreenRow,
+  workOrderFieldErrorMessage,
+} from './screen-model';
 import { WorkOrderAssignmentEditor } from './work-order-assignment-editor';
 import { WorkOrderListPane } from './work-order-list-pane';
 
 const t = messages.workOrder.screen.view;
 const emptyPage = { page: 1, size: 1, total: 0 };
+const breadcrumb = <Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />;
 
 const priorityError = (fact: WorkOrderFact, priorityText: string): string | undefined => {
   const error = validateWorkOrderAssignmentDraft({
@@ -185,6 +191,24 @@ export const WorkOrderAssignmentWorkspace = ({
             }
           />
         ))}
+    </>
+  );
+};
+
+export const WorkOrderAssignmentScreen = () => {
+  const [searchParams] = useSearchParams();
+  const productionPlanId = readWorkOrderProductionPlanId(searchParams);
+
+  return (
+    <>
+      <PageHeader title={t.title} breadcrumb={breadcrumb} />
+      {productionPlanId === null ? (
+        <AlertBanner variant="warning" title={t.selectPlan}>
+          <Link to="/production/production-plans">{t.selectPlanLink}</Link>
+        </AlertBanner>
+      ) : (
+        <WorkOrderAssignmentWorkspace key={productionPlanId} productionPlanId={productionPlanId} />
+      )}
     </>
   );
 };
