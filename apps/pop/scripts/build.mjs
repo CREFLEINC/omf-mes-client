@@ -10,37 +10,29 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const webDist = join(root, '../web/dist');
 
+// 릴리스 여부. 배포본에는 소스맵을 싣지 않고, 렌더러 부재를 실패로 처리한다.
+const isRelease = process.env.POP_RELEASE === '1';
+
 const common = {
   bundle: true,
   platform: 'node',
   target: 'node20',
   format: 'cjs',
   external: ['electron'],
-  sourcemap: true,
+  sourcemap: !isRelease,
+  // `import.meta`는 CJS 출력에서 비는데 esbuild는 경고로만 알린다. 비면 preload·renderer
+  // 경로가 조용히 어긋나 창이 빈 화면으로 뜨므로, 이 경고 하나만 실패로 올린다.
+  // (경고 전체를 올리면 정당한 경고 하나에 가드를 통째로 끄는 우회가 나온다.)
+  logOverride: { 'empty-import-meta': 'error' },
 };
 
-/**
- * esbuild 경고를 실패로 올린다.
- * 근거: `import.meta`가 CJS 출력에서 비는 것은 경고로만 나오는데, 비면 preload·renderer
- * 경로가 조용히 어긋나 창이 빈 화면으로 뜬다. 빌드가 초록인 채 앱만 죽는 부류라 여기서 막는다.
- */
-async function buildOrFail(options) {
-  const result = await build(options);
-  if (result.warnings.length > 0) {
-    for (const w of result.warnings) {
-      console.error(`✖ ${w.text}  (${w.location?.file}:${w.location?.line})`);
-    }
-    throw new Error(`esbuild 경고 ${result.warnings.length}건 — 빌드를 실패로 처리한다`);
-  }
-}
-
-await buildOrFail({
+await build({
   ...common,
   entryPoints: [join(root, 'src/main/index.ts')],
   outfile: join(root, 'dist/main/index.cjs'),
 });
 
-await buildOrFail({
+await build({
   ...common,
   entryPoints: [join(root, 'src/preload/index.ts')],
   outfile: join(root, 'dist/preload/index.cjs'),
@@ -56,6 +48,13 @@ if (existsSync(webDist)) {
   mkdirSync(join(root, 'dist/renderer'), { recursive: true });
   cpSync(webDist, join(root, 'dist/renderer'), { recursive: true });
   console.log('renderer: apps/web/dist 복사 완료');
+} else if (isRelease) {
+  // 렌더러 없는 인스톨러는 설치되고 실행되지만 화면이 빈다 — 이 셸이 두 번 고친 그 증상이다.
+  // 릴리스 경로에서는 경고로 넘기지 않는다.
+  throw new Error(
+    `apps/web/dist가 없다: ${webDist}\n` +
+      '릴리스 빌드는 렌더러 없이 만들지 않는다. 먼저 `pnpm --filter @omf-mes/web build`를 실행하라.',
+  );
 } else {
-  console.warn('⚠ apps/web/dist 없음 — 먼저 web을 빌드해야 셸이 화면을 띄운다');
+  console.warn('⚠ apps/web/dist 없음 — 셸만 뜨고 화면은 비어 있다 (개발 편의로 허용)');
 }

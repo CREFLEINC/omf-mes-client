@@ -29,10 +29,18 @@ const api = {
       ipcRenderer.invoke('outbox:enqueue', endpoint, payload, createdAt),
     peek: (limit?: number): Promise<QueuedRequest[]> => ipcRenderer.invoke('outbox:peek', limit),
     size: (): Promise<number> => ipcRenderer.invoke('outbox:size'),
+    /** 전송이 확정된 뒤에만 부른다 — 보내기 전에 지우면 현장 실적이 사라진다. */
+    dequeue: (id: number): Promise<void> => ipcRenderer.invoke('outbox:dequeue', id),
   },
   label: {
-    printToPdf: (bytes: Uint8Array, label: string, filePath: string): Promise<void> =>
-      ipcRenderer.invoke('label:print-pdf', bytes, label, filePath),
+    /**
+     * 라벨을 PDF로 떨어뜨리고 만들어진 경로를 돌려준다.
+     *
+     * ⛔ 저장 경로를 렌더러가 정하지 않는다 — 메인이 소유한다. 렌더러가 준 경로에 그대로
+     *    쓰면 앱이 임의 위치에 파일을 만들 수 있다.
+     */
+    printToPdf: (bytes: Uint8Array, label: string, now: string): Promise<string> =>
+      ipcRenderer.invoke('label:print-pdf', bytes, label, now),
   },
 };
 

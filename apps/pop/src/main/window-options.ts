@@ -5,9 +5,14 @@
  * 앱을 띄우지 않고 감지기로 잴 수 있다. 창 생성은 index.ts가 한다.
  */
 
-/** preload 스크립트의 절대 경로. 호출부가 주입한다(런타임 경로를 이 모듈이 알 필요가 없다). */
 export interface WindowOptionsInput {
+  /** preload 스크립트의 절대 경로. 호출부가 주입한다(런타임 경로를 이 모듈이 알 필요가 없다). */
   preloadPath: string;
+  /**
+   * 개발 모드인가. 개발 중에만 개발자도구를 연다 — POP 화면 20건이 이 셸 위에 얹히는데
+   * 렌더러를 들여다볼 수단이 아예 없으면 그 작업이 막힌다. 배포본에서는 잠긴다.
+   */
+  isDev?: boolean;
 }
 
 /**
@@ -20,8 +25,8 @@ export interface WebPreferences {
   nodeIntegration: false;
   sandbox: true;
   webSecurity: true;
-  /** 개발자도구를 아예 열 수 없게 한다 — 현장 작업자가 셸 밖으로 빠져나가지 못하게. */
-  devTools: false;
+  /** 배포본에서는 개발자도구를 아예 열 수 없게 한다 — 작업자가 셸 밖으로 빠져나가지 못하게. */
+  devTools: boolean;
 }
 
 export interface KioskWindowOptions {
@@ -40,7 +45,10 @@ export interface KioskWindowOptions {
 export const PANEL_WIDTH = 1920;
 export const PANEL_HEIGHT = 1080;
 
-export function createKioskWindowOptions({ preloadPath }: WindowOptionsInput): KioskWindowOptions {
+export function createKioskWindowOptions({
+  preloadPath,
+  isDev = false,
+}: WindowOptionsInput): KioskWindowOptions {
   return {
     kiosk: true,
     frame: false,
@@ -55,7 +63,7 @@ export function createKioskWindowOptions({ preloadPath }: WindowOptionsInput): K
       nodeIntegration: false,
       sandbox: true,
       webSecurity: true,
-      devTools: false,
+      devTools: isDev,
     },
   };
 }

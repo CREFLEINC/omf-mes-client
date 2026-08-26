@@ -9,9 +9,11 @@ const root = join(here, '..');
 
 await import('./build.mjs');
 
-const electron = spawn(join(root, 'node_modules/.bin/electron'), ['.'], {
-  cwd: root,
-  stdio: 'inherit',
-  env: process.env,
-});
+// ⛔ `node_modules/.bin/electron`을 직접 spawn하지 않는다 — Windows에서 그것은 확장자 없는
+//    sh 스크립트이고 실행 가능한 것은 `electron.cmd`다. shell:false spawn은 확장자 해석을
+//    하지 않아 실패한다. 이 이슈가 상정한 개발 PC가 Windows다.
+//    패키지가 알려 주는 실행 파일 경로를 쓰면 플랫폼과 무관하게 맞는다.
+const { default: electronPath } = await import('electron');
+
+const electron = spawn(electronPath, ['.'], { cwd: root, stdio: 'inherit', env: process.env });
 electron.on('exit', (code) => process.exit(code ?? 0));

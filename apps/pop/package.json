@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
-    "dist": "pnpm build && electron-builder --win --publish never",
+    "dist": "POP_RELEASE=1 pnpm build && electron-builder --win --publish never",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },

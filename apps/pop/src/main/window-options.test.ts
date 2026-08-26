@@ -21,8 +21,17 @@ describe('키오스크 창 옵션', () => {
     expect(o.height).toBe(PANEL_HEIGHT);
   });
 
-  it('개발자도구를 열 수 없다', () => {
+  it('배포본에서는 개발자도구를 열 수 없다', () => {
     expect(options().webPreferences.devTools).toBe(false);
+  });
+
+  it('개발 모드에서만 개발자도구가 열린다 — 화면 작업에 필요하다', () => {
+    const dev = createKioskWindowOptions({ preloadPath: '/tmp/preload.cjs', isDev: true });
+    expect(dev.webPreferences.devTools).toBe(true);
+  });
+
+  it('isDev를 주지 않으면 잠긴 쪽이 기본이다 — 실수로 열린 채 배포되지 않게', () => {
+    expect(createKioskWindowOptions({ preloadPath: '/p' }).webPreferences.devTools).toBe(false);
   });
 });
 
