@@ -87,6 +87,13 @@ export const workOrderRelease = {
     detailUnavailable: '작업지시 상세를 불러올 수 없습니다.',
     inputRequired: '유효한 LOT 크기를 입력하세요.',
   },
+  execution: {
+    released: '작업지시를 배포하고 생산LOT을 선발행했습니다.',
+    writeOwnerMismatch: '배포 응답이 선택한 작업지시와 일치하지 않습니다. 다시 조회하세요.',
+    retryDetail: '작업지시 상세 다시 시도',
+    retryValidation: '작업지시 검증 다시 시도',
+    reloadDetail: '작업지시 상세 다시 불러오기',
+  },
   candidateList: {
     pane: '배포 후보 작업지시 목록',
     fields: { workOrderNo: 'W/O 번호', item: '품목', quantity: '지시 수량' },
