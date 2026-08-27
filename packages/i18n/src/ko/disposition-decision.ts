@@ -96,20 +96,28 @@ export const dispositionDecision = {
   form: {
     dispositionLabel: '처분',
     qtyLabel: '수량',
-    qtyHelp: '1 이상, 남은 수량 이하로 입력하세요.',
+    /** ⚠ 남은 수량이 참고값이라는 사실을 규칙과 «함께» 적는다 — 규칙만 단정하면 거짓이 된다. */
+    qtyHelp: '0보다 큰 수를 입력하세요. 저장할 수 있는 수량은 저장할 때 서버가 확정합니다.',
     reasonLabel: '사유',
     reasonHelp: '이 처분을 정한 근거를 남기세요.',
     qtyRequired: '수량을 입력하세요',
     qtyNotNumber: '수량은 숫자로 입력하세요',
-    qtyTooSmall: '수량은 1 이상이어야 합니다',
+    qtyTooLong: '수량이 너무 깁니다. 정수 12자리·소수 6자리까지 입력하세요',
+    qtyTooSmall: '수량은 0보다 커야 합니다',
+    /**
+     * ⚠ **명령이 아니라 예고다.** 저장을 막지 않으므로 「이하로 입력하세요」라고 적으면
+     * 화면이 「고쳐라」와 「진행해도 된다」를 동시에 말하게 된다. 남은 수량은 참고값이고
+     * 최종 판정은 서버가 하므로, 무엇이 일어날지를 알린다.
+     */
     qtyOverRemaining: (remaining: string): string =>
-      `수량이 남은 수량(${remaining})보다 많습니다. 남은 수량 이하로 입력하세요`,
+      `화면이 계산한 남은 수량(${remaining})보다 많습니다. 남은 수량은 저장할 때 서버가 확정합니다`,
+    /** 남은 수량이 0일 때도 같은 자리다 — 참고값으로 막지 않고 예고한다. */
+    qtySettledNotice: '화면이 계산한 남은 수량이 없습니다. 저장 여부는 서버가 확정합니다',
     reasonRequired: '사유를 입력하세요',
     dispositionRequired: '처분을 선택하세요',
     savingReason: '판정을 저장하는 중입니다',
     uncertainReason: '앞서 보낸 판정의 처리 결과를 먼저 확인해야 합니다',
     forbiddenReason: '판정 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요',
-    settledReason: '남은 수량이 없어 더 판정할 수 없습니다',
     selectFirstReason: '먼저 판정할 부적합을 선택하세요',
     reloadDetail: '부적합 상태 다시 확인',
     irreversible: '판정은 되돌릴 수 없습니다',
