@@ -236,6 +236,17 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/production/work-order-close" icon="archive">
               W/O 마감·ERP 실적 송신
             </NavItem>
+            {/*
+             * P-02-13 — 공정 중 제품을 검사하고 판정한다. **생산 섹션에 둔다**: 검사이지만
+             * 검사 «수행» 지점이 생산 공정이고, 품질관리 섹션이 다루는 것은 그 결과를
+             * 횡단해 보는 조회·승인이다. IQC 가 자재창고에 남아 있는 것과 같은 기준이다.
+             *
+             * ⚠ 이 화면은 원래 현장 단말(POP)에서 쓴다 — 관리웹 메뉴에 두는 것은 셸이
+             * 아직 웹 빌드를 렌더러로 쓰기 때문이고, POP 렌더러가 서면 이 항목은 그쪽으로 간다.
+             */}
+            <NavItem to="/production/pqc-inspection" icon="fact_check">
+              PQC 제품 검사
+            </NavItem>
           </SidebarSection>
           {/*
            * W-03-01 — Lot Status 계열의 첫 화면이 독립된 「품질관리」 섹션을 연다.
