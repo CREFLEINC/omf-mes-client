@@ -40,7 +40,7 @@
  * POP(1024×768 터치 키오스크) — 관리웹과 폼팩터가 다르다
  * .pop-screen       POP 화면 최상위 — 남은 높이를 그대로 쓴다
  * .pop-screen-head  화면명과 프린터·단말 상태를 한 줄에 두는 머리
- * .pop-panes        POP 좌우 2단 — 접힘 기준점이 없다
+ * .pop-panes        POP 좌우 2단 — 접힘 기준점이 없다. 구획이 하나면 줄 전체를 쓴다
  * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
  * .pop-page-nav     쪽 이동 줄 — 위치 표시와 이전·다음
  * .pop-touch(-등급) 터치 타겟 최소 높이 — ⚠ 제품이 임시로 채우는 치수
@@ -894,6 +894,17 @@ main > * + * {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-4);
   align-items: stretch;
+}
+
+/*
+ * 아직 한 구획뿐이면 그 구획이 줄 전체를 쓴다.
+ *
+ * 두 칸을 미리 갈라 두면 **오른쪽 절반이 빈 채로 남아 화면이 반쪽만 찬 것처럼 보인다**
+ * (실기 확인에서 드러났다). 오른쪽 구획이 실제로 들어오면 이 규칙은 저절로 풀린다 —
+ * 그때 CSS를 고칠 일이 없다.
+ */
+.pop-panes > :only-child {
+  grid-column: 1 / -1;
 }
 
 /*
