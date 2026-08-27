@@ -1,0 +1,150 @@
+import { PageHeader } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
+import { useEffect, useState } from 'react';
+
+import { ExpansionPane } from './expansion-pane';
+import { issueRoutingOperationId, type LoadState, resolveExpansion } from './expansion';
+import { FixedTermsPane } from './fixed-terms';
+import { EMPTY_ISSUE_FORM, isIssueInputComplete, validateIssueForm } from './issue-form';
+import { IssueFormPane } from './issue-form-pane';
+import { IssueAction } from './issue-action';
+import { toIssueLock } from './issue-lock';
+import { ItemPicker } from './item-picker';
+import { useIssueEmergencyWorkOrder } from './mutations';
+import { useItemBoms, useItemRoutings, useRoutingOperations } from './queries';
+import type { Bom, Routing, RoutingOperation, SelectedItem } from './types';
+import { useUomLookup } from './uom-lookup';
+import { EMERGENCY_WORK_ORDER_TYPE_CODE } from './work-order-type';
+
+/**
+ * 조회 훅을 판정이 쓰는 모양으로 옮긴다.
+ *
+ * ⛔ **`isLoading` 을 그대로 넘기지 않는다.** 그 값은 «꺼 둔» 조회에 대해 거짓이라, 아직 묻지도
+ * 않은 것이 「받는 중」에서 빠지고 값 없음이 「없다」로 읽힌다. 이 저장소의 다른 조회들이 쓰는
+ * 모양 — **`<조회를 열었는가> && isPending`** — 을 따른다.
+ */
+const toLoadState = <TItem,>(
+  query: { isPending: boolean; isError: boolean; data?: { items: TItem[] } },
+  enabled: boolean,
+): LoadState<TItem[]> => ({
+  isLoading: enabled && query.isPending,
+  isError: query.isError,
+  value: query.data?.items,
+});
+
+export interface EmergencyWorkOrderScreenProps {
+  /** 제출 순간. 시간대 표기를 여기서 얻는다 — 검사에서 고정할 수 있게 밖에서 받는다. */
+  now?: Date;
+  /**
+   * 긴급을 뜻하는 유형 코드.
+   *
+   * ⛔ **지금 이 값은 비어 있어 발행이 잠겨 있다**(omf-mes#259). 밖에서도 받는 이유는 값이
+   * 온 «뒤»의 동작을 값이 오기 전에 확인해 두기 위해서다 — 상수만 읽으면 열린 쪽 경로가
+   * 회신이 와야 처음 실행된다. 화면은 기본값으로 상수를 쓴다.
+   */
+  typeCode?: string;
+}
+
+/**
+ * `W-02-07` 긴급 W/O 발행.
+ *
+ * ⛔ **막힌 사유를 한 곳에서만 말한다** — 발행 버튼 옆이다. 구획마다 되풀이하면 한쪽만
+ * 고쳐질 때 화면이 스스로와 어긋난다.
+ */
+export const EmergencyWorkOrderScreen = ({
+  now,
+  typeCode = EMERGENCY_WORK_ORDER_TYPE_CODE,
+}: EmergencyWorkOrderScreenProps) => {
+  const t = messages.emergencyWorkOrder;
+  const [item, setItem] = useState<SelectedItem | null>(null);
+  const [form, setForm] = useState(EMPTY_ISSUE_FORM);
+  const [routingId, setRoutingId] = useState<number | null>(null);
+
+  const itemId = item?.itemId ?? null;
+  const boms = useItemBoms(itemId);
+  const routings = useItemRoutings(itemId);
+  const operations = useRoutingOperations(routingId);
+  const uoms = useUomLookup();
+  const issue = useIssueEmergencyWorkOrder();
+
+  const expansion = resolveExpansion({
+    itemId,
+    boms: toLoadState<Bom>(boms, itemId !== null),
+    routings: toLoadState<Routing>(routings, itemId !== null),
+    selectedRoutingId: routingId,
+    operations: toLoadState<RoutingOperation>(operations, routingId !== null),
+  });
+
+  /**
+   * 개정이 **하나뿐이면 화면이 골라 준다** — 고를 것이 없는데 고르라고 하지 않는다.
+   *
+   * ⛔ **판정은 여전히 「골랐는가」만 본다.** 자동으로 채우는 쪽이 나중에 바뀌거나 사라져도
+   * **고르지 않은 채 발행되는 길이 열리지 않는다** — 편의와 안전을 갈라 둔 것이다.
+   */
+  const soleRoutingId =
+    expansion.kind === 'needsRevision' && expansion.routings.length === 1
+      ? (expansion.routings[0]?.routingId ?? null)
+      : null;
+
+  useEffect(() => {
+    if (soleRoutingId !== null) setRoutingId(soleRoutingId);
+  }, [soleRoutingId]);
+
+  const lock = toIssueLock({
+    isIssuing: issue.isIssuing,
+    pending: issue.pending,
+    issueError: issue.error,
+    isCreateUncertain: issue.isCreateUncertain,
+    expansion,
+    isInputComplete: isIssueInputComplete(form),
+    typeCode,
+  });
+
+  /* 품목을 바꾸면 고른 개정을 지운다 — 앞 품목의 개정으로 발행되지 않게. */
+  const selectItem = (next: SelectedItem | null): void => {
+    setItem(next);
+    setRoutingId(null);
+    setForm({ ...form, itemId: next === null ? '' : String(next.itemId) });
+  };
+
+  return (
+    <>
+      <PageHeader title={t.title} />
+
+      <FixedTermsPane />
+
+      <ItemPicker selected={item} onSelect={selectItem} />
+
+      <IssueFormPane
+        value={form}
+        errors={validateIssueForm(form)}
+        item={item}
+        uomLabel={uoms.labelOf(item?.baseUomId)}
+        onChange={setForm}
+      />
+
+      <ExpansionPane
+        state={expansion}
+        orderQtyText={form.orderQty}
+        selectedRoutingId={routingId}
+        onSelectRouting={setRoutingId}
+      />
+
+      <IssueAction
+        lock={lock}
+        releasedNo={issue.releasedNo}
+        pending={issue.pending}
+        onRetryRelease={issue.retryRelease}
+        onIssue={() => {
+          issue.issue({
+            form,
+            item: item ?? { itemId: 0, itemCode: '', itemName: '', baseUomId: 0 },
+            routingOperationId: issueRoutingOperationId(expansion),
+            typeCode,
+            at: now ?? new Date(),
+          });
+        }}
+      />
+    </>
+  );
+};
