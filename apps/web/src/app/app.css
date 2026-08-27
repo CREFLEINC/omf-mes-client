@@ -41,6 +41,15 @@
  * .pop-header    그 화면의 표제 줄
  * .pop-title     표제 — 1024×768 단말에서 멀리서 읽는다
  * .pop-context   표제 옆의 맥락 표시(작업지시 등)
+ * .pop-panes     POP 화면의 좌우 두 구획 — 스캔이 주 입력이라 좌우로 편다
+ * .pane-title    구획 표제
+ * .scan-row      스캔 칸과 읽기 버튼을 한 줄에 — 버튼 높이를 칸의 라벨 층만큼 내린다
+ * .scan-outcome  스캔 한 번의 결과가 서는 자리(늘 자리를 차지한다)
+ * .scanned-items 담은 자재 목록
+ * .scanned-item  그 한 줄
+ * .scanned-code  LOT·금형 코드 — 멀리서 읽는다
+ * .scanned-mold  물린 금형 구획
+ * .confirm-row   투입 확정 버튼과 잠금 사유
  */
 
 :root {
@@ -730,4 +739,87 @@ main > * + * {
   font: var(--type-body-lg);
   letter-spacing: var(--type-body-lg-tracking);
   color: var(--on-surface-muted);
+}
+
+/*
+ * 스펙 §3 — **스캔이 주 입력이라 좌우로 편다.** 1024×768에서 세로 여유가 119px뿐이라
+ * 위아래로 쌓으면 스캔 칸이 접힌 아래로 내려간다.
+ */
+.pop-panes {
+  display: grid;
+  grid-template-columns: minmax(320px, 2fr) 3fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .pop-panes {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pane-title {
+  margin: 0 0 var(--space-3);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 두 번째 이후의 구획 표제는 앞 블록과 사이를 둔다. */
+.pane-title:not(:first-child) {
+  margin-top: var(--space-5);
+}
+
+/* 규범 2 — 컨트롤 상자의 윗선에 맞춘다. 버튼에는 라벨 층이 없어 그만큼 내려 준다. */
+.scan-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.scan-row > button {
+  margin-top: var(--field-label-layer);
+}
+
+/*
+ * 결과가 없을 때도 **자리를 비워 둔다.** 결과가 뜰 때마다 아래 목록이 밀리면, 담긴 줄을
+ * 누르려던 손가락이 빗나간다 — 터치 화면에서 이 흔들림은 오조작이 된다.
+ */
+.scan-outcome {
+  min-height: 1.5rem;
+  margin: var(--space-3) 0 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.scanned-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.scanned-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 멀리서 읽는 값이라 본문보다 크게 두고, 자릿수가 흔들리지 않게 고정폭으로 그린다. */
+.scanned-code {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.scanned-mold {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.confirm-row {
+  margin-top: var(--space-5);
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
 }

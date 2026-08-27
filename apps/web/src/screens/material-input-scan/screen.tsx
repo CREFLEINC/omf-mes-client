@@ -1,14 +1,39 @@
 import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { ConfirmPanel } from './confirm-panel';
 import { LoadErrorBanner } from './load-error-banner';
 import { useReceiptLines } from './queries';
 import { ReceiptTable } from './receipt-table';
+import { applyScan, EMPTY_SCAN_DRAFT, type ScanDraft, type ScanOutcome } from './scan';
+import { ScanField } from './scan-field';
+import { useScanLookup } from './scan-queries';
+import { ScannedList } from './scanned-list';
 import { readWorkOrderId } from './screen-params';
 
 const t = messages.materialInputScan;
+
+/** 스캔 한 번의 결과를 사람의 말로 옮긴다. 실패도 성공과 **같은 자리**에 선다. */
+const describeOutcome = (outcome: ScanOutcome): string => {
+  switch (outcome.kind) {
+    case 'material':
+      return t.scan.outcomes.material(outcome.material.lotNo);
+    case 'mold':
+      return t.scan.outcomes.mold(outcome.mold.moldCode);
+    case 'duplicate':
+      return t.scan.outcomes.duplicate(outcome.lotNo);
+    case 'ambiguous':
+      return t.scan.outcomes.ambiguous(outcome.count);
+    case 'not-found':
+      return t.scan.outcomes.notFound(outcome.code);
+  }
+};
+
+/** 읽었으나 담기지 않은 결과인가. 담긴 것과 다른 색으로 말해야 작업자가 넘어가지 않는다. */
+const isRejected = (outcome: ScanOutcome): boolean =>
+  outcome.kind === 'duplicate' || outcome.kind === 'ambiguous' || outcome.kind === 'not-found';
 
 /**
  * P-02-03 컨테이너 — **POP(현장 단말) 화면이라 관리웹 셸을 쓰지 않는다.**
@@ -18,13 +43,19 @@ const t = messages.materialInputScan;
  * `W-CO-01`(로그인)이 셸 밖에 선 것과 같은 형태이고, 근거는 다르다: 그쪽은 **메뉴가
  * 성립하지 않는 것**이고 이쪽은 **메뉴를 쓸 손이 없는 것**이다.
  *
- * **이 슬라이스는 「계획 대비 수령」 한 구획이다.** 스캔 입력·투입 목록·투입 확정은 뒤
- * 슬라이스에서 붙는다 — 자리만 비워 두지 않고 아직 없는 것은 그리지 않는다.
+ * ## 이 화면이 하는 것과 하지 않는 것
  *
- * ⛔ **단말 게이팅을 화면이 미리 판정하지 않는다.** 스펙 §5-1은 자재 투입 플래그로 「투입
- * 확정」을 잠그라고 하는데 계약의 단말 기능 구성에 그 플래그가 없다(검토 요청 omf-mes#246).
- * 대신 쓰기가 붙는 슬라이스에서 서버가 내려주는 거절을 안내로 그린다 — **없는 값을 다른
- * 플래그로 대신 읽지 않는다.**
+ * | | |
+ * | --- | --- |
+ * | 한다 | 계획 대비 수령 대조 · 자재LOT·금형 스캔 · 담은 것 표시 · 타발수 경고 |
+ * | **하지 않는다** | **투입 확정 쓰기** — 계약 필수 본문 셋을 채울 근거가 없다(`ConfirmPanel`) |
+ *
+ * ⛔ **판정을 화면이 대신하지 않는다.** 셋 다 서버 몫이다 —
+ * 오투입(BOM 정합)·자재 상태(Hold·불량)·단말 게이팅. 화면은 읽은 것을 보이고 서버가 거절하면
+ * 그 말을 옮긴다. 스캔한 LOT의 상태 코드를 색으로 갈래 지우지 않는 것도 같은 이유다(스펙 §5-2).
+ *
+ * ⛔ **단말 게이팅을 미리 판정하지 않는다.** 스펙 §5-1이 요구하는 플래그가 계약의 단말 기능
+ * 구성에 없다(검토 요청 omf-mes#246) — **없는 값을 다른 플래그로 대신 읽지 않는다.**
  */
 export const MaterialInputScanScreen = () => {
   const [searchParams] = useSearchParams();
@@ -33,6 +64,37 @@ export const MaterialInputScanScreen = () => {
   const titleId = useId();
 
   const receipt = useReceiptLines(workOrderId);
+
+  const [draft, setDraft] = useState<ScanDraft>(EMPTY_SCAN_DRAFT);
+  const scan = useScanLookup();
+
+  const handleScan = (code: string): void => {
+    /*
+     * **후보 목록을 그 순간의 값으로 넘긴다.** 중복 판정이 조회 쪽에서 일어나는데, 훅이
+     * 목록을 따로 들고 있으면 화면과 훅에 정본이 둘 생긴다.
+     */
+    scan.mutate(
+      { draft, code },
+      {
+        onSuccess: (outcome) => {
+          /*
+           * 함수형 갱신으로 담는다 — 연달아 읽힌 스캔 둘이 같은 `draft`를 각자 읽고 덮으면
+           * **먼저 담긴 자재가 사라진다.** 현장에서는 이 연타가 기본 사용법이다.
+           */
+          setDraft((prev) => applyScan(prev, outcome));
+        },
+      },
+    );
+  };
+
+  const removeMaterial = (lotId: number): void => {
+    setDraft((prev) => ({
+      ...prev,
+      materials: prev.materials.filter((material) => material.lotId !== lotId),
+    }));
+  };
+
+  const outcome = scan.data;
 
   return (
     /*
@@ -61,15 +123,43 @@ export const MaterialInputScanScreen = () => {
 
       {receipt.isError && <LoadErrorBanner error={receipt.error} onRetry={receipt.refetch} />}
 
-      <section className="pane" aria-label={t.panes.receipt}>
-        {!receipt.isError && (
-          <ReceiptTable
-            lines={receipt.lines}
-            isLoading={receipt.isPending && workOrderId !== null}
-            hasWorkOrder={workOrderId !== null}
-          />
-        )}
-      </section>
+      <div className="pop-panes">
+        <section className="pane" aria-label={t.panes.receipt}>
+          <h2 className="pane-title">{t.panes.receipt}</h2>
+          {!receipt.isError && (
+            <ReceiptTable
+              lines={receipt.lines}
+              isLoading={receipt.isPending && workOrderId !== null}
+              hasWorkOrder={workOrderId !== null}
+            />
+          )}
+        </section>
+
+        <section className="pane" aria-label={t.panes.scan}>
+          <h2 className="pane-title">{t.panes.scan}</h2>
+
+          <ScanField isScanning={scan.isPending} onScan={handleScan} />
+
+          {/*
+           * 스캔 결과는 **한 자리에서만** 말한다. `role="status"`라 화면을 보지 않는 작업자도
+           * 읽힌 결과를 듣는다 — 이 화면의 사용자는 손과 눈이 자재에 가 있다.
+           */}
+          <p className="scan-outcome" role="status">
+            {scan.isError
+              ? t.scan.outcomes.failed
+              : outcome === undefined
+                ? ''
+                : describeOutcome(outcome)}
+          </p>
+          {outcome !== undefined && !scan.isError && isRejected(outcome) && (
+            <span className="field-note">{t.notes.manualEntry}</span>
+          )}
+
+          <ScannedList draft={draft} onRemoveMaterial={removeMaterial} />
+
+          <ConfirmPanel hasMaterials={draft.materials.length > 0} />
+        </section>
+      </div>
     </main>
   );
 };

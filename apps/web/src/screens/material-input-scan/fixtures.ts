@@ -1,3 +1,5 @@
+import type { components } from '@omf-mes/api-client';
+
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다.
  *
@@ -67,3 +69,50 @@ export const receiptLineFixtures = [
     varianceQty: 50,
   }),
 ];
+
+type LotResponse = components['schemas']['Lot'];
+type MoldResponse = components['schemas']['Mold'];
+
+/**
+ * ⚠ **자재LOT·금형은 계약 타입으로 고정한다.** 이 둘은 스텁 응답으로만 쓰이는 것이 아니라
+ * 화면 변환 함수에 그대로 들어간다 — 느슨하게 두면 계약이 바뀌어도 픽스처가 조용히 통과하고,
+ * 감지기가 **없는 모양의 자료**를 검사하게 된다.
+ */
+const BASE_LOT: LotResponse = {
+  lotId: 7301,
+  lotNo: 'SAMPLE-LOT-0001',
+  itemId: 7201,
+  lotTypeCode: 'SAMPLE_LOT_TYPE',
+  plantId: 7701,
+  initialQty: 100,
+  uomId: 7401,
+  sourceTypeCode: 'SAMPLE_SOURCE',
+  sourceId: 7801,
+  statusCode: 'NORMAL',
+  held: false,
+};
+
+export const lot = (overrides: Partial<LotResponse> = {}): LotResponse => ({
+  ...BASE_LOT,
+  ...overrides,
+});
+
+const BASE_MOLD: MoldResponse = {
+  moldId: 7601,
+  plantId: 7701,
+  moldCode: 'SAMPLE-MLD-01',
+  moldName: '합성 금형 가',
+  toolTypeCode: 'MOLD',
+  cavityCount: 4,
+  currentShotCount: 12450,
+  guaranteedShotCount: 50000,
+  availableShotCount: 37550,
+  pmTriggerTypeCode: 'NONE',
+  statusCode: 'IN_SERVICE',
+  isActive: true,
+};
+
+export const mold = (overrides: Partial<MoldResponse> = {}): MoldResponse => ({
+  ...BASE_MOLD,
+  ...overrides,
+});
