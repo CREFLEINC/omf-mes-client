@@ -3,35 +3,56 @@ import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { popTouchClass } from '../../patterns/pop-touch';
-import { useSupplierLookup } from './lookups';
+import { LineTable } from './line-table';
+import { useItemLookup, useSupplierLookup, useUomLookup } from './lookups';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
-import { useReceipts } from './queries';
+import { useReceiptLines, useReceipts } from './queries';
 import { ReceiptTable } from './receipt-table';
+import { TargetCard } from './target-card';
 
 const t = messages.popMaterialLotLabel;
 
 /**
  * `P-01-01` 자재LOT 등록·라벨 발행 (POP).
  *
- * **이 슬라이스는 왼쪽 절반까지다.** 발번 대상·프린터 상태·등록·인쇄·재인쇄는 뒤따르는
- * 슬라이스가 채운다. 등록·인쇄와 단말 게이팅은 설계 회신을 기다리고 있다 —
- * LOT 채번 주체와 `can_print_label`을 읽을 경로가 계약에 없다(검토 요청 omf-mes#245 ①②).
+ * 스펙 §3 배치를 따른다 — **좌: 입하 목록 / 우: 발번 대상.** 세로로 쌓지 않는다.
+ * 1024×768에서 세로 여유가 119px뿐이라 구획을 쌓으면 아래가 잘린다.
  *
- * 세로로 쌓지 않고 좌우로 편다 — 1024×768에서 세로 여유가 119px뿐이라 구획을 쌓으면
- * 아래가 잘린다. 제목은 DS `PageHeader`가 그린다(`size="compact"`) — 맨 `<h1>`을 두면
- * 브라우저 기본 크기가 나와 **이 화면만 다른 화면과 제목 크기가 어긋난다**(실기에서 드러났다).
+ * ⭐ **좌측 구획이 두 단계를 갈아 끼운다** — 입하 건 목록 ↔ 그 건의 품목 줄. 스펙은 품목·수량이
+ * 목록에 바로 보이는 한 단계이나, 계약이 입하 건 목록에 품목을 싣지 않아 라인을 따로 부른다.
+ * 두 표를 세로로 쌓으면 세로 예산을 넘기므로 **한 자리에서 단계를 바꾼다**(검토 요청
+ * omf-mes#245 ③ 이 풀리면 한 단계로 줄어든다).
+ *
+ * 프린터·단말 상태와 등록·인쇄·재인쇄는 뒤따르는 슬라이스와 설계 회신을 기다린다.
  */
 export const PopMaterialLotLabelScreen = () => {
   const [page, setPage] = useState(1);
   const [selectedReceiptId, setSelectedReceiptId] = useState<number | null>(null);
+  const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
 
   // 첫 쪽이면 조건을 싣지 않는다 — 서버 기본값이 1이라 URL에 없는 편이 조건을 정직하게 드러낸다.
   const receipts = useReceipts(page === 1 ? {} : { page });
+  const lines = useReceiptLines(selectedReceiptId);
+
+  const hasReceipt = selectedReceiptId !== null;
   const supplierLookup = useSupplierLookup();
+  const itemLookup = useItemLookup(hasReceipt);
+  const uomLookup = useUomLookup(hasReceipt);
 
   const result = receipts.data;
   const pageView = result === undefined ? null : toPageView(result.page, result.items.length);
+
+  const selectedReceipt =
+    result?.items.find((row) => row.inboundReceiptId === selectedReceiptId) ?? null;
+  const selectedLine =
+    lines.data?.find((row) => row.inboundReceiptLineId === selectedLineId) ?? null;
+
+  /** 입하 건을 바꾸면 고른 품목이 남아 있으면 안 된다 — 다른 건의 품목을 가리키게 된다. */
+  const selectReceipt = (inboundReceiptId: number) => {
+    setSelectedLineId(null);
+    setSelectedReceiptId((current) => (current === inboundReceiptId ? null : inboundReceiptId));
+  };
 
   return (
     <div className="pop-screen">
@@ -40,7 +61,10 @@ export const PopMaterialLotLabelScreen = () => {
       </header>
 
       <div className="pop-panes">
-        <section className="pane pop-pane" aria-label={t.receipts.paneLabel}>
+        <section
+          className="pane pop-pane"
+          aria-label={hasReceipt ? t.lines.paneLabel : t.receipts.paneLabel}
+        >
           {receipts.isError ? (
             <AlertBanner
               variant="error"
@@ -58,6 +82,48 @@ export const PopMaterialLotLabelScreen = () => {
                 </Button>
               }
             />
+          ) : hasReceipt ? (
+            <>
+              <Button
+                className={popTouchClass('normal')}
+                variant="text"
+                size="xl"
+                onClick={() => {
+                  setSelectedLineId(null);
+                  setSelectedReceiptId(null);
+                }}
+              >
+                {t.receipts.backToReceipts}
+              </Button>
+              {lines.isError ? (
+                <AlertBanner
+                  variant="error"
+                  title={t.lines.loadFailed}
+                  action={
+                    <Button
+                      className={popTouchClass('normal')}
+                      variant="outlined"
+                      size="xl"
+                      onClick={() => {
+                        void lines.refetch();
+                      }}
+                    >
+                      {t.lines.retry}
+                    </Button>
+                  }
+                />
+              ) : (
+                <LineTable
+                  rows={lines.data ?? []}
+                  itemLookup={itemLookup}
+                  uomLookup={uomLookup}
+                  selectedId={selectedLineId}
+                  onToggleSelect={(lineId) => {
+                    setSelectedLineId((current) => (current === lineId ? null : lineId));
+                  }}
+                />
+              )}
+            </>
           ) : (
             <>
               {/*
@@ -70,17 +136,23 @@ export const PopMaterialLotLabelScreen = () => {
                 rows={result?.items ?? []}
                 supplierLookup={supplierLookup}
                 selectedId={selectedReceiptId}
-                onToggleSelect={(inboundReceiptId) => {
-                  // 같은 건을 다시 누르면 해제한다 — 고른 것을 무를 수단이 없으면 갇힌다.
-                  setSelectedReceiptId((current) =>
-                    current === inboundReceiptId ? null : inboundReceiptId,
-                  );
-                }}
+                onToggleSelect={selectReceipt}
                 empty={pageView?.isBeyondLast === true ? t.receipts.beyondLast : t.receipts.empty}
               />
               {pageView === null ? null : <PageNav view={pageView} onChange={setPage} />}
             </>
           )}
+        </section>
+
+        <section className="pane pop-pane" aria-label={t.target.paneLabel}>
+          <h2 className="pop-pane-title">{t.target.title}</h2>
+          <TargetCard
+            receipt={selectedReceipt}
+            line={selectedLine}
+            itemLookup={itemLookup}
+            uomLookup={uomLookup}
+            supplierLookup={supplierLookup}
+          />
         </section>
       </div>
     </div>

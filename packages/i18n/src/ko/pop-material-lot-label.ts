@@ -2,7 +2,7 @@ export const popMaterialLotLabel = {
   title: '자재LOT 등록·라벨 발행',
   receipts: {
     paneLabel: '입하 목록',
-    caption: '라벨을 아직 발행하지 않은 입하 건',
+    caption: '입하 건',
     columns: {
       select: '선택',
       inboundReceiptNo: '입하번호',
@@ -22,9 +22,48 @@ export const popMaterialLotLabel = {
      */
     filterNotice:
       '라벨을 발행하지 않은 입하 건을 모두 보입니다. 부착 여부는 품목 줄에서 확인하세요.',
+    backToReceipts: '◀ 입하 건 목록',
     beyondLast: '이 쪽에는 결과가 없습니다. 이전 쪽으로 돌아가세요.',
     loadFailed: '입하 목록을 불러오지 못했습니다.',
     retry: '다시 불러오기',
+  },
+  lines: {
+    paneLabel: '품목',
+    caption: '고른 입하 건의 품목',
+    columns: {
+      select: '선택',
+      item: '품목',
+      quantity: '수량',
+      attachment: '부착',
+    },
+    select: '선택',
+    selected: '선택됨',
+    selectRow: (itemName: string) => `${itemName} 선택`,
+    deselectRow: (itemName: string) => `${itemName} 선택 해제`,
+    /** 공급사가 LOT 을 붙여 온 건과 우리가 발번할 건을 가른다. */
+    missing: '미부착',
+    attached: '부착됨',
+    empty: '이 입하 건에 품목이 없습니다.',
+    loadFailed: '품목을 불러오지 못했습니다.',
+    retry: '다시 불러오기',
+  },
+  target: {
+    paneLabel: '발번 대상',
+    title: '발번 대상',
+    empty: '왼쪽에서 품목을 고르세요.',
+    fields: {
+      item: '품목',
+      quantity: '수량',
+      supplier: '공급사',
+      status: '상태',
+    },
+    /** 자재LOT 은 Hold 로 생성된다(스펙 §4-B). 고를 수 있는 값이 아니라 정해진 값이다. */
+    statusHold: 'Hold',
+    /**
+     * 이미 공급사 LOT 이 붙어 온 건이다. 이 화면은 미부착 건에 MES 가 발번하는 자리라
+     * 대상이 아니다 — 왜 진행할 수 없는지 밝힌다.
+     */
+    alreadyAttached: '공급사 LOT 이 붙어 있는 품목입니다. 이 화면의 발번 대상이 아닙니다.',
   },
   pageNav: {
     label: '쪽 이동',
