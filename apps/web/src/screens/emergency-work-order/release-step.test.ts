@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, type StubFetch } from '../../test/api-harness';
 import {
+  ReleaseFailure,
   type ReleaseKeyHolder,
   releaseKeyFor,
   releaseWorkOrder,
@@ -25,7 +26,20 @@ interface Harness {
   keyHolder: ReleaseKeyHolder;
 }
 
-const harness = (options: { withoutEtag?: boolean; failRelease?: boolean } = {}): Harness => {
+/** 실패한 배포가 «어디서» 멈췄는지 꺼낸다. 이 값이 사용자에게 하는 말을 가른다. */
+const stepOf = async (run: Promise<void>): Promise<string> => {
+  try {
+    await run;
+  } catch (cause) {
+    return cause instanceof ReleaseFailure ? cause.step : 'other';
+  }
+
+  return 'none';
+};
+
+const harness = (
+  options: { withoutEtag?: boolean; failRelease?: boolean; failDetail?: boolean } = {},
+): Harness => {
   const calls: Call[] = [];
   const keyHolder: ReleaseKeyHolder = { current: null };
 
@@ -43,6 +57,8 @@ const harness = (options: { withoutEtag?: boolean; failRelease?: boolean } = {})
         ? jsonResponse({ message: '실패' }, { status: 500 })
         : jsonResponse(WORK_ORDER);
     }
+
+    if (options.failDetail === true) return jsonResponse({ message: '실패' }, { status: 500 });
 
     return options.withoutEtag === true
       ? jsonResponse(WORK_ORDER)
@@ -150,6 +166,25 @@ describe('releaseWorkOrder', () => {
     const test = harness({ failRelease: true });
 
     await expect(test.release()).rejects.toThrow();
+  });
+
+  /*
+   * ⭐ **어디서 멈췄는지가 사용자에게 하는 말을 가른다.** 보내지도 못한 것은 「배포되지
+   * 않았습니다」로 단언해도 되지만, 보냈는데 답을 못 받은 것을 그렇게 말하면 거짓일 수 있다 —
+   * 실제로 배포됐는데 사용자가 다시 눌러 이중 배포를 시도하게 된다.
+   */
+  describe('어디서 멈췄는지 알린다', () => {
+    it('⛔ 토큰을 못 얻으면 «보내지 못함» 이다 — 단언해도 되는 자리', async () => {
+      expect(await stepOf(harness({ withoutEtag: true }).release())).toBe('notSent');
+    });
+
+    it('⛔ 상세 조회가 실패해도 «보내지 못함» 이다', async () => {
+      expect(await stepOf(harness({ failDetail: true }).release())).toBe('notSent');
+    });
+
+    it('⛔ 배포를 보낸 뒤 실패하면 «불명» 이다 — 안 됐다고 단언하지 않는다', async () => {
+      expect(await stepOf(harness({ failRelease: true }).release())).toBe('unknown');
+    });
   });
 });
 

@@ -8,6 +8,16 @@ import { type IssueResult, useIssueEmergencyWorkOrder } from './mutations';
 
 const WORK_ORDER = { workOrderId: 7001, workOrderNo: 'SYN-WO-0007' };
 const ETAG = 'W/"3"';
+const CREATE_PATH = '/production/work-orders';
+const DETAIL_PATH = '/production/work-orders/7001';
+const RELEASE_PATH = '/production/work-orders/7001:release';
+
+/** 계약이 실제로 내려 주는 오류 모양. 손으로 지은 `{ message }` 로는 정규화 갈래가 달라진다. */
+const contractError = (status: number): Response =>
+  jsonResponse(
+    { errors: [{ scope: 'screen', code: 'SYN_CODE', message: '서버 문구' }] },
+    { status },
+  );
 
 const form = (overrides: Partial<IssueFormValue> = {}): IssueFormValue => ({
   itemId: '5001',
@@ -34,10 +44,15 @@ interface Call {
 }
 
 interface StubOptions {
-  /** 이 단계만 실패시킨다. */
-  fail?: 'create' | 'release';
+  fail?: 'create' | 'detail' | 'release';
   /** 첫 배포만 실패시키고 재시도는 통과시킨다. */
   failFirstRelease?: boolean;
+  /** 상세가 성공하되 토큰을 주지 않는다. */
+  withoutEtag?: boolean;
+  /** 발행이 2xx 인데 본문을 읽을 수 없다. */
+  createWithoutBody?: boolean;
+  /** 배포를 붙잡아 둔다 — 나가 있는 «동안»의 상태를 보려는 것이다. */
+  holdRelease?: Promise<void>;
 }
 
 interface Stub {
@@ -45,16 +60,17 @@ interface Stub {
   fetch: StubFetch;
 }
 
+/**
+ * ⛔ **모르는 경로는 던진다.** 받아 넘기면 경로가 틀려도 감지기가 통과한다 — 스텁이
+ * 관대하면 검사는 스텁을 검사하는 셈이 된다.
+ */
 const stub = (options: StubOptions = {}): Stub => {
   const calls: Call[] = [];
   let releaseCount = 0;
 
   const fetch: StubFetch = async (request) => {
     const path = new URL(request.url).pathname;
-    /*
-     * 본문이 없거나 깨진 요청도 **기록한다.** 파싱에 걸려 넘어지면 그런 요청이 나간 사실이
-     * 스텁에서 사라져, 「아무것도 안 보냈다」를 확인하는 감지기가 조용히 통과한다.
-     */
+    /* 본문이 없거나 깨진 요청도 기록한다 — 나간 사실이 스텁에서 사라지지 않게. */
     const body =
       request.method === 'POST'
         ? await request
@@ -70,19 +86,30 @@ const stub = (options: StubOptions = {}): Stub => {
       body,
     });
 
-    if (path.endsWith(':release')) {
+    if (path === RELEASE_PATH) {
       releaseCount += 1;
+      if (options.holdRelease !== undefined) await options.holdRelease;
       const fails =
         options.fail === 'release' || (options.failFirstRelease === true && releaseCount === 1);
-
-      return fails ? jsonResponse({ message: '실패' }, { status: 500 }) : jsonResponse(WORK_ORDER);
+      return fails ? contractError(500) : jsonResponse(WORK_ORDER);
     }
 
-    if (request.method === 'GET') return jsonResponse(WORK_ORDER, { headers: { ETag: ETAG } });
+    if (path === DETAIL_PATH) {
+      if (options.fail === 'detail') return contractError(500);
+      return options.withoutEtag === true
+        ? jsonResponse(WORK_ORDER)
+        : jsonResponse(WORK_ORDER, { headers: { ETag: ETAG } });
+    }
 
-    return options.fail === 'create'
-      ? jsonResponse({ message: '실패' }, { status: 500 })
-      : jsonResponse(WORK_ORDER, { status: 201 });
+    if (path === CREATE_PATH) {
+      if (options.fail === 'create') return contractError(400);
+      if (options.createWithoutBody === true) {
+        return new Response(null, { status: 201 });
+      }
+      return jsonResponse(WORK_ORDER, { status: 201 });
+    }
+
+    throw new Error(`스텁에 없는 요청입니다: ${request.method} ${path}`);
   };
 
   return { calls, fetch };
@@ -115,18 +142,20 @@ const retryAndSettle = async (result: { current: IssueResult }): Promise<void> =
 };
 
 const releaseCalls = (stubbed: Stub): Call[] =>
-  stubbed.calls.filter((call) => call.path.endsWith(':release'));
+  stubbed.calls.filter((call) => call.path === RELEASE_PATH);
+const createCalls = (stubbed: Stub): Call[] =>
+  stubbed.calls.filter((call) => call.path === CREATE_PATH);
 
 describe('useIssueEmergencyWorkOrder', () => {
   it('한 액션에 세 호출을 순서대로 낸다', async () => {
     const stubbed = stub();
     const result = await issueAndSettle(stubbed);
 
-    expect(result.current.released).toEqual(WORK_ORDER);
+    expect(result.current.releasedNo).toBe('SYN-WO-0007');
     expect(stubbed.calls.map((call) => `${call.method} ${call.path}`)).toEqual([
-      'POST /production/work-orders',
-      'GET /production/work-orders/7001',
-      'POST /production/work-orders/7001:release',
+      `POST ${CREATE_PATH}`,
+      `GET ${DETAIL_PATH}`,
+      `POST ${RELEASE_PATH}`,
     ]);
   });
 
@@ -139,18 +168,94 @@ describe('useIssueEmergencyWorkOrder', () => {
     /* LOT 크기는 지시수량 — 슬롯 하나. */
     expect(stubbed.calls[2]?.body).toEqual({ lotSize: 200 });
     /* 발행과 배포는 서로 다른 키를 쓴다 — 다른 쓰기다. */
-    expect(stubbed.calls[0]?.idempotencyKey).toEqual(expect.any(String));
-    expect(stubbed.calls[2]?.idempotencyKey).toEqual(expect.any(String));
     expect(stubbed.calls[0]?.idempotencyKey).not.toBe(stubbed.calls[2]?.idempotencyKey);
   });
 
-  describe('⛔ 만들어졌는데 배포되지 않은 창', () => {
-    it('배포가 실패하면 「성공」이라 하지 않고 만들어진 번호를 남긴다', async () => {
+  describe('⛔ 한 번에 하나만 나간다', () => {
+    it('같은 틱에 두 번 눌러도 발행은 한 번이다 — 긴급 지시가 둘이 되지 않게', async () => {
+      const stubbed = stub();
+      const { result } = renderIssue(stubbed);
+
+      act(() => {
+        result.current.issue(command());
+        result.current.issue(command());
+      });
+      await waitFor(() => {
+        expect(result.current.isIssuing).toBe(false);
+      });
+
+      expect(createCalls(stubbed)).toHaveLength(1);
+    });
+
+    it('배포가 나가 있는 «동안» 재시도를 눌러도 두 번 나가지 않는다', async () => {
+      let letGo = (): void => undefined;
+      const held = new Promise<void>((resolve) => {
+        letGo = resolve;
+      });
+      const stubbed = stub({ holdRelease: held });
+      const { result } = renderIssue(stubbed);
+
+      act(() => {
+        result.current.issue(command());
+      });
+      await waitFor(() => {
+        expect(releaseCalls(stubbed)).toHaveLength(1);
+      });
+
+      /* 첫 배포가 아직 전선에 있는 동안 누른다. */
+      act(() => {
+        result.current.retryRelease();
+      });
+      await act(async () => {
+        letGo();
+        await held;
+      });
+      await waitFor(() => {
+        expect(result.current.isIssuing).toBe(false);
+      });
+
+      expect(releaseCalls(stubbed)).toHaveLength(1);
+    });
+
+    it('배포가 끝나지 않은 W/O 가 있으면 새 발행을 내지 않는다', async () => {
+      const stubbed = stub({ fail: 'release' });
+      const result = await issueAndSettle(stubbed);
+
+      act(() => {
+        result.current.issue(command());
+      });
+      await waitFor(() => {
+        expect(result.current.isIssuing).toBe(false);
+      });
+
+      expect(createCalls(stubbed)).toHaveLength(1);
+    });
+  });
+
+  describe('⛔ 만들어졌는데 배포가 끝나지 않은 창', () => {
+    it('배포를 «보내지도 못하면» 그렇게 말한다 — 단언해도 되는 자리다', async () => {
+      const result = await issueAndSettle(stub({ fail: 'detail' }));
+
+      expect(result.current.pending).toMatchObject({
+        workOrderNo: 'SYN-WO-0007',
+        failedAt: 'notSent',
+      });
+      expect(result.current.releasedNo).toBeNull();
+    });
+
+    it('⛔ 토큰이 안 오면 배포를 내지 않는다 — 빈 토큰으로 물어 거부당하지 않게', async () => {
+      const stubbed = stub({ withoutEtag: true });
+      const result = await issueAndSettle(stubbed);
+
+      expect(result.current.pending?.failedAt).toBe('notSent');
+      expect(releaseCalls(stubbed)).toHaveLength(0);
+    });
+
+    it('⛔ 배포를 «보냈는데 답을 못 받으면» 안 됐다고 단언하지 않는다', async () => {
       const result = await issueAndSettle(stub({ fail: 'release' }));
 
-      expect(result.current.undelivered).toEqual(WORK_ORDER);
-      expect(result.current.released).toBeNull();
-      expect(result.current.error).not.toBeNull();
+      expect(result.current.pending?.failedAt).toBe('unknown');
+      expect(result.current.releasedNo).toBeNull();
     });
 
     it('⛔ 발행 자체가 실패하면 남길 W/O 가 없다 — 배포 재시도가 열리지 않는다', async () => {
@@ -158,8 +263,28 @@ describe('useIssueEmergencyWorkOrder', () => {
       const result = await issueAndSettle(stubbed);
 
       expect(result.current.error).not.toBeNull();
-      expect(result.current.undelivered).toBeNull();
+      expect(result.current.pending).toBeNull();
       expect(stubbed.calls).toHaveLength(1);
+    });
+
+    /*
+     * ⛔ 2xx 인데 번호를 못 읽었다면 **지시는 이미 만들어졌을 수 있다.** 「발행 실패」로 말하면
+     * 사용자가 한 번 더 눌러 긴급 지시가 둘이 된다. 번호를 모르니 재시도도 낼 수 없다.
+     */
+    it('⛔ 발행이 성공했는데 번호를 못 읽은 것을 「실패」로 말하지 않는다', async () => {
+      const stubbed = stub({ createWithoutBody: true });
+      const result = await issueAndSettle(stubbed);
+
+      expect(result.current.isCreateUncertain).toBe(true);
+      expect(result.current.releasedNo).toBeNull();
+      /* 배포로 넘어가지 않는다 — 대상 번호를 모른다. */
+      expect(stubbed.calls).toHaveLength(1);
+    });
+
+    it('발행이 «분명히» 거부되면 불명으로 흐리지 않는다', async () => {
+      const result = await issueAndSettle(stub({ fail: 'create' }));
+
+      expect(result.current.isCreateUncertain).toBe(false);
     });
   });
 
@@ -173,24 +298,34 @@ describe('useIssueEmergencyWorkOrder', () => {
 
       expect(releaseCalls(stubbed)).toHaveLength(2);
       expect(releaseCalls(stubbed).at(-1)?.idempotencyKey).toBe(firstKey);
-      expect(stubbed.calls.filter((call) => call.path === '/production/work-orders')).toHaveLength(
-        1,
-      );
+      expect(createCalls(stubbed)).toHaveLength(1);
     });
 
-    it('재시도가 성공하면 배포 안 됨을 지운다', async () => {
+    it('재시도가 성공하면 배포 안 끝남을 지운다', async () => {
       const result = await issueAndSettle(stub({ failFirstRelease: true }));
 
       await retryAndSettle(result);
 
-      expect(result.current.released).toEqual(WORK_ORDER);
-      expect(result.current.undelivered).toBeNull();
+      expect(result.current.releasedNo).toBe('SYN-WO-0007');
+      expect(result.current.pending).toBeNull();
+    });
+
+    it('⛔ 재시도가 그 W/O 의 본문을 보낸다 — 대상과 본문이 함께 다닌다', async () => {
+      const stubbed = stub({ fail: 'release' });
+      const result = await issueAndSettle(stubbed, { form: form({ orderQty: '350' }) });
+
+      /* 배포가 안 끝난 동안 다른 수량으로 눌러 봐도 새 발행이 나가지 않는다. */
+      act(() => {
+        result.current.issue(command({ form: form({ orderQty: '999' }) }));
+      });
+      await retryAndSettle(result);
+
+      expect(releaseCalls(stubbed).at(-1)?.body).toEqual({ lotSize: 350 });
     });
 
     /*
      * ⛔ 배포가 끝나면 그 키를 **버려야** 한다. 남겨 두면 다음 배포가 끝난 키로 나가고,
-     * 서버는 계약대로 **실행 없이 앞 응답을 되돌려 준다** — 화면은 그것을 성공으로 읽어,
-     * 일어나지 않은 배포를 일어났다고 단언한다.
+     * 서버는 계약대로 **실행 없이 앞 응답을 되돌려 준다** — 화면은 그것을 성공으로 읽는다.
      */
     it('⛔ 배포가 끝나면 그 키를 버린다 — 다음 배포가 앞 응답으로 대체되지 않게', async () => {
       const stubbed = stub();
@@ -204,6 +339,41 @@ describe('useIssueEmergencyWorkOrder', () => {
       });
 
       const keys = releaseCalls(stubbed).map((call) => call.idempotencyKey);
+      expect(keys[0]).not.toBe(keys[1]);
+    });
+
+    /*
+     * ⛔ 발행 키도 같다 — 다만 방향이 반대다. **끝나기 전에는 같은 키**여야 통신이 끊긴 뒤
+     * 다시 눌러도 지시가 둘이 되지 않는다.
+     */
+    it('⛔ 같은 본문으로 다시 발행하면 같은 키를 쓴다 — 끊긴 뒤 다시 눌러도 하나다', async () => {
+      const stubbed = stub({ fail: 'create' });
+      const result = await issueAndSettle(stubbed);
+
+      act(() => {
+        result.current.issue(command());
+      });
+      await waitFor(() => {
+        expect(createCalls(stubbed)).toHaveLength(2);
+      });
+
+      const keys = createCalls(stubbed).map((call) => call.idempotencyKey);
+      expect(keys[0]).toBe(keys[1]);
+      expect(result.current.pending).toBeNull();
+    });
+
+    it('본문이 달라지면 다른 발행이라 새 키를 쓴다', async () => {
+      const stubbed = stub({ fail: 'create' });
+      const result = await issueAndSettle(stubbed);
+
+      act(() => {
+        result.current.issue(command({ form: form({ orderQty: '350' }) }));
+      });
+      await waitFor(() => {
+        expect(createCalls(stubbed)).toHaveLength(2);
+      });
+
+      const keys = createCalls(stubbed).map((call) => call.idempotencyKey);
       expect(keys[0]).not.toBe(keys[1]);
     });
   });
@@ -233,7 +403,7 @@ describe('useIssueEmergencyWorkOrder', () => {
       result.current.issue(command());
     });
     await waitFor(() => {
-      expect(result.current.released).toEqual(WORK_ORDER);
+      expect(result.current.releasedNo).toBe('SYN-WO-0007');
     });
 
     expect(stubbed.calls).toHaveLength(3);
