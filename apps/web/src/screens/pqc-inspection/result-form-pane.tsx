@@ -280,19 +280,6 @@ export const ResultFormPane = ({
         </>
       )}
 
-      <dl className="filter-bar">
-        <div className="field-cell">
-          <dt className="field-label">{t.fields.inspectedQty}</dt>
-          <dd>{String(inspectedQty)}</dd>
-        </div>
-      </dl>
-
-      <div className="form-grid">
-        {field('accepted', t.fields.accepted, errors.accepted)}
-        {field('rejected', t.fields.rejected, errors.rejected)}
-        {field('held', t.fields.held, errors.held)}
-      </div>
-
       {/*
        * 적용 생산구간 — 이 검사가 «어느 시간대의 생산분»을 대표하는가(§5-5). 불합격일 때
        * 회수 범위가 이 구간으로 정해지므로, 자동으로 채우되 **사람이 고칠 수 있게** 둔다.
@@ -316,6 +303,19 @@ export const ResultFormPane = ({
         />
       </div>
       <p className="field-note">{tCoverage.note}</p>
+
+      <dl className="filter-bar">
+        <div className="field-cell">
+          <dt className="field-label">{t.fields.inspectedQty}</dt>
+          <dd>{String(inspectedQty)}</dd>
+        </div>
+      </dl>
+
+      <div className="form-grid">
+        {field('accepted', t.fields.accepted, errors.accepted)}
+        {field('rejected', t.fields.rejected, errors.rejected)}
+        {field('held', t.fields.held, errors.held)}
+      </div>
 
       <dl className="filter-bar">
         {/* 셀 수 없을 때 0으로 읽은 합을 보이면 그 숫자 자체가 거짓이다. 없음 표시를 낸다. */}
