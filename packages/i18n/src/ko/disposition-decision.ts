@@ -117,6 +117,13 @@ export const dispositionDecision = {
     dispositionRequired: '처분을 선택하세요',
     savingReason: '판정을 저장하는 중입니다',
     uncertainReason: '앞서 보낸 판정의 처리 결과를 먼저 확인해야 합니다',
+    /**
+     * ⭐ 적용 여부를 모르는 판정이 **지금 보고 있는 부적합이 아닌** 다른 부적합을 겨눌 때.
+     * 어느 부적합인지 이름을 대야 확인하러 갈 수 있다 — 「먼저 확인하세요」만으로는 어디를
+     * 확인해야 하는지 알 수 없고, 그러면 확인 없이 지워 버리게 된다.
+     */
+    uncertainOtherTarget: (nonconformanceNo: string): string =>
+      `부적합 ${nonconformanceNo}에 보낸 판정의 처리 결과를 먼저 확인해야 합니다`,
     forbiddenReason: '판정 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요',
     /** ⛔ 잠그되 왜 잠겼는지를 말한다 — 버튼만 죽이면 무엇이 잘못됐는지 알 수 없다. */
     unitUnknownReason:

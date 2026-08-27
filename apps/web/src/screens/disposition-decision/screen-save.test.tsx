@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
-import { dispositionStub, lotFixture, requestsSent } from './fixtures';
+import { dispositionStub, lotFixture, requestedPaths, requestsSent } from './fixtures';
 import { DispositionDecisionScreen } from './screen';
 
 const t = messages.dispositionDecision;
@@ -53,7 +53,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     const request = posted();
     expect(request?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
     /* ⭐ 토큰은 저장 경로가 아니라 부적합 «상세»가 내린 것이다. */
-    expect(request?.headers.get('If-Match')).toBe('W/"7"');
+    expect(request?.headers.get('If-Match')).toBe('W/"41"');
     await expect(request?.json()).resolves.toEqual({
       dispositionTypeCode: CODE,
       decisionQty: 120,
@@ -176,6 +176,117 @@ describe('DispositionDecisionScreen 판정 저장', () => {
       expect(screen.getByRole('button', { name: t.actions.save })).toBeEnabled();
     });
     expect(screen.queryByRole('button', { name: t.form.checkOutcome })).toBeNull();
+  });
+
+  it('⭐ 참조 이름 조회는 판정 저장으로 다시 나가지 않는다 — 판정으로 바뀌지 않는 값이다', async () => {
+    const lookupCount = (): number =>
+      requestedPaths().filter((path) => path.startsWith('/mdm/')).length;
+
+    const { user } = renderScreen();
+    await fillDecision(user, '120');
+    const before = lookupCount();
+    await save(user);
+
+    await waitFor(() => {
+      expect(posted()).toBeDefined();
+    });
+    await screen.findByText(t.form.success);
+
+    expect(lookupCount()).toBe(before);
+  });
+
+  it('⭐ 확인은 겨눈 부적합의 판정 이력을 다시 읽는다 — 적용됐는지 «보게» 한다', async () => {
+    const historyCount = (): number =>
+      requestedPaths().filter((path) => path.includes('/41/disposition-decisions')).length;
+
+    const { user } = renderScreen({ saveThrows: true });
+    await fillDecision(user, '120');
+    await save(user);
+
+    const before = historyCount();
+    await user.click(await screen.findByRole('button', { name: t.form.checkOutcome }));
+
+    await waitFor(() => {
+      expect(historyCount()).toBeGreaterThan(before);
+    });
+  });
+
+  it('⭐ 결과를 모르는 판정은 «겨눈 부적합의 번호»를 대며 다른 부적합에서도 잠근다', async () => {
+    const { user } = renderScreen({ saveThrows: true, secondNonconformance: true });
+    await fillDecision(user, '120');
+    await save(user);
+    await screen.findByRole('button', { name: t.form.checkOutcome });
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
+
+    expect(
+      await screen.findByText(t.form.uncertainOtherTarget('NC-TEST-0041')),
+    ).toBeInTheDocument();
+  });
+
+  it('⭐ 다른 부적합에서 확인을 누르면 겨눈 부적합으로 데려간다 — 거짓 확인이 되지 않게 한다', async () => {
+    const { user } = renderScreen({ saveThrows: true, secondNonconformance: true });
+    await fillDecision(user, '120');
+    await save(user);
+    await screen.findByRole('button', { name: t.form.checkOutcome });
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
+    await screen.findByText(t.form.uncertainOtherTarget('NC-TEST-0041'));
+
+    const before = requestedPaths().filter((path) => path.includes('/41/')).length;
+    await user.click(screen.getByRole('button', { name: t.form.checkOutcome }));
+
+    await waitFor(() => {
+      expect(requestedPaths().filter((path) => path.includes('/41/')).length).toBeGreaterThan(
+        before,
+      );
+    });
+  });
+
+  it('⭐ 다른 부적합에는 «다른» 멱등 키가 나간다 — 판정이 조용히 유실되지 않게 한다', async () => {
+    const { user } = renderScreen({
+      secondNonconformance: true,
+      saveResponse: () => jsonResponse({ code: 'INVALID_STATE', message: '거절' }, { status: 409 }),
+    });
+    await fillDecision(user, '120');
+    await save(user);
+    await screen.findByText('거절');
+
+    await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
+    await screen.findByText('LOT-TEST-0088');
+    await user.click(screen.getByRole('radio', { name: CODE }));
+    await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), '120');
+    await user.type(screen.getByLabelText(t.form.reasonLabel), '표면만 손상됐다');
+    await save(user);
+
+    await waitFor(() => {
+      expect(allPosted()).toHaveLength(2);
+    });
+
+    const keys = allPosted().map((request) => request.headers.get('Idempotency-Key'));
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
+  it('취소는 서버가 되돌린 오류도 지운다 — 지운 값에 대한 판정을 남기지 않는다', async () => {
+    const { user } = renderScreen({
+      saveResponse: () =>
+        jsonResponse(
+          {
+            errors: [
+              { scope: 'field', field: 'reason', code: 'TOO_SHORT', message: '사유가 짧습니다' },
+            ],
+          },
+          { status: 400 },
+        ),
+    });
+    await fillDecision(user, '120');
+    await save(user);
+    await screen.findByText('사유가 짧습니다');
+
+    await user.click(screen.getByRole('button', { name: t.actions.cancel }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('사유가 짧습니다')).toBeNull();
+    });
   });
 
   it('권한이 없으면 판정 컨트롤을 잠그고 사유를 보인다(403)', async () => {

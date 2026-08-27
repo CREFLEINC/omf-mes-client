@@ -1,5 +1,6 @@
 import { AlertBanner, Breadcrumb, PageHeader, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
@@ -57,6 +58,21 @@ import {
 } from './types';
 
 const EMPTY_NONCONFORMANCES: Nonconformance[] = [];
+
+/**
+ * 저장에 실어 보내는 값. **대상 식별자를 함께 싣는다** — 멱등 키의 지문이 여기서 나오므로,
+ * 경로에만 두면 다른 부적합에 같은 본문을 보낼 때 같은 키가 나간다.
+ */
+interface DecisionWriteVariables {
+  nonconformanceId: number;
+  body: DecisionCreateBody;
+}
+
+/** 결과를 아직 모르는 판정이 겨눈 부적합. 번호까지 기억해야 사용자에게 어디를 확인할지 말할 수 있다. */
+interface PendingWriteTarget {
+  nonconformanceId: number;
+  nonconformanceNo: string;
+}
 
 export interface DispositionDecisionScreenProps {
   dispositionTypeCodes?: readonly string[];
@@ -121,24 +137,32 @@ export const DispositionDecisionScreen = ({
 
   const [form, setForm] = useState<DecisionFormValue>(EMPTY_DECISION_FORM);
   const [showErrors, setShowErrors] = useState(false);
+  /** 선택을 옮겨도 쓰기가 따라다니지 않도록, 겨눈 부적합을 기억한다. */
+  const [pendingTarget, setPendingTarget] = useState<PendingWriteTarget | null>(null);
   const { client } = useApiClient();
+  const queryClient = useQueryClient();
   const toast = useToast();
 
-  const write = useMasterWrite<DecisionCreateBody, unknown>({
-    request: (variables, headers) => {
-      if (selectedId === null) throw new Error('부적합을 고르기 전에는 저장하지 않습니다.');
-
-      return client.POST('/quality/nonconformances/{nonconformanceId}/disposition-decisions', {
+  /**
+   * ⭐ **대상 식별자를 «본문 밖»이 아니라 쓰기 변수에 싣는다.**
+   *
+   * 멱등 키의 지문은 쓰기 변수에서 나오는데 `nonconformanceId`는 경로에 있다. 변수에 얹지
+   * 않으면 **다른 부적합에 같은 본문을 보낼 때 같은 키가 나가고**, 서버가 전역 유일 제약으로
+   * 중복을 걸러내면 두 번째 판정은 기록되지 않는데 화면은 성공으로 읽는다 — 되돌릴 수 없는
+   * 원장 위의 조용한 유실이다(공유계약 C-1).
+   */
+  const write = useMasterWrite<DecisionWriteVariables, unknown>({
+    request: (variables, headers) =>
+      client.POST('/quality/nonconformances/{nonconformanceId}/disposition-decisions', {
         params: {
-          path: { nonconformanceId: selectedId },
+          path: { nonconformanceId: variables.nonconformanceId },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
             'If-Match': headers['If-Match'],
           },
         },
-        body: variables,
-      });
-    },
+        body: variables.body,
+      }),
     /* ⭐ 토큰은 부적합 «상세»가 내린다 — 저장 경로가 아니다(공유계약 B-1). */
     etagPath: selectedId === null ? null : nonconformanceDetailPath(selectedId),
     /* ⚠ 참조 이름 조회는 뿌리 키가 갈려 있어 여기 걸리지 않는다 — 판정으로 바뀌지 않는 값이다. */
@@ -150,6 +174,7 @@ export const DispositionDecisionScreen = ({
       toast.show({ variant: 'success', description: t.form.success });
       setForm(EMPTY_DECISION_FORM);
       setShowErrors(false);
+      setPendingTarget(null);
     },
   });
 
@@ -160,6 +185,7 @@ export const DispositionDecisionScreen = ({
 
   /* 서버가 되돌린 필드 오류가 화면 검증을 덮는다 — 계약이 정본이다. */
   const errors = { ...validateDecisionForm(form), ...write.fieldErrors };
+  const isOtherTarget = pendingTarget !== null && pendingTarget.nonconformanceId !== selectedId;
   const lock = toDecisionLock({
     selectedId,
     isSaving: write.isSaving,
@@ -167,6 +193,9 @@ export const DispositionDecisionScreen = ({
     detailError,
     uomId,
     dispositionTypeCodes,
+    ...(isOtherTarget && pendingTarget !== null
+      ? { otherPendingWriteNo: pendingTarget.nonconformanceNo }
+      : {}),
   });
 
   const apply = (next: PendingFilters, nextPage = 1): void => {
@@ -179,13 +208,17 @@ export const DispositionDecisionScreen = ({
      * 잠긴 동안에는 저장 버튼이 눌리지 않으므로 여기서 잠금을 다시 보지 않는다 —
      * 닿지 않는 분기는 감지기가 물 수 없다. 단위 좁히기만 남는다(타입이 요구한다).
      */
-    if (uomId === undefined) return;
+    if (uomId === undefined || selectedId === null) return;
 
     /* 검증을 통과하지 못하면 본문이 만들어지지 않는다 — 그 자체가 마지막 문이다. */
     const body = toDecisionCreateBody(form, uomId);
     if (body === undefined) return;
 
-    write.write(body);
+    setPendingTarget({
+      nonconformanceId: selectedId,
+      nonconformanceNo: detail.data?.nonconformanceNo ?? String(selectedId),
+    });
+    write.write({ nonconformanceId: selectedId, body });
   };
 
   /**
@@ -193,9 +226,22 @@ export const DispositionDecisionScreen = ({
    * 서버 상태를 다시 읽고 오류 표시를 지운다 — **멱등 키는 버리지 않는다**(훅이 그렇게 둔다).
    */
   const checkOutcome = (): void => {
-    void detail.refetch();
-    void decisions.refetch();
+    const target = pendingTarget?.nonconformanceId ?? selectedId;
+    if (target === null) return;
+
+    /*
+     * ⭐ **쓰기가 겨눈 부적합을 다시 읽는다 — 지금 «보고 있는» 것이 아니다.**
+     * 선택을 옮긴 뒤 확인하면 화면은 겨냥된 레코드를 한 번도 읽지 않은 채 잠금만 지우게 되고,
+     * 미해결 쓰기가 있었다는 사실이 화면에서 사라진다. 다른 것을 겨눴으면 그리로 데려간다.
+     */
+    void queryClient.invalidateQueries({ queryKey: dispositionKeys.detail(target) });
+    void queryClient.invalidateQueries({ queryKey: dispositionKeys.decisions(target) });
+    if (target !== selectedId) {
+      setSearchParams((current) => withSelectedNonconformance(current, target));
+    }
+
     write.reset();
+    setPendingTarget(null);
   };
 
   const codeNotice = scopeWarning(severityCodes, statusCodes);
@@ -289,6 +335,8 @@ export const DispositionDecisionScreen = ({
             onCancel={() => {
               setForm(EMPTY_DECISION_FORM);
               setShowErrors(false);
+              /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
+              write.reset();
             }}
             onReload={checkOutcome}
           />
