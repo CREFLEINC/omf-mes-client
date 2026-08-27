@@ -1,4 +1,4 @@
-import { Button } from '@crefle/web-ui';
+import { AlertBanner, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -19,7 +19,8 @@ const t = messages.popMaterialLotLabel;
  * LOT 채번 주체와 `can_print_label`을 읽을 경로가 계약에 없다(검토 요청 omf-mes#245 ①②).
  *
  * 세로로 쌓지 않고 좌우로 편다 — 1024×768에서 세로 여유가 119px뿐이라 구획을 쌓으면
- * 아래가 잘린다.
+ * 아래가 잘린다. 제목은 DS `PageHeader`가 그린다(`size="compact"`) — 맨 `<h1>`을 두면
+ * 브라우저 기본 크기가 나와 **이 화면만 다른 화면과 제목 크기가 어긋난다**(실기에서 드러났다).
  */
 export const PopMaterialLotLabelScreen = () => {
   const [page, setPage] = useState(1);
@@ -35,33 +36,46 @@ export const PopMaterialLotLabelScreen = () => {
   return (
     <div className="pop-screen">
       <header className="pop-screen-head">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} size="compact" />
       </header>
 
       <div className="pop-panes">
         <section className="pane pop-pane" aria-label={t.receipts.paneLabel}>
           {receipts.isError ? (
-            <div className="banner-slot">
-              <p className="field-error">{t.receipts.loadFailed}</p>
-              <Button
-                className={popTouchClass('normal')}
-                variant="outlined"
-                size="xl"
-                onClick={() => {
-                  void receipts.refetch();
-                }}
-              >
-                {t.receipts.retry}
-              </Button>
-            </div>
+            <AlertBanner
+              variant="error"
+              title={t.receipts.loadFailed}
+              action={
+                <Button
+                  className={popTouchClass('normal')}
+                  variant="outlined"
+                  size="xl"
+                  onClick={() => {
+                    void receipts.refetch();
+                  }}
+                >
+                  {t.receipts.retry}
+                </Button>
+              }
+            />
           ) : (
             <>
-              <p className="field-note">{t.receipts.filterNotice}</p>
+              {/*
+               * ⛔ `.field-note`를 쓰지 않는다 — 그 클래스는 규범 4가 **비활성 사유**용으로
+               * 정의한 것이라 `max-width: 20rem`에 갇힌다. 이 문구는 구획 전체에 걸리는
+               * 안내라 가로 여유가 남는데도 두 줄로 접혔다(실기에서 드러났다).
+               */}
+              <AlertBanner variant="info">{t.receipts.filterNotice}</AlertBanner>
               <ReceiptTable
                 rows={result?.items ?? []}
                 supplierLookup={supplierLookup}
                 selectedId={selectedReceiptId}
-                onSelect={setSelectedReceiptId}
+                onToggleSelect={(inboundReceiptId) => {
+                  // 같은 건을 다시 누르면 해제한다 — 고른 것을 무를 수단이 없으면 갇힌다.
+                  setSelectedReceiptId((current) =>
+                    current === inboundReceiptId ? null : inboundReceiptId,
+                  );
+                }}
                 empty={pageView?.isBeyondLast === true ? t.receipts.beyondLast : t.receipts.empty}
               />
               {pageView === null ? null : <PageNav view={pageView} onChange={setPage} />}
