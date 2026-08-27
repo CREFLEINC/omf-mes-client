@@ -49,6 +49,7 @@ import { putawayRule } from './putaway-rule';
 import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { iqcInspection } from './iqc-inspection';
+import { pqcInspection } from './pqc-inspection';
 import { equipmentMaster } from './equipment-master';
 import { qualityApproval } from './quality-approval';
 import { productionOrder } from './production-order';
@@ -100,6 +101,7 @@ export const ko = {
   documentProgress,
   notificationCenter,
   iqcInspection,
+  pqcInspection,
   equipmentMaster,
   qualityApproval,
   productionOrder,
