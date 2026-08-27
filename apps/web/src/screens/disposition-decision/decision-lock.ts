@@ -14,6 +14,14 @@ export interface DecisionLockInput {
   /** 대상 LOT의 단위. 갈리거나 없으면 `undefined`. */
   uomId: number | undefined;
   dispositionTypeCodes: readonly string[];
+  /**
+   * 적용 여부를 모르는 판정이 **지금 고른 부적합이 아닌** 다른 부적합을 겨누고 있으면 그 번호.
+   *
+   * ⭐ 이것이 없으면 탈출구가 **거짓 확인**이 된다 — 다른 부적합으로 옮긴 뒤 「확인」을 누르면
+   * 화면은 겨냥된 레코드를 한 번도 읽지 않은 채 잠금을 지우고, 미해결 쓰기가 있었다는 사실이
+   * 화면에서 사라진다.
+   */
+  otherPendingWriteNo?: string;
 }
 
 export interface DecisionLock {
@@ -57,7 +65,15 @@ export const toDecisionLock = (input: DecisionLockInput): DecisionLock => {
 
   if (input.selectedId === null) return { reason: t.selectFirstReason, isUncertain: false };
   if (input.isSaving) return { reason: t.savingReason, isUncertain: false };
-  if (isUnknownOutcome(input.writeError)) return { reason: t.uncertainReason, isUncertain: true };
+  if (isUnknownOutcome(input.writeError)) {
+    return {
+      reason:
+        input.otherPendingWriteNo === undefined
+          ? t.uncertainReason
+          : t.uncertainOtherTarget(input.otherPendingWriteNo),
+      isUncertain: true,
+    };
+  }
 
   /* ⚠ 저장 403도 본다 — 읽기는 되고 쓰기만 막히는 게이팅이 계약에 있다(단말·권한). */
   if (isForbidden(input.writeError) || isForbidden(input.detailError)) {

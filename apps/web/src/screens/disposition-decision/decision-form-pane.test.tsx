@@ -23,6 +23,8 @@ const baseProps = (): DecisionFormPaneProps => ({
   errors: {},
   qtyNotice: undefined,
   lockReason: undefined,
+  isUncertain: false,
+  onCheckOutcome: vi.fn(),
   dispositionOptions: [{ value: CODE, label: CODE }],
   uomId: 7001,
   uoms: lookup(),
@@ -124,6 +126,23 @@ describe('DecisionFormPane', () => {
       ...EMPTY_DECISION_FORM,
       dispositionTypeCode: CODE,
     });
+  });
+
+  it('⭐ 적용 여부를 모르는 저장에는 빠져나갈 길을 함께 낸다', async () => {
+    const { props, user } = renderPane({
+      lockReason: t.form.uncertainReason,
+      isUncertain: true,
+    });
+
+    await user.click(screen.getByRole('button', { name: t.form.checkOutcome }));
+
+    expect(props.onCheckOutcome).toHaveBeenCalledOnce();
+  });
+
+  it('그 밖의 잠금에는 확인 액션을 내지 않는다 — 확인할 것이 없다', () => {
+    renderPane({ lockReason: t.form.forbiddenReason, isUncertain: false });
+
+    expect(screen.queryByRole('button', { name: t.form.checkOutcome })).toBeNull();
   });
 
   it('오류 문구를 입력칸에 붙인다', () => {

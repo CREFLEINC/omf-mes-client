@@ -51,6 +51,16 @@ describe('toDecisionLock — 잠그는 경우', () => {
     });
   });
 
+  it('⭐ 겨냥한 부적합이 지금 고른 것과 다르면 그 번호를 대며 잠근다', () => {
+    const lock = toDecisionLock(
+      input({ writeError: NETWORK, otherPendingWriteNo: 'NC-TEST-0041' }),
+    );
+
+    expect(lock.reason).toBe(t.form.uncertainOtherTarget('NC-TEST-0041'));
+    expect(lock.reason).not.toBe(t.form.uncertainReason);
+    expect(lock.isUncertain).toBe(true);
+  });
+
   it('⭐ 5xx도 같은 묶음이다 — 한쪽만 잠그면 최악의 조합이 된다', () => {
     expect(toDecisionLock(input({ writeError: http(500) }))).toEqual({
       reason: t.form.uncertainReason,

@@ -11,6 +11,16 @@ export interface DispositionStubOptions {
   decidedQty?: number;
   /** 목록 조회를 실패시킨다. */
   listStatus?: number;
+  /** 상세 조회를 실패시킨다. */
+  detailStatus?: number;
+  /** 저장 응답을 갈아 끼운다. */
+  saveResponse?: () => Response;
+  /** 저장이 «응답 없이» 실패한다 — 적용 여부를 모르는 상태를 만든다. */
+  saveThrows?: boolean;
+  /** 목록에 부적합을 둘 둔다 — 선택을 옮기는 감지기가 쓴다. */
+  secondNonconformance?: boolean;
+  /** 대상 LOT을 갈아 끼운다(단위 혼재 등). */
+  lots?: unknown[];
 }
 
 let sent: Request[] = [];
@@ -34,9 +44,12 @@ export const lotFixture = (overrides: Record<string, unknown> = {}): Record<stri
   ...overrides,
 });
 
-const nonconformanceFixture = (lots: unknown[]): Record<string, unknown> => ({
-  nonconformanceId: 41,
-  nonconformanceNo: 'NC-TEST-0041',
+const nonconformanceFixture = (
+  lots: unknown[],
+  nonconformanceId = 41,
+): Record<string, unknown> => ({
+  nonconformanceId,
+  nonconformanceNo: `NC-TEST-00${String(nonconformanceId)}`,
   itemId: 5001,
   severityCode: 'CODE-B',
   description: '도장 표면 박리',
@@ -70,7 +83,7 @@ const pathOf = (request: Request): string => new URL(request.url).pathname;
 
 export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch => {
   sent = [];
-  const lots = [lotFixture()];
+  const lots = options.lots ?? [lotFixture()];
   const decisions = options.decidedQty === undefined ? [] : [decisionFixture(options.decidedQty)];
 
   const inner = createStubFetch([
@@ -78,18 +91,38 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
       match: (request) => pathOf(request) === '/quality/nonconformances',
       respond: () =>
         options.listStatus === undefined
-          ? jsonResponse(listBody([nonconformanceFixture(lots)]))
+          ? jsonResponse(
+              listBody(
+                options.secondNonconformance === true
+                  ? [nonconformanceFixture(lots), nonconformanceFixture(lots, 42)]
+                  : [nonconformanceFixture(lots)],
+              ),
+            )
           : jsonResponse({ message: '' }, { status: options.listStatus }),
     },
     {
       match: (request) =>
-        pathOf(request) === '/quality/nonconformances/41/disposition-decisions' &&
+        /^\/quality\/nonconformances\/\d+\/disposition-decisions$/.test(pathOf(request)) &&
         request.method === 'GET',
       respond: () => jsonResponse(listBody(decisions)),
     },
     {
-      match: (request) => pathOf(request) === '/quality/nonconformances/41',
-      respond: () => jsonResponse(nonconformanceFixture(lots), { headers: { ETag: 'W/"7"' } }),
+      match: (request) =>
+        /^\/quality\/nonconformances\/\d+\/disposition-decisions$/.test(pathOf(request)) &&
+        request.method === 'POST',
+      respond: () => {
+        if (options.saveThrows === true) throw new Error('연결이 끊겼습니다');
+        return options.saveResponse?.() ?? jsonResponse({}, { status: 201 });
+      },
+    },
+    {
+      match: (request) => /^\/quality\/nonconformances\/\d+$/.test(pathOf(request)),
+      respond: (request) =>
+        options.detailStatus === undefined
+          ? jsonResponse(nonconformanceFixture(lots, Number(pathOf(request).split('/').pop())), {
+              headers: { ETag: `W/"${pathOf(request).split('/').pop() ?? '7'}"` },
+            })
+          : jsonResponse({ message: '권한이 없습니다' }, { status: options.detailStatus }),
     },
     {
       match: (request) => pathOf(request) === '/mdm/items',
