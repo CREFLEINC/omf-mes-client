@@ -26,6 +26,8 @@ export const materialLocation = {
     /** 한 LOT이 여러 자리에 나뉘어 있을 때 첫 줄만 보면 나머지를 못 찾는다. */
     countSuffix: (count: number): string => `위치 ${String(count)}곳`,
     depleted: '(소진)',
+    emptyTitle: '재고가 있는 위치가 없습니다',
+    emptyDescription: '등록된 LOT이지만 지금 재고가 잡힌 자리가 없습니다.',
   },
   quantity: {
     onHand: '보유',
@@ -60,5 +62,6 @@ export const materialLocation = {
   offline: {
     title: '오프라인이라 조회할 수 없습니다',
     description: '저장해 둔 자료를 두지 않습니다. 연결되면 다시 시도해 주세요.',
+    retry: '다시 시도',
   },
 } as const;

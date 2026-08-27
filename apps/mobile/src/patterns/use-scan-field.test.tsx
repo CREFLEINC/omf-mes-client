@@ -42,14 +42,33 @@ describe('스캔 필드 결선', () => {
     expect(field).toHaveValue('');
   });
 
-  it('포커스가 벗어나면 되돌린다', async () => {
-    const user = userEvent.setup();
+  it('포커스가 아무 데도 가지 않고 빠지면 되돌린다', async () => {
     render(<Probe onScan={vi.fn()} />);
 
-    await user.click(screen.getByRole('button', { name: '다른 곳' }));
+    screen.getByLabelText('스캔').blur();
+
     await vi.waitFor(() => {
       expect(screen.getByLabelText('스캔')).toHaveFocus();
     });
+  });
+
+  it('다른 컨트롤로 옮겨 간 포커스는 뺏지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<Probe onScan={vi.fn()} />);
+
+    const elsewhere = screen.getByRole('button', { name: '다른 곳' });
+    await user.click(elsewhere);
+
+    expect(elsewhere).toHaveFocus();
+  });
+
+  it('Tab 으로 다음 컨트롤에 닿는다', async () => {
+    const user = userEvent.setup();
+    render(<Probe onScan={vi.fn()} />);
+
+    await user.tab();
+
+    expect(screen.getByRole('button', { name: '다른 곳' })).toHaveFocus();
   });
 
   it('연결한 어댑터를 쓴다', () => {

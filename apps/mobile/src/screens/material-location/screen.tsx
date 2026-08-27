@@ -55,12 +55,30 @@ const Quantity = ({
   </>
 );
 
+/*
+ * 잔액은 위치 하나에 여러 줄이 올 수 있다 — 계약이 소유 구분을 어떤 축에서도 합치지
+ * 않고 품질·재고 상태도 유일축에 남는다. 위치까지만으로 키를 만들면 줄이 겹친다.
+ * groupBy 로 묶인 줄에는 식별자가 없어 축을 이어 붙인다.
+ */
+const balanceKey = (balance: InventoryBalance): string =>
+  [
+    balance.warehouseId,
+    balance.locationId,
+    balance.lotId,
+    balance.qualityStatusCode,
+    balance.inventoryStatusCode,
+    balance.ownershipTypeCode,
+    balance.ownerPartnerId,
+  ]
+    .map((axis) => String(axis))
+    .join('/');
+
 const LocationCard = ({ balance, names }: { balance: InventoryBalance; names: ReferenceNames }) => {
   const uom = referenceLabel(names.uom(balance.uomId));
   const depleted = balance.onHandQty === 0 ? t.location.depleted : undefined;
 
   return (
-    <Card bordered>
+    <Card bordered aria-label={t.location.title}>
       <Card.Header>
         <p>{referenceLabel(names.warehouse(balance.warehouseId))}</p>
         <p>{referenceLabel(names.location(balance.locationId))}</p>
@@ -121,7 +139,7 @@ export const MaterialLocationScreen = () => {
   const lotId = lot.data?.lotId ?? null;
   const balances = useLotBalances(lotId);
   const holds = useLotHolds(lotId);
-  const names = useReferenceNames(balances.data ?? []);
+  const names = useReferenceNames(balances.data ?? [], lot.data?.itemId);
 
   const errors = [lot.error, balances.error, holds.error].filter((error) => error !== null);
   const failed = errors.length > 0;
@@ -146,6 +164,7 @@ export const MaterialLocationScreen = () => {
 
   return (
     <div className="material-location">
+      <h1>{t.title}</h1>
       <TextField
         ref={scanField.ref}
         label={t.scan.label}
@@ -163,7 +182,16 @@ export const MaterialLocationScreen = () => {
       </Button>
 
       {unreachable ? (
-        <EmptyState live title={t.offline.title} description={t.offline.description} />
+        <EmptyState
+          live
+          title={t.offline.title}
+          description={t.offline.description}
+          action={
+            <Button variant="outlined" onClick={retry}>
+              {t.offline.retry}
+            </Button>
+          }
+        />
       ) : null}
 
       {failed && !unreachable ? (
@@ -187,18 +215,22 @@ export const MaterialLocationScreen = () => {
       {lot.data !== null && lot.data !== undefined ? (
         <>
           <p className="material-location__lot-no">{formatMaterialLotNo(lot.data.lotNo)}</p>
+          <p>{referenceLabel(names.item(lot.data.itemId))}</p>
           {holds.data !== undefined && holds.data.length > 0 ? (
             <HoldBanner holds={holds.data} names={names} />
           ) : null}
           {balances.data !== undefined && balances.data.length > 1 ? (
             <p>{t.location.countSuffix(balances.data.length)}</p>
           ) : null}
-          {byOnHandDesc(balances.data ?? []).map((balance) => (
-            <LocationCard
-              key={`${String(balance.warehouseId)}-${String(balance.locationId)}`}
-              balance={balance}
-              names={names}
+          {balances.data !== undefined && balances.data.length === 0 ? (
+            <EmptyState
+              live
+              title={t.location.emptyTitle}
+              description={t.location.emptyDescription}
             />
+          ) : null}
+          {byOnHandDesc(balances.data ?? []).map((balance) => (
+            <LocationCard key={balanceKey(balance)} balance={balance} names={names} />
           ))}
           <Button variant="filled" size="xl" onClick={restart}>
             {t.nextScan}

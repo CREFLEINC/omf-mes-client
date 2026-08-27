@@ -51,7 +51,7 @@ describe('스캔값으로 LOT 찾기', () => {
     const { result } = renderHookWithProviders(() => useScannedLot(SCANNED), { fetch });
 
     await waitFor(() => {
-      expect(result.current.data).toEqual({ lotId: 4, lotNo: SCANNED });
+      expect(result.current.data).toEqual({ lotId: 4, lotNo: SCANNED, itemId: 1 });
     });
   });
 

@@ -10,7 +10,7 @@ export type InventoryBalance = components['schemas']['InventoryBalance'];
 export type LotHold = components['schemas']['LotHold'];
 
 /** 스캔값이 가리키는 LOT. 찾지 못하면 null이며, 조회 실패와는 다른 결과다. */
-export type ScannedLot = { lotId: number; lotNo: string } | null;
+export type ScannedLot = { lotId: number; lotNo: string; itemId: number } | null;
 
 export const materialLocationKeys = {
   lot: (code: string | null) => ['material-location-lot', code] as const,
@@ -26,7 +26,9 @@ const findLot = async (client: Client, code: string): Promise<ScannedLot> => {
   // q는 LOT 번호와 외부 식별자를 함께 훑으므로 다른 줄이 섞여 온다.
   const found = data.items.find((lot) => lot.lotNo === code);
 
-  return found === undefined ? null : { lotId: found.lotId, lotNo: found.lotNo };
+  return found === undefined
+    ? null
+    : { lotId: found.lotId, lotNo: found.lotNo, itemId: found.itemId };
 };
 
 /**

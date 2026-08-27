@@ -93,7 +93,7 @@ const useByIdNames = (
   return toResolver(ids, results);
 };
 
-const useUomNames = (): ReferenceResolver => {
+const useUomNames = (enabled: boolean): ReferenceResolver => {
   const { client } = useApiClient();
   // 단위는 단건 조회가 없어 목록으로 받는다. 미사용 단위를 참조하는 과거 재고가 오면
   // 기본 조회로는 이름이 비어 보인다.
@@ -101,6 +101,7 @@ const useUomNames = (): ReferenceResolver => {
     queries: [
       {
         queryKey: lookupKeys.uoms(),
+        enabled,
         queryFn: async () => {
           const data = await runRequest(() =>
             client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } }),
@@ -142,15 +143,21 @@ const useUomNames = (): ReferenceResolver => {
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
-export const useReferenceNames = (balances: InventoryBalance[]): ReferenceNames => {
+export const useReferenceNames = (
+  balances: InventoryBalance[],
+  itemId?: number | null,
+): ReferenceNames => {
   const warehouseIds = distinct(balances.map((balance) => balance.warehouseId));
   const locationIds = distinct(balances.map((balance) => balance.locationId));
-  const itemIds = distinct(balances.map((balance) => balance.itemId));
+  const itemIds = distinct([...balances.map((balance) => balance.itemId), itemId]);
+  // 단위 목록은 LOT 을 찾기 전에는 쓸 자리가 없다. 스캔 전에 부르면 오프라인 기동에서
+  // 아무도 읽지 않을 실패가 하나 생긴다.
+  const scanned = balances.length > 0 || itemIds.length > 0;
 
   return {
     warehouse: useByIdNames(warehouseIds, lookupKeys.warehouse, fetchWarehouseName),
     location: useByIdNames(locationIds, lookupKeys.location, fetchLocationName),
     item: useByIdNames(itemIds, lookupKeys.item, fetchItemCode),
-    uom: useUomNames(),
+    uom: useUomNames(scanned),
   };
 };

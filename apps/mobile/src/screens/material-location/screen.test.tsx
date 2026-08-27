@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -74,6 +74,10 @@ const scan = async (value = SCANNED) => {
   return user;
 };
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('자재 위치 확인 화면', () => {
   it('스캔하기 전에는 결과를 보이지 않는다', () => {
     renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
@@ -89,6 +93,55 @@ describe('자재 위치 확인 화면', () => {
     expect(
       await screen.findByText('000123450 · 000001200 · 260731 · 000123 · 0007'),
     ).toBeInTheDocument();
+  });
+
+  it('어느 화면인지 제목으로 알린다', () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+
+    expect(screen.getByRole('heading', { name: '자재 위치 확인' })).toBeInTheDocument();
+  });
+
+  it('품목 코드를 보인다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan();
+
+    expect(await screen.findByText('ABC-123')).toBeInTheDocument();
+  });
+
+  it('LOT은 있는데 재고가 잡힌 자리가 없으면 그렇게 알린다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub({ balances: [] }) });
+    await scan();
+
+    expect(await screen.findByText('재고가 있는 위치가 없습니다')).toBeInTheDocument();
+  });
+
+  it('같은 자리라도 상태가 다른 잔액은 따로 보인다', async () => {
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({
+        balances: [
+          balanceRow({ inventoryStatusCode: 'AVAILABLE', onHandQty: 90 }),
+          balanceRow({ inventoryStatusCode: 'IN_TRANSIT', onHandQty: 30 }),
+        ],
+      }),
+    });
+    await scan();
+
+    await screen.findByText('위치 2곳');
+    expect(screen.getAllByText('A-01-03 (3단 선반)')).toHaveLength(2);
+    expect(warn.mock.calls.flat().join(' ')).not.toContain('same key');
+  });
+
+  it('스캔하기 전에는 단위 목록도 부르지 않는다', () => {
+    const seen: string[] = [];
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: (request) => {
+        seen.push(new URL(request.url).pathname);
+        return Promise.resolve(jsonResponse({ items: [], page }));
+      },
+    });
+
+    expect(seen).toEqual([]);
   });
 
   it('창고와 위치를 이름으로 보인다', async () => {
@@ -204,14 +257,19 @@ describe('자재 위치 확인 화면', () => {
   });
 
   it('34자리가 아니면 조회하지 않고 읽은 자릿수를 알린다', async () => {
+    const seen: string[] = [];
     renderWithProviders(<MaterialLocationScreen />, {
-      fetch: createStubFetch([]),
+      fetch: (request) => {
+        seen.push(new URL(request.url).pathname);
+        return Promise.resolve(jsonResponse({ items: [], page }));
+      },
     });
     await scan('0001234500');
 
     expect(
       await screen.findByText('자재 LOT은 34자리입니다. 10자리를 읽었습니다.'),
     ).toBeInTheDocument();
+    expect(seen).toEqual([]);
   });
 
   it('길이 오류 뒤에도 스캔 칸은 비워지고 포커스가 남는다', async () => {
