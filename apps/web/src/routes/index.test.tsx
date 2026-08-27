@@ -11,6 +11,10 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import { AppLayout } from '../app/layout';
+import {
+  DISPOSITION_SCREEN_PATH,
+  dispositionEntryPath,
+} from '../screens/disposition-decision/filters';
 import { SessionProvider } from '../patterns/session';
 import {
   groupsResponse as equipmentGroupsResponse,
@@ -1287,8 +1291,10 @@ describe('appRouter — 처분 판정 처리의 진입 경로', () => {
     expect(within(items[1]!).getByText('처분 판정 처리')).toBeVisible();
   });
 
-  it('⭐ 진입 키가 붙은 주소도 같은 화면으로 간다 — 부적합 열기가 이 경로로 온다', () => {
-    expect(routedPaths()).toContain('/quality/dispositions');
+  it('⭐ 다른 화면이 부르는 진입 주소와 등록된 라우트가 «같다»', () => {
+    /* 둘이 갈리면 「부적합 열기」가 조용히 404로 간다 — 여기서 묶어 둔다. */
+    expect(routedPaths()).toContain(DISPOSITION_SCREEN_PATH);
+    expect(dispositionEntryPath(1001).startsWith(DISPOSITION_SCREEN_PATH)).toBe(true);
   });
 
   it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {

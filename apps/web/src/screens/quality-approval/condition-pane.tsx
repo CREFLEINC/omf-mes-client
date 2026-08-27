@@ -1,7 +1,9 @@
 import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { Link } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
+import { dispositionEntryPath } from '../disposition-decision/filters';
 import {
   toConcessionCardinality,
   toConcessionCardView,
@@ -153,6 +155,25 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
           </div>
         ))}
       </dl>
+      {/*
+       * ⭐ **「부적합 열기」 — 특채일 때만 선다**(스펙 §5-1). 지목할 부적합 식별자를 특채가
+       * 들고 있어(계약에서 `nonconformanceId`가 필수다) 이 칸이 그 이동의 자리다. 한도승인처럼
+       * 연결 조건이 없는 결재에서는 이 칸 자체가 그려지지 않으므로 갈 곳 없는 컨트롤이 남지 않는다.
+       *
+       * **버튼이 아니라 링크다.** 자리표시 시절에는 잠긴 버튼이라 사유를 `aria-describedby`로
+       * 이어야 했지만, 링크는 포커스를 받고 그 이름이 갈 곳을 그대로 말한다.
+       *
+       * 주소는 **가는 쪽 화면이 만든다** — 키 이름을 여기서 손으로 적으면 그 화면이 키를 바꿀 때
+       * 조용히 끊어진다(진입 규약 omf-mes#194 §3).
+       *
+       * **번호를 링크 «옆에» 둔다** — 링크 이름은 갈 곳을 말하고, 번호는 어느 부적합인지를 말한다.
+       * 번호 없이 링크만 세우면 승인자가 무엇을 여는지 모른 채 화면을 떠난다.
+       */}
+      <div className="field-cell">
+        <span className="field-label">{t.nonconformance}</span>
+        <span>{view.nonconformanceNo}</span>
+        <Link to={dispositionEntryPath(detail.data.nonconformanceId)}>{t.openNonconformance}</Link>
+      </div>
       {hasReferenceError ? (
         <AlertBanner
           variant="error"

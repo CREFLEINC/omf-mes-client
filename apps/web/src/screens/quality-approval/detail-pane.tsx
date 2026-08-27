@@ -1,6 +1,5 @@
-import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { Fragment, useId } from 'react';
+import { Fragment } from 'react';
 
 import type { RequestDetailView } from './types';
 
@@ -10,7 +9,6 @@ export interface DetailPaneProps {
 
 export const DetailPane = ({ view }: DetailPaneProps) => {
   const t = messages.qualityApproval;
-  const targetReasonId = useId();
 
   return (
     <>
@@ -41,15 +39,14 @@ export const DetailPane = ({ view }: DetailPaneProps) => {
         </p>
       </div>
 
+      {/*
+       * ⚠ 대상 «이름»만 둔다. 부적합으로 나가는 길은 연결 조건 칸에 있다 — 그 이동은 특채일
+       * 때만 성립하고(스펙 §5-1), 지목할 부적합 식별자는 특채가 들고 있기 때문이다. 여기 두면
+       * 한도승인처럼 부적합이 없는 결재에도 갈 곳 없는 버튼이 선다.
+       */}
       <div className="field-cell" role="group" aria-label={t.panes.target}>
         <span className="field-label">{t.fields.target}</span>
         <span>{view.targetName}</span>
-        <Button variant="outlined" disabled aria-describedby={targetReasonId}>
-          {t.actions.openTarget}
-        </Button>
-        <span id={targetReasonId} className="field-note">
-          {t.detail.targetUnavailable}
-        </span>
       </div>
     </>
   );

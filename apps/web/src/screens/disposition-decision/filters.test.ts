@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DISPOSITION_SCREEN_PATH,
+  dispositionEntryPath,
   readPage,
   readPendingFilters,
   readSelectedNonconformanceId,
@@ -27,6 +29,20 @@ const filters = (overrides: Partial<PendingFilters> = {}): PendingFilters => ({
   severityCode: '',
   statusCode: '',
   ...overrides,
+});
+
+describe('dispositionEntryPath', () => {
+  it('⭐ 부적합을 지목해 이 화면을 여는 주소를 만든다 — 부르는 쪽이 키를 적지 않는다', () => {
+    expect(dispositionEntryPath(1001)).toBe('/quality/dispositions?nonconformanceId=1001');
+  });
+
+  it('만든 주소를 이 화면이 그대로 읽는다 — 양쪽이 같은 키를 쓴다', () => {
+    const entry = dispositionEntryPath(1001);
+    const search = new URLSearchParams(entry.slice(entry.indexOf('?')));
+
+    expect(readSelectedNonconformanceId(search)).toBe(1001);
+    expect(entry.startsWith(DISPOSITION_SCREEN_PATH)).toBe(true);
+  });
 });
 
 describe('readPendingFilters', () => {

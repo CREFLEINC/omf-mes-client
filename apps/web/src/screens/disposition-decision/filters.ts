@@ -40,6 +40,24 @@ const KEYS = {
   selected: 'nonconformanceId',
 } as const;
 
+/**
+ * 이 화면의 정식 주소. 라우트에 등록된 값과 **같아야 한다** — 라우트 감지기가 그것을 고정한다.
+ *
+ * 화면 슬라이스는 `routes/`를 참조할 수 없으므로(의존 방향) 값을 여기 둔다. 다른 화면이 이
+ * 화면을 열 때 주소를 손으로 적지 않도록 아래 진입 주소 함수와 함께 내보낸다.
+ */
+export const DISPOSITION_SCREEN_PATH = '/quality/dispositions';
+
+/**
+ * ⭐ **다른 화면이 «특정 부적합을 지목해» 이 화면을 여는 주소.**
+ *
+ * W-03-09(특채·한도승인 승인 처리)의 「부적합 열기」가 이 규약으로 온다(omf-mes#194 §3).
+ * 키 이름을 부르는 쪽이 손으로 적으면 이 화면이 키를 바꿀 때 조용히 끊어지므로, **키를 아는
+ * 쪽이 주소를 만든다.**
+ */
+export const dispositionEntryPath = (nonconformanceId: number): string =>
+  `${DISPOSITION_SCREEN_PATH}?${KEYS.selected}=${String(nonconformanceId)}`;
+
 const POSITIVE_INTEGER = /^\d+$/;
 
 const isIdentifier = (raw: string): boolean => {
