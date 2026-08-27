@@ -1,6 +1,12 @@
+import { ToastProvider } from '@crefle/web-ui';
 import { createApiClient, type ApiClient } from '@omf-mes/api-client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook, type RenderHookResult } from '@testing-library/react';
+import {
+  render,
+  renderHook,
+  type RenderHookResult,
+  type RenderResult,
+} from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 import { ApiClientProvider } from '../patterns/api-context';
@@ -47,29 +53,49 @@ export type ProvidedRenderHookResult<TResult> = RenderHookResult<TResult, unknow
 };
 
 /**
- * 훅을 앱과 같은 데이터 계층 구성으로 돌린다.
  * networkMode는 앱과 같은 값을 쓴다 — 여기서만 기본값을 두면 오프라인으로 보고될 때
  * 조회가 보류되는 실패를 테스트가 통과시켜 버린다.
  */
-export const renderHookWithProviders = <TResult,>(
-  hook: () => TResult,
-  options: ProviderOptions,
-): ProvidedRenderHookResult<TResult> => {
+const createProviders = (fetch: StubFetch) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false, networkMode: 'always' },
       mutations: { retry: false, networkMode: 'always' },
     },
   });
-  const apiClient = createApiClient({ baseUrl: TEST_BASE_URL, fetch: options.fetch });
+  const apiClient = createApiClient({ baseUrl: TEST_BASE_URL, fetch });
 
   const Providers = ({ children }: { children: ReactNode }): ReactNode => (
     <QueryClientProvider client={queryClient}>
-      <ApiClientProvider client={apiClient}>{children}</ApiClientProvider>
+      <ApiClientProvider client={apiClient}>
+        <ToastProvider>{children}</ToastProvider>
+      </ApiClientProvider>
     </QueryClientProvider>
   );
 
+  return { apiClient, Providers };
+};
+
+/** 훅을 앱과 같은 데이터 계층 구성으로 돌린다. */
+export const renderHookWithProviders = <TResult,>(
+  hook: () => TResult,
+  options: ProviderOptions,
+): ProvidedRenderHookResult<TResult> => {
+  const { apiClient, Providers } = createProviders(options.fetch);
   const result = renderHook(hook, { wrapper: Providers });
+
+  return { ...result, apiClient };
+};
+
+export type ProvidedRenderResult = RenderResult & { apiClient: ApiClient };
+
+/** 화면을 앱과 같은 프로바이더 구성으로 렌더한다. */
+export const renderWithProviders = (
+  ui: ReactNode,
+  options: ProviderOptions,
+): ProvidedRenderResult => {
+  const { apiClient, Providers } = createProviders(options.fetch);
+  const result = render(<Providers>{ui}</Providers>);
 
   return { ...result, apiClient };
 };

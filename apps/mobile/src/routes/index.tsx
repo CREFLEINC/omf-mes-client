@@ -2,6 +2,7 @@ import { Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
 import { ShellHome } from '../app/shell-home';
+import { MaterialLocationScreen } from '../screens/material-location/screen';
 
 export const appRouter = createBrowserRouter([
   {
@@ -11,6 +12,9 @@ export const appRouter = createBrowserRouter([
         <Outlet />
       </AppLayout>
     ),
-    children: [{ index: true, element: <ShellHome /> }],
+    children: [
+      { index: true, element: <ShellHome /> },
+      { path: 'material-location', element: <MaterialLocationScreen /> },
+    ],
   },
 ]);

@@ -1,0 +1,32 @@
+.material-location {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.material-location__lot-no {
+  font-family: var(--font-mono, monospace);
+  word-break: break-all;
+}
+
+.material-location__quantities {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2, 8px) var(--space-4, 16px);
+  margin: 0;
+}
+
+.material-location__quantities dt {
+  color: var(--on-surface-muted, inherit);
+}
+
+.material-location__quantities dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* 마이너스 재고는 정상일 수 있어 오류색을 쓰지 않는다. 확인이 필요하다는 뜻만 준다. */
+.material-location__negative {
+  color: var(--semantic-warning);
+}
