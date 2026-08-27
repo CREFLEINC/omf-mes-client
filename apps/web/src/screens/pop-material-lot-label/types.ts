@@ -115,3 +115,41 @@ export const toPrinterView = (data: PrinterResponse): PrinterView => ({
  */
 export const toHeadPrinter = (printers: PrinterView[]): PrinterView | null =>
   printers.find((printer) => printer.isDefault) ?? printers[0] ?? null;
+
+/**
+ * 목록에 놓이는 **발번 대상 한 줄** — 입하 건과 그 라인을 합친 것이다.
+ *
+ * 스펙 §3 은 목록 한 줄에 입하번호·품목·수량·공급사·입하일을 함께 그린다. 계약은 그것을
+ * 두 경로로 나눠 주므로(건 목록 · 건마다의 라인) **화면이 합친다.**
+ */
+export interface TargetRow {
+  inboundReceiptLineId: number;
+  inboundReceiptId: number;
+  inboundReceiptNo: string;
+  supplierId: number;
+  receiptDatetime: string;
+  itemId: number;
+  receivedQty: number;
+  uomId: number;
+}
+
+/**
+ * 입하 건과 그 라인을 목록 줄로 편다.
+ *
+ * ⛔ **사전부착 건은 빼고 낸다** — 스펙 §6 「사전부착 건이 목록에 옴 → 나타나면 안 된다」.
+ * 계약이 이 조건을 질의로 주지 않아 화면이 거른다. 그래서 **한 쪽에 보이는 줄 수가 쪽 크기와
+ * 다를 수 있다**(검토 요청 omf-mes#245 ③).
+ */
+export const toTargetRows = (receipt: ReceiptView, lines: LineView[]): TargetRow[] =>
+  lines
+    .filter((line) => line.supplierLotMissing)
+    .map((line) => ({
+      inboundReceiptLineId: line.inboundReceiptLineId,
+      inboundReceiptId: receipt.inboundReceiptId,
+      inboundReceiptNo: receipt.inboundReceiptNo,
+      supplierId: receipt.supplierId,
+      receiptDatetime: receipt.receiptDatetime,
+      itemId: line.itemId,
+      receivedQty: line.receivedQty,
+      uomId: line.uomId,
+    }));

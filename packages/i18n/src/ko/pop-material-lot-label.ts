@@ -2,27 +2,29 @@ export const popMaterialLotLabel = {
   title: '자재LOT 등록·라벨 발행',
   receipts: {
     paneLabel: '입하 목록',
-    caption: '입하 건',
+    caption: '입하 목록',
     columns: {
       select: '선택',
-      inboundReceiptNo: '입하번호',
-      supplier: '공급사',
-      receiptDate: '입하일',
+      receipt: '입하',
+      item: '품목',
+      quantity: '수량',
     },
     select: '선택',
     selected: '선택됨',
     /** 행마다 「선택」이 되풀이되면 어느 건인지 알 수 없다 — 접근 이름에 입하번호를 넣는다. */
-    selectRow: (receiptNo: string) => `${receiptNo} 선택`,
-    deselectRow: (receiptNo: string) => `${receiptNo} 선택 해제`,
-    empty: '발행할 입하 건이 없습니다.',
+    selectRow: (receiptNo: string, itemName: string) => `${receiptNo} ${itemName} 선택`,
+    deselectRow: (receiptNo: string, itemName: string) => `${receiptNo} ${itemName} 선택 해제`,
+    empty: '발행할 자재가 없습니다.',
     /**
      * 계약이 입하 건 목록에 미부착 여부 조건을 주지 않는다 — 그 값은 라인에 있다.
      * 지금 보이는 것이 「라벨 미발행 건 전부」이지 「미부착 건만」이 아님을 밝힌다.
      * 공유계약 G-2 — 미확정인 것을 확정처럼 보이지 않는다.
      */
-    filterNotice:
-      '라벨을 발행하지 않은 입하 건을 모두 보입니다. 부착 여부는 품목 줄에서 확인하세요.',
-    backToReceipts: '◀ 입하 건 목록',
+    /**
+     * 사전부착 건을 화면이 걸러 낸다(스펙 §6). 계약이 그 조건을 질의로 주지 않아 받은 뒤에
+     * 거르므로, **한 쪽에 보이는 줄 수가 쪽 크기와 다를 수 있다.** 그 사실을 밝힌다.
+     */
+    filterNotice: '공급사 LOT 이 붙어 온 자재는 보이지 않습니다.',
     beyondLast: '이 쪽에는 결과가 없습니다. 이전 쪽으로 돌아가세요.',
     loadFailed: '입하 목록을 불러오지 못했습니다.',
     retry: '다시 불러오기',
@@ -63,7 +65,22 @@ export const popMaterialLotLabel = {
   target: {
     paneLabel: '발번 대상',
     title: '발번 대상',
-    empty: '왼쪽에서 품목을 고르세요.',
+    empty: '왼쪽에서 자재를 고르세요.',
+    lotPreview: {
+      label: 'LOT 번호',
+      /**
+       * 스펙은 발번 결과를 등록 전에 미리 보이지만, 계약에 번호를 채번하거나 예약하는 경로가
+       * 없다. 규칙을 지어내면 승인된 적 없는 채번이 화면에 굳는다 — 자리를 두고 왜 비었는지
+       * 밝힌다(공유계약 A-11 — 물러난 수준을 명시한다).
+       */
+      pending: '등록할 때 정해집니다.',
+    },
+    actions: {
+      issue: '등록·인쇄',
+      reissue: '재인쇄',
+      /** 구현 사정이 아니라 사용자가 지금 무엇을 할 수 있는지로 적는다. */
+      unavailable: '아직 사용할 수 없습니다. 준비되면 이 자리에서 바로 하실 수 있습니다.',
+    },
     fields: {
       item: '품목',
       quantity: '수량',

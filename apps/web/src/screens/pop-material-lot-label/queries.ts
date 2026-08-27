@@ -1,5 +1,5 @@
 import type { ApiClient } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -7,9 +7,12 @@ import {
   toLineView,
   toPrinterView,
   toReceiptView,
+  toTargetRows,
   type LineView,
   type PrinterView,
   type ReceiptListResult,
+  type ReceiptView,
+  type TargetRow,
 } from './types';
 
 /**
@@ -132,4 +135,47 @@ export const usePrinters = (): UseQueryResult<PrinterView[]> => {
       return data.items.map(toPrinterView);
     },
   });
+};
+
+export interface TargetRowsResult {
+  rows: TargetRow[];
+  isPending: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
+
+/**
+ * 목록에 놓일 발번 대상 줄 — **입하 건마다 라인을 받아 한 목록으로 편다.**
+ *
+ * 스펙 §3 은 품목·수량이 목록에 바로 보이는 한 단계다. 계약이 입하 건 목록에 품목을 싣지
+ * 않아 건마다 라인을 따로 부르고, 그 결과를 화면이 합친다.
+ *
+ * ⚠ **요청이 쪽마다 1 + N 이다.** 쪽 크기를 작게 두어(POP 목록은 한 화면에 몇 줄뿐이다)
+ * 감당한다. 계약이 라인을 함께 내려 주면 1 회로 줄어든다(검토 요청 omf-mes#245 ③).
+ */
+export const useTargetRows = (receipts: ReceiptView[]): TargetRowsResult => {
+  const { client } = useApiClient();
+
+  const results = useQueries({
+    queries: receipts.map((receipt) => ({
+      queryKey: receiptKeys.lines(receipt.inboundReceiptId),
+      queryFn: () => fetchReceiptLines(client, receipt.inboundReceiptId),
+    })),
+  });
+
+  return {
+    rows: results.flatMap((result, index) => {
+      const receipt = receipts[index];
+
+      return receipt === undefined || result.data === undefined
+        ? []
+        : toTargetRows(receipt, result.data);
+    }),
+    isPending: results.some((result) => result.isPending),
+    // 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다.
+    isError: results.some((result) => result.isError),
+    refetch: () => {
+      for (const result of results) void result.refetch();
+    },
+  };
 };
