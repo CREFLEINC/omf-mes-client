@@ -10,7 +10,7 @@ const row = (statusCode: string): ShipmentRequestView => ({
   shipToPartnerId: 1,
   requestedShipDate: '2026-08-01',
   statusCode,
-  hasInspectionRequiredLine: false,
+  inspectionStatus: 'NOT_REQUIRED',
   lineTotals: null,
 });
 

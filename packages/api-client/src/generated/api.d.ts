@@ -21044,7 +21044,7 @@ export interface paths {
         };
         /**
          * 검사 결과 목록
-         * @description 재검 사슬을 previousResultId 로 잇는다 — 숨기지 않고 들여쓰기로 보인다. 근거: W-03-05 §5-3 ⛔ inspectionRequestId 도 기간(inspectedFrom·inspectedTo)도 없으면 400 이다 — 둘 중 하나로 반드시 유계여야 한다(공유계약 L-3 · omf-mes#170).
+         * @description 재검 사슬을 previousResultId 로 잇는다 — 숨기지 않고 들여쓰기로 보인다. finalRoundOnly=false 면 page/size/total 은 뿌리 결과(1회차) 기준으로 세고, 사슬 전체가 뿌리와 같은 페이지에 동거한다 — 부모·자식이 페이지로 갈리지 않는다. 정렬은 뿌리 기준, 사슬 안은 회차 순이다. 사슬이 한 페이지에 온전히 있으므로 previousResultId 만으로 들여쓰기가 가능해 별도 rootResultId·depth 는 내리지 않는다. 근거: W-03-05 §5-3 · omf-mes#192 문4. ⛔ inspectionRequestId 도 기간(inspectedFrom·inspectedTo)도 없으면 400 이다 — 둘 중 하나로 반드시 유계여야 한다(공유계약 L-3 · omf-mes#170).
          */
         get: {
             parameters: {
@@ -22590,6 +22590,54 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/shipment-requests/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 출하작업지시 요약
+         * @description W-04-02 요약 구획(작업지시 건수·요청/배정/출하 합계·미배정·검사 대기·피킹 미완) — 필터 전체 기준. 목록(GET /logistics/shipment-requests)과 같은 필터를 쓰되 page/size/sort 는 없다. ⛔ 화면이 페이지를 모아 더하지 않는다 — 필터 전체와 다른 수가 나온다(공유계약 L-2). 근거: W-04-02 §4-B · omf-mes#232
+         */
+        get: {
+            parameters: {
+                query?: {
+                    customerId?: number;
+                    shipToPartnerId?: number;
+                    statusCode?: string;
+                    /** @description 검사 상태 필터 */
+                    shippingInspectionRequired?: boolean;
+                    /** @description 필수 — 공유계약 L-3. 목록과 같은 기준을 쓴다 */
+                    shipDateFrom?: string;
+                    shipDateTo?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 요약 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShipmentRequestSummary"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -36208,13 +36256,13 @@ export interface components {
             /** @example 값 */
             reasonCode: string;
             /**
-             * @description targetLotStatusCode 가 보류이면 필수, 불량(Hold)이면 받지 않는다.
+             * @description targetLotStatusCode 가 INSPECTION_PENDING(검사 대기)이면 필수, DEFECTIVE(불량)면 받지 않는다.
              * @example 값
              */
             releaseCondition?: string;
             /**
-             * @description ⭐ 도착 상태. 의심자재 등록(C10)은 보류, 클레임·리콜 재Hold(C9)는 불량이다. 두 화면이 같은 행을 만들고 도착 상태만 다르다.
-             * @example NORMAL
+             * @description ⭐ 도착 상태. 의심자재 등록(C10)은 INSPECTION_PENDING(검사 대기), 클레임·리콜 재Hold(C9)는 DEFECTIVE(불량)다. 두 화면이 같은 행을 만들고 도착 상태만 다르다. 「보류」는 lot.status_code 축에 없는 값이다 — Hold(보류 «문서»의 진행 상태)는 lot_hold.status_code 가 별도로 갖고 서버가 자동으로 채운다(공유계약 §I-32 · omf-mes#227).
+             * @example INSPECTION_PENDING
              */
             targetLotStatusCode: string;
             /** @example 값 */
@@ -36550,6 +36598,11 @@ export interface components {
              *     ]
              */
             outOfSpecValues?: string[];
+            /**
+             * @description 규격 밖 측정값 «전체» 건수 — outOfSpecValues(최대 10건 예시)와 별개로 서버가 낸다. 화면의 「외 N건」은 이 값에서 outOfSpecValues.length 를 뺀 수다. ⛔ rejectedCount 로 역산하지 않는다 — 규격 밖이어도 자동 불합격이 아니라(사람이 판정) 두 집합이 같다고 보장되지 않는다. 근거: omf-mes#228
+             * @example 2
+             */
+            outOfSpecTotalCount: number;
             /**
              * @description 측정 장비 표시명
              * @example 캘리퍼 CAL-03
@@ -37087,9 +37140,60 @@ export interface components {
             requestedShipDate: string;
             /** @example 값 */
             statusCode: string;
+            /**
+             * @description ⭐ W-04-02 「검사」 열의 판정 근거 — 라인 전체(shippingInspectionRequired + 03 품질 inspection-results)를 서버가 롤업해 하나로 낸다. NOT_REQUIRED=대상 라인 없음(「—」) · PENDING=대상인데 결과 없음(「● 대기」) · PASSED=전 대상 라인 합격(「✅ 합격」) · REJECTED=불합격 라인 존재(「⛔ 불합격」) · HELD=보류 라인 존재, 불합격 없음(「⚠ 보류」). ⭐ 롤업 우선순위(가장 나쁜 것이 이긴다): REJECTED > HELD > PENDING > PASSED > NOT_REQUIRED. ⛔ 화면이 라인을 순회해 판정하지 않는다(공유계약 G-8과 같은 결 — W-04-02 §5-3) — 03 계약과의 조인은 서버 몫이다. ⚠ 이 필드를 이미 소비 중인 코드는 PASSED 외 값을 몰라도 PENDING과 동일하게(대기 취급) 두면 당장은 안전하다. 근거: W-04-02 §5-3·§5-4 · omf-mes#232 · omf-mes#235
+             * @example PENDING
+             * @enum {string}
+             */
+            shippingInspectionStatusCode: "NOT_REQUIRED" | "PENDING" | "PASSED" | "REJECTED" | "HELD";
             lines?: components["schemas"]["ShipmentRequestLine"][];
             /** @example 1 */
             versionNo?: number;
+        };
+        /** @description W-04-02 요약 구획 — 필터 전체 기준(목록 페이지와 다른 모집단). 근거: W-04-02 §4-B · omf-mes#232 */
+        ShipmentRequestSummary: {
+            /**
+             * @description 필터 전체 기준 작업지시 건수
+             * @example 24
+             */
+            requestCount: number;
+            /**
+             * Format: double
+             * @example 12400
+             */
+            requestedQtyTotal: number;
+            /**
+             * Format: double
+             * @example 11900
+             */
+            allocatedQtyTotal: number;
+            /**
+             * Format: double
+             * @example 3200
+             */
+            shippedQtyTotal: number;
+            /**
+             * Format: double
+             * @description 요청 − 배정. ⭐ 서버가 계산한다(공유계약 L-2) — 화면이 requestedQtyTotal·allocatedQtyTotal 을 받아 다시 빼지 않는다
+             * @example 500
+             */
+            unallocatedQtyTotal: number;
+            /**
+             * @description shippingInspectionStatusCode=PENDING 인 작업지시 건수
+             * @example 4
+             */
+            pendingInspectionCount: number;
+            /**
+             * @description 피킹이 끝나지 않은 작업지시 건수
+             * @example 9
+             */
+            incompletePickingCount: number;
+            /**
+             * Format: date-time
+             * @description 서버 집계 기준 시각(공유계약 L-5) — 화면 헤더 「기준 …」에 쓴다
+             * @example 2026-08-07T14:32:00+09:00
+             */
+            asOf: string;
         };
         /** @description 편성. 라인 1건 이상이고 배정 수량이 1 이상이어야 한다(W-04-01 §5-7). ⛔ 편성 취소를 두지 않는다 — 출하작업지시 취소는 범위 밖이다 */
         ShipmentRequestCreate: {

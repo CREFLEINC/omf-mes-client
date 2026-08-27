@@ -11,7 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import { partnerFixtures, shipmentRequestFixtures } from './fixtures';
+import { partnerFixtures, shipmentRequest, shipmentRequestFixtures } from './fixtures';
 import { ShipmentScheduleScreen } from './screen';
 
 const t = messages.shipmentSchedule;
@@ -375,15 +375,44 @@ describe('ShipmentScheduleScreen — 요청/배정/출하·검사 열', () => {
     expect(listTable()).toHaveTextContent('500 / 500 / 500');
   });
 
-  it('검사 대상 라인이 있으면 「대상」 배지가 보인다', async () => {
+  it('검사 상태가 PENDING이면 「대기」 배지가 보인다', async () => {
     renderScreen([listRoute(), ...partnerRoutes()], SHIP_DATE_FROM);
 
     await screen.findByText('SAMPLE-SR-0002');
 
     const row = within(listTable()).getByText('SAMPLE-SR-0002').closest('tr');
     expect(row).not.toBeNull();
-    expect(within(row as HTMLElement).getByText(t.values.inspectionTarget)).toBeInTheDocument();
+    expect(within(row as HTMLElement).getByText(t.values.inspectionPending)).toBeInTheDocument();
   });
+
+  it('검사 상태가 PASSED이면 「합격」 배지가 보인다', async () => {
+    const rows = [
+      shipmentRequest({ shipmentRequestId: 9003, shippingInspectionStatusCode: 'PASSED' }),
+    ];
+
+    renderScreen([listRoute(rows), ...partnerRoutes()], SHIP_DATE_FROM);
+
+    await screen.findByText('SAMPLE-SR-0001');
+
+    expect(within(listTable()).getByText(t.values.inspectionPassed)).toBeInTheDocument();
+  });
+
+  /* REJECTED·HELD 전용 배지는 이번 슬라이스에서 두지 않는다(omf-mes#232·#235) — default 분기가
+   * 「대기」로 안전하게 떨어지는지 확인한다. 놓치면 빈 배지·예외로 이어진다. */
+  it.each(['REJECTED', 'HELD'] as const)(
+    '검사 상태가 %s이면 전용 배지 대신 「대기」로 안전하게 떨어진다',
+    async (statusCode) => {
+      const rows = [
+        shipmentRequest({ shipmentRequestId: 9004, shippingInspectionStatusCode: statusCode }),
+      ];
+
+      renderScreen([listRoute(rows), ...partnerRoutes()], SHIP_DATE_FROM);
+
+      await screen.findByText('SAMPLE-SR-0001');
+
+      expect(within(listTable()).getByText(t.values.inspectionPending)).toBeInTheDocument();
+    },
+  );
 
   /* 값 집합이 확정되지 않아 「진행」 열은 원문 코드를 그대로 낸다. */
   it('진행 열은 상태 코드를 그대로 보인다', async () => {
