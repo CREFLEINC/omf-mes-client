@@ -66,8 +66,10 @@ export const PrinterStatusIndicator = ({
 
   return (
     <div className="pop-screen-status">
-      <span className="field-note">{t.label}</span>
-      <span>{printer.displayName}</span>
+      <p className="pop-printer-name">
+        <span className="pop-printer-label">{t.label}</span>
+        <span>{printer.displayName}</span>
+      </p>
       <Chip status={CHIP_STATUS[printer.status]}>{printer.statusMessage ?? t.noStatusMessage}</Chip>
     </div>
   );
