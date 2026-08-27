@@ -262,6 +262,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/quality/approvals" icon="approval">
               특채·한도승인 승인 처리
             </NavItem>
+            {/* W-03-10 — 승인 처리 다음이다. 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */}
+            <NavItem to="/quality/dispositions" icon="gavel">
+              처분 판정 처리
+            </NavItem>
           </SidebarSection>
           {/*
            * W-05-12 — **도메인 05(설비/툴)의 첫 섹션이다.** 통합 IA 의 최상위 그룹이며,

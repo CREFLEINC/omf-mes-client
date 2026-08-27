@@ -37,6 +37,7 @@ import { PoRegisterScreen } from '../screens/po-register/screen';
 import { ProductionOrderScreen } from '../screens/production-order/screen';
 import { ProductionPlanScreen } from '../screens/production-plan/screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
+import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
@@ -271,6 +272,13 @@ export const appRouter = createBrowserRouter([
       },
       /* W-03-09 — Lot Status 조회·판정·의심자재 등록 다음에 서는 품질 승인 화면이다. */
       { path: 'quality/approvals', element: <QualityApprovalScreen /> },
+      /*
+       * W-03-10 — 특채·한도승인 «다음»이다. 부적합의 처분을 정하는 화면이라 승인 처리 뒤에 서고,
+       * 이 라우트가 W-04-10(폐기)·W-04-11(재등록)·P-04-03(재작업)의 진입 목록과
+       * W-03-09의 「부적합 열기」(`?nonconformanceId=`)를 함께 연다.
+       * 앞머리는 계약 경로가 아니라 사이드바 업무 섹션(품질관리)을 따른다.
+       */
+      { path: 'quality/dispositions', element: <DispositionDecisionScreen /> },
       /*
        * W-CO-09 — 앞머리는 같은 규칙(사이드바 섹션)이고 계약 경로(`/app/**`)를 따르지 않는다.
        * 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**여서 섹션을 새로 연다.

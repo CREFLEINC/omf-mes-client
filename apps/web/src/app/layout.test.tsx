@@ -444,6 +444,13 @@ describe('AppLayout', () => {
     expect(links.indexOf('/quality/approvals')).toBeGreaterThan(
       links.indexOf('/quality/inspection-results'),
     );
+    expect(within(sidebar).getByRole('link', { name: '처분 판정 처리' })).toHaveAttribute(
+      'href',
+      '/quality/dispositions',
+    );
+    expect(links.indexOf('/quality/dispositions')).toBeGreaterThan(
+      links.indexOf('/quality/approvals'),
+    );
     expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
   });
 
@@ -678,6 +685,7 @@ describe('AppLayout', () => {
       '/quality/suspicious-material-hold',
       '/quality/inspection-results',
       '/quality/approvals',
+      '/quality/dispositions',
       '/equipment/master',
       '/equipment/tool-master',
       '/equipment/work-calendar',
