@@ -132,6 +132,28 @@ export const emergencyWorkOrder = {
     lotNotice: '지시 수량 전량을 LOT 1개로 배포합니다.',
   },
 
+  /** 품목 고르기. */
+  itemPicker: {
+    /** 구획의 이름과 입력칸의 이름을 갈라 둔다 — 같으면 둘 중 무엇을 가리키는지 알 수 없다. */
+    title: '품목 고르기',
+    label: '품목 검색',
+    placeholder: '품목코드 또는 품목명',
+    search: '검색',
+    searching: '찾는 중입니다.',
+    empty: '찾은 품목이 없습니다. 다른 말로 찾아보세요.',
+    error: '품목을 찾지 못했습니다. 잠시 뒤 다시 시도하세요.',
+    select: (itemCode: string): string => `${itemCode} 고르기`,
+    selected: '고른 품목',
+    clear: '고른 품목 지우기',
+
+    /**
+     * ⛔ 잘렸다는 사실을 말한다. 안 말하면 **「찾는 품목이 없다」로 읽는다** — 목록에 없는
+     * 것과 목록이 잘린 것은 다른 사실이다.
+     */
+    truncated: (shown: number): string =>
+      `앞의 ${String(shown)}건만 보입니다. 찾는 품목이 없으면 검색어를 좁히세요.`,
+  },
+
   /**
    * 발행을 잠그는 사유.
    *
