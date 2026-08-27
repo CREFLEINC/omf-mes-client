@@ -1,7 +1,6 @@
-import type { ApiClient, ApiError, EtagStore } from '@omf-mes/api-client';
-import { messages } from '@omf-mes/i18n';
+import type { ApiClient, EtagStore } from '@omf-mes/api-client';
 
-import { ApiRequestError, runRequest } from '../../patterns/request';
+import { runRequest } from '../../patterns/request';
 import type { WorkOrderReleaseBody } from './issue-request';
 
 /**
@@ -13,11 +12,33 @@ import type { WorkOrderReleaseBody } from './issue-request';
 export const workOrderDetailPath = (workOrderId: number): string =>
   `/production/work-orders/${String(workOrderId)}`;
 
-/** 토큰을 얻지 못해 배포를 시작조차 못 한 상태. */
-const staleTokenError = (): ApiError => ({
-  kind: 'validation',
-  errors: [{ scope: 'screen', code: 'STALE_TOKEN', message: messages.save.staleToken }],
-});
+/**
+ * 배포가 어디서 멈췄는가.
+ *
+ * ⭐ **이 구분이 사용자에게 하는 말을 바꾼다.**
+ *
+ * | 값 | 무슨 일이 있었나 | 화면이 할 말 |
+ * | --- | --- | --- |
+ * | `notSent` | 토큰을 못 얻어 **배포를 보내지도 못했다** | 「배포되지 않았습니다」 — 단언해도 된다 |
+ * | `unknown` | 배포를 **보냈는데 답을 못 받았다** | 「확인되지 않았습니다」 — 단언하면 거짓일 수 있다 |
+ *
+ * ⛔ **상태 코드로 가르지 않는다.** 오류 정규화가 계약 형태의 본문을 만나면 **상태를 버리므로**
+ * 400(거부)과 500(불명)이 화면에서 같은 모양이 된다(다른 화면도 같은 자리에서 막혔다). 그래서
+ * **어디까지 갔는지**로 가른다 — 그것은 화면이 스스로 아는 사실이라 잃어버릴 수가 없다.
+ */
+export type ReleaseFailureStep = 'notSent' | 'unknown';
+
+export class ReleaseFailure extends Error {
+  readonly step: ReleaseFailureStep;
+  readonly cause: unknown;
+
+  constructor(step: ReleaseFailureStep, cause: unknown) {
+    super(`배포 실패 (${step})`);
+    this.name = 'ReleaseFailure';
+    this.step = step;
+    this.cause = cause;
+  }
+}
 
 /**
  * 배포의 멱등 키를 들고 있는 자리. 대상마다 하나다.
@@ -55,34 +76,47 @@ export interface ReleaseStepInput {
  * ③ POST /production/work-orders/{id}:release  (멱등 키 · If-Match)
  * ```
  *
- * 발행에서 떼어 둔 이유는 **이 두 걸음이 다시 시도되는 단위**이기 때문이다 — 만들어진 W/O 를
- * 두고 배포만 다시 낼 때 도는 것이 정확히 여기다.
+ * 발행에서 떼어 둔 이유는 **이 두 걸음이 다시 시도되는 단위**이기 때문이다.
  */
 export const releaseWorkOrder = async (input: ReleaseStepInput): Promise<void> => {
-  /* 상세를 받아 두면 보관소에 토큰이 들어온다. 응답 값 자체는 여기서 쓰지 않는다. */
-  await runRequest(() =>
-    input.client.GET('/production/work-orders/{workOrderId}', {
-      params: { path: { workOrderId: input.workOrderId } },
-    }),
-  );
+  let ifMatch: string | undefined;
 
-  const ifMatch = input.etags.ifMatch(workOrderDetailPath(input.workOrderId));
+  try {
+    /* 상세를 받아 두면 보관소에 토큰이 들어온다. 응답 값 자체는 여기서 쓰지 않는다. */
+    await runRequest(() =>
+      input.client.GET('/production/work-orders/{workOrderId}', {
+        params: { path: { workOrderId: input.workOrderId } },
+      }),
+    );
+    ifMatch = input.etags.ifMatch(workOrderDetailPath(input.workOrderId));
+  } catch (cause) {
+    throw new ReleaseFailure('notSent', cause);
+  }
+
   /*
    * ⛔ **빈 토큰으로 보내지 않는다.** 계약이 요구하는 헤더라 서버가 거부하고, 그 거부는
    * 「배포가 반려됐다」로 읽힌다 — 실제로는 **물어보지도 못한 것**이다.
    */
-  if (ifMatch === undefined) throw new ApiRequestError(staleTokenError());
+  if (ifMatch === undefined) throw new ReleaseFailure('notSent', undefined);
 
-  await runRequest(() =>
-    input.client.POST('/production/work-orders/{workOrderId}:release', {
-      params: {
-        path: { workOrderId: input.workOrderId },
-        header: {
-          'Idempotency-Key': releaseKeyFor(input.keyHolder, input.workOrderId),
-          'If-Match': ifMatch,
+  try {
+    await runRequest(() =>
+      input.client.POST('/production/work-orders/{workOrderId}:release', {
+        params: {
+          path: { workOrderId: input.workOrderId },
+          header: {
+            'Idempotency-Key': releaseKeyFor(input.keyHolder, input.workOrderId),
+            'If-Match': ifMatch,
+          },
         },
-      },
-      body: input.body,
-    }),
-  );
+        body: input.body,
+      }),
+    );
+  } catch (cause) {
+    /*
+     * ⛔ **거부인지 불명인지 화면은 모른다** — 위 표를 참고. 되돌릴 수 없는 쓰기라 **모르는
+     * 쪽으로 말한다.** 「안 됐다」고 단언했다가 실제로 됐으면 사용자가 두 번 발행한다.
+     */
+    throw new ReleaseFailure('unknown', cause);
+  }
 };

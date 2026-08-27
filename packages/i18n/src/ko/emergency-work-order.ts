@@ -108,9 +108,15 @@ export const emergencyWorkOrder = {
     /**
      * ⛔ 앞은 성공하고 뒤가 실패한 자리. **「발행 실패」로 말하지 않는다** — 지시는 이미
      * 만들어져 있다. 번호를 보이고 배포만 다시 하게 한다.
+     *
+     * ⭐ **둘로 갈라 둔 것이 요점이다.** 배포를 «보내지도 못한» 것은 단언해도 되지만, «보냈는데
+     * 답을 못 받은» 것을 「안 됐다」고 단언하면 거짓일 수 있다 — 실제로 배포됐는데 사용자가
+     * 다시 눌러 이중 배포를 시도하게 된다.
      */
-    undelivered: (workOrderNo: string): string =>
+    notSent: (workOrderNo: string): string =>
       `발행·배포: ${workOrderNo} 가 만들어졌으나 배포되지 않았습니다. 배포를 다시 시도하세요. 새로 발행하면 같은 지시가 둘이 됩니다.`,
+    releaseUnknown: (workOrderNo: string): string =>
+      `발행·배포: ${workOrderNo} 가 만들어졌습니다. 배포까지 됐는지는 확인되지 않았습니다. 다시 시도해도 이중으로 배포되지 않습니다.`,
 
     /** 결과를 모르는 요청. 다시 보내면 같은 지시가 둘이 될 수 있어 확인이 먼저다. */
     uncertain:
