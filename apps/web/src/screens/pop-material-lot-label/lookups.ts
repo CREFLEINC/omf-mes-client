@@ -43,3 +43,54 @@ export const useSupplierLookup = (): LookupSource => {
     isLoading: query.isPending,
   };
 };
+
+/**
+ * 품목 — 품목 줄과 발번 대상이 함께 쓴다.
+ *
+ * **입하 건을 고르기 전에는 부르지 않는다**(`enabled`). 이름이 필요한 품목 줄 자체가 라인
+ * 응답을 기다리므로 미리 받아 둘 이득이 없고, 첫 진입의 요청 수만 이유 없이 는다.
+ */
+export const useItemLookup = (enabled: boolean): LookupSource => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: ['pop-material-lot-label', 'items'],
+    enabled,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/items', { params: { query: { includeInactive: true } } })),
+  });
+
+  return {
+    entries:
+      query.data?.items.map((item) => ({
+        value: String(item.itemId),
+        label: `${item.itemCode} · ${item.itemName}`,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    isError: query.isError,
+    isLoading: enabled && query.isPending,
+  };
+};
+
+/** 단위 — 수량 표기에서만 보인다(단위 열을 따로 두지 않는다). 품목과 같은 시점에 부른다. */
+export const useUomLookup = (enabled: boolean): LookupSource => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: ['pop-material-lot-label', 'uoms'],
+    enabled,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+  });
+
+  return {
+    entries:
+      query.data?.items.map((item) => ({
+        value: String(item.uomId),
+        label: item.uomCode,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    isError: query.isError,
+    isLoading: enabled && query.isPending,
+  };
+};

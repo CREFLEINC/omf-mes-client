@@ -3,7 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toReceiptView, type ReceiptListResult } from './types';
+import { toLineView, toReceiptView, type LineView, type ReceiptListResult } from './types';
 
 /**
  * 이 화면의 요청 — 이 슬라이스에서는 **읽기 하나뿐**이다.
@@ -34,6 +34,12 @@ const RECEIPT_LIST_KEY = ['pop-material-lot-label', 'receipts'] as const;
 export const receiptKeys = {
   lists: RECEIPT_LIST_KEY,
   list: (query: ReceiptListQuery) => [...RECEIPT_LIST_KEY, query] as const,
+  /**
+   * 라인 캐시는 **고른 건마다 갈린다.** 목록 키와 앞머리를 갈라 두어, 목록만 다시 불러도
+   * 라인까지 함께 무효화되지 않게 한다.
+   */
+  lines: (inboundReceiptId: number | null) =>
+    ['pop-material-lot-label', 'receipt-lines', inboundReceiptId] as const,
 };
 
 const fetchReceipts = async (
@@ -62,5 +68,37 @@ export const useReceipts = (query: ReceiptListQuery): UseQueryResult<ReceiptList
   return useQuery({
     queryKey: receiptKeys.list(query),
     queryFn: () => fetchReceipts(client, query),
+  });
+};
+
+const fetchReceiptLines = async (client: Client, inboundReceiptId: number): Promise<LineView[]> => {
+  const data = await runRequest(() =>
+    client.GET('/logistics/inbound-receipts/{inboundReceiptId}/lines', {
+      params: { path: { inboundReceiptId } },
+    }),
+  );
+
+  return data.items.map(toLineView);
+};
+
+/**
+ * 고른 입하 건의 품목.
+ *
+ * **고르기 전에는 부르지 않는다**(`enabled`). 캐시 키가 고른 번호를 담으므로 같은 건을
+ * 다시 그려도 요청이 한 번을 넘지 않는다.
+ */
+export const useReceiptLines = (inboundReceiptId: number | null): UseQueryResult<LineView[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: receiptKeys.lines(inboundReceiptId),
+    enabled: inboundReceiptId !== null,
+    queryFn: () => {
+      if (inboundReceiptId === null) {
+        throw new Error('입하 건을 고르기 전에는 품목을 조회하지 않습니다.');
+      }
+
+      return fetchReceiptLines(client, inboundReceiptId);
+    },
   });
 };

@@ -48,3 +48,32 @@ const RFC3339_DATE_PATTERN = /^(\d{4}-\d{2}-\d{2})T/u;
  */
 export const formatReceiptDate = (value: string): string =>
   RFC3339_DATE_PATTERN.exec(value)?.[1] ?? value;
+
+type InboundReceiptLineResponse = components['schemas']['InboundReceiptLine'];
+
+/**
+ * 화면이 다루는 입하 라인 한 줄.
+ *
+ * **`supplierLotMissing`이 이 화면의 갈림길이다.** 공급사가 LOT 을 붙여 온 건은 이 화면의
+ * 대상이 아니다(사전부착 경로가 따로 있다). 계약이 이 값을 **라인** 속성으로 두고 입하 건
+ * 목록에는 필터를 주지 않아, 걸러 내는 대신 **줄마다 표시**한다(검토 요청 omf-mes#245 ③).
+ */
+export interface LineView {
+  inboundReceiptLineId: number;
+  lineNo: number;
+  itemId: number;
+  receivedQty: number;
+  uomId: number;
+  /** 참이면 공급사 LOT 이 없다 — MES 가 발번할 대상이다. */
+  supplierLotMissing: boolean;
+}
+
+/** 라인 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toLineView = (data: InboundReceiptLineResponse): LineView => ({
+  inboundReceiptLineId: data.inboundReceiptLineId,
+  lineNo: data.lineNo,
+  itemId: data.itemId,
+  receivedQty: data.receivedQty,
+  uomId: data.uomId,
+  supplierLotMissing: data.supplierLotMissing,
+});
