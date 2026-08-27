@@ -49,6 +49,9 @@ export const qualityApproval = {
      * 버튼이 아니라 링크라 이름이 곧 「어디로 가는가」다 — 사유를 따로 잇지 않는다.
      */
     openNonconformance: '부적합 열기',
+    nonconformance: '부적합',
+    /** 번호는 계약에서 선택 항목이다 — 없다고 이동까지 막지 않는다. 식별자는 따로 있다. */
+    nonconformanceNoUnknown: '부적합번호 미제공',
     concessionNo: '특채번호',
     approvedQty: '승인 수량',
     consumedQty: '사용 수량',

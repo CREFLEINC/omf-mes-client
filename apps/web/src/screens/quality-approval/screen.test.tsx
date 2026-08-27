@@ -100,6 +100,7 @@ const concession: Concession = {
   concessionId: 501,
   concessionNo: 'SYNTH-CN-501',
   nonconformanceId: 701,
+  nonconformanceNo: 'SYNTH-NC-701',
   lotId: 801,
   approvedQty: 10,
   consumedQty: 2,
@@ -722,6 +723,27 @@ describe('QualityApprovalScreen conditions', () => {
     /* 주소는 가는 쪽 화면이 만든다 — 여기서 키 이름을 손으로 적지 않는다. */
     expect(link).toHaveAttribute('href', dispositionEntryPath(concession.nonconformanceId));
     expect(link).toHaveAttribute('href', expect.stringContaining('nonconformanceId=701'));
+    /* ⭐ 어느 부적합인지 옆에 적는다 — 번호 없이 링크만 세우면 무엇을 여는지 모른다. */
+    expect(within(group).getByText(t.condition.nonconformance)).toBeInTheDocument();
+    expect(within(group).getByText('SYNTH-NC-701')).toBeInTheDocument();
+  });
+
+  it('부적합번호가 없으면 그 사실을 적고 이동은 그대로 연다 — 식별자는 따로 있다', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => jsonResponse(candidateBody([concession]))),
+        concessionRoute(() => jsonResponse({ ...concession, nonconformanceNo: '  ' })),
+      ]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    const group = await screen.findByRole('group', { name: t.condition.title });
+
+    expect(within(group).getByText(t.condition.nonconformanceNoUnknown)).toBeInTheDocument();
+    expect(
+      within(group).getByRole('link', { name: t.condition.openNonconformance }),
+    ).toHaveAttribute('href', dispositionEntryPath(concession.nonconformanceId));
   });
 
   it('⛔ 연결 조건이 없으면 「부적합 열기」를 두지 않는다 — 갈 곳 없는 길을 만들지 않는다', async () => {

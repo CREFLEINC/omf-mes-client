@@ -82,6 +82,7 @@ export const UNKNOWN_CONDITION_REFERENCES: ConditionReferenceStates = {
 };
 
 export interface ConcessionCardView {
+  nonconformanceNo: string;
   concessionNo: string;
   approvedQty: string;
   consumedQty: string;
@@ -124,6 +125,8 @@ export const toConcessionCardView = (
     source.usable === true ? t.usable : source.usable === false ? t.unusable : t.usableUnknown;
 
   return {
+    /* ⚠ 번호는 계약에서 선택 항목이다 — 없으면 그 사실을 적는다(§5-3 「모르는 값 ≠ 없는 값」). */
+    nonconformanceNo: nonBlank(source.nonconformanceNo ?? '', t.nonconformanceNoUnknown),
     concessionNo: nonBlank(source.concessionNo, t.concessionNoUnknown),
     approvedQty: String(source.approvedQty),
     consumedQty: String(source.consumedQty),

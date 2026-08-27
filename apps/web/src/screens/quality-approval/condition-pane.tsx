@@ -165,8 +165,13 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
        *
        * 주소는 **가는 쪽 화면이 만든다** — 키 이름을 여기서 손으로 적으면 그 화면이 키를 바꿀 때
        * 조용히 끊어진다(진입 규약 omf-mes#194 §3).
+       *
+       * **번호를 링크 «옆에» 둔다** — 링크 이름은 갈 곳을 말하고, 번호는 어느 부적합인지를 말한다.
+       * 번호 없이 링크만 세우면 승인자가 무엇을 여는지 모른 채 화면을 떠난다.
        */}
       <div className="field-cell">
+        <span className="field-label">{t.nonconformance}</span>
+        <span>{view.nonconformanceNo}</span>
         <Link to={dispositionEntryPath(detail.data.nonconformanceId)}>{t.openNonconformance}</Link>
       </div>
       {hasReferenceError ? (

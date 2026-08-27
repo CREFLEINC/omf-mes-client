@@ -79,6 +79,7 @@ describe('toConcessionCardView', () => {
     const view = toConcessionCardView(source, references);
 
     expect(view).toEqual({
+      nonconformanceNo: '부적합번호 미제공',
       concessionNo: 'SYNTH-CN-501',
       approvedQty: '10',
       consumedQty: '2',
@@ -138,6 +139,16 @@ describe('toConcessionCardView', () => {
       process: '참조 목록이 잘려 이름을 확인할 수 없음',
       customer: '참조 이름을 확인할 수 없음',
     });
+  });
+
+  it('부적합번호를 옮기고, 없으면 그 사실을 적는다 — 이동은 식별자로 하므로 막지 않는다', () => {
+    expect(
+      toConcessionCardView({ ...concession(), nonconformanceNo: 'SYNTH-NC-701' }, references)
+        .nonconformanceNo,
+    ).toBe('SYNTH-NC-701');
+    expect(toConcessionCardView(concession(), references).nonconformanceNo).toBe(
+      '부적합번호 미제공',
+    );
   });
 
   it('공백 사실값은 빈칸으로 노출하지 않고 usable은 서버 값을 재계산하지 않는다', () => {
