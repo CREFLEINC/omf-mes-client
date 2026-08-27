@@ -85,6 +85,7 @@ import { materialIssueRequest } from './material-issue-request';
 import { deviceRegistration } from './device-registration';
 import { oqcInspection } from './oqc-inspection';
 import { popShell } from './pop-shell';
+import { popMaterialLotLabel } from './pop-material-lot-label';
 
 export const ko = {
   common,
@@ -158,6 +159,7 @@ export const ko = {
   deviceRegistration,
   oqcInspection,
   popShell,
+  popMaterialLotLabel,
 } as const;
 
 export type Messages = typeof ko;
