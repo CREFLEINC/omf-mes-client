@@ -72,4 +72,33 @@ describe('toRemainingQty', () => {
   it('소수 수량을 그대로 다룬다', () => {
     expect(toRemainingQty([lot(10.5)], [decision(0.5)]).value).toBe(10);
   });
+
+  it('⭐ 부동소수 찌꺼기를 0으로 맞춘다 — 보이는 값이 0인데 안 끝난 상태를 만들지 않는다', () => {
+    const remaining = toRemainingQty([lot(0.1), lot(0.2)], [decision(0.3)]);
+
+    expect(remaining.value).toBe(0);
+    expect(remaining.text).toBe('0');
+    expect(remaining.isSettled).toBe(true);
+  });
+
+  it('⭐ 음수 쪽 찌꺼기도 0으로 맞춘다 — 「-0」이 화면에 찍히지 않게 한다', () => {
+    const remaining = toRemainingQty([lot(10.1), lot(20.2), lot(30.3)], [decision(60.6)]);
+
+    expect(remaining.text).not.toBe('-0');
+    expect(remaining.value).toBe(0);
+    expect(remaining.isSettled).toBe(true);
+  });
+
+  it('보이는 값과 끝났다는 판정이 언제나 함께 간다', () => {
+    for (const [lots, decided] of [
+      [[0.1, 0.2], 0.3],
+      [[10.1, 20.2, 30.3], 60.6],
+      [[320], 320],
+      [[320], 200],
+    ] as [number[], number][]) {
+      const remaining = toRemainingQty(lots.map(lot), [decision(decided)]);
+
+      expect(remaining.isSettled).toBe(remaining.text === '0');
+    }
+  });
 });

@@ -29,6 +29,19 @@ export interface RemainingQty {
  *
  * 대상 LOT이 실려 오지 않으면(`lots`는 계약에서 required가 아니다) 낼 수 없다고 답한다.
  */
+/**
+ * ⭐ **보이는 값과 판정을 같은 수에서 낸다.**
+ *
+ * 수량이 소수일 수 있어(계약이 `double`) 뺄셈이 `5.55e-17` 같은 값을 남긴다. 표시가 소수
+ * 여섯 자리에서 끊기므로 그대로 두면 **화면에는 `0`이 보이는데 「끝나지 않았다」**가 되고,
+ * 사용자는 「남은 수량 0보다 많다」는, 어떤 입력으로도 만족할 수 없는 안내를 받는다.
+ * 음수 쪽으로 어긋나면 `-0`이 그대로 찍힌다. 표시와 같은 자리에서 끊어 둘을 붙인다.
+ */
+const snapToDisplay = (value: number): number => {
+  const snapped = Number(value.toFixed(6));
+  return snapped === 0 ? 0 : snapped;
+};
+
 export const toRemainingQty = (
   lots: NonconformanceLot[] | undefined,
   decisions: DispositionDecision[] | undefined,
@@ -40,7 +53,7 @@ export const toRemainingQty = (
   }
 
   const decided = decisions.reduce((sum, decision) => sum + decision.decisionQty, 0);
-  const value = total - decided;
+  const value = snapToDisplay(total - decided);
 
   return { value, text: formatQty(value), isSettled: value <= 0 };
 };
