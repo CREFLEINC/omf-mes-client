@@ -10,6 +10,9 @@ export interface ApiCallResult<TData> {
   response: Response;
 }
 
+/** HTTP 응답이 없었음을 나타내는 자리 — 상태 코드로 분기하는 화면이 어느 갈래에도 걸리지 않게 한다. */
+const NO_HTTP_STATUS = 0;
+
 /** 던지는 값은 Error 하위 클래스여야 하고, TanStack Query도 오류 타입을 Error로 둔다. */
 export class ApiRequestError extends Error {
   readonly apiError: ApiError;
@@ -43,3 +46,10 @@ export const runRequest = async <TData>(
 
   return result.data as TData;
 };
+
+/**
+ * 요청 경로 밖에서 생긴 오류(렌더 중 예외 등)는 network로 다루지 않는다 —
+ * 원인을 연결 문제로 오인시키면 사용자가 할 수 없는 조치를 하게 된다.
+ */
+export const toApiError = (error: unknown): ApiError =>
+  error instanceof ApiRequestError ? error.apiError : { kind: 'http', status: NO_HTTP_STATUS };

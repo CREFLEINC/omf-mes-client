@@ -2,9 +2,11 @@ import { AlertBanner, Button, Card, EmptyState, TextField } from '@crefle/web-ui
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { playErrorTone } from '../../patterns/error-tone';
+import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useReferenceNames, type ReferenceNames, type ReferenceState } from './lookups';
-import { formatMaterialLotNo } from './lot-number';
+import { MATERIAL_LOT_NO_LENGTH, formatMaterialLotNo, isMaterialLotNo } from './lot-number';
 import {
   useLotBalances,
   useLotHolds,
@@ -100,7 +102,20 @@ const HoldBanner = ({ holds, names }: { holds: LotHold[]; names: ReferenceNames 
 
 export const MaterialLocationScreen = () => {
   const [code, setCode] = useState<string | null>(null);
-  const scanField = useScanField({ onScan: setCode });
+  const [rejectedLength, setRejectedLength] = useState<number | null>(null);
+
+  const accept = (value: string) => {
+    if (!isMaterialLotNo(value)) {
+      setRejectedLength(value.length);
+      playErrorTone();
+      return;
+    }
+
+    setRejectedLength(null);
+    setCode(value);
+  };
+
+  const scanField = useScanField({ onScan: accept });
 
   const lot = useScannedLot(code);
   const lotId = lot.data?.lotId ?? null;
@@ -108,7 +123,9 @@ export const MaterialLocationScreen = () => {
   const holds = useLotHolds(lotId);
   const names = useReferenceNames(balances.data ?? []);
 
-  const failed = lot.isError || balances.isError || holds.isError;
+  const errors = [lot.error, balances.error, holds.error].filter((error) => error !== null);
+  const failed = errors.length > 0;
+  const unreachable = errors.some((error) => toApiError(error).kind === 'network');
   const pending =
     code !== null && !failed && (lot.isPending || (lotId !== null && balances.isPending));
 
@@ -123,6 +140,7 @@ export const MaterialLocationScreen = () => {
 
   const restart = () => {
     setCode(null);
+    setRejectedLength(null);
     scanField.focus();
   };
 
@@ -134,12 +152,21 @@ export const MaterialLocationScreen = () => {
         placeholder={t.scan.placeholder}
         size="xl"
         fullWidth
+        error={
+          rejectedLength === null
+            ? undefined
+            : t.invalidLength(rejectedLength, MATERIAL_LOT_NO_LENGTH)
+        }
       />
       <Button variant="outlined" size="lg" onClick={scanField.focus}>
         {t.scan.manualEntry}
       </Button>
 
-      {failed ? (
+      {unreachable ? (
+        <EmptyState live title={t.offline.title} description={t.offline.description} />
+      ) : null}
+
+      {failed && !unreachable ? (
         <AlertBanner
           variant="error"
           title={t.loadFailed.title}

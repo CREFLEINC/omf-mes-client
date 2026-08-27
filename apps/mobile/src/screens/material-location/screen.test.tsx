@@ -203,6 +203,62 @@ describe('자재 위치 확인 화면', () => {
     expect(await screen.findByText('등록되지 않은 LOT입니다')).toBeInTheDocument();
   });
 
+  it('34자리가 아니면 조회하지 않고 읽은 자릿수를 알린다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: createStubFetch([]),
+    });
+    await scan('0001234500');
+
+    expect(
+      await screen.findByText('자재 LOT은 34자리입니다. 10자리를 읽었습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('길이 오류 뒤에도 스캔 칸은 비워지고 포커스가 남는다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: createStubFetch([]) });
+    await scan('0001234500');
+
+    const field = screen.getByLabelText('스캔 대기');
+    expect(field).toHaveValue('');
+    expect(field).toHaveFocus();
+  });
+
+  it('길이가 맞으면 오류가 사라진다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan('0001234500');
+    await screen.findByText(/34자리입니다/);
+
+    await scan();
+
+    expect(await screen.findByText('1공장 자재창고')).toBeInTheDocument();
+    expect(screen.queryByText(/34자리입니다/)).not.toBeInTheDocument();
+  });
+
+  it('서버에 닿지 못하면 오프라인이라고 알린다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: () => Promise.reject(new TypeError('Failed to fetch')),
+    });
+    await scan();
+
+    expect(await screen.findByText('오프라인이라 조회할 수 없습니다')).toBeInTheDocument();
+  });
+
+  it('서버가 오류를 주면 다시 시도를 낸다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: createStubFetch([
+        {
+          match: (request) => new URL(request.url).pathname === '/trace/lots',
+          respond: () => jsonResponse({ code: 'INTERNAL' }, { status: 500 }),
+        },
+      ]),
+    });
+    await scan();
+
+    expect(await screen.findByText('조회하지 못했습니다')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    expect(screen.queryByText('오프라인이라 조회할 수 없습니다')).not.toBeInTheDocument();
+  });
+
   it('다음 스캔을 누르면 결과를 비우고 스캔 칸으로 돌아간다', async () => {
     renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
     const user = await scan();
