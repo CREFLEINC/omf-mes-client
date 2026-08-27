@@ -19,7 +19,7 @@
     "@capacitor/core": "8.5.0",
     "@capacitor/keyboard": "8.0.1",
     "@capacitor/preferences": "8.0.1",
-    "@crefle/web-ui": "github:CREFLEINC/design-system-v2-webui#91c233b257ea844dfe9df8eef440221329b092a6",
+    "@crefle/web-ui": "github:CREFLEINC/design-system-v2-webui#8c4a7751f0760b438d185546796cbdc4bc1fabee",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router": "^7.18.2"
