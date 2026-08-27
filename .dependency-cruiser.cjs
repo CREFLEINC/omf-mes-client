@@ -3,6 +3,12 @@
  * 워크스페이스 경계는 잘못된 방향의 "선언"까지는 막지 못하므로 여기서 검증한다.
  * 규칙의 to.path는 해석된 경로와 @omf-mes/* 지정자를 모두 매칭한다(미해석 import 대비).
  */
+
+const EXCLUDED_BUILD_OUTPUT = [
+  '(^|/)dist/',
+  '(^|/)android/(\\.gradle|build|app/build|app/src/main/assets)/',
+].join('|');
+
 module.exports = {
   forbidden: [
     {
@@ -56,6 +62,11 @@ module.exports = {
     },
   ],
   options: {
+    // 루트에서 도는 depcruise 는 하위 디렉터리의 .gitignore 를 읽지 않는다.
+    // 빌드 산출물이 순회에 섞이면 「방금 빌드했는지」에 따라 모듈 수가 달라진다.
+    // 산출물이 놓이는 자리만 적는다 — `build` 를 경로 어디서나 잡으면 `src/build/`
+    // 같은 소스까지 조용히 빠져 검사가 그 범위에서 눈이 먼다.
+    exclude: { path: EXCLUDED_BUILD_OUTPUT },
     doNotFollow: { path: 'node_modules' },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.base.json' },

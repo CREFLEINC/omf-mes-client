@@ -7,6 +7,7 @@ OMF-MES 사용자 프로그램의 클라이언트 모노레포. React + TypeScri
 ```
 apps/
   web/            # 관리웹 셸 (routes → screens → patterns → packages)
+  mobile/         # 모바일 셸 (Capacitor Android) — 같은 내부 의존 방향
 packages/
   domain/         # 업무 개념·상태 전이·검증 — 내부 의존 0
   api-client/     # OpenAPI 계약 클라이언트·횡단 규약 — domain만 의존
@@ -25,10 +26,13 @@ pnpm install
 pnpm typecheck     # 전 패키지 타입 검사
 pnpm mock          # 목 서버 (형제 경로의 omf-mes 클론 필요 — tools/mock/README.md)
 pnpm mock:smoke    # 목 서버 smoke 테스트
-pnpm --filter @omf-mes/web dev   # 관리웹 개발 서버
+pnpm --filter @omf-mes/web dev      # 관리웹 개발 서버
+pnpm --filter @omf-mes/mobile dev   # 모바일 셸 개발 서버 (브라우저)
 ```
 
 요구 사항: Node ≥ 20.19, pnpm 11.
+
+모바일 셸을 **단말에서** 돌리려면 JDK 21과 Android SDK가 더 필요하다 — 준비 절차와 빌드·동기화·APK 명령은 `apps/mobile/README.md`에 있다.
 
 ### 관리웹을 목 서버에 붙여 실행
 

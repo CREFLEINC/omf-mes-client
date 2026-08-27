@@ -1,0 +1,11 @@
+# 루트에서 도는 Prettier 는 하위 디렉터리의 .gitignore 를 읽지 않는다.
+# Capacitor 가 apps/mobile/android/.gitignore 로 제외해 둔 생성물을 여기서 다시 제외한다.
+# 없으면 앱을 한 번 빌드하는 것만으로 비준수 파일 수가 152 에서 285 로 뛰어,
+# 기존 실패와 신규 실패를 가르는 기준선이 흔들린다.
+
+apps/mobile/android/**/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/capacitor-cordova-android-plugins/
+apps/mobile/android/app/src/main/assets/public/
+apps/mobile/android/app/src/main/assets/capacitor.config.json
+apps/mobile/android/app/src/main/assets/capacitor.plugins.json
