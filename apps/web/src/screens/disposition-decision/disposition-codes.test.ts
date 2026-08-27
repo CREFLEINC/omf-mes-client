@@ -6,7 +6,7 @@ import {
   NONCONFORMANCE_STATUS_CODES,
   SEVERITY_CODES,
   dispositionLockReason,
-  severityScopeWarning,
+  scopeWarning,
   toCodeOptions,
 } from './disposition-codes';
 
@@ -49,13 +49,22 @@ describe('dispositionLockReason', () => {
   });
 });
 
-describe('severityScopeWarning', () => {
-  it('심각도·상태 이름이 모두 없을 때만 안내를 낸다', () => {
-    expect(severityScopeWarning([], [])).toBe(messages.dispositionDecision.severityScopeWarning);
+describe('scopeWarning', () => {
+  const t = messages.dispositionDecision.scopeWarning;
+
+  it('둘 다 이름이 없으면 둘을 함께 지목한다', () => {
+    expect(scopeWarning([], [])).toBe(t.both);
   });
 
-  it('한쪽이라도 이름을 알 수 있으면 안내를 내지 않는다', () => {
-    expect(severityScopeWarning([PLACEHOLDER_SEVERITY_CODE], [])).toBeUndefined();
-    expect(severityScopeWarning([], [PLACEHOLDER_STATUS_CODE])).toBeUndefined();
+  it('심각도만 남으면 심각도를 지목한다 — 사유 없이 남기지 않는다', () => {
+    expect(scopeWarning([], [PLACEHOLDER_STATUS_CODE])).toBe(t.severity);
+  });
+
+  it('상태만 남으면 상태를 지목한다', () => {
+    expect(scopeWarning([PLACEHOLDER_SEVERITY_CODE], [])).toBe(t.status);
+  });
+
+  it('둘 다 이름을 알면 안내하지 않는다', () => {
+    expect(scopeWarning([PLACEHOLDER_SEVERITY_CODE], [PLACEHOLDER_STATUS_CODE])).toBeUndefined();
   });
 });
