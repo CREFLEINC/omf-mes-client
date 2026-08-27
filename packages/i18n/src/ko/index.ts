@@ -105,6 +105,7 @@ import { temporaryPutaway } from './temporary-putaway';
 import { shellHome } from './shell-home';
 import { workerAssignment } from './worker-assignment';
 import { popShell } from './pop-shell';
+import { popMaterialLotLabel } from './pop-material-lot-label';
 
 export const ko = {
   common,
@@ -198,6 +199,7 @@ export const ko = {
   shellHome,
   workerAssignment,
   popShell,
+  popMaterialLotLabel,
 } as const;
 
 export type Messages = typeof ko;

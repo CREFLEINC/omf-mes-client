@@ -2,6 +2,7 @@ import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
 import { popRoutes } from './pop';
+import { PopLayout } from '../app/pop-layout';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
@@ -50,6 +51,7 @@ import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
 import { PoChangeReviewScreen } from '../screens/po-change-review/screen';
+import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { ProductionOrderScreen } from '../screens/production-order/screen';
 import { ProductionPlanScreen } from '../screens/production-plan/screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
@@ -574,6 +576,27 @@ export const appRouter = createBrowserRouter([
    * 열려 있다(라우트 가드는 이 작업의 범위 밖 — 후속 작업). 로그인 화면이 생겼다는 것이
    * 보호가 생겼다는 뜻이 아니다.
    */
+  /*
+   * POP(1024×768 터치 키오스크) — **셸 자식이 아닌 라우트다.** 관리웹 셸을 지나지 않고
+   * `PopLayout`을 쓴다. 폼팩터 분기를 이 자리에서만 한다(루트 CLAUDE.md — 코드는 1벌이고
+   * 분기는 진입점·레이아웃 레벨에서만).
+   *
+   * ⛔ **사이드바에 올리지 않는다.** 이 주소는 관리웹 사용자가 메뉴로 찾아가는 곳이 아니라
+   * 현장 단말이 고정으로 띄우는 화면이다. 셸이 렌더러로 `apps/web` 빌드 산출물을 그대로
+   * 복사해 쓰므로 주소는 한 벌을 공유한다.
+   *
+   * ⚠ **이 라우트도 접근을 제한하지 않는다.** 단말 인증은 셸(Electron)이 토큰으로 하고
+   * 화면 앞단에는 가드가 없다 — 로그인 라우트와 같은 상태다.
+   */
+  {
+    path: '/pop',
+    element: (
+      <PopLayout>
+        <Outlet />
+      </PopLayout>
+    ),
+    children: [{ path: 'material-lot-label', element: <PopMaterialLotLabelScreen /> }],
+  },
   { path: '/login', element: <LoginScreen /> },
   /*
    * POP(현장 단말) 화면. 표는 `./pop`이 들고 여기서는 펼치기만 한다 — POP은 관리웹의 한

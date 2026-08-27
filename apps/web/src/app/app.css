@@ -67,7 +67,12 @@
  * .worker-no-field  사번 표시칸 — 글자만 키운다(높이는 xl 그대로)
  * .worker-card__name  현재 작업자 이름·사번 — 늘 크게 보인다
  * POP(1024×768 터치 키오스크) — 관리웹과 폼팩터가 다르다
- * .pop-touch(-등급)  터치 타겟 최소 높이 — ⚠ 제품이 임시로 채우는 치수
+ * .pop-screen       POP 화면 최상위 — 남은 높이를 그대로 쓴다
+ * .pop-screen-head  화면명과 프린터·단말 상태를 한 줄에 두는 머리
+ * .pop-panes        POP 좌우 2단 — 접힘 기준점이 없다
+ * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
+ * .pop-page-nav     쪽 이동 줄 — 위치 표시와 이전·다음
+ * .pop-touch(-등급) 터치 타겟 최소 높이 — ⚠ 제품이 임시로 채우는 치수
  */
 
 :root {
@@ -1053,8 +1058,6 @@ main > * + * {
  * ── POP(1024×768 터치 키오스크) ────────────────────────────────────────────
  *
  * 관리웹과 폼팩터가 다르다. **세로 여유가 119px뿐이라** 구획을 쌓지 않고 좌우로 편다.
- * 좌우 2단 같은 **배치 클래스는 그것을 실제로 그리는 화면과 함께 들어온다** — 소비자 없는
- * CSS는 맞는지 틀린지 확인할 방법이 없다.
  *
  * ⚠ docs/layout-conventions.md 에 규범으로 올리지 않는다 — 그 문서의 갱신 규칙이
  * 「두 번째 화면에서 같은 결정을 또 하게 될 때 규범을 추가한다」이고, POP 화면은 아직
@@ -1064,6 +1067,7 @@ main > * + * {
 /*
  * 화면 최상위 — 남은 높이를 그대로 쓴다. 세로로 흐르면 1024×768에서 아래가 잘린다.
  * 관리웹의 `main > * + *` 이음매를 받지 않으려고 최상위 블록을 하나만 둔다.
+ * 최상위 블록을 하나만 두어 관리웹의 `main > * + *` 이음매를 받지 않는다.
  */
 .pop-screen {
   display: flex;
@@ -1143,6 +1147,31 @@ main > * + * {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-4);
   align-items: stretch;
+}
+
+/*
+ * 2단의 각 칸 — **칸 안에서 스크롤한다.**
+ * 화면 전체를 스크롤시키면 머리의 프린터 상태가 함께 밀려 올라간다. 그 자리는 인쇄가
+ * 안 될 때 가장 먼저 보는 곳이라 항상 보여야 한다.
+ */
+.pop-pane {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+}
+
+/* 쪽 이동 줄 — 위치 표시를 왼쪽 끝에 두고 이동 버튼을 오른쪽에 모은다. */
+.pop-page-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.pop-page-nav > .field-note {
+  margin-right: auto;
 }
 
 /*
