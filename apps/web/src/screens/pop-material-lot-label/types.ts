@@ -77,3 +77,41 @@ export const toLineView = (data: InboundReceiptLineResponse): LineView => ({
   uomId: data.uomId,
   supplierLotMissing: data.supplierLotMissing,
 });
+
+type PrinterResponse = components['schemas']['Printer'];
+
+/** 프린터 상태. 계약의 enum 을 그대로 쓴다 — 화면이 값을 늘리거나 줄이지 않는다. */
+export type PrinterStatus = PrinterResponse['status'];
+
+/**
+ * 화면이 다루는 프린터 한 대.
+ *
+ * `statusMessage`는 **서버가 주는 사람이 읽는 설명**이다. 화면이 `status`로 문구를 조립하지
+ * 않는다(계약 명시) — 조립하면 서버가 값을 늘렸을 때 화면만 모르는 문구가 생긴다.
+ */
+export interface PrinterView {
+  printerName: string;
+  displayName: string;
+  status: PrinterStatus;
+  /** 없을 수 있다. 없는 것과 조회하지 못한 것은 다른 상태다(공유계약 G-9). */
+  statusMessage: string | null;
+  isDefault: boolean;
+}
+
+/** 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toPrinterView = (data: PrinterResponse): PrinterView => ({
+  printerName: data.printerName,
+  displayName: data.displayName,
+  status: data.status,
+  statusMessage: data.statusMessage ?? null,
+  isDefault: data.isDefault,
+});
+
+/**
+ * 머리에 보일 한 대를 고른다 — **기본 프린터가 있으면 그것, 없으면 첫 번째.**
+ *
+ * 프린터 설치 구성(대수·단말당 배정)이 고객 정리 대기라 **한 대 전제로 동작한다**(착수 이슈
+ * 미결 4). 여러 대가 오면 고르는 자리가 필요하지만 그 구성이 정해지기 전에는 만들지 않는다.
+ */
+export const toHeadPrinter = (printers: PrinterView[]): PrinterView | null =>
+  printers.find((printer) => printer.isDefault) ?? printers[0] ?? null;

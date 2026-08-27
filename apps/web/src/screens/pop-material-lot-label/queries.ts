@@ -3,7 +3,14 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toLineView, toReceiptView, type LineView, type ReceiptListResult } from './types';
+import {
+  toLineView,
+  toPrinterView,
+  toReceiptView,
+  type LineView,
+  type PrinterView,
+  type ReceiptListResult,
+} from './types';
 
 /**
  * 이 화면의 요청 — 이 슬라이스에서는 **읽기 하나뿐**이다.
@@ -99,6 +106,30 @@ export const useReceiptLines = (inboundReceiptId: number | null): UseQueryResult
       }
 
       return fetchReceiptLines(client, inboundReceiptId);
+    },
+  });
+};
+
+/**
+ * 이 단말이 쓸 수 있는 프린터와 그 상태.
+ *
+ * ⛔ **`documentTypeCode`로 거르지 않는다.** 문서 유형 값 목록이 아직 확정되지 않아(착수 이슈
+ * 미결 1) 화면이 값을 넣으면 서버가 모르는 코드로 걸러 **목록이 통째로 비어 올 수 있다.**
+ * 거르지 않으면 최악이 「쓸 수 없는 프린터도 함께 보인다」이고, 거르면 최악이 「쓸 수 있는
+ * 프린터가 없다고 보인다」다 — 뒤쪽이 더 나쁘다.
+ *
+ * ⚠ **비어 올 수 있다.** 서버가 무엇을 보고 목록을 만드는지가 미결이다(착수 이슈 6항).
+ * 빈 목록은 정상 응답이므로 오류로 다루지 않고 빈 상태로 그린다.
+ */
+export const usePrinters = (): UseQueryResult<PrinterView[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['pop-material-lot-label', 'printers'],
+    queryFn: async () => {
+      const data = await runRequest(() => client.GET('/app/printers', {}));
+
+      return data.items.map(toPrinterView);
     },
   });
 };

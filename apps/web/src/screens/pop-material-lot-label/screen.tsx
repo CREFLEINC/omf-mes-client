@@ -7,9 +7,11 @@ import { LineTable } from './line-table';
 import { useItemLookup, useSupplierLookup, useUomLookup } from './lookups';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
-import { useReceiptLines, useReceipts } from './queries';
+import { PrinterStatusIndicator } from './printer-status';
+import { usePrinters, useReceiptLines, useReceipts } from './queries';
 import { ReceiptTable } from './receipt-table';
 import { TargetCard } from './target-card';
+import { toHeadPrinter } from './types';
 
 const t = messages.popMaterialLotLabel;
 
@@ -34,6 +36,7 @@ export const PopMaterialLotLabelScreen = () => {
   // 첫 쪽이면 조건을 싣지 않는다 — 서버 기본값이 1이라 URL에 없는 편이 조건을 정직하게 드러낸다.
   const receipts = useReceipts(page === 1 ? {} : { page });
   const lines = useReceiptLines(selectedReceiptId);
+  const printers = usePrinters();
 
   const hasReceipt = selectedReceiptId !== null;
   const supplierLookup = useSupplierLookup();
@@ -58,6 +61,14 @@ export const PopMaterialLotLabelScreen = () => {
     <div className="pop-screen">
       <header className="pop-screen-head">
         <PageHeader title={t.title} size="compact" />
+        <PrinterStatusIndicator
+          printer={toHeadPrinter(printers.data ?? [])}
+          isLoading={printers.isPending}
+          isError={printers.isError}
+          onRetry={() => {
+            void printers.refetch();
+          }}
+        />
       </header>
 
       <div className="pop-panes">
