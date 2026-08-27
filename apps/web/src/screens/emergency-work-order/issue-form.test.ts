@@ -103,5 +103,12 @@ describe('validateIssueForm', () => {
     it('고르지 않으면 짚는다', () => {
       expect(validateIssueForm(filled({ itemId: '' })).itemId).toBe(t.itemRequired);
     });
+
+    it.each(['0', '-1', 'abc', '5001.5', '9007199254740993'])(
+      '⛔ 부를 수 없는 식별자를 통과시키지 않는다 — 숫자 자리에서 조용히 무너진다: %s',
+      (itemId) => {
+        expect(validateIssueForm(filled({ itemId })).itemId).toBe(t.itemRequired);
+      },
+    );
   });
 });

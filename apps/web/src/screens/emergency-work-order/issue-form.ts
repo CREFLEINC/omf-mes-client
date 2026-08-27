@@ -37,6 +37,17 @@ const DECIMAL = /^\d{1,12}(\.\d{1,6})?$/;
 const LOCAL_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
 /**
+ * 고른 품목이 실제로 부를 수 있는 식별자인가.
+ *
+ * ⚠ **비어 있지 않은 것만으로는 부족하다.** 이 칸은 글자로 들고 있다가 숫자로 바뀌어 전선에
+ * 나간다 — 「비지 않았다」만 보면 `'0'`·`'abc'` 가 검증을 통과한 뒤 숫자 자리에서 조용히
+ * 무너진다. 선택 목록이 성한 동안에는 그런 값이 들어올 일이 없지만, **검증은 그 목록이
+ * 어긋났을 때를 위해 있다.**
+ */
+const isSelectedId = (value: string): boolean =>
+  /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) > 0;
+
+/**
  * 달력에 있는 시각인가.
  *
  * 모양만 보면 `2026-02-30`·`2026-08-06T25:00` 이 통과한다. 만들어 본 뒤 **같은 글자로 되돌아
@@ -68,7 +79,7 @@ export const validateIssueForm = (value: IssueFormValue): IssueFormErrors => {
   const qty = value.orderQty.trim();
   const due = value.plannedEndAtLocal.trim();
 
-  if (value.itemId.trim() === '') errors.itemId = t.itemRequired;
+  if (!isSelectedId(value.itemId.trim())) errors.itemId = t.itemRequired;
 
   if (qty === '') errors.orderQty = t.qtyRequired;
   else if (/^\d+(\.\d+)?$/.test(qty) && !DECIMAL.test(qty)) errors.orderQty = t.qtyTooLong;
