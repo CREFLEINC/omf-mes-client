@@ -42,7 +42,10 @@ interface StubOptions {
   page?: { page: number; size: number; total: number };
   receiptsFail?: boolean;
   linesFail?: boolean;
+  printers?: unknown[];
+  printersFail?: boolean;
   onReceiptRequest?: (url: URL) => void;
+  onPrinterRequest?: (url: URL) => void;
 }
 
 const renderScreen = (options: StubOptions = {}) => {
@@ -93,6 +96,27 @@ const renderScreen = (options: StubOptions = {}) => {
             items: [{ uomId: 8401, uomCode: 'EA', uomName: '개', isActive: true }],
             page: { page: 1, size: 20, total: 1 },
           }),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/app/printers',
+        respond: (request) => {
+          options.onPrinterRequest?.(new URL(request.url));
+
+          return options.printersFail === true
+            ? jsonResponse({ message: '실패' }, { status: 500 })
+            : jsonResponse({
+                items: options.printers ?? [
+                  {
+                    printerName: 'syn-label-printer',
+                    displayName: '합성 라벨 프린터 가',
+                    status: 'READY',
+                    statusMessage: '대기 중',
+                    isDefault: true,
+                    supportedDocumentTypeCodes: ['LABEL'],
+                  },
+                ],
+              });
+        },
       },
       {
         match: (request) => new URL(request.url).pathname === '/mdm/partners',
@@ -344,5 +368,39 @@ describe('PopMaterialLotLabelScreen — 품목 줄과 발번 대상', () => {
     await selectReceipt(user);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('품목을 불러오지 못했습니다.');
+  });
+});
+
+describe('PopMaterialLotLabelScreen — 프린터 상태', () => {
+  it('머리에 프린터와 그 상태를 상시 보인다 — 인쇄가 안 될 때 가장 먼저 보는 자리다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText('합성 라벨 프린터 가')).toBeInTheDocument();
+    expect(screen.getByText('대기 중')).toBeInTheDocument();
+  });
+
+  /** 서버가 무엇을 보고 목록을 만드는지가 미결이라 비어 올 수 있다(착수 이슈 6항). */
+  it('프린터가 한 대도 없으면 빈 상태를 그린다 — 오류로 다루지 않는다', async () => {
+    renderScreen({ printers: [] });
+
+    expect(await screen.findByText('사용할 수 있는 프린터가 없습니다.')).toBeInTheDocument();
+  });
+
+  it('프린터 조회가 실패해도 입하 목록은 그대로 쓴다 — 머리 하나가 화면을 막지 않는다', async () => {
+    renderScreen({ printersFail: true });
+
+    expect(await screen.findByText('프린터 상태를 확인할 수 없습니다.')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'SYN-IB-0001 선택' })).toBeInTheDocument();
+  });
+
+  /** 문서 유형 값 목록이 미확정이라 값을 실으면 목록이 통째로 비어 올 수 있다. */
+  it('문서 유형으로 프린터를 거르지 않는다', async () => {
+    const seen: URL[] = [];
+    renderScreen({ onPrinterRequest: (url) => seen.push(url) });
+
+    await waitFor(() => {
+      expect(seen.length).toBeGreaterThan(0);
+    });
+    expect(seen[0]?.searchParams.has('documentTypeCode')).toBe(false);
   });
 });
