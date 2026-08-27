@@ -11,7 +11,8 @@ import type {
 
 export const dispositionKeys = {
   all: ['disposition-decision'] as const,
-  pending: (query: PendingListQuery) => ['disposition-decision', 'pending', { ...query }] as const,
+  pending: (query: PendingListQuery | null) =>
+    ['disposition-decision', 'pending', query === null ? null : { ...query }] as const,
   detail: (nonconformanceId: number | null) =>
     ['disposition-decision', 'detail', nonconformanceId] as const,
   decisions: (nonconformanceId: number | null) =>
@@ -31,13 +32,19 @@ export const nonconformanceDetailPath = (nonconformanceId: number): string =>
  * 경로 앞머리가 같아도 정본 파일이 다르다(공유계약 B-13).
  */
 export const usePendingNonconformances = (
-  query: PendingListQuery,
+  query: PendingListQuery | null,
 ): UseQueryResult<NonconformanceListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: dispositionKeys.pending(query),
-    queryFn: () => runRequest(() => client.GET('/quality/nonconformances', { params: { query } })),
+    /* 기간이 막히면 조회를 열지 않는다 — 막았는데 요청은 나가는 상태를 만들지 않는다. */
+    enabled: query !== null,
+    queryFn: () => {
+      if (query === null) throw new Error('기간이 막힌 채로는 목록을 조회하지 않습니다.');
+
+      return runRequest(() => client.GET('/quality/nonconformances', { params: { query } }));
+    },
   });
 };
 
