@@ -299,7 +299,7 @@ describe('PopMaterialLotLabelScreen — 품목 줄과 발번 대상', () => {
     expect(await screen.findByText(/이 화면의 발번 대상이 아닙니다/u)).toBeInTheDocument();
   });
 
-  it('품목을 고르면 발번 대상에 품목·수량·공급사·상태가 뜬다', async () => {
+  it('품목을 고르면 발번 대상에 품목·수량·공급사가 뜬다', async () => {
     const { user } = renderScreen();
 
     await selectReceipt(user);
@@ -311,7 +311,12 @@ describe('PopMaterialLotLabelScreen — 품목 줄과 발번 대상', () => {
 
     expect(await within(target).findByText('500 EA')).toBeInTheDocument();
     expect(await within(target).findByText('SYN-P-01 · 합성 공급사 가')).toBeInTheDocument();
-    expect(within(target).getByText('Hold')).toBeInTheDocument();
+    /**
+     * ⛔ 상태를 보이지 않는다 — 계약의 `Lot.statusCode`는 품질 판정 축이고 스펙이 그린
+     * 「Hold」는 다른 축(`lot_hold`)이다. `LotCreate`에 그 필드가 없어 화면이 보낼 수도
+     * 없다. 어느 축의 어떤 값인지가 정해지기 전에 지어내지 않는다(omf-mes#245 ⑤).
+     */
+    expect(within(target).queryByText('Hold')).not.toBeInTheDocument();
   });
 
   it('고르기 전에는 무엇을 하면 되는지 말한다', async () => {

@@ -42,6 +42,7 @@
  * .pop-screen-head  화면명과 프린터·단말 상태를 한 줄에 두는 머리
  * .pop-panes        POP 좌우 2단 — 접힘 기준점이 없다. 구획이 하나면 줄 전체를 쓴다
  * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
+ * .pop-pane-back    구획 안에서 되돌아가는 길 — 줄 왼쪽 끝
  * .pop-pane-title   구획 제목
  * .pop-target-fields 발번 대상의 읽기 전용 라벨·값 두 열
  * .pop-page-nav     쪽 이동 줄 — 위치 표시와 이전·다음
@@ -932,6 +933,16 @@ main > * + * {
 
 .pop-page-nav > .field-note {
   margin-right: auto;
+}
+
+/*
+ * 되돌아가는 길 — **줄 왼쪽 끝에 붙인다.**
+ *
+ * 구획이 세로 flex 라 그냥 두면 버튼이 칸 폭만큼 늘어나 가운데로 보인다(실기에서 드러났다).
+ * 되돌아가기는 목록의 시작 지점을 가리키므로 왼쪽이 제자리다.
+ */
+.pop-pane-back {
+  align-self: flex-start;
 }
 
 /* 구획 제목 — 어느 칸이 무엇인지 밝힌다. 칸이 둘뿐이라 제목을 크게 두지 않는다. */
