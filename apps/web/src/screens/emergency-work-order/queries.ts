@@ -19,7 +19,13 @@ export const emergencyWorkOrderKeys = {
     ['emergency-work-order', 'routing-operations', routingId] as const,
 };
 
-/** 검색 한 번에 받아 둘 최대 건수. 넘치면 「좁혀 달라」고 말한다 — 조용히 자르지 않는다. */
+/**
+ * 검색 한 번에 받아 둘 최대 건수.
+ *
+ * ⚠ **잘렸다는 사실을 화면이 말해야 한다.** 응답의 전체 건수가 이 수보다 크면 사용자가 보는
+ * 목록은 답의 일부인데, 말하지 않으면 **「찾는 품목이 없다」로 읽는다.** 그 안내를 붙이는
+ * 것은 이 목록을 그리는 자리의 몫이고 여기서는 건수만 정한다.
+ */
 export const ITEM_SEARCH_SIZE = 20;
 
 /**
