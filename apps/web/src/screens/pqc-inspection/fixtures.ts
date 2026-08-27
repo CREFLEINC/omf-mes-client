@@ -51,21 +51,24 @@ export const inProgressRequest: InspectionRequestResponse = {
  * 자재 LOT 이 없는 건. 계약에서 `lotId` 는 선택이며(작업지시 대상 검사 등) **없는 것이 정상**이다.
  * 표가 이 갈래에서 깨지지 않아야 한다.
  */
-export const requestWithoutLot: InspectionRequestResponse = {
+/**
+ * 작업지시가 붙지 않은 의뢰. **표의 「없음」 표시를 재는 자리다** — 이 화면의 큐는 작업지시
+ * 열을 그리므로 그 칸이 비는 경우가 시험 대상이다.
+ */
+export const requestWithoutWorkOrder: InspectionRequestResponse = {
   ...waitingRequest,
   inspectionRequestId: 1003,
   inspectionRequestNo: 'IR-2026-0003',
   /* 의뢰 일시를 겹치지 않게 둔다 — 겹치면 표기 시험이 어느 줄을 본 것인지 가릴 수 없다. */
   requestedAt: '2026-08-16T08:40:00+09:00',
-  lotId: undefined,
-  workOrderId: 7001,
-  targetTypeCode: 'WORK_ORDER',
+  workOrderId: undefined,
+  targetTypeCode: 'LOT',
 };
 
 export const queueItems: InspectionRequestResponse[] = [
   waitingRequest,
   inProgressRequest,
-  requestWithoutLot,
+  requestWithoutWorkOrder,
 ];
 
 export const pageOf = (total: number, page = 1, size = 50): PageMetaResponse => ({
