@@ -53,6 +53,15 @@ importers:
       '@crefle/web-ui':
         specifier: github:CREFLEINC/design-system-v2-webui#8c4a7751f0760b438d185546796cbdc4bc1fabee
         version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/8c4a7751f0760b438d185546796cbdc4bc1fabee(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@omf-mes/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
+      '@omf-mes/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@tanstack/react-query':
+        specifier: ^5.101.4
+        version: 5.101.4(react@19.2.8)
       react:
         specifier: ^19.1.1
         version: 19.2.8
