@@ -66,9 +66,6 @@ export const pqcInspectionKeys = {
   rounds: (inspectionRequestId: number) => [...ALL_KEY, 'rounds', inspectionRequestId] as const,
   /** 회차 한 건. **목록과 갈라 두는 이유가 내용이 아니라 잠금 토큰이다** — 아래 훅 주석 참조. */
   round: (inspectionResultId: number) => [...ALL_KEY, 'round', inspectionResultId] as const,
-  /** 이 단말×공정의 기능 플래그. 마스터라 저장이 바꾸지 않는다. */
-  terminalProcesses: (terminalId: number) =>
-    [...ALL_KEY, 'terminal-processes', terminalId] as const,
 };
 
 /** 회차 한 건의 경로. 잠금 토큰이 이 경로를 열쇠로 보관되므로 **한 자리에서만 만든다.** */
@@ -259,37 +256,6 @@ export const useCodeValues = (codeGroupCode: string): UseQueryResult<CodeValueRe
   return useQuery({
     queryKey: pqcInspectionKeys.codeValues(codeGroupCode),
     queryFn: () => fetchCodeValues(client, codeGroupCode),
-  });
-};
-
-type TerminalProcessResponse = components['schemas']['TerminalProcess'];
-
-const fetchTerminalProcesses = (
-  client: Client,
-  terminalId: number,
-): Promise<TerminalProcessResponse[]> =>
-  runRequest(() =>
-    client.GET('/mdm/terminals/{terminalId}/processes', { params: { path: { terminalId } } }),
-  ).then((response) => response.items);
-
-/**
- * 이 단말이 공정마다 무엇을 할 수 있는가 — ⭐ **`can_input_inspection` 이 여기 있다**(F-1).
- *
- * ⛔ **플래그가 없다고 화면을 감추지 않는다**(G-3 · 스펙 §5-1). 확정 버튼을 **비활성 + 사유**로
- * 두고 어떻게 푸는지를 함께 말한다 — 감추면 검사자는 단말이 고장 난 줄 안다.
- *
- * ⚠ **화면의 막음은 편의이고 정본은 서버다.** 계약이 「단말 게이팅을 서버가 강제한다」고
- * 적었다 — 화면이 먼저 막는 것은 헛수고를 줄이기 위함이지 이것이 권한 판정은 아니다.
- */
-export const useTerminalProcesses = (
-  terminalId: number | null,
-): UseQueryResult<TerminalProcessResponse[]> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: pqcInspectionKeys.terminalProcesses(terminalId ?? 0),
-    queryFn: () => fetchTerminalProcesses(client, terminalId as number),
-    enabled: terminalId !== null,
   });
 };
 

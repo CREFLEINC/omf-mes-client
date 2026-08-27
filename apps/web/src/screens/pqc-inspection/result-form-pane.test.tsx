@@ -1,0 +1,430 @@
+import { messages } from '@omf-mes/i18n';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+
+import { renderWithProviders } from '../../test/api-harness';
+import { toCodeOptions } from './code-options';
+import { confirmedRound, draftRound, overallJudgmentCodeValues } from './fixtures';
+import { EMPTY_COVERAGE_DRAFT } from './coverage';
+import { EMPTY_QUANTITY_DRAFT, type QuantityDraft } from './quantity-draft';
+import { ResultFormPane } from './result-form-pane';
+import { toInspectionResultRound, type InspectionResultRound } from './types';
+
+const t = messages.pqcInspection.result;
+const tDisposition = messages.pqcInspection.disposition;
+const tCoverage = messages.pqcInspection.coverage;
+
+const renderPane = (
+  draft: QuantityDraft = EMPTY_QUANTITY_DRAFT,
+  round: InspectionResultRound | null = toInspectionResultRound(draftRound),
+  inspectedQty = 500,
+  overrides: Partial<Parameters<typeof ResultFormPane>[0]> = {},
+) => {
+  const onChange = vi.fn();
+  const onSave = vi.fn();
+  const onConfirm = vi.fn();
+  const onStartReinspection = vi.fn();
+  const onCoverageChange = vi.fn();
+  const onDispositionChange = vi.fn();
+
+  renderWithProviders(
+    <ResultFormPane
+      round={round}
+      inspectedQty={inspectedQty}
+      draft={draft}
+      onChange={onChange}
+      onSave={onSave}
+      isSaving={false}
+      isSaved={false}
+      fieldErrors={{}}
+      saveError={null}
+      onReload={vi.fn()}
+      judgmentOptions={toCodeOptions(overallJudgmentCodeValues)}
+      judgment=""
+      onJudgmentChange={vi.fn()}
+      onConfirm={onConfirm}
+      isConfirming={false}
+      confirmError={null}
+      isJustConfirmed={false}
+      isReinspecting={false}
+      onStartReinspection={onStartReinspection}
+      onCancelReinspection={vi.fn()}
+      coverage={EMPTY_COVERAGE_DRAFT}
+      onCoverageChange={onCoverageChange}
+      disposition={null}
+      onDispositionChange={onDispositionChange}
+      canInputInspection
+      {...overrides}
+    />,
+  );
+
+  return {
+    onChange,
+    onSave,
+    onConfirm,
+    onStartReinspection,
+    onCoverageChange,
+    onDispositionChange,
+  };
+};
+
+const saveButton = () => screen.getByRole('button', { name: t.save });
+
+/** 이미 만들어진 작성중 회차. 확정 갈래는 회차가 «있어야» 성립한다. */
+const savedRound = toInspectionResultRound(draftRound);
+
+describe('ResultFormPane', () => {
+  it('회차를 밝힌다', () => {
+    renderPane();
+
+    expect(screen.getByText(t.round(1))).toBeInTheDocument();
+  });
+
+  it('아직 회차가 없으면 시작 전임을 말한다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null);
+
+    expect(screen.getByText(t.notStarted)).toBeInTheDocument();
+  });
+
+  it('세 칸을 손으로 넣는다 — 자동 계산을 만들지 않는다', async () => {
+    const { onChange } = renderPane();
+
+    await userEvent.type(screen.getByLabelText(t.fields.accepted), '4');
+
+    expect(onChange).toHaveBeenCalledWith({ ...EMPTY_QUANTITY_DRAFT, accepted: '4' });
+  });
+
+  it('합계가 맞으면 일치한다고 말한다', () => {
+    renderPane({ accepted: '480', rejected: '15', held: '5' });
+
+    expect(screen.getByText(t.matched)).toBeInTheDocument();
+  });
+
+  it('모자라면 얼마나 모자란지 숫자로 말한다 — 사용자가 다시 세지 않게', () => {
+    renderPane({ accepted: '400', rejected: '0', held: '0' });
+
+    expect(screen.getByText(t.short('100'))).toBeInTheDocument();
+  });
+
+  it('넘기면 얼마나 넘겼는지 말한다 — 0으로 깎아 감추지 않는다', () => {
+    renderPane({ accepted: '600', rejected: '0', held: '0' });
+
+    expect(screen.getByText(t.over('100'))).toBeInTheDocument();
+  });
+
+  it('소수 합이 부동소수 오차로 어긋나지 않는다', () => {
+    renderPane({ accepted: '0.1', rejected: '0.2', held: '0' }, null, 0.3);
+
+    expect(screen.getByText(t.matched)).toBeInTheDocument();
+  });
+
+  it('오류를 타이핑마다 보이지 않는다 — 「0.5」를 치는 도중 「0.」에서 틀렸다고 하지 않는다', () => {
+    renderPane({ ...EMPTY_QUANTITY_DRAFT, accepted: '0.' });
+
+    expect(screen.queryByText(t.quantityInvalid)).not.toBeInTheDocument();
+  });
+
+  it('저장을 누른 뒤부터 수량이 아닌 값을 짚는다', async () => {
+    renderPane({ ...EMPTY_QUANTITY_DRAFT, accepted: '-1' });
+
+    await userEvent.click(saveButton());
+
+    expect(screen.getByText(t.quantityInvalid)).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 리뷰가 잡은 자리다. 잘못된 칸을 0으로 읽고 세면 화면이 오류와 「일치합니다」를
+   * 동시에 내고, 그중 하나가 거짓이다.
+   */
+  it('한 칸이 수량이 아니면 일치한다고 말하지 않는다 — 셀 수 없는 것을 셌다고 하지 않는다', () => {
+    /* 0으로 읽고 세면 abc + 500 + 빈칸 = 500 이 되어 「일치합니다」가 거짓이 된다. */
+    renderPane({ accepted: 'abc', rejected: '500', held: '' });
+
+    expect(screen.queryByText(t.matched)).not.toBeInTheDocument();
+  });
+
+  it('셀 수 없으면 합계·잔여도 숫자로 내지 않는다 — 0으로 읽은 합은 그 숫자가 거짓이다', () => {
+    renderPane({ accepted: 'abc', rejected: '500', held: '' });
+
+    expect(screen.getAllByText(messages.pqcInspection.queue.emptyValue)).toHaveLength(2);
+  });
+
+  it('확정된 회차는 고칠 수 있는 것처럼 보이지 않는다 — 이전 회차는 정정하지 않는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeDisabled();
+    expect(screen.getAllByText(t.confirmed).length).toBeGreaterThan(0);
+  });
+
+  it('저장을 누르면 저장한다', async () => {
+    const { onSave } = renderPane({ accepted: '480', rejected: '15', held: '5' });
+
+    await userEvent.click(saveButton());
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+   * ⭐ 임시 저장은 판정을 확정하는 것이 아니라 하던 일을 남기는 것이다. 계약도 「작성중」에는
+   * 합계 제약을 걸지 않는다(스펙 §6). 여기서 막으면 검사자가 중간에 자리를 뜰 수 없다.
+   */
+  it('합계가 맞지 않아도 저장한다 — 확정이 아니라 하던 일을 남기는 것이다', async () => {
+    const { onSave } = renderPane({ accepted: '100', rejected: '0', held: '0' });
+
+    await userEvent.click(saveButton());
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('수량이 아닌 값이 남아 있으면 저장하지 않고 사유를 보인다 — 보낼 수 없는 값이다', async () => {
+    const { onSave } = renderPane({ ...EMPTY_QUANTITY_DRAFT, accepted: 'abc' });
+
+    await userEvent.click(saveButton());
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText(t.saveBlockedByInvalid)).toBeInTheDocument();
+  });
+
+  it('저장 중에는 칸과 단추를 잠근다 — 같은 값을 두 번 보내지 않는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isSaving: true });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.saving })).toBeDisabled();
+  });
+
+  it('저장하면 결과를 알린다 — 눌렀는데 아무 일도 없어 보이지 않게', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isSaved: true });
+
+    expect(screen.getByText(t.saved)).toBeInTheDocument();
+  });
+
+  it('서버가 칸을 짚어 주면 그 칸에 낸다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, {
+      fieldErrors: { acceptedQty: '합격수량이 검사수량을 넘습니다.' },
+    });
+
+    expect(screen.getByText('합격수량이 검사수량을 넘습니다.')).toBeInTheDocument();
+  });
+
+  const confirmButton = () => screen.queryByRole('button', { name: t.confirm });
+
+  it('⛔ 확정이 되돌릴 수 없다는 사실을 누르기 전에 알린다', () => {
+    renderPane();
+
+    expect(screen.getByText(t.confirmNote)).toBeInTheDocument();
+  });
+
+  /* ⭐ 회차를 «있는 것»으로 둔다 — 회차가 없으면 합계와 무관하게 확정 자체가 불가능하다. */
+  it('합계가 맞지 않으면 확정을 막고 사유를 밝힌다', () => {
+    renderPane({ accepted: '100', rejected: '0', held: '0' }, savedRound, 500, {
+      judgment: 'ACCEPTED',
+    });
+
+    expect(confirmButton()).toBeDisabled();
+    expect(screen.getByText(t.confirmBlockedByTotals)).toBeInTheDocument();
+  });
+
+  it('판정을 고르지 않으면 확정을 막고 사유를 밝힌다 — 합계와 다른 사유다', () => {
+    renderPane({ accepted: '480', rejected: '15', held: '5' }, savedRound, 500, { judgment: '' });
+
+    expect(confirmButton()).toBeDisabled();
+    expect(screen.getByText(t.confirmBlockedByJudgment)).toBeInTheDocument();
+  });
+
+  it('합계가 맞고 판정을 고르면 확정할 수 있다', async () => {
+    const { onConfirm } = renderPane(
+      { accepted: '480', rejected: '15', held: '5' },
+      savedRound,
+      500,
+      {
+        judgment: 'ACCEPTED',
+      },
+    );
+
+    expect(confirmButton()).toBeEnabled();
+    await userEvent.click(confirmButton() as HTMLElement);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('셀 수 없는 수량이 있으면 확정을 막는다 — 「일치」를 지어내지 않는다', () => {
+    renderPane({ accepted: 'abc', rejected: '500', held: '' }, null, 500, { judgment: 'ACCEPTED' });
+
+    expect(confirmButton()).toBeDisabled();
+  });
+
+  it('판정 목록이 비면 감추지 않고 사유를 밝힌다 — 시드가 아직 없을 수 있다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { judgmentOptions: [] });
+
+    expect(screen.getByLabelText(t.judgment)).toBeDisabled();
+    expect(screen.getByText(t.judgmentUnavailable)).toBeInTheDocument();
+  });
+
+  it('저장된 판정이 목록에 없으면 알린다 — 조용히 비우면 고른 것이 지워진다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { judgment: 'RETIRED' });
+
+    expect(screen.getByText(t.judgmentUnknown('RETIRED'))).toBeInTheDocument();
+  });
+
+  it('확정된 회차에는 확정 자리를 만들지 않는다 — 재검사로 새 회차를 쌓는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
+
+    expect(confirmButton()).not.toBeInTheDocument();
+  });
+
+  it('확정된 회차에는 저장 자리를 만들지 않는다 — 눌러도 아무 일이 없는 컨트롤을 두지 않는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
+
+    expect(screen.queryByRole('button', { name: t.save })).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 재검사', () => {
+  it('확정된 회차에는 재검사로 가는 길이 있다 — 사유만 내고 막지 않는다', async () => {
+    const { onStartReinspection } = renderPane(
+      EMPTY_QUANTITY_DRAFT,
+      toInspectionResultRound(confirmedRound),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: t.reinspect }));
+
+    expect(onStartReinspection).toHaveBeenCalledTimes(1);
+  });
+
+  it('확정되지 않은 회차에는 재검사 자리를 두지 않는다', () => {
+    renderPane();
+
+    expect(screen.queryByRole('button', { name: t.reinspect })).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ 재검사 중에는 «아직 만들어지지 않은» 회차라 번호가 없다. 번호를 붙이면 화면이 회차를
+   * 세는 셈인데 +1 은 서버가 한다 — 두 사람이 동시에 열면 같은 번호를 만든다.
+   */
+  it('재검사 중에는 번호 없이 새 회차임을 말한다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isReinspecting: true });
+
+    expect(screen.getByText(t.reinspectRound)).toBeInTheDocument();
+    expect(screen.getByText(t.reinspectNote)).toBeInTheDocument();
+  });
+
+  /* ⛔ 사유 칸을 지어내지 않되 감추지도 않는다 — 왜 없는지 밝힌다(omf-mes#179). */
+  it('재검사 사유가 아직 없다는 사실을 감추지 않는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isReinspecting: true });
+
+    expect(screen.getByText(t.reinspectReasonPending)).toBeInTheDocument();
+  });
+
+  it('재검사를 그만두는 길이 함께 있다 — 열고 나서 갇히지 않는다', async () => {
+    const onCancelReinspection = vi.fn();
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isReinspecting: true, onCancelReinspection });
+
+    await userEvent.click(screen.getByRole('button', { name: t.reinspectCancel }));
+
+    expect(onCancelReinspection).toHaveBeenCalledTimes(1);
+  });
+
+  it('재검사 중에는 칸이 열려 있다 — 확정본을 고치는 것이 아니다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null, 500, { isReinspecting: true });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeEnabled();
+    expect(saveButton()).toBeEnabled();
+  });
+});
+
+describe('ResultFormPane — 저장 전 확정', () => {
+  /**
+   * ⛔ **회차가 없으면 확정할 것이 없다.** 확정은 회차 하나를 «경로로» 지목하는 쓰기라,
+   * 없는 회차를 지목하면 치환되지 않은 주소 틀이 그대로 나가 알 수 없는 오류만 돌아온다.
+   * 화면에서 가장 중요한 단추가 그렇게 실패하면 사용자는 무엇을 해야 할지 알 수 없다.
+   */
+  it('회차가 없으면 확정을 막고 먼저 저장하라고 말한다', () => {
+    renderPane({ accepted: '500', rejected: '0', held: '0' }, null, 500, { judgment: 'ACCEPTED' });
+
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
+    expect(screen.getByText(t.confirmBlockedByUnsaved)).toBeInTheDocument();
+  });
+
+  it('재검사 중에도 저장 전에는 확정을 막는다', () => {
+    renderPane({ accepted: '500', rejected: '0', held: '0' }, null, 500, {
+      judgment: 'ACCEPTED',
+      isReinspecting: true,
+    });
+
+    expect(screen.getByRole('button', { name: t.confirm })).toBeDisabled();
+  });
+
+  /* 회차가 있으면 그 사유는 사라진다 — 늘 막으면 확정 자체가 불가능하다. */
+  it('회차가 있으면 확정이 열린다', () => {
+    renderPane(
+      { accepted: '500', rejected: '0', held: '0' },
+      toInspectionResultRound(draftRound),
+      500,
+      {
+        judgment: 'ACCEPTED',
+      },
+    );
+
+    expect(screen.getByRole('button', { name: t.confirm })).toBeEnabled();
+    expect(screen.queryByText(t.confirmBlockedByUnsaved)).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 미결과 결과 문면', () => {
+  /**
+   * ⚠ **처분은 잠정이고 저장되지 않는다**(REQ-PR-0025 · 스펙 §5-8). ⛔ 감추지 않고 자리를
+   * 두되, 그 사실을 문면이 먼저 말한다 — 안 말하면 고른 값이 확정인 줄 안다.
+   */
+  it('처분 자리에 저장되지 않는다는 사실을 함께 낸다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, null);
+
+    expect(screen.getByText(tDisposition.note)).toBeInTheDocument();
+  });
+
+  /* ⛔ 불합격이 없으면 고를 것이 없다 — 감추지 않고 왜 비활성인지 밝힌다. */
+  it('불합격이 0이면 처분을 고를 수 없고 사유를 낸다', () => {
+    renderPane({ accepted: '30', rejected: '0', held: '0' }, null, 30);
+
+    expect(screen.getByText(tDisposition.disabledNote)).toBeInTheDocument();
+    expect(screen.getByLabelText(tDisposition.rework)).toBeDisabled();
+  });
+
+  it('불합격이 있으면 처분을 고를 수 있다', () => {
+    renderPane({ accepted: '28', rejected: '2', held: '0' }, null, 30);
+
+    expect(screen.getByLabelText(tDisposition.rework)).toBeEnabled();
+    expect(screen.queryByText(tDisposition.disabledNote)).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **셀 수 없으면 열지 않는다** — 화면이 불합격을 «모르는» 것이지 0인 것이 아니다.
+   * 여기서 열면 쓰레기 입력에서 처분 칸이 열린다.
+   */
+  it('불합격 칸이 수량이 아니면 처분을 고를 수 없다', () => {
+    renderPane({ accepted: '28', rejected: 'abc', held: '0' }, null, 30);
+
+    expect(screen.getByLabelText(tDisposition.rework)).toBeDisabled();
+  });
+
+  /*
+   * ⛔ 되돌릴 수 없는 쓰기가 끝난 것을 말한다. 저장은 「저장했습니다」를 내는데 확정만
+   * 아무 말이 없으면 사용자는 그것이 됐는지 확인할 문장을 못 찾아 한 번 더 누를 자리를 찾는다.
+   */
+  it('방금 확정했으면 그 사실을 말한다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound), 500, {
+      isJustConfirmed: true,
+    });
+
+    expect(screen.getByText(t.confirmSucceeded)).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **상태가 아니라 결과다.** 어제 확정된 회차에도 「확정했습니다」를 내면 화면에 들어올
+   * 때마다 방금 한 일처럼 말한다 — 사용자는 자기가 누른 적 없는 쓰기를 했다고 읽는다.
+   */
+  it('예전에 확정된 회차에는 방금 한 일처럼 말하지 않는다', () => {
+    renderPane(EMPTY_QUANTITY_DRAFT, toInspectionResultRound(confirmedRound));
+
+    expect(screen.queryByText(t.confirmSucceeded)).not.toBeInTheDocument();
+  });
+});

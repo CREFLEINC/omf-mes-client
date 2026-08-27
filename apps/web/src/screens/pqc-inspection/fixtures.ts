@@ -202,12 +202,27 @@ export const expiredMeasurement: InspectionMeasurementResponse = {
 };
 
 /** 치수 2번 샘플. 교정이 멀쩡한 장비로 쟀다. */
+/**
+ * 규격을 벗어난 측정치. **판정은 「합격」으로 둔다** — 규격 밖이 자동 불합격이 아니라는
+ * 사실을 재려면, 벗어난 값과 사람이 매긴 판정이 «어긋난 채로» 있는 자료가 필요하다.
+ */
 export const normalMeasurement: InspectionMeasurementResponse = {
   ...expiredMeasurement,
   inspectionMeasurementId: 8002,
   sampleNo: 2,
   numericValue: 9.95,
   calibrationExpiredAtMeasurement: false,
+};
+
+/**
+ * 규격(9.9~10.1)을 벗어난 측정치. **판정은 「합격」으로 둔다** — 규격 밖이 자동 불합격이
+ * 아니라는 사실을 재려면 벗어난 값과 사람이 매긴 판정이 «어긋난 채로» 있는 자료가 필요하다.
+ */
+export const outOfSpecMeasurement: InspectionMeasurementResponse = {
+  ...normalMeasurement,
+  inspectionMeasurementId: 8003,
+  sampleNo: 3,
+  numericValue: 12.5,
 };
 
 export const measurementsResponse = (

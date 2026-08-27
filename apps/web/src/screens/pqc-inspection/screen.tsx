@@ -1,0 +1,508 @@
+import { Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
+
+import { toApiError } from '../../patterns/request';
+import {
+  EMPTY_FILTERS,
+  readFilters,
+  readPage,
+  readSelectedId,
+  toListQuery,
+  toPageParams,
+  toSearchParams,
+  URL_KEYS,
+  type QueueFilters,
+} from './filters';
+import { QueueLoadErrorBanner } from './load-error-banner';
+import {
+  EMPTY_QUANTITY_DRAFT,
+  toMicro,
+  toSendableNumber,
+  type QuantityDraft,
+} from './quantity-draft';
+import { PageNav } from './page-nav';
+import { toPageView } from './pagination';
+import { CODE_GROUPS, toCodeOptions } from './code-options';
+import { MeasurementGrid } from './measurement-grid';
+import { toMeasurementRows } from './measurement-rows';
+import {
+  useInspectionItemSpecs,
+  useInspectionRequestDetail,
+  useInspectionQueue,
+  useInspectionRoundLock,
+  useInspectionRounds,
+  useCodeValues,
+  useConfirmResult,
+  useMeasurements,
+  useSaveDraft,
+} from './queries';
+import { QueueFilterBar } from './queue-filter-bar';
+import { QueueTable } from './queue-table';
+import { RequestDetailPane } from './request-detail-pane';
+import { ResultFormPane } from './result-form-pane';
+import { RoundHistory } from './round-history';
+import {
+  EMPTY_COVERAGE_DRAFT,
+  fillCoverage,
+  toCoverageDraft,
+  type CoverageDraft,
+} from './coverage';
+import { settleDisposition, type DispositionState } from './disposition';
+import { latestRound, previousRounds } from './types';
+
+/**
+ * W-01-01 IQC 수입검사·판정 — **이 회차는 좌측 검사 대기 큐 하나다.**
+ *
+ * 화면 스펙 §3 은 좌우 2단이고 우측 2/3 가 진행 중인 1건이다. 그 창(의뢰 상세·측정치·수량
+ * 판정·확정)은 다음 회차가 세우며, **미완성 부분을 노출하지 않으려고 라우트도 아직 열지
+ * 않는다.** 그래서 여기서 `.two-pane` 을 만들지 않는다 — 빈 칸을 만들어 두면 「고장난 화면」이
+ * 되고, 우측이 서는 회차에 그 칸을 함께 만드는 편이 정직하다.
+ *
+ * **주소가 조건의 정본이다.** 조건·쪽·고른 의뢰가 전부 주소에 산다 — 새로고침·뒤로가기·공유가
+ * 같은 결과를 내야 하기 때문이다. 읽고 쓰는 규칙은 `filters.ts` 가 소유한다.
+ *
+ * ⛔ **「검사 시작」 버튼을 두지 않는다.** 요구서가 시작을 이벤트로 열거하지만 스펙 §3 에
+ * 시작 버튼이 없고, 첫 임시 저장이 곧 검사 시작이며 서버가 그때 상태를 옮긴다(omf-mes#170 회신).
+ *
+ * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
+ */
+
+const t = messages.pqcInspection;
+
+export const PqcInspectionScreen = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const filters = readFilters(searchParams);
+  const page = readPage(searchParams);
+  const selectedId = readSelectedId(searchParams);
+
+  const queue = useInspectionQueue(toListQuery(filters, page));
+  const detail = useInspectionRequestDetail(selectedId);
+  const rounds = useInspectionRounds(selectedId);
+
+  const round = latestRound(rounds.data ?? []);
+
+  /**
+   * 확정된 회차에서 **재검사 회차를 쓰는 중**인가.
+   *
+   * ⭐ **회차를 먼저 만들지 않는다.** 누르면 칸이 열릴 뿐이고 회차는 첫 임시 저장이 만든다 —
+   * 「검사 시작」 액션을 두지 않고 첫 저장을 검사 시작으로 삼은 규율과 같다(확정 2026-08-21
+   * §1.2). 먼저 만들면 열어 보고 그만둔 사람마다 빈 회차가 쌓이고, 그 순간 의뢰가
+   * `COMPLETED` 에서 `IN_PROGRESS` 로 돌아가 대기 큐에 다시 뜬다.
+   */
+  const [isReinspecting, setIsReinspecting] = useState(false);
+
+  /**
+   * 재검사가 가리키는 **앞 회차**. 재검사 중이 아니면 `null`.
+   *
+   * ⭐ **지금 화면에 있는 회차로 매번 다시 판정한다** — 눌렀을 때의 식별자를 따로 들고 있지
+   * 않는다. 들고 있으면 그 값이 화면의 회차와 어긋나는 상태가 생기고, 어느 쪽이 옳은지
+   * 정할 근거가 코드 어디에도 없다.
+   *
+   * ⚠ 「최신이 확정본인가」를 여기서 다시 보지 않는다. 재검사는 확정본에서만 열리고, 회차가
+   * 바뀌면 아래 되돌림이 모드를 푼다 — 같은 일을 두 자리에서 하면 뮤테이션이 그 중 한 자리를
+   * 지워도 아무 시험도 죽지 않아, 어느 쪽이 실제로 지키는 것인지 알 수 없게 된다.
+   */
+  const reinspectingFrom = isReinspecting ? (round?.inspectionResultId ?? null) : null;
+  const isReinspectingNow = reinspectingFrom !== null;
+
+  /**
+   * 고칠 회차. **확정된 회차는 고치지 않는다** — 정정이 아니라 재검사로 새 회차를 쌓는다(§5-3).
+   * 그래서 확정본이면 `null` 이 되고 저장은 「새로 만들기」로 간다.
+   */
+  const editingResultId =
+    round !== null && round.statusCode !== '확정' ? round.inspectionResultId : null;
+
+  /*
+   * ⭐ 잠금 토큰을 얻으려고 회차 한 건을 따로 부른다 — 목록 200 에는 `ETag` 가 없고, 토큰
+   * 보관소가 응답이 온 URL 경로를 열쇠로 쓴다. 고칠 회차가 있을 때만 부른다.
+   */
+  useInspectionRoundLock(editingResultId);
+
+  /** 마지막 저장이 성공했는가. 눌렀는데 아무 일도 없어 보이지 않게 한 줄로 알린다. */
+  const [isSaved, setIsSaved] = useState(false);
+
+  const save = useSaveDraft(selectedId, editingResultId, () => {
+    setIsSaved(true);
+  });
+
+  /**
+   * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 그룹을 «이름»으로 부른다:
+   * `codeGroupId` 정수는 환경마다 다르므로 코드에 박지 않는다(omf-mes#179 회신).
+   */
+  const judgmentValues = useCodeValues(CODE_GROUPS.overallJudgment);
+  const judgmentOptions = toCodeOptions(judgmentValues.data ?? []);
+
+  const [judgment, setJudgment] = useState('');
+
+  /** 방금 확정했는가. **상태가 아니라 결과다** — 고른 의뢰가 바뀌면 지워진다. */
+  const [isJustConfirmed, setIsJustConfirmed] = useState(false);
+
+  const confirm = useConfirmResult(selectedId, editingResultId, () => {
+    setIsSaved(false);
+    setIsJustConfirmed(true);
+  });
+
+  /**
+   * 초안이 바뀌면 「저장했습니다」를 지운다.
+   *
+   * ⭐ **표시가 언제 거짓이 되는지**를 값이 바뀌는 자리에서 함께 정한다. 지우지 않으면
+   * 저장한 뒤 수량을 더 고쳐도 화면이 저장됐다고 말하고, 검사자가 그 문구를 보고 자리를
+   * 뜨면 **고친 값이 사라진다.** 이 화면이 남기는 것은 품질 판정 자료다.
+   */
+  const changeDraft = (next: QuantityDraft): void => {
+    setIsSaved(false);
+    setDraft(next);
+    /*
+     * ⭐ **불합격이 0이 되면 고른 처분을 함께 거둔다.** 남겨 두면 화면에는 안 보이는데 값은
+     * 살아 있어, 불합격을 다시 올렸을 때 사용자가 고르지 않은 처분이 되살아난다.
+     */
+    setDisposition((current) => settleDisposition(current, toMicro(next.rejected)));
+  };
+
+  /**
+   * 수량 초안. **고른 의뢰가 바뀌면 그 회차의 값으로 되돌아간다.**
+   *
+   * 되돌림을 참조가 아니라 **값**으로 판정한다 — 조회 응답이 다시 그려질 때마다 참조가
+   * 달라지므로, 참조로 판정하면 그때마다 사용자가 치던 값이 사라진다.
+   *
+   * 회차가 없으면 빈 초안이다. ⛔ 0을 미리 채우지 않는다 — 채우면 「검사자가 0으로 판정했다」와
+   * 「아직 아무것도 넣지 않았다」가 화면에서 같아 보인다.
+   *
+   * ⭐ **고른 의뢰(`selectedId`)가 의존성에 든다.** 회차 값만 보면 **회차가 없는 의뢰끼리
+   * 옮길 때** 네 값이 모두 그대로여서(`null`·0·0·0) effect 가 깨어나지 않고, 앞 의뢰에 친
+   * 수량이 다음 의뢰 화면에 남는다. 저장이 붙는 순간 **다른 LOT 에 앞 의뢰의 수량을 저장**하는
+   * 길이 된다 — 값이 그럴듯해서 아무도 눈치채지 못한다.
+   */
+  const [draft, setDraft] = useState<QuantityDraft>(EMPTY_QUANTITY_DRAFT);
+
+  /**
+   * 적용 생산구간 초안(§5-5). **의뢰가 준 값에서 시작한다** — 없으면 빈 칸이고, 저장할 때
+   * 검사 시각으로 채운다.
+   */
+  const [coverage, setCoverage] = useState<CoverageDraft>(EMPTY_COVERAGE_DRAFT);
+
+  /**
+   * 불합격 처분 — ⚠ **잠정이고 저장되지 않는다**(REQ-PR-0025). 서버가 모르는 값이라
+   * 되돌림도 서버에서 오지 않는다: 고른 의뢰·회차가 바뀌면 화면이 지운다.
+   */
+  const [disposition, setDisposition] = useState<DispositionState>(null);
+
+  const roundId = round?.inspectionResultId ?? null;
+  const { acceptedQty, rejectedQty, heldQty } = round ?? {
+    acceptedQty: 0,
+    rejectedQty: 0,
+    heldQty: 0,
+  };
+
+  const storedJudgment = round?.overallJudgmentCode ?? '';
+
+  /*
+   * 의뢰가 가진 구간. **값으로 의존성에 넣는다** — 객체 참조로 넣으면 조회가 다시 그려질
+   * 때마다 되돌림이 깨어나 사용자가 고친 구간이 사라진다.
+   */
+  const coverageFromAt = detail.data?.coverageFromAt ?? null;
+  const coverageToAt = detail.data?.coverageToAt ?? null;
+
+  /**
+   * 회차가 화면에 보일 값. 회차가 없으면 빈 초안이다.
+   *
+   * ⛔ 0을 미리 채우지 않는다 — 채우면 「검사자가 0으로 판정했다」와 「아직 아무것도 넣지
+   * 않았다」가 화면에서 같아 보인다.
+   */
+  const draftOf = (
+    source: {
+      acceptedQty: number;
+      rejectedQty: number;
+      heldQty: number;
+    } | null,
+  ): QuantityDraft =>
+    source === null
+      ? EMPTY_QUANTITY_DRAFT
+      : {
+          accepted: String(source.acceptedQty),
+          rejected: String(source.rejectedQty),
+          held: String(source.heldQty),
+        };
+
+  useEffect(() => {
+    setIsSaved(false);
+    setIsJustConfirmed(false);
+    /*
+     * ⭐ 재검사 모드도 함께 푼다 — 저장이 새 회차를 만들면 `roundId` 가 바뀌어 여기로 오고,
+     * 그 회차는 이제 «실재하는 작성중 회차»라 재검사 모드로 남아 있으면 다음 저장이 또 새
+     * 회차를 만든다. 고른 의뢰가 바뀔 때 풀리는 것도 같은 자리다.
+     */
+    setIsReinspecting(false);
+    setJudgment(storedJudgment);
+    setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
+    /*
+     * ⚠ **처분은 저장되지 않으므로 되돌릴 원본이 없다.** 다른 의뢰로 옮겼는데 앞 의뢰에서
+     * 고른 처분이 남아 있으면, 검사자는 그것을 «이 의뢰의 판단»으로 읽는다. 지운다.
+     */
+    setDisposition(null);
+    setCoverage(toCoverageDraft(coverageFromAt, coverageToAt));
+  }, [
+    selectedId,
+    roundId,
+    acceptedQty,
+    rejectedQty,
+    heldQty,
+    storedJudgment,
+    coverageFromAt,
+    coverageToAt,
+  ]);
+
+  const rows = queue.data?.rows ?? [];
+  const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
+
+  /**
+   * 조건을 바꾼다. **첫 쪽으로 가고 고른 의뢰가 풀린다** — 결과가 통째로 달라지므로
+   * 3쪽을 보다가 좁히면 결과가 3쪽에 못 미쳐 「좁혔더니 아무것도 없다」로 보이고, 고른 의뢰는
+   * 새 결과에 없을 수 있다. 두 일을 `toSearchParams` 가 한 자리에서 한다.
+   */
+  const applyFilters = (next: QueueFilters): void => {
+    setSearchParams(toSearchParams(next));
+  };
+
+  /** 쪽만 옮긴다 — 조건과 고른 의뢰는 그대로다. */
+  const goToPage = (next: number): void => {
+    setSearchParams(toPageParams(searchParams, next));
+  };
+
+  const select = (inspectionRequestId: number): void => {
+    const next = new URLSearchParams(searchParams);
+    next.set(URL_KEYS.selected, String(inspectionRequestId));
+    setSearchParams(next);
+  };
+
+  /**
+   * 표 자리에 그릴 것. **네 갈래를 가른다** — 실패 · 부르는 중 · 이 쪽에 없음 · 조건에 맞는 것 없음.
+   *
+   * ⭐ **실패를 「결과 없음」으로 접지 않는다.** 접으면 요청이 실패했을 뿐인데 표가 「조건을
+   * 넓혀 보세요」라고 말하고, 사용자는 조건을 넓히다가 결국 못 찾는다 — 실제로 할 일은 다시
+   * 시도하거나 담당자에게 알리는 것이고 그것은 배너가 말한다.
+   *
+   * ⭐ 「이 쪽에 없음」과 「조건에 맞는 것이 없음」도 합치지 않는다. 앞은 **쪽이 문제**라
+   * 앞쪽으로 가면 풀리고, 뒤는 **조건이 문제**라 조건을 넓혀야 풀린다.
+   */
+  const emptyContent = queue.isError ? (
+    <p className="field-note">{t.queue.unavailable}</p>
+  ) : queue.isPending ? (
+    <p className="field-note">{t.queue.loading}</p>
+  ) : pageView.isBeyondLast ? (
+    <p className="field-note">
+      {t.pageNav.beyondLast}{' '}
+      <Button variant="outlined" size="sm" onClick={() => goToPage(1)}>
+        {t.pageNav.toFirstPage}
+      </Button>
+    </p>
+  ) : (
+    <p className="field-note">{t.queue.empty}</p>
+  );
+
+  const inspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
+
+  /*
+   * 이력에 실을 회차. 평소에는 최신을 뺀 나머지이고, **재검사 중에는 최신도 함께 싣는다** —
+   * 그 회차는 지금 쓰는 새 회차의 «앞»이 됐으므로 이력 쪽이 제자리다.
+   */
+  const historyRounds = isReinspectingNow
+    ? [...(rounds.data ?? [])].sort((left, right) => right.inspectionRound - left.inspectionRound)
+    : previousRounds(rounds.data ?? []);
+
+  /*
+   * ⚠ **검사 시점에 고정된 기준 버전으로 부른다** — 의뢰가 준 버전을 그대로 쓰고 「최신
+   * 기준」을 찾지 않는다. 최신을 부르면 검사자가 재지 않은 항목이 그리드에 나타난다.
+   */
+  const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
+  /*
+   * ⚠ **재검사 중에는 앞 회차의 측정치를 그리지 않는다.** 그리면 아직 아무것도 재지 않은 새
+   * 회차에 앞 회차의 값이 들어 있는 것처럼 보이고, 검사자가 그것을 자기가 잰 값으로 읽는다.
+   */
+  const measurements = useMeasurements(
+    isReinspectingNow ? null : (round?.inspectionResultId ?? null),
+  );
+
+  const measurementRows = toMeasurementRows(itemSpecs.data ?? [], measurements.data ?? []);
+
+  /**
+   * 저장이 보낼 값을 만든다.
+   *
+   * 수량은 `toSendableNumber` 를 거친다 — 화면이 재는 자와 보내는 자가 같아야 한다.
+   *
+   * ⛔ **검사자·단말을 보내지 않는다** — 계약에서 사라졌다(omf-mes#173).
+   *
+   * 고른 의뢰를 **인자로 받는다** — 이 자리에 도달했으면 null 이 아니라는 사실이 타입이
+   * 아니라 렌더 조건에 있어서, 단언으로 메우면 그 조건이 바뀔 때 조용히 어긋난다.
+   */
+  const saveDraft = (inspectionRequestId: number, inspected: number, uomId: number): void => {
+    setIsSaved(false);
+
+    /* 검사한 시각은 지금이다. **한 번만 읽어 두 자리가 갈리지 않게 한다.** */
+    const inspectedAt = new Date().toISOString();
+
+    save.write({
+      inspectionRequestId,
+      inspectedQty: inspected,
+      acceptedQty: toSendableNumber(draft.accepted),
+      rejectedQty: toSendableNumber(draft.rejected),
+      heldQty: toSendableNumber(draft.held),
+      uomId,
+      /*
+       * ⛔ **고른 판정을 함께 싣는다.** 싣지 않으면 저장 뒤 재조회가 저장 전 판정을 돌려주고
+       * 되돌림이 사용자가 고른 값을 덮는다 — 그러고 확정하면 «고른 것과 다른 판정»이 나가는데
+       * 그 쓰기는 되돌릴 수 없다.
+       */
+      overallJudgmentCode: judgment,
+      inspectedAt,
+      /*
+       * 재검사면 앞 회차를 가리킨다 — 이 값이 있어야 서버가 회차를 +1 하고 사슬을 잇는다.
+       * ⛔ 빠뜨리면 같은 의뢰에 회차 1이 두 번 만들어지려 해 `UNIQUE(의뢰, 회차)` 에 걸린다.
+       */
+      previousResultId: reinspectingFrom,
+      /*
+       * ⭐ **구간이 비어 있으면 검사 시각으로 채워 보낸다.** 표본 검사는 대표 구간이 있어야
+       * 불합격 시 회수 범위가 정해진다 — 비운 채 저장하면 그 근거가 영영 없다.
+       */
+      coverage: fillCoverage(coverage, inspectedAt),
+    });
+  };
+
+  /**
+   * 우측 창. **네 갈래다** — 고르지 않음 · 부르는 중 · 실패 · 상세.
+   *
+   * ⛔ 실패를 「고르지 않음」으로 접지 않는다. 접으면 고른 것이 사라진 것처럼 보여
+   * 사용자가 다시 고르는데, 다시 골라도 같은 실패가 온다.
+   */
+  const detailContent =
+    selectedId === null ? (
+      <p className="field-note">{t.detail.nothingSelected}</p>
+    ) : detail.isError ? (
+      <QueueLoadErrorBanner
+        error={toApiError(detail.error)}
+        onRetry={() => void detail.refetch()}
+      />
+    ) : detail.data === undefined ? (
+      <p className="field-note">{t.detail.loading}</p>
+    ) : (
+      <>
+        <RequestDetailPane detail={detail.data} />
+        {rounds.isPending ? (
+          <p className="field-note">{t.result.loading}</p>
+        ) : (
+          <ResultFormPane
+            /*
+             * ⭐ 재검사 중에는 **회차를 넘기지 않는다.** 넘기면 그 회차가 확정본이라 칸이
+             * 잠긴 채로 남는다 — 지금 쓰는 것은 확정본이 아니라 «아직 없는 새 회차»다.
+             */
+            round={isReinspectingNow ? null : round}
+            inspectedQty={inspectedQty}
+            draft={draft}
+            onChange={changeDraft}
+            onSave={() => {
+              saveDraft(selectedId, inspectedQty, detail.data.uomId);
+            }}
+            isSaving={save.isSaving || rounds.isFetching}
+            isSaved={isSaved}
+            fieldErrors={save.fieldErrors}
+            saveError={save.error}
+            onReload={() => void rounds.refetch()}
+            judgmentOptions={judgmentOptions}
+            judgment={judgment}
+            onJudgmentChange={setJudgment}
+            onConfirm={() => {
+              confirm.write({ overallJudgmentCode: judgment });
+            }}
+            isConfirming={confirm.isSaving}
+            confirmError={confirm.error}
+            isJustConfirmed={isJustConfirmed}
+            isReinspecting={isReinspectingNow}
+            coverage={coverage}
+            onCoverageChange={setCoverage}
+            disposition={disposition}
+            onDispositionChange={setDisposition}
+            /*
+             * ⚠ **단말 컨텍스트가 이 저장소에 아직 없다** — 세션이 단말 식별자를 싣지 않아
+             * 화면이 이 단말×공정의 플래그를 읽을 길이 없다. ⛔ 모를 때 막지 않는다:
+             * 막으면 권한 있는 사람이 이유 없이 갇힌다. 계약이 「단말 게이팅을 서버가
+             * 강제한다」고 적었으므로 정본은 서버이고, 화면의 막음은 헛수고를 줄이는 편의다.
+             * 단말 컨텍스트가 서는 날 이 한 자리만 실제 플래그로 바꾼다.
+             */
+            canInputInspection
+            onStartReinspection={() => {
+              /* 새 회차는 빈 칸에서 시작한다 — 앞 회차의 값이 남으면 그대로 저장된다. */
+              setIsSaved(false);
+              setDraft(EMPTY_QUANTITY_DRAFT);
+              setJudgment('');
+              setIsReinspecting(true);
+            }}
+            onCancelReinspection={() => {
+              setIsReinspecting(false);
+              /*
+               * ⛔ **확정본의 값을 되돌려 놓는다.** 비우면 그만둔 자리에 확정된 회차가
+               * «수량 없이» 놓인다 — 판정이 끝난 기록인데 화면이 비어 있으니 검사자는
+               * 자기가 방금 그것을 지웠다고 읽는다.
+               */
+              setDraft(draftOf(round));
+              setJudgment(storedJudgment);
+            }}
+          />
+        )}
+
+        {/* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */}
+        <RoundHistory rounds={historyRounds} />
+
+        {/*
+         * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
+         * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
+         * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
+         * 실제로 부르는 중을 잡는다.
+         */}
+        <MeasurementGrid
+          rows={measurementRows}
+          isLoading={itemSpecs.isLoading || measurements.isLoading}
+        />
+      </>
+    );
+
+  return (
+    <>
+      <PageHeader
+        title={t.title}
+        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+      />
+
+      <div className="two-pane">
+        <section className="pane" aria-label={t.queue.heading}>
+          <QueueFilterBar
+            appliedFilters={filters}
+            onSearch={applyFilters}
+            onReset={() => applyFilters(EMPTY_FILTERS)}
+          />
+
+          {queue.isError && (
+            <QueueLoadErrorBanner
+              error={toApiError(queue.error)}
+              onRetry={() => void queue.refetch()}
+            />
+          )}
+
+          <QueueTable rows={rows} selectedId={selectedId} onSelect={select} empty={emptyContent} />
+
+          {/*
+           * ⛔ **셀 것이 없으면 그리지 않는다.** 조회가 끝나기 전이나 실패했을 때는 총계를
+           * 모르는데, 그리면 대신 넘긴 0이 「전체 0건」이라는 **사실 주장**이 되어 화면에 선다.
+           */}
+          {queue.data !== undefined && <PageNav view={pageView} onChange={goToPage} />}
+        </section>
+
+        <section className="pane" aria-label={t.detail.heading}>
+          {detailContent}
+        </section>
+      </div>
+    </>
+  );
+};
