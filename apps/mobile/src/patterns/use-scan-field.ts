@@ -29,9 +29,8 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
   }, []);
 
   /*
-   * 포커스가 스캔 필드를 벗어나면 스캐너가 밀어 넣는 입력이 유실되므로 되돌린다.
-   * 다만 다른 컨트롤로 옮겨 간 것은 되돌리지 않는다 — 무조건 되돌리면 Tab 과
-   * 보조 기술이 화면의 버튼에 닿지 못하고, 직접 입력 대체 경로가 사라진다.
+   * 포커스가 갈 곳 없이 빠지면 스캐너가 밀어 넣는 입력이 유실되므로 되돌린다.
+   * 다른 컨트롤로 옮겨 간 포커스는 그대로 둔다.
    */
   const handleBlur = useCallback((event: FocusEvent) => {
     if (document.hidden || event.relatedTarget !== null) {

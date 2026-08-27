@@ -135,13 +135,10 @@ const useUomNames = (enabled: boolean): ReferenceResolver => {
 
 /**
  * 잔액 응답의 내부 번호를 이름으로 푼다. 계약의 InventoryBalance 21개 필드에 이름이
- * 하나도 없어 필요한 만큼 되짚어 부른다 — 잔액 응답에 이름을 실어 달라는 계약 개선이
- * 반영되면 이 파일이 통째로 사라진다.
+ * 하나도 없어 필요한 만큼 되짚어 부른다.
  *
  * 창고를 모른 채 들어오는 화면이라 단건 조회를 쓴다. 창고·위치·품목 목록 조회는
  * 창고를 고른 뒤를 전제하며 위치 목록은 warehouseId 를 필수로 요구한다.
- *
- * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 export const useReferenceNames = (
   balances: InventoryBalance[],

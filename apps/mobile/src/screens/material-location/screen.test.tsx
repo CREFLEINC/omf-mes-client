@@ -229,6 +229,40 @@ describe('자재 위치 확인 화면', () => {
     expect(screen.getByText(/해제 조건: 수입검사 합격/)).toBeInTheDocument();
   });
 
+  it('보류를 확인하지 못하면 없는 것처럼 두지 않는다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: createStubFetch([
+        route('/trace/lots', { items: [lotRow], page }),
+        route('/inventory/balances', { items: [balanceRow()], page }),
+        {
+          match: (request) => new URL(request.url).pathname === '/trace/lots/4/holds',
+          respond: () => jsonResponse({ code: 'INTERNAL' }, { status: 500 }),
+        },
+        route('/mdm/warehouses/11', { warehouse: { warehouseName: '1공장 자재창고' } }),
+        route('/mdm/locations/21', {
+          location: { locationCode: 'A-01-03', locationName: '3단 선반' },
+        }),
+        route('/mdm/items/31', { item: { itemCode: 'ABC-123' } }),
+        route('/mdm/uoms', { items: [{ uomId: 41, uomCode: 'EA' }], page }),
+      ]),
+    });
+    await scan();
+
+    expect(await screen.findByText('보류 여부를 확인하지 못했습니다')).toBeInTheDocument();
+    expect(screen.getByText('1공장 자재창고')).toBeInTheDocument();
+  });
+
+  it('길이 위반 스캔은 앞 결과를 지운다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan();
+    await screen.findByText('1공장 자재창고');
+
+    await scan('0001234500');
+
+    expect(await screen.findByText(/34자리입니다/)).toBeInTheDocument();
+    expect(screen.queryByText('1공장 자재창고')).not.toBeInTheDocument();
+  });
+
   it('보류 수량이 없으면 전량 보류로 읽는다', async () => {
     renderWithProviders(<MaterialLocationScreen />, {
       fetch: stub({

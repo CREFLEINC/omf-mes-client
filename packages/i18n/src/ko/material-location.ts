@@ -6,9 +6,6 @@
  *
  * (소진)은 행을 감추는 대신 붙인다. 수량 0 인 자리도 재고가 지나간 자리라
  * 감추면 작업자가 그 위치를 찾아보지 않는다.
- *
- * 보류 사유 코드는 값 목록이 확정되지 않아 문구로 옮기지 않는다. 코드를 그대로
- * 보이면 사용자가 쓰지 않는 말이 화면에 나온다.
  */
 export const materialLocation = {
   title: '자재 위치 확인',
@@ -38,6 +35,8 @@ export const materialLocation = {
   },
   hold: {
     title: '보류 중',
+    unconfirmed: '보류 여부를 확인하지 못했습니다',
+    unconfirmedDescription: '묶여 있을 수 있으니 연결된 뒤에 확인하고 옮기세요.',
     wholeLot: '전량 보류',
     quantity: (amount: string): string => `${amount} 보류`,
     releaseCondition: (condition: string): string => `해제 조건: ${condition}`,

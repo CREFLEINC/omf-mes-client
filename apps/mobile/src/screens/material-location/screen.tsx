@@ -65,6 +65,7 @@ const balanceKey = (balance: InventoryBalance): string =>
     balance.warehouseId,
     balance.locationId,
     balance.lotId,
+    balance.itemId,
     balance.qualityStatusCode,
     balance.inventoryStatusCode,
     balance.ownershipTypeCode,
@@ -124,6 +125,8 @@ export const MaterialLocationScreen = () => {
 
   const accept = (value: string) => {
     if (!isMaterialLotNo(value)) {
+      // 앞 LOT 의 결과를 남기면 잘못 읽은 직후의 잔상이 새 결과로 읽힌다.
+      setCode(null);
       setRejectedLength(value.length);
       playErrorTone();
       return;
@@ -145,15 +148,22 @@ export const MaterialLocationScreen = () => {
   const failed = errors.length > 0;
   const unreachable = errors.some((error) => toApiError(error).kind === 'network');
   const pending =
-    code !== null && !failed && (lot.isPending || (lotId !== null && balances.isPending));
+    code !== null &&
+    !failed &&
+    (lot.isPending || (lotId !== null && (balances.isPending || holds.isPending)));
+
+  /*
+   * 보류가 걸려 있지 않은 것과 확인하지 못한 것을 가른다. 확인 못 한 것을 조용히
+   * 지나가면 묶인 자재가 자유 재고로 읽힌다.
+   */
+  const holdsUnconfirmed = holds.isError;
 
   const retry = () => {
-    if (lot.isError) {
-      void lot.refetch();
-      return;
+    for (const query of [lot, balances, holds]) {
+      if (query.isError) {
+        void query.refetch();
+      }
     }
-    void balances.refetch();
-    void holds.refetch();
   };
 
   const restart = () => {
@@ -216,6 +226,11 @@ export const MaterialLocationScreen = () => {
         <>
           <p className="material-location__lot-no">{formatMaterialLotNo(lot.data.lotNo)}</p>
           <p>{referenceLabel(names.item(lot.data.itemId))}</p>
+          {holdsUnconfirmed ? (
+            <AlertBanner variant="warning" title={t.hold.unconfirmed}>
+              {t.hold.unconfirmedDescription}
+            </AlertBanner>
+          ) : null}
           {holds.data !== undefined && holds.data.length > 0 ? (
             <HoldBanner holds={holds.data} names={names} />
           ) : null}

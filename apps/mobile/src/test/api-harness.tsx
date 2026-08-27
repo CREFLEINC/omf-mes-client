@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
+import { appQueryDefaults } from '../app/providers';
 import { ApiClientProvider } from '../patterns/api-context';
 
 /** 테스트 전용 기준 URL. 실제로 접속하지 않으며 스텁 fetch가 모든 요청을 받는다. */
@@ -53,14 +54,15 @@ export type ProvidedRenderHookResult<TResult> = RenderHookResult<TResult, unknow
 };
 
 /**
- * networkMode는 앱과 같은 값을 쓴다 — 여기서만 기본값을 두면 오프라인으로 보고될 때
- * 조회가 보류되는 실패를 테스트가 통과시켜 버린다.
+ * 앱의 캐시 기본값을 그대로 쓴다. 여기서 값을 다시 적으면 앱이 바뀌어도 테스트는 옛
+ * 값으로 계속 통과한다 — 오프라인으로 보고될 때 조회가 보류되는 실패가 그런 갈래다.
+ * 다시 조회하지 않게 만드는 값만 덮는다.
  */
 const createProviders = (fetch: StubFetch) => {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { retry: false, networkMode: 'always' },
-      mutations: { retry: false, networkMode: 'always' },
+      ...appQueryDefaults,
+      queries: { ...appQueryDefaults.queries, staleTime: 0 },
     },
   });
   const apiClient = createApiClient({ baseUrl: TEST_BASE_URL, fetch });
