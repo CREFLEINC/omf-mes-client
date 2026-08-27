@@ -25,7 +25,7 @@ import type {
 export const waitingRequest: InspectionRequestResponse = {
   inspectionRequestId: 1001,
   inspectionRequestNo: 'IR-2026-0001',
-  inspectionTypeCode: 'IQC',
+  inspectionTypeCode: 'PQC',
   inspectionPlanVersionId: 3001,
   targetTypeCode: 'LOT',
   targetId: 5001,

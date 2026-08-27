@@ -42,6 +42,11 @@ export interface MeasurementRow {
   displayNo: number;
   itemName: string;
   itemCode: string;
+  /**
+   * 측정치를 **어느 칸에 담는지** 정한다(`NUMERIC`·`TEXT`·`BOOLEAN`). 화면이 값 입력 칸의
+   * 모양을 이 값으로 고르고, 규격 대비 판정도 수치형에만 뜻이 있다.
+   */
+  dataTypeCode: string;
   /** 이 항목의 몇 번째 샘플인가. 1부터 */
   sampleNo: number;
   /** 이 항목이 요구하는 샘플 수 — 같은 항목의 줄들이 공유한다 */
@@ -113,6 +118,7 @@ export const toMeasurementRows = (
         displayNo: position + 1,
         itemName: spec.inspectionItemName,
         itemCode: spec.inspectionItemCode,
+        dataTypeCode: spec.dataTypeCode,
         sampleNo,
         sampleCount,
         required: spec.requiredFlag,

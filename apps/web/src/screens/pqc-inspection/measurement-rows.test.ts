@@ -114,6 +114,7 @@ describe('isOutOfSpec — 규격 밖 판정', () => {
     displayNo: 1,
     itemName: '치수 A',
     itemCode: 'DIM-A',
+    dataTypeCode: 'NUMERIC',
     sampleNo: 1,
     sampleCount: 1,
     required: true,

@@ -691,3 +691,71 @@ main > * + * {
   letter-spacing: var(--type-label-lg-tracking);
   color: var(--on-surface-variant);
 }
+
+/*
+ * POP 검사 화면 배치 — 화면 스펙 §3 의 도면을 그대로 옮긴다.
+ *
+ * 좌 464 / 우 544 는 1024 폭 단말의 비율이고, 본문 616 · 액션바 88 은 세로 예산(E-1)이다.
+ * ⚠ **이 화면은 관리웹 셸 안에 들어 있어 뷰포트 768 을 통째로 갖지 못한다** — 그래서 절대
+ * 높이를 뷰포트에 걸지 않고 **본문 구획의 높이**로 둔다. POP 렌더러가 서면 그때 이 값이
+ * 뷰포트 예산이 된다.
+ *
+ * ⭐ **스크롤 구획은 좌측 하나다**(E-4). 지시가 여럿이면 항목이 길어지므로 그쪽만 흐르고,
+ * 우측 결과 입력과 액션바는 제자리에 남는다 — 판정 결과가 스크롤 밖으로 나가면 못 본다.
+ */
+.pop-inspect {
+  display: grid;
+  grid-template-columns: 464fr 544fr;
+  gap: var(--space-4);
+  align-items: stretch;
+  height: 616px;
+}
+
+.pop-inspect > .pane {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 좌측만 흐른다 — 이 구획이 E-4 가 지정한 유일한 스크롤 자리다. */
+.pop-inspect-scroll {
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+/*
+ * 액션바 — 화면 아래 고정 88. ⛔ 폼 중간에 흘리지 않는다: 터치 단말에서 손이 닿는 자리가
+ * 정해져 있어야 하고, 스크롤하다 놓치면 검사자가 저장 자리를 찾아 헤맨다.
+ */
+.pop-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  min-height: 88px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  margin-top: var(--space-4);
+  position: sticky;
+  bottom: 0;
+}
+
+/* 막힌 사유는 버튼 왼쪽에 함께 선다 — 잠긴 버튼만 두지 않는다(G-3). */
+.pop-action-note {
+  margin-right: auto;
+  min-width: 0;
+}
+
+@media (max-width: 1280px) {
+  .pop-inspect {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .pop-inspect-scroll {
+    overflow-y: visible;
+  }
+}

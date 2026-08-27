@@ -10,46 +10,17 @@ export const pqcInspection = {
   title: 'PQC 제품 검사',
   breadcrumbRoot: '생산실행',
 
-  queue: {
-    heading: '검사 대기',
-    columns: {
-      inspectionRequestNo: '의뢰번호',
-      workOrderId: '작업지시',
-      statusCode: '상태',
-      requestedAt: '의뢰 일시',
-    },
-    emptyValue: '—',
-    openRow: (inspectionRequestNo: string): string => `검사 의뢰 ${inspectionRequestNo} 열기`,
-    caption: '검사 대기 목록',
-    empty: '조건에 맞는 검사 의뢰가 없습니다. 조건을 넓혀 보세요.',
-    unavailable: '목록을 표시할 수 없습니다.',
-    loading: '검사 의뢰를 불러오는 중입니다.',
-  },
-
-  /**
-   * 조건 셋. 검사 유형(PQC)과 「아직 안 끝난 것만」은 조건이 아니라 **이 화면이 무엇인지의
-   * 정의**라서 조건 줄에 두지 않는다.
-   */
-  filters: {
-    workOrder: '작업지시',
-    workOrderPlaceholder: '작업지시 번호',
-    lot: '생산 LOT',
-    lotPlaceholder: 'LOT 번호',
-    keyword: '의뢰번호',
-    keywordPlaceholder: '의뢰번호로 검색',
-    apply: '조회',
-    reset: '초기화',
-    identifierInvalid: '번호는 1 이상의 정수로 넣어 주세요.',
-  },
-
-  status: {
-    requested: '대기',
-    inProgress: '진행',
-  },
+  /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
+  emptyValue: '—',
 
   detail: {
     heading: '대상',
-    nothingSelected: '왼쪽 목록에서 검사할 의뢰를 고르세요.',
+    /**
+     * ⚠ **진입 인자 없이 열렸다.** 이 화면은 작업 화면에서 대상을 받아 열리는데(스펙 §3·§5-9
+     * 에 조회·필터가 없다), 그 화면이 아직 없다. ⛔ 「목록에서 고르세요」라고 말하지 않는다 —
+     * 고를 목록이 이 화면에 없고, 만들면 설계에 없는 액션이 된다(검토 요청 omf-mes#257).
+     */
+    nothingSelected: '작업 화면에서 검사할 대상을 선택해 진입하세요.',
     loading: '의뢰를 불러오는 중입니다.',
     fields: {
       inspectionRequestNo: '의뢰번호',
@@ -118,6 +89,8 @@ export const pqcInspection = {
     confirmBlockedByJudgment: '검사 확정 — 종합 판정을 골라야 확정할 수 있습니다.',
     confirmBlockedByConfirmed: '검사 확정 — 이미 확정된 회차입니다.',
     confirmBlockedByUnsaved: '검사 확정 — 먼저 임시 저장을 해야 확정할 수 있습니다.',
+    /** 스펙 §5-9 「전 항목 판정」 — 무엇이 남았는지는 좌측 「진행 n / m」이 말한다. */
+    confirmBlockedByItems: '검사 확정 — 검사 항목을 모두 판정해야 확정할 수 있습니다.',
     /**
      * ⛔ 단말에 검사 입력 권한이 없다(스펙 §5-1 · 공유계약 F-1). **감추지 않는다** —
      * 어떻게 푸는지를 함께 말한다(G-3).
@@ -148,22 +121,17 @@ export const pqcInspection = {
     disabledNote: '불합격 처분 — 불합격수량이 있어야 고를 수 있습니다.',
   },
 
-  history: {
-    heading: '이전 회차',
-    caption: '이전 검사 회차',
-    columns: {
-      round: '회차',
-      judgment: '종합 판정',
-      accepted: '합격',
-      rejected: '불합격',
-      held: '보류',
-      confirmedAt: '확정 시각',
-    },
-    notConfirmed: '미확정',
-  },
-
   measurements: {
     heading: '검사 항목',
+    /** 무엇이 남았는지가 이 구획의 정보다(스펙 §3 「진행 2 / 3」). */
+    progress: (judged: number, total: number): string => `진행 ${judged} / ${total}`,
+    /** 판정을 아직 안 골랐다. ⛔ 화면이 대신 고르지 않는다 — 사람이 판정한다. */
+    judgmentPlaceholder: '판정',
+    judgmentUnavailable: '판정 값 목록이 아직 준비되지 않았습니다. 담당자에게 문의하세요.',
+    valueInvalid: '숫자로 넣어 주세요.',
+    /** 불리언 항목의 «측정 결과» — 판정과 다른 축이다. */
+    booleanTrue: '양호',
+    booleanFalse: '불량',
     caption: '항목별 측정치',
     loading: '검사 항목을 불러오는 중입니다.',
     noItems: '이 검사기준 버전에는 검사 항목이 없습니다. 기준정보 담당자에게 문의하세요.',
@@ -191,16 +159,5 @@ export const pqcInspection = {
     calibrationWarning:
       '해당 측정치를 다시 확인하세요. 검사를 막지는 않습니다 — 계측기 교정은 설비 담당자에게 문의하세요.',
     calibrationExpired: '교정 만료',
-  },
-
-  pageNav: {
-    label: '검사 대기 목록 쪽 이동',
-    range: (start: number, end: number, total: number): string =>
-      `${start}–${end} / 전체 ${total}건`,
-    totalOnly: (total: number): string => `전체 ${total}건`,
-    previous: '이전',
-    next: '다음',
-    beyondLast: '이 쪽에는 결과가 없습니다. 앞쪽으로 돌아가 보세요.',
-    toFirstPage: '첫 쪽으로',
   },
 } as const;

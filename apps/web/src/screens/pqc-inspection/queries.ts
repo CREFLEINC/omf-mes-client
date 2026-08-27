@@ -6,14 +6,12 @@ import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../..
 import { runRequest, type ApiCallResult } from '../../patterns/request';
 import type { CodeValueResponse } from './code-options';
 import type { CoverageDraft } from './coverage';
+import type { InspectionMeasurementInput } from './measurement-draft';
 import { toCoverageBody } from './coverage';
-import type { QueueListQuery } from './filters';
 import type { InspectionItemSpecResponse, InspectionMeasurementResponse } from './measurement-rows';
 import {
-  toInspectionQueueResult,
   toInspectionRequestDetail,
   toInspectionResultRound,
-  type InspectionQueueResult,
   type InspectionRequestDetail,
   type InspectionResultRound,
 } from './types';
@@ -50,8 +48,6 @@ const ALL_KEY = ['pqc-inspection'] as const;
 
 export const pqcInspectionKeys = {
   all: ALL_KEY,
-  /** 질의가 곧 열쇠다 — 조건이나 쪽이 다르면 다른 결과이므로 캐시도 갈려야 한다. */
-  queue: (query: QueueListQuery) => [...ALL_KEY, 'queue', query] as const,
   /** 고른 의뢰의 상세. **목록과 앞머리를 갈라 둔다** — 저장 뒤 한쪽만 갱신할 수 있게. */
   detail: (inspectionRequestId: number) => [...ALL_KEY, 'detail', inspectionRequestId] as const,
   /** 공통코드 값 목록. **그룹 이름이 곧 열쇠다** — 화면이 정수 id 를 알지 않는다. */
@@ -71,28 +67,6 @@ export const pqcInspectionKeys = {
 /** 회차 한 건의 경로. 잠금 토큰이 이 경로를 열쇠로 보관되므로 **한 자리에서만 만든다.** */
 export const roundPath = (inspectionResultId: number): string =>
   `/quality/inspection-results/${inspectionResultId}`;
-
-const fetchQueue = (client: Client, query: QueueListQuery): Promise<InspectionQueueResult> =>
-  runRequest(() => client.GET('/quality/inspection-requests', { params: { query } })).then(
-    toInspectionQueueResult,
-  );
-
-/**
- * 검사 대기 큐를 부른다.
- *
- * **늘 부른다 — 이 화면에는 「조회가 성립하지 않는」 상태가 없다.** 계약의 질의값이 전부
- * 선택이라 조건 없이도 목록이 나오고, 그것이 이 화면의 기본 상태(전체 대기)다.
- */
-export const useInspectionQueue = (
-  query: QueueListQuery,
-): UseQueryResult<InspectionQueueResult> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: pqcInspectionKeys.queue(query),
-    queryFn: () => fetchQueue(client, query),
-  });
-};
 
 const fetchDetail = (
   client: Client,
@@ -294,6 +268,11 @@ export interface SaveDraftVariables {
   /** 이 검사가 대표하는 생산 구간(§5-5). 빈 칸은 키 자체가 실리지 않는다 */
   coverage: CoverageDraft;
   /**
+   * 항목별 측정치. ⛔ **자체 쓰기 경로가 없다** — 계약이 「검사 결과 저장에 함께 실린다」고
+   * 못박았다. 판정하지 않은 줄은 부르는 쪽이 이미 걸러 낸다.
+   */
+  measurements: InspectionMeasurementInput[];
+  /**
    * 재검사면 **앞 회차**. 아니면 `null`.
    *
    * ⭐ 회차 번호는 **서버가 +1 한다** — 화면이 세면 두 사람이 동시에 재검사를 열었을 때 같은
@@ -379,6 +358,15 @@ const judgmentOf = (code: string): { overallJudgmentCode?: string } =>
 const previousOf = (previousResultId: number | null): { previousResultId?: number } =>
   previousResultId === null ? {} : { previousResultId };
 
+/**
+ * 잰 것이 없으면 **키 자체를 싣지 않는다** — 빈 배열을 보내면 서버가 그것을 「측정치를
+ * 전부 지워라」로 읽을 수 있다. 아직 아무것도 재지 않은 상태와 지우려는 뜻은 다르다.
+ */
+const measurementsOf = (
+  measurements: InspectionMeasurementInput[],
+): { measurements?: InspectionMeasurementInput[] } =>
+  measurements.length === 0 ? {} : { measurements };
+
 const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   inspectionRequestId: v.inspectionRequestId,
   inspectedQty: v.inspectedQty,
@@ -391,6 +379,7 @@ const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   ...judgmentOf(v.overallJudgmentCode),
   ...previousOf(v.previousResultId),
   ...toCoverageBody(v.coverage),
+  ...measurementsOf(v.measurements),
 });
 
 const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
@@ -400,6 +389,7 @@ const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
   inspectedAt: v.inspectedAt,
   ...judgmentOf(v.overallJudgmentCode),
   ...toCoverageBody(v.coverage),
+  ...measurementsOf(v.measurements),
 });
 
 /** 확정이 보내는 값. ⛔ 처분·비고를 싣지 않는다 — 스펙 §4-B 가 싣지 않은 칸이다. */
