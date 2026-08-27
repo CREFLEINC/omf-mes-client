@@ -66,6 +66,12 @@
  * .pop-pane      그 두 구획 각각(⚠ 위 `.pop-panes` 와 다른 이름 · 서로 간섭하지 않는다)
  * .worker-no-field  사번 표시칸 — 글자만 키운다(높이는 xl 그대로)
  * .worker-card__name  현재 작업자 이름·사번 — 늘 크게 보인다
+ * POP(1024×768 터치 키오스크) — 관리웹과 폼팩터가 다르다
+ * .pop-screen        POP 화면 최상위 — 남은 높이를 그대로 쓴다
+ * .pop-screen-head   화면명과 프린터·단말 상태를 한 줄에 두는 머리
+ * .pop-screen-status 머리 오른쪽의 상태 표식 묶음
+ * .pop-panes         POP 좌우 2단 — 접힘 기준점이 없다
+ * .pop-touch(-등급)  터치 타겟 최소 높이 — ⚠ 제품이 임시로 채우는 치수
  */
 
 :root {
@@ -1048,6 +1054,36 @@ main > * + * {
 .alert-meta {
   display: flex;
   flex-wrap: wrap;
+ * ── POP(1024×768 터치 키오스크) ────────────────────────────────────────────
+ *
+ * 관리웹과 폼팩터가 다르다. **세로 여유가 119px뿐이라** 구획을 쌓지 않고 좌우로 편다.
+ *
+ * ⚠ docs/layout-conventions.md 에 규범으로 올리지 않는다 — 그 문서의 갱신 규칙이
+ * 「두 번째 화면에서 같은 결정을 또 하게 될 때 규범을 추가한다」이고, POP 화면은 아직
+ * 이것 하나다. 두 번째 POP 화면이 같은 결정을 되풀이하면 그때 옮긴다.
+ */
+
+/*
+ * 화면 최상위 — 남은 높이를 그대로 쓴다. 세로로 흐르면 1024×768에서 아래가 잘린다.
+ * 관리웹의 `main > * + *` 이음매를 받지 않으려고 최상위 블록을 하나만 둔다.
+ */
+.pop-screen {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 머리 — 화면명 왼쪽, 프린터·단말 상태 오른쪽. 인쇄가 안 될 때 가장 먼저 보는 자리다. */
+.pop-screen-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pop-screen-status {
+  display: flex;
   align-items: center;
   gap: var(--space-2);
 }
@@ -1097,6 +1133,48 @@ main > * + * {
   white-space: pre-wrap;
   max-width: 44rem;
   margin: var(--space-2) 0;
+/*
+ * 좌우 2단 — 좌측이 목록, 우측이 대상이다.
+ *
+ * ⛔ `.two-pane`을 쓰지 않는다. 그쪽은 1280px 아래에서 한 줄로 접히는데, POP은 1024px에
+ * 고정된 키오스크라 **접히면 항상 접힌 채로 선다.** 여기는 접힘 기준점을 두지 않는다.
+ */
+.pop-panes {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+/*
+ * 터치 타겟 등급 — ⚠ **제품이 임시로 채우는 치수다.**
+ *
+ * 디자인 시스템 고정 커밋의 `Button`은 `xl`(60px)까지라 **일반 등급까지만 덮는다.**
+ * 나머지 세 등급의 부족분을 여기서 채운다(착수 이슈 #139 6항 · design-system-v2-webui#67).
+ *
+ * ⛔ 이 값을 화면 파일에 옮겨 적지 않는다 — 등급 이름은 `patterns/pop-touch.ts`가 낸다.
+ * 디자인 시스템이 72px 변형을 내려 주면 이 블록과 그 모듈을 함께 걷어낸다.
+ */
+.pop-touch {
+  min-height: var(--pop-touch-size);
+}
+
+.pop-touch-normal {
+  --pop-touch-size: 56px;
+}
+
+.pop-touch-primary {
+  --pop-touch-size: 64px;
+}
+
+/* 핵심·위험은 같은 치수이나 등급을 합치지 않는다 — 합치면 무엇이 위험인지 코드에서 사라진다. */
+.pop-touch-critical {
+  --pop-touch-size: 72px;
+}
+
+.pop-touch-destructive {
+  --pop-touch-size: 72px;
 }
 
 /*

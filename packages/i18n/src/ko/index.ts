@@ -104,6 +104,7 @@ import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
 import { shellHome } from './shell-home';
 import { workerAssignment } from './worker-assignment';
+import { popShell } from './pop-shell';
 
 export const ko = {
   common,
@@ -196,6 +197,7 @@ export const ko = {
   poChangeReview,
   shellHome,
   workerAssignment,
+  popShell,
 } as const;
 
 export type Messages = typeof ko;
