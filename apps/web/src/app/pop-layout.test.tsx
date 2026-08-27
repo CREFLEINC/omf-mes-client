@@ -24,9 +24,14 @@ describe('PopLayout', () => {
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 
-  it('단말·사용자 자리를 지어내지 않는다 — 받을 경로가 아직 없다', () => {
+  /**
+   * ⚠ **글자 하나를 막는 것으로는 부족하다.** 「단말」이라는 낱말만 막으면 정작 금지 대상인
+   * 지어낸 값(단말 이름·사번)은 그 낱말을 포함하지 않아 그대로 통과한다 — 실측으로 확인했다.
+   * 그래서 머리에 들어갈 것을 **화이트리스트로 고정한다.**
+   */
+  it('머리에 프로그램 이름 말고 아무것도 두지 않는다 — 없는 값을 지어내지 않는다', () => {
     renderLayout('POP 본문');
 
-    expect(screen.getByRole('banner')).not.toHaveTextContent('단말');
+    expect(screen.getByRole('banner')).toHaveTextContent(/^OMF-MES POP$/u);
   });
 });
