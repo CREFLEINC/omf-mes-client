@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, PageHeader, useToast } from '@crefle/web-ui';
+import { AlertBanner, Breadcrumb, PageHeader, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -31,11 +31,21 @@ import {
   readPage,
   readPendingFilters,
   readSelectedNonconformanceId,
+  readTab,
   toAppliedSearchParams,
   toPendingListQuery,
   withSelectedNonconformance,
+  withTab,
   type PendingFilters,
+  type ScreenTab,
 } from './filters';
+import {
+  readHistoryFilters,
+  toHistoryAppliedSearchParams,
+  toHistoryListQuery,
+  type HistoryFilters,
+} from './history-filters';
+import { HistoryTab } from './history-tab';
 import { LoadErrorBanner } from './load-error';
 import { useItemLookup, useUomLookup } from './lookups';
 import { NonconformanceList } from './nonconformance-list';
@@ -44,6 +54,7 @@ import { defaultPeriod } from './period';
 import {
   dispositionKeys,
   nonconformanceDetailPath,
+  useDecisionHistory,
   useDispositionDecisions,
   useNonconformanceDetail,
   usePendingNonconformances,
@@ -104,6 +115,7 @@ export const DispositionDecisionScreen = ({
     [baseDate, searchParams, severityCodes, statusCodes],
   );
   const page = readPage(searchParams);
+  const tab = readTab(searchParams);
   const selectedId = readSelectedNonconformanceId(searchParams);
   /*
    * 기간이 막히면 `null`이고 조회가 열리지 않는다.
@@ -113,9 +125,22 @@ export const DispositionDecisionScreen = ({
    * 닿지 않는 분기는 감지기가 물 수 없고, 물지 못하는 코드는 조용히 썩는다.
    * 갈래 자체는 조회 조건 쪽이 타입으로 들고 있어, 되돌리기를 없애면 컴파일이 먼저 잡는다.
    */
-  const query = useMemo(() => toPendingListQuery(filters, page, zone), [filters, page, zone]);
+  /* ⚠ 보지 않는 목록은 부르지 않는다 — 탭마다 조회를 «닫는다». 원장 조회가 두 배가 된다. */
+  const query = useMemo(
+    () => (tab === 'pending' ? toPendingListQuery(filters, page, zone) : null),
+    [filters, page, tab, zone],
+  );
+  const historyFilters = useMemo(
+    () => readHistoryFilters(searchParams, baseDate, dispositionTypeCodes),
+    [baseDate, dispositionTypeCodes, searchParams],
+  );
+  const historyQuery = useMemo(
+    () => (tab === 'history' ? toHistoryListQuery(historyFilters, page, zone) : null),
+    [historyFilters, page, tab, zone],
+  );
 
   const list = usePendingNonconformances(query);
+  const history = useDecisionHistory(historyQuery);
   const detail = useNonconformanceDetail(selectedId);
   const decisions = useDispositionDecisions(selectedId);
   const items = useItemLookup();
@@ -244,6 +269,11 @@ export const DispositionDecisionScreen = ({
     setPendingTarget(null);
   };
 
+  const applyHistory = (next: HistoryFilters, nextPage = 1): void => {
+    setSearchParams((current) => toHistoryAppliedSearchParams(current, next, nextPage));
+  };
+
+  const historyRows = useMemo(() => (history.data?.items ?? []).map(toDecisionRow), [history.data]);
   const codeNotice = scopeWarning(severityCodes, statusCodes);
 
   return (
@@ -252,96 +282,135 @@ export const DispositionDecisionScreen = ({
         title={t.title}
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
-      <div className="three-pane">
-        <section className="pane" aria-label={t.panes.list}>
-          <FilterBar
-            applied={filters}
-            severityOptions={toCodeOptions(severityCodes)}
-            statusOptions={toCodeOptions(statusCodes)}
-            items={items}
-            onApply={(next) => apply(next)}
-            onReset={() =>
-              apply({ ...defaultPeriod(baseDate), itemId: '', severityCode: '', statusCode: '' })
-            }
-          />
-          {codeNotice !== undefined && (
-            <div className="banner-slot">
-              <AlertBanner variant="info">{codeNotice}</AlertBanner>
-            </div>
-          )}
-          <NonconformanceList
-            rows={rows}
-            items={items}
-            isLoading={list.isPending}
-            error={
-              list.isError ? (
-                <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
-              ) : null
-            }
-            page={pageView}
-            selectedId={selectedId}
-            onSelect={(id) =>
-              setSearchParams((current) =>
-                withSelectedNonconformance(current, selectedId === id ? null : id),
-              )
-            }
-            onChangePage={(nextPage) => apply(filters, nextPage)}
-          />
-        </section>
-        <section className="pane" aria-label={t.panes.detail}>
-          <DetailSlot
-            selectedId={selectedId}
-            detail={{
-              isPending: detail.isPending,
-              isError: detail.isError,
-              isNotFound: isDetailNotFound,
-              error: detail.error,
-              view: detail.data === undefined ? null : toDetailView(detail.data),
-            }}
-            decisions={{
-              rows: decisionRows,
-              isLoading: decisions.isPending,
-              isError: decisions.isError,
-            }}
-            remaining={remaining}
-            items={items}
-            uoms={uoms}
-            onRetry={() => void detail.refetch()}
-          />
-        </section>
-        <section className="pane" aria-label={t.panes.decision}>
-          <DecisionFormPane
-            value={form}
-            errors={showErrors ? errors : write.fieldErrors}
-            qtyNotice={remainingNotice(form, remaining)}
-            lockReason={lock.reason}
-            isUncertain={lock.isUncertain}
-            onCheckOutcome={checkOutcome}
-            dispositionOptions={toCodeOptions(dispositionTypeCodes)}
-            uomId={uomId}
-            uoms={uoms}
-            writeError={write.error}
-            isSaving={write.isSaving}
-            canCancel={hasDecisionInput(form)}
-            onChange={(next) => {
-              /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
-              if (next.dispositionTypeCode !== form.dispositionTypeCode)
-                write.clearFieldError('dispositionTypeCode');
-              if (next.qty !== form.qty) write.clearFieldError('decisionQty');
-              if (next.reason !== form.reason) write.clearFieldError('reason');
-              setForm(next);
-            }}
-            onSave={save}
-            onCancel={() => {
-              setForm(EMPTY_DECISION_FORM);
-              setShowErrors(false);
-              /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
-              write.reset();
-            }}
-            onReload={checkOutcome}
-          />
-        </section>
-      </div>
+      <Tabs
+        aria-label={t.tabs.label}
+        value={tab}
+        items={[
+          {
+            value: 'pending',
+            label: t.tabs.pending,
+            content: (
+              <div className="three-pane">
+                <section className="pane" aria-label={t.panes.list}>
+                  <FilterBar
+                    applied={filters}
+                    severityOptions={toCodeOptions(severityCodes)}
+                    statusOptions={toCodeOptions(statusCodes)}
+                    items={items}
+                    onApply={(next) => apply(next)}
+                    onReset={() =>
+                      apply({
+                        ...defaultPeriod(baseDate),
+                        itemId: '',
+                        severityCode: '',
+                        statusCode: '',
+                      })
+                    }
+                  />
+                  {codeNotice !== undefined && (
+                    <div className="banner-slot">
+                      <AlertBanner variant="info">{codeNotice}</AlertBanner>
+                    </div>
+                  )}
+                  <NonconformanceList
+                    rows={rows}
+                    items={items}
+                    isLoading={list.isPending}
+                    error={
+                      list.isError ? (
+                        <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+                      ) : null
+                    }
+                    page={pageView}
+                    selectedId={selectedId}
+                    onSelect={(id) =>
+                      setSearchParams((current) =>
+                        withSelectedNonconformance(current, selectedId === id ? null : id),
+                      )
+                    }
+                    onChangePage={(nextPage) => apply(filters, nextPage)}
+                  />
+                </section>
+                <section className="pane" aria-label={t.panes.detail}>
+                  <DetailSlot
+                    selectedId={selectedId}
+                    detail={{
+                      isPending: detail.isPending,
+                      isError: detail.isError,
+                      isNotFound: isDetailNotFound,
+                      error: detail.error,
+                      view: detail.data === undefined ? null : toDetailView(detail.data),
+                    }}
+                    decisions={{
+                      rows: decisionRows,
+                      isLoading: decisions.isPending,
+                      isError: decisions.isError,
+                    }}
+                    remaining={remaining}
+                    items={items}
+                    uoms={uoms}
+                    onRetry={() => void detail.refetch()}
+                  />
+                </section>
+                <section className="pane" aria-label={t.panes.decision}>
+                  <DecisionFormPane
+                    value={form}
+                    errors={showErrors ? errors : write.fieldErrors}
+                    qtyNotice={remainingNotice(form, remaining)}
+                    lockReason={lock.reason}
+                    isUncertain={lock.isUncertain}
+                    onCheckOutcome={checkOutcome}
+                    dispositionOptions={toCodeOptions(dispositionTypeCodes)}
+                    uomId={uomId}
+                    uoms={uoms}
+                    writeError={write.error}
+                    isSaving={write.isSaving}
+                    canCancel={hasDecisionInput(form)}
+                    onChange={(next) => {
+                      /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
+                      if (next.dispositionTypeCode !== form.dispositionTypeCode)
+                        write.clearFieldError('dispositionTypeCode');
+                      if (next.qty !== form.qty) write.clearFieldError('decisionQty');
+                      if (next.reason !== form.reason) write.clearFieldError('reason');
+                      setForm(next);
+                    }}
+                    onSave={save}
+                    onCancel={() => {
+                      setForm(EMPTY_DECISION_FORM);
+                      setShowErrors(false);
+                      /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
+                      write.reset();
+                    }}
+                    onReload={checkOutcome}
+                  />
+                </section>
+              </div>
+            ),
+          },
+          {
+            value: 'history',
+            label: t.tabs.history,
+            content: (
+              <HistoryTab
+                applied={historyFilters}
+                dispositionOptions={toCodeOptions(dispositionTypeCodes)}
+                rows={historyRows}
+                uoms={uoms}
+                page={toPageView(
+                  history.data?.page ?? { page, size: 0, total: 0 },
+                  historyRows.length,
+                )}
+                isLoading={history.isPending && historyQuery !== null}
+                error={history.isError ? history.error : null}
+                onApply={(next) => applyHistory(next)}
+                onChangePage={(nextPage) => applyHistory(historyFilters, nextPage)}
+                onRetry={() => void history.refetch()}
+              />
+            ),
+          },
+        ]}
+        onChange={(next) => setSearchParams((current) => withTab(current, next as ScreenTab))}
+      />
     </>
   );
 };
