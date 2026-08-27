@@ -1,0 +1,88 @@
+import type { ApiClient, ApiError, EtagStore } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
+
+import { ApiRequestError, runRequest } from '../../patterns/request';
+import type { WorkOrderReleaseBody } from './issue-request';
+
+/**
+ * 낙관적 잠금 토큰을 꺼낼 자리. 보관소가 응답 URL 의 경로로 키를 잡으므로 같은 모양을 만든다.
+ *
+ * ⚠ **토큰은 만들어진 W/O 의 «상세»가 내린다.** 발행 응답이 아니다 — 발행은 목록 경로로
+ * 나가고 보관소는 경로별로 토큰을 갖는다. 그래서 발행과 배포 사이에 상세를 한 번 부른다.
+ */
+export const workOrderDetailPath = (workOrderId: number): string =>
+  `/production/work-orders/${String(workOrderId)}`;
+
+/** 토큰을 얻지 못해 배포를 시작조차 못 한 상태. */
+const staleTokenError = (): ApiError => ({
+  kind: 'validation',
+  errors: [{ scope: 'screen', code: 'STALE_TOKEN', message: messages.save.staleToken }],
+});
+
+/**
+ * 배포의 멱등 키를 들고 있는 자리. 대상마다 하나다.
+ *
+ * ⛔ **재시도마다 새 키를 내면** 「같은 키로 안전하게 다시 누른다」가 성립하지 않아 **이중
+ * 배포**가 열린다. 반대로 **대상이 바뀌었는데 키를 물려주면** 다른 W/O 의 배포가 앞 응답으로
+ * 대체된다 — 서버가 계약대로 실행 없이 앞 응답을 되돌려 주기 때문이다. 그래서 키와 대상
+ * 식별자를 **함께** 들고 다닌다.
+ */
+export interface ReleaseKeyHolder {
+  current: { workOrderId: number; key: string } | null;
+}
+
+export const releaseKeyFor = (holder: ReleaseKeyHolder, workOrderId: number): string => {
+  if (holder.current === null || holder.current.workOrderId !== workOrderId) {
+    holder.current = { workOrderId, key: crypto.randomUUID() };
+  }
+
+  return holder.current.key;
+};
+
+export interface ReleaseStepInput {
+  client: ApiClient['client'];
+  etags: EtagStore;
+  workOrderId: number;
+  body: WorkOrderReleaseBody;
+  keyHolder: ReleaseKeyHolder;
+}
+
+/**
+ * 배포 한 걸음 — **토큰을 얻고 배포를 낸다.**
+ *
+ * ```
+ * ② GET  /production/work-orders/{id}          (토큰을 여기서 얻는다)
+ * ③ POST /production/work-orders/{id}:release  (멱등 키 · If-Match)
+ * ```
+ *
+ * 발행에서 떼어 둔 이유는 **이 두 걸음이 다시 시도되는 단위**이기 때문이다 — 만들어진 W/O 를
+ * 두고 배포만 다시 낼 때 도는 것이 정확히 여기다.
+ */
+export const releaseWorkOrder = async (input: ReleaseStepInput): Promise<void> => {
+  /* 상세를 받아 두면 보관소에 토큰이 들어온다. 응답 값 자체는 여기서 쓰지 않는다. */
+  await runRequest(() =>
+    input.client.GET('/production/work-orders/{workOrderId}', {
+      params: { path: { workOrderId: input.workOrderId } },
+    }),
+  );
+
+  const ifMatch = input.etags.ifMatch(workOrderDetailPath(input.workOrderId));
+  /*
+   * ⛔ **빈 토큰으로 보내지 않는다.** 계약이 요구하는 헤더라 서버가 거부하고, 그 거부는
+   * 「배포가 반려됐다」로 읽힌다 — 실제로는 **물어보지도 못한 것**이다.
+   */
+  if (ifMatch === undefined) throw new ApiRequestError(staleTokenError());
+
+  await runRequest(() =>
+    input.client.POST('/production/work-orders/{workOrderId}:release', {
+      params: {
+        path: { workOrderId: input.workOrderId },
+        header: {
+          'Idempotency-Key': releaseKeyFor(input.keyHolder, input.workOrderId),
+          'If-Match': ifMatch,
+        },
+      },
+      body: input.body,
+    }),
+  );
+};
