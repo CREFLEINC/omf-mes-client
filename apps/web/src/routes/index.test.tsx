@@ -431,6 +431,12 @@ const inspectionResultRoutes = (): StubRoute[] => [
 /** W-03-09가 선택 없는 첫 진입에 부르는 승인 요청 목록 하나다. */
 const qualityApprovalRoutes = (): StubRoute[] => [lookupRoute('/app/approval-requests', [])];
 
+const dispositionRoutes = (): StubRoute[] => [
+  lookupRoute('/quality/nonconformances', []),
+  lookupRoute('/mdm/items', []),
+  lookupRoute('/mdm/uoms', []),
+];
+
 const workOrderCloseRoutes = (): StubRoute[] => [
   {
     match: (request) => isGet(request, '/mdm/code-values'),
@@ -1260,6 +1266,35 @@ describe('appRouter — 특채·한도승인 승인 처리의 진입 경로', ()
     expect(routedPaths()).toContain('/quality/approvals');
     expect(routedPaths()).not.toContain('/quality-approval');
     expect(routedPaths()).not.toContain('/quality/approval');
+  });
+});
+
+describe('appRouter — 처분 판정 처리의 진입 경로', () => {
+  it('품질관리 메뉴를 키보드로 열면 정식 주소와 화면 제목·탐색 경로가 선다', async () => {
+    const user = userEvent.setup();
+    renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...dispositionRoutes()]);
+
+    const link = screen.getByRole('link', { name: '처분 판정 처리' });
+    link.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(currentLocation()).toBe('/quality/dispositions'));
+    expect(screen.getAllByRole('heading', { level: 1, name: '처분 판정 처리' })).toHaveLength(1);
+    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
+    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(within(items[0]!).getByText(messages.dispositionDecision.breadcrumbRoot)).toBeVisible();
+    expect(within(items[1]!).getByText('처분 판정 처리')).toBeVisible();
+  });
+
+  it('⭐ 진입 키가 붙은 주소도 같은 화면으로 간다 — 부적합 열기가 이 경로로 온다', () => {
+    expect(routedPaths()).toContain('/quality/dispositions');
+  });
+
+  it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {
+    expect(routedPaths()).not.toContain('/quality/disposition');
+    expect(routedPaths()).not.toContain('/disposition-decision');
+    expect(routedPaths()).not.toContain('/quality/disposition-decisions');
   });
 });
 
