@@ -2,6 +2,8 @@ import { TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { TextArea } from '@omf-mes/ui';
 
+import { useState } from 'react';
+
 import type { IssueFormErrors, IssueFormValue } from './issue-form';
 import type { SelectedItem } from './types';
 
@@ -22,12 +24,23 @@ export interface IssueFormPaneProps {
  *
  * ⛔ **품목은 여기서 고르지 않는다.** 고르는 일은 품목 구획이 맡고 여기서는 **고른 결과만**
  * 보인다 — 같은 값을 두 곳에서 바꾸게 두지 않는다.
+ *
+ * ⛔ **건드리지 않은 칸을 붉게 물들이지 않는다.** 화면에 들어서자마자 「입력하세요」가 세 칸에
+ * 떠 있으면, 아직 아무것도 하지 않은 사람을 나무라는 꼴이 된다 — 무엇이 모자란지는 발행
+ * 버튼 옆 사유가 이미 말한다. **한 번 손댄 칸부터** 그 칸의 오류를 보인다.
  */
 export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: IssueFormPaneProps) => {
   const t = messages.emergencyWorkOrder.form;
-  const set = (patch: Partial<IssueFormValue>): void => {
-    onChange({ ...value, ...patch });
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const set = (field: keyof IssueFormValue, next: string): void => {
+    setTouched((current) => ({ ...current, [field]: true }));
+    onChange({ ...value, [field]: next });
   };
+
+  /** 손댄 칸의 오류만 낸다. 손대기 전에는 사유가 발행 버튼 옆에서 말한다. */
+  const errorOf = (field: keyof IssueFormErrors): string | undefined =>
+    touched[field] === true ? errors[field] : undefined;
 
   return (
     <section aria-label={messages.emergencyWorkOrder.title}>
@@ -40,9 +53,9 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
         label={`${t.orderQty} (${uomLabel})`}
         inputMode="decimal"
         value={value.orderQty}
-        error={errors.orderQty}
+        error={errorOf('orderQty')}
         onChange={(event) => {
-          set({ orderQty: event.target.value });
+          set('orderQty', event.target.value);
         }}
       />
 
@@ -51,9 +64,9 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
         type="datetime-local"
         value={value.plannedEndAtLocal}
         helperText={t.dueHelp}
-        error={errors.plannedEndAtLocal}
+        error={errorOf('plannedEndAtLocal')}
         onChange={(event) => {
-          set({ plannedEndAtLocal: event.target.value });
+          set('plannedEndAtLocal', event.target.value);
         }}
       />
 
@@ -62,9 +75,9 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
         value={value.remarks}
         /* 왜 필수인지와, 어디에 어떻게 남는지를 함께 적는다. */
         helperText={`${t.reasonHelp} ${t.reasonScope}`}
-        error={errors.remarks}
+        error={errorOf('remarks')}
         onChange={(event) => {
-          set({ remarks: event.target.value });
+          set('remarks', event.target.value);
         }}
       />
     </section>

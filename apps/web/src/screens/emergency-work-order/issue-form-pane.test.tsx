@@ -78,39 +78,68 @@ describe('IssueFormPane', () => {
     );
   });
 
-  describe('오류를 칸 옆에 낸다', () => {
+  describe('오류를 «손댄» 칸 옆에 낸다', () => {
+    /*
+     * ⛔ 화면에 들어서자마자 「입력하세요」가 세 칸에 떠 있으면, 아직 아무것도 하지 않은
+     * 사람을 나무라는 꼴이 된다 — 무엇이 모자란지는 발행 버튼 옆 사유가 이미 말한다.
+     */
+    it('⛔ 건드리지 않은 칸은 붉게 물들지 않는다', () => {
+      renderPane({
+        value: EMPTY_ISSUE_FORM,
+        errors: {
+          orderQty: t.qtyRequired,
+          remarks: t.reasonRequired,
+          plannedEndAtLocal: t.dueInvalid,
+        },
+      });
+
+      expect(screen.queryByText(t.qtyRequired)).not.toBeInTheDocument();
+      expect(screen.queryByText(t.reasonRequired)).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/EA/)).not.toHaveAttribute('aria-invalid', 'true');
+    });
+
     it.each([
-      ['수량', { orderQty: t.qtyNotPositive }, t.qtyNotPositive],
-      ['납기', { plannedEndAtLocal: t.dueInvalid }, t.dueInvalid],
-      ['사유', { remarks: t.reasonRequired }, t.reasonRequired],
-    ])('%s', (_name, errors, message) => {
-      renderPane({ value: EMPTY_ISSUE_FORM, errors });
+      ['수량', /EA/, { orderQty: t.qtyNotPositive }, t.qtyNotPositive],
+      ['사유', t.reason, { remarks: t.reasonRequired }, t.reasonRequired],
+    ])('%s 은 손댄 뒤부터 오류를 낸다', async (_name, label, errors, message) => {
+      const { user } = renderPane({ value: EMPTY_ISSUE_FORM, errors });
+
+      await user.type(screen.getByLabelText(label), '1');
 
       expect(screen.getByText(message)).toBeInTheDocument();
     });
 
-    it('⛔ 오류가 있으면 그 칸이 유효하지 않다고 표시된다', () => {
-      renderPane({ errors: { orderQty: t.qtyNotPositive } });
+    it('⛔ 손댄 칸은 유효하지 않다고 표시된다', async () => {
+      const { user } = renderPane({ errors: { orderQty: t.qtyNotPositive } });
+
+      await user.type(screen.getByLabelText(/EA/), '0');
 
       expect(screen.getByLabelText(/EA/)).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('⛔ 한 칸을 손대도 다른 칸은 조용하다 — 칸마다 따로 센다', async () => {
+      const { user } = renderPane({
+        value: EMPTY_ISSUE_FORM,
+        errors: { orderQty: t.qtyRequired, remarks: t.reasonRequired },
+      });
+
+      await user.type(screen.getByLabelText(/EA/), '1');
+
+      expect(screen.getByText(t.qtyRequired)).toBeInTheDocument();
+      expect(screen.queryByText(t.reasonRequired)).not.toBeInTheDocument();
     });
   });
 
   describe('고친 값을 그대로 올린다', () => {
-    it('수량', async () => {
+    it.each([
+      ['수량', /EA/, 'orderQty' as const, '5'],
+      ['사유', t.reason, 'remarks' as const, '급'],
+    ])('%s', async (_name, label, field, typed) => {
       const { onChange, user } = renderPane({ value: EMPTY_ISSUE_FORM });
 
-      await user.type(screen.getByLabelText(/EA/), '5');
+      await user.type(screen.getByLabelText(label), typed);
 
-      expect(onChange).toHaveBeenCalledWith({ ...EMPTY_ISSUE_FORM, orderQty: '5' });
-    });
-
-    it('사유', async () => {
-      const { onChange, user } = renderPane({ value: EMPTY_ISSUE_FORM });
-
-      await user.type(screen.getByLabelText(t.reason), '급');
-
-      expect(onChange).toHaveBeenCalledWith({ ...EMPTY_ISSUE_FORM, remarks: '급' });
+      expect(onChange).toHaveBeenCalledWith({ ...EMPTY_ISSUE_FORM, [field]: typed });
     });
   });
 

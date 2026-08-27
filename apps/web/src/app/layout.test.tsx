@@ -503,6 +503,10 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-close',
     );
+    expect(within(sidebar).getByRole('link', { name: '긴급 W/O 발행' })).toHaveAttribute(
+      'href',
+      '/production/emergency-work-orders',
+    );
     expect(links.indexOf('/production/production-orders')).toBe(
       links.indexOf('/shipment/shipment-schedule') + 1,
     );
@@ -680,6 +684,7 @@ describe('AppLayout', () => {
       '/production/work-order-assignments',
       '/production/work-order-release',
       '/production/work-order-close',
+      '/production/emergency-work-orders',
       '/quality/lot-status',
       '/quality/lot-status-transition',
       '/quality/suspicious-material-hold',

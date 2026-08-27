@@ -236,6 +236,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/production/work-order-close" icon="archive">
               W/O 마감·ERP 실적 송신
             </NavItem>
+            {/* W-02-07 — 계획을 거치지 않고 직접 발행한다. 갈래가 달라 정규 흐름 뒤에 둔다. */}
+            <NavItem to="/production/emergency-work-orders" icon="bolt">
+              긴급 W/O 발행
+            </NavItem>
           </SidebarSection>
           {/*
            * W-03-01 — Lot Status 계열의 첫 화면이 독립된 「품질관리」 섹션을 연다.
