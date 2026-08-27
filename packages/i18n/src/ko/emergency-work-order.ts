@@ -154,6 +154,21 @@ export const emergencyWorkOrder = {
       `앞의 ${String(shown)}건만 보입니다. 찾는 품목이 없으면 검색어를 좁히세요.`,
   },
 
+  /** 발행 결과. */
+  outcome: {
+    released: (workOrderNo: string): string => `${workOrderNo} 를 발행하고 배포했습니다.`,
+
+    /**
+     * ⛔ **「발행 실패」가 아니다.** 지시는 이미 만들어져 있다 — 그 사실을 먼저 말하고,
+     * 무엇이 남았는지와 무엇을 하면 되는지를 잇는다. 보내지 못한 것과 답을 못 받은 것을
+     * 가르는 이유는 `lock` 쪽 주석에 적었다.
+     */
+    notSent: (workOrderNo: string): string => `${workOrderNo} 가 만들어졌지만 배포되지 않았습니다.`,
+    releaseUnknown: (workOrderNo: string): string =>
+      `${workOrderNo} 가 만들어졌습니다. 배포까지 됐는지는 확인되지 않았습니다.`,
+    retryRelease: '배포 다시 시도',
+  },
+
   /**
    * 발행을 잠그는 사유.
    *
