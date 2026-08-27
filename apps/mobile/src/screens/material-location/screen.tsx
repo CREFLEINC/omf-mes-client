@@ -1,5 +1,6 @@
 import { AlertBanner, Button, Card, EmptyState, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { playErrorTone } from '../../patterns/error-tone';
@@ -143,27 +144,23 @@ export const MaterialLocationScreen = () => {
   const balances = useLotBalances(lotId);
   const holds = useLotHolds(lotId);
   const names = useReferenceNames(balances.data ?? [], lot.data?.itemId);
+  const queryClient = useQueryClient();
 
   const errors = [lot.error, balances.error, holds.error].filter((error) => error !== null);
   const failed = errors.length > 0;
   const unreachable = errors.some((error) => toApiError(error).kind === 'network');
-  // 실패한 조회는 진행 중이 아니다. failed 로 통째로 끄면 나머지가 도착하는 동안 화면이 빈다.
-  const pending =
-    code !== null && (lot.isPending ? !lot.isError : lotId !== null && balances.isPending);
+  // 실패한 조회를 이유로 끄지 않는다. 나머지가 도착하는 동안 화면이 빈 채로 남는다.
+  const pending = code !== null && (lot.isPending || (lotId !== null && balances.isPending));
 
   /*
    * 확인 못 한 보류를 조용히 지나가면 묶인 자재가 자유 재고로 읽힌다. 잔액보다 늦게
    * 오는 구간이 있어 도착 여부까지 세 갈래로 가른다.
    */
-  const holdState =
-    lotId === null || holds.isSuccess ? 'known' : holds.isError ? 'failed' : 'checking';
+  const holdState = holds.isSuccess ? 'known' : holds.isError ? 'failed' : 'checking';
 
+  // 이름 해석까지 함께 되살린다. 이 버튼이 화면의 유일한 복구 수단이다.
   const retry = () => {
-    for (const query of [lot, balances, holds]) {
-      if (query.isError) {
-        void query.refetch();
-      }
-    }
+    void queryClient.refetchQueries({ predicate: (query) => query.state.status === 'error' });
   };
 
   const restart = () => {
