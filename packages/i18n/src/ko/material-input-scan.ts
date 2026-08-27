@@ -52,11 +52,24 @@ export const materialInputScan = {
     label: '자재LOT / 금형 코드',
     submit: '읽기',
     scanning: '조회 중',
-    /** 스캔 한 번의 결과를 말하는 자리. 실패도 그 자리에서 말한다 — 화면을 옮기지 않는다. */
+    /**
+     * 스캔 한 번의 결과를 말하는 자리. 실패도 그 자리에서 말한다 — 화면을 옮기지 않는다.
+     *
+     * ⭐ **읽은 코드와 찾은 것을 함께 말한다.** LOT 검색은 번호의 일부나 외부 식별자로도
+     * 걸리므로 **읽은 것과 찾은 것이 다를 수 있다.** 찾은 쪽만 말하면 작업자는 자기가 읽지
+     * 않은 번호를 보고도 왜 그런지 알 수 없고, 잘못 걸린 것인지 판단할 근거가 없다.
+     */
     outcomes: {
-      material: (lotNo: string): string => `${lotNo} 담았습니다.`,
-      mold: (moldCode: string): string => `금형 ${moldCode} 물렸습니다.`,
-      duplicate: (lotNo: string): string => `${lotNo}은(는) 이미 담겨 있습니다.`,
+      material: (code: string, lotNo: string): string =>
+        code === lotNo ? `${lotNo} 담았습니다.` : `${code} → ${lotNo} 담았습니다.`,
+      mold: (code: string, moldCode: string): string =>
+        code === moldCode
+          ? `금형 ${moldCode} 물렸습니다.`
+          : `${code} → 금형 ${moldCode} 물렸습니다.`,
+      duplicate: (code: string, lotNo: string): string =>
+        code === lotNo
+          ? `${lotNo}은(는) 이미 담겨 있습니다.`
+          : `${code} → ${lotNo}은(는) 이미 담겨 있습니다.`,
       ambiguous: (count: number): string =>
         `${String(count)}건이 함께 검색됐습니다. 코드를 더 정확히 읽어 주세요.`,
       notFound: (code: string): string => `${code}을(를) 찾을 수 없습니다.`,
@@ -73,7 +86,11 @@ export const materialInputScan = {
     empty: '아직 아무것도 담지 않았습니다.',
     moldEmpty: '물린 금형이 없습니다.',
     /** LOT 상태는 **표시만 한다** — 투입 가부는 서버가 정한다(스펙 §5-2). */
+    statusLabel: '상태',
+    /** 품질 판정과 **다른 축**이다. 나란히 두면 모순처럼 읽혀 줄을 나눈다. */
     heldMark: '보류 중',
+    /** 표시명을 못 받았을 때. 원문 코드를 그대로 보이므로 담당자에게 전할 단서는 남는다. */
+    statusLabelUnavailable: '상태 이름을 불러오지 못해 코드로 표시합니다.',
     shotCount: (current: number, guaranteed: number): string =>
       `타발 ${current.toLocaleString('ko-KR')} / ${guaranteed.toLocaleString('ko-KR')}`,
     /* 적정 타수가 마스터에 없으면 남은 타수를 낼 수 없다. 0으로 채우지 않는다. */
@@ -93,7 +110,7 @@ export const materialInputScan = {
      * 누가 풀 수 있는지」까지만 적는다.
      */
     reasons: {
-      notReady: '투입 확정은 아직 사용할 수 없습니다. 작업자·단말 확인 기능이 준비되면 열립니다.',
+      notReady: '투입 확정은 아직 열리지 않았습니다. 관리자에게 문의하세요.',
       nothingScanned: '투입 확정은 자재를 하나 이상 담아야 누를 수 있습니다.',
     },
   },

@@ -40,8 +40,8 @@ const lookupScan = async (client: Client, draft: ScanDraft, code: string): Promi
   const lot = lots.items[0];
   if (lot !== undefined) {
     return hasMaterial(draft, lot.lotId)
-      ? { kind: 'duplicate', lotNo: lot.lotNo }
-      : { kind: 'material', material: toScannedMaterial(lot) };
+      ? { kind: 'duplicate', code, lotNo: lot.lotNo }
+      : { kind: 'material', code, material: toScannedMaterial(lot) };
   }
 
   const molds = await runRequest(() =>
@@ -54,7 +54,7 @@ const lookupScan = async (client: Client, draft: ScanDraft, code: string): Promi
 
   return mold === undefined
     ? { kind: 'not-found', code }
-    : { kind: 'mold', mold: toScannedMold(mold) };
+    : { kind: 'mold', code, mold: toScannedMold(mold) };
 };
 
 export interface ScanLookupVariables {

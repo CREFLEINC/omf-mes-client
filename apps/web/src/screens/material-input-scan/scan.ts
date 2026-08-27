@@ -74,11 +74,15 @@ export const toScannedMold = (mold: MoldResponse): ScannedMold => ({
  *
  * `ambiguous`는 검색어 하나에 여러 건이 걸린 것이다. 화면이 **고르지 않는다** — 어느 것을
  * 고를지 판단할 근거가 없고, 틀리면 다른 자재가 계보에 들어간다.
+ *
+ * ⭐ **읽은 코드(`code`)를 함께 들고 다닌다.** 검색이 번호의 일부·외부 식별자로도 걸리므로
+ * 읽은 것과 찾은 것이 다를 수 있다 — 화면이 둘을 함께 보여야 작업자가 잘못 걸린 것인지
+ * 판단할 수 있다.
  */
 export type ScanOutcome =
-  | { kind: 'material'; material: ScannedMaterial }
-  | { kind: 'mold'; mold: ScannedMold }
-  | { kind: 'duplicate'; lotNo: string }
+  | { kind: 'material'; code: string; material: ScannedMaterial }
+  | { kind: 'mold'; code: string; mold: ScannedMold }
+  | { kind: 'duplicate'; code: string; lotNo: string }
   | { kind: 'ambiguous'; count: number }
   | { kind: 'not-found'; code: string };
 

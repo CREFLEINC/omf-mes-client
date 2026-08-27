@@ -17,6 +17,7 @@ const t = messages.materialInputScan;
 const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
 const LIST_PATH = '/logistics/shopfloor-receipts';
 const detailPath = (receiptId: number): string => `${LIST_PATH}/${String(receiptId)}`;
+const CODE_VALUES_PATH = '/mdm/code-values';
 
 interface RecordedRequest {
   method: string;
@@ -57,8 +58,23 @@ const detailRoute = (receiptId: number, lines: unknown[], init: ResponseInit = {
     ),
 });
 
+/**
+ * 상태 표시명 조회 — 이 감지기들의 관심사가 아니다.
+ *
+ * ⚠ **작업지시와 무관하게 나간다.** 표시용 이름 풀이라 무엇을 볼지 정해지기 전에도 필요하다.
+ * 그래서 아래 「조회를 부르지 않는다」는 **수령 조회**에만 건다.
+ */
+const codeValuesRoute = (): StubRoute => ({
+  match: (request) => isGet(request, CODE_VALUES_PATH),
+  respond: () => jsonResponse({ items: [], page: { page: 1, size: 50, total: 0 } }),
+});
+
+/** 수령 조회만 센다 — 표시용 이름 풀이는 이 판정의 대상이 아니다. */
+const receiptRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
+  requests.filter((request) => request.url.pathname.startsWith(LIST_PATH));
+
 const renderScreen = (routes: StubRoute[], route = ROUTE) => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  const { fetch, requests } = createRecordingFetch([...routes, codeValuesRoute()]);
   const result = renderWithProviders(<MaterialInputScanScreen />, { fetch, route });
 
   return { ...result, requests };
@@ -221,7 +237,7 @@ describe('MaterialInputScanScreen — 작업지시가 없을 때', () => {
     const { requests } = renderScreen([listRoute()], '/pop/material-input');
 
     expect(await screen.findByText(t.header.workOrderMissing)).toBeTruthy();
-    expect(requests).toHaveLength(0);
+    expect(receiptRequests(requests)).toHaveLength(0);
     /*
      * ⚠ **요청이 0회인 것만으로는 부족하다.** 조회를 막는 겹이 둘인데(`enabled`와 queryFn의
      * 가드) 앞의 겹이 사라져도 뒤의 겹이 던져 요청은 여전히 0회다 — 대신 그 예외가 **빨간
@@ -252,7 +268,7 @@ describe('MaterialInputScanScreen — 작업지시가 없을 때', () => {
     const { requests } = renderScreen([listRoute()], '/pop/material-input?workOrderId=0');
 
     expect(await screen.findByText(t.header.workOrderMissing)).toBeTruthy();
-    expect(requests).toHaveLength(0);
+    expect(receiptRequests(requests)).toHaveLength(0);
     await flush();
     expect(screen.queryByText(messages.httpError.loadTitle)).toBeNull();
   });

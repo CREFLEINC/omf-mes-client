@@ -35,7 +35,13 @@ export const ConfirmPanel = ({ hasMaterials }: ConfirmPanelProps) => {
        * 잠긴 버튼은 포커스를 받지 못해 툴팁만으로는 키보드·스크린리더 사용자가 사유에 닿을 수
        * 없다. 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다.
        */}
-      <Button variant="filled" size="xl" disabled aria-describedby={reasonId}>
+      <Button
+        variant="filled"
+        size="xl"
+        className="pop-touch-target"
+        disabled
+        aria-describedby={reasonId}
+      >
         {t.confirm.action}
       </Button>
       <span id={reasonId} className="field-note">

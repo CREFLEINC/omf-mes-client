@@ -50,6 +50,7 @@
  * .scanned-code  LOT·금형 코드 — 멀리서 읽는다
  * .scanned-mold  물린 금형 구획
  * .confirm-row   투입 확정 버튼과 잠금 사유
+ * .pop-touch-target  현장 단말의 터치 타겟 하한 — DS xl(60px)이 12px 모자란 자리를 채운다
  */
 
 :root {
@@ -781,6 +782,23 @@ main > * + * {
 }
 
 /*
+ * 현장 단말의 터치 타겟 하한 — **72px**.
+ *
+ * 착수 이슈 6번이 「위험 등급 버튼은 72px가 필요한데 DS의 `xl`은 60px다 — 12px 부족분은
+ * 제품이 임시로 채운다」로 처리 방법을 정했다. 그 12px을 여기서 채운다.
+ *
+ * ⚠ **임시다.** 디자인 시스템에 그 크기가 서면 이 규칙을 지우고 DS 변형을 쓴다 —
+ * 제품이 치수를 오래 들고 있으면 화면마다 다른 값이 굳는다.
+ *
+ * ⛔ **모든 버튼에 걸지 않는다.** 목록의 「빼기」처럼 되돌릴 수 있는 조작까지 키우면
+ * 화면이 버튼으로 덮이고, 정작 큰 것이 눈에 띄지 않아 크기가 뜻을 잃는다.
+ * 장갑 낀 손으로 눌러야 하는 것 — 스캔을 보내는 것과 투입을 확정하는 것 — 에만 건다.
+ */
+.pop-touch-target {
+  min-height: 72px;
+}
+
+/*
  * 결과가 없을 때도 **자리를 비워 둔다.** 결과가 뜰 때마다 아래 목록이 밀리면, 담긴 줄을
  * 누르려던 손가락이 빗나간다 — 터치 화면에서 이 흔들림은 오조작이 된다.
  */
@@ -797,12 +815,6 @@ main > * + * {
   list-style: none;
   display: grid;
   gap: var(--space-2);
-}
-
-.scanned-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
 }
 
 /* 멀리서 읽는 값이라 본문보다 크게 두고, 자릿수가 흔들리지 않게 고정폭으로 그린다. */
@@ -822,4 +834,22 @@ main > * + * {
   display: grid;
   gap: var(--space-2);
   justify-items: start;
+}
+
+/* 품질 판정과 보류는 **다른 축**이라 코드 줄 아래에 따로 세운다(나란히 두면 모순처럼 읽힌다). */
+.scanned-item {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.scanned-item-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.scanned-item-facts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }

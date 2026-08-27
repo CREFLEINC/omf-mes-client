@@ -19,12 +19,41 @@ const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
 const RECEIPTS_PATH = '/logistics/shopfloor-receipts';
 const LOTS_PATH = '/trace/lots';
 const MOLDS_PATH = '/mdm/molds';
+const CODE_VALUES_PATH = '/mdm/code-values';
 
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
 
+/** 상태 표시명 — 계약이 정한 코드 그룹으로 온다. 갈래를 재는 테스트가 아니면 늘 같은 답을 준다. */
+const codeValuesRoute = (): StubRoute => ({
+  match: (request) => isGet(request, CODE_VALUES_PATH),
+  respond: () =>
+    jsonResponse({
+      items: [
+        {
+          codeValueId: 7501,
+          codeGroupId: 7500,
+          code: 'NORMAL',
+          codeName: '정상',
+          displayOrder: 1,
+          isActive: true,
+        },
+        {
+          codeValueId: 7502,
+          codeGroupId: 7500,
+          code: 'INSPECTION_PENDING',
+          codeName: '검사 대기',
+          displayOrder: 2,
+          isActive: true,
+        },
+      ],
+      page: { page: 1, size: 50, total: 2 },
+    }),
+});
+
 /** 수령 대조 구획은 이 감지기의 관심사가 아니다 — 늘 같은 답을 주고 비켜 둔다. */
 const receiptRoutes = (): StubRoute[] => [
+  codeValuesRoute(),
   {
     match: (request) => isGet(request, RECEIPTS_PATH),
     respond: () => jsonResponse({ items: [receipt()], page: { page: 1, size: 50, total: 1 } }),
@@ -81,7 +110,9 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     await scanCode(user, 'SAMPLE-LOT-0001');
 
-    expect(await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeTruthy();
+    expect(
+      await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001')),
+    ).toBeTruthy();
 
     const lotRequest = requests.find((request) => request.url.pathname === LOTS_PATH);
     expect(lotRequest?.url.searchParams.get('q')).toBe('SAMPLE-LOT-0001');
@@ -96,7 +127,9 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     await scanCode(user, 'SAMPLE-MLD-01');
 
-    expect(await screen.findByText(t.scan.outcomes.mold('SAMPLE-MLD-01'))).toBeTruthy();
+    expect(
+      await screen.findByText(t.scan.outcomes.mold('SAMPLE-MLD-01', 'SAMPLE-MLD-01')),
+    ).toBeTruthy();
     expect(requests.some((request) => request.url.pathname === MOLDS_PATH)).toBe(true);
   });
 
@@ -106,9 +139,37 @@ describe('MaterialInputScanScreen — 스캔', () => {
     const { requests } = renderScreen([lotsRoute([lot()]), moldsRoute([mold()])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
     expect(requests.some((request) => request.url.pathname === MOLDS_PATH)).toBe(false);
+  });
+
+  /*
+   * ⭐ **읽은 것과 찾은 것이 다를 수 있다.** 계약의 검색은 LOT 번호의 일부와 외부 식별자에도
+   * 걸리므로, 짧은 코드를 읽어도 전혀 다른 번호가 돌아올 수 있다. 찾은 쪽만 말하면 작업자는
+   * **자기가 읽지 않은 번호**를 보고도 왜 그런지 알 수 없고, 잘못 걸린 것인지 판단하지 못한다.
+   */
+  it('읽은 코드와 찾은 LOT이 다르면 둘을 함께 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()])]);
+
+    await scanCode(user, '123');
+
+    expect(
+      await screen.findByText(t.scan.outcomes.material('123', 'SAMPLE-LOT-0001')),
+    ).toBeTruthy();
+    expect(screen.getByText(/123 →/)).toBeTruthy();
+  });
+
+  /* 읽은 것과 찾은 것이 같으면 되풀이하지 않는다 — 같은 번호를 두 번 적으면 읽히지 않는다. */
+  it('읽은 코드와 찾은 LOT이 같으면 한 번만 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()])]);
+
+    await scanCode(user, 'SAMPLE-LOT-0001');
+
+    expect(await screen.findByText('SAMPLE-LOT-0001 담았습니다.')).toBeTruthy();
+    expect(screen.queryByText(/→/)).toBeNull();
   });
 
   /*
@@ -120,11 +181,13 @@ describe('MaterialInputScanScreen — 스캔', () => {
     renderScreen([lotsRoute([lot()])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
     await scanCode(user, 'SAMPLE-LOT-0001');
 
-    expect(await screen.findByText(t.scan.outcomes.duplicate('SAMPLE-LOT-0001'))).toBeTruthy();
+    expect(
+      await screen.findByText(t.scan.outcomes.duplicate('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001')),
+    ).toBeTruthy();
     expect(screen.getAllByText('SAMPLE-LOT-0001')).toHaveLength(1);
   });
 
@@ -189,7 +252,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
      */
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
     await waitFor(() => {
       expect(document.activeElement).toBe(field);
@@ -237,7 +300,9 @@ describe('MaterialInputScanScreen — 스캔', () => {
     expect(document.activeElement).toBe(screen.getByLabelText(t.scan.label));
 
     releaseLots();
-    expect(await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeTruthy();
+    expect(
+      await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001')),
+    ).toBeTruthy();
   });
 
   /*
@@ -280,7 +345,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     expect(requests.filter((request) => request.url.pathname === LOTS_PATH)).toHaveLength(1);
 
     releaseLots();
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
   });
 
   /*
@@ -322,7 +387,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     const field = screen.getByLabelText(t.scan.label);
     await user.type(field, 'SAMPLE-LOT-0001{Enter}');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
     // 둘째 조회를 붙잡아 둔 채로 첫 자재를 뺀다.
     await user.type(field, 'SAMPLE-LOT-0002{Enter}');
@@ -336,7 +401,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     expect(screen.queryByText('SAMPLE-LOT-0001')).toBeNull();
 
     releaseSecond();
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0002'));
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0002', 'SAMPLE-LOT-0002'));
 
     expect(screen.queryByText('SAMPLE-LOT-0001')).toBeNull();
     expect(screen.getByText('SAMPLE-LOT-0002')).toBeTruthy();
@@ -356,13 +421,50 @@ describe('MaterialInputScanScreen — 스캔', () => {
     renderScreen([lotsRoute([lot()])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
     await user.click(
       screen.getByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
     );
 
     expect(await screen.findByText(t.scanned.empty)).toBeTruthy();
+  });
+});
+
+describe('MaterialInputScanScreen — 터치 타겟', () => {
+  /*
+   * ⭐ 착수 이슈 6번이 정한 처리다 — 「위험 등급 버튼은 72px가 필요한데 DS의 `xl`은 60px다.
+   * 12px 부족분은 제품이 임시로 채운다」.
+   *
+   * 장갑 낀 손으로 누르는 것 둘에만 건다. 크기는 `app.css`가 갖고 있고 여기서는 **그 규칙에
+   * 걸리는 표시가 붙어 있는지**를 잰다 — jsdom은 스타일시트를 적용하지 않아 실제 높이를 잴 수
+   * 없다(측정 불가 경로).
+   */
+  it('스캔 보내기와 투입 확정에 현장 단말 치수를 건다', () => {
+    renderScreen([lotsRoute([lot()])]);
+
+    expect(screen.getByRole('button', { name: t.scan.submit }).className).toContain(
+      'pop-touch-target',
+    );
+    expect(screen.getByRole('button', { name: t.confirm.action }).className).toContain(
+      'pop-touch-target',
+    );
+  });
+
+  /*
+   * ⛔ 되돌릴 수 있는 조작까지 키우지 않는다 — 화면이 버튼으로 덮이면 정작 큰 것이 눈에
+   * 띄지 않아 크기가 뜻을 잃는다.
+   */
+  it('되돌릴 수 있는 조작에는 걸지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()])]);
+
+    await scanCode(user, 'SAMPLE-LOT-0001');
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
+
+    expect(
+      screen.getByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }).className,
+    ).not.toContain('pop-touch-target');
   });
 });
 
@@ -411,7 +513,7 @@ describe('MaterialInputScanScreen — 투입 확정', () => {
     expect(screen.getByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
     /* 담은 뒤에는 사유가 바뀐다 — 「담으면 열린다」고 읽히면 작업자가 계속 담는다. */
@@ -424,7 +526,7 @@ describe('MaterialInputScanScreen — 투입 확정', () => {
     const { requests } = renderScreen([lotsRoute([lot()])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
     expect(requests.every((request) => request.method === 'GET')).toBe(true);
   });
@@ -440,11 +542,11 @@ describe('MaterialInputScanScreen — 자재 상태 표시', () => {
     renderScreen([lotsRoute([lot({ statusCode: 'INSPECTION_PENDING', held: true })])]);
 
     await scanCode(user, 'SAMPLE-LOT-0001');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
     const item = screen.getByText('SAMPLE-LOT-0001').closest('li');
     expect(item).not.toBeNull();
-    expect(within(item as HTMLElement).getByText('INSPECTION_PENDING')).toBeTruthy();
+    expect(within(item as HTMLElement).getByText(/검사 대기/)).toBeTruthy();
     expect(within(item as HTMLElement).getByText(t.scanned.heldMark)).toBeTruthy();
   });
 });

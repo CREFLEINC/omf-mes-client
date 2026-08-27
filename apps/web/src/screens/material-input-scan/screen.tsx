@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 
 import { ConfirmPanel } from './confirm-panel';
 import { LoadErrorBanner } from './load-error-banner';
+import { useLotStatusLabels } from './lot-status-labels';
 import { useReceiptLines } from './queries';
 import { ReceiptTable } from './receipt-table';
 import { applyScan, EMPTY_SCAN_DRAFT, type ScanDraft, type ScanOutcome } from './scan';
@@ -19,11 +20,11 @@ const t = messages.materialInputScan;
 const describeOutcome = (outcome: ScanOutcome): string => {
   switch (outcome.kind) {
     case 'material':
-      return t.scan.outcomes.material(outcome.material.lotNo);
+      return t.scan.outcomes.material(outcome.code, outcome.material.lotNo);
     case 'mold':
-      return t.scan.outcomes.mold(outcome.mold.moldCode);
+      return t.scan.outcomes.mold(outcome.code, outcome.mold.moldCode);
     case 'duplicate':
-      return t.scan.outcomes.duplicate(outcome.lotNo);
+      return t.scan.outcomes.duplicate(outcome.code, outcome.lotNo);
     case 'ambiguous':
       return t.scan.outcomes.ambiguous(outcome.count);
     case 'not-found':
@@ -68,6 +69,8 @@ export const MaterialInputScanScreen = () => {
 
   const [draft, setDraft] = useState<ScanDraft>(EMPTY_SCAN_DRAFT);
   const scan = useScanLookup();
+  /* 표시용 이름 풀이. 어느 판정에도 쓰이지 않는다 — 읽을 수 있게 하는 데만 쓴다. */
+  const statusLabels = useLotStatusLabels();
 
   const handleScan = (code: string): void => {
     /*
@@ -153,7 +156,11 @@ export const MaterialInputScanScreen = () => {
                 : describeOutcome(outcome)}
           </p>
 
-          <ScannedList draft={draft} onRemoveMaterial={removeMaterial} />
+          <ScannedList
+            draft={draft}
+            statusLabels={statusLabels}
+            onRemoveMaterial={removeMaterial}
+          />
 
           <ConfirmPanel hasMaterials={draft.materials.length > 0} />
         </section>

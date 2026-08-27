@@ -99,16 +99,25 @@ describe('applyScan', () => {
   const scannedMold = toScannedMold(mold());
 
   it('자재는 쌓는다', () => {
-    const next = applyScan(EMPTY_SCAN_DRAFT, { kind: 'material', material });
+    const next = applyScan(EMPTY_SCAN_DRAFT, {
+      kind: 'material',
+      code: 'SAMPLE-LOT-0001',
+      material,
+    });
 
     expect(next.materials).toHaveLength(1);
   });
 
   /* 러닝체인지로 금형을 바꾸면 새로 읽은 것이 지금 물린 금형이다. 둘이 함께 남으면 안 된다. */
   it('금형은 덮어쓴다', () => {
-    const first = applyScan(EMPTY_SCAN_DRAFT, { kind: 'mold', mold: scannedMold });
+    const first = applyScan(EMPTY_SCAN_DRAFT, {
+      kind: 'mold',
+      code: 'SAMPLE-MLD-01',
+      mold: scannedMold,
+    });
     const second = applyScan(first, {
       kind: 'mold',
+      code: 'SAMPLE-MLD-02',
       mold: toScannedMold(mold({ moldId: 7602, moldCode: 'SAMPLE-MLD-02' })),
     });
 
@@ -116,7 +125,7 @@ describe('applyScan', () => {
   });
 
   it.each([
-    { kind: 'duplicate', lotNo: 'SAMPLE-LOT-0001' } as const,
+    { kind: 'duplicate', code: 'SAMPLE-LOT-0001', lotNo: 'SAMPLE-LOT-0001' } as const,
     { kind: 'ambiguous', count: 3 } as const,
     { kind: 'not-found', code: 'SAMPLE-X' } as const,
   ])('담기지 않는 결과($kind)는 후보를 바꾸지 않는다', (outcome) => {

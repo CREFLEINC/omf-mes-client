@@ -91,7 +91,17 @@ export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
             setValue(event.target.value);
           }}
         />
-        <Button type="submit" variant="filled" size="xl" disabled={isScanning}>
+        {/*
+         * 장갑 낀 손으로 누른다 — 착수 이슈 6번이 정한 72px 하한을 함께 건다.
+         * DS 의 `xl` 은 60px 이라 12px 이 모자라고, 그 부족분을 제품이 임시로 채운다.
+         */}
+        <Button
+          type="submit"
+          variant="filled"
+          size="xl"
+          className="pop-touch-target"
+          disabled={isScanning}
+        >
           {isScanning ? t.scan.scanning : t.scan.submit}
         </Button>
       </div>
