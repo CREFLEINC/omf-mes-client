@@ -8,7 +8,7 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-const t = messages.materialLocation.connection;
+const t = messages.common.connection;
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
   const online = useOnlineStatus();

@@ -12,6 +12,10 @@ export const common = {
   retry: '다시 시도',
   includeInactive: '미사용 포함',
   discardChangesConfirm: '입력한 내용이 저장되지 않았습니다. 변경을 파기할까요?',
+  connection: {
+    online: '온라인',
+    offline: '오프라인',
+  },
   reference: {
     empty: '—',
     unknown: '알 수 없음',

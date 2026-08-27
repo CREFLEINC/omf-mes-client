@@ -35,6 +35,7 @@ export const materialLocation = {
   },
   hold: {
     title: '보류 중',
+    checking: '보류 여부를 확인하는 중입니다',
     unconfirmed: '보류 여부를 확인하지 못했습니다',
     unconfirmedDescription: '묶여 있을 수 있으니 연결된 뒤에 확인하고 옮기세요.',
     wholeLot: '전량 보류',
@@ -50,10 +51,6 @@ export const materialLocation = {
   loadFailed: {
     title: '조회하지 못했습니다',
     retry: '다시 시도',
-  },
-  connection: {
-    online: '온라인',
-    offline: '오프라인',
   },
   /** 읽은 자릿수를 함께 보인다. 몇 자를 덜 읽었는지 알아야 다시 대는 위치를 잡는다. */
   invalidLength: (read: number, required: number): string =>

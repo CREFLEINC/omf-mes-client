@@ -3,19 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
-import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-harness';
+import { createStubFetch, renderWithProviders } from '../test/api-harness';
 import { appRoutes } from './index';
-
-const page = { page: 0, size: 20, totalElements: 0, totalPages: 1 };
 
 const renderAt = (path: string) =>
   renderWithProviders(
     <RouterProvider router={createMemoryRouter(appRoutes, { initialEntries: [path] })} />,
-    {
-      fetch: createStubFetch([
-        { match: () => true, respond: () => jsonResponse({ items: [], page }) },
-      ]),
-    },
+    { fetch: createStubFetch([]) },
   );
 
 describe('모바일 라우트', () => {

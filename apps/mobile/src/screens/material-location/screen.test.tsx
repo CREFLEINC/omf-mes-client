@@ -229,6 +229,92 @@ describe('자재 위치 확인 화면', () => {
     expect(screen.getByText(/해제 조건: 수입검사 합격/)).toBeInTheDocument();
   });
 
+  it('보류가 아직 오지 않았으면 확인 중임을 알린다', async () => {
+    let releaseHolds = () => {};
+    const held = new Promise<void>((resolve) => {
+      releaseHolds = resolve;
+    });
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: async (request) => {
+        if (new URL(request.url).pathname === '/trace/lots/4/holds') {
+          await held;
+          return jsonResponse({ items: [] });
+        }
+        return stub()(request);
+      },
+    });
+    await scan();
+
+    expect(await screen.findByText('보류 여부를 확인하는 중입니다')).toBeInTheDocument();
+    releaseHolds();
+  });
+
+  it('하나가 실패해도 남은 조회의 진행을 계속 알린다', async () => {
+    let releaseBalances = () => {};
+    const held = new Promise<void>((resolve) => {
+      releaseBalances = resolve;
+    });
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: async (request) => {
+        const path = new URL(request.url).pathname;
+        if (path === '/trace/lots/4/holds') {
+          return jsonResponse({ code: 'INTERNAL' }, { status: 500 });
+        }
+        if (path === '/inventory/balances') {
+          await held;
+          return jsonResponse({ items: [balanceRow()], page });
+        }
+        return stub()(request);
+      },
+    });
+    await scan();
+    await screen.findByText('보류 여부를 확인하지 못했습니다');
+
+    expect(screen.getByText('조회 중입니다')).toBeInTheDocument();
+    releaseBalances();
+  });
+
+  it('같은 자리·같은 상태라도 품목이 다르면 따로 보인다', async () => {
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({
+        balances: [
+          balanceRow({ lotId: null, itemId: 31, onHandQty: 90 }),
+          balanceRow({ lotId: null, itemId: 32, onHandQty: 30 }),
+        ],
+      }),
+    });
+    await scan();
+
+    await screen.findByText('위치 2곳');
+    expect(warn.mock.calls.flat().join(' ')).not.toContain('same key');
+  });
+
+  it('다시 시도는 실패한 조회만 다시 부른다', async () => {
+    const seen: string[] = [];
+    let holdsFails = true;
+    const user = userEvent.setup();
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: (request) => {
+        const path = new URL(request.url).pathname;
+        seen.push(path);
+        if (path === '/trace/lots/4/holds' && holdsFails) {
+          return Promise.resolve(jsonResponse({ code: 'INTERNAL' }, { status: 500 }));
+        }
+        return stub()(request);
+      },
+    });
+    await user.type(screen.getByLabelText('스캔 대기'), `${SCANNED}{Enter}`);
+    await screen.findByText('보류 여부를 확인하지 못했습니다');
+
+    holdsFails = false;
+    seen.length = 0;
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+    await screen.findByText('1공장 자재창고');
+
+    expect(seen).toEqual(['/trace/lots/4/holds']);
+  });
+
   it('보류를 확인하지 못하면 없는 것처럼 두지 않는다', async () => {
     renderWithProviders(<MaterialLocationScreen />, {
       fetch: createStubFetch([
