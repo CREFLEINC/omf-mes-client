@@ -24,6 +24,11 @@ export interface TargetCardProps {
  * 설계가 승인한 적 없는 채번이 화면에 굳는다 — 검토 요청 omf-mes#245 ① 이 풀려야 선다.
  *
  * ⛔ **등록·인쇄·재인쇄 단추도 두지 않는다.** 같은 이유로 부를 수 있는 경로가 없다.
+ *
+ * ⛔ **상태를 보이지 않는다.** 스펙은 「상태 Hold」를 그리지만 계약의 `Lot.statusCode`는
+ * **품질 판정 축**이고 계약이 「보류 건의 진행 상태와는 다른 축」이라고 못박았다. 게다가
+ * `LotCreate`에 `statusCode`가 없어 **화면이 보낼 수도 없다.** 어느 축의 어떤 값을 보여야
+ * 하는지는 설계 판단이다 — 검토 요청 omf-mes#245 ⑤.
  */
 export const TargetCard = ({
   receipt,
@@ -49,10 +54,6 @@ export const TargetCard = ({
 
         <dt>{t.fields.supplier}</dt>
         <dd>{lookupDisplayLabel(supplierLookup, receipt.supplierId)}</dd>
-
-        {/* 자재LOT 은 Hold 로 생성된다(스펙 §4-B). 고르는 값이 아니라 정해진 값이라 그대로 보인다. */}
-        <dt>{t.fields.status}</dt>
-        <dd>{t.statusHold}</dd>
       </dl>
 
       {/*

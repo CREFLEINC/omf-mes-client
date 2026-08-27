@@ -85,7 +85,7 @@ export const PopMaterialLotLabelScreen = () => {
           ) : hasReceipt ? (
             <>
               <Button
-                className={popTouchClass('normal')}
+                className={`pop-pane-back ${popTouchClass('normal')}`}
                 variant="text"
                 size="xl"
                 onClick={() => {

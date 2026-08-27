@@ -55,10 +55,7 @@ export const popMaterialLotLabel = {
       item: '품목',
       quantity: '수량',
       supplier: '공급사',
-      status: '상태',
     },
-    /** 자재LOT 은 Hold 로 생성된다(스펙 §4-B). 고를 수 있는 값이 아니라 정해진 값이다. */
-    statusHold: 'Hold',
     /**
      * 이미 공급사 LOT 이 붙어 온 건이다. 이 화면은 미부착 건에 MES 가 발번하는 자리라
      * 대상이 아니다 — 왜 진행할 수 없는지 밝힌다.
