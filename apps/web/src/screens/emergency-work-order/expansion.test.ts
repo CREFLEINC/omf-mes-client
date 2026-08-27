@@ -23,6 +23,15 @@ const failed = <TValue>(): LoadState<TValue> => ({
   isError: true,
   value: undefined,
 });
+/**
+ * 꺼 둔 조회. 받는 중도 아니고 실패도 아닌데 값이 없다 — 조회 라이브러리가 이렇게 보고한다.
+ * 「아직 안 받았다」를 「없다」로 읽지 않는지 확인하는 데 쓴다.
+ */
+const notFetched = <TValue>(): LoadState<TValue> => ({
+  isLoading: false,
+  isError: false,
+  value: undefined,
+});
 
 const bom = (overrides: Partial<Bom> = {}): Bom => ({
   bomId: 71,
@@ -83,7 +92,7 @@ describe('resolveExpansion', () => {
     if (state.kind !== 'ready') return;
     expect(state.bom.bomCode).toBe('SYN-BOM-0001');
     expect(state.routing.routingId).toBe(31);
-    expect(state.operations).toHaveLength(1);
+    expect(state.operations.map((item) => item.routingOperationId)).toEqual([901]);
   });
 
   describe('막는 자리', () => {
@@ -139,13 +148,104 @@ describe('resolveExpansion', () => {
     });
   });
 
+  describe('아직 안 받은 것을 「없다」로 말하지 않는다', () => {
+    it.each([
+      ['BOM', { boms: notFetched<Bom[]>() }],
+      ['Routing', { routings: notFetched<Routing[]>() }],
+    ])('⛔ %s 조회가 아직 답을 주지 않았으면 「없음」이 아니다', (_name, overrides) => {
+      expect(resolveExpansion(input(overrides)).kind).toBe('loading');
+    });
+
+    it('⛔ 공정 조회가 아직 답을 주지 않았으면 「공정 없음」이 아니다', () => {
+      expect(resolveExpansion(input({ operations: notFetched() })).kind).toBe('loading');
+    });
+
+    it('빈 응답은 「없음」이 맞다 — 「빈 목록」과 「목록 없음」을 가른다', () => {
+      expect(resolveExpansion(input({ boms: loaded([]) }))).toEqual({
+        kind: 'blocked',
+        reason: 'bomMissing',
+      });
+    });
+  });
+
+  describe('앞에서 남은 것을 쓰지 않는다', () => {
+    it('⛔ 다른 품목의 BOM·Routing 을 걸러 낸다 — 고른 적 없는 품목으로 발행된다', () => {
+      const state = resolveExpansion(
+        input({
+          boms: loaded([bom({ parentItemId: 9999 })]),
+          routings: loaded([routing({ itemId: 9999 })]),
+        }),
+      );
+
+      expect(state).toEqual({ kind: 'blocked', reason: 'bothMissing' });
+    });
+
+    it('⛔ 고른 개정의 공정만 남긴다 — 새 개정을 보이면서 옛 공정으로 발행한다', () => {
+      const state = resolveExpansion(
+        input({
+          routings: loaded([routing({ routingId: 31 }), routing({ routingId: 32 })]),
+          selectedRoutingId: 32,
+          operations: loaded([operation({ routingId: 31, routingOperationId: 901 })]),
+        }),
+      );
+
+      expect(state).toEqual({ kind: 'blocked', reason: 'operationsMissing' });
+      expect(issueRoutingOperationId(state)).toBeNull();
+    });
+
+    it('⛔ 발행에 실리는 공정은 «고른 개정»의 것이다', () => {
+      const state = resolveExpansion(
+        input({
+          routings: loaded([routing({ routingId: 31 }), routing({ routingId: 32 })]),
+          selectedRoutingId: 32,
+          operations: loaded([
+            operation({ routingId: 31, routingOperationId: 901, operationSeq: 10 }),
+            operation({ routingId: 32, routingOperationId: 911, operationSeq: 20 }),
+          ]),
+        }),
+      );
+
+      expect(issueRoutingOperationId(state)).toBe(911);
+    });
+  });
+
+  describe('공정의 상태가 앞 단계를 덮지 않는다', () => {
+    it('⛔ 앞 개정에서 남은 공정 조회 실패가 「BOM 없음」을 덮지 않는다', () => {
+      const state = resolveExpansion(input({ boms: loaded([]), operations: failed() }));
+
+      expect(state).toEqual({ kind: 'blocked', reason: 'bomMissing' });
+    });
+
+    it('⛔ 남은 공정 조회 실패가 「개정을 고르라」를 덮지 않는다', () => {
+      const state = resolveExpansion(input({ selectedRoutingId: null, operations: failed() }));
+
+      expect(state.kind).toBe('needsRevision');
+    });
+
+    it('개정을 고른 뒤의 공정 조회 실패는 그대로 실패다', () => {
+      expect(resolveExpansion(input({ operations: failed() })).kind).toBe('error');
+    });
+
+    it.each([
+      ['받는 중', loading<RoutingOperation[]>()],
+      ['아직 안 받음', notFetched<RoutingOperation[]>()],
+    ])(
+      '⛔ 개정을 고르기 전의 공정 조회(%s)가 「개정을 고르라」를 덮지 않는다 — 고를 자리가 사라진다',
+      (_name, operations) => {
+        const state = resolveExpansion(input({ selectedRoutingId: null, operations }));
+
+        expect(state.kind).toBe('needsRevision');
+      },
+    );
+  });
+
   describe('개정 고르기', () => {
     it('고르지 않았으면 고르라고 한다 — 개정이 하나뿐이어도', () => {
       const state = resolveExpansion(input({ selectedRoutingId: null }));
 
       expect(state.kind).toBe('needsRevision');
       if (state.kind !== 'needsRevision') return;
-      expect(state.routings).toHaveLength(1);
+      expect(state.routings.map((item) => item.routingId)).toEqual([31]);
     });
 
     it('⛔ 목록에 없는 개정을 고른 상태는 고르지 않은 것으로 본다', () => {
@@ -153,14 +253,55 @@ describe('resolveExpansion', () => {
     });
 
     it('개정이 여럿이면 전부 내준다 — 화면이 최신을 골라 주지 않는다', () => {
-      const routings = [routing(), routing({ routingId: 32, routingVersion: 3 })];
+      /* 계약은 개정을 «내림차순»으로 준다 — 응답 모양을 그대로 흉내 낸다. */
+      const routings = [routing({ routingId: 32, routingVersion: 3 }), routing()];
       const state = resolveExpansion(
         input({ routings: loaded(routings), selectedRoutingId: null }),
       );
 
       expect(state.kind).toBe('needsRevision');
       if (state.kind !== 'needsRevision') return;
-      expect(state.routings.map((item) => item.routingId)).toEqual([31, 32]);
+      expect(state.routings.map((item) => item.routingId)).toEqual([32, 31]);
+    });
+
+    it('고른 개정이 그대로 실린다 — 여럿 중 뒤엣것을 골라도', () => {
+      const state = resolveExpansion(
+        input({
+          routings: loaded([routing({ routingId: 32, routingVersion: 3 }), routing()]),
+          selectedRoutingId: 31,
+        }),
+      );
+
+      expect(state.kind).toBe('ready');
+      if (state.kind !== 'ready') return;
+      expect(state.routing.routingId).toBe(31);
+      expect(state.routing.routingVersion).toBe(2);
+    });
+
+    it('⛔ 폐기·작성중 개정을 목록에서 지우지 않는다 — 상태 해석은 화면의 일이 아니다', () => {
+      const state = resolveExpansion(
+        input({
+          routings: loaded([routing({ statusCode: 'SYN_OBSOLETE' })]),
+          selectedRoutingId: null,
+        }),
+      );
+
+      expect(state.kind).toBe('needsRevision');
+      if (state.kind !== 'needsRevision') return;
+      expect(state.routings[0]?.statusCode).toBe('SYN_OBSOLETE');
+    });
+
+    /*
+     * 고른 것까지 그대로 통과시킨다. 목록에만 남기고 고르면 막으면 **고를 수 있는데 골라도
+     * 안 되는** 자리가 된다 — 사용자는 왜 안 되는지 알 수 없다. 폐기된 개정으로 발행하는 것이
+     * 옳은지는 화면이 정할 일이 아니라 설계가 정할 일이고, 그동안 화면은 값을 해석하지 않는다.
+     */
+    it('⛔ 폐기 개정을 «골랐을 때»도 화면이 대신 막지 않는다 — 상태 해석은 화면의 일이 아니다', () => {
+      const state = resolveExpansion(
+        input({ routings: loaded([routing({ statusCode: 'SYN_OBSOLETE' })]) }),
+      );
+
+      expect(state.kind).toBe('ready');
     });
   });
 
@@ -211,9 +352,15 @@ describe('resolveExpansion', () => {
       expect(issueRoutingOperationId(state)).toBe(901);
     });
 
-    it('준비되지 않은 상태에서는 실을 공정이 없다', () => {
-      expect(issueRoutingOperationId(resolveExpansion(input({ itemId: null })))).toBeNull();
-      expect(issueRoutingOperationId(resolveExpansion(input({ boms: loaded([]) })))).toBeNull();
+    it.each([
+      ['고르기 전', { itemId: null }],
+      ['BOM 없음', { boms: loaded<Bom[]>([]) }],
+      ['개정 미선택', { selectedRoutingId: null }],
+      ['받는 중', { boms: loading<Bom[]>() }],
+      ['조회 실패', { boms: failed<Bom[]>() }],
+      ['아직 안 받음', { boms: notFetched<Bom[]>() }],
+    ])('⛔ 준비되지 않은 상태(%s)에서는 실을 공정이 없다', (_name, overrides) => {
+      expect(issueRoutingOperationId(resolveExpansion(input(overrides)))).toBeNull();
     });
   });
 });
