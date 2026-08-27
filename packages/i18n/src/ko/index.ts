@@ -64,6 +64,7 @@ import { workOrderRelease } from './work-order-release';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { shipmentSchedule } from './shipment-schedule';
 import { dispositionDecision } from './disposition-decision';
+import { emergencyWorkOrder } from './emergency-work-order';
 
 export const ko = {
   common,
@@ -116,6 +117,7 @@ export const ko = {
   suspiciousMaterialHold,
   shipmentSchedule,
   dispositionDecision,
+  emergencyWorkOrder,
 } as const;
 
 export type Messages = typeof ko;
