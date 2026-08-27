@@ -27,11 +27,21 @@ export const toCodeOptions = (codes: readonly string[]): CodeOption[] =>
 export const dispositionLockReason = (codes: readonly string[]): string | undefined =>
   codes.length === 0 ? messages.dispositionDecision.dispositionPending : undefined;
 
-/** 심각도·상태 코드를 이름 없이 그대로 보이는 동안 목록 머리에 다는 안내. */
-export const severityScopeWarning = (
+/**
+ * 심각도·상태 코드를 이름 없이 그대로 보이는 동안 목록 머리에 다는 안내.
+ *
+ * ⚠ **비어 있는 쪽을 이름으로 지목한다.** 둘 다 비었을 때만 안내하면, 한쪽 값 목록이 먼저
+ * 도착했을 때 남은 쪽이 사유 없이 날코드로 남는다 — G-2가 막으려는 상태 그대로다.
+ */
+export const scopeWarning = (
   severityCodes: readonly string[],
   statusCodes: readonly string[],
-): string | undefined =>
-  severityCodes.length === 0 && statusCodes.length === 0
-    ? messages.dispositionDecision.severityScopeWarning
-    : undefined;
+): string | undefined => {
+  const t = messages.dispositionDecision.scopeWarning;
+
+  if (severityCodes.length === 0 && statusCodes.length === 0) return t.both;
+  if (severityCodes.length === 0) return t.severity;
+  if (statusCodes.length === 0) return t.status;
+
+  return undefined;
+};
