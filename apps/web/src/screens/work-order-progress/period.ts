@@ -79,6 +79,9 @@ const parseCalendarDate = (value: string): CalendarDate | null => {
     : null;
 };
 
+/** 달력에 실재하는 날인가 — 주소에서 읽은 값이 쓸 수 있는 날인지 가릴 때 쓴다. */
+export const isPeriodDate = (value: string): boolean => parseCalendarDate(value) !== null;
+
 const pad = (value: number, width: number): string => String(value).padStart(width, '0');
 
 const formatDate = (date: Date): string =>
