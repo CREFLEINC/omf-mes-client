@@ -6,6 +6,7 @@ import { useItemLookup, useUomLookup } from './lookups';
 import {
   dispositionKeys,
   nonconformanceDetailPath,
+  useDecisionHistory,
   useDispositionDecisions,
   useNonconformanceDetail,
 } from './queries';
@@ -72,6 +73,43 @@ describe('고르기 전 조회를 열지 않는다', () => {
       expect(urls).toContain('/quality/nonconformances/41');
       expect(urls).toContain('/quality/nonconformances/41/disposition-decisions');
     });
+  });
+});
+
+describe('useDecisionHistory', () => {
+  it('⛔ 이력 탭이 아니면 조회를 열지 않는다 — 보지 않는 목록을 부르지 않는다', () => {
+    const { urls, fetch } = collecting();
+
+    const { result } = renderHookWithProviders(() => useDecisionHistory(null), { fetch });
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(urls).toEqual([]);
+  });
+
+  it('이력 탭이면 처분 결정 목록을 부른다', async () => {
+    const { urls, fetch } = collecting();
+
+    renderHookWithProviders(
+      () =>
+        useDecisionHistory({
+          decidedFrom: '2026-07-14T00:00:00+09:00',
+          decidedTo: '2026-08-13T00:00:00+09:00',
+        }),
+      { fetch },
+    );
+
+    await waitFor(() => {
+      expect(urls).toContain('/quality/disposition-decisions');
+    });
+  });
+
+  it('캐시 키가 조회 조건을 담는다 — 조건이 바뀌면 다른 결과다', () => {
+    const base = { decidedFrom: 'A', decidedTo: 'B' };
+
+    expect(dispositionKeys.history(base)).not.toEqual(
+      dispositionKeys.history({ ...base, dispositionTypeCode: 'CODE-A' }),
+    );
+    expect(dispositionKeys.history(null)).toEqual(['disposition-decision', 'history', null]);
   });
 });
 
