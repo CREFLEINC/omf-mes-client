@@ -11,7 +11,6 @@ export const materialInputScan = {
   panes: {
     receipt: '계획 대비 수령',
     scan: '스캔',
-    scanned: '투입 목록',
   },
   header: {
     /** W/O 를 주소에서 받지 못한 상태 — 무엇을 해야 하는지까지 적는다. */

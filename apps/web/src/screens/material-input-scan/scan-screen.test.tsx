@@ -283,6 +283,65 @@ describe('MaterialInputScanScreen — 스캔', () => {
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
   });
 
+  /*
+   * ⭐ **조회가 도는 동안에도 「빼기」는 잠기지 않는다** — 그래서 이 순서가 실제로 일어난다.
+   *
+   * 담을 때 그 순간의 후보 목록을 통째로 덮어쓰면, 조회 사이에 뺀 자재가 **응답이 도착하는
+   * 순간 되살아난다.** 작업자는 분명히 뺐는데 목록에 남고, 그대로 확정하면 빼려던 자재가
+   * 계보에 들어간다 — 되돌릴 수 없는 기록이다.
+   */
+  it('조회 중에 뺀 자재는 응답이 와도 되살아나지 않는다', async () => {
+    const user = userEvent.setup();
+
+    let releaseSecond = (): void => undefined;
+    const secondHeld = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+
+    let lotCalls = 0;
+    const stub = createStubFetch([...receiptRoutes(), lotsRoute([lot()])]);
+    const fetch: StubFetch = async (request) => {
+      if (isGet(request, LOTS_PATH)) {
+        lotCalls += 1;
+        if (lotCalls === 1) {
+          return jsonResponse({ items: [lot()], page: { page: 1, size: 50, total: 1 } });
+        }
+
+        await secondHeld;
+
+        return jsonResponse({
+          items: [lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002' })],
+          page: { page: 1, size: 50, total: 1 },
+        });
+      }
+
+      return stub(request);
+    };
+
+    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+
+    const field = screen.getByLabelText(t.scan.label);
+    await user.type(field, 'SAMPLE-LOT-0001{Enter}');
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
+
+    // 둘째 조회를 붙잡아 둔 채로 첫 자재를 뺀다.
+    await user.type(field, 'SAMPLE-LOT-0002{Enter}');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.scan.scanning })).toBeTruthy();
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
+    );
+    expect(screen.queryByText('SAMPLE-LOT-0001')).toBeNull();
+
+    releaseSecond();
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0002'));
+
+    expect(screen.queryByText('SAMPLE-LOT-0001')).toBeNull();
+    expect(screen.getByText('SAMPLE-LOT-0002')).toBeTruthy();
+  });
+
   it('빈 값으로는 조회하지 않는다', async () => {
     const user = userEvent.setup();
     const { requests } = renderScreen([lotsRoute([lot()])]);

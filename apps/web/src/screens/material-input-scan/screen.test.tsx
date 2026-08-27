@@ -156,6 +156,54 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
     expect(await screen.findByText(messages.httpError.loadTitle)).toBeTruthy();
   });
 
+  /*
+   * ⭐ **권한 없음은 다른 실패다.** 이 화면의 단말 게이팅 처리 방법이 「서버의 403을 안내로
+   * 그린다」에 걸려 있다(검토 요청 omf-mes#246 대기 중) — 그 자리가 다른 실패와 같은 말을
+   * 하면, 게이팅에 막힌 작업자가 **같은 요청을 계속 다시 보낸다.**
+   */
+  it('본문 없는 권한 없음은 재시도를 붙이지 않는다', async () => {
+    renderScreen([
+      {
+        match: (request) => isGet(request, LIST_PATH),
+        respond: () => new Response(null, { status: 403 }),
+      },
+    ]);
+
+    expect(await screen.findByText(messages.httpError.title)).toBeTruthy();
+    expect(screen.getByText(messages.httpError.forbidden)).toBeTruthy();
+    /* 같은 권한으로 다시 불러도 같은 답이 온다 — 누를 수 있는 버튼을 두면 헛수고를 시킨다. */
+    expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
+  });
+
+  /*
+   * ⚠ **여기가 지금의 한계다 — 결함을 감지기로 고정해 둔다.**
+   *
+   * 계약이 403에 실으라고 한 본문은 `{ errors: [...] }`인데, 공용 정규화가 그 모양을 보고
+   * **검증 실패로 분류한다**(상태 코드보다 본문 모양이 앞선다). 그래서 권한 없음이 다른 실패와
+   * 같은 배너로 서고 **재시도 버튼까지 붙는다.**
+   *
+   * 이 화면만 고칠 수 있는 자리가 아니다 — 정규화는 모든 화면이 함께 쓰고, 전례(`shipment-
+   * schedule`)도 같은 모양이다. 지금 상태를 감지기로 박아 두어, 정규화가 고쳐지는 날 이
+   * 감지기가 **실패로 알린다.**
+   */
+  it('계약 형태의 권한 없음은 아직 다른 실패와 구분되지 않는다', async () => {
+    renderScreen([
+      {
+        match: (request) => isGet(request, LIST_PATH),
+        respond: () =>
+          jsonResponse(
+            { errors: [{ scope: 'screen', code: 'FORBIDDEN', message: '합성 거절' }] },
+            { status: 403 },
+          ),
+      },
+    ]);
+
+    expect(await screen.findByText(messages.httpError.loadTitle)).toBeTruthy();
+    expect(screen.getByText('합성 거절')).toBeTruthy();
+    expect(screen.queryByText(messages.httpError.forbidden)).toBeNull();
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeTruthy();
+  });
+
   it('수령 내역이 없으면 빈 상태를 낸다 — 실패와 다른 말을 한다', async () => {
     renderScreen([listRoute([])]);
 
@@ -181,6 +229,16 @@ describe('MaterialInputScanScreen — 작업지시가 없을 때', () => {
      */
     await flush();
     expect(screen.queryByText(messages.httpError.loadTitle)).toBeNull();
+
+    /*
+     * ⭐ **「없다」와 「아직 안 봤다」는 다른 말이다.** 조회가 나가지 않은 화면에 「수령
+     * 내역이 없습니다」를 내면, 그 빈 상태는 `live` 영역이라 스크린리더가 소리 내어 읽는다 —
+     * 작업자는 받은 자재를 못 받은 것으로 듣는다. 스켈레톤이 남는 것도 마찬가지로 틀리다:
+     * 오지 않을 답을 영원히 기다리는 화면이 된다.
+     */
+    expect(screen.getByText(t.empty.notQueriedTitle)).toBeTruthy();
+    expect(screen.queryByText(t.empty.receiptTitle)).toBeNull();
+    expect(screen.queryByRole('status', { name: t.loading.receipt })).toBeNull();
   });
 
   it('작업지시 표시를 세우지 않는다', async () => {

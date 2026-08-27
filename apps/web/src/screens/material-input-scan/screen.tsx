@@ -52,6 +52,11 @@ const describeOutcome = (outcome: ScanOutcome): string => {
  *
  * ⛔ **단말 게이팅을 미리 판정하지 않는다.** 스펙 §5-1이 요구하는 플래그가 계약의 단말 기능
  * 구성에 없다(검토 요청 omf-mes#246) — **없는 값을 다른 플래그로 대신 읽지 않는다.**
+ *
+ * ⚠ 그 자리를 「서버의 403을 안내로 그린다」로 메우려 했으나 **지금은 그것이 온전히 서지
+ * 않는다.** 계약이 403에 실으라고 한 본문 모양(`{ errors: [...] }`)을 공용 정규화가 검증
+ * 실패로 분류해, 권한 없음이 다른 실패와 같은 배너로 선다. 이 화면만 고칠 수 있는 자리가
+ * 아니라 지금 상태를 감지기로 박아 두었다(`screen.test.tsx`).
  */
 export const MaterialInputScanScreen = () => {
   const [searchParams] = useSearchParams();
