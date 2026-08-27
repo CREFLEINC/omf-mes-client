@@ -32,7 +32,9 @@ const nameOr = (value: string): string =>
 export const useItemLookup = (): DispositionLookup => {
   const { client } = useApiClient();
   const query = useQuery({
-    queryKey: ['disposition-decision', 'lookups', 'items'],
+    /* ⚠ 뿌리 키를 화면 캐시와 «가른다» — 같은 뿌리를 쓰면 판정 저장의 무효화가 접두로 걸려
+     * 저장 한 번마다 품목·단위 전량이 다시 나간다. 참조 이름은 판정으로 바뀌지 않는다. */
+    queryKey: ['disposition-lookups', 'items'],
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/mdm/items', { params: { query: { includeInactive: true } } }),
@@ -56,7 +58,7 @@ export const useItemLookup = (): DispositionLookup => {
 export const useUomLookup = (): DispositionLookup => {
   const { client } = useApiClient();
   const query = useQuery({
-    queryKey: ['disposition-decision', 'lookups', 'uoms'],
+    queryKey: ['disposition-lookups', 'uoms'],
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } }),

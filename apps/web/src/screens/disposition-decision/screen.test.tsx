@@ -90,12 +90,24 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(screen.getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
   });
 
-  it('⛔ 이 슬라이스는 쓰기를 만들지 않는다 — 판정 칸은 아직 붙지 않았다', async () => {
+  it('⛔ 고르고 보기만 해서는 쓰기가 나가지 않는다', async () => {
     const { user } = renderScreen();
     await selectRow(user);
     await screen.findByText('LOT-TEST-0088');
 
     expect(requestsSent().every((request) => request.method === 'GET')).toBe(true);
-    expect(screen.queryByRole('button', { name: t.actions.save })).toBeNull();
+  });
+
+  it('처분 선택지가 비면 저장을 잠그고 사유를 보인다(G-2)', async () => {
+    const { user } = renderScreen();
+    await selectRow(user);
+
+    const save = screen.getByRole('button', { name: t.actions.save });
+    await waitFor(() => {
+      expect(save).toBeDisabled();
+    });
+    expect(save).toHaveAccessibleDescription(
+      new RegExp(t.dispositionPending.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    );
   });
 });

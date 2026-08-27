@@ -17,6 +17,12 @@ export interface DecisionFormPaneProps {
   qtyNotice: string | undefined;
   /** 판정 컨트롤 전체를 잠그는 사유. 없으면 잠그지 않는다. */
   lockReason: string | undefined;
+  /**
+   * ⭐ 적용 여부를 모르는 저장이 남아 있다. **잠그되 빠져나갈 길을 함께 낸다** — 길이 없으면
+   * 사용자는 새로고침으로 나가고, 그 순간 멱등 키가 사라져 이중 실행 위험이 되살아난다.
+   */
+  isUncertain: boolean;
+  onCheckOutcome: () => void;
   dispositionOptions: CodeOption[];
   uomId: number | undefined;
   uoms: DispositionLookup;
@@ -34,6 +40,8 @@ export const DecisionFormPane = ({
   errors,
   qtyNotice,
   lockReason,
+  isUncertain,
+  onCheckOutcome,
   dispositionOptions,
   uomId,
   uoms,
@@ -121,9 +129,16 @@ export const DecisionFormPane = ({
       />
 
       {isLocked && (
-        <p id={lockReasonId} className="field-note">
-          {lockReason}
-        </p>
+        <div className="form-actions">
+          <p id={lockReasonId} className="field-note form-actions-secondary">
+            {lockReason}
+          </p>
+          {isUncertain && (
+            <Button variant="outlined" size="sm" onClick={onCheckOutcome}>
+              {t.form.checkOutcome}
+            </Button>
+          )}
+        </div>
       )}
 
       <div className="form-actions">
