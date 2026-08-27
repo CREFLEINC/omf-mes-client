@@ -11,6 +11,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { dispositionEntryPath } from '../disposition-decision/filters';
 import { QualityApprovalScreen } from './screen';
 import {
   concessionDetailPath,
@@ -489,8 +490,6 @@ describe('QualityApprovalScreen detail', () => {
     expect(reason).toHaveTextContent('둘째 근거');
     expect(reason.querySelectorAll('br')).toHaveLength(2);
     expect(within(pane).getByText('합성 대상')).toBeInTheDocument();
-    expect(within(pane).getByRole('button', { name: '대상 열기' })).toBeDisabled();
-    expect(within(pane).getByText('대상 화면 연결 준비 중')).toBeInTheDocument();
     expect(pane.textContent).not.toContain('700007');
     expect(pane.textContent).not.toContain('910009');
     expect(recorded.urls.map((url) => url.pathname)).toContain(requestDetailPath(31));
@@ -705,6 +704,34 @@ describe('QualityApprovalScreen conditions', () => {
     const group = await screen.findByRole('group', { name: t.condition.title });
     expect(within(group).getAllByText(t.condition.reference.loading)).toHaveLength(4);
     expect(within(group).queryByText('SYNTH-WO-1201')).toBeNull();
+  });
+
+  it('⭐ 특채면 「부적합 열기」가 처분 판정 화면의 진입 주소를 가리킨다', async () => {
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => jsonResponse(candidateBody([concession]))),
+        concessionRoute(),
+      ]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    const group = await screen.findByRole('group', { name: t.condition.title });
+    const link = within(group).getByRole('link', { name: t.condition.openNonconformance });
+
+    /* 주소는 가는 쪽 화면이 만든다 — 여기서 키 이름을 손으로 적지 않는다. */
+    expect(link).toHaveAttribute('href', dispositionEntryPath(concession.nonconformanceId));
+    expect(link).toHaveAttribute('href', expect.stringContaining('nonconformanceId=701'));
+  });
+
+  it('⛔ 연결 조건이 없으면 「부적합 열기」를 두지 않는다 — 갈 곳 없는 길을 만들지 않는다', async () => {
+    renderScreen(
+      approvalFetch([listRoute(), candidateRoute(() => jsonResponse(candidateBody([])))]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+
+    await screen.findByText(t.condition.none);
+    expect(screen.queryByRole('link', { name: t.condition.openNonconformance })).toBeNull();
   });
 
   it('exact 404·network 실패를 표시하고 한 번의 재시도로 둘 다 복구한다', async () => {

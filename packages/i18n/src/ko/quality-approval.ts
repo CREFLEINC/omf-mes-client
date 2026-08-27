@@ -31,7 +31,6 @@ export const qualityApproval = {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
-    openTarget: '대상 열기',
   },
   detail: {
     select: '승인 요청을 선택하세요',
@@ -39,13 +38,17 @@ export const qualityApproval = {
     loading: '승인 요청 상세 불러오는 중',
     notFound: '요청을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 요청을 선택하세요.',
-    targetUnavailable: '대상 화면 연결 준비 중',
   },
   condition: {
     title: '연결 조건',
     loading: '연결 조건 불러오는 중',
     none: '연결된 조건 없음',
     unsafe: '연결 조건을 안전하게 특정할 수 없습니다',
+    /**
+     * ⭐ 부적합 상세를 소유한 화면(처분 판정 처리)으로 나가는 링크의 이름.
+     * 버튼이 아니라 링크라 이름이 곧 「어디로 가는가」다 — 사유를 따로 잇지 않는다.
+     */
+    openNonconformance: '부적합 열기',
     concessionNo: '특채번호',
     approvedQty: '승인 수량',
     consumedQty: '사용 수량',
