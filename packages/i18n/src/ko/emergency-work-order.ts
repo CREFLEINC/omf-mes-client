@@ -97,6 +97,42 @@ export const emergencyWorkOrder = {
   action: '발행·배포',
 
   /**
+   * 자동 전개 구획. 고른 품목에서 **무엇이 펼쳐지는지**를 보인다.
+   *
+   * ⛔ 여기 나오는 것은 전부 **읽는 값**이다. 사람이 고르는 것은 Routing 개정 하나뿐이다.
+   */
+  expansion: {
+    title: '자동 전개',
+    bom: 'BOM',
+    routing: 'Routing',
+    revision: '개정',
+    revisionLabel: '어느 Routing 개정으로 발행할지 고르세요',
+    operations: '공정',
+
+    columns: {
+      seq: '순서',
+      operation: '공정',
+      qty: '수량',
+    },
+
+    selectItem: '품목을 고르면 BOM 과 Routing 이 자동으로 펼쳐집니다.',
+    loading: '전개를 받는 중입니다.',
+    loadError: '전개를 받지 못했습니다. 잠시 뒤 다시 시도하세요.',
+
+    /**
+     * 개정 상태를 값 옆에 그대로 보인다. ⛔ 화면이 상태를 해석해 목록에서 지우지 않는다 —
+     * 지우면 값이 정해질 때 조용히 틀린다. 대신 **보고 고르게** 한다.
+     */
+    revisionStatus: (statusCode: string): string => `상태 ${statusCode}`,
+
+    /**
+     * ⚠ LOT 수는 화면이 정한 값이라 그 사실을 함께 적는다. 나누는 방식은 현장의 결정인데
+     * 이 화면에는 그것을 받을 칸이 없다 — 대신 정해진 값을 밝힌다.
+     */
+    lotNotice: '지시 수량 전량을 LOT 1개로 배포합니다.',
+  },
+
+  /**
    * 발행을 잠그는 사유.
    *
    * 전부 **컨트롤 이름으로 시작한다** — 사유가 붙은 대상이 시각적으로 끊겼을 때 무엇이
