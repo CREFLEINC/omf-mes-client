@@ -81,6 +81,14 @@ describe('formatDateTime', () => {
     expect(formatDateTime('알 수 없음')).toBe('알 수 없음');
   });
 
+  it('RFC 3339가 허용하는 소문자 구분자도 받는다 — 원문이 그대로 새지 않는다', () => {
+    expect(formatDateTime('2026-08-12t14:20:35+09:00')).toBe('2026-08-12 14:20');
+  });
+
+  it('오프셋을 옮기지 않고 벽시계 시각을 그대로 보인다', () => {
+    expect(formatDateTime('2026-08-12T05:20:00Z')).toBe('2026-08-12 05:20');
+  });
+
   it('날짜만 필요한 자리는 날짜만 낸다', () => {
     expect(formatDate('2026-08-12T14:20:35+09:00')).toBe('2026-08-12');
   });
@@ -165,6 +173,14 @@ describe('toDetailView', () => {
 describe('decisionUomIdOf', () => {
   it('대상 LOT의 단위로 고정한다', () => {
     expect(decisionUomIdOf([lot({ uomId: 7002 })])).toBe(7002);
+  });
+
+  it('LOT이 여럿이어도 단위가 같으면 그 단위다', () => {
+    expect(decisionUomIdOf([lot({ uomId: 7002 }), lot({ uomId: 7002 })])).toBe(7002);
+  });
+
+  it('⛔ 단위가 섞이면 고르지 않는다 — 첫 LOT의 단위를 말없이 집지 않는다', () => {
+    expect(decisionUomIdOf([lot({ uomId: 7001 }), lot({ uomId: 7002 })])).toBeUndefined();
   });
 
   it('대상 LOT이 없으면 단위를 정할 수 없다', () => {
