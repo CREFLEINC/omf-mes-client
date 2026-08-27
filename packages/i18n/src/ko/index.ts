@@ -84,6 +84,7 @@ import { toolPmResult } from './tool-pm-result';
 import { materialIssueRequest } from './material-issue-request';
 import { deviceRegistration } from './device-registration';
 import { oqcInspection } from './oqc-inspection';
+import { popShell } from './pop-shell';
 
 export const ko = {
   common,
@@ -156,6 +157,7 @@ export const ko = {
   materialIssueRequest,
   deviceRegistration,
   oqcInspection,
+  popShell,
 } as const;
 
 export type Messages = typeof ko;
