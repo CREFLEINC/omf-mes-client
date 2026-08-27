@@ -31,10 +31,6 @@ const describeOutcome = (outcome: ScanOutcome): string => {
   }
 };
 
-/** 읽었으나 담기지 않은 결과인가. 담긴 것과 다른 색으로 말해야 작업자가 넘어가지 않는다. */
-const isRejected = (outcome: ScanOutcome): boolean =>
-  outcome.kind === 'duplicate' || outcome.kind === 'ambiguous' || outcome.kind === 'not-found';
-
 /**
  * P-02-03 컨테이너 — **POP(현장 단말) 화면이라 관리웹 셸을 쓰지 않는다.**
  *
@@ -151,9 +147,6 @@ export const MaterialInputScanScreen = () => {
                 ? ''
                 : describeOutcome(outcome)}
           </p>
-          {outcome !== undefined && !scan.isError && isRejected(outcome) && (
-            <span className="field-note">{t.notes.manualEntry}</span>
-          )}
 
           <ScannedList draft={draft} onRemoveMaterial={removeMaterial} />
 
