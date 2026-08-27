@@ -133,6 +133,9 @@ export const dispositionDecision = {
   },
   values: {
     unknownQty: '—',
+    /** 셋의 해법이 서로 다르므로 문구를 가른다(G-3 — 사유는 「어떻게 풀 것인가」를 담는다). */
     periodRequired: '기간을 선택해야 조회할 수 있습니다',
+    periodInvalid: '달력에 없는 날짜입니다. 있는 날짜로 고쳐 주세요',
+    periodReversed: '시작일이 종료일보다 뒤입니다. 두 날짜를 바꿔 주세요',
   },
 } as const;
