@@ -118,6 +118,11 @@ export const dispositionDecision = {
     savingReason: '판정을 저장하는 중입니다',
     uncertainReason: '앞서 보낸 판정의 처리 결과를 먼저 확인해야 합니다',
     forbiddenReason: '판정 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요',
+    /** ⛔ 잠그되 왜 잠겼는지를 말한다 — 버튼만 죽이면 무엇이 잘못됐는지 알 수 없다. */
+    unitUnknownReason:
+      '대상 LOT의 단위를 하나로 정할 수 없어 판정할 수 없습니다. 담당자에게 문의하세요',
+    /** 적용 여부를 모르는 저장에서 빠져나가는 길. 없으면 새로고침이 유일한 탈출이 된다. */
+    checkOutcome: '처리 결과 확인',
     selectFirstReason: '먼저 판정할 부적합을 선택하세요',
     reloadDetail: '부적합 상태 다시 확인',
     irreversible: '판정은 되돌릴 수 없습니다',
