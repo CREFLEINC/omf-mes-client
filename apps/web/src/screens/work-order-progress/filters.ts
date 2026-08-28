@@ -166,6 +166,22 @@ export const toAppliedSearchParams = (
   return next;
 };
 
+/**
+ * 기간만 주소에 적는다 — 다른 것은 건드리지 않는다.
+ *
+ * 주소에 기간이 없이 들어온 첫 화면에서 쓴다. ⛔ **조회를 다시 거는 것이 아니다** — 그래서
+ * 쪽도, 고른 W/O 도 비우지 않는다. `?workOrderId=…` 만 담긴 링크를 받아 들어온 사용자에게서
+ * **선택을 빼앗지 않으려는 것이다.**
+ */
+export const withPeriod = (current: URLSearchParams, period: PeriodInput): URLSearchParams => {
+  const next = new URLSearchParams(current);
+
+  replace(next, KEYS.from, dateOf(period.from));
+  replace(next, KEYS.to, dateOf(period.to));
+
+  return next;
+};
+
 export const withSort = (current: URLSearchParams, sort: SortState): URLSearchParams => {
   const next = new URLSearchParams(current);
 
