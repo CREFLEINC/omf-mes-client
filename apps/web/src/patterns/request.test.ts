@@ -63,6 +63,27 @@ describe('runRequest', () => {
     });
   });
 
+  /*
+   * ⛔ **이미 정규화된 실패를 network로 덮지 않는다.** 요청을 만들면서 「보낼 수 없다」고
+   * 판정한 실패(낙관적 잠금 토큰 없음 등)가 여기로 올라오는데, 연결 문제로 바꿔 말하면
+   * 사용자는 **할 수 없는 조치**를 한다 — 연결을 확인하고 다시 눌러 본다. 실제로는 화면이
+   * 스스로 멈춘 것이고 푸는 길이 따로 있다.
+   */
+  it('⛔ 이미 정규화된 실패는 그대로 올린다 — 연결 문제로 덮지 않는다', async () => {
+    const original = new ApiRequestError({
+      kind: 'validation',
+      errors: [{ scope: 'screen', code: 'STALE_TOKEN', message: '다시 불러오세요' }],
+    });
+    const call = async (): Promise<never> => {
+      throw original;
+    };
+
+    const thrown = await runRequest(call).catch((error: unknown) => error);
+
+    expect(thrown).toBe(original);
+    expect(toApiError(thrown)).toMatchObject({ kind: 'validation' });
+  });
+
   it('던지는 값은 Error의 하위 클래스다 — 문자열이나 평범한 객체를 던지지 않는다', async () => {
     const call = async () => ({ error: undefined, response: errorResponse(500) });
 

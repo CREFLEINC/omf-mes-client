@@ -810,6 +810,21 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 
+  /*
+   * ⛔ **등록에서는 빈 거래처가 진짜 「없음」이다.** 「조회로 확인할 수 없어 비워 두었습니다」는
+   * 수정에서만 참인 말이라, 등록에도 적으면 **거짓말을 적는 것**이 된다 — 아직 아무것도 지정한
+   * 적이 없는데 「확인할 수 없다」고 읽힌다.
+   */
+  it('⛔ 등록 폼에는 거래처를 확인할 수 없다는 문구를 적지 않는다', async () => {
+    const { user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
+
+    await user.click(await screen.findByRole('button', { name: '창고 추가' }));
+
+    expect(
+      screen.queryByText(messages.warehouseLocation.fields.partnerNotReturned),
+    ).not.toBeInTheDocument();
+  });
+
   it('빈 상태의 창고 추가도 같은 신규 폼을 연다', async () => {
     const { user } = renderScreen([warehouseListRoute([]), ...lookupRoutes()]);
 
