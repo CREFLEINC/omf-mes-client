@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -14,6 +14,7 @@ import {
   roundsResponse,
   waitingRequest,
 } from './fixtures';
+import type { CodeValueResponse } from './code-options';
 import { PqcInspectionScreen } from './screen';
 
 const t = messages.pqcInspection;
@@ -69,6 +70,54 @@ const renderScreen = (route = '/?ir=1001', rounds = [draftRound], specs = itemSp
   renderWithProviders(<PqcInspectionScreen />, { route, fetch });
 
   return { writes };
+};
+
+/**
+ * 저장된 판정이 코드 목록에 «없는» 상태를 만든다 — 코드값이 사용 중지된 경우다.
+ * 목록은 다른 코드 하나만 주고, 측정치·회차에는 `ACCEPTED` 가 저장돼 있다.
+ */
+const renderWithStoredJudgment = async (): Promise<{ measured: string }> => {
+  const fetch = createStubFetch([
+    {
+      match: (request) => request.method !== 'GET',
+      respond: () => jsonResponse(draftRound, { status: 201 }),
+    },
+    {
+      match: (request) => new URL(request.url).pathname.endsWith('/measurements'),
+      respond: () => jsonResponse(measurementsResponse([expiredMeasurement])),
+    },
+    {
+      match: (request) => new URL(request.url).pathname.endsWith('/items'),
+      respond: () => jsonResponse(itemSpecsResponse()),
+    },
+    {
+      match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
+      respond: () => jsonResponse(roundsResponse([draftRound])),
+    },
+    {
+      match: (request) =>
+        /^\/quality\/inspection-results\/\d+$/.test(new URL(request.url).pathname),
+      respond: () => jsonResponse(draftRound, { headers: { ETag: 'W/"1"' } }),
+    },
+    {
+      match: (request) => new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
+      respond: () => jsonResponse(waitingRequest),
+    },
+    {
+      /* 목록에 저장된 코드가 «없다» — 다른 코드 하나만 준다. */
+      match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+      respond: () =>
+        jsonResponse(
+          codeValuesResponse([
+            { ...(overallJudgmentCodeValues[0] as CodeValueResponse), code: 'OTHER' },
+          ]),
+        ),
+    },
+  ]);
+
+  renderWithProviders(<PqcInspectionScreen />, { route: '/?ir=1001', fetch });
+
+  return { measured: expiredMeasurement.judgmentCode };
 };
 
 const bodyOf = async (request: Request): Promise<Record<string, unknown>> =>
@@ -184,6 +233,35 @@ describe('PqcInspectionScreen — 검사 항목 구획', () => {
     await waitFor(() => expect(requested.length).toBeGreaterThanOrEqual(2));
     expect(requested).toContain('INSPECTION_RESULT_OVERALL_JUDGMENT');
     expect(requested).toContain('INSPECTION_MEASUREMENT_JUDGMENT');
+  });
+});
+
+describe('PqcInspectionScreen — 저장된 판정이 목록에 없을 때', () => {
+  /*
+   * ⚠ 코드값이 사용 중지되면 **선택칸은 비어 보이는데 화면은 값을 들고 있다.** 조용히 두면
+   * 아무도 판정하지 않은 줄로 읽히고 「진행 n / m」도 어긋나 보인다 — 실동작 확인에서
+   * 드러난 자리다. 종합 판정에는 안내가 있었고 항목 판정에만 없었다.
+   */
+  it('항목 판정이 목록에 없으면 그 사실을 «항목 구획»에 밝힌다', async () => {
+    const { measured } = await renderWithStoredJudgment();
+
+    const items = await screen.findByLabelText(messages.pqcInspection.measurements.heading);
+
+    /* 문구가 두 구획에서 같으므로 «어느 구획인지»로 가른다. */
+    expect(
+      within(items).getByText(messages.pqcInspection.measurements.judgmentUnknown(measured)),
+    ).toBeInTheDocument();
+  });
+
+  /* 종합 판정 쪽 안내는 이미 있었다 — 함께 서 있는지 확인한다. */
+  it('종합 판정이 목록에 없으면 그 사실을 «결과 구획»에 밝힌다', async () => {
+    await renderWithStoredJudgment();
+
+    const result = await screen.findByLabelText(messages.pqcInspection.result.heading);
+
+    expect(
+      within(result).getByText(messages.pqcInspection.result.judgmentUnknown('ACCEPTED')),
+    ).toBeInTheDocument();
   });
 });
 

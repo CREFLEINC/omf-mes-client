@@ -2,7 +2,7 @@ import { Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
-import type { CodeOption } from './code-options';
+import { isKnownCode, type CodeOption } from './code-options';
 import {
   DATA_TYPES,
   EMPTY_MEASUREMENT_DRAFT,
@@ -166,6 +166,13 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, isLocked }: ItemRowPro
             onChange={(judgment) => onChange(row.key, { ...draft, judgment })}
           />
           {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
+          {/*
+           * ⚠ 저장된 판정이 목록에서 사라졌다. 조용히 비우면 **선택칸은 비어 보이는데 화면은
+           * 값을 들고 있어**, 아무도 판정하지 않은 줄로 읽히고 「진행 n / m」도 어긋나 보인다.
+           */}
+          {!isKnownCode(judgmentOptions, draft.judgment) && (
+            <p className="field-note">{t.judgmentUnknown(draft.judgment)}</p>
+          )}
         </div>
       </div>
 
