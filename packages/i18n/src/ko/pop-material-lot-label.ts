@@ -1,8 +1,8 @@
 export const popMaterialLotLabel = {
   title: '자재LOT 등록·라벨 발행',
   receipts: {
-    paneLabel: '입하 목록',
-    caption: '입하 목록',
+    paneLabel: '입하 라인',
+    caption: '입하 라인',
     /** 스펙 §3 의 목록은 세 칸이다 — 선택 칸을 따로 두지 않고 줄을 눌러 고른다. */
     columns: {
       receipt: '입하',
@@ -28,7 +28,8 @@ export const popMaterialLotLabel = {
      * 사전부착 건을 화면이 걸러 낸다(스펙 §6). 계약이 그 조건을 질의로 주지 않아 받은 뒤에
      * 거르므로, **한 쪽에 보이는 줄 수가 쪽 크기와 다를 수 있다.** 그 사실을 밝힌다.
      */
-    filterNotice: '공급사 LOT 이 붙어 온 자재는 보이지 않습니다.',
+    /** 서버가 거른 결과다 — 무엇이 빠졌는지 밝혀 두어야 「전부」로 오해하지 않는다. */
+    filterNotice: '공급사 LOT 이 붙어 온 자재와 이미 발행한 자재는 보이지 않습니다.',
     beyondLast: '이 쪽에는 결과가 없습니다. 이전 쪽으로 돌아가세요.',
     loadFailed: '입하 목록을 불러오지 못했습니다.',
     retry: '다시 불러오기',
@@ -65,8 +66,8 @@ export const popMaterialLotLabel = {
     retry: '다시 불러오기',
   },
   target: {
-    paneLabel: '발번 대상',
-    title: '발번 대상',
+    paneLabel: '채번 대상',
+    title: '채번 대상',
     empty: '왼쪽에서 자재를 고르세요.',
     lotPreview: {
       label: 'LOT 번호',
@@ -75,7 +76,7 @@ export const popMaterialLotLabel = {
        * 없다. 규칙을 지어내면 승인된 적 없는 채번이 화면에 굳는다 — 자리를 두고 왜 비었는지
        * 밝힌다(공유계약 A-11 — 물러난 수준을 명시한다).
        */
-      pending: '등록할 때 정해집니다.',
+      pending: '등록 시 서버가 매깁니다.',
     },
     actions: {
       issue: '등록·인쇄',

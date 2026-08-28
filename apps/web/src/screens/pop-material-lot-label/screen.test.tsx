@@ -204,7 +204,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     renderScreen();
 
     expect(await screen.findByRole('status')).toHaveTextContent(
-      /공급사 LOT 이 붙어 온 자재는 보이지 않습니다/u,
+      /공급사 LOT 이 붙어 온 자재와 이미 발행한 자재는 보이지 않습니다/u,
     );
   });
 
@@ -302,7 +302,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   });
 });
 
-describe('PopMaterialLotLabelScreen — 발번 대상', () => {
+describe('PopMaterialLotLabelScreen — 채번 대상', () => {
   it('고르기 전에는 무엇을 하면 되는지 말한다', async () => {
     renderScreen();
 
@@ -313,7 +313,7 @@ describe('PopMaterialLotLabelScreen — 발번 대상', () => {
     const { user } = renderScreen();
 
     await selectFirst(user);
-    const target = screen.getByLabelText('발번 대상');
+    const target = screen.getByLabelText('채번 대상');
 
     expect(await within(target).findByText('SYN-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
     expect(within(target).getByText('500 EA')).toBeInTheDocument();
@@ -328,10 +328,10 @@ describe('PopMaterialLotLabelScreen — 발번 대상', () => {
     const { user } = renderScreen();
 
     await selectFirst(user);
-    const target = screen.getByLabelText('발번 대상');
+    const target = screen.getByLabelText('채번 대상');
 
     expect(await within(target).findByText('LOT 번호')).toBeInTheDocument();
-    expect(within(target).getByText('등록할 때 정해집니다.')).toBeInTheDocument();
+    expect(within(target).getByText('등록 시 서버가 매깁니다.')).toBeInTheDocument();
   });
 
   /** F-1 — 숨기지 않는다. 왜 못 하는지 알아야 한다. */
@@ -339,7 +339,7 @@ describe('PopMaterialLotLabelScreen — 발번 대상', () => {
     const { user } = renderScreen();
 
     await selectFirst(user);
-    const target = screen.getByLabelText('발번 대상');
+    const target = screen.getByLabelText('채번 대상');
 
     expect(await within(target).findByRole('button', { name: '등록·인쇄' })).toBeDisabled();
     expect(within(target).getByRole('button', { name: '재인쇄' })).toBeDisabled();
