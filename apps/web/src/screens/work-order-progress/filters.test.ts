@@ -9,6 +9,7 @@ import {
   toAppliedSearchParams,
   toProgressListQuery,
   withPage,
+  withPeriod,
   withSelectedWorkOrder,
   withSort,
 } from './filters';
@@ -189,5 +190,46 @@ describe('readPage · readSelectedWorkOrderId', () => {
     ['숫자 아님', 'workOrderId=abc', null],
   ])('고른 W/O(%s)를 읽는다', (_name, search, expected) => {
     expect(readSelectedWorkOrderId(params(search))).toBe(expected);
+  });
+});
+
+/*
+ * 주소에 기간이 없이 들어온 첫 화면에서 쓴다. ⛔ **조회를 다시 거는 것이 아니다** —
+ * `?workOrderId=…` 만 담긴 링크를 받아 들어온 사용자에게서 선택을 빼앗지 않으려는 것이다.
+ */
+describe('withPeriod', () => {
+  it('기간을 적는다', () => {
+    const next = withPeriod(params(''), NARROW);
+
+    expect(next.get('from')).toBe('2026-08-01');
+    expect(next.get('to')).toBe('2026-08-30');
+  });
+
+  it('⛔ 고른 W/O 를 지우지 않는다 — 조회를 다시 거는 것이 아니다', () => {
+    const next = withPeriod(params('workOrderId=7001'), NARROW);
+
+    expect(next.get('workOrderId')).toBe('7001');
+  });
+
+  it('⛔ 쪽도 정렬도 건드리지 않는다', () => {
+    const next = withPeriod(params('page=3&sort=workOrderNo,desc'), NARROW);
+
+    expect(next.get('page')).toBe('3');
+    expect(next.get('sort')).toBe('workOrderNo,desc');
+  });
+
+  it('다른 조건도 그대로 둔다', () => {
+    const next = withPeriod(params('q=SYN-WO&line=7'), NARROW);
+
+    expect(next.get('q')).toBe('SYN-WO');
+    expect(next.get('line')).toBe('7');
+  });
+
+  /* 달력에 없는 값이 주소에 남으면 그 주소로 들어온 다음 사람이 막힌 화면을 본다. */
+  it('쓸 수 없는 날짜는 적지 않는다', () => {
+    const next = withPeriod(params(''), { from: '2026-13-01', to: '' });
+
+    expect(next.has('from')).toBe(false);
+    expect(next.has('to')).toBe(false);
   });
 });
