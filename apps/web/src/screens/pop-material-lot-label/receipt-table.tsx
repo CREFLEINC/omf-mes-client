@@ -105,7 +105,7 @@ export const ReceiptTable = ({
       columns={columns}
       rows={rows}
       density="comfortable"
-      empty={<p className="field-note">{empty}</p>}
+      empty={<p className="field-note pop-empty-note">{empty}</p>}
       getRowId={(row) => String(row.inboundReceiptLineId)}
     />
   );

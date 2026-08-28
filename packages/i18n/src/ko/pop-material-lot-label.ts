@@ -16,6 +16,12 @@ export const popMaterialLotLabel = {
     deselectRow: (receiptNo: string, itemName: string) => `${receiptNo} ${itemName} 선택 해제`,
     empty: '발행할 자재가 없습니다.',
     /**
+     * 쪽 나눔은 **입하 건** 단위인데 줄은 **자재**다. 사전부착을 걸러 내면 이 쪽의 입하 건에
+     * 발행할 자재가 하나도 없을 수 있다 — 「전체 N건」과 「없음」이 함께 뜨는 자리라,
+     * 왜 비었는지와 어디를 더 봐야 하는지를 함께 말한다.
+     */
+    emptyOnThisPage: '이 쪽의 입하 건에는 발행할 자재가 없습니다. 다음 쪽을 확인하세요.',
+    /**
      * 계약이 입하 건 목록에 미부착 여부 조건을 주지 않는다 — 그 값은 라인에 있다.
      * 지금 보이는 것이 「라벨 미발행 건 전부」이지 「미부착 건만」이 아님을 밝힌다.
      * 공유계약 G-2 — 미확정인 것을 확정처럼 보이지 않는다.
@@ -96,7 +102,8 @@ export const popMaterialLotLabel = {
     label: '쪽 이동',
     prev: '◀ 이전',
     next: '다음 ▶',
-    range: (from: number, to: number, total: number) => `${from}–${to} / 전체 ${total}건`,
-    totalOnly: (total: number) => `전체 ${total}건`,
+    /** **입하 건**을 센다 — 목록에 보이는 자재 줄 수와 단위가 다르다. */
+    range: (from: number, to: number, total: number) => `입하 건 ${from}–${to} / 전체 ${total}건`,
+    totalOnly: (total: number) => `입하 건 전체 ${total}건`,
   },
 } as const;
