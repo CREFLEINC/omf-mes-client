@@ -64,7 +64,26 @@ interface StubOptions {
   boms?: unknown[];
   routings?: unknown[];
   failRelease?: boolean;
+  /** 배포되지 않은 채 남아 있는 긴급 W/O. 기본은 없음 — 그것이 정상이다. */
+  unreleased?: unknown[];
+  /** 되찾기 조회가 실패한다 — 「밀린 것 없음」과 갈리는지 보려는 것이다. */
+  failUnreleased?: boolean;
 }
+
+/** 되찾기 목록의 한 줄. 발행으로 만들어지는 것과 번호를 달리해 둘이 섞이지 않게 한다. */
+const UNRELEASED = {
+  workOrderId: 7009,
+  workOrderNo: 'SYN-WO-0009',
+  productionPlanId: 3009,
+  routingOperationId: 901,
+  itemId: 5001,
+  orderQty: 150,
+  uomId: 11,
+  workOrderTypeCode: 'EMERGENCY',
+  statusCode: 'SYN_CONFIRMED',
+  priorityNo: 1,
+  remarks: '앞서 멈춘 발행',
+};
 
 const listOf = (items: unknown[]): Response =>
   jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
@@ -100,6 +119,16 @@ const stub = (
             { status: 500 },
           )
         : jsonResponse(WORK_ORDER);
+    }
+    /*
+     * ⛔ **경로가 같아도 메서드가 다르면 다른 요청이다.** 발행(POST)과 배포 안 된 목록
+     * 조회(GET)가 같은 경로를 쓴다 — 경로만 보고 답하면 조회에 발행 응답이 돌아가고,
+     * 그 어긋남은 화면이 아니라 스텁의 결함인데 감지기 실패로만 나타나 찾기 어렵다.
+     */
+    if (path === '/production/work-orders' && request.method === 'GET') {
+      return options.failUnreleased === true
+        ? jsonResponse({ message: '실패' }, { status: 500 })
+        : listOf(options.unreleased ?? []);
     }
     /* ⭐ 발행 응답이 잠금 토큰을 준다 — 그래서 배포 전에 상세를 부르지 않는다. */
     if (path === '/production/work-orders') {
@@ -279,5 +308,56 @@ describe('EmergencyWorkOrderScreen', () => {
     renderScreen();
 
     expect(screen.getAllByText(t.lock.itemNotChosen)).toHaveLength(1);
+  });
+
+  describe('배포 안 된 W/O 이어받기', () => {
+    /* ⚠ 밀린 것이 없는 것이 정상이다 — 그때 구획이 서면 늘 켜진 경고가 된다. */
+    it('⚠ 밀린 것이 없으면 구획이 서지 않는다', async () => {
+      renderScreen();
+
+      await screen.findByRole('button', { name: t.itemPicker.search });
+      expect(screen.queryByRole('region', { name: t.handover.title })).not.toBeInTheDocument();
+    });
+
+    it('밀린 것이 있으면 번호와 함께 보이고 배포 재시도를 낸다', async () => {
+      renderScreen({ unreleased: [UNRELEASED] });
+
+      expect(await screen.findByRole('region', { name: t.handover.title })).toBeInTheDocument();
+      expect(screen.getByRole('cell', { name: 'SYN-WO-0009' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: t.handover.retry })).toBeInTheDocument();
+    });
+
+    /*
+     * ⛔⛔ **같은 W/O 에 배포 버튼이 둘이면 안 된다.**
+     *
+     * 방금 발행했는데 배포가 멈춘 W/O 는 되찾기 목록에도 들어온다. 그대로 두면 위쪽 발행
+     * 구획과 아래 목록이 **같은 지시에 각각 [배포 재시도]를 내주고, 둘은 서로 다른 멱등 키를
+     * 쓴다.** 서버는 그것을 다른 쓰기로 보므로 **이중 배포**가 열린다 — 되돌릴 수 없다.
+     */
+    it('⛔ 지금 화면이 들고 있는 W/O 는 목록에서 뺀다 — 배포 버튼이 둘이 되지 않게', async () => {
+      const { user } = renderScreen({
+        failRelease: true,
+        /* 방금 발행할 것과 같은 번호가 목록에도 들어와 있는 상태를 만든다. */
+        unreleased: [{ ...UNRELEASED, workOrderId: 7001, workOrderNo: 'SYN-WO-0007' }],
+      });
+
+      await fillForm(user);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.action })).toBeEnabled();
+      });
+      await user.click(screen.getByRole('button', { name: t.action }));
+
+      /* 발행 구획이 그 W/O 를 맡는다 — 재시도는 거기 하나뿐이다. */
+      expect(await screen.findByText(t.outcome.releaseUnknown('SYN-WO-0007'))).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: t.outcome.retryRelease })).toHaveLength(1);
+      expect(screen.queryByRole('button', { name: t.handover.retry })).not.toBeInTheDocument();
+    });
+
+    /* ⛔ 못 받은 것을 「밀린 것 없음」으로 두면 화면이 조용히 틀린다. */
+    it('⛔ 목록을 받지 못하면 그 사실을 알린다', async () => {
+      renderScreen({ failUnreleased: true });
+
+      expect(await screen.findByText(t.handover.loadError)).toBeInTheDocument();
+    });
   });
 });
