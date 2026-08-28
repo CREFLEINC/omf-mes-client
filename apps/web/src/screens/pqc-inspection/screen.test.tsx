@@ -9,6 +9,7 @@ import {
   draftRound,
   itemSpecsResponse,
   measurementsResponse,
+  expiredMeasurement,
   overallJudgmentCodeValues,
   roundsResponse,
   waitingRequest,
@@ -155,6 +156,81 @@ describe('PqcInspectionScreen — 검사 항목 구획', () => {
     await waitFor(() => expect(requested.length).toBeGreaterThanOrEqual(2));
     expect(requested).toContain('INSPECTION_RESULT_OVERALL_JUDGMENT');
     expect(requested).toContain('INSPECTION_MEASUREMENT_JUDGMENT');
+  });
+});
+
+describe('PqcInspectionScreen — 저장된 측정치가 칸에 붙는다', () => {
+  /*
+   * ⛔ **항목 규격과 측정치는 서로 다른 조회다** — 규격이 먼저 오고 측정치가 나중에 온다.
+   * 그 사이 줄의 열쇠는 그대로라, 되돌림이 열쇠만 보면 깨어나지 않아 **저장된 값이 화면
+   * 칸에 영영 안 붙는다.** 실제로 그 상태로 화면에 나갔고, 칸은 비었는데 「규격 밖」 표만
+   * 붙어 있는 모습으로 드러났다.
+   */
+  it('나중에 도착한 측정치가 입력 칸에 채워진다', async () => {
+    let measurementsReady = false;
+
+    const fetch = createStubFetch([
+      {
+        match: (request) => request.method !== 'GET',
+        respond: () => jsonResponse(draftRound, { status: 201 }),
+      },
+      {
+        match: (request) => new URL(request.url).pathname.endsWith('/measurements'),
+        respond: () => {
+          /*
+           * 첫 조회는 비어 있고 저장 뒤 재조회에서 값이 온다 — 항목 규격과 측정치가 서로
+           * 다른 조회라 실제로 이 차가 난다.
+           */
+          const items = measurementsReady ? [expiredMeasurement] : [];
+          measurementsReady = true;
+          return jsonResponse(measurementsResponse(items));
+        },
+      },
+      {
+        match: (request) => new URL(request.url).pathname.endsWith('/items'),
+        respond: () => jsonResponse(itemSpecsResponse()),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
+        respond: () => jsonResponse(roundsResponse([draftRound])),
+      },
+      {
+        match: (request) =>
+          /^\/quality\/inspection-results\/\d+$/.test(new URL(request.url).pathname),
+        respond: () => jsonResponse(draftRound, { headers: { ETag: 'W/"1"' } }),
+      },
+      {
+        match: (request) =>
+          new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
+        respond: () => jsonResponse(waitingRequest),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+        respond: () => jsonResponse(codeValuesResponse(overallJudgmentCodeValues)),
+      },
+    ]);
+
+    renderWithProviders(<PqcInspectionScreen />, { route: '/?ir=1001', fetch });
+
+    await screen.findByText(t.measurements.heading);
+
+    /* 저장이 회차를 무효화해 측정치를 다시 부른다 — 그때 값이 도착한다. */
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    /* 먼저 «줄»에 값이 도착했는지 본다 — 도착 자체가 안 되면 되돌림 문제가 아니다. */
+    await waitFor(() => {
+      expect(screen.getAllByText(t.measurements.calibrationExpired).length).toBeGreaterThan(0);
+    });
+
+    /*
+     * 줄에 붙었으면 **입력 칸에도** 붙어야 한다 — 이 둘이 갈리던 것이 이번 결함이다.
+     * 되돌림은 렌더 «뒤» 효과라 한 렌더 늦게 반영된다.
+     */
+    await waitFor(() => {
+      const values = screen.getAllByLabelText(t.measurements.columns.value) as HTMLInputElement[];
+      /* 줄 차례는 채번(sequenceNo)이 정하므로 «값»으로 찾는다 — 자리로 찾으면 차례가 바뀔 때 헛통과한다. */
+      expect(values.map((input) => input.value)).toContain(String(expiredMeasurement.numericValue));
+    });
   });
 });
 

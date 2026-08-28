@@ -125,9 +125,17 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, isLocked }: ItemRowPro
         {row.required && ` (${t.requiredMark})`}
       </p>
 
-      {/* 규격은 **한쪽만 있어도 규격이다** — 둘 다 있을 때만 내면 흔한 공차가 사라진다. */}
+      {/*
+       * 규격은 **한쪽만 있어도 규격이다** — 둘 다 있을 때만 내면 흔한 공차가 사라진다.
+       *
+       * ⚠ 규격과 샘플을 **한 줄에 잇지 않는다.** 이으면 「목표 1 · 1 ~ 1 · 1 중 1」처럼 숫자만
+       * 늘어서 무엇이 공차이고 무엇이 샘플 번호인지 읽히지 않는다.
+       */}
       <p className="field-note">
-        {describeSpec(row.spec)} · {t.sampleOf(row.sampleNo, row.sampleCount)}
+        {t.columns.spec} {describeSpec(row.spec)}
+      </p>
+      <p className="field-note">
+        {t.columns.sample} {t.sampleOf(row.sampleNo, row.sampleCount)}
       </p>
 
       <div className="form-grid">

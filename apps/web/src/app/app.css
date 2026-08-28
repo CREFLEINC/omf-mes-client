@@ -717,11 +717,38 @@ main > * + * {
   flex-direction: column;
 }
 
-/* 좌측만 흐른다 — 이 구획이 E-4 가 지정한 유일한 스크롤 자리다. */
+/*
+ * 좌측 항목이 흐른다 — E-4 가 지정한 스크롤 자리다.
+ *
+ * ⚠ **우측도 넘치면 흘려야 한다.** 세로를 616 으로 고정해 두고 넘침을 다루지 않으면 내용이
+ * 구획 밖으로 삐져나와 **글자가 서로 겹친다** — 판정 화면에서 합계 문구와 판정 라벨이 겹쳐
+ * 읽을 수 없게 되는 것을 실제로 겪었다. 좌측이 «주» 스크롤이고, 우측은 넘칠 때만 흐른다.
+ */
 .pop-inspect-scroll {
   overflow-y: auto;
   min-height: 0;
   flex: 1;
+}
+
+.pop-inspect > .pane {
+  overflow-y: auto;
+}
+
+/*
+ * 항목 목록 — 번호는 **화면이 그린다**(채번 값이 아니라 목록 내 위치). 그래서 목록 표지의
+ * 자동 번호를 끈다: 켜 두면 「1. 1. 항목」처럼 번호가 두 번 나온다.
+ */
+.pop-item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.pop-item {
+  border-top: 1px solid var(--outline-variant);
+  padding-top: var(--space-3);
 }
 
 /*

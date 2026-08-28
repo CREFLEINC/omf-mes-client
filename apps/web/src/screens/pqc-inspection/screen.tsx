@@ -25,7 +25,7 @@ import {
   type MeasurementDraft,
   type MeasurementDrafts,
 } from './measurement-draft';
-import { toMeasurementRows } from './measurement-rows';
+import { toMeasurementRows, type MeasurementRow } from './measurement-rows';
 import {
   useCodeValues,
   useConfirmResult,
@@ -216,17 +216,24 @@ export const PqcInspectionScreen = () => {
   ]);
 
   /**
-   * 항목 초안은 **줄이 서면 그 줄의 저장값으로** 되돌아간다.
+   * 항목 초안은 **줄이 서거나 저장값이 바뀌면** 그 줄의 저장값으로 되돌아간다.
    *
-   * 줄의 열쇠를 이어 붙인 문자열을 의존성으로 삼는다 — 배열 참조로 넣으면 조회가 다시
-   * 그려질 때마다 검사자가 치던 값이 사라진다.
+   * ⛔ **열쇠만 보면 안 된다.** 항목 규격과 측정치는 서로 다른 조회라 **규격이 먼저 오고
+   * 측정치가 나중에 온다** — 그 사이 줄의 열쇠는 그대로이므로, 열쇠만 의존성에 넣으면
+   * 되돌림이 깨어나지 않아 **저장된 측정치가 화면 칸에 영영 안 붙는다.** 실제로 그 상태로
+   * 화면에 나갔고, 값이 비었는데 「규격 밖」 표만 붙어 있는 모습으로 드러났다.
+   *
+   * 그래서 **저장값까지 포함한 지문**을 의존성으로 삼는다. 배열 참조로 넣으면 조회가 다시
+   * 그려질 때마다 검사자가 치던 값이 사라지므로 참조가 아니라 **값**이어야 한다.
    */
-  const rowKeys = rows.map((row) => row.key).join('|');
+  const rowsFingerprint = rows
+    .map((row) => `${row.key}:${row.measured?.judgmentCode ?? ''}:${storedValueKey(row)}`)
+    .join('|');
 
   useEffect(() => {
     setDrafts(toMeasurementDrafts(rows));
-    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 줄 목록은 열쇠 문자열로 판정한다 */
-  }, [rowKeys, roundId, isReinspectingNow]);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 줄 목록은 지문 문자열로 판정한다 */
+  }, [rowsFingerprint, roundId, isReinspectingNow]);
 
   const changeDraft = (next: QuantityDraft): void => {
     setIsSaved(false);
@@ -429,6 +436,18 @@ export const PqcInspectionScreen = () => {
       />
     </PqcFrame>
   );
+};
+
+/**
+ * 저장값의 지문 한 조각. **세 칸 중 채워진 것 하나**를 문자열로 낸다 — 어느 칸인지는 항목
+ * 유형이 정하고, 셋 다 비어 있는 줄(육안 항목)도 정상이다.
+ */
+const storedValueKey = (row: MeasurementRow): string => {
+  const measured = row.measured;
+
+  if (measured === null) return '';
+
+  return String(measured.numericValue ?? measured.textValue ?? measured.booleanValue ?? '');
 };
 
 /** 머리와 이름은 어느 갈래에서나 같다 — 갈래마다 다시 쓰면 한쪽만 고쳐지는 자리가 된다. */
