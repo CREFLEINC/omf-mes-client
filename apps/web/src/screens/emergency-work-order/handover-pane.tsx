@@ -120,13 +120,19 @@ export const HandoverPane = ({
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.workOrderId)}
-            caption={t.title}
+            caption={t.tableCaption}
           />
 
-          {/* A-11 — 여기 없는 것을 밝힌다. 없는 이유까지 적어야 다른 데를 찾아보지 않는다. */}
-          <p className="field-note">{t.itemNotShown}</p>
+          {/*
+           * A-11 — 여기 없는 것을 밝힌다. 없는 이유까지 적어야 다른 데를 찾아보지 않는다.
+           *
+           * ⛔ **`.field-note` 를 쓰지 않는다**(규범 4의 20rem 제한). 이것은 칸 하나에 딸린
+           * 사유가 아니라 **표 전체**의 설명이라, 좁은 기둥으로 접히면 표 아래에서 서너 줄로
+           * 접혀 읽기 어려워진다(브라우저 확인 실측).
+           */}
+          <p>{t.itemNotShown}</p>
 
-          {isTruncated && <p className="field-note">{t.truncated(rows.length, total)}</p>}
+          {isTruncated && <p>{t.truncated(rows.length, total)}</p>}
         </>
       )}
     </section>
