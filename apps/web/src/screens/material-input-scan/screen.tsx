@@ -12,7 +12,8 @@ import { applyScan, EMPTY_SCAN_DRAFT, type ScanDraft, type ScanOutcome } from '.
 import { ScanField } from './scan-field';
 import { useScanLookup } from './scan-queries';
 import { ScannedList } from './scanned-list';
-import { readWorkOrderId } from './screen-params';
+import { readProcessId, readTerminalId, readWorkOrderId } from './screen-params';
+import { useTerminalGate } from './terminal-gating';
 
 const t = messages.materialInputScan;
 
@@ -51,17 +52,17 @@ const describeOutcome = (outcome: ScanOutcome): string => {
  * 오투입(BOM 정합)·자재 상태(Hold·불량)·단말 게이팅. 화면은 읽은 것을 보이고 서버가 거절하면
  * 그 말을 옮긴다. 스캔한 LOT의 상태 코드를 색으로 갈래 지우지 않는 것도 같은 이유다(스펙 §5-2).
  *
- * ⛔ **단말 게이팅을 미리 판정하지 않는다.** 스펙 §5-1이 요구하는 플래그가 계약의 단말 기능
- * 구성에 없다(검토 요청 omf-mes#246) — **없는 값을 다른 플래그로 대신 읽지 않는다.**
- *
- * ⚠ 그 자리를 「서버의 403을 안내로 그린다」로 메우려 했으나 **지금은 그것이 온전히 서지
- * 않는다.** 계약이 403에 실으라고 한 본문 모양(`{ errors: [...] }`)을 공용 정규화가 검증
- * 실패로 분류해, 권한 없음이 다른 실패와 같은 배너로 선다. 이 화면만 고칠 수 있는 자리가
- * 아니라 지금 상태를 감지기로 박아 두었다(`screen.test.tsx`).
+ * ⭐ **단말 게이팅은 미리 판정한다**(스펙 §5-1). 계약이 `canInputMaterial`을 갖게 되어
+ * (검토 요청 omf-mes#246 — A안) 진입 시 읽어 「투입 확정」을 선제 비활성한다. 다만 그 잠금은
+ * **오조작을 줄이는 장치이지 집행이 아니다** — 집행은 서버의 403이고, 오프라인 큐로 들어온
+ * 투입은 이 화면을 지나지 않는다.
  */
 export const MaterialInputScanScreen = () => {
   const [searchParams] = useSearchParams();
   const workOrderId = readWorkOrderId(searchParams);
+  /* ⚠ 임시 이음매 — 셸이 서면 단말·공정은 그 자리에서 온다(`screen-params.ts`). */
+  const terminalId = readTerminalId(searchParams);
+  const processId = readProcessId(searchParams);
 
   const titleId = useId();
 
@@ -71,6 +72,8 @@ export const MaterialInputScanScreen = () => {
   const scan = useScanLookup();
   /* 표시용 이름 풀이. 어느 판정에도 쓰이지 않는다 — 읽을 수 있게 하는 데만 쓴다. */
   const statusLabels = useLotStatusLabels();
+  /* 단말 게이팅 — 스펙 §5-1. 화면의 잠금은 오조작을 줄이는 장치이지 집행이 아니다. */
+  const gate = useTerminalGate(terminalId, processId);
 
   const handleScan = (code: string): void => {
     /*
@@ -162,7 +165,7 @@ export const MaterialInputScanScreen = () => {
             onRemoveMaterial={removeMaterial}
           />
 
-          <ConfirmPanel hasMaterials={draft.materials.length > 0} />
+          <ConfirmPanel hasMaterials={draft.materials.length > 0} gate={gate} />
         </section>
       </div>
     </main>

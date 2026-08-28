@@ -21,6 +21,8 @@ export interface paths {
                     /** @description 코드·명칭 검색 */
                     q?: string;
                     warehouseTypeCode?: string;
+                    /** @description 불량창고만 거른다 — W-01-06 §3의 창고 선택(「불량창고」)이 이 조건으로 건다. 근거: DR-012 확정 3-C · omf-mes#147 */
+                    isDefect?: boolean;
                     /** @description 기본은 사용 중인 것만. 과거 데이터 표시용으로 켜면 isActive 표식을 함께 내린다 */
                     includeInactive?: boolean;
                     page?: number;
@@ -6862,6 +6864,8 @@ export interface paths {
         /**
          * 단말 기능 구성 조회
          * @description 이 단말에서 어떤 공정의 무엇이 열려 있나. POP 셸이 화면을 그리기 전에 읽는다. 근거: W-CO-06 §5 · P-CO-01 §5-1
+         *
+         *     ⭐ 0건이 정상인 단말이 있다 — 창고 전용 단말은 공정 행이 없다. 셸은 0건을 「전부 금지」로도 「전부 허용」으로도 읽지 않는다. 기능 구성 축이 이 단말에 걸리지 않는다는 뜻이고, 게이팅은 서버의 403 이 맡는다. 근거: 공유계약 F-1·F-5 · omf-mes#245
          */
         get: {
             parameters: {
@@ -12785,8 +12789,10 @@ export interface paths {
                     supplierId?: number;
                     plantId?: number;
                     statusCode?: string;
-                    /** @description 라벨이 발행된 건을 뺄지. 근거: P-01-01 §5-1 */
+                    /** @description 라벨이 발행된 건을 뺄지. 근거: P-01-01 §6 */
                     labelIssued?: boolean;
+                    /** @description 라인 중 supplier_lot_missing 이 이 값인 라인을 하나 이상 가진 건만. true = 미부착 건(MES 가 채번한다) · false = 사전부착 건. ⚠ 헤더 목록인데 판정은 라인 단위다 — 건 안에 두 종류가 섞여 있을 수 있으므로 라인을 고를 때 GET .../lines 의 같은 이름 필터를 함께 쓴다. 근거: P-01-01 §6 */
+                    supplierLotMissing?: boolean;
                     /** @description 입하번호·거래명세서번호 검색 */
                     q?: string;
                     page?: number;
@@ -13015,7 +13021,12 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description 미부착 라인만 거른다. LOT 발번 단위가 라인이기 때문이다 — 한 건에 미부착 라인이 여럿이면 LOT 도 여럿이다. 근거: P-01-01 §4-B·§6 */
+                    supplierLotMissing?: boolean;
+                    /** @description 라벨이 발행된 라인을 뺄지. false 이면서 lotId 가 채워진 라인 = 「LOT 은 생겼는데 발행 기록이 없는」 상태다 — 화면은 그 라인에 「인쇄」만 보인다. 근거: P-01-01 §5-2·§6 */
+                    labelIssued?: boolean;
+                };
                 header?: never;
                 path: {
                     inboundReceiptId: number;
@@ -15035,7 +15046,15 @@ export interface paths {
         put?: never;
         /**
          * LOT 등록
-         * @description 스캔한 값이 그대로 번호가 된다. 같은 공장에 같은 번호가 있으면 400 이다. 근거: M-01-02 §5-2
+         * @description 번호 출처가 둘이다 — numberSourceCode 로 가른다.
+         *
+         *     SUPPLIER(사전부착) — 스캔한 값이 그대로 번호가 된다. 같은 공장에 같은 번호가 있으면 400 이다. 재시도해도 안 풀린다 — 사람이 스캔값을 고쳐야 한다. 근거: M-01-02 §5-1 [사전부착]
+         *
+         *     MES(미부착) — 번호는 서버가 매긴다. 화면은 lotNo 를 보내지 않고 201 응답으로 받는다. ⛔ 채번 충돌은 서버가 스스로 재시도한다 — 그래도 실패하면 409 이고, 다시 부르면 풀린다. 400 을 내지 않는다: 사용자가 고칠 수 있는 값이 아니기 때문이다(POST /trace/serial-numbers 와 같은 이유). 계약은 「서버가 매긴다」까지만 정하고 도출·검증 규칙은 정하지 않는다 — 34자리 고정폭만 확정이다(MLOT #16). 근거: M-01-02 §5-1 [미부착] · P-01-01 §5-2
+         *
+         *     ⭐ 발행 기록은 이 경로가 만들지 않는다 — 공통 계약의 POST /app/document-issues 가 이어서 만든다. LOT 이 먼저 있어야 그쪽 targets 에 담을 수 있다. 두 호출 사이가 끊기면 「LOT 은 있고 라벨 기록은 없는」 상태가 남는데, 그것은 오류가 아니라 표현 가능한 상태다 — InboundReceiptLine.lotId 가 채워지고 labelIssued 가 false 로 남는다. 근거: P-01-01 §5-2
+         *
+         *     ⭐ 자재 LOT 은 등록 즉시 검사 대기로 보류된다 — 화면이 보내지 않고 서버가 건다. lot_hold 행이 함께 생기고 재고는 즉시 잡히되 가용이 아니다. Release 는 IQC 합격 시점이다. 근거: MLOT #5 · M-01-02 §4
          */
         post: {
             parameters: {
@@ -15068,7 +15087,7 @@ export interface paths {
                         "application/json": components["schemas"]["LotDetailResponse"];
                     };
                 };
-                /** @description 검증 실패. 고쳐야 풀린다 */
+                /** @description 검증 실패. 고쳐야 풀린다. numberSourceCode 와 lotNo 의 조합이 어긋난 경우를 포함한다 — SUPPLIER 인데 lotNo 가 없거나, MES 인데 lotNo 를 보냈다 */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -15086,7 +15105,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                /** @description 저장 충돌 — 다시 부르면 풀린다. numberSourceCode = MES 에서 서버 채번이 거듭 충돌한 경우를 포함한다 */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -17582,7 +17601,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    policyCode?: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES";
+                    policyCode?: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL";
                     businessUnitId?: number;
                     plantId?: number;
                     itemId?: number;
@@ -17682,7 +17701,7 @@ export interface paths {
         get: {
             parameters: {
                 query: {
-                    policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES";
+                    policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL";
                     businessUnitId?: number;
                     plantId?: number;
                     itemId?: number;
@@ -18648,7 +18667,7 @@ export interface paths {
         put?: never;
         /**
          * 자재 반출 등록
-         * @description 근거: M-02-02 §5 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항).
+         * @description ⚠ 2026-08-26 — 근거였던 M-02-02(수리 왕복)가 이 경로를 쓰지 않는 것으로 정정됐다. 수리 반출은 자재 반납이 아니라서 전용 자원(/production/repair-executions:return)으로 갔다. 이 경로는 「W/O 잔여 자재를 창고로 반납」이라는 실재 업무이나 부르는 화면이 아직 매핑되지 않았다 — 소유 화면이 정해지면 근거를 다시 적는다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항).
          */
         post: {
             parameters: {
@@ -18925,6 +18944,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/production/precheck-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 작업 전 점검 통제 판정 이력 조회
+         * @description 작업 전 점검 게이트가 내린 판정을 조회한다. ⭐ 통과도 남는다 — 안 보이는 것과 안 남기는 것은 다르다(P-02-02 §9-3). 근거: P-02-02 §5-8
+         */
+        get: {
+            parameters: {
+                query?: {
+                    workOrderId?: number;
+                    equipmentId?: number;
+                    decisionCode?: "PASSED" | "BLOCKED" | "WARNED" | "OVERRIDDEN";
+                    decidedFrom?: string;
+                    decidedTo?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PrecheckDecisionList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 작업 전 점검 통제 판정 기록
+         * @description 작업 전 점검 게이트의 판정을 기록한다. 화면이 통제 수준을 읽어 판정하고 그 결과를 네 값 중 하나로 남긴다. ⭐ 차단도 기록된다 — 차단이면 세션이 열리지 않으므로 work_session_event 로는 남길 수 없다(P-02-02 §5-8). 통과·우회면 이 기록 뒤에 POST /production/work-sessions 로 세션을 연다. ⛔ 오프라인 대상이 아니다 — 이 화면은 온라인에서만 판정한다(P-02-02 §6-1). 근거: P-02-02 §5-8·§9-3
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PrecheckDecisionCreate"];
+                };
+            };
+            responses: {
+                /** @description 기록됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PrecheckDecision"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProductionConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/production/production-results": {
         parameters: {
             query?: never;
@@ -19173,6 +19298,191 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/production/repair-executions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 수리 실행 목록
+         * @description 수리 왕복의 실행 기록을 조회한다. ⭐ open=true 가 「투입 대기 목록」이다 — 반출 시각이 없는 것이 아직 수리 중인 건이다. 작업 세션과 같은 구간 형 리소스라 「진행 중」을 상태 컬럼으로 두지 않는다. 근거: M-02-02 §5-3
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 반출 시각이 없는 것만. 기본 true — 이것이 투입 대기 목록이다 */
+                    open?: boolean;
+                    defectRecordId?: number;
+                    /** @description 원 불량이 매인 LOT 으로 거른다 */
+                    lotId?: number;
+                    startedFrom?: string;
+                    startedTo?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RepairExecutionList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 수리 투입 등록
+         * @description 불량 LOT 을 수리에 투입한 사실을 기록한다. 왕복의 앞쪽이다 — 반출은 :return 이 닫는다. ⛔ 오프라인 대상이 아니다 — 이 화면은 온라인 전용이다(M-02-02 §5-6). 근거: M-02-02 §5-3·§5-6
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RepairExecutionCreate"];
+                };
+            };
+            responses: {
+                /** @description 투입됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RepairExecution"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 — 같은 불량에 열린 수리 건이 이미 있다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProductionConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/production/repair-executions/{repairExecutionId}:return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 수리 반출 등록
+         * @description 수리를 마치고 반출한 사실을 기록해 왕복을 닫는다. 반출 시각이 생기면 투입 대기 목록에서 빠진다. ⭐ 재투입은 이 화면이 하지 않는다 — 수리된 물건은 원 LOT 으로 돌아가지 않고 그때 진행 중인 생산LOT 에 합류하며, 그 등록은 P-02-03·P-02-04 소관이다(M-02-02 §5-4). 근거: M-02-02 §5-3
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
+                };
+                path: {
+                    repairExecutionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RepairExecutionReturn"];
+                };
+            };
+            responses: {
+                /** @description 반출됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RepairExecution"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 수리 건이 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 — 이미 반출됐다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProductionConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/production/work-orders": {
         parameters: {
             query?: never;
@@ -19192,6 +19502,8 @@ export interface paths {
                     productionPlanId?: number;
                     statusCode?: string;
                     productionLineId?: number;
+                    /** @description 계획 설비로 거른다. POP 작업 시작 화면(P-02-01 §4 ②)의 기본 목록 「이 설비 · 배포됨」이 이 축으로 선다 — 응답의 plannedEquipmentId 를 클라이언트가 거르는 것으로는 성립하지 않는다(목록이 페이지 단위라 페이지 안에서만 걸러진다). 저장 자리가 실재하므로 필터를 둔다(공유계약 L-11 의 반대쪽). 근거: P-02-01 §4·§5-5 · omf-mes#247 */
+                    plannedEquipmentId?: number;
                     workOrderTypeCode?: string;
                     plannedStartFrom?: string;
                     plannedStartTo?: string;
@@ -19229,7 +19541,7 @@ export interface paths {
         put?: never;
         /**
          * W/O 발행
-         * @description 긴급 W/O(W-02-07)를 직접 만든다 — 전개 생성분은 계획 :confirm 이 서버 트랜잭션으로 만들므로 이 경로를 쓰지 않는다(omf-mes#199). 근거: W-02-07 §5
+         * @description 긴급 W/O(W-02-07)를 직접 만든다 — 전개 생성분은 계획 :confirm 이 서버 트랜잭션으로 만들므로 이 경로를 쓰지 않는다(omf-mes#199). ⭐ productionPlanId 를 비우고 부르면 서버가 내부 P/O 와 계획을 함께 만든다 — P/O·계획·W/O 생성이 한 트랜잭션이고, 중간에 끊기면 전체를 되돌린다(공유계약 B-8). 그 P/O 는 erp_order_no 가 비어 있다 — ERP 가 보내지 않은 P/O 는 반제품 전개에서 이미 쓰는 개념이다. 근거: W-02-07 §5-2
          */
         post: {
             parameters: {
@@ -19281,15 +19593,6 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ProductionConflictResponse"];
-                    };
-                };
-                /** @description 구현할 수 없다 — 상류 미해소 */
-                501: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -19980,7 +20283,7 @@ export interface paths {
         put?: never;
         /**
          * 작업 시작 — 세션 열기
-         * @description 단말 게이팅(can_start_work)을 서버가 강제한다. 통제 우회는 controlOverride 로 함께 보낸다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: P-02-01 §5 · P-02-02 §5 · 공유계약 F-1·F-6
+         * @description 단말 게이팅(can_start_work)을 서버가 강제한다. 통제 우회는 controlOverride 로 함께 보낸다. ⛔ 오프라인 대상이 아니다 — 이 오퍼레이션을 부르는 화면은 온라인에서만 세션을 연다 (P-02-01 §6-1 · P-02-02 §6-1). 여는 조건이 전부 «판정값»이라(can_start_work · 점검 이력 · W/O 상태) 캐시하면 차단해야 할 작업이 열린다 — 공유계약 C-14 가 그렇게 가르고, C-18 이 이 화면을 소비자 쪽 대표 사례로 이름 붙였다. ⛔ 셸의 outbox 에 담지 않는다. ⛔ 큐 접수 202 를 두지 않는다 — 오프라인이면 HTTP 요청 자체가 일어나지 않아 서버가 202 를 보낼 자리가 없다 (2026-08-12 정정 · omf-mes-client#97). Idempotency-Key 는 필수다 — 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해서다(공유계약 C-8). If-Match 는 선택이다 — 신규 생성이라 대조할 version_no 가 아직 없다(공유계약 C-9 의 큐 조항과는 무관하다). 근거: P-02-01 §5-1·§6-1 · P-02-02 §6-1 · 공유계약 F-1·F-6·C-14·C-18
          */
         post: {
             parameters: {
@@ -20134,7 +20437,7 @@ export interface paths {
         put?: never;
         /**
          * 세션 이벤트 적재
-         * @description 중단·재개를 기록한다. occurredAt 은 단말이 보낸다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). ⚠ 세션이 먼저 서야 한다 — 큐에서는 세션 열기와 묶음으로 간다(C-10). 사건 유형은 다섯이다 — START(시작)·STOP(중단)·RESUME(재개)·END(종료)·CONTROL_OVERRIDE(통제 우회). ⭐ 이 오퍼레이션으로 단말이 적재하는 것은 구간 «안의» 사건인 STOP·RESUME 뿐이다. 구간의 «경계»(START·END)와 통제 우회는 세션을 열고 닫는 오퍼레이션이 같은 트랜잭션으로 만든다 — 따로 보내지 않는다. 유형별로 reasonCode 에 어느 코드 그룹을 쓰는지는 공유계약 A-25 가 정한다. 근거: P-02-10 §5-2 · 공유계약 C-12
+         * @description 중단·재개를 기록한다. occurredAt 은 단말이 보낸다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). ⚠ 세션이 먼저 서야 한다 — 큐에서는 세션 열기와 묶음으로 간다(C-10). 사건 유형은 다섯이다 — START(시작)·STOP(중단)·RESUME(재개)·END(종료)·CONTROL_OVERRIDE(통제 우회). ⭐ 이 오퍼레이션으로 단말이 적재하는 것은 구간 «안의» 사건인 STOP·RESUME 뿐이다. 구간의 «경계»(START·END)와 통제 우회는 세션을 열고 닫는 오퍼레이션이 같은 트랜잭션으로 만든다 — 따로 보내지 않는다. 유형별로 reasonCode 에 어느 코드 그룹을 쓰는지는 공유계약 A-25 가 정한다. ⭐ P-02-01(작업 시작) 의 [재개] 도 이 경로다 — 중단된 W/O 를 재개할 때 새 세션을 열지 않고 같은 세션에 RESUME 을 적재한다(P-02-01 §5-4 · 공유계약 G-16 보완). ⛔ /production/work-orders/{workOrderId}:resume 를 부르지 않는다. 근거: P-02-10 §5-2 · 공유계약 C-12
          */
         post: {
             parameters: {
@@ -21044,7 +21347,7 @@ export interface paths {
         };
         /**
          * 검사 결과 목록
-         * @description 재검 사슬을 previousResultId 로 잇는다 — 숨기지 않고 들여쓰기로 보인다. 근거: W-03-05 §5-3 ⛔ inspectionRequestId 도 기간(inspectedFrom·inspectedTo)도 없으면 400 이다 — 둘 중 하나로 반드시 유계여야 한다(공유계약 L-3 · omf-mes#170).
+         * @description 재검 사슬을 previousResultId 로 잇는다 — 숨기지 않고 들여쓰기로 보인다. finalRoundOnly=false 면 page/size/total 은 뿌리 결과(1회차) 기준으로 세고, 사슬 전체가 뿌리와 같은 페이지에 동거한다 — 부모·자식이 페이지로 갈리지 않는다. 정렬은 뿌리 기준, 사슬 안은 회차 순이다. 사슬이 한 페이지에 온전히 있으므로 previousResultId 만으로 들여쓰기가 가능해 별도 rootResultId·depth 는 내리지 않는다. 근거: W-03-05 §5-3 · omf-mes#192 문4. ⛔ inspectionRequestId 도 기간(inspectedFrom·inspectedTo)도 없으면 400 이다 — 둘 중 하나로 반드시 유계여야 한다(공유계약 L-3 · omf-mes#170).
          */
         get: {
             parameters: {
@@ -22596,6 +22899,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/logistics/shipment-requests/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 출하작업지시 요약
+         * @description W-04-02 요약 구획(작업지시 건수·요청/배정/출하 합계·미배정·검사 대기·피킹 미완) — 필터 전체 기준. 목록(GET /logistics/shipment-requests)과 같은 필터를 쓰되 page/size/sort 는 없다. ⛔ 화면이 페이지를 모아 더하지 않는다 — 필터 전체와 다른 수가 나온다(공유계약 L-2). 근거: W-04-02 §4-B · omf-mes#232
+         */
+        get: {
+            parameters: {
+                query?: {
+                    customerId?: number;
+                    shipToPartnerId?: number;
+                    statusCode?: string;
+                    /** @description 검사 상태 필터 */
+                    shippingInspectionRequired?: boolean;
+                    /** @description 필수 — 공유계약 L-3. 목록과 같은 기준을 쓴다 */
+                    shipDateFrom?: string;
+                    shipDateTo?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 요약 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShipmentRequestSummary"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/logistics/shipment-requests/{shipmentRequestId}": {
         parameters: {
             query?: never;
@@ -22642,6 +22993,93 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/shipment-requests/{shipmentRequestId}/lines/{shipmentRequestLineId}:pick": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 제품 LOT 피킹 확정
+         * @description 현장이 집은 제품 LOT 과 수량을 이 라인에 기록한다. ⭐ 화면이 예약을 직접 쓰지 않는다 — 서버가 이 피킹의 결과로 inventory_reservation 을 걸고 푼다(01 자재창고 계약 · M-01-08 §5-5 와 같은 규약). 자재 피킹의 :pick 과 대칭이다. ⛔ 오프라인 대상이 아니다 — Release 판정값을 캐시할 수 없어 이 화면은 온라인에서만 돈다(공유계약 C-6 · M-04-01 §5-6). 권장 외 LOT 을 집어도 막지 않는다 — 경고 후 통과이고 사유는 남기지 않는다(M-04-01 §5-5). 근거: M-04-01 §5-7
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
+                };
+                path: {
+                    shipmentRequestId: number;
+                    shipmentRequestLineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ShipmentLinePick"];
+                };
+            };
+            responses: {
+                /** @description 피킹됨 — 갱신된 라인 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShipmentRequestLine"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 라인이 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 — LOT 이 Hold 이거나 가용이 모자라거나 배정을 넘는다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShipmentConflictResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -25568,11 +26006,11 @@ export interface components {
              */
             isExternal: boolean;
             /**
-             * Format: int64
-             * @description ck_external_warehouse_partner — isExternal 이 참이면 필수
-             * @example 1001
+             * @description 불량창고 여부. isExternal 을 대체하지 않고 보완한다 — 창고 유형(자재·제품·반제품·상품·생산) 축과 별개로, 불량은 자재 불량창고도 제품 불량창고도 받을 수 있는 세 번째(품질) 축이다. W-01-06 §3의 창고 선택이 isDefect=true 로 걸러진다. 근거: DR-012 확정 3-C(2026-08-13) · 공유계약 §I-42 · omf-mes#147
+             * @default false
+             * @example false
              */
-            partnerId?: number | null;
+            isDefect: boolean;
             /**
              * @default true
              * @example true
@@ -25609,6 +26047,12 @@ export interface components {
              */
             isExternal: boolean;
             /**
+             * @description 불량창고 여부. 근거: DR-012 확정 3-C · omf-mes#147
+             * @default false
+             * @example false
+             */
+            isDefect: boolean;
+            /**
              * Format: int64
              * @description ck_external_warehouse_partner — isExternal 이 참이면 필수
              * @example 1001
@@ -25635,6 +26079,11 @@ export interface components {
             managementLevelCode: string;
             /** @example false */
             isExternal: boolean;
+            /**
+             * @description 불량창고 여부. 근거: DR-012 확정 3-C · omf-mes#147
+             * @example false
+             */
+            isDefect: boolean;
             /**
              * Format: int64
              * @description ck_external_warehouse_partner — isExternal 이 참이면 필수
@@ -28155,7 +28604,11 @@ export interface components {
              */
             expiresAt?: string;
         };
-        /** @description 이 단말에서 이 공정의 무엇을 열어 둘 것인가. ⭐ 이것은 «인증이 아니라 기능 구성»이다 — 오조작을 막는 것이지 보안 경계가 아니다. 보안 경계는 단말 토큰 하나뿐이다. 근거: P-CO-01 §5-1 */
+        /**
+         * @description 이 단말에서 이 공정의 무엇을 열어 둘 것인가. ⭐ 이것은 «인증이 아니라 기능 구성»이다 — 오조작을 막는 것이지 보안 경계가 아니다. 보안 경계는 단말 토큰 하나뿐이다. 근거: P-CO-01 §5-1
+         *
+         *     ⛔ 적용 범위 = 생산·품질 단말이다. 창고 전용 단말은 이 표에서 공정 행 0건으로 남는 것이 정상이다 — 게이팅해도 어느 단말에서 했는지 기록될 곳이 없다. 근거: 공유계약 F-1 · W-CO-06 §5-1
+         */
         TerminalProcess: {
             /**
              * Format: int64
@@ -28165,45 +28618,45 @@ export interface components {
             /** @example 사출 */
             processName?: string;
             /**
-             * @description 입고 스캔을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @description 작업 시작을 이 단말에서 할 수 있나. 기본은 닫힘이다
              * @example false
              */
-            canScanIn?: boolean;
+            canStartWork?: boolean;
             /**
-             * @description 출고 스캔을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @description 작업 완료를 이 단말에서 할 수 있나. 기본은 닫힘이다
              * @example false
              */
-            canScanOut?: boolean;
+            canCompleteWork?: boolean;
             /**
-             * @description 실적 등록을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @description 자재 투입을 이 단말에서 할 수 있나. 기본은 닫힘이다
              * @example false
              */
-            canRegisterResult?: boolean;
+            canInputMaterial?: boolean;
+            /**
+             * @description 실적 입력을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @example false
+             */
+            canInputResult?: boolean;
             /**
              * @description 검사 입력을 이 단말에서 할 수 있나. 기본은 닫힘이다
              * @example false
              */
-            canInspect?: boolean;
+            canInputInspection?: boolean;
             /**
              * @description 라벨 발행을 이 단말에서 할 수 있나. 기본은 닫힘이다
              * @example false
              */
             canPrintLabel?: boolean;
             /**
-             * @description 재고 이동을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @description 투입 취소를 이 단말에서 할 수 있나. 기본은 닫힘이다
              * @example false
              */
-            canMoveStock?: boolean;
+            canCancelInput?: boolean;
             /**
-             * @description 작업 중단 등록을 이 단말에서 할 수 있나. 기본은 닫힘이다
+             * @description 자재 반납을 이 단말에서 할 수 있나. 기본은 닫힘이다
              * @example false
              */
-            canHold?: boolean;
-            /**
-             * @description 현장 승인을 이 단말에서 할 수 있나. 기본은 닫힘이다
-             * @example false
-             */
-            canApprove?: boolean;
+            canReturnMaterial?: boolean;
         };
         /** @description 단말 하나의 공정 구성을 통째로 바꾼다 — 화면의 저장이 단말 단위 한 트랜잭션이기 때문이다. 빠진 공정은 지워진다. 근거: W-CO-06 §5-3 */
         TerminalProcessReplace: {
@@ -28216,21 +28669,21 @@ export interface components {
              */
             processId: number;
             /** @example false */
-            canScanIn?: boolean;
+            canStartWork?: boolean;
             /** @example false */
-            canScanOut?: boolean;
+            canCompleteWork?: boolean;
             /** @example false */
-            canRegisterResult?: boolean;
+            canInputMaterial?: boolean;
             /** @example false */
-            canInspect?: boolean;
+            canInputResult?: boolean;
+            /** @example false */
+            canInputInspection?: boolean;
             /** @example false */
             canPrintLabel?: boolean;
             /** @example false */
-            canMoveStock?: boolean;
+            canCancelInput?: boolean;
             /** @example false */
-            canHold?: boolean;
-            /** @example false */
-            canApprove?: boolean;
+            canReturnMaterial?: boolean;
         };
         /** @description 창고 도면 한 장과 그 위에 찍은 위치 점들. 근거: W-CO-08 §5 */
         WarehouseLayout: {
@@ -31513,8 +31966,8 @@ export interface components {
              */
             lotId: number;
             /**
-             * @description 공장 안에서 유일하다
-             * @example LOT-2026-000045
+             * @description 공장 안에서 유일하다. 자재 LOT 은 34자리·전부 숫자다(MLOT #16)
+             * @example 0001234500000012002607310001230007
              */
             lotNo: string;
             /**
@@ -31561,10 +32014,15 @@ export interface components {
              */
             sourceId: number;
             /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example HOLD
+             * @description 품질 판정 축 — 정상·불량·검사 대기·폐기(공유계약 G-2 표기: NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다. ⚠ 보류 건의 진행 상태(lot_hold.status_code)·생산LOT 생명주기(lifecycleStatusCode)와는 다른 축이다. 근거: 회신 E-3 종결 2026-08-07 · 공유계약 §I-32 · omf-mes#227
+             * @example NORMAL
              */
             statusCode: string;
+            /**
+             * @description ⭐ 생명주기 축(대기·활성·폐번 — 영문 표기 미정, 후보 WAITING·ACTIVE·VOIDED) — statusCode(품질 판정)와는 다른 축이다. 생산LOT 선발행(W-02-04)에서만 쓴다 — 대기: 번호 슬롯만 예약(R26 「완료 전 실물 미귀속」) · 활성: 실적이 붙어 실물에 귀속 · 폐번: 마감 시 미달 슬롯 자동 폐번(R27). 자재·제품 LOT 은 null. ⛔ 물리 컬럼 신설 대상 — 값 목록도 함께 확정 필요. 근거: 02-SW설계사양서 §4.6 · W-02-04 §5-3 · W-02-05 §5-3 · omf-mes#46
+             * @example WAITING
+             */
+            lifecycleStatusCode?: string | null;
             /**
              * Format: int64
              * @description 분할 조회 편의용 표시 값. 계보의 원천은 아니다
@@ -31606,8 +32064,23 @@ export interface components {
         };
         /** @description LOT 등록. 스캔한 값이 그대로 번호가 되며, 같은 공장에 같은 번호가 있으면 409 가 아니라 400 으로 막는다. 근거: M-01-02 */
         LotCreate: {
-            /** @example LOT-2026-000045 */
-            lotNo: string;
+            /**
+             * @description 번호를 누가 매기는가. ⛔ 이 한 경로가 두 업무를 받으므로 화면이 반드시 밝힌다.
+             *
+             *     SUPPLIER = 사전부착. 공급사가 MES 표준 양식대로 부여한 번호를 스캔해 수용한다. lotNo 가 필수이고, 같은 공장에 같은 번호가 있으면 400 이다 — 스캔값이 틀린 것이므로 사람이 고쳐야 풀린다.
+             *
+             *     MES = 미부착. 서버가 채번한다. lotNo 를 주면 400 이다 — 빈 값이 조용히 서버 채번으로 흘러가는 것을 막기 위해 「안 준 것」과 「못 정한 것」을 가르지 않고 «누가 매기는가»를 직접 받는다(공유계약 G-9 의 계약 판).
+             *
+             *     근거: MLOT #4(발번 경로 이원화 ✓확정 2026-07-20) · M-01-02 §5-1 · P-01-01 §1
+             * @example SUPPLIER
+             * @enum {string}
+             */
+            numberSourceCode: "SUPPLIER" | "MES";
+            /**
+             * @description numberSourceCode = SUPPLIER 일 때만 준다. ⚠ 자재 LOT 은 34자리·전부 숫자·구분문자 없음이다(제품코드9 · 수량 스냅샷9 · 날짜6 YYMMDD · 공급사 성분6 · 번호4 — MLOT #16 ✓확정 2026-07-27). 자릿수·숫자 검증은 화면이 한다 — DB 에 제약이 없다(M-01-02 §4-1). 생산 LOT 의 패턴 문자열은 미정이다.
+             * @example 0001234500000012002607310001230007
+             */
+            lotNo?: string;
             /**
              * Format: int64
              * @example 1001
@@ -32761,6 +33234,11 @@ export interface components {
              * @example IN_TRANSIT
              */
             statusCode: string;
+            /**
+             * @description 불량 반출·분실 사유. ⛔ 물리 모델에 아직 없다 — 같은 성격의 putaway_task(적치 사유)는 이미 있는데 이 테이블만 없다. 근거: 공유계약 §I-41 · omf-mes#84
+             * @example 값
+             */
+            reasonCode?: string | null;
         };
         /** @description 도착 확정. 반출한 수량 이하만 받을 수 있다. 근거: M-01-10 §5-6 */
         StockTransferArrive: {
@@ -33728,11 +34206,11 @@ export interface components {
              */
             operationPolicyId: number;
             /**
-             * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). 코드는 화면이 붙인다 — 사용자가 만들지 않는다
+             * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다
              * @example SHOT_CONVERSION_RATIO
              * @enum {string}
              */
-            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES";
+            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL";
             /**
              * Format: int64
              * @example 1001
@@ -33774,11 +34252,11 @@ export interface components {
         /** @description 값 칸은 셋 중 하나만 쓴다. 물리 제약은 「셋 중 하나 이상」이라 셋 다 채워도 통과하지만, 어느 칸을 쓰는지는 정책 코드가 정한다 — 쓰지 않는 칸을 채우면 읽는 쪽이 헷갈린다. 범위 축은 넷 다 비울 수 있고 비면 전체를 뜻한다. 여럿이 동시에 맞으면 더 좁은 것이 이기며 축 우선순위는 품목 · 공정 · 공장 · 사업부 차례다. 이 판정은 서버가 하고 화면은 effective 경로로 결과를 받는다 */
         OperationPolicyCreate: {
             /**
-             * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). 코드는 화면이 붙인다 — 사용자가 만들지 않는다
+             * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다
              * @example SHOT_CONVERSION_RATIO
              * @enum {string}
              */
-            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES";
+            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL";
             /**
              * Format: int64
              * @example 1001
@@ -33843,7 +34321,7 @@ export interface components {
              * @example SHOT_CONVERSION_RATIO
              * @enum {string}
              */
-            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES";
+            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL";
             /**
              * @description 거짓이면 맞는 정책이 없다. 화면은 기본값을 지어내 그리지 않고 「적용 정책 없음」으로 밝힌다
              * @example true
@@ -34023,8 +34501,11 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example 값 */
-            consumptionTypeCode: string;
+            /**
+             * @description 투입 유형이며 물리 컬럼은 production.material_consumption.consumption_type_code 다. 보내지 않으면 서버가 기본 투입 유형으로 기록한다 — 화면이 값을 지어내지 않는다. 값 목록은 아직 확정 전이고, 확정 전에는 이 칸을 보내지 않는다.
+             * @example 값
+             */
+            consumptionTypeCode?: string;
             /**
              * Format: int64
              * @example 1001
@@ -34065,16 +34546,6 @@ export interface components {
             occurredAt: string;
             /** @example 값 */
             lateEntryReasonCode?: string;
-            /**
-             * Format: int64
-             * @example 1001
-             */
-            workerId: number;
-            /**
-             * Format: int64
-             * @example 1001
-             */
-            terminalId: number;
             /** @example 값 */
             remarks?: string;
         };
@@ -34233,6 +34704,216 @@ export interface components {
              * @example 1001
              */
             uomId: number;
+        };
+        /** @description 작업 전 점검 통제 게이트의 판정 1건. P-02-02 §5-8 이 정의했다 */
+        PrecheckDecision: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            precheckDecisionId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            workOrderId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            equipmentId: number;
+            /**
+             * Format: date-time
+             * @description 단말 시계가 정한다. 서버 수신 시각으로 덮지 않는다. 근거: 공유계약 C-12
+             * @example 2026-08-11T09:12:00+09:00
+             */
+            decidedAt: string;
+            /**
+             * @description 판정 시점에 적용된 통제 수준의 스냅샷. app.operation_policy 의 PRECHECK_CONTROL_LEVEL 을 읽은 값이다 — 정책이 나중에 바뀌어도 이 기록은 바뀌지 않는다
+             * @example WARN
+             * @enum {string}
+             */
+            controlLevelCode: "BLOCK" | "WARN" | "OFF";
+            /**
+             * @description PASSED = 통과 · BLOCKED = 차단 · WARNED = 경고 후 진행 · OVERRIDDEN = 긴급 W/O 우회
+             * @example PASSED
+             * @enum {string}
+             */
+            decisionCode: "PASSED" | "BLOCKED" | "WARNED" | "OVERRIDDEN";
+            /**
+             * Format: int64
+             * @description ⚠ 비어도 된다 — 점검 이력이 없는 채로 판정한 경우 비운다(P-02-02 §5-8)
+             * @example 1001
+             */
+            basisInspectionId?: number | null;
+            /**
+             * @description ⚠ decisionCode 가 OVERRIDDEN 일 때만 값이 있다
+             * @example EMERGENCY_WORK_ORDER
+             */
+            overrideReasonCode?: string | null;
+            /**
+             * @description 판정 시점의 귀속 사번. 쓰기 요청의 X-Worker-No 를 서버가 옮겨 적는다
+             * @example 100027
+             */
+            workerNo?: string | null;
+        };
+        /** @description 통제 판정 기록 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다 */
+        PrecheckDecisionCreate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            workOrderId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            equipmentId: number;
+            /**
+             * Format: date-time
+             * @description 단말 시계가 정한다. 근거: 공유계약 C-12
+             * @example 2026-08-11T09:12:00+09:00
+             */
+            decidedAt: string;
+            /**
+             * @description 화면이 읽은 통제 수준. 적용 정책이 없으면 WARN 이다(P-02-02 §6)
+             * @example WARN
+             * @enum {string}
+             */
+            controlLevelCode: "BLOCK" | "WARN" | "OFF";
+            /**
+             * @example PASSED
+             * @enum {string}
+             */
+            decisionCode: "PASSED" | "BLOCKED" | "WARNED" | "OVERRIDDEN";
+            /**
+             * Format: int64
+             * @description 근거로 삼은 점검 헤더. 이력이 없으면 비운다
+             * @example 1001
+             */
+            basisInspectionId?: number | null;
+            /**
+             * @description OVERRIDDEN 일 때만 보낸다. 자유 텍스트가 아니라 코드다
+             * @example EMERGENCY_WORK_ORDER
+             */
+            overrideReasonCode?: string | null;
+        };
+        PrecheckDecisionList: {
+            items: components["schemas"]["PrecheckDecision"][];
+            page: components["schemas"]["PageMeta"];
+        };
+        /** @description 수리 왕복 실행 1건. 투입에서 반출까지를 한 행으로 담는다. M-02-02 §4-A 가 정의했다 */
+        RepairExecution: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            repairExecutionId: number;
+            /**
+             * Format: int64
+             * @description 원 불량. 기록 전용 테이블이라 이쪽을 갱신하지 않고 여기에 쌓는다
+             * @example 1001
+             */
+            defectRecordId: number;
+            /**
+             * Format: int64
+             * @description ⚠ 비어도 된다 — 수리를 공정으로 둘지가 아직 정해지지 않았다(M-02-02 §8-5)
+             * @example 1001
+             */
+            repairProcessId?: number | null;
+            /**
+             * Format: date-time
+             * @description 투입 시각. 단말 시계가 정한다. 근거: 공유계약 C-12
+             * @example 2026-08-11T09:12:00+09:00
+             */
+            startedAt: string;
+            /**
+             * Format: date-time
+             * @description ⭐ 반출 시각. 비어 있으면 아직 수리 중이다 — 이것이 「투입 대기 목록」의 판정 축이다
+             * @example 2026-08-11T11:40:00+09:00
+             */
+            returnedAt?: string | null;
+            /**
+             * @description 수리에 투입한 수량. 0 보다 커야 한다
+             * @example 40
+             */
+            repairQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description ⚠ 반출할 때 정해진다 — 투입 시점에는 비어 있다
+             * @example SUCCEEDED
+             * @enum {string|null}
+             */
+            repairResultCode?: "SUCCEEDED" | "FAILED" | null;
+            /**
+             * Format: int64
+             * @description ⭐ 재투입 참조 필드 — 수리분이 합류한 생산LOT. 원 LOT 이 아니다(M-02-02 §5-4). 재투입 등록 화면이 나중에 채운다
+             * @example 1001
+             */
+            reintroducedLotId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            terminalId?: number | null;
+            /**
+             * @description 투입한 사람. 쓰기 요청의 X-Worker-No 를 서버가 옮겨 적는다
+             * @example 100027
+             */
+            workerNo?: string | null;
+        };
+        /** @description 수리 투입 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다 */
+        RepairExecutionCreate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            defectRecordId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            repairProcessId?: number | null;
+            /**
+             * Format: date-time
+             * @description 단말 시계가 정한다. 근거: 공유계약 C-12
+             * @example 2026-08-11T09:12:00+09:00
+             */
+            startedAt: string;
+            /** @example 40 */
+            repairQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            terminalId?: number | null;
+        };
+        /** @description 수리 반출 요청 */
+        RepairExecutionReturn: {
+            /**
+             * Format: date-time
+             * @description 단말 시계가 정한다. 근거: 공유계약 C-12
+             * @example 2026-08-11T11:40:00+09:00
+             */
+            returnedAt: string;
+            /**
+             * @example SUCCEEDED
+             * @enum {string}
+             */
+            repairResultCode: "SUCCEEDED" | "FAILED";
+        };
+        RepairExecutionList: {
+            items: components["schemas"]["RepairExecution"][];
+            page: components["schemas"]["PageMeta"];
         };
         ProductionOrder: {
             /**
@@ -34648,22 +35329,12 @@ export interface components {
              * Format: int64
              * @example 1001
              */
-            workerId: number;
-            /**
-             * Format: int64
-             * @example 1001
-             */
             equipmentId?: number;
             /**
              * Format: int64
              * @example 1001
              */
             moldId?: number;
-            /**
-             * Format: int64
-             * @example 1001
-             */
-            terminalId?: number;
             /** @description 실적↔LOT 배분은 본문에 싣는다 — 독립 경로를 두지 않는다 */
             lotAllocations?: components["schemas"]["ResultLotAllocation"][];
             /** @example 값 */
@@ -34771,6 +35442,7 @@ export interface components {
             workOrderNo: string;
             /**
              * Format: int64
+             * @description ⭐ 항상 값이 있다. 긴급 W/O(W-02-07)도 마찬가지다 — 서버가 내부 P/O 와 계획을 함께 만들어 붙이기 때문이다. ⛔ 「계획이 없을 수 있다」를 전제로 분기하지 않는다(W-02-07 §5-2 ①안).
              * @example 1001
              */
             productionPlanId: number;
@@ -34883,8 +35555,8 @@ export interface components {
              */
             operationSettingsSnapshot?: Record<string, never>;
             /**
-             * @description 편성 → 확정 → 배포 → 진행 → 완료 → 마감. 중단↕재개 반복. 취소가 값으로 붙는다. 근거: ✓설계확정 결정 14 · 예외 E-4 ④
-             * @example NORMAL
+             * @description 편성 → 확정 → 배포 → 진행 → 완료 → 마감. 중단↕재개 반복. 취소가 값으로 붙는다. ⚠ 진행불가(자원 유효성 NG — 해소되면 배포로 복귀)도 결정 14 그래프의 노드다(W-02-03 §5 · W-02-04 §5 가 쓴다). ⚠ 코드 문자열은 아직 확정되지 않았다 — 뜻과 식별자는 다른 산출물이다(공유계약 G-32 v3.4). ⛔ 화면이 이 값을 로직에 흩어 박지 않는다 — 한 곳에 모아 두고 그 한 곳만 참조한다(omf-mes#247). 근거: ✓설계확정 결정 14 · 예외 E-4 ④
+             * @example 값
              */
             statusCode: string;
             /**
@@ -34936,9 +35608,10 @@ export interface components {
         WorkOrderCreate: {
             /**
              * Format: int64
+             * @description ⚠ 긴급 W/O(W-02-07)는 비우고 부른다 — 서버가 내부 P/O(erp_order_no 없음)와 생산 계획을 한 트랜잭션으로 만들어 붙인다(공유계약 B-8). 전개 경로에서는 이 경로 자체를 쓰지 않는다.
              * @example 1001
              */
-            productionPlanId: number;
+            productionPlanId?: number | null;
             /**
              * Format: int64
              * @example 1001
@@ -35166,11 +35839,6 @@ export interface components {
              * @example 1001
              */
             moldId?: number;
-            /**
-             * Format: int64
-             * @example 1001
-             */
-            terminalId: number;
             /**
              * Format: date-time
              * @description 단말 시계가 정한다. 서버 수신 시각으로 덮지 않는다. 근거: 공유계약 C-12
@@ -36208,13 +36876,13 @@ export interface components {
             /** @example 값 */
             reasonCode: string;
             /**
-             * @description targetLotStatusCode 가 보류이면 필수, 불량(Hold)이면 받지 않는다.
+             * @description targetLotStatusCode 가 INSPECTION_PENDING(검사 대기)이면 필수, DEFECTIVE(불량)면 받지 않는다.
              * @example 값
              */
             releaseCondition?: string;
             /**
-             * @description ⭐ 도착 상태. 의심자재 등록(C10)은 보류, 클레임·리콜 재Hold(C9)는 불량이다. 두 화면이 같은 행을 만들고 도착 상태만 다르다.
-             * @example NORMAL
+             * @description ⭐ 도착 상태. 의심자재 등록(C10)은 INSPECTION_PENDING(검사 대기), 클레임·리콜 재Hold(C9)는 DEFECTIVE(불량)다. 두 화면이 같은 행을 만들고 도착 상태만 다르다. 「보류」는 lot.status_code 축에 없는 값이다 — Hold(보류 «문서»의 진행 상태)는 lot_hold.status_code 가 별도로 갖고 서버가 자동으로 채운다(공유계약 §I-32 · omf-mes#227).
+             * @example INSPECTION_PENDING
              */
             targetLotStatusCode: string;
             /** @example 값 */
@@ -36550,6 +37218,11 @@ export interface components {
              *     ]
              */
             outOfSpecValues?: string[];
+            /**
+             * @description 규격 밖 측정값 «전체» 건수 — outOfSpecValues(최대 10건 예시)와 별개로 서버가 낸다. 화면의 「외 N건」은 이 값에서 outOfSpecValues.length 를 뺀 수다. ⛔ rejectedCount 로 역산하지 않는다 — 규격 밖이어도 자동 불합격이 아니라(사람이 판정) 두 집합이 같다고 보장되지 않는다. 근거: omf-mes#228
+             * @example 2
+             */
+            outOfSpecTotalCount: number;
             /**
              * @description 측정 장비 표시명
              * @example 캘리퍼 CAL-03
@@ -37087,9 +37760,60 @@ export interface components {
             requestedShipDate: string;
             /** @example 값 */
             statusCode: string;
+            /**
+             * @description ⭐ W-04-02 「검사」 열의 판정 근거 — 라인 전체(shippingInspectionRequired + 03 품질 inspection-results)를 서버가 롤업해 하나로 낸다. NOT_REQUIRED=대상 라인 없음(「—」) · PENDING=대상인데 결과 없음(「● 대기」) · PASSED=전 대상 라인 합격(「✅ 합격」) · REJECTED=불합격 라인 존재(「⛔ 불합격」) · HELD=보류 라인 존재, 불합격 없음(「⚠ 보류」). ⭐ 롤업 우선순위(가장 나쁜 것이 이긴다): REJECTED > HELD > PENDING > PASSED > NOT_REQUIRED. ⛔ 화면이 라인을 순회해 판정하지 않는다(공유계약 G-8과 같은 결 — W-04-02 §5-3) — 03 계약과의 조인은 서버 몫이다. ⚠ 이 필드를 이미 소비 중인 코드는 PASSED 외 값을 몰라도 PENDING과 동일하게(대기 취급) 두면 당장은 안전하다. 근거: W-04-02 §5-3·§5-4 · omf-mes#232 · omf-mes#235
+             * @example PENDING
+             * @enum {string}
+             */
+            shippingInspectionStatusCode: "NOT_REQUIRED" | "PENDING" | "PASSED" | "REJECTED" | "HELD";
             lines?: components["schemas"]["ShipmentRequestLine"][];
             /** @example 1 */
             versionNo?: number;
+        };
+        /** @description W-04-02 요약 구획 — 필터 전체 기준(목록 페이지와 다른 모집단). 근거: W-04-02 §4-B · omf-mes#232 */
+        ShipmentRequestSummary: {
+            /**
+             * @description 필터 전체 기준 작업지시 건수
+             * @example 24
+             */
+            requestCount: number;
+            /**
+             * Format: double
+             * @example 12400
+             */
+            requestedQtyTotal: number;
+            /**
+             * Format: double
+             * @example 11900
+             */
+            allocatedQtyTotal: number;
+            /**
+             * Format: double
+             * @example 3200
+             */
+            shippedQtyTotal: number;
+            /**
+             * Format: double
+             * @description 요청 − 배정. ⭐ 서버가 계산한다(공유계약 L-2) — 화면이 requestedQtyTotal·allocatedQtyTotal 을 받아 다시 빼지 않는다
+             * @example 500
+             */
+            unallocatedQtyTotal: number;
+            /**
+             * @description shippingInspectionStatusCode=PENDING 인 작업지시 건수
+             * @example 4
+             */
+            pendingInspectionCount: number;
+            /**
+             * @description 피킹이 끝나지 않은 작업지시 건수
+             * @example 9
+             */
+            incompletePickingCount: number;
+            /**
+             * Format: date-time
+             * @description 서버 집계 기준 시각(공유계약 L-5) — 화면 헤더 「기준 …」에 쓴다
+             * @example 2026-08-07T14:32:00+09:00
+             */
+            asOf: string;
         };
         /** @description 편성. 라인 1건 이상이고 배정 수량이 1 이상이어야 한다(W-04-01 §5-7). ⛔ 편성 취소를 두지 않는다 — 출하작업지시 취소는 범위 밖이다 */
         ShipmentRequestCreate: {
@@ -37146,6 +37870,11 @@ export interface components {
              * @example 120
              */
             allocatedQty: number;
+            /**
+             * @description 누적 피킹 수량. ⭐ 서버가 유지한다 — 화면이 더하지 않는다(공유계약 L-2). 배정 잔여 = allocatedQty − pickedQty
+             * @example 120
+             */
+            pickedQty: number;
             /**
              * Format: double
              * @example 120
@@ -37225,6 +37954,25 @@ export interface components {
              * @enum {string}
              */
             conflictCause?: "user" | "erpSync" | "workerLease";
+        };
+        /** @description 피킹 확정 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다 */
+        ShipmentLinePick: {
+            /**
+             * Format: int64
+             * @description 현장이 실제로 집은 제품 LOT. 권장 1순위가 아니어도 된다
+             * @example 1001
+             */
+            lotId: number;
+            /**
+             * @description 이번에 집은 수량. 0 보다 커야 한다
+             * @example 180
+             */
+            pickedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
         };
         InspectionLine: {
             /**

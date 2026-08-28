@@ -2,32 +2,48 @@ import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import type { TerminalGate } from './terminal-gating';
+
 const t = messages.materialInputScan;
 
 export interface ConfirmPanelProps {
   hasMaterials: boolean;
+  gate: TerminalGate;
 }
 
 /**
  * 투입 확정 구획.
  *
- * ⛔ **이번 회차에는 누를 수 없다. 그리고 그것이 결함이 아니다.**
+ * **잠그는 이유가 둘이고 순서가 뜻을 정한다.**
  *
- * 계약이 요구하는 쓰기 본문의 필수 아홉 중 셋을 화면이 채울 근거가 없다 — 투입 유형의 값이
- * 정해지지 않았고, 작업자·단말을 아는 자리가 이 저장소에 아직 없다. 값을 지어 넣으면 **되돌릴
- * 수 없는 기록**에 설계가 승인한 적 없는 값이 남는다(정정이 아니라 새 기록으로만 고칠 수 있다).
+ * 1. **게이팅** — 이 단말이 이 공정에서 투입할 수 있는가(스펙 §5-1). 앞에 둔다: 담기 전에 이미
+ *    정해지는 사정이라, 뒤에 두면 자재를 다 담은 작업자가 그제서야 막힌 것을 안다
+ * 2. **담은 것이 없음** — 담으면 풀린다
  *
- * 그래서 **「비활성 + 사유 표시」**를 택했다 — 버튼을 감추지 않는 이유는, 없으면 작업자가
- * 「이 화면은 투입을 못 하는 화면」으로 읽고 다른 길을 찾기 때문이다. 자리는 서 있고 왜 잠겼는지
- * 말한다.
+ * ⛔ **게이팅의 갈래를 한 문장으로 합치지 않는다**(공유계약 F-6). 「권한이 없다」·「확인할 수
+ * 없다」·「단말을 모른다」는 작업자가 할 일이 다르다. 특히 **「확인할 수 없다」에는 다시 시도할
+ * 경로를 준다**(G-3) — 그것만이 작업자가 스스로 풀 수 있는 갈래다.
  *
- * ⚠ **사유가 둘이고 순서가 뜻을 정한다.** 아직 열리지 않았다는 사정이 앞이다 — 뒤에 두면
- * 자재를 담은 작업자가 「담으면 누를 수 있습니다」를 읽고도 잠긴 버튼을 본다.
+ * ⛔ **화면의 잠금은 방어가 아니다.** 집행은 서버가 한다(쓰기의 403) — 오프라인 큐로 들어온
+ * 투입은 이 화면을 지나지 않기 때문이다.
  */
-export const ConfirmPanel = ({ hasMaterials }: ConfirmPanelProps) => {
+export const ConfirmPanel = ({ hasMaterials, gate }: ConfirmPanelProps) => {
   const reasonId = useId();
 
-  const reason = hasMaterials ? t.confirm.reasons.notReady : t.confirm.reasons.nothingScanned;
+  const blockReason = ((): string | undefined => {
+    switch (gate.verdict) {
+      case 'denied':
+        return t.confirm.reasons.denied;
+      case 'unavailable':
+        return t.confirm.reasons.unavailable;
+      case 'unidentified':
+        return t.confirm.reasons.unidentified;
+      case 'checking':
+        return t.confirm.reasons.checking;
+      case 'allowed':
+        return hasMaterials ? undefined : t.confirm.reasons.nothingScanned;
+    }
+  })();
 
   return (
     <div className="confirm-row">
@@ -39,14 +55,24 @@ export const ConfirmPanel = ({ hasMaterials }: ConfirmPanelProps) => {
         variant="filled"
         size="xl"
         className="pop-touch-target"
-        disabled
-        aria-describedby={reasonId}
+        disabled={blockReason !== undefined}
+        aria-describedby={blockReason === undefined ? undefined : reasonId}
       >
         {t.confirm.action}
       </Button>
-      <span id={reasonId} className="field-note">
-        {reason}
-      </span>
+
+      {blockReason !== undefined && (
+        <span id={reasonId} className="field-note">
+          {blockReason}
+        </span>
+      )}
+
+      {/* 다시 시도가 뜻이 있는 갈래는 하나뿐이다 — 조회가 실패했을 때. */}
+      {gate.verdict === 'unavailable' && (
+        <Button variant="outlined" size="sm" onClick={gate.retry}>
+          {t.confirm.retry}
+        </Button>
+      )}
     </div>
   );
 };

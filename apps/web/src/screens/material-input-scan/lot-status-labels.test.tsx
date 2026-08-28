@@ -161,6 +161,6 @@ describe('자재 상태 표시명', () => {
     await scanOnce(user);
 
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    expect(screen.getByText(t.confirm.reasons.notReady)).toBeTruthy();
+    expect(screen.getByText(t.confirm.reasons.unidentified)).toBeTruthy();
   });
 });

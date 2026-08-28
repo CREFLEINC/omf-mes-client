@@ -20,6 +20,18 @@ const RECEIPTS_PATH = '/logistics/shopfloor-receipts';
 const LOTS_PATH = '/trace/lots';
 const MOLDS_PATH = '/mdm/molds';
 const CODE_VALUES_PATH = '/mdm/code-values';
+const TERMINAL_ID = 7901;
+const PROCESS_ID = 7902;
+const TERMINAL_PROCESSES_PATH = `/mdm/terminals/${String(TERMINAL_ID)}/processes`;
+
+/** 단말·공정까지 실린 주소 — 게이팅이 판정할 수 있는 상태다. */
+const GATED_ROUTE = `${ROUTE}&terminalId=${String(TERMINAL_ID)}&processId=${String(PROCESS_ID)}`;
+
+/** 이 단말·공정에서 자재 투입이 열려 있는가. */
+const gateRoute = (canInputMaterial: boolean): StubRoute => ({
+  match: (request) => isGet(request, TERMINAL_PROCESSES_PATH),
+  respond: () => jsonResponse({ items: [{ processId: PROCESS_ID, canInputMaterial }] }),
+});
 
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
@@ -84,7 +96,7 @@ interface RecordedRequest {
   url: URL;
 }
 
-const renderScreen = (routes: StubRoute[]) => {
+const renderScreen = (routes: StubRoute[], route = ROUTE) => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch([...receiptRoutes(), ...routes]);
   const fetch: StubFetch = async (request) => {
@@ -93,7 +105,7 @@ const renderScreen = (routes: StubRoute[]) => {
     return stub(request);
   };
 
-  return { ...renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE }), requests };
+  return { ...renderWithProviders(<MaterialInputScanScreen />, { fetch, route }), requests };
 };
 
 /** 스캔 칸에 코드를 넣고 Enter로 확정한다 — 스캐너가 하는 것과 같은 순서다. */
@@ -471,16 +483,20 @@ describe('MaterialInputScanScreen — 터치 타겟', () => {
 describe('MaterialInputScanScreen — 금형 타발수', () => {
   it('타발수를 보이고 넘었으면 경고한다 — 다만 막지 않는다', async () => {
     const user = userEvent.setup();
-    renderScreen([
-      lotsRoute([]),
-      moldsRoute([mold({ currentShotCount: 50000, availableShotCount: 0 })]),
-    ]);
+    renderScreen(
+      [
+        lotsRoute([]),
+        moldsRoute([mold({ currentShotCount: 50000, availableShotCount: 0 })]),
+        gateRoute(true),
+      ],
+      GATED_ROUTE,
+    );
 
     await scanCode(user, 'SAMPLE-MLD-01');
 
     expect(await screen.findByText(t.scanned.shotCountExceeded)).toBeTruthy();
     /* 경고는 떴는데 「투입 확정」이 그 때문에 잠기지는 않는다 — 잠긴 사유가 다른 것이어야 한다. */
-    expect(screen.getByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
+    expect(await screen.findByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
   });
 
   /* 적정 타수가 없으면 남은 타수를 낼 수 없다. 0으로 채우면 한도를 넘은 금형으로 보인다. */
@@ -499,36 +515,135 @@ describe('MaterialInputScanScreen — 금형 타발수', () => {
   });
 });
 
-describe('MaterialInputScanScreen — 투입 확정', () => {
+describe('MaterialInputScanScreen — 단말 게이팅', () => {
   /*
-   * ⭐ **누를 수 없는 것이 이번 회차의 의도다.** 계약 필수 본문 셋을 채울 근거가 없어
-   * 쓰기를 만들지 않았다. 이 감지기가 무너지면 값을 지어낸 쓰기가 조용히 들어온 것이다.
+   * ⛔ **「판정할 수 없음」을 「통과」로 처리하지 않는다**(공유계약 F-6). 아래 넷은 작업자가
+   * 할 일이 다르므로 문장이 갈려야 한다 — 합치면 열린 단말에서 관리자를 찾아가고, 막힌
+   * 단말에서 되읽기를 반복한다.
    */
-  it('언제나 잠겨 있고 그 사유를 밝힌다', async () => {
-    const user = userEvent.setup();
+  it('단말을 모르면 막고 그 사실을 말한다', async () => {
     renderScreen([lotsRoute([lot()])]);
 
-    const button = screen.getByRole('button', { name: t.confirm.action });
-    expect(button).toHaveProperty('disabled', true);
-    expect(screen.getByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByText(t.confirm.reasons.unidentified)).toBeTruthy();
+  });
 
+  it('권한이 닫혀 있으면 막고 관리자를 가리킨다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()]), gateRoute(false)], GATED_ROUTE);
+
+    expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
+
+    /* 담아도 사유가 바뀌지 않는다 — 담는 것으로 풀리는 문제가 아니다. */
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
-    /* 담은 뒤에는 사유가 바뀐다 — 「담으면 열린다」고 읽히면 작업자가 계속 담는다. */
-    expect(screen.getByText(t.confirm.reasons.notReady)).toBeTruthy();
+    expect(screen.getByText(t.confirm.reasons.denied)).toBeTruthy();
   });
 
-  /* 쓰기를 만들지 않았다는 것은 **요청이 한 건도 나가지 않는다**는 뜻이다. */
-  it('쓰기 요청이 한 건도 나가지 않는다', async () => {
+  /*
+   * ⭐ 조회가 실패한 것과 권한이 없는 것은 **다른 사실**이다. 앞은 작업자가 다시 시도해 스스로
+   * 풀 수 있고 뒤는 그럴 수 없다 — 그래서 이 갈래에만 다시 시도할 경로를 준다(G-3).
+   */
+  it('권한을 확인하지 못하면 「확인할 수 없다」고 말하고 다시 시도할 길을 준다', async () => {
+    renderScreen(
+      [
+        lotsRoute([lot()]),
+        {
+          match: (request) => isGet(request, TERMINAL_PROCESSES_PATH),
+          respond: () => new Response(null, { status: 500 }),
+        },
+      ],
+      GATED_ROUTE,
+    );
+
+    expect(await screen.findByText(t.confirm.reasons.unavailable)).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.confirm.retry })).toBeTruthy();
+    expect(screen.queryByText(t.confirm.reasons.denied)).toBeNull();
+  });
+
+  /*
+   * ⭐ **구성되지 않은 공정은 열려 있지 않다.** 계약이 「기본은 닫힘」이라 적었다 — 이 단말의
+   * 구성에 그 공정 행이 아예 없으면 「없으니 통과」가 아니라 「닫혀 있다」로 읽어야 한다.
+   * 반대로 두면 **설정되지 않은 단말이 전부 열린 단말이 된다.**
+   */
+  it('이 공정의 구성이 아예 없으면 닫힌 것으로 읽는다', async () => {
+    renderScreen(
+      [
+        lotsRoute([lot()]),
+        {
+          match: (request) => isGet(request, TERMINAL_PROCESSES_PATH),
+          /* 다른 공정만 구성돼 있다 — 우리가 묻는 공정의 행은 없다. */
+          respond: () => jsonResponse({ items: [{ processId: 7999, canInputMaterial: true }] }),
+        },
+      ],
+      GATED_ROUTE,
+    );
+
+    expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
+  });
+
+  /* 권한이 없을 때 「다시 시도」를 두면 작업자가 풀 수 없는 것을 되풀이한다. */
+  it('권한이 닫힌 것에는 다시 시도를 붙이지 않는다', async () => {
+    renderScreen([lotsRoute([lot()]), gateRoute(false)], GATED_ROUTE);
+
+    await screen.findByText(t.confirm.reasons.denied);
+    expect(screen.queryByRole('button', { name: t.confirm.retry })).toBeNull();
+  });
+
+  /*
+   * ⭐ **조회가 도는 동안에도 막는다.** 여는 쪽으로 두면 답이 오기 전 찰나에 눌린 확정이
+   * 게이팅을 지나친다 — 스캔을 마친 작업자는 그 버튼을 바로 누른다.
+   */
+  it('확인이 끝나기 전에는 열지 않는다', async () => {
+    let releaseGate = (): void => undefined;
+    const gateHeld = new Promise<void>((resolve) => {
+      releaseGate = resolve;
+    });
+
+    const stub = createStubFetch([...receiptRoutes(), lotsRoute([lot()]), gateRoute(true)]);
+    const fetch: StubFetch = async (request) => {
+      if (isGet(request, TERMINAL_PROCESSES_PATH)) await gateHeld;
+
+      return stub(request);
+    };
+
+    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: GATED_ROUTE });
+
+    await waitFor(() => {
+      expect(screen.getByText(t.confirm.reasons.checking)).toBeTruthy();
+    });
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+
+    releaseGate();
+    expect(await screen.findByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
+  });
+
+  /* 열려 있고 담았으면 비로소 눌린다 — 이 화면이 실제로 투입할 수 있는 유일한 상태다. */
+  it('권한이 열려 있고 자재를 담으면 확정이 열린다', async () => {
     const user = userEvent.setup();
-    const { requests } = renderScreen([lotsRoute([lot()])]);
+    renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED_ROUTE);
+
+    expect(await screen.findByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
 
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
-    expect(requests.every((request) => request.method === 'GET')).toBe(true);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty(
+        'disabled',
+        false,
+      );
+    });
+  });
+
+  /* 단말을 모르면 조회를 보내지 않는다 — 서버가 거절할 요청을 화면이 한 번 더 만들지 않는다. */
+  it('단말을 모르면 게이팅을 조회하지 않는다', async () => {
+    const { requests } = renderScreen([lotsRoute([lot()])]);
+
+    await screen.findByText(t.confirm.reasons.unidentified);
+    expect(requests.some((request) => request.url.pathname.includes('/processes'))).toBe(false);
   });
 });
 
