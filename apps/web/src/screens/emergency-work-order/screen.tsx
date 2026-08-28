@@ -163,6 +163,7 @@ export const EmergencyWorkOrderScreen = ({
         lock={lock}
         releasedNo={issue.releasedNo}
         pending={issue.pending}
+        error={issue.error}
         onRetryRelease={issue.retryRelease}
         onIssue={() => {
           issue.issue({

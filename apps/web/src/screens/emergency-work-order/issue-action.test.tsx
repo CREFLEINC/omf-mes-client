@@ -27,6 +27,7 @@ const renderAction = (overrides: Partial<IssueActionProps> = {}) => {
       lock={OPEN}
       releasedNo={null}
       pending={null}
+      error={null}
       onIssue={onIssue}
       onRetryRelease={onRetryRelease}
       {...overrides}
@@ -122,6 +123,37 @@ describe('IssueAction', () => {
       expect(
         screen.queryByRole('button', { name: t.outcome.retryRelease }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  /*
+   * ⛔ **거절당한 사실이 화면에 남아야 한다.** 잠금 사유는 화면이 «아는» 것만 말하는데,
+   * 발행이 **반려**되는 경우가 따로 있다 — 고른 개정이 조회와 저장 사이에 폐기되면 서버가
+   * 물린다. 그 문구를 내지 않으면 사용자는 버튼을 눌렀는데 화면이 그대로인 것을 보고
+   * **아무 일도 안 일어난 줄 알고 다시 누른다.**
+   */
+  describe('서버가 되돌린 오류', () => {
+    it('⛔ 반려 문구를 그대로 보인다 — 뭉뚱그리면 왜 반려됐는지가 사라진다', () => {
+      renderAction({
+        error: {
+          kind: 'validation',
+          errors: [
+            {
+              scope: 'screen',
+              code: 'SYN_CODE',
+              message: '고른 개정이 폐기되어 발행할 수 없습니다',
+            },
+          ],
+        },
+      });
+
+      expect(screen.getByText('고른 개정이 폐기되어 발행할 수 없습니다')).toBeInTheDocument();
+    });
+
+    it('오류가 없으면 배너를 세우지 않는다', () => {
+      renderAction();
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
   });
 });
