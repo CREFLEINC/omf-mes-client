@@ -85,6 +85,45 @@ export const useItemLookup = (): NameLookup => {
   return toLookup(query.data, query.isPending, query.isError);
 };
 
+/**
+ * P/O 이름표. 필터의 선택지로 쓴다.
+ *
+ * ⚠ **여기서 잘림이 가장 잘 일어난다.** 품목·라인은 마스터라 수가 정해져 있지만 P/O 는
+ * 주문이 들어올 때마다 늘어난다. 그래서 「고르려는 P/O 가 목록에 없는」 일이 실제로 생기고,
+ * 화면은 `isTruncated` 로 그 사실을 적는다 — 적지 않으면 「그런 P/O 는 없다」로 읽힌다.
+ *
+ * ⛔ **P/O 는 번호가 곧 이름이라 코드를 덧붙이지 않는다.** 품목·라인처럼 `코드 · 이름` 으로
+ * 꾸미면 없는 필드를 지어내는 셈이 된다.
+ */
+export const useProductionOrderLookup = (): NameLookup => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: ['work-order-progress', 'production-orders'] as const,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/planning/production-orders', {
+          /*
+           * ⛔ 하위 P/O 를 함께 받지 않는다 — 참이면 page·total 이 «루트 기준»으로 바뀌어
+           * 「몇 건 중 몇 건을 받았나」가 어긋나고, 잘림 판정이 거짓이 된다.
+           */
+          params: { query: { size: LOOKUP_SIZE } },
+        }),
+      );
+
+      return {
+        entries: data.items.map((order) => ({
+          value: String(order.productionOrderId),
+          label: order.productionOrderNo,
+        })),
+        total: data.page.total,
+      };
+    },
+  });
+
+  return toLookup(query.data, query.isPending, query.isError);
+};
+
 /** 라인 이름표. 필터의 선택지로 쓴다. */
 export const useProductionLineLookup = (): NameLookup => {
   const { client } = useApiClient();

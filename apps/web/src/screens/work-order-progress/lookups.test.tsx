@@ -2,7 +2,13 @@ import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderHookWithProviders, type StubFetch } from '../../test/api-harness';
-import { LOOKUP_SIZE, NAME_UNKNOWN, useItemLookup, useProductionLineLookup } from './lookups';
+import {
+  LOOKUP_SIZE,
+  NAME_UNKNOWN,
+  useItemLookup,
+  useProductionLineLookup,
+  useProductionOrderLookup,
+} from './lookups';
 
 const ITEM = {
   itemId: 5001,
@@ -27,6 +33,14 @@ const LINE = {
   isActive: true,
 };
 
+const ORDER = {
+  productionOrderId: 31,
+  productionOrderNo: 'SYN-PO-0031',
+  itemId: 5001,
+  orderQty: 3000,
+  statusCode: 'SYN_OPEN',
+};
+
 const stub = (
   options: { fail?: boolean; total?: number } = {},
 ): { urls: string[]; fetch: StubFetch } => {
@@ -37,7 +51,12 @@ const stub = (
 
     if (options.fail === true) return jsonResponse({ message: '실패' }, { status: 500 });
 
-    const items = url.pathname === '/mdm/items' ? [ITEM] : [LINE];
+    const items =
+      url.pathname === '/mdm/items'
+        ? [ITEM]
+        : url.pathname === '/planning/production-orders'
+          ? [ORDER]
+          : [LINE];
     const total = options.total ?? items.length;
     return jsonResponse({ items, page: { page: 1, size: 200, total } });
   };
@@ -170,6 +189,61 @@ describe('useItemLookup', () => {
   });
 });
 
+describe('useProductionOrderLookup', () => {
+  /*
+   * ⛔ P/O 는 번호가 곧 이름이다. 품목·라인처럼 「코드 · 이름」으로 꾸미면 없는 필드를
+   * 지어내는 셈이 된다.
+   */
+  it('P/O 번호를 그대로 보인다', async () => {
+    const { result } = renderHookWithProviders(() => useProductionOrderLookup(), {
+      fetch: stub().fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+    });
+    expect(result.current.labelOf(31)).toBe('SYN-PO-0031');
+  });
+
+  /*
+   * ⛔ 하위를 함께 받으면 page·total 이 «루트 기준»으로 바뀌어 「몇 건 중 몇 건을 받았나」가
+   * 어긋난다 — 잘림 판정이 거짓이 된다.
+   */
+  it('⛔ 하위 P/O 를 함께 받지 않는다 — 세는 기준이 바뀐다', async () => {
+    const stubbed = stub();
+
+    renderHookWithProviders(() => useProductionOrderLookup(), { fetch: stubbed.fetch });
+
+    await waitFor(() => {
+      expect(stubbed.urls).toHaveLength(1);
+    });
+    expect(stubbed.urls[0]).not.toContain('includeChildren');
+  });
+
+  /* P/O 는 주문이 들어올 때마다 늘어난다 — 「고르려는 것이 목록에 없는」 일이 실제로 생긴다. */
+  it('받은 것보다 전체가 많으면 잘렸다고 알린다', async () => {
+    const { result } = renderHookWithProviders(() => useProductionOrderLookup(), {
+      fetch: stub({ total: 9000 }).fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+    });
+    expect(result.current.isTruncated).toBe(true);
+  });
+
+  it('⛔ 조회가 실패해도 숫자로 물러나지 않는다', async () => {
+    const { result } = renderHookWithProviders(() => useProductionOrderLookup(), {
+      fetch: stub({ fail: true }).fetch,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+    expect(result.current.labelOf(31)).toBe(NAME_UNKNOWN);
+  });
+});
+
 describe('useProductionLineLookup', () => {
   it('라인 코드와 이름을 함께 보인다', async () => {
     const { result } = renderHookWithProviders(() => useProductionLineLookup(), {
@@ -182,17 +256,23 @@ describe('useProductionLineLookup', () => {
     expect(result.current.labelOf(7)).toBe('SYN-LINE-A · 합성 라인');
   });
 
-  it('품목과 다른 자리에서 받는다 — 캐시가 섞이지 않는다', async () => {
+  it('셋이 서로 다른 자리에서 받는다 — 캐시가 섞이지 않는다', async () => {
     const stubbed = stub();
 
-    renderHookWithProviders(() => ({ items: useItemLookup(), lines: useProductionLineLookup() }), {
-      fetch: stubbed.fetch,
-    });
+    renderHookWithProviders(
+      () => ({
+        items: useItemLookup(),
+        lines: useProductionLineLookup(),
+        orders: useProductionOrderLookup(),
+      }),
+      { fetch: stubbed.fetch },
+    );
 
     await waitFor(() => {
-      expect(stubbed.urls).toHaveLength(2);
+      expect(stubbed.urls).toHaveLength(3);
     });
-    expect(stubbed.urls.some((url) => url.startsWith('/mdm/items'))).toBe(true);
-    expect(stubbed.urls.some((url) => url.startsWith('/mdm/production-lines'))).toBe(true);
+    for (const path of ['/mdm/items', '/mdm/production-lines', '/planning/production-orders']) {
+      expect(stubbed.urls.some((url) => url.startsWith(path))).toBe(true);
+    }
   });
 });
