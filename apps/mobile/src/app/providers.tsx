@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, type DefaultOptions } from '@tanstack
 import type { ReactNode } from 'react';
 
 import { ApiClientProvider } from '../patterns/api-context';
+import { DeviceRegistrationProvider } from '../patterns/device-registration';
 import { apiClient } from './api';
 
 /**
@@ -34,9 +35,11 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
   return (
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={apiClient}>
-        <ThemeProvider defaultTheme="system">
-          <ToastProvider position="top-center">{children}</ToastProvider>
-        </ThemeProvider>
+        <DeviceRegistrationProvider>
+          <ThemeProvider defaultTheme="system">
+            <ToastProvider position="top-center">{children}</ToastProvider>
+          </ThemeProvider>
+        </DeviceRegistrationProvider>
       </ApiClientProvider>
     </QueryClientProvider>
   );

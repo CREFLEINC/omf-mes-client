@@ -1,6 +1,7 @@
 import { Outlet, createBrowserRouter, type RouteObject } from 'react-router';
 
 import { AppLayout } from '../app/layout';
+import { ShellGate } from '../app/shell-gate';
 import { ShellHome } from '../app/shell-home';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
 
@@ -9,7 +10,9 @@ export const appRoutes: RouteObject[] = [
     path: '/',
     element: (
       <AppLayout>
-        <Outlet />
+        <ShellGate>
+          <Outlet />
+        </ShellGate>
       </AppLayout>
     ),
     children: [

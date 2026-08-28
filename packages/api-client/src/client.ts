@@ -6,6 +6,12 @@ import { createEtagStore, type EtagStore } from './etag-store';
 export interface ApiClientOptions {
   baseUrl: string;
   fetch?: (request: Request) => Promise<Response>;
+  /**
+   * 요청마다 실을 단말 토큰. 현장 단말은 계정 로그인이 없어 이 토큰이 인증의 전부다.
+   * 함수로 받는 것은 등록·해제로 값이 바뀌기 때문이다 — 만들 때 고정하면 재등록 뒤에도
+   * 옛 토큰을 계속 보낸다.
+   */
+  authToken?: () => string | null;
 }
 
 export interface ApiClient {
@@ -62,6 +68,22 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
     fetch: options.fetch,
     querySerializer: serializeQuery,
   });
+
+  const authToken = options.authToken;
+
+  if (authToken !== undefined) {
+    client.use({
+      onRequest({ request }) {
+        const token = authToken();
+
+        if (token !== null) {
+          request.headers.set('Authorization', `Bearer ${token}`);
+        }
+
+        return request;
+      },
+    });
+  }
 
   client.use({
     onResponse({ request, response }) {
