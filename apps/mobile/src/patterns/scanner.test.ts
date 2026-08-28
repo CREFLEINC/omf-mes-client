@@ -15,7 +15,12 @@ const mountField = (): HTMLInputElement => {
 };
 
 /* 스캐너가 밀어 넣는 속도를 시계로 정확히 재현한다. 실제 대기 없이 간격만 흉내 낸다. */
-const typeInto = (field: HTMLInputElement, value: string, gapMs: number, options = {}) => {
+const typeInto = (
+  field: HTMLInputElement,
+  value: string,
+  gapMs: number,
+  options: KeyboardEventInit = {},
+) => {
   for (const ch of value) {
     vi.advanceTimersByTime(gapMs);
     field.value += ch;
@@ -24,9 +29,20 @@ const typeInto = (field: HTMLInputElement, value: string, gapMs: number, options
   }
 };
 
-const pasteInto = (field: HTMLInputElement, value: string) => {
+const pasteInto = (field: HTMLInputElement, value: string, inputType = 'insertFromPaste') => {
   field.value += value;
-  field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+  field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType }));
+};
+
+const deleteChars = (field: HTMLInputElement, count: number, gapMs: number) => {
+  for (let i = 0; i < count; i += 1) {
+    vi.advanceTimersByTime(gapMs);
+    field.value = field.value.slice(0, -1);
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+    field.dispatchEvent(
+      new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }),
+    );
+  }
 };
 
 beforeEach(() => {
@@ -292,5 +308,137 @@ describe('종료 문자가 없는 스캐너', () => {
 
     expect(onScan).toHaveBeenNthCalledWith(1, 'SYN-LOT-0105');
     expect(onScan).toHaveBeenNthCalledWith(2, 'SYN-LOT-0106');
+  });
+});
+
+describe('버스트 판정의 경계', () => {
+  it('마지막 한 글자가 늦게 와도 놓치지 않는다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'SYN-LOT-01', 5);
+    typeInto(field, '2', 70);
+    vi.advanceTimersByTime(120);
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-012');
+    expect(field.value).toBe('');
+  });
+
+  it('천천히 시작한 뒤 빨라진 입력은 넘기지 않는다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'AB', 200);
+    typeInto(field, 'CDE', 50);
+    vi.advanceTimersByTime(200);
+
+    expect(onScan).not.toHaveBeenCalled();
+    expect(field.value).toBe('ABCDE');
+  });
+
+  it('지우는 중에는 넘기지 않고 입력을 남긴다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'SYN-LOTX', 250);
+    deleteChars(field, 3, 50);
+    vi.advanceTimersByTime(300);
+
+    expect(onScan).not.toHaveBeenCalled();
+    expect(field.value).toBe('SYN-L');
+  });
+
+  it('통째로 넣은 뒤 지우면 넘기지 않는다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    pasteInto(field, 'SYN-LOT-0200');
+    deleteChars(field, 1, 20);
+    vi.advanceTimersByTime(300);
+
+    expect(onScan).not.toHaveBeenCalled();
+    expect(field.value).toBe('SYN-LOT-020');
+  });
+
+  it('자동완성으로 들어온 값은 스캔으로 보지 않는다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    pasteInto(field, 'SYN-LOT', 'insertReplacementText');
+    vi.advanceTimersByTime(300);
+
+    expect(onScan).not.toHaveBeenCalled();
+  });
+
+  it('평균 간격이 기준 안이면 넘긴다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'ABCD', 60);
+    vi.advanceTimersByTime(120);
+
+    expect(onScan).toHaveBeenCalledWith('ABCD');
+  });
+
+  it('평균 간격이 기준을 넘으면 넘기지 않는다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'ABCD', 61);
+    vi.advanceTimersByTime(120);
+
+    expect(onScan).not.toHaveBeenCalled();
+  });
+
+  it('두 글자로는 속도를 판정하지 않는다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'AB', 5);
+    vi.advanceTimersByTime(200);
+
+    expect(onScan).not.toHaveBeenCalled();
+  });
+
+  it('문자 간격이 느린 단말은 기준을 넓혀 받는다', () => {
+    const scanner = createKeyboardWedgeScanner({ burstAvgGapMs: 100 });
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'SYN-LOT-0201', 80);
+    vi.advanceTimersByTime(120);
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0201');
+  });
+
+  it('대기 시간도 바꿔 받을 수 있다', () => {
+    const scanner = createKeyboardWedgeScanner({ quietMs: 400 });
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'SYN-LOT-0202', 5);
+    vi.advanceTimersByTime(200);
+    expect(onScan).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(300);
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0202');
   });
 });
