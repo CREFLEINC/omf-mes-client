@@ -8,13 +8,7 @@ import {
   normalMeasurement,
   optionalSpec,
 } from './fixtures';
-import {
-  hasCalibrationWarning,
-  hasOutOfSpec,
-  isOutOfSpec,
-  toMeasurementRows,
-  type MeasurementRow,
-} from './measurement-rows';
+import { isOutOfSpec, toMeasurementRows, type MeasurementRow } from './measurement-rows';
 
 describe('toMeasurementRows', () => {
   it('줄은 「항목 × 샘플」이다 — 검사기준이 세 개를 재라고 하면 세 줄이 선다', () => {
@@ -86,24 +80,6 @@ describe('toMeasurementRows', () => {
   });
 });
 
-describe('hasCalibrationWarning', () => {
-  it('미검교정으로 잰 줄이 하나라도 있으면 경고한다', () => {
-    expect(hasCalibrationWarning(toMeasurementRows([dimensionSpec], [expiredMeasurement]))).toBe(
-      true,
-    );
-  });
-
-  it('멀쩡한 장비로만 쟀으면 경고하지 않는다', () => {
-    expect(hasCalibrationWarning(toMeasurementRows([dimensionSpec], [normalMeasurement]))).toBe(
-      false,
-    );
-  });
-
-  it('아직 아무것도 재지 않았으면 경고하지 않는다 — 잰 적이 없으면 만료도 없다', () => {
-    expect(hasCalibrationWarning(toMeasurementRows(itemSpecs, []))).toBe(false);
-  });
-});
-
 describe('isOutOfSpec — 규격 밖 판정', () => {
   const rowWith = (
     spec: { lower: number | null; upper: number | null },
@@ -167,12 +143,5 @@ describe('isOutOfSpec — 규격 밖 판정', () => {
 
     expect(isOutOfSpec(row)).toBe(true);
     expect(row.measured?.judgmentCode).toBe('ACCEPTED');
-  });
-
-  it('hasOutOfSpec 은 한 줄이라도 벗어나면 참이다', () => {
-    expect(
-      hasOutOfSpec([rowWith({ lower: 1, upper: 10 }, 5), rowWith({ lower: 1, upper: 10 }, 20)]),
-    ).toBe(true);
-    expect(hasOutOfSpec([rowWith({ lower: 1, upper: 10 }, 5)])).toBe(false);
   });
 });

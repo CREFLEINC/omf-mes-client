@@ -131,6 +131,13 @@ export const PqcInspectionScreen = () => {
   const itemJudgmentOptions = toCodeOptions(itemJudgmentValues.data ?? []);
 
   const [draft, setDraft] = useState<QuantityDraft>(EMPTY_QUANTITY_DRAFT);
+
+  /**
+   * 검사 수량 초안 — **사람이 넣는 값이다**(§3 도면 · §4-B). 회차가 있으면 그 값에서,
+   * 없으면 의뢰의 대상 수량에서 시작한다: 표본 검사라 둘이 다를 수 있고, 다를 때 고치는
+   * 것은 사람이다.
+   */
+  const [inspectedDraft, setInspectedDraft] = useState('');
   const [drafts, setDrafts] = useState<MeasurementDrafts>({});
   const [coverage, setCoverage] = useState<CoverageDraft>(EMPTY_COVERAGE_DRAFT);
   const [disposition, setDisposition] = useState<DispositionState>(null);
@@ -159,6 +166,8 @@ export const PqcInspectionScreen = () => {
     heldQty: 0,
   };
   const storedJudgment = round?.overallJudgmentCode ?? '';
+  /* 회차가 있으면 그 검사 수량, 없으면 의뢰의 대상 수량에서 시작한다. */
+  const storedInspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
   const coverageFromAt = detail.data?.coverageFromAt ?? null;
   const coverageToAt = detail.data?.coverageToAt ?? null;
 
@@ -204,6 +213,7 @@ export const PqcInspectionScreen = () => {
      */
     setDisposition(null);
     setCoverage(toCoverageDraft(coverageFromAt, coverageToAt));
+    setInspectedDraft(String(storedInspectedQty));
   }, [
     targetId,
     roundId,
@@ -211,6 +221,7 @@ export const PqcInspectionScreen = () => {
     rejectedQty,
     heldQty,
     storedJudgment,
+    storedInspectedQty,
     coverageFromAt,
     coverageToAt,
   ]);
@@ -235,6 +246,11 @@ export const PqcInspectionScreen = () => {
     /* eslint-disable-next-line react-hooks/exhaustive-deps -- 줄 목록은 지문 문자열로 판정한다 */
   }, [rowsFingerprint, roundId, isReinspectingNow]);
 
+  const changeInspected = (raw: string): void => {
+    setIsSaved(false);
+    setInspectedDraft(raw);
+  };
+
   const changeDraft = (next: QuantityDraft): void => {
     setIsSaved(false);
     setDraft(next);
@@ -250,7 +266,12 @@ export const PqcInspectionScreen = () => {
     setDrafts((current) => ({ ...current, [key]: next }));
   };
 
-  const inspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
+  /**
+   * 합계 판정의 오른쪽 변. **초안이 수량이면 그 값을 쓴다** — 사람이 고친 검사 수량으로
+   * 견줘야 합계 제약이 실제로 검사한 수와 맞는다.
+   */
+  const inspectedMicro = toMicro(inspectedDraft);
+  const inspectedQty = inspectedMicro === null ? 0 : Number(inspectedDraft);
   const totals = toTotals(draft, inspectedQty);
 
   /**
@@ -306,7 +327,7 @@ export const PqcInspectionScreen = () => {
 
     save.write({
       inspectionRequestId,
-      inspectedQty,
+      inspectedQty: toSendableNumber(inspectedDraft),
       acceptedQty: toSendableNumber(draft.accepted),
       rejectedQty: toSendableNumber(draft.rejected),
       heldQty: toSendableNumber(draft.held),
@@ -372,6 +393,7 @@ export const PqcInspectionScreen = () => {
 
       <div className="pop-inspect">
         <ItemPanel
+          inspectionPlanVersionId={detail.data.inspectionPlanVersionId}
           rows={rows}
           drafts={drafts}
           onChange={changeMeasurement}
@@ -381,8 +403,11 @@ export const PqcInspectionScreen = () => {
         />
 
         <ResultPanel
+          inspectedDraft={inspectedDraft}
+          onInspectedChange={changeInspected}
           inspectedQty={inspectedQty}
           round={isReinspectingNow ? null : (round?.inspectionRound ?? null)}
+          resultNo={isReinspectingNow ? null : (round?.inspectionResultNo ?? null)}
           isLocked={isLocked}
           isReinspecting={isReinspectingNow}
           draft={draft}

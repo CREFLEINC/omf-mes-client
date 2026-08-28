@@ -91,12 +91,28 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
     expect(await screen.findByText(t.detail.nothingSelected)).toBeInTheDocument();
   });
 
-  /* ⚠ 검사 시점의 기준 버전이 고정된다 — 감추면 어느 기준으로 잰 값인지 알 수 없다. */
-  it('검사기준 버전을 상시 보인다', async () => {
+  /*
+   * ⚠ 검사 시점의 기준 버전이 고정된다 — 감추면 어느 기준으로 잰 값인지 알 수 없다.
+   * §3 도면이 이 값을 **좌측 구획 머리**에 두므로 거기서 찾는다.
+   */
+  it('검사기준 버전을 좌측 구획 머리에 상시 보인다', async () => {
     renderScreen();
 
     expect(await screen.findByText(t.detail.planVersionNote)).toBeInTheDocument();
-    expect(screen.getByText(t.detail.fields.inspectionPlanVersionId)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `${t.detail.fields.inspectionPlanVersionId} ${waitingRequest.inspectionPlanVersionId}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /* §4-A 의 필드 표를 그대로 그린다 — 「늘 같은 값」이라는 이유로 칸을 빼지 않는다. */
+  it('유형·대상·실적을 헤더에 그린다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(t.detail.fields.inspectionTypeCode)).toBeInTheDocument();
+    expect(screen.getByText(t.detail.fields.target)).toBeInTheDocument();
+    expect(screen.getByText(t.detail.fields.productionResultId)).toBeInTheDocument();
   });
 
   /* ⚠ 샘플 수의 단위가 미확정이다 — 어느 한쪽으로 읽어 계산하지 않고 그 사실을 밝힌다. */
@@ -216,11 +232,6 @@ describe('PqcInspectionScreen — 저장된 측정치가 칸에 붙는다', () =
 
     /* 저장이 회차를 무효화해 측정치를 다시 부른다 — 그때 값이 도착한다. */
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
-
-    /* 먼저 «줄»에 값이 도착했는지 본다 — 도착 자체가 안 되면 되돌림 문제가 아니다. */
-    await waitFor(() => {
-      expect(screen.getAllByText(t.measurements.calibrationExpired).length).toBeGreaterThan(0);
-    });
 
     /*
      * 줄에 붙었으면 **입력 칸에도** 붙어야 한다 — 이 둘이 갈리던 것이 이번 결함이다.

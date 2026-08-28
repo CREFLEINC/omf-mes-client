@@ -133,10 +133,6 @@ export const toMeasurementRows = (
   });
 };
 
-/** 미검교정 장비로 잰 줄이 하나라도 있는가. 경고를 세울지 판정한다 — **차단하지 않는다.** */
-export const hasCalibrationWarning = (rows: MeasurementRow[]): boolean =>
-  rows.some((row) => row.measured?.calibrationExpired === true);
-
 /**
  * 잰 값이 규격을 벗어났는가.
  *
@@ -161,6 +157,3 @@ export const isOutOfSpec = (row: MeasurementRow): boolean => {
 
   return upper !== null && value > upper;
 };
-
-/** 규격 밖 줄이 하나라도 있는가. 경고를 세울지 판정한다 — ⛔ **차단하지 않는다.** */
-export const hasOutOfSpec = (rows: MeasurementRow[]): boolean => rows.some(isOutOfSpec);

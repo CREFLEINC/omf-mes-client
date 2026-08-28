@@ -40,10 +40,18 @@ const tDisposition = messages.pqcInspection.disposition;
 const unknownValue = messages.pqcInspection.emptyValue;
 
 export interface ResultPanelProps {
-  /** 검사수량 — 회차가 있으면 그 값, 없으면 의뢰의 대상 수량이다 */
+  /**
+   * 검사 수량 — **사람이 넣는 칸이다**(§3 도면 `검사 수량 [ 30 ] EA` · §4-B `inspected_qty`).
+   * ⛔ 읽기 전용으로 두지 않는다: 표본 검사라 대상 수량과 실제 검사 수량이 다를 수 있다.
+   */
+  inspectedDraft: string;
+  onInspectedChange: (raw: string) => void;
+  /** 합계 판정의 오른쪽 변. 초안이 수량이 아니면 판정이 서지 않는다 */
   inspectedQty: number;
   /** 회차 번호. 아직 회차가 없으면 `null` */
   round: number | null;
+  /** 결과번호(§4-B). 회차가 아직 없으면 `null` */
+  resultNo: string | null;
   /** 확정된 회차는 고치지 않는다 — 정정이 아니라 재검사로 새 회차를 쌓는다 */
   isLocked: boolean;
   /** 지금 **재검사 회차를 쓰는 중**인가. 아직 만들어지지 않은 회차라 번호가 없다 */
@@ -87,8 +95,11 @@ const toDisposition = (value: string): DispositionState =>
   value === 'REWORK' || value === 'SCRAP' ? value : null;
 
 export const ResultPanel = ({
+  inspectedDraft,
+  onInspectedChange,
   inspectedQty,
   round,
+  resultNo,
   isLocked,
   isReinspecting,
   draft,
@@ -108,6 +119,8 @@ export const ResultPanel = ({
   const dispositionLabelId = useId();
   const errors = validateQuantities(draft);
   const totals = toTotals(draft, inspectedQty);
+  /* 검사 수량도 수량이다 — 같은 자로 잰다. 빈 칸은 아직 넣지 않은 것이지 잘못이 아니다. */
+  const inspectedInvalid = inspectedDraft.trim() !== '' && toMicro(inspectedDraft) === null;
   const canChoose = !isLocked && canChooseDisposition(rejectedMicro(draft.rejected));
 
   /** 서버가 짚어 준 칸 오류를 화면의 칸 이름으로 옮긴다. */
@@ -153,6 +166,13 @@ export const ResultPanel = ({
       <p className="field-note">
         {isReinspecting ? t.reinspectRound : round === null ? t.notStarted : t.round(round)}
       </p>
+
+      {/* §4-B 필수 표시 항목 — 회차와 함께 이 결과가 «무엇인지» 가리킨다. */}
+      {resultNo !== null && (
+        <p className="field-note">
+          {t.resultNo} {resultNo}
+        </p>
+      )}
 
       {/*
        * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
@@ -202,11 +222,19 @@ export const ResultPanel = ({
        * 읽기 전용 숫자 셋을 한 줄에 둔다 — 검사수량이 «오른쪽 변»이고 합계·잔여가 그것과
        * 견준 결과라 나란히 있어야 읽힌다. 세로로 쌓으면 예산(E-1 슬랙 0)을 넘긴다.
        */}
+      <div className="form-grid">
+        <TextField
+          label={t.fields.inspectedQty}
+          inputMode="decimal"
+          value={inspectedDraft}
+          disabled={isLocked}
+          disabledReason={isLocked ? t.confirmed : undefined}
+          error={showErrors && inspectedInvalid ? t.quantityInvalid : undefined}
+          onChange={(event) => onInspectedChange(event.target.value)}
+        />
+      </div>
+
       <dl className="filter-bar">
-        <div className="field-cell">
-          <dt className="field-label">{t.fields.inspectedQty}</dt>
-          <dd>{String(inspectedQty)}</dd>
-        </div>
         {/* 셀 수 없을 때 0으로 읽은 합을 보이면 그 숫자 자체가 거짓이다. 없음 표시를 낸다. */}
         <div className="field-cell">
           <dt className="field-label">{t.sum}</dt>

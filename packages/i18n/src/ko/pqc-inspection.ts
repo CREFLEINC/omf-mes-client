@@ -24,11 +24,16 @@ export const pqcInspection = {
     loading: '의뢰를 불러오는 중입니다.',
     fields: {
       inspectionRequestNo: '의뢰번호',
+      /** §4-A 필수 항목. 이 화면은 늘 PQC 이지만 스펙이 그리라고 한 칸이다 */
+      inspectionTypeCode: '유형',
+      /** `target_type_code` + `target_id` 다형 참조(A-10) */
+      target: '대상',
       inspectionPlanVersionId: '검사기준 버전',
       lotId: '대상 LOT',
       itemId: '품목',
       workOrderId: '작업지시',
-      targetQty: '검사수량',
+      productionResultId: '실적',
+      targetQty: '대상 수량',
     },
     planVersionNote: '검사 시점의 기준 버전으로 고정됩니다.',
 
@@ -56,6 +61,8 @@ export const pqcInspection = {
 
   result: {
     heading: '수량 판정',
+    /** §4-B 필수 표시 항목. 회차와 함께 이 결과가 무엇인지 가리킨다 */
+    resultNo: '결과번호',
     round: (round: number): string => `${round}회차`,
     notStarted: '아직 입력된 검사 결과가 없습니다.',
     loading: '검사 결과를 불러오는 중입니다.',
@@ -132,7 +139,6 @@ export const pqcInspection = {
     /** 불리언 항목의 «측정 결과» — 판정과 다른 축이다. */
     booleanTrue: '양호',
     booleanFalse: '불량',
-    caption: '항목별 측정치',
     loading: '검사 항목을 불러오는 중입니다.',
     noItems: '이 검사기준 버전에는 검사 항목이 없습니다. 기준정보 담당자에게 문의하세요.',
     columns: {
@@ -152,12 +158,9 @@ export const pqcInspection = {
     /**
      * ⚠ 규격을 벗어난 값이다. ⛔ **자동으로 불합격을 매기지 않는다**(스펙 §6) — 표시하고
      * 사람이 판정한다. 문구도 「불합격」이라고 말하지 않는다.
+     *
+     * §3 도면이 줄 «안»의 기호로 표시하므로 배너를 세우지 않는다.
      */
     outOfSpec: '규격 밖',
-    outOfSpecNote: '규격을 벗어난 값이 있습니다. 확인 후 직접 판정하세요.',
-    calibrationWarningTitle: '교정이 만료된 계측기로 잰 값이 있습니다',
-    calibrationWarning:
-      '해당 측정치를 다시 확인하세요. 검사를 막지는 않습니다 — 계측기 교정은 설비 담당자에게 문의하세요.',
-    calibrationExpired: '교정 만료',
   },
 } as const;

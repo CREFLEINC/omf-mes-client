@@ -1,4 +1,4 @@
-import { AlertBanner, Chip, Select, TextField } from '@crefle/web-ui';
+import { Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -11,13 +11,7 @@ import {
   type MeasurementDraft,
   type MeasurementDrafts,
 } from './measurement-draft';
-import {
-  hasCalibrationWarning,
-  hasOutOfSpec,
-  isOutOfSpec,
-  type MeasurementRow,
-  type SpecRange,
-} from './measurement-rows';
+import { isOutOfSpec, type MeasurementRow, type SpecRange } from './measurement-rows';
 
 /**
  * 좌측 《검사 항목》 구획 — 화면 스펙 §3 의 왼쪽 464 다.
@@ -35,8 +29,11 @@ import {
  */
 
 const t = messages.pqcInspection.measurements;
+const tDetail = messages.pqcInspection.detail;
 
 export interface ItemPanelProps {
+  /** 검사 시점에 고정된 기준 버전. §3 도면이 이 구획 머리에 둔다 */
+  inspectionPlanVersionId: number;
   rows: MeasurementRow[];
   drafts: MeasurementDrafts;
   onChange: (key: string, draft: MeasurementDraft) => void;
@@ -48,6 +45,7 @@ export interface ItemPanelProps {
 }
 
 export const ItemPanel = ({
+  inspectionPlanVersionId,
   rows,
   drafts,
   onChange,
@@ -58,32 +56,24 @@ export const ItemPanel = ({
   <section className="pane" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
 
+    {/*
+     * ⭐ **기준 버전과 샘플 수가 이 구획의 머리다**(§3 도면 「기준 IP-… v2 / 샘플 30」).
+     * 검사 시점의 기준 버전이 그 검사에 고정되고, 이후 기준이 바뀌어도 이 검사는 당시
+     * 버전으로 남는다 — 감추면 어느 기준으로 잰 값인지 아무도 모른다.
+     */}
+    <p className="field-note">
+      {tDetail.fields.inspectionPlanVersionId} {inspectionPlanVersionId}
+    </p>
+    <p className="field-note">{tDetail.planVersionNote}</p>
+
+    {/*
+     * ⚠ **샘플 수의 단위가 확정되지 않았다**(§8 #5 · 공유계약 A-8). ⛔ 어느 한쪽으로 읽어
+     * 계산하지 않고 **단위가 미확정이라는 사실을 화면에 밝힌다.**
+     */}
+    <p className="field-note">{tDetail.sampleUnitPending}</p>
+
     {/* ⭐ 무엇이 남았는지가 이 구획의 정보다(§3 「진행 2 / 3」). */}
     <p className="field-note">{t.progress(judgedCount(rows, drafts), rows.length)}</p>
-
-    {/*
-     * ⚠ 규격을 벗어난 값이 있다. ⛔ **차단하지 않는다** — 표시하고 사람이 판정한다.
-     * 문구도 「불합격」이라고 말하지 않는다.
-     */}
-    {hasOutOfSpec(rows) && (
-      <div className="banner-slot">
-        <AlertBanner variant="warning" title={t.outOfSpec}>
-          {t.outOfSpecNote}
-        </AlertBanner>
-      </div>
-    )}
-
-    {/*
-     * ⛔ 경고일 뿐 차단이 아니다. 무효화 정책이 미결이라 화면이 값을 빼거나 확정을 막지
-     * 않는다 — 무엇을 다시 볼지만 알린다.
-     */}
-    {hasCalibrationWarning(rows) && (
-      <div className="banner-slot">
-        <AlertBanner variant="warning" title={t.calibrationWarningTitle}>
-          {t.calibrationWarning}
-        </AlertBanner>
-      </div>
-    )}
 
     <div className="pop-inspect-scroll">
       {rows.length === 0 ? (
@@ -186,11 +176,6 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, isLocked }: ItemRowPro
       {outOfSpec && (
         <Chip variant="status" size="sm" status="error">
           {t.outOfSpec}
-        </Chip>
-      )}
-      {row.measured?.calibrationExpired === true && (
-        <Chip variant="status" size="sm" status="warning">
-          {t.calibrationExpired}
         </Chip>
       )}
     </li>

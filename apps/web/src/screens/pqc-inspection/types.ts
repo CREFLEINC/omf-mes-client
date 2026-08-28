@@ -60,25 +60,6 @@ export const toInspectionQueueResult = (response: {
   page: response.page,
 });
 
-const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
-
-/**
- * 의뢰 일시 표기(`2026-08-18 09:15`).
- *
- * **실행 환경 시간대로 옮기지 않는다.** 문자열에 실려 온 offset 은 의뢰가 일어난 곳의
- * 시각이고, 보는 사람의 시간대로 옮기면 같은 의뢰가 사람마다 다른 시각에 온 것으로 보인다.
- *
- * **형식이 아니면 원문을 그대로 낸다** — 「—」로 바꾸면 값이 없는 것과 못 알아본 것이
- * 구분되지 않는다.
- */
-export const formatDateTime = (value: string): string => {
-  const matched = RFC3339_PATTERN.exec(value);
-
-  if (matched === null) return value;
-
-  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
-};
-
 /**
  * 고른 의뢰의 상세 — 스펙 §4-A.
  *
@@ -89,7 +70,13 @@ export const formatDateTime = (value: string): string => {
 export interface InspectionRequestDetail {
   inspectionRequestId: number;
   inspectionRequestNo: string;
+  /** §4-A 필수 표시 항목. 이 화면은 늘 `PQC` 이지만 **스펙이 그리라고 한 칸이다** */
   inspectionTypeCode: string;
+  /** 대상 — `target_type_code` + `target_id` 의 다형 참조(A-10). §4-A 필수 */
+  targetTypeCode: string;
+  targetId: number;
+  /** 생산실적. §4-A 「품목·LOT·W/O·실적」의 마지막 항목이며 nullable 이다 */
+  productionResultId: number | null;
   /** ⚠ 검사 시점에 고정되는 기준 버전. 화면 표시 필수(§4-A) */
   inspectionPlanVersionId: number;
   workOrderId: number | null;
@@ -110,6 +97,9 @@ export const toInspectionRequestDetail = (
   inspectionRequestId: item.inspectionRequestId,
   inspectionRequestNo: item.inspectionRequestNo,
   inspectionTypeCode: item.inspectionTypeCode,
+  targetTypeCode: item.targetTypeCode,
+  targetId: item.targetId,
+  productionResultId: item.productionResultId ?? null,
   inspectionPlanVersionId: item.inspectionPlanVersionId,
   workOrderId: item.workOrderId ?? null,
   lotId: item.lotId ?? null,
@@ -131,6 +121,8 @@ export const toInspectionRequestDetail = (
  */
 export interface InspectionResultRound {
   inspectionResultId: number;
+  /** 결과번호. §4-B 필수 표시 항목이다 */
+  inspectionResultNo: string;
   inspectionRound: number;
   inspectedQty: number;
   acceptedQty: number;
@@ -145,6 +137,7 @@ export interface InspectionResultRound {
 
 export const toInspectionResultRound = (item: InspectionResultResponse): InspectionResultRound => ({
   inspectionResultId: item.inspectionResultId,
+  inspectionResultNo: item.inspectionResultNo,
   inspectionRound: item.inspectionRound,
   inspectedQty: item.inspectedQty,
   acceptedQty: item.acceptedQty,
