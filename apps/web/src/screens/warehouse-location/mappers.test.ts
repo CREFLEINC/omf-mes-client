@@ -24,7 +24,7 @@ const base: Warehouse = {
   warehouseTypeCode: 'MATERIAL',
   managementLevelCode: PENDING_CODE_VALUE,
   isExternal: false,
-  partnerId: null,
+  isDefect: false,
   isActive: true,
 };
 
@@ -36,18 +36,25 @@ describe('warehouseToFormValues', () => {
     expect(values.businessUnitId).toBe('21');
   });
 
-  it('널 거래처는 빈 문자열이 된다 — 선택칸의 「고르지 않음」과 같은 값이다', () => {
-    expect(warehouseToFormValues({ ...base, partnerId: null }).partnerId).toBe('');
+  /*
+   * ⛔ **거래처는 채울 수 없다 — 조회 응답에 그 칸이 없다.** 외부창고여도 마찬가지다.
+   * 여기서 무언가를 채우면 그것은 화면이 지어낸 값이다.
+   */
+  it('⛔ 거래처는 비운 채로 온다 — 서버가 조회 응답에 주지 않는다', () => {
+    expect(warehouseToFormValues(base).partnerId).toBe('');
   });
 
-  it('거래처 필드 자체가 없어도 빈 문자열이 된다', () => {
-    const { partnerId: _partnerId, ...withoutPartner } = base;
-
-    expect(warehouseToFormValues(withoutPartner).partnerId).toBe('');
+  it('⛔ 외부창고여도 거래처를 지어내지 않는다', () => {
+    expect(warehouseToFormValues({ ...base, isExternal: true }).partnerId).toBe('');
   });
 
-  it('거래처가 있으면 문자열 id가 된다', () => {
-    expect(warehouseToFormValues({ ...base, partnerId: 31 }).partnerId).toBe('31');
+  /*
+   * ⛔ **컨트롤이 없는 값이라 더 중요하다.** 여기서 흘리면 저장 때 지어낸 값이 나가고
+   * 서버가 갖고 있던 불량창고 여부가 조용히 덮인다.
+   */
+  it('⛔ 불량창고 여부를 받은 그대로 들고 있는다', () => {
+    expect(warehouseToFormValues({ ...base, isDefect: true }).isDefect).toBe(true);
+    expect(warehouseToFormValues({ ...base, isDefect: false }).isDefect).toBe(false);
   });
 
   it('코드·명칭·스위치 값은 그대로 옮긴다', () => {
@@ -80,7 +87,11 @@ describe('emptyWarehouseFormValues', () => {
 });
 
 describe('toWarehouseUpdate', () => {
-  const values = warehouseToFormValues({ ...base, businessUnitId: 21, partnerId: 31 });
+  /* 거래처는 조회로 채워지지 않으므로 사람이 고른 뒤의 폼을 흉내 낸다. */
+  const values = {
+    ...warehouseToFormValues({ ...base, businessUnitId: 21 }),
+    partnerId: '31',
+  };
 
   it('문자열 id를 계약이 요구하는 숫자로 되돌린다', () => {
     expect(toWarehouseUpdate(values).businessUnitId).toBe(21);
@@ -89,6 +100,12 @@ describe('toWarehouseUpdate', () => {
 
   it('고르지 않은 거래처는 널로 보낸다 — 0은 유효한 id가 아니다', () => {
     expect(toWarehouseUpdate({ ...values, partnerId: '' }).partnerId).toBeNull();
+  });
+
+  /* ⛔ 화면에 컨트롤이 없는 값이다 — 지어내 보내면 서버가 갖고 있던 값이 덮인다. */
+  it('⛔ 불량창고 여부를 받은 그대로 되돌려 보낸다', () => {
+    expect(toWarehouseUpdate({ ...values, isDefect: true }).isDefect).toBe(true);
+    expect(toWarehouseUpdate({ ...values, isDefect: false }).isDefect).toBe(false);
   });
 
   it('공장은 요청에 실리지 않는다 — 등록 후 바꿀 수 없다', () => {

@@ -171,6 +171,11 @@ export const WarehouseFormPane = ({
           onChange={(event) => onChange({ isExternal: event.target.checked })}
         />
 
+        {/*
+         * ⛔ **수정에서는 비어 있는 것이 「없음」이 아니라 「모름」이다.** 조회 응답이 거래처를
+         * 주지 않아 지금 값을 채울 수 없다 — 사유를 적지 않으면 사람이 빈 칸을 보고 거래처가
+         * 지워진 줄 안다. 등록에서는 원래 비어 있는 것이 맞으므로 적지 않는다.
+         */}
         <SelectField
           label={t.fields.partner}
           required={values.isExternal}
@@ -178,6 +183,7 @@ export const WarehouseFormPane = ({
           value={values.partnerId}
           onChange={(value) => onChange({ partnerId: value })}
           error={fieldErrors.partnerId}
+          note={mode === 'edit' ? t.fields.partnerNotReturned : undefined}
         />
 
         {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. */}

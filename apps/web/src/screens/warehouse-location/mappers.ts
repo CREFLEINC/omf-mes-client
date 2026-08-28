@@ -27,7 +27,21 @@ export const warehouseToFormValues = (warehouse: Warehouse): WarehouseFormValues
   warehouseTypeCode: warehouse.warehouseTypeCode,
   managementLevelCode: warehouse.managementLevelCode,
   isExternal: warehouse.isExternal,
-  partnerId: optionalIdToText(warehouse.partnerId),
+  /* 고칠 자리가 없는 값이라 받은 그대로 들고 있다가 그대로 돌려보낸다 — 타입 쪽 주석 참고. */
+  isDefect: warehouse.isDefect,
+  /*
+   * ⛔ **채울 수 없다 — 서버가 조회 응답에 거래처를 주지 않는다.**
+   *
+   * 계약이 한쪽으로만 열려 있다: 등록·수정 본문에는 이 칸이 있고 **외부창고면 필수**인데,
+   * 조회 응답에는 없다. 그래서 지금 이 창고의 거래처가 무엇인지 화면은 알 방법이 없다.
+   *
+   * ⛔ **모르는 값을 지어내지 않고 비운 채 둔다.** 외부창고를 고쳐 저장하려 하면 검증이
+   * 거래처를 다시 고르게 한다 — 비운 채로는 저장되지 않으므로 **있던 거래처가 조용히
+   * 지워지지는 않는다.** 다시 고르게 만드는 불편은 남고, 그 사실을 폼이 문구로 밝힌다.
+   *
+   * 이 비대칭이 의도인지는 설계 저장소에 물어 두었다.
+   */
+  partnerId: '',
 });
 
 /**
@@ -42,6 +56,8 @@ export const emptyWarehouseFormValues = (): WarehouseFormValues => ({
   warehouseTypeCode: '',
   managementLevelCode: PENDING_CODE_VALUE,
   isExternal: false,
+  /* 신규 창고는 불량창고가 아니다 — 그렇게 정하는 자리가 화면에 없으므로 꺼진 값으로 낸다. */
+  isDefect: false,
   partnerId: '',
 });
 
@@ -60,6 +76,8 @@ export const toWarehouseUpdate = (values: WarehouseFormValues): WarehouseUpdate 
   warehouseTypeCode: values.warehouseTypeCode,
   managementLevelCode: values.managementLevelCode,
   isExternal: values.isExternal,
+  /* 화면이 고치지 않은 값을 그대로 되돌려 보낸다 — 여기서 지어내면 서버 값이 덮인다. */
+  isDefect: values.isDefect,
   partnerId: textToOptionalId(values.partnerId),
 });
 
@@ -146,4 +164,5 @@ export const isSameWarehouseValues = (a: WarehouseFormValues, b: WarehouseFormVa
   a.warehouseTypeCode === b.warehouseTypeCode &&
   a.managementLevelCode === b.managementLevelCode &&
   a.isExternal === b.isExternal &&
+  a.isDefect === b.isDefect &&
   a.partnerId === b.partnerId;

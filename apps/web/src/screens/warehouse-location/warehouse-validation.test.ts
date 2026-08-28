@@ -75,10 +75,28 @@ describe('validateWarehouse', () => {
   });
 });
 
+/**
+ * ⭐ **입력칸이 없는 값이라 이 목록에 넣지 않는다.** 이 목록은 「서버 오류를 어느 칸 옆에
+ * 인라인으로 붙일까」의 기준이다 — 컨트롤이 없는 이름을 넣으면 그 오류가 **아무 데도 붙지
+ * 못하고 사라진다.** 목록에 없으면 배너로 올라가 사람 눈에 닿는다.
+ *
+ * 불량창고 여부는 받은 값을 그대로 되돌려 보내려고 폼이 들고만 있는 값이다(`types.ts` 참고).
+ */
+const VALUES_WITHOUT_CONTROL: readonly string[] = ['isDefect'];
+
 describe('WAREHOUSE_FORM_FIELDS', () => {
   it('폼이 소유한 입력칸 이름을 전부 담는다 — 서버 오류를 인라인으로 낼 기준이다', () => {
     for (const field of Object.keys(emptyWarehouseFormValues())) {
+      if (VALUES_WITHOUT_CONTROL.includes(field)) continue;
+
       expect(WAREHOUSE_FORM_FIELDS).toContain(field);
+    }
+  });
+
+  /* ⛔ 붙일 칸이 없는 이름이 섞이면 그 오류는 인라인으로 가려다 사라진다. */
+  it('⛔ 입력칸이 없는 값은 담지 않는다 — 붙일 자리가 없는 오류가 되어 사라진다', () => {
+    for (const field of VALUES_WITHOUT_CONTROL) {
+      expect(WAREHOUSE_FORM_FIELDS).not.toContain(field);
     }
   });
 });

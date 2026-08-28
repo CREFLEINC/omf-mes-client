@@ -187,6 +187,7 @@ const warehouseResponse = (overrides: Partial<WarehouseResponse> = {}): Warehous
   warehouseTypeCode: 'SAMPLE_WH_TYPE_A',
   managementLevelCode: 'SAMPLE_WH_LEVEL_A',
   isExternal: false,
+  isDefect: false,
   isActive: true,
   ...overrides,
 });

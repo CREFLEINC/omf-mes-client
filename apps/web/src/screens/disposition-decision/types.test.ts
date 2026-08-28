@@ -39,6 +39,15 @@ const nonconformance = (overrides: Partial<Nonconformance> = {}): Nonconformance
   description: '도장 표면 박리',
   statusCode: 'CODE-C',
   openedAt: '2026-08-12T09:30:00+09:00',
+  /*
+   * ⚠ 계약이 새로 필수로 요구하는 넷이다(집계·단위·처분 진행·LOT). **화면이 아직 읽지
+   * 않는다** — 그것을 어떻게 쓸지는 별건(#570)이고, 여기서는 픽스처가 계약을 만족하게만 둔다.
+   * 그래서 `lots` 는 종전 기본값과 같은 빈 배열이다.
+   */
+  affectedQtyTotal: 320,
+  uomId: 7001,
+  dispositionProgressCode: 'NOT_STARTED',
+  lots: [],
   ...overrides,
 });
 
@@ -123,8 +132,20 @@ describe('toNonconformanceRow', () => {
     });
   });
 
-  it('lots가 없으면 수량 칸을 비운다', () => {
-    expect(toNonconformanceRow(nonconformance()).affectedQtyText).toBe(
+  /*
+   * ⭐ **「비어 있다」와 「받지 못했다」를 가르는 자리다.** 계약이 `lots` 를 필수로 바꿔
+   * 정상 응답에서는 목록이 늘 오지만, 그 둘을 가르는 판정 자체는 그대로 지켜야 한다 —
+   * 받지 못한 것을 「0」이라고 단언하면 사람은 **영향 LOT 이 없는 부적합**으로 읽는다.
+   */
+  it('lots가 비어 있으면 0이다 — 영향 LOT 이 없다는 사실이다', () => {
+    expect(toNonconformanceRow(nonconformance({ lots: [] })).affectedQtyText).toBe('0');
+  });
+
+  it('⛔ lots를 받지 못하면 수량 칸을 비운다 — 「0」이라고 단언하지 않는다', () => {
+    /* 계약은 이 칸을 필수로 두지만, 오지 않은 응답을 0으로 읽지 않는 것은 그대로다. */
+    const withoutLots = { ...nonconformance(), lots: undefined } as unknown as Nonconformance;
+
+    expect(toNonconformanceRow(withoutLots).affectedQtyText).toBe(
       messages.dispositionDecision.values.unknownQty,
     );
   });

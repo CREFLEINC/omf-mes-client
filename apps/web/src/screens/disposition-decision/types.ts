@@ -17,8 +17,19 @@ export type PageMeta = components['schemas']['PageMeta'];
 export type NonconformanceListResponse =
   paths['/quality/nonconformances']['get']['responses']['200']['content']['application/json'];
 
+/** 한 부적합에 딸린 판정 목록. 이 봉투에는 그 부적합에 대한 집계 구획이 함께 온다. */
 export type DispositionDecisionListResponse =
   paths['/quality/nonconformances/{nonconformanceId}/disposition-decisions']['get']['responses']['200']['content']['application/json'];
+
+/**
+ * 처리 이력 탭이 부르는 **전역** 판정 목록.
+ *
+ * ⛔ **위 봉투와 같은 타입으로 두지 않는다.** 경로가 다르고 **봉투도 다르다** — 부적합 하나에
+ * 딸린 목록에는 집계가 함께 오지만 전역 목록에는 없다. 하나로 묶으면 있지도 않은 집계를
+ * 화면이 읽게 되고, 그 값은 오류가 아니라 **빈 값**으로 나타나 알아채기 어렵다.
+ */
+export type DispositionDecisionHistoryResponse =
+  paths['/quality/disposition-decisions']['get']['responses']['200']['content']['application/json'];
 
 const quantityFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 });
 

@@ -28,7 +28,7 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseTypeCode: 'MATERIAL',
     managementLevelCode: PENDING_CODE_VALUE,
     isExternal: false,
-    partnerId: null,
+    isDefect: false,
     isActive: true,
   },
   {
@@ -40,7 +40,7 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseTypeCode: 'PRODUCT',
     managementLevelCode: PENDING_CODE_VALUE,
     isExternal: false,
-    partnerId: null,
+    isDefect: false,
     isActive: true,
   },
   {
@@ -52,7 +52,7 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseTypeCode: 'MERCHANDISE',
     managementLevelCode: PENDING_CODE_VALUE,
     isExternal: true,
-    partnerId: 31,
+    isDefect: false,
     isActive: false,
   },
 ];
@@ -197,6 +197,7 @@ export const warehouseFormInitialValues: WarehouseFormValues = {
   warehouseTypeCode: 'MATERIAL',
   managementLevelCode: PENDING_CODE_VALUE,
   isExternal: false,
+  isDefect: false,
   partnerId: '',
 };
 

@@ -5,6 +5,7 @@ import { runRequest } from '../../patterns/request';
 import type { PendingListQuery } from './filters';
 import type { HistoryListQuery } from './history-filters';
 import type {
+  DispositionDecisionHistoryResponse,
   DispositionDecisionListResponse,
   Nonconformance,
   NonconformanceListResponse,
@@ -106,7 +107,7 @@ export const useDispositionDecisions = (
  */
 export const useDecisionHistory = (
   query: HistoryListQuery | null,
-): UseQueryResult<DispositionDecisionListResponse> => {
+): UseQueryResult<DispositionDecisionHistoryResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
