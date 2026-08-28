@@ -124,6 +124,35 @@ describe('ExpansionPane', () => {
 
       expect(screen.getByRole('option', { name: /SYN_OBSOLETE/ })).toBeInTheDocument();
     });
+
+    /*
+     * ⚠ **여럿이면 알리고, 화면이 대신 고르지 않는다.** 「최신」을 골라 주면 사용자가 고른
+     * 적 없는 개정으로 되돌릴 수 없는 지시가 나간다.
+     */
+    it('⚠ 쓸 수 있는 개정이 여럿이면 그 사실과 개수를 알린다', () => {
+      const { region } = renderPane({ state: NEEDS, selectedRoutingId: null });
+
+      expect(within(region).getByText(t.revisionMultiple(2))).toBeInTheDocument();
+    });
+
+    it('⛔ 하나뿐이면 「직접 고르세요」로 다그치지 않는다 — 고를 것이 없다', () => {
+      const { region } = renderPane({
+        state: { kind: 'needsRevision', routings: [routing()] },
+        selectedRoutingId: null,
+      });
+
+      expect(within(region).queryByText(t.revisionMultiple(1))).not.toBeInTheDocument();
+    });
+
+    /*
+     * ⭐ **자재 명세는 자동, 공정 순서는 수동.** 적지 않으면 일관성 없는 화면으로 읽히고,
+     * 사용자가 규칙을 스스로 지어낸다.
+     */
+    it('⭐ 자재 명세와 동작이 갈리는 이유를 적는다', () => {
+      const { region } = renderPane({ state: NEEDS, selectedRoutingId: null });
+
+      expect(within(region).getByText(t.revisionChoiceReason)).toBeInTheDocument();
+    });
   });
 
   describe('아직 볼 것이 없을 때', () => {
