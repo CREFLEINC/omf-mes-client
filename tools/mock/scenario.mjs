@@ -211,14 +211,105 @@ const LOT_STATUS_VALUES = [
   isActive: true,
 }));
 
-/** ⚠ 목 전용 제어. 업무 값이 아니라는 것이 이름에 드러나야 한다. */
-const MOCK_CONTROL = '__mock';
+/**
+ * 단말 기능 구성 — 게이팅 조회가 읽는다.
+ *
+ * **7901 은 열려 있고, 그 밖의 단말은 이 공정 행이 없다.** 「행이 없다」와 「닫혀 있다」를
+ * 화면이 같게 다루는지 보려면 후자가 필요하다.
+ */
+const TERMINAL_PROCESSES = {
+  7901: [{ processId: 7902, processName: '합성 공정 가', canInputMaterial: true }],
+  7902: [{ processId: 7902, processName: '합성 공정 가', canInputMaterial: false }],
+};
 
-const routes = (url) => {
+/** 투입 확정 응답. 요청 본문을 되비추고, 기록만 되는 것을 LOT 번호로 가른다. */
+const toConsumption = (body, seq) => ({
+  materialConsumptionId: 6000 + seq,
+  consumptionNo: `SAMPLE-MC-${String(6000 + seq)}`,
+  workOrderId: body.workOrderId,
+  itemId: body.itemId,
+  lotId: body.lotId,
+  /* 화면이 보내지 않는 칸 — 서버가 채운 것으로 되돌려 준다. */
+  consumptionTypeCode: 'NORMAL',
+  inputQty: body.inputQty,
+  uomId: body.uomId,
+  occurredAt: body.occurredAt,
+  recordedAt: body.occurredAt,
+  workerId: 8801,
+  terminalId: 7901,
+  statusCode: 'RECORDED',
+  /*
+   * **0071 은 출고에 귀속되지 않은 자재**, **0072 는 다른 공정 자재**로 되돌려 준다 —
+   * 스펙 §5-3의 「통과하되 기록만 되는 것」 두 갈래를 눈으로 볼 수 있게.
+   */
+  ...(body.lotId === 8371 ? {} : { shopfloorReceiptLineId: 8101 }),
+  ...(body.lotId === 8372 ? { actualUseProcessId: 7903 } : {}),
+});
+
+let consumptionSeq = 0;
+
+/**
+ * ⚠ 목 전용 제어 — **서버가 상태로 들고 있는다.**
+ *
+ * 화면은 자기 요청에 이 값을 싣지 않는다(실을 이유가 없다). 그래서 브라우저 주소에 붙여도
+ * 서버에 닿지 않는다 — 모드를 **서버에 미리 걸어 두고** 화면은 평소대로 부르게 한다.
+ *
+ * ```
+ * http://127.0.0.1:4020/__mock?mode=gate-fail   ← 브라우저에서 한 번 연다
+ * http://127.0.0.1:4020/__mock                  ← 지금 모드 확인
+ * http://127.0.0.1:4020/__mock?mode=off         ← 해제
+ * ```
+ */
+const MODES = [
+  'off',
+  'empty',
+  'partial-fail',
+  'forbidden',
+  'gate-fail',
+  'write-forbidden',
+  'write-fail',
+];
+let mockMode = 'off';
+
+const routes = (url, method, body) => {
   const path = url.pathname;
   const q = url.searchParams.get('q') ?? '';
-  const control = url.searchParams.get(MOCK_CONTROL) ?? '';
+  /* 질의로도 받되(감지기·curl 용) 평소에는 서버에 걸어 둔 모드를 쓴다. */
+  const control = url.searchParams.get('__mock') ?? (mockMode === 'off' ? '' : mockMode);
   const workOrderId = Number(url.searchParams.get('workOrderId') ?? '0');
+
+  const gating = /^\/mdm\/terminals\/(\d+)\/processes$/.exec(path);
+  if (gating !== null) {
+    if (control === 'gate-fail')
+      return [500, errorBody('SAMPLE_FAIL', '합성 실패 — 게이팅 확인 불가')];
+
+    return [200, { items: TERMINAL_PROCESSES[Number(gating[1])] ?? [] }];
+  }
+
+  if (path === '/production/material-consumptions' && method === 'POST') {
+    if (control === 'write-forbidden') {
+      return [403, errorBody('FORBIDDEN', '이 단말에는 열려 있지 않습니다.')];
+    }
+    if (control === 'write-fail') {
+      return [400, errorBody('SAMPLE_FAIL', '합성 실패 — 투입 기록 불가')];
+    }
+
+    consumptionSeq += 1;
+
+    return [201, toConsumption(body ?? {}, consumptionSeq)];
+  }
+
+  if (path === '/__mock') {
+    const next = url.searchParams.get('mode');
+    if (next !== null) {
+      if (!MODES.includes(next)) {
+        return [400, { error: `모르는 모드: ${next}`, modes: MODES }];
+      }
+      mockMode = next;
+    }
+
+    return [200, { mode: mockMode, modes: MODES }];
+  }
 
   if (path === '/trace/lots') return [200, page(lotsFor(q))];
   if (path === '/mdm/molds') return [200, page(moldsFor(q))];
@@ -262,6 +353,18 @@ const routes = (url) => {
   return [404, errorBody('NOT_FOUND', `시나리오에 없는 경로입니다: ${path}`)];
 };
 
+const readBody = async (req) => {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  if (chunks.length === 0) return undefined;
+
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+  } catch {
+    return undefined;
+  }
+};
+
 const server = createServer((req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, CORS);
@@ -269,11 +372,19 @@ const server = createServer((req, res) => {
     return;
   }
 
-  const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
-  const [status, body] = routes(url);
+  void readBody(req).then((requestBody) => {
+    const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
+    const [status, body] = routes(url, req.method ?? 'GET', requestBody);
 
-  console.log(`${String(status)} ${req.method ?? 'GET'} ${url.pathname}${url.search}`);
-  json(res, status, body);
+    /* 쓰기는 헤더까지 찍는다 — 멱등 키와 귀속 사번이 실제로 실렸는지 눈으로 본다. */
+    const headers =
+      req.method === 'POST'
+        ? `  [Idempotency-Key=${req.headers['idempotency-key'] ?? '없음'} · X-Worker-No=${req.headers['x-worker-no'] ?? '없음'}]`
+        : '';
+
+    console.log(`${String(status)} ${req.method ?? 'GET'} ${url.pathname}${url.search}${headers}`);
+    json(res, status, body);
+  });
 });
 
 server.listen(PORT, '0.0.0.0', () => {
@@ -282,5 +393,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('자재LOT: SAMPLE-LOT-0001·0002·0003·0071·0072·0091 (부분 일치 검색)');
   console.log('        SAMPLE-LOT-0001 은 외부 식별자 SAMPLE-EXT-77 로도 걸린다');
   console.log('금형:   SAMPLE-MLD-01·02(한도 초과)·03(적정 타수 없음)');
-  console.log(`목 전용 제어: &${MOCK_CONTROL}=empty|partial-fail|forbidden`);
+  console.log('단말: 7901(투입 열림) · 7902(닫힘) · 그 밖(구성 없음) · 공정 7902');
+  console.log(`목 전용 제어: http://127.0.0.1:${String(PORT)}/__mock?mode=<${MODES.join('|')}>`);
 });

@@ -10,6 +10,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import { lot, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
 
@@ -19,9 +20,14 @@ const TERMINAL_ID = 7901;
 const PROCESS_ID = 7902;
 const WORKER_NO = 'SAMPLE-W-0001';
 
-const ROUTE =
-  `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}` +
-  `&terminalId=${String(TERMINAL_ID)}&processId=${String(PROCESS_ID)}&workerNo=${WORKER_NO}`;
+const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
+
+/** 셸이 채워 준 단말·공정·사번 — 확정까지 갈 수 있는 유일한 상태다. */
+const GATED: PopIdentity = {
+  terminalId: TERMINAL_ID,
+  processId: PROCESS_ID,
+  workerNo: WORKER_NO,
+};
 
 const RECEIPTS_PATH = '/logistics/shopfloor-receipts';
 const LOTS_PATH = '/trace/lots';
@@ -93,7 +99,12 @@ const renderScreen = (lots: unknown[], postRoute: StubRoute) => {
     return stub(request);
   };
 
-  renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+  renderWithProviders(
+    <PopIdentityProvider value={GATED}>
+      <MaterialInputScanScreen />
+    </PopIdentityProvider>,
+    { fetch, route: ROUTE },
+  );
 
   return sent;
 };
@@ -302,7 +313,12 @@ describe('투입 확정 — 보내지 않는 경우', () => {
       return stub(request);
     };
 
-    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: ROUTE });
+    renderWithProviders(
+    <PopIdentityProvider value={GATED}>
+      <MaterialInputScanScreen />
+    </PopIdentityProvider>,
+    { fetch, route: ROUTE },
+  );
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
     await user.click(screen.getByRole('button', { name: t.confirm.action }));

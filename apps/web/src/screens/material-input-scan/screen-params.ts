@@ -14,31 +14,6 @@
 export const WORK_ORDER_PARAM = 'workOrderId';
 
 /**
- * 단말·공정을 담는 키.
- *
- * ⚠ **여기가 임시 이음매다.** 게이팅 조회는 경로에 단말 번호를, 판정에 공정 번호를 요구하는데
- * **화면이 그 둘을 아는 자리가 이 저장소에 아직 없다** — 단말 번호는 단말 토큰의 주체이고
- * 그것을 다루는 것은 셸의 몫이다. 셸이 서면 이 두 줄이 그 자리에서 오도록 바꾼다.
- *
- * ⛔ **없으면 지어내지 않는다.** 값이 없으면 게이팅을 「확인할 수 없음」이 아니라
- * 「단말을 모른다」로 말하고 투입 확정을 막는다 — 모르는 것을 통과로 처리하지 않는다(F-6).
- */
-export const TERMINAL_PARAM = 'terminalId';
-export const PROCESS_PARAM = 'processId';
-
-/**
- * 귀속 사번. 쓰기의 `X-Worker-No` 헤더에 실린다(귀속 조항 D-5).
- *
- * ⚠ **같은 임시 이음매다.** 스펙은 이 값을 `P-CO-01`(사번 경량 인증)이 단말 메모리에 두고
- * 이 화면이 읽는 것으로 적었는데, 그 화면이 이 저장소에 아직 없다. 서면 이 줄이 그 자리에서
- * 오도록 바꾼다.
- *
- * ⛔ **인증으로 승격시키지 않는다**(F-2 단서) — 사번에 비밀번호·잠금·만료를 붙이지 않는다.
- * 이것은 「누가 한 일인가」를 적는 값이지 자격을 증명하는 값이 아니다.
- */
-export const WORKER_NO_PARAM = 'workerNo';
-
-/**
  * 주소에서 작업지시 번호를 읽는다. 읽을 수 없으면 `null`이다.
  *
  * **양의 정수만 받는다.** 계약이 `int64`를 요구하므로 소수·음수·0은 있을 수 없는 값이고,
@@ -56,21 +31,3 @@ const readPositiveId = (params: URLSearchParams, key: string): number | null => 
 
 export const readWorkOrderId = (params: URLSearchParams): number | null =>
   readPositiveId(params, WORK_ORDER_PARAM);
-
-/** 게이팅 조회가 경로로 요구하는 단말 번호. 위 「임시 이음매」 참조. */
-export const readTerminalId = (params: URLSearchParams): number | null =>
-  readPositiveId(params, TERMINAL_PARAM);
-
-/** 게이팅 판정의 대상 공정. 단말 하나가 여러 공정을 갖는다. */
-export const readProcessId = (params: URLSearchParams): number | null =>
-  readPositiveId(params, PROCESS_PARAM);
-
-/**
- * 귀속 사번. **공백만 있는 값은 없는 것으로 다룬다** — 서버가 거절할 헤더를 화면이 만들지
- * 않는다. 계약이 문자열 50자를 상한으로 둔다.
- */
-export const readWorkerNo = (params: URLSearchParams): string | null => {
-  const raw = params.get(WORKER_NO_PARAM)?.trim() ?? '';
-
-  return raw === '' || raw.length > 50 ? null : raw;
-};

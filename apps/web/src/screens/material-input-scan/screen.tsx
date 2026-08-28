@@ -3,6 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { usePopIdentity } from '../../patterns/pop-identity';
+
 import { ConfirmPanel } from './confirm-panel';
 import { LoadErrorBanner } from './load-error-banner';
 import { useLotStatusLabels } from './lot-status-labels';
@@ -15,7 +17,7 @@ import { ScannedList } from './scanned-list';
 import { dropQty, EMPTY_QTY_DRAFTS, hasEveryQty, writeQty, type QtyDrafts } from './input-qty';
 import { toRecordedNote, useConfirmInput, type RecordedNote } from './mutations';
 import { toMaterialConsumptions } from './post-request';
-import { readProcessId, readTerminalId, readWorkerNo, readWorkOrderId } from './screen-params';
+import { readWorkOrderId } from './screen-params';
 import { useTerminalGate } from './terminal-gating';
 
 const t = messages.materialInputScan;
@@ -63,10 +65,12 @@ const describeOutcome = (outcome: ScanOutcome): string => {
 export const MaterialInputScanScreen = () => {
   const [searchParams] = useSearchParams();
   const workOrderId = readWorkOrderId(searchParams);
-  /* ⚠ 임시 이음매 — 셸이 서면 단말·공정은 그 자리에서 온다(`screen-params.ts`). */
-  const terminalId = readTerminalId(searchParams);
-  const processId = readProcessId(searchParams);
-  const workerNo = readWorkerNo(searchParams);
+  /*
+   * 단말·공정·사번은 **셸이 아는 것**이라 주소가 아니라 컨텍스트로 온다(`patterns/pop-identity`).
+   * 채우는 자리가 아직 없어 지금은 전부 `null`이고, 화면은 그 상태를 사유와 함께 보인다 —
+   * 모르는 것을 통과로 처리하지 않는다(F-6).
+   */
+  const { terminalId, processId, workerNo } = usePopIdentity();
 
   const titleId = useId();
 

@@ -10,6 +10,11 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
+import {
+  PopIdentityProvider,
+  UNKNOWN_POP_IDENTITY,
+  type PopIdentity,
+} from '../../patterns/pop-identity';
 import { lot, mold, receipt, receiptLineFixtures, WORK_ORDER_ID } from './fixtures';
 import { MaterialInputScanScreen } from './screen';
 
@@ -26,10 +31,12 @@ const TERMINAL_PROCESSES_PATH = `/mdm/terminals/${String(TERMINAL_ID)}/processes
 
 const WORKER_NO = 'SAMPLE-W-0001';
 
-/** 단말·공정·사번까지 실린 주소 — 게이팅이 판정할 수 있고 귀속도 갖춰진 상태다. */
-const GATED_ROUTE =
-  `${ROUTE}&terminalId=${String(TERMINAL_ID)}&processId=${String(PROCESS_ID)}` +
-  `&workerNo=${WORKER_NO}`;
+/** 셸이 단말·공정·사번을 채워 준 상태 — 게이팅이 판정할 수 있고 귀속도 갖춰졌다. */
+const GATED: PopIdentity = {
+  terminalId: TERMINAL_ID,
+  processId: PROCESS_ID,
+  workerNo: WORKER_NO,
+};
 
 /** 이 단말·공정에서 자재 투입이 열려 있는가. */
 const gateRoute = (canInputMaterial: boolean): StubRoute => ({
@@ -100,7 +107,7 @@ interface RecordedRequest {
   url: URL;
 }
 
-const renderScreen = (routes: StubRoute[], route = ROUTE) => {
+const renderScreen = (routes: StubRoute[], identity = UNKNOWN_POP_IDENTITY) => {
   const requests: RecordedRequest[] = [];
   const stub = createStubFetch([...receiptRoutes(), ...routes]);
   const fetch: StubFetch = async (request) => {
@@ -109,7 +116,14 @@ const renderScreen = (routes: StubRoute[], route = ROUTE) => {
     return stub(request);
   };
 
-  return { ...renderWithProviders(<MaterialInputScanScreen />, { fetch, route }), requests };
+  const view = renderWithProviders(
+    <PopIdentityProvider value={identity}>
+      <MaterialInputScanScreen />
+    </PopIdentityProvider>,
+    { fetch, route: ROUTE },
+  );
+
+  return { ...view, requests };
 };
 
 /** 스캔 칸에 코드를 넣고 Enter로 확정한다 — 스캐너가 하는 것과 같은 순서다. */
@@ -493,7 +507,7 @@ describe('MaterialInputScanScreen — 금형 타발수', () => {
         moldsRoute([mold({ currentShotCount: 50000, availableShotCount: 0 })]),
         gateRoute(true),
       ],
-      GATED_ROUTE,
+      GATED,
     );
 
     await scanCode(user, 'SAMPLE-MLD-01');
@@ -534,7 +548,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
 
   it('권한이 닫혀 있으면 막고 관리자를 가리킨다', async () => {
     const user = userEvent.setup();
-    renderScreen([lotsRoute([lot()]), gateRoute(false)], GATED_ROUTE);
+    renderScreen([lotsRoute([lot()]), gateRoute(false)], GATED);
 
     expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
 
@@ -559,7 +573,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
           respond: () => new Response(null, { status: 500 }),
         },
       ],
-      GATED_ROUTE,
+      GATED,
     );
 
     expect(await screen.findByText(t.confirm.reasons.unavailable)).toBeTruthy();
@@ -582,7 +596,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
           respond: () => jsonResponse({ items: [{ processId: 7999, canInputMaterial: true }] }),
         },
       ],
-      GATED_ROUTE,
+      GATED,
     );
 
     expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
@@ -590,7 +604,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
 
   /* 권한이 없을 때 「다시 시도」를 두면 작업자가 풀 수 없는 것을 되풀이한다. */
   it('권한이 닫힌 것에는 다시 시도를 붙이지 않는다', async () => {
-    renderScreen([lotsRoute([lot()]), gateRoute(false)], GATED_ROUTE);
+    renderScreen([lotsRoute([lot()]), gateRoute(false)], GATED);
 
     await screen.findByText(t.confirm.reasons.denied);
     expect(screen.queryByRole('button', { name: t.confirm.retry })).toBeNull();
@@ -613,7 +627,12 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
       return stub(request);
     };
 
-    renderWithProviders(<MaterialInputScanScreen />, { fetch, route: GATED_ROUTE });
+    renderWithProviders(
+      <PopIdentityProvider value={GATED}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
 
     await waitFor(() => {
       expect(screen.getByText(t.confirm.reasons.checking)).toBeTruthy();
@@ -630,7 +649,7 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
    */
   it('권한·자재·수량이 모두 갖춰져야 확정이 열린다', async () => {
     const user = userEvent.setup();
-    renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED_ROUTE);
+    renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED);
 
     expect(await screen.findByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
 

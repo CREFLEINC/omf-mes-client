@@ -52,31 +52,37 @@ const renderQty = (value: number): ReactNode => String(value);
  * 보인다(#47).
  */
 export const ReceiptTable = ({ lines, isLoading, hasWorkOrder }: ReceiptTableProps) => {
+  /*
+   * **여섯 열을 모두 가운데로 맞춘다.** 현장 단말은 멀리서 훑어보는 화면이라, 열마다 정렬이
+   * 갈리면 눈이 좌우로 튄다 — 숫자를 오른쪽에 붙이는 관행은 자릿수를 견주는 표의 것이고
+   * 이 표는 줄 사이 크기 비교가 목적이 아니다.
+   */
   const columns: Column<ReceiptLineView>[] = [
-    { key: 'itemId', header: t.table.item, render: (row) => String(row.itemId) },
-    { key: 'lotId', header: t.table.lot, render: (row) => String(row.lotId) },
+    { key: 'itemId', header: t.table.item, align: 'center', render: (row) => String(row.itemId) },
+    { key: 'lotId', header: t.table.lot, align: 'center', render: (row) => String(row.lotId) },
     {
       key: 'issuedQty',
       header: t.table.issuedQty,
-      align: 'end',
+      align: 'center',
       render: (row) => renderQty(row.issuedQty),
     },
     {
       key: 'receivedQty',
       header: t.table.receivedQty,
-      align: 'end',
+      align: 'center',
       render: (row) => renderQty(row.receivedQty),
     },
     {
       key: 'varianceQty',
       header: t.table.varianceQty,
-      align: 'end',
+      align: 'center',
       render: (row) => renderQty(row.varianceQty),
     },
     {
       key: 'status',
       header: t.table.status,
       width: '120px',
+      align: 'center',
       render: (row) => (
         <Chip variant="status" size="sm" status={STATUS_TONE[row.status]}>
           {STATUS_LABEL[row.status]}
