@@ -28,6 +28,7 @@ const warehouse: components['schemas']['Warehouse'] = {
   warehouseTypeCode: 'SAMPLE_TYPE',
   managementLevelCode: 'SAMPLE_LEVEL',
   isExternal: false,
+  isDefect: false,
   isActive: true,
 };
 const earlierWarehouse: components['schemas']['Warehouse'] = {

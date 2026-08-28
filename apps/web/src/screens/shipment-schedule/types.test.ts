@@ -8,6 +8,7 @@ const LINE = {
   itemId: 9301,
   requestedQty: 100,
   allocatedQty: 80,
+  pickedQty: 20,
   shippedQty: 20,
   uomId: 9501,
   shippingInspectionRequired: false,
@@ -20,6 +21,7 @@ const RESPONSE = {
   shipToPartnerId: 9201,
   requestedShipDate: '2026-08-13',
   statusCode: 'SAMPLE_STATUS_A',
+  shippingInspectionStatusCode: 'NOT_REQUIRED' as const,
   lines: [LINE],
 };
 
