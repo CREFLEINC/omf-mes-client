@@ -74,6 +74,7 @@
  * .pop-panes        POP 좌우 2단 — 접힘 기준점이 없다. 구획이 하나면 줄 전체를 쓴다
  * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
  * .pop-empty-note   표가 비었을 때의 안내 — 칸 가운데
+ * .pop-stacked-end  오른쪽 정렬 칸에 쌓는 두 줄(.stacked-cell 보조)
  * .pop-pane-title   구획 제목
  * .pop-target-fields 발번 대상의 읽기 전용 라벨·값 두 열
  * .pop-lot-label    LOT 번호 자리의 라벨
@@ -1233,6 +1234,17 @@ main > * + * {
 
 .pop-target-actions > button {
   flex: 1;
+}
+
+/*
+ * 오른쪽 정렬 칸에 쌓는 두 줄.
+ *
+ * `.stacked-cell`은 줄이 칸 너비로 늘어나지 않게 `align-items: flex-start`를 준다. 그런데
+ * 수량처럼 **칸 자체가 오른쪽 정렬**인 자리에서는 그것이 칸 정렬을 거슬러, 머리글은 오른쪽
+ * 끝에 있는데 값은 왼쪽에 붙는다(실기에서 드러났다). 그 자리만 정렬을 맞춘다.
+ */
+.pop-stacked-end {
+  align-items: flex-end;
 }
 
 /*

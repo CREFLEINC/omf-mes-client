@@ -179,6 +179,18 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   });
 
   /** 스펙 §6 — 사전부착 건이 목록에 나타나면 안 된다. */
+  /**
+   * 칸은 오른쪽 정렬인데 쌓는 줄이 왼쪽에 붙어, 머리글과 값이 어긋나 보였다(실기에서
+   * 드러났다). `.stacked-cell`의 기본값이 칸 정렬을 거스르는 자리다.
+   */
+  it('수량 칸의 쌓인 두 줄이 칸 정렬을 따른다', async () => {
+    renderScreen();
+
+    const quantity = await screen.findByText('500 EA');
+
+    expect(quantity.closest('.stacked-cell')).toHaveClass('pop-stacked-end');
+  });
+
   it('공급사 LOT 이 붙어 온 자재는 목록에서 뺀다', async () => {
     renderScreen({
       lines: [line(8501, 8101, 8601, 500, true), line(8502, 8101, 8601, 200, false)],

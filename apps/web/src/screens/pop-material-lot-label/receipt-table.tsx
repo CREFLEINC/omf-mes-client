@@ -89,7 +89,8 @@ export const ReceiptTable = ({
       align: 'end',
       width: '140px',
       render: (row) => (
-        <span className="stacked-cell">
+        // 칸이 오른쪽 정렬이라 쌓는 줄도 오른쪽에 맞춘다 — 기본값은 왼쪽에 붙는다.
+        <span className="stacked-cell pop-stacked-end">
           <span>
             {row.receivedQty} {lookupDisplayLabel(uomLookup, row.uomId)}
           </span>
