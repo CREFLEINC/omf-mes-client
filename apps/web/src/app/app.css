@@ -46,6 +46,7 @@
  * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
  * .pop-empty-note   표가 비었을 때의 안내 — 칸 가운데
  * .pop-stacked-end  오른쪽 정렬 칸에 쌓는 두 줄(.stacked-cell 보조)
+ * .pop-wide-note    구획 폭을 그대로 쓰는 보조 안내(.field-note 의 20rem 제한 밖)
  * .pop-pane-title   구획 제목
  * .pop-target-fields 발번 대상의 읽기 전용 라벨·값 두 열
  * .pop-lot-label    LOT 번호 자리의 라벨
@@ -981,6 +982,17 @@ main > * + * {
 
 .pop-target-actions > button {
   flex: 1;
+}
+
+/*
+ * 구획 폭을 그대로 쓰는 보조 안내.
+ *
+ * `.field-note`는 규범 4가 **한 필드에 붙는 사유**용으로 정의한 것이라 `max-width: 20rem`에
+ * 갇힌다. 구획 전체에 걸리는 안내를 그대로 실으면 가로 여유가 남는데도 접힌다(실기에서
+ * 두 번 드러났다 — 목록 안내와 비활성 사유).
+ */
+.pop-wide-note {
+  max-width: none;
 }
 
 /*

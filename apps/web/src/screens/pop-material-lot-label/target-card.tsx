@@ -62,7 +62,7 @@ export const TargetCard = ({ row, itemLookup, uomLookup, supplierLookup }: Targe
           {t.actions.reissue}
         </Button>
       </div>
-      <p className="field-note">{t.actions.unavailable}</p>
+      <p className="field-note pop-wide-note">{t.actions.unavailable}</p>
     </>
   );
 };

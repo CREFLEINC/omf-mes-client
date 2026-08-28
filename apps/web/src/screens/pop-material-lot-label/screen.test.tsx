@@ -328,7 +328,11 @@ describe('PopMaterialLotLabelScreen — 발번 대상', () => {
 
     expect(await within(target).findByRole('button', { name: '등록·인쇄' })).toBeDisabled();
     expect(within(target).getByRole('button', { name: '재인쇄' })).toBeDisabled();
-    expect(within(target).getByText(/아직 사용할 수 없습니다/u)).toBeInTheDocument();
+    /*
+     * 구획 폭을 그대로 쓴다 — `.field-note`의 20rem 제한에 갇히면 가로 여유가 남는데도
+     * 두 줄로 접힌다(실기에서 드러났다).
+     */
+    expect(within(target).getByText(/아직 사용할 수 없습니다/u)).toHaveClass('pop-wide-note');
   });
 
   /** 되돌릴 수 없는 조작이라 터치 등급이 높다. */
