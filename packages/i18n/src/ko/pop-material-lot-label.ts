@@ -3,14 +3,12 @@ export const popMaterialLotLabel = {
   receipts: {
     paneLabel: '입하 목록',
     caption: '입하 목록',
+    /** 스펙 §3 의 목록은 세 칸이다 — 선택 칸을 따로 두지 않고 줄을 눌러 고른다. */
     columns: {
-      select: '선택',
       receipt: '입하',
       item: '품목',
       quantity: '수량',
     },
-    select: '선택',
-    selected: '선택됨',
     /** 행마다 「선택」이 되풀이되면 어느 건인지 알 수 없다 — 접근 이름에 입하번호를 넣는다. */
     selectRow: (receiptNo: string, itemName: string) => `${receiptNo} ${itemName} 선택`,
     deselectRow: (receiptNo: string, itemName: string) => `${receiptNo} ${itemName} 선택 해제`,
@@ -57,8 +55,6 @@ export const popMaterialLotLabel = {
       quantity: '수량',
       attachment: '부착',
     },
-    select: '선택',
-    selected: '선택됨',
     selectRow: (itemName: string) => `${itemName} 선택`,
     deselectRow: (itemName: string) => `${itemName} 선택 해제`,
     /** 공급사가 LOT 을 붙여 온 건과 우리가 발번할 건을 가른다. */

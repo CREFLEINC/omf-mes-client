@@ -1,4 +1,4 @@
-import { Button, Table, type Column } from '@crefle/web-ui';
+import { Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel, lookupDisplayLabelWithInactive } from '../../patterns/lookup-display';
@@ -20,10 +20,15 @@ export interface ReceiptTableProps {
 }
 
 /**
- * 입하 목록 — **스펙 §3 의 한 줄이 입하 건과 품목을 함께 담는다.**
+ * 입하 목록 — **스펙 §3 의 세 칸이다: 입하 · 품목 · 수량.**
  *
- * 칸을 늘리는 대신 **한 칸에 두 줄을 쌓는다**(`.stacked-cell`). 1024 를 좌우로 나눈 폭에
- * 다섯 칸을 늘어놓으면 값이 칸 안에서 접히고, 코드는 하이픈 뒤에서 갈려 다른 코드로 읽힌다.
+ * ⛔ **선택 칸을 따로 두지 않는다.** 스펙의 목록에 그런 칸이 없고, §5-1 도 「입하 건 선택」을
+ * 액션으로만 적는다. 앞선 판이 관리웹(`W-01-10`)의 선택 버튼 열을 가져왔는데, 그쪽은 마우스로
+ * 쓰는 화면이라 터치 단말에 같은 모양이 맞다는 근거가 없었다 — 실기에서 「선택이 뭘 뜻하는지
+ * 모르겠다」가 나왔다.
+ *
+ * 대신 **첫 칸 전체가 누르는 자리**다. 칸을 채우는 버튼이라 타겟이 크고, 고르면 채워진 모양이
+ * 되어 어느 줄을 골랐는지 눈에 남는다.
  *
  * 밀도를 `comfortable`로 둔다. 장갑 낀 손으로 누르는 표라 `compact`는 행이 서로 붙는다.
  *
@@ -41,18 +46,18 @@ export const ReceiptTable = ({
 }: ReceiptTableProps) => {
   const columns: Column<TargetRow>[] = [
     {
-      key: 'select',
-      header: t.columns.select,
-      width: '128px',
+      key: 'receipt',
+      header: t.columns.receipt,
       render: (row) => {
         const isSelected = row.inboundReceiptLineId === selectedId;
         const itemName = lookupDisplayLabel(itemLookup, row.itemId);
 
         return (
-          <Button
-            className={popTouchClass('normal')}
-            variant={isSelected ? 'filled' : 'outlined'}
-            size="xl"
+          <button
+            type="button"
+            className={`pop-row-select ${popTouchClass('normal')}${
+              isSelected ? ' pop-row-select-on' : ''
+            }`}
             aria-pressed={isSelected}
             aria-label={
               isSelected
@@ -63,20 +68,11 @@ export const ReceiptTable = ({
               onToggleSelect(row.inboundReceiptLineId);
             }}
           >
-            {isSelected ? t.selected : t.select}
-          </Button>
+            <span>{row.inboundReceiptNo}</span>
+            <span>{lookupDisplayLabelWithInactive(supplierLookup, row.supplierId)}</span>
+          </button>
         );
       },
-    },
-    {
-      key: 'receipt',
-      header: t.columns.receipt,
-      render: (row) => (
-        <span className="stacked-cell">
-          <span>{row.inboundReceiptNo}</span>
-          <span>{lookupDisplayLabelWithInactive(supplierLookup, row.supplierId)}</span>
-        </span>
-      ),
     },
     {
       key: 'item',

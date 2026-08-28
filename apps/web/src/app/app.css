@@ -45,6 +45,7 @@
  * .pop-panes        POP 좌우 2단 — 접힘 기준점이 없다. 구획이 하나면 줄 전체를 쓴다
  * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
  * .pop-empty-note   표가 비었을 때의 안내 — 칸 가운데
+ * .pop-row-select(-on) 목록에서 한 줄을 고르는 자리 — 칸 전체가 누르는 곳
  * .pop-stacked-end  오른쪽 정렬 칸에 쌓는 두 줄(.stacked-cell 보조)
  * .pop-wide-note    구획 폭을 그대로 쓰는 보조 안내(.field-note 의 20rem 제한 밖)
  * .pop-pane-title   구획 제목
@@ -982,6 +983,56 @@ main > * + * {
 
 .pop-target-actions > button {
   flex: 1;
+}
+
+/*
+ * 목록에서 한 줄을 고르는 자리 — **칸 전체가 누르는 곳이다.**
+ *
+ * 스펙의 목록에는 선택 칸이 없다. 줄을 눌러 고르는 모양이라, 첫 칸을 채우는 버튼으로 둔다.
+ * 장갑 낀 손으로 누르므로 타겟을 칸 크기까지 넓힌다.
+ */
+.pop-row-select {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 값이 하이픈 뒤에서 갈리면 다른 코드로 읽힌다 — 줄마다 끊지 않는다. */
+.pop-row-select > span {
+  white-space: nowrap;
+}
+
+.pop-row-select:hover {
+  background: var(--state-hover-neutral);
+}
+
+.pop-row-select:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/*
+ * 고른 줄 — **눈에 남아야 한다.** 앞선 판은 눌린 상태를 화면 읽기 프로그램에만 알리고
+ * 시각 변화를 두지 않아, 누른 사람이 골랐는지 알 수 없었다(실기에서 드러났다).
+ */
+.pop-row-select-on {
+  border-color: var(--primary);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.pop-row-select-on:hover {
+  background: var(--primary-container);
 }
 
 /*
