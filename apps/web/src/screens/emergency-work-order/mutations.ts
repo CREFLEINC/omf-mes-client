@@ -165,12 +165,7 @@ export const useIssueEmergencyWorkOrder = (): IssueResult => {
               params: {
                 header: { 'Idempotency-Key': createKeyFor(JSON.stringify(createBody)) },
               },
-              /*
-               * ⚠ 생성 타입이 낡아 계획 참조를 널 불가로 들고 있다(#543). 본문은 정본대로
-               * 만들어 두고 **이 한 자리에서만** 낡은 타입에 맞춘다 — 보내는 값은 바뀌지 않고,
-               * 감지기가 실제로 `null` 이 실리는지를 고정한다. 생성물이 갱신되면 지운다.
-               */
-              body: createBody as unknown as components['schemas']['WorkOrderCreate'],
+              body: createBody,
             }),
           );
 
