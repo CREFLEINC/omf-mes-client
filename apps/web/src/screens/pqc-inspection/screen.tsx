@@ -407,7 +407,6 @@ export const PqcInspectionScreen = () => {
           onInspectedChange={changeInspected}
           inspectedQty={inspectedQty}
           round={isReinspectingNow ? null : (round?.inspectionRound ?? null)}
-          resultNo={isReinspectingNow ? null : (round?.inspectionResultNo ?? null)}
           isLocked={isLocked}
           isReinspecting={isReinspectingNow}
           draft={draft}

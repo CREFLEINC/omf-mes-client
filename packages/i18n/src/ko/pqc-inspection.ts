@@ -24,16 +24,10 @@ export const pqcInspection = {
     loading: '의뢰를 불러오는 중입니다.',
     fields: {
       inspectionRequestNo: '의뢰번호',
-      /** §4-A 필수 항목. 이 화면은 늘 PQC 이지만 스펙이 그리라고 한 칸이다 */
-      inspectionTypeCode: '유형',
-      /** `target_type_code` + `target_id` 다형 참조(A-10) */
-      target: '대상',
       inspectionPlanVersionId: '검사기준 버전',
       lotId: '대상 LOT',
       itemId: '품목',
       workOrderId: '작업지시',
-      productionResultId: '실적',
-      targetQty: '대상 수량',
     },
     planVersionNote: '검사 시점의 기준 버전으로 고정됩니다.',
 
@@ -61,8 +55,6 @@ export const pqcInspection = {
 
   result: {
     heading: '수량 판정',
-    /** §4-B 필수 표시 항목. 회차와 함께 이 결과가 무엇인지 가리킨다 */
-    resultNo: '결과번호',
     round: (round: number): string => `${round}회차`,
     notStarted: '아직 입력된 검사 결과가 없습니다.',
     loading: '검사 결과를 불러오는 중입니다.',

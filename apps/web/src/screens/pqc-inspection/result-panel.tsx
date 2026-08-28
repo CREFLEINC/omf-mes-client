@@ -50,8 +50,6 @@ export interface ResultPanelProps {
   inspectedQty: number;
   /** 회차 번호. 아직 회차가 없으면 `null` */
   round: number | null;
-  /** 결과번호(§4-B). 회차가 아직 없으면 `null` */
-  resultNo: string | null;
   /** 확정된 회차는 고치지 않는다 — 정정이 아니라 재검사로 새 회차를 쌓는다 */
   isLocked: boolean;
   /** 지금 **재검사 회차를 쓰는 중**인가. 아직 만들어지지 않은 회차라 번호가 없다 */
@@ -99,7 +97,6 @@ export const ResultPanel = ({
   onInspectedChange,
   inspectedQty,
   round,
-  resultNo,
   isLocked,
   isReinspecting,
   draft,
@@ -166,13 +163,6 @@ export const ResultPanel = ({
       <p className="field-note">
         {isReinspecting ? t.reinspectRound : round === null ? t.notStarted : t.round(round)}
       </p>
-
-      {/* §4-B 필수 표시 항목 — 회차와 함께 이 결과가 «무엇인지» 가리킨다. */}
-      {resultNo !== null && (
-        <p className="field-note">
-          {t.resultNo} {resultNo}
-        </p>
-      )}
 
       {/*
        * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사

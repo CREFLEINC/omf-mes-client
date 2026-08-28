@@ -106,13 +106,21 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
     ).toBeInTheDocument();
   });
 
-  /* §4-A 의 필드 표를 그대로 그린다 — 「늘 같은 값」이라는 이유로 칸을 빼지 않는다. */
-  it('유형·대상·실적을 헤더에 그린다', async () => {
+  /*
+   * ⛔ **§4-A 를 표시 목록으로 읽지 않는다.** 그 표는 테이블의 필드 표이고, 무엇을 어디에
+   * 그리는지는 §3 도면이 정한다 — 도면의 헤더는 W/O·품목·LOT 다.
+   */
+  it('헤더는 도면대로 작업지시·품목·대상 LOT 셋이다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.detail.fields.inspectionTypeCode)).toBeInTheDocument();
-    expect(screen.getByText(t.detail.fields.target)).toBeInTheDocument();
-    expect(screen.getByText(t.detail.fields.productionResultId)).toBeInTheDocument();
+    const header = await screen.findByLabelText(t.detail.heading);
+    const labels = [...header.querySelectorAll('dt')].map((cell) => cell.textContent);
+
+    expect(labels).toEqual([
+      t.detail.fields.workOrderId,
+      t.detail.fields.itemId,
+      t.detail.fields.lotId,
+    ]);
   });
 
   /* ⚠ 샘플 수의 단위가 미확정이다 — 어느 한쪽으로 읽어 계산하지 않고 그 사실을 밝힌다. */

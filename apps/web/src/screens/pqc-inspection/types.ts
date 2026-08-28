@@ -70,13 +70,6 @@ export const toInspectionQueueResult = (response: {
 export interface InspectionRequestDetail {
   inspectionRequestId: number;
   inspectionRequestNo: string;
-  /** §4-A 필수 표시 항목. 이 화면은 늘 `PQC` 이지만 **스펙이 그리라고 한 칸이다** */
-  inspectionTypeCode: string;
-  /** 대상 — `target_type_code` + `target_id` 의 다형 참조(A-10). §4-A 필수 */
-  targetTypeCode: string;
-  targetId: number;
-  /** 생산실적. §4-A 「품목·LOT·W/O·실적」의 마지막 항목이며 nullable 이다 */
-  productionResultId: number | null;
   /** ⚠ 검사 시점에 고정되는 기준 버전. 화면 표시 필수(§4-A) */
   inspectionPlanVersionId: number;
   workOrderId: number | null;
@@ -96,10 +89,6 @@ export const toInspectionRequestDetail = (
 ): InspectionRequestDetail => ({
   inspectionRequestId: item.inspectionRequestId,
   inspectionRequestNo: item.inspectionRequestNo,
-  inspectionTypeCode: item.inspectionTypeCode,
-  targetTypeCode: item.targetTypeCode,
-  targetId: item.targetId,
-  productionResultId: item.productionResultId ?? null,
   inspectionPlanVersionId: item.inspectionPlanVersionId,
   workOrderId: item.workOrderId ?? null,
   lotId: item.lotId ?? null,
@@ -121,8 +110,6 @@ export const toInspectionRequestDetail = (
  */
 export interface InspectionResultRound {
   inspectionResultId: number;
-  /** 결과번호. §4-B 필수 표시 항목이다 */
-  inspectionResultNo: string;
   inspectionRound: number;
   inspectedQty: number;
   acceptedQty: number;
@@ -137,7 +124,6 @@ export interface InspectionResultRound {
 
 export const toInspectionResultRound = (item: InspectionResultResponse): InspectionResultRound => ({
   inspectionResultId: item.inspectionResultId,
-  inspectionResultNo: item.inspectionResultNo,
   inspectionRound: item.inspectionRound,
   inspectedQty: item.inspectedQty,
   acceptedQty: item.acceptedQty,
