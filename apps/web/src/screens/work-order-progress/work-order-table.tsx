@@ -21,6 +21,13 @@ export interface WorkOrderTableProps {
   isError: boolean;
   /** 식별자를 사람이 읽는 이름으로. 이름표를 만드는 일은 화면이 맡는다. */
   itemLabel: (itemIdText: string) => string;
+  /**
+   * 상태 코드를 마스터의 표시명으로.
+   *
+   * ⚠ 품목과 달리 **못 찾으면 코드를 그대로 둔다** — 상태 코드는 그 자체가 사람이 읽을 수
+   * 있는 말이라, 감추면 오히려 정보가 준다. 그 판단은 이름표가 갖는다.
+   */
+  statusLabel: (statusCode: string) => string;
   onSort: (key: SortKey) => void;
   onSelect: (workOrderId: number) => void;
 }
@@ -54,6 +61,7 @@ export const WorkOrderTable = ({
   isLoading,
   isError,
   itemLabel,
+  statusLabel,
   onSort,
   onSelect,
 }: WorkOrderTableProps) => {
@@ -115,7 +123,7 @@ export const WorkOrderTable = ({
       key: 'statusCode',
       header: t.columns.statusCode,
       sortable: sortable('statusCode'),
-      render: (row) => row.statusCode,
+      render: (row) => statusLabel(row.statusCode),
     },
     {
       key: 'plannedEndAt',

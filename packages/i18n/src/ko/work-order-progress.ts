@@ -165,6 +165,13 @@ export const workOrderProgress = {
     range: (start: number, end: number, total: number): string =>
       `${String(total)}건 중 ${String(start)}–${String(end)}`,
     total: (total: number): string => `${String(total)}건`,
+
+    /**
+     * ⛔ 조건이 좁아져 **없는 쪽**을 가리키게 됐을 때. 「결과가 없습니다」로 적으면 조건이
+     * 잘못된 줄 알고 조건을 더 만지게 된다 — 어떻게 풀 것인가를 적는다(G-3).
+     */
+    beyondLast: '이 쪽에는 결과가 없습니다. 조건이 좁아져 쪽 번호가 남았습니다.',
+    toFirst: '첫 쪽으로',
   },
 
   /** 고른 W/O 의 상세. 가장자리 패널이 DS 에 없어 가운데 창으로 시작한다. */

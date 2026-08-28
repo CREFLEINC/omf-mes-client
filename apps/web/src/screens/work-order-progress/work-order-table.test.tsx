@@ -41,6 +41,7 @@ const renderTable = (overrides: Partial<WorkOrderTableProps> = {}) => {
       isLoading={false}
       isError={false}
       itemLabel={(id) => `품목 ${id}`}
+      statusLabel={(code) => (code === 'SYN_RUN' ? '진행중' : code)}
       onSort={onSort}
       onSelect={onSelect}
       {...overrides}
@@ -190,5 +191,23 @@ describe('WorkOrderTable', () => {
     expect(within(region).getByText(t.joinedColumnsNote)).toBeInTheDocument();
     expect(within(region).queryByRole('columnheader', { name: 'P/O' })).not.toBeInTheDocument();
     expect(within(region).queryByRole('columnheader', { name: '공정' })).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * ⚠ 상태는 품목과 다르다 — 코드 자체가 사람이 읽을 수 있는 말이라, 표시명을 모른다고
+ * 감추면 오히려 정보가 준다.
+ */
+describe('상태 열', () => {
+  it('마스터의 표시명으로 바꾼다', () => {
+    renderTable({ rows: [row({ statusCode: 'SYN_RUN' })] });
+
+    expect(screen.getByRole('cell', { name: '진행중' })).toBeInTheDocument();
+  });
+
+  it('표시명을 모르는 코드는 받은 값을 그대로 보인다', () => {
+    renderTable({ rows: [row({ statusCode: 'SYN_UNSEEN' })] });
+
+    expect(screen.getByRole('cell', { name: 'SYN_UNSEEN' })).toBeInTheDocument();
   });
 });
