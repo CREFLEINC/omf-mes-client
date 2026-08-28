@@ -208,16 +208,31 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     );
   });
 
-  it('고르면 버튼 글자가 「선택됨」으로 바뀐다 — 보이지 않는 선택은 선택이 아니다', async () => {
+  /**
+   * ⭐ 고른 것이 **눈에 보여야** 한다. 앞선 판은 눌린 상태를 화면 읽기 프로그램에만 알리고
+   * 시각 변화를 두지 않아, 누른 사람이 골랐는지 알 수 없었다(실기에서 드러났다).
+   * 스펙의 목록에는 선택 칸이 없으므로 글자로 말할 자리가 없다 — **모양으로 남긴다.**
+   */
+  it('고르면 그 줄이 고른 모양이 된다 — 보이지 않는 선택은 선택이 아니다', async () => {
     const { user } = renderScreen();
 
     await selectFirst(user);
 
-    expect(
-      await screen.findByRole('button', {
-        name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택 해제',
-      }),
-    ).toHaveTextContent('선택됨');
+    const selected = await screen.findByRole('button', {
+      name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택 해제',
+    });
+
+    expect(selected).toHaveClass('pop-row-select-on');
+    expect(selected).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  /** 스펙 §3 의 목록은 입하·품목·수량 세 칸이다. 선택 칸을 따로 두지 않는다. */
+  it('목록이 스펙의 세 칸으로 선다', async () => {
+    renderScreen();
+
+    const headers = await screen.findAllByRole('columnheader');
+
+    expect(headers.map((header) => header.textContent)).toEqual(['입하', '품목', '수량']);
   });
 
   it('입하 건이 하나도 없으면 빈 상태를 보인다', async () => {
