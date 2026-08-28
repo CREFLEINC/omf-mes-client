@@ -110,17 +110,19 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
    * ⛔ **§4-A 를 표시 목록으로 읽지 않는다.** 그 표는 테이블의 필드 표이고, 무엇을 어디에
    * 그리는지는 §3 도면이 정한다 — 도면의 헤더는 W/O·품목·LOT 다.
    */
-  it('헤더는 도면대로 작업지시·품목·대상 LOT 셋이다', async () => {
+  it('헤더는 도면대로 값을 라벨 없이 잇는다', async () => {
     renderScreen();
 
     const header = await screen.findByLabelText(t.detail.heading);
-    const labels = [...header.querySelectorAll('dt')].map((cell) => cell.textContent);
 
-    expect(labels).toEqual([
-      t.detail.fields.workOrderId,
-      t.detail.fields.itemId,
-      t.detail.fields.lotId,
-    ]);
+    /* ⛔ 눈에 보이는 라벨을 두지 않는다 — 도면은 값만 가운뎃점으로 잇는다. */
+    expect(header.textContent).not.toContain(t.detail.fields.workOrderId);
+    expect(header.textContent).not.toContain(t.detail.fields.itemId);
+
+    /* 값이 없는 칸은 빈 자리로 두지 않고 없음 표시를 낸다 — 못 불러온 것과 구분한다. */
+    expect(header.textContent).toContain(`${t.emptyValue} · ${waitingRequest.itemId}`);
+    /* 도면이 LOT 에만 앞표를 단다. */
+    expect(header.textContent).toContain(`${t.detail.lotPrefix} ${waitingRequest.lotId}`);
   });
 
   /* ⚠ 샘플 수의 단위가 미확정이다 — 어느 한쪽으로 읽어 계산하지 않고 그 사실을 밝힌다. */
