@@ -24,8 +24,12 @@ const TERMINAL_ID = 7901;
 const PROCESS_ID = 7902;
 const TERMINAL_PROCESSES_PATH = `/mdm/terminals/${String(TERMINAL_ID)}/processes`;
 
-/** 단말·공정까지 실린 주소 — 게이팅이 판정할 수 있는 상태다. */
-const GATED_ROUTE = `${ROUTE}&terminalId=${String(TERMINAL_ID)}&processId=${String(PROCESS_ID)}`;
+const WORKER_NO = 'SAMPLE-W-0001';
+
+/** 단말·공정·사번까지 실린 주소 — 게이팅이 판정할 수 있고 귀속도 갖춰진 상태다. */
+const GATED_ROUTE =
+  `${ROUTE}&terminalId=${String(TERMINAL_ID)}&processId=${String(PROCESS_ID)}` +
+  `&workerNo=${WORKER_NO}`;
 
 /** 이 단말·공정에서 자재 투입이 열려 있는가. */
 const gateRoute = (canInputMaterial: boolean): StubRoute => ({
@@ -620,8 +624,11 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     expect(await screen.findByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
   });
 
-  /* 열려 있고 담았으면 비로소 눌린다 — 이 화면이 실제로 투입할 수 있는 유일한 상태다. */
-  it('권한이 열려 있고 자재를 담으면 확정이 열린다', async () => {
+  /*
+   * 열려 있고 · 담았고 · 수량까지 있어야 비로소 눌린다 — 이 화면이 실제로 투입할 수 있는
+   * 유일한 상태다. **수량이 빠진 채로 열리면** 갖춰지지 않은 값이 되돌릴 수 없는 기록에 실린다.
+   */
+  it('권한·자재·수량이 모두 갖춰져야 확정이 열린다', async () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED_ROUTE);
 
@@ -629,6 +636,12 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
 
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
+
+    /* 담기만 해서는 열리지 않는다 — 수량이 남았다. */
+    expect(await screen.findByText(t.confirm.reasons.qtyMissing)).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+
+    await user.type(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001')), '12');
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty(

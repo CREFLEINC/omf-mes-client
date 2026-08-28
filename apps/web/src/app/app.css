@@ -853,3 +853,9 @@ main > * + * {
   align-items: center;
   gap: var(--space-2);
 }
+
+/* 서버가 기록만 한 것을 상태 옆에 붙인다 — 「통과」가 「정상」이 아니다. */
+.scanned-item-notes {
+  display: inline-flex;
+  gap: var(--space-2);
+}

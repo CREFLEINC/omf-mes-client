@@ -12,7 +12,10 @@ import { applyScan, EMPTY_SCAN_DRAFT, type ScanDraft, type ScanOutcome } from '.
 import { ScanField } from './scan-field';
 import { useScanLookup } from './scan-queries';
 import { ScannedList } from './scanned-list';
-import { readProcessId, readTerminalId, readWorkOrderId } from './screen-params';
+import { dropQty, EMPTY_QTY_DRAFTS, hasEveryQty, writeQty, type QtyDrafts } from './input-qty';
+import { toRecordedNote, useConfirmInput, type RecordedNote } from './mutations';
+import { toMaterialConsumptions } from './post-request';
+import { readProcessId, readTerminalId, readWorkerNo, readWorkOrderId } from './screen-params';
 import { useTerminalGate } from './terminal-gating';
 
 const t = messages.materialInputScan;
@@ -63,6 +66,7 @@ export const MaterialInputScanScreen = () => {
   /* ⚠ 임시 이음매 — 셸이 서면 단말·공정은 그 자리에서 온다(`screen-params.ts`). */
   const terminalId = readTerminalId(searchParams);
   const processId = readProcessId(searchParams);
+  const workerNo = readWorkerNo(searchParams);
 
   const titleId = useId();
 
@@ -74,6 +78,10 @@ export const MaterialInputScanScreen = () => {
   const statusLabels = useLotStatusLabels();
   /* 단말 게이팅 — 스펙 §5-1. 화면의 잠금은 오조작을 줄이는 장치이지 집행이 아니다. */
   const gate = useTerminalGate(terminalId, processId);
+
+  const [qtyDrafts, setQtyDrafts] = useState<QtyDrafts>(EMPTY_QTY_DRAFTS);
+  const [notes, setNotes] = useState<readonly RecordedNote[]>([]);
+  const confirm = useConfirmInput();
 
   const handleScan = (code: string): void => {
     /*
@@ -99,6 +107,39 @@ export const MaterialInputScanScreen = () => {
       ...prev,
       materials: prev.materials.filter((material) => material.lotId !== lotId),
     }));
+    /* 뺀 줄의 수량도 함께 버린다 — 남겨 두면 같은 LOT을 다시 담을 때 되살아난다. */
+    setQtyDrafts((prev) => dropQty(prev, lotId));
+  };
+
+  const changeQty = (lotId: number, value: string): void => {
+    setQtyDrafts((prev) => writeQty(prev, lotId, value));
+  };
+
+  /**
+   * 투입 확정 — **되돌릴 수 없는 쓰기**다.
+   *
+   * ⛔ **보내기 직전에 본문을 다시 만든다.** 버튼 잠금이 이미 닫아 둔 길이지만, 그것이
+   * 뚫려도 갖춰지지 않은 값이 원장에 실리지 않아야 한다. 본문을 만들 수 없으면 보내지 않는다.
+   */
+  const sendConfirm = (): void => {
+    if (workOrderId === null || workerNo === null || confirm.isPending) return;
+
+    const bodies = toMaterialConsumptions(workOrderId, draft.materials, qtyDrafts, new Date());
+    if (bodies === null) return;
+
+    confirm.mutate(
+      { workerNo, bodies },
+      {
+        onSuccess: (recorded) => {
+          /*
+           * 서버가 통과시키되 기록만 한 것을 표시한다(§5-3). **담은 목록은 지우지 않는다** —
+           * 무엇이 들어갔는지 작업자가 확인할 수 있어야 하고, 되돌릴 수 없는 기록이라
+           * 화면이 스스로 치우면 확인할 길이 사라진다.
+           */
+          setNotes(recorded.map(toRecordedNote));
+        },
+      },
+    );
   };
 
   const outcome = scan.data;
@@ -162,10 +203,23 @@ export const MaterialInputScanScreen = () => {
           <ScannedList
             draft={draft}
             statusLabels={statusLabels}
+            qtyDrafts={qtyDrafts}
+            notes={notes}
+            onQtyChange={changeQty}
             onRemoveMaterial={removeMaterial}
           />
 
-          <ConfirmPanel hasMaterials={draft.materials.length > 0} gate={gate} />
+          <ConfirmPanel
+            hasMaterials={draft.materials.length > 0}
+            hasEveryQty={hasEveryQty(
+              qtyDrafts,
+              draft.materials.map((material) => material.lotId),
+            )}
+            hasWorker={workerNo !== null}
+            gate={gate}
+            confirm={confirm}
+            onConfirm={sendConfirm}
+          />
         </section>
       </div>
     </main>

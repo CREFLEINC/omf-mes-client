@@ -82,6 +82,16 @@ export const materialInputScan = {
     materialsLabel: '담은 자재',
     moldLabel: '물린 금형',
     remove: '빼기',
+    /** 스펙 §4-B의 유일한 「입력」 칸. 되돌릴 수 없는 값이라 문구가 무엇을 치는지 못박는다. */
+    qtyLabel: (lotNo: string): string => `${lotNo} 투입 수량`,
+    qtyProblems: {
+      empty: '투입 수량을 입력하세요.',
+      format: '투입 수량은 숫자로 입력하세요.',
+      notPositive: '투입 수량은 0보다 커야 합니다.',
+    },
+    /** 서버가 통과시키되 기록만 한 것 — 스펙 §5-3. 「통과」가 「정상」이 아니다. */
+    unlinkedIssue: '출고 미귀속',
+    crossProcess: '교차 투입',
     removeMaterial: (lotNo: string): string => `${lotNo} 빼기`,
     empty: '아직 아무것도 담지 않았습니다.',
     moldEmpty: '물린 금형이 없습니다.',
@@ -122,7 +132,19 @@ export const materialInputScan = {
       unavailable: '투입 권한을 확인할 수 없습니다. 다시 시도해 주세요.',
       unidentified: '단말이 확인되지 않았습니다. 작업지시를 고른 뒤 다시 들어오세요.',
       checking: '투입 권한을 확인하는 중입니다.',
+      qtyMissing: '투입 확정은 담은 자재마다 수량을 입력해야 누를 수 있습니다.',
+      workerMissing: '작업자가 확인되지 않았습니다. 사번을 확인한 뒤 다시 들어오세요.',
+      sending: '투입을 기록하는 중입니다.',
     },
     retry: '다시 확인',
+    /** 되돌릴 수 없는 기록이 남았다는 사실을 그 자리에서 말한다. */
+    recorded: (count: number): string => `${String(count)}건을 투입 기록했습니다.`,
+    /**
+     * ⚠ **몇 건이 들어갔는지 함께 말한다.** 서버에 일괄 취소가 없고 정정 경로도 없어
+     * (스펙 §8 미결 9), 작업자가 무엇을 다시 해야 하는지는 그 수가 정한다.
+     */
+    partiallyRecorded: (count: number): string =>
+      `${String(count)}건까지 기록된 뒤 실패했습니다. 기록된 것은 남아 있습니다.`,
+    failed: '투입을 기록하지 못했습니다.',
   },
 } as const;
