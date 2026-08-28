@@ -17,6 +17,8 @@ export const emergencyWorkOrderKeys = {
   routings: (itemId: number | null) => ['emergency-work-order', 'routings', itemId] as const,
   routingOperations: (routingId: number | null) =>
     ['emergency-work-order', 'routing-operations', routingId] as const,
+  /** 배포가 끝나지 않은 긴급 W/O. 조건이 고정이라 키에 담을 것이 없다. */
+  unreleased: () => ['emergency-work-order', 'unreleased'] as const,
 };
 
 /**

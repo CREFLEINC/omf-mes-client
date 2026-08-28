@@ -18,6 +18,10 @@ export type RoutingListResponse =
 export type RoutingOperationListResponse =
   paths['/planning/routings/{routingId}/operations']['get']['responses']['200']['content']['application/json'];
 
+export type WorkOrder = components['schemas']['WorkOrder'];
+export type WorkOrderListResponse =
+  paths['/production/work-orders']['get']['responses']['200']['content']['application/json'];
+
 /** 품목을 골랐을 때 화면이 붙들고 있는 것. 발행 본문의 `uomId`가 여기서 나온다. */
 export interface SelectedItem {
   itemId: number;
