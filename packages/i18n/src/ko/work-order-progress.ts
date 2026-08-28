@@ -17,6 +17,7 @@ export const workOrderProgress = {
 
   /** 조회 조건. */
   filters: {
+    legend: '조회 조건',
     period: '기간',
     from: '시작일',
     to: '종료일',
@@ -24,7 +25,12 @@ export const workOrderProgress = {
     status: '상태',
     productionOrder: 'P/O',
     keyword: 'W/O 번호',
+    keywordPlaceholder: 'W/O 번호의 일부',
     search: '조회',
+    reset: '초기화',
+
+    /** 고르지 않은 상태. ⛔ 「선택 안 함」이 아니라 **무엇이 조회되는지**를 적는다. */
+    all: '전체',
 
     /** L-3 — 비울 수 없다. 그래서 「왜 막혔나」가 아니라 「무엇을 채우면 되나」를 적는다. */
     periodRequired: '조회: 기간을 채우세요. 시작일과 종료일이 모두 필요합니다.',
@@ -42,6 +48,20 @@ export const workOrderProgress = {
      * 없는 것을 자리만 만들어 두면 「고장 났나」로 읽힌다.
      */
     processUnavailable: '공정으로는 아직 거를 수 없습니다.',
+
+    /**
+     * G-1·G-2 — 선택지를 세울 수 없으면 **지우지 않고 끄고 이유를 적는다.** 조용히 사라지면
+     * 「원래 없는 기능」으로 읽히고, 값이 채워지는 날에도 아무도 눈치채지 못한다.
+     */
+    statusUnavailable: '상태 값 목록을 받지 못했습니다. 상태로는 아직 거를 수 없습니다.',
+    lookupFailed: '선택지를 받지 못했습니다. 새로고침해 보세요.',
+
+    /**
+     * ⛔ **「여기 없으면 없는 것」으로 읽히지 않게 한다.** 선택지는 앞의 몇 건만 받아 둔
+     * 것이라, 찾는 것이 안 보이는 이유가 「없어서」가 아니라 「아직 못 받아서」일 수 있다.
+     */
+    optionsTruncated: (shown: number): string =>
+      `앞의 ${String(shown)}건만 선택지에 있습니다. 찾는 것이 없다면 아직 못 받은 것일 수 있습니다.`,
   },
 
   /**
