@@ -167,6 +167,18 @@ describe('HandoverPane', () => {
     expect(within(pane() as HTMLElement).getByText(t.itemNotShown)).toBeInTheDocument();
   });
 
+  /*
+   * ⛔ **같은 이름을 두 번 그리지 않는다.** 표에 구획 제목을 그대로 이름으로 주면 제목이
+   * 바로 아래 한 번 더 나온다 — 브라우저로 열어 보고서야 찾은 자리다. 감지기가 셈으로
+   * 고정해 둔다.
+   */
+  it('⛔ 구획 제목이 화면에 한 번만 나온다 — 표 이름이 제목을 되풀이하지 않는다', () => {
+    renderPane();
+
+    expect(screen.getAllByText(t.title)).toHaveLength(1);
+    expect(screen.getByText(t.tableCaption)).toBeInTheDocument();
+  });
+
   /* ⛔ 이 구획의 지시는 이미 만들어져 있다 — 낼 수 있는 액션은 배포뿐이다. */
   it('⛔ 여기서 새로 발행하거나 되돌리는 컨트롤을 두지 않는다', () => {
     renderPane();
