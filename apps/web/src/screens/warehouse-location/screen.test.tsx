@@ -329,9 +329,17 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
     expect(screen.queryByLabelText('창고명')).not.toBeInTheDocument();
   });
 
-  it('미사용 거래처를 참조하는 창고를 열면 그 값이 표식과 함께 선택지에 남는다', async () => {
-    const external: Warehouse = { ...warehouseFixtures[2]!, warehouseId: 1001, partnerId: 32 };
-    const { user } = renderScreen(
+  /*
+   * ⛔ **거래처는 조회 응답에 없다** — 외부창고를 열어도 화면은 그 값을 모른다. 무언가가
+   * 채워져 보이면 그것은 화면이 지어낸 값이고, 그대로 저장하면 엉뚱한 거래처가 실린다.
+   *
+   * ⚠ 종전에는 「미사용 거래처를 참조하는 창고를 열면 그 값이 표식과 함께 남는다」를 지켰다.
+   * 계약이 그 칸을 조회에서 걷어내 **참조하던 값을 알 방법이 사라졌으므로** 그 감지기는
+   * 성립하지 않는다. 지워 없애지 않고 지금 성립하는 사실로 바꿔 둔다.
+   */
+  it('⛔ 외부창고를 열어도 거래처는 비어 있다 — 서버가 주지 않는 값을 지어내지 않는다', async () => {
+    const external: Warehouse = { ...warehouseFixtures[2]!, warehouseId: 1001 };
+    renderScreen(
       [
         warehouseListRoute(),
         warehouseDetailRoute(external),
@@ -342,9 +350,14 @@ describe('WarehouseLocationScreen — 창고 상세 조회', () => {
     );
 
     await screen.findByLabelText('창고명');
-    await user.click(screen.getByRole('combobox', { name: '거래처' }));
 
-    expect(screen.getByRole('option', { name: '(주)한빛소재 (미사용)' })).toBeInTheDocument();
+    /* 어느 거래처도 고른 것으로 보이지 않는다 — 하나라도 보이면 화면이 지어낸 값이다. */
+    const partner = screen.getByRole('combobox', { name: '거래처' });
+    expect(partner).not.toHaveTextContent('(주)한빛소재');
+    expect(partner).not.toHaveTextContent('(주)대한부품');
+
+    /* ⛔ 빈 것이 「없음」이 아니라 「모름」임을 밝힌다 — 적지 않으면 지워진 줄 안다. */
+    expect(screen.getByText(messages.warehouseLocation.fields.partnerNotReturned)).toBeVisible();
   });
 
   it('선택 목록이 잘리면 폼에 그 사실을 알린다', async () => {
@@ -795,6 +808,21 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
     expect(screen.getByLabelText('창고명')).toHaveValue('');
     expect(screen.getByRole('combobox', { name: '공장' })).not.toBeDisabled();
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **등록에서는 빈 거래처가 진짜 「없음」이다.** 「조회로 확인할 수 없어 비워 두었습니다」는
+   * 수정에서만 참인 말이라, 등록에도 적으면 **거짓말을 적는 것**이 된다 — 아직 아무것도 지정한
+   * 적이 없는데 「확인할 수 없다」고 읽힌다.
+   */
+  it('⛔ 등록 폼에는 거래처를 확인할 수 없다는 문구를 적지 않는다', async () => {
+    const { user } = renderScreen([warehouseListRoute(), ...lookupRoutes()]);
+
+    await user.click(await screen.findByRole('button', { name: '창고 추가' }));
+
+    expect(
+      screen.queryByText(messages.warehouseLocation.fields.partnerNotReturned),
+    ).not.toBeInTheDocument();
   });
 
   it('빈 상태의 창고 추가도 같은 신규 폼을 연다', async () => {

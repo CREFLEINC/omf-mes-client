@@ -39,6 +39,14 @@ export const runRequest = async <TData>(
   try {
     result = await call();
   } catch (cause) {
+    /*
+     * ⛔ **이미 정규화된 실패를 연결 문제로 덮지 않는다.** 요청을 만들면서 「보낼 수 없다」고
+     * 판정한 실패(예: 낙관적 잠금 토큰 없음)가 여기로 올라오는데, 그것을 network 로 바꾸면
+     * 사용자는 **할 수 없는 조치**(연결 확인·재시도)를 하게 된다 — 실제로는 화면이 스스로
+     * 멈춘 것이고 풀 방법이 따로 있다.
+     */
+    if (cause instanceof ApiRequestError) throw cause;
+
     // 응답이 없는 실패다. 상태 코드가 없으므로 http로 뭉뚱그리지 않는다.
     throw new ApiRequestError(NETWORK_ERROR, { cause });
   }

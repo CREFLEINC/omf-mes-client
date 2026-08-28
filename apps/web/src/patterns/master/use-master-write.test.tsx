@@ -2,8 +2,14 @@ import { messages } from '@omf-mes/i18n';
 import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ApiRequestError, toApiError } from '../request';
 import { renderHookWithProviders } from '../../test/api-harness';
-import { useMasterWrite, type MasterWriteOptions, type WriteHeaders } from './use-master-write';
+import {
+  requireIfMatch,
+  useMasterWrite,
+  type MasterWriteOptions,
+  type WriteHeaders,
+} from './use-master-write';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -703,5 +709,43 @@ describe('useMasterWrite — 화면의 말로 되말하기', () => {
       });
     });
     expect(result.current.fieldErrors).toEqual({});
+  });
+});
+
+/**
+ * ⭐ **계약이 `If-Match` 를 필수로 받는 쓰기가 생겨 필요해진 자리다.**
+ *
+ * 훅은 `etagPath` 가 있으면 토큰 없이 보내지 않지만 **타입에는 그 보장이 없다.** 그 틈을
+ * 빈 문자열로 메우면 빈 토큰이 나가고, 서버의 거부가 화면에서 「저장이 반려됐다」로 읽힌다 —
+ * 실제로는 **물어보지도 못한 것**이다.
+ */
+describe('requireIfMatch', () => {
+  it('토큰이 있으면 그대로 준다', () => {
+    expect(requireIfMatch({ 'Idempotency-Key': 'key-1', 'If-Match': '7' })).toBe('7');
+  });
+
+  /* ⛔ 「0」·빈 문자열 같은 값을 지어내 채우지 않는다 — 그 값으로 보내면 거부가 오해를 낳는다. */
+  it('⛔ 토큰이 없으면 값을 지어내지 않고 멈춘다', () => {
+    expect(() => requireIfMatch({ 'Idempotency-Key': 'key-1' })).toThrow(ApiRequestError);
+  });
+
+  /*
+   * ⛔ **멈춘 이유가 사용자에게 닿아야 한다.** 연결 문제로 읽히면 사용자는 할 수 없는 조치를
+   * 하고, 아무 문구도 없으면 버튼이 그냥 안 먹는 것으로 보인다.
+   */
+  it('⛔ 멈춘 이유를 화면이 말할 수 있는 형태로 던진다', () => {
+    const thrown = (() => {
+      try {
+        requireIfMatch({ 'Idempotency-Key': 'key-1' });
+        return null;
+      } catch (error: unknown) {
+        return error;
+      }
+    })();
+
+    expect(toApiError(thrown)).toEqual({
+      kind: 'validation',
+      errors: [{ scope: 'screen', code: 'STALE_TOKEN', message: messages.save.staleToken }],
+    });
   });
 });

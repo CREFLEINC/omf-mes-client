@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
-import { useMasterWrite } from '../../patterns/master';
+import { requireIfMatch, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import {
   EMPTY_DECISION_FORM,
@@ -183,7 +183,8 @@ export const DispositionDecisionScreen = ({
           path: { nonconformanceId: variables.nonconformanceId },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'],
+            /* ⛔ 계약이 이 헤더를 **필수**로 바꿨다 — 없으면 빈 값을 채우지 않고 멈춘다. */
+            'If-Match': requireIfMatch(headers),
           },
         },
         body: variables.body,

@@ -8,6 +8,7 @@ const LINE = {
   itemId: 9301,
   requestedQty: 100,
   allocatedQty: 80,
+  pickedQty: 40,
   shippedQty: 20,
   uomId: 9501,
   shippingInspectionRequired: false,
