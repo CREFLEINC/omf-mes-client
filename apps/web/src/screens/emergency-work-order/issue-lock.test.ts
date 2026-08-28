@@ -208,8 +208,16 @@ describe('toIssueLock', () => {
     expect(lock.isUncertain).toBe(false);
   });
 
-  describe('유형 코드 미정', () => {
-    it.each([undefined, '', '   '])('값이 없으면 잠근다: %s', (typeCode) => {
+  /*
+   * ⭐ **값은 정해졌지만 이 잠금은 남는다.** 상수를 채운 것과 「빈 값으로는 못 보낸다」는
+   * 다른 보장이고, 뒤엣것은 계속 필요하다 — 빈 유형으로 나가면 서버가 양산으로 채워
+   * **오류 없이** 엉뚱한 지시가 만들어진다.
+   */
+  describe('유형 코드', () => {
+    it.each([
+      ['빈 문자열', ''],
+      ['공백만', '   '],
+    ])('⛔ %s 이면 잠근다 — 빈 유형으로 보내면 양산 지시가 만들어진다', (_name, typeCode) => {
       expect(toIssueLock(input({ typeCode })).reason).toBe(t.typeCodeUnknown);
     });
 
@@ -221,8 +229,13 @@ describe('toIssueLock', () => {
       expect(lock.reason).toBe(t.typeCodeUnknown);
     });
 
-    it('값이 오면 그 자리가 열린다 — 상수 한 줄이면 된다', () => {
+    it('값이 있으면 그 자리가 열린다', () => {
       expect(toIssueLock(input({ typeCode: KNOWN_CODE })).reason).toBeUndefined();
+    });
+
+    /* 넘기지 않으면 화면이 쓰는 상수를 그대로 쓴다 — 그 값이 이제 정해져 있어 열린다. */
+    it('넘기지 않으면 확정된 상수를 쓴다 — 발행이 열려 있다', () => {
+      expect(toIssueLock(input({ typeCode: undefined })).reason).toBeUndefined();
     });
   });
 

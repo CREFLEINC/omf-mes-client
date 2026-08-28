@@ -69,12 +69,24 @@ interface StubOptions {
 const listOf = (items: unknown[]): Response =>
   jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
 
-const stub = (options: StubOptions = {}): { paths: string[]; fetch: StubFetch } => {
+/** 나간 쓰기 하나. 경로만으로는 **무엇을 보냈는지**를 볼 수 없다. */
+interface SentWrite {
+  path: string;
+  body: Record<string, unknown>;
+}
+
+const stub = (
+  options: StubOptions = {},
+): { paths: string[]; writes: SentWrite[]; fetch: StubFetch } => {
   const paths: string[] = [];
+  const writes: SentWrite[] = [];
 
   const fetch: StubFetch = async (request) => {
     const path = new URL(request.url).pathname;
     paths.push(path);
+    if (request.method !== 'GET') {
+      writes.push({ path, body: (await request.clone().json()) as Record<string, unknown> });
+    }
 
     if (path === '/mdm/items') return listOf([ITEM]);
     if (path === '/mdm/uoms') return listOf([{ uomId: 11, uomCode: 'EA', isActive: true }]);
@@ -97,9 +109,13 @@ const stub = (options: StubOptions = {}): { paths: string[]; fetch: StubFetch } 
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${path}`);
   };
 
-  return { paths, fetch };
+  return { paths, writes, fetch };
 };
 
+/**
+ * `typeCode` 를 넘기지 않으면 **화면이 쓰는 상수가 그대로 간다** — 상수부터 전선까지를
+ * 한 번에 보려는 검사가 그 모양을 쓴다.
+ */
 const renderScreen = (options: StubOptions & { typeCode?: string } = {}) => {
   const stubbed = stub(options);
 
@@ -108,7 +124,15 @@ const renderScreen = (options: StubOptions & { typeCode?: string } = {}) => {
     { fetch: stubbed.fetch },
   );
 
-  return { user: userEvent.setup(), paths: stubbed.paths };
+  return { user: userEvent.setup(), paths: stubbed.paths, writes: stubbed.writes };
+};
+
+const renderWithScreenDefaultTypeCode = (options: StubOptions = {}) => {
+  const stubbed = stub(options);
+
+  renderWithProviders(<EmergencyWorkOrderScreen now={NOW} />, { fetch: stubbed.fetch });
+
+  return { user: userEvent.setup(), paths: stubbed.paths, writes: stubbed.writes };
 };
 
 /**
@@ -140,8 +164,9 @@ describe('EmergencyWorkOrderScreen', () => {
   });
 
   /*
-   * ⛔ 지금 저장소의 유형 코드는 «비어 있다». 화면이 그것을 감추지 않고 사유와 함께 잠그는지가
-   * 이 화면의 현재 상태다 — 값이 오면 이 검사가 먼저 깨져서 알려 준다.
+   * ⛔ **빈 유형으로는 보내지 않는다.** 보내면 서버가 양산으로 채워, 화면은 「유형: 긴급」이라
+   * 적어 놓고 **양산 작업지시가 만들어진다** — 오류가 나지 않아 아무 데서도 드러나지 않는다.
+   * 값이 확정된 뒤에도 이 잠금은 남는다.
    */
   it('⛔ 유형 값이 없으면 잠그고 사유를 말한다 — 입력을 다 채우기 «전에»', () => {
     renderScreen({ typeCode: '' });
@@ -149,6 +174,31 @@ describe('EmergencyWorkOrderScreen', () => {
     const action = screen.getByRole('button', { name: t.action });
     expect(action).toBeDisabled();
     expect(action).toHaveAccessibleDescription(t.lock.typeCodeUnknown);
+  });
+
+  /*
+   * ⛔⛔ **이 화면에서 가장 조용한 사고를 막는 자리다.**
+   *
+   * 상수·명령·본문 어느 한 마디에서 값이 새면 서버가 유형을 양산으로 채우고, **오류 없이**
+   * 긴급이 아닌 작업지시가 만들어진다. 화면은 「유형: 긴급」이라 적혀 있고, 그렇게 만들어진
+   * 지시는 긴급으로 세어지지도 긴급 현장 투입 화면에 뜨지도 않는다.
+   *
+   * ⭐ **`typeCode` 를 넘기지 않는다** — 화면이 실제로 쓰는 상수가 전선까지 가는지를 봐야
+   * 하므로, 검사가 값을 주입하면 정작 확인하려던 것을 확인하지 못한다.
+   */
+  it('⛔ 화면이 쓰는 유형 값이 발행 본문에 그대로 실린다 — 새면 양산 지시가 조용히 만들어진다', async () => {
+    const { user, writes } = renderWithScreenDefaultTypeCode();
+
+    await fillForm(user);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.action })).toBeEnabled();
+    });
+    await user.click(screen.getByRole('button', { name: t.action }));
+
+    await screen.findByText(t.outcome.released('SYN-WO-0007'));
+
+    const created = writes.find((write) => write.path === '/production/work-orders');
+    expect(created?.body).toMatchObject({ workOrderTypeCode: 'EMERGENCY' });
   });
 
   it('품목을 고르면 BOM·Routing 이 자동으로 펼쳐진다', async () => {

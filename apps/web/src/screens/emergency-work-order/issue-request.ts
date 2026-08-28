@@ -8,20 +8,11 @@ import { isEmergencyTypeCodeKnown } from './work-order-type';
  * 보낼 본문은 **계약에서 파생한다.** 손으로 옮겨 적으면 계약에 필수 필드가 늘어도 컴파일이
  * 잡지 못한다 — 되돌릴 수 없는 쓰기의 본문이라 특히 그렇다.
  *
- * ⚠ **계획 참조 한 칸만 손으로 고쳐 둔다.** 이 저장소의 생성 타입이 정본보다 낡아서 그 칸이
- * 아직 「필수·널 불가」인데, 정본은 이 화면을 열어 주려고 **널 허용**으로 바꿔 두었다. 낡은
- * 타입을 그대로 쓰면 이 화면이 성립하지 않는다.
- *
- * ⛔ **통째로 걷어 내지 않고 이 칸만 갈아 끼운 것이 요점이다.** 나머지 필드는 그대로 계약에
- * 매여 있어, 계약에 필수 필드가 늘면 여전히 컴파일이 잡는다. 생성물이 갱신되면 `Omit` 을
- * 지우기만 하면 된다. 생성물이 낡은 사실은 따로 올려 두었다(client#543).
+ * ⚠ 생성 타입이 낡아 계획 참조 한 칸을 손으로 갈아 끼워 두었는데(client#543), 생성물을
+ * 정본과 맞추면서 그 자리가 널 허용이 되어 **덧댄 것을 걷어냈다.** 이제 전 필드가 계약에
+ * 그대로 매여 있다.
  */
-export type WorkOrderCreateBody = Omit<
-  components['schemas']['WorkOrderCreate'],
-  'productionPlanId'
-> & {
-  productionPlanId: number | null;
-};
+export type WorkOrderCreateBody = components['schemas']['WorkOrderCreate'];
 export type WorkOrderReleaseBody = components['schemas']['WorkOrderRelease'];
 
 export interface IssueCommand {
