@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { ExpansionPane } from './expansion-pane';
 import { issueRoutingOperationId, type LoadState, resolveExpansion } from './expansion';
 import { FixedTermsPane } from './fixed-terms';
+import { useHandoverRelease } from './handover';
+import { HandoverPane } from './handover-pane';
 import { EMPTY_ISSUE_FORM, isIssueInputComplete, validateIssueForm } from './issue-form';
 import { IssueFormPane } from './issue-form-pane';
 import { IssueAction } from './issue-action';
@@ -13,6 +15,7 @@ import { ItemPicker } from './item-picker';
 import { useIssueEmergencyWorkOrder } from './mutations';
 import { useItemBoms, useItemRoutings, useRoutingOperations } from './queries';
 import type { Bom, Routing, RoutingOperation, SelectedItem } from './types';
+import { useUnreleasedEmergencyWorkOrders } from './unreleased';
 import { useUomLookup } from './uom-lookup';
 import { EMERGENCY_WORK_ORDER_TYPE_CODE } from './work-order-type';
 
@@ -65,6 +68,18 @@ export const EmergencyWorkOrderScreen = ({
   const operations = useRoutingOperations(routingId);
   const uoms = useUomLookup();
   const issue = useIssueEmergencyWorkOrder();
+  const unreleased = useUnreleasedEmergencyWorkOrders();
+  const handover = useHandoverRelease();
+
+  /*
+   * ⛔ **지금 이 화면이 들고 있는 것은 목록에서 뺀다.** 방금 발행했는데 배포가 멈춘 W/O 는
+   * 되찾기 목록에도 들어온다 — 그대로 두면 **같은 지시에 [배포 재시도] 버튼이 둘**이 되고,
+   * 두 버튼은 서로 다른 멱등 키를 쓴다. 서버는 그것을 다른 쓰기로 보므로 **이중 배포**가
+   * 열린다. 위쪽 발행 구획이 이미 그 W/O 를 맡고 있으므로 여기서는 뺀다.
+   */
+  const handoverRows = (unreleased.data?.items ?? []).filter(
+    (workOrder) => workOrder.workOrderId !== issue.pending?.workOrderId,
+  );
 
   const expansion = resolveExpansion({
     itemId,
@@ -111,6 +126,21 @@ export const EmergencyWorkOrderScreen = ({
       <PageHeader title={t.title} />
 
       <FixedTermsPane />
+
+      {/*
+       * ⭐ **밀린 것을 먼저 보인다.** 새로 발행하기 «전에» 이미 만들어진 지시가 있다는 사실을
+       * 알아야 한다 — 모르고 발행하면 같은 지시가 둘이 된다. 밀린 것이 없으면 서지 않는다.
+       */}
+      <HandoverPane
+        workOrders={handoverRows}
+        total={unreleased.data?.page.total}
+        isError={unreleased.isError}
+        releasingId={handover.releasingId}
+        releasedNo={handover.releasedNo}
+        failure={handover.failure}
+        uomLabel={(uomId) => uoms.labelOf(uomId)}
+        onRelease={handover.release}
+      />
 
       <ItemPicker selected={item} onSelect={selectItem} />
 
