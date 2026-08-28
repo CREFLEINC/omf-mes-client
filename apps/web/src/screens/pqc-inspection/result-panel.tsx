@@ -192,20 +192,21 @@ export const ResultPanel = ({
       </div>
       <p className="field-note">{tCoverage.note}</p>
 
-      <dl className="filter-bar">
-        <div className="field-cell">
-          <dt className="field-label">{t.fields.inspectedQty}</dt>
-          <dd>{String(inspectedQty)}</dd>
-        </div>
-      </dl>
-
       <div className="form-grid">
         {field('accepted', t.fields.accepted, errors.accepted)}
         {field('rejected', t.fields.rejected, errors.rejected)}
         {field('held', t.fields.held, errors.held)}
       </div>
 
+      {/*
+       * 읽기 전용 숫자 셋을 한 줄에 둔다 — 검사수량이 «오른쪽 변»이고 합계·잔여가 그것과
+       * 견준 결과라 나란히 있어야 읽힌다. 세로로 쌓으면 예산(E-1 슬랙 0)을 넘긴다.
+       */}
       <dl className="filter-bar">
+        <div className="field-cell">
+          <dt className="field-label">{t.fields.inspectedQty}</dt>
+          <dd>{String(inspectedQty)}</dd>
+        </div>
         {/* 셀 수 없을 때 0으로 읽은 합을 보이면 그 숫자 자체가 거짓이다. 없음 표시를 낸다. */}
         <div className="field-cell">
           <dt className="field-label">{t.sum}</dt>
@@ -224,50 +225,57 @@ export const ResultPanel = ({
        * 비어도 **감추지 않고 사유를 밝힌다** — 시드가 아직 안 들어가 빌 수 있는데, 감추면
        * 그 자리가 왜 없는지 사용자가 알 수 없다.
        */}
-      <div className="field-cell">
-        <label className="field-label" htmlFor={judgmentId}>
-          {t.judgment}
-        </label>
-        <Select
-          id={judgmentId}
-          options={judgmentOptions}
-          value={judgment}
-          placeholder={t.judgmentPlaceholder}
-          disabled={isLocked || judgmentOptions.length === 0}
-          onChange={onJudgmentChange}
-        />
-        {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
-        {/*
-         * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
-         * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
-         */}
-        {!isKnownCode(judgmentOptions, judgment) && (
-          <p className="field-note">{t.judgmentUnknown(judgment)}</p>
-        )}
-      </div>
-
       {/*
-       * 불합격 처분 — ⚠ **잠정 선택이고 저장되지 않는다**(REQ-PR-0025 · §5-8).
-       * ⛔ 자동으로 고르지 않는다 — 재작업/폐기를 가르는 속성이 불량코드에 아직 없다.
-       * ⛔ 처분을 안 골랐다고 확정을 막지 않는다 — 확정 판정은 나중이다.
+       * ⭐ **판정과 처분을 한 줄로 묶는다.** 스펙 §3 의 세로 예산은 슬랙 0 이고(E-1), 둘을
+       * 세로로 쌓으면 우측 구획이 예산을 넘겨 처분이 화면 밖으로 밀린다 — 실측으로 확인했다.
+       * 둘은 「불합격이면 어떻게 할 것인가」로 이어지는 짝이라 나란히 두는 것이 읽기에도 맞다.
        */}
-      <div className="field-cell">
-        <p className="field-label" id={dispositionLabelId}>
-          {tDisposition.heading}
-        </p>
-        <RadioGroup
-          name={dispositionName}
-          value={disposition ?? ''}
-          disabled={!canChoose}
-          aria-labelledby={dispositionLabelId}
-          onChange={(value) => onDispositionChange(value === '' ? null : toDisposition(value))}
-        >
-          <Radio value="REWORK">{tDisposition.rework}</Radio>
-          <Radio value="SCRAP">{tDisposition.scrap}</Radio>
-        </RadioGroup>
-        {/* 순서가 뒤집힌다는 사실을 화면이 먼저 말한다 — 안 말하면 고른 값이 확정인 줄 안다. */}
-        <p className="field-note">{tDisposition.note}</p>
-        {!canChoose && <p className="field-note">{tDisposition.disabledNote}</p>}
+      <div className="form-grid">
+        <div className="field-cell">
+          <label className="field-label" htmlFor={judgmentId}>
+            {t.judgment}
+          </label>
+          <Select
+            id={judgmentId}
+            options={judgmentOptions}
+            value={judgment}
+            placeholder={t.judgmentPlaceholder}
+            disabled={isLocked || judgmentOptions.length === 0}
+            onChange={onJudgmentChange}
+          />
+          {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
+          {/*
+           * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
+           * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
+           */}
+          {!isKnownCode(judgmentOptions, judgment) && (
+            <p className="field-note">{t.judgmentUnknown(judgment)}</p>
+          )}
+        </div>
+
+        {/*
+         * 불합격 처분 — ⚠ **잠정 선택이고 저장되지 않는다**(REQ-PR-0025 · §5-8).
+         * ⛔ 자동으로 고르지 않는다 — 재작업/폐기를 가르는 속성이 불량코드에 아직 없다.
+         * ⛔ 처분을 안 골랐다고 확정을 막지 않는다 — 확정 판정은 나중이다.
+         */}
+        <div className="field-cell">
+          <p className="field-label" id={dispositionLabelId}>
+            {tDisposition.heading}
+          </p>
+          <RadioGroup
+            name={dispositionName}
+            value={disposition ?? ''}
+            disabled={!canChoose}
+            aria-labelledby={dispositionLabelId}
+            onChange={(value) => onDispositionChange(value === '' ? null : toDisposition(value))}
+          >
+            <Radio value="REWORK">{tDisposition.rework}</Radio>
+            <Radio value="SCRAP">{tDisposition.scrap}</Radio>
+          </RadioGroup>
+          {/* 순서가 뒤집힌다는 사실을 화면이 먼저 말한다 — 안 말하면 고른 값이 확정인 줄 안다. */}
+          <p className="field-note">{tDisposition.note}</p>
+          {!canChoose && <p className="field-note">{tDisposition.disabledNote}</p>}
+        </div>
       </div>
     </section>
   );
