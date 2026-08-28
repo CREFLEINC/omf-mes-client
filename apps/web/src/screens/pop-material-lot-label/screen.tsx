@@ -15,6 +15,18 @@ import { toHeadPrinter } from './types';
 const t = messages.popMaterialLotLabel;
 
 /**
+ * 빈 목록의 안내를 고른다 — **왜 비었는지가 셋으로 갈린다.**
+ *
+ * 사전부착 자재를 걸러 내므로 **입하 건은 있는데 보일 자재가 없는** 상태가 정상적으로 생긴다.
+ * 그때 「발행할 자재가 없습니다」만 내면 「전체 N건」과 나란히 서서 서로 어긋나 보인다.
+ */
+const emptyMessage = (isBeyondLast: boolean, receiptCount: number): string => {
+  if (isBeyondLast) return t.receipts.beyondLast;
+
+  return receiptCount > 0 ? t.receipts.emptyOnThisPage : t.receipts.empty;
+};
+
+/**
  * `P-01-01` 자재LOT 등록·라벨 발행 (POP).
  *
  * 스펙 §3 배치를 따른다 — **좌: 입하 목록(미부착) / 우: 발번 대상.** 세로로 쌓지 않는다.
@@ -37,7 +49,11 @@ export const PopMaterialLotLabelScreen = () => {
   const uomLookup = useUomLookup(true);
 
   const result = receipts.data;
-  const pageView = result === undefined ? null : toPageView(result.page, targets.rows.length);
+  /*
+   * ⚠ **세는 단위가 둘이다.** 쪽 나눔은 입하 건 단위이고 목록 줄은 자재다. 쪽 계산에는
+   * 입하 건 수를 넘긴다 — 자재 줄 수를 넘기면 「51–52 / 전체 3건」 같은 값이 나온다.
+   */
+  const pageView = result === undefined ? null : toPageView(result.page, result.items.length);
   const selectedRow =
     targets.rows.find((row) => row.inboundReceiptLineId === selectedLineId) ?? null;
 
@@ -95,7 +111,7 @@ export const PopMaterialLotLabelScreen = () => {
                   // 같은 줄을 다시 누르면 해제한다 — 고른 것을 무를 수단이 없으면 갇힌다.
                   setSelectedLineId((current) => (current === lineId ? null : lineId));
                 }}
-                empty={pageView?.isBeyondLast === true ? t.receipts.beyondLast : t.receipts.empty}
+                empty={emptyMessage(pageView?.isBeyondLast === true, result?.items.length ?? 0)}
               />
               {pageView === null ? null : (
                 <PageNav

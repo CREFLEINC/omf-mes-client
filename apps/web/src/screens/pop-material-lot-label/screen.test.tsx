@@ -208,10 +208,31 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     ).toHaveTextContent('선택됨');
   });
 
-  it('결과가 없으면 빈 상태를 보인다', async () => {
+  it('입하 건이 하나도 없으면 빈 상태를 보인다', async () => {
     renderScreen({ receipts: [], page: { page: 1, size: 20, total: 0 } });
 
     expect(await screen.findByText('발행할 자재가 없습니다.')).toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ **입하 건은 있는데 보일 자재가 없는 상태가 정상적으로 생긴다** — 사전부착 자재를
+   * 걸러 내기 때문이다. 그때 「발행할 자재가 없습니다」만 내면 옆의 「전체 1건」과 나란히
+   * 서서 서로 어긋나 보인다(실기에서 그 상태가 그대로 나왔다).
+   */
+  it('입하 건은 있는데 걸러 내 비었으면 왜 비었는지와 다음 쪽을 말한다', async () => {
+    renderScreen({ lines: [line(8501, 8101, 8601, 500, false)] });
+
+    expect(
+      await screen.findByText(/이 쪽의 입하 건에는 발행할 자재가 없습니다/u),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('발행할 자재가 없습니다.')).not.toBeInTheDocument();
+  });
+
+  /** 쪽 나눔은 입하 건 단위다 — 목록 줄(자재) 수로 세면 단위가 섞인다. */
+  it('쪽 위치를 입하 건 단위로 세고 그 단위를 밝힌다', async () => {
+    renderScreen({ lines: [line(8501, 8101, 8601, 500, false)] });
+
+    expect(await screen.findByText('입하 건 1–1 / 전체 1건')).toBeInTheDocument();
   });
 
   it('입하 목록 조회에 실패하면 사유와 다시 시도 경로를 함께 보인다', async () => {
