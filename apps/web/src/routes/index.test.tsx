@@ -15,6 +15,7 @@ import {
   DISPOSITION_SCREEN_PATH,
   dispositionEntryPath,
 } from '../screens/disposition-decision/filters';
+import { WORK_ORDER_PROGRESS_PATH } from '../screens/work-order-progress/filters';
 import { SessionProvider } from '../patterns/session';
 import {
   groupsResponse as equipmentGroupsResponse,
@@ -1295,6 +1296,14 @@ describe('appRouter — 처분 판정 처리의 진입 경로', () => {
     /* 둘이 갈리면 「부적합 열기」가 조용히 404로 간다 — 여기서 묶어 둔다. */
     expect(routedPaths()).toContain(DISPOSITION_SCREEN_PATH);
     expect(dispositionEntryPath(1001).startsWith(DISPOSITION_SCREEN_PATH)).toBe(true);
+  });
+
+  /*
+   * ⛔ W/O 진행현황은 자기 주소를 화면 슬라이스가 들고 있다(의존 방향 때문에 라우트를 참조할
+   * 수 없다). 둘이 갈리면 조건을 주소에 적는 일이 조용히 어긋난다 — 여기서 묶어 둔다.
+   */
+  it('⭐ W/O 진행현황이 아는 자기 주소와 등록된 라우트가 «같다»', () => {
+    expect(routedPaths()).toContain(WORK_ORDER_PROGRESS_PATH);
   });
 
   it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {

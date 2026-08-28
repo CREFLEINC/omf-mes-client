@@ -13,6 +13,7 @@ import { ToolMasterScreen } from '../screens/tool-master/screen';
 import { WorkCalendarScreen } from '../screens/work-calendar/screen';
 import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
 import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen';
+import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
 import { WorkOrderReleaseScreen } from '../screens/work-order-release/screen';
 import { WorkOrderAssignmentScreen } from '../screens/work-order/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
@@ -260,6 +261,11 @@ export const appRouter = createBrowserRouter([
        * 그 뒤에 둔다.
        */
       { path: 'production/emergency-work-orders', element: <EmergencyWorkOrderScreen /> },
+      /*
+       * W-02-08 — 발행한 W/O 가 지금 어디까지 왔는지 본다. 만드는 화면들 뒤, 조회 자리다.
+       * 저장 액션이 없는 읽기 전용 화면이다.
+       */
+      { path: 'production/work-order-progress', element: <WorkOrderProgressScreen /> },
       /*
        * W-03-01 — Lot Status 계열의 첫 화면이므로 품질관리 섹션을 연다.
        * 계약의 /quality/**와 주소 앞머리가 같지만 근거는 사이드바 업무 섹션이다.
