@@ -12,7 +12,6 @@
     "test": "pnpm -r test",
     "mock": "node tools/mock/serve.mjs",
     "mock:smoke": "node tools/mock/smoke.mjs",
-    "mock:scenario": "node tools/mock/scenario.mjs",
     "gen:api": "node tools/gen-api.mjs",
     "check:generated": "node tools/check-generated-boundary.mjs",
     "dep:check": "depcruise apps packages --config .dependency-cruiser.cjs"
