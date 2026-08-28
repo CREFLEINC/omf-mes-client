@@ -136,6 +136,40 @@ export const workOrderProgress = {
     joinedColumnsNote: 'P/O 와 공정은 이름을 받을 수 없어 열을 두지 않았습니다.',
   },
 
+  /** 쪽 이동. DS 에 전용 부품이 없어 조합으로 만든다. */
+  page: {
+    label: '쪽 이동',
+    prev: '이전',
+    next: '다음',
+    /** 「128건 중 1–50」 — 지금 보는 자리와 전체를 함께 적는다. */
+    range: (start: number, end: number, total: number): string =>
+      `${String(total)}건 중 ${String(start)}–${String(end)}`,
+    total: (total: number): string => `${String(total)}건`,
+  },
+
+  /** 고른 W/O 의 상세. 가장자리 패널이 DS 에 없어 가운데 창으로 시작한다. */
+  detail: {
+    title: '선택한 W/O',
+    close: '닫기',
+    loading: '상세를 받는 중입니다.',
+    loadError: '상세를 받지 못했습니다. 잠시 뒤 다시 시도하세요.',
+
+    workOrderNo: 'W/O 번호',
+    statusCode: '상태',
+    orderQty: '지시 수량',
+    plannedStartAt: '계획 시작',
+    plannedEndAt: '계획 종료',
+    completedAt: '완료',
+    closedAt: '마감',
+    remarks: '비고',
+
+    /**
+     * ⛔ 스펙은 여기에 실적 이력·생산LOT·세션을 함께 그린다고 적었으나, 그것들을 받으려면
+     * W/O 하나마다 조회를 여러 번 더 내야 한다. 지금은 **받은 것만** 보이고 그 사실을 적는다.
+     */
+    historyUnavailable: '실적 이력·생산LOT·세션은 아직 이 창에서 보이지 않습니다.',
+  },
+
   /** L-5 — 집계는 조회 시점의 스냅샷이라 언제 기준인지가 값의 일부다. */
   basis: {
     label: (at: string): string => `기준 ${at}`,
