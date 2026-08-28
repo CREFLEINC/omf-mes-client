@@ -28,12 +28,15 @@ export class ApiRequestError extends Error {
 }
 
 /**
- * 요청 실행과 오류 변환의 유일한 지점.
- * 이 함수를 거치지 않은 호출은 화면마다 다른 실패 처리를 만든다.
+ * 요청 실행과 오류 변환의 유일한 지점. **응답을 통째로** 돌려준다.
+ *
+ * 헤더까지 봐야 하는 호출이 이것을 쓴다 — 응답으로만 오는 값(낙관적 잠금 토큰 등)이 있고,
+ * 그 값이 **어느 리소스의 것인지**가 중요할 때는 경로별 보관소에서 꺼내는 것으로 부족하다.
+ * 실패 처리는 `runRequest` 와 한 몸이라 여기 한 곳에 둔다.
  */
-export const runRequest = async <TData>(
+export const runRequestWithResponse = async <TData>(
   call: () => Promise<ApiCallResult<TData>>,
-): Promise<TData> => {
+): Promise<{ data: TData; response: Response }> => {
   let result: ApiCallResult<TData>;
 
   try {
@@ -57,8 +60,16 @@ export const runRequest = async <TData>(
 
   // 본문 없는 200(사용 중지 등)에서는 data가 undefined이며 그 자체가 정상 결과다.
   // 호출부는 그런 요청을 runRequest<void>로 부른다.
-  return result.data as TData;
+  return { data: result.data as TData, response: result.response };
 };
+
+/**
+ * 요청 실행과 오류 변환의 유일한 지점.
+ * 이 함수를 거치지 않은 호출은 화면마다 다른 실패 처리를 만든다.
+ */
+export const runRequest = async <TData>(
+  call: () => Promise<ApiCallResult<TData>>,
+): Promise<TData> => (await runRequestWithResponse(call)).data;
 
 /**
  * 잡은 값에서 정규화 오류를 꺼낸다. 캐시·훅이 돌려주는 오류는 타입이 unknown이라

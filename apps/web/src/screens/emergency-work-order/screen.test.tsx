@@ -101,7 +101,10 @@ const stub = (
           )
         : jsonResponse(WORK_ORDER);
     }
-    if (path === '/production/work-orders') return jsonResponse(WORK_ORDER, { status: 201 });
+    /* ⭐ 발행 응답이 잠금 토큰을 준다 — 그래서 배포 전에 상세를 부르지 않는다. */
+    if (path === '/production/work-orders') {
+      return jsonResponse(WORK_ORDER, { status: 201, headers: { ETag: 'W/"9"' } });
+    }
     if (path === '/production/work-orders/7001') {
       return jsonResponse(WORK_ORDER, { headers: { ETag: 'W/"3"' } });
     }
@@ -250,6 +253,8 @@ describe('EmergencyWorkOrderScreen', () => {
     expect(await screen.findByText(t.outcome.released('SYN-WO-0007'))).toBeInTheDocument();
     expect(paths).toContain('/production/work-orders');
     expect(paths).toContain('/production/work-orders/7001:release');
+    /* ⭐ 발행 응답이 토큰을 주므로 가운데 상세 조회가 없다 — 호출이 셋에서 둘로 줄었다. */
+    expect(paths).not.toContain('/production/work-orders/7001');
   });
 
   /*

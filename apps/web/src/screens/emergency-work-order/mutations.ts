@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest, toApiError } from '../../patterns/request';
+import { runRequestWithResponse, toApiError } from '../../patterns/request';
 import {
   type IssueCommand,
   toWorkOrderCreateBody,
@@ -30,6 +30,15 @@ export interface PendingWorkOrder {
   workOrderId: number;
   workOrderNo: string;
   body: WorkOrderReleaseBody;
+  /**
+   * 발행 응답이 준 낙관적 잠금 토큰. 되찾은 W/O 처럼 **모르는 경우** `null`.
+   *
+   * ⛔ **경로별 보관소에서 꺼내지 않고 여기 함께 든다.** 발행은 «목록» 경로로 나가므로 보관소는
+   * 이 토큰을 목록 경로에 적어 둔다 — 그런데 토큰은 **행에 속한 값**이다. 자리를 잘못 잡으면
+   * 다음 발행이 앞 W/O 의 토큰을 덮고, 그 배포는 남의 번호로 나간다. 본문을 함께 들고 다니는
+   * 것과 같은 이유다.
+   */
+  ifMatch: string | null;
   /** 배포가 어디서 멈췄는가. 시작 전에는 `null`. */
   failedAt: ReleaseFailureStep | null;
 }
@@ -53,23 +62,25 @@ export interface IssueResult {
 }
 
 /**
- * 발행·배포. **한 액션이지만 호출은 셋이다.**
+ * 발행·배포. **한 액션이고 호출은 둘이다.**
  *
  * ```
- * ① POST /production/work-orders               (멱등 키 · 계획 참조 null)
- * ②③ 배포 한 걸음 — 토큰을 얻고 배포를 낸다
+ * ① POST /production/work-orders               (멱등 키 · 계획 참조 null · 응답이 토큰을 준다)
+ * ② POST …/{id}:release                        (멱등 키 · If-Match 는 ①이 준 토큰)
  * ```
  *
- * ⛔ **①과 ③ 사이에는 트랜잭션이 없다.** 서버가 한 트랜잭션으로 묶는 것은 ①의 «안쪽»
- * (내부 P/O·계획·W/O)이다. ①이 성공하고 ③이 실패하면 **배포되지 않은 W/O 가 남고, 화면은
- * 그것을 되돌릴 수 없다** — 이 화면에 취소 액션이 없고, 취소를 끌어다 쓰는 것은 스펙이
- * 요구하지 않은 보상을 화면이 발명하는 일이다. 그래서 **「성공이라고 말하지 않는」 데까지**
- * 한다(omf-mes#258).
+ * ⭐ **가운데 조회가 없어졌다.** 종전에는 토큰을 얻으려 상세를 한 번 더 불렀는데, 발행 응답이
+ * 그것을 직접 준다(omf-mes#258 회신). 걸음이 하나 줄어든 만큼 아래 창도 좁아진다.
  *
- * ⚠ **화면을 떠나면 이 상태가 사라진다.** 만들어진 번호·멱등 키·재시도할 본문이 컴포넌트와
- * 함께 없어져, 배포 안 된 W/O 가 아무 데도 남지 않는다. 되찾을 수단이 계약에 없고(「배포되지
- * 않은 긴급 W/O」를 찾을 축이 없다), 저장소를 붙이는 것은 **스펙에 없는 저장을 화면이
- * 발명하는 일**이라 하지 않았다 — 설계 저장소에 물어 두었다(omf-mes#258).
+ * ⛔ **①과 ② 사이에는 트랜잭션이 없다.** 서버가 한 트랜잭션으로 묶는 것은 ①의 «안쪽»
+ * (내부 P/O·계획·W/O)이다. ①이 성공하고 ②가 실패하면 **배포되지 않은 W/O 가 남고, 화면은
+ * 그것을 되돌릴 수 없다** — 이 화면에 취소 액션이 없고, 취소 오퍼레이션은 선발행 슬롯 자동
+ * 폐번이 부수 효과라 배포 전에는 **다른 일을 하는 액션을 빌려 쓰는 것**이 된다. 그래서
+ * **「성공이라고 말하지 않는」 데까지** 한다.
+ *
+ * ⭐ **화면을 떠나도 잃지 않는다.** 종전에는 만들어진 번호가 컴포넌트와 함께 사라졌는데,
+ * 이제 진입할 때 서버에서 되찾는다(`useUnreleasedEmergencyWorkOrders`) — 서버가 정본이라
+ * 새로고침해도, 다른 단말에서도 보인다. 이 훅이 든 상태는 **지금 이 순간의 것**일 뿐이다.
  *
  * ⛔ **한 번에 하나만 나간다.** 잠금이 버튼을 잠그더라도 그것은 화면의 일이고, **두 번 눌러
  * 긴급 지시가 둘이 되는 것**은 여기서 막아야 한다 — 버튼이 잠기기 전에 두 번째 누름이 들어올
@@ -115,6 +126,7 @@ export const useIssueEmergencyWorkOrder = (): IssueResult => {
         workOrderId: target.workOrderId,
         body: target.body,
         keyHolder: releaseKey,
+        ifMatch: target.ifMatch,
       });
 
       /* 배포까지 갔을 때만 두 키를 함께 버린다 — 끝난 키로 다음 쓰기가 나가지 않게. */
@@ -160,7 +172,12 @@ export const useIssueEmergencyWorkOrder = (): IssueResult => {
         let target: PendingWorkOrder;
 
         try {
-          const created = await runRequest<WorkOrder | undefined>(() =>
+          /*
+           * ⭐ **응답을 통째로 받는다 — 토큰이 헤더로만 온다.** 경로별 보관소로도 들어오지만
+           * 발행은 «목록» 경로로 나가므로 거기 적히고, 그 자리는 다음 발행이 덮는다.
+           * 행에 속한 값이라 **그 W/O 와 함께** 들고 다닌다.
+           */
+          const createResult = await runRequestWithResponse<WorkOrder | undefined>(() =>
             client.POST('/production/work-orders', {
               params: {
                 header: { 'Idempotency-Key': createKeyFor(JSON.stringify(createBody)) },
@@ -168,6 +185,7 @@ export const useIssueEmergencyWorkOrder = (): IssueResult => {
               body: createBody,
             }),
           );
+          const created = createResult.data;
 
           /*
            * ⛔ **성공했는데 번호를 못 읽은 경우를 실패로 말하지 않는다.** 응답이 2xx 였다면
@@ -182,6 +200,12 @@ export const useIssueEmergencyWorkOrder = (): IssueResult => {
             workOrderId: created.workOrderId,
             workOrderNo: created.workOrderNo,
             body,
+            /*
+             * ⚠ **없으면 `null` 로 두고 지어내지 않는다.** 빈 토큰으로 배포하면 계약 위반이라
+             * 서버가 거부하고, 그 거부는 「배포가 반려됐다」로 읽힌다 — 실제로는 물어보지도
+             * 못한 것이다. `null` 이면 배포 걸음이 상세를 불러 제대로 얻는다.
+             */
+            ifMatch: createResult.response.headers.get('ETag'),
             failedAt: null,
           };
         } catch (cause) {

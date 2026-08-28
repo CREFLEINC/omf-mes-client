@@ -7,7 +7,10 @@ import type { IssueCommand } from './issue-request';
 import { type IssueResult, useIssueEmergencyWorkOrder } from './mutations';
 
 const WORK_ORDER = { workOrderId: 7001, workOrderNo: 'SYN-WO-0007' };
+/** 상세가 내려 주는 토큰. */
 const ETAG = 'W/"3"';
+/** **발행 응답이** 내려 주는 토큰. 둘을 다르게 둬야 어느 쪽을 실었는지 갈린다. */
+const CREATE_ETAG = 'W/"9"';
 const CREATE_PATH = '/production/work-orders';
 const DETAIL_PATH = '/production/work-orders/7001';
 const RELEASE_PATH = '/production/work-orders/7001:release';
@@ -40,6 +43,7 @@ interface Call {
   method: string;
   path: string;
   idempotencyKey: string | null;
+  ifMatch: string | null;
   body: unknown;
 }
 
@@ -49,6 +53,8 @@ interface StubOptions {
   failFirstRelease?: boolean;
   /** 상세가 성공하되 토큰을 주지 않는다. */
   withoutEtag?: boolean;
+  /** 발행이 성공하되 토큰을 주지 않는다 — 조회로 되돌아가는지 보려는 것이다. */
+  createWithoutEtag?: boolean;
   /** 발행이 2xx 인데 본문을 읽을 수 없다. */
   createWithoutBody?: boolean;
   /** 배포를 붙잡아 둔다 — 나가 있는 «동안»의 상태를 보려는 것이다. */
@@ -83,6 +89,7 @@ const stub = (options: StubOptions = {}): Stub => {
       method: request.method,
       path,
       idempotencyKey: request.headers.get('Idempotency-Key'),
+      ifMatch: request.headers.get('If-Match'),
       body,
     });
 
@@ -106,7 +113,13 @@ const stub = (options: StubOptions = {}): Stub => {
       if (options.createWithoutBody === true) {
         return new Response(null, { status: 201 });
       }
-      return jsonResponse(WORK_ORDER, { status: 201 });
+      /*
+       * ⭐ **발행 응답이 토큰을 준다** — 이것이 있어 배포 전에 상세를 부르지 않는다.
+       * `createWithoutEtag` 는 그 헤더가 오지 않았을 때 조회로 되돌아가는지를 보려는 것이다.
+       */
+      return options.createWithoutEtag === true
+        ? jsonResponse(WORK_ORDER, { status: 201 })
+        : jsonResponse(WORK_ORDER, { status: 201, headers: { ETag: CREATE_ETAG } });
     }
 
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${path}`);
@@ -147,16 +160,48 @@ const createCalls = (stubbed: Stub): Call[] =>
   stubbed.calls.filter((call) => call.path === CREATE_PATH);
 
 describe('useIssueEmergencyWorkOrder', () => {
-  it('한 액션에 세 호출을 순서대로 낸다', async () => {
+  /*
+   * ⭐ **한 액션에 두 호출이다.** 종전에는 토큰을 얻으려 가운데 상세를 한 번 더 불렀는데,
+   * 발행 응답이 그것을 직접 준다 — 걸음이 하나 줄어든 만큼 「만들어졌는데 배포가 안 끝나는」
+   * 창도 좁아진다.
+   */
+  it('⭐ 한 액션에 두 호출이다 — 가운데 조회가 없다', async () => {
     const stubbed = stub();
     const result = await issueAndSettle(stubbed);
 
     expect(result.current.releasedNo).toBe('SYN-WO-0007');
     expect(stubbed.calls.map((call) => `${call.method} ${call.path}`)).toEqual([
       `POST ${CREATE_PATH}`,
+      `POST ${RELEASE_PATH}`,
+    ]);
+  });
+
+  /*
+   * ⛔ **발행이 준 토큰을 그대로 실어야 한다.** 상세 토큰과 값을 다르게 둬서, 실수로 조회로
+   * 되돌아가거나 엉뚱한 자리에서 꺼내 오면 값이 갈려 드러나게 했다.
+   */
+  it('⛔ 발행 응답이 준 토큰을 배포에 싣는다', async () => {
+    const stubbed = stub();
+    await issueAndSettle(stubbed);
+
+    expect(stubbed.calls[1]?.ifMatch).toBe(CREATE_ETAG);
+    expect(stubbed.calls[1]?.ifMatch).not.toBe(ETAG);
+  });
+
+  /*
+   * ⚠ **토큰이 오지 않으면 지어내지 않고 조회로 되돌아간다.** 빈 토큰으로 배포하면 서버가
+   * 거부하고, 그 거부는 「배포가 반려됐다」로 읽힌다 — 실제로는 물어보지도 못한 것이다.
+   */
+  it('⚠ 발행이 토큰을 주지 않으면 상세를 불러 얻는다 — 빈 값으로 보내지 않는다', async () => {
+    const stubbed = stub({ createWithoutEtag: true });
+    await issueAndSettle(stubbed);
+
+    expect(stubbed.calls.map((call) => `${call.method} ${call.path}`)).toEqual([
+      `POST ${CREATE_PATH}`,
       `GET ${DETAIL_PATH}`,
       `POST ${RELEASE_PATH}`,
     ]);
+    expect(stubbed.calls[2]?.ifMatch).toBe(ETAG);
   });
 
   it('전선에 실리는 본문과 키가 계약대로다', async () => {
@@ -166,9 +211,9 @@ describe('useIssueEmergencyWorkOrder', () => {
     /* ⛔ 계획 참조는 «명시적 null» — 이것이 내부 P/O 자동 생성을 부른다. */
     expect(stubbed.calls[0]?.body).toHaveProperty('productionPlanId', null);
     /* LOT 크기는 지시수량 — 슬롯 하나. */
-    expect(stubbed.calls[2]?.body).toEqual({ lotSize: 200 });
+    expect(stubbed.calls[1]?.body).toEqual({ lotSize: 200 });
     /* 발행과 배포는 서로 다른 키를 쓴다 — 다른 쓰기다. */
-    expect(stubbed.calls[0]?.idempotencyKey).not.toBe(stubbed.calls[2]?.idempotencyKey);
+    expect(stubbed.calls[0]?.idempotencyKey).not.toBe(stubbed.calls[1]?.idempotencyKey);
   });
 
   describe('⛔ 한 번에 하나만 나간다', () => {
@@ -233,8 +278,12 @@ describe('useIssueEmergencyWorkOrder', () => {
   });
 
   describe('⛔ 만들어졌는데 배포가 끝나지 않은 창', () => {
+    /*
+     * ⚠ 발행이 토큰을 준 뒤에는 상세를 부르지 않으므로, 이 두 가지는 **토큰이 오지 않아
+     * 조회로 되돌아간 경우**에만 성립한다. 그 갈래가 사라지지 않았음을 함께 고정한다.
+     */
     it('배포를 «보내지도 못하면» 그렇게 말한다 — 단언해도 되는 자리다', async () => {
-      const result = await issueAndSettle(stub({ fail: 'detail' }));
+      const result = await issueAndSettle(stub({ createWithoutEtag: true, fail: 'detail' }));
 
       expect(result.current.pending).toMatchObject({
         workOrderNo: 'SYN-WO-0007',
@@ -244,7 +293,7 @@ describe('useIssueEmergencyWorkOrder', () => {
     });
 
     it('⛔ 토큰이 안 오면 배포를 내지 않는다 — 빈 토큰으로 물어 거부당하지 않게', async () => {
-      const stubbed = stub({ withoutEtag: true });
+      const stubbed = stub({ createWithoutEtag: true, withoutEtag: true });
       const result = await issueAndSettle(stubbed);
 
       expect(result.current.pending?.failedAt).toBe('notSent');
@@ -406,7 +455,8 @@ describe('useIssueEmergencyWorkOrder', () => {
       expect(result.current.releasedNo).toBe('SYN-WO-0007');
     });
 
-    expect(stubbed.calls).toHaveLength(3);
+    /* 갖춰진 발행 한 번이 낸 두 호출뿐이다 — 헛발은 한 건도 전선에 나가지 않았다. */
+    expect(stubbed.calls).toHaveLength(2);
     /* 누른 적 없는 실패가 화면에 뜨지 않는다. */
     expect(result.current.error).toBeNull();
   });
