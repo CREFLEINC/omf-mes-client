@@ -83,5 +83,22 @@ describe('WorkOrderProgressScreen', () => {
 
       expect(await screen.findByText(t.list.loadError)).toBeInTheDocument();
     });
+
+    /*
+     * ⛔ 「0건」이라고 **단언하게 된다** — 실제로는 몇 건인지 모른다. 실패를 「결과 없음」으로
+     * 바꿔 읽게 만드는 자리다.
+     */
+    it('⛔ 목록을 받지 못했으면 쪽 이동을 세우지 않는다', async () => {
+      renderScreen({ listStatus: 500 });
+
+      await screen.findByText(t.list.loadError);
+      expect(screen.queryByRole('navigation', { name: t.page.label })).not.toBeInTheDocument();
+    });
+
+    it('받았으면 쪽 이동을 세운다', async () => {
+      renderScreen();
+
+      expect(await screen.findByRole('navigation', { name: t.page.label })).toBeInTheDocument();
+    });
   });
 });

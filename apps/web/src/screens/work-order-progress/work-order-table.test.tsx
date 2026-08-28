@@ -211,3 +211,17 @@ describe('상태 열', () => {
     expect(screen.getByRole('cell', { name: 'SYN_UNSEEN' })).toBeInTheDocument();
   });
 });
+
+/*
+ * ⛔ 「SYN-WO-0007 상세 열기」를 눈에 보이는 글자로 쓰면 번호 열이 문장 열이 되어, 번호끼리
+ * 견주며 훑는 일이 안 된다. 무엇을 여는지는 화면 읽기 도구에만 들려주면 된다.
+ */
+describe('W/O 번호 열', () => {
+  it('⛔ 칸에는 번호만 보인다', () => {
+    renderTable({ rows: [row({ workOrderNo: 'SYN-WO-0007' })] });
+
+    expect(screen.getByRole('button', { name: t.select('SYN-WO-0007') })).toHaveTextContent(
+      /^SYN-WO-0007$/,
+    );
+  });
+});

@@ -86,18 +86,27 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
   const offsetMinutes = -today.getTimezoneOffset();
 
   const filters = readFilters(searchParams, today);
+  const { from: periodFrom, to: periodTo } = filters;
   const sort = readSort(searchParams, filters);
   const page = readPage(searchParams);
   const selectedWorkOrderId = readSelectedWorkOrderId(searchParams);
 
-  /* 기간이 아예 없으면 기본값을 주소에 적는다 — 그래야 지금 화면을 그대로 공유할 수 있다. */
-  const hasPeriod = searchParams.has('from') && searchParams.has('to');
+  /*
+   * 화면이 실제로 거는 기간을 주소에 적는다 — 그래야 지금 화면을 그대로 공유할 수 있다.
+   *
+   * ⛔ 「주소에 값이 있는가」로 묻지 않는다. `?from=` 처럼 **비었거나 달력에 없는 값**이 들어
+   * 있으면 화면은 기본 기간으로 되돌리는데(L-3), 주소는 그 사실을 모른 채 남는다 — 그 링크를
+   * 받은 사람은 **주소와 다른 화면**을 보게 된다. 그래서 「적힌 값이 거는 값과 같은가」로 묻는다.
+   */
+  const isPeriodInAddress =
+    searchParams.get('from') === filters.from && searchParams.get('to') === filters.to;
   useEffect(() => {
-    if (hasPeriod) return;
+    if (isPeriodInAddress) return;
 
-    const seeded = defaultPeriod(now ?? new Date());
-    setSearchParams((current) => withPeriod(current, seeded), { replace: true });
-  }, [hasPeriod, now, setSearchParams]);
+    setSearchParams((current) => withPeriod(current, { from: periodFrom, to: periodTo }), {
+      replace: true,
+    });
+  }, [isPeriodInAddress, periodFrom, periodTo, setSearchParams]);
 
   const list = useWorkOrderProgressList(toProgressListQuery(filters, sort, page, offsetMinutes));
   const detail = useWorkOrderDetail(selectedWorkOrderId);
@@ -180,12 +189,18 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
           }}
         />
 
-        <PageNav
-          view={pageView}
-          onChange={(next) => {
-            setSearchParams(withPage(searchParams, next));
-          }}
-        />
+        {/*
+         * ⛔ 받지 못했으면 쪽 이동을 세우지 않는다. 세우면 「0건」이라고 **단언하게 되는데**,
+         * 실제로는 몇 건인지 모른다 — 실패를 「결과 없음」으로 바꿔 읽게 만든다.
+         */}
+        {list.data === undefined ? null : (
+          <PageNav
+            view={pageView}
+            onChange={(next) => {
+              setSearchParams(withPage(searchParams, next));
+            }}
+          />
+        )}
       </section>
 
       <DetailDialog
