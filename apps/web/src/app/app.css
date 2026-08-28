@@ -750,23 +750,6 @@ main > * + * {
 }
 
 /*
- * 헤더 — §3 도면의 위쪽 64. **라벨 없이 값을 가운뎃점으로 잇고**, 대상 정보는 왼쪽,
- * LOT 은 오른쪽 묶음이다. 도면이 그 배열을 그렸다.
- */
-.pop-target-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  min-height: 64px;
-}
-
-.pop-target-line {
-  margin: 0;
-  min-width: 0;
-}
-
-/*
  * 액션바 — 화면 아래 88(§3). ⛔ 폼 «중간»에 흘리지 않는다: 터치 단말에서 손이 닿는 자리가
  * 정해져 있어야 한다.
  *

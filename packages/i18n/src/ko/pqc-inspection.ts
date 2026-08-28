@@ -29,7 +29,6 @@ export const pqcInspection = {
       itemId: '품목',
       workOrderId: '작업지시',
     },
-    lotPrefix: 'LOT',
     planVersionNote: '검사 시점의 기준 버전으로 고정됩니다.',
 
     /**
