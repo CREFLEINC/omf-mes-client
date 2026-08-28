@@ -22,7 +22,10 @@ interface Call {
 
 interface Harness {
   calls: Call[];
+  /** 토큰을 들고 있지 않은 대상 — 상세를 불러 얻는다(이어받은 W/O). */
   release: (workOrderId?: number) => Promise<void>;
+  /** 토큰을 이미 들고 있는 대상 — 조회 없이 바로 배포한다(방금 발행한 W/O). */
+  releaseWith: (ifMatch: string, workOrderId?: number) => Promise<void>;
   keyHolder: ReleaseKeyHolder;
 }
 
@@ -71,7 +74,16 @@ const harness = (
     calls,
     keyHolder,
     release: (workOrderId = WORK_ORDER.workOrderId) =>
-      releaseWorkOrder({ client, etags, workOrderId, body: { lotSize: 200 }, keyHolder }),
+      releaseWorkOrder({
+        client,
+        etags,
+        workOrderId,
+        body: { lotSize: 200 },
+        keyHolder,
+        ifMatch: null,
+      }),
+    releaseWith: (ifMatch, workOrderId = WORK_ORDER.workOrderId) =>
+      releaseWorkOrder({ client, etags, workOrderId, body: { lotSize: 200 }, keyHolder, ifMatch }),
   };
 };
 
@@ -106,7 +118,30 @@ describe('releaseKeyFor', () => {
 });
 
 describe('releaseWorkOrder', () => {
-  it('상세를 먼저 부르고 그다음 배포를 낸다', async () => {
+  /*
+   * ⭐ **두 길이 여기서 갈린다.** 방금 발행한 W/O 는 발행 응답이 토큰을 줘서 조회가 없고,
+   * 이어받은 W/O 는 만들어진 순간을 화면이 보지 못했으니 조회로 얻는다.
+   */
+  describe('토큰을 이미 들고 있으면 — 방금 발행한 W/O', () => {
+    it('⭐ 조회 없이 배포만 낸다 — 호출이 셋에서 둘로 준다', async () => {
+      const test = harness();
+      await test.releaseWith('W/"9"');
+
+      expect(test.calls.map((call) => `${call.method} ${call.path}`)).toEqual([
+        'POST /production/work-orders/7001:release',
+      ]);
+    });
+
+    it('⛔ 들고 있던 그 토큰을 싣는다 — 다시 얻어 온 값으로 바꾸지 않는다', async () => {
+      const test = harness();
+      await test.releaseWith('W/"9"');
+
+      expect(test.calls[0]?.ifMatch).toBe('W/"9"');
+      expect(test.calls[0]?.ifMatch).not.toBe(ETAG);
+    });
+  });
+
+  it('토큰이 없으면 상세를 먼저 부르고 그다음 배포를 낸다', async () => {
     const test = harness();
     await test.release();
 

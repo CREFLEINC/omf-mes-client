@@ -6,8 +6,9 @@ import type { WorkOrderReleaseBody } from './issue-request';
 /**
  * 낙관적 잠금 토큰을 꺼낼 자리. 보관소가 응답 URL 의 경로로 키를 잡으므로 같은 모양을 만든다.
  *
- * ⚠ **토큰은 만들어진 W/O 의 «상세»가 내린다.** 발행 응답이 아니다 — 발행은 목록 경로로
- * 나가고 보관소는 경로별로 토큰을 갖는다. 그래서 발행과 배포 사이에 상세를 한 번 부른다.
+ * ⚠ **이 경로가 필요한 것은 「토큰을 들고 있지 않은」 W/O 뿐이다.** 발행 응답이 토큰을 직접
+ * 주므로 방금 만든 W/O 는 상세를 부르지 않는다. 이어받기로 되찾은 W/O 는 만들어진 순간을
+ * 이 화면이 보지 못했으니 토큰이 없고, 그때만 여기로 온다.
  */
 export const workOrderDetailPath = (workOrderId: number): string =>
   `/production/work-orders/${String(workOrderId)}`;
@@ -66,31 +67,43 @@ export interface ReleaseStepInput {
   workOrderId: number;
   body: WorkOrderReleaseBody;
   keyHolder: ReleaseKeyHolder;
+  /**
+   * 이미 들고 있는 낙관적 잠금 토큰. 없으면(`null`) 상세를 불러 얻는다.
+   *
+   * ⭐ **방금 발행한 W/O 는 값이 있다** — 발행 응답이 토큰을 직접 준다. **이어받기로 되찾은
+   * W/O 는 없다** — 만들어진 순간을 이 화면이 보지 못했다. 두 경우가 여기서 갈린다.
+   */
+  ifMatch: string | null;
 }
 
 /**
- * 배포 한 걸음 — **토큰을 얻고 배포를 낸다.**
+ * 배포 한 걸음 — **토큰을 갖추고 배포를 낸다.**
  *
  * ```
- * ② GET  /production/work-orders/{id}          (토큰을 여기서 얻는다)
- * ③ POST /production/work-orders/{id}:release  (멱등 키 · If-Match)
+ * (토큰이 없을 때만) GET  /production/work-orders/{id}
+ *                    POST /production/work-orders/{id}:release  (멱등 키 · If-Match)
  * ```
  *
- * 발행에서 떼어 둔 이유는 **이 두 걸음이 다시 시도되는 단위**이기 때문이다.
+ * ⭐ **발행 직후에는 조회가 없다.** 발행 응답이 토큰을 주므로 호출이 셋에서 둘로 준다 —
+ * 줄어든 한 걸음만큼 「만들어졌는데 배포가 안 끝나는」 창도 좁아진다.
+ *
+ * 발행에서 떼어 둔 이유는 **이것이 다시 시도되는 단위**이기 때문이다.
  */
 export const releaseWorkOrder = async (input: ReleaseStepInput): Promise<void> => {
-  let ifMatch: string | undefined;
+  let ifMatch = input.ifMatch ?? undefined;
 
-  try {
-    /* 상세를 받아 두면 보관소에 토큰이 들어온다. 응답 값 자체는 여기서 쓰지 않는다. */
-    await runRequest(() =>
-      input.client.GET('/production/work-orders/{workOrderId}', {
-        params: { path: { workOrderId: input.workOrderId } },
-      }),
-    );
-    ifMatch = input.etags.ifMatch(workOrderDetailPath(input.workOrderId));
-  } catch (cause) {
-    throw new ReleaseFailure('notSent', cause);
+  if (ifMatch === undefined) {
+    try {
+      /* 상세를 받아 두면 보관소에 토큰이 들어온다. 응답 값 자체는 여기서 쓰지 않는다. */
+      await runRequest(() =>
+        input.client.GET('/production/work-orders/{workOrderId}', {
+          params: { path: { workOrderId: input.workOrderId } },
+        }),
+      );
+      ifMatch = input.etags.ifMatch(workOrderDetailPath(input.workOrderId));
+    } catch (cause) {
+      throw new ReleaseFailure('notSent', cause);
+    }
   }
 
   /*

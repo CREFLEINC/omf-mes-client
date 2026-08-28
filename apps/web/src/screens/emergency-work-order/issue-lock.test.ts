@@ -37,6 +37,7 @@ const pendingWorkOrder = (failedAt: PendingWorkOrder['failedAt']): PendingWorkOr
   workOrderId: 7001,
   workOrderNo: 'SYN-WO-0007',
   body: { lotSize: 200 },
+  ifMatch: 'W/"3"',
   failedAt,
 });
 
