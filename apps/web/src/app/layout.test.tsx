@@ -507,6 +507,10 @@ describe('AppLayout', () => {
       'href',
       '/production/emergency-work-orders',
     );
+    expect(within(sidebar).getByRole('link', { name: 'W/O 진행현황 조회' })).toHaveAttribute(
+      'href',
+      '/production/work-order-progress',
+    );
     expect(links.indexOf('/production/production-orders')).toBe(
       links.indexOf('/shipment/shipment-schedule') + 1,
     );
@@ -685,6 +689,7 @@ describe('AppLayout', () => {
       '/production/work-order-release',
       '/production/work-order-close',
       '/production/emergency-work-orders',
+      '/production/work-order-progress',
       '/quality/lot-status',
       '/quality/lot-status-transition',
       '/quality/suspicious-material-hold',
