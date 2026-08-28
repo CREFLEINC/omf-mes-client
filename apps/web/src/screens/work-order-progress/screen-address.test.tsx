@@ -21,6 +21,23 @@ describe('WorkOrderProgressScreen — 주소 수명', () => {
   });
 
   /*
+   * ⛔ 「주소에 값이 있는가」로 묻지 않는다. 비었거나 달력에 없는 값이 들어 있으면 화면은
+   * 기본 기간으로 되돌리는데(L-3), 주소는 그 사실을 모른 채 남는다 — 그 링크를 받은 사람은
+   * **주소와 다른 화면**을 보게 된다.
+   */
+  it.each([
+    ['비어 있으면', '?from=&to='],
+    ['달력에 없는 날이면', '?from=2026-13-45&to=2026-13-46'],
+  ])('⛔ 주소의 기간이 %s 화면이 거는 기간으로 고쳐 적는다', async (_name, search) => {
+    renderScreen({ route: `${WORK_ORDER_PROGRESS_PATH}${search}` });
+
+    await waitFor(() => {
+      expect(address()).toHaveTextContent('from=2026-06-16');
+    });
+    expect(address()).toHaveTextContent('to=2026-07-15');
+  });
+
+  /*
    * ⛔ 주소로 고른 W/O 를 받아 들어온 사용자에게서 선택을 빼앗지 않는다 — 기간을 채워 넣는
    * 일은 「조회를 다시 거는 것」이 아니다.
    */

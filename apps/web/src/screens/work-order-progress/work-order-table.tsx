@@ -74,14 +74,20 @@ export const WorkOrderTable = ({
       key: 'workOrderNo',
       header: t.columns.workOrderNo,
       sortable: sortable('workOrderNo'),
+      /*
+       * ⛔ **칸에는 번호만 보인다.** 「SYN-WO-0007 상세 열기」를 눈에 보이는 글자로 쓰면
+       * 번호 열이 문장 열이 되어, 번호끼리 견주며 훑는 일이 안 된다. 무엇을 여는지는
+       * **화면 읽기 도구에만** 들려주면 된다.
+       */
       render: (row) => (
         <Button
+          aria-label={t.select(row.workOrderNo)}
           variant="text"
           onClick={() => {
             onSelect(row.workOrderId);
           }}
         >
-          {t.select(row.workOrderNo)}
+          {row.workOrderNo}
         </Button>
       ),
     },
