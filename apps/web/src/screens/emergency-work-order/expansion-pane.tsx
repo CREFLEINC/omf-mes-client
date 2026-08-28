@@ -48,19 +48,36 @@ export const ExpansionPane = ({
       )}
 
       {state.kind === 'needsRevision' && (
-        <Select
-          aria-label={t.revisionLabel}
-          placeholder={t.revisionLabel}
-          value={selectedRoutingId === null ? null : String(selectedRoutingId)}
-          onChange={(value) => {
-            onSelectRouting(Number(value));
-          }}
-          /* 상태를 값 옆에 그대로 보인다 — 지우지 않고 보고 고르게 한다. */
-          options={state.routings.map((routing) => ({
-            value: String(routing.routingId),
-            label: `${routing.routingCode} ${t.revision} ${String(routing.routingVersion)} · ${t.revisionStatus(routing.statusCode)}`,
-          }))}
-        />
+        <>
+          {/*
+           * ⚠ **여럿일 때만 경고한다.** 하나뿐이면 화면이 골라 주므로 고를 것이 없고, 그때
+           * 「직접 고르세요」는 할 일이 없는 사람에게 할 일을 만드는 말이 된다.
+           */}
+          {state.routings.length > 1 && (
+            <div className="banner-slot">
+              <AlertBanner variant="warning">
+                {t.revisionMultiple(state.routings.length)}
+              </AlertBanner>
+            </div>
+          )}
+
+          <Select
+            aria-label={t.revisionLabel}
+            placeholder={t.revisionLabel}
+            value={selectedRoutingId === null ? null : String(selectedRoutingId)}
+            onChange={(value) => {
+              onSelectRouting(Number(value));
+            }}
+            /* 상태를 값 옆에 그대로 보인다 — 지우지 않고 보고 고르게 한다. */
+            options={state.routings.map((routing) => ({
+              value: String(routing.routingId),
+              label: `${routing.routingCode} ${t.revision} ${String(routing.routingVersion)} · ${t.revisionStatus(routing.statusCode)}`,
+            }))}
+          />
+
+          {/* ⭐ 자재 명세는 자동, 공정 순서는 수동 — 갈리는 이유를 여기서 밝힌다. */}
+          <p className="field-note">{t.revisionChoiceReason}</p>
+        </>
       )}
 
       {state.kind === 'ready' && (

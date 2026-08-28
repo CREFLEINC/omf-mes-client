@@ -55,6 +55,17 @@ export const useItemSearch = (keyword: string): UseQueryResult<ItemListResponse>
 };
 
 /**
+ * ⭐ **「지금 새 작업지시에 걸 수 있는 것만」을 서버에 묻는다.**
+ *
+ * ⛔ **화면이 상태 문자열로 거르지 않는다**(G-8). 쓸 수 있는지는 상태·유효기간이 얽힌 판정이고,
+ * 그 규칙은 서버 것이다 — 화면이 흉내 내면 값이 정해질 때 **조용히 틀린다.** 이 파라미터를
+ * 보내지 않으면 종전대로 전부 오므로, 폐기된 개정으로 발행되는 길이 열린 채로 남는다.
+ *
+ * 기준정보 관리 화면들은 이것을 쓰지 않는다 — 그쪽은 폐기된 것까지 보여야 하는 자리다.
+ */
+const USABLE_ONLY = true;
+
+/**
  * 고른 품목의 BOM.
  *
  * 발행에 BOM 식별자를 싣지는 않는다 — 계약의 생성 본문에 그 자리가 없고, 전개는 서버가 한다.
@@ -70,7 +81,9 @@ export const useItemBoms = (itemId: number | null): UseQueryResult<BomListRespon
       if (itemId === null) throw new Error('품목을 고르기 전에는 BOM 을 조회하지 않습니다.');
 
       return runRequest(() =>
-        client.GET('/planning/boms', { params: { query: { parentItemId: itemId } } }),
+        client.GET('/planning/boms', {
+          params: { query: { parentItemId: itemId, usableOnly: USABLE_ONLY } },
+        }),
       );
     },
   });
@@ -79,8 +92,8 @@ export const useItemBoms = (itemId: number | null): UseQueryResult<BomListRespon
 /**
  * 고른 품목의 Routing 개정 목록.
  *
- * ⚠ **최신 것만 받지 않는다.** 개정이 여럿이면 어느 것으로 발행할지 **사람이 고른다**(스펙
- * 완료 조건) — 화면이 「최신」을 골라 주면 고른 적 없는 개정으로 지시가 나간다.
+ * ⚠ **최신 것만 받지 않는다.** 쓸 수 있는 개정이 여럿이면 어느 것으로 발행할지 **사람이
+ * 고른다**(스펙 완료 조건) — 화면이 「최신」을 골라 주면 고른 적 없는 개정으로 지시가 나간다.
  */
 export const useItemRoutings = (itemId: number | null): UseQueryResult<RoutingListResponse> => {
   const { client } = useApiClient();
@@ -91,7 +104,11 @@ export const useItemRoutings = (itemId: number | null): UseQueryResult<RoutingLi
     queryFn: () => {
       if (itemId === null) throw new Error('품목을 고르기 전에는 Routing 을 조회하지 않습니다.');
 
-      return runRequest(() => client.GET('/planning/routings', { params: { query: { itemId } } }));
+      return runRequest(() =>
+        client.GET('/planning/routings', {
+          params: { query: { itemId, usableOnly: USABLE_ONLY } },
+        }),
+      );
     },
   });
 };

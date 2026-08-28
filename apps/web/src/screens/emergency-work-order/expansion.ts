@@ -106,10 +106,10 @@ export const resolveExpansion = (input: ExpansionInput): ExpansionState => {
   if (!hasRouting) return { kind: 'blocked', reason: 'routingMissing' };
 
   /*
-   * ⛔ **개정의 상태 코드로 거르지 않는다.** 계약이 「상태(작성중/확정/폐기)를 가리지 않고
-   * 전부 낸다」고 스스로 적었고, 상태 코드로 거르는 것은 화면이 값을 해석하는 일이라 값이
-   * 정해질 때 조용히 틀린다. 대신 **고르는 자리에 상태를 함께 보여** 사람이 알고 고르게 한다.
-   * ⚠ 폐기된 개정으로도 발행이 되는 것이 옳은지는 설계 저장소에 물어 두었다.
+   * ⛔ **개정의 상태 코드로 거르지 않는다.** 상태 코드로 거르는 것은 화면이 값을 해석하는
+   * 일이라 값이 정해질 때 조용히 틀린다. 대신 **조회가 「지금 쓸 수 있는 것만」을 청해**
+   * 서버가 판정한 목록을 받는다(omf-mes#259 회신 · G-8) — 여기 오는 것은 이미 걸러진 것이다.
+   * 고르는 자리에는 상태를 함께 보여 사람이 알고 고르게 한다.
    */
   const routing = routings.find((candidate) => candidate.routingId === input.selectedRoutingId);
   if (routing === undefined) return { kind: 'needsRevision', routings };

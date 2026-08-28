@@ -142,7 +142,12 @@ describe('useItemSearch', () => {
 });
 
 describe('고른 뒤의 조회', () => {
-  it('BOM 은 모품목으로, Routing 은 품목으로 조회한다', async () => {
+  /*
+   * ⛔ **「지금 쓸 수 있는 것만」을 함께 청한다.** 이 조건을 빼면 계약이 종전대로 전부 내려
+   * 주고, **폐기된 개정으로 되돌릴 수 없는 지시가 나가는 길**이 열린 채로 남는다. 화면이
+   * 상태 문자열로 거르는 것은 답이 아니다 — 판정은 서버 것이다(G-8).
+   */
+  it('⛔ BOM·Routing 을 「지금 쓸 수 있는 것만」으로 조회한다 — 폐기된 것으로 발행되지 않게', async () => {
     const { urls, fetch } = collecting();
 
     renderHookWithProviders(() => ({ boms: useItemBoms(5001), routings: useItemRoutings(5001) }), {
@@ -152,8 +157,8 @@ describe('고른 뒤의 조회', () => {
     await waitFor(() => {
       expect(urls).toHaveLength(2);
     });
-    expect(urls).toContain('/planning/boms?parentItemId=5001');
-    expect(urls).toContain('/planning/routings?itemId=5001');
+    expect(urls).toContain('/planning/boms?parentItemId=5001&usableOnly=true');
+    expect(urls).toContain('/planning/routings?itemId=5001&usableOnly=true');
   });
 
   it('공정은 고른 개정의 것만 조회한다', async () => {
