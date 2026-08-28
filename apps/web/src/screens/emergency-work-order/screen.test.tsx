@@ -68,6 +68,8 @@ interface StubOptions {
   unreleased?: unknown[];
   /** 되찾기 조회가 실패한다 — 「밀린 것 없음」과 갈리는지 보려는 것이다. */
   failUnreleased?: boolean;
+  /** 발행이 반려된다 — 고른 개정이 조회와 저장 사이에 폐기된 상황이다. */
+  rejectIssue?: boolean;
 }
 
 /** 되찾기 목록의 한 줄. 발행으로 만들어지는 것과 번호를 달리해 둘이 섞이지 않게 한다. */
@@ -132,7 +134,20 @@ const stub = (
     }
     /* ⭐ 발행 응답이 잠금 토큰을 준다 — 그래서 배포 전에 상세를 부르지 않는다. */
     if (path === '/production/work-orders') {
-      return jsonResponse(WORK_ORDER, { status: 201, headers: { ETag: 'W/"9"' } });
+      return options.rejectIssue === true
+        ? jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'screen',
+                  code: 'SYN_CODE',
+                  message: '고른 개정이 폐기되어 발행할 수 없습니다',
+                },
+              ],
+            },
+            { status: 400 },
+          )
+        : jsonResponse(WORK_ORDER, { status: 201, headers: { ETag: 'W/"9"' } });
     }
     if (path === '/production/work-orders/7001') {
       return jsonResponse(WORK_ORDER, { headers: { ETag: 'W/"3"' } });
@@ -308,6 +323,45 @@ describe('EmergencyWorkOrderScreen', () => {
     renderScreen();
 
     expect(screen.getAllByText(t.lock.itemNotChosen)).toHaveLength(1);
+  });
+
+  /*
+   * ⭐ **개정은 조회와 저장 «사이»에 폐기될 수 있다.** 그때 서버가 발행을 반려하는데, 화면이
+   * 아무 말도 하지 않으면 사용자는 **아무 일도 안 일어난 줄 알고 다시 누른다.** 그리고 낡은
+   * 목록을 그대로 두면 **같은 폐기된 개정으로** 다시 누르게 된다.
+   */
+  describe('발행이 반려됐을 때', () => {
+    it('⛔ 서버가 되돌린 문구를 그대로 보인다', async () => {
+      const { user } = renderScreen({ rejectIssue: true });
+
+      await fillForm(user);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.action })).toBeEnabled();
+      });
+      await user.click(screen.getByRole('button', { name: t.action }));
+
+      expect(
+        await screen.findByText('고른 개정이 폐기되어 발행할 수 없습니다'),
+      ).toBeInTheDocument();
+    });
+
+    it('⭐ 전개를 다시 받는다 — 낡은 목록으로 같은 개정을 또 고르지 않게', async () => {
+      const { user, paths } = renderScreen({ rejectIssue: true });
+
+      await fillForm(user);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.action })).toBeEnabled();
+      });
+
+      const before = paths.filter((path) => path === '/planning/routings').length;
+      await user.click(screen.getByRole('button', { name: t.action }));
+
+      await waitFor(() => {
+        expect(paths.filter((path) => path === '/planning/routings').length).toBeGreaterThan(
+          before,
+        );
+      });
+    });
   });
 
   describe('배포 안 된 W/O 이어받기', () => {

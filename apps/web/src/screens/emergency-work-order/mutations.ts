@@ -216,6 +216,18 @@ export const useIssueEmergencyWorkOrder = (): IssueResult => {
           } else {
             setError(toApiError(cause));
           }
+
+          /*
+           * ⭐ **거절당했으면 전개를 다시 받는다.** 목록을 받은 뒤 저장까지 사이에 고른 개정이
+           * 폐기될 수 있고, 그때 서버가 발행을 반려한다 — 낡은 목록을 그대로 두면 사용자는
+           * **같은 폐기된 개정으로 다시 누른다.**
+           *
+           * ⛔ **상태 코드로 가르지 않는다.** 오류 정규화가 계약 형태의 본문을 만나면 상태를
+           * 버려서(client#548) 400 을 골라낼 수 없다. 실패한 발행에 대해 **늘 다시 받는 쪽**을
+           * 택했다 — 헛되이 한 번 더 받는 값은 싸고, 낡은 목록으로 다시 누르는 것은 비싸다.
+           */
+          void queryClient.invalidateQueries({ queryKey: emergencyWorkOrderKeys.all });
+
           inFlight.current = false;
           setIsIssuing(false);
           return;
@@ -231,7 +243,7 @@ export const useIssueEmergencyWorkOrder = (): IssueResult => {
         setIsIssuing(false);
       })();
     },
-    [client, pending, runRelease],
+    [client, pending, queryClient, runRelease],
   );
 
   const retryRelease = useCallback((): void => {
