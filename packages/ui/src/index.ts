@@ -6,3 +6,5 @@ export { QrCode } from './ds-candidates/qr-code';
 export type { QrCodeProps } from './ds-candidates/qr-code';
 export { MarkerOverlay } from './ds-candidates/marker-overlay';
 export type { MarkerOverlayProps, OverlayMarker } from './ds-candidates/marker-overlay';
+export { NumericKeypad } from './ds-candidates/numeric-keypad';
+export type { NumericKeypadProps } from './ds-candidates/numeric-keypad';
