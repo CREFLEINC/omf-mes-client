@@ -94,6 +94,8 @@ export const createdShipmentRequestFixture: ShipmentRequestResponse = {
       shippedQty: 0,
       uomId: 8401,
       shippingInspectionRequired: false,
+      /* client#601 1-5 — 집은 LOT 신설. 이 화면은 아직 이 값을 읽지 않는다. */
+      picks: [],
     },
   ],
 };

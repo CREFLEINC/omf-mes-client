@@ -12,6 +12,8 @@ const line = (overrides: Partial<Parameters<typeof toShipmentRequestLineCandidat
   shippedQty: 0,
   uomId: 920001,
   shippingInspectionRequired: true,
+  /* client#601 1-5 — 집은 LOT 신설. 이 시험은 아직 이 값을 읽지 않는다. */
+  picks: [],
   ...overrides,
 });
 

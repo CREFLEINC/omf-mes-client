@@ -104,11 +104,7 @@ export const createOperationDraft = (): OperationDraft => {
  * **여기서 서버를 부르지 않는다.** 이동은 초안만 바꾸고 저장은 편집을 마칠 때 한 번뿐이다.
  * 목록 밖으로 나가는 이동(첫 행 위로·마지막 행 아래로)은 받은 목록을 그대로 돌려준다.
  */
-export const moveDraft = (
-  drafts: OperationDraft[],
-  from: number,
-  to: number,
-): OperationDraft[] => {
+export const moveDraft = (drafts: OperationDraft[], from: number, to: number): OperationDraft[] => {
   const isOutOfRange =
     from < 0 || from >= drafts.length || to < 0 || to >= drafts.length || from === to;
 
@@ -149,16 +145,16 @@ export const upsertDraft = (drafts: OperationDraft[], draft: OperationDraft): Op
  * 기존 행은 식별자를 실어 보내고 새 행은 그 키 자체를 넣지 않는다 —
  * 전체 치환은 행 교체가 아니라 순서 갱신이라, 식별자를 버리면 진행 중 작업지시가 참조하던 행이 사라진다.
  *
- * 계약에 자리가 없는 항목(외주 공정)은 싣지 않는다. 없는 값을 지어내 보내면 서버가 거부한다.
+ * ⭐ **client#603 — 외주 공정(`isOutsourced`)이 2026-08-30 계약에 되살아나 필수가 됐다.**
+ * 이 화면은 아직 그 칸을 입력받지 않는다(폼의 체크칸은 비활성 고정) — 그 사실 그대로
+ * **항상 `false`를 싣는다.** 칸을 열지는 별도 판단(설계 확인)이 필요하다.
  */
 export const toOperationsPayload = (
   routingId: number,
   drafts: OperationDraft[],
 ): RoutingOperationUpsert[] =>
   drafts.map((draft, index) => ({
-    ...(draft.routingOperationId === null
-      ? {}
-      : { routingOperationId: draft.routingOperationId }),
+    ...(draft.routingOperationId === null ? {} : { routingOperationId: draft.routingOperationId }),
     routingId,
     operationSeq: index + 1,
     processId: Number(draft.processId),
@@ -168,6 +164,7 @@ export const toOperationsPayload = (
     materialInputManaged: draft.materialInputManaged,
     productionResultManaged: draft.productionResultManaged,
     inspectionManaged: draft.inspectionManaged,
+    isOutsourced: false,
     outputLotRequired: draft.outputLotRequired,
     equipmentRequired: draft.equipmentRequired,
     moldRequired: draft.moldRequired,

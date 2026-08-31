@@ -52,6 +52,7 @@ const routing = (overrides: Partial<Routing> = {}): Routing => ({
   routingCode: 'SYN-RT-0001',
   routingVersion: 2,
   statusCode: 'SYN_ACTIVE',
+  isDefault: true,
   ...overrides,
 });
 
@@ -65,6 +66,7 @@ const operation = (overrides: Partial<RoutingOperation> = {}): RoutingOperation 
   materialInputManaged: true,
   productionResultManaged: true,
   inspectionManaged: false,
+  isOutsourced: false,
   outputLotRequired: true,
   equipmentRequired: false,
   moldRequired: false,

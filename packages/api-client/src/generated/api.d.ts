@@ -23,6 +23,8 @@ export interface paths {
                     warehouseTypeCode?: string;
                     /** @description 불량창고만 거른다 — W-01-06 §3의 창고 선택(「불량창고」)이 이 조건으로 건다. 근거: DR-012 확정 3-C · omf-mes#147 */
                     isDefect?: boolean;
+                    /** @description 참이면 「창고 안을 나눈 창고」만 낸다 — 활성 위치가 둘 이상인 창고다. 재고를 한 번이라도 받은 창고는 기본 위치 한 행이 반드시 있으므로 「위치 행이 있는가」로는 갈리지 않는다. 배치도 화면이 대상 창고를 고를 때 참으로 보낸다. 판정을 화면이 세지 않는다. */
+                    dividedOnly?: boolean;
                     /** @description 기본은 사용 중인 것만. 과거 데이터 표시용으로 켜면 isActive 표식을 함께 내린다 */
                     includeInactive?: boolean;
                     page?: number;
@@ -151,7 +153,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -233,7 +235,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -244,6 +246,72 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description 중지됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Warehouse"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-07 §6 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/warehouses/{warehouseId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                warehouseId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 창고 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    warehouseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -292,10 +360,12 @@ export interface paths {
         get: {
             parameters: {
                 query: {
-                    /** @description 필수. Location 은 창고를 고른 뒤에 본다 — W-06-07 §3 */
+                    /** @description 필수. Location 은 창고를 고른 뒤에 본다 — W-06-07 §3 ⚠ 위치 «코드» 스캔은 locationCode 와 함께 보낸다 — 창고는 적치 지시·화면 문맥이 준다. */
                     warehouseId: number;
                     /** @description 코드·명칭 검색 */
                     q?: string;
+                    /** @description 위치 코드 정확 일치. 스캔한 코드로 한 건을 집을 때 쓰며 0건 또는 1건이 나온다 — 부분 일치 검색은 q 를 쓴다. ⛔ q 로 받은 페이지를 화면이 걸러 쓰는 것으로는 성립하지 않는다 — 부분 일치가 여러 건을 낸다 */
+                    locationCode?: string;
                     includeInactive?: boolean;
                     page?: number;
                     size?: number;
@@ -423,7 +493,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -505,7 +575,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -516,6 +586,72 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description 중지됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Location"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-07 §6 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/locations/{locationId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Location 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    locationId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -707,7 +843,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -789,7 +925,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -824,6 +960,136 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/users/{appUserId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                appUserId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 사용자 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    appUserId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AppUser"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/users/{appUserId}:reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                appUserId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 비밀번호 관리자 초기화
+         * @description DR-002 2-B ③ 「관리자 초기화」를 되살린 오퍼레이션(2026-08-30) — 만료·재사용 금지가 없는 것과 짝이라(자가 복구 경로를 안 만든다) 초기화가 유일한 복구 수단이다. 임시 비밀번호를 생성해 이 응답에서 한 번만 보인다 — 저장하지 않는다(단말 토큰 발급과 같은 규약). password_hash·failed_login_count·last_login_at 은 이미 계약에 있다(W-CO-01 §5-B) — 이 오퍼레이션이 새로 필요로 하는 컬럼은 없다. 근거: W-CO-02 §8-2
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    appUserId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 초기화됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AppUserPasswordReset"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-CO-02 §6 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -1182,7 +1448,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -1264,7 +1530,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -1275,6 +1541,72 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description 중지됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Role"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/roles/{roleId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roleId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 역할 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    roleId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1543,7 +1875,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -1745,7 +2077,7 @@ export interface paths {
         put?: never;
         /**
          * Rev 폐기
-         * @description 확정 → 폐기. 폐기 후에는 되돌릴 수 없고 편집도, 신규 Rev 발행의 원본으로도 쓸 수 없다(§5-4 상태표 — 폐기: (없음)). 상태≠확정이면 400(ErrorResponse, code=STATE_LOCKED). 근거: W-06-01 §5-4 · 설계 결정 07
+         * @description 확정 → 폐기. 폐기 후에는 되돌릴 수 없고 편집도, 신규 Rev 발행의 원본으로도 쓸 수 없다(§5-4 상태표 — 폐기: (없음)). 상태≠확정이면 400(ErrorResponse, code=STATE_LOCKED). 근거: W-06-01 §5-4 · 설계 결정 07 ⛔ 마지막 확정 Rev 를 폐기하면 「신규 Rev 발행」이 쓸 원본이 없어진다 — 그 화면 버튼은 항상 켜져 있으나 부를 경로가 없다. 되돌아오는 길은 아직 정해지지 않았다.
          */
         post: {
             parameters: {
@@ -1780,6 +2112,61 @@ export interface paths {
                     };
                 };
                 /** @description 권한 없음. 근거: W-06-01 §6 「권한 없음」(회신 E-9 대기) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/planning/routings/{routingId}:set-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                routingId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 기본 Rev 지정
+         * @description 결정 07 헤더 속성 「기본(default) Rev 플래그」를 되살린 오퍼레이션(2026-08-30) — Bom.isDefault·:set-default와 같은 형태(공유계약 A-6). uq_routing_default ON (item_id) WHERE is_default — 서버가 한 트랜잭션으로 지정한 Routing을 isDefault=true로 세우고 같은 품목의 기존 기본 Rev를 isDefault=false로 내린다. 유효 기간이 겹치는 Rev가 둘일 때 이 값으로 어느 것을 쓸지 정한다. 근거: W-06-01 §8-1
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    routingId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 지정됨 — 응답은 지정한 Routing만 반환한다 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Routing"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-01 §6 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2140,7 +2527,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -2222,7 +2609,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -2233,6 +2620,72 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description 중지됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CodeGroup"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-06 §6 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/code-groups/{codeGroupId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codeGroupId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 코드그룹 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    codeGroupId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2423,7 +2876,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -2505,7 +2958,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -2544,6 +2997,174 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/code-values/{codeValueId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codeValueId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 코드값 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    codeValueId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CodeValue"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-06 §6 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/judgment-type-controls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 판정유형별 통제 속성 목록
+         * @description 결정 10 「출고·출하·Picking 차단 판정은 이 단일 지점을 본다」를 되살린 자원(2026-08-30). 판정유형(code_value, codeGroupCode=JUDGMENT_TYPE)마다 물류 통제 속성 6종을 붙인다. 저장 테이블은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-06-04 §4-B
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 판정유형 통제 속성 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["JudgmentTypeControl"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/judgment-type-controls/{codeValueId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codeValueId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 판정유형 통제 속성 편집
+         * @description 전사 고정 축 — 편집하면 상태 전이도·물류 통제 규칙이 함께 바뀐다(W-06-04 §5-1). 근거: W-06-04 §4-B
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    codeValueId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["JudgmentTypeControlUpdate"];
+                };
+            };
+            responses: {
+                /** @description 저장됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JudgmentTypeControl"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2686,7 +3307,7 @@ export interface paths {
         };
         /**
          * 부서 수정
-         * @description ⚠ W-06-06 §5-4 는 부서를 ERP 수신본으로 규정해 전 필드를 읽기 전용으로 두어야 한다고 적었으나, 판정할 수신본 식별 컬럼이 없어(#65) 이 API 는 잠정적으로 마스터 형(전 필드 편집 가능)으로 노출한다 — 컬럼이 생기면 편집을 막아야 한다. ck_department_parent 는 자기 자신만 막고 순환은 막지 않으므로 서버가 검사한다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-06 §4-C·§5-4
+         * @description ⛔ 조직(부서)은 기간계 수신본이라 읽기 전용이 확정이다(W-06-06 §5-4). 이 경로는 편집 본문에 원본 필드 넷(departmentCode·departmentName·parentDepartmentId·businessUnitId)을 그대로 담고 있어 그 확정과 어긋난다 — 잠정 노출이며 화면은 부르지 않는다. 폐쇄 여부는 결정 대기다. ck_department_parent 는 자기 자신만 막고 순환은 막지 않으므로 서버가 검사한다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-06 §4-C·§5-4
          */
         put: {
             parameters: {
@@ -2694,7 +3315,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -2776,7 +3397,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -2787,6 +3408,72 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description 중지됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Department"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-06 §6 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/departments/{departmentId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                departmentId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 부서 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    departmentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2837,9 +3524,12 @@ export interface paths {
                 query?: {
                     /** @description 사번·성명 검색 */
                     q?: string;
+                    /** @description 사번 정확 일치. 사번 경량 인증(P-CO-01·M-CO-01)이 부르는 축이며 0건 또는 1건이 나온다 — 부분 일치 검색은 q 를 쓴다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 페이지 단위다. ⛔ 재직 여부를 판정하려면 includeInactive=true 와 함께 보낸다 — 기본값(false)으로는 퇴사자가 0건으로 떨어져 「등록되지 않은 사번」과 구분되지 않는다. */
+                    workerNo?: string;
                     departmentId?: number;
                     plantId?: number;
                     businessUnitId?: number;
+                    /** @description false(기본)면 재직자만 낸다. 「현재 재직 중이 아닌 사번입니다」 판정은 true 로 받아 isActive 를 본다. */
                     includeInactive?: boolean;
                     page?: number;
                     size?: number;
@@ -2883,7 +3573,7 @@ export interface paths {
         };
         /**
          * 작업자 상세 (읽기 전용)
-         * @description 쓰기 경로를 제공하지 않는다 — 작업자 기본 정보는 전부 ERP 수신본이다(W-06-06 §5-4). editability.reason 은 항상 RECEIVED_FROM_ERP 로 고정한다 — 이 테이블 전체가 ERP 수신본이라 행 단위 식별 플래그(#65)가 없어도 판정에 모호함이 없다. 자격·인증 편집은 GET/PUT .../qualifications 를 쓴다. 근거: W-06-06 §4-D·§5-4
+         * @description 기본 정보(코드·이름 원본)는 쓰기 경로가 없다 — 전부 ERP 수신본이다(W-06-06 §5-4). editability.reason 은 항상 RECEIVED_FROM_ERP 로 고정한다. 다국어 명칭(nameKo·nameVi)만 예외로 PUT :update-name-translation 로 편집한다(QA #33·#34 — MES 확장 속성, 2026-08-30 되살림). 자격·인증 편집은 GET/PUT .../qualifications 를 쓴다. 근거: W-06-06 §4-D·§5-4
          */
         get: {
             parameters: {
@@ -2908,6 +3598,72 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/workers/{workerId}:update-name-translation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workerId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 작업자 다국어 명칭 편집
+         * @description 작업자 기본 정보는 전부 ERP 수신본이라 쓰기 경로가 없지만(GET /mdm/workers/{workerId} 참조), 다국어 명칭(nameKo·nameVi)은 QA #33·#34가 「MES 확장 속성」으로 확정해 예외로 둔다 — 2026-08-30 되살림. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-06-06 §8-1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    workerId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example 표시명 */
+                        nameKo?: string | null;
+                        /** @example Ten hien thi */
+                        nameVi?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description 저장됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Worker"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -2942,6 +3698,8 @@ export interface paths {
                 /** @description 목록 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -2952,7 +3710,7 @@ export interface paths {
         };
         /**
          * 자격·인증 전체 치환
-         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. uq_worker_qualification 이 COALESCE(process_id,0) 으로 접는다 — 빈 축은 (전체 공정)으로 표기(A-7). certified_by 는 FK 없는 bigint 라 무엇을 가리키는지 하류에 근거가 없다 — #64. valid_to 만료는 검사 확정을 막는다(공유계약 B-2). worker_qualification 은 created_at·created_by 만 있고 is_active·updated_at·version_no 가 없다 — 「물리 삭제 금지」(B-4)를 적용하지 않는다. 서버는 한 트랜잭션으로 반영한다. 근거: W-06-06 §4-E·§5-1 「자격 추가/삭제」 · 공유계약 B-6
+         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. uq_worker_qualification 이 COALESCE(process_id,0) 으로 접는다 — 빈 축은 (전체 공정)으로 표기(A-7). certified_by 는 FK 없는 bigint 라 무엇을 가리키는지 하류에 근거가 없다 — #64. valid_to 만료는 검사 확정을 막는다(공유계약 B-2). worker_qualification 은 created_at·created_by 만 있고 is_active·updated_at·version_no 가 없다 — 「물리 삭제 금지」(B-4)를 적용하지 않는다. 서버는 한 트랜잭션으로 반영한다. 근거: W-06-06 §4-E·§5-1 「자격 추가/삭제」 · 공유계약 B-6 통째로 교체하는 저장이라 보호가 없으면 남이 방금 넣은 줄이 조용히 사라진다. 토큰은 같은 경로의 조회가 내려주는 ETag 다.
          */
         put: {
             parameters: {
@@ -2960,6 +3718,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     workerId: number;
@@ -3020,6 +3780,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 — 남이 먼저 고쳤다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
                     };
                 };
             };
@@ -3121,7 +3890,7 @@ export interface paths {
         };
         /**
          * 품목 MES 확장 속성 수정
-         * @description ERP 수신본. 원본 필드(itemCode·itemName·itemTypeCode·baseUomId)는 읽기 전용이고 MES 확장 속성만 편집한다 — QA #34. 그리고 수신본 식별 플래그 부재로 읽기 전용 판정 자체가 불가능하다 — #65. 「유효기한 관리」 토글은 별도 컬럼이 아니라 shelfLifeDays 의 NULL 여부로 표현한다(§8-2) — 화면이 토글 OFF 시 shelfLifeDays 를 null 로 보낸다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-05 §4-B·§5-1
+         * @description ERP 수신본. 원본 필드(itemCode·itemName·itemTypeCode·baseUomId)는 읽기 전용이고 MES 확장 속성만 편집한다 — QA #34. 원본 필드는 편집 본문(ItemUpdate)에 자리 자체를 두지 않아, 행 단위 출처 표시가 없어도 잠금이 성립한다. 「유효기한 관리」 토글은 별도 컬럼이 아니라 shelfLifeDays 의 NULL 여부로 표현한다(§8-2) — 화면이 토글 OFF 시 shelfLifeDays 를 null 로 보낸다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-05 §4-B·§5-1
          */
         put: {
             parameters: {
@@ -3129,7 +3898,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -3217,6 +3986,8 @@ export interface paths {
                 /** @description 목록 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3227,7 +3998,7 @@ export interface paths {
         };
         /**
          * 단위 환산 전체 치환
-         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. ck_item_uom_distinct·ck_item_uom_dates 를 서버가 검증한다. is_active·version_no 없음 — 부여·회수 형태. 서버는 한 트랜잭션으로 반영한다. 근거: W-06-05 §4-C·§5-1 「부속 행 추가/삭제」 · 공유계약 B-6
+         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. ck_item_uom_distinct·ck_item_uom_dates 를 서버가 검증한다. is_active·version_no 없음 — 부여·회수 형태. 서버는 한 트랜잭션으로 반영한다. 근거: W-06-05 §4-C·§5-1 「부속 행 추가/삭제」 · 공유계약 B-6 통째로 교체하는 저장이라 보호가 없으면 남이 방금 넣은 줄이 조용히 사라진다. 토큰은 같은 경로의 조회가 내려주는 ETag 다.
          */
         put: {
             parameters: {
@@ -3235,6 +4006,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     itemId: number;
@@ -3293,6 +4066,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 충돌 — 남이 먼저 고쳤다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
             };
         };
         post?: never;
@@ -3329,6 +4111,8 @@ export interface paths {
                 /** @description 목록 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3339,7 +4123,7 @@ export interface paths {
         };
         /**
          * 외부 코드 전체 치환
-         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. uq_item_external_code 의 COALESCE(partner_id,0) — 거래처를 비우면 (전체)로 접혀 유일 판정한다(A-7). external_item_code 는 고객 바코드 체계의 저장처(WF04 S6). is_active·version_no 없음 — 부여·회수 형태. 서버는 한 트랜잭션으로 반영한다. 근거: W-06-05 §4-D·§5-1 · 공유계약 B-6
+         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. uq_item_external_code 의 COALESCE(partner_id,0) — 거래처를 비우면 (전체)로 접혀 유일 판정한다(A-7). external_item_code 는 고객 바코드 체계의 저장처(WF04 S6). is_active·version_no 없음 — 부여·회수 형태. 서버는 한 트랜잭션으로 반영한다. 근거: W-06-05 §4-D·§5-1 · 공유계약 B-6 통째로 교체하는 저장이라 보호가 없으면 남이 방금 넣은 줄이 조용히 사라진다. 토큰은 같은 경로의 조회가 내려주는 ETag 다.
          */
         put: {
             parameters: {
@@ -3347,6 +4131,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     itemId: number;
@@ -3397,6 +4183,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 충돌 — 남이 먼저 고쳤다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
             };
         };
         post?: never;
@@ -3433,6 +4228,8 @@ export interface paths {
                 /** @description 목록 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3443,7 +4240,7 @@ export interface paths {
         };
         /**
          * 사업부 매핑 전체 치환
-         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. fromItemId 는 경로의 itemId 로 고정한다. ck_item_bu_map_distinct — fromBusinessUnitId 와 toBusinessUnitId 가 같으면 불가. ck_item_bu_map_dates 짝 제약(A-2). 사업부 간 이동입고는 이 매핑이 없으면 차단된다(1-3 SCN-28). is_active·version_no 없음 — 부여·회수 형태. 서버는 한 트랜잭션으로 반영한다. 근거: W-06-05 §3·§5-1 · 공유계약 B-6
+         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. fromItemId 는 경로의 itemId 로 고정한다. ck_item_bu_map_distinct — fromBusinessUnitId 와 toBusinessUnitId 가 같으면 불가. ck_item_bu_map_dates 짝 제약(A-2). 사업부 간 이동입고는 이 매핑이 없으면 차단된다(1-3 SCN-28). is_active·version_no 없음 — 부여·회수 형태. 서버는 한 트랜잭션으로 반영한다. 근거: W-06-05 §3·§5-1 · 공유계약 B-6 통째로 교체하는 저장이라 보호가 없으면 남이 방금 넣은 줄이 조용히 사라진다. 토큰은 같은 경로의 조회가 내려주는 ETag 다.
          */
         put: {
             parameters: {
@@ -3451,6 +4248,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     itemId: number;
@@ -3507,6 +4306,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 — 남이 먼저 고쳤다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
                     };
                 };
             };
@@ -3754,7 +4562,7 @@ export interface paths {
         };
         /**
          * BOM 구성품 MES 확장 열 수정
-         * @description 편집 가능한 것은 routingOperationId·actualUseProcessId·lotTraceRequired·backflushAllowed 넷뿐이다. scrapRate 는 0~1 비율이며 퍼센트가 아니다 — A-8. 나머지 열(sequenceNo·componentItemId·requiredQty·uomId·scrapRate·isMandatory)은 ERP 원본이라 이 API 로 바꾸지 않는다. BOM 상태가 작성중일 때만 허용한다 — 상태≠작성중이면 400(ErrorResponse, code=STATE_LOCKED). routingOperationId 선택은 Routing 등록(W-06-01)이 선행돼야 한다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-05 §4-F·§5-1 「구성품 확장 열 편집」
+         * @description 편집 가능한 것은 routingOperationId·actualUseProcessId·lotTraceRequired·backflushAllowed 넷뿐이다. scrapRate 는 0~1 비율이며 퍼센트가 아니다 — A-8. 나머지 열(sequenceNo·componentItemId·requiredQty·uomId·scrapRate·isMandatory)은 ERP 원본이라 이 API 로 바꾸지 않는다. BOM 헤더는 기간계에서 받아 오므로 이 시스템이 상태를 바꾸지 않는다 — 확장 네 칸의 편집을 헤더 상태로 막지 않는다. routingOperationId 선택은 Routing 등록(W-06-01)이 선행돼야 한다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-05 §4-F·§5-1 「구성품 확장 열 편집」
          */
         put: {
             parameters: {
@@ -3762,7 +4570,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -3788,7 +4596,7 @@ export interface paths {
                         "application/json": components["schemas"]["BomComponent"];
                     };
                 };
-                /** @description 검증 실패 또는 BOM 상태≠작성중(code=STATE_LOCKED) — W-06-05 §5-1 */
+                /** @description 검증 실패 — W-06-05 §5-1 */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -3969,7 +4777,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -4051,7 +4859,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -4062,6 +4870,72 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description 중지됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InspectionPlan"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quality/inspection-plans/{inspectionPlanId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspectionPlanId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 검사기준 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    inspectionPlanId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -4289,7 +5163,7 @@ export interface paths {
         };
         /**
          * 검사기준 버전 수정
-         * @description 상태=작성중일 때만 허용한다 — W-06-01 §5-4 와 같은 규칙을 적용한다(다만 근거는 status_code 의 존재와 inspection_item_spec 에 version_no 가 없다는 구조에서 읽은 것이다 [추정] — W-06-02 §5-4). 상태≠작성중이면 400(ErrorResponse, code=STATE_LOCKED). planVersion·statusCode 는 이 API 로 바꾸지 않고 :new-revision·:confirm·:obsolete 로만 전이한다. ck_inspection_plan_version_dates — effectiveTo 는 있으면 effectiveFrom 이상. ⚠ sampling_qty 의 단위 해석(비율/수량)이 확정되지 않았다 — 규약 없이 개발하면 30%가 30개로 저장된다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-B·§5-4
+         * @description 상태=작성중일 때만 허용한다 — W-06-01 §5-4 와 같은 규칙을 적용한다(다만 근거는 status_code 의 존재와 inspection_item_spec 에 version_no 가 없다는 구조에서 읽은 것이다 [추정] — W-06-02 §5-4). 상태≠작성중이면 400(ErrorResponse, code=STATE_LOCKED). planVersion·statusCode 는 이 API 로 바꾸지 않고 :new-revision·:confirm·:obsolete 로만 전이한다. ck_inspection_plan_version_dates — effectiveTo 는 있으면 effectiveFrom 이상. 샘플 비율(%)이 정본이다(samplingRatio) — 확정 2026-07-15·재확인 2026-08-18. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-B·§5-4
          */
         put: {
             parameters: {
@@ -4297,7 +5171,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -4499,7 +5373,7 @@ export interface paths {
         put?: never;
         /**
          * 버전 폐기
-         * @description 확정 → 폐기. 폐기 후에는 되돌릴 수 없다. 상태≠확정이면 400(code=STATE_LOCKED). 근거: W-06-02 §5-1 「폐기」
+         * @description 확정 → 폐기. 폐기 후에는 되돌릴 수 없다. 상태≠확정이면 400(code=STATE_LOCKED). 근거: W-06-02 §5-1 「폐기」 ⛔ 마지막 확정 버전을 폐기하면 「신규 버전」이 복사할 원본이 없어진다 — 그 화면 버튼은 항상 켜져 있으나 부를 경로가 없다. 되돌아오는 길은 아직 정해지지 않았다.
          */
         post: {
             parameters: {
@@ -4561,7 +5435,7 @@ export interface paths {
         };
         /**
          * 검사 항목 목록
-         * @description sequenceNo 오름차순. 화면은 이 값을 그대로 보여주지 않고 목록 내 위치로 1부터 연속 표시한다. 근거: W-06-02 §4-C
+         * @description sequenceNo 오름차순. 화면은 이 값을 그대로 보여주지 않고 목록 내 위치로 1부터 연속 표시한다. ⭐ 검사 화면 P-02-13 이 이 경로로 항목 규격을 받는다 — 진입한 검사 의뢰의 inspectionPlanVersionId 로 부른다. 그 값이 비어 있으면 부르지 않는다(기준 없는 갈래 · P-02-13 §5-2). 근거: W-06-02 §4-C · P-02-13 §4-C·§5-11
          */
         get: {
             parameters: {
@@ -4790,7 +5664,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -4872,7 +5746,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -4912,6 +5786,219 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quality/defect-codes/{defectCodeId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defectCodeId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 불량코드 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    defectCodeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DefectCode"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-03 §6 「권한 없음」 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quality/defect-codes/{defectCodeId}/processes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defectCodeId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 불량코드-공정 매핑 목록
+         * @description 결정 12 「공정—불량코드 연결 = N:M 매핑 테이블」을 되살린 자원(2026-08-30) — 상세 코드만 매핑한다(대분류는 전사 고정 축). POP 불량 입력 화면은 이 매핑으로 자기 공정의 불량코드만 본다. 저장 테이블은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-06-03 §4-D
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    defectCodeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 매핑된 공정 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["DefectCodeProcess"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 불량코드-공정 매핑 추가
+         * @description 부여 형태(created_at·created_by만) — uq(defect_code_id, process_id)로 중복을 막는다. 근거: W-06-03 §4-D·§5-1 「매핑 토글」
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    defectCodeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: int64
+                         * @example 1001
+                         */
+                        processId: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description 매핑됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DefectCodeProcess"];
+                    };
+                };
+                /** @description 이미 매핑돼 있다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quality/defect-codes/{defectCodeId}/processes/{processId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defectCodeId: number;
+                processId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 불량코드-공정 매핑 해제
+         * @description 매핑 토글(셀 클릭)의 해제 쪽 — 즉시 반영. 근거: W-06-03 §5-1
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    defectCodeId: number;
+                    processId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 해제됨 */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -5061,7 +6148,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -5143,7 +6230,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -5154,6 +6241,72 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description 중지됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CauseCode"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-03 §6 「권한 없음」 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quality/cause-codes/{causeCodeId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                causeCodeId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 원인코드 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    causeCodeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -5209,7 +6362,9 @@ export interface paths {
                     statusCode?: string;
                     /** @description 연계 정의의 interfaceCode. 선택 목록은 GET /integration/interface-definitions 에서 받는다 */
                     interfaceCode?: string;
+                    /** @description 수신(INBOUND) 또는 송신(OUTBOUND). 연계 정의의 방향 값과 같은 어휘다 */
                     directionCode?: string;
+                    /** @description 무엇을 나른 메시지인가. 값 목록은 아직 정해지지 않았다 — 확정 전에는 이 조건 대신 interfaceCode 로 거른다(선택 목록은 GET /integration/interface-definitions). */
                     targetTypeCode?: string;
                     /** @description 「N회 이상」 필터 — 반복 실패 건을 찾는 주 경로 */
                     retryCountMin?: number;
@@ -5464,6 +6619,7 @@ export interface paths {
                     /** @description 공통코드 — 값 목록 미정 §8-3 */
                     targetTypeCode?: string;
                     targetId?: number;
+                    /** @description 어떤 변경인가로 거른다. ⚠ 값 목록은 아직 정해지지 않았다 — 확정 전에는 화면이 이 선택칸을 비활성으로 두고 사유를 보인다. */
                     eventTypeCode?: string;
                     performedBy?: number;
                     /** @description 한 트랜잭션의 여러 이벤트를 묶는다[추정] */
@@ -6130,7 +7286,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -6212,7 +7368,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -6278,7 +7434,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -6433,7 +7589,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -6626,7 +7782,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -6655,7 +7811,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -6742,7 +7898,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -6807,7 +7963,7 @@ export interface paths {
         put?: never;
         /**
          * 단말 등록 토큰 발급
-         * @description ⭐ 관리웹이 부르고, 받은 토큰을 화면에 «QR 로» 보인다. 기기는 그것을 스캔해 저장한다 — 기기가 서버를 부르지 않으므로 토큰 없이 열리는 경로가 생기지 않는다. ⚠ 재발급해도 «이전 기기가 끊기지 않는다» — 세대를 올릴 자리가 아직 없다. 화면이 그 사실을 경고한다. 근거: M-CO-01 §5-2 B안(2026-08-13 확정) · W-CO-06 §5-4
+         * @description ⭐ 관리웹이 부르고, 받은 토큰을 화면에 «QR 로» 보인다. 기기는 그것을 스캔해 저장한다 — 기기가 서버를 부르지 않으므로 토큰 없이 열리는 경로가 생기지 않는다. **재발급하면 이전 기기 전부가 끊긴다** — 세대 번호(tokenVersion)를 올리고 클레임과 대조한다. 화면이 그 사실을 안내한다. 근거: M-CO-01 §5-2 B안(2026-08-13 확정) · W-CO-06 §5-4
          */
         post: {
             parameters: {
@@ -6885,7 +8041,7 @@ export interface paths {
                 /** @description 목록 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        /** @description 낙관적 잠금 토큰. ⭐ 이 값은 «단말»의 판 번호다 — 부여 테이블에는 판 번호가 없어 마스터의 토큰을 대표로 쓴다. 저장 단위가 단말이기 때문이다. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -6916,7 +8072,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -7011,6 +8167,8 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -7038,7 +8196,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -7055,6 +8213,8 @@ export interface paths {
                 /** @description 저장됨 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -7302,7 +8462,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -7384,7 +8544,84 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    equipmentGroupId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 처리됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EquipmentGroup"];
+                    };
+                };
+                /** @description 업무 규칙 위반 — 상태 잠김·참조 존재 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다. 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/equipment-groups/{equipmentGroupId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                equipmentGroupId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 설비 그룹 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -7487,7 +8724,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -7569,7 +8806,84 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    equipmentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 처리됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Equipment"];
+                    };
+                };
+                /** @description 업무 규칙 위반 — 상태 잠김·참조 존재 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다. 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/equipments/{equipmentId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                equipmentId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 설비 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -7646,7 +8960,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -7848,7 +9162,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -7956,7 +9270,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -8064,7 +9378,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -8144,6 +9458,10 @@ export interface paths {
                     plantId?: number;
                     /** @description 도구 유형으로 거른다 */
                     toolTypeCode?: string;
+                    /** @description 자산 수명주기로 거른다 — 운용(IN_SERVICE) 또는 폐기(DISPOSED). 사용 여부(includeInactive)와 «다른 축» 이다. 툴 보전오더 생성 화면이 폐기된 툴을 목록에서 버릴 때 건다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_STATUS 로 받는다 */
+                    statusCode?: string;
+                    /** @description 열린 보전오더가 있는 툴만/없는 툴만 거른다. 생략하면 거르지 않는다 · false 면 열린 오더가 없는 툴만 · true 면 있는 툴만. 툴 보전오더 생성 화면의 기본 목록은 false 이고 필터로 뒤집는다 */
+                    withOpenMaintenanceOrder?: boolean;
                     /** @description 적정타수가 비어 있는 것만 본다. 비어 있으면 예방보전이 돌지 않으므로 채울 것을 한눈에 세는 자리다 */
                     guaranteedShotCountMissing?: boolean;
                     /** @description 예방보전이 도래한 것만 본다. 예방보전 도래 조회 화면의 기본값이다 — 적체 화면이라 미처리 전건이 먼저 보인다 */
@@ -8169,6 +9487,29 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["Mold"][];
                             page: components["schemas"]["PageMeta"];
+                            /** @description ⭐ 필터 «전체» 기준 요약이다 — 페이지가 아니다. 툴 보전오더 생성 화면의 요약 구획이 그대로 보인다. ⚠ pmDueOnly 는 이 집계에 적용하지 않는다 — q·plantId·toolTypeCode·includeInactive 만 걸고 센다. 적용하면 「임박」이 항상 0 이 된다 */
+                            summary?: {
+                                /**
+                                 * @description 예방보전이 도래한 툴 수(초과 포함)
+                                 * @example 3
+                                 */
+                                pmDueCount: number;
+                                /**
+                                 * @description 임박한 툴 수 — 보증 타발수 대비 사용률이 pmNearThresholdPercent 이상인 툴이다
+                                 * @example 5
+                                 */
+                                pmNearCount: number;
+                                /**
+                                 * @description 적정타수·주기가 둘 다 비어 판정이 서지 않는 툴 수. 숨기지 않고 세어 보인다
+                                 * @example 2
+                                 */
+                                criteriaMissingCount: number;
+                                /**
+                                 * @description 「임박」의 임계. 화면이 이 값을 그대로 문구에 쓴다 — 화면이 90 을 지어내지 않는다
+                                 * @example 90
+                                 */
+                                pmNearThresholdPercent: number;
+                            };
                         };
                     };
                 };
@@ -8277,7 +9618,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -8359,7 +9700,84 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    moldId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 처리됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Mold"];
+                    };
+                };
+                /** @description 업무 규칙 위반 — 상태 잠김·참조 존재 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다. 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/molds/{moldId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                moldId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 툴 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -8436,7 +9854,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -8708,7 +10126,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -8790,7 +10208,84 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    sparePartId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 처리됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SparePart"];
+                    };
+                };
+                /** @description 업무 규칙 위반 — 상태 잠김·참조 존재 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다. 업무 규칙 위반(상태 잠김·참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/spare-parts/{sparePartId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sparePartId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 예비품 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -8893,7 +10388,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -9167,7 +10662,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -9249,7 +10744,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -9691,7 +11186,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -9773,7 +11268,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -9784,6 +11279,83 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description 중지됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InterfaceDefinition"];
+                    };
+                };
+                /** @description 업무 규칙 위반 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌 — 다른 사용자가 먼저 고쳤다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integration/interface-definitions/{interfaceDefinitionId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interfaceDefinitionId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 연계 정의 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    interfaceDefinitionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
                 200: {
                     headers: {
                         /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
@@ -10216,7 +11788,7 @@ export interface paths {
         };
         /**
          * 조정 라인 치환
-         * @description 전기된 조정은 바꿀 수 없다. 근거: 공유계약 A-5 · G-1
+         * @description 전기된 조정은 바꿀 수 없다. 근거: 공유계약 A-5 · G-1 ⭐ 이 경로의 조회는 ETag 를 내리지 않는다 — If-Match 에 담을 토큰은 부모 자원 GET /inventory/adjustments/{inventoryAdjustmentId} 200 의 ETag 다. 잠그는 단위가 부모이기 때문이다. 근거: 공유계약 B-1-1
          */
         put: {
             parameters: {
@@ -10224,7 +11796,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -10243,6 +11815,8 @@ export interface paths {
                 /** @description 치환됨 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 라인을 고치면 이 헤더의 값이 오르므로 다음 상태 전이(:request-approval·:post)는 이 값을 쓴다 — 상세 GET 을 다시 돌지 않는다. */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -10306,7 +11880,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -10377,7 +11951,7 @@ export interface paths {
         put?: never;
         /**
          * 재고 조정 상신
-         * @description 근거: W-01-12 §5-6 · 공유계약 J-4
+         * @description 결재선이 없으면 400(code=ROUTE_NOT_FOUND)이다 — 상신할 곳이 없는 요청을 만들지 않는다. 진행 중인 승인 요청이 이미 있으면 400 이다 — 한 전표에 살아 있는 요청은 하나다. 반려된 요청은 진행 중이 아니므로 다시 상신할 수 있고 그때는 새 요청이 만들어진다(공유계약 J-6). 근거: W-01-12 §5-6 · 공유계약 J-4
          */
         post: {
             parameters: {
@@ -10385,7 +11959,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -10469,8 +12043,16 @@ export interface paths {
                     ownershipTypeCode?: string;
                     /** @description 잔액이 0 인 줄도 내릴지 */
                     includeZero?: boolean;
-                    /** @description 정렬. 지정된 열만 받는다 */
-                    sort?: "itemCode" | "lotNo" | "locationCode" | "onHandQty" | "availableQty";
+                    /** @description 이 날짜까지 만료되는 LOT 을 가진 줄만. 경과·임박 조회용이다. 근거: W-01-07 §5-5 */
+                    expiryDateTo?: string;
+                    /** @description heldLotCount 가 0 보다 큰 줄만. 근거: W-01-07 §3 필터 */
+                    heldOnly?: boolean;
+                    /** @description 신재·재생재 구분으로 거른다. ⚠ 값 목록이 아직 확정되지 않았다 — 서버가 내려주는 선택지를 그대로 쓴다(공유계약 G-2) */
+                    mesCategoryCode?: string;
+                    /** @description 오늘부터 이 일수 안에 유효기간이 도래하는 LOT 만 — W-04-08 「유효기간 임박」 필터다. ⚠ 유효기한이 없는 LOT 은 이 필터로 판정할 수 없어 결과에서 빠지고, 응답이 그 건수를 함께 낸다(공유계약 L-8 · W-04-08 §5-3) */
+                    expiryWithinDays?: number;
+                    /** @description 정렬. 지정된 열만 받는다. ⭐ earliestExpiryDate 오름차순이 FEFO 권장 순서다(M-04-01 §5-1). ⚠ earliestExpiryDate·manufacturedAt 은 groupBy=LOT 일 때만 뜻이 있다 — 접힌 줄에는 유효기한이 여럿이다. ⚠ 유효기한이 없는 LOT 은 항상 맨 뒤에 따로 모은다 — 섞지 않는다(공유계약 L-10 · M-04-01 §5-2) */
+                    sort?: "itemCode" | "lotNo" | "locationCode" | "onHandQty" | "availableQty" | "earliestExpiryDate" | "manufacturedAt";
                     page?: number;
                     size?: number;
                 };
@@ -10487,8 +12069,14 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
+                            summary: components["schemas"]["InventoryBalanceSummary"];
                             items: components["schemas"]["InventoryBalance"][];
                             page: components["schemas"]["PageMeta"];
+                            /**
+                             * @description 유효기한이 없어 임박 판정을 할 수 없는 LOT 수. ⭐ 「판정 불가」를 「정상」으로 보이지 않기 위해 화면이 이 수를 함께 적는다(공유계약 L-8)
+                             * @example 4
+                             */
+                            expiryUnknownCount?: number;
                         };
                     };
                 };
@@ -10806,7 +12394,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -10910,7 +12498,7 @@ export interface paths {
         put?: never;
         /**
          * 취급 단위 등록
-         * @description 근거: M-01-10 §5-2
+         * @description 근거: P-02-08 §5-2 · P-04-01 §5 · M-04-03 §5
          */
         post: {
             parameters: {
@@ -11058,7 +12646,7 @@ export interface paths {
         };
         /**
          * 취급 단위 구성 치환
-         * @description 근거: 공유계약 A-5
+         * @description 근거: 공유계약 A-5. ⭐ 이 경로의 조회는 ETag 를 내리지 않는다 — If-Match 에 담을 토큰은 부모 자원 GET /inventory/handling-units/{handlingUnitId} 200 의 ETag 다. 잠그는 단위가 부모이기 때문이다. 근거: 공유계약 B-1-1. ⭐ 오프라인 대상 오퍼레이션이다 — 큐에 쌓인 요청은 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). 중복은 멱등키가 막고, 이미 처리된 건은 서버가 거부한다. ⭐ 결정 13 되살림(2026-08-30) — 이 치환은 서버가 HandlingUnitRepackEvent(헤더) + Line(수량 변경 전/후)을 함께 기록한다. 신규 발번·새 라벨 대상은 이 이벤트가 아니라 POST /inventory/handling-units(P-04-04)가 별도로 만든다. 저장 테이블은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: M-04-03 §5-2
          */
         put: {
             parameters: {
@@ -11066,8 +12654,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
-                    "If-Match": components["parameters"]["IfMatchVersion"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
                     /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
@@ -11122,6 +12710,51 @@ export interface paths {
                 };
             };
         };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/handling-units/{handlingUnitId}/repack-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                handlingUnitId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 포장 재구성 이력
+         * @description 결정 13 「이벤트 헤더–라인 계보」를 되살린 자원(2026-08-30) — 누가·언제·왜 재구성했는지와 수량 변경 전/후를 담는다. 저장 테이블은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: M-04-03 §5-2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    handlingUnitId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재구성 이력 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["HandlingUnitRepackEvent"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -11555,7 +13188,7 @@ export interface paths {
          *
          *     ⭐ successorCount·cancellable 을 서버가 판정해 내린다. 원천 참조가 다형이라(source_document_type_code + source_document_id) 유형↔테이블 규약이 아직 없는데, 프런트가 「입고 → 출고·이동·투입」 관계표를 하드코딩하면 유형이 늘 때마다 취소 판정이 조용히 틀린다(공유계약 A-10 보강).
          *
-         *     ⚠ 이 화면이 덮는 것은 6유형이다 — 발주·입하·입고·출고요청·피킹·이동요청. 외주 2문서는 상태 컬럼 자체가 없고 출하·생산품 입고는 다른 도메인이다. 근거: W-01-13 §5-2·§5-3
+         *     이 화면이 덮는 것은 8유형이다 — 발주·입하·입고·출고요청·피킹·이동요청·외주출고·외주입고(2026-08-30 되살림 — subcontract_issue/receipt 도 동형으로 status_code 를 둔다). 출하·생산품 입고는 다른 도메인이라 범위 밖이다. 근거: W-01-13 §5-2·§5-3·§5-6
          */
         get: {
             parameters: {
@@ -11626,7 +13259,7 @@ export interface paths {
         };
         /**
          * 물류 문서 진행현황 상세
-         * @description 처리 경과와 후속 목록을 함께 내린다. 후속이 있으면 그것을 역순으로 먼저 취소해야 이 문서를 취소할 수 있다. 근거: W-01-13 §3·§5-3
+         * @description 처리 경과와 후속 목록을 함께 내린다. 후속이 있으면 그것을 역순으로 먼저 취소해야 이 문서를 취소할 수 있다. 근거: W-01-13 §3·§5-3 취소 요청·실행의 If-Match 토큰은 이 응답이 아니라 대상 문서 리소스의 상세 GET(입하 /logistics/inbound-receipts/{inboundReceiptId} · 입고 /logistics/goods-receipts/{goodsReceiptId} · 출고 /logistics/goods-issues/{goodsIssueId})이 내려주는 ETag 다 — 공유계약 B-1·A-4.
          */
         get: {
             parameters: {
@@ -11693,7 +13326,9 @@ export interface paths {
                     reasonCode?: string;
                     /** @description 반품 대상 공급사. 근거: W-01-05 §3 */
                     supplierId?: number;
-                    /** @description 출고번호 검색 */
+                    /** @description 라인 단위 출고 QR 을 스캔했을 때. 그 라인이 속한 출고 전표를 낸다. 근거: P-01-02 §5-2 · M-01-09 §5-6 */
+                    goodsIssueLineId?: number;
+                    /** @description 출고번호 검색. ⛔ 발행된 출고 QR 은 라인을 가리키므로 이 축으로는 풀리지 않는다 — goodsIssueLineId 를 쓴다(P-01-02 §5-2) */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -11880,7 +13515,7 @@ export interface paths {
         };
         /**
          * 출고 라인 치환
-         * @description 전기된 전표의 라인은 바꿀 수 없다. 근거: 공유계약 A-5 · G-1
+         * @description 전기된 전표의 라인은 바꿀 수 없다. 근거: 공유계약 A-5 · G-1 ⭐ 이 경로의 조회는 ETag 를 내리지 않는다 — If-Match 에 담을 토큰은 부모 자원 GET /logistics/goods-issues/{goodsIssueId} 200 의 ETag 다. 잠그는 단위가 부모이기 때문이다. 근거: 공유계약 B-1-1
          */
         put: {
             parameters: {
@@ -11888,7 +13523,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -11976,7 +13611,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -12060,7 +13695,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -12131,7 +13766,7 @@ export interface paths {
         put?: never;
         /**
          * 기타 출고 품의 상신
-         * @description 결재선이 없으면 400 이다 — 상신할 곳이 없는 품의를 만들지 않는다. 근거: W-01-06 §5-7 · 공유계약 J-4
+         * @description 결재선이 없으면 400(code=ROUTE_NOT_FOUND)이다 — 상신할 곳이 없는 요청을 만들지 않는다. 진행 중인 승인 요청이 이미 있으면 400 이다 — 한 전표에 살아 있는 요청은 하나다. 반려된 요청은 진행 중이 아니므로 다시 상신할 수 있고 그때는 새 요청이 만들어진다(공유계약 J-6). 근거: W-01-06 §5-7 · 공유계약 J-4
          */
         post: {
             parameters: {
@@ -12139,7 +13774,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -12224,7 +13859,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -12341,7 +13976,7 @@ export interface paths {
         put?: never;
         /**
          * 입고 처리
-         * @description 입고 전표 생성과 전기가 한 번에 일어난다. LOT 상태 전이·수불 원장·잔액·ERP 송신 적재가 같은 트랜잭션이며 ERP 실제 전송만 밖이다. 근거: W-01-10 §5-4 · 공유계약 B-8
+         * @description 입고 전표 생성과 전기가 한 번에 일어난다. LOT 상태 전이·수불 원장·잔액·ERP 송신 적재가 같은 트랜잭션이며 ERP 실제 전송만 밖이다. 근거: W-01-10 §5-4 · 공유계약 B-8 ⭐ 적치 지시는 라인마다 서버가 함께 만들고, 응답의 GoodsReceiptLine.putawayTaskId 가 그 식별자를 싣는다 — 화면은 그 값으로 라인 수만큼 적치 완료를 부른다. ⛔ 입고와 적치 완료는 한 트랜잭션이 아니다 — 입고만 성공하고 적치가 남는 상태는 오류가 아니라 표현 가능한 상태이고, GET /logistics/putaway-tasks?goodsReceiptId= 로 되찾는다(공유계약 B-8 의 경계는 전표 안까지다).
          */
         post: {
             parameters: {
@@ -12520,7 +14155,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -12610,7 +14245,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -12949,7 +14584,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -13052,7 +14687,7 @@ export interface paths {
         };
         /**
          * 입하 라인 치환
-         * @description LOT 이 이미 만들어진 라인은 지울 수 없다. 근거: 공유계약 A-5 · G-1
+         * @description LOT 이 이미 만들어진 라인은 지울 수 없다. 근거: 공유계약 A-5 · G-1 ⭐ 이 경로의 조회는 ETag 를 내리지 않는다 — If-Match 에 담을 토큰은 부모 자원 GET /logistics/inbound-receipts/{inboundReceiptId} 200 의 ETag 다. 잠그는 단위가 부모이기 때문이다. 근거: 공유계약 B-1-1
          */
         put: {
             parameters: {
@@ -13060,7 +14695,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -13148,7 +14783,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -13238,7 +14873,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -13417,7 +15052,7 @@ export interface paths {
         put?: never;
         /**
          * 추가 자재 출고 요청 발행
-         * @description 현장이 BOM 소요량 밖의 자재를 수동으로 요청한다. 라인 1건 이상이고 각 수량이 0 보다 커야 한다. BOM 밖 품목도 담을 수 있다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다(공유계약 C-9). 근거: W-02-10 §5-6
+         * @description 현장이 BOM 소요량 밖의 자재를 수동으로 요청한다. 라인 1건 이상이고 각 수량이 0 보다 커야 한다. BOM 밖 품목도 담을 수 있다. ⛔ 오프라인 대상이 아니다 — 이 오퍼레이션을 부르는 추가 자재 출고 요청(W-02-10)은 관리웹이고, 관리웹 셸에는 오프라인이 없다(공유계약 C-5 · W-02-10 §1). Idempotency-Key 는 필수이나 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해서다(C-8) — Idempotency-Key 는 필수이고 If-Match 는 선택이다(공유계약 C-9). 근거: W-02-10 §5-6
          */
         post: {
             parameters: {
@@ -13475,6 +15110,57 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/material-issue-requests/shortage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * W/O 품목별 소요·기출고·부족
+         * @description 추가 자재 출고 요청 화면(W-02-10 §3 ②)의 표를 이 한 호출이 채운다 — 「BOM 소요량 불러오기」 버튼이 부르는 것이 이 경로다. 자재 명세(BOM) 조회를 화면이 따로 하지 않는다. 근거: W-02-10 §5 · 공유계약 L-2
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 이 W/O 의 품목별 집계를 낸다 */
+                    workOrderId: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MaterialIssueShortageList"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -13547,7 +15233,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 비우면 요청자 본인 */
+                    /** @description 담당자로 거른다. ⛔ 「비우면 본인」이 아니다 — 모바일·POP 은 계정 로그인이 없고 서버가 사번 세션을 갖지 않아 「본인」을 풀 근거가 없다(공유계약 D-5·F-2). 현장 셸은 사번으로 GET /mdm/workers?q=<사번> 을 한 번 받아 얻은 workerId 를 여기에 싣는다. 근거: M-01-08 §5-3 */
                     assignedWorkerId?: number;
                     warehouseId?: number;
                     statusCode?: string;
@@ -13885,7 +15571,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -13983,7 +15669,7 @@ export interface paths {
         };
         /**
          * P/O 라인 치환
-         * @description 라인 배열을 통째로 치환한다. 이미 입하가 붙은 라인은 지울 수 없다. 근거: W-01-11 §5-1 · 공유계약 A-5
+         * @description 라인 배열을 통째로 치환한다. 이미 입하가 붙은 라인은 지울 수 없다. 근거: W-01-11 §5-1 · 공유계약 A-5 ⭐ 이 경로의 조회는 ETag 를 내리지 않는다 — If-Match 에 담을 토큰은 부모 자원 GET /logistics/purchase-orders/{purchaseOrderId} 200 의 ETag 다. 잠그는 단위가 부모이기 때문이다. 근거: 공유계약 B-1-1
          */
         put: {
             parameters: {
@@ -13991,7 +15677,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -14010,6 +15696,8 @@ export interface paths {
                 /** @description 치환됨 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 라인을 고치면 이 헤더의 값이 오르므로 다음 상태 전이(:request-approval·:post)는 이 값을 쓴다 — 상세 GET 을 다시 돌지 않는다. */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -14065,7 +15753,7 @@ export interface paths {
         put?: never;
         /**
          * P/O 승인 요청
-         * @description 등록이 끝난 P/O 에 승인을 건다. 근거: W-01-11 §5-1 · 공유계약 J-4
+         * @description 등록이 끝난 P/O 에 승인을 건다. 결재선이 없으면 400(code=ROUTE_NOT_FOUND)이다 — 상신할 곳이 없는 요청을 만들지 않는다. 진행 중인 승인 요청이 이미 있으면 400 이다 — 한 전표에 살아 있는 요청은 하나다. 반려된 요청은 진행 중이 아니므로 다시 상신할 수 있고 그때는 새 요청이 만들어진다(공유계약 J-6). 근거: W-01-11 §5-1 · 공유계약 J-4
          */
         post: {
             parameters: {
@@ -14073,7 +15761,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -14145,7 +15833,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 비우면 요청자 본인 */
+                    /** @description 담당자로 거른다. ⛔ 「비우면 본인」이 아니다 — 모바일·POP 은 계정 로그인이 없고 서버가 사번 세션을 갖지 않아 「본인」을 풀 근거가 없다(공유계약 D-5·F-2). 현장 셸은 사번으로 GET /mdm/workers?q=<사번> 을 한 번 받아 얻은 workerId 를 여기에 싣는다. */
                     assignedWorkerId?: number;
                     warehouseId?: number;
                     statusCode?: string;
@@ -14154,6 +15842,8 @@ export interface paths {
                     temporaryOnly?: boolean;
                     page?: number;
                     size?: number;
+                    /** @description 이 입고 전표가 만든 적치 지시만. ⭐ 제품 입고(M-04-04)는 한 포장 단위를 인수해 LOT 마다 라인을 만들므로 적치 지시가 라인 수만큼 생긴다 — 부분 완료 상태에서 재진입할 때 남은 지시와 그 상태를 이 축으로 되찾는다 */
+                    goodsReceiptId?: number;
                 };
                 header?: never;
                 path?: never;
@@ -14846,7 +16536,7 @@ export interface paths {
         };
         /**
          * 이동 라인 치환
-         * @description 반출이 끝난 라인은 바꿀 수 없다. 근거: 공유계약 A-5 · G-1
+         * @description 반출이 끝난 라인은 바꿀 수 없다. 근거: 공유계약 A-5 · G-1 ⭐ 이 경로의 조회는 ETag 를 내리지 않는다 — If-Match 에 담을 토큰은 부모 자원 GET /logistics/stock-transfers/{stockTransferId} 200 의 ETag 다. 잠그는 단위가 부모이기 때문이다. 근거: 공유계약 B-1-1
          */
         put: {
             parameters: {
@@ -14854,7 +16544,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -15012,7 +16702,9 @@ export interface paths {
                 query?: {
                     itemId?: number;
                     plantId?: number;
+                    /** @description LOT 유형으로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_TYPE 로 받는다(MATERIAL·PRODUCTION·PRODUCT) — 생산LOT 만 볼 때는 PRODUCTION 이다. 근거: 공유계약 G-32 */
                     lotTypeCode?: string;
+                    /** @description 품질 판정 축으로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). ⛔ 이 축으로는 「완료」·「폐번」을 고를 수 없다 — 완료는 completed, 폐번은 생명주기 축이다. 근거: 공유계약 G-32 · omf-mes#269 */
                     statusCode?: string;
                     /** @description 보류 중인 LOT 만 */
                     heldOnly?: boolean;
@@ -15020,12 +16712,22 @@ export interface paths {
                     expiryDateFrom?: string;
                     /** @description 유효기간 종료 */
                     expiryDateTo?: string;
+                    /** @description LOT 번호 정확 일치. 스캔 화면이 쓴다 — 스캔값 하나로 한 건을 집어야 하므로 부분 검색(q)으로는 성립하지 않는다(여러 건이 온다). 공장 안에서 유일하다. 근거: P-02-03 §5-1 · P-02-08 §5-2 · 공유계약 D-2 */
+                    lotNo?: string;
                     /** @description LOT 번호·외부 식별자 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
-                    /** @description 이 W/O 를 원천으로 발행된 LOT 만. 선발행 슬롯을 빠짐없이 훑는 경로다(W-02-05 §3). ⭐ 저장된 형태는 다형 참조 짝(sourceTypeCode + sourceId)이지만 판별자 값 목록이 아직 미확정이라 짝 필터를 열지 않았다 — 값을 모르는 채 열면 눌러도 아무것도 안 걸린다(공유계약 G-23). 서버가 W/O 원천으로 풀어 준다 */
+                    /** @description 이 W/O 를 원천으로 발행된 LOT 만. 선발행 슬롯을 빠짐없이 훑는 경로다 — 마감(W-02-05 §3)과 POP 의 실적 대상 LOT 선택(P-02-04 §5)·생산LOT 완료(P-02-06 §3 좌단 LOT 목록)가 같은 축을 쓴다. ⭐ 저장된 형태는 다형 참조 짝(sourceTypeCode + sourceId)이지만 판별자 값 목록이 아직 미확정이라 짝 필터를 열지 않았다 — 값을 모르는 채 열면 눌러도 아무것도 안 걸린다(공유계약 G-23). 서버가 W/O 원천으로 풀어 준다 */
                     workOrderId?: number;
+                    /** @description 입고 확정 대기 큐의 판정 축 — IQC 합격 · 샘플링 미대상 · 긴급 IQC 생략 한도승인 세 갈래다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 서버가 판정한다 — 화면이 검사 결과·승인 요청을 따로 조회해 조합하면 세 갈래가 화면마다 갈린다. 근거: W-01-10 §3·§5-1·§5-5 */
+                    receiptDispositionCode?: string;
+                    /** @description 입고 확정이 아직 안 된 것만. 참이면 IQC 미완료 LOT 이 빠진다 — 화면 §6 이 「진입 자체가 막힌다」로 못박은 규칙을 서버가 집행한다. heldOnly 로 갈음할 수 없다 — 의심자재 보류가 섞인다. 근거: W-01-10 §5-1 */
+                    awaitingReceiptOnly?: boolean;
+                    /** @description 완료 처리됐는가로 거른다 — false 면 completedAt 이 비어 있는 것만, true 면 값이 있는 것만 낸다. LOT 라벨 출력(P-02-07 §4-B)의 완료 LOT 목록과 긴급 직행 출하(W-04-05 §3)의 생산 완료분 선택이 이 축으로 선다. ⭐ 상태 코드 문자열을 몰라도 판정된다. ⛔ statusCode(품질 판정 축)로는 완료를 고를 수 없다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다(공유계약 L-11). 근거: P-02-07 §4-B·§5-4 · omf-mes#269 */
+                    completed?: boolean;
+                    /** @description 아직 입고 전표에 실리지 않은 LOT 만. ⭐ W-04-05 긴급 직행 출하가 「창고에 아직 안 들어온 생산 완료분」을 고르는 축이다(W-04-05 §5-7). 이미 입고된 LOT 은 정상 출하 흐름으로 가야 한다. ⭐ M-04-04 제품입고·적치가 오프라인 진입 전 「인수 대기 제품 LOT 목록」을 미리 받는 축이기도 하다(공유계약 C-11) */
+                    unreceivedOnly?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -15141,7 +16843,10 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description 생산 진척을 함께 받는다. 목록에서는 LOT 마다 세게 되므로 기본은 끈다 */
+                    withProgress?: boolean;
+                };
                 header?: never;
                 path: {
                     lotId: number;
@@ -15182,7 +16887,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -15280,7 +16985,7 @@ export interface paths {
         };
         /**
          * LOT 외부 식별자 치환
-         * @description 근거: 공유계약 A-5
+         * @description 근거: 공유계약 A-5 ⭐ 이 경로의 조회는 ETag 를 내리지 않는다 — If-Match 에 담을 토큰은 부모 자원 GET /trace/lots/{lotId} 200 의 ETag 다. 잠그는 단위가 부모이기 때문이다. 근거: 공유계약 B-1-1
          */
         put: {
             parameters: {
@@ -15288,7 +16993,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -15395,6 +17100,185 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trace/lot-status-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * LOT 상태 변경이력 조회 — 전이 9종 전건
+         * @description 결정 10 「현재 1행 + 변경이력 1:N」을 되살린 전용 이력(2026-08-30). 도식스펙03 §1.3 공통 범례가 요구하는 상태 전이 9종(C4·C5·C6·C7·C8·C9·C10·C14·C15) 전건을 사건별 행으로 낸다 — 기존 GET /quality/lot-hold-events(보류 등록·해제 2종만)를 대체하는 상위 자원이다. 저장 테이블은 데이터 모델 담당에게 통지한다 — 기다리지 않는다(data-model-boundary.md). 근거: W-03-01 §5-1·§5-2 · W-01-02 · M-01-08
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 사건 기간 시작 — 감사 조회는 기간을 강제한다(공유계약 L-3) */
+                    occurredFrom: string;
+                    /** @description 사건 기간 끝 */
+                    occurredTo: string;
+                    /** @description 「LOT으로 찾기」 모드 */
+                    lotId?: number;
+                    /** @description 「이력으로 찾기」의 판정유형 축 */
+                    transitionCode?: "C4" | "C5" | "C6" | "C7" | "C8" | "C9" | "C10" | "C14" | "C15";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description LOT 상태 변경이력 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["LotStatusHistoryEvent"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trace/lot-lifecycle-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * LOT 생명주기 변경이력 조회 — 전이 3종 전건
+         * @description 선발행 LOT 번호 슬롯(trace.lot.lifecycleStatusCode — 대기/활성/폐번)의 전이 3종(L1·L2·L3)을 사건별 행으로 낸다. LotStatusHistoryEvent(품질 판정 축 — 정상/불량/검사대기/폐기)와는 다른 축이다 — 섞지 않는다. 저장 테이블은 데이터 모델 담당에게 통지한다 — 기다리지 않는다(data-model-boundary.md). 근거: omf-mes-server#50 정정 회신(2026-08-31) · W-02-05 §5-3 · W-02-06 §5-5 · DR-007
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 사건 기간 시작 — 감사 조회는 기간을 강제한다(공유계약 L-3) */
+                    occurredFrom: string;
+                    /** @description 사건 기간 끝 */
+                    occurredTo: string;
+                    /** @description 「LOT으로 찾기」 모드 */
+                    lotId?: number;
+                    /** @description 「이력으로 찾기」의 전이유형 축 */
+                    transitionCode?: "L1" | "L2" | "L3";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description LOT 생명주기 변경이력 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["LotLifecycleHistoryEvent"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trace/lots/{lotId}:request-iqc-skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 긴급 IQC 생략 요청
+         * @description 입하돼 수입검사 대기인 LOT 에 대해 현장이 검사 생략을 요청한다. 요청을 만들기만 하고 한도는 승인자가 정한다. 결재선이 없으면 400(code=ROUTE_NOT_FOUND)이다 — 상신할 곳이 없는 요청을 만들지 않는다. 근거: M-01-13 §5-A · 공유계약 J-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
+                };
+                path: {
+                    lotId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestCreate"];
+                };
+            };
+            responses: {
+                /** @description 요청됨 */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestRef"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trace/lots/{lotId}:complete": {
         parameters: {
             query?: never;
@@ -15432,7 +17316,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description 완료됨 */
+                /** @description 완료됨 — 결과가 Lot.completedAt 에 실려 돌아온다 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -15643,7 +17527,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -15734,7 +17618,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -15811,7 +17695,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -15924,7 +17808,7 @@ export interface paths {
          * 결재 단계 전체 치환 (순서 포함)
          * @description 화면이 최종 순서를 통째로 보내고 서버가 한 트랜잭션으로 반영한다. uq_approval_route_step UNIQUE(route, step_no) 가 걸려 있어 두 단계를 맞바꾸면 중간 상태가 반드시 제약을 위반한다 — 행 단위 저장이 원리적으로 불가능하다(공유계약 A-5 · B-11).
          *
-         *     approval_route_step 에는 version_no 가 없으므로 낙관적 잠금은 마스터의 토큰으로 판정한다 — If-Match 는 approval_route.version_no 다.
+         *     approval_route_step 에는 version_no 가 없으므로 낙관적 잠금은 마스터의 토큰으로 판정한다 — If-Match 는 approval_route.version_no 다. 그 값은 부모 경로 GET /app/approval-routes/{approvalRouteId} 의 200 응답 ETag 헤더에서 받는다.
          *
          *     ⚠ 이 치환은 진행 중인 요청에 소급하지 않는다. approval_step 은 상신 시점에 전개되고 기록 전용이다(공유계약 J-9).
          *
@@ -15936,7 +17820,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -16015,7 +17899,7 @@ export interface paths {
          * 승인 요청 목록
          * @description 결재함이 쓰는 목록이다. assignedToMe 는 「로그인 사용자가 approver_id 인 단계가 있는 요청」이고, pendingOnly 와 함께 쓰면 「내 결재 대기」 탭이 된다(공유계약 J-3 — 역할 기반 필터가 아니다).
          *
-         *     targetTypeCode·targetId 로 거르면 업무 화면이 「이 문서의 승인 상태」를 찾을 수 있다 — goods_issue·purchase_order 에는 approval_request_id 컬럼이 없어 이 경로가 유일한 방법이다.
+         *     targetTypeCode·targetId 로 거르면 업무 화면이 「이 문서의 승인 상태」를 찾을 수 있다 — 업무 자원이 승인 요청 식별자를 싣지 않는 경우에는 이것이 유일한 방법이다.
          *
          *     근거: W-CO-09 §3·§5-8
          */
@@ -16169,7 +18053,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -16261,7 +18145,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -16659,7 +18543,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 아이디 또는 비밀번호가 맞지 않는다 */
+                /** @description 현재 비밀번호가 맞지 않는다 */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -16893,7 +18777,7 @@ export interface paths {
         };
         /**
          * 알림 이벤트 목록
-         * @description ⭐ 이 목록의 정본은 계약이다 — 공통코드 마스터에 두면 편집 가능해지고, 코드가 바뀌면 «보내는 쪽»이 조용히 깨진다. 근거: W-CO-03 §8-3 · W-CO-11 §8-3
+         * @description ⭐ 이 목록의 정본은 계약이다 — 공통코드 마스터에 두면 편집 가능해지고, 코드가 바뀌면 «보내는 쪽»이 조용히 깨진다. 이벤트마다 「무엇이 일어나면 나는가」(발생 지점)도 이 계약이 갖는다 — 수신자를 발생 시점에 사람 목록으로 전개하고 본문을 서버가 만들기로 정했으므로, 어느 쓰기 뒤에 그 일이 일어나는지가 계약에 없으면 알림이 아예 나지 않는다. ⛔ 2026-08-29 실측 — 발생 지점 표가 아직 비어 있다. 근거: W-CO-03 §8-3 · W-CO-11 §8-3
          */
         get: {
             parameters: {
@@ -16939,6 +18823,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description 이벤트 하나로 좁힌다. 생략하면 전건을 내린다 — 이벤트 목록의 수신자 수 표시가 이것을 쓴다(응답 recipients 의 길이). */
                     eventCode?: string;
                 };
                 header?: never;
@@ -16950,7 +18835,7 @@ export interface paths {
                 /** @description 목록 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 */
+                        /** @description 낙관적 잠금 토큰. ⭐ eventCode 를 «지정해» 부른 응답에만 온다 — 그 이벤트 하나의 토큰이다. eventCode 없이 부르면(목록 전체 로드) ETag 를 내리지 «않는다» — 여러 이벤트의 판 번호를 하나로 표현할 수 없기 때문이다. 화면은 이벤트를 고른 뒤 ?eventCode= 로 한 번 더 부르고 그 ETag 를 저장의 If-Match 에 담는다. */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -16983,7 +18868,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path?: never;
@@ -17049,20 +18934,37 @@ export interface paths {
         };
         /**
          * 공지 목록
-         * @description 근거: W-CO-04 §5
+         * @description ⛔ 기간을 필수로 «받지 않는다» — 기간 필수 규약은 원장·파티션 테이블의 조항이고 공지는 둘 다 아니다. 화면 기본은 «게시 중»이며 기간은 비울 수 있다(기본 최근 1개월). 근거: W-CO-04 §5-4
          */
         get: {
             parameters: {
                 query?: {
-                    statusCode?: string;
+                    statusCode?: "DRAFT" | "SCHEDULED" | "PUBLISHED" | "CLOSED";
+                    /** @description 공지 범위로 거른다. 1차는 COMPANY·WORK_ORDER 만 유효하다 */
+                    scopeCode?: "COMPANY" | "WORK_ORDER" | "BUSINESS_UNIT" | "EQUIPMENT_GROUP" | "WORK_SHIFT";
                     /** @description 참이면 게시 중인 것만 */
                     activeOnly?: boolean;
                     /** @description 제목 검색 */
                     q?: string;
+                    /**
+                     * @description 이 날 이후와 «겹치는» 공지만. 게시 기간(시작일~종료일)이 조회 구간과 겹치면 걸린다 — 시작일 기준이 아니다. date 라 양끝 포함이다
+                     * @example 2026-08-13
+                     */
+                    overlapFrom?: string;
+                    /**
+                     * @description 이 날 이전과 «겹치는» 공지만. 양끝 포함
+                     * @example 2026-08-31
+                     */
+                    overlapTo?: string;
+                    /** @description 참이면 «지금 귀속된 주체»가 아직 확인하지도 닫지도 않은 게시 중 공지만. 현장 셸이 진입할 때 이것으로 묻는다. ⚠ 현장 셸은 계정 세션이 없다 — 이 질의를 쓸 때는 X-Worker-No 로 주체를 싣는다. 관리웹은 계정 토큰에서 서버가 푼다 */
+                    unacknowledgedByMe?: boolean;
                     page?: number;
                     size?: number;
                 };
-                header?: never;
+                header?: {
+                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -17160,7 +19062,7 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 ⭐ 확인(:acknowledge)은 이 판을 «올리지 않는다» — 잠그는 대상은 공지 «본문»이고 확인은 별개 기록이다. 확인이 쌓일 때마다 판이 오르면 관리자가 본문을 고치려 할 때 「남이 먼저 고쳤다」를 보게 된다. 고친 사람은 없고 읽은 사람만 있는데도. 근거: 공유계약 G-30 — 잠그는 대상과 버전 축을 일치시킨다. */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 표시하지 않되 전달한다. ⭐ 확인(:acknowledge)은 이 판을 «올리지 않는다» — 잠그는 대상은 공지 «본문»이고 확인은 별개 기록이다. 확인이 쌓일 때마다 판이 오르면 관리자가 본문을 고치려 할 때 「남이 먼저 고쳤다」를 보게 된다. 고친 사람은 없고 읽은 사람만 있는데도. 근거: 공유계약 G-30 — 잠그는 대상과 버전 축을 일치시킨다. */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -17189,7 +19091,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -17276,7 +19178,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -17349,7 +19251,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -17422,6 +19324,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path: {
                     noticeId: number;
@@ -17548,7 +19452,7 @@ export interface paths {
         };
         /**
          * 통합 대시보드 집계
-         * @description 카드마다 소유 화면이 따로 있고 이 경로는 «숫자만» 모은다. ⛔ 자동 갱신을 두지 않는다 — 사람이 「갱신」을 누른다. ⛔ 설비종합효율(OEE)은 내지 않는다: 계획 조업 시간의 분모가 되는 휴일·계획 정지를 담을 자리가 아직 없다. 근거: W-CO-05 §5·§8-1
+         * @description 카드마다 소유 화면이 따로 있고 이 경로는 «숫자만» 모은다. ⛔ 자동 갱신을 두지 않는다 — 사람이 「갱신」을 누른다. ✅ 설비종합효율(OEE)을 낸다(2026-08-30 되살림) — 계획 조업 시간의 분모는 mdm.WorkCalendar/WorkCalendarDay/WorkCalendarApplication(결정 03)에서 구한다. 근거: W-CO-05 §5·§8-1
          */
         get: {
             parameters: {
@@ -17605,7 +19509,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    policyCode?: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL";
+                    policyCode?: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL" | "FIFO_ENFORCEMENT_LEVEL";
                     businessUnitId?: number;
                     plantId?: number;
                     itemId?: number;
@@ -17705,7 +19609,7 @@ export interface paths {
         get: {
             parameters: {
                 query: {
-                    policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL";
+                    policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL" | "FIFO_ENFORCEMENT_LEVEL";
                     businessUnitId?: number;
                     plantId?: number;
                     itemId?: number;
@@ -17785,7 +19689,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -17846,6 +19750,329 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 첨부 목록
+         * @description 한 대상에 붙은 첨부를 낸다.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    targetTypeCode?: string;
+                    targetId?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["Attachment"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 첨부 올리기
+         * @description 파일을 올리고 첨부 식별자를 돌려준다. 다형 참조라 대상 유형과 대상 식별자를 함께 받는다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        targetTypeCode: string;
+                        /** Format: int64 */
+                        targetId: number;
+                        /** Format: binary */
+                        file: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description 올리기 완료. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Attachment"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 파일이 너무 크다 */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/attachments/{attachmentId}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example 1001 */
+                attachmentId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 첨부 파일 내려받기
+         * @description 파일 내용을 그대로 내린다.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @example 1001 */
+                    attachmentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 파일 내용. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                        "image/png": string;
+                        "image/jpeg": string;
+                    };
+                };
+                /** @description 없다. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notices/{noticeId}:dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 공지 확인 없이 닫기
+         * @description 확인하지 «않고» 닫았다를 기록한다. 확인 요구가 켜진 공지에는 이 호출이 400 이다 — 그 공지는 닫을 수 없다. ⭐ 확인과 닫음을 나누는 이유는 「확인하지 않았다」가 이력에 남아야 하기 때문이고, 남기려면 닫은 것도 기록해야 한다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
+                };
+                path: {
+                    noticeId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 기록됐다 */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description 확인 요구가 켜진 공지다 — 닫을 수 없다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/notification-subscriptions/recipients:preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 지금 받는 사람 미리보기
+         * @description 저장 «전»의 규칙으로 수신자를 전개해 돌려준다 — 규칙만 보면 몇 명인지 모르고 중복도 안 보인다. 중복은 서버가 접어 한 번만 내린다. ⛔ 아무것도 저장하지 않는다 — 읽기지만 편집 중 규칙을 본문에 실어야 해서 POST 다. ⚠ 아무것도 저장하지 않지만 POST 라 전 쓰기 규약대로 Idempotency-Key 를 받는다 — 같은 키로 다시 보내면 같은 전개 결과를 돌려준다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotificationSubscriptionReplace"];
+                };
+            };
+            responses: {
+                /** @description 전개 결과 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * Format: date-time
+                             * @description 전개 기준 시각. 화면이 「ⓘ 08-11 16:30 기준」으로 적는다
+                             * @example 2026-08-11T16:30:00+09:00
+                             */
+                            resolvedAt: string;
+                            /** @example 7 */
+                            totalCount: number;
+                            users: {
+                                /**
+                                 * Format: int64
+                                 * @example 1001
+                                 */
+                                userId: number;
+                                /** @example 홍길동 */
+                                userName: string;
+                                /** @example 품질보증팀 */
+                                departmentName?: string | null;
+                                /**
+                                 * @description 거짓이면 화면이 「(비활성)」을 덧붙여 표시하고 설정은 지우지 않는다
+                                 * @example true
+                                 */
+                                isActive: boolean;
+                            }[];
+                        };
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한·단말 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/planning/production-orders": {
         parameters: {
             query?: never;
@@ -17861,6 +20088,8 @@ export interface paths {
             parameters: {
                 query?: {
                     statusCode?: string;
+                    /** @description ERP 변경이 도착했는데 관리자가 아직 확인하지 않은 P/O 만 낸다. 참이면 acknowledgedAt 이 비어 있고 마지막 변경 수신이 그 뒤인 것만 내린다. ⭐ 상태 코드 문자열을 몰라도 판정된다 — 확인 시각의 유무로 갈리기 때문이다(released 파라미터와 같은 형태다). ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 쪽 안에서만 걸러진다. 근거: W-02-06 §3·§4-C·§6 · omf-mes#87 */
+                    unacknowledgedOnly?: boolean;
                     /** @description 사업부 필터 — 화면 정본(W-02-01 §3)의 첫 필터. 근거: omf-mes#196 */
                     businessUnitId?: number;
                     plantId?: number;
@@ -17929,6 +20158,8 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다. ⭐ P/O 는 ERP 배치가 다시 덮어쓸 수 있어 사용자끼리의 충돌이 아니라 «ERP 재변경» 충돌이 난다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -17966,6 +20197,8 @@ export interface paths {
         /**
          * P/O 변경 확인 처리
          * @description 관리자가 ERP 변경을 반영할지 강행할지 판정한다. 근거: W-02-06 §5-5 · :동사 규약
+         *
+         *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /planning/production-orders/{productionOrderId} 의 ETag 를 그대로 싣는다. 409 가 나면 화면 문구는 「남이 고쳤다」가 아니라 「ERP 가 다시 보냈다」다.
          */
         post: {
             parameters: {
@@ -17973,6 +20206,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
                     productionOrderId: number;
@@ -18049,7 +20284,7 @@ export interface paths {
         put?: never;
         /**
          * ERP 재동기 요청
-         * @description 수신본이 어긋났을 때 다시 받는다. 근거: W-02-01 §5
+         * @description 수신본이 어긋났을 때 다시 받는다. ⚠ 이 오퍼레이션을 호출하는 화면은 현재 없다 — 재동기 실행 소관은 연계 동기화 현황 화면이 단독으로 갖는다.
          */
         post: {
             parameters: {
@@ -18258,7 +20493,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -18330,7 +20565,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -18402,7 +20637,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -18511,7 +20746,7 @@ export interface paths {
         put?: never;
         /**
          * 자재 투입 등록
-         * @description 오투입 판정이 서버에서 일어난다 — 화면만으로 막지 않는다. 근거: P-02-03 §5-1·5-3 · 공유계약 F-1 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항).
+         * @description 오투입 판정이 서버에서 일어난다 — 화면만으로 막지 않는다. 한 호출이 투입 한 건이다 — 스캔한 자재가 여럿이면 건마다 부른다. ⭐ 자재LOT → 생산LOT 계보가 시작되는 지점이다 — 서버가 계보 관계를 이 등록과 한 트랜잭션으로 만든다(공유계약 B-8). 화면은 추적 정확도·배분 방법을 보내지 않는다 — 서버가 투입 형태로 정한다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: P-02-03 §5-1·5-3·§5-4 · 공유계약 F-1
          */
         post: {
             parameters: {
@@ -18832,7 +21067,7 @@ export interface paths {
         put?: never;
         /**
          * 공정 인계 확정
-         * @description 인계와 인수를 한 번에 확정한다 — 화면의 버튼이 하나다. 근거: M-02-01 §5 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항).
+         * @description 인계와 인수를 한 번에 확정한다 — 화면의 버튼이 하나다. ⛔ 오프라인 대상이 아니다 — 이 오퍼레이션을 부르는 WIP 공정 이동 스캔은 온라인 전용이다(✓확정 2026-07-24 #2·#3 · R79). 화면은 연결이 끊기면 진입 자체를 막는다. ⛔ 셸의 outbox 에 담지 않는다. Idempotency-Key 는 필수다 — 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해서다(공유계약 C-8). If-Match 는 선택이다 — 신규 생성이라 대조할 version_no 가 아직 없다. 근거: M-02-01 §1·§6
          */
         post: {
             parameters: {
@@ -19100,7 +21335,7 @@ export interface paths {
         put?: never;
         /**
          * 생산 실적 등록
-         * @description 다섯 수량을 그대로 받는다. 근거: P-02-04 §5 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항).
+         * @description 다섯 수량을 그대로 받는다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: P-02-04 §5
          */
         post: {
             parameters: {
@@ -19421,7 +21656,7 @@ export interface paths {
         put?: never;
         /**
          * 수리 반출 등록
-         * @description 수리를 마치고 반출한 사실을 기록해 왕복을 닫는다. 반출 시각이 생기면 투입 대기 목록에서 빠진다. ⭐ 재투입은 이 화면이 하지 않는다 — 수리된 물건은 원 LOT 으로 돌아가지 않고 그때 진행 중인 생산LOT 에 합류하며, 그 등록은 P-02-03·P-02-04 소관이다(M-02-02 §5-4). 근거: M-02-02 §5-3
+         * @description 수리를 마치고 반출한 사실을 기록해 왕복을 닫는다. 반출 시각이 생기면 투입 대기 목록에서 빠진다. ⭐ 재투입은 이 화면이 하지 않는다 — 수리된 물건은 원 LOT 으로 돌아가지 않고 그때 진행 중인 생산LOT 에 합류하며, 그 등록은 P-02-03·P-02-04 가 후보다 — 아직 정해지지 않았다(M-02-02 §5-4·§8-3). 근거: M-02-02 §5-3
          */
         post: {
             parameters: {
@@ -19507,13 +21742,27 @@ export interface paths {
                     statusCode?: string;
                     /** @description 배포됐는가로 거른다 — false 면 released_at 이 비어 있는 것만, true 면 값이 있는 것만 낸다. 긴급 발행 화면(W-02-07)이 진입할 때 「만들어졌으나 배포되지 않은 긴급 W/O」를 되찾는 축이다(W-02-07 §5-8). ⭐ 상태 코드 문자열을 몰라도 판정된다 — 배포 시각이 있고 없고로 갈리기 때문이다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 페이지 단위라 페이지 안에서만 걸러진다(공유계약 L-11 의 반대쪽). 근거: W-02-07 §5-8 · omf-mes#258 */
                     released?: boolean;
+                    /** @description 지금 중단 중인가로 거른다 — true 면 미종료 작업홀드이력이 있는 것만 낸다(✓설계확정 결정 14 — 「현재 중단 중」 = 미종료 홀드이력 존재). ⭐ 상태 코드 문자열을 몰라도 판정된다 — 구간이 열려 있고 없고로 갈리기 때문이다(released 와 같은 형태다). 설비고장 상세처리가 plannedEquipmentId 와 함께 걸어 「이 설비의 W/O 중단 N건」을 page.total 로 받는다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다 */
+                    held?: boolean;
+                    /** @description 지금 진행할 수 있는 상태인가로 거른다 — true 면 배포됐고 아직 완료·마감·취소되지 않은 것만 낸다. 배포 대기와 중단 중이 함께 나온다. POP 작업 시작 화면의 기본 목록이 이 축으로 선다. ⭐ 상태 코드 문자열을 몰라도 판정된다 — 배포 시각의 유무와 완료·마감·취소 시각의 부재로 갈리기 때문이다(released 와 같은 형태다). 거짓이면 그 여집합을 낸다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다 */
+                    open?: boolean;
+                    /** @description 확정·배포할 수 있는 상태인가로 거른다 — 참이면 ⓐ 배포 시각이 비어 있고 ⓑ 계획 자원이 배정돼 있으며 ⓒ 4M 배정 유효성 점검에 차단 건이 없는 것만 낸다. 확정·배포 화면의 《확정 대기》 목록이 이 축으로 선다. 거짓이면 그 여집합을 낸다. ⭐ 긴급 W/O 는 이 목록에 넣지 않는다 — 발행·배포를 긴급 발행 화면이 한 화면에서 끝낸다. ⭐ 상태 코드 문자열을 몰라도 판정된다 — released 와 같은 형태다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다 */
+                    releasable?: boolean;
+                    /** @description P/O 와 어긋난 채 강행된 W/O 만 거른다 — 응답의 poMismatch 와 같은 축이다 */
+                    poMismatch?: boolean;
+                    /** @description 이 W/O 의 후속 W/O 만 낸다 — 서버가 공정 의존을 푼다. WIP 공정 이동 스캔의 「다음 공정」 선택지가 이 축으로 선다. ⭐ 후속이 여럿이면 여럿을 낸다 — 외주·재작업 분기가 있어 화면이 고른다. 후속이 없으면 빈 목록이고 화면은 「다음 공정이 없습니다」를 그린다. 후속의 statusCode 를 함께 받아 화면이 「후속 W/O 미시작 → 경고 + 진행 가능」을 추가 호출 없이 판정한다 */
+                    successorOfWorkOrderId?: number;
+                    /** @description 공정으로 거른다. 진행현황 조회의 「공정」 필터가 이 축으로 선다 — 선택 목록은 GET /mdm/processes 의 processId·processName 이다. work_order 에 직접 컬럼이 아니라 routingOperationId → routing_operation.process_id 1단 조인이므로 잇는 것은 서버 몫이다(같은 목록의 productionOrderId 도 같은 방식이다). ⛔ 응답의 routingOperationId 를 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 쪽 안에서만 걸러진다 */
+                    processId?: number;
                     productionLineId?: number;
                     /** @description 계획 설비로 거른다. POP 작업 시작 화면(P-02-01 §4 ②)의 기본 목록 「이 설비 · 배포됨」이 이 축으로 선다 — 응답의 plannedEquipmentId 를 클라이언트가 거르는 것으로는 성립하지 않는다(목록이 페이지 단위라 페이지 안에서만 걸러진다). 저장 자리가 실재하므로 필터를 둔다(공유계약 L-11 의 반대쪽). 근거: P-02-01 §4·§5-5 · omf-mes#247 */
                     plannedEquipmentId?: number;
                     workOrderTypeCode?: string;
+                    /** @description 기간 필터. ⚠ 진행현황 조회는 이 쌍을 «비울 수 없다» — 무제한 조회를 허용하면 실적이 쌓인 뒤 화면이 멎는다. 기본값은 최근 1개월이고 그 강제는 «화면» 규칙이다 — 다른 화면이 같은 경로를 기간 없이 부르기 때문에 계약에서 필수로 올리지 않았다. 끝 경계는 date-time 이라 반열림이다(From 이상 · To 미만). ⚠ 이 축은 W/O 의 «계획 시작 시각»이다 — 실적의 발생 시각이 아니다. 이 쌍으로 좁힌 요약의 수량 합계는 «이 기간에 시작 계획된 W/O» 의 전 기간 실적 합이며 「그 기간에 생산된 양」이 아니다. 실적 발생 시각으로 세려면 GET /production/production-results 의 occurredFrom·occurredTo 다. */
                     plannedStartFrom?: string;
+                    /** @description 기간 필터. ⚠ 진행현황 조회는 이 쌍을 «비울 수 없다» — 무제한 조회를 허용하면 실적이 쌓인 뒤 화면이 멎는다. 기본값은 최근 1개월이고 그 강제는 «화면» 규칙이다 — 다른 화면이 같은 경로를 기간 없이 부르기 때문에 계약에서 필수로 올리지 않았다. 끝 경계는 date-time 이라 반열림이다(From 이상 · To 미만). ⚠ 이 축은 W/O 의 «계획 시작 시각»이다 — 실적의 발생 시각이 아니다. 이 쌍으로 좁힌 요약의 수량 합계는 «이 기간에 시작 계획된 W/O» 의 전 기간 실적 합이며 「그 기간에 생산된 양」이 아니다. 실적 발생 시각으로 세려면 GET /production/production-results 의 occurredFrom·occurredTo 다. */
                     plannedStartTo?: string;
-                    /** @description W/O 번호 검색 */
+                    /** @description W/O 번호 검색. ⚠ P/O 번호는 이 축으로 검색되지 않는다 — P/O 는 productionOrderId 로 좁힌다 */
                     q?: string;
                     /** @description 정렬 키는 제한한다. 근거: 공유계약 L-4 */
                     sort?: string;
@@ -19523,6 +21772,10 @@ export interface paths {
                     size?: number;
                     /** @description 선발행 생산LOT 슬롯 집계를 함께 받는다. 마감 화면(W-02-05)이 쓴다 — 목록에서는 W/O 마다 세게 되므로 기본은 끈다 */
                     withPreIssuedLots?: boolean;
+                    /** @description 요약 집계를 함께 받는다 — 필터 전체 기준이며 목록과 «같은 트랜잭션»에서 낸다. 목록만 필요한 호출에는 켜지 않는다 */
+                    withSummary?: boolean;
+                    /** @description 4M 배정 유효성 요약을 함께 받는다. 자원배정 화면의 목록이 쓴다 — 켜지 않으면 채우지 않는다(줄마다 세게 되므로 기본은 끈다) */
+                    withValidation?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -19539,6 +21792,7 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["WorkOrder"][];
                             page: components["schemas"]["PageMeta"];
+                            summary?: components["schemas"]["WorkOrderListSummary"];
                         };
                     };
                 };
@@ -19662,7 +21916,7 @@ export interface paths {
         };
         /**
          * W/O 수정 · 4M 자원배정
-         * @description 배포 전에만 고친다. 근거: W-02-03 §5 · W-02-04 §5
+         * @description 배포 전에만 고친다. ⛔ 이 경로로 상태를 옮기지 않는다 — 본문에 statusCode 칸을 두지 않은 것이 그 뜻이다(상태 전이는 전부 :동사 이고, 「확정 대기」는 전이가 아니라 파생이다). 근거: W-02-03 §5 · W-02-04 §5
          */
         put: {
             parameters: {
@@ -19670,7 +21924,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -19733,6 +21987,147 @@ export interface paths {
         };
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/production/work-orders/{workOrderId}/resource-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 4M 계획 배정 목록
+         * @description 결정 04 「배정 No(surrogate) + 논리 유니크(W/O·자원유형·자원ID)」를 되살린 자원(2026-08-30) — 자원 유형당 N개 배정을 받는다(work_order 계획 컬럼 5개의 「자원 유형당 1개」 제약을 벗는다). 저장 테이블은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-02-03 §5-1
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    workOrderId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 계획 배정 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["WorkOrderResourcePlan"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 4M 계획 배정 추가
+         * @description 자원 유형(EQUIPMENT·WORKER·MOLD)마다 여러 행을 만들 수 있다 — R23. uq_work_order_resource_plan(work_order_id, resource_type_code, resource_id)로 같은 자원 중복 배정을 막는다. 근거: W-02-03 §5-1
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    workOrderId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["WorkOrderResourcePlanCreate"];
+                };
+            };
+            responses: {
+                /** @description 배정됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WorkOrderResourcePlan"];
+                    };
+                };
+                /** @description 이미 같은 자원이 배정돼 있다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/production/work-orders/{workOrderId}/resource-plans/{workOrderResourcePlanId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workOrderId: number;
+                workOrderResourcePlanId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 4M 계획 배정 해제
+         * @description 배정 한 건을 뺀다 — 우선순위 조정 화면(W-02-03)이 부른다. 근거: W-02-03 §5-1
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    workOrderId: number;
+                    workOrderResourcePlanId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 해제됨 */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -19808,7 +22203,7 @@ export interface paths {
         put?: never;
         /**
          * W/O 취소
-         * @description 취소 상태로 옮기고 선발행된 생산LOT 슬롯을 자동 폐번한다. 마감 시 미달 슬롯을 폐번하는 것과 같은 규칙이다. 근거: 예외 E-4 ④(2026-08-12 종결) · R27·R82 · W-02-06 §5-5
+         * @description 취소 상태로 옮기고 선발행된 생산LOT 슬롯을 전부 자동 폐번한다. 마감이 미달 슬롯을 폐번하는 것과 같은 모양이다 — ⛔ 다만 대상 집합은 다르다. 마감은 실적이 없는 슬롯만(R82 · 마감 시점 전용), 취소는 선발행 슬롯 전건이다(DR-007 3-A · 2026-08-12 확정). 근거: 예외 E-4 ④(2026-08-12 종결) · R27·R82 · W-02-06 §5-5
          *
          *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /production/work-orders/{workOrderId} 의 ETag 를 그대로 싣는다. 취소는 관리웹(W-02-06) 온라인 전제이고 선발행 슬롯 자동 폐번이 붙는 되돌릴 수 없는 전이라 :close·:release 와 같은 정책이다. 근거: 형제 전이 정책 정렬 · omf-mes#205
          */
@@ -19818,7 +22213,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -19900,12 +22295,16 @@ export interface paths {
          *
          *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /production/work-orders/{workOrderId} 의 ETag 를 그대로 싣는다. 마감은 관리웹 온라인 전제이고 되돌릴 수 없는 전이라(재오픈 금지 · R83) 형제 전이 :hold·:resume 처럼 선택으로 두지 않는다 — 그 둘은 POP 오프라인 대상이라 큐가 토큰을 싣지 못해 선택이다(공유계약 C-9). 근거: W-02-05 §6
          *
+         *     ⭐ ERP 생산 실적 송신 — 이 마감이 대기열에 적재한다. 품목이 개발품이면 제외한다(판정 축은 품목이다). ⚠ 개발품 여부를 담을 컬럼이 아직 없어 서버는 그때까지 전건을 적재한다. 실제 전송과 재처리는 이 계약 밖이다.
+         *
          *     ⭐ 본문 검증 — 서버가 스스로 낸 마감 3분류 판정과 본문을 대조한다(판정은 WorkOrderProgress.completionJudgmentCode 와 같은 식이다).
          *       · 미달인데 remainderDispositionCode 가 없다 → 400
          *       · 정상·초과인데 remainderDispositionCode 가 있다 → 400 (넘길 잔량도 없앨 잔량도 없다)
          *       · 미달·초과인데 reasonCode 가 없다 → 400 (미달·초과 사유는 R80 이 요구한다)
          *       · 정상은 두 칸을 다 비운다
          *     ⚠ 「정상」의 폭(허용 오차)은 서버 정책이 정한다 — 규칙은 그대로고 미달의 경계만 움직인다(W-02-05 §5-1·§8-1)
+         *     ⛔ 같은 W/O 에 열린 작업 세션이 있으면 409 OPEN_SESSION_EXISTS 로 거절한다 — 화면은 그 문구를 띄운다.
+         *     ⭐ 잔량 처분의 결과 — 이월은 새 W/O 로 표현되고 그 W/O 가 parentWorkOrderId 로 원본을 가리킨다. 소멸은 아무 자원도 만들지 않으므로 본문 remarks 에 사유를 남긴다. ⚠ 이월이 잔량 W/O 를 «자동으로» 만드는지는 아직 정해지지 않았다 — 정해지기 전까지 이 오퍼레이션은 만들지 않는다.
          */
         post: {
             parameters: {
@@ -19913,7 +22312,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -19991,7 +22390,7 @@ export interface paths {
         put?: never;
         /**
          * 작업 중단
-         * @description W/O 를 중단 상태로 옮긴다. 세션은 :end 로 따로 닫는다 — 중단 상태를 갖는 것은 W/O 다. POP 에서 누르므로 오프라인 대상이다. 근거: ✓설계확정 결정 14 · P-02-10 §5-4 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항).
+         * @description W/O 를 중단 상태로 옮긴다 — 바뀌는 것은 W/O 의 status_code 이고 이 오퍼레이션이 바꾼다. ⭐ 세션은 닫지 않는다 — 중단해도 세션은 열려 있다(ended_at 이 빈 채). 세션의 status_code 를 「중단」으로 옮기는 것은 POST /production/work-sessions/{workSessionId}/events 의 eventTypeCode=STOP 이다. 앞은 W/O 층의 상태, 뒤는 세션 구간 안의 사건이다. POP 에서 누르므로 오프라인 대상이다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: ✓설계확정 결정 14 · P-02-10 §5-4 · 공유계약 G-16 보완 v3.9
          */
         post: {
             parameters: {
@@ -20091,7 +22490,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -20169,7 +22568,7 @@ export interface paths {
         put?: never;
         /**
          * 작업 재개
-         * @description 중단→진행 전이 이벤트다. 재시작은 상태가 아니다. POP 에서 누르므로 오프라인 대상이다. 근거: ✓설계확정 결정 14 · P-02-01 §5 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항).
+         * @description 중단→진행 전이 이벤트다. 재시작은 상태가 아니다 — 바뀌는 것은 W/O 의 status_code 다. ⭐ 세션은 다시 열지 않는다 — 같은 세션 안의 RESUME 사건이 세션 층을 되돌린다. ⚠ POP 작업 시작 화면의 [재개]는 이 경로가 아니라 events 의 RESUME 이다. POP 에서 누르므로 오프라인 대상이다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: ✓설계확정 결정 14 · P-02-10 §5-4 · 공유계약 G-16 보완 v3.9
          */
         post: {
             parameters: {
@@ -20457,6 +22856,8 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
+                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     workSessionId: number;
@@ -21093,13 +23494,14 @@ export interface paths {
         };
         /**
          * 불량코드 분포
-         * @description 2계층 분포. ⚠ 공정별로 나누면 중복 계상될 수 있어 duplicateRisk 를 함께 내린다 — 분포를 보고 개선 대상을 정하는 화면이라 왜곡이 곧 잘못된 판단이 된다. 근거: W-03-05 §5-5
+         * @description 2계층 분포. ⚠ 공정별로 나누면 중복 계상될 수 있어 duplicateRisk 를 함께 내린다 — 분포를 보고 개선 대상을 정하는 화면이라 왜곡이 곧 잘못된 판단이 된다. 근거: W-03-05 §5-5 ⚠ 이 뷰는 검사 결과가 아니라 불량 레코드를 센다 — 판정·최종회차·교정만료 축이 없다(근거: W-03-05 §5-2 · omf-mes#192).
          */
         get: {
             parameters: {
                 query?: {
                     /** @description 발생 공정으로 묶어야 개선 대상이 나온다 */
                     groupBy?: "defectCode" | "occurrenceProcess" | "detectionProcess";
+                    /** @description 현장 · PQC · OQC · 원천미상 */
                     sourceAxisCode?: string;
                     itemId?: number;
                     /** @description 필수 */
@@ -21140,7 +23542,7 @@ export interface paths {
         };
         /**
          * 처분 결정 목록
-         * @description W-03-10 의 처리 이력이고, 동시에 W-04-10(폐기) · W-04-11(재등록) · P-04-03(재작업)의 진입 목록이다 — 처분 유형으로 걸러 각자의 대상을 찾는다. 근거: W-03-10 §3 · 네 화면 §5
+         * @description W-03-10 의 처리 이력이고, 동시에 W-04-10(폐기) · W-04-11(재등록)의 진입 목록이다 — 처분 유형으로 걸러 각자의 대상을 찾는다. P-04-03(재작업 실적)은 진입이 02 W/O 목록이고 이 값을 상세의 「미처리 수량」으로 쓴다(P-04-03 §3 ④·§6). 근거: W-03-10 §3 · 네 화면 §5
          */
         get: {
             parameters: {
@@ -21153,6 +23555,12 @@ export interface paths {
                     /** @description 기간 — 이력 모드에서 필수(공유계약 L-3) */
                     decidedFrom?: string;
                     decidedTo?: string;
+                    /** @description 보관 창고로 거른다. 형제 오퍼레이션 GET /quality/nonconformances 와 같은 축이다 — 응답을 화면이 거르는 것으로는 성립하지 않는다(목록이 페이지 단위다) */
+                    warehouseId?: number;
+                    /** @description 재고로 되돌릴 수 있는 결정만. 처분이 정상이거나, 처분이 재작업이고 그 재작업이 끝난 것을 서버가 한 축으로 판정해 낸다 — 화면이 두 조건을 각각 질의해 합치지 않는다(공유계약 L-2). ⛔ 폐기 결정은 포함하지 않는다 */
+                    reinstatable?: boolean;
+                    /** @description 후속 처리가 남은 결정만. ⭐ W-04-10(폐기 요청)·W-04-11(재고 재등록)의 진입 목록이 이 오퍼레이션이다 — 처리한 건이 계속 남으면 같은 건을 두 번 처리한다. P-04-03(재작업 실적)은 진입이 02 W/O 목록이고 이 값을 상세의 「미처리 수량」으로 쓴다(P-04-03 §3 ④·§6). 근거: W-04-07 §5-5(부분 처분이 정상) */
+                    followUpPending?: boolean;
                     /** @description 1 부터 */
                     page?: number;
                     /** @description 기본 50 */
@@ -21307,7 +23715,7 @@ export interface paths {
         };
         /**
          * 검사 의뢰 한 건
-         * @description P-02-13 진입 시 기준 버전·대상 수량을 읽는다. 근거: P-02-13 §4-A
+         * @description P-02-13 진입 시 기준 버전·대상 수량을 읽는다. ⭐ 이 화면의 진입 인자는 inspectionRequestId 하나이고 화면 안에 대상 목록을 두지 않는다 — 인자가 없으면 「작업 화면에서 진입하세요」 안내만 그린다(P-02-13 §5-10). ⚠ 검사 대기 큐(GET /quality/inspection-requests 의 pendingOnly)는 W-01-01 의 것이다 — 이 화면이 부르지 않는다. 근거: P-02-13 §4-A·§5-10 · omf-mes#257
          */
         get: {
             parameters: {
@@ -21416,7 +23824,7 @@ export interface paths {
         put?: never;
         /**
          * 검사 결과 저장
-         * @description 임시 저장(statusCode=작성중)과 즉시 확정(=확정)을 한 경로로 받는다. ⭐ 오프라인 큐는 언제나 확정으로 온다 — 임시 저장은 단말에 남는다. 재검이면 previousResultId 를 실으면 서버가 회차를 +1 한다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: W-01-01 §5-2 · P-02-13 §5-9
+         * @description 임시 저장(statusCode=작성중)과 즉시 확정(=확정)을 한 경로로 받는다. ⭐ 오프라인 큐는 언제나 확정으로 온다 — 임시 저장은 단말에 남는다. 재검이면 previousResultId 를 실으면 서버가 회차를 +1 한다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: W-01-01 §5-2 · P-02-13 §5-9 ⭐ PQC 샘플 검사에서 불합격 수가 공정별 합격판정개수를 넘으면 서버가 «같은 W/O 의 생산LOT 전체»를 INSPECTION_PENDING(검사 대기)으로 일괄 전이하고 관리자 알람을 낸다 — 화면이 부르는 추가 액션은 없다(도식 C14 · 05 §5 S2 태스크 4 ✓확정 2026-07-15). 기준값은 06 계약 GET /quality/inspection-plan-versions/{inspectionPlanVersionId} 가 갖는다.
          */
         post: {
             parameters: {
@@ -21570,6 +23978,8 @@ export interface paths {
                     finalRoundOnly?: boolean;
                     /** @description 교정 만료 장비 측정분만 보거나 뺀다. ⛔ 기본은 섞어서 낸다 — 자동 제외는 정책이 미정이다(E-9 ①) */
                     calibrationExpired?: "only" | "exclude";
+                    inspectionRequestId?: number;
+                    statusCode?: string;
                 };
                 header?: never;
                 path?: never;
@@ -21659,7 +24069,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -21790,7 +24200,7 @@ export interface paths {
         put?: never;
         /**
          * 검사 판정 확정
-         * @description 작성중 → 확정. ⭐ 이 순간 Lot Status 가 전이한다 — 합격이면 정상, 불합격이면 불량, 보류면 검사 대기다. 독립된 상태 전이 경로를 두지 않는다(결정 10 「상태 이중 보유 없음」 · 공유계약 B-8). ⛔ accepted + rejected + held = inspected 가 아니면 400 이다(A-3). 근거: W-01-01 §5-2 · P-02-13 §5-3
+         * @description 작성중 → 확정. ⭐ 이 순간 Lot Status 가 전이한다 — 합격이면 정상, 불합격이면 불량, 보류면 검사 대기다. 독립된 상태 전이 경로를 두지 않는다(결정 10 「상태 이중 보유 없음」 · 공유계약 B-8). ⛔ accepted + rejected + held = inspected 가 아니면 400 이다(A-3). 근거: W-01-01 §5-2 · P-02-13 §5-3 ⭐ PQC 샘플 검사에서 불합격 수가 공정별 합격판정개수를 넘으면 서버가 «같은 W/O 의 생산LOT 전체»를 INSPECTION_PENDING(검사 대기)으로 일괄 전이하고 관리자 알람을 낸다 — 화면이 부르는 추가 액션은 없다(도식 C14 · 05 §5 S2 태스크 4 ✓확정 2026-07-15). 기준값은 06 계약 GET /quality/inspection-plan-versions/{inspectionPlanVersionId} 가 갖는다.
          */
         post: {
             parameters: {
@@ -21798,7 +24208,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -22132,7 +24542,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -22227,6 +24637,10 @@ export interface paths {
                     excludeFullyHeld?: boolean;
                     /** @description LOT 번호 검색 */
                     q?: string;
+                    /** @description 기간 시작 — latestTransitionAt 기준. transitionTo 와 한 쌍이다(함께 보내거나 함께 생략한다). 근거: W-03-01 §5-7 · omf-mes#225 */
+                    transitionFrom?: string;
+                    /** @description 기간 끝. transitionFrom 과 한 쌍이다. 근거: W-03-01 §5-7 · omf-mes#225 ⛔ 끝 경계는 «미만»이다(반열림 · 공유계약 L-3-1) — 「그날까지」는 23:59:59 가 아니라 «익일 00:00:00» 을 보낸다. 23:59:59 로 보내면 그 1초 안의 기록이 빠진다 */
+                    transitionTo?: string;
                 };
                 header?: never;
                 path?: never;
@@ -22331,7 +24745,7 @@ export interface paths {
                     excludeFullyHeld?: boolean;
                     /** @description 기간 시작 — latestTransitionAt 기준. transitionTo 와 한 쌍이다(함께 보내거나 함께 생략한다) — 현재 페이지의 latestTransitionAt 만 클라이언트에서 거르면 서버 페이지네이션의 total·다음 페이지와 어긋난다. 근거: W-03-02 §3 · omf-mes#225 */
                     transitionFrom?: string;
-                    /** @description 기간 끝. transitionFrom 과 한 쌍이다. 근거: W-03-02 §3 · omf-mes#225 */
+                    /** @description 기간 끝. transitionFrom 과 한 쌍이다. 근거: W-03-02 §3 · omf-mes#225 ⛔ 끝 경계는 «미만»이다(반열림 · 공유계약 L-3-1) — 「그날까지」는 23:59:59 가 아니라 «익일 00:00:00» 을 보낸다. 23:59:59 로 보내면 그 1초 안의 기록이 빠진다 */
                     transitionTo?: string;
                     /** @description LOT 번호 검색 */
                     q?: string;
@@ -22414,7 +24828,7 @@ export interface paths {
         put?: never;
         /**
          * 처분 판정 저장
-         * @description W-03-10 「판정 저장」. 부적합 하나를 수량으로 갈라 여러 번 부를 수 있다 — 일부 재작업 · 일부 폐기가 성립한다. ⭐ 판정 저장과 Lot Status 전이는 한 트랜잭션이다(공유계약 B-8) — 처분만 남고 LOT 이 안 바뀌면 다음 화면이 잘못된 대상을 집는다. 근거: W-03-10 §5-1 · DR-008 확정 3-A
+         * @description W-03-10 「판정 저장」. 부적합 하나를 수량으로 갈라 여러 번 부를 수 있다 — 일부 재작업 · 일부 폐기가 성립한다. ⭐ 판정 저장과 Lot Status 전이는 한 트랜잭션이다(공유계약 B-8) — 처분만 남고 LOT 이 안 바뀌면 다음 화면이 잘못된 대상을 집는다. 근거: W-03-10 §5-1·§5-2 · DR-008 확정 3-A ⭐ 도착 상태는 처분에 따라 갈린다 — 재작업 → INSPECTION_PENDING(검사 대기) · 폐기 → SCRAPPED(폐기) · 정상 → NORMAL(정상). 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 가 갖는다. ⭐ If-Match 값은 이 경로의 GET 이 아니라 부적합 상세(GET /quality/nonconformances/{nonconformanceId} · 제품출하 계약)의 ETag 를 담는다 — 잠그는 대상이 처분 결정 한 건이 아니라 부적합이기 때문이다. ⛔ 이 경로의 목록 GET 에는 ETag 가 없다.
          */
         post: {
             parameters: {
@@ -22422,7 +24836,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -22439,6 +24853,8 @@ export interface paths {
                 /** @description 저장됨 */
                 201: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 부적합의 version_no. 판정을 저장하면 이 값이 오르므로 같은 부적합을 이어서 갈라 판정할 때 이 값을 쓴다 — 부적합 상세 GET 을 다시 돌지 않는다. */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -22675,6 +25091,10 @@ export interface paths {
                     unpackedOnly?: boolean;
                     /** @description ⭐ 출하검사 합격분만. 납품라벨 대상 목록이 「합격」만 활성하는 데 쓴다(P-04-02 §5) */
                     oqcPassed?: boolean;
+                    /** @description 스캔한 납품라벨 값으로 배분을 찾는다. ⛔ 범위는 납품라벨 번호 하나다 — LOT 번호는 lotId 를, 포장은 handlingUnitId 를 쓴다. ⭐ P-04-01 매칭 스캔의 진입이다(P-04-01 §5-1 · 공유계약 D-2). 일치하는 배분이 없으면 «빈 목록»이다 — 화면은 items 가 비었는지로 「없는 납품라벨」을 판정한다. ⛔ 404 를 내지 않는다 — 같은 오퍼레이션의 lotQ 가 이미 200 + match 로 판정을 내리므로, 파라미터에 따라 상태 코드가 갈리면 예외가 는다 */
+                    q?: string;
+                    /** @description 스캔한 생산 LOT 값. shipmentId(납품라벨 스캔으로 정해진 출하)와 함께 주면 서버가 「이 출하의 배분에 이 LOT 이 있는가」를 판정한다 — 화면이 목록을 받아 비교하지 않는다(P-04-01 §5-1 · 공유계약 C-6) */
+                    lotQ?: string;
                     /** @description 1 부터 */
                     page?: number;
                     /** @description 기본 50 */
@@ -22695,6 +25115,16 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["ShipmentLotAllocation"][];
                             page: components["schemas"]["PageMeta"];
+                            /** @description lotQ 를 준 요청에만 실린다. 서버의 매칭 판정 — 화면이 목록을 받아 비교하지 않는다(P-04-01 §5-1 · 공유계약 C-6) */
+                            match?: {
+                                /** @example true */
+                                matched: boolean;
+                                /**
+                                 * @description matched 가 거짓일 때의 사유. LABEL_ITEM_MISMATCH=이 납품라벨은 다른 품목용이다 · LOT_NOT_ALLOCATED=이 출하에 배분되지 않은 LOT 이다
+                                 * @example LOT_NOT_ALLOCATED
+                                 */
+                                reasonCode?: string | null;
+                            };
                         };
                     };
                 };
@@ -22818,6 +25248,10 @@ export interface paths {
                     /** @description 필수 — 공유계약 L-3 */
                     shipDateFrom?: string;
                     shipDateTo?: string;
+                    /** @description 라인 전체가 pickedQty = allocatedQty 인 작업지시만. ⭐ W-04-04 출하 처리의 진입 필터다 — 출하는 이 화면이 만들므로 /logistics/shipments 로는 진입할 수 없다. 근거: W-04-04 §3·§5-4 */
+                    pickingCompleteOnly?: boolean;
+                    /** @description 출하 잔여가 남은 작업지시만 — 라인 중 shippedQty < allocatedQty 인 것이 하나라도 있는 건. ⭐ 부분 출하 후 잔여도 다시 잡힌다(W-04-04 §5-7·§8-6) */
+                    shippableRemainderOnly?: boolean;
                     /** @description 출하일·고객·작업지시번호 셋만. 근거: 공유계약 L-4 */
                     sort?: string;
                     /** @description 1 부터 */
@@ -22919,7 +25353,7 @@ export interface paths {
         };
         /**
          * 출하작업지시 요약
-         * @description W-04-02 요약 구획(작업지시 건수·요청/배정/출하 합계·미배정·검사 대기·피킹 미완) — 필터 전체 기준. 목록(GET /logistics/shipment-requests)과 같은 필터를 쓰되 page/size/sort 는 없다. ⛔ 화면이 페이지를 모아 더하지 않는다 — 필터 전체와 다른 수가 나온다(공유계약 L-2). 근거: W-04-02 §4-B · omf-mes#232
+         * @description W-04-02 요약 구획(작업지시 건수·요청/배정/출하 합계·미배정·검사 대기·피킹 미완) — 필터 전체 기준. 목록(GET /logistics/shipment-requests)과 같은 필터를 쓰되 page/size/sort 는 없다. ⛔ 화면이 페이지를 모아 더하지 않는다 — 필터 전체와 다른 수가 나온다(공유계약 L-2). 근거: W-04-02 §4-B · omf-mes#232 ⭐ 질의 축은 짝 목록(GET /logistics/shipment-requests)과 같다 — page·size·sort 만 뺀다(공유계약 L-1-1 ⑶).
          */
         get: {
             parameters: {
@@ -22932,6 +25366,10 @@ export interface paths {
                     /** @description 필수 — 공유계약 L-3. 목록과 같은 기준을 쓴다 */
                     shipDateFrom?: string;
                     shipDateTo?: string;
+                    /** @description 라인 전체가 pickedQty = allocatedQty 인 작업지시만. ⭐ W-04-04 출하 처리의 진입 필터다 — 출하는 이 화면이 만들므로 /logistics/shipments 로는 진입할 수 없다. 근거: W-04-04 §3·§5-4 */
+                    pickingCompleteOnly?: boolean;
+                    /** @description 출하 잔여가 남은 작업지시만 — 라인 중 shippedQty < allocatedQty 인 것이 하나라도 있는 건. ⭐ 부분 출하 후 잔여도 다시 잡힌다(W-04-04 §5-7·§8-6) */
+                    shippableRemainderOnly?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -23115,13 +25553,17 @@ export interface paths {
                     customerId?: number;
                     statusCode?: string;
                     warehouseId?: number;
-                    /** @description 피킹이 끝난 건만 — W-04-04 진입 필터 */
+                    /** @description 피킹이 끝난 건만 */
                     pickedOnly?: boolean;
                     /** @description 미확정만 — W-04-12 기본 */
                     unconfirmedOnly?: boolean;
                     /** @description 필수 */
                     shipDateFrom?: string;
                     shipDateTo?: string;
+                    /** @description 출하 번호 검색. ⛔ 범위는 shipment_no 하나다 — 고객은 customerId 를, LOT 은 lotId 를 쓴다(omf-mes#170 과 같은 처리). 근거: W-04-06 §3 */
+                    q?: string;
+                    /** @description 이 제품 LOT 이 배분된 출하만. ⭐ 반품에서 라벨만 남았을 때 원 출하를 찾는 경로다(W-04-06 §5-3) — 조인은 서버 몫이다 */
+                    lotId?: number;
                     /** @description 경과일 긴 순이 기본이다. 근거: W-04-12 §5-7 */
                     sort?: string;
                     /** @description 1 부터 */
@@ -23289,7 +25731,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -23369,7 +25811,7 @@ export interface paths {
         put?: never;
         /**
          * 출하 확정
-         * @description 미확정 → 확정. ⭐ 이 시점에 재고 차감과 ERP 송신 적재가 걸린다(2026-08-07 출하 2단 확정). 취소 결재가 진행 중이면 409 CANCEL_IN_PROGRESS 다(공유계약 J-7). ⛔ 확정 취소 경로가 없다 — 되돌릴 수 없다. 근거: W-04-12 §5-3·§5-8
+         * @description 미확정 → 확정. ⭐ 이 시점에 ERP 송신 적재가 걸린다(2026-08-07 출하 2단 확정) — 재고는 앞 단계(출하 처리)에서 이미 차감됐다. 취소 결재가 진행 중이면 409 CANCEL_IN_PROGRESS 다(공유계약 J-7). ⛔ 확정 취소 경로가 없다 — 되돌릴 수 없다. 근거: W-04-12 §5-3·§5-8
          */
         post: {
             parameters: {
@@ -23377,7 +25819,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -23461,7 +25903,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -23544,6 +25986,8 @@ export interface paths {
                 query?: {
                     /** @description 의뢰 전 · 판정 대기 · 판정 완료 */
                     statusCode?: string;
+                    /** @description PRODUCT(제품)·RETURN(반품). 2026-08-30 되살림 — W-03-10 §5-4 */
+                    sourceCode?: string;
                     warehouseId?: number;
                     itemId?: number;
                     lotId?: number;
@@ -23652,7 +26096,7 @@ export interface paths {
         };
         /**
          * 부적합 한 건
-         * @description 영향 LOT 을 함께 내린다. ⭐ 03 품질의 W-03-09 「부적합 열기」가 이 경로로 온다 — 특채는 부적합을 NOT NULL 로 참조하는데 03 계약에는 열 경로가 없었다
+         * @description 영향 LOT 을 함께 내린다. ⭐ 부르는 화면은 W-03-10(처분 판정 처리)이다 — W-03-09 「부적합 열기」는 API 호출이 아니라 ?nonconformanceId={id} 로 W-03-10 으로 이동하는 화면 전환이다. ⭐ 이 응답의 ETag 는 품질 계약의 처분 판정 저장(POST /quality/nonconformances/{nonconformanceId}/disposition-decisions)이 If-Match 로 받는 토큰이다
          */
         get: {
             parameters: {
@@ -23716,7 +26160,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -23792,20 +26236,26 @@ export interface paths {
         };
         /**
          * 점검 기록 목록
-         * @description 설비 점검 이력을 조회한다. 기간이 필수다(공유계약 L-3). 작업 전 점검 통제가 이 목록을 근거로 삼는다. 단말에 아직 남아 있는 입력분은 여기 포함되지 않는다.
+         * @description 설비 점검 이력을 조회한다. 작업 전 점검 통제처럼 전 이력을 훑을 때는 기간이 필수다(공유계약 L-3). 보전 지시 발행의 미발행 트리거 목록은 예외다(공유계약 L-12) — 기본이 미처리 전건이고 정렬은 경과일 긴 순이다. 작업 전 점검 통제가 이 목록을 근거로 삼는다. 단말에 아직 남아 있는 입력분은 여기 포함되지 않는다. ⭐ 기본 정렬이 점검 시각 내림차순이라, equipmentId·inspectionTypeCode 로 좁히고 size=1 로 부르면 통제 판정이 쓰는 「가장 최근 한 건」이 된다(P-02-02 §5-5).
          */
         get: {
             parameters: {
                 query?: {
                     equipmentId?: number;
                     inspectionTypeCode?: string;
-                    /** @description 필수 — 공유계약 L-3 */
+                    /** @description 기간 시작. ⭐ 조건부 필수 — 전 이력을 훑는 호출에서는 반드시 싣는다(공유계약 L-3). 미발행 트리거 목록처럼 미처리 전건을 부르는 호출은 예외다(공유계약 L-12) */
                     inspectedFrom?: string;
                     inspectedTo?: string;
                     /** @description 1 부터 */
                     page?: number;
                     /** @description 기본 50 */
                     size?: number;
+                    /** @description 종합 판정으로 거른다 — 합격(OK) 또는 불합격(NG). 보전 지시 발행 화면이 불합격만 트리거 목록으로 부른다(W-05-05 §4) */
+                    overallResultCode?: string;
+                    /** @description 참이면 아직 보전 지시로 발행되지 않은 건만 낸다. 「미발행 트리거」가 그 화면의 기본 목록이다(W-05-05 §7) */
+                    withoutMaintenanceOrder?: boolean;
+                    /** @description 정렬 키를 제한한다(공유계약 L-4). 기본은 점검 시각 내림차순이다 — 작업 전 점검 통제(P-02-02 §5-5)가 「여러 건 있으면 가장 최근 것」으로 판정하고 점검 입력(M-05-01 §6-2)도 같은 규약을 세웠다. ⚠ 반대 방향도 있다 — 보전 지시 발행의 미발행 트리거 목록은 오름차순을 명시해 부른다(W-05-05 §4 「경과일 긴 순」 · 공유계약 L-12). ⛔ 응답을 화면이 정렬해 고르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 쪽 안에서만 정렬된다 */
+                    sort?: "inspectedAtDesc" | "inspectedAtAsc";
                 };
                 header?: never;
                 path?: never;
@@ -23822,10 +26272,11 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["Inspection"][];
                             /**
-                             * @description 전체 건수
+                             * @description 전체 건수. ⚠ page.total 과 같은 값이다 — 새로 만드는 화면은 page.total 을 읽는다(공유계약 L-1)
                              * @example 42
                              */
                             totalCount?: number;
+                            page?: components["schemas"]["PageMeta"];
                         };
                     };
                 };
@@ -23874,6 +26325,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -23974,6 +26434,8 @@ export interface paths {
                     page?: number;
                     /** @description 기본 50 */
                     size?: number;
+                    /** @description 참이면 아직 보전 지시로 발행되지 않은 건만 낸다. ⭐ openOnly(고장 자신이 완료됐는가)와 다른 축이다 — 지시가 나간 고장도 완료 전이면 openOnly 에 걸린다. 근거: W-05-05 §7 */
+                    withoutMaintenanceOrder?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -23990,10 +26452,11 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["Breakdown"][];
                             /**
-                             * @description 전체 건수
+                             * @description 전체 건수. ⚠ page.total 과 같은 값이다 — 새로 만드는 화면은 page.total 을 읽는다(공유계약 L-1)
                              * @example 42
                              */
                             totalCount?: number;
+                            page?: components["schemas"]["PageMeta"];
                         };
                     };
                 };
@@ -24042,6 +26505,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -24120,7 +26592,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -24145,6 +26617,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -24245,6 +26726,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상을 찾을 수 없다 */
                 404: {
                     headers: {
@@ -24290,7 +26780,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -24307,6 +26797,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Breakdown"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상을 찾을 수 없다 */
@@ -24355,7 +26854,7 @@ export interface paths {
         put?: never;
         /**
          * 고장 완료
-         * @description 원인 코드와 처리 내역이 있어야 완료된다. 경미한 건은 처리 중을 거치지 않고 바로 완료할 수 있다. 완료된 건은 잠기며 되돌리는 길은 없다 — 잘못됐으면 새 고장 건으로 등록한다.
+         * @description 원인 코드와 처리 내역이 있어야 완료된다. 경미한 건은 처리 중을 거치지 않고 바로 완료할 수 있다. 완료된 건은 잠기며 되돌리는 길은 없다 — 잘못됐으면 새 고장 건으로 등록한다. ⛔ 이 호출은 작업지시를 재개시키지도, 연결된 비가동을 종료시키지도 않는다 — 멈춘 작업을 다시 돌리는 것은 현장 작업자의 판단이고, 비가동 종료는 현장 단말의 몫이다. 되돌릴 수 없는 행위를 자동화하지 않는다.
          */
         post: {
             parameters: {
@@ -24363,7 +26862,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -24388,6 +26887,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -24447,6 +26955,7 @@ export interface paths {
                     targetTypeCode?: string;
                     targetId?: number;
                     statusCode?: string;
+                    /** @description 보전 유형으로 거른다 — 사후(CORRECTIVE)·예방(PREVENTIVE). 사람이 고르는 값이 아니라 발행 시 트리거 조합이 정한 값이다. */
                     maintenanceTypeCode?: string;
                     plannedFrom?: string;
                     plannedTo?: string;
@@ -24470,10 +26979,11 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["MaintenanceOrder"][];
                             /**
-                             * @description 전체 건수
+                             * @description 전체 건수. ⚠ page.total 과 같은 값이다 — 새로 만드는 화면은 page.total 을 읽는다(공유계약 L-1)
                              * @example 42
                              */
                             totalCount?: number;
+                            page?: components["schemas"]["PageMeta"];
                         };
                     };
                 };
@@ -24520,6 +27030,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -24615,7 +27134,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -24632,6 +27151,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["MaintenanceOrder"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상을 찾을 수 없다 */
@@ -24708,10 +27236,11 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["MaintenanceResult"][];
                             /**
-                             * @description 전체 건수
+                             * @description 전체 건수. ⚠ page.total 과 같은 값이다 — 새로 만드는 화면은 page.total 을 읽는다(공유계약 L-1)
                              * @example 42
                              */
                             totalCount?: number;
+                            page?: components["schemas"]["PageMeta"];
                         };
                     };
                 };
@@ -24729,7 +27258,7 @@ export interface paths {
         put?: never;
         /**
          * 보전 실적 등록
-         * @description 지시에서 이어받거나 고장에서 바로 등록한다. 지시가 없어도 성립한다 — 현장에서 이미 조치한 건이 있기 때문이다.
+         * @description 지시에서 이어받거나 고장에서 바로 등록한다. 지시가 없어도 성립한다 — 현장에서 이미 조치한 건이 있기 때문이다. ⭐ resetCounter=true 이면 If-Match 가 필수다 — 누계 리셋은 증분이 아니라 치환이라 충돌 감지가 필요하고, 값은 대상 툴의 상세 조회 200 이 내려주는 ETag 를 그대로 싣는다(공유계약 B-1). 없으면 422 로 거부한다. ⭐ closed=true 는 lines 가 전부 완료 또는 해당없음일 때만 받는다(W-05-06 §5-6).
          */
         post: {
             parameters: {
@@ -24737,6 +27266,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
                 };
                 path?: never;
                 cookie?: never;
@@ -24763,6 +27294,24 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌 — 되돌릴 대상 툴의 누계가 그 사이 바뀌었다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
                     };
                 };
                 /** @description 업무 규칙에 걸린다 */
@@ -24836,7 +27385,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -24861,6 +27410,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -24913,18 +27471,19 @@ export interface paths {
         };
         /**
          * 비가동 목록
-         * @description 기간이 필수다(공유계약 L-3). 아직 끝나지 않은 구간만, 또는 겹친 구간만 걸러 볼 수 있다 — 집계 화면의 두 안내가 이 필터를 부른다.
+         * @description 기간이 필수다(공유계약 L-3) — 다만 openOnly=true 로 「열린 구간만」 부르는 호출은 기간을 비울 수 있다. 전날부터 이어진 구간을 놓치면 안 되기 때문이고, 미처리 전건을 보이는 목록과 같은 갈래다(공유계약 L-12). 아직 끝나지 않은 구간만, 또는 겹친 구간만 걸러 볼 수 있다 — 집계 화면의 두 안내가 이 필터를 부른다. 현장 단말의 「진행 중 비가동」 구획도 이 호출을 쓴다(P-05-02 §3).
          */
         get: {
             parameters: {
                 query?: {
                     equipmentId?: number;
+                    /** @description 비가동 사유로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=DOWNTIME_REASON 로 받는다 */
                     reasonCode?: string;
                     /** @description 끝나지 않은 구간만 */
                     openOnly?: boolean;
                     /** @description 다른 구간과 겹치는 것만 */
                     overlappingOnly?: boolean;
-                    /** @description 필수 — 공유계약 L-3 */
+                    /** @description 기간 시작. ⭐ 조건부 필수 — openOnly=true 로 「열린 구간만」 부르는 호출이 아니면 반드시 싣는다(공유계약 L-3) */
                     startedFrom?: string;
                     startedTo?: string;
                     /** @description 1 부터 */
@@ -24947,10 +27506,11 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["Downtime"][];
                             /**
-                             * @description 전체 건수
+                             * @description 전체 건수. ⚠ page.total 과 같은 값이다 — 새로 만드는 화면은 page.total 을 읽는다(공유계약 L-1)
                              * @example 42
                              */
                             totalCount?: number;
+                            page?: components["schemas"]["PageMeta"];
                         };
                     };
                 };
@@ -24999,6 +27559,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -25077,7 +27646,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -25102,6 +27671,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -25156,7 +27734,7 @@ export interface paths {
         put?: never;
         /**
          * 비가동 지금 종료
-         * @description 진행 중인 구간을 지금 시각으로 끝낸다.
+         * @description 진행 중인 구간을 지금 시각으로 끝낸다. ⚠ 현장 단말(P-05-02)이 오프라인 큐로 보내는 자리라 잠금 토큰은 선택이다 — 큐에 쌓인 요청은 토큰을 싣지 않는다(공유계약 C-9).
          */
         post: {
             parameters: {
@@ -25164,8 +27742,8 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
-                    "If-Match": components["parameters"]["IfMatchVersion"];
+                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
+                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
                     /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
@@ -25183,6 +27761,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Downtime"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상을 찾을 수 없다 */
@@ -25229,19 +27816,19 @@ export interface paths {
         };
         /**
          * 비가동 집계
-         * @description 요약과 사유별 분포를 낸다. 끝나지 않은 구간과 겹친 구간은 «건수»만 내고 목록은 담지 않는다 — 목록이 필요하면 비가동 목록을 필터로 부른다. 설비종합효율은 내지 않는다.
+         * @description 기간이 필수다(공유계약 L-3). 요약과 사유별 분포를 낸다. 끝나지 않은 구간과 겹친 구간은 «건수»만 내고 목록은 담지 않는다 — 목록이 필요하면 비가동 목록을 필터로 부른다. 설비종합효율은 내지 않는다. ⭐ 조업 시간은 작업 세션에서, 계획 비가동은 작업 캘린더에서 온다 — 이 오퍼레이션은 그 둘을 읽어 시간가동률까지만 낸다. 보전 건수 셋은 비가동이 아니지만 같은 사람이 같은 시점에 보므로 요약에 함께 낸다 — 탭을 늘리지 않는다(W-05-08 §5-6).
          */
         get: {
             parameters: {
-                query?: {
+                query: {
                     plantId?: number;
                     equipmentGroupId?: number;
                     equipmentId?: number;
                     /** @description 사유별 · 설비별 · 추이. 화면의 세 탭에 하나씩 대응하며 응답의 by… 배열 하나만 채워진다 */
                     groupBy?: "REASON" | "EQUIPMENT" | "PERIOD";
                     /** @description 필수 — 공유계약 L-3 */
-                    startedFrom?: string;
-                    startedTo?: string;
+                    startedFrom: string;
+                    startedTo: string;
                     /** @description groupBy=PERIOD 일 때 칸의 크기. 그 밖에는 무시된다 */
                     bucket?: "DAY" | "WEEK" | "MONTH";
                 };
@@ -25317,10 +27904,11 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["ToolUsage"][];
                             /**
-                             * @description 전체 건수
+                             * @description 전체 건수. ⚠ page.total 과 같은 값이다 — 새로 만드는 화면은 page.total 을 읽는다(공유계약 L-1)
                              * @example 42
                              */
                             totalCount?: number;
+                            page?: components["schemas"]["PageMeta"];
                         };
                     };
                 };
@@ -25369,6 +27957,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -25479,10 +28076,11 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["CollectionChannel"][];
                             /**
-                             * @description 전체 건수
+                             * @description 전체 건수. ⚠ page.total 과 같은 값이다 — 새로 만드는 화면은 page.total 을 읽는다(공유계약 L-1)
                              * @example 42
                              */
                             totalCount?: number;
+                            page?: components["schemas"]["PageMeta"];
                         };
                     };
                 };
@@ -25531,6 +28129,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -25613,7 +28220,7 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
                     "If-Match": components["parameters"]["IfMatchVersion"];
                 };
                 path: {
@@ -25638,6 +28245,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -25714,10 +28330,11 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["CollectionChannelObservation"][];
                             /**
-                             * @description 전체 건수
+                             * @description 전체 건수. ⚠ page.total 과 같은 값이다 — 새로 만드는 화면은 page.total 을 읽는다(공유계약 L-1)
                              * @example 42
                              */
                             totalCount?: number;
+                            page?: components["schemas"]["PageMeta"];
                         };
                     };
                 };
@@ -25749,13 +28366,14 @@ export interface paths {
         };
         /**
          * 계측기 이력 목록
-         * @description 계측기의 검교정·점검 이력을 조회한다. 만료가 임박한 것을 거를 수 있다.
+         * @description 계측기의 검교정·점검·수리·폐기 이력을 조회한다. 만료가 임박한 것을 거를 수 있다.
          */
         get: {
             parameters: {
                 query?: {
                     /** @description 계측기. 계측기는 설비의 한 종류라 /mdm/equipments 의 equipmentId 그대로다 — 계측기 전용 자원을 두지 않는다 */
                     equipmentId?: number;
+                    /** @description 이력 유형으로 거른다. 값은 Calibration.historyTypeCode 와 같다. */
                     historyTypeCode?: string;
                     /** @description 다음 기한이 이 날 이전인 것 */
                     dueBefore?: string;
@@ -25781,10 +28399,11 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["Calibration"][];
                             /**
-                             * @description 전체 건수
+                             * @description 전체 건수. ⚠ page.total 과 같은 값이다 — 새로 만드는 화면은 page.total 을 읽는다(공유계약 L-1)
                              * @example 42
                              */
                             totalCount?: number;
+                            page?: components["schemas"]["PageMeta"];
                         };
                     };
                 };
@@ -25803,6 +28422,8 @@ export interface paths {
         /**
          * 계측기 이력 등록
          * @description 한 번 적으면 고치거나 지울 수 없다 — 잘못 적었으면 새 이력을 덧붙인다.
+         *
+         *     ⭐ 이력 유형이 검교정이고 결과가 합격 계열이면 서버가 같은 트랜잭션에서 설비 마스터의 최근 검교정일과 차기 검교정 기한을 갱신한다 — 값은 performedOn 과 nextDueOn 이다. ⛔ 화면이 설비 마스터를 따로 부르지 않는다(공유계약 B-13 · W-05-10 §5-3). ⛔ 이 오퍼레이션만이 그 두 칸을 쓴다 — 설비 마스터 수정 본문은 두 칸을 받지 않는다. 불합격이면 갱신하지 않는다 — 유효기한이 늘어나면 안 된다. 점검·수리·폐기 유형도 갱신하지 않는다.
          */
         post: {
             parameters: {
@@ -25831,6 +28452,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 단말·권한 게이팅에 막혔다 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -25923,7 +28553,7 @@ export interface components {
             field?: string;
             /**
              * @description UNIQUE_VIOLATION · REQUIRED · RANGE · PAIR · PERMISSION_DENIED · STATE_LOCKED 등. STATE_LOCKED 는 확정·폐기 상태라 수정이 잠긴 것으로, 재로드해도 풀리지 않는다 — 재로드로 풀리는 저장 충돌(409)과 구분한다(공유계약 G-1)
-             * @example STANDARD
+             * @example STATE_LOCKED
              */
             code: string;
             /** @description code=UNIQUE_VIOLATION 일 때 어느 유일키 범위에서 중복인지. 근거: 공유계약 A-1 — 범위 없이 「중복」만 오면 화면이 문구를 만들 수 없다 */
@@ -25968,11 +28598,11 @@ export interface components {
             /** @example false */
             codeEditable: boolean;
             /**
-             * @description NOT_COUNTABLE = 참조가 FK 가 아니라 세지 못함(의도적 비-FK 또는 코드 문자열 참조) → 화면은 무조건 잠근다. RECEIVED_FROM_ERP = 수신본이라 항상 읽기 전용. LABEL_ISSUED = 코드가 라벨로 발행돼 현장에 물리적으로 나가 있다 → 참조 건수가 0이어도 잠근다
-             * @example 라인 정지 임박. 검사 대기 불가.
+             * @description NOT_COUNTABLE = 참조가 FK 가 아니라 세지 못함(의도적 비-FK 또는 코드 문자열 참조) → 화면은 무조건 잠근다. RECEIVED_FROM_ERP = 수신본이라 항상 읽기 전용. LABEL_ISSUED = 코드가 라벨로 발행돼 현장에 물리적으로 나가 있다 → 참조 건수가 0이어도 잠근다. SYSTEM_OWNED = 그룹 자체가 시스템 소유라 고객이 값을 편집할 수 없다(mdm.code_group 의 그룹 단위 플래그, 근거: omf-mes-server#45 정정 회신) → 화면은 그룹 단위로 잠근다(개별 값이 아니라 그룹 전체)
+             * @example REFERENCED
              * @enum {string}
              */
-            reason: "EDITABLE" | "REFERENCED" | "NOT_COUNTABLE" | "RECEIVED_FROM_ERP" | "LABEL_ISSUED";
+            reason: "EDITABLE" | "REFERENCED" | "NOT_COUNTABLE" | "RECEIVED_FROM_ERP" | "LABEL_ISSUED" | "SYSTEM_OWNED";
             /**
              * @description reason=NOT_COUNTABLE 이면 null
              * @example 3
@@ -26008,7 +28638,10 @@ export interface components {
             warehouseCode: string;
             /** @example 1공장 자재창고 */
             warehouseName: string;
-            /** @example MATERIAL */
+            /**
+             * @description 창고 유형(코드형). 값 목록은 GET /mdm/code-values?codeGroupCode=WAREHOUSE_TYPE 로 받는다 (공유계약 G-31·G-32 — 동작이 값에 걸리지 않는 분류용이라 고객 마스터). 근거: W-05-06 §3-3
+             * @example MATERIAL
+             */
             warehouseTypeCode: string;
             /** @example STANDARD */
             managementLevelCode: string;
@@ -26023,6 +28656,12 @@ export interface components {
              * @example false
              */
             isDefect: boolean;
+            /**
+             * Format: int64
+             * @description 외부창고이면 반드시 있다 — 외부창고가 아니면 비어 있다. 수정 화면이 지금 지정된 거래처를 그대로 보이는 데 쓴다.
+             * @example 1001
+             */
+            partnerId?: number | null;
             /**
              * @default true
              * @example true
@@ -26049,7 +28688,10 @@ export interface components {
             warehouseCode: string;
             /** @example 1공장 자재창고 */
             warehouseName: string;
-            /** @example MATERIAL */
+            /**
+             * @description 창고 유형(코드형). 값 목록은 GET /mdm/code-values?codeGroupCode=WAREHOUSE_TYPE 로 받는다 (공유계약 G-31·G-32 — 동작이 값에 걸리지 않는 분류용이라 고객 마스터). 근거: W-05-06 §3-3
+             * @example MATERIAL
+             */
             warehouseTypeCode: string;
             /** @example STANDARD */
             managementLevelCode: string;
@@ -26085,7 +28727,10 @@ export interface components {
             warehouseCode: string;
             /** @example 1공장 자재창고 */
             warehouseName: string;
-            /** @example MATERIAL */
+            /**
+             * @description 창고 유형(코드형). 값 목록은 GET /mdm/code-values?codeGroupCode=WAREHOUSE_TYPE 로 받는다 (공유계약 G-31·G-32 — 동작이 값에 걸리지 않는 분류용이라 고객 마스터). 근거: W-05-06 §3-3
+             * @example MATERIAL
+             */
             warehouseTypeCode: string;
             /** @example STANDARD */
             managementLevelCode: string;
@@ -26248,7 +28893,22 @@ export interface components {
             location: components["schemas"]["Location"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description 사용자. 비밀번호 초기화 액션을 정의할 수 없다. loginId 는 참조를 셀 수 없어(created_by 류가 의도적 비-FK) editability.reason=NOT_COUNTABLE 로 무조건 잠근다 — 공유계약 B-4 */
+        /** @description 비밀번호 관리자 초기화 응답(2026-08-30 되살림 — DR-002 2-B ③). 근거: W-CO-02 §8-2 */
+        AppUserPasswordReset: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            appUserId: number;
+            /** @description 이 응답에서 한 번만 보인다 — 서버는 해시만 저장한다(단말 토큰 발급과 같은 규약) */
+            temporaryPassword: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-30T09:12:00+09:00
+             */
+            resetAt: string;
+        };
+        /** @description 사용자. 비밀번호 관리자 초기화는 POST :reset-password 가 한다(2026-08-30 되살림 — DR-002 2-B ③). loginId 는 참조를 셀 수 없어(created_by 류가 의도적 비-FK) editability.reason=NOT_COUNTABLE 로 무조건 잠근다 — 공유계약 B-4 */
         AppUser: {
             /**
              * Format: int64
@@ -26306,7 +28966,7 @@ export interface components {
              */
             statusCode?: string;
         };
-        /** @description 사용자 수정 요청. loginId 는 항상 잠김(NOT_COUNTABLE)이라 요청에 포함하지 않는다. isActive 는 별도 사용 중지 액션(:deactivate)으로만 바꾼다. 낙관적 잠금은 공유계약 B-1. 근거: W-CO-02 §5-2 */
+        /** @description 사용자 수정 요청. loginId 는 항상 잠김(NOT_COUNTABLE)이라 요청에 포함하지 않는다. isActive 는 별도 액션(:deactivate / :activate)으로만 바꾼다. 낙관적 잠금은 공유계약 B-1. 근거: W-CO-02 §5-2 */
         AppUserUpdate: {
             /** @example 표시명 */
             userName: string;
@@ -26358,7 +29018,7 @@ export interface components {
             /** @example 문자열 */
             description?: string | null;
         };
-        /** @description 역할 수정 요청. isActive 는 별도 사용 중지 액션(:deactivate)으로만 바꾼다. 낙관적 잠금은 공유계약 B-1. 근거: W-CO-02 §4-B */
+        /** @description 역할 수정 요청. isActive 는 별도 액션(:deactivate / :activate)으로만 바꾼다. 낙관적 잠금은 공유계약 B-1. 근거: W-CO-02 §4-B */
         RoleUpdate: {
             /**
              * @description uq — 전역 유일. 실제 편집 가능 여부는 GET 응답의 editability 를 따른다
@@ -26373,6 +29033,11 @@ export interface components {
         RoleDetailResponse: {
             role: components["schemas"]["Role"];
             editability: components["schemas"]["Editability"];
+            /**
+             * @description 이 역할이 배정된 사용자 수. 사용 중지 확인 문구가 이 값을 쓴다
+             * @example 3
+             */
+            assignedUserCount: number;
         };
         UserRole: {
             /**
@@ -26477,6 +29142,12 @@ export interface components {
              * @example 2026-08-04
              */
             effectiveTo?: string | null;
+            /**
+             * @description uq_routing_default ON (item_id) WHERE is_default — 부분 유일 인덱스, Bom.isDefault와 같은 형태(2026-08-30 되살림). :set-default 로만 바꾼다
+             * @default false
+             * @example true
+             */
+            isDefault: boolean;
         };
         /** @description Routing 최초 등록(Rev 1) 요청 — 품목에 Rev 가 하나도 없을 때만 쓴다. routingVersion 은 서버가 항상 1로, statusCode 는 항상 작성중으로 채운다. 근거: W-06-01 §4-A · §5-1 */
         RoutingCreate: {
@@ -26553,6 +29224,16 @@ export interface components {
             /** @example 표시명 */
             operationName: string;
             /**
+             * @description 공정 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 공정 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * @default true
              * @example false
              */
@@ -26573,6 +29254,12 @@ export interface components {
              * @example false
              */
             inspectionManaged: boolean;
+            /**
+             * @description 이 공정은 외주로 나간다 — 결정 07 라인 속성(2026-08-03 사용자 확정 · 2026-08-30 되살림). 물리 컬럼은 이미 있다(omf-mes-server#42 2026-08-28 확인 — planning.routing_operation.is_subcontract) — 이름만 확정 이름(isOutsourced)과 다르다. 데이터 모델 담당에게 이름 정합화를 통지 — 기다리지 않는다. 근거: W-06-01 §4-B-1
+             * @default false
+             * @example false
+             */
+            isOutsourced: boolean;
             /**
              * @default false
              * @example false
@@ -26625,6 +29312,16 @@ export interface components {
             /** @example 표시명 */
             operationName: string;
             /**
+             * @description 공정 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 공정 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * @default true
              * @example false
              */
@@ -26645,6 +29342,12 @@ export interface components {
              * @example false
              */
             inspectionManaged: boolean;
+            /**
+             * @description 이 공정은 외주로 나간다 — 결정 07 라인 속성(2026-08-03 사용자 확정 · 2026-08-30 되살림). 물리 컬럼은 이미 있다(omf-mes-server#42 2026-08-28 확인 — planning.routing_operation.is_subcontract) — 이름만 확정 이름(isOutsourced)과 다르다. 데이터 모델 담당에게 이름 정합화를 통지 — 기다리지 않는다. 근거: W-06-01 §4-B-1
+             * @default false
+             * @example false
+             */
+            isOutsourced: boolean;
             /**
              * @default false
              * @example false
@@ -26696,14 +29399,14 @@ export interface components {
             /**
              * @description 공통코드 — 값 목록 미정
              * @default FINISH_TO_START
-             * @example STANDARD
+             * @example FINISH_TO_START
              */
             dependencyTypeCode: string;
         };
         RoutingOperationDependencyListResponse: {
             items: components["schemas"]["RoutingOperationDependency"][];
         };
-        /** @description 코드그룹 — 공통코드 값 목록의 최상위 분류. 근거: W-06-06 §4-A. 잠정적으로 MES 등록을 허용한다 */
+        /** @description 코드그룹 — 공통코드 값 목록의 최상위 분류. 근거: W-06-06 §4-A. 공통코드는 이 시스템이 정본이라 여기서 등록·수정한다 — 기간계 수신 연계대상이 아니다. 값이 수동 등록으로 들어오든 연동 배치로 들어오든 구분하지 않는다 */
         CodeGroup: {
             /**
              * Format: int64
@@ -26747,7 +29450,7 @@ export interface components {
             codeGroup: components["schemas"]["CodeGroup"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description ck_code_value_dates 짝 제약. display_order 에는 유일 제약이 없어 순서 재배치에 전체 치환이 불필요하다 — 공유계약 A-5 대상 아님. ERP 수신본이라 읽기 전용이어야 하는데 판정할 컬럼이 없다 */
+        /** @description ck_code_value_dates 짝 제약. display_order 에는 유일 제약이 없어 순서 재배치에 전체 치환이 불필요하다 — 공유계약 A-5 대상 아님. 공통코드는 이 시스템이 정본이라 여기서 등록·수정한다 — 기간계와의 값 정합은 운영 주체의 몫이다 */
         CodeValue: {
             /**
              * Format: int64
@@ -26766,6 +29469,16 @@ export interface components {
             code: string;
             /** @example 표시명 */
             codeName: string;
+            /**
+             * @description 코드값 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 코드값 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
             /**
              * @default 0
              * @example 1
@@ -26804,6 +29517,16 @@ export interface components {
             /** @example 표시명 */
             codeName: string;
             /**
+             * @description 코드값 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 코드값 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * @description 미지정 시 서버가 물리 모델 DEFAULT(0)로 채운다
              * @example 1
              */
@@ -26826,6 +29549,16 @@ export interface components {
             code: string;
             /** @example 표시명 */
             codeName: string;
+            /**
+             * @description 코드값 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 코드값 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
             /** @example 1 */
             displayOrder: number;
             /**
@@ -26840,11 +29573,65 @@ export interface components {
              */
             effectiveTo?: string | null;
         };
+        /** @description 판정유형(codeValueId, codeGroupCode=JUDGMENT_TYPE)의 물류 통제 속성. 결정 10을 되살린 자원(2026-08-30). 저장 테이블은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-06-04 §4-B */
+        JudgmentTypeControl: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            codeValueId: number;
+            /**
+             * @description 출고 차단 — 결정 10
+             * @example true
+             */
+            blocksIssue: boolean;
+            /**
+             * @description 출하 차단 — 한도승인·특채는 출하 허용 범위가 판정마다 다르다(결정 10)
+             * @example true
+             */
+            blocksShipment: boolean;
+            /**
+             * @description Picking 차단 — 결정 10
+             * @example true
+             */
+            blocksPicking: boolean;
+            /**
+             * @description 승인 필요 — 한도승인·특채는 승인 행위 자체가 감사 대상(결정 10)
+             * @example false
+             */
+            requiresApproval: boolean;
+            /**
+             * Format: int64
+             * @description 승인 권한 — 「승인 주체 = MES 권한 보유 관리자」(REQ-PR-0027). requiresApproval 이 참일 때만 의미가 있다
+             * @example 1001
+             */
+            approverRoleId?: number | null;
+            /** @description 판정유형 → 어떤 Lot Status로 전이하는가(결정 10 「상태 3축」) */
+            lotStatusCode?: string | null;
+            /** @example 1 */
+            versionNo: number;
+        };
+        JudgmentTypeControlUpdate: {
+            /** @example true */
+            blocksIssue: boolean;
+            /** @example true */
+            blocksShipment: boolean;
+            /** @example true */
+            blocksPicking: boolean;
+            /** @example false */
+            requiresApproval: boolean;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            approverRoleId?: number | null;
+            lotStatusCode?: string | null;
+        };
         CodeValueDetailResponse: {
             codeValue: components["schemas"]["CodeValue"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description 계층(parent_department_id). ck_department_parent 는 자기 자신만 막고 순환(A→B→A)은 막지 않으므로 서버가 검사한다. ERP 수신본이라 읽기 전용이어야 하는데 판정할 컬럼이 없다 */
+        /** @description 계층(parent_department_id). ck_department_parent 는 자기 자신만 막고 순환(A→B→A)은 막지 않으므로 서버가 검사한다. ERP 수신본이면 읽기 전용이다 — sourceSystemCode로 판정한다(2026-08-30 되살림). */
         Department: {
             /**
              * Format: int64
@@ -26855,6 +29642,16 @@ export interface components {
             departmentCode: string;
             /** @example 생산1팀 */
             departmentName: string;
+            /**
+             * @description 부서 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 부서 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
             /**
              * Format: int64
              * @description ck_department_parent — 자기 자신 금지. 순환은 서버 검사
@@ -26871,6 +29668,12 @@ export interface components {
              * @example true
              */
             isActive: boolean;
+            /**
+             * @description 이 행의 출처 — ERP(Legacy 수신본, 수정/삭제 불가) · MES(자체 등록). WF06 S7 Result 「'Legacy 출처' 플래그 + MES 원천 등록분과 연계분의 구분 플래그」를 되살린 하나의 축이다(2026-08-30). 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-06-09 §4-D · W-06-05 §9-1 · W-06-06 §5-4
+             * @example MES
+             * @enum {string}
+             */
+            sourceSystemCode?: "ERP" | "MES";
         };
         /** @description 부서 등록 요청. isActive 는 받지 않는다. 근거: W-06-06 §4-C·§5-1 */
         DepartmentCreate: {
@@ -26881,6 +29684,16 @@ export interface components {
             departmentCode: string;
             /** @example 생산1팀 */
             departmentName: string;
+            /**
+             * @description 부서 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 부서 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
             /**
              * Format: int64
              * @example 1001
@@ -26898,6 +29711,16 @@ export interface components {
             departmentCode: string;
             /** @example 생산1팀 */
             departmentName: string;
+            /**
+             * @description 부서 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 부서 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
             /**
              * Format: int64
              * @example 1001
@@ -26928,6 +29751,16 @@ export interface components {
             /** @example 홍길동 */
             workerName: string;
             /**
+             * @description 작업자 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 작업자 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * Format: int64
              * @example 1001
              */
@@ -26948,10 +29781,7 @@ export interface components {
              * @example 1001
              */
             appUserId?: number | null;
-            /**
-             * @description 공통코드 — 값 목록 미정
-             * @example ACTIVE
-             */
+            /** @description 재직 상태 코드. ⛔ 화면은 이 값으로 재직 여부를 판정하지 않고 isActive 를 본다. */
             statusCode: string;
             /**
              * @default true
@@ -27009,7 +29839,7 @@ export interface components {
         WorkerQualificationListResponse: {
             items: components["schemas"]["WorkerQualification"][];
         };
-        /** @description ERP 수신본. 원본 필드(itemCode·itemName·itemTypeCode·baseUomId)는 읽기 전용이고 MES 확장 속성만 편집한다 — QA #34. 그리고 수신본 식별 플래그 부재로 읽기 전용 판정 자체가 불가능하다 — #65 */
+        /** @description ERP 수신본. 원본 필드(itemCode·itemName·itemTypeCode·baseUomId)는 읽기 전용이고 MES 확장 속성만 편집한다 — QA #34. 원본 필드는 편집 본문(ItemUpdate)에 자리 자체를 두지 않아, 행 단위 출처 표시가 없어도 잠금이 성립한다. */
         Item: {
             /**
              * Format: int64
@@ -27023,6 +29853,16 @@ export interface components {
              * @example 하우징 커버 A
              */
             itemName: string;
+            /**
+             * @description 품목 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 품목 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
             /**
              * @description 공통코드 — 값 목록 미정
              * @example MATERIAL
@@ -27041,7 +29881,7 @@ export interface components {
             /**
              * @description MES 확장 · 공통코드
              * @default NONE
-             * @example STANDARD
+             * @example NONE
              */
             serialControlTypeCode: string;
             /**
@@ -27058,7 +29898,7 @@ export interface components {
             /**
              * @description MES 확장 · 확정(QA #28) — 유효기한 관리 품목=FEFO, 나머지=FIFO
              * @default FIFO
-             * @example STANDARD
+             * @example FIFO
              */
             fifoPolicyCode: string;
             /**
@@ -27090,6 +29930,18 @@ export interface components {
              * @example false
              */
             developmentItem?: boolean;
+            /**
+             * Format: int64
+             * @description MES 확장 — 자재LOT 보관 단위 기본값(수량·무게 등). 확정 QA #14 「자재별 LOT 보관 단위 기본값 사용 + 특이 시 개별 설정」 — 이 값은 기본값이고 LOT마다 개별 재정의를 막지 않는다. 2026-08-30 되살림. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-06-05 §4-B
+             * @example 1001
+             */
+            defaultLotStorageUomId?: number | null;
+            /**
+             * Format: double
+             * @description MES 확장 — 생산LOT 기본크기. 확정 REQ-PR-0008 · E26 「기본값 + 수정 가능」. 2026-08-30 되살림. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-06-05 §4-B
+             * @example 500
+             */
+            defaultProductionLotSize?: number | null;
         };
         /** @description 품목 MES 확장 속성 수정 요청. 원본 4열(itemCode·itemName·itemTypeCode·baseUomId)은 이 요청에 포함하지 않는다 — 항상 읽기 전용(ERP 수신본). 근거: W-06-05 §4-B·§5-1 */
         ItemUpdate: {
@@ -27104,7 +29956,10 @@ export interface components {
             shelfLifeDays?: number | null;
             /** @example true */
             inspectionRequired: boolean;
-            /** @example STANDARD */
+            /**
+             * @description MES 확장 · 확정(QA #28) — 유효기한 관리 품목=FEFO, 나머지=FIFO
+             * @example FIFO
+             */
             fifoPolicyCode: string;
             /** @example false */
             negativeStockAllowed: boolean;
@@ -27119,6 +29974,28 @@ export interface components {
              * @example false
              */
             developmentItem?: boolean;
+            /**
+             * Format: int64
+             * @description MES 확장 — 자재LOT 보관 단위 기본값. 확정 QA #14. 2026-08-30 되살림
+             * @example 1001
+             */
+            defaultLotStorageUomId?: number | null;
+            /**
+             * Format: double
+             * @description MES 확장 — 생산LOT 기본크기. 확정 REQ-PR-0008·E26. 2026-08-30 되살림
+             * @example 500
+             */
+            defaultProductionLotSize?: number | null;
+            /**
+             * @description 품목 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 품목 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
         };
         ItemDetailResponse: {
             item: components["schemas"]["Item"];
@@ -27413,6 +30290,16 @@ export interface components {
              */
             inspectionPlanName: string;
             /**
+             * @description 검사기준 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 검사기준 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * Format: int64
              * @description 비우면 「전 품목 공통 기준」[추정] — 적용 우선순위 §8-4
              * @example 1001
@@ -27448,6 +30335,12 @@ export interface components {
              */
             approvedAt?: string | null;
             /**
+             * @description PQC 생략 허용 — QA #4 「품목·공정 단위 생략 설정」(itemId·processId와 함께 축을 이룬다). Routing에 PQC 공정 미명시 시 생략(RoutingOperation.inspectionManaged)과는 다른 축이다. 2026-08-30 되살림. 물리 컬럼은 quality.inspection_plan 헤더에 이미 있다(omf-mes-server#42 2026-08-28 확인). 근거: W-06-02 §4-A
+             * @default false
+             * @example false
+             */
+            pqcSkipAllowed: boolean;
+            /**
              * @default true
              * @example true
              */
@@ -27463,6 +30356,16 @@ export interface components {
             /** @example 하우징 IQC 기준 */
             inspectionPlanName: string;
             /**
+             * @description 검사기준 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 검사기준 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * Format: int64
              * @example 1001
              */
@@ -27482,6 +30385,11 @@ export interface components {
              * @example IQC
              */
             inspectionTypeCode: string;
+            /**
+             * @description PQC 생략 허용 — QA #4. 2026-08-30 되살림
+             * @example false
+             */
+            pqcSkipAllowed?: boolean;
         };
         /** @description 검사기준 헤더 수정 요청. approvedBy·approvedAt 은 :approve 전용, isActive 는 :deactivate 전용. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A */
         InspectionPlanUpdate: {
@@ -27490,6 +30398,16 @@ export interface components {
             /** @example 하우징 IQC 기준 */
             inspectionPlanName: string;
             /**
+             * @description 검사기준 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 검사기준 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * Format: int64
              * @example 1001
              */
@@ -27509,12 +30427,17 @@ export interface components {
              * @example IQC
              */
             inspectionTypeCode: string;
+            /**
+             * @description PQC 생략 허용 — QA #4. 2026-08-30 되살림
+             * @example false
+             */
+            pqcSkipAllowed?: boolean;
         };
         InspectionPlanDetailResponse: {
             inspectionPlan: components["schemas"]["InspectionPlan"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description samplingQty 는 확정 문구가 「샘플 비율(%)」인데 컬럼은 수량(app.qty_t)이다 — 규약 없이 개발하면 30%가 30개로 저장된다(A-8·#64) */
+        /** @description 샘플 비율(%)이 정본이다(samplingRatio) — 확정 문구가 「샘플 비율(%)」이고 수량은 로트 크기를 알아야 나오는 파생값이라 두지 않는다(A-8). 2026-08-30 되살림. */
         InspectionPlanVersion: {
             /**
              * Format: int64
@@ -27693,6 +30616,16 @@ export interface components {
              */
             inspectionItemName: string;
             /**
+             * @description 검사항목 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 검사항목 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * @description 측정치를 «어느 칸에» 담는지 정한다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_ITEM_SPEC_DATA_TYPE 로 받는다. 값은 NUMERIC(수치)·TEXT(텍스트)·BOOLEAN(불리언) 셋이고 각각 InspectionMeasurement 의 numericValue·textValue·booleanValue 에 대응한다 — 값 이름이 곧 칸 이름이다. ⛔ 셋 중 «하나만» 채운다(ck_inspection_measurement num_nonnulls ≤ 1). ⚠ 모르는 값이 오면 화면은 그 항목의 입력을 «비활성 + 사유»로 둔다(공유계약 G-2) — 담을 칸을 고를 수 없으므로 추측해서 그리지 않는다. 근거: 공유계약 G-31·G-32 · omf-mes#179
              * @example NUMERIC
              */
@@ -27735,6 +30668,7 @@ export interface components {
              */
             requiredFlag: boolean;
             /**
+             * @description 이 항목의 합·불을 상·하한으로 자동 판정할지(W-06-02 §4-C). ⭐ 참이면 검사 화면이 측정값을 상·하한과 대조해 항목 판정을 «채운 채로» 시작하고, 사람이 바꿀 수 있다 — 채운 값은 시작점이지 확정이 아니다(P-02-13 §5-11). ⛔ 참이어도 세 조건이 모두 맞아야 판정이 선다: 데이터 유형이 NUMERIC 이고, 하한·상한 중 하나 이상이 있어야 한다. 텍스트·불리언 항목에는 상·하한이 없어 설 수 없다. ⚠ 참인데 상·하한이 둘 다 비면 화면은 저장을 막지 말고 「기준 없음 — 직접 판정」으로 그린다 — 공유계약 G-15. ⛔ 이 플래그는 항목 판정에만 걸린다 — 검사 결과의 종합 판정은 어떤 경우에도 자동으로 내리지 않는다. 근거: W-06-02 §4-C · P-02-13 §5-11 · omf-mes#257
              * @default true
              * @example false
              */
@@ -27768,6 +30702,16 @@ export interface components {
              */
             inspectionItemName: string;
             /**
+             * @description 검사항목 한국어 명칭 — QA #33 「다국어(한/베) 전범위(UI·마스터 명칭·출력물)」·QA #34 「다국어 명칭 = MES 확장 속성」을 되살렸다(2026-08-30). ERP 원본 필드의 편집 가능 여부와 무관하게 항상 편집 가능하다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 검사항목 베트남어 명칭 — QA #33·#34. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * @description 측정치를 «어느 칸에» 담는지 정한다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_ITEM_SPEC_DATA_TYPE 로 받는다. 값은 NUMERIC(수치)·TEXT(텍스트)·BOOLEAN(불리언) 셋이고 각각 InspectionMeasurement 의 numericValue·textValue·booleanValue 에 대응한다 — 값 이름이 곧 칸 이름이다. ⛔ 셋 중 «하나만» 채운다(ck_inspection_measurement num_nonnulls ≤ 1). ⚠ 모르는 값이 오면 화면은 그 항목의 입력을 «비활성 + 사유»로 둔다(공유계약 G-2) — 담을 칸을 고를 수 없으므로 추측해서 그리지 않는다. 근거: 공유계약 G-31·G-32 · omf-mes#179
              * @example NUMERIC
              */
@@ -27810,6 +30754,7 @@ export interface components {
              */
             requiredFlag: boolean;
             /**
+             * @description 이 항목의 합·불을 상·하한으로 자동 판정할지(W-06-02 §4-C). ⭐ 참이면 검사 화면이 측정값을 상·하한과 대조해 항목 판정을 «채운 채로» 시작하고, 사람이 바꿀 수 있다 — 채운 값은 시작점이지 확정이 아니다(P-02-13 §5-11). ⛔ 참이어도 세 조건이 모두 맞아야 판정이 선다: 데이터 유형이 NUMERIC 이고, 하한·상한 중 하나 이상이 있어야 한다. 텍스트·불리언 항목에는 상·하한이 없어 설 수 없다. ⚠ 참인데 상·하한이 둘 다 비면 화면은 저장을 막지 말고 「기준 없음 — 직접 판정」으로 그린다 — 공유계약 G-15. ⛔ 이 플래그는 항목 판정에만 걸린다 — 검사 결과의 종합 판정은 어떤 경우에도 자동으로 내리지 않는다. 근거: W-06-02 §4-C · P-02-13 §5-11 · omf-mes#257
              * @default true
              * @example false
              */
@@ -27818,7 +30763,7 @@ export interface components {
         InspectionItemSpecListResponse: {
             items: components["schemas"]["InspectionItemSpec"][];
         };
-        /** @description 2계층(parent_defect_code_id). ck_*_parent 자기참조 CHECK 가 없다 — department 에만 있고 location·defect_code 엔 둘 다 없다(#64). 3계층 이상은 결정 12 위반이라 서버가 차단한다. N:M 테이블이 없어 공정 매핑 엔드포인트가 성립하지 않는다 */
+        /** @description 2계층(parent_defect_code_id). ck_*_parent 자기참조 CHECK 가 없다 — department 에만 있고 location·defect_code 엔 둘 다 없다(#64). 3계층 이상은 결정 12 위반이라 서버가 차단한다. 공정 매핑은 GET·POST·DELETE /quality/defect-codes/{defectCodeId}/processes(N:M, 2026-08-30 되살림)로 한다 */
         DefectCode: {
             /**
              * Format: int64
@@ -27833,6 +30778,16 @@ export interface components {
              */
             defectName: string;
             /**
+             * @description 불량코드 한국어 명칭 — 결정 12 「다국어 명칭(ko/vi)」을 되살렸다(2026-08-30). 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 불량코드 베트남어 명칭 — 결정 12. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * Format: int64
              * @description 비우면 대분류, 채우면 상세[추정]. 자기참조 CHECK 없음 — 서버가 검사
              * @example 1001
@@ -27840,10 +30795,16 @@ export interface components {
             parentDefectCodeId?: number | null;
             /**
              * Format: int64
-             * @description ⚠ N:1 — 결정 12 가 N:M 으로 조정 승인했으나 물리 모델 미반영(§8-1). N:M 매핑 테이블이 없어 공정 매핑 엔드포인트를 만들 수 없다
+             * @description 레거시 N:1 참조 — 결정 12가 N:M 매핑으로 대체를 승인했다. 정식 매핑은 /processes 자원을 쓴다
              * @example 1001
              */
             processId?: number | null;
+            /**
+             * @description 처분구분(재작업가능/폐기) — ✅REQ-PR-0025·결정 12 확정. 2026-08-30 되살림. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-06-03 §4-A
+             * @example REWORKABLE
+             * @enum {string}
+             */
+            dispositionTypeCode?: "REWORKABLE" | "SCRAP";
             /**
              * @default true
              * @example true
@@ -27860,6 +30821,16 @@ export interface components {
             /** @example 표시명 */
             defectName: string;
             /**
+             * @description 불량코드 한국어 명칭 — 결정 12 「다국어 명칭(ko/vi)」을 되살렸다(2026-08-30). 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 불량코드 베트남어 명칭 — 결정 12. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * Format: int64
              * @description 상세 추가 시 대분류를 지정(자동 설정) — 서버가 3계층 이상·자기참조를 차단
              * @example 1001
@@ -27870,6 +30841,12 @@ export interface components {
              * @example 1001
              */
             processId?: number | null;
+            /**
+             * @description 처분구분(재작업가능/폐기) — 결정 12. 상세 코드에만 의미가 있다. 2026-08-30 되살림
+             * @example REWORKABLE
+             * @enum {string|null}
+             */
+            dispositionTypeCode?: "REWORKABLE" | "SCRAP" | null;
         };
         /** @description 불량코드 수정 요청. isActive 는 별도 :deactivate. 낙관적 잠금은 공유계약 B-1. 근거: W-06-03 §4-A */
         DefectCodeUpdate: {
@@ -27877,6 +30854,16 @@ export interface components {
             defectCode: string;
             /** @example 표시명 */
             defectName: string;
+            /**
+             * @description 불량코드 한국어 명칭 — 결정 12 「다국어 명칭(ko/vi)」을 되살렸다(2026-08-30). 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 불량코드 베트남어 명칭 — 결정 12. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
             /**
              * Format: int64
              * @example 1001
@@ -27887,6 +30874,29 @@ export interface components {
              * @example 1001
              */
             processId?: number | null;
+            /**
+             * @example REWORKABLE
+             * @enum {string|null}
+             */
+            dispositionTypeCode?: "REWORKABLE" | "SCRAP" | null;
+        };
+        /** @description 불량코드-공정 매핑 한 건. 결정 12 N:M을 되살린 자원(2026-08-30). 테이블은 이미 있다(omf-mes-server#42 2026-08-28 확인 — quality.defect_code_process, 5979행) — 없던 것은 API 쓰기 경로뿐이라 이번에 그것만 신설했다. 근거: W-06-03 §4-D */
+        DefectCodeProcess: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            defectCodeId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            processId: number;
+            /**
+             * @description mdm.process.process_name 조인 — 화면 왕복을 없앤다
+             * @example 사출
+             */
+            processName?: string;
         };
         DefectCodeDetailResponse: {
             defectCode: components["schemas"]["DefectCode"];
@@ -27906,6 +30916,16 @@ export interface components {
              * @example 표시명
              */
             causeName: string;
+            /**
+             * @description 원인코드 한국어 명칭 — 결정 12 「다국어 명칭(ko/vi)」을 되살렸다(2026-08-30). 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 원인코드 베트남어 명칭 — 결정 12. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
             /**
              * Format: int64
              * @description defect_code 와 완전히 같은 구조. 자기참조 CHECK 없음
@@ -27933,6 +30953,16 @@ export interface components {
             /** @example 표시명 */
             causeName: string;
             /**
+             * @description 원인코드 한국어 명칭 — 결정 12 「다국어 명칭(ko/vi)」을 되살렸다(2026-08-30). 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 원인코드 베트남어 명칭 — 결정 12. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
+            /**
              * Format: int64
              * @example 1001
              */
@@ -27949,6 +30979,16 @@ export interface components {
             causeCode: string;
             /** @example 표시명 */
             causeName: string;
+            /**
+             * @description 원인코드 한국어 명칭 — 결정 12 「다국어 명칭(ko/vi)」을 되살렸다(2026-08-30). 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다.
+             * @example 표시명
+             */
+            nameKo?: string | null;
+            /**
+             * @description 원인코드 베트남어 명칭 — 결정 12. 2026-08-30 되살림.
+             * @example Ten hien thi
+             */
+            nameVi?: string | null;
             /**
              * Format: int64
              * @example 1001
@@ -27982,11 +31022,11 @@ export interface components {
              */
             interfaceCode: string;
             /**
-             * @description 수신/송신
+             * @description 수신(INBOUND) 또는 송신(OUTBOUND). 연계 정의의 방향 값과 같은 어휘다
              * @example OUTBOUND
              */
             directionCode: string;
-            /** @example GOODS_RECEIPT */
+            /** @description 무엇을 나른 메시지인가. 값 목록은 아직 정해지지 않았다 — 확정 전에는 이 조건 대신 interfaceCode 로 거른다(선택 목록은 GET /integration/interface-definitions). */
             targetTypeCode: string;
             /**
              * Format: int64
@@ -28135,9 +31175,7 @@ export interface components {
             partnerCode: string;
             /** @example (주)대한부품 */
             partnerName: string;
-            /** @example STANDARD */
             countryCode?: string | null;
-            /** @example STANDARD */
             erpPartnerCode?: string | null;
             /**
              * @default true
@@ -28156,9 +31194,7 @@ export interface components {
             legalEntityCode: string;
             /** @example 본사법인 */
             legalEntityName: string;
-            /** @example STANDARD */
             countryCode: string;
-            /** @example STANDARD */
             timezoneCode: string;
             /**
              * @default true
@@ -28215,7 +31251,6 @@ export interface components {
             plantCode: string;
             /** @example 1공장 */
             plantName: string;
-            /** @example STANDARD */
             timezoneCode: string;
             /**
              * @default true
@@ -28251,7 +31286,7 @@ export interface components {
             /**
              * @description LINE | WORK_AREA
              * @default LINE
-             * @example STANDARD
+             * @example LINE
              */
             lineTypeCode: string;
             /**
@@ -28306,6 +31341,12 @@ export interface components {
              * @example CALIPER
              */
             equipmentTypeCode: string;
+            /**
+             * Format: int64
+             * @description 이 설비에 매핑된 Location(호퍼 등). 결정 08 「호퍼=Location 모델링(설비—Location 매핑)」을 되살린 축(2026-08-30) — M-01-09가 이 값으로 「1호기 호퍼」처럼 설비 기준으로 호퍼를 지정하고 잔량을 설비 기준으로 집계한다. 비어 있을 수 있다 — 모든 설비가 호퍼를 갖지 않는다. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: M-01-09 §5-3 · P-02-03 §4
+             * @example 1001
+             */
+            locationId?: number | null;
             /**
              * Format: int64
              * @example 1001
@@ -28550,6 +31591,22 @@ export interface components {
              * @example 1001
              */
             locationId?: number;
+            /**
+             * Format: int64
+             * @description 이 단말이 붙어 있는 설비. POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다 — P-02-01 의 기본 목록 필터와 P-05-02 의 헤더 고정이 그것이다. 비어 있을 수 있다 — 설비에 붙지 않은 단말이 있다.
+             * @example 2001
+             */
+            equipmentId?: number | null;
+            /**
+             * @description 설비 코드. 헤더가 「PRS-01 · 프레스 1호기」로 그리므로 함께 내린다 — 왕복 한 번을 없앤다.
+             * @example PRS-01
+             */
+            equipmentCode?: string | null;
+            /**
+             * @description 설비명. equipmentCode 와 짝이다.
+             * @example 프레스 1호기
+             */
+            equipmentName?: string | null;
             /** @description 어떤 단말인가 — 고정 스테이션과 손에 드는 기기가 여기서 갈린다. 값 목록은 아직 확정 전이다 */
             terminalTypeCode: string;
             statusCode: string;
@@ -28561,6 +31618,11 @@ export interface components {
              * @example 2026-08-13T09:12:00+09:00
              */
             tokenIssuedAt?: string;
+            /**
+             * @description 재발급마다 서버가 +1 — 이전 값의 토큰은 클레임 tv 가 이 값과 어긋나 거부된다(공유계약 F-4 · ✓확정 2026-07-28 §6-②)
+             * @example 3
+             */
+            tokenVersion?: number;
             /** @example 1 */
             versionNo?: number;
         };
@@ -28577,6 +31639,12 @@ export interface components {
              * @example 1001
              */
             locationId?: number;
+            /**
+             * Format: int64
+             * @description 이 단말이 붙어 있는 설비. POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다 — P-02-01 의 기본 목록 필터와 P-05-02 의 헤더 고정이 그것이다. 비어 있을 수 있다 — 설비에 붙지 않은 단말이 있다.
+             * @example 2001
+             */
+            equipmentId?: number | null;
             terminalTypeCode: string;
             statusCode: string;
         };
@@ -28592,6 +31660,12 @@ export interface components {
              * @example 1001
              */
             locationId?: number;
+            /**
+             * Format: int64
+             * @description 이 단말이 붙어 있는 설비. POP 이 「이 설비」를 전제로 도는 화면들이 이 값을 쓴다 — P-02-01 의 기본 목록 필터와 P-05-02 의 헤더 고정이 그것이다. 비어 있을 수 있다 — 설비에 붙지 않은 단말이 있다.
+             * @example 2001
+             */
+            equipmentId?: number | null;
             terminalTypeCode: string;
             statusCode: string;
         };
@@ -28706,12 +31780,15 @@ export interface components {
             warehouseId: number;
             /**
              * Format: int64
-             * @description 도면 이미지. 첨부의 다형 참조를 그대로 쓴다 — 대상 유형은 창고다. 비어 있으면 화면이 「도면을 올리세요」를 보인다
+             * @description 도면 이미지. 첨부의 다형 참조를 그대로 쓴다 — 대상 유형은 창고다. 비어 있으면 화면이 「도면을 올리세요」를 보인다 이미지는 GET /app/attachments/{attachmentId}/content 로 받는다.
              * @example 1001
              */
             drawingAttachmentId?: number;
             markers: components["schemas"]["WarehouseLayoutMarker"][];
-            /** @example 1 */
+            /**
+             * @description 표시하지 않는다 — If-Match 에 담을 값은 ETag 응답 헤더에서 받는다.
+             * @example 1
+             */
             versionNo?: number;
         };
         /** @description 위치 하나가 도면 어디에 있나. ⭐ 좌표는 도면 «비율»이다 — 0 과 1 사이. 픽셀로 두면 도면을 바꿀 때 점이 전부 어긋난다 */
@@ -28869,7 +31946,7 @@ export interface components {
              */
             precisionUomId?: number | null;
         };
-        /** @description equipmentCode 는 참조가 0일 때만 보낼 수 있다 — 상세 조회의 editability 가 가부와 사유를 함께 내린다. statusCode 는 여기서 바꾸지 않는다 — 폐기는 :dispose 가, 사용 중지는 :deactivate 가 받는다. lastCalibrationDate·calibrationDueDate 도 받지 않는다 — 검교정 이력 등록(W-05-10)이 정한다. 근거: 공유계약 B-4·B-13·B-16 */
+        /** @description equipmentCode 는 참조가 0일 때만 보낼 수 있다 — 상세 조회의 editability 가 가부와 사유를 함께 내린다. statusCode 는 여기서 바꾸지 않는다 — 폐기는 :dispose 가, 사용 중지는 :deactivate 가, 다시 사용은 :activate 가 받는다. lastCalibrationDate·calibrationDueDate 도 받지 않는다 — 검교정 이력 등록(W-05-10)이 정한다. 근거: 공유계약 B-4·B-13·B-16 */
         EquipmentUpdate: {
             /** @example PRS-01 */
             equipmentCode?: string;
@@ -29275,7 +32352,7 @@ export interface components {
              */
             availableShotCount?: number | null;
             /**
-             * @description 자산 수명주기 — 운용 또는 폐기 두 값. 고장·보전 중·비가동은 거래가 만드는 조건이라 마스터에 적지 않는다
+             * @description 자산 수명주기 — 운용 또는 폐기 두 값. 고장·보전 중·비가동은 거래가 만드는 조건이라 마스터에 적지 않는다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_STATUS 로 받는다 — 설비·툴·계측기가 같은 규칙을 쓴다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다
              * @example IN_SERVICE
              */
             statusCode: string;
@@ -29296,7 +32373,7 @@ export interface components {
              */
             pmCycleInterval?: number | null;
             /**
-             * @description 날짜 주기 단위 — 일(DAY) 또는 월(MONTH)
+             * @description 날짜 주기 단위 — 일(DAY) 또는 월(MONTH). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다
              * @example MONTH
              */
             pmCycleUnitCode?: string | null;
@@ -29368,7 +32445,7 @@ export interface components {
              */
             pmCycleInterval?: number | null;
             /**
-             * @description 날짜 주기 단위 — 일(DAY) 또는 월(MONTH)
+             * @description 날짜 주기 단위 — 일(DAY) 또는 월(MONTH). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다
              * @example MONTH
              */
             pmCycleUnitCode?: string | null;
@@ -29408,7 +32485,7 @@ export interface components {
              */
             pmCycleInterval?: number | null;
             /**
-             * @description 날짜 주기 단위 — 일(DAY) 또는 월(MONTH)
+             * @description 날짜 주기 단위 — 일(DAY) 또는 월(MONTH). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다
              * @example MONTH
              */
             pmCycleUnitCode?: string | null;
@@ -29697,7 +32774,7 @@ export interface components {
              */
             directionCode: "INBOUND" | "OUTBOUND";
             /**
-             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 공통코드 · 조직 · 작업자 · 구매발주 여섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다
+             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 거래처 · 조직 · 작업자 · 구매발주 여섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다
              * @example ITEM
              */
             targetCode: string;
@@ -29755,7 +32832,7 @@ export interface components {
              */
             directionCode: "INBOUND" | "OUTBOUND";
             /**
-             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 공통코드 · 조직 · 작업자 · 구매발주 여섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다
+             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 거래처 · 조직 · 작업자 · 구매발주 여섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다
              * @example ITEM
              */
             targetCode: string;
@@ -29804,7 +32881,7 @@ export interface components {
              */
             directionCode: "INBOUND" | "OUTBOUND";
             /**
-             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 공통코드 · 조직 · 작업자 · 구매발주 여섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다
+             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 거래처 · 조직 · 작업자 · 구매발주 여섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다
              * @example ITEM
              */
             targetCode: string;
@@ -30001,10 +33078,7 @@ export interface components {
              * @example DN-2026-000045
              */
             deliveryNoteNo?: string | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example PLANNED
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /** @example 비고 문자열 */
             remarks?: string | null;
@@ -30052,6 +33126,16 @@ export interface components {
              * @example SL-2026-0001
              */
             supplierLotNo?: string | null;
+            /**
+             * @description 이 라인이 가리키는 P/O 라인의 발주 수량. purchaseOrderLineId 가 비면(무발주) 널이다
+             * @example 500
+             */
+            readonly orderedQty?: number | null;
+            /**
+             * @description 그 P/O 라인의 누적 입하 수량. 화면의 「진행」 열은 receivedQty ÷ orderedQty 다 — 화면이 라인마다 P/O 를 따로 부르지 않는다(공유계약 L-2). 무발주 행은 널이고 화면은 「—」로 그린다(W-01-09 §5-2)
+             * @example 0
+             */
+            readonly receivedQty?: number | null;
         };
         AsnLineListResponse: {
             items: components["schemas"]["AsnLine"][];
@@ -30215,15 +33299,9 @@ export interface components {
             goodsIssueId: number;
             /** @example GI-2026-000402 */
             goodsIssueNo: string;
-            /**
-             * @description 출고 유형. 일반 출고·반품·기타 출고를 가른다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example MATERIAL
-             */
+            /** @description 출고 유형. 일반 출고·반품·기타 출고를 가른다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             issueTypeCode: string;
-            /**
-             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example PICKING_ORDER
-             */
+            /** @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             sourceDocumentTypeCode: string;
             /**
              * Format: int64
@@ -30252,13 +33330,10 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             issuedAt: string;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example DRAFT
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
-             * @description 반품·폐기 등의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 반품·폐기 등의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=GOODS_ISSUE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example SUPPLIER_RETURN
              */
             reasonCode?: string | null;
@@ -30269,7 +33344,7 @@ export interface components {
             replacementExpected?: boolean | null;
             /**
              * Format: int64
-             * @description 이 출고가 어느 승인 요청에서 나왔는지 되짚는 식별자. 비어 있으면 승인을 타지 않은 출고다. 폐기 출고 화면이 이 값으로 승인 이력을 보이고, 승인 없이 나간 건을 가려낸다.
+             * @description 이 출고가 어느 승인 요청에서 나왔는지 되짚는 식별자. 비어 있으면 승인을 타지 않은 출고다. 폐기 출고 화면이 이 값으로 승인을 보이고, 승인 없이 나간 건을 가려낸다.
              * @example 1001
              */
             approvalRequestId?: number | null;
@@ -30283,13 +33358,10 @@ export interface components {
         };
         /** @description 출고 전표 등록. postImmediately 가 참이면 등록과 전기가 같은 트랜잭션에서 일어난다 — 「출고 확정」·「반품 처리」처럼 화면이 한 버튼인 경우다. 승인을 먼저 받아야 하는 기타 출고는 거짓으로 보내고 나중에 전기한다. 근거: M-01-08 §5-8 · W-01-05 §5-7 · W-01-06 §5-7 */
         GoodsIssueCreate: {
-            /**
-             * @description 출고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example MATERIAL
-             */
+            /** @description 출고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             issueTypeCode: string;
             /**
-             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 원천 문서 유형. 유형마다 sourceDocumentId 가 가리키는 대상이 다르다 — 피킹 지시(생산 투입) · 입고 전표(공급사 반품 · 자재 폐기) · 처분 결정(제품 폐기) 셋이다. 확정된 값 목록은 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 A-10 · G-2
              * @example PICKING_ORDER
              */
             sourceDocumentTypeCode: string;
@@ -30321,14 +33393,14 @@ export interface components {
              */
             issuedAt: string;
             /**
-             * @description 사유. 반품·기타 출고에서는 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 사유. 반품·기타 출고에서는 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=GOODS_ISSUE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example SUPPLIER_RETURN
              */
             reasonCode?: string | null;
             /** @example true */
             replacementExpected?: boolean | null;
             /**
-             * @description ERP 송신 여부. 화면의 송신 토글이 이 값이다. 근거: W-01-05 §5-7
+             * @description ERP 송신 여부. 화면의 송신 토글이 이 값이다. 근거: W-01-05 §5-7. ⭐ 전역 송신 설정과 논리곱이다 — 전역이 꺼져 있으면 이 값이 참이어도 보내지 않고, 전역이 켜져 있을 때 이 값으로 이 건만 끈다. 켜고 끄기의 정본은 전역 설정이다.
              * @default true
              * @example true
              */
@@ -30461,10 +33533,7 @@ export interface components {
             goodsReceiptId: number;
             /** @example GR-2026-000310 */
             goodsReceiptNo: string;
-            /**
-             * @description 입고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example PURCHASE
-             */
+            /** @description 입고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             receiptTypeCode: string;
             /**
              * Format: int64
@@ -30482,15 +33551,9 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             receiptDatetime: string;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example POSTED
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
-            /**
-             * @description 원천 문서의 유형. 유형 코드와 대응 테이블의 규약이 함께 와야 화면이 원천을 표시할 수 있다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example INBOUND_RECEIPT
-             */
+            /** @description 원천 문서의 유형. 유형 코드와 대응 테이블의 규약이 함께 와야 화면이 원천을 표시할 수 있다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             sourceDocumentTypeCode: string;
             /**
              * Format: int64
@@ -30498,10 +33561,7 @@ export interface components {
              * @example 1001
              */
             sourceDocumentId: number;
-            /**
-             * @description 반품 입고 등의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example RETURN
-             */
+            /** @description 반품 입고 등의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             reasonCode?: string | null;
             /** @example 비고 문자열 */
             remarks?: string | null;
@@ -30513,10 +33573,7 @@ export interface components {
         };
         /** @description 입고 처리. 생성과 전기가 같은 순간이다 — 화면이 「입고 처리」 한 버튼이므로 오퍼레이션도 하나다. 입고 전표·LOT 상태 전이·수불 원장·잔액·ERP 송신 적재가 한 트랜잭션에서 일어나며, ERP 실제 전송만 트랜잭션 밖이다. 근거: W-01-10 §5-4 · 공유계약 B-8 */
         GoodsReceiptCreate: {
-            /**
-             * @description 입고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example PURCHASE
-             */
+            /** @description 입고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             receiptTypeCode: string;
             /**
              * Format: int64
@@ -30534,7 +33591,7 @@ export interface components {
              */
             receiptDatetime: string;
             /**
-             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⚠ 반품·클레임 입고(W-04-06)에서는 부적합/클레임 접수 문서를 가리킨다.
              * @example INBOUND_RECEIPT
              */
             sourceDocumentTypeCode: string;
@@ -30543,10 +33600,7 @@ export interface components {
              * @example 1001
              */
             sourceDocumentId: number;
-            /**
-             * @description 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example RETURN
-             */
+            /** @description 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             reasonCode?: string | null;
             /** @example 비고 문자열 */
             remarks?: string | null;
@@ -30603,8 +33657,8 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다.
-             * @example RELEASED
+             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
+             * @example NORMAL
              */
             qualityStatusCode: string;
             /**
@@ -30625,6 +33679,12 @@ export interface components {
              * @example 1001
              */
             inventoryTransactionLineId?: number | null;
+            /**
+             * Format: int64
+             * @description 이 라인으로 서버가 만든 적치 지시. 화면은 이 값으로 바로 적치 완료를 부른다 — 입고 응답이 라인마다 지시 식별자를 실어 왕복 하나를 없앤다. 아직 만들어지지 않았으면 비어 온다. 근거: M-04-04 §5-6 · W-01-10 §5-4
+             * @example 1001
+             */
+            readonly putawayTaskId?: number | null;
         };
         /** @description 입고 라인 등록 항목. */
         GoodsReceiptLineCreate: {
@@ -30651,8 +33711,8 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다.
-             * @example RELEASED
+             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
+             * @example NORMAL
              */
             qualityStatusCode: string;
             /**
@@ -30663,6 +33723,7 @@ export interface components {
             inventoryStatusCode: "AVAILABLE" | "IN_TRANSIT" | "ON_HOLD" | "BLOCKED";
             /**
              * Format: int64
+             * @description 이 값은 입고 전기 시점의 장부 위치다 — 적치 판정에는 쓰이지 않는다. 적치 지시의 권장 위치는 적치 규칙(putaway_rule)만이 낸다(M-01-05 §5-2-1 · 2026-08-06 확정). 실물이 권장 위치로 가서 이 값과 달라지면 M-01-07·M-01-10 으로 조정한다(W-01-10 §5-2).
              * @example 1001
              */
             destinationLocationId: number;
@@ -30680,7 +33741,7 @@ export interface components {
             /** @example HU-2026-000058 */
             handlingUnitNo: string;
             /**
-             * @description 취급 단위 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 취급 단위 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=HANDLING_UNIT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example PALLET
              */
             handlingUnitTypeCode: string;
@@ -30699,10 +33760,7 @@ export interface components {
              * @example 1001
              */
             locationId?: number | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example ACTIVE
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
         };
         /** @description 취급 단위 구성. 같은 취급 단위 안에서 품목·LOT 조합은 한 번만 나온다. */
@@ -30761,7 +33819,7 @@ export interface components {
         /** @description 취급 단위 등록. */
         HandlingUnitCreate: {
             /**
-             * @description 취급 단위 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 취급 단위 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=HANDLING_UNIT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example PALLET
              */
             handlingUnitTypeCode: string;
@@ -30786,6 +33844,65 @@ export interface components {
         HandlingUnitDetailResponse: {
             handlingUnit: components["schemas"]["HandlingUnit"];
             contents: components["schemas"]["HandlingUnitContent"][];
+        };
+        /** @description 포장 재구성 사건 헤더. 결정 13 「이벤트 헤더–라인 계보」를 되살린 자원(2026-08-30) — 신규 생성분(신규 발번)은 이 이벤트가 아니라 POST /inventory/handling-units가 별도로 만든다. 저장 테이블은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: M-04-03 §5-2 */
+        HandlingUnitRepackEvent: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            repackEventId: number;
+            /**
+             * @description 합병(MERGE)·분할(SPLIT)·재구성(RECONFIGURE) — M-04-03 §3 유형 선택
+             * @example SPLIT
+             * @enum {string}
+             */
+            repackTypeCode: "MERGE" | "SPLIT" | "RECONFIGURE";
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            performedBy: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /** @description 결정 13 규칙 2 — 수량 변경은 이벤트 한정 + 이력 */
+            lines: components["schemas"]["HandlingUnitRepackEventLine"][];
+        };
+        HandlingUnitRepackEventLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            handlingUnitId: number;
+            /**
+             * @description 이 취급 단위가 이 사건의 원본인지 결과인지
+             * @example SOURCE
+             * @enum {string}
+             */
+            roleCode: "SOURCE" | "RESULT";
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /**
+             * Format: double
+             * @example 500
+             */
+            qtyBefore: number;
+            /**
+             * Format: double
+             * @example 300
+             */
+            qtyAfter: number;
         };
         /** @description 포장 확정. 포장 단위와 내용물 N행이 한 트랜잭션으로 확정된다(공유계약 B-8) — 내용물 없이 확정할 수 없다. 근거: P-02-08 §5-6 */
         HandlingUnitPack: {
@@ -30853,7 +33970,7 @@ export interface components {
              */
             dockLocationId?: number | null;
             /**
-             * @description P/O 없이 도착한 예외 입하의 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description P/O 없이 도착한 예외 입하의 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NO_PO
              */
             exceptionTypeCode?: string | null;
@@ -30868,10 +33985,7 @@ export interface components {
              * @example 1001
              */
             approvalRequestId?: number | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example DRAFT
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: int64
@@ -30881,7 +33995,7 @@ export interface components {
             /** @example 비고 문자열 */
             remarks?: string | null;
         };
-        /** @description 입하 등록. 헤더·라인·자재 LOT 이 한 트랜잭션으로 만들어진다 — 입하는 저장됐는데 LOT 이 없으면 이후 흐름이 통째로 막힌다. 근거: M-01-01 §5-4 */
+        /** @description 입하 등록. 헤더·라인이 한 트랜잭션으로 만들어지고, 자재 LOT 은 공급사 LOT 이 부착된 라인에만 함께 생긴다. supplierLotMissing=true 인 라인은 LOT 없이 저장되고 P-01-01 이 POST /trace/lots(numberSourceCode=MES)로 나중에 채운다. 부착 라인의 LOT 이 없으면 이후 흐름이 통째로 막힌다. 근거: M-01-01 §5-4 · P-01-01 §3-6 · 공유계약 B-8 */
         InboundReceiptCreate: {
             /**
              * Format: int64
@@ -30908,7 +34022,7 @@ export interface components {
              */
             dockLocationId?: number | null;
             /**
-             * @description P/O 를 고르지 않고 진행할 때 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description P/O 를 고르지 않고 진행할 때 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NO_PO
              */
             exceptionTypeCode?: string | null;
@@ -30997,7 +34111,7 @@ export interface components {
              */
             supplierLotMissing: boolean;
             /**
-             * @description supplierLotMissing 이 참일 때의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description supplierLotMissing 이 참일 때의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=SUBSTITUTE_LOT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NO_LABEL
              */
             substituteLotReasonCode?: string | null;
@@ -31013,18 +34127,15 @@ export interface components {
              */
             expiryDate?: string | null;
             /**
-             * @description 이 라인이 수입검사 대상인지. 입하 라인 단위로 갈린다. 근거: M-01-01 §5-4
+             * @description 이 라인이 수입검사 대상인지. 입하 라인 단위로 갈린다. 서버가 채운다 — 요청 스키마 InboundReceiptLineUpsert 에 이 칸이 없다. 근거: M-01-01 §5-4
              * @example true
              */
             inspectionRequired: boolean;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example DRAFT
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: int64
-             * @description 이 라인으로 만들어진 자재 LOT. 등록과 같은 트랜잭션에서 생긴다. 근거: M-01-01 §5-4
+             * @description 이 라인으로 만들어진 자재 LOT. 사전부착 라인은 입하 등록과 같은 트랜잭션에서 생기고, 미부착 라인은 P-01-01 이 채울 때까지 비어 있다. 근거: M-01-01 §5-4
              * @example 1001
              */
             lotId?: number | null;
@@ -31072,7 +34183,7 @@ export interface components {
              */
             supplierLotMissing: boolean;
             /**
-             * @description supplierLotMissing 이 참일 때 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description supplierLotMissing 이 참일 때 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=SUBSTITUTE_LOT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NO_LABEL
              */
             substituteLotReasonCode?: string | null;
@@ -31112,7 +34223,7 @@ export interface components {
              */
             dockLocationId?: number | null;
             /**
-             * @description 초과분 쪽에서 쓰는 예외 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 초과분 쪽에서 쓰는 예외 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example OVER_DELIVERY
              */
             exceptionTypeCode?: string | null;
@@ -31192,7 +34303,7 @@ export interface components {
              */
             inboundReceiptLineId: number;
             /**
-             * @description 차이 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 차이 유형(GET /mdm/code-values?codeGroupCode=INBOUND_VARIANCE_TYPE). 근거: 공유계약 G-32
              * @example SHORTAGE
              */
             varianceTypeCode: string;
@@ -31204,10 +34315,10 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⛔ 선택이다 — 「무엇이 틀렸나」는 varianceTypeCode 가 이미 필수로 받는다. 현장이 사유를 모를 때 오류 기록 자체가 막히면 안 된다. 근거: M-01-06 §4-A(2026-08-18 정정) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example DAMAGED
              */
-            reasonCode: string;
+            reasonCode?: string | null;
             /**
              * Format: int64
              * @example 1001
@@ -31217,7 +34328,7 @@ export interface components {
         /** @description 입하 차이 등록. 등록 후 수정·삭제 경로를 두지 않는다 — 화면이 한 번 등록하면 고칠 수 없다고 정했다. 근거: M-01-06 §5-1 */
         InboundVarianceCreate: {
             /**
-             * @description 차이 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 차이 유형(GET /mdm/code-values?codeGroupCode=INBOUND_VARIANCE_TYPE). 근거: 공유계약 G-32
              * @example SHORTAGE
              */
             varianceTypeCode: string;
@@ -31229,10 +34340,10 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⛔ 선택이다 — 「무엇이 틀렸나」는 varianceTypeCode 가 이미 필수로 받는다. 현장이 사유를 모를 때 오류 기록 자체가 막히면 안 된다. 근거: M-01-06 §4-A(2026-08-18 정정) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example DAMAGED
              */
-            reasonCode: string;
+            reasonCode?: string | null;
         };
         InboundVarianceListResponse: {
             items: components["schemas"]["InboundVariance"][];
@@ -31253,7 +34364,7 @@ export interface components {
              */
             inventoryCountId?: number | null;
             /**
-             * @description 헤더 사유. 비울 수 없다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 헤더 사유. 비울 수 없다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_ADJUSTMENT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example COUNT_VARIANCE
              */
             reasonCode: string;
@@ -31262,10 +34373,7 @@ export interface components {
              * @example 1001
              */
             approvalRequestId?: number | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example REQUESTED
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: date-time
@@ -31288,12 +34396,12 @@ export interface components {
              */
             inventoryCountId?: number | null;
             /**
-             * @description 헤더 사유. 비울 수 없다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 헤더 사유. 비울 수 없다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_ADJUSTMENT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example COUNT_VARIANCE
              */
             reasonCode: string;
             /**
-             * @description ERP 송신 여부. 화면의 송신 토글이 이 값이다
+             * @description ERP 송신 여부. 화면의 송신 토글이 이 값이다. ⭐ 전역 송신 설정과 논리곱이다 — 전역이 꺼져 있으면 이 값이 참이어도 보내지 않고, 전역이 켜져 있을 때 이 값으로 이 건만 끈다. 켜고 끄기의 정본은 전역 설정이다.
              * @default true
              * @example true
              */
@@ -31353,10 +34461,7 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /**
-             * @description 라인 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example COUNT_VARIANCE
-             */
+            /** @description 라인 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             reasonCode?: string | null;
         };
         InventoryAdjustmentLineListResponse: {
@@ -31397,10 +34502,7 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /**
-             * @description 라인 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example COUNT_VARIANCE
-             */
+            /** @description 라인 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             reasonCode?: string | null;
         };
         /** @description 재고 잔액 한 줄. 읽기 전용이다 — 잔액을 직접 쓰는 경로를 두지 않고 원장이 움직이면 서버가 파생한다. groupBy 로 접은 축은 비워서 내린다. 다만 소유 구분은 어떤 축에서도 합치지 않는다 — 자사 재고와 고객 지급품을 더하면 오독이다. 근거: W-01-07 §5-1 · M-01-04 · 공유계약 L-7 */
@@ -31450,13 +34552,13 @@ export interface components {
             itemId: number;
             /**
              * Format: int64
-             * @description groupBy 가 LOT 일 때 채워진다
+             * @description groupBy 가 ITEM·LOCATION 이면 축이 접혀 비고, groupBy 가 LOT 이어도 LOT 단위로 나누지 않는 재고는 비어 온다 — 두 경우는 groupBy 값으로 갈린다. 화면은 후자를 「(LOT 무관)」 으로 적는다(공유계약 A-7 · W-01-07 §5-2 · M-01-04 §5-1).
              * @example 1001
              */
             lotId?: number | null;
             /**
-             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다.
-             * @example RELEASED
+             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
+             * @example NORMAL
              */
             qualityStatusCode?: string | null;
             /**
@@ -31466,13 +34568,13 @@ export interface components {
              */
             inventoryStatusCode?: "AVAILABLE" | "IN_TRANSIT" | "ON_HOLD" | "BLOCKED" | null;
             /**
-             * @description 소유 구분. 묶는 축과 무관하게 항상 채워진다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 소유 구분. 묶는 축과 무관하게 항상 채워진다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=OWNERSHIP_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example OWNED
              */
             ownershipTypeCode: string;
             /**
              * Format: int64
-             * @description 소유가 자사가 아닐 때의 거래처
+             * @description 소유가 자사가 아닐 때의 거래처. 비면 자사 소유다 — 화면은 「(자사 소유)」 로 적는다(공유계약 A-7).
              * @example 1001
              */
             ownerPartnerId?: number | null;
@@ -31481,11 +34583,20 @@ export interface components {
              * @example 100
              */
             onHandQty: number;
-            /** @example 20 */
+            /**
+             * @description 출고요청 생성 시 걸리는 예약분. 서버 전기가 올리고 소진되면 내린다 — 화면은 계산하지 않는다. 근거: M-01-08 §5-5
+             * @example 20
+             */
             reservedQty: number;
-            /** @example 0 */
+            /**
+             * @description 피킹으로 예약분에서 옮겨 온 수량. 서버 전기가 옮긴다. 근거: M-01-08 §5-5
+             * @example 0
+             */
             pickedQty: number;
-            /** @example 0 */
+            /**
+             * @description 내보낼 수 없게 묶인 수량. ⚠ 출고·출하·피킹의 차단 판정 정본은 이 값이 아니라 Lot Status 단일 지점이다(결정 10 · M-01-08 §5-2). 근거: M-01-08 §5-5
+             * @example 0
+             */
             blockedQty: number;
             /**
              * @description 보유 − 예약 − 피킹 − 보류. 서버가 계산해 내려보내며 화면도 서버도 다시 빼지 않는다
@@ -31507,6 +34618,66 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             lastTransactionAt?: string | null;
+            /**
+             * Format: date
+             * @description 이 줄에 포함된 LOT 중 가장 이른 유효기한. 축이 접힌 줄에서는 최솟값이다 — 「이 줄이 경과다」가 아니라 「이 줄에 가장 이른 것이 이 날짜다」로 읽는다. 유효기한 관리 품목이 아니면 비어 온다 — 「판정 불가」이지 「경과 아님」이 아니다. 근거: W-01-07 §5-5
+             * @example 2026-09-30
+             */
+            readonly earliestExpiryDate?: string | null;
+            /**
+             * @description 화면이 보이는 값. 식별자를 사람이 읽는 값으로 바꾸려 마스터를 다시 부르지 않게 한다. 근거: W-01-07 §3
+             * @example ABC-123
+             */
+            readonly itemCode?: string;
+            /**
+             * @description 화면이 보이는 값. 근거: W-01-07 §3
+             * @example 외장 커버
+             */
+            readonly itemName?: string;
+            /**
+             * @description 화면이 보이는 값. 축이 접힌 줄에서는 비어 온다. 근거: W-01-07 §3
+             * @example 0001234500000012002607310001230007
+             */
+            readonly lotNo?: string | null;
+            /**
+             * @description 화면이 보이는 값. 축이 접힌 줄에서는 비어 온다. 근거: W-01-07 §3
+             * @example A-01-03
+             */
+            readonly locationCode?: string | null;
+        };
+        /** @description 필터 조건 전체의 집계다 — 목록 한 쪽의 합이 아니다. 근거: W-01-07 §3·§5-1 · 공유계약 L-1 */
+        InventoryBalanceSummary: {
+            /**
+             * @description 조건에 걸린 품목 수
+             * @example 342
+             */
+            itemCount: number;
+            /**
+             * @description 조건에 걸린 LOT 수
+             * @example 1308
+             */
+            lotCount: number;
+            /**
+             * @description 보유 합계
+             * @example 128400
+             */
+            onHandQty: number;
+            /**
+             * @description 가용 합계
+             * @example 121200
+             */
+            availableQty: number;
+            /**
+             * @description 묶인 수량 합계
+             * @example 7200
+             */
+            blockedQty: number;
+            /**
+             * Format: date-time
+             * @description 서버 집계 기준 시각 — 화면이 「기준 HH:MM」 으로 보인다. 브라우저 수신 시각이 아니다. 근거: W-01-07 §3·§5-3 · 공유계약 L-5
+             * @example 2026-08-05T09:12:00+09:00
+             */
+            asOf: string;
         };
         /** @description 재고 실사. 근거: W-01-04 · M-01-11 */
         InventoryCount: {
@@ -31518,7 +34689,7 @@ export interface components {
             /** @example IC-2026-000019 */
             inventoryCountNo: string;
             /**
-             * @description 실사 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 실사 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_COUNT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example CYCLE
              */
             countTypeCode: string;
@@ -31538,10 +34709,7 @@ export interface components {
              * @example false
              */
             blindCount: boolean;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example IN_PROGRESS
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
         };
         /** @description 실사 마감. 미실사가 0 이고 차이가 없거나 모두 조정된 뒤에만 통과한다 — 조건을 못 채우면 400 으로 무엇이 남았는지 돌려준다. 근거: W-01-04 §5-5 */
@@ -31556,7 +34724,7 @@ export interface components {
         /** @description 실사 개시. 라인은 서버가 장부에서 만든다 — 화면이 대상을 열거하지 않는다. 근거: W-01-04 §5-7 */
         InventoryCountCreate: {
             /**
-             * @description 실사 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 실사 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_COUNT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example CYCLE
              */
             countTypeCode: string;
@@ -31617,10 +34785,13 @@ export interface components {
              * @example 100
              */
             systemQty: number;
-            /** @example 98 */
+            /**
+             * @description 실물 수량. counted 가 참일 때만 뜻이 있다
+             * @example 98
+             */
             countedQty: number;
             /**
-             * @description 실물 − 장부. 서버가 계산한다
+             * @description 실물 − 장부. 서버가 계산한다. counted 가 참일 때만 뜻이 있다 — 거짓인 줄의 0 을 「차이 없음」으로 읽지 않는다
              * @example -2
              */
             readonly varianceQty: number;
@@ -31630,12 +34801,13 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MISPLACED
              */
             varianceReasonCode?: string | null;
             /**
              * Format: int64
+             * @description 누가 세었나. counted 가 거짓이면 널이다 — 미실사 판정은 counted 로 하고 이 필드로 하지 않는다
              * @example 1001
              */
             countedBy?: number | null;
@@ -31644,6 +34816,31 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             countedAt: string;
+            /**
+             * @description 이 라인을 실제로 세었는가. 거짓이면 countedQty·countedAt·varianceQty 는 뜻이 없다 — 화면은 「미실사」로 보이고 0 으로 읽지 않는다. uncountedOnly=true 로 거른 줄은 전부 거짓이다. 근거: M-01-11 §5-2 · W-01-04 §5-4
+             * @example false
+             */
+            readonly counted: boolean;
+            /**
+             * @description 화면이 보이는 값. 식별자를 사람이 읽는 값으로 바꾸려 마스터를 다시 부르지 않게 한다 — 모바일은 오프라인에서 그 마스터를 갱신할 수 없다. 근거: M-01-11 §3
+             * @example ABC-123
+             */
+            readonly itemCode?: string;
+            /**
+             * @description 화면이 보이는 값. 근거: M-01-11 §3
+             * @example 외장 커버
+             */
+            readonly itemName?: string;
+            /**
+             * @description 화면이 보이는 값. LOT 로 관리하지 않는 재고는 비어 온다. 근거: M-01-11 §3
+             * @example 0001234500000012002607310001230007
+             */
+            readonly lotNo?: string | null;
+            /**
+             * @description 화면이 보이는 값. 근거: M-01-11 §3
+             * @example A-01-03
+             */
+            readonly locationCode?: string;
         };
         InventoryCountLineListResponse: {
             items: components["schemas"]["InventoryCountLine"][];
@@ -31703,7 +34900,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MISPLACED
              */
             varianceReasonCode?: string | null;
@@ -31735,6 +34932,16 @@ export interface components {
              * @example 12
              */
             varianceCount: number;
+            /**
+             * @description 지금 마감할 수 있는가. 미실사 0 이고 차이가 없거나 모두 조정된 상태인지를 서버가 함께 본 결과다 — 화면이 조정 목록을 따로 조회해 판정하지 않는다(공유계약 L-2). 근거: W-01-04 §5-5·§5-7
+             * @example false
+             */
+            closable: boolean;
+            /**
+             * @description closable 이 거짓인 이유 — 미실사 잔여 · 차이 미조정 · 이미 마감 · 상태 잠김. 화면은 이 값으로 안내 문구와 「조정 등록」 경로를 가른다(공유계약 G-3). ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다
+             * @example 값
+             */
+            closeBlockedReasonCode?: string | null;
         };
         /** @description 재고 예약. 조회만 제공한다 — 예약은 출고 요청과 피킹의 결과로 서버가 걸고 푼다. 근거: M-01-08 §5-5 */
         InventoryReservation: {
@@ -31746,14 +34953,11 @@ export interface components {
             /** @example RS-2026-000144 */
             reservationNo: string;
             /**
-             * @description 예약 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 예약 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=RESERVATION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MATERIAL
              */
             reservationTypeCode: string;
-            /**
-             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example MATERIAL_ISSUE_REQUEST
-             */
+            /** @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             sourceDocumentTypeCode: string;
             /**
              * Format: int64
@@ -31791,10 +34995,7 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example OPEN
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
         };
         /** @description 수불 원장. 조회만 제공한다 — 전표의 전기가 만들며 화면이 직접 쓰지 않는다. 취소도 행을 지우지 않고 역처리 행을 더한다. 근거: W-01-07 §5-4 */
@@ -31812,10 +35013,7 @@ export interface components {
             businessDate: string;
             /** @example IT-2026-000998 */
             transactionNo: string;
-            /**
-             * @description 거래 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example RECEIPT
-             */
+            /** @description 거래 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             transactionTypeCode: string;
             /**
              * Format: int64
@@ -31834,20 +35032,14 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             recordedAt: string;
-            /**
-             * @description 원천 전표 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example GOODS_RECEIPT
-             */
+            /** @description 원천 전표 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             sourceDocumentTypeCode: string;
             /**
              * Format: int64
              * @example 1001
              */
             sourceDocumentId: number;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example POSTED
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: int64
@@ -31916,8 +35108,8 @@ export interface components {
              */
             fromLocationId?: number | null;
             /**
-             * @description 전이 전 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다.
-             * @example RELEASED
+             * @description 전이 전 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
+             * @example NORMAL
              */
             fromQualityStatusCode?: string | null;
             /**
@@ -31937,8 +35129,8 @@ export interface components {
              */
             toLocationId?: number | null;
             /**
-             * @description 전이 후 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다.
-             * @example RELEASED
+             * @description 전이 후 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
+             * @example NORMAL
              */
             toQualityStatusCode?: string | null;
             /**
@@ -31947,7 +35139,10 @@ export interface components {
              * @enum {string|null}
              */
             toInventoryStatusCode?: "AVAILABLE" | "IN_TRANSIT" | "ON_HOLD" | "BLOCKED" | null;
-            /** @example OWNED */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=OWNERSHIP_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example OWNED
+             */
             ownershipTypeCode: string;
             /**
              * Format: int64
@@ -32015,7 +35210,7 @@ export interface components {
              */
             expiryDate?: string | null;
             /**
-             * @description LOT 을 만든 원천의 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description LOT 을 만든 원천의 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 확정된 값 하나 — RECYCLE_ENTRY(재생재 등록 건 · sourceId 는 등록 건 자체를 가리킨다). 근거: 공유계약 A-16 · M-01-12 §5-2
              * @example INBOUND_RECEIPT
              */
             sourceTypeCode: string;
@@ -32026,12 +35221,12 @@ export interface components {
              */
             sourceId: number;
             /**
-             * @description 품질 판정 축 — 정상·불량·검사 대기·폐기(공유계약 G-2 표기: NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다. ⚠ 보류 건의 진행 상태(lot_hold.status_code)·생산LOT 생명주기(lifecycleStatusCode)와는 다른 축이다. 근거: 회신 E-3 종결 2026-08-07 · 공유계약 §I-32 · omf-mes#227
+             * @description 품질 판정 축 — 정상·불량·검사 대기·폐기(공유계약 G-2 표기: NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다. ⚠ 보류 건의 진행 상태(lot_hold.status_code)·생산LOT 생명주기(lifecycleStatusCode)와는 다른 축이다. 근거: 회신 E-3 종결 2026-08-07 · 공유계약 §I-32 · omf-mes#227 ⛔ 「완료」·「미달 마감」·「폐번」은 이 축의 값이 아니다 — 완료는 completedAt(시각)이, 폐번은 lifecycleStatusCode 가 담는다. 근거: omf-mes#269
              * @example NORMAL
              */
             statusCode: string;
             /**
-             * @description ⭐ 생명주기 축(대기·활성·폐번 — 영문 표기 미정, 후보 WAITING·ACTIVE·VOIDED) — statusCode(품질 판정)와는 다른 축이다. 생산LOT 선발행(W-02-04)에서만 쓴다 — 대기: 번호 슬롯만 예약(R26 「완료 전 실물 미귀속」) · 활성: 실적이 붙어 실물에 귀속 · 폐번: 마감 시 미달 슬롯 자동 폐번(R27). 자재·제품 LOT 은 null. ⛔ 물리 컬럼 신설 대상 — 값 목록도 함께 확정 필요. 근거: 02-SW설계사양서 §4.6 · W-02-04 §5-3 · W-02-05 §5-3 · omf-mes#46
+             * @description ⭐ 생명주기 축(대기·활성·폐번 — 영문 표기 미정, 후보 WAITING·ACTIVE·VOIDED) — statusCode(품질 판정)와는 다른 축이다. 생산LOT 선발행(W-02-04)에서만 쓴다 — 대기: 번호 슬롯만 예약(R26 「완료 전 실물 미귀속」) · 활성: 실적이 붙어 실물에 귀속 · 폐번: 마감 시 미달 슬롯 자동 폐번(R27). 자재·제품 LOT 은 null. ⛔ 물리 컬럼 신설 대상 — 값 목록도 함께 확정 필요. 근거: 02-SW설계사양서 §4.6 · W-02-04 §5-3 · W-02-05 §5-3 · omf-mes#46 ⛔ 「완료」·「미달 마감」도 이 축에 넣지 않는다 — 폐번은 「실적이 붙지 않은 슬롯」이고 미달 마감은 「실적이 붙었는데 계획에 못 미친 것」이라 뜻이 겹치지 않는다. 완료 축은 completedAt 이 담는다. 근거: omf-mes#269
              * @example WAITING
              */
             lifecycleStatusCode?: string | null;
@@ -32041,6 +35236,29 @@ export interface components {
              * @example 1001
              */
             parentLotId?: number | null;
+            /**
+             * Format: date-time
+             * @description 생산 LOT 완료 처리(P-02-06)가 찍는 시각. 비어 있으면 아직 완료되지 않았다. ⭐ 상태 코드 문자열을 몰라도 완료 여부가 판정된다 — 완료 시각이 있고 없고로 갈리기 때문이다. ⛔ 「완료」·「미달 마감」은 statusCode(품질 판정)에도 lifecycleStatusCode(생명주기)에도 값으로 넣지 않는다. 자재·제품 LOT 은 null. 근거: P-02-06 §5-5 · 공유계약 §I-32·§I-49
+             * @example 2026-08-11T17:40:00+09:00
+             */
+            completedAt?: string | null;
+            /**
+             * @description 생산LOT 선발행(W-02-04) 확정 시점의 BOM을 굳혀 둔 것 — 러닝체인지로 LOT마다 다른 BOM 버전을 쓸 수 있다(R42 「W/O 무분할 · 생산LOT만 BOM 스냅샷별 분할」). 서버가 선발행 시점에 자동으로 채운다 — 화면·클라이언트가 값을 만들어 보내지 않는다(LotCreate 에 없다). 자재·제품 LOT 은 null. 이 값이 있으면 투입 오투입 판정(P-02-03)이 해당 LOT의 BOM 기준으로 선다(R43) — 없으면 W/O BOM 기준으로 물러난다(공유계약 A-11). 2026-08-30 되살림. 근거: 공유계약 A-11 · §I-16 · P-02-11 §5-3 · W-02-04 §5-2
+             * @example {
+             *       "bomId": 1001,
+             *       "bomVersion": 2,
+             *       "components": [
+             *         {
+             *           "componentItemId": 2001,
+             *           "requiredQty": 4,
+             *           "uomId": 1001
+             *         }
+             *       ]
+             *     }
+             */
+            bomSnapshot?: Record<string, never> | null;
+            /** @description 생산 진척. withProgress=true 일 때만 채워진다 */
+            progress?: components["schemas"]["LotProgress"];
             /** @example 비고 문자열 */
             remarks?: string | null;
             /**
@@ -32048,12 +35266,17 @@ export interface components {
              * @example true
              */
             held?: boolean;
+            /**
+             * @description 입고 확정 대기 큐의 판정 축 — IQC 합격 · 샘플링 미대상 · 긴급 IQC 생략 한도승인 세 갈래다. 목록 배지 「⚠ 한도승인」의 원천이다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: W-01-10 §5-1
+             * @example 값
+             */
+            readonly receiptDispositionCode?: string | null;
         };
         /** @description 생산 LOT 완료. 계획 수량에 미달하면 사유 코드가 필요하고, 서버가 작업지시에 그 사유를 함께 기록한다 — 한 트랜잭션이다(공유계약 B-8). 근거: P-02-06 §5-5 */
         LotComplete: {
             /**
-             * @description 미달 마감 사유. 계획 수량에 미달하면 필수이고 서버가 400 으로 막는다. work_order.completion_variance_reason_code 로 간다. 근거: P-02-06 §5-5
-             * @example 자재 부족
+             * @description 미달 마감 사유. 계획 수량에 미달하면 필수이고 서버가 400 으로 막는다. work_order.completion_variance_reason_code 로 간다. 근거: P-02-06 §5-5 ⚠ 같은 칸을 W/O 마감(02 계약 POST /production/work-orders/{workOrderId}:close 본문 reasonCode)도 쓴다. 생산LOT 완료는 S10, W/O 마감은 S12 라 마감이 나중이다.
+             * @example MATERIAL_SHORTAGE
              */
             completionVarianceReasonCode?: string | null;
             /**
@@ -32126,7 +35349,7 @@ export interface components {
              */
             expiryDate?: string | null;
             /**
-             * @description 원천 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 원천 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 확정된 값 하나 — RECYCLE_ENTRY(재생재 등록 건 · sourceId 는 등록 건 자체를 가리킨다). 근거: 공유계약 A-16 · M-01-12 §5-2
              * @example INBOUND_RECEIPT
              */
             sourceTypeCode: string;
@@ -32171,7 +35394,7 @@ export interface components {
              */
             lotId: number;
             /**
-             * @description 식별자 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 식별자 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_EXTERNAL_IDENTIFIER_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example SUPPLIER_LOT
              */
             identifierTypeCode: string;
@@ -32182,10 +35405,7 @@ export interface components {
              * @example 1001
              */
             partnerId?: number | null;
-            /**
-             * @description 외부 시스템. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example ERP
-             */
+            /** @description 외부 시스템. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             externalSystemCode?: string | null;
         };
         LotExternalIdentifierListResponse: {
@@ -32194,7 +35414,7 @@ export interface components {
         /** @description 외부 식별자 전체 치환 항목. 요청에서 빠진 기존 행은 삭제한다. 근거: 공유계약 A-5 */
         LotExternalIdentifierUpsert: {
             /**
-             * @description 식별자 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 식별자 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_EXTERNAL_IDENTIFIER_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example SUPPLIER_LOT
              */
             identifierTypeCode: string;
@@ -32205,10 +35425,7 @@ export interface components {
              * @example 1001
              */
             partnerId?: number | null;
-            /**
-             * @description 외부 시스템. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example ERP
-             */
+            /** @description 외부 시스템. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             externalSystemCode?: string | null;
         };
         /** @description LOT 보류. 이 파일은 읽기만 제공한다 — 보류를 걸고 푸는 것은 품질 도메인의 화면이다. 근거: W-01-07 §4-B · M-01-04 · M-01-08 */
@@ -32242,8 +35459,8 @@ export interface components {
              */
             uomId?: number | null;
             /**
-             * @description 보류 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example QUALITY_HOLD
+             * @description 보류 사유. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_REASON 로 받는다. 고객이 운영 중 W-06-06 공통코드 마스터에서 정하는 실행 시점 자료라 계약에 enum 을 두지 않는다. 근거: 공유계약 G-31·G-32 · 시드 omf-mes#198
+             * @example INCOMING_INSPECTION_WAIT
              */
             reasonCode: string;
             /**
@@ -32251,10 +35468,7 @@ export interface components {
              * @example 비고 문자열
              */
             releaseCondition?: string | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example HELD
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: int64
@@ -32277,16 +35491,124 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             releasedAt?: string | null;
+            /**
+             * @description 해제 사유(코드형) — 2026-08-30 되살림. 등록 사유(reasonCode)와 대칭 축이다 — C7(재판정 합격)·C8(재판정 불합격)이 왜 갈렸는지를 이 값으로 가른다. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_RELEASE_REASON 로 받는다(공유계약 G-32). 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-03-02 §5-4 · omf-mes#87
+             * @example RETEST_PASS
+             */
+            releaseReasonCode?: string | null;
             /** @example 비고 문자열 */
             remarks?: string | null;
             /**
-             * @description 이 보류가 걸었을 때 LOT 이 간 상태
-             * @example IQC
+             * @description 이 보류가 걸었을 때 LOT 이 간 상태 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32 · omf-mes#176
+             * @example NORMAL
              */
             lotStatusCode?: string;
         };
         LotHoldListResponse: {
             items: components["schemas"]["LotHold"][];
+        };
+        /** @description LOT 상태 전이 사건 1건. 결정 10 「현재 1행 + 변경이력 1:N」을 되살린 전용 이력(2026-08-30) — 도식스펙03 §1.3 전이 9종(C4·C5·C6·C7·C8·C9·C10·C14·C15) 전건을 담는다. 저장 테이블(trace.lot_status_history 성격)은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-03-01 §5-1·§5-2 */
+        LotStatusHistoryEvent: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotStatusHistoryId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 값 */
+            lotNo?: string;
+            /** @description 전이 전 상태. 최초 등록 전이(C4·C6·C14)는 null */
+            fromStatusCode?: string | null;
+            toStatusCode: string;
+            /**
+             * @description 전이 9종 — 도식스펙03 §1.3 · W-03-01 §5-1 표
+             * @example C7
+             * @enum {string}
+             */
+            transitionCode: "C4" | "C5" | "C6" | "C7" | "C8" | "C9" | "C10" | "C14" | "C15";
+            /** @example 값 */
+            reason?: string | null;
+            /** @description 이 전이를 일으킨 문서 유형 — 다형 참조(공유계약 A-10) */
+            sourceDocumentTypeCode?: string | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceDocumentId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            changedBy: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            changedAt: string;
+        };
+        /** @description LOT 생명주기 전이 사건 1건(대기/활성/폐번). LotStatusHistoryEvent(품질 판정 축)와 형태를 맞춘 별도 이력 — 두 축을 한 이력에 섞지 않는다(과거 W-03-01 §8이 두 축을 헷갈려 적었던 사고 재발 방지). 저장 테이블(trace.lot_lifecycle_history 성격)은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: omf-mes-server#50 정정 회신(2026-08-31) */
+        LotLifecycleHistoryEvent: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotLifecycleHistoryId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 값 */
+            lotNo?: string;
+            /** @description 전이 전 생명주기 상태. 최초 전이(L1)는 null */
+            fromLifecycleStatusCode?: string | null;
+            toLifecycleStatusCode: string;
+            /**
+             * @description L1=대기→활성(첫 실적이 붙을 때, 해당 슬롯) · L2=대기→폐번(마감, 실적 없는 슬롯만) · L3=활성→폐번(작업지시 취소, 그 작업지시의 선발행 슬롯 전건 — DR-007). ⚠ L3를 여는 것은 취소 오퍼레이션 한 곳뿐이다 — 사람이 화면에서 직접 폐번하는 액션은 없다
+             * @example L1
+             * @enum {string}
+             */
+            transitionCode: "L1" | "L2" | "L3";
+            /** @description 이 전이를 일으킨 문서 유형 — 다형 참조(공유계약 A-10). L2=work_order_closing, L3=work_order */
+            sourceDocumentTypeCode?: string | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            sourceDocumentId?: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            changedAt: string;
+        };
+        /** @description 이 LOT 의 생산 진척. 서버가 계산해 내린다 — 화면이 각자 계산하면 완료 화면과 라벨 화면의 값이 갈린다(공유계약 L-2). 근거: P-02-04 §5 · P-02-06 §5-2 */
+        LotProgress: {
+            /**
+             * @description 이 LOT 에 배분된 양품 합계
+             * @example 480
+             */
+            goodQty: number;
+            /**
+             * @description 달성률 = goodQty ÷ 이 LOT 의 initialQty. ⚠ W/O 진행의 달성률과 분모가 다르다 — 그쪽은 W/O 지시 수량이다
+             * @example 0.96
+             */
+            achievementRate: number;
+            /**
+             * @description goodQty − 이 LOT 의 initialQty
+             * @example -20
+             */
+            varianceQty: number;
+            /**
+             * @description 미달·정상·초과. W/O 진행 스키마의 같은 이름과 값 집합이 같다
+             * @example UNDER
+             * @enum {string}
+             */
+            completionJudgmentCode: "UNDER" | "NORMAL" | "OVER";
         };
         /** @description LOT 수정. 이미 재고가 움직인 LOT 은 수량을 바꿀 수 없다 — 400 STATE_LOCKED. */
         LotUpdate: {
@@ -32329,16 +35651,18 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             requiredAt?: string | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example OPEN
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: int64
              * @example 1001
              */
             requestedBy?: number | null;
+            /**
+             * @description 요청 사유(코드형) — 2026-08-30 되살림. GET /mdm/code-values?codeGroupCode=MATERIAL_ISSUE_REQUEST_REASON. 사유별 집계는 이 값으로 한다(§9-2 목록 요약). 근거: W-02-10 §5-1
+             * @example URGENT_WO_RESPONSE
+             */
+            reasonCode?: string | null;
             /** @example 비고 문자열 */
             remarks?: string | null;
         };
@@ -32363,8 +35687,8 @@ export interface components {
              */
             requiredAt?: string | null;
             /**
-             * @description 요청 사유. ⛔ 담을 코드 컬럼이 아직 없어 remarks 로 저장된다 — 「무절차 반출 금지」를 화면이 말하지만 집계는 안 된다. 근거: omf-mes#87
-             * @example 부족분 보충
+             * @description 요청 사유(코드형) — 확정이 형태까지 지정했다(✓확정 2026-07-14 #4·#5·#7·#8 「사유 필드(코드형 — '긴급 W/O 대응' 포함) 신설」). 2026-08-30 되살림. 값 목록은 GET /mdm/code-values?codeGroupCode=MATERIAL_ISSUE_REQUEST_REASON 로 받는다 — 「긴급 W/O 대응」 포함(공유계약 G-32). 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-02-10 §5-1 · omf-mes#87
+             * @example URGENT_WO_RESPONSE
              */
             reasonCode?: string | null;
             /**
@@ -32458,6 +35782,43 @@ export interface components {
              */
             uomId: number;
         };
+        /** @description 한 W/O 의 품목별 소요·기출고·부족 한 줄 */
+        MaterialIssueShortageLine: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            bomComponentId?: number | null;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 자재 명세(BOM) 소요량 — 이 W/O 의 지시수량 기준
+             * @example 200
+             */
+            requiredQty: number;
+            /**
+             * @description 기출고 누계 — 이 W/O 앞으로 출고된 수량의 합. ⛔ 화면이 요청 건별 상세를 훑어 더하지 않는다(공유계약 L-2)
+             * @example 120
+             */
+            issuedQty: number;
+            /**
+             * @description 부족 = 소요 − 기출고. 음수면 0 으로 낸다
+             * @example 80
+             */
+            shortageQty: number;
+        };
+        /** @description 추가 자재 출고 요청 화면(W-02-10 §3 ②)의 표를 이 한 응답이 채운다 — 「BOM 소요량 불러오기」 버튼이 부르는 것이 이 경로다. 자재 명세(BOM) 조회를 화면이 따로 하지 않는다 */
+        MaterialIssueShortageList: {
+            items: components["schemas"]["MaterialIssueShortageLine"][];
+        };
         /** @description 피킹 라인. 계획 수량을 넘겨 피킹할 수 없다. 근거: M-01-08 */
         PickingLine: {
             /**
@@ -32504,10 +35865,7 @@ export interface components {
              * @example 1001
              */
             inventoryReservationId?: number | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example OPEN
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * @description 이 라인의 LOT 이 보류 중인지. 참이면 화면이 라인을 비활성으로 두고 사유를 보여준다. 근거: M-01-08 §5-8
@@ -32515,10 +35873,47 @@ export interface components {
              */
             held?: boolean;
             /**
-             * @description held 가 참일 때의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description held 가 참일 때의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example QUALITY_HOLD
              */
             holdReasonCode?: string | null;
+            /**
+             * @description 화면이 보이는 값. 식별자를 사람이 읽는 값으로 바꾸려 마스터를 다시 부르지 않게 한다 — 모바일은 오프라인에서 그 마스터를 갱신할 수 없다. 근거: M-01-08 §3
+             * @example ABC-123
+             */
+            readonly itemCode?: string;
+            /**
+             * @description 화면이 보이는 값. 근거: M-01-08 §3
+             * @example 외장 커버
+             */
+            readonly itemName?: string;
+            /**
+             * @description 화면이 보이는 값. 근거: M-01-08 §3
+             * @example 0001234500000012002607310001230007
+             */
+            readonly lotNo?: string;
+            /**
+             * @description 화면이 보이는 값. 근거: M-01-08 §3
+             * @example A-01-03
+             */
+            readonly locationCode?: string;
+            /**
+             * Format: date
+             * @description 이 라인이 가리키는 LOT 의 유효기한. FEFO 정렬 키다. 근거: M-01-08 §4-C
+             * @example 2027-07-31
+             */
+            readonly expiryDate?: string | null;
+            /**
+             * Format: date-time
+             * @description FIFO 품목 라인의 부제 표시값이자 FIFO 정렬 키. 근거: M-01-08 §4-C
+             * @example 2026-07-31T09:00:00+09:00
+             */
+            readonly manufacturedAt?: string | null;
+            /**
+             * @description 이 품목의 선출 정책상 몇 번째인가. 1 이 우선이다. 품목의 선출 정책(유효기한 관리 품목은 FEFO, 나머지는 FIFO)을 서버가 적용해 낸다 — 화면이 다시 계산하지 않는다(공유계약 L-2). 정렬 근거가 없으면 비어 온다 — 「1순위」가 아니다
+             * @example 1
+             */
+            readonly pickSequenceRank?: number | null;
         };
         /** @description 라인 하나를 피킹한다. 건별로 저장하고 마지막에 출고를 확정한다 — 중간에 통신이 끊겨도 이미 피킹한 건은 남는다. 보류 중인 LOT 이면 400 으로 막는다. 근거: M-01-08 §5-8 · 공유계약 C-3 */
         PickingLinePick: {
@@ -32556,14 +35951,11 @@ export interface components {
             /** @example PK-2026-000131 */
             pickingOrderNo: string;
             /**
-             * @description 피킹 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 피킹 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PICKING_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MATERIAL
              */
             pickingTypeCode: string;
-            /**
-             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example MATERIAL_ISSUE_REQUEST
-             */
+            /** @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             sourceDocumentTypeCode: string;
             /**
              * Format: int64
@@ -32575,10 +35967,7 @@ export interface components {
              * @example 1001
              */
             warehouseId: number;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example OPEN
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: int64
@@ -32648,10 +36037,7 @@ export interface components {
              * @example 2026-08-06
              */
             expectedReceiptDate?: string | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example DRAFT
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: int64
@@ -32847,14 +36233,17 @@ export interface components {
             appliedPutawayRuleId?: number | null;
             /**
              * Format: int64
-             * @description 실제 적치된 위치. 완료되면 반드시 채워진다
+             * @description 실제 적치된 위치. 완료되면 반드시 채워지며, 재고 잔액의 위치 축이 이 값을 따른다
              * @example 1001
              */
             actualLocationId?: number | null;
             /**
-             * @description 이 지시가 속한 창고의 위치 관리 수준. 위치 스캔을 요구할지가 이 값으로 갈린다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example CELL
+             * Format: int64
+             * @description 적치 «목적» 창고. GET /mdm/locations?warehouseId= 가 이 값을 required 로 받으므로 지시가 실어 내린다 — fromLocationId(입하장·하역장)는 다른 창고일 수 있어 대신 쓸 수 없다. 근거: M-01-05 §5-3 · M-01-07 §5-5
+             * @example 1001
              */
+            warehouseId: number;
+            /** @description 이 지시가 속한 창고의 위치 관리 수준. 위치 스캔을 요구할지가 이 값으로 갈린다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             warehouseManagementLevelCode?: string;
             /**
              * @default 100
@@ -32866,10 +36255,7 @@ export interface components {
              * @example 1001
              */
             assignedWorkerId?: number | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example ASSIGNED
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: date-time
@@ -32915,7 +36301,7 @@ export interface components {
              */
             actualLocationId: number;
             /**
-             * @description 임시 적재 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 임시 적재 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PUTAWAY_TASK_TEMPORARY_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NO_SPACE
              */
             reasonCode?: string | null;
@@ -32952,7 +36338,7 @@ export interface components {
             lotId: number;
             /**
              * @description 서버가 매긴 번호
-             * @example LOT-2026-000045
+             * @example 0001234500000012002607310001230007
              */
             lotNo: string;
             /**
@@ -33061,11 +36447,10 @@ export interface components {
              * @example 1001
              */
             receivedBy?: number | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example CONFIRMED
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
+            /** @description 이 수령 전표의 라인. 목록 응답도 라인을 함께 싣는다 — 한 W/O 에 수령 전표가 여러 건 서므로 라인을 보려고 전표마다 상세를 다시 부르면 1+N 왕복이 된다. 근거: P-02-03 §3 · M-01-09 §4-B */
+            readonly lines?: components["schemas"]["ShopfloorReceiptLine"][];
         };
         /** @description 생산창고 입고 확정. 화면이 「입고 확정」 한 버튼이므로 등록이 곧 확정이다. 근거: M-01-09 §5-6 */
         ShopfloorReceiptCreate: {
@@ -33135,6 +36520,21 @@ export interface components {
              * @example 1001
              */
             lotId: number;
+            /**
+             * @description 화면이 보이는 값. 식별자를 사람이 읽는 값으로 바꾸려 마스터를 다시 부르지 않게 한다 — POP 은 오프라인에서 그 마스터를 갱신할 수 없다. 근거: P-02-03 §3 · 공유계약 C-6
+             * @example ABC-123
+             */
+            readonly itemCode?: string;
+            /**
+             * @description 화면이 보이는 값. 근거: P-02-03 §3 · 공유계약 C-6
+             * @example 외장 커버
+             */
+            readonly itemName?: string;
+            /**
+             * @description 화면이 보이는 값. 근거: P-02-03 §3 · 공유계약 C-6
+             * @example 0001234500000012002607310001230007
+             */
+            readonly lotNo?: string;
             /** @example 100 */
             issuedQty: number;
             /**
@@ -33153,7 +36553,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이 사유. 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 차이 사유. 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example SPILL
              */
             varianceReasonCode?: string | null;
@@ -33185,7 +36585,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example SPILL
              */
             varianceReasonCode?: string | null;
@@ -33199,10 +36599,7 @@ export interface components {
             stockTransferId: number;
             /** @example ST-2026-000260 */
             stockTransferNo: string;
-            /**
-             * @description 이동 유형. 일반 이동과 불량 반출을 가른다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example NORMAL
-             */
+            /** @description 이동 유형. 일반 이동과 불량 반출을 가른다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             transferTypeCode: string;
             /**
              * Format: int64
@@ -33241,15 +36638,9 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             receivedAt?: string | null;
-            /**
-             * @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2
-             * @example IN_TRANSIT
-             */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
-            /**
-             * @description 불량 반출·분실 사유. ⛔ 물리 모델에 아직 없다 — 같은 성격의 putaway_task(적치 사유)는 이미 있는데 이 테이블만 없다. 근거: 공유계약 §I-41 · omf-mes#84
-             * @example 값
-             */
+            /** @description 불량 반출·분실 사유. ⛔ 물리 모델에 아직 없다 — 같은 성격의 putaway_task(적치 사유)는 이미 있는데 이 테이블만 없다. 근거: 공유계약 §I-41 · omf-mes#84 */
             reasonCode?: string | null;
         };
         /** @description 도착 확정. 반출한 수량 이하만 받을 수 있다. 근거: M-01-10 §5-6 */
@@ -33285,10 +36676,7 @@ export interface components {
         };
         /** @description 반출 등록. 반출 스캔이 곧 이동 문서를 만드는 행위이므로 생성과 반출이 한 오퍼레이션이다 — 둘로 나누면 오프라인 큐에 반출 전 상태가 남는다. 근거: M-01-10 §5-6 */
         StockTransferCreate: {
-            /**
-             * @description 이동 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
-             * @example NORMAL
-             */
+            /** @description 이동 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
             transferTypeCode: string;
             /**
              * Format: int64
@@ -33748,10 +37136,7 @@ export interface components {
         };
         /** @description 무엇을 대상으로 발행했는가. targetType 을 먼저 보고 판정한다 — 개체 단위 출력물은 targetId 와 lotId 가 서로 다른 것을 가리킨다. */
         DocumentTarget: {
-            /**
-             * @description 대상 유형. 이 값이 targetId 의 해석을 정한다.
-             * @example LOT
-             */
+            /** @description 대상 유형. 이 값이 targetId 의 해석을 정한다. LOT → 자재·생산·제품 로트 · 개체 → 개체 일련번호 · 포장 → 취급 단위 · 출고 라인 → 출고 전표 라인 · 툴 → 툴·금형 마스터 · Location → 위치 마스터 · 검사 결과 → 검사 결과. ⚠ 값 문자열은 아직 확정되지 않았다 — 화면은 유형 선택을 비활성으로 두고 사유를 보인다. ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다 */
             targetTypeCode: string;
             /**
              * Format: int64
@@ -33763,10 +37148,7 @@ export interface components {
              * @example LOT-SAMPLE-0001
              */
             displayName: string;
-            /**
-             * @description 이 대상을 여는 화면. 목록에서 원본으로 이동할 때 쓴다.
-             * @example P-02-07
-             */
+            /** @description 이 대상을 여는 화면. 목록에서 원본으로 이동할 때 쓴다. 값이 없으면 화면은 「대상으로 이동」을 열지 않는다 — 서버가 열 화면을 정하지 못하면 이 키를 생략한다(널을 보내지 않는다). */
             screenId?: string;
         };
         /** @description 발행 기록 한 건. 회차가 오르면 새 행이고 이전 회차는 남는다. */
@@ -33776,10 +37158,7 @@ export interface components {
              * @example 44001
              */
             documentIssueLogId: number;
-            /**
-             * @description 출력물 종류(라벨·검사성적서·추적보고서 등).
-             * @example LABEL
-             */
+            /** @description 출력물 종류(라벨·검사성적서·추적보고서 등). */
             documentTypeCode: string;
             target: components["schemas"]["DocumentTarget"];
             /**
@@ -33795,10 +37174,7 @@ export interface components {
              * @example 2
              */
             issueSeq: number;
-            /**
-             * @description 재발행 사유. 회차가 2 이상이면 반드시 있다.
-             * @example PRINT_FAILED
-             */
+            /** @description 재발행 사유. 회차가 2 이상이면 반드시 있다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=REISSUE_REASON 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             reissueReasonCode?: string | null;
             /** @example 인쇄 실패 */
             reissueReasonName?: string | null;
@@ -33832,22 +37208,11 @@ export interface components {
             /** @example null */
             remarks?: string | null;
         };
-        /** @description 발행 요청. 대상이 여럿이면 한 번에 보낸다 — 개체 단위 출력물은 수백 건이 한 작업이라 건별 호출로 나누면 부분 실패가 생긴다. */
+        /** @description 발행 요청. 대상이 여럿이면 한 번에 보낸다 — 개체 단위 출력물은 수백 건이 한 작업이라 건별 호출로 나누면 부분 실패가 생긴다. 단말은 요청을 인증한 단말 토큰에서 서버가 푼다 — 화면이 보내지 않는다. */
         DocumentIssueCreate: {
-            /** @example LABEL */
             documentTypeCode: string;
-            /**
-             * @description 한 트랜잭션으로 처리한다. 하나라도 실패하면 전건 실패다.
-             * @example [
-             *       {
-             *         "targetTypeCode": "SERIAL",
-             *         "targetId": 771205,
-             *         "lotId": 90101
-             *       }
-             *     ]
-             */
+            /** @description 한 트랜잭션으로 처리한다. 하나라도 실패하면 전건 실패다. */
             targets: {
-                /** @example SERIAL */
                 targetTypeCode: string;
                 /**
                  * Format: int64
@@ -33863,15 +37228,9 @@ export interface components {
             /**
              * @description 재발행 사유. 대상 중 하나라도 이미 발행된 것이 있으면 **필수**다 — 없으면 422 다.
              *
-             *     신규와 재발행이 섞여 들어와도 **한 번만 받는다.** 서버는 회차가 2 이상인 기록에만 이 값을 남긴다 — 신규 기록에 재발행 사유가 붙으면 이력이 거짓이 된다.
-             * @example PRINT_FAILED
+             *     신규와 재발행이 섞여 들어와도 **한 번만 받는다.** 서버는 회차가 2 이상인 기록에만 이 값을 남긴다 — 신규 기록에 재발행 사유가 붙으면 이력이 거짓이 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=REISSUE_REASON 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              */
             reissueReasonCode?: string | null;
-            /**
-             * Format: int64
-             * @example 210
-             */
-            terminalId?: number | null;
             /** @example label-printer-a */
             printerName?: string | null;
             /** @example null */
@@ -33930,7 +37289,6 @@ export interface components {
         };
         /** @description 대상 하나의 발행 현황 요약. 목록 화면이 행마다 「이미 발행됐는가 · 몇 회차인가」를 판정하는 입력이다. */
         DocumentIssueSummary: {
-            /** @example HANDLING_UNIT */
             targetTypeCode: string;
             /**
              * Format: int64
@@ -34008,6 +37366,8 @@ export interface components {
             /** @description 권한 범위는 사업부·공장 두 축이다. 근거: W-CO-01 §5-3 */
             scopes: components["schemas"]["SessionScope"][];
             roles?: string[];
+            /** @description 이 사용자가 지금 가진 기능 권한 코드 전부. 부여된 역할들의 권한을 서버가 합집합으로 풀어 내린다 — 화면이 역할에서 권한을 다시 계산하지 않는다. 화면은 이 배열로 액션을 활성·비활성한다: 403 을 받아 보고 아는 것이 아니라 «누르기 전에» 판정한다. ⚠ 이 필드가 «없으면» 값 목록이 아직 정해지지 않았다는 뜻이다 — 그때 화면은 판정하지 않고 컨트롤을 비활성으로 두고 사유를 보인다. 빈 배열은 「아무 기능 권한도 없다」이며 「모른다」가 아니다. */
+            permissions?: string[];
         };
         SessionScope: {
             /**
@@ -34037,9 +37397,12 @@ export interface components {
              * @example 1001
              */
             notificationId: number;
-            /** @description 무슨 일이 일어났나. 목록은 이벤트 조회 경로가 준다 */
+            /** @description 무슨 일이 일어났나. 목록은 이벤트 조회 경로가 준다 목록 항목의 첫 줄(제목)은 이벤트명이다 — 이 코드로 GET /app/notification-events 의 eventName 을 찾아 쓴다. */
             eventCode: string;
-            /** @example 출하검사에서 불합격이 나왔습니다 */
+            /**
+             * @description 목록 항목의 둘째 줄(본문). 서버가 만든다. ⛔ 화면이 한 문자열을 쪼개지도 조립하지도 않는다.
+             * @example PRS-01 프레스 1호기 · 유압 누유
+             */
             message: string;
             /**
              * Format: date-time
@@ -34048,13 +37411,25 @@ export interface components {
             occurredAt: string;
             /** @example false */
             read: boolean;
-            /** @description 무엇에 대한 알림인가. LOT → trace.lot · WORK_ORDER → production.work_order · NONCONFORMANCE → quality.nonconformance · APPROVAL_REQUEST → app.approval_request. ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다 */
+            /** @description 무엇에 대한 알림인가. EQUIPMENT → 설비(설비 고장 발생) · MOLD → 툴·금형(적정타수 초과) · INSTRUMENT → 계측기(검교정 만료 임박) · PURCHASE_ORDER → 구매발주(P/O 변경 수신) · INTEGRATION_SYNC → 연계 메시지(연계 실패) · APPROVAL_REQUEST → 승인 요청(승인 요청·결재 도착) · LOT / WORK_ORDER / NONCONFORMANCE — ⚠ 대응 이벤트가 알림센터 목록에 아직 없다. ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다 */
             targetTypeCode?: string;
             /**
              * Format: int64
              * @example 1001
              */
             targetId?: number;
+            /** @description 대상을 여는 화면 ID. 프런트가 「유형 → 화면」 표를 갖지 않는다. 서버가 열 화면을 정하지 못하면 이 키를 생략한다 */
+            screenId?: string | null;
+            /**
+             * @description 열 화면이 없으면 거짓. 화면은 링크를 만들지 않고 원본 코드를 그대로 보인다
+             * @example true
+             */
+            openable: boolean;
+            /**
+             * @description 알람 위치를 «계층 텍스트»로 준다. 통합 대시보드의 알람 항목 둘째 줄이 이 값이다 — 평면 배치·도면 구획을 쓰지 않는다
+             * @example 1공장 > A라인 > 사출기 3호
+             */
+            locationPath?: string | null;
         };
         /** @description 알림 이벤트 목록. ⭐ 이 목록의 정본은 계약이다 — 공통코드 마스터에 두면 편집 가능해지는데, 코드가 바뀌면 보내는 쪽이 깨진다. 근거: W-CO-03 §8-3 */
         NotificationEvent: {
@@ -34110,8 +37485,12 @@ export interface components {
             title: string;
             /** @example 8월 20일 09:00~12:00 사이 2호기 정기 보전이 있습니다. */
             body?: string;
-            /** @description 작성 중 · 게시 중 · 종료 */
-            statusCode: string;
+            /**
+             * @description 서버가 «파생»한다. 저장 컬럼이 아니다. DRAFT = 아직 게시하지 않았다(publishedAt 이 비어 있다) · SCHEDULED = 게시됐고 오늘 < 시작일 · PUBLISHED = 시작일 ≤ 오늘 ≤ 종료일 · CLOSED = 종료일 < 오늘. 「내려버리기」는 상태를 바꾸는 것이 아니라 종료일을 오늘로 당기는 것이다
+             * @example PUBLISHED
+             * @enum {string}
+             */
+            statusCode: "DRAFT" | "SCHEDULED" | "PUBLISHED" | "CLOSED";
             /**
              * Format: date
              * @example 2026-08-13
@@ -34129,8 +37508,11 @@ export interface components {
             acknowledgeRequired?: boolean;
             /** @example 12 */
             acknowledgedCount?: number;
-            /** @example 30 */
-            targetCount?: number;
+            /**
+             * @description 확인 대상 인원 수(분모). ⚠ scopeCode=WORK_ORDER 이면 «비운다» — 작업지시에 사람을 배정하는 자리가 없어 분모를 셀 수 없다. 화면은 분자만 「3명」으로 보인다. ⛔ 0 을 내려보내지 않는다 — 「셀 수 없음」과 「아무도 안 봤음」이 구분되지 않는다.
+             * @example 30
+             */
+            targetCount?: number | null;
             /**
              * Format: date-time
              * @example 2026-08-13T09:12:00+09:00
@@ -34143,6 +37525,23 @@ export interface components {
             createdBy?: number;
             /** @example 1 */
             versionNo?: number;
+            /**
+             * @description 누가 대상인가. COMPANY = 전사(새 계정도 자동 포함된다) · WORK_ORDER = 그 작업지시에 걸린 사람. ⚠ 1차는 COMPANY·WORK_ORDER 만 유효하다 — 나머지는 400(code=SCOPE_NOT_SUPPORTED)
+             * @example COMPANY
+             * @enum {string}
+             */
+            scopeCode: "COMPANY" | "WORK_ORDER" | "BUSINESS_UNIT" | "EQUIPMENT_GROUP" | "WORK_SHIFT";
+            /**
+             * Format: int64
+             * @description scopeCode=WORK_ORDER 일 때 필수. 둘의 짝이 어긋나면 400(code=PAIR)
+             * @example 55021
+             */
+            targetWorkOrderId?: number | null;
+            /**
+             * @description 표시용 작업지시 번호. 목록의 「W/O-…」 표기가 이 값이다
+             * @example W/O-2026-0812
+             */
+            targetWorkOrderNo?: string | null;
         };
         NoticeCreate: {
             /** @example 8월 정기 보전 안내 */
@@ -34161,8 +37560,20 @@ export interface components {
             endDate?: string;
             /** @example true */
             acknowledgeRequired?: boolean;
+            /**
+             * @description 누가 대상인가. COMPANY = 전사(새 계정도 자동 포함된다) · WORK_ORDER = 그 작업지시에 걸린 사람. ⚠ 1차는 COMPANY·WORK_ORDER 만 유효하다 — 나머지는 400(code=SCOPE_NOT_SUPPORTED)
+             * @example COMPANY
+             * @enum {string}
+             */
+            scopeCode: "COMPANY" | "WORK_ORDER" | "BUSINESS_UNIT" | "EQUIPMENT_GROUP" | "WORK_SHIFT";
+            /**
+             * Format: int64
+             * @description scopeCode=WORK_ORDER 일 때 필수. 둘의 짝이 어긋나면 400(code=PAIR)
+             * @example 55021
+             */
+            targetWorkOrderId?: number | null;
         };
-        /** @description 누가 확인했고 누가 아직 안 했나. 근거: W-CO-04 「미확인자 보기」 */
+        /** @description 누가 확인했고 누가 아직 안 했나. 근거: W-CO-04 「미확인자 보기」 관리웹에서 확인하면 userId·userName 이, 현장 단말에서 확인하면 workerNo·workerName 이 온다 — 현장 작업자는 계정을 갖지 않는다. 서버가 인증 토큰의 종류로 가른다. */
         NoticeAcknowledgement: {
             /**
              * Format: int64
@@ -34175,9 +37586,14 @@ export interface components {
             acknowledged: boolean;
             /**
              * Format: date-time
+             * @description ⭐ 이 시각은 «닫기»로 남은 행에도 찍힌다. 확인=참·시각 있음 = 확인 / 확인=거짓·시각 있음 = 열람(미확인) / 행이 없음 = 미확인. 셋을 같은 모양으로 그리지 않는다.
              * @example 2026-08-13T09:12:00+09:00
              */
             acknowledgedAt?: string;
+            /** @description 현장 단말에서 확인했으면 사번이 온다 */
+            workerNo?: string | null;
+            /** @description workerNo 와 짝이다 */
+            workerName?: string | null;
         };
         /** @description 경영·생산 한눈 보기. ⭐ 카드마다 소유 화면이 따로 있고 이 경로는 «숫자만» 모은다 — 클릭하면 그 화면으로 넘어간다. 근거: W-CO-05 §5 */
         DashboardSummary: {
@@ -34194,6 +37610,39 @@ export interface components {
             cards: components["schemas"]["DashboardCard"][];
             /** @description 최근 알람 — 클릭하면 알림센터로 간다 */
             alerts?: components["schemas"]["Notification"][];
+            /**
+             * Format: date-time
+             * @description 서버 집계 기준 시각 — 화면이 「기준 HH:MM」 으로 보인다. 브라우저 수신 시각이 아니다
+             * @example 2026-08-24T09:12:00+09:00
+             */
+            asOf: string;
+            /** @description 일일 생산실적 추이. 목표선은 targetValue 다 */
+            trend?: {
+                /** @example 일일 생산실적 */
+                seriesName?: string;
+                /** @example EA */
+                unit?: string;
+                /**
+                 * Format: double
+                 * @example 3000
+                 */
+                targetValue?: number | null;
+                points: {
+                    /** @example 08-11 */
+                    label: string;
+                    /**
+                     * Format: double
+                     * @example 2850
+                     */
+                    value: number;
+                }[];
+                /**
+                 * Format: date-time
+                 * @description 서버 집계 기준 시각 — 화면이 「기준 HH:MM」 으로 보인다. 브라우저 수신 시각이 아니다
+                 * @example 2026-08-24T09:12:00+09:00
+                 */
+                asOf: string;
+            };
         };
         DashboardCard: {
             /** @description 어느 지표인가. 화면이 이 코드로 드릴다운 대상을 안다 */
@@ -34209,6 +37658,20 @@ export interface components {
              * @example 0.08
              */
             deltaRatio?: number;
+            /** @description 카드 «아래 본문»으로 그릴 한 줄. 분모가 온전하지 않은 지표는 여기에 그 사실을 담는다(예: 「시간가동률은 교대 시간 기준입니다 — 휴일·계획 정지가 반영되지 않았습니다」). ⛔ 툴팁이 아니다 */
+            note?: string | null;
+            /**
+             * @description NOT_YET 이면 화면이 0 이 아니라 「아직 없음」을 그린다 · PARTIAL 이면 excludedCount 를 함께 보인다
+             * @default AVAILABLE
+             * @example AVAILABLE
+             * @enum {string}
+             */
+            valueStatusCode: "AVAILABLE" | "NOT_YET" | "PARTIAL";
+            /**
+             * @description 분모에서 제외한 건수. 화면이 「N품목 제외」로 적는다
+             * @example 3
+             */
+            excludedCount?: number | null;
         };
         /** @description 운영 정책 한 건. 표 하나를 여러 화면이 쓰고 뜻은 policyCode 가 정한다. 범위 축은 넷 다 비울 수 있고 비면 전체를 뜻한다. 여럿이 동시에 맞으면 더 좁은 것이 이기며 축 우선순위는 품목 · 공정 · 공장 · 사업부 차례다. 이 판정은 서버가 하고 화면은 effective 경로로 결과를 받는다. 값 칸은 셋 중 하나만 쓴다. 물리 제약은 「셋 중 하나 이상」이라 셋 다 채워도 통과하지만, 어느 칸을 쓰는지는 정책 코드가 정한다 — 쓰지 않는 칸을 채우면 읽는 쪽이 헷갈린다. 근거: W-05-01 §5-A */
         OperationPolicy: {
@@ -34218,11 +37681,11 @@ export interface components {
              */
             operationPolicyId: number;
             /**
-             * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다
+             * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다 FIFO_ENFORCEMENT_LEVEL = 선출(FEFO/FIFO) 위반을 어떻게 다루는가(valueText · BLOCK | WARN | OFF). 「선택적 적용 + 강제 옵션」 요구를 담고 화면은 기본 WARN 으로 시작한다.
              * @example SHOT_CONVERSION_RATIO
              * @enum {string}
              */
-            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL";
+            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL" | "FIFO_ENFORCEMENT_LEVEL";
             /**
              * Format: int64
              * @example 1001
@@ -34264,11 +37727,11 @@ export interface components {
         /** @description 값 칸은 셋 중 하나만 쓴다. 물리 제약은 「셋 중 하나 이상」이라 셋 다 채워도 통과하지만, 어느 칸을 쓰는지는 정책 코드가 정한다 — 쓰지 않는 칸을 채우면 읽는 쪽이 헷갈린다. 범위 축은 넷 다 비울 수 있고 비면 전체를 뜻한다. 여럿이 동시에 맞으면 더 좁은 것이 이기며 축 우선순위는 품목 · 공정 · 공장 · 사업부 차례다. 이 판정은 서버가 하고 화면은 effective 경로로 결과를 받는다 */
         OperationPolicyCreate: {
             /**
-             * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다
+             * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다 FIFO_ENFORCEMENT_LEVEL = 선출(FEFO/FIFO) 위반을 어떻게 다루는가(valueText · BLOCK | WARN | OFF). 「선택적 적용 + 강제 옵션」 요구를 담고 화면은 기본 WARN 으로 시작한다.
              * @example SHOT_CONVERSION_RATIO
              * @enum {string}
              */
-            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL";
+            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL" | "FIFO_ENFORCEMENT_LEVEL";
             /**
              * Format: int64
              * @example 1001
@@ -34333,7 +37796,7 @@ export interface components {
              * @example SHOT_CONVERSION_RATIO
              * @enum {string}
              */
-            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL";
+            policyCode: "SHOT_CONVERSION_ENABLED" | "SHOT_CONVERSION_RATIO" | "MINOR_STOP_THRESHOLD_MINUTES" | "PRECHECK_CONTROL_LEVEL" | "FIFO_ENFORCEMENT_LEVEL";
             /**
              * @description 거짓이면 맞는 정책이 없다. 화면은 기본값을 지어내 그리지 않고 「적용 정책 없음」으로 밝힌다
              * @example true
@@ -34355,6 +37818,40 @@ export interface components {
              * @example ITEM
              */
             matchedScopeCode?: string | null;
+        };
+        /** @description 다형 참조다 — 창고 도면과 공지 첨부가 현재 사용처다. */
+        Attachment: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            attachmentId: number;
+            /** @description 무엇에 붙은 첨부인가. ⚠ 값 문자열은 아직 확정되지 않았다. */
+            targetTypeCode: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            targetId: number;
+            /** @example layout.png */
+            fileName: string;
+            /** @example image/png */
+            contentType: string;
+            /**
+             * Format: int64
+             * @example 204800
+             */
+            byteSize: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-13T09:12:00+09:00
+             */
+            uploadedAt: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uploadedBy?: number | null;
         };
         /** @description 작업 전 점검 통제를 우회하고 시작할 때 함께 보낸다. 서버가 세션과 work_session_event(통제 우회)를 한 트랜잭션으로 만든다. 별도 액션을 두지 않는 이유는 「우회만 하고 세션을 안 여는」 상태를 없애기 위함이다. 근거: QA #9 · P-02-02 §4 · 공유계약 F-6 */
         ControlOverride: {
@@ -34403,10 +37900,7 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /**
-             * @description 정상·재생재·대체
-             * @example NORMAL
-             */
+            /** @description 투입 유형. 물리 컬럼은 production.material_consumption.consumption_type_code 다. ⛔ 뜻 목록(정상·재생재·대체)은 축 정합화 전의 잠정 서술이라 코드값이 아니다 — 「재생재」는 품목 축, 「대체·교체」는 구조 축(replacedConsumptionId)에 이미 자리가 있다. 값 목록은 아직 확정 전이다 — 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. */
             consumptionTypeCode: string;
             /**
              * Format: int64
@@ -34495,11 +37989,13 @@ export interface components {
             workSessionId?: number;
             /**
              * Format: int64
+             * @description 출고 귀속. 스캔한 자재가 이 W/O 의 생산창고 입고 라인에서 온 것이면 서버가 그 라인을 잇는다 — 비어 있어도 투입은 선다(출고 귀속 무관). 화면은 이 값을 보내지 않는다.
              * @example 1001
              */
             shopfloorReceiptLineId?: number;
             /**
              * Format: int64
+             * @description 오투입 판정의 근거. 화면은 이 값을 보내지 않는다 — 서버가 이 W/O 의 자재 명세에서 찾아 채우고, 찾지 못하면 명세에 없는 품목이므로 거절한다.
              * @example 1001
              */
             bomComponentId?: number;
@@ -34520,6 +38016,7 @@ export interface components {
             consumptionTypeCode?: string;
             /**
              * Format: int64
+             * @description 교차 투입에서 실제로 사용한 공정. 화면은 이 값을 보내지 않는다 — 서버가 이 W/O 의 공정으로 채운다. 다른 공정용 자재를 써도 막지 않고 기록만 한다.
              * @example 1001
              */
             actualUseProcessId?: number;
@@ -34863,7 +38360,7 @@ export interface components {
             repairResultCode?: "SUCCEEDED" | "FAILED" | null;
             /**
              * Format: int64
-             * @description ⭐ 재투입 참조 필드 — 수리분이 합류한 생산LOT. 원 LOT 이 아니다(M-02-02 §5-4). 재투입 등록 화면이 나중에 채운다
+             * @description ⭐ 재투입 참조 필드 — 수리분이 합류한 생산LOT. 원 LOT 이 아니다(M-02-02 §5-4). ⚠ 지금은 채워지지 않는다 — 이 값을 실을 쓰기가 계약에 없다(:return 본문은 returnedAt·repairResultCode 둘뿐이고 이 자원에 PUT·PATCH 가 없다). 재투입 등록을 어느 화면이 하는지가 정해지면 그때 경로를 세운다.
              * @example 1001
              */
             reintroducedLotId?: number | null;
@@ -34878,7 +38375,7 @@ export interface components {
              */
             workerNo?: string | null;
         };
-        /** @description 수리 투입 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다 */
+        /** @description 수리 투입 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다. 단말은 요청을 인증한 단말 토큰에서 서버가 푼다 — 화면이 보내지 않는다. */
         RepairExecutionCreate: {
             /**
              * Format: int64
@@ -34903,11 +38400,6 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /**
-             * Format: int64
-             * @example 1001
-             */
-            terminalId?: number | null;
         };
         /** @description 수리 반출 요청 */
         RepairExecutionReturn: {
@@ -34935,10 +38427,7 @@ export interface components {
             productionOrderId: number;
             /** @example 값 */
             productionOrderNo: string;
-            /**
-             * @description ERP 수신 원번호
-             * @example WO-2026-0812-001
-             */
+            /** @description ERP 수신 원번호 */
             erpOrderNo?: string;
             /**
              * Format: int64
@@ -34977,8 +38466,26 @@ export interface components {
              * @example 2026-08-11
              */
             dueDate?: string;
-            /** @example 값 */
+            /** @description P/O 상태. ⚠ 값 목록은 아직 확정 전이다 — 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. */
             statusCode: string;
+            /**
+             * Format: date-time
+             * @description 관리자가 이 P/O 변경을 확인한 시각. 비어 있으면 미확인이다 — GET /planning/production-orders 의 unacknowledgedOnly 가 이 값으로 판정한다
+             * @example 2026-08-11T09:12:00+09:00
+             */
+            acknowledgedAt?: string;
+            /**
+             * Format: int64
+             * @description 마지막으로 확인한 사용자
+             * @example 1001
+             */
+            acknowledgedBy?: number;
+            /**
+             * @description 마지막 확인의 판정 — 반영 / 강행. ProductionOrderAcknowledge.decisionCode 와 같은 값 집합이다
+             * @example APPLY
+             * @enum {string}
+             */
+            acknowledgeDecisionCode?: "APPLY" | "PROCEED";
             /** @example 값 */
             remarks?: string;
             /** @example 1 */
@@ -35115,10 +38622,7 @@ export interface components {
              * @example 1001
              */
             sourcePlanId?: number;
-            /**
-             * @description 러닝체인지 분할 사유
-             * @example NORMAL
-             */
+            /** @description 러닝체인지 분할 사유. 값 목록은 공통코드 마스터가 갖는다 — 공통코드 그룹 이름은 PRODUCTION_PLAN_SPLIT_REASON 이다. ⛔ 화면이 이 값을 로직에 박지 않는다. */
             reasonCode?: string;
         };
         ProductionPlanUpdate: {
@@ -35211,7 +38715,7 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /** @example 값 */
+            /** @description 실적을 무엇이 만들었는가 — 수기 입력 · IoT 자동수집. ⚠ 값 목록·그룹 이름 모두 미확정 — 정해질 때까지 화면은 선택칸을 비활성 + 사유 표시로 둔다. 확정되면 GET /mdm/code-values?codeGroupCode=… 로 받는다. ⛔ enum 으로 못박지 않는다. */
             resultSourceCode: string;
             /**
              * Format: date-time
@@ -35328,7 +38832,7 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /** @example 값 */
+            /** @description 실적을 무엇이 만들었는가 — 수기 입력 · IoT 자동수집. ⚠ 값 목록·그룹 이름 모두 미확정 — 정해질 때까지 화면은 선택칸을 비활성 + 사유 표시로 둔다. 확정되면 GET /mdm/code-values?codeGroupCode=… 로 받는다. ⛔ enum 으로 못박지 않는다. */
             resultSourceCode: string;
             /**
              * Format: date-time
@@ -35436,6 +38940,44 @@ export interface components {
             /** @example 값 */
             message: string;
         };
+        /** @description W/O 4M 계획 배정 한 건. 결정 04 R23·R24를 되살린 자원(2026-08-30) — 자원 유형당 N개 배정을 받아 work_order 계획 컬럼 5개의 「자원 유형당 1개」 표현력 제약을 벗는다. 저장 테이블은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-02-03 §5-1 */
+        WorkOrderResourcePlan: {
+            /**
+             * Format: int64
+             * @description 배정 No — surrogate(R23)
+             * @example 1001
+             */
+            workOrderResourcePlanId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            workOrderId: number;
+            /**
+             * @description 자원 유형 — R23
+             * @example EQUIPMENT
+             * @enum {string}
+             */
+            resourceTypeCode: "EQUIPMENT" | "WORKER" | "MOLD";
+            /**
+             * Format: int64
+             * @description resourceTypeCode 에 따라 equipment_id·worker_id·mold_id 중 하나를 가리킨다
+             * @example 1001
+             */
+            resourceId: number;
+        };
+        WorkOrderResourcePlanCreate: {
+            /**
+             * @example EQUIPMENT
+             * @enum {string}
+             */
+            resourceTypeCode: "EQUIPMENT" | "WORKER" | "MOLD";
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            resourceId: number;
+        };
         ValidationReport: {
             /**
              * @description BLOCK 이 하나도 없으면 true
@@ -35443,6 +38985,15 @@ export interface components {
              */
             passed: boolean;
             findings: components["schemas"]["ValidationFinding"][];
+        };
+        /** @description 4M 배정 유효성 점검의 요약. 상세 findings 는 GET /production/work-orders/{workOrderId}/validation 이 낸다. */
+        ValidationSummary: {
+            /** @example true */
+            passed: boolean;
+            /** @example 0 */
+            blockCount: number;
+            /** @example 2 */
+            warnCount: number;
         };
         WorkOrder: {
             /**
@@ -35566,10 +39117,7 @@ export interface components {
              *     }
              */
             operationSettingsSnapshot?: Record<string, never>;
-            /**
-             * @description 편성 → 확정 → 배포 → 진행 → 완료 → 마감. 중단↕재개 반복. 취소가 값으로 붙는다. ⚠ 진행불가(자원 유효성 NG — 해소되면 배포로 복귀)도 결정 14 그래프의 노드다(W-02-03 §5 · W-02-04 §5 가 쓴다). ⚠ 코드 문자열은 아직 확정되지 않았다 — 뜻과 식별자는 다른 산출물이다(공유계약 G-32 v3.4). ⛔ 화면이 이 값을 로직에 흩어 박지 않는다 — 한 곳에 모아 두고 그 한 곳만 참조한다(omf-mes#247). 근거: ✓설계확정 결정 14 · 예외 E-4 ④
-             * @example 값
-             */
+            /** @description 편성 → 확정 → 배포 → 진행 → 완료 → 마감. 중단↕재개 반복. 취소가 값으로 붙는다. ⚠ 진행불가(자원 유효성 NG — 해소되면 배포로 복귀)도 결정 14 그래프의 노드다(W-02-03 §5 · W-02-04 §5 가 쓴다). ⚠ 코드 문자열은 아직 확정되지 않았다 — 뜻과 식별자는 다른 산출물이다(공유계약 G-32 v3.4). ⛔ 화면이 이 값을 로직에 흩어 박지 않는다 — 한 곳에 모아 두고 그 한 곳만 참조한다(omf-mes#247). 근거: ✓설계확정 결정 14 · 예외 E-4 ④ ⭐ 「확정 대기」는 저장하는 상태 값이 아니다 — 아직 배포되지 않은 편성 W/O 를 가리키는 화면 용어이며, 상태는 :release 가 「확정」으로 한 번에 옮긴다. 화면이 별도 전이를 부르지 않는다. */
             statusCode: string;
             /**
              * Format: date-time
@@ -35588,12 +39136,44 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             closedAt?: string;
+            /**
+             * @description ERP 생산 실적 송신 메시지가 대기열에 적재됐는지. 적재이지 전송이 아니다 — 직후에 기간계에서 조회하면 아직 없을 수 있다. 마감 전에는 비어 있다
+             * @example true
+             */
+            erpMessageQueued?: boolean | null;
             /** @example 값 */
             remarks?: string;
+            /**
+             * Format: int64
+             * @description 이 W/O 가 매인 P/O. 서버가 계획을 경유해 잇는다
+             * @example 1001
+             */
+            productionOrderId?: number;
+            /**
+             * @description P/O 번호 — 목록의 「P/O」 열이 쓴다
+             * @example PO-2026-0812-001
+             */
+            productionOrderNo?: string;
+            /**
+             * @description 공정명 — 목록의 「공정」 열이 쓴다
+             * @example 사출
+             */
+            routingOperationName?: string;
+            /**
+             * @description 품목 코드 — 목록의 「품목」 열이 쓴다
+             * @example ITM-0001
+             */
+            itemCode?: string;
+            /**
+             * @description P/O 와 어긋난 채 강행된 W/O 인가. 관리자가 「기존 유지(강행)」를 고르면 서버가 참으로 세운다. 마감 화면이 이 값으로 경고를 낸다. ⛔ 화면이 스스로 계산하지 않는다
+             * @example false
+             */
+            poMismatch?: boolean;
             /** @example 1 */
             versionNo?: number;
             progress?: components["schemas"]["WorkOrderProgress"];
             preIssuedLots?: components["schemas"]["PreIssuedLotSummary"];
+            validation?: components["schemas"]["ValidationSummary"];
         };
         /** @description 취소하면 선발행된 생산LOT 슬롯이 자동 폐번된다 — 화면이 저장 전에 그 파급을 말한다. 근거: DR-007 · 공유계약 G-19 */
         WorkOrderCancel: {
@@ -35614,8 +39194,13 @@ export interface components {
              * @example 값
              */
             reasonCode?: string;
-            /** @description 송신 항목 토글 결과 */
+            /** @description 이 마감 건에서 «켠» 생산 실적 부속 항목의 목록이다 — 투입자재·공수·설비시간·비가동 넷. ⛔ 최상위 송신 항목 켜고 끄기(생산 실적·입고·출하·반품·실사조정)와는 다른 축이며 그쪽은 전역 설정이고 이 칸에 싣지 않는다. ⭐ 생산 실적 본체는 필수라 이 목록의 대상이 아니다. ⚠ 넷의 코드 표기는 아직 정하지 않았다. */
             erpSendItems?: string[];
+            /**
+             * @description 마감 비고. ⭐ 소멸을 고른 이유를 남기는 자리다 — 소멸은 아무 자원도 만들지 않아 선택 사실이 이 칸과 remainderDispositionCode 에만 남는다
+             * @example 비고
+             */
+            remarks?: string;
         };
         WorkOrderCreate: {
             /**
@@ -35661,6 +39246,12 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             plannedEndAt?: string;
+            /**
+             * Format: date
+             * @description 납기(날짜). 긴급 발행 화면이 받는 값이며, 서버가 함께 만드는 내부 P/O 의 dueDate 에 그대로 실린다. ⚠ plannedEndAt(계획 종료 «시각»)과 다르다 — 납기는 「언제까지 내야 하는가」이고 계획 종료는 「언제 끝날 것으로 잡았는가」다. 긴급 발행은 계획 시각을 잡지 않으므로(무배정 배포) plannedStartAt·plannedEndAt 을 비운 채 이 칸만 보낸다
+             * @example 2026-08-06
+             */
+            dueDate?: string;
             /** @example 값 */
             remarks?: string;
         };
@@ -35676,9 +39267,64 @@ export interface components {
             /** @example 값 */
             note?: string;
         };
+        /** @description 목록 요약 집계 — 필터 전체 기준이며 쪽과 무관하다. 목록과 같은 트랜잭션에서 낸다. */
+        WorkOrderListSummary: {
+            /** @example 42 */
+            totalCount: number;
+            /** @description 상태 코드 → 건수. 필터 전체 기준이며 쪽과 무관하다. 키는 W/O 상태 공통코드 값이다 — 그룹 이름은 WorkOrder.statusCode 의 설명을 정본으로 따른다. */
+            statusCounts: {
+                [key: string]: number;
+            };
+            /**
+             * Format: double
+             * @description 양품 합계 — 필터 전체 기준. ⚠ 기간 축은 W/O 의 «계획 시작 시각»이라 「그 기간에 생산된 양」이 아니다.
+             * @example 1200
+             */
+            goodQty?: number;
+            /**
+             * Format: double
+             * @description 불량 합계 — 필터 전체 기준. 기간 축의 뜻은 goodQty 와 같다.
+             * @example 12
+             */
+            defectQty?: number;
+            /**
+             * Format: double
+             * @description 보류 합계 — 필터 전체 기준. 기간 축의 뜻은 goodQty 와 같다.
+             * @example 0
+             */
+            holdQty?: number;
+            /**
+             * Format: double
+             * @description 스크랩 합계 — 필터 전체 기준. 기간 축의 뜻은 goodQty 와 같다.
+             * @example 3
+             */
+            scrapQty?: number;
+            /**
+             * Format: double
+             * @description 재작업 합계 — 필터 전체 기준. 기간 축의 뜻은 goodQty 와 같다.
+             * @example 5
+             */
+            reworkQty?: number;
+            /**
+             * Format: double
+             * @description SUM(goodQty)/SUM(orderQty) — 필터 전체 기준. 행별 WorkOrderProgress.achievementRate 와 같은 식이다.
+             * @example 0.82
+             */
+            achievementRate?: number;
+            /**
+             * @description 지연 건수 — 계획 종료 시각이 지났고 아직 완료되지 않은 것.
+             * @example 3
+             */
+            delayedCount?: number;
+            /**
+             * @description 계획 종료 시각이 없어 지연을 판정할 수 없는 건 — 「지연 아님」과 구분한다.
+             * @example 1
+             */
+            undeterminableDelayCount?: number;
+        };
         WorkOrderRelease: {
             /**
-             * @description LOT 크기 — 슬롯 하나의 계획 수량. 사용자가 화면에서 입력한다(품목별 기본값이 없어 매번 입력 — W-02-04 §8-2). 슬롯 수는 서버가 파생한다: N = 올림(지시수량 orderQty ÷ lotSize). 각 슬롯의 trace.lot.initial_qty 는 lotSize 로, 마지막 슬롯은 나머지가 있으면 나머지로 채운다 — 슬롯 계획 수량의 합이 지시수량과 같아야 마감 3분류(미달/정상/초과) 판정이 어긋나지 않는다. lotSize ≥ 지시수량이면 슬롯 1개(initial_qty = 지시수량 · 화면은 경고하되 막지 않는다 — W-02-04 §6). N 은 계획값이지 상한이 아니다 — 초과 생산은 추가 발번, 미달 슬롯은 마감 자동 폐번(R27). 근거: W-02-04 §4-B(initial_qty ← LOT 크기)·§5-3 · WF02 S4(N=양품목표÷LOT크기 ✓확정 2026-07-29) · omf-mes#206
+             * @description LOT 크기 — 슬롯 하나의 계획 수량. 사용자가 화면에서 입력한다(품목별 기본값이 없어 매번 입력 — W-02-04 §8-2). 슬롯 수는 서버가 파생한다: N = 올림(지시수량 orderQty ÷ lotSize). 각 슬롯의 trace.lot.initial_qty 는 lotSize 로, 마지막 슬롯은 나머지가 있으면 나머지로 채운다 — 슬롯 계획 수량의 합이 지시수량과 같아야 마감 3분류(미달/정상/초과) 판정이 어긋나지 않는다. lotSize ≥ 지시수량이면 슬롯 1개(initial_qty = 지시수량 · 화면은 경고하되 막지 않는다 — W-02-04 §6). N 은 계획값이지 상한이 아니다 — 초과 생산은 추가 발번, 미달 슬롯은 마감 자동 폐번(R27). (⭐ 지금 확정된 처리는 기존 슬롯 초과 배분이다 — 누적 양품이 슬롯 계획 수량을 넘어도 막지 않고 「초과 달성」으로 인정한다(✓확정 QA #27). 별도 슬롯을 더 만드는 동선은 아직 없다.) 근거: W-02-04 §4-B(initial_qty ← LOT 크기)·§5-3 · WF02 S4(N=양품목표÷LOT크기 ✓확정 2026-07-29) · omf-mes#206
              * @example 500
              */
             lotSize: number;
@@ -35789,9 +39435,10 @@ export interface components {
             sessionNo: number;
             /**
              * Format: int64
+             * @description 교대. ⭐ 비우면 서버가 정한다 — 시작 시각과 요청을 인증한 단말의 공장으로 교대 마스터를 풀어 넣는다. 화면이 교대를 계산하지 않는다. ⚠ 어느 교대에도 들지 않는 시각이면 서버가 비운 채 기록한다 — 세션을 막지 않는다. ⛔ 화면이 교대를 고르는 칸을 두지 않는다
              * @example 1001
              */
-            shiftId: number;
+            shiftId?: number;
             /**
              * Format: int64
              * @example 1001
@@ -35841,9 +39488,10 @@ export interface components {
             workOrderId: number;
             /**
              * Format: int64
+             * @description 교대. ⭐ 비우면 서버가 정한다 — 시작 시각과 요청을 인증한 단말의 공장으로 교대 마스터를 풀어 넣는다. 화면이 교대를 계산하지 않는다. ⚠ 어느 교대에도 들지 않는 시각이면 서버가 비운 채 기록한다 — 세션을 막지 않는다. ⛔ 화면이 교대를 고르는 칸을 두지 않는다
              * @example 1001
              */
-            shiftId: number;
+            shiftId?: number;
             /**
              * Format: int64
              * @example 1001
@@ -35902,6 +39550,8 @@ export interface components {
             recordedAt?: string;
             /** @example 값 */
             reasonCode?: string;
+            /** @example 금형 교체 */
+            reasonName?: string;
             /**
              * Format: int64
              * @example 1001
@@ -35913,6 +39563,7 @@ export interface components {
              */
             terminalId?: number;
         };
+        /** @description 세션 구간 안의 사건 적재. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다. 단말은 요청을 인증한 단말 토큰에서 서버가 푼다. */
         WorkSessionEventCreate: {
             /** @example 값 */
             eventTypeCode: string;
@@ -35923,16 +39574,6 @@ export interface components {
             occurredAt: string;
             /** @example 값 */
             reasonCode?: string;
-            /**
-             * Format: int64
-             * @example 1001
-             */
-            performedBy?: number;
-            /**
-             * Format: int64
-             * @example 1001
-             */
-            terminalId?: number;
         };
         WorkSessionWorker: {
             /**
@@ -36059,6 +39700,12 @@ export interface components {
              * @enum {string}
              */
             completionJudgmentCode: "UNDER" | "NORMAL" | "OVER";
+            /**
+             * @description 지연 판정 — 서버가 낸다. DELAYED = 계획 종료 시각이 지났고 아직 완료되지 않았다 · UNDETERMINABLE = 계획 종료 시각이 비어 판정할 수 없다. ⛔ UNDETERMINABLE 을 ON_TIME 으로 접지 않는다 — 「판정 불가」를 「정상」으로 보이면 요약의 지연 건수가 실제보다 적게 나온다
+             * @example ON_TIME
+             * @enum {string}
+             */
+            delayStatusCode?: "ON_TIME" | "DELAYED" | "UNDETERMINABLE";
         };
         /** @description 선발행 생산LOT 슬롯 집계 — 건수만 내린다. 목록은 넣지 않는다. 「그 슬롯들을 보여 달라」는 GET /trace/lots?workOrderId=… 로 간다. withPreIssuedLots=true 일 때만 채워진다. 근거: W-02-05 §3·§5-3 */
         PreIssuedLotSummary: {
@@ -36093,8 +39740,8 @@ export interface components {
              */
             nonconformanceId: number;
             /**
-             * @description ⚠ 번호만 내려준다 — 부적합 상세는 04 제품출하 계약(W-04-07) 소관이라 지금은 열 경로가 없다.
-             * @example IR-2026-0812-0412
+             * @description 부적합 번호. ⭐ 상세는 처분 판정 처리 화면(W-03-10)이 소유한다 — W-03-09 「부적합 열기」는 같은 스키마의 nonconformanceId 를 ?nonconformanceId={id} 로 넘겨 그 화면으로 이동한다(조회 경로 GET /quality/nonconformances/{nonconformanceId} 는 04 제품출하 계약 · 부르는 쪽은 W-03-10). 근거: omf-mes#194 §3 · W-03-09 §5-1
+             * @example NC-2026-0813-0042
              */
             nonconformanceNo?: string;
             /**
@@ -36205,7 +39852,7 @@ export interface components {
              */
             share?: number;
             /**
-             * @description ⚠ 공정별로 나눌 때 같은 현상이 공정 수만큼 복제 등록됐을 수 있다는 표식이다. 결정 12 의 공정—불량코드 N:M 이 물리 모델에 착지하지 않아 defect_code.process_id 가 아직 N:1 이다. 화면이 경고를 상시 보인다. 근거: W-03-05 §5-5
+             * @description ⚠ 공정별로 나눌 때 같은 현상이 공정 수만큼 복제 등록됐을 수 있다는 표식이다. 결정 12의 공정—불량코드 N:M을 되살렸다(DefectCodeProcess, 2026-08-30) — 신규 등록은 더 이상 공정마다 복제할 필요가 없다. 과거 데이터의 복제 흔적은 남을 수 있어 화면은 경고를 상시 보인다. 근거: W-03-05 §5-5
              * @example true
              */
             duplicateRisk?: boolean;
@@ -36242,7 +39889,7 @@ export interface components {
              */
             asOf: string;
         };
-        /** @description 불량 실적. ⛔ 등록 경로를 두지 않는다 — 03 화면 7장에 불량코드 입력이 0건이다. 만드는 화면은 M-02-02(#83 로 막힘) · P-04-03(04 계약 없음)이다. */
+        /** @description 불량 실적. ⛔ 등록 경로를 두지 않는다 — 03 화면 7장에 불량코드 입력이 0건이다. 이 계약에 만드는 경로가 없고, M-02-02(수리 왕복)는 이 레코드를 읽어 쓰는 쪽이다 — POST /production/repair-executions 가 defectRecordId 를 필수로 받는다. P-04-03(재작업 실적 등록)은 계약 미착수다. */
         DefectRecord: {
             /**
              * Format: int64
@@ -36259,12 +39906,14 @@ export interface components {
              * @example 1001
              */
             inspectionResultId?: number;
+            /** @description 원천 축 — FIELD(현장)·PQC·OQC·REPAIR(수리)·CLAIM(클레임) 5종(공유계약 결정 09). REPAIR 는 M-02-02 착수 전까지 실적 0건. 2026-08-30 되살림 — productionResultId/inspectionResultId 2단 조인 대신 이 축으로 직접 필터한다 */
+            sourceCode?: string;
             /**
              * Format: int64
-             * @description ⛔ NOT NULL 이다. 그래서 W/O 없는 클레임 불량(고객 지급품·외주 가공품)이 들어오지 못한다 — 계약이 우회하지 않는다. 근거: W-03-05 §5-2 · 확정 QA #15
+             * @description NULL 허용 — 클레임 원천(sourceCode=CLAIM)은 W/O가 없다. 2026-08-30 되살림: NOT NULL 로 클레임을 막던 것이 원칙 위반이었다(data-model-boundary.md). 저장 제약 완화는 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-03-05 §5-2 · 확정 QA #15
              * @example 1001
              */
-            workOrderId: number;
+            workOrderId: number | null;
             /**
              * Format: int64
              * @example 1001
@@ -36401,6 +40050,33 @@ export interface components {
              * @example 1001
              */
             itemId?: number;
+            /**
+             * @description 화면이 보이는 품목 코드. 식별자를 사람이 읽는 값으로 바꾸려 마스터를 다시 부르지 않게 한다
+             * @example 값
+             */
+            readonly itemCode?: string;
+            /**
+             * @description 화면이 보이는 품목명
+             * @example 값
+             */
+            readonly itemName?: string;
+            /**
+             * @description 판정자 이름. 목록·상세가 사번이 아니라 이름을 보인다
+             * @example 값
+             */
+            readonly decidedByName?: string;
+            /**
+             * @description 후속 처리 진행. NOT_STARTED=아직 안 함 · PARTIAL=일부 수량 처리 · COMPLETED=처리 수량 = decisionQty. ⭐ 서버가 후속 전표를 롤업해 낸다(공유계약 L-2). ⛔ 화면이 후속 전표를 세어 판정하지 않는다
+             * @example NOT_STARTED
+             * @enum {string}
+             */
+            followUpStatusCode: "NOT_STARTED" | "PARTIAL" | "COMPLETED";
+            /**
+             * Format: double
+             * @description 이미 후속 처리된 수량. 남은 수량 = decisionQty − followUpQty
+             * @example 0
+             */
+            followUpQty: number;
         };
         /** @description W-03-10 ② 「남은 수량」 구획. 목록(items)과 같은 모집단이라 한 응답에 함께 담는다 — 요약 전용 경로를 두지 않는다(공유계약 L-1). 근거: W-03-10 §3 · §9-1 · omf-mes#253 */
         DispositionRemainingSummary: {
@@ -36476,12 +40152,12 @@ export interface components {
              */
             textValue?: string;
             /**
-             * @description dataTypeCode=BOOLEAN 인 항목만 채운다. ⚠ 판정(judgmentCode)과 다른 축이다 — 이 칸은 «측정 결과»이고 판정은 그것을 보고 사람이 정한다(규격 밖이어도 자동 불합격이 아니다 · P-02-13 §6). 근거: omf-mes#179
+             * @description dataTypeCode=BOOLEAN 인 항목만 채운다. ⚠ 판정(judgmentCode)과 다른 축이다 — 이 칸은 «측정 결과»이고 판정은 그것을 보고 사람이 정한다. ⭐ 불리언 항목에는 상·하한이 없어 자동 판정이 설 수 없다 — 판정은 언제나 사람이 고른다(P-02-13 §5-11). 근거: omf-mes#179 · omf-mes#257
              * @example true
              */
             booleanValue?: boolean;
             /**
-             * @description 항목별 측정치의 판정. ⛔ enum 으로 못박지 않는다(공유계약 G-2·G-6). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_MEASUREMENT_JUDGMENT 로 받는다. 값은 ACCEPTED(합격)·REJECTED(불합격) «두 개»다. ⚠ 종합 판정과 그룹이 «다르다» — 항목 판정에는 「보류」가 없다. 보류는 검사 결과 수준의 개념이고(held_qty) 항목은 규격에 드는지 아닌지 둘뿐이다(P-02-13 §5 「항목 판정(합격/불합격)」). ⛔ 측정값이 규격 밖이어도 «자동 불합격이 아니다» — 표시하고 사람이 판정한다(P-02-13 §6). 근거: omf-mes#179
+             * @description 항목별 측정치의 판정. ⛔ enum 으로 못박지 않는다(공유계약 G-2·G-6). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_MEASUREMENT_JUDGMENT 로 받는다. 값은 ACCEPTED(합격)·REJECTED(불합격) «두 개»다. ⚠ 종합 판정과 그룹이 «다르다» — 항목 판정에는 「보류」가 없다. 보류는 검사 결과 수준의 개념이고(held_qty) 항목은 규격에 드는지 아닌지 둘뿐이다(P-02-13 §5 「항목 판정(합격/불합격)」). ⛔ 측정값이 규격 밖이어도 판정이 «확정»되지는 않는다 — 항목 규격의 automaticJudgment 가 참이고 데이터 유형이 NUMERIC 이며 상·하한 중 하나 이상이 있으면 화면이 이 칸을 «채운 채로» 시작하되 사람이 바꿀 수 있고, 그 밖의 경우에는 비운 채로 사람이 고른다(P-02-13 §5-11). ⛔ 종합 판정(overallJudgmentCode)은 어떤 경우에도 자동으로 내리지 않는다(P-02-13 §6). 근거: omf-mes#179 · omf-mes#257
              * @example ACCEPTED
              */
             judgmentCode: string;
@@ -36522,12 +40198,12 @@ export interface components {
              */
             textValue?: string;
             /**
-             * @description dataTypeCode=BOOLEAN 인 항목만 채운다. ⚠ 판정(judgmentCode)과 다른 축이다 — 이 칸은 «측정 결과»이고 판정은 그것을 보고 사람이 정한다(규격 밖이어도 자동 불합격이 아니다 · P-02-13 §6). 근거: omf-mes#179
+             * @description dataTypeCode=BOOLEAN 인 항목만 채운다. ⚠ 판정(judgmentCode)과 다른 축이다 — 이 칸은 «측정 결과»이고 판정은 그것을 보고 사람이 정한다. ⭐ 불리언 항목에는 상·하한이 없어 자동 판정이 설 수 없다 — 판정은 언제나 사람이 고른다(P-02-13 §5-11). 근거: omf-mes#179 · omf-mes#257
              * @example true
              */
             booleanValue?: boolean;
             /**
-             * @description 항목별 측정치의 판정. ⛔ enum 으로 못박지 않는다(공유계약 G-2·G-6). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_MEASUREMENT_JUDGMENT 로 받는다. 값은 ACCEPTED(합격)·REJECTED(불합격) «두 개»다. ⚠ 종합 판정과 그룹이 «다르다» — 항목 판정에는 「보류」가 없다. 보류는 검사 결과 수준의 개념이고(held_qty) 항목은 규격에 드는지 아닌지 둘뿐이다(P-02-13 §5 「항목 판정(합격/불합격)」). ⛔ 측정값이 규격 밖이어도 «자동 불합격이 아니다» — 표시하고 사람이 판정한다(P-02-13 §6). 근거: omf-mes#179
+             * @description 항목별 측정치의 판정. ⛔ enum 으로 못박지 않는다(공유계약 G-2·G-6). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_MEASUREMENT_JUDGMENT 로 받는다. 값은 ACCEPTED(합격)·REJECTED(불합격) «두 개»다. ⚠ 종합 판정과 그룹이 «다르다» — 항목 판정에는 「보류」가 없다. 보류는 검사 결과 수준의 개념이고(held_qty) 항목은 규격에 드는지 아닌지 둘뿐이다(P-02-13 §5 「항목 판정(합격/불합격)」). ⛔ 측정값이 규격 밖이어도 판정이 «확정»되지는 않는다 — 항목 규격의 automaticJudgment 가 참이고 데이터 유형이 NUMERIC 이며 상·하한 중 하나 이상이 있으면 화면이 이 칸을 «채운 채로» 시작하되 사람이 바꿀 수 있고, 그 밖의 경우에는 비운 채로 사람이 고른다(P-02-13 §5-11). ⛔ 종합 판정(overallJudgmentCode)은 어떤 경우에도 자동으로 내리지 않는다(P-02-13 §6). 근거: omf-mes#179 · omf-mes#257
              * @example ACCEPTED
              */
             judgmentCode: string;
@@ -36558,12 +40234,13 @@ export interface components {
             inspectionTypeCode: string;
             /**
              * Format: int64
+             * @description 이 의뢰가 따르는 검사 기준 버전. ⚠ 비어 있을 수 있다 — 검사 기준이 등록되지 않은 상태에서도 검사를 진행한다는 고객 확정이 있어(2026-07-15), 기준 없이 만들어진 의뢰가 이 칸을 비운 채 온다. 비면 화면은 항목별 규격 표 대신 판정 선택과 자유 입력만 그린다(P-02-13 §5-2). ⛔ 비어 있음을 「값을 못 읽었다」와 같은 모양으로 그리지 않는다 — 공유계약 G-9. ⚠ IQC·OQC 의뢰는 서버가 언제나 채워 내린다(W-01-01 §4 · W-04-03 §4) — 그 두 화면은 비는 경우를 방어만 하면 된다. 근거: P-02-13 §5-2 · omf-mes#251
              * @example 1001
              */
-            inspectionPlanVersionId: number;
+            inspectionPlanVersionId?: number | null;
             /**
-             * @description 다형 참조의 유형. 근거: 공유계약 A-10
-             * @example IQC
+             * @description 다형 참조의 유형. ⬜ 유형 코드 ↔ 대상 테이블 대응표는 미정이다 — 공유계약 A-10 · omf-mes#68 과 함께 정한다. 값 목록이 정해지기 전까지 이 example 을 값으로 읽지 않는다. 근거: 공유계약 A-10
+             * @example 값
              */
             targetTypeCode: string;
             /**
@@ -36588,6 +40265,7 @@ export interface components {
             workOrderId?: number;
             /**
              * Format: int64
+             * @description 이 검사가 가리키는 작업실적. ⚠ PQC 의뢰에는 대개 비어 있다 — 공정검사는 실적 등록 «전»에 수행하므로(R54 ✓확정 2026-07-14 Q4 · P-02-04 ③→④) 의뢰가 만들어지는 시점에 실적이 아직 없다. ⛔ 이 칸의 유무로 검사와 실적의 선후를 읽지 않는다. 선후는 coverageFromAt·coverageToAt 가 말한다. 근거: P-02-13 §4-A·§5-5
              * @example 1001
              */
             productionResultId?: number;
@@ -36719,7 +40397,7 @@ export interface components {
             terminalId?: number;
             /**
              * @description 작성중 · 확정. 임시 저장은 작성중으로 남는다
-             * @example IQC
+             * @example 작성중
              */
             statusCode: string;
             /**
@@ -36815,8 +40493,12 @@ export interface components {
             previousResultId?: number;
             /** @example 값 */
             reinspectionReasonCode?: string;
+            /** @description 항목별 측정치. ⭐ 필수가 아니다 — 검사 기준이 없는 의뢰(inspectionPlanVersionId 가 빈 의뢰)에는 항목 자체가 없으므로 이 배열을 생략하거나 빈 배열로 보낸다. 그때 검사는 수량 세 칸과 종합 판정, 그리고 remarks 의 자유 입력만으로 성립한다(P-02-13 §5-2). 근거: omf-mes#251 */
             measurements?: components["schemas"]["InspectionMeasurementInput"][];
-            /** @example 값 */
+            /**
+             * @description 검사 비고. ⭐ 검사 기준이 없는 의뢰에서는 이 칸이 「자유 입력」의 자리다 — 항목별 규격이 없으므로 무엇을 어떻게 보았는지가 여기에만 남는다(P-02-13 §5-2). 기준이 있는 정상 갈래에서는 선택 입력이다. 근거: omf-mes#251
+             * @example 값
+             */
             remarks?: string;
         };
         /** @description 작성중인 결과만 고칠 수 있다. 확정된 것은 409 INVALID_STATE — 고치는 것이 아니라 재검이다(B-10) ⭐ 검사자·단말은 «보내지 않는다» — 서버가 인증 주체에서 채운다(관리웹은 계정 토큰, 현장 단말·모바일은 사번 귀속 헤더). */
@@ -36924,7 +40606,7 @@ export interface components {
              */
             releaseCondition?: string;
             /**
-             * @description ⭐ 도착 상태. 의심자재 등록(C10)은 INSPECTION_PENDING(검사 대기), 클레임·리콜 재Hold(C9)는 DEFECTIVE(불량)다. 두 화면이 같은 행을 만들고 도착 상태만 다르다. 「보류」는 lot.status_code 축에 없는 값이다 — Hold(보류 «문서»의 진행 상태)는 lot_hold.status_code 가 별도로 갖고 서버가 자동으로 채운다(공유계약 §I-32 · omf-mes#227).
+             * @description ⭐ 도착 상태. 의심자재 등록(C10)은 INSPECTION_PENDING(검사 대기), 클레임·리콜 재Hold(C9)는 DEFECTIVE(불량)다. 두 화면이 같은 행을 만들고 도착 상태만 다르다. 「보류」는 lot.status_code 축에 없는 값이다 — Hold(보류 «문서»의 진행 상태)는 lot_hold.status_code 가 별도로 갖고 서버가 자동으로 채운다(공유계약 §I-32 · omf-mes#227). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32 · omf-mes#176
              * @example INSPECTION_PENDING
              */
             targetLotStatusCode: string;
@@ -37000,7 +40682,7 @@ export interface components {
         };
         LotHoldRelease: {
             /**
-             * @description 재판정 합격이면 정상, 재판정 불합격이면 불량이다(C7 · C8). 근거: W-03-02 §5-1
+             * @description 재판정 합격이면 정상, 재판정 불합격이면 불량이다(C7 · C8). 근거: W-03-02 §5-1 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32 · omf-mes#176
              * @example NORMAL
              */
             targetLotStatusCode: string;
@@ -37011,12 +40693,17 @@ export interface components {
              */
             releaseQty?: number;
             /**
-             * @description ⛔ 해제 사유를 담을 코드 컬럼이 lot_hold 에 없다 — 등록에는 reason_code 가 있는데 해제에는 없다. 자유 텍스트로 물러나므로 「재판정으로 풀린 건」을 셀 수 없다. 「기록하라는데 자리가 없다」 7번째(omf-mes#87). 근거: W-03-02 §5-4
+             * @description 해제 사유(코드형) — 2026-08-30 되살림. 등록 사유(reasonCode)와 대칭 축이다 — C7(재판정 합격)·C8(재판정 불합격)이 왜 갈렸는지 이 값으로 센다(「기록하라는데 자리가 없다」 7번째, omf-mes#87 해소). 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_RELEASE_REASON. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-03-02 §5-4
+             * @example RETEST_PASS
+             */
+            releaseReasonCode: string;
+            /**
+             * @description 부가 비고 — 사유는 releaseReasonCode 가 정본이다
              * @example 값
              */
-            remarks: string;
+            remarks?: string | null;
         };
-        /** @description 품질 축의 LOT 목록. ⚠ 01 계약의 GET /trace/lots 는 물류 축이라 창고 필터·보류 요약·최근 전이를 갖지 않는다 — 세 화면(W-03-01·02·03)이 공통으로 요구해 03 이 낸다. */
+        /** @description 품질 축의 LOT 목록. ⚠ 01 계약의 GET /trace/lots 는 물류 축이라 창고 필터·보류 요약·최근 전이를 갖지 않는다 — 세 화면(W-03-01·02·03)이 공통으로 요구해 03 이 낸다. ⭐ versionNo 는 필수다 — POST /quality/lot-holds 의 lots[].versionNo 가 required 인데, 그 본문을 한 번의 조회로 조립할 수 있는 자리가 이 목록이라 선택이면 화면이 토큰을 채우지 못하는 경우가 계약상 허용된다(공유계약 A-4-1). */
         LotQualityStatus: {
             /**
              * Format: int64
@@ -37044,7 +40731,7 @@ export interface components {
              * @description 낙관적 잠금 토큰(저장할 때 판을 대조해 남이 먼저 고쳤는지 잡는다). ⭐ 대량 보류(POST /quality/lot-holds)의 lots[].versionNo 에 그대로 싣는다 — 여러 LOT 을 한 트랜잭션으로 걸어 토큰이 여럿이라 헤더 If-Match 하나로는 표현할 수 없고, 하나라도 어긋나면 전체를 거부한다(W-03-03 §5-1). ⛔ 화면에 «표시»하지 않는다 — 필드표·폼·목록 열에 드러내지 않는다(공유계약 A-4). 전달은 막지 않는다는 것이 그 조항의 2026-08-03 확정이고, 헤더 ETag 가 이미 같은 값을 전달하고 있다. 근거: omf-mes#190 질문3
              * @example 3
              */
-            versionNo?: number;
+            versionNo: number;
             /**
              * Format: int64
              * @example 1001
@@ -37122,7 +40809,10 @@ export interface components {
             outOfScopeCount?: number;
         };
         LotStatusTransition: {
-            /** @example 값 */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32 · omf-mes#176
+             * @example NORMAL
+             */
             targetLotStatusCode: string;
             /** @example true */
             allowed: boolean;
@@ -37220,7 +40910,7 @@ export interface components {
              */
             currentVersion?: string;
             /**
-             * @description VERSION_CONFLICT 일 때 서버의 현재 lot.status_code — 충돌 문구에 최신 상태를 담는다(「다른 사용자가 먼저 전이했습니다. 현재 상태는 Hold입니다」 W-03-02 §6). ⛔ message 자유 텍스트에서 파싱하지 않는다 — 이 구조화 필드가 정본이다. 근거: W-03-02 §6 · omf-mes#225
+             * @description VERSION_CONFLICT 일 때 서버의 현재 lot.status_code — 충돌 문구에 최신 상태를 담는다(「다른 사용자가 먼저 전이했습니다. 현재 상태는 불량입니다」 W-03-02 §6). ⛔ message 자유 텍스트에서 파싱하지 않는다 — 이 구조화 필드가 정본이다. 근거: W-03-02 §6 · omf-mes#225
              * @example DEFECTIVE
              */
             currentLotStatusCode?: string;
@@ -37310,7 +41000,7 @@ export interface components {
             /** @example 값 */
             remarks?: string | null;
         };
-        /** @description 부적합. W-04-07 「부적합 등록」과 W-04-06 반품 등록이 만든다. 판정은 W-03-10 이 한다 — affectedQtyTotal·dispositionProgressCode 는 그 화면의 목록이 쓰는 서버 집계다 */
+        /** @description 부적합. W-04-07 「부적합 등록」이 만든다. 판정은 W-03-10 이 한다 — affectedQtyTotal·dispositionProgressCode 는 그 화면의 목록이 쓰는 서버 집계다 */
         Nonconformance: {
             /**
              * Format: int64
@@ -37335,6 +41025,8 @@ export interface components {
              * @example 1001
              */
             inspectionResultId?: number | null;
+            /** @description 원천 축 — PRODUCT(04 제품 부적합 등록)·RETURN(04 반품 입고) 2종. 02 수리·01 자재는 이 경로로 들어오지 않아 대상이 아니다(W-03-10 §5-4). 2026-08-30 되살림 — W-04-07·W-04-06 이 같은 경로·스키마를 쓰던 것을 이 축으로 가른다 */
+            sourceCode?: string;
             /** @example 값 */
             severityCode: string;
             /**
@@ -37548,7 +41240,7 @@ export interface components {
              */
             shippedQty: number;
         };
-        /** @description 실물 출하. ⭐ 2026-08-07 「출하 2단 확정」으로 재고 차감·ERP 송신 적재가 W-04-12 로 갔다 — 이 리소스를 만드는 것은 미확정 출하까지다(W-04-04 §5) */
+        /** @description 실물 출하. ⭐ 2026-08-07 「출하 2단 확정」으로 ERP 송신 적재가 W-04-12 확정 시점으로 갔다 — 이 리소스를 만드는 것은 미확정 출하까지이고, 실물이 나갔으므로 재고는 그 시점에 차감한다(W-04-04 §5-1) */
         Shipment: {
             /**
              * Format: int64
@@ -37609,6 +41301,17 @@ export interface components {
             erpDeliveryNo?: string | null;
             /** @example 값 */
             remarks?: string;
+            /**
+             * @description 긴급 직행 출하로 만들어진 건인가(W-04-05).
+             * @default false
+             * @example false
+             */
+            expedited: boolean;
+            /**
+             * @description 긴급 사유. expedited 가 참인 건에만 있다(공유계약 A-12).
+             * @example 값
+             */
+            expediteReason?: string | null;
             lines?: components["schemas"]["ShipmentLine"][];
             /** @example 1 */
             versionNo?: number;
@@ -37625,7 +41328,7 @@ export interface components {
              */
             reason: string;
         };
-        /** @description 출하 처리. 출하·라인·LOT 배분을 한 트랜잭션으로 만든다(공유계약 B-8). ⛔ 확정하지 않는다 — 미확정 출하까지다. 확정은 :confirm 이다 */
+        /** @description 출하 처리. 출하·라인·LOT 배분을 한 트랜잭션으로 만든다(공유계약 B-8). ⛔ 확정하지 않는다 — 미확정 출하까지다. 확정은 :confirm 이다 재고 차감(수불 원장 전기)은 이 오퍼레이션 안이다. expedited=true 이면 제품 입고 전표와 입고 전기를 여기서 함께 만든다. ⛔ 출고 전기·ERP 송신 적재는 여기가 아니라 :confirm 이다(2026-08-07 출하 2단 확정 · W-04-05 §5-1 · 공유계약 B-8) */
         ShipmentCreate: {
             /**
              * Format: int64
@@ -37656,7 +41359,7 @@ export interface components {
              */
             carrierId?: number;
             /**
-             * @description ⭐ 긴급 직행 출하인가(W-04-05) — 피킹·검사를 건너뛴다
+             * @description ⭐ 긴급 직행 출하인가(W-04-05) — 창고 경유·피킹·Packing 을 건너뛴다. ⛔ 품질 게이트는 건너뛰지 않는다 — 배분 LOT 이 Release 가 아니면 400 이다(결정 10 · W-04-05 §5-3). ⭐ 참이면 서버가 제품 입고 전표와 입고 전기를 같은 트랜잭션에서 함께 만든다 — 화면이 01 계약을 따로 부르지 않는다. 입고 유형·원천 문서 유형은 서버가 정한다(01 계약 receiptTypeCode·sourceDocumentTypeCode · 공유계약 G-2 — 그 값 목록은 아직 확정되지 않았다). 장부상 입고 창고는 본문의 warehouseId 다(W-04-05 §5-1·§5-4)
              * @default false
              * @example true
              */
@@ -37700,7 +41403,7 @@ export interface components {
             uomId: number;
             /**
              * Format: int64
-             * @description ⚠ 비어도 된다 — 재고 차감이 아직 안 걸린 구간이 있다(W-04-04 §5-2)
+             * @description ⚠ 비어도 된다 — 출고 전표를 만들지 않고 원장에 직접 전기하는 구간이 있다(W-04-04 §5-2·§8-2)
              * @example 1001
              */
             goodsIssueLineId?: number | null;
@@ -37760,16 +41463,16 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description ⭐ 서버가 판정한 값 — 이 배분의 LOT 이 출하검사에 합격했는가. 납품라벨 대상 목록이 「합격」만 활성하는 데 쓴다(P-04-02 §5). 검사 결과는 03 품질 계약이 소유한다
+             * @description ⭐ 서버가 판정한 값 — 이 배분의 LOT 이 출하검사에 합격했는가. 납품라벨 대상 목록이 「합격」만 활성하는 데 쓴다(P-04-02 §5). 검사 결과는 03 품질 계약이 소유한다 ⛔ 없으면 납품라벨 대상을 가릴 수 없다 — 항상 내린다(P-04-02 §5-1). ⛔ 검사 대상이 아닌 배분(해당 라인의 shippingInspectionRequired=false)은 true 로 내린다 — 「검사를 안 거쳤다」가 「발행하면 안 된다」가 아니다.
              * @example true
              */
-            oqcPassed?: boolean;
+            oqcPassed: boolean;
             /**
              * Format: double
-             * @description 이미 포장에 담긴 수량. 배분 잔여 = allocatedQty − packedQty 를 서버가 파생한다(L-2)
+             * @description 이미 포장에 담긴 수량. 배분 잔여 = allocatedQty − packedQty 를 서버가 파생한다(L-2) ⛔ 없으면 화면이 잔여를 계산할 수 없다 — 항상 내린다(P-04-01 §5-6).
              * @example 120
              */
-            packedQty?: number;
+            packedQty: number;
         };
         ShipmentLotAllocationCreate: {
             /**
@@ -37974,6 +41677,8 @@ export interface components {
              * @example 1
              */
             minimumRemainingShelfLifeDays?: number | null;
+            /** @description 이 라인에서 실제로 집은 제품 LOT 별 내역. ⭐ 서버가 유지한다 — W-04-04 출하 처리가 ShipmentCreate.lines[].allocations 를 채우는 원천이 이것이다(공유계약 L-2). 근거: M-04-01 §5-7 · W-04-04 §3 */
+            picks: components["schemas"]["ShipmentLinePickedLot"][];
         };
         ShipmentRequestLineCreate: {
             /**
@@ -38048,6 +41753,31 @@ export interface components {
              */
             uomId: number;
         };
+        /** @description 라인이 집은 제품 LOT 한 건. 서버가 유지하는 읽기 전용 기록이다 */
+        ShipmentLinePickedLot: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example 값 */
+            lotNo?: string;
+            /**
+             * Format: double
+             * @example 120
+             */
+            pickedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-13T10:22:00+09:00
+             */
+            pickedAt: string;
+        };
         InspectionLine: {
             /**
              * Format: int64
@@ -38082,7 +41812,10 @@ export interface components {
              * @example 1001
              */
             inspectionItemId: number;
-            /** @example OK */
+            /**
+             * @description 합격(OK) 또는 불합격(NG)
+             * @example OK
+             */
             resultCode: string;
             /**
              * Format: double
@@ -38113,7 +41846,7 @@ export interface components {
              */
             inspectionTypeCode: string;
             /**
-             * @description 라인이 하나라도 불합격이면 불합격이다
+             * @description 라인이 하나라도 불합격이면 불합격이다. 값은 합격(OK)·불합격(NG) 둘이다. ⛔ 작업 전 점검 통제(P-02-02 §5-7)가 이 값으로 «수준과 무관한 차단»을 판정하므로 화면이 문자열을 흩어 박지 않는다
              * @example NG
              */
             overallResultCode: string;
@@ -38128,6 +41861,11 @@ export interface components {
              * @example 3391
              */
             inspectorWorkerNo: string;
+            /**
+             * @description 점검 전체에 대한 비고. ⚠ 라인에 불합격(NG)이 하나라도 있으면 화면이 필수로 올린다 — 남이 읽고 판단할 자유 텍스트다(공유계약 A-12). 근거: M-05-01 §4-A·§5-3
+             * @example 3번 항목 누유 — 씰 교체 필요, 보전 요청함
+             */
+            remarks?: string | null;
             lines?: components["schemas"]["InspectionLine"][];
         };
         InspectionCreate: {
@@ -38147,6 +41885,11 @@ export interface components {
              * @example 2026-08-18T09:40:00+07:00
              */
             inspectedAt: string;
+            /**
+             * @description 점검 전체에 대한 비고. ⚠ 라인에 불합격(NG)이 하나라도 있으면 화면이 필수로 올린다 — 남이 읽고 판단할 자유 텍스트다(공유계약 A-12). 근거: M-05-01 §4-A·§5-3
+             * @example 3번 항목 누유 — 씰 교체 필요, 보전 요청함
+             */
+            remarks?: string | null;
             lines: components["schemas"]["InspectionLineCreate"][];
         };
         BreakdownAttachment: {
@@ -38168,7 +41911,7 @@ export interface components {
         BreakdownHandling: {
             /**
              * @description 원인 코드 — 완료로 갈 때 필요하다
-             * @example HYD-LEAK
+             * @example HYD_LEAK
              */
             causeCode?: string | null;
             /** @example 실린더 씰 교체 */
@@ -38239,6 +41982,21 @@ export interface components {
              * @example true
              */
             notifyAssignee?: boolean;
+            /**
+             * @description 이 고장에 연결된 비가동 건수. ⚠ 상세 응답에서만 채운다 — 목록에서는 0 이다
+             * @example 3
+             */
+            linkedDowntimeCount?: number;
+            /**
+             * @description 연결된 비가동의 합계 분. 끝나지 않은 구간이 있으면 그 몫은 빠지고 openLinkedDowntimeCount 로 따로 센다. ⚠ 상세 응답에서만 채운다
+             * @example 112
+             */
+            linkedDowntimeMinutes?: number | null;
+            /**
+             * @description 연결된 비가동 중 아직 끝나지 않은 건수. 화면이 완료 전에 경고한다(W-05-04 §6). ⚠ 상세 응답에서만 채운다
+             * @example 1
+             */
+            openLinkedDowntimeCount?: number;
             handling?: components["schemas"]["BreakdownHandling"];
             attachments?: components["schemas"]["BreakdownAttachment"][];
         };
@@ -38270,7 +42028,7 @@ export interface components {
             notifyAssignee?: boolean;
         };
         BreakdownHandlingUpdate: {
-            /** @example HYD-LEAK */
+            /** @example HYD_LEAK */
             causeCode?: string | null;
             /** @example 실린더 씰 교체 */
             handlingNote?: string | null;
@@ -38278,7 +42036,7 @@ export interface components {
         BreakdownComplete: {
             /**
              * @description 완료에는 반드시 있어야 한다
-             * @example HYD-LEAK
+             * @example HYD_LEAK
              */
             causeCode: string;
             /** @example 실린더 씰 교체 */
@@ -38297,6 +42055,35 @@ export interface components {
              * @example PLANNED
              */
             statusCode?: string;
+            /**
+             * Format: int64
+             * @description 가리키는 점검·보전 항목 마스터. 자유 입력 항목이면 비어 있다
+             * @example 1001
+             */
+            inspectionItemId?: number | null;
+            /**
+             * @description 표시 순서
+             * @example 1
+             */
+            sequenceNo?: number;
+        };
+        MaintenanceOrderItemInput: {
+            /**
+             * Format: int64
+             * @description 점검·보전 항목 마스터를 가리킨다. targetTypeCode=EQUIPMENT 이면 반드시 채운다 — 부여가 없으면 발행할 수 없다. 근거: W-05-05 §5-B
+             * @example 1001
+             */
+            inspectionItemId?: number | null;
+            /**
+             * @description 항목 마스터가 없을 때의 자유 입력. 툴 예방보전이 이쪽이다. ⭐ inspectionItemId 와 itemName 중 적어도 하나는 있어야 한다 — 짝 제약은 화면이 진다(공유계약 A-2)
+             * @example 분해 청소
+             */
+            itemName?: string | null;
+            /**
+             * @description 표시 순서
+             * @example 1
+             */
+            sequenceNo: number;
         };
         MaintenanceOrderTrigger: {
             /**
@@ -38306,15 +42093,32 @@ export interface components {
             triggerTypeCode: string;
             /**
              * Format: int64
-             * @description 트리거가 가리키는 기록
+             * @description 트리거가 가리키는 기록. ⛔ triggerTypeCode=PM_DUE 이면 가리킬 행이 없어 비운다 — 주기 도래는 저장된 사건이 아니라 파생 조건이다(W-05-05 §6-3 · 공유계약 A-15). 나머지 두 유형에서는 반드시 채운다
              * @example 1001
              */
-            sourceId: number;
+            sourceId?: number | null;
             /**
              * @description 발행 시점의 트리거 축과 누계를 그대로 남긴다
              * @example 타발수 512,400 / 500,000
              */
             snapshotNote?: string | null;
+            /**
+             * @description 먼저 도달한 축 — SHOT 또는 DATE. triggerTypeCode=PM_DUE 일 때만 채운다. 근거: W-05-02 §5-A
+             * @example SHOT
+             */
+            pmDueAxisCode?: string | null;
+            /**
+             * Format: int64
+             * @description 발행 시점의 누계 타발수 스냅샷. 뒤에 리셋되므로 얼려 둔다. 근거: W-05-02 §5-2
+             * @example 512400
+             */
+            shotCountAtDue?: number | null;
+            /**
+             * Format: int64
+             * @description 발행 시점의 적정타수 스냅샷
+             * @example 500000
+             */
+            guaranteedShotCountAtDue?: number | null;
         };
         MaintenanceOrder: {
             /**
@@ -38364,6 +42168,23 @@ export interface components {
              * @example 2026-08-18
              */
             baseDate?: string | null;
+            /**
+             * @description 지시 내용. 담당자가 읽고 판단하는 자유 서술이라 화면이 형식을 유도한다(공유계약 A-12). 근거: W-05-05 §5-A
+             * @example 유압 유닛 분해 청소 후 누유 재점검
+             */
+            orderNote?: string | null;
+            /**
+             * Format: int64
+             * @description 발행자. 근거: W-05-05 §5-A
+             * @example 1001
+             */
+            issuedByUserId?: number | null;
+            /**
+             * Format: date-time
+             * @description 발행 시각. 서버가 채운다
+             * @example 2026-08-18T09:40:00+07:00
+             */
+            issuedAt?: string | null;
         };
         MaintenanceOrderCreate: {
             /** @example EQUIPMENT */
@@ -38383,8 +42204,10 @@ export interface components {
              * @example 1001
              */
             assigneeUserId: number;
-            /** @description 항목 마스터가 없으면 자유 입력을 받는다 */
+            /** @description 항목 마스터가 없을 때만 쓰는 옛 표현이다. ⭐ 새로 만드는 화면은 items 를 쓴다 — 둘을 함께 실으면 items 가 이긴다 */
             itemNames?: string[];
+            /** @description 지시 항목. 설비 보전은 점검·보전 항목 마스터를 가리키고(W-05-05 §5-B) 툴 예방보전은 마스터가 없어 이름만 담는다(W-05-02 §7-2). ⭐ items 와 itemNames 를 함께 실으면 items 가 이긴다 */
+            items?: components["schemas"]["MaintenanceOrderItemInput"][];
             triggers?: components["schemas"]["MaintenanceOrderTrigger"][];
             /**
              * Format: date
@@ -38392,6 +42215,31 @@ export interface components {
              * @example 2026-08-18
              */
             baseDate?: string | null;
+            /**
+             * @description 지시 내용. 담당자가 읽고 판단하는 자유 서술이라 화면이 형식을 유도한다(공유계약 A-12). 근거: W-05-05 §5-A
+             * @example 유압 유닛 분해 청소 후 누유 재점검
+             */
+            orderNote?: string | null;
+        };
+        MaintenanceResultLine: {
+            /**
+             * Format: int64
+             * @description 지시 항목과 이어질 때만 채운다. 설비 보전은 지시 항목을 따라가고(W-05-06 §5-B) 툴 예방보전은 비운다
+             * @example 1001
+             */
+            orderItemId?: number | null;
+            /**
+             * @description 보전부위. 툴 예방보전은 항목 마스터가 없어 자유 입력이다. 근거: W-05-03 §5-B
+             * @example 게이트 부시
+             */
+            partName?: string | null;
+            /** @description 항목·부위별 결과. ⚠ 값 집합이 대상에 따라 다르다 — 설비 보전은 완료·미완·해당없음(MaintenanceOrderItem.statusCode 의 PLANNED·DONE·NA 와 같은 집합), 툴 예방보전은 양호·조정·교체·불가다. ⛔ 값 이름은 아직 확정되지 않았다 — 공통코드 마스터(W-06-06)가 정하며 그때까지 화면은 선택칸을 비활성 + 사유로 둔다(공유계약 G-2). ⛔ enum 으로 못박지 않는다 */
+            resultCode: string;
+            /**
+             * @description 라인 비고
+             * @example 체결 토크 재조정
+             */
+            remarks?: string | null;
         };
         MaintenanceResultPart: {
             /**
@@ -38408,10 +42256,26 @@ export interface components {
             usedQty: number;
             /**
              * Format: int64
-             * @description 예비품 출고 건과 연결된다
+             * @description 예비품 출고 건과 연결된다. ⛔ 이 화면이 출고를 만들지 않는다 — 물류가 만든 건을 참조만 하고 재고를 자동으로 깎지 않는다. 근거: W-05-06 §5-1
              * @example 1001
              */
             goodsIssueId?: number | null;
+            /**
+             * @description 연결된 출고 건의 전표 번호. 화면이 표에 그대로 보인다. 근거: W-05-06 §4
+             * @example GI-2026-000402
+             */
+            readonly goodsIssueNo?: string | null;
+            /**
+             * Format: date-time
+             * @description 연결된 출고 건의 출고 시각. 화면은 날짜만 그린다
+             * @example 2026-08-14T09:12:00+07:00
+             */
+            readonly issuedAt?: string | null;
+            /**
+             * @description 사용 수량의 단위
+             * @example EA
+             */
+            readonly uomCode?: string | null;
         };
         MaintenanceResult: {
             /**
@@ -38450,15 +42314,46 @@ export interface components {
             /** @example 씰 교체 후 시운전 정상 */
             resultNote: string;
             /**
-             * @description 툴 정기보전에서 누계를 되돌릴지
+             * Format: int64
+             * @description 수행자. 외주면 비운다 — 짝 제약은 화면이 진다(공유계약 A-2). 근거: W-05-06 §5-5
+             * @example 1001
+             */
+            performedByUserId?: number | null;
+            /**
+             * @description 외주 보전인가. 참이면 performedByUserId 를 비우고 outsourceVendorName 을 채운다
+             * @default false
+             * @example false
+             */
+            isOutsourced: boolean;
+            /**
+             * @description 외주처 이름. ⛔ 거래처 마스터를 가리키지 않는다 — 보전 업체는 구매 협력사로 등록돼 있지 않을 가능성이 높고 등록을 강제하면 실적을 못 적는다. 근거: W-05-06 §5-5
+             * @example 대성정밀
+             */
+            outsourceVendorName?: string | null;
+            /**
+             * @description 툴 예방보전에서 누계를 되돌릴지. 참이면 shotCountAfterReset 을 함께 보낸다 — shotCountBeforeReset 은 서버가 채운다
              * @example false
              */
             resetCounter?: boolean;
+            /**
+             * Format: int64
+             * @description 리셋 직전 누계 타발수 스냅샷. resetCounter=true 인 실적에 서버가 저장 시점 누계로 채운다 — 누계가 0 이 되면 「이번 예방보전까지 얼마나 썼는지」가 사라지고 그것이 수명 분석의 유일한 재료다. 근거: W-05-03 §3-3
+             * @example 512400
+             */
+            readonly shotCountBeforeReset?: number | null;
+            /**
+             * Format: int64
+             * @description 리셋 후 시작값. 보통 0 이고 오버홀이면 다를 수 있다. resetCounter=true 이면 채운다. 근거: W-05-03 §5-A
+             * @example 0
+             */
+            shotCountAfterReset?: number | null;
             /**
              * @description 지시를 마감했는지
              * @example false
              */
             closed?: boolean;
+            /** @description 부위·항목별 결과. 실적 저장과 한 번에 간다 — 별도 경로를 두지 않는다. 근거: W-05-03 §5-B · W-05-06 §5-B */
+            lines?: components["schemas"]["MaintenanceResultLine"][];
             parts?: components["schemas"]["MaintenanceResultPart"][];
         };
         MaintenanceResultCreate: {
@@ -38491,10 +42386,38 @@ export interface components {
             finishedAt?: string | null;
             /** @example 씰 교체 후 시운전 정상 */
             resultNote: string;
-            /** @example false */
+            /**
+             * Format: int64
+             * @description 수행자. 외주면 비운다 — 짝 제약은 화면이 진다(공유계약 A-2). 근거: W-05-06 §5-5
+             * @example 1001
+             */
+            performedByUserId?: number | null;
+            /**
+             * @description 외주 보전인가. 참이면 performedByUserId 를 비우고 outsourceVendorName 을 채운다
+             * @default false
+             * @example false
+             */
+            isOutsourced: boolean;
+            /**
+             * @description 외주처 이름. ⛔ 거래처 마스터를 가리키지 않는다 — 보전 업체는 구매 협력사로 등록돼 있지 않을 가능성이 높고 등록을 강제하면 실적을 못 적는다. 근거: W-05-06 §5-5
+             * @example 대성정밀
+             */
+            outsourceVendorName?: string | null;
+            /**
+             * @description 툴 예방보전에서 누계를 되돌릴지. 참이면 shotCountAfterReset 을 함께 보낸다 — shotCountBeforeReset 은 서버가 채운다
+             * @example false
+             */
             resetCounter?: boolean;
+            /**
+             * Format: int64
+             * @description 리셋 후 시작값. 보통 0 이고 오버홀이면 다를 수 있다. resetCounter=true 이면 채운다. 근거: W-05-03 §5-A
+             * @example 0
+             */
+            shotCountAfterReset?: number | null;
             /** @example false */
             closed?: boolean;
+            /** @description 부위·항목별 결과. 실적 저장과 한 번에 간다 — 별도 경로를 두지 않는다. 근거: W-05-03 §5-B · W-05-06 §5-B */
+            lines?: components["schemas"]["MaintenanceResultLine"][];
             parts?: components["schemas"]["MaintenanceResultPart"][];
         };
         MaintenanceResultUpdate: {
@@ -38507,6 +42430,8 @@ export interface components {
             resultNote?: string;
             /** @example true */
             closed?: boolean;
+            /** @description 부위·항목별 결과. 실적 저장과 한 번에 간다 — 별도 경로를 두지 않는다. 근거: W-05-03 §5-B · W-05-06 §5-B */
+            lines?: components["schemas"]["MaintenanceResultLine"][];
             parts?: components["schemas"]["MaintenanceResultPart"][];
         };
         Downtime: {
@@ -38522,7 +42447,7 @@ export interface components {
             equipmentId: number;
             /** @example PRS-01 */
             equipmentCode?: string;
-            /** @example MOLD-CHANGE */
+            /** @example MOLD_CHANGE */
             reasonCode: string;
             /** @example 금형 교체 */
             reasonName?: string;
@@ -38549,11 +42474,17 @@ export interface components {
             breakdownId?: number | null;
             /**
              * Format: int64
+             * @description ⚠ 화면이 보내지 않는다 — 비가동 등록·수정 본문(DowntimeCreate·DowntimeUpdate)에 이 칸이 없다. ⛔ 비가동은 설비에 붙지 작업에 붙지 않는다(P-05-02 §4-A) — 이 칸을 작업지시 귀속으로 읽지 않는다.
              * @example 1001
              */
             workSessionId?: number | null;
             /** @example 3391 */
             recordedByWorkerNo: string;
+            /**
+             * @description 현장이 남기는 메모. 사유 코드로 담기지 않는 사연을 적는다. 근거: P-05-02 §4-A
+             * @example 유압 호스 교체 대기
+             */
+            remarks?: string | null;
         };
         DowntimeCreate: {
             /**
@@ -38561,7 +42492,7 @@ export interface components {
              * @example 1001
              */
             equipmentId: number;
-            /** @example MOLD-CHANGE */
+            /** @example MOLD_CHANGE */
             reasonCode: string;
             /**
              * Format: date-time
@@ -38580,9 +42511,14 @@ export interface components {
              * @example 1001
              */
             breakdownId?: number | null;
+            /**
+             * @description 현장이 남기는 메모. 사유 코드로 담기지 않는 사연을 적는다. 근거: P-05-02 §4-A
+             * @example 유압 호스 교체 대기
+             */
+            remarks?: string | null;
         };
         DowntimeUpdate: {
-            /** @example MOLD-CHANGE */
+            /** @example MOLD_CHANGE */
             reasonCode?: string;
             /**
              * Format: date-time
@@ -38594,9 +42530,14 @@ export interface components {
              * @example 1001
              */
             breakdownId?: number | null;
+            /**
+             * @description 현장이 남기는 메모. 사유 코드로 담기지 않는 사연을 적는다. 근거: P-05-02 §4-A
+             * @example 유압 호스 교체 대기
+             */
+            remarks?: string | null;
         };
         DowntimeReasonSummary: {
-            /** @example MOLD-CHANGE */
+            /** @example MOLD_CHANGE */
             reasonCode: string;
             /** @example 금형 교체 */
             reasonName?: string;
@@ -38617,11 +42558,14 @@ export interface components {
         };
         DowntimeSummary: {
             /**
-             * @description 조업 시간
+             * @description 조업 시간(분). 서버가 설비별·기간별로 작업 세션 구간을 더한 값이다(공유계약 L-2). 근거: W-05-08 §5-2
              * @example 105600
              */
             operatingMinutes: number;
-            /** @example 14400 */
+            /**
+             * @description 계획 비가동(분). 작업 캘린더가 정한 휴무·계획 정지다. ⛔ 이 오퍼레이션이 만들지 않는다 — 만드는 곳은 작업 캘린더 설정(W-05-09)이다. 근거: W-05-08 §5-2 · P-05-02 §5-5
+             * @example 14400
+             */
             plannedDowntimeMinutes?: number;
             /** @example 7680 */
             actualDowntimeMinutes: number;
@@ -38666,6 +42610,21 @@ export interface components {
              * @example 4
              */
             sessionsWithoutEquipmentCount?: number;
+            /**
+             * @description 이 기간·이 범위에서 완료된 사후 보전 건수
+             * @example 18
+             */
+            correctiveMaintenanceCount?: number;
+            /**
+             * @description 예방 보전 건수. 사후/예방 비율이 예방 계획의 부실을 보이는 지표라 요약이 함께 낸다. 근거: W-05-08 §5-6
+             * @example 7
+             */
+            preventiveMaintenanceCount?: number;
+            /**
+             * @description 보전 지시 없이 완료된 고장 건수. 지시를 강제하지 않기로 한 대신 이 수를 세어 보인다. ⭐ 비율의 분모는 사후·예방 보전 건수의 합이다 — 완료 고장 전체가 아니다. 근거: W-05-04 §5-4 · W-05-08 §5-6
+             * @example 6
+             */
+            breakdownsClosedWithoutOrderCount?: number;
         };
         ToolUsage: {
             /**
@@ -38918,7 +42877,7 @@ export interface components {
              */
             calibrationId: number;
             /**
-             * @description 검교정(CALIBRATION) 또는 점검(CHECK)
+             * @description 계측기 이력 유형. 확정된 유형은 넷이다 — 검교정(CALIBRATION) · 점검(CHECK) · 수리 · 폐기. ⚠ 뒤 둘의 코드값 이름은 아직 확정되지 않았다 — 관리자 설정형이라 값이 늘 수 있고 공통코드 마스터(W-06-06)가 정한다. ⚠ 「열린 수리 이력이 없다」가 설비 사용 가부 판정식의 한 항이므로 수리 유형을 뺄 수 없다(W-05-11 §5-2). ⛔ enum 으로 좁히지 않는다
              * @example CALIBRATION
              */
             historyTypeCode: string;
@@ -38928,13 +42887,18 @@ export interface components {
              */
             performedOn: string;
             /**
-             * @description 합격(PASS) 또는 불합격(FAIL)
+             * @description 이력 결과. ⚠ 값 집합이 이력 유형마다 다르다 — 검교정은 합격·조정 후 합격·불합격, 점검은 정상·이상, 수리는 완료·불가다. 화면은 historyTypeCode 로 걸러 보인다. ⚠ 합격(PASS)·불합격(FAIL) 밖의 코드값 이름은 아직 확정되지 않았다 — 공통코드 마스터(W-06-06)가 정하며 그때까지 화면은 선택칸을 비활성 + 사유로 둔다(공유계약 G-2). ⭐ 설비 마스터의 검교정일 갱신은 검교정 유형의 합격 계열에서만 일어난다. ⛔ enum 으로 못박지 않는다. 근거: W-05-10 §5-2·§5-3
              * @example PASS
              */
             resultCode: string;
             /** @example CAL-2026-0031 */
             certificateNo?: string | null;
-            /** @example 한국계측인증 */
+            /** @description 교정 기관 구분 — 내부 교정인가 외부 기관 교정인가. historyTypeCode 가 검교정일 때만 쓴다. ⛔ 값 이름은 아직 확정되지 않았다 — 공통코드 마스터(W-06-06)가 정하며 그때까지 화면은 선택칸을 비활성 + 사유로 둔다(공유계약 G-2). 근거: W-05-10 §3-2·§5-4 */
+            agencyTypeCode?: string | null;
+            /**
+             * @description 교정 기관 이름. 외부 기관 교정일 때 필수다 — 짝 제약은 화면이 진다(공유계약 A-2). ⛔ 거래처 마스터를 가리키지 않는다 — 교정 기관은 구매 협력사로 등록돼 있지 않을 수 있고 등록을 강제하면 이력을 못 적는다. 근거: W-05-10 §5-4
+             * @example 한국계측인증
+             */
             agencyName?: string | null;
             /**
              * Format: date
@@ -38945,9 +42909,16 @@ export interface components {
             toleranceNote?: string | null;
             /**
              * Format: int64
+             * @description 기록자 — 이력을 입력한 계정. 서버가 인증 주체에서 채우며 요청 본문으로 받지 않는다(CalibrationCreate 에 없다). ⚠ 수행자(performedByUserId)와 다른 축이다 — 외부 기관 검교정은 수행자가 비어도 기록자는 남는다
              * @example 1001
              */
             recordedByUserId?: number;
+            /**
+             * Format: int64
+             * @description 수행자. 외부 기관 교정이면 비우고 agencyName 을 채운다(공유계약 A-2 짝 제약)
+             * @example 1001
+             */
+            performedByUserId?: number | null;
             /**
              * Format: int64
              * @description 계측기. 계측기는 설비의 한 종류라 /mdm/equipments 의 equipmentId 그대로다 — 계측기 전용 자원을 두지 않는다
@@ -38956,20 +42927,36 @@ export interface components {
             equipmentId: number;
             /** @example GAU-0031 */
             equipmentCode?: string;
+            /**
+             * @description 비고
+             * @example 정정 재검교정 — 1차 성적서 오기
+             */
+            remarks?: string | null;
         };
         CalibrationCreate: {
-            /** @example CALIBRATION */
+            /**
+             * @description 계측기 이력 유형. 확정된 유형은 넷이다 — 검교정(CALIBRATION) · 점검(CHECK) · 수리 · 폐기. ⚠ 뒤 둘의 코드값 이름은 아직 확정되지 않았다 — 관리자 설정형이라 값이 늘 수 있고 공통코드 마스터(W-06-06)가 정한다. ⚠ 「열린 수리 이력이 없다」가 설비 사용 가부 판정식의 한 항이므로 수리 유형을 뺄 수 없다(W-05-11 §5-2). ⛔ enum 으로 좁히지 않는다
+             * @example CALIBRATION
+             */
             historyTypeCode: string;
             /**
              * Format: date
              * @example 2026-08-18
              */
             performedOn: string;
-            /** @example PASS */
+            /**
+             * @description 이력 결과. ⚠ 값 집합이 이력 유형마다 다르다 — 검교정은 합격·조정 후 합격·불합격, 점검은 정상·이상, 수리는 완료·불가다. 화면은 historyTypeCode 로 걸러 보인다. ⚠ 합격(PASS)·불합격(FAIL) 밖의 코드값 이름은 아직 확정되지 않았다 — 공통코드 마스터(W-06-06)가 정하며 그때까지 화면은 선택칸을 비활성 + 사유로 둔다(공유계약 G-2). ⭐ 설비 마스터의 검교정일 갱신은 검교정 유형의 합격 계열에서만 일어난다. ⛔ enum 으로 못박지 않는다. 근거: W-05-10 §5-2·§5-3
+             * @example PASS
+             */
             resultCode: string;
             /** @example CAL-2026-0031 */
             certificateNo?: string | null;
-            /** @example 한국계측인증 */
+            /** @description 교정 기관 구분 — 내부 교정인가 외부 기관 교정인가. historyTypeCode 가 검교정일 때만 쓴다. ⛔ 값 이름은 아직 확정되지 않았다 — 공통코드 마스터(W-06-06)가 정하며 그때까지 화면은 선택칸을 비활성 + 사유로 둔다(공유계약 G-2). 근거: W-05-10 §3-2·§5-4 */
+            agencyTypeCode?: string | null;
+            /**
+             * @description 교정 기관 이름. 외부 기관 교정일 때 필수다 — 짝 제약은 화면이 진다(공유계약 A-2). ⛔ 거래처 마스터를 가리키지 않는다 — 교정 기관은 구매 협력사로 등록돼 있지 않을 수 있고 등록을 강제하면 이력을 못 적는다. 근거: W-05-10 §5-4
+             * @example 한국계측인증
+             */
             agencyName?: string | null;
             /**
              * Format: date
@@ -38980,10 +42967,21 @@ export interface components {
             toleranceNote?: string | null;
             /**
              * Format: int64
+             * @description 수행자. 외부 기관 교정이면 비우고 agencyName 을 채운다(공유계약 A-2 짝 제약)
+             * @example 1001
+             */
+            performedByUserId?: number | null;
+            /**
+             * Format: int64
              * @description 계측기. 계측기는 설비의 한 종류라 /mdm/equipments 의 equipmentId 그대로다 — 계측기 전용 자원을 두지 않는다
              * @example 1001
              */
             equipmentId: number;
+            /**
+             * @description 비고
+             * @example 정정 재검교정 — 1차 성적서 오기
+             */
+            remarks?: string | null;
         };
         /** @description 설비별 묶음 한 줄. 근거: W-05-08 §4 ③ 설비별 탭 */
         DowntimeEquipmentSummary: {
@@ -39029,7 +43027,7 @@ export interface components {
     parameters: {
         /** @description 전 쓰기 API 필수. */
         IdempotencyKey: string;
-        /** @description 낙관적 잠금용 version_no. 값은 같은 리소스의 상세 GET 200 이 내려주는 ETag 응답 헤더에서 받는다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 */
+        /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
         IfMatchVersion: string;
         /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
         IfMatchVersionOptional: string;
@@ -39221,6 +43219,8 @@ export interface operations {
             header: {
                 /** @description 전 쓰기 API 필수. */
                 "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                "X-Worker-No": components["parameters"]["WorkerNo"];
             };
             path: {
                 /**

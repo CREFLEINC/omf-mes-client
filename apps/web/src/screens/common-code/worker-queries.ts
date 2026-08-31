@@ -34,6 +34,14 @@ export const workerKeys = {
 };
 
 /**
+ * 자격 목록 조회 경로. `PUT` 저장의 `etagPath`가 이 문자열과 정확히 같아야
+ * `useMasterWrite`가 이 조회로 잡힌 토큰을 찾는다(client#602 — 이 경로의 `GET` 200 응답에
+ * `ETag`가 신설됐다).
+ */
+export const workerQualificationsPath = (workerId: number): string =>
+  `/mdm/workers/${String(workerId)}/qualifications`;
+
+/**
  * 작업자 목록. 조건은 서버로 보낸다.
  *
  * **`plantId`·`businessUnitId`를 보내지 않는다** — 그 필터를 만들지 않았고,
@@ -82,6 +90,9 @@ export const useWorkerDetail = (workerId: number | null): UseQueryResult<WorkerD
 /**
  * 자격·인증 목록. **쪽 나눔이 없다**(`items`만 오고 `page`가 없다 — 계약 실측).
  * 그래서 자격 표에 쪽 이동을 두지 않는다.
+ *
+ * 이 응답의 `ETag`가 저장(`PUT`)의 `If-Match`를 채운다(client#602) —
+ * `workerQualificationsPath`가 그 경로 문자열을 낸다.
  */
 export const useWorkerQualifications = (
   workerId: number | null,

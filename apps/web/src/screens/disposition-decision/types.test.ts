@@ -60,6 +60,12 @@ const decision = (overrides: Partial<DispositionDecision> = {}): DispositionDeci
   reason: '표면만 손상돼 재작업으로 회복된다',
   decidedBy: 4001,
   decidedAt: '2026-08-12T14:20:00+09:00',
+  /*
+   * client#601 1-4 — 계약이 새로 필수로 요구하는 둘이다. **화면이 아직 읽지 않는다**
+   * (그것을 어떻게 쓸지는 별건 #570) — 픽스처가 계약을 만족하게만 둔다.
+   */
+  followUpStatusCode: 'NOT_STARTED',
+  followUpQty: 0,
   ...overrides,
 });
 

@@ -134,10 +134,14 @@ const itemSaveFailureRoute = (status: number, body: unknown, itemId = 1001): Stu
 
 /* ── 부속 정보 ─────────────────────────────────────────────────────────────── */
 
-/** 사업부 매핑 목록 — **`ETag`가 없다**(계약 실측). 쪽 나눔도 없다. */
-const buMapsRoute = (items = buMapFixtures, itemId = 1001): StubRoute => ({
+/** 사업부 매핑 목록 — client#602로 `ETag`가 생겼다. 쪽 나눔은 여전히 없다. */
+const buMapsRoute = (
+  items = buMapFixtures,
+  itemId = 1001,
+  { withEtag = true } = {},
+): StubRoute => ({
   match: (request) => isGet(request, buMapsPath(itemId)),
-  respond: () => jsonResponse({ items }),
+  respond: () => jsonResponse({ items }, withEtag ? { headers: { ETag: 'W/"1"' } } : {}),
 });
 
 /** 사업부 매핑 치환 — 성공. 서버가 행 번호를 새로 매겨 돌려준다. */
@@ -173,8 +177,8 @@ const itemDetailByIdRoute = ({ withEtag = true } = {}): StubRoute => ({
     return jsonResponse(
       { item, editability: { codeEditable: false, reason: 'EDITABLE', referenceCount: 3 } },
       /*
-       * 토큰 없는 갈래를 만들 수 있어야 한다. **부속 치환 셋은 낙관적 잠금을 쓰지 않으므로**
-       * 잠금 토큰이 없어도 저장이 나가야 하는데(§5.3 2~4행), 토큰이 늘 있는 상황만
+       * 토큰 없는 갈래를 만들 수 있어야 한다. 확장 속성 저장은 이 상세의 토큰에 매이므로
+       * (§5.3 1행) 토큰이 없으면 저장이 나가지 않아야 하는데, 토큰이 늘 있는 상황만
        * 검사하면 `etagPath`를 잘못 준 코드가 그대로 통과한다.
        */
       withEtag ? { headers: { ETag: 'W/"7"' } } : {},
@@ -182,10 +186,14 @@ const itemDetailByIdRoute = ({ withEtag = true } = {}): StubRoute => ({
   },
 });
 
-/** 단위 환산 목록 — `ETag`도 쪽 나눔도 없다(계약 실측). */
-const uomConversionsRoute = (items = uomConversionFixtures, itemId = 1001): StubRoute => ({
+/** 단위 환산 목록 — client#602로 `ETag`가 생겼다. 쪽 나눔은 여전히 없다. */
+const uomConversionsRoute = (
+  items = uomConversionFixtures,
+  itemId = 1001,
+  { withEtag = true } = {},
+): StubRoute => ({
   match: (request) => isGet(request, uomConversionsPath(itemId)),
-  respond: () => jsonResponse({ items }),
+  respond: () => jsonResponse({ items }, withEtag ? { headers: { ETag: 'W/"2"' } } : {}),
 });
 
 const uomConversionSaveRoute = (items = uomConversionFixtures, itemId = 1001): StubRoute => ({
@@ -193,10 +201,14 @@ const uomConversionSaveRoute = (items = uomConversionFixtures, itemId = 1001): S
   respond: () => jsonResponse({ items }),
 });
 
-/** 외부 코드 목록 — `ETag`도 쪽 나눔도 없다(계약 실측). */
-const externalCodesRoute = (items = externalCodeFixtures, itemId = 1001): StubRoute => ({
+/** 외부 코드 목록 — client#602로 `ETag`가 생겼다. 쪽 나눔은 여전히 없다. */
+const externalCodesRoute = (
+  items = externalCodeFixtures,
+  itemId = 1001,
+  { withEtag = true } = {},
+): StubRoute => ({
   match: (request) => isGet(request, externalCodesPath(itemId)),
-  respond: () => jsonResponse({ items }),
+  respond: () => jsonResponse({ items }, withEtag ? { headers: { ETag: 'W/"3"' } } : {}),
 });
 
 const externalCodeSaveRoute = (items = externalCodeFixtures, itemId = 1001): StubRoute => ({
@@ -1761,10 +1773,10 @@ describe('ItemExtendedAttrsScreen — 사업부 매핑 치환 (M15~M18)', () => 
   });
 
   /*
-   * M17 — **`If-Match`가 실리지 않는다.** 계약에 이 쓰기의 그 파라미터 자체가 없고,
-   * 목록 조회가 `ETag`를 주지 않아 `etagPath`에 상세 경로를 주면 요청이 멈춘다.
+   * client#602 — **이 목록 조회의 `ETag`가 `If-Match`로 실린다.** 예전에는 계약에 이 쓰기의
+   * 그 파라미터 자체가 없고 목록 조회도 `ETag`를 주지 않아 보내지 않았다.
    */
-  it('치환 저장이 1회이고 If-Match가 실리지 않는다 (M17)', async () => {
+  it('치환 저장이 1회이고 목록 조회의 ETag를 If-Match로 되돌려 보낸다', async () => {
     const { requests, user } = renderScreen(
       [...subsidiaryRoutes(), buMapSaveRoute()],
       '?item=1001&tab=sub',
@@ -1779,7 +1791,7 @@ describe('ItemExtendedAttrsScreen — 사업부 매핑 치환 (M15~M18)', () => 
     });
 
     const put = buMapPuts(requests)[0]!;
-    expect(put.headers.get('If-Match')).toBeNull();
+    expect(put.headers.get('If-Match')).toBe('W/"1"');
     expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
   });
 
@@ -2128,7 +2140,7 @@ describe('ItemExtendedAttrsScreen — 단위 환산 치환 (M15~M18)', () => {
     expect(uomConversionPuts(requests)[0]?.body).not.toContain('itemId');
   });
 
-  it('치환 저장이 1회이고 If-Match가 실리지 않는다 (M17)', async () => {
+  it('치환 저장이 1회이고 목록 조회의 ETag를 If-Match로 되돌려 보낸다', async () => {
     const { requests, user } = renderScreen(
       [...subsidiaryRoutes(), uomConversionSaveRoute()],
       '?item=1001&tab=sub&sub=uom',
@@ -2144,7 +2156,7 @@ describe('ItemExtendedAttrsScreen — 단위 환산 치환 (M15~M18)', () => {
 
     const put = uomConversionPuts(requests)[0]!;
     expect(put.url.pathname).toBe('/mdm/items/1001/uom-conversions');
-    expect(put.headers.get('If-Match')).toBeNull();
+    expect(put.headers.get('If-Match')).toBe('W/"2"');
     expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
   });
 
@@ -2440,7 +2452,7 @@ describe('ItemExtendedAttrsScreen — 외부 코드 치환 (M15~M18)', () => {
     expect(externalCodePuts(requests)[0]?.body).not.toContain('itemId');
   });
 
-  it('치환 저장이 1회이고 If-Match가 실리지 않는다 (M17)', async () => {
+  it('치환 저장이 1회이고 목록 조회의 ETag를 If-Match로 되돌려 보낸다', async () => {
     const { requests, user } = renderScreen(
       [...subsidiaryRoutes(), externalCodeSaveRoute()],
       '?item=1001&tab=sub&sub=ext',
@@ -2456,7 +2468,7 @@ describe('ItemExtendedAttrsScreen — 외부 코드 치환 (M15~M18)', () => {
 
     const put = externalCodePuts(requests)[0]!;
     expect(put.url.pathname).toBe('/mdm/items/1001/external-codes');
-    expect(put.headers.get('If-Match')).toBeNull();
+    expect(put.headers.get('If-Match')).toBe('W/"3"');
     expect(put.headers.get('Idempotency-Key')).toMatch(UUID);
   });
 
@@ -2692,31 +2704,32 @@ describe('ItemExtendedAttrsScreen — 부속 초안 세 벌 (C12)', () => {
 });
 
 /**
- * M17(핵심) — **부속 치환 셋은 잠금 토큰에 매이지 않는다.**
+ * client#602(핵심) — **부속 치환 셋도 이제 확장 속성과 같이 잠금 토큰에 매인다.**
  *
- * 계약에 이 쓰기들의 `If-Match` 파라미터 자체가 없고 목록 조회가 `ETag`를 주지도 않는다.
- * `etagPath`에 상세 경로를 주면 토큰을 찾지 못한 `useMasterWrite`가 **요청을 보내지 않고 멈춘다** —
- * 「저장을 눌러도 아무 일이 없다」가 된다.
+ * 예전에는 계약에 이 쓰기들의 `If-Match` 파라미터 자체가 없고 목록 조회도 `ETag`를 주지
+ * 않아 토큰 없이도 저장이 나갔다(M17). 지금은 각 목록 조회 자체가 `ETag`를 주고 저장이
+ * `If-Match`를 요구한다 — `etagPath`가 그 토큰을 찾지 못하면 `useMasterWrite`가
+ * **요청을 보내지 않고 멈춘다.**
  *
- * **토큰이 있는 상황만 검사하면 이 결함이 통과한다.** 이 화면은 품목 상세를 늘 함께 받아
- * 보관소에 토큰이 들어 있기 때문이다. 그래서 여기서는 **토큰 없는 상세**를 준다.
+ * **토큰이 있는 상황만 검사하면 이 결함이 통과한다.** 그래서 여기서는 네 조회(품목 상세 +
+ * 부속 셋) 모두 **토큰 없는 응답**을 준다.
  */
-describe('ItemExtendedAttrsScreen — 부속 치환은 잠금 토큰에 매이지 않는다 (M17)', () => {
+describe('ItemExtendedAttrsScreen — 부속 치환도 확장 속성처럼 잠금 토큰에 매인다 (client#602)', () => {
   const tokenlessRoutes = (): StubRoute[] => [
     itemListRoute(),
     itemDetailByIdRoute({ withEtag: false }),
     uomsRoute(),
     businessUnitsRoute(),
     partnersRoute(),
-    buMapsRoute(),
-    uomConversionsRoute(),
-    externalCodesRoute(),
+    buMapsRoute(buMapFixtures, 1001, { withEtag: false }),
+    uomConversionsRoute(uomConversionFixtures, 1001, { withEtag: false }),
+    externalCodesRoute(externalCodeFixtures, 1001, { withEtag: false }),
     buMapSaveRoute(),
     uomConversionSaveRoute(),
     externalCodeSaveRoute(),
   ];
 
-  it('상세에 잠금 토큰이 없어도 사업부 매핑 저장이 나간다', async () => {
+  it('목록 조회에 잠금 토큰이 없으면 사업부 매핑 저장이 나가지 않는다', async () => {
     const { requests, user } = renderScreen(tokenlessRoutes(), '?item=1001&tab=sub');
 
     const pane = await findBuMapPane();
@@ -2724,12 +2737,14 @@ describe('ItemExtendedAttrsScreen — 부속 치환은 잠금 토큰에 매이�
     await user.click(within(pane).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
-      expect(buMapPuts(requests)).toHaveLength(1);
+      expect(buMapPuts(requests)).toHaveLength(0);
     });
-    expect(screen.queryByText(/최신 내용을 불러온 뒤/)).not.toBeInTheDocument();
+    expect(
+      await screen.findByText('최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.'),
+    ).toBeInTheDocument();
   });
 
-  it('상세에 잠금 토큰이 없어도 단위 환산 저장이 나간다', async () => {
+  it('목록 조회에 잠금 토큰이 없으면 단위 환산 저장이 나가지 않는다', async () => {
     const { requests, user } = renderScreen(tokenlessRoutes(), '?item=1001&tab=sub&sub=uom');
 
     const pane = await findUomConversionPane();
@@ -2737,11 +2752,14 @@ describe('ItemExtendedAttrsScreen — 부속 치환은 잠금 토큰에 매이�
     await user.click(within(pane).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
-      expect(uomConversionPuts(requests)).toHaveLength(1);
+      expect(uomConversionPuts(requests)).toHaveLength(0);
     });
+    expect(
+      await screen.findByText('최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.'),
+    ).toBeInTheDocument();
   });
 
-  it('상세에 잠금 토큰이 없어도 외부 코드 저장이 나간다', async () => {
+  it('목록 조회에 잠금 토큰이 없으면 외부 코드 저장이 나가지 않는다', async () => {
     const { requests, user } = renderScreen(tokenlessRoutes(), '?item=1001&tab=sub&sub=ext');
 
     const pane = await findExternalCodePane();
@@ -2749,13 +2767,15 @@ describe('ItemExtendedAttrsScreen — 부속 치환은 잠금 토큰에 매이�
     await user.click(within(pane).getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
-      expect(externalCodePuts(requests)).toHaveLength(1);
+      expect(externalCodePuts(requests)).toHaveLength(0);
     });
+    expect(
+      await screen.findByText('최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.'),
+    ).toBeInTheDocument();
   });
 
   /*
-   * 반대 방향 — **확장 속성 저장은 토큰에 매인다**(§5.3 1행).
-   * 두 규칙을 한 화면이 함께 지키므로 한쪽만 검사하면 나머지가 흔들린다.
+   * 확장 속성도 같은 규칙이다(§5.3 1행) — 부속 셋과 함께 네 쓰기가 모두 토큰에 매인다.
    */
   it('상세에 잠금 토큰이 없으면 확장 속성 저장은 나가지 않는다', async () => {
     const { requests, user } = renderScreen([...tokenlessRoutes(), itemSaveRoute()], '?item=1001');

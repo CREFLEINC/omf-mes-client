@@ -93,6 +93,7 @@ const statusRow: components['schemas']['LotQualityStatus'] = {
   fullyHeld: false,
   latestTransitionAt: '2026-08-21T12:34:00+09:00',
   latestReasonCode: 'SAMPLE_REASON',
+  versionNo: 1,
 };
 
 const qualityRoutes = (

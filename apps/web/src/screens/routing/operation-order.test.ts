@@ -136,7 +136,10 @@ describe('removeDraft · upsertDraft', () => {
     const first = drafts[0];
     expect(first).toBeDefined();
 
-    const edited = upsertDraft(drafts, { ...(first as (typeof drafts)[number]), operationName: '1차 사출(개정)' });
+    const edited = upsertDraft(drafts, {
+      ...(first as (typeof drafts)[number]),
+      operationName: '1차 사출(개정)',
+    });
 
     expect(names(edited)).toEqual(['1차 사출(개정)', '2차 조립']);
   });
@@ -194,12 +197,16 @@ describe('toOperationsPayload', () => {
     expect(payload[1]?.standardYieldRate).toBeNull();
   });
 
-  /** 계약에 자리가 없는 항목을 지어내 보내지 않는다(외주 공정). */
-  it('계약에 없는 항목을 본문에 싣지 않는다', () => {
+  /**
+   * client#603 — `isOutsourced`가 2026-08-30 계약에 되살아나 필수가 됐다. 이 화면은 아직 그 칸을
+   * 입력받지 않아(폼의 체크칸이 비활성 고정) **항상 `false`를 싣는다** — 값을 지어내는 게 아니라
+   * 폼이 실제로 보이는 값 그대로다. `draftId`(화면 전용 키)는 여전히 싣지 않는다.
+   */
+  it('외주 공정은 항상 false를 싣고, 화면 전용 키는 싣지 않는다', () => {
     const payload = toOperationsPayload(7003, toOperationDrafts(routingOperationFixtures));
 
     for (const item of payload) {
-      expect('isOutsourced' in item).toBe(false);
+      expect(item.isOutsourced).toBe(false);
       expect('outsourced' in item).toBe(false);
       expect('draftId' in item).toBe(false);
     }

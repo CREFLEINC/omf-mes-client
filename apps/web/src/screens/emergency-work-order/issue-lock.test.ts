@@ -27,6 +27,7 @@ const READY: ExpansionState = {
     routingCode: 'SYN-RT-0001',
     routingVersion: 2,
     statusCode: 'SYN_ACTIVE',
+    isDefault: true,
   },
   operations: [],
 };

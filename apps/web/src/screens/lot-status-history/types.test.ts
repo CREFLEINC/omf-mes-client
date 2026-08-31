@@ -13,6 +13,8 @@ const MINIMAL_LOT_STATUS: LotQualityStatusResponse = {
   itemId: 202,
   lotStatusCode: 'SAMPLE_STATUS_A',
   fullyHeld: false,
+  /* 화면에 표시하지 않는 낙관적 잠금 토큰이다(공유계약 A-4) — 픽스처가 계약을 만족하게만 둔다. */
+  versionNo: 1,
 };
 
 const FULL_LOT_STATUS: LotQualityStatusResponse = {

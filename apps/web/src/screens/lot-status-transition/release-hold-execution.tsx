@@ -24,15 +24,22 @@ const HISTORY_KEY = ['lot-status-history'] as const;
 interface Draft {
   mode: 'FULL' | 'PARTIAL';
   releaseQty: string;
+  releaseReasonCode: string;
   remarks: string;
 }
 
 interface Validation {
   body: LotHoldRelease | null;
   quantityError?: string;
+  releaseReasonError?: string;
   remarksError?: string;
 }
 
+/**
+ * client#601 2-2 — `releaseReasonCode`가 2026-08-30 되살아나 필수가 됐다(등록 사유와 대칭 축).
+ * 값 목록이 아직 확정되지 않아 자유 입력으로 받는다 — 형제 폼(`create-hold-execution.tsx`의
+ * `reasonCode`)이 같은 사정(등록 사유)에 이미 쓰고 있는 형태를 그대로 옮겼다.
+ */
 const validate = (draft: Draft, maximum: number | undefined, target: string): Validation => {
   const text = draft.releaseQty.trim();
   const quantity = Number(text);
@@ -46,16 +53,20 @@ const validate = (draft: Draft, maximum: number | undefined, target: string): Va
           : quantity > maximum
             ? `해제 수량은 보류 수량 ${String(maximum)} 이하여야 합니다.`
             : undefined;
+  const releaseReasonCode = draft.releaseReasonCode.trim();
+  const releaseReasonError = releaseReasonCode === '' ? '해제 사유를 입력하세요.' : undefined;
   const remarks = draft.remarks.trim();
-  const remarksError = remarks === '' ? '해제 사유 및 비고를 입력하세요.' : undefined;
+  const remarksError = remarks === '' ? '비고를 입력하세요.' : undefined;
   return {
     quantityError,
+    releaseReasonError,
     remarksError,
     body:
-      quantityError === undefined && remarksError === undefined
+      quantityError === undefined && releaseReasonError === undefined && remarksError === undefined
         ? {
             targetLotStatusCode: target,
             ...(draft.mode === 'PARTIAL' ? { releaseQty: quantity } : {}),
+            releaseReasonCode,
             remarks,
           }
         : null,
@@ -80,7 +91,12 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const [draft, setDraft] = useState<Draft>({ mode: 'FULL', releaseQty: '', remarks: '' });
+  const [draft, setDraft] = useState<Draft>({
+    mode: 'FULL',
+    releaseQty: '',
+    releaseReasonCode: '',
+    remarks: '',
+  });
   const [confirmation, setConfirmation] = useState<LotHoldRelease | null>(null);
   const validation = validate(draft, props.maxReleaseQty, props.targetLotStatusCode);
   const write = useMasterWrite<LotHoldRelease, LotHold>({
@@ -128,7 +144,12 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
         disabled={write.isSaving}
         aria-label="해제 범위"
         onChange={(value) => {
-          setDraft({ mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL', releaseQty: '', remarks: '' });
+          setDraft({
+            mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL',
+            releaseQty: '',
+            releaseReasonCode: '',
+            remarks: '',
+          });
           setConfirmation(null);
           write.reset();
         }}
@@ -149,8 +170,17 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
             }
           />
         )}
+        <TextField
+          label="해제 사유"
+          required
+          value={draft.releaseReasonCode}
+          error={validation.releaseReasonError}
+          onChange={(event) =>
+            setDraft((current) => ({ ...current, releaseReasonCode: event.target.value }))
+          }
+        />
         <TextArea
-          label="해제 사유 및 비고"
+          label="비고"
           required
           fullWidth
           rows={3}

@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderWithProviders } from '../../test/api-harness';
-import { requestWithoutLot, waitingRequest } from './fixtures';
+import { requestWithoutLot, requestWithoutPlanVersion, waitingRequest } from './fixtures';
 import { RequestDetailPane } from './request-detail-pane';
 import { toInspectionRequestDetail } from './types';
 
@@ -37,5 +37,18 @@ describe('RequestDetailPane', () => {
     );
 
     expect(screen.getByText(messages.iqcInspection.queue.emptyValue)).toBeInTheDocument();
+  });
+
+  /*
+   * client#589 — 검사기준이 등록되지 않은 채 만들어진 의뢰는 이 칸이 빈다. 없는 값과
+   * 모르는 값은 다른 모양이어야 하므로(공유계약 G-9) 일반 빈 값 표시와 다른 문구를 낸다.
+   */
+  it('검사기준 버전이 없으면 일반 빈 값과 다른 「기준 없음」을 낸다', () => {
+    renderWithProviders(
+      <RequestDetailPane detail={toInspectionRequestDetail(requestWithoutPlanVersion)} />,
+    );
+
+    expect(screen.getByText(t.noPlanVersion)).toBeInTheDocument();
+    expect(screen.queryByText(messages.iqcInspection.queue.emptyValue)).not.toBeInTheDocument();
   });
 });

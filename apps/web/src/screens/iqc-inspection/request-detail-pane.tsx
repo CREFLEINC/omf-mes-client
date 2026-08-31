@@ -37,7 +37,11 @@ export const RequestDetailPane = ({ detail }: RequestDetailPaneProps) => {
     {
       key: 'plan',
       label: t.fields.inspectionPlanVersionId,
-      value: String(detail.inspectionPlanVersionId),
+      /* client#589 — 없는 값(기준 미등록)과 모르는 값은 다른 모양이어야 한다(공유계약 G-9). */
+      value:
+        detail.inspectionPlanVersionId === null
+          ? t.noPlanVersion
+          : String(detail.inspectionPlanVersionId),
     },
   ];
 
