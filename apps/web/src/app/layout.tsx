@@ -393,6 +393,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/equipment/tool-pm-order" icon="schedule">
               툴 보전오더 생성
             </NavItem>
+            {/* W-05-03 — 오더 생성 바로 뒤다. 오더가 이 실적의 대상이다. */}
+            <NavItem to="/equipment/tool-pm-result" icon="restart_alt">
+              툴 PM 실적 등록
+            </NavItem>
             {/*
              * W-05-08 — 마스터·설정 항목들 **뒤**다. 앞의 것들은 설비를 어떻게 다룰지 정해 두는
              * 자리이고 이것은 그렇게 돌아간 결과를 보는 자리라, 정하는 것과 보는 것을 섞지 않는다.
