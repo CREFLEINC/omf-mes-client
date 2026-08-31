@@ -114,9 +114,18 @@ const loadShortage = async (user: User): Promise<void> => {
   });
 };
 
+/**
+ * ⛔ **정리 대상이 아니다 — 이 setup 이 감지의 전부를 짊어진다.**
+ *
+ * 시계를 손에 쥐지 않으면 두 누름이 같은 초 안에 일어나 `occurredAt` 이 우연히 같아지고,
+ * **배선이 끊긴 채로도 아래 갈래가 전부 통과한다.** 재검증이 실측했다 — 결함을 심어 둔 채
+ * 밀기 한 줄만 빼니 4갈래가 그대로 통과했다.
+ *
+ * `toFake` 를 `Date` 로 좁힌 이유는 따로 있다 — `setTimeout` 까지 가짜로 만들면 사용자 조작과
+ * 조회가 멎는다.
+ */
 const useFrozenClock = (): void => {
   beforeEach(() => {
-    /* Date 만 고정한다 — setTimeout 을 함께 가짜로 만들면 사용자 조작과 조회가 멎는다. */
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 8, 1, 0, 12, 30));
   });
@@ -159,13 +168,17 @@ describe('발행 배선 — 같은 제출을 두 번 시도하면 같은 멱등 
     });
 
     /*
-     * 90초 뒤 재시도. 그 사이 **사유를 바꿨다가 되돌린다** — 보낼 값이 첫 시도와 완전히 같아진
-     * 상태다. 값이 같으면 같은 키가 나가야 한다(검증 발견 3의 갈래).
-     *
-     * 배선이 끊겨 제출 순간을 다시 뜨면 `occurredAt` 이 갈려 새 키가 나가고, 앞 시도가 실제로
-     * 적용됐다면 같은 전표가 둘 쌓인다.
+     * ⛔ **이 한 줄을 지우면 감지기가 죽는다.** 90초를 밀어야 배선이 끊겼을 때 `occurredAt` 이
+     * 갈린다 — 밀지 않으면 두 누름이 같은 초에 들어 **결함을 심어도 이 갈래가 통과한다**
+     * (재검증 실측). 「불필요한 setup」으로 보이지만 감지의 전부다.
      */
     vi.setSystemTime(new Date(2026, 8, 1, 0, 14, 0));
+
+    /*
+     * 그 사이 **사유를 바꿨다가 되돌린다** — 보낼 값이 첫 시도와 완전히 같아진 상태다. 값이
+     * 같으면 같은 키가 나가야 한다(검증 발견 3의 갈래). 배선이 끊겨 제출 순간을 다시 뜨면 새
+     * 키가 나가고, 앞 시도가 실제로 적용됐다면 같은 전표가 둘 쌓인다.
+     */
 
     await user.click(screen.getAllByRole('radio')[1]!);
     await user.click(screen.getAllByRole('radio')[0]!);
@@ -186,6 +199,42 @@ describe('발행 배선 — 같은 제출을 두 번 시도하면 같은 멱등 
     });
 
     expect(screen.queryByText(t.errors.destinationRequired)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⚠ **화면이 연쇄로 비운 칸은 만짐이 아니다**(재검증 R2-1).
+   *
+   * 창고를 바꾸면 그 창고에 없는 위치가 남지 않게 **화면이** 도착 위치를 비운다. 그것까지
+   * 만짐으로 적으면 사용자가 건드리지도 않은 칸이 그 자리에서 붉어져, 「만진 칸만 붉힌다」는
+   * 규칙이 바로 그 경로에서 깨진다.
+   */
+  it('창고를 바꿔 화면이 도착 위치를 비워도 그 칸이 붉어지지 않는다', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+    renderWithProviders(<MaterialIssueRequestScreen />, {
+      fetch: createStubFetch(routesFor({ keys: [] })),
+    });
+
+    await selectWorkOrder(user);
+
+    await user.click(screen.getByLabelText(t.formFields.warehouse));
+    await user.click(await screen.findByRole('option', { name: 'SAMPLE-WH-02 · 합성 부품창고' }));
+
+    /* 도착 위치가 실제로 비워졌는지 먼저 본다 — 비워지지 않았으면 이 갈래가 성립하지 않는다. */
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.formFields.destinationLocation)).not.toHaveTextContent(
+        'SAMPLE-LOC-01',
+      );
+    });
+
+    expect(screen.queryByText(t.errors.destinationRequired)).not.toBeInTheDocument();
+
+    /*
+     * ⭐ **감춘 것은 표시이지 판정이 아니다.** 발행은 닫혀 있고 그 사유가 버튼 옆에 글자로 선다 —
+     * 사용자는 무엇을 해야 하는지 알 수 있고, 아직 만지지 않은 칸만 조용하다.
+     */
+    expect(screen.getByRole('button', { name: t.actions.publish })).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.noDestination)).toBeInTheDocument();
   });
 });
 

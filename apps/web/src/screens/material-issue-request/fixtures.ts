@@ -112,6 +112,10 @@ export const shortageFixtures: ShortageLineResponse[] = [
   },
 ];
 
+/**
+ * 창고 둘. **7201 이 기본 재공 위치(7301)가 속한 창고**라 자동 채움이 이쪽으로 온다.
+ * 7202 는 **사용자가 창고를 바꾸는 갈래**에 필요하다 — 하나뿐이면 바꿀 곳이 없다.
+ */
 export const warehouseFixtures = [
   {
     warehouseId: 7201,
@@ -119,6 +123,18 @@ export const warehouseFixtures = [
     businessUnitId: 7000,
     warehouseCode: 'SAMPLE-WH-01',
     warehouseName: '합성 자재창고',
+    warehouseTypeCode: 'SAMPLE_WH_T_A',
+    managementLevelCode: 'SAMPLE_WH_L_A',
+    isExternal: false,
+    isDefect: false,
+    isActive: true,
+  },
+  {
+    warehouseId: 7202,
+    plantId: 7000,
+    businessUnitId: 7000,
+    warehouseCode: 'SAMPLE-WH-02',
+    warehouseName: '합성 부품창고',
     warehouseTypeCode: 'SAMPLE_WH_T_A',
     managementLevelCode: 'SAMPLE_WH_L_A',
     isExternal: false,

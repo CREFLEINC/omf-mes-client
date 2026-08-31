@@ -264,9 +264,21 @@ export const MaterialIssueRequestScreen = () => {
     });
   };
 
-  const changeForm = (patch: Partial<FormDraft>): void => {
+  /**
+   * 폼 값을 바꾼다.
+   *
+   * ⚠ **화면이 연쇄로 비운 칸은 만짐으로 치지 않는다**(`cascaded`). 창고를 바꾸면 도착 위치를
+   * 화면이 스스로 비우는데, 그것까지 만짐으로 적으면 **사용자가 건드리지도 않은 칸이 즉시
+   * 붉어진다** — 「만진 칸만 붉힌다」는 규칙이 바로 그 경로에서 깨진다(재검증 R2-1).
+   *
+   * 서버 오류는 연쇄로 비운 칸에서도 지운다 — 값이 달라졌으므로 그 오류는 이미 낡았다.
+   */
+  const changeForm = (
+    patch: Partial<FormDraft>,
+    cascaded: readonly (keyof FormDraft)[] = [],
+  ): void => {
     setForm((prev) => ({ ...prev, ...patch }));
-    markTouched(Object.keys(patch));
+    markTouched(Object.keys(patch).filter((field) => !cascaded.includes(field as keyof FormDraft)));
 
     for (const field of Object.keys(patch)) create.clearFieldError(field);
   };
@@ -422,8 +434,11 @@ export const MaterialIssueRequestScreen = () => {
         warehouseNote={warehouseNote()}
         warehouseId={form.warehouseId}
         onChangeWarehouse={(value) => {
-          /* 창고가 바뀌면 그 창고에 없는 위치가 남지 않게 도착 위치를 비운다. */
-          changeForm({ warehouseId: value, destinationLocationId: '' });
+          /*
+           * 창고가 바뀌면 그 창고에 없는 위치가 남지 않게 도착 위치를 비운다.
+           * **비운 것은 화면이므로 만짐으로 적지 않는다** — 사용자는 창고만 건드렸다.
+           */
+          changeForm({ warehouseId: value, destinationLocationId: '' }, ['destinationLocationId']);
         }}
         locationOptions={toSelectOptions(locations)}
         locationNote={lookupNote(locations)}
