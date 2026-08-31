@@ -454,7 +454,7 @@ describe('Lot Status 화면 shell', () => {
     expect(screen.getByText('1–2 / 전체 3건')).toBeVisible();
     const first = lastRequest(urls, '/quality/lot-hold-events');
     expect(first?.searchParams.get('occurredFrom')).toContain('2026-08-01T00:00:00');
-    expect(first?.searchParams.get('occurredTo')).toContain('2026-08-07T23:59:59');
+    expect(first?.searchParams.get('occurredTo')).toContain('2026-08-08T00:00:00');
     expect(first?.searchParams.get('actorId')).toBe('601');
     expect(first?.searchParams.get('lotNo')).toBe('SAMPLE-LOT-001');
     expect(first?.searchParams.get('sort')).toBe('occurredDesc');

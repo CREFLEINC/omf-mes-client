@@ -126,7 +126,7 @@ describe('보류 등록·해제 사건 hook', () => {
     expect(urls[0]?.pathname).toBe(EVENTS_PATH);
     expect(Object.fromEntries(urls[0]?.searchParams ?? [])).toEqual({
       occurredFrom: '2026-08-01T00:00:00+09:00',
-      occurredTo: '2026-08-07T23:59:59+09:00',
+      occurredTo: '2026-08-08T00:00:00+09:00',
       actorId: '505',
       lotNo: 'SAMPLE-LOT-001',
       sort: 'occurredDesc',
