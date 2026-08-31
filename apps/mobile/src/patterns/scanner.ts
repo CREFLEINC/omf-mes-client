@@ -141,7 +141,7 @@ export const createKeyboardWedgeScanner = (timing: ScannerTiming = {}): ScannerA
           return;
         }
 
-        if (lastInputAt !== 0 && now - lastInputAt > sessionBreakMs) {
+        if (now - lastInputAt > sessionBreakMs) {
           startSession();
         }
 

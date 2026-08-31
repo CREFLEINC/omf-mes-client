@@ -380,6 +380,31 @@ describe('버스트 판정의 경계', () => {
     expect(onScan).not.toHaveBeenCalled();
   });
 
+  it('한 글자만 통째로 들어온 것은 스캔으로 보지 않는다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    pasteInto(field, 'X');
+    vi.advanceTimersByTime(300);
+
+    expect(onScan).not.toHaveBeenCalled();
+  });
+
+  it('통째 입력에 유형 모를 삽입이 이어져도 한 건으로 넘긴다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    pasteInto(field, 'SYN-LOT-0203');
+    pasteInto(field, 'XY', 'insertReplacementText');
+    vi.advanceTimersByTime(300);
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0203XY');
+  });
+
   it('평균 간격이 기준 안이면 넘긴다', () => {
     const scanner = createKeyboardWedgeScanner();
     const field = mountField();
@@ -513,6 +538,20 @@ describe('세션 경계', () => {
     vi.advanceTimersByTime(120);
 
     expect(onScan).toHaveBeenCalledWith('ABCD');
+  });
+
+  it('키를 누르고 있어도 통째로 들어온 스캔은 받는다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    vi.advanceTimersByTime(3000);
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', repeat: true, bubbles: true }));
+    pasteInto(field, 'SYN-LOT-0304');
+    vi.advanceTimersByTime(200);
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0304');
   });
 
   it('유형을 알 수 없는 통째 입력은 넘기지 않는다', () => {
