@@ -34,7 +34,8 @@ const t = messages.materialIssueRequest;
  * | `remarks` | `reason-pane.tsx` — 비고 칸 |
  * | `lines` | `line-pane.tsx` — 표 머리 |
  *
- * 이 표가 실물과 어긋나지 않는지는 `mutations.test.ts` 가 **이름마다 한 갈래씩** 돌며 확인한다.
+ * 이 표가 실물과 어긋나지 않는지는 `screen-wiring.test.tsx` 의 「거부가 침묵하지 않는다」가
+ * **이 목록을 직접 돌며** 확인한다 — 이름을 더하면 갈래도 함께 늘고, 자리를 만들지 않으면 붉어진다.
  */
 export const HEADER_FORM_FIELDS: readonly string[] = [
   'workOrderId',

@@ -87,8 +87,8 @@ interface CreatedBinding {
  *
  * 구획 셋과 액션 하나다 — ① 대상 W/O · ② 요청 품목 · ③ 사유 / [요청 발행].
  *
- * ⛔ **원인 W/O 칸을 만들지 않는다**(스펙 §5-2). `workOrderId` 는 「투입 대상」이고 「발생 원인」은
- * 사유 코드가 대신한다.
+ * ⛔ **원인 W/O 칸을 만들지 않는다**(스펙 §5-2). `workOrderId` 는 투입 대상을 가리키고,
+ * 발생 원인은 사유 코드가 대신한다.
  *
  * ⛔ **오프라인 큐가 없다.** 관리웹 셸이다(공유계약 C-5). `Idempotency-Key` 는 오프라인 때문이
  * 아니라 **재시도 중복을 막기 위해** 붙는다.
@@ -107,10 +107,10 @@ export const MaterialIssueRequestScreen = () => {
   const [lines, setLines] = useState<MaterialIssueLineDraft[]>([]);
   const [isShortageRequested, setIsShortageRequested] = useState(false);
   /**
-   * 사용자가 「불러오기」를 눌렀고 아직 그 응답을 초안에 반영하지 못했는가.
+   * 「불러오기」가 도는 중인가 — **표시 전용**이다.
    *
-   * ⭐ **이 표식이 「누가 불렀는가」를 가르는 유일한 축이다.** 조회가 돌았는지로는 가를 수 없다 —
-   * 배경 재조회도 똑같이 성공한다.
+   * ⛔ 「반영해도 되는가」의 판정에 쓰지 않는다. 그 판정은 누름이 쥔 약속이 진다(`loadShortage`) —
+   * 표식으로 판정하면 실패로 굳은 표식을 **배경 재조회가 소비**해 편집을 덮는다.
    */
   const [isLoadPending, setIsLoadPending] = useState(false);
   const [createdBinding, setCreatedBinding] = useState<CreatedBinding | null>(null);
@@ -206,38 +206,6 @@ export const MaterialIssueRequestScreen = () => {
     );
   }, [defaultWipLocationId, resolvedWarehouseId]);
 
-  /*
-   * 소요 응답이 도착하면 **BOM 유래 줄만** 갈아 끼운다. 손으로 더한 줄은 키까지 그대로 남는다 —
-   * 지우면 사용자가 담은 품목이 조용히 사라진다.
-   *
-   * ⭐ **축은 「사용자가 불렀는가」다 — 「조회가 돌았는가」가 아니다.**
-   *
-   * 앞선 판은 `dataUpdatedAt` 을 축으로 삼았는데, 그 값은 **성공한 모든 조회**에서 갱신되어
-   * 버튼이 부른 것인지 배경이 부른 것인지 구별하지 못한다. 앱 기본값이 `refetchOnReconnect` 를
-   * 덮지 않으므로(`app/providers.tsx`) **연결이 끊겼다 돌아오면 사용자가 아무것도 하지 않아도**
-   * 이 조회가 다시 나가고, 그때 초안이 통째로 다시 서서 사용자가 친 수량과 포커스가 사라진다.
-   *
-   * 여파가 한 겹 더 있다 — 줄이 새로 서면 초안 지문이 갈려 **새 멱등 키**가 나간다. 통신이
-   * 끊겼다 돌아와 다시 누르는 바로 그 순간이라, 방어선이 가장 필요한 자리에서 풀린다
-   * (지문 쪽은 `fingerprintOf` 가 줄 키를 빼는 것으로 따로 한 겹 더 막는다).
-   *
-   * 그래서 **누름이 대기 표식을 세우고, 응답을 반영한 뒤 그 표식을 내린다.** 표식이 없으면 조회가
-   * 몇 번을 돌든 초안은 흔들리지 않는다.
-   *
-   * ⛔ **실패에는 반영하지 않는다**(`isSuccess`). 재조회가 실패하면 앞서 받아 둔 값이 그대로
-   * 남는데, 그것을 반영하면 **실패한 불러오기가 사용자의 편집을 옛 값으로 되돌린다.** 표식은
-   * 남겨 두어 사용자가 「다시 시도」로 성공했을 때 그 누름이 살아 있게 한다.
-   */
-  useEffect(() => {
-    if (!isLoadPending) return;
-    if (shortage.isFetching || !shortage.isSuccess) return;
-
-    const arrived = shortage.data;
-
-    setLines((prev) => replaceShortageDrafts(prev, arrived));
-    setIsLoadPending(false);
-  }, [isLoadPending, shortage.isFetching, shortage.isSuccess, shortage.data]);
-
   /** BOM 유래 판정을 한 자리에서 채운다 — 표의 경고와 본문의 FK 가 같은 값을 본다. */
   const resolvedLines = useMemo(
     () => resolveLineOrigins(lines, shortageLines),
@@ -325,16 +293,51 @@ export const MaterialIssueRequestScreen = () => {
   };
 
   /**
-   * 「불러오기」 — 누름을 표식으로 세우고 새 응답을 받아 온다.
+   * 「불러오기」 — 누름이 부른 조회의 **응답을 그 자리에서** 초안에 반영한다.
    *
-   * **누를 때마다 실제로 받아 온다**(`refetch`). 서버 값이 앞과 같아도 **누른 사람에게는 반영이
-   * 보여야 한다**(검증 발견 4). `refetch` 는 조회가 꺼져 있어도 돌므로 첫 누름도 같은 길을 간다.
+   * ⭐ **반영을 effect 가 아니라 이 누름의 약속(promise)에 맨다.** 「반영해도 되는 응답」은
+   * 조회 상태로는 가려낼 수 없다 — 배경 재조회도 똑같이 성공하기 때문이다. `refetch()` 가
+   * 돌려주는 결과는 **이 누름이 부른 조회의 결과**라, 다른 조회가 끼어들 자리가 없다.
+   *
+   * 앞선 두 판이 각각 다른 쪽으로 샜다 —
+   *
+   * | 판 | 축 | 새는 곳 |
+   * | --- | --- | --- |
+   * | 참조 비교 | 응답 객체 | 서버 값이 같으면 **누름이 삼켜진다** |
+   * | 대기 표식 + `dataUpdatedAt` | 조회가 돌았는가 | **누르지 않은 배경 재조회**가 초안을 덮는다 |
+   * | 대기 표식 + `isSuccess` | 아무 성공이나 | 실패로 표식이 굳고, 그 구간의 **배경 재조회가 표식을 소비**한다 |
+   *
+   * 셋 다 「누가 불렀는가」를 조회 상태에서 되짚으려 한 것이 원인이다. 약속을 쥐면 되짚을 필요가
+   * 없다.
+   *
+   * ⛔ **실패에는 반영하지 않는다.** 실패해도 앞서 받아 둔 값이 `data` 에 남는데, 그것을 반영하면
+   * **실패한 불러오기가 사용자의 편집을 옛 값으로 되돌린다.** 실패 사실은 `shortage.isError` 가
+   * 배너로 이미 낸다.
+   *
+   * **누를 때마다 실제로 받아 온다**(`refetch`). 서버 값이 앞과 같아도 누른 사람에게는 반영이
+   * 보여야 한다(검증 발견 4). `refetch` 는 조회가 꺼져 있어도 돌므로 첫 누름도 같은 길을 간다.
    */
   const loadShortage = (): void => {
     setIsShortageRequested(true);
     setIsLoadPending(true);
 
-    void shortage.refetch();
+    void (async () => {
+      try {
+        const result = await shortage.refetch();
+
+        if (result.isSuccess && result.data !== undefined) {
+          setLines((prev) => replaceShortageDrafts(prev, result.data));
+        }
+      } catch {
+        /*
+         * `refetch` 는 실패를 결과로 돌려주고 던지지 않는다. 그래도 잡아 두는 이유는 던지는 판이
+         * 오더라도 **화면이 대기 표식에 갇히지 않게** 하기 위해서다 — 실패 문면은 `isError` 가
+         * 배너로 내므로 여기서 다시 말하지 않는다.
+         */
+      } finally {
+        setIsLoadPending(false);
+      }
+    })();
   };
 
   /**
@@ -401,8 +404,8 @@ export const MaterialIssueRequestScreen = () => {
     if (page === undefined) return undefined;
 
     /*
-     * 0건은 **잘림과 다른 사실**이고 사용자가 할 일도 다르다 — 잘렸으면 좁히라 하고, 없으면
-     * 검색어를 바꾸라 한다. 아무 말도 없으면 선택칸이 고장 난 것으로 읽힌다.
+     * 0건은 **잘림과 다른 사실**이다 — 잘렸으면 좁히라 하고, 0건이면 결과가 없다고 말한다.
+     * 아무 말도 없으면 빈 선택칸이 고장 난 것으로 읽힌다.
      */
     if (workOrderRows.length === 0) return t.empty.noWorkOrderOption;
 
@@ -509,14 +512,13 @@ export const MaterialIssueRequestScreen = () => {
             isLocked={isLocked}
             isLoadingShortage={isLoadPending && shortage.isFetching}
             linesError={headerErrors.lines}
+            /*
+             * 「다시 시도」는 다시 누르는 것과 같다 — 같은 길(`loadShortage`)로 보낸다. 조회만
+             * 다시 부르면 그 응답을 반영할 자리가 없어 표가 그대로 남는다.
+             */
             shortageErrorBanner={
               shortage.isError ? (
-                <LoadErrorBanner
-                  error={shortage.error}
-                  onRetry={() => {
-                    void shortage.refetch();
-                  }}
-                />
+                <LoadErrorBanner error={shortage.error} onRetry={loadShortage} />
               ) : null
             }
             onLoadShortage={loadShortage}

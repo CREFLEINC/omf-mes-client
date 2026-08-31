@@ -1,6 +1,6 @@
 import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import { countOutsideBomLines } from './bom-origin';
 import { LineTable } from './line-table';
@@ -63,9 +63,18 @@ export const LinePane = ({
   onRemoveLine,
 }: LinePaneProps) => {
   const outsideBomCount = countOutsideBomLines(rows);
+  const linesErrorId = useId();
 
   return (
-    <section className="pane" aria-label={t.panes.lines}>
+    /*
+     * 배치 규범 3·4 — 줄 전체를 두고 하는 말이라 딸린 칸이 없다. 구획에 이어 붙여, 표 안 어느
+     * 칸에 서 있든 그 말이 읽히게 한다.
+     */
+    <section
+      className="pane"
+      aria-label={t.panes.lines}
+      aria-describedby={linesError === undefined ? undefined : linesErrorId}
+    >
       <div className="form-actions">
         <Button
           variant="outlined"
@@ -78,7 +87,11 @@ export const LinePane = ({
 
       {shortageErrorBanner}
 
-      {linesError !== undefined && <span className="field-error">{linesError}</span>}
+      {linesError !== undefined && (
+        <span id={linesErrorId} className="field-error">
+          {linesError}
+        </span>
+      )}
 
       {isLoadingShortage ? (
         <div role="status" aria-label={t.loading.shortage}>

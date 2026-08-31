@@ -102,6 +102,25 @@ const routesFor = (
   ];
 };
 
+/** 소요 조회만 빼고 나머지 스텁을 준다 — 그 자리에 갈래마다 다른 응답을 끼운다. */
+const routesWithoutShortage = (): StubRoute[] =>
+  routesFor({ keys: [] }).filter(
+    (route) =>
+      !route.match(
+        new Request('http://api.test/logistics/material-issue-requests/shortage?workOrderId=7101'),
+      ),
+  );
+
+/**
+ * ⛔ **반영이 늦게 오더라도 잡는다.** 여기서 쉬지 않으면 「아직 안 덮은 것」을 「안 덮는다」로
+ * 읽어, **결함이 있어도 통과한다**(4회차에 실제로 그렇게 헛통과했다).
+ */
+const settle = async (): Promise<void> => {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+};
+
 type User = ReturnType<typeof userEvent.setup>;
 
 /** ① 대상 W/O — 고르면 창고·도착 위치가 기본 재공 위치로 자동으로 채워진다. */
@@ -359,17 +378,7 @@ describe('불러오기 재실행 배선 — 서버 값이 같아도 누름이 �
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const { queryClient } = renderWithProviders(<MaterialIssueRequestScreen />, {
-      fetch: createStubFetch([
-        changingShortage,
-        ...routesFor({ keys: [] }).filter(
-          (route) =>
-            !route.match(
-              new Request(
-                'http://api.test/logistics/material-issue-requests/shortage?workOrderId=7101',
-              ),
-            ),
-        ),
-      ]),
+      fetch: createStubFetch([changingShortage, ...routesWithoutShortage()]),
     });
 
     await selectWorkOrder(user);
@@ -397,12 +406,112 @@ describe('불러오기 재실행 배선 — 서버 값이 같아도 누름이 �
     /* 짝 양성 — 재조회가 실제로 일어났고 바뀐 값이 도착했다. */
     expect(call).toBe(2);
 
-    /* 반영이 늦게 오더라도 잡는다 — 여기서 쉬지 않으면 「아직 안 덮은 것」을 「안 덮는다」로 읽는다. */
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
+    await settle();
 
     expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(1))).toHaveValue('999');
+  });
+
+  /**
+   * ⛔ **정문을 잠그고 옆문을 열어 두지 않는다**(리뷰 R2-1).
+   *
+   * 앞 판은 누름을 「대기 표식」으로 세우고 **아무 성공이나** 그 표식을 소비하게 두었다. 그래서
+   * 불러오기가 **실패하면 표식이 참으로 굳고**, 그 구간에 사용자가 누르지 않은 배경 재조회가
+   * 표식을 소비해 편집을 덮었다.
+   *
+   * ⚠ **연결이 불안정하면 실패와 재접속은 붙어서 일어난다** — M-2 가 겨눈 바로 그 상황이다.
+   * 지금은 반영이 누름이 쥔 약속에 매여 있어, 실패한 누름은 아무것도 반영하지 못한 채 끝난다.
+   */
+  it('불러오기가 실패한 뒤 배경 재조회가 편집을 덮지 않는다', async () => {
+    let call = 0;
+    const flakyShortage: StubRoute = {
+      match: (request) =>
+        request.method === 'GET' &&
+        new URL(request.url).pathname === '/logistics/material-issue-requests/shortage',
+      respond: () => {
+        call += 1;
+
+        /* ① 성공(80) → ② 사용자가 누른 재실행이 실패 → ③ 배경 재조회는 성공(55) */
+        if (call === 2) return jsonResponse({ message: '합성 서버 오류' }, { status: 500 });
+
+        return jsonResponse({
+          items: shortageFixtures.map((row, index) =>
+            index === 0 ? { ...row, shortageQty: call === 1 ? 80 : 55 } : row,
+          ),
+        });
+      },
+    };
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { queryClient } = renderWithProviders(<MaterialIssueRequestScreen />, {
+      fetch: createStubFetch([flakyShortage, ...routesWithoutShortage()]),
+    });
+
+    await selectWorkOrder(user);
+    await loadShortage(user);
+
+    const requestedQty = screen.getByLabelText(t.lineTable.requestedQtyLabel(1));
+
+    await user.clear(requestedQty);
+    await user.type(requestedQty, '999');
+
+    /* ② 사용자가 누른 재실행이 실패한다 — 편집은 그대로 남아야 한다. */
+    await user.click(screen.getByRole('button', { name: t.actions.loadShortage }));
+
+    await waitFor(() => {
+      expect(call).toBe(2);
+    });
+    await settle();
+
+    expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(1))).toHaveValue('999');
+
+    /* ③ 그 구간에서 누르지 않은 배경 재조회가 성공한다. */
+    vi.setSystemTime(new Date(2026, 8, 1, 0, 20, 0));
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: materialIssueRequestKeys.shortage(7101) });
+    });
+
+    expect(call).toBe(3);
+    await settle();
+
+    expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(1))).toHaveValue('999');
+  });
+
+  /**
+   * 리뷰가 권한 갈래 — 축을 갈아 끼우며 **재실행이 새 서버 값을 반영하는지**가 렌더 순서에
+   * 기대고 있었다. 약속이 결과를 직접 들고 오므로 이제 순서에 기대지 않는다.
+   */
+  it('서버 값이 달라져 있으면 재실행이 그 새 값을 반영한다 — 옛 캐시가 아니다', async () => {
+    let call = 0;
+    const changingShortage: StubRoute = {
+      match: (request) =>
+        request.method === 'GET' &&
+        new URL(request.url).pathname === '/logistics/material-issue-requests/shortage',
+      respond: () => {
+        call += 1;
+
+        return jsonResponse({
+          items: shortageFixtures.map((row, index) =>
+            index === 0 ? { ...row, shortageQty: call === 1 ? 80 : 55 } : row,
+          ),
+        });
+      },
+    };
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+    renderWithProviders(<MaterialIssueRequestScreen />, {
+      fetch: createStubFetch([changingShortage, ...routesWithoutShortage()]),
+    });
+
+    await selectWorkOrder(user);
+    await loadShortage(user);
+
+    await user.click(screen.getByRole('button', { name: t.actions.loadShortage }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(1))).toHaveValue('55');
+    });
   });
 
   it('손으로 더한 줄은 재실행에도 남는다', async () => {

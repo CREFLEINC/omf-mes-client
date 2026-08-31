@@ -50,6 +50,7 @@ export const ReasonPane = ({
   isLocked,
 }: ReasonPaneProps) => {
   const groupName = useId();
+  const reasonErrorId = useId();
 
   return (
     <section className="pane" aria-label={t.panes.reason}>
@@ -61,6 +62,7 @@ export const ReasonPane = ({
           value={reasonCode}
           disabled={isLocked}
           aria-label={t.formFields.reason}
+          aria-describedby={reasonError === undefined ? undefined : reasonErrorId}
           onChange={onChangeReason}
         >
           {reasons.entries.map((entry) => (
@@ -70,7 +72,12 @@ export const ReasonPane = ({
           ))}
         </RadioGroup>
 
-        {reasonError !== undefined && <span className="field-error">{reasonError}</span>}
+        {/* 배치 규범 3·4 — 오류는 항상 보이는 DOM 텍스트로 두고 `aria-describedby` 로 잇는다. */}
+        {reasonError !== undefined && (
+          <span id={reasonErrorId} className="field-error">
+            {reasonError}
+          </span>
+        )}
 
         {reasons.isError ? (
           <span className="field-note">
