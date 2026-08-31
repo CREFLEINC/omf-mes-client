@@ -33,6 +33,17 @@ export const requestedPaths = (): string[] =>
     return `${url.pathname}${url.search}`;
   });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+/** 대상 LOT 수량 합. 부적합 픽스처와 판정 이력 summary가 같은 값을 쓰도록 한곳에 모은다. */
+const affectedQtyTotalOf = (lots: unknown[]): number =>
+  lots.reduce<number>(
+    (sum, lot) =>
+      sum + (isRecord(lot) && typeof lot.affectedQty === 'number' ? lot.affectedQty : 0),
+    0,
+  );
+
 export const lotFixture = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
   nonconformanceLotId: 9001,
   lotId: 8001,
@@ -55,7 +66,19 @@ const nonconformanceFixture = (
   description: '도장 표면 박리',
   statusCode: 'CODE-C',
   openedAt: '2026-08-12T09:30:00+09:00',
+  affectedQtyTotal: affectedQtyTotalOf(lots),
+  uomId: 7001,
+  dispositionProgressCode: 'NOT_STARTED',
   lots,
+});
+
+/** 저장 409 응답 몸통. 코드별 필드까지 채운 완성형이라 테스트는 필요한 것만 덮어쓴다. */
+export const conflictResponseFixture = (
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> => ({
+  code: 'INVALID_STATE',
+  message: '합성 충돌 문구',
+  ...overrides,
 });
 
 // prettier-ignore
@@ -85,6 +108,15 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
   sent = [];
   const lots = options.lots ?? [lotFixture()];
   const decisions = options.decidedQty === undefined ? [] : [decisionFixture(options.decidedQty)];
+  const decidedQtyTotal = options.decidedQty ?? 0;
+  const affectedQtyTotal = affectedQtyTotalOf(lots);
+  /** W-03-10 ② 「남은 수량」 구획 — 서버가 이미 뺀 값이라 화면은 그대로 읽기만 한다. */
+  const summary = {
+    affectedQtyTotal,
+    decidedQtyTotal,
+    remainingQty: affectedQtyTotal - decidedQtyTotal,
+    uomId: 7001,
+  };
 
   const inner = createStubFetch([
     {
@@ -104,7 +136,7 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
       match: (request) =>
         /^\/quality\/nonconformances\/\d+\/disposition-decisions$/.test(pathOf(request)) &&
         request.method === 'GET',
-      respond: () => jsonResponse(listBody(decisions)),
+      respond: () => jsonResponse({ ...listBody(decisions), summary }),
     },
     {
       match: (request) =>

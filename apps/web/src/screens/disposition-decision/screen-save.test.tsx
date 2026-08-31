@@ -4,7 +4,13 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
-import { dispositionStub, lotFixture, requestedPaths, requestsSent } from './fixtures';
+import {
+  conflictResponseFixture,
+  dispositionStub,
+  lotFixture,
+  requestedPaths,
+  requestsSent,
+} from './fixtures';
 import { DispositionDecisionScreen } from './screen';
 
 const t = messages.dispositionDecision;
@@ -74,18 +80,41 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     expect(screen.getByLabelText(t.form.reasonLabel)).toHaveValue('');
   });
 
-  it('⛔ 남은 수량을 넘겨도 화면이 막지 않고 서버 문구를 그대로 보인다', async () => {
+  it('⛔ 처분 결정 수량 합이 서버 판정 남은 수량을 넘으면 구조화된 문구를 보인다 — message 원문을 파싱하지 않는다', async () => {
     const { user } = renderScreen({
       saveResponse: () =>
         jsonResponse(
-          { code: 'INVALID_STATE', message: '남은 수량은 320 EA 입니다' },
+          conflictResponseFixture({
+            code: 'DISPOSITION_QTY_EXCEEDED',
+            message: '서버가 준 임의의 원문 — 화면이 이 글자를 그대로 옮기지 않는다',
+            remainingQty: 45,
+            remainingQtyUomId: 7001,
+          }),
           { status: 409 },
         ),
     });
     await fillDecision(user, '9999');
     await save(user);
 
-    expect(await screen.findByText('남은 수량은 320 EA 입니다')).toBeInTheDocument();
+    expect(await screen.findByText(t.form.qtyExceededByServer('45'))).toBeInTheDocument();
+    expect(
+      screen.queryByText('서버가 준 임의의 원문 — 화면이 이 글자를 그대로 옮기지 않는다'),
+    ).toBeNull();
+  });
+
+  it('⛔ 이미 종결된 부적합에 저장하면 고정 문구를 보인다 — message 원문을 표시하지 않는다', async () => {
+    const { user } = renderScreen({
+      saveResponse: () =>
+        jsonResponse(
+          conflictResponseFixture({ code: 'INVALID_STATE', message: '서버가 준 다른 임의의 원문' }),
+          { status: 409 },
+        ),
+    });
+    await fillDecision(user, '120');
+    await save(user);
+
+    expect(await screen.findByText(t.form.alreadyClosed)).toBeInTheDocument();
+    expect(screen.queryByText('서버가 준 다른 임의의 원문')).toBeNull();
   });
 
   it('낙관적 잠금 충돌은 최신 불러오기를 낸다 — 재조회로 풀린다', async () => {
@@ -151,7 +180,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     });
     await fillDecision(user, '120');
     await save(user);
-    await screen.findByText('이미 종결된 부적합입니다');
+    await screen.findByText(t.form.alreadyClosed);
     await save(user);
 
     await waitFor(() => {
@@ -249,7 +278,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     });
     await fillDecision(user, '120');
     await save(user);
-    await screen.findByText('거절');
+    await screen.findByText(t.form.alreadyClosed);
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
     await screen.findByText('LOT-TEST-0088');

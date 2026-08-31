@@ -60,8 +60,10 @@ export const DecisionHistory = ({
         empty={<EmptyState size="sm" title={t.decisions.empty} />}
       />
       {/*
-       * ⭐ 남은 수량은 서버가 내려주지 않아 화면이 합계 차로 낸 **참고값**이다(omf-mes#253).
-       * 값 옆에 그 사실을 상시 적어, 사용자가 이 수를 서버의 확정 판정으로 읽지 않게 한다.
+       * ⭐ 남은 수량은 판정 이력 조회의 `summary.remainingQty`다 — 서버가 대상 수량 합에서
+       * 결정 수량 합을 뺀 값이다(공유계약 L-2). ⚠ 그래도 **조회 시점의 스냅샷**이라 참고값으로
+       * 적는다 — 이 값을 받은 뒤 다른 판정이 저장되면 실제 남은 수량은 달라져 있을 수 있고,
+       * 최종 판정은 저장 시 서버가 409로 낸다. 근거: W-03-10 §3 · §9-1 · omf-mes#253.
        */}
       <div className="field-cell" role="group" aria-label={t.remaining.label}>
         <span className="field-label">{t.remaining.label}</span>

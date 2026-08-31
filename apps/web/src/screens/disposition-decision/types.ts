@@ -10,6 +10,8 @@ export type Nonconformance = components['schemas']['Nonconformance'];
 export type NonconformanceLot = components['schemas']['NonconformanceLot'];
 export type DispositionDecision = components['schemas']['DispositionDecision'];
 export type PageMeta = components['schemas']['PageMeta'];
+/** W-03-10 ② 「남은 수량」 구획 — 판정 이력 조회 봉투가 목록과 함께 싣는다. */
+export type DispositionRemainingSummary = components['schemas']['DispositionRemainingSummary'];
 
 /**
  * 목록 봉투는 계약에서 파생한다 — 손으로 옮겨 적으면 계약이 바뀌어도 컴파일이 잡지 못한다.
@@ -64,19 +66,6 @@ export const formatDate = (value: string): string => {
   return matched === null ? value : (matched[1] ?? value);
 };
 
-/**
- * 대상 LOT 수량의 합.
- *
- * ⚠ **이것은 잠정 처리다.** 스펙 §4-A는 이 합을 「서버 집계」로 정했고(공유계약 L-2 — 파생값은
- * 서버가 낸다) 계약 응답에는 집계 필드가 없다. 회신 전까지 화면이 대신 더한다 — 근거는
- * omf-mes#253. 파생을 이 함수 하나에 가둬 서버 필드가 오면 여기만 바꾸게 한다.
- *
- * ⚠ 목록 응답의 `lots`는 계약에서 `required`가 아니다 — 실려 오지 않으면 합을 낼 수 없으므로
- * 0을 지어내지 않고 `undefined`로 남긴다. 화면은 그 자리를 「—」로 비운다.
- */
-export const totalAffectedQty = (lots: NonconformanceLot[] | undefined): number | undefined =>
-  lots === undefined ? undefined : lots.reduce((sum, lot) => sum + lot.affectedQty, 0);
-
 export interface NonconformanceRow {
   nonconformanceId: number;
   nonconformanceNo: string;
@@ -85,6 +74,7 @@ export interface NonconformanceRow {
   statusCode: string;
   openedAtText: string;
   affectedQtyText: string;
+  dispositionProgressCode: Nonconformance['dispositionProgressCode'];
 }
 
 export const toNonconformanceRow = (nonconformance: Nonconformance): NonconformanceRow => ({
@@ -94,8 +84,30 @@ export const toNonconformanceRow = (nonconformance: Nonconformance): Nonconforma
   severityCode: nonconformance.severityCode,
   statusCode: nonconformance.statusCode,
   openedAtText: formatDate(nonconformance.openedAt),
-  affectedQtyText: formatQty(totalAffectedQty(nonconformance.lots)),
+  /* ⭐ lots를 세지 않는다 — 서버가 롤업해 낸 합을 그대로 옮긴다(공유계약 L-2). 근거: omf-mes#253 */
+  affectedQtyText: formatQty(nonconformance.affectedQtyTotal),
+  dispositionProgressCode: nonconformance.dispositionProgressCode,
 });
+
+/**
+ * ⭐ W-03-10 ① 「판정 진행」 열의 표시 문구. 서버가 대상 수량 합과 결정 수량 합을 롤업해 세 값
+ * 중 하나로 낸다(공유계약 L-2) — 화면이 `statusCode`나 판정 이력을 세어 다시 판정하지 않는다.
+ * 무기본절 switch로 셋을 전수 처리한다 — 계약이 값을 늘리면 컴파일이 먼저 잡는다.
+ */
+export const dispositionProgressLabel = (
+  code: Nonconformance['dispositionProgressCode'],
+): string => {
+  const t = messages.dispositionDecision.values.dispositionProgress;
+
+  switch (code) {
+    case 'NOT_STARTED':
+      return t.NOT_STARTED;
+    case 'PARTIAL':
+      return t.PARTIAL;
+    case 'COMPLETED':
+      return t.COMPLETED;
+  }
+};
 
 export interface NonconformanceLotRow {
   nonconformanceLotId: number;

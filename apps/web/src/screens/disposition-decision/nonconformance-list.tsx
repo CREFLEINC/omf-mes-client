@@ -6,7 +6,7 @@ import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import type { DispositionLookup } from './lookups';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
-import type { NonconformanceRow } from './types';
+import { dispositionProgressLabel, type NonconformanceRow } from './types';
 
 export interface NonconformanceListProps {
   rows: NonconformanceRow[];
@@ -20,10 +20,9 @@ export interface NonconformanceListProps {
 }
 
 /**
- * ⚠ **「판정 진행」 열은 만들지 않는다** — 스펙 §4-A는 「미판정 / 일부 판정 / 완료」를 서버가
- * 낸다고 적었으나 계약 응답에 그 필드가 없고, `statusCode`로는 앞의 둘을 가를 수 없다.
- * 없는 것을 화면이 지어내면 다음 화면이 잘못된 대상을 집으므로 A-11로 물러나 상태만 보인다.
- * 회신 대기: omf-mes#253.
+ * ⭐ 「판정 진행」 열은 서버가 대상 수량 합과 결정 수량 합을 롤업해 낸 `dispositionProgressCode`를
+ * 그대로 보인다 — `statusCode`의 「판정 대기」 한 값은 미판정·일부 판정을 가르지 못한다.
+ * 근거: W-03-10 §4-A · omf-mes#253(회신 반영).
  */
 export const NonconformanceList = ({
   rows,
@@ -58,6 +57,11 @@ export const NonconformanceList = ({
       render: (row) => lookupDisplayLabel(items, row.itemId),
     },
     { key: 'qty', header: t.fields.qty, align: 'end', render: (row) => row.affectedQtyText },
+    {
+      key: 'dispositionProgress',
+      header: t.fields.dispositionProgressCode,
+      render: (row) => dispositionProgressLabel(row.dispositionProgressCode),
+    },
     { key: 'severity', header: t.fields.severityCode, render: (row) => row.severityCode },
     { key: 'openedAt', header: t.fields.openedAt, render: (row) => row.openedAtText },
     { key: 'status', header: t.fields.statusCode, render: (row) => row.statusCode },
@@ -92,14 +96,11 @@ export const NonconformanceList = ({
   return (
     <>
       {/*
-       * A-11 — 만들지 않기로 «물러난» 두 항목의 사실을 결과 표 머리에 적는다.
+       * A-11 — 만들지 않기로 «물러난» 항목의 사실을 결과 표 머리에 적는다.
        * 조용히 빼면 보는 사람이 「없는 기능」이 아니라 「없는 데이터」로 읽는다.
-       * 서버가 값을 내리기 시작하면 이 안내부터 지운다(omf-mes#253).
        */}
       <div className="banner-slot">
-        <AlertBanner variant="info">
-          {t.withdrawn.decisionProgress} {t.withdrawn.sourceFilter}
-        </AlertBanner>
+        <AlertBanner variant="info">{t.withdrawn.sourceFilter}</AlertBanner>
       </div>
       <Table
         density="compact"
