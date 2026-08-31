@@ -423,7 +423,7 @@ describe('버스트 판정의 경계', () => {
     scanner.attach(field, onScan);
 
     typeInto(field, 'SYN-LOT-0201', 80);
-    vi.advanceTimersByTime(120);
+    vi.advanceTimersByTime(220);
 
     expect(onScan).toHaveBeenCalledWith('SYN-LOT-0201');
   });
@@ -470,6 +470,20 @@ describe('세션 경계', () => {
     vi.advanceTimersByTime(120);
 
     expect(onScan).toHaveBeenCalledWith('AASYN-LOT-0301');
+  });
+
+  it('키에서 손을 떼면 곧바로 다음 스캔을 받는다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'AA', 40, { repeat: true });
+    vi.advanceTimersByTime(500);
+    typeInto(field, 'SYN-LOT-0303', 10);
+    vi.advanceTimersByTime(200);
+
+    expect(onScan).toHaveBeenCalledWith('AASYN-LOT-0303');
   });
 
   it('잠깐 쉬었다 이어 친 것은 한 세션으로 본다', () => {
@@ -537,10 +551,38 @@ describe('세션 경계', () => {
     const onScan = vi.fn();
     scanner.attach(field, onScan);
 
-    typeInto(field, '00', 90);
-    typeInto(field, '01234500000012002607310001230007', 8);
+    typeInto(field, '77', 90);
+    typeInto(field, '70001118880002229901015554447777', 8);
     vi.advanceTimersByTime(120);
 
-    expect(onScan).toHaveBeenCalledWith('0001234500000012002607310001230007');
+    expect(onScan).toHaveBeenCalledWith('7770001118880002229901015554447777');
+  });
+});
+
+describe('임계값 조합', () => {
+  /* 조용해짐 판정이 문자 사이보다 짧으면 버스트 한가운데서 터져 한 건이 쪼개진다. */
+  it('평균 기준을 크게 올려도 한 건으로 넘긴다', () => {
+    const scanner = createKeyboardWedgeScanner({ burstAvgGapMs: 150 });
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'SYN-LOT-0400', 120);
+    vi.advanceTimersByTime(400);
+
+    expect(onScan).toHaveBeenCalledTimes(1);
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0400');
+  });
+
+  it('대기 시간을 짧게 줘도 평균 기준보다는 길게 쓴다', () => {
+    const scanner = createKeyboardWedgeScanner({ burstAvgGapMs: 150, quietMs: 20 });
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'SYN-LOT-0401', 120);
+    vi.advanceTimersByTime(400);
+
+    expect(onScan).toHaveBeenCalledTimes(1);
   });
 });

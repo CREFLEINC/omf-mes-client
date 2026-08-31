@@ -9,7 +9,7 @@ import {
 } from '../../test/api-harness';
 import { useLotBalances, useLotHolds, useScannedLot } from './queries';
 
-const SCANNED = '0001234500000012002607310001230007';
+const SCANNED = '7770001118880002229901015554447777';
 
 const lotRow = (lotId: number, lotNo: string) => ({
   lotId,

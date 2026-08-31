@@ -6,16 +6,20 @@ export interface ScannerAdapter {
   /**
    * 스캔 한 건이 끝나면 onScan 을 부른다.
    *
-   * 종료 문자를 붙이지 않는 단말에서는 입력이 멎는 것으로 경계를 찾으므로, 읽는 도중
-   * 끊기면 잘린 값이 올 수 있다. 소비하는 화면이 형식을 반드시 검증한다.
+   * 스캔값이 키 이벤트나 붙여넣기로 도착하는 단말을 받는다. 종료 문자를 붙이지 않는
+   * 단말에서는 입력이 멎는 것으로 경계를 찾으므로, 읽는 도중 끊기면 잘린 값이 오고
+   * 앞서 칸에 있던 문자가 붙은 값도 온다. 소비하는 화면이 형식을 반드시 검증한다.
    */
   attach(field: HTMLInputElement, onScan: (value: string) => void): () => void;
 }
 
 export interface ScannerTiming {
-  /** 입력당 평균 간격이 이보다 짧으면 사람 손이 아니다. 단말의 문자 간 지연 설정에 맞춘다. */
+  /** 입력당 평균 간격이 이 값 이하이면 사람 손이 아니다. 단말의 문자 간 지연 설정에 맞춘다. */
   burstAvgGapMs?: number;
-  /** 이만큼 조용하면 한 건이 끝난 것으로 본다. */
+  /**
+   * 이만큼 조용하면 한 건이 끝난 것으로 본다.
+   * 문자 사이 간격보다 반드시 길어야 하므로, 짧게 주면 평균 기준에 맞춰 늘려 쓴다.
+   */
   quietMs?: number;
   /** 이만큼 벌어지면 앞뒤 입력이 서로 무관한 것으로 본다. */
   sessionBreakMs?: number;
@@ -44,8 +48,14 @@ const BULK_INPUT_TYPES = new Set(['insertFromPaste', 'insertFromDrop']);
 
 export const createKeyboardWedgeScanner = (timing: ScannerTiming = {}): ScannerAdapter => {
   const burstAvgGapMs = timing.burstAvgGapMs ?? DEFAULT_BURST_AVG_GAP_MS;
-  const quietMs = timing.quietMs ?? DEFAULT_QUIET_MS;
   const sessionBreakMs = timing.sessionBreakMs ?? DEFAULT_SESSION_BREAK_MS;
+
+  /*
+   * 조용해졌다는 판정이 문자 사이보다 짧으면 버스트 한가운데서 터져 스캔 하나가 여러
+   * 건으로 쪼개진다. 문자 간 지연이 긴 단말에 맞춰 평균 기준을 올리면 그 조합이 실제로
+   * 생기므로, 기준보다 넉넉해지도록 끌어올린다.
+   */
+  const quietMs = Math.max(timing.quietMs ?? DEFAULT_QUIET_MS, burstAvgGapMs * 2);
 
   return {
     // 스캔값을 키보드 입력처럼 흘려보내는 단말은 일반 키보드와 구별되지 않아,
@@ -108,9 +118,8 @@ export const createKeyboardWedgeScanner = (timing: ScannerTiming = {}): ScannerA
       };
 
       const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.repeat) {
-          heldKey = true;
-        }
+        // 누르고 있는 동안만 막는다. 손을 떼면 다음 키가 반복이 아니므로 풀린다.
+        heldKey = event.repeat;
 
         if (event.key !== SCAN_TERMINATOR) {
           return;
@@ -122,7 +131,7 @@ export const createKeyboardWedgeScanner = (timing: ScannerTiming = {}): ScannerA
       };
 
       const handleInput = (event: Event) => {
-        const now = Date.now();
+        const now = performance.now();
         const added = field.value.length - previousLength;
         previousLength = field.value.length;
 
