@@ -454,7 +454,7 @@ describe('AppLayout', () => {
     expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
   });
 
-  it('출하 섹션(출하지시서 Import·작업지시 생성 · 출하 예정 목록 · 출하 처리)이 자재창고 뒤·생산 앞에 있다', () => {
+  it('출하 섹션(출하지시서 Import·작업지시 생성 · 출하 예정 목록 · OQC 출하검사 판정 · 출하 처리)이 자재창고 뒤·생산 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -470,6 +470,10 @@ describe('AppLayout', () => {
       'href',
       '/shipment/shipment-schedule',
     );
+    expect(within(sidebar).getByRole('link', { name: 'OQC 출하검사 판정' })).toHaveAttribute(
+      'href',
+      '/shipment/oqc-inspection',
+    );
     expect(
       within(sidebar).getByRole('link', { name: '출하 처리(상차·실물 출고)' }),
     ).toHaveAttribute('href', '/shipment/shipment-processing');
@@ -480,9 +484,13 @@ describe('AppLayout', () => {
     expect(links.indexOf('/shipment/shipment-schedule')).toBe(
       links.indexOf('/shipment/shipment-request-create') + 1,
     );
-    /* 예정 목록에서 피킹까지 끝난 후보를 처리하므로 그 바로 뒤다(업무 순서). */
-    expect(links.indexOf('/shipment/shipment-processing')).toBe(
+    /* 상차 전에 출하검사를 판정하므로 예정 목록 뒤·출하 처리 앞이다(업무 순서). */
+    expect(links.indexOf('/shipment/oqc-inspection')).toBe(
       links.indexOf('/shipment/shipment-schedule') + 1,
+    );
+    /* 예정 목록에서 피킹까지 끝난 후보를 처리하므로 판정 바로 뒤다(업무 순서). */
+    expect(links.indexOf('/shipment/shipment-processing')).toBe(
+      links.indexOf('/shipment/oqc-inspection') + 1,
     );
     expect(links.indexOf('/shipment/shipment-processing')).toBeLessThan(
       links.indexOf('/production/work-order-close'),
@@ -721,6 +729,8 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       '/shipment/shipment-request-create',
       '/shipment/shipment-schedule',
+      /* W-04-03 — 상차 전에 판정한다. 예정 목록 뒤·출하 처리 앞이다(업무 순서). */
+      '/shipment/oqc-inspection',
       '/shipment/shipment-processing',
       '/production/production-orders',
       '/production/production-plans',
