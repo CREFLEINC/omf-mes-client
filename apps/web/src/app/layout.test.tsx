@@ -454,7 +454,7 @@ describe('AppLayout', () => {
     expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
   });
 
-  it('출하 섹션의 출하 예정 목록 메뉴가 자재창고 뒤·생산 앞에 있다', () => {
+  it('출하 섹션(출하지시서 Import·작업지시 생성 · 출하 예정 목록)이 자재창고 뒤·생산 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -463,12 +463,19 @@ describe('AppLayout', () => {
       .map((link) => link.getAttribute('href'));
 
     expect(within(sidebar).getByText('출하')).toBeInTheDocument();
+    expect(
+      within(sidebar).getByRole('link', { name: '출하지시서 Import·작업지시 생성' }),
+    ).toHaveAttribute('href', '/shipment/shipment-request-create');
     expect(within(sidebar).getByRole('link', { name: '출하 예정 목록' })).toHaveAttribute(
       'href',
       '/shipment/shipment-schedule',
     );
-    expect(links.indexOf('/shipment/shipment-schedule')).toBe(
+    /* 편성이 예정보다 먼저다 — 지시서를 편성해야 예정이 생긴다(업무 순서). */
+    expect(links.indexOf('/shipment/shipment-request-create')).toBe(
       links.indexOf('/logistics/document-progress') + 1,
+    );
+    expect(links.indexOf('/shipment/shipment-schedule')).toBe(
+      links.indexOf('/shipment/shipment-request-create') + 1,
     );
     expect(links.indexOf('/shipment/shipment-schedule')).toBeLessThan(
       links.indexOf('/production/work-order-close'),
@@ -682,6 +689,7 @@ describe('AppLayout', () => {
       '/logistics/disposal-issue',
       '/logistics/iqc-skip-approval',
       '/logistics/document-progress',
+      '/shipment/shipment-request-create',
       '/shipment/shipment-schedule',
       '/production/production-orders',
       '/production/production-plans',

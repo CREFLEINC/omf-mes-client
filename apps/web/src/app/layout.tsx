@@ -211,6 +211,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
            * 입고를 처리한 뒤(자재창고) 출하를 다루고, 그 결과가 생산과는 독립이다.
            */}
           <SidebarSection label="출하">
+            {/*
+             * W-04-01 — 출하지시서 Import·작업지시 생성. 「출하 예정 목록」(W-04-02)이 먼저
+             * 이 섹션을 열었으나, 업무 순서로는 지시서를 편성해야 예정이 생긴다 — 그래서
+             * 목록보다 앞자리에 둔다.
+             */}
+            <NavItem to="/shipment/shipment-request-create" icon="assignment">
+              출하지시서 Import·작업지시 생성
+            </NavItem>
             <NavItem to="/shipment/shipment-schedule" icon="local_shipping">
               출하 예정 목록
             </NavItem>
