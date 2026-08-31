@@ -355,78 +355,76 @@ export const TerminalProcessMapScreen = () => {
           )}
         </section>
 
-        <div className="pane-stack">
-          <section className="pane" aria-label={t.panes.terminal}>
-            <h2>{formMode === 'create' ? t.terminal.create : t.panes.terminal}</h2>
+        <section className="pane" aria-label={t.panes.terminal}>
+          <h2>{formMode === 'create' ? t.terminal.create : t.panes.terminal}</h2>
 
-            {formMode === 'closed' ? (
-              selected === null ? (
-                <EmptyState
-                  size="sm"
-                  title={t.grid.selectTerminalTitle}
-                  description={t.grid.selectTerminal}
-                />
-              ) : (
-                <>
-                  <SaveErrorBanner error={deactivate.error} />
-                  <dl className="token-meta">
-                    <dt>{t.terminal.code}</dt>
-                    <dd>{selected.terminalCode}</dd>
-                    <dt>{t.terminal.type}</dt>
-                    <dd>{selected.terminalTypeCode}</dd>
-                    <dt>{t.terminal.status}</dt>
-                    <dd>{selected.statusCode}</dd>
-                    <dt>{t.terminal.equipment}</dt>
-                    <dd>{selected.equipmentLabel ?? t.terminal.equipmentNone}</dd>
-                  </dl>
-                  <SaveErrorBanner error={issueToken.error} />
-                  {/* ⚠ 누르기 전에 말한다 — 누른 뒤에는 이미 이전 기기가 끊겨 있다. */}
-                  <AlertBanner variant="warning">{t.token.reissueWarning}</AlertBanner>
-                  <div className="form-actions">
-                    <Button
-                      variant="outlined"
-                      disabled={!selected.isActive || deactivate.isSaving}
-                      onClick={() => {
-                        setDeactivating(true);
-                      }}
-                    >
-                      {t.terminal.deactivate}
-                    </Button>
-                    <Button variant="outlined" onClick={openEdit}>
-                      {t.terminal.edit}
-                    </Button>
-                    <Button
-                      disabled={issueToken.isSaving}
-                      onClick={() => {
-                        issueToken.write({});
-                      }}
-                    >
-                      {t.token.issue}
-                    </Button>
-                  </div>
-                </>
-              )
-            ) : (
-              <TerminalForm
-                draft={terminalDraft}
-                errors={terminalErrors}
-                isNew={formMode === 'create'}
-                isSaving={create.isSaving || update.isSaving}
-                saveError={formMode === 'create' ? create.error : update.error}
-                fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
-                plants={plants}
-                equipments={equipments}
-                onChange={(patch) => {
-                  setTerminalDraft((prev) => ({ ...prev, ...patch }));
-                }}
-                onSubmit={submitTerminal}
-                onCancel={() => {
-                  setFormMode('closed');
-                }}
+          {formMode === 'closed' ? (
+            selected === null ? (
+              <EmptyState
+                size="sm"
+                title={t.grid.selectTerminalTitle}
+                description={t.grid.selectTerminal}
               />
-            )}
-          </section>
-        </div>
+            ) : (
+              <>
+                <SaveErrorBanner error={deactivate.error} />
+                <dl className="token-meta">
+                  <dt>{t.terminal.code}</dt>
+                  <dd>{selected.terminalCode}</dd>
+                  <dt>{t.terminal.type}</dt>
+                  <dd>{selected.terminalTypeCode}</dd>
+                  <dt>{t.terminal.status}</dt>
+                  <dd>{selected.statusCode}</dd>
+                  <dt>{t.terminal.equipment}</dt>
+                  <dd>{selected.equipmentLabel ?? t.terminal.equipmentNone}</dd>
+                </dl>
+                <SaveErrorBanner error={issueToken.error} />
+                {/* ⚠ 누르기 전에 말한다 — 누른 뒤에는 이미 이전 기기가 끊겨 있다. */}
+                <AlertBanner variant="warning">{t.token.reissueWarning}</AlertBanner>
+                <div className="form-actions">
+                  <Button
+                    variant="outlined"
+                    disabled={!selected.isActive || deactivate.isSaving}
+                    onClick={() => {
+                      setDeactivating(true);
+                    }}
+                  >
+                    {t.terminal.deactivate}
+                  </Button>
+                  <Button variant="outlined" onClick={openEdit}>
+                    {t.terminal.edit}
+                  </Button>
+                  <Button
+                    disabled={issueToken.isSaving}
+                    onClick={() => {
+                      issueToken.write({});
+                    }}
+                  >
+                    {t.token.issue}
+                  </Button>
+                </div>
+              </>
+            )
+          ) : (
+            <TerminalForm
+              draft={terminalDraft}
+              errors={terminalErrors}
+              isNew={formMode === 'create'}
+              isSaving={create.isSaving || update.isSaving}
+              saveError={formMode === 'create' ? create.error : update.error}
+              fieldErrors={formMode === 'create' ? create.fieldErrors : update.fieldErrors}
+              plants={plants}
+              equipments={equipments}
+              onChange={(patch) => {
+                setTerminalDraft((prev) => ({ ...prev, ...patch }));
+              }}
+              onSubmit={submitTerminal}
+              onCancel={() => {
+                setFormMode('closed');
+              }}
+            />
+          )}
+        </section>
       </div>
 
       {/*
