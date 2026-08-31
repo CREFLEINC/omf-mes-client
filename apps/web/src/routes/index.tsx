@@ -40,6 +40,7 @@ import { ProductionOrderScreen } from '../screens/production-order/screen';
 import { ProductionPlanScreen } from '../screens/production-plan/screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
 import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
+import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
@@ -436,6 +437,11 @@ export const appRouter = createBrowserRouter([
        * 섹션을 따른다는 선례를 남겼다.
        */
       { path: 'shipment/shipment-schedule', element: <ShipmentScheduleScreen /> },
+      /*
+       * W-04-08 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만
+       * 완제품 재고·Lot Status 조회는 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다.
+       */
+      { path: 'shipment/product-stock-status', element: <ProductStockStatusScreen /> },
     ],
   },
   /*

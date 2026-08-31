@@ -67,6 +67,7 @@ import { dispositionDecision } from './disposition-decision';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
+import { productStockStatus } from './product-stock-status';
 
 export const ko = {
   common,
@@ -122,6 +123,7 @@ export const ko = {
   emergencyWorkOrder,
   workOrderProgress,
   materialLocation,
+  productStockStatus,
 } as const;
 
 export type Messages = typeof ko;
