@@ -379,6 +379,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               설비고장 상세처리
             </NavItem>
             {/*
+             * W-05-05 — **고장 처리 바로 뒤다.** 고장이 트리거의 한 원천이라 앞선 화면이 만든
+             * 것을 이 화면이 묶는다.
+             */}
+            <NavItem to="/equipment/maintenance-orders" icon="assignment">
+              보전지시 발행
+            </NavItem>
+            {/*
              * W-05-08 — 마스터·설정 항목들 **뒤**다. 앞의 것들은 설비를 어떻게 다룰지 정해 두는
              * 자리이고 이것은 그렇게 돌아간 결과를 보는 자리라, 정하는 것과 보는 것을 섞지 않는다.
              */}

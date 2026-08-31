@@ -734,6 +734,7 @@ describe('AppLayout', () => {
       '/equipment/gauge-master',
       '/equipment/gauge-calibration',
       '/equipment/failures',
+      '/equipment/maintenance-orders',
       '/equipment/downtime-summary',
       '/approval/inbox',
       '/notification/center',

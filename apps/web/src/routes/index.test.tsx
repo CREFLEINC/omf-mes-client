@@ -1728,6 +1728,8 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       '/equipment/gauge-calibration',
       /* W-05-04 — 일하는 화면이라 정해 두는 화면들과 결과를 보는 화면 사이다. */
       '/equipment/failures',
+      /* W-05-05 — 고장이 트리거의 한 원천이라 고장 처리 바로 뒤다. */
+      '/equipment/maintenance-orders',
       /* W-05-08 — 마스터·설정 뒤다. 정해 두는 화면들과 그 결과를 보는 화면을 섞지 않는다. */
       '/equipment/downtime-summary',
     ]);
