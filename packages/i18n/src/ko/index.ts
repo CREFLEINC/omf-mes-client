@@ -74,6 +74,7 @@ import { dashboard } from './dashboard';
 import { downtimeSummary } from './downtime-summary';
 import { gaugeCalibration } from './gauge-calibration';
 import { equipmentFailure } from './equipment-failure';
+import { maintenanceOrder } from './maintenance-order';
 
 export const ko = {
   common,
@@ -136,6 +137,7 @@ export const ko = {
   downtimeSummary,
   gaugeCalibration,
   equipmentFailure,
+  maintenanceOrder,
 } as const;
 
 export type Messages = typeof ko;

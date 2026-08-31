@@ -27,6 +27,7 @@ import { DashboardScreen } from '../screens/dashboard/screen';
 import { DowntimeSummaryScreen } from '../screens/downtime-summary/screen';
 import { EquipmentFailureScreen } from '../screens/equipment-failure/screen';
 import { GaugeCalibrationScreen } from '../screens/gauge-calibration/screen';
+import { MaintenanceOrderScreen } from '../screens/maintenance-order/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
@@ -449,6 +450,11 @@ export const appRouter = createBrowserRouter([
        * 주소 앞머리는 같은 규칙(사이드바 섹션)을 따른다.
        */
       { path: 'equipment/failures', element: <EquipmentFailureScreen /> },
+      /*
+       * W-05-05 — 고장 처리 바로 뒤다. 고장이 트리거의 한 원천이라 앞선 화면이 만든 것을
+       * 이 화면이 묶는다 — 인접이 그 흐름을 드러낸다.
+       */
+      { path: 'equipment/maintenance-orders', element: <MaintenanceOrderScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을
