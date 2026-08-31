@@ -8,7 +8,14 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { ScreenTitleProvider, useCurrentScreenTitle } from '../../patterns/screen-title';
 import { MaterialLocationScreen } from './screen';
+
+/* 앱바를 대신해 셸이 받은 제목을 그린다. */
+const TitleProbe = () => {
+  const title = useCurrentScreenTitle();
+  return title === null ? null : <h1>{title}</h1>;
+};
 
 const SCANNED = '7770001118880002229901015554447777';
 
@@ -95,8 +102,14 @@ describe('자재 위치 확인 화면', () => {
     ).toBeInTheDocument();
   });
 
-  it('어느 화면인지 제목으로 알린다', () => {
-    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+  it('어느 화면인지 셸에 넘겨 알린다', () => {
+    renderWithProviders(
+      <ScreenTitleProvider>
+        <TitleProbe />
+        <MaterialLocationScreen />
+      </ScreenTitleProvider>,
+      { fetch: stub() },
+    );
 
     expect(screen.getByRole('heading', { name: '자재 위치 확인' })).toBeInTheDocument();
   });
