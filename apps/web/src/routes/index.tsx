@@ -25,6 +25,7 @@ import { InspectionResultInsightsPage } from '../screens/inspection-result-insig
 import { CollectionChannelScreen } from '../screens/collection-channel/screen';
 import { DashboardScreen } from '../screens/dashboard/screen';
 import { DowntimeSummaryScreen } from '../screens/downtime-summary/screen';
+import { GaugeCalibrationScreen } from '../screens/gauge-calibration/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
@@ -435,6 +436,12 @@ export const appRouter = createBrowserRouter([
        * **설비가 선 시간**을 보는 자리라 설비/툴에 든다.
        */
       { path: 'equipment/downtime-summary', element: <DowntimeSummaryScreen /> },
+      /*
+       * W-05-10 — 계측기 마스터(W-05-11) 바로 뒤다. 이력을 적으려면 그 마스터가 있어야 하고,
+       * 인접이 그 관계를 드러낸다. 계약 경로는 `/maintenance/**`이지만 주소 앞머리는 같은
+       * 규칙(사이드바 섹션)을 따른다.
+       */
+      { path: 'equipment/gauge-calibration', element: <GaugeCalibrationScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을

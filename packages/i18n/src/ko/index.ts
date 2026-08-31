@@ -72,6 +72,7 @@ import { shipmentRequestCreate } from './shipment-request-create';
 import { shipmentProcessing } from './shipment-processing';
 import { dashboard } from './dashboard';
 import { downtimeSummary } from './downtime-summary';
+import { gaugeCalibration } from './gauge-calibration';
 
 export const ko = {
   common,
@@ -132,6 +133,7 @@ export const ko = {
   shipmentProcessing,
   dashboard,
   downtimeSummary,
+  gaugeCalibration,
 } as const;
 
 export type Messages = typeof ko;

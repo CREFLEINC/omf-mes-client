@@ -364,6 +364,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               계측기 마스터 관리
             </NavItem>
             {/*
+             * W-05-10 — **계측기 마스터 바로 뒤다.** 이력은 그 마스터가 있어야 적을 수 있고,
+             * 인접이 그 관계를 드러낸다. 비가동 집계보다 앞인 것은 이쪽이 계측기라는 같은
+             * 대상을 다루기 때문이다.
+             */}
+            <NavItem to="/equipment/gauge-calibration" icon="event_available">
+              계측기 검교정 이력
+            </NavItem>
+            {/*
              * W-05-08 — 마스터·설정 항목들 **뒤**다. 앞의 것들은 설비를 어떻게 다룰지 정해 두는
              * 자리이고 이것은 그렇게 돌아간 결과를 보는 자리라, 정하는 것과 보는 것을 섞지 않는다.
              */}
