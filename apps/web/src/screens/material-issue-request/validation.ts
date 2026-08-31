@@ -136,6 +136,25 @@ export const hasRequestableLine = (lines: readonly MaterialIssueLineDraft[]): bo
 export const hasReasonOrRemarks = (reasonCode: string, remarks: string): boolean =>
   reasonCode.trim() !== '' || remarks.trim() !== '';
 
+/**
+ * 아직 만지지 않은 칸의 오류를 감춘다.
+ *
+ * 진입 직후 도착 위치는 비어 있지만 그것은 사용자의 잘못이 아니라 **아직 W/O 를 고르지 않은
+ * 상태**이고, 그 상태의 안내는 「먼저 W/O 를 고르세요」다. 그 자리에 붉은 글씨를 세우면 사용자가
+ * 아무 일도 하지 않았는데 무언가 잘못한 것으로 읽는다(검증 발견 6).
+ *
+ * ⛔ **잠금 판정에는 쓰지 않는다.** 보이지 않는 오류로도 발행은 닫혀 있어야 하고, 그 사유는
+ * 버튼 옆에 글자로 선다 — 감추는 것은 **오류 표시**이지 **판정**이 아니다.
+ */
+export const visibleHeaderErrors = (
+  errors: Record<string, string>,
+  touched: Record<string, boolean>,
+  hasAttemptedPublish: boolean,
+): Record<string, string> =>
+  hasAttemptedPublish
+    ? errors
+    : Object.fromEntries(Object.entries(errors).filter(([field]) => touched[field] === true));
+
 export interface PublishBlockInput {
   header: HeaderDraft;
   lines: readonly MaterialIssueLineDraft[];

@@ -90,4 +90,21 @@ describe('TargetPane', () => {
 
     expect(screen.getByText(t.errors.requiredTimeMissing)).toBeInTheDocument();
   });
+
+  /**
+   * 목이 `page.total` 을 항상 1 로 주어 브라우저에서 확인하지 못한 자리다(검증 발견 7).
+   * 「목록에 없다」와 「목록이 잘렸다」는 사용자가 할 일이 다르므로, 잘림을 말하지 않으면
+   * 찾는 W/O 가 아예 없는 것으로 읽힌다.
+   */
+  it('검색 결과가 잘리면 좁히라고 말한다', () => {
+    renderPane({ workOrderNote: t.filters.workOrderTruncated });
+
+    expect(screen.getByText(t.filters.workOrderTruncated)).toBeInTheDocument();
+  });
+
+  it('선택지 조회가 실패하면 그 사실을 말한다 — 「없다」로 읽히지 않게 한다', () => {
+    renderPane({ workOrderNote: t.filters.lookupFailed });
+
+    expect(screen.getByText(t.filters.lookupFailed)).toBeInTheDocument();
+  });
 });

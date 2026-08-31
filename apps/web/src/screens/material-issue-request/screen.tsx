@@ -9,6 +9,7 @@ import { addLineDraft, patchLineDraft, removeLineDraft, replaceShortageDrafts } 
 import { LinePane } from './line-pane';
 import { LoadErrorBanner } from './load-error-banner';
 import {
+  isTruncated,
   lookupNote,
   useItemOptions,
   useLocationDetail,
@@ -17,13 +18,9 @@ import {
   useWarehouseOptions,
   type LookupResult,
 } from './lookups';
-import {
-  stampSubmission,
-  toMaterialIssueRequestBody,
-  type MaterialIssueRequestInput,
-  type SubmissionStamp,
-} from './material-issue-request-body';
+import type { MaterialIssueRequestInput } from './material-issue-request-body';
 import { useMaterialIssueRequestMutation } from './mutations';
+import { usePublishSubmission } from './publish-submission';
 import { useExistingRequests, useShortage, useWorkOrderSearch } from './queries';
 import { ReasonPane } from './reason-pane';
 import { useReasonOptions } from './reason-options';
@@ -37,7 +34,13 @@ import type {
   ShortageLineView,
   WorkOrderView,
 } from './types';
-import { publishBlockReason, validateHeader, validateLines, type HeaderDraft } from './validation';
+import {
+  publishBlockReason,
+  validateHeader,
+  validateLines,
+  visibleHeaderErrors,
+  type HeaderDraft,
+} from './validation';
 
 const t = messages.materialIssueRequest;
 
@@ -103,7 +106,12 @@ export const MaterialIssueRequestScreen = () => {
   const [form, setForm] = useState<FormDraft>(EMPTY_FORM);
   const [lines, setLines] = useState<MaterialIssueLineDraft[]>([]);
   const [isShortageRequested, setIsShortageRequested] = useState(false);
+  /** 「불러오기」를 누른 횟수. 서버 값이 그대로여도 누름이 반영되게 하는 축이다 */
+  const [loadCount, setLoadCount] = useState(0);
   const [createdBinding, setCreatedBinding] = useState<CreatedBinding | null>(null);
+  /** 사용자가 만진 칸(오류의 열쇠로 적는다) · 발행을 한 번이라도 눌렀는가 — 오류 노출의 문이다. */
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [hasAttemptedPublish, setHasAttemptedPublish] = useState(false);
 
   const workOrderId = selectedWorkOrder === null ? '' : String(selectedWorkOrder.workOrderId);
   const targetSignature: TargetSignature = `wo:${workOrderId}`;
@@ -126,10 +134,9 @@ export const MaterialIssueRequestScreen = () => {
   const shortageLines = shortage.data ?? EMPTY_SHORTAGE;
   const existing = useExistingRequests(numericWorkOrderId);
 
-  /** 이미 초안에 반영한 소요 응답. 같은 응답을 두 번 반영해 사용자가 고친 값을 되돌리지 않는다. */
-  const appliedShortageRef = useRef<readonly ShortageLineView[] | null>(null);
-  const submittedStampRef = useRef<SubmissionStamp | null>(null);
   const submittingTargetRef = useRef<TargetSignature | null>(null);
+  /** 제출 순간의 고정은 이 훅이 진다 — 화면은 본문을 직접 조립하지 않는다. */
+  const submission = usePublishSubmission();
 
   const create = useMaterialIssueRequestMutation({
     onSuccess: (result) => {
@@ -151,13 +158,16 @@ export const MaterialIssueRequestScreen = () => {
     create.reset();
   };
 
-  /* 대상이 바뀌면 이 W/O 에 매인 것을 전부 비운다 — 앞 W/O 의 줄이 새 대상에 실리면 안 된다. */
+  /*
+   * 대상이 바뀌면 이 W/O 에 매인 것을 전부 비운다 — 앞 W/O 의 줄이 새 대상에 실리면 안 된다.
+   *
+   * ⛔ **제출 도장은 여기서도 버리지 않는다.** 대상이 바뀌면 `workOrderId` 가 지문에 들어 있어
+   * 어차피 새 도장이 찍힌다. 손으로 버리면 「값을 고쳤다 되돌린」 경우까지 새 키가 나간다.
+   */
   useEffect(() => {
     setForm((prev) => ({ ...prev, warehouseId: '', destinationLocationId: '' }));
     setLines([]);
     setIsShortageRequested(false);
-    appliedShortageRef.current = null;
-    submittedStampRef.current = null;
     resetCreateIfIdle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workOrderId]);
@@ -186,17 +196,28 @@ export const MaterialIssueRequestScreen = () => {
   /*
    * 소요 응답이 도착하면 **BOM 유래 줄만** 갈아 끼운다. 손으로 더한 줄은 키까지 그대로 남는다 —
    * 지우면 사용자가 담은 품목이 조용히 사라진다.
+   *
+   * ⭐ **응답의 참조로 가드하지 않는다.** react-query 는 내용이 같은 응답에 **같은 참조**를
+   * 돌려주므로(구조적 공유), 참조로 가드하면 서버 값이 그대로일 때 「불러오기」를 다시 눌러도
+   * 아무 일도 일어나지 않는다 — 사용자에게는 버튼이 안 먹는 것으로 읽히고, 고쳐 둔 요청 수량이
+   * 부족량으로 되돌아간다는 감지기의 단언과도 어긋난다(검증 발견 4). **불러오기는 사용자가 고른
+   * 명시적 동작이므로 누를 때마다 반영한다.**
+   *
+   * 누름 횟수(`loadCount`)와 불러온 시각을 함께 본다 — 누름만으로도 캐시에 있는 값이 곧바로
+   * 다시 서고, 새 응답이 도착하면 한 번 더 선다. 둘 다 같은 함수를 지나므로 두 번 반영해도 결과가
+   * 같다. 시각만 보면 두 응답이 같은 밀리초에 끝나는 드문 경우에 누름이 삼켜진다.
+   *
+   * `isShortageRequested` 를 함께 본다 — 대상을 바꾼 직후에는 조회가 꺼져 있는데, 캐시에 남은
+   * 앞선 응답이 그대로 보여 **버튼을 누르지 않았는데** 줄이 서는 것을 막는다.
    */
   useEffect(() => {
-    if (shortage.data === undefined) return;
-    if (appliedShortageRef.current === shortage.data) return;
+    if (!isShortageRequested || shortage.data === undefined) return;
 
     const arrived = shortage.data;
 
-    appliedShortageRef.current = arrived;
     setLines((prev) => replaceShortageDrafts(prev, arrived));
-    submittedStampRef.current = null;
-  }, [shortage.data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shortage.dataUpdatedAt, loadCount, isShortageRequested]);
 
   /** BOM 유래 판정을 한 자리에서 채운다 — 표의 경고와 본문의 FK 가 같은 값을 본다. */
   const resolvedLines = useMemo(
@@ -213,13 +234,39 @@ export const MaterialIssueRequestScreen = () => {
 
   const header: HeaderDraft = { workOrderId, ...form };
   const headerLocalErrors = validateHeader(header);
-  /* 빈 칸에서는 로컬 판정이 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다. */
-  const headerErrors = { ...create.fieldErrors, ...headerLocalErrors };
+
+  /*
+   * **아직 만지지 않은 칸에는 붉은 글씨를 세우지 않는다**(검증 발견 6). 판정은 그대로 두고
+   * 표시만 미룬다 — 잠금은 아래 `publishBlockReason` 이 `headerLocalErrors` 전부를 보고 한다.
+   *
+   * 빈 칸에서는 로컬 판정이 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
+   */
+  const headerErrors = {
+    ...create.fieldErrors,
+    ...visibleHeaderErrors(headerLocalErrors, touched, hasAttemptedPublish),
+  };
   const lineErrors = validateLines(resolvedLines).errors;
+
+  /**
+   * 이 칸을 만졌다고 적는다. **오류의 열쇠로 적는다** — 필요 일자·시각 두 칸이 `requiredAt` 오류
+   * 하나를 공유하므로, 칸 이름으로 적으면 어느 쪽을 만져도 그 오류가 드러나지 않는다.
+   */
+  const markTouched = (fields: readonly string[]): void => {
+    setTouched((prev) => {
+      const next = { ...prev };
+
+      for (const field of fields) {
+        next[field] = true;
+        if (field === 'requiredDate' || field === 'requiredTime') next.requiredAt = true;
+      }
+
+      return next;
+    });
+  };
 
   const changeForm = (patch: Partial<FormDraft>): void => {
     setForm((prev) => ({ ...prev, ...patch }));
-    submittedStampRef.current = null;
+    markTouched(Object.keys(patch));
 
     for (const field of Object.keys(patch)) create.clearFieldError(field);
   };
@@ -229,23 +276,32 @@ export const MaterialIssueRequestScreen = () => {
     create.clearFieldError('workOrderId');
   };
 
+  /*
+   * ⛔ **줄을 고쳐도 제출 도장을 손으로 버리지 않는다.** 「값이 달라졌는가」는 `stampSubmission`
+   * 의 지문이 판정한다. 손으로 버리면 값을 고쳤다 **되돌렸을 때** — 보낼 값이 첫 시도와 완전히
+   * 같은데도 — 새 멱등 키가 나가 전표가 둘 쌓일 수 있다(검증 발견 3).
+   */
   const patchLine = (key: string, patch: Partial<Omit<MaterialIssueLineDraft, 'key'>>): void => {
     setLines((prev) => patchLineDraft(prev, key, patch));
-    submittedStampRef.current = null;
   };
 
   const removeLine = (key: string): void => {
     setLines((prev) => removeLineDraft(prev, key));
-    submittedStampRef.current = null;
   };
 
   const addLine = (): void => {
     setLines((prev) => addLineDraft(prev));
-    submittedStampRef.current = null;
   };
 
-  /** 「불러오기」 — 처음이면 조회를 열고, 이미 받았으면 다시 받는다. */
+  /**
+   * 「불러오기」 — 처음이면 조회를 열고, 이미 받았으면 다시 받는다.
+   *
+   * 누름 자체를 세어 둔다. 서버 값이 앞과 같아도 **누른 사람에게는 반영이 보여야 한다**
+   * (검증 발견 4).
+   */
   const loadShortage = (): void => {
+    setLoadCount((count) => count + 1);
+
     if (!isShortageRequested) {
       setIsShortageRequested(true);
       return;
@@ -257,11 +313,13 @@ export const MaterialIssueRequestScreen = () => {
   /**
    * 확인 창 없이 곧바로 보낸다 — 전송 중 잠금과 성공 후 잠금 두 겹이 연타를 막는다.
    *
-   * ⭐ **제출 순간을 초안에 매어 둔다.** 본문 조립 안에서 `new Date()` 를 뜨면 `businessDate`·
-   * `occurredAt` 이 매번 달라져 공통 쓰기 훅의 지문이 재시도마다 새 멱등 키를 만든다 — 서버가
-   * 중복 요청을 막지 않으므로 같은 전표가 둘 쌓인다.
+   * ⭐ **본문을 여기서 조립하지 않는다.** 제출 순간의 고정과 본문 조립을 잇는 이음매는
+   * `usePublishSubmission` 이 진다 — 그 이음매가 이 화면에서 가장 조용히 틀릴 자리이고,
+   * 화면 안에 두면 감지기가 닿지 않는다(검증 발견 1).
    */
   const publish = (): void => {
+    setHasAttemptedPublish(true);
+
     const input: MaterialIssueRequestInput = {
       workOrderId,
       destinationLocationId: form.destinationLocationId,
@@ -273,11 +331,7 @@ export const MaterialIssueRequestScreen = () => {
       shortage: shortageLines,
     };
 
-    const stamp = stampSubmission(submittedStampRef.current, input, new Date());
-
-    submittedStampRef.current = stamp;
-
-    const body = toMaterialIssueRequestBody(input, stamp.at);
+    const body = submission.build(input);
 
     if (body === null) return;
 
@@ -312,7 +366,8 @@ export const MaterialIssueRequestScreen = () => {
 
     const page = workOrders.data?.page;
 
-    return page !== undefined && page.total > workOrderRows.length
+    /* 잘림 판정은 선택 목록들과 같은 함수를 쓴다 — 「전체가 첫 쪽보다 많은가」 하나다. */
+    return page !== undefined && isTruncated(page, workOrderRows.length)
       ? t.filters.workOrderTruncated
       : undefined;
   };

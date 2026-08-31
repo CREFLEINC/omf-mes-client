@@ -9,6 +9,7 @@ import {
   readQty,
   validateHeader,
   validateLines,
+  visibleHeaderErrors,
   type HeaderDraft,
 } from './validation';
 
@@ -118,6 +119,26 @@ describe('validateHeader', () => {
     expect(validateHeader(header({ requiredTime: '14:00' })).requiredAt).toBe(
       t.errors.requiredDateMissing,
     );
+  });
+});
+
+describe('visibleHeaderErrors — 만지지 않은 칸에는 붉은 글씨를 세우지 않는다', () => {
+  const errors = { destinationLocationId: t.errors.destinationRequired };
+
+  it('진입 직후에는 아무 오류도 보이지 않는다 — 사용자가 아직 아무 일도 하지 않았다', () => {
+    expect(visibleHeaderErrors(errors, {}, false)).toEqual({});
+  });
+
+  it('그 칸을 만지면 그 칸의 오류가 드러난다', () => {
+    expect(visibleHeaderErrors(errors, { destinationLocationId: true }, false)).toEqual(errors);
+  });
+
+  it('다른 칸을 만진 것으로는 드러나지 않는다', () => {
+    expect(visibleHeaderErrors(errors, { requiredAt: true }, false)).toEqual({});
+  });
+
+  it('발행을 한 번 누르면 전부 드러난다', () => {
+    expect(visibleHeaderErrors(errors, {}, true)).toEqual(errors);
   });
 });
 

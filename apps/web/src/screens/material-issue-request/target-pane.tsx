@@ -116,16 +116,24 @@ export const TargetPane = ({
 
         {selectedWorkOrder !== null && (
           <div className="field-cell field-cell-unlabeled">
-            <span>
-              {t.values.orderQty(
-                String(selectedWorkOrder.orderQty),
-                lookupDisplayLabel(uomLookup, selectedWorkOrder.uomId),
-              )}
-            </span>
-            {/* 유형 글자를 서버가 준 그대로 보인다 — 값으로 분기하지 않는다(공유계약 G-2). */}
-            <Chip variant="status" status="info" size="sm">
-              {t.values.workOrderType(selectedWorkOrder.workOrderTypeCode)}
-            </Chip>
+            {/*
+             * ⚠ **래퍼를 두는 이유가 있다.** `.form-grid .field-cell` 은 `align-items: stretch` 다
+             * (배치 규범 3-1 — 선택칸이 칸 폭을 받게 하려는 규칙). 그 밑에 `Chip` 을 바로 놓으면
+             * **칩이 칸 폭 전체로 늘어나 파란 띠가 된다**(브라우저에서 851px 로 실측). 블록 래퍼
+             * 안에서는 칩이 인라인 상자라 제 내용 폭을 갖는다.
+             */}
+            <div>
+              <span>
+                {t.values.orderQty(
+                  String(selectedWorkOrder.orderQty),
+                  lookupDisplayLabel(uomLookup, selectedWorkOrder.uomId),
+                )}
+              </span>{' '}
+              {/* 유형 글자를 서버가 준 그대로 보인다 — 값으로 분기하지 않는다(공유계약 G-2). */}
+              <Chip variant="status" status="info" size="sm">
+                {t.values.workOrderType(selectedWorkOrder.workOrderTypeCode)}
+              </Chip>
+            </div>
           </div>
         )}
 
