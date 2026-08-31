@@ -30,7 +30,8 @@ type MaintenanceResultCreate = components['schemas']['MaintenanceResultCreate'];
 
 export const toolResultKeys = {
   all: ['tool-pm-result'] as const,
-  results: (moldId: number | null) => ['tool-pm-result', 'results', moldId ?? 0] as const,
+  results: (moldId: number | null, page: number) =>
+    ['tool-pm-result', 'results', moldId ?? 0, page] as const,
   tool: (moldId: number | null) => ['tool-pm-result', 'tool', moldId ?? 0] as const,
 };
 
@@ -63,12 +64,23 @@ export const useToolDetail = (moldId: number | null): UseQueryResult<Mold> => {
   });
 };
 
-/** 고른 툴의 실적 목록. */
-export const useToolResults = (moldId: number | null): UseQueryResult<ToolResultListResult> => {
+/** 한 쪽에 담는 실적 수. 예방보전 이력은 한 툴에 여러 해가 쌓인다. */
+export const PAGE_SIZE = 20;
+
+/**
+ * 고른 툴의 실적 목록.
+ *
+ * ⭐ **쪽을 보낸다.** 보내지 않으면 서버가 첫 쪽만 주고 화면은 그 사실을 모른 채 「이게
+ * 전부」로 그린다 — 되돌린 이력이 여기서 잘리면 언제 무엇을 되돌렸는지 되짚을 수 없다.
+ */
+export const useToolResults = (
+  moldId: number | null,
+  page: number,
+): UseQueryResult<ToolResultListResult> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: toolResultKeys.results(moldId),
+    queryKey: toolResultKeys.results(moldId, page),
     enabled: moldId !== null,
     queryFn: () => {
       if (moldId === null) {
@@ -77,11 +89,13 @@ export const useToolResults = (moldId: number | null): UseQueryResult<ToolResult
 
       return runRequest(() =>
         client.GET('/maintenance/results', {
-          params: { query: { targetTypeCode: 'MOLD', targetId: moldId } },
+          params: {
+            query: { targetTypeCode: 'MOLD', targetId: moldId, page, size: PAGE_SIZE },
+          },
         }),
       ).then((data) => ({
         items: data.items.map(toToolResultView),
-        page: data.page ?? { page: 1, size: data.items.length, total: data.items.length },
+        page: data.page ?? { page, size: PAGE_SIZE, total: data.items.length },
       }));
     },
   });

@@ -21,6 +21,8 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
 import { lookupNote, useOrderOptions, useToolOptions, useUserOptions } from './lookups';
+import { PageNav } from './page-nav';
+import { toPageView } from './pagination';
 import {
   canClose,
   EMPTY_DRAFT,
@@ -75,6 +77,10 @@ export const ToolPmResultScreen = () => {
   const toolParam = searchParams.get('tool') ?? '';
   const moldId = isPositiveInteger(toolParam) ? Number(toolParam) : null;
 
+  /* 쪽도 주소가 소유한다 — 새로고침이 보던 쪽으로 돌아온다. */
+  const pageParam = searchParams.get('page') ?? '';
+  const page = isPositiveInteger(pageParam) ? Number(pageParam) : 1;
+
   const [draft, setDraft] = useState<ToolResultDraft>({ ...EMPTY_DRAFT, tool: toolParam });
   const [errors, setErrors] = useState<DraftErrors>({});
   const [isConfirming, setConfirming] = useState(false);
@@ -91,7 +97,7 @@ export const ToolPmResultScreen = () => {
   const users = useUserOptions();
   const orders = useOrderOptions(moldId);
   const detail = useToolDetail(moldId);
-  const results = useToolResults(moldId);
+  const results = useToolResults(moldId, page);
 
   const create = useToolResultCreate(moldId, () => {
     setSavedReset(draft.resetCounter);
@@ -104,6 +110,22 @@ export const ToolPmResultScreen = () => {
 
   const tool = detail.data === undefined ? null : toToolView(detail.data);
   const rows = results.data?.items ?? EMPTY_ROWS;
+  const pageView = results.data === undefined ? null : toPageView(results.data.page, rows.length);
+
+  /*
+   * ⭐ **서버가 되말한 필드 오류를 화면이 전부 그린다.** `knownFields` 에 이름을 올리면 그
+   * 항목은 배너에서 빠져 인라인으로만 나온다 — 그릴 자리가 없으면 그대로 사라진다. 되돌릴 수
+   * 없는 쓰기에서 「왜 거부됐는지」가 사라지면 사람은 같은 값을 다시 보낸다.
+   */
+  const startedError = errors.startedAt ?? create.fieldErrors.startedAt;
+  const finishedError = errors.finishedAt ?? create.fieldErrors.finishedAt;
+
+  const goToPage = (next: number): void => {
+    const params = new URLSearchParams(searchParams);
+
+    params.set('page', String(next));
+    setSearchParams(params);
+  };
 
   const toOptions = (entries: { value: string; label: string }[]): SelectOption[] =>
     entries.map((entry) => ({ value: entry.value, label: entry.label }));
@@ -200,7 +222,7 @@ export const ToolPmResultScreen = () => {
             options={toOptions(tools.entries)}
             value={draft.tool}
             note={lookupNote(tools, t.tool.lookupFailed)}
-            error={errors.tool}
+            error={errors.tool ?? create.fieldErrors.targetId}
             placeholder={t.tool.selectPlaceholder}
             wide
             onChange={selectTool}
@@ -263,15 +285,13 @@ export const ToolPmResultScreen = () => {
               mode="single"
               clearable
               placeholder={messages.common.selectDate}
-              invalid={errors.startedAt !== undefined}
+              invalid={startedError !== undefined}
               value={draft.startedAt === '' ? null : draft.startedAt}
               onChange={(value) => {
                 set({ startedAt: value ?? '' });
               }}
             />
-            {errors.startedAt !== undefined && (
-              <span className="field-error">{errors.startedAt}</span>
-            )}
+            {startedError !== undefined && <span className="field-error">{startedError}</span>}
           </div>
 
           <div className="field-cell">
@@ -281,16 +301,14 @@ export const ToolPmResultScreen = () => {
               mode="single"
               clearable
               placeholder={messages.common.selectDate}
-              invalid={errors.finishedAt !== undefined}
+              invalid={finishedError !== undefined}
               value={draft.finishedAt === '' ? null : draft.finishedAt}
               onChange={(value) => {
                 set({ finishedAt: value ?? '' });
               }}
             />
             <span className="field-note">{t.form.finishedAtNote}</span>
-            {errors.finishedAt !== undefined && (
-              <span className="field-error">{errors.finishedAt}</span>
-            )}
+            {finishedError !== undefined && <span className="field-error">{finishedError}</span>}
           </div>
 
           <div className="field-cell form-grid-full">
@@ -325,7 +343,7 @@ export const ToolPmResultScreen = () => {
             options={toOptions(users.entries)}
             value={draft.performer}
             note={lookupNote(users, t.form.userLookupFailed)}
-            error={errors.performer}
+            error={errors.performer ?? create.fieldErrors.performedByUserId}
             placeholder={t.form.selectPlaceholder}
             disabled={draft.isOutsourced}
             wide
@@ -340,7 +358,7 @@ export const ToolPmResultScreen = () => {
               id={vendorId}
               value={draft.vendorName}
               disabled={!draft.isOutsourced}
-              error={errors.vendorName}
+              error={errors.vendorName ?? create.fieldErrors.outsourceVendorName}
               helperText={t.form.vendorNote}
               onChange={(event) => {
                 set({ vendorName: event.target.value });
@@ -415,6 +433,8 @@ export const ToolPmResultScreen = () => {
           >
             {t.form.reset}
           </Button>
+          {/* 저장하는 동안 무엇을 하고 있는지 말한다 — 늦으면 사람은 한 번 더 누른다. */}
+          {create.isSaving && <p className="field-note form-actions-secondary">{t.form.saving}</p>}
           <Button
             onClick={requestSave}
             /* 잠금 토큰이 아직 없으면 보내도 막힌다 — 누르기 전에 잠근다. */
@@ -451,6 +471,8 @@ export const ToolPmResultScreen = () => {
             />
           </div>
         )}
+        {/* 되돌린 이력은 여러 해 쌓인다 — 첫 쪽만 그리고 「이게 전부」로 보이게 두지 않는다. */}
+        {pageView !== null && <PageNav view={pageView} onChange={goToPage} />}
       </section>
 
       {/*
@@ -496,12 +518,6 @@ export const ToolPmResultScreen = () => {
           </strong>
         </p>
       </Dialog>
-
-      {create.error === null && create.isSaving && (
-        <div className="banner-slot">
-          <AlertBanner variant="info" title={t.tool.loadingLock} />
-        </div>
-      )}
     </>
   );
 };
