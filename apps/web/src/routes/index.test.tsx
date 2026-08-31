@@ -696,6 +696,11 @@ describe('appRouter', () => {
 
   it('적치 규칙이 기준정보 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/master-data/putaway-rule');
+  });
+
+  /** ⭐ 창고·Location 이 만든 위치를 이 화면이 도면에 얹는다 — 같은 묶음이다. */
+  it('W-CO-08 창고 배치도를 기준정보 아래에 둔다', () => {
+    expect(routedPaths()).toContain('/master-data/warehouse-layout');
     expect(routedPaths()).not.toContain('/logistics/putaway-rules');
     expect(routedPaths()).not.toContain('/logistics/putaway-rule');
   });

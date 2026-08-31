@@ -77,6 +77,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/master-data/putaway-rule" icon="shelves">
               적치 규칙
             </NavItem>
+            {/*
+             * W-CO-08 — 창고 계열의 끝에 둔다. 창고·Location 이 만든 위치를 여기서 도면에
+             * 얹으므로 그 뒤이고, 적치 규칙과 창고·Location 의 인접은 흔들지 않는다.
+             */}
+            <NavItem to="/master-data/warehouse-layout" icon="map">
+              창고 배치도
+            </NavItem>
             <NavItem to="/master-data/routing" icon="account_tree">
               Routing(공정)
             </NavItem>

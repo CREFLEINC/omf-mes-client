@@ -4,3 +4,5 @@ export { TextArea } from './ds-candidates/text-area';
 export type { TextAreaProps, TextAreaResize } from './ds-candidates/text-area';
 export { QrCode } from './ds-candidates/qr-code';
 export type { QrCodeProps } from './ds-candidates/qr-code';
+export { MarkerOverlay } from './ds-candidates/marker-overlay';
+export type { MarkerOverlayProps, OverlayMarker } from './ds-candidates/marker-overlay';

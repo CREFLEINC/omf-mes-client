@@ -695,6 +695,7 @@ describe('AppLayout', () => {
       '/dashboard',
       '/master-data/warehouse-location',
       '/master-data/putaway-rule',
+      '/master-data/warehouse-layout',
       '/master-data/routing',
       '/master-data/inspection-standard',
       '/master-data/defect-cause-code',
