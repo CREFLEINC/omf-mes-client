@@ -122,13 +122,27 @@ export const EquipmentFailureScreen = () => {
   const writeError = update.error ?? startHandling.error ?? complete.error;
   const fieldErrors = { ...update.fieldErrors, ...complete.fieldErrors };
 
+  /**
+   * 한 쓰기를 시작하기 전에 **다른 쓰기의 오류를 지운다.**
+   *
+   * 훅은 자기 오류만 지우므로, 저장이 실패해 남은 칸 오류가 완료를 누른 뒤에도 그대로 서 있다 —
+   * 사용자는 방금 누른 완료가 그 이유로 막힌 줄 안다.
+   */
+  const clearOtherErrors = (keep: 'update' | 'start' | 'complete'): void => {
+    if (keep !== 'update') update.reset();
+    if (keep !== 'start') startHandling.reset();
+    if (keep !== 'complete') complete.reset();
+  };
+
   const confirmPending = (): void => {
     if (pending === 'start') {
+      clearOtherErrors('start');
       startHandling.write(undefined);
       return;
     }
 
     if (pending === 'complete') {
+      clearOtherErrors('complete');
       /* 완료 본문은 둘 다 필수다 — 버튼이 이미 그것을 확인했으므로 여기서는 값만 옮긴다. */
       complete.write({ causeCode, handlingNote });
     }
@@ -213,6 +227,7 @@ export const EquipmentFailureScreen = () => {
                 onChangeCause={setCauseCode}
                 onChangeNote={setHandlingNote}
                 onSave={() => {
+                  clearOtherErrors('update');
                   /* 빈 값은 「지운다」가 아니라 「아직 안 적었다」다 — `null`로 보낸다. */
                   update.write({
                     causeCode: causeCode === '' ? null : causeCode,
