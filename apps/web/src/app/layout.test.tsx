@@ -732,6 +732,7 @@ describe('AppLayout', () => {
       '/equipment/collection-channels',
       '/equipment/shot-conversion',
       '/equipment/gauge-master',
+      '/equipment/gauge-calibration',
       '/equipment/downtime-summary',
       '/approval/inbox',
       '/notification/center',
