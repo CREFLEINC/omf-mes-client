@@ -807,3 +807,29 @@ main > * + * {
   margin-left: auto;
   color: var(--on-surface-muted);
 }
+
+/*
+ * 코드 그림 자리 — 가운데 두고 위아래로 숨을 준다. 그림 자체는 흰 바탕을 스스로 그리므로
+ * 여기서 배경을 칠하지 않는다(칠하면 어두운 테마에서 그림 테두리가 배경에 먹힌다).
+ */
+.token-figure {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3) 0;
+}
+
+/* 발급 시각·만료 — 이름과 값을 두 칸으로 세운다. 값이 길어도 이름 칸은 흔들리지 않는다. */
+.token-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0;
+}
+
+.token-meta dt {
+  color: var(--on-surface-muted);
+}
+
+.token-meta dd {
+  margin: 0;
+}
