@@ -36,8 +36,6 @@ const toLoadState = <TItem,>(
 });
 
 export interface EmergencyWorkOrderScreenProps {
-  /** 제출 순간. 시간대 표기를 여기서 얻는다 — 검사에서 고정할 수 있게 밖에서 받는다. */
-  now?: Date;
   /**
    * 긴급을 뜻하는 유형 코드. 화면은 기본값으로 상수를 쓴다.
    *
@@ -54,7 +52,6 @@ export interface EmergencyWorkOrderScreenProps {
  * 고쳐질 때 화면이 스스로와 어긋난다.
  */
 export const EmergencyWorkOrderScreen = ({
-  now,
   typeCode = EMERGENCY_WORK_ORDER_TYPE_CODE,
 }: EmergencyWorkOrderScreenProps) => {
   const t = messages.emergencyWorkOrder;
@@ -171,7 +168,6 @@ export const EmergencyWorkOrderScreen = ({
             item: item ?? { itemId: 0, itemCode: '', itemName: '', baseUomId: 0 },
             routingOperationId: issueRoutingOperationId(expansion),
             typeCode,
-            at: now ?? new Date(),
           });
         }}
       />

@@ -12,7 +12,7 @@ const ITEM = { itemId: 5001, itemCode: 'SYN-ITEM-0001', itemName: '합성 품목
 const filled: IssueFormValue = {
   itemId: '5001',
   orderQty: '200',
-  plannedEndAtLocal: '2026-08-06T18:00',
+  dueDate: '2026-08-06',
   remarks: '고객 긴급 요청',
 };
 
@@ -89,7 +89,7 @@ describe('IssueFormPane', () => {
         errors: {
           orderQty: t.qtyRequired,
           remarks: t.reasonRequired,
-          plannedEndAtLocal: t.dueInvalid,
+          dueDate: t.dueInvalid,
         },
       });
 

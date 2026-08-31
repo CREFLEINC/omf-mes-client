@@ -25,7 +25,7 @@ const contractError = (status: number): Response =>
 const form = (overrides: Partial<IssueFormValue> = {}): IssueFormValue => ({
   itemId: '5001',
   orderQty: '200',
-  plannedEndAtLocal: '2026-08-06T18:00',
+  dueDate: '2026-08-06',
   remarks: '고객 긴급 요청',
   ...overrides,
 });
@@ -35,7 +35,6 @@ const command = (overrides: Partial<IssueCommand> = {}): IssueCommand => ({
   item: { itemId: 5001, itemCode: 'SYN-ITEM-0001', itemName: '합성 품목', baseUomId: 11 },
   routingOperationId: 901,
   typeCode: 'SYN_EMERGENCY',
-  at: new Date('2026-08-05T09:00:00+09:00'),
   ...overrides,
 });
 

@@ -3,12 +3,10 @@ import { describe, expect, it } from 'vitest';
 import type { IssueFormValue } from './issue-form';
 import { type IssueCommand, toWorkOrderCreateBody, toWorkOrderReleaseBody } from './issue-request';
 
-const AT = new Date('2026-08-05T09:00:00+09:00');
-
 const form = (overrides: Partial<IssueFormValue> = {}): IssueFormValue => ({
   itemId: '5001',
   orderQty: '200',
-  plannedEndAtLocal: '2026-08-06T18:00',
+  dueDate: '2026-08-06',
   remarks: '고객 긴급 요청',
   ...overrides,
 });
@@ -18,7 +16,6 @@ const command = (overrides: Partial<IssueCommand> = {}): IssueCommand => ({
   item: { itemId: 5001, itemCode: 'SYN-ITEM-0001', itemName: '합성 품목', baseUomId: 11 },
   routingOperationId: 901,
   typeCode: 'SYN_EMERGENCY',
-  at: AT,
   ...overrides,
 });
 
@@ -74,33 +71,22 @@ describe('toWorkOrderCreateBody', () => {
   });
 
   describe('납기', () => {
-    it('초와 시간대를 갖춰 싣는다 — 시간대가 없으면 같은 글자가 다른 순간을 가리킨다', () => {
+    /*
+     * ⛔ `dueDate`(계약 신설)로 보낸다 — `plannedEndAt`(계획 종료 «시각»)이 아니다. 뜻이
+     * 다르다: 납기는 「언제까지 내야 하는가」, 계획 종료는 「언제 끝날 것으로 잡았는가」다.
+     */
+    it('날짜 그대로 dueDate 에 싣는다 — plannedEndAt 이 아니다', () => {
       const body = toWorkOrderCreateBody(command());
 
-      expect(body?.plannedEndAt).toMatch(/^2026-08-06T18:00:00[+-]\d{2}:\d{2}$/);
-    });
-
-    /*
-     * 모양만 보면 시간대를 «잘못» 붙여도 통과한다. 되읽어서 같은 벽시계 시각이 나오는지까지
-     * 본다 — 여기서 UTC 로 보내거나 부호를 뒤집으면 사람이 고른 시각과 다른 순간이 지시에
-     * 박힌다. 긴급 발행에서 납기가 아홉 시간 어긋나는 것은 작은 일이 아니다.
-     */
-    it('⛔ 되읽으면 사람이 고른 그 시각이다 — 시간대를 잘못 붙이면 다른 순간이 된다', () => {
-      const sent = toWorkOrderCreateBody(command())?.plannedEndAt ?? '';
-      const parsed = new Date(sent);
-
-      expect(parsed.getFullYear()).toBe(2026);
-      expect(parsed.getMonth()).toBe(7);
-      expect(parsed.getDate()).toBe(6);
-      expect(parsed.getHours()).toBe(18);
-      expect(parsed.getMinutes()).toBe(0);
+      expect(body?.dueDate).toBe('2026-08-06');
+      expect(body).not.toHaveProperty('plannedEndAt');
     });
 
     it('⛔ 비운 납기는 키 자체를 싣지 않는다 — 빈 값이 「비웠다」로 남지 않게', () => {
-      const body = toWorkOrderCreateBody(command({ form: form({ plannedEndAtLocal: '' }) }));
+      const body = toWorkOrderCreateBody(command({ form: form({ dueDate: '' }) }));
 
       expect(body).toBeDefined();
-      expect(body).not.toHaveProperty('plannedEndAt');
+      expect(body).not.toHaveProperty('dueDate');
     });
   });
 
@@ -118,7 +104,7 @@ describe('toWorkOrderCreateBody', () => {
       ['사유 없음', command({ form: form({ remarks: '' }) })],
       ['수량 0', command({ form: form({ orderQty: '0' }) })],
       ['품목 없음', command({ form: form({ itemId: '' }) })],
-      ['납기 형식 오류', command({ form: form({ plannedEndAtLocal: '2026-02-30T09:00' }) })],
+      ['납기 형식 오류', command({ form: form({ dueDate: '2026-02-30' }) })],
       ['시작 공정 미정', command({ routingOperationId: null })],
       ['유형 코드 미정', command({ typeCode: '' })],
       ['유형 코드가 공백뿐', command({ typeCode: '   ' })],

@@ -61,12 +61,12 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
 
       <TextField
         label={t.plannedEnd}
-        type="datetime-local"
-        value={value.plannedEndAtLocal}
+        type="date"
+        value={value.dueDate}
         helperText={t.dueHelp}
-        error={errorOf('plannedEndAtLocal')}
+        error={errorOf('dueDate')}
         onChange={(event) => {
-          set('plannedEndAtLocal', event.target.value);
+          set('dueDate', event.target.value);
         }}
       />
 

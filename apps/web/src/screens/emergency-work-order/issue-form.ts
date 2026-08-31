@@ -5,8 +5,8 @@ export interface IssueFormValue {
   itemId: string;
   /** 입력 그대로의 글자. 숫자로 바꾸는 것은 검증을 통과한 뒤다. */
   orderQty: string;
-  /** `YYYY-MM-DDTHH:mm` — 비울 수 있다. */
-  plannedEndAtLocal: string;
+  /** `YYYY-MM-DD` — 비울 수 있다. 계약 `WorkOrderCreate.dueDate`가 날짜만 받는다(시각 없음). */
+  dueDate: string;
   /** 발행 사유. */
   remarks: string;
 }
@@ -14,14 +14,14 @@ export interface IssueFormValue {
 export interface IssueFormErrors {
   itemId?: string;
   orderQty?: string;
-  plannedEndAtLocal?: string;
+  dueDate?: string;
   remarks?: string;
 }
 
 export const EMPTY_ISSUE_FORM: IssueFormValue = {
   itemId: '',
   orderQty: '',
-  plannedEndAtLocal: '',
+  dueDate: '',
   remarks: '',
 };
 
@@ -34,7 +34,7 @@ export const EMPTY_ISSUE_FORM: IssueFormValue = {
  */
 const DECIMAL = /^\d{1,12}(\.\d{1,6})?$/;
 
-const LOCAL_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const LOCAL_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * 고른 품목이 실제로 부를 수 있는 식별자인가.
@@ -48,17 +48,17 @@ const isSelectedId = (value: string): boolean =>
   /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) > 0;
 
 /**
- * 달력에 있는 시각인가.
+ * 달력에 있는 날인가.
  *
- * 모양만 보면 `2026-02-30`·`2026-08-06T25:00` 이 통과한다. 만들어 본 뒤 **같은 글자로 되돌아
- * 오는지**로 판정한다 — 없는 날짜는 다음 달로 넘어가면서 글자가 달라진다. 윤년 표를 손으로
- * 들고 있지 않아도 되고, 표를 잘못 옮겨 적을 자리도 없다.
+ * 모양만 보면 `2026-02-30` 이 통과한다. 만들어 본 뒤 **같은 글자로 되돌아 오는지**로 판정한다 —
+ * 없는 날짜는 다음 달로 넘어가면서 글자가 달라진다. 윤년 표를 손으로 들고 있지 않아도 되고,
+ * 표를 잘못 옮겨 적을 자리도 없다.
  */
-const isValidLocalDateTime = (value: string): boolean => {
-  if (!LOCAL_DATE_TIME.test(value)) return false;
+const isValidLocalDate = (value: string): boolean => {
+  if (!LOCAL_DATE.test(value)) return false;
 
-  const at = new Date(`${value}:00Z`);
-  return !Number.isNaN(at.getTime()) && at.toISOString().slice(0, 16) === value;
+  const at = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(at.getTime()) && at.toISOString().slice(0, 10) === value;
 };
 
 /**
@@ -77,7 +77,7 @@ export const validateIssueForm = (value: IssueFormValue): IssueFormErrors => {
   const t = messages.emergencyWorkOrder.form;
   const errors: IssueFormErrors = {};
   const qty = value.orderQty.trim();
-  const due = value.plannedEndAtLocal.trim();
+  const due = value.dueDate.trim();
 
   if (!isSelectedId(value.itemId.trim())) errors.itemId = t.itemRequired;
 
@@ -86,7 +86,7 @@ export const validateIssueForm = (value: IssueFormValue): IssueFormErrors => {
   else if (!DECIMAL.test(qty)) errors.orderQty = t.qtyNotNumber;
   else if (Number(qty) <= 0) errors.orderQty = t.qtyNotPositive;
 
-  if (due !== '' && !isValidLocalDateTime(due)) errors.plannedEndAtLocal = t.dueInvalid;
+  if (due !== '' && !isValidLocalDate(due)) errors.dueDate = t.dueInvalid;
 
   if (value.remarks.trim() === '') errors.remarks = t.reasonRequired;
 

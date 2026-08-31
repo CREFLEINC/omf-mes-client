@@ -13,7 +13,7 @@ const t = messages.emergencyWorkOrder.form;
 const filled = (overrides: Partial<IssueFormValue> = {}): IssueFormValue => ({
   itemId: '5001',
   orderQty: '200',
-  plannedEndAtLocal: '2026-08-06T18:00',
+  dueDate: '2026-08-06',
   remarks: '고객 긴급 요청',
   ...overrides,
 });
@@ -77,25 +77,23 @@ describe('validateIssueForm', () => {
 
   describe('납기', () => {
     it('⛔ 비워도 발행할 수 있다 — 활성 조건에 납기가 없다', () => {
-      expect(validateIssueForm(filled({ plannedEndAtLocal: '' }))).toEqual({});
-      expect(isIssueInputComplete(filled({ plannedEndAtLocal: '' }))).toBe(true);
+      expect(validateIssueForm(filled({ dueDate: '' }))).toEqual({});
+      expect(isIssueInputComplete(filled({ dueDate: '' }))).toBe(true);
     });
 
-    it.each(['2026-02-30T09:00', '2026-13-01T09:00', '2026-08-06T25:00', '2026-08-06'])(
+    it.each(['2026-02-30', '2026-13-01', '2026-08-32', '2026/08/06'])(
       '달력에 없는 값은 짚는다: %s',
       (due) => {
-        expect(validateIssueForm(filled({ plannedEndAtLocal: due })).plannedEndAtLocal).toBe(
-          t.dueInvalid,
-        );
+        expect(validateIssueForm(filled({ dueDate: due })).dueDate).toBe(t.dueInvalid);
       },
     );
 
     it('윤년의 2월 29일을 받는다', () => {
-      expect(validateIssueForm(filled({ plannedEndAtLocal: '2028-02-29T09:00' }))).toEqual({});
+      expect(validateIssueForm(filled({ dueDate: '2028-02-29' }))).toEqual({});
     });
 
     it('⛔ 지난 날짜를 막지 않는다 — 막으라고 정한 곳이 없다', () => {
-      expect(validateIssueForm(filled({ plannedEndAtLocal: '2020-01-01T09:00' }))).toEqual({});
+      expect(validateIssueForm(filled({ dueDate: '2020-01-01' }))).toEqual({});
     });
   });
 
