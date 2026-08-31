@@ -1,7 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
 import { useApiClient } from '../../patterns/api-context';
-import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import {
   toWorkOrderCloseFact,
   workOrderCloseDetailPath,
@@ -31,7 +31,8 @@ export const useWorkOrderCloseMutation = (
           path: { workOrderId: options.workOrderId },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
+            /* ⛔ 계약이 이 헤더를 필수로 요구한다 — 없으면 빈 값을 채우지 않고 멈춘다. */
+            'If-Match': requireIfMatch(headers),
           },
         },
         body,
