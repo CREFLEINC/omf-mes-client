@@ -555,8 +555,17 @@ describe('AppLayout', () => {
    * 아닌, **올라온 결재를 처리하는 일**이라 기존 「승인」 섹션에 그대로 남는다.
    *
    * W-04-02가 출하(도메인 04)의 첫 화면으로 「출하」를 열어 이제 아홉이다.
+   *
+   * ⭐ **섹션 밖에 서는 항목이 하나 생겼다** — W-CO-05 통합 대시보드다. 그 화면은 어느 업무
+   * 묶음에도 속하지 않고 **모든 묶음의 숫자를 모아** 보이므로, 어느 섹션에 넣어도 그 섹션의
+   * 분류가 무너진다. 항목 하나짜리 섹션을 만들면 제목이 항목보다 무거워진다.
+   *
+   * ⚠ **그래서 이 감지기는 「전부 섹션 안」이 아니라 「섹션 밖은 이것 하나」를 잰다.**
+   * 느슨해진 것이 아니다 — 섹션 밖에 항목이 하나 더 늘면 그때도 여기서 걸린다.
    */
-  it('사이드바 섹션이 아홉이고 모든 항목이 그 안에 있다', () => {
+  const UNSECTIONED_LINKS = ['/dashboard'];
+
+  it('사이드바 섹션이 아홉이고 섹션 밖 항목은 통합 대시보드 하나다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -575,8 +584,11 @@ describe('AppLayout', () => {
     const grouped = sections.flatMap((section) =>
       section === null ? [] : [...section.querySelectorAll('a')],
     );
+    const all = within(sidebar).getAllByRole('link');
+    const ungrouped = all.filter((link) => !grouped.some((anchor) => anchor === link));
 
-    expect(grouped).toEqual(within(sidebar).getAllByRole('link'));
+    expect(ungrouped.map((link) => link.getAttribute('href'))).toEqual(UNSECTIONED_LINKS);
+    expect(grouped.length + ungrouped.length).toBe(all.length);
   });
 
   /*
@@ -675,6 +687,8 @@ describe('AppLayout', () => {
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')),
     ).toEqual([
+      /* W-CO-05 — 섹션 밖 맨 위. 로그인 직후 첫 화면이라 모든 묶음 위에 선다. */
+      '/dashboard',
       '/master-data/warehouse-location',
       '/master-data/putaway-rule',
       '/master-data/routing',

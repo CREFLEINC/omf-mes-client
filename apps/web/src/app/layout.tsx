@@ -55,6 +55,15 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       }
       sidebar={
         <Sidebar aria-label="주 메뉴">
+          {/*
+           * W-CO-05 — **맨 위이고 섹션이 없다.** 이 화면은 어느 업무 묶음에도 속하지 않고
+           * 모든 묶음의 숫자를 모아 보인다. 「기준정보」 아래에 넣으면 마스터 관리 화면들
+           * 사이에 서서 분류가 무너지고, 자기 섹션을 하나 만들면 항목 하나짜리 섹션이 생겨
+           * 제목이 항목보다 무거워진다.
+           */}
+          <NavItem to="/dashboard" icon="dashboard">
+            통합 대시보드
+          </NavItem>
           <SidebarSection label="기준정보">
             <NavItem to="/master-data/warehouse-location" icon="warehouse">
               창고·Location

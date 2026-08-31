@@ -695,3 +695,78 @@ main > * + * {
   letter-spacing: var(--type-label-lg-tracking);
   color: var(--on-surface-variant);
 }
+
+/*
+ * 지표 카드 줄 — **카드 수를 화면이 정하지 않는다.**
+ *
+ * 서버가 준 카드를 그대로 그리는 자리라 개수가 회차마다 다를 수 있다. 열 수를 고정하면
+ * 카드가 넷일 때는 빈 칸이 남고 일곱일 때는 눌린다. 최소 폭 격자로 두면 폭이 허락하는 만큼
+ * 한 줄에 서고 모자라면 접힌다 — 접힘 기준점을 따로 두지 않아도 된다.
+ *
+ * ⭐ `auto-fit`이 아니라 **`auto-fill`**이다. 둘의 차이는 **카드가 트랙 수보다 적을 때** 난다 —
+ * `auto-fit`은 빈 트랙을 접어 버려 **카드 한 장이 페인 폭 전체로 늘어난다.** 브라우저 확인에서
+ * 실제로 그렇게 보였고, 그 카드는 지표가 아니라 배너로 읽혔다. `auto-fill`은 빈 트랙을 남겨
+ * 카드가 몇 장이든 **같은 폭**으로 선다.
+ *
+ * 최소 폭 11rem은 「12,480」에 단위와 증감이 붙은 카드가 눌리지 않는 폭이다. 간격은
+ * 규범 1의 블록 이음매(--space-5)보다 좁은 --space-3이다 — 카드끼리는 서로 다른 블록이
+ * 아니라 한 묶음의 항목이라, 블록 간격을 주면 한 줄이 아니라 구획 여럿으로 읽힌다.
+ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-3);
+}
+
+/*
+ * 페인 «전체»에 걸리는 안내 문장 — 칸 하나가 아니라 그 구획이 통째로 지는 사정이다.
+ *
+ * `.field-note`(규범 4)를 쓰면 안 되는 자리다. 그쪽은 **필드 하나에 딸린 사유**라 `20rem`에
+ * 갇혀 있어, 넓은 페인에 두면 오른쪽을 다 비워 두고 좁은 기둥으로 서너 줄 접힌다 — 브라우저
+ * 확인에서 실제로 그렇게 보였다. 그렇다고 폭을 풀면 한 줄이 너무 길어져 눈이 다음 줄 첫머리를
+ * 놓친다. `.dialog-lead`가 창 안에서 푼 것과 같은 문제이고, 여기서는 **읽기 좋은 길이**로 가둔다.
+ */
+.pane-lead {
+  display: block;
+  max-width: 44rem;
+  margin-top: var(--space-2);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 카드 아래 본문 — 분모가 온전하지 않다는 사유와 제외 건수가 여기 온다.
+ *
+ * ⛔ 툴팁이 아니다. 가려 두면 사용자가 온전한 값으로 읽고 그대로 판단한다.
+ * 값보다 약하게 읽혀야 한다 — 카드에서 먼저 읽히는 것은 숫자다.
+ */
+.kpi-card-note {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 카드 한 장을 통째로 감싸는 링크 — 지표 카드와 알람 카드가 함께 쓴다.
+ *
+ * 카드 «안»에 링크를 두지 않는 이유는 눌리는 자리가 제목 글자만큼으로 줄어들기 때문이다.
+ * 밑줄·색을 물려받지 않게 지우고, 대신 **포커스 링을 링크가 직접 그린다** — 감싸기만 하면
+ * 링크 자신은 크기가 없어 보이지 않는 곳에 링이 그려진다.
+ */
+.kpi-card-link,
+.alert-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+}
+
+.kpi-card-link:focus-visible,
+.alert-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
