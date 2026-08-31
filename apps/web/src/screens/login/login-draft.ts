@@ -28,10 +28,21 @@ export interface LoginDraft {
 export const emptyLoginDraft: LoginDraft = { loginId: '', password: '' };
 
 /**
- * 값이 실제로 채워졌는가. **판정할 때만 공백을 걷어내고 본다** — 값 자체는 건드리지 않는다.
+ * 아이디가 실제로 채워졌는가. **판정할 때만 공백을 걷어내고 본다** — 값 자체는 건드리지 않는다.
  * 공백만 친 칸은 사용자에게도 빈 칸으로 보이므로 채운 것으로 세지 않는다.
  */
 const isFilled = (value: string): boolean => value.trim() !== '';
+
+/**
+ * 비밀번호가 실제로 채워졌는가. **다듬지 않고 그대로 본다**(client#197).
+ *
+ * `isFilled`와 반대로 판단하는 자리다 — 아이디 칸은 공백만 쳐도 사용자 눈에 빈 칸으로 «보이지만»,
+ * 가려진 칸(`type="password"`)에서 공백은 점으로 **보인다.** `trim()`을 걸면 값을 바르게 친
+ * 사용자가 자기 눈에 채워진 칸을 보면서 「모두 입력하면 쓸 수 있습니다」를 읽게 된다. 계약이
+ * 이 칸에 형식을 두지 않고 길이만 재므로 공백도 값의 일부다(형제 구현
+ * `password-change/password-draft.ts`의 `isEmpty`와 같은 근거).
+ */
+const isPasswordFilled = (value: string): boolean => value !== '';
 
 /**
  * 로그인을 보낼 수 있는가.
@@ -41,7 +52,7 @@ const isFilled = (value: string): boolean => value.trim() !== '';
  * 바꾸는 화면의 규칙이다). 아이디 상한도 칸의 `maxLength`가 막고 넘긴 값의 판정은 서버 몫이다.
  */
 export const canSubmit = (draft: LoginDraft): boolean =>
-  isFilled(draft.loginId) && isFilled(draft.password);
+  isFilled(draft.loginId) && isPasswordFilled(draft.password);
 
 /**
  * 로그인 버튼이 잠긴 사유. 열려 있으면 `undefined`.
