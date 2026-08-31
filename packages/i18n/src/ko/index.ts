@@ -83,6 +83,7 @@ import { terminalProcessMap } from './terminal-process-map';
 import { toolPmResult } from './tool-pm-result';
 import { materialIssueRequest } from './material-issue-request';
 import { deviceRegistration } from './device-registration';
+import { oqcInspection } from './oqc-inspection';
 
 export const ko = {
   common,
@@ -154,6 +155,7 @@ export const ko = {
   toolPmResult,
   materialIssueRequest,
   deviceRegistration,
+  oqcInspection,
 } as const;
 
 export type Messages = typeof ko;
