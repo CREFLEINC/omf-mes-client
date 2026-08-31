@@ -51,7 +51,6 @@ export const materialIssueRequest = {
     rowActions: '행 조작',
   },
   actions: {
-    search: '검색',
     loadShortage: 'BOM 소요량 불러오기',
     addLine: '+ 품목 추가',
     removeLine: (rowIndex: number): string => `${String(rowIndex)}행 삭제`,
@@ -87,10 +86,10 @@ export const materialIssueRequest = {
       `이 W/O 앞으로 발행된 요청이 ${String(count)}건 있습니다. 중복 요청을 막지는 않습니다 — 아래 목록을 확인한 뒤 진행하세요.`,
     existingRequestRow: (issueRequestNo: string, statusCode: string, requiredAt: string): string =>
       `${issueRequestNo} · ${statusCode} · ${requiredAt}`,
+    existingRequestsTruncated: '앞쪽 일부만 보입니다. 전체는 자재 출고 요청 목록에서 확인하세요.',
   },
   values: {
     empty: '—',
-    unknown: '알 수 없음',
     workOrderType: (code: string): string => `유형 ${code}`,
     workOrderOption: (workOrderNo: string, operation: string, itemCode: string): string =>
       `${workOrderNo} · ${operation} · ${itemCode}`,
@@ -106,7 +105,6 @@ export const materialIssueRequest = {
     workOrderTruncated: '검색 결과가 앞쪽 일부만 보입니다. 검색어로 좁히세요.',
   },
   loading: {
-    workOrders: 'W/O 를 불러오는 중',
     shortage: 'BOM 소요량을 불러오는 중',
   },
   empty: {

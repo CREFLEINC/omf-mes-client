@@ -7,7 +7,7 @@ import {
   toExistingRequestView,
   toShortageLineView,
   toWorkOrderView,
-  type ExistingRequestView,
+  type ExistingRequestListResult,
   type ShortageLineView,
   type WorkOrderListResult,
 } from './types';
@@ -57,9 +57,9 @@ const fetchWorkOrders = async (client: Client, q: string): Promise<WorkOrderList
 /**
  * 대상 W/O 검색.
  *
- * ⛔ **상태로 좁히지 않는다.** 스펙 §5-6 이 「W/O 검색·선택 = 항상」이라 적었고, `open=true` 로
- * 좁히면 아직 배포되지 않은 W/O 가 목록에서 사라진다 — 그 W/O 의 부족 자재를 미리 요청할 길이
- * 없어진다.
+ * ⛔ **상태로 좁히지 않는다.** 스펙 §5-6 이 W/O 검색·선택을 항상 열어 두라고 적었고, `open=true`
+ * 로 좁히면 아직 배포되지 않은 W/O 가 목록에서 사라진다 — 그 W/O 의 부족 자재를 미리 요청할
+ * 길이 없어진다.
  *
  * **글자마다 찾지 않는다.** 확정된 검색어(`q`)만 받는다 — 확정 전에는 화면이 부르지 않는다.
  */
@@ -112,7 +112,7 @@ export const useShortage = (
  */
 export const useExistingRequests = (
   workOrderId: number | null,
-): UseQueryResult<ExistingRequestView[]> => {
+): UseQueryResult<ExistingRequestListResult> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -127,7 +127,15 @@ export const useExistingRequests = (
         client.GET('/logistics/material-issue-requests', {
           params: { query: { workOrderId } },
         }),
-      ).then((data) => data.items.map(toExistingRequestView));
+      ).then((data) => ({
+        items: data.items.map(toExistingRequestView),
+        /*
+         * ⚠ **건수는 쪽 길이가 아니라 전체다.** `size` 를 지정하지 않아 쪽 크기를 서버가 정하므로,
+         * 첫 쪽 길이로 「N건」이라 말하면 요청이 쌓인 W/O 에서 **실제보다 적게** 단언하게 된다 —
+         * 중복 경고가 이 화면의 목적 중 하나라 그 숫자가 어긋나면 경고의 값이 깎인다.
+         */
+        total: data.page.total,
+      }));
     },
   });
 };

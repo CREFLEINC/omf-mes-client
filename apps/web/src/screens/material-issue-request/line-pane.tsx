@@ -21,6 +21,14 @@ export interface LinePaneProps {
   isLoadingShortage: boolean;
   /** 소요 조회 실패 배너. 실패해도 **이미 채워진 줄을 지우지 않는다** */
   shortageErrorBanner: ReactNode;
+  /**
+   * 서버가 요청 품목 전체를 거부했을 때의 문구(계약 `lines`).
+   *
+   * ⭐ **이 자리가 없으면 그 거부가 통째로 사라진다** — 공용 쓰기 훅이 화면이 아는 이름을 배너에서
+   * 빼내 인라인으로 넘기기 때문이다(`HEADER_FORM_FIELDS` 주석). 수량 하한·BOM 정합·중복 줄처럼
+   * **서버만 아는 판정**이 이 이름으로 온다.
+   */
+  linesError?: string;
   onLoadShortage: () => void;
   onAddLine: () => void;
   onPatchLine: (key: string, patch: Partial<Omit<MaterialIssueLineDraft, 'key'>>) => void;
@@ -48,6 +56,7 @@ export const LinePane = ({
   isLocked,
   isLoadingShortage,
   shortageErrorBanner,
+  linesError,
   onLoadShortage,
   onAddLine,
   onPatchLine,
@@ -68,6 +77,8 @@ export const LinePane = ({
       </div>
 
       {shortageErrorBanner}
+
+      {linesError !== undefined && <span className="field-error">{linesError}</span>}
 
       {isLoadingShortage ? (
         <div role="status" aria-label={t.loading.shortage}>

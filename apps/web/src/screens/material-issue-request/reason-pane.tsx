@@ -12,7 +12,14 @@ export interface ReasonPaneProps {
   onChangeReason: (value: string) => void;
   remarks: string;
   onChangeRemarks: (value: string) => void;
-  /** 서버가 준 필드 오류(있으면) */
+  /**
+   * 서버가 사유를 거부했을 때의 문구.
+   *
+   * ⭐ **이 자리가 없으면 그 거부가 통째로 사라진다** — 공용 쓰기 훅이 화면이 아는 이름을 배너에서
+   * 빼내 인라인으로 넘기기 때문이다(`HEADER_FORM_FIELDS` 주석).
+   */
+  reasonError?: string;
+  /** 서버가 준 비고 오류(있으면) */
   remarksError?: string;
   isLocked: boolean;
 }
@@ -38,6 +45,7 @@ export const ReasonPane = ({
   onChangeReason,
   remarks,
   onChangeRemarks,
+  reasonError,
   remarksError,
   isLocked,
 }: ReasonPaneProps) => {
@@ -61,6 +69,8 @@ export const ReasonPane = ({
             </Radio>
           ))}
         </RadioGroup>
+
+        {reasonError !== undefined && <span className="field-error">{reasonError}</span>}
 
         {reasons.isError ? (
           <span className="field-note">

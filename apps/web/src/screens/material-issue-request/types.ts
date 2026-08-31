@@ -99,6 +99,17 @@ export interface ExistingRequestView {
   requiredAt: string | null;
 }
 
+/**
+ * 기존 요청 조회 결과.
+ *
+ * **건수와 목록을 갈라 든다** — 목록은 첫 쪽뿐이고 건수는 전체다. 둘을 같은 값으로 쓰면 요청이
+ * 쌓인 W/O 에서 경고가 실제보다 적은 수를 말한다.
+ */
+export interface ExistingRequestListResult {
+  items: ExistingRequestView[];
+  total: number;
+}
+
 export const toExistingRequestView = (data: MaterialIssueRequestResponse): ExistingRequestView => ({
   materialIssueRequestId: data.materialIssueRequestId,
   issueRequestNo: data.issueRequestNo,

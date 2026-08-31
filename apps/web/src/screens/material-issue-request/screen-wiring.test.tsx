@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,7 +18,9 @@ import {
   warehouseFixtures,
   workOrderFixtures,
 } from './fixtures';
+import { materialIssueRequestKeys } from './queries';
 import { MaterialIssueRequestScreen } from './screen';
+import { HEADER_FORM_FIELDS } from './validation';
 
 const t = messages.materialIssueRequest;
 
@@ -55,7 +57,17 @@ interface PostCapture {
   keys: string[];
 }
 
-const routesFor = (capture: PostCapture): StubRoute[] => {
+/** 기본은 「적용됐는지 모르는 실패」다 — 키가 살아 있어야 하는 갈래를 흉내 낸다. */
+const SERVER_ERROR = (): Response => jsonResponse({ message: '합성 서버 오류' }, { status: 500 });
+
+/** 서버가 필드 하나를 거부한 400. 그 문구가 화면 어딘가에 서는지 보는 데 쓴다. */
+const fieldRejection = (field: string, message: string) => (): Response =>
+  jsonResponse({ errors: [{ scope: 'field', field, code: 'INVALID', message }] }, { status: 400 });
+
+const routesFor = (
+  capture: PostCapture,
+  respondToPost: () => Response = SERVER_ERROR,
+): StubRoute[] => {
   const get = (pathname: string, body: unknown): StubRoute => ({
     match: (request) => request.method === 'GET' && new URL(request.url).pathname === pathname,
     respond: () => jsonResponse(body),
@@ -84,8 +96,7 @@ const routesFor = (capture: PostCapture): StubRoute[] => {
       respond: (request) => {
         capture.keys.push(request.headers.get('Idempotency-Key') ?? '');
 
-        /* 통신이 끊긴 갈래를 흉내 낸다 — 적용됐는지 모르는 실패라 키가 살아 있어야 한다. */
-        return jsonResponse({ message: '합성 서버 오류' }, { status: 500 });
+        return respondToPost();
       },
     },
   ];
@@ -238,6 +249,50 @@ describe('발행 배선 — 같은 제출을 두 번 시도하면 같은 멱등 
   });
 });
 
+/**
+ * 집중 갈래 — **거부가 침묵하지 않는가**(리뷰 M-1).
+ *
+ * 공용 쓰기 훅은 화면이 아는 이름(`HEADER_FORM_FIELDS`)을 **배너용 목록에서 빼내** 인라인으로
+ * 넘긴다. 넘겨받은 화면에 그릴 자리가 없으면 그 오류는 배너에도 칸에도 서지 않고 **통째로
+ * 사라진다** — 사용자에게는 「발행을 눌렀는데 아무 일도 안 일어난다」로 보인다. 이 화면의 유일한
+ * 되돌릴 수 없는 쓰기에서 거부가 침묵하는 것이다.
+ *
+ * ⛔ **이름마다 한 갈래씩 돈다.** 앞선 시험은 그리는 자리가 **있는** 필드 하나만 봐서, 이름을
+ * 올려놓고 자리는 만들지 않은 둘(`reasonCode`·`lines`)이 그대로 통과했다. 목록에 이름을 더하는
+ * 사람이 자리도 함께 만들도록, 판정 기준을 목록 자체에서 끌어온다.
+ */
+describe('거부가 침묵하지 않는다 — 아는 이름마다 문구가 선다 (M-1)', () => {
+  useFrozenClock();
+
+  for (const field of HEADER_FORM_FIELDS) {
+    it(`400 의 field 가 ${field} 여도 서버 문구가 화면에 선다`, async () => {
+      const message = `합성 거부 문구 ${field}`;
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+      renderWithProviders(<MaterialIssueRequestScreen />, {
+        fetch: createStubFetch(routesFor({ keys: [] }, fieldRejection(field, message))),
+      });
+
+      await selectWorkOrder(user);
+      await loadShortage(user);
+      await user.click(screen.getAllByRole('radio')[0]!);
+
+      const publishButton = screen.getByRole('button', { name: t.actions.publish });
+
+      await waitFor(() => {
+        expect(publishButton).toBeEnabled();
+      });
+
+      await user.click(publishButton);
+
+      /* 어디에 서는지는 자리마다 다르다 — 「어딘가에 선다」만 본다. */
+      await waitFor(() => {
+        expect(screen.getAllByText(message).length).toBeGreaterThan(0);
+      });
+    });
+  }
+});
+
 describe('불러오기 재실행 배선 — 서버 값이 같아도 누름이 반영된다 (D-6)', () => {
   useFrozenClock();
 
@@ -269,6 +324,85 @@ describe('불러오기 재실행 배선 — 서버 값이 같아도 누름이 �
     await waitFor(() => {
       expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(1))).toHaveValue('80');
     });
+  });
+
+  /**
+   * ⛔ **반대 방향이 이 갈래의 요점이다** — 「누르면 반영된다」만 단언하면 **누르지 않았는데
+   * 반영되는** 경로가 잡히지 않는다(리뷰 M-2).
+   *
+   * 앱 기본값이 `refetchOnReconnect` 를 덮지 않으므로(`app/providers.tsx`) 연결이 끊겼다 돌아오면
+   * 이 조회가 **사용자가 아무것도 하지 않아도** 다시 나간다. 그때 초안이 통째로 다시 서면 친
+   * 수량과 포커스가 사라지고, 줄이 새로 서는 것만으로 지문이 갈려 **새 멱등 키**까지 나간다 —
+   * 통신이 끊겼다 돌아와 다시 누르는 바로 그 순간이라 방어선이 가장 필요한 자리에서 풀린다.
+   *
+   * ⚠ **호출마다 값이 달라지는 스텁**을 쓴다(`po-register` 의 같은 부류 시험이 남긴 교훈).
+   * 같은 값을 다시 주면 조회 캐시가 구조를 공유해 참조가 그대로라, 축이 무엇이든 아무 일도
+   * 일어나지 않아 결함을 잡지 못한다.
+   */
+  it('누르지 않은 배경 재조회는 친 수량을 되돌리지 않는다', async () => {
+    let call = 0;
+    const changingShortage: StubRoute = {
+      match: (request) =>
+        request.method === 'GET' &&
+        new URL(request.url).pathname === '/logistics/material-issue-requests/shortage',
+      respond: () => {
+        call += 1;
+
+        /* 둘째 응답은 부족량이 달라진다 — 반영되면 눈에 띈다. */
+        return jsonResponse({
+          items: shortageFixtures.map((row, index) =>
+            index === 0 ? { ...row, shortageQty: call === 1 ? 80 : 55 } : row,
+          ),
+        });
+      },
+    };
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { queryClient } = renderWithProviders(<MaterialIssueRequestScreen />, {
+      fetch: createStubFetch([
+        changingShortage,
+        ...routesFor({ keys: [] }).filter(
+          (route) =>
+            !route.match(
+              new Request(
+                'http://api.test/logistics/material-issue-requests/shortage?workOrderId=7101',
+              ),
+            ),
+        ),
+      ]),
+    });
+
+    await selectWorkOrder(user);
+    await loadShortage(user);
+
+    const requestedQty = screen.getByLabelText(t.lineTable.requestedQtyLabel(1));
+
+    await user.clear(requestedQty);
+    await user.type(requestedQty, '999');
+
+    /*
+     * ⛔ **시계를 밀어 두는 것이 여기서도 감지의 조건이다.** `Date` 가 멈춰 있으면 재조회가
+     * 끝난 시각(`dataUpdatedAt`)이 앞과 같아져, 그 값을 축으로 삼은 **결함이 있어도 초안이
+     * 흔들리지 않는다** — 감지기가 결함을 놓친다.
+     */
+    vi.setSystemTime(new Date(2026, 8, 1, 0, 20, 0));
+
+    /* 사용자는 아무것도 누르지 않는다 — 배경에서 조회만 다시 돈다. */
+    await act(async () => {
+      await queryClient.refetchQueries({
+        queryKey: materialIssueRequestKeys.shortage(7101),
+      });
+    });
+
+    /* 짝 양성 — 재조회가 실제로 일어났고 바뀐 값이 도착했다. */
+    expect(call).toBe(2);
+
+    /* 반영이 늦게 오더라도 잡는다 — 여기서 쉬지 않으면 「아직 안 덮은 것」을 「안 덮는다」로 읽는다. */
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(1))).toHaveValue('999');
   });
 
   it('손으로 더한 줄은 재실행에도 남는다', async () => {

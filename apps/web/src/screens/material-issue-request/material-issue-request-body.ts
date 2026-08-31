@@ -18,7 +18,7 @@ import { readQty } from './validation';
  * | `requiredAt` | 날짜+시각을 이은 offset 포함 값. **날짜가 비면 키 자체를 싣지 않는다** | nullable(§4-A) |
  * | `reasonCode` | 고른 사유. **비면 키를 싣지 않는다**(`null` 도 아니다) | §5-1 · 계약 nullable |
  * | `remarks` | 비고 `trim()`. **비면 키를 싣지 않는다** | §4-A |
- * | `lines` | **요청 수량 > 0 인 줄만.** 0·빈칸·못 읽는 값은 뺀다 | §6 「요청 수량 0인 라인 → 자동 제외」 |
+ * | `lines` | **요청 수량 > 0 인 줄만.** 0·빈칸·못 읽는 값은 뺀다 | §6 |
  * | `lines[].bomComponentId` | `resolveBomComponentId` — 없으면 **키를 싣지 않는다** | §5-3 nullable |
  * | `lines[].itemId`·`uomId` | 양의 정수로 읽힌 값만. 못 읽으면 **그 줄을 뺀다** | 계약 필수 |
  * | `lines[].requestedQty` | `readQty` 가 `qty` 로 읽고 `> 0` 인 값 | 계약 `CHECK > 0` |
@@ -26,7 +26,7 @@ import { readQty } from './validation';
  * | `occurredAt` | **제출 순간**, 초·offset 포함 | 공유계약 C-8 |
  * | `lineNo` | **싣지 않는다** | 서버가 부여한다(계약 설명 실측) |
  * | `issuedQty` | **싣지 않는다** | `readOnly` — 피킹이 채운다 |
- * | 원인 W/O | **자리를 만들지 않는다** | §5-2 — 「발생 원인」은 사유 코드가 대신한다 |
+ * | 원인 W/O | **자리를 만들지 않는다** — 발생 원인은 사유 코드가 대신한다 | §5-2 |
  * | 출고 전표의 다형 도착지 | **싣지 않는다** | 서버가 채운다(§5-4) |
  *
  * ⚠ `businessDate` 는 **`requiredAt` 의 날짜가 아니다.** 필요 시각은 미래이고 영업일은 「이
@@ -181,6 +181,37 @@ export interface SubmissionStamp {
 }
 
 /**
+ * 지문은 **나갈 값만 본다.**
+ *
+ * ⛔ 초안을 통째로 직렬화하면 **본문에 실리지 않는 값까지 지문에 섞인다** — 특히 줄 키가 그렇다.
+ * 줄 키는 초안이 다시 세워질 때마다 새로 발급되므로, 조회가 한 번 다시 돌아 같은 값으로 줄이
+ * 새로 서기만 해도 지문이 갈리고 **새 멱등 키**가 나간다. 통신이 끊겼다 돌아온 직후가 정확히
+ * 그 상황이라, 방어선이 가장 필요한 자리에서 풀린다.
+ *
+ * 그래서 **본문에 실리는 열 자리만** 고른다. 줄의 `bomComponentId` 는 본문과 **같은 함수**로
+ * 푼 값을 쓴다 — 소요 목록이 바뀌어 FK 가 달라지면 그것은 다른 쓰기가 맞다.
+ *
+ * ⚠ 표시 전용 값(줄 키·`origin`·소요/기출고/부족)은 일부러 뺐다. 그 값이 달라져도 서버로 나가는
+ * 것은 하나도 달라지지 않는다.
+ */
+const fingerprintOf = (input: MaterialIssueRequestInput): string =>
+  JSON.stringify({
+    workOrderId: input.workOrderId,
+    destinationLocationId: input.destinationLocationId,
+    requiredDate: input.requiredDate,
+    requiredTime: input.requiredTime,
+    reasonCode: input.reasonCode,
+    remarks: input.remarks,
+    lines: input.lines.map((line) => ({
+      bomComponentId:
+        line.bomComponentId ?? resolveBomComponentId(Number(line.itemId), input.shortage),
+      itemId: line.itemId,
+      uomId: line.uomId,
+      requestedQty: line.requestedQty,
+    })),
+  });
+
+/**
  * 제출 순간을 **초안에 매어 둔다.**
  *
  * 보낼 값이 그대로면 앞서 찍은 순간을 그대로 돌려주고(같은 본문 → 같은 멱등 키), 값이
@@ -192,7 +223,7 @@ export const stampSubmission = (
   input: MaterialIssueRequestInput,
   now: Date,
 ): SubmissionStamp => {
-  const fingerprint = JSON.stringify(input);
+  const fingerprint = fingerprintOf(input);
 
   return previous !== null && previous.fingerprint === fingerprint
     ? previous

@@ -22,6 +22,19 @@ const t = messages.materialIssueRequest;
 /**
  * 화면이 오류를 그릴 자리를 가진 이름 — 서버의 400 필드 오류를 인라인으로 낼지 배너로 올릴지
  * 가르는 기준이다(`patterns/master`의 `knownFields`).
+ *
+ * ⛔ **그릴 자리가 없는 이름을 여기 올리지 않는다.** 공용 훅은 여기 있는 이름을 배너용 목록에서
+ * **빼내** 인라인으로 넘긴다. 넘겨받은 화면에 그릴 자리가 없으면 그 오류는 배너에도 칸에도 서지
+ * 않고 **통째로 사라진다** — 되돌릴 수 없는 쓰기의 거부가 침묵한다.
+ *
+ * | 이름 | 그리는 자리 |
+ * | --- | --- |
+ * | `workOrderId`·`destinationLocationId`·`requiredAt` | `target-pane.tsx` |
+ * | `reasonCode` | `reason-pane.tsx` — 라디오 아래 |
+ * | `remarks` | `reason-pane.tsx` — 비고 칸 |
+ * | `lines` | `line-pane.tsx` — 표 머리 |
+ *
+ * 이 표가 실물과 어긋나지 않는지는 `mutations.test.ts` 가 **이름마다 한 갈래씩** 돌며 확인한다.
  */
 export const HEADER_FORM_FIELDS: readonly string[] = [
   'workOrderId',
@@ -46,10 +59,24 @@ export type QtyRead = { kind: 'empty' } | { kind: 'invalid' } | { kind: 'qty'; v
  * ⚠ `Number('')`은 **0**이고 `Number('12x')`는 `NaN`이라, 그대로 흘리면 **0 수량 줄이 전표에
  * 실린다.** 빈 칸과 못 읽는 값을 수의 값역 밖으로 밀어내는 것이 이 함수의 전부다.
  */
+/**
+ * 사람이 수량으로 치는 글자의 꼴 — 부호 하나와 십진 자릿수뿐이다.
+ *
+ * ⚠ `Number` 는 `0x10` 을 16, `1e3` 을 1000, `Infinity` 를 무한으로 읽는다. 요청 수량 칸은
+ * `type="number"` 가 아니라 붙여넣기로 그런 글자가 닿을 수 있고, 닿으면 **사용자가 본 글자와
+ * 전표에 실리는 수가 다르다.** 꼴을 먼저 거르면 그 갈래가 통째로 닫힌다.
+ *
+ * 음수 부호를 허용하는 이유는 「숫자로 입력하세요」가 아니라 「0 이상이어야 합니다」로 말하기
+ * 위해서다 — 무엇이 틀렸는지 더 정확히 짚는다.
+ */
+const DECIMAL_TEXT = /^-?\d+(\.\d+)?$/;
+
 export const readQty = (raw: string): QtyRead => {
   const text = raw.trim();
 
   if (text === '') return { kind: 'empty' };
+
+  if (!DECIMAL_TEXT.test(text)) return { kind: 'invalid' };
 
   const value = Number(text);
 
@@ -166,9 +193,9 @@ export interface PublishBlockInput {
 /**
  * 발행이 막힌 사유 — **이 화면에서 발행 활성 조건의 유일한 구현 자리**다.
  *
- * ⭐ 스펙 두 절이 갈리는 지점이다. **§5-6 액션 표를 정본으로 둔다** — 「라인 1건 이상(수량 > 0)
- * AND (사유 선택 **또는** 비고 입력)」. §6 예외 표의 「사유 미선택은 화면이 막는다」는 사유를
- * 담을 자리가 비고뿐이던 시절의 문면이고, §5-6 의 조건이 그 상황(둘 다 비었을 때)을 이미 닫는다.
+ * ⭐ 스펙 두 절이 갈리는 지점이다. **§5-6 액션 표를 정본으로 둔다** — 라인 1건 이상(수량 > 0)
+ * AND (사유 **또는** 비고). §6 예외 표가 사유를 필수로 읽히게 적었으나, 그것은 사유를 담을
+ * 자리가 비고뿐이던 시절의 문면이고 §5-6 의 조건이 그 상황(둘 다 비었을 때)을 이미 닫는다.
  * 계약도 `reasonCode`·`remarks` 를 둘 다 비필수로 두어 서버가 막지 않는다.
  *
  * ⚠ 설계가 §6 을 좁게 의도했다면 **이 함수의 마지막 조건 한 줄만** 바꾸면 된다 —

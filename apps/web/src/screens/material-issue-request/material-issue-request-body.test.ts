@@ -218,6 +218,34 @@ describe('stampSubmission — 제출 순간을 초안에 매어 둔다 (D-5)', (
     );
   });
 
+  /**
+   * ⭐ **줄 키는 본문에 실리지 않는다** — 그러니 지문에도 들지 않아야 한다(리뷰 M-2 의 여파).
+   *
+   * 초안이 다시 세워지면 줄 키가 새로 발급된다. 그때마다 지문이 갈리면 **보낼 값이 하나도 달라지지
+   * 않았는데 새 멱등 키**가 나가고, 서버가 중복을 막지 않으므로 전표가 둘 쌓인다.
+   */
+  it('줄 키만 새로 발급돼도 같은 도장을 쓴다 — 보낼 값이 그대로다', () => {
+    const first = stampSubmission(null, input(), submittedAt);
+    const reseated = stampSubmission(
+      first,
+      input({ lines: [line({ key: 'shortage:99' })] }),
+      new Date(2026, 8, 1, 0, 13, 45),
+    );
+
+    expect(reseated.at).toBe(first.at);
+  });
+
+  it('표시 전용 값이 달라져도 같은 도장을 쓴다 — 소요·기출고·부족은 나가지 않는다', () => {
+    const first = stampSubmission(null, input(), submittedAt);
+    const redisplayed = stampSubmission(
+      first,
+      input({ lines: [line({ requiredQty: 999, issuedQty: 111, shortageQty: 5 })] }),
+      new Date(2026, 8, 1, 0, 13, 45),
+    );
+
+    expect(redisplayed.at).toBe(first.at);
+  });
+
   it('보낼 값이 달라지면 새로 찍는다 — 다른 쓰기다', () => {
     const first = stampSubmission(null, input(), submittedAt);
     const later = new Date(2026, 8, 1, 0, 13, 45);
