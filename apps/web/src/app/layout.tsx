@@ -438,6 +438,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/notification/center" icon="notifications">
               알림센터
             </NavItem>
+            {/* W-CO-04 — 알림센터가 받는 자리이고 이쪽이 보내는 자리다. */}
+            <NavItem to="/notification/notices" icon="campaign">
+              공지·전달
+            </NavItem>
           </SidebarSection>
           {/*
            * 사용자·역할·권한은 기준정보가 아니라 **시스템 운영**이다 —

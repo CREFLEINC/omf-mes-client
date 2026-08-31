@@ -833,3 +833,14 @@ main > * + * {
 .token-meta dd {
   margin: 0;
 }
+
+/*
+ * 공지 본문 — 사람이 친 줄바꿈을 살린다. 살리지 않으면 문단이 한 덩어리로 붙어
+ * 「8월 20일 09:00~12:00」 같은 줄이 앞 문장 꼬리에 매달린다.
+ * 읽는 글이라 규범 4의 이탈 조건을 따라 폭을 묶는다.
+ */
+.notice-body {
+  white-space: pre-wrap;
+  max-width: 44rem;
+  margin: var(--space-2) 0;
+}
