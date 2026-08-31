@@ -43,6 +43,7 @@ import { DispositionDecisionScreen } from '../screens/disposition-decision/scree
 import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
+import { ShipmentRequestCreateScreen } from '../screens/shipment-request-create/screen';
 import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
 import { StockAdjustScreen } from '../screens/stock-adjust/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
@@ -436,6 +437,14 @@ export const appRouter = createBrowserRouter([
        * (착수 이슈 §1), W-01-07(재고 현황)이 이미 계약 경로와 사이드바 섹션이 갈릴 때는
        * 섹션을 따른다는 선례를 남겼다.
        */
+      /*
+       * W-04-01 — **출하(도메인 04)에서 가장 먼저 도는 화면**이지만 W-04-02보다 뒤에 적는다.
+       * 이 저장소에 이미 W-04-02(예정 목록)가 있었고 그 화면이 먼저 이 섹션을 열었다 —
+       * 목록에 화면을 더하는 차례는 착수 순서를 따르고, 사이드바의 항목 차례(업무 순서)와는
+       * 별개다. 계약 경로는 `/logistics/**`이지만 앞머리는 `shipment/`를 쓴다 — W-04-02와
+       * 같은 선례(사이드바 섹션을 따른다)다.
+       */
+      { path: 'shipment/shipment-request-create', element: <ShipmentRequestCreateScreen /> },
       { path: 'shipment/shipment-schedule', element: <ShipmentScheduleScreen /> },
       /*
        * W-04-08 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만
