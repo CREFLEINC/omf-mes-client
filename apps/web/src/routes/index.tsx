@@ -24,6 +24,7 @@ import { InspectionMeasurementRoutePage } from '../screens/inspection-result-ins
 import { InspectionResultInsightsPage } from '../screens/inspection-result-insights/page';
 import { CollectionChannelScreen } from '../screens/collection-channel/screen';
 import { DashboardScreen } from '../screens/dashboard/screen';
+import { DowntimeSummaryScreen } from '../screens/downtime-summary/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
@@ -428,6 +429,12 @@ export const appRouter = createBrowserRouter([
        * 이름을 쓴다.
        */
       { path: 'equipment/shot-conversion', element: <ShotConversionScreen /> },
+      /*
+       * W-05-08 — 설비/툴 섹션의 조회 화면이다. 계약 경로는 `/maintenance/**`이지만 주소
+       * 앞머리는 같은 규칙(사이드바 섹션)을 따른다 — 비가동은 보전 업무의 기록이 아니라
+       * **설비가 선 시간**을 보는 자리라 설비/툴에 든다.
+       */
+      { path: 'equipment/downtime-summary', element: <DowntimeSummaryScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을
