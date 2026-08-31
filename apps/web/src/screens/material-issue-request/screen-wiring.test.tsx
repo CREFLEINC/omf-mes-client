@@ -7,6 +7,7 @@ import {
   createStubFetch,
   jsonResponse,
   renderWithProviders,
+  type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
 import {
@@ -47,6 +48,14 @@ const WORK_ORDER_LABEL = t.values.workOrderOption(
   WORK_ORDER.itemCode ?? '',
 );
 
+/** 옮겨 갈 대상. 기본 재공 위치가 없어 자동 채움이 걸리지 않는다 — 선택만 확인하면 된다. */
+const SECOND_WORK_ORDER = workOrderFixtures[1]!;
+const SECOND_WORK_ORDER_LABEL = t.values.workOrderOption(
+  SECOND_WORK_ORDER.workOrderNo,
+  SECOND_WORK_ORDER.routingOperationName ?? '',
+  SECOND_WORK_ORDER.itemCode ?? '',
+);
+
 const pageOf = (items: readonly unknown[]) => ({
   page: 1,
   size: items.length,
@@ -74,7 +83,10 @@ const routesFor = (
   });
 
   return [
-    get('/production/work-orders', { items: [WORK_ORDER], page: pageOf([WORK_ORDER]) }),
+    get('/production/work-orders', {
+      items: [WORK_ORDER, SECOND_WORK_ORDER],
+      page: pageOf([WORK_ORDER, SECOND_WORK_ORDER]),
+    }),
     get('/mdm/warehouses', { items: warehouseFixtures, page: pageOf(warehouseFixtures) }),
     get('/mdm/locations', { items: locationFixtures, page: pageOf(locationFixtures) }),
     get('/mdm/locations/7301', {
@@ -112,8 +124,14 @@ const routesWithoutShortage = (): StubRoute[] =>
   );
 
 /**
- * ⛔ **반영이 늦게 오더라도 잡는다.** 여기서 쉬지 않으면 「아직 안 덮은 것」을 「안 덮는다」로
- * 읽어, **결함이 있어도 통과한다**(4회차에 실제로 그렇게 헛통과했다).
+ * ⛔ **늦게 오는 반영을 기다린다 — 정리 대상이 아니다.**
+ *
+ * 여기서 쉬지 않으면 「아직 안 덮은 것」을 「안 덮는다」로 읽어 **결함이 있어도 통과한다**
+ * (4회차에 실제로 그렇게 헛통과했다).
+ *
+ * ⚠ 시계를 밀어 두는 것과는 **다른 함정이다.** 그쪽은 「같은 시각이라 결함이 발동하지 않는」
+ * 문제이고 그 이유는 발동 조건이 걸린 자리(`useFrozenClock`)에 따로 적혀 있다. 둘을 겹쳐
+ * 부르면 어느 쪽을 지우면 안 되는지가 흐려진다.
  */
 const settle = async (): Promise<void> => {
   await act(async () => {
@@ -512,6 +530,68 @@ describe('불러오기 재실행 배선 — 서버 값이 같아도 누름이 �
     await waitFor(() => {
       expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(1))).toHaveValue('55');
     });
+  });
+
+  /**
+   * ⛔ **우리 수정이 만든 회귀를 되풀이하지 않는다**(리뷰 R3-1).
+   *
+   * 반영을 약속에 매면서 대상 확인이 함께 사라졌다. 약속은 관측자의 **지금** 결과로 풀리므로,
+   * 불러오기가 도는 중에 대상을 바꾸면 **누르지도 않은 새 대상**의 줄이 선다 — `queries.ts` 가
+   * 못 박은 「버튼을 눌러야 부른다」가 깨진다.
+   *
+   * ⚠ 실린 값은 새 대상의 것이라 **자료가 섞이는 오염은 아니다.** 깨지는 것은 불변식이다 —
+   * 그래서 값이 아니라 **줄이 서는지**를 본다.
+   */
+  it('불러오기가 도는 중에 대상을 바꾸면 새 대상의 줄이 서지 않는다', async () => {
+    const shortageCalls: string[] = [];
+    let releaseFirstLoad = (): void => undefined;
+    const firstLoad = new Promise<void>((resolve) => {
+      releaseFirstLoad = resolve;
+    });
+    const base = createStubFetch(routesWithoutShortage());
+
+    /* 첫 대상의 응답을 손에 쥔다 — 그동안이 「도는 중」이다. */
+    const gatedFetch: StubFetch = async (request) => {
+      const url = new URL(request.url);
+
+      if (
+        request.method === 'GET' &&
+        url.pathname === '/logistics/material-issue-requests/shortage'
+      ) {
+        const workOrderId = url.searchParams.get('workOrderId') ?? '';
+
+        shortageCalls.push(workOrderId);
+
+        if (workOrderId === '7101') await firstLoad;
+
+        return jsonResponse({
+          items: [{ ...shortageFixtures[0]!, shortageQty: workOrderId === '7101' ? 80 : 11 }],
+        });
+      }
+
+      return base(request);
+    };
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+    renderWithProviders(<MaterialIssueRequestScreen />, { fetch: gatedFetch });
+
+    await selectWorkOrder(user);
+    await user.click(screen.getByRole('button', { name: t.actions.loadShortage }));
+
+    await waitFor(() => {
+      expect(shortageCalls).toEqual(['7101']);
+    });
+
+    /* 응답을 기다리지 않고 대상을 바꾼다. */
+    await user.click(screen.getByLabelText(t.formFields.workOrder));
+    await user.click(await screen.findByRole('option', { name: SECOND_WORK_ORDER_LABEL }));
+
+    releaseFirstLoad();
+    await settle();
+
+    expect(screen.getByText(t.empty.noLinesTitle)).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.lineTable.requestedQtyLabel(1))).not.toBeInTheDocument();
   });
 
   it('손으로 더한 줄은 재실행에도 남는다', async () => {

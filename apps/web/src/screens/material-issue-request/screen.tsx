@@ -140,6 +140,13 @@ export const MaterialIssueRequestScreen = () => {
   const existing = useExistingRequests(numericWorkOrderId);
 
   const submittingTargetRef = useRef<TargetSignature | null>(null);
+  /**
+   * 지금 불러오기가 겨눈 대상. **쓰기 경로의 `submittingTargetRef` 와 같은 관용구다** — 나가는
+   * 중에 다른 W/O 로 옮겨 가면 늦게 도착한 응답이 새 대상 위에 서면 안 된다.
+   *
+   * ⭐ 쓰기만 대상을 확인하고 읽기는 확인하지 않는 비대칭이 회귀를 낳았다(리뷰 R3-1).
+   */
+  const loadTargetRef = useRef<TargetSignature | null>(null);
   /** 제출 순간의 고정은 이 훅이 진다 — 화면은 본문을 직접 조립하지 않는다. */
   const submission = usePublishSubmission();
 
@@ -174,6 +181,12 @@ export const MaterialIssueRequestScreen = () => {
     setLines([]);
     setIsShortageRequested(false);
     setIsLoadPending(false);
+    /*
+     * ⭐ **앞 대상을 겨눈 불러오기는 이제 남의 것이다.** 비우지 않으면 나가 있던 조회가 돌아와
+     * **누르지도 않은 새 대상**의 줄을 세운다 — `queries.ts` 가 못 박은 「버튼을 눌러야 부른다」가
+     * 깨진다(리뷰 R3-1).
+     */
+    loadTargetRef.current = null;
     /*
      * ⭐ **만짐 기록도 함께 비운다.** 앞 대상에서 발행을 눌렀다는 사실이 남으면, 새 대상에서
      * 화면이 방금 비운 도착 위치에 **즉시 붉은 오류**가 선다 — 사용자는 새 대상에서 아직 아무
@@ -318,12 +331,21 @@ export const MaterialIssueRequestScreen = () => {
    * 보여야 한다(검증 발견 4). `refetch` 는 조회가 꺼져 있어도 돌므로 첫 누름도 같은 길을 간다.
    */
   const loadShortage = (): void => {
+    const pressedTarget = targetSignature;
+
+    loadTargetRef.current = pressedTarget;
     setIsShortageRequested(true);
     setIsLoadPending(true);
 
     void (async () => {
       try {
         const result = await shortage.refetch();
+
+        /*
+         * 돌아와 보니 대상이 바뀌어 있으면 **아무것도 하지 않는다.** 약속은 관측자의 «지금»
+         * 결과로 풀리므로, 확인하지 않으면 새 대상의 자료가 누르지도 않았는데 실린다.
+         */
+        if (loadTargetRef.current !== pressedTarget) return;
 
         if (result.isSuccess && result.data !== undefined) {
           setLines((prev) => replaceShortageDrafts(prev, result.data));
