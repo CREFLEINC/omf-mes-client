@@ -685,6 +685,11 @@ describe('appRouter', () => {
    */
   it('알림센터가 알림 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/notification/center');
+  });
+
+  /** ⭐ 알림센터가 «받는» 자리이고 공지·전달이 «보내는» 자리다 — 같은 묶음에 둔다. */
+  it('W-CO-04 공지·전달을 알림 아래에 둔다', () => {
+    expect(routedPaths()).toContain('/notification/notices');
     expect(routedPaths()).not.toContain('/app/notifications');
     expect(routedPaths()).not.toContain('/system/notification-center');
   });

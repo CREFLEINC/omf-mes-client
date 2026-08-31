@@ -41,6 +41,7 @@ import { LoginScreen } from '../screens/login/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
 import { LotStatusTransitionScreen } from '../screens/lot-status-transition/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
+import { NoticeScreen } from '../screens/notice/screen';
 import { NotificationCenterScreen } from '../screens/notification-center/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
@@ -486,6 +487,8 @@ export const appRouter = createBrowserRouter([
        * 알림은 계속 쌓이는데 지울 수도 읽음으로 바꿀 수도 없으면 화면이 늘 밀린 것으로 보인다.
        */
       { path: 'notification/center', element: <NotificationCenterScreen /> },
+      /* W-CO-04 — 알림 묶음이다. 알림센터가 받는 자리이고 이쪽이 보내는 자리다. */
+      { path: 'notification/notices', element: <NoticeScreen /> },
       /*
        * W-04-02 — **출하(도메인 04)의 첫 화면.** 계약 경로가 `/logistics/**`이지만 앞머리는
        * `shipment/`를 쓴다 — IA가 이 화면을 「자재창고」가 아니라 새 「출하」 섹션에 두었고
