@@ -272,6 +272,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/production/emergency-work-orders" icon="bolt">
               긴급 W/O 발행
             </NavItem>
+            {/* W-02-10 — 긴급 W/O 의 부족 자재를 정식 출고로 경유시킨다. 긴급 발행 바로 뒤가 흐름이다. */}
+            <NavItem to="/production/material-issue-requests" icon="playlist_add">
+              추가 자재 출고 요청
+            </NavItem>
             {/* W-02-08 — 발행한 W/O 가 지금 어디까지 왔는지 본다. 만드는 화면들 뒤, 조회 자리다. */}
             <NavItem to="/production/work-order-progress" icon="monitoring">
               W/O 진행현황 조회

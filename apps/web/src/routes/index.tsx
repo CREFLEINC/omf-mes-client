@@ -13,6 +13,7 @@ import { ToolMasterScreen } from '../screens/tool-master/screen';
 import { WorkCalendarScreen } from '../screens/work-calendar/screen';
 import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
 import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen';
+import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
 import { WorkOrderReleaseScreen } from '../screens/work-order-release/screen';
 import { WorkOrderAssignmentScreen } from '../screens/work-order/screen';
@@ -288,6 +289,11 @@ export const appRouter = createBrowserRouter([
        * 그 뒤에 둔다.
        */
       { path: 'production/emergency-work-orders', element: <EmergencyWorkOrderScreen /> },
+      /*
+       * W-02-10 — 긴급 W/O 등으로 부족한 자재를 무절차 반출 없이 정식 출고로 경유시킨다.
+       * 긴급 발행 바로 뒤에 둔다 — 그 화면이 만든 W/O 의 부족분을 여기서 잇는다.
+       */
+      { path: 'production/material-issue-requests', element: <MaterialIssueRequestScreen /> },
       /*
        * W-02-08 — 발행한 W/O 가 지금 어디까지 왔는지 본다. 만드는 화면들 뒤, 조회 자리다.
        * 저장 액션이 없는 읽기 전용 화면이다.

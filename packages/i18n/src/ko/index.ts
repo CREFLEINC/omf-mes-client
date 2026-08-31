@@ -81,6 +81,7 @@ import { notice } from './notice';
 import { warehouseLayout } from './warehouse-layout';
 import { terminalProcessMap } from './terminal-process-map';
 import { toolPmResult } from './tool-pm-result';
+import { materialIssueRequest } from './material-issue-request';
 
 export const ko = {
   common,
@@ -150,6 +151,7 @@ export const ko = {
   warehouseLayout,
   terminalProcessMap,
   toolPmResult,
+  materialIssueRequest,
 } as const;
 
 export type Messages = typeof ko;
