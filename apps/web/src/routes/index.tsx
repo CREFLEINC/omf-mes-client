@@ -23,6 +23,7 @@ import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { InspectionMeasurementRoutePage } from '../screens/inspection-result-insights/measurement-route-page';
 import { InspectionResultInsightsPage } from '../screens/inspection-result-insights/page';
 import { CollectionChannelScreen } from '../screens/collection-channel/screen';
+import { DashboardScreen } from '../screens/dashboard/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
@@ -63,7 +64,16 @@ export const appRouter = createBrowserRouter([
       </AppLayout>
     ),
     children: [
-      { index: true, element: <Navigate to="/master-data/warehouse-location" replace /> },
+      /*
+       * W-CO-05 — **로그인 직후 첫 화면이다**(IA). 그래서 루트가 여기로 보낸다. 그전까지 루트는
+       * 「그때 있던 첫 화면」(창고·Location)을 가리키고 있었다 — 첫 화면이 없어서지 그 화면이
+       * 시작점이어서가 아니었다.
+       *
+       * 계약 경로는 `/app/dashboard-summary`인데 주소 앞머리는 `dashboard/`를 쓰지 않고 이
+       * 화면 하나로 선다 — 이 화면은 어느 섹션에도 속하지 않고 **모든 섹션 위에** 있다.
+       */
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: 'dashboard', element: <DashboardScreen /> },
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
       /*
        * W-06-14 — 계약 경로는 `/logistics/putaway-rules`인데 앞머리는 같은 규칙(사이드바

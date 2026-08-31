@@ -70,6 +70,7 @@ import { materialLocation } from './material-location';
 import { productStockStatus } from './product-stock-status';
 import { shipmentRequestCreate } from './shipment-request-create';
 import { shipmentProcessing } from './shipment-processing';
+import { dashboard } from './dashboard';
 
 export const ko = {
   common,
@@ -128,6 +129,7 @@ export const ko = {
   productStockStatus,
   shipmentRequestCreate,
   shipmentProcessing,
+  dashboard,
 } as const;
 
 export type Messages = typeof ko;
