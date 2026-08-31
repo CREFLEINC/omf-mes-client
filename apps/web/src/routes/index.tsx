@@ -62,6 +62,7 @@ import { StocktakingScreen } from '../screens/stocktaking/screen';
 import { SuspiciousMaterialHoldScreen } from '../screens/suspicious-material-hold/screen';
 import { SupplierReturnScreen } from '../screens/supplier-return/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
+import { WarehouseLayoutScreen } from '../screens/warehouse-layout/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
 export const appRouter = createBrowserRouter([
@@ -84,6 +85,8 @@ export const appRouter = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardScreen /> },
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
+      /* W-CO-08 — 창고·Location 바로 뒤다. 그 화면이 만든 위치를 여기서 도면에 얹는다. */
+      { path: 'master-data/warehouse-layout', element: <WarehouseLayoutScreen /> },
       /*
        * W-06-14 — 계약 경로는 `/logistics/putaway-rules`인데 앞머리는 같은 규칙(사이드바
        * 섹션)을 따른다. 적치 규칙은 물건이 오가는 일이 아니라 **어디에 둘지 미리 정해 두는

@@ -1,0 +1,79 @@
+/*
+ * 표식 판. 바깥 크기는 쓰는 쪽이 정하고, 안쪽 배치만 여기서 정한다.
+ *
+ * ⭐ 판의 가로세로 비는 **그림이 정한다** — 고정 비를 박으면 도면을 갈 때마다 여백이나
+ * 잘림이 생기고, 비율 좌표가 가리키는 자리가 눈에 보이는 자리와 어긋난다.
+ */
+.marker-overlay {
+  width: 100%;
+}
+
+.marker-overlay-board {
+  position: relative;
+  width: 100%;
+  /*
+   * ⭐ **판이 접히지 않게 최소 높이를 준다.** 그림이 아직 안 왔거나 못 받았을 때 판이 몇
+   * 픽셀로 줄어들면, 표식이 판 «위»로 삐져나와 겹친다 — 그림이 없다는 사실보다 「배치가
+   * 망가졌다」로 보인다. 그림이 오면 그림의 높이가 이 값을 넘어 판을 늘린다.
+   */
+  min-height: 16rem;
+  border: 1px solid var(--outline, #d0d5dd);
+  border-radius: var(--radius-2, 8px);
+  overflow: hidden;
+  background: var(--surface-2, #f5f6f8);
+}
+
+/* 그림이 판의 폭을 결정한다 — block 이 아니면 아래에 서너 픽셀의 빈 줄이 남는다. */
+.marker-overlay-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+}
+
+/* 그림이 없을 때의 판. 사람이 「무엇을 해야 하는가」를 읽을 만큼의 높이는 준다. */
+.marker-overlay-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 16rem;
+  padding: var(--space-4, 1.5rem);
+  text-align: center;
+  color: var(--on-surface-muted, #667085);
+}
+
+/*
+ * 표식. 좌표가 «중심»을 가리키므로 자기 크기의 절반만큼 되민다 —
+ * 되밀지 않으면 왼쪽 위 모서리가 좌표에 붙어 점이 오른쪽 아래로 치우쳐 보인다.
+ */
+.marker-overlay-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--primary, #2563eb);
+  border-radius: 999px;
+  background: var(--surface-1, #fff);
+  color: var(--primary, #2563eb);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.marker-overlay-pin:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring, 0 0 0 3px rgb(37 99 235 / 40%));
+}
+
+/* 고른 표식은 채워서 구분한다 — 테두리 굵기만으로는 작은 점에서 알아보기 어렵다. */
+.marker-overlay-pin-selected {
+  background: var(--primary, #2563eb);
+  color: var(--on-primary, #fff);
+}
+
+.marker-overlay-pin-label {
+  pointer-events: none;
+}

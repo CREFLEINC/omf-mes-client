@@ -78,6 +78,7 @@ import { maintenanceOrder } from './maintenance-order';
 import { maintenanceResult } from './maintenance-result';
 import { toolPmOrder } from './tool-pm-order';
 import { notice } from './notice';
+import { warehouseLayout } from './warehouse-layout';
 import { terminalProcessMap } from './terminal-process-map';
 import { toolPmResult } from './tool-pm-result';
 
@@ -146,6 +147,7 @@ export const ko = {
   maintenanceResult,
   toolPmOrder,
   notice,
+  warehouseLayout,
   terminalProcessMap,
   toolPmResult,
 } as const;

@@ -11,6 +11,15 @@ export interface ApiClientOptions {
 export interface ApiClient {
   client: ReturnType<typeof createClient<paths>>;
   etags: EtagStore;
+  /**
+   * 서버 주소.
+   *
+   * ⭐ **파일 내용처럼 `fetch` 로 받지 않는 자원이 있다** — 이미지는 `<img src>` 가 브라우저에게
+   * 직접 받게 하는 편이 낫다(캐시·점진 표시가 공짜다). 그때 주소를 지을 자리가 필요하다.
+   * ⛔ 화면이 환경 변수를 따로 읽지 않게 한다 — 클라이언트와 다른 주소를 가리키면 조회는
+   * 되는데 그림만 안 나오고, 그 어긋남은 화면에서 보이지 않는다.
+   */
+  baseUrl: string;
 }
 
 /**
@@ -64,5 +73,5 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
     },
   });
 
-  return { client, etags };
+  return { client, etags, baseUrl: options.baseUrl };
 };
