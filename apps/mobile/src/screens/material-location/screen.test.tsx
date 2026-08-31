@@ -10,7 +10,7 @@ import {
 } from '../../test/api-harness';
 import { MaterialLocationScreen } from './screen';
 
-const SCANNED = '0001234500000012002607310001230007';
+const SCANNED = '7770001118880002229901015554447777';
 
 const page = { page: 0, size: 20, totalElements: 1, totalPages: 1 };
 
@@ -91,7 +91,7 @@ describe('자재 위치 확인 화면', () => {
     await scan();
 
     expect(
-      await screen.findByText('000123450 · 000001200 · 260731 · 000123 · 0007'),
+      await screen.findByText('777000111 · 888000222 · 990101 · 555444 · 7777'),
     ).toBeInTheDocument();
   });
 
