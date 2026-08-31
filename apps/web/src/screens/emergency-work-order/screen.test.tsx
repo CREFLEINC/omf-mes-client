@@ -8,7 +8,6 @@ import { EmergencyWorkOrderScreen } from './screen';
 
 const t = messages.emergencyWorkOrder;
 const KNOWN_CODE = 'SYN_EMERGENCY';
-const NOW = new Date('2026-08-05T09:00:00+09:00');
 const WORK_ORDER = { workOrderId: 7001, workOrderNo: 'SYN-WO-0007' };
 
 const ITEM = {
@@ -166,10 +165,9 @@ const stub = (
 const renderScreen = (options: StubOptions & { typeCode?: string } = {}) => {
   const stubbed = stub(options);
 
-  renderWithProviders(
-    <EmergencyWorkOrderScreen now={NOW} typeCode={options.typeCode ?? KNOWN_CODE} />,
-    { fetch: stubbed.fetch },
-  );
+  renderWithProviders(<EmergencyWorkOrderScreen typeCode={options.typeCode ?? KNOWN_CODE} />, {
+    fetch: stubbed.fetch,
+  });
 
   return { user: userEvent.setup(), paths: stubbed.paths, writes: stubbed.writes };
 };
@@ -177,7 +175,7 @@ const renderScreen = (options: StubOptions & { typeCode?: string } = {}) => {
 const renderWithScreenDefaultTypeCode = (options: StubOptions = {}) => {
   const stubbed = stub(options);
 
-  renderWithProviders(<EmergencyWorkOrderScreen now={NOW} />, { fetch: stubbed.fetch });
+  renderWithProviders(<EmergencyWorkOrderScreen />, { fetch: stubbed.fetch });
 
   return { user: userEvent.setup(), paths: stubbed.paths, writes: stubbed.writes };
 };

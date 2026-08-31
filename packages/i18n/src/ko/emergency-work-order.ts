@@ -74,7 +74,7 @@ export const emergencyWorkOrder = {
     qtyNotNumber: '수량: 숫자로 입력하세요.',
     qtyTooLong: '수량: 자릿수가 너무 깁니다. 정수 12자리·소수 6자리까지 입력할 수 있습니다.',
     qtyNotPositive: '수량: 0보다 큰 수를 입력하세요.',
-    dueInvalid: '납기: 달력에 없는 날짜·시각입니다. 다시 고르세요.',
+    dueInvalid: '납기: 달력에 없는 날짜입니다. 다시 고르세요.',
 
     /**
      * 사유는 계약이 아니라 **화면이** 막는다. 그 사실을 사람에게 설명할 필요는 없지만,

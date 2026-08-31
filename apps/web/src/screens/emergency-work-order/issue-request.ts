@@ -22,34 +22,7 @@ export interface IssueCommand {
   routingOperationId: number | null;
   /** 긴급을 뜻하는 유형 코드. 비어 있으면 아직 정해지지 않은 것이다. */
   typeCode: string;
-  /** 제출 순간. 시간대 표기를 여기서 얻는다. */
-  at: Date;
 }
-
-const pad = (value: number, length: number): string => String(value).padStart(length, '0');
-
-/**
- * 실행 환경이 UTC 와 얼마나 떨어져 있는지. `+09:00` 꼴이다.
- *
- * **제출 순간의 값을 쓴다.** 납기를 파싱해 그 시점의 값을 쓰면 서머타임 경계에서 더
- * 정확해지지만 파싱이 실패할 수 있는 가지가 생긴다 — 이 제품이 도는 지역에는 서머타임이 없어
- * 두 값이 갈리지 않으므로 가지를 만들지 않는 쪽을 택했다.
- */
-const offsetText = (at: Date): string => {
-  const minutes = -at.getTimezoneOffset();
-  const sign = minutes < 0 ? '-' : '+';
-  const absolute = Math.abs(minutes);
-
-  return `${sign}${pad(Math.floor(absolute / 60), 2)}:${pad(absolute % 60, 2)}`;
-};
-
-/**
- * 분까지 받은 값에 초와 시간대를 붙인다.
- *
- * 납기 칸은 분까지만 주는데(`HH:mm`) 계약은 초까지 있는 형식을 요구한다. 시간대가 없는
- * 문자열을 그대로 보내면 **같은 글자가 지역마다 다른 순간을 가리킨다.**
- */
-const toOffsetDateTime = (local: string, at: Date): string => `${local}:00${offsetText(at)}`;
 
 /**
  * 발행 본문.
@@ -72,7 +45,7 @@ export const toWorkOrderCreateBody = (command: IssueCommand): WorkOrderCreateBod
   if (command.routingOperationId === null) return undefined;
   if (!isEmergencyTypeCodeKnown(command.typeCode)) return undefined;
 
-  const due = command.form.plannedEndAtLocal.trim();
+  const due = command.form.dueDate.trim();
 
   return {
     productionPlanId: null,
@@ -82,7 +55,7 @@ export const toWorkOrderCreateBody = (command: IssueCommand): WorkOrderCreateBod
     uomId: command.item.baseUomId,
     workOrderTypeCode: command.typeCode.trim(),
     remarks: command.form.remarks.trim(),
-    ...(due === '' ? {} : { plannedEndAt: toOffsetDateTime(due, command.at) }),
+    ...(due === '' ? {} : { dueDate: due }),
   };
 };
 
