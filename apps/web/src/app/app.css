@@ -428,9 +428,13 @@ main > * + * {
   background: var(--state-hover-neutral);
 }
 
+/*
+ * `--focus-ring` 값은 box-shadow 목록(`0 0 0 2px …, 0 0 0 4px …`)이다 — `outline` 단축 문법에
+ * 넣으면 선언째 버려진다(client#243). `box-shadow`로 적용한다. 전례: 아래
+ * `.notification-list [role='button']:focus-visible`.
+ */
 .link-cell:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
 }
 
 .tree-toggle {
