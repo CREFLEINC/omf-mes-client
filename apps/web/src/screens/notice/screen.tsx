@@ -95,7 +95,8 @@ export const NoticeScreen = () => {
   const [errors, setErrors] = useState<DraftErrors>({});
   const [confirming, setConfirming] = useState<Confirming>('none');
   const [pendingOnly, setPendingOnly] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  /** 방금 무엇을 했는지 한 줄로 말한다. 저장하면 폼이 닫혀 화면만으로는 알 수 없다. */
+  const [flash, setFlash] = useState<string | null>(null);
 
   const workOrders = useWorkOrderOptions();
   const notices = useNotices(filters);
@@ -110,32 +111,32 @@ export const NoticeScreen = () => {
 
   const create = useNoticeCreate((created) => {
     setFormMode('closed');
-    setNotice(t.form.saved);
+    setFlash(t.form.saved);
     selectNotice(created.noticeId);
   });
 
   const update = useNoticeUpdate(selectedId, () => {
     setFormMode('closed');
-    setNotice(t.form.saved);
+    setFlash(t.form.saved);
   });
 
   const publish = useNoticePublish(selectedId, () => {
     setConfirming('none');
-    setNotice(t.detail.published);
+    setFlash(t.detail.published);
   });
 
   const close = useNoticeClose(selectedId, () => {
     setConfirming('none');
-    setNotice(t.detail.closed);
+    setFlash(t.detail.closed);
   });
 
   const acknowledge = useAcknowledge(selectedId, () => {
-    setNotice(t.detail.acknowledged);
+    setFlash(t.detail.acknowledged);
     void acks.refetch();
   });
 
   const dismiss = useDismiss(selectedId, () => {
-    setNotice(t.detail.dismissed);
+    setFlash(t.detail.dismissed);
   });
 
   const rows = notices.data?.items ?? EMPTY_ROWS;
@@ -148,7 +149,7 @@ export const NoticeScreen = () => {
   const selectNotice = (noticeId: number | null): void => {
     setSearchParams(toSearchParams(filters, noticeId));
     setFormMode('closed');
-    setNotice(null);
+    setFlash(null);
     setPendingOnly(false);
     create.reset();
     update.reset();
@@ -162,7 +163,7 @@ export const NoticeScreen = () => {
     setDraft(EMPTY_DRAFT);
     setErrors({});
     setFormMode('create');
-    setNotice(null);
+    setFlash(null);
     create.reset();
     update.reset();
   };
@@ -173,7 +174,7 @@ export const NoticeScreen = () => {
     setDraft(toDraft(selected));
     setErrors({});
     setFormMode('edit');
-    setNotice(null);
+    setFlash(null);
     create.reset();
     update.reset();
   };
@@ -269,15 +270,15 @@ export const NoticeScreen = () => {
         actions={<Button onClick={openCreate}>{t.form.create}</Button>}
       />
 
-      {notice !== null && (
+      {flash !== null && (
         <div className="banner-slot">
           <AlertBanner
             variant="success"
             onDismiss={() => {
-              setNotice(null);
+              setFlash(null);
             }}
           >
-            {notice}
+            {flash}
           </AlertBanner>
         </div>
       )}

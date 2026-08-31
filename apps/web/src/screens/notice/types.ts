@@ -59,6 +59,13 @@ export interface NoticeListResult {
 export type AckState = 'done' | 'opened' | 'pending';
 
 export interface AckView {
+  /**
+   * 목록에서 이 줄을 가리키는 값.
+   *
+   * ⭐ **이름으로 가르지 않는다** — 동명이인이 있으면 두 줄이 한 줄로 뭉개진다. 계정이면
+   * 계정 번호, 현장 단말이면 사번이 그 자리를 대신한다.
+   */
+  key: string;
   /** 화면에 보일 이름. 계정이면 이름, 현장 단말이면 사번이다. */
   who: string;
   state: AckState;
@@ -106,6 +113,7 @@ export const toAckView = (source: NoticeAcknowledgement): AckView => {
   const isWorker = workerNo !== null;
 
   return {
+    key: isWorker ? `w:${workerNo ?? ''}` : `u:${String(source.userId)}`,
     who: isWorker ? (workerName ?? workerNo ?? '') : source.userName,
     state: toAckState(source),
     at: nullable(source.acknowledgedAt),

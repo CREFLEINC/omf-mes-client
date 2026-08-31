@@ -102,7 +102,7 @@ export const AckPanel = ({
           <Table
             columns={columns}
             rows={data?.items ?? []}
-            getRowId={(row) => `${row.who}-${row.state}`}
+            getRowId={(row) => row.key}
             density="compact"
             empty={<EmptyState size="sm" live title={t.ack.emptyTitle} description={t.ack.empty} />}
           />
