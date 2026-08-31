@@ -25243,6 +25243,8 @@ export interface paths {
                     customerId?: number;
                     shipToPartnerId?: number;
                     statusCode?: string;
+                    /** @description 출하 희망 시간대 필터 — 공통코드 그룹 `SHIPMENT_TIME_SLOT`(`MORNING`·`AFTERNOON`·`NIGHT`). W-04-02 시간대 필터 축. 근거: W-04-02 §5-2, 2026-08-31 결정(omf-mes-server#41) */
+                    timeSlotCode?: string;
                     /** @description 검사 상태 필터 */
                     shippingInspectionRequired?: boolean;
                     /** @description 필수 — 공유계약 L-3 */
@@ -25361,6 +25363,8 @@ export interface paths {
                     customerId?: number;
                     shipToPartnerId?: number;
                     statusCode?: string;
+                    /** @description 출하 희망 시간대 필터 — 목록(GET /logistics/shipment-requests)과 같은 축. 공통코드 그룹 `SHIPMENT_TIME_SLOT`(`MORNING`·`AFTERNOON`·`NIGHT`). 근거: W-04-02 §5-2, 2026-08-31 결정(omf-mes-server#41) */
+                    timeSlotCode?: string;
                     /** @description 검사 상태 필터 */
                     shippingInspectionRequired?: boolean;
                     /** @description 필수 — 공유계약 L-3. 목록과 같은 기준을 쓴다 */
@@ -41535,6 +41539,11 @@ export interface components {
              * @example 2026-08-13
              */
             requestedShipDate: string;
+            /**
+             * @description 출하 희망 시간대(코드형). nullable — 지시서가 시간대를 지정한 라인이 있는 건만 채운다(「일부 항목」, W-04-01 §5-3). 값 목록은 GET /mdm/code-values?codeGroupCode=SHIPMENT_TIME_SLOT 로 받는다(공유계약 G-31·G-32 — 동작이 값에 걸리지 않는 필터·표시용이라 고객 마스터). 고객 확정 3값: `MORNING`·`AFTERNOON`·`NIGHT`(2026-08-31, omf-mes-server#41 회신).
+             * @example MORNING
+             */
+            timeSlotCode?: string | null;
             /** @example 값 */
             statusCode: string;
             /**
@@ -41615,6 +41624,11 @@ export interface components {
              * @example 2026-08-13
              */
             requestedShipDate: string;
+            /**
+             * @description 출하 희망 시간대(코드형). nullable — 지시서가 시간대를 지정한 라인이 있는 건만 채운다(「일부 항목」, W-04-01 §5-3). 값 목록은 GET /mdm/code-values?codeGroupCode=SHIPMENT_TIME_SLOT 로 받는다(공유계약 G-31·G-32 — 동작이 값에 걸리지 않는 필터·표시용이라 고객 마스터).
+             * @example MORNING
+             */
+            timeSlotCode?: string | null;
             lines: components["schemas"]["ShipmentRequestLineCreate"][];
         };
         ShipmentRequestLine: {
