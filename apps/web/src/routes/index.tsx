@@ -29,6 +29,7 @@ import { EquipmentFailureScreen } from '../screens/equipment-failure/screen';
 import { GaugeCalibrationScreen } from '../screens/gauge-calibration/screen';
 import { MaintenanceOrderScreen } from '../screens/maintenance-order/screen';
 import { MaintenanceResultScreen } from '../screens/maintenance-result/screen';
+import { ToolPmOrderScreen } from '../screens/tool-pm-order/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
@@ -460,6 +461,11 @@ export const appRouter = createBrowserRouter([
        * W-05-06 — 보전지시 발행 바로 뒤다. 지시가 이 실적의 대상이고, 인접이 그 흐름을 드러낸다.
        */
       { path: 'equipment/maintenance-results', element: <MaintenanceResultScreen /> },
+      /*
+       * W-05-02 — 툴 마스터 계열이 아니라 **보전 흐름** 쪽이다. 설비 보전 실적 뒤에 두어
+       * 「설비 보전 → 툴 보전」 차례를 만든다.
+       */
+      { path: 'equipment/tool-pm-order', element: <ToolPmOrderScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을

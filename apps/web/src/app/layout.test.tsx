@@ -736,6 +736,7 @@ describe('AppLayout', () => {
       '/equipment/failures',
       '/equipment/maintenance-orders',
       '/equipment/maintenance-results',
+      '/equipment/tool-pm-order',
       '/equipment/downtime-summary',
       '/approval/inbox',
       '/notification/center',

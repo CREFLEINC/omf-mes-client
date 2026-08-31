@@ -1,0 +1,250 @@
+- generic [ref=f41e2]:
+  - generic [ref=f41e3]:
+    - link "본문으로 건너뛰기" [ref=f41e4] [cursor=pointer]:
+      - /url: "#_r_0_"
+    - banner [ref=f41e6]:
+      - strong [ref=f41e8]: OMF-MES 관리웹
+    - navigation "주 메뉴" [ref=f41e10]:
+      - button "사이드바 접기" [expanded] [ref=f41e12] [cursor=pointer]:
+        - generic [ref=f41e13]: menu_open
+      - generic [ref=f41e14]:
+        - link "통합 대시보드" [ref=f41e15] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=f41e16]: dashboard
+        - group "기준정보" [ref=f41e18]:
+          - link "창고·Location" [ref=f41e20] [cursor=pointer]:
+            - /url: /master-data/warehouse-location
+            - generic [ref=f41e21]: warehouse
+          - link "적치 규칙" [ref=f41e23] [cursor=pointer]:
+            - /url: /master-data/putaway-rule
+            - generic [ref=f41e24]: shelves
+          - link "Routing(공정)" [ref=f41e26] [cursor=pointer]:
+            - /url: /master-data/routing
+            - generic [ref=f41e27]: account_tree
+          - link "검사기준" [ref=f41e29] [cursor=pointer]:
+            - /url: /master-data/inspection-standard
+            - generic [ref=f41e30]: fact_check
+          - link "불량·원인코드" [ref=f41e32] [cursor=pointer]:
+            - /url: /master-data/defect-cause-code
+            - generic [ref=f41e33]: rule
+          - link "공통코드·조직·작업자" [ref=f41e35] [cursor=pointer]:
+            - /url: /master-data/common-code
+            - generic [ref=f41e36]: list_alt
+          - link "판정유형 코드" [ref=f41e38] [cursor=pointer]:
+            - /url: /master-data/judgment-code
+            - generic [ref=f41e39]: verified
+          - link "연계 동기화 현황" [ref=f41e41] [cursor=pointer]:
+            - /url: /master-data/integration-sync
+            - generic [ref=f41e42]: sync_alt
+          - link "품목 확장속성" [ref=f41e44] [cursor=pointer]:
+            - /url: /master-data/item-extended-attrs
+            - generic [ref=f41e45]: inventory_2
+          - link "마스터 변경관리" [ref=f41e47] [cursor=pointer]:
+            - /url: /master-data/master-change
+            - generic [ref=f41e48]: history
+        - group "자재창고" [ref=f41e50]:
+          - link "입하 예정 조회" [ref=f41e52] [cursor=pointer]:
+            - /url: /logistics/inbound-schedule
+            - generic [ref=f41e53]: local_shipping
+          - link "초과 입하 분리" [ref=f41e55] [cursor=pointer]:
+            - /url: /logistics/over-receipt-split
+            - generic [ref=f41e56]: call_split
+          - link "IQC 수입검사·판정" [ref=f41e58] [cursor=pointer]:
+            - /url: /logistics/iqc-inspection
+            - generic [ref=f41e59]: troubleshoot
+          - link "정상품 입하 처리" [ref=f41e61] [cursor=pointer]:
+            - /url: /logistics/goods-receipt
+            - generic [ref=f41e62]: inventory_2
+          - link "재고 현황·상태 조회" [ref=f41e64] [cursor=pointer]:
+            - /url: /logistics/stock-status
+            - generic [ref=f41e65]: inventory
+          - link "재고실사" [ref=f41e67] [cursor=pointer]:
+            - /url: /logistics/stocktaking
+            - generic [ref=f41e68]: checklist
+          - link "재고조정" [ref=f41e70] [cursor=pointer]:
+            - /url: /logistics/stock-adjust
+            - generic [ref=f41e71]: tune
+          - link "공급사 반품 처리" [ref=f41e73] [cursor=pointer]:
+            - /url: /logistics/supplier-return
+            - generic [ref=f41e74]: assignment_return
+          - link "폐기 품의·기타출고" [ref=f41e76] [cursor=pointer]:
+            - /url: /logistics/disposal-issue
+            - generic [ref=f41e77]: delete_forever
+          - link "긴급 IQC 생략 한도승인" [ref=f41e79] [cursor=pointer]:
+            - /url: /logistics/iqc-skip-approval
+            - generic [ref=f41e80]: approval
+          - link "물류 문서 진행현황·취소" [ref=f41e82] [cursor=pointer]:
+            - /url: /logistics/document-progress
+            - generic [ref=f41e83]: manage_search
+        - group "출하" [ref=f41e85]:
+          - link "출하지시서 Import·작업지시 생성" [ref=f41e87] [cursor=pointer]:
+            - /url: /shipment/shipment-request-create
+            - generic [ref=f41e88]: assignment
+          - link "출하 예정 목록" [ref=f41e90] [cursor=pointer]:
+            - /url: /shipment/shipment-schedule
+            - generic [ref=f41e91]: local_shipping
+          - link "출하 처리(상차·실물 출고)" [ref=f41e93] [cursor=pointer]:
+            - /url: /shipment/shipment-processing
+            - generic [ref=f41e94]: outbound
+        - group "생산" [ref=f41e96]:
+          - link "P/O 수신·조회" [ref=f41e98] [cursor=pointer]:
+            - /url: /production/production-orders
+            - generic [ref=f41e99]: account_tree
+          - link "W/O 전개·편성" [ref=f41e101] [cursor=pointer]:
+            - /url: /production/production-plans
+            - generic [ref=f41e102]: schema
+          - link "4M 자원배정·유효성 점검" [ref=f41e104] [cursor=pointer]:
+            - /url: /production/work-order-assignments
+            - generic [ref=f41e105]: tune
+          - link "W/O 확정·배포·생산LOT 선발행" [ref=f41e107] [cursor=pointer]:
+            - /url: /production/work-order-release
+            - generic [ref=f41e108]: rocket_launch
+          - link "W/O 마감·ERP 실적 송신" [ref=f41e110] [cursor=pointer]:
+            - /url: /production/work-order-close
+            - generic [ref=f41e111]: archive
+          - link "긴급 W/O 발행" [ref=f41e113] [cursor=pointer]:
+            - /url: /production/emergency-work-orders
+            - generic [ref=f41e114]: bolt
+          - link "W/O 진행현황 조회" [ref=f41e116] [cursor=pointer]:
+            - /url: /production/work-order-progress
+            - generic [ref=f41e117]: monitoring
+        - group "품질관리" [ref=f41e119]:
+          - link "Lot Status 현황·변경이력 조회" [ref=f41e121] [cursor=pointer]:
+            - /url: /quality/lot-status
+            - generic [ref=f41e122]: history
+          - link "Lot Status 판정·전이 처리" [ref=f41e124] [cursor=pointer]:
+            - /url: /quality/lot-status-transition
+            - generic [ref=f41e125]: published_with_changes
+          - link "의심자재 등록" [ref=f41e127] [cursor=pointer]:
+            - /url: /quality/suspicious-material-hold
+            - generic [ref=f41e128]: report_problem
+          - link "검사실적·검사결과 조회" [ref=f41e130] [cursor=pointer]:
+            - /url: /quality/inspection-results
+            - generic [ref=f41e131]: analytics
+          - link "특채·한도승인 승인 처리" [ref=f41e133] [cursor=pointer]:
+            - /url: /quality/approvals
+            - generic [ref=f41e134]: approval
+          - link "처분 판정 처리" [ref=f41e136] [cursor=pointer]:
+            - /url: /quality/dispositions
+            - generic [ref=f41e137]: gavel
+        - group "설비/툴" [ref=f41e139]:
+          - link "설비·설비그룹 마스터" [ref=f41e141] [cursor=pointer]:
+            - /url: /equipment/master
+            - generic [ref=f41e142]: precision_manufacturing
+          - link "툴/금형/지그 마스터" [ref=f41e144] [cursor=pointer]:
+            - /url: /equipment/tool-master
+            - generic [ref=f41e145]: handyman
+          - link "작업 캘린더 설정" [ref=f41e147] [cursor=pointer]:
+            - /url: /equipment/work-calendar
+            - generic [ref=f41e148]: calendar_month
+          - link "수집 채널 매핑 관리" [ref=f41e150] [cursor=pointer]:
+            - /url: /equipment/collection-channels
+            - generic [ref=f41e151]: sensors
+          - link "타발수 환산 파라미터 설정" [ref=f41e153] [cursor=pointer]:
+            - /url: /equipment/shot-conversion
+            - generic [ref=f41e154]: calculate
+          - link "계측기 마스터 관리" [ref=f41e156] [cursor=pointer]:
+            - /url: /equipment/gauge-master
+            - generic [ref=f41e157]: straighten
+          - link "계측기 검교정 이력" [ref=f41e159] [cursor=pointer]:
+            - /url: /equipment/gauge-calibration
+            - generic [ref=f41e160]: event_available
+          - link "설비고장 상세처리" [ref=f41e162] [cursor=pointer]:
+            - /url: /equipment/failures
+            - generic [ref=f41e163]: build
+          - link "보전지시 발행" [ref=f41e165] [cursor=pointer]:
+            - /url: /equipment/maintenance-orders
+            - generic [ref=f41e166]: assignment
+          - link "보전 실적·예비품" [ref=f41e168] [cursor=pointer]:
+            - /url: /equipment/maintenance-results
+            - generic [ref=f41e169]: task_alt
+          - link "툴 보전오더 생성" [ref=f41e171] [cursor=pointer]:
+            - /url: /equipment/tool-pm-order
+            - generic [ref=f41e172]: schedule
+          - link "비가동 집계 조회" [ref=f41e174] [cursor=pointer]:
+            - /url: /equipment/downtime-summary
+            - generic [ref=f41e175]: timelapse
+        - group "승인" [ref=f41e177]:
+          - link "결재함" [ref=f41e179] [cursor=pointer]:
+            - /url: /approval/inbox
+            - generic [ref=f41e180]: inbox
+        - group "알림" [ref=f41e182]:
+          - link "알림센터" [ref=f41e184] [cursor=pointer]:
+            - /url: /notification/center
+            - generic [ref=f41e185]: notifications
+        - group "시스템 관리" [ref=f41e187]:
+          - link "사용자·역할·권한" [ref=f41e189] [cursor=pointer]:
+            - /url: /system/users-roles
+            - generic [ref=f41e190]: manage_accounts
+          - link "결재선 정의" [ref=f41e192] [cursor=pointer]:
+            - /url: /system/approval-route
+            - generic [ref=f41e193]: approval
+          - link "비밀번호 변경" [ref=f41e195] [cursor=pointer]:
+            - /url: /system/password-change
+            - generic [ref=f41e196]: password
+    - main "본문" [ref=f41e198]:
+      - generic [ref=f41e199]:
+        - navigation "탐색 경로" [ref=f41e201]:
+          - list [ref=f41e202]:
+            - listitem [ref=f41e203]:
+              - generic [ref=f41e204]: 설비/툴
+            - listitem [ref=f41e205]:
+              - generic [ref=f41e206]: chevron_right
+              - generic [ref=f41e208]: 툴 보전오더 생성
+        - heading "툴 보전오더 생성" [level=1] [ref=f41e211]
+      - region "조회 조건" [ref=f41e212]:
+        - generic [ref=f41e213]:
+          - generic [ref=f41e214]:
+            - generic [ref=f41e215]: 공장
+            - combobox "공장" [ref=f41e217] [cursor=pointer]:
+              - generic [ref=f41e218]: 전체
+              - generic [ref=f41e219]: expand_more
+          - generic [ref=f41e221]:
+            - generic [ref=f41e222]: 정렬
+            - combobox "정렬" [ref=f41e224] [cursor=pointer]:
+              - generic [ref=f41e225]: 초과율 높은 순
+              - generic [ref=f41e226]: expand_more
+          - generic [ref=f41e228]:
+            - generic [ref=f41e229] [cursor=pointer]:
+              - checkbox "도래한 것만" [checked] [ref=f41e231]
+              - generic [ref=f41e236]: 도래한 것만
+            - generic [ref=f41e237] [cursor=pointer]:
+              - checkbox "열린 오더 없는 것만" [checked] [ref=f41e239]
+              - generic [ref=f41e244]: 열린 오더 없는 것만
+            - generic [ref=f41e245] [cursor=pointer]:
+              - checkbox "적정타수 없는 것만" [ref=f41e247]
+              - generic [ref=f41e252]: 적정타수 없는 것만
+          - button "초기화" [ref=f41e254] [cursor=pointer]
+        - paragraph [ref=f41e256]: 기본은 도래했고 열린 오더가 없는 툴이며 초과율 높은 순으로 보입니다 — 경과일보다 초과율이 위험의 크기입니다.
+      - region "예방보전 도래" [ref=f41e257]
+      - region "오더 만들기" [ref=f41e259]:
+        - heading "오더 만들기" [level=2] [ref=f41e260]
+        - paragraph [ref=f41e261]: 0개 툴을 골랐습니다
+        - paragraph [ref=f41e262]: 고른 툴마다 오더가 하나씩 만들어집니다 — 오더 0건이 됩니다.
+        - generic [ref=f41e263]:
+          - generic [ref=f41e264]:
+            - generic [ref=f41e265]: 예정일
+            - button "예정일" [ref=f41e267] [cursor=pointer]:
+              - generic [ref=f41e268]: 날짜 선택
+              - generic [ref=f41e269]: calendar_today
+          - generic [ref=f41e271]:
+            - generic [ref=f41e272]: 담당자
+            - combobox "담당자" [ref=f41e274] [cursor=pointer]:
+              - generic [ref=f41e275]: 고르세요
+              - generic [ref=f41e276]: expand_more
+          - generic [ref=f41e278]:
+            - generic [ref=f41e279]: 주기 기준일
+            - button "주기 기준일" [ref=f41e281] [cursor=pointer]:
+              - generic [ref=f41e282]: 날짜 선택
+              - generic [ref=f41e283]: calendar_today
+            - generic [ref=f41e285]: 다음 주기가 이 날부터 시작합니다. 비우면 서버가 정합니다.
+          - generic [ref=f41e286]:
+            - generic [ref=f41e287]: 지시 내용
+            - textbox "지시 내용" [ref=f41e290]
+        - heading "지시 항목" [level=3] [ref=f41e291]
+        - paragraph [ref=f41e292]: 툴 예방보전에는 항목 마스터가 없어 이름을 직접 적습니다. 한 줄에 하나씩 적으세요.
+        - button "항목 더하기" [ref=f41e294] [cursor=pointer]
+        - generic [ref=f41e296]:
+          - button "입력 지우기" [ref=f41e297] [cursor=pointer]
+          - button "오더 만들기" [ref=f41e299] [cursor=pointer]
+  - region "알림"
