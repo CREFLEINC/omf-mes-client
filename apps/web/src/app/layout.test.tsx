@@ -521,6 +521,10 @@ describe('AppLayout', () => {
       'href',
       '/production/emergency-work-orders',
     );
+    expect(within(sidebar).getByRole('link', { name: '추가 자재 출고 요청' })).toHaveAttribute(
+      'href',
+      '/production/material-issue-requests',
+    );
     expect(within(sidebar).getByRole('link', { name: 'W/O 진행현황 조회' })).toHaveAttribute(
       'href',
       '/production/work-order-progress',
@@ -724,6 +728,8 @@ describe('AppLayout', () => {
       '/production/work-order-release',
       '/production/work-order-close',
       '/production/emergency-work-orders',
+      /* W-02-10 — 긴급 발행이 만든 W/O 의 부족 자재를 잇는 자리라 그 바로 뒤다. */
+      '/production/material-issue-requests',
       '/production/work-order-progress',
       '/quality/lot-status',
       '/quality/lot-status-transition',
