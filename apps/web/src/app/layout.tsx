@@ -385,6 +385,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/equipment/maintenance-orders" icon="assignment">
               보전지시 발행
             </NavItem>
+            {/* W-05-06 — 지시가 이 실적의 대상이라 발행 바로 뒤다. */}
+            <NavItem to="/equipment/maintenance-results" icon="task_alt">
+              보전 실적·예비품
+            </NavItem>
             {/*
              * W-05-08 — 마스터·설정 항목들 **뒤**다. 앞의 것들은 설비를 어떻게 다룰지 정해 두는
              * 자리이고 이것은 그렇게 돌아간 결과를 보는 자리라, 정하는 것과 보는 것을 섞지 않는다.
