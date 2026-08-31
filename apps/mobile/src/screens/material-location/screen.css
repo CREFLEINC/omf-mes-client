@@ -2,7 +2,6 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 0;
 }
 
 .material-location__body {
@@ -24,7 +23,6 @@
 }
 
 /* 세로 간격은 위 gap 하나로만 준다. 기본 여백이 남으면 그 위에 겹쳐 리듬이 두 배가 된다. */
-.material-location__body > h1,
 .material-location__body > p {
   margin: 0;
 }
