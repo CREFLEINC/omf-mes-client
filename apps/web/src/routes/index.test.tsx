@@ -1724,6 +1724,8 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       '/equipment/collection-channels',
       '/equipment/shot-conversion',
       '/equipment/gauge-master',
+      /* W-05-08 — 마스터·설정 뒤다. 정해 두는 화면들과 그 결과를 보는 화면을 섞지 않는다. */
+      '/equipment/downtime-summary',
     ]);
   });
 });

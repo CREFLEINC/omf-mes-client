@@ -71,6 +71,7 @@ import { productStockStatus } from './product-stock-status';
 import { shipmentRequestCreate } from './shipment-request-create';
 import { shipmentProcessing } from './shipment-processing';
 import { dashboard } from './dashboard';
+import { downtimeSummary } from './downtime-summary';
 
 export const ko = {
   common,
@@ -130,6 +131,7 @@ export const ko = {
   shipmentRequestCreate,
   shipmentProcessing,
   dashboard,
+  downtimeSummary,
 } as const;
 
 export type Messages = typeof ko;
