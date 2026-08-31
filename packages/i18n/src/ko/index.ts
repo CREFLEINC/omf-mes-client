@@ -77,6 +77,7 @@ import { equipmentFailure } from './equipment-failure';
 import { maintenanceOrder } from './maintenance-order';
 import { maintenanceResult } from './maintenance-result';
 import { toolPmOrder } from './tool-pm-order';
+import { toolPmResult } from './tool-pm-result';
 
 export const ko = {
   common,
@@ -142,6 +143,7 @@ export const ko = {
   maintenanceOrder,
   maintenanceResult,
   toolPmOrder,
+  toolPmResult,
 } as const;
 
 export type Messages = typeof ko;
