@@ -60,9 +60,9 @@ body:
         디자인 시스템은 「이슈가 닫혔다」가 아니라 **고정한 커밋의 설치본에서 실물을 확인한** 결과를 적는다 —
         이슈가 닫힌 것과 우리가 쓰는 커밋에 들어 있는 것은 서로 다른 사실이다.
       placeholder: |
-        - 화면 스펙: uiux/화면상세스펙/W-06-03.md (개정 2026-08-05)
-        - 계약 정본: deliverables/openapi/mdm-기준정보.json (2026-08-05판)
-        - 공유계약: 공유계약.md v0.6
+        - 화면 스펙: design/wiki/screens/06/W-06-03.md (개정 2026-08-05)
+        - 계약 정본: design/wiki/api-contracts/openapi/mdm-기준정보.json (2026-08-05판)
+        - 공유계약: design/wiki/decisions-policy/공유계약.md v0.6
         - 디자인 시스템: design-system-v2-webui 커밋 a554d11 기준으로 인벤토리 실물 확인
     validations:
       required: true
