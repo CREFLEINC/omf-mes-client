@@ -69,6 +69,7 @@ import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
 import { productStockStatus } from './product-stock-status';
 import { shipmentRequestCreate } from './shipment-request-create';
+import { shipmentProcessing } from './shipment-processing';
 
 export const ko = {
   common,
@@ -126,6 +127,7 @@ export const ko = {
   materialLocation,
   productStockStatus,
   shipmentRequestCreate,
+  shipmentProcessing,
 } as const;
 
 export type Messages = typeof ko;
