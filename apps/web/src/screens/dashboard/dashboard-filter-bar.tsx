@@ -49,7 +49,7 @@ export const DashboardFilterBar = ({
      * 안에 넣으면 문장이 칸 하나로 끼어들어 컨트롤 사이에 선다.
      */
     <>
-      <div className="filter-bar" aria-describedby={noteId}>
+      <div className="filter-bar">
         <div className="field-cell">
           <FieldLabel htmlFor={baseDateId} label={t.filters.baseDate} />
           {/*
@@ -82,7 +82,17 @@ export const DashboardFilterBar = ({
         />
 
         <div className="filter-actions">
-          <Button variant="outlined" onClick={onRefresh} disabled={isRefreshing}>
+          {/*
+           * 안내를 **이 버튼에** 잇는다. 줄을 감싼 `div`에 붙이면 역할이 없는 요소라 보조 기술이
+           * 읽지 않는다 — 「자동으로 갱신되지 않는다」는 사실이 이 버튼을 두는 이유 자체이므로,
+           * 그 사실이 닿아야 할 자리도 여기다.
+           */}
+          <Button
+            variant="outlined"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            aria-describedby={noteId}
+          >
             {t.filters.refresh}
           </Button>
         </div>

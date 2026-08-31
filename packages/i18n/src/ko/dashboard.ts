@@ -78,6 +78,5 @@ export const dashboard = {
     locationUnknown: '위치 정보 없음',
     emptyMessage: '내용이 비어 있습니다.',
     openCenter: '알림센터',
-    openHint: '알림센터에서 이 알람 보기',
   },
 } as const;

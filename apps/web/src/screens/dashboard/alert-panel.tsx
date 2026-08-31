@@ -58,28 +58,29 @@ export const AlertPanel = ({ views, isLoading }: AlertPanelProps) => {
   }
 
   return (
-    <ul className="notification-list">
+    <ul className="alert-list">
       {views.map((view) => {
         const titleId = `dashboard-alert-${String(view.notificationId)}`;
 
         return (
           <li key={view.notificationId}>
-            <Link
-              className="alert-link"
-              to={alertPathOf(view.eventCode)}
-              aria-label={t.alerts.openHint}
-            >
+            {/*
+             * ⛔ **링크에 `aria-label`을 두지 않는다.** 두면 그것이 링크의 이름을 **대체**해
+             * 모든 알람이 같은 문구 하나로 읽히고, 어느 알람으로 가는 링크인지 사라진다.
+             * 이름은 카드 내용(유형 · 문구 · 시각)에서 나오게 둔다.
+             */}
+            <Link className="alert-link" to={alertPathOf(view.eventCode)}>
               <Card surface="default" bordered aria-labelledby={titleId}>
                 <Card.Header>
-                  <div className="notification-card-meta">
-                    <span id={titleId} className="notification-card-code">
+                  <div className="alert-meta">
+                    <span id={titleId} className="alert-code">
                       {view.eventCode}
                     </span>
                     <Chip size="sm" status={view.read ? 'idle' : 'error'}>
                       {view.read ? t.alerts.read : t.alerts.unread}
                     </Chip>
                     {/* 원문을 `dateTime`에 그대로 둔다 — 표기는 조각이라 그것만으로는 되짚을 수 없다. */}
-                    <time className="notification-card-time" dateTime={view.occurredAt}>
+                    <time className="alert-time" dateTime={view.occurredAt}>
                       {view.occurredAtText}
                     </time>
                   </div>
