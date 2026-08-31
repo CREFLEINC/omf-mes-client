@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { playErrorTone } from '../../patterns/error-tone';
 import { toApiError } from '../../patterns/request';
+import { useScreenTitle } from '../../patterns/screen-title';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useReferenceNames, type ReferenceNames, type ReferenceState } from './lookups';
 import { MATERIAL_LOT_NO_LENGTH, formatMaterialLotNo, isMaterialLotNo } from './lot-number';
@@ -137,6 +138,7 @@ export const MaterialLocationScreen = () => {
     setCode(value);
   };
 
+  useScreenTitle(t.title);
   const scanField = useScanField({ onScan: accept });
 
   const lot = useScannedLot(code);
@@ -171,84 +173,92 @@ export const MaterialLocationScreen = () => {
 
   return (
     <div className="material-location">
-      <h1>{t.title}</h1>
-      <TextField
-        ref={scanField.ref}
-        label={t.scan.label}
-        placeholder={t.scan.placeholder}
-        size="xl"
-        fullWidth
-        error={
-          rejectedLength === null
-            ? undefined
-            : t.invalidLength(rejectedLength, MATERIAL_LOT_NO_LENGTH)
-        }
-      />
-      <Button variant="outlined" size="lg" onClick={scanField.focus}>
-        {t.scan.manualEntry}
-      </Button>
-
-      {unreachable ? (
-        <EmptyState
-          live
-          title={t.offline.title}
-          description={t.offline.description}
-          action={
-            <Button variant="outlined" onClick={retry}>
-              {t.offline.retry}
-            </Button>
+      <div className="material-location__body">
+        <TextField
+          ref={scanField.ref}
+          label={t.scan.label}
+          placeholder={t.scan.placeholder}
+          size="xl"
+          fullWidth
+          error={
+            rejectedLength === null
+              ? undefined
+              : t.invalidLength(rejectedLength, MATERIAL_LOT_NO_LENGTH)
           }
         />
-      ) : null}
+        <Button variant="outlined" size="lg" onClick={scanField.focus}>
+          {t.scan.manualEntry}
+        </Button>
 
-      {failed && !unreachable ? (
-        <AlertBanner
-          variant="error"
-          title={t.loadFailed.title}
-          action={
-            <Button variant="text" onClick={retry}>
-              {t.loadFailed.retry}
-            </Button>
-          }
-        />
-      ) : null}
+        {unreachable ? (
+          <EmptyState
+            live
+            title={t.offline.title}
+            description={t.offline.description}
+            action={
+              <Button variant="outlined" onClick={retry}>
+                {t.offline.retry}
+              </Button>
+            }
+          />
+        ) : null}
 
-      {pending ? <p role="status">{t.loading}</p> : null}
+        {failed && !unreachable ? (
+          <AlertBanner
+            variant="error"
+            title={t.loadFailed.title}
+            action={
+              <Button variant="text" onClick={retry}>
+                {t.loadFailed.retry}
+              </Button>
+            }
+          />
+        ) : null}
 
-      {!pending && !failed && lot.data === null ? (
-        <EmptyState live title={t.notFound.title} description={t.notFound.description} />
-      ) : null}
+        {pending ? <p role="status">{t.loading}</p> : null}
+
+        {!pending && !failed && lot.data === null ? (
+          <EmptyState live title={t.notFound.title} description={t.notFound.description} />
+        ) : null}
+
+        {lot.data !== null && lot.data !== undefined ? (
+          <>
+            <p className="material-location__lot-no">{formatMaterialLotNo(lot.data.lotNo)}</p>
+            <p>{referenceLabel(names.item(lot.data.itemId))}</p>
+            {holdState === 'checking' ? (
+              <AlertBanner variant="info" title={t.hold.checking} />
+            ) : null}
+            {holdState === 'failed' ? (
+              <AlertBanner variant="warning" title={t.hold.unconfirmed}>
+                {t.hold.unconfirmedDescription}
+              </AlertBanner>
+            ) : null}
+            {holds.data !== undefined && holds.data.length > 0 ? (
+              <HoldBanner holds={holds.data} names={names} />
+            ) : null}
+            {balances.data !== undefined && balances.data.length > 1 ? (
+              <p>{t.location.countSuffix(balances.data.length)}</p>
+            ) : null}
+            {balances.data !== undefined && balances.data.length === 0 ? (
+              <EmptyState
+                live
+                title={t.location.emptyTitle}
+                description={t.location.emptyDescription}
+              />
+            ) : null}
+            {byOnHandDesc(balances.data ?? []).map((balance) => (
+              <LocationCard key={balanceKey(balance)} balance={balance} names={names} />
+            ))}
+          </>
+        ) : null}
+      </div>
 
       {lot.data !== null && lot.data !== undefined ? (
-        <>
-          <p className="material-location__lot-no">{formatMaterialLotNo(lot.data.lotNo)}</p>
-          <p>{referenceLabel(names.item(lot.data.itemId))}</p>
-          {holdState === 'checking' ? <AlertBanner variant="info" title={t.hold.checking} /> : null}
-          {holdState === 'failed' ? (
-            <AlertBanner variant="warning" title={t.hold.unconfirmed}>
-              {t.hold.unconfirmedDescription}
-            </AlertBanner>
-          ) : null}
-          {holds.data !== undefined && holds.data.length > 0 ? (
-            <HoldBanner holds={holds.data} names={names} />
-          ) : null}
-          {balances.data !== undefined && balances.data.length > 1 ? (
-            <p>{t.location.countSuffix(balances.data.length)}</p>
-          ) : null}
-          {balances.data !== undefined && balances.data.length === 0 ? (
-            <EmptyState
-              live
-              title={t.location.emptyTitle}
-              description={t.location.emptyDescription}
-            />
-          ) : null}
-          {byOnHandDesc(balances.data ?? []).map((balance) => (
-            <LocationCard key={balanceKey(balance)} balance={balance} names={names} />
-          ))}
+        <div className="material-location__actions">
           <Button variant="filled" size="xl" onClick={restart}>
             {t.nextScan}
           </Button>
-        </>
+        </div>
       ) : null}
     </div>
   );

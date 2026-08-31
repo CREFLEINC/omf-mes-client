@@ -8,7 +8,14 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { ScreenTitleProvider, useCurrentScreenTitle } from '../../patterns/screen-title';
 import { MaterialLocationScreen } from './screen';
+
+/* 앱바를 대신해 셸이 받은 제목을 그린다. */
+const TitleProbe = () => {
+  const title = useCurrentScreenTitle();
+  return title === null ? null : <h1>{title}</h1>;
+};
 
 const SCANNED = '7770001118880002229901015554447777';
 
@@ -95,8 +102,14 @@ describe('자재 위치 확인 화면', () => {
     ).toBeInTheDocument();
   });
 
-  it('어느 화면인지 제목으로 알린다', () => {
-    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+  it('어느 화면인지 셸에 넘겨 알린다', () => {
+    renderWithProviders(
+      <ScreenTitleProvider>
+        <TitleProbe />
+        <MaterialLocationScreen />
+      </ScreenTitleProvider>,
+      { fetch: stub() },
+    );
 
     expect(screen.getByRole('heading', { name: '자재 위치 확인' })).toBeInTheDocument();
   });
@@ -435,6 +448,24 @@ describe('자재 위치 확인 화면', () => {
     expect(await screen.findByText('조회하지 못했습니다')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
     expect(screen.queryByText('오프라인이라 조회할 수 없습니다')).not.toBeInTheDocument();
+  });
+
+  /* 결과가 길어지면 흐르는 구획 안의 것은 화면 밖으로 밀린다. 다음 스캔은 그 밖에 있어야 한다. */
+  it('다음 스캔을 흐르는 구획 밖에 둔다', async () => {
+    const { container } = renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan();
+
+    const nextScan = await screen.findByRole('button', { name: '다음 스캔' });
+    const scrolling = container.querySelector('.material-location__body');
+
+    expect(scrolling).not.toBeNull();
+    expect(scrolling?.contains(nextScan)).toBe(false);
+  });
+
+  it('결과가 없을 때는 다음 스캔 자리를 세우지 않는다', () => {
+    const { container } = renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+
+    expect(container.querySelector('.material-location__actions')).toBeNull();
   });
 
   it('다음 스캔을 누르면 결과를 비우고 스캔 칸으로 돌아간다', async () => {

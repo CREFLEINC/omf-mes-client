@@ -12,10 +12,26 @@ body {
  */
 .mobile-shell {
   grid-template-columns: 0 1fr;
-  min-height: 100dvh;
+  height: 100dvh;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-right: env(safe-area-inset-right, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
+}
+
+/*
+ * 셸이 늘어나면 화면이 통째로 스크롤돼 화면 바닥에 붙여 둔 액션이 흐름 안으로 밀린다.
+ * 셸 높이를 뷰포트에 못 박고 본문 칸만 남는 높이를 갖게 해, 넘치는 것은 그 안에서 흐르게 한다.
+ */
+.mobile-shell > main {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 앱바 한 줄에 들어가야 해서 본문 제목 크기를 그대로 쓰지 않는다. */
+.mobile-shell__title {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
 }
