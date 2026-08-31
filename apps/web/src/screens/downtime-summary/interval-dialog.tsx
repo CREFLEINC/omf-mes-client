@@ -42,6 +42,14 @@ const columns: Column<DowntimeIntervalView>[] = [
 
 export interface IntervalDialogProps {
   kind: IntervalKind | null;
+  /**
+   * 공장·설비 그룹 조건이 걸려 있는가.
+   *
+   * ⚠ **목록 조회에는 그 둘로 좁히는 수단이 없다**(계약 실측 — 설비 하나로만 좁힌다). 조건을
+   * 걸어 둔 채 목록을 열면 요약의 건수보다 많이 보이는데, 밝히지 않으면 사용자는 둘 중 하나가
+   * 틀렸다고 읽는다.
+   */
+  isScopeNarrowed: boolean;
   rows: DowntimeIntervalView[];
   isLoading: boolean;
   isError: boolean;
@@ -60,6 +68,7 @@ export interface IntervalDialogProps {
  */
 export const IntervalDialog = ({
   kind,
+  isScopeNarrowed,
   rows,
   isLoading,
   isError,
@@ -82,6 +91,7 @@ export const IntervalDialog = ({
       <p className="dialog-lead">
         {kind === 'overlapping' ? t.summary.overlappingIntervalsNote : t.summary.openIntervalsNote}
       </p>
+      {isScopeNarrowed && <p className="dialog-lead">{t.intervals.scopeMismatch}</p>}
       {isError && <LoadErrorBanner error={error} onRetry={onRetry} />}
       {isLoading ? (
         <Skeleton variant="rect" height="10rem" />

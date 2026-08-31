@@ -265,6 +265,7 @@ export const DowntimeSummaryScreen = () => {
 
       <IntervalDialog
         kind={openKind}
+        isScopeNarrowed={filters.plant !== '' || filters.equipmentGroup !== ''}
         rows={intervals.data?.items ?? EMPTY_INTERVALS}
         isLoading={intervals.isPending && openKind !== null}
         isError={intervals.isError}
