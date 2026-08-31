@@ -62,6 +62,7 @@ import {
 import { toRemainingQty } from './remaining-qty';
 import {
   decisionUomIdOf,
+  formatQty,
   toDecisionRow,
   toDetailView,
   toNonconformanceRow,
@@ -69,6 +70,9 @@ import {
 } from './types';
 
 const EMPTY_NONCONFORMANCES: Nonconformance[] = [];
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
 
 /**
  * 저장에 실어 보내는 값. **대상 식별자를 함께 싣는다** — 멱등 키의 지문이 여기서 나오므로,
@@ -153,7 +157,7 @@ export const DispositionDecisionScreen = ({
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
-  const remaining = toRemainingQty(detail.data?.lots, decisions.data?.items);
+  const remaining = toRemainingQty(decisions.data?.summary);
   const uomId = decisionUomIdOf(detail.data?.lots);
   const decisionRows = useMemo(
     () => (decisions.data?.items ?? []).map(toDecisionRow),
@@ -177,18 +181,50 @@ export const DispositionDecisionScreen = ({
    * 원장 위의 조용한 유실이다(공유계약 C-1).
    */
   const write = useMasterWrite<DecisionWriteVariables, unknown>({
-    request: (variables, headers) =>
-      client.POST('/quality/nonconformances/{nonconformanceId}/disposition-decisions', {
-        params: {
-          path: { nonconformanceId: variables.nonconformanceId },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            /* ⛔ 계약이 이 헤더를 **필수**로 바꿨다 — 없으면 빈 값을 채우지 않고 멈춘다. */
-            'If-Match': requireIfMatch(headers),
+    request: async (variables, headers) => {
+      const result = await client.POST(
+        '/quality/nonconformances/{nonconformanceId}/disposition-decisions',
+        {
+          params: {
+            path: { nonconformanceId: variables.nonconformanceId },
+            header: {
+              'Idempotency-Key': headers['Idempotency-Key'],
+              /* ⛔ 계약이 이 헤더를 **필수**로 바꿨다 — 없으면 빈 값을 채우지 않고 멈춘다. */
+              'If-Match': requireIfMatch(headers),
+            },
           },
+          body: variables.body,
         },
-        body: variables.body,
-      }),
+      );
+
+      /*
+       * ⭐ **raw `error`를 가로채 구조화 필드로 문구를 되말한다.** 공유 정규화기
+       * (`packages/api-client/src/errors.ts:normalizeApiError`)는 `conflictCause`가 있어야
+       * `kind: 'conflict'`로 분류하는데, 이 둘(`DISPOSITION_QTY_EXCEEDED`·`INVALID_STATE`)은
+       * `conflictCause`를 싣지 않아 `kind: 'http'`로 떨어지며 `message` 원문만 남는다 — 공유
+       * 정규화기는 고치지 않고 이 화면에서만 되말한다(`suspicious-material-hold/hold-execution.tsx`
+       * L58-79와 같은 기법). ⛔ 서버 `message` 원문은 표시·파싱하지 않는다. 근거: W-03-10 §6 ·
+       * 공유계약 A-9 ⓑ · omf-mes#253.
+       */
+      if (result.response.status !== 409 || !isRecord(result.error)) return result;
+
+      /* 계약 형태별로 갈린 오류 타입을 원시 레코드로 본다 — 위 가드가 런타임 형태를 보장한다. */
+      const raw = result.error as Record<string, unknown>;
+      if (raw.code === 'DISPOSITION_QTY_EXCEEDED') {
+        const remainingText = formatQty(
+          typeof raw.remainingQty === 'number' ? raw.remainingQty : undefined,
+        );
+        return {
+          ...result,
+          error: { ...raw, message: t.form.qtyExceededByServer(remainingText) },
+        };
+      }
+      if (raw.code === 'INVALID_STATE') {
+        return { ...result, error: { ...raw, message: t.form.alreadyClosed } };
+      }
+
+      return result;
+    },
     /* ⭐ 토큰은 부적합 «상세»가 내린다 — 저장 경로가 아니다(공유계약 B-1). */
     etagPath: selectedId === null ? null : nonconformanceDetailPath(selectedId),
     /* ⚠ 참조 이름 조회는 뿌리 키가 갈려 있어 여기 걸리지 않는다 — 판정으로 바뀌지 않는 값이다. */

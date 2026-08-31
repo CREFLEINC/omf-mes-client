@@ -33,6 +33,7 @@ export const dispositionDecision = {
     decidedAt: '판정 일시',
     decidedBy: '판정자',
     remainingQty: '남은 수량',
+    dispositionProgressCode: '판정 진행',
   },
   all: '전체',
   codePending: '선택할 기준값이 아직 준비되지 않았습니다',
@@ -58,8 +59,6 @@ export const dispositionDecision = {
    * 조용히 빼면 보는 사람이 「없는 기능」이 아니라 「없는 데이터」로 읽는다.
    */
   withdrawn: {
-    decisionProgress:
-      '판정 진행(미판정·일부 판정·완료)은 표시하지 않습니다. 부적합 상태만 보입니다.',
     sourceFilter: '원천으로 거르는 기능은 두지 않았습니다. 품목·심각도·상태로 좁히세요.',
   },
   actions: {
@@ -113,6 +112,16 @@ export const dispositionDecision = {
       `화면이 계산한 남은 수량(${remaining})보다 많습니다. 남은 수량은 저장할 때 서버가 확정합니다`,
     /** 남은 수량이 0일 때도 같은 자리다 — 참고값으로 막지 않고 예고한다. */
     qtySettledNotice: '화면이 계산한 남은 수량이 없습니다. 저장 여부는 서버가 확정합니다',
+    /**
+     * ⭐ 저장 409의 구조화 문구 — 위 `qtyOverRemaining`/`qtySettledNotice`와는 **다른 자리다.**
+     * 그것들은 **저장 전** 화면이 낸 참고값에 대한 예고이고, 이 둘은 **저장을 서버가 거절한
+     * 뒤** 응답의 `code`를 보고 화면이 되말하는 문구다 — `message` 원문을 그대로 옮기지
+     * 않는다(공유 정규화기를 고치지 않고 화면 로컬에서 되말한다). 근거: W-03-10 §6 ·
+     * 공유계약 A-9 ⓑ · omf-mes#253.
+     */
+    qtyExceededByServer: (remaining: string): string =>
+      `처분 결정 수량 합이 남은 수량(${remaining})을 넘어 저장되지 않았습니다. 남은 수량 이하로 다시 입력하세요`,
+    alreadyClosed: '이미 종결된 부적합입니다. 판정을 저장할 수 없습니다',
     reasonRequired: '사유를 입력하세요',
     dispositionRequired: '처분을 선택하세요',
     savingReason: '판정을 저장하는 중입니다',
@@ -157,5 +166,11 @@ export const dispositionDecision = {
     periodRequired: '기간을 선택해야 조회할 수 있습니다',
     periodInvalid: '달력에 없는 날짜입니다. 있는 날짜로 고쳐 주세요',
     periodReversed: '시작일이 종료일보다 뒤입니다. 두 날짜를 바꿔 주세요',
+    /** 「판정 진행」 열의 값 셋. 계약이 값을 열거했으므로(G-2 예외) 코드로 갈라도 된다. */
+    dispositionProgress: {
+      NOT_STARTED: '미판정',
+      PARTIAL: '일부 판정',
+      COMPLETED: '완료',
+    },
   },
 } as const;

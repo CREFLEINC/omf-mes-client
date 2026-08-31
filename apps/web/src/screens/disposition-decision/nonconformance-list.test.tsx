@@ -25,6 +25,7 @@ const rows: NonconformanceRow[] = [
     statusCode: 'CODE-C',
     openedAtText: '2026-08-12',
     affectedQtyText: '320',
+    dispositionProgressCode: 'PARTIAL',
   },
   {
     nonconformanceId: 42,
@@ -34,6 +35,7 @@ const rows: NonconformanceRow[] = [
     statusCode: 'CODE-C',
     openedAtText: '2026-08-11',
     affectedQtyText: t.values.unknownQty,
+    dispositionProgressCode: 'NOT_STARTED',
   },
 ];
 
@@ -60,19 +62,25 @@ const renderList = (overrides: Partial<NonconformanceListProps> = {}) => {
 };
 
 describe('NonconformanceList', () => {
-  it('⚠ 「판정 진행」 열을 만들지 않는다 — 서버가 값을 내리지 않는다', () => {
+  it('⭐ 「판정 진행」 열에 서버가 낸 값을 우리말로 보인다', () => {
     renderList();
 
-    expect(screen.queryByRole('columnheader', { name: '판정 진행' })).toBeNull();
-    expect(screen.getByRole('columnheader', { name: t.fields.statusCode })).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: t.fields.dispositionProgressCode }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(messages.dispositionDecision.values.dispositionProgress.PARTIAL),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(messages.dispositionDecision.values.dispositionProgress.NOT_STARTED),
+    ).toBeInTheDocument();
   });
 
-  it('⚠ 물러난 두 항목의 사실을 표 머리에 적는다(A-11)', () => {
+  it('⚠ 물러난 항목의 사실을 표 머리에 적는다(A-11)', () => {
     renderList();
 
     const banner = screen.getByRole('status');
 
-    expect(banner).toHaveTextContent(t.withdrawn.decisionProgress);
     expect(banner).toHaveTextContent(t.withdrawn.sourceFilter);
   });
 

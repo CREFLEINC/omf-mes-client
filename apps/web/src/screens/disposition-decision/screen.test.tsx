@@ -63,16 +63,15 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(screen.getByText(t.remaining.note)).toBeInTheDocument();
   });
 
-  it('물러난 두 항목의 사실을 목록 머리에 적는다', async () => {
+  it('물러난 항목의 사실을 목록 머리에 적는다', async () => {
     renderScreen();
     await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
 
     const banner = screen
       .getAllByRole('status')
-      .find((element) => element.textContent?.includes(t.withdrawn.decisionProgress) === true);
+      .find((element) => element.textContent?.includes(t.withdrawn.sourceFilter) === true);
 
     expect(banner).toBeDefined();
-    expect(banner?.textContent).toContain(t.withdrawn.sourceFilter);
   });
 
   it('⛔ 승인·반려 컨트롤이 화면에 없다', async () => {
