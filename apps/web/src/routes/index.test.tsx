@@ -1726,6 +1726,8 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       '/equipment/gauge-master',
       /* W-05-10 — 계측기 마스터 바로 뒤다. 이력은 그 마스터가 있어야 적을 수 있다. */
       '/equipment/gauge-calibration',
+      /* W-05-04 — 일하는 화면이라 정해 두는 화면들과 결과를 보는 화면 사이다. */
+      '/equipment/failures',
       /* W-05-08 — 마스터·설정 뒤다. 정해 두는 화면들과 그 결과를 보는 화면을 섞지 않는다. */
       '/equipment/downtime-summary',
     ]);
