@@ -454,7 +454,7 @@ describe('AppLayout', () => {
     expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
   });
 
-  it('출하 섹션(출하지시서 Import·작업지시 생성 · 출하 예정 목록)이 자재창고 뒤·생산 앞에 있다', () => {
+  it('출하 섹션(출하지시서 Import·작업지시 생성 · 출하 예정 목록 · 출하 처리)이 자재창고 뒤·생산 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -470,6 +470,9 @@ describe('AppLayout', () => {
       'href',
       '/shipment/shipment-schedule',
     );
+    expect(
+      within(sidebar).getByRole('link', { name: '출하 처리(상차·실물 출고)' }),
+    ).toHaveAttribute('href', '/shipment/shipment-processing');
     /* 편성이 예정보다 먼저다 — 지시서를 편성해야 예정이 생긴다(업무 순서). */
     expect(links.indexOf('/shipment/shipment-request-create')).toBe(
       links.indexOf('/logistics/document-progress') + 1,
@@ -477,7 +480,11 @@ describe('AppLayout', () => {
     expect(links.indexOf('/shipment/shipment-schedule')).toBe(
       links.indexOf('/shipment/shipment-request-create') + 1,
     );
-    expect(links.indexOf('/shipment/shipment-schedule')).toBeLessThan(
+    /* 예정 목록에서 피킹까지 끝난 후보를 처리하므로 그 바로 뒤다(업무 순서). */
+    expect(links.indexOf('/shipment/shipment-processing')).toBe(
+      links.indexOf('/shipment/shipment-schedule') + 1,
+    );
+    expect(links.indexOf('/shipment/shipment-processing')).toBeLessThan(
       links.indexOf('/production/work-order-close'),
     );
   });
@@ -519,7 +526,7 @@ describe('AppLayout', () => {
       '/production/work-order-progress',
     );
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/shipment/shipment-schedule') + 1,
+      links.indexOf('/shipment/shipment-processing') + 1,
     );
     expect(links.indexOf('/production/production-plans')).toBe(
       links.indexOf('/production/production-orders') + 1,
@@ -691,6 +698,7 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       '/shipment/shipment-request-create',
       '/shipment/shipment-schedule',
+      '/shipment/shipment-processing',
       '/production/production-orders',
       '/production/production-plans',
       '/production/work-order-assignments',

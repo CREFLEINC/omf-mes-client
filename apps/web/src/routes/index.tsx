@@ -43,6 +43,7 @@ import { DispositionDecisionScreen } from '../screens/disposition-decision/scree
 import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
+import { ShipmentProcessingScreen } from '../screens/shipment-processing/screen';
 import { ShipmentRequestCreateScreen } from '../screens/shipment-request-create/screen';
 import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
 import { StockAdjustScreen } from '../screens/stock-adjust/screen';
@@ -446,6 +447,13 @@ export const appRouter = createBrowserRouter([
        */
       { path: 'shipment/shipment-request-create', element: <ShipmentRequestCreateScreen /> },
       { path: 'shipment/shipment-schedule', element: <ShipmentScheduleScreen /> },
+      /*
+       * W-04-04 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만 출하 처리는
+       * 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다. 업무 순서로는 편성(W-04-01) →
+       * 예정 목록(W-04-02) → 이 화면(피킹완료 후보를 상차·실물 출고 처리) 순이라 예정 목록
+       * 바로 뒤에 둔다.
+       */
+      { path: 'shipment/shipment-processing', element: <ShipmentProcessingScreen /> },
       /*
        * W-04-08 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만
        * 완제품 재고·Lot Status 조회는 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다.

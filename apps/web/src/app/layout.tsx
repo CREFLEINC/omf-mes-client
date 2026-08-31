@@ -222,6 +222,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/shipment/shipment-schedule" icon="local_shipping">
               출하 예정 목록
             </NavItem>
+            {/*
+             * W-04-04 — 예정 목록(W-04-02)에서 피킹까지 끝난 후보를 상차·실물 출고 처리하므로
+             * 그 바로 뒤에 둔다. 되돌릴 수 없는 쓰기(재고 차감·genealogy 종결)이지만 출하 자체는
+             * 미확정 상태로 남는다 — 확정·취소는 W-04-12(미착수) 소관이다.
+             */}
+            <NavItem to="/shipment/shipment-processing" icon="outbound">
+              출하 처리(상차·실물 출고)
+            </NavItem>
           </SidebarSection>
           {/* W-02-01 — 생산의 계획·지시 첫 화면이며 현재 생산 블록의 첫 항목으로 둔다. */}
           <SidebarSection label="생산">
