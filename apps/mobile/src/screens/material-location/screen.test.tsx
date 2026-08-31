@@ -450,6 +450,24 @@ describe('자재 위치 확인 화면', () => {
     expect(screen.queryByText('오프라인이라 조회할 수 없습니다')).not.toBeInTheDocument();
   });
 
+  /* 결과가 길어지면 흐르는 구획 안의 것은 화면 밖으로 밀린다. 다음 스캔은 그 밖에 있어야 한다. */
+  it('다음 스캔을 흐르는 구획 밖에 둔다', async () => {
+    const { container } = renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan();
+
+    const nextScan = await screen.findByRole('button', { name: '다음 스캔' });
+    const scrolling = container.querySelector('.material-location__body');
+
+    expect(scrolling).not.toBeNull();
+    expect(scrolling?.contains(nextScan)).toBe(false);
+  });
+
+  it('결과가 없을 때는 다음 스캔 자리를 세우지 않는다', () => {
+    const { container } = renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+
+    expect(container.querySelector('.material-location__actions')).toBeNull();
+  });
+
   it('다음 스캔을 누르면 결과를 비우고 스캔 칸으로 돌아간다', async () => {
     renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
     const user = await scan();
