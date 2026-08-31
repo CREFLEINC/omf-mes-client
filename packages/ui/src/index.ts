@@ -2,3 +2,5 @@
 // 구조설계 v0.2 §4.5 참조.
 export { TextArea } from './ds-candidates/text-area';
 export type { TextAreaProps, TextAreaResize } from './ds-candidates/text-area';
+export { QrCode } from './ds-candidates/qr-code';
+export type { QrCodeProps } from './ds-candidates/qr-code';

@@ -613,6 +613,14 @@ describe('appRouter', () => {
    */
   it('비밀번호 변경이 시스템 관리 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/system/password-change');
+  });
+
+  /**
+   * ⭐ **단말은 시스템 관리의 자원이다.** 계약 경로는 `/mdm/terminals`이지만 이 화면이 하는 일은
+   * 기준정보 편집이 아니라 「어느 단말에서 무엇을 열어 둘 것인가」의 운영 설정이다.
+   */
+  it('W-CO-06 단말기-공정 매핑을 시스템 관리 아래에 둔다', () => {
+    expect(routedPaths()).toContain('/system/terminal-process-map');
     expect(routedPaths()).not.toContain('/account/password');
     expect(routedPaths()).not.toContain('/app/users/me:change-password');
   });

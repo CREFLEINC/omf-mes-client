@@ -454,6 +454,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/system/approval-route" icon="approval">
               결재선 정의
             </NavItem>
+            {/* W-CO-06 — 단말은 시스템 관리의 자원이다. */}
+            <NavItem to="/system/terminal-process-map" icon="tablet_android">
+              단말기-공정 매핑
+            </NavItem>
             {/*
              * W-CO-10 — **섹션 맨 끝이다.** 앞의 둘은 관리자가 남을 설정하는 자리이고 이것은
              * 누구나 자기 것을 바꾸는 자리라, 앞의 순서(권한 → 결재선)를 흔들지 않고 뒤에 붙인다.

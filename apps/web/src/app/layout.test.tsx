@@ -644,8 +644,12 @@ describe('AppLayout', () => {
       'href',
       '/system/password-change',
     );
-    expect(links.indexOf('/system/password-change')).toBe(
-      links.indexOf('/system/approval-route') + 1,
+    /*
+     * ⭐ 견주는 것은 **맨 끝인가**이지 「결재선 다음인가」가 아니다. 관리자 설정 항목은 앞으로도
+     * 더 붙으므로, 인접으로 못 박으면 항목이 늘 때마다 뜻과 무관하게 시험이 깨진다.
+     */
+    expect(links.indexOf('/system/password-change')).toBeGreaterThan(
+      links.indexOf('/system/approval-route'),
     );
     expect(links.indexOf('/system/password-change')).toBe(links.length - 1);
   });
@@ -743,6 +747,7 @@ describe('AppLayout', () => {
       '/notification/center',
       '/system/users-roles',
       '/system/approval-route',
+      '/system/terminal-process-map',
       '/system/password-change',
     ]);
   });

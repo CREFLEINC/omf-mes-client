@@ -77,6 +77,7 @@ import { equipmentFailure } from './equipment-failure';
 import { maintenanceOrder } from './maintenance-order';
 import { maintenanceResult } from './maintenance-result';
 import { toolPmOrder } from './tool-pm-order';
+import { terminalProcessMap } from './terminal-process-map';
 import { toolPmResult } from './tool-pm-result';
 
 export const ko = {
@@ -143,6 +144,7 @@ export const ko = {
   maintenanceOrder,
   maintenanceResult,
   toolPmOrder,
+  terminalProcessMap,
   toolPmResult,
 } as const;
 

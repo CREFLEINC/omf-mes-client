@@ -30,6 +30,7 @@ import { GaugeCalibrationScreen } from '../screens/gauge-calibration/screen';
 import { MaintenanceOrderScreen } from '../screens/maintenance-order/screen';
 import { MaintenanceResultScreen } from '../screens/maintenance-result/screen';
 import { ToolPmOrderScreen } from '../screens/tool-pm-order/screen';
+import { TerminalProcessMapScreen } from '../screens/terminal-process-map/screen';
 import { ToolPmResultScreen } from '../screens/tool-pm-result/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
@@ -124,6 +125,8 @@ export const appRouter = createBrowserRouter([
        * 보낼 수 없는 비밀번호 변경 화면을 노출하면 사용자는 바꿨다고 믿고 떠난다
        * (정책 §5.2 — 접근 불가능한 경계).
        */
+      /* W-CO-06 — 단말은 시스템 관리의 자원이다. 결재선 정의 뒤에 둔다. */
+      { path: 'system/terminal-process-map', element: <TerminalProcessMapScreen /> },
       { path: 'system/password-change', element: <PasswordChangeScreen /> },
       /*
        * W-01-09 — 자재창고(도메인 01)의 첫 화면. 앞머리를 계약 경로(`/logistics/**`)와 같은
