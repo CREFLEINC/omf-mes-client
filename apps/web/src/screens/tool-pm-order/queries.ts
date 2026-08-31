@@ -78,7 +78,7 @@ export interface BulkOrderResult {
  * 결정적이고, 실패한 자리에서 멈추지 않고 **끝까지 가서 전부의 결과를 모은다** — 하나가
  * 실패했다고 나머지를 안 만들면 사용자가 다시 고르는 수고를 진다.
  */
-export const useBulkOrderCreate = (onSettled: () => void): BulkOrderResult => {
+export const useBulkOrderCreate = (): BulkOrderResult => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const [outcomes, setOutcomes] = useState<OrderOutcome[]>([]);
@@ -120,8 +120,8 @@ export const useBulkOrderCreate = (onSettled: () => void): BulkOrderResult => {
     },
     onSuccess: (results) => {
       setOutcomes(results);
+      /* 성공한 것이 하나라도 있으면 목록이 달라진다 — 열린 오더가 생겨 조건에서 빠진다. */
       void queryClient.invalidateQueries({ queryKey: toolPmKeys.all });
-      onSettled();
     },
   });
 

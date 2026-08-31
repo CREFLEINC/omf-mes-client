@@ -94,9 +94,7 @@ export const ToolPmOrderScreen = () => {
   const rows = molds.data?.items ?? EMPTY_ROWS;
   const pageView = toPageView(molds.data?.page ?? { page, size: 0, total: 0 }, rows.length);
 
-  const create = useBulkOrderCreate(() => {
-    /* 결과가 나오면 성공한 것만 선택에서 뺀다 — 실패한 것은 다시 시도할 수 있게 남긴다. */
-  });
+  const create = useBulkOrderCreate();
 
   /* 결과가 있으면 성공한 툴을 선택에서 빼고 실패한 것만 남긴다. */
   const failedIds = create.outcomes
@@ -187,15 +185,20 @@ export const ToolPmOrderScreen = () => {
       ),
     },
     {
-      key: 'shots',
+      key: 'currentShot',
       header: t.table.currentShot,
       align: 'end',
-      render: (row) => (
-        <span className="stacked-cell">
-          <span>{formatCount(row.currentShotCount)}</span>
-          <span>{notComputable(row.guaranteedShotCount, formatCount)}</span>
-        </span>
-      ),
+      render: (row) => formatCount(row.currentShotCount),
+    },
+    {
+      /*
+       * ⛔ 누계와 적정타수를 한 칸에 쌓지 않는다 — 머리글이 하나뿐이라 **아래 수가 무엇인지
+       * 이름이 없다.** 브라우저 확인에서 두 수가 이름 없이 겹쳐 보였다.
+       */
+      key: 'guaranteed',
+      header: t.table.guaranteed,
+      align: 'end',
+      render: (row) => notComputable(row.guaranteedShotCount, formatCount),
     },
     {
       key: 'available',
