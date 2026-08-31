@@ -59,18 +59,19 @@ export const useCalibrationList = (
   });
 };
 
-/** 화면이 소유한 입력칸 이름 — 서버 오류를 인라인으로 낼지 배너로 올릴지 가르는 기준이다. */
+/**
+ * 화면이 소유한 입력칸 이름 — 서버 오류를 인라인으로 낼지 배너로 올릴지 가르는 기준이다.
+ *
+ * ⭐ **오류를 그릴 자리가 있는 칸만 넣는다.** 여기에 이름을 넣으면 그 오류는 배너에서 빠져
+ * 인라인으로 가는데, 화면에 그릴 자리가 없으면 **어디에도 나타나지 않고 사라진다.** 성적서
+ * 번호·기관·허용오차·비고는 지금 오류 자리가 없어 일부러 뺐다 — 빠지면 배너가 받는다.
+ */
 const KNOWN_FIELDS = [
   'equipmentId',
   'historyTypeCode',
   'performedOn',
   'resultCode',
-  'certificateNo',
-  'agencyTypeCode',
-  'agencyName',
   'nextDueOn',
-  'toleranceNote',
-  'remarks',
 ] as const;
 
 /**
