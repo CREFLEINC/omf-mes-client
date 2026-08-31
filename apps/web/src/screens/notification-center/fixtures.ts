@@ -26,6 +26,11 @@ const BASE_NOTIFICATION: Notification = {
   message: '합성 알림 문구 가입니다.',
   occurredAt: '2026-08-17T14:05:00+09:00',
   read: false,
+  /*
+   * client#601 1-3 — 신설 필수 필드. 이 화면은 아직 이 값을 읽지 않는다(별도 판단·별건) —
+   * 픽스처가 계약을 만족하게만 둔다.
+   */
+  openable: false,
 };
 
 export const notificationFixture = (overrides: Partial<Notification> = {}): Notification => ({

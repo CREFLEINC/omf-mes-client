@@ -11,17 +11,18 @@ type ItemExternalCodeListResponse = components['schemas']['ItemExternalCodeListR
 /**
  * 부속 행 세 종류의 조회와 캐시 키.
  *
- * ## 낙관적 잠금 — **셋 다 `etagPath`가 `null`이다**(§5.3 표 2~4행)
+ * ## 낙관적 잠금 — **셋 다 `If-Match`가 필수다**(client#602 · §5.3 표 2~4행 갱신)
  *
  * | 쓰기 | `Idempotency-Key` | `If-Match` | `etagPath` |
  * | --- | :-: | :-: | --- |
- * | `PUT …/bu-item-maps` | 필수 | **없음** | **`null`** |
- * | `PUT …/uom-conversions` | 필수 | **없음** | **`null`** |
- * | `PUT …/external-codes` | 필수 | **없음** | **`null`** |
+ * | `PUT …/bu-item-maps` | 필수 | **필수** | `buMapsPath(itemId)` |
+ * | `PUT …/uom-conversions` | 필수 | **필수** | `uomConversionsPath(itemId)` |
+ * | `PUT …/external-codes` | 필수 | **필수** | `externalCodesPath(itemId)` |
  *
- * 계약에 이 쓰기들의 `If-Match` 파라미터 자체가 없고, **목록 조회가 `ETag`를 주지도 않는다.**
- * 그 자리에 상세 경로를 주면 토큰을 찾지 못해 `useMasterWrite`가 **요청을 보내지 않고 멈춘다** —
- * 「저장을 눌러도 아무 일이 없다」가 된다(M17).
+ * ⭐ **client#602 — 이 세 목록 조회의 `GET` 200 응답에 `ETag`가 새로 생겼다.** 예전에는
+ * 계약에 `If-Match` 파라미터 자체가 없고 목록 조회도 토큰을 주지 않아 셋 다 `etagPath: null`
+ * 이었다 — 지금은 각 목록 조회 자체가 토큰을 준다. 헤더 없이 보내면 400, 남이 먼저 고쳤으면
+ * 409다.
  *
  * **쪽 나눔이 없다**(`items`만 오고 `page`가 없다). 계약이 「한 번에 다 받을 수 있는 양」으로
  * 본다는 뜻이라 쪽 이동을 두지 않는다.
@@ -38,6 +39,16 @@ export const subsidiaryKeys = {
   uomConversions: (itemId: number) => ['item-extended-attrs-uom-conversions', itemId] as const,
   externalCodes: (itemId: number) => ['item-extended-attrs-external-codes', itemId] as const,
 };
+
+/**
+ * 부속 목록 세 종류의 조회 경로. 각 `PUT` 저장의 `etagPath`가 이 문자열과 정확히 같아야
+ * `useMasterWrite`가 이 조회로 잡힌 토큰을 찾는다(client#602).
+ */
+export const buMapsPath = (itemId: number): string => `/mdm/items/${String(itemId)}/bu-item-maps`;
+export const uomConversionsPath = (itemId: number): string =>
+  `/mdm/items/${String(itemId)}/uom-conversions`;
+export const externalCodesPath = (itemId: number): string =>
+  `/mdm/items/${String(itemId)}/external-codes`;
 
 /**
  * 사업부 매핑 목록.

@@ -73,6 +73,7 @@ export const routingFixtures: Routing[] = [
     statusCode: 'DRAFT',
     effectiveFrom: '2026-03-01',
     effectiveTo: null,
+    isDefault: false,
   },
   {
     routingId: 7002,
@@ -82,6 +83,7 @@ export const routingFixtures: Routing[] = [
     statusCode: 'CONFIRMED',
     effectiveFrom: '2026-02-01',
     effectiveTo: '2026-02-28',
+    isDefault: true,
   },
   {
     routingId: 7001,
@@ -91,6 +93,7 @@ export const routingFixtures: Routing[] = [
     statusCode: 'OBSOLETE',
     effectiveFrom: '2026-01-01',
     effectiveTo: '2026-01-31',
+    isDefault: false,
   },
 ];
 
@@ -112,6 +115,7 @@ export const routingOperationFixtures: RoutingOperation[] = [
     materialInputManaged: false,
     productionResultManaged: true,
     inspectionManaged: true,
+    isOutsourced: false,
     outputLotRequired: false,
     equipmentRequired: false,
     moldRequired: false,
@@ -128,6 +132,7 @@ export const routingOperationFixtures: RoutingOperation[] = [
     materialInputManaged: false,
     productionResultManaged: false,
     inspectionManaged: false,
+    isOutsourced: false,
     outputLotRequired: false,
     equipmentRequired: false,
     moldRequired: false,

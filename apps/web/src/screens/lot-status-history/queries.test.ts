@@ -21,6 +21,7 @@ const statusRow: components['schemas']['LotQualityStatus'] = {
   lotTypeCode: 'SAMPLE_TYPE',
   lotStatusCode: 'SAMPLE_STATUS',
   fullyHeld: false,
+  versionNo: 1,
 };
 
 const listBody = {

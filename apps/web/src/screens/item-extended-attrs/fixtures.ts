@@ -348,6 +348,7 @@ export const routingFixtures: Routing[] = [
     statusCode: 'SYN-ROUTING-STATUS-A',
     effectiveFrom: '2026-03-01',
     effectiveTo: null,
+    isDefault: true,
   },
   {
     routingId: 9001,
@@ -357,6 +358,7 @@ export const routingFixtures: Routing[] = [
     statusCode: 'SYN-ROUTING-STATUS-B',
     effectiveFrom: '2026-01-01',
     effectiveTo: '2026-02-28',
+    isDefault: false,
   },
 ];
 
@@ -370,6 +372,7 @@ const routingOperation = (overrides: Partial<RoutingOperation>): RoutingOperatio
   materialInputManaged: false,
   productionResultManaged: true,
   inspectionManaged: false,
+  isOutsourced: false,
   outputLotRequired: false,
   equipmentRequired: false,
   moldRequired: false,

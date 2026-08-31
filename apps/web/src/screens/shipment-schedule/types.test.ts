@@ -12,6 +12,8 @@ const LINE = {
   shippedQty: 20,
   uomId: 9501,
   shippingInspectionRequired: false,
+  /* client#601 1-5 — 집은 LOT 신설. 이 시험은 아직 이 값을 읽지 않는다. */
+  picks: [],
 };
 
 const RESPONSE = {
