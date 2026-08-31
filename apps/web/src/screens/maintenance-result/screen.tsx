@@ -151,8 +151,20 @@ export const MaintenanceResultScreen = () => {
     {
       key: 'performer',
       header: t.table.performer,
-      render: (row) =>
-        row.isOutsourced ? optional(row.outsourceVendorName) : String(row.performedByUserId ?? '—'),
+      /*
+       * ⛔ **내부 번호를 그대로 그리지 않는다.** 수행자는 계정 식별자라 그 수를 보여 주면
+       * 사용자가 사번으로 읽고 담당자에게 그 수를 말한다 — 목록에서 이름으로 푼다.
+       * 못 풀면 「—」다: 지어낸 이름보다 없음이 낫다.
+       */
+      render: (row) => {
+        if (row.isOutsourced) return optional(row.outsourceVendorName);
+        if (row.performedByUserId === null) return t.table.notAvailable;
+
+        return optional(
+          users.entries.find((entry) => entry.value === String(row.performedByUserId))?.label ??
+            null,
+        );
+      },
     },
     {
       key: 'closed',
