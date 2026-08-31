@@ -76,6 +76,7 @@ import { gaugeCalibration } from './gauge-calibration';
 import { equipmentFailure } from './equipment-failure';
 import { maintenanceOrder } from './maintenance-order';
 import { maintenanceResult } from './maintenance-result';
+import { toolPmOrder } from './tool-pm-order';
 
 export const ko = {
   common,
@@ -140,6 +141,7 @@ export const ko = {
   equipmentFailure,
   maintenanceOrder,
   maintenanceResult,
+  toolPmOrder,
 } as const;
 
 export type Messages = typeof ko;

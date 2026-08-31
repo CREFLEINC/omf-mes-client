@@ -1732,6 +1732,8 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       '/equipment/maintenance-orders',
       /* W-05-06 — 지시가 이 실적의 대상이라 발행 바로 뒤다. */
       '/equipment/maintenance-results',
+      /* W-05-02 — 설비 보전 실적 뒤다. 「설비 보전 → 툴 보전」 차례를 만든다. */
+      '/equipment/tool-pm-order',
       /* W-05-08 — 마스터·설정 뒤다. 정해 두는 화면들과 그 결과를 보는 화면을 섞지 않는다. */
       '/equipment/downtime-summary',
     ]);

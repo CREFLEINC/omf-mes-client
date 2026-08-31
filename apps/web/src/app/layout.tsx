@@ -389,6 +389,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/equipment/maintenance-results" icon="task_alt">
               보전 실적·예비품
             </NavItem>
+            {/* W-05-02 — 설비 보전 실적 뒤다. 「설비 보전 → 툴 보전」 차례를 만든다. */}
+            <NavItem to="/equipment/tool-pm-order" icon="schedule">
+              툴 보전오더 생성
+            </NavItem>
             {/*
              * W-05-08 — 마스터·설정 항목들 **뒤**다. 앞의 것들은 설비를 어떻게 다룰지 정해 두는
              * 자리이고 이것은 그렇게 돌아간 결과를 보는 자리라, 정하는 것과 보는 것을 섞지 않는다.
