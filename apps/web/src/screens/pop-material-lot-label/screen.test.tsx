@@ -15,7 +15,15 @@ const receipt = (id: number, no: string, supplierId: number, at: string) => ({
   statusCode: 'SYN_STATUS',
 });
 
-const line = (id: number, receiptId: number, itemId: number, qty: number, missing: boolean) => ({
+const line = (
+  id: number,
+  receiptId: number,
+  itemId: number,
+  qty: number,
+  missing: boolean,
+  /** 이 라인으로 만들어진 자재LOT. 없으면 아직 등록하지 않은 라인이다. */
+  lotId: number | null = null,
+) => ({
   inboundReceiptLineId: id,
   inboundReceiptId: receiptId,
   lineNo: 1,
@@ -25,6 +33,7 @@ const line = (id: number, receiptId: number, itemId: number, qty: number, missin
   supplierLotMissing: missing,
   inspectionRequired: false,
   statusCode: 'SYN_STATUS',
+  lotId,
 });
 
 const DEFAULT_RECEIPTS = [receipt(8101, 'SYN-IB-0001', 8201, '2026-08-27T09:12:30Z')];
@@ -427,5 +436,35 @@ describe('PopMaterialLotLabelScreen — 프린터 상태', () => {
       expect(seen.length).toBeGreaterThan(0);
     });
     expect(seen[0]?.searchParams.has('documentTypeCode')).toBe(false);
+  });
+});
+
+describe('PopMaterialLotLabelScreen — 등록이 어디까지 갔는가', () => {
+  const selectRow = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(
+      await screen.findByRole('button', { name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택' }),
+    );
+  };
+
+  it('아직 등록하지 않은 자재는 「등록·인쇄」로 보인다', async () => {
+    const { user } = renderScreen();
+
+    await selectRow(user);
+
+    expect(await screen.findByRole('button', { name: '등록·인쇄' })).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ 이미 등록된 자재에 「등록·인쇄」를 보이면 이미 있는 LOT 위에 또 만든다고 읽힌다.
+   * 실제로 다시 부르면 같은 자재에 LOT 이 둘 생기고 되돌릴 화면이 없다(변경 통지 #534 §3).
+   */
+  it('이미 등록된 자재는 「인쇄」로 보이고 왜 그런지 말한다', async () => {
+    const { user } = renderScreen({ lines: [line(8501, 8101, 8601, 500, true, 9001)] });
+
+    await selectRow(user);
+
+    expect(await screen.findByRole('button', { name: '인쇄' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '등록·인쇄' })).not.toBeInTheDocument();
+    expect(screen.getByText(/이미 등록된 자재입니다/u)).toBeInTheDocument();
   });
 });

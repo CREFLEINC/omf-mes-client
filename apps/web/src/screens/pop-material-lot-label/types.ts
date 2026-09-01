@@ -64,6 +64,13 @@ export interface LineView {
   itemId: number;
   receivedQty: number;
   uomId: number;
+  /**
+   * 이 라인으로 만들어진 자재LOT. **없을 수 있다** — 아직 등록하지 않은 라인이다.
+   *
+   * 등록과 발행 기록은 한 트랜잭션이 아니라, 「LOT 은 생겼는데 라벨 기록이 없는」 상태가
+   * 정상적으로 생긴다. 그 상태를 이 값으로 가른다(변경 통지 #534 §3).
+   */
+  lotId: number | null;
 }
 
 /** 라인 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -73,6 +80,7 @@ export const toLineView = (data: InboundReceiptLineResponse): LineView => ({
   itemId: data.itemId,
   receivedQty: data.receivedQty,
   uomId: data.uomId,
+  lotId: data.lotId ?? null,
 });
 
 type PrinterResponse = components['schemas']['Printer'];
@@ -128,7 +136,31 @@ export interface TargetRow {
   itemId: number;
   receivedQty: number;
   uomId: number;
+  /** 이 라인으로 만들어진 자재LOT. 없으면 아직 등록하지 않은 것이다. */
+  lotId: number | null;
 }
+
+/**
+ * 등록·인쇄가 어디까지 갔는가 — **변경 통지 #534 §3 의 세 상태다.**
+ *
+ * 등록(`POST /trace/lots`)과 발행 기록(`POST /app/document-issues`)은 한 트랜잭션이 아니라,
+ * 앞이 됐는데 뒤가 안 된 상태가 **오류가 아니라 정상 상태로** 들어온다.
+ *
+ * | 상태 | 판정 | 다음에 할 일 |
+ * | --- | --- | --- |
+ * | `unregistered` | `lotId`가 없다 | 등록·인쇄 |
+ * | `registered` | `lotId`가 있다 | **인쇄만** — 등록을 다시 부르면 LOT 이 둘 생긴다 |
+ *
+ * 완료(`labelIssued`가 참)는 서버가 목록에서 빼므로 화면에 오지 않는다.
+ */
+export type IssueStage = 'unregistered' | 'registered';
+
+/**
+ * ⛔ **`lotId`가 있으면 등록을 다시 부르지 않는다.** 부르면 같은 자재에 LOT 이 둘 생기고,
+ * 그것을 되돌릴 화면이 없다(변경 통지 #534 §3).
+ */
+export const toIssueStage = (row: TargetRow): IssueStage =>
+  row.lotId === null ? 'unregistered' : 'registered';
 
 /**
  * 입하 건과 그 라인을 목록 줄로 편다.
@@ -147,4 +179,5 @@ export const toTargetRows = (receipt: ReceiptView, lines: LineView[]): TargetRow
     itemId: line.itemId,
     receivedQty: line.receivedQty,
     uomId: line.uomId,
+    lotId: line.lotId,
   }));
