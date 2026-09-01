@@ -27,6 +27,16 @@ export const equipmentFailureReport = {
     hint: '무엇이 어떻게 되었는지 한 줄로 적어 주세요.',
     required: '증상을 적어 주세요',
   },
+  photo: {
+    legend: '사진',
+    take: (count: number, max: number) => `촬영 (${String(count)}/${String(max)})`,
+    thumbnail: '찍은 사진',
+    full: '사진은 세 장까지 붙일 수 있습니다.',
+    /** 사진 한 장이 수백 KB 라 쌓이면 단말 보관소가 감당하지 못한다. */
+    tooHeavy: '보내지 못한 사진이 많아 지금은 더 찍을 수 없습니다.',
+    failed: '사진을 가져오지 못했습니다',
+    waiting: (count: number) => `사진 ${String(count)}장도 함께 기다립니다.`,
+  },
   state: {
     legend: '지금 상태',
     label: '발생 상태',

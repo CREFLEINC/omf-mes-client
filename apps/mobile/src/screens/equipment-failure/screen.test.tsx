@@ -7,6 +7,19 @@ import { EquipmentFailureScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
 
+vi.mock('../../patterns/photo-capture', () => ({
+  capturePhoto: () => Promise.resolve({ type: 'photo', uri: 'file:///syn.jpg' }),
+  readCapturedPhoto: vi.fn(() =>
+    Promise.resolve({
+      fileName: 'syn.jpg',
+      mimeType: 'image/jpeg',
+      data: 'AAAA',
+      previewUrl: 'blob:syn',
+      byteLength: 10,
+    }),
+  ),
+}));
+
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
@@ -312,6 +325,89 @@ describe('설비 고장 보고 화면', () => {
     await user.click(screen.getByRole('button', { name: '고장 보고' }));
 
     expect(await screen.findByText('고장을 보고했습니다')).toBeInTheDocument();
+  });
+
+  /* 설비담당이 사진을 기다리느라 늦게 알면 안 된다. */
+  it('사진보다 본문을 먼저 담는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('설비 스캔');
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+    await user.click(screen.getByRole('button', { name: /촬영/ }));
+    await screen.findByAltText('찍은 사진');
+
+    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
+    await user.click(screen.getByRole('button', { name: '고장 보고' }));
+
+    await waitFor(() => {
+      expect(store.get('outbox')).toBeDefined();
+    });
+    const queued = JSON.parse(store.get('outbox') ?? '[]') as { path: string }[];
+    const paths = queued.map((item) => item.path);
+
+    expect(paths[0]).toBe('/maintenance/breakdowns');
+    expect(paths[1]).toBe('/maintenance/breakdowns/:breakdownId/attachments');
+  });
+
+  it('세 장을 채우면 더 찍을 수 없고 이유를 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('설비 스캔');
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+
+    for (let index = 0; index < 3; index += 1) {
+      await user.click(screen.getByRole('button', { name: /촬영/ }));
+      await waitFor(() => {
+        expect(screen.getAllByAltText('찍은 사진')).toHaveLength(index + 1);
+      });
+    }
+
+    expect(screen.getByRole('button', { name: /촬영/ })).toBeDisabled();
+    expect(screen.getByText('사진은 세 장까지 붙일 수 있습니다.')).toBeInTheDocument();
+  });
+
+  /* 보고를 마치면 화면은 비지만 큐는 그대로다 - 이 화면 것만 세면 큐가 끝없이 커진다. */
+  it('이미 큐에 쌓인 사진도 한도에 센다', async () => {
+    const heavy = 'A'.repeat(5 * 1024 * 1024);
+    store.set(
+      'outbox',
+      JSON.stringify([
+        {
+          id: 'old',
+          idempotencyKey: 'old-key',
+          method: 'POST',
+          path: '/maintenance/breakdowns/9/attachments',
+          body: null,
+          file: { fileName: 'old.jpg', mimeType: 'image/jpeg', data: heavy },
+          occurredAt: '2026-09-01T00:00:00.000Z',
+          confirmation: 'pending',
+        },
+      ]),
+    );
+
+    mount();
+    await screen.findByLabelText('설비 스캔');
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /촬영/ })).toBeDisabled();
+    });
+    expect(
+      screen.getByText('보내지 못한 사진이 많아 지금은 더 찍을 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('설비를 고르기 전에는 찍을 수 없다', async () => {
+    mount();
+
+    expect(await screen.findByRole('button', { name: /촬영/ })).toBeDisabled();
   });
 
   /* 담긴 것만으로 보고됨이라 하면 설비담당이 오지 않는데 온 줄 안다. */

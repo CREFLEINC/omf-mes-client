@@ -3,8 +3,8 @@ import type { ApiError } from '@omf-mes/api-client';
 import { ApiRequestError } from '../request';
 import type { OutboxEntry } from './queue';
 
-/** 한 건을 실제로 보내는 자리. 실패는 던져 올린다. */
-export type OutboxTransport = (entry: OutboxEntry) => Promise<void>;
+/** 한 건을 실제로 보내는 자리. 응답 본문을 돌려주고 실패는 던져 올린다. */
+export type OutboxTransport = (entry: OutboxEntry) => Promise<unknown>;
 
 export interface OutboxRejection {
   entry: OutboxEntry;
@@ -21,6 +21,19 @@ export interface FlushResult {
   /** 큐를 비운 것과 도중에 멈춘 것은 다르다. 뒤엣것은 남은 것을 그대로 둔다. */
   outcome: 'drained' | 'unreachable';
 }
+
+/** 앞 건이 못 갔다는 뜻. 서버가 이 건을 본 적은 없다. */
+const NO_LEADER: ApiError = { kind: 'http', status: 0 };
+
+const readField = (response: unknown, field: string): string | null => {
+  if (typeof response !== 'object' || response === null) {
+    return null;
+  }
+
+  const value = (response as Record<string, unknown>)[field];
+
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : null;
+};
 
 /**
  * 담긴 순서대로 보낸다.
@@ -40,10 +53,16 @@ export const flushQueue = async (
 ): Promise<FlushResult> => {
   const rejected: OutboxRejection[] = [];
   const brokenBatches = new Map<string, ApiError>();
+  const responses = new Map<string, unknown>();
+  /*
+   * 앞 건의 값을 알게 되는 즉시 뒤 건에 굳혀 둔다. 여기서 멈추면 남는 것은 이 목록이고,
+   * 다음 회차에는 앞 건이 큐에 없어 값을 다시 얻을 길이 없다.
+   */
+  const pending = [...entries];
   let sent = 0;
 
-  for (let index = 0; index < entries.length; index += 1) {
-    const entry = entries[index];
+  for (let index = 0; index < pending.length; index += 1) {
+    const entry = pending[index];
 
     if (entry === undefined) {
       continue;
@@ -56,14 +75,33 @@ export const flushQueue = async (
       continue;
     }
 
+    let ready = entry;
+
+    if (entry.pathFrom !== undefined) {
+      const value = readField(responses.get(entry.pathFrom.entryId), entry.pathFrom.field);
+
+      /*
+       * 붙을 곳이 없으면 보내지 않는다. 앞 건이 이번에 안 갔거나 응답이 그 값을 주지 않은
+       * 것이고, 둘 다 이 건만 다시 보내서는 풀리지 않는다.
+       */
+      if (value === null) {
+        rejected.push({ entry, error: NO_LEADER, cascaded: true });
+        continue;
+      }
+
+      const { pathFrom, ...rest } = entry;
+      ready = { ...rest, path: entry.path.replace(pathFrom.token, value) };
+      pending[index] = ready;
+    }
+
     try {
-      await send(entry);
+      responses.set(entry.id, await send(ready));
       sent += 1;
     } catch (cause) {
       const stop = (): FlushResult => ({
         sent,
         rejected,
-        remaining: entries.slice(index),
+        remaining: pending.slice(index),
         outcome: 'unreachable',
       });
 
