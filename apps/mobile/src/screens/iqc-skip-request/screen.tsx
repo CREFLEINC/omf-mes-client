@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { useScannedLot } from '../../patterns/lots';
-import { useItemName, useUomCodes } from '../../patterns/masters';
+import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -69,7 +69,7 @@ export const IqcSkipRequestScreen = () => {
 
   const lot = useScannedLot(scanned);
   const found = lot.data ?? null;
-  const item = useItemName(found?.itemId ?? null);
+  const item = useItem(found?.itemId ?? null);
   const uoms = useUomCodes(found !== null);
   const pending = usePendingRequest(found?.lotId ?? null);
   const mine = useMyRequests();
