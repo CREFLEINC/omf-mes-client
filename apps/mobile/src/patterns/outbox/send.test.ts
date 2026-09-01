@@ -60,6 +60,23 @@ describe('앞 건이 만든 것에 붙는 건', () => {
     ]);
   });
 
+  /* 본문은 갔는데 사진이 다음 회차로 넘어가면, 그때는 앞 건이 큐에 없어 붙을 곳을 잃는다. */
+  it('앞 건이 간 뒤 멈추면 뒤 건이 완성된 경로를 들고 남는다', async () => {
+    const send: OutboxTransport = (item) => {
+      if (item.id === 'body') {
+        return Promise.resolve({ breakdownId: 42 });
+      }
+      return Promise.reject(new ApiRequestError(NETWORK_ERROR));
+    };
+
+    const result = await flushQueue([leader, follower], send);
+
+    expect(result.outcome).toBe('unreachable');
+    expect(result.remaining).toHaveLength(1);
+    expect(result.remaining[0]?.path).toBe('/maintenance/breakdowns/42/attachments');
+    expect(result.remaining[0]?.pathFrom).toBeUndefined();
+  });
+
   it('앞 건의 응답에 그 값이 없으면 보내지 않는다', async () => {
     const seen: string[] = [];
     const send: OutboxTransport = (item) => {

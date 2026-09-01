@@ -54,10 +54,15 @@ export const flushQueue = async (
   const rejected: OutboxRejection[] = [];
   const brokenBatches = new Map<string, ApiError>();
   const responses = new Map<string, unknown>();
+  /*
+   * 앞 건의 값을 알게 되는 즉시 뒤 건에 굳혀 둔다. 여기서 멈추면 남는 것은 이 목록이고,
+   * 다음 회차에는 앞 건이 큐에 없어 값을 다시 얻을 길이 없다.
+   */
+  const pending = [...entries];
   let sent = 0;
 
-  for (let index = 0; index < entries.length; index += 1) {
-    const entry = entries[index];
+  for (let index = 0; index < pending.length; index += 1) {
+    const entry = pending[index];
 
     if (entry === undefined) {
       continue;
@@ -84,7 +89,9 @@ export const flushQueue = async (
         continue;
       }
 
-      ready = { ...entry, path: entry.path.replace(entry.pathFrom.token, value) };
+      const { pathFrom, ...rest } = entry;
+      ready = { ...rest, path: entry.path.replace(pathFrom.token, value) };
+      pending[index] = ready;
     }
 
     try {
@@ -94,7 +101,7 @@ export const flushQueue = async (
       const stop = (): FlushResult => ({
         sent,
         rejected,
-        remaining: entries.slice(index),
+        remaining: pending.slice(index),
         outcome: 'unreachable',
       });
 
