@@ -115,6 +115,33 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     return sending.current;
   }, [runFlush]);
 
+  /*
+   * 보내기를 부르는 자리가 화면마다 흩어지면 어느 화면도 열지 않은 동안 큐가 갇힌다. 셸이
+   * 두 시점에 스스로 보낸다 - 앱을 다시 띄웠을 때와 연결이 돌아왔을 때다.
+   *
+   * 되풀이해 두드리지 않는다. 못 닿는 동안 계속 보내면 배터리만 쓰고, 닿게 되는 순간은
+   * 연결 사건으로 알 수 있다.
+   */
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+
+  useEffect(() => {
+    if (!loaded) {
+      return;
+    }
+
+    const attempt = () => {
+      void flushRef.current().catch(() => undefined);
+    };
+
+    attempt();
+    window.addEventListener('online', attempt);
+
+    return () => {
+      window.removeEventListener('online', attempt);
+    };
+  }, [loaded]);
+
   const value = useMemo(
     () => ({ pending: loaded ? entries.length : 0, enqueue, flush }),
     [enqueue, entries.length, flush, loaded],

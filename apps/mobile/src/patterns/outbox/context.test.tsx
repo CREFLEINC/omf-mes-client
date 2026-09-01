@@ -29,7 +29,10 @@ const draft = (key: string): OutboxDraft => ({
   confirmation: 'immediate',
 });
 
-const mount = (send: OutboxTransport = () => Promise.resolve()) =>
+/* 셸이 스스로 보내므로 기본은 못 닿는 상태로 둔다 - 그래야 큐에 쌓인 것을 잴 수 있다. */
+const unreachable: OutboxTransport = () => Promise.reject(new ApiRequestError({ kind: 'network' }));
+
+const mount = (send: OutboxTransport = unreachable) =>
   renderHook(() => useOutbox(), {
     wrapper: ({ children }) => <OutboxProvider send={send}>{children}</OutboxProvider>,
   });
@@ -50,15 +53,15 @@ describe('outbox', () => {
   });
 
   /* 통신을 기다리게 하지 않는 것이 이 부품의 요점이다. */
-  it('담을 때 서버를 부르지 않는다', async () => {
-    const send = vi.fn(() => Promise.resolve());
-    const { result } = mount(send);
+  /* 통신을 기다리게 하지 않는 것이 이 부품의 요점이다. */
+  it('담기는 통신이 끝나기를 기다리지 않는다', async () => {
+    const { result } = mount(() => new Promise<void>(() => undefined));
 
     await act(async () => {
       await result.current.enqueue(draft('k-1'));
     });
 
-    expect(send).not.toHaveBeenCalled();
+    expect(result.current.pending).toBe(1);
   });
 
   /* 화면 둘이 동시에 담으면 나중 것이 먼저 것을 덮어 한 건이 사라진다. */
@@ -102,7 +105,11 @@ describe('outbox', () => {
   /* 겹쳐 부르면 같은 건을 두 번 보낸다. 서버가 흡수해도 보낸 건수는 거짓이 된다. */
   it('겹쳐 보내라 해도 같은 건을 두 번 보내지 않는다', async () => {
     const seen: string[] = [];
+    let reachable = false;
     const send: OutboxTransport = (entry) => {
+      if (!reachable) {
+        return Promise.reject(new ApiRequestError({ kind: 'network' }));
+      }
       seen.push(entry.idempotencyKey);
       return Promise.resolve();
     };
@@ -112,6 +119,7 @@ describe('outbox', () => {
       await result.current.enqueue(draft('k-1'));
     });
 
+    reachable = true;
     await act(async () => {
       await Promise.all([result.current.flush(), result.current.flush()]);
     });
@@ -133,7 +141,7 @@ describe('outbox', () => {
   });
 
   it('보낸 만큼 건수가 줄고 큐가 비워진다', async () => {
-    const { result } = mount();
+    const { result } = mount(() => Promise.resolve());
 
     await act(async () => {
       await result.current.enqueue(draft('k-1'));
@@ -166,7 +174,7 @@ describe('outbox', () => {
     expect(result.current.pending).toBe(1);
   });
 
-  it('거부된 건은 큐에서 빠지고 이유와 함께 돌아온다', async () => {
+  it('거부된 건은 큐에서 빠진다', async () => {
     const send: OutboxTransport = () =>
       Promise.reject(new ApiRequestError({ kind: 'http', status: 409 }));
     const { result } = mount(send);
@@ -175,13 +183,59 @@ describe('outbox', () => {
       await result.current.enqueue(draft('k-1'));
     });
 
-    let rejectedCount: number | undefined;
+    await waitFor(() => {
+      expect(result.current.pending).toBe(0);
+    });
+  });
+
+  /* 어느 화면도 열지 않으면 큐가 갇힌다. 셸이 스스로 보낸다. */
+  it('앱을 다시 띄우면 남아 있던 것을 스스로 보낸다', async () => {
+    const first = mount();
     await act(async () => {
-      rejectedCount = (await result.current.flush())?.rejected.length;
+      await first.result.current.enqueue(draft('k-1'));
     });
 
-    expect(rejectedCount).toBe(1);
-    expect(result.current.pending).toBe(0);
+    const seen: string[] = [];
+    const send: OutboxTransport = (entry) => {
+      seen.push(entry.idempotencyKey);
+      return Promise.resolve();
+    };
+    const again = mount(send);
+
+    await waitFor(() => {
+      expect(seen).toEqual(['k-1']);
+    });
+    expect(again.result.current.pending).toBe(0);
+  });
+
+  it('연결이 돌아오면 스스로 보낸다', async () => {
+    const seen: string[] = [];
+    let reachable = false;
+    const send: OutboxTransport = (entry) => {
+      if (!reachable) {
+        return Promise.reject(new ApiRequestError({ kind: 'network' }));
+      }
+      seen.push(entry.idempotencyKey);
+      return Promise.resolve();
+    };
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+      await result.current.flush();
+    });
+
+    expect(result.current.pending).toBe(1);
+
+    reachable = true;
+    await act(async () => {
+      window.dispatchEvent(new Event('online'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await waitFor(() => {
+      expect(seen).toEqual(['k-1']);
+    });
   });
 
   it('빈 큐를 보내면 아무 결과도 내지 않는다', async () => {
