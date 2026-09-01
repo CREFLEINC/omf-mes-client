@@ -1,11 +1,12 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import type { Location } from '../../patterns/locations';
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 
 export type PutawayTask = components['schemas']['PutawayTask'];
-export type Location = components['schemas']['Location'];
 export type PutawayTaskComplete = components['schemas']['PutawayTaskComplete'];
+export type { Location };
 
 /**
  * 고른 위치가 지시와 맞는가.

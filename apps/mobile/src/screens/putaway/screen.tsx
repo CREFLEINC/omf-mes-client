@@ -9,7 +9,8 @@ import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useWorkerId } from '../../patterns/workers';
-import { useLocationByCode, useLocations, usePutawayTasks } from './queries';
+import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
+import { usePutawayTasks } from './queries';
 import {
   MATCHED,
   NOT_RECOMMENDED,
@@ -18,7 +19,6 @@ import {
   isSingleItemOnly,
   toOutboxDraft,
   verdictOf,
-  type Location,
   type PutawayTask,
 } from './putaway';
 import './screen.css';
