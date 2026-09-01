@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { useOnlineStatus } from '../patterns/online-status';
 import { ScreenTitleProvider, useCurrentScreenTitle } from '../patterns/screen-title';
+import { useOutbox } from '../patterns/outbox';
 import { useWorkerSession } from '../patterns/worker-session';
 
 interface AppLayoutProps {
@@ -17,6 +18,11 @@ const ShellTopbar = () => {
   const title = useCurrentScreenTitle();
   // 귀속 정보는 상시 표시다 - 누구로 기록되는지 안 보이면 남의 사번으로 쌓인다(D-5).
   const { worker } = useWorkerSession();
+  /*
+   * 담긴 순간 성공으로 보이는 것이 이 앱의 저장 방식이라, 아직 서버에 닿지 않은 건수를
+   * 보이지 않으면 도달하지 못한 사실을 알 방법이 사라진다. 0 이면 감춘다.
+   */
+  const { pending } = useOutbox();
 
   return (
     <Topbar
@@ -31,6 +37,7 @@ const ShellTopbar = () => {
         <>
           {worker === null ? null : <Chip>{`${worker.workerName} · ${worker.workerNo}`}</Chip>}
           <Chip status={online ? 'success' : 'warning'}>{online ? t.online : t.offline}</Chip>
+          {pending === 0 ? null : <Chip status="warning">{t.unsent(pending)}</Chip>}
         </>
       }
     />
