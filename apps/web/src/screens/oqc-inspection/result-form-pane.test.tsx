@@ -1,0 +1,262 @@
+import { messages } from '@omf-mes/i18n';
+import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+
+import { renderWithProviders } from '../../test/api-harness';
+import { toCodeOptions } from './code-options';
+import { confirmedRound, draftRound, overallJudgmentCodeValues, waitingRequest } from './fixtures';
+import { EMPTY_QUANTITY_DRAFT, type QuantityDraft } from './quantity-draft';
+import { ResultFormPane, type ResultFormPaneProps } from './result-form-pane';
+import { toInspectionResultRound } from './types';
+
+const t = messages.oqcInspection.result;
+const transition = messages.oqcInspection.transition;
+const confirm = messages.oqcInspection.confirm;
+
+const options = toCodeOptions(overallJudgmentCodeValues);
+
+/** 합계가 딱 맞는 초안 — 저장이 열리는 정상 경로다(480 + 15 + 5 = 500). */
+const MATCHING: QuantityDraft = { accepted: '480', rejected: '15', held: '5' };
+
+const renderPane = (overrides: Partial<ResultFormPaneProps> = {}) => {
+  const onSave = vi.fn();
+  const props: ResultFormPaneProps = {
+    round: null,
+    inspectionRequestNo: waitingRequest.inspectionRequestNo,
+    inspectedQty: 500,
+    draft: EMPTY_QUANTITY_DRAFT,
+    onChange: vi.fn(),
+    judgmentOptions: options,
+    judgment: '',
+    onJudgmentChange: vi.fn(),
+    onSave,
+    isSaving: false,
+    isJustSaved: false,
+    fieldErrors: {},
+    saveError: null,
+    onReload: vi.fn(),
+    isReinspecting: false,
+    onStartReinspection: vi.fn(),
+    onCancelReinspection: vi.fn(),
+    ...overrides,
+  };
+
+  renderWithProviders(<ResultFormPane {...props} />);
+
+  return { onSave, props };
+};
+
+describe('ResultFormPane — 판정 폼', () => {
+  it('수량 세 칸과 종합 판정을 그리고, 임시 저장 자리를 두지 않는다', () => {
+    renderPane();
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.rejected)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.held)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.judgment })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.save })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '임시 저장' })).not.toBeInTheDocument();
+  });
+
+  it('회차가 하나도 없으면 0을 미리 채우지 않는다 — 「0으로 판정했다」와 같아 보이면 안 된다', () => {
+    renderPane();
+
+    expect(screen.getByLabelText(t.fields.accepted)).toHaveValue('');
+    expect(screen.getByText(t.notStarted)).toBeInTheDocument();
+  });
+
+  it('검사성적서 발행 자리를 감추지 않고 비활성 + 사유로 세운다', () => {
+    renderPane();
+
+    expect(screen.getByRole('button', { name: t.coaIssue })).toBeDisabled();
+    expect(screen.getByText(t.coaPending)).toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 막힌 사유 네 갈래', () => {
+  it('합계가 어긋나면 무엇이 막혔는지 말한다', () => {
+    renderPane({ draft: { accepted: '480', rejected: '15', held: '' } });
+
+    expect(screen.getByText(t.blockedByTotals)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+  });
+
+  it('판정을 고르지 않았으면 고르라고 말한다', () => {
+    renderPane({ draft: MATCHING });
+
+    expect(screen.getByText(t.blockedByJudgment)).toBeInTheDocument();
+  });
+
+  it('판정 목록이 비면 감추지 않고 사유를 밝힌다 — 「고르세요」라고 하지 않는다', () => {
+    renderPane({ draft: MATCHING, judgmentOptions: [] });
+
+    expect(screen.getByRole('combobox', { name: t.judgment })).toBeDisabled();
+    expect(screen.getByText(t.judgmentUnavailable)).toBeInTheDocument();
+    expect(screen.getByText(t.blockedByJudgmentOptions)).toBeInTheDocument();
+    expect(screen.queryByText(t.blockedByJudgment)).not.toBeInTheDocument();
+  });
+
+  it('확정된 회차는 칸이 잠기고 재검사만 열린다', () => {
+    renderPane({ round: toInspectionResultRound(confirmedRound), draft: MATCHING });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.reinspect })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.save })).not.toBeInTheDocument();
+    expect(screen.getByText(t.blockedByConfirmed)).toBeInTheDocument();
+  });
+
+  it('잠긴 이유를 묶음에 한 번만 낸다 — 칸마다 달면 세 칸이 각각 다른 이유로 잠긴 것처럼 읽힌다', () => {
+    renderPane({ round: toInspectionResultRound(confirmedRound), draft: MATCHING });
+
+    /* `getAllByText` 라 세 번 반복되면 길이가 3이 되어 죽는다. */
+    expect(screen.getAllByText(t.confirmed)).toHaveLength(1);
+  });
+
+  it('잠긴 사유를 세 칸이 접근 이름으로도 가리킨다 — 보이는 문장과 접근 이름 중 하나를 고르지 않는다', () => {
+    renderPane({ round: toInspectionResultRound(confirmedRound), draft: MATCHING });
+
+    const note = screen.getByText(t.confirmed);
+
+    for (const label of [t.fields.accepted, t.fields.rejected, t.fields.held]) {
+      expect(screen.getByLabelText(label)).toHaveAttribute('aria-describedby', note.id);
+    }
+  });
+
+  /**
+   * ⭐ **막다른 길을 열어 두지 않는다.**
+   *
+   * 다른 곳이 남긴 「작성중」 회차에서 칸만 열어 두면, 저장은 서버에서 `UNIQUE(의뢰, 회차)` 에
+   * 걸려 409 로 되돌아오는데 「확정본이 아니다」라는 이유로 재검사 단추도 서지 않는다 —
+   * 그 회차를 끝낼 길이 화면 어디에도 없다.
+   */
+  it('다른 곳이 남긴 「작성중」 회차도 잠그고 재검사 길을 연다 — 끝낼 길 없는 자리를 만들지 않는다', () => {
+    renderPane({ round: toInspectionResultRound(draftRound), draft: MATCHING });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeDisabled();
+    expect(screen.getByText(t.draftElsewhere)).toBeInTheDocument();
+    expect(screen.getByText(t.blockedByDraftElsewhere)).toBeInTheDocument();
+    /* 여기서 할 수 있는 일이 하나 있어야 한다. */
+    expect(screen.getByRole('button', { name: t.reinspect })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.save })).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 재검사 갈래', () => {
+  it('재검사를 시작하면 부르는 쪽에 알린다', async () => {
+    const onStartReinspection = vi.fn();
+
+    renderPane({ round: toInspectionResultRound(confirmedRound), onStartReinspection });
+
+    await userEvent.click(screen.getByRole('button', { name: t.reinspect }));
+
+    expect(onStartReinspection).toHaveBeenCalledTimes(1);
+  });
+
+  it('재검사 중에는 칸이 열리고 사유 목록이 없다는 사실을 밝힌다', () => {
+    renderPane({ round: null, isReinspecting: true, draft: MATCHING, judgment: 'ACCEPTED' });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeEnabled();
+    expect(screen.getByText(t.reinspectRound)).toBeInTheDocument();
+    expect(screen.getByText(t.reinspectNote)).toBeInTheDocument();
+    /* ⛔ 사유 칸을 지어내지 않는다 — 고를 값 목록이 없다. */
+    expect(screen.getByText(t.reinspectReasonPending)).toBeInTheDocument();
+  });
+
+  it('그만두는 길을 함께 둔다 — 열고 나서 되돌아갈 데가 없으면 갇힌다', async () => {
+    const onCancelReinspection = vi.fn();
+
+    renderPane({ round: null, isReinspecting: true, draft: MATCHING, onCancelReinspection });
+
+    await userEvent.click(screen.getByRole('button', { name: t.reinspectCancel }));
+
+    expect(onCancelReinspection).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ResultFormPane — 서버가 되돌린 것', () => {
+  it('저장된 판정이 목록에서 사라진 것을 밝힌다 — 조용히 비우면 고른 것이 지워진다', () => {
+    renderPane({ draft: MATCHING, judgment: 'RETIRED' });
+
+    expect(screen.getByText(t.judgmentUnknown('RETIRED'))).toBeInTheDocument();
+  });
+
+  it('서버가 짚어 준 칸 오류를 그 칸에 낸다', () => {
+    renderPane({ draft: MATCHING, fieldErrors: { acceptedQty: '합격수량이 너무 큽니다.' } });
+
+    expect(screen.getByText('합격수량이 너무 큽니다.')).toBeInTheDocument();
+  });
+
+  it('되말한 충돌 문구를 배너로 낸다', () => {
+    renderPane({
+      draft: MATCHING,
+      judgment: 'ACCEPTED',
+      saveError: { kind: 'http', status: 409, message: messages.oqcInspection.save.invalidState },
+    });
+
+    expect(screen.getByText(messages.oqcInspection.save.invalidState)).toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 전이 경고', () => {
+  it('네 규칙을 담고, 아는 판정에는 방향을 덧붙인다', () => {
+    renderPane({ draft: MATCHING, judgment: 'ACCEPTED' });
+
+    const banner = screen.getByRole('alert');
+
+    expect(within(banner).getByText(transition.quantities('480', '15', '5'))).toBeInTheDocument();
+    expect(within(banner).getByText(transition.directionRelease)).toBeInTheDocument();
+    expect(within(banner).getByText(transition.pickingImpact)).toBeInTheDocument();
+    expect(within(banner).getByText(transition.pickedNotReturned)).toBeInTheDocument();
+    expect(within(banner).getByText(transition.noAmendment)).toBeInTheDocument();
+    expect(within(banner).getByText(transition.dispositionPath)).toBeInTheDocument();
+  });
+
+  it('모르는 판정 코드에는 방향을 지어내지 않는다', () => {
+    renderPane({ draft: MATCHING, judgment: 'SOMETHING_NEW' });
+
+    expect(screen.getByText(transition.directionUnknown)).toBeInTheDocument();
+    expect(screen.queryByText(transition.directionRelease)).not.toBeInTheDocument();
+  });
+
+  it('셀 수 없으면 경고 자체를 그리지 않는다 — 숫자가 거짓이 되는 동안 권하지 않는다', () => {
+    renderPane({ draft: { accepted: 'abc', rejected: '15', held: '5' }, judgment: 'ACCEPTED' });
+
+    expect(screen.queryByText(transition.title)).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 확인 창', () => {
+  it('저장을 누르면 창이 열릴 뿐이고 쓰기는 창의 버튼에서 나간다', async () => {
+    const { onSave } = renderPane({ draft: MATCHING, judgment: 'ACCEPTED' });
+
+    await userEvent.click(screen.getByRole('button', { name: t.save }));
+
+    const dialog = screen.getByRole('dialog');
+
+    expect(
+      within(dialog).getByText(confirm.title(waitingRequest.inspectionRequestNo)),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText(confirm.judgment('합격'))).toBeInTheDocument();
+    expect(within(dialog).getByText(confirm.irreversible)).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: confirm.confirm }));
+
+    /* 검사한 시각은 창을 여는 순간 한 번 읽은 값이다 — 형식만 확인한다. */
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(String(onSave.mock.calls[0]?.[0])).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it('취소하면 창이 닫히고 아무것도 나가지 않는다', async () => {
+    const { onSave } = renderPane({ draft: MATCHING, judgment: 'ACCEPTED' });
+
+    await userEvent.click(screen.getByRole('button', { name: t.save }));
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: confirm.cancel }),
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+});

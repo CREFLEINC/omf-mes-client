@@ -44,6 +44,7 @@ import { LotStatusTransitionScreen } from '../screens/lot-status-transition/scre
 import { MasterChangeScreen } from '../screens/master-change/screen';
 import { NoticeScreen } from '../screens/notice/screen';
 import { NotificationCenterScreen } from '../screens/notification-center/screen';
+import { OqcInspectionScreen } from '../screens/oqc-inspection/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
@@ -525,6 +526,12 @@ export const appRouter = createBrowserRouter([
        * 완제품 재고·Lot Status 조회는 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다.
        */
       { path: 'shipment/product-stock-status', element: <ProductStockStatusScreen /> },
+      /*
+       * W-04-03 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/quality/**`이지만 OQC 출하검사
+       * 판정은 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다. 이 목록의 차례는 **착수 순서**라
+       * 업무 순서(예정 목록 → 이 화면 → 출하 처리)와 별개이며, 그 차례는 사이드바가 든다.
+       */
+      { path: 'shipment/oqc-inspection', element: <OqcInspectionScreen /> },
     ],
   },
   /*

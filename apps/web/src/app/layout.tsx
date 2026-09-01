@@ -239,6 +239,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               출하 예정 목록
             </NavItem>
             {/*
+             * W-04-03 — 예정 목록에서 출하 대상이 정해진 뒤, 상차하기 «전»에 출하검사를 판정한다.
+             * 그래서 예정 목록 뒤·출하 처리 앞이다: 편성 → 예정 → **OQC 판정** → 출하 처리.
+             */}
+            <NavItem to="/shipment/oqc-inspection" icon="fact_check">
+              OQC 출하검사 판정
+            </NavItem>
+            {/*
              * W-04-04 — 예정 목록(W-04-02)에서 피킹까지 끝난 후보를 상차·실물 출고 처리하므로
              * 그 바로 뒤에 둔다. 되돌릴 수 없는 쓰기(재고 차감·genealogy 종결)이지만 출하 자체는
              * 미확정 상태로 남는다 — 확정·취소는 W-04-12(미착수) 소관이다.
