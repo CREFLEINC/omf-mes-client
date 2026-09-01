@@ -18,7 +18,8 @@ import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { useEquipments, useOpenBreakdownCount, type Equipment } from './queries';
+import { useEquipments, type Equipment } from '../../patterns/equipments';
+import { useOpenBreakdownCount } from './queries';
 import {
   MAX_PHOTOS,
   PHOTO_QUEUE_LIMIT_BYTES,

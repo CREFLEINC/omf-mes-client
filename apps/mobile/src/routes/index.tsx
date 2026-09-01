@@ -5,6 +5,7 @@ import { ShellGate } from '../app/shell-gate';
 import { ShellHome } from '../app/shell-home';
 import { WorkerSignInScreen } from '../screens/device-registration/sign-in';
 import { EquipmentFailureScreen } from '../screens/equipment-failure/screen';
+import { EquipmentInspectionScreen } from '../screens/equipment-inspection/screen';
 import { IqcSkipRequestScreen } from '../screens/iqc-skip-request/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
@@ -24,6 +25,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'screens', element: <ShellHome /> },
       { path: 'material-location', element: <MaterialLocationScreen /> },
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },
+      { path: 'equipment-inspection', element: <EquipmentInspectionScreen /> },
       { path: 'iqc-skip-request', element: <IqcSkipRequestScreen /> },
       { path: 'rejections', element: <OutboxRejectionsScreen /> },
     ],
