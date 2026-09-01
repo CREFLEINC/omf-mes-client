@@ -92,9 +92,30 @@ const listBody = (items: unknown[]) => ({
   page: { page: 1, size: 50, total: items.length },
 });
 
+/** 이 요청이 정확 일치(`lotNo`) 축인가. 아니면 부분 검색(`q`) 축이다. */
+const isExactLotQuery = (request: Request): boolean =>
+  new URL(request.url).searchParams.has('lotNo');
+
+/**
+ * 자재LOT 조회 두 축을 한 라우트로 세운다.
+ *
+ * 정확 일치 축은 **계약이 0·1건을 보장**하므로 첫 건만 낸다 — 스텁이 그 약속을 어기면
+ * 감지기가 있을 수 없는 상태를 재게 된다.
+ */
 const lotsRoute = (items: unknown[]): StubRoute => ({
   match: (request) => isGet(request, LOTS_PATH),
-  respond: () => jsonResponse(listBody(items)),
+  respond: (request) => jsonResponse(listBody(isExactLotQuery(request) ? items.slice(0, 1) : items)),
+});
+
+/**
+ * 정확 일치는 비었고 부분 검색에만 결과가 있는 상태 — **외부 식별자 스캔**이다.
+ *
+ * 여러 건이 걸릴 수 있는 축은 여기뿐이라(omf-mes#254 회신 ①), 모호함을 재는 감지기는
+ * 이 라우트를 쓴다.
+ */
+const partialOnlyLotsRoute = (items: unknown[]): StubRoute => ({
+  match: (request) => isGet(request, LOTS_PATH),
+  respond: (request) => jsonResponse(listBody(isExactLotQuery(request) ? [] : items)),
 });
 
 const moldsRoute = (items: unknown[]): StubRoute => ({
@@ -134,7 +155,11 @@ const scanCode = async (user: ReturnType<typeof userEvent.setup>, code: string):
 };
 
 describe('MaterialInputScanScreen — 스캔', () => {
-  it('읽은 코드로 자재LOT을 찾아 담는다', async () => {
+  /*
+   * ⭐ **정확 일치를 먼저 묻는다**(omf-mes#254 회신 ①). 부분 검색만으로 집으면 여러 건 중
+   * 하나를 화면이 임의로 고르게 되고, 다른 범위의 LOT을 잘못 가리켜도 오류가 나지 않는다.
+   */
+  it('읽은 코드로 자재LOT을 찾아 담는다 — 정확 일치를 먼저 묻는다', async () => {
     const user = userEvent.setup();
     const { requests } = renderScreen([lotsRoute([lot()])]);
 
@@ -145,7 +170,60 @@ describe('MaterialInputScanScreen — 스캔', () => {
     ).toBeTruthy();
 
     const lotRequest = requests.find((request) => request.url.pathname === LOTS_PATH);
-    expect(lotRequest?.url.searchParams.get('q')).toBe('SAMPLE-LOT-0001');
+    expect(lotRequest?.url.searchParams.get('lotNo')).toBe('SAMPLE-LOT-0001');
+  });
+
+  /*
+   * ⛔ **정확 일치로 집었으면 부분 검색을 하지 않는다.** 이어서 물으면 같은 스캔 하나가 축을
+   * 둘 타고, 뒤 축이 다른 LOT을 물어 오면 무엇이 정본인지 정할 근거가 없어진다.
+   */
+  it('정확 일치로 집으면 부분 검색을 잇지 않는다', async () => {
+    const user = userEvent.setup();
+    const { requests } = renderScreen([lotsRoute([lot()])]);
+
+    await scanCode(user, 'SAMPLE-LOT-0001');
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
+
+    const lotRequests = requests.filter((request) => request.url.pathname === LOTS_PATH);
+    expect(lotRequests).toHaveLength(1);
+    expect(lotRequests[0]?.url.searchParams.has('q')).toBe(false);
+  });
+
+  /*
+   * 정확 일치가 비면 외부 식별자를 훑는다 — 그 축을 지우면 **자재LOT 번호가 아닌 코드가
+   * 붙은 자재는 통째로 스캔되지 않는다.**
+   */
+  it('정확 일치가 비면 부분 검색으로 외부 식별자를 훑는다', async () => {
+    const user = userEvent.setup();
+    const { requests } = renderScreen([partialOnlyLotsRoute([lot()])]);
+
+    await scanCode(user, 'SAMPLE-EXT-0001');
+
+    expect(
+      await screen.findByText(t.scan.outcomes.material('SAMPLE-EXT-0001', 'SAMPLE-LOT-0001')),
+    ).toBeTruthy();
+
+    const lotRequests = requests.filter((request) => request.url.pathname === LOTS_PATH);
+    expect(lotRequests.map((request) => request.url.searchParams.has('lotNo'))).toEqual([
+      true,
+      false,
+    ]);
+  });
+
+  /*
+   * ⛔ **스캔값을 건드리지 않는다.** 대소문자 규칙이 계약에 아직 없다(#254 물음 ② — 미결).
+   * 화면이 올리거나 내리면 화면이 서버 규칙을 정한 것이 되고, 서버가 반대로 정하면 조용히
+   * 어긋난다.
+   */
+  it('읽은 값의 대소문자를 바꾸지 않는다', async () => {
+    const user = userEvent.setup();
+    const { requests } = renderScreen([lotsRoute([]), moldsRoute([])]);
+
+    await scanCode(user, 'sample-Lot-0001');
+    await screen.findByText(t.scan.outcomes.notFound('sample-Lot-0001'));
+
+    const lotRequest = requests.find((request) => request.url.pathname === LOTS_PATH);
+    expect(lotRequest?.url.searchParams.get('lotNo')).toBe('sample-Lot-0001');
   });
 
   /*
@@ -227,7 +305,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
    */
   it('여러 건이 걸리면 담지 않고 다시 읽으라고 말한다', async () => {
     const user = userEvent.setup();
-    renderScreen([lotsRoute([lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002' })])]);
+    renderScreen([partialOnlyLotsRoute([lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002' })])]);
 
     await scanCode(user, 'SAMPLE-LOT');
 
