@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiRequestError } from '../patterns/request';
 import { useScreenTitle } from '../patterns/screen-title';
 import { OutboxProvider, useOutbox } from '../patterns/outbox';
 import { WorkerSessionProvider, useWorkerSession } from '../patterns/worker-session';
@@ -38,6 +40,7 @@ const EnqueueScreen = () => {
       type="button"
       onClick={() => {
         void enqueue({
+          label: '생산 실적',
           idempotencyKey: 'k-1',
           method: 'POST',
           path: '/production/results',
@@ -64,6 +67,11 @@ const Shell = ({ children }: { children: ReactNode }) => (
 const renderLayout = (children: string) => {
   render(<Shell>{children}</Shell>);
 };
+
+/* 큐는 단말 보관소에 남는다. 비우지 않으면 앞 시험이 담은 것을 다음 시험이 함께 센다. */
+beforeEach(() => {
+  localStorage.clear();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -158,5 +166,34 @@ describe('AppLayout', () => {
     renderLayout('본문 자리');
 
     expect(screen.getByRole('banner')).toHaveTextContent('오프라인');
+  });
+
+  /*
+   * 되돌아온 것은 화면을 떠난 뒤에 생긴다. 셸이 이고 다니지 않으면 그것을 적은 사람은
+   * 되돌아왔다는 사실 자체를 만날 자리가 없다.
+   */
+  it('되돌아온 건수를 상단 바에 보이고 목록으로 가는 길을 낸다', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <OutboxProvider
+          send={() => Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }))}
+        >
+          <WorkerSessionProvider>
+            <AppLayout>
+              <EnqueueScreen />
+            </AppLayout>
+          </WorkerSessionProvider>
+        </OutboxProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('banner')).not.toHaveTextContent('되돌아옴');
+
+    await user.click(screen.getByRole('button', { name: '담기' }));
+    window.dispatchEvent(new Event('online'));
+
+    expect(await screen.findByText('되돌아옴 1')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '되돌아옴 1' })).toHaveAttribute('href', '/rejections');
   });
 });

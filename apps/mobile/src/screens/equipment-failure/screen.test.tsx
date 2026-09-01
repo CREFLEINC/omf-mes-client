@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
@@ -524,5 +525,43 @@ describe('설비 고장 보고 화면', () => {
       screen.getByText('연결되면 보냅니다. 아직 설비담당에게 가지 않았습니다.'),
     ).toBeInTheDocument();
     expect(screen.queryByText('고장을 보고했습니다')).not.toBeInTheDocument();
+  });
+
+  /*
+   * 되돌아온 것을 담아 두었다고 하면, 보고자는 연결되면 갈 줄 알고 자리를 뜬다. 그 보고는
+   * 어디에도 없다.
+   */
+  it('서버가 되돌리면 담아 두었다고 하지 않는다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <MemoryRouter>
+        <SignedIn>
+          <EquipmentFailureScreen />
+        </SignedIn>
+      </MemoryRouter>,
+      {
+        fetch: createStubFetch([
+          ...routes(),
+          {
+            match: (request: Request) =>
+              new URL(request.url).pathname === '/maintenance/breakdowns' &&
+              request.method === 'POST',
+            respond: () => jsonResponse({ message: '이미 처리 중인 고장입니다' }, { status: 409 }),
+          },
+        ]),
+      },
+    );
+    await screen.findByLabelText('설비 스캔');
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
+    await user.click(screen.getByRole('button', { name: '고장 보고' }));
+
+    expect(await screen.findByText('보고가 되돌아왔습니다')).toBeInTheDocument();
+    expect(screen.queryByText('보고를 담아 두었습니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('고장을 보고했습니다')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '되돌아온 기록 보기' })).toBeInTheDocument();
   });
 });

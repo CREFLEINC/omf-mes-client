@@ -8,9 +8,16 @@ import type { OutboxTransport } from './send';
 
 const store = vi.hoisted(() => new Map<string, string>());
 
+/** 보관소가 특정 자리의 저장을 거절하는 상황을 만든다. */
+const refuse = vi.hoisted(() => ({ key: null as string | null }));
+
 vi.mock('../local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (key === refuse.key) {
+      return Promise.reject(new Error('보관소가 거절했습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -21,6 +28,7 @@ vi.mock('../local-store', () => ({
 }));
 
 const draft = (key: string): OutboxDraft => ({
+  label: '생산 실적',
   idempotencyKey: key,
   method: 'POST',
   path: '/production/results',
@@ -39,6 +47,7 @@ const mount = (send: OutboxTransport = unreachable) =>
 
 beforeEach(() => {
   store.clear();
+  refuse.key = null;
 });
 
 describe('outbox', () => {
@@ -186,6 +195,103 @@ describe('outbox', () => {
     await waitFor(() => {
       expect(result.current.pending).toBe(0);
     });
+  });
+
+  /* 큐에서 빠지고 어디에도 남지 않으면, 적은 사람은 기록이 어디로 갔는지 알 수 없다. */
+  it('거부된 건을 큐 밖에 남긴다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }));
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    await waitFor(() => {
+      expect(result.current.rejected).toHaveLength(1);
+    });
+    expect(result.current.rejected[0]?.entry.label).toBe('생산 실적');
+    expect(result.current.rejected[0]?.error).toEqual({ kind: 'http', status: 422 });
+  });
+
+  /*
+   * 큐를 먼저 비우면, 그 사이에 보관소가 거절할 때 큐에서도 빠지고 어디에도 남지 않는다.
+   * 남기는 것이 먼저라야 최악이 같은 건을 큐에 한 번 더 남기는 데서 그친다.
+   */
+  it('보관소가 큐 저장을 거절해도 되돌아온 건은 남는다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }));
+
+    // 담아 둔 것을 셸이 스스로 보내는 첫 회차에 거절이 걸리게 한다.
+    store.set('outbox', JSON.stringify([{ ...draft('k-1'), id: 'e-1' }]));
+    refuse.key = 'outbox';
+
+    const { result } = mount(send);
+
+    await waitFor(() => {
+      expect(result.current.rejected).toHaveLength(1);
+    });
+  });
+
+  it('앱을 다시 띄워도 되돌아온 건이 남아 있다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }));
+    const first = mount(send);
+
+    await act(async () => {
+      await first.result.current.enqueue(draft('k-1'));
+    });
+    await waitFor(() => {
+      expect(first.result.current.rejected).toHaveLength(1);
+    });
+
+    const again = mount(send);
+
+    await waitFor(() => {
+      expect(again.result.current.rejected).toHaveLength(1);
+    });
+  });
+
+  /* 닿지 못한 것은 기다리면 간다. 거부와 같은 목록에 넣으면 갈 것을 안 간다고 하는 셈이다. */
+  it('닿지 못한 건은 되돌아온 것으로 세지 않는다', async () => {
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    await act(async () => {
+      await result.current.flush();
+    });
+
+    expect(result.current.rejected).toHaveLength(0);
+    expect(result.current.pending).toBe(1);
+  });
+
+  it('내린 건은 다시 띄워도 돌아오지 않는다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }));
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+    await waitFor(() => {
+      expect(result.current.rejected).toHaveLength(1);
+    });
+
+    const id = result.current.rejected[0]?.entry.id ?? '';
+    await act(async () => {
+      await result.current.dismissRejected(id);
+    });
+
+    expect(result.current.rejected).toHaveLength(0);
+
+    const again = mount(send);
+    await waitFor(() => {
+      expect(again.result.current.pending).toBe(0);
+    });
+    expect(again.result.current.rejected).toHaveLength(0);
   });
 
   /* 어느 화면도 열지 않으면 큐가 갇힌다. 셸이 스스로 보낸다. */
