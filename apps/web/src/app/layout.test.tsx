@@ -509,6 +509,14 @@ describe('AppLayout', () => {
     expect(links.indexOf('/shipment/stock-reinstatements')).toBe(
       links.indexOf('/shipment/disposition-requests') + 1,
     );
+    /* W-04-10 — 처분 판정이 선행이고 결재를 탄다. 재고 재등록 뒤다. */
+    expect(links.indexOf('/shipment/product-disposal-request')).toBe(
+      links.indexOf('/shipment/stock-reinstatements') + 1,
+    );
+    expect(within(sidebar).getByRole('link', { name: '제품 폐기 요청' })).toHaveAttribute(
+      'href',
+      '/shipment/product-disposal-request',
+    );
     /* 편성이 예정보다 먼저다 — 지시서를 편성해야 예정이 생긴다(업무 순서). */
     expect(links.indexOf('/shipment/shipment-request-create')).toBe(
       links.indexOf('/logistics/document-progress') + 1,
@@ -534,6 +542,10 @@ describe('AppLayout', () => {
     /* 확정은 «만드는» 두 화면 뒤다 — 되돌릴 수 있는 구간이 여기서 끝난다(W-04-12). */
     expect(links.indexOf('/shipment/shipment-confirm')).toBe(
       links.indexOf('/shipment/expedited-shipment') + 1,
+    );
+    /* 버리는 일은 만드는·확정하는 일 뒤다(W-04-10). */
+    expect(links.indexOf('/shipment/product-disposal-request')).toBe(
+      links.indexOf('/shipment/shipment-confirm') + 1,
     );
     expect(links.indexOf('/shipment/shipment-processing')).toBeLessThan(
       links.indexOf('/production/work-order-close'),
@@ -585,7 +597,7 @@ describe('AppLayout', () => {
       '/production/work-order-progress',
     );
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/shipment/stock-reinstatements') + 1,
+      links.indexOf('/shipment/product-disposal-request') + 1,
     );
     /* 변경 판정은 수신·조회 바로 뒤다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06). */
     expect(links.indexOf('/production/po-change-review')).toBe(
@@ -793,6 +805,8 @@ describe('AppLayout', () => {
       '/shipment/disposition-requests',
       /* W-04-11 — 정상 판정된 반품 LOT을 출하 가능 재고로 되돌린다. */
       '/shipment/stock-reinstatements',
+      /* W-04-10 — 처분 판정이 선행이고 결재를 탄다. 출하 흐름 넷 뒤다. */
+      '/shipment/product-disposal-request',
       '/production/production-orders',
       /* W-02-06 — 받은 P/O 가 «바뀌었을 때» 판정하는 자리라 수신·조회 바로 뒤다. */
       '/production/po-change-review',
