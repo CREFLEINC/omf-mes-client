@@ -208,6 +208,28 @@ describe('기기 등록 화면', () => {
     expect(keystore.token).toBeNull();
   });
 
+  /* 잠깐 끊긴 것을 만료라 하면 다시 시도하면 될 일에 관리자를 찾아가게 된다. */
+  it('받는 도중 닿지 못한 것은 만료라 하지 않는다', async () => {
+    const camera = stubCamera();
+    renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
+      fetch: createStubFetch([
+        {
+          match: (request) => new URL(request.url).pathname === '/mdm/workers',
+          respond: () => {
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ]),
+    });
+
+    await screen.findByText('관리자 화면의 등록 QR을 비추세요.');
+    camera.read(REGISTRATION_TOKEN);
+
+    expect(await screen.findByText('연결된 상태에서 등록해야 합니다')).toBeInTheDocument();
+    expect(screen.queryByText('등록 정보가 만료됐습니다')).not.toBeInTheDocument();
+    expect(keystore.token).toBeNull();
+  });
+
   it('끊긴 상태에서는 카메라를 열지 않고 이유를 말한다', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     const camera = stubCamera();

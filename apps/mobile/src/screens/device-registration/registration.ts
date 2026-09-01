@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { useDeviceRegistration } from '../../patterns/device-registration';
 import { useOnlineStatus } from '../../patterns/online-status';
+import { toApiError } from '../../patterns/request';
 import { createMlkitQrCamera, type QrCamera } from '../../patterns/qr-camera';
 import { readTerminalClaims, type TerminalClaims } from '../../patterns/token-claims';
 import { fetchWorkerDirectory, saveWorkerDirectory } from './directory';
@@ -88,10 +89,16 @@ export const useRegistrationFlow = ({ camera }: RegistrationFlowOptions = {}): R
       void register(value, async () => {
         const entries = await fetchWorkerDirectory(client, claims.plantId);
         await saveWorkerDirectory(entries);
-      }).catch(() => {
-        if (!cancelled) {
-          setPhase('rejected');
+      }).catch((error: unknown) => {
+        if (cancelled) {
+          return;
         }
+
+        /*
+         * 닿지 못한 것과 거절당한 것을 가른다. 둘을 뭉치면 잠깐 끊긴 작업자에게 관리자를
+         * 찾아가 새 QR 을 받아 오라고 말하게 된다 - 다시 시도하면 될 일이다.
+         */
+        setPhase(toApiError(error).kind === 'network' ? 'offline' : 'rejected');
       });
     };
 
