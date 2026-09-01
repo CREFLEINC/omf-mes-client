@@ -74,6 +74,7 @@ import { productStockStatus } from './product-stock-status';
 import { shipmentRequestCreate } from './shipment-request-create';
 import { shipmentProcessing } from './shipment-processing';
 import { dashboard } from './dashboard';
+import { downtimeRegister } from './downtime-register';
 import { downtimeSummary } from './downtime-summary';
 import { gaugeCalibration } from './gauge-calibration';
 import { equipmentFailure } from './equipment-failure';
@@ -164,6 +165,7 @@ export const ko = {
   shipmentRequestCreate,
   shipmentProcessing,
   dashboard,
+  downtimeRegister,
   downtimeSummary,
   gaugeCalibration,
   equipmentFailure,
