@@ -17,8 +17,10 @@ export const toolUsage = {
   scan: {
     sectionLabel: '툴 스캔',
     inputLabel: '금형 QR',
-    placeholder: '금형 QR 을 비추거나 코드를 입력하세요',
-    submit: '조회',
+    placeholder: '금형 QR 을 비추세요',
+    /** QR 이 안 읽힐 때의 폴백. 같은 칸에 손으로 친다 — 스캐너와 입력 자리를 나누지 않는다. */
+    manualEntry: '코드 직접 입력',
+    manualPlaceholder: '툴 코드를 입력하고 Enter',
     cavity: '캐비티',
     notFound: '그 코드의 툴이 없습니다. 코드를 다시 확인하세요.',
     disposed: '폐기된 툴입니다. 다른 툴을 스캔하세요.',
@@ -30,11 +32,11 @@ export const toolUsage = {
     inputLabel: '타발수',
     unit: '회',
     keypadLabel: '타발수 숫자 키패드',
-    directLabel: '직접 입력',
     convertedLabel: '생산 수량으로 환산',
-    baseQtyLabel: '생산 수량',
-    ratioLabel: '환산 비율',
-    convertedResult: '환산 타발수',
+    baseQtyLabel: '수량',
+    /** 환산이 어떻게 나온 값인지 식 그대로 보인다 — 「수량 500 × 2.5 = 1,250 회」 */
+    convertedExpression: (baseQty: string, ratio: string, shots: string) =>
+      `수량 ${baseQty} × ${ratio} = ${shots} 회`,
     /** 환산 결과는 정수로 맞춰 보낸다 — 계약이 타발수를 정수로 받는다. */
     roundedNote: '환산 결과는 가장 가까운 정수로 맞춰 보냅니다.',
     conversionUnavailable: '환산 비율이 설정돼 있지 않습니다. 직접 입력으로 기입하세요.',
@@ -49,6 +51,8 @@ export const toolUsage = {
     increment: '이번 입력',
     projected: '저장 후 누계',
     available: '사용 가능',
+    /** 누계를 언제 받은 값인지. 서버가 시각을 주지 않아 «화면이 받은 시각»을 적는다. */
+    asOf: (time: string) => `${time} 기준`,
     usageLabel: '적정타수 대비 사용률',
     /** 적정타수가 비어 있을 때. **저장은 막지 않는다** — 기록 자체는 남아야 한다. */
     guaranteedMissing: '적정타수 미등록 — 사용 가능 타수를 산출할 수 없습니다.',
@@ -59,6 +63,7 @@ export const toolUsage = {
   },
 
   notice: {
+    sectionLabel: '안내',
     /** 화면이 누계를 계산해 보내지 않는다는 사실을 상시 밝힌다. */
     serverAdds: '누계는 저장할 때 서버가 더합니다 — 이 화면은 미리 계산만 합니다.',
   },

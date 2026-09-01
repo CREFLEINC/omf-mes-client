@@ -5,8 +5,7 @@ import {
   Chip,
   NumberPad,
   Progress,
-  Radio,
-  RadioGroup,
+  Switch,
   TextField,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -33,7 +32,6 @@ import {
   COLLECTION_METHOD,
   DISPOSED_STATUS_CODE,
   emptyUsageDraft,
-  type CollectionMethod,
   type Mold,
   type ToolUsage,
   type UsageDraft,
@@ -84,6 +82,9 @@ export const ToolUsageScreen = () => {
 
   /** 스캔칸에 치는 중인 값과, 조회를 건 값은 다르다 — 한 글자마다 서버를 부르지 않는다. */
   const [codeInput, setCodeInput] = useState('');
+  /** 손으로 치는 중인가 — 안내 문구만 바뀐다. 스캐너와 입력 자리를 나누지 않는다. */
+  const [isManualEntry, setIsManualEntry] = useState(false);
+  const scanRef = useRef<HTMLInputElement>(null);
   const [submittedCode, setSubmittedCode] = useState('');
   const [draft, setDraft] = useState<UsageDraft>(emptyUsageDraft);
   const [saved, setSaved] = useState<SaveResult | null>(null);
@@ -154,6 +155,34 @@ export const ToolUsageScreen = () => {
    * ⛔ 발생 시각도 버린다 — 붙들고 있으면 **툴 B 의 실적에 툴 A 를 찍던 시각**이 박힌다.
    * 친 타발수는 남긴다. 값을 먼저 치고 툴을 찍는 순서도 정상이다.
    */
+  const isConverted = draft.method === COLLECTION_METHOD.converted;
+  const usagePercentFigure = usagePercent(figures);
+  const isOver = isOverGuaranteed(figures);
+
+  const guaranteedText =
+    usableTool === null ||
+    usableTool.guaranteedShotCount === null ||
+    usableTool.guaranteedShotCount === undefined
+      ? '—'
+      : `${formatShots(usableTool.guaranteedShotCount)} ${t.shot.unit}`;
+
+  /**
+   * 누계를 «언제 받은 값»인가.
+   *
+   * ⚠ **서버가 시각을 주지 않는다** — 툴 마스터에 그 칸이 없다. 그래서 화면이 그 값을 받은
+   * 시각을 적는다. 스펙 §3 이 요구하는 「○○ 기준」의 뜻(이 숫자가 언제 것인가)은 그대로 서고,
+   * 없는 값을 지어내지도 않는다. 계약에 시각이 생기면 그 값으로 바꾼다.
+   */
+  const asOfText =
+    lookup.dataUpdatedAt === 0
+      ? null
+      : t.cumulative.asOf(
+          new Date(lookup.dataUpdatedAt).toLocaleTimeString('ko-KR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        );
+
   const submitCode = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     setSubmittedCode(codeInput.trim());
@@ -178,6 +207,7 @@ export const ToolUsageScreen = () => {
   const clearTool = (): void => {
     setCodeInput('');
     setSubmittedCode('');
+    setIsManualEntry(false);
     resetDraft();
   };
 
@@ -239,13 +269,14 @@ export const ToolUsageScreen = () => {
           </div>
         )}
 
-        {/* ① 툴 스캔 — QR 이 실패해도 코드를 손으로 칠 수 있어야 한다(스펙 §6-1). */}
+        {/* ① 툴 스캔 — QR 이 실패해도 코드를 손으로 칠 수 있어야 한다(스펙 §6-1 · D-3). */}
         <Card bordered className="pop-section" aria-label={t.scan.sectionLabel}>
           <Card.Body>
             <form className="pop-scan" onSubmit={submitCode}>
               <TextField
+                ref={scanRef}
                 label={t.scan.inputLabel}
-                placeholder={t.scan.placeholder}
+                placeholder={isManualEntry ? t.scan.manualPlaceholder : t.scan.placeholder}
                 size="xl"
                 fullWidth
                 autoFocus
@@ -254,8 +285,21 @@ export const ToolUsageScreen = () => {
                   setCodeInput(event.target.value);
                 }}
               />
-              <Button type="submit" size="2xl" variant="tonal">
-                {t.scan.submit}
+              {/*
+               * ⭐ **조회 버튼을 두지 않는다.** 스캐너가 코드 끝에 Enter 를 붙여 보내므로 폼이
+               * 그대로 제출된다 — 손으로 칠 때도 같은 길이다. 버튼을 두면 장갑 낀 손이 스캔
+               * 뒤에 한 번 더 눌러야 한다.
+               */}
+              <Button
+                type="button"
+                size="2xl"
+                variant="tonal"
+                onClick={() => {
+                  setIsManualEntry(true);
+                  scanRef.current?.focus();
+                }}
+              >
+                {t.scan.manualEntry}
               </Button>
             </form>
 
@@ -277,97 +321,104 @@ export const ToolUsageScreen = () => {
           </Card.Body>
         </Card>
 
-        {/* ② 타발수 입력 — 직접 기입이 기본이고 환산은 정책이 열어 줄 때만 선다(스펙 §5-4). */}
+        {/* ② 타발수 입력 — 타발수 칸은 늘 서고, 환산은 그 아래에서 값을 만든다(스펙 §3). */}
         <Card bordered className="pop-section" aria-label={t.shot.sectionLabel}>
           <Card.Body>
-            <RadioGroup
-              name="collection-method"
-              orientation="horizontal"
-              aria-label={t.shot.sectionLabel}
-              value={draft.method}
-              onChange={(value) => {
-                changeDraft({ method: value as CollectionMethod });
-              }}
-            >
-              <Radio value={COLLECTION_METHOD.direct}>{t.shot.directLabel}</Radio>
-              <Radio value={COLLECTION_METHOD.converted} disabled={conversion.kind !== 'ready'}>
-                {t.shot.convertedLabel}
-              </Radio>
-            </RadioGroup>
-
-            {conversion.kind === 'loading' && (
-              <p className="field-note">{t.shot.conversionLoading}</p>
-            )}
-            {conversion.kind === 'off' && <p className="field-note">{t.shot.conversionOff}</p>}
-            {conversion.kind === 'unset' && (
-              <p className="field-note">{t.shot.conversionUnavailable}</p>
-            )}
-
             <div className="pop-shot">
-              {draft.method === COLLECTION_METHOD.direct ? (
+              <div className="pop-shot-fields">
+                {/*
+                 * ⭐ **환산을 켜면 이 칸은 «결과»를 보인다.** 사람이 고칠 수 있는 자리가 둘이면
+                 * 어느 값이 나가는지 알 수 없다 — 환산 중에는 읽기 전용이다.
+                 */}
                 <TextField
                   id={shotInputId}
                   label={t.shot.inputLabel}
                   size="xl"
+                  fullWidth
                   inputMode="numeric"
-                  value={draft.shotCount}
+                  readOnly={isConverted}
+                  value={
+                    isConverted
+                      ? increment === null
+                        ? ''
+                        : formatShots(increment)
+                      : draft.shotCount
+                  }
                   error={write.fieldErrors.shotCount}
+                  /* 단위는 칸 오른쪽 안에 붙인다 — 스펙 §3 의 「타발수 [1,250] 회」 */
+                  trailingIcon={t.shot.unit}
                   onChange={(event) => {
                     changeDraft({ shotCount: event.target.value });
                   }}
                 />
-              ) : (
-                <div className="pop-conversion">
-                  <TextField
-                    id={shotInputId}
-                    label={t.shot.baseQtyLabel}
-                    size="xl"
-                    inputMode="decimal"
-                    value={draft.baseQty}
-                    error={write.fieldErrors.conversionBaseQty}
-                    onChange={(event) => {
-                      changeDraft({ baseQty: event.target.value });
-                    }}
-                  />
-                  {conversion.kind === 'ready' && (
+
+                <Switch
+                  label={t.shot.convertedLabel}
+                  checked={isConverted}
+                  disabled={conversion.kind !== 'ready'}
+                  onChange={(event) => {
+                    changeDraft({
+                      method: event.target.checked
+                        ? COLLECTION_METHOD.converted
+                        : COLLECTION_METHOD.direct,
+                      shotCount: '',
+                      baseQty: '',
+                    });
+                  }}
+                />
+
+                {conversion.kind === 'loading' && (
+                  <p className="field-note">{t.shot.conversionLoading}</p>
+                )}
+                {conversion.kind === 'off' && <p className="field-note">{t.shot.conversionOff}</p>}
+                {conversion.kind === 'unset' && (
+                  <p className="field-note">{t.shot.conversionUnavailable}</p>
+                )}
+
+                {isConverted && conversion.kind === 'ready' && (
+                  <div className="pop-conversion">
+                    <TextField
+                      label={t.shot.baseQtyLabel}
+                      size="xl"
+                      inputMode="decimal"
+                      value={draft.baseQty}
+                      error={write.fieldErrors.conversionBaseQty}
+                      onChange={(event) => {
+                        changeDraft({ baseQty: event.target.value });
+                      }}
+                    />
                     <p className="field-note">
-                      {`${t.shot.ratioLabel} ${String(conversion.ratio)} · ${t.shot.convertedResult} ${
-                        increment === null ? '—' : formatShots(increment)
-                      } ${t.shot.unit} · ${t.shot.roundedNote}`}
+                      {t.shot.convertedExpression(
+                        draft.baseQty === '' ? '—' : draft.baseQty,
+                        String(conversion.ratio),
+                        increment === null ? '—' : formatShots(increment),
+                      )}
                     </p>
-                  )}
-                </div>
-              )}
+                    <p className="field-note">{t.shot.roundedNote}</p>
+                  </div>
+                )}
+              </div>
 
               <NumberPad
                 aria-label={t.shot.keypadLabel}
                 maxLength={SHOT_MAX_LENGTH}
-                allowDecimal={draft.method === COLLECTION_METHOD.converted}
-                value={draft.method === COLLECTION_METHOD.direct ? draft.shotCount : draft.baseQty}
+                allowDecimal={isConverted}
+                value={isConverted ? draft.baseQty : draft.shotCount}
                 onChange={(value) => {
-                  changeDraft(
-                    draft.method === COLLECTION_METHOD.direct
-                      ? { shotCount: value }
-                      : { baseQty: value },
-                  );
+                  changeDraft(isConverted ? { baseQty: value } : { shotCount: value });
                 }}
               />
             </div>
           </Card.Body>
         </Card>
 
-        {/* ③ 누계 — 저장 전에 「저장하면 얼마가 남는가」를 보인다(스펙 §3-2). */}
+        {/* ③ 누계 — 저장 전에 「저장하면 얼마가 남는가」를 보인다(스펙 §3 · §3-2). */}
         <Card bordered className="pop-section" aria-label={t.cumulative.sectionLabel}>
           <Card.Body>
             <dl className="pop-figures">
               <div>
                 <dt>{t.cumulative.guaranteed}</dt>
-                <dd>
-                  {usableTool?.guaranteedShotCount === null ||
-                  usableTool?.guaranteedShotCount === undefined
-                    ? '—'
-                    : `${formatShots(usableTool.guaranteedShotCount)} ${t.shot.unit}`}
-                </dd>
+                <dd>{guaranteedText}</dd>
               </div>
               <div>
                 <dt>{t.cumulative.current}</dt>
@@ -375,12 +426,19 @@ export const ToolUsageScreen = () => {
                   {usableTool === null
                     ? '—'
                     : `${formatShots(usableTool.currentShotCount)} ${t.shot.unit}`}
+                  {usableTool !== null && asOfText !== null && (
+                    <span className="pop-figure-note">{asOfText}</span>
+                  )}
                 </dd>
               </div>
               <div>
                 <dt>{t.cumulative.increment}</dt>
                 <dd>{increment === null ? '—' : `+${formatShots(increment)} ${t.shot.unit}`}</dd>
               </div>
+
+              {/* 구분선 — 위 셋은 「지금 사실」이고 아래 둘은 「저장하면 그렇게 된다」다. */}
+              <div className="pop-figures-rule" />
+
               <div>
                 <dt>{t.cumulative.projected}</dt>
                 <dd>
@@ -395,45 +453,43 @@ export const ToolUsageScreen = () => {
               </div>
               <div>
                 <dt>{t.cumulative.available}</dt>
-                <dd>
-                  {usableTool === null
-                    ? '—'
-                    : figureText(
-                        availableShots(figures),
-                        t.cumulative.offlineProjection,
-                        t.cumulative.guaranteedMissing,
-                      )}
+                <dd className="pop-figure-usage">
+                  <span>
+                    {usableTool === null
+                      ? '—'
+                      : figureText(
+                          availableShots(figures),
+                          t.cumulative.offlineProjection,
+                          t.cumulative.guaranteedMissing,
+                        )}
+                  </span>
+                  {/*
+                   * ⛔ **적정타수가 없거나 연결이 끊기면 막대를 그리지 않는다**(스펙 §5-3 · §6-2).
+                   * 0% 로 그리면 「다 썼다」로, 캐시 값으로 그리면 실제보다 여유 있게 읽힌다.
+                   */}
+                  {usagePercentFigure.kind === 'value' && (
+                    <Progress
+                      label={t.cumulative.usageLabel}
+                      value={usagePercentFigure.value}
+                      showValue
+                      tone={isOver ? 'error' : 'primary'}
+                    />
+                  )}
                 </dd>
               </div>
             </dl>
 
-            {/*
-             * ⛔ **적정타수가 없거나 연결이 끊기면 진행 막대를 그리지 않는다**(스펙 §5-3 · §6-2).
-             * 0% 로 그리면 「다 썼다」로, 캐시 값으로 그리면 실제보다 여유 있게 읽힌다.
-             */}
-            {usableTool !== null &&
-              (() => {
-                const percent = usagePercent(figures);
-
-                return percent.kind === 'value' ? (
-                  <Progress
-                    label={t.cumulative.usageLabel}
-                    value={percent.value}
-                    showValue
-                    tone={isOverGuaranteed(figures) ? 'error' : 'primary'}
-                  />
-                ) : null;
-              })()}
-
             {!isOnline && usableTool !== null && (
               <p className="field-note">{t.cumulative.offlineBase}</p>
             )}
-            {isOverGuaranteed(figures) && <p className="field-note">{t.cumulative.over}</p>}
+            {isOver && <p className="field-note">{t.cumulative.over}</p>}
           </Card.Body>
         </Card>
 
         {/* ④ 안내 — 누계를 서버가 더한다는 사실을 상시 밝힌다(스펙 §3-2). */}
-        <p className="pane-lead">{t.notice.serverAdds}</p>
+        <Card bordered className="pop-section pop-notice" aria-label={t.notice.sectionLabel}>
+          <Card.Body>{t.notice.serverAdds}</Card.Body>
+        </Card>
       </div>
 
       <div className="pop-actions">

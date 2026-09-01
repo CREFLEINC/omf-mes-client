@@ -111,10 +111,12 @@ afterEach(() => {
 const renderScreen = (options: Options = {}, route: string = ENTRY_ROUTE) =>
   renderWithProviders(<ToolUsageScreen />, { fetch: createStubFetch(routes(options)), route });
 
-/** 코드를 찍고 조회를 누른다 — 스캐너가 값을 밀어 넣는 것과 같은 경로다. */
+/**
+ * 코드를 찍는다 — **스캐너가 값을 밀어 넣고 끝에 Enter 를 붙이는 것과 같은 경로다.**
+ * 조회 버튼은 두지 않았다(스펙 §3): 장갑 낀 손이 스캔 뒤 한 번 더 누르게 하지 않는다.
+ */
 const scanTool = async (user: ReturnType<typeof userEvent.setup>, code = TOOL_CODE) => {
-  await user.type(screen.getByLabelText(t.scan.inputLabel), code);
-  await user.click(screen.getByRole('button', { name: t.scan.submit }));
+  await user.type(screen.getByLabelText(t.scan.inputLabel), `${code}{Enter}`);
 };
 
 describe('ToolUsageScreen — 툴 스캔', () => {
@@ -479,7 +481,7 @@ describe('ToolUsageScreen — 환산', () => {
     renderScreen();
 
     expect(await screen.findByText(t.shot.conversionUnavailable)).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: t.shot.convertedLabel })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: t.shot.convertedLabel })).toBeDisabled();
   });
 
   it('비율이 서 있으면 수량을 곱한 값을 보내고 기준 수량·비율을 함께 저장한다', async () => {
@@ -488,7 +490,7 @@ describe('ToolUsageScreen — 환산', () => {
     renderScreen({ conversionReady: true, writes });
 
     await scanTool(user);
-    await user.click(await screen.findByRole('radio', { name: t.shot.convertedLabel }));
+    await user.click(await screen.findByRole('switch', { name: t.shot.convertedLabel }));
     await user.type(await screen.findByLabelText(t.shot.baseQtyLabel), '500');
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 

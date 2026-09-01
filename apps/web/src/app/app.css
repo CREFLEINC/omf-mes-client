@@ -939,24 +939,26 @@ main > * + * {
   gap: var(--space-5);
 }
 
-.pop-shot > *:first-child {
-  flex: 1;
-}
-
 .pop-conversion {
   display: grid;
   gap: var(--space-2);
 }
 
 /*
- * 누계 다섯 줄 — 이름과 값이 짝으로 읽혀야 한다. 최소 폭 격자로 두면 폭이 허락하는 만큼
- * 한 줄에 서고 모자라면 접힌다(`.kpi-grid`와 같은 판단, 값은 이 화면의 것이다).
+ * 누계 다섯 줄 — **세로로 쌓는다**(화면 스펙 §3). 이름과 값이 한 줄에서 짝을 이루고, 줄이
+ * 위에서 아래로 「지금 → 저장하면」의 순서를 만든다. 가로로 늘어놓으면 그 순서가 사라진다.
  */
 .pop-figures {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  gap: var(--space-3);
+  gap: var(--space-2);
   margin: 0;
+}
+
+.pop-figures > div {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  align-items: baseline;
+  gap: var(--space-4);
 }
 
 .pop-figures dt {
@@ -968,6 +970,49 @@ main > * + * {
 .pop-figures dd {
   margin: 0;
   font: var(--type-title-sm);
+}
+
+/*
+ * 구분선 — 위 셋은 「지금 사실」이고 아래 둘은 「저장하면 그렇게 된다」다.
+ * 선 하나가 그 경계를 말한다(화면 스펙 §3).
+ */
+.pop-figures-rule {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--outline-variant);
+}
+
+/* 사용 가능 줄 — 값 오른쪽에 진행 막대가 붙는다. 막대가 없으면 값만 선다. */
+.pop-figure-usage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.pop-figure-usage > *:last-child {
+  flex: 1;
+}
+
+/* 「이 숫자가 언제 것인가」 — 값보다 약하게 읽혀야 한다. */
+.pop-figure-note {
+  margin-left: var(--space-3);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 안내 구획 — 글자만 담는다. 경고가 아니라 상시 사실이라 배너를 쓰지 않는다. */
+.pop-notice {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 입력칸 묶음이 남는 폭을 쓰고 키패드가 자기 폭을 갖는다. */
+.pop-shot-fields {
+  display: grid;
+  gap: var(--space-3);
+  flex: 1;
 }
 
 /* 액션바 — 화면 아래에 붙박이다. 오른쪽 정렬이되 사유는 줄 왼쪽에 남는다. */
